@@ -26,6 +26,17 @@ foreach ($src in @($CORP_SRC, $GOV_SRC)) {
     }
 }
 
+# An industry group becomes a goods name that is also a safe filename.
+# "INTERNET SERV. / CONTENT" -> INTERNET_SERV_CONTENT, "BASE METALS & MINING"
+# -> BASE_METALS_MINING. Non-alphanumerics collapse to a single '_' rather than
+# stacking ("___"), and the result is uppercased to match the legacy's style.
+function Normalize-Good([string]$s) {
+    if (-not $s) { return "" }
+    $t = ($s.ToUpper() -replace '[^A-Z0-9]+', '_').Trim('_')
+    if ($t.Length -gt 32) { $t = $t.Substring(0, 32).TrimEnd('_') }
+    return $t
+}
+
 function Get-FirstDecimal([string]$text, [string]$label) {
     if (-not $text) { return $null }
     $lines = $text -split "`r?`n" | Where-Object { $_ -like "*${label}*" }
@@ -43,6 +54,13 @@ function Get-FirstInt([string]$text, [string]$label) {
     }
     return $null
 }
+
+# Opening units of stock every producer starts with. See the corp creation loop:
+# the goods market deadlocks at zero without it, because production chases last
+# tick's sales and sales start at zero. Env-overridable for the complexity
+# tiers. A NEW rule - the legacy specifies no opening inventory.
+if ($env:WSR_PAL_OPENING_STOCK) { $opening_stock = [long]$env:WSR_PAL_OPENING_STOCK }
+else { $opening_stock = 20 }
 
 $corp_created = 0
 $corp_skipped = 0
@@ -64,6 +82,17 @@ if (Test-Path $CORP_SRC) {
         $shares_outstanding = Get-FirstDecimal $ptext "Shares of Stock Outstanding:"
         $market_cap = Get-FirstDecimal $ptext "Total Stock Capitalization:"
         $debt_to_equity = Get-FirstDecimal $ptext "Debt to Equity Ratio:"
+        # What this corporation PRODUCES, derived from its real profile line
+        # "Industry Group:" (AFL.txt: "Industry Group:  SHIPPING"). 50 corps
+        # span 27 distinct groups, and each group becomes a tradeable good.
+        #
+        # This is the key the corp schema lacked - state.txt had no industry
+        # field at all, so there was no way to say what a corp sells. Storing it
+        # once at creation keeps the taxonomy derived from real legacy data
+        # instead of invented, and the goods market needs no profile parsing.
+        $produces = ""
+        $igrp = Select-String -Path $profile -Pattern 'Industry Group:\s*(.+)' -ErrorAction SilentlyContinue
+        if ($igrp) { $produces = Normalize-Good $igrp.Matches[0].Groups[1].Value }
         $risk_bias = 50
         if (Test-Path $weights) {
             $w = Get-Content $weights -Raw
@@ -74,8 +103,24 @@ if (Test-Path $CORP_SRC) {
             -not $shares_outstanding -or -not $market_cap -or -not $debt_to_equity) {
             return
         }
+        if (-not $produces) { return }   # no taxonomy -> no good; do not half-create
 
         New-Item -ItemType Directory -Force -Path $piece_dir | Out-Null
+        # OPENING INVENTORY. Without it the goods market is deadlocked at zero:
+        # production chases last tick's sales, sales start at zero, so nothing
+        # is ever produced and nothing can ever be sold. The production feedback
+        # loop needs a seed.
+        #
+        # The legacy profile's "Working Capital (A/R, Inven.): 373.88" is NOT
+        # used, because that is a MONEY figure (receivables + inventory) and
+        # treating it as a unit count is exactly the scale error the house rule
+        # forbids (OPERATING-INCOME.md 5.1). This is a documented opening
+        # QUANTITY instead, same category as opening cash: a NEW rule, meant to
+        # be replaced by a scenario-file parameter.
+        $stock_file = Join-Path $piece_dir "goods.txt"
+        if (-not (Test-Path $stock_file)) {
+            "$produces|$opening_stock" | Set-Content -Path $stock_file
+        }
         @"
 current_state=0
 decision_mode=1
@@ -86,6 +131,7 @@ shares_outstanding=$shares_outstanding
 market_cap=$market_cap
 debt_to_equity=$debt_to_equity
 risk_bias=$risk_bias
+produces=$produces
 shares_held=0
 pending_action=
 last_action=
@@ -164,6 +210,10 @@ Write-Host "governments:  $gov_created created, $gov_skipped already existed"
 #
 # Idempotent, like the rest: a household whose state.txt exists is left alone.
 # ---------------------------------------------------------------------------
+# Opening units of stock every producer starts with. See the corp creation loop:
+# the goods market deadlocks at zero without it. Env-overridable for the
+# complexity tiers. A NEW rule - the legacy specifies no opening inventory.
+
 $pop_src  = Join-Path $SCRIPT_DIR "projects\wsr-pal\pieces_template\pop_downtown\state.txt"
 $pop_count   = 24
 $pop_cash    = 5000
