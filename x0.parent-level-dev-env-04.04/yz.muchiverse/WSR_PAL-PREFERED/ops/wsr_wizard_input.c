@@ -199,8 +199,8 @@ int main(int argc, char *argv[]) {
     resolve_root();
 
     char state_path[PATH_BUF], wizard_path[PATH_BUF];
-    snprintf(state_path, sizeof(state_path), "%s/projects/wsr-pal/pieces/wsr_menu/state.txt", project_root);
-    snprintf(wizard_path, sizeof(wizard_path), "%s/projects/wsr-pal/pieces/wsr_menu/new_corp_wizard.txt", project_root);
+    snprintf(state_path, sizeof(state_path), "%s/projects/wsr-pal/pieces/wsr_main_menu/state.txt", project_root);
+    snprintf(wizard_path, sizeof(wizard_path), "%s/projects/wsr-pal/pieces/wsr_main_menu/new_corp_wizard.txt", project_root);
 
     int step = read_kv_int(state_path, "prompt_step", 1);
     char buf[MAX_BUF];

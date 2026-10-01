@@ -169,7 +169,7 @@ static void blank(FILE *out) { line(out, ""); }
 static void read_top_news_line(const char *project_root, char *out, size_t out_sz) {
     out[0] = '\0';
     char news_path[PATH_BUF];
-    snprintf(news_path, sizeof(news_path), "%s/projects/wsr-pal/pieces/wsr_menu/news.txt", project_root);
+    snprintf(news_path, sizeof(news_path), "%s/projects/wsr-pal/pieces/wsr_main_menu/news.txt", project_root);
     FILE *f = fopen(news_path, "r");
     if (!f) return;
     char line1[MAX_LINE];
@@ -349,7 +349,7 @@ int main(void) {
     resolve_root();
 
     char menu_state_path[PATH_BUF], out_path[PATH_BUF];
-    snprintf(menu_state_path, sizeof(menu_state_path), "%s/projects/wsr-pal/pieces/wsr_menu/state.txt", project_root);
+    snprintf(menu_state_path, sizeof(menu_state_path), "%s/projects/wsr-pal/pieces/wsr_main_menu/state.txt", project_root);
     snprintf(out_path, sizeof(out_path), "%s/pieces/display/current_frame.txt", project_root);
 
     char view_path[PATH_BUF];
