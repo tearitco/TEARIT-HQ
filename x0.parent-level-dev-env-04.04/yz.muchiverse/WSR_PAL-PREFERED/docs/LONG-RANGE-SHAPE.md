@@ -100,6 +100,45 @@ because almost nothing depends on coordinates yet. This is the rare case where
 the *cheap* move is the early one — but only if it stays a data contract
 (`data/locations.txt`) rather than a refactor of every op.
 
+#### 2.2 Zoning — the reason the hierarchy has to be a hierarchy
+
+Government / commercial / residential zoning is the clearest justification for the
+tree, and it is worth being explicit about why **flat coordinates cannot express
+it** even though they superficially look sufficient.
+
+Zoning is a property of a **parcel**, and a parcel only means something because of
+what *contains* it:
+
+- A residential lot **inside** a commercial district is not the same asset as the
+  same lot in a rural one. Value comes from access to jobs, to roads, and to
+  services — all of which are properties of the surrounding region, not of the
+  `(x, y)` pair. With flat `x,y` there is nothing to inherit from, so zoning
+  degenerates into a colour-coded flag with no economic content.
+- Parcels must be **finite, adjacent and competing**. Contention for land is
+  where the auction earns its keep.
+- **Land value must be discovered, not computed** — same rule as stock price.
+  A parcel's worth is what a bidder will actually pay for it in that location,
+  and it should rise near commerce, fall after a war, and collapse when the road
+  moves. That means land joins the existing `goods_quote`/`goods_settle` book and
+  ledger rather than getting its own pricing formula.
+
+**Terrain is also the natural home of the three sinks** in `goods_sink.c`, which
+is a pleasing fit rather than a coincidence:
+
+| sink | on terrain |
+|------|------------|
+| CONSUMABLE | land is **built on** — a parcel is consumed by the structure on it, and mined out if it holds ore |
+| DEPRECIATING | the **building** decays, and the parcel loses value as it does |
+| OBSOLESCENT | a location is **made obsolete** by an event — war, a new trade route, a moved industry — and its land is suddenly unsellable at any price |
+
+So war (§2) has a consequence in the goods model rather than being a flag, and a
+city that boomed and then emptied is the OBSOLESCENT case made geographic.
+
+**Current state:** `tick_all.ps1` already loops over `realestate_*` pieces, but
+**zero exist** — it is a latent no-op today. The type is referenced before it is
+real, which is harmless now and will silently misbehave the moment creation lands
+without the fields being agreed. Fix the seam before adding the first parcel.
+
 ---
 
 ## 3. Companies graded — and credit ratings that mean something
