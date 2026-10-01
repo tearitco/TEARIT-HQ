@@ -9,8 +9,9 @@
  *   - a household's cash          (paying for goods)
  *   - a corporation's cash        (receiving revenue)
  *   - a corporation's inventory   (pieces/<id>/goods.txt)
- *   - data/gsold_<GOOD>.txt       (producer|sold|offered, so production can
- *                                   steer on sell-through, not just volume)
+ *   - data/gsold_<GOOD>.txt       (producer|sold|offered|revenue, so production
+ *                                   steers on sell-through and payroll can be
+ *                                   sized off real revenue, not a guess)
  *   - the goods rows in the ledger
  *
  * goods_quote.c posts intent; this decides what actually happened. An order
@@ -246,9 +247,10 @@ static int settle_good(const char *good) {
      * sold/offered is the sell-through goods_quote steers production on. A
      * producer that offers and never fills must still be recorded, or a dead
      * market looks like a market that was never stocked. */
-    static char sold_names[MAXPIECE][MAXPIECE];
-    static long  sold_units[MAXPIECE];
-    static long  sold_offer[MAXPIECE];
+static char sold_names[MAXPIECE][MAXPIECE];
+static long  sold_units[MAXPIECE];
+static long  sold_offer[MAXPIECE];
+static double sold_rev[MAXPIECE];
     int nsold = 0;
 
     FILE *f = fopen(book, "r");
@@ -275,7 +277,8 @@ static int settle_good(const char *good) {
             if (k < 0 && nsold < MAXPIECE) {
                 snprintf(sold_names[nsold], MAXPIECE, "%s", who);
                 sold_units[nsold] = 0;
-                sold_offer[nsold] = 0;
+            sold_offer[nsold] = 0;
+            sold_rev[nsold] = 0.0;
                 k = nsold++;
             }
             if (k >= 0) sold_offer[k] += units;
@@ -379,7 +382,7 @@ static int settle_good(const char *good) {
         int k = -1;
         for (int i = 0; i < nsold; i++)
             if (!strcmp(sold_names[i], a->who)) { k = i; break; }
-        if (k >= 0) sold_units[k] += qty;
+        if (k >= 0) { sold_units[k] += qty; sold_rev[k] += amount; }
 
         last_price = price;
         last_units = qty;
@@ -401,7 +404,7 @@ static int settle_good(const char *good) {
         FILE *sf = fopen(sp, "w");
         if (sf) {
             for (int i = 0; i < nsold; i++)
-                fprintf(sf, "%s|%ld|%ld\n", sold_names[i], sold_units[i], sold_offer[i]);
+                fprintf(sf, "%s|%ld|%ld|%.2f\n", sold_names[i], sold_units[i], sold_offer[i], sold_rev[i]);
             fclose(sf);
         }
     }
