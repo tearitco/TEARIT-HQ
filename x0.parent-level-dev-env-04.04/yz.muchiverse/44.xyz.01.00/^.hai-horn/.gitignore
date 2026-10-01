@@ -1,0 +1,30 @@
+# Build outputs
+system/prisc+x
+system/chtpm_parser_pal
+system/keyboard_input
+system/renderer
+ops/+x/
+
+# Runtime state - never commit. The whole pieces/ tree is written by the
+# running harness (key histories, the rendered frame, gui_state, the
+# cursor files), and chats/ holds the user's own conversation history.
+pieces/
+chats/
+
+# Dropped by chtpm_parser_pal's ${var} substitution debug path while
+# rendering. Runtime noise.
+text_substitution_debug.txt
+debug.txt
+
+# House standard: ignore editor and OS droppings.
+*.swp
+*~
+.DS_Store
+.vscode/
+.idea/
+
+# NOTE on the binaries above: this house generally commits built +x
+# artifacts, but these are all one-command rebuilds from scripts/build.sh
+# and they are architecture-specific, so they are kept out of history.
+# Flip that by removing the block above if the house convention is
+# confirmed to be "commit the binaries".
