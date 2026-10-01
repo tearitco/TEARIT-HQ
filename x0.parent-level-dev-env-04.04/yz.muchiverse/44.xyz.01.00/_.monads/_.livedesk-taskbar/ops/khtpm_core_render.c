@@ -5866,12 +5866,41 @@ static void assign_nav_and_layout(void) {
         g_dock_header_nav_hi = g_n_nav;
         if (g_dock_peer) {
             int hx = g_win_x, hy = g_win_y, hw = g_win_w, hh = g_win_h;
+            /* REAL FIX 2026-09-30 (live report: "after i clicked pc-hq,
+             * it seemed to freeze. and take multiple pressed 2 respond/
+             * close. then nav reset to one 1 but jumped back to 12 on
+             * focus and is stuck") - the peer (bottom) bar's layout pass
+             * ran with the HEADER bar's dropdown range still live in
+             * g_dock_drop_lo/_hi, and both dropdown layouters write those
+             * globals: `g_dock_drop_hi = c->nav_index` is UNCONDITIONAL
+             * (only _lo guards on `if (!g_dock_drop_lo)`). So opening any
+             * dropdown in the BOTTOM bar made the bottom bar's last row
+             * become g_dock_drop_hi while g_dock_drop_lo stayed the
+             * HEADER's, i.e. a range spanning two different bars.
+             *
+             * Every consumer of that range then disagreed with the
+             * screen: the clamp just below yanks focus into it
+             * ("nav reset to 1 but jumped back to 12"), dock_nav_step()'s
+             * own in-range step refuses to move because focus is pinned,
+             * and dock_hit_test()'s i0/i1 window (g_dock_click_menu ->
+             * [drop_lo-1, drop_hi)) scans rows belonging to the other bar
+             * so a click either hits nothing or hits a row whose activate
+             * re-enters this same layout and fights the click - the
+             * "freeze / needs several presses to respond or close".
+             *
+             * g_dock_drop_lo/_hi mean ONE specific thing: the range of rows
+             * drawn in the popup MENU window (g_dock_menu_win). Only the
+             * non-bottom bar builds that window (its own `if (!is_bottom)`
+             * block), so only the non-bottom bar may own those globals.
+             * Save and restore them across the peer pass. */
+            int hlo = g_dock_drop_lo, hhi = g_dock_drop_hi;
             Elem *hold = g_window;
             g_window = g_dock_peer;
             {
                 Elem *pp = find_page(g_current_page);
                 if (pp) layout_dock_bar(pp);
             }
+            g_dock_drop_lo = hlo; g_dock_drop_hi = hhi;
             g_dock_peer_x = g_win_x; g_dock_peer_y = g_win_y;
             g_dock_peer_w = g_win_w; g_dock_peer_h = g_win_h;
             g_window = hold;
