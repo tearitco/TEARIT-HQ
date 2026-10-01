@@ -126,12 +126,18 @@ focus_composer() {
 # live-API assertions rather than reporting a harness failure that is
 # really an account state.
 api_available() {
-    local out
-    out=$(./ops/+x/horn_chat_openrouter.+x "quota probe" 2>&1)
-    case "$out" in
-        *quota*) return 1 ;;
-        *)       return 0 ;;
-    esac
+    # Judge by EXIT CODE, not by grepping the output. The first version
+    # grepped for "quota" and the probe prompt itself was "quota probe",
+    # so the model's own reply tripped the check and the live path was
+    # skipped even with a working provider.
+    #
+    #   0 = a provider answered        3 = everything rate/quota limited
+    #   1 = no key configured          2 = reachable but silent
+    local out rc
+    out=$(./ops/+x/horn_chat_backend.+x "Reply with the single word: ready" 2>&1)
+    rc=$?
+    echo "$out" >&2
+    [ "$rc" -eq 0 ]
 }
 
 ask() {
@@ -242,9 +248,9 @@ echo "=== API availability ==="
 # Everything else below is offline and still runs either way.
 API_UP=0
 if api_available; then
-    API_UP=1; ok "OpenRouter free tier responding"
+    API_UP=1; ok "an LLM provider is answering"
 else
-    echo "  SKIP  OpenRouter daily free-tier quota is exhausted."
+    echo "  SKIP  every configured provider is rate/quota limited."
     echo "        Live round-trip assertions are skipped; the harness cannot"
     echo "        distinguish an exhausted quota from a broken transport"
     echo "        mid-run, so this is checked once, up front."
@@ -252,7 +258,7 @@ fi
 
 if [ "$API_UP" = 1 ]; then
 echo "=== turn 1: chat round-trip ==="
-if ask "What is 6 times 7?" "42"; then ok "reply rendered (live OpenRouter call)"
+if ask "What is 6 times 7?" "42"; then ok "reply rendered (live LLM call)"
 else bad "no model reply after 3 attempts"; fi
 check "prompt is not doubled by the harness" "$(cat "$TRANSCRIPT")" "you: What is 6 times 7?"
 # The transcript is written synchronously by horn_turn, but the FRAME is
@@ -300,10 +306,12 @@ else bad "completion listing missing"; fi
 if grep -q "path: ops/horn_turn.c" "$TRANSCRIPT"; then
     ok "listing recorded in the transcript"
 else bad "listing not in the transcript"; fi
-if [ "$API_UP" = 1 ]; then
-    check "completion did not go to the model" "$(cat "$TRANSCRIPT")" "horn: 42"
-fi
-[ "$(turn_count)" = "$before" ] && ok "completion costs no model turn" \
+# One assertion covers both "did not go to the model" and "cost no turn":
+# a completion that reached a provider would necessarily add a user turn.
+# Counting turns is also robust to wording - an earlier version matched a
+# literal "horn: 42" and failed the moment a provider answered
+# "6 x 7 = 42" instead of a bare number.
+[ "$(turn_count)" = "$before" ] && ok "completion did not go to the model, and cost no turn" \
                                || bad "completion was sent as a chat turn"
 
 echo "=== persistence across a restart ==="

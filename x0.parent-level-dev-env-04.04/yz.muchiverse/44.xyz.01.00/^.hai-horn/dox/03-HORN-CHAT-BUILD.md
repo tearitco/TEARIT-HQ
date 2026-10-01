@@ -53,10 +53,41 @@ chtpm_parser_pal      parses layouts/horn_chat.chtpm
 | `layouts/horn_chat.chtpm` | the box, the composer, the `${…}` vars |
 | `pal/horn_main_loop.pal` | dispatch loop — on Enter, run a turn. Nothing else |
 | `ops/horn_turn.c` | read the prompt, dispatch (chat vs `@`), record, publish |
-| `ops/horn_chat_openrouter.c` | the OpenRouter transport. Pure transport: no history, no layout |
+| `ops/horn_chat_backend.c` | the LLM transport, provider-agnostic. Pure transport: no history, no layout |
 | `ops/horn_publish.c` | project history → `view.txt` / `state.txt` + pulse the frame |
 | `ops/horn_completions.c` | `@` path completion |
 | `system/keyboard_input.c`, `system/renderer.c` | local copies (no canonical version exists to compile in place) |
+
+### Providers
+
+`ops/horn_chat_backend.c` is one file with a provider table. OpenRouter and
+Poolside both expose an OpenAI-compatible `POST /chat/completions` with a
+Bearer token and a `choices[0].message.content` reply, so they share one
+request path, one reply parser and one payload writer; what differs —
+endpoint, key file, model ladder, whether thinking defaults on — is table
+data, not a second 300-line copy.
+
+**Provider order is fallback order.** Poolside is first, because its key is
+independent of OpenRouter's 50/day free tier. Within a provider the model
+ladder is walked until one answers; a quota failure breaks out of that
+provider immediately, since the limit is account-wide and every model in it
+shares the bucket.
+
+| provider | endpoint | key file | models |
+| --- | --- | --- | --- |
+| poolside | `inference.poolside.ai/v1/chat/completions` | `raw_poolside.txt` | `laguna-s-2.1`, `laguna-xs-2.1` |
+| openrouter | `openrouter.ai/api/v1/chat/completions` | `openrouter_api_key.txt` | 3 free slugs |
+
+A provider with no key is skipped with a note on stderr, not silently —
+that silence is what hid a real misconfiguration for a while.
+
+Poolside-hosted inference enables thinking by default, which prepends a
+reasoning block to the reply; its requests carry
+`chat_template_kwargs.enable_thinking=false`.
+
+**Exit codes** (callers depend on the distinction):
+`0` replied · `1` bad usage or no key at all · `2` reachable but silent ·
+`3` every provider rate/quota limited — an account state, not a code fault.
 
 `prisc+x.c` and `chtpm_parser_pal.c` are **compiled in place** from
 `&.widgits/_shared-lib/system/` per the current convention
@@ -142,15 +173,20 @@ pattern cannot detect teardown failure. It now prints the survivors.
 
 ## Known limits
 
-- **OpenRouter's free tier is 50 requests/day per key.** When it is spent,
-  no model answers until the UTC day boundary. The transport reports this
-  distinctly (exit 3) rather than as a generic failure, and `scripts/e2e.sh`
-  skips the live assertions instead of reporting a false failure.
+- **Key files are per-tree, and this repo has a worktree.** The key lives at
+  `<tree>/&.widgits/open-hai/state/<name>_api_key.txt`, so a git worktree has
+  its own copy of that directory. A key pasted into the main checkout is
+  invisible to a worktree, and vice versa. `HORN_POOLSIDE_KEY` /
+  `HORN_API_KEY` override the file if you want one key for both.
 - **The model ladder rots.** Two of the three slugs inherited from
-  entity-cli's version are now paid-only. A slug retired from the free tier
-  returns HTTP 200 with an error *body*, not an HTTP error — so it shows up
-  as "no content", not a crash. Re-verify with
-  `curl -s https://openrouter.ai/api/v1/models` and add live free slugs.
+  entity-cli's version went paid-only in a week. A slug retired from a free
+  tier returns HTTP 200 with an error *body*, not an HTTP error — so it
+  shows up as "no content", not a crash. Refresh with
+  `curl -s https://openrouter.ai/api/v1/models` and
+  `curl -s https://inference.poolside.ai/v1/models -H "Authorization: Bearer $KEY"`.
+- **Two provider keys were committed in plaintext** and pushed to origin
+  before 2026-10-01. Untracked now, but untracking does not unpublish —
+  they still need rotating.
 - **The turn blocks the UI for up to 60s** across the ladder. The renderer
   and parser keep running, so the window stays live and the box is ready for
   the next message, but no second turn can be dispatched meanwhile.

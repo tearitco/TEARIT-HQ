@@ -264,11 +264,11 @@ static void publish(void) {
     run_op("horn_publish", NULL);
 }
 
-/* The OpenRouter transport. It writes its reply to
- * pieces/horn/last_reply.txt, which is how multi-line text comes back
- * without a pipe or a temp-file collision between concurrent turns. */
+/* The LLM transport. It writes its reply to pieces/horn/last_reply.txt,
+ * which is how multi-line text comes back without a pipe or a temp-file
+ * collision between concurrent turns. */
 static int run_transport(const char *prompt) {
-    return run_op("horn_chat_openrouter", prompt);
+    return run_op("horn_chat_backend", prompt);
 }
 
 /* '@' completion: append the listing to the transcript as a system note. */
