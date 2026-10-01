@@ -1,0 +1,16 @@
+<panel time_reactive="true">
+    <module>../horn_chat_main.pal</module>
+    <interact src="../.horn-sessions/relay.txt" />
+    <text label="╔════════════════════════════════════════════╗" /><br/>
+    <text label="║       H O R N   C H A T   v 0 . 1       ║" /><br/>
+    <text label="║     OpenRouter models, terminal UI       ║" /><br/>
+    <text label="╠════════════════════════════════════════════╣" /><br/>
+    <text label="${horn_status}" /><br/>
+    <text label="╠════════════════════════════════════════════╣" /><br/>
+    <text label="${horn_reply_area}" /><br/>
+    <text label="╠════════════════════════════════════════════╣" /><br/>
+    <text label="  " /><cli_io id="user_input" label="you: " /><br/>
+    <text label="╠════════════════════════════════════════════╣" /><br/>
+    <button label="[q] Quit" onClick="KEY:q" /><br/>
+    <text label="${horn_info}" /><br/>
+</panel>
