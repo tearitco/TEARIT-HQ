@@ -6975,6 +6975,80 @@ static void dispatch(const char *action) {
         if (g_page_stack_n > 0) { switch_page(g_page_stack[--g_page_stack_n]); }
         return;
     }
+    /* REAL FIX 2026-09-30 (live report: "tried opening pc-hq from toys
+     * dropdown, didn't open", then "after i clicked pc-hq, it seemed to
+     * freeze. and take multiple pressed 2 respond / close") - handle the
+     * dock's own strip-relay action in-process instead of shelling out.
+     *
+     * The manager builds every toys/pals/palettes dropdown row's command
+     * as "'<...>/strip_relay.sh' <5000+row>" (see
+     * khtpm_taskbar_manager_main.c's own KSC_HQ_ITEM_BASE / hi_%d_cmd
+     * writer). That script's entire job is one line: append the code to
+     * #.desktop/strip_history.txt, which the manager then polls. On
+     * Linux, `sh` exists and this works. On Windows there is no `sh` on
+     * PATH (verified: Get-Command sh fails; only Git's bash.exe exists at
+     * a hardcoded path this code has no business knowing), so cmd.exe
+     * answered "'C:/.../strip_relay.sh' is not recognized" / "The system
+     * cannot find the path specified" - the row did nothing at all. That
+     * is why NO toys item opened, not just pc-hq.
+     *
+     * Worse, the two failure modes the user actually saw both come from
+     * reaching system() at all:
+     *   - "froze / needs several presses": on Windows system() BLOCKS
+     *     until the child exits, and this runs inside the click handler
+     *     on the event loop, so the entire UI stalls for the duration.
+     *     The trailing `&` is a POSIX background operator that cmd.exe
+     *     does not give the same non-blocking meaning.
+     *   - the dropdown staying open across those retries: activate path
+     *     re-ran assign_nav_and_layout() + redraw() per click while the
+     *     action silently failed.
+     *
+     * This renderer ALREADY writes that exact file in-process for nav
+     * relays (dock_relay_focus_code()), and already owns every other
+     * Windows-shell concern in this port. Writing one integer here is
+     * strictly less work than the shell-out and removes the whole
+     * dependency: no sh, no PATH, no blocking, no freeze.
+     *
+     * Matched narrowly - only when the action is exactly a quoted path
+     * ending in strip_relay.sh followed by a bare integer code, which is
+     * the manager's own generated form. Anything else still falls
+     * through to the real shell branch below, so genuine shell actions
+     * are untouched. The `submit` form (used by cli_io) takes a 3rd argv
+     * and a different code path and is NOT matched here. */
+    {
+        const char *a = action;
+        char relay[PATH_BUF];
+        relay[0] = '\0';
+        while (*a == ' ') a++;
+        if (*a == '\'') {
+            const char *close = strchr(a + 1, '\'');
+            if (close) {
+                size_t n = (size_t)(close - (a + 1));
+                if (n < sizeof(relay)) {
+                    memcpy(relay, a + 1, n);
+                    relay[n] = '\0';
+                }
+                a = close + 1;
+            }
+        }
+        const char *base = relay;
+        for (const char *q = relay; *q; q++)
+            if (*q == '/' || *q == '\\') base = q + 1;
+        const char *code = a;
+        while (*code == ' ') code++;
+        if (relay[0] && strcmp(base, "strip_relay.sh") == 0) {
+            const char *end = code;
+            while (*end >= '0' && *end <= '9') end++;
+            if (end != code) {
+                int only_spaces = 1;
+                for (const char *p = end; *p; p++) if (*p != ' ') { only_spaces = 0; break; }
+                if (only_spaces) {
+                    dock_relay_focus_code(atoi(code));
+                    return;
+                }
+            }
+        }
+    }
     char cmd[PATH_BUF * 3];
     snprintf(cmd, sizeof(cmd), "%s '%s' '%s' >/dev/null 2>&1 &", action, g_package_dir, g_house_root);
     int rc = system(cmd);
@@ -7636,7 +7710,29 @@ static void default_grid_handle_key(KeySym ks, char ch) {
 static void activate_focused(void) {
     if (g_focus_nav < 1 || g_focus_nav > g_n_nav) return;
     Elem *item = g_nav[g_focus_nav - 1];
-    if (!kh_elem_in_scope(item)) return;
+    /* REAL FIX 2026-09-30 (live report: "after i clicked pc-hq, it
+     * seemed to freeze. and take multiple presses 2 respond / close") -
+     * this is the SAME dock scope bug that click_focus_then_activate()
+     * carried, reached here instead: click_focus_then_activate() pins
+     * g_focus_nav to the clicked row, then the click handler calls
+     * activate_focused(), and THIS guard is the one that ran. The dock's
+     * scope_id is the strip-cell's own id, so kh_elem_in_scope()'s
+     * scope-root / parent-chain / scope-id tests match none of the
+     * dropdown rows, it returned 0, and activate_focused() returned
+     * silently - no launch, no error, nothing on screen. That is
+     * precisely "froze, needs several presses to respond".
+     *
+     * It was worse than a dead click: dock_hit_test()'s click handler
+     * calls assign_nav_and_layout() + redraw() after every click
+     * regardless, so each attempt relaid out and redrew the bar while
+     * the dropdown stayed open - the visible part of the "freeze".
+     *
+     * The dock is exempt for the same reason as everywhere else in this
+     * file (kh_nav_step, kh_apply_scope_confine, dock_nav_step,
+     * click_focus_then_activate): page-scope confinement is a real-window
+     * concept, meaningless for the dock, whose dropdown range is already
+     * fenced by g_dock_drop_lo/_hi in dock_nav_step(). */
+    if (!window_is_dock() && !kh_elem_in_scope(item)) return;
     /* REAL FIX 2026-08-31 - see default_cli_io_handle_key()'s own
      * Escape-branch comment for the full real diagnosis. Grab taken
      * HERE (arm time), released on every real disarm path. */
