@@ -121,6 +121,65 @@ The two feedback directions, both of which should be survivable:
   allowed to happen, and the `food_supply` field `pop_update.c` already reads but
   **no op writes** (frozen at `15.0`) is where starvation would be recorded.
 
+### 3.1 Production must steer on sell-through, not on last tick's sales
+
+Implemented in `ops/goods_quote.c`; measured, and the obvious version fails.
+
+The tempting rule is "produce some fraction of what sold last tick", damped for
+stability. **That rule is fatal, and it fails silently** — it looks like a
+reasonable heuristic and produces no error at all:
+
+- A firm that sells everything it offers always has `produce < sell-through`,
+  because produce is a fraction of what sold and all of it sold.
+- So inventory decays `100% → 50% → 25% → 12.5%` and the goods market is
+  **empty by tick 6**.
+- Confirmed by running it: production `500 → 250 → 100 → 50 → 0`, then a market
+  with zero offers and zero fills, with nothing in any log to indicate a fault.
+
+The fix is to steer on the **ratio** `sold/offered` rather than the level,
+because volume alone is ambiguous: 20 units sold is healthy demand for a firm
+that offered 20 and total failure for one that offered 200.
+
+```
+want = sold × (0.5 + sell_through)      sell_through = sold / offered, clamped [0,1]
+
+  sold out  (1.00) → ×1.50   grow into unmet demand
+  half sold (0.50) → ×1.00   holds steady
+  10% sold  (0.10) → ×0.60   backs off, runs inventory down
+  no demand (0.00) →  0      spends no cash, which is correct for an idle producer
+```
+
+There is no fixed point to fall through, and the last row matters: a producer
+with no demand must produce nothing, because production is a cash expenditure
+and an idle producer must not bleed. Capped by `WSR_MAX_PRODUCE_FRACTION` of cash
+so a firm cannot spend itself into insolvency to fulfil one order.
+
+`offered` must be registered when orders are *parsed*, not accumulated on fills.
+Accumulating fill quantity instead silently makes `offered == sold`, the ratio
+collapses to a constant, and you are back to the flat damper above — with a
+plausible-looking number in the file.
+
+### 3.2 The wage arrow is designed, and is still the blocking gap
+
+The `wages` arrow in §3 exists in `SOCIETY-ECONOMY-ARCHITECTURE.txt` and in the
+diagram above, and **no op implements it**. Confirmed dynamically, not just by
+reading: `goods_quote` + `goods_settle` are now a working market, and household
+cash falls monotonically because households spend and never earn.
+
+| tick | household cash | corp cash |
+|------|---------------:|----------:|
+| 1    | 53,095         | 53,608    |
+| 2    | 39,836         | 55,658    |
+| 3    | 27,486         | 56,807    |
+| 4    | 17,579         | 56,198    |
+
+Money is **conserved** — it moves household → corp, corp cash stays roughly flat
+— so this is not a printing bug. But it is a one-way transfer with no return leg:
+households liquidate within ~4–5 ticks and the goods market then has no buyers.
+This blocks ROADMAP 2.2 (real GDP from auction prices), because `calendar →
+auction → taxes → bonds → rate benchmark` has no circulating income to tax once
+households are broke.
+
 ## 4. The accounting identities that must hold
 
 `Assets = Liabilities + Equity` everywhere, and these three must be invariant
