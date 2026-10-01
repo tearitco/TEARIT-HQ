@@ -122,6 +122,10 @@ for ($i = 1; $i -le $Ticks; $i++) {
     if ($LASTEXITCODE -ne 0) { Write-Host ($k -join "`n"); throw "goods_sink failed on tick $i" }
     $consumed = [regex]::Match(($k -join "`n"), 'consumed (\d+)').Groups[1].Value
     $breaks = [regex]::Match(($k -join "`n"), '(\d+) R&D breakthrough').Groups[1].Value
+    # An empty column is indistinguishable from "the sink did nothing", and this
+    # harness exists to tell those apart. Fail loudly instead of printing blank.
+    if (-not $consumed) { throw "goods_sink printed no 'consumed N' on tick ${i}: $($k -join ' | ')" }
+    if ($breaks -eq "") { $breaks = 0 }
 
     $prod = [regex]::Match(($q -join "`n"), 'produced (\d+)').Groups[1].Value
     if (-not $prod) { throw "could not parse 'produced N' from goods_quote on tick $i" }
@@ -142,8 +146,20 @@ for ($i = 1; $i -le $Ticks; $i++) {
         }
     }
 
-    Write-Host ("{0,-5} {1,9} {2,7} {3,9} {4,13:N0} {5,11:N0} {6,11} {7,8}" -f `
-        $i, $prod, $fill, $st.Ratio, $wages, $cc.Total, $pc.Total, $un.Total, "$broke/24", $consumed, $breaks)
+    # 11 placeholders for 11 arguments, matching the 11 headers above. This was
+    # previously 8 placeholders for 11 arguments, so PowerShell silently dropped
+    # broke/sunk/rd - the harness hid the one number it exists to report, and a
+    # non-fatal PowerShell format error is indistinguishable from an empty
+    # measurement. If the columns are added to, add them HERE too.
+    $fmt = "{0,-5} {1,9} {2,7} {3,9} {4,11} {5,13:N0} {6,13:N0} {7,11} {8,8} {9,9} {10,4}"
+    $cells = @($i, $prod, $fill, $st.Ratio, $wages, $cc.Total, $pc.Total,
+              $un.Total, "$broke/24", $consumed, $breaks)
+    $ph = ([regex]::Matches($fmt, '\{(\d+)')).Count
+    if ($ph -ne $cells.Count) {
+        throw ("row format has $ph placeholders but " + $cells.Count +
+               " values were passed - a mismatch here drops columns SILENTLY")
+    }
+    Write-Host ($fmt -f $cells)
 
     $prevPop = $pc.Total
 }
