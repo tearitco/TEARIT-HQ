@@ -65,6 +65,37 @@ Get-ChildItem $piecesRoot -Directory -Filter "corp_*" | ForEach-Object {
 Invoke-Op "wsr_news_op"
 Invoke-Op "player_settle_futures"
 
+# ---- goods market: on its OWN cycle, not every End Turn ----
+# Goods are consumed, depreciate and obsolete (ops/goods_sink.c), so the
+# market only needs to clear when there is actual TURNOVER. Clearing it every
+# turn would be both unfaithful and wasteful: nothing in the goods book
+# changes meaningfully between turns, so it would churn state for no economic
+# reason and make the End Turn slow.
+#
+# WSR_GOODS_EVERY_N is the cycle length in End Turns. 4 means the goods market
+# clears once per quarter-year of turns, which is the cadence the sink is tuned
+# for - consumption rates in data/goods_kind.txt are per goods period, so
+# changing this number changes how fast goods wear out, not just how often the
+# book is rebuilt.
+$GoodsEveryN = 4
+if ($env:WSR_GOODS_EVERY_N) { $GoodsEveryN = [int]$env:WSR_GOODS_EVERY_N }
+$periodFile = Join-Path $SCRIPT_DIR "projects\wsr-pal\data\goods_period.txt"
+$period = 0
+if (Test-Path $periodFile) {
+    $raw = (Get-Content $periodFile -Raw)
+    if ($raw -and $raw.Trim()) { $period = [int]$raw.Trim() }
+}
+$period++
+Set-Content -Path $periodFile -Value $period
+
+if (($period % $GoodsEveryN) -eq 0) {
+    Write-Host "=== goods period $period (clearing goods market) ==="
+    Invoke-Op "goods_quote"
+    Invoke-Op "goods_settle"
+    Invoke-Op "corp_payroll"
+    Invoke-Op "goods_sink"
+}
+
 for ($round = 1; $round -le $Rounds; $round++) {
     Write-Host "=== round $round/$Rounds ==="
     Get-ChildItem $piecesRoot -Directory -Filter "corp_*" | ForEach-Object {
