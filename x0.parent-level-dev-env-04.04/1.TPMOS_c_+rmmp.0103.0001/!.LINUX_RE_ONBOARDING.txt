@@ -1,0 +1,98 @@
+# LINUX RE-ONBOARDING / DIRECTORY RENAME GUIDE
+
+## TL;DR
+**You can rename the project directory to anything on Linux without breaking anything.**
+
+All paths are resolved dynamically at runtime.
+
+---
+
+## How It Works
+
+### Launch Scripts (Linux)
+```bash
+# run_chtpm.sh
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"  # Resolves actual path at runtime
+project_root=${SCRIPT_DIR}                   # Written to location_kvp
+pieces_dir=${SCRIPT_DIR}/pieces
+# ... all other paths derived from SCRIPT_DIR
+```
+
+### Launch Scripts (Windows / MSYS2)
+```bash
+# pieces/buttons/shared/run_orchestrator.sh
+WIN_PATH=$(pwd -W)                           # Native Windows path at runtime
+project_root=${WIN_PATH}
+pieces_dir=${WIN_PATH}\pieces
+# ... all other paths derived from WIN_PATH
+```
+
+### Runtime Path Resolution
+1. Launch script generates `pieces/locations/location_kvp` with current absolute paths
+2. All managers call `resolve_paths()` at startup to read `project_root` from `location_kvp`
+3. Managers build paths relative to `project_root` (e.g., `projects/cpp-llm/config/apis.txt`)
+
+---
+
+## What Was Fixed (Commit d1a83bff8)
+
+**Before:** Checked-in `location_kvp` had hardcoded paths:
+```
+project_root=C:/Users/jbro8/OneDrive/Desktop/github/TEARIT-HQ/x0.parent-level-dev-env-04.04/1.TPMOS_c_+rmmp.0103.0001
+pieces_dir=C:/Users/jbro8/OneDrive/Desktop/github/TEARIT-HQ/x0.parent-level-dev-env-04.04/1.TPMOS_c_+rmmp.0103.0001\pieces
+...
+```
+
+**After:** 
+- `location_kvp` deleted from repo
+- Added to `.gitignore` (regenerated at every launch)
+- No hardcoded paths remain in any `.sh` or `.c` files
+
+---
+
+## Renaming Procedure
+
+### On Linux Machine
+```bash
+# From parent directory
+mv 1.TPMOS_c_+rmmp.0103.0001  200.TPMOS_c_+rmmp.0103.0001
+# or whatever name you want
+cd 200.TPMOS_c_+rmmp.0103.0001
+./run_chtpm.sh   # Works immediately - generates correct location_kvp
+```
+
+### On Windows Machine
+```powershell
+# From parent directory (PowerShell)
+Rename-Item "1.TPMOS_c_+rmmp.0103.0001" "200.TPMOS_c_+rmmp.0103.0001"
+# Or use git mv from external shell:
+git mv 1.TPMOS_c_+rmmp.0103.0001 200.TPMOS_c_+rmmp.0103.0001
+# Then launch via run.ps1
+```
+
+---
+
+## Multi-Checkout Safety
+
+Each checkout is independent:
+- Checkout A: `/home/user/TPMOS_001/` → generates its own `location_kvp`
+- Checkout B: `/home/user/TPMOS_002/` → generates its own `location_kvp`
+- No conflicts, no shared state
+
+---
+
+## Files That Are Dynamic (Never Commit)
+
+`pieces/locations/location_kvp` - Added to `.gitignore`, generated at every launch by:
+- `run_chtpm.sh` (Linux/macOS)
+- `pieces/buttons/shared/run_orchestrator.sh` (Windows MSYS2)
+
+---
+
+## Verification
+
+After rename, verify by checking generated `location_kvp`:
+```bash
+cat pieces/locations/location_kvp
+# Should show your NEW directory path
+```
