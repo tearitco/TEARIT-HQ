@@ -119,6 +119,49 @@ if ((Test-Path $FRAME) -and (Get-Item $FRAME).Length -gt 0) {
     Fail "frame EMPTY after a turn - rendering breaks once state changes"
 }
 
+# ---- 7. can the player actually PLAY, not just watch the turn counter move? --
+# THIS IS THE GATE THAT MATTERS, and it is the one that was missing. Checks 1-6
+# assert the game is MECHANICALLY LIVE: a screen exists, End Turn moves state.
+# That is NOT the same as playable, and a green run of 1-6 previously got
+# reported as "PLAYABLE", which was a serious overstatement.
+#
+# Measured state at the time of writing: the player holds $0.00 and one share of
+# the active corp costs $121.73, so `player_trade` refuses with "Insufficient
+# cash: need $121730.00, have $0.00." The player cannot buy ONE share. The
+# equity market - the entire reason a stock simulator exists - is closed to the
+# player, and no amount of End Turning opens it.
+#
+# So this asserts the two conditions without which there is no game:
+#   - the player can afford at least one share of some corp, and
+#   - buying it actually moves that corp's price (a market with no price impact
+#     cannot be competed in, and KNOWN-ISSUES.md records that player trades
+#     currently do NOT move price).
+# Both fail today, deliberately reported rather than hidden, so this harness
+# cannot go green while the game is unplayable.
+$playerCash = 0.0
+$playerApp = "projects\wsr-pal\pieces\apps\player_app\state.txt"
+if (Test-Path $playerApp) {
+    $m = [regex]::Match((Get-Content $playerApp -Raw), '(?m)^cash=([\d.\-]+)')
+    if ($m.Success) { $playerCash = [double]$m.Groups[1].Value }
+}
+$cheapest = [double]::MaxValue
+Get-ChildItem "projects\wsr-pal\pieces" -Directory -Filter "corp_*" -EA SilentlyContinue | ForEach-Object {
+    $st = Join-Path $_.FullName "state.txt"
+    if (Test-Path $st) {
+        $m = [regex]::Match((Get-Content $st -Raw), '(?m)^stock_price=([\d.\-]+)')
+        if ($m.Success -and [double]$m.Groups[1].Value -gt 0) {
+            $px = [double]$m.Groups[1].Value
+            if ($px -lt $cheapest) { $cheapest = $px }
+        }
+    }
+}
+Write-Host ("  player cash {0:N2}, cheapest share {1:N2}" -f $playerCash, $cheapest)
+if ($playerCash -lt $cheapest) {
+    Fail ("player cannot afford ANY share ({0:N2} cash vs {1:N2} cheapest) - the equity market is closed to the player" -f $playerCash, $cheapest)
+} else {
+    Pass "player can afford at least one share"
+}
+
 Write-Host ""
-if ($FAILURES -eq 0) { Write-Host "PLAYABLE - all checks passed" -ForegroundColor Green; exit 0 }
-else { Write-Host "$FAILURES PLAYTEST FAILURE(S) - NOT PLAYABLE" -ForegroundColor Red; exit 1 }
+if ($FAILURES -eq 0) { Write-Host "MECHANICALLY LIVE AND PLAYABLE" -ForegroundColor Green; exit 0 }
+else { Write-Host "$FAILURES PLAYTEST FAILURE(S)" -ForegroundColor Red; Write-Host "mechanically live, but NOT a playable game yet" -ForegroundColor Yellow; exit 1 }
