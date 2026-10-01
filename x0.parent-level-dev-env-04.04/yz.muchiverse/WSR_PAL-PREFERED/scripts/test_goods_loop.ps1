@@ -28,7 +28,7 @@ $DATA   = Join-Path $SCRIPT_DIR "projects\wsr-pal\data"
 
 # --- build (the op that this whole file exists to test) --------------------
 Write-Host "building goods ops..." -ForegroundColor DarkGray
-foreach ($op in @("goods_quote", "goods_settle", "corp_payroll")) {
+foreach ($op in @("goods_quote", "goods_settle", "corp_payroll", "goods_sink")) {
     $out = "ops\+x\$op.+x"
     cmd /c "gcc -Wall -Wextra -O2 ops\$op.c -o $out 2>&1" | ForEach-Object {
         if ($_ -match 'warning|error') { Write-Host "  $_" -ForegroundColor Yellow }
@@ -99,8 +99,8 @@ if ($Reset) {
 }
 
 Write-Host ""
-Write-Host ("{0,-5} {1,9} {2,7} {3,9} {4,11} {5,13} {6,11} {7,11} {8,8}" -f `
-    "tick", "produced", "fills", "s-thru", "wages", "corp_cash", "pop_cash", "units", "broke?")
+Write-Host ("{0,-5} {1,9} {2,7} {3,9} {4,11} {5,13} {6,11} {7,11} {8,8} {9,7} {10,6}" -f `
+    "tick", "produced", "fills", "s-thru", "wages", "corp_cash", "pop_cash", "units", "broke?", "sunk", "rd")
 Write-Host ("-" * 100)
 
 $prevPop = $null
@@ -115,6 +115,13 @@ for ($i = 1; $i -le $Ticks; $i++) {
     $w = cmd /c "ops\+x\corp_payroll.+x 2>&1"
     if ($LASTEXITCODE -ne 0) { Write-Host ($w -join "`n"); throw "corp_payroll failed on tick $i" }
     $wages = [regex]::Match(($w -join "`n"), 'wages ([\d.]+) total').Groups[1].Value
+
+    # The sink. Runs AFTER settlement, so units bought this period can be
+    # consumed in it.
+    $k = cmd /c "ops\+x\goods_sink.+x 2>&1"
+    if ($LASTEXITCODE -ne 0) { Write-Host ($k -join "`n"); throw "goods_sink failed on tick $i" }
+    $consumed = [regex]::Match(($k -join "`n"), 'consumed (\d+)').Groups[1].Value
+    $breaks = [regex]::Match(($k -join "`n"), '(\d+) R&D breakthrough').Groups[1].Value
 
     $prod = [regex]::Match(($q -join "`n"), 'produced (\d+)').Groups[1].Value
     if (-not $prod) { throw "could not parse 'produced N' from goods_quote on tick $i" }
@@ -136,7 +143,7 @@ for ($i = 1; $i -le $Ticks; $i++) {
     }
 
     Write-Host ("{0,-5} {1,9} {2,7} {3,9} {4,13:N0} {5,11:N0} {6,11} {7,8}" -f `
-        $i, $prod, $fill, $st.Ratio, $wages, $cc.Total, $pc.Total, $un.Total, "$broke/24")
+        $i, $prod, $fill, $st.Ratio, $wages, $cc.Total, $pc.Total, $un.Total, "$broke/24", $consumed, $breaks)
 
     $prevPop = $pc.Total
 }

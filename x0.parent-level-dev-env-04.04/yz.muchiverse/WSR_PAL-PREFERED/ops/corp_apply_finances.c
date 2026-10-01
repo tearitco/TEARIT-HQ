@@ -125,6 +125,18 @@ int main(int argc, char *argv[]) {
     if (rnd_pct > 0) {
         float spend = cash * (rnd_pct / 100.0f);
         cash -= spend;
+        /* The EXPENSE is unchanged - R&D is expensed under ASC 730 and this is
+         * still a real cost. What the spend additionally buys is KNOWLEDGE, and
+         * knowledge persists even though the expense does not. So the same
+         * dollars also land in rd_pool, which ops/goods_sink.c turns into an
+         * actual breakthrough once it crosses a threshold - which is what
+         * obsoletes the previous generation of this firm's technology.
+         *
+         * Without this, R&D was money that vanished into a risk_bias nudge and
+         * nothing in the world ever improved, so technology could never
+         * obsolete anything. */
+        float pool = field_f(corp_state, "rd_pool");
+        write_float(corp_state, "rd_pool", pool + spend);
         int risk_bias = (int)field_f(corp_state, "risk_bias");
         if (risk_bias < 100) {
             char buf[16]; snprintf(buf, sizeof(buf), "%d", risk_bias + 1);
