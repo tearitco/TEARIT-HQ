@@ -280,6 +280,16 @@ static int get_active_gui_index(void) {
     return idx;
 }
 
+static int get_active_gui_is_typing(void) {
+    char *path = NULL;
+    int typing = 0;
+    if (asprintf(&path, "%s/pieces/display/active_gui_is_typing.txt", project_root) == -1) return 0;
+    FILE *f = fopen(path, "r");
+    if (f) { if (fscanf(f, "%d", &typing) != 1) typing = 0; fclose(f); }
+    free(path);
+    return typing != 0;
+}
+
 static void get_current_layout_name(char *buf, size_t sz) {
     buf[0] = '\0';
     char *path = NULL;
@@ -1294,15 +1304,17 @@ int process_key(int key) {
         }
     } else if (key == 10 || key == 13) {
         if (strcmp(layout, "file_browser.chtpm") == 0) {
-            int active_idx = get_active_gui_index();
-            if (active_idx == 2) { // file_path_input
-                read_file_path_input();
-                if (strlen(file_path_input_buffer) > 0) {
-                    if (browser_mode == 0) handle_command("SET_LOAD_ACTION");
-                    else handle_command("SET_SAVE_ACTION");
-                    return 1;
-                }
-            } else if (active_idx == 1) { read_search_query_input(); return 1; }
+            if (!get_active_gui_is_typing()) {
+                int active_idx = get_active_gui_index();
+                if (active_idx == 2) { // file_path_input
+                    read_file_path_input();
+                    if (strlen(file_path_input_buffer) > 0) {
+                        if (browser_mode == 0) handle_command("SET_LOAD_ACTION");
+                        else handle_command("SET_SAVE_ACTION");
+                        return 1;
+                    }
+                } else if (active_idx == 1) { read_search_query_input(); return 1; }
+            }
         }
     }
 
