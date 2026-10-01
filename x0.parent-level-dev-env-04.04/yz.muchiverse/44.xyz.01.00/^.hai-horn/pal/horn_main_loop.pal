@@ -1,0 +1,68 @@
+# horn_main_loop.pal - HORN_CHAT's pal-native main loop.
+#
+# Launched by the layout's own <module> tag (layout/horn_chat.chtpm), so
+# chtpm_parser_pal forks this once at parse time and keeps it alive for
+# the whole session. It is the dispatch loop, nothing more: every real
+# behaviour lives in ops/, so this file stays readable as a table of
+# "what happens on which keystroke".
+#
+# INPUT CONTRACT (why this loop looks like this):
+#
+#   The composer is a chtpm <cli_io>, which chtpm owns completely. It
+#   accumulates keystrokes into its own element buffer and renders them
+#   itself; this loop never sees a character. On Enter, chtpm's own
+#   process_key() handler does three things (see chtpm_parser_pal.c's
+#   cli_io Enter branch):
+#     1. saves the full typed text to gui_state.txt under "input_text"
+#     2. clears its element buffer and sets suppress_next_gui_sync
+#     3. injects raw key 13 into the <interact> relay file
+#
+#   So the ONLY signal reaching us is that single 13. That is deliberate
+#   on chtpm's part and it is why this loop reads the relay file rather
+#   than the keyboard history: reading keyboard/history.txt would see
+#   every character and race chtpm's own buffer, which is the bug class
+#   the handoff flagged ("'@' completion is a harness-level concern, not
+#   a parser concern").
+#
+#   Keys we deliberately ignore: anything that is not 13. Navigation,
+#   editing, and rendering are chtpm's job. We are a turn dispatcher.
+
+li x1, 0                    # byte cursor into the interact relay
+li x2, 13                   # Enter
+li x10, 0                   # scratch
+
+# Start the cursor at the CURRENT END of the relay, not at 0. The relay
+# is append-only and is NOT cleared between sessions, so a fresh pal loop
+# starting at 0 would replay every Enter the user ever pressed - each one
+# re-dispatching horn_turn against whatever text is in gui_state right
+# now. That showed up live as phantom turns appearing in the transcript
+# after a restart, duplicating history.
+read_pos x1, pieces/apps/player_app/interact_relay.txt
+
+# ── main loop ────────────────────────────────────────────────────────
+loop:
+    # Incremental tail of the relay file. Literal-path form (3-arg) so
+    # the cursor register actually advances; the 2-arg form silently
+    # leaves it at r0, which is reset every instruction, and would
+    # re-read byte 0 forever.
+    read_history pieces/apps/player_app/interact_relay.txt x11, x1
+
+    # No new key this tick: 0 means EOF/nothing to read.
+    beq x11, x10, idle
+
+    # Not Enter: chtpm owns it, ignore.
+    bne x11, x2, ignore
+
+    # Enter: run the turn, then re-render.
+    exec ../ops/+x/horn_turn.+x
+    hit_frame
+    j loop
+
+ignore:
+    j loop
+
+idle:
+    # ~120ms. Fast enough that a reply appears to land immediately,
+    # slow enough that an idle session is not spinning a core.
+    sleep 120000
+    j loop
