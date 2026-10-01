@@ -26,5 +26,8 @@ parser.out
 **/session/.manager.lock
 **/session/history.cursor
 
+# --- Dynamic path config (generated at runtime by launch scripts) ---
+pieces/locations/location_kvp
+
 # --- Build artifacts ---
 *.o

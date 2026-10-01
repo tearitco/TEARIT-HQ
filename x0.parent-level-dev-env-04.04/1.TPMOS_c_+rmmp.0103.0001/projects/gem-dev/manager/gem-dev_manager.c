@@ -204,6 +204,19 @@ static int read_active_gui_index(void) {
     return idx;
 }
 
+static int get_active_gui_is_typing(void) {
+    char *path = NULL;
+    if (asprintf(&path, "%s/pieces/display/active_gui_is_typing.txt", project_root) == -1) return 0;
+    FILE *f = fopen(path, "r");
+    free(path);
+    if (!f) return 0;
+    char line[64] = "";
+    int typing = 0;
+    if (fgets(line, sizeof(line), f)) typing = (atoi(line) != 0);
+    fclose(f);
+    return typing;
+}
+
 static void build_project_path(char *dst, size_t dst_size, const char *suffix) {
     snprintf(dst, dst_size, "%s/projects/%s/%s", project_root, PROJECT_ID, suffix);
 }
@@ -1661,7 +1674,11 @@ int main(int argc, char *argv[]) {
                             if (bracket) key = atoi(bracket + 1);
                             else key = atoi(line);
 
-                            if (key == 10 || key == 13) { process_input_trigger(); state_changed = 1; }
+                            if (key == 10 || key == 13) {
+                                if (!get_active_gui_is_typing()) {
+                                    process_input_trigger(); state_changed = 1;
+                                }
+                            }
                             else if (g_completion_mode && key >= '2' && key <= '6') {
                                 handle_choose_path(key - '0');
                                 state_changed = 1;
