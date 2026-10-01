@@ -160,6 +160,15 @@ working code: `pop_update.c` reads a `food_supply` field that **no op writes**
 (frozen at the template's `15.0`), so its famine logic can never fire. That is a
 dead scalar, not a supply/demand model.
 
+> **The design for this section now exists: `OPERATING-INCOME.md`.** A real
+> playthrough (`7b594a6bc`) established that nothing in the tree credits a
+> corporation for selling anything, which makes this section — and therefore
+> *both* seeding modes the user asked for — unreachable. `OPERATING-INCOME.md`
+> is the reviewed-on-paper model: one market engine reused for two asset
+> classes, the bootstrap chain that makes a `prerun_years` of 0 or 100 both
+> work, the accounting identities that must hold, and the open decisions that
+> are the user's to settle. Read it before building §4.
+
 ---
 
 ## 5. Governments respond to the real economy
