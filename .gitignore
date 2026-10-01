@@ -141,3 +141,18 @@ x0.parent-level-dev-env-04.04_*.7z
 # per-machine window override, do not commit your default_win_w/h - keep it local
 *.local.pdl
 # hq_ui.local.pdl per-machine window size, see MACHINE-SPECIFIC-WINDOW-SIZING-2026-09-25.md
+
+# ── SECRETS: provider API keys (2026-10-01) ──────────────────────────
+# &.widgits/open-hai/state/ was tracked in full, which swept TWO live
+# provider keys into git in plaintext:
+#   openrouter_api_key.txt
+#   tokenrouter_api_key.txt
+# AGENTS.md forbids committing keys. They are `git rm --cached`ed below
+# (files stay on disk) in the same commit that adds this block, matching
+# the house convention already used for the ascii_frames / strip_ascii
+# blocks above. NOTE: this only stops FUTURE commits - both keys are
+# already in history (first tracked in 5a4164334) and in the origin
+# remote, so they need ROTATING, not just untracking.
+**/&.widgits/open-hai/state/*_api_key.txt
+**/state/*_api_key.txt
+**/*_api_key.txt
