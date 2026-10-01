@@ -2585,8 +2585,18 @@ static void dock_relay_focus_code(int code) {
 static int click_focus_then_activate(Elem *hit) {
     if (!hit) return 0;
     /* Out-of-scope rows stay numbered and drawn, but a click must not
-     * steal focus or fire — same as chtpm_parser.c is_navigable(). */
-    if (!kh_elem_in_scope(hit)) return 0;
+     * steal focus or fire - same as chtpm_parser.c is_navigable().
+     * REAL FIX 2026-09-30 (live report: "tried opening pc-hq from toys
+     * dropdown, didn't open"): the dock is exempt for the same reason
+     * kh_nav_step() and kh_apply_scope_confine() are - see kh_nav_step's
+     * own comment. The dock's scope_id is the strip-cell's own id, so
+     * kh_elem_in_scope()'s scope-root / parent-chain / scope-id checks
+     * match NOTHING among the dropdown rows, this returned 0, and the
+     * click was silently dropped: row highlighted or not, pc-hq never
+     * opened. The dropdown-child check inside kh_elem_in_scope() is the
+     * one branch that legitimately matches dock dropdown rows, so let the
+     * dock through and keep that structure doing the real work. */
+    if (!window_is_dock() && !kh_elem_in_scope(hit)) return 0;
     /* Dock: bottom-strip HQ window cells (class hqwin / onclick
      * FOCUSWIN:) are the same shape as a taskbar button — first click
      * must raise/restore, not merely focus (Enter already activated;
@@ -5599,7 +5609,40 @@ static int kh_elem_arrow_stop(Elem *e) {
 static void kh_nav_step(int dir) {
     int prev, n;
     if (g_n_nav < 1) return;
-    if (!g_default_scope_confine) {
+    /* REAL FIX 2026-09-30 (live report: "after they keys seem to replay,
+     * they get stuck? is it reconsuming last key over and over?", plus
+     * "tried opening pc-hq from toys dropdown, didn't open") - the dock
+     * must NOT be scope-confined here, exactly like
+     * kh_apply_scope_confine()'s own `&& !window_is_dock()` guard.
+     *
+     * Linux parity: chtpm_parser.c's is_navigable() is the only gate its
+     * up/down loop (chtpm_parser.c:1721) consults, and that predicate knows
+     * nothing about page scopes - scope confinement there is expressed
+     * purely by which rows end up in elements[]. This port instead kept a
+     * process-global g_default_scope_confine + kh_elem_arrow_stop(), which
+     * is correct for a real window but poison for the dock: the dock's
+     * scope_id is the strip-cell's own id (set on every dropdown open),
+     * so kh_elem_arrow_stop() returns 0 for the root and the scope_id row
+     * and 1 for everything else. When the in-scope candidate set ends up
+     * empty - which is the normal state for a closed dropdown, since
+     * assign_nav_and_layout()'s own clamp at the top of this file has
+     * already collapsed focus onto g_dock_drop_lo - the
+     * `while (g_focus_nav != prev && !kh_elem_arrow_stop(...))` loop walks
+     * all the way around the ring and exits on `g_focus_nav == prev`, i.e.
+     * focus NEVER changes. One keypress in, one identical relay code out
+     * (dock_nav_after_step()'s 6000+nav), forever - which is precisely the
+     * "keys replaying the same thing then getting stuck" report, and also
+     * why the click path's own kh_elem_in_scope() guard in
+     * click_focus_then_activate() refuses the toys dropdown rows so pc-hq
+     * never fires.
+     *
+     * In the dock every laid-out row is navigable, so take the plain
+     * clamped step. The dropdown clamp above stays the single owner of
+     * "focus may not leave the open dropdown", and because
+     * dock_nav_step() now moves focus a real step at a time it lands
+     * INSIDE [g_dock_drop_lo, g_dock_drop_hi] and the clamp stops firing -
+     * the two no longer fight. */
+    if (window_is_dock() || !g_default_scope_confine) {
         int nv = g_focus_nav + dir;
         if (nv >= 1 && nv <= g_n_nav) g_focus_nav = nv;
         return;
@@ -8795,15 +8838,49 @@ static void dock_nav_after_step(void) {
 }
 
 static void dock_nav_step(int dir) {
-    if (g_dock_drop_lo && g_default_active_scope_id[0]) {
-        /* Enter the open dropdown at its first row if focus is still
-         * outside it; only step once it is genuinely inside. */
-        if (g_focus_nav < g_dock_drop_lo)       g_focus_nav = g_dock_drop_lo;
-        else if (g_focus_nav > g_dock_drop_lo)  g_focus_nav += dir;
-        dock_nav_after_step();
-        return;
+    /* REAL FIX 2026-09-30 (live report: "nav is still getting stuck, maybe
+     * after opening / closing a dropdown") - this used to hand-roll the
+     * whole step instead of calling kh_nav_step():
+     *
+     *   if (g_focus_nav < g_dock_drop_lo)      g_focus_nav = g_dock_drop_lo;
+     *   else if (g_focus_nav > g_dock_drop_lo) g_focus_nav += dir;
+     *
+     * which has NO branch for g_focus_nav == g_dock_drop_lo, so the arrow
+     * key was a total no-op on exactly the row the snap above lands on.
+     * That row is also where assign_nav_and_layout()'s own drop-zone clamp
+     * forces focus whenever the dropdown is open (its
+     * `g_focus_nav < g_dock_drop_lo || > g_dock_drop_hi` test), so you
+     * arrive there, both arrow directions do nothing, and nav is stuck
+     * until the dropdown is closed again - reported as "stuck from arrow
+     * AND from click", since the click path pins focus the same way.
+     * The bare `g_focus_nav += dir` was also unclamped: it could walk past
+     * g_dock_drop_hi and past g_n_nav entirely, whereas kh_nav_step()
+     * bounds-checks to [1, g_n_nav], wraps, and honours
+     * kh_elem_arrow_stop() rows under scope confinement.
+     *
+     * The 2026-09-13 8c fix's actual intent - "walks focus INTO the
+     * dropdown at its first row when it is outside" - only needs the snap
+     * pre-step, so keep that and delegate the real stepping to the one
+     * function that already does it correctly. Bookkeeping
+     * (dock_nav_after_step: relay 6000+nav, raise/refocus/regrab) still
+     * runs on both paths, which is the other half of the 8c fix. */
+    if (g_dock_drop_lo && g_default_active_scope_id[0] &&
+        g_focus_nav < g_dock_drop_lo)
+        g_focus_nav = g_dock_drop_lo;
+    else if (!g_dock_drop_lo || !g_default_active_scope_id[0])
+        kh_nav_step(dir);
+    else {
+        /* Dropdown is open: step freely, but stay inside its rows. The
+         * clamp at the top of this file (assign_nav_and_layout) enforces
+         * the same range on every layout pass; doing it here as well
+         * means a step past the last/first row leaves focus IN the
+         * dropdown instead of briefly landing outside and being yanked
+         * back on the next ~400ms projector tick, which is what read as
+         * "the key got stuck" (kh_nav_step's own wrap would otherwise
+         * carry focus out of the dropdown entirely). */
+        int nv = g_focus_nav + dir;
+        if (nv >= g_dock_drop_lo && nv <= g_dock_drop_hi) g_focus_nav = nv;
     }
-    kh_nav_step(dir);
     dock_nav_after_step();
 }
 

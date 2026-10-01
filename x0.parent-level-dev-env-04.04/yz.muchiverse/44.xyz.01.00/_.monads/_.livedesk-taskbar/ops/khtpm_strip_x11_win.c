@@ -1555,6 +1555,45 @@ static int fg_is_our_window(Display *d) {
     return 0;
 }
 
+/* Does one of our bars already hold the INPUT (keyboard) focus, even
+ * though it is not the FOREGROUND window? REAL FIX 2026-09-30 (live
+ * report: "keys seem to replay... is it reconsuming last key over and
+ * over?").
+ *
+ * fg_is_our_window() above is necessary but NOT sufficient, and the gap
+ * between the two is the double-delivery bug. XSetInputFocus() (used by
+ * dock_nav_after_step() on every arrow step) maps to SetFocus(), which
+ * works within our own thread REGARDLESS of foreground. Windows routes
+ * WM_KEYDOWN by input focus, not foreground. So the real sequence while
+ * arrow-navigating the dock was:
+ *
+ *   1. dock_nav_after_step() -> XSetInputFocus(bar)  => bar holds focus
+ *   2. key arrives -> WndProc(bar) queues KeyPress     (delivery #1)
+ *   3. key ALSO hits the WH_KEYBOARD_LL hook, which is gated only on
+ *      fg_is_our_window(); foreground is some OTHER app, so that check
+ *      passed and the hook injected its own KeyPress             (delivery #2)
+ *
+ * Two XEvents per physical keypress => the selection moves TWO rows per
+ * press, and if the second one lands on a row the layout clamp then
+ * yanks back, the net effect on screen is a keypress that appears to do
+ * nothing except keep re-reporting itself. GetFocus() is the check that
+ * actually answers the question the hook is asking ("will Windows hand
+ * this key to one of my own windows by itself?"), so ask it.
+ *
+ * GetFocus() only returns focus for the calling thread, and the hook
+ * always runs on the thread that installed it - which is our own - so
+ * this is exactly right and needs no AttachThreadInput. */
+static int bar_holds_key_focus(Display *d) {
+    HWND fg;
+    int i;
+    if (!d) return 0;
+    fg = GetFocus();
+    if (!fg) return 0;
+    for (i = 0; i < d->nwins; i++)
+        if (d->wins[i]->hwnd == fg) return 1;
+    return 0;
+}
+
 static LRESULT CALLBACK x11_ll_kbd_hook(int code, WPARAM wparam, LPARAM lparam) {
     if (code == HC_ACTION && g_kbd_grab_dpy && xd_valid(g_kbd_grab_win)) {
         KBDLLHOOKSTRUCT *hs = (KBDLLHOOKSTRUCT *)lparam;
@@ -1570,7 +1609,8 @@ static LRESULT CALLBACK x11_ll_kbd_hook(int code, WPARAM wparam, LPARAM lparam) 
          * ordinary focused-window path do the work - which is exactly how
          * Linux behaves once XSetInputFocus has succeeded. The hook is a
          * fallback for the case where Windows refused activation. */
-        if (hs && (down || up) && !fg_is_our_window(g_kbd_grab_dpy)) {
+        if (hs && (down || up) && !fg_is_our_window(g_kbd_grab_dpy) &&
+            !bar_holds_key_focus(g_kbd_grab_dpy)) {
             /* XLookupKeysym only knows these - it returns 0 for anything
              * else, so anything we don't recognise would be delivered as
              * a meaningless keycode 0 and then dropped by the renderer
