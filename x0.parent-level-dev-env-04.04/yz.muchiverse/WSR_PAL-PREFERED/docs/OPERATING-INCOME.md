@@ -22,6 +22,33 @@ That blocks both seeding modes the user asked for:
 
 So operating income is the critical path, not the pre-setup menu.
 
+### 0.1 The household layer did not exist either *(fixed, `5b5246d95`)*
+
+Starting this work surfaced a bigger version of the same problem. Three ops —
+`pop_tick_idle.c`, `pop_update.c`, `market_quote.c` — all **discover** `pop_*`
+pieces, and a live world contained **zero**. There was one template,
+`pieces_template/pop_downtown`, that nothing ever instantiated. Every one of
+those ops had nothing to act on.
+
+Worse, the household template had **no `cash` field at all** (`total_population`,
+`birth_rate`, `food_supply`, `avg_wage`, `unemployment_rate`, …). So even with
+the piece present, a household had no money to bid with. The missing field, not
+just the missing piece, is why §3's bootstrap could never have started.
+
+`ensure_entities` now instantiates 24 households, idempotently, seeded with
+cash, env-overridable via `WSR_PAL_HOUSEHOLDS` / `WSR_PAL_HOUSEHOLD_CASH` for
+the complexity tiers to drive later. A household is a **district**
+(`total_population=10000`), not an individual, so it buys in bulk.
+
+`market_quote` participant discovery went **57 → 81**, which is the equity ops
+finally seeing participants rather than just corps. Seeded cash is a **new
+rule** — the legacy specifies no starting household wealth, same as it specifies
+none for share ownership — and is meant to be replaced by
+`seed_cash_household` from the scenario file.
+
+Building the goods market before this would have produced a market with no
+counterparty on the other side.
+
 ## 1. Fidelity status: this is NEW, and it must be labelled so
 
 > Verified 2026-09-29: zero matches for `employ`, `unemploy`, `labor`, `jobs` or
