@@ -56,5 +56,18 @@ for src in ops/*.c; do
     gcc $CFLAGS "$src" -o "ops/+x/$name.+x"
 done
 
+# Drop binaries whose source is gone. A stale horn_chat_openrouter.+x sat
+# in ops/+x/ after the transport was renamed to horn_chat_backend, and
+# nothing referenced it - it just made ops/ lie about what this project
+# actually runs.
+for bin in ops/+x/*.+x; do
+    [ -e "$bin" ] || continue
+    name="$(basename "$bin" .+x)"
+    if [ ! -f "ops/$name.c" ]; then
+        echo "  removing stale $bin (no ops/$name.c)"
+        rm -f "$bin"
+    fi
+done
+
 echo "--- done ---"
 ls -l system/prisc+x system/chtpm_parser_pal ops/+x/
