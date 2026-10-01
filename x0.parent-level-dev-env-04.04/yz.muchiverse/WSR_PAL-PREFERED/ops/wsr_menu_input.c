@@ -247,7 +247,7 @@ static int collect_corp_names(const char *project_root_, char names[][64], int m
 }
 
 /* Resolves the active corporation piece id ("corp_AFL") from
- * projects/wsr-pal/pieces/wsr_menu/state.txt's active_corp_index.
+ * projects/wsr-pal/pieces/wsr_main_menu/state.txt's active_corp_index.
  *
  * WHY THIS EXISTS (Windows only):
  *   The live RUN rows in projects/wsr-pal/pieces/wsr_trade_menu/piece.pdl
@@ -275,7 +275,7 @@ static void resolve_active_corp(const char *project_root_, char *out, size_t out
 
     snprintf(out, out_sz, "corp_AFL");   /* safe fallback: first corp sorted */
     snprintf(state_path, sizeof(state_path),
-             "%s/projects/wsr-pal/pieces/wsr_menu/state.txt", project_root_);
+             "%s/projects/wsr-pal/pieces/wsr_main_menu/state.txt", project_root_);
     idx = read_kv_int(state_path, "active_corp_index", 0);
     n = collect_corp_names(project_root_, names, 512);
     if (n <= 0) return;
@@ -464,7 +464,7 @@ int main(int argc, char **argv) {
     resolve_root();
 
     char state_path[PATH_BUF];
-    snprintf(state_path, sizeof(state_path), "%s/projects/wsr-pal/pieces/wsr_menu/state.txt", project_root);
+    snprintf(state_path, sizeof(state_path), "%s/projects/wsr-pal/pieces/wsr_main_menu/state.txt", project_root);
 
     int key = atoi(argv[1]);
 
@@ -550,9 +550,24 @@ int main(int argc, char **argv) {
      * typed digit keystroke to older non-chtpm code paths; 10+ is
      * written as the bare integer). Either form arrives here as ONE
      * fully-resolved selection - no accumulation needed on this side. */
+    /* resolved_item is ONE-BASED here and is converted to an array index by the
+     * `items[resolved_item - 1]` below.
+     *
+     * REAL BUG, found by playtest rather than by reading: this used to subtract
+     * one here AND subtract one again at the array index, so every menu item
+     * selected the one BEFORE it. Item 14 (End Turn) ran item 13 (Other Trans,
+     * a STUB), item 8 (Select Corp) ran item 7 (Select Player, a STUB), and
+     * item 1 resolved to index -1 and never dispatched at all. The menu looked
+     * completely alive - it accepted the keystroke, exited 0, and printed a
+     * message - while being incapable of running anything. Only a harness that
+     * asserts on OBSERVED STATE (did turn_number actually move?) rather than on
+     * exit codes could ever see this, because exit code was 0 throughout.
+     *
+     * chtpm sends 1-9 ASCII-encoded as '0'+k and 10+ as the bare integer; both
+     * forms are 1-based indexes into the METHOD table, hence no -1 here. */
     int resolved_item = 0;
-    if (key >= '0' && key <= '9') resolved_item = (key - '0') - 1;
-    else if (key > 9 && key < 1000) resolved_item = key - 1;
+    if (key >= '0' && key <= '9') resolved_item = (key - '0');
+    else if (key > 9 && key < 1000) resolved_item = key;
 
     /* Default to whatever last_message ALREADY was, not blank - this op
      * is now also called with key=0 on every persistent-loop iteration

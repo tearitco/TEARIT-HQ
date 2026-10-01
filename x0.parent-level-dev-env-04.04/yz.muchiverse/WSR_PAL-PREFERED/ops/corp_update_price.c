@@ -149,7 +149,7 @@ int main(int argc, char *argv[]) {
 
     char turn_str[MAX_LINE];
     char menu_state_path[PATH_BUF];
-    snprintf(menu_state_path, sizeof(menu_state_path), "%s/projects/wsr-pal/pieces/wsr_menu/state.txt", project_root);
+    snprintf(menu_state_path, sizeof(menu_state_path), "%s/projects/wsr-pal/pieces/wsr_main_menu/state.txt", project_root);
     read_state_field(menu_state_path, "turn_number", turn_str, sizeof(turn_str));
 
     char hist_path[PATH_BUF];
