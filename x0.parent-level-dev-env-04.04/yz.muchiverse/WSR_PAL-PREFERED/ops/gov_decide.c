@@ -38,8 +38,23 @@
 #define MAX_FIELD 256
 
 static char project_root[MAX_PATH] = ".";
-static const char *GEMMA_LAN_URL = "http://10.0.0.144:11434";
-static const char *GEMMA_LAN_MODEL = "gemma3:270m";
+
+/* Ollama endpoint and model, both overridable - see the fuller note in
+ * corp_decide.c. connect_op.+x takes the URL as an argument and shells to
+ * curl, so the transport was never LAN-specific; only the default was pinned,
+ * which made decision_mode depend on one machine on one network. Verified
+ * 2026-10-01: the local daemon is up but carries only qwen2.5-coder:7b, while
+ * gemma3:270m lives on the LAN host, so the MODEL must be configurable too -
+ * repointing the URL alone would have broken a working setup. */
+static const char *GEMMA_LAN_URL = NULL;
+static const char *GEMMA_LAN_MODEL = NULL;
+
+static void resolve_ollama(void) {
+    const char *url = getenv("PRISC_OLLAMA_URL");
+    const char *model = getenv("PRISC_OLLAMA_MODEL");
+    GEMMA_LAN_URL = (url && url[0]) ? url : "http://127.0.0.1:11434";
+    GEMMA_LAN_MODEL = (model && model[0]) ? model : "gemma3:270m";
+}
 
 static void resolve_root(void) {
     const char *env = getenv("PRISC_PROJECT_ROOT");
@@ -209,6 +224,7 @@ static int llm_choice(float revenue, float spending, float net_operating, float 
 
 int main(int argc, char *argv[]) {
     resolve_root();
+    resolve_ollama();
     if (argc < 2) return 1;
     char state_path[PATH_BUF];
     snprintf(state_path, sizeof(state_path), "%s/projects/wsr-pal/pieces/%s/state.txt", project_root, argv[1]);
