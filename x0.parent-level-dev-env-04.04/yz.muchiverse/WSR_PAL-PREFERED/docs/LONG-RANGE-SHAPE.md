@@ -30,6 +30,12 @@ coupled function — each domain gets its own state files and its own ops, and t
 communicate only through data contracts, per the existing house rule that ops are
 self-contained.
 
+Coercion and civics (§5 — crime, policing, elections, generals) is deliberately
+**not** a fifth domain. It cuts across all four rather than sitting beside them:
+crime is economy, policing is territory, an election determines who holds
+polity, and a jail is demography. Forcing it into its own domain would be a
+mistake; it is a *mode of operation* that applies to transfers in the others.
+
 ---
 
 ## 1. Technology trees — governments and companies both
@@ -192,7 +198,71 @@ rewrite will happen at the worst possible time.
 
 ---
 
-## 5. What this costs the current build, and what it does not
+## 5. Coercion and civics *(long term — named, not built)*
+
+Named in one breath by the user: crime, law enforcement, jail, elections,
+politicians, generals, employees, homelessness. All long term. Recording the
+shape, because the list is long and the actual work is short.
+
+### 5.1 The one genuinely new primitive: the INVOLUNTARY transfer
+
+Everything built so far is **voluntary** exchange. Households buy because they
+choose to; corps pay wages because they choose to. Crime, confiscation, war
+reparations and fines are not that — they move value with **no consent from the
+losing side**. That distinction is the whole architectural addition, and it is
+*one concept*, not seven systems:
+
+> A ledger row that already exists gains a **cause** and a **coerced** flag.
+
+The double-entry format from `financing.c:256` carries any debit/credit pair
+already, so crime is not new machinery — it is a transaction whose cause is
+`theft` rather than `sale`. The discipline then applies to everything else here:
+if a feature cannot be expressed as a real transfer or a real state change, it is
+probably theatre and should be cut.
+
+| feature | what it actually is |
+|---------|---------------------|
+| **crime** | an involuntary transfer, cause `theft`/`fraud` |
+| **law enforcement** | an institution with a budget, like any ministry — but per-region, not per-government |
+| **jail** | involuntary removal of a person *from the economy*; and an **income** the state pays (it feeds them, so it touches the §2.2 consumable sink) |
+| **elections / politicians** | a mechanism that determines *who occupies a government piece*. Today `gov_*` pieces are autonomous; this is what gives them leadership and makes them losable |
+| **generals** | military command — belongs to §2 territory/war, not here |
+| **employees** | see below — **mostly already built** |
+| **homelessness** | see below — **emergent, needs no new data** |
+
+### 5.2 Employees: a limitation I already documented
+
+`ops/corp_payroll.c` pays wages **equally to every household**, with the source
+commenting that "employment does not yet follow demand" as a labelled v1
+simplification. Employees are precisely that limitation being removed: an
+employee is a household with a job *at a firm*, and the wage should follow what
+that firm actually sells them. The B2B note in the `goods_sink.c` header already
+anticipates the input (`data/goods_input.txt` states who consumes what).
+
+So employment is **not** a new system — it is generalising an existing, verified
+payroll op. Lowest-cost item in this whole document, and the highest leverage on
+the goods market, because it makes demand *follow* production rather than lagging
+behind it.
+
+### 5.3 Homelessness and jail are emergent — do not build them directly
+
+Both are worth resisting the urge to implement as their own feature, because each
+falls out of two others:
+
+- **Homeless** = has no job (§5.2) **and** has no parcel (§2.2). You cannot be
+  homeless without there being somewhere to be homeless *from*, and somewhere to
+  be housed. Neither homelessness nor housing needs a field: it is the absence of
+  two facts that already exist.
+- **Jail** = convicted (§5.1 crime) **and** enforcement capacity exceeded
+  (§5.1 law enforcement). Jail population is the overflow of the policing budget.
+
+The test to apply when any of this gets built: *can this state be derived from
+facts already in the world?* If yes, derive it — a stored `homeless=1` flag
+would be a duplicate that can disagree with the truth.
+
+---
+
+## 6. What this costs the current build, and what it does not
 
 Honest accounting, because long-range shape is only worth recording if it does not
 distort what is being built now:
@@ -212,7 +282,7 @@ distort what is being built now:
 
 ---
 
-## 6. Near-term order (unchanged by this document)
+## 7. Near-term order (unchanged by this document)
 
 The vision does not reorder the actual work. These are still the priorities, and
 they are still small:
