@@ -14,12 +14,39 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <limits.h>
+#ifdef _WIN32
+#include <direct.h>
+#endif
 
 #define MAX_LINE 2048
 #define MAX_PATH 4096
 #define PATH_BUF (MAX_PATH + 256)
 #define MAX_ENTRIES 64
 #define MAX_NAME 512
+
+/* Windows: realpath() does not exist (mingw has _fullpath), and the
+ * resolved path is backslash-separated, so a strrchr(buf,'/') walk
+ * would never find a separator and install_root would silently stay
+ * equal to the session dir. Same wrapper as start_menu_input.c.
+ *
+ * _fullpath is a 3-arg function while realpath is 2-arg, so this has to
+ * be a real wrapper function, not a macro. */
+#ifdef _WIN32
+static int path_realpath(const char *in, char *out, size_t outsz) {
+    return _fullpath(out, in, outsz) != NULL;
+}
+static char *last_path_sep(char *p) {
+    char *s = strrchr(p, '\\');
+    char *f = strrchr(p, '/');
+    return (s && f) ? (s > f ? s : f) : (s ? s : f);
+}
+#else
+static int path_realpath(const char *in, char *out, size_t outsz) {
+    (void)outsz;
+    return realpath(in, out) != NULL;
+}
+static char *last_path_sep(char *p) { return strrchr(p, '/'); }
+#endif
 
 static char project_root[MAX_PATH] = ".";   /* session (writable piece.pdl) */
 static char install_root[MAX_PATH] = ".";   /* _.START_BUTTON install — config + relative roots */
@@ -44,12 +71,12 @@ static void resolve_root(void) {
         /* Prefer config symlink target's parent (session → install). */
         char cfg[PATH_BUF], resolved[MAX_PATH];
         snprintf(cfg, sizeof(cfg), "%s/config/start_button.pdl", project_root);
-        if (realpath(cfg, resolved)) {
+        if (path_realpath(cfg, resolved, sizeof(resolved))) {
             /* .../install/config/start_button.pdl → strip 2 components */
-            char *slash = strrchr(resolved, '/');
+            char *slash = last_path_sep(resolved);
             if (slash) {
                 *slash = '\0'; /* /config */
-                slash = strrchr(resolved, '/');
+                slash = last_path_sep(resolved);
                 if (slash) {
                     *slash = '\0'; /* install root */
                     snprintf(install_root, sizeof(install_root), "%s", resolved);
@@ -154,7 +181,7 @@ static void abspath_from(const char *base, const char *rel, char *out, size_t ou
     /* base is project_root (session); rel like .. or ../@.apps */
     char joined[PATH_BUF];
     snprintf(joined, sizeof(joined), "%s/%s", base, rel);
-    if (!realpath(joined, out)) {
+    if (!path_realpath(joined, out, out_sz)) {
         /* realpath fails if missing — keep joined */
         snprintf(out, out_sz, "%s", joined);
     }
@@ -175,6 +202,14 @@ static int has_file(const char *dir, const char *name) {
     return access(p, F_OK) == 0;
 }
 
+/* A runnable child is one that has a launcher. Linux uses button.sh;
+ * Windows uses button.ps1. Probing only button.sh filtered out EVERY
+ * candidate on Windows (0 entries written, no error) - the menu would
+ * come up permanently empty with no diagnostic. */
+static int has_button(const char *dir) {
+    return has_file(dir, "button.sh") || has_file(dir, "button.ps1");
+}
+
 /* Collect direct children (and optional depth-2) under root_abs. */
 static int collect_entries(const char *root_abs, int depth, int need_button,
                            int need_pdl, Entry *out, int max_out) {
@@ -190,7 +225,7 @@ static int collect_entries(const char *root_abs, int depth, int need_button,
         if (stat(child, &st) != 0 || !S_ISDIR(st.st_mode)) continue;
 
         int ok = 1;
-        if (need_button && !has_file(child, "button.sh")) ok = 0;
+        if (need_button && !has_button(child)) ok = 0;
         if (need_pdl && !has_file(child, "project.pdl")) ok = 0;
 
         if (ok) {
@@ -210,7 +245,7 @@ static int collect_entries(const char *root_abs, int depth, int need_button,
                 snprintf(c2, sizeof(c2), "%s/%s", child, e2->d_name);
                 struct stat st2;
                 if (stat(c2, &st2) != 0 || !S_ISDIR(st2.st_mode)) continue;
-                if (need_button && !has_file(c2, "button.sh")) continue;
+                if (need_button && !has_button(c2)) continue;
                 if (need_pdl && !has_file(c2, "project.pdl")) continue;
                 /* skip if parent already listed as runnable (avoid dup noise) */
                 snprintf(out[n].label, sizeof(out[n].label), "%s/%s", ent->d_name, e2->d_name);
@@ -225,16 +260,41 @@ static int collect_entries(const char *root_abs, int depth, int need_button,
     return n;
 }
 
+/* Create every missing component of `path` (mkdir -p equivalent).
+ * Both separators accepted so the same code serves a '/' joined path on
+ * Linux and a '\\' path handed in by PRISC_PROJECT_ROOT on Windows. */
+static void ensure_dir_recursive(const char *path) {
+    char buf[PATH_BUF];
+    snprintf(buf, sizeof(buf), "%s", path);
+    size_t n = strlen(buf);
+    if (n == 0) return;
+    for (size_t i = 1; i <= n; i++) {
+        char ch = buf[i];
+        if (ch != '/' && ch != '\\' && ch != '\0') continue;
+        char save = buf[i];
+        buf[i] = '\0';
+#ifdef _WIN32
+        _mkdir(buf);
+#else
+        mkdir(buf, 0755);
+#endif
+        buf[i] = save;
+    }
+}
+
 static void write_section_pdl(const char *section, const Entry *ents, int n, int is_store) {
     char pdl[PATH_BUF];
     snprintf(pdl, sizeof(pdl),
              "%s/projects/start-button/pieces/%s/piece.pdl", project_root, section);
-    /* ensure dir */
     char dir[PATH_BUF];
     snprintf(dir, sizeof(dir), "%s/projects/start-button/pieces/%s", project_root, section);
-    char cmd[PATH_BUF + 32];
-    snprintf(cmd, sizeof(cmd), "mkdir -p '%s'", dir);
-    { int _rc = system(cmd); (void)_rc; }
+    /* ensure dir. Was `system("mkdir -p '<dir>'")`, which cannot work
+     * on Windows (no mkdir) AND is unsafe even in principle here: cmd.exe
+     * splits arguments on '&', and this house is full of '&.widgits'
+     * paths, so the command was being torn in half (observed live:
+     * four "The syntax of the command is incorrect" per run, dir never
+     * created, catalogs silently skipped). Native mkdir call instead. */
+    ensure_dir_recursive(dir);
 
     FILE *f = fopen(pdl, "w");
     if (!f) return;

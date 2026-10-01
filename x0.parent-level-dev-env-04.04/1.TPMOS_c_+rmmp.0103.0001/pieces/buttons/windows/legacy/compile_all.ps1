@@ -42,13 +42,101 @@ Compile-Piece "projects\op-ed\manager\op-ed_manager.c" "projects\op-ed\manager\+
 Compile-Piece "projects\fuzz-op\manager\fuzz-op_manager.c" "projects\fuzz-op\manager\+x\fuzz-op_manager.+x"
 Compile-Piece "projects\user\manager\user_manager.c" "projects\user\manager\+x\user_manager.+x"
 Compile-Piece "projects\man-pal\manager\man-pal_module.c" "projects\man-pal\manager\+x\man-pal_module.+x"
+# agy-text-editor: was MISSING from this list entirely, so
+# agy-text-editor_manager.+x was never built on Windows and
+# editor.chtpm's <module> tag pointed at a nonexistent binary. That is why
+# INTERACT mode forwarded keys into player_app/history.txt with nothing
+# consuming them. Evidence: FRAME_REPORT_20260926-1540_agy-interact-inject.txt
+Compile-Piece "projects\agy-text-editor\manager\agy-text-editor_manager.c" "projects\agy-text-editor\manager\+x\agy-text-editor_manager.+x"
+
+# Shared file Ops. Also MISSING from this list, and agy-text-editor invokes
+# all four at runtime through run_op() -- without them the manager builds but
+# every keystroke silently no-ops because its Op binary is absent.
+$file_ops = @("text_edit_key", "text_editor_view", "file_copy", "dir_browse")
+foreach ($op in $file_ops) {
+    Compile-Piece "pieces\system\file_ops\$op.c" "pieces\system\file_ops\+x\$op.+x"
+}
+
+# --- cpp-llm ---
+# Was MISSING entirely, so cpp-llm did not run on Windows at all. Its manager
+# needs -lws2_32: the MinGW toolchain has no ifaddrs.h, so resolve_my_ip() uses
+# gethostbyname() instead, which pulls in ws2_32. MinGW's own gcc rejects
+# -lwinsock2 in this sysroot; ws2_32 is the library name it actually ships.
+Compile-Piece "projects\cpp-llm\manager\cpp-llm_manager.c" "projects\cpp-llm\manager\+x\cpp-llm_manager.+x" "-lws2_32"
+# Its Ops. run_tool() resolves these under projects/cpp-llm/ops/+x at runtime,
+# so without them every tool call returns NULL and the manager no-ops. 10 of the
+# 13 compiled unmodified; cmd_exec, connect_op and search_in_files needed
+# Windows spawn/pipe/getline equivalents.
+$cpp_llm_ops = @("cmd_exec", "complete_path", "connect_op", "cpp-llm_bridge",
+                 "edit_file", "file_ops", "json_escaper", "json_parser",
+                 "json_state", "list_dir", "search_in_files",
+                 "text_to_llama3", "web_search")
+foreach ($op in $cpp_llm_ops) {
+    Compile-Piece "projects\cpp-llm\ops\src\$op.c" "projects\cpp-llm\ops\+x\$op.+x"
+}
+
+# --- groq-ollama ---
+# Also MISSING entirely, the same omission as cpp-llm. Needs -lws2_32 for the
+# same reason only if it resolves addresses; it does not (no ifaddrs.h use), so
+# the flag is omitted here rather than added on a guess. 9 of its 11 Ops
+# compiled unmodified; cmd_exec and search_in_files needed the same
+# Windows pipe-spawn and getline equivalents as cpp-llm's copies, which are
+# byte-for-byte the same source apart from a header comment.
+Compile-Piece "projects\groq-ollama\manager\groq-ollama_manager.c" "projects\groq-ollama\manager\+x\groq-ollama_manager.+x"
+$groq_ops = @("cmd_exec", "complete_path", "edit_file", "file_ops",
+              "gemini_payload_builder", "groq-ollama_bridge", "json_parser",
+              "json_state", "list_dir", "search_in_files", "web_search")
+foreach ($op in $groq_ops) {
+    Compile-Piece "projects\groq-ollama\ops\src\$op.c" "projects\groq-ollama\ops\+x\$op.+x"
+}
+
+# --- gem-dev ---
+# Third of the same family, third of the same omission. 9 of 13 Ops compiled
+# unmodified; four needed work. cmd_exec and search_in_files are the shared
+# duplicated ops again (byte-identical to the cpp-llm copies apart from a
+# header comment). startup_reset_op only needed the one-argument MinGW mkdir
+# shim in ensure_dir(). web_search was the only genuinely new one: it
+# fork/execs curl through a pipe to read the DuckDuckGo response, so it took
+# the full CreatePipe/CreateProcess port plus its own PATH walk for curl.
+Compile-Piece "projects\gem-dev\manager\gem-dev_manager.c" "projects\gem-dev\manager\+x\gem-dev_manager.+x"
+$gem_ops = @("cmd_exec", "complete_path", "edit_file", "file_ops", "gem-dev",
+             "gemini_payload_builder", "get_completion_methods_op", "json_parser",
+             "json_state", "list_dir", "search_in_files", "startup_reset_op",
+             "web_search")
+foreach ($op in $gem_ops) {
+    Compile-Piece "projects\gem-dev\ops\src\$op.c" "projects\gem-dev\ops\+x\$op.+x"
+}
+
+# --- slop-ed-dev ---
+# The last of the four, and the only one that COMPILED on Windows the whole
+# time. Unlike the LLM trio it was already partly ported in-place -- sys/wait.h
+# guarded, windows.h, a mkdir shim, a usleep shim and its own Windows asprintf
+# -- so it needed no compile fixes and was not portable in the sense that
+# mattered. Its run_command() had "#else return system(cmd)", which hands the
+# string to cmd.exe, and every one of its nine call sites was POSIX shell:
+# "mkdir -p", "cp -r", single-quoted paths, "> /dev/null 2>&1", "VAR=x cmd".
+# cmd.exe has none of those, so the whole app compiled clean and did nothing.
+# A green build was the only thing wrong with it, and it is the reason this
+# project's port could not be judged by whether it compiled.
+# No Ops of its own -- it calls the shared pieces/system/file_ops ones, already
+# ported for agy-text-editor.
+Compile-Piece "projects\slop-ed-dev\manager\slop-ed-dev_manager.c" "projects\slop-ed-dev\manager\+x\slop-ed-dev_manager.+x"
+# pal_editor.chtpm points at a SECOND module in the same directory, so building
+# only the manager would leave one of the six layouts pointing at a binary that
+# does not exist.
+Compile-Piece "projects\slop-ed-dev\manager\pal_editor_module.c" "projects\slop-ed-dev\manager\+x\pal_editor_module.+x"
+
+
 
 # --- Keyboard & Joystick ---
 Compile-Piece "pieces\keyboard\src\keyboard_input_win.c" "pieces\keyboard\plugins\+x\keyboard_input.+x"
 # Windows: Use XInput for Xbox controllers
 Write-Host "Compiling joystick_input (Windows/XInput)..." -ForegroundColor Gray
 if (Test-Path "pieces\joystick\plugins\joystick_input_win.c") {
-    & gcc -D_WIN32 -std=gnu11 "pieces\joystick\plugins\joystick_input_win.c" -o "pieces\joystick\plugins\+x\joystick_input.+x" -lxinput -lpthread
+    # Was a raw gcc call, so unlike every Compile-Piece target it never got
+    # its +x\ directory created and failed to link on a clean tree. Compile-Piece
+    # creates the output dir (see its New-Item above) and adds -lpthread.
+    Compile-Piece "pieces\joystick\plugins\joystick_input_win.c" "pieces\joystick\plugins\+x\joystick_input.+x" "-lxinput"
 }
 
 # --- CHTPM Core ---

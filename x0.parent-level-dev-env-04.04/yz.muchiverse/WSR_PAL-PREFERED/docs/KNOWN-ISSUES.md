@@ -143,6 +143,44 @@ Windows path is therefore unfixable from this tree.
 
 ---
 
+## Deferred on purpose, for a human to reconcile
+
+- **`prisc+x.c` has drifted from canonical, and the fix is untracked.**
+  Two facts, both verified, and they are not the same thing:
+
+  1. The house `.gitignore` (lines 113-116) deliberately vendors exactly one
+     `prisc+x.c`, at
+     `44.xyz.01.00/&.widgits/_shared-lib/system/prisc+x.c`, which is
+     explicitly whitelisted with `!**/_shared-lib/system/prisc+x.c`. Every
+     per-project copy is ignored on purpose. **This is working as designed,
+     and the other machine is not missing anything** - it gets the canonical
+     tracked file. The earlier note in `PROGRESS.md` describing the file as
+     "missing entirely" is wrong and should not be trusted.
+  2. Separately, a Windows op-spawning fix made on 2026-09-28 lives in an
+     untracked copy at `WSR_PAL-PREFERED/system/prisc+x.c`. That copy is 1520
+     lines against the canonical 1492, and the diff is **purely additive, 28
+     lines, 0 removals** - the `_WIN32` double-quoting of op paths plus its
+     explanatory comment. No canonical behaviour is modified.
+
+  The fix is real and it works: without it, `cmd.exe` treats `'` as a literal
+  filename character, every op spawn dies with "The filename, directory name,
+  or volume label syntax is incorrect", and it hits the pal relay path only -
+  which is why `button.ps1 run` looked healthy while no keypress ever
+  dispatched. See `PROGRESS.md` for the original diagnosis.
+
+  **The cost of leaving it here:** the fix is invisible to any other checkout
+  and will be lost if this working tree is cleaned. It is not force-added,
+  because doing so would vendor a divergent per-project copy, which is exactly
+  what the consolidation rule exists to prevent. Reconciling it means folding
+  the change into the canonical `_shared-lib` file, not committing this one.
+
+  Left alone deliberately on 2026-09-29 at the user's direction: the other
+  machine is already running a working `prisc+x`, and the canonical file is
+  shared by every project in the repo, so the change deserves a deliberate
+  decision rather than a drive-by from a WSR task.
+
+---
+
 ## House-level traps (not bugs in this project, but they cost time here)
 
 - **Stale duplicate files.** The live `piece.pdl` is under

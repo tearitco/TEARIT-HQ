@@ -95,7 +95,7 @@ dividend/payroll loops, no `salary_loop.c` at all).
 
 | # | Change | File | Evidence |
 |---|---|---|---|
-| 1 | Installed the canonical `prisc+x.c`, which was **missing entirely** | `system/prisc+x.c` | was 0 files on disk; `check` passed only on a stale checked-in `.exe` |
+| 1 | Restored a working `system/prisc+x.c` for Windows op spawning | `system/prisc+x.c` | **CORRECTION:** this was never "missing entirely". The canonical file is tracked at `44.xyz.01.00/&.widgits/_shared-lib/system/prisc+x.c` and the house `.gitignore` (lines 113-116) deliberately excludes per-project copies. What was actually true: an untracked local copy carried a 28-line additive Windows quoting fix that canonical lacks. See `KNOWN-ISSUES.md` |
 | 2 | Op-spawn quoting | `system/prisc+x.c` | standalone loop: `history_cursor` 0 -> 1, **empty stderr** (was 12x `The filename, directory name, or volume label syntax is incorrect.`) |
 | 3 | `sim-key` stdout/stderr redirect | `button.ps1:196` | PowerShell was refusing the command outright; now runs, exit 0 |
 | 4 | Op path forward slashes | `ops/wsr_menu_input.c` | `ops/+x/...` -> `'ops' is not recognized`; `ops\+x\...` -> op runs |

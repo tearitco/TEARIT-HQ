@@ -621,6 +621,51 @@ static int cmd_dividend(const char *corp_piece, double amount) {
         return 1;
     }
 
+    /* DIVIDEND IS A DISTRIBUTION FROM EQUITY, NOT ONLY A CASH OUTFLOW.
+     *
+     * Under GAAP a dividend is paid out of retained earnings, which is part of
+     * shareholders' equity. Crediting only the cash side leaves equity
+     * untouched, so book value per share never falls.
+     *
+     * That is not cosmetic in this sim - it is fatal. Valuation is BVP-based
+     * (ECONOMY-INTENT.md sections 7 and 9: every bank's own fair-value view is
+     * built from book value), so a dividend that leaves equity alone inflates
+     * every future valuation. A company could pay dividends indefinitely while
+     * its book value climbed, and the auction would converge on a number that
+     * drifts upward with every payout. The whole market would slowly become
+     * fiction.
+     *
+     * ORDER IS LOAD-BEARING: this runs BEFORE any money moves, not after. If
+     * equity cannot be written, the payout is not a dividend at all - it is
+     * cash leaving the balance sheet with no offsetting reduction in equity,
+     * which is a broken balance sheet rather than a distribution. Doing it
+     * first means a failure aborts before a single cent has been credited or
+     * debited, so there is no partial state to reconcile.
+     *
+     * `book_value` is this sim's common-equity carrier; there is no separate
+     * retained_earnings field yet (ROADMAP 2.2, ECONOMY-INTENT.md section 6).
+     * Clamped at zero: a corporation cannot distribute more equity than it
+     * holds, and an un-clamped negative would put book value - and so every
+     * valuation - below zero.
+     */
+    {
+        char eqbuf[64];
+        float book_before = field_f(corp_state, "book_value");
+        float book_after = book_before - (float)amount;
+        if (book_after < 0.0f) book_after = 0.0f;
+        snprintf(eqbuf, sizeof(eqbuf), "%.4f", book_after);
+        if (!write_state_field(corp_state, "book_value", eqbuf)) {
+            fprintf(stderr,
+                    "internal: could not reduce equity for %s - dividend of $%.2f "
+                    "ABORTED, no cash moved (equity must fall with the payout or "
+                    "book value per share never declines)\n",
+                    corp_piece, amount);
+            return 1;
+        }
+        printf("dividend: %s equity reduced by $%.2f (book_value $%.2f -> $%.2f)\n",
+               corp_piece, amount, book_before, book_after);
+    }
+
     /* Pass 2: apply every cent allocation, tracking the first failure. */
     long long applied_cents = 0;
     int failed = 0;

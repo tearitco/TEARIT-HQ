@@ -1,0 +1,104 @@
+FINANCIAL PROFILE FOR IL INSURANCE (ILI)
+FINANCIAL BALANCE SHEET: IL INSURANCE (ILI):
+-----------------------------------------------
+(Amounts in millions of U.S. Dollars, except per share amounts)
+ASSETS:
+Free Cash and Equivalents
+Stock in Subsidiary Corps.
+Options Long/Short: Net Value
+Government Bonds (mkt. value)
+Corporate Bonds (mkt. value)
+Subprime Mortgage Securities
+Index Futures: Marked to Mkt.
+Commodity A/C Margin Balance
+Total Assets:
+LIABILITIES AND EQUITY:
+Long-Term Bonds Issued
+Bank Loan
+Insurance Policy Reserves
+Accrued Income Tax Payable
+Total Liabilities:
+Equity (Net Worth):
+2558.50
+0.00
+0.00
+0.00
+0.00
+0.00
+0.00
+0.00
+----------------
+2558.50
+----------------
+0.00
+280.00
+1378.50
+0.00
+----------------
+1658.50 [1]
+----------------
+900.00
+================
+STOCK AND EARNINGS DATA:
+--------------------------
+Net Worth Per Share:
+18.00
+Current Stock Price:
+20.18
+52-Week High/Low Stock Price: 29.98 / 19.73
+Shares of stock outstanding:
+50.00 million
+Total stock capitalization:
+1009.15 million
+2021 Earnings Per Share
+0.00 (Operating Earnings)
+2022 Earnings Per Share
+0.00 (Operating Earnings)
+2023 Earnings Per Share
+0.00 (Operating Earnings)
+2024 Earnings Per Share
+0.00 (Operating Earnings)
+2025 E/P/S through Qtr. #1
+(Not Yet Announced)
+-------------------------------------------------------------------
+VARIOUS FINANCIAL RATIOS:
+-------------------------
+Price/Earnings Ratio:
+NMF (No Meaningful Figure)
+Dividend Yield:
+0.00%
+Debt to Equity Ratio:
+0.31 to 1
+Return on Equity (2024):
+NMF (No Meaningful Figure)
+-------------------------------------------------------------------
+*** CREDIT INFO: ***
+-------------------------------------------------------------------
+Credit Rating: A
+Unused Bank Line of Credit: ZERO
+Borrowing Rate (Interest):
+11.00% (Prime is:
+10.00%)
+Lending Bank: IND. & COM. BANK OF CHINA (ICBC)
+-------------------------------------------------------------------
+VARIABLE SETTINGS (Changeable by controlling player):
+-------------------------------------------------------------------
+Dividend Payout Per Share:
+0.00
+% of Net Premiums for Advertising
+7%Growth Rate (Insurance in Force)
+6%
+MISCELLANEOUS INFO:
+-------------------
+Industry Group:
+INSURANCE
+Incorporated in: KOREA
+Controlled (and actively managed) by: sol supreme
+Wholly owned by: sol supreme
+Annual CEO salary (approx.): $ 0.69 M.
+(Plus possible bonuses)
+Today's (Game) Date:
+January 1, 2025
+Next Earnings Report: January 8, 2025
+FOOTNOTE TO FINANCIAL STATEMENT:
+-------------------------------------------------------------------

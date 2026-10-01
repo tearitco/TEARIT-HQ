@@ -9,10 +9,19 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#ifndef _WIN32
 #include <sys/wait.h>
+#endif
 #include <signal.h>
 #include <time.h>
 #include <ctype.h>
+
+#ifdef _WIN32
+#include <windows.h>
+/* windows.h defines MAX_PATH as 260; this file uses its own 4096 below.
+   Drop the Windows one so the house-sized value wins. */
+#undef MAX_PATH
+#endif
 
 #define MODULE_NAME "agy-text-editor"
 #define MAX_PATH 4096
@@ -159,6 +168,34 @@ static int get_active_gui_index(void) {
     return idx;
 }
 
+/* Whether the element active_gui_index points at is genuinely ACTIVE (a
+   focused INTERACT element actually accepting keystrokes right now) as
+   opposed to merely focused. This is a SEPARATE signal from
+   get_active_gui_index() above, and the separation is the whole point:
+   active_gui_index.txt alone conflates "just focused" and "genuinely
+   active/typing" into one number, so it cannot tell this file whether
+   digits and control keys should be treated as navigation commands or
+   handed to the text editor. chtpm_parser.c's export_active_index() already
+   publishes the unambiguous answer as a companion file, rewritten every
+   frame from compose_frame() -- see that function's own comment and
+   2fix-july6.txt bug 3. wraith-alpha_manager.c is the one sibling manager
+   that already reads it (sync_active_gui_index_from_display()); this is the
+   same pattern. Defaults to 0 (not typing) if the file is missing, which is
+   the safe fallback: keys keep their existing command meanings rather than
+   silently leaking into the document. */
+static int get_active_gui_is_typing(void) {
+    char *path = NULL;
+    int typing = 0;
+    if (asprintf(&path, "%s/pieces/display/active_gui_is_typing.txt", project_root) == -1) return 0;
+    FILE *f = fopen(path, "r");
+    if (f) {
+        if (fscanf(f, "%d", &typing) != 1) typing = 0;
+        fclose(f);
+    }
+    free(path);
+    return typing != 0;
+}
+
 static void read_editor_line(void) {
     char *path = NULL;
     if (asprintf(&path, "%s/pieces/apps/player_app/cli_buffers.txt", project_root) == -1) return;
@@ -282,10 +319,55 @@ static void transition_to_layout(const char *layout_path) {
    execute" -- this is the ONE place that knows how to run one) ---- */
 static int run_op(const char *op_rel_path, char *const op_argv[]) {
     char full_path[MAX_PATH];
+
+    snprintf(full_path, sizeof(full_path), "%s/%s", project_root, op_rel_path);
+
+#ifdef _WIN32
+    /* Windows has no fork()/execv()/waitpid(). Build one quoted command
+     * line and spawn it synchronously, mirroring the CreateProcess path
+     * orchestrator.c already uses successfully on this platform.
+     *
+     * Deliberately LOCAL rather than reusing pieces/system/win_spawn.h:
+     * that header's win_spawn() assembles a cmd_line and then passes NULL
+     * to _spawnl(), so every argument is silently dropped -- fatal here,
+     * because all four of agy's Ops take arguments (doc path, cursor
+     * path, key code). chtpm_parser.c calls that same win_spawn() live, so
+     * repairing the shared header is its own change with its own risk and
+     * is deliberately NOT bundled into this build fix.
+     *
+     * CREATE_NO_WINDOW matches how the orchestrator launches other
+     * helpers. None of these Ops write to stdout -- they all communicate
+     * through the files named in their arguments -- so nothing is lost. */
+    char cmd[8192];
+    size_t off = 0;
+    cmd[0] = '\0';
+    for (int i = 0; op_argv[i] != NULL && off + 2 < sizeof(cmd); i++) {
+        int n = snprintf(cmd + off, sizeof(cmd) - off, "%s\"%s\"",
+                         i ? " " : "", op_argv[i]);
+        if (n < 0) break;
+        off += (size_t)n;
+    }
+
+    STARTUPINFO si;
+    PROCESS_INFORMATION pi;
+    ZeroMemory(&si, sizeof(si));
+    si.cb = sizeof(si);
+    ZeroMemory(&pi, sizeof(pi));
+
+    if (!CreateProcess(full_path, cmd, NULL, NULL, FALSE, CREATE_NO_WINDOW,
+                       NULL, NULL, &si, &pi)) {
+        return -1;
+    }
+    WaitForSingleObject(pi.hProcess, INFINITE);
+    DWORD code = 0;
+    GetExitCodeProcess(pi.hProcess, &code);
+    CloseHandle(pi.hThread);
+    CloseHandle(pi.hProcess);
+    return (int)code;
+#else
     pid_t pid;
     int status;
 
-    snprintf(full_path, sizeof(full_path), "%s/%s", project_root, op_rel_path);
     pid = fork();
     if (pid == 0) {
         execv(full_path, op_argv);
@@ -295,6 +377,7 @@ static int run_op(const char *op_rel_path, char *const op_argv[]) {
         return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
     }
     return -1;
+#endif
 }
 
 static void get_document_path(char *out, size_t sz) {
@@ -577,24 +660,38 @@ static int process_key(int key) {
     char layout[MAX_LINE];
     get_current_layout_name(layout, sizeof(layout));
 
+    /* In editor.chtpm, once an INTERACT element is genuinely active, EVERY key
+       belongs to the text editor -- including the keys that are navigation
+       commands everywhere else in this file. This one gate is the shared root
+       of two long-standing bugs:
+
+         B.2 backspace was swallowed. It used to be intercepted above and
+             routed to a cli_buffers.txt "e" line that the typing path never
+             writes, so it was always stale/empty and the key was dropped.
+         B.3 '2' and '6' were stolen as SET_CLEAR_FILE / SET_NEW_FILE, so you
+             literally could not type those two characters into a document.
+
+       Both are the same mistake: applying navigation-mode key semantics
+       while a text element holds the keyboard. The reliable signal that an
+       element is genuinely active -- not merely focused -- is
+       active_gui_is_typing.txt; see get_active_gui_is_typing() above. When it
+       is 0 (navigation mode) the command handling below stays exactly as it
+       was, so nav digits still work for the buttons.
+
+       handle_interact_key() -> text_edit_key.+x already implements backspace
+       correctly and cursor-aware (delete before the cursor, merge lines at
+       column 0), so delegating is strictly better than reimplementing it
+       here. Unhandled codes (e.g. ESC, if it ever reaches us) are a harmless
+       no-op inside that Op. */
+    if (strcmp(layout, "editor.chtpm") == 0 && get_active_gui_is_typing()) {
+        handle_interact_key(key);
+        return 1;
+    }
+
     if (key == 127 || key == 8) {
-        if (strcmp(layout, "editor.chtpm") == 0) {
-            read_editor_line();
-            int len = strlen(input_line_buffer);
-            if (len > 0) {
-                input_line_buffer[len - 1] = '\0';
-                char *path = NULL;
-                if (asprintf(&path, "%s/pieces/apps/player_app/cli_buffers.txt", project_root) != -1) {
-                    FILE *bf = fopen(path, "a");
-                    if (bf) {
-                        fprintf(bf, "e%s\n", input_line_buffer);
-                        fclose(bf);
-                    }
-                    free(path);
-                }
-                processed = 1;
-            }
-        } else if (strcmp(layout, "file_browser.chtpm") == 0) {
+        /* editor.chtpm never reaches here -- the gate above owns it. Only
+           file_browser.chtpm's two discrete text fields are handled below. */
+        if (strcmp(layout, "file_browser.chtpm") == 0) {
             int active_idx = get_active_gui_index();
             if (active_idx == 1) { // search_query
                 read_search_query_input();
@@ -933,7 +1030,12 @@ static void update_gui_state(void) {
 int main(void) {
     signal(SIGINT, handle_sigint);
     signal(SIGTERM, handle_sigint);
+#ifndef _WIN32
+    /* Detach into our own process group so terminal signals aimed at the
+       launching shell don't reach us. No Windows equivalent and none
+       needed: CREATE_NO_WINDOW children are already signal-isolated. */
     setpgid(0, 0);
+#endif
     resolve_paths();
 
     /* Seed the working document/cursor files on first run if they don't

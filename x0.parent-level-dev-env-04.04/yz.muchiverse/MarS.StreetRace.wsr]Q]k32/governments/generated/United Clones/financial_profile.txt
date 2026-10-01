@@ -1,0 +1,90 @@
+FINANCIAL PROFILE FOR United Clones
+====================================================
+FINANCIAL STATEMENT: United Clones (CONSOLIDATED)
+----------------------------------------------------
+(Amounts in Martian Credits, to four decimal places)
+ASSETS:
+  Cash and Cash Equivalents:		31.8000
+  Tax Receivables (Net):		15.9000
+  Loans (Colony Development):		9.5400
+  Physical Assets (Habitats, Rovers):	25.4400
+  Investments (Trust Funds):		22.2600
+  ---------------------------------------------
+  Total Assets:				104.9400
+  ---------------------------------------------
+LIABILITIES AND NET POSITION:
+  Public Debt Outstanding:		63.6000
+  Intragovernmental Debt:		15.9000
+  Pension & Benefits Payable:		9.5400
+  Environmental & Legal Liabilities:	3.1800
+  Accrued Interest Payable:		1.5900
+  ---------------------------------------------
+  Total Liabilities:			93.8100
+  ---------------------------------------------
+  Net Position (Net Worth):		11.1300
+  =============================================
+FISCAL OPERATIONS (FY 2024):
+----------------------------
+  Total Revenue:			47.7000
+    - Individual Income Tax:		31.8000
+    - Corporate Income Tax:		9.5400
+    - Payroll Taxes (Social Security):	6.3600
+    - Other Revenue:			0.0000
+  Net Cost of Operations:		57.2400
+    - Social Security:			12.7200
+    - Health (Medicare, Clinics):	9.5400
+    - Net Interest on Debt:		3.1800
+    - Life Support Systems:		9.5400
+    - Colony Defense:			9.5400
+    - Income Security:			6.3600
+    - Other Spending:			4.7700
+  Net Operating (Cost)/Revenue:		-9.5400
+  ---------------------------------------------
+NET POSITION:
+-------------
+  Beginning of Period:			20.6700
+  Adjustments (Accounting Changes):	+0.5000
+  Net Operating (Cost)/Revenue:		-9.5400
+  ---------------------------------------------
+  End of Period (Net Worth):		11.1300
+  ---------------------------------------------
+VARIOUS FISCAL RATIOS:
+----------------------
+  Debt-to-GDP Ratio:			25.0000
+  Deficit-to-Spending Ratio:		16.6667
+  Interest-to-Revenue Ratio:		6.6667
+  Tax Revenue per Capita:		4.7700
+  Spending per Capita:			5.7240
+  ---------------------------------------------
+*** CREDIT INFO: ***
+-------------------
+  Sovereign Credit Rating:		AA+
+  Benchmark 10-Year Yield:		4.2100%
+  Effective Borrowing Rate:		3.8700%
+  Debt Ceiling Limit:			63.6000
+  Current Debt Level:			63.6000
+  ---------------------------------------------
+VARIABLE SETTINGS (Changeable by controlling player):
+----------------------------------------------------
+  % Change in Defense Spending:		0.0000%
+  % Change in Social Security:		0.0000%
+  Tax Rate Adjustment (Bracket Shift):	0.0000%
+  New Debt Issuance (Automatic):		YES (To Cover Deficit)
+  ---------------------------------------------
+MISCELLANEOUS INFO:
+-------------------
+  Government Type:			MARTIAN COLONY
+  Fiscal Year End:			September 30
+  Next Budget Deadline:			October 1, 2025
+  Next Debt Ceiling Vote:		TBD
+  Controlled (and actively managed) by:	Player_Name
+  Wholly owned by:			Citizens of United Clones
+  Inflation Rate (2024):			3.1000%
+  Unemployment Rate (2024):		4.0000%
+  GDP (Nominal, 2024):			318.0000
+  ---------------------------------------------
+FOOTNOTE TO FINANCIAL STATEMENT:
+-------------------------------
+[1] This statement is consolidated and includes all colonial agencies and trust funds. Intragovernmental transactions are eliminated.
+[2] "Net Position" is analogous to net worth or equity in colonial finance. A negative value indicates liabilities exceed assets.
+[3] Interest on debt is projected based on current yield curve and debt rollover schedule.

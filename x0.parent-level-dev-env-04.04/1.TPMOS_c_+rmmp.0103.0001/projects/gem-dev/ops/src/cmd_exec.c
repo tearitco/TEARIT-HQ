@@ -3,8 +3,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef _WIN32
+#include <windows.h>
+#include <io.h>
+#define access(p, m) _access(p, m)
+#else
 #include <unistd.h>
 #include <sys/wait.h>
+#endif
 
 static int get_sandbox_depth() {
     int depth = 1;
@@ -55,11 +61,67 @@ int main(int argc, char* argv[]) {
     printf("\033[90m[Action: exec_cmd]\033[0m\n");
     fflush(stdout);
     
-    int pipefd[2];
-    if (pipe(pipefd) != 0) {
-        perror("pipe");
-        return 1;
+#ifdef _WIN32
+    /* Windows counterpart of the pipe()+fork()+dup2() block below. The shell
+       is cmd.exe rather than /bin/sh, so command syntax is whatever the
+       Windows shell accepts -- a real behavioural difference from the POSIX
+       build for any command using POSIX shell syntax, and unavoidable.
+
+       Unlike the POSIX original this reads the pipe to EOF BEFORE waiting on
+       the child. The POSIX order (waitpid, then a single read()) can deadlock
+       if the child fills the 64K pipe buffer before exiting, and its single
+       read() call silently truncates anything longer than one buffer's worth.
+       Reading first is both deadlock-free and complete; the output format is
+       unchanged. The read end must have HANDLE_FLAG_INHERIT cleared or the
+       child holds a duplicate and the loop never sees EOF. */
+    {
+        SECURITY_ATTRIBUTES sa;
+        HANDLE rd, wr;
+        STARTUPINFOA si;
+        PROCESS_INFORMATION pi;
+        char cmd[8192];
+        char buf[4096];
+        char out[65536];
+        size_t total = 0;
+        DWORD n;
+
+        memset(&sa, 0, sizeof(sa));
+        sa.nLength = sizeof(sa);
+        sa.bInheritHandle = TRUE;
+        if (!CreatePipe(&rd, &wr, &sa, 0)) { return 1; }
+        SetHandleInformation(rd, HANDLE_FLAG_INHERIT, 0);
+
+        snprintf(cmd, sizeof(cmd), "cmd.exe /c \"%s\"", argv[1]);
+
+        memset(&si, 0, sizeof(si));
+        si.cb = sizeof(si);
+        si.dwFlags = STARTF_USESTDHANDLES;
+        si.hStdOutput = wr;
+        si.hStdError = wr;
+        si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+        memset(&pi, 0, sizeof(pi));
+
+        if (!CreateProcessA("cmd.exe", cmd, NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
+            CloseHandle(rd); CloseHandle(wr);
+            return 1;
+        }
+        CloseHandle(wr);
+        for (;;) {
+            if (!ReadFile(rd, buf, (DWORD)sizeof(buf) - 1, &n, NULL) || n == 0) break;
+            if (total + n < sizeof(out) - 1) { memcpy(out + total, buf, n); total += n; }
+        }
+        out[total] = '\0';
+        CloseHandle(rd);
+        WaitForSingleObject(pi.hProcess, INFINITE);
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+
+        printf("STDOUT/ERR:\n%s\n", out);
+        return 0;
     }
+#else
+    int pipefd[2];
+    pipe(pipefd);
     pid_t pid = fork();
     if (pid == 0) {
         close(pipefd[0]);
@@ -73,11 +135,11 @@ int main(int argc, char* argv[]) {
     waitpid(pid, NULL, 0);
     
     char buf[4096];
-    ssize_t n = read(pipefd[0], buf, sizeof(buf)-1);
-    if (n < 0) n = 0;
+    size_t n = read(pipefd[0], buf, sizeof(buf)-1);
     buf[n] = '\0';
     close(pipefd[0]);
     
     printf("STDOUT/ERR:\n%s\n", buf);
     return 0;
+#endif
 }

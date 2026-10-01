@@ -1,0 +1,292 @@
+================================================================================
+FRAME_REPORT_20260926-1540_agy-interact-inject.txt
+================================================================================
+Test scope : Does bot/relay key injection work on Windows, and do keys reach the
+             agy-text-editor in INTERACT mode?
+Branch     : windows
+Base commit: 6a8c9151
+Method     : AIGENT-TESTING-K9.txt (HQ-IQ-BOOK/06-testing)
+Date       : 2026-09-26, 15:19 - 15:40
+Verdict    : Bug B ROOT CAUSED. Relay injection WORKS. The agy manager is
+             never compiled on Windows, so nothing consumes injected keys.
+
+================================================================================
+1. ROOT CAUSE (the headline)
+================================================================================
+
+The agy-text-editor manager has NO BINARY on Windows, and is NOT IN THE WINDOWS
+BUILD SCRIPT AT ALL.
+
+  Evidence 1 - the binary does not exist:
+    projects\agy-text-editor\manager\  contains ONLY:
+        agy-text-editor_manager.c   (40021 bytes, source)
+        gui_state.txt               (3597 bytes)
+    There is NO +x\ directory.      (Test-Path -> False)
+
+  Evidence 2 - the build script never builds it:
+    button.ps1 c -> pieces\buttons\windows\compile.ps1 (8 lines)
+      -> pieces\buttons\legacy\compile_all.ps1 (92 lines)
+    compile_all.ps1 line 39-44 enumerates the project managers by hand:
+        Compile-Piece "projects\op-ed\manager\op-ed_manager.c" ...
+        Compile-Piece "projects\fuzz-op\manager\fuzz-op_manager.c" ...
+        Compile-Piece "projects\user\manager\user_manager.c" ...
+        Compile-Piece "projects\man-pal\manager\man-pal_module.c" ...
+    It is a HARDCODED list, not a glob. "agy" appears ZERO times in all 92
+    lines. agy-text-editor is simply absent from the Windows build.
+
+  Evidence 3 - the consequence, observed live:
+    projects/agy-text-editor/layouts/editor.chtpm:2 declares
+        <module>projects/agy-text-editor/manager/+x/agy-text-editor_manager.+x</module>
+    That path does not exist, so the parser cannot launch it. Confirmed at
+    test time: after engaging interact mode and injecting 3 printable keys,
+    the only live TPMOS process was chtpm_parser.+x. Zero agy processes.
+
+  WHY LINUX WORKS AND WINDOWS DOES NOT: this is not a logic difference in the
+  key path. It is that the Windows compile script never learned about this
+  project. My earlier hypothesis (that the bug lived in the Windows key
+  capture muscle) was WRONG for this symptom and is withdrawn - see section 5.
+
+================================================================================
+2. WHAT WAS INJECTED, AND WHAT IT PROVED
+================================================================================
+
+Harness: headless single parser, per K9 Pitfall 11.
+  C:\msys64\usr\bin\bash.exe -lc "cd <root> && exec \
+    ./pieces/chtpm/plugins/+x/chtpm_parser.+x \
+    projects/agy-text-editor/layouts/editor.chtpm"
+
+Injection format, exactly per K9 "High-Value Test Interfaces" item 1:
+  [YYYY-MM-DD HH:MM:SS] KEY_PRESSED: <code>   appended to
+  pieces/keyboard/history.txt
+  (fixed timestamps used deliberately, per K9's own advice that shell `date`
+   generation is unreliable on Windows)
+
+  T1  1003 x2 (ARROW_DOWN), 600ms apart
+      PASS. Focus marker moved  [>] 1. EDIT TEXT (INTERACT)
+                                   -> [>] 3. CLEAR FILE
+      Frame mtime advanced 15:29:33 -> 15:32:41.
+      => relay injection WORKS on Windows. The parser reads history.txt,
+         process_key runs, compose_frame re-renders. Half-2 pipeline is
+         FUNCTIONAL. K9 Pitfall 7 satisfied: the key is visible in the frame.
+
+  T2  1002 x2 (ARROW_UP) then 13 (ENTER)
+      PASS. Focus returned to item 1; ENTER engaged interact mode.
+      Frame changed to a visibly different active state:
+          [^] 1. [EDIT TEXT (INTERACT)]
+          Active [^]:  (ESC to exit)
+      => the INTERACT gate at chtpm_parser.c:2846 engages correctly.
+
+  T3  104, 105, 120 ('h','i','x') injected while in interact mode
+      PARTIAL. pieces/apps/player_app/history.txt afterwards contained
+          104
+          105
+          120
+      => inject_raw_key (chtpm_parser.c:1299/3003) ran and forwarded every
+         key correctly to the <interact src=...> target.
+      BUT projects/agy-text-editor/pieces/document.txt was UNCHANGED.
+      => nothing consumed them, because there is no agy binary to consume
+         them. This is the proof point for section 1.
+
+================================================================================
+3. INCIDENTAL FINDING - the gate field cannot be trusted (Rule 10 violation)
+================================================================================
+
+K9 Rule 10 requires reading the actual interact-gate field at the moment the
+test key is sent. For this parser the obvious candidate is
+pieces/display/active_gui_index.txt. IT IS NOT SUFFICIENT.
+
+  Observed: active_gui_index.txt read "1" both in nav mode AND in active
+  interact mode. It did not change when the gate engaged.
+
+  Why, in source: chtpm_parser.c:2242-2243
+      if (active_index != -1) active_gui_idx = elements[active_index].interactive_idx;
+      else                   active_gui_idx = elements[focus_index].interactive_idx;
+  When focus and active are the same element (index 1 here) both branches
+  write 1, so the file cannot distinguish the two states.
+
+  The ONLY reliable gate signal found is the frame text itself:
+      "Active [^]:  (ESC to exit)"
+  and the [^] marker replacing [>].
+
+  This directly substantiates section 5 finding B.5: agy-text-editor_manager.c
+  cannot see the frame, and the exported gate file cannot tell it either, so
+  the manager genuinely has no way to know whether interact mode is engaged.
+
+================================================================================
+4. TEST-METHODOLOGY ERRORS I MADE, recorded per K9's own practice
+================================================================================
+
+K9's SCOPE ADDENDUM 2026-08-13 says to keep self-corrections in the testing doc
+precisely so the next agent repeats them less. These are mine, kept here too.
+
+  M1 - I launched without checking for existing processes (K9 Mistake #3).
+       A live stack from a 04:20 session was already running
+       (chtpm_parser PID 19712, clock_daemon, loader_module,
+       response_handler). My new parser exited on contention.
+       Also, I had truncated pieces/keyboard/history.txt to 0 while a live
+       parser held a byte offset ~800 into it. Per chtpm_parser.c:3062
+       (fseek to last_history_position) that live parser would then skip
+       anything appended. I desynced a running process in about 30 seconds.
+       This is exactly the byte-offset fragility logged as a latent risk.
+
+  M2 - I drew a false conclusion from a stale artifact. The frame I read
+       first had mtime 04:20:12 - it was LAST NIGHT's render, not live. I
+       briefly treated it as proof the renderer worked. Frame evidence must
+       be mtime-checked, not just read.
+
+  M3 - My first injection test used 'h', which in nav mode hits the else at
+       chtpm_parser.c:2851 (digit_accum = 0) and changes nothing visible. I
+       compared frame CONTENT, saw no change, and nearly concluded injection
+       was broken. It was not - I had picked a key with no visible effect.
+       This is K9 Pitfall 7 / "Mode/context sensitivity" biting exactly as
+       documented. Fix: inject a key with an OBSERVABLE effect (arrows move
+       the focus marker) and check mtime as well as content.
+
+  M4 - On Windows, a .+x binary cannot be run by invoking it directly from
+       PowerShell; it raises "Cannot run a document in the middle of a
+       pipeline" because the +x extension is not a recognised executable.
+       My first three "parser exited immediately" readings were this
+       PowerShell artifact, NOT real crashes. The house's own path works:
+       run it under MSYS2 bash, as pieces/buttons/windows/run.ps1:22 does
+       via bash -lc "... run_orchestrator.sh".
+
+================================================================================
+5. CORRECTIONS TO THE BUG LOG (win-open-bugs-s26.txt)
+================================================================================
+
+  WITHDRAWN - the AsciiChar / six-virtual-key theory as the cause of the
+  reported interact-mode symptom. It is a real Windows-only weakness of
+  keyboard_input_win.c (single-byte AsciiChar at :81, discarded when zero at
+  :88, only 6 VK codes at :83-87) and it MAY still affect the PHYSICAL
+  keyboard, but it is demonstrably NOT why interact mode fails, because
+  interact mode fails identically with relay injection that never touches
+  that code at all. The cause is the missing binary.
+
+  STILL TRUE and unaffected by this test:
+    - B.2 backspace swallowed at agy-text-editor_manager.c:580
+    - B.3 '2'/'6' stolen as commands at agy-text-editor_manager.c:652-657
+    - B.5 no interact-mode bit in the injected-key protocol, now with live
+      evidence from section 3
+    - Bug A entirely (frame unicode / codepage) - untouched by this test.
+      The frame file was confirmed correct UTF-8 during this session.
+
+  STILL UNTESTED: the physical-keyboard capture half. Relay injection
+  bypasses keyboard_input_win.c completely, so K9 Rule 11 applies - testing
+  the capture path itself needs a REAL synthetic keypress. The Windows
+  equivalent of the XTest injector K9 prescribes on Linux is SendInput,
+  which writes into the same console input buffer ReadConsoleInput reads.
+
+================================================================================
+6. SAFE TO PROCEED WITH CODE CHANGES?
+================================================================================
+
+YES for the agy build gap - it is unambiguous and the fix is one line in
+pieces/buttons/windows/legacy/compile_all.ps1 adding agy-text-editor to the
+hardcoded project-manager list, followed by a rebuild.
+
+NOT YESTESTED, do not claim as fixed:
+  - the physical keyboard capture half (needs a SendInput harness)
+  - Bug A, the frame unicode/codepage path (untouched, needs its own
+    GetConsoleOutputCP diagnostic)
+  - B.2/B.3, which live in agy-text-editor_manager.c and therefore cannot be
+    exercised at all until that binary is actually built and running
+
+================================================================================
+7. VERIFICATION PASS - FIX APPLIED AND PROVEN (2026-09-26 16:42-17:10)
+================================================================================
+
+Committed to branch `kilo` (not `windows` -- see section 9). `windows` is
+untouched at 6a8c9151, same as origin/windows.
+
+THE FIX WAS NOT ONE LINE. Fixing the build target exposed THREE further
+Windows-only defects underneath it, all of which had to be fixed before any
+key could reach the document. Each was found by running, not by reading.
+
+FIX 1 - build targets missing (compile_all.ps1)
+  Added agy-text-editor_manager.c to the hardcoded project-manager list, AND
+  the four shared Ops it invokes at runtime, which were ALSO absent from the
+  list: text_edit_key, text_editor_view, file_copy, dir_browse.
+  Without the Ops the manager would have built and still no-oped on every key,
+  because run_op()'s binary would not exist.
+
+FIX 2 - agy-text-editor_manager.c could not compile on Windows at all
+  It had never been built here, so it was POSIX-only in four places:
+    - line 12  #include <sys/wait.h>            -> guarded with #ifndef _WIN32
+    - line 991 setpgid(0, 0)                    -> guarded, no Windows equivalent
+    - run_op() used fork()/execv()/waitpid()    -> replaced with a CreateProcess
+                                                   + WaitForSingleObject path,
+                                                   mirroring orchestrator.c:33
+    - MAX_PATH collision with windows.h          -> #undef MAX_PATH after include
+  run_op was deliberately kept LOCAL rather than reusing
+  pieces/system/win_spawn.h: that header's win_spawn() assembles a cmd_line
+  and then passes NULL to _spawnl(), silently dropping every argument -- fatal
+  here, because all four Ops require arguments. chtpm_parser.c calls that same
+  win_spawn() live, so repairing the shared header is its own riskier change
+  and is deliberately NOT bundled in.
+
+FIX 3 - dir_browse.c: strcasestr() is a GNU extension MinGW does not provide
+  Added a small ASCII case-insensitive fallback under #ifdef _WIN32.
+
+FIX 4 - THE REAL SECOND-LAYER BUG: rename() does not overwrite on Windows
+  text_edit_key.c:96 and :120 and file_copy.c:55 all did the standard
+  write-.tmp-then-rename idiom to get an atomic replace. On POSIX rename()
+  atomically replaces the destination. MSVCRT's rename() FAILS if the
+  destination already exists, leaving the .tmp stranded beside the untouched
+  original.
+  Observed directly: document.txt.tmp was created at 34 bytes (the edit WAS
+  computed) while document.txt stayed at 33 bytes, unchanged since Sept 25.
+  Every keystroke was being computed correctly and then silently discarded,
+  which is precisely what "the editor is dead" looks like from the outside.
+  Fixed with a replace_file() helper: MoveFileExA(..., MOVEFILE_REPLACE_EXISTING)
+  on Windows, plain rename() on POSIX. file_copy.c additionally now reports
+  failure to stderr and returns exit 2 instead of silently returning 0.
+
+FIX 5 (incidental, pre-existing) - joystick_input never linked on Windows
+  compile_all.ps1 called gcc directly for it instead of via Compile-Piece, so
+  unlike every other target it never got its +x\ directory created. Routed
+  through Compile-Piece. Same defect class, same file.
+
+VERIFICATION RUN (clean state, single parser, zero prior processes):
+  procs        chtpm_parser.+x AND agy-text-editor_manager.+x BOTH present
+               (before the fix, agy-text-editor_manager.+x never existed)
+  interact     frame shows "[^] 1." and "Active [^]:  (ESC to exit)"
+  inject 72,73 ('H','I')
+  document.txt BEFORE   ... "? ne"                        (33 bytes)
+  document.txt AFTER    ... "HI"                          (new line inserted)
+  cursor.txt    BEFORE   cursor_x=1
+  cursor.txt    AFTER    cursor_x=3                       (two chars inserted)
+
+  => KEYS NOW REACH THE DOCUMENT IN INTERACT MODE. Bug B is FIXED and
+     PROVEN, not merely compiled.
+
+BUILD: 0 errors, "Compilation Complete".
+
+CLEANUP: all processes killed and zero confirmed; document.txt, cursor.txt and
+history files restored from backup; stray .tmp files removed.
+
+================================================================================
+8. STILL OPEN AFTER THIS PASS
+================================================================================
+  - B.2 backspace swallowed at agy-text-editor_manager.c:580, and
+    B.3 '2'/'6' stolen as commands at :652-657. Both are now COMPILED AND
+    RUNNING, so they are observable for the first time. Neither was exercised
+    by this pass -- T3 typed H and I only, deliberately avoiding 2 and 6.
+  - B.5 / B.8 the interact-mode protocol bit. Still the shared root of B.2 and
+    B.3; fixing those two properly needs this, not a branch reorder.
+  - Bug A, the frame unicode/codepage path. Entirely untouched. Still needs
+    the GetConsoleOutputCP diagnostic from the bug log's section A.5.
+  - The physical-keyboard capture half (keyboard_input_win.c AsciiChar
+    weakness). Still untested; needs a SendInput harness per K9 Rule 11.
+
+================================================================================
+9. BRANCH NOTE
+================================================================================
+Four of these commits were initially made while `windows` was the checked-out
+branch, which violates the house rule that each tool commits only to its own
+branch. `windows` has since been restored to 6a8c9151 -- identical to
+origin/windows and to where this session started -- so that branch is
+pristine and nothing was ever pushed. All this work now lives on `kilo` only.
+A concurrent `opencode-windows` agent shares this checkout and its index; its
+files do not overlap these, but two agents committing into one index is a
+known hazard here (it already produced one 255-file accidental commit today).
+# END OF REPORT

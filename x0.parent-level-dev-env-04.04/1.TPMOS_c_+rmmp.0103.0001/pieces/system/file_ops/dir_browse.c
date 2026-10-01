@@ -6,8 +6,28 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <ctype.h>
 #include <dirent.h>
 #include <sys/stat.h>
+
+#ifdef _WIN32
+/* strcasestr() is a GNU extension. MinGW-w64 does not provide it, even with
+   _GNU_SOURCE defined, so agy-text-editor's dir_browse Op could not build on
+   Windows at all. Minimal ASCII-case-insensitive equivalent. */
+static char *strcasestr(const char *haystack, const char *needle) {
+    if (needle == NULL || *needle == '\0') return (char *)haystack;
+    if (haystack == NULL) return NULL;
+    for (; *haystack != '\0'; haystack++) {
+        const char *h = haystack, *n = needle;
+        while (*h != '\0' && *n != '\0' &&
+               tolower((unsigned char)*h) == tolower((unsigned char)*n)) {
+            h++; n++;
+        }
+        if (*n == '\0') return (char *)haystack;
+    }
+    return NULL;
+}
+#endif
 
 /*
  * dir_browse.+x -- all-purpose, reusable directory-listing Op (Bible

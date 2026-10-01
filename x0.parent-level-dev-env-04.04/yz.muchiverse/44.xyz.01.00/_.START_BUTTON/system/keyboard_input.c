@@ -37,13 +37,30 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <termios.h>
 #include <errno.h>
 #include <signal.h>
+#ifdef _WIN32
+/* Windows: conio _getch/_kbhit path, ported from 014.wsr-pal's own
+ * system/keyboard_input.c (surgical #ifdef, same as that file). Linux
+ * termios path below is unchanged. */
+#include <conio.h>
+#include <windows.h>
+#include <direct.h>
+#include <process.h>
 #include <sys/stat.h>
+#define usleep(x) Sleep((DWORD)((x) / 1000))
+#define getcwd _getcwd
+#define exit_immediately _exit
+#else
+#include <unistd.h>
+#include <termios.h>
+#include <sys/stat.h>
+#define exit_immediately _exit
+#endif
 
+#ifndef MAX_PATH
 #define MAX_PATH 4096
+#endif
 /* Room for MAX_PATH worth of project_root plus the longest relative
  * suffix this file appends, so gcc can prove snprintf can't truncate. */
 #define PATH_BUF (MAX_PATH + 256)
@@ -54,7 +71,9 @@
 #define ARROW_DOWN  1003
 
 static char project_root[MAX_PATH] = ".";
+#ifndef _WIN32
 static struct termios orig_term;
+#endif
 
 static void resolve_root(void) {
     const char *env = getenv("PRISC_PROJECT_ROOT");
@@ -63,7 +82,9 @@ static void resolve_root(void) {
 }
 
 static void disable_raw_mode(void) {
+#ifndef _WIN32
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_term);
+#endif
 }
 
 static void write_quit_flag(void);
@@ -76,10 +97,17 @@ static void handle_signal(int sig) {
     (void)sig;
     disable_raw_mode();
     write_quit_flag();
-    _exit(0);
+    exit_immediately(0);
 }
 
 static void enable_raw_mode(void) {
+#ifdef _WIN32
+    /* No termios on Windows; _getch() is already unbuffered-by-line.
+     * Only the defensive signal handlers are needed here. Ctrl+C still
+     * arrives as a real key byte (3) that main()'s loop catches. */
+    signal(SIGINT, handle_signal);
+    signal(SIGTERM, handle_signal);
+#else
     tcgetattr(STDIN_FILENO, &orig_term);
     atexit(disable_raw_mode);
     signal(SIGINT, handle_signal);
@@ -99,6 +127,7 @@ static void enable_raw_mode(void) {
     raw.c_cc[VMIN] = 0;
     raw.c_cc[VTIME] = 1;
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+#endif
 }
 
 /* START_BUTTON: same-TTY handoff — menu_input writes handoff_launch.txt
@@ -115,6 +144,36 @@ static int handoff_or_quit_requested(void) {
 }
 
 static int read_key(void) {
+#ifdef _WIN32
+    /* TPMOS Windows keyboard path: _kbhit/_getch (same as 014.wsr-pal's
+     * system/keyboard_input.c). Native console only; mintty/MSYS2
+     * pseudo-ttys may not deliver arrows (known TPMOS lim).
+     *
+     * START_BUTTON ADDITION vs that file: this project is a same-TTY
+     * HANDOFF loader, so the idle wait MUST poll handoff_launch.txt /
+     * quit_request.txt. wsr-pal has no handoff and correctly omits it;
+     * copying its loop verbatim here would make button.ps1's handoff
+     * loop unreachable on Windows — the session would spin until the
+     * user pressed a key, and the chosen app would never launch. */
+    while (!_kbhit()) {
+        if (handoff_or_quit_requested()) return -2;
+        usleep(20000);
+    }
+    int c = _getch();
+    if (c == 0 || c == 224) {
+        switch (_getch()) {
+            case 72: return ARROW_UP;
+            case 80: return ARROW_DOWN;
+            case 77: return ARROW_RIGHT;
+            case 75: return ARROW_LEFT;
+        }
+        return -1;
+    }
+    /* Windows Enter (CR 13) -> LF 10, same as wsr-pal's map, so the
+     * menu's Enter handling is identical on both platforms. */
+    if (c == 13) return 10;
+    return c;
+#else
     char c;
     int nread;
     while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
@@ -149,6 +208,7 @@ static int read_key(void) {
         return '\x1b';
     }
     return (unsigned char)c;
+#endif
 }
 
 /* CORRECTION (found via direct testing, not assumed): this file used to

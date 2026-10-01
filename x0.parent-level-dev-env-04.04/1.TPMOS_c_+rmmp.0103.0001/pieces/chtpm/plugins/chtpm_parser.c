@@ -2704,6 +2704,49 @@ void handle_mouse(int btn, int x, int y, int is_press) {
     }
 }
 
+/* Publishes one cli_io field's current value to cli_buffers.txt, the file
+ * managers actually read their field values from (agy-text-editor,
+ * op-ed and slop-ed-dev all resolve search_query/file_path_input by scanning
+ * for their "s"/"f"-prefixed lines). The prefix is the element id's own
+ * convention: username->U, password->P (masked), answer->A, otherwise the
+ * first character of the id.
+ *
+ * Extracted so that BOTH the printable-character path and the backspace path
+ * publish through one identical rule. They previously each had their own copy
+ * of the prefix logic, and only the printable path called it at all: backspace
+ * truncated the element's own input_buffer and wrote gui_state.txt, but never
+ * cli_buffers.txt, and (unlike the Enter branch) never called
+ * inject_raw_key() either -- so the keystroke reached no manager at all. Every
+ * manager therefore kept serving the pre-backspace value: verified live, typing
+ * "abc" published sa/sab/sabc and a following backspace left cli_buffers.txt
+ * still ending in "sabc" while the on-screen field correctly showed "ab".
+ *
+ * star_count is passed separately rather than derived from strlen(value)
+ * because the password mask historically counted from the length BEFORE the
+ * newly typed character was appended; passing strlen(value) there would add a
+ * star per character plus one. Printable passes the pre-append length to
+ * preserve that exact output; backspace passes the post-truncate length so the
+ * mask matches the characters that remain. */
+static void append_cli_buffer_line(const char *id, const char *value, int star_count) {
+    FILE *bf;
+    if (!id || !value) return;
+    bf = fopen("pieces/apps/player_app/cli_buffers.txt", "a");
+    if (!bf) return;
+    if (strstr(id, "username")) {
+        fprintf(bf, "U%s\n", value);
+    } else if (strstr(id, "password")) {
+        char masked[256] = "";
+        for (int i = 0; i <= star_count && i < 20; i++) strcat(masked, "*");
+        fprintf(bf, "P%s\n", masked);
+    } else if (strstr(id, "answer")) {
+        fprintf(bf, "A%s\n", value);
+    } else if (strlen(id) > 0) {
+        /* Generic fallback: First char of ID */
+        fprintf(bf, "%c%s\n", id[0], value);
+    }
+    fclose(bf);
+}
+
 void process_key(int key) {
     /* Set last_key variable for display in frame */
     char key_str[32] = "None";
@@ -2959,6 +3002,12 @@ void process_key(int key) {
                 if (len > 0) {
                     el->input_buffer[len-1] = '\0';
                     save_cli_io_gui_state(el->target_id[0] ? el->target_id : "input_text", el->input_buffer);
+                    /* Republish to cli_buffers.txt as well. Without this the
+                     * two sinks disagreed: gui_state.txt got the truncated
+                     * value (so the field looked right on screen) while every
+                     * manager, which reads cli_buffers.txt, kept seeing the
+                     * pre-backspace text. See append_cli_buffer_line(). */
+                    append_cli_buffer_line(el->id, el->input_buffer, (int)strlen(el->input_buffer));
                 }
             }
             else if (key >= 32 && key <= 126 &&
@@ -2976,23 +3025,12 @@ void process_key(int key) {
                     /* Live sync to gui_state.txt for UI visibility */
                     save_cli_io_gui_state(el->target_id[0] ? el->target_id : "input_text", el->input_buffer);
 
-                    /* Append to cli_buffers.txt - simple and safe fallback */
-                    FILE *bf = fopen("pieces/apps/player_app/cli_buffers.txt", "a");
-                    if (bf) {
-                        if (strstr(el->id, "username")) {
-                            fprintf(bf, "U%s\n", el->input_buffer);
-                        } else if (strstr(el->id, "password")) {
-                            char masked[256] = "";
-                            for (int i = 0; i <= len && i < 20; i++) strcat(masked, "*");
-                            fprintf(bf, "P%s\n", masked);
-                        } else if (strstr(el->id, "answer")) {
-                            fprintf(bf, "A%s\n", el->input_buffer);
-                        } else if (strlen(el->id) > 0) {
-                            /* Generic fallback: First char of ID */
-                            fprintf(bf, "%c%s\n", el->id[0], el->input_buffer);
-                        }
-                        fclose(bf);
-                    }
+                    /* Append to cli_buffers.txt - simple and safe fallback.
+                       Shares append_cli_buffer_line() with the backspace
+                       branch above so both publish the same prefix rule;
+                       len is the pre-append length, preserving the password
+                       mask's historical star count. */
+                    append_cli_buffer_line(el->id, el->input_buffer, len);
                 }
             }
         }

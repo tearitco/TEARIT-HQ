@@ -1,0 +1,704 @@
+# Windows Open Bugs Log — Sep 26, 2026
+# Document: win-open-bugs-s26.txt
+# Date: September 26, 2026
+# Status: LOGGED — NOT YET FIXED. Nothing in this file has been changed in code.
+# Branch: windows
+# Last commit at time of logging: 6a8c9151
+#   "build(windows): stop confusing linker errors on locked binaries, and build
+#    the real win pal renderer"
+# Run command: .\button.ps1 r   (button.ps1:26-28 -> pieces\buttons\windows\run.ps1)
+
+Purpose: write down the Windows TPMOS defects BEFORE touching any code, so the
+starting point is unambiguous. Two reported symptoms:
+  (A) CLI frame renders "weird characters" instead of the Unicode frame glyphs.
+  (B) Keys do not get through in agy-text-editor INTERACT mode.
+Everything below is source-read evidence, not speculation. Where I could not
+prove a root cause from source alone, the entry says so explicitly and gives
+the instrumentation needed to prove it.
+
+================================================================================
+## 0. GROUND TRUTH (verified this session)
+================================================================================
+
+Branch / HEAD:
+  git rev-parse --abbrev-ref HEAD   -> windows
+  git log --oneline -1              -> 6a8c9151
+  tracking                         -> origin/windows, in sync, no divergence
+
+The working tree has ~60 modified files, but every one of them is runtime
+state (pieces/**/*.txt ledgers, prisc+x.exe, livedesk pal state). No source
+files are modified. So HEAD is a clean source baseline.
+
+================================================================================
+## BUG A — CLI FRAME UNICODE RENDERS AS MOJIBAKE
+================================================================================
+
+### A.0 What is actually on disk (verified — this is NOT the bug)
+
+pieces/display/current_frame.txt starts with these bytes:
+
+  E2 95 94 E2 95 90 E2 95 90 E2 95 90 E2 95 90 E2 95 90 E2 95 90 E2 95 90
+  UTF-8 decode ->  ╔═══════
+
+So the frame file itself is CORRECT UTF-8. `╔` is U+2554 and encodes as
+E2 95 94. The parser is not corrupting anything on the way out. If you see
+`â•”â•Ð` on screen, that is correct UTF-8 bytes being decoded as CP1252
+somewhere AFTER the file is written. The corruption is in the output pipeline,
+not in compose_frame().
+
+Reproduce the corruption yourself with this, which mimics a CP1252 read:
+  Get-Content pieces\display\current_frame.txt -TotalCount 3
+PowerShell 5.1 Get-Content defaults to the ANSI code page, so it shows
+`â•”â•Ðâ•Ð` even though the file is fine. Do NOT trust PowerShell's view of
+these files — read them with [System.IO.File]::ReadAllText($p, [Text.Encoding]::UTF8).
+
+### A.1 Where the frame is written
+
+pieces/chtpm/plugins/chtpm_parser.c
+  2454  compose_frame() — builds the frame buffer
+  2383  append_colored_text() — concatenates layout label text into the buffer
+  2491  bottom border built from the ASCII BOX_* macros (+ = +)
+  2562  build_path_malloc("pieces/display/current_frame.txt")
+  2563  fopen(..., "w")
+  2564  fprintf(out_f, "%s", frame)   <-- raw UTF-8 bytes, no transcoding
+  2567  appends "P\n" to pieces/display/renderer_pulse.txt
+
+The BOX_* macros at chtpm_parser.c:38-51 are ALREADY ASCII:
+  BOX_TL "+"  BOX_TR "+"  BOX_H "="  BOX_V "|"  etc.
+The comment there says "ASCII for consistent display". So the macro layer is
+fine — the Unicode comes from somewhere else (see A.2).
+
+### A.2 Where the Unicode actually comes from (the real source)
+
+The glyphs are NOT coming from the BOX_* macros. They are hardcoded literals
+in two places:
+
+1) Layout files, as literal text in label attributes:
+   projects/agy-text-editor/layouts/editor.chtpm:5,7,8,10,15
+   projects/agy-text-editor/layouts/file_menu.chtpm:5,6,9,10,16,17,19
+     e.g.  <text label="╔════════════ A G Y   E D I T O R ════════════╗" />
+
+2) agy-text-editor manager, 14 hardcoded `║` literals written into gui_state.txt:
+   projects/agy-text-editor/manager/agy-text-editor_manager.c
+     379, 467, 475, 709, 711, 716, 725, 738, 857, 864, 879, 891, 902, 903
+     e.g.  snprintf(formatted, sizeof(formatted),
+                     "<text label=\"║  %-40.40s ║\" /><br/>", line);
+
+pieces/chtpm/layouts/os.chtpm (lines 2-20) WAS converted to ASCII (+ = |).
+That is why the OS menu looks fine and the agy editor looks broken. The
+March 31 claim in pieces/buttons/dev-notes/win-lin-parity-m31.txt:589-596
+("Replaced all hardcoded Unicode in C source files", "Converted all .chtpm
+layout files to ASCII") was only ever true for the OS-level layouts. The
+per-project layouts and the agy manager were never converted. That doc is
+stale and should be corrected.
+
+### A.3 Where the frame is printed (the actual suspect)
+
+The ACTIVE Windows render path is NOT windows_renderer.c. On Windows the
+orchestrator inlines the render loop in its own thread and never spawns
+renderer.+x, because _spawnl does not inherit the parent console stdout.
+
+pieces/chtpm/plugins/orchestrator.c
+  320  void* render_thread_func(void* arg)
+  322  #ifndef _WIN32 branch spawns renderer.+x; the Windows branch skips this
+  325  const char* pp = "pieces/display/renderer_pulse.txt"
+  328  polls st.st_size for new frames
+  330  history mode:  printf("\n\n\n\n\n--- FRAME UPDATE ---\n")
+  331  static mode:   system("cls")
+  333  char buf[4096]; while (fgets(buf, sizeof(buf), f)) printf("%s", buf);
+  334  fflush(stdout)
+
+pieces/display/windows_renderer.c (192 lines, NOT on the active path)
+  46   FillConsoleOutputCharacterA(h_console, ' ', ...)   <-- ANSI variant
+  91   fopen("pieces/display/current_frame.txt", "r")
+  100  fread(content, 1, file_size, frame_file); printf("%s", content);
+
+pieces/display/renderer.c (the cross-platform one, also not on the win path)
+  20-36  clear_screen() uses FillConsoleOutputCharacter (TCHAR variant)
+  85    printf("%s", content)
+
+Every one of these three paths is byte-level with ZERO encoding awareness.
+
+### A.4 The missing codepage call (root cause candidate, high confidence)
+
+I grepped the whole tree for every plausible fix. ALL OF THESE ARE ABSENT
+from every .c/.h/.ps1/.sh in the repo:
+
+  SetConsoleOutputCP          NOT FOUND  (only inside vendored stb_image.h)
+  SetConsoleCP                NOT FOUND
+  WriteConsoleW               NOT FOUND
+  _setmode(..., _O_U8TEXT)    NOT FOUND
+  chcp 65001                  NOT FOUND  (no .ps1, .bat or .sh sets it)
+
+Only Console API calls in the whole render path are FillConsoleOutputCharacterA
+(windows_renderer.c:46), FillConsoleOutputCharacter (renderer.c:32), and
+SetConsoleCursorPosition. None of them touch the output code page.
+
+Therefore: UTF-8 bytes from current_frame.txt reach the console's output
+code page untouched, and whatever that code page is, it decodes them as
+single-byte legacy characters. The glyph `╔` (E2 95 94) becomes three
+mojibake characters. That matches the reported symptom exactly.
+
+There is a second, compounding hop. run.ps1 does not run the orchestrator
+directly:
+
+  button.ps1:26-28   "run"/"r" -> pieces\buttons\windows\run.ps1
+  run.ps1:22         & C:\msys64\usr\bin\bash.exe -lc "... run_orchestrator.sh"
+
+So stdout goes orchestrator (C runtime) -> MSYS2 bash -> PowerShell console.
+That is THREE encoding boundaries, and MSYS2's own translation layer sits in
+the middle. Any one of the three can be the one doing the wrong decode.
+
+NOTE: the GL renderer is NOT affected. pieces/display/gl_renderer.c:219-245
+has a decode_utf8() that turns UTF-8 into codepoints for FreeType. That is a
+separate raster path and proves the house already knows how to do this
+correctly; the console path just never got the equivalent.
+
+### A.5 What I could NOT prove from source alone
+
+I cannot tell from reading the source WHICH of the three hops corrupts the
+bytes, because no code anywhere reports the active output code page. I will
+not guess. To pin it, add a one-time diagnostic to orchestrator.c:320 before
+the render loop:
+
+  HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
+  UINT cp = GetConsoleOutputCP();
+  fprintf(stderr, "[DIAG] console output CP=%u\n", cp);
+and read the same from inside the MSYS2 bash hop:
+  python -c "import sys;print(sys.stdout.encoding)"     # or
+  locale
+If CP is 437/850, the orchestrator is the culprit. If CP is 65001 but the
+screen is still wrong, the MSYS2 hop is the culprit.
+
+### A.6 Candidate fixes (do NOT apply yet — pick one after A.5)
+
+Fix A1 (smallest, most likely correct): set the code page at the top of the
+  Windows branch of orchestrator.c main(), before any printf:
+      SetConsoleOutputCP(65001);
+  This is the standard, documented fix for "UTF-8 text renders as mojibake in
+  a Windows console". If MSYS2 is the corrupting hop instead, this alone will
+  not be enough and A2 is needed too.
+
+Fix A2 (belt and braces): make the renderer encoding-explicit regardless of
+  code page. Replace the printf at orchestrator.c:333 with a WriteConsoleW
+  path: MultiByteToWideChar(CP_UTF8, ...) then WriteConsoleW. This is
+  immune to whatever the code page happens to be and to any MSYS2
+  translation. Cost: a per-frame conversion loop, which is fine at 17ms.
+
+Fix A3 (house-consistent, kills the whole class): finish the March 31 ASCII
+  conversion that was only half-done. Strip the ║ from the 14 literals in
+  agy-text-editor_manager.c and convert editor.chtpm / file_menu.chtpm to
+  +, =, | like os.chtpm already is. This sidesteps encoding entirely, but it
+  throws away the nicer glyphs and it is a content change to a project's
+  layouts, so it is a product decision, not a bugfix. Note the agy manager
+  writes the box markup at runtime (agy-text-editor_manager.c:379 et al), so
+  this is a code change, not just a file edit.
+
+A1 and A2 are complementary. A1 is the root fix; A2 is the guarantee.
+
+================================================================================
+## BUG B — KEYS NOT GETTING THROUGH IN agy INTERACT MODE
+================================================================================
+
+*** STATUS: FIXED AND PROVEN 2026-09-26 17:10, on branch kilo. ***
+
+*** VERIFIED, NOT MERELY COMPILED: with the fix in place both
+    chtpm_parser.+x and agy-text-editor_manager.+x run, and injecting 72/73
+    ('H','I') in interact mode inserted "HI" into document.txt and advanced
+    cursor_x from 1 to 3. Build: 0 errors. ***
+
+*** IT WAS NOT A ONE-LINE FIX. Adding the missing build target exposed three
+    further Windows-only defects that each independently blocked every
+    keystroke. Full detail and evidence in
+    FRAME_REPORT_20260926-1540_agy-interact-inject.txt section 7. ***
+
+  1. BUILD TARGET MISSING. agy-text-editor was absent from the hardcoded
+     project-manager list in compile_all.ps1 -- and so were all four shared
+     Ops it invokes (text_edit_key, text_editor_view, file_copy,
+     dir_browse). It could not have worked with only the manager built,
+     because run_op()'s binaries would not exist either.
+  2. THE MANAGER NEVER COMPILED ON WINDOWS. Being unbuilt, it was POSIX-only
+     in four places: <sys/wait.h>, setpgid(), and a fork/execv/waitpid
+     run_op(). Replaced with a CreateProcess path mirroring orchestrator.c:33.
+     Also had to #undef windows.h's MAX_PATH. run_op was kept LOCAL on
+     purpose: pieces/system/win_spawn.h's win_spawn() drops every argument
+     (it builds a cmd_line then passes NULL to _spawnl), and
+     chtpm_parser.c calls that live -- so fixing the shared header is a
+     separate, riskier change and is deliberately not bundled here.
+  3. dir_browse.c used strcasestr(), a GNU extension MinGW does not provide.
+     Added a small ASCII case-insensitive fallback.
+  4. THE REAL SECOND-LAYER BUG, and the one that actually made the editor
+     look dead: text_edit_key.c:96,:120 and file_copy.c:55 used the standard
+     write-.tmp-then-rename idiom. POSIX rename() atomically replaces the
+     destination; MSVCRT's rename() FAILS if the destination exists, leaving
+     the .tmp stranded beside the untouched original. Observed live:
+     document.txt.tmp was written at 34 bytes (the edit WAS computed) while
+     document.txt sat unchanged at 33 bytes. Every keystroke was computed
+     correctly and then silently thrown away. Fixed with a replace_file()
+     helper using MoveFileExA(MOVEFILE_REPLACE_EXISTING) on Windows.
+  5. Incidental, pre-existing: joystick_input called gcc directly instead of
+     via Compile-Piece, so it never got its +x\ dir and never linked. Routed
+     through Compile-Piece.
+
+*** THE ANSWER IS NOT WHAT I SPENT MOST OF THIS DOCUMENT GUESSING. ***
+
+  agy-text-editor_manager.+x DOES NOT EXIST ON WINDOWS, and
+  agy-text-editor is ABSENT FROM THE WINDOWS BUILD SCRIPT.
+
+  projects/agy-text-editor/manager/ contains only the .c source and
+  gui_state.txt. There is no +x\ directory.
+
+  button.ps1 c -> pieces/buttons/windows/compile.ps1 (8 lines)
+    -> pieces/buttons/windows/legacy/compile_all.ps1 (92 lines)
+  That script lists project managers by HAND at lines 39-44:
+      op-ed_manager.c, fuzz-op_manager.c, user_manager.c, man-pal_module.c
+  "agy" appears ZERO times in the file. It is a hardcoded list, not a glob,
+  and agy-text-editor was never added to it.
+
+  So editor.chtpm:2's
+      <module>.../manager/+x/agy-text-editor_manager.+x</module>
+  points at a binary that does not exist. The parser cannot launch it.
+  Nothing consumes pieces/apps/player_app/history.txt. Every key forwarded
+  into interact mode goes nowhere.
+
+  THAT is why it works on Linux and not here. Not a logic difference in the
+  key path - a missing build target.
+
+  PROVEN LIVE: with relay injection (which never touches the Windows capture
+  code at all), interact mode engaged correctly, inject_raw_key forwarded
+  104/105/120 into player_app/history.txt, and document.txt did not change
+  because no agy process existed to consume it.
+
+  FULL EVIDENCE: FRAME_REPORT_20260926-1540_agy-interact-inject.txt
+
+*** WHAT I WITHDRAW ***
+
+  The AsciiChar / six-virtual-key theory (B.4, and section B.7's ranked list)
+  is WITHDRAWN as the cause of the reported interact-mode symptom. Interact
+  mode fails identically when keys arrive by file injection, which bypasses
+  keyboard_input_win.c completely. So that code cannot be the cause.
+
+  It remains a real, untested Windows-only weakness that may affect the
+  PHYSICAL keyboard, and it is still worth fixing - but it is a separate
+  issue from what the user reported, and it must be tested with a real
+  synthetic keypress (SendInput), not with a file append.
+
+  I also withdraw the framing that the parser/agy key path is
+  "platform-identical, so the fault must be upstream." It was platform-
+  identical AND it was broken, because the consumer was never built.
+
+### B.0 WHAT RELAY INJECTION PROVED (and the one thing it still cannot)
+The relay half works on Windows. Verified this session:
+  - 2x ARROW_DOWN moved the focus marker [>] 1 -> [>] 3, frame mtime
+    advanced. K9 Pitfall 7 satisfied: the key is visible in the frame, so the
+    input pipeline is functional.
+  - ENTER on the INTERACT button engaged the gate: the frame switched to
+    "[^] 1. [EDIT TEXT (INTERACT)]" plus "Active [^]:  (ESC to exit)".
+  - Printable keys in interact mode reached inject_raw_key and landed in
+    pieces/apps/player_app/history.txt as bare decimals 104/105/120.
+Only the final consumption hop failed, for the reason above.
+Relay still cannot test keyboard_input_win.c (see B.7) - but that turned out
+not to matter for this bug.
+
+### B.8 CONFIRMED LIVE: the exported gate field cannot be trusted
+New finding, and it substantiates B.5 with evidence.
+
+K9 Rule 10 says to read the actual interact-gate field at the moment you send
+the test key. The obvious candidate, pieces/display/active_gui_index.txt, is
+INSUFFICIENT. It read "1" in nav mode AND "1" in active interact mode - it
+did not change when the gate engaged.
+
+Cause, chtpm_parser.c:2242-2243:
+    if (active_index != -1) active_gui_idx = elements[active_index].interactive_idx;
+    else                   active_gui_idx = elements[focus_index].interactive_idx;
+When focus and active are the same element, both branches write the same
+value, so the file cannot distinguish nav-focus from active-mode.
+
+The only reliable gate signal found is the FRAME TEXT: the "[^]" marker
+replacing "[>]", and the "Active [^]:  (ESC to exit)" line.
+
+This matters because agy-text-editor_manager.c cannot read the frame, and
+the exported gate file cannot tell it either. So the manager really does have
+no way to know whether interact mode is engaged - which is the root of both
+B.2 and B.3, and it is the protocol gap B.5 describes. Fixing B.2/B.3
+properly requires the fix in B.5, not a local branch reorder.
+
+### B.1 The forwarding chain (verified end to end, platform-identical)
+
+  pieces/keyboard/src/keyboard_input_win.c:56
+      writes "[ts] KEY_PRESSED: N" to pieces/keyboard/history.txt
+    -> chtpm_parser.c:3066   strstr(line, "KEY_PRESSED: ")
+    -> chtpm_parser.c:3079   process_key(key)
+    -> chtpm_parser.c:2846   Enter on the INTERACT button sets active_index
+                             (this is how you ENTER interact mode)
+    -> chtpm_parser.c:2999   if onClick == "INTERACT", every key is forwarded
+    -> chtpm_parser.c:3003   inject_raw_key(eff)
+    -> chtpm_parser.c:1299   inject_raw_key writes to the <interact src=...>
+                             target, which for agy is
+                             pieces/apps/player_app/history.txt
+    -> agy-text-editor_manager.c:959   opens that same history file
+    -> agy-text-editor_manager.c:978   reads new lines by byte offset
+    -> agy-text-editor_manager.c:987   process_key(key)
+    -> agy-text-editor_manager.c:348   handle_interact_key()
+    -> agy-text-editor_manager.c:354   run_op(".../text_edit_key.+x", ...)
+
+Exiting interact mode: chtpm_parser.c:2860, ESC or JOY_BUTTON_8 clears
+active_index. Note there is no explicit "am I in interact mode" flag passed
+across the file boundary — see B.5.
+
+Everything from line 305 down to the last arrow is the same code on both
+platforms, per the proof in B.0.
+
+### B.2 BUG (confirmed by source): BACKSPACE NEVER REACHES THE DOCUMENT
+
+agy-text-editor_manager.c:580
+    if (key == 127 || key == 8) {
+        if (strcmp(layout, "editor.chtpm") == 0) {
+            read_editor_line();
+            ... truncates input_line_buffer by one char ...
+            ... appends "e<buffer>" to pieces/apps/player_app/cli_buffers.txt ...
+            processed = 1;
+        }
+        ...
+    }
+
+This branch is entered BEFORE the editor's interact branch at line 651, and
+it never calls handle_interact_key(). So pressing Backspace in the agy editor
+does not delete a character from the document. It mutates a buffer and
+appends a line to cli_buffers.txt that nothing in the editing path reads back.
+
+Windows relevance: on Windows, Backspace arrives as AsciiChar 8, and Delete
+arrives as AsciiChar 127. Both are swallowed here. On Linux the same two
+codes are produced by the arrow-escape parser, so this is cross-platform, but
+it is the single most visible "my key does nothing" in interact mode.
+
+### B.3 BUG (confirmed by source): '2' AND '6' ARE STOLEN BY COMMANDS
+
+agy-text-editor_manager.c:651
+    } else if (strcmp(layout, "editor.chtpm") == 0) {
+        if (key == '6') { handle_command("SET_NEW_FILE");   processed = 1; }
+        else if (key == '2') { handle_command("SET_CLEAR_FILE"); processed = 1; }
+        else { handle_interact_key(key); return 1; }
+      }
+
+handle_command("SET_NEW_FILE") at line 552 and SET_CLEAR_FILE at line 560
+rewrite or truncate the document file. So in agy interact mode, typing the
+character 2 wipes the file you are editing and typing 6 replaces it. Any text
+containing a 2 or a 6 is mangled.
+
+The buttons that use these codes are declared in editor.chtpm:11-12
+(onClick="KEY:6" and onClick="KEY:2"), and the intent was clearly
+button-triggered, not free-typed. But agy's process_key has no way to tell
+"the user pressed 2 on a button" from "the user typed 2 in the document" —
+see B.4. Fix direction: only honour '2'/'6' when the parser is NOT in
+interact mode, or move the mapping to a non-typing key (Ctrl+N / Ctrl+K).
+
+### B.4 BUG (Windows-specific, confirmed): KEYS WITH NO ASCII BYTE ARE DROPPED
+
+pieces/keyboard/src/keyboard_input_win.c:30-31 (enableRawMode)
+    DWORD mode = ENABLE_EXTENDED_FLAGS | ENABLE_WINDOW_INPUT
+               | ENABLE_MOUSE_INPUT | ENABLE_PROCESSED_INPUT;
+    SetConsoleMode(hIn, mode);
+  - ENABLE_VIRTUAL_TERMINAL_INPUT is NOT set. Nothing downstream parses VT
+    sequences, so pasted or VT-native input does not arrive.
+  - ENABLE_PROCESSED_INPUT IS set, and line 35 intercepts key==3 and fires
+    GenerateConsoleCtrlEvent. Ctrl+C never becomes a key event.
+  - ENABLE_QUICK_EDIT_MODE is not explicitly cleared, so console text
+    selection can steal keystrokes when the user drags in the window. This is
+    a classic Windows-only "some keys just don't register".
+
+pieces/keyboard/src/keyboard_input_win.c:78-92 (the read loop)
+    if (ir[i].EventType == KEY_EVENT && ir[i].Event.KeyEvent.bKeyDown) {
+        char c = ir[i].Event.KeyEvent.uChar.AsciiChar;      // line 81
+        if (vk == VK_LEFT)       key = 1000;
+        else if (vk == VK_RIGHT) key = 1001;
+        else if (vk == VK_UP)    key = 1002;
+        else if (vk == VK_DOWN)  key = 1003;
+        else if (vk == VK_ESCAPE) key = 27;
+        else if (c != 0) key = (unsigned char)c;              // line 88
+        if (key != 0) writeCommand(key);                      // line 90
+    }
+
+Four separate drop mechanisms, all Windows-only:
+
+  1. AsciiChar is a single ANSI byte. On any non-US keyboard layout, and for
+     AltGr combinations, and for any Unicode character, AsciiChar is 0.
+     Line 88's `else if (c != 0)` then discards the key completely. Nothing
+     is logged, so the drop is invisible. The fix is to read
+     ir[i].Event.KeyEvent.uChar.UnicodeChar instead, and to fall back to
+     wVirtualKeyCode when that is also 0.
+  2. Only 6 virtual keys are mapped (4 arrows + Escape). F1-F12, Insert,
+     Delete, Home, End, PageUp, PageDown, the numpad operators, and every
+     modifier-only key all produce AsciiChar 0 and are dropped. They need
+     their own key codes in the same 1000-series as the arrows.
+  3. Only bKeyDown is handled (line 78). Auto-repeat arrives as repeated
+     key-down records with dwRepeatCount > 1; nothing filters on
+     dwRepeatCount, so holding a key floods the history file with duplicates.
+     You can see this in the live log: pieces/keyboard/history.txt tail shows
+     `1002` four times in one second, `1003` five times in one second.
+  4. The `if (key != 0)` guard at line 90 means key 0 can never be emitted.
+     Combined with chtpm_parser.c:3072 `if (key > 0)`, code 0 is dead in two
+     places.
+
+### B.5 BUG (design, confirmed): agy CANNOT TELL IF INTERACT MODE IS ENGAGED
+
+First, the parser knows. chtpm_parser.c:2726 `if (active_index == -1)` is the
+nav/active split, and 2846/2999 are the only places that consult it. But the
+only thing that crosses the file boundary to the app is the bare key code:
+
+  chtpm_parser.c:1310  fprintf(fp, "%d\n", code);   // no mode flag
+
+agy-text-editor_manager.c:651 then calls handle_interact_key for ANY key on
+editor.chtpm, whether or not interact mode is engaged. So agy edits the
+document even while you are just navigating the menu with arrows. That is the
+mirror image of B.2 and they have the same root cause: there is no "am I in
+interact mode" bit in the protocol.
+
+Fix direction: have the parser write a marker alongside the key, e.g. a
+separate pieces/apps/player_app/interact_active.txt that agy polls, or prefix
+injected keys. Then agy can scope B.1 and B.2 to real interact mode only.
+This is a protocol change and needs the other app managers (fuzzpet,
+playrm, user) checked before it lands.
+
+### B.6 Lower-confidence items, listed for completeness
+
+  - chtpm_parser.c:3073-3077, the "Windows CRLF Debounce": if key==10
+    follows 13, or 13 follows 10, the key is skipped. On Windows the
+    keyboard muscle only ever emits 13 for Enter, so this should be inert
+    here — but if any other writer appends a 10, the next Enter is eaten and
+    interact mode will look like it "sometimes won't take the Enter".
+    Worth watching; not proven.
+  - The nav-mode global quit at chtpm_parser.c:2850
+    `else if (key == 'q' || key == 'Q') exit(0);` runs in nav mode, i.e.
+    before interact mode is entered. Pressing q while navigating kills the
+    parser. In active mode q is forwarded normally, so this only bites
+    outside interact mode.
+  - pieces/apps/gl_os/plugins/gl_desktop.c:3260 and 3293 apply tolower()
+    before forwarding. Not on the CLI path, but it means any key arriving
+    through the GL desktop is already case-folded, which is a second, hidden
+    way "the key I pressed is not the key that arrived".
+  - Both history consumers track position by byte offset
+    (chtpm_parser.c:3062 last_history_position, agy-text-editor_manager.c:975
+    last_pos) and neither handles the file being rotated or truncated upward
+    except by resetting to 0 (agy-text-editor_manager.c:1004-1006). A
+    truncation-and-regrow that ends up the same size silently loses keys.
+    I have not observed this happening; it is a latent risk only.
+
+================================================================================
+## B.2 BACKSPACE + B.3 STOLEN DIGITS — FIXED AND PROVEN 2026-09-26 17:45
+================================================================================
+
+*** BOTH FIXED, VERIFIED LIVE, committed to kilo. ***
+*** NOT a Windows bug — this class fails identically on Linux. Windows testing
+    merely reached it first, because until the previous fix agy did not run on
+    Windows at all. Two separate classes of bug, not one. ***
+
+THE ANSWER WAS ALREADY IN THE HOUSE. This pass began by looking for an
+interact-mode signal, and nearly went to build a new shared helper for one.
+The signal already existed and one sibling manager already used it:
+
+  pieces/display/active_gui_is_typing.txt
+    chtpm_parser.c export_active_index() :2259 writes it EVERY FRAME (it is
+    called from compose_frame(), so it cannot go stale). "1" = the focused
+    element is genuinely active and accepting keystrokes. "0" = merely
+    focused. Its own comment cites 2fix-july6.txt bug 3.
+
+  wraith-alpha_manager.c is the ONLY manager that reads it
+  (sync_active_gui_index_from_display() :6247, defaulting to 0 as the safe
+  fallback). The other seven -- agy, cpp-llm, fuzz-op, gem-dev, groq-ollama,
+  op-ed, slop-ed-dev -- read only active_gui_index.txt, which is precisely
+  the conflated signal this companion file exists to disambiguate.
+
+ROOT CAUSE (one bug, two symptoms). process_key() applied NAVIGATION-mode key
+semantics while a text element held the keyboard, because it had no way to
+tell the two apart:
+
+  B.2 backspace was intercepted and routed to a cli_buffers.txt "e"-prefixed
+      line. But the typing path never writes an "e" line -- it calls
+      text_edit_key.+x, which edits the document directly. So that buffer was
+      always stale/empty, the len > 0 test never passed, and the key was
+      dropped with processed left at 0. Swallowed, silently.
+  B.3 '2' and '6' ran SET_CLEAR_FILE / SET_NEW_FILE, so those two characters
+      were literally untypeable into a document.
+
+FIX. Added get_active_gui_is_typing() to agy-text-editor_manager.c and one
+early gate in process_key(): when the layout is editor.chtpm AND that signal
+is 1, EVERY key goes to handle_interact_key() -> text_edit_key.+x. When the
+signal is 0 the existing command handling is untouched, so nav digits still
+drive the buttons. text_edit_key already had a correct cursor-aware backspace
+(text_edit_key.c :183-201 -- delete before the cursor, merge lines at column
+0) that had simply never been reachable. Delegating is strictly better than
+reimplementing it in the manager. The dead cli_buffers branch was deleted
+rather than left behind as misleading code.
+
+VERIFIED LIVE (single parser, zero prior processes, signal observed flipping):
+  active_gui_is_typing.txt  0 -> 1 on engaging INTERACT  (gate proven live)
+  typed H,2,I,6  ->  line2 " H2I6", cursor_x 1->5  => 2 and 6 NOT stolen
+  backspace x3   ->  " H2I6"/x5 -> " H2I"/4 -> " H2"/3 -> " H"/2
+                    (both key codes 8 and 127; cursor decrements with the
+                     delete, so it is genuinely cursor-aware)
+  lowercase 105  ->  0x69 'i'. I first injected 73 and briefly reported a
+                    phantom uppercase bug; 73 is 'I', ASCII 'i' is 105. The
+                    system was correct and my test code was wrong.
+  Build 0 errors. All processes killed, zero confirmed, document/cursor
+  restored from backup, stray .tmp removed.
+
+SCOPE NOTE, DELIBERATELY NOT DONE HERE. A shared
+pieces/system/active_gui_state.h helper was considered and rejected for now:
+no manager currently #includes anything from pieces/, and Compile-Piece has
+no -I at all, so it would mean introducing a new build convention to save
+~6 lines that are already correct and identical in all seven managers.
+Worse, wraith-alpha could not adopt it -- its read is entangled with
+read_project_map_control() and max-index raising (:6247-6290) -- so it would
+leave two implementations, not one. Copying the compliant sibling pattern
+into agy is the right-sized move. Revisit if more managers prove broken.
+
+STILL OPEN, unchanged: op-ed and slop-ed-dev carry a structurally identical
+dead cli_buffers.txt backspace branch in their file_browser path (op-ed:960),
+and all six non-wraith managers still read only the conflated signal. SAME
+SHAPE, NOT VERIFIED BROKEN -- each needs its own audit before anyone calls it
+a bug. Not touched.
+
+================================================================================
+## TESTING METHOD — WHAT RELAY INPUT CAN AND CANNOT PROVE
+================================================================================
+
+Added after being pointed at
+#.dev-storage/#.dox/TPMOSTEXTBOOK_v05.01/CH9_TESTING.md, which describes a
+Testing Bot that "plays" the OS by injecting keys into history.txt.
+
+STATE OF THAT HARNESS, checked this session:
+  pieces/apps/bot_tester/   DOES NOT EXIST
+  nav_bot / state.txt        DOES NOT EXIST anywhere in the repo
+  interact_relay.txt         exists in 2 livedesk pals, 0 bytes, and NO code
+                             in pieces/ or projects/ reads it (grep for
+                             "relay" returns only unrelated comments in
+                             playrm_module.c:336 and chtpm_parser.c:445,
+                             :1742, :1768, :1776)
+
+So CH9 is a design chapter, not a working harness. The MECHANISM it describes
+does exist and works today with no bot binary: the parser tails
+pieces/keyboard/history.txt (chtpm_parser.c:3060) and acts on lines containing
+"KEY_PRESSED: ". Appending a correctly formatted line to that file IS a relay
+injector. That is the whole of it.
+
+*** THE CRITICAL LIMIT — A RELAY TEST CANNOT DETECT BUG B ***
+The input chain has two halves, and a relay bot only ever exercises one:
+
+  HALF 1  capture        WINDOWS-ONLY, NEEDS A REAL KEYBOARD
+    physical key -> ReadConsoleInput -> AsciiChar / wVirtualKeyCode
+    -> keyboard_input_win.c -> append "KEY_PRESSED: N" to history.txt
+
+  HALF 2  relay/consume  PLATFORM-IDENTICAL, FULLY SYNTHESISABLE
+    history.txt -> chtpm_parser.c process_key -> inject_raw_key
+    -> app history.txt -> agy process_key -> handle_interact_key
+
+history.txt is the BOUNDARY BETWEEN THE TWO HALVES. A relay injector writes
+there, so it enters at the top of half 2 and never executes a single
+instruction of half 1. It cannot observe AsciiChar, the six-virtual-key map at
+keyboard_input_win.c:83-87, the console mode flags at :30, or the
+dwRepeatCount gap at :78. Every one of the four candidate mechanisms in B.4
+lives in half 1 and is therefore invisible to it.
+
+CONSEQUENCE, and this is the dangerous one: a relay test will report PASS on
+a machine whose physical keyboard is completely broken in interact mode. It
+is a false green, and it is worse than no test, because it would let us close
+Bug B while the reported symptom is still there. Do not let a relay result be
+cited as evidence that Bug B is fixed.
+
+Therefore:
+  B.4 (the muscle)       HUMAN AT THE KEYBOARD. No bot can substitute.
+  B.2 backspace          RELAY-TESTABLE. Should fail on BOTH platforms.
+  B.3 '2'/'6' hijack     RELAY-TESTABLE. Should fail on BOTH platforms.
+  B.5 no interact bit    RELAY-TESTABLE, but it is a protocol change so it
+                         needs the other app managers checked too.
+  Bug A (frame unicode)  NOT a key-path bug at all. It is tested by reading
+                         current_frame.txt bytes and the console output code
+                         page, not by injecting keys.
+
+Running the relay test for B.2/B.3 on this Windows box is still worth doing,
+precisely because it is the control: if backspace fails identically here and
+on Linux, that is a clean cross-platform bug and is NOT the Windows
+regression, which keeps the two findings separate.
+
+IF A RELAY INJECTOR IS WRITTEN, these four details will bite:
+  1. Format must match keyboard_input_win.c:56 exactly --
+        [<YYYY-MM-DD HH:MM:SS>] KEY_PRESSED: <int>
+     The parser matches on the literal substring "KEY_PRESSED: "
+     (chtpm_parser.c:3066) and atoi's the text after the first colon.
+  2. CH9 Pitfall 1 applies verbatim: the pipeline is polled, not pushed, so
+     sleep 100-200ms between injections or keys are coalesced.
+  3. The CRLF debounce at chtpm_parser.c:3073-3077 will eat a 13 immediately
+     following a 10, or a 10 immediately following a 13. Do not script a
+     10/13 pair and conclude the second one is lost.
+  4. chtpm_parser.c:3072 is `if (key > 0)`, so key 0 can never be delivered
+     by any injector, scripted or physical.
+
+WHAT I HAVE ACTUALLY DONE SO FAR, stated plainly: nothing has been executed.
+No test, no run, no build. Every finding in this document comes from reading
+source and from reading log files that already existed on disk. The Bug B
+histogram quoted in B.7 is a read of a previous session's
+pieces/keyboard/history.txt, not a test I performed.
+
+================================================================================
+## PRIORITY ORDER I RECOMMEND (for discussion, not decided)
+================================================================================
+
+STEP 0 (DONE 2026-09-26, root caused - see FRAME_REPORT_20260926-1540):
+   Bug B is not a key-path bug at all. The agy manager is never compiled on
+   Windows. Fix is one line in the hardcoded project list in
+   pieces/buttons/windows/legacy/compile_all.ps1:39-44, then rebuild.
+
+0. Add agy-text-editor to compile_all.ps1:39-44 and rebuild. This is the
+   actual Bug B fix, and it is the prerequisite for testing anything else in
+   the agy manager.
+1. THEN re-run the FRAME_REPORT T3 test (printable keys in interact mode).
+   document.txt should change. If it does, B.2/B.3 become observable for the
+   first time and can be fixed with live evidence.
+2. B.5 the interact-mode protocol bit, which unblocks a correct B.2 and B.3.
+   Now evidence-backed by B.8 - the exported gate file provably cannot carry
+   the state, so this needs a real protocol change, not a branch reorder.
+3. B.2 backspace, and B.3 '2'/'6' - both cross-platform, both currently
+   untestable because the binary does not exist.
+4. A1 SetConsoleOutputCP(65001) in the orchestrator Windows branch, plus the
+   A.5 diagnostic, to confirm A. Unrelated to Bug B; still untouched.
+5. B.4 points 1-3 in keyboard_input_win.c - the AsciiChar weakness. STILL
+   WORTH FIXING but NO LONGER the reported symptom. To test it at all you
+   need a real synthetic keypress: per K9 Rule 11 a file append gives a
+   false PASS on the capture path, so use SendInput, the Windows equivalent
+   of the XTest injector K9 prescribes on Linux.
+6. B.4 point 4 - filter dwRepeatCount so held keys stop flooding the log.
+7. A3 the ASCII conversion, if the product wants to abandon the glyphs
+   instead of fixing the encoding.
+
+================================================================================
+## WHAT I DID NOT DO
+================================================================================
+
+No source file was edited. No binary was rebuilt. No test was run. This
+document is the only thing added, plus the TESTING METHOD section above,
+which was added in response to a pointer to CH9_TESTING.md. The runtime state
+files already showing as modified in `git status`
+(pieces/**/*.txt ledgers, prisc+x.exe, livedesk pal state) were already dirty
+before this session and are not mine.
+
+Two commits sit on top of 6a8c9151 on branch windows, unpushed:
+  feac6d72  this document
+  ddee363f  the MarS.StreetRace directory rename, which was already staged in
+            the index before this session and is unrelated to these bugs
+
+## SEE ALSO
+
+  pieces/buttons/dev-notes/win-lin-parity-m31.txt:589-596
+      claims the Unicode-to-ASCII conversion was completed. It was not, for
+      per-project layouts. Needs correcting.
+  pieces/buttons/dev-notes/win-butt-prog-rep.txt:169-186
+      previously logged the identical mojibake as "FIXED" by converting to
+      ASCII. That fix only covered pieces/chtpm/layouts/*.chtpm.
+  !.gem-flashlite--yolo/#.docs/windows_renderer.md
+      renderer architecture doc. Note its claim that renderer.+x is spawned on
+      Windows is out of date — orchestrator.c:322 only spawns it on the
+      non-_WIN32 branch.
+  pieces/display/gl_renderer.c:219-245
+      decode_utf8(), the correct pattern already used by the GL path.
+# END OF DOCUMENT

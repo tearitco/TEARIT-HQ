@@ -1,0 +1,48 @@
+================================================================================
+op-ed -- INTERACT-MODE BACKSPACE: ALREADY FIXED, IN THE SHARED PARSER
+================================================================================
+
+Written 2026-09-26 on branch kilo, during an audit of every manager that reads
+pieces/display/active_gui_index.txt instead of
+pieces/display/active_gui_is_typing.txt. Full writeup, including the projects
+that were checked and found NOT broken:
+  pieces/buttons/dev-notes/interact-cli_io-audit-20260926.txt
+
+SHORT VERSION: nothing is wrong with op-ed, and nothing here needs changing.
+
+WHY THIS FILE EXISTS. op-ed_manager.c's process_key() has a backspace branch
+around line 960 that reads search_query/file_path_input out of
+pieces/apps/player_app/cli_buffers.txt, truncates the string, and appends a
+"s"- or "f"-prefixed line back. That branch LOOKS like the dead code that was
+removed from agy-text-editor, and it is tempting to "fix" it the same way. Do
+not. Read this first.
+
+  1. It is NOT dead in the sense of writing a format nothing reads.
+     chtpm_parser.c keys cli_buffers.txt lines by the cli_io element's id
+     (username->U, password->P, answer->A, otherwise the FIRST CHARACTER of
+     the id, around :2990). This file's file_browser.chtpm declares
+     id="search_query" and id="file_path_input", so the prefixes 's' and 'f'
+     are exactly right. The format is the live wire format.
+
+  2. It IS unreachable in normal flow, but that is a parser fact, not an op-ed
+     bug. chtpm_parser.c handles an active cli_io's backspace itself: it
+     truncates the element's own input_buffer and writes gui_state.txt. Unlike
+     its Enter branch it does not call inject_raw_key(), so key 8/127 never
+     reaches any manager. Every manager's own backspace branch -- op-ed's,
+     agy's, slop-ed-dev's -- is therefore bypassed in the ordinary case.
+
+  3. That bypass was itself a real bug, and it has been fixed (commit
+     2aabe1cb, kilo). The parser now republishes the truncated value to
+     cli_buffers.txt as well as gui_state.txt, so both sinks agree and every
+     manager sees the post-backspace value. The branch here is left in place
+     deliberately, as a no-op fallback for any future path that does forward
+     the key. Deleting it would remove that safety net for no gain.
+
+VERIFIED, NOT ASSUMED. op-ed IS in
+pieces/buttons/windows/legacy/compile_all.ps1, has a built manager, and runs on
+Windows. With the fix, typing x,y,z into the search field published
+'sx'/'sxy'/'sxyz', and a following backspace published 'sxy'. Before the fix
+nothing was appended at all and the field's value went stale in every manager.
+That build membership was checked per project during the audit rather than
+assumed -- three of the other projects audited are NOT built, which is why
+their verdicts are marked unverified rather than clean.

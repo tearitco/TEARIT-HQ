@@ -1,0 +1,72 @@
+================================================================================
+slop-ed-dev -- INTERACT-MODE BACKSPACE: SHARED PARSER FIXED; THIS APP IS NOT
+                             EVEN BUILT ON WINDOWS
+================================================================================
+
+Written 2026-09-26 on branch kilo, during an audit of every manager that reads
+pieces/display/active_gui_index.txt instead of
+pieces/display/active_gui_is_typing.txt. Full writeup, including which projects
+were checked and found NOT broken:
+  pieces/buttons/dev-notes/interact-cli_io-audit-20260926.txt
+
+READ THIS BEFORE "FIXING" ANYTHING IN THIS PROJECT. Two separate facts, and the
+second one makes the first moot for practical purposes.
+
+--------------------------------------------------------------------------------
+1. THIS APP DOES NOT RUN ON WINDOWS
+--------------------------------------------------------------------------------
+slop-ed-dev is NOT listed in
+pieces/buttons/windows/legacy/compile_all.ps1, and
+projects/slop-ed-dev/manager/+x/slop-ed-dev_manager.+x does not exist. Its
+layouts declare <module>projects/slop-ed-dev/manager/+x/slop-ed-dev_manager.+x
+(module or path), so the module reference points at a binary that is never
+built. Same omission class as agy-text-editor had before its fix.
+
+Consequence for this audit: nothing about slop-ed-dev could be TESTED. Its
+verdict below is read from the source, not from a run. It is marked NOT
+VERIFIED in the audit table for exactly that reason. Anyone who wants a real
+answer has to add it to the build list first -- and should budget for the same
+kind of Windows-porting work agy needed, which was four separate fixes
+(POSIX-only includes, fork/execv, strcasestr, and MSVCRT rename() semantics)
+before it would compile and behave at all.
+
+--------------------------------------------------------------------------------
+2. ITS cli_buffers BACKSPACE BRANCH IS THE SAME PATTERN AS op-ed's -- AND IS
+   NOT DEAD CODE, DESPITE LOOKING LIKE IT
+--------------------------------------------------------------------------------
+slop-ed-dev_manager.c's process_key() has a backspace branch around line 1060
+that reads search_query/file_path_input from
+pieces/apps/player_app/cli_buffers.txt, truncates, and appends an "s"- or
+"f"-prefixed line. It closely resembles the branch that WAS removed from
+agy-text-editor, which makes it look like the same bug. It is not, for two
+reasons.
+
+  a) The format is the live wire format, not a dead one.
+     chtpm_parser.c keys cli_buffers.txt lines by the cli_io element's id
+     (username->U, password->P, answer->A, otherwise the FIRST CHARACTER of
+     the id, around :2990). This project's file_browser.chtpm declares
+     id="search_query" and id="file_path_input", so 's' and 'f' are correct.
+     agy's editor was different because its editing surface is a plain
+     document handled by text_edit_key.+x, not a cli_io at all -- which is why
+     its "e" line had no reader.
+
+  b) It is unreachable in normal flow for a parser reason that applies
+     house-wide, and that reason has been FIXED (commit 2aabe1cb, kilo):
+     chtpm_parser.c used to handle an active cli_io's backspace entirely
+     itself, writing only gui_state.txt and never calling inject_raw_key(), so
+     the key never reached any manager and every manager's copy of the field
+     went stale. The parser now also republishes to cli_buffers.txt, so both
+     sinks agree. The branch here is intentionally KEPT as a no-op fallback for
+     any future path that does forward the key. Deleting it would remove that
+     safety net for no gain.
+
+  The same applies to pal_editor_module.c in this directory, which also
+  references cli_buffers (2 refs) -- it is the module behind pal_editor.chtpm
+  and follows the identical pattern.
+
+VERIFIED ELSEWHERE, NOT HERE. The shared parser fix was verified live against
+agy-text-editor's file_browser (typed a,b,c -> 'sababa','sababab','sabababc';
+backspace x2 -> 'sababab','sababa'; on-screen field matched the last published
+value) and against op-ed, which IS built (typed x,y,z -> 'sx','sxy','sxyz';
+backspace -> 'sxy'). slop-ed-dev itself remains untested because it cannot be
+launched.

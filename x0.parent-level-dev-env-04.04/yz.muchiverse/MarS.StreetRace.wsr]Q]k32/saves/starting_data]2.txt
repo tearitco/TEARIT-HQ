@@ -1,0 +1,16 @@
+cat starting_data.txt 
+num_players:1
+game_length:5
+starting_cash:50000
+player_0_name:Human
+player_0_type:0
+
+||
+cat starting_data.txt 
+num_players:2
+game_length:10
+starting_cash:10000.00
+player_0_name:p1
+player_0_type:0
+player_1_name:p2
+player_1_type:0

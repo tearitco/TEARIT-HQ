@@ -1,0 +1,6 @@
+My Balance Sheet: Red African Union
+Cash (CD's)..		42.6000
+Other Assets....		34.0800
+Total Assets.....		140.5800
+Less Debt....		-85.2000
+Net Worth........		14.9100

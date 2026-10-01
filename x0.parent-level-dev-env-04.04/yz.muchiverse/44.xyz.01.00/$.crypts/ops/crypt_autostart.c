@@ -391,53 +391,6 @@ static int pid_alive(pid_t pid) {
 #endif
 
 #ifdef _WIN32
-static int pid_alive_win(DWORD pid) {
-    if (pid <= 0) return 0;
-    HANDLE h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
-    if (!h) return 0;
-    DWORD code = 0;
-    int alive = GetExitCodeProcess(h, &code) && code == STILL_ACTIVE;
-    CloseHandle(h);
-    return alive;
-}
-
-static void kill_pid_win(DWORD pid) {
-    if (pid <= 0) return;
-    HANDLE h = OpenProcess(PROCESS_TERMINATE, FALSE, pid);
-    if (!h) return;
-    TerminateProcess(h, 1);
-    CloseHandle(h);
-}
-
-/* Kill by image name via Toolhelp — never system(taskkill) (console flash)
- * and never enumerate Process.Path (hang risk). */
-static int exe_name_match(const char *exe, const char *want) {
-    if (!exe || !want || !want[0]) return 0;
-    size_t wl = strlen(want);
-    if (_stricmp(exe, want) == 0) return 1;
-    if (wl > 4 && _stricmp(want + wl - 4, ".exe") == 0)
-        return _stricmp(exe, want) == 0;
-    char with[160];
-    snprintf(with, sizeof(with), "%s.exe", want);
-    return _stricmp(exe, with) == 0;
-}
-
-static void kill_by_name_win(const char *name) {
-    DWORD self = GetCurrentProcessId();
-    HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-    if (snap == INVALID_HANDLE_VALUE) return;
-    PROCESSENTRY32 pe;
-    pe.dwSize = sizeof(pe);
-    if (Process32First(snap, &pe)) {
-        do {
-            if (pe.th32ProcessID == self) continue;
-            if (!exe_name_match(pe.szExeFile, name)) continue;
-            kill_pid_win(pe.th32ProcessID);
-        } while (Process32Next(snap, &pe));
-    }
-    CloseHandle(snap);
-}
-
 /* Match PowerShell Start-Process: no DETACHED, no CREATE_NO_WINDOW, no
  * SW_HIDE. DETACHED+parent-exit was dropping rgb while strip survived. */
 #define SPAWN_GUI (CREATE_BREAKAWAY_FROM_JOB | CREATE_UNICODE_ENVIRONMENT)
@@ -548,6 +501,7 @@ static int launch_detached_win(const char *exe, char args[][PATH_BUF], int nargs
 }
 #endif
 
+#ifndef _WIN32
 static void quit_current_livedesk(const char *house_root) {
     char open_path[PATH_BUF];
     char claims_path[PATH_BUF];
@@ -716,6 +670,36 @@ static void quit_current_livedesk(const char *house_root) {
     }
     printf("crypt_autostart: livedesk quit complete\n");
 }
+#endif
+
+#ifdef _WIN32
+/* Registry hygiene only - deliberately NOT the full quit_current_livedesk().
+ * That routine emits entity CLOSE records under #.desktop/, and the live
+ * manager matches them by entity NAME, so it reaped the very instances
+ * win-start-livedesk.ps1 had just launched (pals flickering 1 -> 0 -> 1
+ * -> 0 and settling at 0). Its step 5 is still required, though:
+ * #.desktop/livedesk_open.txt is append-only, so without a truncate it
+ * grows every boot - 160 stale PID entries after 10 boots - until a
+ * recycled stale PID collides with a freshly spawned pal and the manager's
+ * duplicate handler SIGTERMs a live one. And the process teardown here
+ * would be redundant anyway: win-start-livedesk.ps1 already force-kills
+ * the runtime processes by name before it reads the pdl. */
+static void clear_livedesk_registries(const char *house_root) {
+    char open_path[PATH_BUF], claims_path[PATH_BUF], tbar_pid_path[PATH_BUF];
+    FILE *wf;
+    join_path(open_path, sizeof(open_path), house_root, "#.desktop/livedesk_open.txt");
+    join_path(claims_path, sizeof(claims_path), house_root,
+              "#.desktop/livedesk-nav-claims/livedesk_nav_claims.txt");
+    join_path(tbar_pid_path, sizeof(tbar_pid_path), house_root, "#.desktop/livedesk_taskbar.pid");
+    path_norm_slashes(open_path);
+    path_norm_slashes(claims_path);
+    path_norm_slashes(tbar_pid_path);
+    wf = fopen(open_path, "w"); if (wf) fclose(wf);
+    wf = fopen(claims_path, "w"); if (wf) fclose(wf);
+    remove(tbar_pid_path);
+    printf("crypt_autostart: cleared livedesk PID registries (win)\n");
+}
+#endif
 
 static int launch_one(const char *house_root, const char *label, const char *cmd_raw) {
     char args[MAX_ARGS][PATH_BUF];
@@ -867,7 +851,11 @@ int main(int argc, char **argv) {
     }
     printf("crypt_autostart: house_root=%s pdl=%s\n", house_root, pdl_path);
 
+#ifdef _WIN32
+    if (house_root[0]) clear_livedesk_registries(house_root);
+#else
     if (house_root[0]) quit_current_livedesk(house_root);
+#endif
 
 #ifdef _WIN32
     {

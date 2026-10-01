@@ -1,4 +1,4 @@
-/*
+﻿/*
  * slop-ed-dev_module.c - Advanced RMMP Editor (Unified Trait Edition)
  * CPU-SAFE: Signal handling + fork/exec/waitpid pattern
  */
@@ -93,6 +93,122 @@ static int run_command(const char* cmd) {
     return -1;
 }
 
+#ifdef _WIN32
+/* The run_command() branch above is `return system(cmd)`, which on Windows runs
+ * cmd.exe. That LOOKS like it works and does not: every command this file
+ * passed was POSIX shell -- "mkdir -p '<path>'", "cp -r '<src>' '<dst>/'",
+ * "> /dev/null 2>&1", "VAR=x cmd", and single-quoted arguments. cmd.exe has no
+ * mkdir, no cp, no /dev/null, and treats ' as an ordinary character rather
+ * than a quote. So every one of those call sites would fail at runtime while
+ * the file still compiled clean, which is why this app looked portable on the
+ * strength of a successful build.
+ *
+ * The helpers below replace that whole class of call with real Windows
+ * equivalents, so the POSIX strings stop being built at all. */
+
+/* Runs a program with output discarded. STARTF_USESTDHANDLES pointed at the
+ * NUL device is the direct equivalent of ">/dev/null 2>&1" -- and unlike a
+ * shell redirect it costs no process. CreateProcess is given the path
+ * separately as lpApplicationName so the CRT does not re-parse the command
+ * line looking for an executable to substitute. */
+static int win_spawn_quiet(const char* exe, char* const argv[]) {
+    char cmd[16384];
+    size_t used;
+    STARTUPINFOA si;
+    PROCESS_INFORMATION pi;
+    int rc = -1;
+
+    snprintf(cmd, sizeof(cmd), "\"%s\"", exe);
+    for (int i = 0; argv[i]; i++) {
+        used = strlen(cmd);
+        if (used + 3 >= sizeof(cmd)) break;
+        cmd[used++] = ' ';
+        cmd[used++] = '"';
+        for (const char *p = argv[i]; *p && used + 2 < sizeof(cmd); p++) {
+            if (*p == '"') { cmd[used++] = '\\'; if (used + 1 >= sizeof(cmd)) break; }
+            cmd[used++] = *p;
+        }
+        cmd[used++] = '"';
+        cmd[used] = '\0';
+    }
+
+    HANDLE nul = CreateFileA("NUL", GENERIC_WRITE,
+                             FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+                             OPEN_EXISTING, 0, NULL);
+    memset(&si, 0, sizeof(si));
+    memset(&pi, 0, sizeof(pi));
+    si.cb = sizeof(si);
+    si.dwFlags = STARTF_USESTDHANDLES;
+    si.hStdOutput = nul;
+    si.hStdError = nul;
+    si.hStdInput = nul;
+
+    if (CreateProcessA(exe, cmd, NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
+        WaitForSingleObject(pi.hProcess, INFINITE);
+        DWORD code = 0;
+        GetExitCodeProcess(pi.hProcess, &code);
+        rc = (int)code;
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+    }
+    if (nul != INVALID_HANDLE_VALUE) CloseHandle(nul);
+    return rc;
+}
+
+/* mkdir -p: create every path prefix, ignoring "already exists". The POSIX
+ * call sites all passed -p, so a non-recursive _mkdir would fail on every
+ * multi-level path this project actually uses. */
+static int win_make_dirs(const char *path) {
+    char tmp[MAX_PATH];
+    size_t len;
+    if (!path || !*path) return -1;
+    len = strlen(path);
+    if (len >= sizeof(tmp)) return -1;
+    memcpy(tmp, path, len + 1);
+    for (size_t i = 1; i < len; i++) {
+        if (tmp[i] == '/' || tmp[i] == '\\') {
+            tmp[i] = '\0';
+            _mkdir(tmp);
+            tmp[i] = path[i];
+        }
+    }
+    _mkdir(tmp);
+    return 0;
+}
+
+static int win_copy_file(const char *src, const char *dst) {
+    if (CopyFileA(src, dst, FALSE)) return 0;         /* FALSE = overwrite */
+    return -1;
+}
+
+static int win_copy_tree(const char *src_dir, const char *dst_dir) {
+    WIN32_FIND_DATAA fd;
+    char pattern[MAX_PATH];
+    char src_child[MAX_PATH];
+    char dst_child[MAX_PATH];
+    HANDLE h;
+    int rc = 0;
+
+    snprintf(pattern, sizeof(pattern), "%s\\*", src_dir);
+    h = FindFirstFileA(pattern, &fd);
+    if (h == INVALID_HANDLE_VALUE) return win_copy_file(src_dir, dst_dir);
+
+    win_make_dirs(dst_dir);
+    do {
+        if (strcmp(fd.cFileName, ".") == 0 || strcmp(fd.cFileName, "..") == 0) continue;
+        snprintf(src_child, sizeof(src_child), "%s\\%s", src_dir, fd.cFileName);
+        snprintf(dst_child, sizeof(dst_child), "%s\\%s", dst_dir, fd.cFileName);
+        if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+            if (win_copy_tree(src_child, dst_child) != 0) rc = -1;
+        } else {
+            if (win_copy_file(src_child, dst_child) != 0) rc = -1;
+        }
+    } while (FindNextFileA(h, &fd));
+    FindClose(h);
+    return rc;
+}
+#endif
+
 char project_root[MAX_PATH] = ".";
 char current_project[MAX_LINE] = "slop-ed-dev"; // Default to slop-ed-dev project
 char active_game_name[MAX_LINE] = "none";
@@ -111,7 +227,7 @@ int stage_map_idx = -1; /* Tracks which map is actually active for editing */
 
 /* Glyph Palette */
 const char *ascii_glyphs[] = {"#", ".", "R", "T", "@", "&", "Z", "X", "?", "!"};
-const char *emoji_glyphs[] = {"🧱", "🟩", "🌲", "🏰", "🎯", "🐶", "🧟", "💰", "🏠", "🔥"};
+const char *emoji_glyphs[] = {"ðŸ§±", "ðŸŸ©", "ðŸŒ²", "ðŸ°", "ðŸŽ¯", "ðŸ¶", "ðŸ§Ÿ", "ðŸ’°", "ðŸ ", "ðŸ”¥"};
 int glyph_idx = 0;
 int emoji_mode = 0;
 
@@ -203,7 +319,7 @@ static void append_aligned_button_attr(char *out, size_t max_sz, const char *lab
     if (padding < 0) padding = 0;
     
     char btn_markup[1024];
-    snprintf(btn_markup, sizeof(btn_markup), "<text label=\"║  \" /><button label=\"%s\" %s=\"%s\" />", label, attr_name, attr_val);
+    snprintf(btn_markup, sizeof(btn_markup), "<text label=\"â•‘  \" /><button label=\"%s\" %s=\"%s\" />", label, attr_name, attr_val);
     strncat(out, btn_markup, max_sz - strlen(out) - 1);
     
     if (padding > 0) {
@@ -211,7 +327,7 @@ static void append_aligned_button_attr(char *out, size_t max_sz, const char *lab
         snprintf(pad_str, sizeof(pad_str), "<text label=\"%.*s\" />", padding, "                                                                                ");
         strncat(out, pad_str, max_sz - strlen(out) - 1);
     }
-    strncat(out, "<text label=\" ║\" /><br/>", max_sz - strlen(out) - 1);
+    strncat(out, "<text label=\" â•‘\" /><br/>", max_sz - strlen(out) - 1);
     
     (*p_display_num)++;
 }
@@ -387,10 +503,23 @@ void scan_maps() {
 }
 
 void trigger_render() {
+#ifdef _WIN32
+    /* Was "'<root>/pieces/apps/playrm/ops/+x/render_map.+x' > /dev/null 2>&1"
+       handed to system(). The single quotes and /dev/null are POSIX shell, so
+       cmd.exe would have treated them as literal characters and never run the
+       renderer at all. */
+    char exe[MAX_PATH];
+    char *no_args[] = { NULL };
+    snprintf(exe, sizeof(exe), "%s/pieces/apps/playrm/ops/+x/render_map.+x", project_root);
+    win_spawn_quiet(exe, no_args);
+#else
     char *cmd = NULL;
     if (asprintf(&cmd, "'%s/pieces/apps/playrm/ops/+x/render_map.+x' > /dev/null 2>&1", project_root) != -1) {
-        run_command(cmd); free(cmd);
+        run_command(cmd);
+        free(cmd);
     }
+#endif
+
 }
 
 void hit_frame_marker() {
@@ -640,25 +769,58 @@ static int save_game_to_path(const char *rel_path) {
 
     snprintf(full_dest, sizeof(full_dest), "%s/%s", project_root, final_rel);
     
-    char cmd[MAX_CMD];
-    snprintf(cmd, sizeof(cmd), "mkdir -p '%s'", full_dest);
-    run_command(cmd);
+      char cmd[MAX_CMD];
+      (void)cmd;
+#ifdef _WIN32
+      /* Was "mkdir -p '<dest>'" and "cp -r '<src>/maps' '<dest>/'". cmd.exe has
+         neither command, and both were wrapped in single quotes that cmd.exe
+         would have passed through as literal characters. See the note above
+         win_spawn_quiet() for why these shell strings are gone rather than
+         translated. */
+      win_make_dirs(full_dest);
+      save_project();
 
-    save_project();
+      char src_base[MAX_PATH];
+      if (strcmp(active_game_name, "none") == 0) {
+          strcpy(src_base, "projects/slop-ed-dev");
+      } else {
+          strncpy(src_base, active_game_name, sizeof(src_base) - 1);
+          src_base[sizeof(src_base) - 1] = '\0';
+      }
 
-    char src_base[MAX_PATH];
-    if (strcmp(active_game_name, "none") == 0) {
-        strcpy(src_base, "projects/slop-ed-dev");
-    } else {
-        strncpy(src_base, active_game_name, sizeof(src_base) - 1);
-    }
+      {
+          char s[MAX_PATH], d[MAX_PATH];
+          snprintf(s, sizeof(s), "%s/%s/maps", project_root, src_base);
+          snprintf(d, sizeof(d), "%s/maps", full_dest);
+          win_copy_tree(s, d);
+          snprintf(s, sizeof(s), "%s/%s/pieces", project_root, src_base);
+          snprintf(d, sizeof(d), "%s/pieces", full_dest);
+          win_copy_tree(s, d);
+          snprintf(s, sizeof(s), "%s/%s/project.pdl", project_root, src_base);
+          snprintf(d, sizeof(d), "%s/project.pdl", full_dest);
+          win_copy_file(s, d);
+      }
+#else
+      snprintf(cmd, sizeof(cmd), "mkdir -p '%s'", full_dest);
+      run_command(cmd);
 
-    snprintf(cmd, sizeof(cmd), "cp -r '%s/%s/maps' '%s/'", project_root, src_base, full_dest);
-    run_command(cmd);
-    snprintf(cmd, sizeof(cmd), "cp -r '%s/%s/pieces' '%s/'", project_root, src_base, full_dest);
-    run_command(cmd);
-    snprintf(cmd, sizeof(cmd), "cp '%s/%s/project.pdl' '%s/'", project_root, src_base, full_dest);
-    run_command(cmd);
+      save_project();
+
+      char src_base[MAX_PATH];
+      if (strcmp(active_game_name, "none") == 0) {
+          strcpy(src_base, "projects/slop-ed-dev");
+      } else {
+          strncpy(src_base, active_game_name, sizeof(src_base) - 1);
+      }
+
+      snprintf(cmd, sizeof(cmd), "cp -r '%s/%s/maps' '%s/'", project_root, src_base, full_dest);
+      run_command(cmd);
+      snprintf(cmd, sizeof(cmd), "cp -r '%s/%s/pieces' '%s/'", project_root, src_base, full_dest);
+      run_command(cmd);
+      snprintf(cmd, sizeof(cmd), "cp '%s/%s/project.pdl' '%s/'", project_root, src_base, full_dest);
+      run_command(cmd);
+#endif
+
 
     char msg[MAX_LINE];
     snprintf(msg, sizeof(msg), "Game saved to %s", final_rel);
@@ -693,8 +855,10 @@ static int load_game_from_path(const char *rel_path) {
 
     if (access(full_src, F_OK) != 0) {
         set_response("Error: Game folder not found");
-        return -1;
-    }
+    return -1;
+}
+
+
 
     // Set active project path (strip "projects/" for current_project usage)
     if (strncmp(final_rel, "projects/", 9) == 0) {
@@ -779,10 +943,10 @@ void write_gui_state() {
             read_file_path_input();
             read_search_query_input();
             
-            if (browser_mode == 0) fprintf(f, "browser_mode_header=<text label=\"║  MODE: LOAD GAME | GAME: %-15.15s ║\" /><br/>\n", active_game_name);
-            else fprintf(f, "browser_mode_header=<text label=\"║  MODE: SAVE GAME AS | GAME: %-10.10s ║\" /><br/>\n", active_game_name);
+            if (browser_mode == 0) fprintf(f, "browser_mode_header=<text label=\"â•‘  MODE: LOAD GAME | GAME: %-15.15s â•‘\" /><br/>\n", active_game_name);
+            else fprintf(f, "browser_mode_header=<text label=\"â•‘  MODE: SAVE GAME AS | GAME: %-10.10s â•‘\" /><br/>\n", active_game_name);
             
-            fprintf(f, "browser_current_dir_line=<text label=\"║  DIR: %-35.35s ║\" /><br/>\n", current_browser_dir);
+            fprintf(f, "browser_current_dir_line=<text label=\"â•‘  DIR: %-35.35s â•‘\" /><br/>\n", current_browser_dir);
             fprintf(f, "search_query_val=%s\n", search_query_buffer);
             fprintf(f, "file_path_input_val=%s\n", file_path_input_buffer);
 
@@ -791,7 +955,7 @@ void write_gui_state() {
             int num_suggestions = find_autocomplete_matches(file_path_input_buffer, current_browser_dir, suggestions, 4);
             int next_display_num = 3;
             if (num_suggestions > 0) {
-                strcat(autocomplete_markup, "<text label=\"║  SUGGESTIONS:                               ║\" /><br/>");
+                strcat(autocomplete_markup, "<text label=\"â•‘  SUGGESTIONS:                               â•‘\" /><br/>");
                 for (int i = 0; i < num_suggestions; i++) {
                     char display_label[256];
                     if (strlen(suggestions[i]) > 28) snprintf(display_label, sizeof(display_label), "...%s", suggestions[i] + strlen(suggestions[i]) - 25);
@@ -800,7 +964,7 @@ void write_gui_state() {
                     append_aligned_button_attr(autocomplete_markup, sizeof(autocomplete_markup), display_label, "onClick", action, &next_display_num);
                 }
             } else {
-                strcat(autocomplete_markup, "<text label=\"║  (Type to see autocompletions)              ║\" /><br/>");
+                strcat(autocomplete_markup, "<text label=\"â•‘  (Type to see autocompletions)              â•‘\" /><br/>");
             }
             fprintf(f, "autocomplete_suggestions_markup=%s\n", autocomplete_markup);
 
@@ -857,14 +1021,14 @@ void write_gui_state() {
                     struct stat st;
                     if (stat(entry_path, &st) == 0 && S_ISDIR(st.st_mode)) {
                         char btn[1024];
-                        snprintf(btn, sizeof(btn), "<text label=\"║  \" /><button label=\"%-30.30s\" onClick=\"SET_LOAD_GAME:%s\" /><text label=\"  ║\" /><br/>\n", entry->d_name, entry_path);
+                        snprintf(btn, sizeof(btn), "<text label=\"â•‘  \" /><button label=\"%-30.30s\" onClick=\"SET_LOAD_GAME:%s\" /><text label=\"  â•‘\" /><br/>\n", entry->d_name, entry_path);
                         strcat(selection_markup, btn);
                     }
                 }
                 closedir(gd);
             }
             if (strlen(selection_markup) == 0) {
-                strcat(selection_markup, "<text label=\"║  (No saved games found)                      ║\" /><br/>\n");
+                strcat(selection_markup, "<text label=\"â•‘  (No saved games found)                      â•‘\" /><br/>\n");
             }
             fprintf(f, "project_selection_markup=%s\n", selection_markup);
 
@@ -1034,16 +1198,54 @@ void save_project() {
 void trigger_event(const char* piece_id, const char* event) {
     char handler[MAX_PATH];
     if (get_method(piece_id, event, handler, sizeof(handler), project_root, current_project) == 0) {
+#ifdef _WIN32
+        /* The POSIX form set two env vars as a shell prefix before the
+           program, which cmd.exe cannot do at all. SetEnvironmentVariable is
+           the real equivalent and, unlike a shell prefix, it actually reaches
+           the child. The env is restored afterwards rather than left set,
+           because this manager is long-lived and the project/root it was
+           carrying for one prisc run is not necessarily right for the next. */
+        char *a[2];
+        char root_arg[MAX_PATH];
+        a[0] = NULL;
+        if (strstr(handler, ".asm")) {
+            char exe[MAX_PATH];
+            SetEnvironmentVariableA("PRISC_PROJECT_ID", current_project);
+            SetEnvironmentVariableA("PRISC_PROJECT_ROOT", project_root);
+            snprintf(exe, sizeof(exe), "%s/pieces/system/prisc/prisc+x", project_root);
+            snprintf(root_arg, sizeof(root_arg), "%s/%s", project_root, handler);
+            a[0] = root_arg;
+            a[1] = NULL;
+            win_spawn_quiet(exe, a);
+            SetEnvironmentVariableA("PRISC_PROJECT_ID", NULL);
+            SetEnvironmentVariableA("PRISC_PROJECT_ROOT", NULL);
+        } else {
+            char exe[MAX_PATH];
+            snprintf(exe, sizeof(exe), "%s/%s", project_root, handler);
+            win_spawn_quiet(exe, a);
+        }
+        { char msg[MAX_LINE]; snprintf(msg, sizeof(msg), "Triggered %s on %s", event, piece_id); set_response(msg); }
+#else
         char *cmd = NULL;
         if (strstr(handler, ".asm")) {
             asprintf(&cmd, "PRISC_PROJECT_ID=%s PRISC_PROJECT_ROOT='%s' '%s/pieces/system/prisc/prisc+x' '%s/%s' > /dev/null 2>&1",
                      current_project, project_root, project_root, project_root, handler);
         } else { asprintf(&cmd, "'%s/%s' > /dev/null 2>&1", project_root, handler); }
         if (cmd) { run_command(cmd); char msg[MAX_LINE]; snprintf(msg, sizeof(msg), "Triggered %s on %s", event, piece_id); set_response(msg); free(cmd); }
+#endif
     } else { char msg[MAX_LINE]; snprintf(msg, sizeof(msg), "No handler for %s on %s", event, piece_id); set_response(msg); }
 }
 
 void bind_event(const char* piece_id, const char* event, const char* handler) {
+#ifdef _WIN32
+    {
+        char exe[MAX_PATH];
+        char *a[] = { (char *)"add-method", (char *)piece_id, (char *)event, (char *)handler, NULL };
+        snprintf(exe, sizeof(exe), "%s/pieces/master_ledger/plugins/+x/piece_manager.+x", project_root);
+        win_spawn_quiet(exe, a);
+    }
+    { char msg[MAX_LINE]; snprintf(msg, sizeof(msg), "Bound %s to %s", event, piece_id); set_response(msg); }
+#else
     char *cmd = NULL;
     if (asprintf(&cmd, "%s/pieces/master_ledger/plugins/+x/piece_manager.+x %s add-method %s %s > /dev/null 2>&1",
                  project_root, piece_id, event, handler) != -1) {
@@ -1051,6 +1253,7 @@ void bind_event(const char* piece_id, const char* event, const char* handler) {
         char msg[MAX_LINE]; snprintf(msg, sizeof(msg), "Bound %s to %s", event, piece_id);
         set_response(msg);
     }
+#endif
 }
 
 
@@ -1181,9 +1384,37 @@ int process_key(int key) {
         else { gui_focus_index = key - '0'; return 1; }
     }
 
-    if (key == 122) { char *cmd = NULL; if (asprintf(&cmd, "'%s/pieces/apps/playrm/ops/+x/undo_action.+x' > /dev/null 2>&1", project_root) != -1) { run_command(cmd); free(cmd); set_response("Undo performed"); } return 1; }
+    /* From here on the three ops below were all invoked as POSIX shell
+       strings through system(): single-quoted paths plus ">/dev/null 2>&1".
+       On Windows each becomes win_spawn_quiet() with a real argv, which quotes
+       arguments itself and sends output to the NUL device. The three are the
+       only place in this file that talks to playrm ops, and they are the ones
+       that could never have worked here, so they are converted individually
+       rather than by translating the command text. */
 
-    if (key == 127 || key == 8) { if (gui_focus_index == 1 && stage_map_idx > 0 && stage_map_idx < map_count) { char *cmd = NULL; if (asprintf(&cmd, "'%s/pieces/apps/playrm/ops/+x/place_tile.+x' %s %d %d . > /dev/null 2>&1", project_root, project_maps[stage_map_idx], cursor_x, cursor_y) != -1) { run_command(cmd); free(cmd); set_response("Tile cleared"); } } return 1; }
+    if (key == 122) { /* z = undo */
+#ifdef _WIN32
+        char exe[MAX_PATH]; char *a[] = { NULL };
+        snprintf(exe, sizeof(exe), "%s/pieces/apps/playrm/ops/+x/undo_action.+x", project_root);
+        win_spawn_quiet(exe, a);
+#else
+        char *cmd = NULL; if (asprintf(&cmd, "'%s/pieces/apps/playrm/ops/+x/undo_action.+x' > /dev/null 2>&1", project_root) != -1) { run_command(cmd); free(cmd); }
+#endif
+        set_response("Undo performed"); return 1; }
+
+    if (key == 127 || key == 8) { if (gui_focus_index == 1 && stage_map_idx > 0 && stage_map_idx < map_count) {
+#ifdef _WIN32
+        char exe[MAX_PATH];
+        char cx[16], cy[16];
+        char *a[] = { (char *)project_maps[stage_map_idx], cx, cy, (char *)".", NULL };
+        snprintf(exe, sizeof(exe), "%s/pieces/apps/playrm/ops/+x/place_tile.+x", project_root);
+        snprintf(cx, sizeof(cx), "%d", cursor_x);
+        snprintf(cy, sizeof(cy), "%d", cursor_y);
+        win_spawn_quiet(exe, a);
+#else
+        char *cmd = NULL; if (asprintf(&cmd, "'%s/pieces/apps/playrm/ops/+x/place_tile.+x' %s %d %d . > /dev/null 2>&1", project_root, project_maps[stage_map_idx], cursor_x, cursor_y) != -1) { run_command(cmd); free(cmd); }
+#endif
+        set_response("Tile cleared"); } return 1; }
 
     if (gui_focus_index == 1) {
         if (key == 'w' || key == 'W' || key == 1002 || key == 's' || key == 'S' || key == 1003 || key == 'a' || key == 'A' || key == 1000 || key == 'd' || key == 'D' || key == 1001) {
@@ -1194,7 +1425,15 @@ int process_key(int key) {
                 save_xlector_state();
             } else {
                 char piece_dir[MAX_PATH]; if (!resolve_piece_dir(active_target_id, piece_dir, sizeof(piece_dir))) { strcpy(active_target_id, "xlector"); set_response("Entity not found"); }
-                else { char *cmd = NULL; if (asprintf(&cmd, "'%s/pieces/apps/playrm/ops/+x/move_entity.+x' %s %s %s > /dev/null 2>&1", project_root, active_target_id, dir, current_project) != -1) { run_command(cmd); free(cmd); }
+                else {
+#ifdef _WIN32
+                    char exe[MAX_PATH];
+                    char *a[] = { (char *)active_target_id, (char *)dir, (char *)current_project, NULL };
+                    snprintf(exe, sizeof(exe), "%s/pieces/apps/playrm/ops/+x/move_entity.+x", project_root);
+                    win_spawn_quiet(exe, a);
+#else
+                    char *cmd = NULL; if (asprintf(&cmd, "'%s/pieces/apps/playrm/ops/+x/move_entity.+x' %s %s %s > /dev/null 2>&1", project_root, active_target_id, dir, current_project) != -1) { run_command(cmd); free(cmd); }
+#endif
                     int px = get_state_int_fast(active_target_id, "pos_x"), py = get_state_int_fast(active_target_id, "pos_y");
                     if (px != -1 && py != -1) { cursor_x = px; cursor_y = py; save_xlector_state(); }
                 }
@@ -1226,12 +1465,34 @@ int process_key(int key) {
         if (stage_map_idx < 1) { set_response("Select a map first!"); return 1; }
         const char **active_set = emoji_mode ? emoji_glyphs : ascii_glyphs; const char *glyph = active_set[glyph_idx];
         int is_entity = (strcmp(glyph, "@") == 0 || strcmp(glyph, "&") == 0 || strcmp(glyph, "Z") == 0 || strcmp(glyph, "T") == 0);
+#ifdef _WIN32
+        {
+            char exe[MAX_PATH];
+            char cx[16], cy[16];
+            snprintf(cx, sizeof(cx), "%d", cursor_x);
+            snprintf(cy, sizeof(cy), "%d", cursor_y);
+            if (is_entity) {
+                const char *type = (strcmp(glyph, "@") == 0) ? "player" : (strcmp(glyph, "&") == 0) ? "npc" : (strcmp(glyph, "Z") == 0) ? "zombie" : "chest";
+                char *a[] = { (char *)type, cx, cy, (char *)current_project,
+                              (char *)"--world", (char *)current_world_id,
+                              (char *)"--map", (char *)current_map_dir, NULL };
+                snprintf(exe, sizeof(exe), "%s/pieces/apps/playrm/ops/+x/create_piece.+x", project_root);
+                win_spawn_quiet(exe, a);
+            } else {
+                char *a[] = { (char *)project_maps[stage_map_idx], cx, cy, (char *)glyph, NULL };
+                snprintf(exe, sizeof(exe), "%s/pieces/apps/playrm/ops/+x/place_tile.+x", project_root);
+                win_spawn_quiet(exe, a);
+            }
+        }
+#else
         char *cmd = NULL;
         if (is_entity) {
             const char *type = (strcmp(glyph, "@") == 0) ? "player" : (strcmp(glyph, "&") == 0) ? "npc" : (strcmp(glyph, "Z") == 0) ? "zombie" : "chest";
             asprintf(&cmd, "%s/pieces/apps/playrm/ops/+x/create_piece.+x '%s' %d %d %s --world %s --map %s > /dev/null 2>&1", project_root, type, cursor_x, cursor_y, current_project, current_world_id, current_map_dir);
         } else { asprintf(&cmd, "%s/pieces/apps/playrm/ops/+x/place_tile.+x %s %d %d '%s' > /dev/null 2>&1", project_root, project_maps[stage_map_idx], cursor_x, cursor_y, glyph); }
-        if (cmd) { run_command(cmd); free(cmd); set_response(is_entity ? "Piece created" : "Tile placed"); }
+        if (cmd) { run_command(cmd); free(cmd); }
+#endif
+        set_response(is_entity ? "Piece created" : "Tile placed");
         return 1;
     }
     return 0;

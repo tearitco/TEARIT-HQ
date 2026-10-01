@@ -1,0 +1,13 @@
+high_return_on_equity:0
+low_pe_ratio:0
+stock_price_less_than_net_worth:95
+dividend_yield:0
+min_market_cap:400
+max_market_cap:2060
+earnings_up_next_quarter:10
+management_rated:Good
+credit_rating:AA
+analyst_rating:Sell
+industry_supply_demand_improving:0
+publicly_traded_only:0
+has_bonds_issued:0
