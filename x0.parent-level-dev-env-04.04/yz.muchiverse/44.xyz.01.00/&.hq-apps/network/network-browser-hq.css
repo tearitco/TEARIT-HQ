@@ -1,10 +1,21 @@
 /* network-browser-hq.css - REAL, applied via sibling .css merge in
    khtpm_core_render.c (same stem as network-browser-hq.chtpm).
    Window width/height are CSS; other geometry stays in C layout.
-   Colors/borders only besides window size. */
-window { width: 960px; height: 640px; }
-window.network-browser { width: 960px; height: 640px; background-color: #141414; color: #dddddd; }
-.network-browser { width: 960px; height: 640px; background-color: #141414; color: #dddddd; }
+   Colors/borders only besides window size.
+
+   784x504 is the verified size for a 1360x768 desktop. It reproduces
+   exactly what the renderer used to hardcode for user-resizable windows,
+   kh_auto_px(1120) x kh_auto_px(720), where
+   kh_auto_px(v) = (v * 70 + 50) / 100  ->  784 and 504. Declaring it here
+   is the supported way to keep it: khtpm_core_render.c prefers a
+   window's own CSS width/height as its INITIAL size and only falls back
+   to default_win_w/h in #.desktop/hq_ui.pdl when CSS declares none, so
+   this is data, not a compiled constant, and per-app like events-hq.css's
+   own 620px. The previous 960px x 640px here was stale - on this screen
+   that is far wider and taller than the window anyone wants. */
+window { width: 784px; height: 504px; }
+window.network-browser { width: 784px; height: 504px; background-color: #141414; color: #dddddd; }
+.network-browser { width: 784px; height: 504px; background-color: #141414; color: #dddddd; }
 .close-btn { background-color: #2a2a2a; color: #ff8888; }
 .fullscreen-btn { background-color: #2a2a2a; color: #cccccc; }
 .toolbar { background-color: #2a2a2a; color: #eeeeee; }
