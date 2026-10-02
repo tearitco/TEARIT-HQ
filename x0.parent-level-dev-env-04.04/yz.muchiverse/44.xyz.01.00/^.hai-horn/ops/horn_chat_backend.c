@@ -88,6 +88,10 @@ typedef struct {
      * chat_template_kwargs.enable_thinking=false. Documented as a
      * Poolside-API-only field. */
     int no_thinking;
+    /* Set once this provider reports a rate/quota limit. Mutable because
+     * the table is const-by-convention, not const: the ladder's state is
+     * per-process. */
+    int quota_seen;
 } Provider;
 
 /* Verified live 2026-10-01/02. See the header for the measurement behind
@@ -98,23 +102,23 @@ typedef struct {
  *   curl -s https://inference.poolside.ai/v1/models -H "Authorization: Bearer $KEY"
  *   curl -s https://openrouter.ai/api/v1/models
  */
-static const Provider PROVIDERS[] = {
+static Provider PROVIDERS[] = {  /* mutable: quota_seen is per-process */
     { "groq",
       "https://api.groq.com/openai/v1/chat/completions",
       "GROQ_API_KEY", "raw_groq.txt",
-      { "openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b", NULL }, 0 },
+      { "openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b", NULL }, 0, 0 },
 
     { "poolside",
       "https://inference.poolside.ai/v1/chat/completions",
       "HORN_POOLSIDE_KEY", "raw_poolside.txt",
-      { "poolside/laguna-s-2.1", "poolside/laguna-xs-2.1", NULL }, 1 },
+      { "poolside/laguna-s-2.1", "poolside/laguna-xs-2.1", NULL }, 1, 0 },
 
     { "openrouter",
       "https://openrouter.ai/api/v1/chat/completions",
       "HORN_API_KEY", "openrouter_api_key.txt",
       { "nvidia/nemotron-3-super-120b-a12b:free",
         "nvidia/nemotron-3-ultra-550b-a55b:free",
-        "inclusionai/ling-3.0-flash-sante:free", NULL }, 0 },
+        "inclusionai/ling-3.0-flash-sante:free", NULL }, 0, 0 },
 };
 #define N_PROVIDERS ((int)(sizeof(PROVIDERS) / sizeof(PROVIDERS[0])))
 
@@ -717,18 +721,48 @@ seeded:;
     const char *used = NULL;
     char used_model[160] = "";
 
+    /* PINNING, for when a comparison has to mean something.
+     *
+     * The fallback ladder is right for interactive use and wrong for
+     * measurement: if HORN silently answers from groq and HALO silently
+     * answers from poolside, any difference in the result is
+     * indistinguishable from a difference in the model - and the measured
+     * spread between these providers is enormous (15/15 vs 8/10 tool
+     * calls). That is an uncontrolled variable large enough to manufacture
+     * a conclusion on its own.
+     *
+     * With HORN_PIN_PROVIDER set, the ladder is disabled: only that
+     * provider is used and a failure is a failure, reported as such, rather
+     * than being papered over by a fallback that quietly changes the
+     * subject under test. Unset (the default) keeps normal interactive
+     * behaviour. */
+    const char *pin_provider = getenv("HORN_PIN_PROVIDER");
+    const char *pin_model    = getenv("HORN_PIN_MODEL");
+    int pinned = pin_provider && pin_provider[0];
+
     for (int i = 0; i < N_PROVIDERS && !reply && !tool_calls; i++) {
-        const Provider *p = &PROVIDERS[i];
+        Provider *p = &PROVIDERS[i];
+        if (pinned && strcmp(p->name, pin_provider) != 0) continue;
+
+        /* A provider that has already reported a quota/rate limit this
+         * process is done: it is an account state, every model in it shares
+         * the bucket, and retrying only deepens the limit. */
+        if (p->quota_seen) continue;
 
         char *key = load_key(p);
         if (!key) continue;
         any_key = 1;
 
         for (int m = 0; p->models[m] && !reply && !tool_calls; m++) {
+            /* A pinned model is the ONLY candidate, so if it is not in the
+             * table that is a configuration error, not a reason to fall
+             * back to a different model. */
+            if (pin_model && pin_model[0] && strcmp(pin_model, p->models[m]) != 0)
+                continue;
             int quota = 0, rc;
             rc = post_chat(p, p->models[m], key, err, sizeof(err), &quota, &reply, &tool_calls);
             if (rc == 10) { used = p->name; snprintf(used_model, sizeof(used_model), "%s", p->models[m]); break; }
-            if (quota) { any_quota = 1; break; }
+            if (quota) { any_quota = 1; p->quota_seen = 1; break; }
             if (reply) { used = p->name; snprintf(used_model, sizeof(used_model), "%s", p->models[m]); }
         }
         free(key);

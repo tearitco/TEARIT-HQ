@@ -206,7 +206,49 @@ static void ensure_sessions_dir(void) {
     free(dir);
 }
 
-static void append_history(const char *role, const char *text) {
+/* Which model a history record belongs to.
+ *
+ * `attrib` is passed in rather than read from a side file at write time,
+ * because the two halves of a turn want DIFFERENT attributions: the user
+ * line records what the turn was AIMED at (the pinned target), the reply
+ * line records what actually answered. Collapsing both to "the model that
+ * replied" makes the column identical either side of every turn and
+ * therefore useless for comparison. */
+/* The model a turn was AIMED at: the pinned target when one is set, or an
+ * honest "unpinned" so a grader can see the ladder was free to answer from
+ * anywhere. Silently recording the primary model here would be a lie in the
+ * exact case that matters - when a fallback quietly answered instead. */
+static const char *aimed_at(void) {
+    static char buf[192];
+    const char *pp = getenv("HORN_PIN_PROVIDER");
+    const char *pm = getenv("HORN_PIN_MODEL");
+    if (pp && pp[0] && pm && pm[0]) snprintf(buf, sizeof(buf), "%s/%s", pp, pm);
+    else if (pp && pp[0])              snprintf(buf, sizeof(buf), "%s (ladder)", pp);
+    else                               snprintf(buf, sizeof(buf), "unpinned");
+    return buf;
+}
+
+/* Which provider/model actually produced the reply just completed, read
+ * from the file horn_chat_backend writes. */
+static const char *answered_by(void) {
+    static char buf[192];
+    snprintf(buf, sizeof(buf), "unknown");
+    char *p = NULL;
+    if (asprintf(&p, "%s/pieces/horn/last_model.txt", project_root) < 0 || !p) return buf;
+    FILE *f = fopen(p, "rb");
+    free(p);
+    if (!f) return buf;
+    if (fgets(buf, (int)sizeof(buf), f)) {
+        trim_in_place(buf);
+        char *tab = strchr(buf, '\t');
+        if (tab) snprintf(buf, sizeof(buf), "%s", tab + 1);
+    }
+    fclose(f);
+    if (!buf[0]) snprintf(buf, sizeof(buf), "unknown");
+    return buf;
+}
+
+static void append_history(const char *role, const char *text, const char *attrib) {
     ensure_sessions_dir();
 
     char *hp = history_path();
@@ -222,7 +264,8 @@ static void append_history(const char *role, const char *text) {
     strftime(stamp, sizeof(stamp), "%Y-%m-%d %H:%M:%S", &tmv);
 
     char *flat = flatten_newlines(text);
-    fprintf(f, "%s\t%s\t%s\n", stamp, role, flat ? flat : text);
+    fprintf(f, "%s\t%s\t%s\t%s\n", stamp, role,
+            (attrib && attrib[0]) ? attrib : "unknown", flat ? flat : text);
     free(flat);
     fclose(f);
 }
@@ -895,7 +938,7 @@ int main(void) {
     const char *ask = prompt;
     if (*ask == '!') { force_tool = 1; ask++; while (*ask == ' ') ask++; }
 
-    append_history("user", ask);
+    append_history("user", ask, aimed_at());
     append_transcript("you:", ask);
 
     if (!seed_convo(ask)) {
@@ -967,19 +1010,19 @@ int main(void) {
     }
 
     if (reply[0]) {
-        append_history("horn", reply);
+        append_history("horn", reply, answered_by());
         append_transcript("horn:", reply);
     } else if (rc == 3) {
         /* Daily free-tier quota is gone (exit 3). Say exactly that: "all
          * models failed" reads as a broken harness and sends the next
          * person hunting a bug that is not there. */
-        append_history("horn", "[OpenRouter daily free-tier quota exhausted - resets at the UTC day boundary]");
+        append_history("horn", "[OpenRouter daily free-tier quota exhausted - resets at the UTC day boundary]", "none");
         append_transcript("horn:", "[daily free-tier quota exhausted - no model can answer until it resets]");
     } else {
         char msg[MSG_CAP];
         snprintf(msg, sizeof(msg), "[no reply from model%s]",
                  rc == 2 ? " (all models failed)" : "");
-        append_history("horn", msg);
+        append_history("horn", msg, "none");
         append_transcript("horn:", msg);
     }
 

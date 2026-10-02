@@ -38,6 +38,36 @@ export PRISC_PROJECT_ID="hai-horn"
 mkdir -p ops/+x pieces/horn pieces/display pieces/keyboard pieces/system \
          pieces/os pieces/apps/player_app/manager "$HORN_SESSIONS"
 
+# Count live HORN processes of ours. Zero before launch, exactly one after.
+# From the house J2 testing guide, MISTAKE #3: concurrent instances each
+# poll the SAME relay with their own cursor and race for the same key, and
+# that alone accounts for most "flaky, unreproducible" behaviour - there is
+# never one ground truth to check against. The guide says not to put a
+# guard in production code (multiple real windows may be legitimate later),
+# so this lives in the launcher and the test procedure, not in the ops.
+count_ours() {
+    { pgrep -f "horn_main_loop.pal" 2>/dev/null
+      pgrep -f "chtpm_parser_pal layouts" 2>/dev/null
+      pgrep -f "keyboard_input" 2>/dev/null
+      pgrep -f "ops/+x/horn_turn" 2>/dev/null
+      pgrep -f "ai-horn/system/renderer" 2>/dev/null
+      pgrep -f "\./system/renderer" 2>/dev/null
+    } | sort -u | grep -v "^$$\$$" | wc -l
+}
+
+# Kill every one of ours by full path. Name-based pkill is unreliable on
+# this house: the tree path contains '&.widgits' and '^.hai-horn', and the
+# guide records pkill failing to match binaries whose path carries those.
+kill_ours_hard() {
+    pkill -9 -f "horn_main_loop.pal"       2>/dev/null
+    pkill -9 -f "chtpm_parser_pal layouts" 2>/dev/null
+    pkill -9 -f "ops/+x/horn_turn"         2>/dev/null
+    pkill -9 -f "keyboard_input"           2>/dev/null
+    pkill -9 -f "ai-horn/system/renderer"  2>/dev/null
+    pkill -9 -f "\./system/renderer"      2>/dev/null
+    sleep 0.5
+}
+
 kill_all() {
     # Layer 1: anything this script's own process group owns.
     kill 0 2>/dev/null
@@ -121,6 +151,15 @@ send)
     ;;
 
 run)
+    # Refuse to stack on top of a previous session. Killed and confirmed
+    # rather than warned about: an orphan left behind here is the exact
+    # thing that compounded into the 2.6-hour strays.
+    pre=$(count_ours)
+    if [ "$pre" -gt 0 ]; then
+        echo "horn_chat: $pre process(es) from a previous session are still alive; clearing" >&2
+        kill_ours_hard
+    fi
+
     if [ ! -x system/prisc+x ] || [ ! -x ops/+x/horn_turn.+x ]; then
         echo "horn_chat: building..."
         bash scripts/build.sh || exit 1
@@ -150,6 +189,12 @@ run)
     ./system/chtpm_parser_pal "$LAYOUT"
 
     kill_all
+    # Belt and braces: kill_all sweeps, but PDEATHSIG on a detached turn is
+    # what actually guarantees this. Sweeping too means an orphan cannot
+    # survive even if it was reparented somewhere the sweep does not reach.
+    kill_ours_hard
+    left=$(count_ours)
+    [ "$left" -gt 0 ] && echo "horn_chat: WARNING $left process(es) survived teardown" >&2
     ;;
 
 *)

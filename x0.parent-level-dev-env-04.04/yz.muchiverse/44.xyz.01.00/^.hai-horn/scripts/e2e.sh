@@ -78,7 +78,7 @@ esc() { key 27; }
 enter() { key 13; }
 
 turn_count() {
-    grep -c "user" chats/HORN_SESSIONS/chat_history.txt 2>/dev/null || echo 0
+    awk -F'\t' '$2=="user"' chats/HORN_SESSIONS/chat_history.txt 2>/dev/null | wc -l
 }
 # True once the cli_io is actually accepting keystrokes. Typing before this
 # lands in nav mode, where letters are navigation commands - that is how a
@@ -567,6 +567,25 @@ case "$out" in
 esac
 rm -f config/yolo.flag
 
+echo "=== per-turn model attribution (for IRL) ==="
+# The IRL harness compares turns, so the history has to say which model
+# produced each one. A column that exists but is empty, or identical on
+# both halves of a turn, would make a comparison silently meaningless.
+attrib=$(awk -F'\t' '$2=="horn"{print $3}' "$HORN_SESSIONS/chat_history.txt" 2>/dev/null | tail -1)
+if [ -n "$attrib" ] && [ "$attrib" != "unknown" ]; then
+    ok "history records which model answered: $attrib"
+else
+    bad "history has no usable model attribution (got '${attrib:-none}')"
+fi
+ncols=$(awk -F'\t' 'NR==1{print NF}' "$HORN_SESSIONS/chat_history.txt" 2>/dev/null)
+if [ "${ncols:-0}" -ge 4 ]; then ok "history rows carry the attribution column"
+else bad "history rows have $ncols columns, expected >=4"; fi
+if [ -n "$(awk -F'\t' '$2=="user"{print $3}' "$HORN_SESSIONS/chat_history.txt" 2>/dev/null | grep -v unpinned)" ]; then
+    ok "a pinned turn records its target, not the answering model"
+else
+    echo "  ..no pinned turn in this session (attribution shows 'unpinned')"
+fi
+
 echo "=== approval gate through the real UI (live) ==="
 # Each gate outcome is proven from a CLEAN session: teardown, boot, drive.
 # Testing deny-then-approve back to back in one window worked until it
@@ -628,7 +647,7 @@ sleep 1
 boot   # clean relay, so this specifically proves history persists
 if wait_frame "$persisted" 20; then ok "history survives a restart"
 else bad "history lost on restart (expected to see '$persisted')"; fi
-after=$(grep -c "user" chats/HORN_SESSIONS/chat_history.txt)
+after=$(turn_count)
 [ "$before" = "$after" ] && ok "restart added no phantom turns" \
                          || bad "restart changed history ($before -> $after turns)"
 
@@ -640,7 +659,7 @@ echo "=== a stale relay must not replay into a new session ==="
 # Clear the composer: a leftover prompt would make a stray Enter dispatch
 # a REAL turn, and the suite would blame the replay for its own leftover.
 printf 'horn_prompt=\n' > pieces/apps/player_app/manager/gui_state.txt
-before=$(grep -c "user" chats/HORN_SESSIONS/chat_history.txt)
+before=$(turn_count)
 printf '13\n13\n13\n' >> pieces/apps/player_app/interact_relay.txt   # stale, pre-seeded
 boot_keep_relay() {
     cleanup
@@ -653,7 +672,7 @@ boot_keep_relay() {
 }
 boot_keep_relay
 sleep 2
-after=$(grep -c "user" chats/HORN_SESSIONS/chat_history.txt)
+after=$(turn_count)
 [ "$before" = "$after" ] && ok "stale relay Enters did not replay" \
                          || bad "stale relay replayed ($before -> $after turns)"
 
