@@ -558,6 +558,23 @@ static pid_t launch_module(const char *src, const char *house_root, const char *
     if (extra_arg && extra_arg[0]) argv[argc++] = (char *)extra_arg;
     argv[argc] = NULL;
 
+#ifdef _WIN32
+    /* No fork()/execv() on Windows (khtpm_strip_posix_win.c stubs both).
+     * khtpm_win_spawn_module() starts the manager with CreateProcessW and
+     * returns its PID; the *.+x -> *.exe rewrite happens there, matching
+     * the manager's own win_star_alias(). The env the fork child used to
+     * set is set here first so the spawned process inherits it. */
+    if (house_root)   setenv("KHTPM_HOUSE", house_root, 1);
+    if (package_dir) { setenv("KHTPM_PKG", package_dir, 1);
+                       setenv("PRISC_PROJECT_ROOT", package_dir, 1); }
+    {
+        extern long khtpm_win_spawn_module(const char *path, char *const argv[]);
+        pid_t wpid = (pid_t)khtpm_win_spawn_module(argv[0], argv);
+        if (wpid <= 0)
+            fprintf(stderr, "khtpm_entity_menu_render: launch_module: spawn failed for %s\n", argv[0]);
+        return wpid;
+    }
+#else
     pid_t pid = fork();
     if (pid == 0) {
         if (house_root)   setenv("KHTPM_HOUSE", house_root, 1);
@@ -569,6 +586,7 @@ static pid_t launch_module(const char *src, const char *house_root, const char *
         fprintf(stderr, "khtpm_entity_menu_render: launch_module: fork failed for %s\n", argv[0]);
     }
     return pid;
+#endif
 }
 
 /* fork EVERY <module> in the tree (chtpm carries several, like an HTML
