@@ -33,7 +33,10 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdio.h>
 #include <regex.h>
+#include <signal.h>
+#include <time.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -419,6 +422,531 @@ static int tool_grep_files(const char *args, char *out, size_t out_sz) {
     return 0;
 }
 
+
+/* ── builtin: write_file ──────────────────────────────────────────────
+ *
+ * The first tool that MUTATES. Everything above is read-only, so this is
+ * where the risk argument actually starts, and the containment is
+ * deliberate rather than incidental:
+ *
+ *   - confined to the project root. An absolute path outside it, or a ".."
+ *     that escapes it, is refused. There is no flag to widen this.
+ *   - denied paths, listed explicitly and reviewable below. The important
+ *     one is tools/horn_tools.json: that file IS the tool allowlist, so a
+ *     model able to write it can add a tool that runs anything. Self-
+ *     escalation has to be closed off or the allowlist is decorative.
+ *   - atomic: written to a temp file and renamed, so an interrupted or
+ *     failed write cannot leave a half-written source file behind.
+ *   - size-capped, and it will not create directories on demand - a model
+ *     cannot sprawl a tree by writing into paths it invented.
+ *
+ * Returns the number of bytes written. */
+
+#define WRITE_HARD_CAP (1024 * 1024)
+
+/* Paths the model may never write. Keep this list tight and keep the
+ * reasoning in the comment; it is a security boundary, not a preference. */
+static const char *WRITE_DENY[] = {
+    ".git",              /* history and index: corrupting it breaks every other tool */
+    "chats",             /* the human's own conversation history */
+    "pieces",            /* live runtime state the running harness is using */
+    "system",            /* compiled binaries - a text write would just corrupt them */
+    "ops/+x",            /* compiled op binaries, same reason */
+    "tools/horn_tools.json", /* THE ALLOWLIST. Writing it = self-escalation. */
+    NULL
+};
+
+static int path_denied(const char *root, const char *full) {
+    for (int i = 0; WRITE_DENY[i]; i++) {
+        char probe[PATH_BUF];
+        snprintf(probe, sizeof(probe), "%s/%s", root, WRITE_DENY[i]);
+        size_t pl = strlen(probe);
+        if (strncmp(full, probe, pl) == 0 &&
+            (full[pl] == '\0' || full[pl] == '/'))
+            return 1;
+    }
+    /* Key-shaped files anywhere: *.pdl, *_api_key.txt, state/raw_*.txt.
+     * Already committed to the repo once (2026-10-01); do not hand-write
+     * another one. */
+    const char *base = strrchr(full, '/');
+    base = base ? base + 1 : full;
+    if (strstr(base, "api_key") || strstr(base, "raw_") ||
+        (strlen(base) > 4 && strcmp(base + strlen(base) - 4, ".pdl") == 0))
+        return 1;
+    return 0;
+}
+
+/* Resolve a model-supplied path for WRITING: must land inside the project
+ * root. Unlike resolve_path (which is deliberately permissive so the model
+ * can read anywhere), this one refuses to escape. Returns 0 on refusal. */
+static int resolve_write_path(const char *in, char *out, size_t out_sz) {
+    if (!in || !in[0]) return 0;
+    if (in[0] == '/') return 0;               /* absolute paths are out */
+    /* snprintf INTO the caller's buffer. This was asprintf(&out, ...),
+     * which took the address of this function's own pointer parameter and
+     * allocated somewhere else entirely - so `full` in the caller stayed
+     * uninitialised, stat() failed, and write_file reported "does not
+     * exist" for a file that plainly existed. Same mistake as the argv
+     * use-after-free: writing to &a-parameter instead of *a-buffer. */
+    snprintf(out, out_sz, "%s/%s", project_root, in);
+
+    /* Normalise "." and ".." by hand - realpath() would resolve symlinks,
+     * which we do NOT want: a symlink inside the project could point out of
+     * it, and lexically-normalising the input is what actually bounds the
+     * write to the path the model named. */
+    char norm[PATH_BUF];
+    size_t o = 0;
+    norm[0] = '\0';
+    const char *p = out;
+    while (*p) {
+        while (*p == '/') p++;
+        if (!*p) break;
+        const char *seg = p;
+        while (*p && *p != '/') p++;
+        size_t seglen = (size_t)(p - seg);
+        if (seglen == 1 && seg[0] == '.') continue;
+        if (seglen == 2 && seg[0] == '.' && seg[1] == '.') {
+            while (o > 0 && norm[o - 1] != '/') o--;
+            if (o > 0) o--;
+            continue;
+        }
+        if (o + seglen + 2 >= sizeof(norm)) return 0;
+        norm[o++] = '/';
+        memcpy(norm + o, seg, seglen);
+        o += seglen;
+    }
+    norm[o] = '\0';
+
+    size_t rl = strlen(project_root);
+    if (strncmp(norm, project_root, rl) != 0 || (norm[rl] != '/' && norm[rl] != '\0'))
+        return 0;
+    if (norm[rl] == '\0') return 0;            /* the root itself */
+
+    snprintf(out, out_sz, "%s", norm);
+    return 1;
+}
+
+static int tool_write_file(const char *args, char *out, size_t out_sz) {
+    char rel[PATH_BUF];
+    if (!json_get_str(args, "path", rel, sizeof(rel)) || !rel[0]) {
+        snprintf(out, out_sz, "error: write_file needs a \"path\" relative to the project root");
+        return 1;
+    }
+    /* Content can be up to a megabyte, so it cannot go on the stack. */
+    static char big[WRITE_HARD_CAP + 1];
+    if (!json_get_str(args, "content", big, sizeof(big))) {
+        snprintf(out, out_sz, "error: write_file needs a \"content\" string");
+        return 1;
+    }
+    const char *body = big;
+
+    char full[PATH_BUF];
+    if (!resolve_write_path(rel, full, sizeof(full))) {
+        snprintf(out, out_sz,
+                 "error: '%s' is outside the project root or escapes it via '..'. "
+                 "write_file takes a path relative to the project root.", rel);
+        return 1;
+    }
+    if (path_denied(project_root, full)) {
+        snprintf(out, out_sz,
+                 "error: '%s' is a protected path and cannot be written by the model. "
+                 "Protected: .git, chats, pieces, system, ops/+x, "
+                 "tools/horn_tools.json (the tool allowlist), and key-shaped files.",
+                 rel);
+        return 1;
+    }
+
+    struct stat st;
+    if (stat(full, &st) == 0 && S_ISDIR(st.st_mode)) {
+        snprintf(out, out_sz, "error: '%s' is a directory", rel);
+        return 1;
+    }
+    /* No mkdir -p: a model that can invent directory trees can sprawl one. */
+    if (stat(full, &st) != 0) {
+        snprintf(out, out_sz,
+                 "error: '%s' does not exist. write_file will not create new "
+                 "directories - create it yourself if it is really needed.", rel);
+        return 1;
+    }
+
+    size_t len = strlen(body);
+    if (len > WRITE_HARD_CAP) {
+        snprintf(out, out_sz,
+                 "error: content is %zu bytes, over the %d byte limit", len, WRITE_HARD_CAP);
+        return 1;
+    }
+
+    char *tmp = NULL;
+    if (asprintf(&tmp, "%s.horn-tmp", full) < 0 || !tmp) {
+        snprintf(out, out_sz, "error: out of memory");
+        return 1;
+    }
+    FILE *f = fopen(tmp, "wb");
+    if (!f) {
+        snprintf(out, out_sz, "error: cannot write '%s'", rel);
+        free(tmp);
+        return 1;
+    }
+    size_t w = fwrite(body, 1, len, f);
+    /* fsync before rename: a rename that lands before the data does gives
+     * you a valid-looking empty file, which is worse than a failed write. */
+    fflush(f);
+    fsync(fileno(f));
+    fclose(f);
+
+    if (w != len || rename(tmp, full) != 0) {
+        unlink(tmp);
+        snprintf(out, out_sz, "error: failed to write '%s'", rel);
+        free(tmp);
+        return 1;
+    }
+    free(tmp);
+
+    snprintf(out, out_sz, "wrote %zu bytes to %s", len, rel);
+    return 0;
+}
+
+
+/* ── builtin: edit_file ───────────────────────────────────────────────
+ *
+ * gem-dev's semantics (ops/src/edit_file.c there): replace an exact string,
+ * not rewrite the file. That is a materially safer primitive than
+ * write_file and it is the house's own choice - a model holding a full
+ * overwrite can discard content it never meant to touch, and nothing in
+ * the diff would make that obvious at the call site.
+ *
+ * Refuses on: no match, or more than one match without replace_all. Both
+ * mean the edit was not the one the model intended, which is the case worth
+ * stopping for. */
+
+#define EDIT_MAX_FILE (1024 * 1024)
+
+static int tool_edit_file(const char *args, char *out, size_t out_sz) {
+    char rel[PATH_BUF], needle[8192], repl[8192];
+    if (!json_get_str(args, "path", rel, sizeof(rel)) || !rel[0]) {
+        snprintf(out, out_sz, "error: edit_file needs a \"path\"");
+        return 1;
+    }
+    if (!json_get_str(args, "search", needle, sizeof(needle))) {
+        snprintf(out, out_sz, "error: edit_file needs a \"search\" string");
+        return 1;
+    }
+    if (!json_get_str(args, "replace", repl, sizeof(repl))) {
+        snprintf(out, out_sz, "error: edit_file needs a \"replace\" string");
+        return 1;
+    }
+    int all = json_get_int(args, "replace_all", 0, 1);
+
+    char full[PATH_BUF];
+    if (!resolve_write_path(rel, full, sizeof(full))) {
+        snprintf(out, out_sz,
+                 "error: '%s' is outside the project root or escapes it via '..'.", rel);
+        return 1;
+    }
+    if (path_denied(project_root, full)) {
+        snprintf(out, out_sz, "error: '%s' is a protected path and cannot be edited.", rel);
+        return 1;
+    }
+
+    struct stat st;
+    if (stat(full, &st) != 0) {
+        snprintf(out, out_sz,
+                 "error: '%s' does not exist - use write_file to create it.", rel);
+        return 1;
+    }
+    if ((size_t)st.st_size > EDIT_MAX_FILE) {
+        snprintf(out, out_sz, "error: '%s' is %lld bytes, over the edit limit", rel, (long long)st.st_size);
+        return 1;
+    }
+
+    char *buf = malloc((size_t)st.st_size + 1);
+    if (!buf) { snprintf(out, out_sz, "error: out of memory"); return 1; }
+    FILE *f = fopen(full, "rb");
+    if (!f) { free(buf); snprintf(out, out_sz, "error: cannot read '%s'", rel); return 1; }
+    size_t got = fread(buf, 1, (size_t)st.st_size, f);
+    fclose(f);
+    buf[got] = '\0';
+
+    if (!needle[0]) { free(buf); snprintf(out, out_sz, "error: \"search\" is empty"); return 1; }
+
+    int hits = 0;
+    for (char *q = buf; (q = strstr(q, needle)) != NULL; q += strlen(needle)) hits++;
+
+    if (hits == 0) {
+        free(buf);
+        snprintf(out, out_sz, "error: the search text was not found in %s - nothing changed", rel);
+        return 1;
+    }
+    if (hits > 1 && !all) {
+        free(buf);
+        snprintf(out, out_sz,
+                 "error: the search text appears %d times in %s. Refusing to guess "
+                 "which one you meant - add more surrounding context to make it "
+                 "unique, or set replace_all.", hits, rel);
+        return 1;
+    }
+
+    /* Rebuild rather than edit in place: the replacement may be a different
+     * length, and the file is written atomically anyway. */
+    size_t nlen = strlen(needle), rlen = strlen(repl);
+    size_t worst = got + hits * (rlen + 64) + 64;
+    char *outbuf = malloc(worst);
+    if (!outbuf) { free(buf); snprintf(out, out_sz, "error: out of memory"); return 1; }
+
+    /* One pass: copy up to each match, then the replacement. */
+    size_t o = 0, replaced = 0;
+    char *q = buf;
+    for (;;) {
+        char *m = strstr(q, needle);
+        if (!m) {
+            size_t rest = strlen(q);
+            memcpy(outbuf + o, q, rest);
+            o += rest;
+            break;
+        }
+        size_t chunk = (size_t)(m - q);
+        memcpy(outbuf + o, q, chunk);
+        o += chunk;
+        memcpy(outbuf + o, repl, rlen);
+        o += rlen;
+        replaced++;
+        q = m + nlen;
+    }
+    outbuf[o] = '\0';
+    free(buf);
+
+    char *tmp = NULL;
+    if (asprintf(&tmp, "%s.horn-tmp", full) < 0 || !tmp) {
+        free(outbuf); snprintf(out, out_sz, "error: out of memory"); return 1;
+    }
+    FILE *tf = fopen(tmp, "wb");
+    if (!tf) { free(outbuf); free(tmp); snprintf(out, out_sz, "error: cannot write '%s'", rel); return 1; }
+    fwrite(outbuf, 1, o, tf);
+    fflush(tf);
+    fsync(fileno(tf));
+    fclose(tf);
+    if (rename(tmp, full) != 0) {
+        unlink(tmp); free(outbuf); free(tmp);
+        snprintf(out, out_sz, "error: failed to write '%s'", rel);
+        return 1;
+    }
+    free(outbuf);
+    free(tmp);
+
+    snprintf(out, out_sz, "edited %s: %d replacement%s of %zu bytes -> %zu bytes",
+             rel, (int)replaced, replaced == 1 ? "" : "s", got, o);
+    return 0;
+}
+
+/* ── builtin: run_script ─────────────────────────────────────────────
+ *
+ * gem-dev's cmd_exec, plus a real sandbox. gem-dev gates on a y/n prompt
+ * and a "../"-count sandbox_depth check in config/context.txt; the
+ * approval half is done by horn_turn (see the "gate" list in the
+ * manifest) because this file must stay free of UI policy.
+ *
+ * The sandbox is the part gem-dev does not have, and it is the part that
+ * matters now that a model can write. bwrap gives us, verified live on
+ * this box:
+ *   --unshare-net      no network at all, so a read-only tool cannot
+ *                      become an exfiltration channel and no command can
+ *                      fetch a payload to execute
+ *   --ro-bind / /      the whole filesystem read-only
+ *   --bind <root>      ...except the project, which stays writable so
+ *                      run_script and write_file can compose
+ *   --tmpfs /home /root
+ *                      the user's home is EMPTY: no .ssh, no .aws, no
+ *                      shell rc files, and crucially no reachable copy of
+ *                      the API keys that live under &.widgits/open-hai
+ *   --dev /dev --proc /proc
+ *                      minimal devices
+ * If bwrap is missing, refuse rather than fall back to an unsandboxed
+ * shell - silently dropping the sandbox would be the worst outcome here. */
+
+#define SCRIPT_TIMEOUT_DEFAULT 60
+#define SCRIPT_TIMEOUT_MAX 300
+
+static int bwrap_available(void) { return access("/usr/bin/bwrap", X_OK) == 0; }
+
+/* Whole-file reader for the small config files only - this file's other
+ * reads are bounded and size-checked. */
+static char *read_small_file(const char *path) {
+    FILE *f = fopen(path, "rb");
+    if (!f) return NULL;
+    char *buf = malloc(8192);
+    if (!buf) { fclose(f); return NULL; }
+    size_t got = fread(buf, 1, 8191, f);
+    buf[got] = '\0';
+    fclose(f);
+    return buf;
+}
+
+static int tool_run_script(const char *args, char *out, size_t out_sz) {
+    char cmd[16384];
+    if (!json_get_str(args, "command", cmd, sizeof(cmd)) || !cmd[0]) {
+        snprintf(out, out_sz, "error: run_script needs a \"command\"");
+        return 1;
+    }
+    int tmo = json_get_int(args, "timeout_s", SCRIPT_TIMEOUT_DEFAULT, SCRIPT_TIMEOUT_MAX);
+
+    /* gem-dev's sandbox_depth check: at most N "../" sequences in a command.
+     * Kept because it is cheap and it is the house's own rule, even though
+     * bwrap is doing the real containment. */
+    int max_depth = 1;
+    {
+        char *cfg = NULL;
+        if (asprintf(&cfg, "%s/config/context.txt", project_root) >= 0 && cfg) {
+            char *cb = read_small_file(cfg);
+            if (cb) {
+                char *p = strstr(cb, "sandbox_depth=");
+                if (p) max_depth = atoi(p + strlen("sandbox_depth="));
+                free(cb);
+            }
+            free(cfg);
+        }
+    }
+    int ups = 0;
+    for (const char *p = cmd; (p = strstr(p, "../")) != NULL; p += 3) ups++;
+    if (ups > max_depth) {
+        snprintf(out, out_sz,
+                 "error: command has %d '../' sequences, over sandbox_depth=%d "
+                 "(gem-dev's rule). Use absolute or project-relative paths.", ups, max_depth);
+        return 1;
+    }
+
+    if (!bwrap_available()) {
+        snprintf(out, out_sz,
+                 "error: bwrap (bubblewrap) is not available, so run_script refuses "
+                 "to execute. Running unsandboxed would give the model an "
+                 "unrestricted shell with your API keys readable.");
+        return 1;
+    }
+
+    /* Command goes in via argv to /bin/sh -c, never interpolated into a
+     * system() string: the command is model-authored, and building a shell
+     * string around it is how injection becomes trivial. */
+    /* Mount layout, verified live:
+     *   --ro-bind / /           whole filesystem read-only
+     *   --bind root root        ...except the project, writable, so
+     *                           run_script can build and write_file can
+     *                           land changes
+     *   --tmpfs <house>/&.widgits   BLANK. This is where every provider
+     *                           key lives, and it is a SIBLING of the
+     *                           project, not inside it. The first
+     *                           attempt blanked all of /home instead,
+     *                           which also erased the project (the tree
+     *                           lives under /home/no/Desktop/...) and
+     *                           bwrap failed with "Can't chdir to ...".
+     *   --tmpfs /root /tmp      no shell rc files, and scratch space
+     *                           that cannot outlive the command
+     *   --unshare-net           no network: stops a read tool becoming an
+     *                           exfiltration channel and stops any
+     *                           command fetching a payload to run
+     */
+    /* Fixed buffer, not a heap pointer: this value lives in argv until
+     * execv, and the first version asprintf'd it and then free()d it while
+     * argv still referenced it. bwrap then received freed memory as the
+     * tmpfs target, mis-parsed every following argument, and tried to exec
+     * the project path as the command. A use-after-free that surfaced as a
+     * baffling "execvp <project path>" - worth a fixed buffer forever. */
+    char secrets[PATH_BUF];
+    secrets[0] = '\0';
+    {
+        char house[MAX_PATH];
+        snprintf(house, sizeof(house), "%s", project_root);
+        char *slash = strrchr(house, '/');
+        if (slash && slash != house) *slash = '\0';
+        snprintf(secrets, sizeof(secrets), "%s/&.widgits", house);
+    }
+
+    char *argv[32];
+    int argc = 0;
+    argv[argc++] = "/usr/bin/bwrap";
+    /* --ro-bind takes SOURCE and DEST: two arguments, not one. Pushing a
+     * single "/" made bwrap swallow the next flag as its destination, shift
+     * every following argument by one, and finally try to exec the PROJECT
+     * ROOT as the command - reported as the baffling
+     *   bwrap: execvp /home/.../^.hai-horn: No such file or directory
+     * A shell bisect of the same flags passed the whole time, because the
+     * shell version had both slashes. Found by strace, not by reading. */
+    argv[argc++] = "--ro-bind";  argv[argc++] = "/";
+    argv[argc++] = "/";
+    argv[argc++] = "--bind";     argv[argc++] = project_root;
+    argv[argc++] = project_root;
+    if (secrets[0]) { argv[argc++] = "--tmpfs"; argv[argc++] = secrets; }
+    argv[argc++] = "--tmpfs";    argv[argc++] = "/root";
+    argv[argc++] = "--tmpfs";    argv[argc++] = "/tmp";
+    argv[argc++] = "--dev";      argv[argc++] = "/dev";
+    argv[argc++] = "--proc";     argv[argc++] = "/proc";
+    argv[argc++] = "--unshare-net";
+    argv[argc++] = "--die-with-parent";
+    argv[argc++] = "--new-session";
+    argv[argc++] = "--chdir";    argv[argc++] = project_root;
+    argv[argc++] = "/bin/sh";
+    argv[argc++] = "-c";
+    argv[argc++] = cmd;
+    argv[argc] = NULL;
+
+    if (getenv("HORN_DEBUG_ARGV")) {
+        for (int i = 0; i < argc; i++)
+            fprintf(stderr, "argv[%d]=%s\n", i, argv[i]);
+    }
+
+    int fds[2];
+    if (pipe(fds) != 0) { snprintf(out, out_sz, "error: cannot create pipe"); return 1; }
+
+    pid_t pid = fork();
+    if (pid < 0) {
+        close(fds[0]); close(fds[1]);
+        snprintf(out, out_sz, "error: cannot fork");
+        return 1;
+    }
+    if (pid == 0) {
+        close(fds[0]);
+        dup2(fds[1], STDOUT_FILENO);
+        dup2(fds[1], STDERR_FILENO);
+        close(fds[1]);
+        execv(argv[0], argv);
+        _exit(127);
+    }
+    close(fds[1]);
+
+    /* Drain the pipe BEFORE waiting: a chatty command fills the 64K buffer
+     * and deadlocks if the parent waits first. gem-dev's POSIX branch does
+     * wait-then-read and has exactly this bug, and its single read()
+     * silently truncates anything longer than one buffer. Read to EOF. */
+    char *buf = malloc(out_sz);
+    if (!buf) { close(fds[0]); waitpid(pid, NULL, 0); return 1; }
+    size_t got = 0;
+    ssize_t r;
+    while (got < out_sz - 1 && (r = read(fds[0], buf + got, out_sz - 1 - got)) > 0)
+        got += (size_t)r;
+    buf[got] = '\0';
+    close(fds[0]);
+
+    /* Kill the whole process group on timeout - bwrap --new-session puts the
+     * child in its own group, so one killpg reaches everything it spawned. */
+    int st = 0;
+    for (int waited = 0; waited < tmo; waited++) {
+        pid_t w = waitpid(pid, &st, WNOHANG);
+        if (w == pid) goto done;
+        if (waited == tmo - 1) {
+            killpg(pid, SIGKILL);
+            waitpid(pid, &st, 0);
+            size_t o = strlen(buf);
+            snprintf(buf + o, out_sz - o, "\n[terminated after %d s]", tmo);
+            got = strlen(buf);
+            goto done;
+        }
+        sleep(1);
+    }
+done:;
+    snprintf(out, out_sz, "%s\n[exit %d]", buf,
+             WIFEXITED(st) ? WEXITSTATUS(st) : (WIFSIGNALED(st) ? -WTERMSIG(st) : -1));
+    free(buf);
+    return 0;
+}
+
 /* ── manifest: the allowlist ───────────────────────────────────────── */
 
 /* Read the op that tools/horn_tools.json maps "name" to. Returns 0 when
@@ -497,6 +1025,12 @@ int main(int argc, char *argv[]) {
         tool_read_file(args, result, RESULT_CAP);
     } else if (strcmp(mapped, "builtin:grep_files") == 0) {
         tool_grep_files(args, result, RESULT_CAP);
+    } else if (strcmp(mapped, "builtin:write_file") == 0) {
+        tool_write_file(args, result, RESULT_CAP);
+    } else if (strcmp(mapped, "builtin:edit_file") == 0) {
+        tool_edit_file(args, result, RESULT_CAP);
+    } else if (strcmp(mapped, "builtin:run_script") == 0) {
+        tool_run_script(args, result, RESULT_CAP);
     } else {
         /* External op: dispatch it. fork/exec rather than system(), so the
          * JSON args reach argv untouched - system() would need quoting

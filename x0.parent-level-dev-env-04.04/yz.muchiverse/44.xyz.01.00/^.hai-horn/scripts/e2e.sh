@@ -229,8 +229,9 @@ boot
 if pgrep -f "horn_main_loop.pal" >/dev/null; then ok "pal module forked by the parser"
 else bad "pal module not running (check /tmp/horn_parser.log)"; fi
 
-wait_frame "HORN_CHAT v0.1" 20 || bad "no first frame"
-check "first frame renders the box" "$(cat "$FRAME")" "HORN_CHAT v0.1"
+wait_frame "HORN_CHAT" 20 || bad "no first frame"
+check "first frame renders the box" "$(cat "$FRAME")" "HORN_CHAT"
+check "approval buttons are present" "$(cat "$FRAME")" "APPROVE"
 check "model name resolved from state.txt" "$(cat "$FRAME")" "nemotron"
 
 echo "=== turn 1: the composer holds what was typed ==="
@@ -383,6 +384,98 @@ if [ "$API_UP" = 1 ]; then
 else
     echo "  SKIP  model-driven tool test needs a live provider"
 fi
+
+# ── write / exec containment (offline: no LLM, no network needed) ────
+echo "=== write containment (offline) ==="
+mkdir -p config
+printf 'alpha\nbeta\nbeta\n' > dox/.e2e_edit.txt
+TOOL="$TOOL"
+: > config/yolo.flag          # arm so direct op calls are not gated anyway
+
+out=$($TOOL edit_file '{"path":"dox/.e2e_edit.txt","search":"beta","replace":"BETA"}' 2>&1)
+case "$out" in
+  *"appears 2 times"*) ok "edit_file refuses an ambiguous match" ;;
+  *) bad "edit_file did not refuse ambiguity: ${out:0:80}" ;;
+esac
+out=$($TOOL edit_file '{"path":"dox/.e2e_edit.txt","search":"beta","replace":"X","replace_all":1}' 2>&1)
+case "$out" in
+  *"2 replacements"*) ok "edit_file honours replace_all" ;;
+  *) bad "edit_file replace_all failed: ${out:0:80}" ;;
+esac
+out=$($TOOL edit_file '{"path":"dox/.e2e_edit.txt","search":"absent","replace":"y"}' 2>&1)
+case "$out" in
+  *"not found"*) ok "edit_file refuses a missing match, changes nothing" ;;
+  *) bad "edit_file did not report a missing match: ${out:0:80}" ;;
+esac
+rm -f dox/.e2e_edit.txt
+
+printf '# original\n' > dox/.e2e_w.txt
+out=$($TOOL write_file '{"path":"dox/.e2e_w.txt","content":"# overwritten\n"}' 2>&1)
+case "$out" in
+  *"wrote"*) ok "write_file overwrites an existing file" ;;
+  *) bad "write_file failed on an existing file: ${out:0:80}" ;;
+esac
+if [ "$(cat dox/.e2e_w.txt)" = "# overwritten" ]; then ok "write landed on disk"
+else bad "write_file did not change the file"; fi
+
+# The allowlist is writable by a human but must NOT be writable by a model,
+# or the gate list next to it stops meaning anything.
+out=$($TOOL write_file '{"path":"tools/horn_tools.json","content":"x"}' 2>&1)
+case "$out" in
+  *"protected path"*) ok "write_file refuses the tool allowlist itself" ;;
+  *) bad "MODEL COULD WRITE THE ALLOWLIST: ${out:0:80}" ;;
+esac
+out=$($TOOL write_file '{"path":"dox/../../../../tmp/e2e-escape","content":"x"}' 2>&1)
+case "$out" in
+  *"outside the project root"*) ok "write_file refuses '..' escapes" ;;
+  *) bad "write_file allowed a '..' escape: ${out:0:80}" ;;
+esac
+out=$($TOOL write_file '{"path":"/etc/e2e","content":"x"}' 2>&1)
+case "$out" in
+  *"outside the project root"*) ok "write_file refuses absolute paths" ;;
+  *) bad "write_file allowed an absolute path: ${out:0:80}" ;;
+esac
+out=$($TOOL write_file '{"path":"config/raw_groq.txt","content":"x"}' 2>&1)
+case "$out" in
+  *"protected path"*) ok "write_file refuses key-shaped files" ;;
+  *) bad "write_file would write a key file: ${out:0:80}" ;;
+esac
+out=$($TOOL write_file '{"path":"no/such/dir/x.txt","content":"x"}' 2>&1)
+case "$out" in
+  *"does not exist"*) ok "write_file will not create directories" ;;
+  *) bad "write_file created a directory tree: ${out:0:80}" ;;
+esac
+rm -f dox/.e2e_w.txt
+
+echo "=== script sandbox (offline) ==="
+out=$($TOOL run_script '{"command":"echo sandbox-ok"}' 2>&1)
+case "$out" in
+  *sandbox-ok*) ok "run_script runs a normal command" ;;
+  *) bad "run_script failed on a trivial command: ${out:0:90}" ;;
+esac
+out=$($TOOL run_script '{"command":"touch ../e2e-escape.txt; echo rc=$?"}' 2>&1)
+case "$out" in
+  *"rc=1"*|*"Read-only"*) ok "sandbox blocks writes outside the project" ;;
+  *) bad "sandbox ALLOWED a parent-directory write: ${out:0:90}" ;;
+esac
+[ -f ../e2e-escape.txt ] && { bad "escape file exists on the real filesystem"; rm -f ../e2e-escape.txt; } \
+                       || ok "no escape file leaked to the real filesystem"
+out=$($TOOL run_script '{"command":"touch /etc/e2e-horn 2>&1 | head -1; echo rc=$?"}' 2>&1)
+case "$out" in
+  *"Read-only"*) ok "sandbox blocks writes to /etc" ;;
+  *) bad "sandbox may have written to /etc: ${out:0:90}" ;;
+esac
+out=$($TOOL run_script '{"command":"getent hosts openrouter.ai >/dev/null 2>&1 && echo DNS-UP || echo DNS-BLOCKED"}' 2>&1)
+case "$out" in
+  *DNS-BLOCKED*) ok "sandbox blocks the network" ;;
+  *) bad "sandbox ALLOWED network access: ${out:0:90}" ;;
+esac
+out=$($TOOL run_script '{"command":"cat \"../&.widgits/open-hai/state/raw_groq.txt\" 2>&1 | head -c 30"}' 2>&1)
+case "$out" in
+  *"No such file"*) ok "sandbox hides the provider keys" ;;
+  *) bad "KEYS REACHABLE FROM THE SANDBOX: ${out:0:90}" ;;
+esac
+rm -f config/yolo.flag
 
 echo "=== persistence across a restart ==="
 # Use whatever the session actually recorded. In the offline branch that is

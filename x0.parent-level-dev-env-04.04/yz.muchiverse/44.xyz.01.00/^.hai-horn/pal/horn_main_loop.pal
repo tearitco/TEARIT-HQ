@@ -1,10 +1,10 @@
 # horn_main_loop.pal - HORN_CHAT's pal-native main loop.
 #
-# Launched by the layout's own <module> tag (layout/horn_chat.chtpm), so
+# Launched by the layout's own <module> tag (layouts/horn_chat.chtpm), so
 # chtpm_parser_pal forks this once at parse time and keeps it alive for
-# the whole session. It is the dispatch loop, nothing more: every real
-# behaviour lives in ops/, so this file stays readable as a table of
-# "what happens on which keystroke".
+# the whole session. It is a dispatch table and nothing else: every real
+# behaviour lives in ops/, so this file stays readable as "what happens on
+# which keystroke".
 #
 # INPUT CONTRACT (why this loop looks like this):
 #
@@ -13,30 +13,35 @@
 #   itself; this loop never sees a character. On Enter, chtpm's own
 #   process_key() handler does three things (see chtpm_parser_pal.c's
 #   cli_io Enter branch):
-#     1. saves the full typed text to gui_state.txt under "input_text"
+#     1. saves the full typed text to gui_state.txt under "horn_prompt"
 #     2. clears its element buffer and sets suppress_next_gui_sync
 #     3. injects raw key 13 into the <interact> relay file
 #
 #   So the ONLY signal reaching us is that single 13. That is deliberate
 #   on chtpm's part and it is why this loop reads the relay file rather
 #   than the keyboard history: reading keyboard/history.txt would see
-#   every character and race chtpm's own buffer, which is the bug class
-#   the handoff flagged ("'@' completion is a harness-level concern, not
-#   a parser concern").
+#   every character and race chtpm's own buffer. This is the same
+#   conclusion the handoff reached about '@' completion - prompt-level
+#   parsing is a harness concern, not a parser one.
 #
-#   Keys we deliberately ignore: anything that is not 13. Navigation,
-#   editing, and rendering are chtpm's job. We are a turn dispatcher.
+#   The approve/deny keys arrive the same way: the layout's buttons use
+#   onClick="KEY:1" / "KEY:0", which chtpm turns into injected keycodes on
+#   the same relay.
+#
+#   Keys we deliberately ignore: everything else. Navigation, editing and
+#   rendering are chtpm's job.
 
 li x1, 0                    # byte cursor into the interact relay
 li x2, 13                   # Enter
-li x10, 0                   # scratch
+li x10, 0                   # scratch / "no key"
+li x12, 0                   # comparison scratch
 
-# Start the cursor at the CURRENT END of the relay, not at 0. The relay
-# is append-only and is NOT cleared between sessions, so a fresh pal loop
+# Start the cursor at the CURRENT END of the relay, not at 0. The relay is
+# append-only and is NOT cleared between sessions, so a fresh pal loop
 # starting at 0 would replay every Enter the user ever pressed - each one
-# re-dispatching horn_turn against whatever text is in gui_state right
-# now. That showed up live as phantom turns appearing in the transcript
-# after a restart, duplicating history.
+# re-dispatching horn_turn against whatever text is in gui_state right now.
+# That showed up live as phantom turns in the transcript after a restart,
+# duplicating history.
 read_pos x1, pieces/apps/player_app/interact_relay.txt
 
 # ── main loop ────────────────────────────────────────────────────────
@@ -50,18 +55,44 @@ loop:
     # No new key this tick: 0 means EOF/nothing to read.
     beq x11, x10, idle
 
-    # Not Enter: chtpm owns it, ignore.
-    bne x11, x2, ignore
+    # Enter FIRST. The approve/deny labels sit below this block; an earlier
+    # version put them above it, which stranded "exec horn_turn" inside the
+    # deny branch where nothing could reach it, so Enter fell through to the
+    # approve branch and every submitted message silently vanished.
+    bne x11, x2, not_enter
 
-    # Enter: run the turn, then re-render.
     exec ../ops/+x/horn_turn.+x
     hit_frame
     j loop
 
-ignore:
+not_enter:
+    # Approve / deny for gated tools (see the "gate" list in
+    # tools/horn_tools.json). These reach us at all only because horn_turn
+    # detaches itself: the pal loop dispatches it with a BLOCKING exec, so a
+    # turn that stopped to ask for approval would wedge the only process
+    # able to deliver the answer.
+    li x12, 49                  # '1' = approve
+    beq x11, x12, approve
+    li x12, 48                  # '0' = deny
+    beq x11, x12, deny
+
+    # Anything else belongs to chtpm's own handling.
+    j loop
+
+approve:
+    exec ../ops/+x/horn_decide.+x y
+    j loop
+
+deny:
+    exec ../ops/+x/horn_decide.+x n
     j loop
 
 idle:
+    # Poll for a pending approval and republish when one appears, so the
+    # prompt is on screen during the window where horn_turn is blocked
+    # waiting for an answer. This is the exact moment a person is looking
+    # at the box, so it must not depend on anything else having repainted.
+    exec ../ops/+x/horn_publish_pending.+x
     # ~120ms. Fast enough that a reply appears to land immediately,
     # slow enough that an idle session is not spinning a core.
     sleep 120000
