@@ -139,7 +139,13 @@ if ((Test-Path $FRAME) -and (Get-Item $FRAME).Length -gt 0) {
 # Both fail today, deliberately reported rather than hidden, so this harness
 # cannot go green while the game is unplayable.
 $playerCash = 0.0
-$playerApp = "projects\wsr-pal\pieces\apps\player_app\state.txt"
+# The player is a PIECE, not an app: projects/wsr-pal/pieces/player_you/state.txt.
+# That is the same file wsr_compose_frame.c:416 reads for the "Your Wallet" line.
+# This harness previously read apps/player_app/state.txt, which is EMPTY, and so
+# reported the player as having $0.00 and the game as unplayable - a pure
+# measurement bug that produced a false negative on the game's most important
+# property. Verified against a live UI: the wallet really does render ~1038.
+$playerApp = "projects\wsr-pal\pieces\player_you\state.txt"
 if (Test-Path $playerApp) {
     $m = [regex]::Match((Get-Content $playerApp -Raw), '(?m)^cash=([\d.\-]+)')
     if ($m.Success) { $playerCash = [double]$m.Groups[1].Value }
