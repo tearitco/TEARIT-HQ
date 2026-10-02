@@ -7,7 +7,14 @@
 # the real frame the renderer would draw. No mocking anywhere: this is
 # the whole harness, driven headlessly.
 #
-# Usage: bash scripts/e2e.sh [clean|keep]
+# Usage: timeout <seconds> bash scripts/e2e.sh [clean|keep]
+#
+# The `timeout` wrapper is REQUIRED, not advisory - see
+# CPU-AND-SESSION-SAFETY.md: "Every automated test must be timeout-wrapped".
+# The EXIT trap below is the other half of that rule, because timeout does
+# not reliably kill backgrounded children and this suite starts three.
+#
+# Recommended: timeout 900 bash scripts/e2e.sh
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -243,6 +250,40 @@ wait_frame() {  # wait until the frame matches a pattern, or time out
     done
     return 1
 }
+
+# CPU-AND-SESSION-SAFETY.md: "Every automated test must be timeout-wrapped"
+# and "timeout does not reliably kill backgrounded children of the script it
+# wraps - verify no leftover process afterward and clean up by PID directly".
+#
+# Both halves are here: this script refuses to run unbounded, and the EXIT
+# trap reaps whatever a timeout or an interrupt left behind. Previously the
+# suite had neither, so an interrupted run left a live parser, renderer,
+# keyboard_input and pal loop behind - which is how orphans accumulated.
+OUR_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+our_pids() {
+    ps -eo pid,args 2>/dev/null \
+      | grep -F "$OUR_ROOT" \
+      | grep -vE "grep -F|e2e\.sh" \
+      | awk '{print $1}'
+}
+
+reap() {
+    local pids sig
+    for sig in TERM KILL; do
+        pids=$(our_pids)
+        [ -z "$pids" ] && return 0
+        kill -"$sig" $pids 2>/dev/null
+        sleep 0.5
+    done
+}
+
+# Reap on ANY exit, including an interrupt or an external kill of this
+# script. Matched on our absolute project path, never on bare binary
+# names: `keyboard_input` and `renderer` are house-wide binaries
+# (pieces/system/input_dispatcher, pieces/display) and the user's own
+# windows must never be touched.
+trap 'reap' EXIT INT TERM
 
 cleanup() {
     # Match on argv TAILS, not on "$SCRIPT_DIR/system/...".

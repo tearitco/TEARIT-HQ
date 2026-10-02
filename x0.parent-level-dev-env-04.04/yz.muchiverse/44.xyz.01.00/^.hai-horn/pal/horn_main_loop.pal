@@ -35,6 +35,8 @@ li x1, 0                    # byte cursor into the interact relay
 li x2, 13                   # Enter
 li x10, 0                   # scratch / "no key"
 li x12, 0                   # comparison scratch
+li x13, 0                   # idle-tick counter for the pending poll
+li x14, 20                  # poll cadence, in ticks
 
 # Start the cursor at the CURRENT END of the relay, not at 0. The relay is
 # append-only and is NOT cleared between sessions, so a fresh pal loop
@@ -88,12 +90,26 @@ deny:
     j loop
 
 idle:
-    # Poll for a pending approval and republish when one appears, so the
-    # prompt is on screen during the window where horn_turn is blocked
-    # waiting for an answer. This is the exact moment a person is looking
-    # at the box, so it must not depend on anything else having repainted.
+    # Poll for a pending approval, but NOT every tick.
+    #
+    # hq-cpu-safety.md 3c: anything added inside a tick loop that touches
+    # more than one file needs an explicit answer to how often it actually
+    # needs to run. This poll runs while the session is idle and the answer
+    # is almost always "nothing pending" - and it costs file I/O, so every
+    # tick is spending real CPU to learn nothing.
+    #
+    # Every 20th tick is ~2.4s at the 120ms sleep below. That is well
+    # inside human reaction time for noticing a prompt appear, and it cuts
+    # the idle cost by 20x. horn_turn ALSO publishes the moment it creates
+    # a prompt, so this poll is only the belt-and-braces path, not the
+    # primary one - which is what makes a slow cadence acceptable here.
+    addi x13, x13, 1
+    li x14, 20
+    bne x13, x14, skip_pending_poll
+    li x13, 0
     exec ../ops/+x/horn_publish_pending.+x
-    # ~120ms. Fast enough that a reply appears to land immediately,
-    # slow enough that an idle session is not spinning a core.
+skip_pending_poll:
+    # ~120ms between ticks. NEVER remove this sleep - hq-cpu-safety.md
+    # names the house crash that came from an unthrottled idle-poll loop.
     sleep 120000
     j loop

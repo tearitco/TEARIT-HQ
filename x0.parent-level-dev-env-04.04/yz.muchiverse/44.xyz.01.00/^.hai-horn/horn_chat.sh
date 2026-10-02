@@ -38,34 +38,51 @@ export PRISC_PROJECT_ID="hai-horn"
 mkdir -p ops/+x pieces/horn pieces/display pieces/keyboard pieces/system \
          pieces/os pieces/apps/player_app/manager "$HORN_SESSIONS"
 
-# Count live HORN processes of ours. Zero before launch, exactly one after.
-# From the house J2 testing guide, MISTAKE #3: concurrent instances each
-# poll the SAME relay with their own cursor and race for the same key, and
-# that alone accounts for most "flaky, unreproducible" behaviour - there is
-# never one ground truth to check against. The guide says not to put a
-# guard in production code (multiple real windows may be legitimate later),
-# so this lives in the launcher and the test procedure, not in the ops.
-count_ours() {
-    { pgrep -f "horn_main_loop.pal" 2>/dev/null
-      pgrep -f "chtpm_parser_pal layouts" 2>/dev/null
-      pgrep -f "keyboard_input" 2>/dev/null
-      pgrep -f "ops/+x/horn_turn" 2>/dev/null
-      pgrep -f "ai-horn/system/renderer" 2>/dev/null
-      pgrep -f "\./system/renderer" 2>/dev/null
-    } | sort -u | grep -v "^$$\$$" | wc -l
+# ── process hygiene ───────────────────────────────────────────────────
+#
+# TWO house rules from CPU-AND-SESSION-SAFETY.md that this file previously
+# broke, both found by reading the doc after being told CPU safety was not
+# being followed:
+#
+#   1. "pkill may be sandboxed/blocked in some environments (every
+#      invocation can return non-zero regardless of pattern). Use
+#      `ps aux | grep` + targeted `kill <pid>` instead of assuming pkill
+#      works."  -> every kill below is ps + kill by PID.
+#
+#   2. "Never touch the user's own live testing sessions - a long-running
+#      process you didn't start is very likely the user's own open window."
+#      This one was actively dangerous: the previous patterns included bare
+#      `keyboard_input` and `./system/renderer`, and BOTH are house-wide
+#      names - pieces/system/input_dispatcher/plugins/keyboard_input.c and
+#      pieces/display/renderer.c are core house binaries. Killing them
+#      would have taken out the user's own open windows.
+#
+# So: match on THIS project's absolute path only. That is the one string
+# that cannot collide with another project, because the path contains the
+# project directory name.
+
+OUR_ROOT="$(cd "$SCRIPT_DIR" && pwd)"
+
+# Print the PIDs of our processes: anything whose command line contains our
+# own absolute project root. Excludes this script and its own shell.
+our_pids() {
+    ps -eo pid,args 2>/dev/null       | grep -F "$OUR_ROOT"       | grep -vE "grep -F|horn_chat\.sh" \
+      | awk '{print $1}'
 }
 
-# Kill every one of ours by full path. Name-based pkill is unreliable on
-# this house: the tree path contains '&.widgits' and '^.hai-horn', and the
-# guide records pkill failing to match binaries whose path carries those.
+count_ours() { our_pids | wc -l; }
+
+# TERM first so a turn gets the chance to finish writing, then verify and
+# escalate to KILL for whatever is still there.
 kill_ours_hard() {
-    pkill -9 -f "horn_main_loop.pal"       2>/dev/null
-    pkill -9 -f "chtpm_parser_pal layouts" 2>/dev/null
-    pkill -9 -f "ops/+x/horn_turn"         2>/dev/null
-    pkill -9 -f "keyboard_input"           2>/dev/null
-    pkill -9 -f "ai-horn/system/renderer"  2>/dev/null
-    pkill -9 -f "\./system/renderer"      2>/dev/null
-    sleep 0.5
+    local pids sig
+    for sig in TERM KILL; do
+        pids=$(our_pids)
+        [ -z "$pids" ] && return 0
+        # shellcheck disable=SC2086
+        kill -"$sig" $pids 2>/dev/null
+        sleep 0.6
+    done
 }
 
 kill_all() {
@@ -80,19 +97,11 @@ kill_all() {
     # Layer 3: the flag the renderer polls.
     printf 'q' > "$QUIT_FLAG"
     sleep 0.3
-    # Layer 4: the pal module. chtpm_parser_pal FORKS this from the
-    # layout's <module> tag, so it is the parser's child, not the
-    # orchestrator's - killing the parser leaves it running and it goes on
-    # tailing the interact relay forever.
-    #
-    # Match on the .pal argument only. pkill -f takes an EXTENDED REGEX,
-    # so a pattern containing the binary's own name would treat the '+' in
-    # "prisc+x" as a quantifier ("prisc" + one-or-more "c" + "x") and
-    # match nothing - which is why this layer silently did nothing until
-    # the pattern was narrowed to a plain substring.
-    pkill -TERM -f "horn_main_loop.pal" 2>/dev/null
-    sleep 0.3
-    pkill -KILL -f "horn_main_loop.pal" 2>/dev/null
+    # Layer 4: everything still of ours, by absolute path. This covers the
+    # pal module, which chtpm_parser_pal FORKS from the layout's <module>
+    # tag and so is not in the launcher's process group - killing the
+    # parser alone leaves it tailing the interact relay forever.
+    kill_ours_hard
     if [ -f "$PROC_LIST" ]; then
         while read -r pid name; do
             [ -n "${pid:-}" ] && kill -KILL "$pid" 2>/dev/null
