@@ -11,6 +11,14 @@ system/egg_window
 system/emoji_gen_atlas
 system/emoji_xtract
 
+# 2026-10-02 - the same system binaries, but built as native Windows .exe
+# (button.ps1 on win32), and nested one or more levels down under a project
+# root. The entries above are extension-less and root-relative, so they match
+# neither the .exe suffix nor a path like
+# x0.../WSR_PAL-PREFERED/system/renderer - all 7 of these were untracked AND
+# unignored, i.e. one `git add -A` away from committing build output.
+**/system/*.exe
+
 # Generated runtime/session state - grows large, regenerated every launch,
 # never meaningful to diff/commit.
 pieces/display/frame_history.txt
