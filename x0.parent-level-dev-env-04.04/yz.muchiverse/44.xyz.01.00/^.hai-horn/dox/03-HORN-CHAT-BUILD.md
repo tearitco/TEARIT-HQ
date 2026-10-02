@@ -56,7 +56,43 @@ chtpm_parser_pal      parses layouts/horn_chat.chtpm
 | `ops/horn_chat_backend.c` | the LLM transport, provider-agnostic. Pure transport: no history, no layout |
 | `ops/horn_publish.c` | project history → `view.txt` / `state.txt` + pulse the frame |
 | `ops/horn_completions.c` | `@` path completion |
+| `ops/horn_tool_exec.c` | the tool allowlist gate + `list_dir`/`read_file`/`grep_files` |
+| `tools/horn_tools.json` | tool definitions + the name→op map. Adding a tool = edit this + drop in an op |
 | `system/keyboard_input.c`, `system/renderer.c` | local copies (no canonical version exists to compile in place) |
+
+### Tools
+
+HORN can call tools, and it is the reason this matters: HORN is the model
+that will help build HALO, and an IRL harness comparing two models needs the
+tool to fire *consistently* or the comparison is measuring noise.
+
+**`tools/horn_tools.json` is the entire security boundary.** A tool the
+model asks for that is not in the `ops` map is refused, never dispatched —
+a hallucinated tool name must not become a process launch. Adding a tool
+needs no C: drop a binary in `ops/+x/`, name it in the map. That is the
+seam HALO's Concept Bank ops will go through.
+
+Three read-only tools ship now: `list_dir`, `read_file`, `grep_files`.
+Nothing built in writes, deletes or executes; a mutating tool has to be a
+deliberate edit.
+
+The loop:
+
+```
+horn_turn seeds convo.json (system + user)
+  -> horn_chat_backend  --(exit 10, tool_calls.json)-->  horn_turn
+  -> horn_tool_exec runs each call, appends {"role":"tool",...}
+  -> horn_chat_backend again ... -> exit 0, final text
+```
+
+The transport never executes anything and `horn_tool_exec` is the only
+place a tool name is resolved, so there is exactly one file to audit.
+
+**`!` forces a tool call.** Measured: with `tool_choice:"auto"` a model
+fires 8–15 times out of 10 depending on provider; forced is 10/10. Forcing
+on *every* request cannot terminate, though — `required` also applies after
+a tool result — so `!` forces only the first call of the turn and the rest
+of the loop goes back to `auto`.
 
 ### Providers
 
@@ -135,6 +171,43 @@ per stale 13 — against whatever is in `gui_state` right now. Observed live:
 phantom turns in the transcript after a restart, duplicating history.
 
 The loop now seeds its cursor with `read_pos` at startup.
+
+### 4. `grep_files` let the model find its own question
+
+Searching the project root hit `chats/HORN_SESSIONS/transcript.txt`, which
+contains the model's previous output — including the question it had just
+been asked. So "find where MAX_TOOL_ROUNDS is defined" matched the question
+text before the real source, and the model confidently reported a line
+number that was really its own prompt echoed back. `chats/` and `pieces/`
+are now refused by name, with the reason given.
+
+The same pass fixed `grep_files` treating a file path as a directory,
+which reported "no matches in 0 files" for a symbol that was definitely in
+the file it was pointed at.
+
+### 5. The tool loop could not see its own results
+
+The transport re-seeded `convo.json` on every call, so within one user turn
+each round wiped the tool results. The model saw `system + user + a fresh
+tool call` every time, had no memory, and re-issued the same call until the
+round cap — a hang that burned six live requests per turn. Conversation
+seeding moved to `horn_turn`, which owns that policy; the transport only
+seeds when running standalone.
+
+Two more from the same build, both caught only by actually running it:
+
+- `post_chat` returned exit 10 without setting `*tools_out`, so `main` read
+  it as "no reply and no tools", printed "groq unavailable" and walked the
+  entire ladder — the tool call was captured correctly and then discarded
+  by the code meant to act on it.
+- `arguments` is a JSON string *containing* escaped JSON. A reader that
+  stopped at the first `"` returned `{\`, so every argument silently
+  vanished and `list_dir` answered with the project root every time.
+
+And a warning worth keeping: the first version of the suite reported
+"no leaked processes" while 30 orphaned renderer/parser pairs were running,
+because the check reused the teardown's own broken pattern. A teardown
+assertion that shares the teardown's pattern cannot detect teardown failure.
 
 ### 3. `pkill -f` silently matched nothing
 

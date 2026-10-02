@@ -314,6 +314,76 @@ else bad "listing not in the transcript"; fi
 [ "$(turn_count)" = "$before" ] && ok "completion did not go to the model, and cost no turn" \
                                || bad "completion was sent as a chat turn"
 
+# ── tools ──────────────────────────────────────────────────────────────
+# These run whether or not the API is up: horn_tool_exec has no network in
+# it. The live model-driven tool test is below and is skipped without one.
+TOOL=ops/+x/horn_tool_exec.+x
+
+echo "=== tool allowlist (offline) ==="
+out=$($TOOL list_dir '{"path":"ops"}' 2>&1)
+case "$out" in
+  *"horn_turn.c"*) ok "list_dir lists the project" ;;
+  *) bad "list_dir returned nothing useful: ${out:0:80}" ;;
+esac
+
+out=$($TOOL read_file '{"path":"tools/horn_tools.json","max_bytes":400}' 2>&1)
+case "$out" in
+  *horn_tools.json*|*HORN*) ok "read_file returns file contents" ;;
+  *) bad "read_file failed: ${out:0:80}" ;;
+esac
+
+out=$($TOOL grep_files '{"pattern":"MAX_TOOL_ROUNDS","path":"ops/horn_turn.c"}' 2>&1)
+case "$out" in
+  *"#define MAX_TOOL_ROUNDS 6"*) ok "grep_files greps a FILE path" ;;
+  *) bad "grep_files on a file path failed: ${out:0:90}" ;;
+esac
+
+# The allowlist is the security boundary: a tool the model invents must be
+# refused, not dispatched.
+out=$($TOOL definitely_not_a_real_tool '{"path":"/"}' 2>&1)
+case "$out" in
+  *"not registered"*) ok "unregistered tool is refused" ;;
+  *) bad "UNREGISTERED TOOL WAS NOT REFUSED: ${out:0:90}" ;;
+esac
+
+# Runtime trees hold this session's own transcript; grepping them returns
+# the model's own question echoed back, which it then reports as a finding.
+out=$($TOOL grep_files '{"pattern":"tool","path":"chats"}' 2>&1)
+case "$out" in
+  *"refusing to search"*) ok "grep refuses the session transcript" ;;
+  *) bad "grep searched the transcript: ${out:0:90}" ;;
+esac
+
+out=$($TOOL read_file '{"path":"/etc/shadow"}' 2>&1)
+case "$out" in
+  *"error:"*) ok "unreadable file returns an error, not a crash" ;;
+  *) bad "read_file on /etc/shadow: ${out:0:90}" ;;
+esac
+
+echo "=== live tool use through the model (live API only) ==="
+if [ "$API_UP" = 1 ]; then
+    rm -f chats/HORN_SESSIONS/transcript.txt
+    ./horn_chat.sh send "Use grep_files to find where MAX_TOOL_ROUNDS is defined in ops/horn_turn.c, then tell me the number." >/dev/null 2>&1
+    if grep -q "tool: grep_files" "$TRANSCRIPT"; then
+        ok "model invoked grep_files through the loop"
+    else
+        bad "model did not use a tool: $(tail -2 "$TRANSCRIPT" | tr '\n' ' ' | cut -c1-90)"
+    fi
+    if grep -q "#define MAX_TOOL_ROUNDS 6" "$TRANSCRIPT"; then
+        ok "tool result fed back to the model and used in its answer"
+    else
+        bad "tool result never reached the model"
+    fi
+    # A tool-using turn must still end with a plain answer, not a loop.
+    if grep -q "horn: " "$TRANSCRIPT" && ! grep -q "stopped:" "$TRANSCRIPT"; then
+        ok "tool turn terminated with an answer"
+    else
+        bad "tool turn did not terminate cleanly"
+    fi
+else
+    echo "  SKIP  model-driven tool test needs a live provider"
+fi
+
 echo "=== persistence across a restart ==="
 # Use whatever the session actually recorded. In the offline branch that is
 # the failed pipeline check, not the 6-times-7 prompt.
