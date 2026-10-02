@@ -164,3 +164,10 @@ x0.parent-level-dev-env-04.04_*.7z
 # stray `git add -A` cannot publish it.
 **/state/raw_poolside.txt
 **/raw_poolside.txt
+
+# Raw provider keys that match NEITHER *_api_key.txt nor the explicit
+# raw_poolside.txt rule above. Matching by name is whack-a-mole - a new
+# key file has been created for each provider so far and every one needed
+# its own line. Rule: any file under a state/ dir whose name starts with
+# "raw_" is a pasted secret.
+**/state/raw_*.txt
