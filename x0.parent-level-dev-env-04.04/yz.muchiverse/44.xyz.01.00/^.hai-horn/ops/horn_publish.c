@@ -105,10 +105,9 @@ int main(void) {
     if (dir && asprintf(&tp, "%s/transcript.txt", dir) < 0) tp = NULL;
     free(dir);
 
-    char view_path[PATH_BUF], state_path[PATH_BUF], changed_path[PATH_BUF];
+    char view_path[PATH_BUF], state_path[PATH_BUF];
     snprintf(view_path,    sizeof(view_path),    "%s/pieces/apps/player_app/view.txt", project_root);
     snprintf(state_path,   sizeof(state_path),   "%s/pieces/apps/player_app/state.txt", project_root);
-    snprintf(changed_path, sizeof(changed_path), "%s/pieces/apps/player_app/state_changed.txt", project_root);
 
     /* Ring buffer of the last MAX_LINES records: the frame is a fixed-size
      * terminal box, so an ever-growing view.txt just pushes the input line
@@ -226,10 +225,27 @@ int main(void) {
         fclose(sf);
     }
 
-    /* The pulse chtpm's main loop watches. Without this grow, the state
-     * files above are written but never re-read and the display freezes. */
-    FILE *cf = fopen(changed_path, "ab");
-    if (cf) { fprintf(cf, "H\n"); fclose(cf); }
+
+/* Only frame_changed.txt. NOT state_changed.txt.
+ *
+ * chtpm's main loop reacts to state_changed.txt growth by doing a FULL
+ * parse_chtm() - and a re-parse rebuilds every element from the layout
+ * file, which empties the active cli_io's input_buffer. The follow-up
+ * sync_cli_input_from_gui_state() deliberately SKIPS the active element
+ * (that is what lets typing work), so the buffer is wiped and never
+ * refilled.
+ *
+ * Observed: the composer held "Hi" correctly, and ~1.5s later with no
+ * input at all the box went empty. Caught by sampling gui_state and the
+ * frame together - gui_state still said "Hi", so it was a render
+ * regression, not a lost keystroke. state_changed grew by exactly the 8
+ * bytes a publish writes, in the same sample where the box emptied.
+ *
+ * frame_changed.txt alone is enough: compose_frame() calls load_vars() on
+ * every pass regardless, so state.txt values are picked up and the ${...}
+ * substitutions refresh without a forced re-parse. Nothing here needs the
+ * destructive path. */
+
 
     /* Frame marker: tells the renderer a new frame is worth drawing. */
     char fc[PATH_BUF];

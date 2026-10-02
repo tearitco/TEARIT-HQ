@@ -28,6 +28,7 @@
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <string.h>
 #include <ctype.h>
 #include <dirent.h>
@@ -65,6 +66,32 @@ static void resolve_root(void) {
     if (env && env[0]) { snprintf(project_root, sizeof(project_root), "%s", env); return; }
     if (getcwd(project_root, sizeof(project_root)) == NULL)
         snprintf(project_root, sizeof(project_root), ".");
+}
+
+
+/* Append to a fixed buffer, returning the NEW offset, clamped.
+ *
+ * snprintf returns the length it WOULD have written, so
+ *     o += snprintf(out + o, out_sz - o, ...)
+ * overshoots once the output is truncated. The next call then computes
+ * out_sz - o with o > out_sz, which in size_t arithmetic is a number near
+ * 2^64, and glibc's printf machinery tries to allocate it:
+ *     xrealloc: cannot allocate 18446744071964721152 bytes
+ * That aborted the whole suite mid-run, from an ordinary long tool result.
+ *
+ * Returns the offset actually written, never more than out_sz - 1, so the
+ * next call always has a non-negative remaining size. */
+static size_t appendf(char *buf, size_t sz, size_t off, const char *fmt, ...)
+    __attribute__((format(printf, 4, 5)));
+static size_t appendf(char *buf, size_t sz, size_t off, const char *fmt, ...) {
+    if (off >= sz) return sz - 1;
+    va_list ap;
+    va_start(ap, fmt);
+    int n = vsnprintf(buf + off, sz - off, fmt, ap);
+    va_end(ap);
+    if (n < 0) return off;
+    size_t wrote = (size_t)n;
+    return (wrote >= sz - off) ? sz - 1 : off + wrote;
 }
 
 /* ── tiny JSON readers ────────────────────────────────────────────────
@@ -195,20 +222,20 @@ static int tool_list_dir(const char *args, char *out, size_t out_sz) {
     qsort(names, (size_t)n, sizeof(char *), cmp_entry);
 
     size_t o = 0;
-    o += (size_t)snprintf(out + o, out_sz - o, "%s (%d entries)\n", rel, n);
+    o = appendf(out, out_sz, o, "%s (%d entries)\n", rel, n);
     for (int i = 0; i < n && o < out_sz - PATH_BUF - 8; i++) {
         char p[PATH_BUF];
         snprintf(p, sizeof(p), "%s/%s", full, names[i]);
         struct stat st;
         int is_dir = (stat(p, &st) == 0 && S_ISDIR(st.st_mode));
-        o += (size_t)snprintf(out + o, out_sz - o, "  %s%s\n",
+        o = appendf(out, out_sz, o, "  %s%s\n",
                               names[i], is_dir ? "/" : "");
         free(names[i]);
     }
     if (truncated)
-        o += (size_t)snprintf(out + o, out_sz - o,
-                              "  ... (more than %d entries; listing truncated)\n",
-                              LIST_MAX_ENTRIES);
+        o = appendf(out, out_sz, o,
+                    "  ... (more than %d entries; listing truncated)\n",
+                    LIST_MAX_ENTRIES);
     return 0;
 }
 
@@ -323,20 +350,20 @@ static int tool_grep_files(const char *args, char *out, size_t out_sz) {
     if (stat(root, &rst) == 0 && S_ISREG(rst.st_mode)) {
         size_t o = 0;
         int found = 0;
-        o += (size_t)snprintf(out + o, out_sz - o, "grep /%s/ for /%s/\n", rel, pat);
+        o = appendf(out, out_sz, o, "grep /%s/ for /%s/\n", rel, pat);
         FILE *f1 = fopen(root, "rb");
-        if (!f1) { snprintf(out + o, out_sz - o, "error: cannot read '%s'", rel); return 1; }
+        if (!f1) { appendf(out, out_sz, o, "error: cannot read '%s'", rel); return 1; }
         char line[4096];
         int ln = 0;
         while (fgets(line, sizeof(line), f1) && found < max && o < out_sz - 1024) {
             ln++;
             if (regexec(&re, line, 0, NULL, 0) == 0) {
-                o += (size_t)snprintf(out + o, out_sz - o, "%s:%d: %.300s\n", rel, ln, line);
+                o = appendf(out, out_sz, o, "%s:%d: %.300s\n", rel, ln, line);
                 found++;
             }
         }
         fclose(f1);
-        if (!found) snprintf(out + o, out_sz - o, "no matches in %s\n", rel);
+        if (!found) appendf(out, out_sz, o, "no matches in %s\n", rel);
         regfree(&re);
         return 0;
     }
@@ -357,7 +384,7 @@ static int tool_grep_files(const char *args, char *out, size_t out_sz) {
 
     size_t o = 0;
     int    found = 0, scanned = 0;
-    o += (size_t)snprintf(out + o, out_sz - o, "grep /%s/ for /%s/\n", pat, rel);
+    o = appendf(out, out_sz, o, "grep /%s/ for /%s/\n", pat, rel);
 
     while (sp > 0 && found < max && o < out_sz - 1024) {
         char *dir = stack[--sp];
@@ -402,7 +429,7 @@ static int tool_grep_files(const char *args, char *out, size_t out_sz) {
                     if (strncmp(p, project_root, rootlen) == 0 && p[rootlen] == '/'
                         && p[rootlen + 1] != '\0')
                         shown = p + rootlen + 1;
-                    o += (size_t)snprintf(out + o, out_sz - o, "%s:%d: %.300s\n",
+                    o = appendf(out, out_sz, o, "%s:%d: %.300s\n",
                                           shown, ln, line);
                     found++;
                 }
@@ -414,9 +441,9 @@ static int tool_grep_files(const char *args, char *out, size_t out_sz) {
     }
     for (int i = 0; i < sp; i++) free(stack[i]);
 
-    if (found == 0) snprintf(out + o, out_sz - o, "no matches in %d files\n", scanned);
+    if (found == 0) appendf(out, out_sz, o, "no matches in %d files\n", scanned);
     else if (found >= max)
-        snprintf(out + o, out_sz - o, "... (stopped at max_matches=%d)\n", max);
+        appendf(out, out_sz, o, "... (stopped at max_matches=%d)\n", max);
 
     regfree(&re);
     return 0;
@@ -934,7 +961,7 @@ static int tool_run_script(const char *args, char *out, size_t out_sz) {
             killpg(pid, SIGKILL);
             waitpid(pid, &st, 0);
             size_t o = strlen(buf);
-            snprintf(buf + o, out_sz - o, "\n[terminated after %d s]", tmo);
+            o = appendf(buf, out_sz, o, "\n[terminated after %d s]", tmo);
             got = strlen(buf);
             goto done;
         }
