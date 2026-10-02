@@ -1,0 +1,96 @@
+{
+  "_comment": [
+    "HORN's tool manifest. Two jobs, one file:",
+    "  \"tools\" is spliced into the request verbatim as the OpenAI `tools`",
+    "      array. It must stay a valid OpenAI tool definition - no extra",
+    "      keys, providers reject unknown fields.",
+    "  \"ops\"   maps a tool name to the op binary that executes it. This is",
+    "      the ENTIRE security boundary: a tool the model asks for that is",
+    "      not in this map is refused, never dispatched.",
+    "",
+    "Adding a tool needs no C changes: drop the binary in ops/+x/ and add",
+    "an entry here. That is deliberate - HALO will want Concept Bank ops",
+    "and this is the seam they go through.",
+    "",
+    "A value of \"builtin:<name>\" runs a handler compiled into",
+    "ops/horn_tool_exec.c. Any other value is executed as",
+    "ops/+x/<value>.+x with the raw JSON as argv[1].",
+    "",
+    "Everything registered here is READ-ONLY by design while the loop is",
+    "being proved out. Nothing here writes, deletes or executes anything.",
+    "Anything destructive must be added deliberately, with the reasoning in",
+    "a comment next to it."
+  ],
+
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "list_dir",
+        "description": "List the files and directories at a path. Use this to find out what exists before reading anything. Paths may be absolute or relative to the project root.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Directory to list. Use \".\" for the project root."
+            }
+          },
+          "required": ["path"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "read_file",
+        "description": "Read a UTF-8 text file and return its contents. Use this after list_dir to inspect source, configs or docs.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "File to read."
+            },
+            "max_bytes": {
+              "type": "integer",
+              "description": "Optional cap on bytes returned. Defaults to 8000."
+            }
+          },
+          "required": ["path"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "grep_files",
+        "description": "Search file contents for a regular expression and return matching lines with file and line numbers. Use this to find where something is defined or referenced.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "pattern": {
+              "type": "string",
+              "description": "POSIX extended regular expression."
+            },
+            "path": {
+              "type": "string",
+              "description": "Directory to search under. Use \".\" for the project root."
+            },
+            "max_matches": {
+              "type": "integer",
+              "description": "Optional cap on matches returned. Defaults to 60."
+            }
+          },
+          "required": ["pattern"]
+        }
+      }
+    }
+  ],
+
+  "ops": {
+    "list_dir":   "builtin:list_dir",
+    "read_file":  "builtin:read_file",
+    "grep_files": "builtin:grep_files"
+  }
+}

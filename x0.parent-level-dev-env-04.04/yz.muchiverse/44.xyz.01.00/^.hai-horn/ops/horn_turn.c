@@ -29,6 +29,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 
 #ifndef MAX_PATH
 #define MAX_PATH 4096
@@ -302,6 +303,297 @@ static void run_completions(const char *partial) {
     free(path);
 }
 
+
+/* Read a JSON string value's body, WITHOUT terminating early on an escaped
+ * quote, and without unescaping it.
+ *
+ * This exists because of `arguments`. The tool call carries
+ *   "arguments": "{\"path\":\"./ops\"}"
+ * - a JSON string whose content is itself JSON. A reader that stops at the
+ * first '"' returns `{\` and every argument silently vanishes, so the tool
+ * falls back to its default path. Observed live as list_dir answering with
+ * the project root every single time, and the model re-issuing the same
+ * useless call until the round limit. Keep the escapes; the caller
+ * unescapes once, deliberately. */
+static int read_json_string_body(const char *json, const char *key,
+                                 char *out, size_t out_sz) {
+    char pat[128];
+    snprintf(pat, sizeof(pat), "\"%s\"", key);
+    const char *p = json ? strstr(json, pat) : NULL;
+    if (!p) return 0;
+    p += strlen(pat);
+    while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r') p++;
+    if (*p != ':') return 0;
+    p++;
+    while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r') p++;
+    if (*p != '"') return 0;
+    p++;
+
+    size_t o = 0;
+    while (*p && o < out_sz - 1) {
+        if (*p == '\\' && p[1]) {          /* keep the pair, keep going */
+            out[o++] = *p++;
+            out[o++] = *p++;
+            continue;
+        }
+        if (*p == '"') break;                /* real terminator */
+        out[o++] = *p++;
+    }
+    out[o] = '\0';
+    return 1;
+}
+
+/* Unescape in place. The model's `arguments` is a JSON string wrapping a
+ * JSON object, so it arrives with \\" for every quote. The tool op expects
+ * the bare object, and passing it through verbatim would make every
+ * argument key fail to parse. */
+static void unescape_json_body(char *s) {
+    size_t o = 0;
+    for (size_t i = 0; s[i] && o < strlen(s); i++) {
+        if (s[i] == '\\' && s[i + 1]) {
+            i++;
+            switch (s[i]) {
+                case 'n': s[o++] = '\n'; break;
+                case 't': s[o++] = '\t'; break;
+                case 'r': s[o++] = '\r'; break;
+                case '"': s[o++] = '"';  break;
+                case '\\': s[o++] = '\\'; break;
+                case '/': s[o++] = '/';  break;
+                default: s[o++] = s[i];  break;
+            }
+        } else s[o++] = s[i];
+    }
+    s[o] = '\0';
+}
+
+
+/* JSON-escape a string for embedding in a message object. */
+static char *json_escape_local(const char *s) {
+    size_t n = strlen(s);
+    char *out = malloc(n * 6 + 16);
+    if (!out) return NULL;
+    size_t o = 0;
+    for (size_t i = 0; i < n; i++) {
+        unsigned char c = (unsigned char)s[i];
+        switch (c) {
+            case '"':  out[o++] = '\\'; out[o++] = '"';  break;
+            case '\\': out[o++] = '\\'; out[o++] = '\\'; break;
+            case '\n': out[o++] = '\\'; out[o++] = 'n';  break;
+            case '\r': out[o++] = '\\'; out[o++] = 'r';  break;
+            case '\t': out[o++] = '\\'; out[o++] = 't';  break;
+            default:
+                if (c < 0x20) o += (size_t)sprintf(out + o, "\\u%04x", c);
+                else out[o++] = (char)c;
+        }
+    }
+    out[o] = '\0';
+    return out;
+}
+
+/* Seed pieces/horn/convo.json with the system prompt plus this user turn.
+ *
+ * Done HERE, not in the transport: one user turn can be several provider
+ * calls (model -> tool -> model -> tool -> answer), and every one of them
+ * must see the same growing conversation. The transport used to re-seed on
+ * each call, which erased the tool results between rounds. */
+static int seed_convo(const char *user_text) {
+    char *path = NULL;
+    if (asprintf(&path, "%s/pieces/horn/convo.json", project_root) < 0 || !path) return 0;
+
+    char *u = json_escape_local(user_text);
+    if (!u) { free(path); return 0; }
+
+    FILE *f = fopen(path, "wb");
+    if (!f) { free(u); free(path); return 0; }
+    fprintf(f,
+        "[{\"role\":\"system\",\"content\":\"You are HORN, a terminal-based "
+        "assistant working in a code project. Answer clearly and concisely. "
+        "Plain text only, no markdown fences. You have read-only tools for "
+        "listing, reading and searching files; use them when the answer "
+        "depends on the actual contents of the code rather than on "
+        "assumption.\"},{\"role\":\"user\",\"content\":\"%s\"}]",
+        u);
+    fclose(f);
+    free(u);
+    free(path);
+    return 1;
+}
+
+/* ── tool loop ────────────────────────────────────────────────────────
+ *
+ * The transport never executes anything: on exit 10 it has written
+ * pieces/horn/tool_calls.json and left the assistant's tool-call message in
+ * pieces/horn/convo.json. This is where the model asks get acted on.
+ *
+ * Loop shape per turn:
+ *   transport -> (10, tool_calls.json) -> execute each call
+ *             -> append {role:tool, tool_call_id, content} per call
+ *             -> transport again -> ... -> (0, final content) -> done
+ *
+ * MAX_TOOL_ROUNDS is a hard stop. A model that keeps asking for tools
+ * would otherwise spin here forever while the player's terminal looks
+ * merely slow - the loop has to give up and say so. */
+
+#define MAX_TOOL_ROUNDS 6
+
+/* Append one {"role":"tool",...} message to the conversation. */
+static int convo_append_tool(const char *call_id, const char *name, const char *result) {
+    char *cid = json_escape_local(call_id ? call_id : "");
+    char *nm  = json_escape_local(name ? name : "");
+    char *res = json_escape_local(result ? result : "");
+    if (!cid || !nm || !res) { free(cid); free(nm); free(res); return 0; }
+
+    char *msg = NULL;
+    if (asprintf(&msg,
+        "{\"role\":\"tool\",\"tool_call_id\":\"%s\",\"name\":\"%s\","
+        "\"content\":\"%s\"}", cid, nm, res) < 0 || !msg) {
+        free(cid); free(nm); free(res);
+        return 0;
+    }
+
+    char *path = NULL;
+    int ok = 0;
+    if (asprintf(&path, "%s/pieces/horn/convo.json", project_root) >= 0 && path) {
+        char *cur = read_file(path);
+        if (!cur) cur = strdup("[]");
+        char *last = strrchr(cur, ']');
+        if (last) {
+            int empty = 1;
+            for (char *q = cur; q < last; q++) {
+                if (*q != ' ' && *q != '\n' && *q != '\r' && *q != '\t' && *q != '[') { empty = 0; break; }
+            }
+            size_t need = strlen(cur) + strlen(msg) + 8;
+            char *out = malloc(need);
+            if (out) {
+                *last = '\0';
+                snprintf(out, need, "%s%s%s]", cur, empty ? "" : ",", msg);
+                FILE *f = fopen(path, "wb");
+                if (f) { fputs(out, f); fclose(f); ok = 1; }
+                free(out);
+            }
+        }
+        free(cur);
+        free(path);
+    }
+    free(msg); free(cid); free(nm); free(res);
+    return ok;
+}
+
+/* Run ONE tool call through horn_tool_exec and return its stdout.
+ * horn_tool_exec is the allowlist gate - it refuses any tool that is not
+ * in tools/horn_tools.json - so this does not need its own check. */
+static char *execute_tool(const char *name, const char *args_json) {
+    char *op = NULL;
+    if (asprintf(&op, "%s/ops/+x/horn_tool_exec.+x", project_root) < 0 || !op) return NULL;
+
+    int fds[2];
+    if (pipe(fds) != 0) { free(op); return NULL; }
+
+    pid_t pid = fork();
+    if (pid < 0) { close(fds[0]); close(fds[1]); free(op); return NULL; }
+    if (pid == 0) {
+        close(fds[0]);
+        dup2(fds[1], STDOUT_FILENO);
+        close(fds[1]);
+        int devnull = open("/dev/null", O_WRONLY);
+        if (devnull >= 0) { dup2(devnull, STDERR_FILENO); close(devnull); }
+        execl(op, "horn_tool_exec", name, args_json, (char *)NULL);
+        _exit(127);
+    }
+    close(fds[1]);
+    char *buf = malloc(MSG_CAP);
+    if (!buf) { close(fds[0]); waitpid(pid, NULL, 0); free(op); return NULL; }
+    size_t got = 0;
+    ssize_t r;
+    while (got < MSG_CAP - 1 && (r = read(fds[0], buf + got, MSG_CAP - 1 - got)) > 0)
+        got += (size_t)r;
+    buf[got] = '\0';
+    close(fds[0]);
+    int st = 0;
+    waitpid(pid, &st, 0);
+    free(op);
+    return buf;
+}
+
+/* One pass over pieces/horn/tool_calls.json: execute every call, append the
+ * results, and note what happened for the transcript. Returns the number of
+ * calls executed, or -1 if the file could not be read. */
+static int run_tool_calls(const char *prev_sig, char *cur_sig, size_t cur_sz) {
+    char *path = NULL;
+    if (asprintf(&path, "%s/pieces/horn/tool_calls.json", project_root) < 0 || !path) return -1;
+    char *raw = read_file(path);
+    free(path);
+    if (!raw) return 0;
+
+    int executed = 0;
+    if (cur_sig && cur_sz) cur_sig[0] = '\0';
+    char sig_raw[2048];
+    sig_raw[0] = '\0';
+    const char *p = raw;
+    /* Walk the array element by element, one tool-call object at a time. */
+    while ((p = strstr(p, "\"function\"")) != NULL) {
+        const char *obj = p;
+        /* step back to the enclosing '{' */
+        while (obj > raw && *obj != '{') obj--;
+        char call[MSG_CAP];
+        size_t ci = 0;
+        int depth = 0, in_str = 0, esc = 0, done = 0;
+        for (const char *q = obj; *q && !done; q++) {
+            char c = *q;
+            if (in_str) {
+                if (esc) esc = 0;
+                else if (c == '\\') esc = 1;
+                else if (c == '"') in_str = 0;
+            } else {
+                if (c == '"') in_str = 1;
+                else if (c == '{') depth++;
+                else if (c == '}') { depth--; if (depth == 0) done = 1; }
+            }
+            if (ci < MSG_CAP - 1) call[ci++] = c;
+        }
+        call[ci] = '\0';
+
+        char name[256] = "", args[MSG_CAP] = "", id[256] = "";
+        if (!read_json_string_body(call, "id", id, sizeof(id))) id[0] = '\0';
+        if (read_json_string_body(call, "name", name, sizeof(name))) {
+            /* "arguments" is a JSON string containing escaped JSON; pass it
+             * through unescaped so the op receives the object it expects. */
+            if (!read_json_string_body(call, "arguments", args, sizeof(args))) args[0] = '\0';
+            unescape_json_body(args);
+
+            char note[MSG_CAP];
+            snprintf(note, sizeof(note), "%s%s", name, args[0] ? " ..." : "");
+            append_transcript("  tool:", note);
+
+            size_t nl = strlen(sig_raw);
+            snprintf(sig_raw + nl, sizeof(sig_raw) - nl, "%s%s|", name, args);
+
+            char *res = execute_tool(name, args);
+            if (res) {
+                /* Keep the transcript readable: a full file dump would
+                 * scroll the conversation out of a fixed-height box. */
+                char one[600];
+                snprintf(one, sizeof(one), "%s -> %.400s", name, res);
+                for (char *nl = strchr(one, '\n'); nl; nl = strchr(nl, '\n')) *nl = ' ';
+                append_transcript("  tool:", one);
+                convo_append_tool(id, name, res);
+                free(res);
+            } else {
+                convo_append_tool(id, name, "error: tool execution failed");
+            }
+            executed++;
+        }
+        p += 1;
+    }
+    free(raw);
+
+    /* Fingerprint of everything we ran this round. Compared against the
+     * previous round by the caller. */
+    if (cur_sig && cur_sz) snprintf(cur_sig, cur_sz, "%s", sig_raw);
+    if (prev_sig && cur_sig && strcmp(prev_sig, cur_sig) == 0 && cur_sig[0]) return -2;
+    return executed;
+}
+
 int main(void) {
     resolve_root();
 
@@ -358,10 +650,69 @@ int main(void) {
         return 0;
     }
 
-    append_history("user", prompt);
-    append_transcript("you:", prompt);
+    /* '!' forces a tool call this turn. Measured 2026-10-01: with
+     * tool_choice:"auto" a model answers 8-15 times out of 10 depending on
+     * provider, and forced is 10/10 - but forcing on EVERY request would
+     * break ordinary chat, because the model would have to call a tool even
+     * for "hello". So the policy is per-turn and explicit: '!' when you want
+     * the tool to fire, plain text when you want conversation. */
+    int force_tool = 0;
+    const char *ask = prompt;
+    if (*ask == '!') { force_tool = 1; ask++; while (*ask == ' ') ask++; }
 
-    int rc = run_transport(prompt);
+    append_history("user", ask);
+    append_transcript("you:", ask);
+
+    if (!seed_convo(ask)) {
+        append_transcript("horn:", "[could not start the conversation]");
+        publish();
+        return 0;
+    }
+
+    int rc;
+    int rounds = 0;
+    char sig_prev[2048] = "", sig_cur[2048];
+    for (;;) {
+        /* Force only the FIRST request of the turn.
+         *
+         * tool_choice:"required" means "this response MUST contain a tool
+         * call" - on every request, including the one that follows a tool
+         * result. Forcing it throughout the loop therefore cannot terminate:
+         * the model dutifully calls a tool again, gets a result, is forced
+         * to call another, and the turn ends at the round cap with
+         * "[stopped: the model repeated the same tool call]". Observed live.
+         * Forcing once gets what '!' actually means - "use a tool this
+         * turn" - and the rest of the loop is back to auto, so the model
+         * can read the result and answer. */
+        if (force_tool && rounds == 0) setenv("HORN_TOOL_CHOICE", "required", 1);
+        rc = run_transport(ask);
+        unsetenv("HORN_TOOL_CHOICE");
+
+        if (rc != 10) break;                 /* 0 = answer, else a failure */
+        if (++rounds >= MAX_TOOL_ROUNDS) {
+            append_transcript("horn:",
+                "[stopped: the model kept asking for tools and hit the "
+                "round limit]");
+            rc = 2;
+            break;
+        }
+        snprintf(sig_prev, sizeof(sig_prev), "%s", sig_cur);
+        int n = run_tool_calls(sig_prev, sig_cur, sizeof(sig_cur));
+        if (n == -2) {
+            /* The model asked for exactly the same thing again. Executing it
+             * again would produce the same result and the same answer, so
+             * break rather than spin to the round cap looking like a hang. */
+            append_transcript("horn:",
+                "[stopped: the model repeated the same tool call]");
+            rc = 2;
+            break;
+        }
+        if (n <= 0) {
+            append_transcript("horn:", "[stopped: no usable tool call]");
+            rc = 2;
+            break;
+        }
+    }
 
     char reply_path[PATH_BUF];
     snprintf(reply_path, sizeof(reply_path), "%s/pieces/horn/last_reply.txt", project_root);
