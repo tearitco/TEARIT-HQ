@@ -407,6 +407,22 @@ int main(void) {
     if (qf) fclose(qf);
     FILE *wsc = fopen("pieces/display/wsr_screen_changed.txt", "w");
     if (wsc) fclose(wsc);
+    /* Stale saved UI focus makes the whole numbered menu unreachable.
+     * chtpm_parser_pal.c restores this file via
+     * sync_focus_from_saved_active_index() at startup, and its digit
+     * handler is gated on `if (active_index == -1)` - i.e. nav mode. A
+     * value left over from a PREVIOUS session restores a non -1
+     * active_index, which means every digit keystroke is silently
+     * ignored and no menu row can be selected by typing its number.
+     * Live-caught: active_gui_index.txt held 13 from an earlier layout
+     * whose element 13 no longer exists, and the menu was completely
+     * dead to keyboard input while looking perfectly normal on screen.
+     * Session state like this has no business surviving a restart -
+     * same rationale as the frame/pulse/history clears above. */
+    FILE *agi = fopen("pieces/display/active_gui_index.txt", "w");
+    if (agi) fclose(agi);
+    FILE *agi_t = fopen("pieces/display/active_gui_is_typing.txt", "w");
+    if (agi_t) fclose(agi_t);
 
 #ifdef _WIN32
     /* Relative root: absolute paths through emoji/Unicode house folders
