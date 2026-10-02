@@ -666,11 +666,32 @@ int main(int argc, char **argv) {
              * switch needs no parallel state. */
             char target[128];
             snprintf(target, sizeof(target), "%s", cmd + 5);
+            /* APPEND the target to layout_changed.txt - do NOT write
+             * current_layout.txt directly.
+             *
+             * chtpm_parser_pal.c owns current_layout.txt as an in-memory
+             * global and re-exports it on every parse (its own
+             * "EXPORT CURRENT LAYOUT FOR MODULE HEARTBEAT"), so an
+             * external write to that file is simply overwritten on the
+             * next tick - the screen never moves.
+             *
+             * layout_changed.txt IS the inbound command, and is read in
+             * chtpm_parser_pal.c's own main loop:
+             *     if (stat(layout_ch,&st)==0 && st.st_size > last_layout_file_size) {
+             *         ...take the LAST non-empty line...
+             *         strncpy(current_layout, last_line, MAX_PATH-1);
+             *         active_index=-1; focus_index=0; clear_saved_active_index();
+             *         parse_chtm(); initialize_focus(); dirty=1;
+             *     }
+             * i.e. appending a layout path is a real screen switch: it
+             * re-parses AND resets stale focus. It must be an append -
+             * the guard is on the file GROWING, so a truncate-and-write
+             * of equal size would be ignored. */
             char goto_layout[PATH_BUF];
-            snprintf(goto_layout, sizeof(goto_layout), "%s/pieces/display/current_layout.txt", project_root);
-            FILE *gf = fopen(goto_layout, "w");
+            snprintf(goto_layout, sizeof(goto_layout), "%s/pieces/display/layout_changed.txt", project_root);
+            FILE *gf = fopen(goto_layout, "a");
             if (gf) {
-                fprintf(gf, "pieces/chtpm/layouts/%s.chtpm", target);
+                fprintf(gf, "pieces/chtpm/layouts/%s.chtpm\n", target);
                 fclose(gf);
                 snprintf(message, sizeof(message), "Opened %s.", target);
             } else {
