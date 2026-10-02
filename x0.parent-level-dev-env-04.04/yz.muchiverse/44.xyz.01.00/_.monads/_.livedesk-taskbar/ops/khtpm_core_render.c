@@ -5438,10 +5438,18 @@ static void dock_paint_peer(void) {
     g_dock_in_peer_paint = 0;
 }
 
+/* REAL FIX 2026-10-01 - see the map guard inside dock_paint_menu(). */
+static int g_dock_menu_mapped = 0;
+static int g_dock_menu_msx = 0, g_dock_menu_msy = 0;
+static int g_dock_menu_mw = 0, g_dock_menu_mh = 0;
+
 static void dock_paint_menu(void) {
     int i;
     if (g_dock_menu_w <= 0 || g_dock_menu_h <= 0 || g_dock_drop_lo < 1) {
-        if (g_dock_menu_win) XUnmapWindow(dpy, g_dock_menu_win);
+        if (g_dock_menu_win && g_dock_menu_mapped) {
+            XUnmapWindow(dpy, g_dock_menu_win);
+            g_dock_menu_mapped = 0;
+        }
         return;
     }
     if (!g_dock_menu_win) {
@@ -5462,9 +5470,28 @@ static void dock_paint_menu(void) {
             (unsigned)DefaultDepth(dpy, screen));
         g_dock_menu_xft = XftDrawCreate(dpy, g_dock_menu_buf, DefaultVisual(dpy, screen), cmap);
     }
-    XMoveResizeWindow(dpy, g_dock_menu_win, g_dock_menu_sx, g_dock_menu_sy,
-                      (unsigned)g_dock_menu_w, (unsigned)g_dock_menu_h);
-    XMapRaised(dpy, g_dock_menu_win);
+    /* REAL FIX 2026-10-01 - the unconditional XMoveResizeWindow + XMapRaised
+     * below ran on EVERY redraw (this function is called once per paint).
+     * On the real X server that is merely redundant, but the Win32 shim
+     * turns each XMapRaised/XMoveResizeWindow into a freshly posted Windows
+     * message, so the renderer's `while (XPending(dpy)) XNextEvent(...)`
+     * drain never emptied: it re-queued an event every pass, the loop spun
+     * at 100% CPU, and hq_idle_tick()/poll_agent_history() were never
+     * reached again - a relayed click after the menu opened was read by
+     * nobody ("menu opened, then the strip froze and ignored the relay",
+     * reproduced live 2026-10-01). Only move/raise when the geometry really
+     * changed (or the menu is being mapped for the first time), exactly the
+     * "one map, then just repaint" shape the Linux loop gets for free. */
+    if (!g_dock_menu_mapped ||
+        g_dock_menu_msx != g_dock_menu_sx || g_dock_menu_msy != g_dock_menu_sy ||
+        g_dock_menu_mw != g_dock_menu_w || g_dock_menu_mh != g_dock_menu_h) {
+        XMoveResizeWindow(dpy, g_dock_menu_win, g_dock_menu_sx, g_dock_menu_sy,
+                          (unsigned)g_dock_menu_w, (unsigned)g_dock_menu_h);
+        XMapRaised(dpy, g_dock_menu_win);
+        g_dock_menu_mapped = 1;
+        g_dock_menu_msx = g_dock_menu_sx; g_dock_menu_msy = g_dock_menu_sy;
+        g_dock_menu_mw = g_dock_menu_w;  g_dock_menu_mh = g_dock_menu_h;
+    }
     if (g_dock_menu_w > g_dock_menu_buf_w || g_dock_menu_h > g_dock_menu_buf_h) {
         int nw = g_dock_menu_w > g_dock_menu_buf_w ? g_dock_menu_w : g_dock_menu_buf_w;
         int nh = g_dock_menu_h > g_dock_menu_buf_h ? g_dock_menu_h : g_dock_menu_buf_h;
@@ -9390,6 +9417,43 @@ static void history_init_empty(void) {
  * Printable ASCII as-is; Tab=9; Return/Esc/BS same as existing relay;
  * arrows/page 200-205 (already in dispatch_relay_code). Other keys
  * write the raw X11 KeySym so consume can handle_key(ks,0). */
+
+/* REAL, NEW 2026-10-01 - dock/strip cheap TEXT state dump (relay code
+ * 210), the K9 "J2 Testing Guide" standard's step 2 ("a cheap TEXT state
+ * dump, not a PNG frame dump, for verifying what happened"). Needed
+ * specifically because the dock's dropdown rows are activated through
+ * the CLICK path (popup_handle_click(), reached from a relayed
+ * MOUSE_EVENT) - unlike the header cells they have NO digit-nav that
+ * reaches the MANAGER's own hq_focus, so an agent cannot drive them by
+ * keyboard relay alone and must synthesize a click. That click needs
+ * the row's real laid-out x/y/w/h, which lived nowhere an agent could
+ * read before this. Same shape as db-hq's retired code-210
+ * dbhq_dump_debug_state(). Writes #.desktop/strip_dump.txt; only ever
+ * called on an explicit relay code, never on the hot path. */
+static void dock_dump_state(void) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/strip_dump.txt", g_house_root);
+    FILE *f = fopen(path, "w");
+    if (!f) return;
+    fprintf(f, "# dock state dump (relay code 210) is_dock=%d pid=%d\n",
+            window_is_dock(), (int)getpid());
+    fprintf(f, "win x=%d y=%d w=%d h=%d header_nav_hi=%d focus_nav=%d\n",
+            g_win_x, g_win_y, g_win_w, g_win_h, g_dock_header_nav_hi, g_focus_nav);
+    fprintf(f, "menu sx=%d sy=%d w=%d h=%d click_menu=%d click_peer=%d drop_lo=%d drop_hi=%d\n",
+            g_dock_menu_sx, g_dock_menu_sy, g_dock_menu_w, g_dock_menu_h,
+            g_dock_click_menu, g_dock_click_peer, g_dock_drop_lo, g_dock_drop_hi);
+    for (int i = 1; i <= g_n_nav; i++) {
+        Elem *e = g_nav[i - 1];
+        if (!e) continue;
+        fprintf(f, "nav=%d tag=%s id=%s x=%d y=%d w=%d h=%d%s%s label=%s\n",
+                e->nav_index, e->tag, e->id, e->x, e->y, e->w, e->h,
+                (i == g_focus_nav) ? " FOCUS" : "",
+                (g_dock_drop_lo && i >= g_dock_drop_lo && i <= g_dock_drop_hi) ? " DROP" : "",
+                e->label);
+    }
+    fclose(f);
+}
+
 static void dispatch_relay_code(int code) {
     /* REAL, NEW 2026-09-05 - a relay-driven key is Shift-held only if
      * it's one of the explicit shifted-selection codes (220-225 below).
@@ -9398,6 +9462,7 @@ static void dispatch_relay_code(int code) {
      * leak into an unshifted relay arrow and silently extend a
      * selection instead of collapsing it. */
     if (code < 220 || code > 225) g_key_shift = 0;
+    if (code == 210) { dock_dump_state(); return; } /* NEW 2026-10-01 - dock text state dump, see dock_dump_state() */
     if (code == 13) handle_key(XK_Return, 0);
     else if (code == 27) handle_key(XK_Escape, 0);
     else if (code == 8) handle_key(XK_BackSpace, 0); /* real, db-hq's own extra code - harmless no-op for other modes */
@@ -9574,7 +9639,22 @@ static int poll_agent_history(void) {
         if (line[0] != '#') { /* '#'-prefixed lines are audit comments, not commands */
             if (strncmp(line, "MOUSE_EVENT: ", 13) == 0) {
                 int button = 0, mx = 0, my = 0, is_press = 1;
-                int nf = sscanf(line + 13, "%d %d %d %d", &button, &mx, &my, &is_press);
+                char wname[64] = "";
+                /* REAL, NEW 2026-10-01 - the Linux strip parser's own relay
+                 * format is `MOUSE_EVENT: <button> <x> <y> <is_press>
+                 * <window_name>` (khtpm_strip_parser.c mirror_mouse_history()),
+                 * and its apply_captured_mouse() routes the click to the
+                 * header (hq_win), the open popup menu (popup_win) or the
+                 * bottom bar (win) by that name. The Windows port dropped
+                 * the name, so a relayed click always hit popup_handle_click()
+                 * with g_dock_click_menu/g_dock_click_peer both 0 - which
+                 * scans ONLY the header range and makes every dropdown row
+                 * (nav 17-40) unreachable by relayed click, the exact
+                 * "dropdown rows drive fine on Linux, not here" gap. Accept
+                 * the trailing name (optional, so an old 4-field line still
+                 * works) and set the same window context the real ButtonPress
+                 * handler sets from cw before dispatching. */
+                int nf = sscanf(line + 13, "%d %d %d %d %63s", &button, &mx, &my, &is_press, wname);
                 if (nf >= 3 && is_press && (button == 4 || button == 5)) {
                     if (generic_sbar_wheel(mx, my, (button == 5) ? 1 : -1))
                         n++;
@@ -9586,6 +9666,12 @@ static int poll_agent_history(void) {
                     kh_open_cli_io_context_menu(kh_ctx_hit(mx, my), mx, my);
                     n++;
                 } else if (nf >= 3 && is_press && button != 3 && button != 4 && button != 5) {
+                    g_dock_click_menu = (strcmp(wname, "popup_win") == 0 ||
+                                         strcmp(wname, "popup") == 0 ||
+                                         strcmp(wname, "menu") == 0);
+                    g_dock_click_peer = (strcmp(wname, "win") == 0 ||
+                                         strcmp(wname, "bottom") == 0 ||
+                                         strcmp(wname, "peer") == 0);
                     popup_handle_click(mx, my);
                     n++;
                 }

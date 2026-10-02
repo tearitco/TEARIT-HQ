@@ -30,8 +30,12 @@
 #                              or a single character
 #   nav.sh esc                 Escape
 #   nav.sh type <text>         each char in turn (no trailing Enter)
-#   nav.sh click <x> <y> [b]   NAV_PID only: press+release (b default 1;
-#                              b=3 opens the window's context menu)
+#   nav.sh click <x> <y> [b] [win] NAV_PID only: press+release (b default 1;
+#                              b=3 opens the window's context menu). `win`
+#                              names the target so a dock dropdown row can be
+#                              clicked: hq (header, default) / popup (open
+#                              menu) / win (bottom bar) - see the Linux
+#                              strip parser's apply_captured_mouse().
 #   nav.sh string <text>       NAV_PID only: `STRING: <text>` (Cli-io text
 #                              commands, e.g. `string mv 25 26`)
 #   nav.sh frame [n]           last n lines of the strip frame history
@@ -129,8 +133,20 @@ case "${1:-}" in
     ;;
   click)
     [ -n "$NAV_PID" ] || { echo "click needs NAV_PID=<pid>" >&2; exit 1; }
-    x="${2:?usage: nav.sh click <x> <y> [button]}"; y="${3:?usage: nav.sh click <x> <y> [button]}"; b="${4:-1}"
-    printf 'MOUSE_EVENT: %s %s %s 1\nMOUSE_EVENT: %s %s %s 0\n' "$b" "$x" "$y" "$b" "$x" "$y" >> "$RELAY"
+    x="${2:?usage: nav.sh click <x> <y> [button] [window]}"; y="${3:?usage: nav.sh click <x> <y> [button] [window]}"; b="${4:-1}"
+    # 5th field = target window, same as the Linux strip parser's own
+    # mirror_mouse_history()/apply_captured_mouse() format. It is REQUIRED
+    # to click a dock dropdown row: with no name the renderer routes the
+    # click to the header only and the menu rows (nav 17-40) are never
+    # hit-tested. hq=header strip, popup=open dropdown menu, win=bottom bar.
+    w="${5:-hq_win}"
+    case "$w" in
+      hq|header|hq_win)   wname=hq_win ;;
+      popup|menu|popup_win) wname=popup_win ;;
+      win|bottom|peer)    wname=win ;;
+      *)                  wname="$w" ;;
+    esac
+    printf 'MOUSE_EVENT: %s %s %s 1 %s\nMOUSE_EVENT: %s %s %s 0 %s\n' "$b" "$x" "$y" "$wname" "$b" "$x" "$y" "$wname" >> "$RELAY"
     sleep 0.5
     ;;
   string)
@@ -155,7 +171,7 @@ case "${1:-}" in
     sleep 0.5
     ;;
   *)
-    echo "usage: nav.sh {nav <n>|row <n>|key <name>|esc|type <text>|click <x> <y> [b]|string <text>|frame [n]|wait [sec]|hqcell <n>|mgrcode <code>}" >&2
+    echo "usage: nav.sh {nav <n>|row <n>|key <name>|esc|type <text>|click <x> <y> [b] [hq|popup|win]|string <text>|frame [n]|wait [sec]|hqcell <n>|mgrcode <code>}" >&2
     exit 1
     ;;
 esac
