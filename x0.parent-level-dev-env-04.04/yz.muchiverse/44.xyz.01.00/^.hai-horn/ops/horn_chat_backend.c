@@ -63,8 +63,35 @@ typedef struct {
     int no_thinking;
 } Provider;
 
-/* Verified live 2026-10-01. */
+/* Verified live 2026-10-01/02.
+ *
+ * ORDER IS FALLBACK ORDER, and it is measured, not alphabetical. All
+ * three were probed with the SAME deliberately ambiguous prompt ("List the
+ * files in the current directory using the tool.", which does not name a
+ * path) because an unambiguous prompt flatters every provider:
+ *
+ *   groq       15/15 tool_calls across gpt-oss-120b, qwen3.8-27b,
+ *              gpt-oss-20b          - best measured tool reliability
+ *   poolside    8/10 tool_calls     - good, but it sometimes narrates
+ *                                    about the tool instead of calling it
+ *   openrouter  unavailable on this key while the free tier was spent
+ *
+ * Groq leads because tool-calling reliability is the property that matters
+ * for HORN: it is HORN that will help build HALO, and an IRL harness
+ * comparing two models needs the tool to fire consistently or the
+ * comparison is measuring noise. Groq's ~30 req/min also makes it the one
+ * provider here that does not ration you into a handful of calls a day.
+ *
+ * Tool_choice is left at "auto" in the request. Forcing it was measured at
+ * 10/10 on Poolside, but forcing means the model MUST call a tool on every
+ * request, which would break ordinary chat. The policy belongs at the
+ * call site (see horn_turn), not baked into the transport. */
 static const Provider PROVIDERS[] = {
+    { "groq",
+      "https://api.groq.com/openai/v1/chat/completions",
+      "GROQ_API_KEY", "raw_groq.txt",
+      { "openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b", NULL }, 0 },
+
     { "poolside",
       "https://inference.poolside.ai/v1/chat/completions",
       "HORN_POOLSIDE_KEY", "raw_poolside.txt",
@@ -73,8 +100,8 @@ static const Provider PROVIDERS[] = {
     { "openrouter",
       "https://openrouter.ai/api/v1/chat/completions",
       "HORN_API_KEY", "openrouter_api_key.txt",
-      { "nvidia/nemotron-3-ultra-550b-a55b:free",
-        "nvidia/nemotron-3-super-120b-a12b:free",
+      { "nvidia/nemotron-3-super-120b-a12b:free",
+        "nvidia/nemotron-3-ultra-550b-a55b:free",
         "inclusionai/ling-3.0-flash-sante:free", NULL }, 0 },
 };
 #define N_PROVIDERS ((int)(sizeof(PROVIDERS) / sizeof(PROVIDERS[0])))
