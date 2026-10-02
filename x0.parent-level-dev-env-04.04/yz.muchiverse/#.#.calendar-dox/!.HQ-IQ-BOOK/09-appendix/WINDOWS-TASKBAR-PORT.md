@@ -480,3 +480,172 @@ Generalisation worth keeping: on Windows a stale binary from another
 install is a far more common cause of "the rendering is wrong on some
 windows" than an actual rendering bug, and it is invisible to any
 lifecycle that keys on PIDs it wrote itself. Check `status` first.
+
+---
+
+## 10. Learning from Linux: the porting process (worked example, 2026-10-01)
+
+**The house rule, stated once: on Windows, the Linux implementation is
+the spec.** When a Windows behaviour diverges from Linux, the first move
+is to open the Linux twin and read *both* its capture and its consume
+path — not to design a Windows-shaped fix. The instruction that produced
+this section was literally *"the answer is in the linux implimentation.
+always check that. it works fine for the case your describing."* Every
+fix below began by finding the Linux half the port had dropped. This
+also matters because the renderer is one canonical source shared with
+Linux: a fix that mirrors Linux is very often a **canonical** fix (see
+§8a/§8c), so it repairs both platforms at once.
+
+### 10a. The usual shape of a translation loss
+
+The agent relay is a **two-ended contract**: a capture site writes a line
+into a file, a consume site parses it back. A port that works on Linux
+but not Windows is almost always one of:
+
+1. **A dropped field.** The writer emits fewer fields than the reader
+   expects (or vice-versa), so routing information never arrives.
+2. **A dropped routing branch.** The parse succeeds but the dispatch
+   collapses several real cases into one.
+3. **A shim side effect.** A per-frame Xlib call becomes a per-frame
+   *Windows message*, so the event loop never idles (10c).
+
+Find the Linux half, diff the two ends field-by-field, and the loss
+usually names itself.
+
+### 10b. Worked example: relayed dropdown-row clicks
+
+*Symptom.* An agent can drive the header cells, but a **relayed click on
+a dock dropdown row does nothing** — the row may highlight, the app never
+launches. The same click works on Linux.
+
+*Linux (the spec)* — `ops/khtpm_strip_parser.c`:
+
+- `mirror_mouse_history(const char *window_name, int button, int x, int y)`
+  (~line 661) writes `MOUSE_EVENT: <button> <x> <y> 1 <window_name>` —
+  **five fields; the last one is the target window name.**
+- `apply_captured_mouse(..., const char *window_name, ...)` (~line 2523)
+  reads that name and routes the click to the right hit-list:
+  `hq_win` → header hits, `popup_win` → the open menu's own `g_popup_hits`,
+  `win` → bottom-bar hits, then `dispatch_onclick()`.
+
+*Windows (the loss).* The capture end of `poll_agent_history()` in
+`khtpm_core_render.c` wrote `MOUSE_EVENT: %d %d %d 1` — **no name** — and
+the consume end parsed `%d %d %d %d` and called `popup_handle_click()`
+with no idea which window the click targeted. `popup_handle_click()`
+only widens its scan to the dropdown rows when
+`g_dock_click_menu && g_dock_drop_lo`; with `g_dock_click_menu` always
+`0` it scanned the header range only, so nav 17–40 were unreachable by
+relayed click. (The real `ButtonPress` handler *does* set that flag —
+from the event window `cw`, at `khtpm_core_render.c:10462` — the relay
+simply never carried the equivalent.)
+
+*Fix* (commit `05099beb3`). Accept the optional 5th field and set the
+same context the real handler sets: `g_dock_click_menu` when the name is
+`popup_win`/`popup`/`menu`, `g_dock_click_peer` when
+`win`/`bottom`/`peer`, otherwise the header. `nav.sh click <x> <y>
+[button] [hq|popup|win]` now emits that name. Note the fix lives on the
+**Windows end of a contract Linux already had** — the Linux parser
+needed no change.
+
+### 10c. The shim can turn a per-frame X call into a per-frame message
+
+*Symptom.* The instant a dropdown menu opens, the renderer pegs ~95% CPU
+and **the relay goes dead** — later `MOUSE_EVENT`/`KEY_PRESSED` lines are
+never read, and the code-210 state dump stops updating.
+
+*Cause.* `dock_paint_menu()` (`~5441`) ran
+
+```c
+XMoveResizeWindow(dpy, g_dock_menu_win, ...);
+XMapRaised(dpy, g_dock_menu_win);
+```
+
+on **every redraw**. On a real X server that is merely redundant. On the
+Win32 shim each map/resize posts a fresh Windows message, so the
+renderer's own drain loop
+
+```c
+while (XPending(dpy)) { XNextEvent(dpy, &ev); hq_dispatch_xevent(&ev, ...); }
+```
+
+never emptied: one map re-queued the next event, the process spun at
+100%, and `hq_idle_tick()` / `poll_agent_history()` (which run *after*
+the drain) were never reached again. The Linux loop gets "one map, then
+just repaint" for free; the shim does not.
+
+*Fix.* Map/raise only when the geometry actually changed (tracked in
+`g_dock_menu_mapped` / `g_dock_menu_m*`), and unmap only when actually
+mapped. CPU returned to ~2.5%.
+
+**Rule: on Windows, "call this Xlib routine on every paint" is a
+suspect.** If a window misbehaves *and* a process pegs a core, suspect
+the shim amplifying a per-frame call; check `XPending()` drain semantics
+before blaming the canonical renderer.
+
+### 10d. The agent's diagnostic loop
+
+1. **Reproduce through the relay, never by hand**:
+   `#.desktop/entity_menu_history/<pid>.txt` accepts `MOUSE_EVENT: …`,
+   `KEY_PRESSED: <code>`, `STRING: …` and a bare decimal code. Find the
+   renderer pid with `ps -eo pid,args` (or `Get-Process
+   khtpm_core_render`).
+2. **Send relay code `210`** → read `#.desktop/strip_dump.txt`: `is_dock`,
+   the `win` rect, `menu sx/sy/w/h`, `click_menu`/`click_peer`,
+   `drop_lo`/`drop_hi`, then every `nav_index` with `x/y/w/h` plus
+   `FOCUS`/`DROP` markers. This is the *cheap TEXT state dump, not a PNG
+   frame dump* the K9 J2 guide asks for. If this file's mtime has stopped
+   advancing, the renderer is not consuming at all — go to 10c.
+3. **For the painted menu rows**, read
+   `#.desktop/entity_menu_frame_<pid>_menu.txt` (written by
+   `dock_paint_menu()`; one serialized row per line, ending in the row's
+   `onclick`, `nav_index`, `x`, `y`, `w`, `h`, `target_id`).
+4. **Confirm consumption.** Dump updates but nothing dispatches → a
+   routing/field loss (10a/10b). Dump frozen + CPU pegged → 10c.
+5. **Verify the effect, not the click.** A dropdown row's `onclick` runs
+   `strip_relay.sh <5000+row>`, so success shows up as that code in
+   `#.desktop/strip_history.txt` **and** a new process.
+
+Live proof of the whole chain, 2026-10-01:
+
+```
+relay:  MOUSE_EVENT: 1 119 499 1 popup_win    (Piececraft-HQ, row nav 35, y 486..513)
+dump:   menu sx=1191 sy=77 w=238 h=648 drop_lo=17 drop_hi=40
+history: 5018
+spawn:  khtpm_core_render.exe <house> .../@.apps/piececraft-hq/pchq-board.xhtpm  (pid 26956)
+```
+
+### 10e. Gotchas that cost real time here
+
+- **Two-step clicks.** `#.desktop/hq_ui.pdl` sets `click_two_step=1`, so
+  a trigger needs *focus then activate* (two clicks); a dropdown row
+  likewise needs focus then activate. Always read `focus_nav` from the
+  210 dump before choosing how many clicks to send — sending a fixed
+  two clicks when focus is already on the target **toggles it closed**,
+  which is why the menu first looked like it "never opened" during
+  testing.
+- **Relay coords are window-local**, which is exactly *why* the window
+  name is mandatory: `popup_win` row 0 and `hq_win` header cell 0 both
+  occupy `y = 0..27`, so the rectangle alone cannot disambiguate them.
+- **`strip_history.txt` is not truncated at startup** (only
+  `entity_menu_history/<pid>.txt` is). A fresh manager replays any codes
+  left in it, which can look like spurious activity right after `new`.
+- **`XSendEvent` is in-process only** (§5): a synthetic click does not
+  win Windows foreground rights, so it exercises routing but not the
+  low-level key hook (§8b).
+
+### 10f. Still open (2026-10-01)
+
+Recorded so the next agent does not re-derive these from scratch:
+
+- **Keyboard relay still cannot reach dropdown rows.** Unlike the header
+  cells they have no digit-nav that lands on the manager's `hq_focus`
+  (see `dock_dump_state()`'s own comment), so a click is still required;
+  only the click path was fixed here.
+- **The capture end is only half-ported.** `nav.sh` and the renderer's
+  consume path now carry the window name, but the *record* side
+  (`kh_capture_click`, and the dock `ButtonPress` path, which does not
+  capture at all) still writes the 4-field form — so a recorded human
+  menu click is not yet replayable with its window context.
+- **Bottom-bar dropdowns** inherit the same window-name contract and
+  should be exercised the same way; only the header's `toys` menu was
+  proven end-to-end here.
