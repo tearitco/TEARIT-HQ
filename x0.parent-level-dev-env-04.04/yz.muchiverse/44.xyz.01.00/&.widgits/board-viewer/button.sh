@@ -165,9 +165,23 @@ EOSTATE
     if [ -n "$FOCUS_PROJECT_ROOT" ]; then
         LEDGER_PROJECT_ID="board-viewer:$(basename "$FOCUS_PROJECT_ROOT")"
     fi
-    if [ -x ./ops/+x/ledger_append.+x ]; then
-        ./ops/+x/ledger_append.+x ONLINE widget "$LEDGER_PROJECT_ID" "$SESSION_DIR" "$$" "Board Viewer" "pieces/system/bv_state.txt" >/dev/null 2>&1 || true
-    fi
+      if [ -x ./ops/+x/ledger_append.+x ]; then
+          ./ops/+x/ledger_append.+x ONLINE widget "$LEDGER_PROJECT_ID" "$SESSION_DIR" "$$" "Board Viewer" "$SESSION_DIR/inbox"
+      else
+          # 2026-10-01, real live catch. This guard used to be a bare
+          # `if [ -x ... ]; then ...; fi` with no else, so a missing
+          # binary (ops/+x/ is gitignored via .gitignore:9 `*.+x`, so a
+          # `git clean -xdf` / branch switch empties it) meant this
+          # session NEVER appended its ONLINE row. The projector then
+          # found no session, left canvas_raw empty, and the board opened
+          # blank - presenting as "the 2D/3D view doesn't work" rather
+          # than "a required binary is missing". Fail loud instead.
+          echo "button.sh: WARNING ops/+x/ledger_append.+x MISSING - this session will NOT be" >&2
+          echo "button.sh: WARNING registered in the ledger, so no projector can discover it and" >&2
+          echo "button.sh: WARNING the board view will be BLANK. Build with:" >&2
+          echo "button.sh: WARNING   sh scripts/build.sh" >&2
+      fi
+
 
     if [ -x ./ops/+x/bv_compose_frame.+x ]; then
         ./ops/+x/bv_compose_frame.+x >/dev/null 2>&1 || true

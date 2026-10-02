@@ -44,7 +44,19 @@ fi
 HAVE_BV=0
 if [ -n "$BV" ] && [ -d "$BV" ]; then
     HAVE_BV=1
-    H1="$BV/pieces/apps/player_app/history.txt"
+      # 2026-10-02, real live catch ("In: interact mode won't trigger /
+      # drive interact mode"). This pointed at player_app/history.txt,
+      # which is the EXACT dead end pchq_board_projector.c was already
+      # fixed away from on 2026-09-04. Proof from the live session:
+      #   board_viewer.chtpm:3  <interact src="pieces/apps/player_app/
+      #                                    interact_relay.txt" />
+      #   interact_relay.txt  size=0    <- nothing ever arrived
+      #   history.txt         [13 13 13 13 ...]  <- 8 keys into a void
+      # So every In: click (and every camera key) appended into a file no
+      # consumer reads, while the real relay target sat empty. The
+      # projector's bv_h1 already points at interact_relay.txt; this must
+      # agree or the toolbar can never drive interact mode.
+      H1="$BV/pieces/apps/player_app/interact_relay.txt"
     H2="$BV/pieces/keyboard/history.txt"
     TYPING="$BV/pieces/display/active_gui_is_typing.txt"
 fi
