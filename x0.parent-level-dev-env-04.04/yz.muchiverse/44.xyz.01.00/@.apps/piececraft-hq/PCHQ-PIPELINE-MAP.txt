@@ -1,0 +1,184 @@
+================================================================================
+pc-hq PIPELINE MAP (Windows port notes)
+Written 2026-10-02 from live testing on the win-runtime worktree.
+Everything marked [VERIFIED] was observed running on this machine.
+Everything marked [FROM-SOURCE] was read out of the code, not run.
+================================================================================
+
+THE ONE THING THAT CONFUSES EVERYONE
+------------------------------------
+There are TWO independent entry points into pc-hq, and they launch
+DIFFERENT things. Most "pc-hq doesn't open" reports are this confusion.
+
+  A) TOYS DROPDOWN ROW  ->  board shell only (no game, no GL window)
+  B) button.sh / button.ps1  ->  the actual GAME (GL window + engine)
+
+open_pchq_board.sh says so itself, in its own header [FROM-SOURCE, lines 5-12]:
+
+  "...This REPLACES `button.sh run` as [the taskbar path],
+   and `button.sh run` stays the terminal/dev path."
+
+So on LINUX, clicking Piececraft-HQ in the toys dropdown opens the BOARD,
+NOT the game. open_pchq_board.ps1 is correct parity for that.
+
+--------------------------------------------------------------------------------
+PIPELINE A - what the toys dropdown row actually opens (Linux == Windows)
+--------------------------------------------------------------------------------
+  taskbar toys cell "toys" (header cell 12, relay code 4012)
+    -> dropdown row "Piececraft-HQ" (HQITEM:18, relay code 5018)
+    -> khtpm_taskbar_manager ktb_hq_activate()
+    -> @.apps/piececraft-hq/toy.pdl  launch = open_pchq_board.sh
+       (manager rewrites .sh -> .ps1 on Windows)
+    -> open_pchq_board.ps1 [Windows] / open_pchq_board.sh [Linux]
+    -> khtpm_core_render.exe  <house> @.apps/piececraft-hq/pchq-board.xhtpm
+       single-instance: kills any other renderer on THAT template, then starts one
+    -> pchq-board.xhtpm parses, sees:
+         <module src="@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x"
+                  args="piececraft-hq"/>
+    -> khtpm_win_spawn_module()  (.+x -> .exe, CreateProcessW, CREATE_NO_WINDOW)
+    -> pchq_board_projector.exe  [VERIFIED: runs, 0 windows, writes state/ui.txt]
+
+  module argv contract (khtpm_core_render.c launch_module, lines 556-558):
+      argv[1] = house_root
+      argv[2] = package_dir  ( @.apps/piececraft-hq )   -> projector's `pkg`
+      argv[3] = the module's args="..." attr -> projector's `host_id`
+
+  projector writes, atomically, only when content changes:
+      @.apps/piececraft-hq/state/ui.txt
+      (keys: bv_session, canvas_raw, no_session, interact_label, clock,
+             menu_open, file_menu_open, desk_menu_open, n_file_opts, n_desk_opts)
+
+  The board window renders THAT file. With no_session=1 it renders nothing.
+  [VERIFIED: state/ui.txt is 1490 bytes and says no_session=1]
+
+  Where the canvas is SUPPOSED to come from [FROM-SOURCE]:
+      projector -> ledger_peers(+.exe) "widget"  -> finds a BOARD-VIEWER session
+      board-viewer session -> pieces/display/rgb_frame_2d.raw  (render_mode 0)
+                           -> pieces/display/rgb_frame_3d_overlay.raw (mode 1)
+      those .raw paths are written into ui.txt as canvas_raw, and the board
+      window mirrors them.
+
+  So the board is a VIEWER. It shows nothing unless a board-viewer session
+  is live. That session is produced by pipeline B.
+
+--------------------------------------------------------------------------------
+PIPELINE B - the actual game (button.ps1 / button.sh run)
+--------------------------------------------------------------------------------
+  button.ps1 run  [VERIFIED: this exact invocation started a full stack]
+    -> orchestrator.exe            (parent of everything below)
+       -> gl_mirror.exe            <-- THE ONLY real GL/GLUT program.
+                                      THE ONLY pc-hq window.
+         [VERIFIED] got a real visible window: 656x807 at (130,130)
+       -> renderer.exe             NOT GL. stdout frame printer, 30fps poll
+                                      loop, prints current_frame.txt to a tty.
+                                      0 windows is CORRECT for it.
+       -> chtpm_rgb_render.exe     NOT GL either. no GL/glut include at all -
+                                      rasterizes frames to .raw for gl_mirror.
+       -> keyboard_input.exe       raw-mode tty key reader
+
+  gl_mirror.c is the single GL/GLUT caller [VERIFIED by include scan]:
+      #include <GLUT/glut.h>
+      #include <GL/glut.h>
+      #include <X11/Xlib.h>      <-- hard X11 dependency
+      #include <X11/Xatom.h>     <-- hard X11 dependency
+      glutInit / glutCreateWindow / glutMainLoop / glutSwapBuffers / glutTimerFunc
+
+  build.ps1 gets gl_mirror.exe by COPYING it from 014.wsr
+  (WSR-PAL), not by compiling pc-hq's own gl_mirror.c - that source is
+  X11-only and will not build for Windows as-is.
+  [VERIFIED: build.ps1 lines 59-92 do exactly this copy-or-compile ladder]
+
+--------------------------------------------------------------------------------
+THE TRAP THAT COST THE MOST TIME
+--------------------------------------------------------------------------------
+WSR-PAL (a DIFFERENT app, in .kilo\worktrees\wsr-pal) ships the SAME
+gl_mirror binary. When its stack runs, the processes are named
+gl_mirror / orchestrator / renderer / chtpm_rgb_render / keyboard_input -
+IDENTICAL names to pc-hq's. [VERIFIED]
+
+So "the GL window is flickering" was WSR-PAL's stack, started by:
+    powershell -File ...\.kilo\worktrees\wsr-pal\...\WSR_PAL-PREFERED\button.ps1 run
+NOT pc-hq at all. Always confirm the parent chain before blaming pc-hq:
+
+    Get-CimInstance Win32_Process -Filter "Name='gl_mirror.exe'" |
+      ForEach-Object { $_.ParentProcessId }   # then walk UP to the powershell
+
+Two more traps:
+  * renderer.exe and chtpm_rgb_render.exe burning 100% CPU with 0 windows
+    is NOT a bug. They are console/raster daemons with a 33ms poll loop.
+    Judging them by window count or CPU is meaningless.
+  * pc-hq's toys row has NEVER launched the game stack. If you clicked
+    the toys row and expected a GL window, that expectation is wrong even
+    on Linux.
+
+--------------------------------------------------------------------------------
+WINDOWS STATUS
+--------------------------------------------------------------------------------
+  [VERIFIED WORKING]
+    toys cell -> toys dropdown -> Piececraft-HQ        (4012 then 5018)
+    khtpm board shell window                          546x351 at (64,77), stable
+    pchq_board_projector.exe                          runs, no process storm
+    state/ui.txt                                      written (1490 bytes)
+    ledger_peers.exe                                  built from board-viewer
+                                                      source, runs clean
+    gl_mirror.exe (as shipped by WSR-PAL)             DOES get a real window
+
+  [NOT DONE / BLOCKING CONTENT]
+    board-viewer session                              never exists on this host
+                                                      -> no_session=1 -> blank board
+    board-viewer/ops/+x                              was EMPTY (nothing built)
+    pc-hq's own gl_mirror.c                           X11-only, not ported
+    open_pchq_board.ps1                               board only, by Linux parity
+
+  [WINDOWS BUGS FOUND AND FIXED - commit dd5b784a1, pchq_board_projector.c]
+    1. bv_cache only assigned on SUCCESS, so a failed discovery re-ran
+       popen(ledger_peers) every 300ms forever (~3.3 shell spawns/sec).
+       Now rate-limited to one probe per PCHQ_BV_RESCAN_SEC (30). Identical
+       behavior when a session exists; bounded when none does.
+    2. system("mkdir -p '<pkg>/state'") - -p and '...' are POSIX; cmd.exe has
+       neither, so state/ was never made and EVERY fopen+rename silently
+       failed. Replaced with a direct platform mkdir.
+    3. the discovery command itself was unrunnable on Windows (.+x ELF path,
+       VAR='x' prefix, 2>/dev/null). Split per-platform to ledger_peers.exe
+       with set "VAR=..." && and 2>nul.
+
+--------------------------------------------------------------------------------
+RELAY CODES FOR TESTING THE TOYS PATH (all [VERIFIED])
+--------------------------------------------------------------------------------
+  #.desktop/strip_history.txt  = manager relay, one bare decimal per line.
+  #.desktop/entity_menu_history/<renderer_pid>.txt = per-window relay,
+      "KEY_PRESSED: <dec>" and "MOUSE_EVENT: <b> <x> <y> <press> <winname>".
+      Code 210 (write a fresh #.desktop/strip_dump.txt with dock geometry)
+      is handled by the RENDERER, so it must go to the per-pid relay.
+
+  4012   open the "toys" dropdown        (header cell 12)
+  5018   activate "Piececraft-HQ"        (HQITEM:18, read it out of
+                                          strip_var_hqitems.txt - the index
+                                          is not stable, always re-read)
+  27     close the menu
+  210    dump dock geometry + every nav_index (per-pid relay, renderer only)
+
+  GOTCHAS that will waste your time if you forget them:
+   - The manager polls strip_history.txt with a CURSOR and NEVER truncates
+     it. Codes still sitting in the file do NOT mean they went unconsumed.
+   - "toys" is header cell 12, and ktb_hq_open() maps which==12 to
+     livedesk_build_toys_menu(). That mapping is already correct.
+   - nav.sh click needs a 5th field naming the window
+     (hq / popup / win) or dropdown rows are never hit-tested.
+   - `bash nav.sh` hits WSL, which has no distro here. Use
+     C:\msys64\usr\bin\bash.exe.
+
+--------------------------------------------------------------------------------
+IF YOU WANT THE TOYS ROW TO SHOW THE GAME INSTEAD OF THE BOARD
+--------------------------------------------------------------------------------
+That is a deliberate departure from Linux, so do it knowingly. Linux keeps
+them separate on purpose. Two ways:
+
+  1. Point toy.pdl's launch at button.ps1 instead of open_pchq_board.sh.
+     Simple, but loses the board, and diverges from open_pchq_board.sh's
+     own stated role.
+  2. Keep open_pchq_board.sh's role, but have it ALSO ensure the game is
+     running (start button.ps1 if no live session exists) before opening
+     the board. Closer to Linux-in-practice, where the game is normally
+     already up when you open the board.
+================================================================================

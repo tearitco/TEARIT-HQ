@@ -5545,9 +5545,60 @@ void ktb_hq_activate(KtbState *s, int row) {
          * livedesk_proc_list.txt. `button.sh run` is now the terminal
          * path only; the toys-menu `toy.pdl` duplicate was removed. */
 #ifdef _WIN32
-        char launch[KTB_PATH_BUF];
-        snprintf(launch, sizeof(launch), "%s/@.apps/piececraft-hq/open_pchq_board.sh", s->house_root);
-        (void)launch;
+        /* REAL 2026-10-02, Windows parity for open_pchq_board.sh. This
+         * branch was a stub: it snprintf'd the .sh path into `launch` and
+         * then threw it away with `(void)launch`, so selecting
+         * Piececraft-HQ in the HQ menu launched NOTHING on Windows and the
+         * board window could never open from the menu. That is the whole
+         * bug - not GL, not the projector, not blank content.
+         *
+         * Same CreateProcessW shape as the livedesk:open-toy: branch above
+         * (no bash, .sh -> .ps1 rewrite, CREATE_NO_WINDOW + breakaway), but
+         * it passes <house_root> exactly like the POSIX branch below does -
+         * NOT the "run" sentinel the toys path uses.
+         *
+         * It spawns the SCRIPT rather than inlining khtpm_core_render the
+         * way the sibling chat-hai/co-lab-hai/db-hq-pal/sql-hq branches
+         * do, because open_pchq_board.ps1 owns the steps the comment above
+         * promises: the single-instance guard that kills BOTH the board
+         * window and the projector, the board-viewer engine-session
+         * bootstrap, and the livedesk_proc_list.txt write that
+         * ktb_reap_launched() reads on a taskbar quit. Inlining the
+         * renderer here would silently drop all three. */
+        {
+            char launch[KTB_PATH_BUF];
+            snprintf(launch, sizeof(launch), "%s/@.apps/piececraft-hq/open_pchq_board.sh", s->house_root);
+            win_star_alias(launch);
+            size_t ln = strlen(launch);
+            if (ln > 3 && strcmp(launch + ln - 3, ".sh") == 0)
+                memcpy(launch + ln - 3, ".ps1", 5);
+            for (char *p = launch; *p; p++) if (*p == '/') *p = '\\';
+            wchar_t wfile[KTB_PATH_BUF], wdir[KTB_PATH_BUF], whouse[KTB_PATH_BUF];
+            wchar_t wcmd[KTB_PATH_BUF * 2];
+            if (!MultiByteToWideChar(CP_UTF8, 0, launch, -1, wfile, KTB_PATH_BUF))
+                MultiByteToWideChar(CP_ACP, 0, launch, -1, wfile, KTB_PATH_BUF);
+            if (!MultiByteToWideChar(CP_UTF8, 0, s->house_root, -1, whouse, KTB_PATH_BUF))
+                MultiByteToWideChar(CP_ACP, 0, s->house_root, -1, whouse, KTB_PATH_BUF);
+            wcsncpy(wdir, wfile, KTB_PATH_BUF - 1);
+            wdir[KTB_PATH_BUF - 1] = 0;
+            wchar_t *slash = wcsrchr(wdir, L'\\');
+            if (slash) *slash = 0;
+            _snwprintf(wcmd, (KTB_PATH_BUF * 2) - 1,
+                       L"powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%s\" \"%s\"",
+                       wfile, whouse);
+            STARTUPINFOW si; PROCESS_INFORMATION pi;
+            ZeroMemory(&si, sizeof(si)); si.cb = sizeof(si);
+            ZeroMemory(&pi, sizeof(pi));
+            DWORD flags = CREATE_NEW_PROCESS_GROUP | CREATE_BREAKAWAY_FROM_JOB | CREATE_NO_WINDOW;
+            BOOL ok = CreateProcessW(NULL, wcmd, NULL, NULL, FALSE, flags, NULL,
+                                     wdir[0] ? wdir : NULL, &si, &pi);
+            if (!ok) {
+                flags = CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW;
+                ok = CreateProcessW(NULL, wcmd, NULL, NULL, FALSE, flags, NULL,
+                                     wdir[0] ? wdir : NULL, &si, &pi);
+            }
+            if (ok) { CloseHandle(pi.hThread); CloseHandle(pi.hProcess); }
+        }
 #else
         char sh[KTB_PATH_BUF * 3];
         snprintf(sh, sizeof(sh), KTB_SETSID "nohup sh -c 'sh \"%s/@.apps/piececraft-hq/open_pchq_board.sh\" \"%s\"' >/dev/null 2>&1 &",
