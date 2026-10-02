@@ -80,9 +80,12 @@ int main(void) {
     if (!same) {
         FILE *f = fopen(stamp, "wb");
         if (f) { fprintf(f, "%s", sig); fclose(f); }
-        /* Both markers: state_changed makes chtpm re-read the vars, and
-         * frame_changed makes the renderer actually draw the result. */
-        touch("pieces/apps/player_app/state_changed.txt");
+        /* frame_changed ONLY. See the long note in horn_publish.c:
+         * growing state_changed.txt forces a full layout re-parse, which
+         * empties the active cli_io's buffer and is NOT refilled because
+         * chtpm's sync skips the active element. That silently ate whatever
+         * the user was typing. frame_changed alone still makes the
+         * renderer repaint, and compose_frame() re-reads the vars. */
         touch("pieces/display/frame_changed.txt");
     }
     free(stamp);

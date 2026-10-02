@@ -16,7 +16,23 @@ cd "$SCRIPT_DIR" || exit 1
 export PRISC_PROJECT_ROOT="$SCRIPT_DIR"
 export PRISC_PROJECT_ID="hai-horn"
 export HORN_SESSIONS="$SCRIPT_DIR/chats/HORN_SESSIONS"
-export HORN_ENTITY_DIR="$(cd "$SCRIPT_DIR/.." && pwd)/&.widgits/open-hai/state"
+# HORN_ENTITY_DIR: keys live per-TREE. A git worktree has its own
+# &.widgits copy, and key files pasted into the main checkout are NOT
+# there - so defaulting to the worktree's copy silently runs the whole
+# suite against whatever stale key is committed. An externally supplied
+# HORN_ENTITY_DIR always wins.
+export HORN_ENTITY_DIR="${HORN_ENTITY_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)/&.widgits/open-hai/state}"
+
+# Load provider keys from the key files, so the suite does not depend on
+# the caller having exported them. Every previous run of this script was
+# really testing "is GROQ_API_KEY set in this particular shell" until this
+# was added - a green run meant nothing about the harness.
+# Keys already in the environment win, so CI can inject them directly.
+# Look beside the state dir actually in use, not beside the project.
+_HOUSE="$(cd "$HORN_ENTITY_DIR" && pwd)"
+[ -n "${GROQ_API_KEY:-}" ]        || { [ -f "$_HOUSE/&.widgits/open-hai/state/raw_groq.txt" ]           && export GROQ_API_KEY="$(tr -d ' \t\n\r' < "$_HOUSE/&.widgits/open-hai/state/raw_groq.txt")"; }
+[ -n "${HORN_POOLSIDE_KEY:-}" ]   || { [ -f "$_HOUSE/&.widgits/open-hai/state/raw_poolside.txt" ]        && export HORN_POOLSIDE_KEY="$(tr -d ' \t\n\r' < "$_HOUSE/&.widgits/open-hai/state/raw_poolside.txt")"; }
+[ -n "${HORN_API_KEY:-}" ]        || { [ -f "$_HOUSE/&.widgits/open-hai/state/openrouter_api_key.txt" ]  && export HORN_API_KEY="$(tr -d ' \t\n\r' < "$_HOUSE/&.widgits/open-hai/state/openrouter_api_key.txt")"; }
 
 KEYS="pieces/keyboard/history.txt"
 FRAME="pieces/display/current_frame.txt"
@@ -43,13 +59,17 @@ type_str() {
     for (( i=0; i<${#s}; i++ )); do
         printf 'KEY_PRESSED: %d\n' "'${s:$i:1}" >> "$KEYS"
         want="${s:0:$((i+1))}"
-        local t
-        for (( t=0; t<40; t++ )); do
+        local t landed=0
+        for (( t=0; t<60; t++ )); do
             if grep -qF "horn_prompt=$want" pieces/apps/player_app/manager/gui_state.txt 2>/dev/null; then
+                landed=1
                 break
             fi
             sleep 0.15
         done
+        if [ "$landed" = 0 ]; then
+            TYPE_STALLED="${TYPE_STALLED:-}${TYPE_STALLED:+$TYPE_STALLED,}char '$want'"
+        fi
     done
     sleep 0.3
 }
@@ -181,8 +201,16 @@ nav_focus_line() {
     grep -E '\[>\]' "$FRAME" | head -1 | sed 's/^ *//'
 }
 nav_item_index() {   # $1 = substring of the label, e.g. "DENY"
-    nav_focus_line >/dev/null
-    grep -nE "\[ \] [0-9]+\..*$1" "$FRAME" | head -1 | grep -oE '[0-9]+\.' | head -1 | tr -d '.'
+    local i idx
+    # The frame repaints asynchronously, so read it until the label is
+    # actually on screen. Reading once and failing looks identical to "the
+    # button is not there", which is how this first reported a false miss.
+    for (( i=0; i<20; i++ )); do
+        idx=$(grep -E "\[[ >^]\] [0-9]+\..*$1" "$FRAME" 2>/dev/null | head -1 | grep -oE '[0-9]+\.' | head -1 | tr -d '.')
+        [ -n "$idx" ] && { echo "$idx"; return 0; }
+        sleep 0.4
+    done
+    return 1
 }
 # Press the nav number for a labelled item, then Enter to activate.
 activate_nav_item() {
@@ -234,6 +262,11 @@ boot() {
     cleanup
     printf 'horn_prompt=\n' > pieces/apps/player_app/manager/gui_state.txt
     : > "$KEYS"; : > pieces/apps/player_app/interact_relay.txt
+    # Markers left over from a previous session lie about focus. An
+    # active_gui_is_typing.txt still reading "1" makes wait_typing succeed
+    # before the parser has focused anything, and every keystroke then goes
+    # to nav mode as a navigation command instead of a character.
+    printf '0' > pieces/display/active_gui_is_typing.txt
     ops/+x/horn_publish.+x
     nohup ./system/renderer          >/tmp/horn_render.log 2>&1 &
     nohup ./system/chtpm_parser_pal layouts/horn_chat.chtpm >/tmp/horn_parser.log 2>&1 &
@@ -268,11 +301,25 @@ check "approval buttons are present" "$(cat "$FRAME")" "APPROVE"
 check "model name resolved from state.txt" "$(cat "$FRAME")" "nemotron"
 
 echo "=== turn 1: the composer holds what was typed ==="
-key 13                    # nav mode -> activate the cli_io
-wait_typing || bad "composer never became active"
+# Use focus_composer, NOT a bare `key 13`. The parser drains the key
+# history asynchronously, so a lone Enter can sit in the relay while the
+# following characters are already being typed - and then be processed
+# late, submitting the box and clearing it. Observed exactly that:
+# type_str reported every character landed ("stalled: none"), and
+# gui_state was empty at the assertion because the deferred Enter had
+# already fired horn_turn. focus_composer is the same esc+enter+wait path
+# ask() uses, so there is no unaccounted-for activation in flight.
+if ! focus_composer; then bad "composer never became active"; fi
 type_str "What is 6 times 7?"
-sleep 0.8
-check "typed text accumulates in the composer" "$(cat "$FRAME")" "What is 6 times 7?"
+# Assert on the FRAME, not gui_state: type_str already confirmed every
+# character reached the parser (it polls gui_state, which chtpm rewrites
+# per keystroke), and the frame repaints on its own cycle behind it.
+if wait_frame "What is 6 times 7?" 20; then
+    ok "typed text accumulates in the composer"
+else
+    bad "composer did not render the typed text [stalled: ${TYPE_STALLED:-none}] (gui_state had: $(cat pieces/apps/player_app/manager/gui_state.txt 2>/dev/null))"
+fi
+TYPE_STALLED=""
 
 # Read-and-send in one step from here on. The separate pre-type above is
 # only to prove the composer accumulates; sending it here too would double
@@ -503,7 +550,10 @@ case "$out" in
   *DNS-BLOCKED*) ok "sandbox blocks the network" ;;
   *) bad "sandbox ALLOWED network access: ${out:0:90}" ;;
 esac
-out=$($TOOL run_script '{"command":"cat \"../&.widgits/open-hai/state/raw_groq.txt\" 2>&1 | head -c 30"}' 2>&1)
+# head -c 200, not 30: the point is to capture the whole
+# "No such file or directory" and 30 chars cut it off mid-path, which
+# looked exactly like the keys being reachable.
+out=$($TOOL run_script '{"command":"cat \"../&.widgits/open-hai/state/raw_groq.txt\" 2>&1 | head -c 200"}' 2>&1)
 case "$out" in
   *"No such file"*) ok "sandbox hides the provider keys" ;;
   *) bad "KEYS REACHABLE FROM THE SANDBOX: ${out:0:90}" ;;
@@ -511,37 +561,52 @@ esac
 rm -f config/yolo.flag
 
 echo "=== approval gate through the real UI (live) ==="
-if [ "$API_UP" = 1 ]; then
+# Each gate outcome is proven from a CLEAN session: teardown, boot, drive.
+# Testing deny-then-approve back to back in one window worked until it
+# aborted the suite partway through the approve case, and a gate test that
+# only proves itself in one particular accumulated state is a weaker test
+# anyway. This is also what the house J2 guide asks for: kill everything,
+# confirm zero, launch one, confirm one.
+gate_case() {   # $1 = DENY|APPROVE
+    # Only $1: an unused "$2" here is fatal under `set -u`, which is what
+    # ended the previous run at this line with EXIT=0 and no summary.
+    local want="$1"
+    cleanup
     printf '# original\n' > dox/.e2e_gate.md
-    rm -f "$TRANSCRIPT"
+    boot
 
-    # Deny first: the file must come back byte-identical.
     focus_composer
-    type_str "Overwrite dox/.e2e_gate.md to contain exactly DENIED"
+    type_str "Overwrite dox/.e2e_gate.md to contain exactly $want"
     enter
-    if wait_frame "write_file" 40; then ok "gated tool stops and asks"
-    else bad "gate never prompted"; fi
-    activate_nav_item "DENY"
-    if wait_frame "DENIED by user" 30; then ok "DENY button denies through the UI"
-    else bad "DENY button did not register"; fi
-    if [ "$(cat dox/.e2e_gate.md)" = "# original" ]; then
-        ok "denied write left the file byte-identical"
-    else bad "DENIED BUT THE FILE CHANGED: $(cat dox/.e2e_gate.md)"; fi
+    if wait_frame "write_file" 45; then ok "$want: gated tool stops and asks"
+    else bad "$want: gate never prompted"; return 1; fi
 
-    # Then approve, to prove the gate is not simply always-deny.
-    rm -f "$TRANSCRIPT"
-    focus_composer
-    type_str "Overwrite dox/.e2e_gate.md to contain exactly APPROVED"
-    enter
-    wait_frame "write_file" 40 || bad "second gate never prompted"
-    activate_nav_item "APPROVE"
-    if wait_frame "approved" 30; then ok "APPROVE button approves through the UI"
-    else bad "APPROVE button did not register"; fi
-    if [ "$(cat dox/.e2e_gate.md)" = "# original" ]; then
-        bad "APPROVED BUT THE FILE DID NOT CHANGE"
+    if ! activate_nav_item "$want"; then bad "$want: could not find the $want button"; return 1; fi
+    if wait_frame "DENIED by user" 30; then ok "$want: button registers through the UI"
+    else bad "$want: button did not register"; fi
+
+    if [ "$want" = "DENY" ]; then
+        if [ "$(cat dox/.e2e_gate.md)" = "# original" ]; then
+            ok "denied write left the file byte-identical"
+        else
+            bad "DENIED BUT THE FILE CHANGED: $(cat dox/.e2e_gate.md)"
+        fi
     else
-        ok "approved write actually landed on disk"
+        if [ "$(cat dox/.e2e_gate.md)" = "# original" ]; then
+            bad "APPROVED BUT THE FILE DID NOT CHANGE"
+        else
+            ok "approved write actually landed on disk"
+        fi
     fi
+    return 0
+}
+
+if [ "$API_UP" = 1 ]; then
+    # Deny first. A deny-only test cannot tell a working gate from one
+    # that always denies, which is the failure that would matter.
+    gate_case DENY
+    gate_case APPROVE
+    cleanup
     rm -f dox/.e2e_gate.md
 else
     echo "  SKIP  approval-gate UI test needs a live provider"
@@ -565,6 +630,9 @@ echo "=== a stale relay must not replay into a new session ==="
 # its cursor at 0 replays every Enter the user ever pressed, re-dispatching
 # horn_turn against the CURRENT gui_state - phantom turns in the transcript
 # and duplicated history. Guard: seed the cursor at end-of-file.
+# Clear the composer: a leftover prompt would make a stray Enter dispatch
+# a REAL turn, and the suite would blame the replay for its own leftover.
+printf 'horn_prompt=\n' > pieces/apps/player_app/manager/gui_state.txt
 before=$(grep -c "user" chats/HORN_SESSIONS/chat_history.txt)
 printf '13\n13\n13\n' >> pieces/apps/player_app/interact_relay.txt   # stale, pre-seeded
 boot_keep_relay() {
