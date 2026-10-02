@@ -112,7 +112,10 @@ send)
     mkdir -p "$(dirname "$gp")"
     printf 'horn_prompt=%s\n' "$msg" > "$gp"
 
-    ops/+x/horn_turn.+x
+    # HORN_FOREGROUND: horn_turn detaches by default so the pal loop can
+    # service an approval prompt while a turn waits. `send` wants to block
+    # and print the transcript, so it opts out of detaching.
+    HORN_FOREGROUND=1 ops/+x/horn_turn.+x
     echo "--- transcript ---"
     cat "$HORN_SESSIONS/transcript.txt" 2>/dev/null
     ;;

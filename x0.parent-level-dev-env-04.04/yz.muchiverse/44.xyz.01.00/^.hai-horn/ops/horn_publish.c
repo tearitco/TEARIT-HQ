@@ -174,11 +174,55 @@ int main(void) {
     const char *model = getenv("HORN_MODEL");
     if (!model || !model[0]) model = "nvidia/nemotron-3-ultra-550b-a55b:free";
 
+    /* Pending approval, if one is waiting. Read straight from
+     * pieces/horn/pending.json - the file horn_turn wrote when it stopped
+     * to ask - and surfaced so the layout can render the prompt and the
+     * approve/deny buttons. Absent means "nothing waiting", which is the
+     * normal state and must render as nothing rather than as a stale
+     * prompt left over from a turn that already ended. */
+    char pending[4096];
+    snprintf(pending, sizeof(pending), "(no approval pending)");
+    {
+        char *pp = NULL;
+        if (asprintf(&pp, "%s/pieces/horn/pending.json", project_root) >= 0 && pp) {
+            char *raw = NULL;
+            FILE *pf = fopen(pp, "rb");
+            if (pf) {
+                fseek(pf, 0, SEEK_END);
+                long n = ftell(pf);
+                rewind(pf);
+                if (n > 0 && n < (long)sizeof(pending) - 1) {
+                    raw = malloc((size_t)n + 1);
+                    if (raw) {
+                        size_t got = fread(raw, 1, (size_t)n, pf);
+                        raw[got] = '\0';
+                    }
+                }
+                fclose(pf);
+            }
+            free(pp);
+            if (raw && raw[0]) {
+                /* Flatten to one line: state.txt is parsed line by line,
+                 * so a newline in a value would truncate it. */
+                char one[2048];
+                size_t o = 0;
+                for (size_t i = 0; raw[i] && o < sizeof(one) - 1; i++) {
+                    if (raw[i] == '\n' || raw[i] == '\r') { one[o++] = ' '; continue; }
+                    one[o++] = raw[i];
+                }
+                one[o] = '\0';
+                snprintf(pending, sizeof(pending), "%s", one);
+            }
+            free(raw);
+        }
+    }
+
     FILE *sf = fopen(state_path, "wb");
     if (sf) {
         fprintf(sf, "horn_model=%s\n", model);
         fprintf(sf, "horn_status=%s\n", turns > 0 ? "idle" : "ready");
         fprintf(sf, "horn_turns=%d\n", turns);
+        fprintf(sf, "horn_pending=%s\n", pending);
         fclose(sf);
     }
 

@@ -85,12 +85,80 @@
           "required": ["pattern"]
         }
       }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "edit_file",
+        "description": "Replace an exact string in a text file. Fails if the search string is not found, and refuses if it appears more than once unless replace_all is true. Use this instead of rewriting a whole file - it cannot silently discard content you did not intend to change.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string", "description": "File to edit, relative to the project root." },
+            "search": { "type": "string", "description": "Exact text to find." },
+            "replace": { "type": "string", "description": "Replacement text." },
+            "replace_all": { "type": "boolean", "description": "Replace every occurrence. Defaults to false, which requires the match to be unique." }
+          },
+          "required": ["path", "search", "replace"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "write_file",
+        "description": "Create or completely overwrite a text file. Prefer edit_file when changing something that already exists - this replaces the entire contents. Refuses paths outside the project, protected paths, and directories that do not already exist.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string", "description": "File to write, relative to the project root." },
+            "content": { "type": "string", "description": "Full new contents of the file." }
+          },
+          "required": ["path", "content"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "run_script",
+        "description": "Run a shell command inside a sandbox: no network, read-only system directories, and writes confined to the project. Always use this to build, test or inspect - never to install software or reach the internet.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "command": { "type": "string", "description": "Shell command to run." },
+            "timeout_s": { "type": "integer", "description": "Optional timeout in seconds. Defaults to 60." }
+          },
+          "required": ["command"]
+        }
+      }
     }
   ],
 
   "ops": {
     "list_dir":   "builtin:list_dir",
     "read_file":  "builtin:read_file",
-    "grep_files": "builtin:grep_files"
-  }
+    "grep_files": "builtin:grep_files",
+    "edit_file":  "builtin:edit_file",
+    "write_file": "builtin:write_file",
+    "run_script": "builtin:run_script"
+  },
+
+  "gate": ["edit_file", "write_file", "run_script"],
+
+  "_gate_comment": [
+    "MUTATING tools, and so listed in \"gate\": horn_turn asks the human",
+    "before running any of them. This mirrors gem-dev's cmd_exec, where a",
+    "command prompts \"[SAFEGUARD] Run '<cmd>'? (y/n)\" and aborts unless the",
+    "answer is y. Read-only tools are ungated.",
+    "",
+    "Create config/yolo.flag to arm auto-approve for a whole session - also",
+    "gem-dev's mechanism, same path, same name. One command that a model",
+    "wrote can turn this off again, so treat the flag as a deliberate act",
+    "by the human, not something to leave lying around.",
+    "",
+    "A model that can write CAN edit this file. Adding a tool to \"ops\" while",
+    "also removing its name from \"gate\" is the escalation the gate exists",
+    "to stop, so both live in this one reviewable place."
+  ]
 }

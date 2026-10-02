@@ -30,6 +30,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <fcntl.h>
+#include <signal.h>
 
 #ifndef MAX_PATH
 #define MAX_PATH 4096
@@ -419,6 +420,117 @@ static int seed_convo(const char *user_text) {
     return 1;
 }
 
+
+/* ── human approval gate ──────────────────────────────────────────────
+ *
+ * Mirrors gem-dev's cmd_exec, which prints
+ *   [SAFEGUARD] Run '<cmd>'? (y/n)
+ * and aborts unless the answer is y. One necessary adaptation: gem-dev
+ * reads that answer from stdin, because its exec is a foreground call in a
+ * plain CLI. HORN's terminal is owned by the chtpm window - renderer and
+ * keyboard_input hold it in raw mode - so horn_turn has no stdin to read.
+ * The prompt therefore renders in the window and the answer comes back
+ * through the window's own key path (gem-dev's `<button onClick="KEY:n">`
+ * mechanism, which is how its suggestion buttons already work).
+ *
+ * Same arming mechanism too: a marker file skips the prompt. gem-dev uses
+ * config/yolo.flag, so this does too, at the same path.
+ *
+ * Why the wait cannot deadlock: the pal loop dispatches horn_turn with a
+ * BLOCKING exec. If horn_turn sat waiting for an approval that only the pal
+ * loop could deliver, that is a deadlock. So horn_turn detaches itself
+ * (see main) and the pal loop stays free to service the approve/deny keys
+ * while the turn waits. */
+
+static int yolo_armed(void) {
+    char *p = NULL;
+    if (asprintf(&p, "%s/config/yolo.flag", project_root) < 0 || !p) return 0;
+    int armed = (access(p, F_OK) == 0);
+    free(p);
+    return armed;
+}
+
+/* Publish what needs approving and wait for a decision.
+ * Returns 1 = approved, 0 = denied, -1 = timed out. */
+static int request_approval(const char *tool, const char *detail) {
+    char *pend = NULL, *dec = NULL;
+    if (asprintf(&pend, "%s/pieces/horn/pending.json", project_root) < 0 || !pend) return -1;
+    if (asprintf(&dec, "%s/pieces/horn/decision.txt", project_root) < 0 || !dec) { free(pend); return -1; }
+
+    unlink(dec);   /* a stale decision must never approve a new request */
+
+    char *esc_tool = json_escape_local(tool);
+    char *esc_det  = json_escape_local(detail ? detail : "");
+    FILE *f = fopen(pend, "wb");
+    if (f) {
+        fprintf(f, "{\"tool\":\"%s\",\"detail\":\"%s\"}\n", esc_tool ? esc_tool : "", esc_det ? esc_det : "");
+        fclose(f);
+    }
+    free(esc_tool);
+    free(esc_det);
+
+    /* Show it. horn_publish reads pending.json into ${horn_pending}. */
+    publish();
+
+    int approved = -1;
+    /* 60s, then it is a deny. Long enough to read the command and decide,
+     * short enough that an ignored prompt does not wedge the turn - the
+     * first version waited 300s, which is indistinguishable from a hang. */
+    for (int i = 0; i < 60; i++) {
+        FILE *d = fopen(dec, "rb");
+        if (d) {
+            char c[8] = "";
+            if (fgets(c, sizeof(c), d)) {
+                if (c[0] == 'y' || c[0] == 'Y') approved = 1;
+                else approved = 0;
+            }
+            fclose(d);
+            if (approved >= 0) break;
+        }
+        sleep(1);
+        /* Republish periodically so the box keeps showing the prompt even
+         * if the first render landed before the file existed. */
+        if (i % 10 == 9) publish();
+    }
+
+    unlink(pend);
+    unlink(dec);
+    publish();
+    return approved;
+}
+
+/* Is this tool one the human must approve? The list lives in
+ * tools/horn_tools.json under "gate" so it is reviewable in one place
+ * alongside the allowlist itself - a model that can write could otherwise
+ * drop a tool out of "gate" and escalate in one edit. */
+static int tool_is_gated(const char *name) {
+    char *path = NULL;
+    if (asprintf(&path, "%s/tools/horn_tools.json", project_root) < 0 || !path) return 0;
+    char *buf = read_file(path);
+    free(path);
+    if (!buf) return 0;
+
+    const char *g = strstr(buf, "\"gate\"");
+    int found = 0;
+    if (g) {
+        const char *p = g + strlen("\"gate\"");
+        while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r') p++;
+        if (*p == ':') {
+            p++;
+            const char *close = strchr(p, ']');
+            if (close) {
+                char pat[256];
+                snprintf(pat, sizeof(pat), "\"%s\"", name);
+                for (const char *q = p; q < close; q++) {
+                    if (strncmp(q, pat, strlen(pat)) == 0) { found = 1; break; }
+                }
+            }
+        }
+    }
+    free(buf);
+    return found;
+}
+
 /* ── tool loop ────────────────────────────────────────────────────────
  *
  * The transport never executes anything: on exit 10 it has written
@@ -568,6 +680,27 @@ static int run_tool_calls(const char *prev_sig, char *cur_sig, size_t cur_sz) {
             size_t nl = strlen(sig_raw);
             snprintf(sig_raw + nl, sizeof(sig_raw) - nl, "%s%s|", name, args);
 
+            /* Gated tools wait for a human unless the session is armed
+             * with config/yolo.flag. Deny is the default and a timeout is
+             * a deny: silence must never mean consent. */
+            if (tool_is_gated(name) && !yolo_armed()) {
+                char detail[MSG_CAP];
+                snprintf(detail, sizeof(detail), "%s%s%s", name, args[0] ? " " : "", args);
+                int ok = request_approval(name, detail);
+                if (ok != 1) {
+                    char msg[MSG_CAP];
+                    snprintf(msg, sizeof(msg), "[%s DENIED by user%s]", name,
+                             ok == -1 ? " (timed out)" : "");
+                    append_transcript("  tool:", msg);
+                    convo_append_tool(id, name,
+                        "error: the user denied this tool call. Do not retry it "
+                        "and do not look for another route to the same effect - "
+                        "report what you cannot do and why.");
+                    continue;
+                }
+                append_transcript("  tool:", "[approved]");
+            }
+
             char *res = execute_tool(name, args);
             if (res) {
                 /* Keep the transcript readable: a full file dump would
@@ -597,6 +730,21 @@ static int run_tool_calls(const char *prev_sig, char *cur_sig, size_t cur_sz) {
 int main(void) {
     resolve_root();
 
+    /* Detach unless the caller wants to wait.
+     *
+     * The pal loop dispatches this op with a BLOCKING exec. A turn that
+     * stops at an approval prompt would therefore wedge the only process
+     * that can deliver the answer. Forking here makes the pal loop's exec
+     * return at once while the real turn keeps running in the background;
+     * horn_chat.sh `send` sets HORN_FOREGROUND=1 because it wants to wait
+     * and print the transcript. */
+    if (!getenv("HORN_FOREGROUND")) {
+        pid_t bg = fork();
+        if (bg < 0) return 1;
+        if (bg > 0) _exit(0);
+        setsid();
+    }
+
     char gp[PATH_BUF];
     gui_state_path(gp, sizeof(gp));
 
@@ -615,17 +763,28 @@ int main(void) {
         return 0;
     }
 
-    /* Clear BOTH keys before the network call, not after: the transport can
-     * take up to 60s across the model ladder, and chtpm re-renders
-     * throughout. Clearing first means the input box is empty and ready for
-     * the next message the whole time the player is waiting, instead of
-     * still showing the message already in flight.
+    /* Clear the composer, but ONLY if it still holds what we just consumed.
      *
-     * Clearing the target_id key is also what stops chtpm's own
-     * sync_cli_input_from_gui_state() from resurrecting the previous turn's
-     * text into the box on the next frame. */
-    set_kv(gp, "horn_prompt", "");
-    set_kv(gp, "input_text", "");
+     * horn_turn detaches (see main) so the pal loop can service an approval
+     * prompt, which means this turn is no longer holding the UI hostage -
+     * the player can start typing the next message while it runs. An
+     * unconditional clear here deleted that: 60s of typing, thrown away by
+     * the turn that was already finished reading. Re-read and compare, so
+     * new text survives.
+     *
+     * Clearing is still what stops chtpm's sync_cli_input_from_gui_state()
+     * resurrecting the previous turn's text into the box on the next
+     * frame, so the clear has to happen - just not unconditionally. */
+    {
+        char now[MSG_CAP];
+        char key[64];
+        snprintf(key, sizeof(key), "%s", "horn_prompt");
+        int unchanged = read_kv(gp, key, now, sizeof(now)) && strcmp(now, prompt) == 0;
+        if (unchanged) {
+            set_kv(gp, "horn_prompt", "");
+            set_kv(gp, "input_text", "");
+        }
+    }
 
     /* '@' at the start of a line is a completion request, not a message -
      * the same convention gem-dev's composer uses. Handled here, in the
