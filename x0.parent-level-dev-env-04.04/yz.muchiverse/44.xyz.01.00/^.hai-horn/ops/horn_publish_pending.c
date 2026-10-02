@@ -60,8 +60,21 @@ static void touch(const char *rel) {
 int main(void) {
     resolve_root();
 
+    /* ONE stat before any file is opened. This op is called on the pal
+     * loop's idle tick, so the overwhelmingly common case is "there is
+     * nothing pending" - and reaching that answer by fopen/fread/fclose is
+     * two file reads per tick, forever, to discover nothing.
+     *
+     * hq-cpu-safety.md 3c is explicit about this shape: a function inside
+     * a tick loop that touches more than one file needs an explicit answer
+     * to how often it actually needs to run. Measured cost of the
+     * read-first version, idle, doing nothing: 1.48% of a core. The
+     * house's own throttling incidents were 12% and 5%, so this was below
+     * the alarm line and still the wrong shape. access() is a single stat
+     * with no open, no read and no descriptor. */
     char *pend = NULL;
     if (asprintf(&pend, "%s/pieces/horn/pending.json", project_root) < 0 || !pend) return 0;
+    if (access(pend, F_OK) != 0) { free(pend); return 0; }
     char *body = read_all(pend);
     free(pend);
     if (!body || !body[0]) { free(body); return 0; }
