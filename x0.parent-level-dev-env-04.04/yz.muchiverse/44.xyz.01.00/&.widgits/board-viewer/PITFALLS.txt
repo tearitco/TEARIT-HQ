@@ -183,3 +183,93 @@ SMOKE (disk, not full interactive GL close-out):
   non-zero; re-compose has MAP3D 0x01 marker.
 
 SEE ALSO: house root WIN-CONVERSION-STATUS.md §4b.
+
+================================================================================
+PITFALL 4: board window opens BLACK (no 2D/3D view), and the "In:" interact
+mode never triggers. TWO independent bugs, both live-caught 2026-10-02.
+================================================================================
+
+ BUG A - the projector was handed a bare id, parsed it as a path, and so
+ never discovered ANY session. Result: black window.
+
+ pchq-board.xhtpm spawns the projector like this:
+     <module src="@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x"
+              args="piececraft-hq"/>
+ so the module runner hands it argv[1]="piececraft-hq" - a BARE ID, not a
+ path. But main() did:
+     const char *house = (argc > 1 && argv[1][0]) ? argv[1]
+                       : getenv("KHTPM_HOUSE");
+ so house became the relative string "piececraft-hq". static_root then
+ resolved to "piececraft-hq/@.apps/piececraft-hq", the ledger_peers
+ popen path did not exist, find_board_session() returned 0, and the
+ projector published no_session=1 with an EMPTY canvas_raw. Empty
+ canvas_raw = the canvas blits nothing = black board. Only a hand-run
+ projector with real paths ever worked, which is exactly why this read
+ as "the 2D/3D view is broken" rather than "a bad argument".
+
+ FIX: disambiguate rather than guess - a value containing '/', or one
+ naming an existing directory, is a PATH; anything else is the host id.
+ All three historical spawn forms now work.
+
+ BUG B - the "In:" toolbar tab wrote keys into a file NOTHING reads, so
+ interact mode never engaged and never drove the camera.
+
+ ops/pchq_board_action.sh set:
+     H1="$BV/pieces/apps/player_app/history.txt"
+ but the engine's interact relay is:
+     board_viewer.chtpm:3  <interact src="pieces/apps/player_app/
+                                      interact_relay.txt" />
+ and pchq_board_projector.c already published bv_h1 as
+ .../interact_relay.txt - that was its own 2026-09-04 "REAL FIX". The
+ action script was never updated to match, so it kept writing keys to
+ the dead filename.
+
+ Live proof from a single session:
+     interact_relay.txt   size=0                     <- nothing ever arrived
+     history.txt          [13 13 13 13 13 13 13 13]  <- 8 keys into a void
+
+ So every In: click, and every camera key, appended into a file no
+ consumer reads, while the real relay target sat empty. Fixed H1 to
+ .../interact_relay.txt so the action script, the projector's bv_h1,
+ and board_viewer.chtpm all name the same file. WHEN YOU CHANGE ONE,
+ CHECK ALL THREE.
+
+ RELATED TRAP (this is what made Bug A look like a merge problem):
+ ops/+x/ is GITIGNORED.
+
+ .gitignore:9 is *.+x, so every compiled binary in the house is
+ untracked build output. A `git clean -xdf`, a branch switch, or a fresh
+ clone empties board-viewer's ops/+x/ while git still reports a
+ perfectly clean tree. That is the real reason the board "broke when I
+ merged two near-identical branches": the merge was innocent, it merely
+ pruned ignored files. Two near-identical branches differ in nothing
+ relevant, so the merge looks guilty while silently removing binaries.
+
+ Three SILENT guards turned that into a mystery instead of an error:
+   1. button.sh's `if [ -x ./ops/+x/ledger_append.+x ]; then ...; fi`
+      had no else, so the session never appended its ONLINE row and was
+      undiscoverable;
+   2. pchq_board_projector.c's popen("...ledger_peers.+x ... 2>/dev/null")
+      swallowed the missing binary;
+   3. with no session, canvas_raw resolved empty -> blank canvas.
+ open_pchq_board.sh now self-heals: it builds board-viewer's ops when any
+ of ledger_append / ledger_peers / bv_render_2d / bv_render_3d /
+ bv_compose_frame is missing, and exits 1 with a clear message if they
+ are still missing afterwards. Both silent guards now warn on stderr.
+
+ RULE FOR FUTURE AGENTS: the projector is a ONE-SHOT publisher, not a
+ daemon.
+
+ It publishes ui.txt once at board-window load. If you poison or
+ hand-edit state/ui.txt while a board window is open, NOTHING will
+ repair it, because no long-lived process re-publishes. Do not test by
+ writing to the live state/ui.txt - use a throwaway KHTPM_PKG directory
+ and a copy, exactly as you would for any other live state file. A board
+ that goes black shortly after you edited ui.txt is your own poison, not
+ a new bug. Restore from a backup copy.
+
+ ALSO: the 2D/3D source is chosen from bv_state.txt render_mode -
+   0 -> rgb_frame_2d.raw          (bv_render_2d, flat tile grid)
+   1 -> rgb_frame_3d_overlay.raw  (bv_render_3d raymarch)
+   2 -> rgb_frame_2d.raw          (side-scroll slice, flat like mode 0)
+ With no render_mode key it falls back to whichever .raw exists.

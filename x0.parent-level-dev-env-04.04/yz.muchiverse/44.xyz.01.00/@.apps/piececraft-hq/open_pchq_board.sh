@@ -57,6 +57,48 @@ if [ ! -x "$BIN" ]; then
 fi
 [ -x "$PROJECTOR" ] || \
     sh "$PKG/ops/build_pchq_board_projector.sh" >/dev/null 2>&1 || true
+
+# ── board-viewer build-on-demand (2026-10-01) ─────────────────────────
+# .gitignore:9 is `*.+x`, so EVERY compiled binary in the house is
+# untracked build output. A `git clean -xdf`, a branch switch, or a fresh
+# clone therefore empties board-viewer's ops/+x/ while git still reports
+# a perfectly clean tree - which is why this looked like it correlated
+# with merging two near-identical branches (the merge was innocent; it
+# just pruned ignored files).
+#
+# When ops/+x/ is empty, THREE separate guards fail SILENTLY and the
+# board opens blank with no error anywhere:
+#   1. board-viewer/button.sh's `if [ -x ./ops/+x/ledger_append.+x ]`
+#      skips ONLINE registration, so the live session never reaches the
+#      ledger and is undiscoverable;
+#   2. pchq_board_projector.c's `popen("...ledger_peers.+x... 2>/dev/null")`
+#      swallows the missing binary, yielding no_session=1;
+#   3. with no session, canvas_raw resolves empty, so the renderer's
+#      canvas blits nothing - the 2D/3D view simply never appears.
+#
+# So build board-viewer's ops the same way we already build BIN and
+# PROJECTOR above: if any binary it needs is missing, rebuild the lot.
+BV_OPS="$HOUSE_ROOT/&.widgits/board-viewer/ops"
+BV_MISSING=""
+for _bv in ledger_append ledger_peers bv_render_2d bv_render_3d bv_compose_frame; do
+    [ -x "$BV_OPS/+x/$_bv.+x" ] || BV_MISSING="$_bv "
+done
+if [ -n "$BV_MISSING" ]; then
+    echo "open_pchq_board: board-viewer ops missing ($BV_MISSING)- building" >&2
+    (cd "$HOUSE_ROOT/&.widgits/board-viewer" && sh scripts/build.sh) \
+        >/tmp/pchq_board_viewer_build.log 2>&1 || true
+    # Re-check and FAIL LOUDLY if still absent. Better a clear refusal to
+    # open than a silently blank board that looks like a rendering bug.
+    for _bv in $BV_MISSING; do
+        if [ ! -x "$BV_OPS/+x/$_bv.+x" ]; then
+            echo "open_pchq_board: board-viewer $_bv.+x STILL missing after build" >&2
+            echo "open_pchq_board: see /tmp/pchq_board_viewer_build.log" >&2
+            exit 1
+        fi
+    done
+    echo "open_pchq_board: board-viewer ops rebuilt ok" >&2
+fi
+
 if [ ! -f "$BOARD_TPL" ]; then
     echo "open_pchq_board: missing $BOARD_TPL" >&2
     exit 1

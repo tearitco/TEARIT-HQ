@@ -182,6 +182,27 @@ static int find_board_session(const char *house, const char *host_id, char *out,
     if (hrf) { fprintf(hrf, "%s\n", house); fclose(hrf); }
 
     char cmd[PATH_MAX * 2];
+    /* 2026-10-01, real live catch: this used to end in `2>/dev/null`.
+     * board-viewer's ops/+x/ is gitignored (.gitignore:9 `*.+x`), so a
+     * `git clean -xdf` or branch switch empties it; the missing binary
+     * then failed INSIDE this popen and 2>/dev/null threw the only clue
+     * away. find_board_session() just returned 0, the projector published
+     * no_session=1 with an empty canvas_raw, and the board rendered blank
+     * - indistinguishable from "the 2D/3D view is broken". Check the
+     * binary up front and say so plainly on stderr. */
+    {
+        char peer_bin[PATH_MAX];
+        snprintf(peer_bin, sizeof(peer_bin),
+                 "%s/&.widgits/board-viewer/ops/+x/ledger_peers.+x", house);
+        if (access(peer_bin, X_OK) != 0) {
+            fprintf(stderr,
+                    "pchq_board_projector: %s is MISSING - no board session can be\n"
+                    "  discovered, so canvas_raw stays empty and the board view will be\n"
+                    "  BLANK. This is not a rendering bug. Build it with:\n"
+                    "    cd <house>/&.widgits/board-viewer && sh scripts/build.sh\n",
+                    peer_bin);
+        }
+    }
     snprintf(cmd, sizeof(cmd),
              "PRISC_PROJECT_ROOT='%s' '%s/&.widgits/board-viewer/ops/+x/ledger_peers.+x' widget 2>/dev/null",
              static_root, house);
@@ -219,11 +240,30 @@ static int find_board_session(const char *house, const char *host_id, char *out,
 }
 
 int main(int argc, char **argv) {
-    const char *house = (argc > 1 && argv[1][0]) ? argv[1]
+    /* 2026-10-02, real live catch (board window went BLACK): the board
+     * template spawns us as
+     *   <module src=".../pchq_board_projector.+x" args="piececraft-hq"/>
+     * so the module runner hands us argv[1]="piececraft-hq" - a BARE ID,
+     * not a path. This parser blindly took argv[1] as `house`, so house
+     * became the relative string "piececraft-hq", static_root resolved to
+     * "piececraft-hq/@.apps/piececraft-hq", the ledger_peers popen path
+     * did not exist, and find_board_session() silently returned 0 ->
+     * no_session=1 with an EMPTY canvas_raw -> the canvas blits nothing
+     * and the board is black. Only a hand-run projector with real paths
+     * ever worked, which is why this looked like a rendering bug.
+     *
+     * Disambiguate instead of guessing: a value containing '/', or one
+     * that names an existing directory, is a PATH; anything else is the
+     * host id. Keeps all three historical spawn forms working. */
+    const char *a1 = (argc > 1 && argv[1][0]) ? argv[1] : NULL;
+    const char *host_from_a1 = (a1 && !strchr(a1, '/')) ? a1 : NULL;
+
+    const char *house = (a1 && !host_from_a1) ? a1
                       : (getenv("KHTPM_HOUSE") ? getenv("KHTPM_HOUSE") : ".");
-    const char *pkg = (argc > 2 && argv[2][0]) ? argv[2]
+    const char *pkg = (argc > 2 && argv[2][0] && strchr(argv[2], '/')) ? argv[2]
                     : (getenv("KHTPM_PKG") ? getenv("KHTPM_PKG") : ".");
-    const char *host_id = (argc > 3 && argv[3][0]) ? argv[3] : "piececraft-hq";
+    const char *host_id = (argc > 3 && argv[3][0]) ? argv[3]
+                        : host_from_a1 ? host_from_a1 : "piececraft-hq";
 
     char out_path[PATH_MAX], tmp_path[PATH_MAX], menu_path[PATH_MAX];
     snprintf(out_path, sizeof(out_path), "%s/state/ui.txt", pkg);
