@@ -151,13 +151,20 @@ api_available() {
     # so the model's own reply tripped the check and the live path was
     # skipped even with a working provider.
     #
-    #   0 = a provider answered        3 = everything rate/quota limited
-    #   1 = no key configured          2 = reachable but silent
+    #   0 = a provider answered       10 = a provider answered WITH A TOOL
+    #                                    CALL - still alive, see below
+    #   1 = no key configured    2 = reachable but silent
+    #   3 = everything rate/quota limited
     local out rc
     out=$(./ops/+x/horn_chat_backend.+x "Reply with the single word: ready" 2>&1)
     rc=$?
     echo "$out" >&2
-    [ "$rc" -eq 0 ]
+    # 10 counts as available. Since tools were added, the model often
+    # answers a probe by asking for one, and a check that only accepts 0
+    # reported a perfectly healthy provider as unavailable - which silently
+    # skipped every live assertion while the suite still printed a green
+    # summary. A tool call is a response; it is not an outage.
+    [ "$rc" -eq 0 ] || [ "$rc" -eq 10 ]
 }
 
 ask() {
@@ -331,7 +338,7 @@ API_UP=0
 if api_available; then
     API_UP=1; ok "an LLM provider is answering"
 else
-    echo "  SKIP  every configured provider is rate/quota limited."
+    echo "  SKIP  no provider is answering (see the transport errors above)."
     echo "        Live round-trip assertions are skipped; the harness cannot"
     echo "        distinguish an exhausted quota from a broken transport"
     echo "        mid-run, so this is checked once, up front."
