@@ -45,6 +45,14 @@
 
 static char project_root[MAX_PATH] = ".";
 
+/* strip trailing whitespace from a value read out of a file */
+static void trim_in_place(char *s) {
+    size_t n = strlen(s);
+    while (n > 0 && (s[n-1] == '\n' || s[n-1] == '\r' ||
+                     s[n-1] == ' '  || s[n-1] == '\t'))
+        s[--n] = '\0';
+}
+
 static void resolve_root(void) {
     const char *env = getenv("PRISC_PROJECT_ROOT");
     if (env && env[0]) { snprintf(project_root, sizeof(project_root), "%s", env); return; }
@@ -164,13 +172,47 @@ int main(void) {
         fclose(hf);
     }
 
-    /* Report the PRIMARY model's name, not whichever rung answered. The
-     * ladder exists so a rate-limited or retired free slug does not break
-     * the turn; showing "ling-3.0-flash-sante" as HORN's model after one
-     * rate limit would misreport which model is actually in use. The rung
-     * that answered is recorded in the transcript by horn_turn if it ever
-     * matters for grading. */
-    const char *model = getenv("HORN_MODEL");
+    /* Show the rung that ACTUALLY answered the last turn, read from
+     * pieces/horn/last_model.txt which horn_chat_backend writes.
+     *
+     * The provider ladder means the model that replies is often not the one
+     * this would otherwise advertise: with groq leading, a turn answered by
+     * groq while the box claims nemotron is simply wrong, and for an IRL
+     * comparison that misattribution is fatal - you cannot tell whether a
+     * result difference came from the prompt or from a different model.
+     * Falls back to the configured default only before the first turn. */
+    char model_buf[256];
+    snprintf(model_buf, sizeof(model_buf), "%s", "");
+    {
+        char *lp = NULL;
+        if (asprintf(&lp, "%s/pieces/horn/last_model.txt", project_root) >= 0 && lp) {
+            char *lb = NULL;
+            FILE *lf = fopen(lp, "rb");
+            if (lf) {
+                fseek(lf, 0, SEEK_END);
+                long n = ftell(lf);
+                rewind(lf);
+                if (n > 0 && n < (long)sizeof(model_buf) - 1) {
+                    lb = malloc((size_t)n + 1);
+                    if (lb) {
+                        size_t got = fread(lb, 1, (size_t)n, lf);
+                        lb[got] = '\0';
+                    }
+                }
+                fclose(lf);
+            }
+            free(lp);
+            if (lb && lb[0]) {
+                /* provider<TAB>model */
+                char *tab = strchr(lb, '\t');
+                snprintf(model_buf, sizeof(model_buf), "%s",
+                         tab ? tab + 1 : lb);
+                trim_in_place(model_buf);
+            }
+            free(lb);
+        }
+    }
+    const char *model = model_buf[0] ? model_buf : NULL;
     if (!model || !model[0]) model = "nvidia/nemotron-3-ultra-550b-a55b:free";
 
     /* Pending approval, if one is waiting. Read straight from

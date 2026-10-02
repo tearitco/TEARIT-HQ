@@ -440,6 +440,58 @@ static int convo_append(const char *msg_obj) {
     return ok;
 }
 
+
+/* Rebuild the assistant message as a REQUEST-SAFE object.
+ *
+ * The obvious implementation - copy the provider's message verbatim - is
+ * wrong, and it broke Groq outright. gpt-oss returns
+ *   {"role":"assistant","content":"...","reasoning_content":"...","tool_calls":[...]}
+ * and echoing that back verbatim puts `reasoning_content` into the NEXT
+ * request, where Groq's own schema rejects it:
+ *   'messages.17' : property 'reasoning_content' is unsupported
+ * Since the tool loop replays the conversation every round, that killed
+ * every turn after the first on the provider that leads the ladder - and
+ * it surfaced as the confusing "no-content-in-response", because the
+ * error body has no `content` field for extract_reply to find.
+ *
+ * Keep only the fields the OpenAI chat schema defines for an assistant
+ * turn. Anything provider-specific is a display artefact, not state. */
+static char *sanitise_assistant(const char *msg) {
+    char *out = malloc(CONVO_CAP);
+    if (!out) return NULL;
+    size_t o = 0;
+
+    o += (size_t)snprintf(out + o, CONVO_CAP - o, "{\"role\":\"assistant\"");
+
+    /* content may legitimately be null (a pure tool call). */
+    char *content = json_object_field(msg, "content", 0);
+    if (content && strcmp(content, "null") != 0 && content[0]) {
+        char *c = NULL;
+        if (asprintf(&c, "%s", content) >= 0 && c) {
+            o += (size_t)snprintf(out + o, CONVO_CAP - o, ",\"content\":%s", c);
+            free(c);
+        }
+    } else {
+        o += (size_t)snprintf(out + o, CONVO_CAP - o, ",\"content\":null");
+    }
+    free(content);
+
+    /* tool_calls copied verbatim - it is the one part that MUST survive. */
+    const char *tc = strstr(msg, "\"tool_calls\"");
+    if (tc) {
+        const char *q = skip_ws(tc + strlen("\"tool_calls\""));
+        if (*q == ':') {
+            q = skip_ws(q + 1);
+            char *arr = malloc(CONVO_CAP);
+            if (arr && json_slice_value(q, arr, CONVO_CAP) && arr[0] == '[')
+                o += (size_t)snprintf(out + o, CONVO_CAP - o, ",\"tool_calls\":%s", arr);
+            free(arr);
+        }
+    }
+    snprintf(out + o, CONVO_CAP - o, "}");
+    return out;
+}
+
 /* POST one request against one provider+model.
  *
  * The request body is the seeded convo.json plus the tools array, so the
@@ -563,7 +615,11 @@ static int post_chat(const Provider *p, const char *model, const char *api_key,
 
     char *reply = take_reply(raw);
 
-    if (msg) convo_append(msg);
+    if (msg) {
+        char *safe = sanitise_assistant(msg);
+        convo_append(safe ? safe : msg);
+        free(safe);
+    }
 
     if (tool_calls && tool_calls[0] == '[') {
         char *tp = path_in("pieces/horn/tool_calls.json");
@@ -624,13 +680,14 @@ int main(int argc, char *argv[]) {
      * horn_turn owns conversation policy and seeds the file; the transport
      * only seeds when running standalone (no convo.json present), which is
      * the `horn_chat.sh send` and test path. */
-    {
+    /* Explicit modes: a prompt argument means "start fresh", no argument
+     * means "continue whatever horn_turn seeded". The old rule - seed only
+     * when convo.json was ABSENT - meant a standalone call silently
+     * inherited the previous turn's whole conversation, provider-specific
+     * assistant fields included. */
+    if (prompt) {
         char *p = path_in("pieces/horn/convo.json");
         if (!p) goto seeded;
-        char *probe = read_file(p);
-        int have = probe && probe[0];
-        free(probe);
-        if (have) { free(p); goto seeded; }
 
         FILE *f = fopen(p, "wb");
         if (f) {
@@ -658,6 +715,7 @@ seeded:;
     char err[128] = "";
     int any_quota = 0, any_key = 0;
     const char *used = NULL;
+    char used_model[160] = "";
 
     for (int i = 0; i < N_PROVIDERS && !reply && !tool_calls; i++) {
         const Provider *p = &PROVIDERS[i];
@@ -669,9 +727,9 @@ seeded:;
         for (int m = 0; p->models[m] && !reply && !tool_calls; m++) {
             int quota = 0, rc;
             rc = post_chat(p, p->models[m], key, err, sizeof(err), &quota, &reply, &tool_calls);
-            if (rc == 10) { used = p->name; break; }
+            if (rc == 10) { used = p->name; snprintf(used_model, sizeof(used_model), "%s", p->models[m]); break; }
             if (quota) { any_quota = 1; break; }
-            if (reply) used = p->name;
+            if (reply) { used = p->name; snprintf(used_model, sizeof(used_model), "%s", p->models[m]); }
         }
         free(key);
         if (!reply && !tool_calls)
@@ -705,7 +763,23 @@ seeded:;
         return 2;
     }
 
-    if (used) fprintf(stderr, "horn_chat_backend: answered by %s\n", used);
+    /* Record WHICH rung actually answered, not just the provider.
+     *
+     * The provider ladder exists so a rate-limited or retired free slug does
+     * not break a turn, which means the model that replies is frequently NOT
+     * the one the UI advertises. For an IRL harness that is the whole
+     * question: a comparison between "HORN" and "HALO" means nothing unless
+     * both turns record the model that produced them. Written here rather
+     * than parsed back out of stderr, so it cannot drift. */
+    if (used) {
+        char *mp = path_in("pieces/horn/last_model.txt");
+        if (mp) {
+            FILE *mf = fopen(mp, "wb");
+            if (mf) { fprintf(mf, "%s\t%s\n", used, used_model); fclose(mf); }
+            free(mp);
+        }
+        fprintf(stderr, "horn_chat_backend: answered by %s (%s)\n", used, used_model);
+    }
 
     const char *reply_path = getenv("HORN_REPLY_FILE");
     char *default_reply = NULL;

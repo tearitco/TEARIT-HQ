@@ -630,6 +630,55 @@ static char *execute_tool(const char *name, const char *args_json) {
 /* One pass over pieces/horn/tool_calls.json: execute every call, append the
  * results, and note what happened for the transcript. Returns the number of
  * calls executed, or -1 if the file could not be read. */
+#define SIG_SLOTS 8
+
+/* Per-tool-name execution count for this turn.
+ *
+ * String-comparing signatures does not work as a stuck-detector: a model
+ * that is going in circles re-formats its arguments every round, so the
+ * blobs never match and every comparison says "new call". What IS stable
+ * is the tool NAME. A model that calls the same tool three times in one
+ * turn is not making progress - it is stuck, and the honest thing is to
+ * stop and say so rather than spend the rest of the round cap. */
+#define MAX_SAME_TOOL 2
+static int g_tool_count[16];
+static const char *g_tool_name[16];
+static int g_tool_n = 0;
+
+static int bump_tool(const char *name) {
+    for (int i = 0; i < g_tool_n; i++)
+        if (g_tool_name[i] && strcmp(g_tool_name[i], name) == 0)
+            return ++g_tool_count[i];
+    if (g_tool_n < 16) {
+        g_tool_name[g_tool_n] = strdup(name);
+        g_tool_count[g_tool_n] = 1;
+        g_tool_n++;
+        return 1;
+    }
+    return 1;
+}
+/* Signatures of every call already executed THIS turn. The first version
+ * compared only against the immediately previous round, which is not the
+ * same thing: groq/gpt-oss re-issued an identical list_dir across
+ * consecutive rounds with a slightly different arguments blob, so the
+ * pairwise comparison never matched and the loop burned its full round cap
+ * re-running the same command. Remembering every signature makes a repeat
+ * detectable however far apart it happens. */
+static char g_seen[SIG_SLOTS][2048];
+static int  g_seen_n = 0;
+
+/* Has this exact call already been executed this turn? Authoritative check;
+ * the pairwise prev/cur comparison could not catch a repeat that was not
+ * immediately adjacent. */
+static int seen_before(const char *sig) {
+    for (int i = 0; i < g_seen_n; i++)
+        if (strcmp(g_seen[i], sig) == 0) return 1;
+    return 0;
+}
+static void remember(const char *sig) {
+    if (g_seen_n < SIG_SLOTS) snprintf(g_seen[g_seen_n++], sizeof(g_seen[0]), "%s", sig);
+}
+
 static int run_tool_calls(const char *prev_sig, char *cur_sig, size_t cur_sz) {
     char *path = NULL;
     if (asprintf(&path, "%s/pieces/horn/tool_calls.json", project_root) < 0 || !path) return -1;
@@ -637,10 +686,11 @@ static int run_tool_calls(const char *prev_sig, char *cur_sig, size_t cur_sz) {
     free(path);
     if (!raw) return 0;
 
-    int executed = 0;
+    int executed = 0, all_repeated = 1, repeated_tool = 0;
     if (cur_sig && cur_sz) cur_sig[0] = '\0';
     char sig_raw[2048];
     sig_raw[0] = '\0';
+    int sig_n = g_seen_n;   /* index the next signature will land at */
     const char *p = raw;
     /* Walk the array element by element, one tool-call object at a time. */
     while ((p = strstr(p, "\"function\"")) != NULL) {
@@ -679,6 +729,11 @@ static int run_tool_calls(const char *prev_sig, char *cur_sig, size_t cur_sz) {
 
             size_t nl = strlen(sig_raw);
             snprintf(sig_raw + nl, sizeof(sig_raw) - nl, "%s%s|", name, args);
+            { char probe[2048];
+              snprintf(probe, sizeof(probe), "%s%s|", name, args);
+              if (!seen_before(probe)) all_repeated = 0;
+              if (sig_n < SIG_SLOTS)
+                  snprintf(g_seen[sig_n], sizeof(g_seen[0]), "%s", probe); }
 
             /* Gated tools wait for a human unless the session is armed
              * with config/yolo.flag. Deny is the default and a timeout is
@@ -699,6 +754,22 @@ static int run_tool_calls(const char *prev_sig, char *cur_sig, size_t cur_sz) {
                     continue;
                 }
                 append_transcript("  tool:", "[approved]");
+            }
+
+            /* Stuck-detector: refuse to run the same tool a third time in
+             * one turn. */
+            if (bump_tool(name) > MAX_SAME_TOOL) {
+                char msg[MSG_CAP];
+                snprintf(msg, sizeof(msg),
+                         "[%s called %d times this turn with no progress - stopped]",
+                         name, MAX_SAME_TOOL);
+                append_transcript("  tool:", msg);
+                convo_append_tool(id, name,
+                    "error: you have already called this tool repeatedly in this "
+                    "turn and are not making progress. Use the result you "
+                    "already have, or answer directly.");
+                repeated_tool = 1;
+                continue;
             }
 
             char *res = execute_tool(name, args);
@@ -723,7 +794,12 @@ static int run_tool_calls(const char *prev_sig, char *cur_sig, size_t cur_sz) {
     /* Fingerprint of everything we ran this round. Compared against the
      * previous round by the caller. */
     if (cur_sig && cur_sz) snprintf(cur_sig, cur_sz, "%s", sig_raw);
-    if (prev_sig && cur_sig && strcmp(prev_sig, cur_sig) == 0 && cur_sig[0]) return -2;
+    for (int i = sig_n; i < g_seen_n; i++) remember(g_seen[i]);
+    /* Every call this round was already executed this turn: a genuine
+     * repeat, not a new question. Stop rather than re-running it. */
+    if (repeated_tool) return -3;
+    if (executed > 0 && all_repeated) return -2;
+    (void)prev_sig;
     return executed;
 }
 
@@ -857,6 +933,13 @@ int main(void) {
         }
         snprintf(sig_prev, sizeof(sig_prev), "%s", sig_cur);
         int n = run_tool_calls(sig_prev, sig_cur, sizeof(sig_cur));
+        if (n == -3) {
+            append_transcript("horn:",
+                "[stopped: the model kept calling the same tool without making "
+                "progress]");
+            rc = 2;
+            break;
+        }
         if (n == -2) {
             /* The model asked for exactly the same thing again. Executing it
              * again would produce the same result and the same answer, so
