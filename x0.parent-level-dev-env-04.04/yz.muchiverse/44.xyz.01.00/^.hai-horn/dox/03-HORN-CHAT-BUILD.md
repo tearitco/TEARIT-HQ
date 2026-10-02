@@ -94,6 +94,27 @@ on *every* request cannot terminate, though — `required` also applies after
 a tool result — so `!` forces only the first call of the turn and the rest
 of the loop goes back to `auto`.
 
+### Answering an approval prompt
+
+Per the house J2 testing guide
+(`#.#.calendar-dox/1.^V-hq/_.0.aigent-testing-k9.txt`):
+
+1. `Esc` — digits only work in **nav mode**. While the composer is *active*
+   a digit is just a character, so you are typing `3` into your message.
+   `Tab` does not move focus; arrow keys and nav numbers do.
+2. The nav **number** — `2` for APPROVE, `3` for DENY.
+3. `Enter` — activates the focused button, whose `onClick="KEY:1"` /
+   `KEY:0` injects the answer into the relay for the pal loop.
+
+Two rules from that guide that matter when scripting this:
+
+- **Nav indices are not fixed.** Read the number off the live frame
+  (`[ ] 3. [  [0] DENY this tool call]`) immediately before pressing it.
+- **Never run two instances.** Concurrent parsers each poll the same
+  relay with their own cursor and race each other for the same key; that
+  alone accounts for most "flaky, unreproducible" results. Kill all, confirm
+  zero, launch one, confirm one.
+
 ### Providers
 
 `ops/horn_chat_backend.c` is one file with a provider table. OpenRouter and
