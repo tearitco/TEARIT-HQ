@@ -167,6 +167,39 @@ ask() {
     return 1
 }
 
+# Activate a nav item BY ITS INDEX, read from the live frame.
+#
+# House rules, from #.#.calendar-dox/1.^V-hq/_.0.aigent-testing-k9.txt
+# (J2 Testing Guide). The two that bite:
+#   1. Digits only work in NAV mode. While the cli_io is ACTIVE a digit is
+#      just a character, so ESC out first or you are typing "3" into the
+#      message. TAB does not move focus.
+#   2. Nav indices are NOT stable ("Nav numbers are NOT fixed... no static
+#      map you can hardcode"), so the index is read from the frame
+#      immediately before use rather than assumed.
+nav_focus_line() {
+    grep -E '\[>\]' "$FRAME" | head -1 | sed 's/^ *//'
+}
+nav_item_index() {   # $1 = substring of the label, e.g. "DENY"
+    nav_focus_line >/dev/null
+    grep -nE "\[ \] [0-9]+\..*$1" "$FRAME" | head -1 | grep -oE '[0-9]+\.' | head -1 | tr -d '.'
+}
+# Press the nav number for a labelled item, then Enter to activate.
+activate_nav_item() {
+    local label="$1" idx
+    esc                                  # leave the composer -> nav mode
+    idx=$(nav_item_index "$label")
+    if [ -z "$idx" ]; then
+        bad "no nav item labelled '$label' in the frame"
+        return 1
+    fi
+    printf 'KEY_PRESSED: %d\n' "$((48 + idx))" >> "$KEYS"
+    sleep 0.6
+    printf 'KEY_PRESSED: 13\n' >> "$KEYS"
+    sleep 0.6
+    return 0
+}
+
 wait_frame() {  # wait until the frame matches a pattern, or time out
     local pat="$1" tries=${2:-40} i
     for (( i=0; i<tries; i++ )); do
@@ -476,6 +509,43 @@ case "$out" in
   *) bad "KEYS REACHABLE FROM THE SANDBOX: ${out:0:90}" ;;
 esac
 rm -f config/yolo.flag
+
+echo "=== approval gate through the real UI (live) ==="
+if [ "$API_UP" = 1 ]; then
+    printf '# original\n' > dox/.e2e_gate.md
+    rm -f "$TRANSCRIPT"
+
+    # Deny first: the file must come back byte-identical.
+    focus_composer
+    type_str "Overwrite dox/.e2e_gate.md to contain exactly DENIED"
+    enter
+    if wait_frame "write_file" 40; then ok "gated tool stops and asks"
+    else bad "gate never prompted"; fi
+    activate_nav_item "DENY"
+    if wait_frame "DENIED by user" 30; then ok "DENY button denies through the UI"
+    else bad "DENY button did not register"; fi
+    if [ "$(cat dox/.e2e_gate.md)" = "# original" ]; then
+        ok "denied write left the file byte-identical"
+    else bad "DENIED BUT THE FILE CHANGED: $(cat dox/.e2e_gate.md)"; fi
+
+    # Then approve, to prove the gate is not simply always-deny.
+    rm -f "$TRANSCRIPT"
+    focus_composer
+    type_str "Overwrite dox/.e2e_gate.md to contain exactly APPROVED"
+    enter
+    wait_frame "write_file" 40 || bad "second gate never prompted"
+    activate_nav_item "APPROVE"
+    if wait_frame "approved" 30; then ok "APPROVE button approves through the UI"
+    else bad "APPROVE button did not register"; fi
+    if [ "$(cat dox/.e2e_gate.md)" = "# original" ]; then
+        bad "APPROVED BUT THE FILE DID NOT CHANGE"
+    else
+        ok "approved write actually landed on disk"
+    fi
+    rm -f dox/.e2e_gate.md
+else
+    echo "  SKIP  approval-gate UI test needs a live provider"
+fi
 
 echo "=== persistence across a restart ==="
 # Use whatever the session actually recorded. In the offline branch that is
