@@ -30,10 +30,28 @@
 #include <sys/stat.h>
 #include <limits.h>
 
+#ifdef _WIN32
+#include <direct.h>
+#endif
+
 #ifndef PATH_MAX
 #define PATH_MAX 4096
 #endif
 #define UIBUF 16384
+#define PCHQ_BV_RESCAN_SEC 30
+
+/* REAL FIX 2026-10-02 (Windows port) - this file created its state dir with
+ * system("mkdir -p '<pkg>/state'"). -p is a coreutils flag and '...' is POSIX
+ * quoting; cmd.exe has neither, so the dir was never made and every
+ * fopen(tmp_path,"w") + rename() below silently failed - the projector ran
+ * forever publishing nothing. Call the platform mkdir directly instead. */
+static void ensure_dir(const char *p) {
+#ifdef _WIN32
+    _mkdir(p);
+#else
+    mkdir(p, 0777);
+#endif
+}
 
 static void sanitize(char *s) {
     for (char *p = s; *p; p++) if (*p == '\n' || *p == '\r' || *p == '\t') *p = ' ';
@@ -181,10 +199,16 @@ static int find_board_session(const char *house, const char *host_id, char *out,
     FILE *hrf = fopen(hr_path, "w");
     if (hrf) { fprintf(hrf, "%s\n", house); fclose(hrf); }
 
-    char cmd[PATH_MAX * 2];
+    char cmd[PATH_MAX * 3];
+#ifdef _WIN32
+    snprintf(cmd, sizeof(cmd),
+             "set \"PRISC_PROJECT_ROOT=%s\" && \"%s\\&.widgits\\board-viewer\\ops\\+x\\ledger_peers.exe\" widget 2>nul",
+             static_root, house);
+#else
     snprintf(cmd, sizeof(cmd),
              "PRISC_PROJECT_ROOT='%s' '%s/&.widgits/board-viewer/ops/+x/ledger_peers.+x' widget 2>/dev/null",
              static_root, house);
+#endif
     FILE *pf = popen(cmd, "r");
     if (!pf) return 0;
 
@@ -226,11 +250,13 @@ int main(int argc, char **argv) {
     const char *host_id = (argc > 3 && argv[3][0]) ? argv[3] : "piececraft-hq";
 
     char out_path[PATH_MAX], tmp_path[PATH_MAX], menu_path[PATH_MAX];
-    snprintf(out_path, sizeof(out_path), "%s/state/ui.txt", pkg);
-    snprintf(tmp_path, sizeof(tmp_path), "%s/state/ui.txt.tmp", pkg);
-    snprintf(menu_path, sizeof(menu_path), "%s/state/menu.txt", pkg);
-    { char cmd[PATH_MAX + 32]; snprintf(cmd, sizeof(cmd), "mkdir -p '%s/state'", pkg);
-      int r = system(cmd); (void)r; }
+    char state_dir[PATH_MAX];
+    snprintf(state_dir, sizeof(state_dir), "%s/state", pkg);
+    ensure_dir(pkg);
+    ensure_dir(state_dir);
+    snprintf(out_path, sizeof(out_path), "%s/ui.txt", state_dir);
+    snprintf(tmp_path, sizeof(tmp_path), "%s/ui.txt.tmp", state_dir);
+    snprintf(menu_path, sizeof(menu_path), "%s/menu.txt", state_dir);
 
     static char ui[UIBUF], last[UIBUF];
     last[0] = '\0';
@@ -241,18 +267,34 @@ int main(int argc, char **argv) {
      * then only re-scan when we don't have one or the cached dir has
      * disappeared (session ended). */
     static char bv_cache[PATH_MAX] = "";
+    static time_t bv_last_scan = 0;
 
     for (;;) {
         char bv[PATH_MAX] = "";
         int have;
         {
             struct stat cst;
+            /* REAL BUG FIX 2026-10-02 (Windows, live: opening one pc-hq board
+             * spawned an unbounded stream of shell processes). bv_cache was
+             * only ever assigned on the SUCCESS path, so every iteration that
+             * found nothing re-entered find_board_session() -> popen() of
+             * ledger_peers - ~3.3x/second forever. The cache above this comment
+             * was added precisely to stop that, but it can only engage once a
+             * session EXISTS, and on a machine with no board-viewer session it
+             * never does - so the exact pathology it was written to prevent
+             * came straight back. Rate-limit the rescan instead: identical
+             * behaviour whenever a session is present (still zero rescans), and
+             * when there is none it drops to one probe per RESCAN window. */
+            time_t now = time(NULL);
             if (bv_cache[0] && stat(bv_cache, &cst) == 0 && S_ISDIR(cst.st_mode)) {
                 snprintf(bv, sizeof(bv), "%s", bv_cache);
                 have = 1;
-            } else {
+            } else if (now - bv_last_scan >= PCHQ_BV_RESCAN_SEC) {
                 have = find_board_session(house, host_id, bv, sizeof(bv));
-                snprintf(bv_cache, sizeof(bv_cache), "%s", have ? bv : "");
+                snprintf(bv_cache, sizeof(bv_cache), have ? bv : "");
+                bv_last_scan = now;
+} else {
+                have = 0;
             }
         }
 
