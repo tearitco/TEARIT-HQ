@@ -2,31 +2,35 @@ SECTION      | KEY                | VALUE
 ----------------------------------------
 META         | piece_id           | wsr_main_menu
 META         | version            | 1.0
+META         | numbering_source   | MSR-DEPRACATED/game.c display_main_menu()
 
-METHOD       | File                    | STUB
-METHOD       | Game Options            | STUB
-METHOD       | Settings                | STUB
-METHOD       | Help                    | STUB
-METHOD       | Select Player           | STUB
-METHOD       | Culture                 | STUB
-METHOD       | Entity Info             | STUB
-METHOD       | Select Corp.            | CYCLE_CORP
-METHOD       | History                 | STUB
-METHOD       | General                 | STUB
-METHOD       | Tools                   | STUB
-METHOD       | Private                 | STUB
-METHOD       | Other Trans             | STUB
-METHOD       | End Turn                | TICK_ALL:1
-METHOD       | Misc. Menu              | STUB
-METHOD       | Chart                   | STUB
-METHOD       | Auto                    | STUB
-METHOD       | Watchlist               | STUB
-METHOD       | TICKER                  | TOGGLE_TICKER
-METHOD       | Research Report         | STUB
-METHOD       | List Portfolio          | RUN:./ops/+x/player_list_portfolio.+x
-METHOD       | Financial Profile       | STUB
-METHOD       | List Options            | STUB
-METHOD       | Earnings Report         | STUB
-METHOD       | Shareholder List        | RUN:./ops/+x/shareholder_registry.+x summary
-METHOD       | My Corporations         | STUB
-METHOD       | New Game                | START_WIZARD:new_game
+METHOD       | File                         | STUB
+METHOD       | Game Options                 | STUB
+METHOD       | Settings                     | STUB
+METHOD       | Help                         | STUB
+METHOD       | Select Player                | STUB
+METHOD       | My News                      | RUN:./ops/+x/wsr_news_op.+x
+METHOD       | Entity Info                  | STUB
+METHOD       | Select Corp.                 | CYCLE_CORP
+METHOD       | Select Last                  | STUB
+METHOD       | General                      | STUB
+METHOD       | Buy Stock                    | RUN:./ops/+x/player_trade.+x @corp buy 10
+METHOD       | Buy/Sell                     | GOTO:wsr_trade_menu
+METHOD       | Financing                    | GOTO:wsr_financing_menu
+METHOD       | Sell Stock                   | RUN:./ops/+x/player_trade.+x @corp sell 10
+METHOD       | Management                   | GOTO:wsr_management_menu
+METHOD       | Other Trans                  | STUB
+METHOD       | End Turn                     | TICK_ALL:1
+METHOD       | Misc. Menu                   | STUB
+METHOD       | Chart                        | STUB
+METHOD       | Cheat                        | STUB
+METHOD       | Add/Del.                     | STUB
+METHOD       | TICKER                       | TOGGLE_TICKER
+METHOD       | Research Report              | STUB
+METHOD       | List Portfolio Holdings      | RUN:./ops/+x/player_list_portfolio.+x
+METHOD       | List Futures Contracts       | GOTO:wsr_derivatives_menu
+METHOD       | Financial Profile            | STUB
+METHOD       | List Put and Call Options    | GOTO:wsr_derivatives_menu
+METHOD       | Recall DB Search List        | GOTO:wsr_search_menu
+METHOD       | Shareholder List             | RUN:./ops/+x/shareholder_registry.+x summary
+METHOD       | New Game                     | START_WIZARD:new_game

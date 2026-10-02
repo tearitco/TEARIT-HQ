@@ -464,7 +464,21 @@ int main(int argc, char **argv) {
     resolve_root();
 
     char state_path[PATH_BUF];
-    snprintf(state_path, sizeof(state_path), "%s/projects/wsr-pal/pieces/wsr_main_menu/state.txt", project_root);
+    char active_menu_piece[128];
+    /* REAL BUG, live-caught by driving every row of all six menus: the
+     * state path was hardcoded to wsr_main_menu, so any dispatch on a
+     * SUBMENU read and wrote the main menu's state file. Every submenu
+     * row therefore looked completely dead - the op ran, exited 0, and
+     * the submenu's own state.txt never changed, because its message
+     * was being written into wsr_main_menu/state.txt instead.
+     *
+     * get_current_piece_id() derives the screen from the real
+     * current_layout.txt export, which is the single source of truth
+     * for "which screen is showing" (see this file's own header). The
+     * state file follows the screen. */
+    get_current_piece_id(project_root, active_menu_piece, sizeof(active_menu_piece));
+    snprintf(state_path, sizeof(state_path), "%s/projects/wsr-pal/pieces/%s/state.txt",
+             project_root, active_menu_piece);
 
     int key = atoi(argv[1]);
 
@@ -513,8 +527,6 @@ int main(int argc, char **argv) {
     int active_corp_index = read_kv_int(state_path, "active_corp_index", 0);
     int turn_number = read_kv_int(state_path, "turn_number", 0);
     int ticker_on = read_kv_int(state_path, "ticker_on", 0);
-    char active_menu_piece[128];
-    get_current_piece_id(project_root, active_menu_piece, sizeof(active_menu_piece));
 
     /* If a wizard prompt is active (currently just Startup New Corp's
      * real 5-step flow - see wsr_wizard_input.c), EVERY key goes there
@@ -627,6 +639,43 @@ int main(int argc, char **argv) {
                 fclose(sf);
             }
             return 0;
+        } else if (strncmp(cmd, "GOTO:", 5) == 0) {
+            /* Screen switch driven straight from a METHOD row.
+             *
+             * This op's own header used to say GOTO: was "retired for
+             * navigation entirely - piece.pdl METHOD tables now hold
+             * ONLY real actions, never a navigation entry", on the
+             * grounds that chtpm's own <button href=...> was the only
+             * navigation mechanism. That left the main menu with no
+             * reachable path to the trade/financing/management/derivatives/
+             * search screens at all: the href buttons lived inside the
+             * "Actions [+]" accordion, and the METHOD rows that named
+             * those same destinations had no handler here, so pressing
+             * them fell through to the generic message with no screen
+             * change and no error.
+             *
+             * MSR-DEPRACATED/game.c has no equivalent concept: its
+             * switch(choice) ran case 13 -> ./+x/financing.+x, case 15 ->
+             * management.+x, case 28 -> db_search.+x directly. The
+             * numbered row WAS the navigation. Restoring GOTO: restores
+             * that: the row number a player types selects the screen,
+             * exactly as it did on Linux.
+             *
+             * Writing current_layout.txt is the same single source of
+             * truth get_current_piece_id() already reads back, so the
+             * switch needs no parallel state. */
+            char target[128];
+            snprintf(target, sizeof(target), "%s", cmd + 5);
+            char goto_layout[PATH_BUF];
+            snprintf(goto_layout, sizeof(goto_layout), "%s/pieces/display/current_layout.txt", project_root);
+            FILE *gf = fopen(goto_layout, "w");
+            if (gf) {
+                fprintf(gf, "pieces/chtpm/layouts/%s.chtpm", target);
+                fclose(gf);
+                snprintf(message, sizeof(message), "Opened %s.", target);
+            } else {
+                snprintf(message, sizeof(message), "Could not open %s.", target);
+            }
         } else if (strcmp(cmd, "STUB") == 0) {
             snprintf(message, sizeof(message), "Not yet available in this build.");
         } else if (strncmp(cmd, "RUN:", 4) == 0) {
@@ -636,8 +685,35 @@ int main(int argc, char **argv) {
              * as the menu message instead of the generic "Ran: X"
              * fallback below, so the player actually sees what
              * happened, not just that something ran. */
-            char cap[MAX_LINE];
-            shell_cd_run(project_root, cmd + 4, 1, cap, sizeof(cap));
+char cap[MAX_LINE];
+              /* Ops that act on a corporation (player_trade, corp_action,
+               * corp_set_owner) take the corp piece id as their FIRST
+               * argument, but which corp is active is runtime state, not
+               * something a static piece.pdl row can know. The main
+               * menu's Buy Stock / Sell Stock rows therefore shipped as
+               * "RUN:./ops/+x/player_trade.+x buy 10" and every press
+               * died on the op's own usage line:
+               *     Usage: player_trade.+x <corp_piece_id> <buy|sell|...>
+               * i.e. the two rows that actually move the player's money
+               * were the two that could never run.
+               *
+               * Fixed with an explicit @corp placeholder rather than by
+               * hardcoding a list of "ops that need a corp" here - the
+               * table stays the single place that knows what a row runs,
+               * and this side stays the single place that knows what the
+               * active corp currently is. */
+              char run_cmd[PATH_BUF * 2];
+              const char *spec = cmd + 4;
+              const char *at = strstr(spec, "@corp");
+              if (at) {
+                  char corp[128];
+                  resolve_active_corp(project_root, corp, sizeof(corp));
+                  int pre = (int)(at - spec);
+                  snprintf(run_cmd, sizeof(run_cmd), "%.*s %s%s", pre, spec, corp, at + 5);
+              } else {
+                  snprintf(run_cmd, sizeof(run_cmd), "%s", spec);
+              }
+              shell_cd_run(project_root, run_cmd, 1, cap, sizeof(cap));
             if (cap[0])
                 snprintf(message, sizeof(message), "%s", cap);
             else
