@@ -1,0 +1,16 @@
+METHOD | High ROE (>%) | RUN:./ops/+x/wsr_search_input.+x 1
+METHOD | Low P/E (<) | RUN:./ops/+x/wsr_search_input.+x 2
+METHOD | Price < % of Book | RUN:./ops/+x/wsr_search_input.+x 3
+METHOD | Min Div Yield (%) | RUN:./ops/+x/wsr_search_input.+x 4
+METHOD | Min Market Cap (M) | RUN:./ops/+x/wsr_search_input.+x 5
+METHOD | Max Market Cap (M) | RUN:./ops/+x/wsr_search_input.+x 6
+METHOD | Debt/Equity < | RUN:./ops/+x/wsr_search_input.+x 7
+METHOD | Beta < | RUN:./ops/+x/wsr_search_input.+x 8
+METHOD | Payout Ratio < % | RUN:./ops/+x/wsr_search_input.+x 9
+METHOD | Growth Rate > % | RUN:./ops/+x/wsr_search_input.+x 10
+METHOD | Current Ratio > | RUN:./ops/+x/wsr_search_input.+x 11
+METHOD | Public Co | RUN:./ops/+x/wsr_search_input.+x 12
+METHOD | Has Bonds | RUN:./ops/+x/wsr_search_input.+x 13
+METHOD | Display Results | RUN:./ops/+x/display_search_results.+x
+METHOD | Clear Criteria | RUN:./ops/+x/wsr_search_input.+x 15
+METHOD | Back | GOTO:wsr_main_menu
