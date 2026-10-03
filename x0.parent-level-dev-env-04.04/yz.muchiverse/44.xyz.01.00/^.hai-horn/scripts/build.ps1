@@ -8,14 +8,17 @@
 # WHAT IS ALREADY WIN32-CLEAN, verified by direct gcc on MSYS2 MinGW64 here:
 #   system/keyboard_input.c, system/renderer.c  (this project's own sources)
 #   _shared-lib/system/chtpm_parser_pal.c       (compiles; 3 warnings)
+#   _shared-lib/system/prisc+x.c                (4 warnings, after the
+#                                               cross-compatible OP_EXEC fix)
 #   ops/horn_chat_backend, horn_completions, horn_decide, horn_publish,
 #   horn_publish_pending  (5 of 7 ops)
 #
-# WHAT DOES NOT COMPILE ON WIN32, and why - this is the actual port surface:
-#   _shared-lib/system/prisc+x.c    fork()/waitpid() at :1316 and :1346
-#   ops/horn_turn.c                 fork()/waitpid/dup2/setsid, ~30 sites
-#   ops/horn_tool_exec.c            fork()/waitpid/dup2/execv, ~35 sites,
-#                                   AND it sandboxes via /usr/bin/bwrap
+# WHAT DOES NOT COMPILE ON WIN32 - this is now the entire port surface, and it
+# is both files in this project rather than any shared house file:
+#   ops/horn_turn.c        fork()/waitpid/dup2/setsid, ~30 sites
+#   ops/horn_tool_exec.c   fork()/waitpid/dup2/execv, ~35 sites, AND it
+#                          sandboxes via /usr/bin/bwrap, which has no Windows
+#                          equivalent primitive at all
 #
 # MinGW supplies <unistd.h>, <dirent.h> and <sys/stat.h> so those includes are
 # NOT blockers on their own. The blockers are the functions those headers
