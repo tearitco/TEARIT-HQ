@@ -5,6 +5,16 @@ system/keyboard_input
 system/renderer
 ops/+x/
 
+# The same four on win32. MSYS2 MinGW appends .exe, so the extensionless
+# patterns above match NOTHING on Windows and every build left three untracked
+# binaries in the tree. ops/+x/ was already covered because it ignores the
+# whole directory. Keeping both forms here is the difference between a
+# one-command rebuild and an untracked-artifact mess.
+system/prisc+x.exe
+system/chtpm_parser_pal.exe
+system/keyboard_input.exe
+system/renderer.exe
+
 # Runtime state - never commit. The whole pieces/ tree is written by the
 # running harness (key histories, the rendered frame, gui_state, the
 # cursor files), and chats/ holds the user's own conversation history.
