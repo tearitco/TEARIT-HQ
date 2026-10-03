@@ -6529,6 +6529,105 @@ static void switch_page(const char *name) {
     g_focus_nav = 1;
 }
 
+#ifdef _WIN32
+/* REAL FIX (Windows) - the generic shell branch of dispatch() below is the
+ * action= side of every .xhtpm in the house, and on Windows it could never
+ * work: it builds a POSIX string ("<action> '<pkg>' '<house>' >/dev/null
+ * 2>&1 &") and hands it to system(), which on this platform runs cmd.exe.
+ * cmd.exe does not parse single quotes, has no /dev/null, and treats a
+ * trailing `&` differently - so the whole thing failed with "'<path>' is
+ * not recognized" and the click did nothing.
+ *
+ * Only strip_relay.sh (the toys dropdown) had been rescued, in-process, by
+ * the 2026-09-30 fix above. Every OTHER shell action was still dead - most
+ * visibly pc-hq's own pchq-board.xhtpm `tb-in` row, whose onclick is
+ * "'.../pchq_board_action.sh" '<bv_session>' 'interact'", which is why
+ * Interact Mode never engaged on Windows even though the engine side
+ * works perfectly (verified: appending key 13 to the session's
+ * history.txt flips active_gui_is_typing.txt 0 -> 1 in ~2s and the
+ * projector then publishes interact_armed=1 / interact_label=ON).
+ *
+ * Fix: keep the exact POSIX command, but hand it to a real POSIX shell and
+ * spawn it DETACHED over CreateProcessW instead of system(). That also
+ * fixes the other half of that report - system() BLOCKS until the child
+ * exits, and this runs on the click handler on the event loop, so a slow
+ * action froze the whole UI ("froze / needs several presses"). Linux
+ * behaviour is untouched. */
+
+/* Standard install locations, in preference order. Deliberately a short
+ * fixed list rather than a PATH probe: PATH on this host is not
+ * something a renderer should depend on, and Get-Command sh fails here. */
+static const char *kh_find_posix_shell(void) {
+    static const char *cands[] = {
+        "C:/msys64/usr/bin/sh.exe",
+        "C:/msys64/mingw64/bin/sh.exe",
+        "C:/Program Files/Git/usr/bin/sh.exe",
+        "C:/Program Files/Git/bin/sh.exe",
+        NULL
+    };
+    for (int i = 0; cands[i]; i++)
+        if (GetFileAttributesA(cands[i]) != INVALID_FILE_ATTRIBUTES)
+            return cands[i];
+    return NULL;
+}
+
+/* Append arg to dst as one quoted Windows command-line token; inner
+ * double quotes are backslash-escaped the way CommandLineToArgvW expects.
+ * Same re-quoting trick khtpm_strip_posix_win.c's khtpm_win_quote_arg()
+ * uses - this file cannot call that one (it is static there). */
+static void kh_win_quote_arg(char *dst, size_t dstsz, const char *arg) {
+    size_t o = strlen(dst);
+    if (o + 1 < dstsz) dst[o++] = '"';
+    for (const char *p = arg; *p; p++) {
+        if (*p == '"' && o + 1 < dstsz) dst[o++] = '\\';
+        if (o + 1 < dstsz) dst[o++] = *p;
+    }
+    if (o + 1 < dstsz) dst[o++] = '"';
+    dst[o] = '\0';
+}
+
+/* Run the generic dispatch action through a POSIX shell, detached and
+ * non-blocking. Returns the child pid, or -1 if no shell was found. */
+static long kh_win_spawn_shell_action(const char *action) {
+    const char *sh = kh_find_posix_shell();
+    if (!sh) return -1;
+
+    /* Same "%s '%s' '%s'" shape dispatch()'s own system() branch builds. */
+    static char shellcmd[PATH_BUF * 3];
+    snprintf(shellcmd, sizeof(shellcmd), "%s '%s' '%s' >/dev/null 2>&1 &",
+             action, g_package_dir, g_house_root);
+
+    static char cmd[PATH_BUF * 8];
+    cmd[0] = '\0';
+    kh_win_quote_arg(cmd, sizeof(cmd), sh);
+    strncat(cmd, " -c ", sizeof(cmd) - strlen(cmd) - 1);
+    kh_win_quote_arg(cmd, sizeof(cmd), shellcmd);
+
+    wchar_t wexe[MAX_PATH * 2], wcmd[PATH_BUF * 8];
+    if (MultiByteToWideChar(CP_UTF8, 0, sh, -1, wexe, MAX_PATH * 2) == 0)
+        MultiByteToWideChar(CP_ACP, 0, sh, -1, wexe, MAX_PATH * 2);
+    if (MultiByteToWideChar(CP_UTF8, 0, cmd, -1, wcmd, PATH_BUF * 8) == 0)
+        MultiByteToWideChar(CP_ACP, 0, cmd, -1, wcmd, PATH_BUF * 8);
+
+    STARTUPINFOW si;
+    PROCESS_INFORMATION pi;
+    ZeroMemory(&si, sizeof(si)); si.cb = sizeof(si);
+    ZeroMemory(&pi, sizeof(pi));
+    /* Same flag set khtpm_strip_posix_win.c uses for real module spawns.
+     * CREATE_NO_WINDOW is what stops a console flashing per click;
+     * CREATE_BREAKAWAY_FROM_JOB keeps it alive past any job object. */
+    DWORD flags = CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW | CREATE_BREAKAWAY_FROM_JOB;
+    if (!CreateProcessW(wexe, wcmd, NULL, NULL, FALSE, flags, NULL, NULL, &si, &pi)) {
+        flags = CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW;
+        if (!CreateProcessW(wexe, wcmd, NULL, NULL, FALSE, flags, NULL, NULL, &si, &pi))
+            return -1;
+    }
+    CloseHandle(pi.hThread);
+    CloseHandle(pi.hProcess);
+    return (long)pi.dwProcessId;
+}
+#endif /* _WIN32 */
+
 /* Real dispatch - same shape as tp_desktop_window_rgb.c's own
  * dispatch_action(), ported not reinvented (this is a DIFFERENT process
  * so it can't call that function directly, but the semantics must match
@@ -7095,9 +7194,23 @@ static void dispatch(const char *action) {
         }
     }
     char cmd[PATH_BUF * 3];
-    snprintf(cmd, sizeof(cmd), "%s '%s' '%s' >/dev/null 2>&1 &", action, g_package_dir, g_house_root);
-    int rc = system(cmd);
-    (void)rc;
+    int action_ran = 0;
+#ifdef _WIN32
+    /* Real Windows port - see kh_win_spawn_shell_action()'s own header.
+     * Same POSIX command, but through a real POSIX shell, spawned
+     * detached so the click handler never blocks the event loop.
+     * Deliberately NOT an early return: the menu-close handling below has
+     * to keep running either way, or a dropdown would stay stuck open on
+     * Windows but close on Linux. */
+    if (kh_win_spawn_shell_action(action) > 0) action_ran = 1;
+#endif
+    if (!action_ran) {
+        /* No POSIX shell on this host (or plain Linux): the original
+         * system() path, unchanged. */
+        snprintf(cmd, sizeof(cmd), "%s '%s' '%s' >/dev/null 2>&1 &", action, g_package_dir, g_house_root);
+        int rc = system(cmd);
+        (void)rc;
+    }
     /* real menus close after a real action fires, matching
      * tp_desktop_window_rgb.c's own UX - but NOT for a genuinely
      * persistent sidebar+panel window (open-hai/chat-hai/network-
