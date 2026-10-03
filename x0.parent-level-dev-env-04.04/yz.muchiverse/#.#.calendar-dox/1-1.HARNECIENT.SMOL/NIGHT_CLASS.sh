@@ -1,28 +1,33 @@
 #!/bin/bash
-# NIGHT_CLASS.sh — deliver a night class to an external reviewer.
+# NIGHT_CLASS.sh — deliver the NIGHT 32 materials to an external reviewer.
 #
-# The night class is a NIGHT_nn_*.txt briefing plus its narration. This
-# script is the reproducible path from "the txt exists" to "a reviewer has
-# everything, including the code", and it is deliberately standalone so the
-# reviewer can run it without this house's layout knowledge.
+# Two artifacts, deliberately different in genre, and the reviewer needs
+# both:
 #
-# What it does:
-#   1. locate the night class text and its mp3
-#   2. copy both next to this script
-#   3. report which branch carries the code and how to get it
-#   4. print the reviewer's own self-check, so they are told in advance
-#      what "green" has meant in this repo before they read a summary
+#   NIGHT_32_THE_MACHINE_THAT_CAN_WRITE.txt   the NIGHT CLASS SCRIPT.
+#       A scripted dialogue in the house's established format - two
+#       students (MAXINE, RAHWEH) and TOMO teaching - covering what
+#       changed and what is still open. This is what the mp3 narrates.
+#
+#   EXTERNAL_REVIEW_3_DAYS_5_BRANCHES.txt    the VANILLA REVIEW REPORT.
+#       Plain technical briefing: branch-by-branch diffs, line counts, the
+#       security model in reviewable detail, open risks. No dramaturgy.
+#
+# An earlier version narrated the REPORT to mp3 and called it a night
+# class. That was wrong twice: it was the wrong genre, and the "review" a
+# reviewer receives should not require an audio player.
 #
 # Usage:
 #   bash NIGHT_CLASS.sh [output_dir]
 #
-# Defaults to ../../../../XO/11.timemachine-git-repo/ if it exists,
-# otherwise the current directory.
+# Defaults to the timemachine review directory if it exists, else $PWD.
 
 set -u
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-CLASS="${NIGHT_CLASS_FILE:-$HERE/NIGHT_32_EXTERNAL_REVIEW_3_DAYS_5_BRANCHES.txt}"
+
+CLASS_TXT="${NIGHT_CLASS_FILE:-$HERE/NIGHT_32_THE_MACHINE_THAT_CAN_WRITE.txt}"
+REVIEW_TXT="${NIGHT_CLASS_REVIEW:-$HERE/EXTERNAL_REVIEW_3_DAYS_5_BRANCHES.txt}"
 AUDIO_DIR="${NIGHT_CLASS_AUDIO:-$HERE/audio-book}"
 MP3="$(ls "$AUDIO_DIR"/NIGHT_32*.mp3 2>/dev/null | head -1)"
 BRANCH="${NIGHT_CLASS_BRANCH:-claude-kilo}"
@@ -36,34 +41,48 @@ fi
 mkdir -p "$DEST" || exit 1
 
 echo "=== night class delivery ==="
-echo "  script : $(basename "$CLASS")"
-echo "  audio  : ${MP3:-<none found>}"
+echo "  script : $(basename "$CLASS_TXT")"
+echo "  review : $(basename "$REVIEW_TXT")"
+echo "  audio  : $(basename "${MP3:-<none found>}")"
 echo "  dest   : $DEST"
 
-[ -f "$CLASS" ] || { echo "MISSING: $CLASS" >&2; exit 1; }
+missing=0
+for f in "$CLASS_TXT" "$REVIEW_TXT"; do
+    if [ ! -f "$f" ]; then
+        echo "  MISSING: $f" >&2
+        missing=1
+        continue
+    fi
+    cp "$f" "$DEST/" || exit 1
+    echo "  copied $(basename "$f")"
+done
+[ "$missing" -eq 0 ] || exit 1
 
-cp "$CLASS" "$DEST/" || exit 1
-echo "  copied script"
-
-if [ -n "${MP3:-}" ] && [ -f "$MP3" ]; then
+if [ -n "${MP3:-}" ] && [ -f "${MP3}" ]; then
     cp "$MP3" "$DEST/" || exit 1
-    echo "  copied audio ($(du -h "$MP3" | cut -f1))"
+    echo "  copied $(basename "$MP3") ($(du -h "$MP3" | cut -f1))"
 else
-    echo "  WARNING: no mp3 found - regenerate with:"
+    echo "  WARNING: no mp3. Regenerate with:"
     echo "           python3 $HERE/convert_night32_to_audio.py"
 fi
 
 cat <<EOF
 
-=== for the reviewer: getting the code ===
+=== for the reviewer ===
 
-  git clone $REPO
-  cd TEARIT-HQ
-  git checkout $BRANCH
+  START HERE:  EXTERNAL_REVIEW_3_DAYS_5_BRANCHES.txt
+               (plain briefing; no audio needed)
 
-  $BRANCH consolidates every branch that held unmerged work:
-  attrition (HORN_CHAT), kilo-wsr-pal (civ/economy), kilo,
-  opencode-fix, opencode-win32. 52 commits onto claude.
+  THEN:        NIGHT_32_THE_MACHINE_THAT_CAN_WRITE.txt
+               or its mp3 - the same territory as a night class dialogue,
+               including the open questions the briefing does not resolve.
+
+  CODE:        git clone $REPO
+               cd TEARIT-HQ && git checkout $BRANCH
+
+  $BRANCH consolidates every branch that still held unmerged work
+  (attrition, kilo-wsr-pal, kilo, opencode-fix, opencode-win32):
+  52 commits onto claude.
 
 === READ THIS BEFORE YOU TRUST ANY "all tests passed" ===
 
@@ -74,13 +93,11 @@ cat <<EOF
    in git history since 5a4164334. Treat every key in this tree as
    compromised.
 
-3. The highest-value read is ops/horn_tool_exec.c: the tool allowlist gate
-   and the bwrap sandbox. A model here can write files and run shell
-   commands.
+3. Highest-value read: ops/horn_tool_exec.c - the tool allowlist gate and
+   the bwrap sandbox. A model in that tree can write files and run shell.
 
-4. Four house CPU-safety rules were broken by the code under review and
-   were fixed only after the reviewer pointed at the missing documents.
-   The report's section 4 lists them.
+4. Four house CPU-safety rules were broken by the code under review, fixed
+   only after being pointed at the missing documents. Report section 4.
 
 5. The orphan fix (PR_SET_PDEATHSIG) is UNVERIFIED. Reproduce it before
    relying on it.

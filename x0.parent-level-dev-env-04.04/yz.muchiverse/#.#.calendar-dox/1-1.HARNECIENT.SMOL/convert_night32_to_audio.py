@@ -1,12 +1,23 @@
 #!/usr/bin/env python3
 """
-convert_night32_to_audio.py - narrate NIGHT_32 to mp3.
+convert_night32_to_audio.py - narrate the NIGHT 32 night class to mp3.
 
-Follows the house audio-book convention (see convert_user_guide_to_audio.py):
-edge-tts with the Maxine voice, chunked so a long document does not blow
-past the service's per-request limit, then joined with pydub.
+Follows the house audio-book convention (see convert_user_guide_to_audio.py
+and NIGHT_30/NIGHT_31): edge-tts, one voice per CHARACTER, pydub to join.
 
-Creates: audio-book/NIGHT_32_EXTERNAL_REVIEW_3_DAYS_5_BRANCHES.mp3
+Unlike the user-guide converter this one is MULTI-VOICE, because a night
+class is a dialogue. Each **CHARACTER:** line is spoken in that character's
+assigned neural voice:
+
+    MAXINE      en-GB-MaisieNeural
+    TOMO        zh-CN-XiaoxiaoNeural      (the teacher)
+    RAHWEH      zh-CN-YunxiaNeural
+    THE NARRATOR zh-CN-XiaoxiaoNeural
+
+TOMO and THE NARRATOR share a voice, matching the Voices: header line in
+every existing night class.
+
+Creates: audio-book/NIGHT_32_THE_MACHINE_THAT_CAN_WRITE.mp3
 
 Usage: python3 convert_night32_to_audio.py
 """
@@ -20,67 +31,74 @@ import edge_tts
 from pydub import AudioSegment
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-INPUT_FILE = os.path.join(BASE_DIR, "NIGHT_32_EXTERNAL_REVIEW_3_DAYS_5_BRANCHES.txt")
+INPUT_FILE = os.path.join(BASE_DIR, "NIGHT_32_THE_MACHINE_THAT_CAN_WRITE.txt")
 OUTPUT_DIR = os.path.join(BASE_DIR, "audio-book")
-OUTPUT_FILE = os.path.join(
-    OUTPUT_DIR, "NIGHT_32_EXTERNAL_REVIEW_3_DAYS_5_BRANCHES.mp3")
+OUTPUT_FILE = os.path.join(OUTPUT_DIR, "NIGHT_32_THE_MACHINE_THAT_CAN_WRITE.mp3")
 
-MAXINE_VOICE = "en-GB-MaisieNeural"
-MAXINE_SETTINGS = {"rate": "+0%", "pitch": "+0Hz"}
+# Voices, taken verbatim from the night class's own "Voices:" header so
+# the script and the audio cannot drift apart.
+VOICES = {
+    "MAXINE": "en-GB-MaisieNeural",
+    "TOMO": "zh-CN-XiaoxiaoNeural",
+    "RAHWEH": "zh-CN-YunxiaNeural",
+    "THE NARRATOR": "zh-CN-XiaoxiaoNeural",
+}
+SETTINGS = {"rate": "+0%", "pitch": "+0Hz"}
 
-# edge-tts truncates long inputs, so the text is split into chunks and
-# narrated separately. 1800 chars is well inside what the service accepts
-# and keeps each request short enough to succeed on a slow link.
 CHUNK_CHARS = 1800
 
+def parse_script(path):
+    """-> [(voice, text), ...] with header and markup removed.
 
-def load_text(path):
+    Lines beginning "Say ..." are KEPT. They read like stage directions but
+    they are spoken dialogue in this format: one character asking the next
+    to elaborate, and the answer is the next speaker's line. Dropping them
+    - which the first version of this script did - removes roughly a third
+    of the class and turns the remaining narration into an unattributed
+    monologue."""
     with open(path, "r", encoding="utf-8") as fh:
         raw = fh.read()
 
     lines = []
+    speaker_re = re.compile(r"^\*\*([A-Z ]+?):\*\*\s*(.*)$")
     for line in raw.split("\n"):
-        s = line.rstrip()
-        # Skip the pure-ASCII rules and box drawing: they read as noise.
-        if s.startswith("=") or s.startswith("-"):
+        s = line.strip()
+        if not s or s.startswith("#") or s.startswith("=") or s == "---":
             continue
-        if not s.strip():
+        m = speaker_re.match(s)
+        if not m:
             continue
-        # Drop the heavy markup but keep the words.
-        s = re.sub(r"\*{1,2}", "", s)
-        s = s.replace("#", "").replace("`", "")
-        s = s.replace(">>", "Note:")
-        s = re.sub(r"_+", " ", s)
-        s = s.replace("|", ", ")
-        s = re.sub(r"[ \t]+", " ", s).strip()
-        if s:
-            lines.append(s)
-    return "\n".join(lines)
+        who, text = m.group(1).strip(), m.group(2).strip()
+        if who not in VOICES:
+            continue
+        if not text:
+            continue
+        # Long dash runs used as stage pause read better as a full stop.
+        text = re.sub(r"\s*[-—]{2,}\s*", ". ", text)
+        text = text.replace("**", "").replace("`", "")
+        text = re.sub(r"\s+", " ", text).strip()
+        if text:
+            lines.append((who, text))
+    return lines
 
 
 def chunk(text, size=CHUNK_CHARS):
-    """Split on sentence boundaries where possible so the narration does
-    not cut mid-word."""
     out, cur = [], ""
-    for para in text.split("\n"):
-        # Sentences, keeping the terminator.
-        parts = re.split(r"(?<=[.!?])\s+", para)
-        for p in parts:
-            if not p:
-                continue
-            if len(cur) + len(p) + 1 > size and cur:
-                out.append(cur)
-                cur = p
-            else:
-                cur = f"{cur} {p}".strip()
+    for part in re.split(r"(?<=[.!?])\s+", text):
+        if not part:
+            continue
+        if len(cur) + len(part) + 1 > size and cur:
+            out.append(cur)
+            cur = part
+        else:
+            cur = f"{cur} {part}".strip()
     if cur:
         out.append(cur)
     return out
 
 
-async def synth(text, out_path):
-    communicate = edge_tts.Communicate(text, MAXINE_VOICE, **MAXINE_SETTINGS)
-    await communicate.save(out_path)
+async def synth(text, voice, out_path):
+    await edge_tts.Communicate(text, voice, **SETTINGS).save(out_path)
 
 
 async def main():
@@ -88,17 +106,30 @@ async def main():
         raise SystemExit(f"input not found: {INPUT_FILE}")
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    text = load_text(INPUT_FILE)
-    pieces = chunk(text)
-    print(f"narrating {len(text)} chars in {len(pieces)} chunks -> {MAXINE_VOICE}")
+    spoken = parse_script(INPUT_FILE)
+    if not spoken:
+        raise SystemExit("no spoken lines parsed - check the script format")
+
+    pieces = []
+    for who, text in spoken:
+        pieces.append((VOICES[who], text))
+
+    total_chars = sum(len(t) for _, t in pieces)
+    jobs = []
+    for voice, text in pieces:
+        for c in chunk(text):
+            jobs.append((voice, c))
+
+    print(f"narrating {len(spoken)} lines / {total_chars} chars "
+          f"in {len(jobs)} chunks across {len(VOICES)} voices")
 
     combined = None
     with tempfile.TemporaryDirectory() as tmp:
-        for i, piece in enumerate(pieces, 1):
-            part = os.path.join(tmp, f"part{i:03d}.mp3")
+        for i, (voice, text) in enumerate(jobs, 1):
+            part = os.path.join(tmp, f"p{i:03d}.mp3")
             for attempt in range(3):
                 try:
-                    await synth(piece, part)
+                    await synth(text, voice, part)
                     break
                 except Exception as exc:  # noqa: BLE001
                     print(f"  chunk {i} attempt {attempt + 1} failed: {exc}")
@@ -106,7 +137,7 @@ async def main():
                         raise
             seg = AudioSegment.from_file(part, format="mp3")
             combined = seg if combined is None else combined + seg
-            print(f"  chunk {i}/{len(pieces)} ok ({len(seg) / 1000:.1f}s)")
+            print(f"  chunk {i}/{len(jobs)} [{voice}] ok")
 
     combined.export(OUTPUT_FILE, format="mp3")
     size_mb = os.path.getsize(OUTPUT_FILE) / (1024 * 1024)
