@@ -63,10 +63,15 @@ $FAILED = @()
 # NOTHING: a PowerShell function that returns a value leaks it to the caller's
 # pipeline, and this is invoked as a statement, so a bare `return $true` would
 # print a stray "True" between every build line.
-function Try-Compile($src, $out, $extra) {
+function Try-Compile($src, $out, $extra, $postLibs) {
     $args = @($CFLAGS)
     if ($extra) { $args += $extra }
     $args += @($src, "-o", $out)
+    # Libraries must come AFTER the object file. GNU ld processes inputs in
+    # order, so a -l placed before the .c file is discarded before it can
+    # resolve anything - which is why putting -lregex in $extra produced a
+    # link failure while the same flag after $out worked.
+    if ($postLibs) { $args += $postLibs }
     $outText = & gcc @args 2>&1
     $code = $LASTEXITCODE
     # gcc's stderr arrives as ErrorRecord objects, not strings, so every line
@@ -97,10 +102,15 @@ Try-Compile "system\renderer.c" "system\renderer" $null
 Try-Compile (Join-Path $SHARED "system\chtpm_parser_pal.c") "system\chtpm_parser_pal" $FONT_SUPP
 
 Write-Host "--- ops ---" -ForegroundColor Cyan
-Get-ChildItem "ops" -Filter *.c | Sort-Object Name | ForEach-Object {
-    $name = $_.BaseName
-    Try-Compile $_.FullName "ops\+x\$name.+x" $null
-}
+  # -lregex is a MinGW-only requirement. Linux gets POSIX regex from libc, but
+  # on Windows regcomp/regexec/regfree live in libregex.a and horn_tool_exec
+  # (grep_files) fails to link without it. Harmless on targets that do not use
+  # regex, so it goes on every op rather than special-casing one file.
+  $OP_LIBS = @("-lregex")
+  Get-ChildItem "ops" -Filter *.c | Sort-Object Name | ForEach-Object {
+      $name = $_.BaseName
+      Try-Compile $_.FullName "ops\+x\$name.+x" $null $OP_LIBS
+  }
 
 # Drop binaries whose source is gone. A stale horn_chat_openrouter.+x sat in
 # ops/+x after the transport was renamed to horn_chat_backend, nothing

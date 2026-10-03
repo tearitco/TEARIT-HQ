@@ -397,10 +397,16 @@ static void append_transcript(const char *prefix, const char *text) {
         si.cb = sizeof(si);
 
         if (capture_stdout) {
+            /* The write end KEEPS HANDLE_FLAG_INHERIT - it is the child's stdout, and
+             * bInheritHandles=TRUE only passes on handles still carrying the
+             * flag. Clearing it here (the intuitive "don't leak handles" move)
+             * leaves horn_tool_exec with no stdout at all. Only the read end is
+             * made non-inheritable; the child's copy of the write end is closed
+             * in the parent right after CreateProcess, which is what lets the
+             * read side see EOF. */
             HANDLE tmp;
             if (!CreatePipe(&rd, &tmp, &sa, 0)) { free(cmd); return -1; }
-            /* The write end must be inheritable so the child can use it... */
-            SetHandleInformation(tmp, HANDLE_FLAG_INHERIT, 0);
+            SetHandleInformation(rd, HANDLE_FLAG_INHERIT, 0);
             wr = tmp;
             si.hStdOutput = wr;
             si.dwFlags |= STARTF_USESTDHANDLES;

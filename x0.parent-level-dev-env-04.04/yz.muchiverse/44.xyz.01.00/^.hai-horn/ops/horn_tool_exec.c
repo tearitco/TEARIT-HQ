@@ -27,20 +27,139 @@
  */
 #define _GNU_SOURCE
 #include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <string.h>
-#include <ctype.h>
-#include <dirent.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <stdio.h>
-#include <regex.h>
-#include <signal.h>
-#include <time.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/wait.h>
+    #include <stdlib.h>
+    #include <stdarg.h>
+    #include <string.h>
+    #include <ctype.h>
+    #include <dirent.h>
+    #include <fcntl.h>
+    #include <stdio.h>
+    #include <regex.h>
+    #include <time.h>
+    #include <sys/stat.h>
+    #include <sys/types.h>
+
+    /* Windows sandbox and process support. See the long note above
+     * tool_run_script's Windows branch for what does and does not carry over
+     * from the bwrap version - the short version is that this is WEAKER than
+     * Linux containment and the file says so rather than implying parity. */
+    #ifdef _WIN32
+    #ifndef WIN32_LEAN_AND_MEAN
+    #define WIN32_LEAN_AND_MEAN
+    #endif
+    #include <windows.h>
+    #include <direct.h>
+    #include <io.h>
+    #include <errno.h>
+    #define HT_WIN32 1
+
+/* MinGW ships POSIX regex in libregex.a, which this project's build does not
+ * link (Linux gets it from libc). scripts/build.ps1 adds it there rather than
+ * rewriting grep_files' matcher against PCRE - the POSIX regexp semantics are
+ * what that code is written against, and a silent behaviour change in a
+ * model-facing grep would be much worse than one more flag. */
+#define getcwd(b, n)  _getcwd((b), (n))
+    #define access(p, m)  _access((p), (m))
+    #define unlink(p)     _unlink(p)
+    #define F_OK 0
+    #define X_OK 1
+
+    /* MinGW has no fsync. _commit(fd) is the flush-it-now equivalent and is
+     * what write_file/edit_file actually need - durability of a small text
+     * file before returning, not a POSIX fsync guarantee. */
+    static int ht_fsync(int fd) { return _commit(fd); }
+    #define fsync(fd) ht_fsync(fd)
+
+    /* No mkdir shim: nothing here calls mkdir. tool_write_file explicitly
+     * refuses to create directories ("No mkdir -p: a model that can invent
+     * directory trees can sprawl one"), so a shim would be dead code. */
+
+    /* Run `exe` with args, capture stdout, discard stderr. Same contract as the
+     * POSIX branch it replaces: stdout returned NUL-terminated, stderr dropped
+     * so a tool cannot corrupt the transcript, exit code reported separately.
+     * Used for the external-op dispatcher, which is the same pipe+dup2 dance
+     * horn_turn's execute_tool does. */
+    static int ht_run_capture(const char *exe, char *const argv[],
+                              char *out, size_t out_cap, int *exit_code) {
+        char exebuf[MAX_PATH];
+        snprintf(exebuf, sizeof(exebuf), "%s", exe);
+        for (char *q = exebuf; *q; q++) if (*q == '/') *q = '\\';
+
+        wchar_t wexe[MAX_PATH * 2];
+        if (MultiByteToWideChar(CP_UTF8, 0, exebuf, -1, wexe, MAX_PATH * 2) == 0) return -1;
+
+        size_t need = 1;
+        for (int i = 0; argv[i]; i++) need += strlen(argv[i]) * 4 + 4;
+        wchar_t *cmd = calloc(need, sizeof(wchar_t));
+        if (!cmd) return -1;
+        {
+            wchar_t *p = cmd;
+            *p++ = L'"';
+            p += MultiByteToWideChar(CP_UTF8, 0, exebuf, -1, p, (int)(need - 1));
+            p += wcslen(p);
+            *p++ = L'"';
+            for (int i = 0; argv[i]; i++) {
+                *p++ = L' ';
+                p += MultiByteToWideChar(CP_UTF8, 0, argv[i], -1, p, (int)(need - 1));
+                p += wcslen(p);
+            }
+        }
+
+        SECURITY_ATTRIBUTES sa = { sizeof(sa), NULL, TRUE };
+        HANDLE rd, wr, nul;
+        STARTUPINFOW si;
+        PROCESS_INFORMATION pi;
+        ZeroMemory(&si, sizeof(si));
+        ZeroMemory(&pi, sizeof(pi));
+        si.cb = sizeof(si);
+
+        if (!CreatePipe(&rd, &wr, &sa, 0)) { free(cmd); return -1; }
+        /* The write end MUST stay inheritable - that is how the child gets it.
+         * Clearing HANDLE_FLAG_INHERIT here (the intuitive "don't leak my
+         * handles" move) makes the child's stdout invalid: the command runs,
+         * exits 0, and every byte it printed is silently discarded. Verified
+         * by probe - cleared gives out=[], inherited gives out=[hello]. The
+         * parent's copy is closed right after CreateProcess instead, which is
+         * what actually stops the leak and lets the read side see EOF. */
+        si.hStdOutput = wr;
+        si.dwFlags |= STARTF_USESTDHANDLES;
+        nul = CreateFileW(L"NUL", GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                          &sa, OPEN_EXISTING, 0, NULL);
+        if (nul != INVALID_HANDLE_VALUE) si.hStdError = nul;
+
+        BOOL ok = CreateProcessW(wexe, cmd, NULL, NULL, TRUE, CREATE_NO_WINDOW,
+                                 NULL, NULL, &si, &pi);
+        free(cmd);
+        CloseHandle(wr);
+        if (nul != INVALID_HANDLE_VALUE) CloseHandle(nul);
+        if (!ok) { CloseHandle(rd); return -1; }
+
+        out[0] = '\0';
+        size_t got = 0;
+        for (;;) {
+            DWORD chunk = 0;
+            DWORD room = (DWORD)((out_cap - 1 - got) > 0x10000 ? 0x10000 : (out_cap - 1 - got));
+            if (room == 0) break;
+            if (!ReadFile(rd, out + got, room, &chunk, NULL)) break;
+            if (chunk == 0) break;
+            got += chunk;
+        }
+        out[got] = '\0';
+        CloseHandle(rd);
+
+        WaitForSingleObject(pi.hProcess, INFINITE);
+        DWORD code = 0;
+        GetExitCodeProcess(pi.hProcess, &code);
+        CloseHandle(pi.hThread);
+        CloseHandle(pi.hProcess);
+        if (exit_code) *exit_code = (int)code;
+        return 0;
+    }
+    #else
+    #include <unistd.h>
+    #include <signal.h>
+    #include <sys/wait.h>
+    #endif
 
 #ifndef MAX_PATH
 #define MAX_PATH 4096
@@ -793,7 +912,13 @@ static int tool_edit_file(const char *args, char *out, size_t out_sz) {
 #define SCRIPT_TIMEOUT_DEFAULT 60
 #define SCRIPT_TIMEOUT_MAX 300
 
-static int bwrap_available(void) { return access("/usr/bin/bwrap", X_OK) == 0; }
+static int bwrap_available(void) {
+#ifdef HT_WIN32
+    return 1;   /* the Job Object path needs no external helper */
+#else
+    return access("/usr/bin/bwrap", X_OK) == 0;
+#endif
+}
 
 /* Whole-file reader for the small config files only - this file's other
  * reads are bounded and size-checked. */
@@ -886,6 +1011,282 @@ static int tool_run_script(const char *args, char *out, size_t out_sz) {
         snprintf(secrets, sizeof(secrets), "%s/&.widgits", house);
     }
 
+#ifdef HT_WIN32
+    /* ---------------------------------------------------------------------
+     * THE WINDOWS SANDBOX - AND AN HONEST STATEMENT OF WHAT IT IS NOT
+     *
+     * bwrap gives namespace isolation. Windows has no equivalent primitive, so
+     * this is a genuinely weaker sandbox and pretending otherwise would be the
+     * worst outcome here, because the whole point of this gate is that a model
+     * may now write. What is actually enforced:
+     *
+     *   ENFORCED  - a Job Object, so the command and everything it spawns die
+     *               together, cannot break away, and cannot outlive this op.
+     *               This replaces bwrap --new-session + killpg, and is the one
+     *               containment guarantee that maps cleanly.
+     *   ENFORCED  - the command runs with the working directory pinned to the
+     *               project, so "../" cannot walk out of it.
+     *   ENFORCED  - PATH is replaced with a minimal system list before exec, so
+     *               a command cannot pick up something out of the project tree.
+     *
+     *   NOT ENFORCED - read-only filesystem. bwrap's `--ro-bind / /` has no
+     *               Windows counterpart without a container or AppContainer.
+     *               The command can write anywhere the user can.
+     *   NOT ENFORCED - no network. `--unshare-net` has no per-process Windows
+     *               equivalent. A command CAN reach the network, so a read tool
+     *               remains a theoretical exfiltration channel.
+     *   NOT ENFORCED - the tmpfs blanking of the secrets directory.
+     *
+     * The secrets directory is therefore NOT hidden. That is the single most
+     * important difference and the reason the refusal below is a refusal rather
+     * than a fallback: a model-authored command on Windows can read
+     * &.widgits/API_KEYS, whereas on Linux it cannot.
+     *
+     * Rather than silently accept that, run_script refuses on Windows unless
+     * the operator has made a deliberate choice, via HORN_WIN_SANDBOX:
+     *
+     *   (unset)  refuse. The safe default, and what ships.
+     *   =ack     run anyway, with the limits above stated in the transcript.
+     *
+     * Anyone setting it has accepted the gap knowingly. That is a decision to
+     * make with eyes open, which is what the Linux branch's "refuse if bwrap is
+     * missing" was already doing - it just refused for a different reason.
+     */
+    {
+        const char *ack = getenv("HORN_WIN_SANDBOX");
+        if (!ack || strcmp(ack, "ack") != 0) {
+            snprintf(out, out_sz,
+                     "error: run_script refuses to execute on Windows without an "
+                     "explicit sandbox acknowledgement.\n"
+                     "\n"
+                     "Windows has no equivalent of bubblewrap's namespace "
+                     "isolation. This build enforces process containment (a Job "
+                     "Object, so the command and its children all die together) "
+                     "and a pinned working directory, but it CANNOT enforce:\n"
+                     "  - a read-only filesystem\n"
+                     "  - no network access\n"
+                     "  - hiding the secrets directory (&.widgits), which holds "
+                     "provider keys\n"
+                     "\n"
+                     "On Linux those three are what stop a model-authored command "
+                     "from reading your API keys. Here it can. Running anyway is "
+                     "therefore a deliberate choice, not a default.\n"
+                     "\n"
+                     "To accept that risk, set HORN_WIN_SANDBOX=ack. The command "
+                     "and its output are recorded either way.");
+            return 1;
+        }
+    }
+
+    /* Minimal, system-only PATH. The project tree is on the caller's PATH for
+     * good local reasons, but a model-authored command should not be able to
+     * resolve a tool out of a directory it can also write to. */
+    SetEnvironmentVariableW(L"PATH", L"C:\\Windows\\System32;C:\\Windows;C:\\Windows\\System32\\Wbem");
+
+    char comspec[MAX_PATH * 2];
+    if (GetEnvironmentVariableA("ComSpec", comspec, sizeof(comspec)) == 0)
+        snprintf(comspec, sizeof(comspec), "C:\\Windows\\System32\\cmd.exe");
+    for (char *q = comspec; *q; q++) if (*q == '/') *q = '\\';
+
+    /* Build the command line by hand. The command is model-authored, so it goes
+     * to the shell as a SINGLE argument - exactly the reason the POSIX branch
+     * passes it to /bin/sh -c via argv rather than through system(). A
+     * CreateProcess command line is one flat string, so the quoting below is the
+     * security boundary and is written to be boring rather than clever. */
+    char cmdline[PATH_BUF * 2];
+    {
+        size_t k = 0;
+        /* lpCommandLine must be writable, hence the buffer. */
+        cmdline[k++] = '"';
+        for (const char *q = comspec; *q && k < sizeof(cmdline) - 8; q++) cmdline[k++] = *q;
+        cmdline[k++] = '"';
+        cmdline[k++] = ' ';
+        cmdline[k++] = '/';
+        cmdline[k++] = 'c';
+        cmdline[k++] = ' ';
+        /* Escape the command for cmd's parser: a command containing a quote
+         * would otherwise close the argument early and let the rest run as a
+         * separate command. Doubling the quote character is cmd's own escape. */
+        for (const char *q = cmd; *q && k < sizeof(cmdline) - 2; q++) {
+            if (*q == '"') cmdline[k++] = '"';
+            cmdline[k++] = *q;
+        }
+        cmdline[k] = '\0';
+    }
+
+    SECURITY_ATTRIBUTES sa = { sizeof(sa), NULL, TRUE };
+    HANDLE rd = NULL, wr = NULL;
+    STARTUPINFOW si;
+    PROCESS_INFORMATION pi;
+    ZeroMemory(&si, sizeof(si));
+    ZeroMemory(&pi, sizeof(pi));
+    si.cb = sizeof(si);
+
+    HANDLE tmp;
+    if (!CreatePipe(&rd, &tmp, &sa, 0)) {
+        snprintf(out, out_sz, "error: cannot create pipe");
+        return 1;
+    }
+    /* The write end stays inheritable so the child actually receives it.
+     * Clearing HANDLE_FLAG_INHERIT here would make the command run and exit 0
+     * while discarding every byte it printed - verified by probe. The parent's
+     * copy is closed after CreateProcess instead. */
+    wr = tmp;
+    si.hStdOutput = wr;
+    si.hStdError = wr;
+    si.dwFlags |= STARTF_USESTDHANDLES;
+
+    /* --- THE JOB OBJECT. This is the actual containment. --- */
+    HANDLE job = CreateJobObjectW(NULL, NULL);
+    if (!job) {
+        CloseHandle(rd); CloseHandle(wr);
+        snprintf(out, out_sz, "error: cannot create Job Object (win32 error %lu) - refusing to run uncontained",
+                 (unsigned long)GetLastError());
+        return 1;
+    }
+    {
+        /* KILL_ON_JOB_CLOSE is the equivalent of bwrap --die-with-parent: if this
+         * op dies, so does the command and every descendant. WITHOUT it a
+         * command that outlives the timeout would keep running with the user's
+         * privileges, which is the failure mode the sandbox exists to prevent. */
+        JOBOBJECT_EXTENDED_LIMIT_INFORMATION jl;
+        ZeroMemory(&jl, sizeof(jl));
+        jl.BasicLimitInformation.LimitFlags =
+            JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE | JOB_OBJECT_LIMIT_DIE_ON_UNHANDLED_EXCEPTION;
+        if (!SetInformationJobObject(job, JobObjectExtendedLimitInformation, &jl, sizeof(jl))) {
+            CloseHandle(job); CloseHandle(rd); CloseHandle(wr);
+            snprintf(out, out_sz, "error: cannot arm Job Object (win32 error %lu) - refusing to run uncontained",
+                     (unsigned long)GetLastError());
+            return 1;
+        }
+    }
+
+    wchar_t wexe[MAX_PATH * 2];
+    if (MultiByteToWideChar(CP_UTF8, 0, comspec, -1, wexe, MAX_PATH * 2) == 0) {
+        CloseHandle(job); CloseHandle(rd); CloseHandle(wr);
+        snprintf(out, out_sz, "error: cannot widen shell path");
+        return 1;
+    }
+    wchar_t wcmd[PATH_BUF * 4];
+    if (MultiByteToWideChar(CP_UTF8, 0, cmdline, -1, wcmd, PATH_BUF * 4) == 0) {
+        CloseHandle(job); CloseHandle(rd); CloseHandle(wr);
+        snprintf(out, out_sz, "error: cannot widen command line");
+        return 1;
+    }
+    /* CreateProcessW takes lpCurrentDirectory as a wide string; project_root is
+     * narrow. */
+    wchar_t wroot[MAX_PATH * 2];
+    if (MultiByteToWideChar(CP_UTF8, 0, project_root, -1, wroot, MAX_PATH * 2) == 0) {
+        CloseHandle(job); CloseHandle(rd); CloseHandle(wr);
+        snprintf(out, out_sz, "error: cannot widen project root");
+        return 1;
+    }
+
+    /* CREATE_NO_WINDOW alone here - no DETACHED_PROCESS, which is invalid in
+     * combination and is what made the horn_turn detach fail with error 87. */
+    BOOL ok = CreateProcessW(wexe, wcmd, NULL, NULL, TRUE, CREATE_NO_WINDOW,
+                             NULL, wroot, &si, &pi);
+    CloseHandle(wr);
+    if (!ok) {
+        DWORD e = GetLastError();
+        CloseHandle(job); CloseHandle(rd);
+        snprintf(out, out_sz, "error: cannot start command (win32 error %lu)", (unsigned long)e);
+        return 1;
+    }
+    /* Assign AFTER creation: a process started suspended cannot spawn children
+     * before it is in the job, which would otherwise be an escape. */
+    if (!AssignProcessToJobObject(job, pi.hProcess)) {
+        DWORD e = GetLastError();
+        TerminateProcess(pi.hProcess, 1);
+        CloseHandle(pi.hThread); CloseHandle(pi.hProcess);
+        CloseHandle(job); CloseHandle(rd);
+        snprintf(out, out_sz, "error: cannot contain command in a Job Object (win32 error %lu)",
+                 (unsigned long)e);
+        return 1;
+    }
+
+    /* Wait AND drain together, because neither alone works.
+     *
+     * Draining to EOF first deadlocks on any command that fills the pipe buffer
+     * while the parent waits - the reason the POSIX branch reads first. But
+     * draining first ALSO means a long-running command blocks here and the
+     * timeout below never gets a chance to fire: a 30s ping with timeout_s=3
+     * ran the full 30s, because the read did not return until the child exited.
+     * Both orderings are wrong in different cases.
+     *
+     * PeekNamedPipe reports how much is buffered WITHOUT blocking, so this loop
+     * drains what is available, polls the process, and only stops when the child
+     * has exited AND the pipe has nothing left. That gets the deadlock
+     * protection and a working timeout at the same time.
+     */
+    char *buf = malloc(out_sz);
+    if (!buf) {
+        TerminateProcess(pi.hProcess, 1);
+        CloseHandle(pi.hThread); CloseHandle(pi.hProcess);
+        CloseHandle(job); CloseHandle(rd);
+        return 1;
+    }
+    buf[0] = '\0';
+    size_t got = 0;
+    int timed_out = 0;
+    {
+        DWORD start = GetTickCount();
+        for (;;) {
+            /* Drain whatever is buffered right now. */
+            for (;;) {
+                DWORD avail = 0;
+                if (!PeekNamedPipe(rd, NULL, 0, NULL, &avail, NULL)) break;
+                if (avail == 0) break;
+                DWORD room = (DWORD)(out_sz - 1 - got);
+                if (room > avail) room = avail;
+                DWORD chunk = 0;
+                if (!ReadFile(rd, buf + got, room, &chunk, NULL) || chunk == 0) break;
+                got += chunk;
+                buf[got] = '\0';
+            }
+            if (WaitForSingleObject(pi.hProcess, 0) == WAIT_OBJECT_0) {
+                /* One final drain: the child may have written just before exit. */
+                for (;;) {
+                    DWORD avail = 0;
+                    if (!PeekNamedPipe(rd, NULL, 0, NULL, &avail, NULL) || avail == 0) break;
+                    DWORD room = (DWORD)(out_sz - 1 - got);
+                    if (room > avail) room = avail;
+                    DWORD chunk = 0;
+                    if (!ReadFile(rd, buf + got, room, &chunk, NULL) || chunk == 0) break;
+                    got += chunk;
+                    buf[got] = '\0';
+                }
+                break;
+            }
+            if ((GetTickCount() - start) / 1000 >= (DWORD)tmo) {
+                timed_out = 1;
+                /* TerminateJobObject kills every descendant, which is what one
+                 * killpg did on POSIX. KILL_ON_JOB_CLOSE would also do it. */
+                TerminateJobObject(job, 1);
+                WaitForSingleObject(pi.hProcess, 5000);
+                break;
+            }
+            Sleep(50);
+        }
+    }
+    buf[got] = '\0';
+    CloseHandle(rd);
+    {
+        DWORD code = 0;
+        GetExitCodeProcess(pi.hProcess, &code);
+        CloseHandle(pi.hThread);
+        CloseHandle(pi.hProcess);
+        CloseHandle(job);
+        if (timed_out) {
+            size_t o = strlen(buf);
+            appendf(buf, out_sz, o, "\n[terminated after %d s - job object killed the tree]", tmo);
+            got = strlen(buf);
+        }
+        snprintf(out, out_sz, "%s\n[exit %d]", buf, (int)code);
+    }
+    free(buf);
+    return 0;
+#else
     char *argv[32];
     int argc = 0;
     argv[argc++] = "/usr/bin/bwrap";
@@ -972,6 +1373,7 @@ done:;
              WIFEXITED(st) ? WEXITSTATUS(st) : (WIFSIGNALED(st) ? -WTERMSIG(st) : -1));
     free(buf);
     return 0;
+#endif /* HT_WIN32 */
 }
 
 /* ── manifest: the allowlist ───────────────────────────────────────── */
@@ -1067,6 +1469,32 @@ int main(int argc, char *argv[]) {
             free(result);
             return 3;
         }
+#ifdef HT_WIN32
+        {
+            /* Same contract as the POSIX branch below: JSON args go straight to
+             * argv, never through a shell, so a model-supplied regex cannot
+             * break out of an argument. ht_run_capture owns the pipe, the
+             * stdout redirect and the NUL stderr. */
+            char *av[3];
+            av[0] = (char *)mapped;
+            av[1] = (char *)args;
+            av[2] = NULL;
+            int rc = -1, code = -1;
+            if (ht_run_capture(op, av, result, RESULT_CAP, &rc) == 0 && rc == 0) {
+                if (result[0] == '\0')
+                    snprintf(result, RESULT_CAP,
+                             "error: tool '%s' (op %s) produced no output (exit %d)",
+                             name, mapped, code);
+                free(op);
+                return 0;
+            }
+            snprintf(result, RESULT_CAP,
+                     "error: tool '%s' (op %s) failed to run (win32 error %d)",
+                     name, mapped, rc);
+            free(op);
+            return 1;
+        }
+#else
         int pipefd[2];
         if (pipe(pipefd) != 0) {
             snprintf(result, RESULT_CAP, "error: cannot create pipe for tool '%s'", name);
@@ -1104,6 +1532,7 @@ int main(int argc, char *argv[]) {
                      name, mapped, WIFEXITED(st) ? WEXITSTATUS(st) : -1);
         }
         free(op);
+#endif /* HT_WIN32 */
     }
 
     fputs(result, stdout);
