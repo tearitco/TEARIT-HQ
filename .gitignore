@@ -179,3 +179,7 @@ x0.parent-level-dev-env-04.04_*.7z
 # its own line. Rule: any file under a state/ dir whose name starts with
 # "raw_" is a pasted secret.
 **/state/raw_*.txt
+
+# python bytecode from the night class audio converter
+__pycache__/
+*.pyc
