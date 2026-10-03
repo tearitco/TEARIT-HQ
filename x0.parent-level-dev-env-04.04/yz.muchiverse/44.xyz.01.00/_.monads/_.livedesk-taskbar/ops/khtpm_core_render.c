@@ -8205,8 +8205,15 @@ static void dispatch(const char *action) {
     if (strcmp(action, "UI_SCALE_MINUS") == 0 || strcmp(action, "UI_SCALE_PLUS") == 0) {
         /* LIVEDESK-UI-SCALE.md - step font_scale in hq_ui.pdl by 0.25,
          * clamp 0.75..2.0, re-size the chrome font, relayout, repaint.
-         * Other open windows follow via hq_ui_pdl_reload_if_changed(). */
-        int s = g_ui_scale_pct + (action[9] == 'P' ? 25 : -25);
+         * Other open windows follow via hq_ui_pdl_reload_if_changed().
+         *
+         * Step g_ui_user_pct, NOT g_ui_scale_pct: the latter is the
+         * COMBINED scale (font_scale x the screen-relative auto factor,
+         * see kh_ui_apply_scale), so stepping it and writing the result
+         * back as font_scale folded the auto factor into font_scale and
+         * made "+" shrink the desk instead of growing it - one press
+         * took font_scale from 1.25 straight down to the 0.75 floor. */
+        int s = g_ui_user_pct + (action[9] == 'P' ? 25 : -25);
         if (s < 75) s = 75;
         if (s > 200) s = 200;
         desktop_set_font_scale(g_house_root, s);
