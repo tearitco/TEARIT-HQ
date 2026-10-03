@@ -288,6 +288,13 @@ static Pixmap g_dock_menu_buf;
 static XftDraw *g_dock_menu_xft;
 static GC g_dock_menu_gc;
 static int g_dock_menu_buf_w, g_dock_menu_buf_h;
+
+/* Geometry the menu window was last mapped at, plus whether it is mapped
+ * at all. Drives the map/raise throttle in dock_paint_menu(); see the
+ * comment there and 09-appendix/WINDOWS-TASKBAR-PORT.md. */
+static int g_dock_menu_mapped = 0;
+static int g_dock_menu_msx = 0, g_dock_menu_msy = 0;
+static int g_dock_menu_mw = 0, g_dock_menu_mh = 0;
 static int g_dock_menu_sx, g_dock_menu_sy, g_dock_menu_w, g_dock_menu_h;
 /* REAL, NEW 2026-09-01 - the @ z-order toggle's managed half. House rule:
  * behavior comes from #.desktop/livedesk_override_redirect.pdl (true =
@@ -7083,14 +7090,10 @@ static int g_dock_menu_mw = 0, g_dock_menu_mh = 0;
 static void dock_paint_menu(void) {
     int i;
     if (g_dock_menu_w <= 0 || g_dock_menu_h <= 0 || g_dock_drop_lo < 1) {
-#ifdef _WIN32
         if (g_dock_menu_win && g_dock_menu_mapped) {
             XUnmapWindow(dpy, g_dock_menu_win);
             g_dock_menu_mapped = 0;
         }
-#else
-        if (g_dock_menu_win) XUnmapWindow(dpy, g_dock_menu_win);
-#endif
         return;
     }
     if (!g_dock_menu_win) {
@@ -7111,34 +7114,40 @@ static void dock_paint_menu(void) {
             (unsigned)DefaultDepth(dpy, screen));
         g_dock_menu_xft = XftDrawCreate(dpy, g_dock_menu_buf, DefaultVisual(dpy, screen), cmap);
     }
-    /* REAL FIX 2026-10-01 - the unconditional XMoveResizeWindow + XMapRaised
-     * below ran on EVERY redraw (this function is called once per paint).
-     * On the real X server that is merely redundant, but the Win32 shim
-     * turns each XMapRaised/XMoveResizeWindow into a freshly posted Windows
-     * message, so the renderer's `while (XPending(dpy)) XNextEvent(...)`
-     * drain never emptied: it re-queued an event every pass, the loop spun
-     * at 100% CPU, and hq_idle_tick()/poll_agent_history() were never
-     * reached again - a relayed click after the menu opened was read by
-     * nobody ("menu opened, then the strip froze and ignored the relay",
-     * reproduced live 2026-10-01). Only move/raise when the geometry really
-     * changed (or the menu is being mapped for the first time), exactly the
-     * "one map, then just repaint" shape the Linux loop gets for free. */
-#ifdef _WIN32
+    /* THROTTLE, ported from the Windows branch (opencode-win32 05099beb3,
+     * "relayed dock dropdown clicks route by window name"). See
+     * 09-appendix/WINDOWS-TASKBAR-PORT.md for the full account.
+     *
+     * This map/raise ran UNCONDITIONALLY on every redraw. On a real X
+     * server that is merely redundant - but the Win32 shim turns each
+     * XMapRaised/XMoveResizeWindow into a freshly posted Windows message,
+     * so the renderer's `while (XPending(dpy)) XNextEvent(...)` drain
+     * never emptied: it re-queued an event every pass, the loop spun at
+     * 100% CPU, and hq_idle_tick()/poll_agent_history() were never reached
+     * again. Reported as "menu opened, then the strip froze and ignored the
+     * relay".
+     *
+     * Ported to Linux deliberately, not only because the bug bit the
+     * Windows shim. hq-cpu-safety.md 3c is about shape, not magnitude:
+     * "an expensive function called unconditionally inside a tick loop,
+     * with no gate at all" is the pattern behind every CPU incident in
+     * this house, and this call sits in exactly that shape. Guarding it on
+     * the Linux branch too means the shim cannot reintroduce the spin if
+     * it is ever fixed differently there.
+     *
+     * Gate on geometry having actually changed, or the menu being mapped
+     * for the first time - "one map, then just repaint", which is what the
+     * Linux loop got by luck before. */
     if (!g_dock_menu_mapped ||
         g_dock_menu_msx != g_dock_menu_sx || g_dock_menu_msy != g_dock_menu_sy ||
-        g_dock_menu_mw != g_dock_menu_w || g_dock_menu_mh != g_dock_menu_h) {
+        g_dock_menu_mw  != g_dock_menu_w  || g_dock_menu_mh  != g_dock_menu_h) {
         XMoveResizeWindow(dpy, g_dock_menu_win, g_dock_menu_sx, g_dock_menu_sy,
                           (unsigned)g_dock_menu_w, (unsigned)g_dock_menu_h);
         XMapRaised(dpy, g_dock_menu_win);
         g_dock_menu_mapped = 1;
         g_dock_menu_msx = g_dock_menu_sx; g_dock_menu_msy = g_dock_menu_sy;
-        g_dock_menu_mw = g_dock_menu_w;  g_dock_menu_mh = g_dock_menu_h;
+        g_dock_menu_mw  = g_dock_menu_w;  g_dock_menu_mh  = g_dock_menu_h;
     }
-#else
-    XMoveResizeWindow(dpy, g_dock_menu_win, g_dock_menu_sx, g_dock_menu_sy,
-                      (unsigned)g_dock_menu_w, (unsigned)g_dock_menu_h);
-    XMapRaised(dpy, g_dock_menu_win);
-#endif
     if (g_dock_menu_w > g_dock_menu_buf_w || g_dock_menu_h > g_dock_menu_buf_h) {
         int nw = g_dock_menu_w > g_dock_menu_buf_w ? g_dock_menu_w : g_dock_menu_buf_w;
         int nh = g_dock_menu_h > g_dock_menu_buf_h ? g_dock_menu_h : g_dock_menu_buf_h;
