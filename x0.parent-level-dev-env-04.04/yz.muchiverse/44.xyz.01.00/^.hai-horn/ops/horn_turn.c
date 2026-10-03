@@ -22,15 +22,66 @@
  */
 #define _GNU_SOURCE
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <fcntl.h>
-#include <signal.h>
+    #include <stdlib.h>
+    #include <string.h>
+    #include <time.h>
+
+    /* Windows process support. fork/waitpid/dup2/setsid have no equivalent, so
+     * the three spawn sites below route through CreateProcess on _WIN32 and keep
+     * the original POSIX calls everywhere else. Both paths live; the POSIX one
+     * is unchanged byte-for-byte, because Linux remains the primary target.
+     *
+     * lpApplicationName is passed explicitly rather than building a command
+     * line string. That is what makes a project path containing a space or an
+     * '&' (both real here - the project root has '&.widgits' beside it) work
+     * without quoting games. Same reason the shared prisc+x exec fix does it. */
+    #ifdef _WIN32
+    #ifndef WIN32_LEAN_AND_MEAN
+    #define WIN32_LEAN_AND_MEAN
+    #endif
+    #include <windows.h>
+    #include <direct.h>
+    #include <wchar.h>
+    #define HT_NO_FORK 1
+
+    /* --- POSIX spellings this file uses, mapped to their Windows equivalents.
+     * Done as shims rather than edits at each call site so the POSIX branch
+     * stays textually identical and a future diff reads as "what changed on
+     * Windows" rather than "what changed everywhere". */
+    #define getcwd(b, n)      _getcwd((b), (n))
+    #define access(p, m)      _access((p), (m))
+    #define sleep(s)          Sleep((DWORD)((s) * 1000))
+    #define F_OK 0
+
+    /* localtime_s has the arguments the other way round from localtime_r and
+     * returns nonzero on failure, so the macro normalises both. */
+    static struct tm *ht_localtime_r(const time_t *t, struct tm *r) {
+        return localtime_s(r, t) == 0 ? r : NULL;
+    }
+    #define localtime_r(t, r) ht_localtime_r((t), (r))
+
+    /* setenv/unsetenv do not exist on Windows; _putenv takes a NAME=VALUE. */
+    static int ht_setenv(const char *k, const char *v) {
+        char buf[1024];
+        snprintf(buf, sizeof(buf), "%s=%s", k, v);
+        return _putenv(buf) == 0 ? 0 : -1;
+    }
+    static int ht_unsetenv(const char *k) {
+        char buf[1024];
+        snprintf(buf, sizeof(buf), "%s=", k);
+        return _putenv(buf) == 0 ? 0 : -1;
+    }
+    #define setenv(k, v, o) ht_setenv((k), (v))
+    #define unsetenv(k)     ht_unsetenv(k)
+
+    #else
+    #include <unistd.h>
+    #include <sys/stat.h>
+    #include <sys/types.h>
+    #include <sys/wait.h>
+    #include <fcntl.h>
+    #include <signal.h>
+    #endif
 
 #ifndef MAX_PATH
 #define MAX_PATH 4096
@@ -39,6 +90,11 @@
 #define MSG_CAP  65536
 
 static char project_root[MAX_PATH] = ".";
+#ifdef HT_NO_FORK
+/* This op's own path, captured in main via GetModuleFileNameW. The Windows
+ * detach path re-executes it; POSIX uses fork instead and never reads it. */
+static char self_exe[MAX_PATH] = "";
+#endif
 
 static void resolve_root(void) {
     const char *env = getenv("PRISC_PROJECT_ROOT");
@@ -282,6 +338,123 @@ static void append_transcript(const char *prefix, const char *text) {
     fclose(f);
 }
 
+#ifdef HT_NO_FORK
+    /* Build a NUL-terminated wide command line from UTF-8 args. CreateProcess
+     * needs one buffer it can mutate, so it must be writable. */
+    static wchar_t *ht_wide_cmd(const char *exe, char *const argv[]) {
+        size_t n = 1;
+        for (int i = 0; argv[i]; i++) n += strlen(argv[i]) + 3;
+        wchar_t *w = calloc(n, sizeof(wchar_t));
+        if (!w) return NULL;
+        int k = 0;
+        MultiByteToWideChar(CP_UTF8, 0, exe, -1, w + k, (int)(n - (size_t)k));
+        k += (int)wcslen(w + k);
+        for (int i = 0; argv[i]; i++) {
+            w[k++] = L' ';
+            k += MultiByteToWideChar(CP_UTF8, 0, argv[i], -1, w + k, (int)(n - (size_t)k));
+            k += (int)wcslen(w + k);
+        }
+        return w;
+    }
+
+    /* Windows path with '/' accepted. CreateProcess does NOT do the shell's
+     * slash translation, and a path like C:/x/ops/+x/op.+x is what this project
+     * builds, so forward slashes have to become backslashes. */
+    static void ht_backslashify(char *p) {
+        for (; *p; p++) if (*p == '/') *p = '\\';
+    }
+
+    /* Spawn `exe` with argv[1..] and wait for it.
+     *
+     * capture_stdout != 0 redirects the child's stdout into a pipe and returns
+     * it NUL-terminated in *out (caller frees). That replaces the
+     * pipe+dup2(fds[1],STDOUT_FILENO) dance the POSIX branch does.
+     * stderr always goes to the NUL device, matching the POSIX side, so a tool
+     * writing to stderr cannot corrupt the transcript.
+     *
+     * Returns the child's exit code, or -1 if it could not be spawned or the
+     * wait failed. */
+    static int ht_spawn(const char *exe, char *const argv[],
+                        int capture_stdout, char **out, size_t out_cap) {
+        char exebuf[PATH_BUF];
+        snprintf(exebuf, sizeof(exebuf), "%s", exe);
+        ht_backslashify(exebuf);
+
+        wchar_t *cmd = ht_wide_cmd(exebuf, argv);
+        if (!cmd) return -1;
+        wchar_t wexe[PATH_BUF * 4];
+        if (MultiByteToWideChar(CP_UTF8, 0, exebuf, -1, wexe, PATH_BUF * 4) == 0) {
+            free(cmd);
+            return -1;
+        }
+
+        SECURITY_ATTRIBUTES sa = { sizeof(sa), NULL, TRUE };
+        HANDLE rd = NULL, wr = NULL, nul = INVALID_HANDLE_VALUE;
+        STARTUPINFOW si;
+        PROCESS_INFORMATION pi;
+        ZeroMemory(&si, sizeof(si));
+        ZeroMemory(&pi, sizeof(pi));
+        si.cb = sizeof(si);
+
+        if (capture_stdout) {
+            HANDLE tmp;
+            if (!CreatePipe(&rd, &tmp, &sa, 0)) { free(cmd); return -1; }
+            /* The write end must be inheritable so the child can use it... */
+            SetHandleInformation(tmp, HANDLE_FLAG_INHERIT, 0);
+            wr = tmp;
+            si.hStdOutput = wr;
+            si.dwFlags |= STARTF_USESTDHANDLES;
+        }
+        nul = CreateFileW(L"NUL", GENERIC_WRITE,
+                          FILE_SHARE_READ | FILE_SHARE_WRITE, &sa,
+                          OPEN_EXISTING, 0, NULL);
+        if (nul != INVALID_HANDLE_VALUE) {
+            si.hStdError = nul;
+            if (!capture_stdout) si.dwFlags |= STARTF_USESTDHANDLES;
+        }
+
+        /* CREATE_NO_WINDOW: the ops are headless and would otherwise flash a
+         * console every turn. */
+        BOOL ok = CreateProcessW(wexe, cmd, NULL, NULL, TRUE,
+                                 CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
+        free(cmd);
+        if (wr != NULL) CloseHandle(wr);          /* parent must drop its copy */
+        if (nul != INVALID_HANDLE_VALUE && nul != NULL) CloseHandle(nul);
+        if (!ok) {
+            if (rd) CloseHandle(rd);
+            return -1;
+        }
+
+        if (capture_stdout && rd) {
+            size_t got = 0;
+            if (out && out_cap) {
+                out[0] = '\0';
+                char *buf = malloc(out_cap);
+                if (!buf) { CloseHandle(rd); CloseHandle(pi.hProcess); CloseHandle(pi.hThread); return -1; }
+                for (;;) {
+                    DWORD chunk = 0;
+                    DWORD room = (DWORD)((out_cap - 1 - got) > 0x10000
+                                        ? 0x10000 : (out_cap - 1 - got));
+                    if (room == 0) break;
+                    if (!ReadFile(rd, buf + got, room, &chunk, NULL)) break;
+                    if (chunk == 0) break;
+                    got += chunk;
+                }
+                buf[got] = '\0';
+                *out = buf;
+            }
+            CloseHandle(rd);
+        }
+
+        WaitForSingleObject(pi.hProcess, INFINITE);
+        DWORD code = 0;
+        GetExitCodeProcess(pi.hProcess, &code);
+        CloseHandle(pi.hThread);
+        CloseHandle(pi.hProcess);
+        return (int)code;
+    }
+#endif /* HT_NO_FORK */
+
 /* Run an op by absolute path and wait for it. Shared by the transport and
  * the completion op. Returns exit status, or -1 if it could not be
  * spawned. */
@@ -289,6 +462,17 @@ static int run_op(const char *op_name, const char *arg) {
     char *op = NULL;
     if (asprintf(&op, "%s/ops/+x/%s.+x", project_root, op_name) < 0 || !op) return -1;
 
+#ifdef HT_NO_FORK
+    /* argv[0] is the op_name on both paths: the POSIX execl below passes
+     * op_name, not the full path, so the child sees the same argv either way. */
+    char *av[3];
+    av[0] = (char *)op_name;
+    av[1] = arg ? (char *)arg : NULL;
+    av[2] = NULL;
+    int wcode = ht_spawn(op, av, 0, NULL, 0);
+    free(op);
+    return wcode < 0 ? -1 : wcode;
+#else
     pid_t pid = fork();
     if (pid < 0) { free(op); return -1; }
     if (pid == 0) {
@@ -301,6 +485,7 @@ static int run_op(const char *op_name, const char *arg) {
     free(op);
     if (WIFEXITED(status)) return WEXITSTATUS(status);
     return -1;
+#endif
 }
 
 /* Hand off to horn_publish so the frame that follows this turn already
@@ -641,6 +826,24 @@ static char *execute_tool(const char *name, const char *args_json) {
     char *op = NULL;
     if (asprintf(&op, "%s/ops/+x/horn_tool_exec.+x", project_root) < 0 || !op) return NULL;
 
+#ifdef HT_NO_FORK
+    /* Same three-child shape as the POSIX branch below: run horn_tool_exec with
+     * name and args_json, take stdout, discard stderr. ht_spawn does the pipe,
+     * the stdout redirect and the NUL stderr in one place. */
+    char *av[4];
+    av[0] = (char *)"horn_tool_exec";
+    av[1] = (char *)name;
+    av[2] = (char *)args_json;
+    av[3] = NULL;
+    char *buf = NULL;
+    int rc = ht_spawn(op, av, 1, &buf, MSG_CAP);
+    free(op);
+    if (rc < 0) { free(buf); return NULL; }
+    /* An op that produced nothing is a failure, not an empty answer - the
+     * transcript would otherwise record a silent tool call as "no output". */
+    if (!buf || buf[0] == '\0') { free(buf); return NULL; }
+    return buf;
+#else
     int fds[2];
     if (pipe(fds) != 0) { free(op); return NULL; }
 
@@ -668,6 +871,7 @@ static char *execute_tool(const char *name, const char *args_json) {
     waitpid(pid, &st, 0);
     free(op);
     return buf;
+#endif
 }
 
 /* One pass over pieces/horn/tool_calls.json: execute every call, append the
@@ -847,6 +1051,18 @@ static int run_tool_calls(const char *prev_sig, char *cur_sig, size_t cur_sz) {
 }
 
 int main(void) {
+#ifdef HT_NO_FORK
+    /* main(void) gives us no argv[0] to re-exec ourselves from, so take it
+     * from the OS. argv[0] is only defined by the caller, and this op is
+     * spawned by the pal loop with no useful argv at all. */
+    {
+        wchar_t wself[PATH_BUF * 4];
+        DWORD n = GetModuleFileNameW(NULL, wself, PATH_BUF * 4);
+        if (n > 0 && n < PATH_BUF * 4) {
+            WideCharToMultiByte(CP_UTF8, 0, wself, -1, self_exe, sizeof(self_exe), NULL, NULL);
+        }
+    }
+#endif
     resolve_root();
 
     /* Detach unless the caller wants to wait.
@@ -858,10 +1074,83 @@ int main(void) {
      * horn_chat.sh `send` sets HORN_FOREGROUND=1 because it wants to wait
      * and print the transcript. */
     if (!getenv("HORN_FOREGROUND")) {
+#ifdef HT_NO_FORK
+        /* There is no fork here, and pretending otherwise by re-executing the
+         * op would restart main() and re-read the prompt - a loop, not a
+         * detach. What the POSIX fork actually buys is "the caller's blocking
+         * exec returns now while the turn keeps running", so do exactly that:
+         * take a copy of this op's own image, run it with a marker telling it
+         * to stay in the foreground, and return immediately.
+         *
+         * The child is DETACHED_PROCESS rather than a new console, and its
+         * stdio goes to the NUL device so a background turn cannot scribble on
+         * whatever owns the console. That is the closest honest equivalent of
+         * setsid() + the parent's _exit(0). */
+        {
+            if (!self_exe[0]) {
+                fprintf(stderr, "horn_turn: cannot detach background turn (no self path)\n");
+                return 1;
+            }
+            wchar_t wexe[MAX_PATH * 2], wbuf[MAX_PATH * 2];
+            if (MultiByteToWideChar(CP_UTF8, 0, self_exe, -1, wexe, MAX_PATH * 2) > 0) {
+                /* The detached copy takes no arguments, so the command line is
+                 * just the quoted exe path. Quoted because the project root has
+                 * spaces in it and an unquoted path with spaces makes
+                 * CreateProcess fail with ERROR_INVALID_PARAMETER (87). */
+                if (swprintf(wbuf, MAX_PATH * 2, L"\"%ls\"", wexe) < 0) {
+                    fprintf(stderr, "horn_turn: detach command line too long\n");
+                    return 1;
+                }
+
+                /* The child must see HORN_FOREGROUND so it does not try to detach again.
+                 *
+                 * The obvious implementation - copy GetEnvironmentStringsW,
+                 * append the marker, hand the copy to CreateProcess - fails with
+                 * ERROR_INVALID_PARAMETER (87) on this toolchain however the
+                 * trailing NULs are arranged (tested with 0, 1 and 2 extra).
+                 * A NULL lpEnvironment works and means "inherit mine", so the
+                 * marker is set on THIS process instead and inherited normally.
+                 * We return immediately afterwards, so mutating our own
+                 * environment at this point is harmless. */
+                if (ht_setenv("HORN_FOREGROUND", "1") != 0) {
+                    fprintf(stderr, "horn_turn: cannot set HORN_FOREGROUND for the detached turn\n");
+                    return 1;
+                }
+
+                STARTUPINFOW si;
+                PROCESS_INFORMATION pi;
+                ZeroMemory(&si, sizeof(si));
+                ZeroMemory(&pi, sizeof(pi));
+                si.cb = sizeof(si);
+                /* DETACHED_PROCESS ALONE. CREATE_NO_WINDOW is documented as invalid
+                 * in combination with it, and passing both is what produced
+                 * ERROR_INVALID_PARAMETER (87) on the first attempt.
+                 * DETACHED_PROCESS already means "no console of its own", which
+                 * is the part we actually wanted from CREATE_NO_WINDOW - this
+                 * is the setsid() equivalent. */
+                if (CreateProcessW(wexe, wbuf, NULL, NULL, FALSE,
+                                    DETACHED_PROCESS,
+                                    NULL, NULL, &si, &pi)) {
+                    CloseHandle(pi.hThread);
+                    CloseHandle(pi.hProcess);
+                    return 0;
+                }
+            }
+            /* Could not detach. Falling through would block the caller's exec
+             * on a turn that can stop at an approval prompt, which is the exact
+             * wedge the detach exists to avoid - so fail loudly instead.
+             * The GetLastError is what makes this diagnosable at all; without
+             * it a detach failure is indistinguishable from any other. */
+            fprintf(stderr, "horn_turn: cannot detach background turn (win32 error %lu)\n",
+                    (unsigned long)GetLastError());
+            return 1;
+        }
+#else
         pid_t bg = fork();
         if (bg < 0) return 1;
         if (bg > 0) _exit(0);
         setsid();
+#endif
     }
 
     char gp[PATH_BUF];
