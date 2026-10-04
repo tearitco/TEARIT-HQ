@@ -131,7 +131,26 @@ int main(int argc, char **argv) {
         while ((n = fread(buf, 1, sizeof(buf), in)) > 0) {
             char *p = buf;
             while ((p = memchr(p, '_', (size_t)(buf + n - p))) != NULL) {
-                if (strncmp(p, "__NEXT__", 8) == 0 && 0) {
+                /* 2026-10-02: this read `&& 0`, which disabled the
+                 * substitution outright, so page.js kept the literal
+                 * "__NEXT__" as its XHR URL. That URL is not file:, so
+                 * the worker routed it through the manager FETCH RPC
+                 * (nb_js_worker.c: the http:/https: branch) and then
+                 * blocked in recv_frame() waiting for a FETCHED reply
+                 * that this driver never sends - so `make check` hung
+                 * forever at this suite with no output (stdout is block
+                 * buffered to a file, and the driver never got to exit).
+                 *
+                 * Restored to match worker_fetch_test.c exactly, which
+                 * substitutes __DATA__ with no guard. The fixture is
+                 * file://<tmpdir>/next.json, and nb_js_worker.c serves
+                 * file: locally (normalises to a path and reads it),
+                 * so the page-originated XHR completes hermetically with
+                 * no network and no manager round trip - which is the
+                 * whole point of this wall. The cookie is scoped to
+                 * example.com while the fixture is file://, so a pass
+                 * still proves cookie-scope separation survived. */
+                if (strncmp(p, "__NEXT__", 8) == 0) {
                     fwrite(buf, 1, (size_t)(p - buf), out);
                     fputs(next_url, out);
                     p += 8;
@@ -161,7 +180,10 @@ int main(int argc, char **argv) {
     close(to_child[0]); close(from_child[1]);
 
     /* 5. LOAD the page, climb to RENDER then STATUS. */
-    char load[2048];
+    /* 4096, not 2048: page_path and dom_path are each ~1100 bytes and a
+     * long tmpdir would silently truncate the LOAD frame, which reads as a
+     * baffling protocol failure rather than a too-small buffer. */
+    char load[4096];
     snprintf(load, sizeof(load), "LOAD\n%s\n%s\nhttp://example.com/page.html\nWall4 Page Test",
              page_path, dom_path);
     wsend(to_child[1], load);
