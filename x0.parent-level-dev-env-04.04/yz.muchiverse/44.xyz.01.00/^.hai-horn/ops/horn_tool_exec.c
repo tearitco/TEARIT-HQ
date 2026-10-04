@@ -118,9 +118,11 @@
          * Clearing HANDLE_FLAG_INHERIT here (the intuitive "don't leak my
          * handles" move) makes the child's stdout invalid: the command runs,
          * exits 0, and every byte it printed is silently discarded. Verified
-         * by probe - cleared gives out=[], inherited gives out=[hello]. The
-         * parent's copy is closed right after CreateProcess instead, which is
-         * what actually stops the leak and lets the read side see EOF. */
+         * by probe - cleared gives out=[], inherited gives out=[hello]. Only
+         * the READ end is made non-inheritable; the parent's copy of the write
+         * end is closed right after CreateProcess, which is what actually stops
+         * the leak and lets the read side see EOF. */
+        SetHandleInformation(rd, HANDLE_FLAG_INHERIT, 0);
         si.hStdOutput = wr;
         si.dwFlags |= STARTF_USESTDHANDLES;
         nul = CreateFileW(L"NUL", GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
@@ -590,6 +592,31 @@ static int tool_grep_files(const char *args, char *out, size_t out_sz) {
 
 #define WRITE_HARD_CAP (1024 * 1024)
 
+/* rename() that replaces an existing destination.
+ *
+ * POSIX rename() replaces atomically. MSVCRT's rename() - which is what
+ * MinGW's <stdio.h> binds to on Windows - does NOT: it fails with EEXIST when
+ * the destination is already there. So the plain rename(tmp, full) made
+ * write_file and edit_file unable to overwrite ANY existing file: every
+ * replacement, including editing a file the model itself had just created,
+ * died with "failed to write". The whole point of the sibling-temp-then-swap
+ * dance is that it replaces; on this platform it silently did not.
+ *
+ * MoveFileExW + MOVEFILE_REPLACE_EXISTING is the equivalent atomic replace.
+ * Widened with CP_ACP rather than CP_UTF8 because the project root arrives
+ * from the environment and the model supplies ASCII relative paths, and
+ * CP_UTF8 would need winows.h, which does not exist. */
+static int replace_file(const char *from, const char *to) {
+#ifdef _WIN32
+    wchar_t wf[PATH_BUF], wt[PATH_BUF];
+    if (MultiByteToWideChar(CP_ACP, 0, from, -1, wf, PATH_BUF) == 0) return -1;
+    if (MultiByteToWideChar(CP_ACP, 0, to, -1, wt, PATH_BUF) == 0) return -1;
+    return MoveFileExW(wf, wt, MOVEFILE_REPLACE_EXISTING) ? 0 : -1;
+#else
+    return rename(from, to);
+#endif
+}
+
 /* Paths the model may never write. Keep this list tight and keep the
  * reasoning in the comment; it is a security boundary, not a preference. */
 static const char *WRITE_DENY[] = {
@@ -622,12 +649,41 @@ static int path_denied(const char *root, const char *full) {
     return 0;
 }
 
+/* Case-insensitive prefix test, ASCII only. Windows path comparison is
+ * case-insensitive, so a case-sensitive strncmp would refuse a legitimate
+ * write whose spelling merely differed from PRISC_PROJECT_ROOT. This makes
+ * the check match the filesystem's own rule instead of a stricter one the
+ * platform does not have. ASCII fold rather than tolower() because tolower is
+ * locale-dependent and would drag the C locale's opinion about which bytes
+ * are letters into a security decision. */
+static int path_prefix_ci(const char *s, const char *pfx) {
+    while (*pfx) {
+        char a = *s++, b = *pfx++;
+        if (a >= 'A' && a <= 'Z') a = (char)(a - 'A' + 'a');
+        if (b >= 'A' && b <= 'Z') b = (char)(b - 'A' + 'a');
+        if (a != b) return 0;                 /* also catches s ending early: '\0' != pfx byte */
+    }
+    return 1;
+}
+
 /* Resolve a model-supplied path for WRITING: must land inside the project
  * root. Unlike resolve_path (which is deliberately permissive so the model
  * can read anywhere), this one refuses to escape. Returns 0 on refusal. */
 static int resolve_write_path(const char *in, char *out, size_t out_sz) {
     if (!in || !in[0]) return 0;
     if (in[0] == '/') return 0;               /* absolute paths are out */
+#ifdef _WIN32
+    /* ...and so are Windows ones, which the check above does not catch: a
+     * drive-absolute "C:/Windows/Temp/x" does not begin with '/'. Without this
+     * it was not an ESCAPE - it got joined onto the root and normalised into
+     * "C:/<project>/C:/Windows/Temp/x", which then failed the existence check
+     * with a misleading "does not exist". The model was contained either way,
+     * but told the wrong reason. Reject the drive form explicitly, including
+     * the backslash spelling and the UNC-ish leading separator pair. */
+    if ((in[0] && in[1] == ':' && isalpha((unsigned char)in[0])) ||
+        (in[0] == '\\' && in[1] == '\\'))
+        return 0;
+#endif
     /* snprintf INTO the caller's buffer. This was asprintf(&out, ...),
      * which took the address of this function's own pointer parameter and
      * allocated somewhere else entirely - so `full` in the caller stayed
@@ -663,12 +719,24 @@ static int resolve_write_path(const char *in, char *out, size_t out_sz) {
     }
     norm[o] = '\0';
 
-    size_t rl = strlen(project_root);
-    if (strncmp(norm, project_root, rl) != 0 || (norm[rl] != '/' && norm[rl] != '\0'))
-        return 0;
-    if (norm[rl] == '\0') return 0;            /* the root itself */
+    /* The normaliser above prefixes EVERY segment with '/', the first one
+     * included. On Linux that accidentally agrees with project_root, which
+     * already begins with '/'. On Windows project_root begins with a drive
+     * letter ("C:/..."), so norm came out as "/C:/..." and the prefix test
+     * below never matched: every single write_file and edit_file call was
+     * refused as an escape, including paths plainly inside the project. The
+     * model could not write anything at all. Drop the leading separator when
+     * the root has none - verified by e2e, which had 8 write assertions
+     * failing on this alone. */
+    const char *cand = norm;
+    if (cand[0] == '/' && project_root[0] != '/') cand++;
 
-    snprintf(out, out_sz, "%s", norm);
+    size_t rl = strlen(project_root);
+    if (!path_prefix_ci(cand, project_root)) return 0;
+    if (cand[rl] != '/' && cand[rl] != '\0') return 0;
+    if (cand[rl] == '\0') return 0;            /* the root itself */
+
+    snprintf(out, out_sz, "%s", cand);
     return 1;
 }
 
@@ -740,7 +808,7 @@ static int tool_write_file(const char *args, char *out, size_t out_sz) {
     fsync(fileno(f));
     fclose(f);
 
-    if (w != len || rename(tmp, full) != 0) {
+    if (w != len || replace_file(tmp, full) != 0) {
         unlink(tmp);
         snprintf(out, out_sz, "error: failed to write '%s'", rel);
         free(tmp);
@@ -871,7 +939,7 @@ static int tool_edit_file(const char *args, char *out, size_t out_sz) {
     fflush(tf);
     fsync(fileno(tf));
     fclose(tf);
-    if (rename(tmp, full) != 0) {
+    if (replace_file(tmp, full) != 0) {
         unlink(tmp); free(outbuf); free(tmp);
         snprintf(out, out_sz, "error: failed to write '%s'", rel);
         return 1;
@@ -1128,9 +1196,11 @@ static int tool_run_script(const char *args, char *out, size_t out_sz) {
         return 1;
     }
     /* The write end stays inheritable so the child actually receives it.
-     * Clearing HANDLE_FLAG_INHERIT here would make the command run and exit 0
-     * while discarding every byte it printed - verified by probe. The parent's
-     * copy is closed after CreateProcess instead. */
+     * Clearing HANDLE_FLAG_INHERIT on it would make the command run and exit 0
+     * while discarding every byte it printed - verified by probe. Only the read
+     * end is made non-inheritable; the parent's copy of the write end is closed
+     * after CreateProcess, which is what lets the read side see EOF. */
+    SetHandleInformation(rd, HANDLE_FLAG_INHERIT, 0);
     wr = tmp;
     si.hStdOutput = wr;
     si.hStdError = wr;
