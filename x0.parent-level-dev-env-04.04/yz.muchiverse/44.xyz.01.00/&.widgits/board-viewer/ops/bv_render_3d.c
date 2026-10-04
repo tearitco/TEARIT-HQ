@@ -41,6 +41,23 @@
 #include <dirent.h>
 #include <math.h>
 #include <omp.h>
+/* REAL FIX 2026-10-04 (Ubuntu -> Debian 12 port, live: board rendered BLACK,
+ * no_session=1, empty canvas_raw): <time.h> used to be included only inside
+ * the `#ifdef BV_HAVE_GPU` block below, but nothing in it is GPU-specific -
+ * bv_wallclock_ms()'s clock_gettime(CLOCK_MONOTONIC)/struct timespec and the
+ * HUD's localtime_r()/struct tm are all unconditional. So the CPU-only build
+ * (no EGL/GLES3 headers, which is exactly what scripts/build.sh's probe picks
+ * on a box without the GPU dev packages) compiled with no <time.h> at all and
+ * died on 'CLOCK_MONOTONIC undeclared'. That is not a self-contained failure:
+ * scripts/build.sh runs under `set -e`, so it aborted the WHOLE board-viewer
+ * build at this one file and ledger_peers.+x / ledger_append.+x /
+ * bv_render_2d.+x were never produced. find_board_session() then found no
+ * peer binary, returned 0, and the projector published no_session=1 with an
+ * empty canvas - a blank board that reads exactly like a broken 2D/3D view.
+ * Same class as the gitignored-ops gap already documented in
+ * pchq_board_projector.c: a real cause whose visible symptom points
+ * somewhere else entirely. Kept unconditional, above the GPU guard. */
+#include <time.h>
 
 #ifdef BV_HAVE_GPU
 #include "bv_gpu_raymarch.h"   /* Path A - GPU raymarch backend (BV-GPU-RENDER-DESIGN.md) */
@@ -49,7 +66,6 @@
 #include <unistd.h>
 #include "../../_shared-lib/house_wait.h"
 #include <sys/stat.h>
-#include <time.h>
 #endif
 
 #define MAX_LINE 512
