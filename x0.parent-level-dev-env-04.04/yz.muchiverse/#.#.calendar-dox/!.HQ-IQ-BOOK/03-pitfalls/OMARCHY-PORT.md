@@ -317,6 +317,73 @@ should still be gated off on this host rather than relied upon.
 
 ---
 
+## 5.2 The second, deeper blocker: entities were `override_redirect`
+
+Fixing `WM_CLASS` got the windows *targetable*. It did not make the **pal**
+windows *focusable*, because those are created `override_redirect`:
+
+    khtpm_entity.c:101   static int g_override_redirect = 1;
+
+An override-redirect window is **unmanaged** — no WM/compositor is allowed to
+manage it, so no ICCCM hint on it will ever matter, and Hyprland will never
+route keyboard input to it. Under a bare X server with no WM (this house's
+original design target) that was harmless. Under Hyprland it is fatal.
+
+Measured, same 12 windows, only `override_redirect` changed:
+
+| | `override_redirect=true` | `override_redirect=false` |
+|---|---|---|
+| windows with `WM_HINTS` input=True | 2 of 10 (dock bars only) | **12 of 12** |
+| windows advertising `WM_TAKE_FOCUS` | 0 | **9** |
+
+Two house-side fixes were needed together:
+
+1. **ICCCM "Locally Active" input hint.** `khtpm_entity.c` set *no* WM hints at
+   all (zero `XSetWMHints`/`XAllocWMHints`), and `khtpm_core_render.c` only sets
+   `InputHint` inside `apply_dock_window_hints()`, which runs only for
+   `window_is_dock()` — so generic HQ windows had none either. Now every top-level
+   window gets `InputHint | StateHint`, `input = True`,
+   `initial_state = NormalState`. Without `input=True` a compositor is entitled to
+   treat the window as a pure visual surface (widget/notification) and never send
+   it keys — which is exactly the reported symptom.
+
+2. **`WM_TAKE_FOCUS` handshake.** Nothing in either binary registered it (only
+   `WM_DELETE_WINDOW`, `khtpm_core_render.c:354`/`:20077`), and
+   `khtpm_entity.c` handled **no** incoming `ClientMessage` at all. Under
+   Xwayland the compositor does not force input into a clicked X11 window; it
+   sends the client a `WM_TAKE_FOCUS` ClientMessage and expects the client to
+   claim focus with `XSetInputFocus`. Now registered next to window creation and
+   handled in the event loop (`khtpm_entity.c`, `tp_main()`'s `XPending` drain —
+   the message is consumed there so it can never fall through to the
+   `xev.xbutton`/`xev.xkey` branches).
+
+3. **Switch the pals to WM-managed mode** — the house's own existing knob:
+
+       #.desktop/livedesk_override_redirect.pdl
+       override_redirect=false
+
+   The managed path already handles WM chrome correctly
+   (`_MOTIF_WM_HINTS` `decorations=0`, so no titlebar/frame — see the comment at
+   `khtpm_entity.c:4697-4705`), so this does not cost the borderless look. It is
+   runtime state, not code, so it is deliberately **not** committed — see §5.3.
+
+### 5.3 Keep `override_redirect=false` on this host
+
+`#.desktop/livedesk_override_redirect.pdl` is **runtime state** — per
+`AGENTS.md` ("`*.pdl` … are noise — never sweep them into a code commit") it is
+deliberately left uncommitted, which also means a fresh clone silently defaults
+back to `true` and the bug returns with no code change to show for it. Set it
+explicitly on Omarchy.
+
+`override_redirect=true` is still correct on a real X11 session with a real WM
+that needs to sink these windows below native apps — that is what the `@`
+always-on-top toggle is for. It is specifically wrong under a Wayland
+compositor. If the house wants one setting that works in both worlds, the honest
+fix is to detect the session (`XDG_SESSION_TYPE=wayland`, or
+`XDG_CURRENT_DESKTOP=Hyprland`) and default managed mode from that.
+
+---
+
 ## 6. Geometry/scale facts that will bite any layout work
 
 * Screen is **1920x1080, scale 1.5**. `kh_screen_w()`

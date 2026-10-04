@@ -4719,7 +4719,38 @@ static int tp_main(int argc, char **argv) {
         long hints[5] = { 2, 0, 0, 0, 0 }; /* flags=MWM_HINTS_DECORATIONS, decorations=0 */
         XChangeProperty(dpy, win, motif_hints, motif_hints, 32, PropModeReplace,
                         (const unsigned char *)hints, 5);
-        XSetClassHint(dpy, win, &(XClassHint){(char *)"MuchiverseLivedesk", (char *)"MuchiverseLivedesk"});
+XSetClassHint(dpy, win, &(XClassHint){(char *)"MuchiverseLivedesk", (char *)"MuchiverseLivedesk"});
+    /* REAL, NEW 2026-10-03 - Omarchy/Hyprland port, ICCCM "Locally Active"
+     * input model. This file set NO WM hints at all (confirmed: zero
+     * XSetWMHints/XAllocWMHints in khtpm_entity.c), and khtpm_core_render.c's
+     * InputHint lives only inside apply_dock_window_hints(), which runs only for
+     * window_is_dock(). So every pal window reached Xwayland with input=False -
+     * i.e. declaring itself a pure visual surface. Compositors take that as "this
+     * is a widget/overlay, never route keyboard here", which is precisely the
+     * reported symptom of a pal that takes clicks but never gets keys/nav.
+     * input=True + initial_state=NormalState is what tells the WM this window
+     * really wants keyboard input and is ready to take it. Safe on the
+     * override_redirect path too: a real WM ignores hints on an override-redirect
+     * window, and under Xwayland they are read rather than ignored. */
+    { XWMHints *wh = XAllocWMHints();
+      if (wh) { wh->flags = InputHint | StateHint;
+                wh->input = True;
+                wh->initial_state = NormalState;
+                XSetWMHints(dpy, win, wh);
+                XFree(wh); } }
+    /* REAL, NEW 2026-10-03 - ICCCM WM_TAKE_FOCUS handshake, half 1: register
+     * the protocol. This file registered NO protocols at all (only
+     * khtpm_core_render.c did, and only WM_DELETE_WINDOW at :354/:20077), so the
+     * ICCCM focus handshake could never complete. Under Xwayland the compositor
+     * does not simply force input into a clicked X11 window - it sends the client
+     * a WM_TAKE_FOCUS ClientMessage and expects the client to claim focus with
+     * XSetInputFocus. Half 2 (handling that message) is in tp_main()'s event
+     * loop. Meaningful for the WM-managed path (g_override_redirect false); a
+     * real WM ignores protocols on an override-redirect window, so registering
+     * unconditionally is safe. */
+    { Atom prot[2]; prot[0] = XInternAtom(dpy, "WM_TAKE_FOCUS", False);
+      prot[1] = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
+      XSetWMProtocols(dpy, win, prot, 2); }
     }
     XMapWindow(dpy, win);
     TP_TIMING_MARK("motif_hints/XMapWindow");
@@ -5816,6 +5847,28 @@ static int tp_main(int argc, char **argv) {
         while (XPending(dpy)) {
             XEvent xev;
             XNextEvent(dpy, &xev);
+            /* REAL, NEW 2026-10-03 - Omarchy/Hyprland port, ICCCM WM_TAKE_FOCUS
+             * handshake, half 2: claim focus when asked. Paired with the
+             * XSetWMProtocols registration next to the window creation; see that
+             * site's comment for why this is required under Xwayland. This loop
+             * drains every event for the process (plain XPending/XNextEvent), so
+             * the message is seen here regardless of which window it targets.
+             * Consume and move on - never fall through to the KeyPress/ButtonPress
+             * branches below, which test xev.xbutton/xev.xkey and would read
+             * garbage out of a ClientMessage. */
+            if (xev.type == ClientMessage) {
+                static Atom a_wm_protocols = None, a_wm_take_focus = None;
+                if (a_wm_protocols == None) {
+                    a_wm_protocols  = XInternAtom(dpy, "WM_PROTOCOLS", False);
+                    a_wm_take_focus = XInternAtom(dpy, "WM_TAKE_FOCUS", False);
+                }
+                if ((Atom)xev.xclient.message_type == a_wm_protocols &&
+                    (Atom)xev.xclient.data.l[0] == a_wm_take_focus &&
+                    win != None) {
+                    XSetInputFocus(dpy, win, RevertToParent, (Time)xev.xclient.data.l[1]);
+                }
+                continue;
+            }
             if (popup_win && xev.type == Expose && xev.xany.window == popup_win) {
                 draw_context_menu(dpy, popup_win, popup_gc, methods, n_methods, popup_nav_base, popup_focus_row);
             } else if (popup_win && xev.type == ButtonPress) {
