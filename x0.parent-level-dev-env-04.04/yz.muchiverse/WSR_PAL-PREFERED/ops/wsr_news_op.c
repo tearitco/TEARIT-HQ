@@ -170,7 +170,7 @@ int main(void) {
     }
 
     char news_path[PATH_BUF];
-    snprintf(news_path, sizeof(news_path), "%s/projects/wsr-pal/pieces/wsr_menu/news.txt", project_root);
+    snprintf(news_path, sizeof(news_path), "%s/projects/wsr-pal/pieces/wsr_main_menu/news.txt", project_root);
     FILE *out = fopen(news_path, "w");
     if (!out) return 1;
 

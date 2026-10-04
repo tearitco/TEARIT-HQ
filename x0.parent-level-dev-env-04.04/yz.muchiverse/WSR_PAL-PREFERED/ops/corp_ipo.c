@@ -118,7 +118,7 @@ int main(int argc, char *argv[]) {
     fclose(f);
 
     char menu_state[PATH_BUF];
-    snprintf(menu_state, sizeof(menu_state), "%s/projects/wsr-pal/pieces/wsr_menu/state.txt", project_root);
+    snprintf(menu_state, sizeof(menu_state), "%s/projects/wsr-pal/pieces/wsr_main_menu/state.txt", project_root);
     /* Pure C count (no shell) — works on Linux and Windows MinGW. */
     int corp_count = 0;
     {
