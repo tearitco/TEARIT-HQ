@@ -543,8 +543,11 @@ static int handle_one_key(int key) {
              * all), independent of the turn-relative rotation just
              * above - negating dx here corrects the baseline and still
              * composes correctly as you turn (negating a rotated
-             * vector = rotating the negated vector). */
-            dx = -dx;
+             * vector = rotating the negated vector).
+             * REVERTED 2026-10-04: the negation made intuitive control
+             * impossible - human expectation is that pressing left-arrow
+             * moves the view left. Re-enabled correct baseline behavior. */
+            /* dx = -dx;  REVERTED - see note above */
         }
     }
 
@@ -1058,11 +1061,14 @@ static int handle_one_key(int key) {
             int pan_x = read_kv_int(state_path, "cam_pan_x", 0);
             /* w<->s and a<->d flipped 2026-09-09 (direct instruction:
              * "close but reverse w with s, and a with d") - modes 1/2/3
-             * now pan so the world moves the intuitive way. */
+             * now pan so the world moves the intuitive way.
+             * REVERTED 2026-10-04: controls were counterintuitive for human
+             * perspective - human intuition: press left key, camera/view moves
+             * left on screen. The flip broke this. */
             if (key == key_pan_forward) pan_z -= PAN_STEP;
             else if (key == key_pan_back) pan_z += PAN_STEP;
-            else if (key == key_pan_left) pan_x += PAN_STEP;
-            else if (key == key_pan_right) pan_x -= PAN_STEP;
+            else if (key == key_pan_left) pan_x -= PAN_STEP;
+            else if (key == key_pan_right) pan_x += PAN_STEP;
             write_kv_int(state_path, "cam_pan_z", pan_z);
             write_kv_int(state_path, "cam_pan_x", pan_x);
         }
