@@ -11103,6 +11103,13 @@ static Atom ga_xdnd_aware, ga_xdnd_enter, ga_xdnd_position, ga_xdnd_leave,
 static Window g_xdnd_source = None;
 static int g_xdnd_awaiting = 0;
 
+/* REAL, NEW 2026-10-03 - Omarchy/Hyprland port: the two ICCCM atoms the
+ * WM_TAKE_FOCUS handshake needs (see hq_dispatch_xevent's own comment).
+ * Interned lazily at first use there rather than in an init function, because
+ * this dispatch helper is reached from both event loops and the dock bars are
+ * the only windows that care. */
+static Atom ga_wm_protocols = None, ga_wm_take_focus = None;
+
 static void xdnd_init_atoms(Display *dpy) {
     ga_xdnd_aware      = XInternAtom(dpy, "XdndAware", False);
     ga_xdnd_enter      = XInternAtom(dpy, "XdndEnter", False);
@@ -11970,6 +11977,29 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
         while (XCheckTypedWindowEvent(dpy, ev->xexpose.window, Expose, &drain)) { }
         redraw();
         return;
+    }
+    /* REAL, NEW 2026-10-03 - Omarchy/Hyprland port, ICCCM WM_TAKE_FOCUS
+     * handshake, half 2. Paired with the window_is_dock()-gated
+     * XSetWMProtocols registration near window creation; see that site's comment
+     * for why this is needed and why it is dock-only. Under Xwayland the
+     * compositor sends this ClientMessage rather than forcing input in, so if we
+     * do not claim focus here the dock never gets keys even though it is mapped,
+     * visible and advertises input=True. RevertToParent + the message's own
+     * timestamp is the ICCCM-blessed pairing (a CurrentTime request here is
+     * exactly the one g_last_event_time's own comment says a WM can silently
+     * drop). Must come BEFORE the wm_delete test below: that one keys off
+     * data.l[0] alone, and WM_TAKE_FOCUS arrives in that same slot. */
+    if (ev->type == ClientMessage) {
+        if (ga_wm_protocols == None) {
+            ga_wm_protocols  = XInternAtom(dpy, "WM_PROTOCOLS", False);
+            ga_wm_take_focus = XInternAtom(dpy, "WM_TAKE_FOCUS", False);
+        }
+        if ((Atom)ev->xclient.message_type == ga_wm_protocols &&
+            (Atom)ev->xclient.data.l[0] == ga_wm_take_focus) {
+            if (window_is_dock() && win != None)
+                XSetInputFocus(dpy, win, RevertToParent, (Time)ev->xclient.data.l[1]);
+            return;
+        }
     }
     if (ev->type == ClientMessage && (Atom)ev->xclient.data.l[0] == wm_delete) {
         g_quit = 1;
@@ -20074,7 +20104,26 @@ int main(int argc, char **argv) {
     long hints[5] = { 2, 0, 0, 0, 0 };
     XChangeProperty(dpy, win, motif_hints, motif_hints, 32, PropModeReplace, (unsigned char *)hints, 5);
     Atom wm_delete = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
-    XSetWMProtocols(dpy, win, &wm_delete, 1);
+    /* REAL, NEW 2026-10-03 - Omarchy/Hyprland port. Register WM_TAKE_FOCUS on
+     * the MANAGED path only. Under Xwayland a compositor does not force input
+     * into a clicked X11 window - it sends the client a WM_TAKE_FOCUS
+     * ClientMessage and expects the client to claim focus with XSetInputFocus.
+     * Without advertising the protocol the handshake can never complete, which
+     * is why the dock bars drew but never received keys.
+     *
+     * Deliberately NOT applied to the pals: they are free, movable pieces that
+     * snap to the house's own grid (g_override_redirect=1, khtpm_entity.c:101)
+     * and must stay unmanaged so no compositor takes their geometry. Their own
+     * input path is the house's, not the compositor's. Only these dock bars -
+     * genuinely WM-managed, real InputHint set in apply_dock_window_hints() -
+     * want the ICCCM handshake. */
+    if (window_is_dock()) {
+        Atom prot[2]; prot[0] = XInternAtom(dpy, "WM_TAKE_FOCUS", False);
+        prot[1] = wm_delete;
+        XSetWMProtocols(dpy, win, prot, 2);
+    } else {
+        XSetWMProtocols(dpy, win, &wm_delete, 1);
+    }
     /* PPosition - same real fix db-hq/events-hq/chat-hai already needed
      * (khtpm-merge-how2.md's own white-flash/position entries) - without
      * this the WM ignores the requested x/y. */

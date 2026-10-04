@@ -317,70 +317,57 @@ should still be gated off on this host rather than relied upon.
 
 ---
 
-## 5.2 The second, deeper blocker: entities were `override_redirect`
+## 5.2 CORRECTION — pals must stay unmanaged; only the dock bars get ICCCM focus
 
-Fixing `WM_CLASS` got the windows *targetable*. It did not make the **pal**
-windows *focusable*, because those are created `override_redirect`:
+**An earlier version of this section was wrong and is corrected here.** It claimed
+the fix was to flip `#.desktop/livedesk_override_redirect.pdl` to `false` and give
+the pals ICCCM hints. That was a misread of what the pals *are*, and it was
+reverted. Do not re-apply it.
 
-    khtpm_entity.c:101   static int g_override_redirect = 1;
+The distinction that matters:
 
-An override-redirect window is **unmanaged** — no WM/compositor is allowed to
-manage it, so no ICCCM hint on it will ever matter, and Hyprland will never
-route keyboard input to it. Under a bare X server with no WM (this house's
-original design target) that was harmless. Under Hyprland it is fatal.
-
-Measured, same 12 windows, only `override_redirect` changed:
-
-| | `override_redirect=true` | `override_redirect=false` |
+| | what it is | who may manage it |
 |---|---|---|
-| windows with `WM_HINTS` input=True | 2 of 10 (dock bars only) | **12 of 12** |
-| windows advertising `WM_TAKE_FOCUS` | 0 | **9** |
+| **pals / entities** | free, movable, playable pieces that snap to **the house's own** grid | **nobody.** `g_override_redirect=1` (`khtpm_entity.c:101`) is load-bearing — it keeps every compositor from touching their geometry, z-order or shape masks |
+| **entity context menus** | short-lived transient popups | could be Wayland-managed; the house already has a proven path for this |
+| **dock bars (header + bottom)** | the taskbar itself | genuinely WM-managed, and the only windows that want an ICCCM focus handshake |
 
-Two house-side fixes were needed together:
+Making the pals WM-managed to "fix focus" was the wrong fix for the right symptom:
+it handed their layout to Hyprland, which is precisely what they must not have.
+They are not mini `x11-hq` windows — `x11-hq` *is* a compositor-style managed
+window; a pal is not.
 
-1. **ICCCM "Locally Active" input hint.** `khtpm_entity.c` set *no* WM hints at
-   all (zero `XSetWMHints`/`XAllocWMHints`), and `khtpm_core_render.c` only sets
-   `InputHint` inside `apply_dock_window_hints()`, which runs only for
-   `window_is_dock()` — so generic HQ windows had none either. Now every top-level
-   window gets `InputHint | StateHint`, `input = True`,
-   `initial_state = NormalState`. Without `input=True` a compositor is entitled to
-   treat the window as a pure visual surface (widget/notification) and never send
-   it keys — which is exactly the reported symptom.
+So the fix is **split by role**, and only the managed windows get managed-window
+treatment:
 
-2. **`WM_TAKE_FOCUS` handshake.** Nothing in either binary registered it (only
-   `WM_DELETE_WINDOW`, `khtpm_core_render.c:354`/`:20077`), and
-   `khtpm_entity.c` handled **no** incoming `ClientMessage` at all. Under
-   Xwayland the compositor does not force input into a clicked X11 window; it
-   sends the client a `WM_TAKE_FOCUS` ClientMessage and expects the client to
-   claim focus with `XSetInputFocus`. Now registered next to window creation and
-   handled in the event loop (`khtpm_entity.c`, `tp_main()`'s `XPending` drain —
-   the message is consumed there so it can never fall through to the
-   `xev.xbutton`/`xev.xkey` branches).
+1. **`WM_CLASS` on every top-level window** (`khtpm_core_render.c` generic path
+   `:20049`, tile window `:17096`, bottom dock bar, dock menu, and
+   `khtpm_entity.c`'s pal window). Purely identification — it does **not** make a
+   window managed, and it is what let the dock bars escape Omarchy's `no_focus`
+   rule in §5.1. Safe to keep on the pals.
+2. **ICCCM `WM_TAKE_FOCUS` handshake, dock bars only.** Registered behind
+   `if (window_is_dock())` near window creation, handled in
+   `hq_dispatch_xevent()`. The dock bars already had `input=True` from
+   `apply_dock_window_hints()`; what they lacked was the handshake. Deliberately
+   **not** applied to the pals — their input path is the house's own, not the
+   compositor's.
 
-3. **Switch the pals to WM-managed mode** — the house's own existing knob:
+Verified live after the split — the roles are observably different, which is the
+point:
 
-       #.desktop/livedesk_override_redirect.pdl
-       override_redirect=false
+    dock bars  : WM_HINTS input=True,  WM_TAKE_FOCUS advertised
+    all 10 pals: WM_HINTS input absent, WM_TAKE_FOCUS absent   (unmanaged, free)
 
-   The managed path already handles WM chrome correctly
-   (`_MOTIF_WM_HINTS` `decorations=0`, so no titlebar/frame — see the comment at
-   `khtpm_entity.c:4697-4705`), so this does not cost the borderless look. It is
-   runtime state, not code, so it is deliberately **not** committed — see §5.3.
+Confirmed working on this host: **top bar, bottom bar, and entity context menus
+all take key/nav input.**
 
-### 5.3 Keep `override_redirect=false` on this host
+### 5.3 Do not commit the pdl
 
-`#.desktop/livedesk_override_redirect.pdl` is **runtime state** — per
-`AGENTS.md` ("`*.pdl` … are noise — never sweep them into a code commit") it is
-deliberately left uncommitted, which also means a fresh clone silently defaults
-back to `true` and the bug returns with no code change to show for it. Set it
-explicitly on Omarchy.
-
-`override_redirect=true` is still correct on a real X11 session with a real WM
-that needs to sink these windows below native apps — that is what the `@`
-always-on-top toggle is for. It is specifically wrong under a Wayland
-compositor. If the house wants one setting that works in both worlds, the honest
-fix is to detect the session (`XDG_SESSION_TYPE=wayland`, or
-`XDG_CURRENT_DESKTOP=Hyprland`) and default managed mode from that.
+`#.desktop/livedesk_override_redirect.pdl` stays `override_redirect=true` — it is
+the pals' grid guarantee. It is runtime state (per `AGENTS.md`, `*.pdl` is never
+swept into a code commit) so it is never committed anyway; do not "fix" it by
+editing it either. If a future session ever needs the pals managed, that is a
+per-pal decision made in the pal's own config, not a house-wide flip.
 
 ---
 
