@@ -4694,6 +4694,18 @@ static int tp_main(int argc, char **argv) {
                                 0, win_depth, InputOutput, win_vis,
                                 CWColormap | CWEventMask | CWOverrideRedirect | CWBorderPixel | CWBackPixel, &swa);
     TP_TIMING_MARK("XCreateWindow");
+    /* REAL, NEW 2026-10-03 - Omarchy/Hyprland port, and the reason nav input
+     * never reached a pal. khtpm_core_render.c:16142 already documents the
+     * intent - Xwayland's `xwayland-grab-access-rules` allowlists by WM_CLASS,
+     * and this house's real class is "MuchiverseLivedesk" - but the class hint
+     * was only ever set on a few POPUP windows in that file, never on the pal's
+     * own top-level window. So every entity window reached Xwayland with an
+     * EMPTY WM_CLASS, which means: no compositor window rule can match it, no
+     * `hyprctl dispatch focuswindow class:...` can ever target it, and the
+     * grab-access allowlist can never name it. Confirmed live - `hyprctl
+     * clients` lists all nine running pals with class=''. Same compound-literal
+     * form already used at khtpm_core_render.c:17113. */
+    XSetClassHint(dpy, win, &(XClassHint){(char *)"MuchiverseLivedesk", (char *)"MuchiverseLivedesk"});
     /* REAL, NEW 2026-09-01 - when the pdl turns override_redirect off
      * (WM-managed pieces, so the taskbar's @ toggle can control their
      * real z-order on Xwayland/Mutter), Mutter would put a titlebar/frame

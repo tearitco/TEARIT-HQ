@@ -17097,6 +17097,9 @@ static int tp_main(int argc, char **argv) {
                                 0, win_depth, InputOutput, win_vis,
                                 CWColormap | CWEventMask | CWOverrideRedirect | CWBorderPixel | CWBackPixel, &swa);
     TP_TIMING_MARK("XCreateWindow");
+    /* REAL, NEW 2026-10-03 - tile/tile-mode window in this binary; same missing
+     * WM_CLASS fix as the generic path (see the long note there). */
+    XSetClassHint(dpy, win, &(XClassHint){(char *)"MuchiverseLivedesk", (char *)"MuchiverseLivedesk"});
     /* REAL, NEW 2026-09-01 - when the pdl turns override_redirect off
      * (WM-managed pieces, so the taskbar's @ toggle can control their
      * real z-order on Xwayland/Mutter), Mutter would put a titlebar/frame
@@ -19448,7 +19451,10 @@ static void kh_ensure_dock_peer_window(void) {
         (unsigned)(g_dock_peer_h > 0 ? g_dock_peer_h : DOCK_BAR_H),
         0, CopyFromParent, InputOutput, CopyFromParent,
         CWBackPixel | CWOverrideRedirect | CWEventMask, &pswa);
-    apply_dock_window_hints(dpy, g_dock_peer_win, g_dock_peer_x, g_dock_peer_y);
+apply_dock_window_hints(dpy, g_dock_peer_win, g_dock_peer_x, g_dock_peer_y);
+    /* REAL, NEW 2026-10-03 - the bottom dock bar's own window; same missing
+     * WM_CLASS fix as the generic path above (see the long note there). */
+    XSetClassHint(dpy, g_dock_peer_win, &(XClassHint){(char *)"MuchiverseLivedesk", (char *)"MuchiverseLivedesk"});
     render_managed_wm_hints(dpy, g_dock_peer_win, 1);
     XMapRaised(dpy, g_dock_peer_win);
     set_window_opacity(dpy, g_dock_peer_win, load_theme_opacity());
@@ -20049,6 +20055,16 @@ int main(int argc, char **argv) {
     win = XCreateWindow(dpy, RootWindow(dpy, screen), g_win_x, g_win_y, (unsigned)g_win_w, (unsigned)g_win_h, 0,
                          CopyFromParent, InputOutput, CopyFromParent, CWBackPixel | CWOverrideRedirect | CWEventMask, &swa);
     if (window_is_dock()) apply_dock_window_hints(dpy, win, g_win_x, g_win_y);
+    /* REAL, NEW 2026-10-03 - Omarchy/Hyprland port. This is the GENERIC top-level
+     * window path (the strip header/bottom dock bars and every HQ window run
+     * through here), and it is where WM_CLASS was missing, so under rootless
+     * Xwayland these windows arrived with an EMPTY class. That makes them
+     * unmatchable by any compositor window rule and untargetable by
+     * `hyprctl dispatch focuswindow class:...` - the live reason nav/key input
+     * never reached the taskbar. Same compound-literal form already used at
+     * :17113, and the class value the house already documents at :16142 as the
+     * one Xwayland's xwayland-grab-access-rules allowlists by. */
+    XSetClassHint(dpy, win, &(XClassHint){(char *)"MuchiverseLivedesk", (char *)"MuchiverseLivedesk"});
     /* kh_is_entity_context_menu() forced override_redirect=True just
      * above regardless of g_override_redirect - never apply managed WM
      * hints on top of that (2026-09-28, same fix as the override_redirect
