@@ -62,6 +62,22 @@ pager_cell_w=145
 # ui_ref_width=2496
 # ui_ref_height=1664
 
+# default_win_w / default_win_h: size for a window whose own PDL <window>
+# element declares no width/height, and which is not user-resizable and not
+# fullscreen - see kh_default_win_w()/kh_default_win_h() in
+# _.monads/_.livedesk-taskbar/ops/khtpm_core_render.c. Absent (0) means fall
+# back to a percentage of screen size (58% w / 67% h), i.e. 788x514 on this
+# 1360x768 desktop. Set explicitly to keep the verified 784x504 geometry,
+# which is exactly what the renderer used to hardcode for user-resizable
+# windows: kh_auto_px(1120) x kh_auto_px(720), with
+# kh_auto_px(v) = (v * 70 + 50) / 100  ->  784 and 504.
+# A window that declares its own CSS width/height overrides both of these
+# (network-browser-hq.css declares 784x504; proc-mon.css declares 620px).
+# This is the supported data-level knob, so the size stays editable per house
+# instead of being baked into a compiled constant.
+default_win_w=784
+default_win_h=504
+
 # font_family: house-wide DEFAULT font (fontconfig name, e.g. "DejaVu
 # Sans" / "Times New Roman" / "Comic Sans MS" / "Helvetica"). A window's
 # own CSS font-family (if it sets one) always wins - this is only the
