@@ -1,3 +1,4 @@
+#define _GNU_SOURCE /* REAL, NEW 2026-10-03 - Omarchy/glibc 2.44 port. _POSIX_C_SOURCE 200809L below pins the feature set on its own, so usleep() (ktb_toggle_zorder_respawn()'s real 30ms stagger, ~line 2808) stayed undeclared: POSIX.1-2008 DROPPED usleep, and glibc only exposes it via _DEFAULT_SOURCE/_BSD_SOURCE/_SVID_SOURCE/_XOPEN_SOURCE<700 - none implied by a bare _POSIX_C_SOURCE. _GNU_SOURCE implies all of those, so the one-line fix is to ask for them rather than patch each call site. Kept as a source fix, not a build-flag one, so EVERY build path (build_core_render.sh, build_khtpm_strip.sh, ...) gets it. */
 #define _POSIX_C_SOURCE 200809L /* CLOCK_MONOTONIC + getline() under -std=c11 strict mode - bumped from 199309L 2026-08-16 for chai_load_ledger()'s real getline() fix, see that function's own header comment */
 #include <stdarg.h> /* 2026-09-11 - kh_focus_debug_log()'s va_list, TEMPORARY diagnostic logging */
 #include "house_wait.h"
@@ -72,6 +73,7 @@ static int kh_auto_px(int base_px) {
 #include <dirent.h> /* REAL, chat-hai mode only - session-dir listing */
 #include <fcntl.h> /* REAL, NEW 2026-09-01 - strip mode's own zorder toggle respawn (open("/dev/null", O_RDWR)) */
 #include <unistd.h>
+#include <sys/resource.h> /* REAL, NEW 2026-10-03 - nice(), ktb_toggle_zorder_respawn()'s real mild CPU-priority yield (~line 2869). glibc declares nice() HERE, not in <unistd.h>, so this include is the whole fix for that "implicit declaration" error. */
 #include <sys/stat.h>
 #include <sys/select.h>
 #include <sys/time.h> /* REAL, NEW 2026-09-01 - tile mode's own real gettimeofday() frame-pacing/click-vs-drag timing */
