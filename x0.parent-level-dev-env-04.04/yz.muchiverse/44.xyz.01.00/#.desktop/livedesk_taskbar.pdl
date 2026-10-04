@@ -151,6 +151,25 @@ SECTION      | network_menu_6_label  | cancel
 # wired to a user-switcher - DIRECT INSTRUCTION 2026-08-08).
 SECTION      | strip_x_offset         | 200
 SECTION      | strip_y_offset         | 50
+# Dock cell metrics - REFERENCE (base) pixels, same units the old C literals
+# used. They are multiplied by the screen-relative UI scale at load time
+# (hq_ui.pdl ui_scale / ui_ref_width / ui_ref_height), so on a small monitor
+# every one of these shrinks together. Change a value here, no recompile.
+# The cell is: pad + nav_badge + (sprite + sprite_gap) + label + text_pad,
+# clamped to cell_min..cell_max (hq_max for hqwin cells).
+SECTION      | dock_cell_sprite_px    | 24
+SECTION      | dock_cell_gap_px       | 6
+SECTION      | dock_cell_pad_px       | 6
+SECTION      | dock_sprite_gap_px     | 4
+SECTION      | dock_text_pad_px       | 10
+SECTION      | dock_cell_min_px       | 52
+SECTION      | dock_status_min_px     | 40
+SECTION      | dock_font_px           | 12
+SECTION      | dock_cell_max_px       | 180
+SECTION      | dock_hq_max_px         | 240
+SECTION      | dock_nav_badge_px      | 30
+SECTION      | dock_focus_box_px      | 64
+SECTION      | dock_pager_px          | 110
 SECTION      | strip_user_cmd         |
 SECTION      | datetime_lang          | zh
 SECTION      | strip_btn_0_label       | file
