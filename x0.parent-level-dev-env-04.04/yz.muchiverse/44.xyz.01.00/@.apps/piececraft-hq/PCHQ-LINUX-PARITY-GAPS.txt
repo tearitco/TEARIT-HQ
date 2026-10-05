@@ -1,0 +1,169 @@
+================================================================================
+pc-hq LINUX->WINDOWS PARITY GAP ANALYSIS
+Written 2026-10-02 after reading open_pchq_board.sh in FULL (212 lines)
+and diffing it against open_pchq_board.ps1 (62 lines).
+Read this before touching either launcher again.
+================================================================================
+
+I previously declared "open_pchq_board.ps1 is correct parity" after only
+grepping the .sh for keywords. That was wrong. It is ~30% of the Linux
+script and omits the part that actually makes the board work.
+
+--------------------------------------------------------------------------------
+WHAT I MISUNDERSTOOD
+--------------------------------------------------------------------------------
+
+1. "The board WINDOW is this row's deliverable."
+   That sentence is in MY OWN ps1 header (line 13). I wrote it as an excuse
+   to skip the engine bootstrap, then treated the resulting blank window as
+   a content problem instead of a missing-step problem.
+   Linux treats the window as the LAST step of six. I implemented one.
+
+2. I kept reading window count / CPU as the health signal.
+   renderer.exe and chtpm_rgb_render.exe are console/raster daemons. Judging
+   the pipeline by them tells you nothing. The pipeline's health signal is
+   state/ui.txt + whether a board-viewer session exists.
+
+3. I chased GL/GLUT for a "window that isn't opening".
+   gl_mirror belongs to button.sh's dev/game path and to WSR-PAL. The toys
+   row never touches it. The x11-hq window is a khtpm_core_render window,
+   the same family as the taskbar and the 12 entity windows.
+
+4. I treated blank == broken rendering.
+   The board is a MIRROR. It renders whatever ui.txt points at. No session
+   => nothing to point at => blank window. The renderer is fine.
+
+5. The missing 4th argument was visible to me early and I wrote it down
+   as "pc direct test lacked the fourth 'piececraft-hq' arg" and then never
+   fixed it. I had the answer and did not act on it.
+
+--------------------------------------------------------------------------------
+STEP-BY-STEP: LINUX open_pchq_board.sh vs WINDOWS open_pchq_board.ps1
+--------------------------------------------------------------------------------
+
+STEP 1  resolve house root                     [DONE]        ok
+        sh 20-36 walks up for #.desktop AND &.widgits
+        ps1 25-46 walks up for #.desktop only  - minor, fine
+
+STEP 2  build-on-demand                        [MISSING]
+        sh 50-63  builds khtpm_core_render via build_core_render.sh and
+                  pchq_board_projector via build_pchq_board_projector.sh
+        ps1 50-51 hard-fails if the .exe is missing instead of building.
+                  So on a clean checkout the row errors out entirely.
+
+STEP 3  reap orphaned engine sessions           [MISSING]
+        sh 65-114  walks /proc, finds engine procs whose cwd is under a
+                  session dir, checks the SESSION LEADER's ppid for
+                  orphaning, SIGKILLs them, deletes dead session dirs.
+                  Comment at sh 67-73 says these orphans were the real
+                  "pc-hq is laggy" bottleneck - dozens of pollers starving
+                  the live engine.
+        ps1        nothing. Windows has no pgrep/readlink//proc here.
+
+STEP 4  reap orphan board-viewer widget         [MISSING]
+        sh 116-131 kills a `board-viewer/button.sh run-widget` whose
+                  session dir is gone. sh 117-121 explains the exact bug:
+                  ledger_peers still reports the widget ONLINE because its
+                  PID lives, so the projector latches a DELETED
+                  bv_session and renders a permanently blank canvas.
+                  -> This is the Linux bug that already bit them once.
+        ps1        nothing.
+
+STEP 5  single-instance guard                  [PARTIAL - BUG]
+        sh 136-148 kills BOTH board_pids() AND proj_pids():
+                  khtpm_core_render.+x ... pchq-board.xhtpm
+                  pchq_board_projector.+x
+                  TERM, sleep 1, then KILL whatever survives.
+        ps1 56-58  kills ONLY khtpm_core_render.exe matching pchq-board.
+                  The PROJECTOR IS NEVER KILLED.
+                  -> This is why I had two projectors (15936 + 19244)
+                     both writing state/ui.txt. They fight. Content is
+                     whichever wrote last. This alone can make a correct
+                     board look broken.
+
+STEP 6  ENSURE A BOARD-VIEWER ENGINE SESSION    [MISSING - THE BIG ONE]
+        sh 150-203 engine_up() requires BOTH:
+                  a `board-viewer/button.sh run-widget .../piececraft-hq`
+                  AND a live `prisc+x pal/main_module` whose cwd is inside
+                  an ON-DISK board-viewer session dir. sh 155-157 is
+                  explicit that a bash wrapper alone is not enough.
+                  If not up:
+                    - mkdir lock at pieces/system/.engine-start.lock
+                      serializes rapid double-clicks to one engine
+                    - setsid nohup env PCHQ_ENGINE_MODE=1 sh -c
+                      'sh "$0" run' button.sh
+                    - PCHQ_ENGINE_MODE=1 makes button.sh block on the
+                      orchestrator instead of foregrounding a tty-less,
+                      instantly-exiting keyboard_input. sh 177-181 says
+                      that early exit was what fired the rm -rf trap and
+                      left the board blank.
+                    - registers the pgid in livedesk_proc_list.txt so
+                      ktb_reap_launched can kill(-pgid) it
+                    - waits up to 8s (40 x 0.2s) for the session
+        ps1        NOTHING. No engine, no session, no lock, no wait.
+                  -> state/ui.txt reports no_session=1 forever.
+                  -> This is the actual reason the board is blank.
+
+STEP 7  launch the board window                [PARTIAL - BUG]
+        sh 206  "$BIN" "$HOUSE_ROOT" "$BOARD_TPL" piececraft-hq
+                 FOUR args. argv[3] = "piececraft-hq".
+        ps1 61  @($House, $Board)
+                 TWO args. argv[3] is MISSING.
+        -> khtpm_core_render.c reinterprets argv[3]: an EXISTING DIRECTORY
+           becomes g_arg3_dir, an "instance dir" whose ui.txt gets appended
+           as an extra UI source (khtpm_core_render.c:1143-1158, :1565,
+           :11826-11829). The legacy `argc>=5 -> g_win_x=atoi(argv[3])`
+           popup-position path is explicitly guarded to only run when
+           argv[3] is NOT a directory (khtpm_core_render.c:1150-1151).
+           With argc=4 and a non-directory argv[3] the value is currently
+           inert, but Linux passes it, it is part of the launch contract,
+           and the ps1 also runs with a different CWD than setsid+inherit,
+           so a relative "piececraft-hq" could stat differently. Port it.
+
+STEP 8  register in the proc-ledger            [MISSING]
+        sh 208-209 appends "pid pid 0 0 pchq-board" to
+                  #.desktop/livedesk_proc_list.txt
+        ps1        nothing. Taskbar quit cannot reap this window.
+
+--------------------------------------------------------------------------------
+THE ENGINE CHAIN - IS IT PORTABLE? (checked, yes, but it is real work)
+--------------------------------------------------------------------------------
+  prisc+x.exe            EXISTS already in pc-hq          <- VM is available
+  board-viewer/button.ps1 EXISTS (Windows run-widget equivalent)
+  board-viewer/build.ps1 EXISTS
+  board-viewer/ops/+x    EMPTY except the ledger_peers.exe I built.
+                         Seven bv_*.c sources are unbuilt.
+  pc-hq/button.ps1       has NO PCHQ_ENGINE_MODE support
+                         (grep: 0 hits). STEP 6 needs it added.
+
+  So: not impossible, but STEP 6 is a genuine port - engine mode in
+  button.ps1, the board-viewer ops build, Windows stand-ins for
+  pgrep / readlink /proc/<pid>/cwd / setsid / kill(-pgid), plus the lock
+  and the wait. That is its own work block, not a launcher tweak.
+
+--------------------------------------------------------------------------------
+ORDER OF WORK
+--------------------------------------------------------------------------------
+  PHASE 1  launcher parity (small, safe, clearly correct)
+    - add "piececraft-hq" 4th arg                     STEP 7
+    - kill the projector in the single-instance guard STEP 5  <- live bug
+    - register the pid in livedesk_proc_list.txt       STEP 8
+    - build-on-demand instead of hard-fail            STEP 2
+    (STEPS 3/4/6/7 need the engine chain, so Phase 2)
+
+  PHASE 2  engine chain (larger)
+    STEP 6 first - it is what turns a blank window into a live board.
+    Then orphan reaping (3,4) so the Phase 2 stack cannot rot into the
+    "dozens of orphan pollers" problem sh:67-73 warns about.
+
+--------------------------------------------------------------------------------
+HOW TO TELL IF IT IS WORKING  (do not use window count)
+--------------------------------------------------------------------------------
+  state/ui.txt exists, is >1KB, and:
+     bv_session    = a REAL session id, not -1 / empty
+     no_session    = 0
+     canvas_raw    = <house>/&.widgits/board-viewer/pieces/sessions/<id>/...
+                     and that FILE EXISTS on disk and grows
+  Blank window + no_session=1  => engine chain missing (STEP 6).
+  Two projectors writing ui.txt => single-instance guard bug (STEP 5).
+================================================================================

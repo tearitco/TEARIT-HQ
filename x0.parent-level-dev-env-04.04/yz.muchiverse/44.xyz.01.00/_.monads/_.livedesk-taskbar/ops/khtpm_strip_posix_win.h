@@ -81,6 +81,7 @@ int closedir(DIR *d);
 /* --- group 2: link-only process stubs, unreachable (see header) ------- */
 int fork(void);
 int setsid(void);
+long khtpm_win_spawn_module(const char *path, char *const argv[]);
 int execve(const char *path, char *const argv[], char *const envp[]);
 
 #ifdef __cplusplus

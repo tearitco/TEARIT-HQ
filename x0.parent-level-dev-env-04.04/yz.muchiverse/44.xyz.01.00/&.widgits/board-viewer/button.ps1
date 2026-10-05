@@ -22,12 +22,23 @@ if (Test-Path $MSYS) {
 $HOUSE_DIR = Split-Path (Split-Path $SCRIPT_DIR -Parent) -Parent
 
 function Get-Bin([string]$rel) {
-    $exe = Join-Path $SCRIPT_DIR ($rel + ".exe")
-    if (Test-Path -LiteralPath $exe) { return $exe }
-    $plain = Join-Path $SCRIPT_DIR $rel
-    if (Test-Path -LiteralPath $plain) { return $plain }
-    return $null
-}
+        # Windows: a ".+x" suffix is this repo's POSIX ELF artifact name. The
+        # original probe was Join-Path $SCRIPT_DIR ($rel + ".exe"), so for
+        # rel="ops\+x\ledger_append.+x" it looked for "ledger_append.+x.exe",
+        # never matched, and fell through to the ELF itself - which then
+        # failed to execute. That silently skipped ledger_append's ONLINE
+        # registration entirely, so ledger_peers reported ZERO peers, the
+        # pc-hq projector read that as no_session=1, and the board window
+        # rendered blank even with a fully live session and a 1.9MB
+        # rgb_frame.raw sitting on disk. Same trap hit bv_compose_frame and
+        # bv_render_3d. Prefer the native <stem>.exe sibling first.
+        $stem = $rel -replace '\.\+x$', ''
+        foreach ($cand in @("$stem.exe", $stem, "$rel.exe", $rel)) {
+            $p = Join-Path $SCRIPT_DIR $cand
+            if (Test-Path -LiteralPath $p) { return $p }
+        }
+        return $null
+    }
 
 # UTF-8 NO BOM — C read_kv_str / fopen break on EF BB BF prefix
 function Write-Utf8NoBom([string]$Path, [string]$Text) {
@@ -176,8 +187,8 @@ function Copy-TreeLink([string]$src, [string]$dst) {
 
 function Invoke-Kill {
     $names = @("keyboard_input","renderer","prisc+x","chtpm_parser_pal",
-               "chtpm_rgb_render","gl_mirror","bv_compose_frame","bv_menu_input",
-               "bv_render_3d","ledger_append","ledger_peers")
+"chtpm_rgb_render","gl_mirror","bv_compose_frame","bv_menu_input",
+        "bv_render_2d","bv_render_3d","ledger_append","ledger_peers")
     foreach ($n in $names) {
         Get-Process -EA SilentlyContinue |
             Where-Object { $_.ProcessName -eq $n -or $_.ProcessName -like "$n*" } |
@@ -305,9 +316,26 @@ active_target_id=board_viewer
         $cand = Join-Path $SCRIPT_DIR "ops\+x\bv_render_3d.+x"
         if (Test-Path -LiteralPath $cand) { $render3d = $cand }
     }
+    # render_mode==0 output. The pc-hq projector publishes
+    # pieces/display/rgb_frame_2d.raw as its canvas, and NOTHING else
+    # writes that name - prisc+x only emits rgb_frame.raw. Without this
+    # step the projector had a session but no canvas, so the board window
+    # opened blank. Reads PRISC_PROJECT_ROOT and writes
+    # $PRISC_PROJECT_ROOT/pieces/display/rgb_frame_2d.raw.
+    $render2d = Get-Bin "ops\+x\bv_render_2d.+x"
+    if (-not $render2d) {
+        $cand = Join-Path $SCRIPT_DIR "ops\+x\bv_render_2d.+x"
+        if (Test-Path -LiteralPath $cand) { $render2d = $cand }
+    }
     if ($compose) {
         Write-Host "  seeding bv_compose_frame..."
         $null = Invoke-HouseBin -Path $compose -WorkDir $SESSION -Hidden -Wait
+        if ($render2d) {
+            Write-Host "  seeding bv_render_2d..."
+            $null = Invoke-HouseBin -Path $render2d -WorkDir $SESSION -Hidden -Wait
+        } else {
+            Write-Host "  WARN: no bv_render_2d" -ForegroundColor Yellow
+        }
         if ($render3d) {
             Write-Host "  seeding bv_render_3d..."
             $null = Invoke-HouseBin -Path $render3d -WorkDir $SESSION -Hidden -Wait
