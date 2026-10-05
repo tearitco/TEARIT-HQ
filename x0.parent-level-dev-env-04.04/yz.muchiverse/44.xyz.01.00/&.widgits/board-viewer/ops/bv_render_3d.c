@@ -44,6 +44,7 @@
 
 #ifdef BV_HAVE_GPU
 #include "bv_gpu_raymarch.h"   /* Path A - GPU raymarch backend (BV-GPU-RENDER-DESIGN.md) */
+#include "bv_move_range.c"    /* shared Move range finder file helpers */
 #include <signal.h>
 #include <unistd.h>
 #include "../../_shared-lib/house_wait.h"
@@ -3190,6 +3191,7 @@ static int render_one_frame(void) {
         {
             char pp[PATH_BUF];
             snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
+            { BvRange rg; if (bvr_load(focused_project_root, &rg)) bvr_arm_placer(pp, focused_project_root); }
             if (read_kv_int(pp, "armed", 0)) {
                 int sx = read_kv_int(pp, "x", 0);
                 int sy = read_kv_int(pp, "y", 0);
@@ -3252,23 +3254,25 @@ static int render_one_frame(void) {
                    we->x+0.5+wsx/2.0, we->z+wsy, we->y+0.5+wsz/2.0, cr,cg,cb, 0);
             if (wm >= 0) sc.box[sc.box_n-1].model = wm;
         }
-        /* 3D diamond, range 2, on the xelector's cell. That cell is
-         * the possessed entity when possessed_id names one. */
+        /* Move range finder (the REAL range; 2D only renders it - see
+         * @.apps/piececraft-hq/RENDER-STANDARD.md). Drawn only while
+         * move_range_matrix.txt exists, one wire cell per '#', flat at
+         * the origin's level, centred on the xelector (range finder
+         * cursor) when present, else the hero. Esc/Enter delete the
+         * file (bv_menu_input.c), which closes it. */
         if (g_xelector_present || g_hero_present) {
-            int ox = g_xelector_present ? g_xelector_x : g_hero_x;
-            int oy = g_xelector_present ? g_xelector_y : g_hero_y;
-            int oz = g_xelector_present ? g_xelector_z : g_hero_z;
-            int rad = 2;
-            for (int dz = -rad; dz <= rad; dz++) {
-                for (int dy = -rad; dy <= rad; dy++) {
-                    for (int dx = -rad; dx <= rad; dx++) {
-                        int man = (dx < 0 ? -dx : dx) + (dy < 0 ? -dy : dy) + (dz < 0 ? -dz : dz);
-                        if (man == 0 || man > rad) continue;
-                        ADDWIRE(ox + dx + 0.08, oz + dz + 0.08, oy + dy + 0.08,
-                                ox + dx + 0.92, oz + dz + 0.92, oy + dy + 0.92,
+            BvRange rng;
+            if (bvr_load(focused_project_root, &rng)) {
+                int ox = g_xelector_present ? g_xelector_x : g_hero_x;
+                int oy = g_xelector_present ? g_xelector_y : g_hero_y;
+                int oz = g_xelector_present ? g_xelector_z : g_hero_z;
+                for (int dy = -(rng.nr / 2); dy <= rng.nr / 2; dy++)
+                    for (int dx = -(rng.nc / 2); dx <= rng.nc / 2; dx++) {
+                        if (!bvr_has(&rng, dx, dy)) continue;
+                        ADDWIRE(ox + dx + 0.08, oz + 0.08, oy + dy + 0.08,
+                                ox + dx + 0.92, oz + 0.92, oy + dy + 0.92,
                                 255, 220, 40);
                     }
-                }
             }
         }
         #undef GPU_ADD_MODEL

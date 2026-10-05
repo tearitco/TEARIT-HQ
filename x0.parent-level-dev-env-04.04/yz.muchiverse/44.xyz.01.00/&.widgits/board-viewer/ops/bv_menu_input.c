@@ -48,6 +48,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "bv_move_range.c"   /* shared Move range finder file helpers */
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -557,10 +558,38 @@ static int handle_one_key(int key) {
         char pp[PATH_BUF];
         snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
         int armed = read_kv_int(pp, "armed", 0);
-        if (key == 27 && armed) {
+        /* Move range finder (bv_move_range.c): open while
+         * move_range_matrix.txt exists. Esc closes it (and the green
+         * selector); Enter accepts the selector cell if it sits on a
+         * '#' of the matrix around the origin (xelector, else the
+         * entity) and relocates the entity there, then closes. */
+        BvRange rng;
+        int range_open = focused_project_root[0] && bvr_load(focused_project_root, &rng);
+        if (range_open && !armed) { bvr_arm_placer(pp, focused_project_root); armed = read_kv_int(pp, "armed", 0); }
+        if (key == 27 && (armed || range_open)) {
+            if (range_open) bvr_close(focused_project_root);
             write_kv_int(pp, "armed", 0);
             bump_screen_changed(project_root);
             return 0;
+        }
+        if (key == 13 && range_open && armed) {
+            char ep[PATH_BUF], ent[64] = "", sp[PATH_BUF], xs[PATH_BUF];
+            bvr_path(focused_project_root, "move_range_entity.txt", ep, sizeof(ep));
+            read_kv_str(ep, "entity", ent, sizeof(ent));
+            snprintf(sp, sizeof(sp), "%s/pieces/%s/state.txt", focused_project_root, ent);
+            snprintf(xs, sizeof(xs), "%s/pieces/xelector_01/state.txt", focused_project_root);
+            int tx = read_kv_int(pp, "x", 0), ty = read_kv_int(pp, "y", 0), tz = read_kv_int(pp, "z", 0);
+            int ox = read_kv_int(xs, "pos_x", -9999), oy = read_kv_int(xs, "pos_y", -9999);
+            if (ox == -9999 || oy == -9999) { ox = read_kv_int(sp, "pos_x", 0); oy = read_kv_int(sp, "pos_y", 0); }
+            if (ent[0] && bvr_has(&rng, tx - ox, ty - oy)) {
+                write_kv_int(sp, "pos_x", tx);
+                write_kv_int(sp, "pos_y", ty);
+                write_kv_int(sp, "pos_z", tz);
+                bvr_close(focused_project_root);
+                write_kv_int(pp, "armed", 0);
+                bump_screen_changed(project_root);
+            }
+            return 0;   /* out of range: stay open, nothing moves */
         }
         if (armed && (dx || dy || key == 'z' || key == 'x')) {
             int sx = read_kv_int(pp, "x", 0);

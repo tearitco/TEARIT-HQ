@@ -247,6 +247,28 @@ int main(void) {
     long screen_last = 0;
     { FILE *pf = fopen(pos_path, "r"); if (pf) { if (fscanf(pf, "%ld", &screen_last) != 1) screen_last = 0; fclose(pf); } }
     int external_change = (screen_now != screen_last);
+    /* Move range finder (bv_move_range.c) lives in the REAL project, whose
+     * Move script can't reach this session's marker. Its file appearing,
+     * changing or vanishing is therefore a change trigger too. */
+    {
+        char rrp[PATH_BUF], rr[PATH_BUF] = "", mp[PATH_BUF], lp[PATH_BUF];
+        pj(rrp, sizeof(rrp), "pieces/system/real_project_root.txt");
+        FILE *rrf = fopen(rrp, "r");
+        if (rrf) { if (fgets(rr, sizeof(rr), rrf)) rr[strcspn(rr, "\r\n")] = 0; fclose(rrf); }
+        if (rr[0]) {
+            snprintf(mp, sizeof(mp), "%s/pieces/display/move_range_matrix.txt", rr);
+            long range_now = file_size(mp);
+            long range_last = 0;
+            pj(lp, sizeof(lp), "pieces/display/.bv_dispatch_range_sz");
+            FILE *lf = fopen(lp, "r");
+            if (lf) { if (fscanf(lf, "%ld", &range_last) != 1) range_last = 0; fclose(lf); }
+            if (range_now != range_last) {
+                external_change = 1;
+                lf = fopen(lp, "w");
+                if (lf) { fprintf(lf, "%ld\n", range_now); fclose(lf); }
+            }
+        }
+    }
     if (external_change) {
         FILE *pf = fopen(pos_path, "w");
         if (pf) { fprintf(pf, "%ld\n", screen_now); fclose(pf); }
