@@ -51,6 +51,14 @@ Rules while sharing a checkout:
 - Heaviest-collision file at the moment: `board-viewer/ops/bv_menu_input.c`
   is the placer/camera-fix merge point; only touch it if you are doing
   placer or camera work.
+- Lane split vs the `opencode-fix` work (2026-10-05): that lane owns
+  `ops/` worker/fetch/driver code, `tests/worker_*`, `nb_js_worker.+x`
+  sides, and the FETCH protocol, and leads edits to
+  `network_browser_manager.c` while mid-flight. The `opencode` lane
+  owns row-projection/layout into the window (page-state, xhtpm, css)
+  and should avoid touching worker/fetch C files. The handshake file is
+  `network_browser_manager.c` - rebase your row-projection batches over
+  whatever that lane landed last.
 - Driving the network browser: relay file
   `#.desktop/entity_menu_history/<pid>.txt` + reference at
   `08-roadmap/NB-DEBUG-QUICKREF.md`.
