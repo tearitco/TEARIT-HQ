@@ -528,20 +528,10 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
             if (line[0] && title[0] && strcmp(line, title) == 0) { linelen = 0; } \
             else if (line[0] && junk_visible_line(line)) { linelen = 0; } \
             else if (line[0] && line_count < MAX_LINES) { \
-                char *s = line; \
-                while (*s && line_count < MAX_LINES) { \
-                    size_t L = strlen(s); \
-                    if (L <= TEXT_WRAP) { fprintf(out, "TEXT|%s\n", s); line_count++; break; } \
-                    size_t cut = TEXT_WRAP; \
-                    while (cut > TEXT_WRAP / 2 && s[cut] && s[cut] != ' ') cut--; \
-                    if (s[cut] == ' ') { \
-                        s[cut] = '\0'; fprintf(out, "TEXT|%s\n", s); s += cut + 1; \
-                    } else { \
-                        char save = s[TEXT_WRAP]; s[TEXT_WRAP] = '\0'; \
-                        fprintf(out, "TEXT|%s\n", s); s[TEXT_WRAP] = save; s += TEXT_WRAP; \
-                    } \
-                    line_count++; \
-                } \
+                /* Milestone 1 (2026-10-05): one TEXT row per paragraph; scroll_row_span wraps. \
+                 * Avoid the old fixed-88-col pre-split which ignored pane width. */ \
+                fprintf(out, "TEXT|%s\n", line); \
+                line_count++; \
                 linelen = 0; \
             } else { linelen = 0; } \
         } \
