@@ -1048,10 +1048,12 @@ static int merge_render_rows(void) {
         while (fgets(row, sizeof(row), pf)) {
             size_t L = strlen(row);
             while (L > 0 && (row[L-1]=='\n' || row[L-1]=='\r')) row[--L] = 0;
-            if (strncmp(row, "TITLE|", 6) == 0 || strncmp(row, "TEXT|", 5) == 0 ||
+            if (strncmp(row, "TEXT|", 5) == 0 ||
                 strncmp(row, "LINK|", 5) == 0 || strncmp(row, "IMG|", 4) == 0 ||
                 strncmp(row, "MEDIA|", 6) == 0)
                 continue;
+            /* TITLE| from the manager stays: the worker RENDER usually
+             * only covers TEXT/LINK/IMG, not document.title. */
             fprintf(wf, "%s\n", row);
         }
         fclose(pf);
