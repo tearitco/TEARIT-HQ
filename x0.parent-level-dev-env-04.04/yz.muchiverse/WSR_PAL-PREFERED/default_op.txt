@@ -23,6 +23,7 @@ corp_action void ops/+x/corp_action.+x {real logic for management/financing menu
 corp_apply_finances void ops/+x/corp_apply_finances.+x {per-turn bond/loan interest, R&D/marketing/growth spend, dividend payout - not a .pal-dispatched FSM op, invoked directly from tick_all.sh}
 shareholder_registry void ops/+x/shareholder_registry.+x {the corp->holders reverse index and the only code path that pays a dividend: 'list'/'summary' for the Shareholder List menu item, 'dividend <corp> <amount>' called by corp_apply_finances - not a .pal-dispatched FSM op, invoked directly}
 econ_calendar void ops/+x/econ_calendar.+x {the single writer of TIME: turn/year/quarter, and the thing that decides and fires year-boundary events (yearly tax, treasury coupons) - not a .pal-dispatched FSM op, invoked once per End Turn by scripts/tick_all}
+tax_loop void ops/+x/tax_loop.+x {yearly tax collection: debits corporations and the player at gov tax_rate_adj, credits the government - not a .pal-dispatched FSM op, invoked by the calendar's 1_year schedule row}
 bank_loan_op void ops/+x/bank_loan_op.+x {loan request/repay between the player's owned corp and a bank-tagged corp - not a .pal-dispatched FSM op, invoked directly}
 player_open_derivative void ops/+x/player_open_derivative.+x {open a futures or options position - not a .pal-dispatched FSM op, invoked directly}
 player_settle_futures void ops/+x/player_settle_futures.+x {per-turn settlement of open futures/options positions - not a .pal-dispatched FSM op, invoked directly from tick_all.sh}

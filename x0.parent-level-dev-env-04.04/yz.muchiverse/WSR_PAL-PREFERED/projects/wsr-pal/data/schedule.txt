@@ -27,7 +27,7 @@
 
 1_hour   ./ops/+x/news_loop.+x
 1_day    ./ops/+x/day_loop.+x
-3_months ./ops/+x/tax_loop.+x
+1_year   ./ops/+x/tax_loop.+x
 3_months ./ops/+x/dividend_loop.+x
 3_months ./ops/+x/payroll_loop.+x
 1_year   ./ops/+x/salary_loop.+x
