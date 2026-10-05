@@ -301,3 +301,33 @@ If you hit a blocker:
 ---
 
 **Ready to start?** Go build HORN_CHAT v0.1. Report back when it chats.
+
+---
+
+## Build experience: HORN_CHAT v0.1 (verified 2026-10-05)
+
+### What actually happened
+
+1. **Copy-paste baseline:** `horn_chat_openrouter.c` was already in `ops/`, copied from `ai_chat_openrouter.c`. Built clean with `gcc -Wall -Wextra -O2` after widening two buffers (`parser_cmd` from `PATH_BUF*2` to `PATH_BUF*3`, `chat_path` from `PATH_BUF` to `PATH_BUF+64`) to eliminate `-Wformat-truncation` warnings.
+
+2. **Key-loading bug:** First run failed with "no OpenRouter key" even though the file existed. Root cause: `horn_chat.sh` passed `house_root` as empty string because its upward-search loop didn't find `&.widgits/entity-cli/ops` in the hai-horn directory itself (only in parent). Binary works when called directly with explicit house root. Fix: either fix the shell search logic or bypass shell and call binary directly. Documented in `dox/03-RELAY-AND-TOOLCALLS.md`.
+
+3. **Relay output added:** Modified `horn_chat_openrouter.c` to append `HORN_REPLY: <text>` to `.horn-sessions/relay.txt` on each turn. This follows house convention (file-based state, never in-memory) and enables k9/khtpm-style relay injection downstream.
+
+4. **Test harness:** `horn_chat_test.sh` sends a fixed prompt, asserts reply contains expected token, writes `.horn-sessions/test_report.txt`. Verified PASS on first real run.
+
+5. **PAL main loop:** Added `horn_chat_main.pal` — minimal loop polling `.horn-sessions/relay.txt`, dispatching Enter=quit, otherwise `hit_frame`. This is the wiring point for future chtpm layout integration.
+
+### Lessons learned
+
+- The house's relay pattern (`read_history <file> xN, x1`) is consistent across WSR, pal-chat-irc, and gem-dev. hai-horn can slot into the same pattern without custom input code.
+- `horn_chat_openrouter.c` already had all the OpenRouter plumbing; v0.1 was really about build hygiene, relay output, and test harness, not about writing new C.
+- The `json_parser.+x` dependency already existed in `&.widgits/entity-cli/ops/` — no need to copy or rebuild it.
+- Commit discipline matters: staged only hai-horn paths, used scoped commit messages per AGENTS.md.
+
+### Next session priorities
+
+1. Fix `horn_chat.sh` house_root discovery so it works when launched from hai-horn directly
+2. Wire `horn_chat_main.pal` to a real chtpm layout (`layouts/horn_chat.chtpm`) via prisc+x
+3. Sprint 2: HALO_CHAT with Concept Bank validation
+4. Sprint 3: IRL design doc
