@@ -61,16 +61,16 @@ wcl: tests/cli_test.c
 wpt: tests/worker_page_test.c nb_dom.c
 	$(CC) $(CFLAGS) -o $@ tests/worker_page_test.c nb_dom.c
 
-wlt: tests/worker_login_test.c nb_dom.c
+wlt: tests/worker_login_test.c nb_dom.c tests/nb_test_manager.h
 	$(CC) $(CFLAGS) -o $@ tests/worker_login_test.c nb_dom.c
 
-wss: tests/worker_sapisid_test.c nb_dom.c
+wss: tests/worker_sapisid_test.c nb_dom.c tests/nb_test_manager.h
 	$(CC) $(CFLAGS) -o $@ tests/worker_sapisid_test.c nb_dom.c
 
-wit: tests/worker_innertube_test.c nb_dom.c
+wit: tests/worker_innertube_test.c nb_dom.c tests/nb_test_manager.h
 	$(CC) $(CFLAGS) -o $@ tests/worker_innertube_test.c nb_dom.c
 
-wfp: tests/worker_fetch_post_test.c nb_dom.c
+wfp: tests/worker_fetch_post_test.c nb_dom.c tests/nb_test_manager.h
 	$(CC) $(CFLAGS) -o $@ tests/worker_fetch_post_test.c nb_dom.c
 
 check: nbjs wdt wft wet wck wcn wst wps wcs wcl wpt wlt wss wit wfp

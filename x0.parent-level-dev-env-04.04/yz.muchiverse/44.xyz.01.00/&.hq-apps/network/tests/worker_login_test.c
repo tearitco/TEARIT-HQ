@@ -32,10 +32,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
+
+#include "nb_test_manager.h"
 
 static const char *canned_html =
     "<html><body>"
@@ -241,7 +244,7 @@ int main(int argc, char **argv) {
     close(to_child[0]); close(from_child[1]);
 
     /* 6. LOAD the page, climb to RENDER then STATUS. */
-    char load[2048];
+    char load[4096];
     snprintf(load, sizeof(load), "LOAD\n%s\n%s\nhttp://127.0.0.1:%d/auth\nWall6 Login Test",
              page_path, dom_path, port);
     wsend(to_child[1], load);
@@ -255,6 +258,10 @@ int main(int argc, char **argv) {
             if (WIFSIGNALED(st))
                 fprintf(stderr, "harness: worker killed by signal %d — see WERR| stderr above\n", WTERMSIG(st));
             return 1;
+        }
+        if (nbtm_is_fetch(reply)) {
+            nbtm_serve_fetch(to_child[1], reply, jar_path, port);
+            continue;
         }
         if (strncmp(reply, "RENDER\n", 7) == 0) {
             size_t rn = strlen(reply + 7);
