@@ -1,0 +1,7 @@
+METHOD | Long Futures (5 turns) | RUN:./ops/+x/player_open_derivative.+x futures long 5
+METHOD | Short Futures (5 turns) | RUN:./ops/+x/player_open_derivative.+x futures short 5
+METHOD | Call Option (5 turns) | RUN:./ops/+x/player_open_derivative.+x options call 5
+METHOD | Put Option (5 turns) | RUN:./ops/+x/player_open_derivative.+x options put 5
+METHOD | Request Loan ($500) | RUN:./ops/+x/bank_loan_op.+x request 500
+METHOD | Repay Loan | RUN:./ops/+x/bank_loan_op.+x repay
+METHOD | Back to main menu | GOTO:wsr_main_menu

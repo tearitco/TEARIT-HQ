@@ -1,0 +1,5 @@
+METHOD | Buy 10 shares | RUN:./ops/+x/player_trade.+x @corp buy 10
+METHOD | Sell 10 shares | RUN:./ops/+x/player_trade.+x @corp sell 10
+METHOD | Short 10 shares | RUN:./ops/+x/player_trade.+x @corp short 10
+METHOD | Cover 10 shares | RUN:./ops/+x/player_trade.+x @corp cover 10
+METHOD | Back to main menu | GOTO:wsr_main_menu

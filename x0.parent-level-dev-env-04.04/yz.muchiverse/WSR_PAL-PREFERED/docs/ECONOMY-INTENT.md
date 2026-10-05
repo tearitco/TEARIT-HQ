@@ -113,10 +113,20 @@ Every fill appends to `projects/wsr-pal/data/market_ledger.txt` in the
 Time: YYYY-MM-DD HH:MM:SS | Debit: <payer> | Credit: <receiver> | Amount: N.00 Dollars | ...
 ```
 
-A fill is two lines summing to zero. The original also replayed every event
-through `master_reader.+x`; here `market_settle.c` is the equivalent and is the
-**only** thing that moves cash or holdings. Quoting never writes balances, so an
-order cannot create money by existing.
+A fill is **one** line, not two. The original's format already carries both
+sides of the entry on a single row - `Debit: <payer> | Credit: <receiver> |
+Amount: N.00 Dollars` - so a single line *is* the balanced entry. An earlier
+draft of this document said "a fill is two lines summing to zero", which
+contradicted the very source it cited; the source wins, per the fidelity
+hierarchy. The share transfer is deliberately *not* a second ledger row: it
+moves a position, not money, and inventing a cash row for it would create
+money out of nothing. Shares move in `holdings.txt`, conservation held by
+construction (buyer +N, seller -N).
+
+The original replayed every event through `master_reader.+x`; here
+`market_settle.c` is the equivalent and is the **only** thing that moves cash
+or holdings. Quoting never writes balances, so an order cannot create money by
+existing.
 
 ---
 
@@ -149,6 +159,15 @@ There is one dead loose end here today, recorded so it is not mistaken for
 working code: `pop_update.c` reads a `food_supply` field that **no op writes**
 (frozen at the template's `15.0`), so its famine logic can never fire. That is a
 dead scalar, not a supply/demand model.
+
+> **The design for this section now exists: `OPERATING-INCOME.md`.** A real
+> playthrough (`7b594a6bc`) established that nothing in the tree credits a
+> corporation for selling anything, which makes this section — and therefore
+> *both* seeding modes the user asked for — unreachable. `OPERATING-INCOME.md`
+> is the reviewed-on-paper model: one market engine reused for two asset
+> classes, the bootstrap chain that makes a `prerun_years` of 0 or 100 both
+> work, the accounting identities that must hold, and the open decisions that
+> are the user's to settle. Read it before building §4.
 
 ---
 

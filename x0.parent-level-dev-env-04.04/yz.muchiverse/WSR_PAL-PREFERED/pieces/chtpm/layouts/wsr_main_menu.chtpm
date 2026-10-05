@@ -1,0 +1,11 @@
+<panel time_reactive="true">
+      <module>system/prisc+x pal/main_loop_chtpm.pal</module>
+      <interact src="pieces/apps/player_app/interact_relay.txt" />
+      <text label="+==== W A L L   S T R E E T   R A I D E R ====================+" /><br/>
+      <text label="+============================================================+" /><br/>
+      <text label="${game_map}" /><br/>
+      <text label="+============================================================+" /><br/>
+      <br/>
+      ${piece_methods_compact}
+      <br/>
+  </panel>

@@ -1,0 +1,73 @@
+# data/goods_kind.txt - how each good leaves an owner's hands.
+#
+# Format: <GOOD>|<KIND>|<RATE_PER_PERIOD>
+# RATE is optional; each KIND has a documented default. RATE is the fraction of
+# units held that the sink removes in ONE goods period.
+#
+# THREE KINDS, and they are three different MECHANISMS, not three rates:
+#
+#   CONSUMABLE    destroyed by USE. Fuel, food, raw materials, components
+#                 consumed in production, and SERVICES - a service is consumed
+#                 the moment it is performed, which is why banking, insurance
+#                 and telecom sit here rather than under technology.
+#                 Removes units. Demand is continuous and fast-cycling.
+#
+#   DEPRECIATING  still works, but physically wears out. Machinery, buildings,
+#                 equipment. Removes units on a SLOW schedule, so replacement
+#                 demand lags capital formation by years. That lag is what makes
+#                 capital-goods markets cycle in lumps instead of pulsing.
+#
+#   OBSOLESCENT   not worn out at all - still physically fine - but worth LESS
+#                 because a better generation exists. A chip is not consumed; it
+#                 is displaced.
+#
+#                 This is why obsolescence cannot be modelled as "a faster
+#                 depreciation rate". Depreciation removes QUANTITY gradually.
+#                 Obsolescence destroys VALUE suddenly, and a seller still has
+#                 the units to dump.
+#
+#                 OBSOLESCENT goods carry NO RATE, deliberately. Obsolescence is
+#                 not a schedule and not a drip - it is an EVENT caused by R&D.
+#                 A corporation that spends on R&D accumulates a pool; when the
+#                 pool crosses a threshold its good's generation advances and
+#                 the previous generation is obsoleted. A good nobody researches
+#                 never gets obsoleted, which is exactly right and is also how
+#                 a firm can be stranded holding an obsolete generation forever.
+#
+#                 Ops that implement this: ops/goods_sink.c (detects the
+#                 breakthrough from each corp's rd_pool and publishes the price
+#                 multiplier) and ops/goods_quote.c (applies it to ask prices).
+#                 Cascade inputs: data/goods_input.txt.
+#
+# Ordering by obsolescence risk follows the real curve: shortest for
+# semiconductors and software, longest for heavy machinery.
+
+AGRICULTURE|CONSUMABLE|0.80
+AIR_FREIGHT_COURIERS|CONSUMABLE|0.80
+AIR_TRANSPORTATION|CONSUMABLE|0.80
+BANKING|CONSUMABLE|0.80
+BASE_METALS_MINING|CONSUMABLE|0.80
+BEVERAGE|CONSUMABLE|0.80
+BIOTECHNOLOGY|OBSOLESCENT
+BREWING_DISTILLING|CONSUMABLE|0.80
+CHEMICALS_COMMODITY|CONSUMABLE|0.80
+CHEMICALS_SPECIALTY|CONSUMABLE|0.80
+COMPUTER|OBSOLESCENT
+COMPUTER_PERIPHERALS|OBSOLESCENT
+DEFENSE_AEROSPACE|DEPRECIATING|0.05
+ELECTRIC_GAS_UTIL|CONSUMABLE|0.80
+FOOTWEAR|CONSUMABLE|0.80
+GLOBAL_TELECOMMUNICATIONS|CONSUMABLE|0.80
+HEAVY_MACHINERY|DEPRECIATING|0.08
+INSURANCE|CONSUMABLE|0.80
+INTEGRATED_OIL_COMPANIES|CONSUMABLE|0.80
+INTERNET_SERV_CONTENT|CONSUMABLE|0.80
+MEDICAL_EQUIP_SUPPLIES|OBSOLESCENT
+NETWORK_TELECOM_EQUIP|OBSOLESCENT
+PHARMACEUTICALS|CONSUMABLE|0.80
+POLLUTION_CONTROL|DEPRECIATING|0.06
+RETAIL_APPAREL|CONSUMABLE|0.80
+RETAIL_SUPERMARKETS|CONSUMABLE|0.80
+SEMICONDUCTOR|OBSOLESCENT
+SHIPPING|CONSUMABLE|0.80
+SOFTWARE|OBSOLESCENT

@@ -47,8 +47,34 @@
 #define MAX_FIELD 256
 
 static char project_root[MAX_PATH] = ".";
-static const char *GEMMA_LAN_URL = "http://10.0.0.144:11434";
-static const char *GEMMA_LAN_MODEL = "gemma3:270m";
+
+/* Ollama endpoint and model, both overridable.
+ *
+ * The transport was never LAN-specific: connect_op.+x takes the URL as argv[1]
+ * and shells to curl, so localhost and a LAN box travel identical code. Only
+ * the default was pinned, which made decision_mode=3 depend on one machine on
+ * one network. PRISC_OLLAMA_URL and PRISC_OLLAMA_MODEL now override it.
+ *
+ * The MODEL has to be configurable too, not just the URL, and that is the part
+ * that actually bites. Verified 2026-10-01 against both endpoints: the local
+ * daemon on 127.0.0.1:11434 is up but carries a single model,
+ * qwen2.5-coder:7b, while gemma3:270m exists only on the LAN host. Repointing
+ * the URL at localhost while leaving the model pinned would therefore have
+ * broken a working setup - and qwen2.5-coder is a CODE model, the wrong tool for
+ * anything prose-shaped like generating plausible company names.
+ *
+ * Default stays gemma3:270m because that is what this project is tuned and
+ * tested against. Set PRISC_OLLAMA_MODEL for anything else, and check with
+ * `ollama list` on whichever host you point at. */
+static const char *GEMMA_LAN_MODEL = NULL;
+static const char *GEMMA_LAN_URL = NULL;
+
+static void resolve_ollama(void) {
+    const char *url = getenv("PRISC_OLLAMA_URL");
+    const char *model = getenv("PRISC_OLLAMA_MODEL");
+    GEMMA_LAN_URL = (url && url[0]) ? url : "http://127.0.0.1:11434";
+    GEMMA_LAN_MODEL = (model && model[0]) ? model : "gemma3:270m";
+}
 
 static void resolve_root(void) {
     const char *env = getenv("PRISC_PROJECT_ROOT");
@@ -241,6 +267,7 @@ static int llm_choice(float cash, float price, int shares_held, float fv, int fa
 
 int main(int argc, char *argv[]) {
     resolve_root();
+    resolve_ollama();
     if (argc < 2) return 1;
     char state_path[PATH_BUF];
     snprintf(state_path, sizeof(state_path), "%s/projects/wsr-pal/pieces/%s/state.txt", project_root, argv[1]);

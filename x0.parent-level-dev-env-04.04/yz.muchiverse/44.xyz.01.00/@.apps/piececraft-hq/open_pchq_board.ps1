@@ -50,13 +50,42 @@ $Board = Join-Path $PKG "pchq-board.xhtpm"
 if (-not (Test-Path -LiteralPath $Bin))   { Write-Error "open_pchq_board.ps1: missing $Bin";   exit 1 }
 if (-not (Test-Path -LiteralPath $Board)) { Write-Error "open_pchq_board.ps1: missing $Board"; exit 1 }
 
-# Single-instance: clean-restart the board window (mirrors the .sh guard).
-# Match only this board's own template so other khtpm_core_render windows
-# are never touched.
+# Single-instance: clean-restart the board window (mirrors the .sh guard at
+# open_pchq_board.sh:133-148). Match only this board's own template so other
+# khtpm_core_render windows are never touched.
+#
+# The .sh guard kills the PROJECTOR too (proj_pids(), sh:137) - this did not,
+# which let a stale pchq_board_projector.exe survive a relaunch and keep
+# writing state/ui.txt alongside the fresh one. Two projectors racing on one
+# ui.txt is its own source of "the board looks broken".
 Get-CimInstance Win32_Process -Filter "Name='khtpm_core_render.exe'" -ErrorAction SilentlyContinue |
     Where-Object { $_.CommandLine -and $_.CommandLine -like "*pchq-board.xhtpm*" } |
     ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+Get-CimInstance Win32_Process -Filter "Name='pchq_board_projector.exe'" -ErrorAction SilentlyContinue |
+    ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 Start-Sleep -Milliseconds 400
 
-Start-Process -FilePath $Bin -ArgumentList @($House, $Board) -WorkingDirectory $House
-Write-Output "open_pchq_board: board window launched"
+# Launch in the "standard x11-hq shape" (sh:206):
+#     "$BIN" "$HOUSE_ROOT" "$BOARD_TPL" piececraft-hq
+# FOUR arguments. The fourth ("piececraft-hq") was MISSING here - the .ps1
+# passed only two. khtpm_core_render.c reinterprets argv[3]: an existing
+# directory becomes g_arg3_dir, an "instance dir" whose ui.txt is appended as
+# an extra UI source (khtpm_core_render.c:1143-1158, :1565, :11826-11829).
+# With argc==4 and a non-directory value it is currently inert, but Linux
+# passes it, it is part of the documented launch contract, and the .ps1 runs
+# with a different working directory than the .sh's setsid+inherit, so a
+# relative "piececraft-hq" could stat differently. Match the reference.
+$proc = Start-Process -FilePath $Bin -ArgumentList @($House, $Board, "piececraft-hq") `
+                      -WorkingDirectory $House -PassThru
+
+# Record the PID in the proc-ledger exactly like sh:208-209, so a taskbar quit
+# (ktb_reap_launched, khtpm_taskbar_manager.c:1477) can actually reap this
+# board window instead of orphaning it.
+$ledger = Join-Path $House "#.desktop\livedesk_proc_list.txt"
+try {
+    Add-Content -LiteralPath $ledger -Value ("{0} {0} 0 0 pchq-board" -f $proc.Id) -ErrorAction Stop
+} catch {
+    Write-Warning "open_pchq_board.ps1: could not write $ledger : $($_.Exception.Message)"
+}
+
+Write-Output "open_pchq_board: board window launched (pid $($proc.Id))"

@@ -388,3 +388,124 @@ because the original has none. Judged against it, they are additions. The only
 trace of it today is `pop_update.c` reading a `food_supply` field that **no op
 writes** (frozen at the template's `15.0`), so its famine logic can never fire.
 That dead scalar is a known loose end, not a working supply/demand model.
+
+## 5. The auction, and what a real playthrough exposed
+
+Everything above was established by reading source. This section is what came
+out of actually **running** the thing, which is a different and much less
+flattering kind of evidence. Until this pass, no one had launched the game:
+every prior claim about the market rested on headless builds and scratch trees.
+
+### 5.1 What landed
+
+- `ops/market_quote.c` — each participant quotes from **its own** view and posts
+  on the one side that view implies. The offset is a deterministic FNV-1a hash
+  of the piece id, scaled by a per-type skill (bank 0.45 → pop 2.20). It writes
+  `data/book_<TICKER>.txt` and **never touches a price**.
+- `ops/market_settle.c` — matches the book, prints at the resting price, moves
+  cash and shares, appends the original's own ledger row, and sets
+  `stock_price` from the last matched trade. It is the **only** op that moves
+  balances; quoting cannot create money by existing.
+
+The separation is the whole point: the only route to money is a matched trade,
+and the only route to a matched trade is a book written by a different binary.
+
+### 5.2 Gap 12 — the world came up **empty**, silently *(fixed)*
+
+`scripts/ensure_entities.ps1` looked for its entity data at
+`$SCRIPT_DIR\MarS.StreetRace.wsr]Q]k32\corporations\generated` — *inside* the
+project. That tree was renamed away on 2026-09-26 to drop a `$` metacharacter
+and never existed here afterwards. The sibling `MarS.StreetRace.wsr]Q]k32`
+still exists but its `generated/` subtrees are empty; the data lives in
+`MSR-DEPRACATED`.
+
+The failure was **silent**: the script printed `corporations: 0 created, 0
+already existed` and exited 0. No error, no warning. The world had **one**
+piece (`wsr_main_menu`) and no corporations, so no playthrough was possible and
+nothing said so.
+
+Fixed to read the sibling, plus a hard `exit 1` if a source tree is missing —
+the lesson is that this class of bug must be *loud*. Now: **50 corporations,
+7 governments**, matching the intended roster.
+
+`scripts/ensure_entities.sh` carries the same stale path (worse: it still
+escapes a `$` that is no longer in the name). **Still unfixed** — Windows only,
+untested here.
+
+### 5.3 Gap 13 — share ownership is not seeded, so the market has no real holders *(open)*
+
+This is the most serious thing the playthrough found, and it is **pre-existing**,
+not introduced by the auction work.
+
+`projects/wsr-pal/shareholders.txt` — the dividend source of truth — advertised
+`corp_AFL|AFL|player_you|player|55|100.0000`. But `player_you` has **no
+`holdings.txt` at all**, and `pieces_template/player_you/` ships only
+`state.txt`. So 55 shares were recorded in the index with **no backing record**.
+
+The registry is not a second store of ownership: it is a reverse index
+**rebuilt** from every piece's `holdings.txt` (`shareholder_registry.c:247`,
+its `rebuild` mode). Running that rebuild on the seeded world produced
+`registered=0` and **deleted the player's 55 shares**, because nothing had ever
+backed them.
+
+Consequence for the auction: with total registered ownership at 0, the market
+only ever trades positions it created itself. A first run produced 16 fills,
+all offsetting long/short pairs summing back to zero — real cash moving, real
+ledger rows, and **no shares outstanding**. Conservation held perfectly and the
+market was still meaningless.
+
+This must be fixed at world seeding by materialising starting ownership into
+`holdings.txt`, not by patching the index. Until then, treat any dividend or
+market result from a fresh world as unreliable.
+
+### 5.4 Market breadth is one ticker
+
+`market_quote` discovers tradeable tickers from the registry. On the seeded
+world exactly **one** ticker qualified (AFL), so `50 created` corporations
+produce a **one-stock market**. Quotes: `fair=165.80 bid=178.46 ask=130.73`.
+
+Not a code bug — a consequence of Gap 13 plus the absence of cross-holdings.
+Banks trade with each other only if something establishes those stakes; right
+now nothing does.
+
+### 5.5 Multiplayer: legacy has hot-seat, the port has none
+
+The legacy `MSR-DEPRACATED/dividend_loop.c` implements it:
+
+- `:281` `num_players` from argv, `:288` one `Player` per player
+- `:364` **menu case 17** — `current_player_index = (current_player_index + 1)
+  % num_players`. Hot-seat handoff. No separate process, no lock, no
+  authentication: whoever is at the keyboard is that player.
+- `:373` **menu case 22** — toggles `current_player->ticker_on`, which
+  **starts or kills `wsr_clock.+x`** (`:366`/`:374` start, `:368`/`:376` kill)
+- `:365-370` on handoff, the clock is started or stopped according to the
+  **incoming** player's `ticker_on`
+
+So the legacy clock is **per-player**, and it is opt-in per player.
+
+**The stall logic the user identified is real, and the legacy has no defence
+against it.** A player with `ticker_on` set is on a real-time clock — the
+world advances while they deliberate, so stalling costs them. A player with
+`ticker_off` has their clock **killed**, so they can sit at the keyboard
+indefinitely at zero cost. The incentive to move (you need positions to earn)
+is real but unenforced; nothing times out a turn and nobody's holdings move
+while they think. A hot-seat game with one shared screen inherits every
+"whoever is holding the keyboard" ambiguity that implies.
+
+**Port status: none of this exists.** There is no setup menu for player count,
+no `num_players`, no hot-seat rotation, no `ticker_on`. `button.ps1` has no
+multiplayer action. This is unported, and the ~5-moves-per-turn budget the user
+described is not present in either the legacy source I read or the port.
+
+### 5.6 Realism — not yet assessable
+
+A real run does now produce trades, conserved cash, balanced ledger rows and a
+price that tracks rather than spirals (fair 165.80, print 156.55, last 121.73,
+flagged `[below BVP]`). But with Gap 13 open and one ticker, **this is not yet
+evidence of a realistic economy** — it is evidence the plumbing conserves
+value. Realism cannot be judged until ownership is seeded and breadth exists.
+
+Known and accepted: trades print at the resting ask, so price sits a few
+percent under fair rather than exactly at it. That is the deliberate
+anti-self-marking property; a participant cannot mark its own book by quoting
+wide.

@@ -124,10 +124,26 @@ Including `Shareholder List`, `List Portfolio`, `Financial Profile`,
 `PRIVATE` is notable: `corp_ipo.c` exists and is wired through the new-corp
 wizard, so IPO is reachable but not from its own menu entry.
 
-### No payroll anywhere in the ops
+### No payroll anywhere in the ops — **now measured, and it blocks the economy**
 
 Zero matches for payroll / wage / employee in `corp_apply_finances.c`. It exists
 in `SOCIETY-ECONOMY-ARCHITECTURE.txt` as design only.
+
+This started as a suspicion from reading source. It is now a **measured
+failure**, because the goods market (`goods_quote` + `goods_settle`) is a
+working producer/seller/buyer loop and households still end up broke. Household
+cash over four ticks: `53,095 → 39,836 → 27,486 → 17,579`, while corp cash holds
+roughly flat at ~54k.
+
+What that rules out: a money-printing bug. Money is conserved, it is moving
+household → corp, and it is being *consumed*. What it confirms: the wage leg of
+the loop does not exist, so the goods market is a one-way wealth transfer that
+ends in household insolvency within ~4–5 ticks and then has no buyers.
+
+Consequence for sequencing: ROADMAP 2.2 (real GDP from auction prices, then
+`calendar → auction → taxes → bonds → rate benchmark`) cannot be closed before
+this. Taxes need a circulating income base; without wages the base drains to
+zero. See `OPERATING-INCOME.md` §3.2.
 
 ### Player trades have no price impact
 
@@ -196,3 +212,18 @@ Windows path is therefore unfixable from this tree.
   checkout artifacts). Use `git log --date`.
 - **PowerShell cannot run a `.+x` binary through a pipeline**, and cannot be
   given the same file for both stdout and stderr redirects.
+- **Running an op is not building it.** `ops\+x\goods_quote.+x` executes the op.
+  It is *not* a compile step, and it exits 0 whether or not the binary is current.
+  So a "rebuild" loop built from those calls compiles nothing and reports
+  success, and the next experiment measures the **previous** binary's behaviour —
+  which then gets written up as a finding about the new code. Cost a full
+  diagnostic cycle here: a fixed controller still showed the old decay curve, and
+  the source had the fix while the on-disk data did not.
+  Real builds are `scripts/build.ps1` (Windows/MSYS2) or `scripts/build.sh`.
+  Because binaries are gitignored (`.gitignore` `*.+x`), it is easy to believe
+  everything is committed and up to date — **always check the binary mtime
+  against the `.c` mtime** before trusting a run.
+- **`produces=` lives in `state.txt`, not a separate file.** Resetting a test
+  world by reading `pieces/corp_*/produces.txt` silently writes nothing and
+  leaves the market empty, with no error. Reset scripts should fail loudly when a
+  value they intend to read is missing, not `continue`.
