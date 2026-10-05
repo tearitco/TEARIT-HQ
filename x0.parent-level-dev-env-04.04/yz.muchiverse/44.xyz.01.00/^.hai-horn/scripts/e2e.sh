@@ -285,6 +285,16 @@ reap() {
 # windows must never be touched.
 trap 'reap' EXIT INT TERM
 
+# PIDs of THIS project's stack only: name matches, further filtered to
+# processes whose working directory is the project root.
+our_stack_pids() {
+    local p root
+    root="$(cd "$OUR_ROOT" && pwd -P)"
+    for p in $(pgrep -f "horn_main_loop.pal|chtpm_parser_pal|renderer$" 2>/dev/null); do
+        [ "$(readlink "/proc/$p/cwd" 2>/dev/null)" = "$root" ] && echo "$p"
+    done
+}
+
 cleanup() {
     # Match on argv TAILS, not on "$SCRIPT_DIR/system/...".
     #
@@ -297,9 +307,14 @@ cleanup() {
     #
     # pkill -f also takes an extended regex, so "prisc+x" would read the
     # '+' as a quantifier; match the .pal argument as a plain substring.
-    pkill -9 -f "horn_main_loop.pal"          2>/dev/null
-    pkill -9 -f "chtpm_parser_pal layouts"   2>/dev/null
-    pkill -9 -f "renderer$"                  2>/dev/null
+    #
+    # SCOPED BY CWD, not by name. `renderer$` and `chtpm_parser_pal` are
+    # house-wide binaries: another project's engine (pc-hq, WSR, board-viewer)
+    # runs the same ones, and a bare `pkill -f "renderer$"` killed it. This
+    # harness starts its processes with cwd == $OUR_ROOT, so the cwd tells
+    # ours from theirs.
+    local p
+    for p in $(our_stack_pids); do kill -9 "$p" 2>/dev/null; done
     sleep 0.5
 }
 
@@ -346,7 +361,11 @@ else bad "pal module not running (check /tmp/horn_parser.log)"; fi
 wait_frame "HORN_CHAT" 20 || bad "no first frame"
 check "first frame renders the box" "$(cat "$FRAME")" "HORN_CHAT"
 check "approval buttons are present" "$(cat "$FRAME")" "APPROVE"
-check "model name resolved from state.txt" "$(cat "$FRAME")" "nemotron"
+# Which model shows depends on the provider chain and on whichever model
+# answered last (last_model.txt), so a hard-coded vendor name is a stale
+# assertion the moment the chain changes. Assert the line is populated.
+if grep -qE 'model: [^[:space:]]' "$FRAME"; then ok "model name resolved into the frame"
+else bad "model line is empty in the frame (want 'model: <id>')"; fi
 
 echo "=== turn 1: the composer holds what was typed ==="
 # Use focus_composer, NOT a bare `key 13`. The parser drains the key
@@ -398,7 +417,9 @@ wait_frame "turns: 1" 20 || bad "frame never showed the turn counter"
 check "model reply shown" "$(cat "$FRAME")" "horn:"
 check "turn counter advanced" "$(cat "$FRAME")" "turns: 1"
 check "composer cleared after send" "$(cat pieces/apps/player_app/manager/gui_state.txt)" "horn_prompt="
-check "history is persistent TSV" "$(cat chats/HORN_SESSIONS/chat_history.txt)" "user	What is 6 times 7?"
+# Columns: timestamp, role, pin/model attribution, text.
+if awk -F'\t' '$2=="user" && $4=="What is 6 times 7?"{f=1} END{exit !f}' chats/HORN_SESSIONS/chat_history.txt; then ok "history is persistent TSV (ts, role, pin, text)"
+else bad "history row not in the expected TSV shape: $(tail -2 chats/HORN_SESSIONS/chat_history.txt | tr '\t' '|' | cut -c1-90)"; fi
 
 echo "=== turn 2: second turn proves the loop keeps running ==="
 if ask "Name a primary color." "Red"; then ok "second turn dispatched"
@@ -722,7 +743,7 @@ cleanup
 # Count survivors and SHOW them: a bare pass/fail here previously reported
 # success while orphans were still running, because the check and the kill
 # were matching the same wrong pattern.
-leaks=$(pgrep -af "horn_main_loop.pal|chtpm_parser_pal|renderer$" 2>/dev/null | grep -v pgrep || true)
+leaks=$(for p in $(our_stack_pids); do ps -o pid=,args= -p "$p"; done 2>/dev/null || true)
 if [ -n "$leaks" ]; then
     bad "processes leaked after teardown:"
     printf '%s\n' "$leaks" | sed 's/^/         /'
