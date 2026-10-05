@@ -133,6 +133,25 @@ Consequences seen: on a page-bound view the displayed hero (and the
 xelector that follows it) can sit a few cells from the range, because the
 renderer draws from the page rows while Move centred on `state.txt`.
 
+**How the desk keeps z (read 2026-10-05, owner pointed it out):** z is not
+in the `DESK` row. Each entity keeps its own `z=` in its `desktop_pos.txt`
+(`khtpm_entity.c` `read_entity_z`; the desk's move tick "preserves z"), and
+one shared file, `#.desktop/desktop_active_z.txt`, holds the **active
+level**. Cursword's `c`/`v` keys change it (`cursword_handle_camera_key`),
+and every entity whose own z differs from the active z is **unmapped**
+(`khtpm_entity.c` ~6800: "which floor am I looking at", applies in every
+camera mode, 2D included). `tp_place_desktop.c` stamps a newly placed
+entity with the current active z. The desk's Move is flat; it cannot change
+z today, so z traversal on the desk is cursword, not Move.
+
+Under the desk-is-the-parent rule that suggests z for pc-hq entities lives
+where the desk keeps it (per-entity `z=` + the shared active z), not in a new
+`DESK` row field. Consequence to decide: a pc-hq Move that changes level
+would make the hero drop off the desk view unless its z matches the active
+z, which is the desk's existing floor behaviour. **Not confirmed:** whether
+the active z is per page or desktop-wide (it is one file under `#.desktop/`
+in the code I read), and whether pc-hq's hero has a desk-side pos file at all.
+
 To do: make the origin and the write go through the same row the renderer
 draws. **Open question:** the `DESK` row has no z field, but Move now has
 z levels — where does z live (a new field, the existing page `cz` that
