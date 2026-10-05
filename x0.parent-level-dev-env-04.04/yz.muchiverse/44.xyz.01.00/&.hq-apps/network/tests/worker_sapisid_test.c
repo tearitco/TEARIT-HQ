@@ -316,7 +316,7 @@ int main(int argc, char **argv) {
             return 1;
         }
         if (nbtm_is_fetch(reply)) {
-            nbtm_serve_fetch(to_child[1], reply, jar_path, port);
+            nbtm_serve_fetch(to_child[1], reply, port);
             continue;
         }
         if (strncmp(reply, "RENDER\n", 7) == 0) {

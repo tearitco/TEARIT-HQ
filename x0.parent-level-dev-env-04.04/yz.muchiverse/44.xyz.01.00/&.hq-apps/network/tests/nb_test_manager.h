@@ -78,66 +78,81 @@ static void nbtm_wsend(int fd, const char *payload) {
     (void)!write(fd, "\n", 1);
 }
 
-static void nbtm_jar_append(const char *jar, const char *host,
-                            const char *name, const char *val) {
-    FILE *f = fopen(jar, "ab");
-    if (!f) return;
-    fprintf(f, "%s\t/\t%s\t%s\t0\t0\n", host, name, val);
-    fclose(f);
-}
-
-/* Build "name=value; name=value" for cookies whose host covers `host`
- * (exact match, or the request host is a dot-suffix of a parent domain). */
-static void nbtm_jar_cookie_header(const char *jar, const char *host,
-                                   char *out, size_t cap) {
-    out[0] = '\0';
-    FILE *f = fopen(jar, "rb");
-    if (!f) return;
-    char line[1024];
-    while (fgets(line, sizeof(line), f)) {
-        char *nl = strpbrk(line, "\r\n");
-        if (nl) *nl = '\0';
-        char *fld[6] = {0};
-        char *save = NULL;
-        int k = 0;
-        for (char *t = strtok_r(line, "\t", &save); t && k < 6;
-             t = strtok_r(NULL, "\t", &save)) fld[k++] = t;
-        if (k < 4 || !fld[0] || !fld[2] || !fld[3]) continue;
-        size_t hl = strlen(fld[0]);
-        int match = (strcmp(fld[0], host) == 0) ||
-                    (hl < strlen(host) && host[hl] == '.' &&
-                     strcmp(host + hl + 1, fld[0]) == 0);
-        if (!match) continue;
-        size_t used = strlen(out);
-        if (used + 2 < cap && used) { strcat(out, "; "); }
-        if (used + strlen(fld[2]) + strlen(fld[3]) + 2 < cap) {
-            strcat(out, fld[2]);
-            strcat(out, "=");
-            strcat(out, fld[3]);
-        }
-    }
-    fclose(f);
-}
-
 static int nbtm_is_fetch(const char *reply) {
     return strncmp(reply, "FETCH\n", 6) == 0;
 }
 
+/* Hop-by-hop / transport headers we must NOT copy from the page's request:
+ * we regenerate Host and Content-Length ourselves, and forwarding
+ * Accept-Encoding could hand back a body this shim cannot decode. */
+static int nbtm_skip_header(const char *h) {
+    static const char *skip[] = { "host:", "connection:", "content-length:",
+                                  "transfer-encoding:", "accept-encoding:",
+                                  "keep-alive:", "proxy-connection:", NULL };
+    for (int i = 0; skip[i]; i++)
+        if (strncasecmp(h, skip[i], strlen(skip[i])) == 0) return 1;
+    return 0;
+}
+
+static const char *nbtm_line(const char *p, char *out, size_t cap) {
+    if (!p || !*p) return NULL;
+    /* Scan to the REAL line end first, then copy at most cap-1. Stopping the
+     * scan at cap-1 and returning p+n+1 would advance into the MIDDLE of an
+     * over-long line instead of past it - which silently desynchronises
+     * every field after it. A URL is routinely longer than a small buffer. */
+    size_t n = 0;
+    while (p[n] && p[n] != '\n') n++;
+    size_t c = (cap > 1) ? ((n < cap - 1) ? n : cap - 1) : 0;
+    memcpy(out, p, c); out[c] = '\0';
+    return p[n] ? p + n + 1 : p + n;
+}
+
 /* Service one FETCH frame and reply FETCHED.
  *
- * Always replies, including on failure (status 0), so the worker can
- * never be left blocked in recv_frame() by a driver bug - that is the
- * entire failure this shim exists to remove. */
-static void nbtm_serve_fetch(int to_child, const char *frame,
-                             const char *jar, int fallback_port) {
+ * Frame in : FETCH\n<id>\n<method>\n<url>\n<nreq>\n<h1>..\n<hN>\n\n<body>
+ * Frame out: FETCHED\n<id>\n<status>\n<nresp>\n<r1>..\n<rM>\n\n<body>
+ *
+ * The nreq/nresp tail used to be missing, which silently dropped every
+ * page-controlled request header and the whole request body. That is why
+ * worker_sapisid_test could not deliver its Authorization: SAPISIDHASH
+ * header and worker_fetch_post_test hung with the POST body stranded.
+ *
+ * This shim does NO cookie handling. The worker attaches jar cookies to
+ * the outgoing request and ingests Set-Cookie from the response headers we
+ * return, exactly as its direct-curl path already does, and both share one
+ * NB_COOKIES_FILE. An earlier version had the driver write the jar instead;
+ * now that the protocol carries response headers that is redundant, and two
+ * writers is how jars drift apart.
+ *
+ * Always replies, including with status 0 on failure, so no driver bug can
+ * leave the worker blocked waiting for a FETCHED that never comes.
+ */
+static void nbtm_serve_fetch(int to_child, const char *frame, int fallback_port) {
     int id = 0, status = 0;
-    char method[32] = {0}, url[2048] = {0};
-    if (sscanf(frame, "FETCH\n%d\n%31[^\n]\n%2047[^\n]", &id, method, url) < 3) {
+    char method[16] = {0}, url[2048] = {0};
+    if (sscanf(frame, "FETCH\n%d\n%15[^\n]\n%2047[^\n]", &id, method, url) < 3) {
         char bad[64];
-        snprintf(bad, sizeof(bad), "FETCHED\n%d\n0\n", id);
+        snprintf(bad, sizeof(bad), "FETCHED\n%d\n0\n0\n\n", id);
         nbtm_wsend(to_child, bad);
         return;
     }
+
+    const char *cur = strchr(frame, '\n');
+    cur = cur ? strchr(cur + 1, '\n') : NULL;      /* id line */
+    cur = cur ? strchr(cur + 1, '\n') : NULL;      /* method line */
+    cur = cur ? cur + 1 : NULL;
+
+    char reqh[16][512];
+    int nreq = 0;
+    char urlbuf[2048];
+    cur = nbtm_line(cur, urlbuf, sizeof urlbuf);   /* skip url line */
+    char nb[16] = "";
+    cur = nbtm_line(cur, nb, sizeof nb);           /* <nreq> */
+    int want = atoi(nb);
+    if (want > 0 && want <= 16) nreq = want;
+    for (int i = 0; i < nreq; i++) cur = nbtm_line(cur, reqh[i], sizeof reqh[i]);
+    if (cur) cur = nbtm_line(cur, nb, sizeof nb);  /* blank separator */
+    const char *reqbody = cur ? cur : "";
 
     const char *u = url;
     if      (strncmp(u, "http://",  7) == 0) u += 7;
@@ -170,19 +185,33 @@ static void nbtm_serve_fetch(int to_child, const char *frame,
         connect(fd, (struct sockaddr *)&sa, sizeof sa) < 0) {
         if (fd >= 0) close(fd);
         char bad[64];
-        snprintf(bad, sizeof(bad), "FETCHED\n%d\n0\n", id);
+        snprintf(bad, sizeof(bad), "FETCHED\n%d\n0\n0\n\n", id);
         nbtm_wsend(to_child, bad);
         return;
     }
 
-    char ck[2048];
-    nbtm_jar_cookie_header(jar, host, ck, sizeof ck);
-    char req[4096];
-    int n = snprintf(req, sizeof req,
-        "%s %s HTTP/1.1\r\nHost: %s:%d\r\nConnection: close\r\n%s%s%s\r\n",
-        method, path, host, port,
-        ck[0] ? "Cookie: " : "", ck, ck[0] ? "\r\n" : "");
-    if (n > 0) (void)!write(fd, req, (size_t)n);
+    static char req[16384];
+    int rn = snprintf(req, sizeof req,
+        "%s %s HTTP/1.1\r\nHost: %s:%d\r\nConnection: close\r\n"
+        "Content-Length: %zu\r\n",
+        method, path, host, port, strlen(reqbody));
+    for (int i = 0; i < nreq && rn > 0 && (size_t)rn < sizeof(req); i++) {
+        if (nbtm_skip_header(reqh[i])) continue;
+        rn += snprintf(req + rn, sizeof(req) - rn, "%s\r\n", reqh[i]);
+    }
+    if (rn > 0 && (size_t)rn < sizeof(req))
+        rn += snprintf(req + rn, sizeof(req) - rn, "\r\n");
+    size_t roff = (size_t)rn;
+    if (*reqbody && roff + strlen(reqbody) < sizeof(req)) {
+        memcpy(req + roff, reqbody, strlen(reqbody));
+        rn = (int)(roff + strlen(reqbody));
+    }
+    size_t soff = 0;
+    while (soff < (size_t)rn) {
+        ssize_t w = write(fd, req + soff, (size_t)rn - soff);
+        if (w <= 0) break;
+        soff += (size_t)w;
+    }
 
     static char resp[65536];
     size_t rl = 0;
@@ -200,19 +229,24 @@ static void nbtm_serve_fetch(int to_child, const char *frame,
         if (sp) status = atoi(sp + 1);
     }
 
+    char resphdr[32][512];
+    int nresp = 0;
     char *body = strstr(resp, "\r\n\r\n");
     if (body) {
         *body = '\0';
         body += 4;
-        for (char *h = resp; h && *h; ) {
-            char *eol = strstr(h, "\r\n");
+        char *h = resp;
+        char *eol = strstr(h, "\r\n");
+        if (eol) *eol = '\0';                 /* drop the status line */
+        h = eol ? eol + 2 : h;
+        while (h && *h && nresp < 32) {
+            eol = strstr(h, "\r\n");
             if (eol) *eol = '\0';
-            if (strncasecmp(h, "Set-Cookie:", 11) == 0) {
-                char *v = h + 11;
-                while (*v == ' ') v++;
-                char nm[128] = {0}, vl[512] = {0};
-                if (sscanf(v, "%127[^=]=%511[^;\r\n]", nm, vl) == 2)
-                    nbtm_jar_append(jar, host, nm, vl);
+            if (*h && !nbtm_skip_header(h)) {
+                size_t n = strlen(h);
+                if (n >= sizeof resphdr[0]) n = sizeof resphdr[0] - 1;
+                memcpy(resphdr[nresp], h, n + 1);
+                nresp++;
             }
             if (!eol) break;
             h = eol + 2;
@@ -222,8 +256,12 @@ static void nbtm_serve_fetch(int to_child, const char *frame,
         *body = '\0';
     }
 
-    static char out[70000];
-    snprintf(out, sizeof out, "FETCHED\n%d\n%d\n%s", id, status, body);
+    static char out[140000];
+    int on = snprintf(out, sizeof out, "FETCHED\n%d\n%d\n%d", id, status, nresp);
+    for (int i = 0; i < nresp && on > 0 && (size_t)on < sizeof(out); i++)
+        on += snprintf(out + on, sizeof(out) - on, "\n%s", resphdr[i]);
+    if (on > 0 && (size_t)on < sizeof(out))
+        snprintf(out + on, sizeof(out) - on, "\n\n%s", body);
     nbtm_wsend(to_child, out);
 }
 
