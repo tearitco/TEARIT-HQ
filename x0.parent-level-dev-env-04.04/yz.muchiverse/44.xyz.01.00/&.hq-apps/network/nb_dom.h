@@ -54,6 +54,11 @@ NbNode *nb_dom_load(FILE *in);
 /* Value (decoded) of a single named attribute, or "" if absent. */
 const char *nb_attr_get(const NbNode *n, const char *name);
 
+/* Presence of a named attribute, including bare valueless ones
+ * (`<option selected>`). nb_attr_get() returns "" for those, so it cannot
+ * answer "is this boolean attribute set?" — see the note in nb_dom.c. */
+int nb_attr_has(const NbNode *n, const char *name);
+
 /* Free an entire tree. */
 void nb_node_free(NbNode *root);
 

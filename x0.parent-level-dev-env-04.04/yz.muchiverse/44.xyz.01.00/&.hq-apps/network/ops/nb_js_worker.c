@@ -1735,23 +1735,213 @@ static int is_form_field(const char *tag) {
         || !strcmp(tag, "select") || !strcmp(tag, "button")
         || !strcmp(tag, "option");
 }
+/* ---- <select> / <option> (2026-10-05) ----------------------------------
+ * A select's .value is the SELECTED OPTION's value, not the select's own
+ * `value` attribute. Real pages almost never put one on the <select>
+ * itself, so the generic getter below answered "" for every dropdown on a
+ * real page — page code then read an empty string, took a "no selection"
+ * branch, and never fired the request the dropdown was there to make.
+ *
+ * Selection state lives in a hidden \xffsel shadow on each option wrapper.
+ * push_node() caches exactly one wrapper per node in the ID map, so the
+ * shadow survives repeated getElementById/childNodes lookups exactly the
+ * way \xffvalue already does. Writing a `selected` ATTRIBUTE instead would
+ * also work, but that blob is what nb_serialize() ships to the renderer, so
+ * a script-side selection would come back out as markup.
+ */
+#define SELKEY "\xffsel"
+
+static int node_is_tag(const NbNode *n, const char *tag) {
+    return n && n->tag && !strcmp(n->tag, tag);
+}
+/* Explicit script-set state wins; with none set, fall back to the markup.
+ * Returning "unset" and "false" as the same thing is fine here: a select
+ * whose options all carry `selected` cannot express the difference in
+ * markup either. */
+static int opt_selected(JSContext *ctx, NbNode *opt) {
+    JSValue w = push_node(ctx, opt);
+    JSValue v = JS_GetPropertyStr(ctx, w, SELKEY);
+    int r;
+    if (JS_IsUndefined(v) || JS_IsNull(v)) {
+        r = nb_attr_has(opt, "selected") ? 1 : 0;
+    } else {
+        r = JS_ToBool(ctx, v);
+    }
+    JS_FreeValue(ctx, v);
+    JS_FreeValue(ctx, w);
+    return r;
+}
+static void opt_set_selected(JSContext *ctx, NbNode *opt, int on) {
+    JSValue w = push_node(ctx, opt);
+    JS_SetPropertyStr(ctx, w, SELKEY, JS_NewBool(ctx, on));
+    JS_FreeValue(ctx, w);
+}
+/* HTML: an option's value is its `value` attribute, else its text. */
+static void option_value(const NbNode *opt, char *out, size_t cap) {
+    out[0] = 0;
+    if (!opt) return;
+    const char *v = nb_attr_get(opt, "value");
+    if (v && *v) { snprintf(out, cap, "%s", v); return; }
+    if (opt->text) snprintf(out, cap, "%s", opt->text);
+}
+static int sel_option_index(const NbNode *sel, const NbNode *opt) {
+    int i = 0;
+    for (NbNode *c = sel->first_child; c; c = c->next_sibling) {
+        if (!node_is_tag(c, "option")) continue;
+        if (c == opt) return i;
+        i++;
+    }
+    return -1;
+}
+/* HTML default selection: the first option carrying `selected`, else the
+ * first option at all. */
+static NbNode *sel_selected(JSContext *ctx, NbNode *sel) {
+    NbNode *first = NULL;
+    for (NbNode *c = sel->first_child; c; c = c->next_sibling) {
+        if (!node_is_tag(c, "option")) continue;
+        if (!first) first = c;
+        if (opt_selected(ctx, c)) return c;
+    }
+    return first;
+}
+static void sel_select_index(JSContext *ctx, NbNode *sel, int want) {
+    int i = 0;
+    for (NbNode *c = sel->first_child; c; c = c->next_sibling) {
+        if (!node_is_tag(c, "option")) continue;
+        opt_set_selected(ctx, c, i == want);
+        i++;
+    }
+}
+/* select.options (2026-10-05): a live array of the <option> children, plus
+ * select.length and option.index to round out the collection. Pages iterate
+ * options directly ("for (var i=0;i<sel.options.length;i++)"), so without
+ * this a dropdown cannot be read at all. Returns fresh wrapper objects each
+ * call; push_node()'s ID map makes them identity-stable per node. */
+static JSValue nb_sel_options(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    JSValue arr = JS_NewArray(ctx);
+    if (!n) return arr;
+    uint32_t k = 0;
+    for (NbNode *c = n->first_child; c; c = c->next_sibling) {
+        if (!node_is_tag(c, "option")) continue;
+        JS_SetPropertyUint32(ctx, arr, k++, push_node(ctx, c));
+    }
+    return arr;
+}
+static int sel_option_count(const NbNode *sel) {
+    int i = 0;
+    for (NbNode *c = sel->first_child; c; c = c->next_sibling)
+        if (node_is_tag(c, "option")) i++;
+    return i;
+}
+static JSValue nb_sel_length(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    return JS_NewInt32(ctx, n ? sel_option_count(n) : 0);
+}
+static JSValue nb_opt_index(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_NewInt32(ctx, -1);
+    NbNode *sel = n->parent;
+    if (!node_is_tag(sel, "select")) return JS_NewInt32(ctx, -1);
+    return JS_NewInt32(ctx, sel_option_index(sel, n));
+}
 static JSValue nb_el_value_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *n = get_this(ctx, this_val);
     if (!n) return JS_NewString(ctx, "");
+    /* a select reports its SELECTED option's value */
+    if (node_is_tag(n, "select")) {
+        char buf[512];
+        option_value(sel_selected(ctx, n), buf, sizeof buf);
+        return JS_NewString(ctx, buf);
+    }
     JSValue v0 = JS_GetPropertyStr(ctx, this_val, "\xffvalue");
     if (JS_IsString(v0)) return v0;
     JS_FreeValue(ctx, v0);
+    /* an option with no value attribute IS its text (HTML) — the generic
+     * path below answered "" for those, so a page reading opt.value saw an
+     * empty string and a select full of text-only options looked unset. */
+    if (node_is_tag(n, "option")) {
+        char buf[512];
+        option_value(n, buf, sizeof buf);
+        return JS_NewString(ctx, buf);
+    }
     const char *v = nb_attr_get(n, "value");
     if (v && v[0]) return JS_NewString(ctx, v);
     return JS_NewString(ctx, "");
 }
+/* Selecting an option is a user interaction, so it fires `change` — the
+ * only event dropdown-driven pages listen for. Defined next to
+ * nb_el_click(), where the Event constructor and dispatch_event live. */
+static void fire_change(JSContext *ctx, NbNode *n);
 static JSValue nb_el_value_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *n = get_this(ctx, this_val);
     if (!n) return JS_UNDEFINED;
     char *vl = NULL;
     const char *v = (argc > 0 && JS_IsString(argv[0])) ? (vl = JS_ToCString(ctx, argv[0])) : "";
+    if (node_is_tag(n, "select")) {
+        /* select the FIRST option whose value matches, deselect the rest.
+         * An unmatched value leaves the selection alone, as HTML does —
+         * silently selecting nothing would look like the dropdown worked. */
+        int i = 0, hit = -1;
+        char buf[512];
+        for (NbNode *c = n->first_child; c && hit < 0; c = c->next_sibling) {
+            if (!node_is_tag(c, "option")) continue;
+            option_value(c, buf, sizeof buf);
+            if (!strcmp(buf, v)) hit = i;
+            i++;
+        }
+        if (hit >= 0) {
+            sel_select_index(ctx, n, hit);
+            JS_FreeCString(ctx, vl);
+            fire_change(ctx, n);
+            return JS_UNDEFINED;
+        }
+        JS_FreeCString(ctx, vl);
+        return JS_UNDEFINED;
+    }
     JS_SetPropertyStr(ctx, this_val, "\xffvalue", JS_NewString(ctx, v));
     JS_FreeCString(ctx, vl);
+    return JS_UNDEFINED;
+}
+/* select.selectedIndex */
+static JSValue nb_sel_index_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_NewInt32(ctx, -1);
+    return JS_NewInt32(ctx, sel_option_index(n, sel_selected(ctx, n)));
+}
+static JSValue nb_sel_index_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_UNDEFINED;
+    int32_t i = 0;
+    if (argc > 0) JS_ToInt32(ctx, &i, argv[0]);
+    sel_select_index(ctx, n, i);
+    fire_change(ctx, n);
+    return JS_UNDEFINED;
+}
+/* option.selected — read/write, and writing it keeps the parent select in
+ * agreement so select.value never contradicts the option it points at. */
+static JSValue nb_opt_selected_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_NewBool(ctx, 0);
+    return JS_NewBool(ctx, opt_selected(ctx, n));
+}
+static JSValue nb_opt_selected_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_UNDEFINED;
+    int on = (argc > 0) ? JS_ToBool(ctx, argv[0]) : 1;
+    opt_set_selected(ctx, n, on);
+    NbNode *sel = n->parent;
+    if (node_is_tag(sel, "select")) {
+        if (on) {
+            int i = 0;
+            for (NbNode *c = sel->first_child; c; c = c->next_sibling) {
+                if (!node_is_tag(c, "option")) continue;
+                opt_set_selected(ctx, c, c == n);
+                i++;
+            }
+        }
+        fire_change(ctx, sel);
+    }
     return JS_UNDEFINED;
 }
 /* ---- classList natives (this = the classList object, shares \xffnode) ---- */
@@ -2051,14 +2241,50 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
     JS_SetPropertyStr(ctx, el, "getBoundingClientRect",
                       JS_NewCFunction(ctx, nb_el_getBoundingClientRect, "getBoundingClientRect", 0));
 
-    /* rung-2 remainder: el.value get/set for form fields. */
-    if (is_form_field(n->tag)) {
-        JSAtom nm = JS_NewAtom(ctx, "value");
-        JS_DefinePropertyGetSet(ctx, el, nm,
-            JS_NewCFunction(ctx, nb_el_value_get, "get value", 0), JS_NewCFunction(ctx, nb_el_value_set, "set value", 1),
-            JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
-        JS_FreeAtom(ctx, nm);
-    }
+/* rung-2 remainder: el.value get/set for form fields. */
+      if (is_form_field(n->tag)) {
+          JSAtom nm = JS_NewAtom(ctx, "value");
+          JS_DefinePropertyGetSet(ctx, el, nm,
+              JS_NewCFunction(ctx, nb_el_value_get, "get value", 0), JS_NewCFunction(ctx, nb_el_value_set, "set value", 1),
+              JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+          JS_FreeAtom(ctx, nm);
+      }
+      /* select/option state (2026-10-05): selectedIndex on the dropdown,
+       * selected on the option. Both are registered per-node by tag so a
+       * page's `typeof sel.selectedIndex` feature-detects honestly. */
+      if (node_is_tag(n, "select")) {
+          JSAtom nm = JS_NewAtom(ctx, "selectedIndex");
+          JS_DefinePropertyGetSet(ctx, el, nm,
+              JS_NewCFunction(ctx, nb_sel_index_get, "get selectedIndex", 0),
+              JS_NewCFunction(ctx, nb_sel_index_set, "set selectedIndex", 1),
+              JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+          JS_FreeAtom(ctx, nm);
+          /* options/index are VALUE properties, not methods: registering
+           * them with JS_SetPropertyStr made sel.options a function, and
+           * sel.options.length then answered the function's arity (0). */
+          nm = JS_NewAtom(ctx, "options");
+          JS_DefinePropertyGetSet(ctx, el, nm,
+              JS_NewCFunction(ctx, nb_sel_options, "get options", 0), JS_UNDEFINED,
+              JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+          JS_FreeAtom(ctx, nm);
+          nm = JS_NewAtom(ctx, "length");
+          JS_DefinePropertyGetSet(ctx, el, nm,
+              JS_NewCFunction(ctx, nb_sel_length, "get length", 0), JS_UNDEFINED,
+              JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+          JS_FreeAtom(ctx, nm);
+      } else if (node_is_tag(n, "option")) {
+          JSAtom nm = JS_NewAtom(ctx, "selected");
+          JS_DefinePropertyGetSet(ctx, el, nm,
+              JS_NewCFunction(ctx, nb_opt_selected_get, "get selected", 0),
+              JS_NewCFunction(ctx, nb_opt_selected_set, "set selected", 1),
+              JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+          JS_FreeAtom(ctx, nm);
+          nm = JS_NewAtom(ctx, "index");
+          JS_DefinePropertyGetSet(ctx, el, nm,
+              JS_NewCFunction(ctx, nb_opt_index, "get index", 0), JS_UNDEFINED,
+              JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+          JS_FreeAtom(ctx, nm);
+      }
 
     /* classList */
     {
@@ -4833,6 +5059,27 @@ static JSValue nb_el_click(JSContext *ctx, JSValueConst this_val, int argc, JSVa
     int r = dispatch_event(ctx, EVT_NODE, n, ev, 1);
     JS_FreeValue(ctx, ev);
     return JS_NewBool(ctx, r);
+}
+/* select/option state (2026-10-05): a script-driven selection is a user
+ * interaction, so it fires `change` — the only event dropdown-driven pages
+ * listen for. Same Event-constructor shape as nb_el_click() above; `change`
+ * bubbles and is not cancelable. */
+static void fire_change(JSContext *ctx, NbNode *n) {
+    JSValue Event = get_global_attr(ctx, "Event");
+    if (!JS_IsFunction(ctx, Event)) { JS_FreeValue(ctx, Event); return; }
+    JSValue opts = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, opts, "bubbles", JS_NewBool(ctx, 1));
+    JS_SetPropertyStr(ctx, opts, "cancelable", JS_NewBool(ctx, 0));
+    JSValue cargv[2];
+    cargv[0] = JS_NewString(ctx, "change");
+    cargv[1] = opts;
+    JSValue ev = JS_CallConstructor(ctx, Event, 2, cargv);
+    JS_FreeValue(ctx, Event);
+    JS_FreeValue(ctx, cargv[0]);
+    JS_FreeValue(ctx, opts);
+    if (JS_IsException(ev)) { JS_FreeValue(ctx, ev); return; }
+    dispatch_event(ctx, EVT_NODE, n, ev, 1);
+    JS_FreeValue(ctx, ev);
 }
 /* element.focus()/blur() (2026-09-21): typed-input path needs the search
  * input focusable (kevlar reads document.activeElement and toggles the
