@@ -133,8 +133,24 @@ label_for() {
             "${KIND:-_}" "${GLYPH:-_}" "${TMPL:-_}"
     done
     printf '    <item label="Close" action="CLOSE"/>\n'
+    # Same cli_io field a desk entity's menu.chtpm embeds (action = the
+    # shared entity-cli commit script). cli.sh (below) supplies the entity
+    # dir the renderer cannot know: it passes this menu's own package dir.
+    # Entity-like kinds only - a bare voxel/air cell has no pieces/<id>.
+    [ -n "${ID:-}" ] && printf '    <cli_io id="cmd" target_id="cmd" label="Cli-io: " action="%s/cli.sh"/>\n' "$PKG"
     printf '  </page>\n</window>\n'
 } > "$PKG/ctx-menu.xhtpm"
+
+# argv from the renderer: package_dir house_root typed_text. Forwarded to the
+# SHARED entity_cli_commit.sh with the real entity dir as its target.
+if [ -n "${ID:-}" ]; then
+mkdir -p "$ROOT/pieces/$ID"
+cat > "$PKG/cli.sh" <<CLI
+#!/bin/sh
+exec sh "$HOUSE/&.widgits/entity-cli/ops/entity_cli_commit.sh" "$ROOT/pieces/$ID" "\$2" "\$3"
+CLI
+chmod +x "$PKG/cli.sh"
+fi
 
 cat > "$PKG/append.sh" <<APP
 #!/bin/sh

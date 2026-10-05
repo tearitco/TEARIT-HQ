@@ -27,6 +27,7 @@
  * Self-contained, no shared headers. Usage: bv_dispatch.+x (no args).
  */
 #define _GNU_SOURCE
+#include "bv_move_range.c"   /* shared Move range finder + animation helpers */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -262,6 +263,9 @@ int main(void) {
             pj(lp, sizeof(lp), "pieces/display/.bv_dispatch_range_sz");
             FILE *lf = fopen(lp, "r");
             if (lf) { if (fscanf(lf, "%ld", &range_last) != 1) range_last = 0; fclose(lf); }
+            char stp[PATH_BUF];
+            pj(stp, sizeof(stp), "pieces/display/.bv_move_step_ms");
+            if (bvr_step(rr, stp)) external_change = 1;   /* Move animation tick */
             if (range_now != range_last) {
                 external_change = 1;
                 lf = fopen(lp, "w");

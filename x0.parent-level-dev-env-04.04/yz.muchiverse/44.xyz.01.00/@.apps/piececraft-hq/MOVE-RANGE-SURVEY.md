@@ -79,3 +79,26 @@ disappears on Escape, but picking a destination is still unimplemented.
   when both exist; the 3D code currently prefers the xelector.
 - Not run live: the board viewer is a stale session copy until relaunched, so
   any fix needs `scripts/build.sh`, `bash button.sh kill`, relaunch.
+
+## Status (2026-10-05, later): implemented
+
+Full fix landed (see the commits after `83d858dc4`). What exists now, all
+verified live through the relay (bottom-taskbar hero, Act, Move):
+
+- Range = `pieces/display/move_range_matrix.txt` (present = open), drawn in
+  3D and rendered in 2D from the same shared helper `bv_move_range.c`.
+- Origin = the entity Move was chosen for (the hero), not the xelector.
+  (The first version centred on the xelector; corrected on review.)
+- Opening Move arms the green placer on the hero. Arrows (1000-1003) move it.
+  Letters+digits type a cell ref ("jump: g15_", shared `khtpm_grid_jump.c`),
+  Enter jumps, Enter again places, Esc cancels. z/x change the placer z when
+  no ref is being typed.
+- Place animates: a waypoint ledger (`move_path.txt`) stepped every 90 ms by
+  `bv_dispatch.c`, same cadence as the desk's `move_entity.pal`.
+- HUD label: `move <entity> -> <ref> (x,y,z)` plus `jump:` / key hints.
+- pc-hq context menus have the desk's Cli-io field (shared
+  `entity_cli_commit.sh`, via a generated `cli.sh` shim).
+
+Known limits: the path is a straight cell path (no obstacle pathfinding like
+the desk's waypoint pathfinder); the range is a flat diamond at the entity's z;
+raw arrow/letter keys only reach the engine while Interact is ON, as before.

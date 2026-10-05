@@ -1085,6 +1085,7 @@ int main(void) {
             if (bvr_load(focused_root, &rng)) {
                 int nr = rng.nr, nc = rng.nc;
                 int cx0 = nc / 2, cy0 = nr / 2;
+                { int ex, ey, ez; if (bvr_origin(focused_root, &ex, &ey, &ez)) { hx = ex; hy = ey; hz = ez; } }   /* origin = the entity being moved, same as 3D */
                 for (int row = 0; row < nr; row++) {
                     for (int col = 0; col < nc && rng.rows[row][col]; col++) {
                         if (rng.rows[row][col] != '#') continue;

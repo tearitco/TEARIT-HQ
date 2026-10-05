@@ -2049,6 +2049,13 @@ static void bv_draw_hud(const char *game_root, int current_z, int selx, int sely
         snprintf(lines[n++], sizeof(lines[0]), "click %s %s", pos, tm);
         if (n < 12) snprintf(lines[n++], sizeof(lines[0]), "ray %s", ray);
     }
+    {   /* Move range finder label (bv_move_range.c) - only while it is open */
+        BvRange rg;
+        if (bvr_load(game_root, &rg) && n < 11) {
+            bvr_label(game_root, project_root, lines[n], sizeof(lines[0]), lines[n + 1], sizeof(lines[0]));
+            n += 2;
+        }
+    }
     if (n < 12) snprintf(lines[n++], sizeof(lines[0]), "pid %d", (int)getpid());
     double cscale = bv_hud_canvas_scale();
     int pad = (int)(6 * scale * cscale);
@@ -3257,8 +3264,8 @@ static int render_one_frame(void) {
         /* Move range finder (the REAL range; 2D only renders it - see
          * @.apps/piececraft-hq/RENDER-STANDARD.md). Drawn only while
          * move_range_matrix.txt exists, one wire cell per '#', flat at
-         * the origin's level, centred on the xelector (range finder
-         * cursor) when present, else the hero. Esc/Enter delete the
+         * the origin's level, centred on the entity being moved
+         * (xelector/hero only as a fallback). Esc/Enter delete the
          * file (bv_menu_input.c), which closes it. */
         if (g_xelector_present || g_hero_present) {
             BvRange rng;
@@ -3266,6 +3273,7 @@ static int render_one_frame(void) {
                 int ox = g_xelector_present ? g_xelector_x : g_hero_x;
                 int oy = g_xelector_present ? g_xelector_y : g_hero_y;
                 int oz = g_xelector_present ? g_xelector_z : g_hero_z;
+                bvr_origin(focused_project_root, &ox, &oy, &oz);   /* the moving entity */
                 for (int dy = -(rng.nr / 2); dy <= rng.nr / 2; dy++)
                     for (int dx = -(rng.nc / 2); dx <= rng.nc / 2; dx++) {
                         if (!bvr_has(&rng, dx, dy)) continue;

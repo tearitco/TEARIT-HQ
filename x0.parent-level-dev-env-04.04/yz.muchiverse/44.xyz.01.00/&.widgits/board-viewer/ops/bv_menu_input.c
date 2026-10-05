@@ -48,6 +48,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <ctype.h>
 #include "bv_move_range.c"   /* shared Move range finder file helpers */
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -344,6 +345,74 @@ static void send_action_to_host(const char *focused_project_root, const char *ac
  * ONE process (bv_menu_input.+x <k1> <k2> ...) instead of fork+exec+wait
  * per key. Each key is applied in sequence exactly as before - state is
  * re-read/re-written per key, same as when this ran once per process. */
+/* Move range finder keys (bv_move_range.c). Runs BEFORE the camera keys
+ * so letters/digits type a cell ref instead of turning the camera, exactly
+ * like the desk placer ("jump: c7_", Enter = jump, Enter again = place,
+ * Esc = cancel). The ref parser and buffer rules are the SHARED
+ * khtpm_grid_jump.c (same one csv-hq's <grid> and tp_arm_placer use).
+ * Arrow keys are NOT handled here - they keep the turn-relative placer
+ * movement further down. Returns 1 if the key was consumed. */
+static int range_key(int key, const char *froot) {
+    BvRange rng;
+    if (!froot[0] || !bvr_load(froot, &rng)) return 0;
+    char pp[PATH_BUF], jp[PATH_BUF];
+    snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
+    snprintf(jp, sizeof(jp), "%s/pieces/display/move_jump.txt", project_root);
+    if (!read_kv_int(pp, "armed", 0)) bvr_arm_placer(pp, froot);
+
+    char buf[GJ_BUF_CAP] = "";
+    { FILE *f = fopen(jp, "r"); if (f) { if (fgets(buf, sizeof(buf), f)) buf[strcspn(buf, "\r\n")] = 0; fclose(f); } }
+    #define SAVE_BUF() do { FILE *f_ = fopen(jp, "w"); if (f_) { fprintf(f_, "%s\n", buf); fclose(f_); } } while (0)
+
+    if (key == 27) {                       /* Esc: cancel everything */
+        bvr_close(froot);
+        unlink(jp);
+        write_kv_int(pp, "armed", 0);
+        bump_screen_changed(project_root);
+        return 1;
+    }
+    if (key == 13) {
+        if (buf[0]) {                      /* Enter with a ref typed = jump */
+            int r, c;
+            if (gj_parse(buf, 0, 0, &r, &c)) { write_kv_int(pp, "x", c); write_kv_int(pp, "y", r); }
+            buf[0] = '\0'; SAVE_BUF();
+            bump_screen_changed(project_root);
+            return 1;
+        }
+        /* Enter with nothing pending = place here (if inside the range) */
+        char ep[PATH_BUF], ent[64] = "", sp[PATH_BUF], xs[PATH_BUF];
+        bvr_path(froot, "move_range_entity.txt", ep, sizeof(ep));
+        read_kv_str(ep, "entity", ent, sizeof(ent));
+        snprintf(sp, sizeof(sp), "%s/pieces/%s/state.txt", froot, ent);
+        (void)xs;
+        int tx = read_kv_int(pp, "x", 0), ty = read_kv_int(pp, "y", 0), tz = read_kv_int(pp, "z", 0);
+        int ox = 0, oy = 0, oz = 0;
+        bvr_origin(froot, &ox, &oy, &oz);   /* same origin the renderers draw around */
+        if (ent[0] && bvr_has(&rng, tx - ox, ty - oy)) {
+            /* Animate: plan a waypoint path; bv_dispatch steps it. */
+            bvr_plan(froot, ent, read_kv_int(sp, "pos_x", tx), read_kv_int(sp, "pos_y", ty),
+                     read_kv_int(sp, "pos_z", tz), tx, ty, tz);
+            bvr_close(froot);
+            unlink(jp);
+            write_kv_int(pp, "armed", 0);
+            bump_screen_changed(project_root);
+        }
+        return 1;                          /* out of range: stay open */
+    }
+    if ((key == 127 || key == 8) && buf[0]) {
+        buf[strlen(buf) - 1] = '\0'; SAVE_BUF();
+        bump_screen_changed(project_root);
+        return 1;
+    }
+    /* z/x stay the placer's z-down/up keys when no ref is being typed */
+    if (key > 0 && key < 128 && isalnum(key) && !(!buf[0] && (key == 'z' || key == 'x'))) {
+        if (gj_buf_append(buf, sizeof(buf), (char)key)) { SAVE_BUF(); bump_screen_changed(project_root); }
+        return 1;
+    }
+    #undef SAVE_BUF
+    return 0;
+}
+
 static int handle_one_key(int key) {
     char state_path[PATH_BUF];
     snprintf(state_path, sizeof(state_path), "%s/pieces/system/bv_state.txt", project_root);
@@ -358,6 +427,7 @@ static int handle_one_key(int key) {
      * element is the active one). See &.widgits/interact-fix-widget.txt. */
     char focused_project_root[PATH_BUF] = "";
     read_kv_str(state_path, "focused_project_root", focused_project_root, sizeof(focused_project_root));
+    if (range_key(key, focused_project_root)) return 0;
 
     /* REAL FIX 2026-08-04, direct user request ("put them in config
      * file instead of hardcoding them to prevent this from happening")
@@ -558,38 +628,10 @@ static int handle_one_key(int key) {
         char pp[PATH_BUF];
         snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
         int armed = read_kv_int(pp, "armed", 0);
-        /* Move range finder (bv_move_range.c): open while
-         * move_range_matrix.txt exists. Esc closes it (and the green
-         * selector); Enter accepts the selector cell if it sits on a
-         * '#' of the matrix around the origin (xelector, else the
-         * entity) and relocates the entity there, then closes. */
-        BvRange rng;
-        int range_open = focused_project_root[0] && bvr_load(focused_project_root, &rng);
-        if (range_open && !armed) { bvr_arm_placer(pp, focused_project_root); armed = read_kv_int(pp, "armed", 0); }
-        if (key == 27 && (armed || range_open)) {
-            if (range_open) bvr_close(focused_project_root);
+        if (key == 27 && armed) {
             write_kv_int(pp, "armed", 0);
             bump_screen_changed(project_root);
             return 0;
-        }
-        if (key == 13 && range_open && armed) {
-            char ep[PATH_BUF], ent[64] = "", sp[PATH_BUF], xs[PATH_BUF];
-            bvr_path(focused_project_root, "move_range_entity.txt", ep, sizeof(ep));
-            read_kv_str(ep, "entity", ent, sizeof(ent));
-            snprintf(sp, sizeof(sp), "%s/pieces/%s/state.txt", focused_project_root, ent);
-            snprintf(xs, sizeof(xs), "%s/pieces/xelector_01/state.txt", focused_project_root);
-            int tx = read_kv_int(pp, "x", 0), ty = read_kv_int(pp, "y", 0), tz = read_kv_int(pp, "z", 0);
-            int ox = read_kv_int(xs, "pos_x", -9999), oy = read_kv_int(xs, "pos_y", -9999);
-            if (ox == -9999 || oy == -9999) { ox = read_kv_int(sp, "pos_x", 0); oy = read_kv_int(sp, "pos_y", 0); }
-            if (ent[0] && bvr_has(&rng, tx - ox, ty - oy)) {
-                write_kv_int(sp, "pos_x", tx);
-                write_kv_int(sp, "pos_y", ty);
-                write_kv_int(sp, "pos_z", tz);
-                bvr_close(focused_project_root);
-                write_kv_int(pp, "armed", 0);
-                bump_screen_changed(project_root);
-            }
-            return 0;   /* out of range: stay open, nothing moves */
         }
         if (armed && (dx || dy || key == 'z' || key == 'x')) {
             int sx = read_kv_int(pp, "x", 0);
