@@ -551,36 +551,6 @@ static int handle_one_key(int key) {
         }
     }
 
-    /* Placer: while armed, the same arrows and z/x keys move the green
-     * selector instead of the entity. Escape puts the keys back. */
-    {
-        char pp[PATH_BUF];
-        snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
-        int armed = read_kv_int(pp, "armed", 0);
-        if (key == 27 && armed) {
-            write_kv_int(pp, "armed", 0);
-            bump_screen_changed(project_root);
-            return 0;
-        }
-        if (armed && (dx || dy || key == 'z' || key == 'x')) {
-            int sx = read_kv_int(pp, "x", 0);
-            int sy = read_kv_int(pp, "y", 0);
-            int sz = read_kv_int(pp, "z", 0);
-            sx += dx; sy += dy;
-            if (key == 'x') sz++;
-            if (key == 'z') sz--;
-            if (sx < 0) sx = 0;
-            if (sy < 0) sy = 0;
-            if (sz < 0) sz = 0;
-            write_kv_int(pp, "x", sx);
-            write_kv_int(pp, "y", sy);
-            write_kv_int(pp, "z", sz);
-            write_kv_int(pp, "armed", 1);
-            bump_screen_changed(project_root);
-            return 0;
-        }
-    }
-
     if ((dx || dy) && focused_project_root[0]) {
         int current_z = read_kv_int(state_path, "current_z", default_current_z(focused_project_root));
         char board_path[PATH_BUF];
