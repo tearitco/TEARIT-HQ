@@ -23,6 +23,9 @@ window.network-browser { width: 784px; height: 504px; background-color: #141414;
 .nb-address { background-color: #0e0e0e; color: #ffffff; border: 1px solid #666666; }
 .nb-status { background-color: #101010; color: #88cc88; }
 .nb-content { background-color: #1a1a1a; color: #cccccc; }
+/* Milestone 1 (2026-10-05): keep a readable measure like a real page column. \
+   The FLEX children grow, so cap the body's own max-width instead. */
+.nb-body { max-width: 720px; }
 .bar { background-color: #222222; color: #2f8f5f; }
 .bar.play-bar { background-color: #222222; color: #2f8f5f; }
 sidebar { width: 200px; background-color: #1a1a1a; color: #cccccc; }
