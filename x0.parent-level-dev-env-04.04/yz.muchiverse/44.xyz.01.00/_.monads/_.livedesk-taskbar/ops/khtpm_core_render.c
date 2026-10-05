@@ -1,3 +1,4 @@
+#define _GNU_SOURCE /* REAL, NEW 2026-10-03 - Omarchy/glibc 2.44 port. _POSIX_C_SOURCE 200809L below pins the feature set on its own, so usleep() (ktb_toggle_zorder_respawn()'s real 30ms stagger, ~line 2808) stayed undeclared: POSIX.1-2008 DROPPED usleep, and glibc only exposes it via _DEFAULT_SOURCE/_BSD_SOURCE/_SVID_SOURCE/_XOPEN_SOURCE<700 - none implied by a bare _POSIX_C_SOURCE. _GNU_SOURCE implies all of those, so the one-line fix is to ask for them rather than patch each call site. Kept as a source fix, not a build-flag one, so EVERY build path (build_core_render.sh, build_khtpm_strip.sh, ...) gets it. */
 #define _POSIX_C_SOURCE 200809L /* CLOCK_MONOTONIC + getline() under -std=c11 strict mode - bumped from 199309L 2026-08-16 for chai_load_ledger()'s real getline() fix, see that function's own header comment */
 #include <stdarg.h> /* 2026-09-11 - kh_focus_debug_log()'s va_list, TEMPORARY diagnostic logging */
 #include "house_wait.h"
@@ -72,6 +73,7 @@ static int kh_auto_px(int base_px) {
 #include <dirent.h> /* REAL, chat-hai mode only - session-dir listing */
 #include <fcntl.h> /* REAL, NEW 2026-09-01 - strip mode's own zorder toggle respawn (open("/dev/null", O_RDWR)) */
 #include <unistd.h>
+#include <sys/resource.h> /* REAL, NEW 2026-10-03 - nice(), ktb_toggle_zorder_respawn()'s real mild CPU-priority yield (~line 2869). glibc declares nice() HERE, not in <unistd.h>, so this include is the whole fix for that "implicit declaration" error. */
 #include <sys/stat.h>
 #include <sys/select.h>
 #include <sys/time.h> /* REAL, NEW 2026-09-01 - tile mode's own real gettimeofday() frame-pacing/click-vs-drag timing */
@@ -11345,6 +11347,28 @@ static Atom ga_xdnd_aware, ga_xdnd_enter, ga_xdnd_position, ga_xdnd_leave,
 static Window g_xdnd_source = None;
 static int g_xdnd_awaiting = 0;
 
+/* Omarchy/Hyprland-only compat (see OMARCHY-PORT.md). The WM_CLASS hint and the
+ * WM_TAKE_FOCUS handshake exist for Xwayland-under-Hyprland. They are gated at
+ * RUNTIME on the compositor so every other session (GNOME/Mutter, plain X11)
+ * keeps the exact behaviour it had before - a generic "is Wayland" test would
+ * also switch them on under GNOME's Xwayland. */
+static int kh_is_hyprland(void) {
+    static int v = -1;
+    if (v < 0) {
+        const char *d = getenv("XDG_CURRENT_DESKTOP");
+        v = (getenv("HYPRLAND_INSTANCE_SIGNATURE") != NULL) ||
+            (d && (strstr(d, "Hyprland") || strstr(d, "hyprland")));
+    }
+    return v;
+}
+
+/* REAL, NEW 2026-10-03 - Omarchy/Hyprland port: the two ICCCM atoms the
+ * WM_TAKE_FOCUS handshake needs (see hq_dispatch_xevent's own comment).
+ * Interned lazily at first use there rather than in an init function, because
+ * this dispatch helper is reached from both event loops and the dock bars are
+ * the only windows that care. */
+static Atom ga_wm_protocols = None, ga_wm_take_focus = None;
+
 static void xdnd_init_atoms(Display *dpy) {
     ga_xdnd_aware      = XInternAtom(dpy, "XdndAware", False);
     ga_xdnd_enter      = XInternAtom(dpy, "XdndEnter", False);
@@ -12212,6 +12236,29 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
         while (XCheckTypedWindowEvent(dpy, ev->xexpose.window, Expose, &drain)) { }
         redraw();
         return;
+    }
+    /* REAL, NEW 2026-10-03 - Omarchy/Hyprland port, ICCCM WM_TAKE_FOCUS
+     * handshake, half 2. Paired with the window_is_dock()-gated
+     * XSetWMProtocols registration near window creation; see that site's comment
+     * for why this is needed and why it is dock-only. Under Xwayland the
+     * compositor sends this ClientMessage rather than forcing input in, so if we
+     * do not claim focus here the dock never gets keys even though it is mapped,
+     * visible and advertises input=True. RevertToParent + the message's own
+     * timestamp is the ICCCM-blessed pairing (a CurrentTime request here is
+     * exactly the one g_last_event_time's own comment says a WM can silently
+     * drop). Must come BEFORE the wm_delete test below: that one keys off
+     * data.l[0] alone, and WM_TAKE_FOCUS arrives in that same slot. */
+    if (kh_is_hyprland() && ev->type == ClientMessage) {
+        if (ga_wm_protocols == None) {
+            ga_wm_protocols  = XInternAtom(dpy, "WM_PROTOCOLS", False);
+            ga_wm_take_focus = XInternAtom(dpy, "WM_TAKE_FOCUS", False);
+        }
+        if ((Atom)ev->xclient.message_type == ga_wm_protocols &&
+            (Atom)ev->xclient.data.l[0] == ga_wm_take_focus) {
+            if (window_is_dock() && win != None)
+                XSetInputFocus(dpy, win, RevertToParent, (Time)ev->xclient.data.l[1]);
+            return;
+        }
     }
     if (ev->type == ClientMessage && (Atom)ev->xclient.data.l[0] == wm_delete) {
         g_quit = 1;
@@ -17339,6 +17386,9 @@ static int tp_main(int argc, char **argv) {
                                 0, win_depth, InputOutput, win_vis,
                                 CWColormap | CWEventMask | CWOverrideRedirect | CWBorderPixel | CWBackPixel, &swa);
     TP_TIMING_MARK("XCreateWindow");
+    /* REAL, NEW 2026-10-03 - tile/tile-mode window in this binary; same missing
+     * WM_CLASS fix as the generic path (see the long note there). */
+    if (kh_is_hyprland()) XSetClassHint(dpy, win, &(XClassHint){(char *)"MuchiverseLivedesk", (char *)"MuchiverseLivedesk"});
     /* REAL, NEW 2026-09-01 - when the pdl turns override_redirect off
      * (WM-managed pieces, so the taskbar's @ toggle can control their
      * real z-order on Xwayland/Mutter), Mutter would put a titlebar/frame
@@ -19690,7 +19740,10 @@ static void kh_ensure_dock_peer_window(void) {
         (unsigned)(g_dock_peer_h > 0 ? g_dock_peer_h : DOCK_BAR_H),
         0, CopyFromParent, InputOutput, CopyFromParent,
         CWBackPixel | CWOverrideRedirect | CWEventMask, &pswa);
-    apply_dock_window_hints(dpy, g_dock_peer_win, g_dock_peer_x, g_dock_peer_y);
+apply_dock_window_hints(dpy, g_dock_peer_win, g_dock_peer_x, g_dock_peer_y);
+    /* REAL, NEW 2026-10-03 - the bottom dock bar's own window; same missing
+     * WM_CLASS fix as the generic path above (see the long note there). */
+    if (kh_is_hyprland()) XSetClassHint(dpy, g_dock_peer_win, &(XClassHint){(char *)"MuchiverseLivedesk", (char *)"MuchiverseLivedesk"});
     render_managed_wm_hints(dpy, g_dock_peer_win, 1);
     XMapRaised(dpy, g_dock_peer_win);
     set_window_opacity(dpy, g_dock_peer_win, load_theme_opacity());
@@ -20291,6 +20344,16 @@ int main(int argc, char **argv) {
     win = XCreateWindow(dpy, RootWindow(dpy, screen), g_win_x, g_win_y, (unsigned)g_win_w, (unsigned)g_win_h, 0,
                          CopyFromParent, InputOutput, CopyFromParent, CWBackPixel | CWOverrideRedirect | CWEventMask, &swa);
     if (window_is_dock()) apply_dock_window_hints(dpy, win, g_win_x, g_win_y);
+    /* REAL, NEW 2026-10-03 - Omarchy/Hyprland port. This is the GENERIC top-level
+     * window path (the strip header/bottom dock bars and every HQ window run
+     * through here), and it is where WM_CLASS was missing, so under rootless
+     * Xwayland these windows arrived with an EMPTY class. That makes them
+     * unmatchable by any compositor window rule and untargetable by
+     * `hyprctl dispatch focuswindow class:...` - the live reason nav/key input
+     * never reached the taskbar. Same compound-literal form already used at
+     * :17113, and the class value the house already documents at :16142 as the
+     * one Xwayland's xwayland-grab-access-rules allowlists by. */
+    if (kh_is_hyprland()) XSetClassHint(dpy, win, &(XClassHint){(char *)"MuchiverseLivedesk", (char *)"MuchiverseLivedesk"});
     /* kh_is_entity_context_menu() forced override_redirect=True just
      * above regardless of g_override_redirect - never apply managed WM
      * hints on top of that (2026-09-28, same fix as the override_redirect
@@ -20300,7 +20363,26 @@ int main(int argc, char **argv) {
     long hints[5] = { 2, 0, 0, 0, 0 };
     XChangeProperty(dpy, win, motif_hints, motif_hints, 32, PropModeReplace, (unsigned char *)hints, 5);
     Atom wm_delete = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
-    XSetWMProtocols(dpy, win, &wm_delete, 1);
+    /* REAL, NEW 2026-10-03 - Omarchy/Hyprland port. Register WM_TAKE_FOCUS on
+     * the MANAGED path only. Under Xwayland a compositor does not force input
+     * into a clicked X11 window - it sends the client a WM_TAKE_FOCUS
+     * ClientMessage and expects the client to claim focus with XSetInputFocus.
+     * Without advertising the protocol the handshake can never complete, which
+     * is why the dock bars drew but never received keys.
+     *
+     * Deliberately NOT applied to the pals: they are free, movable pieces that
+     * snap to the house's own grid (g_override_redirect=1, khtpm_entity.c:101)
+     * and must stay unmanaged so no compositor takes their geometry. Their own
+     * input path is the house's, not the compositor's. Only these dock bars -
+     * genuinely WM-managed, real InputHint set in apply_dock_window_hints() -
+     * want the ICCCM handshake. */
+    if (window_is_dock() && kh_is_hyprland()) {
+        Atom prot[2]; prot[0] = XInternAtom(dpy, "WM_TAKE_FOCUS", False);
+        prot[1] = wm_delete;
+        XSetWMProtocols(dpy, win, prot, 2);
+    } else {
+        XSetWMProtocols(dpy, win, &wm_delete, 1);
+    }
     /* PPosition - same real fix db-hq/events-hq/chat-hai already needed
      * (khtpm-merge-how2.md's own white-flash/position entries) - without
      * this the WM ignores the requested x/y. */
