@@ -30,8 +30,13 @@
 
 #include "../../_shared-lib/khtpm_grid_jump.c"   /* shared cell-ref parser (csv-hq <grid>, tp_arm_placer) */
 
-#define BVR_MAX 16
-typedef struct { char rows[BVR_MAX][64]; int nr, nc; } BvRange;
+/* The matrix, the in-range test, path planning and the waypoint queue are the
+ * SHARED khtpm_move_range.c - the exact code the desk's placer and
+ * move_entity_init/_tick use. This file is only pc-hq's glue: WHERE the files
+ * live (the real project's pieces/) and HOW the result is applied (cells in
+ * pieces/<id>/state.txt, stepped by bv_dispatch). */
+#include "../../_shared-lib/khtpm_move_range.c"
+typedef MvrMatrix BvRange;
 
 static __attribute__((unused)) void bvr_path(const char *root, const char *name, char *out, size_t n) {
     snprintf(out, n, "%s/pieces/display/%s", root, name);
@@ -40,24 +45,13 @@ static __attribute__((unused)) void bvr_path(const char *root, const char *name,
 /* 1 = range finder open and matrix loaded; 0 = closed. */
 static __attribute__((unused)) int bvr_load(const char *root, BvRange *r) {
     char p[4400];
-    r->nr = r->nc = 0;
     bvr_path(root, "move_range_matrix.txt", p, sizeof(p));
-    FILE *f = fopen(p, "r");
-    if (!f) return 0;
-    while (r->nr < BVR_MAX && fgets(r->rows[r->nr], sizeof(r->rows[0]), f)) {
-        r->rows[r->nr][strcspn(r->rows[r->nr], "\r\n")] = 0;
-        if ((int)strlen(r->rows[r->nr]) > r->nc) r->nc = (int)strlen(r->rows[r->nr]);
-        r->nr++;
-    }
-    fclose(f);
-    return r->nr > 0;
+    return mvr_matrix_load(p, r);
 }
 
 /* dx,dy = cell offset from the origin cell. */
 static __attribute__((unused)) int bvr_has(const BvRange *r, int dx, int dy) {
-    int row = dy + r->nr / 2, col = dx + r->nc / 2;
-    if (row < 0 || row >= r->nr || col < 0 || col >= r->nc) return 0;
-    return r->rows[row][col] == '#';
+    return r->nr > 0 && mvr_matrix_allows(r, dx, dy);
 }
 
 /* Esc / confirmed pick: closes the range finder everywhere at once. */
@@ -133,11 +127,13 @@ static __attribute__((unused)) void bvr_label(const char *real_root, const char 
     else snprintf(l2, n2, "arrows move | ref+Enter jump | Enter place | Esc cancel");
 }
 
-/* ---- Move animation (same idea as the desk's move_entity_init/_tick:
- * a waypoint ledger drained one step per tick - here in CELL coordinates
- * and stepped by the engine's own dispatch loop, not a new process).
- *   pieces/display/move_path.txt : line 1 "entity=<id>", then "x y z" per
- *   remaining waypoint. bvr_plan() writes it; bvr_step() takes one. */
+/* ---- Move animation: the desk's waypoint queue, in cells ----------------
+ * bvr_plan() writes <entity>/animation_queue.txt (+ .cursor) with the shared
+ * planner (step 1 cell) and notes the active entity in
+ * pieces/display/move_active.txt; bvr_step() - called every tick by
+ * bv_dispatch - takes one waypoint per BVR_STEP_MS and applies it to the
+ * entity's pieces/<id>/state.txt. On the desk the same queue files are drained
+ * by move_entity_tick.+x into desktop_pos.txt. */
 #define BVR_STEP_MS 90   /* same cadence as move_entity.pal's sleep 90000 */
 
 /* Replace or append key=value in a kv file (small files only). */
@@ -155,60 +151,47 @@ static __attribute__((unused)) void bvr_kv_set(const char *path, const char *key
     fclose(f);
 }
 
-/* Straight cell path (x and y stepped alternately, z set at the end). */
 static __attribute__((unused)) void bvr_plan(const char *real_root, const char *ent,
                                              int x0, int y0, int z0, int x1, int y1, int z1) {
-    char p[4400];
-    bvr_path(real_root, "move_path.txt", p, sizeof(p));
+    char p[4400], dir[4400];
+    int pts[256][2], n;
+    snprintf(dir, sizeof(dir), "%s/pieces/%s", real_root, ent);
+    n = mvr_path(x0, y0, x1, y1, 1, pts, 256);
+    if (n == 0) { pts[0][0] = x1; pts[0][1] = y1; n = 1; }   /* same cell: still apply z */
+    if (!mvr_queue_write(dir, pts, n, z0, z1)) return;
+    bvr_path(real_root, "move_active.txt", p, sizeof(p));
     FILE *f = fopen(p, "w");
-    if (!f) return;
-    fprintf(f, "entity=%s\n", ent);
-    int x = x0, y = y0, guard = 0;
-    while ((x != x1 || y != y1) && guard++ < 256) {
-        int dx = (x1 > x) - (x1 < x), dy = (y1 > y) - (y1 < y);
-        if (dx && (!dy || (guard & 1))) x += dx; else y += dy;
-        fprintf(f, "%d %d %d\n", x, y, (x == x1 && y == y1) ? z1 : z0);
-    }
-    if (x0 == x1 && y0 == y1) fprintf(f, "%d %d %d\n", x1, y1, z1);
-    fclose(f);
+    if (f) { fprintf(f, "entity=%s\n", ent); fclose(f); }
 }
 
-/* One tick: if a path is pending and BVR_STEP_MS has passed (stamp_path
- * holds the last step's monotonic ms), move the entity one waypoint.
- * Returns 1 when something moved (caller redraws), 0 otherwise. */
+/* One tick: if a queue is pending and BVR_STEP_MS has passed (stamp_path holds
+ * the last step's monotonic ms), move the entity one waypoint. Returns 1 when
+ * something moved (caller redraws), 0 otherwise. */
 static __attribute__((unused)) int bvr_step(const char *real_root, const char *stamp_path) {
-    char p[4400], sp[4400], ent[64] = "";
-    char wp[256][48]; int nw = 0;
-    bvr_path(real_root, "move_path.txt", p, sizeof(p));
-    FILE *f = fopen(p, "r");
-    if (!f) return 0;
-    char l[96];
-    while (fgets(l, sizeof(l), f)) {
-        if (!strncmp(l, "entity=", 7)) { snprintf(ent, sizeof(ent), "%.63s", l + 7); ent[strcspn(ent, "\r\n")] = 0; }
-        else if (nw < 256) { snprintf(wp[nw], sizeof(wp[0]), "%.47s", l); wp[nw][strcspn(wp[nw], "\r\n")] = 0; nw++; }
-    }
+    char ap[4400], dir[4400], sp[4400], ent[64] = "";
+    FILE *f;
+    bvr_path(real_root, "move_active.txt", ap, sizeof(ap));
+    if (!(f = fopen(ap, "r"))) return 0;
+    { char l[128]; while (fgets(l, sizeof(l), f)) if (!strncmp(l, "entity=", 7)) { snprintf(ent, sizeof(ent), "%.63s", l + 7); ent[strcspn(ent, "\r\n")] = 0; } }
     fclose(f);
+    if (!ent[0]) { unlink(ap); return 0; }
     struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
     long long now = (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000, last = 0;
-    f = fopen(stamp_path, "r");
-    if (f) { if (fscanf(f, "%lld", &last) != 1) last = 0; fclose(f); }
-    if (nw > 0 && now - last < BVR_STEP_MS) return 0;
-    int moved = 0;
-    if (nw > 0 && ent[0]) {
-        int x, y, z;
-        if (sscanf(wp[0], "%d %d %d", &x, &y, &z) == 3) {
-            snprintf(sp, sizeof(sp), "%s/pieces/%s/state.txt", real_root, ent);
-            bvr_kv_set(sp, "pos_x", x); bvr_kv_set(sp, "pos_y", y); bvr_kv_set(sp, "pos_z", z);
-            moved = 1;
-        }
+    if ((f = fopen(stamp_path, "r"))) { if (fscanf(f, "%lld", &last) != 1) last = 0; fclose(f); }
+    if (now - last < BVR_STEP_MS) return 0;
+    snprintf(dir, sizeof(dir), "%s/pieces/%s", real_root, ent);
+    int x, y, z, ln, moved = 0;
+    if (mvr_queue_next(dir, &x, &y, &z, &ln)) {
+        snprintf(sp, sizeof(sp), "%s/state.txt", dir);
+        bvr_kv_set(sp, "pos_x", x); bvr_kv_set(sp, "pos_y", y);
+        if (z >= 0) bvr_kv_set(sp, "pos_z", z);
+        mvr_queue_advance(dir, ln);
+        moved = 1;
+    } else {                      /* drained: same cleanup the desk's tick does */
+        mvr_queue_clear(dir);
+        unlink(ap);
     }
-    if (nw <= 1) unlink(p);
-    else {
-        f = fopen(p, "w");
-        if (f) { fprintf(f, "entity=%s\n", ent); for (int i = 1; i < nw; i++) fprintf(f, "%s\n", wp[i]); fclose(f); }
-    }
-    f = fopen(stamp_path, "w");
-    if (f) { fprintf(f, "%lld\n", now); fclose(f); }
+    if ((f = fopen(stamp_path, "w"))) { fprintf(f, "%lld\n", now); fclose(f); }
     return moved;
 }
 #endif

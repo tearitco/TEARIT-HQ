@@ -31,6 +31,7 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 
+#include "khtpm_move_range.c"
 #define MAX_PATH 4096
 #define MAX_WAYPOINTS 4096
 #define ANIM_STEP 8
@@ -84,28 +85,11 @@ static int read_grid_cell_px(const char *house_root) {
     return g;
 }
 
+/* Path planning is the SHARED khtpm_move_range.c (pc-hq's board-viewer uses
+ * the same planner with a 1-cell step). Point is two ints, so it is
+ * layout-compatible with the shared int[2] points. */
 static int pathfind_linear(int sx, int sy, int tx, int ty, Point *waypoints) {
-    int count = 0;
-    int dx = (tx > sx) ? ANIM_STEP : (tx < sx) ? -ANIM_STEP : 0;
-    int dy = (ty > sy) ? ANIM_STEP : (ty < sy) ? -ANIM_STEP : 0;
-    int cx = sx, cy = sy;
-    if (dx == 0 && dy == 0) return 0; /* already there */
-    while (count < MAX_WAYPOINTS) {
-        int reached_x = (dx == 0) ? (cx == tx) : ((dx > 0) ? (cx >= tx) : (cx <= tx));
-        int reached_y = (dy == 0) ? (cy == ty) : ((dy > 0) ? (cy >= ty) : (cy <= ty));
-        if (reached_x && reached_y) {
-            waypoints[count].x = tx;
-            waypoints[count].y = ty;
-            count++;
-            break;
-        }
-        if (cx != tx) cx += dx;
-        if (cy != ty) cy += dy;
-        waypoints[count].x = cx;
-        waypoints[count].y = cy;
-        count++;
-    }
-    return count;
+    return mvr_path(sx, sy, tx, ty, ANIM_STEP, (int (*)[2])waypoints, MAX_WAYPOINTS);
 }
 
 static void ensure_prisc_built(const char *entity_cli_dir, const char *house_root) {
@@ -174,13 +158,11 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    FILE *qf = fopen(queue_path, "w");
-    if (!qf) { fprintf(stderr, "ERROR: cannot write %s\n", queue_path); return 1; }
-    for (int i = 0; i < count; i++) fprintf(qf, "x=%d|y=%d\n", waypoints[i].x, waypoints[i].y);
-    fclose(qf);
-
-    FILE *cf = fopen(cursor_path, "w");
-    if (cf) { fprintf(cf, "0\n"); fclose(cf); }
+    /* Shared queue writer: animation_queue.txt + cursor 0 (same files the
+     * desk's tick op reads, and pc-hq's engine reads for its own entities). */
+    if (!mvr_queue_write(entity_dir, (int (*)[2])waypoints, count, -1, -1)) {
+        fprintf(stderr, "ERROR: cannot write %s\n", queue_path); return 1;
+    }
 
     /* Derive entity-cli dir from this binary's own real path:
      * .../entity-cli/ops/move_entity_init.+x -> .../entity-cli */

@@ -186,43 +186,24 @@ static void load_grid_pdl_options(const char *desktop_root) {
  * one and only writer of this file - see that op's own header for the
  * current shape (diamond) and how to change it without touching this
  * file at all. TP_RANGE_MATRIX (env, set by the same launcher) points
- * at the file; missing/unset/unreadable means g_range_matrix_dim stays
+ * at the file; missing/unset/unreadable means g_mvr.nr stays
  * 0, which every reader below treats as "no shape restriction beyond
  * the bounding box" - never "compute a default shape here instead". */
-#define RANGE_MATRIX_MAX 65
-static char g_range_matrix[RANGE_MATRIX_MAX][RANGE_MATRIX_MAX];
-static int g_range_matrix_dim = 0;    /* 0 = no matrix loaded */
-static int g_range_matrix_radius = 0; /* (dim-1)/2 - matrix is always centered on the origin cell */
+/* Matrix load + in-range test are the SHARED khtpm_move_range.c (the same
+ * code pc-hq's board-viewer uses) - this file keeps only the desk-specific
+ * part: mapping desk grid cells onto it. */
+#include "khtpm_move_range.c"
+static MvrMatrix g_mvr;               /* nr == 0 = no matrix loaded */
 
 static void load_range_matrix(void) {
-    const char *path = getenv("TP_RANGE_MATRIX");
-    if (!path || !path[0]) return;
-    FILE *f = fopen(path, "r");
-    if (!f) return;
-    char line[RANGE_MATRIX_MAX + 4];
-    int dim = 0;
-    while (dim < RANGE_MATRIX_MAX && fgets(line, sizeof(line), f)) {
-        int len = (int)strcspn(line, "\r\n");
-        if (len <= 0) continue; /* skip a stray blank line rather than counting it as a row */
-        for (int i = 0; i < len && i < RANGE_MATRIX_MAX; i++) g_range_matrix[dim][i] = line[i];
-        for (int i = len; i < RANGE_MATRIX_MAX; i++) g_range_matrix[dim][i] = '.';
-        dim++;
-    }
-    fclose(f);
-    if (dim <= 0) return;
-    g_range_matrix_dim = dim;
-    g_range_matrix_radius = (dim - 1) / 2;
+    mvr_matrix_load(getenv("TP_RANGE_MATRIX"), &g_mvr);
 }
 
 /* True if (r,c) on the real desk grid falls on a '#' in the loaded
  * matrix, centered on (origin_c, origin_r). No matrix loaded -> always
  * true (the bounding-box check elsewhere is the only restriction). */
 static int range_matrix_allows(int origin_c, int origin_r, int r, int c) {
-    if (g_range_matrix_dim <= 0) return 1;
-    int mc = c - origin_c + g_range_matrix_radius;
-    int mr = r - origin_r + g_range_matrix_radius;
-    if (mc < 0 || mc >= g_range_matrix_dim || mr < 0 || mr >= g_range_matrix_dim) return 0;
-    return g_range_matrix[mr][mc] == '#';
+    return mvr_matrix_allows(&g_mvr, c - origin_c, r - origin_r);
 }
 #define PDBG(...) do { if (g_dbg < 0) g_dbg = (getenv("TP_PLACE_DEBUG") && getenv("TP_PLACE_DEBUG")[0] == '1'); \
                        if (g_dbg) { fprintf(stderr, "[placer] " __VA_ARGS__); fputc('\n', stderr); } } while (0)
@@ -270,7 +251,7 @@ typedef struct {
      * g_range_matrix global (loaded once from TP_RANGE_MATRIX, written
      * by tp_gen_range_matrix.+x, see that op's header) to test whether
      * a given cell is inside the shape at all. No shape math lives in
-     * this file - g_range_matrix_dim==0 (no matrix file given) is the
+     * this file - g_mvr.nr==0 (no matrix file given) is the
      * only fallback, and it means "no shape restriction beyond the
      * box", not "compute some default shape here". */
     int origin_c, origin_r;
@@ -354,10 +335,10 @@ static void ov_draw_pane(Ov *o, int i) {
      * XShape/window-shaping needed. Draws each in-shape cell's own 4
      * edges rather than full-length lattice lines, since the lattice
      * shortcut only works for a solid rectangle. No matrix loaded
-     * (g_range_matrix_dim==0) draws every cell in the box - same
+     * (g_mvr.nr==0) draws every cell in the box - same
      * fallback range_matrix_allows() uses, kept in sync by construction
      * since this calls that same function rather than its own check. */
-    if (o->has_view && g_range_matrix_dim > 0) {
+    if (o->has_view && g_mvr.nr > 0) {
         for (int r = o->view_r0; r <= o->view_r1; r++) {
             for (int c = o->view_c0; c <= o->view_c1; c++) {
                 if (!range_matrix_allows(o->origin_c, o->origin_r, r, c)) continue;
