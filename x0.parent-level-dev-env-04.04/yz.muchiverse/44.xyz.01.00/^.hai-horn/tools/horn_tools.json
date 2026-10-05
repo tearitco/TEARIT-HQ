@@ -1,0 +1,164 @@
+{
+  "_comment": [
+    "HORN's tool manifest. Two jobs, one file:",
+    "  \"tools\" is spliced into the request verbatim as the OpenAI `tools`",
+    "      array. It must stay a valid OpenAI tool definition - no extra",
+    "      keys, providers reject unknown fields.",
+    "  \"ops\"   maps a tool name to the op binary that executes it. This is",
+    "      the ENTIRE security boundary: a tool the model asks for that is",
+    "      not in this map is refused, never dispatched.",
+    "",
+    "Adding a tool needs no C changes: drop the binary in ops/+x/ and add",
+    "an entry here. That is deliberate - HALO will want Concept Bank ops",
+    "and this is the seam they go through.",
+    "",
+    "A value of \"builtin:<name>\" runs a handler compiled into",
+    "ops/horn_tool_exec.c. Any other value is executed as",
+    "ops/+x/<value>.+x with the raw JSON as argv[1].",
+    "",
+    "Everything registered here is READ-ONLY by design while the loop is",
+    "being proved out. Nothing here writes, deletes or executes anything.",
+    "Anything destructive must be added deliberately, with the reasoning in",
+    "a comment next to it."
+  ],
+
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "list_dir",
+        "description": "List the files and directories at a path. Use this to find out what exists before reading anything. Paths may be absolute or relative to the project root.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Directory to list. Use \".\" for the project root."
+            }
+          },
+          "required": ["path"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "read_file",
+        "description": "Read a UTF-8 text file and return its contents. Use this after list_dir to inspect source, configs or docs.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "File to read."
+            },
+            "max_bytes": {
+              "type": "integer",
+              "description": "Optional cap on bytes returned. Defaults to 8000."
+            }
+          },
+          "required": ["path"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "grep_files",
+        "description": "Search file contents for a regular expression and return matching lines with file and line numbers. Use this to find where something is defined or referenced.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "pattern": {
+              "type": "string",
+              "description": "POSIX extended regular expression."
+            },
+            "path": {
+              "type": "string",
+              "description": "Directory to search under. Use \".\" for the project root."
+            },
+            "max_matches": {
+              "type": "integer",
+              "description": "Optional cap on matches returned. Defaults to 60."
+            }
+          },
+          "required": ["pattern"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "edit_file",
+        "description": "Replace an exact string in a text file. Fails if the search string is not found, and refuses if it appears more than once unless replace_all is true. Use this instead of rewriting a whole file - it cannot silently discard content you did not intend to change.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string", "description": "File to edit, relative to the project root." },
+            "search": { "type": "string", "description": "Exact text to find." },
+            "replace": { "type": "string", "description": "Replacement text." },
+            "replace_all": { "type": "boolean", "description": "Replace every occurrence. Defaults to false, which requires the match to be unique." }
+          },
+          "required": ["path", "search", "replace"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "write_file",
+        "description": "Create or completely overwrite a text file. Prefer edit_file when changing something that already exists - this replaces the entire contents. Refuses paths outside the project, protected paths, and directories that do not already exist.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string", "description": "File to write, relative to the project root." },
+            "content": { "type": "string", "description": "Full new contents of the file." }
+          },
+          "required": ["path", "content"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "run_script",
+        "description": "Run a shell command inside a sandbox: no network, read-only system directories, and writes confined to the project. Always use this to build, test or inspect - never to install software or reach the internet.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "command": { "type": "string", "description": "Shell command to run." },
+            "timeout_s": { "type": "integer", "description": "Optional timeout in seconds. Defaults to 60." }
+          },
+          "required": ["command"]
+        }
+      }
+    }
+  ],
+
+  "ops": {
+    "list_dir":   "builtin:list_dir",
+    "read_file":  "builtin:read_file",
+    "grep_files": "builtin:grep_files",
+    "edit_file":  "builtin:edit_file",
+    "write_file": "builtin:write_file",
+    "run_script": "builtin:run_script"
+  },
+
+  "gate": ["edit_file", "write_file", "run_script"],
+
+  "_gate_comment": [
+    "MUTATING tools, and so listed in \"gate\": horn_turn asks the human",
+    "before running any of them. This mirrors gem-dev's cmd_exec, where a",
+    "command prompts \"[SAFEGUARD] Run '<cmd>'? (y/n)\" and aborts unless the",
+    "answer is y. Read-only tools are ungated.",
+    "",
+    "Create config/yolo.flag to arm auto-approve for a whole session - also",
+    "gem-dev's mechanism, same path, same name. One command that a model",
+    "wrote can turn this off again, so treat the flag as a deliberate act",
+    "by the human, not something to leave lying around.",
+    "",
+    "A model that can write CAN edit this file. Adding a tool to \"ops\" while",
+    "also removing its name from \"gate\" is the escalation the gate exists",
+    "to stop, so both live in this one reviewable place."
+  ]
+}
