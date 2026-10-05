@@ -946,8 +946,22 @@ static int run_tool_calls(const char *prev_sig, char *cur_sig, size_t cur_sz) {
     int sig_n = g_seen_n;   /* index the next signature will land at */
     const char *p = raw;
     /* Walk the array element by element, one tool-call object at a time. */
-    while ((p = strstr(p, "\"function\"")) != NULL) {
-        const char *obj = p;
+    const char *hit;
+    while ((hit = strstr(p, "\"function\"")) != NULL) {
+        /* Advance BEFORE any `continue`: the denied and stuck-detector branches
+         * below continue, and a `p += 1` at the end of the body was skipped by
+         * them, so strstr re-found the same match forever (an unbounded spin that
+         * grew convo.json past 11k messages with no network calls). */
+        p = hit + 1;
+        /* "function" also appears as the VALUE of "type":"function". Only the
+         * key (followed by ':') starts a call; matching both ran every tool call
+         * twice and tripped the stuck detector on the second. */
+        {
+            const char *after = hit + 10;
+            while (*after == ' ' || *after == '\t' || *after == '\n') after++;
+            if (*after != ':') continue;
+        }
+        const char *obj = hit;
         /* step back to the enclosing '{' */
         while (obj > raw && *obj != '{') obj--;
         char call[MSG_CAP];
@@ -1040,7 +1054,6 @@ static int run_tool_calls(const char *prev_sig, char *cur_sig, size_t cur_sz) {
             }
             executed++;
         }
-        p += 1;
     }
     free(raw);
 

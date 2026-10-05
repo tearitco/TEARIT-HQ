@@ -241,6 +241,23 @@ static char *json_object_field(const char *json, const char *key, char want_open
     if (!out) return NULL;
     if (want_open) {
         if (!json_slice_value(p, out, CONVO_CAP)) { free(out); return NULL; }
+    } else if (*p == '"') {
+        /* A string value runs to its real closing quote. Stopping at the first
+         * ',' or '}' cut every reply containing one ("53, 59, 61" -> "53") and,
+         * replayed into convo.json as `"content":"53`, left it malformed, which
+         * made tool loops re-issue the same call forever. Keep both quotes: the
+         * callers strip/emit them. */
+        size_t o = 0;
+        int esc = 0;
+        out[o++] = *p++;
+        while (*p && o < CONVO_CAP - 1) {
+            char c = *p++;
+            out[o++] = c;
+            if (esc) esc = 0;
+            else if (c == '\\') esc = 1;
+            else if (c == '"') break;
+        }
+        out[o] = '\0';
     } else {
         size_t o = 0;
         while (*p && *p != ',' && *p != '}' && o < CONVO_CAP - 1) out[o++] = *p++;
