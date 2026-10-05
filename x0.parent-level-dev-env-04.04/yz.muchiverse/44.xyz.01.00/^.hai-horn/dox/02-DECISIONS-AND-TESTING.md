@@ -239,6 +239,56 @@ git push origin <your-branch>
 
 ---
 
+## Future testing desire: hai-horn as an autonomous driver for house sims
+
+**Logged:** 2026-10-05  
+**Status:** Documented intent, not yet scoped into a sprint
+
+### The question
+
+Once HORN_CHAT / HALO_CHAT prove the terminal-harness + OpenRouter + chtpm pattern works, can hai-horn:
+1. Code (write/compile C ops and .pal loops)?
+2. Issue tool calls (file ops, git, build commands) through its own harness?
+3. Use k9 relay injection to drive an existing house simulation (e.g. WSR `toys:20.DSR`) and run a real test session?
+4. Produce a readable report from that run (state diffs, event log, pass/fail)?
+
+### Why this matters
+
+If hai-horn can drive WSR toys:20.DSR via relay injection, the same pattern scales to:
+- Autonomous playtesting of WSR-CIV / DSR variants
+- IRL signal collection (Sprint 3) without manual harness writing
+- Kilo-as-player inside the house's own terminal UI
+
+### Known constraints
+
+- HORN_CHAT v0.1 currently shells out to `curl` for OpenRouter; it has no native tool-call surface.
+- Relay injection is documented in `khtpm-house-standards` as the preferred input path for khtpm windows.
+- WSR's existing test/playtest harness (`button.sh`, `single_tick.pal`) already proves the game loop is externally drivable.
+- DSR / WSR-CIV use the same `chtpm_parser_pal` / `khtpm_core_render` engine family as gem-dev, so relay mechanics should transfer.
+
+### Open sub-questions (flagged for later)
+
+1. **Tool-call surface:** Do we extend HORN with native shell-tool execution, or run a separate harness process that reads HORN's relay file and injects events?
+2. **DSR target state:** Which DSR variant is the canonical "toys:20.DSR" target — the existing WSR-CIV build or the dedicated DSR track from `kilo-post-mortem-s17.md`?
+3. **Report format:** Plain text diff of state files? PNG frame dumps + TTS per `PRESENTATION-VIDEO-PIPELINE.md`? Structured JSON for downstream grading?
+4. **Permission boundary:** Should hai-horn be allowed to write to WSR state, or only read/inject? (Write is needed for real playtesting; read-only is safer for first experiment.)
+
+### First experiment (proposed)
+
+1. Build HORN_CHAT v0.1 and verify one chat round-trip.
+2. Using the relay file described in `khtpm-house-standards`, inject `KEY_PRESSED` events into a running WSR window.
+3. Record the resulting state-file mutations (`*.txt` in `pieces/sessions/...`).
+4. Compare against a manual baseline run.
+5. Document whether the relay path is stable enough for automated driving.
+
+### Related docs
+
+- `khtpm-house-standards` — relay injection mechanics (`history_path()`, event formats)
+- `x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/!.HQ-IQ-BOOK/10-user-docs/PRESENTATION-VIDEO-PIPELINE.md` — frame dump + TTS pipeline
+- `kilo-post-mortem-s17.md` — DSR track architecture and status
+
+---
+
 ## Blocker resolution
 
 If you hit a blocker:

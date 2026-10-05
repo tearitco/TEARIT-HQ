@@ -84,7 +84,7 @@ static char *openrouter_ask_one(const char *house_root, const char *key,
 
     char parser_bin[PATH_BUF];
     snprintf(parser_bin, sizeof(parser_bin), "%s/&.widgits/entity-cli/ops/json_parser.+x", house_root);
-    char parser_cmd[PATH_BUF * 2];
+    char parser_cmd[PATH_BUF * 3];
     snprintf(parser_cmd, sizeof(parser_cmd), "'%s' '%s' 'choices[0].message.content'", parser_bin, response_path);
     FILE *jp = popen(parser_cmd, "r");
     if (!jp) { remove(response_path); return NULL; }
@@ -146,13 +146,20 @@ int main(int argc, char **argv) {
 
     char cwd[PATH_BUF];
     if (getcwd(cwd, sizeof(cwd))) {
-        char chat_path[PATH_BUF];
+        char chat_path[PATH_BUF + 64];
         snprintf(chat_path, sizeof(chat_path), "%s/.horn-sessions/chat_history.txt", cwd);
         FILE *cf = fopen(chat_path, "a");
         if (cf) {
             fprintf(cf, "[%s] USER: %s\n", timebuf, message);
             fprintf(cf, "[%s] HORN: %s\n", timebuf, rp);
             fclose(cf);
+        }
+        char relay_path[PATH_BUF + 64];
+        snprintf(relay_path, sizeof(relay_path), "%s/.horn-sessions/relay.txt", cwd);
+        FILE *rf = fopen(relay_path, "a");
+        if (rf) {
+            fprintf(rf, "HORN_REPLY: %s\n", rp);
+            fclose(rf);
         }
     }
 
