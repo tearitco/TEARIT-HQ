@@ -3,7 +3,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#ifdef _WIN32
+/* MinGW declares mkdir() with one argument; the POSIX form's mode is ignored on
+   Windows, where _mkdir() creates the directory with default attributes.
+   ensure_dir() below walks a path creating each prefix, so the arity has to be
+   papered over here rather than at each call site. */
+#include <direct.h>
+#define mkdir(path, mode) _mkdir(path)
+#else
 #include <unistd.h>
+#endif
 
 static void truncate_file(const char *path) {
     if (!path || !*path) return;

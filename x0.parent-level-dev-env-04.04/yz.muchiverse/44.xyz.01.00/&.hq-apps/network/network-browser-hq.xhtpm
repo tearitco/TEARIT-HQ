@@ -22,7 +22,7 @@
       <text label="Bookmarks" class="block-title"/>
       <scrolllist>
         <repeat count="${n_bm}" bind="bm">
-          <item id="bm${bm.#}" label="${bm.label}" action="${bm.action}"/>
+          <item id="bm${bm.#}" class="nb-side" label="${bm.label}" action="${bm.action}"/>
         </repeat>
         <text label="No bookmarks yet" class="quiet" show="${no_bm}"/>
       </scrolllist>
@@ -34,10 +34,10 @@
            the row, press Backspace); clear-all is a real, separate row
            that only shows once there's real history to clear
            (show="${n_hist}" - falsy/"0" when the list is empty). -->
-      <item id="nb-clearhist" label="Clear All History" action="${clear_hist_action}" show="${n_hist}"/>
+      <item id="nb-clearhist" class="nb-side" label="Clear All History" action="${clear_hist_action}" show="${n_hist}"/>
       <scrolllist>
         <repeat count="${n_hist}" bind="h">
-          <item id="hist${h.#}" label="${h.label}" action="${h.action}" backspace_action="${h.del_action}"/>
+          <item id="hist${h.#}" class="nb-side" label="${h.label}" action="${h.action}" backspace_action="${h.del_action}"/>
         </repeat>
         <text label="No history yet" class="quiet" show="${no_hist}"/>
       </scrolllist>
@@ -71,9 +71,9 @@
       <text id="status" class="nb-status" label="${status}"/>
       <scrolllist class="from-top nb-content">
         <repeat count="${content_count}" bind="c">
-          <text id="ct${c.#}" class="page-title" label="${c.text}" action="${c.click_action}"        show="${c.is_title}"/>
-          <text id="cx${c.#}"                    label="${c.text}" action="${c.click_action}"        show="${c.is_text}"/>
-          <item id="cl${c.#}" label="${c.text}"  action="${c.action}"                       show="${c.is_link}"/>
+<text id="ct${c.#}" class="page-title" label="${c.text}" action="${c.click_action}"        show="${c.is_title}"/>
+          <text id="cx${c.#}" class="nb-text"                   label="${c.text}" action="${c.click_action}"        show="${c.is_text}"/>
+          <item id="cl${c.#}" class="nb-link" label="${c.text}"  action="${c.action}"                       show="${c.is_link}"/>
           <item id="cm${c.#}" class="quiet sprite-flow" label="${c.label}" sprite="${c.sprite}" action="${c.action}"  show="${c.is_media}"/>
           <!-- V3 video (nb_video_play): live canvas row inside the content
                scrolllist. The op writes surface.raw + surface.receipt.txt
@@ -89,7 +89,7 @@
                The projector emits c_N_is_play=1 / c_N_is_bar=1 rows right
                after the canvas row; empty rows for every other kind, so
                the generic element vocabulary (no per-app C) covers it. -->
-          <item id="pp${c.#}" label="${c.play_label}" action="${c.play_action}" show="${c.is_play}"/>
+          <item id="pp${c.#}" class="nb-link" label="${c.play_label}" action="${c.play_action}" show="${c.is_play}"/>
           <bar id="pa${c.#}" value="${c.bar_value}" max="${c.bar_max}"
                label="${c.bar_text}" action="${c.bar_action}" show="${c.is_bar}"/>
         </repeat>
@@ -106,7 +106,7 @@
       <text label="Try: eval:1 + 1" class="quiet" show="${no_console}"/>
       <scrolllist class="from-top">
         <repeat count="${n_console}" bind="con">
-          <text label="${con.text}"/>
+          <text class="nb-console-text" label="${con.text}"/>
         </repeat>
       </scrolllist>
     </panel>

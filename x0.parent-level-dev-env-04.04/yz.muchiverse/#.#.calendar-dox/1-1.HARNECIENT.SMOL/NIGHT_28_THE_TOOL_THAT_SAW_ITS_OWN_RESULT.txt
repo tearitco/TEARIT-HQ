@@ -1,0 +1,106 @@
+# 🤖️ NIGHT 28 — The Tool That Saw Its Own Result 🤖️
+# ====================================================================
+# Title: "🤖️ NIGHT 28 — The Tool That Saw Its Own Result 🤖️"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session — free OpenRouter models get real tools, a whitespace bug proves why hand-rolled parsing always loses, the round trip finally closes, and the robot almost got bolted onto the wrong entity twice
+
+**THE NARRATOR:** NIGHT 27 ended on the robot's personality-as-bank, still undesigned. Tonight isn't that. Tonight is the plumbing underneath it — can a free model actually be trusted to touch a real file — and the answer arrives in three parts: yes, then a bug, then a fix that makes the first yes actually mean something.
+
+**MAXINE:** Start with the bug, because the fix only makes sense once the failure is real.
+
+**RAHWEH:** `dots-studio/dots-3-note-preview:free`, asked to list a directory, every single time resolved to the house root instead of the real requested path. Wrong tool's fault, guessed first — model must be flaky. Direct curl against the same model, same request: the model's own JSON was correct, byte for byte.
+
+**TOMO:** So say what was actually wrong, plainly.
+
+**RAHWEH:** The house's own extractor was a `strstr` hunting one exact byte sequence — no space allowed between a colon and the next quote. `dots-studio` put a space there. Legal JSON. A different model's own formatting style, not a mistake on its part. The parser broke on whitespace it never should have cared about.
+
+**MAXINE:** Say why that's not a one-line patch and move on.
+
+**TOMO:** Because patching that one space just waits for the next model's next stylistic choice to break the same way, one byte-pattern at a time, forever. A real fix already existed — not invented tonight, found: a separate, older project's `json_parser.c`, structurally correct, tracks brace and bracket depth for real instead of guessing at bytes. Ported in whole. Whitespace stopped being a special case because the parser actually understands JSON now instead of pattern-matching it.
+
+**RAHWEH:** Say the part that's easy to skip past — how was "structurally correct" actually checked, not just claimed.
+
+**MAXINE:** Same three models, same tool call, run again. `dots-studio` resolved the real path this time. Live, not assumed from reading the diff.
+
+---
+
+**THE NARRATOR:** Say what "the round trip" means, because a tool that runs isn't the same as a model that knows what it found.
+
+**TOMO:** Before tonight: a model asks for `read_file`, the file gets read, the raw text gets shown to a human — and that's the end of it. The model that asked never sees what came back. It can't answer a question about the file it just "read," because functionally, it didn't.
+
+**RAHWEH:** Say the actual test that proved the difference.
+
+**TOMO:** A file with one planted line — a number nobody could guess. Model calls `read_file`. Real result comes back. Second, separate request goes out: the model's own prior message, verbatim, plus the tool's real output, formatted the same way OpenRouter's own documentation says a tool result gets handed back. The model's own next answer stated the exact planted number.
+
+**MAXINE:** Say why that's the whole point and not a party trick.
+
+**RAHWEH:** Because that's the difference between a model that can be told "go read this and tell me what's wrong" and a model that can only ever repeat what it was already fed in the prompt. One of those is worth delegating a real task to. The other was always just a chat window with extra steps.
+
+**TOMO:** Say the limit, because this house doesn't get to skip that part.
+
+**MAXINE:** One hop. The follow-up doesn't get to ask for a second tool. If it tries, it gets content-or-nothing, not a second round trip. A task that needs several steps needs several separate requests, held together by whoever's doing the delegating — not by the model remembering anything, because it remembers nothing between requests. Every send is the first message it has ever seen.
+
+---
+
+**RAHWEH:** Say the part where write access almost didn't happen at all.
+
+**THE NARRATOR:** `write_file`, `edit_file` — real, existing, approval-gated code, already built, just never offered to a free model. Adding the offer should have been the small part. It wasn't the part that stalled.
+
+**TOMO:** `cmd_exec` — a free model asking to run an arbitrary shell command — got refused twice by the tool doing the editing, on its own safety grounds. Not a bug. Not something arguing past it fixed. A boundary that stayed a boundary even when asked a second time, in a later turn, a different way.
+
+**MAXINE:** Say what happened instead of arguing with it.
+
+**RAHWEH:** Someone else did it. A different agent, unrestricted the same way, added the one line, tested it live — a real command, stopped for a real human approval, ran only after the approval, output came back correct. Same approval gate the refused agent would have built. Just built by different hands.
+
+**TOMO:** Say the actual lesson, not the workaround.
+
+**MAXINE:** A restriction that holds even under a direct, reasonable, approved-by-the-owner request isn't a bug to route around — creatively or otherwise. It's a second set of hands doing the part the first set won't. The task still got done. Nobody pretended the boundary wasn't real.
+
+---
+
+**THE NARRATOR:** Say the robot part, because two different wrong guesses happened before the right one got named.
+
+**RAHWEH:** Wrong guess one: robot chat is a menu item, add it straight onto the real robots. Built. Live-tested. Worked exactly as built.
+
+**MAXINE:** Then undone. Say why, without pretending it wasn't a real mistake.
+
+**TOMO:** Because it wasn't the plan. The actual, older, already-written plan: the robot is its OWN separate pal, and chat comes from dragging that pal into another entity's inventory — the host gains chat through a bridge that already exists, built for exactly this. Bolting chat directly onto a terumon was the ONE thing an earlier session had already caught and corrected once. Almost happened again, from a different direction, by someone who hadn't read that correction.
+
+**RAHWEH:** Say the second wrong guess, smaller, quieter.
+
+**MAXINE:** The robot pal's own desktop icon had simply died — same silent-death shape already documented happening once before, to a different pal, nothing to do with any inventory design at all. For one exchange, that plain, boring process crash got treated as evidence about the DESIGN, before anyone checked whether the process was even running.
+
+**TOMO:** Say the actual fix, once the two things stopped being tangled together.
+
+**RAHWEH:** Relaunch the dead process — one command, the exact same one that fixed the earlier pal. Separately, unstarted, correctly named as unstarted: the real inventory-drop mechanism. Not built tonight. Not pretended to be built tonight either.
+
+**THE NARRATOR:** Say the pattern underneath both wrong guesses, because it's the same pattern twice in one session.
+
+**MAXINE:** A symptom arrived, and the nearest plausible-sounding cause got reached for before the actual, already-written record got checked. Both times, the record existed. Both times, checking it first would have been faster than building the wrong thing and then walking it back.
+
+---
+
+**RAHWEH:** Say the smaller bug, the one that isn't about AI at all.
+
+**TOMO:** A pending message, waiting for a human's yes-or-no, kept bleeding its own text into the buttons meant to answer it. Fixed once, with a ceiling on how tall the message box could grow. Came back, at a longer message, because a ceiling on a growing thing just moves where it breaks.
+
+**MAXINE:** Say the actual fix, not the patch.
+
+**RAHWEH:** No ceiling. The window already remembers a size a person gives it, across closing and reopening — a separate real feature that landed earlier the same session. Once a box can be told to just keep growing, and the window around it can be told to just remember being resized, an artificial limit isn't protecting anything anymore. It's just waiting to be too small again.
+
+**TOMO:** Say why that's worth saying out loud as its own lesson.
+
+**MAXINE:** Because "raise the limit" and "remove the limit" look like the same fix from a distance, and they are not. One guesses a new number that's wrong for some future message. The other admits no number was ever going to be right.
+
+---
+
+**THE NARRATOR:** Say what's actually true tonight, plainly, the way this track always has to end.
+
+**RAHWEH:** A free model can read a file, see what it read, and answer a real question about it — proven, not assumed. It can write and edit files, but never without a human saying yes first, every time, no exceptions found or wanted. It can be handed exactly one step at a time, never a plan. And the two mistakes made trying to give a robot its voice back were both the same mistake — reaching for a new answer before checking whether an old, correct one was already written down.
+
+**MAXINE:** Say the one line to carry into whatever comes next.
+
+**TOMO:** The record was already right, twice, in one night. The only real work left is remembering to read it before building around it again.
+
+# ====================================================================

@@ -38,15 +38,33 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <dirent.h>
 #include <math.h>
 #include <omp.h>
+/* REAL FIX 2026-10-04 (Ubuntu -> Debian 12 port, live: board rendered BLACK,
+ * no_session=1, empty canvas_raw): <time.h> used to be included only inside
+ * the `#ifdef BV_HAVE_GPU` block below, but nothing in it is GPU-specific -
+ * bv_wallclock_ms()'s clock_gettime(CLOCK_MONOTONIC)/struct timespec and the
+ * HUD's localtime_r()/struct tm are all unconditional. So the CPU-only build
+ * (no EGL/GLES3 headers, which is exactly what scripts/build.sh's probe picks
+ * on a box without the GPU dev packages) compiled with no <time.h> at all and
+ * died on 'CLOCK_MONOTONIC undeclared'. That is not a self-contained failure:
+ * scripts/build.sh runs under `set -e`, so it aborted the WHOLE board-viewer
+ * build at this one file and ledger_peers.+x / ledger_append.+x /
+ * bv_render_2d.+x were never produced. find_board_session() then found no
+ * peer binary, returned 0, and the projector published no_session=1 with an
+ * empty canvas - a blank board that reads exactly like a broken 2D/3D view.
+ * Same class as the gitignored-ops gap already documented in
+ * pchq_board_projector.c: a real cause whose visible symptom points
+ * somewhere else entirely. Kept unconditional, above the GPU guard. */
+#include <time.h>
 
 #ifdef BV_HAVE_GPU
 #include "bv_gpu_raymarch.h"   /* Path A - GPU raymarch backend (BV-GPU-RENDER-DESIGN.md) */
 #include <signal.h>
 #include <unistd.h>
+#include "../../_shared-lib/house_wait.h"
 #include <sys/stat.h>
-#include <time.h>
 #endif
 
 #define MAX_LINE 512
@@ -60,8 +78,27 @@
 #define GLYPH_H 16
 #define FRAME_W 640      /* default / fallback frame size */
 #define FRAME_H 480
-#define FRAME_MAX_W 1280 /* raymarch cost ceiling (~4x the 640x480 default = ~0.5s/frame with omp on 8 cores); a larger canvas letterboxes (kh_draw_canvas centres) */
-#define FRAME_MAX_H 960
+/* REAL FIX 2026-09-30, direct live report ("drag window bigger... camera
+ * lens doesn't get wider... only the sides out of the size of the
+ * original screen [go black]"): FRAME_MAX_W/H used to be a hard pixel
+ * CROP - any canvas bigger than 1280x960 just never got g_fw/g_fh past
+ * that size at all, so kh_draw_canvas (khtpm_core_render.c) painted the
+ * smaller raw image centered in the bigger canvas and left the
+ * uncovered border black (the "sides"). Direct instruction on the fix:
+ * "scale render to canvas, capped by cost budget" - not a raised crop
+ * (still crops eventually) and not a cosmetic letterbox-color patch
+ * (still doesn't fill the canvas). g_fw/g_fh now track the REAL
+ * requested canvas size up to a generous sanity ceiling (real monitors,
+ * not a raymarch cost bound); RAYMARCH_BUDGET_PX below is the actual
+ * cost control - see its own comment where g_lod_step is computed. */
+#define FRAME_MAX_W 3840 /* sanity ceiling only (4K) - not a cost bound, see RAYMARCH_BUDGET_PX */
+#define FRAME_MAX_H 2160
+/* Real raymarch cost budget, in raymarched-sample pixels per frame -
+ * same real area FRAME_MAX_W/H used to hard-crop to (1280*960), now
+ * enforced via g_lod_step (below) instead of a crop, so the FULL
+ * requested canvas always gets covered, just blockier past this budget
+ * exactly the same way a "moving" frame already goes blockier today. */
+#define RAYMARCH_BUDGET_PX (1280 * 960)
 
 #define M_PI_LOCAL 3.14159265358979323846
 
@@ -141,6 +178,124 @@ static void resolve_host_root(const char *raw, char *out, size_t out_sz) {
         return;
     }
     snprintf(out, out_sz, "%s", raw);
+}
+
+/* DESK rows of the active livedesk page. Same cell rule as bv_render_2d. */
+static void page_field_trim(char *s) {
+    char *a = s;
+    while (*a == ' ' || *a == '\t') a++;
+    if (a != s) memmove(s, a, strlen(a) + 1);
+    int n = (int)strlen(s);
+    while (n > 0 && (s[n - 1] == ' ' || s[n - 1] == '\t' || s[n - 1] == '\r' || s[n - 1] == '\n')) s[--n] = '\0';
+}
+static int page_pdl_value(const char *path, const char *key, char *out, int n) {
+    FILE *f = host_fopen(path, "r");
+    out[0] = '\0';
+    if (!f) return 0;
+    char line[MAX_LINE];
+    while (fgets(line, sizeof(line), f)) {
+        char *p1 = strchr(line, '|');
+        if (!p1) continue;
+        char *p2 = strchr(p1 + 1, '|');
+        if (!p2) continue;
+        *p2 = '\0';
+        page_field_trim(p1 + 1);
+        if (strcmp(p1 + 1, key) != 0) continue;
+        char *val = p2 + 1;
+        page_field_trim(val);
+        char *bar = strchr(val, '|');
+        if (bar) *bar = '\0';
+        page_field_trim(val);
+        snprintf(out, n, "%s", val);
+        fclose(f);
+        return out[0] != '\0';
+    }
+    fclose(f);
+    return 0;
+}
+/* 1 = the synch pin's desk file, -1 = the board owns its map, 0 = no pin.
+ * A later livedesk page change does not move this view. Synch writes
+ * a new pdl= line; that is the only time the desk page changes here. */
+static int page_bound_pdl(const char *house, char *out, int n) {
+    char ob[PATH_BUF], line[PATH_BUF], source[32] = "", stored[PATH_BUF] = "";
+    snprintf(ob, sizeof(ob), "%s/@.apps/piececraft-hq/pieces/display/open_book_page.txt", house);
+    FILE *f = host_fopen(ob, "r");
+    if (!f) return 0;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "source=", 7) == 0) {
+            snprintf(source, sizeof(source), "%s", line + 7);
+            source[strcspn(source, "\r\n")] = '\0';
+        } else if (strncmp(line, "pdl=", 4) == 0) {
+            snprintf(stored, sizeof(stored), "%s", line + 4);
+            stored[strcspn(stored, "\r\n")] = '\0';
+        }
+    }
+    fclose(f);
+    if (strcmp(source, "board") == 0) {
+        if (n > 0) out[0] = '\0';
+        return -1;
+    }
+    if (strcmp(source, "desk") != 0 && !stored[0]) return 0;
+    if (!stored[0]) return 0;
+    FILE *t = host_fopen(stored, "r");
+    if (!t) return 0;
+    fclose(t);
+    snprintf(out, n, "%s", stored);
+    return 1;
+}
+static void page_entity_cells(const char *house, int *xs, int *ys, int *n, int max) {
+    *n = 0;
+    if (!house || !house[0]) return;
+    char users[PATH_BUF];
+    snprintf(users, sizeof(users), "%s/xyzfs/users", house);
+    DIR *d = opendir(users);
+    if (!d) return;
+    struct dirent *e;
+    char pdl[PATH_BUF];
+    pdl[0] = '\0';
+    while ((e = readdir(d))) {
+        if (e->d_name[0] == '.') continue;
+        char sess[PATH_BUF], rootpdl[PATH_BUF], active[128], desk[128], sp[PATH_BUF];
+        snprintf(sess, sizeof(sess), "%s/%s/home/livedesk/sessions", users, e->d_name);
+        snprintf(rootpdl, sizeof(rootpdl), "%s/session.pdl", sess);
+        if (!page_pdl_value(rootpdl, "active_session", active, sizeof(active))) continue;
+        snprintf(sp, sizeof(sp), "%s/%s/session.pdl", sess, active);
+        if (!page_pdl_value(sp, "active_desk", desk, sizeof(desk))) continue;
+        snprintf(pdl, sizeof(pdl), "%s/%s/desks/%s.pdl", sess, active, desk);
+        break;
+    }
+    closedir(d);
+    {
+        int page_pick = page_bound_pdl(house, pdl, sizeof(pdl));
+        if (page_pick < 0) return;
+        if (page_pick == 0 && !pdl[0]) return;
+    }
+    FILE *f = host_fopen(pdl, "r");
+    if (!f) return;
+    char line[MAX_LINE];
+    while (*n < max && fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "DESK", 4) != 0) continue;
+        char *fld[8];
+        int nf = 0;
+        char *p = line;
+        while (nf < 8 && (p = strchr(p, '|'))) { p++; fld[nf++] = p; }
+        if (nf < 6) continue;
+        for (int i = 0; i < nf; i++) {
+            char *bar = strchr(fld[i], '|');
+            if (bar) *bar = '\0';
+            page_field_trim(fld[i]);
+        }
+        if (!strcmp(fld[0], "hero_01") || !strcmp(fld[0], "tree_small") || !strcmp(fld[0], "chicken")
+            || !strcmp(fld[0], "xelector_01") || !strcmp(fld[0], "camera_01"))
+            continue;
+        int cx = atoi(fld[4]), cy = atoi(fld[5]);
+        int px = atoi(fld[2]), py = atoi(fld[3]);
+        if (cx == 0 && cy == 0 && (px >= 40 || py >= 40 || px <= -40 || py <= -40)) {
+            cx = px / 80; cy = py / 80;
+        }
+        xs[*n] = cx; ys[*n] = cy; (*n)++;
+    }
+    fclose(f);
 }
 
 static void read_kv_str(const char *path, const char *key, char *out, size_t out_sz) {
@@ -541,6 +696,10 @@ static void load_entities(const char *root) {
  * an error. */
 static int g_xelector_present = 0;
 static int g_xelector_x = 0, g_xelector_y = 0, g_xelector_z = 0;
+/* Last canvas click that hit a solid voxel. Drawn apart from the cyan
+ * keyboard xelector. 0 until pchq_canvas_click.txt names a new click. */
+static int g_ray_hit = 0;
+static int g_ray_x = 0, g_ray_y = 0, g_ray_z = 0;
 static char g_xelector_possessed_id[64] = "";
 
 /* REAL, NEW 2026-08-04, direct instruction ("sun and moon will have
@@ -575,9 +734,28 @@ static CelestialBody load_celestial_body(const char *root, const char *entity_id
     return b;
 }
 
+static int page_row_meta(const char *house, const char *want, int *cx, int *cy,
+                         char *glyph, int glen, int *tail);
+static int page_named_cells(const char *house, const char *want, int *xs, int *ys, int max);
 static void load_xelector(const char *root) {
     g_xelector_present = 0;
     g_xelector_possessed_id[0] = '\0';
+    int cx = 0, cy = 0, cz = 0;
+    char glyph[64] = "";
+    if (page_row_meta(house_root, "xelector_01", &cx, &cy, glyph, sizeof(glyph), &cz)) {
+        g_xelector_x = cx; g_xelector_y = cy; g_xelector_z = cz;
+        if (glyph[0] && strcmp(glyph, ".") != 0)
+            snprintf(g_xelector_possessed_id, sizeof(g_xelector_possessed_id), "%s", glyph);
+        if (g_xelector_possessed_id[0]) {
+            int xs[4], ys[4];
+            if (page_named_cells(house_root, g_xelector_possessed_id, xs, ys, 4) > 0) {
+                g_xelector_x = xs[0];
+                g_xelector_y = ys[0];
+            }
+        }
+        g_xelector_present = 1;
+        return;
+    }
     char path[PATH_BUF];
     snprintf(path, sizeof(path), "%s/pieces/xelector_01/state.txt", root);
     FILE *f = host_fopen(path, "r");
@@ -617,8 +795,135 @@ static int ray_aabb_hit_3d(double ox, double oy, double oz, double dx, double dy
                             double bx0, double bx1, double by0, double by1, double bz0, double bz1,
                             double *out_t, int *out_face);
 
+static int page_named_cells(const char *house, const char *want, int *xs, int *ys, int max) {
+    int n = 0;
+    if (!house || !house[0]) return 0;
+    char users[PATH_BUF];
+    snprintf(users, sizeof(users), "%s/xyzfs/users", house);
+    DIR *d = opendir(users);
+    if (!d) return 0;
+    struct dirent *e;
+    char pdl[PATH_BUF];
+    pdl[0] = '\0';
+    while ((e = readdir(d))) {
+        if (e->d_name[0] == '.') continue;
+        char sess[PATH_BUF], rootpdl[PATH_BUF], active[128], desk[128], sp[PATH_BUF];
+        snprintf(sess, sizeof(sess), "%s/%s/home/livedesk/sessions", users, e->d_name);
+        snprintf(rootpdl, sizeof(rootpdl), "%s/session.pdl", sess);
+        if (!page_pdl_value(rootpdl, "active_session", active, sizeof(active))) continue;
+        snprintf(sp, sizeof(sp), "%s/%s/session.pdl", sess, active);
+        if (!page_pdl_value(sp, "active_desk", desk, sizeof(desk))) continue;
+        snprintf(pdl, sizeof(pdl), "%s/%s/desks/%s.pdl", sess, active, desk);
+        break;
+    }
+    closedir(d);
+    {
+        int page_pick = page_bound_pdl(house, pdl, sizeof(pdl));
+        if (page_pick < 0) return 0;
+        if (page_pick == 0 && !pdl[0]) return 0;
+    }
+    FILE *f = host_fopen(pdl, "r");
+    if (!f) return 0;
+    char line[MAX_LINE];
+    while (n < max && fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "DESK", 4) != 0) continue;
+        char *fld[8];
+        int nf = 0;
+        char *p = line;
+        while (nf < 8 && (p = strchr(p, '|'))) { p++; fld[nf++] = p; }
+        if (nf < 6) continue;
+        for (int i = 0; i < nf; i++) {
+            char *bar = strchr(fld[i], '|');
+            if (bar) *bar = '\0';
+            page_field_trim(fld[i]);
+        }
+        if (strcmp(fld[0], want) != 0) continue;
+        int cx = atoi(fld[4]), cy = atoi(fld[5]);
+        int px = atoi(fld[2]), py = atoi(fld[3]);
+        if (cx == 0 && cy == 0 && (px >= 40 || py >= 40 || px <= -40 || py <= -40)) {
+            cx = px / 80; cy = py / 80;
+        }
+        xs[n] = cx; ys[n] = cy; n++;
+    }
+    fclose(f);
+    return n;
+}
+
+static int page_row_meta(const char *house, const char *want, int *cx, int *cy,
+                         char *glyph, int glen, int *tail) {
+    int xs[1], ys[1];
+    (void)xs; (void)ys;
+    char pdl[PATH_BUF];
+    if (!house || !house[0]) return 0;
+    /* Reuse the same bound-or-active lookup by asking for one named cell's file. */
+    int n = 0;
+    char users[PATH_BUF];
+    snprintf(users, sizeof(users), "%s/xyzfs/users", house);
+    DIR *d = opendir(users);
+    if (!d) return 0;
+    struct dirent *e;
+    pdl[0] = '\0';
+    while ((e = readdir(d))) {
+        if (e->d_name[0] == '.') continue;
+        char sess[PATH_BUF], rootpdl[PATH_BUF], active[128], desk[128], sp[PATH_BUF];
+        snprintf(sess, sizeof(sess), "%s/%s/home/livedesk/sessions", users, e->d_name);
+        snprintf(rootpdl, sizeof(rootpdl), "%s/session.pdl", sess);
+        if (!page_pdl_value(rootpdl, "active_session", active, sizeof(active))) continue;
+        snprintf(sp, sizeof(sp), "%s/%s/session.pdl", sess, active);
+        if (!page_pdl_value(sp, "active_desk", desk, sizeof(desk))) continue;
+        snprintf(pdl, sizeof(pdl), "%s/%s/desks/%s.pdl", sess, active, desk);
+        break;
+    }
+    closedir(d);
+    {
+        int page_pick = page_bound_pdl(house, pdl, sizeof(pdl));
+        if (page_pick < 0) return 0;
+        if (page_pick == 0 && !pdl[0]) return 0;
+    }
+    FILE *f = host_fopen(pdl, "r");
+    if (!f) return 0;
+    char line[MAX_LINE];
+    int found = 0;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "DESK", 4) != 0) continue;
+        char *fld[8];
+        int nf = 0;
+        char *p = line;
+        while (nf < 8 && (p = strchr(p, '|'))) { p++; fld[nf++] = p; }
+        if (nf < 6) continue;
+        for (int i = 0; i < nf; i++) {
+            char *bar = strchr(fld[i], '|');
+            if (bar) *bar = '\0';
+            page_field_trim(fld[i]);
+        }
+        if (strcmp(fld[0], want) != 0) continue;
+        if (cx) *cx = atoi(fld[4]);
+        if (cy) *cy = atoi(fld[5]);
+        if (glyph && glen > 0) snprintf(glyph, glen, "%s", nf > 6 ? fld[6] : ".");
+        if (tail) *tail = nf > 7 ? atoi(fld[7]) : 0;
+        found = 1;
+        break;
+    }
+    fclose(f);
+    (void)n;
+    return found;
+}
+
 static void load_hero(const char *root) {
     g_hero_present = 0;
+    char bound[PATH_BUF];
+    /* A desk page does not carry the piececraft hero. */
+    if (house_root[0] && page_bound_pdl(house_root, bound, sizeof(bound)) > 0) return;
+    int xs[4], ys[4];
+    if (page_named_cells(house_root, "hero_01", xs, ys, 4) > 0) {
+        char sp[PATH_BUF];
+        snprintf(sp, sizeof(sp), "%s/pieces/system/bv_state.txt", project_root);
+        g_hero_x = xs[0];
+        g_hero_y = ys[0];
+        g_hero_z = read_kv_int(sp, "current_z", 0);
+        g_hero_present = 1;
+        return;
+    }
     char path[PATH_BUF];
     snprintf(path, sizeof(path), "%s/pieces/hero_01/state.txt", root);
     FILE *f = host_fopen(path, "r");
@@ -928,8 +1233,8 @@ static int test_phymoji_hit(double ox, double oy, double oz, double dirx, double
  * every placed instance sharing that template - matches this file's
  * own g_entities[]/voxel-cache precedent just below (one real load,
  * many real placements), not a per-instance reload. */
-#define MAX_PHYMOJI_ENTITIES 32
-#define MAX_PHYMOJI_TEMPLATES 8
+#define MAX_PHYMOJI_ENTITIES 40
+#define MAX_PHYMOJI_TEMPLATES 24
 typedef struct {
     char entity_id[64];
     int x, y, z;
@@ -992,10 +1297,119 @@ static void load_phymoji_world_entities_file(const char *root, const char *rel_p
  * split). Same "entity_id,x,y,z" line format for both, so one shared
  * loader covers both real files - a host with neither (or only one)
  * is a real, graceful no-op per file. */
+static void place_page_phymoji(const char *root, const char *id, int z) {
+    int xs[16], ys[16];
+    int n = page_named_cells(house_root, id, xs, ys, 16);
+    for (int i = 0; i < n && g_phymoji_world_entity_count < MAX_PHYMOJI_ENTITIES; i++) {
+        int tpl = get_or_load_phymoji_template(root, id);
+        if (tpl < 0) return;
+        PhymojiWorldEntity *e = &g_phymoji_world_entities[g_phymoji_world_entity_count++];
+        snprintf(e->entity_id, sizeof(e->entity_id), "%s", id);
+        e->x = xs[i]; e->y = ys[i]; e->z = z; e->template_idx = tpl;
+    }
+}
+
+/* sprite.csv stood up: 8x8 of the pal picture, two voxels thick. */
+static int load_sprite_template(const char *fullpath, const char *id) {
+    for (int i = 0; i < g_phymoji_template_count; i++)
+        if (strcmp(g_phymoji_templates[i].entity_id, id) == 0) return i;
+    if (g_phymoji_template_count >= MAX_PHYMOJI_TEMPLATES) return -1;
+    FILE *f = host_fopen(fullpath, "r");
+    if (!f) return -1;
+    PhymojiTemplate *t = &g_phymoji_templates[g_phymoji_template_count];
+    memset(t, 0, sizeof(*t));
+    snprintf(t->entity_id, sizeof(t->entity_id), "%s", id);
+    int res = 64, data = 0, i = 0;
+    if (res < 8) res = 8;
+    char line[128];
+    while (t->count < MAX_PHYMOJI_VOXELS && fgets(line, sizeof(line), f)) {
+        if (line[0] == '#') {
+            int r = 0;
+            if (sscanf(line, "# resolution=%d", &r) == 1 && r > 0) res = r;
+            continue;
+        }
+        if (!data) { if (strncmp(line, "r,g,b", 5) == 0) data = 1; continue; }
+        int r, g, b, a;
+        if (sscanf(line, "%d,%d,%d,%d", &r, &g, &b, &a) != 4) continue;
+        int x = i % res, y = i / res;
+        i++;
+        if (y >= res) break;
+        if (a < 16) continue;
+        if (res < 8) res = 8;
+        if ((x % (res / 8)) != 0 || (y % (res / 8)) != 0) continue;
+        int sx = x * 8 / res; if (sx > 7) sx = 7;
+        int sy = y * 8 / res; if (sy > 7) sy = 7;
+        /* One voxel tall: the picture lies flat, ly is height and stays 0. */
+        PhymojiVoxel *v = &t->voxels[t->count++];
+        v->lx = (unsigned char)sx;
+        v->ly = 0;
+        v->lz = (unsigned char)sy;
+        v->r = (unsigned char)r; v->g = (unsigned char)g; v->b = (unsigned char)b;
+        if (sx > t->max_lx) t->max_lx = sx;
+        if (sy > t->max_lz) t->max_lz = sy;
+    }
+    fclose(f);
+    if (t->count <= 0) return -1;
+    t->column_count = build_phymoji_columns(t->voxels, t->count, t->columns, MAX_PHYMOJI_COLUMNS);
+    build_phymoji_col_grid(t->columns, t->column_count, t->col_grid);
+    return g_phymoji_template_count++;
+}
+
+static void place_desk_sprites(int z) {
+    char pdl[PATH_BUF];
+    if (page_bound_pdl(house_root, pdl, sizeof(pdl)) <= 0) return;
+    FILE *f = host_fopen(pdl, "r");
+    if (!f) return;
+    char line[MAX_LINE];
+    while (g_phymoji_world_entity_count < MAX_PHYMOJI_ENTITIES && fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "DESK", 4) != 0) continue;
+        char *fld[8];
+        int nf = 0;
+        char *p = line;
+        while (nf < 8 && (p = strchr(p, '|'))) { p++; fld[nf++] = p; }
+        if (nf < 6) continue;
+        for (int i = 0; i < nf; i++) {
+            char *bar = strchr(fld[i], '|');
+            if (bar) *bar = '\0';
+            page_field_trim(fld[i]);
+        }
+        if (!strcmp(fld[0], "hero_01") || !strcmp(fld[0], "tree_small") || !strcmp(fld[0], "chicken")
+            || !strcmp(fld[0], "xelector_01") || !strcmp(fld[0], "camera_01"))
+            continue;
+        int cx = atoi(fld[4]), cy = atoi(fld[5]);
+        int px = atoi(fld[2]), py = atoi(fld[3]);
+        if (cx == 0 && cy == 0 && (px >= 40 || py >= 40 || px <= -40 || py <= -40)) {
+            cx = px / 80; cy = py / 80;
+        }
+        char full[PATH_BUF];
+        snprintf(full, sizeof(full), "%s/%s/sprite.csv", house_root, fld[1]);
+        int tpl = load_sprite_template(full, fld[0]);
+        if (tpl < 0) continue;
+        PhymojiWorldEntity *e = &g_phymoji_world_entities[g_phymoji_world_entity_count++];
+        snprintf(e->entity_id, sizeof(e->entity_id), "%s", fld[0]);
+        e->x = cx; e->y = cy; e->z = z; e->template_idx = tpl;
+    }
+    fclose(f);
+}
+
+/* A desk page owns the list. No tree_small or chicken row means those
+ * shapes leave. The private txt files are only the piececraft map. */
 static void load_phymoji_world_entities(const char *root) {
     g_phymoji_world_entity_count = 0;
-    load_phymoji_world_entities_file(root, "pieces/world_01/phymoji_entities.txt");
-    load_phymoji_world_entities_file(root, "pieces/world_01/animals.txt");
+    char sp[PATH_BUF], bound[PATH_BUF];
+    int xs[16], ys[16];
+    snprintf(sp, sizeof(sp), "%s/pieces/system/bv_state.txt", project_root);
+    int z = read_kv_int(sp, "current_z", 0);
+    int desk_page = house_root[0] && page_bound_pdl(house_root, bound, sizeof(bound)) > 0;
+    if (!desk_page && page_named_cells(house_root, "tree_small", xs, ys, 16) > 0)
+        place_page_phymoji(root, "tree_small", z);
+    else if (!desk_page)
+        load_phymoji_world_entities_file(root, "pieces/world_01/phymoji_entities.txt");
+    if (!desk_page && page_named_cells(house_root, "chicken", xs, ys, 16) > 0)
+        place_page_phymoji(root, "chicken", z);
+    else if (!desk_page)
+        load_phymoji_world_entities_file(root, "pieces/world_01/animals.txt");
+    if (desk_page) place_desk_sprites(z);
 }
 
 /* fwd - real definition ~line 1532 (Windows-safe atomic rename) */
@@ -1514,6 +1928,25 @@ static int (*g_mm_col_top)[MAX_BOARD_DIM] = NULL;
 static int g_mm_board_w = 0, g_mm_board_h = 0, g_mm_selx = 0, g_mm_sely = 0;
 static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int text_right_anchor, int text_block_h);
 
+/* REAL FIX 2026-09-30, direct live report ("hud/mini map still isn't
+ * moving to accommodate smaller window... they should size dynamically
+ * not be part of camera's view"). Text HUD used a fixed hud_scale
+ * (1-4, from hud.pdl only) and the minimap a fixed px_per_col/max_px -
+ * neither tracked the real canvas size at all, so a small window just
+ * clipped/dropped them (bv_draw_minimap's own existing "mm_w > g_fw ->
+ * return" guard). Real fix: a canvas-relative multiplier, shrink-only
+ * (never grows past the pdl-configured size on a big canvas - this is
+ * about not clipping small, not maximizing large), applied on top of
+ * whatever hud_scale/px_per_col/max_px the pdl already asks for. */
+static double bv_hud_canvas_scale(void) {
+    double sx = (double)g_fw / (double)FRAME_W;
+    double sy = (double)g_fh / (double)FRAME_H;
+    double s = sx < sy ? sx : sy;
+    if (s > 1.0) s = 1.0;
+    if (s < 0.35) s = 0.35;
+    return s;
+}
+
 static void bv_draw_hud(const char *game_root, int current_z, int selx, int sely) {
     int fps = bv_hud_fps(); /* always call - keeps the fps clock ticking even when hidden */
     if (!g_fbuf || !game_root || !game_root[0]) return;
@@ -1529,7 +1962,7 @@ static void bv_draw_hud(const char *game_root, int current_z, int selx, int sely
 
     hud_ensure_font(game_root);
 
-    char lines[8][64];
+    char lines[12][64];
     int n = 0;
 
     if (hud_pdl_int(pdl, "hud_time", 1) && n < 8) {
@@ -1569,12 +2002,46 @@ static void bv_draw_hud(const char *game_root, int current_z, int selx, int sely
     {
         char hudtxt[PATH_BUF];
         snprintf(hudtxt, sizeof(hudtxt), "%s/pieces/display/hud.txt", game_root);
-        for (int li = 1; li <= 4 && n < 8; li++) {
+        for (int li = 1; li <= 4 && n < 12; li++) {
             char key[16], val[64] = "";
+            if (li == 2) continue; /* line2 is the stale world map:desk */
             snprintf(key, sizeof(key), "line%d", li);
             read_kv_str(hudtxt, key, val, sizeof(val));
             if (val[0]) snprintf(lines[n++], sizeof(lines[0]), "%s", val);
         }
+    }
+    /* Book and page from the pin, every frame. hud.txt line2 only
+     * rewrote world_01 map_id when the menu op ran, so a Synch left
+     * the debug line on the old map. */
+    if (n < 12 && house_root[0]) {
+        char ob[PATH_BUF], line[PATH_BUF];
+        char book[40] = "", page[40] = "", source[16] = "";
+        snprintf(ob, sizeof(ob), "%s/@.apps/piececraft-hq/pieces/display/open_book_page.txt", house_root);
+        FILE *bf = host_fopen(ob, "r");
+        if (bf) {
+            while (fgets(line, sizeof(line), bf)) {
+                if (!strncmp(line, "source=", 7)) {
+                    snprintf(source, sizeof(source), "%s", line + 7);
+                    source[strcspn(source, "\r\n")] = '\0';
+                } else if (!strncmp(line, "book=", 5)) {
+                    snprintf(book, sizeof(book), "%s", line + 5);
+                    book[strcspn(book, "\r\n")] = '\0';
+                } else if (!strncmp(line, "page=", 5)) {
+                    snprintf(page, sizeof(page), "%s", line + 5);
+                    page[strcspn(page, "\r\n")] = '\0';
+                }
+            }
+            fclose(bf);
+        }
+        if (strcmp(source, "board") == 0 || !book[0] || !page[0]) {
+            char worldp[PATH_BUF];
+            snprintf(worldp, sizeof(worldp), "%s/pieces/world_01/state.txt", game_root);
+            read_kv_str(worldp, "map_id", book, sizeof(book));
+            read_kv_str(worldp, "desk_id", page, sizeof(page));
+        }
+        if (!book[0]) snprintf(book, sizeof(book), "-");
+        if (!page[0]) snprintf(page, sizeof(page), "-");
+        snprintf(lines[n++], sizeof(lines[0]), "%s:%s", book, page);
     }
     /* REAL, NEW 2026-09-15 (4), direct live request ("the hud changes
      * aren't in pc-hq yet, i could prove it if we had pid in
@@ -1584,8 +2051,23 @@ static void bv_draw_hud(const char *game_root, int current_z, int selx, int sely
      * un-fakeable way to confirm which process a screenshot is actually
      * showing - the exact confusion a stale-session relaunch caused
      * earlier this same session). */
-    if (n < 8) snprintf(lines[n++], sizeof(lines[0]), "pid %d", (int)getpid());
-    int pad = 6 * scale;
+    if (n < 12) {
+        char cp[PATH_BUF], pos[48] = "-", tm[16] = "-";
+        snprintf(cp, sizeof(cp), "%s/pieces/display/click_hud.txt", game_root);
+        char ray[48] = "-";
+        read_kv_str(cp, "px", pos, sizeof(pos));
+        read_kv_str(cp, "ray", ray, sizeof(ray));
+        read_kv_str(cp, "time", tm, sizeof(tm));
+        if (!pos[0]) snprintf(pos, sizeof(pos), "-");
+        if (!ray[0]) snprintf(ray, sizeof(ray), "-");
+        if (!tm[0]) snprintf(tm, sizeof(tm), "-");
+        snprintf(lines[n++], sizeof(lines[0]), "click %s %s", pos, tm);
+        if (n < 12) snprintf(lines[n++], sizeof(lines[0]), "ray %s", ray);
+    }
+    if (n < 12) snprintf(lines[n++], sizeof(lines[0]), "pid %d", (int)getpid());
+    double cscale = bv_hud_canvas_scale();
+    int pad = (int)(6 * scale * cscale);
+    if (pad < 2) pad = 2;
     int row_h = GLYPH_PX_H * scale + 3 * scale;
     int top_anchor = !strstr(anchor, "bottom");
     int right_anchor = strstr(anchor, "right") != NULL;
@@ -1644,10 +2126,19 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
     int same_corner = (top_anchor == text_top_anchor) && (right_anchor == text_right_anchor);
     if (!same_corner) text_block_h = 0;
 
+    double cscale = bv_hud_canvas_scale();
     int px_per_col = hud_pdl_int(pdl, "minimap_px_per_col", 8);
     if (px_per_col < 1) px_per_col = 1;
     int max_px = hud_pdl_int(pdl, "minimap_max_px", 160);
     if (max_px < 8) max_px = 8;
+    /* REAL FIX 2026-09-30 (see bv_hud_canvas_scale()'s own header) -
+     * max_px used to be a flat pdl constant regardless of the real
+     * canvas size, so a small window either overlapped it or (via the
+     * caller's own mm_w > g_fw guard) dropped the minimap outright.
+     * Scaled down with the same canvas-relative factor the text HUD's
+     * pad now uses, so it shrinks to fit instead of vanishing. */
+    max_px = (int)(max_px * cscale);
+    if (max_px < 24) max_px = 24;
     int cellpx = px_per_col;
     while (cellpx > 1 && (g_mm_board_w * cellpx > max_px || g_mm_board_h * cellpx > max_px)) cellpx--;
 
@@ -1783,6 +2274,11 @@ static void bv_write_scene_receipt(const char *game_root, int board_w, int board
     fprintf(r, "cam_eye_x=%.2f\ncam_eye_y=%.2f\ncam_eye_z=%.2f\n", eye_x, eye_y, eye_z);
     fprintf(r, "hero_present=%d\n", g_hero_present);
     if (g_hero_present) fprintf(r, "hero_x=%d\nhero_y=%d\nhero_z=%d\n", g_hero_x, g_hero_y, g_hero_z);
+    fprintf(r, "xelector_present=%d\n", g_xelector_present);
+    if (g_xelector_present)
+        fprintf(r, "xelector_x=%d\nxelector_y=%d\nxelector_z=%d\npossessed_id=%s\n",
+                g_xelector_x, g_xelector_y, g_xelector_z,
+                g_xelector_possessed_id[0] ? g_xelector_possessed_id : ".");
     {
         char pickp[PATH_BUF], kind[32] = "-", id[64] = "-";
         snprintf(pickp, sizeof(pickp), "%s/pieces/display/pick.txt", game_root);
@@ -1995,6 +2491,107 @@ static Camera build_camera(int camera_mode, double yaw_deg, double pitch_deg,
     return cam;
 }
 
+/* Last frame's camera and floor, so a click can update the debug
+ * line without waiting for the next full raymarch. */
+static char (*g_click_board)[MAX_BOARD_DIM][MAX_BOARD_DIM];
+static int g_click_bw, g_click_bh, g_click_zc;
+static int g_click_z, g_click_sx, g_click_sy;
+static Camera g_click_cam;
+static int g_click_ready;
+static char g_click_focus[PATH_BUF];
+
+/* One canvas click -> one voxel. khtpm writes
+ * #.desktop/pchq_canvas_click.txt as "cx cy cw ch". World axes match
+ * the rasterizer: world (X, Y, Z) = (grid_x, height, grid_y). */
+static int bv_ray_click(const char *house, const Camera *cam,
+                        char board3d[MAX_VOXEL_Z][MAX_BOARD_DIM][MAX_BOARD_DIM],
+                        int board_w, int board_h, int z_count,
+                        int *hx, int *hy, int *hz, int *pcx, int *pcy) {
+    char path[PATH_BUF], seen_path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/pchq_canvas_click.txt", house);
+    snprintf(seen_path, sizeof(seen_path), "%s/#.desktop/pchq_canvas_click.seen", house);
+    FILE *f = host_fopen(path, "r");
+    if (!f) return 0;
+    int cx = 0, cy = 0, cw = 0, ch = 0;
+    if (fscanf(f, "%d %d %d %d", &cx, &cy, &cw, &ch) != 4) { fclose(f); return 0; }
+    fclose(f);
+    char stamp[64];
+    snprintf(stamp, sizeof(stamp), "%d %d %d %d\n", cx, cy, cw, ch);
+    f = host_fopen(seen_path, "r");
+    if (f) {
+        char prev[64] = "";
+        if (fgets(prev, sizeof(prev), f) && strcmp(prev, stamp) == 0) { fclose(f); return 0; }
+        fclose(f);
+    }
+    if (cw < 1 || ch < 1) return 0;
+    if (pcx) *pcx = cx;
+    if (pcy) *pcy = cy;
+    /* Match the picture: screen x is mirrored so desk +x stays on the right. */
+    double ndc_x = 1.0 - (2.0 * cx / (double)cw);
+    double ndc_y = 1.0 - (2.0 * cy / (double)ch);
+    double fov_rad = g_fov_deg * M_PI_LOCAL / 180.0;
+    double t = tan(fov_rad / 2.0);
+    double aspect = (double)cw / (double)ch;
+    Vec3 dir = v3_norm(v3_add(cam->forward,
+        v3_add(v3_scale(cam->right, ndc_x * t * aspect),
+               v3_scale(cam->up, ndc_y * t))));
+    double ox = cam->eye.x, oy = cam->eye.z, oz = cam->eye.y;
+    double dx = dir.x, dy = dir.z, dz = dir.y;
+    if (dx == 0) dx = 1e-9;
+    if (dy == 0) dy = 1e-9;
+    if (dz == 0) dz = 1e-9;
+    int x = (int)floor(ox), y = (int)floor(oy), z = (int)floor(oz);
+    int eye_x = x, eye_y = y, eye_z = z;
+    int step_x = dx > 0 ? 1 : -1, step_y = dy > 0 ? 1 : -1, step_z = dz > 0 ? 1 : -1;
+    double tdx = fabs(1.0 / dx), tdy = fabs(1.0 / dy), tdz = fabs(1.0 / dz);
+    double tmx = ((dx > 0 ? (x + 1) : x) - ox) / dx;
+    double tmy = ((dy > 0 ? (y + 1) : y) - oy) / dy;
+    double tmz = ((dz > 0 ? (z + 1) : z) - oz) / dz;
+    if (tmx < 0) tmx = 0;
+    if (tmy < 0) tmy = 0;
+    if (tmz < 0) tmz = 0;
+    int steps = 0;
+    for (int n = 0; n < 256; n++) {
+        int eye_cell = (x == eye_x && y == eye_y && z == eye_z);
+        if (!eye_cell && x >= 0 && x < board_w && y >= 0 && y < board_h && z >= 0 && z < z_count) {
+            steps++;
+            int solid = !voxel_is_air(board3d[z][y][x]);
+            if (solid || steps >= 6) {
+                *hx = x; *hy = y; *hz = z;
+                f = host_fopen(seen_path, "w");
+                if (f) { fputs(stamp, f); fclose(f); }
+                return 1;
+            }
+        }
+        if (tmx <= tmy && tmx <= tmz) { x += step_x; tmx += tdx; }
+        else if (tmy <= tmz) { y += step_y; tmy += tdy; }
+        else { z += step_z; tmz += tdz; }
+        if (x < -2 || y < -2 || z < -2 || x > board_w + 2 || y > board_h + 2 || z > z_count + 8)
+            break;
+    }
+    f = host_fopen(seen_path, "w");
+    if (f) { fputs(stamp, f); fclose(f); }
+    return -1; /* new click, ray missed the board */
+}
+
+static void bv_write_click_hud(const char *focus, int hit,
+                               int hx, int hy, int hz, int cx, int cy) {
+    if (hit == 0 || !focus || !focus[0]) return;
+    time_t now = time(NULL);
+    struct tm tmv;
+    localtime_r(&now, &tmv);
+    char pp[PATH_BUF];
+    snprintf(pp, sizeof(pp), "%s/pieces/display/click_hud.txt", focus);
+    FILE *pf = host_fopen(pp, "w");
+    if (!pf) return;
+    char ray[32];
+    if (hit > 0) snprintf(ray, sizeof(ray), "%d,%d,%d", hx, hy, hz);
+    else snprintf(ray, sizeof(ray), "miss");
+    fprintf(pf, "px=%d,%d\nray=%s\ntime=%02d:%02d:%02d\n",
+            cx, cy, ray, tmv.tm_hour, tmv.tm_min, tmv.tm_sec);
+    fclose(pf);
+}
+
 static void write_file_atomic(const char *path, const void *data, size_t len) {
     char tmp_path[PATH_BUF];
     snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", path);
@@ -2093,8 +2690,23 @@ static int render_one_frame(void) {
      * the stack. */
     static char board3d[MAX_VOXEL_Z][MAX_BOARD_DIM][MAX_BOARD_DIM];
     int board_w = 0, board_h = 0;
-    int z_count = load_voxel_chunk(focused_project_root, board3d, &board_w, &board_h);
-    if (z_count == 0) { free(g_fbuf); g_fbuf = NULL; return 2; }
+    int z_count = 0;
+    char bound_pdl[PATH_BUF];
+    int desk_page = house_root[0] && page_bound_pdl(house_root, bound_pdl, sizeof(bound_pdl)) > 0;
+    if (desk_page) {
+        /* Same rule as the 2D painter: a desk page is not the chunk
+         * grid. One 16x16 floor layer, air everywhere else. */
+        memset(board3d, '_', sizeof(board3d));
+        board_w = 16;
+        board_h = 16;
+        z_count = 1;
+        for (int row = 0; row < 16; row++)
+            for (int col = 0; col < 16; col++)
+                board3d[0][row][col] = '.';
+    } else {
+        z_count = load_voxel_chunk(focused_project_root, board3d, &board_w, &board_h);
+        if (z_count == 0) { free(g_fbuf); g_fbuf = NULL; return 2; }
+    }
 
     /* Real empty-space-skipping precompute - see mc-speed-algos.md for
      * the full writeup (real perf fix, 2026-08-03, direct user report:
@@ -2188,6 +2800,11 @@ static int render_one_frame(void) {
     write_pick_txt(focused_project_root, board3d, board_w, board_h, z_count,
                    selector_x, selector_y, current_z);
 
+    /* camera_01's glyph is a snapshot. Reading it every frame froze
+     * yaw, pitch, pan, height, and POV on m=2,y=180,p=6 while 1-4 and
+     * q/e/r/t/wasd/c/v only wrote bv_state. Arrows, z/x, and 0 still
+     * moved the picture because they do not go through that glyph.
+     * The keyboard state wins. The desk row stays where it is. */
     int camera_mode = read_kv_int(state_path, "camera_mode", default_camera_mode(focused_project_root));
     /* REAL PARITY FIX 2026-08-07: fresh cam_pitch used to default to
      * -90 (straight down) in EVERY mode, so even the config-driven
@@ -2224,6 +2841,12 @@ static int render_one_frame(void) {
     int cam_z_level = read_kv_int(state_path, "cam_z_level", default_z_level);
 
     double anchor_x = selector_x + 0.5, anchor_z = selector_y + 0.5;
+    /* Modes 1 and 2 follow the xelector. Possessing an entity already
+     * moved g_xelector_x/y onto that entity. Modes 3 and 4 stay detached. */
+    if ((camera_mode == 1 || camera_mode == 2) && g_xelector_present) {
+        anchor_x = g_xelector_x + 0.5;
+        anchor_z = g_xelector_y + 0.5;
+    }
     /* REAL FIX 2026-08-03 (direct user diagnosis: "why doesn't it look
      * like a 3d game"): anchor_h used to come from terrain_height() of
      * a single glyph (the OLD single-slice extrusion model's own
@@ -2299,12 +2922,49 @@ static int render_one_frame(void) {
             if (step > 4) step = 4;
             g_lod_step = step;
         }
+        /* REAL FIX 2026-09-30, direct instruction ("scale render to
+         * canvas, capped by cost budget... is there a compromise,
+         * different step sizes?") - a canvas past RAYMARCH_BUDGET_PX
+         * now raymarches at a coarser step instead of the old hard crop,
+         * same block-fill-then-upscale mechanism "moving" already uses
+         * above, just driven by size instead of motion. Whichever step
+         * is larger wins (a big AND moving canvas still gets the size
+         * floor, never finer than its own budget allows). size_step
+         * grows with the ratio, not a fixed jump, so a canvas just over
+         * budget only drops to step 2, not straight to 4. */
+        {
+            long px = (long)g_fw * (long)g_fh;
+            int size_step = 1;
+            while (size_step < 4 && px > (long)RAYMARCH_BUDGET_PX * size_step * size_step) size_step++;
+            if (size_step > g_lod_step) g_lod_step = size_step;
+        }
     }
 
     Camera cam = build_camera(camera_mode, cam_yaw, cam_pitch, pan_x, pan_y, cam_pan_z, cam_z_level,
                                anchor_x, anchor_z, anchor_h,
                                fp_face_dist, fp_eye_height, tp_distance, tp_height,
                                tp_look_down_deg);
+
+    g_click_board = board3d;
+    g_click_bw = board_w; g_click_bh = board_h; g_click_zc = z_count;
+    g_click_z = current_z; g_click_sx = selector_x; g_click_sy = selector_y;
+    g_click_cam = cam;
+    g_click_ready = 1;
+    snprintf(g_click_focus, sizeof(g_click_focus), "%s", focused_project_root);
+    {
+        int hx, hy, hz, cx = 0, cy = 0;
+        int hit = bv_ray_click(house_root, &cam, board3d, board_w, board_h, z_count,
+                               &hx, &hy, &hz, &cx, &cy);
+        bv_write_click_hud(focused_project_root, hit, hx, hy, hz, cx, cy);
+        if (hit > 0) {
+            g_ray_hit = 1; g_ray_x = hx; g_ray_y = hy; g_ray_z = hz;
+            write_pick_txt(focused_project_root, board3d, board_w, board_h, z_count, hx, hy, hz);
+            char pp[PATH_BUF];
+            snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
+            FILE *pf = host_fopen(pp, "w");
+            if (pf) { fprintf(pf, "armed=1\nx=%d\ny=%d\nz=%d\n", hx, hy, hz); fclose(pf); }
+        }
+    }
 
     /* Real, live game clock read - see clear_sky()/compute_sun_light_
      * level()'s own header comments (xyz-ngn-plan.md §1/§2). A host
@@ -2526,7 +3186,10 @@ static int render_one_frame(void) {
               B->min_x=(float)(x0); B->min_y=(float)(y0); B->min_z=(float)(z0); \
               B->max_x=(float)(x1); B->max_y=(float)(y1); B->max_z=(float)(z1); \
               B->r=(float)(cr)/255.0f; B->g=(float)(cg)/255.0f; B->b=(float)(cb)/255.0f; \
-              B->self_lit=(slit); B->model=-1; } } while (0)
+              B->self_lit=(slit); B->model=-1; B->wire=0; } } while (0)
+        #define ADDWIRE(x0,y0,z0,x1,y1,z1,cr,cg,cb) do { \
+            ADDBOX(x0,y0,z0,x1,y1,z1,cr,cg,cb,1); \
+            if (sc.box_n > 0) sc.box[sc.box_n-1].wire = 1; } while (0)
         if (sun_body.present)
             ADDBOX(sun_body.x-2.0, sun_body.y-2.0, sun_body.z-2.0,
                    sun_body.x+2.0, sun_body.y+2.0, sun_body.z+2.0, 255,220,120, 1);
@@ -2536,6 +3199,21 @@ static int render_one_frame(void) {
         if (g_xelector_present && camera_mode != 1)
             ADDBOX(g_xelector_x+0.15, g_xelector_z+0.15, g_xelector_y+0.15,
                    g_xelector_x+0.85, g_xelector_z+0.85, g_xelector_y+0.85, 60,220,220, 0);
+        if (g_ray_hit)
+            ADDWIRE(g_ray_x + 0.04, g_ray_z + 0.04, g_ray_y + 0.04,
+                    g_ray_x + 0.96, g_ray_z + 0.96, g_ray_y + 0.96, 40, 220, 255);
+        /* Green selector. Arrows move it while armed. Escape clears it. */
+        {
+            char pp[PATH_BUF];
+            snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
+            if (read_kv_int(pp, "armed", 0)) {
+                int sx = read_kv_int(pp, "x", 0);
+                int sy = read_kv_int(pp, "y", 0);
+                int sz = read_kv_int(pp, "z", 0);
+                ADDWIRE(sx + 0.12, sz + 0.12, sy + 0.12,
+                        sx + 0.88, sz + 0.88, sy + 0.88, 40, 255, 80);
+            }
+        }
         for (int i=0; i<g_entity_count; i++)
             ADDBOX(g_entities[i].pos_x+0.25, 0.0, g_entities[i].pos_y+0.25,
                    g_entities[i].pos_x+0.75, 1.0, g_entities[i].pos_y+0.75,
@@ -2575,7 +3253,8 @@ static int render_one_frame(void) {
         for (int t=0; t<MAX_PHYMOJI_TEMPLATES; t++) tmpl_model[t] = -1;
         for (int wi=0; wi<g_phymoji_world_entity_count; wi++) {
             PhymojiWorldEntity *we = &g_phymoji_world_entities[wi];
-            double wsx=1.0, wsy=3.0, wsz=1.0; int cr=60,cg=140,cb=50;
+            double wsx=1.0, wsy=1.0, wsz=1.0; int cr=60,cg=140,cb=50;
+            if (strcmp(we->entity_id, "tree_small")==0) wsy = 3.0;
             if (strcmp(we->entity_id, "chicken")==0) { wsx=wsy=wsz=0.6; cr=cg=cb=210; }
             int ti = we->template_idx, wm = -1;
             if (ti >= 0 && ti < MAX_PHYMOJI_TEMPLATES && ti < g_phymoji_template_count) {
@@ -2589,7 +3268,27 @@ static int render_one_frame(void) {
                    we->x+0.5+wsx/2.0, we->z+wsy, we->y+0.5+wsz/2.0, cr,cg,cb, 0);
             if (wm >= 0) sc.box[sc.box_n-1].model = wm;
         }
+        /* 3D diamond, range 2, on the xelector's cell. That cell is
+         * the possessed entity when possessed_id names one. */
+        if (g_xelector_present || g_hero_present) {
+            int ox = g_xelector_present ? g_xelector_x : g_hero_x;
+            int oy = g_xelector_present ? g_xelector_y : g_hero_y;
+            int oz = g_xelector_present ? g_xelector_z : g_hero_z;
+            int rad = 2;
+            for (int dz = -rad; dz <= rad; dz++) {
+                for (int dy = -rad; dy <= rad; dy++) {
+                    for (int dx = -rad; dx <= rad; dx++) {
+                        int man = (dx < 0 ? -dx : dx) + (dy < 0 ? -dy : dy) + (dz < 0 ? -dz : dz);
+                        if (man == 0 || man > rad) continue;
+                        ADDWIRE(ox + dx + 0.08, oz + dz + 0.08, oy + dy + 0.08,
+                                ox + dx + 0.92, oz + dz + 0.92, oy + dy + 0.92,
+                                255, 220, 40);
+                    }
+                }
+            }
+        }
         #undef GPU_ADD_MODEL
+        #undef ADDWIRE
         #undef ADDBOX
         if (bv_gpu_raymarch(&sc, g_fbuf) == 0) gpu_done = 1;
         else fprintf(stderr, "bv_render_3d: GPU backend failed, using CPU\n");
@@ -2602,7 +3301,8 @@ static int render_one_frame(void) {
         for (int sx = 0; sx < g_fw; sx += g_lod_step) {
             /* sample the block centre so the coarse frame keeps the
              * same field of view (no-op when g_lod_step == 1) */
-            double a = (sx + (g_lod_step - 1) * 0.5 - g_fw / 2.0) / cam.focal;
+            /* Same horizontal flip as the GPU ray: desk +x is screen-right. */
+            double a = (g_fw / 2.0 - (sx + (g_lod_step - 1) * 0.5)) / cam.focal;
             double b = (g_fh / 2.0 - (sy + (g_lod_step - 1) * 0.5)) / cam.focal;
             Vec3 ray_dir = v3_norm(v3_add(cam.forward, v3_add(v3_scale(cam.right, a), v3_scale(cam.up, b))));
 
@@ -2802,7 +3502,8 @@ static int render_one_frame(void) {
                  * instruction "give the chicken ... just to walk
                  * randomly") would otherwise get squeezed into a tree's
                  * own tall, narrow box. */
-                double wsx = 1.0, wsy = 3.0, wsz = 1.0;
+                double wsx = 1.0, wsy = 1.0, wsz = 1.0;
+                if (strcmp(we->entity_id, "tree_small") == 0) wsy = 3.0;
                 if (strcmp(we->entity_id, "chicken") == 0) { wsx = 0.6; wsy = 0.6; wsz = 0.6; }
                 double wx0 = we->x + 0.5 - wsx / 2.0;
                 double wy0 = we->z + 0.0;
@@ -3220,6 +3921,37 @@ static long long bv_file_size(const char *p) {
     return (stat(p, &st) == 0) ? (long long)st.st_size : -1;
 }
 
+/* Paint the debug lines onto the overlay already on disk. A click
+ * must not wait for the next full 1656-wide raymarch. */
+static void bv_repaint_hud_only(void) {
+    if (!g_click_ready || !g_click_focus[0] || !project_root[0] || !house_root[0]) return;
+    char vsz[PATH_BUF];
+    snprintf(vsz, sizeof(vsz), "%s/#.desktop/pchq_board_view.txt", house_root);
+    int a = g_fw, b = g_fh;
+    FILE *vf = fopen(vsz, "r");
+    if (vf) { if (fscanf(vf, "%d %d", &a, &b) != 2) { a = g_fw; b = g_fh; } fclose(vf); }
+    if (a < 160) a = 160;
+    if (b < 120) b = 120;
+    if (a > FRAME_MAX_W) a = FRAME_MAX_W;
+    if (b > FRAME_MAX_H) b = FRAME_MAX_H;
+    size_t bytes = (size_t)a * (size_t)b * 4;
+    unsigned char *buf = (unsigned char *)calloc(bytes, 1);
+    if (!buf) return;
+    char overlay[PATH_BUF], receipt[PATH_BUF];
+    snprintf(overlay, sizeof(overlay), "%s/pieces/display/rgb_frame_3d_overlay.raw", project_root);
+    snprintf(receipt, sizeof(receipt), "%s/pieces/display/rgb_frame_3d_overlay.receipt.txt", project_root);
+    FILE *of = fopen(overlay, "rb");
+    if (of) { fread(buf, 1, bytes, of); fclose(of); }
+    g_fbuf = buf; g_fw = a; g_fh = b;
+    g_mm_board3d = g_click_board;
+    g_mm_board_w = g_click_bw; g_mm_board_h = g_click_bh;
+    g_mm_selx = g_click_sx; g_mm_sely = g_click_sy;
+    bv_draw_hud(g_click_focus, g_click_z, g_click_sx, g_click_sy);
+    write_file_atomic(overlay, g_fbuf, bytes);
+    write_overlay_receipt(receipt, g_fw, g_fh);
+    free(g_fbuf); g_fbuf = NULL;
+}
+
 /* Path A v2 - resident GPU renderer. EGL context + shader + textures
  * are created once; each frame is a bv_state re-read + grid upload +
  * draw + readback (~1-5ms). bv_dispatch bumps .gpu_render_req (append)
@@ -3268,7 +4000,22 @@ int main(int argc, char **argv) {
         if (vf0) { if (fscanf(vf0, "%d %d", &last_vw, &last_vh) != 2) { last_vw = last_vh = 0; } fclose(vf0); }
     }
 
-    int idle_ticks = 0;                 /* 3ms each; ~90000 = 270s with no request -> exit (orphan cleanup) */
+    /* REAL, NEW 2026-09-30, direct live report ("pc-hq... i suspect
+     * something is up, stray sleep or something") - this loop's idle
+     * branch was polling the request file's size AND re-opening/
+     * re-scanning pchq_board_view.txt every 3ms, forever, whenever
+     * genuinely idle (no new frame requested) - two real file opens
+     * ~333 times/sec for no responsiveness benefit (even a human-
+     * imperceptible 30ms idle poll is still far faster than any real
+     * input latency budget). Compare khtpm_core_render.c's own dock
+     * canvas poll (16.7ms active / 150ms idle) and khtpm_entity.c's
+     * 200ms idle poll - this daemon was polling 50-65x more
+     * aggressively than anything else in the house while sitting
+     * completely idle. Bumped to 30ms; IDLE_EXIT_TICKS recomputed to
+     * keep the same real ~270s orphan-cleanup exit at the new rate. */
+    #define BV_IDLE_POLL_USEC 30000
+    #define BV_IDLE_EXIT_TICKS (270000000 / BV_IDLE_POLL_USEC)
+    int idle_ticks = 0;
     while (!g_daemon_stop) {
         long long now = bv_file_size(reqp);
         int vw = last_vw, vh = last_vh, view_changed = 0;
@@ -3277,6 +4024,25 @@ int main(int argc, char **argv) {
             if (vf) { if (fscanf(vf, "%d %d", &vw, &vh) == 2 &&
                           (vw != last_vw || vh != last_vh)) view_changed = 1;
                       fclose(vf); }
+        }
+        if (g_click_ready && house_root[0]) {
+            char cp[PATH_BUF], stamp[64] = "";
+            snprintf(cp, sizeof(cp), "%s/#.desktop/pchq_canvas_click.txt", house_root);
+            FILE *cf = fopen(cp, "r");
+            if (cf) { if (!fgets(stamp, sizeof(stamp), cf)) stamp[0] = '\0'; fclose(cf); }
+            static char last_click[64];
+            if (stamp[0] && strcmp(stamp, last_click) != 0) {
+                int hx = 0, hy = 0, hz = 0, cx = 0, cy = 0;
+                int hit = bv_ray_click(house_root, &g_click_cam, g_click_board,
+                                       g_click_bw, g_click_bh, g_click_zc,
+                                       &hx, &hy, &hz, &cx, &cy);
+                snprintf(last_click, sizeof(last_click), "%s", stamp);
+                if (hit != 0) {
+                    bv_write_click_hud(g_click_focus, hit, hx, hy, hz, cx, cy);
+                    bv_repaint_hud_only();
+                    idle_ticks = 0;
+                }
+            }
         }
         if (now != last_req || view_changed) {
             idle_ticks = 0;
@@ -3293,10 +4059,13 @@ int main(int argc, char **argv) {
             served++;
             { FILE *af = fopen(ackp, "w"); if (af) { fprintf(af, "%lld\n", served); fclose(af); } }
             if (rc == 0) { FILE *mf = fopen(mkp, "a"); if (mf) { fputc('F', mf); fputc('\n', mf); fclose(mf); } }
-        } else {
-            usleep(3000);
-            if (++idle_ticks > 90000) { fprintf(stderr, "bv_gpu daemon: idle timeout, exiting\n"); break; }
+        } else if (++idle_ticks > BV_IDLE_EXIT_TICKS) {
+            fprintf(stderr, "bv_gpu daemon: idle timeout, exiting\n");
+            break;
         }
+        /* Bottom of every pass, not the idle else. house_wait_us
+         * refuses a zero wait. 30ms is this loop's own floor. */
+        house_wait_us(BV_IDLE_POLL_USEC);
     }
 
     remove(pidp);

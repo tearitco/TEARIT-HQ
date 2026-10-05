@@ -1,0 +1,113 @@
+FINANCIAL BALANCE SHEET: USA GOVERNMENT (USA GOV):
+---------------------------------------------
+(Amounts in millions of U.S. Dollars, except per share amounts)
+ASSETS:
+Free Cash and Equivalents
+Stock in Subsidiary Corps.
+Options Long/Short: Net Value
+Government Bonds (mkt. value)
+Corporate Bonds (mkt. value)
+Business Loan Portfolio
+Consumer Loan Portfolio
+Mortgage Loans/Securities
+Less: Bad Debt Reserves:
+Total Assets:
+LIABILITIES AND EQUITY:
+Long-Term Bonds Issued
+Demand Deposits
+Certificates of Deposit
+Interbank Debt -- Fed Funds
+Accrued Income Tax Payable
+Total Liabilities:
+Equity (Net Worth):
+STOCK AND EARNINGS DATA:
+--------------------------
+Net Worth Per Share:
+Current Stock Price:
+52-Week High/Low Stock Price:
+Shares of stock outstanding:
+Total stock capitalization:
+650.24
+0.00
+0.00
+0.00
+0.00
+904.44
+189.00
+216.00
+-261.72
+----------------
+1697.96
+----------------
+0.00
+135.00
+811.34
+0.00
+0.00
+----------------
+946.34 [1]
+----------------
+751.62
+================
+15.03
+20.24
+20.44 / 1.45
+50.00 million
+1011.84 million
+2021 Earnings Per Share
+0.00 (Operating Earnings)
+2022 Earnings Per Share
+0.00 (Operating Earnings)
+2023 Earnings Per Share
+0.00 (Operating Earnings)
+2024 Earnings Per Share
+0.00 (Operating Earnings)
+2025 E/P/S through Qtr. #1
+(Not Yet Announced)
+-------------------------------------------------------------------
+VARIOUS FINANCIAL RATIOS:
+-------------------------
+Price/Earnings Ratio:
+NMF (No Meaningful Figure)
+Dividend Yield:
+0.00%
+Debt to Equity Ratio:
+0.00 to 1
+Bad Debt Reserve Ratio:
+19.99%
+Reserves to Deposits %:
+107.08%
+Return on Equity (2024):
+NMF (No Meaningful Figure)
+-------------------------------------------------------------------
+*** CREDIT INFO: ***
+-------------------------------------------------------------------
+Credit Rating: AA
+Borrowing Rate (Interbank):
+6.32% (LIBOR is:
+6.02%)
+-------------------------------------------------------------------
+VARIABLE SETTINGS (Changeable by controlling player):
+-------------------------------------------------------------------Dividend Payout Per Share:
+% of Net Interest for Advertising
+0.00
+5%
+MISCELLANEOUS INFO:
+-------------------
+Industry Group:
+BANKING
+Incorporated in: UNITED STATES
+Controlled (and actively managed) by: jb brooks
+Wholly owned by: jb brooks
+Annual CEO salary (approx.): $ 0.20 M.
+(Plus possible bonuses)
+Today's (Game) Date:
+January 1, 2025
+Next Earnings Report: January 4, 2025
+FOOTNOTE TO FINANCIAL STATEMENT:
+-------------------------------------------------------------------
+[1] The company is not currently engaged in any interest rate swap
+transactions and has no undisclosed off-balance sheet liabilities.
+WALL STREET RAIDER -- Copyright © 2001-2016
+and Ronin Software -- All Rights Reserved
+Mi

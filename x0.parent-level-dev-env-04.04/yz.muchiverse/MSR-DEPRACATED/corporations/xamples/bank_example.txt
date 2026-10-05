@@ -1,0 +1,83 @@
+FINANCIAL PROFILE FOR SUNTRUST BANKS, INC. (STI)
+================================================
+FINANCIAL BALANCE SHEET: SUNTRUST BANKS, INC. (STI)
+--------------------------------------------------
+(Amounts in millions of U.S. Dollars, except per share amounts)
+
+ASSETS:
+  Free Cash and Equivalents:            691.65
+  Stock in Subsidiary Corps.:            0.00
+  Options Long/Short: Net Value:         0.00
+  Government Bonds (mkt. value):         0.00
+  Corporate Bonds (mkt. value):         0.00
+  Business Loan Portfolio:              807.42
+  Consumer Loan Portfolio:              189.00
+  Mortgage Loans/Securities:            216.00
+  Less: Bad Debt Reserves:             -200.72
+  ---------------------------------------------
+  Total Assets:                        1703.35
+  ---------------------------------------------
+
+LIABILITIES AND EQUITY:
+  Long-Term Bonds Issued:                0.00
+  Demand Deposits:                      139.73
+  Certificates of Deposit:              793.24
+  Interbank Debt -- Fed Funds:           0.00
+  Accrued Income Tax Payable:            0.00
+  ---------------------------------------------
+  Total Liabilities:                    932.96
+  ---------------------------------------------
+  Equity (Net Worth):                   770.39
+  =============================================
+
+STOCK AND EARNINGS DATA:
+------------------------
+  Net Worth Per Share:                  15.41
+  Current Stock Price:                  22.98
+  52-Week High/Low Stock Price:         23.03 / 1.11
+  Shares of Stock Outstanding:          50.00 million
+  Total Stock Capitalization:          1148.99 million
+  2022 Earnings Per Share:               0.00 (Operating Earnings)
+  2023 Earnings Per Share:               0.00 (Operating Earnings)
+  2024 Earnings Per Share:               0.00 (Operating Earnings)
+  2025 Earnings Per Share:               0.00 (Operating Earnings)
+  2026 E/P/S through Qtr. #2:           -4.54 (Operating Earnings)
+  ---------------------------------------------
+
+VARIOUS FINANCIAL RATIOS:
+-------------------------
+  Price/Earnings Ratio:                 NMF (No Meaningful Figure)
+  Dividend Yield:                       0.00%
+  Debt to Equity Ratio:                 0.00 to 1
+  Bad Debt Reserve Ratio:              16.56%
+  Reserves to Deposits %:              104.09%
+  Return on Equity (2025):              NMF (No Meaningful Figure)
+  ---------------------------------------------
+
+*** CREDIT INFO: ***
+-------------------
+  Credit Rating:                        AA
+  Borrowing Rate (Interbank):           9.21% (LIBOR is: 8.91%)
+  ---------------------------------------------
+
+VARIABLE SETTINGS (Changeable by controlling player):
+----------------------------------------------------
+  Dividend Payout Per Share:            0.00
+  % of Net Interest for Advertising:    1%
+  ---------------------------------------------
+
+MISCELLANEOUS INFO:
+-------------------
+  Industry Group:                       BANKING
+  Incorporated in:                      UNITED STATES
+  Controlled (and actively managed) by:  test_acc
+  Wholly owned by:                      test_acc
+  Tax Loss Carryover:                   $324.22 million
+  Annual CEO Salary (approx.):          $0.21 million (Plus possible bonuses)
+  Today's (Game) Date:                  April 12, 2026
+  Next Earnings Report:                 July 4, 2026
+  ---------------------------------------------
+
+FOOTNOTE TO FINANCIAL STATEMENT:
+-------------------------------
+[1] The company is not currently engaged in any interest rate swap transactions and has no undisclosed off-balance sheet liabilities.

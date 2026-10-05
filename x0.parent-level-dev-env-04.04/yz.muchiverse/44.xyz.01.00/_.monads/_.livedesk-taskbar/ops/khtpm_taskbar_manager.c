@@ -40,6 +40,7 @@
 #ifndef _WIN32
 #include <dirent.h>
 #include <sys/stat.h>
+#endif
 
 /* Forward decl - ktb_init() (below) needs this before its own real
  * definition, further down this file (see that definition's own header
@@ -88,6 +89,7 @@ static int ktb_proc_snapshot_find(const KtbProcSnapEntry *snap, int n, const cha
  * beside ktb_reload(). */
 static void ktb_load_zorder_mode(KtbState *s);
 
+#ifndef _WIN32
 /* REAL, NEW 2026-08-25 (direct request: a general "kill hq" menu row that
  * covers EVERYTHING the taskbar launches, not just a fixed -hq binary
  * name list — real live test proved the fixed-list kill_hq_windows.sh
@@ -264,6 +266,50 @@ static int win_spawn_cwd(const char *exe, const char *arg) {
     const char *a = arg ? arg : ".";
     return win_spawn_n(exe, &a, 1);
 }
+static int ktb_win_pid_alive(int pid) {
+    HANDLE h;
+    DWORD code = 0;
+    if (pid <= 1) return 0;
+    h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, (DWORD)pid);
+    if (!h) return 0;
+    if (!GetExitCodeProcess(h, &code)) { CloseHandle(h); return 0; }
+    CloseHandle(h);
+    return code == STILL_ACTIVE;
+}
+
+/* POSIX kill() shim. sig==0 is a LIVENESS PROBE, not a kill - the
+ * SIGTERM-then-SIGKILL escalation sites (load_tabs dup handling, quit
+ * sweeps) branch on it, so treating it as a kill would reap live PIDs. */
+static int ktb_win_kill(int pid, int sig) {
+    HANDLE h;
+    if (pid <= 1) return -1;
+    if (sig == 0) return ktb_win_pid_alive(pid) ? 0 : -1;
+    h = OpenProcess(PROCESS_TERMINATE, FALSE, (DWORD)pid);
+    if (!h) return -1;
+    TerminateProcess(h, (UINT)sig);
+    CloseHandle(h);
+    return 0;
+}
+#define kill(pid, sig) ktb_win_kill((int)(pid), (int)(sig))
+#define getpid() ((int)GetCurrentProcessId())
+#  ifndef SIGTERM
+#    define SIGTERM 15
+#  endif
+#  ifndef SIGKILL
+#    define SIGKILL 9
+#  endif
+
+/* POSIX-only helper: wraps a `setsid nohup sh -c '...' &` string and
+ * registers the setsid group-leader PID. No Windows equivalent exists -
+ * cmd.exe cannot parse that form, and the Windows launch path is
+ * win_spawn_n() above. The one call site (the `widget:` menu row) is a
+ * POSIX-shell-only feature and discards rc with (void)rc, so returning
+ * -1 leaves that row inert rather than half-firing. */
+static int ktb_system_recorded(const char *house_root, const char *cmd) {
+    (void)house_root; (void)cmd;
+    return -1;
+}
+
 static void ktb_kill_by_exe(const char *stem) {
     HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (snap == INVALID_HANDLE_VALUE) return;
@@ -447,8 +493,47 @@ static int ktb_pid_is_this_pal(int pid, const char *pal_path) {
     for (size_t i = 0; i < nb; i++) if (cmdbuf[i] == '\0') cmdbuf[i] = ' ';
     return strstr(cmdbuf, pal_path) != NULL;
 #else
+    /* Windows identity check - REAL FIX 2026-09-28 (the flicker). The
+     * Linux branch above reads /proc/<pid>/cmdline and requires the pal's
+     * own package_dir to be in it. The old Windows branch returned 1 for
+     * ANY alive pid. With ~690 stale PID lines in livedesk_open.txt (17
+     * entities, ~40 lines each) and Windows freely recycling PIDs onto
+     * unrelated live processes (observed live: powershell, conhost and
+     * MoUsoCoreWorker each got a stale pal PID), n_tabs flapped 0<->2 on
+     * every reload and the bottom dock cells flickered in and out - which
+     * the user reported verbatim as "flickering in and out of existence,
+     * sometimes smushed together, sometimes extended, and keep deleting".
+     * The check must be about identity, not just liveness.
+     *
+     * Windows has no /proc, so the faithful equivalent is the process
+     * image: a pal IS khtpm_entity.exe <package_dir> (see
+     * build_khtpm_strip_win.ps1:175-180 - one khtpm_entity process per
+     * pal, invoked with the pal's own package_dir). Requiring the image
+     * basename to be that pal binary excludes every recycled unrelated
+     * PID in one cheap query. pal_path itself is deliberately NOT
+     * compared: on Windows every pal shares one dedicated exe, so the
+     * image name IS the identity (Linux needs the cmdline because its
+     * pal binary doubles as the taskbar renderer - khtpm_core_render is
+     * excluded here exactly so a stale PID recycled onto the live bottom
+     * renderer's own PID cannot become a ghost tab either).
+     *
+     * QueryFullProcessImageNameA (kernel32, Vista+) works off the same
+     * PROCESS_QUERY_LIMITED_INFORMATION handle ktb_pid_alive() already
+     * uses. Same-user processes are always queryable, so a failure here
+     * races an exit and is failed CLOSED - a ghost tab is worse than a
+     * transiently-missing one. */
     (void)pal_path;
-    return 1;
+    HANDLE h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, (DWORD)pid);
+    if (!h) return 0;
+    char img[KTB_PATH_BUF];
+    DWORD cb = sizeof(img);
+    BOOL ok = QueryFullProcessImageNameA(h, 0, img, &cb);
+    CloseHandle(h);
+    if (!ok) return 0;
+    const char *base = img;
+    for (const char *p = img; *p; p++)
+        if (*p == '\\' || *p == '/') base = p + 1;
+    return strcasecmp(base, "khtpm_entity.exe") == 0;
 #endif
 }
 
@@ -884,6 +969,70 @@ void ktb_reload(KtbState *s) {
     if (s->strip_focus_cell >= KTB_STRIP_N_CELLS) s->strip_focus_cell = KTB_STRIP_N_CELLS - 1;
 }
 
+/* Parse one already-known livedesk_hq_windows_<pid>.txt path into *out.
+ * Returns 1 on a well-formed line read, 0 if the file couldn't be
+ * opened/read (caller treats that the same as "gone"). Liveness/
+ * identity is NOT checked here - callers do that with ent.pid, since
+ * both the full-scan and delta paths need the same check. */
+static int ktb_parse_one_hq_win_file(const char *path, HqWinEntry *out) {
+    FILE *f = ktb_fopen(path, "r");
+    if (!f) return 0;
+    char line[KTB_PATH_BUF];
+    if (!fgets(line, sizeof(line), f)) { fclose(f); return 0; }
+    fclose(f);
+    char *nl = strchr(line, '\n');
+    if (nl) *nl = '\0';
+    memset(out, 0, sizeof(*out));
+    char *p;
+    if ((p = strstr(line, "win=0x"))) out->win = strtoul(p + 6, NULL, 16);
+    else if ((p = strstr(line, "win="))) out->win = strtoul(p + 4, NULL, 0);
+    if ((p = strstr(line, "pid="))) out->pid = atoi(p + 4);
+    if ((p = strstr(line, "title="))) {
+        char *t = p + 6;
+        char *end = strchr(t, '|');
+        size_t len = end ? (size_t)(end - t) : strlen(t);
+        if (len >= sizeof(out->title)) len = sizeof(out->title) - 1;
+        memcpy(out->title, t, len);
+        out->title[len] = 0;
+    }
+    if ((p = strstr(line, "x="))) out->x = atoi(p + 2);
+    if ((p = strstr(line, "y="))) out->y = atoi(p + 2);
+    if ((p = strstr(line, "w="))) out->w = atoi(p + 2);
+    if ((p = strstr(line, "h="))) out->h = atoi(p + 2);
+    if ((p = strstr(line, "minimized=1"))) out->minimized = 1;
+    if ((p = strstr(line, "focused=1"))) out->focused = 1;
+    return 1;
+}
+
+/* REAL, NEW 2026-09-30 (grok handoff, CPU-loop analysis, HANDOFF STEP 1
+ * ONLY - HQ WINDOW MARKER): a module-static cache of the last merged
+ * hq_wins[] list plus the last-seen size of #.desktop/
+ * hq_windows_changed.txt (the marker khtpm_core_render.c's
+ * kh_hq_reg_bump_marker() appends "<pid> <add|update|remove>\n" to,
+ * only on a real content change - see that file's own header comment).
+ * A reload that finds the marker's size unchanged copies the cache back
+ * and returns - no opendir/readdir of #.desktop at all (2616+ entries
+ * measured live 2026-09-30, once per reload before this fix). */
+static HqWinEntry s_hq_cache[KTB_MAX_HQ_WINS];
+static int s_hq_cache_n = 0;
+static long s_hq_marker_sz = -1;   /* -1 = no marker seen yet -> full scan every call until one appears */
+
+static int ktb_hq_cache_find(int pid) {
+    for (int i = 0; i < s_hq_cache_n; i++) if (s_hq_cache[i].pid == pid) return i;
+    return -1;
+}
+static void ktb_hq_cache_remove(int pid) {
+    int i = ktb_hq_cache_find(pid);
+    if (i < 0) return;
+    for (int j = i; j < s_hq_cache_n - 1; j++) s_hq_cache[j] = s_hq_cache[j + 1];
+    s_hq_cache_n--;
+}
+static void ktb_hq_cache_upsert(const HqWinEntry *ent) {
+    int i = ktb_hq_cache_find(ent->pid);
+    if (i >= 0) { s_hq_cache[i] = *ent; return; }
+    if (s_hq_cache_n < KTB_MAX_HQ_WINS) s_hq_cache[s_hq_cache_n++] = *ent;
+}
+
 /* REAL, NEW 2026-09-03 (HQ-WINDOW-TASKBAR-ENTRIES-AND-MINIMIZE-2026-09-
  * 03.md §2.1) - merge every live HQ window's own per-PID registry file
  * (#.desktop/livedesk_hq_windows_<pid>.txt, written by that window's own
@@ -893,13 +1042,110 @@ void ktb_reload(KtbState *s) {
  * live window. Real safety net for a crashed renderer leaving a stale
  * file: each PID is liveness-checked with the SAME ktb_pid_alive() (itself
  * already hardened against /proc zombies per its own header comment) the
- * design doc's §2.1 explicitly requires - a dead PID's entry is dropped. */
+ * design doc's §2.1 explicitly requires - a dead PID's entry is dropped.
+ *
+ * REAL, NEW 2026-09-30 (grok handoff): the full opendir/readdir scan
+ * below is now the COLD-START/no-marker path only. The normal path
+ * stats the marker; unchanged size returns the cache; a grown marker
+ * reads only the new "<pid> <event>" lines and touches only those PIDs'
+ * own files - see the cache helpers and their own header just above. */
 void ktb_merge_hq_windows(KtbState *s) {
     s->n_hq_wins = 0;
 #ifndef _WIN32
     char deskdir[KTB_PATH_BUF];
     snprintf(deskdir, sizeof(deskdir), "%s/#.desktop",
              (s->house_root && s->house_root[0]) ? s->house_root : ".");
+    char marker_path[KTB_PATH_BUF];
+    snprintf(marker_path, sizeof(marker_path), "%s/hq_windows_changed.txt", deskdir);
+    struct stat mst;
+    long marker_sz = (stat(marker_path, &mst) == 0) ? (long)mst.st_size : -1;
+
+    if (marker_sz >= 0 && s_hq_marker_sz >= 0 && marker_sz == s_hq_marker_sz) {
+        /* Unchanged since last reload - no directory scan, no per-pid
+         * file opens. REAL FIX 2026-09-30, live-caught same session: a
+         * SIGKILL'd (or otherwise uncleanly killed) renderer never runs
+         * cleanup_hq_window_registry()'s atexit handler, so no "remove"
+         * line is ever appended for it - the marker legitimately never
+         * changes, yet that pid is dead. The pre-marker code re-verified
+         * EVERY entry's liveness on every single reload (the full-scan
+         * path's own ktb_pid_is_hq_renderer() check); this fast path
+         * must keep doing the SAME liveness check to not regress that -
+         * confirmed live: a killed pc-hq window's taskbar cell survived
+         * indefinitely and clicking it did nothing (raised a dead X
+         * window id) until this was added. Cheap: at most KTB_MAX_HQ_WINS
+         * (32) kill(pid,0)-class checks, not a 2616-entry directory scan -
+         * the whole point of this fix is avoiding THAT, not avoiding
+         * liveness checks on our own small cache. */
+        s->n_hq_wins = 0;
+        for (int i = 0; i < s_hq_cache_n && i < KTB_MAX_HQ_WINS; i++) {
+            if (!ktb_pid_is_hq_renderer(s_hq_cache[i].pid)) continue;
+            s->hq_wins[s->n_hq_wins++] = s_hq_cache[i];
+        }
+        if (s->n_hq_wins != s_hq_cache_n) {
+            /* Prune the cache itself too, so a dead pid doesn't get
+             * re-checked (and re-skipped) every single reload forever. */
+            s_hq_cache_n = s->n_hq_wins;
+            for (int i = 0; i < s->n_hq_wins; i++) s_hq_cache[i] = s->hq_wins[i];
+        }
+        return;
+    }
+
+    if (marker_sz >= 0 && s_hq_marker_sz >= 0 && marker_sz > s_hq_marker_sz) {
+        /* Grown, not reset/missing: read only the new lines, touch only
+         * the PIDs they name. */
+        FILE *mf = ktb_fopen(marker_path, "r");
+        if (mf) {
+            fseek(mf, s_hq_marker_sz, SEEK_SET);
+            char line[256];
+            while (fgets(line, sizeof(line), mf)) {
+                char *nl = strchr(line, '\n');
+                if (nl) *nl = '\0';
+                int pid = 0;
+                char event[16] = "";
+                if (sscanf(line, "%d %15s", &pid, event) != 2 || pid <= 0) continue;
+                if (strcmp(event, "remove") == 0) {
+                    ktb_hq_cache_remove(pid);
+                    continue;
+                }
+                char path[KTB_PATH_BUF];
+                snprintf(path, sizeof(path), "%s/livedesk_hq_windows_%d.txt", deskdir, pid);
+                HqWinEntry ent;
+                /* Same dead/wrong-process check the full scan below
+                 * uses, scoped to just this one named pid - "Keep the
+                 * existing dead-pid unlink, but only for the pid named
+                 * in the new line" (grok handoff). */
+                if (!ktb_parse_one_hq_win_file(path, &ent) || !ent.win || !ktb_pid_is_hq_renderer(ent.pid)) {
+                    unlink(path);
+                    ktb_hq_cache_remove(pid);
+                } else {
+                    ktb_hq_cache_upsert(&ent);
+                }
+            }
+            fclose(mf);
+        }
+        s_hq_marker_sz = marker_sz;
+        /* Same liveness sweep as the unchanged-marker path just above -
+         * a pid already in the cache before this delta, and NOT named
+         * by any of the new lines just read, still needs the same
+         * uncleanly-killed check (see that path's own header comment). */
+        s->n_hq_wins = 0;
+        for (int i = 0; i < s_hq_cache_n && i < KTB_MAX_HQ_WINS; i++) {
+            if (!ktb_pid_is_hq_renderer(s_hq_cache[i].pid)) continue;
+            s->hq_wins[s->n_hq_wins++] = s_hq_cache[i];
+        }
+        if (s->n_hq_wins != s_hq_cache_n) {
+            s_hq_cache_n = s->n_hq_wins;
+            for (int i = 0; i < s->n_hq_wins; i++) s_hq_cache[i] = s->hq_wins[i];
+        }
+        return;
+    }
+
+    /* Cold start, or the marker is missing/shrunk (reset) - do the full
+     * directory pass once, exactly as before this fix, then fill the
+     * cache and record the marker size (or -1 if it still doesn't
+     * exist, so the next call keeps cheaply stat()ing for one instead
+     * of scanning again). */
+    s_hq_cache_n = 0;
     DIR *d = opendir(deskdir);
     if (!d) return;
     struct dirent *e;
@@ -907,61 +1153,35 @@ void ktb_merge_hq_windows(KtbState *s) {
         if (strncmp(e->d_name, "livedesk_hq_windows_", 20) != 0) continue;
         char path[KTB_PATH_BUF];
         snprintf(path, sizeof(path), "%s/%s", deskdir, e->d_name);
-        FILE *f = ktb_fopen(path, "r");
-        if (!f) continue;
-        char line[KTB_PATH_BUF];
-        if (fgets(line, sizeof(line), f)) {
-            char *nl = strchr(line, '\n');
-            if (nl) *nl = '\0';
-            HqWinEntry ent;
-            memset(&ent, 0, sizeof(ent));
-            char *p;
-            if ((p = strstr(line, "win=0x"))) ent.win = strtoul(p + 6, NULL, 16);
-            else if ((p = strstr(line, "win="))) ent.win = strtoul(p + 4, NULL, 0);
-            if ((p = strstr(line, "pid="))) ent.pid = atoi(p + 4);
-            if ((p = strstr(line, "title="))) {
-                char *t = p + 6;
-                char *end = strchr(t, '|');
-                size_t len = end ? (size_t)(end - t) : strlen(t);
-                if (len >= sizeof(ent.title)) len = sizeof(ent.title) - 1;
-                memcpy(ent.title, t, len);
-                ent.title[len] = 0;
-            }
-            if ((p = strstr(line, "x="))) ent.x = atoi(p + 2);
-            if ((p = strstr(line, "y="))) ent.y = atoi(p + 2);
-            if ((p = strstr(line, "w="))) ent.w = atoi(p + 2);
-            if ((p = strstr(line, "h="))) ent.h = atoi(p + 2);
-            if ((p = strstr(line, "minimized=1"))) ent.minimized = 1;
-            if ((p = strstr(line, "focused=1"))) ent.focused = 1;
-            fclose(f);
-            /* REAL FIX 2026-09-12 (direct live report: "why has doing
-             * this been killing the tb... entities dropping from the
-             * bottom toolbar" investigation - real, confirmed, separate
-             * leak found along the way, not the entity-tile bug itself
-             * but worth closing regardless). cleanup_hq_window_registry()
-             * only runs via atexit() (khtpm_core_render.c) - a crashed
-             * or SIGKILL'd renderer never gets that chance, so its
-             * registry file survives forever. Confirmed live: 60+ stale
-             * livedesk_hq_windows_<pid>.txt files for long-dead PIDs
-             * sitting in #.desktop/, none matching any currently-alive
-             * process. This reader already does the definitive liveness
-             * + identity check (ktb_pid_is_hq_renderer) every single
-             * scan - it's the one place in the house that KNOWS a given
-             * registry file is stale, so it's the right place to also
-             * delete it, self-healing the leak instead of just skipping
-             * past it forever. Real, safe: only ever unlinks a file this
-             * exact check just proved belongs to a dead/wrong process,
-             * never a live one. */
-            if (!ent.win || !ktb_pid_is_hq_renderer(ent.pid)) {
-                unlink(path);
-                continue;
-            }
-            s->hq_wins[s->n_hq_wins++] = ent;
-        } else {
-            fclose(f);
+        HqWinEntry ent;
+        if (!ktb_parse_one_hq_win_file(path, &ent)) continue;
+        /* REAL FIX 2026-09-12 (direct live report: "why has doing
+         * this been killing the tb... entities dropping from the
+         * bottom toolbar" investigation - real, confirmed, separate
+         * leak found along the way, not the entity-tile bug itself
+         * but worth closing regardless). cleanup_hq_window_registry()
+         * only runs via atexit() (khtpm_core_render.c) - a crashed
+         * or SIGKILL'd renderer never gets that chance, so its
+         * registry file survives forever. Confirmed live: 60+ stale
+         * livedesk_hq_windows_<pid>.txt files for long-dead PIDs
+         * sitting in #.desktop/, none matching any currently-alive
+         * process. This reader already does the definitive liveness
+         * + identity check (ktb_pid_is_hq_renderer) every single
+         * scan - it's the one place in the house that KNOWS a given
+         * registry file is stale, so it's the right place to also
+         * delete it, self-healing the leak instead of just skipping
+         * past it forever. Real, safe: only ever unlinks a file this
+         * exact check just proved belongs to a dead/wrong process,
+         * never a live one. */
+        if (!ent.win || !ktb_pid_is_hq_renderer(ent.pid)) {
+            unlink(path);
+            continue;
         }
+        s->hq_wins[s->n_hq_wins++] = ent;
+        ktb_hq_cache_upsert(&ent);
     }
     closedir(d);
+    s_hq_marker_sz = marker_sz;   /* -1 if still no marker file yet */
 #else
     (void)s;
 #endif
@@ -2261,6 +2481,23 @@ static void livedesk_ensure_pal(const char *pals_root, const char *name, const c
     fclose(f);
 }
 
+/* Page rows the board owns. A desk snapshot rewrites window rows and
+ * must copy these back or the next save drops the hero, trees, chicken,
+ * xelector, and camera. */
+static int livedesk_page_entity_name(const char *line) {
+    const char *bar = strchr(line, '|');
+    if (!bar) return 0;
+    char name[64];
+    snprintf(name, sizeof(name), "%s", bar + 1);
+    char *b2 = strchr(name, '|');
+    if (b2) *b2 = '\0';
+    char *e = name + strlen(name);
+    while (e > name && (e[-1] == ' ' || e[-1] == '\t')) *--e = '\0';
+    char *s = name;
+    while (*s == ' ' || *s == '\t') s++;
+    return !strcmp(s, "hero_01") || !strcmp(s, "tree_small") || !strcmp(s, "chicken")
+        || !strcmp(s, "xelector_01") || !strcmp(s, "camera_01");
+}
 static void livedesk_snapshot_desk(const char *house_root, const char *sroot, const char *id) {
     char active[64] = "";
     livedesk_active_desk(sroot, id, active, sizeof(active));
@@ -2305,10 +2542,27 @@ static void livedesk_snapshot_desk(const char *house_root, const char *sroot, co
             char cline[256];
             int existing_rows = 0;
             while (fgets(cline, sizeof(cline), check)) {
-                if (strncmp(cline, "DESK", 4) == 0) existing_rows++;
+                if (strncmp(cline, "DESK", 4) != 0) continue;
+                if (livedesk_page_entity_name(cline)) continue;
+                existing_rows++;
             }
             fclose(check);
             if (n < existing_rows) return;
+        }
+    }
+    char kept[48][256];
+    int nkept = 0;
+    {
+        FILE *old = fopen(sp, "r");
+        if (old) {
+            char cline[256];
+            while (nkept < 48 && fgets(cline, sizeof(cline), old)) {
+                if (strncmp(cline, "DESK", 4) != 0) continue;
+                if (!livedesk_page_entity_name(cline)) continue;
+                snprintf(kept[nkept], sizeof(kept[0]), "%s", cline);
+                nkept++;
+            }
+            fclose(old);
         }
     }
     FILE *w = fopen(sp, "w");
@@ -2324,6 +2578,7 @@ static void livedesk_snapshot_desk(const char *house_root, const char *sroot, co
                 ents[i], rel, x, y, x / KTB_LIVEDESK_GRID_PX, y / KTB_LIVEDESK_GRID_PX,
                 glyph, indexes[i]);
     }
+    for (int k = 0; k < nkept; k++) fputs(kept[k], w);
     fclose(w);
     /* §4.8/§4.9: register every live entity into the user's pals registry.
      * New-model live entities already RUN from the pal copy, so this is a
@@ -4113,6 +4368,7 @@ static int livedesk_build_player_menu(const char *house_root, HQMenuItem *menu, 
      * handler. */
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "stop"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:play-stop"); n++; }
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "reset"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:reset-entities"); n++; }
+    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "Synch"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:synch-from-pchq"); n++; }
     /* REAL FIX 2026-09-15, direct live correction ("u gave player in tb
      * another notes-db (it already had one)") - a "notes-db" row here
      * duplicated the real, already-existing GENERIC "notes-<cell>" row
@@ -4989,6 +5245,18 @@ void ktb_hq_activate(KtbState *s, int row) {
          * and same ktb_cell_pos_by_id() fix. */
         khtpm_save_play_mode(s->house_root, 0);
         ktb_hq_open(s, ktb_cell_pos_by_id(s, "player", 9));
+        return;
+    }
+    if (strcmp(m->command, "livedesk:synch-from-pchq") == 0) {
+        /* The desk is the sender. The press records the desk's book
+         * and page for pc-hq. It does not reopen this menu: doing that
+         * left hq_open on the Player cell and the strip nav stuck on 9. */
+        char fx[KTB_PATH_BUF * 2];
+        snprintf(fx, sizeof(fx),
+                 "sh '%s/@.apps/piececraft-hq/ops/pc_synch_request.sh' taskbar",
+                 s->house_root);
+        system(fx);
+        ktb_hq_close(s);
         return;
     }
     if (strncmp(m->command, "widget:", 7) == 0) {

@@ -2,9 +2,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 #include <signal.h>
+#ifndef _WIN32
 #include <sys/wait.h>
+#endif
 #include <sys/stat.h>
 #include <time.h>
 #include <errno.h>
@@ -12,20 +16,83 @@
 #include <ctype.h>
 #include <stdbool.h>
 #include <fcntl.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#include <io.h>
+#include <direct.h>
+#include <process.h>
+#define access(p, m) _access(p, m)
+/* windows.h defines MAX_PATH as 260; this file's own MAX_PATH is 4096 and is
+   used pervasively for path buffers below, so the macro has to yield to the
+   file's definition. Same collision agy-text-editor_manager.c,
+   cpp-llm_manager.c and groq-ollama_manager.c each had to resolve. */
+#undef MAX_PATH
+#else
 #include <sys/file.h>
+#endif
+
+#ifdef _WIN32
+/* MinGW has no POSIX getline(). Same signature and semantics -- read one line,
+   growing *lineptr as needed, return the length or -1 at EOF -- so the call
+   sites below are unchanged. Growth is load-bearing: gui_state values here
+   include the agent response area, so a fixed buffer would silently truncate
+   the model's reply. */
+static long win_getline(char **lineptr, size_t *n, FILE *stream) {
+    size_t used = 0;
+    int c;
+    if (!lineptr || !n || !stream) return -1;
+    if (*lineptr == NULL || *n == 0) {
+        *n = 128;
+        *lineptr = (char *)malloc(*n);
+        if (!*lineptr) { *n = 0; return -1; }
+    }
+    while ((c = fgetc(stream)) != EOF) {
+        if (used + 2 > *n) {
+            size_t newn = *n * 2;
+            char *tmp = (char *)realloc(*lineptr, newn);
+            if (!tmp) return -1;
+            *lineptr = tmp; *n = newn;
+        }
+        (*lineptr)[used++] = (char)c;
+        if (c == '\n') break;
+    }
+    if (used == 0) return -1;
+    (*lineptr)[used] = '\0';
+    return (long)used;
+}
+#define getline win_getline
+/* MinGW declares mkdir() with one argument; the POSIX mode is ignored on
+   Windows, where _mkdir() creates the directory with default attributes. */
+#define mkdir(path, mode) _mkdir(path)
+/* MinGW has no usleep(); Sleep() takes milliseconds. */
+#define usleep(usec) Sleep((usec) / 1000)
+#endif
 
 #define PROJECT_ID "gem-dev"
 #define MAX_PATH 4096
 #define MAX_LINE 1024
 
 // PID tracking for CPU Safety
-static void log_pid(pid_t pid, const char* name) {
+/* Takes a plain long rather than pid_t so the same function accepts a POSIX
+   pid and a Windows process id. On Windows the id is only ever used for this
+   log line: there is no pid_t there is anything portable to wait() on, so every
+   wait site below goes through the HANDLE instead. */
+static void log_pid(long pid, const char* name) {
     FILE *f = fopen("pieces/os/proc_list.txt", "a");
     if (f) {
         int fd = fileno(f);
+#ifndef _WIN32
+        /* flock() is POSIX advisory locking with no MinGW equivalent; this is
+           why sys/file.h is not included on Windows. The file is opened "a" so
+           it is already positioned for the write -- the lock only serialised
+           concurrent managers. */
         flock(fd, LOCK_EX);
+#endif
         fprintf(f, "%d %s\n", pid, name);
+#ifndef _WIN32
         flock(fd, LOCK_UN);
+#endif
         fclose(f);
     }
 }
@@ -80,7 +147,17 @@ static char g_sandbox_root[MAX_PATH] = "projects/gem-dev/sandbox";
 static size_t ctx_limit = 65536;
 static int ctx_divisor = 300;
 static volatile sig_atomic_t g_shutdown = 0;
+#ifdef _WIN32
+/* Windows has no waitpid(), so liveness of the in-flight curl is polled with
+   WaitForSingleObject against the process HANDLE. The numeric pid is kept
+   separately and only ever used for log_pid()'s process list, which is why it
+   can stay a plain int here. */
+static HANDLE g_ai_handle = NULL;
+static int g_ai_pid = 0;
+#else
 static pid_t g_ai_pid = -1;
+#endif
+
 static char *g_pending_input = NULL;
 
 // Pending Tool State for 'y/n' Permissions
@@ -125,6 +202,19 @@ static int read_active_gui_index(void) {
     if (fgets(line, sizeof(line), f)) idx = atoi(line);
     fclose(f);
     return idx;
+}
+
+static int get_active_gui_is_typing(void) {
+    char *path = NULL;
+    if (asprintf(&path, "%s/pieces/display/active_gui_is_typing.txt", project_root) == -1) return 0;
+    FILE *f = fopen(path, "r");
+    free(path);
+    if (!f) return 0;
+    char line[64] = "";
+    int typing = 0;
+    if (fgets(line, sizeof(line), f)) typing = (atoi(line) != 0);
+    fclose(f);
+    return typing;
 }
 
 static void build_project_path(char *dst, size_t dst_size, const char *suffix) {
@@ -387,7 +477,153 @@ static char* extract_response_field(const char* text) {
     return json_unescape_segment(start, (size_t)(q - start));
 }
 
+#ifdef _WIN32
+/* Windows run_tool, replacing four POSIX mechanisms at once:
+     fork/dup2/pipe + the blocking read() loop -> CreatePipe/CreateProcess +
+       ReadFile, which returns 0/ERROR_BROKEN_PIPE at EOF instead of n<=0.
+     chdir() before exec -> the lpCurrentDirectory argument, so the child's
+       working directory is set without this process ever changing its own.
+     execvp's PATH search -> CreateProcess does NOT resolve a bare name against
+       PATH the way execvp does, so the executable is located explicitly first
+       (see win_resolve_tool), including the .exe suffix MinGW binaries carry
+       and the ".+x" name this house actually ships. */
+/* Tries one base path against every suffix a binary here can be named. The
+   suffix list is the whole point: the POSIX side calls its ops by bare name
+   ("gemini_payload_builder") and lets execvp find them, but on Windows there
+   is no file called plain "gemini_payload_builder" -- compile_all.ps1 writes
+   "gemini_payload_builder.+x". Without the ".+x" arm every op lookup returns
+   NULL and the agent silently does nothing while still appearing to run. */
+static const char *win_try_suffixes(const char *base) {
+    static char buf[MAX_PATH];
+    static const char *sfx[] = { "", ".exe", ".+x", NULL };
+    for (int i = 0; sfx[i]; i++) {
+        snprintf(buf, sizeof(buf), "%s%s", base, sfx[i]);
+        if (GetFileAttributesA(buf) != INVALID_FILE_ATTRIBUTES) return buf;
+    }
+    return NULL;
+}
+
+static char* win_resolve_tool(const char* tool_name, const char *prefix) {
+    static char resolved[MAX_PATH];
+    const char *hit;
+
+    if (strchr(tool_name, '/') || strchr(tool_name, '\\') || tool_name[0] == '.') {
+        hit = win_try_suffixes(tool_name);
+        if (hit) { snprintf(resolved, sizeof(resolved), "%s", hit); return resolved; }
+        return NULL;
+    }
+
+    {
+        char *base = NULL;
+        if (asprintf(&base, "%s/%s", prefix, tool_name) != -1) {
+            hit = win_try_suffixes(base);
+            if (hit) { snprintf(resolved, sizeof(resolved), "%s", hit); free(base); return resolved; }
+            free(base);
+        }
+    }
+
+    /* Not a project op, so it must be a system tool -- run_tool("curl", ...)
+       below. execvp searched PATH for these; CreateProcess does not, so PATH
+       is walked explicitly. Without this the Windows build returns NULL for
+       every curl call and the agent never gets a reply. */
+    {
+        const char *path_env = getenv("PATH");
+        char *dup_path = NULL;
+        if (path_env && asprintf(&dup_path, "%s", path_env) != -1) {
+            char *saveptr = NULL;
+            for (char *dir = strtok_r(dup_path, ";", &saveptr); dir; dir = strtok_r(NULL, ";", &saveptr)) {
+                char *base = NULL;
+                if (asprintf(&base, "%s/%s", dir, tool_name) != -1) {
+                    hit = win_try_suffixes(base);
+                    if (hit) { snprintf(resolved, sizeof(resolved), "%s", hit); free(base); free(dup_path); return resolved; }
+                    free(base);
+                }
+            }
+            free(dup_path);
+        }
+    }
+    return NULL;
+}
+
+/* Quotes one argument for a Windows command line: wrap in double quotes and
+   backslash-escape any embedded quote, per the CRT's parsing rules. Without
+   this an argument containing a space -- the API URL, the model name, a file
+   path -- arrives at the child already split. */
+static void win_append_quoted(char *dst, size_t dst_sz, const char *arg) {
+    size_t used = strlen(dst);
+    if (used + 3 >= dst_sz) return;
+    dst[used++] = ' ';
+    dst[used++] = '"';
+    for (const char *p = arg; *p && used + 2 < dst_sz; p++) {
+        if (*p == '"') { dst[used++] = '\\'; if (used + 1 >= dst_sz) break; }
+        dst[used++] = *p;
+    }
+    dst[used++] = '"';
+    dst[used] = '\0';
+}
+#endif
+
 static char* run_tool(const char* tool_name, char* const args[], bool sandbox) {
+#ifdef _WIN32
+    SECURITY_ATTRIBUTES sa;
+    HANDLE rd, wr;
+    STARTUPINFOA si;
+    PROCESS_INFORMATION pi;
+    char cmd[8192];
+    const char *prefix;
+    const char *exe;
+    char *output;
+    size_t total = 0;
+    DWORD n;
+
+    memset(&sa, 0, sizeof(sa));
+    sa.nLength = sizeof(sa);
+    sa.bInheritHandle = TRUE;
+    if (!CreatePipe(&rd, &wr, &sa, 0)) return NULL;
+    /* The read end must not be inheritable, or the child keeps a duplicate of
+       it and the read loop below never sees EOF -- it would block forever on a
+       pipe the child itself is still holding open. */
+    SetHandleInformation(rd, HANDLE_FLAG_INHERIT, 0);
+
+    prefix = sandbox ? "../ops/+x" : "projects/gem-dev/ops/+x";
+    exe = win_resolve_tool(tool_name, prefix);
+    if (!exe) { CloseHandle(rd); CloseHandle(wr); return NULL; }
+
+    snprintf(cmd, sizeof(cmd), "\"%s\"", exe);
+    for (int i = 0; args[i]; i++) win_append_quoted(cmd, sizeof(cmd), args[i]);
+
+    memset(&si, 0, sizeof(si));
+    si.cb = sizeof(si);
+    si.dwFlags = STARTF_USESTDHANDLES;
+    si.hStdOutput = wr;
+    si.hStdError = wr;
+    si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+    memset(&pi, 0, sizeof(pi));
+
+    if (!CreateProcessA(exe, cmd, NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL,
+                        sandbox ? "projects/gem-dev/sandbox" : NULL, &si, &pi)) {
+        CloseHandle(rd); CloseHandle(wr);
+        return NULL;
+    }
+    log_pid((long)GetProcessId(pi.hProcess), "gem-dev-tool");
+    CloseHandle(wr);
+
+    output = malloc(ctx_limit);
+    if (!output) { CloseHandle(rd); CloseHandle(pi.hProcess); CloseHandle(pi.hThread); return NULL; }
+    for (;;) {
+        char buf[1024];
+        if (!ReadFile(rd, buf, (DWORD)sizeof(buf), &n, NULL) || n == 0) break;
+        if (total + n < ctx_limit) { memcpy(output + total, buf, n); total += n; }
+    }
+    output[total] = '\0';
+    CloseHandle(rd);
+    WaitForSingleObject(pi.hProcess, INFINITE);
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+
+    { size_t len = strlen(output); while (len > 0 && (output[len-1] == '\n' || output[len-1] == '\r')) output[--len] = '\0'; }
+    return output;
+#else
     int pipefd[2];
     if (pipe(pipefd) == -1) return NULL;
     pid_t pid = fork();
@@ -426,6 +662,7 @@ static char* run_tool(const char* tool_name, char* const args[], bool sandbox) {
     waitpid(pid, NULL, 0);
     size_t len = strlen(output); while (len > 0 && (output[len-1] == '\n' || output[len-1] == '\r')) output[--len] = '\0';
     return output;
+#endif
 }
 
 static void load_apis(void) {
@@ -844,49 +1081,117 @@ void start_ai_query(const char* input) {
     }
 
     if (api_path && asprintf(&body_arg, "@%s", tmp_prompt) != -1) {
+        /* The argument vector is built HERE, above the spawn, rather than
+           inside the child as it used to be. A forked child inherits the
+           parent's stack, so building in place was free; a Windows
+           CreateProcess gets a fresh process that cannot see these locals at
+           all, so the vector has to exist in the parent for both branches.
+           header[] is declared out here for the same reason -- it is passed
+           by pointer into curl_args and must outlive the build. */
+        char *curl_args[20];
+        char *header = NULL;
+        int arg_count = 0;
+        curl_args[arg_count++] = "curl";
+        curl_args[arg_count++] = "-sS";
+        curl_args[arg_count++] = "--max-time";
+        curl_args[arg_count++] = "600";
+        curl_args[arg_count++] = "-H";
+        curl_args[arg_count++] = "Content-Type: application/json";
+
+        if (is_gemini) {
+            char *key = get_gemini_api_key();
+            if (key) {
+                if (asprintf(&header, "x-goog-api-key: %s", key) != -1) {
+                    curl_args[arg_count++] = "-H";
+                    curl_args[arg_count++] = header;
+                }
+                free(key);
+            }
+        }
+
+        curl_args[arg_count++] = api_path;
+        curl_args[arg_count++] = "-d";
+        curl_args[arg_count++] = body_arg;
+        curl_args[arg_count++] = "-o";
+        curl_args[arg_count++] = tmp_llm;
+        curl_args[arg_count++] = NULL;
+
+#ifdef _WIN32
+        /* curl writes the reply straight to tmp_llm with -o, so nothing needs
+           capturing: this is fire-and-poll, and the WaitForSingleObject poll in
+           check_ai_status() picks up the exit code. curl's -sS trace goes to
+           curl_debug.log through a real file HANDLE rather than a dup2'd fd 2,
+           which does not exist on Windows. */
+        const char *exe = win_resolve_tool("curl", NULL);
+        if (!exe) {
+            snprintf(g_sys_msg, sizeof(g_sys_msg), "API Error: curl not found on PATH");
+            snprintf(g_ai_state, sizeof(g_ai_state), "IDLE");
+            snprintf(g_fsm_state, sizeof(g_fsm_state), "IDLE");
+        } else {
+            char cmd[8192];
+            snprintf(cmd, sizeof(cmd), "\"%s\"", exe);
+            for (int i = 1; curl_args[i]; i++) win_append_quoted(cmd, sizeof(cmd), curl_args[i]);
+
+            HANDLE dbg = CreateFileA("projects/gem-dev/state/curl_debug.log",
+                                     GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                     NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+            STARTUPINFOA si; PROCESS_INFORMATION pi;
+            memset(&si, 0, sizeof(si)); memset(&pi, 0, sizeof(pi));
+            si.cb = sizeof(si);
+            si.dwFlags = STARTF_USESTDHANDLES;
+            si.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+            si.hStdError = (dbg != INVALID_HANDLE_VALUE) ? dbg : GetStdHandle(STD_ERROR_HANDLE);
+            si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+            if (CreateProcessA(exe, cmd, NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
+                g_ai_handle = pi.hProcess;
+                g_ai_pid = (int)GetProcessId(pi.hProcess);
+                log_pid(g_ai_pid, "gem-dev-curl");
+                CloseHandle(pi.hThread);
+            } else {
+                if (dbg != INVALID_HANDLE_VALUE) CloseHandle(dbg);
+                snprintf(g_sys_msg, sizeof(g_sys_msg), "API Error: could not start curl");
+                snprintf(g_ai_state, sizeof(g_ai_state), "IDLE");
+                snprintf(g_fsm_state, sizeof(g_fsm_state), "IDLE");
+            }
+        }
+#else
         g_ai_pid = fork();
         if (g_ai_pid == 0) {
             setpgid(0, 0);
-            char *curl_args[20];
-            int arg_count = 0;
-            curl_args[arg_count++] = "curl";
-            curl_args[arg_count++] = "-sS";
-            curl_args[arg_count++] = "--max-time";
-            curl_args[arg_count++] = "600";
-            curl_args[arg_count++] = "-H";
-            curl_args[arg_count++] = "Content-Type: application/json";
-            
-            char *key = NULL;
-            if (is_gemini) {
-                key = get_gemini_api_key();
-                if (key) {
-                    char *header = NULL;
-                    if (asprintf(&header, "x-goog-api-key: %s", key) != -1) {
-                        curl_args[arg_count++] = "-H";
-                        curl_args[arg_count++] = header;
-                    }
-                    free(key);
-                }
-            }
-            
-            curl_args[arg_count++] = api_path;
-            curl_args[arg_count++] = "-d";
-            curl_args[arg_count++] = body_arg;
-            curl_args[arg_count++] = "-o";
-            curl_args[arg_count++] = tmp_llm;
-            curl_args[arg_count++] = NULL;
-
             int fd = open("projects/gem-dev/state/curl_debug.log", O_WRONLY | O_CREAT | O_TRUNC, 0644);
             if (fd >= 0) { dup2(fd, STDERR_FILENO); close(fd); }
             execvp("curl", curl_args);
             _exit(127);
         }
         if (g_ai_pid > 0) log_pid(g_ai_pid, "gem-dev-curl");
+#endif
+        free(header);
     }
     free(body_arg); free(api_path);
 }
 
 void check_ai_status(void) {
+#ifdef _WIN32
+    if (!g_ai_handle) return;
+    /* Zero timeout = poll, do not block: the POSIX original called
+       waitpid(..., WNOHANG) for exactly this reason, and the manager's main
+       loop must stay responsive while the request is in flight. */
+    if (WaitForSingleObject(g_ai_handle, 0) == WAIT_TIMEOUT) return;
+    {
+        DWORD exit_code = 0;
+        GetExitCodeProcess(g_ai_handle, &exit_code);
+        CloseHandle(g_ai_handle);
+        g_ai_handle = NULL;
+        g_ai_pid = 0;
+        if (exit_code != 0) {
+            snprintf(g_sys_msg, sizeof(g_sys_msg), "API Error: Curl failed (code %u)", (unsigned)exit_code);
+            snprintf(g_ai_state, sizeof(g_ai_state), "IDLE");
+            snprintf(g_fsm_state, sizeof(g_fsm_state), "IDLE");
+            if (g_pending_input) { free(g_pending_input); g_pending_input = NULL; }
+            return;
+        }
+    }
+#else
     if (g_ai_pid <= 0) return;
     int status;
     pid_t res = waitpid(g_ai_pid, &status, WNOHANG);
@@ -899,6 +1204,7 @@ void check_ai_status(void) {
         if (g_pending_input) { free(g_pending_input); g_pending_input = NULL; }
         return;
     }
+#endif
     char *ctx_file = "projects/gem-dev/state/context.json";
     char *tmp_llm = "projects/gem-dev/state/llm_response.json";
     char *tmp_last_txt = "projects/gem-dev/state/last_response.txt";
@@ -1202,9 +1508,30 @@ void process_input_trigger(void) {
 }
 
 int main(int argc, char *argv[]) {
-    signal(SIGINT, handle_sig); signal(SIGTERM, handle_sig); setpgid(0, 0); log_pid(getpid(), "gem-dev-manager");
+    signal(SIGINT, handle_sig); signal(SIGTERM, handle_sig);
+#ifndef _WIN32
+    /* setpgid(0,0) puts the manager in its own process group so a Ctrl-C in
+       the terminal's foreground group does not also signal its children.
+       Windows has no process groups to join, and CREATE_NO_WINDOW children are
+       already isolated from console control events. */
+    setpgid(0, 0);
+    log_pid(getpid(), "gem-dev-manager");
+#else
+    log_pid((long)GetCurrentProcessId(), "gem-dev-manager");
+#endif
+
     resolve_paths(argc > 1 ? argv[1] : NULL);
+#ifdef _WIN32
+    /* MinGW has no chdir(); _chdir is the CRT's one-argument equivalent. The
+       failure is reported the same way rather than silently ignored, because
+       every relative path this manager uses -- the ops prefix, the state
+       files, proc_list.txt -- is resolved against the working directory, so a
+       failed chdir here means the manager runs but silently writes nothing
+       where the rest of the system looks. */
+    if (_chdir(project_root) != 0) perror("_chdir project_root failed");
+#else
     if (chdir(project_root) != 0) perror("chdir project_root failed");
+#endif
     load_sandbox_root("projects/gem-dev/config/context.txt", g_sandbox_root, sizeof(g_sandbox_root));
     mkdir("projects/gem-dev/state", 0755); mkdir(g_sandbox_root, 0755); 
     char sandbox_config_dir[MAX_PATH];
@@ -1347,7 +1674,11 @@ int main(int argc, char *argv[]) {
                             if (bracket) key = atoi(bracket + 1);
                             else key = atoi(line);
 
-                            if (key == 10 || key == 13) { process_input_trigger(); state_changed = 1; }
+                            if (key == 10 || key == 13) {
+                                if (!get_active_gui_is_typing()) {
+                                    process_input_trigger(); state_changed = 1;
+                                }
+                            }
                             else if (g_completion_mode && key >= '2' && key <= '6') {
                                 handle_choose_path(key - '0');
                                 state_changed = 1;
@@ -1377,8 +1708,43 @@ int main(int argc, char *argv[]) {
                                 }
                                 if (api_path && asprintf(&body_arg, "@%s", tmp_prompt) != -1) {
                                     char *curl_args[] = {"curl", "-s", "--max-time", "600", "-H", "Content-Type: application/json", api_path, "-d", body_arg, "-o", tmp_llm, NULL};
+#ifdef _WIN32
+                                    /* Summarise is fire-and-forget on the POSIX side
+                                       only in the sense that it forks; the waitpid()
+                                       on the next line means the caller blocks for
+                                       the reply either way. So the Windows version
+                                       runs curl to completion in-process via
+                                       CreateProcess/WaitFor, keeping the same
+                                       blocking contract the code below relies on.
+                                       g_ai_handle is deliberately NOT used here:
+                                       this curl is not the tracked AI request, and
+                                       reusing the handle would let
+                                       check_ai_status() mistake one for the other
+                                       and post-process the summary as if it were
+                                       the model's reply. */
+                                    const char *cexe = win_resolve_tool("curl", NULL);
+                                    if (cexe) {
+                                        char ccmd[8192];
+                                        snprintf(ccmd, sizeof(ccmd), "\"%s\"", cexe);
+                                        for (int i = 0; curl_args[i]; i++) win_append_quoted(ccmd, sizeof(ccmd), curl_args[i]);
+                                        STARTUPINFOA csi; PROCESS_INFORMATION cpi;
+                                        memset(&csi, 0, sizeof(csi)); memset(&cpi, 0, sizeof(cpi));
+                                        csi.cb = sizeof(csi);
+                                        csi.dwFlags = STARTF_USESTDHANDLES;
+                                        csi.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+                                        csi.hStdError = GetStdHandle(STD_ERROR_HANDLE);
+                                        csi.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+                                        if (CreateProcessA(cexe, ccmd, NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &csi, &cpi)) {
+                                            log_pid((long)GetProcessId(cpi.hProcess), "gem-dev-summarize");
+                                            WaitForSingleObject(cpi.hProcess, INFINITE);
+                                            CloseHandle(cpi.hProcess);
+                                            CloseHandle(cpi.hThread);
+                                        }
+                                    }
+#else
                                     pid_t cpid = fork(); if (cpid == 0) { setpgid(0, 0); execvp("curl", curl_args); _exit(127); } if (cpid > 0) log_pid(cpid, "gem-dev-summarize");
                                     waitpid(cpid, NULL, 0);
+#endif
                                 }
                                 free(body_arg); free(api_path);
                                 char *p_ext[] = {"projects/gem-dev/ops/+x/json_parser", tmp_llm, "content", NULL}; char *content_json = run_tool(p_ext[0], p_ext, false);

@@ -77,6 +77,7 @@
 #include <string.h>
 #include <strings.h>
 #include <ctype.h>
+#include <time.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -527,20 +528,10 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
             if (line[0] && title[0] && strcmp(line, title) == 0) { linelen = 0; } \
             else if (line[0] && junk_visible_line(line)) { linelen = 0; } \
             else if (line[0] && line_count < MAX_LINES) { \
-                char *s = line; \
-                while (*s && line_count < MAX_LINES) { \
-                    size_t L = strlen(s); \
-                    if (L <= TEXT_WRAP) { fprintf(out, "TEXT|%s\n", s); line_count++; break; } \
-                    size_t cut = TEXT_WRAP; \
-                    while (cut > TEXT_WRAP / 2 && s[cut] && s[cut] != ' ') cut--; \
-                    if (s[cut] == ' ') { \
-                        s[cut] = '\0'; fprintf(out, "TEXT|%s\n", s); s += cut + 1; \
-                    } else { \
-                        char save = s[TEXT_WRAP]; s[TEXT_WRAP] = '\0'; \
-                        fprintf(out, "TEXT|%s\n", s); s[TEXT_WRAP] = save; s += TEXT_WRAP; \
-                    } \
-                    line_count++; \
-                } \
+                /* Milestone 1 (2026-10-05): one TEXT row per paragraph; scroll_row_span wraps. \
+                 * Avoid the old fixed-88-col pre-split which ignored pane width. */ \
+                fprintf(out, "TEXT|%s\n", line); \
+                line_count++; \
                 linelen = 0; \
             } else { linelen = 0; } \
         } \
@@ -1753,9 +1744,20 @@ static int worker_load(const char *js_path, const char *dom_path,
 
     g_worker_render[0] = 0;
     g_pending_nav_kind[0] = 0; g_pending_nav_url[0] = 0; g_pending_nav_count = 1;
+    time_t t_load_start = time(NULL);
+#define NB_LOAD_WALL_MAX_S 20
     char resp[65536];
     for (;;) {
         if (!worker_recv_line_to(resp, sizeof(resp), WORKER_LOAD_QUIET_MS)) { worker_close(); return 0; }
+        /* REAL FIX 2026-10-05: YouTube-class pages evaluate dozens of
+         * module-graph slices, each under the 60s per-slice budget - so
+         * LOAD itself could quietly burn multiple minutes at
+         * Status: loading. Give up after a real wall-clock cap and fall
+         * back to the static DOM every browser already produced. */
+        if ((time_t)time(NULL) - t_load_start > NB_LOAD_WALL_MAX_S) {
+            worker_close();
+            return 0;
+        }
         if (strncmp(resp, "LIVE|", 5) == 0) continue;   /* drain keepalive */
         if (strncmp(resp, "FETCH\n", 6) == 0) {
             handle_worker_fetch(resp);

@@ -1,0 +1,66 @@
+<!-- robot-chat.xhtpm - STATIC TEMPLATE (same real convention open-hai.xhtpm
+     and events-hq's own dashboard.chtpm already use, see CHTPM-ARCHITECTURE-
+     FIX.md). Real chat surface for a Drop-In Chatbot Entity (AI-PUSH-
+     ROADMAP-AND-NUANCES.md, "Track 1's Natural Test Surface"), built
+     2026-09-28 to replace robot_chat_001's hardcoded single test-line
+     METHOD with a real, typed, multi-turn chat window.
+
+     Launched exactly like events-hq: <house> <chtpm> <entity_dir> <label>
+     - argv[3]=entity_dir populates g_arg3_dir (the real, generic "instance
+     dir" hook, khtpm_core_render.c ~line 1330), so THIS ONE SHARED
+     template serves every chatbot entity's own real chat_history.txt,
+     never a per-entity copy. <entity_dir>/.hq_manager/ui.txt is
+     auto-appended to vars= by that same mechanism - no vars= needed here.
+
+     REAL REWORK 2026-09-28, direct instruction ("the manager should be
+     a pal script instead of C, and we will call event calling ops to
+     do the chat"): the <module> below is now prisc+x.+x running
+     pal/robot_chat.pal - a real, thin poll loop (same shape
+     014.wsr-pal's own pal/main_loop_chtpm.pal uses) that calls two
+     small single-purpose ops (rc_check_request.+x/rc_publish_ui.+x,
+     ops/) every tick. launch_module() (khtpm_core_render.c) sets
+     PRISC_PROJECT_ROOT=entity_dir and KHTPM_HOUSE=house_root as real
+     env vars on THIS process - both ops read those, no argv needed.
+     The retired khtpm_robot_chat_manager.c (same job, hand-written C)
+     is kept nowhere - it never reached a working, verified state
+     before this rework, so there is no real rollback value in it. -->
+<window label="Robot Chat" class="user-resizable" vars="">
+  <module src="&.widgits/_shared-lib/system/+x/prisc+x.+x &.widgits/robot-chat/pal/robot_chat.pal"/>
+  <page name="main">
+    <!-- REAL FIX 2026-09-28, direct live report ("window still empty and
+         too big... why aren't u reusing open-hai layout?"): the real
+         sizing/layout function every working chat-shaped window (open-hai,
+         events-hq) goes through is layout_sidebar_panel(), which requires
+         BOTH <sidebar> AND <panel> to be present - `if (!sidebar || !panel)
+         return 0;` (khtpm_core_render.c ~line 5035). Without a <sidebar>,
+         NONE of that function's real w/h computation ever ran for this
+         window - confirmed live via frame-dump: every element showed
+         w=0 h=0 nav_index=0. Minimal sidebar added (entity label only, no
+         session list - this bot has one continuous conversation, not
+         open-hai's multi-session model) so this window is laid out by the
+         exact same proven code path, same real size/chrome as open-hai. -->
+    <sidebar>
+      <text id="sidebar-header" label="${entity_label}"/>
+    </sidebar>
+    <panel>
+      <text id="status" label="${status}"/>
+      <scrolllist>
+        <repeat count="${transcript_count}" bind="msg">
+          <text id="msg${msg.#}" class="${msg.class}" label="${msg.text}"/>
+        </repeat>
+      </scrolllist>
+      <!-- REAL FIX 2026-09-28, direct live report ("window is empty and
+           chrome doesn't work"): a bare <cli_io> as a direct <panel>
+           child is not a laid-out shape - open-hai's own header comment
+           says its composer's <row class="toolbar"> wrapper is "the
+           first real consumer of layout_toolbar_row()'s new item+cli_io
+           row support" (2026-09-28, same day). Confirmed live: the
+           un-wrapped composer's own frame-dump line showed
+           w=0 h=0 nav_index=0 - never laid out at all. Wrapped, same
+           real shape open-hai already uses. -->
+      <row class="toolbar">
+        <cli_io id="composer" target_id="composer" label="&gt; " action="${send_action}"/>
+      </row>
+    </panel>
+  </page>
+</window>

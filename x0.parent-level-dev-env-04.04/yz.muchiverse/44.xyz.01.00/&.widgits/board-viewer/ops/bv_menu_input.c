@@ -543,8 +543,44 @@ static int handle_one_key(int key) {
              * all), independent of the turn-relative rotation just
              * above - negating dx here corrects the baseline and still
              * composes correctly as you turn (negating a rotated
-             * vector = rotating the negated vector). */
-            dx = -dx;
+             * vector = rotating the negated vector).
+             * REVERTED 2026-10-04: the negation made intuitive control
+             * impossible - human expectation is that pressing left-arrow
+             * moves the view left. Re-enabled correct baseline behavior. */
+            /* dx = -dx;  REVERTED - see note above */
+        }
+    }
+
+    /* Placer: while armed, the same arrows and z/x keys move the green
+     * selector instead of the entity. Escape puts the keys back.
+     * Re-applied 2026-10-04 on top of Claude a318bf17c (camera-control
+     * revert, "supreme") - additive only; placer routing coexists with
+     * the reverted camera defaults. */
+    {
+        char pp[PATH_BUF];
+        snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
+        int armed = read_kv_int(pp, "armed", 0);
+        if (key == 27 && armed) {
+            write_kv_int(pp, "armed", 0);
+            bump_screen_changed(project_root);
+            return 0;
+        }
+        if (armed && (dx || dy || key == 'z' || key == 'x')) {
+            int sx = read_kv_int(pp, "x", 0);
+            int sy = read_kv_int(pp, "y", 0);
+            int sz = read_kv_int(pp, "z", 0);
+            sx += dx; sy += dy;
+            if (key == 'x') sz++;
+            if (key == 'z') sz--;
+            if (sx < 0) sx = 0;
+            if (sy < 0) sy = 0;
+            if (sz < 0) sz = 0;
+            write_kv_int(pp, "x", sx);
+            write_kv_int(pp, "y", sy);
+            write_kv_int(pp, "z", sz);
+            write_kv_int(pp, "armed", 1);
+            bump_screen_changed(project_root);
+            return 0;
         }
     }
 
@@ -1028,11 +1064,14 @@ static int handle_one_key(int key) {
             int pan_x = read_kv_int(state_path, "cam_pan_x", 0);
             /* w<->s and a<->d flipped 2026-09-09 (direct instruction:
              * "close but reverse w with s, and a with d") - modes 1/2/3
-             * now pan so the world moves the intuitive way. */
+             * now pan so the world moves the intuitive way.
+             * REVERTED 2026-10-04: controls were counterintuitive for human
+             * perspective - human intuition: press left key, camera/view moves
+             * left on screen. The flip broke this. */
             if (key == key_pan_forward) pan_z -= PAN_STEP;
             else if (key == key_pan_back) pan_z += PAN_STEP;
-            else if (key == key_pan_left) pan_x += PAN_STEP;
-            else if (key == key_pan_right) pan_x -= PAN_STEP;
+            else if (key == key_pan_left) pan_x -= PAN_STEP;
+            else if (key == key_pan_right) pan_x += PAN_STEP;
             write_kv_int(state_path, "cam_pan_z", pan_z);
             write_kv_int(state_path, "cam_pan_x", pan_x);
         }

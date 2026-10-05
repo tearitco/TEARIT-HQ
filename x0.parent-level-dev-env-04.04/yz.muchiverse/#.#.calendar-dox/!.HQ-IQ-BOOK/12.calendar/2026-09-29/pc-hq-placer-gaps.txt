@@ -1,0 +1,30 @@
+pc-hq placer and hero menu — open gaps
+2026-09-29. Logged only. Not fixed.
+
+What the desk picture shows
+Asa's Act Move opens the desk placer. That is tp_arm_placer_rmmv,
+started by move_entity_on_desk.sh. It draws a yellow diamond of cell
+outlines on the desktop grid, a green cell on the target, and the
+line "Enter = jump | Enter again = place | Esc = cancel | click =
+move target". Asa is a desk pal, so the script does not take the
+pieces/ exit.
+
+What the hero does
+The hero lives under pieces/. The same move script copies the #
+matrix into the project display folder and exits before the placer
+binary. Act Move therefore never opens that desktop diamond for the
+hero. The pc-hq 2D view can draw a one-tile yellow border on the
+hero cell. It does not run the placer, so it does not show the
+diamond, the hint, or the Enter / Escape / click rules.
+
+Context menu
+A desk pal is its own window. Right-click in that window opens the
+pal's menu on that cell. The pc-hq board is one window. A right-click
+there opens the window menu (Cut / Copy / Paste / Place) and returns
+before any hero menu is built. The hero menu is a different path
+and is not placed on the hero sprite.
+
+Still open
+1. Hero Act Move does not use the desk placer mechanism inside pc-hq.
+2. Right-click on the hero inside the pc-hq window does not open the
+   hero menu over that sprite.

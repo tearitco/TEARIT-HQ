@@ -5,8 +5,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <sys/wait.h>
 #include <unistd.h>
+#endif
 
 #define MAX_OUTPUT 131072
 #define MAX_ITEMS 5
@@ -113,6 +117,117 @@ static void html_entity_decode(char *s) {
 }
 
 static char *run_duckduckgo_query(const char *query) {
+#ifdef _WIN32
+    /* Same shape as the POSIX version below: build the argument vector, capture
+       the child's stdout, then require a clean exit and non-empty output. The
+       read-to-EOF-then-wait order is kept deliberately -- it is deadlock-free,
+       whereas waiting first and reading after can hang once the child fills the
+       pipe buffer. */
+    char q_arg[2048];
+    snprintf(q_arg, sizeof(q_arg), "q=%s", query);
+
+    const char *curl = NULL;
+    {
+        /* CreateProcess does not search PATH, so curl.exe is located by hand.
+           This op is built and shipped with a .+x name like every other piece
+           here, so all three suffixes are tried before falling back to PATH. */
+        static const char *sfx[] = { ".exe", "", ".+x", NULL };
+        char candidate[1024];
+        const char *path_env = getenv("PATH");
+        char *dup = NULL;
+        if (path_env) dup = strdup(path_env);
+        char *saveptr = NULL;
+        for (char *dir = dup ? strtok_r(dup, ";", &saveptr) : NULL; dir && !curl;
+             dir = strtok_r(NULL, ";", &saveptr)) {
+            for (int i = 0; sfx[i] && !curl; i++) {
+                snprintf(candidate, sizeof(candidate), "%s/curl%s", dir, sfx[i]);
+                if (GetFileAttributesA(candidate) != INVALID_FILE_ATTRIBUTES) curl = strdup(candidate);
+            }
+        }
+        free(dup);
+    }
+    if (!curl) return NULL;
+
+    SECURITY_ATTRIBUTES sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.nLength = sizeof(sa);
+    sa.bInheritHandle = TRUE;
+    HANDLE rd, wr;
+    if (!CreatePipe(&rd, &wr, &sa, 0)) { free((void *)curl); return NULL; }
+    /* Without this the child inherits a duplicate of its own stdout and the
+       read loop below never sees EOF. */
+    SetHandleInformation(rd, HANDLE_FLAG_INHERIT, 0);
+
+    char cmd[4096];
+    {
+        char *argv[] = {
+            (char *)curl,
+            "-fsSLG",
+            "--max-time", "15",
+            "--data-urlencode", q_arg,
+            "--data", "format=json",
+            "--data", "no_html=1",
+            "--data", "no_redirect=1",
+            "--data", "skip_disambig=1",
+            "https://api.duckduckgo.com/",
+            NULL
+        };
+        snprintf(cmd, sizeof(cmd), "\"%s\"", argv[0]);
+        for (int i = 1; argv[i]; i++) {
+            size_t used = strlen(cmd);
+            if (used + 3 >= sizeof(cmd)) break;
+            cmd[used++] = ' ';
+            cmd[used++] = '"';
+            for (const char *p = argv[i]; *p && used + 2 < sizeof(cmd); p++) {
+                if (*p == '"') { cmd[used++] = '\\'; if (used + 1 >= sizeof(cmd)) break; }
+                cmd[used++] = *p;
+            }
+            cmd[used++] = '"';
+            cmd[used] = '\0';
+        }
+    }
+
+    STARTUPINFOA si; PROCESS_INFORMATION pi;
+    memset(&si, 0, sizeof(si));
+    memset(&pi, 0, sizeof(pi));
+    si.cb = sizeof(si);
+    si.dwFlags = STARTF_USESTDHANDLES;
+    si.hStdOutput = wr;
+    si.hStdError = wr;
+    si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+
+    if (!CreateProcessA(curl, cmd, NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
+        CloseHandle(rd); CloseHandle(wr);
+        free((void *)curl);
+        return NULL;
+    }
+    CloseHandle(wr);
+    free((void *)curl);
+
+    char *buf = calloc(MAX_OUTPUT, 1);
+    if (!buf) { CloseHandle(rd); CloseHandle(pi.hProcess); CloseHandle(pi.hThread); return NULL; }
+
+    size_t total = 0;
+    DWORD got = 0;
+    while (ReadFile(rd, buf + total, (DWORD)(MAX_OUTPUT - total - 1), &got, NULL) && got > 0) {
+        total += (size_t)got;
+        if (total >= MAX_OUTPUT - 1) break;
+    }
+    CloseHandle(rd);
+    buf[total] = '\0';
+
+    WaitForSingleObject(pi.hProcess, INFINITE);
+    DWORD exit_code = 0;
+    GetExitCodeProcess(pi.hProcess, &exit_code);
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+
+    if (exit_code != 0 || total == 0) {
+        free(buf);
+        return NULL;
+    }
+    return buf;
+#else
     int pipefd[2];
     if (pipe(pipefd) != 0) return NULL;
 
@@ -171,6 +286,7 @@ static char *run_duckduckgo_query(const char *query) {
         return NULL;
     }
     return buf;
+#endif
 }
 
 static int collect_topic_items(const char *json, const char *section_name, char items[][2048], int max_items) {

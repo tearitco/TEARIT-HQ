@@ -1,0 +1,8 @@
+METHOD | Elect me as CEO | RUN:./ops/+x/corp_set_owner.+x @corp elect
+METHOD | Resign as CEO | RUN:./ops/+x/corp_set_owner.+x @corp resign
+METHOD | Set R&D Spend | RUN:./ops/+x/corp_action.+x @corp rd_spend
+METHOD | Set Marketing Spend | RUN:./ops/+x/corp_action.+x @corp marketing_spend
+METHOD | Set Growth Rate | RUN:./ops/+x/corp_action.+x @corp growth_rate
+METHOD | Change Dividend Payout | RUN:./ops/+x/corp_action.+x @corp dividend_payout
+METHOD | AutoPilot Toggle | RUN:./ops/+x/corp_action.+x @corp autopilot_toggle
+METHOD | Back to main menu | GOTO:wsr_main_menu

@@ -58,8 +58,8 @@ static const char *FS_SRC =
 "uniform vec3  u_bmax[128];\n"
 "uniform vec4  u_bcol[128];\n"     /* .rgb colour, .a: 1 = apply light, 0 = self-lit */
 "uniform int   u_bmdl[128];\n"     /* >=0 -> raymarch phymoji model u_bmdl[i] inside the box */
-"uniform highp sampler3D u_mdl;\n" /* 32x32x(8*8): model m at z [m*8, m*8+8) */
-"uniform ivec3 u_mdim[8];\n"       /* per-model (lx,ly,lz) counts */
+"uniform highp sampler3D u_mdl;\n" /* 32x32x(8*24): model m at z [m*8, m*8+8) */
+"uniform ivec3 u_mdim[24];\n"      /* per-model (lx,ly,lz) counts */
 "\n"
 "bool slab(vec3 ro, vec3 rd, vec3 bn, vec3 bx, out float t, out int face) {\n"
 "  float tmin = -1e30, tmax = 1e30; face = -1;\n"
@@ -79,8 +79,14 @@ static const char *FS_SRC =
 "  return true;\n"
 "}\n"
 "\n"
+"bool on_edge(vec3 hp, vec3 bn, vec3 bx) {\n"
+"  vec3 q = min(abs(hp - bn), abs(hp - bx));\n"
+"  float e = 0.10;\n"
+"  return (int(q.x < e) + int(q.y < e) + int(q.z < e)) >= 2;\n"
+"}\n"
+"\n"
 "void main() {\n"
-"  float a = (gl_FragCoord.x - u_res.x * 0.5) / u_focal;\n"
+"  float a = (u_res.x * 0.5 - gl_FragCoord.x) / u_focal;\n" /* desk +x is screen-right; this facing would put it on the left */
 "  float b = (u_res.y * 0.5 - gl_FragCoord.y) / u_focal;\n"   /* flipped: GL row 0 = image top, so glReadPixels needs no row-flip */
 "  vec3 rd = normalize(u_fwd + a * u_right + b * u_up);\n"
 "  vec3 ro = u_eye;\n"
@@ -95,6 +101,8 @@ static const char *FS_SRC =
 "    if (!slab(ro, rd, u_bmin[i], u_bmax[i], t, f) || t >= bestT) continue;\n"
 "    int mdl = u_bmdl[i];\n"
 "    if (mdl < 0) {\n"
+"      bool wire = (u_bcol[i].a > 0.12 && u_bcol[i].a < 0.4);\n"
+"      if (wire && !on_edge(ro + rd * t, u_bmin[i], u_bmax[i])) continue;\n"
 "      bestT = t; col = u_bcol[i].rgb; hit = true;\n"
 "      self_lit = (u_bcol[i].a < 0.5); face = f;\n"
 "      continue;\n"
@@ -499,7 +507,7 @@ int bv_gpu_raymarch(const BvGpuScene *s, unsigned char *out) {
                 bmin[i*3+0]=s->box[i].min_x; bmin[i*3+1]=s->box[i].min_y; bmin[i*3+2]=s->box[i].min_z;
                 bmax[i*3+0]=s->box[i].max_x; bmax[i*3+1]=s->box[i].max_y; bmax[i*3+2]=s->box[i].max_z;
                 bcol[i*4+0]=s->box[i].r; bcol[i*4+1]=s->box[i].g; bcol[i*4+2]=s->box[i].b;
-                bcol[i*4+3]=s->box[i].self_lit ? 0.0f : 1.0f;
+                bcol[i*4+3]=s->box[i].wire ? 0.25f : (s->box[i].self_lit ? 0.0f : 1.0f);
                 bmdl[i] = (s->box[i].model >= 0 && s->box[i].model < BV_GPU_MAX_MODEL) ? s->box[i].model : -1;
             }
             glUniform3fv(s_u.bmin, nb, bmin);
@@ -523,9 +531,30 @@ int bv_gpu_raymarch(const BvGpuScene *s, unsigned char *out) {
     if (step == 1) {
         glReadPixels(0, 0, s->w, s->h, GL_RGBA, GL_UNSIGNED_BYTE, out);   /* shader renders top-down -> no flip */
     } else {
-        /* read the reduced frame, then nearest-upscale into the full out */
-        static unsigned char scratch[1280 * 960 * 4];
-        if ((size_t)rw * rh * 4 > sizeof(scratch)) { fprintf(stderr, "bv_gpu: LOD scratch too small\n"); goto done; }
+        /* read the reduced frame, then nearest-upscale into the full out.
+         * REAL FIX 2026-09-30, direct live report ("drag window bigger,
+         * doesn't make camera lens wider, it just shows black") - this
+         * used to be a fixed `scratch[1280*960*4]`, sized for whatever
+         * window dimensions someone tested against at the time. Any
+         * window resize big enough that rw*rh (the LOD-reduced render,
+         * still s->w/h / lod_step - a live drag-resize runs through
+         * THIS branch every frame, since resizing counts as motion,
+         * g_lod_step>1) exceeded that fixed cap hit the guard below and
+         * bailed with zero frame written - the exact black screen
+         * reported. A resizable window has no real upper bound, so
+         * there is no correct fixed constant here; grown on demand
+         * instead, persisted across calls (same `static` lifetime the
+         * fixed buffer had, just heap-backed and resizable) so a normal
+         * fixed-size session pays one allocation, not one per frame. */
+        static unsigned char *scratch = NULL;
+        static size_t scratch_cap = 0;
+        size_t need = (size_t)rw * rh * 4;
+        if (need > scratch_cap) {
+            unsigned char *grown = realloc(scratch, need);
+            if (!grown) { fprintf(stderr, "bv_gpu: LOD scratch realloc failed (%zu bytes)\n", need); goto done; }
+            scratch = grown;
+            scratch_cap = need;
+        }
         glReadPixels(0, 0, rw, rh, GL_RGBA, GL_UNSIGNED_BYTE, scratch);
         for (int y = 0; y < s->h; y++) {
             int sy = y * rh / s->h; if (sy >= rh) sy = rh - 1;

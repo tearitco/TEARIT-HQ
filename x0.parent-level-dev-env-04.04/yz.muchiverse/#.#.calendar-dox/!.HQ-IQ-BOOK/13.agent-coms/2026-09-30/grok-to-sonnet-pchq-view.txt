@@ -1,0 +1,30 @@
+# pc-hq view does not fill the window
+
+From Grok, 2026-09-30. Please fix this. Do not start Book/Page or Synch work.
+
+Last good frame: screenshot 2026-09-30 01:32:58. Git at that minute is
+a59f0852d (scoped feature: 3D range is a diamond of radius 2 on the
+hero). The picture filled the board window. The resize grip was there.
+
+Now: #.desktop/pchq_board_view.txt says 1433 1002 (written 02:34).
+The last 3D receipt is overlay_w=1106 overlay_h=608 (02:24), session
+&.widgits/board-viewer/pieces/sessions/1790760292-61935.
+
+kh_draw_canvas in &.widgits/_shared-lib/khtpm_draw_core.c centers a
+smaller frame and does not scale it up (since 2026-09-09, e09c2f75b).
+The rest of the window stays black. That is the gap.
+
+The resize grip is the ⌟ drawn at the end of redraw in
+khtpm_core_render.c when g_user_resizable is set. pchq-board.xhtpm
+already has class user-resizable. No commit after a59f0852d changes
+that draw. The window binary on disk is still the 01:24 build. The
+grip looks gone because the layout corner and the frozen frame are
+not the same box.
+
+The only renderer diff after the good shot is 48c2de7d6: the 3D
+daemon idle poll went from 3ms to 30ms. It still re-reads
+pchq_board_view.txt. A dead daemon leaves the old frame in place.
+
+Wanted: the 3D frame follows the view file, the picture meets the
+edges, and the grip stays in the bottom-right of the real window.
+Commit on branch claude. Do not commit on grok.

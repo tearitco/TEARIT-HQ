@@ -182,6 +182,7 @@ int main(void) {
      * keybinds.pdl: `OPT | multipress_compensator | 0` disables it.
      * Default on. Cheap to re-read every tick. */
     int compensator = 1;
+    int pause_on_minimize = 0;
     {
         char froot[PATH_BUF] = "";
         read_state_str("focused_project_root", froot, sizeof(froot));
@@ -189,8 +190,24 @@ int main(void) {
             char kbp[PATH_BUF];
             snprintf(kbp, sizeof(kbp), "%s/pieces/system/keybinds.pdl", froot);
             compensator = read_pdl_opt(kbp, "multipress_compensator", 1);
+            pause_on_minimize = read_pdl_opt(kbp, "minimize_pauses_game", 0);
         }
     }
+
+    /* REAL, NEW 2026-09-29, direct live report ("well its cause i
+     * minimized the window, but for long game sessions that needs to
+     * be chill") - pchq_board_projector.c's own renderer_says_minimized()
+     * writes this plain "1"/"0" file into THIS session every ~300ms
+     * (it's the only process with a real path to the owning khtpm
+     * window's own minimized state - see its header comment). A
+     * standalone board-viewer session with no owning pc-hq window
+     * simply never gets this file written - file_size() returns 0,
+     * minimized stays 0, this whole feature is a no-op for it. */
+    char minimized_path[PATH_BUF];
+    pj(minimized_path, sizeof(minimized_path), "pieces/display/window_minimized.txt");
+    int minimized = 0;
+    { FILE *mf = fopen(minimized_path, "r"); if (mf) { if (fscanf(mf, "%d", &minimized) != 1) minimized = 0; fclose(mf); } }
+    if (minimized && pause_on_minimize) return 0; /* real pause: no drain, no dispatch, no render */
 
     char relay_path[PATH_BUF], screen_path[PATH_BUF], pos_path[PATH_BUF],
          marker_path[PATH_BUF], op_path[PATH_BUF];
@@ -317,7 +334,16 @@ int main(void) {
      * render and we dropped the backlog: still render once, so a
      * lingering coarse motion frame gets replaced by a crisp full one
      * (burst_ongoing will be 0 below -> full res). */
-    if (any_key || external_change || dropped_stale) {
+    /* REAL, NEW 2026-09-29 - see this function's own header comment on
+     * `minimized` above: game logic (steps 1/3 above) already ran
+     * unconditionally, exactly as requested ("keep game logic alive")
+     * - this is the one place that's actually expensive (raymarch/
+     * compose), so it's the one place minimized skips, unconditionally,
+     * regardless of any_key/external_change/dropped_stale. Nothing can
+     * see this frame anyway; the very next tick after restore picks up
+     * cleanly since bv_screen_changed.txt / relay state were never
+     * touched by this skip. */
+    if ((any_key || external_change || dropped_stale) && !minimized) {
         /* PCHQ-2D-TILE-VIEW.md: render_mode==0 -> the flat tile grid
          * (bv_render_2d), NOT the raymarch and NOT bv_compose_frame
          * (that's the legend/status text chrome we're dropping). It's a

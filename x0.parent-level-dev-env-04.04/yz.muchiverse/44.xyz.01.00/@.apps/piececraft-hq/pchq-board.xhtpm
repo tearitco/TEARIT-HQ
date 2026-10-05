@@ -37,8 +37,18 @@
            Explorer" is still reachable as one of its own real rows
            (f_1 below), not removed, just no longer the ONLY thing a
            File click can do. -->
-      <tab id="tb-file" class="pchq-tb" label="File ▾" onclick="ACTIVATE" target_id="tb-file"/>
-      <tab id="tb-desk" class="pchq-tb" label="Desk ▾" onclick="ACTIVATE" target_id="tb-desk"/>
+      <!-- REAL FIX 2026-09-30, direct instruction ("the 'FILE:DESK' tb
+           headers are old before 'BOOK PAGE RENAME'"): only the
+           user-visible label text changes here, same precedent already
+           set in khtpm_taskbar_manager.c's ktb_get_file_label()/
+           ktb_get_desks_label() comments - ids (tb-file/tb-desk),
+           target_id, actions, and every f_N_*/d_N_* key stay exactly
+           as-is. A pc-hq "file" (a loaded project) and "desk" (a map
+           inside it) already map naturally onto BOOK (a session/
+           container) and PAGE (a view inside it) - this isn't a forced
+           relabel, the concepts genuinely correspond. -->
+      <tab id="tb-file" class="pchq-tb" label="${book_label} ▾" onclick="ACTIVATE" target_id="tb-file"/>
+      <tab id="tb-desk" class="pchq-tb" label="${page_label} ▾" onclick="ACTIVATE" target_id="tb-desk"/>
       <tab id="tb-menu" class="pchq-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
       <!-- REAL FIX 2026-09-15, direct live correction ("player should
            have dropdown that says play, reset, stop, notes-db, cancel
@@ -98,6 +108,9 @@
       <item id="pm-notes" class="pchq-menu-row dropdown-child" target_id="tb-player"
             label="Notes"
             action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'notes'"/>
+      <item id="pm-synch" class="pchq-menu-row dropdown-child" target_id="tb-player"
+            label="Synch"
+            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'synch'"/>
       <item id="pm-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-player"
             label="- cancel -" action="void"/>
     </sidebar>

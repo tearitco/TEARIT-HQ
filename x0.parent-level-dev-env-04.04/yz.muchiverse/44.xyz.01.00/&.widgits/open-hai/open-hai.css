@@ -1,0 +1,15 @@
+/* open-hai.css - real, per-app CSS (khtpm_core_render.c's own "merge
+ * the .css sitting next to the loaded .chtpm" convention, 2026-09-02 -
+ * any app can ship its own window size this way, no mode flag needed).
+ * Direct live report 2026-09-28: the default sizing (kh_default_win_w(),
+ * ~58% of screen width) was "obscuring my other work" - half width
+ * requested for this window specifically (was previously unset,
+ * falling through to the same global default robot-chat.xhtpm also
+ * used to fall through to). */
+/* Real live report 2026-09-28: default sizing (kh_default_win_w(),
+ * ~58% of screen width) was "obscuring my other work" - half width
+ * requested. window-level percent width is now a real, generic
+ * capability (kh_resolve_win_w(), khtpm_core_render.c) - added the
+ * same day after this rule first exposed the gap (a literal "50%" was
+ * silently read as 50px before that fix). */
+window { width: 25%; }

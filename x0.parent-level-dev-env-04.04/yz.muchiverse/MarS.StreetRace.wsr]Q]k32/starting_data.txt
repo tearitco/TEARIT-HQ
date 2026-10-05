@@ -1,0 +1,7 @@
+num_players:2
+game_length:200
+starting_cash:2000.00
+player_0_name:ab
+player_0_type:1
+player_1_name:ba
+player_1_type:0

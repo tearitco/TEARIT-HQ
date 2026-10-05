@@ -1,0 +1,7 @@
+i restored from backup since last run was still corrupt. 
+
+
+can u just readd db search submenu and then write hand off. 
+in wsr-back-handoff-j17.txt explain what other code we lost during the rollback
+before i got confused about path and asked u to delete the good code and caused this corruption
+. im going to refactor the codebase anyways. 

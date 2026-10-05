@@ -1,0 +1,81 @@
+FINANCIAL PROFILE FOR COLONYGUARD INSUR. (CLG)
+================================================
+FINANCIAL BALANCE SHEET: COLONYGUARD INSUR. (CLG)
+--------------------------------------------------
+(Amounts in millions of U.S. Dollars, except per share amounts)
+
+ASSETS:
+  Free Cash and Equivalents:		1607.43
+  Stock in Subsidiary Corps.:		0.00
+  Options Long/Short: Net Value:	0.00
+  Government Bonds (mkt. value):	0.00
+  Corporate Bonds (mkt. value):	0.00
+  Subprime Mortgage Securities:		0.00
+  Index Futures: Marked to Mkt.:	0.00
+  Commodity A/C Margin Balance:	0.00
+  ---------------------------------------------
+  Total Assets:				1607.43
+  ---------------------------------------------
+
+LIABILITIES AND EQUITY:
+  Long-Term Bonds Issued:		0.00
+  Bank Loan:				456.32
+  Insurance Policy Reserves:		818.17
+  Accrued Income Tax Payable:		0.00
+  ---------------------------------------------
+  Total Liabilities:			1274.49
+  ---------------------------------------------
+  Equity (Net Worth):			332.94
+  =============================================
+
+STOCK AND EARNINGS DATA:
+------------------------
+  Net Worth Per Share:			4.98
+  Current Stock Price:			4.93
+  52-Week High/Low Stock Price:		7.97 / 3.19
+  Shares of Stock Outstanding:		66.92 million
+  Total Stock Capitalization:		329.74 million
+  2021 Earnings Per Share:		0.00 (Operating Earnings)
+  2022 Earnings Per Share:		0.00 (Operating Earnings)
+  2023 Earnings Per Share:		0.00 (Operating Earnings)
+  2024 Earnings Per Share:		0.00 (Operating Earnings)
+  2025 E/P/S through Qtr. #1:		(Not Yet Announced)
+  ---------------------------------------------
+
+VARIOUS FINANCIAL RATIOS:
+-------------------------
+  Price/Earnings Ratio:			NMF (No Meaningful Figure)
+  Dividend Yield:			0.00%
+  Debt to Equity Ratio:			1.37 to 1
+  Return on Equity (2024):		NMF (No Meaningful Figure)
+  ---------------------------------------------
+
+*** CREDIT INFO: ***
+-------------------
+  Credit Rating:			A
+  Unused Bank Line of Credit:		1776.58 million
+  Borrowing Rate (Interest):		11.00% (Prime is: 10.00%)
+  Lending Bank:				LUNAR FINANCE (LUN)
+  ---------------------------------------------
+
+VARIABLE SETTINGS (Changeable by controlling player):
+----------------------------------------------------
+  Dividend Payout Per Share:		0.00
+  % of Net Premiums for Advertising:	7%
+  Growth Rate (Insurance in Force):	6%
+  ---------------------------------------------
+
+MISCELLANEOUS INFO:
+-------------------
+  Industry Group:			INSURANCE
+  Incorporated in:			Robot State
+  Controlled (and actively managed) by:	sol supreme
+  Public Owns:			%
+  Annual CEO Salary (approx.):		$0.84 million (Plus possible bonuses)
+  Today's (Game) Date:			January 1, 2025
+  Next Earnings Report:			January 8, 2025
+  ---------------------------------------------
+
+FOOTNOTE TO FINANCIAL STATEMENT:
+-------------------------------
+[1] The company is not currently engaged in any interest rate swap transactions and has no undisclosed off-balance sheet liabilities.

@@ -31,6 +31,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <time.h>
+#include <dirent.h>
 
 #include "bv_cjk_glyph.h"   /* view_2d_style=ascii: coloured CJK glyph per cell */
 
@@ -208,6 +210,51 @@ static void blit_emoji(unsigned char *frame, int W, int dx, int dy, int cell, co
     }
 }
 
+/* Pal picture. sprite.csv is "r,g,b,a" after a # resolution line.
+ * Samples an 8x8 of the opaque pixels into the cell. Returns 1 when
+ * any pixel was drawn. */
+static int blit_sprite_csv(unsigned char *frame, int W, int dx, int dy, int cell, const char *path) {
+    FILE *f = host_fopen(path, "r");
+    if (!f) return 0;
+    int res = 64, data = 0, i = 0, any = 0;
+    unsigned char tile[8][8][4];
+    memset(tile, 0, sizeof(tile));
+    char line[128];
+    while (fgets(line, sizeof(line), f)) {
+        if (line[0] == '#') {
+            int r = 0;
+            if (sscanf(line, "# resolution=%d", &r) == 1 && r > 0) res = r;
+            continue;
+        }
+        if (!data) { if (strncmp(line, "r,g,b", 5) == 0) data = 1; continue; }
+        int r, g, b, a;
+        if (sscanf(line, "%d,%d,%d,%d", &r, &g, &b, &a) != 4) continue;
+        int x = i % res, y = i / res;
+        i++;
+        if (y >= res) break;
+        int sx = x * 8 / res; if (sx > 7) sx = 7;
+        int sy = y * 8 / res; if (sy > 7) sy = 7;
+        if (a > tile[sy][sx][3]) {
+            tile[sy][sx][0] = (unsigned char)r; tile[sy][sx][1] = (unsigned char)g;
+            tile[sy][sx][2] = (unsigned char)b; tile[sy][sx][3] = (unsigned char)a;
+            if (a) any = 1;
+        }
+    }
+    fclose(f);
+    if (!any) return 0;
+    for (int yy = 0; yy < cell; yy++) {
+        int sy = yy * 8 / cell; if (sy > 7) sy = 7;
+        for (int xx = 0; xx < cell; xx++) {
+            int sx = xx * 8 / cell; if (sx > 7) sx = 7;
+            unsigned char *s = tile[sy][sx];
+            if (s[3] == 0) continue;
+            unsigned char *d = frame + ((size_t)(dy + yy) * W + (dx + xx)) * 4;
+            d[0] = s[0]; d[1] = s[1]; d[2] = s[2]; d[3] = 255;
+        }
+    }
+    return 1;
+}
+
 /* ---- ascii/CJK view: one tinted coverage glyph filling the cell ---- */
 static void blit_cjk(unsigned char *frame, int W, int dx, int dy, int cell,
                      unsigned int cp, unsigned char r, unsigned char g, unsigned char b) {
@@ -227,7 +274,7 @@ static void blit_cjk(unsigned char *frame, int W, int dx, int dy, int cell,
 }
 
 /* ---- entities: pos + colour ---- */
-typedef struct { int x, y, z; unsigned char r, g, b; char hex[16]; char cjk[8]; } Ent;
+typedef struct { int x, y, z; unsigned char r, g, b; char hex[16]; char cjk[8]; char spr[180]; } Ent;
 static Ent g_ent[MAX_ENT];
 static int g_nent = 0;
 
@@ -328,18 +375,323 @@ static void load_actor_list(const char *rel_path, int cur_z) {
     }
     fclose(f);
 }
+/* Active livedesk page: sessions/<id>/session.pdl names the desk,
+ * desks/<desk>.pdl holds DESK rows. Cell columns are the 6th and 7th
+ * fields. A pixel field at or above 40 is cells times 80. */
+static void field_trim(char *s) {
+    char *a = s;
+    while (*a == ' ' || *a == '\t') a++;
+    if (a != s) memmove(s, a, strlen(a) + 1);
+    int n = (int)strlen(s);
+    while (n > 0 && (s[n - 1] == ' ' || s[n - 1] == '\t' || s[n - 1] == '\r' || s[n - 1] == '\n')) s[--n] = '\0';
+}
+static int read_pdl_value(const char *path, const char *key, char *out, int n) {
+    FILE *f = host_fopen(path, "r");
+    out[0] = '\0';
+    if (!f) return 0;
+    char line[MAX_LINE];
+    while (fgets(line, sizeof(line), f)) {
+        char *p1 = strchr(line, '|');
+        if (!p1) continue;
+        char *p2 = strchr(p1 + 1, '|');
+        if (!p2) continue;
+        *p2 = '\0';
+        field_trim(p1 + 1);
+        if (strcmp(p1 + 1, key) != 0) continue;
+        char *val = p2 + 1;
+        field_trim(val);
+        char *nl = strchr(val, '|');
+        if (nl) *nl = '\0';
+        field_trim(val);
+        snprintf(out, n, "%s", val);
+        fclose(f);
+        return out[0] != '\0';
+    }
+    fclose(f);
+    return 0;
+}
+/* open_book_page.txt:
+ *   source=desk  — the pdl= path Synch wrote. A later desk switch
+ *                   does not move this view until the next Synch.
+ *   source=board — the board's own map; do not read a desk file
+ *   no source, but pdl= — older Synch pin; same as source=desk
+ * Returns 1 and writes the desk path, -1 when the board owns the
+ * page, 0 when this file does not decide (caller may use active_desk). */
+static int page_bound_pdl(const char *house, char *out, int n) {
+    char ob[PATH_BUF], line[PATH_BUF], source[32] = "", stored[PATH_BUF] = "";
+    snprintf(ob, sizeof(ob), "%s/@.apps/piececraft-hq/pieces/display/open_book_page.txt", house);
+    FILE *f = host_fopen(ob, "r");
+    if (!f) return 0;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "source=", 7) == 0) {
+            snprintf(source, sizeof(source), "%s", line + 7);
+            source[strcspn(source, "\r\n")] = '\0';
+        } else if (strncmp(line, "pdl=", 4) == 0) {
+            snprintf(stored, sizeof(stored), "%s", line + 4);
+            stored[strcspn(stored, "\r\n")] = '\0';
+        }
+    }
+    fclose(f);
+    if (strcmp(source, "board") == 0) {
+        if (n > 0) out[0] = '\0';
+        return -1;
+    }
+    if (strcmp(source, "desk") != 0 && !stored[0]) return 0;
+    if (!stored[0]) return 0;
+    FILE *t = host_fopen(stored, "r");
+    if (!t) return 0;
+    fclose(t);
+    snprintf(out, n, "%s", stored);
+    return 1;
+}
+static int page_file(const char *house, char *out, int n) {
+    int bound = page_bound_pdl(house, out, n);
+    if (bound < 0) return 0;
+    if (bound > 0) return 1;
+    char users[PATH_BUF];
+    snprintf(users, sizeof(users), "%s/xyzfs/users", house);
+    DIR *d = opendir(users);
+    if (!d) return 0;
+    struct dirent *e;
+    while ((e = readdir(d))) {
+        if (e->d_name[0] == '.') continue;
+        char sess[PATH_BUF], rootpdl[PATH_BUF], active[128];
+        snprintf(sess, sizeof(sess), "%s/%s/home/livedesk/sessions", users, e->d_name);
+        snprintf(rootpdl, sizeof(rootpdl), "%s/session.pdl", sess);
+        if (!read_pdl_value(rootpdl, "active_session", active, sizeof(active))) continue;
+        char sp[PATH_BUF], desk[128];
+        snprintf(sp, sizeof(sp), "%s/%s/session.pdl", sess, active);
+        if (!read_pdl_value(sp, "active_desk", desk, sizeof(desk))) continue;
+        snprintf(out, n, "%s/%s/desks/%s.pdl", sess, active, desk);
+        closedir(d);
+        return 1;
+    }
+    closedir(d);
+    return 0;
+}
+static void read_page_rows(const char *pdl, int cur_z) {
+    FILE *f = host_fopen(pdl, "r");
+    if (!f) return;
+    char line[MAX_LINE];
+    while (g_nent < MAX_ENT && fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "DESK", 4) != 0) continue;
+        char *fld[8];
+        int nf = 0;
+        char *p = line;
+        while (nf < 8 && (p = strchr(p, '|'))) {
+            p++;
+            fld[nf++] = p;
+        }
+        if (nf < 6) continue;
+        for (int i = 0; i < nf; i++) {
+            char *bar = strchr(fld[i], '|');
+            if (bar) *bar = '\0';
+            field_trim(fld[i]);
+        }
+        if (!strcmp(fld[0], "hero_01") || !strcmp(fld[0], "tree_small") || !strcmp(fld[0], "chicken")
+            || !strcmp(fld[0], "xelector_01") || !strcmp(fld[0], "camera_01"))
+            continue;
+        int cx = atoi(fld[4]);
+        int cy = atoi(fld[5]);
+        int px = atoi(fld[2]);
+        int py = atoi(fld[3]);
+        if (cx == 0 && cy == 0 && (px >= 40 || py >= 40 || px <= -40 || py <= -40)) {
+            cx = px / 80; cy = py / 80;
+        }
+        Ent *e = &g_ent[g_nent++];
+        memset(e, 0, sizeof(*e));
+        e->x = cx; e->y = cy; e->z = cur_z;
+        e->r = 80; e->g = 200; e->b = 255;
+        if (nf > 6 && fld[6][0] && strcmp(fld[6], ".") != 0)
+            utf8_first_hex(fld[6], e->hex, sizeof(e->hex));
+        if (nf > 1 && fld[1][0] && house_root[0])
+            snprintf(e->spr, sizeof(e->spr), "%s/%s/sprite.csv", house_root, fld[1]);
+    }
+    fclose(f);
+}
+static int page_has_name(const char *pdl, const char *want) {
+    FILE *f = host_fopen(pdl, "r");
+    if (!f) return 0;
+    char line[MAX_LINE], name[64];
+    int found = 0;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "DESK", 4) != 0) continue;
+        char *bar = strchr(line, '|');
+        if (!bar) continue;
+        snprintf(name, sizeof(name), "%s", bar + 1);
+        char *bar2 = strchr(name, '|');
+        if (bar2) *bar2 = '\0';
+        field_trim(name);
+        if (strcmp(name, want) == 0) { found = 1; break; }
+    }
+    fclose(f);
+    return found;
+}
+static void page_append_row(const char *pdl, const char *name, const char *path, int cx, int cy,
+                            const char *glyph, int tail) {
+    FILE *f = host_fopen(pdl, "a");
+    if (!f) return;
+    fprintf(f, "DESK | %s | %s | %d | %d | %d | %d | %s | %d\n",
+            name, path, cx * 80, cy * 80, cx, cy, glyph && glyph[0] ? glyph : ".", tail);
+    fclose(f);
+}
+/* One pass over the old lists. Writes a row only when that name is absent. */
+static void page_seed_sprites(const char *pdl) {
+    char path[PATH_BUF], b[32];
+    int hx = 0, hy = 0;
+    if (page_has_name(pdl, "hero_01")) goto trees;
+    snprintf(path, sizeof(path), "%s/pieces/hero_01/state.txt", focused_root);
+    read_kv_str(path, "pos_x", b, sizeof(b)); if (b[0]) hx = atoi(b);
+    read_kv_str(path, "pos_y", b, sizeof(b)); if (b[0]) hy = atoi(b);
+    page_append_row(pdl, "hero_01", "@.apps/piececraft-hq/pieces/hero_01", hx, hy, ".", 0);
+trees:
+    if (!page_has_name(pdl, "tree_small")) {
+        snprintf(path, sizeof(path), "%s/pieces/world_01/phymoji_entities.txt", focused_root);
+        FILE *f = host_fopen(path, "r");
+        if (f) {
+            char line[128];
+            while (fgets(line, sizeof(line), f)) {
+                char id[64]; int x, y, z;
+                if (sscanf(line, "%63[^,],%d,%d,%d", id, &x, &y, &z) != 4) continue;
+                page_append_row(pdl, id, "@.apps/piececraft-hq/pieces/world_01", x, y, ".", 0);
+            }
+            fclose(f);
+        }
+    }
+    if (!page_has_name(pdl, "chicken")) {
+        snprintf(path, sizeof(path), "%s/pieces/world_01/animals.txt", focused_root);
+        FILE *f = host_fopen(path, "r");
+        if (f) {
+            char line[128];
+            while (fgets(line, sizeof(line), f)) {
+                char id[64]; int x, y, z;
+                if (sscanf(line, "%63[^,],%d,%d,%d", id, &x, &y, &z) != 4) continue;
+                page_append_row(pdl, id, "@.apps/piececraft-hq/pieces/world_01", x, y, ".", z);
+            }
+            fclose(f);
+        }
+    }
+    if (!page_has_name(pdl, "xelector_01")) {
+        int xx = 0, xy = 0, xz = 0;
+        char poss[64] = ".";
+        snprintf(path, sizeof(path), "%s/pieces/xelector_01/state.txt", focused_root);
+        read_kv_str(path, "pos_x", b, sizeof(b)); if (b[0]) xx = atoi(b);
+        read_kv_str(path, "pos_y", b, sizeof(b)); if (b[0]) xy = atoi(b);
+        read_kv_str(path, "pos_z", b, sizeof(b)); if (b[0]) xz = atoi(b);
+        read_kv_str(path, "possessed_id", poss, sizeof(poss));
+        if (!poss[0]) snprintf(poss, sizeof(poss), ".");
+        page_append_row(pdl, "xelector_01", "@.apps/piececraft-hq/pieces/xelector_01", xx, xy, poss, xz);
+    }
+    if (!page_has_name(pdl, "camera_01")) {
+        int mode = 2, yaw = 180, pitch = 6, panx = 0, pany = 0, panz = 0, zl = 0;
+        char g[96];
+        snprintf(path, sizeof(path), "%s/pieces/system/bv_state.txt", project_root);
+        read_kv_str(path, "camera_mode", b, sizeof(b)); if (b[0]) mode = atoi(b);
+        read_kv_str(path, "cam_yaw", b, sizeof(b)); if (b[0]) yaw = atoi(b);
+        read_kv_str(path, "cam_pitch", b, sizeof(b)); if (b[0]) pitch = atoi(b);
+        read_kv_str(path, "cam_pan_x", b, sizeof(b)); if (b[0]) panx = atoi(b);
+        read_kv_str(path, "cam_pan_y", b, sizeof(b)); if (b[0]) pany = atoi(b);
+        read_kv_str(path, "cam_pan_z", b, sizeof(b)); if (b[0]) panz = atoi(b);
+        read_kv_str(path, "cam_z_level", b, sizeof(b)); if (b[0]) zl = atoi(b);
+        snprintf(g, sizeof(g), "m=%d,y=%d,p=%d,z=%d,h=%d", mode, yaw, pitch, panz, zl);
+        page_append_row(pdl, "camera_01", "@.apps/piececraft-hq/pieces/display", panx, pany, g, 0);
+    }
+}
+static int page_named_cells(const char *house, const char *want, int *xs, int *ys, int max) {
+    char pdl[PATH_BUF];
+    int n = 0;
+    if (!house || !house[0] || !page_file(house, pdl, sizeof(pdl))) return 0;
+    FILE *f = host_fopen(pdl, "r");
+    if (!f) return 0;
+    char line[MAX_LINE];
+    while (n < max && fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "DESK", 4) != 0) continue;
+        char *fld[8];
+        int nf = 0;
+        char *p = line;
+        while (nf < 8 && (p = strchr(p, '|'))) { p++; fld[nf++] = p; }
+        if (nf < 6) continue;
+        for (int i = 0; i < nf; i++) {
+            char *bar = strchr(fld[i], '|');
+            if (bar) *bar = '\0';
+            field_trim(fld[i]);
+        }
+        if (strcmp(fld[0], want) != 0) continue;
+        int cx = atoi(fld[4]), cy = atoi(fld[5]);
+        int px = atoi(fld[2]), py = atoi(fld[3]);
+        if (cx == 0 && cy == 0 && (px >= 40 || py >= 40 || px <= -40 || py <= -40)) {
+            cx = px / 80; cy = py / 80;
+        }
+        xs[n] = cx; ys[n] = cy; n++;
+    }
+    fclose(f);
+    return n;
+}
+/* glyph is field 7 (possessed id, or the camera's m,y,p,z,h pack).
+ * tail is field 8 (xelector z). */
+static int page_row_meta(const char *house, const char *want, int *cx, int *cy,
+                         char *glyph, int glen, int *tail) {
+    char pdl[PATH_BUF];
+    if (!house || !house[0] || !page_file(house, pdl, sizeof(pdl))) return 0;
+    FILE *f = host_fopen(pdl, "r");
+    if (!f) return 0;
+    char line[MAX_LINE];
+    int found = 0;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "DESK", 4) != 0) continue;
+        char *fld[8];
+        int nf = 0;
+        char *p = line;
+        while (nf < 8 && (p = strchr(p, '|'))) { p++; fld[nf++] = p; }
+        if (nf < 6) continue;
+        for (int i = 0; i < nf; i++) {
+            char *bar = strchr(fld[i], '|');
+            if (bar) *bar = '\0';
+            field_trim(fld[i]);
+        }
+        if (strcmp(fld[0], want) != 0) continue;
+        *cx = atoi(fld[4]); *cy = atoi(fld[5]);
+        if (glyph && glen > 0) snprintf(glyph, glen, "%s", nf > 6 ? fld[6] : ".");
+        if (tail) *tail = nf > 7 ? atoi(fld[7]) : 0;
+        found = 1;
+        break;
+    }
+    fclose(f);
+    return found;
+}
 static void load_actors(int cur_z) {
-    /* hero */
-    char p[PATH_BUF], b[32];
-    snprintf(p, sizeof(p), "%s/pieces/hero_01/state.txt", focused_root);
-    int hx = -1, hy = -1, hz = -999;
-    read_kv_str(p, "pos_x", b, sizeof(b)); if (b[0]) hx = atoi(b);
-    read_kv_str(p, "pos_y", b, sizeof(b)); if (b[0]) hy = atoi(b);
-    read_kv_str(p, "pos_z", b, sizeof(b)); if (b[0]) hz = atoi(b);
-    if (hx >= 0 && hy >= 0 && actor_on_z(hz, cur_z)) add_actor("hero_humanoid", hx, hy, hz);
-    /* world props + animals (same "id,x,y,z" shape as bv_compose_frame) */
-    load_actor_list("pieces/world_01/phymoji_entities.txt", cur_z);
-    load_actor_list("pieces/world_01/animals.txt", cur_z);
+    char pdl[PATH_BUF], bound[PATH_BUF];
+    /* A desk page is the whole list. Missing tree_small / chicken
+     * means they left with the old book. Do not seed them back in,
+     * and do not read the private txt files. */
+    int desk_page = house_root[0] && page_bound_pdl(house_root, bound, sizeof(bound)) > 0;
+    if (!desk_page && house_root[0] && page_file(house_root, pdl, sizeof(pdl)))
+        page_seed_sprites(pdl);
+    int xs[16], ys[16], n = 0;
+    if (!desk_page) n = page_named_cells(house_root, "hero_01", xs, ys, 16);
+    if (n > 0) add_actor("hero_humanoid", xs[0], ys[0], cur_z);
+    else if (!desk_page) {
+        char p[PATH_BUF], b[32];
+        snprintf(p, sizeof(p), "%s/pieces/hero_01/state.txt", focused_root);
+        int hx = -1, hy = -1, hz = -999;
+        read_kv_str(p, "pos_x", b, sizeof(b)); if (b[0]) hx = atoi(b);
+        read_kv_str(p, "pos_y", b, sizeof(b)); if (b[0]) hy = atoi(b);
+        read_kv_str(p, "pos_z", b, sizeof(b)); if (b[0]) hz = atoi(b);
+        if (hx >= 0 && hy >= 0 && actor_on_z(hz, cur_z)) add_actor("hero_humanoid", hx, hy, hz);
+    }
+    n = 0;
+    if (!desk_page) n = page_named_cells(house_root, "tree_small", xs, ys, 16);
+    if (n > 0) { for (int i = 0; i < n; i++) add_actor("tree_small", xs[i], ys[i], cur_z); }
+    else if (!desk_page) load_actor_list("pieces/world_01/phymoji_entities.txt", cur_z);
+    n = 0;
+    if (!desk_page) n = page_named_cells(house_root, "chicken", xs, ys, 16);
+    if (n > 0) { for (int i = 0; i < n; i++) add_actor("chicken", xs[i], ys[i], cur_z); }
+    else if (!desk_page) load_actor_list("pieces/world_01/animals.txt", cur_z);
+    /* Livedesk page file, read every frame. The desk writes the row
+     * when a pal moves. Cyan square. hero_01, tree_small, and chicken
+     * are rows too, drawn above as their own sprites. */
+    if (house_root[0] && page_file(house_root, pdl, sizeof(pdl)))
+        read_page_rows(pdl, cur_z);
 }
 
 /* ---- board glyphs (one z-slice) ---- */
@@ -464,8 +816,24 @@ int main(void) {
     g_any_z = side_mode;
     load_actors(cur_z);          /* hero_01 + world_01 animals - all heights in side_mode, this z-slice otherwise */
     int side_zcount = 0;
-    if (side_mode) load_side_board(fixed_row, &side_zcount);
-    else           load_board(cur_z);
+    char bound_pdl[PATH_BUF];
+    int desk_page = house_root[0] && page_bound_pdl(house_root, bound_pdl, sizeof(bound_pdl)) > 0;
+    if (desk_page) {
+        /* The desk page is the map. The piececraft chunk (grass, rock)
+         * stays out. A 16x16 floor keeps pals off the void without
+         * filling the view. source=board brings the chunk back. */
+        memset(g_board, 0, sizeof(g_board));
+        g_bw = 16;
+        g_bh = 16;
+        for (int y = 0; y < 16; y++)
+            for (int x = 0; x < 16; x++)
+                g_board[y][x] = '.';
+        side_zcount = 1;
+    } else if (side_mode) {
+        load_side_board(fixed_row, &side_zcount);
+    } else {
+        load_board(cur_z);
+    }
 
     /* Empty / not-yet-generated board -> still show a grid so `0` isn't blank. */
     int bw = g_bw > 0 ? g_bw : 20;
@@ -514,6 +882,12 @@ int main(void) {
     int oy = (side_mode || sel_y < 0) ? (bh / 2 - rows / 2) : (sel_y - rows / 2);
     if (bw > cols) { if (ox < 0) ox = 0; if (ox > bw - cols) ox = bw - cols; } else ox = -(cols - bw) / 2;
     if (bh > rows) { if (oy < 0) oy = 0; if (oy > bh - rows) oy = bh - rows; } else oy = -(rows - bh) / 2;
+    {
+        char vp[PATH_BUF];
+        snprintf(vp, sizeof(vp), "%s/pieces/display/view_map.txt", project_root);
+        FILE *vf = host_fopen(vp, "w");
+        if (vf) { fprintf(vf, "ox=%d\noy=%d\ncell=%d\nW=%d\nH=%d\n", ox, oy, cell, W, H); fclose(vf); }
+    }
 
     unsigned char *px = calloc((size_t)W * H, 4);
     if (!px) return 1;
@@ -606,6 +980,8 @@ int main(void) {
         const unsigned char *e16 = g_ent[i].hex[0] ? load_emoji16(g_ent[i].hex) : NULL;
         if (e16) {
             blit_emoji(px, W, scx*cell, scy*cell, cell, e16);
+        } else if (g_ent[i].spr[0] && blit_sprite_csv(px, W, scx*cell, scy*cell, cell, g_ent[i].spr)) {
+            /* pal sprite.csv, the picture the desk already shows */
         } else {
             int m = cell / 5;
             for (int yy = m; yy < cell - m; yy++)
@@ -649,6 +1025,168 @@ int main(void) {
                         unsigned char *cc = VP_PXR(x0 + cell - 1 - t - xx, y);
                         a[0]=xr; a[1]=xg; a[2]=xb; a[3]=255; cc[0]=xr; cc[1]=xg; cc[2]=xb; cc[3]=255;
                     }
+            }
+        }
+    }
+
+    /* Yellow wire on the xelector's cell. Possessing an entity
+     * puts the xelector on that entity's cell. */
+    {
+        int hx = -1, hy = -1, hz = 0;
+        char glyph[64] = "";
+        if (!page_row_meta(house_root, "xelector_01", &hx, &hy, glyph, sizeof(glyph), &hz)) {
+            char hpath[PATH_BUF], b[32];
+            snprintf(hpath, sizeof(hpath), "%s/pieces/xelector_01/state.txt", focused_root);
+            read_kv_str(hpath, "pos_x", b, sizeof(b)); if (b[0]) hx = atoi(b);
+            read_kv_str(hpath, "pos_y", b, sizeof(b)); if (b[0]) hy = atoi(b);
+            read_kv_str(hpath, "pos_z", b, sizeof(b)); if (b[0]) hz = atoi(b);
+            read_kv_str(hpath, "possessed_id", glyph, sizeof(glyph));
+        }
+        if (glyph[0] && strcmp(glyph, ".") != 0) {
+            int pxs[4], pys[4];
+            if (page_named_cells(house_root, glyph, pxs, pys, 4) > 0) {
+                hx = pxs[0]; hy = pys[0];
+            }
+        }
+        if (hx >= 0 && hy >= 0) {
+            int scx, scy;
+            if (side_mode) {
+                scx = hx - ox;
+                scy = (side_zcount - 1 - hz) - oy;
+            } else {
+                scx = hx - ox;
+                scy = hy - oy;
+            }
+            if (scx >= 0 && scy >= 0 && scx < cols && scy < rows) {
+                int x0 = scx * cell, y0 = scy * cell;
+                for (int t = 0; t < 3; t++) {
+                    for (int x = x0; x < x0 + cell && x < W; x++) {
+                        unsigned char *a = VP_PXR(x, y0 + t);
+                        unsigned char *b = VP_PXR(x, y0 + cell - 1 - t);
+                        a[0]=255; a[1]=220; a[2]=40; a[3]=255;
+                        b[0]=255; b[1]=220; b[2]=40; b[3]=255;
+                    }
+                    for (int y = y0; y < y0 + cell && y < H; y++) {
+                        unsigned char *a = VP_PXR(x0 + t, y);
+                        unsigned char *b = VP_PXR(x0 + cell - 1 - t, y);
+                        a[0]=255; a[1]=220; a[2]=40; a[3]=255;
+                        b[0]=255; b[1]=220; b[2]=40; b[3]=255;
+                    }
+                }
+            }
+        }
+        /* Desk diamond: the same '#' file, one tile per '#', on the hero. */
+        if (hx >= 0 && hy >= 0) {
+            char mp[PATH_BUF];
+            snprintf(mp, sizeof(mp), "%s/pieces/display/move_range_matrix.txt", project_root);
+            FILE *mf = host_fopen(mp, "r");
+            if (mf) {
+                char rows[16][64];
+                int nr = 0, nc = 0;
+                while (nr < 16 && fgets(rows[nr], sizeof(rows[nr]), mf)) {
+                    rows[nr][strcspn(rows[nr], "\r\n")] = 0;
+                    if ((int)strlen(rows[nr]) > nc) nc = (int)strlen(rows[nr]);
+                    nr++;
+                }
+                fclose(mf);
+                int cx0 = nc / 2, cy0 = nr / 2;
+                for (int row = 0; row < nr; row++) {
+                    for (int col = 0; col < nc && rows[row][col]; col++) {
+                        if (rows[row][col] != '#') continue;
+                        int scx = (hx + col - cx0) - ox;
+                        int scy = side_mode ? ((side_zcount - 1 - hz) - oy) : ((hy + row - cy0) - oy);
+                        if (scx < 0 || scy < 0 || scx >= cols || scy >= rows) continue;
+                        int x0 = scx * cell, y0 = scy * cell;
+                        for (int t = 0; t < 2; t++) {
+                            for (int x = x0; x < x0 + cell && x < W; x++) {
+                                unsigned char *a = VP_PXR(x, y0 + t);
+                                unsigned char *b = VP_PXR(x, y0 + cell - 1 - t);
+                                a[0]=255; a[1]=220; a[2]=40; a[3]=255;
+                                b[0]=255; b[1]=220; b[2]=40; b[3]=255;
+                            }
+                            for (int y = y0; y < y0 + cell && y < H; y++) {
+                                unsigned char *a = VP_PXR(x0 + t, y);
+                                unsigned char *b = VP_PXR(x0 + cell - 1 - t, y);
+                                a[0]=255; a[1]=220; a[2]=40; a[3]=255;
+                                b[0]=255; b[1]=220; b[2]=40; b[3]=255;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        char cpath[PATH_BUF], seenp[PATH_BUF];
+        snprintf(cpath, sizeof(cpath), "%s/#.desktop/pchq_canvas_click.txt", house_root);
+        snprintf(seenp, sizeof(seenp), "%s/pieces/display/click_2d.seen", project_root);
+        FILE *cf = host_fopen(cpath, "r");
+        int cx = 0, cy = 0, cw = 0, ch = 0;
+        if (cf && fscanf(cf, "%d %d %d %d", &cx, &cy, &cw, &ch) == 4 && cw > 0 && ch > 0) {
+            char stamp[64], prev[64] = "";
+            snprintf(stamp, sizeof(stamp), "%d %d %d %d", cx, cy, cw, ch);
+            FILE *sf = host_fopen(seenp, "r");
+            if (sf) { if (fgets(prev, sizeof(prev), sf)) prev[strcspn(prev, "\r\n")] = 0; fclose(sf); }
+            if (strcmp(prev, stamp) != 0) {
+                int px = cx * W / cw, py = cy * H / ch;
+                int scx = px / cell, scy = py / cell;
+                if (scx >= 0 && scy >= 0 && scx < cols && scy < rows) {
+                    int bx = ox + scx;
+                    int by = side_mode ? hy : (oy + scy);
+                    int bz = side_mode ? (side_zcount - 1 - (oy + scy)) : cur_z;
+                    char pp[PATH_BUF];
+                    snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
+                    FILE *pf = host_fopen(pp, "w");
+                    if (pf) { fprintf(pf, "armed=1\nx=%d\ny=%d\nz=%d\n", bx, by, bz); fclose(pf); }
+                    time_t now = time(NULL);
+                    struct tm tmv; localtime_r(&now, &tmv);
+                    snprintf(pp, sizeof(pp), "%s/pieces/display/click_hud.txt", focused_root);
+                    pf = host_fopen(pp, "w");
+                    if (pf) {
+                        fprintf(pf, "pos=%d,%d,%d\ntime=%02d:%02d:%02d\n",
+                                bx, by, bz, tmv.tm_hour, tmv.tm_min, tmv.tm_sec);
+                        fclose(pf);
+                    }
+                }
+                sf = host_fopen(seenp, "w");
+                if (sf) { fputs(stamp, sf); fclose(sf); }
+            }
+        }
+        if (cf) fclose(cf);
+        /* Green selector tile, one cell, same file the 3D view reads. */
+        {
+            char pp[PATH_BUF];
+            snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
+            FILE *pf = host_fopen(pp, "r");
+            int armed = 0, sx = 0, sy = 0, sz = 0;
+            if (pf) {
+                char line[64];
+                while (fgets(line, sizeof(line), pf)) {
+                    if (strncmp(line, "armed=", 6) == 0) armed = atoi(line + 6);
+                    else if (strncmp(line, "x=", 2) == 0) sx = atoi(line + 2);
+                    else if (strncmp(line, "y=", 2) == 0) sy = atoi(line + 2);
+                    else if (strncmp(line, "z=", 2) == 0) sz = atoi(line + 2);
+                }
+                fclose(pf);
+            }
+            if (armed) {
+                int scx = sx - ox;
+                int scy = side_mode ? ((side_zcount - 1 - sz) - oy) : (sy - oy);
+                if (scx >= 0 && scy >= 0 && scx < cols && scy < rows) {
+                    int bx0 = scx * cell, by0 = scy * cell;
+                    for (int t = 0; t < 3; t++) {
+                        for (int x = bx0; x < bx0 + cell && x < W; x++) {
+                            unsigned char *a = VP_PXR(x, by0 + t);
+                            unsigned char *b = VP_PXR(x, by0 + cell - 1 - t);
+                            a[0]=40; a[1]=255; a[2]=80; a[3]=255;
+                            b[0]=40; b[1]=255; b[2]=80; b[3]=255;
+                        }
+                        for (int y = by0; y < by0 + cell && y < H; y++) {
+                            unsigned char *a = VP_PXR(bx0 + t, y);
+                            unsigned char *b = VP_PXR(bx0 + cell - 1 - t, y);
+                            a[0]=40; a[1]=255; a[2]=80; a[3]=255;
+                            b[0]=40; b[1]=255; b[2]=80; b[3]=255;
+                        }
+                    }
+                }
             }
         }
     }

@@ -16,7 +16,7 @@ The "Missing Heart" of WSR must be implemented as standalone TPM Ops.
 ## 🟧 PHASE 2: PIECE MIGRATION
 Convert old WSR data structures into TPM Pieces.
 - [ ] **Corporation Template:** Define `lsr/pieces/world/lunar/corp_template/piece.pdl`.
-- [ ] **Mass Import:** Script the conversion of corporations from `Mar$.$treetRace]Q]k32]4K/corporations/generated/` to `lsr/pieces/world/lunar/`.
+- [ ] **Mass Import:** Script the conversion of corporations from `yz.muchiverse/MarS.StreetRace.wsr]Q]k32/corporations/generated/` to `lsr/pieces/world/lunar/`. (Was written against a `Mar$.$treetRace]Q]k32]4K/` name that no longer exists anywhere in the house; corrected 2026-09-26 to the folder's real, current name.)
 - [ ] **Government Mirror:** Create `state.txt` for the "Lunar Authority" in `lsr/pieces/world/lunar/gov/`.
 
 ## 🟨 PHASE 3: THE MANAGER (EXO-BOT)

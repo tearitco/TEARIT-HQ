@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <limits.h>
+#include <dirent.h>
 
 #ifndef PATH_MAX
 #define PATH_MAX 4096
@@ -59,11 +60,68 @@ static int read_pdl_opt(const char *path, const char *name, int def) {
     return v;
 }
 
-/* MILESTONE C - append entities-bar rows for the <footer> from
- * world_01/{animals,phymoji_entities}.txt + hero_01. host_app_root =
- * "<house>/@.apps/<host>". Capped at 16. */
-static size_t emit_entities(char *ui, size_t off, const char *host_app_root, int on) {
+static void read_kv(const char *path, const char *key, char *out, size_t outsz);
+
+/* Footer rows from the synch pin's pdl= while source=desk (or an older
+ * pin that still has pdl=). A later livedesk page change does not
+ * move this strip. source=board means the board picked its own map:
+ * return -1 so the private lists are the strip. One "map" row stands
+ * for the solid floor. tree_small stays off this bar. */
+static int emit_page_entities(char *ui, size_t *off, const char *house, const char *host_app_root) {
+    char ob[PATH_MAX], pdl[PATH_MAX], source[32] = "";
+    snprintf(ob, sizeof(ob), "%s/pieces/display/open_book_page.txt", host_app_root);
+    read_kv(ob, "source", source, sizeof(source));
+    read_kv(ob, "pdl", pdl, sizeof(pdl));
+    if (!strcmp(source, "board")) return -1;
+    if (strcmp(source, "desk") != 0 && !pdl[0]) return -1;
+    (void)house;
+    FILE *f = fopen(pdl, "r");
+    if (!f) return -1;
     int n = 0;
+    *off += (size_t)snprintf(ui + *off, UIBUF - *off,
+        "ent_0_label=map\nent_0_id=map\nent_0_kind=page\n"
+        "ent_0_x=0\nent_0_y=0\nent_0_z=0\n");
+    n = 1;
+    char line[512];
+    while (n < 24 && fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "DESK", 4) != 0) continue;
+        char name[64], path[256], glyph[64];
+        int px, py, cx, cy, tail;
+        if (sscanf(line, "DESK | %63[^|] | %255[^|] | %d | %d | %d | %d | %63[^|] | %d",
+                   name, path, &px, &py, &cx, &cy, glyph, &tail) != 8) continue;
+        char *e = name + strlen(name);
+        while (e > name && (e[-1] == ' ' || e[-1] == '\t')) *--e = '\0';
+        if (!strcmp(name, "camera_01") || !strcmp(name, "tree_small")
+            || !strcmp(name, "chicken") || !strcmp(name, "hero_01")
+            || !strcmp(name, "xelector_01")) continue;
+        if (cx == 0 && cy == 0 && (px >= 40 || py >= 40 || px <= -40 || py <= -40)) {
+            cx = px / 80; cy = py / 80;
+        }
+        int z = 0;
+        if (!strcmp(name, "hero_01") || !strcmp(name, "tree_small")
+            || !strcmp(name, "chicken") || !strcmp(name, "xelector_01"))
+            z = tail;
+        *off += (size_t)snprintf(ui + *off, UIBUF - *off,
+            "ent_%d_label=%s\nent_%d_id=%s\nent_%d_kind=page\n"
+            "ent_%d_x=%d\nent_%d_y=%d\nent_%d_z=%d\n",
+            n, name, n, name, n, n, cx, n, cy, n, z);
+        n++;
+    }
+    fclose(f);
+    return n;
+}
+
+/* MILESTONE C - append entities-bar rows for the <footer>.
+ * The open desk page wins. The private hero/animal lists are only
+ * the fallback when no page file is bound. Capped at 16. */
+static size_t emit_entities(char *ui, size_t off, const char *house, const char *host_app_root, int on) {
+    int n = emit_page_entities(ui, &off, house, host_app_root);
+    if (n >= 0) {
+        off += (size_t)snprintf(ui + off, UIBUF - off,
+            "n_ent=%d\nentities_bar_on=%s\n", n, on ? "1" : "");
+        return off;
+    }
+    n = 0;
     char hp[PATH_MAX];
     snprintf(hp, sizeof(hp), "%s/pieces/hero_01/state.txt", host_app_root);
     FILE *hf = fopen(hp, "r");
@@ -125,6 +183,48 @@ static void read_kv(const char *path, const char *key, char *out, size_t outsz) 
         }
     }
     fclose(f);
+}
+
+/* REAL, NEW 2026-09-29, direct live report ("well its cause i minimized
+ * the window, but for long game sessions that needs to be chill" ->
+ * "yes no need to render if minimized, also we will keep game logic
+ * alive, unless minimize-pauses-game is set"). khtpm_core_render.c's
+ * own MINIMIZE handler already publishes "minimized=1|0" as one field
+ * of a pipe-joined single-line record in
+ * #.desktop/livedesk_hq_windows_<renderer_pid>.txt (NOT the newline-
+ * separated key=value shape read_kv() parses - it's one line, several
+ * "|key=val|" fields) - that's the ONLY existing, already-real signal
+ * that this specific board window is minimized. This process is
+ * fork()ed directly by khtpm_core_render.c's launch_module() (no
+ * setsid in between), so getppid() here IS that renderer's own pid for
+ * as long as both are alive - the exact same assumption
+ * dock_poll_strip_state()-style per-pid registry lookups already make
+ * elsewhere in this house. Propagated into the live board-viewer
+ * session (not read directly by bv_dispatch.+x, which has no reason to
+ * know about khtpm registries) as a plain "1"/"0" file - see
+ * bv_dispatch.c's own read of it for the render-skip/pause logic. */
+static int renderer_says_minimized(const char *house) {
+    char path[PATH_MAX];
+    snprintf(path, sizeof(path), "%s/#.desktop/livedesk_hq_windows_%d.txt", house, (int)getppid());
+    FILE *f = fopen(path, "r");
+    if (!f) return 0;
+    char line[1024];
+    int minimized = 0;
+    if (fgets(line, sizeof(line), f)) {
+        if (strstr(line, "|minimized=1|")) minimized = 1;
+    }
+    fclose(f);
+    return minimized;
+}
+static void write_window_minimized_flag(const char *bv_session, int minimized) {
+    char path[PATH_MAX], tmp[PATH_MAX];
+    snprintf(path, sizeof(path), "%s/pieces/display/window_minimized.txt", bv_session);
+    snprintf(tmp, sizeof(tmp), "%s.tmp", path);
+    FILE *f = fopen(tmp, "w");
+    if (!f) return;
+    fprintf(f, "%d\n", minimized ? 1 : 0);
+    fclose(f);
+    rename(tmp, path);
 }
 
 /* game.pdl uses "SECTION | KEY | VALUE" pipe columns, not KEY=VALUE -
@@ -298,6 +398,7 @@ int main(int argc, char **argv) {
 
         char raw[PATH_MAX] = "", typing[PATH_MAX] = "", h1[PATH_MAX] = "", h2[PATH_MAX] = "";
         if (have) {
+            write_window_minimized_flag(bv, renderer_says_minimized(house));
             /* Pick the canvas source by render_mode (bv_state.txt):
              *   render_mode==1 -> rgb_frame_3d_overlay.raw  (bv_render_3d
              *       raymarch, no chrome - the khtpm window draws its own
@@ -416,7 +517,14 @@ int main(int argc, char **argv) {
             read_pdl_kv(game_pdl, k_id, d_id, sizeof(d_id));
             read_pdl_kv(game_pdl, k_lbl, d_lbl, sizeof(d_lbl));
             if (!d_id[0]) snprintf(d_id, sizeof(d_id), "desk%d", di);
-            if (!d_lbl[0]) snprintf(d_lbl, sizeof(d_lbl), "Desk %d", di);
+            /* REAL FIX 2026-09-30, direct instruction ("FILE:DESK tb
+             * headers are old before BOOK PAGE RENAME"): default
+             * fallback label only, when game.pdl gives no desk_N_label
+             * of its own - d_id/desk_N_id/the "desk" key names
+             * themselves stay as-is, same precedent as everywhere else
+             * this rename touches (khtpm_taskbar_manager.c, the two
+             * pchq-board*.xhtpm tab labels). */
+            if (!d_lbl[0]) snprintf(d_lbl, sizeof(d_lbl), "Page %d", di);
             if (strcmp(d_id, active_desk_id) == 0)
                 snprintf(cur_desk_label, sizeof(cur_desk_label), "%s", d_lbl);
         }
@@ -468,16 +576,56 @@ int main(int argc, char **argv) {
         char player_label[32];
         snprintf(player_label, sizeof(player_label), "Player: %s",
                  strcmp(pm_mode, "on") == 0 ? "ON" : "OFF");
+        char book_label[80], page_label[80];
+        char own_page[64];
+        snprintf(own_page, sizeof(own_page), "%s",
+                 cur_desk_label[0] ? cur_desk_label : active_desk_id);
+        /* The board's own map and desk, even after Synch retargets the
+         * labels. Taskbar Synch reads this to know which pc-hq was open. */
+        {
+            char lastp[PATH_MAX];
+            snprintf(lastp, sizeof(lastp), "%s/#.desktop/last_pchq_book_page.txt", house);
+            FILE *lf = fopen(lastp, "w");
+            if (lf) {
+                fprintf(lf, "book=%s\npage=%s\n", proj_id, own_page);
+                fclose(lf);
+            }
+        }
+        snprintf(book_label, sizeof(book_label), "book:%s", proj_id);
+        snprintf(page_label, sizeof(page_label), "page:%s", own_page);
+        /* Player > Synch writes this from the same session.pdl the
+         * taskbar reads. While it exists, both bars show one book and page. */
+        {
+            char ob[PATH_MAX], ob_book[80] = "", ob_page[80] = "";
+            snprintf(ob, sizeof(ob),
+                     "%s/@.apps/%s/pieces/display/open_book_page.txt", house, host_id);
+            read_kv(ob, "book", ob_book, sizeof(ob_book));
+            read_kv(ob, "page", ob_page, sizeof(ob_page));
+            char ob_src[32] = "";
+            read_kv(ob, "source", ob_src, sizeof(ob_src));
+            /* source=board is a later pick inside pc-hq. The name
+             * stays on this board's own map. source=desk shows the
+             * book and page Synch wrote. A later desk switch does
+             * not move them until the next Synch. */
+            if (strcmp(ob_src, "board") != 0 && ob_book[0] && ob_page[0]) {
+                snprintf(book_label, sizeof(book_label), "book:%s", ob_book);
+                snprintf(page_label, sizeof(page_label), "page:%s", ob_page);
+            }
+        }
+        sanitize(book_label);
+        sanitize(page_label);
 
         size_t off = 0;
         off += (size_t)snprintf(ui + off, UIBUF - off,
             "bv_session=%s\ncanvas_raw=%s\nno_session=%s\n"
             "bv_h1=%s\nbv_h2=%s\ninteract_class=%s\ninteract_armed=%d\n"
             "interact_label=%s\nclock=%s\nplayer_label=%s\n"
+            "book_label=%s\npage_label=%s\n"
             "menu_open=%s\nfile_menu_open=%s\ndesk_menu_open=%s\n",
             bv, raw, have ? "" : "1",
             h1, h2, interact ? "interact-active" : "", interact ? 1 : 0,
             interact ? "ON" : "off", clock_s, player_label,
+            book_label, page_label,
             menu_open,
             strcmp(menu_open, "file") == 0 ? "1" : "",
             strcmp(menu_open, "desk") == 0 ? "1" : "");
@@ -523,7 +671,7 @@ int main(int argc, char **argv) {
             read_pdl_kv(game_pdl, k_id, d_id, sizeof(d_id));
             read_pdl_kv(game_pdl, k_lbl, d_lbl, sizeof(d_lbl));
             if (!d_id[0]) snprintf(d_id, sizeof(d_id), "desk%d", di);
-            if (!d_lbl[0]) snprintf(d_lbl, sizeof(d_lbl), "Desk %d", di);
+            if (!d_lbl[0]) snprintf(d_lbl, sizeof(d_lbl), "Page %d", di);
             off += (size_t)snprintf(ui + off, UIBUF - off,
                 "d_%d_id=%s\nd_%d_label=%s\nd_%d_active=%s\n",
                 di - 1, d_id, di - 1, d_lbl, di - 1,
@@ -536,7 +684,7 @@ int main(int argc, char **argv) {
             snprintf(host_app, sizeof(host_app), "%s/@.apps/%s", house, host_id);
             snprintf(pdl, sizeof(pdl), "%s/pieces/system/pchq.pdl", host_app);
             int ebar = read_pdl_opt(pdl, "entities_bar", 0);
-            off = emit_entities(ui, off, host_app, ebar);
+            off = emit_entities(ui, off, house, host_app, ebar);
         }
 
         if (strcmp(ui, last) != 0) {

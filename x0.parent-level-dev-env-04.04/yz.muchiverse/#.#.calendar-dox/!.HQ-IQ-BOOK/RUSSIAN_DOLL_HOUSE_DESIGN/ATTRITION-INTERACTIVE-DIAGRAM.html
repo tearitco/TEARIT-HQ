@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Attrition-Model — House AI Roadmap</title>
+<style>
+  :root {
+    --bg: #0f1419;
+    --card: #1a2332;
+    --border: #2d3a4f;
+    --text: #e7ecf3;
+    --muted: #8b9bb4;
+    --accent: #5b9fd4;
+    --gemma: #c084fc;
+    --code: #34d399;
+    --watch: #fbbf24;
+    --promote: #f472b6;
+    --live: #22d3ee;
+    --danger: #f87171;
+    --ok: #4ade80;
+    --agent: #fb923c;
+    --game: #a3e635;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.55;
+    padding: 1.5rem;
+    max-width: 1300px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.7rem; margin-bottom: 0.3rem; }
+  .subtitle { color: var(--muted); margin-bottom: 1.3rem; font-size: 0.95rem; }
+  h2 { font-size: 1.15rem; margin: 1.8rem 0 0.7rem; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; }
+  h3 { font-size: 1rem; margin: 1rem 0 0.4rem; }
+
+  .name-banner {
+    background: linear-gradient(135deg, #1a2332, #24304a);
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    padding: 1rem 1.3rem;
+    margin-bottom: 1.3rem;
+    font-size: 0.92rem;
+  }
+  .name-banner strong { color: var(--accent); }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    margin: 0.8rem 0 1.2rem;
+    font-size: 0.8rem;
+  }
+  .legend span { display: flex; align-items: center; gap: 0.35rem; }
+  .dot { width: 12px; height: 12px; border-radius: 3px; }
+  .status-legend { display: flex; gap: 1rem; margin: 0.5rem 0 1.3rem; font-size: 0.82rem; flex-wrap: wrap; }
+  .status-legend span { padding: 0.15rem 0.5rem; border-radius: 999px; font-weight: 600; }
+  .real { background: #14532d; color: #86efac; }
+  .designed { background: #713f12; color: #fde68a; }
+  .aspirational { background: #450a0a; color: #fca5a5; }
+
+  /* Umbrella tree */
+  .umbrella {
+    background: var(--card);
+    border: 2px solid var(--accent);
+    border-radius: 14px;
+    padding: 1rem 1.3rem;
+    text-align: center;
+    font-weight: 700;
+    font-size: 1.05rem;
+    margin-bottom: 0.8rem;
+  }
+  .branches {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin: 0.8rem 0 1.5rem;
+  }
+  .stage {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    min-width: 150px;
+    flex: 1 1 150px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .stage:hover, .stage.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(91,159,212,0.25);
+    transform: translateY(-2px);
+  }
+  .stage .label { font-weight: 700; font-size: 0.85rem; margin-bottom: 0.25rem; }
+  .stage .who { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .stage .badge-mini { display: inline-block; font-size: 0.65rem; padding: 0.1rem 0.4rem; border-radius: 999px; margin-top: 0.35rem; font-weight: 700; }
+  .stage.tearit { border-left: 4px solid var(--gemma); }
+  .stage.bank { border-left: 4px solid var(--code); }
+  .stage.tomom { border-left: 4px solid var(--watch); }
+  .stage.openrouter { border-left: 4px solid var(--live); }
+  .stage.hierarchy { border-left: 4px solid var(--agent); }
+  .stage.game { border-left: 4px solid var(--game); }
+
+  .detail {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.2rem 1.4rem;
+    margin-bottom: 1.5rem;
+    display: none;
+  }
+  .detail.visible { display: block; }
+  .detail h3 { margin-top: 0; color: var(--accent); }
+  .io { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.8rem; }
+  @media (max-width: 700px) { .io, .compare { grid-template-columns: 1fr; } }
+  .io-box {
+    background: #0d1117;
+    border-radius: 8px;
+    padding: 0.8rem;
+    font-family: ui-monospace, 'Cascadia Code', monospace;
+    font-size: 0.78rem;
+    white-space: pre-wrap;
+    border: 1px solid var(--border);
+  }
+  .io-box .tag { display: inline-block; font-size: 0.65rem; padding: 0.1rem 0.4rem; border-radius: 4px; margin-bottom: 0.4rem; font-weight: 600; }
+  .tag.in { background: #1e3a5f; color: #93c5fd; }
+  .tag.out { background: #14532d; color: #86efac; }
+
+  table { width: 100%; border-collapse: collapse; margin: 0.8rem 0; font-size: 0.85rem; }
+  th, td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.04em; }
+
+  .note {
+    background: #1e293b;
+    border-left: 3px solid var(--watch);
+    padding: 0.7rem 1rem;
+    border-radius: 0 8px 8px 0;
+    font-size: 0.88rem;
+    margin: 1rem 0;
+  }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+  .compare-box { background: #0d1117; border-radius: 10px; padding: 1rem; border: 1px solid var(--border); }
+  .compare-box h4 { margin-top: 0; }
+
+  details {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin: 0.7rem 0;
+    padding: 0.7rem 1rem;
+  }
+  details summary { cursor: pointer; font-weight: 600; color: var(--accent); }
+  details[open] summary { margin-bottom: 0.6rem; }
+  details p, details ul { font-size: 0.9rem; color: var(--muted); }
+  details ul { padding-left: 1.2rem; }
+
+  footer {
+    margin-top: 2.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+
+<h1>🪖⚙️ The Attrition-Model</h1>
+<p class="subtitle">
+  House AI roadmap, visualized — everything nested inside the umbrella term confirmed 2026-09-29.<br>
+  Click any box below to see its real status, blockers, and sources.
+</p>
+
+<div class="name-banner">
+  <strong>The attrition-model</strong> is the umbrella term for the whole effort — a war of attrition,
+  wearing down API/OpenRouter dependence until entities have their own small offline autonomy,
+  sharing trunked intelligence banks. It sounds like both "TEARIT" and "Harnecient" on purpose.
+  Every box below is a piece <strong>inside</strong> it, not a rival name for it.
+</div>
+
+<div class="status-legend">
+  <span class="real">🟢 REAL — built, verified</span>
+  <span class="designed">🟡 DESIGNED — doc exists, nothing runs</span>
+  <span class="aspirational">🔴 ASPIRATIONAL — neither exists yet</span>
+</div>
+
+<div class="umbrella">🪖 THE ATTRITION-MODEL — confirmed 2026-09-29</div>
+
+<div class="branches" id="pipeline">
+  <div class="stage tearit" data-id="tearit">
+    <div class="label">🧠 A TEARIT</div>
+    <div class="who">the learning spec/loop</div>
+    <div class="badge-mini real">🟢 describe real</div>
+  </div>
+  <div class="stage bank" data-id="bank">
+    <div class="label">📚 Concept Bank</div>
+    <div class="who">data layer</div>
+    <div class="badge-mini real">🟢 real, narrow</div>
+  </div>
+  <div class="stage tomom" data-id="tomom">
+    <div class="label">🐾 tomom</div>
+    <div class="who">local learner</div>
+    <div class="badge-mini designed">🟡 dormant</div>
+  </div>
+  <div class="stage tearit" data-id="fsmgoap">
+    <div class="label">🔀 FSM + GOAP</div>
+    <div class="who">decision layer</div>
+    <div class="badge-mini real">🟢 FSM real</div>
+  </div>
+  <div class="stage openrouter" data-id="openrouter">
+    <div class="label">🤝 OpenRouter Workers</div>
+    <div class="who">via open-hai</div>
+    <div class="badge-mini real">🟢 real, limited</div>
+  </div>
+  <div class="stage hierarchy" data-id="hierarchy">
+    <div class="label">🏛️ Agent Hierarchy</div>
+    <div class="who">boss→managers→workers→students</div>
+    <div class="badge-mini designed">🟡 pieces exist</div>
+  </div>
+  <div class="stage game" data-id="game">
+    <div class="label">🎮 Game Testbeds</div>
+    <div class="who">civ/DSR/teru/piececraft</div>
+    <div class="badge-mini aspirational">🔴 mostly unbuilt</div>
+  </div>
+</div>
+
+<!-- DETAIL PANELS -->
+<div id="detail-tearit" class="detail">
+  <h3>🧠 A TEARIT — the learning spec inside the attrition-model</h3>
+  <p>House law: <strong>DESCRIBE, never CLASSIFY</strong>. No model ever sets a weight number or flips live state directly.</p>
+  <table>
+    <tr><th>Stage</th><th>Who</th><th>Status</th></tr>
+    <tr><td>👁️ Watch Layer</td><td>sensors/events</td><td class="real" style="display:inline-block">🟢 real</td></tr>
+    <tr><td>🤖 Gemma DESCRIBE</td><td>gemma3:270m (LAN)</td><td class="real" style="display:inline-block">🟢 verified 2026-09-27</td></tr>
+    <tr><td>🧮 Scorer</td><td>C code</td><td class="real" style="display:inline-block">🟢 real</td></tr>
+    <tr><td>🛡️ Validator</td><td>concept_edit_validate.c</td><td class="designed" style="display:inline-block">🟡 1 of 4 record types</td></tr>
+    <tr><td>📊 Promotion Ledger</td><td>—</td><td class="aspirational" style="display:inline-block">🔴 not built</td></tr>
+    <tr><td>✅ Live State</td><td>Concept Bank + FSM/GOAP</td><td class="aspirational" style="display:inline-block">🔴 waiting on ledger</td></tr>
+  </table>
+  <div class="io">
+    <div class="io-box"><span class="tag in">VERIFIED INPUT (real test)</span>
+Free-form prompt asked Gemma for a
+paragraph + concept list. It hallucinated
+a "thirst" field never present in the
+input, and never produced the requested
+structure. Reproduced on the first real call.</div>
+    <div class="io-box"><span class="tag out">CONSTRAINED FORMAT (works)</span>
+TARGET: hunger | STRENGTH: high |
+REASON: to achieve food scarcity and
+manage hunger.
+(gemma3:270m, real, unedited output)</div>
+  </div>
+  <div class="note">
+    <strong>The honest bottleneck:</strong> there is no way yet to go from "a model proposed an edit" to
+    "the house believes it" — everything dead-ends at <code>pending_review.txt</code> for a human to read.
+    Sequence: more record types → real pending-review volume → THEN promotion automation. Don't guess
+    promotion criteria before there's data to derive them from.
+  </div>
+</div>
+
+<div id="detail-bank" class="detail">
+  <h3>📚 Concept Bank — the data layer A TEARIT reads/writes</h3>
+  <p>Hub-and-spoke weighted concept nodes (<code>&.widgits/concept-bank/data/masters/</code> + <code>spokes/</code>).
+  Every other consumer (tomom's curriculum, FSM transitions, GOAP preconditions) is meant to read from this
+  same bank — one shared vocabulary, not per-feature silos.</p>
+  <p><span class="real" style="padding:0.15rem 0.5rem;border-radius:999px">🟢 REAL, NARROW</span></p>
+</div>
+
+<div id="detail-tomom" class="detail">
+  <h3>🐾 tomom — the local learner, currently dormant</h3>
+  <p><code>#.Z.HUMAN_LLM/3.stage.llm.tomom</code> — a real, hand-built LLM/weight system. Eventually meant to
+  attend to curriculum and the growing Concept Bank so routine work can be proposed by a local model instead
+  of a paid agent.</p>
+  <div class="note">Blocked on the same thing A TEARIT is blocked on: no live promotion loop exists yet for it
+  to learn from. Until that loop is boring and proven, paid agents (Claude, Grok) and humans remain the employees.</div>
+</div>
+
+<div id="detail-fsmgoap" class="detail">
+  <h3>🔀 FSM + GOAP — the decision layer</h3>
+  <p>The model never writes a transition table directly. It only <em>describes</em> a desired transition or
+  action; the real, deterministic events-hq compiler turns that description into an actual event page.</p>
+  <p><code>fsm_transition_describe</code> and <code>goap_action_describe</code> are named future Concept Bank
+  record types — <strong>neither is implemented yet.</strong></p>
+</div>
+
+<div id="detail-openrouter" class="detail">
+  <h3>🤝 OpenRouter Workers — demonstrations, not the runtime</h3>
+  <table>
+    <tr><th>Tool</th><th>Gate</th><th>Status</th></tr>
+    <tr><td>list_dir / read_file</td><td>auto-run, read-only</td><td class="real" style="display:inline-block">🟢 real</td></tr>
+    <tr><td>write_file / edit_file</td><td>stops for human APPROVE, every time</td><td class="real" style="display:inline-block">🟢 real, gated</td></tr>
+    <tr><td>cmd_exec</td><td>not in open-hai's own list; separate surface, same gate</td><td class="real" style="display:inline-block">🟢 real, gated</td></tr>
+  </table>
+  <div class="note">
+    <strong>Honest competency ceiling:</strong> mechanical tool-call reliability is HIGH (verified, 3 models).
+    Reasoning competence is real but lightly tested — exactly one quiz, 2/2 on one model, one question.
+    "Do not generalize it to 'the model is good at code review' yet." Every task should stay small,
+    single-file, and verifiable.
+  </div>
+  <p><strong>Role in the attrition-model:</strong> produce demonstrations (tool traces, hand-tuned bank
+  edits, event-command placements) that IRL can later learn from. Explicitly <strong>not the runtime.</strong>
+  Nothing currently reads those demonstrations back into a training signal.</p>
+</div>
+
+<div id="detail-hierarchy" class="detail">
+  <h3>🏛️ Agent Hierarchy — boss / managers / workers / students</h3>
+  <div class="io-box" style="font-family:inherit;font-size:0.9rem">
+👤 BOSS (the owner) — approves every message in co-lab-hai, every write/cmd_exec
+      ↓
+🧑‍💼 HIGH-AGENTS / MANAGERS (Claude, Grok) — own branches, decide architecture
+      ↓
+🛠️ WORKERS (OpenRouter, via open-hai) — single-file, one-hop, verifiable tasks only
+      ↓
+🎓 STUDENTS (Kilo, Hai, opencode) — promotable to worker/manager, mechanism NOT built yet
+  </div>
+  <p><strong>What's real:</strong> Co-lab-hai is already the boss + high-agent layer (approval-gated, per-agent
+  feeds). Open-hai's delegation channel is already the high-agent → worker layer, same philosophy.
+  Per-tool branches + worktrees are close to "each agent owns a scoped workspace."</p>
+  <p><strong>What's missing:</strong> no permissions layer distinguishes "manager" from "student" — every
+  named agent is currently a peer with equal privileges. Also missing: Claude/Grok have no persistent
+  "embodied" self-storage — no pal holds their own chat-history compactions.</p>
+</div>
+
+<div id="detail-game" class="detail">
+  <h3>🎮 Game-Embodiment Testbeds</h3>
+  <p>Confirmed by Grok's addendum: 2D desk and pc-hq 3D are <strong>the same test, not two AIs</strong> — a
+  mechanic is an event-command brick either way. Both wait on the same unbuilt primitive: per-entity elapsed
+  time, then an event that yields something after that time passes.</p>
+  <table>
+    <tr><th>Testbed</th><th>Status</th><th>Real blocker</th></tr>
+    <tr><td>🌱 civ-test / asa</td><td class="aspirational" style="display:inline-block">🔴 fully unbuilt</td>
+      <td>No survival mechanic exists; no per-entity clock exists anywhere (only a per-world clock in piececraft)</td></tr>
+    <tr><td>🏦 DSR-test</td><td class="designed" style="display:inline-block">🟡 paused</td>
+      <td>Blocked on Cursword's inventory; real 1-corp toy shell already on disk; WSR_PAL-PREFERED already has the dividend/calendar math to port</td></tr>
+    <tr><td>🐣 teru-test</td><td class="aspirational" style="display:inline-block">🔴 new idea</td>
+      <td>Zero prior art — needs a design doc first. <strong>Keeps a body</strong>: 👻 ghost glyph, real pal, custom user-editable GUI (corrected 2026-09-29)</td></tr>
+    <tr><td>⛏️ piececraft-hq</td><td class="designed" style="display:inline-block">🟡 designed in detail</td>
+      <td>Raymarch/camera/voxel-removal work; block placement is the only missing symmetric piece</td></tr>
+  </table>
+</div>
+
+<!-- NEW CATEGORIES -->
+<h2>🆕 Three ideas this thread introduced, not yet fully built</h2>
+<div class="compare">
+  <div class="compare-box">
+    <h4 style="color:var(--game)">"Real" vs "Magic" entity/event — ⚠️ corrected 2026-09-29</h4>
+    <p style="font-size:0.88rem;color:var(--muted)">
+      The house's existing binary is "real" (backed by actual state/process) vs "stub/placeholder" —
+      <strong>not</strong> "physically embodied" vs "magic". New and useful, but corrected: a
+      <strong>real entity</strong> has a full, complex body (walks, collides, occupies desk space);
+      a <strong>magic entity/event</strong> has real state and behavior but a <em>simpler</em> body —
+      <strong>not no body</strong>. Every entity still gets a body; this was only ever about how
+      complex it needs to be. The teru-test babysitter's body is a 👻 ghost glyph plus its own custom,
+      user-editable GUI. See <code>AGENT_ROADMAP_ANSWERS.md</code> §10.
+    </p>
+  </div>
+  <div class="compare-box">
+    <h4 style="color:var(--agent)">BOOK:SYSTEM (proposed)</h4>
+    <p style="font-size:0.88rem;color:var(--muted)">
+      <code>BOOK:PAGE</code> is real and shipped, but every BOOK today is tied to a user login.
+      There's no house-wide, unowned book. Proposed: <strong>BOOK:SYSTEM</strong> — would hold
+      open-hai session pals and Claude/Grok's own self-storage pals under one system-owned book.
+    </p>
+  </div>
+  <div class="compare-box">
+    <h4 style="color:var(--live)">HQ-LAYOUT-STUDIO (new, proposed 2026-09-29)</h4>
+    <p style="font-size:0.88rem;color:var(--muted)">
+      A toy for <strong>visually creating and editing layouts</strong> for custom widgets — the
+      babysitter's dashboard is the first use case, not the only one. Lives as a
+      <strong>sub-entity inside the ☁️ (cloud) entity</strong> from the DSR-test concerns. A layout
+      can <strong>read an existing event page</strong>, or have an <strong>event drag-and-dropped
+      into it as usual</strong> — same convention every other event placement already uses. Needs
+      its own design doc, not started.
+    </p>
+  </div>
+</div>
+
+<details>
+  <summary>Why isn't promotion automated yet, if the validator already works?</summary>
+  <p>Only 1 of 4 EDIT record types (<code>spoke_weight_delta</code>) is implemented. Building
+  auto-promotion on top of a quarter-finished validator, with no real volume of
+  <code>pending_review.txt</code> entries to measure a failure rate from, means designing the
+  promotion criteria from guesses instead of data. The recommended order is: finish the record
+  types → let real review volume accumulate → THEN design promotion from what actually shows up.</p>
+</details>
+
+<details>
+  <summary>Is OpenRouter capable of building DSR's economy, civ-test survival, or the teru-test babysitter?</summary>
+  <p>Not the architecture — those need a human/Claude/Grok to decide the shape first. OpenRouter is a
+  good fit for narrow, already-scoped pieces inside an architecture someone else fixed — e.g. implementing
+  <code>pc_place_voxel.c</code> as the mirror image of the already-working voxel-removal path in
+  piececraft-hq, which is the single best-scoped delegation candidate raised in this whole roadmap.</p>
+</details>
+
+<details>
+  <summary>What's the actual relationship between DSR-test and WSR_PAL-PREFERED?</summary>
+  <p>DSR is a NEW, dystopia-abstraction game with its own front door (castles/banks/stores/hotel).
+  WSR_PAL-PREFERED is a from-scratch rebuild of the OLDER wsr-pal economic sim (bonds/loans/stocks/dividends).
+  They are not the same project — but DSR's economic mechanics are the same math WSR_PAL-PREFERED already
+  built and verified (Phase 1's shareholder registry, cent-exact dividend payouts). When DSR resumes, its
+  manager should call into or port from WSR_PAL-PREFERED's ops rather than re-deriving the math.</p>
+</details>
+
+<footer>
+  Built from A-TEARIT-IS-ALL-YOU-NEED.md, PIPELINE-EMOJI-DIAGRAM-REVISED.md, concept_edit_validate.c,
+  AI-PUSH-ROADMAP-AND-NUANCES.md, OPENROUTER-MODEL-COMPETENCY.md, open-hai-api-delegation-guide.md,
+  BRANCH-STRATEGY.md, WHY-DSR-WSR-PAUSED.md, TEST-GAMES-ROADMAP.md, WSR_PAL-PREFERED/docs/ROADMAP.md,
+  PALCRAFT-DESIGN.md, ROBOT-CHAT-BLUEPRINT.md, and AGENT_ROADMAP_ANSWERS.md §0–9a.<br>
+  Click any box above to inspect its real status and sources. Companion doc: ATTRITION_DIAGRAM.md.
+</footer>
+
+<script>
+  const stages = document.querySelectorAll('.stage');
+  const details = {
+    tearit: document.getElementById('detail-tearit'),
+    bank: document.getElementById('detail-bank'),
+    tomom: document.getElementById('detail-tomom'),
+    fsmgoap: document.getElementById('detail-fsmgoap'),
+    openrouter: document.getElementById('detail-openrouter'),
+    hierarchy: document.getElementById('detail-hierarchy'),
+    game: document.getElementById('detail-game')
+  };
+
+  function hideAll() {
+    Object.values(details).forEach(d => d.classList.remove('visible'));
+    stages.forEach(s => s.classList.remove('active'));
+  }
+
+  stages.forEach(stage => {
+    stage.addEventListener('click', () => {
+      const id = stage.dataset.id;
+      const wasActive = stage.classList.contains('active');
+      hideAll();
+      if (!wasActive) {
+        stage.classList.add('active');
+        details[id].classList.add('visible');
+        details[id].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    });
+  });
+
+  document.querySelector('.stage[data-id="tearit"]').click();
+</script>
+</body>
+</html>

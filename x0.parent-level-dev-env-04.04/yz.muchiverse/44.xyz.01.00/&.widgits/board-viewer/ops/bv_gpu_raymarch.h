@@ -23,7 +23,7 @@
 
 #define BV_GPU_MAX_LEGEND 64
 #define BV_GPU_MAX_BOX    128
-#define BV_GPU_MAX_MODEL  8      /* distinct phymoji models (hero, chicken, tree_small, ...) */
+#define BV_GPU_MAX_MODEL  24     /* one model per desk pal; the old 8 left the rest a flat green box */
 #define BV_GPU_MDL_DIM    32     /* max local grid side */
 #define BV_GPU_MDL_DEPTH  8      /* phymoji lz is always 0..7 */
 
@@ -32,6 +32,7 @@ typedef struct {
     float max_x, max_y, max_z;
     float r, g, b;               /* 0..1 flat colour (used when model < 0) */
     int   self_lit;              /* 1 = skip the ground-light multiply (sun/moon) */
+    int   wire;                  /* 1 = draw only the box edges */
     int   model;                 /* >=0 -> raymarch phymoji model[model] inside the box instead of a flat fill */
 } BvGpuBox;
 

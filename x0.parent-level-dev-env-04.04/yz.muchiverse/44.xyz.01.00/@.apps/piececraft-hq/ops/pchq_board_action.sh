@@ -250,6 +250,12 @@ case "$VERB" in
                 [ "$CUR" = on ] && NEXT=off
                 printf 'mode=%s\n' "$NEXT" > "$PM"
                 ;;
+            synch)
+                # Snapshot the desk's current book and page onto this
+                # board. A later change on the desk does not move the
+                # board until Synch is clicked again.
+                sh "$PCHQ/ops/pc_synch_request.sh" taskbar
+                ;;
             stop)
                 # Explicit force-off, distinct from toggle - "make sure
                 # it's definitely stopped" without needing to read the

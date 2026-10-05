@@ -66,12 +66,51 @@ if [ ! -x "$PRISC" ]; then
   exit 1
 fi
 
+# REAL, NEW 2026-09-28 (EVENT-MODULARITY-AND-BUILD-SPEED.md §1 drop-
+# target handler; direct instruction: "clacker should be numbered like
+# pages, in case there were more than one, one would take priority when
+# executing... [priority means] thats what the dispatch source should
+# be. like a stack push pop", confirmed highest-number-wins, matching
+# this very file's own existing "highest-numbered matching page wins"
+# rule below): if something has actually been PUSHED onto this entity -
+# a 🎬️ clacker numbered 2 or higher exists under inventory/ - the
+# highest-numbered such clacker's own event_pkg/pages becomes the real
+# dispatch source instead of the entity's native pages.
+#
+# The entity's own NATIVE clacker (always event_clacker_1, auto-created
+# by event_auto_clacker.sh as an inventory-only mirror) is deliberately
+# EXCLUDED from this redirect - it is never kept in continuous sync with
+# events-hq's own live edits to $PKG/event_pkg/pages (only materialized
+# once, when a page/command is first created), so treating it as
+# authoritative by itself would make dispatch silently go stale the
+# moment anyone edits an event normally. Only an externally pushed-in
+# clacker (2+) - which by construction is a real, independent copy
+# nobody is editing through THIS entity's own events-hq session - is
+# safe to redirect to. Falls back to the entity's own native pages
+# completely unchanged whenever nothing has been pushed (true today for
+# every entity in the house - the 2026-09-28 retroactive sweep only
+# ever created event_clacker_1).
+PAGES_ROOT="$PKG/event_pkg/pages"
+ACTIVE_CLACKER=""
+if [ -d "$PKG/inventory" ]; then
+  for cdir in $(find "$PKG/inventory" -maxdepth 1 -type d -name 'event_clacker_*' 2>/dev/null | sort -t_ -k3 -n); do
+    cnum="${cdir##*_}"
+    case "$cnum" in ''|*[!0-9]*) continue ;; esac
+    [ "$cnum" -ge 2 ] || continue
+    ACTIVE_CLACKER="$cdir"
+  done
+fi
+if [ -n "$ACTIVE_CLACKER" ] && [ -d "$ACTIVE_CLACKER/event_pkg/pages" ]; then
+  PAGES_ROOT="$ACTIVE_CLACKER/event_pkg/pages"
+  echo "play_event: pushed clacker $(basename "$ACTIVE_CLACKER") overrides dispatch for $NAME" >&2
+fi
+
 # Find the HIGHEST-numbered page whose condition.pdl trigger matches
 # $TRIGGER. Pages sorted numerically (page_1, page_2, ... page_10, not
 # lexically "page_10" < "page_2") since a real event could have >9 pages.
 PAGE_DIR=""
-if [ -d "$PKG/event_pkg/pages" ]; then
-  for pd in $(find "$PKG/event_pkg/pages" -maxdepth 1 -type d -name 'page_*' | sort -t_ -k2 -n); do
+if [ -d "$PAGES_ROOT" ]; then
+  for pd in $(find "$PAGES_ROOT" -maxdepth 1 -type d -name 'page_*' | sort -t_ -k2 -n); do
     cond="$pd/condition.pdl"
     [ -f "$cond" ] || continue
     t=$(awk -F'|' '/^COND[[:space:]]*\|[[:space:]]*trigger/ {print $3}' "$cond" | tail -1 | tr -d ' \r\n')

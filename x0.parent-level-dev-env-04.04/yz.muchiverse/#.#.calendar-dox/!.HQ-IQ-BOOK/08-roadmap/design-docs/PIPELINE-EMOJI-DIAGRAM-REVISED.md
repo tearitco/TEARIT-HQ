@@ -61,9 +61,18 @@ and 3 change.
 
 ## 2️⃣ 🤖 Gemma — Constrained Selection, Not Free Description
 
-**Model:** `gemma3:270m` via the LAN Mac Ollama instance — same model
-already in production use by `my-lawyer`/`my-biotech` (see Evidence for
-why this choice is empirically justified, not arbitrary).
+**Model for this constrained bank line:** `gemma3:270m` via the LAN Mac
+Ollama instance — same model already in production use by
+`my-lawyer`/`my-biotech` (see Evidence for why this choice is
+empirically justified, not arbitrary).
+
+**OpenRouter does more than describe** (2026-09-29). Through open-hai
+it helps bootstrap and accomplish the work: train a bank layer,
+hand-tune a tomom weight, place an event-command brick, and make tool
+calls. Those calls are demonstrations IRL can learn from, same class
+of trace as a player's actions. A weight edit stays an auditable
+record. OpenRouter does not become the runtime. See
+`AI-PUSH-ROADMAP-AND-NUANCES.md` item 3b.
 
 **Prompt shape (real, tested):**
 ```
@@ -201,29 +210,32 @@ justified by this test, not just inherited/arbitrary.
 
 ---
 
-## ⚠️ Separate, Real Finding: Hardcoded Endpoint
+## ⚠️ Separate, Real Finding: Hardcoded Endpoint — ✅ DONE 2026-09-28 (`f8f65dbf3`)
 
-`GEMMA_LAN_URL` (`http://10.0.0.144:11434`) is hardcoded as a C string
-constant in FOUR separate files:
+`GEMMA_LAN_URL` (`http://10.0.0.144:11434`) was hardcoded as a C string
+constant in FOUR separate files (the count below is what this doc
+found on 2026-09-27 — a full house-wide grep after fixing those four
+found 9 MORE hardcoded sites, all fixed the same pass, see the commit):
 - `@.apps/my-lawyer/ops/mylawyer_case_worker.c`
 - `@.apps/my-lawyer/ops/mylawyer_judge_worker.c`
 - `@.apps/my-biotech/ops/mybiotech_research_worker.c`
 - `@.apps/my-biotech/ops/mybiotech_fda_verdict.c`
 
-`my-biotech`'s own design doc already flags this IP as "NOT guaranteed
-stable." Any new Concept Bank Gemma-calling op should NOT add a fifth
-hardcoded copy. Before building the real scorer-side Gemma call:
+`my-biotech`'s own design doc already flagged this IP as "NOT
+guaranteed stable." Real fix landed the next day:
 
-- [ ] Move `GEMMA_LAN_URL` into a shared `.pdl` config (house
-      convention — same pattern as `hq_ui.pdl`/`desk_grid.pdl`), read
-      once at startup by any op that needs it.
-- [ ] Update the four existing hardcoded call sites to read from that
-      config instead, so this gets fixed house-wide in the same pass,
-      not just for the new Concept Bank op.
-- [ ] Keep the "not guaranteed stable" warning as a runtime check (curl
-      `/api/tags` with a short timeout before relying on it, same
-      pattern `my-biotech`'s own test scenarios already use) rather
-      than assuming it's always reachable.
+- [x] Moved into a shared `.pdl` config: `#.desktop/ai_backend.pdl`
+      (`gemma_lan_url`/`gemma_lan_model` keys, same key=value
+      convention `hq_ui.pdl` already uses), read once at startup.
+- [x] All 13 real hardcoded call sites (the 4 above, plus
+      `gov_decide.c`, `corp_decide.c`, `khtpm_open_hai_manager.c`,
+      `run_native_tools.c`, `verify_cell.c`) updated to read from that
+      config, each with its own duplicated loader (this house's own
+      per-worker-file convention, not a shared header) and a fallback
+      to the old default if the file/key is missing.
+- [ ] The "not guaranteed stable" runtime health-check (curl
+      `/api/tags` with a short timeout before relying on it) was NOT
+      part of that fix — still real, still open, if anyone picks it up.
 
 ---
 

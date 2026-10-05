@@ -31,6 +31,7 @@
 #include <fcntl.h>
 #include <time.h>
 #include <signal.h>
+#include <sys/stat.h>
 #include "win_posix_shim.h"
 
 #define MAX_LINE 512
@@ -1083,6 +1084,15 @@ int main(int argc, char **argv) {
              * itself was the break). Fixed to the real, counted length
              * (18) - cmd+18 (not +19) just below for the same reason. */
             write_kv(config_path, "game_state", "playing");
+            /* This pick is the board's own page. Synch's pin must not
+             * keep the name and the strip on the desk page. */
+            {
+                char pin_root[PATH_BUF], pin_path[PATH_BUF];
+                resolve_real_root(project_root, pin_root, sizeof(pin_root));
+                snprintf(pin_path, sizeof(pin_path), "%s/pieces/display/open_book_page.txt", pin_root);
+                FILE *pf = fopen(pin_path, "w");
+                if (pf) { fputs("source=board\n", pf); fclose(pf); }
+            }
 
             char map_id_arg[128];
             snprintf(map_id_arg, sizeof(map_id_arg), "%s", cmd + 18);
@@ -1139,6 +1149,13 @@ int main(int argc, char **argv) {
                 snprintf(message, sizeof(message), "No map loaded - nothing to switch desks on.");
             } else {
                 write_kv(config_path, "game_state", "playing");
+                {
+                    char pin_root[PATH_BUF], pin_path[PATH_BUF];
+                    resolve_real_root(project_root, pin_root, sizeof(pin_root));
+                    snprintf(pin_path, sizeof(pin_path), "%s/pieces/display/open_book_page.txt", pin_root);
+                    FILE *pf = fopen(pin_path, "w");
+                    if (pf) { fputs("source=board\n", pf); fclose(pf); }
+                }
                 char desk_id_arg[64];
                 snprintf(desk_id_arg, sizeof(desk_id_arg), "%s", cmd + (sizeof("CONFIRM_SET_DESK:") - 1));
                 unsigned int world_seed = (unsigned int)time(NULL) ^ (unsigned int)getpid();
@@ -1369,6 +1386,66 @@ int main(int argc, char **argv) {
                     snprintf(message, sizeof(message), "Clipboard empty - Copy something first");
             } else if (strcmp(verb, "PLACE") == 0) {
                 snprintf(message, sizeof(message), "Place: pick a block palette (todo)");
+            } else if (strcmp(verb, "STOP") == 0) {
+                /* REAL, NEW 2026-09-29 - matches asa/ava's own meta.pdl:
+                 * Stop is a real, deliberate `void` everywhere in this
+                 * house (no pal anywhere implements a real Stop yet) -
+                 * matched here, not invented as a fake promise this menu
+                 * doesn't keep. (ACT used to be handled in this same
+                 * branch via the CTX_ inbox - removed 2026-09-29: Act is
+                 * a pure UI launch now wired directly as the menu item's
+                 * own action= via act_menu_row.sh, same real
+                 * dispatch_action() path a desk entity's Act uses,
+                 * bypassing this inbox entirely - see pc_entity_ctx.sh's
+                 * own header comment on that item.) */
+                snprintf(message, sizeof(message), "Stop: not implemented (house-wide - see asa/meta.pdl's own Stop=void)");
+            } else if (strcmp(verb, "EVENTS") == 0 || strcmp(verb, "INVENTORY") == 0 || strcmp(verb, "DIR") == 0) {
+                /* REAL FIX 2026-09-30, direct instruction ("when i click
+                 * their entity i expect to see same kind of context menu
+                 * that the desk entities get, nothing different") -
+                 * these three exactly mirror the real METHOD rows a desk
+                 * pal's own meta.pdl already uses (see e.g.
+                 * xyzfs/.../pals/door_civ/meta.pdl's Events (hq)/
+                 * Inventory/Dir rows) - same events-hq/button.sh call,
+                 * same file-explorer inventory-instance shape, same
+                 * xdg-open. Only reachable for entity-like kinds (hero/
+                 * tree/chicken/entity, see pc_entity_ctx.sh's VERBS) - a
+                 * bare voxel/air cell has no real pieces/<id> dir for
+                 * any of these three to act on. */
+                if (!id[0]) {
+                    snprintf(message, sizeof(message), "%s - no entity here", verb);
+                } else {
+                    char house_root_path[PATH_BUF], house_root[PATH_BUF] = "";
+                    snprintf(house_root_path, sizeof(house_root_path), "%s/pieces/system/house_root.txt", rr_c);
+                    FILE *hf = fopen(house_root_path, "r");
+                    if (hf) {
+                        if (fgets(house_root, sizeof(house_root), hf))
+                            house_root[strcspn(house_root, "\r\n")] = '\0';
+                        fclose(hf);
+                    }
+                    if (!house_root[0]) {
+                        snprintf(message, sizeof(message), "%s - no house_root.txt for this project", verb);
+                    } else {
+                        char ent_dir[PATH_BUF];
+                        snprintf(ent_dir, sizeof(ent_dir), "%s/pieces/%s", rr_c, id);
+#ifndef _WIN32
+                        char c[PATH_BUF * 3];
+                        if (strcmp(verb, "EVENTS") == 0) {
+                            snprintf(c, sizeof(c),
+                                "setsid sh -c 'exec \"%s/&.widgits/events-hq/button.sh\" \"%s\" \"%s\"' >/dev/null 2>&1 &",
+                                house_root, ent_dir, house_root);
+                        } else if (strcmp(verb, "INVENTORY") == 0) {
+                            snprintf(c, sizeof(c),
+                                "setsid sh -c 'H=\"%s\"; I=\"$H/&.widgits/file-explorer/instances/inv-pchq-%s\"; mkdir -p \"%s/inventory\" \"$I\"; printf \"mode=LOAD\\nstart_dir=%s/inventory\\n\" > \"$I/fe_request.txt\"; exec sh \"$H/&.widgits/file-explorer/button.sh\" run-instance \"$I\"' >/dev/null 2>&1 &",
+                                house_root, id, ent_dir, ent_dir);
+                        } else {
+                            snprintf(c, sizeof(c), "setsid xdg-open '%s' >/dev/null 2>&1 &", ent_dir);
+                        }
+                        int rc = system(c); (void)rc;
+#endif
+                        snprintf(message, sizeof(message), "%s: %s", verb, id);
+                    }
+                }
             } else {
                 snprintf(message, sizeof(message), "%s - not implemented yet", verb);
             }

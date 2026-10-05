@@ -2,9 +2,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 #include <signal.h>
+#ifndef _WIN32
 #include <sys/wait.h>
+#endif
 #include <sys/stat.h>
 #include <time.h>
 #include <errno.h>
@@ -12,14 +16,69 @@
 #include <ctype.h>
 #include <stdbool.h>
 #include <fcntl.h>
+
+#ifdef _WIN32
+/* winsock2.h MUST come before windows.h: windows.h drags in the obsolete
+   winsock.h v1 declarations, and including both makes every socket call
+   fail to compile with conflicting types. */
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <windows.h>
+#include <io.h>
+#include <direct.h>
+#include <process.h>
+/* windows.h defines MAX_PATH as 260; this file's own MAX_PATH is 4096 and is
+   used pervasively for path buffers below, so the macro has to yield to the
+   file's definition. Same collision agy-text-editor_manager.c had to resolve
+   for the same reason. */
+#undef MAX_PATH
+#else
 #include <sys/file.h>
+#include <ifaddrs.h>
+#include <netdb.h>
+#endif
+
+#ifdef _WIN32
+/* MinGW has no POSIX getline(). Same signature and semantics -- read one line,
+   growing *lineptr as needed, return the length or -1 at EOF -- so the
+   call site in get_gui_var() is unchanged. The growth is load-bearing, not
+   incidental: gui_state.txt values here include g_resp_area, which is an
+   8192-byte response buffer, so a fixed fgets buffer would silently truncate
+   the model's reply. */
+static long win_getline(char **lineptr, size_t *n, FILE *stream) {
+    size_t used = 0;
+    int c;
+    if (!lineptr || !n || !stream) return -1;
+    if (*lineptr == NULL || *n == 0) {
+        *n = 128;
+        *lineptr = (char *)malloc(*n);
+        if (!*lineptr) { *n = 0; return -1; }
+    }
+    while ((c = fgetc(stream)) != EOF) {
+        if (used + 2 > *n) {
+            size_t newn = *n * 2;
+            char *tmp = (char *)realloc(*lineptr, newn);
+            if (!tmp) return -1;
+            *lineptr = tmp; *n = newn;
+        }
+        (*lineptr)[used++] = (char)c;
+        if (c == '\n') break;
+    }
+    if (used == 0) return -1;
+    (*lineptr)[used] = '\0';
+    return (long)used;
+}
+#define getline win_getline
+/* MinGW declares mkdir() with one argument; the POSIX form's mode is ignored
+   on Windows, where _mkdir() creates the directory with default attributes. */
+#define mkdir(path, mode) _mkdir(path)
+/* MinGW has no usleep(); Sleep() takes milliseconds. */
+#define usleep(usec) Sleep((usec) / 1000)
+#endif
 
 #define PROJECT_ID "cpp-llm"
 #define MAX_PATH 4096
 #define MAX_LINE 1024
-
-#include <ifaddrs.h>
-#include <netdb.h>
 
 // Persistent Global UI State
 static char g_ai_state[64] = "IDLE";
@@ -40,6 +99,42 @@ static void resolve_my_ip(void);
 static void trigger_render(void);
 
 static void resolve_my_ip(void) {
+#ifdef _WIN32
+    /* MinGW provides no getifaddrs(). gethostbyname() over the machine's own
+       hostname gives the same answer this function wants -- the primary
+       non-loopback IPv4 -- without pulling in iphlpapi's GetAdaptersAddresses
+       and its extra link library. Loopback is filtered explicitly, mirroring
+       the POSIX branch's `strcmp(host,"127.0.0.1") != 0` test, because a
+       machine whose hostname resolves to loopback would otherwise be
+       reported as 127.0.0.1 with a "Detected IP" line that means nothing. */
+    char hostname[256];
+    struct hostent *he;
+    WSADATA wsa;
+    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
+        strncpy(my_ip, "127.0.0.1", 63);
+        return;
+    }
+    if (gethostname(hostname, sizeof(hostname)) != 0) {
+        strncpy(my_ip, "127.0.0.1", 63);
+        WSACleanup();
+        return;
+    }
+    he = gethostbyname(hostname);
+    if (he && he->h_addr_list[0]) {
+        struct in_addr addr;
+        memcpy(&addr, he->h_addr_list[0], sizeof(addr));
+        unsigned char *o = (unsigned char *)&addr.s_addr;
+        if (!(o[0] == 127)) {
+            const char *dotted = inet_ntoa(addr);
+            if (dotted) strncpy(my_ip, dotted, 63);
+        }
+    }
+    WSACleanup();
+    if (strlen(my_ip) == 0 || strcmp(my_ip, "0.0.0.0") == 0) strncpy(my_ip, "127.0.0.1", 63);
+    snprintf(g_sys_msg, sizeof(g_sys_msg), "Detected IP: %s", my_ip);
+    FILE *df = fopen("manager_debug.log", "a");
+    if (df) { fprintf(df, "DEBUG: resolve_my_ip detected: %s\n", my_ip); fclose(df); }
+#else
     struct ifaddrs *ifaddr, *ifa;
     int s;
     char host[NI_MAXHOST];
@@ -65,6 +160,7 @@ static void resolve_my_ip(void) {
     snprintf(g_sys_msg, sizeof(g_sys_msg), "Detected IP: %s", my_ip);
     FILE *df = fopen("manager_debug.log", "a");
     if (df) { fprintf(df, "DEBUG: resolve_my_ip detected: %s\n", my_ip); fclose(df); }
+#endif
 }
 
     static bool g_yolo_mode = false;
@@ -79,13 +175,22 @@ static void check_yolo_mode(void) {
 }
 
 // PID tracking for CPU Safety
-    static void log_pid(pid_t pid, const char* name) {
+    /* Takes a plain long rather than pid_t so the same call sites work for a
+       POSIX fork() pid and a Windows process id. The flock() advisory locking
+       is POSIX-only (that is why sys/file.h is not included on Windows); the
+       append-mode fopen is already atomic enough for this file's purpose on
+       Windows, which is what the process-list consumer here actually needs. */
+    static void log_pid(long pid, const char* name) {
     FILE *f = fopen("pieces/os/proc_list.txt", "a");
     if (f) {
+#ifndef _WIN32
         int fd = fileno(f);
         flock(fd, LOCK_EX);
-        fprintf(f, "%d %s\n", pid, name);
+#endif
+        fprintf(f, "%ld %s\n", pid, name);
+#ifndef _WIN32
         flock(fd, LOCK_UN);
+#endif
         fclose(f);
     }
     }
@@ -104,7 +209,16 @@ static char project_root[MAX_PATH] = ".";
 static size_t ctx_limit = 65536;
 static int ctx_divisor = 300;
 static volatile sig_atomic_t g_shutdown = 0;
+#ifdef _WIN32
+/* Windows has no waitpid(), so liveness of the in-flight connect_op is polled
+   with WaitForSingleObject against the process HANDLE. The numeric pid is
+   kept separately and only ever used for log_pid()'s process list, which is
+   why it can stay a plain int here. */
+static HANDLE g_ai_handle = NULL;
+static int g_ai_pid = 0;
+#else
 static pid_t g_ai_pid = -1;
+#endif
 static char *g_pending_input = NULL;
 static bool g_completion_mode = false;
 static char g_last_buf_input[1024] = "";
@@ -133,6 +247,19 @@ static int read_active_gui_index(void) {
     if (fgets(line, sizeof(line), f)) idx = atoi(line);
     fclose(f);
     return idx;
+}
+
+static int get_active_gui_is_typing(void) {
+    char *path = NULL;
+    if (asprintf(&path, "%s/pieces/display/active_gui_is_typing.txt", project_root) == -1) return 0;
+    FILE *f = fopen(path, "r");
+    free(path);
+    if (!f) return 0;
+    char line[64] = "";
+    int typing = 0;
+    if (fgets(line, sizeof(line), f)) typing = (atoi(line) != 0);
+    fclose(f);
+    return typing;
 }
 
 static void handle_sig(int s) { (void)s; g_shutdown = 1; }
@@ -211,7 +338,161 @@ static char* trim_str(char *str) {
     return str;
 }
 
+#ifdef _WIN32
+/* Windows counterpart of the POSIX pipe()+fork()+dup2() path below. The
+   contract is identical: run the tool, capture its stdout+stderr into a
+   heap buffer capped at ctx_limit, wait for it, return the text.
+
+   Three POSIX-isms needed replacing, and the third is the subtle one:
+     pipe/fork/dup2 -> CreatePipe plus STARTF_USESTDHANDLES pointing the
+       child's stdout and stderr at the write end. The read end must have its
+       HANDLE_FLAG_INHERIT cleared or the child keeps a duplicate and the
+       read loop never sees EOF.
+     the blocking read() loop -> ReadFile, which returns 0/ERROR_BROKEN_PIPE
+       at EOF instead of n<=0.
+     execvp's PATH search -> CreateProcess does NOT reliably resolve a bare
+       name against PATH the way execvp does, so the executable is located
+       explicitly first (see win_resolve_tool), including the .exe suffix
+       MinGW binaries carry and a POSIX build would never have needed. */
+/* Tries one base path against every suffix this house actually ships binaries
+   under, and returns the first that exists. The suffix list is the whole point:
+   the POSIX side of this app calls its ops by bare name ("connect_op") and lets
+   execvp find them, but on Windows the binary is not named that. MinGW appends
+   .exe, and this house's own convention is to keep the ".+x" name that
+   compile_all.ps1 writes -- so "connect_op" on disk is "connect_op.+x" and
+   there is no file called plain "connect_op" at all. Without the ".+x" arm
+   here, every op lookup returned NULL and the app silently did nothing. */
+static const char *win_try_suffixes(const char *base) {
+    static char buf[MAX_PATH];
+    static const char *sfx[] = { "", ".exe", ".+x", NULL };
+    for (int i = 0; sfx[i]; i++) {
+        snprintf(buf, sizeof(buf), "%s%s", base, sfx[i]);
+        if (GetFileAttributesA(buf) != INVALID_FILE_ATTRIBUTES) return buf;
+    }
+    return NULL;
+}
+
+static char* win_resolve_tool(const char* tool_name, const char *prefix) {
+    static char resolved[MAX_PATH];
+    const char *hit;
+
+    if (strchr(tool_name, '/') || strchr(tool_name, '\\') || tool_name[0] == '.') {
+        hit = win_try_suffixes(tool_name);
+        if (hit) { snprintf(resolved, sizeof(resolved), "%s", hit); return resolved; }
+        return NULL;
+    }
+
+    {
+        char *base = NULL;
+        if (asprintf(&base, "%s/%s", prefix, tool_name) != -1) {
+            hit = win_try_suffixes(base);
+            if (hit) { snprintf(resolved, sizeof(resolved), "%s", hit); free(base); return resolved; }
+            free(base);
+        }
+    }
+
+    /* Not a project op, so it must be a system tool -- run_tool("curl", ...)
+       at the two call sites. execvp searched PATH for these; CreateProcess
+       does not, so PATH is walked explicitly here. Without this the Windows
+       build would return NULL for every curl call and silently do nothing. */
+    {
+        const char *path_env = getenv("PATH");
+        char *dup_path = NULL;
+        if (path_env && asprintf(&dup_path, "%s", path_env) != -1) {
+            char *saveptr = NULL;
+            for (char *dir = strtok_r(dup_path, ";", &saveptr); dir; dir = strtok_r(NULL, ";", &saveptr)) {
+                char *base = NULL;
+                if (asprintf(&base, "%s/%s", dir, tool_name) != -1) {
+                    hit = win_try_suffixes(base);
+                    if (hit) { snprintf(resolved, sizeof(resolved), "%s", hit); free(base); free(dup_path); return resolved; }
+                    free(base);
+                }
+            }
+            free(dup_path);
+        }
+    }
+    return NULL;
+}
+
+/* Quotes one argument for a Windows command line: wrap in double quotes and
+   backslash-escape any embedded quote, per the CRT's parsing rules. Without
+   this an argument containing a space (a model name, a path) would arrive at
+   the child split in two. */
+static void win_append_quoted(char *dst, size_t dst_sz, const char *arg) {
+    size_t used = strlen(dst);
+    if (used + 3 >= dst_sz) return;
+    dst[used++] = ' ';
+    dst[used++] = '"';
+    for (const char *p = arg; *p && used + 2 < dst_sz; p++) {
+        if (*p == '"') { dst[used++] = '\\'; if (used + 1 >= dst_sz) break; }
+        dst[used++] = *p;
+    }
+    dst[used++] = '"';
+    dst[used] = '\0';
+}
+#endif
+
 static char* run_tool(const char* tool_name, char* const args[], bool sandbox) {
+#ifdef _WIN32
+    SECURITY_ATTRIBUTES sa;
+    HANDLE rd, wr;
+    STARTUPINFOA si;
+    PROCESS_INFORMATION pi;
+    char cmd[8192];
+    char cwd[MAX_PATH];
+    const char *prefix;
+    const char *exe;
+    char *output;
+    size_t total = 0;
+    DWORD n;
+
+    memset(&sa, 0, sizeof(sa));
+    sa.nLength = sizeof(sa);
+    sa.bInheritHandle = TRUE;
+    if (!CreatePipe(&rd, &wr, &sa, 0)) return NULL;
+    SetHandleInformation(rd, HANDLE_FLAG_INHERIT, 0);
+
+    prefix = sandbox ? "../ops/+x" : "projects/cpp-llm/ops/+x";
+    exe = win_resolve_tool(tool_name, prefix);
+    if (!exe) { CloseHandle(rd); CloseHandle(wr); return NULL; }
+
+    snprintf(cmd, sizeof(cmd), "\"%s\"", exe);
+    for (int i = 0; args[i]; i++) win_append_quoted(cmd, sizeof(cmd), args[i]);
+
+    memset(&si, 0, sizeof(si));
+    si.cb = sizeof(si);
+    si.dwFlags = STARTF_USESTDHANDLES;
+    si.hStdOutput = wr;
+    si.hStdError = wr;
+    si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+    memset(&pi, 0, sizeof(pi));
+
+    if (sandbox) snprintf(cwd, sizeof(cwd), "%s/%s", project_root, g_sandbox_root);
+    else snprintf(cwd, sizeof(cwd), "%s", project_root);
+
+    if (!CreateProcessA(exe, cmd, NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, cwd, &si, &pi)) {
+        CloseHandle(rd); CloseHandle(wr);
+        return NULL;
+    }
+    log_pid(GetProcessId(pi.hProcess), "cpp-llm-tool");
+    CloseHandle(wr);
+
+    output = malloc(ctx_limit);
+    if (!output) { CloseHandle(rd); CloseHandle(pi.hProcess); CloseHandle(pi.hThread); return NULL; }
+    for (;;) {
+        char buf[1024];
+        if (!ReadFile(rd, buf, (DWORD)sizeof(buf), &n, NULL) || n == 0) break;
+        if (total + n < (size_t)ctx_limit) { memcpy(output + total, buf, n); total += n; }
+    }
+    output[total] = '\0';
+    CloseHandle(rd);
+    WaitForSingleObject(pi.hProcess, INFINITE);
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+
+    { size_t len = strlen(output); while (len > 0 && (output[len-1] == '\n' || output[len-1] == '\r')) output[--len] = '\0'; }
+    return output;
+#else
     int pipefd[2];
     if (pipe(pipefd) == -1) return NULL;
     pid_t pid = fork();
@@ -250,6 +531,7 @@ static char* run_tool(const char* tool_name, char* const args[], bool sandbox) {
     waitpid(pid, NULL, 0);
     size_t len = strlen(output); while (len > 0 && (output[len-1] == '\n' || output[len-1] == '\r')) output[--len] = '\0';
     return output;
+#endif
 }
 
 static void load_apis(void) {
@@ -360,8 +642,25 @@ static void handle_choose_path(int index) {
     // Re-inject the completed text into the shared keystroke-buffer file so
     // the frontend's own input tracking doesn't fall out of sync with what
     // we just set here.
-    FILE *bfw = fopen("pieces/apps/player_app/cli_buffers.txt", "w");
-    if (bfw) { fprintf(bfw, "%s\n", chosen); fclose(bfw); }
+    //
+    // Two corrections to what this used to do. It opened the file with "w",
+    // which TRUNCATES -- and cli_buffers.txt is a single global file shared
+    // by every project on the desktop, so accepting one autocomplete
+    // suggestion here silently destroyed every other app's field history
+    // (gem-dev polls it by file offset, agy/op-ed/slop-ed-dev scan it for
+    // their "s"/"f"-prefixed lines). It now appends.
+    //
+    // And it wrote the value with NO prefix character, which is the format
+    // the parser's own cli_io writer never emits and that every prefix-keyed
+    // consumer ignores -- so the line could not actually be matched by the
+    // "frontend" this comment is trying to keep in sync, defeating the
+    // stated purpose. chtpm_parser.c keys each line by the cli_io element's
+    // id (username->U, password->P, answer->A, otherwise the first character
+    // of the id); this layout's field is id="input_text", so the prefix is
+    // 'i'. Verified live against the parser: typing "abc" into a
+    // <cli_io id="input_text"> publishes exactly 'i' followed by the text.
+    FILE *bfw = fopen("pieces/apps/player_app/cli_buffers.txt", "a");
+    if (bfw) { fprintf(bfw, "i%s\n", chosen); fclose(bfw); }
 
     clear_completion_state();
 
@@ -547,6 +846,37 @@ void start_ai_query(const char* input) {
     char *connect_args[] = {op_path, api_path, tmp_prompt, tmp_llm, NULL};
 
     if (api_path) {
+#ifdef _WIN32
+        /* Detached, non-blocking spawn: CreateProcess with CREATE_NO_WINDOW
+           (the CRT's _spawnl family cannot be used here because it offers no
+           way to hand back a HANDLE for the WaitForSingleObject poll in
+           check_ai_status, and no argument vector). Executable resolution
+           goes through win_resolve_tool so the .exe suffix MinGW binaries
+           carry is handled. */
+        char exe[MAX_PATH];
+        char cmd[8192];
+        STARTUPINFOA si;
+        PROCESS_INFORMATION pi;
+        snprintf(exe, sizeof(exe), "%s", op_path);
+        if (GetFileAttributesA(exe) == INVALID_FILE_ATTRIBUTES)
+            snprintf(exe, sizeof(exe), "%s.exe", op_path);
+        snprintf(cmd, sizeof(cmd), "\"%s\"", exe);
+        win_append_quoted(cmd, sizeof(cmd), api_path);
+        win_append_quoted(cmd, sizeof(cmd), tmp_prompt);
+        win_append_quoted(cmd, sizeof(cmd), tmp_llm);
+        memset(&si, 0, sizeof(si));
+        si.cb = sizeof(si);
+        memset(&pi, 0, sizeof(pi));
+        if (CreateProcessA(exe, cmd, NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, project_root, &si, &pi)) {
+            g_ai_handle = pi.hProcess;
+            g_ai_pid = (int)GetProcessId(pi.hProcess);
+            CloseHandle(pi.hThread);
+            log_pid(g_ai_pid, "cpp-llm-connect");
+        } else {
+            g_ai_handle = NULL;
+            g_ai_pid = 0;
+        }
+#else
         g_ai_pid = fork();
         if (g_ai_pid == 0) {
             setpgid(0, 0);
@@ -554,11 +884,33 @@ void start_ai_query(const char* input) {
             _exit(127);
         }
         if (g_ai_pid > 0) log_pid(g_ai_pid, "cpp-llm-connect");
+#endif
     }
     free(op_path); free(api_path);
 }
 
 void check_ai_status(void) {
+#ifdef _WIN32
+    int exit_code = 0;
+    if (!g_ai_handle) return;
+    /* Zero timeout = poll, do not block: the POSIX original used
+       waitpid(..., WNOHANG) for exactly this reason, and the manager's main
+       loop must stay responsive while the request is in flight. */
+    if (WaitForSingleObject(g_ai_handle, 0) == WAIT_TIMEOUT) return;
+    GetExitCodeProcess(g_ai_handle, (DWORD *)&exit_code);
+    CloseHandle(g_ai_handle);
+    g_ai_handle = NULL;
+    g_ai_pid = 0;
+    FILE *df = fopen("manager_debug.log", "a");
+    if (df) { fprintf(df, "DEBUG: connect_op exited. Status: %d\n", exit_code); fclose(df); }
+    if (exit_code != 0) {
+        snprintf(g_sys_msg, sizeof(g_sys_msg), "API Error: connect_op failed (code %d)", exit_code);
+        snprintf(g_ai_state, sizeof(g_ai_state), "IDLE");
+        snprintf(g_fsm_state, sizeof(g_fsm_state), "IDLE");
+        if (g_pending_input) { free(g_pending_input); g_pending_input = NULL; }
+        return;
+    }
+#else
     if (g_ai_pid <= 0) return;
     int status;
     pid_t res = waitpid(g_ai_pid, &status, WNOHANG);
@@ -573,6 +925,7 @@ void check_ai_status(void) {
         if (g_pending_input) { free(g_pending_input); g_pending_input = NULL; }
         return;
     }
+#endif
     char *ctx_file = "projects/cpp-llm/state/context.json";
     char *tmp_llm = "projects/cpp-llm/state/llm_response.json";
     char *tmp_content = "projects/cpp-llm/state/llm_content.json";
@@ -891,7 +1244,14 @@ void process_input_trigger(void) {
 }
 
 int main(int argc, char *argv[]) {
-    signal(SIGINT, handle_sig); signal(SIGTERM, handle_sig); setpgid(0, 0); log_pid(getpid(), "cpp-llm-manager");
+    signal(SIGINT, handle_sig); signal(SIGTERM, handle_sig);
+#ifndef _WIN32
+    /* Detach into our own process group so terminal signals aimed at the
+       launching shell don't reach us. No Windows equivalent is needed:
+       CREATE_NO_WINDOW children are already signal-isolated. */
+    setpgid(0, 0);
+#endif
+    log_pid((long)getpid(), "cpp-llm-manager");
     resolve_paths(argc > 1 ? argv[1] : NULL);
     if (chdir(project_root) != 0) perror("chdir project_root failed");
     load_sandbox_root("projects/cpp-llm/config/context.txt", g_sandbox_root, sizeof(g_sandbox_root));
@@ -970,7 +1330,11 @@ int main(int argc, char *argv[]) {
                             if (bracket) key = atoi(bracket + 1);
                             else key = atoi(line);
 
-                            if (key == 10 || key == 13) { process_input_trigger(); state_changed = 1; }
+                            if (key == 10 || key == 13) {
+                                if (!get_active_gui_is_typing()) {
+                                    process_input_trigger(); state_changed = 1;
+                                }
+                            }
                             else if (g_completion_mode && key >= '2' && key <= '6') { handle_choose_path(key - '0'); state_changed = 1; }
                             else if (key == '1') { unlink(ctx_file); snprintf(g_resp_area, sizeof(g_resp_area), "║ Context cleared.                                                           ║"); snprintf(g_sys_msg, sizeof(g_sys_msg), "Context Reset."); state_changed = 1; }
                             else if (key == '2') { load_apis(); update_menu_markup(); state_changed = 1; }
@@ -997,8 +1361,35 @@ int main(int argc, char *argv[]) {
                                 }
                                 if (api_path && asprintf(&body_arg, "@%s", tmp_prompt) != -1) {
                                     char *curl_args[] = {"curl", "-s", "--max-time", "600", "-H", "Content-Type: application/json", api_path, "-d", body_arg, "-o", tmp_llm, NULL};
-                                    pid_t cpid = fork(); if (cpid == 0) { setpgid(0, 0); execvp("curl", curl_args); _exit(127); } if (cpid > 0) log_pid(cpid, "cpp-llm-summarize");
-                                    waitpid(cpid, NULL, 0);
+#ifdef _WIN32
+    /* Windows counterpart of the fork/execvp/waitpid trio. Same contract:
+       spawn curl, log its pid, block until it finishes. run_tool() cannot be
+       reused here because this call site does not want the child's output
+       captured into a buffer -- it writes to a file via -o and the manager
+       only needs to know when it is done. */
+    {
+        const char *exe = win_resolve_tool("curl", "projects/cpp-llm/ops/+x");
+        if (exe) {
+            char cmd[8192];
+            STARTUPINFOA si;
+            PROCESS_INFORMATION pi;
+            snprintf(cmd, sizeof(cmd), "\"%s\"", exe);
+            for (int i = 1; curl_args[i]; i++) win_append_quoted(cmd, sizeof(cmd), curl_args[i]);
+            memset(&si, 0, sizeof(si));
+            si.cb = sizeof(si);
+            memset(&pi, 0, sizeof(pi));
+            if (CreateProcessA(exe, cmd, NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, project_root, &si, &pi)) {
+                log_pid((long)GetProcessId(pi.hProcess), "cpp-llm-summarize");
+                WaitForSingleObject(pi.hProcess, INFINITE);
+                CloseHandle(pi.hProcess);
+                CloseHandle(pi.hThread);
+            }
+        }
+    }
+#else
+    pid_t cpid = fork(); if (cpid == 0) { setpgid(0, 0); execvp("curl", curl_args); _exit(127); } if (cpid > 0) log_pid(cpid, "cpp-llm-summarize");
+    waitpid(cpid, NULL, 0);
+#endif
                                 }
                                 free(body_arg); free(api_path);
                                 char *p_ext[] = {"projects/cpp-llm/ops/+x/json_parser", tmp_llm, is_llamacpp ? "choices[0].message.content" : "message.content", NULL}; char *content_json = run_tool(p_ext[0], p_ext, false);

@@ -657,7 +657,7 @@ $.zest-er-summary-FIN❤️‍🔥️+.txt
 69.list+dirs🔦️[.]+#]🔐️i10]CONT.+x
 directory_map.txt
 GOT-SP?.txt
-Mar$.$treetRace.wsr]Q]k32/
+MarS.StreetRace.wsr]Q]k32/
 topfiles
 
 (11 entries)
@@ -2217,7 +2217,7 @@ The livedesk-taskbar is in `_.monads/_.livedesk-taskbar/`. Let me look at that.
 <path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads</path>
 <type>directory</type>
 <entries>
-*.#.misingno./
+_.#.misingno/
 _.book-stack/
 _.cogmind-clone/
 _.hard-vvar-agent-Q0000/

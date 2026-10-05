@@ -66,9 +66,13 @@
          File Explorer widget (pchq_board_action.sh's `file-hq` verb:
          fe-pick.sh LOAD -> load the picked map). Only Desk keeps the
          dropdown. -->
-    <item id="tb-file" class="pchq-tb" label="File"
+    <!-- REAL FIX 2026-09-30, direct instruction ("the 'FILE:DESK' tb
+         headers are old before 'BOOK PAGE RENAME'"): label text only,
+         same precedent as khtpm_taskbar_manager.c's own rename - ids,
+         actions and every verb/arg stay exactly as-is. -->
+    <item id="tb-file" class="pchq-tb" label="Book"
           action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'file-hq'"/>
-    <item id="tb-desk" class="pchq-tb" label="Desk"
+    <item id="tb-desk" class="pchq-tb" label="Page"
           action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'menu' 'desk'"/>
     <!-- 2026-09-04: restored - the original toolbar order was
          In, File, Desk, Menu, Player, Clock (see PCHQ_ACT_MENU/

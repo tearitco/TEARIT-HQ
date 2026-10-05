@@ -1,0 +1,6 @@
+My Balance Sheet: Sinder Rouge Monarchy
+Cash (CD's)..		33.6000
+Other Assets....		26.8800
+Total Assets.....		110.8800
+Less Debt....		-67.2000
+Net Worth........		11.7600

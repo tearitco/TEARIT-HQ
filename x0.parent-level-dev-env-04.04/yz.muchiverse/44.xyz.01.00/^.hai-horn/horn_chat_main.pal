@@ -1,0 +1,26 @@
+# horn_chat_main.pal - minimal HORN_CHAT PAL main loop
+# Reads keyboard input from relay, composes chtpm frame, loops.
+# OpenRouter calls are handled by horn_chat_openrouter.+x (bash path).
+# Full PAL/chtpm integration is planned for v0.2.
+
+li x1, 0
+
+loop:
+  read_history .horn-sessions/relay.txt x2, x1
+  beq x2, x0, no_key
+  # x2 = keycode; Enter=13, q=113
+  beq x2, x13, quit
+  # For now, just re-compose on any key
+  j render
+
+no_key:
+  sleep 30000
+  j loop
+
+render:
+  hit_frame
+  sleep 30000
+  j loop
+
+quit:
+  halt

@@ -1,0 +1,33 @@
+# wsr-pal schedule - ported verbatim from MSR-DEPRACATED/presets/schedule.txt
+#
+# Format is the original's: <interval> <command>, whitespace-separated,
+# '#' comments. Read and executed by ops/econ_calendar.c, which decides
+# what is due by comparing the current GameTime against the last time each
+# row ran (data/schedule_run.<n>.txt).
+#
+# The original shipped this file with a wall-clock `wsr_clock` process
+# driving it. That driver is now ported as econ_calendar's `run` mode, so
+# this file is live rather than a description of intent.
+#
+# HONEST STATUS: every command below is a stub in the original WSR, and
+# none of them is built in wsr-pal yet. This is the original's own state,
+# not a regression - see docs/PORT-FIDELITY.md. The clock reports each
+# unbuilt row as SKIPPED rather than pretending it ran.
+#
+#   day_loop.c    (original): writes "Hello, DAy!" to data/day.txt, then
+#                               system("./+x/analysis_loop.+x")
+#   tax_loop.c    (original): writes "Hello, TAX!" to data/tax.txt. No tax
+#                               logic exists in the original at all.
+#   dividend_loop.c / payroll_loop.c (original): byte-identical wrong
+#                               copies of each other.
+#   salary_loop.c (original): file does not exist.
+#   news_loop.c   (original): 236 lines, genuinely implemented. It IS
+#                               ported, as ops/wsr_news_op.c - point this
+#                               row at ./ops/+x/wsr_news_op.+x to run it.
+
+1_hour   ./ops/+x/news_loop.+x
+1_day    ./ops/+x/day_loop.+x
+1_year   ./ops/+x/tax_loop.+x
+3_months ./ops/+x/dividend_loop.+x
+3_months ./ops/+x/payroll_loop.+x
+1_year   ./ops/+x/salary_loop.+x

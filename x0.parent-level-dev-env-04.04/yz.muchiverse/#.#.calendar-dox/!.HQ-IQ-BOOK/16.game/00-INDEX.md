@@ -11,6 +11,8 @@ command runs on.
   on the placing grid (not built; tactics proof waits on Ember's HP).
 - `../02-architecture/PLAYTEST-DESK-AND-PCHQ.md` — taskbar cell 9 and
   the PC-HQ Player menu. The playtest button.
+- `../18.pc-hq/00-INDEX.md` — the board itself: the diamond, the
+  daemon, Book/Page, and Synch. Playtest stays in this chapter.
 - `../08-roadmap/design-docs/DUSTOPIA-HACK.md` — chemistry, astronomy,
   mechanics, and the weight that picks which representation advances.
   The 2026-09-23 addendum is the current ladder.

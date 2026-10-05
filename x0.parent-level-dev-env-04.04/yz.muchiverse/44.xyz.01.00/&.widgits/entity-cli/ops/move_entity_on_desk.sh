@@ -44,6 +44,37 @@ if [ -n "$ox" ] && [ -n "$oy" ]; then
     export TP_ORIGIN_X="$ox" TP_ORIGIN_Y="$oy"
 fi
 
+# REAL, 2026-09-30, direct instruction ("placer should read placement
+# layout from an external matrix.txt... an op can write that based on
+# range of character, like a writer/renderer architecture"): regenerate
+# the range matrix (a plain data read/write, done by an op, not shell)
+# fresh before every arm - tp_gen_range_matrix.+x is the writer,
+# tp_arm_placer_rmmv.+x (below) is the renderer and has no shape logic
+# of its own, it only reads TP_RANGE_MATRIX.
+GEN="$HOUSE/&.widgits/tile-picker/ops/+x/tp_gen_range_matrix.+x"
+MATRIX="$ENT/move_range_matrix.txt"
+rm -f "$MATRIX"
+if [ -x "$GEN" ]; then
+    "$GEN" "$HOUSE" "$MATRIX" || true
+fi
+[ -f "$MATRIX" ] && export TP_RANGE_MATRIX="$MATRIX"
+
+# A piececraft / pc-hq entity lives under pieces/. Its range is the
+# same '#' matrix, drawn as voxels inside the 3D window by
+# bv_render_3d.c. The desk X11 diamond must not open for that entity.
+case "$ENT" in
+  */pieces/*)
+    proj=${ENT%%/pieces/*}
+    disp="$proj/pieces/display"
+    mkdir -p "$disp"
+    if [ -f "$MATRIX" ]; then
+      cp "$MATRIX" "$disp/move_range_matrix.txt"
+    fi
+    echo "pc-hq range stays in the 3D window: $disp/move_range_matrix.txt"
+    exit 0
+    ;;
+esac
+
 ARM="$HOUSE/&.widgits/tile-picker/ops/+x/tp_arm_placer_rmmv.+x"
 [ -x "$ARM" ] || { echo "move_entity_on_desk.sh: no placer binary" >&2; exit 1; }
 "$ARM" "$ENT" "$HOUSE" || exit 1

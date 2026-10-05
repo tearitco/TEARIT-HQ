@@ -1,0 +1,9 @@
+METHOD | Startup New Corp | START_WIZARD:new_corp
+METHOD | Capital Contribution | RUN:./ops/+x/corp_action.+x @corp capital_contribution
+METHOD | Public Stock Offering | RUN:./ops/+x/corp_action.+x @corp public_offering
+METHOD | Issue Bonds | RUN:./ops/+x/corp_action.+x @corp issue_bonds
+METHOD | Buy Back or Call Bonds | RUN:./ops/+x/corp_action.+x @corp call_bonds
+METHOD | Extraordinary Dividend | RUN:./ops/+x/corp_action.+x @corp extraordinary_dividend
+METHOD | Tax-Free Liquidation | STUB
+METHOD | Spin Off Subsidiary | STUB
+METHOD | Back to main menu | GOTO:wsr_main_menu

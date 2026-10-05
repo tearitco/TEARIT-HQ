@@ -1,0 +1,123 @@
+Review before any build. 2026-09-29.
+pc-hq placer, shared engine, Synch, hero menu position.
+
+Nothing in this note is built. It is the picture to approve or correct.
+
+1. What is already true
+
+The desk placer and the pc-hq board are two drawers.
+
+The writer is one op, tp_gen_range_matrix. It writes a text file of
+'#' and '.' centered on the entity. The desk drawer is
+tp_arm_placer_rmmv. It reads that file (TP_RANGE_MATRIX) and draws
+the yellow diamond on the desktop grid, with the green cell and the
+line "Enter = jump | Enter again = place | Esc = cancel | click =
+move target".
+
+move_entity_on_desk.sh starts that drawer for a desk pal such as Asa.
+If the entity path contains /pieces/, the same script copies the
+matrix and exits. The hero is under pieces/, so Act Move never starts
+the desk drawer for the hero.
+
+The pc-hq 2D view and the pc-hq 3D view do not call that drawer.
+A one-tile yellow box on the hero is a separate mark. It is not the
+diamond.
+
+The hero and a desk pal are two entities. A move of one does not
+move the other.
+
+2. What "the same engine" means
+
+2D pc-hq and 3D pc-hq should read the same '#' file the desk reads.
+The shape stays in that file. The drawers do not invent a second shape.
+
+Desk drawer: the existing placer, unchanged, for desk pals.
+
+2D pc-hq drawer: the same '#' cells, one tile each, inside the 2D
+board. Same Enter / Escape / click rules as the desk placer.
+
+3D pc-hq drawer: the same '#' cells, each cell one wire brick, read
+from that file. That is the 3D diamond. It is not a second matrix
+and not the camera-locked test cube.
+
+Proposed order of reuse: keep tp_gen_range_matrix as the only writer.
+Keep the desk binary as the desk drawer. Add a reader of that same
+file inside the board viewer for the 2D frame and the 3D frame,
+rather than opening the X11 desktop overlay inside the pc-hq window.
+The overlay is a screen-sized desktop window. It cannot draw inside
+the board, and it cannot draw height.
+
+3. Same entity on desk and pc-hq (documented, not this stretch)
+
+If one entity were open as a desk pal and also standing in pc-hq,
+one Act Move would arm the placer in both places, and one place
+would write one position both views read.
+
+That only works when both windows are on the same BOOK and PAGE.
+Livedesk shows that pair as book:<session> and page:<desk>
+(ktb_get_file_label / ktb_get_desks_label). The pc-hq toolbar has
+its own Book and Page tabs (tb-file, tb-desk in pchq-board.xhtpm).
+Those two pairs are not wired to each other today.
+
+Synch is the button that makes them the same pair. It does not move
+an entity.
+
+  Pressed on the livedesk taskbar: set the desk BOOK:PAGE to the
+  last active pc-hq window's Book and Page.
+
+  Pressed in the pc-hq window: set that window's Book and Page to
+  the desk's current book: and page:.
+
+The same-entity double placer waits until Synch exists and both
+windows are open on that page. It is not part of the first build
+unless you say to fold it in.
+
+4. Hero menu position
+
+A right-click in the pc-hq window currently opens the window menu
+(Cut / Copy / Paste / Place) and returns. The hero menu never opens
+on the sprite.
+
+Approved picture, not built:
+
+  Right-click on an entity in the board opens that entity's menu
+  at the click, which is the sprite's place on screen.
+
+  In first-person view the sprite is the camera, so the same menu
+  opens at the middle of the pc-hq window.
+
+  Right-click on the toolbar stays the window menu.
+
+Opening at a menu is acceptable. Opening at the entity is the goal.
+Off screen is not.
+
+5. First build, after you approve
+
+  a. 2D and 3D read the same '#' file and draw the diamond
+     (tiles in 2D, one wire brick per '#' in 3D).
+  b. Enter, Escape, and click follow the desk placer's rules.
+  c. Synch button on the livedesk taskbar menu and on the pc-hq menu.
+  d. Hero menu at the click, or at the window center in first person.
+
+Not in that build: making the hero and a desk pal the same entity,
+and moving both from one place.
+
+6. Answers, 2026-09-29, not built
+
+  The 3D diamond is a stack of Z layers, stored and read the same way
+  a 3D map is stored: board_manifest.txt gives z_base and z_count,
+  and each layer is its own text grid. Each in-range cell on a layer
+  is a wire '#'. Not a phymoji model.
+
+  Synch copies the whole book and the whole page, and the page holds
+  the entities. It is not a label change. One direction replaces the
+  desk's current page with the last active pc-hq page. The other
+  replaces the pc-hq page with the desk's current page.
+
+  Synch is a row under Player, not under Menu. Menu stays free for
+  dynamic entries. In pc-hq, Player is the 5th toolbar tab
+  (tb-player: Play, Stop, Reset, Notes, cancel). On the livedesk
+  taskbar, Player is cell 9. The same Synch row goes in both Player
+  menus.
+
+  Not started.

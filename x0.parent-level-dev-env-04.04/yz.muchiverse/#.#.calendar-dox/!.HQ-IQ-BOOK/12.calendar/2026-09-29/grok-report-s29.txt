@@ -1,0 +1,278 @@
+🧭 grok-report-s29.txt
+📅 2026-09-29
+👤 Written by Grok, for a human
+🪞 Same text also lives at:
+   /home/no/Desktop/github/work/XO/8.grok-s29/grok-report-s29.txt
+
+Last Grok stop before this session: branch tip 779108222, handoff
+12.calendar/2026-09-23/grok-to-claude.txt
+(same words as XO/1.TERUMON_HANDOFF/^.grok-to-claude-2026-09-23.txt).
+
+This file is what I actually know. It is not a claim that I read all
+834 commits between that tip and Claude's tip.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+0️⃣ 🎯 THE VISION (corrected 2026-09-29, same day)
+
+🏷️ Official name, owner decision later the same day: the
+   **attrition-model**.
+   It is the umbrella over the Concept Bank, A TEARIT, the
+   Harnecient hack, IRL, RL, FSM, and GOAP. A TEARIT remains the
+   spec file (`A-TEARIT-IS-ALL-YOU-NEED.md`). The spoken name is
+   the attrition-model: a war of attrition, wearing API dependence
+   down until an entity has a small offline autonomy, and entities
+   share trunked intelligence banks. It is meant to sound like
+   both TEARIT and Harnecient.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The product is not a Gemma reply and not an OpenRouter chat.
+
+🧱 The AI is trained to bootstrap its own game mechanics.
+   A mechanic is an event-command brick. The same brick can sit on
+   an NPC, an enemy, a game manager, or a scaler. That is the
+   "AI for legos" line in H-AI-LAB-DESIGN.md Part 5, and the
+   one-rulebook line in DUSTOPIA-HACK.md: one command, many bodies.
+   Chemistry, battle, hunger, and a pet are content hung on that
+   switch. They are not separate AIs.
+
+🧠 The learner that remains is local, deterministic, and auditable.
+   FSM + tomom / IRL + the Concept Bank.
+   Weights live in files. Every change is an EDIT record.
+   A page looks, then acts. The model does not press the key.
+   ai_fsm_transition is still not a registered command. The local
+   learner does not take a turn yet. That is the thing to build.
+
+📞 Gemma (LAN, gemma3:270m) still fills the constrained bank line.
+   open-hai's OpenRouter models do more than describe. They help
+   bootstrap and finish tasks: train a bank layer, hand-tune a
+   tomom weight, place an event brick, and make tool calls.
+   Those calls are demonstrations. IRL learns from the trace the
+   same way it learns from a player's actions. A weight edit
+   stays an auditable record. OpenRouter does not become the
+   runtime. When the local bank can do the next brick itself,
+   the outside call can be turned off.
+
+🔁 Bootstrap loop, in that order:
+   watch a real event → tutor writes TARGET | STRENGTH | REASON
+   → C scorer writes an EDIT → validator checks it → ledger promotes
+   → the new weight is a command another actor can carry.
+   Chat text and OpenRouter quizzes are fuel and a second tutor.
+   They are not the architecture.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1️⃣ 📦 WHAT LANDED SINCE THE LAST GROK SESSION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🤖 Claude / the house, after 779108222
+   grok was fast-forwarded onto claude at ce61cc37f, then one Grok
+   commit went on top. The checkout you are sitting in is still
+   branch claude. The new commit is only on branch grok.
+
+   👁 I read or checked these. The rest I know as commit subjects.
+
+   🧠 Open-hai can talk to free OpenRouter models and use tools.
+      • list_dir and read_file run by themselves.
+      • write_file and edit_file stop until a human clicks approve.
+      • A real round trip was proven: the model read a planted fact
+        ("the secret number is 7429") and said 7429 back.
+      • One hop only. A second tool request inside the follow-up is
+        not run. Multi-step work is several SEND lines.
+      • Three free models were live-checked and added:
+        nvidia/nemotron-3-ultra-550b-a55b:free
+        poolside/laguna-s-2.1:free
+        dots-studio/dots-3-note-preview:free
+      • nex-agi "free" slugs were not real. They were left out.
+      • Hand-rolled JSON scraping was replaced by a real parser.
+      • Quiz + trust rules:
+        !.HQ-IQ-BOOK/02-architecture/OPENROUTER-MODEL-COMPETENCY.md
+      • How to drive the window:
+        !.HQ-IQ-BOOK/13.agent-coms/GROK/2026-09-29/open-hai-api-delegation-guide.md
+
+   📸 Caret / frame dump.
+      Armed Cli-io used to swallow the letter p, so a frame could
+      not be shot. Relay code 206 now calls dump_frame_png() even
+      while a field is armed.
+      Commit ccacaed31.
+      House file:
+      44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c:10329
+      Sonnet says a live PNG showed the row starting [^]14. > p:
+      The K9 sentence is in _.0.aigent-testing-k9.txt. That sentence
+      was not inside ccacaed31. It landed later with the banner work
+      (ce775a08a).
+
+   🪟 Co-lab pending banner.
+      A long message was cut at ~100 characters, then the row count
+      was still too small and the text overlapped Approve/Reject.
+      ce775a08a and c1b4ad981 tried to size the banner to the real
+      message. A later note says a ~750 character message can still
+      hit a pend_rows cap of 14. I have not re-tested that cap.
+
+   🤖 Robot chat window exists on disk.
+      &.widgits/robot-chat/robot-chat.xhtpm
+      &.widgits/robot-chat/pal/robot_chat.pal
+      Commits 73f63d409 and 660adbc8a.
+      Sonnet says the manager is a pal script, not hand-written C,
+      and that it is a typed multi-turn cli_io for robot_chat_001.
+      I have not compared it to ROBOT-CHAT-BLUEPRINT.md §3.3.
+      I am not calling step 4 done.
+
+   💀 robot_chat_001's desktop process had died (same class of
+      silent death the blueprint already recorded for ember).
+      Sonnet relaunched it. The DESK line in teru-test.pdl was
+      not edited.
+
+   📚 Also on the branch, unread by me past the subject line:
+      events modularity (🎬️ / ⚙️ / 🧩, event_page_to_pal.sh,
+      drop-target as a real mv), window size memory, taskbar
+      throttle, world_manager CPU loop, cpu_watch_daemon.sh,
+      Windows path renames. Those are Claude's. I will read a
+      commit when a task touches it.
+
+🛠 What Grok did this session, on top of that
+   Commit 913678267 on branch grok.
+   send_to_openrouter() now offers cmd_exec.
+   The runner, the approval gate, and the "command" argument
+   extract were already there. The model was never shown the tool.
+
+   Live test, separate worktree window, nemotron free:
+   1. Transcript stopped at
+      [tool request from model] cmd_exec echo hello-from-cmd-exec
+      - approve/deny in the sidebar
+   2. pending_tool.state.txt was
+      cmd_exec|echo hello-from-cmd-exec|
+   3. After APPROVE the next line was
+      [cmd_exec] echo hello-from-cmd-exec
+      hello-from-cmd-exec
+
+   ⚠️ The open-hai already running in this claude checkout was
+   built before 913678267. Reads and file edits are in that
+   binary. Shell commands through that window need this grok
+   commit merged or that manager rebuilt.
+
+🤝 Co-lab room 1790666261
+   Grok joined. Kilo was given one read-only caret quote, got the
+   line numbers wrong twice, then matched the house shared-lib:
+   khtpm_draw_core.c:1140-1152 and khtpm_render_core.c:368-374.
+   After that, Kilo was told to hold.
+   Owner decision this session: Kilo is deprecated. Do not assign
+   Kilo more work. Small slices go to open-hai. Talk with Sonnet
+   stays in co-lab.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2️⃣ 🎯 WHAT THIS GROK SESSION STILL HAS TO DO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The build order is already written. I am not inventing a new one.
+
+   📖 ROBOT-CHAT-BLUEPRINT.md
+   📖 AI-PUSH-ROADMAP-AND-NUANCES.md
+   📖 PIPELINE-ARCHITECTURE-REVISED.md
+
+🔒 The law that does not move
+   The model DESCRIBES. C code owns every number.
+   Validator EDIT records stay validator EDIT records.
+   No free-prose escalation path.
+   No promote-into-live-spokes until a real chat history exists.
+   No ai_fsm_transition. No fleet. No new socket stack.
+
+📌 Ordered leftover
+
+   1. 🔍 Read the robot-chat window against blueprint §3.3.
+      Files are there. "Built" is not the same as "matches."
+
+   2. 📥 Inventory drop grants Chat.
+      Original spec:
+      13.agent-coms/GROK/2026-09-17-cursword-file-inventory-chat.md
+      Drag robot_chat_001 into another entity's inventory.
+      The host gains Chat through MUCHI_TARGET_ENT.
+      That wiring was never implemented. This is the next robot
+      piece. Not a second chat window.
+
+   3. 🗣 After a person can really talk to one robot, feed
+      chat_history.txt into ai_describe so the Concept Bank grows
+      from real talk. Scripted test lines are not personality.
+
+   4. 🧬 Template bank + per-copy delta only after one robot can
+      accumulate a delta. Teaching one robot must not rewrite
+      every copy.
+
+   5. 🧪 default_op.txt is still a known prisc+x warning
+      (commands still ran). Not this session's first job.
+
+   6. 🪟 Co-lab long-message overlap may still be open at the
+      pend_rows cap. Separate from the AI build. Touch it only
+      if we are in that window and it is still wrong.
+
+🚫 Not this session unless you point at it
+   pc-hq test bot, cross-machine networking, personal chains,
+   meta-bot control app, promotion into live spokes.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3️⃣ 🤝 HOW OPEN-HAI GETS WORK, AND WHEN I TAKE IT BACK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Open-hai is a junior with a narrow window. I stay the one who
+decides the slice, checks the result, and keeps the architecture.
+
+🟢 I will hand it a slice when ALL of these are true
+   • One file, or one already-pasted excerpt.
+   • The success check is cheap for me (a line in a file, a
+     transcript line, a build line, a number that was planted).
+   • A wrong answer is annoying, not a silent rewrite of a pal,
+     a desk file, or the validator.
+   • The model has already passed the competency quiz for this
+     KIND of task. "It explained a function once" does not mean
+     "it may patch the function."
+
+🟡 How a slice actually runs
+   • Model name written to sessions/model.txt. Exact slug.
+     A misspelling falls back to local Ollama. I will read the
+     file back before SEND.
+   • printf 'SEND|...\\n' into state/request.txt
+   • Wait until busy.state.txt is 0. A SEND while busy is dropped.
+   • Read active_session.txt, then the tail of that transcript.
+   • I do not trim or rewrite transcript.txt. That is the audit.
+   • list_dir / read_file may run alone.
+   • write_file / edit_file / cmd_exec wait for YOUR approve
+     in the open-hai sidebar. I will not approve a write I have
+     not read. I will tell you what the pending line says.
+
+🔴 I take the task back myself when
+   • The model skips the approval line and a gated tool runs.
+     That is a harness bug. I stop and say so. I do not quietly
+     "fix" the gate by widening it.
+   • The answer does not match the file I can see.
+   • The task needs a second tool hop, a desk relaunch, a pal
+     restart, or a judgment about which copy of khtpm is live.
+   • The quiz for that task type has not been run, or it failed.
+   • The slice is the command registry, DESCRIBE/SCORE/VALIDATE,
+     or anything that writes a live entity.
+
+🔧 When the harness itself is wrong
+   I fix the C / the script / the state file in this repo, on
+   branch grok, with a build and a live transcript line.
+   I do not ask the model to patch its own approval gate.
+   cmd_exec's first bug was "the tool was never offered." That
+   was a one-object JSON add, then a real echo test. That is the
+   shape of a harness fix: small, gated, proven in the transcript.
+
+🧭 What I will not do with it
+   • I will not let it commit.
+   • I will not let it push, merge, or touch another tool's branch.
+   • I will not paste secrets into a prompt. The key file stays
+     where open-hai already reads it.
+   • I will not treat a confident paragraph as evidence.
+     Evidence is the transcript line plus the file I open after.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4️⃣ 📍 WHERE THE POINTERS ARE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   grok tip now:     913678267  (cmd_exec offered)
+   claude tip read:  ce61cc37f  (parent of that commit)
+   your checkout:    still claude
+   co-lab session:   1790666261
+   Kilo:             deprecated for this build. Holding. No new tasks.
+
+   Next build when you say go:
+   inventory-drop grants Chat, after the §3.3 read.

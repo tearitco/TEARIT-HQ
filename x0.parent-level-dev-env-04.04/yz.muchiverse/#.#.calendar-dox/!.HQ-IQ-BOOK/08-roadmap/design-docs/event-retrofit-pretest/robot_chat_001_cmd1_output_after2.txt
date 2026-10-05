@@ -1,0 +1,2 @@
+robot_chat_001: Hello. I am a small robot.
+exit=0

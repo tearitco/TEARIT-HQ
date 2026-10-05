@@ -388,7 +388,19 @@ static const ModelEntry g_models[] = {
      * still live months from now. */
     { "nvidia/nemotron-3.5-lightning:free", BACKEND_OPENROUTER },
     { "cohere/north-mini-code:free", BACKEND_OPENROUTER },
-    { "qwen/qwen3.8-max-free", BACKEND_TOKENROUTER }
+    { "qwen/qwen3.8-max-free", BACKEND_TOKENROUTER },
+    /* REAL ADD 2026-09-29, from a user leads doc (XO/7.apis-2-openhai/
+     * open-hai-free-apis.md) proposing 4 models via OpenRouter's
+     * unified key. Live-verified against the SAME key already on disk
+     * here (curl, GET /api/v1/models + a real tool_calls request each)
+     * before adding - 3 of the doc's 4 slugs are real and current;
+     * the 4th, nex-agi/nex-n2.5-pro:free, does NOT exist on OpenRouter
+     * (the real slug, nex-agi/nex-n2.5-pro, has no free tier) and was
+     * left out. All 3 below returned a real, live
+     * finish_reason:"tool_calls" on first try. */
+    { "nvidia/nemotron-3-ultra-550b-a55b:free", BACKEND_OPENROUTER },
+    { "poolside/laguna-s-2.1:free", BACKEND_OPENROUTER },
+    { "dots-studio/dots-3-note-preview:free", BACKEND_OPENROUTER }
 };
 static const int g_n_models = sizeof(g_models) / sizeof(g_models[0]);
 
@@ -585,6 +597,31 @@ static BackendMode g_pending_backend_mode = BACKEND_OLLAMA_RAW;
  * slow" (drop + message) apart from "model changed since this was
  * sent" (cancel + proceed). */
 static char g_pending_model_name[128] = "";
+/* REAL, NEW 2026-09-29, direct instruction ("we need to impliment the
+ * round trip") - until now, an OpenRouter tool call executed for
+ * real but the model never saw its own tool's result: the raw output
+ * just got persist_msg()'d straight to the human, dead-ending the
+ * conversation right where a real agent would keep reasoning ("I read
+ * the file, now let me answer your actual question about it"). This
+ * closes that loop for exactly one hop (tool result -> model's real
+ * follow-up answer), matching the real OpenAI/OpenRouter multi-turn
+ * tool-call contract (a `role:"tool"` message referencing the
+ * original `tool_call_id`, appended after the assistant's own
+ * tool_calls message, sent back for one more completion) - not a full
+ * recursive agent loop (a follow-up that itself requests another tool
+ * falls back to content-or-nothing, see send_openrouter_followup()'s
+ * own header). g_pending_prompt/g_or_* below carry everything that
+ * one more request needs across the real async gap between "tool call
+ * detected" and "tool result ready" (which, for an approval-gated
+ * tool, can be an arbitrarily long human-timescale gap - these are
+ * plain globals, not stack state, specifically so they survive that). */
+static char g_pending_prompt[MSG_LEN] = "";
+static char g_or_assistant_msg[MSG_LEN] = "";
+static char g_or_tool_call_id[128] = "";
+static char g_or_followup_prompt[MSG_LEN] = "";
+static char g_or_followup_model[128] = "";
+static int g_or_tool_from_api = 0;
+static int g_pending_is_or_followup = 0;
 
 static void write_busy_state(void) {
     FILE *f = fopen(g_busy_state_path, "w");
@@ -672,6 +709,11 @@ static void send_to_openrouter(const char *prompt, const char *model_name) {
      * already cancels a stale pending request on a model switch. */
     if (g_pending) { persist_msg(0, "[dropped: previous request to this model is still in flight - wait for it, or switch models to cancel it]"); return; }
 
+    /* REAL, NEW 2026-09-29 - the real round-trip follow-up (see
+     * g_pending_prompt's own declaration comment) needs this exact
+     * original prompt again later, once a tool result is ready. */
+    snprintf(g_pending_prompt, sizeof(g_pending_prompt), "%s", prompt);
+
     char key[512];
     if (!load_openrouter_key(key, sizeof(key))) {
         persist_msg(0, "[error: no OpenRouter API key - create &.widgits/open-hai/state/openrouter_api_key.txt with a real key from https://openrouter.ai/keys]");
@@ -689,23 +731,41 @@ static void send_to_openrouter(const char *prompt, const char *model_name) {
      * injection... to do tool calls with new api (if they do toolcalls
      * we can bypass tools harnesses used for gemma)") - real OpenAI-
      * style `tools` array, matching open-hai's own REAL local tool names
-     * (list_dir/read_file - see detect_tool()/tool_list_dir()/
-     * tool_read_file() elsewhere in this file) so a genuine API-native
-     * tool_calls response can be compared directly against what the
-     * local Harnecient-hack dispatcher already produces for the same
-     * request shape. Real, deliberate scope limit: this sends the
-     * tools param and the response gets a real tool_calls DETECTION
-     * (see extract_openrouter_content() below), but does NOT execute
-     * the tool or feed a result back yet - that's a real, separate,
-     * larger round-trip (system prompt needs a tool_call_id + role:
-     * tool follow-up message) not attempted in this pass. */
+     * (see detect_tool()/execute_pending_tool_into() elsewhere in this
+     * file - the SAME engine the local Harnecient-hack path uses, one
+     * execution engine, two ways to reach a PendingTool). Execution now
+     * real too (check_pending()'s OpenRouter branch), not detection-only.
+     * REAL, NEW 2026-09-29, direct instruction ("i want all the tools
+     * the api will need to read, write, edit code... etc"): extended
+     * from list_dir/read_file (read-only, auto-run) to also offer
+     * write_file/edit_file. tool_requires_approval() (unchanged, pre-
+     * existing) gates both behind a real human approve/deny in the
+     * sidebar every time - this is what makes offering write access to
+     * an API-originated request safe at all. edit_file's "search" is
+     * optional (see tool_edit_file()'s own real behavior: given, a
+     * find/replace against the file's current content; absent, a plain
+     * append) - not marked "required" below for exactly that reason.
+     * REAL, NEW 2026-09-29, owner task TASK-add-cmd-exec-tool: cmd_exec
+     * is offered too. tool_requires_approval() already returns true for
+     * it, and execute_pending_tool_into() already runs tool_exec() only
+     * after APPROVE. The model can ask; it does not run until the
+     * sidebar says so. */
     fprintf(pf, "{\"model\":\"%s\",\"messages\":[{\"role\":\"user\",\"content\":\"%s\"}],"
                 "\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"list_dir\","
                 "\"description\":\"List files in a directory\",\"parameters\":{\"type\":\"object\","
                 "\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"]}}},"
                 "{\"type\":\"function\",\"function\":{\"name\":\"read_file\","
                 "\"description\":\"Read a file's contents\",\"parameters\":{\"type\":\"object\","
-                "\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"]}}}]}",
+                "\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"]}}},"
+                "{\"type\":\"function\",\"function\":{\"name\":\"write_file\","
+                "\"description\":\"Create a file or overwrite it entirely with new content. Requires human approval before it runs.\",\"parameters\":{\"type\":\"object\","
+                "\"properties\":{\"path\":{\"type\":\"string\"},\"content\":{\"type\":\"string\"}},\"required\":[\"path\",\"content\"]}}},"
+                "{\"type\":\"function\",\"function\":{\"name\":\"edit_file\","
+                "\"description\":\"Edit an existing file. If search is given, replaces the first occurrence of that exact text with content. If search is omitted, appends content to the end of the file. Requires human approval before it runs.\",\"parameters\":{\"type\":\"object\","
+                "\"properties\":{\"path\":{\"type\":\"string\"},\"search\":{\"type\":\"string\"},\"content\":{\"type\":\"string\"}},\"required\":[\"path\",\"content\"]}}},"
+                "{\"type\":\"function\",\"function\":{\"name\":\"cmd_exec\","
+                "\"description\":\"Run a shell command and return its combined output. Requires human approval before it runs - never assume it has executed until told so.\","
+                "\"parameters\":{\"type\":\"object\",\"properties\":{\"command\":{\"type\":\"string\"}},\"required\":[\"command\"]}}}]}",
             model_name, esc);
     fclose(pf);
 
@@ -736,6 +796,75 @@ static void send_to_openrouter(const char *prompt, const char *model_name) {
     }
 }
 
+/* REAL, NEW 2026-09-29 (g_pending_prompt's own declaration comment has
+ * the full why) - the real second half of an OpenRouter tool-calling
+ * round trip. Builds the real, documented 3-message follow-up shape
+ * (user's original prompt, the model's own prior assistant/tool_calls
+ * message VERBATIM, then a role:"tool" message carrying the real
+ * result keyed to the original tool_call_id) and sends it as a real,
+ * separate request - same fork+curl+execl shape as send_to_openrouter()
+ * itself, deliberately not shared as one bigger function (the actual
+ * messages array differs in shape, not just content, and forcing one
+ * function to build both was less readable than two small ones).
+ * g_or_assistant_msg is spliced in RAW, not re-escaped - it's already
+ * a complete, valid JSON object (the exact bytes OpenRouter itself
+ * sent, extracted via run_json_parser() by the caller), and escaping
+ * it again would double-escape every nested quote.
+ * Real, deliberate scope limit: this is ONE hop, not a recursive agent
+ * loop. If THIS response itself contains another tool_calls, check_
+ * pending()'s own g_pending_is_or_followup branch below does not
+ * re-detect it - it only ever extracts content, same real limit gem-
+ * dev's own manager documents for its own multi-turn handling. A
+ * model that tries to chain a second tool call off a follow-up will
+ * just get "[error: no 'content' field...]" for now - a real, further
+ * hop is a real, separate, larger piece of work if it's ever needed. */
+static void send_openrouter_followup(const char *tool_result) {
+    if (g_pending) { persist_msg(0, "[dropped: previous request still in flight - the model's follow-up reasoning over the tool result was not sent]"); g_or_tool_from_api = 0; return; }
+    char key[512];
+    if (!load_openrouter_key(key, sizeof(key))) { g_or_tool_from_api = 0; return; }
+
+    char esc_prompt[MSG_LEN * 2 + 4096], esc_result[MSG_LEN * 2 + 4096];
+    escape_json_string(g_or_followup_prompt, esc_prompt, sizeof(esc_prompt));
+    escape_json_string(tool_result, esc_result, sizeof(esc_result));
+
+    char payload_path[PATH_BUF];
+    snprintf(payload_path, sizeof(payload_path), "%s/or-followup-payload-%d.json", g_audit_dir, (int)getpid());
+    FILE *pf = fopen(payload_path, "w");
+    if (!pf) { g_or_tool_from_api = 0; return; }
+    fprintf(pf, "{\"model\":\"%s\",\"messages\":[{\"role\":\"user\",\"content\":\"%s\"},%s,"
+                "{\"role\":\"tool\",\"tool_call_id\":\"%s\",\"content\":\"%s\"}]}",
+            g_or_followup_model, esc_prompt, g_or_assistant_msg, g_or_tool_call_id, esc_result);
+    fclose(pf);
+
+    snprintf(g_pending_outfile, sizeof(g_pending_outfile), "%s/or-followup-response-%d.json", g_audit_dir, (int)getpid());
+    unlink(g_pending_outfile);
+
+    pid_t pid = fork();
+    if (pid == 0) {
+        int fd = open(g_pending_outfile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        if (fd >= 0) { dup2(fd, 1); close(fd); }
+        char auth_hdr[600];
+        snprintf(auth_hdr, sizeof(auth_hdr), "Authorization: Bearer %s", key);
+        char data_arg[PATH_BUF + 2];
+        snprintf(data_arg, sizeof(data_arg), "@%s", payload_path);
+        execlp("curl", "curl", "-s", "-m", "60", "-X", "POST",
+               "https://openrouter.ai/api/v1/chat/completions",
+               "-H", "Content-Type: application/json",
+               "-H", auth_hdr,
+               "-d", data_arg,
+               (char *)NULL);
+        _exit(127);
+    } else if (pid > 0) {
+        g_pending = 1;
+        g_pending_pid = pid;
+        g_pending_backend_mode = BACKEND_OPENROUTER;
+        g_pending_is_or_followup = 1;
+        snprintf(g_pending_model_name, sizeof(g_pending_model_name), "%s", g_or_followup_model);
+        write_busy_state();
+    }
+    g_or_tool_from_api = 0; /* consumed - the next tool call gets its own fresh context */
+}
+
 /* REAL 2026-08-16, direct instruction ("test chat using relay
  * injection... to do tool calls with new api") - real tool_calls
  * DETECTION (not execution - see send_to_openrouter()'s own header
@@ -756,90 +885,120 @@ static void send_to_openrouter(const char *prompt, const char *model_name) {
  * argument (matches the 2 real tools currently offered - list_dir/
  * read_file, see send_to_openrouter()'s own tools array) - a real,
  * documented scope limit, not an oversight. */
-static int extract_openrouter_tool_call_raw(const char *json, char *name_out, size_t name_outsz, char *path_out, size_t path_outsz) {
-    const char *tc = strstr(json, "\"tool_calls\":[{");
-    if (!tc) return 0;
-    const char *name_key = strstr(tc, "\"name\":\"");
-    if (!name_key) return 0;
-    name_key += 8;
-    size_t ni = 0;
-    while (name_key[ni] && name_key[ni] != '"' && ni + 1 < name_outsz) { name_out[ni] = name_key[ni]; ni++; }
-    name_out[ni] = '\0';
-    path_out[0] = '\0';
-    /* REAL FIX 2026-08-16, caught before shipping: "arguments" is a
-     * JSON-STRING-ENCODED JSON object (real OpenAI shape - see this
-     * file's own extract_openrouter_tool_call() a few lines up, which
-     * already handles this for its own summary string), so its own
-     * quotes appear BACKSLASH-ESCAPED in the raw response bytes -
-     * \"path\":\" - not a bare "path":" like a real, unescaped JSON
-     * key. Searching for the unescaped form would never match real
-     * live responses (confirmed live: the un-harnessed relay test
-     * this fix was written to support). */
-    const char *path_key = strstr(name_key, "\\\"path\\\":\\\"");
-    if (path_key) {
-        path_key += strlen("\\\"path\\\":\\\"");
-        size_t pi = 0;
-        while (*path_key && pi + 1 < path_outsz) {
-            if (path_key[0] == '\\' && path_key[1] == '"') break; /* end of the JSON-string-encoded value */
-            path_out[pi++] = *path_key++;
-        }
-        path_out[pi] = '\0';
+/* REAL FIX 2026-09-29 (12.calendar/2026-09-29/2do.md's "desired API
+ * fix"): every extractor below used to be a hand-rolled strstr byte-
+ * pattern match against the exact OpenAI-shaped escaping this house's
+ * first-tested models happened to emit. dots-studio/dots-3-note-
+ * preview:free broke it with a single space after a colon (legal
+ * JSON, just a different serialization style) - live milestone
+ * testing before adding new free models to HQ-IQ-BOOK caught it
+ * resolving every tool call to the house root instead of the real
+ * requested path. Root cause confirmed via a direct curl with the
+ * exact same request: the model's own argument was correct byte for
+ * byte, the extractor was not. Replaced with a real, generic,
+ * structurally-correct dot-notation JSON parser (json_parser.c,
+ * ported verbatim from a real, separate, unrelated project - see that
+ * file's own header) run as a real forked child, execvp'd with a real
+ * argv array (never a shell string - this house's own exec-with-a-
+ * literal-& footgun, f3d585396, is exactly why: g_house_root/
+ * g_audit_dir paths routinely contain a literal "&", which a shell
+ * string would silently mis-parse). One child process per dot-path
+ * looked up - simple over clever, and a parser crash can never take
+ * the long-running manager down with it. */
+/* REAL 2026-08-16, moved earlier in the file (was declared further
+ * down, right before its own original single use site) - the
+ * extractors just below need it too, to build a real PendingTool from
+ * an OpenRouter-native tool_calls response and hand it to the SAME
+ * real execution engine (start_tool_job()) the local Harnecient-hack
+ * path already uses. Forward declarations for the functions still
+ * defined later in this file (unmoved - only the type needed to
+ * move). */
+typedef struct {
+    char name[32];
+    char arg[TOOL_MAX_ARG];
+    char search[TOOL_MAX_ARG];
+    char content[MSG_LEN];
+} PendingTool;
+static int run_json_parser(const char *file, const char *dotpath, char *out, size_t outsz) {
+    out[0] = '\0';
+    char bin[PATH_BUF];
+    snprintf(bin, sizeof(bin), "%s/&.widgits/open-hai/ops/+x/json_parser.+x", g_house_root);
+    int pipefd[2];
+    if (pipe(pipefd) != 0) return 0;
+    pid_t pid = fork();
+    if (pid < 0) { close(pipefd[0]); close(pipefd[1]); return 0; }
+    if (pid == 0) {
+        close(pipefd[0]);
+        dup2(pipefd[1], 1);
+        close(pipefd[1]);
+        int devnull = open("/dev/null", O_WRONLY);
+        if (devnull >= 0) { dup2(devnull, 2); close(devnull); }
+        execl(bin, bin, file, dotpath, (char *)NULL);
+        _exit(127);
     }
-    return name_out[0] != '\0';
+    close(pipefd[1]);
+    size_t n = 0;
+    ssize_t r;
+    while (n + 1 < outsz && (r = read(pipefd[0], out + n, outsz - 1 - n)) > 0) n += (size_t)r;
+    out[n] = '\0';
+    close(pipefd[0]);
+    int status;
+    waitpid(pid, &status, 0);
+    return WIFEXITED(status) && WEXITSTATUS(status) == 0;
+}
+/* arguments (choices[0].message.tool_calls[0].function.arguments) is
+ * itself a JSON-string-ENCODED JSON object, real OpenAI shape - a
+ * second real parse pass on that extracted string, same real two-step
+ * gem-dev's own manager already uses (function_call.tmp -> "name"/
+ * "args") rather than a special-cased inline unescape.
+ * REAL, NEW 2026-09-29 (extending the tools array beyond list_dir/
+ * read_file to write_file/edit_file/cmd_exec - see send_to_openrouter()
+ * below): fills the WHOLE PendingTool now, not just name+path, since
+ * those three real tools need more than a single "path" argument
+ * (tool_write_file()/tool_edit_file()'s own real "content"/"search"
+ * fields, cmd_exec's own "command"). Every key is looked up
+ * unconditionally and just comes back empty when a given tool's schema
+ * doesn't define it - cheap (one child process per key) and never
+ * wrong, since a model can never send an argument for a key its own
+ * tool schema didn't declare. */
+static int extract_openrouter_tool_call_raw(const char *file, PendingTool *pt) {
+    memset(pt, 0, sizeof(*pt));
+    if (!run_json_parser(file, "choices[0].message.tool_calls[0].function.name", pt->name, sizeof(pt->name)))
+        return 0;
+    if (!pt->name[0]) return 0;
+    char args_json[MSG_LEN];
+    if (!run_json_parser(file, "choices[0].message.tool_calls[0].function.arguments", args_json, sizeof(args_json)))
+        return 1; /* real tool call, just no args this pass */
+    char args_path[PATH_BUF];
+    snprintf(args_path, sizeof(args_path), "%s/or-args-%d.json", g_audit_dir, (int)getpid());
+    FILE *af = fopen(args_path, "w");
+    if (af) {
+        fputs(args_json, af);
+        fclose(af);
+        char path_arg[TOOL_MAX_ARG] = "";
+        run_json_parser(args_path, "path", path_arg, sizeof(path_arg));
+        if (!path_arg[0] && strcmp(pt->name, "cmd_exec") == 0)
+            run_json_parser(args_path, "command", path_arg, sizeof(path_arg));
+        snprintf(pt->arg, sizeof(pt->arg), "%s", path_arg);
+        run_json_parser(args_path, "content", pt->content, sizeof(pt->content));
+        run_json_parser(args_path, "search", pt->search, sizeof(pt->search));
+        unlink(args_path);
+    }
+    return 1;
 }
 
-static int extract_openrouter_tool_call(const char *json, char *out, size_t outsz) {
-    const char *tc = strstr(json, "\"tool_calls\":[{");
-    if (!tc) return 0;
-    const char *name_key = strstr(tc, "\"name\":\"");
-    const char *args_key = strstr(tc, "\"arguments\":\"");
-    if (!name_key) return 0;
-    name_key += 8;
-    char name[128] = "";
-    size_t ni = 0;
-    while (name_key[ni] && name_key[ni] != '"' && ni + 1 < sizeof(name)) { name[ni] = name_key[ni]; ni++; }
-    name[ni] = '\0';
-    char args[512] = "";
-    if (args_key) {
-        args_key += strlen("\"arguments\":\"");
-        size_t ai = 0;
-        while (*args_key && ai + 1 < sizeof(args)) {
-            if (*args_key == '\\' && args_key[1] == '"') { args[ai++] = '"'; args_key += 2; }
-            else if (*args_key == '"') break;
-            else args[ai++] = *args_key++;
-        }
-        args[ai] = '\0';
-    }
-    snprintf(out, outsz, "[tool_call requested by model] %s(%s) - real API-native tool call, NOT executed (detection only this pass)", name, args);
+static int extract_openrouter_tool_call(const char *file, char *out, size_t outsz) {
+    PendingTool pt;
+    if (!extract_openrouter_tool_call_raw(file, &pt) || !pt.name[0]) return 0;
+    snprintf(out, outsz, "[tool_call requested by model] %s(%s) - real API-native tool call, NOT executed (detection only this pass)", pt.name, pt.arg);
     return 1;
 }
 
 /* Real OpenAI-compatible response shape: choices[0].message.content -
- * different key/nesting than Ollama's own flat "response" field, same
- * minimal strstr-based extraction style as extract_response_field()
- * below (this codebase doesn't use a real JSON parser anywhere yet -
- * not introduced here either, consistency over a bigger unrelated
- * change). */
-static void extract_openrouter_content(const char *json, char *out, size_t outsz) {
-    if (extract_openrouter_tool_call(json, out, outsz)) return;
-    const char *key = "\"content\":\"";
-    const char *p = strstr(json, key);
-    out[0] = '\0';
-    if (!p) return;
-    p += strlen(key);
-    size_t o = 0;
-    while (*p && *p != '"' && o + 1 < outsz) {
-        if (*p == '\\' && p[1]) {
-            p++;
-            if (*p == 'n') { out[o++] = '\n'; }
-            else if (*p == 't') { out[o++] = '\t'; }
-            else { out[o++] = *p; }
-            p++;
-        } else {
-            out[o++] = *p++;
-        }
-    }
-    out[o] = '\0';
+ * different key/nesting than Ollama's own flat "response" field. */
+static void extract_openrouter_content(const char *file, char *out, size_t outsz) {
+    if (extract_openrouter_tool_call(file, out, outsz)) return;
+    run_json_parser(file, "choices[0].message.content", out, outsz);
 }
 
 /* REAL 2026-08-16, direct instruction ("make sure we can get the
@@ -992,19 +1151,6 @@ static void extract_response_field(const char *json, char *out, size_t outsz) {
     out[o] = '\0';
 }
 
-/* REAL 2026-08-16, moved earlier in the file (was declared further
- * down, right before its own original single use site) - check_pending()
- * below now needs it too, to build a real PendingTool from an
- * OpenRouter-native tool_calls response and hand it to the SAME real
- * execution engine (start_tool_job()) the local Harnecient-hack path
- * already uses. Forward declarations for the functions still defined
- * later in this file (unmoved - only the type needed to move). */
-typedef struct {
-    char name[32];
-    char arg[TOOL_MAX_ARG];
-    char search[TOOL_MAX_ARG];
-    char content[MSG_LEN];
-} PendingTool;
 static int tool_requires_approval(const char *name);
 static void start_tool_job(PendingTool *pt);
 static void write_pending_tool_state(void);
@@ -1029,19 +1175,48 @@ static void check_pending(void) {
         fclose(f);
         unlink(g_pending_outfile);
         persist_msg(0, buf[0] ? buf : "[tool: no output]");
+        /* REAL, NEW 2026-09-29 - the real round trip: only when THIS
+         * tool run originated from an OpenRouter tool_calls response
+         * (g_or_tool_from_api, set below when one was detected - never
+         * set for the local Harnecient-hack path, which also runs
+         * through this exact same g_pending_is_tool branch) does the
+         * model get a chance to see its own tool's real result and
+         * give a real follow-up answer, instead of the raw banner
+         * above being the last word. */
+        if (g_or_tool_from_api) send_openrouter_followup(buf[0] ? buf : "(no output)");
         return;
     }
 
+    /* REAL FIX 2026-09-29 - the OpenRouter branch below now runs the
+     * real json_parser op AGAINST THIS FILE (a real, generic, dot-
+     * notation JSON parser needs a real file, not an in-memory buffer -
+     * see run_json_parser()'s own header), so the unlink() that used to
+     * happen right here is deferred to the end of that branch instead.
+     * Other backends still only ever need buf, so they unlink as
+     * before, right where the file's read into memory. */
     FILE *f = fopen(g_pending_outfile, "r");
     if (!f) { persist_msg(0, "[error: curl produced no output]"); return; }
     char buf[MSG_LEN * 4];
     size_t n = fread(buf, 1, sizeof(buf) - 1, f);
     buf[n] = '\0';
     fclose(f);
-    unlink(g_pending_outfile);
+    if (g_pending_backend_mode != BACKEND_OPENROUTER) unlink(g_pending_outfile);
 
     char resp[MSG_LEN];
     if (g_pending_backend_mode == BACKEND_OPENROUTER) {
+        /* REAL, NEW 2026-09-29 - this in-flight request was itself the
+         * round-trip follow-up (send_openrouter_followup()), not a
+         * fresh user SEND - just extract its content and persist it,
+         * same real, deliberate one-hop scope limit send_openrouter_
+         * followup()'s own header explains (no tool re-detection here). */
+        if (g_pending_is_or_followup) {
+            g_pending_is_or_followup = 0;
+            extract_openrouter_content(g_pending_outfile, resp, sizeof(resp));
+            unlink(g_pending_outfile);
+            if (resp[0]) persist_msg(0, resp);
+            else persist_msg(0, "[error: no 'content' field in the model's follow-up reply - check or-followup-response-*.json under the audit dir]");
+            return;
+        }
         /* REAL 2026-08-16, direct instruction ("it says not executed.
          * pls do execution pass so i can see it in gui") - a real
          * tool_calls response now gets ACTUALLY EXECUTED via the same
@@ -1049,17 +1224,27 @@ static void check_pending(void) {
          * local Harnecient-hack path already uses, not just detected
          * and reported as inert. Same real approval gate
          * (tool_requires_approval()) applies - list_dir/read_file
-         * (the only 2 tools currently offered to the API, see
-         * send_to_openrouter()'s own tools array) are read-only and
-         * auto-run; if a future tools array ever adds write_file/
-         * cmd_exec, this same real gate stops it from silently
-         * auto-executing an API-originated request. */
-        char tool_name[32], tool_path[TOOL_MAX_ARG];
-        if (extract_openrouter_tool_call_raw(buf, tool_name, sizeof(tool_name), tool_path, sizeof(tool_path))) {
-            PendingTool pt;
-            memset(&pt, 0, sizeof(pt));
-            snprintf(pt.name, sizeof(pt.name), "%s", tool_name);
-            snprintf(pt.arg, sizeof(pt.arg), "%s", tool_path);
+         * auto-run (read-only); write_file/edit_file/cmd_exec (real,
+         * live in the tools array as of 2026-09-29, direct instruction
+         * "i want all the tools the api will need to read, write, edit
+         * code, run shell scripts etc") ALWAYS stop here for a human
+         * approve/deny in the sidebar first - tool_requires_approval()
+         * gates them exactly like the local Harnecient-hack path
+         * already did before this session, unchanged. This gate is
+         * what makes offering write/exec to an API-originated request
+         * safe at all - never auto-run un-approved. */
+        PendingTool pt;
+        if (extract_openrouter_tool_call_raw(g_pending_outfile, &pt)) {
+            /* REAL, NEW 2026-09-29 - stash everything the real round-
+             * trip follow-up needs (see send_openrouter_followup()'s
+             * own header) BEFORE unlinking g_pending_outfile, since
+             * that's the only place any of this exists. */
+            run_json_parser(g_pending_outfile, "choices[0].message", g_or_assistant_msg, sizeof(g_or_assistant_msg));
+            run_json_parser(g_pending_outfile, "choices[0].message.tool_calls[0].id", g_or_tool_call_id, sizeof(g_or_tool_call_id));
+            snprintf(g_or_followup_prompt, sizeof(g_or_followup_prompt), "%s", g_pending_prompt);
+            snprintf(g_or_followup_model, sizeof(g_or_followup_model), "%s", g_pending_model_name);
+            g_or_tool_from_api = 1;
+            unlink(g_pending_outfile);
             if (tool_requires_approval(pt.name)) {
                 g_pending_tool = pt;
                 g_tool_pending = 1;
@@ -1072,7 +1257,8 @@ static void check_pending(void) {
             }
             return;
         }
-        extract_openrouter_content(buf, resp, sizeof(resp));
+        extract_openrouter_content(g_pending_outfile, resp, sizeof(resp));
+        unlink(g_pending_outfile);
         if (resp[0]) persist_msg(0, resp);
         else persist_msg(0, "[error: no 'content' field in OpenRouter reply - check model name / key / raw response in or-response-*.json under the audit dir]");
         return;

@@ -1,0 +1,6 @@
+1_hour ./+x/news_loop.+x
+1_day ./+x/day_loop.+x
+3_months ./+x/tax_loop.+x
+3_months ./+x/dividend_loop.+x
+3_months ./+x/payroll_loop.+x
+1_year ./+x/salary_loop.+x

@@ -7,6 +7,27 @@
 #include <string.h>
 #include <ctype.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
+/* Replace `dst` with `src`.
+ *
+ * POSIX rename() atomically replaces an existing destination. MSVCRT's
+ * rename() does NOT: if `dst` already exists it fails, leaving the freshly
+ * written .tmp file stranded next to the untouched original. On Windows that
+ * meant every single keystroke was computed correctly, written to
+ * document.txt.tmp, and then silently thrown away -- the editor looked
+ * completely dead. MoveFileExA with MOVEFILE_REPLACE_EXISTING is the Windows
+ * equivalent that actually overwrites. */
+static int replace_file(const char *src, const char *dst) {
+#ifdef _WIN32
+    return MoveFileExA(src, dst, MOVEFILE_REPLACE_EXISTING) ? 0 : -1;
+#else
+    return rename(src, dst);
+#endif
+}
+
 /*
  * text_edit_key.+x -- all-purpose, reusable cursor-based text-editing Op
  * (Bible section 11's REUSE RULE: "If logic is shared across managers or
@@ -93,7 +114,7 @@ static void save_document(const char *path) {
         fprintf(f, "%s\n", lines[i]);
     }
     fclose(f);
-    rename(tmp_path, path);
+    replace_file(tmp_path, path);
 }
 
 static void load_cursor(const char *path) {
@@ -117,7 +138,7 @@ static void save_cursor(const char *path) {
     if (!f) return;
     fprintf(f, "cursor_x=%d\ncursor_y=%d\n", cursor_x, cursor_y);
     fclose(f);
-    rename(tmp_path, path);
+    replace_file(tmp_path, path);
 }
 
 /* Mirrors agy-text-editor's original handle_interact_key() exactly for

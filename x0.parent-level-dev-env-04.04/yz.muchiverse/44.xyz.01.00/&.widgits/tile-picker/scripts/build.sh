@@ -64,6 +64,11 @@ gcc -Wall -O2 -o "ops/+x/tp_rmmv_character_extract.+x" "ops/tp_rmmv_character_ex
 gcc $CFLAGS -o "ops/+x/tp_set_brush_rmmv.+x" "ops/tp_set_brush_rmmv.c"
 gcc $CFLAGS -o "ops/+x/tp_place_desktop_rmmv.+x" "ops/tp_place_desktop_rmmv.c"
 gcc $CFLAGS -I "$SHARED_LIB" -o "ops/+x/tp_arm_placer_rmmv.+x" "ops/tp_arm_placer_rmmv.c" -lX11
+# Real, 2026-09-30 - the writer half of the range-matrix writer/renderer
+# split (tp_arm_placer_rmmv.c is the renderer, reads whatever this op
+# wrote, no shape math of its own). See tp_gen_range_matrix.c's own
+# header.
+gcc $CFLAGS -o "ops/+x/tp_gen_range_matrix.+x" "ops/tp_gen_range_matrix.c"
 # Real standalone debug tool, 2026-08-29, direct instruction ("a simple
 # op that, when on, detects clicks on desktop, and writes them to
 # debug/debug.txt") - built to isolate the real Mutter/XWayland click-
