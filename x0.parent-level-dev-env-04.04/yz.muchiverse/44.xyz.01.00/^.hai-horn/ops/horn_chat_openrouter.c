@@ -144,23 +144,22 @@ int main(int argc, char **argv) {
     char timebuf[32];
     strftime(timebuf, sizeof(timebuf), "%Y-%m-%d %H:%M:%S", localtime(&now));
 
-    char cwd[PATH_BUF];
-    if (getcwd(cwd, sizeof(cwd))) {
-        char chat_path[PATH_BUF + 64];
-        snprintf(chat_path, sizeof(chat_path), "%s/.horn-sessions/chat_history.txt", cwd);
-        FILE *cf = fopen(chat_path, "a");
-        if (cf) {
-            fprintf(cf, "[%s] USER: %s\n", timebuf, message);
-            fprintf(cf, "[%s] HORN: %s\n", timebuf, rp);
-            fclose(cf);
-        }
-        char relay_path[PATH_BUF + 64];
-        snprintf(relay_path, sizeof(relay_path), "%s/.horn-sessions/relay.txt", cwd);
-        FILE *rf = fopen(relay_path, "a");
-        if (rf) {
-            fprintf(rf, "HORN_REPLY: %s\n", rp);
-            fclose(rf);
-        }
+    const char *horn_dir = getenv("HORN_DIR");
+    if (!horn_dir) horn_dir = house_root;
+    char chat_path[PATH_BUF + 64];
+    snprintf(chat_path, sizeof(chat_path), "%s/.horn-sessions/chat_history.txt", horn_dir);
+    FILE *cf = fopen(chat_path, "a");
+    if (cf) {
+        fprintf(cf, "[%s] USER: %s\n", timebuf, message);
+        fprintf(cf, "[%s] HORN: %s\n", timebuf, rp);
+        fclose(cf);
+    }
+    char relay_path[PATH_BUF + 64];
+    snprintf(relay_path, sizeof(relay_path), "%s/.horn-sessions/relay.txt", horn_dir);
+    FILE *rf = fopen(relay_path, "a");
+    if (rf) {
+        fprintf(rf, "HORN_REPLY: %s\n", rp);
+        fclose(rf);
     }
 
     printf("%s\n", rp);
