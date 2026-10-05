@@ -77,6 +77,7 @@
 #include <string.h>
 #include <strings.h>
 #include <ctype.h>
+#include <time.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -1632,9 +1633,20 @@ static int worker_load(const char *js_path, const char *dom_path,
 
     g_worker_render[0] = 0;
     g_pending_nav_kind[0] = 0; g_pending_nav_url[0] = 0; g_pending_nav_count = 1;
+    time_t t_load_start = time(NULL);
+#define NB_LOAD_WALL_MAX_S 20
     char resp[65536];
     for (;;) {
         if (!worker_recv_line_to(resp, sizeof(resp), WORKER_LOAD_QUIET_MS)) { worker_close(); return 0; }
+        /* REAL FIX 2026-10-05: YouTube-class pages evaluate dozens of
+         * module-graph slices, each under the 60s per-slice budget - so
+         * LOAD itself could quietly burn multiple minutes at
+         * Status: loading. Give up after a real wall-clock cap and fall
+         * back to the static DOM every browser already produced. */
+        if ((time_t)time(NULL) - t_load_start > NB_LOAD_WALL_MAX_S) {
+            worker_close();
+            return 0;
+        }
         if (strncmp(resp, "LIVE|", 5) == 0) continue;   /* drain keepalive */
         if (strncmp(resp, "FETCH\n", 6) == 0) {
             handle_worker_fetch(resp);
