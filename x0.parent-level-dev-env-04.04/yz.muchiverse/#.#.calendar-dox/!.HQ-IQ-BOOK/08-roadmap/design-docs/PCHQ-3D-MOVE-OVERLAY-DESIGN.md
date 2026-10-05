@@ -17,7 +17,14 @@ scoped exactly to the two things the owner asked for:
    **3D view mode**, so the 3D renderer can look up the correct shape
    slice for the entity's current Z.
 
-Status: **plan only, not started** — explicitly held off ("yes hold
+> **UPDATE 2026-10-05:** built, differently from §2. The shared file is
+> `_shared-lib/khtpm_move_range.c` (not `range_matrix.c`); instead of
+> per-z matrix files the 2D matrix gets a depth map, so a cell is in range
+> at height dz when depth > |dz| (octahedral). The §3 z-falloff question is
+> still an owner decision. Status, verification and next steps:
+> `18.pc-hq/MOVE-AND-TAKE.md`.
+
+Status (original, 2026-09-29): **plan only, not started** — explicitly held off ("yes hold
 off on those, we should probably do 4 first") until #4 (BOOK:PAGE
 label fix, done, `847fd8009`) and #2 (context-menu Events/Inventory/
 Dir parity, done, `3c44fab3e`) landed. Both are done as of this doc.
