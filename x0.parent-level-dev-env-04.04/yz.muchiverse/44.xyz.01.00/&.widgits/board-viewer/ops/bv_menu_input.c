@@ -355,7 +355,8 @@ static void send_action_to_host(const char *focused_project_root, const char *ac
 static int range_key(int key, const char *froot) {
     BvRange rng;
     if (!froot[0] || !bvr_load(froot, &rng)) return 0;
-    char pp[PATH_BUF], jp[PATH_BUF];
+    char pp[PATH_BUF], jp[PATH_BUF], state_path_for_range[PATH_BUF];
+    snprintf(state_path_for_range, sizeof(state_path_for_range), "%s/pieces/system/bv_state.txt", project_root);
     snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
     snprintf(jp, sizeof(jp), "%s/pieces/display/move_jump.txt", project_root);
     if (!read_kv_int(pp, "armed", 0)) bvr_arm_placer(pp, froot);
@@ -379,25 +380,28 @@ static int range_key(int key, const char *froot) {
             bump_screen_changed(project_root);
             return 1;
         }
-        /* Enter with nothing pending = place here (if inside the range) */
-        char ep[PATH_BUF], ent[64] = "", sp[PATH_BUF], xs[PATH_BUF];
-        bvr_path(froot, "move_range_entity.txt", ep, sizeof(ep));
-        read_kv_str(ep, "entity", ent, sizeof(ent));
-        snprintf(sp, sizeof(sp), "%s/pieces/%s/state.txt", froot, ent);
-        (void)xs;
-        int tx = read_kv_int(pp, "x", 0), ty = read_kv_int(pp, "y", 0), tz = read_kv_int(pp, "z", 0);
-        int ox = 0, oy = 0, oz = 0;
-        bvr_origin(froot, &ox, &oy, &oz);   /* same origin the renderers draw around */
-        if (ent[0] && bvr_has(&rng, tx - ox, ty - oy)) {
-            /* Animate: plan a waypoint path; bv_dispatch steps it. */
-            bvr_plan(froot, ent, read_kv_int(sp, "pos_x", tx), read_kv_int(sp, "pos_y", ty),
-                     read_kv_int(sp, "pos_z", tz), tx, ty, tz);
-            bvr_close(froot);
-            unlink(jp);
-            write_kv_int(pp, "armed", 0);
-            bump_screen_changed(project_root);
+        /* Enter with nothing pending = place here. Shared bvr_confirm checks
+         * the range AND the board edge, plans the animated path, closes. */
+        {
+            int bw = 0, bh = 0;
+            char bpath[PATH_BUF];
+            int cz = read_kv_int(state_path_for_range, "current_z", default_current_z(froot));
+            resolve_board_path(froot, cz, bpath, sizeof(bpath));
+            FILE *bf = fopen(bpath, "r");
+            if (bf) {
+                char bl[MAX_LINE];
+                while (bh < MAX_BOARD_DIM && fgets(bl, sizeof(bl), bf)) {
+                    bl[strcspn(bl, "\r\n")] = '\0';
+                    int len = (int)strlen(bl);
+                    if (len == 0) continue;
+                    if (len > bw) bw = len;
+                    bh++;
+                }
+                fclose(bf);
+            }
+            bvr_confirm(froot, project_root, bw, bh);
         }
-        return 1;                          /* out of range: stay open */
+        return 1;                          /* rejected (range/edge): stays open */
     }
     if ((key == 127 || key == 8) && buf[0]) {
         buf[strlen(buf) - 1] = '\0'; SAVE_BUF();

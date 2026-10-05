@@ -1130,7 +1130,9 @@ int main(void) {
                     int bz = side_mode ? (side_zcount - 1 - (oy + scy)) : cur_z;
                     char pp[PATH_BUF];
                     snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
-                    FILE *pf = host_fopen(pp, "w");
+                    FILE *pf = NULL;
+                    if (!bvr_click(focused_root, project_root, bx, by, 0, 0))   /* Move range open: select/place */
+                        pf = host_fopen(pp, "w");
                     if (pf) { fprintf(pf, "armed=1\nx=%d\ny=%d\nz=%d\n", bx, by, bz); fclose(pf); }
                     time_t now = time(NULL);
                     struct tm tmv; localtime_r(&now, &tmv);

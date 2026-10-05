@@ -1,0 +1,11 @@
+# Move range finder look (read live by bv_render_3d every frame - edit and the
+# next redraw picks it up, no rebuild). Pipe-delimited like desk_grid.pdl.
+# Order matters not. Missing key = the default shown.
+#
+# The PLACER selector is what matters, so the range is a faint thin field around
+# it and the selector stays bold.
+STYLE | range_edge   | 0.03          # range wire half-width in cells (0.10 = old chunky look)
+STYLE | range_dim     | 0.55          # range colour multiplier: lower = fainter
+STYLE | range_color   | 255,220,40
+STYLE | placer_edge   | 0.10          # placer selector wire half-width
+STYLE | placer_color  | 40,255,80

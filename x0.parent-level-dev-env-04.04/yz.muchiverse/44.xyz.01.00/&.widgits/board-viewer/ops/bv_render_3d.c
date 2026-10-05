@@ -2953,8 +2953,11 @@ static int render_one_frame(void) {
             write_pick_txt(focused_project_root, board3d, board_w, board_h, z_count, hx, hy, hz);
             char pp[PATH_BUF];
             snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
-            FILE *pf = host_fopen(pp, "w");
-            if (pf) { fprintf(pf, "armed=1\nx=%d\ny=%d\nz=%d\n", hx, hy, hz); fclose(pf); }
+            /* Move range finder open: the click selects / places (desk behaviour). */
+            if (!bvr_click(focused_project_root, project_root, hx, hy, board_w, board_h)) {
+                FILE *pf = host_fopen(pp, "w");
+                if (pf) { fprintf(pf, "armed=1\nx=%d\ny=%d\nz=%d\n", hx, hy, hz); fclose(pf); }
+            }
         }
     }
 
@@ -3182,6 +3185,12 @@ static int render_one_frame(void) {
         #define ADDWIRE(x0,y0,z0,x1,y1,z1,cr,cg,cb) do { \
             ADDBOX(x0,y0,z0,x1,y1,z1,cr,cg,cb,1); \
             if (sc.box_n > 0) sc.box[sc.box_n-1].wire = 1; } while (0)
+        #define ADDWIRE_THIN(x0,y0,z0,x1,y1,z1,cr,cg,cb) do { \
+            ADDBOX(x0,y0,z0,x1,y1,z1,cr,cg,cb,1); \
+            if (sc.box_n > 0) sc.box[sc.box_n-1].wire = 2; } while (0)
+        BvrStyle rstyle;
+        bvr_style(focused_project_root, &rstyle);   /* external move_range_style.pdl */
+        sc.wire_edge = rstyle.placer_edge; sc.wire_thin = rstyle.range_edge;
         if (sun_body.present)
             ADDBOX(sun_body.x-2.0, sun_body.y-2.0, sun_body.z-2.0,
                    sun_body.x+2.0, sun_body.y+2.0, sun_body.z+2.0, 255,220,120, 1);
@@ -3203,8 +3212,9 @@ static int render_one_frame(void) {
                 int sx = read_kv_int(pp, "x", 0);
                 int sy = read_kv_int(pp, "y", 0);
                 int sz = read_kv_int(pp, "z", 0);
-                ADDWIRE(sx + 0.12, sz + 0.12, sy + 0.12,
-                        sx + 0.88, sz + 0.88, sy + 0.88, 40, 255, 80);
+                ADDWIRE(sx + 0.06, sz + 0.06, sy + 0.06,
+                        sx + 0.94, sz + 0.94, sy + 0.94,
+                        rstyle.placer_rgb[0], rstyle.placer_rgb[1], rstyle.placer_rgb[2]);
             }
         }
         for (int i=0; i<g_entity_count; i++)
@@ -3263,8 +3273,8 @@ static int render_one_frame(void) {
         }
         /* Move range finder (the REAL range; 2D only renders it - see
          * @.apps/piececraft-hq/RENDER-STANDARD.md). Drawn only while
-         * move_range_matrix.txt exists, one wire cell per '#', flat at
-         * the origin's level, centred on the entity being moved
+         * move_range_matrix.txt exists, one wire cell per in-range (x,y,z) -
+         * a true 3D diamond, so the placer/entity can move up and down - centred on the entity being moved
          * (xelector/hero only as a fallback). Esc/Enter delete the
          * file (bv_menu_input.c), which closes it. */
         if (g_xelector_present || g_hero_present) {
@@ -3274,16 +3284,22 @@ static int render_one_frame(void) {
                 int oy = g_xelector_present ? g_xelector_y : g_hero_y;
                 int oz = g_xelector_present ? g_xelector_z : g_hero_z;
                 bvr_origin(focused_project_root, &ox, &oy, &oz);   /* the moving entity */
-                for (int dy = -(rng.nr / 2); dy <= rng.nr / 2; dy++)
-                    for (int dx = -(rng.nc / 2); dx <= rng.nc / 2; dx++) {
-                        if (!bvr_has(&rng, dx, dy)) continue;
-                        ADDWIRE(ox + dx + 0.08, oz + 0.08, oy + dy + 0.08,
-                                ox + dx + 0.92, oz + 0.92, oy + dy + 0.92,
-                                255, 220, 40);
-                    }
+                int R = (rng.nr > rng.nc ? rng.nr : rng.nc) / 2;   /* deepest level the matrix reaches */
+                for (int dz = -R; dz <= R; dz++)
+                    for (int dy = -(rng.nr / 2); dy <= rng.nr / 2; dy++)
+                        for (int dx = -(rng.nc / 2); dx <= rng.nc / 2; dx++) {
+                            if (!dx && !dy && !dz) continue;         /* the entity's own cell */
+                            if (!bvr_has3(&rng, dx, dy, dz)) continue;
+                            ADDWIRE_THIN(ox + dx + 0.04, oz + dz + 0.04, oy + dy + 0.04,
+                                         ox + dx + 0.96, oz + dz + 0.96, oy + dy + 0.96,
+                                         rstyle.range_rgb[0] * rstyle.range_dim,
+                                         rstyle.range_rgb[1] * rstyle.range_dim,
+                                         rstyle.range_rgb[2] * rstyle.range_dim);
+                        }
             }
         }
         #undef GPU_ADD_MODEL
+        #undef ADDWIRE_THIN
         #undef ADDWIRE
         #undef ADDBOX
         if (bv_gpu_raymarch(&sc, g_fbuf) == 0) gpu_done = 1;

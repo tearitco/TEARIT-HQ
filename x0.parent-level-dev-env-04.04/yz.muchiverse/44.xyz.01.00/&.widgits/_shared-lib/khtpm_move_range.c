@@ -39,7 +39,33 @@
  * Rows of '#' (in range) / '.' (out). Centred on the origin cell: the
  * matrix cell (nr/2, nc/2) is the origin. nr == 0 means "no matrix loaded". */
 #define MVR_MAX 65
-typedef struct { char rows[MVR_MAX][MVR_MAX]; int nr, nc; } MvrMatrix;
+typedef struct { char rows[MVR_MAX][MVR_MAX]; int nr, nc; unsigned char depth[MVR_MAX][MVR_MAX]; } MvrMatrix;
+
+/* depth[r][c] = how many z-levels deep a '#' cell reaches: Manhattan distance
+ * to the nearest non-'#' cell (cells outside the matrix count as non-'#'), so
+ * 0 for '.' and 1 for a '#' on the rim. For a diamond of radius R this is
+ * R - (|dx|+|dy|) + 1, which makes the 3D range an octahedron: a cell is in
+ * range at height dz iff depth > |dz|, i.e. |dx|+|dy|+|dz| <= R. Computed from
+ * the matrix itself, so any shape the writer emits gets a consistent 3D form. */
+MVR_UNUSED static void mvr_matrix_depth(MvrMatrix *m) {
+    int r, c, changed = 1, guard = 0;
+    for (r = 0; r < m->nr; r++)
+        for (c = 0; c < MVR_MAX; c++) m->depth[r][c] = (c < m->nc && m->rows[r][c] == '#') ? 250 : 0;
+    while (changed && guard++ < MVR_MAX * 2) {
+        changed = 0;
+        for (r = 0; r < m->nr; r++)
+            for (c = 0; c < m->nc; c++) {
+                int d, best;
+                if (m->rows[r][c] != '#') continue;
+                best = m->depth[r][c];
+                d = (r > 0)        ? m->depth[r-1][c] : 0; if (d + 1 < best) best = d + 1;
+                d = (r < m->nr-1)  ? m->depth[r+1][c] : 0; if (d + 1 < best) best = d + 1;
+                d = (c > 0)        ? m->depth[r][c-1] : 0; if (d + 1 < best) best = d + 1;
+                d = (c < m->nc-1)  ? m->depth[r][c+1] : 0; if (d + 1 < best) best = d + 1;
+                if (best != m->depth[r][c]) { m->depth[r][c] = (unsigned char)best; changed = 1; }
+            }
+    }
+}
 
 /* Returns 1 if the file was read and holds at least one row. Blank lines are
  * skipped (not counted as rows); short rows are padded with '.'. */
@@ -58,19 +84,25 @@ MVR_UNUSED static int mvr_matrix_load(const char *path, MvrMatrix *m) {
         m->nr++;
     }
     fclose(f);
+    mvr_matrix_depth(m);
     return m->nr > 0;
 }
 
-/* Is the cell (dx,dy) away from the origin on a '#'? An empty matrix allows
- * everything (the caller's own bounds are then the only restriction) - the
- * desk placer's long-standing "no matrix = no shape restriction" rule. */
-MVR_UNUSED static int mvr_matrix_allows(const MvrMatrix *m, int dx, int dy) {
-    int row, col;
+/* Is the cell (dx,dy,dz) away from the origin in range? dz = levels above
+ * (+) / below (-) the origin. An empty matrix allows everything (the caller's
+ * own bounds are then the only restriction) - the desk placer's long-standing
+ * "no matrix = no shape restriction" rule. The desk is flat, so it passes
+ * dz = 0 through mvr_matrix_allows(). */
+MVR_UNUSED static int mvr_matrix_allows3(const MvrMatrix *m, int dx, int dy, int dz) {
+    int row, col, az = dz < 0 ? -dz : dz;
     if (m->nr <= 0) return 1;
     row = dy + m->nr / 2;
     col = dx + m->nc / 2;
     if (row < 0 || row >= m->nr || col < 0 || col >= m->nc) return 0;
-    return m->rows[row][col] == '#';
+    return m->rows[row][col] == '#' && m->depth[row][col] > az;
+}
+MVR_UNUSED static int mvr_matrix_allows(const MvrMatrix *m, int dx, int dy) {
+    return mvr_matrix_allows3(m, dx, dy, 0);
 }
 
 /* ---- path planning -------------------------------------------------------
@@ -119,6 +151,19 @@ MVR_UNUSED static int mvr_queue_write(const char *dir, int (*xy)[2], int n, int 
         if (z >= 0) fprintf(f, "x=%d|y=%d|z=%d\n", xy[i][0], xy[i][1], z);
         else        fprintf(f, "x=%d|y=%d\n", xy[i][0], xy[i][1]);
     }
+    fclose(f);
+    if ((f = fopen(c, "w"))) { fprintf(f, "0\n"); fclose(f); }
+    return 1;
+}
+
+/* Same queue, but each waypoint carries its own z: xyz[n][3]. */
+MVR_UNUSED static int mvr_queue_write3(const char *dir, int (*xyz)[3], int n) {
+    char q[4400], c[4400];
+    FILE *f;
+    int i;
+    mvr_queue_paths(dir, q, sizeof(q), c, sizeof(c));
+    if (!(f = fopen(q, "w"))) return 0;
+    for (i = 0; i < n; i++) fprintf(f, "x=%d|y=%d|z=%d\n", xyz[i][0], xyz[i][1], xyz[i][2]);
     fclose(f);
     if ((f = fopen(c, "w"))) { fprintf(f, "0\n"); fclose(f); }
     return 1;
