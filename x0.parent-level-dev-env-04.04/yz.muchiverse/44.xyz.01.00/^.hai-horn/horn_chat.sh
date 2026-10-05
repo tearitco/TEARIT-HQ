@@ -82,10 +82,12 @@ while true; do
 
     # Send to OpenRouter
     printf "horn: "
-    if output=$("$HORN_BIN" "$HOUSE_ROOT" "$user_input" 2>/dev/null); then
+    if output=$(HORN_DIR="$HORN_DIR" "$HORN_BIN" "$HOUSE_ROOT" "$user_input" 2>&1); then
         echo "$output"
     else
         echo "[error - check API key or network]"
     fi
     echo ""
 done
+
+# vim:set et sw=4 ts=4:
