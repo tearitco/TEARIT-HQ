@@ -745,6 +745,23 @@ static pid_t launch_module(const char *src, const char *house_root, const char *
     if (extra_arg && extra_arg[0]) argv[argc++] = (char *)extra_arg;
     argv[argc] = NULL;
 
+#ifdef _WIN32
+    /* No fork()/execv() on Windows (khtpm_strip_posix_win.c stubs both).
+     * khtpm_win_spawn_module() starts the manager with CreateProcessW and
+     * returns its PID; the *.+x -> *.exe rewrite happens there, matching
+     * the manager's own win_star_alias(). The env the fork child used to
+     * set is set here first so the spawned process inherits it. */
+    if (house_root)   setenv("KHTPM_HOUSE", house_root, 1);
+    if (package_dir) { setenv("KHTPM_PKG", package_dir, 1);
+                       setenv("PRISC_PROJECT_ROOT", package_dir, 1); }
+    {
+        extern long khtpm_win_spawn_module(const char *path, char *const argv[]);
+        pid_t wpid = (pid_t)khtpm_win_spawn_module(argv[0], argv);
+        if (wpid <= 0)
+            fprintf(stderr, "khtpm_entity_menu_render: launch_module: spawn failed for %s\n", argv[0]);
+        return wpid;
+    }
+#else
     pid_t pid = fork();
     if (pid == 0) {
         if (house_root)   setenv("KHTPM_HOUSE", house_root, 1);
@@ -756,6 +773,7 @@ static pid_t launch_module(const char *src, const char *house_root, const char *
         fprintf(stderr, "khtpm_entity_menu_render: launch_module: fork failed for %s\n", argv[0]);
     }
     return pid;
+#endif
 }
 
 /* fork EVERY <module> in the tree (chtpm carries several, like an HTML
@@ -6438,10 +6456,25 @@ static void dock_paint_peer(void) {
     g_dock_in_peer_paint = 0;
 }
 
+#ifdef _WIN32
+/* REAL FIX 2026-10-01 - see the map guard inside dock_paint_menu(). Win32
+ * only: Linux keeps the original unconditional move+raise every paint. */
+static int g_dock_menu_mapped = 0;
+static int g_dock_menu_msx = 0, g_dock_menu_msy = 0;
+static int g_dock_menu_mw = 0, g_dock_menu_mh = 0;
+#endif
+
 static void dock_paint_menu(void) {
     int i;
     if (g_dock_menu_w <= 0 || g_dock_menu_h <= 0 || g_dock_drop_lo < 1) {
+#ifdef _WIN32
+        if (g_dock_menu_win && g_dock_menu_mapped) {
+            XUnmapWindow(dpy, g_dock_menu_win);
+            g_dock_menu_mapped = 0;
+        }
+#else
         if (g_dock_menu_win) XUnmapWindow(dpy, g_dock_menu_win);
+#endif
         return;
     }
     if (!g_dock_menu_win) {
@@ -6462,9 +6495,34 @@ static void dock_paint_menu(void) {
             (unsigned)DefaultDepth(dpy, screen));
         g_dock_menu_xft = XftDrawCreate(dpy, g_dock_menu_buf, DefaultVisual(dpy, screen), cmap);
     }
+    /* REAL FIX 2026-10-01 - the unconditional XMoveResizeWindow + XMapRaised
+     * below ran on EVERY redraw (this function is called once per paint).
+     * On the real X server that is merely redundant, but the Win32 shim
+     * turns each XMapRaised/XMoveResizeWindow into a freshly posted Windows
+     * message, so the renderer's `while (XPending(dpy)) XNextEvent(...)`
+     * drain never emptied: it re-queued an event every pass, the loop spun
+     * at 100% CPU, and hq_idle_tick()/poll_agent_history() were never
+     * reached again - a relayed click after the menu opened was read by
+     * nobody ("menu opened, then the strip froze and ignored the relay",
+     * reproduced live 2026-10-01). Only move/raise when the geometry really
+     * changed (or the menu is being mapped for the first time), exactly the
+     * "one map, then just repaint" shape the Linux loop gets for free. */
+#ifdef _WIN32
+    if (!g_dock_menu_mapped ||
+        g_dock_menu_msx != g_dock_menu_sx || g_dock_menu_msy != g_dock_menu_sy ||
+        g_dock_menu_mw != g_dock_menu_w || g_dock_menu_mh != g_dock_menu_h) {
+        XMoveResizeWindow(dpy, g_dock_menu_win, g_dock_menu_sx, g_dock_menu_sy,
+                          (unsigned)g_dock_menu_w, (unsigned)g_dock_menu_h);
+        XMapRaised(dpy, g_dock_menu_win);
+        g_dock_menu_mapped = 1;
+        g_dock_menu_msx = g_dock_menu_sx; g_dock_menu_msy = g_dock_menu_sy;
+        g_dock_menu_mw = g_dock_menu_w;  g_dock_menu_mh = g_dock_menu_h;
+    }
+#else
     XMoveResizeWindow(dpy, g_dock_menu_win, g_dock_menu_sx, g_dock_menu_sy,
                       (unsigned)g_dock_menu_w, (unsigned)g_dock_menu_h);
     XMapRaised(dpy, g_dock_menu_win);
+#endif
     if (g_dock_menu_w > g_dock_menu_buf_w || g_dock_menu_h > g_dock_menu_buf_h) {
         int nw = g_dock_menu_w > g_dock_menu_buf_w ? g_dock_menu_w : g_dock_menu_buf_w;
         int nh = g_dock_menu_h > g_dock_menu_buf_h ? g_dock_menu_h : g_dock_menu_buf_h;
@@ -7518,6 +7576,105 @@ static void switch_page(const char *name) {
     g_focus_nav = 1;
 }
 
+#ifdef _WIN32
+/* REAL FIX (Windows) - the generic shell branch of dispatch() below is the
+ * action= side of every .xhtpm in the house, and on Windows it could never
+ * work: it builds a POSIX string ("<action> '<pkg>' '<house>' >/dev/null
+ * 2>&1 &") and hands it to system(), which on this platform runs cmd.exe.
+ * cmd.exe does not parse single quotes, has no /dev/null, and treats a
+ * trailing `&` differently - so the whole thing failed with "'<path>' is
+ * not recognized" and the click did nothing.
+ *
+ * Only strip_relay.sh (the toys dropdown) had been rescued, in-process, by
+ * the 2026-09-30 fix above. Every OTHER shell action was still dead - most
+ * visibly pc-hq's own pchq-board.xhtpm `tb-in` row, whose onclick is
+ * "'.../pchq_board_action.sh" '<bv_session>' 'interact'", which is why
+ * Interact Mode never engaged on Windows even though the engine side
+ * works perfectly (verified: appending key 13 to the session's
+ * history.txt flips active_gui_is_typing.txt 0 -> 1 in ~2s and the
+ * projector then publishes interact_armed=1 / interact_label=ON).
+ *
+ * Fix: keep the exact POSIX command, but hand it to a real POSIX shell and
+ * spawn it DETACHED over CreateProcessW instead of system(). That also
+ * fixes the other half of that report - system() BLOCKS until the child
+ * exits, and this runs on the click handler on the event loop, so a slow
+ * action froze the whole UI ("froze / needs several presses"). Linux
+ * behaviour is untouched. */
+
+/* Standard install locations, in preference order. Deliberately a short
+ * fixed list rather than a PATH probe: PATH on this host is not
+ * something a renderer should depend on, and Get-Command sh fails here. */
+static const char *kh_find_posix_shell(void) {
+    static const char *cands[] = {
+        "C:/msys64/usr/bin/sh.exe",
+        "C:/msys64/mingw64/bin/sh.exe",
+        "C:/Program Files/Git/usr/bin/sh.exe",
+        "C:/Program Files/Git/bin/sh.exe",
+        NULL
+    };
+    for (int i = 0; cands[i]; i++)
+        if (GetFileAttributesA(cands[i]) != INVALID_FILE_ATTRIBUTES)
+            return cands[i];
+    return NULL;
+}
+
+/* Append arg to dst as one quoted Windows command-line token; inner
+ * double quotes are backslash-escaped the way CommandLineToArgvW expects.
+ * Same re-quoting trick khtpm_strip_posix_win.c's khtpm_win_quote_arg()
+ * uses - this file cannot call that one (it is static there). */
+static void kh_win_quote_arg(char *dst, size_t dstsz, const char *arg) {
+    size_t o = strlen(dst);
+    if (o + 1 < dstsz) dst[o++] = '"';
+    for (const char *p = arg; *p; p++) {
+        if (*p == '"' && o + 1 < dstsz) dst[o++] = '\\';
+        if (o + 1 < dstsz) dst[o++] = *p;
+    }
+    if (o + 1 < dstsz) dst[o++] = '"';
+    dst[o] = '\0';
+}
+
+/* Run the generic dispatch action through a POSIX shell, detached and
+ * non-blocking. Returns the child pid, or -1 if no shell was found. */
+static long kh_win_spawn_shell_action(const char *action) {
+    const char *sh = kh_find_posix_shell();
+    if (!sh) return -1;
+
+    /* Same "%s '%s' '%s'" shape dispatch()'s own system() branch builds. */
+    static char shellcmd[PATH_BUF * 3];
+    snprintf(shellcmd, sizeof(shellcmd), "%s '%s' '%s' >/dev/null 2>&1 &",
+             action, g_package_dir, g_house_root);
+
+    static char cmd[PATH_BUF * 8];
+    cmd[0] = '\0';
+    kh_win_quote_arg(cmd, sizeof(cmd), sh);
+    strncat(cmd, " -c ", sizeof(cmd) - strlen(cmd) - 1);
+    kh_win_quote_arg(cmd, sizeof(cmd), shellcmd);
+
+    wchar_t wexe[MAX_PATH * 2], wcmd[PATH_BUF * 8];
+    if (MultiByteToWideChar(CP_UTF8, 0, sh, -1, wexe, MAX_PATH * 2) == 0)
+        MultiByteToWideChar(CP_ACP, 0, sh, -1, wexe, MAX_PATH * 2);
+    if (MultiByteToWideChar(CP_UTF8, 0, cmd, -1, wcmd, PATH_BUF * 8) == 0)
+        MultiByteToWideChar(CP_ACP, 0, cmd, -1, wcmd, PATH_BUF * 8);
+
+    STARTUPINFOW si;
+    PROCESS_INFORMATION pi;
+    ZeroMemory(&si, sizeof(si)); si.cb = sizeof(si);
+    ZeroMemory(&pi, sizeof(pi));
+    /* Same flag set khtpm_strip_posix_win.c uses for real module spawns.
+     * CREATE_NO_WINDOW is what stops a console flashing per click;
+     * CREATE_BREAKAWAY_FROM_JOB keeps it alive past any job object. */
+    DWORD flags = CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW | CREATE_BREAKAWAY_FROM_JOB;
+    if (!CreateProcessW(wexe, wcmd, NULL, NULL, FALSE, flags, NULL, NULL, &si, &pi)) {
+        flags = CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW;
+        if (!CreateProcessW(wexe, wcmd, NULL, NULL, FALSE, flags, NULL, NULL, &si, &pi))
+            return -1;
+    }
+    CloseHandle(pi.hThread);
+    CloseHandle(pi.hProcess);
+    return (long)pi.dwProcessId;
+}
+#endif /* _WIN32 */
+
 /* Real dispatch - same shape as tp_desktop_window_rgb.c's own
  * dispatch_action(), ported not reinvented (this is a DIFFERENT process
  * so it can't call that function directly, but the semantics must match
@@ -8088,9 +8245,27 @@ static void dispatch(const char *action) {
         }
     }
     char cmd[PATH_BUF * 3];
+#ifdef _WIN32
+    int action_ran = 0;
+    /* Real Windows port - see kh_win_spawn_shell_action()'s own header.
+     * Same POSIX command, but through a real POSIX shell, spawned
+     * detached so the click handler never blocks the event loop.
+     * Deliberately NOT an early return: the menu-close handling below has
+     * to keep running either way, or a dropdown would stay stuck open on
+     * Windows but close on Linux. */
+    if (kh_win_spawn_shell_action(action) > 0) action_ran = 1;
+    if (!action_ran) {
+        /* No POSIX shell on this host (or plain Linux): the original
+         * system() path, unchanged. */
+        snprintf(cmd, sizeof(cmd), "%s '%s' '%s' >/dev/null 2>&1 &", action, g_package_dir, g_house_root);
+        int rc = system(cmd);
+        (void)rc;
+    }
+#else
     snprintf(cmd, sizeof(cmd), "%s '%s' '%s' >/dev/null 2>&1 &", action, g_package_dir, g_house_root);
     int rc = system(cmd);
     (void)rc;
+#endif
     /* real menus close after a real action fires, matching
      * tp_desktop_window_rgb.c's own UX - but NOT for a genuinely
      * persistent sidebar+panel window (open-hai/chat-hai/network-
@@ -10877,6 +11052,45 @@ static int consume_frame_changed(void) {
 }
 
 
+#ifdef _WIN32
+
+/* REAL, NEW 2026-10-01 - dock/strip cheap TEXT state dump (relay code
+ * 210), the K9 "J2 Testing Guide" standard's step 2 ("a cheap TEXT state
+ * dump, not a PNG frame dump, for verifying what happened"). Needed
+ * specifically because the dock's dropdown rows are activated through
+ * the CLICK path (popup_handle_click(), reached from a relayed
+ * MOUSE_EVENT) - unlike the header cells they have NO digit-nav that
+ * reaches the MANAGER's own hq_focus, so an agent cannot drive them by
+ * keyboard relay alone and must synthesize a click. That click needs
+ * the row's real laid-out x/y/w/h, which lived nowhere an agent could
+ * read before this. Same shape as db-hq's retired code-210
+ * dbhq_dump_debug_state(). Writes #.desktop/strip_dump.txt; only ever
+ * called on an explicit relay code, never on the hot path. */
+static void dock_dump_state(void) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/strip_dump.txt", g_house_root);
+    FILE *f = fopen(path, "w");
+    if (!f) return;
+    fprintf(f, "# dock state dump (relay code 210) is_dock=%d pid=%d\n",
+            window_is_dock(), (int)getpid());
+    fprintf(f, "win x=%d y=%d w=%d h=%d header_nav_hi=%d focus_nav=%d\n",
+            g_win_x, g_win_y, g_win_w, g_win_h, g_dock_header_nav_hi, g_focus_nav);
+    fprintf(f, "menu sx=%d sy=%d w=%d h=%d click_menu=%d click_peer=%d drop_lo=%d drop_hi=%d\n",
+            g_dock_menu_sx, g_dock_menu_sy, g_dock_menu_w, g_dock_menu_h,
+            g_dock_click_menu, g_dock_click_peer, g_dock_drop_lo, g_dock_drop_hi);
+    for (int i = 1; i <= g_n_nav; i++) {
+        Elem *e = g_nav[i - 1];
+        if (!e) continue;
+        fprintf(f, "nav=%d tag=%s id=%s x=%d y=%d w=%d h=%d%s%s label=%s\n",
+                e->nav_index, e->tag, e->id, e->x, e->y, e->w, e->h,
+                (i == g_focus_nav) ? " FOCUS" : "",
+                (g_dock_drop_lo && i >= g_dock_drop_lo && i <= g_dock_drop_hi) ? " DROP" : "",
+                e->label);
+    }
+    fclose(f);
+}
+
+#endif /* _WIN32 - dock_dump_state */
 static void dispatch_relay_code(int code) {
     /* REAL, NEW 2026-09-05 - a relay-driven key is Shift-held only if
      * it's one of the explicit shifted-selection codes (220-225 below).
@@ -10885,6 +11099,9 @@ static void dispatch_relay_code(int code) {
      * leak into an unshifted relay arrow and silently extend a
      * selection instead of collapsing it. */
     if (code < 220 || code > 225) g_key_shift = 0;
+#ifdef _WIN32
+    if (code == 210) { dock_dump_state(); return; } /* NEW 2026-10-01 - dock text state dump, see dock_dump_state() */
+#endif
     if (code == 13) handle_key(XK_Return, 0);
     else if (code == 27) handle_key(XK_Escape, 0);
     else if (code == 8) handle_key(XK_BackSpace, 0); /* real, db-hq's own extra code - harmless no-op for other modes */
@@ -11058,7 +11275,26 @@ static int poll_agent_history(void) {
         if (line[0] != '#') { /* '#'-prefixed lines are audit comments, not commands */
             if (strncmp(line, "MOUSE_EVENT: ", 13) == 0) {
                 int button = 0, mx = 0, my = 0, is_press = 1;
+#ifdef _WIN32
+                char wname[64] = "";
+                /* REAL, NEW 2026-10-01 - the Linux strip parser's own relay
+                 * format is `MOUSE_EVENT: <button> <x> <y> <is_press>
+                 * <window_name>` (khtpm_strip_parser.c mirror_mouse_history()),
+                 * and its apply_captured_mouse() routes the click to the
+                 * header (hq_win), the open popup menu (popup_win) or the
+                 * bottom bar (win) by that name. The Windows port dropped
+                 * the name, so a relayed click always hit popup_handle_click()
+                 * with g_dock_click_menu/g_dock_click_peer both 0 - which
+                 * scans ONLY the header range and makes every dropdown row
+                 * (nav 17-40) unreachable by relayed click, the exact
+                 * "dropdown rows drive fine on Linux, not here" gap. Accept
+                 * the trailing name (optional, so an old 4-field line still
+                 * works) and set the same window context the real ButtonPress
+                 * handler sets from cw before dispatching. */
+                int nf = sscanf(line + 13, "%d %d %d %d %63s", &button, &mx, &my, &is_press, wname);
+#else
                 int nf = sscanf(line + 13, "%d %d %d %d", &button, &mx, &my, &is_press);
+#endif
                 if (nf >= 3 && is_press && (button == 4 || button == 5)) {
                     if (generic_sbar_wheel(mx, my, (button == 5) ? 1 : -1))
                         n++;
@@ -11067,6 +11303,14 @@ static int poll_agent_history(void) {
                         n++;
                     }
                 } else if (nf >= 3 && is_press && button != 3 && button != 4 && button != 5) {
+#ifdef _WIN32
+                    g_dock_click_menu = (strcmp(wname, "popup_win") == 0 ||
+                                         strcmp(wname, "popup") == 0 ||
+                                         strcmp(wname, "menu") == 0);
+                    g_dock_click_peer = (strcmp(wname, "win") == 0 ||
+                                         strcmp(wname, "bottom") == 0 ||
+                                         strcmp(wname, "peer") == 0);
+#endif
                     popup_handle_click(mx, my);
                     n++;
                 }

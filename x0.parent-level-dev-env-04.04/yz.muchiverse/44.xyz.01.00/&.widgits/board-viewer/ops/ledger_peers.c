@@ -23,6 +23,18 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#ifdef _WIN32
+/* Windows port of the two POSIX-isms this tool depends on - see
+ * pid_alive() and resolve_house_root() below. Without them ledger_peers
+ * could never report a single live peer on Windows, which is what left the
+ * pc-hq board window permanently blank (no_session=1). */
+#include <windows.h>
+/* windef.h defines MAX_PATH as 260, which is far too small for these house
+ * paths, and it collides with this file's own "#define MAX_PATH 4096"
+ * (a redefinition error, not just a warning). Drop windef's so the 4096
+ * buffer below wins. */
+#undef MAX_PATH
+#endif
 
 #define MAX_LINE 4096
 #define MAX_PATH 4096
@@ -48,7 +60,21 @@ static void resolve_house_root(void) {
     char path[MAX_PATH];
     snprintf(path, sizeof(path), "%s/pieces/system/house_root.txt", prisc_root);
     FILE *f = fopen(path, "r");
+#ifdef _WIN32
+    if (!f) {
+        /* That anchor is a PER-SESSION file, so a house root does not
+         * always carry one. But callers legitimately pass the house root
+         * itself as PRISC_PROJECT_ROOT (the pc-hq projector does exactly
+         * that), and bailing out here made ledger_path() return -1, i.e.
+         * "no such house" -> zero peers -> the board reported
+         * no_session=1 while a perfectly live session sat on disk.
+         * Fall back to the value we were given. */
+        snprintf(house_root, sizeof(house_root), "%s", prisc_root);
+        return;
+    }
+#else
     if (!f) return;
+#endif
     if (!fgets(house_root, sizeof(house_root), f)) { fclose(f); return; }
     fclose(f);
     size_t ln = strlen(house_root);
@@ -87,9 +113,25 @@ static int ledger_path(char *out, size_t out_sz) {
 }
 
 static int pid_alive(const char *pid_str) {
+#ifdef _WIN32
+    /* Windows has no /proc, so the POSIX access("/proc/<pid>") test always
+     * failed here and EVERY peer read as OFFLINE - ledger_peers returned
+     * zero rows no matter what the ledger contained. Ask the kernel
+     * directly instead: OpenProcess(SYNCHRONIZE) succeeds only for a live
+     * PID, and a zero-timeout wait returning WAIT_TIMEOUT means it has not
+     * exited yet. Same semantics as the POSIX branch below. */
+    DWORD pid = (DWORD)strtoul(pid_str, NULL, 10);
+    if (pid == 0) return 0;
+    HANDLE h = OpenProcess(SYNCHRONIZE, FALSE, pid);
+    if (!h) return 0;               /* no such process (or denied) */
+    DWORD wr = WaitForSingleObject(h, 0);
+    CloseHandle(h);
+    return wr == WAIT_TIMEOUT;      /* still running */
+#else
     char proc_path[64];
     snprintf(proc_path, sizeof(proc_path), "/proc/%s", pid_str);
     return (access(proc_path, F_OK) == 0);
+#endif
 }
 
 int main(int argc, char **argv) {

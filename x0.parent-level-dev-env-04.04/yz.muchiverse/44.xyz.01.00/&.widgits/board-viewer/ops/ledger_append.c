@@ -52,10 +52,25 @@ static void resolve_house_root(void) {
     char path[MAX_PATH];
     snprintf(path, sizeof(path), "%s/pieces/system/house_root.txt", prisc_root);
     FILE *f = fopen(path, "r");
+#ifdef _WIN32
+    if (!f) {
+        /* Same Windows gap ledger_peers.c had to be given: that anchor is a
+         * per-session file, so a house root (or any dir that merely IS the
+         * project root) does not always carry one. Hard-exiting here meant
+         * the board-viewer widget could never write its ONLINE row on
+         * Windows, so ledger_peers saw zero peers and the pc-hq projector
+         * read that as no_session=1 - a live session with a 1.9MB
+         * rgb_frame.raw still rendered as a blank board. Fall back to the
+         * root we were handed instead of dying. */
+        snprintf(house_root, sizeof(house_root), "%s", prisc_root);
+        return;
+    }
+#else
     if (!f) {
         fprintf(stderr, "Error: cannot read house_root.txt (%s)\n", path);
         exit(1);
     }
+#endif
     if (!fgets(house_root, sizeof(house_root), f)) {
         fclose(f);
         fprintf(stderr, "Error: empty house_root.txt\n");
