@@ -58,3 +58,12 @@ the bar.
 - Chrome-pixel-parity for complex SPAs
 - Reimplementing a general media player / JS SPA host
 - New system dependencies for the surface-level browser
+
+## Commitment (2026-10-05)
+
+We commit to doing this work. The definition of done is a reasonable,
+non hobby/toy browser shipped from our own stack — no embedded engine,
+no hidden upgrades to a "real browser". We will do it step by step and
+will develop the supporting tooling as we go (test harness, debuggable
+state files, per-layer fixtures, build scripts that prove builds),
+keeping the codebase modular rather than shipping a monolith.
