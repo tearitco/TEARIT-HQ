@@ -4,12 +4,19 @@
 # Every png below is a real X11 window dump of the running browser, taken by
 # capture_scenes.sh against a local python3 -m http.server fixture. No mock.
 #
+# Re-captured 2026-10-05 at 784x504 (was 960x640). capture_scenes.sh no longer
+# hardcodes a size - it reads default_win_w/h out of #.desktop/hq_ui.pdl and
+# picks the unnamed viewable override-redirect window that matches, so moving
+# the configured window size cannot silently break capture again.
+#
 # Proven in the running app on opencode-fix 1c405134b + this work block:
 #   - pages are fetched over real HTTP by the manager (curl), scripts run in
 #     the QuickJS worker, and rows land in network-browser-hq_ui.txt
 #   - content text rows are dim (gray ~40-90) by house palette; read the
 #     screenshots at a low threshold, they are present but quiet
 #   - the sprite-flow grid is generic renderer code, no app-name checks
+#   - a <select> is read through .value/.options/.selectedIndex and every
+#     assignment fires a real `change` event the page listens for
 
 01_load_fixture.png | 6 | A real page fetched over HTTP: title, text and link rows projected from the QuickJS render pass into the khtpm window
 02_fetch_json.png | 6 | An inline script calls fetch('/api.json') through the manager RPC and writes the response back into the DOM
@@ -17,3 +24,4 @@
 04_history_nav.png | 6 | A second document over the same session, with the history strip and address bar updated by the manager
 05_media_grid.png | 6 | Six PNGs wrapped by the generic sprite-flow grid: 3 columns by 2 lines, 168px pitch, natural size 150x110
 06_layout_rect.png | 6 | getBoundingClientRect read inside the page: unstyled paragraphs now stack at y=14, 28, 42 with h=14 from real content metrics
+07_select_change.png | 6 | A dropdown with real option state: options.length=4, the markup-selected option read back on load, then three script-driven selections each firing change, ending selectedIndex=0 value="relevance"
