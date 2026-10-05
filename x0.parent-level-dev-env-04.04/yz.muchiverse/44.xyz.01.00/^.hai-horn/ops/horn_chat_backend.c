@@ -102,6 +102,11 @@ typedef struct {
  *   curl -s https://inference.poolside.ai/v1/models -H "Authorization: Bearer $KEY"
  *   curl -s https://openrouter.ai/api/v1/models
  */
+/* Where each key comes from (put the bare key in the named file under
+ * &.widgits/open-hai/state/, or export the env var; never commit it):
+ *   groq       https://console.groq.com/keys  -> Create API Key (shown once)
+ *   poolside   issued by the Poolside account owner; no public signup link known here
+ *   openrouter https://openrouter.ai/keys */
 static Provider PROVIDERS[] = {  /* mutable: quota_seen is per-process */
     { "groq",
       "https://api.groq.com/openai/v1/chat/completions",
