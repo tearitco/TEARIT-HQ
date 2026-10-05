@@ -67,3 +67,20 @@ no hidden upgrades to a "real browser". We will do it step by step and
 will develop the supporting tooling as we go (test harness, debuggable
 state files, per-layer fixtures, build scripts that prove builds),
 keeping the codebase modular rather than shipping a monolith.
+
+## Expanded scope (2026-10-05, second directive)
+
+Maximal ambition mode. Updated away from the previous "Gmail/GMaps out"
+stance: we will do everything we can to render the full class of modern
+web pages, including Google-class JS apps (Gmail, GMaps, Photos-grade
+pages). When such a site misbehaves, we treat it as a bug in our stack to
+fix, not a product category to explain. Maintenance lag against upstream
+sites is a maintenance cost, filed later — 80/20 rule; the 20% is for
+later.
+
+- Canvas 2D + WebGL surfaces feed the same `surface.raw` model the
+  house video already uses, exposed through the QuickJS worker bridge.
+- The renderer stays khtpm-generic; new page shapes become state-file
+  rows / projector output, never per-app C.
+- Mount topics (DOM box tree, JS reflow, CSP, web apps) stay in the
+  milestone list where they are.
