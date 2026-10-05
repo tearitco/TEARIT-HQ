@@ -3895,12 +3895,16 @@ static void write_ui_projection(void) {
                     UI_PUT("c_%d_kind=title\nc_%d_is_title=1\nc_%d_text=%s\n", rc, rc, rc, t);
                 } else if (strcmp(kind, "TEXT") == 0) {
                     uisan(rest, t, sizeof(t));
+                    /* Walker pass: drop wiki chrome / jump links even when they arrived via the worker RENDER rows, which bypass junk_visible_line() in the extractor. */
+                    if (junk_visible_line(t)) continue;
                     UI_PUT("c_%d_kind=text\nc_%d_is_text=1\nc_%d_text=%s\n", rc, rc, rc, t);
                 } else if (strcmp(kind, "LINK") == 0) {
                     char *b2 = strchr(rest, '|');
                     if (b2) { *b2 = 0; snprintf(s2, sizeof(s2), "%s", b2 + 1); } else s2[0] = 0;
                     char url_sq[PATH_BUF * 2], lab_s[700];
                     uisan(s2[0] ? s2 : rest, lab_s, sizeof(lab_s));
+                    /* Drop jump-links / sidebar nav links (worker rows bypass the extractor filter). */
+                    if (junk_visible_line(lab_s)) continue;
                     shell_escape_squote(rest, url_sq, sizeof(url_sq));
                     UI_PUT("c_%d_kind=link\nc_%d_is_link=1\nc_%d_text=%s\n", rc, rc, rc, lab_s);
                     UI_PUT("c_%d_action='%s/ops/nb_write_go.sh' 'go' '%s'\n", rc, g_package_dir, url_sq);
