@@ -92,6 +92,16 @@ while IFS= read -r bsh; do
     fi
 
     projdir="$(cd "$(dirname "$bsh")" && pwd)"
+    # Heal the output folders first. Git does not track empty directories, so
+    # after a working-tree wipe or a fresh clone every ops/+x and +x is gone and
+    # every build that links into one fails with "cannot open output file
+    # ops/+x/...: No such file or directory" (2026-10-05 incident, 321 folders).
+    # A project root gets <root>/ops/+x; an ops/ dir gets <ops>/+x; scripts/ gets
+    # its parent's ops/+x.
+    proj="$projdir"
+    case "$(basename "$projdir")" in scripts|ops) proj="$(dirname "$projdir")" ;; esac
+    [ -d "$proj/ops" ] && mkdir -p "$proj/ops/+x"
+    [ "$(basename "$projdir")" = "ops" ] && mkdir -p "$projdir/+x"
     # ops/build_*.sh live inside the project already; scripts/build.sh too.
     echo "--- $rel ---"
     safelog="$REPORT_DIR/$(echo "$rel" | tr '/ ' '__').log"

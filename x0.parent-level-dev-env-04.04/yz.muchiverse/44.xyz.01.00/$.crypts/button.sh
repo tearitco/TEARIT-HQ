@@ -116,6 +116,16 @@ case "$ACTION" in
             "$HOUSE/&.hq-apps/world-manager/button.sh" kill 2>/dev/null || true
         echo "closed all toolbars, entities, HQ app managers, and world_manager"
         ;;
+    build|rebuild)
+        # Compile EVERY house program (compile-runner.sh: each project's own
+        # build script, with the +x output folders recreated first). Use after a
+        # wipe, a fresh clone or a branch switch - compiled programs are in no git
+        # branch, so windows come up empty until this has run. An optional 2nd
+        # argument limits it to scripts whose path contains that text, e.g.
+        #   sh button.sh build board-viewer
+        shift
+        DISPLAY="${DISPLAY:-:0}" nice -n 15 bash "$SCRIPT_DIR/compile-runner.sh" "$@"
+        ;;
     reset)
         # Guaranteed-clean kill-everything-then-relaunch — for when the
         # normal autostart sweep (crypt_autostart's own /proc scan, which
@@ -211,6 +221,7 @@ EOF
   sh button.sh run            # quit current livedesk, then mount+launch (autostart.pdl)
   sh button.sh restart        # same as run (clean restart for $ shortcut / focus tests)
   sh button.sh quit | close   # kill all running toolbars and entities (no relaunch)
+  sh button.sh build [text]   # compile every house program (after a wipe/clone/branch switch); text filters by path
   sh button.sh reset          # harder: guaranteed kill-everything + rebuild + relaunch via autostart.pdl
   sh button.sh on | off       # toggle STATE|enabled in autostart.pdl
   sh button.sh status         # show current enabled state + running processes

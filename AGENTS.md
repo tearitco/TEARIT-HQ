@@ -53,6 +53,16 @@ The real fix is one worktree per agent (`.kilo/worktrees/<name>/`),
 each on its own branch, so no index is shared at all. Until that
 exists, the rules above are the whole defence.
 
+## After a reset, branch switch or bulk script (REQUIRED)
+
+Run `git ls-files --deleted | grep -v /pieces/sessions/ | wc -l`. More than a few
+dozen means the working tree was wiped (2026-10-05: 31,571 files). **Stop**: do not
+`git add -A`, stash, clean or reset. Follow
+`#.#.calendar-dox/!.HQ-IQ-BOOK/03-pitfalls/INCIDENT-2026-10-05-WORKING-TREE-WIPE.md`.
+Compiled programs are in no branch: after a wipe, clone or branch switch run
+`sh '$.crypts/button.sh' build`. `sh rezip-house.sh` makes a full local copy
+(compiled programs included) and refuses to run on a wiped tree.
+
 ## Source of truth
 
 Full house conventions live in the HQ-IQ-BOOK:
