@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+SECTION      | title              | vm-rv-li
+SECTION      | launch             | open_vm_rv_li.sh
+SECTION      | deps               | &.hq-apps,shared
