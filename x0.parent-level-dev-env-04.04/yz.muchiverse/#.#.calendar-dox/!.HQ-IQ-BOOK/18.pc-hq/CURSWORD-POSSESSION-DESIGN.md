@@ -300,6 +300,44 @@ Approach that stays compatible with that migration:
 Check when building: the focus box is a fixed width; confirm with a frame dump
 that `^[123]`-style text fits before relying on it.
 
+## 5g. Make it a "thing": the dock stack (owner, 2026-10-05)
+
+"We may do more of these type in future, so make it a thing (could stack on
+stack)." The hotbar is the first of a kind: a **rail** - a chrome'd,
+minimizable bar docked above the bottom taskbar. More rails will come, and they
+stack upward on top of each other. So instead of a one-off geometry feed for the
+hotbar, this is a small general mechanism, the **dock stack**.
+
+(Naming: the code already uses "dock bar" for the taskbar's own rows
+(`DOCK_BAR_H`), so a stacked bar is called a **rail** to avoid the clash. Easy
+to rename; owner to confirm.)
+
+Contract, kept to plain files like the rest of the house:
+- **Base** - the taskbar publishes its laid-out top edge and size
+  (`#.desktop/dock_stack/base.txt`: `x|y|w|h`), the anchor for everything
+  above it (5c: from the laid-out result, so it follows the `+`/`-` row growth
+  and any UI-scale change).
+- **Rails register** - one line each in `#.desktop/dock_stack/rails.txt`:
+  `id|order|height|state` (`state` = `visible` or `min`). `order` 0 is the rail
+  nearest the taskbar. A rail registers when it opens, flips to `min` when
+  minimized into the bottom bar, and is removed when closed.
+- **Layout is computed in one place** (a text-included `khtpm_dock_stack.c`,
+  prefix `dks_`): each visible rail's y is the base top minus the heights of
+  every visible rail below it, so minimizing or closing a rail makes the ones
+  above drop down, and a taller taskbar pushes the whole stack up. Output
+  `#.desktop/dock_stack/layout.txt`: `id|x|y|w|h`, written tmp+rename and
+  announced with an append-only marker (house rule: marker, not mtime). A rail
+  reads only its own line.
+- **Each rail is an ordinary HQ window** (5e): it gets its nav number and its
+  minimize-to-bottom-cell behavior from the existing HQ-window mechanism, so a
+  minimized rail is also a numbered cell in the bottom bar.
+- **The hotbar is rail order 0** (the first rail). A future rail is one new
+  registration plus its own chtpm; nothing in the stack changes.
+
+Why this and not hotbar-specific code: stacking, minimizing and growth are the
+same problem for every rail, and solving it once keeps each new rail to a
+template.
+
 ## 6. Order of work
 
 1. This doc (done). 2. `khtpm_possess.c` plus unit harness, no UI.
