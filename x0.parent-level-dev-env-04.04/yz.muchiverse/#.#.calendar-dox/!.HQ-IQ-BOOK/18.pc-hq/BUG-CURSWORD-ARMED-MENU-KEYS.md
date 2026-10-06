@@ -1,8 +1,9 @@
 # Bug: armed cursword's context menu never gets the arrow keys
 
 Reported by the owner 2026-10-05. Cause found by reading the code the same
-day (first diagnosis retracted, see Cause). **A fix is applied and built but
-not yet verified live.**
+day (first diagnosis retracted, see Cause). **Fixed; the owner confirmed it
+works live after a `button.sh reset` (2026-10-05).** The history-line and
+non-armed checks below were not run by the agent.
 
 ## Symptom
 
@@ -27,7 +28,7 @@ menu is its own window and process. Arming cursword takes a display-wide
 release it. So every arrow/Esc goes to the sword's window, the sword's armed
 branch moves the sword, and the menu process receives no key at all.
 
-## Fix applied (built, NOT yet verified live)
+## Fix applied (owner-verified live)
 
 In the right-click branch, before the menu is launched: if cursword is armed
 and the menu is the khtpm kind, run the same disarm sequence the Escape and
@@ -41,8 +42,7 @@ check. Known catch: if a menu action opens another window (Chat, Inventory),
 the sword re-arms and holds the keyboard over it until Esc. The click-to-place
 pointer grab is not restored on re-arm (a stray click would place the sword).
 
-The running cursword (started before this build) still has the old code. It
-needs a relaunch to pick the fix up.
+A running cursword only picks the fix up after a relaunch (`$.crypts/button.sh reset`).
 
 ## Not covered
 
