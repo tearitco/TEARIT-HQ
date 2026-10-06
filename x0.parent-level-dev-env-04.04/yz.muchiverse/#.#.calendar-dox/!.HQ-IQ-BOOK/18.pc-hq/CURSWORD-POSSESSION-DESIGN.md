@@ -101,17 +101,32 @@ Decided:
      pc-hq Backspace only edits a typed cell ref, so it is free whenever no
      ref is being typed. pc-hq's current `9` release can stay as an alias.
 
-Still open:
-- **What is "the list" Shift walks?** The entities on cursword's cell, the
-  entities in range, or every entity on the page (the order of the bottom
-  bar)? I would use the bottom-bar order, since that is where the nav
-  already lives.
-- **Enter does two jobs:** possess (sword over an entity) and open a menu
-  (focus on the taskbar). I read it as: the focus decides, and Shift moves
-  the focus to the taskbar entry. Confirm.
-- **Is Shift a tap or Shift+arrow?** A tap is simplest, but a held Shift
-  also generates its own key event, so key repeat would cycle fast. I would
-  trigger on press only, no repeat. Confirm.
+Resolved by the owner (2026-10-05, later): **Enter is one progression, driven
+by the existing `click_two_step` setting** (`#.desktop/hq_ui.pdl`, house-wide,
+toggled in Settings; 1 = first click focuses, second activates; 0 = one click
+activates; the bottom bar and menu rows already work this way).
+- **Possess is the "focus" step; opening the entity's context menu is the
+  "activate" step.** "Focused" is simply `possessed_id == selected entity`,
+  so no extra state is needed.
+- **2-step:** Enter once possesses; Enter again opens the entity's menu.
+  **1-step:** one Enter possesses and opens the menu.
+- **Shift** teleports the sword along the entities in **bottom-bar order**;
+  the bar's focus follows. (That answers "which list": the bar order.)
+- It works on the desk too. The sword drives everything while armed (it
+  holds the keyboard), so it calls the same activation helper the bar uses.
+- **Build:** one shared helper in `khtpm_possess.c`, `psx_activate(entity,
+  two_step)`: not possessed -> possess (and, if 1-step, open the menu);
+  already possessed -> open the menu. The step setting is read through one
+  shared reader (three private copies exist today in `khtpm_entity.c`,
+  `khtpm_strip_parser.c`, `khtpm_core_render.c`; new code should not add a
+  fourth, and the three are not refactored here).
+- **Depends on `BUG-CURSWORD-ARMED-MENU-KEYS.md`:** the second Enter opens a
+  menu from the armed sword, so the armed-branch-before-popup bug must be
+  fixed first, and opening an entity menu must hand the keyboard grab to that
+  menu. How the desk launches an entity's menu from the sword is not yet
+  traced.
+- Open: should the Shift teleport save the sword's position (overwrite
+  `desktop_pos.txt`)? Assumed no.
 
 Decided later the same day:
 4. **Hotbar, modeled on Minecraft.** A fixed row of slots over the active
@@ -140,9 +155,8 @@ Decided later the same day:
    drawing the entity, and Place must be able to put it back with its old
    state). Both need a look before Take is built.
 
-Still open from before: the three items under "Still open" above (which
-list Shift walks, how Enter chooses between possess and open-menu, and Shift
-as press-only).
+Still open: Shift as press-only (no key repeat) is assumed; the Shift teleport
+position-saving question above.
 
 ## 6. Order of work
 
