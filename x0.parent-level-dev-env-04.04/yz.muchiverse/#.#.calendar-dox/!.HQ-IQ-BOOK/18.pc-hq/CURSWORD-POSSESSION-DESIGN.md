@@ -110,8 +110,10 @@ activates; the bottom bar and menu rows already work this way).
   so no extra state is needed.
 - **2-step:** Enter once possesses; Enter again opens the entity's menu.
   **1-step:** one Enter possesses and opens the menu.
-- **Shift** teleports the sword along the entities in **bottom-bar order**;
-  the bar's focus follows. (That answers "which list": the bar order.)
+- **Shift+Left / Shift+Right** moves the sword to the previous / next entity
+  in **bottom-bar order** (a modifier plus arrow, not a Shift tap); the bar's
+  focus follows. (That answers "which list": the bar order. It also removes
+  the earlier worry about Shift key repeat.)
 - It works on the desk too. The sword drives everything while armed (it
   holds the keyboard), so it calls the same activation helper the bar uses.
 - **Build:** one shared helper in `khtpm_possess.c`, `psx_activate(entity,
@@ -155,8 +157,17 @@ Decided later the same day:
    drawing the entity, and Place must be able to put it back with its old
    state). Both need a look before Take is built.
 
-Still open: Shift as press-only (no key repeat) is assumed; the Shift teleport
-position-saving question above.
+Still open: the Shift+arrow teleport position-saving question above.
+
+## 5a. Reminder: revisit later (owner, 2026-10-05)
+
+- **"An armed cursword seems like a bug, but I'm not sure."** Deferred on
+  purpose, to be raised again. What is known (see
+  `BUG-CURSWORD-ARMED-MENU-KEYS.md`): arming is a click toggle that takes a
+  display-wide keyboard grab, by design (2026-08-30 "stingy focus" request),
+  and that grab is what breaks the menu keys. Whether the armed state itself
+  (not just the menu clash) is wrong is the owner's open question; do not
+  assume either way.
 
 ## 6. Order of work
 
