@@ -1,7 +1,8 @@
 # Bug: armed cursword's context menu never gets the arrow keys
 
 Reported by the owner 2026-10-05. Cause found by reading the code the same
-day. **Not fixed, not reproduced live.** Only the code path was traced.
+day (first diagnosis retracted, see Cause). **A fix is applied and built but
+not yet verified live.**
 
 ## Symptom
 
@@ -9,34 +10,43 @@ With cursword in control mode (armed: arrow keys move it around the
 desktop), open its context menu. The arrow keys keep moving cursword and
 the menu's focus row does not change. It breaks the native feel of the menu.
 
-## Cause (read in `_.monads/_.livedesk-taskbar/ops/khtpm_entity.c`)
+## Cause (corrected 2026-10-05 - the first diagnosis was wrong)
 
-The `KeyPress` handler is an if/else chain, and the armed branch comes
-first:
+**Retracted:** this doc first said the armed branch of the `KeyPress` chain
+sits ahead of the popup branch. That is not what happens. A legacy in-process
+popup (`popup_win`) is handled by its own `KeyPress` branch earlier in the loop
+(~line 6016), before the armed branch is ever reached, so branch order is not
+the problem. An attempted guard on that branch changed nothing and was reverted.
 
-```
-} else if (xev.type == KeyPress) {
-    if (g_is_cursword && g_cursword_armed) {   // ~6563
-        ... Esc  -> disarm
-        ... Left/Right/Up/Down -> move cursword one grid cell (XMoveWindow)
-        ... camera keys
-    } else if (popup_win || user_popup_win || input_popup_win
-               || text_popup_win || input_active) {   // ~6664
-        ... menu key handling
-    }
-```
+**Actual cause (read in `_.monads/_.livedesk-taskbar/ops/khtpm_entity.c`):**
+cursword has a `menu.chtpm`, so `g_use_khtpm_menu` is set and
+`open_context_menu()` returns `None` after `launch_khtpm_menu()` forks a
+separate `khtpm_core_render` process. In that mode `popup_win` stays 0 and the
+menu is its own window and process. Arming cursword takes a display-wide
+`XGrabKeyboard` plus `XSetInputFocus` on its own window. Right-click does not
+release it. So every arrow/Esc goes to the sword's window, the sword's armed
+branch moves the sword, and the menu process receives no key at all.
 
-Right-click (`ButtonPress` button 3, ~6464) opens the menu in the same
-process as `popup_win`, and does not disarm cursword or release the grab.
-So while armed:
+## Fix applied (built, NOT yet verified live)
 
-- Up/Down/Left/Right are consumed by the move branch and never reach the
-  menu branch, so the focus row (`popup_focus_row`) never changes.
-- Esc takes the disarm branch, so it disarms cursword instead of closing
-  the menu.
-- Armed mode also holds a display-wide `XGrabKeyboard`, so no other window
-  can take the keys either. The grab is intentional: "stingy" focus was
-  an owner request on 2026-08-30.
+In the right-click branch, before the menu is launched: if cursword is armed
+and the menu is the khtpm kind, run the same disarm sequence the Escape and
+focus-lost paths use (release pointer grab if awaiting placement, release the
+keyboard grab, clear armed, write `cursword_armed.txt`, history line
+`CURSWORD_DISARMED_MENU_OPEN`, shape/redraw). The menu then opens exactly as it
+does for an unarmed cursword. Trade-off: the sword is disarmed once its menu
+opens and is re-armed with a click. Keeping it armed would need a "menu open"
+flag, suppressing the focus-lost disarm, and a re-grab when the menu exits,
+which would also steal the keyboard back from whatever window a menu action
+opened (Chat, Inventory), so it was not done.
+
+The running cursword (started before this build) still has the old code. It
+needs a relaunch to pick the fix up.
+
+## Not covered
+
+The legacy in-process popup path (`popup_win`, entities without a
+`menu.chtpm`) was not affected and is unchanged.
 
 ## Why tests would miss it (inferred)
 
@@ -46,26 +56,10 @@ menu through the per-pid relay file would likely pass while a real keyboard
 fails. This matches the existing note
 `relay-testing-may-mask-real-focus-bugs`. Verify with real key events.
 
-## Proposed fix (small)
-
-Give an open menu priority over the armed move branch. Either test the
-popup first, or guard the armed branch:
-
-```
-if (g_is_cursword && g_cursword_armed
-    && !(popup_win || user_popup_win || input_popup_win || text_popup_win || input_active)) {
-```
-
-Effects: with a menu open, arrows and Esc go to the menu; closing the menu
-returns arrow control to cursword; Esc with no menu still disarms. The
-keyboard grab stays, since this window still receives every key.
-
-Also decide: should opening the menu keep cursword armed (assumed yes, so
-the sword resumes moving once the menu closes)?
-
 ## Verification when fixed
 
-Real keyboard, not the relay: arm cursword, right-click it, press Down and
-Up (focus row moves, sword does not), Esc (menu closes, sword stays armed),
-arrows (sword moves), Esc (disarms). Also check `input_active` (a typed
+Real keyboard, not the relay, with a freshly launched cursword: arm it, right-click it
+(history shows `CURSWORD_DISARMED_MENU_OPEN`), press Down and Up (the menu's
+focus row moves, the sword does not), Esc (menu closes), click the sword to
+re-arm, arrows (sword moves), Esc (disarms). Also check `input_active` (a typed
 Cli-io field), since Esc there should cancel the field and not the arm.

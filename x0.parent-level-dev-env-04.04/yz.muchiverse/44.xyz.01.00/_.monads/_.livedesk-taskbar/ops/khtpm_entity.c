@@ -6491,6 +6491,27 @@ XSetClassHint(dpy, win, &(XClassHint){(char *)"MuchiverseLivedesk", (char *)"Muc
                     }
                     popup_x = xev.xbutton.x_root;
                     popup_y = xev.xbutton.y_root;
+                    /* Owner report 2026-10-05: an armed cursword must not take
+                     * focus from its own context menu. With a menu.chtpm the
+                     * menu is a SEPARATE khtpm_core_render process (popup_win
+                     * stays 0), so the armed display-wide XGrabKeyboard sent
+                     * every arrow/Esc to this window and the menu never saw a
+                     * key. Step back first, the same disarm sequence as the
+                     * Escape / focus-lost paths, so the menu opens exactly as
+                     * it does for an unarmed cursword. Re-arm with a click.
+                     * See 18.pc-hq/BUG-CURSWORD-ARMED-MENU-KEYS.md. */
+                    if (g_is_cursword && g_cursword_armed && g_use_khtpm_menu) {
+                        if (g_cursword_awaiting_place) {
+                            XUngrabPointer(dpy, CurrentTime);
+                            g_cursword_awaiting_place = 0;
+                        }
+                        kh_ungrab_kbd();
+                        g_cursword_armed = 0;
+                        cursword_write_armed(g_house_root, 0);
+                        append_history("CURSWORD_DISARMED_MENU_OPEN");
+                        cursword_update_shape(dpy, win);
+                        need_redraw = 1;
+                    }
                     popup_win = open_context_menu(dpy, popup_gc, &popup_x, &popup_y, n_methods, methods);
                     popup_nav_base = nav_claim_rows(g_house_root, getpid(), package_dir, methods, n_methods);
                     popup_focus_row = 0; popup_digit_accum = 0;
