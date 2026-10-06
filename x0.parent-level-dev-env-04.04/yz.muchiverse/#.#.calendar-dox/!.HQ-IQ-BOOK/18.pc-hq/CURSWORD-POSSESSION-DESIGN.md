@@ -229,21 +229,44 @@ Three pieces, to be done together because the hotbar needs all of them:
 3. **Digit echo: typed nav digits shown next to the `^` focus mark, accumulating
    in the same spot, on the top bar, the bottom bar, and pc-hq windows.**
 
-What the code does today (read, not run): the strip parser already draws
-`<^>[<digits>]` (or `^[NAV]` while armed) in the nav box at the left edge, from
-the manager's `digit_buf` (`khtpm_strip_parser.c` ~line 2012-2025). The manager
-accumulates digits against the real nav range (`max_claimed_nav()` reads
-`#.desktop/livedesk-nav-claims/livedesk_nav_claims.txt`), caps the buffer to the
-digit count that range needs, and moves the `[>]` cursor live as digits arrive;
-only Enter activates. So the accumulator exists; **what is not yet known is
-which bar that echo is actually drawn on** (the code that draws it is the HQ
-menu box path) and whether the bottom bar and pc-hq windows draw any echo at
-all. Check with a frame dump of each before building. pc-hq windows are
-`khtpm_core_render` windows that join the same nav numbering, so they need the
-same echo; the digit state they would read is not traced yet.
+**Confirmed by frame dump, 2026-10-05** (digit `1` typed through
+`#.desktop/strip_history.txt`; `strip_state.txt` showed `digit_buf=1`,
+`nav_armed=1`; PNGs of the top bar `0xc00003` and bottom bar `0xc00006`, both
+2096x45): **neither bar echoes the typed digits.** The nav box at the far left
+of each bar shows only a lone `.` (the `^` focus mark when the bar has real
+focus). The cursor `[>]` moves live as digits arrive, so the accumulator works;
+only the display is missing. The echo code that does exist (`khtpm_strip_parser.c`
+~2012-2025, `^[<digits>]` / `^[NAV]`) is on the HQ-menu box path, not these two
+bars.
+- **One shared buffer.** `digit_buf` lives in the manager's state, so the top
+  bar, the bottom bar and any third surface can all show the same text at the
+  same time, in the same spot (the `.` / `^` box), accumulating. No second
+  buffer is needed.
+- **Numbering is unified across both bars:** top bar cells are 1-16 (the last
+  being the clock), bottom bar continues at 17 (cursword) through 22
+  (door_civ). A new cell, such as a minimized hotbar, takes the next number
+  after the existing entities and must not renumber any of them.
+- pc-hq windows (the board window) were not open during the dump, so that
+  surface is not yet checked; it needs the same echo, reading the same buffer.
 
 Open: one shared echo formatter (text-include) used by the strip parser and
 `khtpm_core_render`, so the three surfaces cannot drift apart.
+
+## 5e. The hotbar is a real window with chrome, minimizable into the bottom bar (owner, 2026-10-05)
+
+The hotbar gets the standard window chrome and can be minimized into the bottom
+taskbar. So it should be built **as an ordinary HQ window** (a `khtpm_core_render`
+window drawing the `inv_project` feed), not a custom overlay: HQ windows already
+register in the nav-tab registry, take a nav number, and minimize to a bottom-bar
+cell. That gives the hotbar its nav number and its minimize behavior from the
+existing mechanism, with no new code for either.
+
+Consequences:
+- While visible it docks just above the bottom bar and follows the dock's growth
+  (5c). While minimized it takes no space above the bar; its geometry feed
+  reports that, and its bottom-bar cell carries its nav number.
+- Open: is the visible hotbar locked to the dock edge, or draggable like other
+  HQ windows? Assumed locked while docked.
 
 ## 6. Order of work
 
