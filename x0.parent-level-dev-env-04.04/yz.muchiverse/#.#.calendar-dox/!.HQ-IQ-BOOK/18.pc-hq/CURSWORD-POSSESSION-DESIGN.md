@@ -268,6 +268,38 @@ Consequences:
 - Open: is the visible hotbar locked to the dock edge, or draggable like other
   HQ windows? Assumed locked while docked.
 
+## 5f. Owner answers and the layout direction (2026-10-05)
+
+- The hotbar looks like the taskbar but **has window chrome**. It is **locked
+  to the dock** (not draggable for now). The dock is **pinned to the screen
+  bottom and grows upward**, so the hotbar's anchor is the dock's top edge
+  (the earlier "assumed, not verified" is now the owner's statement).
+- The nav box shows the focus mark and the accumulating index (`.`/`^` plus the
+  typed digits). The owner wants this driven by **layout going forward**, and
+  accepts tweaking the renderer/parser to get there.
+
+Where that stands in the code (read, 2026-10-05): the dock is hand-packed in C,
+not laid out by the generic flex/panel engine, and the dock migration
+(`08-roadmap/design-docs/DOCK-BAR-GENERIC-LAYOUT-MIGRATION.md`) has phase 1 done
+and phases 2 (replace the `+`/`-` row pager with the generic scrollbar) and 3
+(delete the dead constants) not started. That doc also says the focus box and
+the peer-window split are separate, already-hardened mechanisms to leave alone
+for now.
+
+Approach that stays compatible with that migration:
+1. **Variable first, drawing second.** One shared formatter produces the nav
+   echo string (focus mark + `[digits]`) from `digit_buf` and real-focus. Today
+   the C focus box draws it; once the nav box is a layout element, the same
+   string is just the value bound to it (e.g. `${nav_echo}`), with no logic
+   moved twice. The same string feeds the top bar, the bottom bar and pc-hq.
+2. **The hotbar is layout from day one** (a chtpm over the `inv_project` feed),
+   so none of it becomes new hardcoded dock C.
+3. **Publish dock geometry from the laid-out result**, not from
+   `DOCK_BAR_H * rows` arithmetic, so the feed stays correct when the migration
+   replaces the pager.
+Check when building: the focus box is a fixed width; confirm with a frame dump
+that `^[123]`-style text fits before relying on it.
+
 ## 6. Order of work
 
 1. This doc (done). 2. `khtpm_possess.c` plus unit harness, no UI.
