@@ -3410,7 +3410,12 @@ static void livedesk_kill_stray_entities(const char *house_root) {
          * hard-killed as a "stray". */
         if (strstr(cmdbuf, house_root) && !strstr(cmdbuf, "/pals/cursword") &&
             (strstr(cmdbuf, "tp_desktop_window") || strstr(cmdbuf, "khtpm_open_hai_render") ||
-             strstr(cmdbuf, "khtpm_hq_render"))) {
+             strstr(cmdbuf, "khtpm_hq_render") ||
+             /* 2026-10-05, owner report "i still see entities, no tbs": entities run as
+              * khtpm_entity.+x since the entity code was split out of khtpm_core_render
+              * (2026-09-27), so none of the names above match them and quit left every
+              * entity window running. */
+             strstr(cmdbuf, "khtpm_entity.+x"))) {
             int pid = atoi(ent->d_name);
             if (pid > 0 && n < (int)(sizeof(pids) / sizeof(pids[0]))) pids[n++] = (pid_t)pid;
         }

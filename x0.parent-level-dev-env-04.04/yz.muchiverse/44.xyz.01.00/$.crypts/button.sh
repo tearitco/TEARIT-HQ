@@ -41,7 +41,9 @@ KHTPM_PARSER="$TB_DIR/+x/khtpm_core_render.+x"
 # house's own consolidation). khtpm_core_render added; the two retired
 # names kept, harmless, in case an old build is somehow still running
 # mid-transition.
-KHTPM_PAT="khtpm_core_render\.\+x|khtpm_strip_parser\.\+x|khtpm_taskbar_manager_main\.\+x|khtpm_hq_render\.\+x|tp_desktop_window_rgb\.\+x|tp_desktop_window\.\+x"
+# 2026-10-05: khtpm_entity.+x added - entity windows run that binary (split out of
+# khtpm_core_render 2026-09-27); without it quit/reset left every entity running.
+KHTPM_PAT="khtpm_core_render\.\+x|khtpm_strip_parser\.\+x|khtpm_taskbar_manager_main\.\+x|khtpm_hq_render\.\+x|khtpm_entity\.\+x|tp_desktop_window_rgb\.\+x|tp_desktop_window\.\+x"
 khtpm_pids() { pgrep -f "$KHTPM_PAT" 2>/dev/null; }
 
 # REAL FIX 2026-09-23, direct live report ("reset should be killing
