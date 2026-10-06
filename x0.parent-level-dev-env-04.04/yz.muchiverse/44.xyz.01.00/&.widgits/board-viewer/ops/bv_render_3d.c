@@ -906,6 +906,16 @@ static void load_hero(const char *root) {
         g_hero_x = xs[0];
         g_hero_y = ys[0];
         g_hero_z = read_kv_int(sp, "current_z", 0);
+        {   /* The hero keeps its own z like any desk entity (desktop_pos.txt z=);
+             * the page row has no z. Without one, the board's current level. */
+            char rp[PATH_BUF], hp[PATH_BUF];
+            int rx, ry;
+            if (pgr_get(house_root, "hero_01", &rx, &ry, rp, sizeof(rp))) {
+                snprintf(hp, sizeof(hp), "%s/%s/desktop_pos.txt", house_root, rp);
+                int hz = bvr_kv_int(hp, "z", -9999);
+                if (hz != -9999) g_hero_z = hz;
+            }
+        }
         g_hero_present = 1;
         return;
     }

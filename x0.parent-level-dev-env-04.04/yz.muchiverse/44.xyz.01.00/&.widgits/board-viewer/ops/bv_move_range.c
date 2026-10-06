@@ -77,6 +77,49 @@ static __attribute__((unused)) int bvr_kv_int(const char *path, const char *key,
     return v;
 }
 
+/* ---- entity position: the page row first, state.txt as the fallback ------
+ * The livedesk page file is the shared source of truth for where an entity is
+ * (18.pc-hq/PAGE-FILE.md): a move written to the row shows in the desk and in
+ * both pc-hq views on their next draw. So when the entity has a row on the open
+ * page, x/y are read from and written to THAT row (khtpm_page_rows.c).
+ *
+ * z is not in the row. Following the desk (khtpm_entity.c read_entity_z), an
+ * entity keeps its own z= in <entity dir>/desktop_pos.txt. With no page row
+ * (a board-owned map, or nothing seeded yet) everything stays in
+ * pieces/<id>/state.txt exactly as before. state.txt is also kept in step when
+ * a row is written, so readers that have not been moved to the page yet do not
+ * drift. */
+#include "../../_shared-lib/khtpm_page_rows.c"
+
+static __attribute__((unused)) int bvr_house(const char *froot, char *out, size_t n) {
+    char p[4400];
+    FILE *f;
+    out[0] = '\0';
+    snprintf(p, sizeof(p), "%s/pieces/system/house_root.txt", froot);
+    if ((f = fopen(p, "r"))) { if (fgets(out, (int)n, f)) out[strcspn(out, "\r\n")] = 0; fclose(f); }
+    return out[0] != '\0';
+}
+
+/* 1 = x,y,z filled. *from_row (optional) = 1 when the page row supplied x/y. */
+static __attribute__((unused)) int bvr_pos_get(const char *froot, const char *ent,
+                                               int *x, int *y, int *z, int *from_row) {
+    char house[4400], rowpath[4400], sp[4400];
+    int cx, cy;
+    if (from_row) *from_row = 0;
+    snprintf(sp, sizeof(sp), "%s/pieces/%s/state.txt", froot, ent);
+    if (bvr_house(froot, house, sizeof(house)) && pgr_get(house, ent, &cx, &cy, rowpath, sizeof(rowpath))) {
+        char dp[4400];
+        *x = cx; *y = cy;
+        snprintf(dp, sizeof(dp), "%s/%s/desktop_pos.txt", house, rowpath);
+        *z = bvr_kv_int(dp, "z", bvr_kv_int(sp, "pos_z", 0));
+        if (from_row) *from_row = 1;
+        return 1;
+    }
+    if (bvr_kv_int(sp, "pos_x", -9999) == -9999) return 0;
+    *x = bvr_kv_int(sp, "pos_x", 0); *y = bvr_kv_int(sp, "pos_y", 0); *z = bvr_kv_int(sp, "pos_z", 0);
+    return 1;
+}
+
 /* Look of the range finder, from an external pdl (house config style: pipe-
  * delimited rows, `STYLE | key | value`) so it can be tuned without a rebuild:
  *   <real project>/pieces/system/move_range_style.pdl
@@ -119,13 +162,7 @@ static __attribute__((unused)) int bvr_origin(const char *real_root, int *x, int
     bvr_path(real_root, "move_range_entity.txt", ep, sizeof(ep));
     FILE *f = fopen(ep, "r");
     if (f) { char l[128]; while (fgets(l, sizeof(l), f)) if (!strncmp(l, "entity=", 7)) { snprintf(ent, sizeof(ent), "%.63s", l + 7); ent[strcspn(ent, "\r\n")] = 0; } fclose(f); }
-    if (ent[0]) {
-        snprintf(p, sizeof(p), "%s/pieces/%s/state.txt", real_root, ent);
-        if (bvr_kv_int(p, "pos_x", -9999) != -9999) {
-            *x = bvr_kv_int(p, "pos_x", 0); *y = bvr_kv_int(p, "pos_y", 0); *z = bvr_kv_int(p, "pos_z", 0);
-            return 1;
-        }
-    }
+    if (ent[0] && bvr_pos_get(real_root, ent, x, y, z, NULL)) return 1;
     snprintf(p, sizeof(p), "%s/pieces/xelector_01/state.txt", real_root);
     if (bvr_kv_int(p, "pos_x", -9999) == -9999) return 0;
     *x = bvr_kv_int(p, "pos_x", 0); *y = bvr_kv_int(p, "pos_y", 0); *z = bvr_kv_int(p, "pos_z", 0);
@@ -213,6 +250,23 @@ static __attribute__((unused)) void bvr_kv_set(const char *path, const char *key
     fclose(f);
 }
 
+/* Write an entity's position: the page row (x/y) + its own z= when it has a
+ * row, and always state.txt (kept in step). */
+static __attribute__((unused)) void bvr_pos_set(const char *froot, const char *ent, int x, int y, int z) {
+    char house[4400], rowpath[4400], sp[4400], dp[4400];
+    int cx, cy;
+    snprintf(sp, sizeof(sp), "%s/pieces/%s/state.txt", froot, ent);
+    if (bvr_house(froot, house, sizeof(house)) && pgr_get(house, ent, &cx, &cy, rowpath, sizeof(rowpath))) {
+        pgr_set_cell(house, ent, x, y);
+        if (z >= 0) {
+            snprintf(dp, sizeof(dp), "%s/%s/desktop_pos.txt", house, rowpath);
+            bvr_kv_set(dp, "z", z);
+        }
+    }
+    bvr_kv_set(sp, "pos_x", x); bvr_kv_set(sp, "pos_y", y);
+    if (z >= 0) bvr_kv_set(sp, "pos_z", z);
+}
+
 static __attribute__((unused)) void bvr_plan(const char *real_root, const char *ent,
                                              int x0, int y0, int z0, int x1, int y1, int z1) {
     char p[4400], dir[4400];
@@ -256,9 +310,8 @@ static __attribute__((unused)) int bvr_step(const char *real_root, const char *s
     int x, y, z, ln, moved = 0;
     if (mvr_queue_next(dir, &x, &y, &z, &ln)) {
         mvr_queue_advance(dir, ln);
-        snprintf(sp, sizeof(sp), "%s/state.txt", dir);
-        bvr_kv_set(sp, "pos_x", x); bvr_kv_set(sp, "pos_y", y);
-        if (z >= 0) bvr_kv_set(sp, "pos_z", z);
+        (void)sp;
+        bvr_pos_set(real_root, ent, x, y, z);
         bvr_ledger(real_root, ent, x, y, z);
         moved = 1;
     } else {                      /* drained: same cleanup the desk's tick does */
@@ -298,9 +351,12 @@ static __attribute__((unused)) int bvr_confirm(const char *froot, const char *se
     bvr_origin(froot, &ox, &oy, &oz);
     if (tx < 0 || ty < 0 || (bw > 0 && tx >= bw) || (bh > 0 && ty >= bh)) return 0;   /* off the board */
     if (!bvr_has3(&rng, tx - ox, ty - oy, tz - oz)) return 0;                          /* out of range (x,y,z) */
-    snprintf(sp, sizeof(sp), "%s/pieces/%s/state.txt", froot, ent);
-    bvr_plan(froot, ent, bvr_kv_int(sp, "pos_x", tx), bvr_kv_int(sp, "pos_y", ty),
-             bvr_kv_int(sp, "pos_z", tz), tx, ty, tz);
+    (void)sp;
+    {
+        int cx = tx, cy = ty, cz = tz;
+        bvr_pos_get(froot, ent, &cx, &cy, &cz, NULL);   /* from the page row when it has one */
+        bvr_plan(froot, ent, cx, cy, cz, tx, ty, tz);
+    }
     bvr_close(froot);
     unlink(jp);
     bvr_kv_set(pp, "armed", 0);
