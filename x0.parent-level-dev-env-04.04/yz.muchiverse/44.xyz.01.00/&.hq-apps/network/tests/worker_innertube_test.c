@@ -46,6 +46,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "nb_test_manager.h"
+
 #define NB_VISITOR "CAMoOzY9iAIRABAK"
 #define NB_SAPISID "sapisid_w7k9q2"
 #define NB_APIKEY  "AIzaSyHERMETICKEY0123456789"
@@ -361,7 +363,7 @@ int main(int argc, char **argv) {
     }
     close(to_child[0]); close(from_child[1]);
 
-    char load[2048];
+    char load[4096];
     snprintf(load, sizeof(load), "LOAD\n%s\n%s\nhttp://127.0.0.1:%d/login\nWall-6 InnerTube Feed Test",
              page_path, dom_path, port);
     wsend(to_child[1], load);
@@ -375,6 +377,10 @@ int main(int argc, char **argv) {
             if (WIFSIGNALED(st))
                 fprintf(stderr, "harness: worker killed by signal %d — see WERR| stderr above\n", WTERMSIG(st));
             return 1;
+        }
+        if (nbtm_is_fetch(reply)) {
+            nbtm_serve_fetch(to_child[1], reply, port);
+            continue;
         }
         if (strncmp(reply, "RENDER\n", 7) == 0) {
             size_t rn = strlen(reply + 7);

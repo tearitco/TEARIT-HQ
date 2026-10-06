@@ -1050,7 +1050,7 @@ static int merge_render_rows(void) {
             while (L > 0 && (row[L-1]=='\n' || row[L-1]=='\r')) row[--L] = 0;
             if (strncmp(row, "TEXT|", 5) == 0 ||
                 strncmp(row, "LINK|", 5) == 0 || strncmp(row, "IMG|", 4) == 0 ||
-                strncmp(row, "MEDIA|", 6) == 0)
+                strncmp(row, "MEDIA|", 6) == 0 || strncmp(row, "SEL|", 4) == 0)
                 continue;
             /* TITLE| from the manager stays: the worker RENDER usually
              * only covers TEXT/LINK/IMG, not document.title. */
@@ -1400,8 +1400,76 @@ static int worker_send_event(const char *selector, const char *type) {
     return worker_send(payload, (size_t)n);
 }
 
-/* Handle FETCH from worker (async per spec §8.2): worker asks manager to fetch.
- * Payload: FETCH\n<id>\n<method>\n<url> — do curl/file read and reply FETCHED\n<id>\n<status>\n<body> */
+/* ---- curl config-file writers (no shell string) -------------------------
+ * The old FETCH path built a shell command with the URL interpolated
+ * between single quotes. That was already fragile and becomes a command
+ * INJECTION hole the moment page-controlled headers or a POST body travel
+ * over this RPC: a single quote in either would escape the quoting. curl's
+ * -K config file passes every value as data instead. Mirrors cfg_put /
+ * cfg_line / cfg_data in ops/nb_js_worker.c. */
+static void mcfg_put(FILE *f, const char *val) {
+    for (const char *p = val; *p; p++) {
+        if (*p == '"' || *p == '\\') fputc('\\', f);
+        fputc(*p, f);
+    }
+}
+static void mcfg_line(FILE *f, const char *key, const char *val) {
+    fputs(key, f); fputs(" = \"", f); mcfg_put(f, val); fputs("\"\n", f);
+}
+static void mcfg_data(FILE *f, const char *val) {
+    fputs("data = \"", f);
+    for (const char *p = val; *p; p++) {
+        unsigned char c = (unsigned char)*p;
+        if (c < 0x20 && c != '\t') { fputc(' ', f); continue; }  /* config is single-line */
+        if (c == '"') fputs("\\\"", f);
+        else if (c == '\\') fputs("\\\\", f);
+        else fputc((int)c, f);
+    }
+    fputs("\"\n", f);
+}
+
+/* Read one newline-terminated line; returns pointer past it (or NULL). */
+static const char *fetch_line(const char *p, char *out, size_t cap) {
+    if (!p || !*p) return NULL;
+    /* Scan to the REAL line end first, then copy at most cap-1. Stopping the
+     * scan at cap-1 and returning p+n+1 would advance into the MIDDLE of an
+     * over-long line instead of past it - which silently desynchronises
+     * every field after it. A URL is routinely longer than a small buffer. */
+    size_t n = 0;
+    while (p[n] && p[n] != '\n') n++;
+    size_t c = (cap > 1) ? ((n < cap - 1) ? n : cap - 1) : 0;
+    memcpy(out, p, c); out[c] = '\0';
+    return p[n] ? p + n + 1 : p + n;
+}
+
+/* Handle FETCH from worker (async per spec 8.2): worker asks manager to fetch.
+ *
+ * Wire format, extended so the protocol stops losing page-controlled data:
+ *
+ *   FETCH\n<id>\n<method>\n<url>\n<nreq>\n<h1>\n...\n<hN>\n\n<body>
+ *   FETCHED\n<id>\n<status>\n<nresp>\n<r1>\n...\n<rM>\n\n<body>
+ *
+ * The previous form was FETCH\n<id>\n<method>\n<url> and
+ * FETCHED\n<id>\n<status>\n<body>. It silently dropped every request
+ * header and the entire request body, and could not return Set-Cookie at
+ * all. Not hypothetical: that is precisely why worker_sapisid_test could
+ * not deliver its Authorization: SAPISIDHASH header (fixture answered
+ * sign-fail) and why worker_fetch_post_test hung with the POST body
+ * stranded inside the worker.
+ *
+ * The manager is a TRANSPARENT PROXY here - it does no cookie handling.
+ * The worker attaches jar cookies to the outgoing headers and ingests
+ * Set-Cookie from the returned ones, exactly as its direct-curl path
+ * already does, and both sides share one NB_COOKIES_FILE (handed over at
+ * spawn, see g_curl_cookie_path). Cookie logic in two places is how jars
+ * drift apart.
+ *
+ * Compatibility: an OLD manager trimmed the url at the first newline, so
+ * fed this frame it still reads a correct URL and just ignores the tail -
+ * it degrades to the old lossy behaviour instead of misparsing. An OLD
+ * worker fed a new reply would take <nresp> for the body, so the worker's
+ * parser treats a non-numeric field in that position as "old format".
+ */
 static int handle_worker_fetch(const char *payload) {
     if (!payload || strncmp(payload, "FETCH\n", 6) != 0) return 0;
     const char *p = payload + 6;
@@ -1416,13 +1484,26 @@ static int handle_worker_fetch(const char *payload) {
     char method[16]; size_t mlen = (size_t)(n2 - q);
     if (mlen >= sizeof(method)) mlen = sizeof(method)-1;
     memcpy(method, q, mlen); method[mlen] = '\0';
-    const char *url = n2 + 1;
-    // url may have trailing \n, trim
-    char urlbuf[2300]; snprintf(urlbuf, sizeof(urlbuf), "%s", url);
-    char *nl = strchr(urlbuf, '\n'); if (nl) *nl = '\0';
-    // Do fetch: file:// -> read file, http(s):// -> curl
+
+    char urlbuf[2300];
+    const char *cur = fetch_line(n2 + 1, urlbuf, sizeof urlbuf);
+
+    char nb[16] = "";
+    char reqhdr[16][512];
+    int nreq = 0;
+    if (cur && *cur) {
+        cur = fetch_line(cur, nb, sizeof nb);
+        int want = atoi(nb);
+        if (want > 0 && want <= 16) nreq = want;
+    }
+    for (int i = 0; i < nreq; i++) cur = fetch_line(cur, reqhdr[i], sizeof reqhdr[i]);
+    if (nreq > 0 && cur) cur = fetch_line(cur, nb, sizeof nb);   /* blank separator */
+    const char *reqbody = cur ? cur : "";
+
     char *body = NULL; size_t body_len = 0; int status = 0;
     char err[256] = "";
+    /* hoisted: the response-header file is read after the fetch branch */
+    char tcfg[64] = "", tbody[64] = "", thdr[64] = "", tcode[64] = "";
     if (strncmp(urlbuf, "file:", 5) == 0) {
         const char *pp = urlbuf + 5; while (*pp == '/') pp++;
         if (strncmp(pp, "localhost", 9) == 0 && pp[9] == '/') pp += 10;
@@ -1437,22 +1518,43 @@ static int handle_worker_fetch(const char *payload) {
             fclose(f);
         } else snprintf(err, sizeof(err), "cannot read %s", abspath);
     } else if (strncmp(urlbuf, "http:", 5) == 0 || strncmp(urlbuf, "https:", 6) == 0) {
-        char t1[] = "/tmp/mgrfetch.XXXXXX", t2[] = "/tmp/mgrfetchbody.XXXXXX";
-        int fd1 = mkstemp(t1), fd2 = mkstemp(t2);
-        if (fd1 >= 0 && fd2 >= 0) {
-            close(fd1); close(fd2);
-            char cmd[2048];
-            snprintf(cmd, sizeof(cmd), "curl -sS -L --max-time 8 -A 'Mozilla/5.0 (NNEST manager rung4)' -o '%s' -w '%%{http_code}' '%s' 2>/dev/null", t2, urlbuf);
-            FILE *po = popen(cmd, "r");
-            char code[16] = "";
-            if (po) {
-                size_t got = 0;
-                int c;
-                while (got + 1 < sizeof(code) && (c = fgetc(po)) != EOF) code[got++] = (char)c;
-                code[got] = '\0';
-                pclose(po);
+        strcpy(tcfg,  "/tmp/mgrfetchcfg.XXXXXX");
+        strcpy(tbody, "/tmp/mgrfetchbody.XXXXXX");
+        strcpy(thdr,  "/tmp/mgrfetchhdr.XXXXXX");
+        strcpy(tcode, "/tmp/mgrfetchcode.XXXXXX");
+        int fdcfg = mkstemp(tcfg), fdb = mkstemp(tbody);
+        int fdh = mkstemp(thdr), fdc = mkstemp(tcode);
+        if (fdcfg >= 0 && fdb >= 0 && fdh >= 0 && fdc >= 0) {
+            close(fdcfg); close(fdb); close(fdh); close(fdc);
+            FILE *cf = fopen(tcfg, "w");
+            if (!cf) snprintf(err, sizeof(err), "cannot write curl config");
+            else {
+                mcfg_line(cf, "url", urlbuf);
+                mcfg_line(cf, "user-agent", "Mozilla/5.0 (NNEST manager rung4)");
+                mcfg_line(cf, "max-time", "8");
+                mcfg_line(cf, "request", method);
+                mcfg_line(cf, "output", tbody);
+                mcfg_line(cf, "dump-header", thdr);
+                mcfg_line(cf, "write-out", "%{http_code}");
+                fputs("silent\nlocation\nfail\n", cf);
+                for (int i = 0; i < nreq; i++) mcfg_line(cf, "header", reqhdr[i]);
+                if (*reqbody) mcfg_data(cf, reqbody);
+                fclose(cf);
+                /* Only mkstemp paths and literal flags reach this string, never
+                 * page data - the point of the config file. */
+                char cmd[1024];
+                snprintf(cmd, sizeof(cmd), "curl -sS -K '%s' > '%s' 2>/dev/null", tcfg, tcode);
+                (void)!system(cmd);
+                FILE *cf2 = fopen(tcode, "rb");
+                char code[16] = "";
+                if (cf2) {
+                    size_t got = 0; int ch;
+                    while (got + 1 < sizeof(code) && (ch = fgetc(cf2)) != EOF) code[got++] = (char)ch;
+                    code[got] = '\0';
+                    fclose(cf2);
+                }
                 status = atoi(code);
-                FILE *bf = fopen(t2, "rb");
+                FILE *bf = fopen(tbody, "rb");
                 if (bf) {
                     fseek(bf, 0, SEEK_END); long sz = ftell(bf); fseek(bf, 0, SEEK_SET);
                     if (sz >= 0 && sz < 60000) {
@@ -1462,21 +1564,40 @@ static int handle_worker_fetch(const char *payload) {
                     fclose(bf);
                 }
             }
-            unlink(t1); unlink(t2);
         }
+        unlink(tcfg); unlink(tbody); unlink(thdr); unlink(tcode);
         if (!body && !status) { status = 0; snprintf(err, sizeof(err), "curl failed"); }
     } else {
         snprintf(err, sizeof(err), "unsupported scheme");
     }
-    char out[65536];
-    int n = 0;
-    if (body) {
-        n = snprintf(out, sizeof(out), "FETCHED\n%s\n%d\n%s", idbuf, status, body);
-        free(body);
-    } else {
-        n = snprintf(out, sizeof(out), "FETCHED\n%s\n%d\n%s", idbuf, status, err[0] ? err : "");
+
+    /* response headers, so the worker can ingest Set-Cookie into its jar */
+    char resphdr[32][512];
+    int nresp = 0;
+    if (thdr[0]) {
+        FILE *hf = fopen(thdr, "rb");
+        if (hf) {
+            char line[512];
+            while (nresp < 32 && fgets(line, sizeof line, hf)) {
+                size_t n = strlen(line);
+                while (n && (line[n-1] == '\n' || line[n-1] == '\r')) line[--n] = '\0';
+                if (!n) continue;
+                if (n >= sizeof resphdr[0]) n = sizeof resphdr[0] - 1;
+                memcpy(resphdr[nresp], line, n + 1);
+                nresp++;
+            }
+            fclose(hf);
+        }
     }
+
+    static char out[140000];
+    int n = snprintf(out, sizeof out, "FETCHED\n%s\n%d\n%d", idbuf, status, nresp);
+    for (int i = 0; i < nresp && n > 0 && (size_t)n < sizeof(out); i++)
+        n += snprintf(out + n, sizeof out - n, "\n%s", resphdr[i]);
+    if (n > 0 && (size_t)n < sizeof(out))
+        n += snprintf(out + n, sizeof out - n, "\n\n%s", body ? body : (err[0] ? err : ""));
     if (n > 0 && (size_t)n < sizeof(out)) worker_send(out, (size_t)n);
+    free(body);
     return 1;
 }
 
@@ -1696,13 +1817,32 @@ static int worker_load(const char *js_path, const char *dom_path,
  * RENDER rows (overlaid onto page.state.txt via merge_render_rows) and
  * stashes any NAV the snippet triggered (consumed next main-loop tick,
  * same as a page-triggered NAV). Returns 1 on "STATUS ok". */
+static int worker_pump_reply(int quiet_ms);
+
 static int worker_eval(const char *js) {
     worker_spawn();
     if (g_worker_fd < 0) { publish_status("error: no worker"); return 0; }
     char payload[8192];
     int n = snprintf(payload, sizeof(payload), "EVAL\n%s", js ? js : "");
     if (!worker_send(payload, (size_t)n)) { worker_close(); return 0; }
+    return worker_pump_reply(WORKER_LOAD_QUIET_MS);
+}
 
+/* Dispatch a real DOM event on the worker (EVENT|<selector>|<type>) and wait
+ * for its reply, so the RENDER rows captured here are the POST-event ones.
+ * worker_send_event() only writes the request; without this pump the caller
+ * would merge the previous page's rows and the click would look like a no-op. */
+static int worker_event(const char *selector, const char *type) {
+    worker_spawn();
+    if (g_worker_fd < 0) { publish_status("error: no worker"); return 0; }
+    char payload[4096];
+    int n = snprintf(payload, sizeof(payload), "EVENT\n%s\n%s",
+                     selector ? selector : "", type && *type ? type : "click");
+    if (!worker_send(payload, (size_t)n)) { worker_close(); return 0; }
+    return worker_pump_reply(WORKER_LOAD_QUIET_MS);
+}
+
+static int worker_pump_reply(int quiet_ms) {
     char resp[65536];
     for (;;) {
         /* A console command can run the page's own handlers (input/click),
@@ -3175,6 +3315,27 @@ static void handle_request(void) {
     } else if (strncmp(line, "eval:", 5) == 0) {
         publish_status(worker_eval(line + 5) ? "ready" : "eval error");
         (void)merge_render_rows();
+    } else if (strncmp(line, "click:", 6) == 0) {
+        /* khtpm click on a rendered content row -> a real DOM event in the
+         * worker. Payload: "click:<selector>[:<type>]". The worker resolves the
+         * selector with document.querySelector and dispatches a bubbling
+         * Event, then re-renders, so whatever the page's handler changed shows
+         * up in the projection without a reload. */
+        char *sel = line + 6;
+        char *colon = strchr(sel, ':');
+        char type[32] = "click";
+        if (colon) {
+            *colon = 0;
+            snprintf(type, sizeof(type), "%s", colon + 1);
+            if (!type[0]) snprintf(type, sizeof(type), "click");
+        }
+        if (worker_event(sel, type)) {
+            publish_status("ready");
+            (void)merge_render_rows();
+            write_ui_projection();
+        } else {
+            publish_status("event failed");
+        }
     } else if (strncmp(line, "go:", 3) == 0) {
         char target[PATH_BUF];
         go_target_or_search(target, sizeof(target), line + 3);
@@ -3881,6 +4042,10 @@ static void write_ui_projection(void) {
             int nrow = 0;
             while (nrow < NB_UI_ROWS_MAX && fgets(rows[nrow], sizeof(rows[0]), pf)) nrow++;
             fclose(pf);
+            /* SEL rows are emitted by the worker immediately before the row they
+             * belong to; the projector carries the selector forward so each
+             * rendered row can offer a real DOM click. */
+            char pending_sel[96] = "";
             for (int ri = 0; ri < nrow && rc < 400; ri++) {
                 char *line = rows[ri];
                 size_t n = strlen(line);
@@ -3892,14 +4057,31 @@ static void write_ui_projection(void) {
                 const char *kind = line;
                 char t[1024], s1[1024], s2[700];
 
+                if (strcmp(kind, "SEL") == 0) {
+                    snprintf(pending_sel, sizeof(pending_sel), "%s", rest);
+                    continue;
+                }
+                /* click action for a row that has a selector; links keep their
+                 * go: action instead, since a link click navigates. */
+                char click_action[PATH_BUF * 2] = "";
+                if (pending_sel[0] && strcmp(kind, "LINK") != 0) {
+                    char sel_sq[256];
+                    shell_escape_squote(pending_sel, sel_sq, sizeof(sel_sq));
+                    snprintf(click_action, sizeof(click_action),
+                             "'%s/ops/nb_write_click.sh' 'click' '%s' 'click'\n",
+                             g_package_dir, sel_sq);
+                }
+
                 if (strcmp(kind, "TITLE") == 0) {
                     uisan(rest, t, sizeof(t));
                     UI_PUT("c_%d_kind=title\nc_%d_is_title=1\nc_%d_text=%s\n", rc, rc, rc, t);
+                    if (click_action[0]) UI_PUT("c_%d_sel=%s\nc_%d_click_action=%s", rc, pending_sel, rc, click_action);
                 } else if (strcmp(kind, "TEXT") == 0) {
                     uisan(rest, t, sizeof(t));
                     /* Walker pass: drop wiki chrome / jump links even when they arrived via the worker RENDER rows, which bypass junk_visible_line() in the extractor. */
                     if (junk_visible_line(t)) continue;
                     UI_PUT("c_%d_kind=text\nc_%d_is_text=1\nc_%d_text=%s\n", rc, rc, rc, t);
+                    if (click_action[0]) UI_PUT("c_%d_sel=%s\nc_%d_click_action=%s", rc, pending_sel, rc, click_action);
                 } else if (strcmp(kind, "LINK") == 0) {
                     char *b2 = strchr(rest, '|');
                     if (b2) { *b2 = 0; snprintf(s2, sizeof(s2), "%s", b2 + 1); } else s2[0] = 0;
@@ -3934,6 +4116,7 @@ static void write_ui_projection(void) {
                     }
                     char lab_s[700]; uisan(s2[0] ? s2 : " ", lab_s, sizeof(lab_s));
                     UI_PUT("c_%d_kind=img\nc_%d_is_media=1\nc_%d_sprite=%s\nc_%d_label=%s\n", rc, rc, rc, s1, rc, lab_s);
+                    if (click_action[0]) UI_PUT("c_%d_sel=%s\nc_%d_click_action=%s", rc, pending_sel, rc, click_action);
                     /* V4 2026-09-12: an IMG immediately tailed by a LINK
                      * row is the tile's action (watch-page related videos
                      * arrive as IMG+LINK pairs) - emit the go: and consume
