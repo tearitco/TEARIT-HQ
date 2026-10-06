@@ -82,16 +82,39 @@ reference; shared logic is text-included from `&.widgits/_shared-lib/`.
      item onto the chosen cell instead of moving the entity.
    - "Top item" means the selected slot. Hotbar cycling is open, see 5.
 
-## 5. Open questions for the owner
+## 5. Owner decisions (2026-10-05) and what is still open
 
-1. Are cursword's vitals separate from the possessed entity's (and swapped
-   in), or the same numbers? This doc assumes swapped in.
-2. Should desk possession move cursword onto the entity and show that
-   entity's `menu.chtpm`? Assumed yes.
-3. "Top item": a selectable hotbar slot, or strictly the first item?
-4. Are hearts and hunger display-only for now? Assumed yes.
-5. Despawn on Take: how does a desk entity leave the desktop when it goes
-   into an inventory? Not checked yet.
+Decided:
+1. **Vitals are swapped.** Possessing an entity swaps its hearts and hunger
+   in; cursword's own stay as they were (always full when unpossessing).
+2. **Desk shows only cursword's menu.** Possession does not swap in the
+   entity's own menu. **Possess** is one row of cursword's menu.
+3. **Keys, the same on the desk and in pc-hq:**
+   - **Enter** with cursword over an entity: possess it automatically.
+     (pc-hq already does this for the xelector: Enter possesses the entity
+     under it. The desk would match it.)
+   - **Shift**: move to the next entity in the list. The bottom taskbar's
+     nav follows that choice, so Enter from there opens that entity's
+     context menu.
+   - **Backspace** (or similar): stop possessing and be the sword again.
+     Checked: it clashes with nothing in cursword's armed handler, and in
+     pc-hq Backspace only edits a typed cell ref, so it is free whenever no
+     ref is being typed. pc-hq's current `9` release can stay as an alias.
+
+Still open:
+- **What is "the list" Shift walks?** The entities on cursword's cell, the
+  entities in range, or every entity on the page (the order of the bottom
+  bar)? I would use the bottom-bar order, since that is where the nav
+  already lives.
+- **Enter does two jobs:** possess (sword over an entity) and open a menu
+  (focus on the taskbar). I read it as: the focus decides, and Shift moves
+  the focus to the taskbar entry. Confirm.
+- **Is Shift a tap or Shift+arrow?** A tap is simplest, but a held Shift
+  also generates its own key event, so key repeat would cycle fast. I would
+  trigger on press only, no repeat. Confirm.
+- Hotbar: selectable slot or strictly first item (for Place).
+- Hearts and hunger display-only for now (assumed yes).
+- How a desk entity leaves the desktop on Take (not checked).
 
 ## 6. Order of work
 
