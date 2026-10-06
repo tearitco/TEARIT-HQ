@@ -46,6 +46,7 @@
  * eventual integration point doesn't need a different argv shape). */
 #include "khtpm_css_parser.h"
 #include "khtpm_render_core.c" /* real .c, not a header - see that file's own comment */
+#include "khtpm_nav_echo.c" /* nve_text(): nav box = focus mark + typed nav digits, one shared buffer (18.pc-hq/CURSWORD-POSSESSION-DESIGN.md 5d) */
 #include "khtpm_reparse_diff.c" /* 2026-09-11 - real keyed tree diff/patch, see 08-roadmap/design-docs/CHTPM-INCREMENTAL-REPARSE-DESIGN.md. Wired in behind g_use_incremental_reparse, OFF by default - see that flag's own declaration comment. */
 static int kh_auto_px(int base_px) {
     return (base_px * 70 + 50) / 100;
@@ -2041,6 +2042,16 @@ static int g_win_top_y = 90;   /* == WM_MANAGED_DRAG_MIN_Y (defined below) */
  * digit-jump is in khtpm_strip_parser.c / khtpm_taskbar_manager.c -
  * a separate fix if it regressed there too. */
 static int g_nav_digit_accum = 0;
+/* Digits to echo next to the focus mark (nve_text, khtpm_nav_echo.c). Two
+ * sources feed the same box: a REAL key typed into this window lands in
+ * g_nav_digit_accum (found 2026-10-05 from the owner's report "not seeing the
+ * numbers": my relay test went through the manager's digit_buf, real keys do
+ * not), while digits injected through the manager's strip_history.txt show up
+ * as the nav_digits variable. Either one non-empty is shown. */
+static const char *kh_nav_echo_digits(char *buf, size_t n) {
+    if (g_nav_digit_accum > 0) { snprintf(buf, n, "%d", g_nav_digit_accum); return buf; }
+    return kh_get_var("nav_digits");
+}
 /* REAL, NEW 2026-09-03 (direct request: "make menu dropdown... work for
  * all layouts", after live-checking that piececraft-hq's own File/Desk
  * dropdown is hand-built, mode-specific C predating CENTROID_GOLD_STD,
@@ -6386,10 +6397,13 @@ static void dock_paint_peer(void) {
     {
         Window focus_win; int focus_revert;
         XGetInputFocus(dpy, &focus_win, &focus_revert);
-        const char *mark = (focus_win == win) ? "^" : ".";
+        char mark[16], echo_buf[16];
         int ty = DOCK_BAR_H / 2 + (font_ui ? font_ui->ascent / 2 : 6);
         XftColor mark_col = xft_color(window_is_dock() ? g_theme_fg : "#eeeeee");
-        XftDrawStringUtf8(xftdraw_buf, &mark_col, font_ui, 18, ty, (const FcChar8 *)mark, 1);
+        /* focus mark + the nav digits typed so far (one shared buffer, so the
+         * top bar, bottom bar and pc-hq windows echo the same digits). */
+        int mark_n = nve_text((focus_win == win) ? "^" : ".", kh_nav_echo_digits(echo_buf, sizeof(echo_buf)), mark, sizeof(mark));
+        XftDrawStringUtf8(xftdraw_buf, &mark_col, font_ui, 18, ty, (const FcChar8 *)mark, mark_n);
         XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &mark_col);
         XSetForeground(dpy, gc, alloc_pixel("#4a4a4a"));
         XDrawLine(dpy, buf, gc, DOCK_FOCUS_BOX_W, 0, DOCK_FOCUS_BOX_W, g_win_h);
@@ -9906,12 +9920,13 @@ static void redraw(void) {
                  g_window_malformed ? "  \xE2\x9A\xA0 malformed template" : "");
         const char *title = title_buf;
         if (window_is_dock()) {
-            const char *mark = (focus_win == win) ? "^" : ".";
+            char mark[16], echo_buf[16];
             XftFont *df = font_ui;
             int ty = DOCK_BAR_H / 2 + (df ? df->ascent / 2 : 6);
             XftColor mark_col = xft_color(window_is_dock() ? g_theme_fg : "#eeeeee");
+            int mark_n = nve_text((focus_win == win) ? "^" : ".", kh_nav_echo_digits(echo_buf, sizeof(echo_buf)), mark, sizeof(mark));
             XftDrawStringUtf8(xftdraw_buf, &mark_col, df, 18, ty,
-                               (const FcChar8 *)mark, 1);
+                               (const FcChar8 *)mark, mark_n);
             XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &mark_col);
             XSetForeground(dpy, gc, alloc_pixel("#4a4a4a"));
             XDrawLine(dpy, buf, gc, DOCK_FOCUS_BOX_W, 0, DOCK_FOCUS_BOX_W, g_win_h);

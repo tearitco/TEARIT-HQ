@@ -338,6 +338,23 @@ Why this and not hotbar-specific code: stacking, minimizing and growth are the
 same problem for every rail, and solving it once keeps each new rail to a
 template.
 
+## 5h. Status: digit echo built on the desk bars (2026-10-05)
+
+- `&.widgits/_shared-lib/khtpm_nav_echo.c` (`nve_text`): focus mark + the last 3
+  typed digits; included by `khtpm_core_render.c`, drawn at both dock draw sites.
+- The manager publishes `nav_digits` (its `digit_buf`) in `strip_ui.txt`; the
+  renderer also shows its own `g_nav_digit_accum`. **Lesson:** digits injected
+  through the manager's `strip_history.txt` and digits from a REAL key typed
+  into the dock window take different paths (the real one lands in the window's
+  own accumulator and the per-pid relay file, not the manager's buffer). The
+  first build only read the manager's buffer, so my relay test passed while the
+  owner's real keyboard showed nothing; fixed by reading both. Owner confirmed
+  the echo shows on the real desk.
+- Verified: `.1` and `.12` fit the 64 px nav box on the top and bottom bar.
+- Not done: x11-hq / pc-hq windows (they do not draw through the dock code),
+  the strip parser's own HQ-menu echo is untouched, and the dock stack / hotbar
+  window.
+
 ## 6. Order of work
 
 1. This doc (done). 2. `khtpm_possess.c` plus unit harness, no UI.
