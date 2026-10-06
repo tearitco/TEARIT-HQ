@@ -218,11 +218,11 @@ static void new_game(const char *project_root_) {
     }
 }
 
-#ifdef _WIN32
 static int cmp_corp_name(const void *a, const void *b) {
     return strcmp((const char *)a, (const char *)b);
 }
 
+#ifdef _WIN32
 /* corp_* piece names in sorted order - the same ordering
  * scripts/active_corp.sh and scripts/active_corp.ps1 both produce, so the
  * index-to-corp mapping matches what the frame already displays. */
@@ -245,6 +245,26 @@ static int collect_corp_names(const char *project_root_, char names[][64], int m
     qsort(names, (size_t)n, 64, cmp_corp_name);
     return n;
 }
+#else
+static int collect_corp_names(const char *project_root_, char names[][64], int maxn) {
+    int n = 0;
+    char path[PATH_BUF];
+    DIR *dir;
+    struct dirent *ent;
+    snprintf(path, sizeof(path), "%s/projects/wsr-pal/pieces", project_root_);
+    dir = opendir(path);
+    if (!dir) return 0;
+    while ((ent = readdir(dir)) != NULL && n < maxn) {
+        if (strncmp(ent->d_name, "corp_", 5) == 0) {
+            snprintf(names[n], 64, "%s", ent->d_name);
+            n++;
+        }
+    }
+    closedir(dir);
+    qsort(names, (size_t)n, 64, cmp_corp_name);
+    return n;
+}
+#endif
 
 /* Resolves the active corporation piece id ("corp_AFL") from
  * projects/wsr-pal/pieces/wsr_main_menu/state.txt's active_corp_index.
@@ -268,7 +288,7 @@ static int collect_corp_names(const char *project_root_, char names[][64], int m
  * Linux is deliberately left untouched: its $(bash ...) still expands in
  * /bin/sh exactly as before, per the house rule that Linux stays canonical
  * and Windows is only wrapped. */
-static void resolve_active_corp(const char *project_root_, char *out, size_t out_sz) {
+void resolve_active_corp(const char *project_root_, char *out, size_t out_sz) {
     char state_path[PATH_BUF];
     static char names[512][64];
     int idx, n;
@@ -283,7 +303,6 @@ static void resolve_active_corp(const char *project_root_, char *out, size_t out
     if (idx >= n) idx = n - 1;
     snprintf(out, out_sz, "%s", names[idx]);
 }
-#endif
 
 /* Shell-out helper: Linux uses bash-style; Windows uses cmd /c.
  * Also rewrites Linux-style ./ops/+x/ paths so piece.pdl RUN: rows work. */

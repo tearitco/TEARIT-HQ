@@ -1,5 +1,5 @@
 #!/bin/bash
-_pcd="$(cd "$(dirname "$0")" && pwd)"; while [ "$_pcd" != "/" ] && [ ! -d "$_pcd/&.widgits/_shared-lib" ]; do _pcd="$(dirname "$_pcd")"; done; PRISC_CANON_SHARED_LIB="$_pcd/&.widgits/_shared-lib"  # PRISC-X-FORK-CONSOLIDATION.md
+_pcd="$(cd "$(dirname "$0")" && pwd)"; while [ "$_pcd" != "/" ] && [ ! -d "$_pcd/&.widgits/_shared-lib" ]; do _pcd="$(dirname "$_pcd")"; done; PRISC_CANON_SHARED_LIB="${PRISC_CANON_SHARED_LIB:-$_pcd/&.widgits/_shared-lib}"  # PRISC-X-FORK-CONSOLIDATION.md
 # scripts/build.sh - compile everything, warning-free.
 #
 # LOCAL COPIES, NOT A LIVE SHARED_OPS REFERENCE: this project keeps its

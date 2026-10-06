@@ -89,7 +89,6 @@ int main(int argc, char *argv[]) {
 
     if (action == 1) {
         tax_rate_adj += 1.0f;
-        revenue += revenue * 0.01f;
         label = "raise";
     } else if (action == 2) {
         spending -= spending * 0.02f;
