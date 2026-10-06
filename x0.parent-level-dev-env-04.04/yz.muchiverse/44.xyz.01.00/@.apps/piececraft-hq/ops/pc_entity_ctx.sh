@@ -34,6 +34,13 @@ if [ ! -x "$BIN" ]; then
     exit 1
 fi
 
+# In-board menu (IN-GAME-LAYOUTS-PLAN.md): the running board's package dir is recorded by open_pchq_board.sh; a
+# board whose <dir>/state/ctx_overlay.on exists draws the generated menu itself (overlay id "ctx", spliced from
+# <dir>/state/ctx_menu.chtpm) instead of this script opening a floating window. CTX_AT_X/Y = click point in canvas
+# pixels (absent: the overlay centres itself). Desk entities' own menu.chtpm still opens as a window (below).
+CTXDIR="$(cat "$HOUSE/#.desktop/pchq_ctx_dir.txt" 2>/dev/null)"
+[ -n "$CTXDIR" ] && [ -f "$CTXDIR/state/ctx_overlay.on" ] || CTXDIR=""
+
 PICK="$ROOT/pieces/display/pick.txt"
 SX=0; SY=0; SZ=0; KIND=none; ID=""; TMPL=""; GLYPH=""
 NOTE=""
@@ -196,12 +203,23 @@ V="\$1"; X="\$2"; Y="\$3"; Z="\$4"; ID="\$5"; KIND="\$6"; GLYPH="\$7"; TMPL="\$8
 [ "\$V" != EXIT ] && printf 'CTX_%s %s %s %s %s %s %s %s\n' \
     "\$V" "\$X" "\$Y" "\$Z" "\${ID:-_}" "\${KIND:-_}" "\${GLYPH:-_}" "\${TMPL:-_}" >> "$INBOX"
 echo "\$(date '+%H:%M:%S') click \$V \$X,\$Y,\$Z \${ID} \${KIND}" >> "$LOG"
+[ -n "$CTXDIR" ] && printf 'ctx_visible=0\n' > "$CTXDIR/state/ctx.txt"
 for p in \$(pgrep -f "khtpm_core_render.+x .*ctx-menu\\.xhtpm" 2>/dev/null); do
     [ "\$(cat /proc/\$p/comm 2>/dev/null)" = khtpm_core_rend ] && kill "\$p" 2>/dev/null
 done
 APP
 chmod +x "$PKG/append.sh"
 
+if [ -n "$CTXDIR" ]; then
+    # publish into the board: the menu file (same markup the window would render), then the position + visible
+    cp "$PKG/ctx-menu.xhtpm" "$CTXDIR/state/ctx_menu.chtpm.tmp" && mv "$CTXDIR/state/ctx_menu.chtpm.tmp" "$CTXDIR/state/ctx_menu.chtpm"
+    printf 'ctx_visible=1\n' > "$CTXDIR/state/ctx.txt.tmp"
+    [ -n "${CTX_AT_X:-}" ] && printf 'ctx_x=%s\nctx_y=%s\n' "$CTX_AT_X" "${CTX_AT_Y:-0}" >> "$CTXDIR/state/ctx.txt.tmp"
+    mv "$CTXDIR/state/ctx.txt.tmp" "$CTXDIR/state/ctx.txt"
+    echo "$(date '+%H:%M:%S') overlay  [$HEADER] at ${CTX_AT_X:-center},${CTX_AT_Y:-}" >> "$LOG"
+    echo "pc_entity_ctx: in-board menu up [$HEADER]"
+    exit 0
+fi
 for p in $(pgrep -f "khtpm_core_render.+x .*ctx-menu\.xhtpm" 2>/dev/null); do
     [ "$(cat /proc/$p/comm 2>/dev/null)" = khtpm_core_rend ] && kill "$p" 2>/dev/null
 done

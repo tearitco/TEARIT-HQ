@@ -60,10 +60,15 @@ window { background-color: #141414; font-family: Ubuntu; font-size: 10px; }
 
 /* sandbox test menu (layout fragment test-menu) */
 .tm-menu { background-color: #444444; border: 1px solid #666666; border-width: 1; }
-.tm-row { font-size: 13px; background-color: #444444; border: 1px solid #666666; border-width: 1; color: #ffffff; width: 200px; }
+.tm-row { width: 200px; font-size: 13px; background-color: #444444; border: 1px solid #666666; border-width: 1; color: #ffffff; }
 .tm-quiet { color: #ffffff; }
 
 /* overlay chrome: the drag handle */
 .ov-title { background-color: #666666; color: #ffffff; }
 
 .ov-min { width: 66px; height: 20px; font-size: 14px; background-color: #444444; border: 1px solid #666666; border-width: 1; color: #ffffff; }
+
+/* in-board context menu rows (pc_entity_ctx.sh menu markup spliced with inner="page") */
+.ctx-menu { background-color: #444444; border: 1px solid #666666; border-width: 1; }
+.ov-row { width: 400px; font-size: 13px; background-color: #444444; border: 1px solid #666666; border-width: 1; color: #ffffff; }
+.ov-close { width: 66px; height: 20px; font-size: 14px; background-color: #444444; border: 1px solid #666666; border-width: 1; color: #ffffff; }

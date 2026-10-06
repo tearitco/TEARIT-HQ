@@ -97,6 +97,19 @@ title bar and nav-numbered (its action hides the overlay; the host's bottom-bar 
 the pc-hq hotbar: typed `19` + Enter hides it, bottom-bar cell `7` + Enter restores it, and the other overlay
 renumbers because only visible items are numbered (4h).
 
+**Built 2026-10-06 (context menus, first slice):** the pc-hq *generated* verb menus (Inspect, Dir, Cli-io ...) now
+draw inside the board. No new menu logic: `pc_entity_ctx.sh` still generates the same menu markup, and `<overlay
+src=... inner="page"/>` splices that file's `<page>` content into a row `id="ctx"` (class `canvas-overlay-at ov-chrome
+ov-focus`): first `<text>` = title bar, `Close` row dropped, rows get class `ov-row`. The op publishes `state/ctx_menu.chtpm`
++ `state/ctx.txt` (`ctx_visible`, `ctx_x`, `ctx_y`) instead of opening a window, only when `<board dir>/state/ctx_overlay.on`
+exists (`open_pchq_board.sh` records the board dir in `#.desktop/pchq_ctx_dir.txt` and creates the files). Chrome: `_` and
+`x` (`ov-close`) act on ONE click (not the house two-step); `ov-focus` gives the first row keyboard focus when the menu opens
+(`[>]`); the title carries the window focus mark (`^ ` focused, `. ` not) via `kh_ov_finish`; a drag offset belongs to its
+anchor, so a menu reopened elsewhere starts at its own point. The right-click path passes the click point (`CTX_AT_X/Y`).
+Verified live on the pc-hq board: opens with `^` and focus on Inspect, Enter ran the row (`click INSPECT` logged) and closed
+it, `x` closed on one click. **Not yet:** the desk entities' own `menu.chtpm` (still a window: its actions assume the pal's
+package dir, `$0/$1`), right-click placement not driven live, remembered positions, modal scope (`[^]` root) for the menu.
+
 **Long term, this is how the pc-hq context windows work (owner, 2026-10-06):** an entity context menu becomes an
 overlay with the same chrome (title bar to drag, `_` minimize, and an **`x` close** button, i.e. an
 `<item class="ov-close">` placed beside `ov-min`, not built yet), clamped to the board and minimizing with it.

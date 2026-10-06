@@ -49,6 +49,17 @@ fi
 # PCHQ_BOARD_TPL=<path to a template named pchq-board.xhtpm> launches that template instead (the in-game layouts
 # sandbox, @.apps/layout-studio/sandbox/); the name must stay pchq-board.xhtpm so the kill/match patterns still hit.
 if [ -n "${PCHQ_BOARD_TPL:-}" ] && [ -f "$PCHQ_BOARD_TPL" ]; then BOARD_TPL="$PCHQ_BOARD_TPL"; fi
+# which folder the running board treats as its package dir (state/ lives there): pc_entity_ctx.sh publishes an
+# in-board context menu there when <dir>/state/ctx_overlay.on exists (IN-GAME-LAYOUTS-PLAN.md, context menus)
+dirname "$BOARD_TPL" > "$HOUSE_ROOT/#.desktop/pchq_ctx_dir.txt" 2>/dev/null || true
+# a template that carries the in-board menu row (id="ctx") needs its state files; <dir>/state/ is gitignored for the
+# live board, so create them when missing (the menu stays hidden until pc_entity_ctx.sh writes ctx_visible=1)
+if grep -q 'id="ctx"' "$BOARD_TPL" 2>/dev/null; then
+    _CD="$(dirname "$BOARD_TPL")/state"; mkdir -p "$_CD"
+    [ -f "$_CD/ctx.txt" ] || printf 'ctx_visible=0\n' > "$_CD/ctx.txt"
+    [ -f "$_CD/ctx_menu.chtpm" ] || printf '<window class="entity-menu"><page name="main"><text label="menu"/></page></window>\n' > "$_CD/ctx_menu.chtpm"
+    [ -f "$_CD/ctx_overlay.on" ] || echo 1 > "$_CD/ctx_overlay.on"
+fi
 
 # ── build-on-demand (same shape as open_stats_hq.sh) ─────────────────
 if [ ! -x "$BIN" ]; then

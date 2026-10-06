@@ -1816,11 +1816,68 @@ static unsigned long kh_watch_hash(void) {
     return (h ^ (f * 31UL)) ? (h ^ (f * 31UL)) : 1;
 }
 
+/* inner="page" mode (IN-GAME-LAYOUTS-PLAN.md, context menus): take a whole menu file (<window><page>...</page>
+ * </window>, e.g. the pc-hq generated ctx-menu.xhtpm or a desk entity's menu.chtpm) and keep only the children of
+ * its <page>, so the existing menu files are reused unchanged. Chrome adaptations: the first <text> becomes the
+ * title bar (class ov-title, unless it has a class), a Close row (action="CLOSE") is dropped (the chrome x does
+ * that), and an <item> with no class gets class ov-row. Returns a malloc'd string; frees nothing of the input. */
+static char *kh_overlay_menu_inner(const char *frag) {
+    const char *a = strstr(frag, "<page");
+    const char *b = strstr(frag, "</page>");
+    if (!a || !b) return strdup(frag);
+    a = strchr(a, '>');
+    if (!a || a >= b) return strdup(frag);
+    a++;
+    size_t n = (size_t)(b - a);
+    char *out = malloc(n * 2 + 256);
+    if (!out) return NULL;
+    size_t o = 0;
+    int title_done = 0;
+    const char *p = a, *end = b;
+    while (p < end) {
+        if (!strncmp(p, "<item", 5) || !strncmp(p, "<text", 5)) {
+            int is_item = !strncmp(p, "<item", 5);
+            const char *close = p;
+            while (close < end && !(close[0] == '/' && close[1] == '>') ) close++;
+            if (close >= end) { out[o++] = *p++; continue; }
+            close += 2;
+            size_t tl = (size_t)(close - p);
+            char *tag = malloc(tl + 1); memcpy(tag, p, tl); tag[tl] = '\0';
+            int has_class = strstr(tag, " class=\"") != NULL;
+            if (is_item && strstr(tag, "action=\"CLOSE\"")) { free(tag); p = close; continue; }
+            if (is_item) {
+                memcpy(out + o, "<item", 5); o += 5;
+                if (!has_class) { memcpy(out + o, " class=\"ov-row\"", 15); o += 15; }
+                memcpy(out + o, tag + 5, tl - 5); o += tl - 5;
+            } else {
+                memcpy(out + o, "<text", 5); o += 5;
+                if (!title_done && !has_class) { memcpy(out + o, " class=\"ov-title\"", 17); o += 17; }
+                title_done = 1;
+                memcpy(out + o, tag + 5, tl - 5); o += tl - 5;
+            }
+            free(tag); p = close; continue;
+        }
+        out[o++] = *p++;
+    }
+    out[o] = '\0';
+    return out;
+}
+
 static char *kh_splice_overlays(char *buf) {
     for (int pass = 0; pass < 4; pass++) {
         char *tag = strstr(buf, "<overlay");
         int did = 0;
         while (tag) {
+            /* only a real tag: "<overlay" + whitespace and a src="..." before the tag's own '>' (prose such as a
+             * comment mentioning <overlay src> is skipped, not mistaken for one) */
+            {
+                char *tg = strchr(tag, '>');
+                char *sq = strstr(tag, "src=\"");
+                if (!(tag[8] == ' ' || tag[8] == '\n' || tag[8] == '\t') || !tg || !sq || sq > tg) {
+                    tag = strstr(tag + 8, "<overlay");
+                    continue;
+                }
+            }
             char *end = strstr(tag, "/>");
             char *close_tag = NULL;
             if (!end) break;
@@ -1838,6 +1895,8 @@ static char *kh_splice_overlays(char *buf) {
                 while (*sp && *sp != '"' && n + 1 < sizeof(src)) src[n++] = *sp++;
                 src[n] = '\0';
             }
+            int inner_page = 0;
+            { char *ip = strstr(tag, "inner=\"page\""); if (ip && ip < end) inner_page = 1; }
             char full[PATH_BUF] = "", *frag = NULL;
             if (src[0] == '/') snprintf(full, sizeof(full), "%s", src);
             else if ((src[0] == '@' || src[0] == '#' || src[0] == '&') && g_house_root[0])
@@ -1850,6 +1909,7 @@ static char *kh_splice_overlays(char *buf) {
                     frag = malloc((size_t)fs + 1);
                     if (frag) { size_t r = fread(frag, 1, (size_t)fs, ff); frag[r] = '\0'; }
                     fclose(ff);
+                    if (frag && inner_page) { char *inn = kh_overlay_menu_inner(frag); free(frag); frag = inn; }
                     size_t cur = strlen(g_frag_paths);
                     if (!strstr(g_frag_paths, full) && cur + strlen(full) + 2 < sizeof(g_frag_paths))
                         snprintf(g_frag_paths + cur, sizeof(g_frag_paths) - cur, "%s%s", cur ? " " : "", full);
@@ -3264,6 +3324,11 @@ static int click_focus_then_activate(Elem *hit) {
         g_focus_nav = hit->nav_index;
         return 1;
     }
+    /* overlay chrome buttons (ov-min "_" / ov-close "x") act on ONE click, like a window's own chrome buttons */
+    if (elem_has_class(hit, "ov-min") || elem_has_class(hit, "ov-close")) {
+        g_focus_nav = hit->nav_index;
+        return 1;
+    }
     if (hit->nav_index <= 0) return 1;
     if (g_focus_nav != hit->nav_index) {
         g_focus_nav = hit->nav_index;
@@ -4241,7 +4306,8 @@ static int g_win_resizing = 0;
  * ov-slide-y: vertical only). Offsets are ABSOLUTE per overlay id (so the relayout stays idempotent) and are
  * clamped to the canvas in kh_layout_canvas_in_region. Same press/motion/release shape as g_win_resizing. */
 #define KH_OV_MAX 8
-static struct { char id[48]; int dx, dy; } g_ov_off[KH_OV_MAX];
+static struct { char id[48]; int dx, dy, ax, ay, has; int shown, seen_gen; } g_ov_off[KH_OV_MAX];   /* dx..has adjacent: used as int[5] */
+static int g_ov_gen = 0;
 static int g_n_ov_off = 0;
 static Elem *g_ov_drag = NULL;
 static int g_ov_drag_xr = 0, g_ov_drag_yr = 0, g_ov_drag_dx0 = 0, g_ov_drag_dy0 = 0;
@@ -5406,7 +5472,7 @@ static int *kh_ov_off_get(const char *id, int create) {
         if (strcmp(g_ov_off[i].id, id) == 0) return &g_ov_off[i].dx;
     if (!create || g_n_ov_off >= KH_OV_MAX) return NULL;
     snprintf(g_ov_off[g_n_ov_off].id, sizeof(g_ov_off[0].id), "%s", id);
-    g_ov_off[g_n_ov_off].dx = g_ov_off[g_n_ov_off].dy = 0;
+    g_ov_off[g_n_ov_off].dx = g_ov_off[g_n_ov_off].dy = g_ov_off[g_n_ov_off].ax = g_ov_off[g_n_ov_off].ay = g_ov_off[g_n_ov_off].has = 0;
     return &g_ov_off[g_n_ov_off++].dx;   /* dx then dy are adjacent in the struct */
 }
 
@@ -5427,7 +5493,10 @@ static Elem *kh_ov_title_hit(Elem *e, int x, int y) {
 /* Apply a chromed overlay's drag offset to its top-left, then clamp the whole box inside the canvas. */
 static void kh_ov_place(Elem *ov, Elem *cv, int w, int h, int *x0, int *y0) {
     if (!ov->id[0] || !elem_has_class(ov, "ov-chrome")) return;
-    int *o = kh_ov_off_get(ov->id, 0);
+    int *o = kh_ov_off_get(ov->id, 1);
+    /* a drag offset belongs to the anchor it was made at: a new anchor (a context menu opened at another point,
+     * a resized board) starts from the default position again */
+    if (o && (!o[4] || o[2] != *x0 || o[3] != *y0)) { o[0] = o[1] = 0; o[2] = *x0; o[3] = *y0; o[4] = 1; }
     if (o) {
         if (!elem_has_class(ov, "ov-slide-y")) *x0 += o[0];
         if (!elem_has_class(ov, "ov-slide-x")) *y0 += o[1];
@@ -5442,20 +5511,66 @@ static void kh_ov_place(Elem *ov, Elem *cv, int w, int h, int *x0, int *y0) {
  * the title bar (rowh square), is nav-numbered, and the title (drag zone) is shortened so the button is not part
  * of it. Its action is the overlay's own (hide it: the owner's "_"). Called before the overlay's items are numbered. */
 static void kh_ov_min_place(Elem *ov, int x0, int y0, int w, int rowh, int pad4) {
+    Elem *mn = NULL, *cl = NULL;
+    int right = x0 + w - pad4, left;
     for (int k = 0; k < ov->n_children; k++) {
         Elem *m = ov->children[k];
-        if (strcmp(m->tag, "item") != 0 || !elem_has_class(m, "ov-min")) continue;
+        if (strcmp(m->tag, "item") != 0) continue;
+        if (!mn && elem_has_class(m, "ov-min")) mn = m;
+        else if (!cl && elem_has_class(m, "ov-close")) cl = m;
+    }
+    /* conventional order, right to left: close (x), then minimize (_) */
+    Elem *btn[2] = { cl, mn };
+    for (int b = 0; b < 2; b++) {
+        Elem *m = btn[b];
+        if (!m) continue;
         css_compute_style(&g_sheet, m->tag, m->id, m->classes, m->n_classes, 0, &m->style);
         m->w = scaled(66); m->h = rowh;
-        m->x = x0 + w - m->w - pad4; m->y = y0 + pad4;
+        m->x = right - m->w; m->y = y0 + pad4;
+        right = m->x - scaled(2);
+    }
+    left = right;
+    for (int b = 1; b >= 0; b--) {   /* nav order: minimize first, then close */
+        Elem *m = btn[b];
+        if (!m) continue;
         m->nav_index = ++g_n_nav;
         g_nav[g_n_nav - 1] = m;
-        if (ov->n_children > 0 && elem_has_class(ov->children[0], "ov-title")) {
-            Elem *t = ov->children[0];
-            int tw = m->x - pad4 - t->x;
-            if (tw > 40) t->w = tw;
-        }
-        return;
+    }
+    if ((mn || cl) && ov->n_children > 0 && elem_has_class(ov->children[0], "ov-title")) {
+        Elem *t = ov->children[0];
+        int tw = left - pad4 - t->x;
+        if (tw > 40) t->w = tw;
+    }
+}
+
+/* After an overlay's elements are laid out and nav-numbered: (1) class ov-focus: the first layout after it (re)appears
+ * gives its first menu item keyboard focus once ([>]); (2) its title shows the window-style focus mark: "^ " when
+ * the nav focus is inside the overlay, ". " when not (owner 2026-10-06: a menu must show whether it has focus). */
+static void kh_ov_finish(Elem *ov) {
+    int lo = 0, hi = 0, first_item = 0, idx = -1, i;
+    if (!ov->id[0] || !elem_has_class(ov, "ov-chrome")) return;
+    for (int k = 0; k < ov->n_children; k++) {
+        Elem *c = ov->children[k];
+        if (c->nav_index <= 0) continue;
+        if (!lo || c->nav_index < lo) lo = c->nav_index;
+        if (c->nav_index > hi) hi = c->nav_index;
+        if (!first_item && !strcmp(c->tag, "item") && !elem_has_class(c, "ov-min") && !elem_has_class(c, "ov-close"))
+            first_item = c->nav_index;
+    }
+    for (i = 0; i < g_n_ov_off; i++) if (!strcmp(g_ov_off[i].id, ov->id)) { idx = i; break; }
+    if (idx < 0) { kh_ov_off_get(ov->id, 1); idx = g_n_ov_off - 1; }
+    g_ov_off[idx].seen_gen = g_ov_gen;
+    if (!g_ov_off[idx].shown) {
+        g_ov_off[idx].shown = 1;
+        if (elem_has_class(ov, "ov-focus") && first_item) g_focus_nav = first_item;
+    }
+    if (ov->n_children > 0 && elem_has_class(ov->children[0], "ov-title") && lo) {
+        Elem *t = ov->children[0];
+        const char *lab = t->label;
+        char nl[sizeof(t->label)];
+        if ((lab[0] == '^' || lab[0] == '.') && lab[1] == ' ') lab += 2;
+        snprintf(nl, sizeof(nl), "%s %s", (g_focus_nav >= lo && g_focus_nav <= hi) ? "^" : ".", lab);
+        snprintf(t->label, sizeof(t->label), "%s", nl);
     }
 }
 
@@ -5464,6 +5579,7 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
     for (int i = 0; i < region->n_children; i++)
         if (strcmp(region->children[i]->tag, "canvas") == 0) { cv = region->children[i]; break; }
     if (!cv) return 0;
+    g_ov_gen++;
 
     css_compute_style(&g_sheet, cv->tag, cv->id, cv->classes, cv->n_classes, 0, &cv->style);
     { const char *cr = kh_get_var("canvas_raw");
@@ -5492,7 +5608,7 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
             Elem *it = ov->children[k];
             if (strcmp(it->tag, "text") == 0) { n_tx++; continue; }      /* name line: above the items */
             if (strcmp(it->tag, "cli_io") == 0) { n_cl++; continue; }    /* typed line: below the items */
-            if (strcmp(it->tag, "item") == 0 && elem_has_class(it, "ov-min")) continue;   /* placed by kh_ov_min_place */
+            if (strcmp(it->tag, "item") == 0 && (elem_has_class(it, "ov-min") || elem_has_class(it, "ov-close"))) continue;   /* placed by kh_ov_min_place */
             if (strcmp(it->tag, "item") != 0) { it->x = rx; it->y = -100000; it->w = 0; it->h = 0; it->nav_index = 0; continue; }
             css_compute_style(&g_sheet, it->tag, it->id, it->classes, it->n_classes, 0, &it->style);
             it->w = it->style.has_width ? it->style.width : scaled(80);
@@ -5523,7 +5639,7 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
             x = x0 + (stripw - total) / 2;                        /* the slots, centred */
             for (k = 0; k < ov->n_children; k++) {
                 Elem *it = ov->children[k];
-                if (strcmp(it->tag, "item") != 0 || elem_has_class(it, "ov-min")) continue;
+                if (strcmp(it->tag, "item") != 0 || elem_has_class(it, "ov-min") || elem_has_class(it, "ov-close")) continue;
                 it->x = x; it->y = yy + (maxh - it->h) / 2;
                 x += it->w + gap;
                 it->nav_index = ++g_n_nav;
@@ -5539,6 +5655,7 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
                 g_nav[g_n_nav - 1] = t;
                 yy += rowh;
             }
+            kh_ov_finish(ov);
         }
     }
 
@@ -5551,13 +5668,14 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
     for (int oi = 0; oi < region->n_children; oi++) {
         Elem *ov = region->children[oi];
         int n_it = 0, n_tx = 0, n_cl = 0, colw = scaled(180), rowh = ROW_H, itemh = ROW_H + scaled(8), k;
-        if (!elem_has_class(ov, "canvas-overlay-right")) continue;
+        int at_pt = elem_has_class(ov, "canvas-overlay-at");
+        if (!at_pt && !elem_has_class(ov, "canvas-overlay-right")) continue;
         css_compute_style(&g_sheet, ov->tag, ov->id, ov->classes, ov->n_classes, 0, &ov->style);
         for (k = 0; k < ov->n_children; k++) {
             Elem *it = ov->children[k];
             if (strcmp(it->tag, "text") == 0) { n_tx++; continue; }
             if (strcmp(it->tag, "cli_io") == 0) { n_cl++; continue; }
-            if (strcmp(it->tag, "item") == 0 && elem_has_class(it, "ov-min")) continue;   /* placed by kh_ov_min_place */
+            if (strcmp(it->tag, "item") == 0 && (elem_has_class(it, "ov-min") || elem_has_class(it, "ov-close"))) continue;   /* placed by kh_ov_min_place */
             if (strcmp(it->tag, "item") != 0) { it->x = rx; it->y = -100000; it->w = 0; it->h = 0; it->nav_index = 0; continue; }
             css_compute_style(&g_sheet, it->tag, it->id, it->classes, it->n_classes, 0, &it->style);
             if (it->style.has_width && it->style.width > colw) colw = it->style.width;
@@ -5567,6 +5685,13 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
         {
             int pad4 = scaled(4), hh = (n_tx + n_cl) * rowh + n_it * itemh + 2 * pad4 + (n_it ? (n_it - 1) * scaled(2) : 0);
             int x0 = cv->x + cv->w - colw - scaled(10), y0 = cv->y + (cv->h - hh) / 2, yy;
+            if (at_pt) {   /* class canvas-overlay-at: the point comes from the vars <id>_x / <id>_y (canvas pixels); absent = centred */
+                char kx[80], ky[80];
+                snprintf(kx, sizeof(kx), "%s_x", ov->id); snprintf(ky, sizeof(ky), "%s_y", ov->id);
+                const char *vx = kh_get_var(kx), *vy = kh_get_var(ky);
+                x0 = vx && vx[0] ? cv->x + atoi(vx) : cv->x + (cv->w - colw) / 2;
+                y0 = vy && vy[0] ? cv->y + atoi(vy) : cv->y + (cv->h - hh) / 2;
+            }
             if (x0 < cv->x) x0 = cv->x;
             if (y0 < cv->y) y0 = cv->y;
             if (y0 + hh > cv->y + cv->h) hh = cv->y + cv->h - y0;   /* never past the canvas bottom */
@@ -5583,7 +5708,7 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
             kh_ov_min_place(ov, x0, y0, colw, rowh, pad4);
             for (k = 0; k < ov->n_children; k++) {
                 Elem *it = ov->children[k];
-                if (strcmp(it->tag, "item") != 0 || elem_has_class(it, "ov-min")) continue;
+                if (strcmp(it->tag, "item") != 0 || elem_has_class(it, "ov-min") || elem_has_class(it, "ov-close")) continue;
                 it->x = x0 + pad4; it->y = yy; it->w = colw - 2 * pad4; it->h = itemh;
                 yy += itemh + scaled(2);
                 it->nav_index = ++g_n_nav;
@@ -5598,8 +5723,11 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
                 g_nav[g_n_nav - 1] = t;
                 yy += rowh;
             }
+            kh_ov_finish(ov);
         }
     }
+    for (int oi = 0; oi < g_n_ov_off; oi++)                  /* overlays dropped this pass (hidden): reset "shown" */
+        if (g_ov_off[oi].seen_gen != g_ov_gen) g_ov_off[oi].shown = 0;
 
     char vsz[PATH_BUF];
     snprintf(vsz, sizeof(vsz), "%s/#.desktop/pchq_board_view.txt", g_house_root);

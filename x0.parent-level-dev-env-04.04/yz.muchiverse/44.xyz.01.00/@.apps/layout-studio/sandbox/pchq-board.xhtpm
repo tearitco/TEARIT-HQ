@@ -18,7 +18,7 @@
 
      Free: X/!/_ chrome, taskbar entry, minimize/restore, REAL Desk/Menu
      dropdowns. Rollback: pchq-board.hascanvas.xhtpm (PCHQ_BOARD_HASCANVAS=1). -->
-<window label="piececraft-hq board" class="pchq-board-pal database-window managed user-resizable" vars="state/ui.txt state/pchq/ui.txt state/menu.txt">
+<window label="piececraft-hq board" class="pchq-board-pal database-window managed user-resizable" vars="state/ui.txt state/pchq/ui.txt state/menu.txt state/ctx.txt">
   <module src="@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x" args="piececraft-hq"/>
   <!-- the hotbar's manager (@.apps/hotbar-hq, 18.pc-hq/CURSWORD-POSSESSION-DESIGN.md): publishes
        state/pchq/ui.txt (hb_ keys) for the overlay strip in the view panel below. -->
@@ -137,6 +137,14 @@
       </row>
       <!-- SANDBOX (IN-GAME-LAYOUTS-PLAN.md phase 0): a user-made menu loaded from a fragment file -->
       <overlay src="@.apps/layout-studio/sandbox/test-menu/layout.chtpm"/>
+      <!-- in-board entity context menu: pc_entity_ctx.sh writes state/ctx_menu.chtpm (the same menu markup the
+           window used) + state/ctx.txt (ctx_visible, ctx_x, ctx_y). inner="page" splices that file's page content;
+           the first <text> is the title bar, its Close row is dropped (the chrome x does it). -->
+      <row id="ctx" class="canvas-overlay-at ov-chrome ov-focus ctx-menu" show="${ctx_visible}">
+        <overlay src="@.apps/layout-studio/sandbox/state/ctx_menu.chtpm" inner="page"/>
+        <item id="ctx-min" class="ov-min" label="_" action="sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_ctx_close.sh' '${HOUSE}/@.apps/layout-studio/sandbox/state'"/>
+        <item id="ctx-x" class="ov-close" label="x" action="sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_ctx_close.sh' '${HOUSE}/@.apps/layout-studio/sandbox/state'"/>
+      </row>
     </panel>
 
     <!-- MILESTONE C: entities bar. show= drops the whole strip when

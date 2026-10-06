@@ -1,0 +1,9 @@
+<window class="entity-menu">
+  <page name="main">
+    <text label="xelector: xelector_01" />
+    <item label="Inspect" action="sh /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/@.apps/piececraft-hq/pieces/display/ctx_menu/append.sh INSPECT 11 24 17 xelector_01 xelector _ xelector_01"/>
+    <item label="Dir" action="sh /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/@.apps/piececraft-hq/pieces/display/ctx_menu/append.sh DIR 11 24 17 xelector_01 xelector _ xelector_01"/>
+    <item label="Close" action="CLOSE"/>
+    <cli_io id="cmd" target_id="cmd" label="Cli-io: " action="/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/@.apps/piececraft-hq/pieces/display/ctx_menu/cli.sh"/>
+  </page>
+</window>
