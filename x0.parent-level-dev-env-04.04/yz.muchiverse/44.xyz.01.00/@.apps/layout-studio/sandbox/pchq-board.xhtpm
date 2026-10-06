@@ -124,8 +124,8 @@
            canvas-overlay-bottom, see kh_layout_canvas_in_region): the holder's inventory slots - the
            possessed entity's, else the xelector's. Hidden/shown by the "hotbar" cell in the bottom bar
            (show= drops it at parse). Feed: hotbar_manager, hb_ keys. -->
-      <row class="canvas-overlay-bottom pchq-hotbar" show="${hb_visible}">
-        <text label="${hb_holder} - slot: ${hb_sel_name}" class="hb-quiet"/>
+      <row id="hotbar-ov" class="canvas-overlay-bottom ov-chrome ov-slide-x pchq-hotbar" show="${hb_visible}">
+        <text label="${hb_holder} - slot: ${hb_sel_name}" class="hb-quiet ov-title"/>
         <repeat count="${hb_n_slots}" bind="hb_s">
           <item id="hbs${hb_s.#}" class="hb-slot sprite-inline ${hb_s.cls}" label="${hb_s.text}" sprite="${hb_s.sprite}"
                 action="'${HOUSE}/@.apps/hotbar-hq/ops/hotbar_action.sh' '${hb_s.#}' '${HOUSE}/@.apps/layout-studio/sandbox/state/pchq'"/>

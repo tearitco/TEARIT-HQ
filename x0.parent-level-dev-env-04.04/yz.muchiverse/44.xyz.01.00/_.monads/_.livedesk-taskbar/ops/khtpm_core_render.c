@@ -4236,6 +4236,15 @@ static Elem *g_text_drag_elem = NULL;
  * every other window. */
 static int g_user_resizable = 0;
 static int g_win_resizing = 0;
+/* Overlay chrome (IN-GAME-LAYOUTS-PLAN.md 4c): an overlay row with class ov-chrome whose FIRST child is a
+ * <text class="ov-title"> can be dragged by that title with the mouse (class ov-slide-x: sideways only,
+ * ov-slide-y: vertical only). Offsets are ABSOLUTE per overlay id (so the relayout stays idempotent) and are
+ * clamped to the canvas in kh_layout_canvas_in_region. Same press/motion/release shape as g_win_resizing. */
+#define KH_OV_MAX 8
+static struct { char id[48]; int dx, dy; } g_ov_off[KH_OV_MAX];
+static int g_n_ov_off = 0;
+static Elem *g_ov_drag = NULL;
+static int g_ov_drag_xr = 0, g_ov_drag_yr = 0, g_ov_drag_dx0 = 0, g_ov_drag_dy0 = 0;
 static int g_resize_start_xr = 0, g_resize_start_yr = 0, g_resize_start_w = 0, g_resize_start_h = 0;
 #define KH_RESIZE_GRIP 20
 #define KH_WIN_MIN_W   220
@@ -5392,6 +5401,43 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
  * The shared draw_elem() already dispatches <canvas> -> kh_draw_canvas
  * regardless of layout, so no paint-side change is needed. Returns 1 if
  * a canvas was found and placed. */
+static int *kh_ov_off_get(const char *id, int create) {
+    for (int i = 0; i < g_n_ov_off; i++)
+        if (strcmp(g_ov_off[i].id, id) == 0) return &g_ov_off[i].dx;
+    if (!create || g_n_ov_off >= KH_OV_MAX) return NULL;
+    snprintf(g_ov_off[g_n_ov_off].id, sizeof(g_ov_off[0].id), "%s", id);
+    g_ov_off[g_n_ov_off].dx = g_ov_off[g_n_ov_off].dy = 0;
+    return &g_ov_off[g_n_ov_off++].dx;   /* dx then dy are adjacent in the struct */
+}
+
+/* The overlay whose title zone (first child, class ov-title) contains (x,y), or NULL. */
+static Elem *kh_ov_title_hit(Elem *e, int x, int y) {
+    if (!e) return NULL;
+    if (e->id[0] && elem_has_class(e, "ov-chrome") && e->n_children > 0) {
+        Elem *t = e->children[0];
+        if (elem_has_class(t, "ov-title") && x >= t->x && x < t->x + t->w && y >= t->y && y < t->y + t->h) return e;
+    }
+    for (int i = 0; i < e->n_children; i++) {
+        Elem *r = kh_ov_title_hit(e->children[i], x, y);
+        if (r) return r;
+    }
+    return NULL;
+}
+
+/* Apply a chromed overlay's drag offset to its top-left, then clamp the whole box inside the canvas. */
+static void kh_ov_place(Elem *ov, Elem *cv, int w, int h, int *x0, int *y0) {
+    if (!ov->id[0] || !elem_has_class(ov, "ov-chrome")) return;
+    int *o = kh_ov_off_get(ov->id, 0);
+    if (o) {
+        if (!elem_has_class(ov, "ov-slide-y")) *x0 += o[0];
+        if (!elem_has_class(ov, "ov-slide-x")) *y0 += o[1];
+    }
+    if (*x0 + w > cv->x + cv->w) *x0 = cv->x + cv->w - w;
+    if (*y0 + h > cv->y + cv->h) *y0 = cv->y + cv->h - h;
+    if (*x0 < cv->x) *x0 = cv->x;
+    if (*y0 < cv->y) *y0 = cv->y;
+}
+
 static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int rh) {
     Elem *cv = NULL;
     for (int i = 0; i < region->n_children; i++)
@@ -5441,6 +5487,7 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
             int hh = toph + maxh + both + 2 * pad4;
             int x0 = cv->x + (cv->w - stripw) / 2, y0 = cv->y + cv->h - hh - scaled(10), x, yy;
             if (x0 < cv->x) x0 = cv->x;
+            kh_ov_place(ov, cv, stripw, hh, &x0, &y0);
             ov->x = x0; ov->y = y0; ov->w = stripw; ov->h = hh; ov->nav_index = 0;
             yy = y0 + pad4;
             for (k = 0; k < ov->n_children; k++) {               /* name line(s) */
@@ -5499,6 +5546,7 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
             if (x0 < cv->x) x0 = cv->x;
             if (y0 < cv->y) y0 = cv->y;
             if (y0 + hh > cv->y + cv->h) hh = cv->y + cv->h - y0;   /* never past the canvas bottom */
+            kh_ov_place(ov, cv, colw, hh, &x0, &y0);
             ov->x = x0; ov->y = y0; ov->w = colw; ov->h = hh; ov->nav_index = 0;
             yy = y0 + pad4;
             for (k = 0; k < ov->n_children; k++) {
@@ -12766,6 +12814,17 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
             g_resize_start_h = g_win_h;
             return;
         }
+        /* overlay title drag (see g_ov_drag): checked before any element hit-test, after the resize grip */
+        if (ev->xbutton.button == 1 && !g_win_resizing && !g_ov_drag) {
+            Elem *ovh = kh_ov_title_hit(g_window, ev->xbutton.x, ev->xbutton.y);
+            if (ovh) {
+                int *o = kh_ov_off_get(ovh->id, 1);
+                g_ov_drag = ovh;
+                g_ov_drag_xr = ev->xbutton.x_root; g_ov_drag_yr = ev->xbutton.y_root;
+                g_ov_drag_dx0 = o ? o[0] : 0; g_ov_drag_dy0 = o ? o[1] : 0;
+                return;
+            }
+        }
         /* REAL FIX 2026-09-03 (direct live report: "its way to hard to
          * get window focus. i tap click window and it still doesn't
          * have focus") - root cause, confirmed live via the new "^"/"."
@@ -13011,6 +13070,7 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
     if (ev->type == ButtonRelease && ev->xbutton.button == 1) {
         g_popup_dragging = 0;  /* REAL, NEW 2026-08-29 (TASK 1) */
         g_text_drag_elem = NULL; /* REAL, NEW 2026-09-14 - end any real text drag-select */
+        g_ov_drag = NULL;
         if (g_win_resizing) {
             /* commit: ONE relayout + redraw now that the drag is done.
              * Doing it per-MotionNotify feeds back through the
@@ -13049,6 +13109,18 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
             return;
         }
         if (g_text_drag_elem && !(ev->xmotion.state & Button1Mask)) g_text_drag_elem = NULL; /* missed the real ButtonRelease - stop here instead */
+        if (g_ov_drag && (ev->xmotion.state & Button1Mask)) {
+            XEvent mdrain;
+            while (XCheckTypedWindowEvent(dpy, win, MotionNotify, &mdrain)) *ev = mdrain;
+            int *o = kh_ov_off_get(g_ov_drag->id, 1);
+            if (o) {
+                o[0] = g_ov_drag_dx0 + (ev->xmotion.x_root - g_ov_drag_xr);
+                o[1] = g_ov_drag_dy0 + (ev->xmotion.y_root - g_ov_drag_yr);
+                if (!g_quit) { assign_nav_and_layout(); redraw(); }
+            }
+            return;
+        }
+        if (g_ov_drag && !(ev->xmotion.state & Button1Mask)) g_ov_drag = NULL;   /* missed the release */
         if (g_win_resizing) {   /* any user-resizable window, not just popups */
             /* coalesce the motion burst - only the final position matters */
             XEvent mdrain;

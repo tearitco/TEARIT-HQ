@@ -56,3 +56,6 @@ window { background-color: #141414; font-family: Ubuntu; font-size: 10px; }
 .hb-empty { color: #5d6478; }
 .hb-quiet { color: #8b93a7; }
 .hb-cli { background-color: #181818; color: #e6e6e6; }
+
+/* overlay chrome: the drag handle */
+.ov-title { background-color: #26324a; color: #cfd6e6; }

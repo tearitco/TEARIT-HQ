@@ -1,7 +1,7 @@
 <!-- test-menu: a user-made in-game menu (sandbox fragment). Spliced into the board by <overlay src>. Interactive
      items get nav numbers automatically. Actions: one appends to a log, one runs an op, one hides the menu. -->
-<row class="canvas-overlay-right tm-menu" show="${tm_visible}">
-  <text label="Test menu" class="tm-quiet"/>
+<row id="tm-menu" class="canvas-overlay-right ov-chrome tm-menu" show="${tm_visible}">
+  <text label="Test menu  (drag me)" class="tm-quiet ov-title"/>
   <item id="tm1" class="tm-row" label="Log a line"
         action="sh '${HOUSE}/@.apps/layout-studio/sandbox/ops/menu_action.sh' log"/>
   <item id="tm2" class="tm-row" label="Toggle hotbar"
