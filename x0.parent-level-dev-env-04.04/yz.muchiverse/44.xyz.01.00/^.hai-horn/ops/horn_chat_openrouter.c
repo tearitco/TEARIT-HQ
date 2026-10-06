@@ -3,6 +3,8 @@
  * Usage: horn_chat_openrouter.+x <house_root> <message_text>
  * Writes message and reply to .horn-sessions/chat_history.txt
  * Outputs reply to stdout
+ *
+ * Now includes Concept Bank context: top-weighted spokes injected into prompt
  */
 #define _GNU_SOURCE
 #include <stdio.h>
@@ -42,6 +44,27 @@ static int load_openrouter_key(const char *house_root, char *out, size_t outsz) 
     if (!buf[0]) return 0;
     snprintf(out, outsz, "%s", buf);
     return 1;
+}
+
+static char *load_bank_context(const char *house_root, const char *horn_dir) {
+    char ctx_bin[PATH_BUF];
+    snprintf(ctx_bin, sizeof(ctx_bin), "%s/ops/concept_bank_ctx.+x %s", horn_dir, house_root);
+    FILE *fp = popen(ctx_bin, "r");
+    if (!fp) return NULL;
+    char buf[4096];
+    size_t total = 0;
+    buf[0] = '\0';
+    char chunk[512];
+    while (fgets(chunk, sizeof(chunk), fp)) {
+        size_t clen = strlen(chunk);
+        if (total + clen >= sizeof(buf) - 1) break;
+        memcpy(buf + total, chunk, clen);
+        total += clen;
+        buf[total] = '\0';
+    }
+    pclose(fp);
+    if (total == 0) return NULL;
+    return strdup(buf);
 }
 
 static char *openrouter_ask_one(const char *house_root, const char *key,
@@ -125,8 +148,24 @@ int main(int argc, char **argv) {
     const char *house_root = argv[1];
     const char *message = argv[2];
 
+    const char *horn_dir = getenv("HORN_DIR");
+    if (!horn_dir) horn_dir = house_root;
+
+    char *bank_ctx = load_bank_context(house_root, horn_dir);
+
+    char prompt[8192];
+    if (bank_ctx && bank_ctx[0] && strcmp(bank_ctx, "[]") != 0) {
+        snprintf(prompt, sizeof(prompt),
+            "CONCEPT BANK CONTEXT (highest-weighted relations):\n%s\n\n"
+            "USER: %s",
+            bank_ctx, message);
+    } else {
+        snprintf(prompt, sizeof(prompt), "USER: %s", message);
+    }
+    free(bank_ctx);
+
     char *reply = NULL;
-    int rc = openrouter_ask(house_root, message, &reply);
+    int rc = openrouter_ask(house_root, prompt, &reply);
     if (rc == 0) {
         fprintf(stderr, "horn: no OpenRouter key at &.widgits/open-hai/state/openrouter_api_key.txt\n");
         return 1;
@@ -144,8 +183,6 @@ int main(int argc, char **argv) {
     char timebuf[32];
     strftime(timebuf, sizeof(timebuf), "%Y-%m-%d %H:%M:%S", localtime(&now));
 
-    const char *horn_dir = getenv("HORN_DIR");
-    if (!horn_dir) horn_dir = house_root;
     char chat_path[PATH_BUF + 64];
     snprintf(chat_path, sizeof(chat_path), "%s/.horn-sessions/chat_history.txt", horn_dir);
     FILE *cf = fopen(chat_path, "a");

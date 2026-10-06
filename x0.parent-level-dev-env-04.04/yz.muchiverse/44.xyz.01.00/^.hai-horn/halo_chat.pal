@@ -1,0 +1,29 @@
+# halo_chat.pal - HALO_CHAT main loop with Concept Bank pipeline
+# chat -> DESCRIBE -> validate -> (promote or queue for review)
+
+li x1, 0
+li x10, 0        # turn counter
+
+loop:
+  read_history .halo-sessions/relay.txt x2, x1
+  beq x2, x0, no_input
+  beq x2, x13, quit
+  j render
+
+no_input:
+  sleep 30000
+  j loop
+
+render:
+  hit_frame
+  # After rendering, run DESCRIBE + validate pipeline async
+  addi x10, x10, 1
+  call_halo_pipeline x10
+  sleep 30000
+  j loop
+
+quit:
+  halt
+
+# External calls (bash-side): call_halo_pipeline <turn>
+# Runs: halo_chat_describe.+x -> halo_chat_validate.+x
