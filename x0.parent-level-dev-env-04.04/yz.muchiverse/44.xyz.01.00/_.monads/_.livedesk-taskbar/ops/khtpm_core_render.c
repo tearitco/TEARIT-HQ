@@ -99,6 +99,7 @@ extern char **environ;
  * _GNU_SOURCE fallback stays inert. */
 #define KH_PROC_REGISTRY_IMPL
 #include "kh_proc_registry.h"
+#include "kh_boot_mark.h"   /* startup timeline marks -> #.desktop/boot_timeline.txt */
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "lib/stb_image_write.h"
@@ -7001,6 +7002,9 @@ static void dock_paint_peer(void) {
                 fprintf(bf, "%d|%d|%d|%d\n", g_win_x, g_win_y, g_win_w, g_win_h);
                 fclose(bf);
                 rename(bt, bp);
+                {   static int first_bottom = 1;
+                    if (first_bottom) { first_bottom = 0; kh_boot_mark(g_house_root, "dock", "bottom bar first drawn + base.txt published"); }
+                }
                 lx = g_win_x; ly = g_win_y; lw = g_win_w; lh = g_win_h;
                 snprintf(bp, sizeof(bp), "%s/nav_base.txt", dd);   /* top bar's cell count: first free nav number - 1 */
                 snprintf(bt, sizeof(bt), "%s.tmp", bp);

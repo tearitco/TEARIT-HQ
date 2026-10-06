@@ -114,6 +114,7 @@
 #ifndef _WIN32
 #include <sys/types.h>
 #include <unistd.h>
+#include "kh_boot_mark.h"   /* startup timeline marks -> #.desktop/boot_timeline.txt */
 #endif
 
 /* REAL BUG FIX 2026-08-18, direct user report ("its still staggering" /
@@ -718,6 +719,9 @@ static void publish_strip_ui(const KtbState *s, const char *house_root) {
 
     if (off >= sizeof(body)) off = sizeof(body) - 1;
     body[off] = '\0';
+    {   static int first_publish = 1;
+        if (first_publish) { first_publish = 0; kh_boot_mark(house_root, "manager", "first strip_ui.txt publish (the header can now draw)"); }
+    }
     write_small_file(house_root, "#.desktop/strip_ui.txt", body);
 }
 
@@ -1032,7 +1036,9 @@ int main(int argc, char **argv) {
 #endif
 
     KtbState st;
+    kh_boot_mark(house_root, "manager", "main entered, ktb_init start (spawns cursword + the whole active desk)");
     ktb_init(&st, house_root);
+    kh_boot_mark(house_root, "manager", "ktb_init done");
 
     /* REAL FIX 2026-08-12, direct report ("i sawn u double render all
      * entities in toolbar on accident. we should have a guard so that

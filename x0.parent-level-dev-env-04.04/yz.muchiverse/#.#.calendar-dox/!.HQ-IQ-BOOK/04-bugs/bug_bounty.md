@@ -530,6 +530,10 @@ So this is a pure rendering bug, and **it's in a THIRD, different code path from
 
 ---
 
+## ✅ CLOSED 2026-10-06 (restart measured 6.04 s -> 1.09 s; cold login NOT measured): bottom bar slow to appear at startup - the start script's /proc scan, not the bar
+
+Root cause: `run_khtpm_strip.sh` `strip_parser_pids()` forked tr/sed/printf/grep per process (1.9 s per call, 3+ calls). Replaced by one `pgrep -f`. Full evidence, timeline and caveats: `TASKBAR-STARTUP-LATENCY-RESEARCH-2026-10-06.md` (same folder). Startup marks now written to `#.desktop/boot_timeline.txt` on every boot.
+
 ## ✅ CLOSED 2026-09-22 (fixed same day as reported, verified via live `strip_ui.txt` receipts and real timing, commit `60fd7920`): taskbar takes a long time to appear on launch, even though desktop entities (which the user expected to be the slower/bigger thing) appear instantly
 
 **Reported:** direct live report - "it took a long time for tb to populate... doesn't make sense that it took so long when desktop entities, which are larger, were instant." Asked for a "loading" indicator as a possible mitigation, and to track this at minimum.

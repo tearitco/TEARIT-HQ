@@ -66,19 +66,12 @@ run_build_logged() {
     return "$_rc"
 }
 
+# One pgrep over the whole process table. The old version walked /proc in shell and forked tr+sed+printf+grep per process:
+# 1.9 s PER CALL on a 349-process box (measured 2026-10-06, HQ-IQ-BOOK 04-bugs/TASKBAR-STARTUP-LATENCY-RESEARCH-2026-10-06.md),
+# and a start called it 3+ times before launching anything - that was the startup wait, not the bar itself.
+# Same match as before: argv[0] ends in khtpm_core_render.+x and the args name a strip template.
 strip_parser_pids() {
-    for p in /proc/[0-9]*; do
-        pid="${p#/proc/}"
-        [ -r "$p/cmdline" ] || continue
-        args="$(tr '\0' '\n' < "$p/cmdline" 2>/dev/null)"
-        [ -z "$args" ] && continue
-        a0="$(printf '%s\n' "$args" | sed -n 1p)"
-        case "$a0" in
-            */khtpm_core_render.+x|khtpm_core_render.+x)
-                printf '%s\n' "$args" | grep -q 'khtpm_strip_header.xhtpm\|khtpm_strip_bottom.xhtpm\|strip_header.chtpm\|strip_bottom.chtpm' && echo "$pid"
-                ;;
-        esac
-    done
+    pgrep -f '^([^ ]*/)?khtpm_core_render\.\+x .*(khtpm_strip_header\.xhtpm|khtpm_strip_bottom\.xhtpm|strip_header\.chtpm|strip_bottom\.chtpm)' 2>/dev/null
 }
 
 khtpm_pids() { { strip_parser_pids; pgrep -f "khtpm_taskbar_manager_main\.\+x" 2>/dev/null; } 2>/dev/null; }
@@ -194,6 +187,8 @@ case "$ACTION" in
         # cd into HOUSE first — the parser's own children (the manager)
         # inherit this cwd, and relative menu commands (livedesk_taskbar.pdl)
         # depend on it being house root, not wherever this script was invoked from.
+        # startup timeline (kh_boot_mark.h): reset at the start of a boot; the manager and the bottom dock append their own marks
+        { : > "$HOUSE/#.desktop/boot_timeline.txt"; echo "$(date +%s%3N) script boot started" >> "$HOUSE/#.desktop/boot_timeline.txt"; } 2>/dev/null
         # "Loading livedesk..." strip at the bottom-centre of the screen, shown from NOW until the bottom bar publishes
         # (owner 2026-10-06: the header and everything else come up fast, the bottom bar is last - show a loading
         # animation where it will appear). livedesk_splash --boot (livedesk_splash.c) watches strip_ui.txt and
