@@ -210,7 +210,10 @@ case "$ACTION" in
         _icon_dir="$HOME/.local/share/icons/hicolor/256x256/apps"
         _df="$HOME/.local/share/applications/livedesk.desktop"
         mkdir -p "$_icon_dir" "$HOME/.local/share/applications"
-        cp "$SCRIPT_DIR/livedesk-icon-256.png" "$_icon_dir/livedesk.png"
+        # the icon is drawn from the CURRENT livedesk_theme.pdl colors (re-run install-app after changing the theme);
+        # no Pillow -> the shipped livedesk-icon-256.png
+        python3 "$SCRIPT_DIR/livedesk-icon-gen.py" "$HOUSE" "$_icon_dir/livedesk.png" 256 \
+            || cp "$SCRIPT_DIR/livedesk-icon-256.png" "$_icon_dir/livedesk.png"
         # Exec must be quoted, with $ ` " \ escaped (the house folder is literally named "$.crypts"; the keyfile also doubles the backslash)
         _exec="$(printf '%s' "$SCRIPT_DIR/livedesk-launch.sh" | sed 's/[$`"\\]/\\\\&/g')"
         printf '%s\n' '[Desktop Entry]' 'Version=1.0' 'Type=Application' 'Name=Livedesk' \
