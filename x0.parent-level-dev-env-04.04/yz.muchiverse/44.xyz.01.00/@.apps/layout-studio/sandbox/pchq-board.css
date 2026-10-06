@@ -52,7 +52,7 @@ window { background-color: #141414; font-family: Ubuntu; font-size: 10px; }
 /* hotbar overlay strip over the bottom-centre of the game view (same look as @.apps/hotbar-hq/hotbar-desk.css) */
 /* overlay palette = the settings window's (taskbar-settings-pal.css .opacity-btn), owner 2026-10-06 */
 .pchq-hotbar { background-color: #444444; border: 1px solid #666666; border-width: 1; }
-.hb-slot { width: 64px; height: 56px; font-size: 12px; background-color: #444444; border: 1px solid #666666; border-width: 1; color: #ffffff; }
+.hb-slot { width: 84px; height: 56px; font-size: 12px; background-color: #444444; border: 1px solid #666666; border-width: 1; color: #ffffff; }
 .hb-sel  { background-color: #2f5f8f; color: #ffffff; border-color: #8fb4e0; }
 .hb-empty { color: #5d6478; }
 .hb-quiet { color: #ffffff; }

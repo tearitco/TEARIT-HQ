@@ -129,7 +129,7 @@
         <item id="hb-min" class="ov-min hb-slot theme-3" label="_"
               action="sh '${HOUSE}/@.apps/hotbar-hq/ops/hotbar_toggle.sh' pchq '${HOUSE}/@.apps/piececraft-hq'"/>
         <repeat count="${hb_n_slots}" bind="hb_s">
-          <item id="hbs${hb_s.#}" class="hb-slot sprite-inline ${hb_s.cls}" label="${hb_s.text}" sprite="${hb_s.sprite}"
+          <item id="hbs${hb_s.#}" class="hb-slot sprite-inline sprite-big ${hb_s.cls}" label="${hb_s.text}" sprite="${hb_s.sprite}"
                 action="'${HOUSE}/@.apps/hotbar-hq/ops/hotbar_action.sh' '${hb_s.#}' '${HOUSE}/@.apps/piececraft-hq/state/pchq'"/>
         </repeat>
         <cli_io id="hbcmd" target_id="hbcmd" class="hb-cli" label="&gt; "
