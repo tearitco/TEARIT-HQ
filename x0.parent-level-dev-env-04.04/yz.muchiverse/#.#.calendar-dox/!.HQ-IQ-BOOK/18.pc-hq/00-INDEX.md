@@ -52,3 +52,8 @@ Older design notes under `08-roadmap/design-docs/` (`pc-hq-INDEX.md`,
 overlay are design-only. Those lines are stale. The code has moved
 past them. The Move overlay is now built: see `MOVE-AND-TAKE.md` for what
 landed and what is still open.
+- `IN-GAME-LAYOUTS-PLAN.md` — **plan (2026-10-06).** Draw user-made menus and bars inside the
+  pc-hq board window (not floating windows), saved as layouts and called by name from the Events menu
+  (and on the livedesk), made in an agent-usable layout studio. Lists what exists (the canvas overlay
+  strip the hotbar uses), the gaps (no overlay chrome, one footer, floating menus leave the viewport),
+  the phases, and how it builds on the layout-studio seed doc.
