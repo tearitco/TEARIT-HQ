@@ -6,7 +6,7 @@
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
 NDIR="$(cd "$HERE/.." && pwd)"
-HR="$(cd "$NDIR/../../.." && pwd)"
+HR="$(cd "$NDIR/../.." && pwd)"
 REQ="$HR/#.desktop/network_browser_request.txt"
 PF="$HR/#.desktop/network_browser_page.state.txt"
 FX="$HERE/fixtures/mini-article.html"
