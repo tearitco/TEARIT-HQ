@@ -112,9 +112,37 @@ Still open:
 - **Is Shift a tap or Shift+arrow?** A tap is simplest, but a held Shift
   also generates its own key event, so key repeat would cycle fast. I would
   trigger on press only, no repeat. Confirm.
-- Hotbar: selectable slot or strictly first item (for Place).
-- Hearts and hunger display-only for now (assumed yes).
-- How a desk entity leaves the desktop on Take (not checked).
+
+Decided later the same day:
+4. **Hotbar, modeled on Minecraft.** A fixed row of slots over the active
+   entity's `inventory/`, exactly one selected; Place uses the selected slot
+   (an empty slot does nothing). Slot 1 is selected by default, which is
+   "top item". Our items are whole entities, so no stacking at first (one
+   entity per slot). Cycling keys are not chosen yet: previous/next slot
+   keys, plus digits for a direct pick only where they do not clash with the
+   typed cell-ref input of the Move range finder (letters and digits type a
+   ref while it is open). The selected slot is stored per entity so each
+   entity remembers its own.
+5. **Hearts and hunger are display-only now, but build the hooks.** Entities
+   will soon get real hunger and health. So the vitals reader in
+   `khtpm_possess.c` should be the single place that knows where each value
+   lives and carry comments marking the future write side: a `vitals_set`
+   hook (damage, eating, decay tick) that does nothing yet, a
+   `ledger` line type reserved for vital changes, and a note that cursword's
+   "always full" is a rule in that one reader, not a stored value. Comments
+   should say what each hook is for and point back to this doc.
+6. **Take removes the entity from the screen and puts it in the taker's
+   inventory.** It still exists, as an item in `inventory/`; it is not
+   deleted. On the desk that is the same `mv` drag and drop already does.
+   Not yet checked: that moving the directory is enough to make the desktop
+   window disappear (the entity's own process may need to be told to close)
+   and what happens to its DESK row in a pc-hq page file (the row must stop
+   drawing the entity, and Place must be able to put it back with its old
+   state). Both need a look before Take is built.
+
+Still open from before: the three items under "Still open" above (which
+list Shift walks, how Enter chooses between possess and open-menu, and Shift
+as press-only).
 
 ## 6. Order of work
 
