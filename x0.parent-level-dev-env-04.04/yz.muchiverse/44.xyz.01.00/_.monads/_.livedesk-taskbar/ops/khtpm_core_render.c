@@ -6608,6 +6608,9 @@ static void dock_paint_peer(void) {
                 fclose(bf);
                 rename(bt, bp);
                 lx = g_win_x; ly = g_win_y; lw = g_win_w; lh = g_win_h;
+                snprintf(bp, sizeof(bp), "%s/nav_base.txt", dd);   /* top bar's cell count: first free nav number - 1 */
+                snprintf(bt, sizeof(bt), "%s.tmp", bp);
+                if ((bf = fopen(bt, "w"))) { fprintf(bf, "%d\n", g_dock_header_nav_hi); fclose(bf); rename(bt, bp); }
             }
         }
     }
@@ -10890,12 +10893,24 @@ static void handle_key(KeySym ks, char ch) {
         /* multi-digit accumulate: "15" jumps to 15, not 5 (tpmos
          * chtpm_parser.c.bak digit_accum). Take accum*10+d when it's a
          * real nav index; else restart the accumulator with just d. */
+        /* g_nav_digit_accum holds the TYPED number; with a display base (class nav-after-top)
+         * the local index is typed - base. */
         int nv = g_nav_digit_accum * 10 + d;
-        if (nv >= 1 && nv <= g_n_nav && kh_elem_in_scope(g_nav[nv - 1])) {
-            g_focus_nav = nv;
+        if (g_nav_display_base > 0) {
+            /* numbers start above the base, so a short prefix ("1" of "18") is never itself a valid
+             * target: keep accumulating up to 3 digits and jump only when the whole number is one. */
+            if (nv > 999) nv = d;
             g_nav_digit_accum = nv;
-        } else if (d >= 1 && d <= g_n_nav && kh_elem_in_scope(g_nav[d - 1])) {
-            g_focus_nav = d;
+            int lvb = nv - g_nav_display_base;
+            if (lvb >= 1 && lvb <= g_n_nav && kh_elem_in_scope(g_nav[lvb - 1])) g_focus_nav = lvb;
+            return;
+        }
+        int lv = nv - g_nav_display_base, ld = d - g_nav_display_base;
+        if (lv >= 1 && lv <= g_n_nav && kh_elem_in_scope(g_nav[lv - 1])) {
+            g_focus_nav = lv;
+            g_nav_digit_accum = nv;
+        } else if (ld >= 1 && ld <= g_n_nav && kh_elem_in_scope(g_nav[ld - 1])) {
+            g_focus_nav = ld;
             g_nav_digit_accum = d;
         } else {
             g_nav_digit_accum = 0;
@@ -11956,14 +11971,37 @@ static void hq_idle_tick(void) {
     if (g_window && elem_has_class(g_window, "vars-positioned") && !window_is_dock()) {
         const char *acx = kh_get_var("anchor_cx"), *abt = kh_get_var("anchor_bottom");
         if (acx && acx[0] && abt && abt[0]) {
-            int nx = atoi(acx) - g_win_w / 2, ny = atoi(abt) - g_win_h;
+            /* Slide-only (owner 2026-10-05): the user may drag the window sideways; its vertical
+             * position is always the anchor (top of the bottom bar's stack). The sideways offset
+             * from the centred spot is remembered and re-applied as the anchor moves. */
+            static int s_dx = 0, s_last_x = -99999; static time_t s_t0 = 0;
+            int cx0 = atoi(acx) - g_win_w / 2, ny = atoi(abt) - g_win_h, nx;
+            Window ch; int rx = g_win_x, ry = g_win_y, have = 0;
+            if (!s_t0) s_t0 = time(NULL);
+            have = XTranslateCoordinates(dpy, win, DefaultRootWindow(dpy), 0, 0, &rx, &ry, &ch);
+            /* The window manager places a new window asynchronously, so for the first 3 s after
+             * launch we only place it. After that any x the window is found at that we did not set is
+             * the user sliding it: adopt it at once (live, so a drag is not fought). */
+            if (have && time(NULL) - s_t0 >= 3 && s_last_x != -99999 && rx != s_last_x) s_dx = rx - cx0;
+            nx = cx0 + s_dx;
             if (nx < 0) nx = 0;
             if (ny < 0) ny = 0;
-            if (nx != g_win_x || ny != g_win_y) {
+            /* compare with the window's REAL position: y is always forced back to the anchor */
+            if (!have || rx != nx || ry != ny || s_last_x == -99999) {
                 g_win_x = nx; g_win_y = ny;
                 XMoveWindow(dpy, win, g_win_x, g_win_y);
             }
+            s_last_x = nx;
         }
+    }
+    /* class="nav-after-top": number this window's cells after the top bar's (display only). */
+    if (g_window && elem_has_class(g_window, "nav-after-top")) {
+        char np[PATH_BUF];
+        FILE *nf;
+        int nb = 16;                       /* the top bar's cell count; the dock publishes the real one */
+        snprintf(np, sizeof(np), "%s/#.desktop/dock_stack/nav_base.txt", g_house_root);
+        if ((nf = fopen(np, "r"))) { int v; if (fscanf(nf, "%d", &v) == 1 && v >= 0) nb = v; fclose(nf); }
+        if (nb != g_nav_display_base) { g_nav_display_base = nb; hq_request_redraw(); }
     }
     kh_scan_interact_relay();
     /* REAL, NEW 2026-09-14 - real cross-process CUT/COPY/PASTE bridge

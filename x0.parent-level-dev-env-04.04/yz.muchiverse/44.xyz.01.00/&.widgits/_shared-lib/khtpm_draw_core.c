@@ -125,6 +125,11 @@ static XftFont *font_for(const CssStyle *st) {
  * stateless, X11-drawing code with zero db-hq/palettes-specific
  * dependencies - any future mode gets it for free. */
 #define HQ_SPRITE_PX_MAX 64
+/* Display-only offset for the nav badge number (owner 2026-10-05, 18.pc-hq/CURSWORD-POSSESSION-
+ * DESIGN.md): a window of class "nav-after-top" (the hotbar) shows its cells numbered AFTER the top
+ * bar's, i.e. local index + base. Internal nav indexes (g_nav[], nav_index) stay local 1..N; only the
+ * drawn number and the typed-number lookup in handle_key add / subtract this base. 0 = unchanged. */
+static int g_nav_display_base = 0;
 typedef struct {
     char path[512];
     unsigned char *rgba;
@@ -719,7 +724,7 @@ static int kh_elem_badge_label_x(Elem *e) {
                        (g_interact_relay_on && e->relay[0]);
         elem_cursor_prefix(e, g_focus_nav, is_scope, prefix, sizeof(prefix));
         char nav_badge[16];
-        snprintf(nav_badge, sizeof(nav_badge), "%s%d.", prefix, e->nav_index);
+        snprintf(nav_badge, sizeof(nav_badge), "%s%d.", prefix, e->nav_index + g_nav_display_base);
         static char badge_cached_spec2[48] = "";
         static XftFont *badge_cached_font2 = NULL;
         char numspec[48];
@@ -991,7 +996,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
             if (armed && !edit_mode)
                 snprintf(status_line, sizeof(status_line), "%s%d. jump: %s_", prefix, e->nav_index, g_default_input_elem->grid_jump_buffer);
             else
-                snprintf(status_line, sizeof(status_line), "%s%d.", prefix, e->nav_index);
+                snprintf(status_line, sizeof(status_line), "%s%d.", prefix, e->nav_index + g_nav_display_base);
             const char *badge_fg = armed ? (edit_mode ? "#ffcc00" : g_theme_accent) :
                                     (e->nav_index == g_focus_nav ? g_theme_accent : "#888888");
             XftColor bcol = xft_color(badge_fg);
@@ -1150,7 +1155,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                         * declaration comment in khtpm_core_render.c). */
                        (g_interact_relay_on && e->relay[0]);
         elem_cursor_prefix(e, g_focus_nav, is_scope, prefix, sizeof(prefix));
-        snprintf(nav_badge, sizeof(nav_badge), "%s%d.", prefix, e->nav_index);
+        snprintf(nav_badge, sizeof(nav_badge), "%s%d.", prefix, e->nav_index + g_nav_display_base);
         (void)focused;
         /* REAL FIX 2026-08-25 (live perf report: "nav is really slow" with
          * 113 palette tiles on screen) - this was opening a fresh XftFont

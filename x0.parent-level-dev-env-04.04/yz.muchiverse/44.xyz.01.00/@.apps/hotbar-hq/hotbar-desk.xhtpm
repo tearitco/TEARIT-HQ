@@ -8,7 +8,7 @@
      class="vars-positioned": the manager publishes anchor_cx/anchor_bottom and the renderer
      docks the window there (above the bottom bar on the desk). The "-pal" suffix keeps the
      built-in g_is_* paths dormant. -->
-<window label="Hotbar (desk)" class="hotbar-pal database-window vars-positioned" vars="state/desk/ui.txt">
+<window label="Hotbar (desk)" class="hotbar-pal database-window vars-positioned nav-after-top" vars="state/desk/ui.txt">
   <module src="@.apps/hotbar-hq/ops/+x/hotbar_manager.+x desk"/>
   <page name="main">
     <sidebar id="rail" class="hb-rail sidebar"/>
