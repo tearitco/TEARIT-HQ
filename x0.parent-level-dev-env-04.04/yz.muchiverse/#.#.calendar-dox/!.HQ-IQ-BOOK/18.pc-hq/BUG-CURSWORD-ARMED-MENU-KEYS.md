@@ -34,11 +34,12 @@ and the menu is the khtpm kind, run the same disarm sequence the Escape and
 focus-lost paths use (release pointer grab if awaiting placement, release the
 keyboard grab, clear armed, write `cursword_armed.txt`, history line
 `CURSWORD_DISARMED_MENU_OPEN`, shape/redraw). The menu then opens exactly as it
-does for an unarmed cursword. Trade-off: the sword is disarmed once its menu
-opens and is re-armed with a click. Keeping it armed would need a "menu open"
-flag, suppressing the focus-lost disarm, and a re-grab when the menu exits,
-which would also steal the keyboard back from whatever window a menu action
-opened (Chat, Inventory), so it was not done.
+does for an unarmed cursword. Once the menu process has exited, the sword
+re-arms itself (keyboard grab and focus again, history line
+`CURSWORD_REARMED_MENU_CLOSED`). Kept deliberately simple: no timers, no focus
+check. Known catch: if a menu action opens another window (Chat, Inventory),
+the sword re-arms and holds the keyboard over it until Esc. The click-to-place
+pointer grab is not restored on re-arm (a stray click would place the sword).
 
 The running cursword (started before this build) still has the old code. It
 needs a relaunch to pick the fix up.
@@ -60,6 +61,6 @@ fails. This matches the existing note
 
 Real keyboard, not the relay, with a freshly launched cursword: arm it, right-click it
 (history shows `CURSWORD_DISARMED_MENU_OPEN`), press Down and Up (the menu's
-focus row moves, the sword does not), Esc (menu closes), click the sword to
-re-arm, arrows (sword moves), Esc (disarms). Also check `input_active` (a typed
+focus row moves, the sword does not), Esc (menu closes, history shows `CURSWORD_REARMED_MENU_CLOSED`), arrows
+(sword moves), Esc (disarms). Also check `input_active` (a typed
 Cli-io field), since Esc there should cancel the field and not the arm.
