@@ -6,6 +6,9 @@
  * 18.pc-hq/CURSWORD-POSSESSION-DESIGN.md sections 4, 5b, 5e.
  *
  *   hotbar_manager desk|pchq <house_root> <package_dir>
+ * pchq draws inside the pc-hq board window: the board's own <module> starts this with package_dir = the
+ * board's dir, so the feed lands in <board>/state/pchq/ui.txt with hb_ keys and the board loads it as a second
+ * vars file (vars="state/ui.txt state/pchq/ui.txt"). The window's own <module> lifetime ends this process.
  * (the order <module src="...hotbar_manager.+x desk"/> produces: the renderer appends
  * house_root and package_dir; state goes to <package_dir>/state/<mode>/)
  *
@@ -30,6 +33,7 @@
 #include <glob.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <signal.h>
 
 #define HB_SLOTS 9
 
@@ -122,6 +126,14 @@ static void publish(const char *house, const char *mode, const char *state_dir, 
         if (anchor_for(house, mode, &cx, &bt))
             off += snprintf(buf + off, sizeof(buf) - off, "anchor_cx=%d\nanchor_bottom=%d\n", cx, bt);
     }
+    {
+        /* visible: <state_dir>/visible.txt ("1"/"0", default 1), flipped by hotbar_toggle.sh - the pc-hq
+         * board hides/shows its hotbar overlay with it (show="${hb_visible}"). */
+        char vp[INV_PATH + 16], vv[16] = "";
+        snprintf(vp, sizeof(vp), "%s/visible.txt", state_dir);
+        read_kv(vp, "visible", vv, sizeof(vv));
+        off += snprintf(buf + off, sizeof(buf) - off, "visible=%s\n", vv[0] == '0' ? "0" : "1");
+    }
     off += snprintf(buf + off, sizeof(buf) - off, "sel_name=%s\n", sel < n && n > 0 ? names[sel] : "(empty)");
     for (i = 0; i < HB_SLOTS; i++) {
         if (i < n) {
@@ -147,7 +159,16 @@ static void publish(const char *house, const char *mode, const char *state_dir, 
     snprintf(last, lastn, "%s", buf);
     snprintf(path, sizeof(path), "%s/ui.txt", state_dir);
     snprintf(tmp, sizeof(tmp), "%s.tmp", path);
-    if ((f = fopen(tmp, "w"))) { fputs(buf, f); fclose(f); rename(tmp, path); }
+    if ((f = fopen(tmp, "w"))) {
+        /* pchq: the feed is a SECOND vars file of the pc-hq board window, whose own ui.txt has its own keys,
+         * so every key is prefixed hb_ to rule out a collision. */
+        if (!strcmp(mode, "pchq")) {
+            char *ln = buf, *nl;
+            while (*ln) { nl = strchr(ln, '\n'); if (!nl) break; fprintf(f, "hb_%.*s\n", (int)(nl - ln), ln); ln = nl + 1; }
+        } else fputs(buf, f);
+        fclose(f);
+        rename(tmp, path);
+    }
 }
 
 int main(int argc, char **argv) {

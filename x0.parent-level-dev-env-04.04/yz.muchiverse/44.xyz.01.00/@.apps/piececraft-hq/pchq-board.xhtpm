@@ -18,8 +18,11 @@
 
      Free: X/!/_ chrome, taskbar entry, minimize/restore, REAL Desk/Menu
      dropdowns. Rollback: pchq-board.hascanvas.xhtpm (PCHQ_BOARD_HASCANVAS=1). -->
-<window label="piececraft-hq board" class="pchq-board-pal database-window managed user-resizable" vars="state/ui.txt">
+<window label="piececraft-hq board" class="pchq-board-pal database-window managed user-resizable" vars="state/ui.txt state/pchq/ui.txt">
   <module src="@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x" args="piececraft-hq"/>
+  <!-- the hotbar's manager (@.apps/hotbar-hq, 18.pc-hq/CURSWORD-POSSESSION-DESIGN.md): publishes
+       state/pchq/ui.txt (hb_ keys) for the overlay strip in the view panel below. -->
+  <module src="@.apps/hotbar-hq/ops/+x/hotbar_manager.+x pchq"/>
   <page name="main">
     <tabbar id="toolbar" class="pchq-toolbar">
       <tab id="tb-in" class="pchq-tb ${interact_class}" label="In: ${interact_label}"
@@ -117,12 +120,28 @@
 
     <panel id="view-panel" class="pchq-view">
       <canvas id="view" sprite="${canvas_raw}"/>
+      <!-- hotbar, drawn IN the board window over the bottom-centre of the game view (generic class
+           canvas-overlay-bottom, see kh_layout_canvas_in_region): the holder's inventory slots - the
+           possessed entity's, else the xelector's. Hidden/shown by the "hotbar" cell in the bottom bar
+           (show= drops it at parse). Feed: hotbar_manager, hb_ keys. -->
+      <row class="canvas-overlay-bottom pchq-hotbar" show="${hb_visible}">
+        <text label="${hb_holder} - slot: ${hb_sel_name}" class="hb-quiet"/>
+        <repeat count="${hb_n_slots}" bind="hb_s">
+          <item id="hbs${hb_s.#}" class="hb-slot sprite-inline ${hb_s.cls}" label="${hb_s.text}" sprite="${hb_s.sprite}"
+                action="'${HOUSE}/@.apps/hotbar-hq/ops/hotbar_action.sh' '${hb_s.#}' '${HOUSE}/@.apps/piececraft-hq/state/pchq'"/>
+        </repeat>
+        <cli_io id="hbcmd" target_id="hbcmd" class="hb-cli" label="&gt; "
+                action="'${HOUSE}/@.apps/hotbar-hq/ops/hotbar_cli.sh' 'pchq'"/>
+      </row>
     </panel>
 
     <!-- MILESTONE C: entities bar. show= drops the whole strip when
          entities_bar is 0 in pchq.pdl (Menu > Entities bar toggles it). -->
     <footer id="statusbar" class="pchq-footer" show="${entities_bar_on}">
       <text label="ents" class="quiet"/>
+      <!-- show/hide the hotbar overlay ("minimize" it into this bar) -->
+      <item id="hb-toggle" class="pchq-ft" label="hotbar"
+            action="sh '${HOUSE}/@.apps/hotbar-hq/ops/hotbar_toggle.sh' pchq '${HOUSE}/@.apps/piececraft-hq'"/>
       <repeat count="${n_ent}" bind="ent">
         <item id="e${ent.#}" class="pchq-ft" label="${ent.label}"
               action="setsid sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_entity_ctx.sh' '${HOUSE}/@.apps/piececraft-hq' '${ent.x}' '${ent.y}' '${ent.z}' '${ent.kind}' '${ent.id}'"/>

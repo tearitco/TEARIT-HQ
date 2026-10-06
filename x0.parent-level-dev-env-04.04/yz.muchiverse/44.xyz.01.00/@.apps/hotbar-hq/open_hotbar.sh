@@ -8,7 +8,7 @@ set -u
 HOUSE_ROOT="${1:-}"; MODE="${2:-desk}"
 [ -n "$HOUSE_ROOT" ] && [ -d "$HOUSE_ROOT" ] || { echo "open_hotbar: need house_root as argv[1]" >&2; exit 1; }
 HOUSE_ROOT="$(cd "$HOUSE_ROOT" && pwd)"
-case "$MODE" in desk|pchq) ;; *) echo "open_hotbar: mode must be desk or pchq" >&2; exit 1 ;; esac
+case "$MODE" in desk) ;; *) echo "open_hotbar: mode must be desk (pc-hq draws its hotbar inside the board window)" >&2; exit 1 ;; esac
 HERE="$(cd "$(dirname "$0")" && pwd)"
 OPS="$HOUSE_ROOT/_.monads/_.livedesk-taskbar/ops"
 BIN="$OPS/+x/khtpm_core_render.+x"

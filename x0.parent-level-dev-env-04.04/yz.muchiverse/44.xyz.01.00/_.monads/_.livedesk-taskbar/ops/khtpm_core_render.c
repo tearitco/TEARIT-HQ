@@ -5341,6 +5341,68 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
     cv->nav_index = 0;
     g_has_canvas = 1;
 
+    /* class="canvas-overlay-bottom" (generic, owner 2026-10-05 - the pc-hq hotbar): a <row> of <item>s that
+     * is a LATER sibling of the canvas is laid out as a strip centred at the bottom of the canvas region.
+     * Each item takes its css width/height (80x60 if none), the strip is painted over the canvas by tree
+     * order, items get nav numbers in order, and any non-item child of the row is parked off-screen
+     * (the file's -100000 convention). It lives in the window, so it moves/minimizes with it; hide it with
+     * show="${var}" (the element is dropped at parse, re-added on the live reparse). */
+    for (int oi = 0; oi < region->n_children; oi++) {
+        Elem *ov = region->children[oi];
+        int n_it = 0, n_tx = 0, n_cl = 0, total = 0, maxh = 0, gap = scaled(4), k;
+        if (!elem_has_class(ov, "canvas-overlay-bottom")) continue;
+        css_compute_style(&g_sheet, ov->tag, ov->id, ov->classes, ov->n_classes, 0, &ov->style);
+        for (k = 0; k < ov->n_children; k++) {
+            Elem *it = ov->children[k];
+            if (strcmp(it->tag, "text") == 0) { n_tx++; continue; }      /* name line: above the items */
+            if (strcmp(it->tag, "cli_io") == 0) { n_cl++; continue; }    /* typed line: below the items */
+            if (strcmp(it->tag, "item") != 0) { it->x = rx; it->y = -100000; it->w = 0; it->h = 0; it->nav_index = 0; continue; }
+            css_compute_style(&g_sheet, it->tag, it->id, it->classes, it->n_classes, 0, &it->style);
+            it->w = it->style.has_width ? it->style.width : scaled(80);
+            it->h = it->style.has_height ? it->style.height : scaled(60);
+            if (it->h > maxh) maxh = it->h;
+            total += it->w + (n_it ? gap : 0);
+            n_it++;
+        }
+        if (n_it == 0) continue;
+        {
+            int pad4 = scaled(4), rowh = ROW_H;
+            int stripw = total < scaled(360) ? scaled(360) : total;   /* wide enough for the typed line */
+            int toph = n_tx * rowh, both = n_cl * rowh;
+            int hh = toph + maxh + both + 2 * pad4;
+            int x0 = cv->x + (cv->w - stripw) / 2, y0 = cv->y + cv->h - hh - scaled(10), x, yy;
+            if (x0 < cv->x) x0 = cv->x;
+            ov->x = x0; ov->y = y0; ov->w = stripw; ov->h = hh; ov->nav_index = 0;
+            yy = y0 + pad4;
+            for (k = 0; k < ov->n_children; k++) {               /* name line(s) */
+                Elem *t = ov->children[k];
+                if (strcmp(t->tag, "text") != 0) continue;
+                css_compute_style(&g_sheet, t->tag, t->id, t->classes, t->n_classes, 0, &t->style);
+                t->x = x0 + pad4; t->y = yy; t->w = stripw - 2 * pad4; t->h = rowh; t->nav_index = 0;
+                yy += rowh;
+            }
+            x = x0 + (stripw - total) / 2;                        /* the slots, centred */
+            for (k = 0; k < ov->n_children; k++) {
+                Elem *it = ov->children[k];
+                if (strcmp(it->tag, "item") != 0) continue;
+                it->x = x; it->y = yy + (maxh - it->h) / 2;
+                x += it->w + gap;
+                it->nav_index = ++g_n_nav;
+                g_nav[g_n_nav - 1] = it;
+            }
+            yy += maxh;
+            for (k = 0; k < ov->n_children; k++) {               /* typed line(s) */
+                Elem *t = ov->children[k];
+                if (strcmp(t->tag, "cli_io") != 0) continue;
+                css_compute_style(&g_sheet, t->tag, t->id, t->classes, t->n_classes, 0, &t->style);
+                t->x = x0 + pad4; t->y = yy; t->w = stripw - 2 * pad4; t->h = rowh;
+                t->nav_index = ++g_n_nav;
+                g_nav[g_n_nav - 1] = t;
+                yy += rowh;
+            }
+        }
+    }
+
     char vsz[PATH_BUF];
     snprintf(vsz, sizeof(vsz), "%s/#.desktop/pchq_board_view.txt", g_house_root);
     FILE *vf = fopen(vsz, "w");
