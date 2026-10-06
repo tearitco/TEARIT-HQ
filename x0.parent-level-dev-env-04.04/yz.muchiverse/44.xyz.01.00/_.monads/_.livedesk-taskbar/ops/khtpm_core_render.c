@@ -5795,6 +5795,8 @@ static int layout_sidebar_panel(Elem *page) {
         g_nav[g_n_nav - 1] = g_default_minimize_elem;
 
         memset(g_default_fullscreen_elem, 0, sizeof(*g_default_fullscreen_elem));
+        /* class="no-fullscreen": no "!" at all - an empty (w=0) element with no nav number. */
+        if (!(g_window && elem_has_class(g_window, "no-fullscreen"))) {
         snprintf(g_default_fullscreen_elem->tag, sizeof(g_default_fullscreen_elem->tag), "item");
         snprintf(g_default_fullscreen_elem->id, sizeof(g_default_fullscreen_elem->id), "chrome-fullscreen");
         snprintf(g_default_fullscreen_elem->label, sizeof(g_default_fullscreen_elem->label), "!");
@@ -5815,8 +5817,11 @@ static int layout_sidebar_panel(Elem *page) {
          * live struct here never survives that round trip. */
         css_compute_style(&g_sheet, g_default_fullscreen_elem->tag, g_default_fullscreen_elem->id, NULL, 0, 0, &g_default_fullscreen_elem->style);
         g_default_fullscreen_elem->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = g_default_fullscreen_elem;
+        }
 
         memset(g_default_close_elem, 0, sizeof(*g_default_close_elem));
+        /* class="no-close": no X at all - an empty (w=0) element with no nav number. */
+        if (!(g_window && elem_has_class(g_window, "no-close"))) {
         snprintf(g_default_close_elem->tag, sizeof(g_default_close_elem->tag), "item");
         snprintf(g_default_close_elem->id, sizeof(g_default_close_elem->id), "chrome-close");
         snprintf(g_default_close_elem->label, sizeof(g_default_close_elem->label), "X");
@@ -5827,6 +5832,7 @@ static int layout_sidebar_panel(Elem *page) {
          * fullscreen right above, same real reason. */
         css_compute_style(&g_sheet, g_default_close_elem->tag, g_default_close_elem->id, NULL, 0, 0, &g_default_close_elem->style);
         g_default_close_elem->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = g_default_close_elem;
+        }
     }
 
     if (g_focus_nav > g_n_nav) g_focus_nav = g_n_nav > 0 ? g_n_nav : 1;
@@ -7356,11 +7362,14 @@ static void assign_nav_and_layout(void) {
          * exact machinery that already exists for it. */
         {
             int cy = 2; /* chrome on the nametag's former row; entity-menu draws nametag below */
-            if (!found_close)
+            if (!found_close && !(g_window && elem_has_class(g_window, "no-close")))
                 kh_place_chrome_btn(g_default_close_elem, "chrome-close", "X", "CLOSE", &chrome_x, cy);
             else
                 g_default_close_elem->w = 0;
-            kh_place_chrome_btn(g_default_fullscreen_elem, "chrome-fullscreen", "!", "TOGGLE_FULLSCREEN", &chrome_x, cy);
+            if (!(g_window && elem_has_class(g_window, "no-fullscreen")))
+                kh_place_chrome_btn(g_default_fullscreen_elem, "chrome-fullscreen", "!", "TOGGLE_FULLSCREEN", &chrome_x, cy);
+            else
+                g_default_fullscreen_elem->w = 0;
             kh_place_chrome_btn(g_default_minimize_elem, "chrome-minimize", "_", "MINIMIZE", &chrome_x, cy);
         }
         /* helper: does this <item> carry class="pal-dir" (the long folder
@@ -7710,11 +7719,14 @@ static void assign_nav_and_layout(void) {
          * machinery, real id="chrome-close" CSS look included. */
         {
             int cy = 2; /* chrome on the nametag's former row; entity-menu draws nametag below */
-            if (!found_close)
+            if (!found_close && !(g_window && elem_has_class(g_window, "no-close")))
                 kh_place_chrome_btn(g_default_close_elem, "chrome-close", "X", "CLOSE", &chrome_x, cy);
             else
                 g_default_close_elem->w = 0;
-            kh_place_chrome_btn(g_default_fullscreen_elem, "chrome-fullscreen", "!", "TOGGLE_FULLSCREEN", &chrome_x, cy);
+            if (!(g_window && elem_has_class(g_window, "no-fullscreen")))
+                kh_place_chrome_btn(g_default_fullscreen_elem, "chrome-fullscreen", "!", "TOGGLE_FULLSCREEN", &chrome_x, cy);
+            else
+                g_default_fullscreen_elem->w = 0;
             kh_place_chrome_btn(g_default_minimize_elem, "chrome-minimize", "_", "MINIMIZE", &chrome_x, cy);
         }
         /* user owns the height when class="user-resizable". No
@@ -8305,7 +8317,12 @@ static void dispatch(const char *action) {
         }
         return;
     }
-    if (strcmp(action, "CLOSE") == 0) { g_quit = 1; return; }
+    /* class="no-close" (owner 2026-10-05, the hotbar): the window can be minimized but not closed -
+     * no X button is drawn and a CLOSE action is ignored. */
+    if (strcmp(action, "CLOSE") == 0) {
+        if (g_window && elem_has_class(g_window, "no-close")) return;
+        g_quit = 1; return;
+    }
     /* REAL, NEW 2026-09-01 - the sidebar+panel chrome "!" button (see
      * g_default_is_fullscreen's own declaration comment) - a real,
      * generic toggle, not open-hai-specific: any sidebar+panel window
@@ -8316,6 +8333,7 @@ static void dispatch(const char *action) {
      * the same real mechanism, just toggled by a click instead of new
      * content. */
     if (strcmp(action, "TOGGLE_FULLSCREEN") == 0) {
+        if (g_window && elem_has_class(g_window, "no-fullscreen")) return;
         g_default_is_fullscreen = !g_default_is_fullscreen;
         if (g_default_is_fullscreen) {
             g_default_pre_fullscreen_x = g_win_x; g_default_pre_fullscreen_y = g_win_y;
@@ -11968,7 +11986,7 @@ static void hq_idle_tick(void) {
      * anchor_bottom (bottom edge y); the window centres on / sits on them using its OWN
      * size. Generic: no knowledge of which app. Used by the hotbar (docked above the
      * bottom bar / inside the pc-hq board window). */
-    if (g_window && elem_has_class(g_window, "vars-positioned") && !window_is_dock()) {
+    if (g_window && elem_has_class(g_window, "vars-positioned") && !window_is_dock() && !g_default_is_fullscreen) {   /* fullscreen owns its own placement */
         const char *acx = kh_get_var("anchor_cx"), *abt = kh_get_var("anchor_bottom");
         if (acx && acx[0] && abt && abt[0]) {
             /* Slide-only (owner 2026-10-05): the user may drag the window sideways; its vertical
