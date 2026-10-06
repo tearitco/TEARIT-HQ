@@ -53,6 +53,42 @@ fi
 
 echo "$(date '+%H:%M:%S') open  kind=$KIND id=${ID:-.} cell=$SX,$SY,$SZ  $NOTE" >> "$LOG"
 
+# DESK ENTITIES GET THEIR OWN MENU, AUTOMATICALLY (2026-10-05, direct
+# instruction: cursword / the terumons / any page entity must have "the exact
+# same" context menu in pc-hq as on the desktop). The desk's rule
+# (khtpm_entity.c launch_khtpm_menu): if <entity dir>/menu.chtpm exists, open
+# THAT file with the shared khtpm_core_render at the click position. Do the
+# same here - no per-entity verb list, no copy of the menu: whatever the entity
+# defines (Move via Act, Chat, Play, Bookmarks, Events, Inventory, Cli-io, ...)
+# is what shows. A page row's path is <house>/xyzfs/users/*/home/livedesk/pals/<name>
+# (or #.desktop/entities/<name>), found here by name. pc-hq's own pieces
+# (hero_01, trees, chicken, voxels) have no such dir and keep the generated
+# menu below.
+DESK_MENU=""
+if [ -n "$ID" ]; then
+    for d in "$HOUSE"/xyzfs/users/*/home/livedesk/pals/"$ID" "$HOUSE/#.desktop/entities/$ID"; do
+        [ -f "$d/menu.chtpm" ] && { DESK_MENU="$d/menu.chtpm"; break; }
+    done
+fi
+if [ -n "$DESK_MENU" ]; then
+    PIDF="$ROOT/pieces/display/ctx_menu_desk.pid"
+    OLD=$(cat "$PIDF" 2>/dev/null)
+    case "$OLD" in ""|*[!0-9]*) ;; *) [ "$(cat /proc/$OLD/comm 2>/dev/null)" = khtpm_core_rend ] && kill "$OLD" 2>/dev/null ;; esac
+    # also drop a stale generated pc-hq menu, as the generated path does
+    for p in $(pgrep -f "khtpm_core_render.+x .*ctx-menu\.xhtpm" 2>/dev/null); do
+        [ "$(cat /proc/$p/comm 2>/dev/null)" = khtpm_core_rend ] && kill "$p" 2>/dev/null
+    done
+    if [ -n "${MENU_X:-}" ] && [ -n "${MENU_Y:-}" ]; then
+        setsid nohup "$BIN" "$HOUSE" "$DESK_MENU" "$MENU_X" "$MENU_Y" >/dev/null 2>&1 < /dev/null &
+    else
+        setsid nohup "$BIN" "$HOUSE" "$DESK_MENU" >/dev/null 2>&1 < /dev/null &
+    fi
+    echo $! > "$PIDF"
+    echo "$(date '+%H:%M:%S') desk menu  $DESK_MENU" >> "$LOG"
+    echo "pc_entity_ctx: desk entity menu up [$ID]  ->  $DESK_MENU"
+    exit 0
+fi
+
 case "$KIND" in
     none)          HEADER="nothing selected";        VERBS="EXIT" ;;
     air|"")        HEADER="nothing here @ $SX,$SY,$SZ"; VERBS="PLACE EXIT" ;;
