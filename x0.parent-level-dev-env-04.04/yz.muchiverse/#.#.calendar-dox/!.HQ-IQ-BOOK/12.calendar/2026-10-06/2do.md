@@ -11,7 +11,8 @@ Plan and reasoning: `18.pc-hq/IN-GAME-LAYOUTS-PLAN.md`.
       title, four action rows (one appends to the game inbox, one runs an op), a `_` button.
 - [ ] **Step 2:** `<overlay src="..."/>` in the shared renderer (the one new renderer piece), built behind the
       sandbox template only.
-- [ ] **Step 3:** generic overlay chrome — `_` minimize into the pc-hq bottom bar, slide along one axis. Also
+- [x] **Steps 1-2 done 2026-10-06:** sandbox + `<overlay src>` + `canvas-overlay-right`; test-menu draws in the board, nav 29-32; click, typed number + Enter, hide and show verified.
+- [ ] **Step 3:** generic overlay chrome (with MOUSE drag of the title bar, owner 2026-10-06) — `_` minimize into the pc-hq bottom bar, slide along one axis. Also
       closes the pc-hq hotbar gaps (no minimize, no sideways slide).
 - [ ] **Step 4:** anchors (centre, at-clicked-cell) clamped to the board.
 - [ ] **Step 5:** event command `layout.toggle <id>` in `#.ref/menu/event_commands.registry.pdl`, called from

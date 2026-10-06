@@ -85,6 +85,12 @@ Window classes that already exist on x11-hq windows, applied to an overlay: titl
 toggle cell does today), optional `slide-x` / `slide-y` (drag along one axis only, the
 `vars-positioned` behaviour), `no-close`, `no-fullscreen` (added 2026-10-05).
 
+**Mouse control is required alongside the keyboard (owner, 2026-10-06):** an overlay with chrome must be
+draggable like a window: grab its title bar to move it (free, or along one axis for `slide-x` / `slide-y`),
+click `_` to minimize, click items and fields; the position clamps to the host viewport and is remembered
+(the desk hotbar's `vars-positioned` / saved-position path is the model). Keyboard (nav numbers, Tab, Esc) and
+mouse are two ways to the same actions, never one without the other (4h).
+
 ### 4d. Data and actions (pal compatible)
 
 - **Data in:** the layout's feed is a vars file (`state/<id>/ui.txt`) written by a manager
@@ -175,6 +181,7 @@ the layout system, not something each layout opts into.
 | # | What | Done when |
 |---|---|---|
 | 0 | Canvas overlay strip, second vars file, toggle cell, armed-field fix | **done 2026-10-05** |
+| 0b | Sandbox: `<overlay src>` splice + `canvas-overlay-right` column + test-menu fragment (`@.apps/layout-studio/sandbox/`) | **done 2026-10-06**: menu draws in the board, nav 29-32, click / typed number / hide / show verified |
 | 1 | Overlay chrome: `_` minimize into the bottom bar, slide along one axis; apply to the pc-hq hotbar | pc-hq hotbar minimizes and slides like the desk one |
 | 2 | Anchor family + viewport clamp as classes | a test overlay at each anchor never leaves the board |
 | 2b | Nav index on every interactive overlay element (4h), including focus that holds | every item of the test menu is reachable by number, Tab and Esc, by relay and by a real key |
@@ -192,6 +199,12 @@ The seed (`08-roadmap/design-docs/HQ-LAYOUT-STUDIO-DESIGN.md`) already fixes the
 output is a real `.chtpm` + CSS; a layout can read an existing event page or take an event
 drag-dropped into it; it lives as a sub-entity in the proposed ☁️ entity. This plan adds:
 
+- **Home: a Toy (owner, 2026-10-06).** The studio is an app folder `@.apps/layout-studio/` with a `toy.pdl`
+  (`SECTION | launch | button.sh`) and `button.sh run`, so the taskbar's Toys menu lists it
+  (`livedesk_build_toys_menu()`), same convention as csv-hq. Its `ops/` holds `layout_op`; saved layouts go to
+  the game or house `layouts/` folder (4a). The phase-0 sandbox prototype lives there too:
+  `@.apps/layout-studio/sandbox/` (a copy of the board template + a `test-menu` fragment), launched with
+  `PCHQ_BOARD_TPL=<that template>`, so the live board is never touched.
 - **Ops first, window second (house rule: every op is independently testable).** One CLI,
   `layout_op`, does everything: `new | add <kind> | set <id> <attr> <value> | move | remove |
   bind <id> <feed-key> | on <id> <event> | preview | save | load | list`. It edits the

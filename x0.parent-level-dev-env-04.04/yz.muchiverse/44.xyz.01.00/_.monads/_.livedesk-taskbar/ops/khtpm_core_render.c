@@ -1803,6 +1803,72 @@ static char *kh_expand_repeats_all(char *a, char *b, size_t cap) {
     return src;
 }
 
+/* <overlay src="..."/> (IN-GAME-LAYOUTS-PLAN.md 4a, phase 0 step 2): splice a layout fragment into the host's
+ * template text BEFORE the ${var}/<repeat> pipeline, so the fragment is parsed, laid out, nav-numbered and
+ * reparsed exactly like the host's own elements (it IS part of the host's tree - it clips to the host and
+ * minimizes with it). src: absolute, or house-relative when it starts with @ # & , else relative to the
+ * package dir. Up to 4 nesting passes. g_frag_paths lists the files used, space separated, so
+ * kh_watch_hash() reparses live when a fragment file changes. A missing file splices nothing (breadcrumb). */
+static char g_frag_paths[PATH_BUF * 2] = "";
+
+static unsigned long kh_watch_hash(void) {
+    unsigned long h = kh_files_hash(g_vars_path), f = kh_files_hash(g_frag_paths);
+    return (h ^ (f * 31UL)) ? (h ^ (f * 31UL)) : 1;
+}
+
+static char *kh_splice_overlays(char *buf) {
+    for (int pass = 0; pass < 4; pass++) {
+        char *tag = strstr(buf, "<overlay");
+        int did = 0;
+        while (tag) {
+            char *end = strstr(tag, "/>");
+            char *close_tag = NULL;
+            if (!end) break;
+            char *gt = strchr(tag, '>');
+            if (gt && gt < end) { /* <overlay ...></overlay> form */
+                close_tag = strstr(gt, "</overlay>");
+                if (!close_tag) break;
+                end = close_tag + strlen("</overlay>") - 2; /* so end+2 is past the tag */
+            }
+            char src[PATH_BUF] = "";
+            char *sp = strstr(tag, "src=\"");
+            if (sp && sp < end) {
+                sp += 5;
+                size_t n = 0;
+                while (*sp && *sp != '"' && n + 1 < sizeof(src)) src[n++] = *sp++;
+                src[n] = '\0';
+            }
+            char full[PATH_BUF] = "", *frag = NULL;
+            if (src[0] == '/') snprintf(full, sizeof(full), "%s", src);
+            else if ((src[0] == '@' || src[0] == '#' || src[0] == '&') && g_house_root[0])
+                snprintf(full, sizeof(full), "%s/%s", g_house_root, src);
+            else if (src[0]) snprintf(full, sizeof(full), "%s/%s", g_package_dir[0] ? g_package_dir : ".", src);
+            if (full[0]) {
+                FILE *ff = fopen(full, "r");
+                if (ff) {
+                    fseek(ff, 0, SEEK_END); long fs = ftell(ff); fseek(ff, 0, SEEK_SET);
+                    frag = malloc((size_t)fs + 1);
+                    if (frag) { size_t r = fread(frag, 1, (size_t)fs, ff); frag[r] = '\0'; }
+                    fclose(ff);
+                    size_t cur = strlen(g_frag_paths);
+                    if (!strstr(g_frag_paths, full) && cur + strlen(full) + 2 < sizeof(g_frag_paths))
+                        snprintf(g_frag_paths + cur, sizeof(g_frag_paths) - cur, "%s%s", cur ? " " : "", full);
+                } else fprintf(stderr, "khtpm overlay: cannot read src=%s\n", full);
+            }
+            size_t head = (size_t)(tag - buf), tail_off = (size_t)(end + 2 - buf);
+            size_t fl = frag ? strlen(frag) : 0, tl = strlen(buf + tail_off);
+            char *nb = malloc(head + fl + tl + 1);
+            if (!nb) { free(frag); return buf; }
+            memcpy(nb, buf, head); if (fl) memcpy(nb + head, frag, fl);
+            memcpy(nb + head + fl, buf + tail_off, tl + 1);
+            free(frag); free(buf); buf = nb; did = 1;
+            tag = strstr(buf + head + fl, "<overlay");
+        }
+        if (!did) break;
+    }
+    return buf;
+}
+
 static Elem *parse_chtpm(const char *path) {
     long skipped_before = g_parse_skipped_bytes;
     FILE *f = fopen(path, "r");
@@ -1815,6 +1881,8 @@ static Elem *parse_chtpm(const char *path) {
     size_t rd = fread(buf, 1, (size_t)sz, f);
     buf[rd] = '\0';
     fclose(f);
+    g_frag_paths[0] = '\0';
+    if (strstr(buf, "<overlay")) buf = kh_splice_overlays(buf);
 
     /* static-template pipeline (CHTPM-ARCHITECTURE-FIX.md): load the
      * state file, expand <repeat> blocks, then substitute ${var}. All
@@ -1833,7 +1901,7 @@ static Elem *parse_chtpm(const char *path) {
             snprintf(g_vars_path + l, sizeof(g_vars_path) - l,
                      "%s%s", l ? " " : "", g_extra_vars_path);
         }
-        if (g_vars_path[0]) g_vars_hash = kh_files_hash(g_vars_path);
+        if (g_vars_path[0]) g_vars_hash = kh_watch_hash();
         kh_load_vars_multi(g_vars_path);
 
         if (strstr(buf, "<repeat")) {
@@ -2272,12 +2340,12 @@ static int reparse_chtpm_if_changed(void) {
                  * this session proved out repeatedly, not another
                  * blind timer. */
             }
-        } else if (g_vars_path[0]) {
+        } else if (g_vars_path[0] || g_frag_paths[0]) {
             /* content-hash ALL the state files (one per <module>) - a
              * reparse fires only on a real byte change in any of them,
              * not on a projector's identical every-tick rewrite
              * (marker-driven-render spirit). Cheap: small files. */
-            unsigned long h = kh_files_hash(g_vars_path);
+            unsigned long h = kh_watch_hash();
             if (h != g_vars_hash) {
                 /* Debounce a non-atomic in-place projector rewrite (see
                  * g_vars_hash_pending): only treat the change as real once
@@ -5397,6 +5465,62 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
                 if (strcmp(t->tag, "cli_io") != 0) continue;
                 css_compute_style(&g_sheet, t->tag, t->id, t->classes, t->n_classes, 0, &t->style);
                 t->x = x0 + pad4; t->y = yy; t->w = stripw - 2 * pad4; t->h = rowh;
+                t->nav_index = ++g_n_nav;
+                g_nav[g_n_nav - 1] = t;
+                yy += rowh;
+            }
+        }
+    }
+
+    /* class="canvas-overlay-right" (IN-GAME-LAYOUTS-PLAN.md 4b, first of the anchor family): the same kind of
+     * <row>, laid out as a COLUMN against the right edge of the canvas, vertically centred. <text> children are
+     * title lines above the items, each <item> is one full-width menu row (css width/height, else 180 x ROW_H+8),
+     * <cli_io> children sit below. Everything is clamped inside the canvas rect (a menu can never leave the
+     * board), painted over the canvas by tree order, and nav-numbered in order (visible items only; a hidden
+     * overlay was dropped at parse). Other children are parked off-screen like the bottom strip. */
+    for (int oi = 0; oi < region->n_children; oi++) {
+        Elem *ov = region->children[oi];
+        int n_it = 0, n_tx = 0, n_cl = 0, colw = scaled(180), rowh = ROW_H, itemh = ROW_H + scaled(8), k;
+        if (!elem_has_class(ov, "canvas-overlay-right")) continue;
+        css_compute_style(&g_sheet, ov->tag, ov->id, ov->classes, ov->n_classes, 0, &ov->style);
+        for (k = 0; k < ov->n_children; k++) {
+            Elem *it = ov->children[k];
+            if (strcmp(it->tag, "text") == 0) { n_tx++; continue; }
+            if (strcmp(it->tag, "cli_io") == 0) { n_cl++; continue; }
+            if (strcmp(it->tag, "item") != 0) { it->x = rx; it->y = -100000; it->w = 0; it->h = 0; it->nav_index = 0; continue; }
+            css_compute_style(&g_sheet, it->tag, it->id, it->classes, it->n_classes, 0, &it->style);
+            if (it->style.has_width && it->style.width > colw) colw = it->style.width;
+            n_it++;
+        }
+        if (n_it == 0) continue;
+        {
+            int pad4 = scaled(4), hh = (n_tx + n_cl) * rowh + n_it * itemh + 2 * pad4 + (n_it ? (n_it - 1) * scaled(2) : 0);
+            int x0 = cv->x + cv->w - colw - scaled(10), y0 = cv->y + (cv->h - hh) / 2, yy;
+            if (x0 < cv->x) x0 = cv->x;
+            if (y0 < cv->y) y0 = cv->y;
+            if (y0 + hh > cv->y + cv->h) hh = cv->y + cv->h - y0;   /* never past the canvas bottom */
+            ov->x = x0; ov->y = y0; ov->w = colw; ov->h = hh; ov->nav_index = 0;
+            yy = y0 + pad4;
+            for (k = 0; k < ov->n_children; k++) {
+                Elem *t = ov->children[k];
+                if (strcmp(t->tag, "text") != 0) continue;
+                css_compute_style(&g_sheet, t->tag, t->id, t->classes, t->n_classes, 0, &t->style);
+                t->x = x0 + pad4; t->y = yy; t->w = colw - 2 * pad4; t->h = rowh; t->nav_index = 0;
+                yy += rowh;
+            }
+            for (k = 0; k < ov->n_children; k++) {
+                Elem *it = ov->children[k];
+                if (strcmp(it->tag, "item") != 0) continue;
+                it->x = x0 + pad4; it->y = yy; it->w = colw - 2 * pad4; it->h = itemh;
+                yy += itemh + scaled(2);
+                it->nav_index = ++g_n_nav;
+                g_nav[g_n_nav - 1] = it;
+            }
+            for (k = 0; k < ov->n_children; k++) {
+                Elem *t = ov->children[k];
+                if (strcmp(t->tag, "cli_io") != 0) continue;
+                css_compute_style(&g_sheet, t->tag, t->id, t->classes, t->n_classes, 0, &t->style);
+                t->x = x0 + pad4; t->y = yy; t->w = colw - 2 * pad4; t->h = rowh;
                 t->nav_index = ++g_n_nav;
                 g_nav[g_n_nav - 1] = t;
                 yy += rowh;

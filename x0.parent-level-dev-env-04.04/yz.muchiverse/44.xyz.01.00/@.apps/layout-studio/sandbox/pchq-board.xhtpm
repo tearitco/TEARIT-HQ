@@ -1,0 +1,158 @@
+<!-- pchq-board.xhtpm - MILESTONE A + A-2 + B
+     (PCHQ-ENTITY-MENU-AND-TASKBAR-DESIGN.md §6a): the board window as a
+     normal HQ window with a horizontal toolbar + a footer.
+
+       <tabbar id="toolbar">  - In/File/Desk/Menu/Player/clock as a
+         horizontal <tab> row just under the chrome (direct feedback:
+         "header should be <tabbar> horizontal row"). <tab> click
+         dispatches onclick=, so shell actions + ACTIVATE dropdowns both
+         work; kh_scan_interact_relay now also finds a relay= trigger
+         inside a <tabbar>.
+       <sidebar id="rail">  - width:0, present only to satisfy
+         layout_sidebar_panel()'s sidebar+panel trigger.
+       <panel id="view-panel"><canvas id="view"/>  - the 2D/3D blit;
+         kh_layout_canvas_in_region() fills it, sets g_has_canvas, wires
+         canvas_raw, writes #.desktop/pchq_board_view.txt (1:1 blit).
+       <footer id="statusbar">  - horizontal bottom strip; milestone C
+         puts the entities bar here.
+
+     Free: X/!/_ chrome, taskbar entry, minimize/restore, REAL Desk/Menu
+     dropdowns. Rollback: pchq-board.hascanvas.xhtpm (PCHQ_BOARD_HASCANVAS=1). -->
+<window label="piececraft-hq board" class="pchq-board-pal database-window managed user-resizable" vars="state/ui.txt state/pchq/ui.txt state/menu.txt">
+  <module src="@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x" args="piececraft-hq"/>
+  <!-- the hotbar's manager (@.apps/hotbar-hq, 18.pc-hq/CURSWORD-POSSESSION-DESIGN.md): publishes
+       state/pchq/ui.txt (hb_ keys) for the overlay strip in the view panel below. -->
+  <module src="@.apps/hotbar-hq/ops/+x/hotbar_manager.+x pchq"/>
+  <page name="main">
+    <tabbar id="toolbar" class="pchq-toolbar">
+      <tab id="tb-in" class="pchq-tb ${interact_class}" label="In: ${interact_label}"
+           relay="${bv_h1},${bv_h2}"
+           onclick="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'interact'"/>
+      <!-- REAL FIX 2026-09-15 (5), direct live report ("none:none...
+           it says none:none for file:desk. thats wrong" - traced to
+           tb-file calling 'file-hq' DIRECTLY, which opens File
+           Explorer, not a quick-pick menu; the real n_file_opts/f_*
+           rows the projector has published this whole session were
+           never wired into any actual UI element - confirmed dead,
+           the exact reason clicking "File" never actually loaded
+           "default"). Now a real ACTIVATE dropdown, same shape as
+           tb-desk/tb-menu/tb-player right next to it - "Open File
+           Explorer" is still reachable as one of its own real rows
+           (f_1 below), not removed, just no longer the ONLY thing a
+           File click can do. -->
+      <!-- REAL FIX 2026-09-30, direct instruction ("the 'FILE:DESK' tb
+           headers are old before 'BOOK PAGE RENAME'"): only the
+           user-visible label text changes here, same precedent already
+           set in khtpm_taskbar_manager.c's ktb_get_file_label()/
+           ktb_get_desks_label() comments - ids (tb-file/tb-desk),
+           target_id, actions, and every f_N_*/d_N_* key stay exactly
+           as-is. A pc-hq "file" (a loaded project) and "desk" (a map
+           inside it) already map naturally onto BOOK (a session/
+           container) and PAGE (a view inside it) - this isn't a forced
+           relabel, the concepts genuinely correspond. -->
+      <tab id="tb-file" class="pchq-tb" label="${book_label} ▾" onclick="ACTIVATE" target_id="tb-file"/>
+      <tab id="tb-desk" class="pchq-tb" label="${page_label} ▾" onclick="ACTIVATE" target_id="tb-desk"/>
+      <tab id="tb-menu" class="pchq-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
+      <!-- REAL FIX 2026-09-15, direct live correction ("player should
+           have dropdown that says play, reset, stop, notes-db, cancel
+           ... like tb hq dropdown []9.player") - same real dropdown
+           shape as tb-desk right above (ACTIVATE + dropdown-child rows
+           in the rail below), matching the desktop taskbar's own
+           player menu (khtpm_taskbar_manager.c's livedesk_build_
+           player_menu()) instead of a flat single-click toggle. -->
+      <tab id="tb-player" class="pchq-tb" label="${player_label} ▾" onclick="ACTIVATE" target_id="tb-player"/>
+      <tab id="tb-clock" class="pchq-tb" label="${clock}" onclick="void"/>
+    </tabbar>
+
+    <!-- zero-width rail: satisfies layout_sidebar_panel's sidebar+panel
+         trigger AND hosts the dropdown rows. The generic overlay pass
+         (in layout_fixed_rows_and_scrolllist) wants FLAT sibling
+         <item class="dropdown-child" target_id="X">, stacked below
+         trigger X (same shape co-lab-hai uses), NOT a wrapping panel.
+         Triggers stay in the <tabbar>, found window-wide by id.
+         Painted last (over the canvas) - kh_serialize_frame_deferred. -->
+    <sidebar id="rail" class="pchq-rail sidebar">
+      <repeat count="${n_file_opts}" bind="f">
+        <item id="fo-${f.#}" class="pchq-menu-row dropdown-child ${f.active}" target_id="tb-file"
+              label="${f.label}"
+              action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' '${f.verb}' '${f.arg}'"/>
+      </repeat>
+      <item id="fm-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-file"
+            label="- cancel -" action="void"/>
+      <repeat count="${n_desk_opts}" bind="d">
+        <item id="do-${d.#}" class="pchq-menu-row dropdown-child ${d.active}" target_id="tb-desk"
+              label="${d.label}"
+              action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'desk' '${d.id}'"/>
+      </repeat>
+      <item id="dm-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-desk"
+            label="- cancel -" action="void"/>
+      <item id="mn-entbar" class="pchq-menu-row dropdown-child" target_id="tb-menu"
+            label="Entities bar on/off"
+            action="sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_toggle_pdl_opt.sh' '${HOUSE}/@.apps/piececraft-hq/pieces/system/pchq.pdl' 'entities_bar'"/>
+      <item id="mn-db" class="pchq-menu-row dropdown-child quiet" target_id="tb-menu"
+            label="Db (todo)" action="void"/>
+      <item id="mn-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-menu"
+            label="- cancel -" action="void"/>
+      <!-- REAL, NEW 2026-09-15, direct live report ("player should
+           have dropdown that says play, reset, stop, notes-db,
+           cancel") - matches the desktop taskbar's own player menu
+           row set (play/reset/Cancel) plus the two rows it's missing
+           there too (stop, notes-db) - see khtpm_taskbar_manager.c's
+           livedesk_build_player_menu() for the sibling fix. -->
+      <item id="pm-play" class="pchq-menu-row dropdown-child" target_id="tb-player"
+            label="${player_label}"
+            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'toggle'"/>
+      <item id="pm-stop" class="pchq-menu-row dropdown-child" target_id="tb-player"
+            label="Stop"
+            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'stop'"/>
+      <item id="pm-reset" class="pchq-menu-row dropdown-child" target_id="tb-player"
+            label="Reset"
+            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'reset'"/>
+      <item id="pm-notes" class="pchq-menu-row dropdown-child" target_id="tb-player"
+            label="Notes"
+            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'notes'"/>
+      <item id="pm-synch" class="pchq-menu-row dropdown-child" target_id="tb-player"
+            label="Synch"
+            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'synch'"/>
+      <item id="pm-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-player"
+            label="- cancel -" action="void"/>
+    </sidebar>
+
+    <panel id="view-panel" class="pchq-view">
+      <canvas id="view" sprite="${canvas_raw}"/>
+      <!-- hotbar, drawn IN the board window over the bottom-centre of the game view (generic class
+           canvas-overlay-bottom, see kh_layout_canvas_in_region): the holder's inventory slots - the
+           possessed entity's, else the xelector's. Hidden/shown by the "hotbar" cell in the bottom bar
+           (show= drops it at parse). Feed: hotbar_manager, hb_ keys. -->
+      <row class="canvas-overlay-bottom pchq-hotbar" show="${hb_visible}">
+        <text label="${hb_holder} - slot: ${hb_sel_name}" class="hb-quiet"/>
+        <repeat count="${hb_n_slots}" bind="hb_s">
+          <item id="hbs${hb_s.#}" class="hb-slot sprite-inline ${hb_s.cls}" label="${hb_s.text}" sprite="${hb_s.sprite}"
+                action="'${HOUSE}/@.apps/hotbar-hq/ops/hotbar_action.sh' '${hb_s.#}' '${HOUSE}/@.apps/layout-studio/sandbox/state/pchq'"/>
+        </repeat>
+        <cli_io id="hbcmd" target_id="hbcmd" class="hb-cli" label="&gt; "
+                action="'${HOUSE}/@.apps/hotbar-hq/ops/hotbar_cli.sh' 'pchq'"/>
+      </row>
+      <!-- SANDBOX (IN-GAME-LAYOUTS-PLAN.md phase 0): a user-made menu loaded from a fragment file -->
+      <overlay src="@.apps/layout-studio/sandbox/test-menu/layout.chtpm"/>
+    </panel>
+
+    <!-- MILESTONE C: entities bar. show= drops the whole strip when
+         entities_bar is 0 in pchq.pdl (Menu > Entities bar toggles it). -->
+    <footer id="statusbar" class="pchq-footer" show="${entities_bar_on}">
+      <text label="ents" class="quiet"/>
+      <!-- show/hide the hotbar overlay ("minimize" it into this bar) -->
+      <item id="hb-toggle" class="pchq-ft" label="hotbar"
+            action="sh '${HOUSE}/@.apps/hotbar-hq/ops/hotbar_toggle.sh' pchq '${HOUSE}/@.apps/layout-studio/sandbox'"/>
+      <!-- show/hide the sandbox test menu -->
+      <item id="tm-toggle" class="pchq-ft" label="menu"
+            action="sh '${HOUSE}/@.apps/layout-studio/sandbox/ops/menu_toggle.sh'"/>
+      <repeat count="${n_ent}" bind="ent">
+        <item id="e${ent.#}" class="pchq-ft" label="${ent.label}"
+              action="setsid sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_entity_ctx.sh' '${HOUSE}/@.apps/piececraft-hq' '${ent.x}' '${ent.y}' '${ent.z}' '${ent.kind}' '${ent.id}'"/>
+      </repeat>
+    </footer>
+
+    <text label="No live board-viewer session - open 'View Board' from the game first." class="quiet" show="${no_session}"/>
+  </page>
+</window>

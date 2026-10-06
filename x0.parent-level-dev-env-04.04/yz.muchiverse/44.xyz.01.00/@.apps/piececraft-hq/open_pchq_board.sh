@@ -46,6 +46,9 @@ if [ -n "${PCHQ_BOARD_HASCANVAS:-}" ] && [ -f "$PKG/pchq-board.hascanvas.xhtpm" 
 else
     BOARD_TPL="$PKG/pchq-board.xhtpm"
 fi
+# PCHQ_BOARD_TPL=<path to a template named pchq-board.xhtpm> launches that template instead (the in-game layouts
+# sandbox, @.apps/layout-studio/sandbox/); the name must stay pchq-board.xhtpm so the kill/match patterns still hit.
+if [ -n "${PCHQ_BOARD_TPL:-}" ] && [ -f "$PCHQ_BOARD_TPL" ]; then BOARD_TPL="$PCHQ_BOARD_TPL"; fi
 
 # ── build-on-demand (same shape as open_stats_hq.sh) ─────────────────
 if [ ! -x "$BIN" ]; then
