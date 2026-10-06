@@ -1407,10 +1407,15 @@ static void place_desk_sprites(int z) {
  * shapes leave. The private txt files are only the piececraft map. */
 static void load_phymoji_world_entities(const char *root) {
     g_phymoji_world_entity_count = 0;
-    char sp[PATH_BUF], bound[PATH_BUF];
+    char bound[PATH_BUF];
     int xs[16], ys[16];
-    snprintf(sp, sizeof(sp), "%s/pieces/system/bv_state.txt", project_root);
-    int z = read_kv_int(sp, "current_z", 0);
+    /* Owner 2026-10-05: pressing z/x moved every entity on screen. This used the LIVE current_z (the level
+     * the xelector is viewing, which z/x change) as the entities' own level, so the whole set was re-placed on
+     * whatever level the cursor was on and rode along with it. Entities stay on the ground level instead:
+     * default_current_z() is the stable "where the world's ground is" (one below the hero's own z), not the
+     * viewed slice. (Still follows the hero if the hero itself changes level; a per-entity z belongs in the
+     * page row and is the real fix - see 18.pc-hq/IN-GAME-LAYOUTS-PLAN.md part 3 note.) */
+    int z = default_current_z(root);
     int desk_page = house_root[0] && page_bound_pdl(house_root, bound, sizeof(bound)) > 0;
     if (!desk_page && page_named_cells(house_root, "tree_small", xs, ys, 16) > 0)
         place_page_phymoji(root, "tree_small", z);
@@ -1993,10 +1998,23 @@ static void bv_draw_hud(const char *game_root, int current_z, int selx, int sely
             snprintf(lines[n++], sizeof(lines[0]), "time --:--");
         }
     }
+    /* Level numbering (owner 2026-10-05): when the world publishes floor_z (board_manifest.txt) the floor is
+     * level 0 and the xelector's own z is shown relative to it, so a board that loads at the spawn level
+     * reads "z=1". Without floor_z (older worlds) the absolute z is shown, unchanged. */
+    int hud_level = current_z;
+    {
+        char mp[PATH_BUF], xp[PATH_BUF];
+        snprintf(mp, sizeof(mp), "%s/pieces/system/board_manifest.txt", game_root);
+        int fz = read_kv_int(mp, "floor_z", -1);
+        if (fz >= 0) {
+            snprintf(xp, sizeof(xp), "%s/pieces/xelector_01/state.txt", game_root);
+            hud_level = read_kv_int(xp, "pos_z", current_z) - fz;
+        }
+    }
     if (hud_pdl_int(pdl, "hud_coords", 1) && n < 8)
-        snprintf(lines[n++], sizeof(lines[0]), "pos %d,%d,%d", selx, sely, current_z);
+        snprintf(lines[n++], sizeof(lines[0]), "pos %d,%d,%d", selx, sely, hud_level);
     if (hud_pdl_int(pdl, "hud_zlevel", 1) && n < 8)
-        snprintf(lines[n++], sizeof(lines[0]), "z=%d", current_z);
+        snprintf(lines[n++], sizeof(lines[0]), "z=%d", hud_level);
     if (hud_pdl_int(pdl, "hud_possess", 1) && n < 8)
         snprintf(lines[n++], sizeof(lines[0]), "poss %s", g_hero_present ? "hero_01" : "-");
     if (hud_pdl_int(pdl, "hud_pick", 1) && n < 8) {

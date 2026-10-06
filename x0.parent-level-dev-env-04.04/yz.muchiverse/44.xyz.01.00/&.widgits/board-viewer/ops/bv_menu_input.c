@@ -677,8 +677,13 @@ static int handle_one_key(int key) {
         if (board_w > 0 && board_h > 0) {
             int selector_x = read_kv_int(state_path, "selector_x", board_w / 2);
             int selector_y = read_kv_int(state_path, "selector_y", board_h / 2);
-            selector_x = clamp_int(selector_x + dx, 0, board_w - 1);
-            selector_y = clamp_int(selector_y + dy, 0, board_h - 1);
+            /* Owner 2026-10-05: the xelector stopped at the board file's own size (one 16x16 chunk, so it
+             * could not go below row 15 or past column 15, while the page's entities sit at x up to 23).
+             * It is a free cursor: the limit is the world limit (MAX_BOARD_DIM), not one chunk. */
+            int lim_w = board_w > MAX_BOARD_DIM ? board_w : MAX_BOARD_DIM;
+            int lim_h = board_h > MAX_BOARD_DIM ? board_h : MAX_BOARD_DIM;
+            selector_x = clamp_int(selector_x + dx, 0, lim_w - 1);
+            selector_y = clamp_int(selector_y + dy, 0, lim_h - 1);
             write_kv_int(state_path, "selector_x", selector_x);
             write_kv_int(state_path, "selector_y", selector_y);
 

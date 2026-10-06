@@ -104,6 +104,21 @@ if [ ! -f "$BOARD_TPL" ]; then
     exit 1
 fi
 
+# ── always load at level 1 ────────────────────────────────────────
+# Owner 2026-10-05: the floor is level 0 and a board always opens at level 1 (the layer the hero, xelector and
+# entities live on), never up in the sky where the last session left the xelector. The world publishes
+# floor_z in board_manifest.txt (pc_generate_chunk.c); reset the hero and xelector to floor_z + 1 before
+# the engine starts. A world without floor_z is left exactly as it was.
+_FZ="$(sed -n 's/^floor_z=//p' "$PKG/pieces/system/board_manifest.txt" 2>/dev/null | head -1)"
+case "$_FZ" in
+    ""|*[!0-9]*) ;;
+    *) _LV=$((_FZ + 1))
+       for _p in xelector_01 hero_01; do
+           _f="$PKG/pieces/$_p/state.txt"
+           [ -f "$_f" ] && sed -i "s/^pos_z=.*/pos_z=$_LV/" "$_f"
+       done ;;
+esac
+
 # ── reap stale/orphaned engine sessions ────────────────────────────
 # `button.sh run`'s own EXIT trap (rm -rf $SESSION_DIR + kill_own_*)
 # only fires if THAT button.sh exits/gets SIGTERM cleanly. A strip

@@ -476,6 +476,10 @@ int main(int argc, char **argv) {
     if (mf) {
         fprintf(mf, "z_base=pieces/system/chunks/chunk_%d_%d/chunk_%d_%d_z\n", chunk_x, chunk_y, chunk_x, chunk_y);
         fprintf(mf, "z_count=%d\n", Z_COUNT);
+        /* floor_z: the layer BELOW the spawn level. Owner 2026-10-05: "the floor represents level 0", the
+         * hero/xelector/entities live on level 1, and a board always loads at level 1. The HUD shows
+         * (z - floor_z); open_pchq_board.sh resets the hero and xelector to floor_z + 1 on launch. */
+        fprintf(mf, "floor_z=%d\n", FLAT_SURFACE_Z);
         fclose(mf);
     }
 
