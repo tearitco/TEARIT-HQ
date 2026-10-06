@@ -41,6 +41,7 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include "win_posix_shim.h"
+#include "../../../&.widgits/_shared-lib/khtpm_locations.c"   /* loc_house_root() / loc_real_root(): one place that finds the house and real roots */
 
 #define MAX_LINE 1024
 #define MAX_PATH 4096
@@ -63,18 +64,7 @@ static void resolve_root(void) {
  * project-local copy, not a shared header, per this project's own
  * duplicate-rather-than-share convention. */
 static void resolve_real_root(const char *proj_root, char *out, size_t out_sz) {
-    snprintf(out, out_sz, "%s", proj_root);
-    char real_root_path[PATH_BUF];
-    snprintf(real_root_path, sizeof(real_root_path), "%s/pieces/system/real_project_root.txt", proj_root);
-    FILE *rf = fopen(real_root_path, "r");
-    if (rf) {
-        char buf[PATH_BUF];
-        if (fgets(buf, sizeof(buf), rf)) {
-            buf[strcspn(buf, "\r\n")] = '\0';
-            if (buf[0]) snprintf(out, out_sz, "%s", buf);
-        }
-        fclose(rf);
-    }
+    loc_real_root(proj_root, out, out_sz);   /* shared: _shared-lib/khtpm_locations.c */
 }
 
 /* Reads whatever NEW complete lines exist past g_ledger_offset, same
@@ -156,14 +146,8 @@ int main(void) {
      * row) - same real file pc_generate_chunk.c's own resolve_root()
      * reads the same way. */
     char house_root_path[PATH_BUF], house_root[PATH_BUF] = "";
-    snprintf(house_root_path, sizeof(house_root_path), "%s/pieces/system/house_root.txt", real_root);
-    {
-        FILE *hf = fopen(house_root_path, "r");
-        if (hf) {
-            if (fgets(house_root, sizeof(house_root), hf)) house_root[strcspn(house_root, "\r\n")] = '\0';
-            fclose(hf);
-        }
-    }
+    (void)house_root_path;
+    loc_house_root(real_root, house_root, sizeof(house_root));   /* shared resolver, no file required */
 
     char ledger_path[PATH_BUF];
     snprintf(ledger_path, sizeof(ledger_path), "%s/data/master_ledger.txt", real_root);

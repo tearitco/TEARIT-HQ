@@ -11,3 +11,7 @@ tags
 **/@.apps/piececraft-hq/pieces/system/session_dir.txt
 **/@.apps/piececraft-hq/pieces/system/locations.pdl
 **/@.apps/layout-studio/sandbox/state/ctx_menu.chtpm
+**/@.apps/hotbar-hq/state/
+**/@.apps/layout-studio/sandbox/state/pchq/
+**/@.apps/piececraft-hq/pieces/display/ctx_menu/
+**/@.apps/piececraft-hq/pieces/display/open_book_page.txt

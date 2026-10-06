@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../../_shared-lib/khtpm_locations.c"   /* loc_house_root(): one place that finds the house root */
 #ifdef _WIN32
 #include <windows.h>
 #include <io.h>
@@ -92,21 +93,7 @@ static void resolve_host_root(const char *raw, char *out, size_t out_sz) {
 
 static void load_house_root(void) {
     house_root[0] = '\0';
-    char path[PATH_BUF];
-    snprintf(path, sizeof(path), "%s/pieces/system/house_root.txt", project_root);
-    FILE *f = host_fopen(path, "r");
-    if (!f) f = fopen(path, "r");
-    if (!f) return;
-    if (fgets(house_root, sizeof(house_root), f)) {
-        /* strip UTF-8 BOM if present */
-        if ((unsigned char)house_root[0] == 0xEF &&
-            (unsigned char)house_root[1] == 0xBB &&
-            (unsigned char)house_root[2] == 0xBF) {
-            memmove(house_root, house_root + 3, strlen(house_root + 3) + 1);
-        }
-        house_root[strcspn(house_root, "\r\n")] = '\0';
-    }
-    fclose(f);
+    loc_house_root(project_root, house_root, sizeof(house_root));   /* shared resolver (_shared-lib/khtpm_locations.c): locations.pdl / house_root.txt / walk up */
 }
 
 static void read_kv_str(const char *path, const char *key, char *out, size_t out_sz) {

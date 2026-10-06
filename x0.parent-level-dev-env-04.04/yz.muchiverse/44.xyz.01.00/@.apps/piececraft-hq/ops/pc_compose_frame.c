@@ -25,6 +25,7 @@
 #include <sys/time.h>
 #endif
 #include "win_posix_shim.h"
+#include "../../../&.widgits/_shared-lib/khtpm_locations.c"   /* loc_house_root() / loc_real_root(): one place that finds the house and real roots */
 
 #define MAX_LINE 512
 #define MAX_PATH 4096
@@ -54,18 +55,7 @@ static void resolve_root(void) {
  * side too (advance_tick()/ledger_append()/TOGGLE_AUTOTICK/
  * CYCLE_TICK_SPEED, same session). */
 static void resolve_real_root(const char *proj_root, char *out, size_t out_sz) {
-    snprintf(out, out_sz, "%s", proj_root);
-    char real_root_path[PATH_BUF];
-    snprintf(real_root_path, sizeof(real_root_path), "%s/pieces/system/real_project_root.txt", proj_root);
-    FILE *rf = fopen(real_root_path, "r");
-    if (rf) {
-        char buf[PATH_BUF];
-        if (fgets(buf, sizeof(buf), rf)) {
-            buf[strcspn(buf, "\r\n")] = '\0';
-            if (buf[0]) snprintf(out, out_sz, "%s", buf);
-        }
-        fclose(rf);
-    }
+    loc_real_root(proj_root, out, out_sz);   /* shared: _shared-lib/khtpm_locations.c */
 }
 
 static int read_kv_int(const char *path, const char *key, int def) {

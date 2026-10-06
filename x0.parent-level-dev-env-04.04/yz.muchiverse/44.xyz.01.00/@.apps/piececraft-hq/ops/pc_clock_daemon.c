@@ -36,6 +36,7 @@
 #include <sys/time.h>
 #include <math.h>
 #include "win_posix_shim.h"
+#include "../../../&.widgits/_shared-lib/khtpm_locations.c"   /* loc_house_root() / loc_real_root(): one place that finds the house and real roots */
 
 #define MAX_LINE 512
 #define MAX_PATH 4096
@@ -51,18 +52,7 @@ static void resolve_root(void) {
 }
 
 static void resolve_real_root(const char *proj_root, char *out, size_t out_sz) {
-    snprintf(out, out_sz, "%s", proj_root);
-    char real_root_path[PATH_BUF];
-    snprintf(real_root_path, sizeof(real_root_path), "%s/pieces/system/real_project_root.txt", proj_root);
-    FILE *rf = fopen(real_root_path, "r");
-    if (rf) {
-        char buf[PATH_BUF];
-        if (fgets(buf, sizeof(buf), rf)) {
-            buf[strcspn(buf, "\r\n")] = '\0';
-            if (buf[0]) snprintf(out, out_sz, "%s", buf);
-        }
-        fclose(rf);
-    }
+    loc_real_root(proj_root, out, out_sz);   /* shared: _shared-lib/khtpm_locations.c */
 }
 
 static void read_kv_str(const char *path, const char *key, char *out, size_t out_sz) {
@@ -404,12 +394,8 @@ int main(void) {
                 char house_root_path[PATH_BUF], house_root[PATH_BUF] = "";
                 if (now_ms_rl - last_peer_lookup_ms >= 1000) {
                 last_peer_lookup_ms = now_ms_rl;
-                snprintf(house_root_path, sizeof(house_root_path), "%s/pieces/system/house_root.txt", project_root);
-                FILE *hf = fopen(house_root_path, "r");
-                if (hf) {
-                    if (fgets(house_root, sizeof(house_root), hf)) house_root[strcspn(house_root, "\r\n")] = '\0';
-                    fclose(hf);
-                }
+                (void)house_root_path;
+                loc_house_root(project_root, house_root, sizeof(house_root));   /* shared resolver, no file required */
                 if (house_root[0]) {
                     char peer_cmd[PATH_BUF * 2];
                     snprintf(peer_cmd, sizeof(peer_cmd),

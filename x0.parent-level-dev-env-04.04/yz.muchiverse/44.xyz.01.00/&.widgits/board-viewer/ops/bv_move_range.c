@@ -90,14 +90,11 @@ static __attribute__((unused)) int bvr_kv_int(const char *path, const char *key,
  * a row is written, so readers that have not been moved to the page yet do not
  * drift. */
 #include "../../_shared-lib/khtpm_page_rows.c"
+#include "../../_shared-lib/khtpm_locations.c"   /* loc_house_root(): one place that finds the house root */
 
 static __attribute__((unused)) int bvr_house(const char *froot, char *out, size_t n) {
-    char p[4400];
-    FILE *f;
     out[0] = '\0';
-    snprintf(p, sizeof(p), "%s/pieces/system/house_root.txt", froot);
-    if ((f = fopen(p, "r"))) { if (fgets(out, (int)n, f)) out[strcspn(out, "\r\n")] = 0; fclose(f); }
-    return out[0] != '\0';
+    return loc_house_root(froot, out, n);   /* shared resolver (_shared-lib/khtpm_locations.c) */
 }
 
 /* 1 = x,y,z filled. *from_row (optional) = 1 when the page row supplied x/y. */

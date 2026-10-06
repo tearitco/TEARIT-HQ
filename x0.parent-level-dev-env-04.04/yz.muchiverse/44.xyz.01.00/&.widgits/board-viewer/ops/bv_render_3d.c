@@ -153,18 +153,7 @@ static void resolve_root(void) {
 
 static void load_house_root(void) {
     house_root[0] = '\0';
-    char path[PATH_BUF];
-    snprintf(path, sizeof(path), "%s/pieces/system/house_root.txt", project_root);
-    FILE *f = host_fopen(path, "r");
-    if (!f) return;
-    if (fgets(house_root, sizeof(house_root), f)) {
-        if ((unsigned char)house_root[0] == 0xEF &&
-            (unsigned char)house_root[1] == 0xBB &&
-            (unsigned char)house_root[2] == 0xBF)
-            memmove(house_root, house_root + 3, strlen(house_root + 3) + 1);
-        house_root[strcspn(house_root, "\r\n")] = '\0';
-    }
-    fclose(f);
+    loc_house_root(project_root, house_root, sizeof(house_root));   /* shared resolver (_shared-lib/khtpm_locations.c): locations.pdl / house_root.txt / walk up */
 }
 
 /* Relative host paths (e.g. @.apps/aomorai-editor) resolve against house_root. */
