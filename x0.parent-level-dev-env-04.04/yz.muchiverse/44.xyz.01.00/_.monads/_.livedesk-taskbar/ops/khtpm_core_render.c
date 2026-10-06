@@ -5421,11 +5421,17 @@ static int layout_sidebar_panel(Elem *page) {
          * right-edge affordance (scrollbar, chrome X) is never flush
          * against the physical screen edge. */
         const int EDGE_MARGIN = 14;
+        /* Owner 2026-10-05: the bottom bar must never cover a window's resize grip
+         * (the bottom-right corner glyph). Every window that is not itself a bar
+         * keeps its bottom edge above the bottom bar (WM_MANAGED_BOTTOM_RESERVE),
+         * the same band fullscreen already stays out of; only the bars use the plain
+         * screen-edge margin. */
+        int bottom_edge = window_is_dock() ? sh - EDGE_MARGIN : sh - WM_MANAGED_BOTTOM_RESERVE;
         if (g_win_w > sw - EDGE_MARGIN) g_win_w = sw - EDGE_MARGIN;
-        if (g_win_h > sh - EDGE_MARGIN) g_win_h = sh - EDGE_MARGIN;
+        if (g_win_h > bottom_edge) g_win_h = bottom_edge;
         g_window->w = g_win_w; g_window->h = g_win_h;
         if (g_win_x + g_win_w > sw - EDGE_MARGIN) g_win_x = sw - EDGE_MARGIN - g_win_w;
-        if (g_win_y + g_win_h > sh - EDGE_MARGIN) g_win_y = sh - EDGE_MARGIN - g_win_h;
+        if (g_win_y + g_win_h > bottom_edge) g_win_y = bottom_edge - g_win_h;
         if (g_win_x < 0) g_win_x = 0;
         if (g_win_y < 0) g_win_y = 0;
     }
@@ -12759,6 +12765,12 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
             if (nh < KH_WIN_MIN_H) nh = KH_WIN_MIN_H;
             if (nw > maxw) nw = maxw;
             if (nh > maxh) nh = maxh;
+            /* never let a drag-resize push the bottom edge (and the grip) under the
+             * bottom bar - same reserve fullscreen uses (owner 2026-10-05). */
+            if (!window_is_dock() && g_win_y > 0) {
+                int lim = maxh - WM_MANAGED_BOTTOM_RESERVE - g_win_y;
+                if (lim >= KH_WIN_MIN_H && nh > lim) nh = lim;
+            }
             if (nw != g_win_w || nh != g_win_h) {
                 g_win_w = nw; g_win_h = nh;
                 if (g_window) { g_window->w = g_win_w; g_window->h = g_win_h; }
