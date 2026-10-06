@@ -640,7 +640,11 @@ int main(int argc, char **argv) {
     write_kv_int(xelector_state_path, "pos_x", spawn_col);
     write_kv_int(xelector_state_path, "pos_y", spawn_row);
     write_kv_int(xelector_state_path, "pos_z", surface[spawn_row][spawn_col] + 1);
-    write_kv(xelector_state_path, "possessed_id", "hero_01");
+    /* Owner 2026-10-05: the xelector starts as a FREE cursor (possessed_id=none), so
+     * the arrow keys move the xelector and it can select the hero, cursword or any
+     * entity; possession is explicit (Enter on an entity). It used to be seeded as
+     * "hero_01", which made arrows drive the hero from the first keypress. */
+    write_kv(xelector_state_path, "possessed_id", "none");
     write_kv_int(xelector_state_path, "chunk_x", chunk_x);
     write_kv_int(xelector_state_path, "chunk_y", chunk_y);
 
