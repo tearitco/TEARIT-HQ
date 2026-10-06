@@ -2088,7 +2088,8 @@ static int g_headless;  /* fwd (real def near g_dump_and_exit) - referenced by t
 /* Every XUngrabKeyboard(dpy,...) in this file goes through here so a
  * --headless run (dpy == NULL) can't segfault Xlib on a NULL Display,
  * and so the call is a clean no-op before any display is open. */
-static void kh_ungrab_kbd(void) { if (dpy) XUngrabKeyboard(dpy, CurrentTime); }
+static int g_grab_pending = 0;   /* an armed field wanted the keyboard but another client held it: retried each idle tick */
+static void kh_ungrab_kbd(void) { if (dpy) XUngrabKeyboard(dpy, CurrentTime); g_grab_pending = 0; }
 /* 2026-09-11, CHTPM-INCREMENTAL-REPARSE-DESIGN.md §1 - parses `path`
  * into the SCRATCH pool (g_pool_next) instead of the live g_pool,
  * leaving g_window/every existing live pointer completely untouched.
@@ -10752,7 +10753,10 @@ static void handle_key(KeySym ks, char ch) {
      * it (format-correct, D2) so the board_viewer.chtpm parser's own
      * process_key(27) ESC-exit runs even if a spurious Mutter FocusOut
      * left the flag at 0. */
-    if (g_interact_relay_on && ks == XK_Escape) {
+    /* An ARMED typing field takes priority over Interact forwarding (owner 2026-10-05, the pc-hq hotbar's
+     * cli_io): arming it is an explicit act, Esc disarms it (handled below), and only then do keys go
+     * back to the game. Without this the board forwarded every key and the field never got one. */
+    if (g_interact_relay_on && !g_default_input_elem && ks == XK_Escape) {
         /* 27 goes ONLY to keyboard/history.txt - see the double-arrow
          * comment in the general branch below. */
         g_x11_window_focused = 1;
@@ -10765,7 +10769,7 @@ static void handle_key(KeySym ks, char ch) {
         }
         return;
     }
-    if (g_interact_relay_on && g_x11_window_focused) {
+    if (g_interact_relay_on && g_x11_window_focused && !g_default_input_elem) {
         int code = kh_key_history_code(ks, ch);
         /* REAL FIX 2026-09-04 (see PLAN-pchq-interact-camera-pov.md
          * Part A for the full citation trail) - tpmos/board-viewer's
@@ -11503,6 +11507,7 @@ static void kh_grab_keyboard_retry(void) {
         if (rc == GrabSuccess) break;
         XSync(dpy, False); usleep(5000);
     }
+    g_grab_pending = (rc != GrabSuccess);
     Window fw = None; int rev = 0;
     XGetInputFocus(dpy, &fw, &rev);
     kh_focus_debug_log("GRAB key=%s attempts=%d rc=%d(0=success) real_focus_is_us=%d",
@@ -12043,6 +12048,14 @@ static void hq_idle_tick(void) {
      * pc-hq-leg-vs-nu-fix.md §6b: Interact Mode arm must not wait on
      * a vars-hash reparse. Reload projector vars and rescan every tick
      * (legacy read active_gui_is_typing.txt once per frame). */
+    /* A grab that failed because another client held the keyboard (AlreadyGrabbed) is retried every tick while
+     * the field stays armed, so the field gets the keyboard the moment the other holder lets go. */
+    if (g_grab_pending && g_default_input_elem && dpy) {
+        if (XGrabKeyboard(dpy, win, True, GrabModeAsync, GrabModeAsync, CurrentTime) == GrabSuccess) {
+            g_grab_pending = 0;
+            kh_focus_debug_log("GRAB-RETRY key=%s acquired", g_default_input_elem->target_id);
+        }
+    } else if (g_grab_pending) g_grab_pending = 0;
     if (g_vars_path[0]) kh_load_vars_multi(g_vars_path);
     /* class="vars-positioned": the window's manager publishes anchor_cx (centre x) and
      * anchor_bottom (bottom edge y); the window centres on / sits on them using its OWN
