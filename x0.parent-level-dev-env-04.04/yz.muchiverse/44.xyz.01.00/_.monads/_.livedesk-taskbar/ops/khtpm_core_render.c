@@ -6591,6 +6591,26 @@ static void dock_paint_peer(void) {
             (wa.width != g_win_w || wa.height != g_win_h || wa.x != g_win_x || wa.y != g_win_y))
             XMoveResizeWindow(dpy, win, g_win_x, g_win_y, (unsigned)g_win_w, (unsigned)g_win_h);
     }
+    /* Dock stack base (CURSWORD-POSSESSION-DESIGN.md 5c/5g, owner 2026-10-05): publish the
+     * bottom bar's laid-out rectangle so anything docked above it (the hotbar) follows its
+     * growth. Written only when it changes (tmp + rename); a consumer polls the file. */
+    {
+        static int lx = -1, ly = -1, lw = -1, lh = -1;
+        if (g_win_x != lx || g_win_y != ly || g_win_w != lw || g_win_h != lh) {
+            char dd[PATH_BUF], bp[PATH_BUF], bt[PATH_BUF + 8];
+            FILE *bf;
+            snprintf(dd, sizeof(dd), "%s/#.desktop/dock_stack", g_house_root);
+            mkdir(dd, 0755);
+            snprintf(bp, sizeof(bp), "%s/base.txt", dd);
+            snprintf(bt, sizeof(bt), "%s.tmp", bp);
+            if ((bf = fopen(bt, "w"))) {
+                fprintf(bf, "%d|%d|%d|%d\n", g_win_x, g_win_y, g_win_w, g_win_h);
+                fclose(bf);
+                rename(bt, bp);
+                lx = g_win_x; ly = g_win_y; lw = g_win_w; lh = g_win_h;
+            }
+        }
+    }
     /* 2px theme-secondary window frame, same as every other khtpm
      * window (redraw() / run_pchq_board_mode()) - drawn LAST, right
      * before the buffer->window present so no content paint can
@@ -11929,6 +11949,22 @@ static void hq_idle_tick(void) {
      * a vars-hash reparse. Reload projector vars and rescan every tick
      * (legacy read active_gui_is_typing.txt once per frame). */
     if (g_vars_path[0]) kh_load_vars_multi(g_vars_path);
+    /* class="vars-positioned": the window's manager publishes anchor_cx (centre x) and
+     * anchor_bottom (bottom edge y); the window centres on / sits on them using its OWN
+     * size. Generic: no knowledge of which app. Used by the hotbar (docked above the
+     * bottom bar / inside the pc-hq board window). */
+    if (g_window && elem_has_class(g_window, "vars-positioned") && !window_is_dock()) {
+        const char *acx = kh_get_var("anchor_cx"), *abt = kh_get_var("anchor_bottom");
+        if (acx && acx[0] && abt && abt[0]) {
+            int nx = atoi(acx) - g_win_w / 2, ny = atoi(abt) - g_win_h;
+            if (nx < 0) nx = 0;
+            if (ny < 0) ny = 0;
+            if (nx != g_win_x || ny != g_win_y) {
+                g_win_x = nx; g_win_y = ny;
+                XMoveWindow(dpy, win, g_win_x, g_win_y);
+            }
+        }
+    }
     kh_scan_interact_relay();
     /* REAL, NEW 2026-09-14 - real cross-process CUT/COPY/PASTE bridge
      * for the cli_io/text_area right-click menu (kh_open_cli_io_
