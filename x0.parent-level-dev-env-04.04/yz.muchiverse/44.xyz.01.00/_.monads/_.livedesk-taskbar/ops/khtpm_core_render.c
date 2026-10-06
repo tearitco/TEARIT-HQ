@@ -10065,8 +10065,13 @@ static void redraw(void) {
         kh_compose_entity_ident();
         const char *title_raw = g_window->label[0] ? g_window->label
                               : (g_entity_ident[0] ? g_entity_ident : g_current_page);
+        /* Nav echo (owner 2026-10-05, 18.pc-hq/CURSWORD-POSSESSION-DESIGN.md 5d/5h): the
+         * focus mark carries the nav digits typed so far, same formatter and same spot as
+         * the desk bars ("^12 title"). Every non-dock window - x11-hq and pc-hq alike. */
+        char tmark[16], techo[16];
+        nve_text((focus_win == win) ? "^" : ".", kh_nav_echo_digits(techo, sizeof(techo)), tmark, sizeof(tmark));
         snprintf(title_buf, sizeof(title_buf), "%s %s%s%s",
-                 (focus_win == win) ? "^" : ".", title_raw,
+                 tmark, title_raw,
                  g_default_scope_confine ? "  Active [^]: (ESC to exit)" : "",
                  g_window_malformed ? "  \xE2\x9A\xA0 malformed template" : "");
         const char *title = title_buf;
