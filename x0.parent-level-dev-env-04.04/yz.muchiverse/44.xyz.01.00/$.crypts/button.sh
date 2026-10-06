@@ -203,6 +203,29 @@ case "$ACTION" in
         [ -x "$BIN" ] && echo "OK $BIN" || echo "MISSING $BIN"
         [ -f "$PDL" ] && echo "OK $PDL" || echo "MISSING $PDL"
         ;;
+    install-app)
+        # A normal Linux app + desktop launcher for livedesk (replaces the bare start-temp ELF): PNG icon, Terminal=false, shows in
+        # the app grid and on the Desktop. Generated for THIS checkout's location, never committed (no absolute paths in git);
+        # re-run after moving the checkout.
+        _icon_dir="$HOME/.local/share/icons/hicolor/256x256/apps"
+        _df="$HOME/.local/share/applications/livedesk.desktop"
+        mkdir -p "$_icon_dir" "$HOME/.local/share/applications"
+        cp "$SCRIPT_DIR/livedesk-icon-256.png" "$_icon_dir/livedesk.png"
+        # Exec must be quoted, with $ ` " \ escaped (the house folder is literally named "$.crypts"; the keyfile also doubles the backslash)
+        _exec="$(printf '%s' "$SCRIPT_DIR/livedesk-launch.sh" | sed 's/[$`"\\]/\\\\&/g')"
+        printf '%s\n' '[Desktop Entry]' 'Version=1.0' 'Type=Application' 'Name=Livedesk' \
+            'Comment=Start the livedesk desktop (taskbar, entities, autostart)' \
+            "Exec=\"$_exec\"" "Icon=$_icon_dir/livedesk.png" \
+            'Terminal=false' 'StartupNotify=false' 'Categories=Utility;' > "$_df"
+        chmod +x "$_df"
+        echo "installed app entry: $_df"
+        if [ -d "$HOME/Desktop" ]; then
+            cp "$_df" "$HOME/Desktop/Livedesk.desktop"; chmod +x "$HOME/Desktop/Livedesk.desktop"
+            command -v gio >/dev/null 2>&1 && gio set "$HOME/Desktop/Livedesk.desktop" metadata::trusted true 2>/dev/null
+            echo "installed desktop launcher: $HOME/Desktop/Livedesk.desktop (right-click > Allow Launching if it shows a gear icon)"
+        fi
+        command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$HOME/.local/share/applications" 2>/dev/null
+        ;;
     install-xdg)
         mkdir -p "$HOME/.config/autostart"
         cat > "$HOME/.config/autostart/muchiverse-autostart.desktop" << EOF
@@ -227,6 +250,7 @@ EOF
   sh button.sh status         # show current enabled state + running processes
   sh button.sh compile        # rebuild ops/+x/crypt_autostart.+x
   sh button.sh check          # verify binary + pdl exist
+  sh button.sh install-app    # Linux app + Desktop launcher 'Livedesk' with a PNG icon (runs livedesk-launch.sh)
   sh button.sh install-xdg    # install the real XDG autostart .desktop file
                                # (real login-time autostart - one-time setup)
 EOF
