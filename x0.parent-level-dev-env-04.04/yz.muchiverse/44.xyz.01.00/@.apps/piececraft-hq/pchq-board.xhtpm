@@ -124,9 +124,9 @@
            canvas-overlay-bottom, see kh_layout_canvas_in_region): the holder's inventory slots - the
            possessed entity's, else the xelector's. Hidden/shown by the "hotbar" cell in the bottom bar
            (show= drops it at parse). Feed: hotbar_manager, hb_ keys. -->
-      <row id="hotbar-ov" class="canvas-overlay-bottom ov-chrome ov-slide-x pchq-hotbar" show="${hb_visible}">
-        <text label="${hb_holder} - slot: ${hb_sel_name}" class="hb-quiet ov-title"/>
-        <item id="hb-min" class="ov-min hb-slot" label="_"
+      <row id="hotbar-ov" class="canvas-overlay-bottom ov-chrome ov-slide-x pchq-hotbar theme" show="${hb_visible}">
+        <text label="${hb_holder} - slot: ${hb_sel_name}" class="hb-quiet ov-title theme-3"/>
+        <item id="hb-min" class="ov-min hb-slot theme-3" label="_"
               action="sh '${HOUSE}/@.apps/hotbar-hq/ops/hotbar_toggle.sh' pchq '${HOUSE}/@.apps/piececraft-hq'"/>
         <repeat count="${hb_n_slots}" bind="hb_s">
           <item id="hbs${hb_s.#}" class="hb-slot sprite-inline ${hb_s.cls}" label="${hb_s.text}" sprite="${hb_s.sprite}"
@@ -139,10 +139,10 @@
            same menu markup the floating window used) + state/ctx.txt (ctx_visible, ctx_x, ctx_y) when state/ctx_overlay.on
            exists. inner="page" splices that file's page content; its first <text> is the title bar, its Close row is
            dropped (the chrome x does it). ov-focus: takes keyboard focus when it opens. -->
-      <row id="ctx" class="canvas-overlay-at ov-chrome ov-focus ctx-menu" show="${ctx_visible}">
+      <row id="ctx" class="canvas-overlay-at ov-chrome ov-focus ctx-menu theme" show="${ctx_visible}">
         <overlay src="@.apps/piececraft-hq/state/ctx_menu.chtpm" inner="page"/>
-        <item id="ctx-min" class="ov-min" label="_" action="sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_ctx_close.sh' '${HOUSE}/@.apps/piececraft-hq/state'"/>
-        <item id="ctx-x" class="ov-close" label="x" action="sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_ctx_close.sh' '${HOUSE}/@.apps/piececraft-hq/state'"/>
+        <item id="ctx-min" class="ov-min theme-3" label="_" action="sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_ctx_close.sh' '${HOUSE}/@.apps/piececraft-hq/state'"/>
+        <item id="ctx-x" class="ov-close theme-3" label="x" action="sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_ctx_close.sh' '${HOUSE}/@.apps/piececraft-hq/state'"/>
       </row>
     </panel>
 
@@ -154,7 +154,7 @@
       <item id="hb-toggle" class="pchq-ft" label="hotbar"
             action="sh '${HOUSE}/@.apps/hotbar-hq/ops/hotbar_toggle.sh' pchq '${HOUSE}/@.apps/piececraft-hq'"/>
       <repeat count="${n_ent}" bind="ent">
-        <item id="e${ent.#}" class="pchq-ft" label="${ent.label}"
+        <item id="e${ent.#}" class="pchq-ft sprite-inline sprite-big" label="${ent.label}" sprite="${ent.sprite}"
               action="setsid sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_entity_ctx.sh' '${HOUSE}/@.apps/piececraft-hq' '${ent.x}' '${ent.y}' '${ent.z}' '${ent.kind}' '${ent.id}'"/>
       </repeat>
     </footer>

@@ -1,13 +1,13 @@
 <!-- test-menu: a user-made in-game menu (sandbox fragment). Spliced into the board by the overlay tag (src=). Interactive
      items get nav numbers automatically. Actions: one appends to a log, one runs an op, one hides the menu. -->
-<row id="tm-menu" class="canvas-overlay-right ov-chrome tm-menu" show="${tm_visible}">
-  <text label="Test menu" class="tm-quiet ov-title"/>
-  <item id="tm-min" class="ov-min tm-row" label="_"
+<row id="tm-menu" class="canvas-overlay-right ov-chrome tm-menu theme" show="${tm_visible}">
+  <text label="Test menu" class="tm-quiet ov-title theme-3"/>
+  <item id="tm-min" class="ov-min tm-row theme-3" label="_"
         action="sh '${HOUSE}/@.apps/layout-studio/sandbox/ops/menu_toggle.sh'"/>
-  <item id="tm1" class="tm-row" label="Log a line"
+  <item id="tm1" class="tm-row theme-2" label="Log a line"
         action="sh '${HOUSE}/@.apps/layout-studio/sandbox/ops/menu_action.sh' log"/>
-  <item id="tm2" class="tm-row" label="Toggle hotbar"
+  <item id="tm2" class="tm-row theme-2" label="Toggle hotbar"
         action="sh '${HOUSE}/@.apps/hotbar-hq/ops/hotbar_toggle.sh' pchq '${HOUSE}/@.apps/layout-studio/sandbox'"/>
-  <item id="tm3" class="tm-row" label="Say hello"
+  <item id="tm3" class="tm-row theme-2" label="Say hello"
         action="sh '${HOUSE}/@.apps/layout-studio/sandbox/ops/menu_action.sh' hello"/>
 </row>

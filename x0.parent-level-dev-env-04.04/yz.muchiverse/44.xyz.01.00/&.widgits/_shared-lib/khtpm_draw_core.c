@@ -770,8 +770,30 @@ static int kh_text_offset_at_x(XftFont *f, const char *text, int target_x) {
     return best;
 }
 
+/* Theme classes (owner 2026-10-06: the in-game menus/hotbar must take the livedesk theme, not hard-coded greys; a css
+ * rule cannot name a theme colour). class "theme" = the theme background, "theme-2" = 14% lighter (rows),
+ * "theme-3" = 28% lighter (title bars, chrome buttons); text = the theme foreground (dark on a light theme, as the dock
+ * does), border = 45% lighter. Applied at draw, so it is idempotent and follows a live theme change. */
+static void kh_theme_shade(const char *hex, int pct, char *out, size_t n) {
+    unsigned r = 0x1c, g = 0x1c, b = 0x1c;
+    if (hex && hex[0] == '#' && strlen(hex) >= 7) sscanf(hex + 1, "%2x%2x%2x", &r, &g, &b);
+    r += (255 - r) * pct / 100; g += (255 - g) * pct / 100; b += (255 - b) * pct / 100;
+    snprintf(out, n, "#%02x%02x%02x", r, g, b);
+}
+static void kh_theme_classes(Elem *e) {
+    int lv = elem_has_class(e, "theme-3") ? 28 : elem_has_class(e, "theme-2") ? 14 : elem_has_class(e, "theme") ? 0 : -1;
+    if (lv < 0) return;
+    kh_theme_shade(g_theme_bg, lv, e->style.bg_color, sizeof(e->style.bg_color));
+    e->style.has_bg_color = 1;
+    snprintf(e->style.fg_color, sizeof(e->style.fg_color), "%s", kh_hex_luma(g_theme_bg) > 140 ? "#1c1c1c" : g_theme_fg);
+    e->style.has_fg_color = 1;
+    kh_theme_shade(g_theme_bg, 45, e->style.border_color, sizeof(e->style.border_color));
+    e->style.has_border_color = 1;
+}
+
 static void draw_elem(Elem *e, int hover_id_hash) {
     (void)hover_id_hash;
+    kh_theme_classes(e);
     /* REAL FIX 2026-08-29 (EVENTS-HQ-RENDER-UNIFICATION-PLAN.md's own
      * open "ghosting" regression, root-caused: evhq_zero_subtree()
      * zeros an Elem's w/h to hide a whole subtree when a view mode
@@ -1246,7 +1268,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                 if (short_bar) {
                     /* Taskbar-height cells: sprite LEFT of the label,
                      * after the nav badge — not centered over it. */
-                    if (px > 24) px = 24;
+                    if (px > 24 && !elem_has_class(e, "sprite-big")) px = 24;   /* sprite-big: fill the cell height (owner 2026-10-06: entity images too small) */
                     blit_x = e->x + pad_s + (e->nav_index > 0 ? 36 : 0);
                     blit_y = e->y + (e->h - px) / 2;
                     badge_label_x = blit_x + px + 4;

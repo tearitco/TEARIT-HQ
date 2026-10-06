@@ -149,9 +149,9 @@ static void publish(const char *house, const char *mode, const char *state_dir, 
              * the emoji glyph, which the font may not have (drawn as an empty box). The
              * glyph stays as the label fallback for an item with no sprite. */
             off += snprintf(buf + off, sizeof(buf) - off, "s_%d_text= \ns_%d_glyph=%s\ns_%d_sprite=%s/inventory/%s\ns_%d_cls=%s\n",
-                            i, i, glyph[0] ? glyph : "?", i, holder_dir, names[i], i, i == sel ? "hb-sel" : "hb-full");
+                            i, i, glyph[0] ? glyph : "?", i, holder_dir, names[i], i, i == sel ? "hb-sel" : "hb-full theme-2");
         } else {
-            off += snprintf(buf + off, sizeof(buf) - off, "s_%d_text=.\ns_%d_cls=hb-empty\n", i, i);
+            off += snprintf(buf + off, sizeof(buf) - off, "s_%d_text=.\ns_%d_cls=hb-empty theme-2\n", i, i);
         }
         if (off > (int)sizeof(buf) - 256) break;
     }

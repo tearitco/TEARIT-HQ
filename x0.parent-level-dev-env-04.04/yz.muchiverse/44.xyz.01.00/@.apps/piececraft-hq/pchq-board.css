@@ -15,9 +15,9 @@ window { background-color: #141414; font-family: Ubuntu; font-size: 10px; }
 .pchq-rail { width: 2px; }
 
 /* bottom status/footer strip */
-.pchq-footer { background-color: #181818; border: 1px solid #2a2a2a; border-width: 1; height: 24px; }
+.pchq-footer { height: 44px; background-color: #181818; border: 1px solid #2a2a2a; border-width: 1; }
 .pchq-ft { background-color: #232323; color: #cccccc; font-size: 10px;
-  width: 96px; border: 1px solid #3a3a3a; border-width: 1; }
+  width: 160px; height: 40px; border: 1px solid #3a3a3a; border-width: 1; }
 /* the synthesized footer row pager (+ / -) - appears bottom-right when
  * entity cells wrap past one row */
 #footer-rows-more, #footer-rows-less {

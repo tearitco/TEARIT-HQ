@@ -1847,11 +1847,11 @@ static char *kh_overlay_menu_inner(const char *frag) {
             if (is_item && strstr(tag, "action=\"CLOSE\"")) { free(tag); p = close; continue; }
             if (is_item) {
                 memcpy(out + o, "<item", 5); o += 5;
-                if (!has_class) { memcpy(out + o, " class=\"ov-row\"", 15); o += 15; }
+                if (!has_class) { const char *c = " class=\"ov-row theme-2\""; size_t cl = strlen(c); memcpy(out + o, c, cl); o += cl; }
                 memcpy(out + o, tag + 5, tl - 5); o += tl - 5;
             } else {
                 memcpy(out + o, "<text", 5); o += 5;
-                if (!title_done && !has_class) { memcpy(out + o, " class=\"ov-title\"", 17); o += 17; }
+                if (!title_done && !has_class) { const char *c = " class=\"ov-title theme-3\""; size_t cl = strlen(c); memcpy(out + o, c, cl); o += cl; }
                 title_done = 1;
                 memcpy(out + o, tag + 5, tl - 5); o += tl - 5;
             }

@@ -25,11 +25,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <time.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <limits.h>
 #include <dirent.h>
+#ifndef _WIN32
+#include <glob.h>
+#endif
 
 #ifdef _WIN32
 #include <direct.h>
@@ -83,6 +87,37 @@ static int read_pdl_opt(const char *path, const char *name, int def) {
 }
 
 static void read_kv(const char *path, const char *key, char *out, size_t outsz);
+
+/* Entity images: for every "ent_<n>_id=<id>" row already in ui, append "ent_<n>_sprite=<entity dir>" when that entity has a
+ * sprite.csv (desk pals: xyzfs/users/<u>/home/livedesk/pals/<id>, #.desktop/entities/<id>, or this board's pieces/<id>). The
+ * board draws it with <item sprite="${ent.sprite}">, the same entity-sprite attribute the taskbar cells use. Entities
+ * without one (xelector, hero) simply get no key and show text only. Returns the new length. */
+static size_t append_entity_sprites(char *ui, size_t off, const char *house, const char *host_app) {
+    char add[4096]; size_t al = 0; const char *p = ui;
+    while ((p = strstr(p, "ent_")) != NULL) {
+        int n = 0; char id[128] = ""; const char *q = p + 4;
+        if ((p != ui && p[-1] != '\n') || !isdigit((unsigned char)*q)) { p += 4; continue; }
+        n = atoi(q); while (isdigit((unsigned char)*q)) q++;
+        if (strncmp(q, "_id=", 4) != 0) { p = q; continue; }
+        q += 4; { size_t k = 0; while (*q && *q != '\n' && k < sizeof(id) - 1) id[k++] = *q++; id[k] = '\0'; }
+        p = q;
+        if (!id[0]) continue;
+        char dir[PATH_MAX] = "", chk[PATH_MAX];
+#ifndef _WIN32
+        glob_t g; char pat[PATH_MAX];
+        snprintf(pat, sizeof(pat), "%s/xyzfs/users/*/home/livedesk/pals/%s/sprite.csv", house, id);
+        if (glob(pat, 0, NULL, &g) == 0 && g.gl_pathc > 0) {
+            snprintf(dir, sizeof(dir), "%s", g.gl_pathv[0]); char *sl = strrchr(dir, '/'); if (sl) *sl = '\0';
+        }
+        globfree(&g);
+#endif
+        if (!dir[0]) { snprintf(chk, sizeof(chk), "%s/#.desktop/entities/%s/sprite.csv", house, id); if (access(chk, R_OK) == 0) snprintf(dir, sizeof(dir), "%s/#.desktop/entities/%s", house, id); }
+        if (!dir[0]) { snprintf(chk, sizeof(chk), "%s/pieces/%s/sprite.csv", host_app, id); if (access(chk, R_OK) == 0) snprintf(dir, sizeof(dir), "%s/pieces/%s", host_app, id); }
+        if (dir[0] && al + strlen(dir) + 32 < sizeof(add)) al += (size_t)snprintf(add + al, sizeof(add) - al, "ent_%d_sprite=%s\n", n, dir);
+    }
+    if (al && off + al < UIBUF) { memcpy(ui + off, add, al); off += al; ui[off] = '\0'; }
+    return off;
+}
 
 /* The xelector is an ENTITY in pc-hq (it has a cell, a possessed_id, a menu); the
  * livedesk has no such entity yet - see 18.pc-hq/XELECTOR-ENTITY.md. So it gets
@@ -778,6 +813,7 @@ int main(int argc, char **argv) {
             snprintf(pdl, sizeof(pdl), "%s/pieces/system/pchq.pdl", host_app);
             int ebar = read_pdl_opt(pdl, "entities_bar", 0);
             off = emit_entities(ui, off, house, host_app, ebar);
+            off = append_entity_sprites(ui, off, house, host_app);
         }
 
         if (strcmp(ui, last) != 0) {
