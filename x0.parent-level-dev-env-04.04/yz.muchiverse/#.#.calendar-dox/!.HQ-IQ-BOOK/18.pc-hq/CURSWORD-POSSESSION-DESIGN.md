@@ -169,6 +169,27 @@ Still open: the Shift+arrow teleport position-saving question above.
   (not just the menu clash) is wrong is the owner's open question; do not
   assume either way.
 
+## 5b. Status: inventory data layer built (2026-10-05)
+
+Built and tested on a throwaway house (not wired to any menu, key or HUD yet):
+- `&.widgits/_shared-lib/khtpm_inventory.c` (`inv_*`): list (alphabetical =
+  slot order), selected slot (`<entity>/inventory_slot.txt`), Take, Place,
+  stop-a-running-desk-entity (pid checked against /proc, so a stale pid file
+  cannot signal an unrelated process), ledger line, and `inv_project` - the
+  plain-text feed the visual hotbar renders.
+- `khtpm_page_rows.c`: new `pgr_remove_row` / `pgr_append_row`.
+- `&.widgits/entity-cli/ops/inventory_op.c`: one CLI both environments call
+  (`list | slot | project | take | place`).
+- Take keeps the entity's page row inside the item (`taken_row.txt`), so Place
+  restores its glyph; Place picks a fresh page index.
+- Tested: take, list, slot step, projection, place by slot and by name, name
+  collision (`ember_2`), refusing self/parent/missing targets, empty inventory,
+  no page file, and an unrelated live pid left untouched.
+- Not done: wiring (menu rows, Enter/Shift keys, pc-hq pieces rows), the HUD
+  panel, hearts/hunger. The desk `--spawn` path (launching a placed entity) is
+  written but was not exercised live. Non-directory files in an inventory
+  folder are ignored by the hotbar (it lists entities only).
+
 ## 6. Order of work
 
 1. This doc (done). 2. `khtpm_possess.c` plus unit harness, no UI.

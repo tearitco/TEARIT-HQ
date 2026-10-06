@@ -167,4 +167,69 @@ PGR_UNUSED static int pgr_set_cell(const char *house, const char *name, int cx, 
     return rename(tmp, pdl) == 0;
 }
 
+/* Remove the named DESK row (the entity left the page: it was taken into an
+ * inventory). The removed line, without its newline, is copied to row_out so
+ * the caller can keep it and restore glyph/index on Place. Same tmp+rename
+ * write as pgr_set_cell. Returns 1 if a row was removed. */
+PGR_UNUSED static int pgr_remove_row(const char *house, const char *name, char *row_out, size_t rn) {
+    char pdl[PGR_PATH], tmp[PGR_PATH + 8], line[2048], copy[2048], *fld[10];
+    FILE *in, *out;
+    int hit = 0;
+    if (row_out && rn) row_out[0] = '\0';
+    if (!pgr_page_path(house, pdl, sizeof(pdl)) || !(in = fopen(pdl, "r"))) return 0;
+    snprintf(tmp, sizeof(tmp), "%s.tmp", pdl);
+    if (!(out = fopen(tmp, "w"))) { fclose(in); return 0; }
+    while (fgets(line, sizeof(line), in)) {
+        if (!hit && !strncmp(line, "DESK", 4)) {
+            snprintf(copy, sizeof(copy), "%s", line);
+            if (pgr_split(copy, fld, 10) >= 7 && !strcmp(fld[1], name)) {
+                if (row_out && rn) { snprintf(row_out, rn, "%s", line); row_out[strcspn(row_out, "\r\n")] = '\0'; }
+                hit = 1;
+                continue;
+            }
+        }
+        fputs(line, out);
+    }
+    fclose(in);
+    fclose(out);
+    if (!hit) { remove(tmp); return 0; }
+    return rename(tmp, pdl) == 0;
+}
+
+/* Append a DESK row for `name` at cell (cx,cy) (x_px/y_px = cells * 80). `path`
+ * is the entity directory relative to the house, as every row stores it. The
+ * index field n is the page's highest n plus one, so it never collides.
+ * Returns 1 if appended, 2 if a row with that name is already there (nothing
+ * written), 0 on error. */
+PGR_UNUSED static int pgr_append_row(const char *house, const char *name, const char *path,
+                                     int cx, int cy, const char *glyph) {
+    char pdl[PGR_PATH], tmp[PGR_PATH + 8], line[2048], copy[2048], *fld[10];
+    FILE *in, *out;
+    int maxn = 0, exists = 0, last_nl = 1;
+    if (!pgr_page_path(house, pdl, sizeof(pdl)) || !(in = fopen(pdl, "r"))) return 0;
+    while (fgets(line, sizeof(line), in)) {
+        if (strncmp(line, "DESK", 4) != 0) continue;
+        snprintf(copy, sizeof(copy), "%s", line);
+        if (pgr_split(copy, fld, 10) >= 9) {
+            int n = atoi(fld[8]);
+            if (n > maxn) maxn = n;
+            if (!strcmp(fld[1], name)) exists = 1;
+        }
+    }
+    if (exists) { fclose(in); return 2; }
+    rewind(in);
+    snprintf(tmp, sizeof(tmp), "%s.tmp", pdl);
+    if (!(out = fopen(tmp, "w"))) { fclose(in); return 0; }
+    while (fgets(line, sizeof(line), in)) {
+        fputs(line, out);
+        last_nl = strchr(line, '\n') != NULL;
+    }
+    if (!last_nl) fputc('\n', out);
+    fprintf(out, "DESK | %s | %s | %d | %d | %d | %d | %s | %d\n",
+            name, path, cx * 80, cy * 80, cx, cy, (glyph && glyph[0]) ? glyph : "?", maxn + 1);
+    fclose(in);
+    fclose(out);
+    return rename(tmp, pdl) == 0 ? 1 : 0;
+}
+
 #endif
