@@ -108,6 +108,33 @@ toggle cell does today), optional `slide-x` / `slide-y` (drag along one axis onl
   (nav number, minimize into the bottom bar) or as a **rail** in the dock stack
   (`CURSWORD-POSSESSION-DESIGN.md` 5g). One layout, two hosts.
 
+### 4g. Two render targets, one `.pdl`: the HUD text box and the minimap (owner, 2026-10-06)
+
+The HUD text box (time, pos, z, pick ...) and the 3D minimap are **already drawn into the game image**
+by the board-viewer (`bv_draw_hud()` / `bv_draw_minimap()` in `bv_render_3d.c`; design:
+`08-roadmap/design-docs/BV-HUD-TEXT-OVERLAY-AND-MINIMAP.md`) and are **already `.pdl`-driven** from
+`pieces/system/hud.pdl` (read: `hud_enabled`, `hud_anchor`, `hud_scale`, per-line flags `hud_time` /
+`hud_coords` / `hud_zlevel` / `hud_possess` / `hud_pick` / `hud_fps`, `hud_minimap`, `minimap_anchor`,
+`minimap_max_px`, `minimap_px_per_col`). The owner wants that standardized to the same layout `.pdl`.
+
+So a layout declares **where it is drawn**, and everything else (anchor, size/scale, which feed, what is
+shown, show/hide) is the same vocabulary for both:
+
+| target | drawn by | clickable | rides with the picture | examples |
+|---|---|---|---|---|
+| `overlay` | the shared renderer, over the canvas (part 4a-4c) | yes (items, `<cli_io>`) | no | hotbar, user menus |
+| `frame` **(proposed)** | the board-viewer, painted into the game image | no | yes (3D composite, frame dumps, screenshots) | HUD text, minimap |
+
+- `hud.pdl` stays valid: it is read as a layout with `target=frame` and the same keys, so nothing
+  breaks while it migrates (`hud_anchor` -> `anchor`, `hud_scale` -> `scale`, `hud_*` flags -> per-line
+  `show`, `minimap_*` -> the minimap element's own fields).
+- A user layout chooses its target: a non-interactive readout that should be part of the picture is
+  `frame`; anything that takes clicks or typing is `overlay`.
+- The menu-toolbar HUD toggles (design doc part 0, item 3) become the same `layout.show/hide/toggle`
+  event commands as every other layout (part 4e).
+- Open: a `frame` layout cannot take a click, so a click on it falls through to the canvas; whether the
+  minimap should ever become an `overlay` (clickable to jump the camera) is a separate decision.
+
 ### 4f. First users
 
 1. **Hotbar** (done as the first overlay; add chrome + slide).
@@ -128,6 +155,7 @@ toggle cell does today), optional `slide-x` / `slide-y` (drag along one axis onl
 | 5 | Studio ops (part 6) | an agent builds and saves a layout from the command line |
 | 6 | Studio window | a human edits the same layout with live preview |
 | 7 | Livedesk host (HQ window / dock-stack rail) | the same layout runs on the desk |
+| 7b | HUD text + minimap read as `layout.pdl` with `target=frame` (4g); `hud.pdl` keeps working | the HUD and minimap are layouts, toggled by `layout.toggle` |
 | 8 | Migrate pc-hq entity context menus | old floating menus retired |
 
 ## 6. The layout studio (builds on the seed doc)
@@ -162,4 +190,5 @@ drag-dropped into it; it lives as a sub-entity in the proposed ☁️ entity. Th
 
 `CURSWORD-POSSESSION-DESIGN.md` (hotbar, dock stack, digit echo), `PCHQ-ENTITY-MENU-AND-TASKBAR-DESIGN.md`
 in `@.apps/piececraft-hq/` (why menus are windows today), `08-roadmap/design-docs/HQ-LAYOUT-STUDIO-DESIGN.md`,
-`02-architecture/CENTROID_GOLD_STD.md`.
+`02-architecture/CENTROID_GOLD_STD.md`, `08-roadmap/design-docs/BV-HUD-TEXT-OVERLAY-AND-MINIMAP.md`
+(the frame-drawn HUD and minimap this plan folds in, 4g).
