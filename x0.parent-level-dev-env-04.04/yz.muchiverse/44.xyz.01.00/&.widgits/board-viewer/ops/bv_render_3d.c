@@ -62,6 +62,7 @@
 #ifdef BV_HAVE_GPU
 #include "bv_gpu_raymarch.h"   /* Path A - GPU raymarch backend (BV-GPU-RENDER-DESIGN.md) */
 #include "bv_move_range.c"    /* shared Move range finder file helpers */
+#include "../../_shared-lib/khtpm_locations.c"   /* loc_resolve_saved(): saved paths resolved against the live house root */
 #include <signal.h>
 #include <unistd.h>
 #include "../../_shared-lib/house_wait.h"
@@ -238,10 +239,14 @@ static int page_bound_pdl(const char *house, char *out, int n) {
     }
     if (strcmp(source, "desk") != 0 && !stored[0]) return 0;
     if (!stored[0]) return 0;
-    FILE *t = host_fopen(stored, "r");
+    /* the saved pdl= may be house-relative or a stale absolute path (checkout moved): resolve against the LIVE house
+     * root - see _shared-lib/khtpm_locations.c */
+    char resolved[PATH_BUF];
+    loc_resolve_saved(house, stored, resolved, sizeof(resolved));
+    FILE *t = host_fopen(resolved, "r");
     if (!t) return 0;
     fclose(t);
-    snprintf(out, n, "%s", stored);
+    snprintf(out, n, "%s", resolved);
     return 1;
 }
 static void page_entity_cells(const char *house, int *xs, int *ys, int *n, int max) {

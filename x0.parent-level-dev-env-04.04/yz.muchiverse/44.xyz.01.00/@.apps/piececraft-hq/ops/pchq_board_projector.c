@@ -30,6 +30,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <limits.h>
+#include "../../../&.widgits/_shared-lib/khtpm_locations.c"   /* loc_resolve_saved(): saved paths resolved against the live house root */
 #include <dirent.h>
 #ifndef _WIN32
 #include <glob.h>
@@ -155,7 +156,11 @@ static int emit_page_entities(char *ui, size_t *off, const char *house, const ch
     read_kv(ob, "pdl", pdl, sizeof(pdl));
     if (!strcmp(source, "board")) return -1;
     if (strcmp(source, "desk") != 0 && !pdl[0]) return -1;
-    (void)house;
+    {   /* the saved pdl= may be house-relative or a stale absolute path: resolve against the live house root */
+        char resolved[PATH_MAX];
+        loc_resolve_saved(house, pdl, resolved, sizeof(resolved));
+        snprintf(pdl, sizeof(pdl), "%s", resolved);
+    }
     FILE *f = fopen(pdl, "r");
     if (!f) return -1;
     int n = 0;

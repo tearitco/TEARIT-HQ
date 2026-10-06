@@ -52,6 +52,21 @@ if [ -n "${PCHQ_BOARD_TPL:-}" ] && [ -f "$PCHQ_BOARD_TPL" ]; then BOARD_TPL="$PC
 # which folder the running board treats as its package dir (state/ lives there): pc_entity_ctx.sh publishes an
 # in-board context menu there when <dir>/state/ctx_overlay.on exists (IN-GAME-LAYOUTS-PLAN.md, context menus)
 dirname "$BOARD_TPL" > "$HOUSE_ROOT/#.desktop/pchq_ctx_dir.txt" 2>/dev/null || true
+
+# ── locations: generated at EVERY launch from this script's own folder (TPMOS pattern: its location_kvp is generated,
+# never checked in; here pieces/system/locations.pdl). Nothing below depends on where the checkout lives: a saved pointer
+# is house-relative and resolved against house_root (_shared-lib/khtpm_locations.c). house_root.txt, which many ops read,
+# is refreshed here too (it used to be a tracked file with one machine's absolute path in it).
+mkdir -p "$PKG/pieces/system"
+_UH="$(ls -d "$HOUSE_ROOT"/xyzfs/users/*/home/livedesk 2>/dev/null | head -1)"
+{
+    printf 'SECTION      | KEY                | VALUE\n----------------------------------------\n'
+    printf 'LOCATION     | house_root         | %s\n' "$HOUSE_ROOT"
+    printf 'LOCATION     | pchq_root          | %s\n' "$PKG"
+    printf 'LOCATION     | board_dir          | %s\n' "$(dirname "$BOARD_TPL")"
+    printf 'LOCATION     | desk_user_home     | %s\n' "$_UH"
+} > "$PKG/pieces/system/locations.pdl" 2>/dev/null || true
+printf '%s\n' "$HOUSE_ROOT" > "$PKG/pieces/system/house_root.txt" 2>/dev/null || true
 # a template that carries the in-board menu row (id="ctx") needs its state files; <dir>/state/ is gitignored for the
 # live board, so create them when missing (the menu stays hidden until pc_entity_ctx.sh writes ctx_visible=1)
 if grep -q 'id="ctx"' "$BOARD_TPL" 2>/dev/null; then

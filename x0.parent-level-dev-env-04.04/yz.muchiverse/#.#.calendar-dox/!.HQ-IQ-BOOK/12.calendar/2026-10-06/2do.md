@@ -27,6 +27,8 @@ Plan and reasoning: `18.pc-hq/IN-GAME-LAYOUTS-PLAN.md`.
       with `target=frame` (board-viewer paints into the game image) vs `target=overlay`. Plan part 4g.
       `hud.pdl` keeps working during the move.
 
+- [x] **No absolute paths in pc-hq (owner, 2026-10-06; TPMOS pattern):** `open_pchq_board.sh` generates `pieces/system/locations.pdl` + refreshes `house_root.txt` each launch (generated files untracked + gitignored); `_shared-lib/khtpm_locations.c` `loc_resolve_saved()` resolves a saved path against the live house root (relative, or a stale absolute rebased on `/xyzfs/`); `open_book_page.txt` `pdl=` is written house-relative by `pc_synch_request.sh`; the projector and the board-viewer 2D/3D `page_bound_pdl` resolve through it. Verified: stale absolute path -> 16 page entities (as original), nonexistent path -> 7 (old failure). **Still to do:** the other absolute-path writers (`session_dir.txt` from button.sh, `holder.txt`, pc_clock_daemon / pc_trigger_watcher / pc_generate_chunk / bv_move_range readers of house_root.txt) and a sweep of the other apps.
+
 ## Carry-over from 2026-10-05
 
 - [ ] Hotbar: bottom-bar number offset past the hotbar's range and routing typed numbers into it (display base
