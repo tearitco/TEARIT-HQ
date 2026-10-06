@@ -188,6 +188,7 @@ case "$ACTION" in
         # inherit this cwd, and relative menu commands (livedesk_taskbar.pdl)
         # depend on it being house root, not wherever this script was invoked from.
         # startup timeline (kh_boot_mark.h): reset at the start of a boot; the manager and the bottom dock append their own marks
+        rm -f "$HOUSE/#.desktop/dock_stack/draw_stamp.txt" 2>/dev/null
         { : > "$HOUSE/#.desktop/boot_timeline.txt"; echo "$(date +%s%3N) script boot started" >> "$HOUSE/#.desktop/boot_timeline.txt"; } 2>/dev/null
         # "Loading livedesk..." strip at the bottom-centre of the screen, shown from NOW until the bottom bar publishes
         # (owner 2026-10-06: the header and everything else come up fast, the bottom bar is last - show a loading

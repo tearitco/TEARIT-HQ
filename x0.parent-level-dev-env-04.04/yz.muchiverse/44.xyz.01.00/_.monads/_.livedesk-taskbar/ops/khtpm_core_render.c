@@ -6986,6 +6986,19 @@ static void dock_paint_peer(void) {
             (wa.width != g_win_w || wa.height != g_win_h || wa.x != g_win_x || wa.y != g_win_y))
             XMoveResizeWindow(dpy, win, g_win_x, g_win_y, (unsigned)g_win_w, (unsigned)g_win_h);
     }
+    /* Startup activity stamp (owner 2026-10-06: the bottom bar's entity cells take ~20 s to fill on the owner's machine while the
+     * data side is done in 0.3 s): one byte appended per dock redraw during the process's first 60 s. livedesk_splash --boot keeps
+     * its "Loading entities..." strip up while this file is still growing (marker-file size, never mtime). */
+    {
+        static time_t t_first = 0;
+        time_t tn = time(NULL);
+        if (!t_first) t_first = tn;
+        if (tn - t_first < 60) {
+            char sp[PATH_BUF]; FILE *sf;
+            snprintf(sp, sizeof(sp), "%s/#.desktop/dock_stack/draw_stamp.txt", g_house_root);
+            if (1) { if ((sf = fopen(sp, "a"))) { fputc('.', sf); fclose(sf); } }
+        }
+    }
     /* Dock stack base (CURSWORD-POSSESSION-DESIGN.md 5c/5g, owner 2026-10-05): publish the
      * bottom bar's laid-out rectangle so anything docked above it (the hotbar) follows its
      * growth. Written only when it changes (tmp + rename); a consumer polls the file. */

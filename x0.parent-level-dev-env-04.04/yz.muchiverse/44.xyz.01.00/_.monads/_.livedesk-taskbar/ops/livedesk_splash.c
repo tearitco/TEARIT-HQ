@@ -251,10 +251,22 @@ int main(int argc, char **argv) {
             if (g_stop || el > BOOT_TIMEOUT_SECONDS) break;
             int mgr = fresh_since(house, "#.desktop/strip_ui.txt", t_start);
             int dock = fresh_since(house, "#.desktop/dock_stack/base.txt", t_start);
-            double frac = el / 14.0; if (frac > 0.9) frac = 0.9;           /* time creep: keeps moving, never claims done */
+            double frac = el / 6.0; if (frac > 0.9) frac = 0.9;           /* time creep: keeps moving, never claims done */
             if (mgr && frac < 0.4) frac = 0.4;                             /* real milestone: menu manager published */
-            if (dock) { frac = 1.0; if (done_at < 0) done_at = el; }       /* real milestone: bottom bar is up */
-            const char *step = dock ? "Ready" : mgr ? "Loading menus\xE2\x80\xA6" : "Starting\xE2\x80\xA6";
+            /* The bar window publishing (dock) is NOT "ready": the entity cells fill in after it. Ready = dock up AND the open-entity
+             * list (livedesk_open.txt, written only by the manager) has stopped changing for 1.5 s AND at least 4 s have passed
+             * (owner 2026-10-06: the bar "still takes long" and the old splash was gone in 0.35 s). */
+            {   char op[4096]; struct stat ost; static long last_sz = -1, last_mt = -1; static double last_chg = 0;
+                snprintf(op, sizeof(op), "%s/#.desktop/dock_stack/draw_stamp.txt", house);
+                long sz = -1; if (stat(op, &ost) == 0) sz = (long)ost.st_size;
+                /* the dock appends a byte per redraw while it is still filling (khtpm_core_render.c); quiet for 2 s = settled.
+                 * Hard cap 30 s so an always-redrawing bar can never pin the splash. */
+                if (sz != last_sz) { last_sz = sz; last_chg = el; }
+                if (dock && el >= 4.0 && (el - last_chg >= 2.0 || el >= 30.0) && done_at < 0) done_at = el;
+                if (dock && done_at < 0 && frac > 0.95) frac = 0.95;       /* bar window is up, cells still arriving */
+            }
+            if (done_at >= 0) frac = 1.0;
+            const char *step = done_at >= 0 ? "Ready" : dock ? "Loading entities\xE2\x80\xA6" : mgr ? "Loading menus\xE2\x80\xA6" : "Starting\xE2\x80\xA6";
             XSetForeground(dpy, gc, bg);
             XFillRectangle(dpy, win, gc, 0, 0, ww, wh);
             XftDrawStringUtf8(xft, &xfg, fbig, 14, 20, (const FcChar8 *)"Loading livedesk\xE2\x80\xA6", 18);
@@ -265,7 +277,7 @@ int main(int argc, char **argv) {
                 XFillRectangle(dpy, win, gc, bx, by, bw, bh);
                 XSetForeground(dpy, gc, barfill);
                 XFillRectangle(dpy, win, gc, bx, by, (int)(bw * frac + 0.5), bh);
-                if (!dock) {   /* a bright sweep over the filled part: it is visibly alive even while the fraction holds */
+                if (done_at < 0) {   /* a bright sweep over the filled part: it is visibly alive even while the fraction holds */
                     int sweep_w = 46, span = (int)(bw * frac + 0.5) + sweep_w;
                     int sx = span > 0 ? (tick * 9) % span - sweep_w : 0;
                     int x0 = sx < 0 ? 0 : sx, x1 = sx + sweep_w > (int)(bw * frac + 0.5) ? (int)(bw * frac + 0.5) : sx + sweep_w;
