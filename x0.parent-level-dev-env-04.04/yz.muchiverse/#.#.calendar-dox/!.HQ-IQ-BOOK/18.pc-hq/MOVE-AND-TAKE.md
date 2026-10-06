@@ -119,9 +119,8 @@ path, so no canvas click is published; to test, write
 does), the 2D-view range, the desk placer's click and labelled-grid
 overlay after its matrix code was swapped for the shared one.
 
-**Seen once, fix unverified:** a duplicated `entity_move` ledger line for a
-single waypoint. `bvr_step` now claims the tick and advances the cursor
-before side effects; it was not re-observed afterwards.
+**Fixed:** the duplicated `entity_move` ledger line (see R7) - it was the
+planner queuing the final waypoint twice.
 
 ## 5. Roadmap, in order
 
@@ -271,10 +270,16 @@ is the page-row work in R1).
 - The range is thin wire only; there is no real glow.
 - Engine sessions copy `ops/` at launch: rebuild, `bash button.sh kill`,
   relaunch (`open_pchq_board.sh`) or the old binaries keep running.
-- **Duplicate `entity_move` ledger line** for a single waypoint was seen twice
-  (once before and once after the claim-the-tick fix). Not root-caused. The
-  likely cause is two engine sessions stepping the same real-project queue; I
-  started to check running sessions and was asked to stop, so this is open.
+- **Duplicate `entity_move` ledger line - FIXED (2026-10-05).** Root cause was
+  not a race: the shared planner `mvr_path` (lifted unchanged from the desk's
+  `pathfind_linear`) appended the final target a second time whenever a step
+  landed exactly on it, so a one-step move queued two identical waypoints
+  (the desk's "11 waypoints" for an 80 px move was 10 steps plus that
+  duplicate). Reproduced in isolation with the real `bvr_plan`/`bvr_step`
+  (2 ledger lines), fixed in `khtpm_move_range.c` (skip the append when the
+  last point already is the target), re-run: 1 line. The desk's own move is
+  now 10 waypoints and arrives correctly. The earlier "claim the tick /
+  advance the cursor first" change is harmless but was not the fix.
 - Test runs moved `hero_01` and `xelector_01` in their `state.txt` files
   (the hero's original cell was 2,5,17); they show as modified in git.
 

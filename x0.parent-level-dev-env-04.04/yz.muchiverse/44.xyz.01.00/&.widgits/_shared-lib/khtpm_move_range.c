@@ -119,7 +119,14 @@ MVR_UNUSED static int mvr_path(int sx, int sy, int tx, int ty, int step, int (*o
     while (n < max) {
         int rx = (dx == 0) ? (cx == tx) : ((dx > 0) ? (cx >= tx) : (cx <= tx));
         int ry = (dy == 0) ? (cy == ty) : ((dy > 0) ? (cy >= ty) : (cy <= ty));
-        if (rx && ry) { out[n][0] = tx; out[n][1] = ty; n++; break; }
+        if (rx && ry) {
+            /* A step that lands exactly on the target already appended it;
+             * appending again queued the final position twice (a duplicate
+             * move + a duplicate ledger line - found 2026-10-05, same in the
+             * desk's original pathfind_linear: "11 waypoints" for 10 steps). */
+            if (n == 0 || out[n - 1][0] != tx || out[n - 1][1] != ty) { out[n][0] = tx; out[n][1] = ty; n++; }
+            break;
+        }
         if (cx != tx) cx += dx;
         if (cy != ty) cy += dy;
         out[n][0] = cx; out[n][1] = cy; n++;
