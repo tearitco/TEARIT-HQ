@@ -291,6 +291,21 @@ int main(int argc, char **argv) {
             tick++;
             usleep(60000);
         }
+        {   /* leave evidence for the next reader: how long the boot really took and what the bar was doing (no manual data needed) */
+            char tp[4096], sp[4096], tl[4096]; struct stat sst; FILE *tf; struct timespec ts;
+            snprintf(sp, sizeof(sp), "%s/#.desktop/dock_stack/draw_stamp.txt", house);
+            snprintf(tp, sizeof(tp), "%s/#.desktop/livedesk_open.txt", house);
+            snprintf(tl, sizeof(tl), "%s/#.desktop/boot_timeline.txt", house);
+            clock_gettime(CLOCK_MONOTONIC, &ts);
+            if ((tf = fopen(tl, "a"))) {
+                struct timespec rt; clock_gettime(CLOCK_REALTIME, &rt);
+                fprintf(tf, "%lld splash closed after %.1fs (%s) dock_redraws=%ld open_rows_bytes=%ld loadavg=%s\n",
+                        (long long)rt.tv_sec * 1000LL + rt.tv_nsec / 1000000L,
+                        (double)(ts.tv_sec - b0.tv_sec) + (ts.tv_nsec - b0.tv_nsec) / 1e9, done_at >= 0 ? "ready" : (g_stop ? "stopped" : "timeout"),
+                        stat(sp, &sst) == 0 ? (long)sst.st_size : -1L, stat(tp, &sst) == 0 ? (long)sst.st_size : -1L, "see /proc/loadavg");
+                fclose(tf);
+            }
+        }
         {   char pp[4096]; snprintf(pp, sizeof(pp), "%s/#.desktop/livedesk_boot_splash.pid", house); unlink(pp); }
         XftColorFree(dpy, DefaultVisual(dpy, scr), cmap, &xfg);
         XftColorFree(dpy, DefaultVisual(dpy, scr), cmap, &xdimc);
