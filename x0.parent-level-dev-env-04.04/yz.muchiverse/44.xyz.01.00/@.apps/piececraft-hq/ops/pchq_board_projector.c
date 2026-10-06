@@ -84,6 +84,30 @@ static int read_pdl_opt(const char *path, const char *name, int def) {
 
 static void read_kv(const char *path, const char *key, char *out, size_t outsz);
 
+/* The xelector is an ENTITY in pc-hq (it has a cell, a possessed_id, a menu); the
+ * livedesk has no such entity yet - see 18.pc-hq/XELECTOR-ENTITY.md. So it gets
+ * its own button on the bottom bar in BOTH modes (page-bound and the private
+ * lists), right after the map/hero. Cell comes from pieces/xelector_01/state.txt.
+ * Returns 1 if a row was written. */
+static int emit_xelector(char *ui, size_t *off, int n, const char *host_app_root) {
+    char sp[PATH_MAX], l[128], xx[16] = "", yy[16] = "", zz[16] = "";
+    snprintf(sp, sizeof(sp), "%s/pieces/xelector_01/state.txt", host_app_root);
+    FILE *f = fopen(sp, "r");
+    if (!f) return 0;
+    while (fgets(l, sizeof(l), f)) {
+        if (!strncmp(l, "pos_x=", 6)) sscanf(l + 6, "%15s", xx);
+        else if (!strncmp(l, "pos_y=", 6)) sscanf(l + 6, "%15s", yy);
+        else if (!strncmp(l, "pos_z=", 6)) sscanf(l + 6, "%15s", zz);
+    }
+    fclose(f);
+    if (!xx[0] || !yy[0]) return 0;
+    *off += (size_t)snprintf(ui + *off, UIBUF - *off,
+        "ent_%d_label=xelector\nent_%d_id=xelector_01\nent_%d_kind=xelector\n"
+        "ent_%d_x=%s\nent_%d_y=%s\nent_%d_z=%s\n",
+        n, n, n, n, xx, n, yy, n, zz[0] ? zz : "0");
+    return 1;
+}
+
 /* Footer rows from the synch pin's pdl= while source=desk (or an older
  * pin that still has pdl=). A later livedesk page change does not
  * move this strip. source=board means the board picked its own map:
@@ -104,6 +128,7 @@ static int emit_page_entities(char *ui, size_t *off, const char *house, const ch
         "ent_0_label=map\nent_0_id=map\nent_0_kind=page\n"
         "ent_0_x=0\nent_0_y=0\nent_0_z=0\n");
     n = 1;
+    if (emit_xelector(ui, off, n, host_app_root)) n++;
     char line[512];
     while (n < 24 && fgets(line, sizeof(line), f)) {
         if (strncmp(line, "DESK", 4) != 0) continue;
@@ -163,6 +188,7 @@ static size_t emit_entities(char *ui, size_t off, const char *house, const char 
             n++;
         }
     }
+    if (emit_xelector(ui, &off, n, host_app_root)) n++;
     const char *files[2] = { "pieces/world_01/animals.txt",
                              "pieces/world_01/phymoji_entities.txt" };
     for (int fi = 0; fi < 2 && n < 16; fi++) {

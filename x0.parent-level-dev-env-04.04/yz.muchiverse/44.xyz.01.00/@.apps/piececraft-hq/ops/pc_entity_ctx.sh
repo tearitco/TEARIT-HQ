@@ -95,6 +95,7 @@ case "$KIND" in
     hero)          HEADER="hero: ${ID:-hero_01}";     VERBS="INSPECT POSSESS ACT STOP EVENTS INVENTORY DIR EXIT" ;;
     tree)          HEADER="tree: ${ID:-?}";           VERBS="INSPECT COPY PASTE DELETE TOENTITY ACT STOP EVENTS INVENTORY DIR EXIT" ;;
     chicken|entity) HEADER="${KIND}: ${ID:-?}";       VERBS="INSPECT COPY PASTE DELETE ACT STOP EVENTS INVENTORY DIR EXIT" ;;
+    xelector)      HEADER="xelector: ${ID:-xelector_01}"; VERBS="INSPECT DIR EXIT" ;;
     voxel)         HEADER="voxel '$GLYPH' @ $SX,$SY,$SZ"; VERBS="INSPECT COPY PASTE DELETE PLACE EXIT" ;;
     *)             HEADER="$KIND: ${ID:-?}";          VERBS="INSPECT EXIT" ;;
 esac
