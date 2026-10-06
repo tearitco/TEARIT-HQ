@@ -39,6 +39,13 @@ chapter `16.game`. This chapter owns the board itself.
   questions asked before the row was built. Its "Not started" line
   is older than the row. Trust `LEARNINGS.md` for status.
 
+- `CURSWORD-POSSESSION-DESIGN.md` - cursword as a possessor (xelector is
+  its scaffolding), shared inventory/hearts/hunger HUD, and Place/Take
+  built on both. Design only, with what exists and what is missing.
+- `BUG-CURSWORD-ARMED-MENU-KEYS.md` - armed cursword eats the arrow keys
+  and Esc meant for its own context menu. Cause traced, fix proposed,
+  not applied.
+
 Older design notes under `08-roadmap/design-docs/` (`pc-hq-INDEX.md`,
 `PCHQ-3D-RAYCAST-AND-VOXEL-HIGHLIGHT-DESIGN.md`,
 `PCHQ-3D-MOVE-OVERLAY-DESIGN.md`) still say the ray and the move
