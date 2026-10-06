@@ -194,6 +194,23 @@ case "$ACTION" in
         # cd into HOUSE first — the parser's own children (the manager)
         # inherit this cwd, and relative menu commands (livedesk_taskbar.pdl)
         # depend on it being house root, not wherever this script was invoked from.
+        # "Loading livedesk..." strip at the bottom-centre of the screen, shown from NOW until the bottom bar publishes
+        # (owner 2026-10-06: the header and everything else come up fast, the bottom bar is last - show a loading
+        # animation where it will appear). livedesk_splash --boot (livedesk_splash.c) watches strip_ui.txt and
+        # dock_stack/base.txt and closes itself; it never blocks this script. The binary is (re)built when missing OR when
+        # the source is newer: an older binary would ignore --boot and show the long "Building livedesk" splash instead.
+        if [ -n "${DISPLAY:-}" ]; then
+            if [ ! -x "$SCRIPT_DIR/+x/livedesk_splash.+x" ] || [ "$SCRIPT_DIR/livedesk_splash.c" -nt "$SCRIPT_DIR/+x/livedesk_splash.+x" ]; then
+                _sx="$(pkg-config --cflags --libs x11 xft 2>/dev/null)"
+                [ -n "$_sx" ] || _sx="-I/usr/include/freetype2 -lX11 -lXft"
+                mkdir -p "$SCRIPT_DIR/+x"
+                ${CC:-gcc} -std=c11 -O2 -o "$SCRIPT_DIR/+x/livedesk_splash.+x" "$SCRIPT_DIR/livedesk_splash.c" $_sx >/dev/null 2>&1 || true
+            fi
+            if [ -x "$SCRIPT_DIR/+x/livedesk_splash.+x" ]; then
+                (cd "$HOUSE" && $SETSID env DISPLAY="$DISPLAY" "$SCRIPT_DIR/+x/livedesk_splash.+x" "$HOUSE" "$SCRIPT_DIR/+x" --boot \
+                    >/dev/null 2>&1 < /dev/null &)
+            fi
+        fi
         MANAGER="$SCRIPT_DIR/+x/khtpm_taskbar_manager_main.+x"
         HEADER_CHTPM="$(cd "$SCRIPT_DIR/.." && pwd)/khtpm_strip_header.xhtpm"
         (cd "$HOUSE" && $SETSID env DISPLAY="${DISPLAY:-:0}" "$MANAGER" "$HOUSE" \

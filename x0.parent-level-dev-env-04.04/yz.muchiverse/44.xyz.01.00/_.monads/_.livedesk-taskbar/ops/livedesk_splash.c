@@ -14,7 +14,15 @@
  * displayed % is the max of the two so it never stalls or lies about
  * being done.
  *
- * Usage: livedesk_splash <house_root> <ops_+x_dir>
+ * Usage: livedesk_splash <house_root> <ops_+x_dir> [--boot]
+ *
+ * --boot (owner 2026-10-06: "everything loads fast except the bottom tb ... a loading animation there, startup
+ * professionalism"): a slim "Loading livedesk..." strip at the BOTTOM-CENTRE of the screen, where the bottom bar will be,
+ * started by run_khtpm_strip.sh before the taskbar. Its bar follows REAL milestones - the menu manager has published
+ * #.desktop/strip_ui.txt (40%), the bottom dock has published #.desktop/dock_stack/base.txt (done) - plus a time creep to 90%
+ * so it never looks stalled. A file counts only if it was written after this splash started (a leftover from the previous
+ * run must not end it early). Closes itself on "done", on SIGTERM, or after BOOT_TIMEOUT_SECONDS. A new boot splash replaces
+ * a previous one (pid file #.desktop/livedesk_boot_splash.pid).
  * Lifetime: exits on SIGTERM/SIGINT (build_khtpm_strip.sh's EXIT trap
  * kills it the instant the build ends), on all binaries fresh, or after
  * a hard safety timeout.
@@ -49,6 +57,9 @@
 #define H 132
 #define EXPECT_SECONDS 30.0
 #define HARD_TIMEOUT_SECONDS 240
+#define BOOT_W 440
+#define BOOT_H 46
+#define BOOT_TIMEOUT_SECONDS 90
 /* A BUILD FAILED banner waits for a real click/key dismissal, not this -
  * long enough that it is effectively "stays until dismissed" for any
  * normal dev session, while still not running forever unattended. */
@@ -126,10 +137,38 @@ static int build_failed(const char *xdir) {
     return stat(p, &st) == 0;
 }
 
+/* a lighter shade of a hex colour as an allocated pixel (the sweep highlight); falls back to `fallback` */
+static unsigned long shade_pix(Display *dpy, Colormap cmap, const char *hex, int d, unsigned long fallback) {
+    XColor c;
+    if (XParseColor(dpy, cmap, shade(hex, d), &c) && XAllocColor(dpy, cmap, &c)) return c.pixel;
+    return fallback;
+}
+
+/* was <house>/<rel> written at or after t_start? (a leftover from an earlier run does not count) */
+static int fresh_since(const char *house, const char *rel, time_t t_start) {
+    char p[4096]; struct stat st;
+    snprintf(p, sizeof(p), "%s/%s", house, rel);
+    return stat(p, &st) == 0 && st.st_size > 0 && st.st_mtime >= t_start;
+}
+
+/* replace a previous boot splash (pid file), then record ours */
+static void boot_claim_pidfile(const char *house) {
+    char p[4096], buf[32] = "", comm[64] = "";
+    FILE *f;
+    snprintf(p, sizeof(p), "%s/#.desktop/livedesk_boot_splash.pid", house);
+    if ((f = fopen(p, "r"))) { if (fgets(buf, sizeof(buf), f)) { long old = atol(buf);
+            char cp[64]; FILE *c; snprintf(cp, sizeof(cp), "/proc/%ld/comm", old);
+            if (old > 1 && old != (long)getpid() && (c = fopen(cp, "r"))) { if (fgets(comm, sizeof(comm), c) && strstr(comm, "livedesk_splash")) kill((pid_t)old, SIGTERM); fclose(c); } }
+        fclose(f); }
+    if ((f = fopen(p, "w"))) { fprintf(f, "%d\n", (int)getpid()); fclose(f); }
+}
+
 int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: livedesk_splash <house_root> <ops_+x_dir>\n"); return 2; }
     const char *house = argv[1];
     const char *xdir  = argv[2];
+    int boot = (argc >= 4 && !strcmp(argv[3], "--boot"));
+    int ww = W, wh = H;
 
     signal(SIGTERM, on_sig);
     signal(SIGINT,  on_sig);
@@ -149,6 +188,7 @@ int main(int argc, char **argv) {
     int scr = DefaultScreen(dpy);
     Window root = RootWindow(dpy, scr);
     int sw = DisplayWidth(dpy, scr), sh = DisplayHeight(dpy, scr);
+    if (boot) { ww = BOOT_W; wh = BOOT_H; boot_claim_pidfile(house); }
 
     char bg_hex[16], fg_hex[16];
     read_theme(house, bg_hex, fg_hex, sizeof(bg_hex));
@@ -183,7 +223,7 @@ int main(int argc, char **argv) {
      * bug it fixes). KeyPress is still selected as a best-effort second
      * path when it does work. */
     swa.event_mask = ExposureMask | ButtonPressMask | KeyPressMask;
-    Window win = XCreateWindow(dpy, root, (sw - W) / 2, (sh - H) / 3, W, H, 1,
+    Window win = XCreateWindow(dpy, root, (sw - ww) / 2, boot ? (sh - wh - 6) : (sh - wh) / 3, ww, wh, 1,
                                CopyFromParent, InputOutput, CopyFromParent,
                                CWOverrideRedirect | CWBackPixel | CWBorderPixel | CWEventMask, &swa);
     XStoreName(dpy, win, "livedesk");
@@ -198,6 +238,54 @@ int main(int argc, char **argv) {
     XftColor xfg, xdimc;
     XftColorAllocName(dpy, DefaultVisual(dpy, scr), cmap, fg_hex, &xfg);
     XftColorAllocName(dpy, DefaultVisual(dpy, scr), cmap, shade(fg_hex, -70), &xdimc);
+
+    if (boot) {
+        time_t t_start = time(NULL) - 1;
+        struct timespec b0; clock_gettime(CLOCK_MONOTONIC, &b0);
+        double done_at = -1.0;
+        int tick = 0;
+        for (;;) {
+            struct timespec bn; clock_gettime(CLOCK_MONOTONIC, &bn);
+            double el = (bn.tv_sec - b0.tv_sec) + (bn.tv_nsec - b0.tv_nsec) / 1e9;
+            while (XPending(dpy)) { XEvent ev; XNextEvent(dpy, &ev); }
+            if (g_stop || el > BOOT_TIMEOUT_SECONDS) break;
+            int mgr = fresh_since(house, "#.desktop/strip_ui.txt", t_start);
+            int dock = fresh_since(house, "#.desktop/dock_stack/base.txt", t_start);
+            double frac = el / 14.0; if (frac > 0.9) frac = 0.9;           /* time creep: keeps moving, never claims done */
+            if (mgr && frac < 0.4) frac = 0.4;                             /* real milestone: menu manager published */
+            if (dock) { frac = 1.0; if (done_at < 0) done_at = el; }       /* real milestone: bottom bar is up */
+            const char *step = dock ? "Ready" : mgr ? "Loading menus\xE2\x80\xA6" : "Starting\xE2\x80\xA6";
+            XSetForeground(dpy, gc, bg);
+            XFillRectangle(dpy, win, gc, 0, 0, ww, wh);
+            XftDrawStringUtf8(xft, &xfg, fbig, 14, 20, (const FcChar8 *)"Loading livedesk\xE2\x80\xA6", 18);
+            {   XGlyphInfo gi; XftTextExtentsUtf8(dpy, fsm, (const FcChar8 *)step, (int)strlen(step), &gi);
+                XftDrawStringUtf8(xft, &xdimc, fsm, ww - 14 - gi.xOff, 19, (const FcChar8 *)step, (int)strlen(step)); }
+            {   int bx = 14, by = 28, bw = ww - 28, bh = 8;
+                XSetForeground(dpy, gc, trough);
+                XFillRectangle(dpy, win, gc, bx, by, bw, bh);
+                XSetForeground(dpy, gc, barfill);
+                XFillRectangle(dpy, win, gc, bx, by, (int)(bw * frac + 0.5), bh);
+                if (!dock) {   /* a bright sweep over the filled part: it is visibly alive even while the fraction holds */
+                    int sweep_w = 46, span = (int)(bw * frac + 0.5) + sweep_w;
+                    int sx = span > 0 ? (tick * 9) % span - sweep_w : 0;
+                    int x0 = sx < 0 ? 0 : sx, x1 = sx + sweep_w > (int)(bw * frac + 0.5) ? (int)(bw * frac + 0.5) : sx + sweep_w;
+                    if (x1 > x0) { XSetForeground(dpy, gc, shade_pix(dpy, cmap, fg_hex, 60, fg)); XFillRectangle(dpy, win, gc, bx + x0, by, x1 - x0, bh); }
+                }
+                XSetForeground(dpy, gc, dim);
+                XDrawRectangle(dpy, win, gc, bx, by, bw, bh);
+            }
+            XFlush(dpy);
+            if (done_at >= 0 && el - done_at > 0.35) break;                // let "Ready" show a beat
+            tick++;
+            usleep(60000);
+        }
+        {   char pp[4096]; snprintf(pp, sizeof(pp), "%s/#.desktop/livedesk_boot_splash.pid", house); unlink(pp); }
+        XftColorFree(dpy, DefaultVisual(dpy, scr), cmap, &xfg);
+        XftColorFree(dpy, DefaultVisual(dpy, scr), cmap, &xdimc);
+        XDestroyWindow(dpy, win);
+        XCloseDisplay(dpy);
+        return 0;
+    }
 
     struct timespec t0; clock_gettime(CLOCK_MONOTONIC, &t0);
     /* REAL FIX 2026-09-22, direct live report ("also i got a compile
