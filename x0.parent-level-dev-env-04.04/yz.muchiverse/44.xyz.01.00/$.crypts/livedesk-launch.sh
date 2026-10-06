@@ -16,6 +16,15 @@ HOUSE="$(dirname "$CRYPTS")"
 [ -n "${XAUTHORITY:-}" ] || { [ -r "$HOME/.Xauthority" ] && export XAUTHORITY="$HOME/.Xauthority"; }
 cd "$HOUSE" || exit 1
 LOG="$HOUSE/#.desktop/livedesk_launch.log"
+# Every press: re-read the CURRENT theme colors (#.desktop/livedesk_theme.pdl) and redraw the app icon in them, so the icon always
+# follows the last color settings (owner 2026-10-06). Done first and cheaply (~0.1 s); a missing Pillow keeps the previous icon.
+# The icon you see after this press has this press's colors; the .desktop file is touched so file managers re-read it.
+_ICON="$HOME/.local/share/icons/hicolor/256x256/apps/livedesk.png"
+if [ -f "$_ICON" ] && command -v python3 >/dev/null 2>&1; then
+    python3 "$CRYPTS/livedesk-icon-gen.py" "$HOUSE" "$_ICON.new" 256 >/dev/null 2>&1 && mv -f "$_ICON.new" "$_ICON"
+    rm -f "$_ICON.new"
+    touch "$HOME/.local/share/applications/livedesk.desktop" "$HOME/Desktop/Livedesk.desktop" 2>/dev/null
+fi
 {
     echo "== $(date '+%F %T') livedesk-launch (pid $$) DISPLAY=$DISPLAY"
     # same cheap hash-gated build step the old button ran (a no-op takes well under a second)

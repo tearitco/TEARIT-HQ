@@ -530,6 +530,33 @@ So this is a pure rendering bug, and **it's in a THIRD, different code path from
 
 ---
 
+## 🔴 OPEN 2026-10-06 (NOT root-caused): livedesk bottom bar / entity cells take ~20 s to appear when started from the desktop shortcut - never reproduced by the agent
+
+**Reported (owner, repeatedly, "mine is still slow", same on every start):** after quitting from the HQ menu (X.quit) and starting from `start-temp` (right-click > run as program), everything else loads fast but the bottom bar's entity cells take ~20 s and show no loading signal. Owner cannot send data; "trust me".
+
+**What was measured (agent's sessions) - all FAST (bar + 17 entities in ~1-2 s, splash gone ~5 s):** `button.sh quit` then `start`; SIGTERM to the manager (same exit path as HQ X.quit: close-all + reap) then the start-button's build step + `button.sh run`; the real `start-temp` ELF with `env -i` (bare environment). Instrumentation: `#.desktop/boot_timeline.txt` (kh_boot_mark.h marks + the boot splash's own close summary), `#.desktop/dock_stack/draw_stamp.txt` (one byte per dock redraw, first 60 s). Details: `TASKBAR-STARTUP-LATENCY-RESEARCH-2026-10-06.md`.
+
+**Code paths examined, and what they cost / why they were ruled out**
+| path | finding |
+|---|---|
+| `livedesk-start-button.c` (start-temp) | runs `bash build_khtpm_strip.sh` SYNCHRONOUSLY (`system()`), then `exec sh button.sh run`. No bar until the build returns. |
+| no-op build | 0.64 s (13 binaries hash-gated). Not it, *when nothing changed*. |
+| **stale-gate build** | `build_core_render.sh` recompiles `khtpm_core_render.c` (21k lines, one TU, -O2) = **22 s on this box even under `nice`**. If ANY gated input changed since the last build (any agent edits the renderer or a listed shared file), the next start press compiles for ~20 s BEFORE anything launches. This matches the owner's number but not their "everything else is fast" - **unconfirmed whether their starts hit it**; check `#.desktop/livedesk_launch.log` / `+x/.build_hashes.pdl` mtimes after a slow start. |
+| `crypt_autostart` | `system("setsid nohup ... &")` per LAUNCH row, no waits except a 0.4 s + 0.2 s quit sweep. Not it. |
+| `run_khtpm_strip.sh` | the 1.9 s/call /proc shell scan (fixed `7c7401090`). Not 20 s. |
+| manager `ktb_init` | 0.2 s for 17 entities (per-entity /proc scan already hoisted 2026-09-22). Not it. |
+| tab list | `load_tabs()` reads `livedesk_open.txt` rows each entity writes at its own startup; manager rewrites it every second. Fast here. |
+| registry lock | `flock` (kernel releases it on death): a stale lock cannot cause a wait. Ruled out. |
+| nav claims | `nav_claim_rows()` is popup-only, not startup. Ruled out. |
+| dock animation/stagger | grep found no startup animation, reveal or staged-delay code in the dock path. |
+
+**Real defects found along the way (not the 20 s, but real)**
+1. `build_core_render.sh` `CR_SRCS` omits files `khtpm_core_render.c` #includes: `khtpm_nav_echo.c`, `house_wait.h`, `kh_proc_registry.h`, `kh_boot_mark.h` (and whatever `khtpm_draw_core.c` pulls in). Editing one does NOT trigger a rebuild -> a stale renderer binary. (hash_gate.sh documents this limitation; the list was never completed.)
+2. The synchronous pre-launch build means a stale gate blanks the whole desktop for ~20 s with only the "Building livedesk..." splash; nothing launches until it ends.
+
+**Hypotheses still open, ranked:** (a) owner's starts hit the stale-gate compile (22 s) because other agents / other branches edit gated sources between presses - cheapest to test: after the next slow start compare `+x/khtpm_core_render.+x` mtime with the start time; (b) state that exists only on the owner's live desktop (windows/daemons open at start) causing CPU contention - not reproducible without it; (c) first-run-of-the-day cold disk cache.
+**Next step needing no owner effort:** after any slow start the agent reads `boot_timeline.txt` (stage times + splash close summary), `draw_stamp.txt` size, `livedesk_launch.log` and the binary mtimes.
+
 ## ✅ CLOSED 2026-10-06 (restart measured 6.04 s -> 1.09 s; cold login NOT measured): bottom bar slow to appear at startup - the start script's /proc scan, not the bar
 
 Root cause: `run_khtpm_strip.sh` `strip_parser_pids()` forked tr/sed/printf/grep per process (1.9 s per call, 3+ calls). Replaced by one `pgrep -f`. Full evidence, timeline and caveats: `TASKBAR-STARTUP-LATENCY-RESEARCH-2026-10-06.md` (same folder). Startup marks now written to `#.desktop/boot_timeline.txt` on every boot.
