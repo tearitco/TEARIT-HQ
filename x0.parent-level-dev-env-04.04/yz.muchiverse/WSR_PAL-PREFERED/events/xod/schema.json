@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "XOD Event Bus Schema",
+  "description": "Schema for events flowing through the XOD event bus (interact_relay.txt)",
+  "type": "object",
+  "oneOf": [
+    {
+      "title": "FRAME_CHANGED",
+      "description": "Emitted when the WSR frame changes (renderer)",
+      "type": "object",
+      "properties": {
+        "type": { "const": "FRAME_CHANGED" },
+        "timestamp": { "type": "number", "description": "Unix timestamp in milliseconds" }
+      },
+      "required": ["type", "timestamp"]
+    },
+    {
+      "title": "KEY_INJECTED",
+      "description": "Emitted when FSM driver injects a key press",
+      "type": "object",
+      "properties": {
+        "type": { "const": "KEY_INJECTED" },
+        "code": { "type": "integer", "minimum": 0, "description": "Keycode injected (matches wsr_menu_input convention)" },
+        "behavior": { "type": "string", "description": "Behavior that triggered the injection" }
+      },
+      "required": ["type", "code", "behavior"]
+    },
+    {
+      "title": "BEHAVIOR_START",
+      "description": "Emitted when a behavior begins execution",
+      "type": "object",
+      "properties": {
+        "type": { "const": "BEHAVIOR_START" },
+        "behavior": { "type": "string", "description": "Name of the behavior starting" },
+        "params": { "type": "string", "description": "JSON string of behavior parameters" }
+      },
+      "required": ["type", "behavior"]
+    },
+    {
+      "title": "BEHAVIOR_COMPLETE",
+      "description": "Emitted when a behavior completes execution",
+      "type": "object",
+      "properties": {
+        "type": { "const": "BEHAVIOR_COMPLETE" },
+        "behavior": { "type": "string", "description": "Name of the behavior that completed" },
+        "result": { "type": "string", "description": "Result of the behavior execution (ok/error/none)" }
+      },
+      "required": ["type", "behavior", "result"]
+    },
+    {
+      "title": "ATTRITION_TICK",
+      "description": "Emitted each turn by the attrition model",
+      "type": "object",
+      "properties": {
+        "type": { "const": "ATTRITION_TICK" },
+        "cash": { "type": "number", "description": "Current cash amount" },
+        "stock_value": { "type": "number", "description": "Current stock value" },
+        "time_turn": { "type": "number", "description": "Current turn number" },
+        "attention": { "type": "number", "description": "Current attention level (0-100)" },
+        "morale": { "type": "number", "description": "Current morale level (0-100)" },
+        "attrition_cost": { "type": "number", "description": "Cost incurred this tick" }
+      },
+      "required": ["type", "cash", "stock_value", "time_turn", "attention", "morale", "attrition_cost"]
+    },
+    {
+      "title": "GOAL_ADOPTED",
+      "description": "Emitted when GOAP planner adopts a new goal",
+      "type": "object",
+      "properties": {
+        "type": { "const": "GOAL_ADOPTED" },
+        "goal_id": { "type": "string", "description": "Identifier of the adopted goal" },
+        "description": { "type": "string", "description": "Human-readable description of the goal" }
+      },
+      "required": ["type", "goal_id", "description"]
+    },
+    {
+      "title": "PLAN_STEP",
+      "description": "Emitted for each step in the GOAP plan",
+      "type": "object",
+      "properties": {
+        "type": { "const": "PLAN_STEP" },
+        "index": { "type": "integer", "minimum": 0, "description": "Index of this step in the plan" },
+        "behavior": { "type": "string", "description": "Behavior to execute at this step" }
+      },
+      "required": ["type", "index", "behavior"]
+    },
+    {
+      "title": "HARNESS_DONE",
+      "description": "Emitted by harnesses to signal completion",
+      "type": "object",
+      "properties": {
+        "type": { "const": "HARNESS_DONE" },
+        "harness": { "type": "string", "description": "Name of the harness completing" },
+        "result": { "type": "string", "description": "Result of the harness execution" }
+      },
+      "required": ["type", "harness", "result"]
+    }
+  ],
+  "additionalProperties": false
+}

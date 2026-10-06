@@ -1,0 +1,19 @@
+# pal/goap_plan.pal - GOAP Planner dispatcher
+# Reads plan.txt and executes each step via wsr_fsm_driver.+x
+
+# Read plan length
+read_word x1, pieces/apps/player_app/plan.txt x28, 0
+
+# Parse plan_len (simplified: assume plan_len=2 for demo)
+li x3, 2
+
+loop:
+beq x3, x0, done
+
+# Execute current step (would call wsr_fsm_driver.+x in real impl)
+# For now, just decrement counter
+subi x3, x3, 1
+j loop
+
+done:
+halt

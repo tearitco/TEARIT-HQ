@@ -1,0 +1,12 @@
+# pal/attrition_tick.pal - Attrition Model periodic dispatcher
+# Calls wsr_attrition.+x every N ticks.
+
+# Tick attrition
+# prisc+x ./ops/+x/wsr_attrition.+x
+
+# Sleep between ticks (300ms)
+li x2, 300000
+sleep x2
+
+# Loop
+j loop

@@ -1,0 +1,62 @@
+# pal/training_loop.pal - XOD Training Loop (PAL)
+#
+# Runs evolutionary training loop:
+#   for generation in 1..N:
+#       for scenario in scenarios:
+#           session = new_session()
+#           goal = sample_goal()
+#           plan = goap.plan(goal, session.state)
+#           for behavior in plan:
+#               result = session.run(behavior)
+#               attrition.tick()
+#               score += goap.score(behavior, result)
+#           fitness = wsr_fitness(session.corp_state)
+#           population.evolve(fitness)
+
+li x28, 0
+
+# Read generation counter
+read_state x2, xod_generation
+
+loop:
+# Max 1000 generations
+li x3, 1000
+beq x2, x3, halt_training
+
+# Increment generation
+addi x2, x2, 1
+write_state x2, xod_generation
+
+# Run 5 scenarios per generation
+li x4, 0
+li x5, 5
+
+scenario_loop:
+beq x4, x5, next_gen
+
+# Sample goal (rotate through goals)
+li x6, 0
+addi x6, x4, 0
+
+# Run GOAP planner for this goal
+# prisc+x ./ops/+x/wsr_goap_planner.+x make_money
+
+# Run behavior chain from plan
+# prisc+x ./ops/+x/wsr_fsm_driver.+x end_turn
+# prisc+x ./ops/+x/wsr_attrition.+x
+
+# Compute real fitness
+# prisc+x ./ops/+x/wsr_fitness.+x
+
+# Evolve population
+# prisc+x ./ops/+x/wsr_evolve.+x
+
+addi x4, x4, 1
+j scenario_loop
+
+next_gen:
+j loop
+
+halt_training:
+li x1, 0
+halt
