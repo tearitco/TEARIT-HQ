@@ -5438,6 +5438,27 @@ static void kh_ov_place(Elem *ov, Elem *cv, int w, int h, int *x0, int *y0) {
     if (*y0 < cv->y) *y0 = cv->y;
 }
 
+/* Overlay chrome minimize button: an <item class="ov-min"> child of a chromed overlay sits at the right end of
+ * the title bar (rowh square), is nav-numbered, and the title (drag zone) is shortened so the button is not part
+ * of it. Its action is the overlay's own (hide it: the owner's "_"). Called before the overlay's items are numbered. */
+static void kh_ov_min_place(Elem *ov, int x0, int y0, int w, int rowh, int pad4) {
+    for (int k = 0; k < ov->n_children; k++) {
+        Elem *m = ov->children[k];
+        if (strcmp(m->tag, "item") != 0 || !elem_has_class(m, "ov-min")) continue;
+        css_compute_style(&g_sheet, m->tag, m->id, m->classes, m->n_classes, 0, &m->style);
+        m->w = scaled(66); m->h = rowh;
+        m->x = x0 + w - m->w - pad4; m->y = y0 + pad4;
+        m->nav_index = ++g_n_nav;
+        g_nav[g_n_nav - 1] = m;
+        if (ov->n_children > 0 && elem_has_class(ov->children[0], "ov-title")) {
+            Elem *t = ov->children[0];
+            int tw = m->x - pad4 - t->x;
+            if (tw > 40) t->w = tw;
+        }
+        return;
+    }
+}
+
 static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int rh) {
     Elem *cv = NULL;
     for (int i = 0; i < region->n_children; i++)
@@ -5471,6 +5492,7 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
             Elem *it = ov->children[k];
             if (strcmp(it->tag, "text") == 0) { n_tx++; continue; }      /* name line: above the items */
             if (strcmp(it->tag, "cli_io") == 0) { n_cl++; continue; }    /* typed line: below the items */
+            if (strcmp(it->tag, "item") == 0 && elem_has_class(it, "ov-min")) continue;   /* placed by kh_ov_min_place */
             if (strcmp(it->tag, "item") != 0) { it->x = rx; it->y = -100000; it->w = 0; it->h = 0; it->nav_index = 0; continue; }
             css_compute_style(&g_sheet, it->tag, it->id, it->classes, it->n_classes, 0, &it->style);
             it->w = it->style.has_width ? it->style.width : scaled(80);
@@ -5497,10 +5519,11 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
                 t->x = x0 + pad4; t->y = yy; t->w = stripw - 2 * pad4; t->h = rowh; t->nav_index = 0;
                 yy += rowh;
             }
+            kh_ov_min_place(ov, x0, y0, stripw, rowh, pad4);
             x = x0 + (stripw - total) / 2;                        /* the slots, centred */
             for (k = 0; k < ov->n_children; k++) {
                 Elem *it = ov->children[k];
-                if (strcmp(it->tag, "item") != 0) continue;
+                if (strcmp(it->tag, "item") != 0 || elem_has_class(it, "ov-min")) continue;
                 it->x = x; it->y = yy + (maxh - it->h) / 2;
                 x += it->w + gap;
                 it->nav_index = ++g_n_nav;
@@ -5534,6 +5557,7 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
             Elem *it = ov->children[k];
             if (strcmp(it->tag, "text") == 0) { n_tx++; continue; }
             if (strcmp(it->tag, "cli_io") == 0) { n_cl++; continue; }
+            if (strcmp(it->tag, "item") == 0 && elem_has_class(it, "ov-min")) continue;   /* placed by kh_ov_min_place */
             if (strcmp(it->tag, "item") != 0) { it->x = rx; it->y = -100000; it->w = 0; it->h = 0; it->nav_index = 0; continue; }
             css_compute_style(&g_sheet, it->tag, it->id, it->classes, it->n_classes, 0, &it->style);
             if (it->style.has_width && it->style.width > colw) colw = it->style.width;
@@ -5556,9 +5580,10 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
                 t->x = x0 + pad4; t->y = yy; t->w = colw - 2 * pad4; t->h = rowh; t->nav_index = 0;
                 yy += rowh;
             }
+            kh_ov_min_place(ov, x0, y0, colw, rowh, pad4);
             for (k = 0; k < ov->n_children; k++) {
                 Elem *it = ov->children[k];
-                if (strcmp(it->tag, "item") != 0) continue;
+                if (strcmp(it->tag, "item") != 0 || elem_has_class(it, "ov-min")) continue;
                 it->x = x0 + pad4; it->y = yy; it->w = colw - 2 * pad4; it->h = itemh;
                 yy += itemh + scaled(2);
                 it->nav_index = ++g_n_nav;

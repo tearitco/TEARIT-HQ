@@ -65,3 +65,5 @@ window { background-color: #141414; font-family: Ubuntu; font-size: 10px; }
 
 /* overlay chrome: the drag handle */
 .ov-title { background-color: #666666; color: #ffffff; }
+
+.ov-min { width: 66px; height: 20px; font-size: 14px; background-color: #444444; border: 1px solid #666666; border-width: 1; color: #ffffff; }

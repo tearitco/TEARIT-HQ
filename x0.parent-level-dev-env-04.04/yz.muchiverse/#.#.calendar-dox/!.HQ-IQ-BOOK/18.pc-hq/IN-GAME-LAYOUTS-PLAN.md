@@ -91,6 +91,17 @@ click `_` to minimize, click items and fields; the position clamps to the host v
 (the desk hotbar's `vars-positioned` / saved-position path is the model). Keyboard (nav numbers, Tab, Esc) and
 mouse are two ways to the same actions, never one without the other (4h).
 
+**Built 2026-10-06 (chrome):** title bar = first child `<text class="ov-title">` (drag handle); `ov-slide-x` /
+`ov-slide-y` lock an axis; an `<item class="ov-min">` is the `_` minimize button, placed at the right end of the
+title bar and nav-numbered (its action hides the overlay; the host's bottom-bar cell brings it back). Verified on
+the pc-hq hotbar: typed `19` + Enter hides it, bottom-bar cell `7` + Enter restores it, and the other overlay
+renumbers because only visible items are numbered (4h).
+
+**Long term, this is how the pc-hq context windows work (owner, 2026-10-06):** an entity context menu becomes an
+overlay with the same chrome (title bar to drag, `_` minimize, and an **`x` close** button, i.e. an
+`<item class="ov-close">` placed beside `ov-min`, not built yet), clamped to the board and minimizing with it.
+The close button removes the overlay (no bottom-bar cell to restore it); minimize keeps the cell.
+
 ### 4d. Data and actions (pal compatible)
 
 - **Data in:** the layout's feed is a vars file (`state/<id>/ui.txt`) written by a manager
