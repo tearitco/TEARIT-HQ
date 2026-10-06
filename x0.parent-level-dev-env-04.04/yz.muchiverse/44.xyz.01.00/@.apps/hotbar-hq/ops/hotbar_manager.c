@@ -148,8 +148,16 @@ static void publish(const char *house, const char *mode, const char *state_dir, 
              * sprite.csv image (what the taskbar cells do), crisp at any size, instead of
              * the emoji glyph, which the font may not have (drawn as an empty box). The
              * glyph stays as the label fallback for an item with no sprite. */
-            off += snprintf(buf + off, sizeof(buf) - off, "s_%d_text= \ns_%d_glyph=%s\ns_%d_sprite=%s/inventory/%s\ns_%d_cls=%s\n",
-                            i, i, glyph[0] ? glyph : "?", i, holder_dir, names[i], i, i == sel ? "hb-sel" : "hb-full theme-2");
+            {   /* an item with a sprite.csv shows its picture (label blank); one without shows its glyph (emoji) as the label */
+                char spp[INV_PATH + 64]; struct stat sst;
+                int has_spr;
+                snprintf(spp, sizeof(spp), "%s/inventory/%s/sprite.csv", holder_dir, names[i]);
+                has_spr = stat(spp, &sst) == 0;
+                off += snprintf(buf + off, sizeof(buf) - off, "s_%d_text=%s\ns_%d_glyph=%s\ns_%d_sprite=%s%s%s\ns_%d_cls=%s\n",
+                                i, has_spr ? " " : (glyph[0] ? glyph : "?"), i, glyph[0] ? glyph : "?",
+                                i, has_spr ? holder_dir : "", has_spr ? "/inventory/" : "", has_spr ? names[i] : "",
+                                i, i == sel ? "hb-sel" : "hb-full theme-2");
+            }
         } else {
             off += snprintf(buf + off, sizeof(buf) - off, "s_%d_text=.\ns_%d_cls=hb-empty theme-2\n", i, i);
         }
