@@ -22,6 +22,9 @@ chapter `16.game`. This chapter owns the board itself.
   in order (hero position row, post-move tick hook, z-falloff decision,
   Take, Place/Mine/Build), and the relay test recipe. Rule it follows:
   the desk is the functional parent.
+- `XELECTOR-ENTITY.md` — the xelector is an entity in pc-hq (cell, possession,
+  menu), now on the bottom bar; the livedesk has none yet. Lists what to decide
+  before it gets one (cursword may be the desk analogue — unconfirmed).
 - `INTENDED.md` — what commit `38b775390` was supposed to do, the
   check that passed, and the taskbar-binary hole if the rows vanish.
 - `../09-appendix/PC-HQ-BOOK-PAGE-SYNCH.md` — older notes. The

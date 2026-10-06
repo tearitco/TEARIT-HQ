@@ -31,6 +31,9 @@ both renderers read them; 2D never owns state.
 | `3296936fc` | Range finder is a real flow: one switch file, Esc closes, Enter places, placer armed on open, redraw trigger |
 | `6c5fcb9ad` | Typed cell-jump, HUD label, animated move, hero-centred range, Cli-io on pc-hq context menus |
 | `db527e435` | Desk and pc-hq consume one shared library: `_shared-lib/khtpm_move_range.c` |
+| `271201947` | R1 started: Move writes the page row (x/y) and the entity's own `z=`; `_shared-lib/khtpm_page_rows.c` |
+| `2dba4b06d` | pc-hq opens a desk entity's **own `menu.chtpm`** (same menu as the desktop), automatically |
+| `2afd93998` | The xelector is an entity on the pc-hq bottom bar (`XELECTOR-ENTITY.md`) |
 | `f390997eb` | Z levels restored (true 3D diamond), thin external-style range, bold placer, click select/place, board-edge clamp, per-step ledger line, step-race fix |
 
 Behaviour, as verified live through the relay (bottom-taskbar hero →
@@ -152,8 +155,19 @@ z, which is the desk's existing floor behaviour. **Not confirmed:** whether
 the active z is per page or desktop-wide (it is one file under `#.desktop/`
 in the code I read), and whether pc-hq's hero has a desk-side pos file at all.
 
-To do: make the origin and the write go through the same row the renderer
-draws. **Open question:** the `DESK` row has no z field, but Move now has
+**Progress (2026-10-05):** Move now reads its origin from, and writes each
+animation step to, the entity's page row when it has one (x/y), keeps z in the
+entity's own `desktop_pos.txt z=`, and falls back to `pieces/<id>/state.txt`
+(kept in step) when there is no row. Verified against a scratch copy of a real
+page file: only the hero row changed. Not done: no live page file currently
+has a `hero_01` row (rows are seeded by a 2D frame), so on the real desk page
+Move still takes the `state.txt` path; the 3D hero draws its own z in page mode
+only when `desktop_pos.txt` has one. Also seen: in page mode the bottom bar
+does not list `hero_01` at all (the projector skips it on purpose), so the
+hero-button route to Move used in earlier tests does not exist there.
+
+Original to-do: make the origin and the write go through the same row the
+renderer draws. **Open question:** the `DESK` row has no z field, but Move now has
 z levels — where does z live (a new field, the existing page `cz` that
 `page_row_meta` returns, or per-entity state)? Needs an owner decision
 before the write is moved.
@@ -235,6 +249,20 @@ is `g`, Build is `h`, as raw keys. `ops_bank` names `PLACE_BLOCK`,
 palette (todo)". TAKE (R5) overlaps with the inventory half of this; do
 them together so there is one inventory format.
 
+### R6b. Desk entities get their own menu in pc-hq (done) and what is left
+
+Rule applied: if the picked entity has `<dir>/menu.chtpm` (31 of 33 desk pals
+do), pc-hq launches that exact file with the shared renderer
+(`pc_entity_ctx.sh`, same rule as `khtpm_entity.c` `launch_khtpm_menu`). Not
+done: the 2 pals without a `menu.chtpm` (the desk builds a legacy popup from
+`meta.pdl` / `objects.pdl` for them) still get pc-hq's generated menu; pc-hq's
+own pieces (hero, trees, chicken) keep the generated menu with Inspect, Copy,
+Delete, Act, Events, Inventory, Dir, Cli-io. Entities launched from the
+context menu run on the desk's own actions, so "Move" through Act on a
+cursword/terumon uses the desk placer, not the pc-hq range finder (those are
+desk entities with desk positions; making their Move land in pc-hq's 3D range
+is the page-row work in R1).
+
 ### R7. Known limits and debt
 
 - The GPU scene holds at most **128 boxes** (`BV_GPU_MAX_BOX`). A radius-3
@@ -243,6 +271,10 @@ them together so there is one inventory format.
 - The range is thin wire only; there is no real glow.
 - Engine sessions copy `ops/` at launch: rebuild, `bash button.sh kill`,
   relaunch (`open_pchq_board.sh`) or the old binaries keep running.
+- **Duplicate `entity_move` ledger line** for a single waypoint was seen twice
+  (once before and once after the claim-the-tick fix). Not root-caused. The
+  likely cause is two engine sessions stepping the same real-project queue; I
+  started to check running sessions and was asked to stop, so this is open.
 - Test runs moved `hero_01` and `xelector_01` in their `state.txt` files
   (the hero's original cell was 2,5,17); they show as modified in git.
 
