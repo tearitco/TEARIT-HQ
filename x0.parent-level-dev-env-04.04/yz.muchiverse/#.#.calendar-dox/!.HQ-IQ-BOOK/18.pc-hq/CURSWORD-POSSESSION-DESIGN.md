@@ -190,6 +190,33 @@ Built and tested on a throwaway house (not wired to any menu, key or HUD yet):
   written but was not exercised live. Non-directory files in an inventory
   folder are ignored by the hotbar (it lists entities only).
 
+## 5c. The hotbar must follow the bottom taskbar as it grows (owner, 2026-10-05)
+
+Read in `khtpm_core_render.c`: the desk's bottom dock is built from rows of
+`DOCK_BAR_H` (36 px, UI-scaled by `font_scale`). The `-` / `+` buttons send
+`PAGEROW:-1` / `PAGEROW:+1`, which change `g_dock_visible_rows` between 1 and
+the number of packed rows. So the dock's height changes at runtime, and also
+whenever the UI scale changes. **Nothing publishes that height today** (no
+geometry file), so a hotbar placed at a fixed y would overlap the dock or float
+above it as soon as a row is added.
+
+Decision: do not hardcode a y. Two options considered:
+1. **Dock publishes its geometry; the hotbar anchors to it (chosen).** One small
+   projection, e.g. `#.desktop/dock_geom.txt` (`x`, `y`, `w`, `h`, `bar_h`,
+   `rows`, `visible_rows`), rewritten with tmp+rename at relayout and signalled
+   with an append-only marker (house rule: marker file, not mtime). The hotbar
+   sits at `dock_y - hotbar_h` and re-anchors on change. Any consumer can use
+   the same feed (desk hotbar now; others later).
+2. Make the hotbar a row of the dock's own layout (like the cli_io rows added
+   above/below the bar). It would move for free, but welds the hotbar to the
+   dock window and does not help pc-hq, whose board window has its own bottom
+   bar.
+
+pc-hq draws inside its own window, so there the hotbar anchors to that window's
+own bottom bar; it needs the same feed shape from the board viewer. Not yet
+checked: how the dock window itself is positioned (anchored to the screen
+bottom and grown upward is assumed, not verified).
+
 ## 6. Order of work
 
 1. This doc (done). 2. `khtpm_possess.c` plus unit harness, no UI.
