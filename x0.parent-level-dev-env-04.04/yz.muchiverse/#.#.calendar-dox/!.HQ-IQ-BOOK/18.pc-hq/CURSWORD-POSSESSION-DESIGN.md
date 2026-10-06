@@ -217,6 +217,34 @@ own bottom bar; it needs the same feed shape from the board viewer. Not yet
 checked: how the dock window itself is positioned (anchored to the screen
 bottom and grown upward is assumed, not verified).
 
+## 5d. Hotbar gets a nav number; digit echo on both bars and pc-hq (owner, 2026-10-05)
+
+Three pieces, to be done together because the hotbar needs all of them:
+1. **Dock geometry feed** (5c).
+2. **The hotbar is a numbered nav item.** Nav numbers are unified across every
+   khtpm window (entities first, then HQ windows; see `khtpm_strip_bottom.xhtpm`),
+   so the hotbar takes a number like any other cell, and a new window must not
+   renumber what already exists. Typing its digits then Enter focuses it; its
+   slots are chosen with the slot keys.
+3. **Digit echo: typed nav digits shown next to the `^` focus mark, accumulating
+   in the same spot, on the top bar, the bottom bar, and pc-hq windows.**
+
+What the code does today (read, not run): the strip parser already draws
+`<^>[<digits>]` (or `^[NAV]` while armed) in the nav box at the left edge, from
+the manager's `digit_buf` (`khtpm_strip_parser.c` ~line 2012-2025). The manager
+accumulates digits against the real nav range (`max_claimed_nav()` reads
+`#.desktop/livedesk-nav-claims/livedesk_nav_claims.txt`), caps the buffer to the
+digit count that range needs, and moves the `[>]` cursor live as digits arrive;
+only Enter activates. So the accumulator exists; **what is not yet known is
+which bar that echo is actually drawn on** (the code that draws it is the HQ
+menu box path) and whether the bottom bar and pc-hq windows draw any echo at
+all. Check with a frame dump of each before building. pc-hq windows are
+`khtpm_core_render` windows that join the same nav numbering, so they need the
+same echo; the digit state they would read is not traced yet.
+
+Open: one shared echo formatter (text-include) used by the strip parser and
+`khtpm_core_render`, so the three surfaces cannot drift apart.
+
 ## 6. Order of work
 
 1. This doc (done). 2. `khtpm_possess.c` plus unit harness, no UI.
