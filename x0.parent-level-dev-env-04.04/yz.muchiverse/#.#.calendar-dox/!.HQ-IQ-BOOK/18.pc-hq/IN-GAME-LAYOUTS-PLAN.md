@@ -135,6 +135,33 @@ shown, show/hide) is the same vocabulary for both:
 - Open: a `frame` layout cannot take a click, so a click on it falls through to the canvas; whether the
   minimap should ever become an `overlay` (clickable to jump the camera) is a separate decision.
 
+### 4h. Nav index is mandatory for anything interactive (house accessibility standard, owner 2026-10-06)
+
+Every interactive element a layout can contain gets a **nav index**, like every other khtpm element: a numbered
+badge, reachable by typing its number, `Tab`, and the nav/scope keys, with no mouse needed. This is a rule of
+the layout system, not something each layout opts into.
+
+- **Automatic.** The layout engine numbers every clickable item, button, `<cli_io>` and dropdown trigger in an
+  overlay through the shared nav pass (`assign_nav_and_layout`, `g_nav[]`), in layout order. A layout author
+  and the studio never write an index; leaving one out is not possible for interactive tags.
+- **Only visible rows get a number.** Hidden (`show=` false), minimized and clipped-off elements are
+  `nav_index = 0` and out of `g_nav[]` (the same rule as the scroll paths; see the khtpm-house-standards skill).
+- **Numbering order and base.** Overlay items continue the host window's sequence by default. A layout can
+  set a display base (the `nav-after-top` mechanism) when its numbers should restart; the pc-hq hotbar is
+  deliberately not tied to the taskbar's numbers.
+- **Scope.** A modal menu (context menu, popup) takes the nav scope while open (`[^]` / `[>]`), so numbers and
+  Tab stay inside it and Esc returns to the host; a permanent overlay (hotbar) sits in the host's normal scope.
+- **Focus holds.** Typing a nav number focuses the element and the focus stays through reparses (the keyed
+  diff preserves it); an armed `<cli_io>` keeps its keyboard (retry on a failed grab, already built).
+  Known open bug: on the pc-hq hotbar overlay the nav focus does not hold (see the 2do).
+- **Non-interactive targets are exempt.** `target=frame` layouts (HUD text, minimap, 4g) are painted into
+  the picture and take no clicks, so they have no nav index. Their on/off toggles (`layout.toggle`) are
+  interactive and are numbered like any menu item.
+- **Studio check.** `layout_op preview` / save reports any interactive element without a nav index, and the
+  editor window shows the badges, so an agent can verify accessibility from the files and a frame dump.
+- **Verification** for each phase: dump the frame and read the real badges, then drive by the relay (type the
+  number, Tab, Esc), and repeat once with a real key, since relay tests can mask focus bugs.
+
 ### 4f. First users
 
 1. **Hotbar** (done as the first overlay; add chrome + slide).
@@ -150,6 +177,7 @@ shown, show/hide) is the same vocabulary for both:
 | 0 | Canvas overlay strip, second vars file, toggle cell, armed-field fix | **done 2026-10-05** |
 | 1 | Overlay chrome: `_` minimize into the bottom bar, slide along one axis; apply to the pc-hq hotbar | pc-hq hotbar minimizes and slides like the desk one |
 | 2 | Anchor family + viewport clamp as classes | a test overlay at each anchor never leaves the board |
+| 2b | Nav index on every interactive overlay element (4h), including focus that holds | every item of the test menu is reachable by number, Tab and Esc, by relay and by a real key |
 | 3 | `<overlay src>` fragments + `layout.pdl`; hotbar becomes a fragment | the hotbar is loaded from `layouts/hotbar/`, not hand-written into the board |
 | 4 | Event commands `layout.show/hide/toggle`; layouts menu; saved per game and house | a layout opens from the pc-hq Events menu |
 | 5 | Studio ops (part 6) | an agent builds and saves a layout from the command line |

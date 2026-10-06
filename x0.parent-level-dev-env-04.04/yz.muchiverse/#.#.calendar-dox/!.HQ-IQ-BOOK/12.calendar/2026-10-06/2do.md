@@ -16,6 +16,10 @@ Plan and reasoning: `18.pc-hq/IN-GAME-LAYOUTS-PLAN.md`.
 - [ ] **Step 4:** anchors (centre, at-clicked-cell) clamped to the board.
 - [ ] **Step 5:** event command `layout.toggle <id>` in `#.ref/menu/event_commands.registry.pdl`, called from
       the pc-hq Events menu.
+- [ ] **Nav index on all interactive layout elements (house accessibility standard, owner 2026-10-06):** plan
+      part 4h. Automatic numbering of items/buttons/cli_io in overlays, visible rows only, modal scope for menus,
+      focus that holds, studio check. Test every sandbox step by relay AND a real key. Fixes the pc-hq hotbar
+      overlay's "nav focus not holding" as the first case.
 - [ ] **Later:** `layout_op` CLI, the x11-hq editor window, livedesk host, migrate pc-hq entity context menus.
 - [ ] **HUD text box + minimap as layouts (owner, 2026-10-06):** standardize `hud.pdl` to the layout `.pdl`
       with `target=frame` (board-viewer paints into the game image) vs `target=overlay`. Plan part 4g.
