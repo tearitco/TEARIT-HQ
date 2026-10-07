@@ -2,7 +2,7 @@
 
 | field | value |
 |---|---|
-| status | open — waiting for owner OK to touch the manager spawn path and live entity data |
+| status | active — op + dry run + copy-apply proven (see Log); spawn hook, HUD sprite and the live apply wait for owner OK |
 | tier | manager (claude) or outside-agent; needs care (touches every entity) |
 | size | M |
 | assignee | - |
@@ -58,5 +58,16 @@ Phones are how entities talk and how the owner sees their history (design: `HAI-
 Everything in `^.grave/README.md`. Entity data is live: any apply on the real house needs the owner's explicit OK first; do the first apply on a copy.
 
 ## Log
+
+2026-10-06 | claude | built `&.widgits/_shared-lib/khtpm_phone.c` (text-include, prefix `ph_`) and `ops/phone_ensure_op.c` (+ `build_phone_ensure_op.sh`); zero warnings; `--selftest` passes 3 SHA-256 vectors + number format.
+2026-10-06 | claude | DRY RUN on the real house (nothing written: file count under xyzfs 1365 before and after): 55 entities (32 top-level + 23 items), 55 phones to create, 53 uids frozen from `PAL | hash`, 2 random (`tax_robot` has no pal.pdl; `tile_rmmv_World_A2_1790489103` has no hash), 0 collisions. Full report: `DRYRUN-REPORT-2026-10-06.txt` (this folder).
+2026-10-06 | claude | APPLY on a COPY of the pals tree: 55 phones created, 55 unique numbers, 55 unique uids; second run created nothing and every file was byte-identical; zz.phone sorts last in every inventory; every `inventory_slot.txt` byte-identical; frozen uid equals the original pal hash; all wallet ids match `e` + 24 hex. Real house untouched (0 `zz.phone` dirs).
+
+## Still to do (not started)
+
+- [ ] Hook `ph_ensure()` into `livedesk_spawn_desk()` / `livedesk_ensure_cursword()` and measure the manager start (needs a rebuild + restart: owner OK).
+- [ ] Phone sprite: `glyph.txt` is written but a spawned/placed phone needs the usual `sprite.csv`/`atlas.png` generation for the HUD to draw the 📱.
+- [ ] Exclude `entity_uid.txt` and `inventory/zz.phone/` from `livedesk_hash_dir()` (content-hash drift).
+- [ ] Live apply on the real house (owner OK; dry run first, as done).
 
 ## Result

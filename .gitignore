@@ -179,3 +179,10 @@ x0.parent-level-dev-env-04.04_*.7z
 # its own line. Rule: any file under a state/ dir whose name starts with
 # "raw_" is a pasted secret.
 **/state/raw_*.txt
+
+# phone ledgers (runtime history, grows forever; design HAI-ROBOTS-PHONES-SERVER-DESIGN.md 3b). The skeleton (pal.pdl, phone.pdl) and entity_uid.txt ARE tracked.
+**/inventory/zz.phone/inbox.txt
+**/inventory/zz.phone/outbox.txt
+**/inventory/zz.phone/history.txt
+**/inventory/zz.phone/*.[0-9].txt
+^.hai-server/ledger*.txt

@@ -94,8 +94,11 @@ directory at `<entity>/inventory/<name>/`; Take and Place are plain directory re
 > "can they have phone numbers related to entity id? are the entities hashed and prepared to write to the network:chain tx file for
 > mining yet? we should pay some attention to that if we're not"
 
-**Honest status today: no.** Entity ids are short hand-picked labels (`instance_id.txt`: `DCA0`, `ROBOT1`, `CURS`) plus a desk index
-(`livedesk_index.txt`: 126, 121, 117). They are not unique across machines, not hashed, and not tied to a wallet. The chain exists
+**Status today (corrected after reading the code, same day):** partly. Entities have a human label (`instance_id.txt`: `DCA0`, `ROBOT1`, `CURS`),
+a desk index (`livedesk_index.txt`), AND a SHA-256 `PAL | hash | ...` line in `pal.pdl` (53 of 54 entities; `tax_robot` has no `pal.pdl` at all). The house's own
+editor design calls it "Hash = identity (NFT-ready)" (`#.livedesk/livedesk-editor-design.md`). But the hash is not a stable identity today:
+`livedesk_ensure_pal()` writes it as a **content hash of the whole package folder** (`find | sha256sum`, recomputed on every ensure), so it changes whenever
+any file in the entity changes, while other creators (`event_drop_handler.sh` ...) write a **random** hash that stays put. Nothing ties either to a wallet. The chain exists
 (`041.pal-chain`: wallets, `chain_send`, a SHA-256 proof-of-work `chain_miner`, `chain-hq`) but only wallets created by hand
 (`chain_create_wallet <wallet_id> <password>`) write transactions. A transaction is one line, `TX|<from>|<to>|<amount_millicones>|<ts>|<tx_id>`,
 appended to `041.pal-chain/data/pending_tx.txt` (and the peer outbox) for miners to include in the next block. v1 limits, named in its own
@@ -103,8 +106,10 @@ standard: **no transaction signing** (any local process can forge a `from`), `wa
 layer (`palnet_peer.c`) is same-machine only.
 
 **Proposal (cheap now, expensive to retrofit later, so do it in the same pass as Q005 which touches every entity once anyway):**
-1. **`entity_uid`** — a random 128-bit id generated once at entity creation (or at migration for the existing ones), stored in
-   `<entity>/entity_uid.txt`, never changed, never reused. The human label (`instance_id.txt`) stays; the uid is the identity.
+1. **`entity_uid`** — written once to `<entity>/entity_uid.txt`, never changed, never reused. For an entity that already has `PAL | hash` the uid is that hash
+   **frozen** (continuity with the identity the house already designed; 53 of 55 entities); otherwise a fresh random sha256. The human label
+   (`instance_id.txt`) stays. **Follow-up needed:** `livedesk_hash_dir()` hashes the whole folder, so adding `entity_uid.txt` and `inventory/zz.phone/` changes every
+   entity's content hash; exclude both from that hash (or accept one drift) when the spawn hook lands.
 2. **`entity_hash = sha256(entity_uid)`** (hex). Everything below is a pure function of it, so it can be recomputed and verified by anyone.
 3. **Phone number = a readable rendering of the hash**: 11 decimal digits from the hash, shown `NNN-NNNN-NNNN` (collision checked at
    creation against `phones.index`; on a clash, take the next 11 digits). The number is the phone's lookup key; `phone.pdl` stores
