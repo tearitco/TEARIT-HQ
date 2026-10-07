@@ -1,0 +1,16 @@
+# kits.pdl - role kits (design section 2). Given at Setup / Add participant as append-only GRANT rows in grants.txt; Reset / Remove take back exactly these.
+# KITITEM | kit | item | amount      KITSKILL | kit | skill | 1      KITPARAM | kit | stat | delta  (stat is a key of actor_1_stats.txt; additive so it is reversible)
+KITITEM  | farmer | seed | 5
+KITITEM  | farmer | jug  | 1
+KITITEM  | farmer | hoe  | 1
+KITSKILL | farmer | plant   | 1
+KITSKILL | farmer | water   | 1
+KITSKILL | farmer | collect | 1
+KITSKILL | farmer | trade   | 1
+KITSKILL | farmer | talk    | 1
+KITSKILL | farmer | eat     | 1
+KITSKILL | farmer | rest    | 1
+KITSKILL | farmer | study   | 1
+KITSKILL | farmer | build   | 1
+KITPARAM | farmer | mhp | 10
+KITPARAM | farmer | hp  | 10

@@ -979,3 +979,11 @@ COMMAND row_append
   PARAMS file,fields
   TEMPLATE exec "$D/&.widgits/footrace-fu/ops/+x/row_append.+x" "$ENT" '{file}' {fields}
 END
+
+COMMAND eden_verb
+  LABEL Eden Conductor Verb (setup, daytick, act, save, load, ... see eden_op.c)
+  FIELD1 Verb:
+  FIELD2 Arguments:
+  PARAMS verb,args
+  TEMPLATE exec "$D/&.widgits/eden/ops/+x/eden_op.+x" "$ENT" '{verb}'[ {args}]
+END

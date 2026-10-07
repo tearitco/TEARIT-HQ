@@ -1,0 +1,3 @@
+# event.pal - conductor page 12 (trigger load1): one eden_op verb, run with cwd = the conductor dir
+exec ops/+x/eden_op.+x . load 1
+halt

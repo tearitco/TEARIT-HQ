@@ -1,0 +1,16 @@
+# tunables.pdl - every Eden rule number (owner rule: fluid, pdl read). key=int.
+hunger_step=1
+hungry_at=4
+starving_at=8
+max_hunger=10
+hp_loss=1
+eat_min_hunger=2
+max_plots=3
+trade_keep=1
+trade_gap=1
+hut_cost_grain=3
+hut_cost_seed=1
+shelter_gain=1
+max_shelter=1
+practice_exp=1
+study_exp=2

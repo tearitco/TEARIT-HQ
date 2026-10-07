@@ -1,0 +1,2 @@
+# crops.pdl - CROP | name | growth_days (watered days to ripen) | water_per_day (waterings that count per day, v0: 1) | yield (items per collect) | seed_return | item
+CROP | grain | growth_days=4 | water_per_day=1 | yield=3 | seed_return=1 | item=grain

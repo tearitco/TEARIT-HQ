@@ -1,0 +1,7 @@
+# items.pdl - ITEM rows (design section 3). grants_skill= : holding the item makes that skill available (an item implies a skill); tool= : a tool kind; nutrition= : hunger removed by eating one;
+# tradeable=1 : the trade act may swap it.
+ITEM | seed  | label=Seed        | grants_skill=plant   | nutrition=0 | tradeable=1
+ITEM | jug   | label=Water jug   | grants_skill=water   | nutrition=0 | tradeable=0
+ITEM | hoe   | label=Hoe         | tool=farm | grants_skill=collect | nutrition=0 | tradeable=0
+ITEM | apple | label=Apple       | nutrition=3 | tradeable=1
+ITEM | grain | label=Grain       | nutrition=2 | tradeable=1
