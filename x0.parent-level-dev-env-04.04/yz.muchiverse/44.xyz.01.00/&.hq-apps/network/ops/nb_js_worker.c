@@ -29,6 +29,7 @@
 #include "stb_image_write.h"
 
 #include <unistd.h>
+#include <math.h>
 #include <errno.h>
 #include <stdint.h>
 #include <strings.h>
@@ -3291,8 +3292,458 @@ static void install_dom_classes(JSContext *ctx) {
 }
 
 /* ---- canvas 2D ---- */
-static JSValue nb_c2d_noop(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) { return JS_UNDEFINED; }
-static JSValue nb_c2d_getImageData(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+static JSValue nb_c2d_noop(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) { (void)ctx; (void)this_val; (void)argc; (void)argv; return JS_UNDEFINED; }
+
+/* REAL, NEW 2026-10-07 (maximal-scope directive: canvas fast) - software
+ * rasterizer backing every canvas 2D context. Before this, every draw op
+ * was a noop and pages rendered blank canvases; now fill/clear/blit ops
+ * write real pixels readable back via getImageData. Deliberately partial:
+ * full affine image/rect sampling, source-over alpha, save/restore;
+ * text drawing stays noop, gradients/patterns are flat colors, shadow/
+ * filter/composite ops ignored. Display plumbing (surface publish) is
+ * the next slice - this one proves pixel truth through getImageData. */
+#define NB_CANVAS_MAX 64
+#define NB_CANVAS_PX_MAX (2048 * 2048)
+typedef struct {
+    int used, w, h;
+    unsigned char *px;      /* RGBA, w*h*4, straight alpha */
+    double m[6];            /* current transform a,b,c,d,e,f */
+    double alpha;           /* snapshot cache; live prop re-read per draw */
+    int save_depth;
+    double save_stack[8][7]; /* m[6] + alpha */
+    char fillstyle[128];
+} NbCanvas;
+static NbCanvas g_canvases[NB_CANVAS_MAX];
+
+static void nb_canvas_reset(void) {
+    for (int i = 0; i < NB_CANVAS_MAX; i++) {
+        free(g_canvases[i].px);
+        g_canvases[i].px = NULL;
+        g_canvases[i].used = 0;
+    }
+}
+static NbCanvas *nb_canvas_get(JSContext *ctx, JSValueConst ctxobj) {
+    JSValue v = JS_GetPropertyStr(ctx, ctxobj, "__nb_canvas_id");
+    int id = -1;
+    if (JS_IsNumber(v)) JS_ToInt32(ctx, &id, v);
+    JS_FreeValue(ctx, v);
+    if (id < 0 || id >= NB_CANVAS_MAX || !g_canvases[id].used) return NULL;
+    return &g_canvases[id];
+}
+/* parse #rgb #rrggbb #rrggbbaa rgb() rgba() + 16 named; else opaque black */
+static void nb_color_parse(const char *s, unsigned char out[4]) {
+    out[0] = out[1] = out[2] = 0; out[3] = 255;
+    if (!s) return;
+    while (*s == ' ') s++;
+    static const struct { const char *n; unsigned char c[3]; } named[] = {
+        {"black",{0,0,0}},{"white",{255,255,255}},{"red",{255,0,0}},
+        {"lime",{0,255,0}},{"blue",{0,0,255}},{"yellow",{255,255,0}},
+        {"cyan",{0,255,255}},{"magenta",{255,0,255}},{"silver",{192,192,192}},
+        {"gray",{128,128,128}},{"grey",{128,128,128}},{"maroon",{128,0,0}},
+        {"green",{0,128,0}},{"navy",{0,0,128}},{"olive",{128,128,0}},
+        {"teal",{0,128,128}},{"purple",{128,0,128}},{"orange",{255,165,0}},
+        {"transparent",{0,0,0}},
+    };
+    if (!strncasecmp(s, "transparent", 11)) { out[3] = 0; return; }
+    for (size_t i = 0; i < sizeof(named) / sizeof(named[0]); i++)
+        if (!strcasecmp(s, named[i].n)) {
+            out[0] = named[i].c[0]; out[1] = named[i].c[1]; out[2] = named[i].c[2];
+            return;
+        }
+    if (s[0] == '#') {
+        unsigned r = 0, g = 0, b = 0, a = 255;
+        size_t L = strlen(s + 1);
+        if (L == 3 || L == 4) {
+            char t[3] = {0};
+            t[0] = t[1] = s[1]; r = (unsigned)strtoul(t, NULL, 16);
+            t[0] = t[1] = s[2]; g = (unsigned)strtoul(t, NULL, 16);
+            t[0] = t[1] = s[3]; b = (unsigned)strtoul(t, NULL, 16);
+            if (L == 4) { t[0] = t[1] = s[4]; a = (unsigned)strtoul(t, NULL, 16); }
+        } else if (L == 6 || L == 8) {
+            char t[3] = {0};
+            memcpy(t, s + 1, 2); r = (unsigned)strtoul(t, NULL, 16);
+            memcpy(t, s + 3, 2); g = (unsigned)strtoul(t, NULL, 16);
+            memcpy(t, s + 5, 2); b = (unsigned)strtoul(t, NULL, 16);
+            if (L == 8) { memcpy(t, s + 7, 2); a = (unsigned)strtoul(t, NULL, 16); }
+        } else return;
+        out[0] = (unsigned char)r; out[1] = (unsigned char)g;
+        out[2] = (unsigned char)b; out[3] = (unsigned char)a;
+        return;
+    }
+    if (!strncasecmp(s, "rgba(", 5) || !strncasecmp(s, "rgb(", 4)) {
+        const char *p = strchr(s, '(');
+        if (!p) return;
+        double v[4] = {0, 0, 0, 255};
+        int got = 0;
+        char *end = NULL;
+        for (int i = 0; i < 4 && p; i++) {
+            double nv = strtod(p + 1, &end);
+            if (end == p + 1) break;
+            v[i] = nv; got++;
+            p = end;
+        }
+        int is_pct = strchr(s, '%') != NULL;
+        for (int i = 0; i < 3; i++) {
+            double c = is_pct ? v[i] * 255.0 / 100.0 : v[i];
+            if (c < 0) c = 0; if (c > 255) c = 255;
+            out[i] = (unsigned char)(c + 0.5);
+        }
+        /* 4th component (rgba only): 0..1 fraction, else clamp. */
+        double al = 255.0;
+        if (got >= 4)
+            al = (v[3] >= 0.0 && v[3] <= 1.0) ? v[3] * 255.0 : v[3];
+        if (al < 0) al = 0; if (al > 255) al = 255;
+        out[3] = (unsigned char)(al + 0.5);
+        return;
+    }
+}
+/* source-over blend of one pixel */
+static void nb_px_over(unsigned char *d, const unsigned char s[4], double galpha) {
+    double sa = (s[3] / 255.0) * galpha;
+    if (sa <= 0.0) return;
+    double da = d[3] / 255.0;
+    double oa = sa + da * (1.0 - sa);
+    for (int i = 0; i < 3; i++)
+        d[i] = (unsigned char)((s[i] * sa + d[i] * da * (1.0 - sa)) / (oa > 0 ? oa : 1.0) + 0.5);
+    d[3] = (unsigned char)(oa * 255.0 + 0.5);
+}
+/* fill axis-mapped rect (x0,y0,x1,y1 already in device space, exclusive hi) */
+static void nb_px_fill_rect(NbCanvas *cv, int x0, int y0, int x1, int y1,
+                            const unsigned char s[4], double galpha) {
+    if (x0 < 0) x0 = 0; if (y0 < 0) y0 = 0;
+    if (x1 > cv->w) x1 = cv->w; if (y1 > cv->h) y1 = cv->h;
+    for (int y = y0; y < y1; y++)
+        for (int x = x0; x < x1; x++)
+            nb_px_over(cv->px + ((size_t)y * cv->w + x) * 4, s, galpha);
+}
+/* fill rect through the canvas transform via per-pixel inverse map */
+static void nb_px_fill_rect_xf(NbCanvas *cv, double x, double y, double w, double h,
+                               const unsigned char s[4], double galpha) {
+    double a = cv->m[0], b = cv->m[1], c = cv->m[2], d = cv->m[3], e = cv->m[4], f = cv->m[5];
+    double det = a * d - b * c;
+    if (det == 0.0) return;
+    double xs[4] = {x, x + w, x, x + w}, ys[4] = {y, y, y + h, y + h};
+    double x0 = 1e18, x1 = -1e18, y0 = 1e18, y1 = -1e18;
+    for (int i = 0; i < 4; i++) {
+        double px = a * xs[i] + c * ys[i] + e, py = b * xs[i] + d * ys[i] + f;
+        if (px < x0) x0 = px; if (px > x1) x1 = px;
+        if (py < y0) y0 = py; if (py > y1) y1 = py;
+    }
+    int ix0 = (int)floor(x0), iy0 = (int)floor(y0);
+    int ix1 = (int)ceil(x1), iy1 = (int)ceil(y1);
+    if (ix0 < 0) ix0 = 0; if (iy0 < 0) iy0 = 0;
+    if (ix1 > cv->w) ix1 = cv->w; if (iy1 > cv->h) iy1 = cv->h;
+    for (int py = iy0; py < iy1; py++)
+        for (int px = ix0; px < ix1; px++) {
+            double u = ((px + 0.5 - e) * d - (py + 0.5 - f) * c) / det;
+            double v = (a * (py + 0.5 - f) - b * (px + 0.5 - e)) / det;
+            if (u >= x && u < x + w && v >= y && v < y + h)
+                nb_px_over(cv->px + ((size_t)py * cv->w + px) * 4, s, galpha);
+        }
+}
+static double nb_ctx_num(JSContext *ctx, JSValueConst o, const char *k, double def) {
+    JSValue v = JS_GetPropertyStr(ctx, o, k);
+    double d = def;
+    if (JS_IsNumber(v)) JS_ToFloat64(ctx, &d, v);
+    JS_FreeValue(ctx, v);
+    return d;
+}
+static void nb_ctx_fill_rgb(JSContext *ctx, JSValueConst o, unsigned char out[4]) {
+    JSValue v = JS_GetPropertyStr(ctx, o, "fillStyle");
+    const char *s = JS_IsString(v) ? JS_ToCString(ctx, v) : NULL;
+    nb_color_parse(s, out);
+    if (s) JS_FreeCString(ctx, s);
+    JS_FreeValue(ctx, v);
+}
+/* multiply current transform by [a b c d e f] (canvas semantics) */
+static void nb_ctx_xf_mul(NbCanvas *cv, double a, double b, double c, double d, double e, double f) {    double m0 = cv->m[0], m1 = cv->m[1], m2 = cv->m[2], m3 = cv->m[3], m4 = cv->m[4], m5 = cv->m[5];
+    cv->m[0] = m0 * a + m2 * b;
+    cv->m[1] = m1 * a + m3 * b;
+    cv->m[2] = m0 * c + m2 * d;
+    cv->m[3] = m1 * c + m3 * d;
+    cv->m[4] = m0 * e + m2 * f + m4;
+    cv->m[5] = m1 * e + m3 * f + m5;
+}
+static double nb_c2d_argd(JSContext *ctx, JSValueConst *argv, int argc, int i, double def) {
+    double d = def;
+    if (i < argc && JS_IsNumber(argv[i])) JS_ToFloat64(ctx, &d, argv[i]);
+    return d;
+}
+/* resolve an ImageData-like {width,height,data} or canvas element to pixels */
+static int nb_c2d_source(JSContext *ctx, JSValueConst v,
+                         int *sw, int *sh, unsigned char **spx, int *owned) {
+    *sw = 0; *sh = 0; *spx = NULL; *owned = 0;
+    if (!JS_IsObject(v)) return 0;
+    JSValue cid = JS_GetPropertyStr(ctx, v, "__nb_ctx");
+    int id = -1;
+    if (JS_IsObject(cid)) {
+        JSValue iv = JS_GetPropertyStr(ctx, cid, "__nb_canvas_id");
+        if (JS_IsNumber(iv)) JS_ToInt32(ctx, &id, iv);
+        JS_FreeValue(ctx, iv);
+    }
+    JS_FreeValue(ctx, cid);
+    if (id >= 0 && id < NB_CANVAS_MAX && g_canvases[id].used) {
+        *sw = g_canvases[id].w; *sh = g_canvases[id].h;
+        *spx = g_canvases[id].px;
+        return 1;
+    }
+    JSValue wv = JS_GetPropertyStr(ctx, v, "width");
+    JSValue hv = JS_GetPropertyStr(ctx, v, "height");
+    JSValue dv = JS_GetPropertyStr(ctx, v, "data");
+    int32_t w = 0, h = 0;
+    if (JS_IsNumber(wv)) JS_ToInt32(ctx, &w, wv);
+    if (JS_IsNumber(hv)) JS_ToInt32(ctx, &h, hv);
+    int ok = 0;
+    if (w > 0 && h > 0 && (size_t)w * h < (size_t)NB_CANVAS_PX_MAX && JS_IsObject(dv)) {
+        JSValue lv = JS_GetPropertyStr(ctx, dv, "length");
+        int32_t len = 0;
+        if (JS_IsNumber(lv)) JS_ToInt32(ctx, &len, lv);
+        JS_FreeValue(ctx, lv);
+        if (len >= 4 * w * h) {
+            unsigned char *buf = malloc((size_t)4 * w * h);
+            if (buf) {
+                ok = 1;
+                for (int32_t i = 0; i < 4 * w * h; i++) {
+                    JSValue e = JS_GetPropertyUint32(ctx, dv, (uint32_t)i);
+                    int32_t ev = 0;
+                    if (JS_IsNumber(e)) JS_ToInt32(ctx, &ev, e);
+                    JS_FreeValue(ctx, e);
+                    buf[i] = (unsigned char)(ev < 0 ? 0 : ev > 255 ? 255 : ev);
+                }
+                *spx = buf; *owned = 1; *sw = w; *sh = h;
+            }
+        }
+    }
+    JS_FreeValue(ctx, wv); JS_FreeValue(ctx, hv); JS_FreeValue(ctx, dv);
+    return ok;
+}
+static JSValue nb_c2d_fillRect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbCanvas *cv = nb_canvas_get(ctx, this_val);
+    if (!cv) return JS_UNDEFINED;
+    double x = nb_c2d_argd(ctx, argv, argc, 0, 0), y = nb_c2d_argd(ctx, argv, argc, 1, 0);
+    double w = nb_c2d_argd(ctx, argv, argc, 2, 0), h = nb_c2d_argd(ctx, argv, argc, 3, 0);
+    if (w < 0) { x += w; w = -w; } if (h < 0) { y += h; h = -h; }
+    if (w <= 0 || h <= 0) return JS_UNDEFINED;
+    unsigned char s[4];
+    nb_ctx_fill_rgb(ctx, this_val, s);
+    nb_px_fill_rect_xf(cv, x, y, w, h, s, nb_ctx_num(ctx, this_val, "globalAlpha", 1));
+    return JS_UNDEFINED;
+}
+static JSValue nb_c2d_strokeRect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbCanvas *cv = nb_canvas_get(ctx, this_val);
+    if (!cv) return JS_UNDEFINED;
+    double x = nb_c2d_argd(ctx, argv, argc, 0, 0), y = nb_c2d_argd(ctx, argv, argc, 1, 0);
+    double w = nb_c2d_argd(ctx, argv, argc, 2, 0), h = nb_c2d_argd(ctx, argv, argc, 3, 0);
+    if (w < 0) { x += w; w = -w; } if (h < 0) { y += h; h = -h; }
+    double lw = nb_ctx_num(ctx, this_val, "lineWidth", 1);
+    if (lw < 1) lw = 1;
+    unsigned char s[4];
+    nb_ctx_fill_rgb(ctx, this_val, s);
+    double ga = nb_ctx_num(ctx, this_val, "globalAlpha", 1);
+    /* stroke uses strokeStyle; fall back to fill color when unset */
+    nb_px_fill_rect_xf(cv, x, y, w, lw, s, ga);
+    nb_px_fill_rect_xf(cv, x, y + h - lw, w, lw, s, ga);
+    nb_px_fill_rect_xf(cv, x, y, lw, h, s, ga);
+    nb_px_fill_rect_xf(cv, x + w - lw, y, lw, h, s, ga);
+    return JS_UNDEFINED;
+}
+static JSValue nb_c2d_clearRect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbCanvas *cv = nb_canvas_get(ctx, this_val);
+    if (!cv) return JS_UNDEFINED;
+    double x = nb_c2d_argd(ctx, argv, argc, 0, 0), y = nb_c2d_argd(ctx, argv, argc, 1, 0);
+    double w = nb_c2d_argd(ctx, argv, argc, 2, 0), h = nb_c2d_argd(ctx, argv, argc, 3, 0);
+    if (w < 0) { x += w; w = -w; } if (h < 0) { y += h; h = -h; }
+    int x0 = (int)x, y0 = (int)y, x1 = (int)(x + w + 0.999), y1 = (int)(y + h + 0.999);
+    if (x0 < 0) x0 = 0; if (y0 < 0) y0 = 0;
+    if (x1 > cv->w) x1 = cv->w; if (y1 > cv->h) y1 = cv->h;
+    for (int yy = y0; yy < y1; yy++)
+        memset(cv->px + ((size_t)yy * cv->w + x0) * 4, 0, (size_t)(x1 - x0) * 4);
+    return JS_UNDEFINED;
+}
+static char nb_c2d_save_fill[8][128];
+static JSValue nb_c2d_save(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    NbCanvas *cv = nb_canvas_get(ctx, this_val);
+    if (!cv || cv->save_depth >= 8) return JS_UNDEFINED;
+    memcpy(cv->save_stack[cv->save_depth], cv->m, sizeof(cv->m));
+    cv->save_stack[cv->save_depth][6] = nb_ctx_num(ctx, this_val, "globalAlpha", 1);
+    JSValue v = JS_GetPropertyStr(ctx, this_val, "fillStyle");
+    const char *s = JS_IsString(v) ? JS_ToCString(ctx, v) : NULL;
+    snprintf(nb_c2d_save_fill[cv->save_depth], sizeof(nb_c2d_save_fill[0]), "%s", s ? s : "");
+    if (s) JS_FreeCString(ctx, s);
+    JS_FreeValue(ctx, v);
+    cv->save_depth++;
+    return JS_UNDEFINED;
+}
+static JSValue nb_c2d_restore(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    NbCanvas *cv = nb_canvas_get(ctx, this_val);
+    if (!cv || cv->save_depth <= 0) return JS_UNDEFINED;
+    cv->save_depth--;
+    memcpy(cv->m, cv->save_stack[cv->save_depth], sizeof(cv->m));
+    JS_SetPropertyStr(ctx, this_val, "globalAlpha",
+                      JS_NewFloat64(ctx, cv->save_stack[cv->save_depth][6]));
+    JS_SetPropertyStr(ctx, this_val, "fillStyle",
+                      JS_NewString(ctx, nb_c2d_save_fill[cv->save_depth]));
+    return JS_UNDEFINED;
+}
+static JSValue nb_c2d_translate(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbCanvas *cv = nb_canvas_get(ctx, this_val);
+    if (cv) nb_ctx_xf_mul(cv, 1, 0, 0, 1, nb_c2d_argd(ctx, argv, argc, 0, 0), nb_c2d_argd(ctx, argv, argc, 1, 0));
+    return JS_UNDEFINED;
+}
+static JSValue nb_c2d_scale(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbCanvas *cv = nb_canvas_get(ctx, this_val);
+    if (cv) nb_ctx_xf_mul(cv, nb_c2d_argd(ctx, argv, argc, 0, 1), 0, 0, nb_c2d_argd(ctx, argv, argc, 1, 1), 0, 0);
+    return JS_UNDEFINED;
+}
+static JSValue nb_c2d_rotate(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbCanvas *cv = nb_canvas_get(ctx, this_val);
+    if (cv) {
+        double a = nb_c2d_argd(ctx, argv, argc, 0, 0);
+        nb_ctx_xf_mul(cv, cos(a), sin(a), -sin(a), cos(a), 0, 0);
+    }
+    return JS_UNDEFINED;
+}
+static JSValue nb_c2d_setTransform(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbCanvas *cv = nb_canvas_get(ctx, this_val);
+    if (!cv) return JS_UNDEFINED;
+    if (argc == 0) { memset(cv->m, 0, sizeof(cv->m)); cv->m[0] = cv->m[3] = 1.0; return JS_UNDEFINED; }
+    cv->m[0] = nb_c2d_argd(ctx, argv, argc, 0, 1); cv->m[1] = nb_c2d_argd(ctx, argv, argc, 1, 0);
+    cv->m[2] = nb_c2d_argd(ctx, argv, argc, 2, 0); cv->m[3] = nb_c2d_argd(ctx, argv, argc, 3, 1);
+    cv->m[4] = nb_c2d_argd(ctx, argv, argc, 4, 0); cv->m[5] = nb_c2d_argd(ctx, argv, argc, 5, 0);
+    return JS_UNDEFINED;
+}
+static JSValue nb_c2d_transform(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbCanvas *cv = nb_canvas_get(ctx, this_val);
+    if (cv) nb_ctx_xf_mul(cv, nb_c2d_argd(ctx, argv, argc, 0, 1), nb_c2d_argd(ctx, argv, argc, 1, 0),
+                          nb_c2d_argd(ctx, argv, argc, 2, 0), nb_c2d_argd(ctx, argv, argc, 3, 1),
+                          nb_c2d_argd(ctx, argv, argc, 4, 0), nb_c2d_argd(ctx, argv, argc, 5, 0));
+    return JS_UNDEFINED;
+}
+static JSValue nb_c2d_resetTransform(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    NbCanvas *cv = nb_canvas_get(ctx, this_val);
+    if (cv) { memset(cv->m, 0, sizeof(cv->m)); cv->m[0] = cv->m[3] = 1.0; }
+    return JS_UNDEFINED;
+}
+static JSValue nb_c2d_putImageData(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbCanvas *cv = nb_canvas_get(ctx, this_val);
+    if (!cv || argc < 3) return JS_UNDEFINED;
+    int sw = 0, sh = 0, owned = 0;
+    unsigned char *spx = NULL;
+    if (!nb_c2d_source(ctx, argv[0], &sw, &sh, &spx, &owned)) return JS_UNDEFINED;
+    int dx = (int)nb_c2d_argd(ctx, argv, argc, 1, 0), dy = (int)nb_c2d_argd(ctx, argv, argc, 2, 0);
+    int sx = 0, sy = 0, dw = sw, dh = sh;
+    if (argc >= 7) {
+        sx = (int)nb_c2d_argd(ctx, argv, argc, 3, 0); sy = (int)nb_c2d_argd(ctx, argv, argc, 4, 0);
+        dw = (int)nb_c2d_argd(ctx, argv, argc, 5, sw); dh = (int)nb_c2d_argd(ctx, argv, argc, 6, sh);
+    }
+    for (int y = 0; y < dh; y++)
+        for (int x = 0; x < dw; x++) {
+            int qx = sx + x, qy = sy + y, tx = dx + x, ty = dy + y;
+            if (qx < 0 || qy < 0 || qx >= sw || qy >= sh) continue;
+            if (tx < 0 || ty < 0 || tx >= cv->w || ty >= cv->h) continue;
+            memcpy(cv->px + ((size_t)ty * cv->w + tx) * 4, spx + ((size_t)qy * sw + qx) * 4, 4);
+        }
+    if (owned) free(spx);
+    return JS_UNDEFINED;
+}
+static JSValue nb_c2d_drawImage(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbCanvas *cv = nb_canvas_get(ctx, this_val);
+    if (!cv || argc < 3) return JS_UNDEFINED;
+    int sw = 0, sh = 0, owned = 0;
+    unsigned char *spx = NULL;
+    if (!nb_c2d_source(ctx, argv[0], &sw, &sh, &spx, &owned)) return JS_UNDEFINED;
+    double sx = 0, sy = 0, sdw = sw, sdh = sh, dx, dy, dw, dh;
+    if (argc >= 9) {
+        sx = nb_c2d_argd(ctx, argv, argc, 1, 0); sy = nb_c2d_argd(ctx, argv, argc, 2, 0);
+        sdw = nb_c2d_argd(ctx, argv, argc, 3, sw); sdh = nb_c2d_argd(ctx, argv, argc, 4, sh);
+        dx = nb_c2d_argd(ctx, argv, argc, 5, 0); dy = nb_c2d_argd(ctx, argv, argc, 6, 0);
+        dw = nb_c2d_argd(ctx, argv, argc, 7, sdw); dh = nb_c2d_argd(ctx, argv, argc, 8, sdh);
+    } else if (argc >= 5) {
+        dx = nb_c2d_argd(ctx, argv, argc, 1, 0); dy = nb_c2d_argd(ctx, argv, argc, 2, 0);
+        dw = nb_c2d_argd(ctx, argv, argc, 3, sdw); dh = nb_c2d_argd(ctx, argv, argc, 4, sdh);
+    } else {
+        dx = nb_c2d_argd(ctx, argv, argc, 1, 0); dy = nb_c2d_argd(ctx, argv, argc, 2, 0);
+        dw = sdw; dh = sdh;
+    }
+    if (dw <= 0 || dh <= 0 || sdw <= 0 || sdh <= 0) { if (owned) free(spx); return JS_UNDEFINED; }
+    double ga = nb_ctx_num(ctx, this_val, "globalAlpha", 1);
+    double a = cv->m[0], b = cv->m[1], c = cv->m[2], d = cv->m[3], e = cv->m[4], f = cv->m[5];
+    double det = a * d - b * c;
+    double xs[4] = {dx, dx + dw, dx, dx + dw}, ys[4] = {dy, dy, dy + dh, dy + dh};
+    double x0 = 1e18, x1 = -1e18, y0 = 1e18, y1 = -1e18;
+    for (int i = 0; i < 4; i++) {
+        double px = a * xs[i] + c * ys[i] + e, py = b * xs[i] + d * ys[i] + f;
+        if (px < x0) x0 = px; if (px > x1) x1 = px;
+        if (py < y0) y0 = py; if (py > y1) y1 = py;
+    }
+    int ix0 = (int)floor(x0), iy0 = (int)floor(y0);
+    int ix1 = (int)ceil(x1), iy1 = (int)ceil(y1);
+    if (ix0 < 0) ix0 = 0; if (iy0 < 0) iy0 = 0;
+    if (ix1 > cv->w) ix1 = cv->w; if (iy1 > cv->h) iy1 = cv->h;
+    if (det != 0.0) {
+        for (int py = iy0; py < iy1; py++)
+            for (int px = ix0; px < ix1; px++) {
+                double u = ((px + 0.5 - e) * d - (py + 0.5 - f) * c) / det;
+                double v = (a * (py + 0.5 - f) - b * (px + 0.5 - e)) / det;
+                double fx = sx + (u - dx) * sdw / dw, fy = sy + (v - dy) * sdh / dh;
+                int qx = (int)floor(fx), qy = (int)floor(fy);
+                if (qx < 0 || qy < 0 || qx >= sw || qy >= sh) continue;
+                if (fx < sx || fy < sy || fx >= sx + sdw || fy >= sy + sdh) continue;
+                nb_px_over(cv->px + ((size_t)py * cv->w + px) * 4,
+                           spx + ((size_t)qy * sw + qx) * 4, ga);
+            }
+    }
+    if (owned) free(spx);
+    return JS_UNDEFINED;
+}
+/* getImageData returns REAL canvas pixels (was zeros). Out-of-canvas
+ * region reads transparent black; zero-size throws per spec. */
+static JSValue nb_c2d_getImageData_real(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    int sx = js_arg_index(ctx, argv, argc, 0);
+    int sy = js_arg_index(ctx, argv, argc, 1);
+    int w = js_arg_index(ctx, argv, argc, 2);
+    int h = js_arg_index(ctx, argv, argc, 3);
+    if (sx < 0) sx = 0; if (sy < 0) sy = 0;
+    if (w < 0) w = 0; if (h < 0) h = 0;
+    NbCanvas *cv = nb_canvas_get(ctx, this_val);
+    int cw = cv ? cv->w : 0, ch = cv ? cv->h : 0;
+    if (w == 0 || h == 0) {
+        JSValue ex = JS_NewError(ctx);
+        JS_SetPropertyStr(ctx, ex, "name", JS_NewString(ctx, "IndexSizeError"));
+        JS_Throw(ctx, ex);
+        return JS_EXCEPTION;
+    }
+    JSValue img = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, img, "width", JS_NewInt32(ctx, w));
+    JS_SetPropertyStr(ctx, img, "height", JS_NewInt32(ctx, h));
+    JSValue len = JS_NewInt32(ctx, 4 * w * h);
+    JSValue g = JS_GetGlobalObject(ctx);
+    JSValue ctor = JS_GetPropertyStr(ctx, g, "Uint8ClampedArray");
+    JS_FreeValue(ctx, g);
+    JSValue data = (JS_IsObject(ctor) && !JS_IsNull(ctor))
+                       ? JS_CallConstructor(ctx, ctor, 1, &len)
+                       : JS_NewArray(ctx);
+    JS_FreeValue(ctx, ctor);
+    if (JS_IsException(data)) { JS_FreeValue(ctx, JS_GetException(ctx)); data = JS_NewArray(ctx); }
+    for (int y = 0; y < h; y++)
+        for (int x = 0; x < w; x++) {
+            unsigned char px[4] = {0, 0, 0, 0};
+            if (cv && sx + x < cw && sy + y < ch)
+                memcpy(px, cv->px + ((size_t)(sy + y) * cw + sx + x) * 4, 4);
+            for (int k = 0; k < 4; k++) {
+                JSValue ev = JS_NewInt32(ctx, px[k]);
+                JS_SetPropertyUint32(ctx, data, (uint32_t)(4 * (y * w + x) + k), ev);
+                JS_FreeValue(ctx, ev);
+            }
+        }
+    JS_SetPropertyStr(ctx, img, "data", data);
+    JS_FreeValue(ctx, len);
+    return img;
+}
+static JSValue nb_c2d_createImageData(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     int w = js_arg_index(ctx, argv, argc, 0);
     int h = js_arg_index(ctx, argv, argc, 1);
     if (w < 0) w = 0;
@@ -3349,24 +3800,71 @@ static JSValue nb_el_getContext(JSContext *ctx, JSValueConst this_val, int argc,
     };
     for (size_t i = 0; i < sizeof(numprops) / sizeof(numprops[0]); i++)
         JS_SetPropertyStr(ctx, c, numprops[i], JS_NewInt32(ctx, 0));
+    /* spec defaults (a zeroed globalAlpha would silently disable all
+     * drawing - caught live: fillRect wrote nothing until this) */
+    JS_SetPropertyStr(ctx, c, "globalAlpha", JS_NewInt32(ctx, 1));
+    JS_SetPropertyStr(ctx, c, "lineWidth", JS_NewInt32(ctx, 1));
+    JS_SetPropertyStr(ctx, c, "fillStyle", JS_NewString(ctx, "#000000"));
+    JS_SetPropertyStr(ctx, c, "strokeStyle", JS_NewString(ctx, "#000000"));
+    JS_SetPropertyStr(ctx, c, "font", JS_NewString(ctx, "10px sans-serif"));
+    JS_SetPropertyStr(ctx, c, "textAlign", JS_NewString(ctx, "start"));
+    JS_SetPropertyStr(ctx, c, "textBaseline", JS_NewString(ctx, "alphabetic"));
     const char *noops[] = {
-        "fillRect", "clearRect", "strokeRect", "save", "restore", "translate",
-        "rotate", "scale", "setTransform", "transform", "resetTransform",
-        "drawImage", "putImageData", "beginPath", "closePath", "moveTo",
+        "beginPath", "closePath", "moveTo",
         "lineTo", "rect", "arc", "arcTo", "bezierCurveTo", "quadraticCurveTo",
         "fill", "stroke", "clip", "fillText", "strokeText", "setLineDash",
         "reset", "isPointInPath", "setTransformMatrix", "drawFocusIfNeeded"
     };
     for (size_t i = 0; i < sizeof(noops) / sizeof(noops[0]); i++)
         JS_SetPropertyStr(ctx, c, noops[i], JS_NewCFunction(ctx, nb_c2d_noop, noops[i], 0));
-    JS_SetPropertyStr(ctx, c, "getImageData", JS_NewCFunction(ctx, nb_c2d_getImageData, "getImageData", 4));
-    JS_SetPropertyStr(ctx, c, "createImageData", JS_NewCFunction(ctx, nb_c2d_getImageData, "createImageData", 2));
+    JS_SetPropertyStr(ctx, c, "fillRect", JS_NewCFunction(ctx, nb_c2d_fillRect, "fillRect", 4));
+    JS_SetPropertyStr(ctx, c, "strokeRect", JS_NewCFunction(ctx, nb_c2d_strokeRect, "strokeRect", 4));
+    JS_SetPropertyStr(ctx, c, "clearRect", JS_NewCFunction(ctx, nb_c2d_clearRect, "clearRect", 4));
+    JS_SetPropertyStr(ctx, c, "save", JS_NewCFunction(ctx, nb_c2d_save, "save", 0));
+    JS_SetPropertyStr(ctx, c, "restore", JS_NewCFunction(ctx, nb_c2d_restore, "restore", 0));
+    JS_SetPropertyStr(ctx, c, "translate", JS_NewCFunction(ctx, nb_c2d_translate, "translate", 2));
+    JS_SetPropertyStr(ctx, c, "scale", JS_NewCFunction(ctx, nb_c2d_scale, "scale", 2));
+    JS_SetPropertyStr(ctx, c, "rotate", JS_NewCFunction(ctx, nb_c2d_rotate, "rotate", 1));
+    JS_SetPropertyStr(ctx, c, "setTransform", JS_NewCFunction(ctx, nb_c2d_setTransform, "setTransform", 6));
+    JS_SetPropertyStr(ctx, c, "transform", JS_NewCFunction(ctx, nb_c2d_transform, "transform", 6));
+    JS_SetPropertyStr(ctx, c, "resetTransform", JS_NewCFunction(ctx, nb_c2d_resetTransform, "resetTransform", 0));
+    JS_SetPropertyStr(ctx, c, "drawImage", JS_NewCFunction(ctx, nb_c2d_drawImage, "drawImage", 9));
+    JS_SetPropertyStr(ctx, c, "putImageData", JS_NewCFunction(ctx, nb_c2d_putImageData, "putImageData", 7));
+    JS_SetPropertyStr(ctx, c, "getImageData", JS_NewCFunction(ctx, nb_c2d_getImageData_real, "getImageData", 4));
+    JS_SetPropertyStr(ctx, c, "createImageData", JS_NewCFunction(ctx, nb_c2d_createImageData, "createImageData", 2));
     JS_SetPropertyStr(ctx, c, "getLineDash", JS_NewCFunction(ctx, nb_c2d_lineDash, "getLineDash", 0));
     JS_SetPropertyStr(ctx, c, "measureText", JS_NewCFunction(ctx, nb_c2d_measureText, "measureText", 1));
     JS_SetPropertyStr(ctx, c, "createLinearGradient", JS_NewCFunction(ctx, nb_c2d_gradient, "createLinearGradient", 4));
     JS_SetPropertyStr(ctx, c, "createRadialGradient", JS_NewCFunction(ctx, nb_c2d_gradient, "createRadialGradient", 6));
     JS_SetPropertyStr(ctx, c, "createPattern", JS_NewCFunction(ctx, nb_c2d_createPattern, "createPattern", 2));
     JS_SetPropertyStr(ctx, this_val, "__nb_ctx", JS_DupValue(ctx, c));
+    /* Backing raster for this canvas element (one live context per
+     * element - getContext caches __nb_ctx). Sized from the element's
+     * width/height props, spec default 300x150. */
+    {
+        int slot = -1;
+        for (int i = 0; i < NB_CANVAS_MAX; i++)
+            if (!g_canvases[i].used) { slot = i; break; }
+        if (slot >= 0) {
+            int w = (int)nb_ctx_num(ctx, this_val, "width", 300);
+            int h = (int)nb_ctx_num(ctx, this_val, "height", 150);
+            if (w < 1) w = 1; if (h < 1) h = 1;
+            if ((size_t)w * h > (size_t)NB_CANVAS_PX_MAX) { w = 2048; h = 2048; }
+            unsigned char *px = calloc((size_t)w * h, 4);
+            if (px) {
+                g_canvases[slot].used = 1;
+                g_canvases[slot].w = w; g_canvases[slot].h = h;
+                g_canvases[slot].px = px;
+                g_canvases[slot].m[0] = 1; g_canvases[slot].m[1] = 0;
+                g_canvases[slot].m[2] = 0; g_canvases[slot].m[3] = 1;
+                g_canvases[slot].m[4] = 0; g_canvases[slot].m[5] = 0;
+                g_canvases[slot].alpha = 1;
+                g_canvases[slot].save_depth = 0;
+                g_canvases[slot].fillstyle[0] = 0;
+                JS_SetPropertyStr(ctx, c, "__nb_canvas_id", JS_NewInt32(ctx, slot));
+            }
+        }
+    }
     return c;
 }
 static JSValue nb_canvas_toDataURL(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
@@ -5503,6 +6001,7 @@ static void dom_teardown(void) {
  * the success path so an eval:<js> snippet can run against the page; this
  * helper is the disciplined cleanup for the next LOAD, errors and QUIT. */
 static void live_teardown(void) {
+    nb_canvas_reset();   /* page-local raster buffers die with the page */
     if (g_live_ctx) {
         free_held_callbacks(g_live_ctx);   /* release refs before the heap dies */
         JS_FreeContext(g_live_ctx);
