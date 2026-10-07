@@ -1,0 +1,59 @@
+# mr_transfer_desk.+x map access in play modes on a SCRATCH house (replaces events-hq/ops/test_transfer_map_access.sh). Design: GAME-SETUP-PDL-DESIGN.md
+RESULTS | ../results/transfer_map_access.txt
+CASE    | transfer-map-access
+SCRATCH |
+COPY    | &.widgits/events-hq/ops/+x/mr_transfer_desk.+x | bin/mr_transfer_desk
+WRITE   | 0.user-pal-test/00.login-signup/current_login.txt | current_user_uuid | u1\n
+WRITE   | xyzfs/users/u1/home/livedesk/sessions/s1/session.pdl | STATE | name | g\nSTATE | active_desk | a\n
+WRITE   | xyzfs/users/u1/home/livedesk/sessions/s1/desks/a.pdl |
+WRITE   | xyzfs/users/u1/home/livedesk/sessions/s1/desks/town.pdl |
+WRITE   | xyzfs/users/u1/home/livedesk/sessions/s1/desks/cave.pdl |
+WRITE   | xyzfs/users/u1/home/livedesk/sessions/s1/desks/secret.pdl |
+MKDIR   | #.desktop
+
+# 1 legacy: play ON, no game.pdl: allowed (existing houses unchanged)
+WRITE       | #.desktop/khtpm_play_mode.state.txt | mode=on\n
+RUN | $T/bin/mr_transfer_desk | $T | s1 | cave
+EXPECT_EXIT | 0 | legacy-no-game-pdl-rc0
+EXPECT_HAS  | xyzfs/users/u1/home/livedesk/sessions/s1/session.pdl | cave | legacy-no-game-pdl-play-allowed
+
+# 2 game.pdl with MAP rows, play ON: listed allowed, unlisted refused before anything closes
+WRITE       | xyzfs/users/u1/home/livedesk/sessions/s1/session.pdl | STATE | active_desk | a\n
+WRITE       | xyzfs/users/u1/home/livedesk/sessions/s1/game.pdl | MAP | town | available | 1\nMAP | a | available | 1\n
+RUN | $T/bin/mr_transfer_desk | $T | s1 | secret
+EXPECT_EXIT | 3 | play-unlisted-refused-rc3
+EXPECT_OUT  | refused: map 'secret' is not available | play-unlisted-reason-line
+EXPECT_HAS  | xyzfs/users/u1/home/livedesk/sessions/s1/session.pdl | active_desk | a | refused-leaves-player-on-a
+EXPECT_LACKS| xyzfs/users/u1/home/livedesk/sessions/s1/session.pdl | secret | refused-did-not-switch
+EXPECT_HAS  | #.desktop/game_access_ledger.txt | |refused-map|play|secret| | refusal-ledgered
+RUN | $T/bin/mr_transfer_desk | $T | s1 | town
+EXPECT_EXIT | 0 | play-listed-rc0
+EXPECT_HAS  | xyzfs/users/u1/home/livedesk/sessions/s1/session.pdl | town | play-listed-switched
+
+# 3 play-test follows the same rule
+WRITE       | xyzfs/users/u1/home/livedesk/sessions/s1/session.pdl | STATE | active_desk | a\n
+WRITE       | #.desktop/khtpm_play_mode.state.txt | mode=on\nplaytest=1\n
+RUN | $T/bin/mr_transfer_desk | $T | s1 | secret
+EXPECT_EXIT | 3 | playtest-unlisted-refused
+EXPECT_OUT  | not available in playtest | playtest-reason-names-mode
+
+# 4 build mode ignores the list; a missing mode file is build
+WRITE       | #.desktop/khtpm_play_mode.state.txt | mode=off\n
+RUN | $T/bin/mr_transfer_desk | $T | s1 | secret
+EXPECT_EXIT | 0 | build-mode-unrestricted-rc0
+EXPECT_HAS  | xyzfs/users/u1/home/livedesk/sessions/s1/session.pdl | secret | build-mode-switched
+WRITE       | xyzfs/users/u1/home/livedesk/sessions/s1/session.pdl | STATE | active_desk | a\n
+WRITE       | #.desktop/khtpm_play_mode.state.txt | mode=on\n
+RUN         | rm | -f | $T/#.desktop/khtpm_play_mode.state.txt
+EXPECT_EXIT | 0 | rm-exit-0
+EXPECT_NOFILE | #.desktop/khtpm_play_mode.state.txt | mode-file-really-gone
+RUN | $T/bin/mr_transfer_desk | $T | s1 | cave
+EXPECT_EXIT | 0 | no-mode-file-is-build
+
+# 5 game.pdl without MAP rows: unrestricted in play
+WRITE       | xyzfs/users/u1/home/livedesk/sessions/s1/session.pdl | STATE | active_desk | a\n
+WRITE       | #.desktop/khtpm_play_mode.state.txt | mode=on\n
+WRITE       | xyzfs/users/u1/home/livedesk/sessions/s1/game.pdl | GAME | title | t\n
+RUN | $T/bin/mr_transfer_desk | $T | s1 | cave
+EXPECT_EXIT | 0 | game-pdl-without-map-rows-unrestricted
+CLEAN       |
