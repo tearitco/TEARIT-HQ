@@ -20,6 +20,7 @@ METHOD       | Remove participant   | sh -c 'exec "$1/&.widgits/digipet/ops/+x/e
 METHOD       | Reset                | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger reset'
 METHOD       | Start game           | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger begin'
 METHOD       | Stop game            | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger stop'
+METHOD       | Next day             | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger nextday'
 METHOD       | Slot next            | sh -c 'exec "$0/ops/+x/eden_op.+x" "$0" slot next'
 METHOD       | Slot prev            | sh -c 'exec "$0/ops/+x/eden_op.+x" "$0" slot prev'
 METHOD       | Slot +10             | sh -c 'exec "$0/ops/+x/eden_op.+x" "$0" slot +10'

@@ -19,3 +19,8 @@ WIRING | slot_file       | ../../slot.txt
 # tomom talk (scratch copy only; unset = the phrase fallback). tomom_bin = the tomom-hq chatbot_seed7 binary built on a scratch copy, tomom_dir = that copy's folder (cwd of the Ask).
 # WIRING | tomom_bin | ../../tomom/chatbot_seed7
 # WIRING | tomom_dir | ../../tomom
+# --- clock daemon / Next day (all optional; unset = off, the harness and the v0/v1 behaviour are unchanged). The installer writes them: daemon=1 makes Start game/Resume start `lc.+x <house> daemon` and Stop game/Pause stop it (SIGTERM to the pid in daemon_pid only); prisc / event_runner are what the clock's event runner needs.
+# WIRING | daemon       | 1
+# WIRING | daemon_pid   | ../../eden_daemon.pid
+# WIRING | prisc        | ../../prisc
+# WIRING | event_runner | ../../&.widgits/digipet/ops/+x/event_page_op.+x

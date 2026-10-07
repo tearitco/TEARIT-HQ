@@ -8,7 +8,7 @@
 # Mirrors the khtpm strip build style (build_khtpm_strip.sh): cd to ops,
 # mkdir +x, CC=gcc CFLAGS="-std=c11 -Wall -O2", Xft via pkg-config.
 set -e
-cd "$(dirname "$0")"
+D="$(cd "$(dirname "$0")" && pwd)"; cd "$D"
 mkdir -p +x
 CC=${CC:-gcc}
 CFLAGS="-std=c11 -Wall -O2"
@@ -17,7 +17,7 @@ CFLAGS="-std=c11 -Wall -O2"
 # RGB window styled by the shared CSS parser (house standard, NOT GL —
 # see lc_reminder_popup.c's header). Compile the canonical parser in
 # place via -I; no local copy in this dir.
-SHARED="$(cd "$(dirname "$0")/../../_shared-lib" && pwd)"
+SHARED="$(cd "$D/../../_shared-lib" && pwd)"
 
 echo "-- lc_clock (daemon + control plane, headless) -> +x/lc_clock.+x"
 $CC $CFLAGS -o +x/lc_clock.+x lc_clock.c

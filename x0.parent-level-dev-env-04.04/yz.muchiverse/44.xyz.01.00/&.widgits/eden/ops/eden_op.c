@@ -27,11 +27,14 @@
  *                         ED<n> identities, every spawn a SPAWN row of manifest.txt; start the clock. Twice = no duplicates (a name that is live in the manifest is skipped).
  *   stop                  "Stop game": pause the clock, then despawn ONLY the live entities of manifest.txt (DESPAWN rows; participants get their grants revoked and their items
  *                         written off first so the ledger balances); a folder that is not in the manifest is never touched. A later begin spawns fresh ones.
+ *   daemon-start | daemon-stop | daemon-status   the lc_clock daemon (`<G>/lc.+x <G> daemon`, fork+setsid+exec, env from wiring prisc / event_runner), pid in wiring daemon_pid (default ../../eden_daemon.pid),
+ *                         DAEMON rows in the control ledger; start twice = one process; stop = SIGTERM to the recorded pid only. `WIRING | daemon | 1` makes Start game / Resume start it and Stop game / Pause stop it.
+ *   nextday               "Next day": `lc_clock cmd g1 advance 1d` + `step 0` = exactly one Day Tick (with a daemon running: only the advance, the daemon fires it)
  *   days <n>              n x daytick (the harness's 30 days; same code the clock event runs)
  *   total <item>          sum of an item over the live participants;   count   the live manifest entities by kind
- *   save <n> | resave <n> | load <n>   n = 1..100; slots.pdl index (outside the tree, append-only SLOT rows, revision per resave); save refuses a used slot, resave adds a revision
+ *   save <n> | resave <n> | load <n>   n = 1..max_slots (tunables.pdl, default 10); slots.pdl index (outside the tree, append-only SLOT rows, revision per resave); save refuses a used slot, resave adds a revision
  *   slot [n|next|prev|+10|-10]  the slot.txt cursor;  save-slot | resave-slot | load-slot   act on the cursor (for menus that cannot take an argument)
- *   slots                 latest index row per slot;   gen-slots <toolbar|methods>   print the generated 200-row slot menu (toolbar_slots.pdl / slots_methods.pdl)
+ *   slots                 latest index row per slot;   gen-slots <toolbar|methods>   print the generated slot menu (2 x max_slots rows) (toolbar_slots.pdl / slots_methods.pdl)
  *   acts added in v1: feed (a chicken, grain), dig (spade, finds.pdl, seeded), repair (the house, clay); trade also sells an item for coin (items.pdl value=);
  *   talk asks the tomom chatbot on a scratch copy (wiring tomom_bin / tomom_dir) and falls back to phrases.pdl; the path used is logged (path=tomom|phrase).
  * Randomness: splitmix-style integer hash of (seed, day, participant ordinal, salt) - no clock, no rand(), so a restored game rolls the same next dice.
@@ -398,10 +401,67 @@ static int run_argv(char **argv) {
     if (pid == 0) { int dn = open("/dev/null", O_RDWR); if (dn >= 0) { dup2(dn, 0); dup2(dn, 1); dup2(dn, 2); } execv(argv[0], argv); _exit(127); }
     int st; waitpid(pid, &st, 0); return WIFEXITED(st) ? WEXITSTATUS(st) : 128;
 }
+/* Env the clock's event runner needs (wiring keys prisc / event_runner; unset = nothing is set, the caller's env, e.g. the harness's, is left alone; an already-set variable is never overwritten). */
+static void lc_env(void) {
+    if (wiring("event_runner", "")[0]) { setenv("LC_CLOCK_NO_POPUP", "1", 0); setenv("LC_CLOCK_EVENT_RUNNER", cp(wiring("event_runner", "")), 0); setenv("EVENT_PAGE_TRIGGER", "parallel", 0); }
+    if (wiring("prisc", "")[0]) setenv("EVENT_PAGE_PRISC", cp(wiring("prisc", "")), 0);
+}
 static int lc(const char *a, const char *b, const char *c, const char *d, const char *e, const char *f2) {
+    lc_env();
     const char *bin = cp(wiring("lc_clock", "")), *house = cp(wiring("house", "../..")); if (!wiring("lc_clock", "")[0]) return 127;
     char *av[12]; int n = 0; av[n++] = (char *)bin; av[n++] = (char *)house; const char *x[] = { a, b, c, d, e, f2 };
     for (int i = 0; i < 6; i++) if (x[i]) av[n++] = (char *)x[i]; av[n] = NULL; return run_argv(av);
+}
+
+/* ---------- the clock daemon (wiring daemon_pid; `WIRING | daemon | 1` makes Start game / Resume start it and Stop game / Pause stop it) ----------
+ * Started with fork + setsid + execv (no shell, no system()), pid in the pid file, ledger rows DAEMON|... in the control ledger (no wall time). Stopped ONLY by SIGTERM to the recorded
+ * pid, and only if /proc/<pid>/cmdline still names the lc binary (a recycled pid is never signalled); never a pkill by pattern. */
+static char *dpid_path(void) { return cp(wiring("daemon_pid", "../../eden_daemon.pid")); }
+static long dpid_read(void) { FILE *f = fopen(dpid_path(), "r"); long v = 0; if (f) { if (fscanf(f, "%ld", &v) != 1) v = 0; fclose(f); } return v; }
+/* the daemon is exec'd by its normalised absolute path so argv0 (and ps) read cleanly and /proc/<pid>/cmdline can be matched */
+static void lc_bin(char *out) { char *b = cp(wiring("lc_clock", "")); if (!realpath(b, out)) snprintf(out, P, "%s", b); }
+static int dpid_is_lc(long pid) {
+    if (pid <= 1 || kill((pid_t)pid, 0) != 0) return 0;
+    char pp[64], buf[4096]; snprintf(pp, sizeof pp, "/proc/%ld/cmdline", pid); FILE *f = fopen(pp, "r"); if (!f) return 0;
+    size_t n = fread(buf, 1, sizeof buf - 1, f); fclose(f); buf[n] = 0;                      /* argv0 is the first NUL-terminated string */
+    char want[P]; lc_bin(want); return n > 0 && !strcmp(buf, want);
+}
+static int v_daemon_start(void) {
+    if (!wiring("lc_clock", "")[0]) { err("daemon-start: no lc_clock wiring"); return 1; }
+    long old = dpid_read();
+    if (old && dpid_is_lc(old)) { printf("daemon already running pid=%ld\n", old); control("DAEMON|start-refused|pid=%ld|already-running", old); return 0; }
+    if (old > 1 && kill((pid_t)old, 0) == 0) { err("daemon-start refused: %s names pid %ld, a live process that is not %s", dpid_path(), old, cp(wiring("lc_clock", ""))); return 1; }
+    if (!kv_get(cp("install.txt"), "clock_installed", 0)) { err("daemon-start refused: run Setup first (no clock installed)"); return 1; }
+    lc_env();
+    char bin[P], house[P]; lc_bin(bin); if (!realpath(cp(wiring("house", "../..")), house)) snprintf(house, sizeof house, "%s", cp(wiring("house", "../..")));
+    pid_t pid = fork(); if (pid < 0) { err("daemon-start: fork failed"); return 1; }
+    if (pid == 0) { setsid(); int dn = open("/dev/null", O_RDWR); if (dn >= 0) { dup2(dn, 0); dup2(dn, 1); dup2(dn, 2); }
+        char *av[4] = { bin, house, "daemon", NULL }; execv(bin, av); _exit(127); }
+    FILE *f = fopen(dpid_path(), "w"); if (f) { fprintf(f, "%ld\n", (long)pid); fclose(f); }
+    for (int i = 0; i < 100; i++) { if (dpid_is_lc(pid)) break; usleep(10000); }            /* wait for the exec to land (cmdline = lc path) */
+    if (!dpid_is_lc(pid)) { err("daemon-start: %s did not stay up", bin); remove(dpid_path()); return 1; }
+    control("DAEMON|start|pid=%ld", (long)pid); printf("daemon started pid=%ld\n", (long)pid); return 0;
+}
+static int v_daemon_stop(void) {
+    long pid = dpid_read();
+    if (!pid) { printf("daemon not running\n"); return 0; }
+    if (dpid_is_lc(pid)) { kill((pid_t)pid, SIGTERM); int i; for (i = 0; i < 300 && kill((pid_t)pid, 0) == 0; i++) usleep(10000);
+        if (kill((pid_t)pid, 0) == 0) { err("daemon-stop: pid %ld did not exit after SIGTERM", pid); return 1; } control("DAEMON|stop|pid=%ld", pid); }
+    else if (pid > 1 && kill((pid_t)pid, 0) == 0) { err("daemon-stop: pid %ld is a live process that is not the clock daemon, NOT signalled", pid); return 1; }
+    else control("DAEMON|stop|pid=%ld|stale-pid-file", pid);
+    remove(dpid_path()); printf("daemon stopped\n"); return 0;
+}
+static int v_daemon_status(void) { long pid = dpid_read(); if (pid && dpid_is_lc(pid)) { printf("daemon running pid=%ld\n", pid); return 0; } printf("daemon stopped\n"); return 1; }
+static int daemon_wanted(void) { return atoi(wiring("daemon", "0")) == 1; }
+/* Next day: exactly one game day, deterministic. With no daemon: `cmd advance 1d` then `step 0` (one pass fires the Day Tick once). With a daemon running the daemon owns the clock
+ * (`step` must not run beside it), so only the advance goes into the mailbox and the daemon fires the tick on its next pass. */
+static int v_nextday(void) {
+    if (!kv_get(VARS(), "setup_done", 0) || !kv_get(cp("install.txt"), "clock_installed", 0)) { err("nextday refused: run Setup / Start game first"); return 1; }
+    const char *clk = wiring("clock", "g1"); long d0 = cur_day(); int rc = lc("cmd", clk, "advance", "1d", NULL, NULL);
+    long dp = dpid_read(); int queued = dp && dpid_is_lc(dp);
+    if (!queued && !rc) rc = lc("step", "0", NULL, NULL, NULL, NULL);
+    control("NEXTDAY|day_before=%ld|rc=%d|%s", d0, rc, queued ? "queued-to-daemon" : "stepped"); printf("nextday rc=%d %s\n", rc, queued ? "queued" : "stepped");
+    return rc ? 1 : 0;
 }
 
 /* ---------- verbs ---------- */
@@ -440,7 +500,8 @@ static int v_ctl(const char *what) {
     if (!strcmp(what, "start")) { kv_set(VARS(), "running", 1); lc("cmd", clk, "rate", wiring("start_rate", "x86400"), NULL, NULL); rc = lc("cmd", clk, "resume", NULL, NULL, NULL); }
     else if (!strcmp(what, "pause")) { kv_set(VARS(), "running", 0); rc = lc("cmd", clk, "pause", NULL, NULL, NULL); }
     else { kv_set(VARS(), "running", 1); rc = lc("cmd", clk, "resume", NULL, NULL, NULL); }
-    control("%s|day=%ld|rc=%d", what, cur_day(), rc); printf("%s rc=%d\n", what, rc); return 0;
+    control("%s|day=%ld|rc=%d", what, cur_day(), rc);
+    if (daemon_wanted()) { if (!strcmp(what, "pause")) v_daemon_stop(); else if (strcmp(what, "start")) v_daemon_start(); } printf("%s rc=%d\n", what, rc); return 0;
 }
 static int v_add(const char *name) {
     if (!kv_get(VARS(), "setup_done", 0)) { err("add refused: run Setup first"); return 1; }
@@ -481,13 +542,14 @@ static int v_begin(void) {
     if (ch) hist("BEGIN|%ld|changes=%d", cur_day(), ch);
     control("BEGIN|day=%ld|changes=%d", cur_day(), ch);
     printf("begin changes=%d\n", ch);
-    return v_ctl("start");
+    rc = v_ctl("start"); if (!rc && daemon_wanted()) rc = v_daemon_start(); return rc;
 }
 static int rm_cb(const char *p, const struct stat *sb, int tf, struct FTW *fw) { (void)sb; (void)tf; (void)fw; return remove(p); }
 static int safe_under(const char *path, const char *root) { char rp[P], rr[P]; if (!realpath(path, rp) || !realpath(root, rr)) return 0; size_t L = strlen(rr); return !strncmp(rp, rr, L) && rp[L] == '/'; }
 static int v_stop(void) {
     const char *clk = wiring("clock", "g1"); int gone = 0, skipped = 0; ents_load(); parts_load();
     kv_set(VARS(), "running", 0);
+    if (daemon_wanted()) v_daemon_stop();
     if (wiring("lc_clock", "")[0] && kv_get(cp("install.txt"), "clock_installed", 0)) lc("cmd", clk, "pause", NULL, NULL, NULL);
     Ent list[96]; int n = nENTS; memcpy(list, ENTS, sizeof(Ent) * (size_t)n);
     for (int i = n - 1; i >= 0; i--) { Ent *e = &list[i];
@@ -594,14 +656,14 @@ static int snap_args(char **av, int *n, int load, const char *slot, char *store,
 /* slots: n = 1..max_slots. The index slots.pdl lives OUTSIDE the game tree (a Load must not rewind it), append-only: SLOT | n | id=<checkpoint> | rev=<k> | day=<d> | label=Day <d>.
  * The newest row of a slot wins. `save` uses id slot<n> (game_snapshot_op refuses an id that exists, so a used slot is refused); `resave` writes revision k+1 as slot<n>_r<k+1>, keeping the old one. */
 static char *slots_path(void) { return cp(wiring("slots_index", "../../slots.pdl")); }
-static int slot_ok(const char *num) { if (!num || !num[0]) return 0; for (const char *c = num; *c; c++) if (*c < '0' || *c > '9') return 0; long v = atol(num); return v >= 1 && v <= tun("max_slots", 100) && strlen(num) <= 3; }
+static int slot_ok(const char *num) { if (!num || !num[0]) return 0; for (const char *c = num; *c; c++) if (*c < '0' || *c > '9') return 0; long v = atol(num); return v >= 1 && v <= tun("max_slots", 10) && strlen(num) <= 3; }
 static int slot_last(long n, char *id, size_t idn, long *rev, long *day) {
     static Row R[1200]; int c = rows_load(slots_path(), R, 1200), found = 0;
     for (int i = 0; i < c; i++) if (!strcmp(R[i].f[0], "SLOT") && R[i].n >= 3 && atol(R[i].f[1]) == n) { found = 1; snprintf(id, idn, "%s", rkv(&R[i], "id", "")); *rev = rkl(&R[i], "rev", 1); *day = rkl(&R[i], "day", 0); }
     return found; }
 static int v_snap(int load, const char *num, int resave) {
     if (!wiring("snapshot", "")[0]) { err("no snapshot wiring"); return 1; }
-    if (!slot_ok(num)) { err("%s refused: slot must be a number 1..%ld (got '%s')", load ? "load" : "save", tun("max_slots", 100), num ? num : ""); return 1; }
+    if (!slot_ok(num)) { err("%s refused: slot must be a number 1..%ld (got '%s')", load ? "load" : "save", tun("max_slots", 10), num ? num : ""); return 1; }
     long n = atol(num), rev = 0, sday = 0; char last[64] = "", slot[64], store[P], tree[P], gso[P], dest[P], c0[P], c1[P], c2[P]; char *clk[3] = { c0, c1, c2 }; char *av[24]; int k;
     int have = slot_last(n, last, sizeof last, &rev, &sday);
     if (load) { if (have && last[0]) snprintf(slot, sizeof slot, "%s", last); else snprintf(slot, sizeof slot, "slot%ld", n); }
@@ -615,31 +677,31 @@ static int v_snap(int load, const char *num, int resave) {
     printf("%s %s ok\n", load ? "load" : "save", slot); return 0;
 }
 static int v_slots(void) {
-    static Row R[1200]; int c = rows_load(slots_path(), R, 1200); long max = tun("max_slots", 100);
+    static Row R[1200]; int c = rows_load(slots_path(), R, 1200); long max = tun("max_slots", 10);
     for (long n = 1; n <= max; n++) { int at = -1; for (int i = 0; i < c; i++) if (!strcmp(R[i].f[0], "SLOT") && R[i].n >= 3 && atol(R[i].f[1]) == n) at = i;
         if (at >= 0) printf("slot %ld | %s | %s | %s\n", n, rkv(&R[at], "id", ""), rkv(&R[at], "day", ""), rkv(&R[at], "label", "")); }
     return 0; }
 /* slot.txt cursor: the menu rows that cannot take an argument act on it */
 static char *slot_file(void) { return cp(wiring("slot_file", "../../slot.txt")); }
-static long slot_cur(void) { char b[32]; if (!txt_get(slot_file(), b, sizeof b)) return 1; long v = atol(b); return (v >= 1 && v <= tun("max_slots", 100)) ? v : 1; }
+static long slot_cur(void) { char b[32]; if (!txt_get(slot_file(), b, sizeof b)) return 1; long v = atol(b); return (v >= 1 && v <= tun("max_slots", 10)) ? v : 1; }
 static int v_slot(const char *arg) {
-    long max = tun("max_slots", 100), c = slot_cur();
+    long max = tun("max_slots", 10), c = slot_cur();
     if (arg) { if (!strcmp(arg, "next")) c = c % max + 1; else if (!strcmp(arg, "prev")) c = c == 1 ? max : c - 1;
         else if (!strcmp(arg, "+10")) c = (c - 1 + 10) % max + 1; else if (!strcmp(arg, "-10")) c = (c - 1 + max - 10) % max + 1;
         else if (slot_ok(arg)) c = atol(arg); else { err("slot refused: '%s'", arg); return 1; }
         char b[16]; snprintf(b, sizeof b, "%ld", c); txt_set(slot_file(), b); }
     printf("%ld\n", c); return 0; }
-/* generated menus: 10 blocks of 10 slots (Save then Load); toolbar = pdl rows for the taskbar's <prefix>_menu_<N>_label/_cmd reader, methods = entity-menu METHOD rows */
+/* generated menus: max_slots/10 blocks of 10 slots (Save then Load); toolbar = pdl rows for the taskbar's <prefix>_menu_<N>_label/_cmd reader, methods = entity-menu METHOD rows */
 static int v_gen(FILE *o, const char *kind, const char *prefix, long base, const char *condir) {
-    long max = tun("max_slots", 100), per = 10, N = base; int toolbar = !strcmp(kind, "toolbar");
+    long max = tun("max_slots", 10), per = 10, N = base; int toolbar = !strcmp(kind, "toolbar");
     if (toolbar) fprintf(o, "# toolbar_slots.pdl - generated by `eden_op <conductor> gen-slots toolbar` (do not hand edit; the harness compares it with a fresh run).\n"
         "# Rows for the taskbar's pdl-driven menu reader (livedesk_pdl_menu_rows): SECTION | <prefix>_menu_<N>_label | text  and  SECTION | <prefix>_menu_<N>_cmd | command.\n"
         "# Each cmd is a bare shell string (no single quote: the taskbar wraps it in sh -c '...'); ' .' is replaced by the house root by the taskbar, so it runs from any cwd.\n"
-        "# 10 blocks x (header + 10 Save + 10 Load) = 210 rows + cancel. See eden/README.md for what the taskbar needs.\n");
-    else fprintf(o, "# slots_methods.pdl - generated by `eden_op <conductor> gen-slots methods`: 200 METHOD rows for an entity menu that can hold them (paste into meta.pdl). $0 = the conductor dir.\n");
-    for (long p = 0; p < max / per; p++) {
-        if (toolbar) { fprintf(o, "SECTION | %s_menu_%ld_label | -- slots %ld-%ld --\nSECTION | %s_menu_%ld_cmd | \n", prefix, N, p * per + 1, (p + 1) * per, prefix, N); N++; }
-        for (int ld = 0; ld < 2; ld++) for (long j = 1; j <= per; j++) { long sl = p * per + j; const char *v = ld ? "load" : "save", *V = ld ? "Load" : "Save";
+        "# max_slots/10 blocks x (header + 10 Save + 10 Load) + cancel (max_slots is a tunable, default 10). See eden/README.md for what the taskbar needs.\n");
+    else fprintf(o, "# slots_methods.pdl - generated by `eden_op <conductor> gen-slots methods`: 2 x max_slots METHOD rows for an entity menu that can hold them (paste into meta.pdl). $0 = the conductor dir.\n");
+    for (long p = 0; p < (max + per - 1) / per; p++) {
+        if (toolbar) { fprintf(o, "SECTION | %s_menu_%ld_label | -- slots %ld-%ld --\nSECTION | %s_menu_%ld_cmd | \n", prefix, N, p * per + 1, (p + 1) * per > max ? max : (p + 1) * per, prefix, N); N++; }
+        for (int ld = 0; ld < 2; ld++) for (long j = 1; j <= per; j++) { long sl = p * per + j; if (sl > max) break; const char *v = ld ? "load" : "save", *V = ld ? "Load" : "Save";
             if (toolbar) { fprintf(o, "SECTION | %s_menu_%ld_label | %s %ld\nSECTION | %s_menu_%ld_cmd | cd . && %s/ops/+x/eden_op.+x . %s %ld\n", prefix, N, V, sl, prefix, N, condir, v, sl); N++; }
             else fprintf(o, "METHOD       | %s %ld | sh -c 'exec \"$0/ops/+x/eden_op.+x\" \"$0\" %s %ld'\n", V, sl, v, sl); } }
     if (toolbar) fprintf(o, "SECTION | %s_menu_%ld_label | cancel\nSECTION | %s_menu_%ld_cmd | \n", prefix, N, prefix, N);
@@ -742,6 +804,10 @@ resolved:
     if (!strcmp(v, "slots")) return v_slots();
     if (!strcmp(v, "gen-slots") && a1) return v_gen(stdout, a1, argc > 4 ? argv[4] : "eden", argc > 5 ? atol(argv[5]) : 1, argc > 6 ? argv[6] : "game/conductor");
     if (!strcmp(v, "gen-check") && a1 && a2) return v_gen_check(a1, a2, argc > 5 ? argv[5] : "eden", argc > 6 ? atol(argv[6]) : 1, argc > 7 ? argv[7] : "game/conductor");
+    if (!strcmp(v, "daemon-start")) return v_daemon_start();
+    if (!strcmp(v, "daemon-stop")) return v_daemon_stop();
+    if (!strcmp(v, "daemon-status")) return v_daemon_status();
+    if (!strcmp(v, "nextday")) return v_nextday();
     if (!strcmp(v, "begin")) return v_begin();
     if (!strcmp(v, "stop")) return v_stop();
     if (!strcmp(v, "days") && a1) return v_days(atol(a1));

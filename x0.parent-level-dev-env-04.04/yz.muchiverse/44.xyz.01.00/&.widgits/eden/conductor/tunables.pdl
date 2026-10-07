@@ -23,4 +23,4 @@ repair_below=7
 repair_gain=3
 repair_cost_clay=1
 max_dig_depth=6
-max_slots=100
+max_slots=10

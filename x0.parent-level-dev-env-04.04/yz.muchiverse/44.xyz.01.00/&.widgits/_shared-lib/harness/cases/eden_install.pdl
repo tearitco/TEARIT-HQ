@@ -1,0 +1,190 @@
+# eden_install: install_eden (dry run / apply / refusals), the pal's ctl.sh, the clock daemon verbs (start/status/stop, idempotent, Stop game/Pause stop it), Next day = exactly one day, 10 save slots.
+# Everything under a scratch livedesk ($T/ld); the live desk, xyzfs/users and every other process are never touched. Daemon liveness = the pid file + EXPECT_ALIVE / EXPECT_DEAD (kill(pid,0)), never pkill.
+# Needs the built programs: eden_op, install_eden, event_page_op, lc_clock, game_snapshot_op and the shared prisc (_shared-lib/ops/build_prisc.sh); about 25 s.
+RESULTS | ../results/eden_install.txt
+ENV | LC_ALL | C
+
+CASE    | dry-run-apply-refusals
+SCRATCH |
+MKDIR   | ld
+MKDIR   | ld/sessions/s1/desks
+WRITE   | ld/sessions/s1/desks/d.pdl | DESK \p cursword \p pals/cursword \p 0 \p 0 \p 0 \p 0 \p K \p 1\n
+SUMTREE | d0 | ld
+RUN | $HOUSE/&.widgits/eden/+x/install_eden.+x | --livedesk | $T/ld | --house | $HOUSE
+EXPECT_EXIT | 0 | dry-run-exits-0
+EXPECT_OUT | DRY RUN | dry-run-says-so
+SUMTREE | d1 | ld
+EXPECT_EQ | $d0 | $d1 | dry-run-writes-nothing
+RUN | $HOUSE/&.widgits/eden/+x/install_eden.+x | --house | $HOUSE | --apply
+EXPECT_EXIT | 2 | refused-without-livedesk
+RUN | $HOUSE/&.widgits/eden/+x/install_eden.+x | --livedesk | $T/ld
+EXPECT_EXIT | 2 | refused-without-house
+SUMTREE | d2 | ld
+EXPECT_EQ | $d0 | $d2 | refusals-write-nothing
+RUN | $HOUSE/&.widgits/eden/+x/install_eden.+x | --livedesk | $T/ld | --house | $HOUSE | --apply
+EXPECT_EXIT | 0 | apply-exits-0
+EXPECT_OUT | DESK \p eden_button \p pals/eden_button \p 800 \p 80 \p 10 \p 1 \p 🔘 \p | apply-prints-the-DESK-row
+RUN | /usr/bin/ls | -A | $T/ld
+EXPECT_OUT_IS | eden_game\npals\nsessions | livedesk-holds-exactly-eden_game-pals-and-the-untouched-sessions
+RUN | /usr/bin/ls | -A | $T/ld/eden_game
+EXPECT_OUT_IS | &.widgits\ncommon_events\ngame\ngso\nlc.+x\nprisc\nstore | G-holds-exactly-the-layout
+RUN | /usr/bin/ls | -A | $T/ld/pals
+EXPECT_OUT_IS | eden_button | pals-holds-only-eden_button
+RUN | /usr/bin/ls | -A | $T/ld/pals/eden_button
+EXPECT_OUT_IS | ctl.sh\nglyph.txt\nmeta.pdl\npal.pdl | pal-holds-exactly-ctl-glyph-meta-pal
+EXPECT_FILE | ld/pals/eden_button/pal.pdl | PAL \p name \p eden_button\nPAL \p glyph \p 🔘\n | pal-pdl-name-and-glyph
+EXPECT_LACKS | ld/pals/eden_button/pal.pdl | hash | pal-has-no-PAL-hash
+EXPECT_NOFILE | ld/pals/eden_button/entity_uid.txt | pal-has-no-uid
+EXPECT_EXISTS | ld/eden_game/game/conductor/game.pdl | conductor-copied
+EXPECT_EXISTS | ld/eden_game/game/conductor/ops/+x/eden_op.+x | eden_op-in-the-conductor
+EXPECT_EXISTS | ld/eden_game/game/conductor/event_pkg/pages/page_17/event.pal | next-day-page-copied
+EXPECT_EXISTS | ld/eden_game/common_events/eden_day_tick/event_pkg/target.pdl | day-tick-event-copied
+EXPECT_EXISTS | ld/eden_game/&.widgits/digipet/ops/+x/event_page_op.+x | event_page_op-where-the-menu-rows-exec-it
+EXPECT_EXISTS | ld/eden_game/lc.+x | lc-copied
+EXPECT_EXISTS | ld/eden_game/gso | gso-copied
+EXPECT_EXISTS | ld/eden_game/store | store-dir
+EXPECT_HAS | ld/eden_game/game/conductor/wiring.pdl | daemon       \p 1 | wiring-enables-the-daemon
+EXPECT_NOFILE | ld/eden_game/game/conductor/entity_uid.txt | conductor-has-no-uid
+EXPECT_HAS | ld/pals/eden_button/ctl.sh | G='$T/ld/eden_game' | ctl-sh-holds-G-as-an-absolute-path
+EXPECT_HAS | ld/pals/eden_button/ctl.sh | event_page_op.+x" "$C" "$G" --trigger "$1" | ctl-sh-execs-event_page_op-with-the-trigger
+EXPECT_HAS | ld/pals/eden_button/meta.pdl | \p Start game  | menu-Start-game
+EXPECT_HAS | ld/pals/eden_button/meta.pdl | \p Stop game  | menu-Stop-game
+EXPECT_HAS | ld/pals/eden_button/meta.pdl | \p Next day  | menu-Next-day
+EXPECT_HAS | ld/pals/eden_button/meta.pdl | \p Status  | menu-Status
+EXPECT_HAS | ld/pals/eden_button/meta.pdl | \p Pause  | menu-Pause
+EXPECT_HAS | ld/pals/eden_button/meta.pdl | \p Resume  | menu-Resume
+EXPECT_HAS | ld/pals/eden_button/meta.pdl | \p Save slot...  | menu-Save-slot
+EXPECT_HAS | ld/pals/eden_button/meta.pdl | \p Load slot...  | menu-Load-slot
+EXPECT_HAS | ld/pals/eden_button/meta.pdl | \p Close  | menu-Close
+EXPECT_HAS | ld/pals/eden_button/meta.pdl | \p Cancel  | menu-Cancel
+EXPECT_HAS | ld/pals/eden_button/meta.pdl | sh -c 'exec sh "$0/ctl.sh" nextday' | Next-day-row-calls-ctl-sh
+EXPECT_LACKS | ld/pals/eden_button/meta.pdl | event_page_op | rows-go-through-ctl-sh-only
+EXPECT_FILE | ld/sessions/s1/desks/d.pdl | DESK \p cursword \p pals/cursword \p 0 \p 0 \p 0 \p 0 \p K \p 1\n | the-installer-edits-no-desk-file
+SUMTREE | a1 | ld
+RUN | $HOUSE/&.widgits/eden/+x/install_eden.+x | --livedesk | $T/ld | --house | $HOUSE | --apply
+EXPECT_EXIT | 2 | second-apply-refused
+EXPECT_OUT | REFUSED | refusal-says-so
+EXPECT_OUT_LACKS | DESK \p eden_button | refusal-prints-no-DESK-row
+SUMTREE | a2 | ld
+EXPECT_EQ | $a1 | $a2 | second-apply-changes-nothing
+CLEAN   |
+
+CASE    | existing-pal-refused
+SCRATCH |
+MKDIR   | ld/pals/eden_button
+WRITE   | ld/pals/eden_button/pal.pdl | PAL | name | mine\n
+SUMTREE | e0 | ld
+RUN | $HOUSE/&.widgits/eden/+x/install_eden.+x | --livedesk | $T/ld | --house | $HOUSE | --apply
+EXPECT_EXIT | 2 | existing-pal-refused
+SUMTREE | e1 | ld
+EXPECT_EQ | $e0 | $e1 | existing-pal-nothing-written-not-even-G
+EXPECT_NOFILE | ld/eden_game/game/conductor/game.pdl | no-G-created
+CLEAN   |
+
+CASE    | slots-are-10
+SCRATCH |
+RUN | /usr/bin/grep | -c | -E | _cmd [\p] cd [.] && game/conductor/ops/[+]x/eden_op[.][+]x [.] save [0-9]+$ | $HOUSE/&.widgits/eden/toolbar_slots.pdl
+EXPECT_OUT_IS | 10 | toolbar-menu-has-10-Save-rows
+RUN | /usr/bin/grep | -c | -E | _cmd [\p] cd [.] && game/conductor/ops/[+]x/eden_op[.][+]x [.] load [0-9]+$ | $HOUSE/&.widgits/eden/toolbar_slots.pdl
+EXPECT_OUT_IS | 10 | toolbar-menu-has-10-Load-rows
+RUN | /usr/bin/grep | -c | ^METHOD | $HOUSE/&.widgits/eden/slots_methods.pdl
+EXPECT_OUT_IS | 20 | slots_methods-has-20-METHOD-rows
+RUN | /usr/bin/grep | -c | ^max_slots=10$ | $HOUSE/&.widgits/eden/conductor/tunables.pdl
+EXPECT_OUT_IS | 1 | slot-count-is-the-data-value-max_slots-10
+CLEAN   |
+
+CASE    | ctl-status-daemon-nextday
+SCRATCH |
+MKDIR   | ld
+RUN | $HOUSE/&.widgits/eden/+x/install_eden.+x | --livedesk | $T/ld | --house | $HOUSE | --apply
+EXPECT_EXIT | 0 | installed
+RUN | /bin/sh | -c | exec sh "$0/ctl.sh" status | $T/ld/pals/eden_button | $T/ld
+EXPECT_EXIT | 0 | menu-style-Status-row-runs
+EXPECT_HAS | ld/eden_game/game/conductor/status.txt | STATUS\pday=0\p | Status-produced-status-txt-day-0
+EXPECT_HAS | ld/eden_game/game/conductor/event_page_ledger.txt | conductor\pstatus\ppage_ | Status-went-through-event_page_op
+RUN | $T/ld/pals/eden_button/ctl.sh
+EXPECT_OUT | usage | ctl-sh-without-a-trigger-says-usage
+RUN | $T/ld/eden_game/game/conductor/ops/+x/eden_op.+x | $T/ld/eden_game/game/conductor | daemon-status
+EXPECT_EXIT | 1 | no-daemon-before-Start
+RUN | $T/ld/eden_game/game/conductor/ops/+x/eden_op.+x | $T/ld/eden_game/game/conductor | daemon-start
+EXPECT_EXIT | 1 | daemon-start-before-Setup-refused
+EXPECT_NOFILE | ld/eden_game/eden_daemon.pid | no-pid-file-after-the-refusal
+RUN | /bin/sh | -c | exec sh "$0/ctl.sh" begin | $T/ld/pals/eden_button | $T/ld
+EXPECT_EXIT | 0 | Start-game-row-runs
+RUN | /usr/bin/cat | $T/ld/eden_game/eden_daemon.pid
+CAPTURE | dp
+EXPECT_ALIVE | $dp | daemon-alive-after-Start-game
+RUN | $T/ld/eden_game/game/conductor/ops/+x/eden_op.+x | $T/ld/eden_game/game/conductor | daemon-status
+EXPECT_EXIT | 0 | daemon-status-running
+EXPECT_OUT | running pid=$dp | daemon-status-names-the-recorded-pid
+RUN | /usr/bin/pgrep | -c | -f | $T/ld/eden_game/lc[.][+]x
+EXPECT_OUT_IS | 1 | exactly-one-daemon-process
+WAIT_HAS | ld/eden_game/game/conductor/variables.txt | day=2\n | 8000 | the-game-advances-by-itself-to-day-2
+RUN | $T/ld/eden_game/game/conductor/ops/+x/eden_op.+x | $T/ld/eden_game/game/conductor | daemon-start
+EXPECT_EXIT | 0 | second-daemon-start-is-idempotent
+EXPECT_OUT | already running pid=$dp | second-start-names-the-live-pid
+RUN | /usr/bin/cat | $T/ld/eden_game/eden_daemon.pid
+EXPECT_OUT_IS | $dp | pid-file-unchanged
+RUN | /usr/bin/pgrep | -c | -f | $T/ld/eden_game/lc[.][+]x
+EXPECT_OUT_IS | 1 | still-exactly-one-daemon-process
+RUN | /bin/sh | -c | exec sh "$0/ctl.sh" begin | $T/ld/pals/eden_button | $T/ld
+RUN | /usr/bin/pgrep | -c | -f | $T/ld/eden_game/lc[.][+]x
+EXPECT_OUT_IS | 1 | Start-game-twice-still-one-daemon
+RUN | /bin/sh | -c | exec sh "$0/ctl.sh" pause | $T/ld/pals/eden_button | $T/ld
+EXPECT_EXIT | 0 | Pause-row-runs
+EXPECT_DEAD | $dp | Pause-stops-the-daemon
+EXPECT_NOFILE | ld/eden_game/eden_daemon.pid | Pause-removes-the-pid-file
+RUN | /bin/sh | -c | exec sh "$0/ctl.sh" resume | $T/ld/pals/eden_button | $T/ld
+RUN | /usr/bin/cat | $T/ld/eden_game/eden_daemon.pid
+CAPTURE | dp2
+EXPECT_ALIVE | $dp2 | Resume-starts-the-daemon-again
+EXPECT_NE | $dp | $dp2 | Resume-made-a-fresh-process
+RUN | /bin/sh | -c | exec sh "$0/ctl.sh" stop | $T/ld/pals/eden_button | $T/ld
+EXPECT_EXIT | 0 | Stop-game-row-runs
+EXPECT_DEAD | $dp2 | Stop-game-leaves-no-daemon
+EXPECT_NOFILE | ld/eden_game/eden_daemon.pid | Stop-game-removes-the-pid-file
+RUN | /usr/bin/pgrep | -c | -f | $T/ld/eden_game/lc[.][+]x
+EXPECT_OUT_IS | 0 | no-daemon-process-left
+RUN | $T/ld/eden_game/game/conductor/ops/+x/eden_op.+x | $T/ld/eden_game/game/conductor | daemon-stop
+EXPECT_OUT | not running | daemon-stop-with-nothing-running-is-a-no-op
+EXPECT_HAS | ld/eden_game/eden_control.txt | DAEMON\pstart\ppid=$dp | control-ledger-has-the-first-start
+EXPECT_HAS | ld/eden_game/eden_control.txt | DAEMON\pstart-refused\ppid=$dp\palready-running | control-ledger-has-the-refused-second-start
+EXPECT_HAS | ld/eden_game/eden_control.txt | DAEMON\pstop\ppid=$dp2 | control-ledger-has-the-stop
+CLEAN   |
+
+CASE    | next-day-is-exactly-one-day
+SCRATCH |
+MKDIR   | ld
+RUN | $HOUSE/&.widgits/eden/+x/install_eden.+x | --livedesk | $T/ld | --house | $HOUSE | --apply
+EXPECT_EXIT | 0 | installed
+RUN | $T/ld/eden_game/game/conductor/ops/+x/eden_op.+x | $T/ld/eden_game/game/conductor | setup
+EXPECT_EXIT | 0 | Setup-without-a-daemon
+RUN | $T/ld/eden_game/game/conductor/ops/+x/eden_op.+x | $T/ld/eden_game/game/conductor | nextday
+EXPECT_EXIT | 0 | nextday-verb
+RUN | /usr/bin/grep | -c | ^DAY[\p] | $T/ld/eden_game/game/conductor/eden_history.txt
+EXPECT_OUT_IS | 1 | one-DAY-row-after-one-Next-day
+EXPECT_HAS | ld/eden_game/game/conductor/variables.txt | day=1\n | day-is-1
+RUN | /bin/sh | -c | exec sh "$0/ctl.sh" nextday | $T/ld/pals/eden_button | $T/ld
+EXPECT_EXIT | 0 | Next-day-menu-row
+RUN | /usr/bin/grep | -c | ^DAY[\p] | $T/ld/eden_game/game/conductor/eden_history.txt
+EXPECT_OUT_IS | 2 | two-DAY-rows-after-two-Next-days
+EXPECT_HAS | ld/eden_game/game/conductor/variables.txt | day=2\n | day-is-2
+EXPECT_HAS | ld/eden_game/eden_control.txt | NEXTDAY\pday_before=1\prc=0\pstepped | ledger-row-for-the-second-Next-day
+RUN | $T/ld/eden_game/game/conductor/ops/+x/eden_op.+x | $T/ld/eden_game/game/conductor | audit
+EXPECT_OUT | ok=1 | audit-ok-after-two-days
+CLEAN   |
+
+CASE    | live-foreign-pid-never-signalled
+SCRATCH |
+MKDIR   | ld
+RUN | $HOUSE/&.widgits/eden/+x/install_eden.+x | --livedesk | $T/ld | --house | $HOUSE | --apply
+RUN | $T/ld/eden_game/game/conductor/ops/+x/eden_op.+x | $T/ld/eden_game/game/conductor | setup
+SPAWN | sl | /usr/bin/sleep | 60
+WRITE | ld/eden_game/eden_daemon.pid | $sl\n
+RUN | $T/ld/eden_game/game/conductor/ops/+x/eden_op.+x | $T/ld/eden_game/game/conductor | daemon-start
+EXPECT_EXIT | 1 | daemon-start-refused-when-the-pid-file-names-a-live-process
+RUN | $T/ld/eden_game/game/conductor/ops/+x/eden_op.+x | $T/ld/eden_game/game/conductor | daemon-stop
+EXPECT_EXIT | 1 | daemon-stop-refuses-to-signal-a-process-that-is-not-the-clock
+EXPECT_ALIVE | $sl | the-foreign-process-is-untouched
+EXPECT_HAS | ld/eden_game/game/conductor/op_errors.txt | NOT signalled | refusal-logged
+CLEAN   |

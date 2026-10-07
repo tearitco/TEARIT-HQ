@@ -18,7 +18,7 @@ EXPECT_HAS | eden/conductor/animals.pdl | rideable=1 | horse-rideable-flag-is-da
 EXPECT_HAS | eden/conductor/evolution.pdl | EVOLVE \p chicken \p to=cow | evolution-chicken-to-cow
 EXPECT_HAS | eden/conductor/evolution.pdl | to=horse | evolution-cow-to-horse
 EXPECT_HAS | eden/conductor/evolution.pdl | requires_meals=12 | evolution-requirement-is-a-number-in-data
-EXPECT_HAS | eden/conductor/tunables.pdl | max_slots=100 | 100-slots-is-a-tunable
+EXPECT_HAS | eden/conductor/tunables.pdl | max_slots=10 | 10-slots-is-a-tunable
 EXPECT_HAS | eden/conductor/tunables.pdl | house_decay_days=3 | house-wear-is-a-tunable
 EXPECT_HAS | eden/conductor/game.pdl | chicken \p count=2 | manifest-2-chickens
 EXPECT_HAS | eden/conductor/game.pdl | plant   \p count=4 | manifest-4-garden-plots
@@ -49,19 +49,19 @@ EXPECT_OUT_IS | MATCH | toolbar_slots-pdl-equals-the-generator-output
 RUN | $T/eden/conductor/ops/+x/eden_op.+x | $T/eden/conductor | gen-check | methods | $T/eden/slots_methods.pdl
 EXPECT_OUT_IS | MATCH | slots_methods-pdl-equals-the-generator-output
 RUN | /usr/bin/grep | -c | -E | _cmd [\p] cd [.] && game/conductor/ops/[+]x/eden_op[.][+]x [.] save [0-9]+$ | $T/eden/toolbar_slots.pdl
-EXPECT_OUT_IS | 100 | toolbar-has-exactly-100-Save-rows
+EXPECT_OUT_IS | 10 | toolbar-has-exactly-10-Save-rows
 RUN | /usr/bin/grep | -c | -E | _cmd [\p] cd [.] && game/conductor/ops/[+]x/eden_op[.][+]x [.] load [0-9]+$ | $T/eden/toolbar_slots.pdl
-EXPECT_OUT_IS | 100 | toolbar-has-exactly-100-Load-rows
+EXPECT_OUT_IS | 10 | toolbar-has-exactly-10-Load-rows
 RUN | /usr/bin/grep | -c | ^SECTION.*' | $T/eden/toolbar_slots.pdl
 EXPECT_OUT_IS | 0 | no-single-quote-in-any-toolbar-row-the-taskbar-wraps-them-in-sh-c
 RUN | /usr/bin/grep | -c | -E | ^SECTION [\p] eden_menu_[0-9]+_label | $T/eden/toolbar_slots.pdl
-EXPECT_OUT_IS | 211 | 211-label-rows-10-headers-200-slots-1-cancel-under-the-256-row-menu-cap
+EXPECT_OUT_IS | 22 | 22-label-rows-1-header-20-slots-1-cancel
 RUN | /usr/bin/grep | -c | ^METHOD | $T/eden/slots_methods.pdl
-EXPECT_OUT_IS | 200 | slots_methods-has-200-METHOD-rows
+EXPECT_OUT_IS | 20 | slots_methods-has-20-METHOD-rows
 RUN | $T/eden/conductor/ops/+x/eden_op.+x | $T/eden/conductor | toyread | $T/eden/toolbar_slots.pdl | eden_menu_2_label
 EXPECT_OUT_IS | Save 1 | taskbar-reader-reads-label-2
-RUN | $T/eden/conductor/ops/+x/eden_op.+x | $T/eden/conductor | toyread | $T/eden/toolbar_slots.pdl | eden_menu_210_label
-EXPECT_OUT_IS | Load 100 | taskbar-reader-reads-label-210
+RUN | $T/eden/conductor/ops/+x/eden_op.+x | $T/eden/conductor | toyread | $T/eden/toolbar_slots.pdl | eden_menu_21_label
+EXPECT_OUT_IS | Load 10 | taskbar-reader-reads-label-21
 CLEAN   |
 
 CASE    | start-spawns-exactly-the-manifest
@@ -537,7 +537,7 @@ RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | count
 EXPECT_OUT | total=0 | a-paused-then-advanced-clock-spawned-nothing
 CLEAN   |
 
-CASE    | slots-1-100-cursor-toolbar
+CASE    | slots-1-10-cursor-toolbar
 SCRATCH |
 COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
 COPY    | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | gso
@@ -554,39 +554,39 @@ CAPTURE | v0
 RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | save | 1
 EXPECT_EXIT | 0 | Save-1
 RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | days | 2
-RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | save | 100
-EXPECT_EXIT | 0 | Save-100
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | save | 10
+EXPECT_EXIT | 0 | Save-10
 RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | digest
 CAPTURE | v1
 RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | days | 4
-RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | load | 100
-EXPECT_EXIT | 0 | Load-100
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | load | 10
+EXPECT_EXIT | 0 | Load-10
 RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | digest
 CAPTURE | v2
-EXPECT_EQ | $v1 | $v2 | slot-100-round-trip-restores-day-5-exactly
+EXPECT_EQ | $v1 | $v2 | slot-10-round-trip-restores-day-5-exactly
 RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | load | 1
 EXPECT_EXIT | 0 | Load-1
 RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | digest
 CAPTURE | v3
 EXPECT_EQ | $v0 | $v3 | slot-1-round-trip-restores-day-3-exactly
 EXPECT_HAS | game/conductor/variables.txt | day=3\n | day-3
-RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | load | 100
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | load | 10
 RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | digest
 CAPTURE | v4
-EXPECT_EQ | $v1 | $v4 | and-back-to-slot-100
-EXPECT_HAS | slots.pdl | SLOT \p 100 \p id=slot100 \p rev=1 \p day=5 \p label=Day 5 | index-row-for-slot-100
+EXPECT_EQ | $v1 | $v4 | and-back-to-slot-10
+EXPECT_HAS | slots.pdl | SLOT \p 10 \p id=slot10 \p rev=1 \p day=5 \p label=Day 5 | index-row-for-slot-10
 EXPECT_HAS | slots.pdl | SLOT \p 1 \p id=slot1 \p rev=1 \p day=3 \p label=Day 3 | index-row-for-slot-1
 RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | slots
-EXPECT_OUT | slot 100 \p slot100 \p 5 \p Day 5 | slots-lists-slot-100-with-its-day-label
+EXPECT_OUT | slot 10 \p slot10 \p 5 \p Day 5 | slots-lists-slot-10-with-its-day-label
 EXPECT_OUT | slot 1 \p slot1 \p 3 \p Day 3 | slots-lists-slot-1
 RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | save | 0
 EXPECT_EXIT | 1 | Save-0-refused
 RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | load | 0
 EXPECT_EXIT | 1 | Load-0-refused
-RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | save | 101
-EXPECT_EXIT | 1 | Save-101-refused
-RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | load | 101
-EXPECT_EXIT | 1 | Load-101-refused
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | save | 11
+EXPECT_EXIT | 1 | Save-11-refused
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | load | 11
+EXPECT_EXIT | 1 | Load-11-refused
 RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | save | abc
 EXPECT_EXIT | 1 | Save-abc-refused
 RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | load | abc
@@ -599,9 +599,9 @@ RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | save | 1000
 EXPECT_EXIT | 1 | Save-1000-refused
 RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | load | 1000
 EXPECT_EXIT | 1 | Load-1000-refused
-EXPECT_HAS | game/conductor/op_errors.txt | slot must be a number 1..100 | refusal-names-the-range
+EXPECT_HAS | game/conductor/op_errors.txt | slot must be a number 1..10 | refusal-names-the-range
 EXPECT_NOFILE | store/checkpoints/slot0/manifest.txt | nothing-saved-as-slot0
-EXPECT_NOFILE | store/checkpoints/slot101/manifest.txt | nothing-saved-as-slot101
+EXPECT_NOFILE | store/checkpoints/slot11/manifest.txt | nothing-saved-as-slot11
 SUMTREE | v5 | game/world
 SUMTREE | v6 | game/participants
 RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | load | 55
@@ -629,9 +629,9 @@ RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | slot | next
 EXPECT_OUT_IS | 2 | cursor-next-2
 RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | slot | prev
 RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | slot | prev
-EXPECT_OUT_IS | 100 | cursor-prev-wraps-1-to-100
+EXPECT_OUT_IS | 10 | cursor-prev-wraps-1-to-10
 RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | slot | +10
-EXPECT_OUT_IS | 10 | cursor-+10-wraps-100-to-10
+EXPECT_OUT_IS | 10 | cursor-+10-stays-10-at-10
 RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | slot | 7
 EXPECT_OUT_IS | 7 | cursor-set-to-7
 RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | slot | 0
@@ -656,11 +656,11 @@ CAPTURE | v9
 EXPECT_EQ | $v9 | cd . && game/conductor/ops/+x/eden_op.+x . save 2 | the-row-read-by-the-taskbar-reader-is-the-Save-2-command
 RUN | /bin/sh | -c | eval "$(printf '%s' "$0" \p sed "s# [.]# $1#g")" | $v9 | $T
 EXPECT_EXISTS | store/checkpoints/slot2/manifest.txt | the-toolbar-Save-2-row-saved-slot-2-from-a-bare-sh-c
-RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | toyread | $T/toolbar_slots.pdl | eden_menu_210_cmd
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | toyread | $T/toolbar_slots.pdl | eden_menu_21_cmd
 CAPTURE | v10
 RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | days | 2
 RUN | /bin/sh | -c | eval "$(printf '%s' "$0" \p sed "s# [.]# $1#g")" | $v10 | $T
-EXPECT_HAS | game/conductor/variables.txt | day=5\n | the-toolbar-Load-100-row-loaded-slot-100-day-5
+EXPECT_HAS | game/conductor/variables.txt | day=5\n | the-toolbar-Load-10-row-loaded-slot-10-day-5
 CLEAN   |
 
 CASE    | determinism-by-seed

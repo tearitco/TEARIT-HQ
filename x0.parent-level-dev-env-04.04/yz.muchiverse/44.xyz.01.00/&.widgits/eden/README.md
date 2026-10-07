@@ -68,3 +68,6 @@ Format read from `khtpm_taskbar_manager.c` (`livedesk_pdl_menu_rows`, `ktb_hq_ac
 - Not done on purpose: riding, GUI window, live install, music, souls/ghosts, evolution art.
 
 Harness: `&.widgits/_shared-lib/harness/eden_conductor.pal` (`cases/eden_conductor.pdl`); v1: `eden_loop.pal` (`cases/eden_loop.pdl`).
+
+## Desk button install (2026-10-07, branch eden-button-work)
+`install_eden --livedesk <livedesk_dir> --house <house_root> [--apply]` (dry run by default; build with `ops/build_install_eden.sh`) creates `<livedesk>/eden_game/` (conductor, clock, snapshot op, prisc, event_page_op) and the desk pal `<livedesk>/pals/eden_button/`, then prints the DESK row for the caller to append; it never overwrites and edits no desk file. New `eden_op` verbs: `daemon-start|daemon-stop|daemon-status`, `nextday` (menu row Next day). `max_slots` is 10 (`tunables.pdl`). Details: the build report in GAME-CONDUCTOR-ENTITY-AND-EDEN-DESIGN.md; harness `eden_install.pal`. The sections above that say 100 slots / 211 rows describe the earlier default; the generator now follows `max_slots`.
