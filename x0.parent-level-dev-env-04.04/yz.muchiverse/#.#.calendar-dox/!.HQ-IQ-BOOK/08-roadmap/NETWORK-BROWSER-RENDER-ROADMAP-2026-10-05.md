@@ -19,16 +19,40 @@ the bar.
 - [x] Worker LOAD wall-clock capped at 20s — js-heavy pages no longer hang at `Status: loading` (`3a1a59e55`)
 - [x] House nav: relay file drives keys, address bar type/committed, tabs, back/forward/reload
 
-## Todo — Milestone 1: block flow (readable article)
+## Done — Milestone 1: block flow (2026-10-05..07, all verified live)
 
-- [ ] Manager publishes per-row y-offsets/w/h/class so TEXT/LINK rows lay out as a column, not a list
-- [ ] xhtpm uses them; content scroll region scrolls; nav indexes only visible rows
-- [ ] Proof: `go:` a real Wikipedia article → readable, no overlap at 2 line counts
+- [x] One TEXT row per paragraph block (was fixed 88-col pre-wrap); renderer wraps at pane width (`bb99e4c92`)
+- [x] Headings close as TITLE rows → page-title class (`1dec8c331`)
+- [x] Wiki chrome junk filtered on both paths (extractor + worker-row merge) (`8ae47db9d`)
+- [x] Manager TITLE survives worker merge (`3a366c527`)
+- [x] Proof: Blockly loads ready, article skeleton renders as title rows
 
-## Todo — Milestone 2: inline flow
+## Done — Milestone 2: rows to tiles (2026-10-07)
 
-- [ ] Word-wrap text spans inside a block row using Xft extents; links stay inline + clickable
-- [ ] Inline media tiles (sprite-flow grid) — interim instead of real block-embedded `<img>`
+- [x] Fragment-only links → text/drop, consecutive dup links collapse (`c0262262a`)
+- [x] Navigable inline links split into clickable rows; junk-href still folds (`ee25146f2`)
+- [x] Skin-asset furniture images dropped both paths (`4fbd9a95f`)
+- [x] Projection caps lifted (rows 128→2048, vars to 4096) so full articles render (`fd45a098f`, `20de0b6fc`)
+- [x] Worker IMG rows route through MEDIA→sprite; static fallback when worker imageless; bad resume reverted (`9ca69d596`)
+- [x] Fixtures: mini-article (fold/split/heading), media-grid (6-image tiling) — harness PASS
+
+## Todo — Milestone 2 remaining
+
+- [ ] sprite-flow grid inside the panel path (`layout_fixed_rows_and_scrolllist` lacks the branch; tiles stack)
+- [ ] True inline-clickable spans (segment row kind + renderer inline flow; needs xhtpm contract change)
+- [ ] `file://` worker image resolution (worker emits zero IMG rows on file pages; static fallback covers it, but JS-driven pages depend on the worker path)
+- [ ] Column width as computed layout state (CSS cap is a stand-in)
+
+## Todo — Milestone 1: block flow (readable article) — SUPERSEDED by Done above
+
+- [x] ~~Manager publishes per-row y-offsets/w/h/class~~ — not needed: renderer wraps rows at pane width
+- [x] ~~xhtpm uses them~~ — static repeat + scroll region already scroll; nav numbers visible rows
+- [x] ~~Proof: Wikipedia readable~~ — done (Blockly)
+
+## Todo — Milestone 2: inline flow — SUPERSEDED by Done/remaining above
+
+- [x] ~~Word-wrap spans~~ — renderer-side wrap suffices for now; true spans need segment rows (listed above)
+- [ ] Inline media tiles (sprite-flow grid) — open (panel-path branch missing)
 
 ## Todo — Milestone 3: JS ↔ box tree reflow
 
