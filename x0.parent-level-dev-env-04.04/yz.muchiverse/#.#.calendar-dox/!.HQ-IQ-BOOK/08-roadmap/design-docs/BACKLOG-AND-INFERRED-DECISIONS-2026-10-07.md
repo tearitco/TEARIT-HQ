@@ -65,3 +65,5 @@ Written by claude. The owner said: "use common sense and taste to infer those an
 21. **Taskbar clock display from a daemon-written .txt, source chosen by pdl or game input** (`CLOCK-AS-THE-PLAY-SPINE-DESIGN.md` section 11): lc_clock `display_*.txt` writer + `datetime_source` key + taskbar read (shared file, owner review).
 22. **Game conductor entities** (`GAME-CONDUCTOR-ENTITY-AND-EDEN-DESIGN.md`): Eden v0 in progress in alpha; **dsr-test conductor** next; compare ways of running games (conductor vs Player-menu play hook vs game.pdl).
 23. **Player-start path for one game end to end** (toy.pdl, spawn/install, play hook, beta relay check) per `ROADMAP-AND-STATE-OF-PLAY-2026-10-07.md`.
+24. **`eden-test` pre-design page** (owner: "we meant to use pre-design:eden-test"): copy of Eden via `desk_copy_op` for design, tests and delegated quests before the real Eden; not built (conductor doc section 13).
+25. **Build line for `json_parser`** in `build_entity_cli_ops.sh` (done 2026-10-07) so HORN can parse OpenRouter replies; HORN op error handling still open.
