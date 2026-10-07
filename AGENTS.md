@@ -80,6 +80,21 @@ Compiled programs are in no branch: after a wipe, clone or branch switch run
 `sh '$.crypts/button.sh' build`. `sh rezip-house.sh` makes a full local copy
 (compiled programs included) and refuses to run on a wiped tree.
 
+## User desk data is NOT in code branches (REQUIRED, since 2026-10-06)
+
+`xyzfs/users/` (every user's entities, histories, phones, wallets) is no longer tracked by `claude`; it lives on local orphan data branches
+`user/jb` (the owner), `user/<uuid8>`, `user/guest-<8>` (design: `08-roadmap/design-docs/USER-DATA-BRANCHES-DESIGN.md`, quest Q007). Other branches
+(`opencode`, `kilo`, `grok`, `main`, ...) may still track those files until they are converted. The files are live user data, so:
+
+- **Never `git checkout`, `git switch`, `git reset --hard`, `git clean` or fast-forward a live checkout from a branch that tracks `xyzfs/users` onto one that
+  does not.** git deletes the tracked files from disk (reproduced on a test tree: all 1,725 files; the same mechanism deleted the owner's API key files).
+  Merge in a scratch worktree (`git worktree add /tmp/x <branch>`), resolve and build there, and move the live tree only with a verified backup.
+- **A merge that brings `xyzfs/users` files into `claude`: keep them deleted** (`git rm --cached -r xyzfs/users`, resolve modify/delete as deleted). Do not re-add them.
+- **Never `git add` anything under `xyzfs/users`** (it is gitignored; `-f` would put private data and wallets into code history).
+- **Never push `user/*` branches.** They hold `wallet.txt` and private chat history; they are local only.
+- Data is committed by `sh '$.crypts/button.sh' save-data` (also runs automatically after `quit`/`reset`); plumbing only, it never touches your working tree.
+- Before any bulk operation that could touch `xyzfs/users`, take a tarball + `sha256sum` list outside the repo and verify the file count.
+
 ## Source of truth
 
 Full house conventions live in the HQ-IQ-BOOK:
