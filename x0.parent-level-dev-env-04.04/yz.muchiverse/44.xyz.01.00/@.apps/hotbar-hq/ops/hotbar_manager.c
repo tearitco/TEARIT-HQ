@@ -188,7 +188,7 @@ static void publish(const char *house, const char *mode, const char *state_dir, 
 int main(int argc, char **argv) {
     char last[8192] = "", holder[INV_PATH] = "", prev_holder[INV_PATH] = "", hp[INV_PATH + 16], htmp[INV_PATH + 24];
     const char *house, *mode, *state_dir;
-    struct timespec ts = {0, 400 * 1000 * 1000};
+    struct timespec ts = {0, 80 * 1000 * 1000};   /* 80 ms tick: visible.txt is checked every tick, the full publish only every 5th (400 ms) - see main() */
     char sdir[INV_PATH];
     if (argc < 4) { fprintf(stderr, "usage: hotbar_manager desk|pchq <house_root> <package_dir>\n"); return 2; }
     /* the renderer resolves bare tokens against the house ("desk" -> "<house>/desk"): keep the basename */
@@ -199,7 +199,18 @@ int main(int argc, char **argv) {
     snprintf(sdir, sizeof(sdir), "%s/state/%s", argv[3], mode);
     state_dir = sdir;
     mkdir(state_dir, 0755);
+    {
+        int tick = 0; char vlast[16] = "";
     for (;;) {
+        /* minimize / restore must feel instant: the owner re-clicked "_" within ~280 ms because the old 400 ms poll + board reparse showed nothing, and a toggle cancelled itself
+         * (2026-10-06, from the human-input log). So the tiny visible.txt is read every tick and a change publishes at once; everything else stays at 400 ms. */
+        char vp[INV_PATH + 16], vv[16] = "";
+        int vchanged;
+        snprintf(vp, sizeof(vp), "%s/visible.txt", state_dir);
+        read_kv(vp, "visible", vv, sizeof(vv));
+        vchanged = strcmp(vv, vlast) != 0;
+        if (tick++ % 5 != 0 && !vchanged) { nanosleep(&ts, NULL); continue; }
+        snprintf(vlast, sizeof(vlast), "%s", vv);
         if (resolve_holder(house, mode, holder, sizeof(holder))) {
             if (strcmp(holder, prev_holder)) {
                 FILE *f;
@@ -211,6 +222,7 @@ int main(int argc, char **argv) {
             publish(house, mode, state_dir, holder, last, sizeof(last));
         }
         nanosleep(&ts, NULL);
+    }
     }
     return 0;
 }
