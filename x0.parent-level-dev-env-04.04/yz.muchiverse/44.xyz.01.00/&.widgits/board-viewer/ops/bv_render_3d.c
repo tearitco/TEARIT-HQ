@@ -2622,6 +2622,39 @@ static void bv_write_click_hud(const char *focus, int hit,
     fclose(pf);
 }
 
+/* Click / drag -> xelector (owner 2026-10-06: "the xelector is basically the mouse, and should follow mouse click / drags").
+ * The same two writes the arrow keys make in bv_menu_input.c: the board-viewer's selector_x/y (camera anchor + 2D highlight) and the xelector piece's own
+ * pos_x/pos_y, then the screen-changed marker so the next frame draws it. Only for a solid-voxel hit (a sky miss moves nothing), and not while possessing
+ * (then the xelector is tied to the hero and moving it would need a world tick: arrows own that). */
+static void write_file_atomic(const char *path, const void *data, size_t len);
+static void bv_set_kv_int(const char *path, const char *key, int val) {
+    char *buf = NULL; size_t n = 0; long sz = 0; FILE *f = host_fopen(path, "r");
+    if (f) { fseek(f, 0, SEEK_END); sz = ftell(f); fseek(f, 0, SEEK_SET); if (sz < 0) sz = 0;
+             buf = malloc((size_t)sz + 1); if (buf) { n = fread(buf, 1, (size_t)sz, f); buf[n] = 0; } fclose(f); }
+    size_t cap = n + 128, o = 0; char *out = malloc(cap); if (!out) { free(buf); return; }
+    int done = 0; size_t kl = strlen(key); const char *p = buf ? buf : "";
+    while (*p) {
+        const char *e = strchr(p, '\n'); size_t ll = e ? (size_t)(e - p) : strlen(p);
+        if (!done && ll > kl && !strncmp(p, key, kl) && p[kl] == '=') { o += (size_t)snprintf(out + o, cap - o, "%s=%d\n", key, val); done = 1; }
+        else { memcpy(out + o, p, ll); o += ll; out[o++] = '\n'; }
+        p += ll + (e ? 1 : 0);
+    }
+    if (!done) o += (size_t)snprintf(out + o, cap - o, "%s=%d\n", key, val);
+    write_file_atomic(path, out, o); free(out); free(buf);
+}
+static void bv_xelector_to(const char *project_root, const char *focus, int hx, int hy) {
+    char sp[PATH_BUF], xp[PATH_BUF], mk[PATH_BUF], poss[64] = "";
+    if (!project_root || !project_root[0] || !focus || !focus[0] || hx < 0 || hy < 0 || hx >= MAX_BOARD_DIM || hy >= MAX_BOARD_DIM) return;
+    snprintf(xp, sizeof(xp), "%s/pieces/xelector_01/state.txt", focus);
+    read_kv_str(xp, "possessed_id", poss, sizeof(poss));
+    if (poss[0] && strcmp(poss, "none") != 0) return;
+    snprintf(sp, sizeof(sp), "%s/pieces/system/bv_state.txt", project_root);
+    bv_set_kv_int(sp, "selector_x", hx); bv_set_kv_int(sp, "selector_y", hy);
+    bv_set_kv_int(xp, "pos_x", hx); bv_set_kv_int(xp, "pos_y", hy);
+    snprintf(mk, sizeof(mk), "%s/pieces/display/bv_screen_changed.txt", project_root);
+    { FILE *m = host_fopen(mk, "a"); if (m) { fputc('.', m); fclose(m); } }
+}
+
 static void write_file_atomic(const char *path, const void *data, size_t len) {
     char tmp_path[PATH_BUF];
     snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", path);
@@ -2988,6 +3021,7 @@ static int render_one_frame(void) {
         bv_write_click_hud(focused_project_root, hit, hx, hy, hz, cx, cy);
         if (hit > 0) {
             g_ray_hit = 1; g_ray_x = hx; g_ray_y = hy; g_ray_z = hz;
+            bv_xelector_to(project_root, focused_project_root, hx, hy);
             write_pick_txt(focused_project_root, board3d, board_w, board_h, z_count, hx, hy, hz);
             char pp[PATH_BUF];
             snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
@@ -4089,6 +4123,7 @@ int main(int argc, char **argv) {
                 snprintf(last_click, sizeof(last_click), "%s", stamp);
                 if (hit != 0) {
                     bv_write_click_hud(g_click_focus, hit, hx, hy, hz, cx, cy);
+                    if (hit > 0) bv_xelector_to(project_root, g_click_focus, hx, hy);
                     bv_repaint_hud_only();
                     idle_ticks = 0;
                 }

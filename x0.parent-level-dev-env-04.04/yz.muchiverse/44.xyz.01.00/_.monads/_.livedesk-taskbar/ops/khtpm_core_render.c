@@ -7631,6 +7631,15 @@ static int kh_canvas_hit(int px, int py) {
 /* Generic click coords for a <canvas>. The shared renderer does not
  * raycast. bv_render_3d reads pchq_canvas_click.txt and does the math.
  * CANVAS_CLICK on the per-pid relay is the same numbers, for the log. */
+static int g_canvas_drag = 0;                 /* button 1 went down on bare canvas (no nav item under it): motion keeps publishing the pointer (xelector follows the drag) */
+static int g_canvas_drag_px = -1000, g_canvas_drag_py = -1000;
+static int kh_nav_item_at(int px, int py) {
+    for (int i = 0; i < g_n_nav; i++) {
+        Elem *it = g_nav[i];
+        if (it && it->w > 0 && px >= it->x && px < it->x + it->w && py >= it->y && py < it->y + it->h) return 1;
+    }
+    return 0;
+}
 static void kh_publish_canvas_click(int px, int py, int button) {
     Elem *cv = kh_canvas_at(px, py);
     if (!cv || cv->w < 1 || cv->h < 1) return;
@@ -13252,6 +13261,8 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
                      * gate never wrote pchq_canvas_click.txt and the
                      * debug click line stayed "-". */
                     kh_publish_canvas_click(ev->xbutton.x, ev->xbutton.y, ev->xbutton.button);
+                    g_canvas_drag = (ev->xbutton.button == 1 && !kh_nav_item_at(ev->xbutton.x, ev->xbutton.y));
+                    g_canvas_drag_px = ev->xbutton.x; g_canvas_drag_py = ev->xbutton.y;
                 }
             }
             if (window_is_dock() && g_dock_menu_win && cw == g_dock_menu_win &&
@@ -13438,6 +13449,7 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
         return;
     }
     if (ev->type == ButtonRelease && ev->xbutton.button == 1) {
+        g_canvas_drag = 0;
         g_popup_dragging = 0;  /* REAL, NEW 2026-08-29 (TASK 1) */
         g_text_drag_elem = NULL; /* REAL, NEW 2026-09-14 - end any real text drag-select */
         g_ov_drag = NULL;
@@ -13450,6 +13462,17 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
             g_win_resizing = 0;
             kh_save_win_size();
             if (!g_quit) { assign_nav_and_layout(); redraw(); }
+        }
+        return;
+    }
+    if (ev->type == MotionNotify && g_canvas_drag && (ev->xmotion.state & Button1Mask)) {
+        /* xelector follows a canvas drag (owner 2026-10-06): publish the pointer as a click while button 1 is still held (checked from the event state, the release may land outside
+         * the window). Coalesced, and only after the pointer moved >= 6 px, so the raycast consumer (it re-reads pchq_canvas_click.txt on change) is not flooded. */
+        XEvent mdr;
+        while (XCheckTypedWindowEvent(dpy, win, MotionNotify, &mdr)) *ev = mdr;
+        if (abs(ev->xmotion.x - g_canvas_drag_px) >= 6 || abs(ev->xmotion.y - g_canvas_drag_py) >= 6) {
+            g_canvas_drag_px = ev->xmotion.x; g_canvas_drag_py = ev->xmotion.y;
+            kh_publish_canvas_click(ev->xmotion.x, ev->xmotion.y, 1);
         }
         return;
     }
