@@ -4103,6 +4103,36 @@ static void write_ui_projection(void) {
                     uisan(s2[0] ? s2 : rest, lab_s, sizeof(lab_s));
                     /* Drop jump-links / sidebar nav links (worker rows bypass the extractor filter). */
                     if (junk_visible_line(lab_s)) continue;
+                    /* Milestone 2 (2026-10-07): fragment-only hrefs (# with
+                     * no path) navigate nowhere - render a labeled one
+                     * (TOC entries) as plain TEXT, drop unlabeled ones.
+                     * Consecutive identical LINK rows (infobox+body+footer
+                     * repeats) collapse to one. */
+                    { const char *u = rest;
+                      while (*u == ' ') u++;
+                      if (*u == '#' || *u == '\0') {
+                          /* Strip the '#' + anchor run and collapse the
+                           * interior tabs: the row showed "#History
+                           * <tabs> 1History" otherwise. */
+                          char frag[700];
+                          snprintf(frag, sizeof(frag), "%s", lab_s);
+                          { char *t = frag;
+                            while (*t == '#' || *t == ' ' || *t == '\t') t++;
+                            if (t != frag) memmove(frag, t, strlen(t) + 1); }
+                          collapse_ws(frag);
+                          if (frag[0] && !junk_visible_line(frag)) {
+                              UI_PUT("c_%d_kind=text\nc_%d_is_text=1\nc_%d_text=%s\n", rc, rc, rc, frag);
+                              rc++;
+                          }
+                          continue;
+                      } }
+                    { static char last_link_url[PATH_BUF], last_link_lab[700];
+                      static int last_link_rc = -1;
+                      if (last_link_rc == rc - 1 && strcmp(last_link_url, rest) == 0 &&
+                          strcmp(last_link_lab, lab_s) == 0) continue;
+                      snprintf(last_link_url, sizeof(last_link_url), "%s", rest);
+                      snprintf(last_link_lab, sizeof(last_link_lab), "%s", lab_s);
+                      last_link_rc = rc; }
                     shell_escape_squote(rest, url_sq, sizeof(url_sq));
                     UI_PUT("c_%d_kind=link\nc_%d_is_link=1\nc_%d_text=%s\n", rc, rc, rc, lab_s);
                     UI_PUT("c_%d_action='%s/ops/nb_write_go.sh' 'go' '%s'\n", rc, g_package_dir, url_sq);
