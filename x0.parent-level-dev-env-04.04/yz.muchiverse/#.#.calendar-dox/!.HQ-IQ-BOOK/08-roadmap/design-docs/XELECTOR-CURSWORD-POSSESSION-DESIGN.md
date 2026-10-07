@@ -99,6 +99,8 @@ layer 2  hero          (cursword hidden inside the hero's inventory; hotbar = he
 3. Which files are "game data" in practice (what is the list a slot captures)? And what exactly is the game-time value and file?
 4. Layer 2 when two heroes exist: the designated one only, or cycle through every possessable hero?
 
+**Update 2026-10-07:** the owner says a **db session is the game**, so "per db session" and "per game" in section 5 are one place, the db session (see `PLAY-MODES-AND-MAP-ACCESS-DESIGN.md` section 5). Also, the headers on the top bars are to be driven by a per-game menu setup `.pdl` (same doc), which is the shape the section 6 header work should take.
+
 ## 6. Related, queued (owner, 2026-10-06): more taskbar headers on the pc-hq top bar
 
 pc-hq's top toolbar has only: In, book, page, Menu, Player, clock. The owner wants more of the livedesk taskbar headers on it, e.g. **db** and **plugins**, as the kind that **can change per book/session and are not handled by the "super user"** (so they are session-scoped, not global admin headers).

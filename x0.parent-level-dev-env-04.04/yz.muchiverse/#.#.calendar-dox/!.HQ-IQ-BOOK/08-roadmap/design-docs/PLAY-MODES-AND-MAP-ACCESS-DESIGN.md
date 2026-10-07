@@ -47,10 +47,17 @@ Starting any play mode begins at the game's single starting-position entity and 
 
 Feasibility: yes. Teleport, desk switch, the mode flag and the ledger all exist; the new work is the third mode, the .pdl, one enforcement check, and the two-layer save rule (the only part with real design risk).
 
-## 5. Open questions for the owner
+## 5. Owner answers (2026-10-06/07) and what is still open
 
-1. Is the available-maps list per game, per db session, or both (like the designated body)?
-2. In play-test, is editing allowed on **everything** (maps, entities, events) or a subset?
-3. Rule 6 above: definition changes immediately, live state keeps its values. Right, or should an edit restart that entity's state?
-4. In **play** (not test), may the player open menus that edit (db, plugins), or are those hidden entirely?
-5. Does a refused teleport show a message to the player, or just not offer the option?
+- **A "db session" IS the game.** So "per game" and "per db session" are the same thing: the available-maps list, the starting-position entity and the designated body all belong to the db session. (This also simplifies the possession doc, which listed them as two places.)
+- **Play-test editing = whatever is marked.** Not everything: each editable thing carries a marker for "editable in play-test" (the exact word is open, `playtest` / `edit`), set when it is authored. No marker, no edit in play-test.
+- **Rule 6 confirmed:** an edit during play-test changes the **definition immediately**, the live state keeps its values.
+- **Menus in play are gated by a user-defined setup from a .pdl** (or similar): the game's author decides which menus (db, plugins, ...) exist during play and play-test. A game may also **add its own cells and menus** (the owner's example: a "game title" menu). So the top-bar headers are **data-driven per game**, not a fixed list. This is the same mechanism as the queued pc-hq extra headers (possession doc, section 6): one per-game menu `.pdl` should drive the livedesk taskbar headers and the pc-hq top bar, in every mode (in build it lists everything).
+
+Consequences for the build list (section 4): add (7) a per-game **menu setup .pdl** (header cells: id, label, which modes show it, what it opens, optional author-defined cells) read by both taskbars; (8) the **edit marker** on authored items and its check in play-test.
+
+**Still open**
+
+1. Does a refused teleport show a message to the player, or is the option just not offered? (Not answered yet.)
+2. The edit marker: its name, and where it lives (per item in its `meta.pdl`, or one list in the game's setup `.pdl`).
+3. The menu setup `.pdl`: one file per game, and how a game-added cell names the action it runs (an event, a shell op?).
