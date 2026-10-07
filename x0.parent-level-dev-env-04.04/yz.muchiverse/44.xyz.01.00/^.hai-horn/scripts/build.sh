@@ -56,7 +56,7 @@ for src in ops/*.c; do
     # halo_chat_describe makes ids with libuuid; without -luuid the link failed and, under set -e, stopped the build before the HORN
     # ops after it (alphabetical) were compiled (found 2026-10-06 landing HALO, Q001).
     extra=""
-    case "$name" in halo_chat_describe) extra="-luuid" ;; esac
+    case "$name" in halo_chat_describe|irl_bootstrap_fsm) extra="-luuid" ;; esac
     gcc $CFLAGS "$src" -o "ops/+x/$name.+x" $extra
 done
 
