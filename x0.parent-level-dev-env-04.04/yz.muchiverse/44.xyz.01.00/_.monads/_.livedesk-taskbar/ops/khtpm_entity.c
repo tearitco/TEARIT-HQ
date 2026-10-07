@@ -2681,6 +2681,53 @@ static void draw_sprite_rgb(Display *dpy, Drawable buf, GC gc, int bg_r, int bg_
  * g_sprite_res (the exact same sprite.csv data draw_sprite_rgb() just
  * used above), so THAT is the real texture this reuses directly. */
 static int g_camera_mode = 1;
+
+/* 2026-10-07, direct instruction ("we need a better way to reload sprites... animations soon... how bout a
+ * 'marker file' change?"): <package_dir>/sprite_changed.txt is an append-only marker, polled by SIZE each idle
+ * tick (house convention, never mtime), same shape as desktop_pos_changed.txt. When it changes the window
+ * reloads its sprite WITHOUT a relaunch. The marker's LAST non-empty line may name the csv to show (a plain
+ * *.csv basename in package_dir, no '/'): that is the animation hook, write frame2.csv then append its name.
+ * Empty or invalid line = sprite.csv. A failed load keeps the old sprite. 3D phymoji model is NOT reloaded
+ * (loaded once at start; known gap). Cursword's shape is owned by cursword_update_shape(), and 3D camera modes
+ * rebuild the shape per frame, so the 2D shape is only rebuilt here for other entities in 2D mode. */
+static void sprite_pick_csv(const char *marker_path, char *out, size_t sz) {
+    char line[256], last[256] = "";
+    FILE *f = fopen(marker_path, "r");
+    if (f) {
+        while (fgets(line, sizeof(line), f)) {
+            line[strcspn(line, "\r\n")] = '\0';
+            if (line[0]) snprintf(last, sizeof(last), "%s", line);
+        }
+        fclose(f);
+    }
+    size_t n = strlen(last);
+    if (n > 4 && n < 120 && !strchr(last, '/') && !strstr(last, "..") && strcmp(last + n - 4, ".csv") == 0)
+        snprintf(out, sz, "%s", last);
+    else
+        snprintf(out, sz, "sprite.csv");
+}
+
+static int sprite_reload(Display *dpy, Window win, const char *package_dir, const char *marker_path) {
+    char name[128], path[TP_PATH_BUF];
+    sprite_pick_csv(marker_path, name, sizeof(name));
+    snprintf(path, sizeof(path), "%s/%s", package_dir, name);
+    unsigned char *old = g_sprite_pixels;
+    if (!load_sprite_csv(path)) return 0;      /* globals untouched on failure: old sprite stays */
+    free(old);
+    g_has_sprite = 1;
+    if (dpy && win) {
+        set_net_wm_icon(dpy, win);
+        if (!g_is_cursword && g_camera_mode != 3 && g_camera_mode != 4) {
+            Pixmap m = XCreatePixmap(dpy, win, WIN_PX, WIN_PX, 1);
+            GC mg = XCreateGC(dpy, m, 0, NULL);
+            build_shape_mask(dpy, win, mg, m);
+            XFreeGC(dpy, mg);
+            XFreePixmap(dpy, m);
+        }
+    }
+    return 1;
+}
+
 static void load_camera_mode(const char *house_root) {
     char path[TP_PATH_BUF];
     snprintf(path, sizeof(path), "%s/#.desktop/desktop_camera_mode.txt", house_root);
@@ -5010,6 +5057,11 @@ XSetClassHint(dpy, win, &(XClassHint){(char *)"MuchiverseLivedesk", (char *)"Muc
     snprintf(pos_marker_path, sizeof(pos_marker_path), "%s/desktop_pos_changed.txt", package_dir);
     long pos_marker_size = 0;
     { struct stat pst; if (stat(pos_marker_path, &pst) == 0) pos_marker_size = (long)pst.st_size; }
+    /* sprite_changed.txt: size growth = reload the sprite (see sprite_reload()). Seeded to the current size so an old marker does not fire at startup. */
+    char sprite_marker_path[TP_PATH_BUF];
+    snprintf(sprite_marker_path, sizeof(sprite_marker_path), "%s/sprite_changed.txt", package_dir);
+    long sprite_marker_size = 0;
+    { struct stat sst; if (stat(sprite_marker_path, &sst) == 0) sprite_marker_size = (long)sst.st_size; }
 
     TP_TIMING_MARK("setup-complete->entering event loop");
     while (running && !g_shutdown_requested) {
@@ -5204,6 +5256,14 @@ XSetClassHint(dpy, win, &(XClassHint){(char *)"MuchiverseLivedesk", (char *)"Muc
 
         /* Real, cheap, event-driven opacity reapply - see
          * theme_changed_dirty()'s own declaration comment. */
+        {
+            struct stat sst;
+            if (stat(sprite_marker_path, &sst) == 0 && (long)sst.st_size != sprite_marker_size) {
+                sprite_marker_size = (long)sst.st_size;
+                if (sprite_reload(dpy, win, package_dir, sprite_marker_path)) need_redraw = 1;
+            }
+        }
+
         if (theme_changed_dirty(g_house_root)) {
             set_window_opacity(dpy, win, tp_load_theme_opacity(g_house_root));
             load_theme_colors();   /* bg/fg too, not just opacity - see the load_theme_colors() call in tp_main()'s setup */
