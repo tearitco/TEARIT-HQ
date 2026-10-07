@@ -21,6 +21,7 @@ A harness is three small things:
 | `pchq_playtest_action.pal` | `cases/pchq_playtest_action.pdl` | 8 | pc-hq `player` verbs `playtest` / `toggle` / `stop` on the real `pchq_board_action.sh` |
 | `transfer_map_access.pal` | `cases/transfer_map_access.pdl` | 17 | real `mr_transfer_desk.+x`: play-mode map access, refusal rc 3 + reason + ledger, build/missing-mode/no-MAP-rows unrestricted, play-test follows play |
 | `solar_sandbox.pal` | `cases/solar_sandbox.pdl` | 41 | solar-sandbox entity menu rows (the real METHOD strings) through the real `mr_transfer_desk.+x`: Enter, Leave orbit, Teleport, access list, unlisted page refused rc 3 |
+| `phys_nodes.pal` | `cases/phys_nodes.pdl` | 31 | physics-nodes `phys_node_eval`: Earth/Moon/Mars g, escape, year; impl swap and tunable change recompute downstream; page > planet override; unknown impl refused; unchanged inputs append nothing |
 | `game_setup_parser.pal` | `cases/game_setup_parser.pdl` | 42 | the `game.pdl` parser (`khtpm_game_setup.c`) through `game_setup_query_op`: rows, maps, cells, edit marks, mode file, `gs_check_map_switch` + ledger |
 | `player_menu_playtest.pal` | `cases/player_menu_playtest.pdl` | 17 | taskbar Player menu play-test row, play-mode file transitions (via `player_menu_query_op`, white-box) |
 | `hotbar_minimize.pal` | `cases/hotbar_minimize.pdl` | 9 | a REAL `hotbar_manager` process: hide/show/toggle publish within 300 ms, two clicks 280 ms apart stay hidden |
