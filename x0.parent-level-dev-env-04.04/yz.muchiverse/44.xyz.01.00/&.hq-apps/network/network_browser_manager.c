@@ -700,18 +700,24 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                     html_decode_entities(text);
                     collapse_ws(text);
                 }
-                /* Fold <a> into the current paragraph so a sentence stays
-                 * one TEXT row. Standalone nav links (empty line so far,
-                 * short-ish label) still become LINK rows. */
-                if (linelen > 0 && text[0]) {
-                    if (linelen < sizeof(line) - 1 && line[linelen - 1] != ' ') line[linelen++] = ' ';
-                    size_t ti;
-                    for (ti = 0; text[ti] && linelen < sizeof(line) - 1; ti++) line[linelen++] = text[ti];
-                } else if (href[0] && href[0] != '#' && strncasecmp(href, "javascript:", 11) != 0 && strncasecmp(href, "mailto:", 7) != 0 && strncasecmp(href, "tel:", 4) != 0) {
+                /* Milestone 2 (2026-10-07): split navigable links out of the
+                 * paragraph instead of folding them invisibly (folding
+                 * swallowed the href, so no content link was clickable).
+                 * Flush pre-link text, emit the LINK row, post-link text
+                 * accumulates fresh: every content link becomes a real
+                 * navigable row with zero schema/xhtpm change. Junk-href
+                 * links (mailto/javascript/#) still fold as plain text so
+                 * sentences don't split for zero clickability gain.
+                 * Readable-flow spans are the follow-up (segment rows). */
+                if (href[0] && href[0] != '#' && strncasecmp(href, "javascript:", 11) != 0 && strncasecmp(href, "mailto:", 7) != 0 && strncasecmp(href, "tel:", 4) != 0) {
+                    /* Navigable href: flush pre-link text first so the
+                     * LINK becomes its own clickable row (see note). */
+                    if (linelen > 0) FLUSH_LINE();
                     char resolved[PATH_BUF];
                     resolve_url(url, href, resolved, sizeof(resolved));
                     fprintf(out, "LINK|%s|%s\n", resolved, text[0] ? text : resolved);
                 } else if (text[0]) {
+                    if (linelen > 0 && linelen < sizeof(line) - 1 && line[linelen - 1] != ' ') line[linelen++] = ' ';
                     size_t ti;
                     for (ti = 0; text[ti] && linelen < sizeof(line) - 1; ti++) line[linelen++] = text[ti];
                 }
