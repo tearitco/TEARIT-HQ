@@ -1,1 +1,0 @@
-# append-only, written only by the phone's owner.  <epoch_ms>|<from>|<to>|<kind>|<ref>|<text>

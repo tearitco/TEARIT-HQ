@@ -1,3 +1,0 @@
-TRIGGER|(unset)
-CMD|1|change_gold|
-SCRATCHBLOCK|change_gold|OK

@@ -1,8 +1,0 @@
-META         | piece_id           | tax_robot
-STATE        | kind                | robot
-STATE        | glyph               | 🤖
-STATE        | instance_id         | TAX1
-STATE        | footprint_tiles     | 1
-METHOD       | Play                | sh -c 'exec sh "$1/&.widgits/events-hq/ops/play_event.sh" "$0"'
-METHOD       | Events (hq)         | sh -c 'exec "$1/&.widgits/events-hq/button.sh" "$0" "$1"'
-METHOD       | Close               | CLOSE

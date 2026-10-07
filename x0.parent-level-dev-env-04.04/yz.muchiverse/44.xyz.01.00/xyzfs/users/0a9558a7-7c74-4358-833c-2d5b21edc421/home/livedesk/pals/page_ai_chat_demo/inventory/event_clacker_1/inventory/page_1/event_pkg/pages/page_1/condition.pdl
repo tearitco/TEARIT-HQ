@@ -1,4 +1,0 @@
-SECTION      | KEY                | VALUE
-----------------------------------------
-META         | piece_id           | page_ai_chat_demo
-COND | trigger | player-touch

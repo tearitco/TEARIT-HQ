@@ -1,1 +1,0 @@
-[2026-08-05 14:05:44] Created: m8_redhorned entity initialized | Trigger: active_monster.pdl selection

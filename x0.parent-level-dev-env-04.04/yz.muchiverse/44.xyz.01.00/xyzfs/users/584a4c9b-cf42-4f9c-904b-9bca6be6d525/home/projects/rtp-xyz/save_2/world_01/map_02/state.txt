@@ -1,4 +1,0 @@
-id=map_02
-width=40
-height=16
-turn=0

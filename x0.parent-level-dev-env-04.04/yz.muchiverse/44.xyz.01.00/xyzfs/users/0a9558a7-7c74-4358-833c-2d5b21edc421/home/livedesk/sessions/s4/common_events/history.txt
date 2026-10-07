@@ -1,2 +1,0 @@
-CHANGE_GOLD delta=+50 qolq: 0 -> 50
-CHANGE_GOLD delta=+50 qolq: 0 -> 50
