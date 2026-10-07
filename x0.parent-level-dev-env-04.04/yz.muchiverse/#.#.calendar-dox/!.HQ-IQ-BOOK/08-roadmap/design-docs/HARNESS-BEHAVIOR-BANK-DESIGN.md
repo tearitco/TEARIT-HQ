@@ -89,6 +89,17 @@ Source: `#.#.calendar-dox/1-1.HARNECIENT.SMOL/NIGHT_31_THE_TEST_THAT_TEACHES.txt
 
 **Build order that respects the lessons (nothing below needs the owner's AI-layer approval until step 4):** (a) rename `SYNONYM` rows to the house `CANON=|ALIAS=|WEIGHT=|SOURCE=` format; (b) author the software masters + one corpus tag in a **scratch concept-bank folder** and run `concept_mirror_rebuild.sh` on it; (c) make the harness ledger writer append to a watcher entity's `history.txt` (a small op, in a pal); (d) only then point `ai_describe` at the watcher, with the corpus filter, writing to `pending_review.txt`; (e) the concept-level ledger. Each step gets its own pal harness first.
 
+## 4e. Is "promoted" resolved in horn/halo? (checked 2026-10-07 across branches, at the owner's request)
+
+Looked at `^.hai-horn` and `&.widgits/concept-bank` on every branch. Only `claude` and `claude-halo-pull` hold the HALO_CHAT work (`9028e0706`, same commit on both; `opencode`/`kilo` have no promotion code; `grok`, `attrition`, `main` only carry the stub rule file). **Answer: not resolved, and the code disagrees with the docs.**
+- Docs (`^.hai-horn/dox/02-DECISIONS-AND-TESTING.md` Decision 1, `HORN_CHAT-HANDOFF.md`, NIGHT 30): **Option A, review file, no auto-promotion yet**; the handoff flags it as a question for the owner.
+- Code (`ops/halo_chat_validate.c`): after the validator rules pass, **`if (tier >= 2) promote_to_bank(...)`**: it edits the real spoke file directly and rewrites the entry as `status=promoted`. Tier >= 2 is read from the entity's `learning_limits.pdl` (`max_tier`; missing file = preschool = 0). Lower tiers print `QUEUED_FOR_REVIEW`.
+- That auto-promote path **does not consult the promotion ledger** (no score, no observation count), although `ops/promotion_ledger.c` exists (Laplace score, `add_candidate`/`replay`/`score`/`list`, commit `1309ba6ae`). `AUTO-PROMOTION-RULE.md` requires >= 0.90 AND >= 20 observations, and says it is a stub to wire once replay data exists. So tier alone currently opens the gate.
+- The halo pipeline in `halo_chat.pal` runs describe then validate per turn, so with a tier >= 2 entity it would write the bank with no human step.
+- Harness test 4 in `halo_test_harness.sh` asserts "VALIDATE promotes candidate" (an `.sh` harness: not ported to pal).
+
+**Not changed by me** (not my lane, owner decision pending). Recommended: make the validator always queue (Option A) and have promotion read the ledger score + N, or gate auto-promote behind an explicit flag defaulting off. The harness bank must never rely on this path (4c item 2 stands).
+
 ## 5. Open questions for the owner
 
 1. Is my reading of "3D" (words / concepts / corpus) right, or is the third axis something else (for example a 3-coordinate position of the behavior in the concept space)?
