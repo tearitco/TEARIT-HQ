@@ -174,6 +174,38 @@ So the rule is: **a possessor is any entity that holds a possession; what it can
   respects the existing move range rules (no teleporting through walls).
 - New message kinds: `command`, `lease`, `release`, `result` (added to §3's table).
 
+### 3f. Built from pal/ops events, tunable weights, and tomom as an advisor (owner, 2026-10-06)
+
+> "we will try to build all these with pal/ops events, and tunable weights, inside the tomom system right? reusable events?"
+
+Yes, with one line drawn. Everything here uses pieces the house already has; this section only says how they fit. Read-and-verified 2026-10-06: the Prisc+Ops standard
+(`.pal` loop `exec`s compiled ops, append-only ledgers + size-growth cursors, `PRISC-OPS-ARCHITECTURE.md`), the data-driven event command registry
+(`#.ref/menu/event_commands.registry.pdl`: a `COMMAND` block = `LABEL / FIELD1 / FIELD2 / PARAMS / TEMPLATE / END`, add a command by editing that one file, no recompile),
+the FSM harness joints (`%.harnesses/harnecient-fsm/tunables.conf`: named values sourced by `run_plan.sh`, every value still a commented default today) and its dataset
+(`observations.log`, one row per step; created by plan runs, does not exist in this checkout yet), and tomom (`#.Z.HUMAN_LLM/3.stage.llm.tomom...`: a real C pipeline incl. a `meta_rl`
+curriculum selector that learns from feedback; dormant). **Not read yet:** whether tomom's trainer can consume a `.pdl` ledger directly.
+
+**1. Events are small, deterministic, reusable units.** Each is one compiled op with a fixed argument list and one registry entry, so any event script (events-hq, a ghost plan,
+a robot) can call it the same way. First set (names are working names): `phone.send` (append a validated line to the owner's outbox), `server.route` (the single-writer router:
+outbox -> recipient inbox + history + ledger), `lease.grant` / `lease.release` (§3e), `ghost.assign` (give a quest to a ghost), `quest.score` (run the quest's `verify.sh`, record the verdict).
+A "step" a ghost takes is an event call, not a free-form model action.
+
+**2. Scoring is never a model's opinion.** `quest.score` runs the quest's own verifier script (like Q003's `verify.sh`) and records exit code + output. A model can propose; only a verdict
+from a script moves a quest to `done`. This is the harness rule ("nothing is scored by the model saying done").
+
+**3. Weights only choose among valid options, and every choice is a named joint.** Joints live in `^.hai-server/tunables.conf` (same sourced-assignment format and comment discipline as the
+FSM's file; defaults commented, edit by hand today): which ghost gets a quest (`ghost_pick_weight_*`), lease length (`lease_default_s`, `lease_max_s`), routing priority and rate caps
+(`route_max_msgs_per_min`), when to escalate to the owner (`escalate_after_fails`), history caps (§3c). No weight may bypass a rule: leases still expire, `locked` entities still need the
+owner, caps still apply. A weight changes order and amount, never permission.
+
+**4. Every use of a joint is a ledger row** in `^.hai-server/observations.log`: `<epoch_ms>|<event>|<joint>=<value>|<inputs>|<verdict>`. That file is the Stage-0 dataset
+(`HARNESS-DELEGATION-PIPELINE.md` §7): hand-tune first; a heuristic or tomom can later *propose* new joint values from it.
+
+**5. tomom is an optional advisor behind the server.** It reads `observations.log`, proposes joint values, and the server applies them as ordinary tunables under the same rules.
+Everything works with tomom off. Training events (rl / irl / fsm) are runs of the same events with a recorded verdict, so a ghost's history is also its training data.
+
+**Not built yet:** none of the events, the router, the tunables file or the ledger. First slice is quest Q009.
+
 ## 4. The server (`^.hai-server`, 🖥️)
 
 The server is the **one entity that manages all the others through their phones**:
