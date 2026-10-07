@@ -1,0 +1,2 @@
+# x|y|dest_map_id|dest_x|dest_y
+8|3|building_01_gf|8|3

@@ -1,0 +1,148 @@
+[20:52:26] === step 0: preflight ===
+[20:52:26] prisc=/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/101.mutaclsym🧟‍♂️️+18.0G/system/prisc+x
+[20:52:26] === clean stray processes ===
+[20:52:27] === step 1: sandbox package + IR with all 18 Party/Actor commands ===
+[20:52:27] === step 2: launch events-hq manager (standalone, real house root) ===
+[20:52:29] action sent: edit:1|change_items|item_id=1|amount=5
+[20:52:32] PASS: manager launched
+[20:52:32] === step 3: compile proof ===
+[20:52:32] PASS: event.pal compiled
+# event.pal - real prisc+x opcodes, COMPILED from event.ir.pdl by khtpm_events_hq_manager.c
+# pkg=task2b-sandbox page=page_1 - regenerated fresh on every command save
+li x15, 6
+li x13, 0
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task2b_sandbox/20260830-205226/items.txt" "item_1"
+addi x12, x12, 5
+li x15, 7
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task2b_sandbox/20260830-205226/items.txt" "item_1"
+li x15, 6
+li x13, 0
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task2b_sandbox/20260830-205226/weapons.txt" "weapon_2"
+addi x12, x12, 3
+li x15, 7
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task2b_sandbox/20260830-205226/weapons.txt" "weapon_2"
+li x15, 6
+li x13, 0
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task2b_sandbox/20260830-205226/armors.txt" "armor_3"
+addi x12, x12, 7
+li x15, 7
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task2b_sandbox/20260830-205226/armors.txt" "armor_3"
+li x15, 7
+li x12, 1
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task2b_sandbox/20260830-205226/party.txt" "member_1"
+li x15, 6
+li x13, 0
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task2b_sandbox/20260830-205226/actor_1_stats.txt" "hp"
+addi x12, x12, -10
+li x15, 7
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task2b_sandbox/20260830-205226/actor_1_stats.txt" "hp"
+li x15, 6
+li x13, 0
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task2b_sandbox/20260830-205226/actor_1_stats.txt" "mp"
+addi x12, x12, 25
+li x15, 7
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task2b_sandbox/20260830-205226/actor_1_stats.txt" "mp"
+li x15, 6
+li x13, 0
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task2b_sandbox/20260830-205226/actor_1_stats.txt" "tp"
+addi x12, x12, -5
+li x15, 7
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task2b_sandbox/20260830-205226/actor_1_stats.txt" "tp"
+li x15, 6
+li x13, 0
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task2b_sandbox/20260830-205226/actor_1_stats.txt" "exp"
+addi x12, x12, 120
+li x15, 7
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task2b_sandbox/20260830-205226/actor_1_stats.txt" "exp"
+li x15, 6
+li x13, 0
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task2b_sandbox/20260830-205226/actor_1_stats.txt" "level"
+addi x12, x12, 2
+li x15, 7
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task2b_sandbox/20260830-205226/actor_1_stats.txt" "level"
+li x15, 6
+li x13, 0
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task2b_sandbox/20260830-205226/actor_params.txt" "param_1:2"
+addi x12, x12, 5
+li x15, 7
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task2b_sandbox/20260830-205226/actor_params.txt" "param_1:2"
+li x15, 6
+li x13, 9999
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task2b_sandbox/20260830-205226/actor_1_stats.txt" "max_hp"
+li x15, 7
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task2b_sandbox/20260830-205226/actor_1_stats.txt" "hp"
+li x15, 6
+li x13, 9999
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task2b_sandbox/20260830-205226/actor_1_stats.txt" "max_mp"
+li x15, 7
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task2b_sandbox/20260830-205226/actor_1_stats.txt" "mp"
+li x15, 6
+li x13, 9999
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task2b_sandbox/20260830-205226/actor_1_stats.txt" "max_tp"
+li x15, 7
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task2b_sandbox/20260830-205226/actor_1_stats.txt" "tp"
+li x15, 7
+li x12, 1
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task2b_sandbox/20260830-205226/actor_states.txt" "state_1:4"
+li x15, 7
+li x12, 1
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task2b_sandbox/20260830-205226/actor_skills.txt" "skill_1:3"
+li x15, 7
+li x12, 8
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task2b_sandbox/20260830-205226/actor_equipment.txt" "equip_1:0"
+li x15, 7
+li x12, 2
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task2b_sandbox/20260830-205226/actor_1_stats.txt" "class_id"
+exec cmd_16.sh
+exec cmd_17.sh
+exec cmd_18.sh
+halt
+[20:52:32] PASS: IR has 18 NODEs (15 numeric + 3 string Party/Actor commands)
+[20:52:32] PASS: event.pal has inline PAL kv bytecode (GET/SET_KV_INT + negative addi delta)
+[20:52:32] PASS: event.pal has compound-id keys (param_/state_/equip_) and item_ key verbatim
+[20:52:32] PASS: 3 cmd_N.sh wrappers generated (change_name/nickname/profile string ops)
+[20:52:32] PASS: all 3 string-command wrappers route to mr_actor_string.+x
+### /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task2b_sandbox/20260830-205226/event_pkg/pages/page_1/cmd_16.sh
+#!/bin/sh
+cd "$(dirname "$0")/../../.." || exit 1
+ENT="$PWD"
+D="$ENT"
+while [ "$D" != "/" ] && [ ! -d "$D/xyzfs" ]; do D="$(dirname "$D")"; done
+exec "$D/&.widgits/events-hq/ops/+x/mr_actor_string.+x" "$ENT" '1' name 'Officer Helena'
+### /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task2b_sandbox/20260830-205226/event_pkg/pages/page_1/cmd_17.sh
+#!/bin/sh
+cd "$(dirname "$0")/../../.." || exit 1
+ENT="$PWD"
+D="$ENT"
+while [ "$D" != "/" ] && [ ! -d "$D/xyzfs" ]; do D="$(dirname "$D")"; done
+exec "$D/&.widgits/events-hq/ops/+x/mr_actor_string.+x" "$ENT" '1' nickname 'Hel'
+### /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task2b_sandbox/20260830-205226/event_pkg/pages/page_1/cmd_18.sh
+#!/bin/sh
+cd "$(dirname "$0")/../../.." || exit 1
+ENT="$PWD"
+D="$ENT"
+while [ "$D" != "/" ] && [ ! -d "$D/xyzfs" ]; do D="$(dirname "$D")"; done
+exec "$D/&.widgits/events-hq/ops/+x/mr_actor_string.+x" "$ENT" '1' profile 'Guardian of the North'
+[20:52:32] === step 4: runtime proof - run the compiled bytecode under prisc+x ===
+[20:52:33] PASS: prisc+x ran the compiled event to halt (exit 0)
+[20:52:33] === step 5: text-state-dump verification ===
+[20:52:33] PASS: change_items: item_1 1->6 (seeded delta)
+[20:52:33] PASS: change_weapons: weapon_2=3
+[20:52:33] PASS: change_armors: armor_3=7
+[20:52:33] PASS: change_party_member: member_1=1
+[20:52:33] PASS: actor_1_stats: hp=9999
+[20:52:33] PASS: actor_1_stats: mp=9999
+[20:52:33] PASS: actor_1_stats: tp=9999
+[20:52:33] PASS: actor_1_stats: exp=120
+[20:52:33] PASS: actor_1_stats: level=2
+[20:52:33] PASS: actor_1_stats: class_id=2
+[20:52:33] PASS: actor_1_stats: name=Officer Helena
+[20:52:33] PASS: actor_1_stats: nickname=Hel
+[20:52:33] PASS: actor_1_stats: profile=Guardian of the North
+[20:52:33] PASS: actor_params.txt: param_1:2=5
+[20:52:33] PASS: actor_states.txt: state_1:4=1
+[20:52:33] PASS: actor_skills.txt: skill_1:3=1
+[20:52:33] PASS: actor_equipment.txt: equip_1:0=8
+[20:52:33] PASS: history.txt: ACTOR string command audits present
+[20:52:33] state dumps copied into /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/presentations/events-hq-task2b-party-actor-commands-20260830-205226
+cleanup done

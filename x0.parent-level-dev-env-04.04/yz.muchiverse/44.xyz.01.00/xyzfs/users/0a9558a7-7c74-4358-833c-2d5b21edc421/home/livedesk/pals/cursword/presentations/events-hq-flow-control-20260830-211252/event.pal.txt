@@ -1,0 +1,42 @@
+# event.pal - real prisc+x opcodes, COMPILED from event.ir.pdl by khtpm_events_hq_manager.c
+# pkg=flowctl-sandbox page=page_1 - regenerated fresh on every command save
+j user_MID
+user_MID:
+li x15, 7
+li x12, 1
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.flowctl_sandbox/20260830-211252/switches.txt" "FC_PROVED_JUMP"
+_loop_1:
+li x15, 6
+li x13, 0
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.flowctl_sandbox/20260830-211252/items.txt" "item_tick"
+addi x12, x12, 1
+li x15, 7
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.flowctl_sandbox/20260830-211252/items.txt" "item_tick"
+li x15, 6
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.flowctl_sandbox/20260830-211252/switches.txt" "FC_LOOP_GATE"
+li x2, 1
+bne x12, x2, _else_2
+j _loop_end_1
+j _endif_2
+_else_2:
+li x15, 7
+li x12, 1
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.flowctl_sandbox/20260830-211252/switches.txt" "FC_LOOP_GATE"
+_endif_2:
+sleep 25000
+j _loop_1
+_loop_end_1:
+halt
+li x15, 6
+li x13, 0
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.flowctl_sandbox/20260830-211252/actor_1_stats.txt" "level"
+addi x12, x12, 5
+li x15, 7
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.flowctl_sandbox/20260830-211252/actor_1_stats.txt" "level"
+li x15, 6
+li x13, 0
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.flowctl_sandbox/20260830-211252/items.txt" "item_should_not_exist"
+addi x12, x12, 999
+li x15, 7
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.flowctl_sandbox/20260830-211252/items.txt" "item_should_not_exist"
+halt

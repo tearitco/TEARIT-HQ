@@ -1,0 +1,7 @@
+# event.pal - real prisc+x opcodes, hand-authored to match the exact
+# shape khtpm_events_hq_manager.c's own compiler produces (event.ir.pdl
+# -> event.pal -> cmd_N.sh) - door_civ's real "transfer player" Common
+# Event, teleporting the player from this desk (office) to civ-test.
+# pkg=door_civ page=page_1
+exec cmd_1.sh
+halt
