@@ -1,0 +1,7 @@
+# event.pal - Bot: decide whether to buy (cash >= price + policy_reserve) (trigger autoturn). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set cur_cash cash_{current}
+exec ops/+x/var_math.+x . set cur_pos pos_{current}
+exec ops/+x/tile_lookup.+x . cur_pos price tile_price
+exec ops/+x/var_math.+x . add buy_need tile_price rules.pdl:policy_reserve
+exec ops/+x/var_math.+x . ge want_buy cur_cash buy_need
+halt

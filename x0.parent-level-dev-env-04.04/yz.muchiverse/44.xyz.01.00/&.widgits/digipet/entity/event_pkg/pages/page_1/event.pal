@@ -1,0 +1,6 @@
+# event.pal - Feed page 1: reset the result code (last_feed 1 = ate)
+# hand-written in the registry PAL shape (relative paths; event_page_op runs it with cwd = the entity state dir)
+li x15, 7
+li x12, 1
+ecall "variables.txt" "last_feed"
+halt

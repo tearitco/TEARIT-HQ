@@ -1,0 +1,7 @@
+# event.pal - Move: raw = pos + roll; wrapped = raw >= 40; pos = raw mod 40 (trigger roll). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . add new_raw pos_{current} roll
+exec ops/+x/var_math.+x . ge wrapped new_raw rules.pdl:board_size
+exec ops/+x/var_math.+x . mod cur_pos new_raw rules.pdl:board_size
+exec ops/+x/var_math.+x . set pos_{current} cur_pos
+exec ops/+x/var_math.+x . set phase 4
+halt

@@ -1,0 +1,6 @@
+# Land: unowned property -> awaiting_buy (Buy / Pass choice)
+COND | trigger | roll
+COND | kv | switches.txt | game_over | eq | 0
+COND | kv | variables.txt | phase | eq | 4
+COND | kv | variables.txt | tile_kind | eq | 2
+COND | kv | variables.txt | tile_owner | eq | 0

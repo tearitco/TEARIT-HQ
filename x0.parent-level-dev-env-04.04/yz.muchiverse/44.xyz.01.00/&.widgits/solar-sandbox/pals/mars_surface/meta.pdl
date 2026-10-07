@@ -1,0 +1,9 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | solar_mars_surface
+STATE        | kind                 | solar-surface
+METHOD       | Leave orbit          | sh -c 'H="$1"; U=$(sed -n "s/^current_user_uuid[^A-Za-z0-9]*//p" "$H"/0.user-pal*/00.login-signup/current_login.txt); S=$(sed -n "/active_session/{s/.*active_session[^A-Za-z0-9]*//;s/ *$//;p;q}" "$H/xyzfs/users/$U/home/livedesk/sessions/session.pdl"); exec "$H/&.widgits/events-hq/ops/+x/mr_transfer_desk.+x" "$H" "${S:-s1}" solar-system'
+METHOD       | Teleport to Earth    | sh -c 'H="$1"; U=$(sed -n "s/^current_user_uuid[^A-Za-z0-9]*//p" "$H"/0.user-pal*/00.login-signup/current_login.txt); S=$(sed -n "/active_session/{s/.*active_session[^A-Za-z0-9]*//;s/ *$//;p;q}" "$H/xyzfs/users/$U/home/livedesk/sessions/session.pdl"); exec "$H/&.widgits/events-hq/ops/+x/mr_transfer_desk.+x" "$H" "${S:-s1}" solar-earth'
+METHOD       | Teleport to Moon     | sh -c 'H="$1"; U=$(sed -n "s/^current_user_uuid[^A-Za-z0-9]*//p" "$H"/0.user-pal*/00.login-signup/current_login.txt); S=$(sed -n "/active_session/{s/.*active_session[^A-Za-z0-9]*//;s/ *$//;p;q}" "$H/xyzfs/users/$U/home/livedesk/sessions/session.pdl"); exec "$H/&.widgits/events-hq/ops/+x/mr_transfer_desk.+x" "$H" "${S:-s1}" solar-moon'
+METHOD       | Close                | CLOSE
+METHOD       | Cancel               | void

@@ -1,0 +1,5 @@
+# event.pal - Pay jail fee 1/3: load jail state and cash (trigger payjail). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set cur_jail jail_{current}
+exec ops/+x/var_math.+x . set cur_cash cash_{current}
+exec ops/+x/var_math.+x . ge can_pay cur_cash rules.pdl:jail_fee
+halt

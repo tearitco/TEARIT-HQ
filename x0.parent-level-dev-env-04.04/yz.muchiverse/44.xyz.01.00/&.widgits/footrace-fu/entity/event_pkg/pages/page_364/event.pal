@@ -1,0 +1,6 @@
+# event.pal - Block 5: pay, take the stance (+block_bonus on its next defence) (trigger block). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . sub tokens tokens bl_cost
+exec ops/+x/var_math.+x . set guard_{current}_{sel} rules.pdl:block_bonus
+exec ops/+x/row_append.+x . ledger.txt ACT {turn} {current} {sel} block {bl_free} {bl_cost}
+exec ops/+x/var_math.+x . set ph_blk 3
+halt

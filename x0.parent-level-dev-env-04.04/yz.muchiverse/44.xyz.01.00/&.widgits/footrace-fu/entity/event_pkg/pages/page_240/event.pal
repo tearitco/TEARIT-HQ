@@ -1,0 +1,4 @@
+# event.pal - Combat 11: tie, rule both_lose (trigger combat). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set a_hit rules.pdl:combat_loss
+exec ops/+x/var_math.+x . set d_hit rules.pdl:combat_loss
+halt

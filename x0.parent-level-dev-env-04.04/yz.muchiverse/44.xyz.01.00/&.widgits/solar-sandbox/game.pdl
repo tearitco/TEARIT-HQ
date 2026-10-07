@@ -1,0 +1,6 @@
+# solar-sandbox game.pdl (template; install copies it to sessions/<id>/game.pdl). Format: GAME-SETUP-PDL-DESIGN.md. In play and play-test only these maps are reachable.
+GAME | title | Solar sandbox
+MAP | solar-system | available | 1
+MAP | solar-earth | available | 1
+MAP | solar-moon | available | 1
+MAP | solar-mars | available | 1

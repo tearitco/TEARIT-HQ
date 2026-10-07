@@ -1,0 +1,4 @@
+# event.pal - Attack 4: nobody to attack, or cannot act: refused, no token spent (trigger attack). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/row_append.+x . ledger.txt REFUSE {turn} {current} {sel} attack {act_ok} 0
+exec ops/+x/var_math.+x . set ph_att 0
+halt

@@ -1,0 +1,6 @@
+# event.pal - Move 10: target space and the finish rule (exact / bounce / overshoot wins) (trigger move). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . add ftgt act_pos mv_dist
+exec ops/+x/var_math.+x . set fcur act_pos
+exec ops/+x/event_page_op.+x . . --trigger finrule --state .
+exec ops/+x/var_math.+x . set ph_move 5
+halt

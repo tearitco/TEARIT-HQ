@@ -1,0 +1,4 @@
+# event.pal - Land: unowned property -> awaiting_buy (Buy / Pass choice) (trigger roll). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set switches.txt:awaiting_buy 1
+exec ops/+x/var_math.+x . set phase 1
+halt

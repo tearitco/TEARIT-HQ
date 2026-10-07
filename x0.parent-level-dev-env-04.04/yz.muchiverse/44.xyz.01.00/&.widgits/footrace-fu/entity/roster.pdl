@@ -1,0 +1,22 @@
+# roster.pdl - who plays which class: `r_<seat>_<slot>=<class id>` (ninjas.pdl). Setup reads the first ninjas_per_player slots of each seat that plays and builds those armies.
+# Default: every seat brings classes 1, 2, 3 in order, then 4, 5 (slots 4-5 are used only when rules.pdl ninjas_per_player is raised; the five classes total 21 HP, above max_army_hp, so setup refuses that).
+r_1_1=1
+r_1_2=2
+r_1_3=3
+r_1_4=4
+r_1_5=5
+r_2_1=1
+r_2_2=2
+r_2_3=3
+r_2_4=4
+r_2_5=5
+r_3_1=1
+r_3_2=2
+r_3_3=3
+r_3_4=4
+r_3_5=5
+r_4_1=1
+r_4_2=2
+r_4_3=3
+r_4_4=4
+r_4_5=5

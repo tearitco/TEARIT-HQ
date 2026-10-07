@@ -1,0 +1,4 @@
+# Block 1: load; a Ward Sentinel's first Block each turn is free
+COND | trigger | block
+COND | kv | variables.txt | ph_blk | eq | 0
+COND | kv | switches.txt | game_over | eq | 0

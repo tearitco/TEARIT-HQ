@@ -1,0 +1,5 @@
+# Chrono Shield 4: +ab_4_bonus Block for one combat, log
+COND | trigger | cast_shield
+COND | kv | variables.txt | ph_cast | eq | 2
+COND | kv | variables.txt | cc_ok | eq | 1
+COND | kv | switches.txt | game_over | eq | 0

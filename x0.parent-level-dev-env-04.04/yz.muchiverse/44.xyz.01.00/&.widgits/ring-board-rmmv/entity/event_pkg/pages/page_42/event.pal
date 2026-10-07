@@ -1,0 +1,4 @@
+# event.pal - Pay jail fee 3/3: paid -> out of jail, the player may roll (trigger payjail). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set jail_{current} 0
+exec ops/+x/var_math.+x . set cur_jail 0
+halt

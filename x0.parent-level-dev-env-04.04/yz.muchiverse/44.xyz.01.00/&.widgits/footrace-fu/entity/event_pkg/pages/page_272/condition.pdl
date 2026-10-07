@@ -1,0 +1,4 @@
+# ArmyCheck 3: no army left (both last ninjas fell together) -> draw
+COND | trigger | armycheck
+COND | kv | variables.txt | seats_up | le | 0
+COND | kv | switches.txt | game_over | eq | 0

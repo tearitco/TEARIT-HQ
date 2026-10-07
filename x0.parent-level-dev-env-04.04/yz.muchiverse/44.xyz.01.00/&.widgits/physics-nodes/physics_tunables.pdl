@@ -1,0 +1,6 @@
+# Default tunables (named joints). system.pdl TUNABLE rows are read after this file and win.
+# TUNABLE | node | key | value
+TUNABLE | gravity | factor | 1.0
+TUNABLE | gravity | value  | 9.81
+TUNABLE | orbit   | value  | 31557600
+TUNABLE | escape  | value  | 11186

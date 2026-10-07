@@ -1,0 +1,40 @@
+<!-- concept-bank-hq.xhtpm - X11-HQ READ-ONLY view of &.widgits/concept-bank/data.
+     Static layout; shared khtpm_core_render.+x; class="cbank-window
+     database-window" hits no g_is_* trigger (generic sidebar/panel/
+     scrolllist path) - ZERO renderer C.  Design:
+     #.#.calendar-dox/!.HQ-IQ-BOOK/08-roadmap/design-docs/CONCEPT-BANK-HQ-DESIGN.md
+     One <module>: ops/+x/concept_bank_manager.+x publishes concept_bank_ui.txt
+     and polls concept_bank_action.txt (written by ops/concept_bank_item.sh).
+     ONE scrolllist serves every page: level 0 = the list (masters / spokes /
+     candidates), level 1 = the selected record's detail rows. -->
+<window label="${head}" class="cbank-window database-window" vars="concept_bank_ui.txt">
+  <module src="&.hq-apps/concept-bank-hq/ops/+x/concept_bank_manager.+x"/>
+  <page name="main">
+
+    <sidebar id="sidebar" class="cbank-sidebar">
+      <text id="who" label="concept bank" class="cbank-who"/>
+      <item id="tm" class="cbank-tab ${cls_masters}" label="Masters"    action="'${PKG}/ops/concept_bank_item.sh' 'TAB masters'"/>
+      <item id="ts" class="cbank-tab ${cls_spokes}"  label="Spokes"     action="'${PKG}/ops/concept_bank_item.sh' 'TAB spokes'"/>
+      <item id="tc" class="cbank-tab ${cls_cands}"   label="Candidates" action="'${PKG}/ops/concept_bank_item.sh' 'TAB cands'"/>
+      <item id="tr" class="cbank-tab" label="reload" action="'${PKG}/ops/concept_bank_item.sh' 'RELOAD'"/>
+    </sidebar>
+
+    <panel id="content" class="cbank-panel">
+      <text id="status" class="cbank-status" label="${status}"/>
+      <text id="n1" class="cbank-quiet" label="${note1}" show="${note1}"/>
+      <text id="n2" class="cbank-quiet" label="${note2}" show="${note2}"/>
+      <text id="n3" class="cbank-quiet" label="${note3}" show="${note3}"/>
+      <text id="n4" class="cbank-quiet" label="${note4}" show="${note4}"/>
+      <text id="crumb" class="cbank-sel" label="${crumb}" show="${crumb}"/>
+      <item id="bk" class="cbank-btn" label="&lt; back" action="'${PKG}/ops/concept_bank_item.sh' 'BACK'" show="${show_back}"/>
+      <item id="vl" class="cbank-btn" label="validate (read-only check, writes nothing)" action="'${PKG}/ops/concept_bank_item.sh' 'VALIDATE'" show="${show_validate}"/>
+
+      <scrolllist class="from-top">
+        <repeat count="${n_list}" bind="l">
+          <item id="l${l.#}" class="cbank-row ${l.cls}" label="${l.text}"
+                action="'${PKG}/ops/concept_bank_item.sh' 'SEL ${l.idx}'"/>
+        </repeat>
+      </scrolllist>
+    </panel>
+  </page>
+</window>

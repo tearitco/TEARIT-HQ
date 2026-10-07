@@ -1,0 +1,5 @@
+# Block 6: the free Block is used up this turn
+COND | trigger | block
+COND | kv | variables.txt | ph_blk | eq | 3
+COND | kv | variables.txt | bl_free | eq | 1
+COND | kv | switches.txt | game_over | eq | 0

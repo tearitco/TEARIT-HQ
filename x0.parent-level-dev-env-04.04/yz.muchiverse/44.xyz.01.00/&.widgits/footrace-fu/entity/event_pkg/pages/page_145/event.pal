@@ -1,0 +1,3 @@
+# event.pal - TurnStart 3: select the leading ninja of this army (trigger turnstart). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/event_page_op.+x . . --trigger selectlead --state .
+halt

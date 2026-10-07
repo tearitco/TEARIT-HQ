@@ -1,0 +1,5 @@
+# Bot: Buy
+COND | trigger | autoturn
+COND | kv | switches.txt | game_over | eq | 0
+COND | kv | variables.txt | phase | eq | 1
+COND | kv | variables.txt | want_buy | eq | 1

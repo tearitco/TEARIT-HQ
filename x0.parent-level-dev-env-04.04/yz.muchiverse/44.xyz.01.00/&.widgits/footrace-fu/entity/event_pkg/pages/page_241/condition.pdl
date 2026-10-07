@@ -1,0 +1,5 @@
+# Combat 12: tie, rule coin - flip
+COND | trigger | combat
+COND | kv | variables.txt | ph_cmb | eq | 6
+COND | kv | variables.txt | tie | eq | 1
+COND | kv | rules.pdl | tie_rule | eq | 2

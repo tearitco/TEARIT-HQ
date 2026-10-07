@@ -1,0 +1,3 @@
+# event.pal - FinRule 4: overshoot wins - land on Finish (trigger finrule). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set ftgt rules.pdl:track_len
+halt

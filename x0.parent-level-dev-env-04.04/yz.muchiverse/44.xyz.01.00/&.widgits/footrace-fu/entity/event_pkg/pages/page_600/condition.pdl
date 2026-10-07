@@ -1,0 +1,4 @@
+# Bot 1: pick by bot_counter mod policy_period; no tokens (or the action cap) -> end the turn
+COND | trigger | autoturn
+COND | kv | variables.txt | ph_bot | eq | 0
+COND | kv | switches.txt | game_over | eq | 0

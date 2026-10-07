@@ -1,0 +1,5 @@
+# reward_table.pdl - the seed reward table (digipet M2), DATA ONLY: nothing reads these rows yet (no learning, no weighted choice).
+# Real changes would go through candidate EDIT and review, never auto-promotion (ENTITY-NEEDS-AND-CARE-DESIGN section 6).
+REWARD | eat_when_hungry      | 5
+REWARD | eat_when_full        | -2
+REWARD | rest_while_starving  | -4

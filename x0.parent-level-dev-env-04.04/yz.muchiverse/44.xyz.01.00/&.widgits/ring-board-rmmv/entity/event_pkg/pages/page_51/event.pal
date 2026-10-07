@@ -1,0 +1,4 @@
+# event.pal - EndTurn 2/9: a jailed player who did not pay skips the turn (jail -= 1) (trigger endturn). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . sub jail_{current} jail_{current} 1
+exec ops/+x/var_math.+x . set phase 2
+halt

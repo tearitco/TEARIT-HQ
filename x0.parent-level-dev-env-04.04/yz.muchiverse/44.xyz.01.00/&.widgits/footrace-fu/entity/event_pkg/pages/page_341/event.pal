@@ -1,0 +1,3 @@
+# event.pal - Attack 2: the nearest enemy within reach (both directions) (trigger attack). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_find.+x . pos_ pos_{current}_ act_pos at_rmin at_rmax tgt
+halt

@@ -1,0 +1,5 @@
+# Setup 4: accepted -> seats count, seat 1 starts (tokens, selection)
+COND | trigger | setup
+COND | kv | variables.txt | setup_error | eq | 0
+COND | kv | variables.txt | players | ge | @rules.pdl:players_min
+COND | kv | variables.txt | players | le | @rules.pdl:players_max

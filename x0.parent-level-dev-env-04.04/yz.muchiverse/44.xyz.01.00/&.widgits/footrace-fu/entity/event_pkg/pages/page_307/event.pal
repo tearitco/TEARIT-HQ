@@ -1,0 +1,9 @@
+# event.pal - Move 8: roll 1d6, add the class Move bonus (class Move - move_baseline), at least move_min (trigger move). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/dice_roll.+x . dice_seed dice_counter
+exec ops/+x/var_math.+x . set mv_die dice1
+exec ops/+x/var_math.+x . set mv_stat ninjas.pdl:class_{act_cls}_move
+exec ops/+x/var_math.+x . sub mv_bonus mv_stat rules.pdl:move_baseline
+exec ops/+x/var_math.+x . add mv_dist mv_die mv_bonus
+exec ops/+x/var_math.+x . lt mv_low mv_dist rules.pdl:move_min
+exec ops/+x/var_math.+x . set ph_move 4
+halt

@@ -1,0 +1,4 @@
+# Attack 5: pay, fight (the roll-off), log
+COND | trigger | attack
+COND | kv | variables.txt | ph_att | eq | 2
+COND | kv | variables.txt | tgt | gt | 0

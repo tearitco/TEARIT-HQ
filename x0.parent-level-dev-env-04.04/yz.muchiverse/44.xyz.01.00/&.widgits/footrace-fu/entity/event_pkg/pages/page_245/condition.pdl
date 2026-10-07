@@ -1,0 +1,3 @@
+# Combat 16: apply the HP loss
+COND | trigger | combat
+COND | kv | variables.txt | ph_cmb | eq | 7

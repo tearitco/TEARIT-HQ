@@ -1,0 +1,5 @@
+# event.pal - EndTurn 6/9: turn cap reached -> GameOver (reason 2, winner 0 = none) (trigger endturn). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set switches.txt:game_over 1
+exec ops/+x/var_math.+x . set game_over_reason 2
+exec ops/+x/var_math.+x . set winner 0
+halt

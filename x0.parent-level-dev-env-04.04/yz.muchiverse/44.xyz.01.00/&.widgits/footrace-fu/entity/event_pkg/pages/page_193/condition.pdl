@@ -1,0 +1,5 @@
+# FinRule 4: overshoot wins - land on Finish
+COND | trigger | finrule
+COND | kv | variables.txt | ph_fin | eq | 1
+COND | kv | variables.txt | fover | eq | 1
+COND | kv | rules.pdl | finish_rule | eq | 3

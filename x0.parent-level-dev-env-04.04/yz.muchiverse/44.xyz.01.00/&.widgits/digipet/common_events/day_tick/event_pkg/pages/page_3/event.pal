@@ -1,0 +1,6 @@
+# event.pal - Day Tick page 3 (starving, death OFF, the loss would take HP below 1): HP floors at 1
+# hand-written in the registry PAL shape (relative paths; event_page_op runs it with cwd = the entity state dir)
+li x15, 7
+li x12, 1
+ecall "actor_1_stats.txt" "hp"
+halt

@@ -1,0 +1,5 @@
+# Buy 2/3: pay the bank (strict: an overdraft is refused, never bankrupt)
+COND | trigger | buy
+COND | kv | switches.txt | game_over | eq | 0
+COND | kv | variables.txt | phase | eq | 1
+COND | kv | variables.txt | can_buy | eq | 1

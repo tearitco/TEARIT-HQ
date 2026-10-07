@@ -1,0 +1,7 @@
+# runtime state - never tracked
+state/
+audit/
+ops/+x/
+concept_bank_ui.txt
+concept_bank_action.txt
+concept_bank.seq

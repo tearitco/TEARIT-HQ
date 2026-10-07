@@ -1,0 +1,4 @@
+# event.pal - Combat 22: last army standing check (after BOTH deaths are applied), done (trigger combat). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/event_page_op.+x . . --trigger armycheck --state .
+exec ops/+x/var_math.+x . set ph_cmb 0
+halt

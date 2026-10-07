@@ -1,0 +1,444 @@
+# digipet_needs (RPGMAKER-PRIMITIVES-FOR-EVERYTHING-DESIGN.md section 4): the first NEEDS loop as RPG Maker-style events on the house clock, scratch roots only.
+# Real lc_clock (schedule row repeat=every:1day event=common:day_tick, manual End Turn via the endturn mailbox, timer via rate x86400), the real event.pal pages run through the real
+# prisc (compiled from the house source into $T) by event_page_op (the LC_CLOCK_EVENT_RUNNER: play_event.sh cannot run these pages, see digipet README), real METHOD strings from meta.pdl.
+RESULTS | ../results/digipet_needs.txt
+CASE    | ticks-endturn
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+COPY    | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | gso
+MKDIR   | &.widgits/digipet/ops/+x
+COPY    | &.widgits/digipet/ops/+x/event_page_op.+x | &.widgits/digipet/ops/+x/event_page_op.+x
+MKDIR   | common_events
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/digipet/entity | $T/pet
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/digipet/common_events/day_tick | $T/common_events/day_tick
+WRITE   | common_events/day_tick/event_pkg/target.pdl | TARGET | state | pet
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+ENV | EVENT_PAGE_TRIGGER | parallel
+ENV | LC_CLOCK_NO_POPUP | 1
+ENV | LC_CLOCK_EVENT_RUNNER | $T/&.widgits/digipet/ops/+x/event_page_op.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 | common:day_tick |  | every:1day
+EXPECT_EXIT | 0 | schedule-row-installed
+RUN | $T/lc.+x | $T | reminders
+EXPECT_OUT | common:day_tick | schedule-row-points-at-common-day_tick
+EXPECT_OUT | every:1day | schedule-row-repeats-every-1day
+EXPECT_HAS | pet/variables.txt | hunger=0\n | initial-hunger-0
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+EXPECT_HAS | pet/variables.txt | hunger=1\n | hunger-rises-one-per-day-day1
+EXPECT_HAS | pet/variables.txt | days=1\n | days-counter-day1
+EXPECT_HAS | pet/actor_states.txt | state_1:1=0\n | not-hungry-below-T1-day1
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+EXPECT_HAS | pet/variables.txt | hunger=2\n | hunger-rises-one-per-day-day2
+EXPECT_HAS | pet/variables.txt | days=2\n | days-counter-day2
+EXPECT_HAS | pet/actor_states.txt | state_1:1=0\n | not-hungry-below-T1-day2
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+EXPECT_HAS | pet/variables.txt | hunger=3\n | hunger-rises-one-per-day-day3
+EXPECT_HAS | pet/variables.txt | days=3\n | days-counter-day3
+EXPECT_HAS | pet/actor_states.txt | state_1:1=0\n | not-hungry-below-T1-day3
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+EXPECT_HAS | pet/variables.txt | hunger=4\n | hunger-rises-one-per-day-day4
+EXPECT_HAS | pet/variables.txt | days=4\n | days-counter-day4
+EXPECT_HAS | pet/actor_states.txt | state_1:1=0\n | not-hungry-below-T1-day4
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+EXPECT_HAS | pet/variables.txt | hunger=5\n | hunger-5-at-T1
+EXPECT_HAS | pet/actor_states.txt | state_1:1=1\n | Hungry-state-set-at-T1-day5
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+EXPECT_HAS | pet/actor_1_stats.txt | hp=10\n | no-hp-loss-below-T2-day6
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+EXPECT_HAS | pet/actor_1_stats.txt | hp=10\n | no-hp-loss-below-T2-day7
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+EXPECT_HAS | pet/actor_1_stats.txt | hp=10\n | no-hp-loss-below-T2-day8
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+EXPECT_HAS | pet/actor_1_stats.txt | hp=10\n | no-hp-loss-below-T2-day9
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+EXPECT_HAS | pet/variables.txt | hunger=10\n | hunger-10-at-T2
+EXPECT_HAS | pet/actor_1_stats.txt | hp=8\n | hp-loss-starts-at-T2-day10
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+EXPECT_HAS | pet/actor_1_stats.txt | hp=6\n | hp-6-day11
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+EXPECT_HAS | pet/actor_1_stats.txt | hp=4\n | hp-4-day12
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+EXPECT_HAS | pet/actor_1_stats.txt | hp=2\n | hp-2-day13
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+EXPECT_HAS | pet/actor_1_stats.txt | hp=1\n | hp-floors-at-1-day14-death-off
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+EXPECT_HAS | pet/actor_1_stats.txt | hp=1\n | hp-stays-1-day15
+EXPECT_HAS | pet/switches.txt | dead=0\n | not-dead-while-death-off
+RUN | $T/lc.+x | $T | sched-count | r1 | ok
+EXPECT_OUT_IS | 15 | 15-ticks-ledgered-ok
+RUN | /usr/bin/grep | -c | EVENTPAGE.day_tick.parallel.page_1 | $T/pet/event_page_ledger.txt
+EXPECT_OUT_IS | 15 | page_1-ran-exactly-15-times
+CLEAN |
+CASE    | death-on-changes-the-floor
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+COPY    | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | gso
+MKDIR   | &.widgits/digipet/ops/+x
+COPY    | &.widgits/digipet/ops/+x/event_page_op.+x | &.widgits/digipet/ops/+x/event_page_op.+x
+MKDIR   | common_events
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/digipet/entity | $T/pet
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/digipet/common_events/day_tick | $T/common_events/day_tick
+WRITE   | common_events/day_tick/event_pkg/target.pdl | TARGET | state | pet
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+ENV | EVENT_PAGE_TRIGGER | parallel
+ENV | LC_CLOCK_NO_POPUP | 1
+ENV | LC_CLOCK_EVENT_RUNNER | $T/&.widgits/digipet/ops/+x/event_page_op.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 | common:day_tick |  | every:1day
+WRITE   | sw_on.pal | li x15, 7\nli x12, 1\necall "pet/switches.txt" "death_enabled"\nhalt\n
+RUN | $T/prisc | $T/sw_on.pal
+EXPECT_HAS | pet/switches.txt | death_enabled=1\n | control_switch-pal-turned-death-ON
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+EXPECT_HAS | pet/actor_1_stats.txt | hp=2\n | death-on-hp-2-day13
+EXPECT_HAS | pet/switches.txt | dead=0\n | not-dead-yet-day13
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+EXPECT_HAS | pet/actor_1_stats.txt | hp=0\n | death-on-hp-reaches-0-day14
+EXPECT_HAS | pet/switches.txt | dead=1\n | dead-switch-ON-at-hp-0
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+EXPECT_HAS | pet/actor_1_stats.txt | hp=0\n | hp-stays-0-day15
+CLEAN |
+CASE    | feed-methods
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+COPY    | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | gso
+MKDIR   | &.widgits/digipet/ops/+x
+COPY    | &.widgits/digipet/ops/+x/event_page_op.+x | &.widgits/digipet/ops/+x/event_page_op.+x
+MKDIR   | common_events
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/digipet/entity | $T/pet
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/digipet/common_events/day_tick | $T/common_events/day_tick
+WRITE   | common_events/day_tick/event_pkg/target.pdl | TARGET | state | pet
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+ENV | EVENT_PAGE_TRIGGER | parallel
+ENV | LC_CLOCK_NO_POPUP | 1
+ENV | LC_CLOCK_EVENT_RUNNER | $T/&.widgits/digipet/ops/+x/event_page_op.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 | common:day_tick |  | every:1day
+COPY    | #.ref/menu/event_commands.registry.pdl | registry.pdl
+EXPECT_HAS | registry.pdl | COMMAND change_variable | registry-has-the-new-change_variable-row
+EXPECT_HAS | pet/meta.pdl | METHOD       \p Feed | menu-has-a-Feed-row
+EXPECT_HAS | pet/meta.pdl | METHOD       \p Status | menu-has-a-Status-row
+EXPECT_HAS | pet/meta.pdl | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger feed' | Feed-METHOD-string-is-the-one-run-below
+EXPECT_HAS | pet/meta.pdl | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger status' | Status-METHOD-string-is-the-one-run-below
+WRITE   | pet/variables.txt | hunger=7\ncoins=15\ndays=0\nlast_feed=1\nfed_total=0\n
+WRITE   | pet/items.txt | item_apple=0\n
+WRITE   | pet/actor_states.txt | state_1:1=1\n
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger feed | $T/pet | $T
+EXPECT_EXIT | 0 | feed-no-food-with-coins-runs
+EXPECT_HAS | pet/variables.txt | coins=5\n | feed-bought-an-apple-for-10-coins
+EXPECT_HAS | pet/variables.txt | last_feed=2\n | feed-result-2-means-bought
+EXPECT_HAS | pet/variables.txt | hunger=4\n | feed-lowered-hunger-by-nutrition-3
+EXPECT_HAS | pet/items.txt | item_apple=0\n | bought-apple-was-eaten-pantry-empty-again
+EXPECT_HAS | pet/variables.txt | fed_total=1\n | fed_total-1
+EXPECT_HAS | pet/actor_states.txt | state_1:1=0\n | Hungry-cleared-because-hunger-4-is-below-T1
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger feed | $T/pet | $T
+EXPECT_HAS | pet/variables.txt | last_feed=0\n | feed-refused-no-food-and-coins-5-below-price-10
+EXPECT_HAS | pet/variables.txt | coins=5\n | refusal-spends-no-coins
+EXPECT_HAS | pet/variables.txt | hunger=4\n | refusal-leaves-hunger
+WRITE   | pet/items.txt | item_apple=2\n
+WRITE   | pet/variables.txt | hunger=7\ncoins=5\ndays=0\nlast_feed=1\nfed_total=0\n
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger feed | $T/pet | $T
+EXPECT_HAS | pet/items.txt | item_apple=1\n | feed-consumed-one-apple-from-the-pantry
+EXPECT_HAS | pet/variables.txt | hunger=4\n | feed-with-food-lowers-hunger-by-3
+EXPECT_HAS | pet/variables.txt | coins=5\n | eating-from-the-pantry-spends-no-coins
+EXPECT_HAS | pet/variables.txt | last_feed=1\n | feed-result-1-means-ate
+WRITE   | pet/variables.txt | hunger=2\ncoins=5\ndays=0\nlast_feed=1\nfed_total=0\n
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger feed | $T/pet | $T
+EXPECT_HAS | pet/variables.txt | hunger=0\n | hunger-floors-at-0
+EXPECT_HAS | pet/items.txt | item_apple=0\n | second-apple-consumed
+WRITE   | pet/variables.txt | hunger=6\ncoins=20\ndays=0\nlast_feed=1\nfed_total=0\n
+WRITE   | pet/items.txt | item_apple=1\n
+WRITE   | pet/actor_states.txt | state_1:1=1\n
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger feed | $T/pet | $T
+EXPECT_HAS | pet/variables.txt | hunger=3\n | hunger-3-after-feed
+EXPECT_HAS | pet/actor_states.txt | state_1:1=0\n | Hungry-cleared-once-hunger-is-below-T1
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger status | $T/pet | $T
+EXPECT_EXIT | 0 | status-runs
+EXPECT_HAS | pet/status.txt | hunger\n3\ncoins\n20\napples\n0\nhp\n10\nhungry\n0\ndays\n0\n | status-lists-hunger-coins-apples-hp-hungry-days
+CLEAN |
+CASE    | equivalence-endturn
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+COPY    | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | gso
+MKDIR   | &.widgits/digipet/ops/+x
+COPY    | &.widgits/digipet/ops/+x/event_page_op.+x | &.widgits/digipet/ops/+x/event_page_op.+x
+MKDIR   | common_events
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/digipet/entity | $T/pet
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/digipet/common_events/day_tick | $T/common_events/day_tick
+WRITE   | common_events/day_tick/event_pkg/target.pdl | TARGET | state | pet
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+ENV | EVENT_PAGE_TRIGGER | parallel
+ENV | LC_CLOCK_NO_POPUP | 1
+ENV | LC_CLOCK_EVENT_RUNNER | $T/&.widgits/digipet/ops/+x/event_page_op.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 | common:day_tick |  | every:1day
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+EXPECT_HAS | pet/variables.txt | days=12\n | endturn-applied-12-ticks
+RUN | /usr/bin/cat | pet/variables.txt | pet/actor_1_stats.txt | pet/actor_states.txt | pet/switches.txt | pet/items.txt
+CAPTURE | sig_endturn
+RUN | /usr/bin/cut | -d | \p | -f | 1-3 | #.desktop/clocks/schedule_ledger.txt
+CAPTURE | led_endturn
+RUN | $T/lc.+x | $T | sched-count | r1 | ok
+EXPECT_OUT_IS | 12 | 12-ok-rows
+CLEAN |
+CASE    | equivalence-timer
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+COPY    | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | gso
+MKDIR   | &.widgits/digipet/ops/+x
+COPY    | &.widgits/digipet/ops/+x/event_page_op.+x | &.widgits/digipet/ops/+x/event_page_op.+x
+MKDIR   | common_events
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/digipet/entity | $T/pet
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/digipet/common_events/day_tick | $T/common_events/day_tick
+WRITE   | common_events/day_tick/event_pkg/target.pdl | TARGET | state | pet
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+ENV | EVENT_PAGE_TRIGGER | parallel
+ENV | LC_CLOCK_NO_POPUP | 1
+ENV | LC_CLOCK_EVENT_RUNNER | $T/&.widgits/digipet/ops/+x/event_page_op.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 | common:day_tick |  | every:1day
+RUN | $T/lc.+x | $T | cmd | g1 | rate | x86400
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | step | 1000
+RUN | $T/lc.+x | $T | step | 1000
+RUN | $T/lc.+x | $T | step | 1000
+RUN | $T/lc.+x | $T | step | 1000
+RUN | $T/lc.+x | $T | step | 1000
+RUN | $T/lc.+x | $T | step | 1000
+RUN | $T/lc.+x | $T | step | 1000
+RUN | $T/lc.+x | $T | step | 1000
+RUN | $T/lc.+x | $T | step | 1000
+RUN | $T/lc.+x | $T | step | 1000
+RUN | $T/lc.+x | $T | step | 1000
+RUN | $T/lc.+x | $T | step | 1000
+EXPECT_HAS | pet/variables.txt | days=12\n | timer-applied-12-ticks
+RUN | /usr/bin/cat | pet/variables.txt | pet/actor_1_stats.txt | pet/actor_states.txt | pet/switches.txt | pet/items.txt
+CAPTURE | sig_timer
+RUN | /usr/bin/cut | -d | \p | -f | 1-3 | #.desktop/clocks/schedule_ledger.txt
+CAPTURE | led_timer
+RUN | $T/lc.+x | $T | sched-count | r1 | ok
+EXPECT_OUT_IS | 12 | 12-ok-rows
+CLEAN |
+CASE    | equivalence-advance
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+COPY    | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | gso
+MKDIR   | &.widgits/digipet/ops/+x
+COPY    | &.widgits/digipet/ops/+x/event_page_op.+x | &.widgits/digipet/ops/+x/event_page_op.+x
+MKDIR   | common_events
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/digipet/entity | $T/pet
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/digipet/common_events/day_tick | $T/common_events/day_tick
+WRITE   | common_events/day_tick/event_pkg/target.pdl | TARGET | state | pet
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+ENV | EVENT_PAGE_TRIGGER | parallel
+ENV | LC_CLOCK_NO_POPUP | 1
+ENV | LC_CLOCK_EVENT_RUNNER | $T/&.widgits/digipet/ops/+x/event_page_op.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 | common:day_tick |  | every:1day
+RUN | $T/lc.+x | $T | cmd | g1 | advance | 12d
+RUN | $T/lc.+x | $T | step | 0
+EXPECT_HAS | pet/variables.txt | days=12\n | advance-applied-12-ticks
+RUN | /usr/bin/cat | pet/variables.txt | pet/actor_1_stats.txt | pet/actor_states.txt | pet/switches.txt | pet/items.txt
+CAPTURE | sig_advance
+RUN | /usr/bin/cut | -d | \p | -f | 1-3 | #.desktop/clocks/schedule_ledger.txt
+CAPTURE | led_advance
+RUN | $T/lc.+x | $T | sched-count | r1 | ok
+EXPECT_OUT_IS | 12 | 12-ok-rows
+CLEAN |
+CASE    | equivalence-compare
+EXPECT_EQ | $sig_endturn | $sig_timer | manual-End-Turn-and-timer-ticks-give-the-same-entity-rows
+EXPECT_EQ | $sig_endturn | $sig_advance | End-Turn-and-one-12-day-advance-give-the-same-entity-rows
+EXPECT_EQ | $led_endturn | $led_timer | manual-and-timer-give-the-same-schedule-ledger-rows
+EXPECT_EQ | $led_endturn | $led_advance | manual-and-advance-give-the-same-schedule-ledger-rows
+EXPECT_NE | $sig_endturn | | signature-is-not-empty
+CASE    | fast-forward-30
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+COPY    | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | gso
+MKDIR   | &.widgits/digipet/ops/+x
+COPY    | &.widgits/digipet/ops/+x/event_page_op.+x | &.widgits/digipet/ops/+x/event_page_op.+x
+MKDIR   | common_events
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/digipet/entity | $T/pet
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/digipet/common_events/day_tick | $T/common_events/day_tick
+WRITE   | common_events/day_tick/event_pkg/target.pdl | TARGET | state | pet
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+ENV | EVENT_PAGE_TRIGGER | parallel
+ENV | LC_CLOCK_NO_POPUP | 1
+ENV | LC_CLOCK_EVENT_RUNNER | $T/&.widgits/digipet/ops/+x/event_page_op.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 | common:day_tick |  | every:1day
+RUN | $T/lc.+x | $T | cmd | g1 | advance | 30d
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r1 | ok
+EXPECT_OUT_IS | 30 | 30-day-fast-forward-ledgers-exactly-30-ok-ticks
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 30 | no-collapsed-or-extra-rows
+EXPECT_HAS | pet/variables.txt | days=30\n | days-30
+EXPECT_HAS | pet/variables.txt | hunger=30\n | hunger-30
+EXPECT_HAS | pet/actor_1_stats.txt | hp=1\n | hp-floored-at-1-after-30-days
+EXPECT_HAS | pet/actor_states.txt | state_1:1=1\n | Hungry-after-30-days
+RUN | /usr/bin/grep | -c | EVENTPAGE.day_tick.parallel.page_1 | $T/pet/event_page_ledger.txt
+EXPECT_OUT_IS | 30 | page_1-ran-exactly-30-times
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | step | 3600000
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 30 | stepping-again-applies-no-tick-twice
+EXPECT_HAS | pet/variables.txt | days=30\n | days-still-30
+CLEAN |
+CASE    | player-path-save-load
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+COPY    | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | gso
+MKDIR   | &.widgits/digipet/ops/+x
+COPY    | &.widgits/digipet/ops/+x/event_page_op.+x | &.widgits/digipet/ops/+x/event_page_op.+x
+MKDIR   | common_events
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/digipet/entity | $T/pet
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/digipet/common_events/day_tick | $T/common_events/day_tick
+WRITE   | common_events/day_tick/event_pkg/target.pdl | TARGET | state | pet
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+ENV | EVENT_PAGE_TRIGGER | parallel
+ENV | LC_CLOCK_NO_POPUP | 1
+ENV | LC_CLOCK_EVENT_RUNNER | $T/&.widgits/digipet/ops/+x/event_page_op.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 | common:day_tick |  | every:1day
+RUN | $T/lc.+x | $T | ticker | g1 | off
+RUN | $T/lc.+x | $T | cmd | g1 | rate | x86400
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | step | 5000
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | g1\puser\px86400\p0\p0\p | game-off-clock-not-running-epoch-0
+EXPECT_OUT_IS | g1\puser\px86400\p0\p0\p0 | game-off-clock-row-exact
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 0 | no-tick-while-the-game-is-off
+RUN | $T/lc.+x | $T | ticker | g1 | on
+RUN | $T/lc.+x | $T | step | 3000
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_HAS | pet/variables.txt | hunger=3\n | play-on-clock-running-3-days-3-ticks
+EXPECT_OUT_IS | 3 | three-ledger-rows
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger feed | $T/pet | $T
+EXPECT_HAS | pet/variables.txt | hunger=0\n | act-Feed-via-the-menu-METHOD-hunger-3-minus-3
+EXPECT_HAS | pet/items.txt | item_apple=1\n | act-Feed-used-an-apple
+RUN | $T/lc.+x | $T | step | 2000
+EXPECT_HAS | pet/variables.txt | days=5\n | two-more-days-days-5
+EXPECT_HAS | pet/variables.txt | hunger=2\n | hunger-2
+RUN | /usr/bin/cat | pet/variables.txt | pet/actor_1_stats.txt | pet/actor_states.txt | pet/switches.txt | pet/items.txt
+CAPTURE | sig_saved
+RUN | $T/lc.+x | $T | list
+CAPTURE | clock_saved
+RUN | $T/lc.+x | $T | sched-count | r1
+CAPTURE | cursor_saved
+RUN | $T/gso | $T/store | $T/pet | save | CP1 | --extra | $T/#.desktop/clocks/g1.pdl | --extra | $T/#.desktop/clocks/reminders.pdl | --extra | $T/#.desktop/clocks/schedule_ledger.txt | --now-ms | 1000
+EXPECT_EXIT | 0 | save-with-clock-state-reminders-and-schedule-ledger
+RUN | $T/lc.+x | $T | step | 4000
+WRITE   | sw_on.pal | li x15, 7\nli x12, 1\necall "pet/switches.txt" "death_enabled"\nhalt\n
+RUN | $T/prisc | $T/sw_on.pal
+WRITE   | pet/items.txt | item_apple=9\n
+RUN | $T/lc.+x | $T | step | 3000
+EXPECT_HAS | pet/variables.txt | days=12\n | mutate-clock-ran-7-more-days
+EXPECT_HAS | pet/actor_1_stats.txt | hp=10\n | mutate-hp-still-10
+EXPECT_HAS | pet/switches.txt | death_enabled=1\n | mutate-switch-flipped
+RUN | /usr/bin/cat | pet/variables.txt | pet/actor_1_stats.txt | pet/actor_states.txt | pet/switches.txt | pet/items.txt
+CAPTURE | sig_mutated
+EXPECT_NE | $sig_saved | $sig_mutated | mutation-really-changed-the-entity-rows
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 12 | before-load-12-ledger-rows
+RUN | $T/gso | $T/store | $T/pet | restore | CP1 | $T/pet | --apply | --prune | --extra-dir | $T/#.desktop/clocks | --now-ms | 2000
+EXPECT_EXIT | 0 | load-restore-applied
+RUN | /usr/bin/cat | pet/variables.txt | pet/actor_1_stats.txt | pet/actor_states.txt | pet/switches.txt | pet/items.txt
+CAPTURE | sig_restored
+EXPECT_EQ | $sig_saved | $sig_restored | variables-states-switches-items-restored-exactly
+RUN | $T/lc.+x | $T | list
+CAPTURE | clock_restored
+EXPECT_EQ | $clock_saved | $clock_restored | clock-epoch-tick-and-rate-restored-exactly
+RUN | $T/lc.+x | $T | sched-count | r1
+CAPTURE | cursor_restored
+EXPECT_EQ | $cursor_saved | $cursor_restored | schedule-ledger-cursor-restored-exactly
+EXPECT_EQ | 5 | $cursor_restored | ledger-has-exactly-the-5-saved-ticks
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | step | 1
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 5 | stepping-after-load-applies-no-already-ledgered-tick
+EXPECT_HAS | pet/variables.txt | days=5\n | days-not-re-applied-after-load
+EXPECT_HAS | pet/variables.txt | hunger=2\n | hunger-not-re-applied-after-load
+RUN | $T/lc.+x | $T | step | 1000
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 6 | one-more-game-day-after-load-applies-exactly-one-tick
+EXPECT_HAS | pet/variables.txt | days=6\n | day-6-applied-once
+EXPECT_HAS | pet/variables.txt | hunger=3\n | hunger-3-after-day-6
+RUN | /usr/bin/grep | -c | SCHED.r1.432000000. | $T/#.desktop/clocks/schedule_ledger.txt
+EXPECT_OUT_IS | 1 | day-5-is-in-the-ledger-once
+RUN | /usr/bin/grep | -c | SCHED.r1.518400000. | $T/#.desktop/clocks/schedule_ledger.txt
+EXPECT_OUT_IS | 1 | day-6-fired-exactly-once-after-the-load
+CLEAN |

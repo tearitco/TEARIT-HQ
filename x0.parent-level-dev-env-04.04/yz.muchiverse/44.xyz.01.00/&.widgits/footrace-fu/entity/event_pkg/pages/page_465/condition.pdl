@@ -1,0 +1,5 @@
+# Banish Foe 6: teleport_foe_to_finish = 1: coin flip
+COND | trigger | cast_banish
+COND | kv | variables.txt | ph_cast | eq | 3
+COND | kv | rules.pdl | teleport_foe_to_finish | eq | 1
+COND | kv | switches.txt | game_over | eq | 0

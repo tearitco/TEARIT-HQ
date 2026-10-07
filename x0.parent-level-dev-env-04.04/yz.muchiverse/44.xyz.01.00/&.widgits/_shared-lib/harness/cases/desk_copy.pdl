@@ -1,0 +1,89 @@
+# desk_copy_op on a SCRATCH livedesk tree (2 dsr_ pals + 1 shared pal); never touches real user data.
+RESULTS | ../results/desk_copy.txt
+CASE    | desk-copy
+SCRATCH |
+COPY    | &.widgits/_shared-lib/ops/+x/desk_copy_op.+x | bin/desk_copy_op
+
+WRITE | livedesk/pals/dsr_x1/pal.pdl | PAL \p name \p dsr_x1\nPAL \p hash \p abc\nPAL \p glyph \p S\n
+WRITE | livedesk/pals/dsr_x1/meta.pdl | META \p piece_id \p dsr_x1\nMETHOD \p Dir \p x\n
+WRITE | livedesk/pals/dsr_x1/menu.chtpm | <menu name="dsr_x1"/>\n
+WRITE | livedesk/pals/dsr_x1/history.txt | one\ntwo\n
+WRITE | livedesk/pals/dsr_x1/instance_id.txt | DSX1\n
+WRITE | livedesk/pals/dsr_x1/entity_uid.txt | UID-OLD\n
+WRITE | livedesk/pals/dsr_x1/module_parent.pid | 123\n
+WRITE | livedesk/pals/dsr_x1/interact_relay.txt | relay\n
+WRITE | livedesk/pals/dsr_x1/inventory/zz.phone/phone.pdl | phone\n
+WRITE | livedesk/pals/dsr_x1/pieces/registry/phymoji_assets/dsr_x1/voxels.csv | 1,2,3\n
+WRITE | livedesk/pals/dsr_x2/pal.pdl | PAL \p name \p dsr_x2\n
+WRITE | livedesk/pals/dsr_x2/meta.pdl | META \p piece_id \p dsr_x2\n
+WRITE | livedesk/pals/dsr_x2/menu.chtpm | <menu name="dsr_x2"/>\n
+WRITE | livedesk/pals/dsr_x2/instance_id.txt | DSX2\n
+WRITE | livedesk/pals/cursword/pal.pdl | PAL \p name \p cursword\n
+WRITE | livedesk/sessions/s1/desks/dsr.pdl | # a comment\nDESK \p cursword \p pals/cursword \p 0 \p 0 \p 0 \p 0 \p K \p 1\nDESK \p dsr_x1 \p pals/dsr_x1 \p 800 \p 80 \p 10 \p 1 \p S \p 2\nDESK \p dsr_x2 \p pals/dsr_x2 \p 880 \p 80 \p 11 \p 1 \p B \p 3\nDESK \p dsr_x1 \p pals/dsr_x1 \p 900 \p 90 \p 10 \p 1 \p S \p 4\n
+SUMTREE | before | livedesk
+
+# dry run writes nothing
+RUN | $T/bin/desk_copy_op | $T/livedesk | dsr.pdl | dsr-test.pdl | dsr_ | dsrtest_
+EXPECT_EXIT | 0 | dry-run-rc-0
+EXPECT_OUT  | DRY RUN | dry-run-labelled
+EXPECT_OUT  | 2 pal(s) to copy, 1 shared by reference | dry-run-counts
+SUMTREE | afterDry | livedesk
+EXPECT_EQ | $before | $afterDry | dry-run-writes-nothing
+
+# apply
+RUN | $T/bin/desk_copy_op | $T/livedesk | dsr.pdl | dsr-test.pdl | dsr_ | dsrtest_ | --apply
+EXPECT_EXIT | 0 | apply-rc-0
+EXPECT_HAS  | livedesk/pals/dsrtest_x1/pal.pdl | PAL \p name \p dsrtest_x1 | new-pal-name-set
+EXPECT_LACKS | livedesk/pals/dsrtest_x1/pal.pdl | dsr_x1 | old-name-gone-from-pal-pdl
+EXPECT_LACKS | livedesk/pals/dsrtest_x1/pal.pdl | PAL \p hash | original-pal-hash-not-copied-no-identity-collision
+EXPECT_HAS  | livedesk/pals/dsrtest_x1/pal.pdl | PAL \p glyph \p S | other-pal-lines-kept
+EXPECT_HAS  | livedesk/pals/dsr_x1/pal.pdl | PAL \p hash \p abc | source-pal-hash-intact
+EXPECT_HAS  | livedesk/pals/dsrtest_x1/meta.pdl | META \p piece_id \p dsrtest_x1 | piece-id-renamed
+EXPECT_LACKS | livedesk/pals/dsrtest_x1/menu.chtpm | dsr_x1 | menu-renamed
+EXPECT_EXISTS | livedesk/pals/dsrtest_x1/pieces/registry/phymoji_assets/dsrtest_x1/voxels.csv | phymoji-dir-renamed
+EXPECT_NOFILE | livedesk/pals/dsrtest_x1/pieces/registry/phymoji_assets/dsr_x1/voxels.csv | phymoji-old-dir-gone
+EXPECT_HAS  | livedesk/pals/dsrtest_x1/history.txt | two | history-copied
+EXPECT_NOFILE | livedesk/pals/dsrtest_x1/entity_uid.txt | identity-not-copied
+EXPECT_NOFILE | livedesk/pals/dsrtest_x1/module_parent.pid | runtime-pid-not-copied
+EXPECT_NOFILE | livedesk/pals/dsrtest_x1/interact_relay.txt | runtime-relay-not-copied
+EXPECT_NOFILE | livedesk/pals/dsrtest_x1/inventory/zz.phone/phone.pdl | phone-not-copied
+EXPECT_HAS  | livedesk/pals/dsrtest_x1/instance_id.txt | DT1 | fresh-instance-id
+EXPECT_HAS  | livedesk/pals/dsrtest_x2/instance_id.txt | DT2 | second-instance-id-differs
+EXPECT_LACKS | livedesk/pals/dsrtest_x1/instance_id.txt | DSX1 | old-instance-id-gone
+EXPECT_HAS  | livedesk/sessions/s1/desks/dsr-test.pdl | DESK \p dsrtest_x1 \p pals/dsrtest_x1 \p 900 \p 90 | desk-row-renamed-last-row-wins
+EXPECT_HAS  | livedesk/sessions/s1/desks/dsr-test.pdl | DESK \p cursword \p pals/cursword | shared-row-kept-by-reference
+EXPECT_LACKS | livedesk/sessions/s1/desks/dsr-test.pdl | dsr_x | no-old-names-in-new-desk
+EXPECT_NOFILE | livedesk/pals/cursword/pal.pdl.tmp_dc | shared-pal-untouched
+# source untouched
+EXPECT_HAS  | livedesk/pals/dsr_x1/pal.pdl | PAL \p name \p dsr_x1 | source-pal-intact
+EXPECT_HAS  | livedesk/pals/dsr_x1/module_parent.pid | 123 | source-runtime-file-intact
+EXPECT_HAS  | livedesk/sessions/s1/desks/dsr.pdl | DESK \p dsr_x2 | source-desk-intact
+SUMTREE | afterApply | livedesk
+
+# a second run is refused and changes nothing
+RUN | $T/bin/desk_copy_op | $T/livedesk | dsr.pdl | dsr-test.pdl | dsr_ | dsrtest_ | --apply
+EXPECT_EXIT | 2 | rerun-refused-rc-2
+EXPECT_OUT  | REFUSED: destination desk already exists | rerun-says-why
+SUMTREE | afterRerun | livedesk
+EXPECT_EQ | $afterApply | $afterRerun | rerun-changes-nothing
+
+# destination pal collision: no desk written
+RUN | rm | -f | $T/livedesk/sessions/s1/desks/dsr-test.pdl
+RUN | $T/bin/desk_copy_op | $T/livedesk | dsr.pdl | dsr-test.pdl | dsr_ | dsrtest_ | --apply
+EXPECT_EXIT | 2 | pal-collision-refused-rc-2
+EXPECT_OUT  | REFUSED: destination pal already exists | pal-collision-says-why
+EXPECT_NOFILE | livedesk/sessions/s1/desks/dsr-test.pdl | pal-collision-writes-no-desk
+
+# missing source pal: nothing written
+WRITE | livedesk/sessions/s1/desks/gone.pdl | DESK \p dsr_gone \p pals/dsr_gone \p 1 \p 1 \p 1 \p 1 \p G \p 1\n
+RUN | $T/bin/desk_copy_op | $T/livedesk | gone.pdl | gone-test.pdl | dsr_ | dsrtest_ | --apply
+EXPECT_EXIT | 1 | missing-source-rc-1
+EXPECT_NOFILE | livedesk/sessions/s1/desks/gone-test.pdl | missing-source-writes-no-desk
+EXPECT_NOFILE | livedesk/pals/dsrtest_gone | missing-source-creates-no-pal
+
+# unsafe name refused
+WRITE | livedesk/sessions/s1/desks/bad.pdl | DESK \p dsr_a'b \p pals/x \p 1 \p 1 \p 1 \p 1 \p G \p 1\n
+RUN | $T/bin/desk_copy_op | $T/livedesk | bad.pdl | bad-test.pdl | dsr_ | dsrtest_ | --apply
+EXPECT_EXIT | 1 | unsafe-name-rc-1
+EXPECT_NOFILE | livedesk/sessions/s1/desks/bad-test.pdl | unsafe-name-writes-no-desk
+CLEAN |

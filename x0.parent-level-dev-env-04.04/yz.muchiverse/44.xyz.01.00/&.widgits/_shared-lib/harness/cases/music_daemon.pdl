@@ -1,0 +1,170 @@
+# music daemon v0 (EDEN-PLAYABLE-LOOP plan section 4): the REAL music_seq / music_synth / music_daemon on a scratch dir, plus the independent music_wav_audit_op.
+# Everything runs under $T. The daemon only ever uses --sink file:... here, so NO audio is played. This harness measures pattern determinism, WAV validity, length, range,
+# pitch (zero crossings), silence at volume 0, the headless sink, the flag-file stop and Heal. It CANNOT judge how the music SOUNDS - that needs the owner's ears.
+RESULTS | ../results/music_daemon.txt
+CASE    | music-daemon
+SCRATCH |
+COPY    | &.widgits/music-daemon/ops/+x/music_seq.+x    | ops/music_seq.+x
+COPY    | &.widgits/music-daemon/ops/+x/music_synth.+x  | ops/music_synth.+x
+COPY    | &.widgits/music-daemon/ops/+x/music_daemon.+x | ops/music_daemon.+x
+COPY    | &.widgits/_shared-lib/harness/ops/+x/music_wav_audit_op.+x | ops/music_wav_audit_op.+x
+COPY    | &.widgits/music-daemon/mood.pdl        | data/mood.pdl
+COPY    | &.widgits/music-daemon/scales.pdl      | data/scales.pdl
+COPY    | &.widgits/music-daemon/instruments.pdl | data/instruments.pdl
+MKDIR   | a
+MKDIR   | b
+MKDIR   | c
+MKDIR   | d
+MKDIR   | e
+MKDIR   | f
+MKDIR   | g
+MKDIR   | h
+# 1 pattern determinism: same seed + mood = byte-identical pattern, a different seed differs
+RUN | $T/ops/music_seq.+x | --data | $T/data | --mood | calm | --seed | 42 | -o | $T/a/p.txt
+EXPECT_EXIT | 0 | seq-rc0
+EXPECT_HAS | a/p.txt | NOTE track=0 pitch= | pattern-has-DAW-NOTE-lines
+EXPECT_HAS | a/p.txt | tempo=84 | calm-tempo-84-from-mood-pdl
+EXPECT_HAS | a/p.txt | fallback=none | real-mood-no-fallback
+RUN | $T/ops/music_seq.+x | --data | $T/data | --mood | calm | --seed | 42 | -o | $T/b/p.txt
+RUN | $T/ops/music_seq.+x | --data | $T/data | --mood | calm | --seed | 43 | -o | $T/c/p.txt
+SUMTREE | ha | a
+SUMTREE | hb | b
+SUMTREE | hc | c
+EXPECT_EQ | $ha | $hb | same-seed-same-mood-byte-identical-pattern
+EXPECT_NE | $ha | $hc | different-seed-different-pattern
+# 2 mood / time_of_day / weather variants alter the output
+RUN | $T/ops/music_seq.+x | --data | $T/data | --mood | tense | --seed | 42 | -o | $T/d/p.txt
+SUMTREE | hd | d
+EXPECT_NE | $ha | $hd | mood-change-alters-pattern
+EXPECT_HAS | d/p.txt | mood=tense | header-names-the-mood
+RUN | $T/ops/music_seq.+x | --data | $T/data | --mood | calm | --seed | 42 | --tod | night | -o | $T/e/p.txt
+SUMTREE | he | e
+EXPECT_NE | $ha | $he | night-differs-from-day
+EXPECT_HAS | e/p.txt | time_of_day=night | header-names-tod
+EXPECT_HAS | e/p.txt | tempo=63 | night-tempo-84-times-75pct
+RUN | $T/ops/music_seq.+x | --data | $T/data | --mood | calm | --seed | 42 | --tod | dawn | -o | $T/f/p.txt
+SUMTREE | hf | f
+EXPECT_NE | $he | $hf | dawn-differs-from-night
+RUN | $T/ops/music_seq.+x | --data | $T/data | --mood | calm | --seed | 42 | --weather | rain | -o | $T/g/p.txt
+SUMTREE | hg | g
+EXPECT_NE | $ha | $hg | rain-differs-from-clear
+EXPECT_HAS | g/p.txt | weather=rain | header-names-weather
+EXPECT_HAS | g/p.txt | name=rain | rain-adds-the-rain-bed-track
+RUN | $T/ops/music_seq.+x | --data | $T/data | --mood | calm | --seed | 42 | --weather | clear | --tod | day | -o | $T/h/p.txt
+SUMTREE | hh | h
+EXPECT_EQ | $ha | $hh | explicit-day-clear-equals-default
+# 3 render: WAV header valid, length = tempo*bars, no clipping, not silent
+RUN | $T/ops/music_synth.+x | --data | $T/data | -o | $T/a/p.wav | $T/a/p.txt
+EXPECT_EXIT | 0 | synth-rc0
+RUN | $T/ops/music_wav_audit_op.+x | $T/a/p.wav
+EXPECT_OUT | header_ok=1 | wav-header-valid-and-sizes-match
+EXPECT_OUT | rate=22050 | wav-rate-22050
+EXPECT_OUT | samples=252000 | length-is-84bpm-x-4bars-x-4beats-11.43s
+EXPECT_OUT | clipped=0 | no-sample-at-full-scale
+EXPECT_OUT_LACKS | peak=0 | not-silent
+RUN | $T/ops/music_synth.+x | --data | $T/data | -o | $T/b/p.wav | $T/b/p.txt
+SUMTREE | wa | a
+SUMTREE | wb | b
+EXPECT_EQ | $wa | $wb | same-pattern-renders-byte-identical-wav
+RUN | $T/ops/music_synth.+x | --data | $T/data | -o | $T/d/p.wav | $T/d/p.txt
+RUN | $T/ops/music_wav_audit_op.+x | $T/d/p.wav
+EXPECT_OUT | samples=211680 | tense-100bpm-length-equals-tempo-x-bars
+EXPECT_OUT | clipped=0 | tense-no-clipping
+# 4 pitch: a rendered A4 sine has ~440 Hz by zero-crossing count (and the audit can tell 220 from 440)
+WRITE | pitch/a4.txt | tempo=120\nbars=1\nbeats=4\ntrack0 name=sine inst=sine\nNOTE track=0 pitch=69 start=0 len=1920 vel=127\n
+WRITE | pitch/a3.txt | tempo=120\nbars=1\nbeats=4\ntrack0 name=sine inst=sine\nNOTE track=0 pitch=57 start=0 len=1920 vel=127\n
+RUN | $T/ops/music_synth.+x | --data | $T/data | -o | $T/pitch/a4.wav | $T/pitch/a4.txt
+RUN | $T/ops/music_wav_audit_op.+x | $T/pitch/a4.wav | 440 | 5
+EXPECT_OUT | pitch_ok=1 | A4-is-440Hz-within-5Hz
+EXPECT_OUT | samples=44100 | one-bar-120bpm-is-2s
+RUN | $T/ops/music_synth.+x | --data | $T/data | -o | $T/pitch/a3.wav | $T/pitch/a3.txt
+RUN | $T/ops/music_wav_audit_op.+x | $T/pitch/a3.wav | 220 | 5
+EXPECT_OUT | pitch_ok=1 | A3-is-220Hz-within-5Hz
+RUN | $T/ops/music_wav_audit_op.+x | $T/pitch/a3.wav | 440 | 5
+EXPECT_OUT | pitch_ok=0 | audit-rejects-220Hz-as-440
+# 5 silence when volume 0
+RUN | $T/ops/music_synth.+x | --data | $T/data | --volume | 0 | -o | $T/pitch/quiet.wav | $T/a/p.txt
+RUN | $T/ops/music_wav_audit_op.+x | $T/pitch/quiet.wav
+EXPECT_OUT | nonzero=0 | volume-0-every-sample-zero
+EXPECT_OUT | header_ok=1 | volume-0-still-valid-wav
+EXPECT_OUT | samples=252000 | volume-0-same-length
+# 6 daemon --once with the headless sink: N phrases, N ledger rows, no player, no leftovers
+WRITE | s1/music_state.txt | on=1\nmood=calm\nvolume=0.6\nseed=42\ntime_of_day=day\nweather=clear\n
+RUN | $T/ops/music_daemon.+x | --dir | $T/s1 | --data | $T/data | --ops | $T/ops | --sink | file:$T/s1/out | --once | 3 | --pace-ms | 5
+EXPECT_EXIT | 0 | once-rc0
+EXPECT_HAS | s1/music_ledger.txt | PHRASE\p1\pcalm\p42\p | ledger-phrase-1
+EXPECT_HAS | s1/music_ledger.txt | PHRASE\p3\pcalm\p42\p | ledger-phrase-3
+EXPECT_LACKS | s1/music_ledger.txt | PHRASE\p4\p | no-fourth-phrase
+EXPECT_HAS | s1/music_ledger.txt | STOP\ponce-done | ledger-stop-row
+EXPECT_EXISTS | s1/out.3.wav | third-wav-written
+EXPECT_NOFILE | s1/out.4.wav | no-fourth-wav
+EXPECT_NOFILE | s1/music_daemon.pid | pid-file-removed-at-exit
+RUN | $T/ops/music_wav_audit_op.+x | $T/s1/out.2.wav
+EXPECT_OUT | header_ok=1 | sink-wav-valid
+EXPECT_OUT | clipped=0 | sink-wav-no-clipping
+# phrases differ from each other (phrase n uses seed+n)
+SUMTREE | s1h | s1
+RUN | $T/ops/music_seq.+x | --data | $T/data | --mood | calm | --seed | 42 | --phrase | 1 | -o | $T/s1/q1.txt
+RUN | $T/ops/music_seq.+x | --data | $T/data | --mood | calm | --seed | 42 | --phrase | 2 | -o | $T/s1/q2.txt
+RUN | $T/ops/music_seq.+x | --data | $T/data | --mood | calm | --seed | 42 | --phrase | 1 | -o | $T/s1/q1b.txt
+EXPECT_EXIT | 0 | phrase-seq-rc0
+SUMTREE | p1 | s1
+EXPECT_NE | $s1h | $p1 | tree-hash-sees-the-new-files
+# 7 daemon loop: start, pid file, content change (same size) noticed, stop by flag file, no process left
+WRITE | s2/music_state.txt | on=1\nmood=calm\nvolume=0.5\nseed=1111\ntime_of_day=day\nweather=clear\n
+SPAWN | dpid | $T/ops/music_daemon.+x | --dir | $T/s2 | --data | $T/data | --ops | $T/ops | --sink | file:$T/s2/out | --pace-ms | 100
+WAIT_HAS | s2/music_ledger.txt | START\p | 3000 | daemon-started
+WAIT_HAS | s2/music_ledger.txt | PHRASE\p1\pcalm\p1111\p | 5000 | first-phrase-rendered
+EXPECT_EXISTS | s2/music_daemon.pid | pid-file-written
+RUN | /bin/cat | $T/s2/music_daemon.pid
+CAPTURE | gotpid
+EXPECT_EQ | $gotpid | $dpid | pid-file-holds-the-daemon-pid
+EXPECT_ALIVE | $dpid | daemon-alive
+WRITE | s2/music_state.txt | on=1\nmood=calm\nvolume=0.5\nseed=2222\ntime_of_day=day\nweather=clear\n
+WAIT_HAS | s2/music_ledger.txt | calm\p2222\p | 5000 | same-size-content-change-noticed
+APPEND | s2/music_stop.flag | stop\n
+WAIT_HAS | s2/music_ledger.txt | STOP\pflag | 5000 | stopped-on-flag-file
+SLEEP | 300
+EXPECT_DEAD | $dpid | no-process-left-after-flag-stop
+EXPECT_NOFILE | s2/music_daemon.pid | pid-file-removed
+EXPECT_NOFILE | s2/music_stop.flag | flag-consumed
+# on=0 also stops it
+WRITE | s3/music_state.txt | on=1\nmood=eden\nvolume=0.5\nseed=5\n
+SPAWN | d3 | $T/ops/music_daemon.+x | --dir | $T/s3 | --data | $T/data | --ops | $T/ops | --sink | file:$T/s3/out | --pace-ms | 100
+WAIT_HAS | s3/music_ledger.txt | PHRASE\p1\peden\p5\p | 5000 | eden-mood-phrase-rendered
+WRITE | s3/music_state.txt | on=0\nmood=eden\nvolume=0.5\nseed=5\n
+WAIT_HAS | s3/music_ledger.txt | STOP\pon=0 | 5000 | stopped-on-on-eq-0
+SLEEP | 300
+EXPECT_DEAD | $d3 | no-process-left-after-on0
+EXPECT_NOFILE | s3/music_daemon.pid | pid-file-removed-after-on0
+# 8 Heal: garbage / missing state, unknown mood, missing or garbage data all give a safe valid phrase
+WRITE | s4/music_state.txt | }{!!garbage\non=maybe\nmood=!!bad mood!!\nvolume=loud\nseed=\n\n=\n
+RUN | $T/ops/music_daemon.+x | --dir | $T/s4 | --data | $T/data | --ops | $T/ops | --sink | file:$T/s4/out | --once | 1 | --pace-ms | 5
+EXPECT_EXIT | 0 | garbage-state-rc0
+EXPECT_HAS | s4/music_ledger.txt | PHRASE\p1\pcalm\p1\p | garbage-state-falls-back-to-defaults
+RUN | $T/ops/music_wav_audit_op.+x | $T/s4/out.1.wav
+EXPECT_OUT | header_ok=1 | garbage-state-valid-wav
+EXPECT_OUT_LACKS | peak=0 | garbage-state-not-silent
+MKDIR | s5
+RUN | $T/ops/music_daemon.+x | --dir | $T/s5 | --data | $T/data | --ops | $T/ops | --sink | file:$T/s5/out | --once | 1 | --pace-ms | 5
+EXPECT_HAS | s5/music_ledger.txt | PHRASE\p1\pcalm\p1\p | missing-state-file-defaults
+RUN | $T/ops/music_seq.+x | --data | $T/data | --mood | no_such_mood | --seed | 9 | -o | $T/s5/u.txt
+EXPECT_EXIT | 0 | unknown-mood-rc0
+EXPECT_HAS | s5/u.txt | fallback=mood-unknown | unknown-mood-uses-safe-fallback
+EXPECT_HAS | s5/u.txt | NOTE track=0 | unknown-mood-still-has-notes
+RUN | $T/ops/music_synth.+x | --data | $T/data | -o | $T/s5/u.wav | $T/s5/u.txt
+RUN | $T/ops/music_wav_audit_op.+x | $T/s5/u.wav
+EXPECT_OUT | header_ok=1 | unknown-mood-renders
+RUN | $T/ops/music_seq.+x | --data | $T/s5/nothing-here | --mood | calm | --seed | 9 | -o | $T/s5/m.txt
+EXPECT_HAS | s5/m.txt | NOTE track=0 | missing-data-dir-still-gives-a-pattern
+WRITE | s6/mood.pdl | MOOD | calm | major | 5 | 9999 | 0 | x | y | z\nTOD | night | what\n
+WRITE | s6/scales.pdl | garbage garbage\n
+RUN | $T/ops/music_seq.+x | --data | $T/s6 | --mood | calm | --seed | 9 | --tod | night | -o | $T/s6/g.txt
+EXPECT_HAS | s6/g.txt | fallback=mood-unknown | garbage-mood-row-falls-back
+EXPECT_HAS | s6/g.txt | NOTE track=0 | garbage-data-still-gives-notes
+RUN | $T/ops/music_seq.+x | --data | $T/data | --safe | --seed | 1 | -o | $T/s6/safe.txt
+EXPECT_HAS | s6/safe.txt | fallback=safe-requested | safe-flag-honoured
+# bad synth input fails loudly instead of writing garbage
+RUN | $T/ops/music_synth.+x | --data | $T/data | -o | $T/s6/x.wav | $T/s6/does-not-exist.txt
+EXPECT_EXIT | 1 | missing-pattern-is-rc1
+CLEAN |

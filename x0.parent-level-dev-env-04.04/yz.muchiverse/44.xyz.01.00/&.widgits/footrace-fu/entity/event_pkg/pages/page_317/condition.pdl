@@ -1,0 +1,8 @@
+# Move 18: ...or both live and rules.pdl collide_share = 1
+COND | trigger | move
+COND | kv | variables.txt | ph_move | eq | 8
+COND | kv | variables.txt | foe | gt | 0
+COND | kv | variables.txt | cmb_att_dead | eq | 0
+COND | kv | variables.txt | cmb_def_dead | eq | 0
+COND | kv | rules.pdl | collide_share | eq | 1
+COND | kv | switches.txt | game_over | eq | 0

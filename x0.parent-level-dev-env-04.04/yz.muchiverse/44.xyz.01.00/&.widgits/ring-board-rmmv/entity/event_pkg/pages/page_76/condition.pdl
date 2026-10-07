@@ -1,0 +1,3 @@
+# Bot: End Turn
+COND | trigger | autoturn
+COND | kv | switches.txt | game_over | eq | 0

@@ -1,0 +1,4 @@
+# Move 1: load the acting ninja (seat `current`, ninja `sel`), cost of this Move
+COND | trigger | move
+COND | kv | variables.txt | ph_move | eq | 0
+COND | kv | switches.txt | game_over | eq | 0

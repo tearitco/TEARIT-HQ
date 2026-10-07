@@ -1,0 +1,6 @@
+# EndTurn 5/9: GameOver reason 1 -> the survivor (seat 4) is the winner
+COND | trigger | endturn
+COND | kv | switches.txt | game_over | eq | 1
+COND | kv | variables.txt | game_over_reason | eq | 1
+COND | kv | variables.txt | phase | eq | 2
+COND | kv | variables.txt | alive_4 | eq | 1

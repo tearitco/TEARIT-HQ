@@ -92,7 +92,9 @@ SECTION      | ai_menu_7_label       | Phones
 SECTION      | ai_menu_7_cmd         | sh @.apps/board-hq/ops/open_board_menu.sh phones
 SECTION      | ai_menu_8_label       | tomom
 SECTION      | ai_menu_8_cmd         | sh _.monads/_.livedesk-taskbar/ops/open_tomom.sh
-SECTION      | ai_menu_9_label       | Cancel
+SECTION      | ai_menu_9_label       | Concept Bank
+SECTION      | ai_menu_9_cmd         | sh _.monads/_.livedesk-taskbar/ops/open_concept_bank.sh
+SECTION      | ai_menu_10_label      | Cancel
 
 # db cell (9.db) - converted from C-hardcoded 2026-09-08. The builder
 # still gates on an active livedesk session (no session -> no menu).

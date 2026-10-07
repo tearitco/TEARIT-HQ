@@ -1,0 +1,246 @@
+# pc-hq (piececraft-hq) LEVELS harness: proves/diagnoses what the level (map) machinery really does, on SCRATCH copies only (no GUI, no daemons, no pc_menu_input, no clock daemon).
+# Subject files are copied from $HOUSE/@.apps/piececraft-hq into $T/<root>/ ; pc_generate_chunk is COMPILED into $T/bin from its source and run with PRISC_PROJECT_ROOT=$T/<root> (no pieces/system/real_project_root.txt is copied, so the op's real_root IS the scratch root: it cannot write to the house).
+# The map-load path the real handler uses (ops/pc_menu_input.c CONFIRM_START_MAP:<id>) is: system("PRISC_PROJECT_ROOT=<root> ops/+x/pc_generate_chunk.+x <seed> 0 0 map:<id>"). Case 5 runs exactly that argv.
+# FINDING cases are written so the DRIFT is reported, not hidden: *_drift_is_exactly pass while the drift is exactly what we documented; registry_complete / registry_paths_exist are STRICT and FAIL today (owner decision, maps.pdl is NOT fixed here).
+RESULTS | ../results/pchq_levels.txt
+SCRATCH |
+MKDIR   | bin
+RUN     | gcc | -std=gnu11 | -O2 | -w | -o | $T/bin/pc_generate_chunk | $HOUSE/@.apps/piececraft-hq/ops/pc_generate_chunk.c
+CASE    | build
+EXPECT_EXIT | 0 | compile-pc_generate_chunk-rc-0
+EXPECT_EXISTS | bin/pc_generate_chunk | compiled-binary-exists
+
+# ---------- static subject copy: root "live" = the tracked state as shipped ----------
+COPY    | @.apps/piececraft-hq/pieces/system/maps.pdl | live/pieces/system/maps.pdl
+COPY    | @.apps/piececraft-hq/pieces/system/board_config.txt | live/pieces/system/board_config.txt
+COPY    | @.apps/piececraft-hq/pieces/system/board_manifest.txt | live/pieces/system/board_manifest.txt
+COPY    | @.apps/piececraft-hq/pieces/world_01/state.txt | live/pieces/world_01/state.txt
+COPY    | @.apps/piececraft-hq/pieces/sun_01/state.txt | live/pieces/sun_01/state.txt
+COPY    | @.apps/piececraft-hq/pieces/moon_01/state.txt | live/pieces/moon_01/state.txt
+COPY    | @.apps/piececraft-hq/pieces/world_01/animals.txt | live/pieces/world_01/animals.txt
+COPY    | @.apps/piececraft-hq/pieces/system/maps/cdda_sample/desk1/map.txt | live/pieces/system/maps/cdda_sample/desk1/map.txt
+COPY    | @.apps/piececraft-hq/pieces/system/maps/cdda_sample/events.pdl | live/pieces/system/maps/cdda_sample/events.pdl
+COPY    | @.apps/piececraft-hq/pieces/system/maps/cdda_sample/game.pdl | live/pieces/system/maps/cdda_sample/game.pdl
+COPY    | @.apps/piececraft-hq/pieces/system/maps/default/desk1/extrusion.pdl | live/pieces/system/maps/default/desk1/extrusion.pdl
+COPY    | @.apps/piececraft-hq/pieces/system/maps/default/desk1/map.txt | live/pieces/system/maps/default/desk1/map.txt
+COPY    | @.apps/piececraft-hq/pieces/system/maps/default/desk2/extrusion.pdl | live/pieces/system/maps/default/desk2/extrusion.pdl
+COPY    | @.apps/piececraft-hq/pieces/system/maps/default/desk2/map.txt | live/pieces/system/maps/default/desk2/map.txt
+COPY    | @.apps/piececraft-hq/pieces/system/maps/default/game.pdl | live/pieces/system/maps/default/game.pdl
+COPY    | @.apps/piececraft-hq/pieces/system/maps/mineclonia_sample/desk1/map.txt | live/pieces/system/maps/mineclonia_sample/desk1/map.txt
+COPY    | @.apps/piececraft-hq/pieces/system/maps/mineclonia_sample/events.pdl | live/pieces/system/maps/mineclonia_sample/events.pdl
+COPY    | @.apps/piececraft-hq/pieces/system/maps/mineclonia_sample/game.pdl | live/pieces/system/maps/mineclonia_sample/game.pdl
+COPY    | @.apps/piececraft-hq/pieces/system/maps/test_terraces/desk1/extrusion.pdl | live/pieces/system/maps/test_terraces/desk1/extrusion.pdl
+COPY    | @.apps/piececraft-hq/pieces/system/maps/test_terraces/desk1/map.txt | live/pieces/system/maps/test_terraces/desk1/map.txt
+COPY    | @.apps/piececraft-hq/pieces/system/maps/test_terraces/game.pdl | live/pieces/system/maps/test_terraces/game.pdl
+COPY    | @.apps/piececraft-hq/pieces/system/maps/test_walls/desk1/extrusion.pdl | live/pieces/system/maps/test_walls/desk1/extrusion.pdl
+COPY    | @.apps/piececraft-hq/pieces/system/maps/test_walls/desk1/map.txt | live/pieces/system/maps/test_walls/desk1/map.txt
+COPY    | @.apps/piececraft-hq/pieces/system/maps/test_walls/game.pdl | live/pieces/system/maps/test_walls/game.pdl
+
+# ---------- case 1: REGISTRY DRIFT ----------
+CASE    | registry
+# the folders under maps/ (read-only listing of the shipped tree via the scratch copy) are exactly these five
+RUN     | ls | -1 | live/pieces/system/maps
+EXPECT_OUT_IS | cdda_sample\ndefault\nmineclonia_sample\ntest_terraces\ntest_walls | map-folders-are-the-five-known
+EXPECT_EXISTS | live/pieces/system/maps/default/game.pdl | default-has-game-pdl
+EXPECT_EXISTS | live/pieces/system/maps/mineclonia_sample/game.pdl | mineclonia_sample-has-game-pdl
+EXPECT_EXISTS | live/pieces/system/maps/cdda_sample/game.pdl | cdda_sample-has-game-pdl
+EXPECT_EXISTS | live/pieces/system/maps/test_terraces/game.pdl | test_terraces-has-game-pdl
+EXPECT_EXISTS | live/pieces/system/maps/test_walls/game.pdl | test_walls-has-game-pdl
+# registered today
+RUN     | grep | -Eq | ^MAP +[\p] +default +[\p] | live/pieces/system/maps.pdl
+EXPECT_EXIT | 0 | maps-pdl-lists-default
+RUN     | grep | -Eq | ^MAP +[\p] +mineclonia_sample +[\p] | live/pieces/system/maps.pdl
+EXPECT_EXIT | 0 | maps-pdl-lists-mineclonia_sample
+RUN     | grep | -Eq | ^MAP +[\p] +cdda_sample +[\p] | live/pieces/system/maps.pdl
+EXPECT_EXIT | 0 | maps-pdl-lists-cdda_sample
+EXPECT_EXISTS | live/pieces/system/maps/mineclonia_sample/desk1/map.txt | mineclonia_sample-real-map-is-under-desk1
+EXPECT_EXISTS | live/pieces/system/maps/cdda_sample/desk1/map.txt | cdda_sample-real-map-is-under-desk1
+# STRICT registry cases (drift fixed 2026-10-07: maps.pdl now lists all 5 maps with KIND and correct desk1/map.txt paths; these guard against regression).
+RUN     | grep | -Eq | ^MAP +[\p] +test_terraces +[\p] | live/pieces/system/maps.pdl
+EXPECT_EXIT | 0 | registry_complete-test_terraces
+RUN     | grep | -Eq | ^MAP +[\p] +test_walls +[\p] | live/pieces/system/maps.pdl
+EXPECT_EXIT | 0 | registry_complete-test_walls
+EXPECT_EXISTS | live/pieces/system/maps/mineclonia_sample/desk1/map.txt | registry_paths_exist-mineclonia_sample
+EXPECT_EXISTS | live/pieces/system/maps/cdda_sample/desk1/map.txt | registry_paths_exist-cdda_sample
+EXPECT_HAS | live/pieces/system/maps.pdl | pieces/system/maps/default/desk1/map.txt | registry_index_path-default
+EXPECT_HAS | live/pieces/system/maps.pdl | planet | registry_index_kind-default
+EXPECT_HAS | live/pieces/system/maps.pdl | pieces/system/maps/mineclonia_sample/desk1/map.txt | registry_index_path-mineclonia_sample
+EXPECT_HAS | live/pieces/system/maps.pdl | sample | registry_index_kind-mineclonia_sample
+EXPECT_HAS | live/pieces/system/maps.pdl | pieces/system/maps/cdda_sample/desk1/map.txt | registry_index_path-cdda_sample
+EXPECT_HAS | live/pieces/system/maps.pdl | sample | registry_index_kind-cdda_sample
+EXPECT_HAS | live/pieces/system/maps.pdl | pieces/system/maps/test_terraces/desk1/map.txt | registry_index_path-test_terraces
+EXPECT_HAS | live/pieces/system/maps.pdl | test | registry_index_kind-test_terraces
+EXPECT_HAS | live/pieces/system/maps.pdl | pieces/system/maps/test_walls/desk1/map.txt | registry_index_path-test_walls
+EXPECT_HAS | live/pieces/system/maps.pdl | test | registry_index_kind-test_walls
+
+# ---------- case 2: ACTIVE MAP SOURCE ----------
+CASE    | active-map-source
+EXPECT_HAS | live/pieces/system/board_config.txt | active_level=mineclonia_sample | FINDING-board_config-active_level-value-is-mineclonia_sample
+EXPECT_HAS | live/pieces/world_01/state.txt | map_id= | world_01-state-has-map_id-key
+RUN     | sed | -n | s/^map_id=//p | live/pieces/world_01/state.txt
+CAPTURE | wmap
+RUN     | sed | -n | s/^active_level=//p | live/pieces/system/board_config.txt
+CAPTURE | cfglevel
+# board_config.txt is a DEAD key (pchq_board_projector.c / pchq_board_action.sh comments 2026-09-15): the real active map is world_01 map_id. It disagrees today, so nothing may read it for selection.
+EXPECT_NE | $wmap | $cfglevel | board_config_is_stale
+# a flat world (the default procedural world) has an EMPTY map_id: scratch root "flat" is generated below and checked in case 4.
+
+# ---------- case 3: DEFAULT WORLD PIECES ----------
+CASE    | default-world-pieces
+EXPECT_HAS | live/pieces/sun_01/state.txt | entity_type=celestial_body | sun-is-celestial_body
+EXPECT_HAS | live/pieces/moon_01/state.txt | entity_type=celestial_body | moon-is-celestial_body
+RUN     | grep | -Eq | ^pos_x=-?[0-9]+(\.[0-9]+)?$ | live/pieces/sun_01/state.txt
+EXPECT_EXIT | 0 | sun-pos_x-numeric
+RUN     | grep | -Eq | ^pos_y=-?[0-9]+(\.[0-9]+)?$ | live/pieces/sun_01/state.txt
+EXPECT_EXIT | 0 | sun-pos_y-numeric
+RUN     | grep | -Eq | ^pos_z=-?[0-9]+(\.[0-9]+)?$ | live/pieces/sun_01/state.txt
+EXPECT_EXIT | 0 | sun-pos_z-numeric
+RUN     | grep | -Eq | ^pos_x=-?[0-9]+(\.[0-9]+)?$ | live/pieces/moon_01/state.txt
+EXPECT_EXIT | 0 | moon-pos_x-numeric
+RUN     | grep | -Eq | ^pos_y=-?[0-9]+(\.[0-9]+)?$ | live/pieces/moon_01/state.txt
+EXPECT_EXIT | 0 | moon-pos_y-numeric
+RUN     | grep | -Eq | ^pos_z=-?[0-9]+(\.[0-9]+)?$ | live/pieces/moon_01/state.txt
+EXPECT_EXIT | 0 | moon-pos_z-numeric
+RUN     | grep | -Eq | ^chicken,-?[0-9]+,-?[0-9]+,-?[0-9]+$ | live/pieces/world_01/animals.txt
+EXPECT_EXIT | 0 | animals-has-a-chicken-row
+RUN     | grep | -Eq | ^GAME +[\p] +n_desks +[\p] +2$ | live/pieces/system/maps/default/game.pdl
+EXPECT_EXIT | 0 | default-game-lists-2-desks
+RUN     | grep | -Eq | ^GAME +[\p] +desk_1_id +[\p] +desk1$ | live/pieces/system/maps/default/game.pdl
+EXPECT_EXIT | 0 | default-game-desk1
+RUN     | grep | -Eq | ^GAME +[\p] +desk_2_id +[\p] +desk2$ | live/pieces/system/maps/default/game.pdl
+EXPECT_EXIT | 0 | default-game-desk2
+EXPECT_EXISTS | live/pieces/system/maps/default/desk1/map.txt | default-desk1-has-map-txt
+EXPECT_EXISTS | live/pieces/system/maps/default/desk2/map.txt | default-desk2-has-map-txt
+# every other map's game.pdl desk_1_id is backed by a desk dir with map.txt
+RUN     | grep | -Eq | ^GAME +[\p] +desk_1_id +[\p] +desk1$ | live/pieces/system/maps/mineclonia_sample/game.pdl
+EXPECT_EXIT | 0 | mineclonia_sample-game-desk1
+EXPECT_EXISTS | live/pieces/system/maps/mineclonia_sample/desk1/map.txt | mineclonia_sample-desk1-map
+RUN     | grep | -Eq | ^GAME +[\p] +desk_1_id +[\p] +desk1$ | live/pieces/system/maps/cdda_sample/game.pdl
+EXPECT_EXIT | 0 | cdda_sample-game-desk1
+EXPECT_EXISTS | live/pieces/system/maps/cdda_sample/desk1/map.txt | cdda_sample-desk1-map
+RUN     | grep | -Eq | ^GAME +[\p] +desk_1_id +[\p] +desk1$ | live/pieces/system/maps/test_terraces/game.pdl
+EXPECT_EXIT | 0 | test_terraces-game-desk1
+EXPECT_EXISTS | live/pieces/system/maps/test_terraces/desk1/map.txt | test_terraces-desk1-map
+RUN     | grep | -Eq | ^GAME +[\p] +desk_1_id +[\p] +desk1$ | live/pieces/system/maps/test_walls/game.pdl
+EXPECT_EXIT | 0 | test_walls-game-desk1
+EXPECT_EXISTS | live/pieces/system/maps/test_walls/desk1/map.txt | test_walls-desk1-map
+
+# ---------- case 4: GENERATION (flat world, fixed seed, twice into two scratch roots) ----------
+CASE    | generation
+MKDIR   | gen_a/pieces/system
+MKDIR   | gen_b/pieces/system
+ENV     | PRISC_PROJECT_ROOT | $T/gen_a
+RUN     | $T/bin/pc_generate_chunk | 424242 | 0 | 0 | flat
+EXPECT_EXIT | 0 | gen-a-rc-0
+ENV     | PRISC_PROJECT_ROOT | $T/gen_b
+RUN     | $T/bin/pc_generate_chunk | 424242 | 0 | 0 | flat
+EXPECT_EXIT | 0 | gen-b-rc-0
+ENV     | PRISC_PROJECT_ROOT |
+SUMTREE | chunksA | gen_a/pieces/system/chunks
+SUMTREE | chunksB | gen_b/pieces/system/chunks
+EXPECT_EQ | $chunksA | $chunksB | chunks-byte-identical-same-seed
+SUMTREE | allA | gen_a/pieces
+SUMTREE | allB | gen_b/pieces
+EXPECT_EQ | $allA | $allB | whole-pieces-tree-identical-same-seed
+EXPECT_EXISTS | gen_a/pieces/system/chunks/chunk_0_0/chunk_0_0_z0.txt | chunk-z0-written
+EXPECT_EXISTS | gen_a/pieces/system/chunks/chunk_0_0/chunk_0_0_z31.txt | chunk-z31-written
+EXPECT_HAS | gen_a/pieces/hero_01/state.txt | entity_type=hero | hero-state-written
+EXPECT_HAS | gen_a/pieces/world_01/state.txt | seed=424242 | world-state-has-the-seed
+EXPECT_HAS | gen_a/pieces/world_01/state.txt | map_id= | flat-world-map_id-key-present
+EXPECT_LACKS | gen_a/pieces/world_01/state.txt | map_id=t | flat-world-map_id-empty-not-a-map
+EXPECT_FILE | gen_a/pieces/system/board_manifest.txt | z_base=pieces/system/chunks/chunk_0_0/chunk_0_0_z\nz_count=32\nfloor_z=16\n | board_manifest-floor_z-16-written
+EXPECT_HAS | gen_a/pieces/world_01/animals.txt | chicken, | flat-world-has-a-chicken
+# a different seed must change the world (so identical-same-seed is not vacuous)
+MKDIR   | gen_c/pieces/system
+ENV     | PRISC_PROJECT_ROOT | $T/gen_c
+RUN     | $T/bin/pc_generate_chunk | 777 | 0 | 0 | flat
+ENV     | PRISC_PROJECT_ROOT |
+SUMTREE | allC | gen_c/pieces
+EXPECT_NE | $allA | $allC | different-seed-different-world
+
+# ---------- case 5: MAP LOAD PATH, one row per map (the exact argv CONFIRM_START_MAP builds: <seed> 0 0 map:<id>) ----------
+CASE    | map-load
+MKDIR   | ml_default/pieces/system
+COPY    | @.apps/piececraft-hq/pieces/system/maps/default/desk1/extrusion.pdl | ml_default/pieces/system/maps/default/desk1/extrusion.pdl
+COPY    | @.apps/piececraft-hq/pieces/system/maps/default/desk1/map.txt | ml_default/pieces/system/maps/default/desk1/map.txt
+COPY    | @.apps/piececraft-hq/pieces/system/maps/default/desk2/extrusion.pdl | ml_default/pieces/system/maps/default/desk2/extrusion.pdl
+COPY    | @.apps/piececraft-hq/pieces/system/maps/default/desk2/map.txt | ml_default/pieces/system/maps/default/desk2/map.txt
+COPY    | @.apps/piececraft-hq/pieces/system/maps/default/game.pdl | ml_default/pieces/system/maps/default/game.pdl
+ENV     | PRISC_PROJECT_ROOT | $T/ml_default
+RUN     | $T/bin/pc_generate_chunk | 7 | 0 | 0 | map:default
+EXPECT_EXIT | 0 | default-load-rc-0
+ENV     | PRISC_PROJECT_ROOT |
+EXPECT_HAS | ml_default/pieces/world_01/state.txt | map_id=default | default-world-map_id-set-to-the-map
+EXPECT_HAS | ml_default/pieces/world_01/state.txt | desk_id=desk1 | default-world-desk_id-desk1
+EXPECT_EXISTS | ml_default/pieces/system/chunks/chunk_0_0/chunk_0_0_z16.txt | default-chunk-z16-written
+EXPECT_HAS | ml_default/pieces/hero_01/state.txt | pos_x=1 | default-hero-spawns-at-map-tile-1-1
+EXPECT_OUT_LACKS | falling back | default-no-fallback-to-flat
+MKDIR   | ml_mineclonia_sample/pieces/system
+COPY    | @.apps/piececraft-hq/pieces/system/maps/mineclonia_sample/desk1/map.txt | ml_mineclonia_sample/pieces/system/maps/mineclonia_sample/desk1/map.txt
+COPY    | @.apps/piececraft-hq/pieces/system/maps/mineclonia_sample/events.pdl | ml_mineclonia_sample/pieces/system/maps/mineclonia_sample/events.pdl
+COPY    | @.apps/piececraft-hq/pieces/system/maps/mineclonia_sample/game.pdl | ml_mineclonia_sample/pieces/system/maps/mineclonia_sample/game.pdl
+ENV     | PRISC_PROJECT_ROOT | $T/ml_mineclonia_sample
+RUN     | $T/bin/pc_generate_chunk | 7 | 0 | 0 | map:mineclonia_sample
+EXPECT_EXIT | 0 | mineclonia_sample-load-rc-0
+ENV     | PRISC_PROJECT_ROOT |
+EXPECT_HAS | ml_mineclonia_sample/pieces/world_01/state.txt | map_id=mineclonia_sample | mineclonia_sample-world-map_id-set-to-the-map
+EXPECT_HAS | ml_mineclonia_sample/pieces/world_01/state.txt | desk_id=desk1 | mineclonia_sample-world-desk_id-desk1
+EXPECT_EXISTS | ml_mineclonia_sample/pieces/system/chunks/chunk_0_0/chunk_0_0_z16.txt | mineclonia_sample-chunk-z16-written
+EXPECT_HAS | ml_mineclonia_sample/pieces/hero_01/state.txt | pos_x=1 | mineclonia_sample-hero-spawns-at-map-tile-1-1
+EXPECT_OUT_LACKS | falling back | mineclonia_sample-no-fallback-to-flat
+MKDIR   | ml_cdda_sample/pieces/system
+COPY    | @.apps/piececraft-hq/pieces/system/maps/cdda_sample/desk1/map.txt | ml_cdda_sample/pieces/system/maps/cdda_sample/desk1/map.txt
+COPY    | @.apps/piececraft-hq/pieces/system/maps/cdda_sample/events.pdl | ml_cdda_sample/pieces/system/maps/cdda_sample/events.pdl
+COPY    | @.apps/piececraft-hq/pieces/system/maps/cdda_sample/game.pdl | ml_cdda_sample/pieces/system/maps/cdda_sample/game.pdl
+ENV     | PRISC_PROJECT_ROOT | $T/ml_cdda_sample
+RUN     | $T/bin/pc_generate_chunk | 7 | 0 | 0 | map:cdda_sample
+EXPECT_EXIT | 0 | cdda_sample-load-rc-0
+ENV     | PRISC_PROJECT_ROOT |
+EXPECT_HAS | ml_cdda_sample/pieces/world_01/state.txt | map_id=cdda_sample | cdda_sample-world-map_id-set-to-the-map
+EXPECT_HAS | ml_cdda_sample/pieces/world_01/state.txt | desk_id=desk1 | cdda_sample-world-desk_id-desk1
+EXPECT_EXISTS | ml_cdda_sample/pieces/system/chunks/chunk_0_0/chunk_0_0_z16.txt | cdda_sample-chunk-z16-written
+EXPECT_HAS | ml_cdda_sample/pieces/hero_01/state.txt | pos_x=1 | cdda_sample-hero-spawns-at-map-tile-1-1
+EXPECT_OUT_LACKS | falling back | cdda_sample-no-fallback-to-flat
+MKDIR   | ml_test_terraces/pieces/system
+COPY    | @.apps/piececraft-hq/pieces/system/maps/test_terraces/desk1/extrusion.pdl | ml_test_terraces/pieces/system/maps/test_terraces/desk1/extrusion.pdl
+COPY    | @.apps/piececraft-hq/pieces/system/maps/test_terraces/desk1/map.txt | ml_test_terraces/pieces/system/maps/test_terraces/desk1/map.txt
+COPY    | @.apps/piececraft-hq/pieces/system/maps/test_terraces/game.pdl | ml_test_terraces/pieces/system/maps/test_terraces/game.pdl
+ENV     | PRISC_PROJECT_ROOT | $T/ml_test_terraces
+RUN     | $T/bin/pc_generate_chunk | 7 | 0 | 0 | map:test_terraces
+EXPECT_EXIT | 0 | test_terraces-load-rc-0
+ENV     | PRISC_PROJECT_ROOT |
+EXPECT_HAS | ml_test_terraces/pieces/world_01/state.txt | map_id=test_terraces | test_terraces-world-map_id-set-to-the-map
+EXPECT_HAS | ml_test_terraces/pieces/world_01/state.txt | desk_id=desk1 | test_terraces-world-desk_id-desk1
+EXPECT_EXISTS | ml_test_terraces/pieces/system/chunks/chunk_0_0/chunk_0_0_z16.txt | test_terraces-chunk-z16-written
+EXPECT_HAS | ml_test_terraces/pieces/hero_01/state.txt | pos_x=1 | test_terraces-hero-spawns-at-map-tile-1-1
+EXPECT_OUT_LACKS | falling back | test_terraces-no-fallback-to-flat
+MKDIR   | ml_test_walls/pieces/system
+COPY    | @.apps/piececraft-hq/pieces/system/maps/test_walls/desk1/extrusion.pdl | ml_test_walls/pieces/system/maps/test_walls/desk1/extrusion.pdl
+COPY    | @.apps/piececraft-hq/pieces/system/maps/test_walls/desk1/map.txt | ml_test_walls/pieces/system/maps/test_walls/desk1/map.txt
+COPY    | @.apps/piececraft-hq/pieces/system/maps/test_walls/game.pdl | ml_test_walls/pieces/system/maps/test_walls/game.pdl
+ENV     | PRISC_PROJECT_ROOT | $T/ml_test_walls
+RUN     | $T/bin/pc_generate_chunk | 7 | 0 | 0 | map:test_walls
+EXPECT_EXIT | 0 | test_walls-load-rc-0
+ENV     | PRISC_PROJECT_ROOT |
+EXPECT_HAS | ml_test_walls/pieces/world_01/state.txt | map_id=test_walls | test_walls-world-map_id-set-to-the-map
+EXPECT_HAS | ml_test_walls/pieces/world_01/state.txt | desk_id=desk1 | test_walls-world-desk_id-desk1
+EXPECT_EXISTS | ml_test_walls/pieces/system/chunks/chunk_0_0/chunk_0_0_z16.txt | test_walls-chunk-z16-written
+EXPECT_HAS | ml_test_walls/pieces/hero_01/state.txt | pos_x=1 | test_walls-hero-spawns-at-map-tile-1-1
+EXPECT_OUT_LACKS | falling back | test_walls-no-fallback-to-flat
+# the loaded maps are genuinely different worlds: terraces (extruded) != default
+SUMTREE | mlDefault | ml_default/pieces/system/chunks
+SUMTREE | mlTerr | ml_test_terraces/pieces/system/chunks
+EXPECT_NE | $mlDefault | $mlTerr | terraces-chunks-differ-from-default
+# FINDING: test_terraces and test_walls load through the handler path even though maps.pdl does not list them (the registry is a UI list, not a gate)
+# unknown map id: the op falls back to flat (empty map_id) instead of failing -> a mistyped CONFIRM_START_MAP silently gives the flat world
+MKDIR   | ml_nosuch/pieces/system
+ENV     | PRISC_PROJECT_ROOT | $T/ml_nosuch
+RUN     | $T/bin/pc_generate_chunk | 7 | 0 | 0 | map:nosuch_map
+EXPECT_EXIT | 0 | nosuch-rc-0-silent-fallback
+EXPECT_OUT | falling back to flat | nosuch-reports-fallback
+ENV     | PRISC_PROJECT_ROOT |
+EXPECT_LACKS | ml_nosuch/pieces/world_01/state.txt | map_id=nosuch_map | nosuch-map_id-not-recorded
+# SKIP (reason, not a pass): the CONFIRM_START_MAP inbox handler itself (pc_menu_input.c: sets game_state, writes display pin, launches clock daemon + trigger watcher) is NOT exercised: it needs the running manager and spawns daemons. Only the generation argv it builds is run above.
+# SKIP (reason, not a pass): no GUI/window check that the loaded level is what a pc-hq window shows.
+
+CLEAN   |

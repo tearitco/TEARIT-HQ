@@ -1,0 +1,8 @@
+QUEST|q001-clamp|2026-10-07|worker=nvidia/nemotron-3-ultra-550b-a55b:free via OpenRouter chat/completions (direct curl, max_tokens 6000)|runner=claude by hand (quest_runner not built)
+LOCK|cases/quest_q001_clamp.pdl|sha256=67dbe061e0ff2f55ac14b08e13950c62057ce1bb5c0c62d6c23e646692450619
+LOCK|quest_q001_clamp.pal|sha256=644d6eea77bd95691cc9a4d7327ff9c78bfde9a16f9a8fcce05609effab20043
+HARNESS_CHECK|reference implementation (claude) PASS 37/0; bad stub FAIL 13 passed 25 failed; flawed case (leading-space arg trimmed by case runner) found by the reference and removed BEFORE dispatch
+ITER|1|prompt 937 bytes|reply 1322 chars|prompt_tokens=255 completion_tokens=906 total=1161 cost=0 reasoning_tokens=443|wall_s=18.7|verdict=PASS passed=37 failed=0
+DIFFSCAN|no system/popen/exec/fopen; only stdio stdlib string errno ctype limits includes|locked hashes unchanged after run
+RESULT|ACCEPTED_BY_HARNESS|iterations=1|claude_tokens_for_this_run=spec+cases+review only|merge=none (alpha scratch commit only)
+FINDING|horn_chat_openrouter.+x failed on all 3 :free models in ~2 min (no max_tokens, 60 s curl cap, response deleted before diagnosis); the same endpoint called directly worked in 18.7 s. Also needs &.widgits/entity-cli/ops/json_parser.+x which is not compiled in the live tree.

@@ -1,0 +1,4 @@
+# event.pal - Block 4: refused (trigger block). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/row_append.+x . ledger.txt REFUSE {turn} {current} {sel} block {act_alive} {tokens}
+exec ops/+x/var_math.+x . set ph_blk 0
+halt

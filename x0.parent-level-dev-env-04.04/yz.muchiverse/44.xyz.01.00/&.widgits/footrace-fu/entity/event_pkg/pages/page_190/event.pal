@@ -1,0 +1,5 @@
+# event.pal - FinRule 1: does the target pass Finish (trigger finrule). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . gt fover ftgt rules.pdl:track_len
+exec ops/+x/var_math.+x . set fin_cancel 0
+exec ops/+x/var_math.+x . set ph_fin 1
+halt

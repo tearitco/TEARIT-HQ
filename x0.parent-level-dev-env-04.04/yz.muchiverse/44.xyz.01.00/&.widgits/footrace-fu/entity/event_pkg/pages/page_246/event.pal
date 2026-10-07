@@ -1,0 +1,4 @@
+# event.pal - Combat 17: HP never below 0 (defender) (trigger combat). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set hp_{cmb_dp}_{cmb_dn} 0
+exec ops/+x/var_math.+x . set d_now 0
+halt

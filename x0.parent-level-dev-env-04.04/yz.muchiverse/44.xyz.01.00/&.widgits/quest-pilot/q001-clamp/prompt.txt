@@ -1,0 +1,5 @@
+Write ONE self-contained C source file, program name clamp_op. Reply with ONLY the C code inside a single ```c fenced block, no explanation.
+Spec: usage `clamp_op <value> <min> <max>`. Print value clamped into [min,max] as a decimal integer followed by a newline on stdout, exit 0.
+Exit 2 with nothing on stdout and a short message on stderr when: argument count is not exactly 3; any argument is not a whole base-10 signed integer (empty string, trailing characters like 5x, decimal point like 5.5, hex like 0x10, a lone minus); any argument is outside the signed 64-bit range (long long); min is greater than max.
+A leading minus or plus sign is allowed. Use long long and strtoll with errno and end-pointer checks; reject hex by requiring the characters after an optional sign to be digits only.
+Must compile with no warnings: gcc -std=gnu11 -Wall -Wextra -Werror -O2. Use only the C standard library. Do not use system() or popen().

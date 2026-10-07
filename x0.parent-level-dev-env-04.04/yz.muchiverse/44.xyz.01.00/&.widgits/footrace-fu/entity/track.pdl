@@ -1,0 +1,18 @@
+# track.pdl - the race track: Start is position 0, Finish is position `track_len` (rules.pdl). A slide moves a ninja that lands on its `from` space back to its `to` space,
+# a climb moves it forward. Rows are `slide_<from>=<to>` / `climb_<from>=<to>`, read by var_math as `track.pdl:slide_{lpos}` (a missing row reads 0 = no link, so a link target must be >= 1).
+# PLACEHOLDER=1: the draft gives NO slides or climbs for the race track (its slide/climb spaces belong to the Buffet loop). These 3 slides and 2 climbs are stand-ins; delete or replace them freely.
+# Rules used: one hop only (landing on a link's target does not trigger another), teleports and slides do not start a fight, sources and targets never overlap.
+PLACEHOLDER=1
+slide_9=4
+slide_14=7
+slide_21=13
+climb_3=11
+climb_16=20
+# optional display names (pipe rows are ignored by the kv readers)
+SPACE | 0 | start | Gateway of Moments
+SPACE | 9 | slide | Slip Rift
+SPACE | 14 | slide | Rewind Ravine
+SPACE | 21 | slide | Echo Pit
+SPACE | 3 | climb | Cherry Stair
+SPACE | 16 | climb | Crystal Bridge
+SPACE | 24 | finish | Feast of Eternity

@@ -1,0 +1,5 @@
+# music_daemon.pal - pal harness for the music daemon v0 (see cases/music_daemon.pdl). Read results/music_daemon.txt.verdict.txt.
+# Headless: the daemon only runs with --sink file:..., no audio is ever played. It cannot judge how the music SOUNDS.
+exec ./ops/+x/harness_case_op.+x cases/music_daemon.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/music_daemon.pdl
+halt

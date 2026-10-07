@@ -1,0 +1,4 @@
+# Blink 1: load, gate (Shadow Step only)
+COND | trigger | cast_blink
+COND | kv | variables.txt | ph_cast | eq | 0
+COND | kv | switches.txt | game_over | eq | 0

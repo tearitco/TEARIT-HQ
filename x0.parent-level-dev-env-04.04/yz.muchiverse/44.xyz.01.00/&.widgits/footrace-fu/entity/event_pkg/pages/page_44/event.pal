@@ -1,0 +1,4 @@
+# event.pal - Setup 3: guardrail - action_tokens above max_action_tokens -> refused (trigger setup). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set setup_error 1
+exec ops/+x/row_append.+x . ledger.txt SETUP refused action_tokens
+halt

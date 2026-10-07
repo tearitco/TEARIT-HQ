@@ -1,0 +1,4 @@
+# Move: raw = pos + roll; wrapped = raw >= 40; pos = raw mod 40
+COND | trigger | roll
+COND | kv | switches.txt | game_over | eq | 0
+COND | kv | variables.txt | phase | eq | 3

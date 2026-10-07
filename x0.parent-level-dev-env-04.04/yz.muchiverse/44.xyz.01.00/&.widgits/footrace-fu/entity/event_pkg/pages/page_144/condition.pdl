@@ -1,0 +1,4 @@
+# TurnStart 2: seat 4 - stances (Block, shield) and the free-Block flag end with the owner's new turn
+COND | trigger | turnstart
+COND | kv | variables.txt | current | eq | 4
+COND | kv | switches.txt | game_over | eq | 0

@@ -1,0 +1,4 @@
+# EndTurn 3/9: turn += 1 and count the players still alive
+COND | trigger | endturn
+COND | kv | switches.txt | game_over | eq | 0
+COND | kv | variables.txt | phase | eq | 2

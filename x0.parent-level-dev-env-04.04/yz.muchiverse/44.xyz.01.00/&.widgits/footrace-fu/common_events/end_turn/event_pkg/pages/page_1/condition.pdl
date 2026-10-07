@@ -1,0 +1,2 @@
+# the clock calls this common event (LC_CLOCK_EVENT_RUNNER=event_page_op, EVENT_PAGE_TRIGGER=endturn); it just forwards to the End Turn pages of the game entity named in target.pdl
+COND | trigger | endturn

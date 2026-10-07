@@ -1,0 +1,5 @@
+# Warp Ally 6: cannot teleport past Finish: clamp
+COND | trigger | cast_warp
+COND | kv | variables.txt | ph_cast | eq | 3
+COND | kv | variables.txt | ftgt | gt | @rules.pdl:track_len
+COND | kv | switches.txt | game_over | eq | 0

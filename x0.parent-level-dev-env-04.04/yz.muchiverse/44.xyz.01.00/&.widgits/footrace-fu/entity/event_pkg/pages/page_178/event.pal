@@ -1,0 +1,4 @@
+# event.pal - Select 2 1/3: is that ninja alive (trigger select2). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set sel_try 2
+exec ops/+x/var_math.+x . set sel_alive alive_{current}_{sel_try}
+halt

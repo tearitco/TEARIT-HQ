@@ -47,6 +47,9 @@ gcc $CFLAGS -o "ops/+x/chain_balance.+x" "ops/chain_balance.c"
 gcc $CFLAGS -o "ops/+x/chain_send.+x" "ops/chain_send.c"
 gcc $CFLAGS -o "ops/+x/chain_miner.+x" "ops/chain_miner.c" -lcrypto
 gcc $CFLAGS -o "ops/+x/chain_inbox_watcher.+x" "ops/chain_inbox_watcher.c" -lcrypto
+gcc $CFLAGS -o "ops/+x/chain_new.+x" "ops/chain_new.c"
+gcc $CFLAGS -o "ops/+x/chain_faucet.+x" "ops/chain_faucet.c"
+gcc $CFLAGS -o "ops/+x/chain_escrow.+x" "ops/chain_escrow.c"
 gcc $CFLAGS -o "ops/+x/chain_menu_input.+x" "ops/chain_menu_input.c"
 gcc $CFLAGS -o "ops/+x/chain_compose_frame.+x" "ops/chain_compose_frame.c"
 

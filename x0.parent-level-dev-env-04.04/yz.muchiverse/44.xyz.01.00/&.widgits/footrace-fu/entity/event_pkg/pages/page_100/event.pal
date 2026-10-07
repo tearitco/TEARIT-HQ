@@ -1,0 +1,4 @@
+# event.pal - EndTurn 1: turn += 1 (trigger endturn). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . add turn turn 1
+exec ops/+x/var_math.+x . set ph_end 1
+halt

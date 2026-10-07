@@ -1,0 +1,4 @@
+# lc_clock_recur.pal - pal harness over the real lc_clock on scratch roots (see cases/lc_clock_recur.pdl). Read results/lc_clock_recur.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/lc_clock_recur.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/lc_clock_recur.pdl
+halt

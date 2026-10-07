@@ -40,7 +40,18 @@ $CC -std=gnu11 -Wall -O2 -D_GNU_SOURCE -DCONFIG_VERSION=\"2026-06-04\" -fwrapv -
 # Step 3 adds nb_dom.c (the manager's DOM serializer) so the worker can
 # rebuild the fetch.dom tree in its own heap.
 echo "-- nb_js_worker -> ops/+x/nb_js_worker.+x"
-$CC -std=gnu11 -Wall -O2 -D_GNU_SOURCE -DCONFIG_VERSION=\"2026-06-04\" -fwrapv -pthread -I"$JSDIR" -o "$SDIR/ops/+x/nb_js_worker.+x" "$SDIR/ops/nb_js_worker.c" "$SDIR/nb_dom.c" "$SDIR/nb_css.c" "$JSDIR/quickjs.c" "$JSDIR/cutils.c" "$JSDIR/libregexp.c" "$JSDIR/libunicode.c" "$JSDIR/dtoa.c" -lm && echo "OK nb_js_worker" || exit 1
+# WebGL (2026-10-07): EGL+GLES2 when present (getContext('webgl') is real);
+# without the headers it builds anyway and webgl reads undefined.
+# NOTE: libs go after the sources (link order matters with --as-needed).
+GL_CFLAGS=""
+GL_LIBS=""
+if pkg-config --exists egl glesv2 2>/dev/null; then
+  GL_CFLAGS="-DNB_HAVE_GLES $(pkg-config --cflags egl glesv2)"
+  GL_LIBS="$(pkg-config --libs egl glesv2)"
+else
+  echo "note: no egl/glesv2 dev - worker builds without WebGL"
+fi
+$CC -std=gnu11 -Wall -O2 -D_GNU_SOURCE -DCONFIG_VERSION=\"2026-06-04\" -fwrapv -pthread -I"$JSDIR" $GL_CFLAGS -o "$SDIR/ops/+x/nb_js_worker.+x" "$SDIR/ops/nb_js_worker.c" "$SDIR/nb_dom.c" "$SDIR/nb_css.c" "$JSDIR/quickjs.c" "$JSDIR/cutils.c" "$JSDIR/libregexp.c" "$JSDIR/libunicode.c" "$JSDIR/dtoa.c" -lm $GL_LIBS && echo "OK nb_js_worker" || exit 1
 
 echo "-- nb_media_to_sprite -> ops/+x/nb_media_to_sprite.+x"
 $CC -std=c11 -Wall -O2 -I"$JSDIR" -o "$SDIR/ops/+x/nb_media_to_sprite.+x" "$SDIR/ops/nb_media_to_sprite.c" -lm && echo "OK nb_media_to_sprite" || exit 1

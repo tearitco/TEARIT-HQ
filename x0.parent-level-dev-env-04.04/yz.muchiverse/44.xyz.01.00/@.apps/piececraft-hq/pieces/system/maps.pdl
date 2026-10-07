@@ -1,5 +1,12 @@
-SECTION      | KEY                | PATH
-----------------------------------------------------------------------
-MAP          | default            | pieces/system/chunks/chunk_0_0/chunk_0_0_z0.txt
-MAP          | mineclonia_sample  | pieces/system/maps/mineclonia_sample/map.txt
-MAP          | cdda_sample        | pieces/system/maps/cdda_sample/map.txt
+# maps.pdl - INDEX of the pc-hq levels (maps). One row per folder under pieces/system/maps/.
+# Derived index only: the engine reads each map's own game.pdl and world_01/state.txt (map_id); nothing
+# reads this file today, and board_config.txt is a dead key (see PCHQ-LEVELS-REVIEW-CORRECTIONS.md).
+# The pchq_levels harness checks this index against the folders (registry_complete, registry_paths_exist).
+# KIND: planet = a world to live in | sample = demo of an asset set | test = fixture, not for play
+SECTION      | KEY                | PATH                                                  | KIND
+-----------------------------------------------------------------------------------------------------
+MAP          | default            | pieces/system/maps/default/desk1/map.txt              | planet
+MAP          | mineclonia_sample  | pieces/system/maps/mineclonia_sample/desk1/map.txt    | sample
+MAP          | cdda_sample        | pieces/system/maps/cdda_sample/desk1/map.txt          | sample
+MAP          | test_terraces      | pieces/system/maps/test_terraces/desk1/map.txt        | test
+MAP          | test_walls         | pieces/system/maps/test_walls/desk1/map.txt           | test

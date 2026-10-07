@@ -1,0 +1,4 @@
+# Block 7: done
+COND | trigger | block
+COND | kv | variables.txt | ph_blk | eq | 3
+COND | kv | switches.txt | game_over | eq | 0

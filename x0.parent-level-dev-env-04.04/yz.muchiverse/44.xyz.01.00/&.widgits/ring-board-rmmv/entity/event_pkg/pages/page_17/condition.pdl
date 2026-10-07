@@ -1,0 +1,5 @@
+# Land: tax tile -> pay the tax to the bank
+COND | trigger | roll
+COND | kv | switches.txt | game_over | eq | 0
+COND | kv | variables.txt | phase | eq | 4
+COND | kv | variables.txt | tile_kind | eq | 3

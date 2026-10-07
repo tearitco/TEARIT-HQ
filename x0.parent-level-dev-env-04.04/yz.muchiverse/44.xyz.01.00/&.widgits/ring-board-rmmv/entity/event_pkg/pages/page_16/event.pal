@@ -1,0 +1,4 @@
+# event.pal - Land: property owned by another player -> pay the fixed rent to the owner (trigger roll). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/cash_transfer.+x . {current} tile_owner tile_rent rent
+exec ops/+x/var_math.+x . set phase 5
+halt

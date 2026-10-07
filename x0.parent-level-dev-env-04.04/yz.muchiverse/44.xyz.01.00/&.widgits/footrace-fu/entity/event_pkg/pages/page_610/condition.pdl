@@ -1,0 +1,4 @@
+# Bot 5: did the pick spend nothing (refused)?
+COND | trigger | autoturn
+COND | kv | variables.txt | ph_bot | eq | 3
+COND | kv | switches.txt | game_over | eq | 0

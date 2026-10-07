@@ -1,0 +1,15 @@
+# skills.pdl - SKILL rows (design section 3): the act menu is generated from the skills an entity has (stored, or implied by a held item) and whose needs_item it holds.
+# needs_place is a label in v0 (no map: every place is present, see README gaps); cost_ticks is informational (one act per day); event= names the page/verb that performs it.
+SKILL | plant   | needs_item=seed | needs_place=field | cost_ticks=1 | event=eden_plant
+SKILL | water   | needs_item=jug  | needs_place=field | cost_ticks=1 | event=eden_water
+SKILL | collect | needs_item=hoe  | needs_place=field | cost_ticks=1 | event=eden_collect
+SKILL | eat     | cost_ticks=1 | event=eden_eat
+SKILL | rest    | cost_ticks=1 | event=eden_rest
+SKILL | trade   | cost_ticks=1 | event=eden_trade
+SKILL | talk    | cost_ticks=1 | event=eden_talk
+SKILL | build   | needs_item=hoe | needs_place=field | cost_ticks=1 | event=eden_build
+SKILL | study   | cost_ticks=1 | event=eden_study
+# --- v1: feed a chicken (kit skill), dig (implied by the spade, which it needs), repair the house (needs clay)
+SKILL | feed   | cost_ticks=1 | event=eden_feed
+SKILL | dig    | needs_item=spade | needs_place=field | cost_ticks=1 | event=eden_dig
+SKILL | repair | needs_item=clay | needs_place=house | cost_ticks=1 | event=eden_repair

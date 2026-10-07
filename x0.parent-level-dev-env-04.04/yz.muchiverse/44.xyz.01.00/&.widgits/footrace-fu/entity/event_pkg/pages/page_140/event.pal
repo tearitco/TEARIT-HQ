@@ -1,0 +1,5 @@
+# event.pal - TurnStart 1: tokens reset, free steps reset (trigger turnstart). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set tokens rules.pdl:action_tokens
+exec ops/+x/var_math.+x . set free_left rules.pdl:free_moves_per_turn
+exec ops/+x/var_math.+x . set bot_acts 0
+halt

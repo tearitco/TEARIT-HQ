@@ -1,0 +1,8 @@
+# event.pal - Land: read the tile (kind code, price, rent) and who owns it (trigger roll). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/tile_lookup.+x . cur_pos kind tile_kind
+exec ops/+x/tile_lookup.+x . cur_pos price tile_price
+exec ops/+x/tile_lookup.+x . cur_pos rent tile_rent
+exec ops/+x/var_math.+x . set tile_owner owner_{cur_pos}
+exec ops/+x/var_math.+x . gt owned tile_owner 0
+exec ops/+x/var_math.+x . ne foreign tile_owner current
+halt

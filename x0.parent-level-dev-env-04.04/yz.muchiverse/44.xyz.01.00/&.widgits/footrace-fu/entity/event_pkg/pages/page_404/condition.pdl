@@ -1,0 +1,3 @@
+# CastCheck 5: double sixes
+COND | trigger | castcheck
+COND | kv | variables.txt | cc_cond | eq | 3

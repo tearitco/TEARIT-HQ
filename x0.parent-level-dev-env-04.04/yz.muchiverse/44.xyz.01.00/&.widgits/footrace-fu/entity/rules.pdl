@@ -1,0 +1,66 @@
+# rules.pdl - every number the Footrace Fu race mode (v0) uses, as `key=int` rows (read at run time by var_math `rules.pdl:key`, var_find/rand_roll operands, and event_page_op `@rules.pdl:key` conditions).
+# Owner rule (2026-10-07): "make them fluid, pdl read" - no number lives in code; a rule VARIANT is a different rules.pdl (the two source PDFs become two rule variants later).
+# Source: ff-fu-IQ-a29-RULES v0.1 draft. `owner decision pending` = the draft ends in that open question; the default is a placeholder, never a decision.
+# PLACEHOLDER=1 rows: the draft gives no number, the value is a stand-in the owner replaces (listed in README).
+# Enumerations are small integers; the meaning is in the comment above the row.
+
+# --- table: players, army, fairness guardrails (draft "Fairness Standard Recommendation") ---
+players_min=2
+players_max=4
+# ninjas per player: draft says 3-5 (Duel 3, Squad Race 5, Blitz 2 is outside 3-5: owner decision pending)
+ninjas_per_player=3
+ninjas_min=3
+ninjas_max=5
+# guardrail: maximum total starting HP of one army. Setup REFUSES a roster above it. NOTE (found while building): the draft's five classes sum to 3+5+6+4+3 = 21 > 20,
+# so a full "Squad Race" of one of each class is refused by the draft's own guardrail. owner decision pending
+max_army_hp=20
+# action tokens per turn: draft "1-3, 2 standard, 3 epic". Setup REFUSES action_tokens > max_action_tokens.
+action_tokens=2
+max_action_tokens=2
+
+# --- track: positions 0 (Start) .. track_len (Finish); slides and climbs are in track.pdl ---
+track_len=24
+# the position stored for a ninja that is dead or not in the army (never on the track; chosen far outside any window)
+off_track_pos=-1000
+
+# --- actions ---
+# does Move always cost an action token? 1 = yes, 0 = no. owner decision pending (draft question)
+move_costs_action=1
+# free steps per turn: this many Moves per turn cost no token (0 = none). owner decision pending (draft question: "1 free step per turn?")
+free_moves_per_turn=0
+# the class table has a "Move" stat (3..6) but the action says "Move = roll 1d6". Interpretation used: distance = 1d6 + (class Move - move_baseline), at least move_min. PLACEHOLDER=1, owner decision pending
+move_baseline=4
+move_min=1
+# Attack and Block action cost in tokens (draft: one action each)
+attack_cost=1
+block_cost=1
+# Block action: Block bonus added to the ninja's next defence (until it defends once or its owner's next turn starts). The draft gives no number. PLACEHOLDER=1
+block_bonus=1
+# HP lost by the loser of a combat (draft: 1)
+combat_loss=1
+# "adjacent" distance for Blade Dancer (+1 Attack when adjacent to an enemy); a melee collision is distance 0
+adjacent_dist=1
+
+# --- combat: 1d6 + Attack vs 1d6 + Block, higher wins, loser loses combat_loss HP ---
+# tie rule: 1 = both lose, 2 = coin flip (heads: the defender loses, tails: the attacker loses). owner decision pending (draft: "both lose OR coin")
+tie_rule=1
+# what a melee collision does when both ninjas survive: 0 = the mover bounces back to the space it started on, 1 = both stay on the space. owner decision pending (draft is silent)
+collide_share=0
+
+# --- finish ---
+# 1 = exact landing needed (an overshooting Move is wasted), 2 = bounce back by the overshoot, 3 = overshoot wins (reaching or passing Finish wins). owner decision pending (draft: "exact... Overshooting? Bounce back or lose turn")
+finish_rule=2
+# may Banish Foe send the enemy to Finish (coin flip), where the enemy wins at once? 0 = never (always to Start), 1 = coin flip. owner decision pending (draft design check)
+teleport_foe_to_finish=0
+# may Warp Ally reach the Finish itself? 1 = yes (clamp to Finish), 0 = clamp to the space before it. owner decision pending ("Cannot teleport past Finish")
+warp_ally_may_finish=1
+
+# --- game end ---
+# the race ends in a draw (winner 0, reason 4) after this many End Turns. A safety net, not a rule of the draft. PLACEHOLDER=1
+turn_cap=300
+
+# --- bot policy (the harness's deterministic seat, never a human rule) ---
+# action k of the bot picks by (bot_counter mod policy_period): 0 Time Skip, 1 Warp Ally, 2 Banish Foe, 3 Chrono Shield, 4 Shadow blink, 5 Block, others Attack (else Move).
+# A refused pick falls back to Move. The bot ends its turn at 0 tokens or after policy_max_acts actions.
+policy_period=10
+policy_max_acts=4

@@ -1,0 +1,3 @@
+# event.pal - Warp Ally 7: warp_ally_may_finish = 0: stop one space short (trigger cast_warp). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . sub ftgt rules.pdl:track_len 1
+halt

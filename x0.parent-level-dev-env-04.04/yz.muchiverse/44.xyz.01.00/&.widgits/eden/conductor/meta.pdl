@@ -1,0 +1,30 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | eden-conductor
+STATE        | menu_stay_open     | 1
+STATE        | grab_pointer       | 1
+STATE        | grab_keyboard      | 1
+METHOD       | Setup                | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger setup'
+METHOD       | Start                | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger start'
+METHOD       | Pause                | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger pause'
+METHOD       | Resume               | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger resume'
+METHOD       | Save 1               | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger save1'
+METHOD       | Save 2               | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger save2'
+METHOD       | Save 3               | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger save3'
+METHOD       | Load 1               | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger load1'
+METHOD       | Load 2               | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger load2'
+METHOD       | Load 3               | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger load3'
+METHOD       | Status               | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger status'
+METHOD       | Add participant      | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger add'
+METHOD       | Remove participant   | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger remove'
+METHOD       | Reset                | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger reset'
+METHOD       | Start game           | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger begin'
+METHOD       | Stop game            | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger stop'
+METHOD       | Slot next            | sh -c 'exec "$0/ops/+x/eden_op.+x" "$0" slot next'
+METHOD       | Slot prev            | sh -c 'exec "$0/ops/+x/eden_op.+x" "$0" slot prev'
+METHOD       | Slot +10             | sh -c 'exec "$0/ops/+x/eden_op.+x" "$0" slot +10'
+METHOD       | Save slot...         | sh -c 'exec "$0/ops/+x/eden_op.+x" "$0" save-slot'
+METHOD       | Resave slot...       | sh -c 'exec "$0/ops/+x/eden_op.+x" "$0" resave-slot'
+METHOD       | Load slot...         | sh -c 'exec "$0/ops/+x/eden_op.+x" "$0" load-slot'
+METHOD       | Close                | CLOSE
+METHOD       | Cancel               | void

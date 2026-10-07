@@ -1,0 +1,3 @@
+# event.pal - Pay jail fee 2/3: pay the bank (strict) (trigger payjail). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/cash_transfer.+x . {current} bank rules.pdl:jail_fee jail strict
+halt

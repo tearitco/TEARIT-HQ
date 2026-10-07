@@ -1,0 +1,5 @@
+# Time Skip 4: the condition failed - fizzle (tokens and use are spent)
+COND | trigger | cast_timeskip
+COND | kv | variables.txt | ph_cast | eq | 2
+COND | kv | variables.txt | cc_ok | eq | 0
+COND | kv | switches.txt | game_over | eq | 0

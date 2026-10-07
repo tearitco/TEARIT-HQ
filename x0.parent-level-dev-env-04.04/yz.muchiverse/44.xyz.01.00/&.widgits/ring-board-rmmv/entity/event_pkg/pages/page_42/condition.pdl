@@ -1,0 +1,7 @@
+# Pay jail fee 3/3: paid -> out of jail, the player may roll
+COND | trigger | payjail
+COND | kv | switches.txt | game_over | eq | 0
+COND | kv | variables.txt | phase | eq | 0
+COND | kv | variables.txt | cur_jail | gt | 0
+COND | kv | variables.txt | can_pay | eq | 1
+COND | kv | variables.txt | xfer_result | eq | 1

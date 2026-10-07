@@ -1,0 +1,4 @@
+# event.pal - Time Skip 4: the condition failed - fizzle (tokens and use are spent) (trigger cast_timeskip). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/row_append.+x . ledger.txt CAST {turn} {current} {sel} timeskip fizzle {act_pos} {act_pos}
+exec ops/+x/var_math.+x . set ph_cast 0
+halt

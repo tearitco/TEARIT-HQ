@@ -1,0 +1,22 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/xod_setup_module.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="+============================================================+" /><br/>
+    <text label="|           XOD TOURNAMENT SETUP                           |" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label="  Agents: ${num_agents}    Duration: ${duration_sec}s    Status: ${status}" /><br/>
+    <br/>
+    <text label="  Configure Agent Slots:" /><br/>
+    ${agent_slots}
+    <br/>
+    ${piece_methods}
+    <br/>
+    <text label="  ${last_message}" /><br/>
+    <text label="+============================================================+" /><br/>
+    <button label="Start Tournament" onClick="START_TOURNAMENT" visibility="${ready_to_start}" /><br/>
+    <button label="Add Agent Slot" onClick="ADD_AGENT" visibility="${can_add_agent}" /><br/>
+    <button label="Remove Last Agent" onClick="REMOVE_AGENT" visibility="${can_remove_agent}" /><br/>
+    <button label="Reset Config" onClick="RESET_CONFIG" /><br/>
+    <button label="Cancel" onClick="CANCEL" /><br/>
+    <text label=" [enter] select  [esc] Back  (Ctrl+C to quit)" /><br/>
+</panel>

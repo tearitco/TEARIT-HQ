@@ -1,0 +1,2 @@
+# weather.pdl - one seeded roll per day: rain when hash(seed, day) % 100 < rain_pct (percent). Rain waters every growing plot.
+rain_pct=30

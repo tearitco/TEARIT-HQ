@@ -1,0 +1,5 @@
+# Banish Foe 2: refused
+COND | trigger | cast_banish
+COND | kv | variables.txt | ph_cast | eq | 1
+COND | kv | variables.txt | gate_ok | eq | 0
+COND | kv | switches.txt | game_over | eq | 0

@@ -1,0 +1,556 @@
+# dsr_sim_step1 (DSR-SIMULATION-DESIGN.md sections 5 step 1, 8, 8b, 9, 10): scenario generator + a deterministic 30-day headless economy run as the `common:dsr_day_tick`
+# common event on the house clock (real lc_clock `repeat=every:1day`, catch-up, `step`). State = RPG Maker variables (variables.txt key=int) per entity, append-only
+# dsr_history.txt per entity, WSR price/payroll/interest/pop formulas inside ops/dsr_day_tick.c. Scratch roots only (/tmp/hc_*): each case builds mini houses $T/<h>/
+# (clock files, scenario, dsr_game). Authored once from a script (the 30-day step-by-step block is 60 repeated rows); it is plain data now, edit by hand.
+RESULTS | ../results/dsr_sim_step1.txt
+CASE    | gen-default-is-the-dsrtest-set
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+COPY    | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | gso
+COPY    | &.widgits/dsr-sim/ops/+x/dsr_scenario_gen.+x | gen
+COPY    | &.widgits/dsr-sim/ops/+x/dsr_day_tick.+x | dsr_day_tick.+x
+COPY    | &.widgits/dsr-sim/ops/+x/dsr_sim_query_op.+x | q
+ENV     | LC_CLOCK_NO_POPUP | 1
+ENV     | LC_CLOCK_EVENT_RUNNER | $T/dsr_day_tick.+x
+MKDIR   | h1/common_events/dsr_day_tick/event_pkg
+COPY    | &.widgits/dsr-sim/common_events/dsr_day_tick/event_pkg/target.pdl | h1/common_events/dsr_day_tick/event_pkg/target.pdl
+COPY    | &.widgits/dsr-sim/scenario.pdl | h1/scenario.pdl
+RUN | $T/gen | $T/h1/scenario.pdl | $T/h1/dsr_game
+EXPECT_EXIT | 0 | gen-ok
+RUN | /usr/bin/ls | $T/h1/dsr_game/pals
+EXPECT_OUT_IS | dsrtest_bank_a1\ndsrtest_bank_a2\ndsrtest_bank_b1\ndsrtest_bank_b2\ndsrtest_castle_a\ndsrtest_castle_b\ndsrtest_population_a\ndsrtest_population_b\ndsrtest_store_a1\ndsrtest_store_a2\ndsrtest_store_a3\ndsrtest_store_a4\ndsrtest_store_b1\ndsrtest_store_b2\ndsrtest_store_b3\ndsrtest_store_b4 | exactly-the-16-dsrtest-entities-2-castles-4-banks-8-stores-2-pops
+RUN | $T/q | $T/h1/dsr_game | positions
+EXPECT_OUT | dsrtest_castle_a 800 80 | position-dsrtest_castle_a-matches-the-live-desk
+EXPECT_OUT | dsrtest_bank_a1 880 80 | position-dsrtest_bank_a1-matches-the-live-desk
+EXPECT_OUT | dsrtest_bank_a2 960 80 | position-dsrtest_bank_a2-matches-the-live-desk
+EXPECT_OUT | dsrtest_store_a1 1040 80 | position-dsrtest_store_a1-matches-the-live-desk
+EXPECT_OUT | dsrtest_store_a2 800 240 | position-dsrtest_store_a2-matches-the-live-desk
+EXPECT_OUT | dsrtest_store_a3 880 240 | position-dsrtest_store_a3-matches-the-live-desk
+EXPECT_OUT | dsrtest_store_a4 960 240 | position-dsrtest_store_a4-matches-the-live-desk
+EXPECT_OUT | dsrtest_population_a 1120 240 | position-dsrtest_population_a-matches-the-live-desk
+EXPECT_OUT | dsrtest_castle_b 1600 80 | position-dsrtest_castle_b-matches-the-live-desk
+EXPECT_OUT | dsrtest_bank_b1 1680 80 | position-dsrtest_bank_b1-matches-the-live-desk
+EXPECT_OUT | dsrtest_bank_b2 1760 80 | position-dsrtest_bank_b2-matches-the-live-desk
+EXPECT_OUT | dsrtest_store_b1 1840 80 | position-dsrtest_store_b1-matches-the-live-desk
+EXPECT_OUT | dsrtest_store_b2 1600 240 | position-dsrtest_store_b2-matches-the-live-desk
+EXPECT_OUT | dsrtest_store_b3 1680 240 | position-dsrtest_store_b3-matches-the-live-desk
+EXPECT_OUT | dsrtest_store_b4 1760 240 | position-dsrtest_store_b4-matches-the-live-desk
+EXPECT_OUT | dsrtest_population_b 1840 240 | position-dsrtest_population_b-matches-the-live-desk
+RUN | $T/q | $T/h1/dsr_game | nodupcells
+EXPECT_OUT_IS | ok | no-two-entities-share-a-cell
+RUN | /usr/bin/grep | -c | ^DESK | $T/h1/dsr_game/sessions/s1/desks/dsr-test.pdl
+EXPECT_OUT_IS | 16 | desk-file-has-16-rows
+EXPECT_HAS | h1/dsr_game/sessions/s1/desks/dsr-test.pdl | DESK \p dsrtest_castle_a \p pals/dsrtest_castle_a \p 800 \p 80 \p 10 \p 1 \p 🏰 \p 144 | desk-row-shape-like-the-live-desk
+EXPECT_FILE | h1/dsr_game/pals/dsrtest_store_a1/pal.pdl | PAL \p name \p dsrtest_store_a1\nPAL \p glyph \p 🏪\n | pal-pdl-shape-no-hash
+EXPECT_LACKS | h1/dsr_game/pals/dsrtest_store_a1/pal.pdl | PAL \p hash | no-frozen-hash-identity
+EXPECT_NOFILE | h1/dsr_game/pals/dsrtest_store_a1/entity_uid.txt | no-entity-uid-minted-on-first-spawn
+EXPECT_HAS | h1/dsr_game/pals/dsrtest_store_a1/meta.pdl | META         \p piece_id           \p dsrtest_store_a1 | meta-piece-id-row
+EXPECT_FILE | h1/dsr_game/pals/dsrtest_store_a1/instance_id.txt | DT4\n | instance-id-DT4-like-the-live-copy
+EXPECT_FILE | h1/dsr_game/pals/dsrtest_population_b/instance_id.txt | DT16\n | instance-id-DT16-like-the-live-copy
+EXPECT_FILE | h1/dsr_game/pals/dsrtest_store_a4/glyph.txt | 🏫 | store-4-glyph-like-the-live-desk
+EXPECT_HAS | h1/dsr_game/pals/dsrtest_store_a1/variables.txt | cash=600000\n | initial-dsrtest_store_a1-cash=600000
+EXPECT_HAS | h1/dsr_game/pals/dsrtest_store_a1/variables.txt | shares=1000\n | initial-dsrtest_store_a1-shares=1000
+EXPECT_HAS | h1/dsr_game/pals/dsrtest_store_a1/variables.txt | stock=50\n | initial-dsrtest_store_a1-stock=50
+EXPECT_HAS | h1/dsr_game/pals/dsrtest_store_a1/variables.txt | loan_balance=100000\n | initial-dsrtest_store_a1-loan_balance=100000
+EXPECT_HAS | h1/dsr_game/pals/dsrtest_store_a2/variables.txt | loan_bank=2\n | initial-dsrtest_store_a2-loan_bank=2
+EXPECT_HAS | h1/dsr_game/pals/dsrtest_store_a1/variables.txt | good_id=1\n | initial-dsrtest_store_a1-good_id=1
+EXPECT_HAS | h1/dsr_game/pals/dsrtest_store_a4/variables.txt | good_id=4\n | initial-dsrtest_store_a4-good_id=4
+EXPECT_HAS | h1/dsr_game/pals/dsrtest_bank_a1/variables.txt | reserves=1800000\n | initial-dsrtest_bank_a1-reserves=1800000
+EXPECT_HAS | h1/dsr_game/pals/dsrtest_bank_a1/variables.txt | loans_out=200000\n | initial-dsrtest_bank_a1-loans_out=200000
+EXPECT_HAS | h1/dsr_game/pals/dsrtest_bank_a1/variables.txt | rate=2000\n | initial-dsrtest_bank_a1-rate=2000
+EXPECT_HAS | h1/dsr_game/pals/dsrtest_castle_a/variables.txt | treasury=100000\n | initial-dsrtest_castle_a-treasury=100000
+EXPECT_HAS | h1/dsr_game/pals/dsrtest_castle_a/variables.txt | tax_rate=10\n | initial-dsrtest_castle_a-tax_rate=10
+EXPECT_HAS | h1/dsr_game/pals/dsrtest_population_a/variables.txt | count=1000\n | initial-dsrtest_population_a-count=1000
+EXPECT_HAS | h1/dsr_game/pals/dsrtest_population_a/variables.txt | cash=1000000\n | initial-dsrtest_population_a-cash=1000000
+EXPECT_HAS | h1/dsr_game/pals/dsrtest_population_b/variables.txt | unemployment=1000\n | initial-dsrtest_population_b-unemployment=1000
+EXPECT_FILE | h1/dsr_game/dsr_world/variables.txt | day=0\nseed=1789\ncivs=2\nsink=0\n | world-state-day0-seed-civs-sink
+EXPECT_HAS | h1/dsr_game/dsr_world/world_ledger.txt | SETUP\pcivs\p2\nSETUP\pseed\p1789\n | ledger-starts-with-the-SETUP-rows
+EXPECT_HAS | h1/dsr_game/dsr_world/world_ledger.txt | START\p0\p14200000\p0\p800000\p800000\n | ledger-START-row-total-sink-loans
+RUN | $T/q | $T/h1/dsr_game | rows
+EXPECT_OUT_IS | min=0 max=0 entities=16 | no-history-rows-before-day-1
+RUN | $T/q | $T/h1/dsr_game | total
+EXPECT_OUT_IS | total=14200000 sink=0 loans_out=800000 loans_owed=800000 day=0 | independent-total-equals-the-START-row
+RUN | $T/gen | $T/h1/scenario.pdl | $T/h1/dsr_game
+EXPECT_EXIT | 2 | gen-refuses-to-overwrite-an-existing-game
+RUN | $T/gen | $T/h1/scenario.pdl | $T/h2/dsr_game | --seed | 7
+EXPECT_HAS | h2/dsr_game/dsr_world/variables.txt | seed=7\n | seed-flag-overrides-the-SETUP-seed
+EXPECT_HAS | h2/dsr_game/dsr_world/world_ledger.txt | SETUP\peffective_seed\p7\n | effective-seed-is-ledgered
+CLEAN |
+CASE    | gen-variants
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+COPY    | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | gso
+COPY    | &.widgits/dsr-sim/ops/+x/dsr_scenario_gen.+x | gen
+COPY    | &.widgits/dsr-sim/ops/+x/dsr_day_tick.+x | dsr_day_tick.+x
+COPY    | &.widgits/dsr-sim/ops/+x/dsr_sim_query_op.+x | q
+ENV     | LC_CLOCK_NO_POPUP | 1
+ENV     | LC_CLOCK_EVENT_RUNNER | $T/dsr_day_tick.+x
+MKDIR   | h1/common_events/dsr_day_tick/event_pkg
+COPY    | &.widgits/dsr-sim/common_events/dsr_day_tick/event_pkg/target.pdl | h1/common_events/dsr_day_tick/event_pkg/target.pdl
+COPY    | &.widgits/dsr-sim/scenario.pdl | h1/scenario.pdl
+APPEND  | h1/scenario.pdl | SETUP | civ.a.free | castle=1,bank=1,store=2\n
+RUN | $T/gen | $T/h1/scenario.pdl | $T/h1/dsr_game
+EXPECT_EXIT | 0 | gen-civ-A-smaller-ok
+RUN | /usr/bin/ls | $T/h1/dsr_game/pals
+EXPECT_OUT_IS | dsrtest_bank_a1\ndsrtest_bank_b1\ndsrtest_bank_b2\ndsrtest_castle_a\ndsrtest_castle_b\ndsrtest_population_a\ndsrtest_population_b\ndsrtest_store_a1\ndsrtest_store_a2\ndsrtest_store_b1\ndsrtest_store_b2\ndsrtest_store_b3\ndsrtest_store_b4 | civ-A-free-list-changes-only-civ-A-the-B-block-is-intact
+EXPECT_HAS | h1/dsr_game/pals/dsrtest_store_b4/variables.txt | cash=600000\n | civ-B-store-4-unchanged-and-still-loaned
+EXPECT_HAS | h1/dsr_game/pals/dsrtest_bank_a1/variables.txt | loans_out=200000\n | one-bank-lends-to-both-A-stores
+EXPECT_HAS | h1/dsr_game/pals/dsrtest_bank_a1/variables.txt | reserves=1800000\n | reserves-drop-by-both-loans
+RUN | $T/q | $T/h1/dsr_game | nodupcells
+EXPECT_OUT_IS | ok | no-overlap-in-the-variant
+MKDIR   | h2/common_events/dsr_day_tick/event_pkg
+COPY    | &.widgits/dsr-sim/common_events/dsr_day_tick/event_pkg/target.pdl | h2/common_events/dsr_day_tick/event_pkg/target.pdl
+COPY    | &.widgits/dsr-sim/scenario.pdl | h2/scenario.pdl
+APPEND  | h2/scenario.pdl | SETUP | civs | 3\n
+RUN | $T/gen | $T/h2/scenario.pdl | $T/h2/dsr_game
+RUN | $T/q | $T/h2/dsr_game | rows
+EXPECT_OUT_IS | min=0 max=0 entities=24 | civs-3-makes-24-entities
+RUN | $T/q | $T/h2/dsr_game | nodupcells
+EXPECT_OUT_IS | ok | civs-3-no-overlap
+RUN | $T/q | $T/h2/dsr_game | positions
+EXPECT_OUT | dsrtest_castle_c 800 480\n | civ-C-block-starts-a-second-row
+MKDIR   | h3/common_events/dsr_day_tick/event_pkg
+COPY    | &.widgits/dsr-sim/common_events/dsr_day_tick/event_pkg/target.pdl | h3/common_events/dsr_day_tick/event_pkg/target.pdl
+COPY    | &.widgits/dsr-sim/scenario.pdl | h3/scenario.pdl
+APPEND  | h3/scenario.pdl | SETUP | civs | 4\n
+RUN | $T/gen | $T/h3/scenario.pdl | $T/h3/dsr_game
+RUN | $T/q | $T/h3/dsr_game | rows
+EXPECT_OUT_IS | min=0 max=0 entities=32 | civs-4-makes-32-entities
+RUN | $T/q | $T/h3/dsr_game | nodupcells
+EXPECT_OUT_IS | ok | civs-4-no-overlap
+MKDIR   | h4/common_events/dsr_day_tick/event_pkg
+COPY    | &.widgits/dsr-sim/common_events/dsr_day_tick/event_pkg/target.pdl | h4/common_events/dsr_day_tick/event_pkg/target.pdl
+COPY    | &.widgits/dsr-sim/scenario.pdl | h4/scenario.pdl
+APPEND  | h4/scenario.pdl | SETUP | civ.a.pop | 500\n
+RUN | $T/gen | $T/h4/scenario.pdl | $T/h4/dsr_game
+EXPECT_HAS | h4/dsr_game/pals/dsrtest_population_a/variables.txt | count=500\ncash=500000\n | civ-a-pop-sets-the-pool-and-its-cash
+EXPECT_HAS | h4/dsr_game/pals/dsrtest_population_b/variables.txt | count=1000\ncash=1000000\n | civ-b-pool-untouched
+MKDIR   | h5/common_events/dsr_day_tick/event_pkg
+COPY    | &.widgits/dsr-sim/common_events/dsr_day_tick/event_pkg/target.pdl | h5/common_events/dsr_day_tick/event_pkg/target.pdl
+COPY    | &.widgits/dsr-sim/scenario.pdl | h5/scenario.pdl
+APPEND  | h5/scenario.pdl | SETUP | civ.b.free | castle=1,hotel=1\n
+RUN | $T/gen | $T/h5/scenario.pdl | $T/h5/dsr_game
+EXPECT_EXIT | 2 | hotel-refused-until-its-step-is-built
+EXPECT_NOFILE | h5/dsr_game/pals/dsrtest_castle_a/variables.txt | refusal-happens-before-any-entity-is-written
+MKDIR   | h6/common_events/dsr_day_tick/event_pkg
+COPY    | &.widgits/dsr-sim/common_events/dsr_day_tick/event_pkg/target.pdl | h6/common_events/dsr_day_tick/event_pkg/target.pdl
+COPY    | &.widgits/dsr-sim/scenario.pdl | h6/scenario.pdl
+APPEND  | h6/scenario.pdl | TUNE | bank_reserves_c | 150000\n
+RUN | $T/gen | $T/h6/scenario.pdl | $T/h6/dsr_game
+EXPECT_HAS | h6/dsr_game/pals/dsrtest_store_a1/variables.txt | loan_balance=0\n | bank-under-2x-reserves-refuses-the-loan-WSR-bank_loan_op-rule
+EXPECT_HAS | h6/dsr_game/pals/dsrtest_store_a1/variables.txt | cash=500000\n | no-loan-so-no-extra-cash
+CLEAN |
+CASE    | econ-30-days-jump
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+COPY    | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | gso
+COPY    | &.widgits/dsr-sim/ops/+x/dsr_scenario_gen.+x | gen
+COPY    | &.widgits/dsr-sim/ops/+x/dsr_day_tick.+x | dsr_day_tick.+x
+COPY    | &.widgits/dsr-sim/ops/+x/dsr_sim_query_op.+x | q
+ENV     | LC_CLOCK_NO_POPUP | 1
+ENV     | LC_CLOCK_EVENT_RUNNER | $T/dsr_day_tick.+x
+MKDIR   | h1/common_events/dsr_day_tick/event_pkg
+COPY    | &.widgits/dsr-sim/common_events/dsr_day_tick/event_pkg/target.pdl | h1/common_events/dsr_day_tick/event_pkg/target.pdl
+COPY    | &.widgits/dsr-sim/scenario.pdl | h1/scenario.pdl
+RUN | $T/gen | $T/h1/scenario.pdl | $T/h1/dsr_game
+RUN | $T/lc.+x | $T/h1 | new | g1
+RUN | $T/lc.+x | $T/h1 | reminder-add | g1 | 86400000 | common:dsr_day_tick |  | every:1day
+RUN | $T/q | $T/h1/dsr_game | money
+CAPTURE | total0
+RUN | $T/lc.+x | $T/h1 | reminders
+EXPECT_OUT | common:dsr_day_tick | schedule-row-points-at-common-dsr_day_tick
+EXPECT_OUT | every:1day | schedule-row-repeats-every-1day
+RUN | $T/lc.+x | $T/h1 | cmd | g1 | advance | 30d
+RUN | $T/lc.+x | $T/h1 | step | 0
+RUN | $T/lc.+x | $T/h1 | sched-count | r1
+EXPECT_OUT_IS | 30 | fast-forward-30-days-fires-exactly-30-schedule-rows
+EXPECT_NOFILE | h1/#.desktop/clocks/schedule_flags.txt | no-caught-up-collapse-flag-30-is-under-the-cap
+RUN | $T/q | $T/h1/dsr_game | get | dsr_world | day
+EXPECT_OUT_IS | 30 | world-day-is-exactly-30-ticks-applied
+RUN | $T/q | $T/h1/dsr_game | rows
+EXPECT_OUT_IS | min=30 max=30 entities=16 | history-rows-are-30-for-every-entity
+RUN | $T/q | $T/h1/dsr_game | daysseq | dsrtest_store_a1
+EXPECT_OUT_IS | ok | dsrtest_store_a1-history-days-1-to-30-no-gap-no-repeat
+RUN | $T/q | $T/h1/dsr_game | daysseq | dsrtest_store_b4
+EXPECT_OUT_IS | ok | dsrtest_store_b4-history-days-1-to-30-no-gap-no-repeat
+RUN | $T/q | $T/h1/dsr_game | daysseq | dsrtest_bank_a2
+EXPECT_OUT_IS | ok | dsrtest_bank_a2-history-days-1-to-30-no-gap-no-repeat
+RUN | $T/q | $T/h1/dsr_game | daysseq | dsrtest_castle_b
+EXPECT_OUT_IS | ok | dsrtest_castle_b-history-days-1-to-30-no-gap-no-repeat
+RUN | $T/q | $T/h1/dsr_game | daysseq | dsrtest_population_a
+EXPECT_OUT_IS | ok | dsrtest_population_a-history-days-1-to-30-no-gap-no-repeat
+EXPECT_HAS | h1/dsr_game/dsr_world/world_ledger.txt | DAY\p30\p | ledger-has-day-30
+EXPECT_LACKS | h1/dsr_game/dsr_world/world_ledger.txt | DAY\p31\p | ledger-has-no-day-31
+RUN | /usr/bin/grep | -c | ^MARKET | $T/h1/dsr_game/dsr_world/world_ledger.txt
+EXPECT_OUT_IS | 120 | market-rows-4-goods-x-30-days
+RUN | $T/q | $T/h1/dsr_game | atleast | dsrtest_store_a1 | 3 | 8
+EXPECT_OUT_IS | ok | a1-goods-price-moves-8-or-more-distinct-values
+RUN | $T/q | $T/h1/dsr_game | atleast | dsrtest_store_a1 | 4 | 4
+EXPECT_OUT_IS | ok | a1-share-price-moves-4-or-more-distinct-values
+RUN | $T/q | $T/h1/dsr_game | atleast | dsrtest_store_a1 | 2 | 10
+EXPECT_OUT_IS | ok | a1-cash-changes-10-or-more-distinct-values
+RUN | $T/q | $T/h1/dsr_game | atleast | dsrtest_store_a2 | 3 | 8
+EXPECT_OUT_IS | ok | a2-goods-price-moves-8-or-more-distinct-values
+RUN | $T/q | $T/h1/dsr_game | atleast | dsrtest_store_a2 | 4 | 4
+EXPECT_OUT_IS | ok | a2-share-price-moves-4-or-more-distinct-values
+RUN | $T/q | $T/h1/dsr_game | atleast | dsrtest_store_a2 | 2 | 10
+EXPECT_OUT_IS | ok | a2-cash-changes-10-or-more-distinct-values
+RUN | $T/q | $T/h1/dsr_game | atleast | dsrtest_store_a3 | 3 | 8
+EXPECT_OUT_IS | ok | a3-goods-price-moves-8-or-more-distinct-values
+RUN | $T/q | $T/h1/dsr_game | atleast | dsrtest_store_a3 | 4 | 4
+EXPECT_OUT_IS | ok | a3-share-price-moves-4-or-more-distinct-values
+RUN | $T/q | $T/h1/dsr_game | atleast | dsrtest_store_a3 | 2 | 10
+EXPECT_OUT_IS | ok | a3-cash-changes-10-or-more-distinct-values
+RUN | $T/q | $T/h1/dsr_game | atleast | dsrtest_store_a4 | 3 | 8
+EXPECT_OUT_IS | ok | a4-goods-price-moves-8-or-more-distinct-values
+RUN | $T/q | $T/h1/dsr_game | atleast | dsrtest_store_a4 | 4 | 4
+EXPECT_OUT_IS | ok | a4-share-price-moves-4-or-more-distinct-values
+RUN | $T/q | $T/h1/dsr_game | atleast | dsrtest_store_a4 | 2 | 10
+EXPECT_OUT_IS | ok | a4-cash-changes-10-or-more-distinct-values
+RUN | $T/q | $T/h1/dsr_game | atleast | dsrtest_store_b1 | 3 | 8
+EXPECT_OUT_IS | ok | b1-goods-price-moves-8-or-more-distinct-values
+RUN | $T/q | $T/h1/dsr_game | atleast | dsrtest_store_b1 | 4 | 4
+EXPECT_OUT_IS | ok | b1-share-price-moves-4-or-more-distinct-values
+RUN | $T/q | $T/h1/dsr_game | atleast | dsrtest_store_b1 | 2 | 10
+EXPECT_OUT_IS | ok | b1-cash-changes-10-or-more-distinct-values
+RUN | $T/q | $T/h1/dsr_game | atleast | dsrtest_store_b2 | 3 | 8
+EXPECT_OUT_IS | ok | b2-goods-price-moves-8-or-more-distinct-values
+RUN | $T/q | $T/h1/dsr_game | atleast | dsrtest_store_b2 | 4 | 4
+EXPECT_OUT_IS | ok | b2-share-price-moves-4-or-more-distinct-values
+RUN | $T/q | $T/h1/dsr_game | atleast | dsrtest_store_b2 | 2 | 10
+EXPECT_OUT_IS | ok | b2-cash-changes-10-or-more-distinct-values
+RUN | $T/q | $T/h1/dsr_game | atleast | dsrtest_store_b3 | 3 | 8
+EXPECT_OUT_IS | ok | b3-goods-price-moves-8-or-more-distinct-values
+RUN | $T/q | $T/h1/dsr_game | atleast | dsrtest_store_b3 | 4 | 4
+EXPECT_OUT_IS | ok | b3-share-price-moves-4-or-more-distinct-values
+RUN | $T/q | $T/h1/dsr_game | atleast | dsrtest_store_b3 | 2 | 10
+EXPECT_OUT_IS | ok | b3-cash-changes-10-or-more-distinct-values
+RUN | $T/q | $T/h1/dsr_game | atleast | dsrtest_store_b4 | 3 | 8
+EXPECT_OUT_IS | ok | b4-goods-price-moves-8-or-more-distinct-values
+RUN | $T/q | $T/h1/dsr_game | atleast | dsrtest_store_b4 | 4 | 4
+EXPECT_OUT_IS | ok | b4-share-price-moves-4-or-more-distinct-values
+RUN | $T/q | $T/h1/dsr_game | atleast | dsrtest_store_b4 | 2 | 10
+EXPECT_OUT_IS | ok | b4-cash-changes-10-or-more-distinct-values
+RUN | /usr/bin/head | -n | 30 | $T/h1/dsr_game/pals/dsrtest_store_a1/dsr_history.txt
+CAPTURE | hist30
+RUN | $T/q | $T/h1/dsr_game | money
+CAPTURE | total30
+EXPECT_EQ | $total0 | $total30 | cash-conserved-money-in-equals-money-out-over-30-days-stores-banks-castles-pops-plus-sink
+RUN | $T/q | $T/h1/dsr_game | ledgerconst | 2
+EXPECT_OUT_IS | ok rows=30 | every-day-row-total-equals-the-START-total
+RUN | $T/q | $T/h1/dsr_game | debtbalanced
+EXPECT_OUT_IS | ok | debt-conserved-bank-loans-out-equals-store-loan-balances
+RUN | $T/q | $T/h1/dsr_game | atleast | dsrtest_castle_a | 2 | 30
+EXPECT_OUT_IS | ok | castle-treasury-differs-every-day-taxes-flow-in
+RUN | $T/q | $T/h1/dsr_game | atleast | dsrtest_population_a | 3 | 20
+EXPECT_OUT_IS | ok | population-cash-moves-wages-in-spending-out
+RUN | $T/q | $T/h1/dsr_game | atleast | dsrtest_population_a | 4 | 10
+EXPECT_OUT_IS | ok | average-wage-varies
+RUN | $T/q | $T/h1/dsr_game | above | dsrtest_bank_a1 | reserves | 1800000
+EXPECT_OUT_IS | ok | bank-reserves-grew-by-the-loan-interest
+RUN | $T/q | $T/h1/dsr_game | above | dsrtest_castle_a | treasury | 100000
+EXPECT_OUT_IS | ok | castle-treasury-above-its-start
+RUN | $T/lc.+x | $T/h1 | step | 0
+RUN | $T/lc.+x | $T/h1 | sched-count | r1
+EXPECT_OUT_IS | 30 | stepping-again-with-no-time-passed-fires-nothing
+RUN | $T/q | $T/h1/dsr_game | rows
+EXPECT_OUT_IS | min=30 max=30 entities=16 | no-extra-history-rows-after-the-idle-step
+RUN | $T/lc.+x | $T/h1 | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T/h1 | step | 0
+RUN | $T/q | $T/h1/dsr_game | rows
+EXPECT_OUT_IS | min=31 max=31 entities=16 | one-more-day-exactly-one-more-row-everywhere
+RUN | $T/lc.+x | $T/h1 | sched-count | r1
+EXPECT_OUT_IS | 31 | schedule-ledger-31
+RUN | /usr/bin/head | -n | 30 | $T/h1/dsr_game/pals/dsrtest_store_a1/dsr_history.txt
+CAPTURE | hist30b
+EXPECT_EQ | $hist30 | $hist30b | history-is-append-only-the-first-30-rows-are-byte-identical-after-day-31
+RUN | $T/q | $T/h1/dsr_game | money
+CAPTURE | total31
+EXPECT_EQ | $total0 | $total31 | cash-still-conserved-at-day-31
+CLEAN |
+CASE    | determinism-and-seeds
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+COPY    | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | gso
+COPY    | &.widgits/dsr-sim/ops/+x/dsr_scenario_gen.+x | gen
+COPY    | &.widgits/dsr-sim/ops/+x/dsr_day_tick.+x | dsr_day_tick.+x
+COPY    | &.widgits/dsr-sim/ops/+x/dsr_sim_query_op.+x | q
+ENV     | LC_CLOCK_NO_POPUP | 1
+ENV     | LC_CLOCK_EVENT_RUNNER | $T/dsr_day_tick.+x
+MKDIR   | h1/common_events/dsr_day_tick/event_pkg
+COPY    | &.widgits/dsr-sim/common_events/dsr_day_tick/event_pkg/target.pdl | h1/common_events/dsr_day_tick/event_pkg/target.pdl
+COPY    | &.widgits/dsr-sim/scenario.pdl | h1/scenario.pdl
+RUN | $T/gen | $T/h1/scenario.pdl | $T/h1/dsr_game | --seed | 1789
+RUN | $T/lc.+x | $T/h1 | new | g1
+RUN | $T/lc.+x | $T/h1 | reminder-add | g1 | 86400000 | common:dsr_day_tick |  | every:1day
+MKDIR   | h2/common_events/dsr_day_tick/event_pkg
+COPY    | &.widgits/dsr-sim/common_events/dsr_day_tick/event_pkg/target.pdl | h2/common_events/dsr_day_tick/event_pkg/target.pdl
+COPY    | &.widgits/dsr-sim/scenario.pdl | h2/scenario.pdl
+RUN | $T/gen | $T/h2/scenario.pdl | $T/h2/dsr_game | --seed | 1789
+RUN | $T/lc.+x | $T/h2 | new | g1
+RUN | $T/lc.+x | $T/h2 | reminder-add | g1 | 86400000 | common:dsr_day_tick |  | every:1day
+MKDIR   | h3/common_events/dsr_day_tick/event_pkg
+COPY    | &.widgits/dsr-sim/common_events/dsr_day_tick/event_pkg/target.pdl | h3/common_events/dsr_day_tick/event_pkg/target.pdl
+COPY    | &.widgits/dsr-sim/scenario.pdl | h3/scenario.pdl
+RUN | $T/gen | $T/h3/scenario.pdl | $T/h3/dsr_game | --seed | 42
+RUN | $T/lc.+x | $T/h3 | new | g1
+RUN | $T/lc.+x | $T/h3 | reminder-add | g1 | 86400000 | common:dsr_day_tick |  | every:1day
+MKDIR   | h4/common_events/dsr_day_tick/event_pkg
+COPY    | &.widgits/dsr-sim/common_events/dsr_day_tick/event_pkg/target.pdl | h4/common_events/dsr_day_tick/event_pkg/target.pdl
+COPY    | &.widgits/dsr-sim/scenario.pdl | h4/scenario.pdl
+RUN | $T/gen | $T/h4/scenario.pdl | $T/h4/dsr_game | --seed | 1789
+RUN | $T/lc.+x | $T/h4 | new | g1
+RUN | $T/lc.+x | $T/h4 | reminder-add | g1 | 86400000 | common:dsr_day_tick |  | every:1day
+SUMTREE | day0a | h1/dsr_game
+SUMTREE | day0b | h2/dsr_game
+EXPECT_EQ | $day0a | $day0b | same-seed-same-start-tree
+SUMTREE | day0c | h3/dsr_game
+EXPECT_NE | $day0a | $day0c | different-seed-different-start-tree-seed-variable
+RUN | $T/lc.+x | $T/h1 | cmd | g1 | advance | 30d
+RUN | $T/lc.+x | $T/h1 | step | 0
+RUN | $T/lc.+x | $T/h2 | cmd | g1 | advance | 30d
+RUN | $T/lc.+x | $T/h2 | step | 0
+RUN | $T/lc.+x | $T/h3 | cmd | g1 | advance | 30d
+RUN | $T/lc.+x | $T/h3 | step | 0
+RUN | $T/lc.+x | $T/h4 | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T/h4 | step | 0
+RUN | $T/lc.+x | $T/h4 | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T/h4 | step | 0
+RUN | $T/lc.+x | $T/h4 | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T/h4 | step | 0
+RUN | $T/lc.+x | $T/h4 | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T/h4 | step | 0
+RUN | $T/lc.+x | $T/h4 | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T/h4 | step | 0
+RUN | $T/lc.+x | $T/h4 | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T/h4 | step | 0
+RUN | $T/lc.+x | $T/h4 | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T/h4 | step | 0
+RUN | $T/lc.+x | $T/h4 | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T/h4 | step | 0
+RUN | $T/lc.+x | $T/h4 | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T/h4 | step | 0
+RUN | $T/lc.+x | $T/h4 | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T/h4 | step | 0
+RUN | $T/lc.+x | $T/h4 | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T/h4 | step | 0
+RUN | $T/lc.+x | $T/h4 | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T/h4 | step | 0
+RUN | $T/lc.+x | $T/h4 | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T/h4 | step | 0
+RUN | $T/lc.+x | $T/h4 | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T/h4 | step | 0
+RUN | $T/lc.+x | $T/h4 | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T/h4 | step | 0
+RUN | $T/lc.+x | $T/h4 | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T/h4 | step | 0
+RUN | $T/lc.+x | $T/h4 | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T/h4 | step | 0
+RUN | $T/lc.+x | $T/h4 | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T/h4 | step | 0
+RUN | $T/lc.+x | $T/h4 | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T/h4 | step | 0
+RUN | $T/lc.+x | $T/h4 | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T/h4 | step | 0
+RUN | $T/lc.+x | $T/h4 | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T/h4 | step | 0
+RUN | $T/lc.+x | $T/h4 | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T/h4 | step | 0
+RUN | $T/lc.+x | $T/h4 | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T/h4 | step | 0
+RUN | $T/lc.+x | $T/h4 | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T/h4 | step | 0
+RUN | $T/lc.+x | $T/h4 | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T/h4 | step | 0
+RUN | $T/lc.+x | $T/h4 | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T/h4 | step | 0
+RUN | $T/lc.+x | $T/h4 | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T/h4 | step | 0
+RUN | $T/lc.+x | $T/h4 | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T/h4 | step | 0
+RUN | $T/lc.+x | $T/h4 | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T/h4 | step | 0
+RUN | $T/lc.+x | $T/h4 | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T/h4 | step | 0
+SUMTREE | sa | h1/dsr_game
+SUMTREE | sb | h2/dsr_game
+SUMTREE | sc | h3/dsr_game
+SUMTREE | sd | h4/dsr_game
+EXPECT_EQ | $sa | $sb | same-seed-two-runs-byte-identical-state-and-history-after-30-days
+EXPECT_NE | $sa | $sc | different-seed-different-state-after-30-days
+EXPECT_EQ | $sa | $sd | thirty-single-day-steps-equal-one-30-day-fast-forward-byte-for-byte
+RUN | $T/q | $T/h4/dsr_game | get | dsr_world | day
+EXPECT_OUT_IS | 30 | day-by-day-run-also-ends-at-day-30
+RUN | $T/lc.+x | $T/h4 | sched-count | r1
+EXPECT_OUT_IS | 30 | day-by-day-schedule-ledger-30
+EXPECT_HAS | h3/dsr_game/dsr_world/world_ledger.txt | START\p0\p14200000\p | seed-42-same-starting-money
+RUN | $T/q | $T/h3/dsr_game | ledgerconst | 2
+EXPECT_OUT_IS | ok rows=30 | seed-42-run-conserves-cash-too
+CLEAN |
+CASE    | save-restore-midrun
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+COPY    | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | gso
+COPY    | &.widgits/dsr-sim/ops/+x/dsr_scenario_gen.+x | gen
+COPY    | &.widgits/dsr-sim/ops/+x/dsr_day_tick.+x | dsr_day_tick.+x
+COPY    | &.widgits/dsr-sim/ops/+x/dsr_sim_query_op.+x | q
+ENV     | LC_CLOCK_NO_POPUP | 1
+ENV     | LC_CLOCK_EVENT_RUNNER | $T/dsr_day_tick.+x
+MKDIR   | hU/common_events/dsr_day_tick/event_pkg
+COPY    | &.widgits/dsr-sim/common_events/dsr_day_tick/event_pkg/target.pdl | hU/common_events/dsr_day_tick/event_pkg/target.pdl
+COPY    | &.widgits/dsr-sim/scenario.pdl | hU/scenario.pdl
+RUN | $T/gen | $T/hU/scenario.pdl | $T/hU/dsr_game | --seed | 1789
+RUN | $T/lc.+x | $T/hU | new | g1
+RUN | $T/lc.+x | $T/hU | reminder-add | g1 | 86400000 | common:dsr_day_tick |  | every:1day
+MKDIR   | hR/common_events/dsr_day_tick/event_pkg
+COPY    | &.widgits/dsr-sim/common_events/dsr_day_tick/event_pkg/target.pdl | hR/common_events/dsr_day_tick/event_pkg/target.pdl
+COPY    | &.widgits/dsr-sim/scenario.pdl | hR/scenario.pdl
+RUN | $T/gen | $T/hR/scenario.pdl | $T/hR/dsr_game | --seed | 1789
+RUN | $T/lc.+x | $T/hR | new | g1
+RUN | $T/lc.+x | $T/hR | reminder-add | g1 | 86400000 | common:dsr_day_tick |  | every:1day
+RUN | $T/lc.+x | $T/hU | cmd | g1 | advance | 30d
+RUN | $T/lc.+x | $T/hU | step | 0
+SUMTREE | uninterrupted | hU/dsr_game
+RUN | $T/lc.+x | $T/hR | cmd | g1 | advance | 12d
+RUN | $T/lc.+x | $T/hR | step | 0
+RUN | $T/q | $T/hR/dsr_game | rows
+EXPECT_OUT_IS | min=12 max=12 entities=16 | 12-days-in
+SUMTREE | at12 | hR/dsr_game
+RUN | $T/gso | $T/store | $T/hR/dsr_game | save | CP12 | --extra | $T/hR/#.desktop/clocks/g1.pdl | --extra | $T/hR/#.desktop/clocks/reminders.pdl | --extra | $T/hR/#.desktop/clocks/schedule_ledger.txt | --now-ms | 1000
+EXPECT_EXIT | 0 | checkpoint-saved-with-the-clock-state-and-schedule-ledger
+RUN | $T/lc.+x | $T/hR | cmd | g1 | advance | 7d
+RUN | $T/lc.+x | $T/hR | step | 0
+RUN | $T/q | $T/hR/dsr_game | rows
+EXPECT_OUT_IS | min=19 max=19 entities=16 | 19-days-in-after-the-save
+SUMTREE | at19 | hR/dsr_game
+EXPECT_NE | $at12 | $at19 | state-changed-after-the-save
+RUN | $T/gso | $T/store | $T/hR/dsr_game | restore | CP12 | $T/hR/dsr_game | --extra-dir | $T/hR/#.desktop/clocks | --now-ms | 2000
+SUMTREE | dry | hR/dsr_game
+EXPECT_EQ | $at19 | $dry | restore-dry-run-changes-nothing
+RUN | $T/gso | $T/store | $T/hR/dsr_game | restore | CP12 | $T/hR/dsr_game | --apply | --prune | --extra-dir | $T/hR/#.desktop/clocks | --now-ms | 3000
+EXPECT_EXIT | 0 | restore-applied
+SUMTREE | restored | hR/dsr_game
+EXPECT_EQ | $at12 | $restored | restored-game-tree-equals-the-day-12-tree-byte-for-byte
+RUN | $T/q | $T/hR/dsr_game | get | dsr_world | day
+EXPECT_OUT_IS | 12 | restored-world-day-is-12
+RUN | $T/q | $T/hR/dsr_game | rows
+EXPECT_OUT_IS | min=12 max=12 entities=16 | restored-history-has-12-rows-everywhere
+RUN | $T/lc.+x | $T/hR | sched-count | r1
+EXPECT_OUT_IS | 12 | restored-schedule-ledger-has-12-rows
+RUN | $T/lc.+x | $T/hR | step | 0
+RUN | $T/q | $T/hR/dsr_game | get | dsr_world | day
+EXPECT_OUT_IS | 12 | stepping-after-the-restore-applies-no-tick-twice
+RUN | $T/lc.+x | $T/hR | cmd | g1 | advance | 18d
+RUN | $T/lc.+x | $T/hR | step | 0
+RUN | $T/q | $T/hR/dsr_game | get | dsr_world | day
+EXPECT_OUT_IS | 30 | continued-to-day-30
+RUN | $T/lc.+x | $T/hR | sched-count | r1
+EXPECT_OUT_IS | 30 | schedule-ledger-30-after-the-continue
+SUMTREE | continued | hR/dsr_game
+EXPECT_EQ | $uninterrupted | $continued | save-restore-then-continue-equals-the-uninterrupted-30-day-run-byte-for-byte
+RUN | $T/q | $T/hR/dsr_game | ledgerconst | 2
+EXPECT_OUT_IS | ok rows=30 | ledger-total-const-across-the-restore
+CLEAN |
+CASE    | sink-wsr-faithful
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+COPY    | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | gso
+COPY    | &.widgits/dsr-sim/ops/+x/dsr_scenario_gen.+x | gen
+COPY    | &.widgits/dsr-sim/ops/+x/dsr_day_tick.+x | dsr_day_tick.+x
+COPY    | &.widgits/dsr-sim/ops/+x/dsr_sim_query_op.+x | q
+ENV     | LC_CLOCK_NO_POPUP | 1
+ENV     | LC_CLOCK_EVENT_RUNNER | $T/dsr_day_tick.+x
+MKDIR   | h1/common_events/dsr_day_tick/event_pkg
+COPY    | &.widgits/dsr-sim/common_events/dsr_day_tick/event_pkg/target.pdl | h1/common_events/dsr_day_tick/event_pkg/target.pdl
+COPY    | &.widgits/dsr-sim/scenario.pdl | h1/scenario.pdl
+APPEND  | h1/scenario.pdl | TUNE | production_wage_pct | 0\n
+RUN | $T/gen | $T/h1/scenario.pdl | $T/h1/dsr_game
+RUN | $T/lc.+x | $T/h1 | new | g1
+RUN | $T/lc.+x | $T/h1 | reminder-add | g1 | 86400000 | common:dsr_day_tick |  | every:1day
+RUN | $T/q | $T/h1/dsr_game | money
+CAPTURE | t0
+RUN | $T/lc.+x | $T/h1 | cmd | g1 | advance | 30d
+RUN | $T/lc.+x | $T/h1 | step | 0
+RUN | $T/q | $T/h1/dsr_game | money
+CAPTURE | t30
+EXPECT_EQ | $t0 | $t30 | production-cost-to-the-sink-still-conserves-the-total-WSR-faithful-mode
+RUN | $T/q | $T/h1/dsr_game | above | dsr_world | sink | 100000
+EXPECT_OUT_IS | ok | sink-holds-the-production-cost-WSR-lets-it-vanish
+RUN | $T/q | $T/h1/dsr_game | below | dsrtest_population_a | cash | 300000
+EXPECT_OUT_IS | ok | households-drain-as-WSR-itself-measured-without-production-wages
+RUN | $T/q | $T/h1/dsr_game | ledgerconst | 2
+EXPECT_OUT_IS | ok rows=30 | every-day-conserved
+CLEAN |
+CASE    | famine-shrinks-the-population
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+COPY    | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | gso
+COPY    | &.widgits/dsr-sim/ops/+x/dsr_scenario_gen.+x | gen
+COPY    | &.widgits/dsr-sim/ops/+x/dsr_day_tick.+x | dsr_day_tick.+x
+COPY    | &.widgits/dsr-sim/ops/+x/dsr_sim_query_op.+x | q
+ENV     | LC_CLOCK_NO_POPUP | 1
+ENV     | LC_CLOCK_EVENT_RUNNER | $T/dsr_day_tick.+x
+MKDIR   | h1/common_events/dsr_day_tick/event_pkg
+COPY    | &.widgits/dsr-sim/common_events/dsr_day_tick/event_pkg/target.pdl | h1/common_events/dsr_day_tick/event_pkg/target.pdl
+COPY    | &.widgits/dsr-sim/scenario.pdl | h1/scenario.pdl
+APPEND  | h1/scenario.pdl | TUNE | pop_food_need_ppm | 900000000\n
+RUN | $T/gen | $T/h1/scenario.pdl | $T/h1/dsr_game
+RUN | $T/lc.+x | $T/h1 | new | g1
+RUN | $T/lc.+x | $T/h1 | reminder-add | g1 | 86400000 | common:dsr_day_tick |  | every:1day
+RUN | $T/lc.+x | $T/h1 | cmd | g1 | advance | 10d
+RUN | $T/lc.+x | $T/h1 | step | 0
+RUN | $T/q | $T/h1/dsr_game | below | dsrtest_population_a | count | 900
+EXPECT_OUT_IS | ok | food-adequacy-near-0-no-births-and-deaths-x3-pop_update-weighted-mode
+CLEAN |
+CASE    | no-castle-no-bank
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+COPY    | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | gso
+COPY    | &.widgits/dsr-sim/ops/+x/dsr_scenario_gen.+x | gen
+COPY    | &.widgits/dsr-sim/ops/+x/dsr_day_tick.+x | dsr_day_tick.+x
+COPY    | &.widgits/dsr-sim/ops/+x/dsr_sim_query_op.+x | q
+ENV     | LC_CLOCK_NO_POPUP | 1
+ENV     | LC_CLOCK_EVENT_RUNNER | $T/dsr_day_tick.+x
+MKDIR   | h1/common_events/dsr_day_tick/event_pkg
+COPY    | &.widgits/dsr-sim/common_events/dsr_day_tick/event_pkg/target.pdl | h1/common_events/dsr_day_tick/event_pkg/target.pdl
+COPY    | &.widgits/dsr-sim/scenario.pdl | h1/scenario.pdl
+APPEND  | h1/scenario.pdl | SETUP | civ.a.free | store=4\n
+RUN | $T/gen | $T/h1/scenario.pdl | $T/h1/dsr_game
+RUN | $T/lc.+x | $T/h1 | new | g1
+RUN | $T/lc.+x | $T/h1 | reminder-add | g1 | 86400000 | common:dsr_day_tick |  | every:1day
+RUN | $T/lc.+x | $T/h1 | cmd | g1 | advance | 5d
+RUN | $T/lc.+x | $T/h1 | step | 0
+EXPECT_NOFILE | h1/dsr_game/pals/dsrtest_castle_a/variables.txt | civ-A-has-no-castle
+RUN | $T/q | $T/h1/dsr_game | total
+EXPECT_OUT | loans_out=400000 loans_owed=400000 day=5 | only-civ-B-has-loans-and-5-ticks-ran
+RUN | $T/q | $T/h1/dsr_game | ledgerconst | 2
+EXPECT_OUT_IS | ok rows=5 | conserved-without-a-castle-or-banks-in-civ-A
+RUN | $T/q | $T/h1/dsr_game | rows
+EXPECT_OUT_IS | min=5 max=5 entities=13 | 13-entities-each-with-5-history-rows
+CLEAN |
+CASE    | loan-compounds-when-unaffordable
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+COPY    | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | gso
+COPY    | &.widgits/dsr-sim/ops/+x/dsr_scenario_gen.+x | gen
+COPY    | &.widgits/dsr-sim/ops/+x/dsr_day_tick.+x | dsr_day_tick.+x
+COPY    | &.widgits/dsr-sim/ops/+x/dsr_sim_query_op.+x | q
+ENV     | LC_CLOCK_NO_POPUP | 1
+ENV     | LC_CLOCK_EVENT_RUNNER | $T/dsr_day_tick.+x
+MKDIR   | h1/common_events/dsr_day_tick/event_pkg
+COPY    | &.widgits/dsr-sim/common_events/dsr_day_tick/event_pkg/target.pdl | h1/common_events/dsr_day_tick/event_pkg/target.pdl
+COPY    | &.widgits/dsr-sim/scenario.pdl | h1/scenario.pdl
+APPEND  | h1/scenario.pdl | TUNE | bank_rate_ppm | 2000000\n
+APPEND  | h1/scenario.pdl | TUNE | store_cash_c | 1\n
+RUN | $T/gen | $T/h1/scenario.pdl | $T/h1/dsr_game
+RUN | $T/lc.+x | $T/h1 | new | g1
+RUN | $T/lc.+x | $T/h1 | reminder-add | g1 | 86400000 | common:dsr_day_tick |  | every:1day
+RUN | $T/lc.+x | $T/h1 | cmd | g1 | advance | 3d
+RUN | $T/lc.+x | $T/h1 | step | 0
+RUN | $T/q | $T/h1/dsr_game | debtbalanced
+EXPECT_OUT_IS | ok | compounded-interest-grows-bank-loans-out-and-store-balance-together
+RUN | $T/q | $T/h1/dsr_game | above | dsrtest_store_a1 | loan_balance | 100000
+EXPECT_OUT_IS | ok | unpaid-interest-compounds-onto-the-balance-WSR-loan-times-1-plus-rate
+RUN | $T/q | $T/h1/dsr_game | ledgerconst | 2
+EXPECT_OUT_IS | ok rows=3 | cash-conserved-while-debt-compounds
+CLEAN |

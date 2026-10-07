@@ -1,0 +1,4 @@
+# event.pal - Bot 5: did the pick spend nothing (refused)? (trigger autoturn). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . eq bot_nochange tokens tok_before
+exec ops/+x/var_math.+x . set ph_bot 4
+halt

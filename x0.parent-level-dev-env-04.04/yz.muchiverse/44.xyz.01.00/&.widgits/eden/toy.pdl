@@ -1,0 +1,4 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+SECTION      | title              | Eden
+SECTION      | launch             | conductor/button.sh

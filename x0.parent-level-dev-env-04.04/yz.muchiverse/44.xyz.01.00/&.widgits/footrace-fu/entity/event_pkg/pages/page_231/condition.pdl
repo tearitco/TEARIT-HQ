@@ -1,0 +1,3 @@
+# Combat 2: attacker may re-roll its own die once per game if it is losing (Chrono-Weaver)
+COND | trigger | combat
+COND | kv | variables.txt | ph_cmb | eq | 1

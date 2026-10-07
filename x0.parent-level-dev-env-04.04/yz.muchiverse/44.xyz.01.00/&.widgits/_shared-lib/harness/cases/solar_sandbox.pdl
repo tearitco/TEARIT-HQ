@@ -1,0 +1,87 @@
+# solar-sandbox (SOLAR-SANDBOX-AND-PLANET-PHYSICS-DESIGN.md step 1): the REAL METHOD rows of the shipped entities (EXPECT_HAS proves each row is present in the scratch copy of its meta.pdl, then RUN runs that exact action string the way khtpm_entity.c does: sh -c "<action> '<pkg dir>' '<house>'") through the real mr_transfer_desk.+x on a SCRATCH house. No GUI; entity spawn is skipped because khtpm_entity.+x is absent in scratch.
+RESULTS | ../results/solar_sandbox.txt
+CASE    | solar-sandbox
+SCRATCH |
+COPY    | &.widgits/events-hq/ops/+x/mr_transfer_desk.+x | &.widgits/events-hq/ops/+x/mr_transfer_desk.+x
+COPY    | &.widgits/solar-sandbox/pals/sol/meta.pdl | &.widgits/solar-sandbox/pals/sol/meta.pdl
+COPY    | &.widgits/solar-sandbox/pals/earth/meta.pdl | &.widgits/solar-sandbox/pals/earth/meta.pdl
+COPY    | &.widgits/solar-sandbox/pals/moon/meta.pdl | &.widgits/solar-sandbox/pals/moon/meta.pdl
+COPY    | &.widgits/solar-sandbox/pals/mars/meta.pdl | &.widgits/solar-sandbox/pals/mars/meta.pdl
+COPY    | &.widgits/solar-sandbox/pals/earth_surface/meta.pdl | &.widgits/solar-sandbox/pals/earth_surface/meta.pdl
+COPY    | &.widgits/solar-sandbox/pals/moon_surface/meta.pdl | &.widgits/solar-sandbox/pals/moon_surface/meta.pdl
+COPY    | &.widgits/solar-sandbox/pals/mars_surface/meta.pdl | &.widgits/solar-sandbox/pals/mars_surface/meta.pdl
+COPY    | &.widgits/solar-sandbox/pals/leave_orbit/meta.pdl | &.widgits/solar-sandbox/pals/leave_orbit/meta.pdl
+COPY    | &.widgits/solar-sandbox/desks/solar-system.pdl | xyzfs/users/u1/home/livedesk/sessions/s1/desks/solar-system.pdl
+COPY    | &.widgits/solar-sandbox/desks/solar-earth.pdl | xyzfs/users/u1/home/livedesk/sessions/s1/desks/solar-earth.pdl
+COPY    | &.widgits/solar-sandbox/desks/solar-moon.pdl | xyzfs/users/u1/home/livedesk/sessions/s1/desks/solar-moon.pdl
+COPY    | &.widgits/solar-sandbox/desks/solar-mars.pdl | xyzfs/users/u1/home/livedesk/sessions/s1/desks/solar-mars.pdl
+COPY    | &.widgits/solar-sandbox/game.pdl | xyzfs/users/u1/home/livedesk/sessions/s1/game.pdl
+WRITE   | 0.user-pal-test/00.login-signup/current_login.txt | current_user_uuid=u1\n
+WRITE   | xyzfs/users/u1/home/livedesk/sessions/session.pdl | STATE | active_session | s1\n
+WRITE   | xyzfs/users/u1/home/livedesk/sessions/s1/session.pdl | STATE | name | solar\nSTATE | active_desk | solar-system\n
+WRITE   | #.desktop/khtpm_play_mode.state.txt | mode=on\n
+# 0 the access list covers exactly the 4 pages, and every page has a desk file
+EXPECT_HAS | xyzfs/users/u1/home/livedesk/sessions/s1/game.pdl | MAP \p solar-system \p available | access-lists-solar-system
+EXPECT_HAS | xyzfs/users/u1/home/livedesk/sessions/s1/desks/solar-system.pdl | DESK | desk-file-solar-system-has-rows
+EXPECT_HAS | xyzfs/users/u1/home/livedesk/sessions/s1/game.pdl | MAP \p solar-earth \p available | access-lists-solar-earth
+EXPECT_HAS | xyzfs/users/u1/home/livedesk/sessions/s1/desks/solar-earth.pdl | DESK | desk-file-solar-earth-has-rows
+EXPECT_HAS | xyzfs/users/u1/home/livedesk/sessions/s1/game.pdl | MAP \p solar-moon \p available | access-lists-solar-moon
+EXPECT_HAS | xyzfs/users/u1/home/livedesk/sessions/s1/desks/solar-moon.pdl | DESK | desk-file-solar-moon-has-rows
+EXPECT_HAS | xyzfs/users/u1/home/livedesk/sessions/s1/game.pdl | MAP \p solar-mars \p available | access-lists-solar-mars
+EXPECT_HAS | xyzfs/users/u1/home/livedesk/sessions/s1/desks/solar-mars.pdl | DESK | desk-file-solar-mars-has-rows
+EXPECT_HAS | xyzfs/users/u1/home/livedesk/sessions/s1/desks/solar-system.pdl | pals/sol | system-page-has-sun
+# enter-earth: earth menu row 'Enter Earth'
+EXPECT_HAS | &.widgits/solar-sandbox/pals/earth/meta.pdl | sh -c 'H="$1"; U=$(sed -n "s/^current_user_uuid[^A-Za-z0-9]*//p" "$H"/0.user-pal*/00.login-signup/current_login.txt); S=$(sed -n "/active_session/{s/.*active_session[^A-Za-z0-9]*//;s/ *$//;p;q}" "$H/xyzfs/users/$U/home/livedesk/sessions/session.pdl"); exec "$H/&.widgits/events-hq/ops/+x/mr_transfer_desk.+x" "$H" "${S:-s1}" solar-earth' | enter-earth-row-shipped-in-meta
+RUN | sh | -c | sh -c 'H="$1"; U=$(sed -n "s/^current_user_uuid[^A-Za-z0-9]*//p" "$H"/0.user-pal*/00.login-signup/current_login.txt); S=$(sed -n "/active_session/{s/.*active_session[^A-Za-z0-9]*//;s/ *$//;p;q}" "$H/xyzfs/users/$U/home/livedesk/sessions/session.pdl"); exec "$H/&.widgits/events-hq/ops/+x/mr_transfer_desk.+x" "$H" "${S:-s1}" solar-earth' '$T/&.widgits/solar-sandbox/pals/earth' '$T'
+EXPECT_EXIT | 0 | enter-earth-rc0
+EXPECT_HAS | xyzfs/users/u1/home/livedesk/sessions/s1/session.pdl | active_desk \p solar-earth | enter-earth-landed-on-solar-earth
+# leave-earth: earth_surface menu row 'Leave orbit'
+EXPECT_HAS | &.widgits/solar-sandbox/pals/earth_surface/meta.pdl | sh -c 'H="$1"; U=$(sed -n "s/^current_user_uuid[^A-Za-z0-9]*//p" "$H"/0.user-pal*/00.login-signup/current_login.txt); S=$(sed -n "/active_session/{s/.*active_session[^A-Za-z0-9]*//;s/ *$//;p;q}" "$H/xyzfs/users/$U/home/livedesk/sessions/session.pdl"); exec "$H/&.widgits/events-hq/ops/+x/mr_transfer_desk.+x" "$H" "${S:-s1}" solar-system' | leave-earth-row-shipped-in-meta
+RUN | sh | -c | sh -c 'H="$1"; U=$(sed -n "s/^current_user_uuid[^A-Za-z0-9]*//p" "$H"/0.user-pal*/00.login-signup/current_login.txt); S=$(sed -n "/active_session/{s/.*active_session[^A-Za-z0-9]*//;s/ *$//;p;q}" "$H/xyzfs/users/$U/home/livedesk/sessions/session.pdl"); exec "$H/&.widgits/events-hq/ops/+x/mr_transfer_desk.+x" "$H" "${S:-s1}" solar-system' '$T/&.widgits/solar-sandbox/pals/earth_surface' '$T'
+EXPECT_EXIT | 0 | leave-earth-rc0
+EXPECT_HAS | xyzfs/users/u1/home/livedesk/sessions/s1/session.pdl | active_desk \p solar-system | leave-earth-landed-on-solar-system
+# enter-earth-again: earth menu row 'Enter Earth'
+EXPECT_HAS | &.widgits/solar-sandbox/pals/earth/meta.pdl | sh -c 'H="$1"; U=$(sed -n "s/^current_user_uuid[^A-Za-z0-9]*//p" "$H"/0.user-pal*/00.login-signup/current_login.txt); S=$(sed -n "/active_session/{s/.*active_session[^A-Za-z0-9]*//;s/ *$//;p;q}" "$H/xyzfs/users/$U/home/livedesk/sessions/session.pdl"); exec "$H/&.widgits/events-hq/ops/+x/mr_transfer_desk.+x" "$H" "${S:-s1}" solar-earth' | enter-earth-again-row-shipped-in-meta
+RUN | sh | -c | sh -c 'H="$1"; U=$(sed -n "s/^current_user_uuid[^A-Za-z0-9]*//p" "$H"/0.user-pal*/00.login-signup/current_login.txt); S=$(sed -n "/active_session/{s/.*active_session[^A-Za-z0-9]*//;s/ *$//;p;q}" "$H/xyzfs/users/$U/home/livedesk/sessions/session.pdl"); exec "$H/&.widgits/events-hq/ops/+x/mr_transfer_desk.+x" "$H" "${S:-s1}" solar-earth' '$T/&.widgits/solar-sandbox/pals/earth' '$T'
+EXPECT_EXIT | 0 | enter-earth-again-rc0
+EXPECT_HAS | xyzfs/users/u1/home/livedesk/sessions/s1/session.pdl | active_desk \p solar-earth | enter-earth-again-landed-on-solar-earth
+# teleport-earth-to-mars: earth_surface menu row 'Teleport to Mars'
+EXPECT_HAS | &.widgits/solar-sandbox/pals/earth_surface/meta.pdl | sh -c 'H="$1"; U=$(sed -n "s/^current_user_uuid[^A-Za-z0-9]*//p" "$H"/0.user-pal*/00.login-signup/current_login.txt); S=$(sed -n "/active_session/{s/.*active_session[^A-Za-z0-9]*//;s/ *$//;p;q}" "$H/xyzfs/users/$U/home/livedesk/sessions/session.pdl"); exec "$H/&.widgits/events-hq/ops/+x/mr_transfer_desk.+x" "$H" "${S:-s1}" solar-mars' | teleport-earth-to-mars-row-shipped-in-meta
+RUN | sh | -c | sh -c 'H="$1"; U=$(sed -n "s/^current_user_uuid[^A-Za-z0-9]*//p" "$H"/0.user-pal*/00.login-signup/current_login.txt); S=$(sed -n "/active_session/{s/.*active_session[^A-Za-z0-9]*//;s/ *$//;p;q}" "$H/xyzfs/users/$U/home/livedesk/sessions/session.pdl"); exec "$H/&.widgits/events-hq/ops/+x/mr_transfer_desk.+x" "$H" "${S:-s1}" solar-mars' '$T/&.widgits/solar-sandbox/pals/earth_surface' '$T'
+EXPECT_EXIT | 0 | teleport-earth-to-mars-rc0
+EXPECT_HAS | xyzfs/users/u1/home/livedesk/sessions/s1/session.pdl | active_desk \p solar-mars | teleport-earth-to-mars-landed-on-solar-mars
+# leave-mars-via-rocket: leave_orbit menu row 'Leave orbit'
+EXPECT_HAS | &.widgits/solar-sandbox/pals/leave_orbit/meta.pdl | sh -c 'H="$1"; U=$(sed -n "s/^current_user_uuid[^A-Za-z0-9]*//p" "$H"/0.user-pal*/00.login-signup/current_login.txt); S=$(sed -n "/active_session/{s/.*active_session[^A-Za-z0-9]*//;s/ *$//;p;q}" "$H/xyzfs/users/$U/home/livedesk/sessions/session.pdl"); exec "$H/&.widgits/events-hq/ops/+x/mr_transfer_desk.+x" "$H" "${S:-s1}" solar-system' | leave-mars-via-rocket-row-shipped-in-meta
+RUN | sh | -c | sh -c 'H="$1"; U=$(sed -n "s/^current_user_uuid[^A-Za-z0-9]*//p" "$H"/0.user-pal*/00.login-signup/current_login.txt); S=$(sed -n "/active_session/{s/.*active_session[^A-Za-z0-9]*//;s/ *$//;p;q}" "$H/xyzfs/users/$U/home/livedesk/sessions/session.pdl"); exec "$H/&.widgits/events-hq/ops/+x/mr_transfer_desk.+x" "$H" "${S:-s1}" solar-system' '$T/&.widgits/solar-sandbox/pals/leave_orbit' '$T'
+EXPECT_EXIT | 0 | leave-mars-via-rocket-rc0
+EXPECT_HAS | xyzfs/users/u1/home/livedesk/sessions/s1/session.pdl | active_desk \p solar-system | leave-mars-via-rocket-landed-on-solar-system
+# enter-moon: moon menu row 'Enter Moon'
+EXPECT_HAS | &.widgits/solar-sandbox/pals/moon/meta.pdl | sh -c 'H="$1"; U=$(sed -n "s/^current_user_uuid[^A-Za-z0-9]*//p" "$H"/0.user-pal*/00.login-signup/current_login.txt); S=$(sed -n "/active_session/{s/.*active_session[^A-Za-z0-9]*//;s/ *$//;p;q}" "$H/xyzfs/users/$U/home/livedesk/sessions/session.pdl"); exec "$H/&.widgits/events-hq/ops/+x/mr_transfer_desk.+x" "$H" "${S:-s1}" solar-moon' | enter-moon-row-shipped-in-meta
+RUN | sh | -c | sh -c 'H="$1"; U=$(sed -n "s/^current_user_uuid[^A-Za-z0-9]*//p" "$H"/0.user-pal*/00.login-signup/current_login.txt); S=$(sed -n "/active_session/{s/.*active_session[^A-Za-z0-9]*//;s/ *$//;p;q}" "$H/xyzfs/users/$U/home/livedesk/sessions/session.pdl"); exec "$H/&.widgits/events-hq/ops/+x/mr_transfer_desk.+x" "$H" "${S:-s1}" solar-moon' '$T/&.widgits/solar-sandbox/pals/moon' '$T'
+EXPECT_EXIT | 0 | enter-moon-rc0
+EXPECT_HAS | xyzfs/users/u1/home/livedesk/sessions/s1/session.pdl | active_desk \p solar-moon | enter-moon-landed-on-solar-moon
+# teleport-moon-to-earth: moon_surface menu row 'Teleport to Earth'
+EXPECT_HAS | &.widgits/solar-sandbox/pals/moon_surface/meta.pdl | sh -c 'H="$1"; U=$(sed -n "s/^current_user_uuid[^A-Za-z0-9]*//p" "$H"/0.user-pal*/00.login-signup/current_login.txt); S=$(sed -n "/active_session/{s/.*active_session[^A-Za-z0-9]*//;s/ *$//;p;q}" "$H/xyzfs/users/$U/home/livedesk/sessions/session.pdl"); exec "$H/&.widgits/events-hq/ops/+x/mr_transfer_desk.+x" "$H" "${S:-s1}" solar-earth' | teleport-moon-to-earth-row-shipped-in-meta
+RUN | sh | -c | sh -c 'H="$1"; U=$(sed -n "s/^current_user_uuid[^A-Za-z0-9]*//p" "$H"/0.user-pal*/00.login-signup/current_login.txt); S=$(sed -n "/active_session/{s/.*active_session[^A-Za-z0-9]*//;s/ *$//;p;q}" "$H/xyzfs/users/$U/home/livedesk/sessions/session.pdl"); exec "$H/&.widgits/events-hq/ops/+x/mr_transfer_desk.+x" "$H" "${S:-s1}" solar-earth' '$T/&.widgits/solar-sandbox/pals/moon_surface' '$T'
+EXPECT_EXIT | 0 | teleport-moon-to-earth-rc0
+EXPECT_HAS | xyzfs/users/u1/home/livedesk/sessions/s1/session.pdl | active_desk \p solar-earth | teleport-moon-to-earth-landed-on-solar-earth
+# back-to-system: earth_surface menu row 'Leave orbit'
+EXPECT_HAS | &.widgits/solar-sandbox/pals/earth_surface/meta.pdl | sh -c 'H="$1"; U=$(sed -n "s/^current_user_uuid[^A-Za-z0-9]*//p" "$H"/0.user-pal*/00.login-signup/current_login.txt); S=$(sed -n "/active_session/{s/.*active_session[^A-Za-z0-9]*//;s/ *$//;p;q}" "$H/xyzfs/users/$U/home/livedesk/sessions/session.pdl"); exec "$H/&.widgits/events-hq/ops/+x/mr_transfer_desk.+x" "$H" "${S:-s1}" solar-system' | back-to-system-row-shipped-in-meta
+RUN | sh | -c | sh -c 'H="$1"; U=$(sed -n "s/^current_user_uuid[^A-Za-z0-9]*//p" "$H"/0.user-pal*/00.login-signup/current_login.txt); S=$(sed -n "/active_session/{s/.*active_session[^A-Za-z0-9]*//;s/ *$//;p;q}" "$H/xyzfs/users/$U/home/livedesk/sessions/session.pdl"); exec "$H/&.widgits/events-hq/ops/+x/mr_transfer_desk.+x" "$H" "${S:-s1}" solar-system' '$T/&.widgits/solar-sandbox/pals/earth_surface' '$T'
+EXPECT_EXIT | 0 | back-to-system-rc0
+EXPECT_HAS | xyzfs/users/u1/home/livedesk/sessions/s1/session.pdl | active_desk \p solar-system | back-to-system-landed-on-solar-system
+# 7 NEGATIVE: a page not in the access list is refused by the same op, player stays on the system page
+WRITE   | xyzfs/users/u1/home/livedesk/sessions/s1/game.pdl | GAME | title | t\nMAP | solar-system | available | 1\nMAP | solar-earth | available | 1\nMAP | solar-mars | available | 1\n
+RUN | sh | -c | sh -c 'H="$1"; U=$(sed -n "s/^current_user_uuid[^A-Za-z0-9]*//p" "$H"/0.user-pal*/00.login-signup/current_login.txt); S=$(sed -n "/active_session/{s/.*active_session[^A-Za-z0-9]*//;s/ *$//;p;q}" "$H/xyzfs/users/$U/home/livedesk/sessions/session.pdl"); exec "$H/&.widgits/events-hq/ops/+x/mr_transfer_desk.+x" "$H" "${S:-s1}" solar-moon' '$T/&.widgits/solar-sandbox/pals/moon' '$T'
+EXPECT_EXIT | 3 | unlisted-moon-refused-rc3
+EXPECT_OUT  | refused: map 'solar-moon' is not available | unlisted-moon-reason-line
+EXPECT_HAS | xyzfs/users/u1/home/livedesk/sessions/s1/session.pdl | active_desk \p solar-system | refused-leaves-player-on-system
+EXPECT_HAS | #.desktop/game_access_ledger.txt | \prefused-map\pplay\psolar-moon\p | refusal-ledgered
+RUN | sh | -c | sh -c 'H="$1"; U=$(sed -n "s/^current_user_uuid[^A-Za-z0-9]*//p" "$H"/0.user-pal*/00.login-signup/current_login.txt); S=$(sed -n "/active_session/{s/.*active_session[^A-Za-z0-9]*//;s/ *$//;p;q}" "$H/xyzfs/users/$U/home/livedesk/sessions/session.pdl"); exec "$H/&.widgits/events-hq/ops/+x/mr_transfer_desk.+x" "$H" "${S:-s1}" solar-pluto' '$T/&.widgits/solar-sandbox/pals/moon' '$T'
+EXPECT_EXIT | 3 | nonexistent-page-refused-rc3
+# listed-earth-still-allowed: earth menu row 'Enter Earth'
+EXPECT_HAS | &.widgits/solar-sandbox/pals/earth/meta.pdl | sh -c 'H="$1"; U=$(sed -n "s/^current_user_uuid[^A-Za-z0-9]*//p" "$H"/0.user-pal*/00.login-signup/current_login.txt); S=$(sed -n "/active_session/{s/.*active_session[^A-Za-z0-9]*//;s/ *$//;p;q}" "$H/xyzfs/users/$U/home/livedesk/sessions/session.pdl"); exec "$H/&.widgits/events-hq/ops/+x/mr_transfer_desk.+x" "$H" "${S:-s1}" solar-earth' | listed-earth-still-allowed-row-shipped-in-meta
+RUN | sh | -c | sh -c 'H="$1"; U=$(sed -n "s/^current_user_uuid[^A-Za-z0-9]*//p" "$H"/0.user-pal*/00.login-signup/current_login.txt); S=$(sed -n "/active_session/{s/.*active_session[^A-Za-z0-9]*//;s/ *$//;p;q}" "$H/xyzfs/users/$U/home/livedesk/sessions/session.pdl"); exec "$H/&.widgits/events-hq/ops/+x/mr_transfer_desk.+x" "$H" "${S:-s1}" solar-earth' '$T/&.widgits/solar-sandbox/pals/earth' '$T'
+EXPECT_EXIT | 0 | listed-earth-still-allowed-rc0
+EXPECT_HAS | xyzfs/users/u1/home/livedesk/sessions/s1/session.pdl | active_desk \p solar-earth | listed-earth-still-allowed-landed-on-solar-earth
+CLEAN |

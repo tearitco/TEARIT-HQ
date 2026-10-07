@@ -1,0 +1,5 @@
+# Move 4: refused (dead ninja or not enough tokens): nothing changes
+COND | trigger | move
+COND | kv | variables.txt | ph_move | eq | 2
+COND | kv | variables.txt | act_ok | eq | 0
+COND | kv | switches.txt | game_over | eq | 0

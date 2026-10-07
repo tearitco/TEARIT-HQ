@@ -1,0 +1,5 @@
+# Move 2: a free step this turn costs no token
+COND | trigger | move
+COND | kv | variables.txt | ph_move | eq | 1
+COND | kv | variables.txt | has_free | eq | 1
+COND | kv | switches.txt | game_over | eq | 0

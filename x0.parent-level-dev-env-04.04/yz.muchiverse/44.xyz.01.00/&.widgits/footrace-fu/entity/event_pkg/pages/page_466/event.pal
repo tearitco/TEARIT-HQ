@@ -1,0 +1,3 @@
+# event.pal - Banish Foe 7: the coin says Finish (trigger cast_banish). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set bx_to rules.pdl:track_len
+halt

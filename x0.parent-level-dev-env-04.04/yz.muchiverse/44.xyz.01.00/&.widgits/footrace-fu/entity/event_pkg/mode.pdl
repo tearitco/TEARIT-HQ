@@ -1,0 +1,2 @@
+# sequential: every page whose conditions hold AT THAT MOMENT runs in number order (a later page sees the earlier page changes), like the ring board.
+MODE | pages | sequential

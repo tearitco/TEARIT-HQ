@@ -1,0 +1,4 @@
+# event.pal - CastCheck 4: coin flip (heads) (trigger castcheck). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/rand_roll.+x . dice_seed rand_counter 2 coin
+exec ops/+x/var_math.+x . eq cc_ok coin 1
+halt

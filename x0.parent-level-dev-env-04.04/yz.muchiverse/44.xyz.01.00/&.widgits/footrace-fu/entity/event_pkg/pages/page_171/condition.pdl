@@ -1,0 +1,4 @@
+# SelectLead 2: select it
+COND | trigger | selectlead
+COND | kv | variables.txt | lead | gt | 0
+COND | kv | switches.txt | game_over | eq | 0

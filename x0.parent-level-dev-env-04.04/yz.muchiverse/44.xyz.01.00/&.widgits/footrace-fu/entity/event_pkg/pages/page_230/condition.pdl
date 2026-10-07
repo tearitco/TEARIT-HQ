@@ -1,0 +1,3 @@
+# Combat 1: gather Attack/Block, guard, shield, Blade Dancer adjacency, roll 1d6 vs 1d6
+COND | trigger | combat
+COND | kv | variables.txt | ph_cmb | eq | 0

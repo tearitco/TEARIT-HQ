@@ -1,0 +1,2 @@
+# schedule.pdl - what runs each tick: a readable list that points at the common event. The CLOCK row is the real one (README install note).
+SCHEDULE | dsr_day_tick | repeat=every:1day | event=common:dsr_day_tick | installs-as: lc_clock <house> reminder-add <clock> 86400000 common:dsr_day_tick "" every:1day

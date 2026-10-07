@@ -58,3 +58,22 @@ Cases for: `chain_new` (creates, refuses duplicate/reserved/bad id); faucet (cla
 
 ## 9. Not done by this spec
 Signing; cross-machine peers; cones faucet (never); converting test-chain coins to cones (never decided); escrow trust on cones. Open for the owner: the cones daily mining cap value; faucet defaults for test chains; whether user chains get a cap on how many one user may create.
+
+
+<!-- appended from claude-alpha at merge 2026-10-07: sections present only there (build reports) -->
+
+## 10. Build report (claude, branch claude-alpha, 2026-10-07)
+Built: `chain.pdl` parsing in `chain_balance`, `chain_miner`, `chain_inbox_watcher` (absent file = old constants); new ops `chain_new`, `chain_faucet`, `chain_escrow` (lock/payout/refund/status + an extra `audit` verb); FAUCET/LOCK/PAYOUT/REFUND replay in `chain_balance`; inclusion-time validation, daily cap and `data/rejected_tx.txt` in `chain_miner`; `scripts/build.sh` lines for the three new ops. Harness `harness/chain_escrow_faucet.pal` + `cases/chain_escrow_faucet.pdl`, result `VERDICT|PASS|passed=132|failed=0`; a copy with one wrong expectation gave `VERDICT|FAIL|passed=131|failed=1` (deleted).
+
+Deviations and findings (honest list):
+- **Cached balance vs escrow works**: every new line is a +/- on one wallet, so `cached_balance`/`last_processed_block` stays valid; validity is enforced at issue and inclusion time, not at replay. Harness checks incremental == full replay.
+- **Legacy bug found, left on cones**: `chain_balance` skips block 0 for every wallet (fresh wallets start at `last_processed_block=0` and the replay skips index <= that), so block 0's reward is never counted. On a root WITH `chain.pdl` a wallet at last=0 and balance 0 replays from -1 (idempotent), so conservation holds; a root without `chain.pdl` keeps the old behaviour (the harness asserts it). Owner decision needed before touching cones.
+- `chain_miner` got `--blocks N` (mine N then exit; exit 3 if stopped by the daily cap or supply cap) because prisc cannot kill a daemon mid-case. No flag = daemon as before.
+- `chain.pdl` MINING difficulty wins over env `CHAIN_DIFFICULTY_HEX_ZEROS` when the file sets it (a chain defines its own difficulty); env still applies with no `chain.pdl`.
+- Escrow is disabled unless `chain.pdl` has `ESCROW enabled = 1` (a root without chain.pdl has no escrow); `FAUCET`/`TX from _burn` are only accepted at inclusion on a chain.pdl chain with faucet enabled and the exact configured amount.
+- Issue-time checks run over the mined chain plus the lines already pending (a lock and its payout can be queued back to back). `chain_escrow status` counts the mined chain only.
+- `_burn` needs no wallet file (full replay, never cached); `chain_send` now refuses `from=_burn`. `chain_new` also creates an `ops` symlink to the parent root's `ops/` (chain_send shells out to `./ops/+x/chain_balance.+x`) and takes an extra `--faucet-daily-cap`.
+- The miner's pending-removal is now exact-line (was substring match) with a 4096-line buffer (was 64); invalid lines are dropped from pending and logged to `data/rejected_tx.txt`.
+- The faucet requires the wallet to exist locally; `_`-prefixed ids are refused.
+- Conservation is checked through `chain_escrow audit` (replay) and cross-checked per wallet against `chain_balance`; it is partly structural (the escrow invariant is what the miner enforces).
+- Open: `chain_inbox_watcher` queues the new tx types and uses the chain.pdl difficulty, but does NOT validate escrow rules in blocks received from peers; no test for the watcher; the bank seed for the harness is not written (the pal has no bank exec line); the UTC day boundary is not faked in tests (an old-day block is hand-written instead).

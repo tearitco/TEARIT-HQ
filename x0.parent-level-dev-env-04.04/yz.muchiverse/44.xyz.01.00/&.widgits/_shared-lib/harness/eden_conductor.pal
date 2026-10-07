@@ -1,0 +1,4 @@
+# eden_conductor.pal - the Eden conductor v0 (setup/grants/reset, derived acts, 20-day seeded run on the real clock, determinism, fast-forward, third participant, save/load), see cases/eden_conductor.pdl.
+exec ./ops/+x/harness_case_op.+x cases/eden_conductor.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/eden_conductor.pdl
+halt

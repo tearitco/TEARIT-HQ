@@ -170,6 +170,7 @@
   an already-named topology only, routed through the same promotion
   gate as any other proposer — never topology discovery). Explicit
   OPEN vs. decided sections, not papered over.
+- `design-docs/HORN-HALO-IRL-IMPLEMENTATION.md` — **IMPLEMENTED 2026-10-06**: Sprint 1-3 complete. HORN_CHAT (OpenRouter + bank context) → HALO_CHAT (Gemma DESCRIBE + tiered promotion + promotion ledger) → IRL Harness (HORN vs HALO grading → weight deltas → curriculum regen). 8-test harness, all passing. HALO 60% win rate vs HORN 20%.
 - `design-docs/RELAY-WINDOW-TARGETING-DESIGN.md` — **2026-09-18
   design, not started**: formalizes how a relay-driving agent picks
   the right window/PID. Real current mechanism confirmed by direct

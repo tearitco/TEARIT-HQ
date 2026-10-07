@@ -1,0 +1,4 @@
+# EndTurn 6: hand the turn to that seat: tokens reset, stances end, leader selected
+COND | trigger | endturn
+COND | kv | variables.txt | ph_end | eq | 3
+COND | kv | switches.txt | game_over | eq | 0

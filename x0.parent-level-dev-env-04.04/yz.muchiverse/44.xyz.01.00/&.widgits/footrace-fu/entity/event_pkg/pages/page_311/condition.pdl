@@ -1,0 +1,5 @@
+# Move 12: look for the enemy
+COND | trigger | move
+COND | kv | variables.txt | ph_move | eq | 6
+COND | kv | variables.txt | inner | eq | 1
+COND | kv | switches.txt | game_over | eq | 0
