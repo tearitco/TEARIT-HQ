@@ -1,0 +1,5 @@
+id=building_01_gf
+width=16
+height=10
+turn=0
+z=1

@@ -1,0 +1,4 @@
+id=map_gen_01
+width=80
+height=40
+turn=0

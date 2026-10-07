@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+PHONE        | number               | 877-6535-6473
+PHONE        | owner_uid            | 8f008b8500e3a040a9ee13336dc2105be437e86142105c91313e090b24b48caf
+PHONE        | owner_label          | BKST
+PHONE        | glyph                | 📱
+PHONE        | state                | idle
+PHONE        | created              | migration
+PHONE        | created_by           | phone_ensure_op
+PHONE        | history_max_lines    | 2000
+PHONE        | history_max_bytes    | 262144
+PHONE        | rotate_keep          | 3
