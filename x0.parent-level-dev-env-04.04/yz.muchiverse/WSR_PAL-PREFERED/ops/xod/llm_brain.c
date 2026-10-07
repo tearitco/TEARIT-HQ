@@ -3,7 +3,8 @@
  * Observes WSR state, builds Ollama payload, calls curl via run_tool pattern,
  * reads response via json_parser, emits LLM_DECISION to event bus.
  *
- * House pattern: payload → tmp file → curl → response tmp → json_parser → decision.
+ * House pattern: payload → tmp file → curl → response tmp → json_parser.+x → decision.
+ * Uses json_parser.+x for both message.content extraction and inner JSON field parsing.
  *
  * Usage: llm_brain.+x <session_dir> <goal> [model] [tom_file]
  */
@@ -172,97 +173,76 @@ static int run_ollama(const char *payload_file, const char *response_file) {
     return system(cmd);
 }
 
-/* Extract action, reason, confidence from Ollama response JSON.
- * Two-step: extract message.content, strip markdown, parse inner JSON.
- * Uses simple string manipulation (avoids json_parser issues). */
+/* Parse the Ollama response JSON using json_parser.+x.
+ * Two-step: extract message.content (unescapes + strips markdown),
+ * then use json_parser to extract action/reason/confidence from inner JSON.
+ * Uses the C op json_parser.+x via popen, matching the house pattern. */
+static char *run_capture(const char *cmd) {
+    FILE *pipe = POPEN(cmd, "r");
+    if (!pipe) return NULL;
+    char *buf = malloc(16384);
+    if (!buf) { PCLOSE(pipe); return NULL; }
+    size_t total = 0, n;
+    while ((n = fread(buf + total, 1, 16383 - total, pipe)) > 0) {
+        total += n;
+        if (total >= 16383) break;
+    }
+    buf[total] = '\0';
+    PCLOSE(pipe);
+    return buf;
+}
+
 static void parse_response(const char *response_file,
                            char *action, size_t action_sz,
                            char *reason, size_t reason_sz,
                            double *conf,
                            const char *session_dir,
-                           const char *project_root) {
+                           const char *proj_root) {
     *conf = 0.5;
     action[0] = '\0';
     reason[0] = '\0';
 
-    char response[16384];
-    if (!read_file(response_file, response, sizeof(response))) return;
+    /* Step 1: Extract message.content (unescaped + markdown-stripped JSON) */
+    char cmd[PATH_BUF * 2];
+    snprintf(cmd, sizeof(cmd), "'%s/ops/+x/json_parser.+x' '%s' 'message.content'", proj_root, response_file);
+    char *content = run_capture(cmd);
+    if (!content || !*content) {
+        if (content) free(content);
+        return;
+    }
 
-    /* Find message.content field in the response */
-    char *content_start = strstr(response, "\"message\"");
-    if (!content_start) return;
-    content_start = strstr(content_start, "\"content\"");
-    if (!content_start) return;
-    content_start = strchr(content_start, ':');
-    if (!content_start) return;
-    content_start++;
-    while (*content_start && (*content_start == ' ' || *content_start == '"')) content_start++;
+    /* Step 2: Write inner JSON to temp file for json_parser */
+    char inner_path[PATH_BUF];
+    snprintf(inner_path, sizeof(inner_path), "%s/state/llm_inner.json", session_dir);
+    FILE *f = fopen(inner_path, "w");
+    if (!f) { free(content); return; }
+    fputs(content, f);
+    fclose(f);
+    free(content);
 
-    /* Extract the content string (handle escaped quotes) */
-    char content[8192];
-    char *c = content;
-    char *s = content_start;
-    while (*s && *s != '"') {
-        if (*s == '\\' && *(s+1) == '"') {
-            *c++ = '"';
-            s += 2;
-        } else if (*s == '\\' && *(s+1) == '\\') {
-            *c++ = '\\';
-            s += 2;
-        } else if (*s == '\\' && *(s+1) == 'n') {
-            *c++ = '\n';
-            s += 2;
-        } else {
-            *c++ = *s++;
-        }
+    /* Step 3: Extract action, reason, confidence via json_parser */
+    snprintf(cmd, sizeof(cmd), "'%s/ops/+x/json_parser.+x' '%s' 'action'", proj_root, inner_path);
+    char *val = run_capture(cmd);
+    if (val && val[0]) {
+        strncpy(action, val, action_sz - 1); action[action_sz-1] = '\0';
     }
-    *c = '\0';
+    if (val) free(val);
 
-    /* Strip markdown code fences if present */
-    char *json_start = content;
-    if (strncmp(content, "```json", 7) == 0) {
-        json_start = content + 7;
-    } else if (strncmp(content, "```", 3) == 0) {
-        json_start = content + 3;
+    snprintf(cmd, sizeof(cmd), "'%s/ops/+x/json_parser.+x' '%s' 'reason'", proj_root, inner_path);
+    val = run_capture(cmd);
+    if (val && val[0]) {
+        strncpy(reason, val, reason_sz - 1); reason[reason_sz-1] = '\0';
     }
-    char *json_end = strstr(json_start, "```");
-    if (json_end) *json_end = '\0';
+    if (val) free(val);
 
-    /* Parse action, reason, confidence from inner JSON */
-    char *p = json_start;
-    char *action_ptr = strstr(p, "\"action\"");
-    if (action_ptr) {
-        char *colon = strchr(action_ptr, ':');
-        if (colon) {
-            char *q = colon + 1;
-            while (*q == ' ' || *q == '"') q++;
-            char *end = q;
-            while (*end && *end != '"' && *end != ',' && *end != '}') end++;
-            if (end > q) {
-                size_t len = end - q;
-                if (len < action_sz) memcpy(action, q, len), action[len] = '\0';
-            }
-        }
+    snprintf(cmd, sizeof(cmd), "'%s/ops/+x/json_parser.+x' '%s' 'confidence'", proj_root, inner_path);
+    val = run_capture(cmd);
+    if (val && val[0]) {
+        *conf = atof(val);
     }
-    char *reason_ptr = strstr(p, "\"reason\"");
-    if (reason_ptr) {
-        char *colon = strchr(reason_ptr, ':');
-        if (colon) {
-            char *q = colon + 1;
-            while (*q == ' ' || *q == '"') q++;
-            char *end = q;
-            while (*end && *end != '"' && *end != ',' && *end != '}') end++;
-            if (end > q) {
-                size_t len = end - q;
-                if (len < reason_sz) memcpy(reason, q, len), reason[len] = '\0';
-            }
-        }
-    }
-    char *conf_ptr = strstr(p, "\"confidence\"");
-    if (conf_ptr) {
-        char *colon = strchr(conf_ptr, ':');
-        if (colon) *conf = atof(colon + 1);
-    }
+    if (val) free(val);
+
+    remove(inner_path);
 }
 
 int main(int argc, char **argv) {
