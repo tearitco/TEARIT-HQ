@@ -2355,9 +2355,16 @@ static int reparse_chtpm_if_changed(void) {
                 static struct timespec s_dock_force_last = {0, 0};
                 struct timespec now_ts;
                 clock_gettime(CLOCK_MONOTONIC, &now_ts);
+                /* Startup: for the dock's first 60 s the backstop is 1 s, not 20 s (owner 2026-10-06; boot_timeline.txt from his real quit-then-start
+                 * shows the bar painted 4 cells by 0.5 s and then NOT AGAIN until 19.9 s - the 20 s backstop - although all 17 entities were
+                 * registered by ~6 s: a change signal was missed and only this timer caught up). 1 s costs one parse_chtpm() of a small template
+                 * per second for a minute, a no-op repaint when nothing changed; steady state keeps the 20 s. */
+                static struct timespec s_dock_birth = {0, 0};
+                if (s_dock_birth.tv_sec == 0) s_dock_birth = now_ts;
+                int force_after = (now_ts.tv_sec - s_dock_birth.tv_sec < 60) ? 1 : 20;
                 if (s_dock_force_last.tv_sec == 0) {
                     s_dock_force_last = now_ts;
-                } else if (now_ts.tv_sec - s_dock_force_last.tv_sec >= 20) {
+                } else if (now_ts.tv_sec - s_dock_force_last.tv_sec >= force_after) {
                     s_dock_force_last = now_ts;
                     vars_changed = 1;
                 }
