@@ -1,4 +1,6 @@
-# A full playable Monopoly-style game from RPG Maker events only (KISS reference game)
+# A full playable ring-board game from RPG Maker events only (KISS reference game)
+
+> **UPDATE 2026-10-07 (owner): avoid the Monopoly name and branding (copyright/trademark).** This engine is now the **neutral ring-board core**; the reference game becomes the owner's own **Footrace Fu / Time-Fu: Buffet** (see `OWN-GAMES-REFERENCE-SUITE-DESIGN.md`). The mechanics below (dice, loop board, buy, rent, bankruptcy) are generic and stay; board data/names are data, so the Time-Fu Buffet board replaces them. Read 'Monopoly' below as 'ring board game'. The file keeps its name only so earlier links still work.
 
 Status: DESIGN + first-build spec, 2026-10-07, claude. Owner: "I think we should get a full 'monopoly' game be playable with the player, using just RMMV events, and even creating the 'layout studio' if needed. Then we will have a full playable example of a game like that. Do you understand? KISS."
 Understood as: **one small, complete, boring-on-purpose game** that proves the house can express a whole game with **events + variables + switches + pages + common events + menus + save/load + the clock**, so every later game (DSR included) is a variation, not an invention. It is a **reference example**, not the DSR economy.
