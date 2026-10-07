@@ -60,3 +60,8 @@ Written by claude. The owner said: "use common sense and taste to infer those an
 ## D. Lanes (owner, 2026-10-07)
 - **Grok:** the **CDDA and Mineclonia games** (survival/voxel content: gathering, farming, mining, water, the CDDA-style survival loop, the Mineclonia-asset planet). The existing Grok handoff docs cover it. Owner also said earlier "forget the grok commits, no one wants or trusts them": so claude **does not merge or cherry-pick from `origin/grok`**; Grok's work reaches claude only when the owner says so.
 - **claude:** **`dsr-test`** (the DSR page: clock, entities, stores/banks/castles/populations, routines, economy, schools, growth, politics) plus the shared blocks DSR needs (clock, snapshots, needs loop, chain/escrow). Items 6-9 and 10 of the backlog (pc-hq worlds beyond what DSR needs, voxel planet, CDDA/Mineclonia content, Canvas-Craft recipes) are **not claude's focus now**.
+
+## E. Added 2026-10-07 (later)
+21. **Taskbar clock display from a daemon-written .txt, source chosen by pdl or game input** (`CLOCK-AS-THE-PLAY-SPINE-DESIGN.md` section 11): lc_clock `display_*.txt` writer + `datetime_source` key + taskbar read (shared file, owner review).
+22. **Game conductor entities** (`GAME-CONDUCTOR-ENTITY-AND-EDEN-DESIGN.md`): Eden v0 in progress in alpha; **dsr-test conductor** next; compare ways of running games (conductor vs Player-menu play hook vs game.pdl).
+23. **Player-start path for one game end to end** (toy.pdl, spawn/install, play hook, beta relay check) per `ROADMAP-AND-STATE-OF-PLAY-2026-10-07.md`.
