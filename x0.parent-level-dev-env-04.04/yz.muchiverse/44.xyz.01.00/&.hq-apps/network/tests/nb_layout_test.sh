@@ -1,26 +1,41 @@
 #!/bin/bash
-# nb_layout_test.sh - Milestone-1 proof harness. Fetch a fixture page
-# through the real manager, capture the resulting page.state.txt, diff
-# against an expected snapshot. Rebuild expected with:
+# nb_layout_test.sh - layout proof harness. Fetches each fixture page
+# through the real manager, captures page.state.txt, diffs against an
+# expected snapshot. Rebuild expected with:
 #   NB_SNAPSHOT_UPDATE=1 sh nb_layout_test.sh
+# Sprite dirs (mN) and absolute house paths are normalized before diff
+# so snapshots are machine-independent and run-order stable.
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
 NDIR="$(cd "$HERE/.." && pwd)"
 HR="$(cd "$NDIR/../.." && pwd)"
 REQ="$HR/#.desktop/network_browser_request.txt"
 PF="$HR/#.desktop/network_browser_page.state.txt"
-FX="$HERE/fixtures/mini-article.html"
-[ -f "$FX" ] || { echo "missing $FX" >&2; exit 1; }
-printf "go:file://%s\n" "$FX" > "$REQ"
-for i in $(seq 1 40); do
-    grep -q "URL|file://$FX" "$PF" && break
-    sleep 0.5
+norm() {
+    sed -e "s|file://$HERE|FIXDIR|g" \
+        -e "s|$HR|HOUSE|g" \
+        -e "s|nb_sprites/m[0-9]*|nb_sprites/mN|g" \
+        -e "s|/tmp/nb_img_[0-9a-fx]*\.png|TMPIMG|g" "$1"
+}
+FAIL=0
+for FX in "$HERE"/fixtures/*.html; do
+    BASE="$(basename "$FX" .html)"
+    printf 'go:file://%s\n' "$FX" > "$REQ"
+    for i in $(seq 1 60); do
+        grep -q "URL|file://$FX" "$PF" 2>/dev/null && break
+        sleep 0.5
+    done
+    sleep 2
+    OUT="$(mktemp)"
+    norm "$PF" > "$OUT"
+    SNAP="$HERE/snapshots/$BASE.state.txt"
+    if [ -n "${NB_SNAPSHOT_UPDATE:-}" ]; then
+        mkdir -p "$HERE/snapshots"; cp "$OUT" "$SNAP"; echo "snapshot updated: $BASE"
+    else
+        if [ ! -f "$SNAP" ]; then echo "no snapshot for $BASE - run NB_SNAPSHOT_UPDATE=1 once"; FAIL=1; continue; fi
+        if diff -q "$SNAP" "$OUT" >/dev/null; then echo "PASS: $BASE"
+        else echo "FAIL: $BASE"; diff -u "$SNAP" "$OUT" | head -20; FAIL=1; fi
+    fi
+    rm -f "$OUT"
 done
-sleep 1
-OUT="$(mktemp)"
-cp "$PF" "$OUT"
-if [ -n "${NB_SNAPSHOT_UPDATE:-}" ]; then mkdir -p "$HERE/snapshots"; cp "$OUT" "$HERE/snapshots/mini-article.state.txt"; echo "snapshot updated"
-else
-    if [ ! -f "$HERE/snapshots/mini-article.state.txt" ]; then echo "no snapshot yet - run NB_SNAPSHOT_UPDATE=1 once"; exit 2; fi
-    diff -u "$HERE/snapshots/mini-article.state.txt" "$OUT" && echo "PASS"
-fi
+exit $FAIL
