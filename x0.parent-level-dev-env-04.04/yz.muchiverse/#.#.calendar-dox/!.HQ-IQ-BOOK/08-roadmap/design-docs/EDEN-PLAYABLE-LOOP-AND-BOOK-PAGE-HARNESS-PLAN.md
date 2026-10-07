@@ -33,3 +33,6 @@ Conductor 🔘 button: **Start / Stop** (and Pause, Save, Load, Status). **Start
 
 ## 6. Done 2026-10-07: pre-design:eden-test created in the live book
 Owner approved ("create the real page in livebook"). Procedure: backup of the owner's `sessions/` (159 files, tarball + sha256 list in `/home/no/staging/backups/`, outside the repo; counts matched), then `book_page_op new-page pre-design:eden-test --root <live sessions root>` (alpha build, commit f33058088, harness book_page 55/0). Result: `sessions/s1/desks/eden-test.pdl` (empty) + one row in `sessions/book_page_ledger.txt`; a diff against the backup checksums shows ONLY those two new files; `active_desk` still `office`. **Not verified:** that the live taskbar lists the page in its page switcher (no GUI check).
+
+## 7. Music daemon heard by the owner (2026-10-07)
+Rendered two phrases (mood calm, seed 42, paplay, about 23 s) and the owner said "thats amazing". Exported as `/home/no/Desktop/eden-calm-seed42.mp3` (22.9 s). **Finding:** with a fixed seed every phrase is byte-identical (both ledger rows show 504044 bytes), so a looping daemon repeats the same phrase; the seed should advance per phrase (seed + n) or the sequencer should vary phrases. Open.
