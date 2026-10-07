@@ -144,13 +144,6 @@ static unsigned long shade_pix(Display *dpy, Colormap cmap, const char *hex, int
     return fallback;
 }
 
-/* was <house>/<rel> written at or after t_start? (a leftover from an earlier run does not count) */
-static int fresh_since(const char *house, const char *rel, time_t t_start) {
-    char p[4096]; struct stat st;
-    snprintf(p, sizeof(p), "%s/%s", house, rel);
-    return stat(p, &st) == 0 && st.st_size > 0 && st.st_mtime >= t_start;
-}
-
 /* replace a previous boot splash (pid file), then record ours */
 static void boot_claim_pidfile(const char *house) {
     char p[4096], buf[32] = "", comm[64] = "";
@@ -240,12 +233,10 @@ int main(int argc, char **argv) {
     XftColorAllocName(dpy, DefaultVisual(dpy, scr), cmap, shade(fg_hex, -70), &xdimc);
 
     if (boot) {
-        time_t t_start = time(NULL) - 1;
         struct timespec b0; clock_gettime(CLOCK_MONOTONIC, &b0);
         double done_at = -1.0;
         int tick = 0;
-        int compile_seen = 0, compiling = 0, failed_boot = 0;
-        double t_post = 0.0;            /* el when the compile phase ended (0 = no compile happened) */
+        int compile_seen = 0, compiling = 0, failed_boot = 0, marker_seen_any = 0;
         for (;;) {
             struct timespec bn; clock_gettime(CLOCK_MONOTONIC, &bn);
             double el = (bn.tv_sec - b0.tv_sec) + (bn.tv_nsec - b0.tv_nsec) / 1e9;
@@ -271,11 +262,12 @@ int main(int argc, char **argv) {
             }
             {   static double marker_since = -1.0;
                 if (build_failed(xdir)) {
+                    marker_seen_any = 1;
                     if (marker_since < 0) marker_since = el;
                     if (el - marker_since >= 0.8) { compile_seen = 1; compiling = 1; }   /* a real compile; a ~0.6 s no-op build never shows the bar */
                 } else {
                     marker_since = -1.0;
-                    if (compiling) { compiling = 0; t_post = el; }
+                    if (compiling) compiling = 0;
                 }
             }
             if (compiling) {
@@ -300,27 +292,19 @@ int main(int argc, char **argv) {
                 XFlush(dpy); tick++; usleep(60000);
                 continue;
             }
-            int mgr = fresh_since(house, "#.desktop/strip_ui.txt", t_start);
-            int dock = fresh_since(house, "#.desktop/dock_stack/base.txt", t_start);
-            double base = compile_seen ? 0.6 : 0.0;
-            double el_post = el - t_post;                                   /* time since the compile (if any) ended */
-            double frac = el_post / 6.0; if (frac > 0.9) frac = 0.9;        /* time creep: keeps moving, never claims done */
-            if (mgr && frac < 0.4) frac = 0.4;                             /* real milestone: menu manager published */
-            /* The bar window publishing (dock) is NOT "ready": the entity cells fill in after it. Ready = dock up AND the open-entity
-             * list (livedesk_open.txt, written only by the manager) has stopped changing for 1.5 s AND at least 4 s have passed
-             * (owner 2026-10-06: the bar "still takes long" and the old splash was gone in 0.35 s). */
-            {   char op[4096]; struct stat ost; static long last_sz = -1; static double last_chg = 0;
-                snprintf(op, sizeof(op), "%s/#.desktop/livedesk_open.txt", house);   /* NOT draw_stamp.txt: the dock's 1 s startup backstop repaints every second for 60 s, so that file never goes quiet */
-                long sz = -1; if (stat(op, &ost) == 0) sz = (long)ost.st_size;
-                /* the entity list (livedesk_open.txt, size only - the manager rewrites it every second at the same size) stops growing once every entity has registered; quiet for 1.2 s = settled, and the dock catches up within its 1 s backstop.
-                 * Hard cap 45 s so an always-redrawing bar can never pin the splash. */
-                if (sz != last_sz) { last_sz = sz; last_chg = el; }
-                if (dock && el_post >= 1.0 && (el - last_chg >= 1.2 || el_post >= 45.0) && done_at < 0) done_at = el;   /* the dock now repaints within ~1 s of a change (1 s startup backstop), so 1.2 s of quiet = settled */
-                if (dock && done_at < 0 && frac > 0.95) frac = 0.95;       /* bar window is up, cells still arriving */
+            /* The strip exists for the COMPILE only (owner 2026-10-06: "forget about entities ... stop strip when compile is done, entities is
+             * lighting fast now"). Compile over -> a short "Ready" beat -> close. No compile (a ~0.6 s no-op build, or no build at all) -> close at once. */
+            double frac = 1.0;
+            const char *step = "Ready";
+            if (compile_seen) {
+                if (done_at < 0) done_at = el;
+            } else if (marker_seen_any && !build_failed(xdir)) {
+                break;                                   /* the build finished without ever becoming a real compile */
+            } else if (el > 4.0 && !marker_seen_any) {
+                break;                                   /* no build ran at all */
+            } else {
+                frac = 0.0; step = "Starting\xE2\x80\xA6";    /* build about to start / marker stood < 0.8 s */
             }
-            if (done_at >= 0) frac = 1.0;
-            else frac = base + (1.0 - base) * frac;                         /* the compile phase already used the first 60% */
-            const char *step = done_at >= 0 ? "Ready" : dock ? "Loading entities\xE2\x80\xA6" : mgr ? "Loading menus\xE2\x80\xA6" : "Starting\xE2\x80\xA6";
             XSetForeground(dpy, gc, bg);
             XFillRectangle(dpy, win, gc, 0, 0, ww, wh);
             XftDrawStringUtf8(xft, &xfg, fbig, 14, 20, (const FcChar8 *)"Loading livedesk\xE2\x80\xA6", 18);

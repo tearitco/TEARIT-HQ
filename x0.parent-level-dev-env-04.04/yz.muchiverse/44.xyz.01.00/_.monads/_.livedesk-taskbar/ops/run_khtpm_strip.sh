@@ -192,27 +192,8 @@ case "$ACTION" in
         # startup timeline (kh_boot_mark.h): reset at the start of a boot; the manager and the bottom dock append their own marks
         rm -f "$HOUSE/#.desktop/dock_stack/draw_stamp.txt" 2>/dev/null
         { : > "$HOUSE/#.desktop/boot_timeline.txt"; echo "$(date +%s%3N) script boot started" >> "$HOUSE/#.desktop/boot_timeline.txt"; } 2>/dev/null
-        # "Loading livedesk..." strip at the bottom-centre of the screen, shown from NOW until the bottom bar publishes
-        # (owner 2026-10-06: the header and everything else come up fast, the bottom bar is last - show a loading
-        # animation where it will appear). livedesk_splash --boot (livedesk_splash.c) watches strip_ui.txt and
-        # dock_stack/base.txt and closes itself; it never blocks this script. The binary is (re)built when missing OR when
-        # the source is newer: an older binary would ignore --boot and show the long "Building livedesk" splash instead.
-        if [ -n "${DISPLAY:-}" ]; then
-            if [ ! -x "$SCRIPT_DIR/+x/livedesk_splash.+x" ] || [ "$SCRIPT_DIR/livedesk_splash.c" -nt "$SCRIPT_DIR/+x/livedesk_splash.+x" ]; then
-                _sx="$(pkg-config --cflags --libs x11 xft 2>/dev/null)"
-                [ -n "$_sx" ] || _sx="-I/usr/include/freetype2 -lX11 -lXft"
-                mkdir -p "$SCRIPT_DIR/+x"
-                ${CC:-gcc} -std=c11 -O2 -o "$SCRIPT_DIR/+x/livedesk_splash.+x" "$SCRIPT_DIR/livedesk_splash.c" $_sx >/dev/null 2>&1 || true
-            fi
-            # the app launcher / start button starts this strip BEFORE the build so it can show a compile; keep that one running
-            _bs_pid="$(cat "$HOUSE/#.desktop/livedesk_boot_splash.pid" 2>/dev/null)"
-            if [ -n "$_bs_pid" ] && grep -q livedesk_splash "/proc/$_bs_pid/comm" 2>/dev/null; then
-                :
-            elif [ -x "$SCRIPT_DIR/+x/livedesk_splash.+x" ]; then
-                (cd "$HOUSE" && $SETSID env DISPLAY="$DISPLAY" "$SCRIPT_DIR/+x/livedesk_splash.+x" "$HOUSE" "$SCRIPT_DIR/+x" --boot \
-                    >/dev/null 2>&1 < /dev/null &)
-            fi
-        fi
+        # (The "Loading livedesk..." strip is started by build_khtpm_strip.sh / livedesk-launch.sh and exists only for a COMPILE - owner 2026-10-06:
+        #  entities load fast now - so nothing is started here.)
         MANAGER="$SCRIPT_DIR/+x/khtpm_taskbar_manager_main.+x"
         HEADER_CHTPM="$(cd "$SCRIPT_DIR/.." && pwd)/khtpm_strip_header.xhtpm"
         (cd "$HOUSE" && $SETSID env DISPLAY="${DISPLAY:-:0}" "$MANAGER" "$HOUSE" \
