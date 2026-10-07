@@ -121,6 +121,12 @@ static void publish(const char *house, const char *mode, const char *state_dir, 
     FILE *f;
     off += snprintf(buf + off, sizeof(buf) - off, "title=Hotbar - %s\nholder=%s\ncount=%d\nn_slots=%d\n",
                     inv_base(holder_dir), inv_base(holder_dir), n, HB_SLOTS);
+    {   /* the holder's OWN visual (owner todo 2026-10-06: the hotbar showed only the holder's name): the entity dir, drawn by the renderer from its sprite.csv
+         * like every slot picture. Empty when the holder has no sprite.csv, so a template gated with show="${holder_sprite}" simply hides the cell. */
+        char hsp[INV_PATH + 32]; struct stat hst;
+        snprintf(hsp, sizeof(hsp), "%s/sprite.csv", holder_dir);
+        off += snprintf(buf + off, sizeof(buf) - off, "holder_sprite=%s\n", stat(hsp, &hst) == 0 ? holder_dir : "");
+    }
     {
         int cx, bt;
         if (anchor_for(house, mode, &cx, &bt))

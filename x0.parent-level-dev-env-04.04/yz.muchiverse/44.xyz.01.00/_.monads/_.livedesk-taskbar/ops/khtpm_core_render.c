@@ -5251,8 +5251,14 @@ static void layout_toolbar_row(Elem *row, int x, int y, int w) {
         t->w = iw;
         t->h = ROW_H;
         css_compute_style(&g_sheet, t->tag, t->id, t->classes, t->n_classes, 0, &t->style);
-        t->nav_index = ++g_n_nav;
-        g_nav[g_n_nav - 1] = t;
+        if (elem_has_class(t, "no-nav")) {
+            /* 2026-10-06 (hotbar header picture): a display-only cell - laid out and drawn, but no nav number and not in g_nav[], so the typed digits of the
+             * items after it are unchanged. Same class the dock strip already honours (kh_dock layout); opt-in per item, no effect on any window that does not use it. */
+            t->nav_index = 0;
+        } else {
+            t->nav_index = ++g_n_nav;
+            g_nav[g_n_nav - 1] = t;
+        }
         col++;
     }
     if (composer) {
