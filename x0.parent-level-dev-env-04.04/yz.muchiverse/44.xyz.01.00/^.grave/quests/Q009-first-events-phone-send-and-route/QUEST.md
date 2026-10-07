@@ -51,7 +51,7 @@ Everything in `^.grave/README.md`. Never write a live phone's `inbox.txt` from a
 
 ## Not done (extend here)
 
-- [ ] A router loop: `server_route_op` is one pass; nothing calls it repeatedly yet (a `.pal` loop with a sleep, or the manager tick). Do NOT run it against live phones without the owner's OK.
+- [x] Router loop (2026-10-06): `^.hai-server/router.pal` (template: `exec server_route_op`, `sleep 2000000` = 2 s in microseconds, `j loop`) + `^.hai-server/button.sh start|stop|status|once` (compiles prisc+x like world-manager, pidfile stop, never `pkill -f`). It REFUSES to start on the live server dir unless `HAI_ROUTER_LIVE_OK=1` (owner's OK); test copies use `HAI_SERVER_DIR=...`. `loop_test.sh` proves on a sandbox: refuses live, starts, delivers a message sent after start, second message arrives with no duplicates (ledger 2 rows), stop kills by pid, status says not running: 6/6 PASS. The live router has NEVER been started. Bug found: `${var//a/b}` is bash-only and `sh` here is dash ("Bad substitution"); the template fill is now awk. To enable live: `HAI_ROUTER_LIVE_OK=1 sh '^.hai-server/button.sh' start` (owner's call).
 - [ ] History/inbox rotation (the caps are enforced on send only; the router does not rotate yet).
 - [ ] `phone_send` exercised through an events-hq script (the registry block is written, not run).
 - [ ] The router writing `kind=ask-human` messages to the human's phone; leases (`command|lease|release|result` are accepted as kinds, not acted on).

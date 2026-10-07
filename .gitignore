@@ -200,3 +200,9 @@ x0.parent-level-dev-env-04.04_*.7z
 
 # human input demonstrations log (renderer, real X events only; local, may contain typed text)
 **/#.desktop/human_input/
+
+# phone router loop runtime (Q009): generated pal, pid, log, compiled prisc+x
+^.hai-server/router.run.pal
+^.hai-server/router.pid
+^.hai-server/router.log
+^.hai-server/system/
