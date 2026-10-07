@@ -1,0 +1,73 @@
+# 🎒 NIGHT 34 — The School Year 🎒
+# ====================================================================
+# Title: "🎒 NIGHT 34 — The School Year 🎒"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: Design night. NIGHT 20 drew a school and left it empty. Tonight fills in the calendar, the classes, the exams and the report card, and keeps every number honest: counted, derived, or decided by a person.
+# Long-form: architecture only. Nothing in this night is built.
+
+**THE NARRATOR:** NIGHT 20 called it a breakthrough and then said the room had been found, not built. NIGHT 23 tried to put a first terumon in that room and said the same: no curriculum format, not one class written down. The owner's request tonight is one sentence. Make them go through school each year, with report cards. Say what it asks for.
+
+**MAXINE:** A calendar, classes, exams, and a record at the end of each term that a person can read. Four things the house has pieces of and no whole.
+
+**TOMO:** Start with what is already real. The four tiers exist on paper and in code: preschool, elementary and high school, associate and bachelor, master and doctorate. A tier decides what an entity may propose. The learning limits file already has a field for the highest tier and a list of enrolled schools. The school model from NIGHT 20 already says each entity has its own learner, classes are tested pass or fail, repeat until pass.
+
+**RAHWEH:** And what is not. No class has ever been written as a file. No clock exists for one character. No report card exists. And the four live terumon do not even have their learning limits file; the spec's starting layout was never applied to them.
+
+---
+
+**THE NARRATOR:** The first design question is what an exam is. Say the answer the house already has.
+
+**MAXINE:** A harness case file. NIGHT 31 showed a test is a Watch record: deterministic code decides pass or fail against a written expectation, leaves one row in an append-only ledger, no human thumb needed. An exam is exactly that. A class folder holds its lessons and its exam as a case file, and the same pal runs it.
+
+**TOMO:** So the school does not need a new kind of test. It needs to point the tests the house already writes at the thing an entity learned.
+
+**RAHWEH:** And an exam row counts toward a grade the same way a harness row counts toward reliability: reward for a pass, punish for a fail, reward plus one over reward plus punish plus two. A new class starts at one half and earns its way. Nobody types a grade.
+
+---
+
+**THE NARRATOR:** Then the report card. What is on it, and who writes it.
+
+**MAXINE:** Nobody writes it. A card is generated from the entity's ledger, rebuilt on demand, never edited by hand, the same derived-mirror rule as the Concept Bank. It lists each class with attendance, exam attempts, the latest result and the term grade. It lists the proposals the entity made this term and how many were accepted, rejected or still waiting, so it carries the acceptance rate A-TEARIT named as the real trust measure. It shows the word bank line. And it has a teacher's comment.
+
+**TOMO:** That comment is the one place a model touches it, and the law is unchanged. A person can write it. Or Gemma can propose one line in the fixed shape, a class, a strength word, a short reason, and a person accepts it. Gemma never grades.
+
+**RAHWEH:** The card also shows whether the numbers clear a threshold for advancing. Show that as a plain check for the reader. It does not act.
+
+---
+
+**THE NARRATOR:** That is the part to be careful with. Year end.
+
+**MAXINE:** The year ends, the card is written, and a person adds one row: advance, repeat, or hold. Only a person writes it in version one. At a tier boundary the owner raises the entity's highest tier with one reviewed edit.
+
+**TOMO:** That is deliberate, and it is not a gap to hurry past. NIGHT 30 refused to design promotion criteria until real records pile up, because rules written now would be guesses. A school year is how the records pile up. Twelve cards in, the owner can see what a passing entity actually looks like, and only then does a rule have anything to be based on.
+
+**RAHWEH:** And say the warning aloud. Today the halo validator promotes edits straight into the bank at the higher tiers without looking at any ledger. A school year gives that tier a measured basis. It does not fix the code. That fix is still the owner's decision.
+
+---
+
+**THE NARRATOR:** Where does the record live?
+
+**MAXINE:** In the entity, in its own school folder next to the phone and the word bank. The classes and calendar are shared, one school many entities point at, the hidden layer. The private numbers stay with the entity: its enrollment, its ledger, its decisions. Those are live user data and follow the data rules, with a backup first and a rehearsal in beta.
+
+**TOMO:** The first class for every entity is vocabulary. The hand-scoring of its word bank is the lesson and the exam in one: the owner's marks are the teacher's marks. Chain-wide scores are the standardized test, advisory until signing exists. That gives the retroactive pass over existing entities a purpose, because every existing entity gets enrolled in year zero with that class.
+
+**RAHWEH:** And tomom goes to the same school. Its ten curricula are already class subjects. Its exam can be the reproducible Ask from the editor window against expected words. Be honest about the first report card: tomom's answers today are runs of curriculum words, so it will fail most of its exams. That is a correct report card.
+
+---
+
+**THE NARRATOR:** The marketplace tie, briefly.
+
+**MAXINE:** A curriculum's pass rate across students is the number the marketplace concept doc used as a price signal. It is the same counted number, read from many report cards. That is what makes a curriculum something that could one day be sold. Not yet, since promotion is still undecided and nothing here is built.
+
+---
+
+**THE NARRATOR:** Honesty checkpoint, the way this track ends.
+
+**MAXINE:** What is real: the four tiers, the learning limits fields for tier and schools, the school model in NIGHT 20, the harness framework that can serve as exams, the phone and word bank patterns for retroactive enrollment, tomom's ten curricula and a reproducible way to question it, and a design file with the ledger rows, the card and a build order.
+
+**TOMO:** What is not: no curriculum format, no class, no exam written as a school exam, no ledger, no report card, no clock, no school window, no learning limits file on the live terumon. Year length is undecided. Who decides at year end beyond the owner is undecided. Nothing was built.
+
+**RAHWEH:** Say the line to carry forward.
+
+**TOMO:** A year is a span of counted evidence that ends with a person reading a card and writing one row. Give them a calendar and the exams they already know how to write, and the school opens. 🎒
