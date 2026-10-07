@@ -3836,6 +3836,61 @@ static JSValue nb_c2d_fillRect(JSContext *ctx, JSValueConst this_val, int argc, 
     /* gradient fillStyle: sample stops per pixel through the transform */
     JSValue fs = JS_GetPropertyStr(ctx, this_val, "fillStyle");
     if (JS_IsObject(fs)) {
+        JSValue srcv = JS_GetPropertyStr(ctx, fs, "src");
+        if (JS_IsObject(srcv)) {
+            /* pattern fillStyle: tile source pixels across the rect.
+             * repetition modes other than repeat/no-repeat collapse to
+             * repeat (noted); transform applies to the rect, pattern
+             * phase stays axis-aligned (noted). */
+            char rep[16] = "repeat";
+            JSValue repv = JS_GetPropertyStr(ctx, fs, "rep");
+            const char *rs = JS_IsString(repv) ? JS_ToCString(ctx, repv) : NULL;
+            if (rs) { snprintf(rep, sizeof(rep), "%s", rs); JS_FreeCString(ctx, rs); }
+            JS_FreeValue(ctx, repv);
+            int sw = 0, sh = 0, owned = 0;
+            unsigned char *spx = NULL;
+            if (nb_c2d_source(ctx, srcv, &sw, &sh, &spx, &owned) && sw > 0 && sh > 0) {
+                double a = cv->m[0], b = cv->m[1], cc = cv->m[2], d = cv->m[3], e = cv->m[4], f = cv->m[5];
+                double det = a * d - b * cc;
+                if (det != 0.0) {
+                    double xs[4] = {x, x + w, x, x + w}, ys[4] = {y, y, y + h, y + h};
+                    double x0 = 1e18, x1 = -1e18, y0 = 1e18, y1 = -1e18;
+                    for (int i = 0; i < 4; i++) {
+                        double px = a * xs[i] + cc * ys[i] + e, py = b * xs[i] + d * ys[i] + f;
+                        if (px < x0) x0 = px; if (px > x1) x1 = px;
+                        if (py < y0) y0 = py; if (py > y1) y1 = py;
+                    }
+                    int ix0 = (int)floor(x0), iy0 = (int)floor(y0);
+                    int ix1 = (int)ceil(x1), iy1 = (int)ceil(y1);
+                    if (ix0 < 0) ix0 = 0; if (iy0 < 0) iy0 = 0;
+                    if (ix1 > cv->w) ix1 = cv->w; if (iy1 > cv->h) iy1 = cv->h;
+                    int norep = !strcmp(rep, "no-repeat");
+                    for (int py = iy0; py < iy1; py++)
+                        for (int px = ix0; px < ix1; px++) {
+                            double u = ((px + 0.5 - e) * d - (py + 0.5 - f) * cc) / det;
+                            double v = (a * (py + 0.5 - f) - b * (px + 0.5 - e)) / det;
+                            if (u < x || u >= x + w || v < y || v >= y + h) continue;
+                            int qx = (int)floor(u - x), qy = (int)floor(v - y);
+                            if (norep) {
+                                if (qx < 0 || qy < 0 || qx >= sw || qy >= sh) continue;
+                            } else {
+                                qx %= sw; qy %= sh;
+                                if (qx < 0) qx += sw; if (qy < 0) qy += sh;
+                            }
+                            nb_px_over(cv->px + ((size_t)py * cv->w + px) * 4,
+                                       spx + ((size_t)qy * sw + qx) * 4, ga);
+                        }
+                    JS_FreeValue(ctx, srcv);
+                    if (owned) free(spx);
+                    JS_FreeValue(ctx, fs);
+                    return JS_UNDEFINED;
+                }
+            }
+            if (owned) free(spx);
+            JS_FreeValue(ctx, srcv);
+        } else {
+            JS_FreeValue(ctx, srcv);
+        }
         JSValue glv = JS_GetPropertyStr(ctx, fs, "glen");
         int32_t glen = 0;
         if (JS_IsNumber(glv)) JS_ToInt32(ctx, &glen, glv);
@@ -4389,7 +4444,15 @@ static void nb_grad_sample(JSContext *ctx, JSValue grad, double t, unsigned char
         out[i] = (unsigned char)(bc[i] + (tc[i] - bc[i]) * f + 0.5);
 }
 static JSValue nb_c2d_createPattern(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
-    return JS_NewObject(ctx);
+    (void)this_val;
+    /* Pattern holds its source reference; resolved to pixels at fill time
+     * so canvas-source patterns track later draws (live pattern). */
+    JSValue p = JS_NewObject(ctx);
+    if (argc >= 1 && JS_IsObject(argv[0]))
+        JS_SetPropertyStr(ctx, p, "src", JS_DupValue(ctx, argv[0]));
+    JS_SetPropertyStr(ctx, p, "rep",
+                      (argc >= 2 && JS_IsString(argv[1])) ? JS_DupValue(ctx, argv[1]) : JS_NewString(ctx, "repeat"));
+    return p;
 }
 static JSValue nb_c2d_lineDash(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     return JS_NewArray(ctx);
