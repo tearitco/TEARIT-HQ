@@ -242,6 +242,54 @@ X-GNOME-Autostart-enabled=true
 EOF
         echo "installed: $HOME/.config/autostart/muchiverse-autostart.desktop"
         ;;
+    install-desktop)
+        # REAL, NEW 2026-10-07: pre-compile Ubuntu app-library shortcut.
+        # No build needed (pure shell + a text SVG icon), so this runs on
+        # a fresh clone before anything is compiled. Reads the user's own
+        # color prefs (#.desktop/livedesk_theme.pdl COLOR bg/fg - the same
+        # rows the color picker writes) and bakes them into the icon, so
+        # the launcher in the GNOME Activities/apps grid matches the desk.
+        # Writes $HOME/.local/share/applications/<name>.desktop (the real
+        # per-user "apps lib") with Exec pointing at this script's own
+        # `run` action. Usage: sh button.sh install-desktop [name]
+        NAME="${2:-muchiverse}"
+        THEME="$HOUSE/#.desktop/livedesk_theme.pdl"
+        BG="#1c1c1c"; FG="#cccccc"
+        if [ -f "$THEME" ]; then
+            V="$(sed -n 's/^COLOR[ |]*bg[ |]*|//p' "$THEME" | head -1 | tr -d ' |')"
+            [ -n "$V" ] && BG="$V"
+            V="$(sed -n 's/^COLOR[ |]*fg[ |]*|//p' "$THEME" | head -1 | tr -d ' |')"
+            [ -n "$V" ] && FG="$V"
+        fi
+        APPS="$HOME/.local/share/applications"
+        ICONS="$HOME/.local/share/icons"
+        mkdir -p "$APPS" "$ICONS"
+        # .desktop Exec reserves `$` (our own `$.crypts` dir trips it) -
+        # escape as `\$`; validated with desktop-file-validate on Debian.
+        ESCAPED_DIR="$(printf '%s' "$SCRIPT_DIR" | sed 's/\$/\\$/g')"
+        ICON="$ICONS/$NAME.svg"
+        cat > "$ICON" << EOF
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+<rect x="4" y="4" width="120" height="120" rx="24" fill="$BG" stroke="$FG" stroke-width="6"/>
+<text x="64" y="88" font-family="sans-serif" font-size="72" font-weight="bold" text-anchor="middle" fill="$FG">M</text>
+</svg>
+EOF
+        cat > "$APPS/$NAME.desktop" << EOF
+[Desktop Entry]
+Type=Application
+Name=Muchiverse
+Comment=Launch the Muchiverse livedesk (house theme $BG/$FG)
+Exec=sh "$ESCAPED_DIR/button.sh" run
+Icon=$ICON
+Terminal=false
+Categories=Utility;
+EOF
+        command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$APPS" >/dev/null 2>&1 || true
+        if command -v desktop-file-validate >/dev/null 2>&1; then
+            desktop-file-validate "$APPS/$NAME.desktop" && echo "desktop file valid."
+        fi
+        echo "installed: $APPS/$NAME.desktop (icon $ICON, theme $BG/$FG)"
+        ;;
     help|h|-h|--help|*)
         cat <<EOF
 \$.crypts — house-wide autostart control
@@ -258,6 +306,8 @@ EOF
   sh button.sh install-app    # Linux app + Desktop launcher 'Livedesk' with a PNG icon (runs livedesk-launch.sh)
   sh button.sh install-xdg    # install the real XDG autostart .desktop file
                                # (real login-time autostart - one-time setup)
+  sh button.sh install-desktop [name]  # themed app-grid shortcut in
+                               # ~/.local/share/applications (pre-compile safe)
 EOF
         ;;
 esac

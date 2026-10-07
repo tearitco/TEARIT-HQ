@@ -627,7 +627,10 @@ static int handle_one_key(int key) {
     }
 
     /* Placer: while armed, the same arrows and z/x keys move the green
-     * selector instead of the entity. Escape puts the keys back. */
+     * selector instead of the entity. Escape puts the keys back.
+     * Re-applied 2026-10-04 on top of Claude a318bf17c (camera-control
+     * revert, "supreme") - additive only; placer routing coexists with
+     * the reverted camera defaults. */
     {
         char pp[PATH_BUF];
         snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);

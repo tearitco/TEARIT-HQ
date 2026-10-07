@@ -431,6 +431,36 @@ const char *nb_attr_get(const NbNode *n, const char *name) {
     return "";
 }
 
+/* Presence test for a bare (valueless) attribute. nb_attr_get() cannot answer
+ * these: for `<option selected>` the raw blob holds `selected` with no `=`,
+ * so the value scan never fires and it returns "". An empty string from
+ * nb_attr_get() therefore means "absent OR present-but-empty", and for
+ * boolean attributes (`selected`, `checked`, `disabled`, `multiple`, ...)
+ * only presence carries the meaning. Walks the same key scan as above and
+ * stops at the key, so `value="selected"` is NOT mistaken for the attribute. */
+int nb_attr_has(const NbNode *n, const char *name) {
+    if (!n || !n->attrs || !name) return 0;
+    size_t nlen = strlen(name);
+    const char *p = n->attrs;
+    while (*p) {
+        while (*p && isspace((unsigned char)*p)) p++;
+        const char *ks = p;
+        while (*p && !isspace((unsigned char)*p) && *p!='=' && *p!='>') p++;
+        size_t kl = (size_t)(p - ks);
+        if (kl == 0) { p++; continue; }
+        if (kl == nlen && !strncasecmp(ks, name, nlen)) return 1;
+        if (*p == '=') {           /* skip the value so it cannot match a key */
+            p++;
+            while (*p && isspace((unsigned char)*p)) p++;
+            char qc = 0;
+            if (*p=='"' || *p=='\'') { qc = *p; p++; }
+            if (qc) { while (*p && *p != qc) p++; if (*p) p++; }
+            else    { while (*p && !isspace((unsigned char)*p)) p++; }
+        }
+    }
+    return 0;
+}
+
 void nb_node_free(NbNode *root) {
     if (!root) return;
     NbNode *c=root->first_child;

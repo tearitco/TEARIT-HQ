@@ -23,9 +23,27 @@ window.network-browser { width: 784px; height: 504px; background-color: #141414;
 .nb-address { background-color: #0e0e0e; color: #ffffff; border: 1px solid #666666; }
 .nb-status { background-color: #101010; color: #88cc88; }
 .nb-content { background-color: #1a1a1a; color: #cccccc; }
+/* Milestone 1 (2026-10-05): keep a readable measure like a real page column. \
+   The FLEX children grow, so cap the body's own max-width instead. */
+.nb-body { max-width: 720px; }
 .bar { background-color: #222222; color: #2f8f5f; }
 .bar.play-bar { background-color: #222222; color: #2f8f5f; }
 sidebar { width: 200px; background-color: #1a1a1a; color: #cccccc; }
+
+/* REAL FIX 2026-10-04, live report ("black text on black background
+   for bookmarks/history/navs"): every element WITHOUT its own class
+   rule was falling through to g_theme_fg (#000000 on this light
+   user theme) while the window's own CSS forces a dark chrome -
+   apply_theme_op's bg==fg guard only checks the theme pdl against
+   itself, never against a window's darker CSS background. Explicit
+   rules here keep every unstyled row readable regardless of the
+   user's picked theme. */
+.nb-side { color: #cccccc; }
+.block-title { color: #9a9a9a; }
+.nb-link { color: #8fb8ff; }
+.nb-text { color: #cccccc; }
+.nb-console-text { color: #8fbf8f; }
+.page-title { color: #eeeeee; }
 
 /* devtools console (2026-09-10): flex 3-column layout, canvas-craft
    recipe — page is a flex row; sidebar keeps its fixed width, content

@@ -34,6 +34,7 @@
 #include <strings.h>
 #include <signal.h>
 #include <string.h>
+#include <poll.h>
 #include <time.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -96,11 +97,54 @@ static void send_status(const char *status) {
 
 /* Read one length-prefixed payload from stdin into g_rbuf.
  * Returns 1 on success, 0 on EOF/shutdown. */
-static int recv_frame(void) {
+/* Milliseconds remaining until a monotonic deadline (0 if already past). */
+static long ms_until(long deadline_ms) {
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    long left = deadline_ms - (long)(now.tv_sec * 1000L + now.tv_nsec / 1000000L);
+    return left < 0 ? 0 : left;
+}
+
+/* Bounded frame read. budget_ms < 0 keeps the historical blocking
+ * behaviour; >= 0 gives up once the budget is spent and returns 0.
+ *
+ * Why: recv_frame() used a bare blocking read(), so a driver that never
+ * answered parked the worker in recv() FOREVER. The worker is a long-lived
+ * resident process (see the "keep the resident browser worker alive through
+ * long page loads" change), so one unanswered FETCH wedged it permanently
+ * and SILENTLY - `make check` printed nothing and had to be killed. Callers
+ * already treat 0 as "no frame" and fall back, so a bounded wait degrades
+ * into the direct-curl path instead of hanging the house.
+ */
+static int recv_frame_budget(int budget_ms) {
+    long deadline = 0;
+    if (budget_ms >= 0) {
+        struct timespec now;
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        deadline = (long)(now.tv_sec * 1000L + now.tv_nsec / 1000000L) + budget_ms;
+    }
+    /* 1 = readable, 0 = budget spent / error. budget_ms < 0 never waits. */
+    struct pollfd nbpfd;
+    int nbok;
+    nbpfd.fd = STDIN_FILENO;
+    nbpfd.events = POLLIN;
+    nbpfd.revents = 0;
+    #define NB_READY_WAIT()                                                \
+        ({                                                                 \
+            if (budget_ms < 0) { nbok = 1; }                               \
+            else {                                                         \
+                int nbrc;                                                  \
+                do { nbrc = poll(&nbpfd, 1, (int)ms_until(deadline)); }   \
+                while (nbrc < 0 && errno == EINTR);                        \
+                nbok = (nbrc > 0);                                          \
+            }                                                              \
+            nbok;                                                          \
+        })
     char lenbuf[16];
     size_t i = 0;
     for (;;) {
         char c;
+        if (!NB_READY_WAIT()) return 0;        /* budget spent */
         ssize_t r = read(STDIN_FILENO, &c, 1);
         if (r == 0) return 0;                 /* EOF */
         if (r < 0) {
@@ -115,6 +159,7 @@ static int recv_frame(void) {
     if (n < 0 || n > MAX_MSG) return 0;
     size_t got = 0;
     while (got < (size_t)n) {
+        if (!NB_READY_WAIT()) return 0;
         ssize_t r = read(STDIN_FILENO, g_rbuf + got, (size_t)n - got);
         if (r == 0) return 0;
         if (r < 0) { if (errno == EINTR) continue; return 0; }
@@ -132,8 +177,11 @@ static int recv_frame(void) {
             (void)c;
         }
     }
+    #undef NB_READY_WAIT
     return 1;
 }
+
+static int recv_frame(void) { return recv_frame_budget(-1); }
 
 /* Split g_rbuf into the LOAD fields, copying each into a target buffer.
  * LOAD payload layout (newline-delimited, plan §4 + extra href/title):
@@ -506,16 +554,48 @@ static void rw_row(SB *b, const char *key, const char *val) {
     buf[o] = 0;
     if (o) { sb_put(b, key); sb_put(b, "|"); sb_put(b, buf); sb_put(b, "\n"); }
 }
-static void rw_wrap(SB *b, char *s) {
+static void rw_sel(SB *b, const NbNode *n);
+
+/* Long text is split into several TEXT rows; each one gets its own SEL row so
+ * every rendered row is independently clickable back to its element. */
+static void rw_wrap(SB *b, char *s, const NbNode *n) {
     while (s && *s) {
         size_t L = strlen(s);
-        if (L <= RWS_TEXT) { rw_row(b, "TEXT", s); break; }
+        if (L <= RWS_TEXT) { rw_sel(b, n); rw_row(b, "TEXT", s); break; }
         size_t cut = RWS_TEXT;
         while (cut > RWS_TEXT / 2 && s[cut] && s[cut] != ' ') cut--;
-        if (s[cut] == ' ') { char save = s[cut]; s[cut] = 0; rw_row(b, "TEXT", s); s[cut] = save; s += cut + 1; }
-        else { char save = s[RWS_TEXT]; s[RWS_TEXT] = 0; rw_row(b, "TEXT", s); s[RWS_TEXT] = save; s += RWS_TEXT; }
+        if (s[cut] == ' ') { char save = s[cut]; s[cut] = 0; rw_sel(b, n); rw_row(b, "TEXT", s); s[cut] = save; s += cut + 1; }
+        else { char save = s[RWS_TEXT]; s[RWS_TEXT] = 0; rw_sel(b, n); rw_row(b, "TEXT", s); s[RWS_TEXT] = save; s += RWS_TEXT; }
     }
 }
+static char *attrs_set(const NbNode *n, const char *name, const char *val);
+
+/* Every row the walk emits is preceded by a SEL row naming a selector that
+ * document.querySelector() can resolve back to the same element, so the
+ * manager can turn a khtpm click on a rendered row into a real DOM EVENT.
+ * Elements that already carry an id use it; the rest get a stable synthetic
+ * id written into the raw attribute blob (nb_attr_get reads that blob, not
+ * n->id, so setting n->id alone would not be findable). */
+static int g_auto_id_seq;
+static void rw_sel(SB *b, const NbNode *n) {
+    if (!n) return;
+    const char *id = nb_attr_get(n, "id");
+    char auto_id[48];
+    if (!id || !id[0]) {
+        snprintf(auto_id, sizeof(auto_id), "nb-auto-%d", ++g_auto_id_seq);
+        NbNode *w = (NbNode *)n;
+        char *na = attrs_set(w, "id", auto_id);
+        free(w->attrs);
+        w->attrs = na;
+        if (w->id) { free(w->id); }
+        w->id = strdup(auto_id);
+        id = auto_id;
+    }
+    char sel[96];
+    snprintf(sel, sizeof(sel), "#%s", id);
+    rw_row(b, "SEL", sel);
+}
+
 static void dom_walk_render(const NbNode *n, int *titled, SB *b) {
     if (!n) return;
     const char *tg = n->tag;
@@ -523,6 +603,7 @@ static void dom_walk_render(const NbNode *n, int *titled, SB *b) {
     if (tg && !strcasecmp(tg, "title") && !*titled) {
         SB t = {0, 0, 0};
         node_text_content(n, &t);
+        rw_sel(b, n);
         rw_row(b, "TITLE", t.s ? t.s : "");
         free(t.s);
         *titled = 1;
@@ -534,6 +615,7 @@ static void dom_walk_render(const NbNode *n, int *titled, SB *b) {
             node_text_content(n, &t);
             char linkbuf[2048];
             snprintf(linkbuf, sizeof(linkbuf), "%s|%s", href, t.s && t.s[0] ? t.s : href);
+            rw_sel(b, n);
             rw_row(b, "LINK", linkbuf);
             free(t.s);
             caption_used = 1;
@@ -572,6 +654,7 @@ static void dom_walk_render(const NbNode *n, int *titled, SB *b) {
             } else {
                 snprintf(imgbuf, sizeof(imgbuf), "%s|%s", srcbuf, altbuf);
             }
+            rw_sel(b, n);
             rw_row(b, "IMG", imgbuf);
             caption_used = 1;
         }
@@ -582,7 +665,7 @@ static void dom_walk_render(const NbNode *n, int *titled, SB *b) {
     if (!caption_used && n->text && n->text[0] && strspn(n->text, " \t\r\n") < strlen(n->text)) {
         size_t L = strlen(n->text);
         char *copy = malloc(L + 1);
-        if (copy) { memcpy(copy, n->text, L + 1); rw_wrap(b, copy); free(copy); }
+        if (copy) { memcpy(copy, n->text, L + 1); rw_wrap(b, copy, n); free(copy); }
     }
     for (const NbNode *c = n->first_child; c; c = c->next_sibling)
         dom_walk_render(c, titled, b);
@@ -1652,23 +1735,213 @@ static int is_form_field(const char *tag) {
         || !strcmp(tag, "select") || !strcmp(tag, "button")
         || !strcmp(tag, "option");
 }
+/* ---- <select> / <option> (2026-10-05) ----------------------------------
+ * A select's .value is the SELECTED OPTION's value, not the select's own
+ * `value` attribute. Real pages almost never put one on the <select>
+ * itself, so the generic getter below answered "" for every dropdown on a
+ * real page — page code then read an empty string, took a "no selection"
+ * branch, and never fired the request the dropdown was there to make.
+ *
+ * Selection state lives in a hidden \xffsel shadow on each option wrapper.
+ * push_node() caches exactly one wrapper per node in the ID map, so the
+ * shadow survives repeated getElementById/childNodes lookups exactly the
+ * way \xffvalue already does. Writing a `selected` ATTRIBUTE instead would
+ * also work, but that blob is what nb_serialize() ships to the renderer, so
+ * a script-side selection would come back out as markup.
+ */
+#define SELKEY "\xffsel"
+
+static int node_is_tag(const NbNode *n, const char *tag) {
+    return n && n->tag && !strcmp(n->tag, tag);
+}
+/* Explicit script-set state wins; with none set, fall back to the markup.
+ * Returning "unset" and "false" as the same thing is fine here: a select
+ * whose options all carry `selected` cannot express the difference in
+ * markup either. */
+static int opt_selected(JSContext *ctx, NbNode *opt) {
+    JSValue w = push_node(ctx, opt);
+    JSValue v = JS_GetPropertyStr(ctx, w, SELKEY);
+    int r;
+    if (JS_IsUndefined(v) || JS_IsNull(v)) {
+        r = nb_attr_has(opt, "selected") ? 1 : 0;
+    } else {
+        r = JS_ToBool(ctx, v);
+    }
+    JS_FreeValue(ctx, v);
+    JS_FreeValue(ctx, w);
+    return r;
+}
+static void opt_set_selected(JSContext *ctx, NbNode *opt, int on) {
+    JSValue w = push_node(ctx, opt);
+    JS_SetPropertyStr(ctx, w, SELKEY, JS_NewBool(ctx, on));
+    JS_FreeValue(ctx, w);
+}
+/* HTML: an option's value is its `value` attribute, else its text. */
+static void option_value(const NbNode *opt, char *out, size_t cap) {
+    out[0] = 0;
+    if (!opt) return;
+    const char *v = nb_attr_get(opt, "value");
+    if (v && *v) { snprintf(out, cap, "%s", v); return; }
+    if (opt->text) snprintf(out, cap, "%s", opt->text);
+}
+static int sel_option_index(const NbNode *sel, const NbNode *opt) {
+    int i = 0;
+    for (NbNode *c = sel->first_child; c; c = c->next_sibling) {
+        if (!node_is_tag(c, "option")) continue;
+        if (c == opt) return i;
+        i++;
+    }
+    return -1;
+}
+/* HTML default selection: the first option carrying `selected`, else the
+ * first option at all. */
+static NbNode *sel_selected(JSContext *ctx, NbNode *sel) {
+    NbNode *first = NULL;
+    for (NbNode *c = sel->first_child; c; c = c->next_sibling) {
+        if (!node_is_tag(c, "option")) continue;
+        if (!first) first = c;
+        if (opt_selected(ctx, c)) return c;
+    }
+    return first;
+}
+static void sel_select_index(JSContext *ctx, NbNode *sel, int want) {
+    int i = 0;
+    for (NbNode *c = sel->first_child; c; c = c->next_sibling) {
+        if (!node_is_tag(c, "option")) continue;
+        opt_set_selected(ctx, c, i == want);
+        i++;
+    }
+}
+/* select.options (2026-10-05): a live array of the <option> children, plus
+ * select.length and option.index to round out the collection. Pages iterate
+ * options directly ("for (var i=0;i<sel.options.length;i++)"), so without
+ * this a dropdown cannot be read at all. Returns fresh wrapper objects each
+ * call; push_node()'s ID map makes them identity-stable per node. */
+static JSValue nb_sel_options(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    JSValue arr = JS_NewArray(ctx);
+    if (!n) return arr;
+    uint32_t k = 0;
+    for (NbNode *c = n->first_child; c; c = c->next_sibling) {
+        if (!node_is_tag(c, "option")) continue;
+        JS_SetPropertyUint32(ctx, arr, k++, push_node(ctx, c));
+    }
+    return arr;
+}
+static int sel_option_count(const NbNode *sel) {
+    int i = 0;
+    for (NbNode *c = sel->first_child; c; c = c->next_sibling)
+        if (node_is_tag(c, "option")) i++;
+    return i;
+}
+static JSValue nb_sel_length(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    return JS_NewInt32(ctx, n ? sel_option_count(n) : 0);
+}
+static JSValue nb_opt_index(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_NewInt32(ctx, -1);
+    NbNode *sel = n->parent;
+    if (!node_is_tag(sel, "select")) return JS_NewInt32(ctx, -1);
+    return JS_NewInt32(ctx, sel_option_index(sel, n));
+}
 static JSValue nb_el_value_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *n = get_this(ctx, this_val);
     if (!n) return JS_NewString(ctx, "");
+    /* a select reports its SELECTED option's value */
+    if (node_is_tag(n, "select")) {
+        char buf[512];
+        option_value(sel_selected(ctx, n), buf, sizeof buf);
+        return JS_NewString(ctx, buf);
+    }
     JSValue v0 = JS_GetPropertyStr(ctx, this_val, "\xffvalue");
     if (JS_IsString(v0)) return v0;
     JS_FreeValue(ctx, v0);
+    /* an option with no value attribute IS its text (HTML) — the generic
+     * path below answered "" for those, so a page reading opt.value saw an
+     * empty string and a select full of text-only options looked unset. */
+    if (node_is_tag(n, "option")) {
+        char buf[512];
+        option_value(n, buf, sizeof buf);
+        return JS_NewString(ctx, buf);
+    }
     const char *v = nb_attr_get(n, "value");
     if (v && v[0]) return JS_NewString(ctx, v);
     return JS_NewString(ctx, "");
 }
+/* Selecting an option is a user interaction, so it fires `change` — the
+ * only event dropdown-driven pages listen for. Defined next to
+ * nb_el_click(), where the Event constructor and dispatch_event live. */
+static void fire_change(JSContext *ctx, NbNode *n);
 static JSValue nb_el_value_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *n = get_this(ctx, this_val);
     if (!n) return JS_UNDEFINED;
     char *vl = NULL;
     const char *v = (argc > 0 && JS_IsString(argv[0])) ? (vl = JS_ToCString(ctx, argv[0])) : "";
+    if (node_is_tag(n, "select")) {
+        /* select the FIRST option whose value matches, deselect the rest.
+         * An unmatched value leaves the selection alone, as HTML does —
+         * silently selecting nothing would look like the dropdown worked. */
+        int i = 0, hit = -1;
+        char buf[512];
+        for (NbNode *c = n->first_child; c && hit < 0; c = c->next_sibling) {
+            if (!node_is_tag(c, "option")) continue;
+            option_value(c, buf, sizeof buf);
+            if (!strcmp(buf, v)) hit = i;
+            i++;
+        }
+        if (hit >= 0) {
+            sel_select_index(ctx, n, hit);
+            JS_FreeCString(ctx, vl);
+            fire_change(ctx, n);
+            return JS_UNDEFINED;
+        }
+        JS_FreeCString(ctx, vl);
+        return JS_UNDEFINED;
+    }
     JS_SetPropertyStr(ctx, this_val, "\xffvalue", JS_NewString(ctx, v));
     JS_FreeCString(ctx, vl);
+    return JS_UNDEFINED;
+}
+/* select.selectedIndex */
+static JSValue nb_sel_index_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_NewInt32(ctx, -1);
+    return JS_NewInt32(ctx, sel_option_index(n, sel_selected(ctx, n)));
+}
+static JSValue nb_sel_index_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_UNDEFINED;
+    int32_t i = 0;
+    if (argc > 0) JS_ToInt32(ctx, &i, argv[0]);
+    sel_select_index(ctx, n, i);
+    fire_change(ctx, n);
+    return JS_UNDEFINED;
+}
+/* option.selected — read/write, and writing it keeps the parent select in
+ * agreement so select.value never contradicts the option it points at. */
+static JSValue nb_opt_selected_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_NewBool(ctx, 0);
+    return JS_NewBool(ctx, opt_selected(ctx, n));
+}
+static JSValue nb_opt_selected_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_UNDEFINED;
+    int on = (argc > 0) ? JS_ToBool(ctx, argv[0]) : 1;
+    opt_set_selected(ctx, n, on);
+    NbNode *sel = n->parent;
+    if (node_is_tag(sel, "select")) {
+        if (on) {
+            int i = 0;
+            for (NbNode *c = sel->first_child; c; c = c->next_sibling) {
+                if (!node_is_tag(c, "option")) continue;
+                opt_set_selected(ctx, c, c == n);
+                i++;
+            }
+        }
+        fire_change(ctx, sel);
+    }
     return JS_UNDEFINED;
 }
 /* ---- classList natives (this = the classList object, shares \xffnode) ---- */
@@ -1968,14 +2241,50 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
     JS_SetPropertyStr(ctx, el, "getBoundingClientRect",
                       JS_NewCFunction(ctx, nb_el_getBoundingClientRect, "getBoundingClientRect", 0));
 
-    /* rung-2 remainder: el.value get/set for form fields. */
-    if (is_form_field(n->tag)) {
-        JSAtom nm = JS_NewAtom(ctx, "value");
-        JS_DefinePropertyGetSet(ctx, el, nm,
-            JS_NewCFunction(ctx, nb_el_value_get, "get value", 0), JS_NewCFunction(ctx, nb_el_value_set, "set value", 1),
-            JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
-        JS_FreeAtom(ctx, nm);
-    }
+/* rung-2 remainder: el.value get/set for form fields. */
+      if (is_form_field(n->tag)) {
+          JSAtom nm = JS_NewAtom(ctx, "value");
+          JS_DefinePropertyGetSet(ctx, el, nm,
+              JS_NewCFunction(ctx, nb_el_value_get, "get value", 0), JS_NewCFunction(ctx, nb_el_value_set, "set value", 1),
+              JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+          JS_FreeAtom(ctx, nm);
+      }
+      /* select/option state (2026-10-05): selectedIndex on the dropdown,
+       * selected on the option. Both are registered per-node by tag so a
+       * page's `typeof sel.selectedIndex` feature-detects honestly. */
+      if (node_is_tag(n, "select")) {
+          JSAtom nm = JS_NewAtom(ctx, "selectedIndex");
+          JS_DefinePropertyGetSet(ctx, el, nm,
+              JS_NewCFunction(ctx, nb_sel_index_get, "get selectedIndex", 0),
+              JS_NewCFunction(ctx, nb_sel_index_set, "set selectedIndex", 1),
+              JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+          JS_FreeAtom(ctx, nm);
+          /* options/index are VALUE properties, not methods: registering
+           * them with JS_SetPropertyStr made sel.options a function, and
+           * sel.options.length then answered the function's arity (0). */
+          nm = JS_NewAtom(ctx, "options");
+          JS_DefinePropertyGetSet(ctx, el, nm,
+              JS_NewCFunction(ctx, nb_sel_options, "get options", 0), JS_UNDEFINED,
+              JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+          JS_FreeAtom(ctx, nm);
+          nm = JS_NewAtom(ctx, "length");
+          JS_DefinePropertyGetSet(ctx, el, nm,
+              JS_NewCFunction(ctx, nb_sel_length, "get length", 0), JS_UNDEFINED,
+              JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+          JS_FreeAtom(ctx, nm);
+      } else if (node_is_tag(n, "option")) {
+          JSAtom nm = JS_NewAtom(ctx, "selected");
+          JS_DefinePropertyGetSet(ctx, el, nm,
+              JS_NewCFunction(ctx, nb_opt_selected_get, "get selected", 0),
+              JS_NewCFunction(ctx, nb_opt_selected_set, "set selected", 1),
+              JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+          JS_FreeAtom(ctx, nm);
+          nm = JS_NewAtom(ctx, "index");
+          JS_DefinePropertyGetSet(ctx, el, nm,
+              JS_NewCFunction(ctx, nb_opt_index, "get index", 0), JS_UNDEFINED,
+              JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+          JS_FreeAtom(ctx, nm);
+      }
 
     /* classList */
     {
@@ -3938,17 +4247,91 @@ static void resolve_doc_url(const char *rel, char *out, size_t olen) {
 
 /* Try manager RPC for fetch (async per spec §8.2): worker -> manager FETCH, manager -> worker FETCHED.
  * Returns 1 if manager handled it (out_body/status set), 0 to fallback to direct curl. */
-static int try_fetch_via_manager(const char *method, const char *url, char **out_body, size_t *out_len, int *out_status, char *errbuf, size_t errcap) {
+/* How long to wait for the manager's FETCHED before giving up and letting
+ * the caller fall back to a direct curl. The direct path's own max-time is
+ * 8s, so this is a little more than double: generous enough that a slow
+ * manager is never mistaken for a dead one, bounded enough that an
+ * unanswered FETCH cannot wedge a resident worker. */
+#define FETCH_RPC_WAIT_MS 15000
+
+/* Worker asks the manager to perform a fetch (async, spec 8.2).
+ *
+ * Frame out:  FETCH\n<id>\n<method>\n<url>\n<nreq>\n<h1>..\n<hN>\n\n<body>
+ * Frame in :  FETCHED\n<id>\n<status>\n<nresp>\n<r1>..\n<rM>\n\n<body>
+ *
+ * The nreq/nresp tail is what the protocol was missing. It used to be
+ * FETCH\n<id>\n<method>\n<url> -> FETCHED\n<id>\n<status>\n<body>, which
+ * dropped every page-controlled request header and the whole request body
+ * and could not return Set-Cookie. worker_sapisid_test could not deliver
+ * its Authorization: SAPISIDHASH header (fixture said sign-fail) and
+ * worker_fetch_post_test hung with the POST body stranded here.
+ *
+ * Cookie handling deliberately mirrors the direct-curl path rather than
+ * being left to the manager: attach jar cookies outbound, ingest Set-Cookie
+ * from the returned headers inbound. Both sides share one NB_COOKIES_FILE,
+ * and one implementation means the two paths cannot drift.
+ *
+ * Returns 0 for "manager could not do it" in every failure mode - no
+ * manager, timeout, short/mismatched reply, unparsable URL - and the
+ * caller then uses the direct path. A manager that never replies therefore
+ * costs one bounded wait, not a hang.
+ */
+static int try_fetch_via_manager(const char *method, const char *url,
+                                  const char *headers, const char *body,
+                                  char **out_body, size_t *out_len,
+                                  int *out_status, char *errbuf, size_t errcap) {
     if (g_cli) return 0;
     if (isatty(STDIN_FILENO)) return 0;
     static int next_id = 1;
     int id = next_id++;
-    char payload[8192];
-    int n = snprintf(payload, sizeof(payload), "FETCH\n%d\n%s\n%s", id, method, url);
-    if (n < 0 || (size_t)n >= sizeof(payload)) return 0;
+
+    /* split the page's headers into individual lines */
+    char reqh[16][512];
+    int nreq = 0;
+    if (headers && *headers) {
+        const char *hp = headers;
+        while (*hp && nreq < 16) {
+            const char *nl = strchr(hp, '\n');
+            size_t n = nl ? (size_t)(nl - hp) : strlen(hp);
+            while (n && (hp[n-1] == '\r' || hp[n-1] == ' ')) n--;
+            if (n && memchr(hp, ':', n) && n < sizeof reqh[0]) {
+                memcpy(reqh[nreq], hp, n); reqh[nreq][n] = '\0';
+                nreq++;
+            }
+            if (!nl) break;
+            hp = nl + 1;
+        }
+    }
+    /* unified jar, same as the direct path: cookies go out with the request */
+    char ckhdr[4096];
+    ckhdr[0] = '\0';
+    cookie_header_for_url(url, ckhdr, sizeof(ckhdr));
+    if (ckhdr[0] && nreq < 16) {
+        snprintf(reqh[nreq], sizeof reqh[0], "%s", ckhdr);   /* already "Cookie: ..." */
+        nreq++;
+    }
+
+    static char payload[65536];
+    int n = snprintf(payload, sizeof(payload), "FETCH\n%d\n%s\n%s\n%d",
+                     id, method, url, nreq);
+    for (int i = 0; i < nreq && n > 0 && (size_t)n < sizeof(payload); i++)
+        n += snprintf(payload + n, sizeof(payload) - n, "\n%s", reqh[i]);
+    if (n > 0 && (size_t)n < sizeof(payload))
+        n += snprintf(payload + n, sizeof(payload) - n, "\n\n%s", (body && *body) ? body : "");
+    if (n < 0 || (size_t)n >= sizeof(payload)) {
+        if (errbuf && errcap) snprintf(errbuf, errcap, "fetch request too large");
+        return 0;
+    }
     send_payload(payload, (size_t)n);
-    if (!recv_frame()) return 0;
-    if (strncmp(g_rbuf, "FETCHED\n", 8) != 0) return 0;
+
+    if (!recv_frame_budget(FETCH_RPC_WAIT_MS)) {
+        if (errbuf && errcap) snprintf(errbuf, errcap, "manager fetch: no reply");
+        return 0;
+    }
+    if (strncmp(g_rbuf, "FETCHED\n", 8) != 0) {
+        if (errbuf && errcap) snprintf(errbuf, errcap, "manager fetch: unexpected reply");
+        return 0;
+    }
     char *p = g_rbuf + 8;
     char *n1 = strchr(p, '\n');
     if (!n1) return 0;
@@ -3960,11 +4343,49 @@ static int try_fetch_via_manager(const char *method, const char *url, char **out
     if (!n2) { *n1 = '\n'; return 0; }
     *n2 = '\0';
     int status = atoi(q2);
-    char *body = n2 + 1;
-    size_t body_len = g_rlen - (size_t)(body - g_rbuf);
+
+    char *rest = n2 + 1;
+    /* <nresp> - if this field is not a plain count, the manager is old and
+     * the remainder of the frame is the body (back-compat). */
+    char *e3 = strchr(rest, '\n');
+    int nresp = 0;
+    int old_format = 1;
+    if (e3) {
+        char cnt[16];
+        size_t cl = (size_t)(e3 - rest);
+        if (cl < sizeof(cnt)) {
+            memcpy(cnt, rest, cl); cnt[cl] = '\0';
+            char *endp = NULL;
+            long v = strtol(cnt, &endp, 10);
+            if (endp && *endp == '\0' && v >= 0 && v <= 32) { nresp = (int)v; old_format = 0; }
+        }
+    }
+    if (!old_format) {
+        char *cur = e3 + 1;
+        for (int i = 0; i < nresp; i++) {
+            char *e = strchr(cur, '\n');
+            size_t hl = e ? (size_t)(e - cur) : strlen(cur);
+            if (hl && strncasecmp(cur, "Set-Cookie:", 11) == 0) {
+                char val[512];
+                if (hl - 11 < sizeof(val)) {
+                    memcpy(val, cur + 11, hl - 11); val[hl - 11] = '\0';
+                    char *v = val;
+                    while (*v == ' ') v++;
+                    cookie_set_from_wire(v, url);
+                }
+            }
+            if (!e) { cur += hl; break; }
+            cur = e + 1;
+        }
+        /* blank separator line, then the body */
+        if (*cur == '\n') cur++;
+        rest = cur;
+    }
+
+    size_t body_len = g_rlen - (size_t)(rest - g_rbuf);
     char *rb = (char *)malloc(body_len + 1);
     if (!rb) { *n1 = '\n'; *n2 = '\n'; return 0; }
-    memcpy(rb, body, body_len);
+    memcpy(rb, rest, body_len);
     rb[body_len] = '\0';
     *out_body = rb;
     *out_len = body_len;
@@ -4009,7 +4430,7 @@ static JSValue nb_fetch_sync(JSContext *ctx, JSValueConst this_val, int argc, JS
         else snprintf(errbuf, sizeof(errbuf), "cannot read %s", abspath);
     } else if (strncmp(url, "http:", 5) == 0 || strncmp(url, "https:", 6) == 0) {
         char *mgr_body = NULL; size_t mgr_len = 0; int mgr_status = 0; char mgr_err[256] = "";
-        if (try_fetch_via_manager(method, url, &mgr_body, &mgr_len, &mgr_status, mgr_err, sizeof(mgr_err))) {
+        if (try_fetch_via_manager(method, url, headers, body, &mgr_body, &mgr_len, &mgr_status, mgr_err, sizeof(mgr_err))) {
             rb = mgr_body; rn = mgr_len; status = mgr_status;
             if (mgr_err[0]) snprintf(errbuf, sizeof(errbuf), "%s", mgr_err);
         } else {
@@ -4638,6 +5059,27 @@ static JSValue nb_el_click(JSContext *ctx, JSValueConst this_val, int argc, JSVa
     int r = dispatch_event(ctx, EVT_NODE, n, ev, 1);
     JS_FreeValue(ctx, ev);
     return JS_NewBool(ctx, r);
+}
+/* select/option state (2026-10-05): a script-driven selection is a user
+ * interaction, so it fires `change` — the only event dropdown-driven pages
+ * listen for. Same Event-constructor shape as nb_el_click() above; `change`
+ * bubbles and is not cancelable. */
+static void fire_change(JSContext *ctx, NbNode *n) {
+    JSValue Event = get_global_attr(ctx, "Event");
+    if (!JS_IsFunction(ctx, Event)) { JS_FreeValue(ctx, Event); return; }
+    JSValue opts = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, opts, "bubbles", JS_NewBool(ctx, 1));
+    JS_SetPropertyStr(ctx, opts, "cancelable", JS_NewBool(ctx, 0));
+    JSValue cargv[2];
+    cargv[0] = JS_NewString(ctx, "change");
+    cargv[1] = opts;
+    JSValue ev = JS_CallConstructor(ctx, Event, 2, cargv);
+    JS_FreeValue(ctx, Event);
+    JS_FreeValue(ctx, cargv[0]);
+    JS_FreeValue(ctx, opts);
+    if (JS_IsException(ev)) { JS_FreeValue(ctx, ev); return; }
+    dispatch_event(ctx, EVT_NODE, n, ev, 1);
+    JS_FreeValue(ctx, ev);
 }
 /* element.focus()/blur() (2026-09-21): typed-input path needs the search
  * input focusable (kevlar reads document.activeElement and toggles the

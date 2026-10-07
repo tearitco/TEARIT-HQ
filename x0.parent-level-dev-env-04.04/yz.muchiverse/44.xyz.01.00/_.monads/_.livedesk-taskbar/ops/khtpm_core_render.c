@@ -1365,10 +1365,17 @@ static const char *parse_element(const char *p, Elem *parent) {
  * makes every ${key} resolve to the empty string, matching tpmos
  * get_var()'s default. Only khtpm_core_render.+x consumes this - the
  * ~25 legacy chtpm_parser_pal.c apps keep their own substituter. */
-#define KH_MAX_VARS   2048  /* was 256 - a <repeat> grid emits 2+ vars/row; a
+#define KH_MAX_VARS   4096  /* was 256, then 2048 - a <repeat> grid emits 2+ vars/row; a
                              * 256-tile rmmv tileset alone is 512, and silent
                              * truncation in kh_set_var() made every count var
-                             * that landed after the overflow resolve to 0 */
+                             * that landed after the overflow resolve to 0.
+                             * 2026-10-07: network-browser projects full
+                             * articles now (664 rows x ~4.5 vars = ~3000) and
+                             * content_count sits at END of ui.txt, so the
+                             * overflow ate the count itself -> zero rows
+                             * rendered, blank pane. 4096 covers it; the real
+                             * fix is projection virtualization (follow-up),
+                             * not another doubling. */
 #define KH_VAR_NAME   64
 /* REAL FIX 2026-09-29, direct live report + real screenshot ("do u see
  * how the message was cut off even tho there was plenty of space") -

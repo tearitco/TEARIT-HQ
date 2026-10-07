@@ -1,0 +1,141 @@
+behavior: navigate_to
+op: wsr_fsm_driver.+x
+pal: navigate.pal
+params: [target]
+pre:
+  - screen_known: true
+post:
+  - cursor_on_item: target
+cost: 1
+
+---
+behavior: select_item
+op: wsr_fsm_driver.+x
+pal: select.pal
+params: []
+pre:
+  - cursor_on_item: any
+post:
+  - item_activated: true
+cost: 1
+
+---
+behavior: new_game
+op: wsr_fsm_driver.+x
+pal: new_game.pal
+params: []
+pre:
+  - at_main_menu: true
+post:
+  - world_reset: true
+cost: 5
+
+---
+behavior: end_turn
+op: wsr_fsm_driver.+x
+pal: end_turn.pal
+params: []
+pre:
+  - at_main_menu: true
+post:
+  - turn_advanced: true
+cost: 2
+
+---
+behavior: buy_stock
+op: wsr_fsm_driver.+x
+pal: buy_stock.pal
+params: [ticker, qty]
+pre:
+  - at_trade_menu: true
+post:
+  - shares_increased: true
+cost: 3
+
+---
+behavior: sell_stock
+op: wsr_fsm_driver.+x
+pal: sell_stock.pal
+params: [ticker, qty]
+pre:
+  - in_trade_menu: true
+post:
+  - shares_decreased: true
+cost: 3
+
+---
+behavior: short_stock
+op: wsr_fsm_driver.+x
+pal: short_stock.pal
+params: [ticker, qty]
+pre:
+  - at_trade_menu: true
+post:
+  - short_position_opened: true
+cost: 3
+
+---
+behavior: cover_stock
+op: wsr_fsm_driver.+x
+pal: cover_stock.pal
+params: [ticker, qty]
+pre:
+  - in_trade_menu: true
+post:
+  - short_position_closed: true
+cost: 3
+
+---
+behavior: buy_sell
+op: wsr_fsm_driver.+x
+pal: buy_sell.pal
+params: []
+pre:
+  - at_main_menu: true
+post:
+  - trade_menu_open: true
+cost: 2
+
+---
+behavior: cycle_corp
+op: wsr_fsm_driver.+x
+pal: cycle_corp.pal
+params: []
+pre:
+  - at_main_menu: true
+post:
+  - active_corp_changed: true
+cost: 1
+
+---
+behavior: list_portfolio
+op: wsr_fsm_driver.+x
+pal: list_portfolio.pal
+params: []
+pre:
+  - at_main_menu: true
+post:
+  - portfolio_visible: true
+cost: 2
+
+---
+behavior: check_market
+op: wsr_fsm_driver.+x
+pal: check_market.pal
+params: []
+pre:
+  - at_main_menu: true
+post:
+  - market_data_visible: true
+cost: 2
+
+---
+behavior: back_to_main
+op: wsr_fsm_driver.+x
+pal: back_to_main.pal
+params: []
+pre:
+  - in_submenu: true
+post:
+  - main_menu_visible: true
+cost: 1

@@ -48,6 +48,23 @@ Rules while sharing a checkout:
 - If a commit lands that you did not author, do not amend or rewrite
   it. Add a follow-up commit that states the correction, and tell
   the user.
+- Heaviest-collision file at the moment: `board-viewer/ops/bv_menu_input.c`
+  is the placer/camera-fix merge point; only touch it if you are doing
+  placer or camera work.
+- Lane split vs the `opencode-fix` work (2026-10-05): that lane owns
+  `ops/` worker/fetch/driver code, `tests/worker_*`, `nb_js_worker.+x`
+  sides, and the FETCH protocol, and leads edits to
+  `network_browser_manager.c` while mid-flight. The `opencode` lane
+  owns row-projection/layout into the window (page-state, xhtpm, css)
+  and should avoid touching worker/fetch C files. The handshake file is
+  `network_browser_manager.c` - rebase your row-projection batches over
+  whatever that lane landed last.
+- Driving the network browser: relay file
+  `#.desktop/entity_menu_history/<pid>.txt` + reference at
+  `08-roadmap/NB-DEBUG-QUICKREF.md`.
+- Do not kill processes carrying the shared renderer for unrelated
+  windows via the same guardian pattern; every `khtpm_core_render.+x`
+  is checked by argv + chtpm path — see `button.sh`.
 
 The real fix is one worktree per agent (`.kilo/worktrees/<name>/`),
 each on its own branch, so no index is shared at all. Until that

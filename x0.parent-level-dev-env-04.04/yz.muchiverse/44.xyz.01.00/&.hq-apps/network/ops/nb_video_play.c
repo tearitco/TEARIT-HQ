@@ -293,7 +293,7 @@ int main(int argc, char **argv) {
      * The file:// protocol REJECTS the seekable option (avio/file has
      * no such knob) so keep the http/yt dict strictly for remote urls. */
     AVDictionary *opts = NULL;
-    if (strncmp(url, "file://", 7) != 0) {
+    if (strncmp(url, "http", 4) == 0) {
         av_dict_set(&opts, "http_user_agent",
                     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
                     "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36", 0);

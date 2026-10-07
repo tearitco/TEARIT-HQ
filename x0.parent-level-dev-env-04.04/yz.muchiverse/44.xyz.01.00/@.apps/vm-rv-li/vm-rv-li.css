@@ -1,0 +1,9 @@
+/* vm-rv-li.css - terminal styling. Auto-merged sibling of vm-rv-li.xhtpm
+   (house §6). Geometry stays in the renderer layout; this file carries
+   only colour/font properties. monospace font-family is real and honored
+   by khtpm_core_render.c (line ~14446 "monospace" picker). */
+window.vm-rv-li { background-color: #000000; color: #00ff00; width: 880px; height: 640px; }
+.terminal-screen { background-color: #000000; color: #00ff00; }
+.terminal-row { font-family: monospace; font-size: 13px; }
+.quiet { color: #55aa55; }
+.close-btn { background-color: #222; color: #ff8888; }

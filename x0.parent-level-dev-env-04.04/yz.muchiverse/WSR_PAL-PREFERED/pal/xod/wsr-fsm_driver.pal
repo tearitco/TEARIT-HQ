@@ -1,0 +1,26 @@
+# pal/wsr-fsm_driver.pal - XOD FSM Driver dispatcher
+# Calls wsr_fsm_driver.+x with the current behavior.
+# This runs inside prisc+x and dispatches to the C op.
+
+# Read current layout to decide behavior
+read_word x1, pieces/display/current_layout.txt x28, 0
+
+# Default behavior: check market
+li x2, 11
+li x3, 13
+
+# Check if we're at trade menu
+strstr x4, x1, "wsr_trade_menu"
+beq x4, x0, dispatch
+
+# At trade menu: try buy_stock (row 1)
+li x2, 1
+li x3, 13
+
+dispatch:
+# Call the C op: wsr_fsm_driver.+x check_market
+# In prisc+x, this would invoke the compiled +x binary
+# For now, emit the key sequence directly
+emit_selection x2, x3
+
+halt
