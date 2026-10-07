@@ -29,11 +29,19 @@ real input file explicitly".
 
 1. List the quoted includes of `khtpm_core_render.c` and of the shared `.c` cores it text-includes (`khtpm_draw_core.c`, `khtpm_render_core.c`, `khtpm_reparse_diff.c`, `khtpm_nav_echo.c`).
    Known gaps at posting time: `khtpm_nav_echo.c`, `house_wait.h`, `kh_proc_registry.h`, `kh_boot_mark.h`, `khtpm_css_parser.h`, `stb_image.h`, `lib/stb_image_write.h`.
-2. Add them (with the right `$SHARED/` prefixes) to `CR_SRCS`. Do the same check for the other gated binaries in `build_khtpm_strip.sh` (`MGR_SRCS`, etc.).
+2. Add them (with the right `$SHARED/` prefixes) to `CR_SRCS`. Fix `MGR_SRCS` in `build_khtpm_strip.sh` too (`khtpm_taskbar_manager.h` is missing). Do not edit `verify.sh` to make it pass.
 3. First build after the change will recompile (about 25 s) because the combined hash changes; that is expected.
+
+## Scorer (deterministic, no judgement needed)
+
+`bash verify.sh [core|manager|all]` reads the real `#include` graph and the real gate lists and prints `MISSING|...` lines and a `VERDICT|PASS|FAIL|...` line (exit 0/1).
+`bash verify.sh --selftest` proves the scorer itself (complete list passes, list missing one file fails). **Baseline 2026-10-06 (FAIL):** core missing 7
+(`house_wait.h`, `kh_boot_mark.h`, `kh_proc_registry.h`, `khtpm_css_parser.h`, `khtpm_nav_echo.c`, `stb_image.h`, `stb_image_write.h`), manager missing 1
+(`ops/khtpm_taskbar_manager.h`, a gap not in the original list). Ops copies of shared-lib files are scored as the shared original. Done = `verify.sh all` prints PASS twice.
 
 ## Acceptance
 
+- [ ] `bash verify.sh all` exits 0 (both VERDICT lines PASS) and `--selftest` still passes.
 - [ ] Touching (a trivial comment edit in) `khtpm_nav_echo.c` makes the next `sh build_khtpm_strip.sh` recompile the renderer; an unchanged tree does not (a no-op run stays under a second).
 - [ ] Same proof for one header (`house_wait.h`).
 - [ ] Output of both runs pasted in `## Result`; revert the trial edits.
