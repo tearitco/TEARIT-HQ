@@ -121,11 +121,32 @@ static void publish(const char *house, const char *mode, const char *state_dir, 
     FILE *f;
     off += snprintf(buf + off, sizeof(buf) - off, "title=Hotbar - %s\nholder=%s\ncount=%d\nn_slots=%d\n",
                     inv_base(holder_dir), inv_base(holder_dir), n, HB_SLOTS);
-    {   /* the holder's OWN visual (owner todo 2026-10-06: the hotbar showed only the holder's name): the entity dir, drawn by the renderer from its sprite.csv
-         * like every slot picture. Empty when the holder has no sprite.csv, so a template gated with show="${holder_sprite}" simply hides the cell. */
-        char hsp[INV_PATH + 32]; struct stat hst;
+    {   /* the holder's OWN visual (owner todo 2026-10-06: the hotbar showed only the holder's name): a sprite DIR, drawn by the renderer from its sprite.csv like every slot picture.
+         * Order: the holder's own dir; else (a pc-hq piece such as the xelector has none) <this app>/assets/<entity_type>/ where entity_type comes from the holder's state.txt;
+         * else empty, so a template gated with show="${holder_sprite}" simply hides the cell. */
+        char hsp[INV_PATH + 64], et[64] = "", stp[INV_PATH + 32], hs[INV_PATH + 64] = ""; struct stat hst;
         snprintf(hsp, sizeof(hsp), "%s/sprite.csv", holder_dir);
-        off += snprintf(buf + off, sizeof(buf) - off, "holder_sprite=%s\n", stat(hsp, &hst) == 0 ? holder_dir : "");
+        if (stat(hsp, &hst) == 0) snprintf(hs, sizeof(hs), "%.4000s", holder_dir);
+        else {
+            snprintf(stp, sizeof(stp), "%s/state.txt", holder_dir);
+            read_kv(stp, "entity_type", et, sizeof(et));
+            if (et[0] && !strchr(et, '/') && !strchr(et, '.')) {
+                snprintf(hsp, sizeof(hsp), "%s/@.apps/hotbar-hq/assets/%s/sprite.csv", house, et);
+                if (stat(hsp, &hst) == 0) snprintf(hs, sizeof(hs), "%s/@.apps/hotbar-hq/assets/%s", house, et);
+            }
+        }
+        off += snprintf(buf + off, sizeof(buf) - off, "holder_sprite=%s\n", hs);
+    }
+    {   /* readout line (owner 2026-10-06: pc-hq lacked the empty slot above the command field that the desk has for terminal readout): v1 = the last line typed into the field,
+         * from <holder>/cli_commands.txt (what entity_cli_commit.sh logs). Empty until something is typed. */
+        char cp[INV_PATH + 40], line[256] = "", rd[300] = ""; FILE *cf;
+        snprintf(cp, sizeof(cp), "%s/cli_commands.txt", holder_dir);
+        if ((cf = fopen(cp, "r"))) {
+            char l[256]; while (fgets(l, sizeof(l), cf)) { l[strcspn(l, "\r\n")] = '\0'; if (l[0]) snprintf(line, sizeof(line), "%s", l); } fclose(cf);
+        }
+        for (char *c = line; *c; c++) if (*c == '=' || *c == '|') *c = ' ';
+        if (line[0]) snprintf(rd, sizeof(rd), "> %.250s", line);
+        off += snprintf(buf + off, sizeof(buf) - off, "readout_on=1\nreadout=%s\n", rd);   /* readout_on gates the template line: only a build that has the overlay layout class publishes it */
     }
     {
         int cx, bt;

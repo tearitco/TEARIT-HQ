@@ -5701,13 +5701,14 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
      * show="${var}" (the element is dropped at parse, re-added on the live reparse). */
     for (int oi = 0; oi < region->n_children; oi++) {
         Elem *ov = region->children[oi];
-        int n_it = 0, n_tx = 0, n_cl = 0, total = 0, maxh = 0, gap = scaled(4), k;
+        int n_it = 0, n_tx = 0, n_cl = 0, n_rd = 0, has_badge = 0, total = 0, maxh = 0, gap = scaled(4), k;
         if (!elem_has_class(ov, "canvas-overlay-bottom")) continue;
         css_compute_style(&g_sheet, ov->tag, ov->id, ov->classes, ov->n_classes, 0, &ov->style);
         for (k = 0; k < ov->n_children; k++) {
             Elem *it = ov->children[k];
-            if (strcmp(it->tag, "text") == 0) { n_tx++; continue; }      /* name line: above the items */
+            if (strcmp(it->tag, "text") == 0) { if (elem_has_class(it, "ov-readout")) n_rd++; else n_tx++; continue; }   /* name line: above the items; class ov-readout: between the items and the typed line */
             if (strcmp(it->tag, "cli_io") == 0) { n_cl++; continue; }    /* typed line: below the items */
+            if (strcmp(it->tag, "item") == 0 && elem_has_class(it, "ov-badge")) { has_badge = 1; continue; }   /* display-only picture at the left of the name line (placed below) */
             if (strcmp(it->tag, "item") == 0 && (elem_has_class(it, "ov-min") || elem_has_class(it, "ov-close"))) continue;   /* placed by kh_ov_min_place */
             if (strcmp(it->tag, "item") != 0) { it->x = rx; it->y = -100000; it->w = 0; it->h = 0; it->nav_index = 0; continue; }
             css_compute_style(&g_sheet, it->tag, it->id, it->classes, it->n_classes, 0, &it->style);
@@ -5721,7 +5722,7 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
         {
             int pad4 = scaled(4), rowh = ROW_H;
             int stripw = total < scaled(360) ? scaled(360) : total;   /* wide enough for the typed line */
-            int toph = n_tx * rowh, both = n_cl * rowh;
+            int toph = n_tx * rowh, both = n_cl * rowh + n_rd * rowh;
             int hh = toph + maxh + both + 2 * pad4;
             int x0 = cv->x + (cv->w - stripw) / 2, y0 = cv->y + cv->h - hh - scaled(10), x, yy;
             if (x0 < cv->x) x0 = cv->x;
@@ -5730,22 +5731,37 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
             yy = y0 + pad4;
             for (k = 0; k < ov->n_children; k++) {               /* name line(s) */
                 Elem *t = ov->children[k];
-                if (strcmp(t->tag, "text") != 0) continue;
+                if (strcmp(t->tag, "text") != 0 || elem_has_class(t, "ov-readout")) continue;
                 css_compute_style(&g_sheet, t->tag, t->id, t->classes, t->n_classes, 0, &t->style);
-                t->x = x0 + pad4; t->y = yy; t->w = stripw - 2 * pad4; t->h = rowh; t->nav_index = 0;
+                t->x = x0 + pad4 + (has_badge ? rowh : 0); t->y = yy; t->w = stripw - 2 * pad4 - (has_badge ? rowh : 0); t->h = rowh; t->nav_index = 0;
                 yy += rowh;
+            }
+            if (has_badge) {                                      /* class ov-badge: a square, display-only picture left of the first name line (no nav number: slot digits stay 1..n) */
+                for (k = 0; k < ov->n_children; k++) {
+                    Elem *b = ov->children[k];
+                    if (strcmp(b->tag, "item") != 0 || !elem_has_class(b, "ov-badge")) continue;
+                    css_compute_style(&g_sheet, b->tag, b->id, b->classes, b->n_classes, 0, &b->style);
+                    b->x = x0 + pad4; b->y = y0 + pad4; b->w = rowh; b->h = rowh; b->nav_index = 0;
+                }
             }
             kh_ov_min_place(ov, x0, y0, stripw, rowh, pad4);
             x = x0 + (stripw - total) / 2;                        /* the slots, centred */
             for (k = 0; k < ov->n_children; k++) {
                 Elem *it = ov->children[k];
-                if (strcmp(it->tag, "item") != 0 || elem_has_class(it, "ov-min") || elem_has_class(it, "ov-close")) continue;
+                if (strcmp(it->tag, "item") != 0 || elem_has_class(it, "ov-min") || elem_has_class(it, "ov-close") || elem_has_class(it, "ov-badge")) continue;
                 it->x = x; it->y = yy + (maxh - it->h) / 2;
                 x += it->w + gap;
                 it->nav_index = ++g_n_nav;
                 g_nav[g_n_nav - 1] = it;
             }
             yy += maxh;
+            for (k = 0; k < ov->n_children; k++) {               /* readout line(s): text class ov-readout, between the slots and the typed line (the desk's blank band) */
+                Elem *t = ov->children[k];
+                if (strcmp(t->tag, "text") != 0 || !elem_has_class(t, "ov-readout")) continue;
+                css_compute_style(&g_sheet, t->tag, t->id, t->classes, t->n_classes, 0, &t->style);
+                t->x = x0 + pad4; t->y = yy; t->w = stripw - 2 * pad4; t->h = rowh; t->nav_index = 0;
+                yy += rowh;
+            }
             for (k = 0; k < ov->n_children; k++) {               /* typed line(s) */
                 Elem *t = ov->children[k];
                 if (strcmp(t->tag, "cli_io") != 0) continue;
