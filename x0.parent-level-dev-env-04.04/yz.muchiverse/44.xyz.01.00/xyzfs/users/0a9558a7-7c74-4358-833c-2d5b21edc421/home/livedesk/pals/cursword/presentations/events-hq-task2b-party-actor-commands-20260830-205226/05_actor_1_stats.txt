@@ -1,9 +1,0 @@
-profile=Guardian of the North
-nickname=Hel
-name=Officer Helena
-hp=9999
-mp=9999
-tp=9999
-exp=120
-level=2
-class_id=2

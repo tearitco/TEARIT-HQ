@@ -1,3 +1,0 @@
-input_number_value=5
-input_number_var=hp
-input_number_digits=1

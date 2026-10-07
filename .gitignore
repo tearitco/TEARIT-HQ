@@ -186,3 +186,6 @@ x0.parent-level-dev-env-04.04_*.7z
 **/inventory/zz.phone/history.txt
 **/inventory/zz.phone/*.[0-9].txt
 ^.hai-server/ledger*.txt
+
+# per-user desk data lives on user/<name> data branches, not in code history (Q007, USER-DATA-BRANCHES-DESIGN.md)
+**/xyzfs/users/

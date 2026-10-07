@@ -1,1 +1,0 @@
-play_event: done m8_redhorned (page_2, trigger=on-spawn)

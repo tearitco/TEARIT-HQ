@@ -1,8 +1,0 @@
-POINTER MANIFEST — real presentation media lives outside this repo
-====================================================================
-Test: events-hq-task2-test-20260826-211501
-Archived: 2026-08-27
-Real location: /home/no/Desktop/🧩️Piecemark-IT/中.SP_00.00/🗡️.crswrd.media-archive/August-26/events-hq-task2-test-20260826-211501/
-Contains: MP4 (TTS narration), PNG snapshots, manifest.txt, summary.txt
-Reason: keeps this git repo free of media file weight - see
-_.0.aigent-testing-k9.txt's presentation-archive convention.

@@ -1,7 +1,0 @@
-[08:47:26] === TEST: H8 Play button direct action.txt injection ===
-[08:47:26] Initial inventory: qolq=0
-[08:47:26] Writing play action to /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/m8_redhorned/event_pkg/.hq_manager/action.txt
-[08:47:36] ❌ FAIL: h8_play_button: Gold value never reached 35 after Play action
-[08:47:36] Final inventory: qolq=0
-[08:47:36] Action file: play
-[08:47:36] 

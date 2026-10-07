@@ -1,3 +1,0 @@
-PASS: real PNG produced and asserted genuine size: /tmp/events-hq-frame.png (20136 bytes)
-PASS: PAL verdict: done=1 pass=1 (archive /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/pal/presentations/events-hq-visible-window-20260827-215519)
-FAIL: stray render process(es) after cleanup: 755139

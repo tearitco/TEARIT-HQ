@@ -1,3 +1,0 @@
-item_id=stick
-pos_x=8
-pos_y=2

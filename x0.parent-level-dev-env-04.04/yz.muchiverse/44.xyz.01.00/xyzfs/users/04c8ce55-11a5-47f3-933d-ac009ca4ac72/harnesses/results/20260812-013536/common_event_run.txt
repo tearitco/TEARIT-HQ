@@ -1,1 +1,0 @@
-play_event: done common_events (page_1, trigger=on-click)
