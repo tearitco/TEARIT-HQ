@@ -1,0 +1,27 @@
+# event.pal - Feed page 2 (pantry empty, coins >= price): buy one apple, coins -= price, last_feed 2 = bought
+# hand-written in the registry PAL shape (relative paths; event_page_op runs it with cwd = the entity state dir)
+li x15, 6
+li x13, 0
+ecall "food_prices.pdl" "apple"
+addi x2, x12, 0
+li x15, 6
+li x13, 0
+ecall "variables.txt" "coins"
+_l1:
+beq x2, x0, _d1
+addi x12, x12, -1
+addi x2, x2, -1
+j _l1
+_d1:
+li x15, 7
+ecall "variables.txt" "coins"
+li x15, 6
+li x13, 0
+ecall "items.txt" "item_apple"
+addi x12, x12, 1
+li x15, 7
+ecall "items.txt" "item_apple"
+li x15, 7
+li x12, 2
+ecall "variables.txt" "last_feed"
+halt

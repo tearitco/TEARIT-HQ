@@ -1,0 +1,18 @@
+# event.pal - Day Tick page 5 (starving, HP >= hp_loss+1): change_hp -hp_loss
+# hand-written in the registry PAL shape (relative paths; event_page_op runs it with cwd = the entity state dir)
+li x15, 6
+li x13, 0
+ecall "needs_tunables.pdl" "hp_loss"
+addi x2, x12, 0
+li x15, 6
+li x13, 0
+ecall "actor_1_stats.txt" "hp"
+_l1:
+beq x2, x0, _d1
+addi x12, x12, -1
+addi x2, x2, -1
+j _l1
+_d1:
+li x15, 7
+ecall "actor_1_stats.txt" "hp"
+halt

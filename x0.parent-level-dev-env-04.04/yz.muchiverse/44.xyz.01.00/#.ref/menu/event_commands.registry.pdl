@@ -104,6 +104,22 @@ COMMAND control_variable
   PAL ecall "{STATE_DIR}/variables.txt" "{var_name}"
 END
 
+# RPG Maker "Control Variables" with the ADD operation (2026-10-07, digipet build): control_variable above only SETS. Same get/addi/set
+# shape as change_items/change_hp; negative {amount} subtracts. A tunable-sized step has no registry form (addi takes a literal): see
+# &.widgits/digipet/README.md "idioms".
+COMMAND change_variable
+  LABEL Change Variable (add)
+  FIELD1 Variable name:
+  FIELD2 Amount (+/-):
+  PARAMS var_name,amount
+  PAL li x15, 6
+  PAL li x13, 0
+  PAL ecall "{STATE_DIR}/variables.txt" "{var_name}"
+  PAL addi x12, x12, {amount}
+  PAL li x15, 7
+  PAL ecall "{STATE_DIR}/variables.txt" "{var_name}"
+END
+
 COMMAND call_common_event
   LABEL Call Common Event
   FIELD1 Target event name:

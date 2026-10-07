@@ -1,0 +1,6 @@
+# event.pal - Feed page 6 (hunger < hungry_at while Hungry): clear the Hungry state
+# hand-written in the registry PAL shape (relative paths; event_page_op runs it with cwd = the entity state dir)
+li x15, 7
+li x12, 0
+ecall "actor_states.txt" "state_1:1"
+halt

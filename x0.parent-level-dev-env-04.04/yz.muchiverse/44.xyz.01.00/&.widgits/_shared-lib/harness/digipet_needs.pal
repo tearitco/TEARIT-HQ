@@ -1,0 +1,4 @@
+# digipet_needs.pal - the first NEEDS loop (hunger/Hungry/HP floor/Feed/clock wiring/save-load), see cases/digipet_needs.pdl.
+exec ./ops/+x/harness_case_op.+x cases/digipet_needs.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/digipet_needs.pdl
+halt

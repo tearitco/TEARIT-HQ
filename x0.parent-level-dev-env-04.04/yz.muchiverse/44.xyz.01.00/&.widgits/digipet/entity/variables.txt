@@ -1,0 +1,5 @@
+hunger=0
+coins=30
+days=0
+last_feed=1
+fed_total=0

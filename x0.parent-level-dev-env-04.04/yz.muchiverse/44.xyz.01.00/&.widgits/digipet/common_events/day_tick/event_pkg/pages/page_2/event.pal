@@ -1,0 +1,6 @@
+# event.pal - Day Tick page 2 (hunger >= hungry_at): change_state 1:1 = Hungry
+# hand-written in the registry PAL shape (relative paths; event_page_op runs it with cwd = the entity state dir)
+li x15, 7
+li x12, 1
+ecall "actor_states.txt" "state_1:1"
+halt
