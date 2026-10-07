@@ -59,4 +59,14 @@ The engine **refuses and logs** (ledger row: mode, target, who asked), nothing m
 - `&.widgits/_shared-lib/khtpm_game_setup.c`: the text-include parser and the four checks (`gs_load`, `gs_map_available`, `gs_cell_visible`, `gs_edit_allowed`). **No consumer includes it yet**, so nothing existing changed behaviour.
 - `&.widgits/_shared-lib/tests/test_game_setup.c`: 19 checks on scratch files (every row type, comments/unknown rows, missing file, legacy defaults, mode/where combination, edit rules, capacity clamp). Run: `gcc -Wall -Wextra -o /tmp/tgs tests/test_game_setup.c && /tmp/tgs`.
 
-Next in the build order (section 5): the `MAP` check in the desk-switch op, the third mode value, then cells in the taskbars.
+## 8. Step 2 built (2026-10-07): the map access check
+
+- **Shared helpers** in `khtpm_game_setup.c`: `gs_current_mode(house)` (reads `#.desktop/khtpm_play_mode.state.txt`: `mode=on` -> `play`, `mode=playtest` -> `playtest` (reserved, nothing writes it yet), anything else/missing -> `build`) and `gs_check_map_switch(house, session_dir, target, reason, n)`.
+  It refuses **only** in a play mode when `<session_dir>/game.pdl` lists at least one `MAP` and the target is not listed; every other case allows. A refusal appends one line to **`#.desktop/game_access_ledger.txt`**: `<epoch_ms>|refused-map|<mode>|<target>|<session dir>`.
+- **Event teleport**: `&.widgits/events-hq/ops/mr_transfer_desk.c` calls it **before it closes anything**, so a refused teleport leaves the player exactly where they were. Exit code **3** and one stdout line `refused: map '<x>' is not available in play`; the event can branch on that (section 4). Allowed: exit 0 as before.
+- **Menu switch**: `khtpm_taskbar_manager.c`, the `livedesk:switch-desk:<session>/<desk>` handler, skips `livedesk_switch_desk` when refused (the menu closes as usual). The delete-desk path that switches internally is not a player teleport and is unchanged. The manager's hash list in `build_khtpm_strip.sh` now includes `khtpm_game_setup.c`.
+- **Tests**: `tests/test_game_setup.c` 28/28 (adds mode reader, refusal, ledger append-only, no game.pdl). `&.widgits/events-hq/ops/test_transfer_map_access.sh` 8/8 against the real op on a **scratch house** (legacy house allowed; play+unlisted refused rc=3 with reason, player stays, ledgered; play+listed allowed; build ignores the list; missing mode file = build; game.pdl without MAP rows unrestricted). The previous op fails exactly the three refusal checks, so the test discriminates.
+- **Not yet exercised**: the taskbar menu path through the real manager UI (code is a four-line guard around the existing call; the running manager is still the old binary until the taskbar restarts). The free book/page tabs are not yet hidden in play modes (build step 4). Nobody writes `mode=playtest` yet (step 3).
+- Build note: one extra compiler warning appears in the manager (124 -> 125), inside the existing `livedesk_session_dir` (a `%s/%s` truncation notice), only because my new call site lets the compiler inline it. The new code itself adds none.
+
+Next: the third mode value (`playtest`) and its four readers, then cells in the taskbars.

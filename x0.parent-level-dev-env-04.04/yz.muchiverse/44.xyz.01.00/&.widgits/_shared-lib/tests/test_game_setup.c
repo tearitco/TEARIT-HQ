@@ -1,6 +1,7 @@
 /* test_game_setup.c - build+run: gcc -Wall -o /tmp/tgs tests/test_game_setup.c && /tmp/tgs   (scratch files only) */
 #include "../khtpm_game_setup.c"
 #include <unistd.h>
+#include <sys/stat.h>
 static int fails;
 #define CK(name, cond) do { if (cond) printf("PASS|%s\n", name); else { printf("FAIL|%s\n", name); fails = 1; } } while (0)
 int main(void) {
@@ -42,6 +43,31 @@ int main(void) {
     f = fopen(path, "w"); for (int i = 0; i < 100; i++) fprintf(f, "MAP | m%d | available | 1\n", i); for (int i = 0; i < 100; i++) fprintf(f, "CELL | c%d | c | modes=play\n", i); fclose(f);
     gs_load(path, &g);
     CK("capacity clamp (64 maps, 64 cells), no crash", g.n_maps == 64 && g.n_cells == 64);
+    /* one-call helpers on a scratch house */
+    {
+        char house[] = "/tmp/gs_house_XXXXXX"; char buf[1200], reason[200]; int ok;
+        if (!mkdtemp(house)) return 2;
+        snprintf(buf, sizeof buf, "%s/#.desktop", house); mkdir(buf, 0755);
+        snprintf(buf, sizeof buf, "%s/sess", house); mkdir(buf, 0755);
+        snprintf(buf, sizeof buf, "%s/sess/game.pdl", house); f = fopen(buf, "w"); fputs("MAP | town | available | 1\n", f); fclose(f);
+        snprintf(buf, sizeof buf, "%s/sess", house);
+        CK("no mode file = build: any map allowed", gs_check_map_switch(house, buf, "cave", reason, sizeof reason) == 1);
+        { char mp[1200]; snprintf(mp, sizeof mp, "%s/#.desktop/khtpm_play_mode.state.txt", house); f = fopen(mp, "w"); fputs("mode=off\n", f); fclose(f);
+          CK("mode=off = build: allowed", gs_check_map_switch(house, buf, "cave", reason, sizeof reason) == 1 && !strcmp(gs_current_mode(house), "build"));
+          f = fopen(mp, "w"); fputs("mode=on\n", f); fclose(f); }
+        CK("mode=on reads as play", !strcmp(gs_current_mode(house), "play"));
+        CK("play: listed map allowed, no ledger line", gs_check_map_switch(house, buf, "town", reason, sizeof reason) == 1);
+        { char lp[1200]; snprintf(lp, sizeof lp, "%s/#.desktop/game_access_ledger.txt", house); CK("no ledger yet", access(lp, F_OK) != 0);
+          ok = gs_check_map_switch(house, buf, "cave", reason, sizeof reason);
+          CK("play: unlisted map refused with a reason", ok == 0 && strstr(reason, "cave") && strstr(reason, "play"));
+          { char l[400] = ""; FILE *lf = fopen(lp, "r"); if (lf) { if (!fgets(l, sizeof l, lf)) l[0] = 0; fclose(lf); }
+            CK("refusal appended one ledger line", strstr(l, "|refused-map|play|cave|") != NULL); }
+          gs_check_map_switch(house, buf, "hall", reason, sizeof reason);
+          { int n = 0; char l[400]; FILE *lf = fopen(lp, "r"); while (lf && fgets(l, sizeof l, lf)) n++; if (lf) fclose(lf); CK("ledger is append-only (2 lines)", n == 2); } }
+        snprintf(buf, sizeof buf, "%s/nogame", house); mkdir(buf, 0755);
+        CK("play but no game.pdl: allowed (existing houses unchanged)", gs_check_map_switch(house, buf, "cave", reason, sizeof reason) == 1);
+        snprintf(buf, sizeof buf, "rm -rf %s", house); if (system(buf)) {}
+    }
     unlink(path);
     printf("VERDICT|%s\n", fails ? "FAIL" : "PASS");
     return fails;

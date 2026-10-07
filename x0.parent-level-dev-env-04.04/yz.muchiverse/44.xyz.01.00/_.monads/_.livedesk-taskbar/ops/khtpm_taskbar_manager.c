@@ -46,6 +46,7 @@
 /* Q005 (HAI-ROBOTS-PHONES-SERVER-DESIGN.md 3b): every entity gets a phone item at <entity>/inventory/zz.phone and an immutable entity_uid.txt.
  * Text-included canonical helper, same pattern as the other _shared-lib .c files; listed in MGR_SRCS so editing it rebuilds this binary. */
 #include "khtpm_phone.c"
+#include "khtpm_game_setup.c"   /* gs_check_map_switch: play-mode map access (GAME-SETUP-PDL-DESIGN.md) */
 static PhCtx s_phone_ctx;
 /* Idempotent. Steady state costs a handful of stat/read calls per entity (nothing is written when the phone and uid already exist). */
 static void livedesk_phone_ensure(const char *house_root, const char *entity_dir) {
@@ -5470,7 +5471,12 @@ void ktb_hq_activate(KtbState *s, int row) {
             char *slash = strchr(rest, '/');
             if (slash) {
                 *slash = '\0';
-                livedesk_switch_desk(s->house_root, sroot, rest, slash + 1);
+                {   /* play-mode map access: refused target = no switch (the menu closes as usual); build mode / no game.pdl / no MAP rows always allow */
+                    char gdir[KTB_PATH_BUF], why[200];
+                    livedesk_session_dir(sroot, rest, gdir, sizeof(gdir));
+                    if (gs_check_map_switch(s->house_root, gdir, slash + 1, why, sizeof why))
+                        livedesk_switch_desk(s->house_root, sroot, rest, slash + 1);
+                }
             }
         }
         ktb_hq_close(s);

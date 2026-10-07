@@ -17,7 +17,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <time.h>
 
+/* every function is static and may be unused by a given includer: no -Wunused-function noise */
+#define GS_FN static __attribute__((unused))
 #define GS_MAX_MAPS 64
 #define GS_MAX_CELLS 64
 #define GS_MAX_ROWS 256
@@ -35,20 +38,20 @@ typedef struct {
     char edits[GS_MAX_EDITS][GS_STR]; int n_edits;
 } GameSetup;
 
-static char *gs_trim(char *s) {
+GS_FN char *gs_trim(char *s) {
     char *e; while (*s == ' ' || *s == '\t') s++;
     e = s + strlen(s); while (e > s && (e[-1] == ' ' || e[-1] == '\t' || e[-1] == '\r' || e[-1] == '\n')) *--e = 0;
     return s;
 }
-static void gs_copy(char *d, size_t n, const char *s) { snprintf(d, n, "%s", s); }
+GS_FN void gs_copy(char *d, size_t n, const char *s) { snprintf(d, n, "%s", s); }
 /* "key=value" option lookup among the trailing fields */
-static const char *gs_opt(char **f, int nf, int from, const char *key) {
+GS_FN const char *gs_opt(char **f, int nf, int from, const char *key) {
     size_t kl = strlen(key);
     for (int i = from; i < nf; i++) if (!strncmp(f[i], key, kl) && f[i][kl] == '=') return f[i] + kl + 1;
     return NULL;
 }
 /* is `word` one of the comma-separated items of `list` */
-static int gs_list_has(const char *list, const char *word) {
+GS_FN int gs_list_has(const char *list, const char *word) {
     size_t wl = strlen(word); const char *p = list;
     while (*p) {
         const char *e = strchr(p, ','); size_t l = e ? (size_t)(e - p) : strlen(p);
@@ -62,7 +65,7 @@ static int gs_list_has(const char *list, const char *word) {
 }
 
 /* Returns 0 when the file was read, 1 when it is missing/unreadable (g stays zeroed with loaded=0 = build defaults). */
-static int gs_load(const char *path, GameSetup *g) {
+GS_FN int gs_load(const char *path, GameSetup *g) {
     char line[1024]; FILE *f;
     memset(g, 0, sizeof(*g));
     if (!path || !(f = fopen(path, "r"))) return 1;
@@ -99,14 +102,14 @@ static int gs_load(const char *path, GameSetup *g) {
     return 0;
 }
 
-static int gs_is_play(const char *mode) { return mode && (!strcmp(mode, "play") || !strcmp(mode, "playtest")); }
+GS_FN int gs_is_play(const char *mode) { return mode && (!strcmp(mode, "play") || !strcmp(mode, "playtest")); }
 
-static int gs_map_available(const GameSetup *g, const char *mode, const char *desk) {
+GS_FN int gs_map_available(const GameSetup *g, const char *mode, const char *desk) {
     if (!gs_is_play(mode) || !g->loaded || g->n_maps == 0) return 1;
     for (int i = 0; i < g->n_maps; i++) if (!strcmp(g->maps[i], desk)) return 1;
     return 0;
 }
-static int gs_cell_visible(const GameSetup *g, const char *mode, const char *place, const char *cell_id) {
+GS_FN int gs_cell_visible(const GameSetup *g, const char *mode, const char *place, const char *cell_id) {
     if (!gs_is_play(mode) || !g->loaded) return 1;
     for (int i = 0; i < g->n_cells; i++) {
         if (strcmp(g->cells[i].id, cell_id)) continue;
@@ -114,9 +117,49 @@ static int gs_cell_visible(const GameSetup *g, const char *mode, const char *pla
     }
     return 1;
 }
-static int gs_edit_allowed(const GameSetup *g, const char *mode, const char *id_or_path) {
+GS_FN int gs_edit_allowed(const GameSetup *g, const char *mode, const char *id_or_path) {
     if (!mode || !strcmp(mode, "play")) return 0;
     if (strcmp(mode, "playtest")) return 1;           /* build / unknown */
     for (int i = 0; i < g->n_edits; i++) if (!strcmp(g->edits[i], id_or_path)) return 1;
     return 0;
+}
+
+/* ---- one-call helpers for the real switch points (mr_transfer_desk, the taskbar menu) ---- */
+
+/* The house-wide play flag: #.desktop/khtpm_play_mode.state.txt, `mode=on|off`. Returns "play" for on, "playtest" for playtest (reserved: the third value is not
+ * written by anything yet), else "build". Missing file = build. */
+GS_FN const char *gs_current_mode(const char *house_root) {
+    char p[4400], l[128]; FILE *f; const char *r = "build";
+    snprintf(p, sizeof p, "%s/#.desktop/khtpm_play_mode.state.txt", house_root);
+    if ((f = fopen(p, "r"))) {
+        while (fgets(l, sizeof l, f)) {
+            char *v = gs_trim(l);
+            if (!strncmp(v, "mode=", 5)) { v += 5; if (!strcmp(v, "on")) r = "play"; else if (!strcmp(v, "playtest")) r = "playtest"; }
+        }
+        fclose(f);
+    }
+    return r;
+}
+
+/* May the player switch to desk `target` right now? 1 = yes, 0 = refused (reason filled). Refuses ONLY when the house is in a play mode AND sess_dir/game.pdl lists at least
+ * one available MAP and `target` is not among them; every other case (build mode, no game.pdl, no MAP rows) allows, so existing houses behave exactly as before.
+ * A refusal appends one line to #.desktop/game_access_ledger.txt: <epoch_ms>|refused-map|<mode>|<target>|<session dir>. */
+GS_FN int gs_check_map_switch(const char *house_root, const char *sess_dir, const char *target, char *reason, size_t rn) {
+    const char *mode = gs_current_mode(house_root); char gp[4400]; GameSetup *g; int ok;
+    if (reason && rn) reason[0] = 0;
+    if (!gs_is_play(mode)) return 1;
+    snprintf(gp, sizeof gp, "%s/game.pdl", sess_dir);
+    g = (GameSetup *)malloc(sizeof *g);
+    if (!g) return 1;                                      /* cannot check: never lock the player out */
+    if (gs_load(gp, g) != 0) { free(g); return 1; }
+    ok = gs_map_available(g, mode, target);
+    free(g);
+    if (!ok) {
+        char lp[4400]; FILE *f; struct timespec ts;
+        if (reason && rn) snprintf(reason, rn, "map '%s' is not available in %s", target, mode);
+        snprintf(lp, sizeof lp, "%s/#.desktop/game_access_ledger.txt", house_root);
+        clock_gettime(CLOCK_REALTIME, &ts);
+        if ((f = fopen(lp, "a"))) { fprintf(f, "%lld|refused-map|%s|%s|%s\n", (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000, mode, target, sess_dir); fclose(f); }
+    }
+    return ok;
 }

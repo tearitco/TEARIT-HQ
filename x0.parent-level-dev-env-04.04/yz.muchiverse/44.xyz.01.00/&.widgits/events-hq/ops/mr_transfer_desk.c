@@ -36,6 +36,7 @@
 #include <dirent.h>
 #include <unistd.h>
 #include <time.h>
+#include "../../_shared-lib/khtpm_game_setup.c"   /* gs_check_map_switch: play-mode map access (GAME-SETUP-PDL-DESIGN.md) */
 
 /* REAL FIX 2026-09-14, direct live report ("i just ran kill all bad
  * under proc mon and it killed castle and cursword. why did it think
@@ -285,6 +286,17 @@ int main(int argc, char **argv) {
         read_pdl_kv(sp, "active_desk", cur_active, sizeof(cur_active));
     }
     if (cur_active[0] && strcmp(cur_active, target_desk) == 0) return 0; /* already there - no-op */
+
+    /* Play-mode map access: in play/play-test only maps the game's sessions/<id>/game.pdl lists are reachable. Checked BEFORE anything is closed, so a refused
+     * teleport leaves the player exactly where they are. Exit 3 + one reason line on stdout lets the event branch on it (what the player sees is the event author's
+     * choice). Build mode, no game.pdl, or no MAP rows: always allowed, as before. The engine also appends a line to #.desktop/game_access_ledger.txt. */
+    {
+        char why[200];
+        if (!gs_check_map_switch(house_root, sess_dir, target_desk, why, sizeof why)) {
+            printf("refused: %s\n", why);
+            return 3;
+        }
+    }
 
     if (cur_active[0]) {
         char cur_desk_pdl[PB];
