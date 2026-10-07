@@ -1,0 +1,3 @@
+# dsr_day_tick: the body is the compiled op (the registry cannot express the price/auction arithmetic, see ops/dsr_day_tick.c header).
+# lc_clock calls LC_CLOCK_EVENT_RUNNER as `<bin> <pkg> <house>`; the house default runner (play_event.sh) cannot call it yet (README, gaps).
+RUNNER | &.widgits/dsr-sim/ops/+x/dsr_day_tick.+x
