@@ -126,12 +126,16 @@
            (show= drops it at parse). Feed: hotbar_manager, hb_ keys. -->
       <row id="hotbar-ov" class="canvas-overlay-bottom ov-chrome ov-slide-x pchq-hotbar theme" show="${hb_visible}">
         <text label="${hb_holder} - slot: ${hb_sel_name}" class="hb-quiet ov-title theme-3"/>
+        <!-- the holder's own picture (the xelector = the coloured cube, the mouse) at the left of the title line: display only (no nav number, slot digits unchanged). Gated: absent = hidden. class ov-badge: renderer overlay layout -->
+        <item id="hb-badge" class="ov-badge sprite-inline theme-3" label=" " sprite="${hb_holder_sprite}" action="void" show="${hb_holder_sprite}"/>
         <item id="hb-min" class="ov-min hb-slot theme-3" label="_"
-              action="sh '${HOUSE}/@.apps/hotbar-hq/ops/hotbar_toggle.sh' pchq '${HOUSE}/@.apps/piececraft-hq'"/>
+              action="sh '${HOUSE}/@.apps/hotbar-hq/ops/hotbar_toggle.sh' pchq '${HOUSE}/@.apps/piececraft-hq' hide"/>   <!-- HIDE, not toggle: two quick clicks must not cancel (owner, 2026-10-06); the bottom bar's "hotbar" cell shows it again -->
         <repeat count="${hb_n_slots}" bind="hb_s">
           <item id="hbs${hb_s.#}" class="hb-slot sprite-inline sprite-big ${hb_s.cls}" label="${hb_s.text}" sprite="${hb_s.sprite}"
                 action="'${HOUSE}/@.apps/hotbar-hq/ops/hotbar_action.sh' '${hb_s.#}' '${HOUSE}/@.apps/piececraft-hq/state/pchq'"/>
         </repeat>
+        <!-- terminal readout line between the slots and the command field (the desk's blank band); v1 = the last command typed. class ov-readout: renderer overlay layout. Gated on hb_readout_on, published only by the NEW manager, so a board still running the old renderer never sees an extra title line. -->
+        <text id="hb-readout" class="hb-quiet ov-readout" label="${hb_readout}" show="${hb_readout_on}"/>
         <cli_io id="hbcmd" target_id="hbcmd" class="hb-cli" label="&gt; "
                 action="'${HOUSE}/@.apps/hotbar-hq/ops/hotbar_cli.sh' 'pchq'"/>
       </row>

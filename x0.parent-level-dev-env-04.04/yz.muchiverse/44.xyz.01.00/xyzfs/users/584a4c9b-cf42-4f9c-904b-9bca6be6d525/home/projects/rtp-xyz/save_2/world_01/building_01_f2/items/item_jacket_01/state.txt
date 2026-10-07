@@ -1,3 +1,0 @@
-item_id=jacket
-pos_x=11
-pos_y=7

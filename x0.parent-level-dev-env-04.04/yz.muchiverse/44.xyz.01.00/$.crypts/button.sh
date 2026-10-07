@@ -89,6 +89,9 @@ read_restore_mode() {
 
 case "$ACTION" in
     run|r|start|restart)
+        sh "$SCRIPT_DIR/livedesk-icon-refresh.sh" </dev/null >/dev/null 2>&1 &   # icon follows the current theme colors
+        # close what restart's own sweep does not know (hotbar, board windows ...): close_on_restart.pdl. Without this the OLD hotbar survived a restart and the new one never showed.
+        sh "$SCRIPT_DIR/close_listed.sh" "$HOUSE" || true
         # restart == run: use the restore feature only when explicitly enabled in autostart.pdl
         if [ "$(read_restore_mode)" = "1" ] && [ -f "$RESTORE" ] && [ -x "$SCRIPT_DIR/scrypts/openall/run.sh" ]; then
             "$SCRIPT_DIR/scrypts/openall/run.sh"
@@ -101,6 +104,7 @@ case "$ACTION" in
     quit|close)
         # Kill all running toolbars and entities (no relaunch)
         all_khtpm_and_hq_pids | xargs -r kill -TERM
+        sh "$SCRIPT_DIR/close_listed.sh" "$HOUSE" || true   # processes listed in close_on_restart.pdl that the pattern kill does not know
         sleep 1
         # REAL, MERGED 2026-09-28: all_khtpm_and_hq_pids() (ee6afba47,
         # main) generically catches every HQ app manager compiled to
@@ -115,6 +119,12 @@ case "$ACTION" in
         [ -x "$HOUSE/&.hq-apps/world-manager/button.sh" ] && \
             "$HOUSE/&.hq-apps/world-manager/button.sh" kill 2>/dev/null || true
         echo "closed all toolbars, entities, HQ app managers, and world_manager"
+        # desk data is not in code history any more (Q007): commit it to the user/<name> data branches now that the data is quiet (local only, never pushed)
+        [ -f "$SCRIPT_DIR/save-user-data.sh" ] && bash "$SCRIPT_DIR/save-user-data.sh" -q || true
+        ;;
+    save-data)
+        # commit every desk user's data folder to its own local data branch (user/jb, ...); idempotent; see save-user-data.sh
+        bash "$SCRIPT_DIR/save-user-data.sh"
         ;;
     build|rebuild)
         # Compile EVERY house program (compile-runner.sh: each project's own
@@ -124,9 +134,15 @@ case "$ACTION" in
         # argument limits it to scripts whose path contains that text, e.g.
         #   sh button.sh build board-viewer
         shift
+        # fresh clone: xyzfs/users is not tracked (Q007), so give the current user their starter files first (copy-if-missing, never overwrites)
+        [ -f "$SCRIPT_DIR/seed-user.sh" ] && bash "$SCRIPT_DIR/seed-user.sh" -q || true
         DISPLAY="${DISPLAY:-:0}" nice -n 15 bash "$SCRIPT_DIR/compile-runner.sh" "$@"
         ;;
+    seed-user)
+        bash "$SCRIPT_DIR/seed-user.sh"
+        ;;
     reset)
+        sh "$SCRIPT_DIR/livedesk-icon-refresh.sh" </dev/null >/dev/null 2>&1 &   # icon follows the current theme colors
         # Guaranteed-clean kill-everything-then-relaunch — for when the
         # normal autostart sweep (crypt_autostart's own /proc scan, which
         # only matches known taskbar/entity process names) isn't enough,
@@ -136,6 +152,7 @@ case "$ACTION" in
         # LAUNCH rows own the tool-bar AND all entity paths, no hardcoded
         # entity list duplicated here).
         all_khtpm_and_hq_pids | xargs -r kill -TERM
+        sh "$SCRIPT_DIR/close_listed.sh" "$HOUSE" || true   # processes listed in close_on_restart.pdl that the pattern kill does not know
         sleep 1
         all_khtpm_and_hq_pids | xargs -r kill -KILL 2>/dev/null || true
         # world_manager's own prisc+x loop isn't caught by the generic
@@ -143,6 +160,8 @@ case "$ACTION" in
         # explicitly here too.
         [ -x "$HOUSE/&.hq-apps/world-manager/button.sh" ] && \
             "$HOUSE/&.hq-apps/world-manager/button.sh" kill 2>/dev/null || true
+        # desk data is not in code history any more (Q007): snapshot it to the local data branches while the data is quiet (a few seconds, never blocks the reset)
+        [ -f "$SCRIPT_DIR/save-user-data.sh" ] && bash "$SCRIPT_DIR/save-user-data.sh" -q || true
         # REAL FIX 2026-09-21, direct instruction ("i dont want it to run
         # the old binaries if theres a compile fail or it may mislead me
         # into thinking things are ok, when they aren't"): this used to
@@ -202,6 +221,32 @@ case "$ACTION" in
     check)
         [ -x "$BIN" ] && echo "OK $BIN" || echo "MISSING $BIN"
         [ -f "$PDL" ] && echo "OK $PDL" || echo "MISSING $PDL"
+        ;;
+    install-app)
+        # A normal Linux app + desktop launcher for livedesk (replaces the bare start-temp ELF): PNG icon, Terminal=false, shows in
+        # the app grid and on the Desktop. Generated for THIS checkout's location, never committed (no absolute paths in git);
+        # re-run after moving the checkout.
+        _icon_dir="$HOME/.local/share/icons/hicolor/256x256/apps"
+        _df="$HOME/.local/share/applications/livedesk.desktop"
+        mkdir -p "$_icon_dir" "$HOME/.local/share/applications"
+        # the icon is drawn from the CURRENT livedesk_theme.pdl colors (re-run install-app after changing the theme);
+        # no Pillow -> the shipped livedesk-icon-256.png
+        python3 "$SCRIPT_DIR/livedesk-icon-gen.py" "$HOUSE" "$_icon_dir/livedesk.png" 256 \
+            || cp "$SCRIPT_DIR/livedesk-icon-256.png" "$_icon_dir/livedesk.png"
+        # Exec must be quoted, with $ ` " \ escaped (the house folder is literally named "$.crypts"; the keyfile also doubles the backslash)
+        _exec="$(printf '%s' "$SCRIPT_DIR/livedesk-launch.sh" | sed 's/[$`"\\]/\\\\&/g')"
+        printf '%s\n' '[Desktop Entry]' 'Version=1.0' 'Type=Application' 'Name=Livedesk' \
+            'Comment=Start the livedesk desktop (taskbar, entities, autostart)' \
+            "Exec=\"$_exec\"" "Icon=$_icon_dir/livedesk.png" \
+            'Terminal=false' 'StartupNotify=false' 'Categories=Utility;' > "$_df"
+        chmod +x "$_df"
+        echo "installed app entry: $_df"
+        if [ -d "$HOME/Desktop" ]; then
+            cp "$_df" "$HOME/Desktop/Livedesk.desktop"; chmod +x "$HOME/Desktop/Livedesk.desktop"
+            command -v gio >/dev/null 2>&1 && gio set "$HOME/Desktop/Livedesk.desktop" metadata::trusted true 2>/dev/null
+            echo "installed desktop launcher: $HOME/Desktop/Livedesk.desktop (right-click > Allow Launching if it shows a gear icon)"
+        fi
+        command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$HOME/.local/share/applications" 2>/dev/null
         ;;
     install-xdg)
         mkdir -p "$HOME/.config/autostart"
@@ -275,6 +320,7 @@ EOF
   sh button.sh status         # show current enabled state + running processes
   sh button.sh compile        # rebuild ops/+x/crypt_autostart.+x
   sh button.sh check          # verify binary + pdl exist
+  sh button.sh install-app    # Linux app + Desktop launcher 'Livedesk' with a PNG icon (runs livedesk-launch.sh)
   sh button.sh install-xdg    # install the real XDG autostart .desktop file
                                # (real login-time autostart - one-time setup)
   sh button.sh install-desktop [name]  # themed app-grid shortcut in

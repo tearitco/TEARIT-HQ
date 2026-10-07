@@ -32,7 +32,8 @@
         <repeat count="${sessions_count}" bind="session">
           <item id="s${session.#}" class="session-item" label="${session.label}"
                 action="'${PKG}/ops/ch_item.sh' 'SWITCH ${session.name}'"
-                backspace_action="'${PKG}/ops/ch_item.sh' 'DELETE ${session.name}'"/>
+                backspace_action="'${PKG}/ops/ch_item.sh' 'DELETE ${session.name}'"
+                confirm="Delete session ${session.label}?"/>
         </repeat>
       </scrolllist>
     </sidebar>

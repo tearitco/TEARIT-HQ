@@ -1,0 +1,5 @@
+# the ghost roster: rows = ^.ghost/roster/<ghost>/ folders (names starting with _ are templates), detail = the tail of that ghost's history.txt
+BOARD  | title    | Ghost roster
+BOARD  | subtitle | ^.ghost roster
+SOURCE | dirs     | ^.ghost/roster
+DETAIL | dir-file-tail | history.txt | 14

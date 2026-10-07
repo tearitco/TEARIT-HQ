@@ -1,3 +1,0 @@
-item_id=apple
-pos_x=20
-pos_y=13

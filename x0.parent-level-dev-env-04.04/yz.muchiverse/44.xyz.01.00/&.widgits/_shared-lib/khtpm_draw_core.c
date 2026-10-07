@@ -153,6 +153,11 @@ typedef struct {
  * smallest stamp is the one nothing has touched longest. */
 #define HQ_SPRITE_CACHE_N 512
 static HqSprite g_hq_sprite_cache[HQ_SPRITE_CACHE_N];
+/* startup-cost counters (owner 2026-10-06: bottom bar entity cells ~20 s to draw; is it sprite load or blit?). Read by the dock's
+ * boot-timeline mark in khtpm_core_render.c; two clock_gettime calls per cell per paint - negligible. */
+static double g_hqs_blit_ms = 0, g_hqs_load_ms = 0;
+static int g_hqs_blits = 0, g_hqs_loads = 0;
+static double hqs_now_ms(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return t.tv_sec * 1000.0 + t.tv_nsec / 1e6; }
 static long g_hq_sprite_tick = 0;
 
 static HqSprite *hq_sprite(const char *dir) {
@@ -179,6 +184,7 @@ static HqSprite *hq_sprite(const char *dir) {
             return &g_hq_sprite_cache[i];
         }
     }
+    double _hqs_t0 = hqs_now_ms();
     FILE *f = fopen(csv_path, "r");
     if (!f) return NULL;
     char line[256];
@@ -226,6 +232,7 @@ static HqSprite *hq_sprite(const char *dir) {
     g_hq_sprite_cache[slot].res = res;
     g_hq_sprite_cache[slot].mtime = mt;
     g_hq_sprite_cache[slot].last_used = ++g_hq_sprite_tick;
+    g_hqs_load_ms += hqs_now_ms() - _hqs_t0; g_hqs_loads++;
     return &g_hq_sprite_cache[slot];
 }
 
@@ -1278,7 +1285,10 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                         ? (e->y + pad_s)
                         : (e->y + (e->h - px) / 2);
                 }
-                hq_blit_sprite(sp, blit_x, blit_y, px, bg_pixel, !e->style.has_bg_color);
+                {   double _b0 = hqs_now_ms();
+                    hq_blit_sprite(sp, blit_x, blit_y, px, bg_pixel, !e->style.has_bg_color);
+                    g_hqs_blit_ms += hqs_now_ms() - _b0; g_hqs_blits++;
+                }
                 drew_sprite = 1;
             }
         }

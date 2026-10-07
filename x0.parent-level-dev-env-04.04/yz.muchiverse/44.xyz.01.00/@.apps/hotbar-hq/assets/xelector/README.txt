@@ -1,0 +1,1 @@
+xelector (the pc-hq mouse cursor cube). Generated 2026-10-06: an isometric teal cube, 64x64, same csv shape as the house sprites. The hotbar manager falls back to assets/<entity_type>/ for a piece that has no sprite.csv of its own (see hotbar_manager.c publish()).

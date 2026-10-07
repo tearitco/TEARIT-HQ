@@ -29,6 +29,7 @@
  * delivers the new colours live to every window with no build and no
  * restart. */
 #include <stdio.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -120,6 +121,20 @@ int main(int argc, char **argv) {
     FILE *mf = fopen(marker, "a");
     if (mf) { fprintf(mf, "%s %s\n", bg_hex, fg_hex); fclose(mf); }
     else fprintf(stderr, "apply_theme_op: WARN cannot append %s\n", marker);
+
+    /* The Livedesk app icon follows the theme: redraw it in the new colors right now (owner 2026-10-06: "hook it to theme apply").
+     * Detached and silent - the theme apply never waits on it; the helper is a no-op when no app icon is installed or Pillow is missing.
+     * Same helper every start path uses (house/$.crypts/livedesk-icon-refresh.sh). */
+#ifndef _WIN32
+    {
+        char helper[PATH_BUF], cmd[PATH_BUF * 2];
+        snprintf(helper, sizeof(helper), "%s/$.crypts/livedesk-icon-refresh.sh", house_root);
+        if (access(helper, F_OK) == 0) {
+            snprintf(cmd, sizeof(cmd), "sh '%s' debounce </dev/null >/dev/null 2>&1 &", helper);
+            int rc = system(cmd); (void)rc;
+        }
+    }
+#endif
 
     fprintf(stderr, "apply_theme_op: wrote %s (bg=%s fg=%s), bumped theme-changed marker\n", path, bg_hex, fg_hex);
     return 0;

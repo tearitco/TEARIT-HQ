@@ -843,3 +843,11 @@ COMMAND change_encounter
   PAL li x12, {enabled}
   PAL ecall "{STATE_DIR}/system_flags.txt" "encounter_enabled"
 END
+
+COMMAND phone_send
+  LABEL Phone: Send Message
+  FIELD1 To number (NNN-NNNN-NNNN):
+  FIELD2 Text:
+  PARAMS to,text
+  TEMPLATE exec "$D/&.widgits/_shared-lib/ops/+x/phone_send_op.+x" "$ENT/inventory/zz.phone" '{to}' say '' '{text}'
+END

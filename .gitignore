@@ -149,3 +149,72 @@ x0.parent-level-dev-env-04.04_*.7z
 # per-machine window override, do not commit your default_win_w/h - keep it local
 *.local.pdl
 # hq_ui.local.pdl per-machine window size, see MACHINE-SPECIFIC-WINDOW-SIZING-2026-09-25.md
+
+# ── SECRETS: provider API keys (2026-10-01) ──────────────────────────
+# &.widgits/open-hai/state/ was tracked in full, which swept TWO live
+# provider keys into git in plaintext:
+#   openrouter_api_key.txt
+#   tokenrouter_api_key.txt
+# AGENTS.md forbids committing keys. They are `git rm --cached`ed below
+# (files stay on disk) in the same commit that adds this block, matching
+# the house convention already used for the ascii_frames / strip_ascii
+# blocks above. NOTE: this only stops FUTURE commits - both keys are
+# already in history (first tracked in 5a4164334) and in the origin
+# remote, so they need ROTATING, not just untracking.
+**/&.widgits/open-hai/state/*_api_key.txt
+**/state/*_api_key.txt
+**/*_api_key.txt
+
+# Provider keys whose filenames do not follow the *_api_key.txt naming
+# convention. raw_poolside.txt is a DIRECT Poolside key (prefix "sky-"),
+# which cannot authenticate against OpenRouter - see the Poolside backend
+# in ^.hai-horn. Untracked as of 2026-10-01, matched explicitly here so a
+# stray `git add -A` cannot publish it.
+**/state/raw_poolside.txt
+**/raw_poolside.txt
+
+# Raw provider keys that match NEITHER *_api_key.txt nor the explicit
+# raw_poolside.txt rule above. Matching by name is whack-a-mole - a new
+# key file has been created for each provider so far and every one needed
+# its own line. Rule: any file under a state/ dir whose name starts with
+# "raw_" is a pasted secret.
+**/state/raw_*.txt
+
+# phone ledgers (runtime history, grows forever; design HAI-ROBOTS-PHONES-SERVER-DESIGN.md 3b). The skeleton (pal.pdl, phone.pdl) and entity_uid.txt ARE tracked.
+**/inventory/zz.phone/inbox.txt
+**/inventory/zz.phone/outbox.txt
+**/inventory/zz.phone/history.txt
+**/inventory/zz.phone/*.[0-9].txt
+^.hai-server/ledger*.txt
+
+# per-user desk data lives on user/<name> data branches, not in code history (Q007, USER-DATA-BRANCHES-DESIGN.md)
+**/xyzfs/users/
+
+# per-desk renderer state (bottom dock rows, hotbar slide offset): runtime, not code (Q007 3d)
+**/#.desktop/dock_state.pdl
+**/#.desktop/slide_offsets.pdl
+
+# server router runtime state (Q009): decisions log, cursors; the ledger is already ignored above
+^.hai-server/observations.log
+^.hai-server/cursors.txt
+
+# human input demonstrations log (renderer, real X events only; local, may contain typed text)
+**/#.desktop/human_input/
+
+# phone router loop runtime (Q009): generated pal, pid, log, compiled prisc+x
+^.hai-server/router.run.pal
+^.hai-server/router.pid
+^.hai-server/router.log
+^.hai-server/system/
+
+# board-hq runtime (Q006): published vars, selection, module pid
+@.apps/board-hq/state/*/ui.txt
+@.apps/board-hq/state/*/selected.txt
+@.apps/board-hq/module_parent.pid
+
+# board-hq runtime (anchored with **/ - the app sits under x0.../44.xyz.01.00/)
+**/@.apps/board-hq/state/*/ui.txt
+**/@.apps/board-hq/state/*/selected.txt
+**/@.apps/board-hq/state/*/window.pid
+**/@.apps/board-hq/module_parent.pid
+**/@.apps/board-hq/.hq_manager/

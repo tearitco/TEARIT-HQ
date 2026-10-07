@@ -23,5 +23,6 @@ for p in $(pgrep -f "khtpm_core_render\.\+x .*hotbar-$MODE\.xhtpm" 2>/dev/null |
          $(pgrep -f "hotbar_manager\.\+x .*$MODE" 2>/dev/null || true); do kill "$p" 2>/dev/null || true; done
 sleep 0.3
 setsid nohup "$BIN" "$HOUSE_ROOT" "$XHTPM" >"/tmp/hotbar-$MODE.log" 2>&1 < /dev/null &
-printf '%s %s 0 0 hotbar-%s\n' "$!" "$!" "$MODE" >> "$HOUSE_ROOT/#.desktop/livedesk_proc_list.txt" 2>/dev/null || true
+# real starttime/pgid so the C reaper does not skip it on quit/restart (a "0 0" line is ignored by its PID-reuse guard; the hotbar survived restarts because of that)
+sh "$HOUSE_ROOT/&.widgits/_shared-lib/ops/proc_ledger_add.sh" "$HOUSE_ROOT" "$!" "hotbar-$MODE"
 echo "open_hotbar: $MODE hotbar launched"

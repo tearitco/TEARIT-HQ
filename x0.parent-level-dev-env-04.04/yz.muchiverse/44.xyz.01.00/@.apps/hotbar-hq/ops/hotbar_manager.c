@@ -121,6 +121,33 @@ static void publish(const char *house, const char *mode, const char *state_dir, 
     FILE *f;
     off += snprintf(buf + off, sizeof(buf) - off, "title=Hotbar - %s\nholder=%s\ncount=%d\nn_slots=%d\n",
                     inv_base(holder_dir), inv_base(holder_dir), n, HB_SLOTS);
+    {   /* the holder's OWN visual (owner todo 2026-10-06: the hotbar showed only the holder's name): a sprite DIR, drawn by the renderer from its sprite.csv like every slot picture.
+         * Order: the holder's own dir; else (a pc-hq piece such as the xelector has none) <this app>/assets/<entity_type>/ where entity_type comes from the holder's state.txt;
+         * else empty, so a template gated with show="${holder_sprite}" simply hides the cell. */
+        char hsp[INV_PATH + 64], et[64] = "", stp[INV_PATH + 32], hs[INV_PATH + 64] = ""; struct stat hst;
+        snprintf(hsp, sizeof(hsp), "%s/sprite.csv", holder_dir);
+        if (stat(hsp, &hst) == 0) snprintf(hs, sizeof(hs), "%.4000s", holder_dir);
+        else {
+            snprintf(stp, sizeof(stp), "%s/state.txt", holder_dir);
+            read_kv(stp, "entity_type", et, sizeof(et));
+            if (et[0] && !strchr(et, '/') && !strchr(et, '.')) {
+                snprintf(hsp, sizeof(hsp), "%s/@.apps/hotbar-hq/assets/%s/sprite.csv", house, et);
+                if (stat(hsp, &hst) == 0) snprintf(hs, sizeof(hs), "%s/@.apps/hotbar-hq/assets/%s", house, et);
+            }
+        }
+        off += snprintf(buf + off, sizeof(buf) - off, "holder_sprite=%s\n", hs);
+    }
+    {   /* readout line (owner 2026-10-06: pc-hq lacked the empty slot above the command field that the desk has for terminal readout): v1 = the last line typed into the field,
+         * from <holder>/cli_commands.txt (what entity_cli_commit.sh logs). Empty until something is typed. */
+        char cp[INV_PATH + 40], line[256] = "", rd[300] = ""; FILE *cf;
+        snprintf(cp, sizeof(cp), "%s/cli_commands.txt", holder_dir);
+        if ((cf = fopen(cp, "r"))) {
+            char l[256]; while (fgets(l, sizeof(l), cf)) { l[strcspn(l, "\r\n")] = '\0'; if (l[0]) snprintf(line, sizeof(line), "%s", l); } fclose(cf);
+        }
+        for (char *c = line; *c; c++) if (*c == '=' || *c == '|') *c = ' ';
+        if (line[0]) snprintf(rd, sizeof(rd), "> %.250s", line);
+        off += snprintf(buf + off, sizeof(buf) - off, "readout_on=1\nreadout=%s\n", rd);   /* readout_on gates the template line: only a build that has the overlay layout class publishes it */
+    }
     {
         int cx, bt;
         if (anchor_for(house, mode, &cx, &bt))
@@ -182,7 +209,7 @@ static void publish(const char *house, const char *mode, const char *state_dir, 
 int main(int argc, char **argv) {
     char last[8192] = "", holder[INV_PATH] = "", prev_holder[INV_PATH] = "", hp[INV_PATH + 16], htmp[INV_PATH + 24];
     const char *house, *mode, *state_dir;
-    struct timespec ts = {0, 400 * 1000 * 1000};
+    struct timespec ts = {0, 80 * 1000 * 1000};   /* 80 ms tick: visible.txt is checked every tick, the full publish only every 5th (400 ms) - see main() */
     char sdir[INV_PATH];
     if (argc < 4) { fprintf(stderr, "usage: hotbar_manager desk|pchq <house_root> <package_dir>\n"); return 2; }
     /* the renderer resolves bare tokens against the house ("desk" -> "<house>/desk"): keep the basename */
@@ -193,7 +220,18 @@ int main(int argc, char **argv) {
     snprintf(sdir, sizeof(sdir), "%s/state/%s", argv[3], mode);
     state_dir = sdir;
     mkdir(state_dir, 0755);
+    {
+        int tick = 0; char vlast[16] = "";
     for (;;) {
+        /* minimize / restore must feel instant: the owner re-clicked "_" within ~280 ms because the old 400 ms poll + board reparse showed nothing, and a toggle cancelled itself
+         * (2026-10-06, from the human-input log). So the tiny visible.txt is read every tick and a change publishes at once; everything else stays at 400 ms. */
+        char vp[INV_PATH + 16], vv[16] = "";
+        int vchanged;
+        snprintf(vp, sizeof(vp), "%s/visible.txt", state_dir);
+        read_kv(vp, "visible", vv, sizeof(vv));
+        vchanged = strcmp(vv, vlast) != 0;
+        if (tick++ % 5 != 0 && !vchanged) { nanosleep(&ts, NULL); continue; }
+        snprintf(vlast, sizeof(vlast), "%s", vv);
         if (resolve_holder(house, mode, holder, sizeof(holder))) {
             if (strcmp(holder, prev_holder)) {
                 FILE *f;
@@ -205,6 +243,7 @@ int main(int argc, char **argv) {
             publish(house, mode, state_dir, holder, last, sizeof(last));
         }
         nanosleep(&ts, NULL);
+    }
     }
     return 0;
 }

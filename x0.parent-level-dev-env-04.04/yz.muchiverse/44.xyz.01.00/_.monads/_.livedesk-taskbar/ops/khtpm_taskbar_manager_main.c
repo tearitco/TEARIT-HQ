@@ -114,6 +114,7 @@
 #ifndef _WIN32
 #include <sys/types.h>
 #include <unistd.h>
+#include "kh_boot_mark.h"   /* startup timeline marks -> #.desktop/boot_timeline.txt */
 #endif
 
 /* REAL BUG FIX 2026-08-18, direct user report ("its still staggering" /
@@ -718,6 +719,9 @@ static void publish_strip_ui(const KtbState *s, const char *house_root) {
 
     if (off >= sizeof(body)) off = sizeof(body) - 1;
     body[off] = '\0';
+    {   static int first_publish = 1;
+        if (first_publish) { first_publish = 0; kh_boot_mark(house_root, "manager", "first strip_ui.txt publish (the header can now draw)"); }
+    }
     write_small_file(house_root, "#.desktop/strip_ui.txt", body);
 }
 
@@ -1032,7 +1036,9 @@ int main(int argc, char **argv) {
 #endif
 
     KtbState st;
+    kh_boot_mark(house_root, "manager", "main entered, ktb_init start (spawns cursword + the whole active desk)");
     ktb_init(&st, house_root);
+    kh_boot_mark(house_root, "manager", "ktb_init done");
 
     /* REAL FIX 2026-08-12, direct report ("i sawn u double render all
      * entities in toolbar on accident. we should have a guard so that
@@ -1134,7 +1140,12 @@ int main(int argc, char **argv) {
         int reload_changed = 0;
         if (reload_elapsed_ms >= 250.0) {
             s_last_reload = now_reload;
-            ktb_reload(&st);
+            {   struct timespec _r0, _r1; clock_gettime(CLOCK_MONOTONIC, &_r0);
+                ktb_reload(&st);
+                clock_gettime(CLOCK_MONOTONIC, &_r1);
+                double _rms = (_r1.tv_sec - _r0.tv_sec) * 1000.0 + (_r1.tv_nsec - _r0.tv_nsec) / 1e6;
+                if (_rms > 100.0) { char m[96]; snprintf(m, sizeof(m), "SLOW ktb_reload %.0fms (n_tabs=%d)", _rms, st.n_tabs); kh_boot_mark(house_root, "manager", m); }
+            }
             reload_changed = (st.n_tabs != prev_n_tabs || st.n_shortcuts != prev_n_sc ||
                                st.tab_focus_idx != prev_focus || st.zorder_above != prev_zorder ||
                                st.n_hq_wins != prev_n_hq);
@@ -1150,8 +1161,14 @@ int main(int argc, char **argv) {
                 reload_changed = 1;
             }
         }
-        if (mutated || reload_changed)
+        if (mutated || reload_changed) {
+            static int n_pub = 0;
+            if (++n_pub <= 60) {   /* startup evidence: when the manager signals the dock (pairs with the dock's redraw marks) */
+                char m[128]; snprintf(m, sizeof(m), "publish#%d n_tabs=%d mutated=%d reload_changed=%d", n_pub, st.n_tabs, mutated, reload_changed);
+                kh_boot_mark(house_root, "manager", m);
+            }
             publish_state(&st, house_root);
+        }
         if (mutated || reload_changed) active_ticks = ACTIVE_HOLD_TICKS;
         else if (active_ticks > 0) active_ticks--;
         int interval = active_ticks > 0 ? POLL_INTERVAL_ACTIVE_USEC : POLL_INTERVAL_IDLE_USEC;

@@ -60,6 +60,17 @@ int main(void) {
         return 1;
     }
 
+    /* One start path (owner 2026-10-06): livedesk-launch.sh starts the loading strip FIRST, runs the hash-gated build, then
+     * `button.sh run`. It used to run the build synchronously here with nothing at the bottom of the screen while it compiled. */
+    {
+        char launcher[PATH_MAX];
+        snprintf(launcher, sizeof(launcher), "%s/$.crypts/livedesk-launch.sh", house_root);
+        if (access(launcher, X_OK) == 0) {
+            char *largs[] = { "sh", launcher, NULL };
+            execvp("sh", largs);
+        }
+    }
+    /* launcher missing: the old behavior below */
     char build_dir[PATH_MAX];
     snprintf(build_dir, sizeof(build_dir), "%s/_.monads/_.livedesk-taskbar/ops", house_root);
 

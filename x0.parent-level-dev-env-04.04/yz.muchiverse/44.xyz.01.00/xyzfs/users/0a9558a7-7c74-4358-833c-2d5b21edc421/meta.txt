@@ -1,5 +1,0 @@
-uuid=0a9558a7-7c74-4358-833c-2d5b21edc421
-user_id=jb
-display_name=JB Test
-created_at=1785999194
-backfilled=1

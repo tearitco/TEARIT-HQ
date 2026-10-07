@@ -95,7 +95,9 @@ fi
 # binary - genuinely the same file, or a separate fork/exec+file-IPC
 # process (khtpm_taskbar_manager_main.+x's own real, separate compile
 # of khtpm_taskbar_manager.c is that legitimate case, untouched).
-CR_SRCS="khtpm_core_render.c $SHARED/khtpm_css_parser.c $SHARED/khtpm_ui_scale.c $SHARED/khtpm_render_core.c $SHARED/khtpm_draw_core.c $SHARED/khtpm_reparse_diff.c"
+# Q003 (2026-10-06): every file khtpm_core_render.c text-includes must be listed, or editing it silently leaves a STALE binary running (hash_gate.sh: "pass every real input
+# file explicitly"). Added: khtpm_css_parser.h, khtpm_nav_echo.c, house_wait.h, kh_boot_mark.h, kh_proc_registry.h, stb_image.h, stb_image_write.h. Scorer: ^.grave/quests/Q003-build-gate-include-list/verify.sh
+CR_SRCS="khtpm_core_render.c $SHARED/khtpm_css_parser.c $SHARED/khtpm_css_parser.h $SHARED/khtpm_ui_scale.c $SHARED/khtpm_render_core.c $SHARED/khtpm_draw_core.c $SHARED/khtpm_reparse_diff.c $SHARED/khtpm_nav_echo.c $SHARED/house_wait.h $SHARED/kh_boot_mark.h $SHARED/kh_proc_registry.h $SHARED/stb_image.h $SHARED/stb_image_write.h"
 if hash_gate_stale "$MANIFEST" +x/khtpm_core_render.+x $CR_SRCS; then
     echo "-- entity-menu renderer -> +x/khtpm_core_render.+x"
     $CC $CFLAGS $X11_FLAGS -I "$SHARED" -o +x/khtpm_core_render.+x \

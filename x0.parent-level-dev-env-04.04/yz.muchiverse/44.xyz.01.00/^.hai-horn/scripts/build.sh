@@ -53,7 +53,11 @@ echo "--- ops ---"
 for src in ops/*.c; do
     name="$(basename "$src" .c)"
     echo "  $name"
-    gcc $CFLAGS "$src" -o "ops/+x/$name.+x"
+    # halo_chat_describe makes ids with libuuid; without -luuid the link failed and, under set -e, stopped the build before the HORN
+    # ops after it (alphabetical) were compiled (found 2026-10-06 landing HALO, Q001).
+    extra=""
+    case "$name" in halo_chat_describe) extra="-luuid" ;; esac
+    gcc $CFLAGS "$src" -o "ops/+x/$name.+x" $extra
 done
 
 # Drop binaries whose source is gone. A stale horn_chat_openrouter.+x sat

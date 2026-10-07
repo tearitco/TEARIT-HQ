@@ -27,24 +27,21 @@ if [ -z "$HOUSE_ROOT" ]; then
     exit 1
 fi
 
-# Build binaries if needed
-HALO_DESCRIBE_BIN="$HALO_DIR/ops/halo_chat_describe.+x"
-HALO_VALIDATE_BIN="$HALO_DIR/ops/halo_chat_validate.+x"
-HORN_BIN="$HALO_DIR/ops/horn_chat_openrouter.+x"
+# Binaries: scripts/build.sh compiles every ops/*.c into ops/+x/ (HALO's ops included). The transport is the multi-provider
+# horn_chat_backend (it replaced the old single-provider horn_chat_openrouter, ported 2026-10-06, Q001).
+OPSX="$HALO_DIR/ops/+x"
+HALO_DESCRIBE_BIN="$OPSX/halo_chat_describe.+x"
+HALO_VALIDATE_BIN="$OPSX/halo_chat_validate.+x"
+HALO_CTX_BIN="$OPSX/concept_bank_ctx.+x"
+HORN_BIN="$OPSX/horn_chat_backend.+x"
 
-build_bin() {
-    local src="$1"
-    local bin="$2"
-    if [ ! -f "$bin" ] || [ "$src" -nt "$bin" ]; then
-        echo "Building $(basename "$bin")..."
-        gcc -o "$bin" "$src" 2>&1
-        chmod +x "$bin"
+for bin in "$HALO_DESCRIBE_BIN" "$HALO_VALIDATE_BIN" "$HALO_CTX_BIN" "$HORN_BIN"; do
+    if [ ! -x "$bin" ]; then
+        echo "Building ^.hai-horn (missing $(basename "$bin"))..."
+        sh "$HALO_DIR/scripts/build.sh" >/dev/null 2>&1 || { echo "ERROR: scripts/build.sh failed"; exit 1; }
+        break
     fi
-}
-
-build_bin "$HALO_DIR/ops/horn_chat_openrouter.c" "$HORN_BIN"
-build_bin "$HALO_DIR/ops/halo_chat_describe.c" "$HALO_DESCRIBE_BIN"
-build_bin "$HALO_DIR/ops/halo_chat_validate.c" "$HALO_VALIDATE_BIN"
+done
 
 # HALO_CHAT uses the same entity dir concept - we'll use HALO_DIR as the entity
 ENTITY_DIR="$HALO_DIR"
@@ -98,7 +95,7 @@ while true; do
         else
             grade_arg="-1"
         fi
-        "$HALO_DIR/ops/curricula_engine.+x" "$BANK_DIR" "$grade_arg" text
+        "$OPSX/curricula_engine.+x" "$BANK_DIR" "$grade_arg" text
         continue
     fi
 
@@ -108,7 +105,7 @@ while true; do
         else
             grade_arg="-1"
         fi
-        "$HALO_DIR/ops/curricula_engine.+x" "$BANK_DIR" "$grade_arg" json
+        "$OPSX/curricula_engine.+x" "$BANK_DIR" "$grade_arg" json
         continue
     fi
 
@@ -118,9 +115,19 @@ while true; do
         continue
     fi
 
-    # Send to OpenRouter (same as HORN)
+    # Send through HORN's provider chain (same transport as HORN_CHAT)
     printf "halo: "
-    if output=$(HALO_DIR="$HALO_DIR" "$HORN_BIN" "$HOUSE_ROOT" "$user_input" 2>&1); then
+    # Concept Bank context (top-weighted spokes) goes in front of the user turn; empty or "[]" means no context
+    bank_ctx="$("$HALO_CTX_BIN" "$HOUSE_ROOT" 2>/dev/null || true)"
+    if [ -n "$bank_ctx" ] && [ "$bank_ctx" != "[]" ]; then
+        prompt="CONCEPT BANK CONTEXT (highest-weighted relations):
+$bank_ctx
+
+USER: $user_input"
+    else
+        prompt="USER: $user_input"
+    fi
+    if output=$("$HORN_BIN" "$prompt" 2>/dev/null); then
         echo "$output"
     else
         echo "[error - check API key or network]"

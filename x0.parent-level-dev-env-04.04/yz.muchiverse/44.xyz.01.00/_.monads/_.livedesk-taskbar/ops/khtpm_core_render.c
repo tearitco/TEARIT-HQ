@@ -99,6 +99,7 @@ extern char **environ;
  * _GNU_SOURCE fallback stays inert. */
 #define KH_PROC_REGISTRY_IMPL
 #include "kh_proc_registry.h"
+#include "kh_boot_mark.h"   /* startup timeline marks -> #.desktop/boot_timeline.txt */
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "lib/stb_image_write.h"
@@ -110,6 +111,9 @@ extern char **environ;
 static void nav_tab_unregister(void);
 static void nav_ledger_publish(void);
 static void popup_handle_click(int px, int py);
+/* Pending Backspace confirmation (2026-10-06): set by the Backspace branch for an item with confirm=, answered by the next key. */
+static char g_confirm_text[200];
+static char g_confirm_action[1536];
 static void handle_key(KeySym ks, char ch);
 static void grid_col_to_letters(int col, char *out, size_t outsz); /* defined near default_grid_handle_key() - needed earlier by dispatch()'s own CSVH_GRIDCOMMIT-style handlers */
 static void history_path(char *out, size_t outsz);
@@ -274,6 +278,61 @@ static Window g_dock_kbd_win;
 static int g_dock_visible_rows = 1;
 static int g_dock_packed_rows = 1;
 static Elem g_dock_plus_elem, g_dock_minus_elem;
+
+/* Bottom dock row count survives a restart (owner, 2026-10-06: "make sure tb restarts in old position"). g_dock_visible_rows is the live value;
+ * g_dock_want_rows is what the owner last chose (0 = never chosen -> default 1 row). The wanted value is re-applied at every layout, because early layouts
+ * see few packed entities and the clamp below would otherwise shrink the saved choice. Stored in #.desktop/dock_state.pdl:
+ *     DOCK | bottom_visible_rows | <n>
+ * One writer (this renderer), read once at the first layout, written on each +/- click. No change detection needed (no other process watches it). */
+/* Sideways slide offset of a "vars-positioned" window (the hotbar), remembered across restarts (owner, 2026-10-06: "hotbar snaps to middle instead of
+ * remembering its position"). The renderer used to keep the offset in a function-local static, so every launch started centred. Stored per window label in
+ *     #.desktop/slide_offsets.pdl      SLIDE | <label> | <dx pixels from the centred spot>
+ * Written atomically (tmp + rename) a moment after the user stops dragging; read once per process. */
+static int slide_dx_get(const char *label) {
+    char p[PATH_BUF + 40], line[512], want[300]; FILE *f; int dx = 0;
+    snprintf(p, sizeof(p), "%s/#.desktop/slide_offsets.pdl", g_house_root);
+    snprintf(want, sizeof(want), "SLIDE | %s | ", label);
+    if (!(f = fopen(p, "r"))) return 0;
+    while (fgets(line, sizeof(line), f)) if (!strncmp(line, want, strlen(want))) dx = atoi(line + strlen(want));
+    fclose(f); return dx;
+}
+static void slide_dx_put(const char *label, int dx) {
+    char p[PATH_BUF + 40], tmp[PATH_BUF + 50], line[512], want[300], keep[16][512]; int n = 0, i; FILE *f;
+    snprintf(p, sizeof(p), "%s/#.desktop/slide_offsets.pdl", g_house_root);
+    snprintf(tmp, sizeof(tmp), "%s.tmp", p);
+    snprintf(want, sizeof(want), "SLIDE | %s | ", label);
+    if ((f = fopen(p, "r"))) {
+        while (n < 16 && fgets(line, sizeof(line), f)) if (strncmp(line, want, strlen(want)) && !strncmp(line, "SLIDE | ", 8)) snprintf(keep[n++], 512, "%s", line);
+        fclose(f);
+    }
+    if (!(f = fopen(tmp, "w"))) return;
+    fprintf(f, "# slide offsets of vars-positioned windows (written by the renderer after a drag)\n");
+    for (i = 0; i < n; i++) fputs(keep[i], f);
+    fprintf(f, "%s%d\n", want, dx);
+    fclose(f);
+    rename(tmp, p);
+}
+static int g_dock_want_rows = 0, g_dock_rows_loaded = 0;
+static void dock_state_path(char *out, size_t n) { snprintf(out, n, "%s/#.desktop/dock_state.pdl", g_house_root); }
+static void dock_rows_load(void) {
+    char p[PATH_BUF + 40], line[256]; FILE *f;
+    g_dock_rows_loaded = 1;
+    dock_state_path(p, sizeof(p));
+    if (!(f = fopen(p, "r"))) return;
+    while (fgets(line, sizeof(line), f)) {
+        char *k = strstr(line, "bottom_visible_rows");
+        if (k && line[0] != '#') { char *bar = strchr(k, '|'); int v = bar ? atoi(bar + 1) : 0; if (v >= 1 && v <= 16) g_dock_want_rows = v; }
+    }
+    fclose(f);
+}
+static void dock_rows_save(void) {
+    char p[PATH_BUF + 40]; FILE *f;
+    g_dock_want_rows = g_dock_visible_rows;
+    dock_state_path(p, sizeof(p));
+    if (!(f = fopen(p, "w"))) return;
+    fprintf(f, "# bottom dock remembered state (written by the dock renderer on each +/- click)\nDOCK | bottom_visible_rows | %d\n", g_dock_visible_rows);
+    fclose(f);
+}
 /* MILESTONE B/C - generic <footer> row pager (same idea as the dock
  * +/- above, for any sidebar+panel window's footer). g_footer_vis_rows
  * survives redraws; clamped against g_footer_total_rows each layout. */
@@ -287,6 +346,13 @@ static Pixmap g_dock_menu_buf;
 static XftDraw *g_dock_menu_xft;
 static GC g_dock_menu_gc;
 static int g_dock_menu_buf_w, g_dock_menu_buf_h;
+
+/* Geometry the menu window was last mapped at, plus whether it is mapped
+ * at all. Drives the map/raise throttle in dock_paint_menu(); see the
+ * comment there and 09-appendix/WINDOWS-TASKBAR-PORT.md. */
+static int g_dock_menu_mapped = 0;
+static int g_dock_menu_msx = 0, g_dock_menu_msy = 0;
+static int g_dock_menu_mw = 0, g_dock_menu_mh = 0;
 static int g_dock_menu_sx, g_dock_menu_sy, g_dock_menu_w, g_dock_menu_h;
 /* REAL, NEW 2026-09-01 - the @ z-order toggle's managed half. House rule:
  * behavior comes from #.desktop/livedesk_override_redirect.pdl (true =
@@ -677,6 +743,14 @@ static void write_theme_opacity(double opacity) {
         snprintf(marker_path, sizeof(marker_path), "%s/#.desktop/livedesk_theme_changed.txt", g_house_root);
         FILE *mf = fopen(marker_path, "a");
         if (mf) { fprintf(mf, "%.2f\n", opacity); fclose(mf); }
+    }
+    {   /* the Livedesk app icon follows the desk transparency too (debounced: a slider drag calls this many times) */
+        char helper[PATH_BUF], cmd[PATH_BUF * 2];
+        snprintf(helper, sizeof(helper), "%s/$.crypts/livedesk-icon-refresh.sh", g_house_root);
+        if (access(helper, F_OK) == 0) {
+            snprintf(cmd, sizeof(cmd), "sh '%s' debounce </dev/null >/dev/null 2>&1 &", helper);
+            int rc = system(cmd); (void)rc;
+        }
     }
 }
 /* REAL, db-hq mode only (§5d.10) - module launch, ported VERBATIM from
@@ -1099,6 +1173,12 @@ static void apply_attr(Elem *e, const char *name, const char *val) {
         snprintf(decoded, sizeof(decoded), "%s", val);
         decode_entities(decoded);
         snprintf(e->backspace_action, sizeof(e->backspace_action), "%s", decoded);
+    } else if (strcmp(name, "confirm") == 0) {
+        /* 2026-10-06 - see Elem's confirm field comment (khtpm_render_core.c): popup text shown before backspace_action runs. */
+        char decoded[sizeof(e->confirm)];
+        snprintf(decoded, sizeof(decoded), "%s", val);
+        decode_entities(decoded);
+        snprintf(e->confirm, sizeof(e->confirm), "%s", decoded);
     } else if (strcmp(name, "relay") == 0) {
         /* REAL, NEW 2026-09-04 - generic "Interact Mode" capability,
          * ported from pc-hq's own hand-rolled run_pchq_board_mode()
@@ -2361,9 +2441,16 @@ static int reparse_chtpm_if_changed(void) {
                 static struct timespec s_dock_force_last = {0, 0};
                 struct timespec now_ts;
                 clock_gettime(CLOCK_MONOTONIC, &now_ts);
+                /* Startup: for the dock's first 60 s the backstop is 1 s, not 20 s (owner 2026-10-06; boot_timeline.txt from his real quit-then-start
+                 * shows the bar painted 4 cells by 0.5 s and then NOT AGAIN until 19.9 s - the 20 s backstop - although all 17 entities were
+                 * registered by ~6 s: a change signal was missed and only this timer caught up). 1 s costs one parse_chtpm() of a small template
+                 * per second for a minute, a no-op repaint when nothing changed; steady state keeps the 20 s. */
+                static struct timespec s_dock_birth = {0, 0};
+                if (s_dock_birth.tv_sec == 0) s_dock_birth = now_ts;
+                int force_after = (now_ts.tv_sec - s_dock_birth.tv_sec < 60) ? 1 : 20;
                 if (s_dock_force_last.tv_sec == 0) {
                     s_dock_force_last = now_ts;
-                } else if (now_ts.tv_sec - s_dock_force_last.tv_sec >= 20) {
+                } else if (now_ts.tv_sec - s_dock_force_last.tv_sec >= force_after) {
                     s_dock_force_last = now_ts;
                     vars_changed = 1;
                 }
@@ -5164,8 +5251,14 @@ static void layout_toolbar_row(Elem *row, int x, int y, int w) {
         t->w = iw;
         t->h = ROW_H;
         css_compute_style(&g_sheet, t->tag, t->id, t->classes, t->n_classes, 0, &t->style);
-        t->nav_index = ++g_n_nav;
-        g_nav[g_n_nav - 1] = t;
+        if (elem_has_class(t, "no-nav")) {
+            /* 2026-10-06 (hotbar header picture): a display-only cell - laid out and drawn, but no nav number and not in g_nav[], so the typed digits of the
+             * items after it are unchanged. Same class the dock strip already honours (kh_dock layout); opt-in per item, no effect on any window that does not use it. */
+            t->nav_index = 0;
+        } else {
+            t->nav_index = ++g_n_nav;
+            g_nav[g_n_nav - 1] = t;
+        }
         col++;
     }
     if (composer) {
@@ -5608,13 +5701,14 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
      * show="${var}" (the element is dropped at parse, re-added on the live reparse). */
     for (int oi = 0; oi < region->n_children; oi++) {
         Elem *ov = region->children[oi];
-        int n_it = 0, n_tx = 0, n_cl = 0, total = 0, maxh = 0, gap = scaled(4), k;
+        int n_it = 0, n_tx = 0, n_cl = 0, n_rd = 0, has_badge = 0, total = 0, maxh = 0, gap = scaled(4), k;
         if (!elem_has_class(ov, "canvas-overlay-bottom")) continue;
         css_compute_style(&g_sheet, ov->tag, ov->id, ov->classes, ov->n_classes, 0, &ov->style);
         for (k = 0; k < ov->n_children; k++) {
             Elem *it = ov->children[k];
-            if (strcmp(it->tag, "text") == 0) { n_tx++; continue; }      /* name line: above the items */
+            if (strcmp(it->tag, "text") == 0) { if (elem_has_class(it, "ov-readout")) n_rd++; else n_tx++; continue; }   /* name line: above the items; class ov-readout: between the items and the typed line */
             if (strcmp(it->tag, "cli_io") == 0) { n_cl++; continue; }    /* typed line: below the items */
+            if (strcmp(it->tag, "item") == 0 && elem_has_class(it, "ov-badge")) { has_badge = 1; continue; }   /* display-only picture at the left of the name line (placed below) */
             if (strcmp(it->tag, "item") == 0 && (elem_has_class(it, "ov-min") || elem_has_class(it, "ov-close"))) continue;   /* placed by kh_ov_min_place */
             if (strcmp(it->tag, "item") != 0) { it->x = rx; it->y = -100000; it->w = 0; it->h = 0; it->nav_index = 0; continue; }
             css_compute_style(&g_sheet, it->tag, it->id, it->classes, it->n_classes, 0, &it->style);
@@ -5628,7 +5722,7 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
         {
             int pad4 = scaled(4), rowh = ROW_H;
             int stripw = total < scaled(360) ? scaled(360) : total;   /* wide enough for the typed line */
-            int toph = n_tx * rowh, both = n_cl * rowh;
+            int toph = n_tx * rowh, both = n_cl * rowh + n_rd * rowh;
             int hh = toph + maxh + both + 2 * pad4;
             int x0 = cv->x + (cv->w - stripw) / 2, y0 = cv->y + cv->h - hh - scaled(10), x, yy;
             if (x0 < cv->x) x0 = cv->x;
@@ -5637,22 +5731,37 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
             yy = y0 + pad4;
             for (k = 0; k < ov->n_children; k++) {               /* name line(s) */
                 Elem *t = ov->children[k];
-                if (strcmp(t->tag, "text") != 0) continue;
+                if (strcmp(t->tag, "text") != 0 || elem_has_class(t, "ov-readout")) continue;
                 css_compute_style(&g_sheet, t->tag, t->id, t->classes, t->n_classes, 0, &t->style);
-                t->x = x0 + pad4; t->y = yy; t->w = stripw - 2 * pad4; t->h = rowh; t->nav_index = 0;
+                t->x = x0 + pad4 + (has_badge ? rowh : 0); t->y = yy; t->w = stripw - 2 * pad4 - (has_badge ? rowh : 0); t->h = rowh; t->nav_index = 0;
                 yy += rowh;
+            }
+            if (has_badge) {                                      /* class ov-badge: a square, display-only picture left of the first name line (no nav number: slot digits stay 1..n) */
+                for (k = 0; k < ov->n_children; k++) {
+                    Elem *b = ov->children[k];
+                    if (strcmp(b->tag, "item") != 0 || !elem_has_class(b, "ov-badge")) continue;
+                    css_compute_style(&g_sheet, b->tag, b->id, b->classes, b->n_classes, 0, &b->style);
+                    b->x = x0 + pad4; b->y = y0 + pad4; b->w = rowh; b->h = rowh; b->nav_index = 0;
+                }
             }
             kh_ov_min_place(ov, x0, y0, stripw, rowh, pad4);
             x = x0 + (stripw - total) / 2;                        /* the slots, centred */
             for (k = 0; k < ov->n_children; k++) {
                 Elem *it = ov->children[k];
-                if (strcmp(it->tag, "item") != 0 || elem_has_class(it, "ov-min") || elem_has_class(it, "ov-close")) continue;
+                if (strcmp(it->tag, "item") != 0 || elem_has_class(it, "ov-min") || elem_has_class(it, "ov-close") || elem_has_class(it, "ov-badge")) continue;
                 it->x = x; it->y = yy + (maxh - it->h) / 2;
                 x += it->w + gap;
                 it->nav_index = ++g_n_nav;
                 g_nav[g_n_nav - 1] = it;
             }
             yy += maxh;
+            for (k = 0; k < ov->n_children; k++) {               /* readout line(s): text class ov-readout, between the slots and the typed line (the desk's blank band) */
+                Elem *t = ov->children[k];
+                if (strcmp(t->tag, "text") != 0 || !elem_has_class(t, "ov-readout")) continue;
+                css_compute_style(&g_sheet, t->tag, t->id, t->classes, t->n_classes, 0, &t->style);
+                t->x = x0 + pad4; t->y = yy; t->w = stripw - 2 * pad4; t->h = rowh; t->nav_index = 0;
+                yy += rowh;
+            }
             for (k = 0; k < ov->n_children; k++) {               /* typed line(s) */
                 Elem *t = ov->children[k];
                 if (strcmp(t->tag, "cli_io") != 0) continue;
@@ -6705,6 +6814,8 @@ static int layout_dock_bar(Elem *page) {
             }
         }
         g_dock_packed_rows = (n_pack > 0) ? (r_max + 1) : 1;
+        if (!g_dock_rows_loaded) dock_rows_load();
+        if (g_dock_want_rows > 0) g_dock_visible_rows = g_dock_want_rows;   /* restore the owner's last choice, clamped just below */
         if (g_dock_visible_rows > g_dock_packed_rows) g_dock_visible_rows = g_dock_packed_rows;
         if (g_dock_visible_rows < 1) g_dock_visible_rows = 1;
         if (row_elem) {
@@ -6992,6 +7103,26 @@ static void dock_paint_peer(void) {
             (wa.width != g_win_w || wa.height != g_win_h || wa.x != g_win_x || wa.y != g_win_y))
             XMoveResizeWindow(dpy, win, g_win_x, g_win_y, (unsigned)g_win_w, (unsigned)g_win_h);
     }
+    /* Startup activity stamp (owner 2026-10-06: the bottom bar's entity cells take ~20 s to fill on the owner's machine while the
+     * data side is done in 0.3 s): one byte appended per dock redraw during the process's first 60 s. livedesk_splash --boot keeps
+     * its "Loading entities..." strip up while this file is still growing (marker-file size, never mtime). */
+    {
+        static time_t t_first = 0;
+        time_t tn = time(NULL);
+        if (!t_first) t_first = tn;
+        if (tn - t_first < 60) {
+            char sp[PATH_BUF]; FILE *sf;
+            snprintf(sp, sizeof(sp), "%s/#.desktop/dock_stack/draw_stamp.txt", g_house_root);
+            if (1) { if ((sf = fopen(sp, "a"))) { fputc('.', sf); fclose(sf); } }
+            {   /* where did this redraw's time go: sprite loads vs blits (cumulative), to boot_timeline.txt */
+                static int n_draw = 0; char m[160];
+                if (++n_draw <= 40) {
+                    snprintf(m, sizeof(m), "redraw#%d cum: sprite_loads=%d (%.1fms) blits=%d (%.1fms)", n_draw, g_hqs_loads, g_hqs_load_ms, g_hqs_blits, g_hqs_blit_ms);
+                    kh_boot_mark(g_house_root, "dock", m);
+                }
+            }
+        }
+    }
     /* Dock stack base (CURSWORD-POSSESSION-DESIGN.md 5c/5g, owner 2026-10-05): publish the
      * bottom bar's laid-out rectangle so anything docked above it (the hotbar) follows its
      * growth. Written only when it changes (tmp + rename); a consumer polls the file. */
@@ -7008,6 +7139,9 @@ static void dock_paint_peer(void) {
                 fprintf(bf, "%d|%d|%d|%d\n", g_win_x, g_win_y, g_win_w, g_win_h);
                 fclose(bf);
                 rename(bt, bp);
+                {   static int first_bottom = 1;
+                    if (first_bottom) { first_bottom = 0; kh_boot_mark(g_house_root, "dock", "bottom bar first drawn + base.txt published"); }
+                }
                 lx = g_win_x; ly = g_win_y; lw = g_win_w; lh = g_win_h;
                 snprintf(bp, sizeof(bp), "%s/nav_base.txt", dd);   /* top bar's cell count: first free nav number - 1 */
                 snprintf(bt, sizeof(bt), "%s.tmp", bp);
@@ -7051,14 +7185,10 @@ static int g_dock_menu_mw = 0, g_dock_menu_mh = 0;
 static void dock_paint_menu(void) {
     int i;
     if (g_dock_menu_w <= 0 || g_dock_menu_h <= 0 || g_dock_drop_lo < 1) {
-#ifdef _WIN32
         if (g_dock_menu_win && g_dock_menu_mapped) {
             XUnmapWindow(dpy, g_dock_menu_win);
             g_dock_menu_mapped = 0;
         }
-#else
-        if (g_dock_menu_win) XUnmapWindow(dpy, g_dock_menu_win);
-#endif
         return;
     }
     if (!g_dock_menu_win) {
@@ -7079,34 +7209,40 @@ static void dock_paint_menu(void) {
             (unsigned)DefaultDepth(dpy, screen));
         g_dock_menu_xft = XftDrawCreate(dpy, g_dock_menu_buf, DefaultVisual(dpy, screen), cmap);
     }
-    /* REAL FIX 2026-10-01 - the unconditional XMoveResizeWindow + XMapRaised
-     * below ran on EVERY redraw (this function is called once per paint).
-     * On the real X server that is merely redundant, but the Win32 shim
-     * turns each XMapRaised/XMoveResizeWindow into a freshly posted Windows
-     * message, so the renderer's `while (XPending(dpy)) XNextEvent(...)`
-     * drain never emptied: it re-queued an event every pass, the loop spun
-     * at 100% CPU, and hq_idle_tick()/poll_agent_history() were never
-     * reached again - a relayed click after the menu opened was read by
-     * nobody ("menu opened, then the strip froze and ignored the relay",
-     * reproduced live 2026-10-01). Only move/raise when the geometry really
-     * changed (or the menu is being mapped for the first time), exactly the
-     * "one map, then just repaint" shape the Linux loop gets for free. */
-#ifdef _WIN32
+    /* THROTTLE, ported from the Windows branch (opencode-win32 05099beb3,
+     * "relayed dock dropdown clicks route by window name"). See
+     * 09-appendix/WINDOWS-TASKBAR-PORT.md for the full account.
+     *
+     * This map/raise ran UNCONDITIONALLY on every redraw. On a real X
+     * server that is merely redundant - but the Win32 shim turns each
+     * XMapRaised/XMoveResizeWindow into a freshly posted Windows message,
+     * so the renderer's `while (XPending(dpy)) XNextEvent(...)` drain
+     * never emptied: it re-queued an event every pass, the loop spun at
+     * 100% CPU, and hq_idle_tick()/poll_agent_history() were never reached
+     * again. Reported as "menu opened, then the strip froze and ignored the
+     * relay".
+     *
+     * Ported to Linux deliberately, not only because the bug bit the
+     * Windows shim. hq-cpu-safety.md 3c is about shape, not magnitude:
+     * "an expensive function called unconditionally inside a tick loop,
+     * with no gate at all" is the pattern behind every CPU incident in
+     * this house, and this call sits in exactly that shape. Guarding it on
+     * the Linux branch too means the shim cannot reintroduce the spin if
+     * it is ever fixed differently there.
+     *
+     * Gate on geometry having actually changed, or the menu being mapped
+     * for the first time - "one map, then just repaint", which is what the
+     * Linux loop got by luck before. */
     if (!g_dock_menu_mapped ||
         g_dock_menu_msx != g_dock_menu_sx || g_dock_menu_msy != g_dock_menu_sy ||
-        g_dock_menu_mw != g_dock_menu_w || g_dock_menu_mh != g_dock_menu_h) {
+        g_dock_menu_mw  != g_dock_menu_w  || g_dock_menu_mh  != g_dock_menu_h) {
         XMoveResizeWindow(dpy, g_dock_menu_win, g_dock_menu_sx, g_dock_menu_sy,
                           (unsigned)g_dock_menu_w, (unsigned)g_dock_menu_h);
         XMapRaised(dpy, g_dock_menu_win);
         g_dock_menu_mapped = 1;
         g_dock_menu_msx = g_dock_menu_sx; g_dock_menu_msy = g_dock_menu_sy;
-        g_dock_menu_mw = g_dock_menu_w;  g_dock_menu_mh = g_dock_menu_h;
+        g_dock_menu_mw  = g_dock_menu_w;  g_dock_menu_mh  = g_dock_menu_h;
     }
-#else
-    XMoveResizeWindow(dpy, g_dock_menu_win, g_dock_menu_sx, g_dock_menu_sy,
-                      (unsigned)g_dock_menu_w, (unsigned)g_dock_menu_h);
-    XMapRaised(dpy, g_dock_menu_win);
-#endif
     if (g_dock_menu_w > g_dock_menu_buf_w || g_dock_menu_h > g_dock_menu_buf_h) {
         int nw = g_dock_menu_w > g_dock_menu_buf_w ? g_dock_menu_w : g_dock_menu_buf_w;
         int nh = g_dock_menu_h > g_dock_menu_buf_h ? g_dock_menu_h : g_dock_menu_buf_h;
@@ -7495,6 +7631,15 @@ static int kh_canvas_hit(int px, int py) {
 /* Generic click coords for a <canvas>. The shared renderer does not
  * raycast. bv_render_3d reads pchq_canvas_click.txt and does the math.
  * CANVAS_CLICK on the per-pid relay is the same numbers, for the log. */
+static int g_canvas_drag = 0;                 /* button 1 went down on bare canvas (no nav item under it): motion keeps publishing the pointer (xelector follows the drag) */
+static int g_canvas_drag_px = -1000, g_canvas_drag_py = -1000;
+static int kh_nav_item_at(int px, int py) {
+    for (int i = 0; i < g_n_nav; i++) {
+        Elem *it = g_nav[i];
+        if (it && it->w > 0 && px >= it->x && px < it->x + it->w && py >= it->y && py < it->y + it->h) return 1;
+    }
+    return 0;
+}
 static void kh_publish_canvas_click(int px, int py, int button) {
     Elem *cv = kh_canvas_at(px, py);
     if (!cv || cv->w < 1 || cv->h < 1) return;
@@ -8288,11 +8433,11 @@ static void dispatch(const char *action) {
      * (#.desktop/livedesk_hq_restore_<pid>.txt) the target renderer polls
      * and responds to by XMapWindow+XSetInputFocus on ITS OWN window. */
     if (strcmp(action, "PAGEROW:+1") == 0) {
-        if (g_dock_visible_rows < g_dock_packed_rows) g_dock_visible_rows++;
+        if (g_dock_visible_rows < g_dock_packed_rows) { g_dock_visible_rows++; dock_rows_save(); }
         return;
     }
     if (strcmp(action, "PAGEROW:-1") == 0) {
-        if (g_dock_visible_rows > 1) g_dock_visible_rows--;
+        if (g_dock_visible_rows > 1) { g_dock_visible_rows--; dock_rows_save(); }
         return;
     }
     if (strcmp(action, "FOOTER_ROWS:+1") == 0) {
@@ -10278,6 +10423,7 @@ static void kh_write_ascii_frame(void) {
     fprintf(ms, "--- %s  pid %d  %s ---\n", base, (int)getpid(), ts);
     if (g_current_page[0]) fprintf(ms, "--- page: %s ---\n", g_current_page);
     dock_ascii_walk(ms, g_window, 0);
+    if (g_confirm_action[0]) fprintf(ms, "[CONFIRM] %s  -- Enter/y = yes, any other key = no\n", g_confirm_text);
     fclose(ms);
 
     FILE *f = fopen(fpath, "w");
@@ -10855,6 +11001,15 @@ static void redraw(void) {
                           (const FcChar8 *)"\xE2\x8C\x9F", 3);   /* U+231F ⌟ */
         XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &gcol);
     }
+    if (g_confirm_action[0] && xftdraw_buf && font_ui) {   /* confirm popup: centred box over everything, themed */
+        int bw = g_win_w - 40 < 460 ? g_win_w - 40 : 460, bh = 78, bx = (g_win_w - bw) / 2, by = (g_win_h - bh) / 2;
+        XftColor tcol = xft_color("#ffffff"), hcol = xft_color(g_theme_fg[0] ? g_theme_fg : "#8fb4e0");
+        XSetForeground(dpy, gc, alloc_pixel("#1b1b1b")); XFillRectangle(dpy, buf, gc, bx, by, (unsigned)bw, (unsigned)bh);
+        XSetForeground(dpy, gc, alloc_pixel(g_theme_fg[0] ? g_theme_fg : "#8fb4e0")); XDrawRectangle(dpy, buf, gc, bx, by, (unsigned)bw, (unsigned)bh);
+        XftDrawStringUtf8(xftdraw_buf, &tcol, font_ui, bx + 14, by + 30, (const FcChar8 *)g_confirm_text, (int)strlen(g_confirm_text));
+        XftDrawStringUtf8(xftdraw_buf, &hcol, font_ui, bx + 14, by + 58, (const FcChar8 *)"Enter / y = yes      any other key = no", 38);
+        XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &tcol); XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &hcol);
+    }
     XSync(dpy, False);
     XImage *frame = XGetImage(dpy, buf, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h, AllPlanes, ZPixmap);
     if (frame) {
@@ -11017,6 +11172,15 @@ static void dock_nav_step(int dir) {
 }
 
 static void handle_key(KeySym ks, char ch) {
+    if (g_confirm_action[0]) {   /* a confirm popup is up: it eats the next key. Enter / y = yes, anything else = no. */
+        char act[sizeof(g_confirm_action)];
+        int yes = (ks == XK_Return || ks == XK_KP_Enter || ch == 13 || ch == 'y' || ch == 'Y');
+        snprintf(act, sizeof(act), "%s", g_confirm_action);
+        g_confirm_action[0] = 0; g_confirm_text[0] = 0;
+        if (yes) dispatch_no_quit(act);
+        redraw();
+        return;
+    }
     /* PDL-configurable window close (#.desktop/hq_ui.pdl close_combo,
      * default ctrl+c). The deliberate close gesture for a focused
      * window - ESC deliberately does NOT close a real app window
@@ -11273,6 +11437,12 @@ static void handle_key(KeySym ks, char ch) {
      * routed away above if a field WAS actually armed). */
     if (ks == XK_BackSpace && g_focus_nav >= 1 && g_focus_nav <= g_n_nav) {
         Elem *focused = g_nav[g_focus_nav - 1];
+        if (focused->backspace_action[0] && focused->confirm[0]) {   /* ask first: the popup is drawn by redraw() */
+            snprintf(g_confirm_text, sizeof(g_confirm_text), "%s", focused->confirm);
+            snprintf(g_confirm_action, sizeof(g_confirm_action), "%s", focused->backspace_action);
+            redraw();
+            return;
+        }
         if (focused->backspace_action[0]) { dispatch_no_quit(focused->backspace_action); return; }
     }
     if (ks == XK_Up || ks == XK_Left) {
@@ -11857,17 +12027,63 @@ static int kh_key_history_code(KeySym ks, char ch) {
     if (ks == XK_Page_Up) return 204; if (ks == XK_Page_Down) return 205;
     return (int)ks;
 }
+/* HUMAN input log (owner 2026-10-06, "irl" demonstrations: HAI-ROBOTS-PHONES-SERVER-DESIGN.md 3f): entity_menu_history/<pid>.txt receives BOTH the human's real X input
+ * and the harness's relay writes in the same format, so it cannot say who did what. This second append-only log is written ONLY from the real X event handlers
+ * (kh_capture_click / kh_capture_key), never from the relay poll, so every line in it is something a person did on this window:
+ *     #.desktop/human_input/<pid>.txt     <epoch_ms>|<pid>|<window label>|KEY|<code>|focus=<nav>|id=<element id>|label=<element label>
+ *                                         <epoch_ms>|<pid>|<window label>|CLICK|<button>|<x>|<y>|nav=<n>|id=<element id>|act=<its onclick>|label=<its label>
+ * The trailing fields are the CONTEXT (which element the key went to / the click landed on, nav-numbered), so a demonstration says what the human did, not just where they pressed.
+ * Same key codes as the relay (kh_key_history_code). One writer (this process). Local only (gitignored). NOTE: it records typed characters like the relay already does,
+ * including into text fields; a password-field exclusion is not implemented. */
+static void kh_ctx_clean(const char *in, char *out, size_t n, size_t maxlen) {
+    size_t i = 0; if (n == 0) return;
+    for (; in && in[i] && i < maxlen && i + 1 < n; i++) out[i] = (in[i] == '|' || in[i] == '\n' || in[i] == '\r' || in[i] == '\t') ? ' ' : in[i];
+    out[i] = '\0';
+}
+static void kh_human_log(const char *kind, const char *args) {
+    char dir[PATH_BUF + 40], path[PATH_BUF + 80], label[160]; struct timespec ts; FILE *f; char *c;
+    snprintf(dir, sizeof(dir), "%s/#.desktop/human_input", g_house_root);
+    mkdir(dir, 0777);
+    snprintf(path, sizeof(path), "%s/%d.txt", dir, (int)getpid());
+    snprintf(label, sizeof(label), "%s", (g_window && g_window->label[0]) ? g_window->label : g_current_page);
+    for (c = label; *c; c++) if (*c == '|' || *c == '\n' || *c == '\r') *c = ' ';
+    clock_gettime(CLOCK_REALTIME, &ts);
+    if (!(f = fopen(path, "a"))) return;
+    fprintf(f, "%lld|%d|%s|%s|%s\n", (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000, (int)getpid(), label, kind, args);
+    fclose(f);
+}
 static void kh_capture_click(int x, int y, int button) {
     char path[PATH_BUF]; history_path(path, sizeof(path));
     if (g_history_cursor < 0) { struct stat st; g_history_cursor = (stat(path,&st)==0)?st.st_size:0; }
     FILE *f = fopen(path, "a"); if (!f) return;
     fprintf(f, "MOUSE_EVENT: %d %d %d 1\n", button, x, y); fclose(f);
+    {   /* context: the element under the pointer (same first-match hit-test as the right-click path) */
+        Elem *hit = NULL; int nav = 0; char a[640], idc[80], act[160], lab[100];
+        for (int i = 0; i < g_n_nav; i++) {
+            Elem *it = g_nav[i];
+            if (!it || it->w <= 0) continue;
+            if (x >= it->x && x < it->x + it->w && y >= it->y && y < it->y + it->h) { hit = it; nav = i + 1; break; }
+        }
+        kh_ctx_clean(hit ? hit->id : "", idc, sizeof(idc), 64);
+        kh_ctx_clean(hit ? hit->onclick : "", act, sizeof(act), 150);
+        kh_ctx_clean(hit ? hit->label : "", lab, sizeof(lab), 90);
+        snprintf(a, sizeof(a), "%d|%d|%d|nav=%d|id=%s|act=%s|label=%s", button, x, y, nav, idc, act, lab);
+        kh_human_log("CLICK", a);
+    }
 }
 static void kh_capture_key(KeySym ks, char ch) {
     char path[PATH_BUF]; history_path(path, sizeof(path));
     if (g_history_cursor < 0) { struct stat st; g_history_cursor = (stat(path,&st)==0)?st.st_size:0; }
     FILE *f = fopen(path, "a"); if (!f) return;
     fprintf(f, "KEY_PRESSED: %d\n", kh_key_history_code(ks, ch)); fclose(f);
+    {   /* context: the element that has keyboard focus when this key arrives */
+        Elem *fe = (g_focus_nav >= 1 && g_focus_nav <= g_n_nav) ? g_nav[g_focus_nav - 1] : NULL;
+        char a[300], idc[80], lab[100];
+        kh_ctx_clean(fe ? fe->id : "", idc, sizeof(idc), 64);
+        kh_ctx_clean(fe ? fe->label : "", lab, sizeof(lab), 90);
+        snprintf(a, sizeof(a), "%d|focus=%d|id=%s|label=%s", kh_key_history_code(ks, ch), fe ? g_focus_nav : 0, idc, lab);
+        kh_human_log("KEY", a);
+    }
 }
 
 static int poll_agent_history(void) {
@@ -12399,16 +12615,19 @@ static void hq_idle_tick(void) {
             /* Slide-only (owner 2026-10-05): the user may drag the window sideways; its vertical
              * position is always the anchor (top of the bottom bar's stack). The sideways offset
              * from the centred spot is remembered and re-applied as the anchor moves. */
-            static int s_dx = 0, s_last_x = -99999; static time_t s_t0 = 0;
+            static int s_dx = 0, s_last_x = -99999, s_dx_loaded = 0, s_dx_dirty = 0; static time_t s_t0 = 0, s_dx_t = 0;
             int cx0 = atoi(acx) - g_win_w / 2, ny = atoi(abt) - g_win_h, nx;
             Window ch; int rx = g_win_x, ry = g_win_y, have = 0;
             if (!s_t0) s_t0 = time(NULL);
+            if (!s_dx_loaded) { s_dx = slide_dx_get(g_window->label); s_dx_loaded = 1; }   /* remembered across restarts */
             have = XTranslateCoordinates(dpy, win, DefaultRootWindow(dpy), 0, 0, &rx, &ry, &ch);
             /* The window manager places a new window asynchronously, so for the first 3 s after
              * launch we only place it. After that any x the window is found at that we did not set is
              * the user sliding it: adopt it at once (live, so a drag is not fought). */
-            if (have && time(NULL) - s_t0 >= 3 && s_last_x != -99999 && rx != s_last_x) s_dx = rx - cx0;
+            if (have && time(NULL) - s_t0 >= 3 && s_last_x != -99999 && rx != s_last_x) { s_dx = rx - cx0; s_dx_dirty = 1; s_dx_t = time(NULL); }
+            if (s_dx_dirty && time(NULL) > s_dx_t) { slide_dx_put(g_window->label, s_dx); s_dx_dirty = 0; }   /* once the drag has settled for a second */
             nx = cx0 + s_dx;
+            { int scr_w = DisplayWidth(dpy, DefaultScreen(dpy)); if (nx > scr_w - g_win_w) nx = scr_w - g_win_w; }   /* a saved offset must not push it off a smaller screen */
             if (nx < 0) nx = 0;
             if (ny < 0) ny = 0;
             /* compare with the window's REAL position: y is always forced back to the anchor */
@@ -13042,6 +13261,8 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
                      * gate never wrote pchq_canvas_click.txt and the
                      * debug click line stayed "-". */
                     kh_publish_canvas_click(ev->xbutton.x, ev->xbutton.y, ev->xbutton.button);
+                    g_canvas_drag = (ev->xbutton.button == 1 && !kh_nav_item_at(ev->xbutton.x, ev->xbutton.y));
+                    g_canvas_drag_px = ev->xbutton.x; g_canvas_drag_py = ev->xbutton.y;
                 }
             }
             if (window_is_dock() && g_dock_menu_win && cw == g_dock_menu_win &&
@@ -13228,6 +13449,7 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
         return;
     }
     if (ev->type == ButtonRelease && ev->xbutton.button == 1) {
+        g_canvas_drag = 0;
         g_popup_dragging = 0;  /* REAL, NEW 2026-08-29 (TASK 1) */
         g_text_drag_elem = NULL; /* REAL, NEW 2026-09-14 - end any real text drag-select */
         g_ov_drag = NULL;
@@ -13240,6 +13462,17 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
             g_win_resizing = 0;
             kh_save_win_size();
             if (!g_quit) { assign_nav_and_layout(); redraw(); }
+        }
+        return;
+    }
+    if (ev->type == MotionNotify && g_canvas_drag && (ev->xmotion.state & Button1Mask)) {
+        /* xelector follows a canvas drag (owner 2026-10-06): publish the pointer as a click while button 1 is still held (checked from the event state, the release may land outside
+         * the window). Coalesced, and only after the pointer moved >= 6 px, so the raycast consumer (it re-reads pchq_canvas_click.txt on change) is not flooded. */
+        XEvent mdr;
+        while (XCheckTypedWindowEvent(dpy, win, MotionNotify, &mdr)) *ev = mdr;
+        if (abs(ev->xmotion.x - g_canvas_drag_px) >= 6 || abs(ev->xmotion.y - g_canvas_drag_py) >= 6) {
+            g_canvas_drag_px = ev->xmotion.x; g_canvas_drag_py = ev->xmotion.y;
+            kh_publish_canvas_click(ev->xmotion.x, ev->xmotion.y, 1);
         }
         return;
     }

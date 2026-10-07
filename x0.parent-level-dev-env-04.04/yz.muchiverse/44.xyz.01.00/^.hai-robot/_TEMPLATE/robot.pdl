@@ -1,0 +1,11 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+ROBOT        | id                   | CHANGE-ME
+ROBOT        | glyph                | 🤖
+ROBOT        | persona              | -
+ROBOT        | brain                | horn:groq
+ROBOT        | phone                | -
+ROBOT        | parent               | -
+ROBOT        | max_children         | 0
+ROBOT        | spend_cap_usd        | 0
+ROBOT        | created              | YYYY-MM-DD

@@ -1,0 +1,36 @@
+<!-- board.xhtpm - the ONE generic board layout (Q006, HAI-ROBOTS-PHONES-SERVER-DESIGN.md 3d): a list of rows (left), a detail pane (right) and action buttons.
+     The grave, the ghost roster, the server and the phone windows are all this shape; each is an INSTANCE = this template + a state/<name>/board.pdl data source.
+     TEMPLATE: do not launch this file. `sh ops/new_board.sh <name>` stamps board-<name>.xhtpm from it (phones -> <name>); edit THIS file and re-run new_board.sh to restyle every board.
+     Static template + manager-as-module, same house convention as music-player-hq / hotbar-hq: board_vars_op.+x (a <module>) reads state/<name>/board.pdl and publishes
+     state/<name>/ui.txt (plain key=value) which this layout renders via vars=. Backspace on a row (when board.pdl has a DELETE line) opens the renderer's confirm popup (confirm=) before anything is removed. A row click runs `board_vars_op.+x <state> --select N`, which saves the selection and republishes. -->
+<window label="${title}" class="board-pal database-window" vars="state/phones/ui.txt">
+  <module src="@.apps/board-hq/ops/+x/board_vars_op.+x @.apps/board-hq/state/phones watch" id="_"/>
+  <page name="main">
+    <sidebar id="sidebar" class="sidebar">
+      <text label="${subtitle} - ${n_rows} rows" class="quiet"/>
+      <!-- "+ New ..." button, same idiom as chat-hai's "+ New Session": creates at once with the CREATE line's default title (Backspace deletes it, with the confirm popup) -->
+      <item id="newbtn" class="data-item" label="+ ${create_label}" action="${create_default_action}" show="${can_create}"/>
+      <scrolllist>
+        <repeat count="${n_rows}" bind="r">
+          <item id="row${r.#}" class="${r.cls}" label="${r.text}" action="${r.action}"
+                backspace_action="${r.del_action}" confirm="${r.confirm}"/>
+        </repeat>
+      </scrolllist>
+    </sidebar>
+    <panel id="detail" class="detail-panel">
+      <text label="${sel_name}" class="detail-title"/>
+      <scrolllist>
+        <repeat count="${n_detail}" bind="d">
+          <text label="${d.text}" class="detail-line"/>
+        </repeat>
+      </scrolllist>
+      <row class="toolbar">
+        <repeat count="${n_actions}" bind="a">
+          <item id="act${a.#}" class="act-btn" label="${a.label}" action="${a.action}"/>
+        </repeat>
+      </row>
+      <!-- composer, same place and shape as open-hai / chat-hai: a cli_io at the bottom of the main panel. What is typed is passed to board.pdl's CREATE command as its one argument (see board_vars_op.c). -->
+      <cli_io id="newitem" target_id="newitem" class="composer-text" label="${create_label} &gt; " action="${create_action}" show="${can_create}"/>
+    </panel>
+  </page>
+</window>

@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+SERVER       | id                   | CHANGE-ME
+SERVER       | glyph                | 🖥️
+SERVER       | grave                | ^.grave
+SERVER       | max_spawn_depth      | 2
+SERVER       | max_children_each    | 3
+SERVER       | max_entities_total   | 12
+SERVER       | rate_msgs_per_min    | 30
+SERVER       | max_message_bytes    | 2000
+SERVER       | spawn_approval       | manager
+SERVER       | human_phone          | human:owner

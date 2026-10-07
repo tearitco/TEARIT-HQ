@@ -59,7 +59,7 @@
 #define HARD_TIMEOUT_SECONDS 240
 #define BOOT_W 440
 #define BOOT_H 46
-#define BOOT_TIMEOUT_SECONDS 90
+#define BOOT_TIMEOUT_SECONDS 300
 /* A BUILD FAILED banner waits for a real click/key dismissal, not this -
  * long enough that it is effectively "stays until dismissed" for any
  * normal dev session, while still not running forever unattended. */
@@ -142,13 +142,6 @@ static unsigned long shade_pix(Display *dpy, Colormap cmap, const char *hex, int
     XColor c;
     if (XParseColor(dpy, cmap, shade(hex, d), &c) && XAllocColor(dpy, cmap, &c)) return c.pixel;
     return fallback;
-}
-
-/* was <house>/<rel> written at or after t_start? (a leftover from an earlier run does not count) */
-static int fresh_since(const char *house, const char *rel, time_t t_start) {
-    char p[4096]; struct stat st;
-    snprintf(p, sizeof(p), "%s/%s", house, rel);
-    return stat(p, &st) == 0 && st.st_size > 0 && st.st_mtime >= t_start;
 }
 
 /* replace a previous boot splash (pid file), then record ours */
@@ -240,21 +233,78 @@ int main(int argc, char **argv) {
     XftColorAllocName(dpy, DefaultVisual(dpy, scr), cmap, shade(fg_hex, -70), &xdimc);
 
     if (boot) {
-        time_t t_start = time(NULL) - 1;
         struct timespec b0; clock_gettime(CLOCK_MONOTONIC, &b0);
         double done_at = -1.0;
         int tick = 0;
+        int compile_seen = 0, compiling = 0, failed_boot = 0, marker_seen_any = 0;
         for (;;) {
             struct timespec bn; clock_gettime(CLOCK_MONOTONIC, &bn);
             double el = (bn.tv_sec - b0.tv_sec) + (bn.tv_nsec - b0.tv_nsec) / 1e9;
-            while (XPending(dpy)) { XEvent ev; XNextEvent(dpy, &ev); }
+            while (XPending(dpy)) { XEvent ev; XNextEvent(dpy, &ev); if (failed_boot && (ev.type == ButtonPress || ev.type == KeyPress)) g_stop = 1; }
             if (g_stop || el > BOOT_TIMEOUT_SECONDS) break;
-            int mgr = fresh_since(house, "#.desktop/strip_ui.txt", t_start);
-            int dock = fresh_since(house, "#.desktop/dock_stack/base.txt", t_start);
-            double frac = el / 14.0; if (frac > 0.9) frac = 0.9;           /* time creep: keeps moving, never claims done */
-            if (mgr && frac < 0.4) frac = 0.4;                             /* real milestone: menu manager published */
-            if (dock) { frac = 1.0; if (done_at < 0) done_at = el; }       /* real milestone: bottom bar is up */
-            const char *step = dock ? "Ready" : mgr ? "Loading menus\xE2\x80\xA6" : "Starting\xE2\x80\xA6";
+            /* The start script's build leaves +x/.build_failed.txt for the whole build (dead-man's switch, cleared on success). The
+             * launcher starts THIS strip before the build, so a compile is shown here, pinned to the build itself: the marker + the
+             * rewritten binaries. The launcher writes #.desktop/boot_build_failed.txt when the build ended without clearing it. */
+            {   char fp[4096]; struct stat fst;
+                snprintf(fp, sizeof(fp), "%s/#.desktop/boot_build_failed.txt", house);
+                if (stat(fp, &fst) == 0) failed_boot = 1;
+            }
+            if (failed_boot) {
+                XSetForeground(dpy, gc, failbg);
+                XFillRectangle(dpy, win, gc, 0, 0, ww, wh);
+                XSetForeground(dpy, gc, failbar);
+                XFillRectangle(dpy, win, gc, 0, 0, ww, 4);
+                XftDrawStringUtf8(xft, &xfail, fbig, 14, 22, (const FcChar8 *)"BUILD FAILED - livedesk not started", 35);
+                XftDrawStringUtf8(xft, &xfail, fsm, 14, 38, (const FcChar8 *)"see ops/+x/build_error.log - click to dismiss", 45);
+                XFlush(dpy); usleep(120000);
+                if (el > 120) break;
+                continue;
+            }
+            {   static double marker_since = -1.0;
+                if (build_failed(xdir)) {
+                    marker_seen_any = 1;
+                    if (marker_since < 0) marker_since = el;
+                    if (el - marker_since >= 0.8) { compile_seen = 1; compiling = 1; }   /* a real compile; a ~0.6 s no-op build never shows the bar */
+                } else {
+                    marker_since = -1.0;
+                    if (compiling) compiling = 0;
+                }
+            }
+            if (compiling) {
+                int cdone = 0;
+                for (int i = 0; i < N_TARGETS; i++) {
+                    char tp[4096]; struct stat tst;
+                    snprintf(tp, sizeof(tp), "%s/%s", xdir, g_targets[i]);
+                    if (stat(tp, &tst) == 0 && (!base_exists[i] || tst.st_mtime > base_mtime[i])) cdone++;
+                }
+                double cf = (double)cdone / (double)N_TARGETS, ct = el / 30.0; if (ct > 0.97) ct = 0.97;
+                double frac = (cf > ct ? cf : ct) * 0.6;                    /* compile = first 60% of the bar */
+                XSetForeground(dpy, gc, bg); XFillRectangle(dpy, win, gc, 0, 0, ww, wh);
+                XftDrawStringUtf8(xft, &xfg, fbig, 14, 20, (const FcChar8 *)"Loading livedesk\xE2\x80\xA6", 18);
+                { const char *st = "Compiling\xE2\x80\xA6"; XGlyphInfo gi; XftTextExtentsUtf8(dpy, fsm, (const FcChar8 *)st, (int)strlen(st), &gi);
+                  XftDrawStringUtf8(xft, &xdimc, fsm, ww - 14 - gi.xOff, 19, (const FcChar8 *)st, (int)strlen(st)); }
+                { int bx = 14, by = 28, bw = ww - 28, bh = 8;
+                  XSetForeground(dpy, gc, trough); XFillRectangle(dpy, win, gc, bx, by, bw, bh);
+                  XSetForeground(dpy, gc, barfill); XFillRectangle(dpy, win, gc, bx, by, (int)(bw * frac + 0.5), bh);
+                  { int fw = (int)(bw * frac + 0.5), sx = fw > 0 ? (tick * 9) % (fw + 46) - 46 : 0, x0 = sx < 0 ? 0 : sx, x1 = sx + 46 > fw ? fw : sx + 46;
+                    if (x1 > x0) { XSetForeground(dpy, gc, shade_pix(dpy, cmap, fg_hex, 60, fg)); XFillRectangle(dpy, win, gc, bx + x0, by, x1 - x0, bh); } }
+                  XSetForeground(dpy, gc, dim); XDrawRectangle(dpy, win, gc, bx, by, bw, bh); }
+                XFlush(dpy); tick++; usleep(60000);
+                continue;
+            }
+            /* The strip exists for the COMPILE only (owner 2026-10-06: "forget about entities ... stop strip when compile is done, entities is
+             * lighting fast now"). Compile over -> a short "Ready" beat -> close. No compile (a ~0.6 s no-op build, or no build at all) -> close at once. */
+            double frac = 1.0;
+            const char *step = "Ready";
+            if (compile_seen) {
+                if (done_at < 0) done_at = el;
+            } else if (marker_seen_any && !build_failed(xdir)) {
+                break;                                   /* the build finished without ever becoming a real compile */
+            } else if (el > 4.0 && !marker_seen_any) {
+                break;                                   /* no build ran at all */
+            } else {
+                frac = 0.0; step = "Starting\xE2\x80\xA6";    /* build about to start / marker stood < 0.8 s */
+            }
             XSetForeground(dpy, gc, bg);
             XFillRectangle(dpy, win, gc, 0, 0, ww, wh);
             XftDrawStringUtf8(xft, &xfg, fbig, 14, 20, (const FcChar8 *)"Loading livedesk\xE2\x80\xA6", 18);
@@ -265,7 +315,7 @@ int main(int argc, char **argv) {
                 XFillRectangle(dpy, win, gc, bx, by, bw, bh);
                 XSetForeground(dpy, gc, barfill);
                 XFillRectangle(dpy, win, gc, bx, by, (int)(bw * frac + 0.5), bh);
-                if (!dock) {   /* a bright sweep over the filled part: it is visibly alive even while the fraction holds */
+                if (done_at < 0) {   /* a bright sweep over the filled part: it is visibly alive even while the fraction holds */
                     int sweep_w = 46, span = (int)(bw * frac + 0.5) + sweep_w;
                     int sx = span > 0 ? (tick * 9) % span - sweep_w : 0;
                     int x0 = sx < 0 ? 0 : sx, x1 = sx + sweep_w > (int)(bw * frac + 0.5) ? (int)(bw * frac + 0.5) : sx + sweep_w;
@@ -279,7 +329,23 @@ int main(int argc, char **argv) {
             tick++;
             usleep(60000);
         }
+        {   /* leave evidence for the next reader: how long the boot really took and what the bar was doing (no manual data needed) */
+            char tp[4096], sp[4096], tl[4096]; struct stat sst; FILE *tf; struct timespec ts;
+            snprintf(sp, sizeof(sp), "%s/#.desktop/dock_stack/draw_stamp.txt", house);
+            snprintf(tp, sizeof(tp), "%s/#.desktop/livedesk_open.txt", house);
+            snprintf(tl, sizeof(tl), "%s/#.desktop/boot_timeline.txt", house);
+            clock_gettime(CLOCK_MONOTONIC, &ts);
+            if ((tf = fopen(tl, "a"))) {
+                struct timespec rt; clock_gettime(CLOCK_REALTIME, &rt);
+                fprintf(tf, "%lld splash closed after %.1fs (%s) dock_redraws=%ld open_rows_bytes=%ld loadavg=%s\n",
+                        (long long)rt.tv_sec * 1000LL + rt.tv_nsec / 1000000L,
+                        (double)(ts.tv_sec - b0.tv_sec) + (ts.tv_nsec - b0.tv_nsec) / 1e9, done_at >= 0 ? "ready" : (g_stop ? "stopped" : "timeout"),
+                        stat(sp, &sst) == 0 ? (long)sst.st_size : -1L, stat(tp, &sst) == 0 ? (long)sst.st_size : -1L, "see /proc/loadavg");
+                fclose(tf);
+            }
+        }
         {   char pp[4096]; snprintf(pp, sizeof(pp), "%s/#.desktop/livedesk_boot_splash.pid", house); unlink(pp); }
+        {   char fp[4096]; snprintf(fp, sizeof(fp), "%s/#.desktop/boot_build_failed.txt", house); unlink(fp); }
         XftColorFree(dpy, DefaultVisual(dpy, scr), cmap, &xfg);
         XftColorFree(dpy, DefaultVisual(dpy, scr), cmap, &xdimc);
         XDestroyWindow(dpy, win);

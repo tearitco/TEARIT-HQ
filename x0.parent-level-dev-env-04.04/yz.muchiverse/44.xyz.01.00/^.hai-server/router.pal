@@ -1,0 +1,11 @@
+# router.pal - TEMPLATE of the phone router's main loop (Q009, HAI-ROBOTS-PHONES-SERVER-DESIGN.md 3f, 4). Do not run this file directly:
+# button.sh start fills @OPS@ with the absolute ops folder and writes router.run.pal next to it (so the same loop works on the live server dir and on a test copy).
+#
+# House pattern (PRISC-OPS-ARCHITECTURE.md): the .pal only sequences; the real work is the compiled op, which is the single writer of every inbox.
+# server_route_op reads each phone's outbox from a saved byte cursor (size growth, never mtime), delivers once, logs a ledger row + an observations row, and exits.
+# `sleep` under prisc+x is MICROSECONDS (2000000 = 2 s): a bare `sleep 2` would re-exec the op thousands of times a second (the world_manager CPU bug of 2026-09-28).
+
+loop:
+  exec @OPS@/server_route_op.+x .
+  sleep 2000000
+  j loop

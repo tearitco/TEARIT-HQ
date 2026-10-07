@@ -13,7 +13,11 @@
   <page name="main">
     <sidebar id="rail" class="hb-rail sidebar"/>
     <panel id="hb-panel" class="hb-panel">
-      <text label="${holder} - slot: ${sel_name}" class="hb-quiet"/>
+      <!-- header: the holder's OWN picture (cursword's sprite.csv, published as holder_sprite) left of "<holder> - slot: <selected>". no-nav: display only, so the slots below keep
+           the typed digits 1-9. Items under 64px high draw the sprite left of the label; with no holder_sprite published (old manager) it is just the text, as before. -->
+      <row class="toolbar hb-headrow">
+        <item id="hbholder" class="hb-head no-nav sprite-inline" label="${holder} - slot: ${sel_name}" sprite="${holder_sprite}" action="void"/>
+      </row>
       <row class="toolbar hb-row">
         <repeat count="${n_slots}" bind="s">
           <item id="hb${s.#}" class="hb-slot sprite-inline ${s.cls}" label="${s.text}" sprite="${s.sprite}"

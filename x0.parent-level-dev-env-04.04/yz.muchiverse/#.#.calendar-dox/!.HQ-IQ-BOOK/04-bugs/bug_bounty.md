@@ -530,6 +530,41 @@ So this is a pure rendering bug, and **it's in a THIRD, different code path from
 
 ---
 
+## ✅ CLOSED 2026-10-06 (owner confirmed on his hardware: "it's good and fixed"; commits f64f932f8 + b3ee8caca, on main): livedesk bottom bar / entity cells took ~20 s to appear after quit-then-start - the dock's 20 s forced-reparse backstop
+
+**FINAL RESOLUTION (2026-10-06):** the owner's own `boot_timeline.txt` showed the dock repainting at 0.5 s and then not again until 19.9 s (the 20 s backstop in `reparse_chtpm_if_changed()`), with all entities registered by ~6 s, i.e. a missed change signal that only the backstop recovered. Fix: the dock's backstop is 1 s for its first 60 s (steady state still 20 s), commit `f64f932f8`. Owner confirmed fast on his machine. Side fixes the same day: the start script's 1.9 s/call /proc shell scan -> one pgrep (`7c7401090`); the compile-progress strip is now started by `build_khtpm_strip.sh` itself, shows only during a real compile and closes when it ends (`7566e0752`, `b3ee8caca`); `$.restart` looked instant only because it leaves entities alive. **Never root-caused:** WHY the manager->dock change signal was missed (manager publish vs the dock's marker-size gate). The startup marks (`publish#N`, `SLOW ktb_reload`, dock redraw marks in `#.desktop/boot_timeline.txt`) stay in so a recurrence shows which side went quiet; reopen if the bar is slow again. The sprite theory (hq_sprite load / hq_blit_sprite XGetImage) was measured and DISPROVED (112 blits = 127 ms).
+
+**Reported (owner, repeatedly, "mine is still slow", same on every start):** after quitting from the HQ menu (X.quit) and starting from `start-temp` (right-click > run as program), everything else loads fast but the bottom bar's entity cells take ~20 s and show no loading signal. Owner cannot send data; "trust me".
+
+**What was measured (agent's sessions) - all FAST (bar + 17 entities in ~1-2 s, splash gone ~5 s):** `button.sh quit` then `start`; SIGTERM to the manager (same exit path as HQ X.quit: close-all + reap) then the start-button's build step + `button.sh run`; the real `start-temp` ELF with `env -i` (bare environment). Instrumentation: `#.desktop/boot_timeline.txt` (kh_boot_mark.h marks + the boot splash's own close summary), `#.desktop/dock_stack/draw_stamp.txt` (one byte per dock redraw, first 60 s). Details: `TASKBAR-STARTUP-LATENCY-RESEARCH-2026-10-06.md`.
+
+**Code paths examined, and what they cost / why they were ruled out**
+| path | finding |
+|---|---|
+| `livedesk-start-button.c` (start-temp) | runs `bash build_khtpm_strip.sh` SYNCHRONOUSLY (`system()`), then `exec sh button.sh run`. No bar until the build returns. |
+| no-op build | 0.64 s (13 binaries hash-gated). Not it, *when nothing changed*. |
+| **stale-gate build** | `build_core_render.sh` recompiles `khtpm_core_render.c` (21k lines, one TU, -O2) = **22 s on this box even under `nice`**. If ANY gated input changed since the last build (any agent edits the renderer or a listed shared file), the next start press compiles for ~20 s BEFORE anything launches. This matches the owner's number but not their "everything else is fast" - **unconfirmed whether their starts hit it**; check `#.desktop/livedesk_launch.log` / `+x/.build_hashes.pdl` mtimes after a slow start. |
+| `crypt_autostart` | `system("setsid nohup ... &")` per LAUNCH row, no waits except a 0.4 s + 0.2 s quit sweep. Not it. |
+| `run_khtpm_strip.sh` | the 1.9 s/call /proc shell scan (fixed `7c7401090`). Not 20 s. |
+| manager `ktb_init` | 0.2 s for 17 entities (per-entity /proc scan already hoisted 2026-09-22). Not it. |
+| tab list | `load_tabs()` reads `livedesk_open.txt` rows each entity writes at its own startup; manager rewrites it every second. Fast here. |
+| registry lock | `flock` (kernel releases it on death): a stale lock cannot cause a wait. Ruled out. |
+| nav claims | `nav_claim_rows()` is popup-only, not startup. Ruled out. |
+| dock animation/stagger | grep found no startup animation, reveal or staged-delay code in the dock path. |
+
+**Real defects found along the way (not the 20 s, but real)**
+1. `build_core_render.sh` `CR_SRCS` omits files `khtpm_core_render.c` #includes: `khtpm_nav_echo.c`, `house_wait.h`, `kh_proc_registry.h`, `kh_boot_mark.h` (and whatever `khtpm_draw_core.c` pulls in). Editing one does NOT trigger a rebuild -> a stale renderer binary. (hash_gate.sh documents this limitation; the list was never completed.)
+2. The synchronous pre-launch build means a stale gate blanks the whole desktop for ~20 s with only the "Building livedesk..." splash; nothing launches until it ends.
+
+**UPDATE 2026-10-06 (evening) - REAL EVIDENCE from the owner's own quit-then-start (boot_timeline.txt, 17:46:29 start):** the sprite theory is DISPROVED (112 blits = 127 ms total, 12 sprite loads = 36 ms). The dock painted 4 cells in the first 0.54 s, then **did not redraw again until 19.9 s** (then 30.2, 39.9, 59.9 - the 20 s forced-reparse backstop in `reparse_chtpm_if_changed()`, plus another ~10 s cadence), although livedesk_open.txt already held all 17 rows (3825 bytes) when the strip closed at ~6 s. So the bar is not slow to draw; the dock is not being told (or is not noticing) that the tab list changed, and only the 20 s backstop catches up. Also explains why `$.restart` (`run_khtpm_strip.sh new`: entities stay alive, bar refills at once) looks instant while quit-then-start (17 fresh entity spawns) looks slow. Mitigation committed: the dock backstop is 1 s for the dock's first 60 s (20 s steady state). Still unknown WHY the signal is missed (manager publish vs dock marker-size gate): the manager now logs `publish#N n_tabs=..` and `SLOW ktb_reload` marks, the dock logs per-redraw marks, all in `#.desktop/boot_timeline.txt` - next real start shows which side went quiet.
+
+**Hypotheses still open, ranked:** (a) owner's starts hit the stale-gate compile (22 s) because other agents / other branches edit gated sources between presses - cheapest to test: after the next slow start compare `+x/khtpm_core_render.+x` mtime with the start time; (b) state that exists only on the owner's live desktop (windows/daemons open at start) causing CPU contention - not reproducible without it; (c) first-run-of-the-day cold disk cache.
+**Next step needing no owner effort:** after any slow start the agent reads `boot_timeline.txt` (stage times + splash close summary), `draw_stamp.txt` size, `livedesk_launch.log` and the binary mtimes.
+
+## ✅ CLOSED 2026-10-06 (restart measured 6.04 s -> 1.09 s; cold login NOT measured): bottom bar slow to appear at startup - the start script's /proc scan, not the bar
+
+Root cause: `run_khtpm_strip.sh` `strip_parser_pids()` forked tr/sed/printf/grep per process (1.9 s per call, 3+ calls). Replaced by one `pgrep -f`. Full evidence, timeline and caveats: `TASKBAR-STARTUP-LATENCY-RESEARCH-2026-10-06.md` (same folder). Startup marks now written to `#.desktop/boot_timeline.txt` on every boot.
+
 ## ✅ CLOSED 2026-09-22 (fixed same day as reported, verified via live `strip_ui.txt` receipts and real timing, commit `60fd7920`): taskbar takes a long time to appear on launch, even though desktop entities (which the user expected to be the slower/bigger thing) appear instantly
 
 **Reported:** direct live report - "it took a long time for tb to populate... doesn't make sense that it took so long when desktop entities, which are larger, were instant." Asked for a "loading" indicator as a possible mitigation, and to track this at minimum.

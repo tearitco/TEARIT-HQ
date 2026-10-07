@@ -18,7 +18,7 @@
       <item id="togglesound" label="${sound_label}" action="${sound_action}"/>
       <scrolllist>
         <repeat count="${sessions_count}" bind="session">
-          <item id="s${session.#}" label="${session.label}" action="${session.action}" backspace_action="${session.del_action}"/>
+          <item id="s${session.#}" label="${session.label}" action="${session.action}" backspace_action="${session.del_action}" confirm="Delete session ${session.label}?"/>
         </repeat>
       </scrolllist>
     </sidebar>

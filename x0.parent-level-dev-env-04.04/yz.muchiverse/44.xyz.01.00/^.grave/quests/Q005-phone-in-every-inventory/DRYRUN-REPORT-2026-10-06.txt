@@ -1,0 +1,66 @@
+phone_ensure_op  DRY RUN (nothing is written)  index=<house>/^.hai-server/phones.index
+pals root: <house>/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals
+    G9JB                         uid:frozen pal hash  number:872-7096-3164  wallet:ea463fe3e06dabfdc7978bf6c  would create phone
+  > event_clacker_1              uid:frozen pal hash  number:176-9775-8313  wallet:e5aa5ee8b8c9d54696281dc25  would create phone
+  > page_2                       uid:frozen pal hash  number:077-6085-2258  wallet:ef51bb0efd3d05d22efb098ff  would create phone
+  > page_1                       uid:frozen pal hash  number:025-8867-2905  wallet:edd8d7ad36d4c2b89fab89678  would create phone
+    TPT1                         uid:frozen pal hash  number:809-8178-7712  wallet:e3a326792468b844016ddc88a  would create phone
+    BKST                         uid:frozen pal hash  number:570-9237-2096  wallet:edfc8d48a7e771e80a1f544d7  would create phone
+    CSTL                         uid:frozen pal hash  number:480-0327-8038  wallet:e2aab6e7ba8d854d65309d0df  would create phone
+  > event_clacker_1              uid:frozen pal hash  number:880-0815-0090  wallet:ef05004ee1efc844ac35dd54b  would create phone
+  > page_1                       uid:frozen pal hash  number:284-2132-4886  wallet:e91752ef2de4e28563009dfa0  would create phone
+    CURS                         uid:frozen pal hash  number:293-5294-9743  wallet:e03857c085b7f3fef7d3d416e  would create phone
+  > 4TSG                         uid:frozen pal hash  number:157-0288-6369  wallet:eab934b801e9167e16572b819  would create phone
+  > event_clacker_1              uid:frozen pal hash  number:471-5576-7310  wallet:e7dbc65509649400ebb438a91  would create phone
+  > page_2                       uid:frozen pal hash  number:927-5585-2860  wallet:ef920bc278d1a463c5d61e433  would create phone
+  > page_1                       uid:frozen pal hash  number:544-3746-6631  wallet:eef3cf88c23390a078e46865b  would create phone
+  > self                         uid:frozen pal hash  number:297-2363-0074  wallet:eb63baf406a37e9fa681d2625  would create phone
+  > event_clacker_1              uid:frozen pal hash  number:196-9686-3319  wallet:ee7f01202a27728573ade6100  would create phone
+  > page_2                       uid:frozen pal hash  number:648-1248-3024  wallet:e97aa1d936e1959d0ac21e25c  would create phone
+  > page_1                       uid:frozen pal hash  number:530-7653-9391  wallet:e1c5505f45742bfffecc4c814  would create phone
+    DOOR                         uid:frozen pal hash  number:738-1982-5308  wallet:ebedaac67c53b1c9c6ca8aade  would create phone
+  > event_clacker_1              uid:frozen pal hash  number:806-3674-3463  wallet:e1af03e10a6df6f2703eb662e  would create phone
+  > page_1                       uid:frozen pal hash  number:184-8252-5994  wallet:e847487cb84e3572a7892ecfa  would create phone
+    DBA1                         uid:frozen pal hash  number:780-5052-0219  wallet:e7a094f9bd0482c9b4682f94f  would create phone
+    DBA2                         uid:frozen pal hash  number:169-3616-6665  wallet:e8e2fb1c0569d7d09e2f60254  would create phone
+    DBB1                         uid:frozen pal hash  number:003-4145-1551  wallet:ece359d6473a7431fb0a9be10  would create phone
+    DBB2                         uid:frozen pal hash  number:338-2293-7897  wallet:e2f729494c5d79329f7749835  would create phone
+    DCA0                         uid:frozen pal hash  number:027-2102-5186  wallet:e80c4038527a99ca2c60dce4c  would create phone
+    DCB0                         uid:frozen pal hash  number:132-6771-4647  wallet:e257f03d4a4296a5794318b3f  would create phone
+    DPA0                         uid:frozen pal hash  number:338-5435-0721  wallet:e620d991b82f3ad813da1f6ee  would create phone
+    DPB0                         uid:frozen pal hash  number:467-6622-8881  wallet:e8bc0d4594a6c75915b937ca2  would create phone
+    DSA1                         uid:frozen pal hash  number:853-6476-4254  wallet:ea6fbe9103abf1e5e87f77757  would create phone
+    DSA2                         uid:frozen pal hash  number:712-3188-5998  wallet:e51a697e4960cbaae8a54bdbb  would create phone
+    DSA3                         uid:frozen pal hash  number:009-5595-8393  wallet:ec079f72d32703c795595efd5  would create phone
+    DSA4                         uid:frozen pal hash  number:341-0243-5703  wallet:ee99ae042a5a91777e4f324b2  would create phone
+    DSB1                         uid:frozen pal hash  number:288-0451-6797  wallet:e9e3ce7fca06cdbbd6fee3319  would create phone
+    DSB2                         uid:frozen pal hash  number:432-9323-9047  wallet:e881d4a8f697abf0719b1e5a3  would create phone
+    DSB3                         uid:frozen pal hash  number:289-4259-5444  wallet:e8152c750d37edd7410825ecd  would create phone
+    DSB4                         uid:frozen pal hash  number:166-5819-1328  wallet:e11824c47bf9b8be0febe4c63  would create phone
+    m1_ninjadragon               uid:frozen pal hash  number:636-9250-1258  wallet:eb2ad22f9433eb90a6f85922a  would create phone
+    m9_missingno                 uid:frozen pal hash  number:999-2413-4999  wallet:eab5cb98e79dddc57071953aa  would create phone
+  > event_clacker_1              uid:frozen pal hash  number:290-6010-9491  wallet:ef176f909606a94b374d30ff2  would create phone
+  > page_1                       uid:frozen pal hash  number:872-3351-1152  wallet:e587d7d0032e01ef00c76193e  would create phone
+    DOOR                         uid:frozen pal hash  number:727-7730-7901  wallet:eb8bc88ac6eefd6fdc63e5905  would create phone
+  > event_clacker_1              uid:frozen pal hash  number:863-0409-4650  wallet:e2d7888913e0399ba0cbaa5c6  would create phone
+  > page_1                       uid:frozen pal hash  number:271-1846-5813  wallet:e61b3022b35ba43156ea4afc2  would create phone
+    ROBOT1                       uid:frozen pal hash  number:909-3903-9656  wallet:ef94bd23b53412fa8edb3ea55  would create phone
+  > event_clacker_1              uid:frozen pal hash  number:187-6774-1896  wallet:e65cbce179420f3c8d56bad4f  would create phone
+  > page_1                       uid:frozen pal hash  number:562-3359-2393  wallet:ef005fb4df5597649b1426ba8  would create phone
+    tax_robot                    uid:random           number:569-9202-6761  wallet:e4ca96bcf85b178893a991141  would create phone [NO pal.pdl]
+  > event_clacker_1              uid:frozen pal hash  number:646-0579-2751  wallet:e1698fbd6a51791ef3745398f  would create phone
+  > page_1                       uid:frozen pal hash  number:504-6391-5729  wallet:e484e3024163736d168033bc1  would create phone
+    terumon_001_ember            uid:frozen pal hash  number:648-7213-8213  wallet:e997c1389313595e576280287  would create phone
+    terumon_002_glacine          uid:frozen pal hash  number:350-6451-2054  wallet:eb3641b788eb66e36c8daa36f  would create phone
+    terumon_003_murmur           uid:frozen pal hash  number:671-1290-4938  wallet:e2a03a76e656bb8eaf0d3be7f  would create phone
+    terumon_004_solvent          uid:frozen pal hash  number:041-4022-7498  wallet:eed5f30d5b17afbaa60e1f0e4  would create phone
+    tile_rmmv_World_A2_1790489103 uid:random           number:502-9891-0580  wallet:ea4aef145cf301f74c99797ac  would create phone
+
+SUMMARY (dry run)
+  entities found:            55  (top-level 32, items inside inventories 23)
+  already have a phone:      0
+  phones to create:        55
+  already have entity_uid:   0
+  new uids from pal hash:    53  (frozen, continuity with PAL | hash)
+  new random uids:           2
+  errors / collisions:       0
