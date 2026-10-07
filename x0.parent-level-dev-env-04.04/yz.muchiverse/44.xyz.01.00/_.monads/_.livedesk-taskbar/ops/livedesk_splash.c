@@ -310,9 +310,9 @@ int main(int argc, char **argv) {
              * list (livedesk_open.txt, written only by the manager) has stopped changing for 1.5 s AND at least 4 s have passed
              * (owner 2026-10-06: the bar "still takes long" and the old splash was gone in 0.35 s). */
             {   char op[4096]; struct stat ost; static long last_sz = -1; static double last_chg = 0;
-                snprintf(op, sizeof(op), "%s/#.desktop/dock_stack/draw_stamp.txt", house);
+                snprintf(op, sizeof(op), "%s/#.desktop/livedesk_open.txt", house);   /* NOT draw_stamp.txt: the dock's 1 s startup backstop repaints every second for 60 s, so that file never goes quiet */
                 long sz = -1; if (stat(op, &ost) == 0) sz = (long)ost.st_size;
-                /* the dock appends a byte per redraw while it is still filling (khtpm_core_render.c); quiet for 1.2 s = settled (was 5 s while the dock had a 20 s backstop; now 1 s).
+                /* the entity list (livedesk_open.txt, size only - the manager rewrites it every second at the same size) stops growing once every entity has registered; quiet for 1.2 s = settled, and the dock catches up within its 1 s backstop.
                  * Hard cap 45 s so an always-redrawing bar can never pin the splash. */
                 if (sz != last_sz) { last_sz = sz; last_chg = el; }
                 if (dock && el_post >= 1.0 && (el - last_chg >= 1.2 || el_post >= 45.0) && done_at < 0) done_at = el;   /* the dock now repaints within ~1 s of a change (1 s startup backstop), so 1.2 s of quiet = settled */
