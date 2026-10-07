@@ -4396,6 +4396,150 @@ static JSValue nb_gl_deleteBuffer(JSContext *ctx, JSValueConst this_val, int arg
     glDeleteBuffers(1, &b);
     return JS_UNDEFINED;
 }
+/* ---- textures (slice 2): create/bind/upload/params/mipmap/delete ----
+ * Upload sources: TypedArray pixels, ImageData-like {width,height,data},
+ * canvas elements (backing store). HTMLImageElement needs async decode
+ * wiring - out of slice. UNPACK_* pixel-store modes ignored (tight packing). */
+static JSValue nb_gl_createTexture(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    NbGL *g = nb_gl_for(ctx, this_val); if (!g) return JS_UNDEFINED;
+    GLuint t = 0;
+    glGenTextures(1, &t);
+    return JS_NewInt32(ctx, (int32_t)t);
+}
+static JSValue nb_gl_deleteTexture(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbGL *g = nb_gl_for(ctx, this_val); if (!g) return JS_UNDEFINED;
+    GLuint t = (GLuint)nb_gl_argi(ctx, argv, argc, 0, 0);
+    glDeleteTextures(1, &t);
+    return JS_UNDEFINED;
+}
+static JSValue nb_gl_bindTexture(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbGL *g = nb_gl_for(ctx, this_val); if (!g) return JS_UNDEFINED;
+    glBindTexture((GLenum)nb_gl_argi(ctx, argv, argc, 0, 0x0DE1), (GLuint)nb_gl_argi(ctx, argv, argc, 1, 0));
+    return JS_UNDEFINED;
+}
+static JSValue nb_gl_activeTexture(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbGL *g = nb_gl_for(ctx, this_val); if (!g) return JS_UNDEFINED;
+    glActiveTexture((GLenum)nb_gl_argi(ctx, argv, argc, 0, 0x84C0));
+    return JS_UNDEFINED;
+}
+static JSValue nb_gl_texParameteri(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbGL *g = nb_gl_for(ctx, this_val); if (!g) return JS_UNDEFINED;
+    glTexParameteri((GLenum)nb_gl_argi(ctx, argv, argc, 0, 0x0DE1),
+                    (GLenum)nb_gl_argi(ctx, argv, argc, 1, 0),
+                    nb_gl_argi(ctx, argv, argc, 2, 0));
+    return JS_UNDEFINED;
+}
+static JSValue nb_gl_generateMipmap(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbGL *g = nb_gl_for(ctx, this_val); if (!g) return JS_UNDEFINED;
+    glGenerateMipmap((GLenum)nb_gl_argi(ctx, argv, argc, 0, 0x0DE1));
+    return JS_UNDEFINED;
+}
+static JSValue nb_gl_texImage2D(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbGL *g = nb_gl_for(ctx, this_val); if (!g || argc < 6) return JS_UNDEFINED;
+    GLenum tgt = (GLenum)nb_gl_argi(ctx, argv, argc, 0, 0x0DE1);
+    GLint level = nb_gl_argi(ctx, argv, argc, 1, 0);
+    GLint internal = nb_gl_argi(ctx, argv, argc, 2, 0x1908);
+    /* 9-arg numeric form: (t,l,i,w,h,border,format,type,pixels?) */
+    if (argc >= 9 && (JS_IsNumber(argv[3]) || JS_IsNull(argv[8]) || JS_IsObject(argv[8]))) {
+        GLsizei w = nb_gl_argi(ctx, argv, argc, 3, 0), h = nb_gl_argi(ctx, argv, argc, 4, 0);
+        GLenum fmt = (GLenum)nb_gl_argi(ctx, argv, argc, 6, 0x1908);
+        GLenum typ = (GLenum)nb_gl_argi(ctx, argv, argc, 7, 0x1401);
+        if (w <= 0 || h <= 0) return JS_UNDEFINED;
+        if (argc < 9 || JS_IsNull(argv[8]) || JS_IsUndefined(argv[8])) {
+            glTexImage2D(tgt, level, internal, w, h, 0, fmt, typ, NULL);
+            return JS_UNDEFINED;
+        }
+        size_t n = 0;
+        unsigned char *bytes = NULL;
+        int fln = 0;
+        float *fl = NULL;
+        {
+            JSValue ctor = JS_GetPropertyStr(ctx, argv[8], "constructor");
+            JSValue nm = JS_IsObject(ctor) ? JS_GetPropertyStr(ctx, ctor, "name") : JS_UNDEFINED;
+            const char *cn = JS_IsString(nm) ? JS_ToCString(ctx, nm) : NULL;
+            int is_float = cn && (!strcmp(cn, "Float32Array") || !strcmp(cn, "Float64Array"));
+            if (cn) JS_FreeCString(ctx, cn);
+            JS_FreeValue(ctx, nm); JS_FreeValue(ctx, ctor);
+            if (is_float) fl = nb_gl_argfloats(ctx, argv[8], &fln);
+            else {
+                JSValue lv = JS_GetPropertyStr(ctx, argv[8], "length");
+                int32_t len = 0;
+                if (JS_IsNumber(lv)) JS_ToInt32(ctx, &len, lv);
+                JS_FreeValue(ctx, lv);
+                if (len > 0 && len <= 64 * 1024 * 1024) {
+                    bytes = malloc((size_t)len);
+                    if (bytes) {
+                        for (int32_t i = 0; i < len; i++) {
+                            JSValue e = JS_GetPropertyUint32(ctx, argv[8], (uint32_t)i);
+                            int32_t ev = 0;
+                            if (JS_IsNumber(e)) JS_ToInt32(ctx, &ev, e);
+                            JS_FreeValue(ctx, e);
+                            bytes[i] = (unsigned char)(ev & 0xFF);
+                        }
+                        n = (size_t)len;
+                    }
+                }
+            }
+        }
+        if (fl) { glTexImage2D(tgt, level, internal, w, h, 0, fmt, typ, fl); free(fl); }
+        else if (bytes) { glTexImage2D(tgt, level, internal, w, h, 0, fmt, typ, bytes); free(bytes); }
+        return JS_UNDEFINED;
+    }
+    /* 6-arg DOM form: (t,l,internal,format,type,src) */
+    GLenum fmt = (GLenum)nb_gl_argi(ctx, argv, argc, 3, 0x1908);
+    GLenum typ = (GLenum)nb_gl_argi(ctx, argv, argc, 4, 0x1401);
+    int sw = 0, sh = 0, owned = 0;
+    unsigned char *spx = NULL;
+    if (!nb_c2d_source(ctx, argv[5], &sw, &sh, &spx, &owned) || sw <= 0 || sh <= 0) {
+        if (owned) free(spx);
+        return JS_UNDEFINED;
+    }
+    glTexImage2D(tgt, level, internal, sw, sh, 0, fmt, typ, spx);
+    if (owned) free(spx);
+    return JS_UNDEFINED;
+}
+static JSValue nb_gl_texSubImage2D(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbGL *g = nb_gl_for(ctx, this_val); if (!g || argc < 7) return JS_UNDEFINED;
+    GLenum tgt = (GLenum)nb_gl_argi(ctx, argv, argc, 0, 0x0DE1);
+    GLint level = nb_gl_argi(ctx, argv, argc, 1, 0);
+    GLint xoff = nb_gl_argi(ctx, argv, argc, 2, 0), yoff = nb_gl_argi(ctx, argv, argc, 3, 0);
+    GLsizei w = nb_gl_argi(ctx, argv, argc, 4, 0), h = nb_gl_argi(ctx, argv, argc, 5, 0);
+    GLenum fmt = (GLenum)nb_gl_argi(ctx, argv, argc, 6, 0x1908);
+    GLenum typ = (GLenum)nb_gl_argi(ctx, argv, argc, 7, 0x1401);
+    if (w <= 0 || h <= 0 || argc < 9) return JS_UNDEFINED;
+    int fln = 0;
+    float *fl = nb_gl_argfloats(ctx, argv[8], &fln);
+    if (fl) {
+        glTexSubImage2D(tgt, level, xoff, yoff, w, h, fmt, typ, fl);
+        free(fl);
+        return JS_UNDEFINED;
+    }
+    JSValue lv = JS_GetPropertyStr(ctx, argv[8], "length");
+    int32_t len = 0;
+    if (JS_IsNumber(lv)) JS_ToInt32(ctx, &len, lv);
+    JS_FreeValue(ctx, lv);
+    if (len <= 0 || len > 64 * 1024 * 1024) return JS_UNDEFINED;
+    unsigned char *bytes = malloc((size_t)len);
+    if (!bytes) return JS_UNDEFINED;
+    for (int32_t i = 0; i < len; i++) {
+        JSValue e = JS_GetPropertyUint32(ctx, argv[8], (uint32_t)i);
+        int32_t ev = 0;
+        if (JS_IsNumber(e)) JS_ToInt32(ctx, &ev, e);
+        JS_FreeValue(ctx, e);
+        bytes[i] = (unsigned char)(ev & 0xFF);
+    }
+    glTexSubImage2D(tgt, level, xoff, yoff, w, h, fmt, typ, bytes);
+    free(bytes);
+    return JS_UNDEFINED;
+}
+static JSValue nb_gl_pixelStorei(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbGL *g = nb_gl_for(ctx, this_val); if (!g) return JS_UNDEFINED;
+    /* UNPACK modes assumed tight; FLIP_Y recorded but applied at upload
+     * only for canvas sources is out of slice - accept and ignore. */
+    glPixelStorei((GLenum)nb_gl_argi(ctx, argv, argc, 0, 0), nb_gl_argi(ctx, argv, argc, 1, 0));
+    return JS_UNDEFINED;
+}
 static JSValue nb_gl_vertexAttribPointer(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbGL *g = nb_gl_for(ctx, this_val); if (!g) return JS_UNDEFINED;
     glVertexAttribPointer((GLuint)nb_gl_argi(ctx, argv, argc, 0, 0),
@@ -4558,6 +4702,25 @@ static JSValue nb_gl_colorMask(JSContext *ctx, JSValueConst this_val, int argc, 
                 nb_gl_argi(ctx, argv, argc, 2, 1), nb_gl_argi(ctx, argv, argc, 3, 1));
     return JS_UNDEFINED;
 }
+static JSValue nb_gl_readPixels(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbGL *g = nb_gl_for(ctx, this_val); if (!g || argc < 7) return JS_UNDEFINED;
+    GLint x = nb_gl_argi(ctx, argv, argc, 0, 0), y = nb_gl_argi(ctx, argv, argc, 1, 0);
+    GLsizei w = nb_gl_argi(ctx, argv, argc, 2, 0), h = nb_gl_argi(ctx, argv, argc, 3, 0);
+    if (w <= 0 || h <= 0 || w > 2048 || h > 2048) return JS_UNDEFINED;
+    size_t n = (size_t)w * h * 4;
+    unsigned char *buf = malloc(n);
+    if (!buf) return JS_UNDEFINED;
+    glReadPixels(x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, buf);
+    if (JS_IsObject(argv[6])) {
+        for (size_t i = 0; i < n; i++) {
+            JSValue e = JS_NewInt32(ctx, buf[i]);
+            JS_SetPropertyUint32(ctx, argv[6], (uint32_t)i, e);
+            JS_FreeValue(ctx, e);
+        }
+    }
+    free(buf);
+    return JS_UNDEFINED;
+}
 static JSValue nb_gl_cullFace(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbGL *g = nb_gl_for(ctx, this_val); if (!g) return JS_UNDEFINED;
     glCullFace((GLenum)nb_gl_argi(ctx, argv, argc, 0, 0x0405));
@@ -4672,6 +4835,16 @@ static JSValue nb_gl_new_context(JSContext *ctx, JSValueConst elem, int cid, int
     JS_SetPropertyStr(ctx, c, "colorMask", JS_NewCFunction(ctx, nb_gl_colorMask, "colorMask", 4));
     JS_SetPropertyStr(ctx, c, "cullFace", JS_NewCFunction(ctx, nb_gl_cullFace, "cullFace", 1));
     JS_SetPropertyStr(ctx, c, "frontFace", JS_NewCFunction(ctx, nb_gl_frontFace, "frontFace", 1));
+    JS_SetPropertyStr(ctx, c, "createTexture", JS_NewCFunction(ctx, nb_gl_createTexture, "createTexture", 0));
+    JS_SetPropertyStr(ctx, c, "deleteTexture", JS_NewCFunction(ctx, nb_gl_deleteTexture, "deleteTexture", 1));
+    JS_SetPropertyStr(ctx, c, "bindTexture", JS_NewCFunction(ctx, nb_gl_bindTexture, "bindTexture", 2));
+    JS_SetPropertyStr(ctx, c, "activeTexture", JS_NewCFunction(ctx, nb_gl_activeTexture, "activeTexture", 1));
+    JS_SetPropertyStr(ctx, c, "texParameteri", JS_NewCFunction(ctx, nb_gl_texParameteri, "texParameteri", 3));
+    JS_SetPropertyStr(ctx, c, "generateMipmap", JS_NewCFunction(ctx, nb_gl_generateMipmap, "generateMipmap", 1));
+    JS_SetPropertyStr(ctx, c, "texImage2D", JS_NewCFunction(ctx, nb_gl_texImage2D, "texImage2D", 9));
+    JS_SetPropertyStr(ctx, c, "texSubImage2D", JS_NewCFunction(ctx, nb_gl_texSubImage2D, "texSubImage2D", 9));
+    JS_SetPropertyStr(ctx, c, "pixelStorei", JS_NewCFunction(ctx, nb_gl_pixelStorei, "pixelStorei", 2));
+    JS_SetPropertyStr(ctx, c, "readPixels", JS_NewCFunction(ctx, nb_gl_readPixels, "readPixels", 7));
     JS_SetPropertyStr(ctx, elem, "__nb_glctx", JS_DupValue(ctx, c));
     if (eglMakeCurrent(g_egl_dpy, surf, surf, gc) == EGL_TRUE) {
         glViewport(0, 0, g_nbgl[slot].w, g_nbgl[slot].h);
