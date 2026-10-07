@@ -154,6 +154,22 @@ def extract_real_cli_io_lines(menu_path: str):
         return [line.strip() for line in f if line.strip().startswith("<cli_io")]
 
 
+def meta_cli_io_action(meta_path: str):
+    """2026-10-07 (eden button had only the placeholder item): a NEW entity can now SOURCE a real <cli_io> element by
+    declaring `META | cli_io_action | <action>` in meta.pdl. The action is what the renderer runs on Enter, with argv
+    <package_dir> <house_root> <typed text> (${PKG}/${HOUSE} expand at parse time). An element already present in an
+    existing menu.chtpm still wins (never overwritten). Standard: 02-architecture/ENTITY-MENU-CLI-IO-STANDARD.md."""
+    try:
+        with open(meta_path, "r", encoding="utf-8") as f:
+            for line in f:
+                parts = [x.strip() for x in line.rstrip("\n\r").split("|")]
+                if len(parts) >= 3 and parts[0] == "META" and parts[1] == "cli_io_action":
+                    return "|".join(parts[2:]).strip()
+    except OSError:
+        pass
+    return ""
+
+
 def write_menu_chtpm(package_dir: str, methods, source_meta: str, preserved_cli_io=None):
     out_path = os.path.join(package_dir, "menu.chtpm")
     lines = []
@@ -196,6 +212,10 @@ def convert_one(package_dir: str, force: bool = False) -> bool:
         print(f"skip (menu.chtpm already exists): {package_dir}")
         return False
     preserved_cli_io = extract_real_cli_io_lines(menu_path)
+    if not preserved_cli_io:
+        cli_action = meta_cli_io_action(meta_path)
+        if cli_action:
+            preserved_cli_io = [f'<cli_io id="cmd" target_id="cmd" label="Cli-io: " action="{escape_action(cli_action)}"/>']
     methods = parse_meta_pdl(meta_path)
     if not methods:
         print(f"skip (no real METHOD rows found): {package_dir}")
