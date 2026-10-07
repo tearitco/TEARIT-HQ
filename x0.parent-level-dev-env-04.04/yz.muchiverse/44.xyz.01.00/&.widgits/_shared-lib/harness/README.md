@@ -30,6 +30,7 @@ A harness is three small things:
 | `harness_bank.pal` | `cases/harness_bank.pdl` | 18 | the behavior bank op: live Laplace weights from a ledger (append-only cursor), `find` ranking |
 | `prisc_exec_args.pal` | `cases/prisc_exec_args.pdl` | 3 | prisc `exec` with one, five, and register+literal arguments (needs the many-args VM; the old VM fails all 3) |
 | `game_slots.pal` | `cases/game_slots.pdl` | 22 | `game_slot_op` save/load slots on a scratch entity tree (SUMTREE: save and load change no entity data) |
+| `game_snapshot.pal` | `cases/game_snapshot.pdl` | 118 | `game_snapshot_op` content-addressed snapshot store + real restore on a scratch tree: object dedup, only-changed objects on re-save, restore byte-for-byte + modes (dry-run default, `--apply`, `--prune`), clock-state `--extra` round trip, REWIND ledger row + timeline fork, tampered/missing object refused, path-escape and symlinked-dest refused |
 | `chain_escrow_faucet.pal` | `cases/chain_escrow_faucet.pdl` | 132 | pal-chain ops on scratch chain roots: `chain_new`, `chain_faucet`, escrow (`chain_escrow` + miner inclusion checks, conservation, rake to `_burn`), daily mining cap, legacy root unchanged |
 | `pchq_levels.pal` | `cases/pchq_levels.pdl` | 93 | pc-hq levels on scratch copies: maps.pdl registry drift (FAILS today by design: test_terraces/test_walls missing, stale PATH column), stale `board_config.txt`, default-world pieces, deterministic `pc_generate_chunk` (compiled in scratch), map-load argv per map |
 
