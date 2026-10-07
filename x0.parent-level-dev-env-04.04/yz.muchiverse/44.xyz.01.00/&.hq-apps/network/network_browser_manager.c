@@ -4173,6 +4173,21 @@ static void write_ui_projection(void) {
                     if (b2) { *b2 = 0; snprintf(s2, sizeof(s2), "%s", b2 + 1); } else s2[0] = 0;
                     char url_sq[PATH_BUF * 2], lab_s[700];
                     uisan(s2[0] ? s2 : rest, lab_s, sizeof(lab_s));
+                    /* Milestone 2 (2026-10-07, live click test): a LINK
+                     * whose URL contains whitespace is malformed (emitted
+                     * as `LINK|<url> <label>` with a space, not a pipe -
+                     * the worker RENDER builder's shape). Clicking it
+                     * submitted the whole string as a YouTube search.
+                     * Never navigate on it; show the label as plain text
+                     * so nothing clickable lies. Emitter-side fix belongs
+                     * to the worker RENDER format (opencode-fix lane). */
+                    if (strpbrk(rest, " \t\r\n") != NULL) {
+                        if (lab_s[0] && strcmp(lab_s, rest) != 0 && !junk_visible_line(lab_s)) {
+                            UI_PUT("c_%d_kind=text\nc_%d_is_text=1\nc_%d_text=%s\n", rc, rc, rc, lab_s);
+                            rc++;
+                        }
+                        continue;
+                    }
                     /* Drop jump-links / sidebar nav links (worker rows bypass the extractor filter). */
                     if (junk_visible_line(lab_s)) continue;
                     /* Milestone 2 (2026-10-07): fragment-only hrefs (# with
