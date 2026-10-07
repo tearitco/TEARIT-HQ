@@ -6,6 +6,13 @@
 HOUSE="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
 ICON="$HOME/.local/share/icons/hicolor/256x256/apps/livedesk.png"
 [ -f "$ICON" ] || exit 0
+# `debounce` (theme-change hooks; the opacity slider fires many times while dragging): wait 0.6 s and only the LAST caller redraws.
+if [ "${1:-}" = "debounce" ]; then
+    TOK="$HOUSE/#.desktop/.icon_refresh.token"
+    echo "$$" > "$TOK"
+    sleep 0.6
+    [ "$(cat "$TOK" 2>/dev/null)" = "$$" ] || exit 0
+fi
 command -v python3 >/dev/null 2>&1 || exit 0
 python3 "$HOUSE/\$.crypts/livedesk-icon-gen.py" "$HOUSE" "$ICON.new" 256 >/dev/null 2>&1 && mv -f "$ICON.new" "$ICON"
 rm -f "$ICON.new"

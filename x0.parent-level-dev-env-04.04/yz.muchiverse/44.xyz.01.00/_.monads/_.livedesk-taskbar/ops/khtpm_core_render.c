@@ -679,6 +679,14 @@ static void write_theme_opacity(double opacity) {
         FILE *mf = fopen(marker_path, "a");
         if (mf) { fprintf(mf, "%.2f\n", opacity); fclose(mf); }
     }
+    {   /* the Livedesk app icon follows the desk transparency too (debounced: a slider drag calls this many times) */
+        char helper[PATH_BUF], cmd[PATH_BUF * 2];
+        snprintf(helper, sizeof(helper), "%s/$.crypts/livedesk-icon-refresh.sh", g_house_root);
+        if (access(helper, F_OK) == 0) {
+            snprintf(cmd, sizeof(cmd), "sh '%s' debounce </dev/null >/dev/null 2>&1 &", helper);
+            int rc = system(cmd); (void)rc;
+        }
+    }
 }
 /* REAL, db-hq mode only (§5d.10) - module launch, ported VERBATIM from
  * khtpm_hq_render.c (real fork()+execl(), already TPMOS-compliant - see

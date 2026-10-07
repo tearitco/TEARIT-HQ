@@ -3,7 +3,7 @@
 
 usage: livedesk-icon-gen.py <house_root> <out.png> [size=256]
 
-Reads COLOR | bg and COLOR | fg from <house_root>/#.desktop/livedesk_theme.pdl (the same file the taskbar and the boot splash
+Reads COLOR | bg, COLOR | fg and COLOR | opacity from <house_root>/#.desktop/livedesk_theme.pdl (the same file the taskbar and the boot splash
 theme from), so the icon matches the desktop instead of a hard-coded palette. Missing/unreadable theme -> charcoal + amber.
 Everything else is derived from those two colors: the rounded base is bg, the strips and loading bar are fg, the entity cells
 alternate fg and a 50% blend, the outline is bg darkened. Exit 3 if Pillow is not installed (the caller falls back to the
@@ -19,7 +19,7 @@ except ImportError:
 
 
 def read_theme(house):
-    bg, fg = "#1a1a1a", "#eab308"
+    bg, fg, op = "#1a1a1a", "#eab308", 1.0
     try:
         with open(os.path.join(house, "#.desktop", "livedesk_theme.pdl"), encoding="utf-8") as f:
             for line in f:
@@ -29,9 +29,14 @@ def read_theme(house):
                         bg = parts[2]
                     elif parts[1] == "fg":
                         fg = parts[2]
+                elif len(parts) >= 3 and parts[0] == "COLOR" and parts[1] == "opacity":
+                    try:
+                        op = float(parts[2])
+                    except ValueError:
+                        pass
     except OSError:
         pass
-    return bg, fg
+    return bg, fg, max(0.25, min(1.0, op))   # floor 0.25: a fully transparent icon would vanish
 
 
 def rgb(h):
@@ -48,7 +53,7 @@ def main():
         return 2
     house, out = sys.argv[1], sys.argv[2]
     size = int(sys.argv[3]) if len(sys.argv) > 3 else 256
-    bg_h, fg_h = read_theme(house)
+    bg_h, fg_h, opacity = read_theme(house)
     bg, fg = rgb(bg_h), rgb(fg_h)
     dim = mix(bg, fg, 0.5)
     edge = mix(bg, (0, 0, 0), 0.5)
@@ -57,7 +62,8 @@ def main():
     S = 512                                  # draw large, shrink for smooth edges
     im = Image.new("RGBA", (S, S), (0, 0, 0, 0))
     d = ImageDraw.Draw(im)
-    d.rounded_rectangle((16, 16, S - 16, S - 16), radius=96, fill=bg + (255,), outline=fg + (255,), width=10)
+    base_a = int(round(255 * opacity))                  # the desk's transparency (theme COLOR | opacity) applies to the icon's base; glyph stays solid
+    d.rounded_rectangle((16, 16, S - 16, S - 16), radius=96, fill=bg + (base_a,), outline=fg + (255,), width=10)
     d.rounded_rectangle((60, 70, S - 60, 120), radius=14, fill=fg + (255,))                 # header strip
     for i in range(5):
         d.ellipse((80 + i * 40, 86, 100 + i * 40, 106), fill=bg + (255,))
@@ -68,7 +74,7 @@ def main():
         x = 84 + i * 62
         d.rounded_rectangle((x, S - 150, x + 44, S - 90), radius=10, fill=(fg if i % 2 == 0 else dim) + (255,))
     im.resize((size, size), Image.LANCZOS).save(out, format="PNG")   # explicit: callers write to temp names like livedesk.png.new
-    print("icon %dpx bg=%s fg=%s -> %s" % (size, bg_h, fg_h, out))
+    print("icon %dpx bg=%s fg=%s opacity=%.2f -> %s" % (size, bg_h, fg_h, opacity, out))
     return 0
 
 
