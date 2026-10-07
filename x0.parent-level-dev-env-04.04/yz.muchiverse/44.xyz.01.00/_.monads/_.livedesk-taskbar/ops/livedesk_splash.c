@@ -59,7 +59,7 @@
 #define HARD_TIMEOUT_SECONDS 240
 #define BOOT_W 440
 #define BOOT_H 46
-#define BOOT_TIMEOUT_SECONDS 90
+#define BOOT_TIMEOUT_SECONDS 300
 /* A BUILD FAILED banner waits for a real click/key dismissal, not this -
  * long enough that it is effectively "stays until dismissed" for any
  * normal dev session, while still not running forever unattended. */
@@ -244,28 +244,75 @@ int main(int argc, char **argv) {
         struct timespec b0; clock_gettime(CLOCK_MONOTONIC, &b0);
         double done_at = -1.0;
         int tick = 0;
+        int compile_seen = 0, compiling = 0, failed_boot = 0;
+        double t_post = 0.0;            /* el when the compile phase ended (0 = no compile happened) */
         for (;;) {
             struct timespec bn; clock_gettime(CLOCK_MONOTONIC, &bn);
             double el = (bn.tv_sec - b0.tv_sec) + (bn.tv_nsec - b0.tv_nsec) / 1e9;
-            while (XPending(dpy)) { XEvent ev; XNextEvent(dpy, &ev); }
+            while (XPending(dpy)) { XEvent ev; XNextEvent(dpy, &ev); if (failed_boot && (ev.type == ButtonPress || ev.type == KeyPress)) g_stop = 1; }
             if (g_stop || el > BOOT_TIMEOUT_SECONDS) break;
+            /* The start script's build leaves +x/.build_failed.txt for the whole build (dead-man's switch, cleared on success). The
+             * launcher starts THIS strip before the build, so a compile is shown here, pinned to the build itself: the marker + the
+             * rewritten binaries. The launcher writes #.desktop/boot_build_failed.txt when the build ended without clearing it. */
+            {   char fp[4096]; struct stat fst;
+                snprintf(fp, sizeof(fp), "%s/#.desktop/boot_build_failed.txt", house);
+                if (stat(fp, &fst) == 0) failed_boot = 1;
+            }
+            if (failed_boot) {
+                XSetForeground(dpy, gc, failbg);
+                XFillRectangle(dpy, win, gc, 0, 0, ww, wh);
+                XSetForeground(dpy, gc, failbar);
+                XFillRectangle(dpy, win, gc, 0, 0, ww, 4);
+                XftDrawStringUtf8(xft, &xfail, fbig, 14, 22, (const FcChar8 *)"BUILD FAILED - livedesk not started", 35);
+                XftDrawStringUtf8(xft, &xfail, fsm, 14, 38, (const FcChar8 *)"see ops/+x/build_error.log - click to dismiss", 45);
+                XFlush(dpy); usleep(120000);
+                if (el > 120) break;
+                continue;
+            }
+            if (build_failed(xdir)) { compile_seen = 1; compiling = 1; }
+            else if (compiling) { compiling = 0; t_post = el; }
+            if (compiling) {
+                int cdone = 0;
+                for (int i = 0; i < N_TARGETS; i++) {
+                    char tp[4096]; struct stat tst;
+                    snprintf(tp, sizeof(tp), "%s/%s", xdir, g_targets[i]);
+                    if (stat(tp, &tst) == 0 && (!base_exists[i] || tst.st_mtime > base_mtime[i])) cdone++;
+                }
+                double cf = (double)cdone / (double)N_TARGETS, ct = el / 30.0; if (ct > 0.97) ct = 0.97;
+                double frac = (cf > ct ? cf : ct) * 0.6;                    /* compile = first 60% of the bar */
+                XSetForeground(dpy, gc, bg); XFillRectangle(dpy, win, gc, 0, 0, ww, wh);
+                XftDrawStringUtf8(xft, &xfg, fbig, 14, 20, (const FcChar8 *)"Loading livedesk\xE2\x80\xA6", 18);
+                { const char *st = "Compiling\xE2\x80\xA6"; XGlyphInfo gi; XftTextExtentsUtf8(dpy, fsm, (const FcChar8 *)st, (int)strlen(st), &gi);
+                  XftDrawStringUtf8(xft, &xdimc, fsm, ww - 14 - gi.xOff, 19, (const FcChar8 *)st, (int)strlen(st)); }
+                { int bx = 14, by = 28, bw = ww - 28, bh = 8;
+                  XSetForeground(dpy, gc, trough); XFillRectangle(dpy, win, gc, bx, by, bw, bh);
+                  XSetForeground(dpy, gc, barfill); XFillRectangle(dpy, win, gc, bx, by, (int)(bw * frac + 0.5), bh);
+                  { int fw = (int)(bw * frac + 0.5), sx = fw > 0 ? (tick * 9) % (fw + 46) - 46 : 0, x0 = sx < 0 ? 0 : sx, x1 = sx + 46 > fw ? fw : sx + 46;
+                    if (x1 > x0) { XSetForeground(dpy, gc, shade_pix(dpy, cmap, fg_hex, 60, fg)); XFillRectangle(dpy, win, gc, bx + x0, by, x1 - x0, bh); } }
+                  XSetForeground(dpy, gc, dim); XDrawRectangle(dpy, win, gc, bx, by, bw, bh); }
+                XFlush(dpy); tick++; usleep(60000);
+                continue;
+            }
             int mgr = fresh_since(house, "#.desktop/strip_ui.txt", t_start);
             int dock = fresh_since(house, "#.desktop/dock_stack/base.txt", t_start);
-            double frac = el / 6.0; if (frac > 0.9) frac = 0.9;           /* time creep: keeps moving, never claims done */
+            double base = compile_seen ? 0.6 : 0.0;
+            double el_post = el - t_post;                                   /* time since the compile (if any) ended */
+            double frac = el_post / 6.0; if (frac > 0.9) frac = 0.9;        /* time creep: keeps moving, never claims done */
             if (mgr && frac < 0.4) frac = 0.4;                             /* real milestone: menu manager published */
             /* The bar window publishing (dock) is NOT "ready": the entity cells fill in after it. Ready = dock up AND the open-entity
              * list (livedesk_open.txt, written only by the manager) has stopped changing for 1.5 s AND at least 4 s have passed
              * (owner 2026-10-06: the bar "still takes long" and the old splash was gone in 0.35 s). */
-            {   char op[4096]; struct stat ost; static long last_sz = -1, last_mt = -1; static double last_chg = 0;
+            {   char op[4096]; struct stat ost; static long last_sz = -1; static double last_chg = 0;
                 snprintf(op, sizeof(op), "%s/#.desktop/dock_stack/draw_stamp.txt", house);
                 long sz = -1; if (stat(op, &ost) == 0) sz = (long)ost.st_size;
                 /* the dock appends a byte per redraw while it is still filling (khtpm_core_render.c); quiet for 5 s = settled (owner reports ~20 s starts with gaps).
                  * Hard cap 45 s so an always-redrawing bar can never pin the splash. */
                 if (sz != last_sz) { last_sz = sz; last_chg = el; }
-                if (dock && el >= 4.0 && (el - last_chg >= 5.0 || el >= 45.0) && done_at < 0) done_at = el;
+                if (dock && el_post >= 4.0 && (el - last_chg >= 5.0 || el_post >= 45.0) && done_at < 0) done_at = el;
                 if (dock && done_at < 0 && frac > 0.95) frac = 0.95;       /* bar window is up, cells still arriving */
             }
             if (done_at >= 0) frac = 1.0;
+            else frac = base + (1.0 - base) * frac;                         /* the compile phase already used the first 60% */
             const char *step = done_at >= 0 ? "Ready" : dock ? "Loading entities\xE2\x80\xA6" : mgr ? "Loading menus\xE2\x80\xA6" : "Starting\xE2\x80\xA6";
             XSetForeground(dpy, gc, bg);
             XFillRectangle(dpy, win, gc, 0, 0, ww, wh);
@@ -307,6 +354,7 @@ int main(int argc, char **argv) {
             }
         }
         {   char pp[4096]; snprintf(pp, sizeof(pp), "%s/#.desktop/livedesk_boot_splash.pid", house); unlink(pp); }
+        {   char fp[4096]; snprintf(fp, sizeof(fp), "%s/#.desktop/boot_build_failed.txt", house); unlink(fp); }
         XftColorFree(dpy, DefaultVisual(dpy, scr), cmap, &xfg);
         XftColorFree(dpy, DefaultVisual(dpy, scr), cmap, &xdimc);
         XDestroyWindow(dpy, win);

@@ -202,7 +202,11 @@ case "$ACTION" in
                 mkdir -p "$SCRIPT_DIR/+x"
                 ${CC:-gcc} -std=c11 -O2 -o "$SCRIPT_DIR/+x/livedesk_splash.+x" "$SCRIPT_DIR/livedesk_splash.c" $_sx >/dev/null 2>&1 || true
             fi
-            if [ -x "$SCRIPT_DIR/+x/livedesk_splash.+x" ]; then
+            # the app launcher / start button starts this strip BEFORE the build so it can show a compile; keep that one running
+            _bs_pid="$(cat "$HOUSE/#.desktop/livedesk_boot_splash.pid" 2>/dev/null)"
+            if [ -n "$_bs_pid" ] && grep -q livedesk_splash "/proc/$_bs_pid/comm" 2>/dev/null; then
+                :
+            elif [ -x "$SCRIPT_DIR/+x/livedesk_splash.+x" ]; then
                 (cd "$HOUSE" && $SETSID env DISPLAY="$DISPLAY" "$SCRIPT_DIR/+x/livedesk_splash.+x" "$HOUSE" "$SCRIPT_DIR/+x" --boot \
                     >/dev/null 2>&1 < /dev/null &)
             fi
