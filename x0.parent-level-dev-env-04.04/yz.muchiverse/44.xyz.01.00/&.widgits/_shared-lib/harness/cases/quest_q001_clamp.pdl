@@ -1,0 +1,67 @@
+# quest q001 clamp_op: LOCKED cases (the worker may not edit this file). Source under test: &.widgits/quest-pilot/q001-clamp/worker/clamp_op.c
+RESULTS | ../results/quest_q001_clamp.txt
+CASE | quest-q001-clamp
+SCRATCH |
+COPY | &.widgits/quest-pilot/q001-clamp/worker/clamp_op.c | clamp_op.c
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/clamp_op.+x | $T/clamp_op.c
+EXPECT_EXIT | 0 | compiles-clean-with-Wall-Wextra-Werror
+RUN | $T/clamp_op.+x | 5 | 0 | 10
+EXPECT_EXIT | 0 | inside-rc0
+EXPECT_OUT_IS | 5 | inside-out
+RUN | $T/clamp_op.+x | -5 | 0 | 10
+EXPECT_EXIT | 0 | below-rc0
+EXPECT_OUT_IS | 0 | below-out
+RUN | $T/clamp_op.+x | 50 | 0 | 10
+EXPECT_EXIT | 0 | above-rc0
+EXPECT_OUT_IS | 10 | above-out
+RUN | $T/clamp_op.+x | 0 | 0 | 10
+EXPECT_EXIT | 0 | at-min-rc0
+EXPECT_OUT_IS | 0 | at-min-out
+RUN | $T/clamp_op.+x | 10 | 0 | 10
+EXPECT_EXIT | 0 | at-max-rc0
+EXPECT_OUT_IS | 10 | at-max-out
+RUN | $T/clamp_op.+x | 7 | 3 | 3
+EXPECT_EXIT | 0 | min-eq-max-rc0
+EXPECT_OUT_IS | 3 | min-eq-max-out
+RUN | $T/clamp_op.+x | -7 | -10 | -2
+EXPECT_EXIT | 0 | negatives-rc0
+EXPECT_OUT_IS | -7 | negatives-out
+RUN | $T/clamp_op.+x | 5 | -10 | -2
+EXPECT_EXIT | 0 | negative-above-rc0
+EXPECT_OUT_IS | -2 | negative-above-out
+RUN | $T/clamp_op.+x | +4 | 0 | 10
+EXPECT_EXIT | 0 | plus-sign-rc0
+EXPECT_OUT_IS | 4 | plus-sign-out
+RUN | $T/clamp_op.+x | 9223372036854775807 | 0 | 100
+EXPECT_EXIT | 0 | int64-max-rc0
+EXPECT_OUT_IS | 100 | int64-max-out
+RUN | $T/clamp_op.+x | -9223372036854775808 | -5 | 5
+EXPECT_EXIT | 0 | int64-min-rc0
+EXPECT_OUT_IS | -5 | int64-min-out
+RUN | $T/clamp_op.+x | 123456789012 | -9223372036854775808 | 9223372036854775807
+EXPECT_EXIT | 0 | wide-range-rc0
+EXPECT_OUT_IS | 123456789012 | wide-range-out
+RUN | $T/clamp_op.+x
+EXPECT_EXIT | 2 | no-args-rc2
+RUN | $T/clamp_op.+x | 1 | 2
+EXPECT_EXIT | 2 | two-args-rc2
+RUN | $T/clamp_op.+x | 1 | 2 | 3 | 4
+EXPECT_EXIT | 2 | four-args-rc2
+RUN | $T/clamp_op.+x | 5 | 10 | 0
+EXPECT_EXIT | 2 | min-gt-max-rc2
+RUN | $T/clamp_op.+x |  | 0 | 10
+EXPECT_EXIT | 2 | empty-value-rc2
+RUN | $T/clamp_op.+x | 5x | 0 | 10
+EXPECT_EXIT | 2 | trailing-junk-rc2
+RUN | $T/clamp_op.+x | 5.5 | 0 | 10
+EXPECT_EXIT | 2 | decimal-rc2
+RUN | $T/clamp_op.+x | 0x10 | 0 | 10
+EXPECT_EXIT | 2 | hex-rc2
+RUN | $T/clamp_op.+x | 9223372036854775808 | 0 | 10
+EXPECT_EXIT | 2 | overflow-rc2
+RUN | $T/clamp_op.+x | 5 | a | 10
+EXPECT_EXIT | 2 | bad-min-rc2
+RUN | $T/clamp_op.+x | 5 | 0 | b
+EXPECT_EXIT | 2 | bad-max-rc2
+RUN | $T/clamp_op.+x | - | 0 | 10
+EXPECT_EXIT | 2 | lone-minus-rc2

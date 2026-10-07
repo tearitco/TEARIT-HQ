@@ -61,3 +61,5 @@ Every harness has a seed `bank/<name>.behavior.pdl` (keywords, weighted synonyms
 
 - `@.apps/board-hq/verify.sh` (24 headless-renderer checks), `^.grave/quests/Q009-.../verify.sh` and `loop_test.sh` (phone ops and the router loop): heavier, need their own subjects wired in.
 - Others' harnesses (`^.hai-horn/halo_test_harness.sh`, `WSR_PAL-PREFERED/...`, Q003 `verify.sh`) are not mine and are untouched.
+
+| `quest_q001_clamp.pal` | `cases/quest_q001_clamp.pdl` | 37 | LOCKED acceptance harness of the first delegation-flywheel pilot quest (`&.widgits/quest-pilot/q001-clamp/`): compiles the worker's `clamp_op.c` with `-Wall -Wextra -Werror` and checks 25 runs (clamp, int64 limits, signs, 13 usage-error cases). Proven able to fail with a stub (25 failures) |

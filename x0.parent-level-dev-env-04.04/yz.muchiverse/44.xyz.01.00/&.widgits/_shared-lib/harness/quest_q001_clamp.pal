@@ -1,0 +1,4 @@
+# quest_q001_clamp.pal - LOCKED acceptance harness for quest q001 (clamp_op). Read results/quest_q001_clamp.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/quest_q001_clamp.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/quest_q001_clamp.pdl
+halt
