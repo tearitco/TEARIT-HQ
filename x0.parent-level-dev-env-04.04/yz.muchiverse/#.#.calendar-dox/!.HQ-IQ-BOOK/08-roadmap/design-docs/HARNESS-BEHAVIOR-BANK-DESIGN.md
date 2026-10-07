@@ -100,6 +100,11 @@ Looked at `^.hai-horn` and `&.widgits/concept-bank` on every branch. Only `claud
 
 **Not changed by me** (not my lane, owner decision pending). Recommended: make the validator always queue (Option A) and have promotion read the ledger score + N, or gate auto-promote behind an explicit flag defaulting off. The harness bank must never rely on this path (4c item 2 stands).
 
+**Re-check 2026-10-07 after the owner had an agent push `opencode`** (the local `opencode` ref was stale at 2026-10-04; `origin/opencode` is at `52ddaa9dd`, 2026-10-07). Findings:
+- `ops/halo_chat_validate.c` and `ops/promotion_ledger.c` are **byte-identical to `claude`**: the auto-promote branch (tier >= 2, no ledger consult) is still there. Nothing on `opencode` resolves it.
+- **Correction to the paragraph above:** `^.hai-horn/learning_limits.pdl` exists (on both branches, from `9028e0706`): `max_tier: elementary_hs` with the comment "Auto-promotion is OFF by default (owner approval pending, Q001)". So the *shipped default* queues for review. But the validator reads `<entity_dir>/learning_limits.pdl` (missing file = tier 0 = queue), so the default is safe only for entities that have no file or this one; any entity given tier >= 2 auto-promotes. Not verified by a live run which dir the pipeline passes as `entity_dir`.
+- New on `opencode` since: **IRL harness** (`ae10ee4fd`: `irl_harness.c`, `irl_signal.c`, `irl_pipeline.sh`, HORN vs HALO grading) and **IRL bootstrap FSM** (`edbd3efb1`: `irl_bootstrap_fsm.c`, WATCHING -> JUDGING (gemma3:270m) -> PROPOSING -> PENDING_REVIEW, "NEVER auto-merges", writes a proposal file only, does not touch the bank). That FSM is a real, built Watch -> describe-shaped -> human-review loop over a transcript: the same shape as section 4c, and a natural second source for the watcher-entity idea. `irl_*.sh` are shell (same pal-conversion note as the halo harness).
+
 ## 5. Open questions for the owner
 
 1. Is my reading of "3D" (words / concepts / corpus) right, or is the third axis something else (for example a 3-coordinate position of the behavior in the concept space)?
