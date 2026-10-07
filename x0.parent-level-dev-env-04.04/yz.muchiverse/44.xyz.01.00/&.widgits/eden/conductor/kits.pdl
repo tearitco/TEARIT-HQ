@@ -14,3 +14,10 @@ KITSKILL | farmer | study   | 1
 KITSKILL | farmer | build   | 1
 KITPARAM | farmer | mhp | 10
 KITPARAM | farmer | hp  | 10
+# --- v1 PLAYKIT (game.pdl `PLAYKIT | kit=settler`): applied by Start game on top of the farmer kit, as ordinary GRANT rows (Stop revokes them, Reset takes them back).
+KITITEM  | settler | spade | 1
+KITITEM  | settler | coin  | 5
+KITITEM  | settler | grain | 6
+KITITEM  | settler | clay  | 1
+KITSKILL | settler | feed   | 1
+KITSKILL | settler | repair | 1

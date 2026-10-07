@@ -5,3 +5,12 @@ ITEM | jug   | label=Water jug   | grants_skill=water   | nutrition=0 | tradeabl
 ITEM | hoe   | label=Hoe         | tool=farm | grants_skill=collect | nutrition=0 | tradeable=0
 ITEM | apple | label=Apple       | nutrition=3 | tradeable=1
 ITEM | grain | label=Grain       | nutrition=2 | tradeable=1
+# --- v1 (playable loop): value= is the coin price when an item is SOLD to a partner (trade act); currency=1 marks the coin item; tool= / grants_skill= as above.
+ITEM | spade  | label=Spade       | tool=dig | grants_skill=dig | nutrition=0 | tradeable=0
+ITEM | coin   | label=Coin        | currency=1 | nutrition=0 | tradeable=0
+ITEM | egg    | label=Egg         | nutrition=2 | tradeable=1 | value=1
+ITEM | milk   | label=Milk        | nutrition=3 | tradeable=1 | value=2
+ITEM | stone  | label=Stone       | nutrition=0 | tradeable=1 | value=1
+ITEM | clay   | label=Clay        | nutrition=0 | tradeable=1 | value=2
+ITEM | silver | label=Silver      | nutrition=0 | tradeable=1 | value=6
+ITEM | gold   | label=Gold        | nutrition=0 | tradeable=1 | value=15

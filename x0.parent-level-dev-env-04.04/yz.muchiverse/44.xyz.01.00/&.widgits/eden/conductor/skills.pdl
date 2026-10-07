@@ -9,3 +9,7 @@ SKILL | trade   | cost_ticks=1 | event=eden_trade
 SKILL | talk    | cost_ticks=1 | event=eden_talk
 SKILL | build   | needs_item=hoe | needs_place=field | cost_ticks=1 | event=eden_build
 SKILL | study   | cost_ticks=1 | event=eden_study
+# --- v1: feed a chicken (kit skill), dig (implied by the spade, which it needs), repair the house (needs clay)
+SKILL | feed   | cost_ticks=1 | event=eden_feed
+SKILL | dig    | needs_item=spade | needs_place=field | cost_ticks=1 | event=eden_dig
+SKILL | repair | needs_item=clay | needs_place=house | cost_ticks=1 | event=eden_repair

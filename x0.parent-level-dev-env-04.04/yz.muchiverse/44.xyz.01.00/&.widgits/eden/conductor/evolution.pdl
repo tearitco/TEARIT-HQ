@@ -1,0 +1,3 @@
+# evolution.pdl - EVOLVE | from kind | to=<kind> | requires_meals=<times fed in total> | requires_day=<earliest game day>. The check runs in the Day Tick; the animal keeps its folder and id, kind.txt changes.
+EVOLVE | chicken | to=cow   | requires_meals=12 | requires_day=0
+EVOLVE | cow     | to=horse | requires_meals=30 | requires_day=0

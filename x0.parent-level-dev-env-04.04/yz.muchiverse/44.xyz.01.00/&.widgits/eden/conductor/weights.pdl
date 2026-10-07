@@ -9,3 +9,7 @@ w_talk=3
 w_build=2
 w_study=2
 w_rest=1
+# --- v1 acts (0 when the act is not available, so they change nothing without a world)
+w_feed=6
+w_dig=4
+w_repair=3

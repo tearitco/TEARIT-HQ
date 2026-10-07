@@ -8,3 +8,9 @@ PARTICIPANT | ava    | kit=farmer
 # SPARE rows are what "Add participant" spawns next (one per press)
 SPARE       | eli    | kit=farmer
 SPARE       | noa    | kit=farmer
+# --- v1 (Start game / Stop game): WORLD rows are spawned from world_templates/<kind>/ with fresh ED<n> identities as <kind>_<i>; count= is how many (plant = garden plots).
+# PLAYKIT rows are extra kits granted to every participant at Start game.
+PLAYKIT     | settler | kit=settler
+WORLD       | house   | count=1
+WORLD       | chicken | count=2
+WORLD       | plant   | count=4

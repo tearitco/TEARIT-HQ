@@ -1,0 +1,3 @@
+# event.pal - conductor page 16 (trigger stop): one eden_op verb, run with cwd = the conductor dir
+exec ops/+x/eden_op.+x . stop
+halt

@@ -14,3 +14,13 @@ shelter_gain=1
 max_shelter=1
 practice_exp=1
 study_exp=2
+# --- v1: house wear / upkeep, digging, slots
+house_decay_days=3
+house_ok_at=5
+house_rest_bonus=1
+max_condition=10
+repair_below=7
+repair_gain=3
+repair_cost_clay=1
+max_dig_depth=6
+max_slots=100

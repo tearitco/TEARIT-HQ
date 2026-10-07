@@ -11,3 +11,11 @@ WIRING | tree           | ..
 WIRING | participants   | ../participants
 WIRING | template       | participant_template
 WIRING | control_ledger | ../../eden_control.txt
+# --- v1 (defaults shown; every one is optional). world / world_templates: where Start game spawns house, chickens, plants; slots_index / slot_file live OUTSIDE the game tree so a Load does not rewind them.
+WIRING | world           | ../world
+WIRING | world_templates | world_templates
+WIRING | slots_index     | ../../slots.pdl
+WIRING | slot_file       | ../../slot.txt
+# tomom talk (scratch copy only; unset = the phrase fallback). tomom_bin = the tomom-hq chatbot_seed7 binary built on a scratch copy, tomom_dir = that copy's folder (cwd of the Ask).
+# WIRING | tomom_bin | ../../tomom/chatbot_seed7
+# WIRING | tomom_dir | ../../tomom
