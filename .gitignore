@@ -193,3 +193,7 @@ x0.parent-level-dev-env-04.04_*.7z
 # per-desk renderer state (bottom dock rows, hotbar slide offset): runtime, not code (Q007 3d)
 **/#.desktop/dock_state.pdl
 **/#.desktop/slide_offsets.pdl
+
+# server router runtime state (Q009): decisions log, cursors; the ledger is already ignored above
+^.hai-server/observations.log
+^.hai-server/cursors.txt

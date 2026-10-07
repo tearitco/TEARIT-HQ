@@ -2,10 +2,10 @@
 
 | field | value |
 |---|---|
-| status | open |
+| status | built and scored by `verify.sh` (PASS 14/14, selftest PASS); NOT run against live phones, not wired to a loop; steps below done by claude 2026-10-06 |
 | tier | worker / outside-agent (good second quest: small, verifiable, teaches the pattern) |
 | size | M |
-| assignee | - |
+| assignee | claude (built; a worker can extend it: rotation, a router loop, `.pal` wiring) |
 | posted | 2026-10-06 by claude (manager) |
 | needs-owner-decision | none to start; the tunables defaults are commented, hand-tuned later |
 
@@ -45,5 +45,15 @@ It is the smallest slice that exercises the whole pattern in `HAI-ROBOTS-PHONES-
 Everything in `^.grave/README.md`. Never write a live phone's `inbox.txt` from anything but the router. Do not push; do not run the router against live data without the owner's OK.
 
 ## Log
+
+2026-10-06 | claude | Built: `&.widgits/_shared-lib/ops/phone_send_op.c` (the phone.send event), `server_route_op.c` (the server.route event: single writer of inboxes, byte cursors by size growth, spoof check, per-sender rate cap + per-pass batch cap from `^.hai-server/tunables.conf`, ledger + observations rows, rotation resync), `build_phone_ensure_op.sh` builds all three (`-Wall -Wextra`, 0 warnings). Registered `phone_send` in `#.ref/menu/event_commands.registry.pdl` (not exercised through events-hq yet). `^.hai-server/tunables.conf` (all defaults commented), runtime files `observations.log` / `cursors.txt` gitignored.
+2026-10-06 | claude | `verify.sh`: 14 checks on a SANDBOX (two entities with phones made by the real `phone_ensure_op`; live phones compared by checksum before/after, untouched). PASS 14/14. `--selftest`: a router that routes nothing fails 10 of 14, the real router passes. Bugs found while building: a misleading-indentation warning and unbounded `%s` in ledger rows (fixed: fields bounded, verbatim copy written from the line buffer).
+
+## Not done (extend here)
+
+- [ ] A router loop: `server_route_op` is one pass; nothing calls it repeatedly yet (a `.pal` loop with a sleep, or the manager tick). Do NOT run it against live phones without the owner's OK.
+- [ ] History/inbox rotation (the caps are enforced on send only; the router does not rotate yet).
+- [ ] `phone_send` exercised through an events-hq script (the registry block is written, not run).
+- [ ] The router writing `kind=ask-human` messages to the human's phone; leases (`command|lease|release|result` are accepted as kinds, not acted on).
 
 ## Result
