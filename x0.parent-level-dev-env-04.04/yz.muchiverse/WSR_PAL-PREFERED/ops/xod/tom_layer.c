@@ -58,39 +58,50 @@ typedef struct {
 static tom_agent_t agents[MAX_AGENTS];
 static int agent_count = 0;
 
-/* Find or create an agent entry by agent_id prefix in an event line. */
+/* Find or create an agent entry by agent_id prefix in an event line.
+ * Does NOT mutate event_line — uses a local copy for ID extraction so
+ * update_agent_from_event can still parse the full line.
+ *
+ * Events are formatted as:
+ *   KEY_INJECTED|17|end_turn
+ *   BEHAVIOR_COMPLETE|end_turn|ok
+ *   FSM_STATE|executing|action=end_turn|confidence=0.95
+ *   LLM_DECISION|end_turn|0.95|reason text
+ *
+ * Agent identity is inferred from event type + first action token.
+ * A real deployment would tag events with agent_id in the relay filename.
+ */
 static tom_agent_t *find_or_create_agent(const char *event_line) {
-    /* Events are formatted as:
-     *   KEY_INJECTED|17|end_turn
-     *   BEHAVIOR_COMPLETE|end_turn|ok
-     *   FSM_STATE|executing|action=end_turn|confidence=0.95
-     *   LLM_DECISION|end_turn|0.95|reason text
-     *
-     * We infer agent identity from the event bus file path / session dir.
-     * For now, use the event type + action hash as a proxy for agent identity.
-     * A real deployment would tag events with agent_id in the relay filename.
-     */
-    const char *action = NULL;
-    const char *etype = event_line;
+    char line_copy[MAX_LINE];
+    strncpy(line_copy, event_line, sizeof(line_copy) - 1);
+    line_copy[sizeof(line_copy) - 1] = '\0';
 
-    if (strncmp(event_line, "KEY_INJECTED|", 13) == 0) {
+    const char *action = NULL;
+    const char *etype = line_copy;
+
+    if (strncmp(line_copy, "KEY_INJECTED|", 13) == 0) {
         etype = "KEY_INJECTED";
-        action = event_line + 13;
+        action = line_copy + 13;
         char *p = strchr(action, '|');
         if (p) *p = '\0';
-    } else if (strncmp(event_line, "BEHAVIOR_", 9) == 0) {
-        etype = event_line;
+    } else if (strncmp(line_copy, "BEHAVIOR_", 9) == 0) {
+        etype = line_copy;
         char *p = strchr(etype, '|');
         if (p) *p = '\0';
         action = p ? p + 1 : "";
-    } else if (strncmp(event_line, "FSM_STATE|", 10) == 0) {
+    } else if (strncmp(line_copy, "FSM_STATE|", 10) == 0) {
         etype = "FSM_STATE";
-        action = event_line + 10;
-    } else if (strncmp(event_line, "LLM_DECISION|", 13) == 0) {
-        etype = "LLM_DECISION";
-        action = event_line + 13;
+        action = line_copy + 10;
         char *p = strchr(action, '|');
         if (p) *p = '\0';
+    } else if (strncmp(line_copy, "LLM_DECISION|", 13) == 0) {
+        etype = "LLM_DECISION";
+        action = line_copy + 13;
+        char *p = strchr(action, '|');
+        if (p) *p = '\0';
+    } else {
+        /* Unknown event type — skip it */
+        return NULL;
     }
 
     /* Create a synthetic agent id from action + event type. */
@@ -218,22 +229,76 @@ int main(int argc, char **argv) {
     char relay_path[PATH_BUF];
     snprintf(relay_path, sizeof(relay_path), "%s/pieces/apps/player_app/interact_relay.txt", project_root);
 
-    /* Read the entire relay and process every event. */
-    FILE *f = fopen(relay_path, "r");
-    if (!f) return 0;
+    /* Load persisted agent state from previous runs */
+    char state_path[PATH_BUF];
+    snprintf(state_path, sizeof(state_path), "%s/pieces/apps/player_app/tom_state.txt", project_root);
+    FILE *sf = fopen(state_path, "r");
+    if (sf) {
+        char sline[MAX_LINE];
+        while (fgets(sline, sizeof(sline), sf)) {
+            sline[strcspn(sline, "\r\n")] = '\0';
+            char *id = sline;
+            char *p = strchr(sline, '|');
+            if (!p) continue;
+            *p = '\0';
+            char *action = p + 1;
+            p = strchr(action, '|'); if (!p) continue;
+            *p = '\0';
+            char *goal = p + 1;
+            p = strchr(goal, '|'); if (!p) continue;
+            *p = '\0';
+            char *conf = p + 1;
 
+            if (agent_count < MAX_AGENTS) {
+                tom_agent_t *a = &agents[agent_count++];
+                snprintf(a->agent_id, sizeof(a->agent_id), "%s", id);
+                snprintf(a->last_action, sizeof(a->last_action), "%s", action);
+                snprintf(a->believed_goal, sizeof(a->believed_goal), "%s", goal);
+                a->confidence = atof(conf);
+                a->last_seen = time(NULL);
+            }
+        }
+        fclose(sf);
+    }
+
+    /* Read position tracker: skip events already processed */
+    long read_pos = 0;
+    FILE *pf = fopen(relay_path, "r");
+    if (!pf) { emit_tom_summary(relay_path); return 0; }
+
+    /* Read entire file and process only new events */
     char line[MAX_LINE];
-    while (fgets(line, sizeof(line), f)) {
+    while (fgets(line, sizeof(line), pf)) {
+        read_pos = ftell(pf);
         line[strcspn(line, "\r\n")] = '\0';
         if (!line[0]) continue;
+
+        /* Skip TOM's own output to prevent recursive processing */
+        if (strncmp(line, "TOM_SUMMARY|", 12) == 0) continue;
+        if (strncmp(line, "TOM_BELIEF|", 11) == 0) continue;
+        if (strncmp(line, "FITNESS", 7) == 0) continue;
 
         tom_agent_t *a = find_or_create_agent(line);
         if (a) update_agent_from_event(a, line);
     }
-    fclose(f);
+    fclose(pf);
+
+    /* Persist agent state for next run */
+    sf = fopen(state_path, "w");
+    if (sf) {
+        for (int i = 0; i < agent_count; i++) {
+            fprintf(sf, "%s|%s|%s|%.2f\n",
+                    agents[i].agent_id,
+                    agents[i].last_action,
+                    agents[i].believed_goal,
+                    agents[i].confidence);
+        }
+        fclose(sf);
+    }
 
     prune_stale_agents();
     emit_tom_summary(relay_path);
 
+    (void)read_pos;
     return 0;
 }
