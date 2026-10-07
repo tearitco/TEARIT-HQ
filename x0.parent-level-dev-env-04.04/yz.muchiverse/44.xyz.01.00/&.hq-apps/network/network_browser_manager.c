@@ -669,6 +669,12 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                 if (!type[0]) snprintf(type, sizeof(type), "%s", "text");
                 if (in_form && (!strcmp(type, "text") || !strcmp(type, "search"))) {
                     if (name[0]) fprintf(out, "INPUT|%s|%s|%s|%s\n", name, type, val, ph);
+                } else if (in_form && !strcmp(type, "hidden")) {
+                    /* Hidden defaults ride page.state untouched to submit
+                     * time (projector renders nothing for HIDDEN); the
+                     * submit script merges them under interactively set
+                     * values. This is what makes token-bearing forms work. */
+                    if (name[0]) fprintf(out, "HIDDEN|%s|%s\n", name, val);
                 } else if (in_form && (!strcmp(type, "submit") || !strcmp(type, "button") || !strcmp(type, "image"))) {
                     char lab[256];
                     snprintf(lab, sizeof(lab), "%s", val[0] ? val : "Submit");
