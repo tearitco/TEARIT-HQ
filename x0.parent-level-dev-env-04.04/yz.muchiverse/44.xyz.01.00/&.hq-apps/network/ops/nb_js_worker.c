@@ -3608,13 +3608,33 @@ static void nb_ctx_str(JSContext *ctx, JSValueConst o, const char *k, char *out,
 }
 /* ---- canvas 2D ---- */
 static JSValue nb_c2d_noop(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) { (void)ctx; (void)this_val; (void)argc; (void)argv; return JS_UNDEFINED; }
+static void nb_grad_sample(JSContext *ctx, JSValue grad, double t, unsigned char out[4]);
 
+static double nb_ctx_num(JSContext *ctx, JSValueConst o, const char *k, double def);
 static NbCanvas *nb_canvas_get(JSContext *ctx, JSValueConst ctxobj) {
     JSValue v = JS_GetPropertyStr(ctx, ctxobj, "__nb_canvas_id");
     int id = -1;
     if (JS_IsNumber(v)) JS_ToInt32(ctx, &id, v);
     JS_FreeValue(ctx, v);
     if (id < 0 || id >= NB_CANVAS_MAX || !g_canvases[id].used) return NULL;
+    /* post-creation resize (spec: setting width/height clears): the props
+     * live on the element, so sync here - every draw op funnels through. */
+    JSValue ev = JS_GetPropertyStr(ctx, ctxobj, "__nb_elem");
+    if (JS_IsObject(ev)) {
+        int w = (int)nb_ctx_num(ctx, ev, "width", g_canvases[id].w);
+        int h = (int)nb_ctx_num(ctx, ev, "height", g_canvases[id].h);
+        if (w < 1) w = 1; if (h < 1) h = 1;
+        if ((size_t)w * h > (size_t)NB_CANVAS_PX_MAX) { w = 2048; h = 2048; }
+        if ((w != g_canvases[id].w || h != g_canvases[id].h)) {
+            unsigned char *px = calloc((size_t)w * h, 4);
+            if (px) {
+                free(g_canvases[id].px);
+                g_canvases[id].px = px;
+                g_canvases[id].w = w; g_canvases[id].h = h;
+            }
+        }
+    }
+    JS_FreeValue(ctx, ev);
     return &g_canvases[id];
 }
 /* parse #rgb #rrggbb #rrggbbaa rgb() rgba() + 16 named; else opaque black */
@@ -3761,6 +3781,22 @@ static int nb_c2d_source(JSContext *ctx, JSValueConst v,
                          int *sw, int *sh, unsigned char **spx, int *owned) {
     *sw = 0; *sh = 0; *spx = NULL; *owned = 0;
     if (!JS_IsObject(v)) return 0;
+    /* img elements with decoded pixels (data: URLs decode inline during
+     * the walk; remote-src Image onload wiring is out of slice) */
+    {
+        NbNode *n = get_node(ctx, v);
+        if (n) {
+            int dw = 0, dh = 0;
+            if (img_get_decoded(n, &dw, &dh)) {
+                for (int i = 0; i < g_img_decoded_count; i++)
+                    if (g_img_decoded[i].n == n && g_img_decoded[i].data) {
+                        *sw = g_img_decoded[i].w; *sh = g_img_decoded[i].h;
+                        *spx = g_img_decoded[i].data;
+                        return 1;
+                    }
+            }
+        }
+    }
     JSValue cid = JS_GetPropertyStr(ctx, v, "__nb_ctx");
     int id = -1;
     if (JS_IsObject(cid)) {
@@ -3812,6 +3848,119 @@ static JSValue nb_c2d_fillRect(JSContext *ctx, JSValueConst this_val, int argc, 
     double w = nb_c2d_argd(ctx, argv, argc, 2, 0), h = nb_c2d_argd(ctx, argv, argc, 3, 0);
     if (w < 0) { x += w; w = -w; } if (h < 0) { y += h; h = -h; }
     if (w <= 0 || h <= 0) return JS_UNDEFINED;
+    double ga = nb_ctx_num(ctx, this_val, "globalAlpha", 1);
+    /* gradient fillStyle: sample stops per pixel through the transform */
+    JSValue fs = JS_GetPropertyStr(ctx, this_val, "fillStyle");
+    if (JS_IsObject(fs)) {
+        JSValue srcv = JS_GetPropertyStr(ctx, fs, "src");
+        if (JS_IsObject(srcv)) {
+            /* pattern fillStyle: tile source pixels across the rect.
+             * repetition modes other than repeat/no-repeat collapse to
+             * repeat (noted); transform applies to the rect, pattern
+             * phase stays axis-aligned (noted). */
+            char rep[16] = "repeat";
+            JSValue repv = JS_GetPropertyStr(ctx, fs, "rep");
+            const char *rs = JS_IsString(repv) ? JS_ToCString(ctx, repv) : NULL;
+            if (rs) { snprintf(rep, sizeof(rep), "%s", rs); JS_FreeCString(ctx, rs); }
+            JS_FreeValue(ctx, repv);
+            int sw = 0, sh = 0, owned = 0;
+            unsigned char *spx = NULL;
+            if (nb_c2d_source(ctx, srcv, &sw, &sh, &spx, &owned) && sw > 0 && sh > 0) {
+                double a = cv->m[0], b = cv->m[1], cc = cv->m[2], d = cv->m[3], e = cv->m[4], f = cv->m[5];
+                double det = a * d - b * cc;
+                if (det != 0.0) {
+                    double xs[4] = {x, x + w, x, x + w}, ys[4] = {y, y, y + h, y + h};
+                    double x0 = 1e18, x1 = -1e18, y0 = 1e18, y1 = -1e18;
+                    for (int i = 0; i < 4; i++) {
+                        double px = a * xs[i] + cc * ys[i] + e, py = b * xs[i] + d * ys[i] + f;
+                        if (px < x0) x0 = px; if (px > x1) x1 = px;
+                        if (py < y0) y0 = py; if (py > y1) y1 = py;
+                    }
+                    int ix0 = (int)floor(x0), iy0 = (int)floor(y0);
+                    int ix1 = (int)ceil(x1), iy1 = (int)ceil(y1);
+                    if (ix0 < 0) ix0 = 0; if (iy0 < 0) iy0 = 0;
+                    if (ix1 > cv->w) ix1 = cv->w; if (iy1 > cv->h) iy1 = cv->h;
+                    int norep = !strcmp(rep, "no-repeat");
+                    for (int py = iy0; py < iy1; py++)
+                        for (int px = ix0; px < ix1; px++) {
+                            double u = ((px + 0.5 - e) * d - (py + 0.5 - f) * cc) / det;
+                            double v = (a * (py + 0.5 - f) - b * (px + 0.5 - e)) / det;
+                            if (u < x || u >= x + w || v < y || v >= y + h) continue;
+                            int qx = (int)floor(u - x), qy = (int)floor(v - y);
+                            if (norep) {
+                                if (qx < 0 || qy < 0 || qx >= sw || qy >= sh) continue;
+                            } else {
+                                qx %= sw; qy %= sh;
+                                if (qx < 0) qx += sw; if (qy < 0) qy += sh;
+                            }
+                            nb_px_over(cv->px + ((size_t)py * cv->w + px) * 4,
+                                       spx + ((size_t)qy * sw + qx) * 4, ga);
+                        }
+                    JS_FreeValue(ctx, srcv);
+                    if (owned) free(spx);
+                    JS_FreeValue(ctx, fs);
+                    return JS_UNDEFINED;
+                }
+            }
+            if (owned) free(spx);
+            JS_FreeValue(ctx, srcv);
+        } else {
+            JS_FreeValue(ctx, srcv);
+        }
+        JSValue glv = JS_GetPropertyStr(ctx, fs, "glen");
+        int32_t glen = 0;
+        if (JS_IsNumber(glv)) JS_ToInt32(ctx, &glen, glv);
+        JS_FreeValue(ctx, glv);
+        if (glen == 4 || glen == 6) {
+            double gp[6] = {0};
+            for (int i = 0; i < glen; i++) {
+                char k[8];
+                snprintf(k, sizeof(k), "g%d", i);
+                JSValue gv = JS_GetPropertyStr(ctx, fs, k);
+                if (JS_IsNumber(gv)) JS_ToFloat64(ctx, &gp[i], gv);
+                JS_FreeValue(ctx, gv);
+            }
+            double a = cv->m[0], b = cv->m[1], cc = cv->m[2], d = cv->m[3], e = cv->m[4], f = cv->m[5];
+            double det = a * d - b * cc;
+            if (det != 0.0) {
+                double xs[4] = {x, x + w, x, x + w}, ys[4] = {y, y, y + h, y + h};
+                double x0 = 1e18, x1 = -1e18, y0 = 1e18, y1 = -1e18;
+                for (int i = 0; i < 4; i++) {
+                    double px = a * xs[i] + cc * ys[i] + e, py = b * xs[i] + d * ys[i] + f;
+                    if (px < x0) x0 = px; if (px > x1) x1 = px;
+                    if (py < y0) y0 = py; if (py > y1) y1 = py;
+                }
+                int ix0 = (int)floor(x0), iy0 = (int)floor(y0);
+                int ix1 = (int)ceil(x1), iy1 = (int)ceil(y1);
+                if (ix0 < 0) ix0 = 0; if (iy0 < 0) iy0 = 0;
+                if (ix1 > cv->w) ix1 = cv->w; if (iy1 > cv->h) iy1 = cv->h;
+                double dx = gp[2] - gp[0], dy = gp[3] - gp[1];
+                double denom = dx * dx + dy * dy;
+                for (int py = iy0; py < iy1; py++)
+                    for (int px = ix0; px < ix1; px++) {
+                        double u = ((px + 0.5 - e) * d - (py + 0.5 - f) * cc) / det;
+                        double v = (a * (py + 0.5 - f) - b * (px + 0.5 - e)) / det;
+                        if (u < x || u >= x + w || v < y || v >= y + h) continue;
+                        double t;
+                        if (glen == 4) {
+                            t = denom > 0 ? ((u - gp[0]) * dx + (v - gp[1]) * dy) / denom : 0;
+                        } else {
+                            double d0 = sqrt((u - gp[0]) * (u - gp[0]) + (v - gp[1]) * (v - gp[1])) - gp[2];
+                            double d1 = sqrt((u - gp[3]) * (u - gp[3]) + (v - gp[4]) * (v - gp[4])) - gp[5];
+                            double dn = d1 - d0;
+                            t = dn != 0 ? d0 / dn : (d0 >= 0 ? 1 : 0);
+                        }
+                        if (t < 0) t = 0; if (t > 1) t = 1;
+                        unsigned char col[4];
+                        nb_grad_sample(ctx, fs, t, col);
+                        nb_px_over(cv->px + ((size_t)py * cv->w + px) * 4, col, ga);
+                    }
+                JS_FreeValue(ctx, fs);
+                return JS_UNDEFINED;
+            }
+        }
+    }
+    JS_FreeValue(ctx, fs);
     unsigned char s[4];
     nb_ctx_fill_rgb(ctx, this_val, s);
     nb_px_fill_rect_xf(cv, x, y, w, h, s, nb_ctx_num(ctx, this_val, "globalAlpha", 1));
@@ -4028,7 +4177,6 @@ static JSValue nb_c2d_getImageData_real(JSContext *ctx, JSValueConst this_val, i
             for (int k = 0; k < 4; k++) {
                 JSValue ev = JS_NewInt32(ctx, px[k]);
                 JS_SetPropertyUint32(ctx, data, (uint32_t)(4 * (y * w + x) + k), ev);
-                JS_FreeValue(ctx, ev);
             }
         }
     JS_SetPropertyStr(ctx, img, "data", data);
@@ -4122,13 +4270,205 @@ static JSValue nb_c2d_fillText(JSContext *ctx, JSValueConst this_val, int argc, 
     if (cv) cv->dirty = 1;
     return JS_UNDEFINED;
 }
+/* strokeText: rasterize the run to a mask, then paint every unset pixel
+ * within lineWidth/2 of a set pixel (true outline, not faux-bold).
+ * Translation part of the transform honored via pen/baseline shift. */
+static JSValue nb_c2d_strokeText(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbCanvas *cv = nb_canvas_get(ctx, this_val);
+    if (!cv) return JS_UNDEFINED;
+    if (cv) cv->dirty = 1;
+    if (argc < 1 || !JS_IsString(argv[0])) return JS_UNDEFINED;
+    const char *s = JS_ToCString(ctx, argv[0]);
+    if (!s) return JS_UNDEFINED;
+    nb_font_load();
+    double x = nb_c2d_argd(ctx, argv, argc, 1, 0), y = nb_c2d_argd(ctx, argv, argc, 2, 0);
+    double px = nb_font_size_px(ctx, this_val);
+    double scale = g_font_upm ? px / g_font_upm : 0;
+    char align[32], base[32];
+    nb_ctx_str(ctx, this_val, "textAlign", align, sizeof(align), "start");
+    nb_ctx_str(ctx, this_val, "textBaseline", base, sizeof(base), "alphabetic");
+    double total = 0;
+    for (const char *p = s; *p; p++) {
+        unsigned char c = (unsigned char)*p;
+        if (c < 32 || c > 126 || !g_font_data) continue;
+        total += nb_font_advance(nb_font_gid(c)) * scale;
+    }
+    double pen = x + cv->m[4];
+    if (!strcmp(align, "center")) pen -= total / 2;
+    else if (!strcmp(align, "right") || !strcmp(align, "end")) pen -= total;
+    double asc = g_font_data ? g_font_asc * scale : px;
+    double desc = g_font_data ? -g_font_desc * scale : 0;
+    double baseline = y + cv->m[5];
+    if (!strcmp(base, "top") || !strcmp(base, "hanging")) baseline += asc;
+    else if (!strcmp(base, "middle")) baseline += asc / 2;
+    else if (!strcmp(base, "bottom") || !strcmp(base, "ideographic")) baseline -= desc;
+    double lw = nb_ctx_num(ctx, this_val, "lineWidth", 1);
+    int rad = (int)(lw / 2 + 0.5);
+    if (rad < 1) rad = 1;
+    if (rad > 8) rad = 8;
+    size_t npix = (size_t)cv->w * cv->h;
+    unsigned char *mask = calloc(npix ? npix : 1, 1);
+    if (!mask) { JS_FreeCString(ctx, s); return JS_UNDEFINED; }
+    double p2 = pen;
+    for (const char *p = s; *p; p++) {
+        unsigned char c = (unsigned char)*p;
+        if (c < 32 || c > 126 || !g_font_data) { p2 += 4 * scale; continue; }
+        unsigned gid = nb_font_gid(c);
+        if (gid) {
+            static double xs[512], ys[512];
+            static int ends[32];
+            int ncont = 0;
+            int npts = nb_font_points(gid, xs, ys, ends, &ncont);
+            if (npts > 0) {
+                double gx0 = 1e18, gx1 = -1e18, gy0 = 1e18, gy1 = -1e18;
+                for (int i = 0; i < npts; i++) {
+                    double qx = p2 + xs[i] * scale, qy = baseline - ys[i] * scale;
+                    if (qx < gx0) gx0 = qx; if (qx > gx1) gx1 = qx;
+                    if (qy < gy0) gy0 = qy; if (qy > gy1) gy1 = qy;
+                }
+                int ix0 = (int)floor(gx0) - 1, iy0 = (int)floor(gy0) - 1;
+                int ix1 = (int)ceil(gx1) + 1, iy1 = (int)ceil(gy1) + 1;
+                if (ix0 < 0) ix0 = 0; if (iy0 < 0) iy0 = 0;
+                if (ix1 > cv->w) ix1 = cv->w; if (iy1 > cv->h) iy1 = cv->h;
+                int sj = 0;
+                for (int yy = iy0; yy < iy1; yy++)
+                    for (int xx = ix0; xx < ix1; xx++) {
+                        double qx = xx + 0.5, qy = yy + 0.5;
+                        int inside = 0;
+                        int sk = 0;
+                        for (int ci = 0; ci < ncont; ci++) {
+                            int en = ends[ci];
+                            for (int i = sk; i <= en; i++) {
+                                int j = (i == en) ? sk : i + 1;
+                                double ax = p2 + xs[i] * scale, ay = baseline - ys[i] * scale;
+                                double bx = p2 + xs[j] * scale, by = baseline - ys[j] * scale;
+                                if ((ay > qy) != (by > qy)) {
+                                    double ix = ax + (qy - ay) * (bx - ax) / (by - ay);
+                                    if (ix > qx) inside = !inside;
+                                }
+                            }
+                            sk = en + 1;
+                        }
+                        if (inside) mask[(size_t)yy * cv->w + xx] = 1;
+                    }
+            }
+        }
+        p2 += nb_font_advance(gid) * scale;
+    }
+    unsigned char col[4];
+    nb_ctx_fill_rgb(ctx, this_val, col);
+    {
+        JSValue sv = JS_GetPropertyStr(ctx, this_val, "strokeStyle");
+        const char *ss = JS_IsString(sv) ? JS_ToCString(ctx, sv) : NULL;
+        if (ss && ss[0]) nb_color_parse(ss, col);
+        if (ss) JS_FreeCString(ctx, ss);
+        JS_FreeValue(ctx, sv);
+    }
+    double ga = nb_ctx_num(ctx, this_val, "globalAlpha", 1);
+    for (int yy = 0; yy < cv->h; yy++)
+        for (int xx = 0; xx < cv->w; xx++) {
+            if (mask[(size_t)yy * cv->w + xx]) continue;
+            int hit = 0;
+            for (int oy = -rad; oy <= rad && !hit; oy++)
+                for (int ox = -rad; ox <= rad && !hit; ox++) {
+                    int qx = xx + ox, qy = yy + oy;
+                    if (qx < 0 || qy < 0 || qx >= cv->w || qy >= cv->h) continue;
+                    if (mask[(size_t)qy * cv->w + qx]) hit = 1;
+                }
+            if (hit) nb_px_over(cv->px + ((size_t)yy * cv->w + xx) * 4, col, ga);
+        }
+    free(mask);
+    JS_FreeCString(ctx, s);
+    return JS_UNDEFINED;
+}
+/* Gradients hold their stops on the JS object; fillRect samples them.
+ * addColorStop with offset outside [0,1] throws per spec (IndexSizeError). */
+static JSValue nb_c2d_addColorStop(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    double off = 0;
+    if (argc >= 1 && JS_IsNumber(argv[0])) JS_ToFloat64(ctx, &off, argv[0]);
+    if (off < 0 || off > 1 || (argc >= 1 && !JS_IsNumber(argv[0]))) {
+        JSValue ex = JS_NewError(ctx);
+        JS_SetPropertyStr(ctx, ex, "name", JS_NewString(ctx, "IndexSizeError"));
+        JS_Throw(ctx, ex);
+        return JS_EXCEPTION;
+    }
+    JSValue stops = JS_GetPropertyStr(ctx, this_val, "stops");
+    if (!JS_IsObject(stops)) { JS_FreeValue(ctx, stops); stops = JS_NewArray(ctx); }
+    JSValue lv = JS_GetPropertyStr(ctx, stops, "length");
+    int32_t len = 0;
+    if (JS_IsNumber(lv)) JS_ToInt32(ctx, &len, lv);
+    JS_FreeValue(ctx, lv);
+    JSValue e = JS_NewArray(ctx);
+    JSValue eo = JS_NewFloat64(ctx, off);
+    JS_SetPropertyUint32(ctx, e, 0, eo);
+    JSValue ec = (argc >= 2 && JS_IsString(argv[1])) ? JS_DupValue(ctx, argv[1]) : JS_NewString(ctx, "#000000");
+    JS_SetPropertyUint32(ctx, e, 1, ec);
+    JS_SetPropertyUint32(ctx, stops, (uint32_t)len, e);
+    JS_SetPropertyStr(ctx, this_val, "stops", JS_DupValue(ctx, stops));
+    JS_FreeValue(ctx, stops);
+    return JS_UNDEFINED;
+}
 static JSValue nb_c2d_gradient(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)this_val;
     JSValue g = JS_NewObject(ctx);
-    JS_SetPropertyStr(ctx, g, "addColorStop", JS_NewCFunction(ctx, nb_c2d_noop, "addColorStop", 2));
+    JS_SetPropertyStr(ctx, g, "addColorStop", JS_NewCFunction(ctx, nb_c2d_addColorStop, "addColorStop", 2));
+    JS_SetPropertyStr(ctx, g, "stops", JS_NewArray(ctx));
+    for (int i = 0; i < argc && i < 6; i++) {
+        JSValue v = JS_NewFloat64(ctx, nb_c2d_argd(ctx, argv, argc, i, 0));
+        char k[8];
+        snprintf(k, sizeof(k), "g%d", i);
+        JS_SetPropertyStr(ctx, g, k, v);
+    }
+    JS_SetPropertyStr(ctx, g, "glen", JS_NewInt32(ctx, argc > 6 ? 6 : argc));
     return g;
 }
+/* sample gradient stops at t in [0,1] */
+static void nb_grad_sample(JSContext *ctx, JSValue grad, double t, unsigned char out[4]) {
+    out[0] = out[1] = out[2] = 0; out[3] = 255;
+    JSValue stops = JS_GetPropertyStr(ctx, grad, "stops");
+    JSValue lv = JS_IsObject(stops) ? JS_GetPropertyStr(ctx, stops, "length") : JS_UNDEFINED;
+    int32_t n = 0;
+    if (JS_IsNumber(lv)) JS_ToInt32(ctx, &n, lv);
+    JS_FreeValue(ctx, lv);
+    if (n <= 0) { JS_FreeValue(ctx, stops); return; }
+    double bo = 0, to = 1;
+    unsigned char bc[4] = {0, 0, 0, 255}, tc[4] = {0, 0, 0, 255};
+    int have_b = 0, have_t = 0;
+    for (int32_t i = 0; i < n; i++) {
+        JSValue e = JS_GetPropertyUint32(ctx, stops, (uint32_t)i);
+        JSValue eo = JS_IsObject(e) ? JS_GetPropertyUint32(ctx, e, 0) : JS_UNDEFINED;
+        JSValue ec = JS_IsObject(e) ? JS_GetPropertyUint32(ctx, e, 1) : JS_UNDEFINED;
+        double o = 0;
+        if (JS_IsNumber(eo)) JS_ToFloat64(ctx, &o, eo);
+        unsigned char cc[4] = {0, 0, 0, 255};
+        if (JS_IsString(ec)) {
+            const char *s = JS_ToCString(ctx, ec);
+            nb_color_parse(s, cc);
+            if (s) JS_FreeCString(ctx, s);
+        }
+        JS_FreeValue(ctx, eo); JS_FreeValue(ctx, ec); JS_FreeValue(ctx, e);
+        /* nearest stop at/below t and at/above t across all stops */
+        if (o <= t && (!have_b || o >= bo)) { bo = o; memcpy(bc, cc, 4); have_b = 1; }
+        if (o >= t && (!have_t || o <= to)) { to = o; memcpy(tc, cc, 4); have_t = 1; }
+    }
+    if (!have_b && have_t) { bo = to; memcpy(bc, tc, 4); }
+    if (!have_t && have_b) { to = bo; memcpy(tc, bc, 4); }
+    JS_FreeValue(ctx, stops);
+    double f = (to > bo) ? (t - bo) / (to - bo) : 0;
+    if (f < 0) f = 0; if (f > 1) f = 1;
+    for (int i = 0; i < 4; i++)
+        out[i] = (unsigned char)(bc[i] + (tc[i] - bc[i]) * f + 0.5);
+}
 static JSValue nb_c2d_createPattern(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
-    return JS_NewObject(ctx);
+    (void)this_val;
+    /* Pattern holds its source reference; resolved to pixels at fill time
+     * so canvas-source patterns track later draws (live pattern). */
+    JSValue p = JS_NewObject(ctx);
+    if (argc >= 1 && JS_IsObject(argv[0]))
+        JS_SetPropertyStr(ctx, p, "src", JS_DupValue(ctx, argv[0]));
+    JS_SetPropertyStr(ctx, p, "rep",
+                      (argc >= 2 && JS_IsString(argv[1])) ? JS_DupValue(ctx, argv[1]) : JS_NewString(ctx, "repeat"));
+    return p;
 }
 static JSValue nb_c2d_lineDash(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     return JS_NewArray(ctx);
@@ -4663,7 +5003,6 @@ static JSValue nb_gl_getParameter(JSContext *ctx, JSValueConst this_val, int arg
         for (int i = 0; i < 4; i++) {
             JSValue e = JS_NewInt32(ctx, v[i]);
             JS_SetPropertyUint32(ctx, a, (uint32_t)i, e);
-            JS_FreeValue(ctx, e);
         }
         return a;
     }
@@ -4715,7 +5054,6 @@ static JSValue nb_gl_readPixels(JSContext *ctx, JSValueConst this_val, int argc,
         for (size_t i = 0; i < n; i++) {
             JSValue e = JS_NewInt32(ctx, buf[i]);
             JS_SetPropertyUint32(ctx, argv[6], (uint32_t)i, e);
-            JS_FreeValue(ctx, e);
         }
     }
     free(buf);
@@ -4929,7 +5267,7 @@ static JSValue nb_el_getContext(JSContext *ctx, JSValueConst this_val, int argc,
     const char *noops[] = {
         "beginPath", "closePath", "moveTo",
         "lineTo", "rect", "arc", "arcTo", "bezierCurveTo", "quadraticCurveTo",
-        "fill", "stroke", "clip", "strokeText", "setLineDash",
+        "fill", "stroke", "clip", "setLineDash",
         "reset", "isPointInPath", "setTransformMatrix", "drawFocusIfNeeded"
     };
     for (size_t i = 0; i < sizeof(noops) / sizeof(noops[0]); i++)
@@ -4948,6 +5286,7 @@ static JSValue nb_el_getContext(JSContext *ctx, JSValueConst this_val, int argc,
     JS_SetPropertyStr(ctx, c, "drawImage", JS_NewCFunction(ctx, nb_c2d_drawImage, "drawImage", 9));
     JS_SetPropertyStr(ctx, c, "putImageData", JS_NewCFunction(ctx, nb_c2d_putImageData, "putImageData", 7));
     JS_SetPropertyStr(ctx, c, "fillText", JS_NewCFunction(ctx, nb_c2d_fillText, "fillText", 4));
+    JS_SetPropertyStr(ctx, c, "strokeText", JS_NewCFunction(ctx, nb_c2d_strokeText, "strokeText", 4));
     JS_SetPropertyStr(ctx, c, "getImageData", JS_NewCFunction(ctx, nb_c2d_getImageData_real, "getImageData", 4));
     JS_SetPropertyStr(ctx, c, "createImageData", JS_NewCFunction(ctx, nb_c2d_createImageData, "createImageData", 2));
     JS_SetPropertyStr(ctx, c, "getLineDash", JS_NewCFunction(ctx, nb_c2d_lineDash, "getLineDash", 0));
@@ -4981,6 +5320,7 @@ static JSValue nb_el_getContext(JSContext *ctx, JSValueConst this_val, int argc,
                 g_canvases[slot].dirty = 0;
                 g_canvases[slot].fillstyle[0] = 0;
                 JS_SetPropertyStr(ctx, c, "__nb_canvas_id", JS_NewInt32(ctx, slot));
+                JS_SetPropertyStr(ctx, c, "__nb_elem", JS_DupValue(ctx, this_val));
             }
         }
     }
