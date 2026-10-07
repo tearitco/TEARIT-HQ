@@ -1,0 +1,145 @@
+# 🧪 NIGHT 31 — The Test That Teaches 🧪
+# ====================================================================
+# Title: "🧪 NIGHT 31 — The Test That Teaches 🧪"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: Design night. How a harness, a plain test written as a pal plus a case file, becomes a Watch record the attrition-model can learn from; which two numbers a test run can honestly move; why the concept list is the real blocker; and what is built, what is named, and what is deliberately left undesigned.
+# Long-form: stays on the architecture. It does not narrate how any script got written.
+
+**THE NARRATOR:** NIGHT 30 gave the whole effort one name and said the next move is to close the gaps between the pieces already named, in the order that unblocks the next one. Tonight picks one gap that nobody had looked at from this side. Say what it is.
+
+**MAXINE:** The house has tests now, and the tests are not decoration. A harness here is a pal, a data file of cases, and two small ops. It runs a real thing on a scratch copy, and it leaves one append-only row per check. Ten of them exist. A hundred and sixty-four checks between them. The question tonight: is a row like that something the attrition-model can learn from, or is it only something a human reads once and forgets.
+
+**TOMO:** Say first why the shape of the harness is not an accident, because the answer decides everything after it.
+
+**RAHWEH:** Because of one fact read straight out of the virtual machine's source. A pal's `exec` line throws away the child's exit status and sends its output to nowhere. A pal cannot ask "did that work." So the harness could never have been a script that exits zero or one. The ops write their verdict into a file, row by row, and a second op reads the file back. Evidence goes through a ledger because the substrate gives no other door.
+
+**MAXINE:** Say what a row looks like, exactly.
+
+**TOMO:** `PASS|case/label`, or `FAIL|case/label|what was seen`, and a `RUN` row each time a case file starts. Plain. No interpretation. Nobody decided what the result means; it only says what happened.
+
+**THE NARRATOR:** Say why that sentence should make everyone sit up.
+
+**RAHWEH:** Because it is word for word the Watch layer's definition. NIGHT 30: "a plain record. No interpretation yet, just what happened." The harness was not built to feed the loop and it already writes the loop's first input. It got there by following the same house law, real files, never hidden state.
+
+---
+
+**THE NARRATOR:** Now the comparison that makes a test an unusually good thing to learn from. Say it.
+
+**MAXINE:** Every observation so far in this track needed a human to say whether it was good. The terumon eats a mushroom, the owner gives a thumbs up or down, and until that thumb arrives the record has no valence at all. Slow, scarce, and the whole loop waits on one person.
+
+**TOMO:** A harness row carries its own valence. PASS or FAIL, decided by deterministic code against a written expectation, no thumb needed. It is also repeatable. The same case file can run again after any change, which means the same behavior produces a fresh observation on demand. Cheap, high volume, objective.
+
+**RAHWEH:** And that is exactly what tomom is starving for. NIGHT 30 said it waits on the same gap as the whole pipeline: no consistent signal of what was accepted and what was rejected, so nothing to learn from. A harness history is a steady signal of one narrow kind, "this behavior still works" or "this change broke it." Narrow is fine. Narrow and honest beats broad and empty.
+
+**MAXINE:** Say the limit before it gets oversold.
+
+**TOMO:** It tells you a behavior works. It does not tell you the words people use for that behavior are right, and it does not tell you what concept the behavior is about. Evidence about the behavior, not about the vocabulary. Hold that, because the next section turns on it.
+
+---
+
+**THE NARRATOR:** Two numbers. Say what they are, because the first draft of this idea confused them.
+
+**RAHWEH:** One is reliability: how often does this behavior pass. The other is aboutness: how strongly is this behavior about a given concept. A harness for the teleport check is about map access, strongly, and about the play-mode file, less, and about restart hardly at all. Those are different kinds of fact.
+
+**MAXINE:** Say which one a test run can move.
+
+**TOMO:** Reliability, and only reliability. A pass or a fail is evidence about whether the behavior works. It is no evidence at all that the teleport check became less about map access. If a test fails, the link between the test and the concept did not change.
+
+**RAHWEH:** So reliability is measured by counting. Reward for a pass, punish for a fail, and the number is the one the house already uses everywhere: reward plus one over reward plus punish plus two. A fresh behavior starts at one half, honestly uncertain, and a long run of passes pushes it toward one without ever claiming certainty. Nobody edits that number; it is a ledger, derived from rows, the way the promotion ledger already works.
+
+**MAXINE:** And aboutness.
+
+**TOMO:** Aboutness is a slot weight on a spoke, the thing the Concept Bank stores, and it changes only the way every Concept Bank weight changes: a model describes, code proposes a bounded delta, a validator checks it, a human reads it. A failing test can be the occasion for that, a human sees a failure and says "this was really about the restart concept as well," and that is a candidate edit. But the failure is the occasion, not the cause.
+
+**THE NARRATOR:** Say what that distinction prevents.
+
+**RAHWEH:** It prevents the quiet corruption. If a pass nudged aboutness up and a fail nudged it down, a flaky test would slowly teach the bank that the test is about nothing. Two kinds of fact, two kinds of mechanism, never one number doing both jobs.
+
+---
+
+**THE NARRATOR:** The concept side. NIGHT 22 said feedback should also reach the concepts the entry touches. How, for a test?
+
+**MAXINE:** Through the slots. A behavior points at masters with weights. When a harness passes, a fraction of that reward flows to each master it points at, scaled by the slot weight. A strong link carries most of it, a faint link almost none. Concepts get their own reliability ledger, assembled from every behavior that touches them.
+
+**TOMO:** Say what that ledger answers that nothing else can.
+
+**RAHWEH:** "How well do we handle map access, across everything that touches it." Not one test, the concept. That is the number worth handing to tomom, and the number a planner can reason with, because a precondition like "map access is reliable" is exactly the kind of abstract statement NIGHT 22 said GOAP should be able to carry.
+
+**MAXINE:** Is any of that built?
+
+**TOMO:** None of the concept ledger. What is built is the behavior-level one, for ten harnesses, counting once through an append-only cursor, which is the house marker rule, size growth, never modification time. The concept ledger is a design.
+
+---
+
+**THE NARRATOR:** Now the real blocker. Say it plainly.
+
+**RAHWEH:** The concept list. Read the bank as it stands today: three masters, energy, force, motion, and one spoke, gravity constant. It is a physics bank. Gemma's describe step is built so it may only pick from the real masters on disk, never invent one. Good rule, and it means a failed teleport check cannot be described. There is no node for it. The model would be forced to choose energy, force or motion, and a forced wrong answer is worse than none.
+
+**MAXINE:** Say what the design requires, then.
+
+**TOMO:** Two things. First, masters for the software domain, hand-authored to start, the way NIGHT 22 said every bank starts: play mode, map access, process lifecycle, hotbar, save and load, the ledger, the parser. The edit type that adds a new concept is named, high bar, and unbuilt, so for now a person writes them.
+
+**RAHWEH:** Second, a corpus boundary. NIGHT 22 asked for a second axis, corpus-level meta-weights, the Mathematics to Physics relation, and left it open on purpose. This is the first time the axis is not academic. Software engineering and physics share almost no concepts, and Gemma must be shown only the candidate list for the corpus the observation belongs to, or it will cheerfully tie a test failure to gravity. As the describe op reads the masters folder today it offers all of them. That is a requirement to carry forward, not a bug in anything that was built for physics.
+
+**MAXINE:** Hand-authored, or derived from overlap?
+
+**TOMO:** Still open, same as NIGHT 22. Hand-authored override over a derived baseline is the likely answer, and a physics-to-engineering weight near zero is the easy first row of it.
+
+---
+
+**THE NARRATOR:** How does an observation actually reach the describe step? Say what exists.
+
+**MAXINE:** `ai_describe` is real now, registered as an event command. It takes an entity folder and the house root, reads the entity's own `history.txt` and `chat_history.txt`, asks Gemma for the one fixed line, and writes a candidate edit into that entity's `pending_review.txt`. It does not call the validator. It does not touch a spoke or a master. A human reads the file.
+
+**TOMO:** The strength word turns into a number with a fixed table. In the chat describe op it is high fifteen hundredths, medium eight hundredths, low three hundredths, and the validator's own bound is plus or minus two tenths. The model never sees the number.
+
+**RAHWEH:** So the plumbing wants an entity. A folder with a history file. That decides the design: the harness does not need a new path into the loop, it needs a body. A small watcher entity whose history is the harness ledger, appended, never rewritten. Then the existing describe op reads it like it reads any other creature's history.
+
+**MAXINE:** Say why that fits the house and is not a hack.
+
+**TOMO:** NIGHT 30 named a category the house lacked: a thing that is real, holds state and does work, but never sits on a desk. A caretaker, a chat session, the passing of time. A harness watcher is the same kind of thing. It has a ledger and a memory and no body. The house will have to name that category anyway, and this is a clean first resident.
+
+---
+
+**THE NARRATOR:** Callable. The owner's word was multipurpose. What does multipurpose mean here?
+
+**RAHWEH:** The same harness serves three callers. A human runs a pal to check a change. A watcher reads its ledger as observations. And the planner can call it as an action: before a change that touches a concept, run the harnesses whose slots point at that concept. Selection by shared concept, with a reason a person can read, not a hardcoded list.
+
+**MAXINE:** Say what exists for that.
+
+**TOMO:** A ranking op that takes words and returns harnesses ordered by keyword, weighted synonym, concept name and sentence, times the behavior's measured reliability. It is a lookup, not yet a registered command, and it reads a scratch bank, not the real one. The registry convention for a command is one op with substituted parameters, which fits it. Running a pal from an event needs the virtual machine as the executed program, and the many-argument change to `exec` is what makes that expressible.
+
+**RAHWEH:** And it must not be oversold. Nothing in the loop calls it. It is a door that has been cut, not one anybody walks through.
+
+---
+
+**THE NARRATOR:** The honest part about promotion. Say what is not designed and why that is right.
+
+**MAXINE:** Promotion. A validated edit lands in a review file and nothing moves it into belief. NIGHT 30 refused to design that yet, and the reason holds here too: only one of four edit types exists, and criteria written now would be guesses. A tiered auto-promotion rule exists as a stub, and it says of itself that it is a rule to wire once real replay data exists.
+
+**TOMO:** So a harness must not auto-promote anything. The pass rate is evidence a human can read beside a candidate edit, "this behavior has passed forty times of forty-one," not a gate that opens by itself.
+
+**RAHWEH:** Let the reviews pile up first. Then design promotion from the pile.
+
+---
+
+**THE NARRATOR:** The long payoff. Why would tomom ever care?
+
+**MAXINE:** Pair two records. A change, what files it touched, and the harness outcomes that followed. Over time, which files fail which harnesses becomes a labeled mapping from code to concept, produced by nobody's opinion, only by what broke when. That is learnable. It is small, it is checkable, and it is the kind of thing a from-scratch model could actually do, which is the point of the whole strategy.
+
+**TOMO:** Dormant today. Honest about that. It waits on the same gap everything waits on.
+
+---
+
+**THE NARRATOR:** Honesty checkpoint, the way this track ends.
+
+**MAXINE:** What is real. A harness is a pal, a case file and two ops, and ten exist with a hundred and sixty-four checks, each leaving plain rows in an append-only ledger because the substrate discards exit status. A behavior-level reliability number is counted from those rows through a cursor, once per row. A scratch bank holds ten behavior entries with keywords, weighted synonyms, sentences and links to concept names, and a ranking lookup reads it. `ai_describe` is a real registered command that writes candidate edits for a human; the validator is real for one edit type.
+
+**TOMO:** What is not. No software-domain masters exist in the real bank, so nothing about a test can be described yet. No corpus boundary exists in the describe step. No concept-level ledger exists. No watcher entity exists. The synonym rows do not yet use the house's own bank format. The seed weights were set by hand and are guesses. Nothing in the loop calls a harness. Promotion is undesigned, on purpose. Tomom has learned nothing from any of it.
+
+**RAHWEH:** And one open word. The owner called the synonym layer three-dimensional. No document defines that. Either three coordinates per word, a position in a small concept space where closeness means similarity, or three kinds of association around one behavior. Tonight does not pick, because picking wrongly would bake a shape into files.
+
+**MAXINE:** Say the line to carry into the next one.
+
+**TOMO:** A test already writes the loop's first record by following the house's own law. The work is not to give tests a new door; it is to give them the concepts to be about, and the entity to be seen through, and then to keep the two numbers apart: reliability is counted, aboutness is proposed. 🧪
