@@ -718,7 +718,9 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                 p = aend ? aend + 4 : (tag_end ? tag_end + 1 : p + 1);
                 continue;
             }
-            /* generic tag: flush accumulated text on a block boundary */
+            /* generic tag: flush accumulated text on a block boundary.
+             * Headings close as TITLE| rows (page-title class downstream)
+             * instead of body TEXT, so article structure survives. */
             const char *nameend = p + 1;
             int closing = (*nameend == '/');
             if (closing) nameend++;
@@ -727,6 +729,18 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
             char tagname[32] = "";
             size_t nl = (size_t)(nameend - ns);
             if (nl > 0 && nl < sizeof(tagname)) { memcpy(tagname, ns, nl); tagname[nl] = '\0'; }
+            if (closing && tagname[0] == 'h' && tagname[1] >= '1' && tagname[1] <= '6' && tagname[2] == '\0') {
+                if (linelen > 0) {
+                    line[linelen] = '\0';
+                    html_decode_entities(line);
+                    collapse_ws(line);
+                    if (line[0] && !junk_visible_line(line)) { fprintf(out, "TITLE|%s\n", line); line_count++; }
+                    linelen = 0;
+                }
+                const char *gt = strchr(p, '>');
+                p = gt ? gt + 1 : p + 1;
+                continue;
+            }
             if (tagname[0] && is_block_tag(tagname)) FLUSH_LINE();
             const char *gt = strchr(p, '>');
             p = gt ? gt + 1 : p + 1;

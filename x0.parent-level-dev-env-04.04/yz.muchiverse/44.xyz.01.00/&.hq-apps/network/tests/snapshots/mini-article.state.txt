@@ -1,6 +1,6 @@
 URL|file:///home/debil/Desktop/github/TEARIT-HQ/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/mini-article.html
 TITLE|Mini article
-TEXT|Block-flow fixture
+TITLE|Block-flow fixture
 TEXT|First paragraph of body text. Enough to force two lines of wrapping when the column is ~400px wide so the layout proof sees a real wrap decision.
 TEXT|Second paragraph with a link inline.
 TEXT|Item one
