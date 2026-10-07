@@ -1,0 +1,3 @@
+# event.pal - Move: passing or landing on GO pays go_pay from the bank (trigger roll). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/cash_transfer.+x . bank {current} rules.pdl:go_pay go
+halt

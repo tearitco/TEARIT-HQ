@@ -1,0 +1,3 @@
+# event.pal - Land: nothing more to do (GO, jail, free parking, own property) -> turn actions done (trigger roll). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set phase 2
+halt

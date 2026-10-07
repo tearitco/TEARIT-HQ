@@ -1,0 +1,4 @@
+# Bot: Roll (the same pages a human Roll click runs)
+COND | trigger | autoturn
+COND | kv | switches.txt | game_over | eq | 0
+COND | kv | variables.txt | phase | eq | 0

@@ -1,0 +1,4 @@
+# EndTurn 9/9: hand the turn to that seat
+COND | trigger | endturn
+COND | kv | switches.txt | game_over | eq | 0
+COND | kv | variables.txt | phase | eq | 2

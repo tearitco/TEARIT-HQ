@@ -1,0 +1,4 @@
+# Setup: seat 2 is in the game (players >= 2): alive, start cash from the bank
+COND | trigger | setup
+COND | kv | variables.txt | players | ge | 2
+COND | kv | variables.txt | players | le | 4

@@ -1,0 +1,18 @@
+# rules.pdl - every number the v0 rules use, as `key=int` rows (read by prisc SYS_GET_KV_INT, ops/var_math.c `rules.pdl:key`, and event_page_op `@rules.pdl:key` conditions).
+# RING-BOARD-AS-RMMV-EVENTS-DESIGN.md section 2 (v0 rules).
+start_cash=1500
+# money the bank is minted with at setup (the ONLY money creation, ledger row `XFER|0|mint|bank|...|setup`); every GO payout and rent comes out of the balances, never from nowhere
+bank_start=100000
+go_pay=200
+jail_fee=50
+# turns a jailed player must skip unless they pay jail_fee at the start of their turn
+jail_turns=1
+jail_pos=10
+board_size=40
+tax_income=200
+tax_luxury=100
+# a game ends at this many End Turns even if several players are alive (winner 0 = none)
+turn_cap=600
+# bot policy (the harness's deterministic seat, never a human rule): buy when cash >= price + policy_reserve; pay the jail fee when cash >= jail_fee + policy_jail_reserve
+policy_reserve=200
+policy_jail_reserve=300

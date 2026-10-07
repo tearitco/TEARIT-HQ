@@ -1,0 +1,4 @@
+# Pass: decline the offer (no auctions in v0)
+COND | trigger | pass
+COND | kv | switches.txt | game_over | eq | 0
+COND | kv | variables.txt | phase | eq | 1

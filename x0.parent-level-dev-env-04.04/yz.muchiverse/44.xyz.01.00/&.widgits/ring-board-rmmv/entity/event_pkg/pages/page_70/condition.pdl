@@ -1,0 +1,4 @@
+# Bot: load cash and jail, decide whether to pay the jail fee (cash >= fee + policy_jail_reserve)
+COND | trigger | autoturn
+COND | kv | switches.txt | game_over | eq | 0
+COND | kv | variables.txt | phase | eq | 0

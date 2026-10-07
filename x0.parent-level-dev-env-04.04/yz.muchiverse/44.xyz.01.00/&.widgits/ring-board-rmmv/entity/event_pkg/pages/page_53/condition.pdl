@@ -1,0 +1,5 @@
+# EndTurn 4/9: one player left -> GameOver (reason 1 = last standing)
+COND | trigger | endturn
+COND | kv | switches.txt | game_over | eq | 0
+COND | kv | variables.txt | phase | eq | 2
+COND | kv | variables.txt | alive_count | le | 1

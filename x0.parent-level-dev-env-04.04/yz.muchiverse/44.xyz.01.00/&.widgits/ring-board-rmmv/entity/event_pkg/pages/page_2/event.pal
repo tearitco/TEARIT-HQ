@@ -1,0 +1,4 @@
+# event.pal - Setup: seat 1 is in the game (players >= 1): alive, start cash from the bank (trigger setup). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set alive_1 1
+exec ops/+x/cash_transfer.+x . bank 1 rules.pdl:start_cash start
+halt

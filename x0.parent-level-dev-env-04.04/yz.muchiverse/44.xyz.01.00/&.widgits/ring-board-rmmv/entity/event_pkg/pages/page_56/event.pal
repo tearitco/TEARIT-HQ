@@ -1,0 +1,3 @@
+# event.pal - EndTurn 5/9: GameOver reason 1 -> the survivor (seat 3) is the winner (trigger endturn). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set winner 3
+halt

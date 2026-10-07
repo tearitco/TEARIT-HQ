@@ -1,0 +1,5 @@
+# Land: Go To Jail -> token to the jail tile, jail_turns to skip
+COND | trigger | roll
+COND | kv | switches.txt | game_over | eq | 0
+COND | kv | variables.txt | phase | eq | 4
+COND | kv | variables.txt | tile_kind | eq | 5

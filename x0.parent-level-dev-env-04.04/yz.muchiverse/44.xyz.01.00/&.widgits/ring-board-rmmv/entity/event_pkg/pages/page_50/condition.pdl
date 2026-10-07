@@ -1,0 +1,3 @@
+# EndTurn 1/9: load jail state
+COND | trigger | endturn
+COND | kv | switches.txt | game_over | eq | 0

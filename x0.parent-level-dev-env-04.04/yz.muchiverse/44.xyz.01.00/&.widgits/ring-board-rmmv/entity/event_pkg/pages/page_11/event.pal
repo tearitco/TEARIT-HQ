@@ -1,0 +1,4 @@
+# event.pal - Roll 2/2: seeded 2d6 (jailed players cannot roll; they pay or skip) (trigger roll). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/dice_roll.+x . dice_seed dice_counter
+exec ops/+x/var_math.+x . set phase 3
+halt

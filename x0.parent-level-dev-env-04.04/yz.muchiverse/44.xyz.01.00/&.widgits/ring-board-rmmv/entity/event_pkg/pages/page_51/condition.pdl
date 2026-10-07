@@ -1,0 +1,5 @@
+# EndTurn 2/9: a jailed player who did not pay skips the turn (jail -= 1)
+COND | trigger | endturn
+COND | kv | switches.txt | game_over | eq | 0
+COND | kv | variables.txt | phase | eq | 0
+COND | kv | variables.txt | cur_jail | gt | 0

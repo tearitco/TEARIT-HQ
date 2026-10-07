@@ -1,0 +1,5 @@
+# EndTurn 8/9: that seat is out (bankrupt or dormant) -> next seat
+COND | trigger | endturn
+COND | kv | switches.txt | game_over | eq | 0
+COND | kv | variables.txt | phase | eq | 2
+COND | kv | variables.txt | cand_alive | eq | 0

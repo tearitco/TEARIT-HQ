@@ -1,0 +1,5 @@
+# Move: passing or landing on GO pays go_pay from the bank
+COND | trigger | roll
+COND | kv | switches.txt | game_over | eq | 0
+COND | kv | variables.txt | phase | eq | 4
+COND | kv | variables.txt | wrapped | eq | 1

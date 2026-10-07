@@ -1,0 +1,6 @@
+# event.pal - Bot: load cash and jail, decide whether to pay the jail fee (cash >= fee + policy_jail_reserve) (trigger autoturn). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set cur_jail jail_{current}
+exec ops/+x/var_math.+x . set cur_cash cash_{current}
+exec ops/+x/var_math.+x . add pay_need rules.pdl:jail_fee rules.pdl:policy_jail_reserve
+exec ops/+x/var_math.+x . ge want_pay cur_cash pay_need
+halt

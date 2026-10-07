@@ -912,3 +912,46 @@ COMMAND set_clock_time
   PARAMS clock,time
   TEMPLATE exec "$D/&.widgits/livedesk-clock/ops/+x/lc_clock.+x" "$D" cmd '{clock}' settime '{time}' --source "event:$ENT"
 END
+
+# ---- ring board game ops (ring-board-rmmv, 2026-10-07): five tiny single-verb compiled ops; each takes the entity state dir ($ENT) first and reads/writes the same
+# `key=int` variables.txt mechanism change_variable uses. Operands: an integer, or [file:]name read as a variable; a name may hold {var} (cash_{current}).
+# Headers in &.widgits/ring-board-rmmv/ops/*.c list the exit codes. (Pages in that widget call the ops from event.pal with `exec ops/+x/<op>.+x . ...`.)
+COMMAND variable_math
+  LABEL Variable Math
+  FIELD1 Operation (set add sub mul mod lt le gt ge eq ne):
+  FIELD2 Target variable:
+  PARAMS op,target,a,b
+  TEMPLATE exec "$D/&.widgits/ring-board-rmmv/ops/+x/var_math.+x" "$ENT" '{op}' '{target}' '{a}'[ '{b}']
+END
+
+COMMAND roll_dice
+  LABEL Roll Dice (seeded 2d6)
+  FIELD1 Seed (number or variable):
+  FIELD2 Counter (number or variable):
+  PARAMS seed,counter
+  TEMPLATE exec "$D/&.widgits/ring-board-rmmv/ops/+x/dice_roll.+x" "$ENT" '{seed}' '{counter}'
+END
+
+COMMAND cash_transfer
+  LABEL Cash Transfer
+  FIELD1 From (bank, mint, seat or variable):
+  FIELD2 To:
+  PARAMS from,to,amount,reason
+  TEMPLATE exec "$D/&.widgits/ring-board-rmmv/ops/+x/cash_transfer.+x" "$ENT" '{from}' '{to}' '{amount}'[ '{reason}']
+END
+
+COMMAND tile_lookup
+  LABEL Tile Lookup
+  FIELD1 Tile (number or variable):
+  FIELD2 Field (kind kindname name price rent group tax):
+  PARAMS tile,field,var_name
+  TEMPLATE exec "$D/&.widgits/ring-board-rmmv/ops/+x/tile_lookup.+x" "$ENT" '{tile}' '{field}'[ '{var_name}']
+END
+
+COMMAND variable_sweep
+  LABEL Variable Sweep (rewrite matching values)
+  FIELD1 Name prefix:
+  FIELD2 From value:
+  PARAMS prefix,from,to
+  TEMPLATE exec "$D/&.widgits/ring-board-rmmv/ops/+x/var_sweep.+x" "$ENT" '{prefix}' '{from}' '{to}'
+END

@@ -1,0 +1,3 @@
+# event.pal - Bot: Roll (the same pages a human Roll click runs) (trigger autoturn). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/event_page_op.+x . . --trigger roll --state .
+halt
