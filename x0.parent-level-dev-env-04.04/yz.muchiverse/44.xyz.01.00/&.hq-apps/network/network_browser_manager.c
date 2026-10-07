@@ -473,6 +473,16 @@ static const char *page_body_start(const char *html) {
     return html;
 }
 
+/* Skin-asset dirs are site furniture, never article content: the header
+ * logo, footer badges and skin icons live under them while article
+ * images come from the upload/thumb CDN. Shared by the extractor IMG
+ * branch (static path) and merge_render_rows (worker rows bypass the
+ * extractor entirely). */
+static int img_url_is_furniture(const char *u) {
+    if (!u) return 0;
+    return strstr(u, "/static/images/") != NULL ||
+           strstr(u, "/w/resources/assets/") != NULL;
+}
 static int junk_visible_line(const char *s) {
     if (!s || !s[0]) return 1;
     if (strcasecmp(s, "Main menu") == 0) return 1;
@@ -602,7 +612,9 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                 if (src[0] && strncasecmp(src, "data:", 5) != 0 && strncasecmp(src, "javascript:", 11) != 0) {
                     char resolved[PATH_BUF];
                     resolve_url(url, src, resolved, sizeof(resolved));
-                    fprintf(out, "MEDIA|I|%s|%s\n", resolved, alt);
+                    /* Milestone 2 (2026-10-07): see img_url_is_furniture. */
+                    if (!img_url_is_furniture(resolved))
+                        fprintf(out, "MEDIA|I|%s|%s\n", resolved, alt);
                 }
                 p = tag_end + 1;
                 continue;
@@ -1078,8 +1090,22 @@ static int merge_render_rows(void) {
         }
         fclose(pf);
     }
-    fputs(g_worker_render, wf);
-    if (g_worker_render[strlen(g_worker_render) - 1] != '\n') fputc('\n', wf);
+    /* Worker rows bypass the extractor, so its IMG/MEDIA lines need the
+     * same furniture filter here (manager side, no worker changes). */
+    {
+        const char *wr = g_worker_render;
+        char wline[PATH_BUF + 512];
+        while (*wr) {
+            size_t wi = 0;
+            while (*wr && *wr != '\n' && wi + 1 < sizeof(wline)) wline[wi++] = *wr++;
+            wline[wi] = 0;
+            if (*wr == '\n') wr++;
+            if ((strncmp(wline, "IMG|", 4) == 0 || strncmp(wline, "MEDIA|", 6) == 0) &&
+                img_url_is_furniture(wline))
+                continue;
+            fprintf(wf, "%s\n", wline);
+        }
+    }
     fclose(wf);
     atomic_commit(g_page_state_path, tmp);
     return 1;
