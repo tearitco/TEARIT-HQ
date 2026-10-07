@@ -4048,7 +4048,11 @@ static void write_ui_projection(void) {
         if (pf) {
             /* in-memory rows so an IMG depleted by an adjacent LINK (the
              * watch-page related-tile pattern) reads far enough ahead. */
-            enum { NB_UI_ROWS_MAX = 128 };
+            /* Milestone 2 (2026-10-07): 128 capped the projection to page
+             * chrome - article bodies (Blockly: 689 rows) never reached
+             * the window. 400 matches the rc<400 loop bound below; the
+             * buffer is heap (400 x ~5KB), well within reason. */
+            enum { NB_UI_ROWS_MAX = 400 };
             char (*rows)[PATH_BUF + 512] = malloc(sizeof(*rows) * NB_UI_ROWS_MAX);
             if (!rows) { fclose(pf); pf = 0; }
             if (!pf) { UI_PUT("content_count=0\ncontent_empty=1\nempty_msg=Ready - enter a URL above\n"); }
