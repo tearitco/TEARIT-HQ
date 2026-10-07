@@ -6446,10 +6446,16 @@ static JSValue nb_fetch_sync(JSContext *ctx, JSValueConst this_val, int argc, JS
         else snprintf(errbuf, sizeof(errbuf), "cannot read %s", abspath);
     } else if (strncmp(url, "http:", 5) == 0 || strncmp(url, "https:", 6) == 0) {
         char *mgr_body = NULL; size_t mgr_len = 0; int mgr_status = 0; char mgr_err[256] = "";
-        if (try_fetch_via_manager(method, url, headers, body, &mgr_body, &mgr_len, &mgr_status, mgr_err, sizeof(mgr_err))) {
+        /* Manager RPC caps bodies at 60KB and NUL-truncates binary in the
+         * text frame: a 200 with an empty body means "too big for RPC",
+         * not success - fall through to direct curl below (2026-10-07:
+         * every remote image died exactly this way). */
+        if (try_fetch_via_manager(method, url, headers, body, &mgr_body, &mgr_len, &mgr_status, mgr_err, sizeof(mgr_err)) &&
+            !(mgr_status == 200 && mgr_len == 0)) {
             rb = mgr_body; rn = mgr_len; status = mgr_status;
             if (mgr_err[0]) snprintf(errbuf, sizeof(errbuf), "%s", mgr_err);
         } else {
+            free(mgr_body);
         char cfgpath[1024] = "", bodypath[1024] = "";
         char t1[] = "/tmp/nbfetch.XXXXXX", t2[] = "/tmp/nbfetchbody.XXXXXX";
         int fd1 = mkstemp(t1), fd2 = mkstemp(t2);
@@ -6561,6 +6567,27 @@ static JSValue nb_fetch_sync(JSContext *ctx, JSValueConst this_val, int argc, JS
     JS_SetPropertyStr(ctx, o, "ok", JS_NewBool(ctx, status >= 200 && status < 300 && rb != NULL));
     JS_SetPropertyStr(ctx, o, "status", JS_NewInt32(ctx, status));
     JS_SetPropertyStr(ctx, o, "body", JS_NewString(ctx, rb ? rb : ""));
+    /* Binary-safe twin: JS strings NUL-truncate (PNG dies). bytes carries
+     * the exact rn bytes; img decode prefers it (2026-10-07: remote Image
+     * loads decoded nothing because of the truncation). */
+    {
+        JSValue len = JS_NewInt32(ctx, (int32_t)(rn > INT32_MAX ? INT32_MAX : rn));
+        JSValue gobj = JS_GetGlobalObject(ctx);
+        JSValue ctor = JS_GetPropertyStr(ctx, gobj, "Uint8Array");
+        JS_FreeValue(ctx, gobj);
+        JSValue data = (JS_IsObject(ctor) && !JS_IsNull(ctor))
+                           ? JS_CallConstructor(ctx, ctor, 1, &len)
+                           : JS_NewArray(ctx);
+        JS_FreeValue(ctx, ctor);
+        JS_FreeValue(ctx, len);
+        size_t fill = rn;
+        for (size_t i = 0; i < fill; i++) {
+            JSValue e = JS_NewInt32(ctx, rb ? (unsigned char)rb[i] : 0);
+            JS_SetPropertyUint32(ctx, data, (uint32_t)i, e);
+        }
+        JS_SetPropertyStr(ctx, o, "bytes", data);
+        JS_SetPropertyStr(ctx, o, "byteLength", JS_NewInt32(ctx, (int32_t)(rn > INT32_MAX ? INT32_MAX : rn)));
+    }
     JS_SetPropertyStr(ctx, o, "error", JS_NewString(ctx, errbuf[0] ? errbuf : ""));
     free(rb);
     JS_FreeCString(ctx, m_own); JS_FreeCString(ctx, u_own);
@@ -6965,9 +6992,32 @@ static JSValue nb_img_src_set(JSContext *ctx, JSValueConst this_val, int argc, J
             int ok = JS_ToBool(ctx, okv);
             JS_FreeValue(ctx, okv);
             if (ok) {
-                JSValue bodyv = JS_GetPropertyStr(ctx, res, "body");
-                char *bstr = JS_ToCString(ctx, bodyv);
-                if (bstr) {
+                /* Prefer the binary-safe bytes field; the body string
+                 * NUL-truncates binary payloads (PNG dies at IHDR). */
+                unsigned char *img_bin = NULL; size_t img_n = 0;
+                JSValue bytesv = JS_GetPropertyStr(ctx, res, "bytes");
+                JSValue blv = JS_IsObject(bytesv) ? JS_GetPropertyStr(ctx, bytesv, "length") : JS_UNDEFINED;
+                int32_t blen = 0;
+                if (JS_IsNumber(blv)) JS_ToInt32(ctx, &blen, blv);
+                JS_FreeValue(ctx, blv);
+                if (blen > 0 && blen <= 64 * 1024 * 1024) {
+                    img_bin = malloc((size_t)blen);
+                    if (img_bin) {
+                        img_n = (size_t)blen;
+                        for (int32_t i = 0; i < blen; i++) {
+                            JSValue e = JS_GetPropertyUint32(ctx, bytesv, (uint32_t)i);
+                            int32_t ev = 0;
+                            if (JS_IsNumber(e)) JS_ToInt32(ctx, &ev, e);
+                            JS_FreeValue(ctx, e);
+                            img_bin[i] = (unsigned char)(ev & 0xFF);
+                        }
+                    } else img_n = 0;
+                }
+                JS_FreeValue(ctx, bytesv);
+                if (!img_bin) {
+                    JSValue bodyv = JS_GetPropertyStr(ctx, res, "body");
+                    char *bstr = JS_ToCString(ctx, bodyv);
+                    if (bstr) {
                     unsigned char *png_data = NULL; size_t png_len = 0;
                     if (strncmp(s, "data:image/", 11) == 0) {
                         const char *comma = strchr(s, ',');
@@ -6986,6 +7036,14 @@ static JSValue nb_img_src_set(JSContext *ctx, JSValueConst this_val, int argc, J
                     JS_FreeCString(ctx, bstr);
                 }
                 JS_FreeValue(ctx, bodyv);
+                }
+                /* bytes path succeeded above: decode the exact bytes */
+                if (img_bin && img_n) {
+                    int w = 0, h = 0, comp = 0;
+                    unsigned char *rgba = stbi_load_from_memory(img_bin, (int)(img_n > INT_MAX ? INT_MAX : img_n), &w, &h, &comp, 4);
+                    if (rgba) img_set_decoded(n, w, h, rgba);
+                    free(img_bin);
+                }
             }
             const char *evtype = ok ? "load" : "error";
             char js[64];
