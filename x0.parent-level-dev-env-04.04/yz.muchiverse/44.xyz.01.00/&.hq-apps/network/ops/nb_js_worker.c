@@ -686,6 +686,36 @@ static void dom_walk_render(const NbNode *n, int *titled, SB *b) {
     for (const NbNode *c = n->first_child; c; c = c->next_sibling)
         dom_walk_render(c, titled, b);
 }
+/* REAL, NEW 2026-10-07 (maximal-scope directive: canvas fast) - software
+ * rasterizer backing every canvas 2D context. Before this, every draw op
+ * was a noop and pages rendered blank canvases; now fill/clear/blit ops
+ * write real pixels readable back via getImageData. Deliberately partial:
+ * full affine image/rect sampling, source-over alpha, save/restore;
+ * text drawing stays noop, gradients/patterns are flat colors, shadow/
+ * filter/composite ops ignored. Display plumbing (surface publish) is
+ * the next slice - this one proves pixel truth through getImageData. */
+#define NB_CANVAS_MAX 64
+#define NB_CANVAS_PX_MAX (2048 * 2048)
+typedef struct {
+    int used, w, h;
+    unsigned char *px;      /* RGBA, w*h*4, straight alpha */
+    double m[6];            /* current transform a,b,c,d,e,f */
+    double alpha;           /* snapshot cache; live prop re-read per draw */
+    int dirty;              /* set by any mutating op, cleared on publish */
+    int save_depth;
+    double save_stack[8][7]; /* m[6] + alpha */
+    char fillstyle[128];
+} NbCanvas;
+static NbCanvas g_canvases[NB_CANVAS_MAX];
+
+static void nb_canvas_reset(void) {
+    for (int i = 0; i < NB_CANVAS_MAX; i++) {
+        free(g_canvases[i].px);
+        g_canvases[i].px = NULL;
+        g_canvases[i].used = 0;
+    }
+}
+
 static void dom_render_rows(SB *b) {
     /* TITLE first, like the static extractor: from the <title> element if the
      * parser kept one, else document.title / the LOAD title (g_title). */
@@ -700,6 +730,27 @@ static void dom_render_rows(SB *b) {
     }
     int titled = 1;                 /* <title> already handled above */
     dom_walk_render(g_dom_root, &titled, b);
+    /* Canvas display publish (2026-10-07): dirty backing stores become
+     * PNGs + 5-field IMG rows; the manager's own MEDIA->sprite pipeline
+     * (IMG without nb_sprites_ → sprite) tiles them with zero new
+     * machinery. Clears dirty so quiet canvases don't re-emit. */
+    for (int i = 0; i < NB_CANVAS_MAX; i++) {
+        NbCanvas *cv = &g_canvases[i];
+        if (!cv->used || !cv->dirty || !cv->px) continue;
+        char path[128];
+        snprintf(path, sizeof(path), "/tmp/nb_canvas_%d.png", i);
+        if (!stbi_write_png(path, cv->w, cv->h, 4, cv->px, cv->w * 4)) continue;
+        char row[512];
+        snprintf(row, sizeof(row), "file://%s|%d|%d|%s|canvas", path, cv->w, cv->h, path);
+        /* NOTE: rw_row() maps '|' to space (wire escaping for TEXT/LINK
+         * rows), which would collapse this 5-field row - emit raw. */
+        if (b->len < RENDER_MAX) {
+            sb_put(b, "IMG|");
+            sb_put(b, row);
+            sb_put(b, "\n");
+        }
+        cv->dirty = 0;
+    }
 }
 
 /* ---- JS <-> C node binding ---- */
@@ -3294,34 +3345,6 @@ static void install_dom_classes(JSContext *ctx) {
 /* ---- canvas 2D ---- */
 static JSValue nb_c2d_noop(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) { (void)ctx; (void)this_val; (void)argc; (void)argv; return JS_UNDEFINED; }
 
-/* REAL, NEW 2026-10-07 (maximal-scope directive: canvas fast) - software
- * rasterizer backing every canvas 2D context. Before this, every draw op
- * was a noop and pages rendered blank canvases; now fill/clear/blit ops
- * write real pixels readable back via getImageData. Deliberately partial:
- * full affine image/rect sampling, source-over alpha, save/restore;
- * text drawing stays noop, gradients/patterns are flat colors, shadow/
- * filter/composite ops ignored. Display plumbing (surface publish) is
- * the next slice - this one proves pixel truth through getImageData. */
-#define NB_CANVAS_MAX 64
-#define NB_CANVAS_PX_MAX (2048 * 2048)
-typedef struct {
-    int used, w, h;
-    unsigned char *px;      /* RGBA, w*h*4, straight alpha */
-    double m[6];            /* current transform a,b,c,d,e,f */
-    double alpha;           /* snapshot cache; live prop re-read per draw */
-    int save_depth;
-    double save_stack[8][7]; /* m[6] + alpha */
-    char fillstyle[128];
-} NbCanvas;
-static NbCanvas g_canvases[NB_CANVAS_MAX];
-
-static void nb_canvas_reset(void) {
-    for (int i = 0; i < NB_CANVAS_MAX; i++) {
-        free(g_canvases[i].px);
-        g_canvases[i].px = NULL;
-        g_canvases[i].used = 0;
-    }
-}
 static NbCanvas *nb_canvas_get(JSContext *ctx, JSValueConst ctxobj) {
     JSValue v = JS_GetPropertyStr(ctx, ctxobj, "__nb_canvas_id");
     int id = -1;
@@ -3520,6 +3543,7 @@ static int nb_c2d_source(JSContext *ctx, JSValueConst v,
 static JSValue nb_c2d_fillRect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbCanvas *cv = nb_canvas_get(ctx, this_val);
     if (!cv) return JS_UNDEFINED;
+    if (cv) cv->dirty = 1;
     double x = nb_c2d_argd(ctx, argv, argc, 0, 0), y = nb_c2d_argd(ctx, argv, argc, 1, 0);
     double w = nb_c2d_argd(ctx, argv, argc, 2, 0), h = nb_c2d_argd(ctx, argv, argc, 3, 0);
     if (w < 0) { x += w; w = -w; } if (h < 0) { y += h; h = -h; }
@@ -3532,6 +3556,7 @@ static JSValue nb_c2d_fillRect(JSContext *ctx, JSValueConst this_val, int argc, 
 static JSValue nb_c2d_strokeRect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbCanvas *cv = nb_canvas_get(ctx, this_val);
     if (!cv) return JS_UNDEFINED;
+    if (cv) cv->dirty = 1;
     double x = nb_c2d_argd(ctx, argv, argc, 0, 0), y = nb_c2d_argd(ctx, argv, argc, 1, 0);
     double w = nb_c2d_argd(ctx, argv, argc, 2, 0), h = nb_c2d_argd(ctx, argv, argc, 3, 0);
     if (w < 0) { x += w; w = -w; } if (h < 0) { y += h; h = -h; }
@@ -3550,6 +3575,7 @@ static JSValue nb_c2d_strokeRect(JSContext *ctx, JSValueConst this_val, int argc
 static JSValue nb_c2d_clearRect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbCanvas *cv = nb_canvas_get(ctx, this_val);
     if (!cv) return JS_UNDEFINED;
+    if (cv) cv->dirty = 1;
     double x = nb_c2d_argd(ctx, argv, argc, 0, 0), y = nb_c2d_argd(ctx, argv, argc, 1, 0);
     double w = nb_c2d_argd(ctx, argv, argc, 2, 0), h = nb_c2d_argd(ctx, argv, argc, 3, 0);
     if (w < 0) { x += w; w = -w; } if (h < 0) { y += h; h = -h; }
@@ -3630,6 +3656,7 @@ static JSValue nb_c2d_resetTransform(JSContext *ctx, JSValueConst this_val, int 
 static JSValue nb_c2d_putImageData(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbCanvas *cv = nb_canvas_get(ctx, this_val);
     if (!cv || argc < 3) return JS_UNDEFINED;
+    if (cv) cv->dirty = 1;
     int sw = 0, sh = 0, owned = 0;
     unsigned char *spx = NULL;
     if (!nb_c2d_source(ctx, argv[0], &sw, &sh, &spx, &owned)) return JS_UNDEFINED;
@@ -3652,6 +3679,7 @@ static JSValue nb_c2d_putImageData(JSContext *ctx, JSValueConst this_val, int ar
 static JSValue nb_c2d_drawImage(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbCanvas *cv = nb_canvas_get(ctx, this_val);
     if (!cv || argc < 3) return JS_UNDEFINED;
+    if (cv) cv->dirty = 1;
     int sw = 0, sh = 0, owned = 0;
     unsigned char *spx = NULL;
     if (!nb_c2d_source(ctx, argv[0], &sw, &sh, &spx, &owned)) return JS_UNDEFINED;
@@ -3860,6 +3888,7 @@ static JSValue nb_el_getContext(JSContext *ctx, JSValueConst this_val, int argc,
                 g_canvases[slot].m[4] = 0; g_canvases[slot].m[5] = 0;
                 g_canvases[slot].alpha = 1;
                 g_canvases[slot].save_depth = 0;
+                g_canvases[slot].dirty = 0;
                 g_canvases[slot].fillstyle[0] = 0;
                 JS_SetPropertyStr(ctx, c, "__nb_canvas_id", JS_NewInt32(ctx, slot));
             }

@@ -3396,9 +3396,13 @@ static void handle_request(void) {
     if (strncmp(line, "go:eval:", 8) == 0) {
         publish_status(worker_eval(line + 8) ? "ready" : "eval error");
         (void)merge_render_rows();
+        /* eval-drawn canvases arrive as MEDIA rows - sprite them here;
+         * the fetch path collects in do_fetch, eval never goes there. */
+        collect_page_media(NULL, NULL);
     } else if (strncmp(line, "eval:", 5) == 0) {
         publish_status(worker_eval(line + 5) ? "ready" : "eval error");
         (void)merge_render_rows();
+        collect_page_media(NULL, NULL);
     } else if (strncmp(line, "click:", 6) == 0) {
         /* khtpm click on a rendered content row -> a real DOM event in the
          * worker. Payload: "click:<selector>[:<type>]". The worker resolves the
