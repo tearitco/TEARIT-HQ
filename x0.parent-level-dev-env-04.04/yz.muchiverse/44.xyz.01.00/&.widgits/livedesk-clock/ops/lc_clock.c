@@ -23,8 +23,22 @@
  *                        row in schedule_flags.txt. Events run fork+exec+waitpid with a 30 s watchdog.
  *      Harness hooks (unset = unchanged): `step <real_ms>` subcommand, LC_CLOCK_NO_POPUP=1,
  *                        LC_CLOCK_EVENT_RUNNER=<bin>, LC_CLOCK_EVENT_TIMEOUT_S=<n>.
- *      endturn.txt     daemon mailbox: one "endturn <id> [ms]" per line; the
- *                      daemon consumes (truncates) it every loop.
+ *      endturn.txt     daemon mailbox, one command per line: "endturn <id> [ms]" or
+ *                        rate <id> <off|cent|sec|min|hour|day|x<ratio>> | pause <id> | resume <id> |
+ *                        advance <id> <ms|Ns|Nm|Nh|Nd> | settime <id> <ms>      each may end with " @<source>".
+ *                      The daemon pass consumes (truncates) it, applies each command under the clock's limits
+ *                      (state keys limit_min_rate, limit_max_rate, allow_settime_back=0, allow_commands=1) and
+ *                      appends EVERY accepted or refused command to append-only clock_audit.txt
+ *                      (ts|clock|cmd|args|result|source). Time never runs backward by command: advance/endturn
+ *                      must be > 0 and settime earlier than now is refused unless allow_settime_back=1 (logged
+ *                      as ok:backwards-allowed). Send with `lc_clock <root> cmd <clock> <verb> [arg] [--source S]`.
+ *      Chaining        clocks.pdl rows may carry |parent=<id>|ratio=<n>|master=0|1 (legacy rows have none).
+ *                      A chained child's game_time_epoch_ms = round(parent_epoch*ratio) + child_offset (state
+ *                      key), recomputed on every pass by derive_children and never advanced on its own, so
+ *                      pause/rate/advance of the parent move the child. Rate/pause on a child are refused;
+ *                      advance/settime on a child move its child_offset. Exactly one master=1 (`master [id]`
+ *                      get/set; setting clears the old one; clearing to zero is refused; two in the file read
+ *                      as ambiguous). Cycles are refused by `chain`. `gamedate master` is the display read.
  *      daemon.pid      running daemon pid.
  *  - All state writers use the SAME flock() read-modify-write protocol as
  *    piececraft's pc_clock_daemon.c write_kv() (single fd, whole-file
@@ -32,7 +46,9 @@
  *    the daemon are all independent processes touching the same files.
  *  - The daemon is the ONLY writer of game_time_epoch_ms/tick/fired.
  *    Control-plane subcommands only write definition fields (rate/running/
- *    scope/desc/reminder records) + the endturn mailbox.
+ *    scope/desc/limits/chain rows/reminder records) + the endturn mailbox. The ctl `rate`/`ticker`
+ *    subcommands (legacy, owner panel) write directly and bypass limits and audit; event commands
+ *    go through `cmd` (mailbox, limits, audit).
  *  - Game calendar: proleptic Gregorian anchored at epoch 0 = Year 0 A.D.,
  *    Month 1, Day 1, 00:00 (the telescope's "fake time starting 0 A.D.").
  *  - Usage: lc_clock.<ext> <house_root> <subcommand> [args]
@@ -395,6 +411,7 @@ static long long rep_kmax(long long at, const Repeat *rp, long long limit) {
 typedef struct { char id[64]; long long last_occ; } LedgerCur;
 static LedgerCur *g_cur = NULL; static int g_ncur = 0, g_capcur = 0;
 static long long g_ledger_off = 0; /* bytes already folded into g_cur (size-growth cursor) */
+static unsigned long long g_ledger_ino = 0, g_ledger_dev = 0; /* identity of the file g_cur was built from */
 
 static void ledger_path(char *out, size_t sz, const char *house) {
     char dir[PBUF];
@@ -421,6 +438,17 @@ static void ledger_refresh(const char *house) {
     ledger_path(path, sizeof(path), house);
     FILE *f = fopen(path, "r");
     if (!f) return;
+    /* A checkpoint restore replaces schedule_ledger.txt (atomic rename = new inode) or shrinks it. The in-memory
+     * cursor then describes a ledger that no longer exists: drop it and re-fold from byte 0 (identity by inode +
+     * size, never mtime). A long-lived daemon would otherwise keep a stale, too-high cursor and skip firings. */
+    struct stat lst;
+    if (fstat(fileno(f), &lst) == 0) {
+        if ((g_ledger_ino && ((unsigned long long)lst.st_ino != g_ledger_ino || (unsigned long long)lst.st_dev != g_ledger_dev)) ||
+            lst.st_size < g_ledger_off) {
+            g_ncur = 0; g_ledger_off = 0;
+        }
+        g_ledger_ino = (unsigned long long)lst.st_ino; g_ledger_dev = (unsigned long long)lst.st_dev;
+    }
     if (fseek(f, g_ledger_off, SEEK_SET) != 0) { fclose(f); return; }
     char line[MAX_LINE];
     while (fgets(line, sizeof(line), f)) {
@@ -671,10 +699,203 @@ static int del_reminder(const char *house, const char *rid) {
 }
 
 /* ------------------------------------------------------------------ */
-/* endturn mailbox                                                     */
+/* rates (names and x<ratio>), clock rows (parent/ratio/master), audit  */
 /* ------------------------------------------------------------------ */
 
-static void mailbox_append(const char *house, const char *id, const char *ms_str) {
+/* game ms per real ms for a rate string. Names keep the legacy multipliers (cent 360000, sec 3600, min 60,
+ * hour 1 = real time, day 1/24); x<ratio> is that number directly (x1 = real time, x2 = twice real time). */
+static double rate_mult(const char *rate) {
+    if (strcmp(rate, "cent") == 0) return 36000.0;
+    if (strcmp(rate, "sec") == 0) return 360.0;
+    if (strcmp(rate, "min") == 0) return 6.0;
+    if (strcmp(rate, "hour") == 0) return 0.1;
+    if (strcmp(rate, "day") == 0) return 0.004166666666666667;
+    return 0.0; /* off / unknown; x<ratio> is handled by parse_rate */
+}
+
+/* 0 = valid, *x = game ms per real ms (0 for off). -1 = invalid. */
+static int parse_rate(const char *s, double *x) {
+    if (!s || !s[0] || strlen(s) > 30) return -1;
+    if (strcmp(s, "off") == 0) { *x = 0.0; return 0; }
+    if (s[0] == 'x') {
+        char *end = NULL;
+        double v = strtod(s + 1, &end);
+        if (end == s + 1 || *end || !(v > 0.0) || v > 1e9) return -1; /* also rejects nan */
+        *x = v;
+        return 0;
+    }
+    double m = rate_mult(s);
+    if (m <= 0.0) return -1;
+    *x = m * 10.0;
+    return 0;
+}
+
+/* a duration: <n> ms, or <n>s|m|h|d (seconds/minutes/hours/days). Returns 0 and *ms, or -1. */
+static int parse_amount(const char *s, long long *ms) {
+    char *end = NULL;
+    long long n = strtoll(s, &end, 10);
+    if (end == s) return -1;
+    long long mult = 1;
+    if (*end == 's') mult = 1000; else if (*end == 'm') mult = 60000; else if (*end == 'h') mult = 3600000; else if (*end == 'd') mult = DAY_MS;
+    else if (*end) return -1;
+    if (*end && end[1]) return -1;
+    *ms = n * mult;
+    return 0;
+}
+
+typedef struct {
+    char id[128], scope[64], desc[256], parent[128], ratio[32];
+    int master, extended; /* extended = row carries parent=/ratio=/master= fields (legacy rows do not) */
+} ClockRow;
+
+static void clocks_file(char *out, size_t sz, const char *house) {
+    char dir[PBUF];
+    clocks_dir(dir, sizeof(dir), house);
+    join3(out, sz, dir, "clocks.pdl", "");
+}
+
+static void row_parse(const char *line, ClockRow *r) {
+    char tmp[MAX_LINE];
+    snprintf(tmp, sizeof(tmp), "%s", line);
+    memset(r, 0, sizeof(*r));
+    char *save = NULL;
+    char *tok = strtok_r(tmp, "|", &save); /* "CLOCK" */
+    tok = strtok_r(NULL, "|", &save);
+    if (tok) snprintf(r->id, sizeof(r->id), "%s", tok);
+    while ((tok = strtok_r(NULL, "|", &save)) != NULL) {
+        if (strncmp(tok, "scope=", 6) == 0) snprintf(r->scope, sizeof(r->scope), "%s", tok + 6);
+        else if (strncmp(tok, "desc=", 5) == 0) snprintf(r->desc, sizeof(r->desc), "%s", tok + 5);
+        else if (strncmp(tok, "parent=", 7) == 0) { snprintf(r->parent, sizeof(r->parent), "%s", tok + 7); r->extended = 1; }
+        else if (strncmp(tok, "ratio=", 6) == 0) { snprintf(r->ratio, sizeof(r->ratio), "%s", tok + 6); r->extended = 1; }
+        else if (strncmp(tok, "master=", 7) == 0) { r->master = atoi(tok + 7) == 1; r->extended = 1; }
+    }
+}
+
+static void row_format(const ClockRow *r, char *out, size_t sz) {
+    if (!r->extended)
+        snprintf(out, sz, "CLOCK|%s|scope=%s|desc=%s", r->id, r->scope, r->desc);
+    else
+        snprintf(out, sz, "CLOCK|%s|scope=%s|desc=%s|parent=%s|ratio=%s|master=%d",
+                 r->id, r->scope, r->desc, r->parent, r->ratio, r->master);
+}
+
+static int rows_load(const char *house, ClockRow *rows, int max) {
+    char path[PBUF];
+    clocks_file(path, sizeof(path), house);
+    char buf[64 * 1024];
+    if (read_whole(path, buf, sizeof(buf)) != 0) return 0;
+    int n = 0;
+    char *save = NULL;
+    for (char *line = strtok_r(buf, "\n", &save); line && n < max; line = strtok_r(NULL, "\n", &save)) {
+        if (strncmp(line, "CLOCK|", 6) != 0) continue;
+        row_parse(line, &rows[n]);
+        if (rows[n].id[0]) n++;
+    }
+    return n;
+}
+
+static int row_find(const ClockRow *rows, int n, const char *id) {
+    for (int i = 0; i < n; i++) if (strcmp(rows[i].id, id) == 0) return i;
+    return -1;
+}
+
+/* chained = a row with a non-empty parent= */
+static int clock_parent_of(const char *house, const char *id, char *parent, size_t psz, double *ratio) {
+    ClockRow rows[MAX_CLOCKS];
+    int n = rows_load(house, rows, MAX_CLOCKS);
+    int i = row_find(rows, n, id);
+    if (i < 0 || !rows[i].parent[0]) return 0;
+    snprintf(parent, psz, "%s", rows[i].parent);
+    *ratio = rows[i].ratio[0] ? atof(rows[i].ratio) : 1.0;
+    if (!(*ratio > 0.0)) *ratio = 1.0;
+    return 1;
+}
+
+/* Rewrite clocks.pdl under flock (definition fields only). op: 'm' master=a, 'c' chain a under b with ratio c, 'u' unchain a.
+ * Returns 0 or -1 with a reason in err. */
+static int rows_edit(const char *house, char op, const char *a, const char *b, const char *c, char *err, size_t esz) {
+    char path[PBUF];
+    clocks_file(path, sizeof(path), house);
+    int fd = open(path, O_RDWR);
+    if (fd < 0) { snprintf(err, esz, "no clock registry"); return -1; }
+    flock(fd, LOCK_EX);
+    char buf[64 * 1024];
+    ssize_t len = read(fd, buf, sizeof(buf) - 1);
+    if (len < 0) len = 0;
+    buf[len] = '\0';
+    ClockRow rows[MAX_CLOCKS];
+    int n = 0, rc = 0;
+    char *save = NULL;
+    for (char *line = strtok_r(buf, "\n", &save); line && n < MAX_CLOCKS; line = strtok_r(NULL, "\n", &save)) {
+        if (strncmp(line, "CLOCK|", 6) != 0) continue;
+        row_parse(line, &rows[n]);
+        if (rows[n].id[0]) n++;
+    }
+    int ia = row_find(rows, n, a);
+    if (ia < 0) { snprintf(err, esz, "no such clock: %s", a); rc = -1; }
+    else if (op == 'm') {
+        for (int i = 0; i < n; i++) { if (rows[i].master) { rows[i].master = 0; rows[i].extended = 1; } }
+        rows[ia].master = 1; rows[ia].extended = 1;
+    } else if (op == 'c') {
+        int ib = row_find(rows, n, b);
+        double rt = atof(c);
+        if (ib < 0) { snprintf(err, esz, "no such parent clock: %s", b); rc = -1; }
+        else if (!(rt > 0.0) || rt > 1e9) { snprintf(err, esz, "bad ratio: %s", c); rc = -1; }
+        else {
+            int cyc = (ia == ib);
+            for (int cur = ib, depth = 0; !cyc && cur >= 0 && rows[cur].parent[0] && depth < MAX_CLOCKS; depth++) {
+                cur = row_find(rows, n, rows[cur].parent);
+                if (cur == ia) cyc = 1;
+            }
+            if (cyc) { snprintf(err, esz, "cycle: %s -> %s would loop", a, b); rc = -1; }
+            else {
+                snprintf(rows[ia].parent, sizeof(rows[ia].parent), "%s", b);
+                snprintf(rows[ia].ratio, sizeof(rows[ia].ratio), "%s", c);
+                rows[ia].extended = 1;
+            }
+        }
+    } else if (op == 'u') {
+        rows[ia].parent[0] = '\0'; rows[ia].ratio[0] = '\0';
+    }
+    if (rc == 0) {
+        if (ftruncate(fd, 0) != 0) {}
+        lseek(fd, 0, SEEK_SET);
+        for (int i = 0; i < n; i++) {
+            char ln[MAX_LINE];
+            row_format(&rows[i], ln, sizeof(ln));
+            dprintf(fd, "%s\n", ln);
+        }
+    }
+    flock(fd, LOCK_UN);
+    close(fd);
+    return rc;
+}
+
+/* append-only audit: ts|clock|cmd|args|result|source (never truncated, never read back by the daemon) */
+static void audit_clean(char *s) { for (; *s; s++) if (*s == '|' || *s == '\n' || *s == '\r') *s = '_'; }
+static void audit_append(const char *house, const char *clock, const char *cmd, const char *args, const char *result, const char *source) {
+    char dir[PBUF], path[PBUF];
+    clocks_dir(dir, sizeof(dir), house);
+    join3(path, sizeof(path), dir, "clock_audit.txt", "");
+    char c[160], k[64], a[256], r[160], s[256];
+    snprintf(c, sizeof(c), "%s", clock); snprintf(k, sizeof(k), "%s", cmd); snprintf(a, sizeof(a), "%s", args ? args : "");
+    snprintf(r, sizeof(r), "%s", result); snprintf(s, sizeof(s), "%s", source && source[0] ? source : "unknown");
+    audit_clean(c); audit_clean(k); audit_clean(a); audit_clean(r); audit_clean(s);
+    int fd = open(path, O_WRONLY | O_CREAT | O_APPEND, 0644);
+    if (fd < 0) return;
+    flock(fd, LOCK_EX);
+    dprintf(fd, "%lld|%s|%s|%s|%s|%s\n", wall_ms_now(), c, k, a, r, s);
+    flock(fd, LOCK_UN);
+    close(fd);
+}
+
+/* ------------------------------------------------------------------ */
+/* endturn mailbox + clock commands                                    */
+/*   <verb> <clock> [arg] [@source]   verbs: endturn rate pause resume  */
+/*   advance settime. The daemon pass is the only applier.              */
+/* ------------------------------------------------------------------ */
+
+static void mailbox_put(const char *house, const char *line) {
     char dir[PBUF], path[PBUF];
     clocks_dir(dir, sizeof(dir), house);
     ensure_dir(dir);
@@ -682,12 +903,136 @@ static void mailbox_append(const char *house, const char *id, const char *ms_str
     int fd = open(path, O_WRONLY | O_CREAT | O_APPEND, 0644);
     if (fd < 0) return;
     flock(fd, LOCK_EX);
-    dprintf(fd, "endturn %s %s\n", id, ms_str && ms_str[0] ? ms_str : "3600000");
+    dprintf(fd, "%s\n", line);
     flock(fd, LOCK_UN);
     close(fd);
 }
 
-/* consume the whole mailbox, applying each endturn. Called by daemon. */
+static void mailbox_append(const char *house, const char *id, const char *ms_str) {
+    char line[512];
+    snprintf(line, sizeof(line), "endturn %s %s", id, ms_str && ms_str[0] ? ms_str : "3600000");
+    mailbox_put(house, line);
+}
+
+/* derive every chained clock from its parent: epoch = round(parent_epoch * ratio) + child_offset. A pure function,
+ * recomputed every pass; a child is never advanced on its own. Cycles (hand edits) are cut by a depth cap. */
+static long long round_ll(double v) { return (long long)(v >= 0 ? v + 0.5 : v - 0.5); }
+
+static void derive_one(const char *house, const char *dir, ClockRow *rows, int n, int i, int depth) {
+    if (depth > 32 || !rows[i].parent[0]) return;
+    int ip = row_find(rows, n, rows[i].parent);
+    if (ip < 0) return;
+    if (rows[ip].parent[0]) derive_one(house, dir, rows, n, ip, depth + 1);
+    char ps[PBUF], cs[PBUF];
+    join3(ps, sizeof(ps), dir, rows[ip].id, ".pdl");
+    join3(cs, sizeof(cs), dir, rows[i].id, ".pdl");
+    if (access(ps, F_OK) != 0 || access(cs, F_OK) != 0) return;
+    double ratio = rows[i].ratio[0] ? atof(rows[i].ratio) : 1.0;
+    if (!(ratio > 0.0)) ratio = 1.0;
+    long long pe = read_kv_ll(ps, "game_time_epoch_ms", 0);
+    long long ce = round_ll((double)pe * ratio) + read_kv_ll(cs, "child_offset", 0);
+    if (ce != read_kv_ll(cs, "game_time_epoch_ms", 0)) write_kv_ll(cs, "game_time_epoch_ms", ce);
+    long long pt = read_kv_ll(ps, "tick", 0);
+    if (pt != read_kv_ll(cs, "tick", 0)) write_kv_ll(cs, "tick", pt);
+    (void)house;
+}
+
+static void derive_children(const char *house) {
+    char dir[PBUF];
+    clocks_dir(dir, sizeof(dir), house);
+    ClockRow rows[MAX_CLOCKS];
+    int n = rows_load(house, rows, MAX_CLOCKS);
+    for (int i = 0; i < n; i++) if (rows[i].parent[0]) derive_one(house, dir, rows, n, i, 0);
+}
+
+/* limits live per clock in its state file; an unset limit means unbounded */
+static int within_rate_limits(const char *state, double x, const char **why) {
+    char b[64]; double lim;
+    read_kv_str(state, "limit_min_rate", b, sizeof(b));
+    if (b[0] && parse_rate(b, &lim) == 0 && x < lim) { *why = "refused:below-min-rate"; return 0; }
+    read_kv_str(state, "limit_max_rate", b, sizeof(b));
+    if (b[0] && parse_rate(b, &lim) == 0 && x > lim) { *why = "refused:above-max-rate"; return 0; }
+    return 1;
+}
+
+static void apply_command(const char *house, const char *dir, const char *rawline) {
+    char line[MAX_LINE];
+    snprintf(line, sizeof(line), "%s", rawline);
+    char source[256] = "mailbox";
+    char *at = strstr(line, " @");
+    if (at) { snprintf(source, sizeof(source), "%s", at + 2); *at = '\0'; }
+    char verb[32] = "", id[128] = "", arg[128] = "";
+    int nf = sscanf(line, "%31s %127s %127s", verb, id, arg);
+    if (nf < 1) return;
+    if (nf < 2) { audit_append(house, "-", verb, "", "refused:usage", source); return; }
+
+    char state[PBUF];
+    join3(state, sizeof(state), dir, id, ".pdl");
+    if (access(state, F_OK) != 0) { audit_append(house, id, verb, arg, "refused:no-such-clock", source); return; }
+
+    char par[128]; double pratio = 1.0;
+    int chained = clock_parent_of(house, id, par, sizeof(par), &pratio);
+    int is_end = strcmp(verb, "endturn") == 0;
+
+    if (!is_end && !strcmp(verb, "rate") + !strcmp(verb, "pause") + !strcmp(verb, "resume") +
+                   !strcmp(verb, "advance") + !strcmp(verb, "settime") == 0) {
+        audit_append(house, id, verb, arg, "refused:unknown-command", source);
+        return;
+    }
+    if (!is_end && read_kv_int(state, "allow_commands", 1) == 0) {
+        audit_append(house, id, verb, arg, "refused:commands-disabled", source);
+        return;
+    }
+
+    if (!strcmp(verb, "rate")) {
+        double x;
+        const char *why = "";
+        if (nf < 3 || parse_rate(arg, &x) != 0) { audit_append(house, id, verb, arg, "refused:bad-rate", source); return; }
+        if (chained) { audit_append(house, id, verb, arg, "refused:chained-child", source); return; }
+        if (!within_rate_limits(state, x, &why)) { audit_append(house, id, verb, arg, why, source); return; }
+        write_kv(state, "rate", arg);
+        audit_append(house, id, verb, arg, "ok", source);
+    } else if (!strcmp(verb, "pause") || !strcmp(verb, "resume")) {
+        if (chained) { audit_append(house, id, verb, "", "refused:chained-child", source); return; }
+        write_kv_int(state, "running", verb[0] == 'r' ? 1 : 0);
+        audit_append(house, id, verb, "", "ok", source);
+    } else if (!strcmp(verb, "advance") || is_end) {
+        long long amt = 3600000LL;
+        if (nf >= 3) {
+            int bad = is_end ? (sscanf(arg, "%lld", &amt) != 1) : (parse_amount(arg, &amt) != 0);
+            if (bad) { audit_append(house, id, verb, arg, "refused:bad-amount", source); return; }
+        }
+        if (amt <= 0) { audit_append(house, id, verb, arg, "refused:non-positive", source); return; } /* time never runs backward by command */
+        if (chained) {
+            write_kv_ll(state, "child_offset", read_kv_ll(state, "child_offset", 0) + amt); /* epoch follows on the derive pass */
+        } else {
+            write_kv_ll(state, "game_time_epoch_ms", read_kv_ll(state, "game_time_epoch_ms", 0) + amt);
+            write_kv_int(state, "tick", read_kv_int(state, "tick", 0) + 1);
+        }
+        audit_append(house, id, verb, arg, "ok", source);
+    } else { /* settime */
+        long long target;
+        if (nf < 3 || sscanf(arg, "%lld", &target) != 1 || target < 0) { audit_append(house, id, verb, arg, "refused:bad-time", source); return; }
+        long long cur = read_kv_ll(state, "game_time_epoch_ms", 0);
+        const char *res = "ok";
+        if (target < cur) {
+            if (read_kv_int(state, "allow_settime_back", 0) != 1) { audit_append(house, id, verb, arg, "refused:backwards", source); return; }
+            res = "ok:backwards-allowed";
+        }
+        if (chained) {
+            char ps[PBUF];
+            join3(ps, sizeof(ps), dir, par, ".pdl");
+            long long pe = read_kv_ll(ps, "game_time_epoch_ms", 0);
+            write_kv_ll(state, "child_offset", target - round_ll((double)pe * pratio));
+        } else {
+            write_kv_ll(state, "game_time_epoch_ms", target);
+            write_kv_int(state, "tick", read_kv_int(state, "tick", 0) + 1);
+        }
+        audit_append(house, id, verb, arg, res, source);
+    }
+}
+
+/* consume the whole mailbox, applying each command in order. Called by daemon. */
 static void consume_mailbox(const char *house) {
     char dir[PBUF], path[PBUF];
     clocks_dir(dir, sizeof(dir), house);
@@ -696,23 +1041,13 @@ static void consume_mailbox(const char *house) {
     if (fd < 0) return;
     flock(fd, LOCK_EX);
     char buf[64 * 1024];
-    size_t n = read(fd, buf, sizeof(buf) - 1);
+    ssize_t n = read(fd, buf, sizeof(buf) - 1);
+    if (n < 0) n = 0;
     buf[n] = '\0';
     if (n > 0) {
         char *save = NULL;
-        for (char *line = strtok_r(buf, "\n", &save); line; line = strtok_r(NULL, "\n", &save)) {
-            char id[128] = ""; long long amt = 3600000LL;
-            if (sscanf(line, "endturn %127s %lld", id, &amt) >= 1 && id[0]) {
-                char state[PBUF];
-                join3(state, sizeof(state), dir, id, ".pdl");
-                if (access(state, F_OK) == 0) {
-                    long long ms = read_kv_ll(state, "game_time_epoch_ms", 0);
-                    int tick = read_kv_int(state, "tick", 0);
-                    write_kv_ll(state, "game_time_epoch_ms", ms + amt);
-                    write_kv_int(state, "tick", tick + 1);
-                }
-            }
-        }
+        for (char *line = strtok_r(buf, "\n", &save); line; line = strtok_r(NULL, "\n", &save))
+            apply_command(house, dir, line);
         if (ftruncate(fd, 0) != 0) {}
     }
     flock(fd, LOCK_UN);
@@ -726,14 +1061,6 @@ static void consume_mailbox(const char *house) {
 static volatile sig_atomic_t g_exit = 0;
 static void on_sig(int s) { (void)s; g_exit = 1; }
 
-static double rate_mult(const char *rate) {
-    if (strcmp(rate, "cent") == 0) return 36000.0;
-    if (strcmp(rate, "sec") == 0) return 360.0;
-    if (strcmp(rate, "min") == 0) return 6.0;
-    if (strcmp(rate, "hour") == 0) return 0.1;
-    if (strcmp(rate, "day") == 0) return 0.004166666666666667;
-    return 0.0; /* off / unknown */
-}
 
 static int pid_alive(long pid) {
     if (pid <= 0) return 0;
@@ -849,11 +1176,13 @@ static const char *fire_reminder(const char *house, const Reminder *r, int show_
     }
 
     const char *np = getenv("LC_CLOCK_NO_POPUP");
+    char lc_dir[PBUF] = "", popup_bin[PBUF] = "";
     if (show_popup && !(np && np[0] == '1')) {
-        char lc_dir[PBUF];
         find_app_dir(house, "livedesk-clock", lc_dir, sizeof(lc_dir));
-        char popup_bin[PBUF];
         snprintf(popup_bin, sizeof(popup_bin), "%s/ops/+x/lc_reminder_popup.+x", lc_dir);
+    }
+    /* never spawn a shell for a popup binary that is not there (scratch roots, unbuilt tree) */
+    if (popup_bin[0] && access(popup_bin, X_OK) == 0) {
         char sh[PBUF * 2];
         /* house window standard: X11 RGB window + CSS (khtpm_css_parser),
          * launched detached exactly like db-hq/events-hq/context-menu open
@@ -932,21 +1261,23 @@ static void poll_reminders(const char *house) {
 static void advance_clocks(const char *house, long long elapsed) {
     char dir[PBUF];
     clocks_dir(dir, sizeof(dir), house);
-    char ids[MAX_CLOCKS][128];
-    int n = clock_ids(house, ids, MAX_CLOCKS);
+    ClockRow rows[MAX_CLOCKS];
+    int n = rows_load(house, rows, MAX_CLOCKS);
     for (int i = 0; i < n; i++) {
+        if (rows[i].parent[0]) continue; /* chained: derived from its parent in derive_children, never advanced here */
         char state[PBUF];
-        join3(state, sizeof(state), dir, ids[i], ".pdl");
+        join3(state, sizeof(state), dir, rows[i].id, ".pdl");
         if (access(state, F_OK) != 0) continue;
         int running = read_kv_int(state, "running", 1);
-        char rate[16] = "off";
+        char rate[32] = "off";
         read_kv_str(state, "rate", rate, sizeof(rate));
-        double mult = rate_mult(rate);
+        double xr = 0.0;
+        double mult = parse_rate(rate, &xr) == 0 ? xr / 10.0 : 0.0;
         if (running && mult > 0.0 && elapsed > 0) {
             long long ms = read_kv_ll(state, "game_time_epoch_ms", 0);
             long long old_min = ms / 60000LL;
             double delta_game_cs = (double)elapsed * mult;
-            long long delta_game_ms = (long long)(delta_game_cs * 10.0);
+            long long delta_game_ms = rate[0] == 'x' ? round_ll((double)elapsed * xr) : (long long)(delta_game_cs * 10.0);
             if (delta_game_ms > 0) {
                 ms += delta_game_ms;
                 write_kv_ll(state, "game_time_epoch_ms", ms);
@@ -958,6 +1289,46 @@ static void advance_clocks(const char *house, long long elapsed) {
             }
         }
     }
+}
+
+/* master_get: 0 = exactly one master (id in out), 1 = none, 2 = more than one (ids joined by ',' in all) */
+static int master_get(const char *house, char *out, size_t sz, char *all, size_t asz) {
+    ClockRow rows[MAX_CLOCKS];
+    int n = rows_load(house, rows, MAX_CLOCKS), cnt = 0;
+    if (all && asz) all[0] = '\0';
+    for (int i = 0; i < n; i++) {
+        if (!rows[i].master) continue;
+        if (cnt == 0) snprintf(out, sz, "%s", rows[i].id);
+        if (all && asz && strlen(all) + strlen(rows[i].id) + 2 < asz) { if (all[0]) strcat(all, ","); strcat(all, rows[i].id); }
+        cnt++;
+    }
+    return cnt == 1 ? 0 : (cnt == 0 ? 1 : 2);
+}
+
+/* control plane: lc_clock <root> cmd <clock> <verb> [arg] [--source S]. Only queues the command in the mailbox; the daemon
+ * pass applies it (limits checked there) and writes the audit row. A malformed request is refused here, also audited. */
+static int cmd_clock_command(const char *house, int argc, char **argv) {
+    if (argc < 5) return 1;
+    const char *clock = argv[3], *verb = argv[4];
+    const char *src = "ctl";
+    const char *arg = "";
+    for (int i = 5; i < argc; i++) {
+        if (strcmp(argv[i], "--source") == 0 && i + 1 < argc) { src = argv[++i]; }
+        else if (!arg[0]) arg = argv[i];
+    }
+    int need = !strcmp(verb, "rate") || !strcmp(verb, "advance") || !strcmp(verb, "settime") || !strcmp(verb, "endturn") ? 1 : 0;
+    int known = need || !strcmp(verb, "pause") || !strcmp(verb, "resume");
+    if (!known) { audit_append(house, clock, verb, arg, "refused:unknown-verb", src); fprintf(stderr, "unknown verb: %s\n", verb); return 1; }
+    if (need && strcmp(verb, "endturn") != 0 && !arg[0]) { audit_append(house, clock, verb, "", "refused:usage", src); fprintf(stderr, "%s needs an argument\n", verb); return 1; }
+    char s[256], line[600];
+    snprintf(s, sizeof(s), "%s", src);
+    for (char *p = s; *p; p++) if (*p == ' ' || *p == '|' || *p == '\n' || *p == '\r') *p = '_';
+    char a[160];
+    snprintf(a, sizeof(a), "%s", arg);
+    for (char *p = a; *p; p++) if (*p == ' ' || *p == '@' || *p == '\n' || *p == '\r') *p = '_';
+    snprintf(line, sizeof(line), "%s %s%s%s @%s", verb, clock, a[0] ? " " : "", a, s);
+    mailbox_put(house, line);
+    return 0;
 }
 
 static int cmd_daemon(const char *house) {
@@ -986,6 +1357,7 @@ static int cmd_daemon(const char *house) {
         advance_clocks(house, elapsed);
 
         consume_mailbox(house);
+        derive_children(house);
         poll_reminders(house);
 
         usleep(300000);
@@ -1039,6 +1411,12 @@ static void print_usage(const char *prog) {
         "  ticker <id> on|off              enable/disable continuous ticker\n"
         "  rate <id> <cent|sec|min|hour|day|off>\n"
         "  endturn <id> [ms]               queue one discrete advance (default 1 game hour)\n"
+        "  cmd <id> rate <off|cent|sec|min|hour|day|x<ratio>> | pause | resume | advance <ms|Ns|Nm|Nh|Nd> | settime <ms>  [--source S]\n"
+        "                                  queue a clock command (the daemon pass applies it under the clock's limits and audits it)\n"
+        "  limit <id> min_rate|max_rate <rate|none> | allow_settime_back|allow_commands <0|1>\n"
+        "  chain <child> <parent> <ratio> | unchain <child>   derive a clock from a parent (epoch = parent*ratio + offset)\n"
+        "  master [id]                     print / set the one master clock (the displayed one); gamedate master reads it\n"
+        "  info <id>                       parent|ratio|master|child_offset|limits\n"
         "  reminder-add <clock> <when> <event> [note] [repeat] [until_ms]\n"
         "                                  when: HH:MM | +N[smhd] | ms | now; repeat: every:<n><min|hour|day|week|month|year>\n"
         "  step <real_ms>                  one deterministic pass (ticker for real_ms, mailbox, reminders); no daemon, no sleep\n"
@@ -1081,7 +1459,7 @@ int main(int argc, char **argv) {
         for (int i = 0; i < n; i++) {
             char state[PBUF];
             join3(state, sizeof(state), dir, ids[i], ".pdl");
-            char rate[16] = "off", scope[64] = "";
+            char rate[32] = "off", scope[64] = "";
             int running = 1;
             if (access(state, F_OK) == 0) {
                 read_kv_str(state, "rate", rate, sizeof(rate));
@@ -1096,9 +1474,14 @@ int main(int argc, char **argv) {
     }
     if (strcmp(cmd, "gamedate") == 0) {
         if (argc < 4) return 1;
-        char state[PBUF];
-        join3(state, sizeof(state), dir, argv[3], ".pdl");
-        if (access(state, F_OK) != 0) { fprintf(stderr, "no such clock: %s\n", argv[3]); return 1; }
+        char state[PBUF], mid[128];
+        const char *gid = argv[3];
+        if (strcmp(gid, "master") == 0) { /* the display reads the master clock */
+            if (master_get(house, mid, sizeof(mid), NULL, 0) != 0) { fprintf(stderr, "no single master clock\n"); return 1; }
+            gid = mid;
+        }
+        join3(state, sizeof(state), dir, gid, ".pdl");
+        if (access(state, F_OK) != 0) { fprintf(stderr, "no such clock: %s\n", gid); return 1; }
         long long ms = read_kv_ll(state, "game_time_epoch_ms", 0);
         char out[256];
         format_gamedate(ms, argc >= 5 ? argv[4] : "zh", out, sizeof(out));
@@ -1128,6 +1511,78 @@ int main(int argc, char **argv) {
         mailbox_append(house, argv[3], argc >= 5 ? argv[4] : NULL);
         return 0;
     }
+    if (strcmp(cmd, "cmd") == 0) return cmd_clock_command(house, argc, argv);
+    if (strcmp(cmd, "limit") == 0) { /* limit <clock> min_rate|max_rate|allow_settime_back|allow_commands <value|none> */
+        if (argc < 6) return 1;
+        char state[PBUF], key[64], val[64];
+        double xv;
+        join3(state, sizeof(state), dir, argv[3], ".pdl");
+        if (access(state, F_OK) != 0) return 1;
+        snprintf(val, sizeof(val), "%s", strcmp(argv[5], "none") == 0 ? "" : argv[5]);
+        if (!strcmp(argv[4], "min_rate") || !strcmp(argv[4], "max_rate")) {
+            if (val[0] && parse_rate(val, &xv) != 0) { fprintf(stderr, "bad rate\n"); return 1; }
+        } else if (!strcmp(argv[4], "allow_settime_back") || !strcmp(argv[4], "allow_commands")) {
+            if (strcmp(val, "0") && strcmp(val, "1")) { fprintf(stderr, "value must be 0 or 1\n"); return 1; }
+        } else { fprintf(stderr, "unknown limit key\n"); return 1; }
+        snprintf(key, sizeof(key), "%s%s", (argv[4][0] == 'a') ? "" : "limit_", argv[4]);
+        write_kv(state, key, val);
+        audit_append(house, argv[3], "limit", argv[4], val[0] ? val : "none", "ctl");
+        return 0;
+    }
+    if (strcmp(cmd, "chain") == 0 || strcmp(cmd, "unchain") == 0) { /* chain <child> <parent> <ratio> | unchain <child> */
+        int is_chain = cmd[0] == 'c';
+        if (argc < (is_chain ? 6 : 4)) return 1;
+        char err[256] = "", cstate[PBUF], pstate[PBUF];
+        join3(cstate, sizeof(cstate), dir, argv[3], ".pdl");
+        if (access(cstate, F_OK) != 0) { fprintf(stderr, "no such clock: %s\n", argv[3]); return 1; }
+        if (is_chain) {
+            join3(pstate, sizeof(pstate), dir, argv[4], ".pdl");
+            if (access(pstate, F_OK) != 0) { fprintf(stderr, "no such parent clock: %s\n", argv[4]); return 1; }
+        }
+        if (rows_edit(house, is_chain ? 'c' : 'u', argv[3], is_chain ? argv[4] : NULL, is_chain ? argv[5] : NULL, err, sizeof(err)) != 0) {
+            fprintf(stderr, "%s\n", err);
+            audit_append(house, argv[3], cmd, is_chain ? argv[4] : "", "refused", "ctl");
+            return 1;
+        }
+        if (is_chain) { /* keep the child's current epoch: offset = epoch - parent*ratio, so chaining never jumps time */
+            long long pe = read_kv_ll(pstate, "game_time_epoch_ms", 0);
+            long long ce = read_kv_ll(cstate, "game_time_epoch_ms", 0);
+            write_kv_ll(cstate, "child_offset", ce - round_ll((double)pe * atof(argv[5])));
+        }
+        audit_append(house, argv[3], cmd, is_chain ? argv[4] : "", "ok", "ctl");
+        return 0;
+    }
+    if (strcmp(cmd, "master") == 0) { /* master [id]: print the master, or make <id> the one master */
+        char mid[128], err[256] = "";
+        if (argc >= 4) {
+            if (!argv[3][0] || !strcmp(argv[3], "none")) { fprintf(stderr, "refused: there must always be exactly one master\n"); return 1; }
+            if (rows_edit(house, 'm', argv[3], NULL, NULL, err, sizeof(err)) != 0) { fprintf(stderr, "%s\n", err); return 1; }
+            audit_append(house, argv[3], "master", "", "ok", "ctl");
+            printf("%s\n", argv[3]);
+            return 0;
+        }
+        char all[256];
+        int rc = master_get(house, mid, sizeof(mid), all, sizeof(all));
+        if (rc == 1) { fprintf(stderr, "no master clock\n"); return 1; }
+        if (rc == 2) { fprintf(stderr, "ambiguous: more than one master (%s)\n", all); return 2; }
+        printf("%s\n", mid);
+        return 0;
+    }
+    if (strcmp(cmd, "info") == 0) { /* info <clock>: id|parent|ratio|master|child_offset|limit_min|limit_max|allow_back|allow_commands */
+        if (argc < 4) return 1;
+        ClockRow rows[MAX_CLOCKS];
+        int rn = rows_load(house, rows, MAX_CLOCKS);
+        int ri = row_find(rows, rn, argv[3]);
+        if (ri < 0) return 1;
+        char state[PBUF], mn[64], mx[64];
+        join3(state, sizeof(state), dir, argv[3], ".pdl");
+        read_kv_str(state, "limit_min_rate", mn, sizeof(mn));
+        read_kv_str(state, "limit_max_rate", mx, sizeof(mx));
+        printf("%s|%s|%s|%d|%lld|%s|%s|%d|%d\n", rows[ri].id, rows[ri].parent, rows[ri].ratio, rows[ri].master,
+               read_kv_ll(state, "child_offset", 0), mn, mx, read_kv_int(state, "allow_settime_back", 0),
+               read_kv_int(state, "allow_commands", 1));
+        return 0;
+    }
     if (strcmp(cmd, "reminder-add") == 0) {
         if (argc < 6) return 1;
         const char *note = argc >= 7 ? argv[6] : "";
@@ -1147,6 +1602,7 @@ int main(int argc, char **argv) {
         if (argc < 4) return 1;
         advance_clocks(house, atoll(argv[3]));
         consume_mailbox(house);
+        derive_children(house);
         poll_reminders(house);
         return 0;
     }

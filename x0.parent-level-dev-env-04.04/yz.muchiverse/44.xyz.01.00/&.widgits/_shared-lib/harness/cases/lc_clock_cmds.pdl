@@ -1,0 +1,366 @@
+# lc_clock_cmds (CLOCK-AS-THE-PLAY-SPINE-DESIGN.md 3.1 + 3.4 + 7.1): clock commands through the mailbox (rate, pause, resume, advance, settime) under per-clock
+# limits with an append-only audit, chained + master clocks, legacy clocks unchanged. Scratch roots only (no popup, harness event runner). A command only queues a
+# mailbox row; the clock changes on the next `step` pass (the daemon is the sole writer). Rate scale: hour = real time (1 game ms per real ms), min = x60, x<n> = n.
+RESULTS | ../results/lc_clock_cmds.txt
+ENV     | LC_CLOCK_NO_POPUP | 1
+ENV     | LC_CLOCK_EVENT_RUNNER | /usr/bin/true
+CASE    | rate
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | rate | g1 | min
+RUN | $T/lc.+x | $T | step | 1000
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | g1\puser\pmin\p1\p60000\p | min-rate-1s-is-60s
+RUN | $T/lc.+x | $T | cmd | g1 | rate | hour
+EXPECT_EXIT | 0 | cmd-queued-rc0
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | g1\puser\pmin\p1\p60000\p | queued-cmd-changes-nothing-until-the-daemon-pass
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | step | 1000
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | g1\puser\phour\p1\p61000\p | rate-hour-advances-1s-for-1s
+RUN | $T/lc.+x | $T | cmd | g1 | rate | x2.5
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | step | 1000
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | g1\puser\px2.5\p1\p63500\p | rate-x2.5-advances-2.5s
+RUN | $T/lc.+x | $T | cmd | g1 | rate | off
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | step | 5000
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | g1\puser\poff\p1\p63500\p | rate-off-freezes
+EXPECT_HAS | #.desktop/clocks/clock_audit.txt | \pg1\prate\px2.5\pok\pctl | audit-rate-ok-row
+CLEAN |
+CASE    | pause-resume
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | cmd | g1 | rate | x2
+RUN | $T/lc.+x | $T | cmd | g1 | pause
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | step | 5000
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | g1\puser\px2\p0\p0\p | pause-freezes-at-0
+RUN | $T/lc.+x | $T | cmd | g1 | resume
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | step | 1000
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | g1\puser\px2\p1\p2000\p | resume-runs-again-at-x2
+RUN | $T/lc.+x | $T | cmd | g1 | pause
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | cmd | g1 | advance | 5000
+RUN | $T/lc.+x | $T | step | 9000
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | g1\puser\px2\p0\p7000\p | paused-clock-still-obeys-advance-but-not-the-ticker
+CLEAN |
+CASE    | advance-catchup
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 |  | d | every:1day
+RUN | $T/lc.+x | $T | cmd | g1 | advance | 3d
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | g1\puser\poff\p1\p0\p | advance-is-queued-not-applied-by-the-sender
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | g1\puser\poff\p1\p259200000\p | advance-3d-jumps
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 3 | catch-up-fires-the-3-skipped-days
+RUN | $T/lc.+x | $T | cmd | g1 | advance | 86400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 4 | plain-ms-amount-fires-day-4-once
+RUN | $T/lc.+x | $T | cmd | g1 | advance | 0
+RUN | $T/lc.+x | $T | cmd | g1 | advance | -86400000
+RUN | $T/lc.+x | $T | cmd | g1 | advance | 3parsecs
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | g1\puser\poff\p1\p345600000\p | zero-negative-and-garbage-advance-change-nothing
+EXPECT_HAS | #.desktop/clocks/clock_audit.txt | \pg1\padvance\p-86400000\prefused:non-positive\p | negative-advance-audited-refused
+EXPECT_HAS | #.desktop/clocks/clock_audit.txt | \pg1\padvance\p3parsecs\prefused:bad-amount\p | garbage-advance-audited-refused
+CLEAN |
+CASE    | settime-back
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 |  | d | every:1day
+RUN | $T/lc.+x | $T | cmd | g1 | advance | 3d
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | cmd | g1 | settime | 86400000 | --source | event:test
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | g1\puser\poff\p1\p259200000\p | settime-back-refused-epoch-unchanged
+EXPECT_HAS | #.desktop/clocks/clock_audit.txt | \pg1\psettime\p86400000\prefused:backwards\pevent:test | audit-row-settime-back-refused-with-source
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 3 | refused-settime-fired-nothing
+RUN | $T/lc.+x | $T | cmd | g1 | settime | 864000000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | g1\puser\poff\p1\p864000000\p | settime-forward-ok
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 10 | settime-forward-catches-up-days-4-to-10
+RUN | $T/lc.+x | $T | cmd | g1 | settime | -5
+RUN | $T/lc.+x | $T | cmd | g1 | settime | abc
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | g1\puser\poff\p1\p864000000\p | bad-settime-values-change-nothing
+EXPECT_HAS | #.desktop/clocks/clock_audit.txt | \psettime\p-5\prefused:bad-time\p | negative-settime-audited
+RUN | $T/lc.+x | $T | limit | g1 | allow_settime_back | 1
+RUN | $T/lc.+x | $T | cmd | g1 | settime | 172800000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | g1\puser\poff\p1\p172800000\p | allow-settime-back-1-lets-it-go-back
+EXPECT_HAS | #.desktop/clocks/clock_audit.txt | \psettime\p172800000\pok:backwards-allowed\p | allowed-back-is-logged-distinctly
+RUN | $T/lc.+x | $T | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 10 | ledger-honest-after-an-allowed-back-set-nothing-fires-twice
+RUN | $T/lc.+x | $T | limit | g1 | allow_settime_back | 0
+RUN | $T/lc.+x | $T | cmd | g1 | settime | 1000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | g1\puser\poff\p1\p259200000\p | back-refused-again-once-flag-cleared
+CLEAN |
+CASE    | limits
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | limit | g1 | min_rate | x1
+EXPECT_EXIT | 0 | limit-min-set
+RUN | $T/lc.+x | $T | limit | g1 | max_rate | x10
+RUN | $T/lc.+x | $T | limit | g1 | max_rate | x0
+EXPECT_EXIT | 1 | bad-limit-value-refused
+RUN | $T/lc.+x | $T | limit | g1 | nonsense | 1
+EXPECT_EXIT | 1 | unknown-limit-key-refused
+RUN | $T/lc.+x | $T | cmd | g1 | rate | x100
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | g1\puser\poff\p | above-max-refused-rate-unchanged
+EXPECT_HAS | #.desktop/clocks/clock_audit.txt | \prate\px100\prefused:above-max-rate\p | audit-above-max
+RUN | $T/lc.+x | $T | cmd | g1 | rate | off
+RUN | $T/lc.+x | $T | cmd | g1 | rate | day
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | g1\puser\poff\p | below-min-refused-off-and-day
+EXPECT_HAS | #.desktop/clocks/clock_audit.txt | \prate\poff\prefused:below-min-rate\p | audit-below-min-off
+EXPECT_HAS | #.desktop/clocks/clock_audit.txt | \prate\pday\prefused:below-min-rate\p | audit-below-min-day
+RUN | $T/lc.+x | $T | cmd | g1 | rate | x5
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | g1\puser\px5\p1\p0\p | in-range-accepted
+RUN | $T/lc.+x | $T | cmd | g1 | rate | x0
+RUN | $T/lc.+x | $T | cmd | g1 | rate | x-3
+RUN | $T/lc.+x | $T | cmd | g1 | rate | bogus
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | g1\puser\px5\p | bad-rate-strings-refused
+EXPECT_HAS | #.desktop/clocks/clock_audit.txt | \prate\px-3\prefused:bad-rate\p | audit-bad-rate
+RUN | $T/lc.+x | $T | limit | g1 | allow_commands | 0
+RUN | $T/lc.+x | $T | cmd | g1 | pause
+RUN | $T/lc.+x | $T | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T | cmd | g1 | settime | 999999
+RUN | $T/lc.+x | $T | cmd | g1 | rate | x6
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | g1\puser\px5\p1\p0\p | allow-commands-0-refuses-everything-nothing-changed
+EXPECT_HAS | #.desktop/clocks/clock_audit.txt | \ppause\p\prefused:commands-disabled\p | audit-commands-disabled
+RUN | $T/lc.+x | $T | endturn | g1 | 1000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | g1\puser\px5\p1\p1000\p | legacy-endturn-button-still-works-with-commands-disabled
+RUN | $T/lc.+x | $T | cmd | nosuch | pause
+RUN | $T/lc.+x | $T | cmd | g1 | explode
+EXPECT_EXIT | 1 | unknown-verb-refused-at-the-sender
+RUN | $T/lc.+x | $T | step | 0
+EXPECT_HAS | #.desktop/clocks/clock_audit.txt | \pnosuch\ppause\p\prefused:no-such-clock\p | audit-no-such-clock
+EXPECT_HAS | #.desktop/clocks/clock_audit.txt | \pg1\pexplode\p\prefused:unknown-verb\p | audit-unknown-verb
+CLEAN |
+CASE    | chain
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+RUN | $T/lc.+x | $T | new | p
+RUN | $T/lc.+x | $T | new | c2
+RUN | $T/lc.+x | $T | new | sep
+RUN | $T/lc.+x | $T | chain | c2 | p | 2
+EXPECT_EXIT | 0 | chain-c2-under-p-ratio-2
+EXPECT_HAS | #.desktop/clocks/clocks.pdl | CLOCK\pc2\pscope=user\pdesc=\pparent=p\pratio=2\pmaster=0 | registry-row-has-parent-ratio-master
+RUN | $T/lc.+x | $T | cmd | p | rate | hour
+RUN | $T/lc.+x | $T | cmd | sep | rate | x3
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | step | 1000
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | p\puser\phour\p1\p1000\p | parent-runs-at-hour
+EXPECT_OUT | c2\puser\poff\p1\p2000\p | ratio-2-child-runs-2x-without-its-own-rate
+EXPECT_OUT | sep\puser\px3\p1\p3000\p | separate-clock-runs-its-own-rate
+RUN | $T/lc.+x | $T | cmd | p | pause
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | step | 5000
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | p\puser\phour\p0\p1000\p | parent-paused
+EXPECT_OUT | c2\puser\poff\p1\p2000\p | parent-pause-freezes-the-child
+EXPECT_OUT | sep\puser\px3\p1\p18000\p | separate-clock-unaffected-by-parent-pause
+RUN | $T/lc.+x | $T | cmd | p | resume
+RUN | $T/lc.+x | $T | cmd | p | rate | x10
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | step | 1000
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | p\puser\px10\p1\p11000\p | parent-rate-change
+EXPECT_OUT | c2\puser\poff\p1\p22000\p | parent-rate-change-moves-the-child-2x
+RUN | $T/lc.+x | $T | cmd | p | advance | 1000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | c2\puser\poff\p1\p24000\p | parent-advance-moves-the-child
+RUN | $T/lc.+x | $T | cmd | c2 | rate | x5
+RUN | $T/lc.+x | $T | cmd | c2 | pause
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | c2\puser\poff\p1\p24000\p | child-cannot-be-given-its-own-rate-or-pause
+EXPECT_HAS | #.desktop/clocks/clock_audit.txt | \pc2\prate\px5\prefused:chained-child\p | audit-chained-child-rate
+RUN | $T/lc.+x | $T | cmd | c2 | advance | 5000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | p\puser\px10\p1\p12000\p | child-advance-leaves-the-parent-alone
+EXPECT_OUT | c2\puser\poff\p1\p29000\p | child-advance-shifts-the-child-offset
+RUN | $T/lc.+x | $T | cmd | c2 | settime | 1000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | c2\puser\poff\p1\p29000\p | child-settime-back-refused
+RUN | $T/lc.+x | $T | cmd | c2 | settime | 100000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | c2\puser\poff\p1\p100000\p | child-settime-forward
+RUN | $T/lc.+x | $T | cmd | p | advance | 1000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | c2\puser\poff\p1\p102000\p | child-keeps-following-the-parent-after-its-own-settime
+RUN | $T/lc.+x | $T | info | c2
+EXPECT_OUT | c2\pp\p2\p0\p | info-shows-parent-and-ratio
+CLEAN |
+CASE    | chain-nested-and-unchain
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+RUN | $T/lc.+x | $T | new | a
+RUN | $T/lc.+x | $T | new | b
+RUN | $T/lc.+x | $T | new | c
+RUN | $T/lc.+x | $T | cmd | a | advance | 100
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | chain | b | a | 3
+RUN | $T/lc.+x | $T | chain | c | b | 2
+RUN | $T/lc.+x | $T | cmd | a | advance | 1000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | a\puser\poff\p1\p1100\p | grandparent
+EXPECT_OUT | b\puser\poff\p1\p3000\p | chaining-keeps-the-childs-own-epoch-then-follows-x3
+EXPECT_OUT | c\puser\poff\p1\p6000\p | grandchild-follows-x3-x2
+RUN | $T/lc.+x | $T | chain | a | c | 1
+EXPECT_EXIT | 1 | cycle-a-under-c-refused-3-deep
+RUN | $T/lc.+x | $T | chain | a | a | 1
+EXPECT_EXIT | 1 | self-parent-refused
+RUN | $T/lc.+x | $T | chain | b | nosuch | 1
+EXPECT_EXIT | 1 | unknown-parent-refused
+RUN | $T/lc.+x | $T | chain | b | a | 0
+EXPECT_EXIT | 1 | zero-ratio-refused
+RUN | $T/lc.+x | $T | info | a
+EXPECT_OUT | a\p\p\p0\p | refused-cycle-left-a-unchained
+RUN | $T/lc.+x | $T | unchain | c
+RUN | $T/lc.+x | $T | cmd | a | advance | 1000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | c\puser\poff\p1\p6000\p | unchained-clock-keeps-its-time-and-stops-following
+EXPECT_OUT | b\puser\poff\p1\p6000\p | b-still-follows-a-x3
+CLEAN |
+CASE    | child-reminder
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+RUN | $T/lc.+x | $T | new | p
+RUN | $T/lc.+x | $T | new | k
+RUN | $T/lc.+x | $T | chain | k | p | 2
+RUN | $T/lc.+x | $T | reminder-add | k | 86400000 |  | child-day | every:1day
+RUN | $T/lc.+x | $T | cmd | p | advance | 11h
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 0 | parent-at-11h-child-at-22h-not-yet
+RUN | $T/lc.+x | $T | cmd | p | advance | 1h
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 1 | child-reminder-fires-when-the-derived-time-passes-a-day
+RUN | $T/lc.+x | $T | cmd | p | advance | 12h
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 2 | next-parent-12h-is-the-childs-next-day
+CLEAN |
+CASE    | master
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | new | g2
+RUN | $T/lc.+x | $T | master
+EXPECT_EXIT | 1 | fresh-legacy-registry-has-no-master
+RUN | $T/lc.+x | $T | master | g1
+EXPECT_OUT_IS | g1 | set-master-g1
+RUN | $T/lc.+x | $T | master
+EXPECT_OUT_IS | g1 | get-master-g1
+RUN | $T/lc.+x | $T | master | g2
+RUN | $T/lc.+x | $T | master
+EXPECT_OUT_IS | g2 | new-master-replaces-old
+RUN | $T/lc.+x | $T | info | g1
+EXPECT_OUT | g1\p\p\p0\p | old-master-flag-cleared
+RUN | $T/lc.+x | $T | master | none
+EXPECT_EXIT | 1 | clearing-to-zero-masters-refused
+RUN | $T/lc.+x | $T | master | nosuch
+EXPECT_EXIT | 1 | unknown-master-refused
+RUN | $T/lc.+x | $T | master
+EXPECT_OUT_IS | g2 | refusals-left-master-intact
+RUN | $T/lc.+x | $T | cmd | g2 | advance | 1d
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | gamedate | master | en
+EXPECT_OUT_IS | 0000-01-02 00:00:00 | display-reads-the-master-clock
+WRITE | #.desktop/clocks/clocks.pdl | CLOCK\pg1\pscope=user\pdesc=\pparent=\pratio=\pmaster=1\nCLOCK\pg2\pscope=user\pdesc=\pparent=\pratio=\pmaster=1\n
+RUN | $T/lc.+x | $T | master
+EXPECT_EXIT | 2 | two-masters-in-the-file-refused-as-ambiguous
+EXPECT_OUT | ambiguous | ambiguous-message
+RUN | $T/lc.+x | $T | gamedate | master
+EXPECT_EXIT | 1 | display-refuses-an-ambiguous-master
+RUN | $T/lc.+x | $T | master | g1
+RUN | $T/lc.+x | $T | master
+EXPECT_OUT_IS | g1 | explicit-set-heals-to-exactly-one
+RUN | $T/lc.+x | $T | info | g2
+EXPECT_OUT | g2\p\p\p0\p | healed-g2-not-master
+CLEAN |
+CASE    | legacy-and-audit
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | new | g2
+RUN | $T/lc.+x | $T | rate | g1 | min
+RUN | $T/lc.+x | $T | step | 1000
+RUN | $T/lc.+x | $T | endturn | g2 | 7200000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | g1\puser\pmin\p1\p60000\p | legacy-rate-min
+EXPECT_OUT | g2\puser\poff\p1\p7200000\p | legacy-endturn-2h
+EXPECT_HAS | #.desktop/clocks/clocks.pdl | CLOCK\pg1\pscope=user\pdesc=\nCLOCK\pg2\pscope=user\pdesc=\n | legacy-registry-rows-unchanged
+EXPECT_LACKS | #.desktop/clocks/clocks.pdl | parent= | legacy-registry-gets-no-new-fields
+EXPECT_LACKS | #.desktop/clocks/g1.pdl | child_offset | legacy-state-file-gets-no-chain-field
+EXPECT_LACKS | #.desktop/clocks/g1.pdl | limit_ | legacy-state-file-gets-no-limit-field
+EXPECT_HAS | #.desktop/clocks/clock_audit.txt | \pg2\pendturn\p7200000\pok\pmailbox | legacy-endturn-audited-with-source-mailbox
+RUN | /usr/bin/grep | -c | . | $T/#.desktop/clocks/endturn.txt
+EXPECT_OUT_IS | 0 | mailbox-consumed-after-the-pass
+RUN | /usr/bin/grep | -c | . | $T/#.desktop/clocks/clock_audit.txt
+EXPECT_OUT_IS | 1 | audit-has-one-row-so-far
+RUN | /usr/bin/head | -n | 1 | $T/#.desktop/clocks/clock_audit.txt
+CAPTURE | first
+RUN | $T/lc.+x | $T | cmd | g1 | pause
+RUN | $T/lc.+x | $T | cmd | g1 | rate | x2
+RUN | $T/lc.+x | $T | cmd | g1 | settime | 1
+RUN | $T/lc.+x | $T | cmd | g1 | rate | bogus
+RUN | $T/lc.+x | $T | step | 0
+RUN | /usr/bin/grep | -c | . | $T/#.desktop/clocks/clock_audit.txt
+EXPECT_OUT_IS | 5 | every-accepted-and-refused-command-adds-exactly-one-row
+RUN | /usr/bin/head | -n | 1 | $T/#.desktop/clocks/clock_audit.txt
+CAPTURE | first2
+EXPECT_EQ | $first | $first2 | audit-first-row-never-rewritten
+RUN | /usr/bin/tail | -n | 1 | $T/#.desktop/clocks/clock_audit.txt
+EXPECT_OUT | \pg1\prate\pbogus\prefused:bad-rate\pctl | audit-rows-in-command-order-last-is-last
+CLEAN |

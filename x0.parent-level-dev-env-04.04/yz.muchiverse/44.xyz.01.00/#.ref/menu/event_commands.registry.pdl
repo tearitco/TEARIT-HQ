@@ -851,3 +851,48 @@ COMMAND phone_send
   PARAMS to,text
   TEMPLATE exec "$D/&.widgits/_shared-lib/ops/+x/phone_send_op.+x" "$ENT/inventory/zz.phone" '{to}' say '' '{text}'
 END
+
+# Clock commands (CLOCK-AS-THE-PLAY-SPINE-DESIGN.md 3.4): an event changes game time from inside the game. Each row only QUEUES a command in the clock's
+# mailbox through the lc_clock control plane; the clock daemon pass applies it (sole writer) under that clock's limits (limit_min_rate / limit_max_rate /
+# allow_settime_back / allow_commands) and appends an audit row (clock_audit.txt) whether accepted or refused. Time never runs backwards by command
+# (set_clock_time earlier than now is refused unless the clock sets allow_settime_back=1). rate: off|cent|sec|min|hour|day|x<ratio> (x1 = real time).
+# advance amount: milliseconds, or N + s|m|h|d (e.g. 8h). A chained child clock follows its parent: give rate/pause to the parent.
+COMMAND set_clock_rate
+  LABEL Clock: Set Rate
+  FIELD1 Clock id:
+  FIELD2 Rate (off|cent|sec|min|hour|day|x<ratio>):
+  PARAMS clock,rate
+  TEMPLATE exec "$D/&.widgits/livedesk-clock/ops/+x/lc_clock.+x" "$D" cmd '{clock}' rate '{rate}' --source "event:$ENT"
+END
+
+COMMAND pause_clock
+  LABEL Clock: Pause
+  FIELD1 Clock id:
+  FIELD2 -
+  PARAMS clock
+  TEMPLATE exec "$D/&.widgits/livedesk-clock/ops/+x/lc_clock.+x" "$D" cmd '{clock}' pause --source "event:$ENT"
+END
+
+COMMAND resume_clock
+  LABEL Clock: Resume
+  FIELD1 Clock id:
+  FIELD2 -
+  PARAMS clock
+  TEMPLATE exec "$D/&.widgits/livedesk-clock/ops/+x/lc_clock.+x" "$D" cmd '{clock}' resume --source "event:$ENT"
+END
+
+COMMAND advance_clock
+  LABEL Clock: Advance
+  FIELD1 Clock id:
+  FIELD2 Amount (ms or Ns|Nm|Nh|Nd):
+  PARAMS clock,amount
+  TEMPLATE exec "$D/&.widgits/livedesk-clock/ops/+x/lc_clock.+x" "$D" cmd '{clock}' advance '{amount}' --source "event:$ENT"
+END
+
+COMMAND set_clock_time
+  LABEL Clock: Set Time
+  FIELD1 Clock id:
+  FIELD2 Game epoch ms:
+  PARAMS clock,time
+  TEMPLATE exec "$D/&.widgits/livedesk-clock/ops/+x/lc_clock.+x" "$D" cmd '{clock}' settime '{time}' --source "event:$ENT"
+END
