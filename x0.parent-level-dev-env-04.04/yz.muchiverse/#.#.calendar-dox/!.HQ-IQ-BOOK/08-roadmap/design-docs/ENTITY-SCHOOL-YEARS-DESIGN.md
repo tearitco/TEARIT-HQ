@@ -62,9 +62,30 @@ Same contract as `phone_ensure_op` / the word bank: `school_ensure_op <house_roo
 7. Tomom class exams.
 
 ## 6. Open questions for the owner
-1. **Year length:** game-time days? a fixed number of play sessions? or advance only when the owner presses "next year" (simplest, recommended to start)?
+1. ~~Year length~~ **ANSWERED (owner 2026-10-07, section 7): a year is a unit of training PASSED, not elapsed time; age = years passed.**
 2. **Who is principal:** owner only for every `DECISION`, or a teacher entity per school later?
-3. **Do all entities attend** (every pal) or only learner entities (terumon, robots, tomom)?
+3. ~~Do all entities attend?~~ **ANSWERED (section 7): an entity attends when it is placed in a school's inventory.**
 4. **Grade ladder:** use the four named tiers only, or numbered years inside them as above?
 5. **Report card home:** a tab in the Concept Bank window, its own `school-hq` window, or both?
 6. Should a report card ever be **printed to the entity's phone** (a message), or stay a file/window only?
+
+## 7. Owner corrections (2026-10-07): they supersede sections 3a, 3e and 4 where they conflict
+
+Owner: "learning is done as a 'play' of a particular 'page'; or can happen independently if it's just 1 entity or for some other reason. An entity can learn from a 'phone' if the lesson is placed on the 'server computer' etc., graded from the computer, no big difference but handwaving non-physical learning entities / training / gameplay styles. Years will be stored within the entity; if it passes 2 years of training, that's its age. Entities should be placed in a 'schools' inventory, where they may undergo accelerated ageing and trainings."
+
+**7a. Three lesson modes, one ledger.** A lesson/exam row gets a `mode` field: `mode=page|solo|phone`. They differ in how the lesson reaches the entity, not in what is recorded.
+- **page**: the lesson is a **play of a page** (a map/event page, the house's `event_pkg/pages/page_N/` unit): the entity plays the page; the exam is a deterministic check on the state or events that play produced (a harness case file over the page's result).
+- **solo**: a single entity learns on its own, no page (its own learner/ledger and lesson files). Used when only one entity is involved, or for any other reason.
+- **phone**: for non-physical entities and "handwaved" training: the lesson is placed on the **server computer** (`^.hai-server`), delivered to the entity's phone as a `task` message (the entity reads its phone by size growth, as the phone design already says); the server **grades** it (the design's `quest.score` already runs a quest's deterministic `verify.sh` and records the verdict; a class exam is the same thing) and writes the `result` message back plus the `EXAM` row. Quests and lessons are the same shape; reuse `verify.sh`/harness, do not invent a second grader.
+
+**7b. Age is stored in the entity and means years of training passed.** Not elapsed or wall-clock time. Reading: each training **year passed** adds 1; after passing 2 years the entity is age 2 (confirm this reading). The count is derived from the entity's own `YEAR_END` rows with a pass and mirrored as an `AGE` line in `zz.school/enrollment.txt` (rebuildable from the ledger, never typed). **This removes the dependency on a per-entity clock** for age and for year length (open question 1 is closed). A clock is only needed for the school's pacing (7d).
+
+**7c. A school is a place: an inventory.** A school is an entity/item with an `inventory/`; entities **placed in it are enrolled** (placing = enrolling; taking out = leaving). It holds the shared catalog (classes, calendar, `school.pdl`): the hidden layer the earlier design pointed at. Each student keeps its own private record (`zz.school`) with a pointer to the school it is in. This is the "schools" inventory the marketplace concept doc also assumes (a school owns a curriculum). Note from the drag/drop design: **a drop is a MOVE** (the dropped folder is moved, not copied), so putting an entity in a school moves its folder into the school's inventory; entities there are not desk windows (they are "non-physical" while enrolled). That has consequences for running entities that must be decided before building: how an enrolled entity is started or shown, and what happens to its desk position and open processes when it is moved.
+
+**7d. Accelerated ageing and training.** A school applies a **time/training scale** (`school.pdl`: `time_scale`, lessons per game tick) so a training year passes quickly inside it; the age gained is still counted from passed years, not from the scale. The school's own pacing is a small clock owned by the school (one clock, for all its students), not one per entity.
+
+**7e. Retroactive step changed.** `school_ensure_op` (section 4) now only **creates each existing entity's `zz.school` record (age 0, no enrollment) and reports**; it never moves an entity into a school. Placing an entity in a school is the owner's action (a drop), so no live entity folder is relocated by a script. Terumon still get their missing `learning_limits.pdl` as a reviewed step.
+
+**7f. What this changes in the build order.** Add before step 1: define `school.pdl` and the school-as-inventory convention (with one hand-made test school and one scratch test entity in beta); add the three `mode` values to the ledger rows and one harness case per mode; the phone mode reuses `server.route` and `quest.score`. Report-card and year-end steps are unchanged except that `YEAR_END` + a human `DECISION=advance` is what increments age.
+
+**7g. New open questions.** (1) Confirm: passing one training year adds exactly 1 to age? (2) Is a "year" in a school a fixed list of classes that must all pass, or a pass mark across them? (3) What does an entity do while it is inside a school inventory (does it keep running, is it shown)? (4) Does the entity's age cap or unlock anything (tier, abilities) or is it only a label for now?
