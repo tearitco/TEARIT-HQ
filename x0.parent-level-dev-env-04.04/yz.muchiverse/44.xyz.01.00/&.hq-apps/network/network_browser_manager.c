@@ -705,7 +705,10 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                     const char *tp = tag_end + 1;
                     size_t tw = 0;
                     while (tp < aend && tw < sizeof(text) - 1) {
-                        if (*tp == '<') { const char *g = strchr(tp, '>'); tp = g ? g + 1 : tp + 1; continue; }
+                        /* Separate text across inner tag boundaries with
+                         * a space (TOC "1"+"History" reads "1History"
+                         * otherwise); collapse_ws normalizes the runs. */
+                        if (*tp == '<') { const char *g = strchr(tp, '>'); tp = g ? g + 1 : tp + 1; if (tw > 0 && text[tw-1] != ' ') text[tw++] = ' '; continue; }
                         text[tw++] = *tp++;
                     }
                     text[tw] = '\0';
