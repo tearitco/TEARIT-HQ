@@ -1,0 +1,6 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | solar_sol
+STATE        | kind                 | solar-star
+METHOD       | Close                | CLOSE
+METHOD       | Cancel               | void

@@ -1,0 +1,4 @@
+# solar-sandbox desk 'solar-earth' (template; install copies it to sessions/<id>/desks/solar-earth.pdl)
+# DESK | name | path | x_px | y_px | cell_x | cell_y | glyph | n
+DESK | earth_surface | &.widgits/solar-sandbox/pals/earth_surface | 400 | 320 | 5 | 4 | 🏞️ | 1
+DESK | leave_orbit | &.widgits/solar-sandbox/pals/leave_orbit | 800 | 160 | 10 | 2 | 🚀 | 2
