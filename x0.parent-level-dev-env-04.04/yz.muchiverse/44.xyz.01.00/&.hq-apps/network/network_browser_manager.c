@@ -509,14 +509,14 @@ static int junk_visible_line(const char *s) {
  * file (streaming, so PAGE_BUF_MAX bounds memory, not output size). */
 /* attribute value reader for the extractor loop: value of key= within
  * [p, tag_end), unquoted or single/double quoted, entity-decoded. */
-static void tag_attrval(const char *p, const char *tag_end, const char *key, char *out, size_t outsz) {
+static int tag_attrval(const char *p, const char *tag_end, const char *key, char *out, size_t outsz) {
     if (outsz) out[0] = 0;
-    if (!p || !tag_end || !key || !out || !outsz) return;
+    if (!p || !tag_end || !key || !out || !outsz) return 0;
     size_t klen = strlen(key);
     const char *k = p;
     while (k && k < tag_end) {
         k = strcasestr_local(k, key);
-        if (!k || k >= tag_end) return;
+        if (!k || k >= tag_end) return 0;
         const char *after = k + klen;
         if ((k > p && (isalnum((unsigned char)k[-1]) || k[-1] == '-' || k[-1] == '_')) ||
             (*after != '=' && !isspace((unsigned char)*after) && *after != '>' && *after != '/')) {
@@ -524,12 +524,8 @@ static void tag_attrval(const char *p, const char *tag_end, const char *key, cha
             continue;
         }
         while (after < tag_end && isspace((unsigned char)*after)) after++;
-        if (after >= tag_end) return;
-        if (*after != '=') {
-            /* bare attribute (e.g. checked): report present-but-empty */
-            snprintf(out, outsz, "%s", "");
-            return;
-        }
+        if (after >= tag_end) return 0;
+        if (*after != '=') return 1;
         const char *v = after + 1;
         while (v < tag_end && isspace((unsigned char)*v)) v++;
         char q = 0;
@@ -541,8 +537,9 @@ static void tag_attrval(const char *p, const char *tag_end, const char *key, cha
         if (n >= outsz) n = outsz - 1;
         memcpy(out, v, n); out[n] = 0;
         html_decode_entities(out);
-        return;
+        return 1;
     }
+    return 0;
 }
 static void extract_and_publish(const char *html, const char *url, FILE *out) {
     fprintf(out, "URL|%s\n", url);
@@ -669,6 +666,16 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                 if (!type[0]) snprintf(type, sizeof(type), "%s", "text");
                 if (in_form && (!strcmp(type, "text") || !strcmp(type, "search"))) {
                     if (name[0]) fprintf(out, "INPUT|%s|%s|%s|%s\n", name, type, val, ph);
+                } else if (in_form && (!strcmp(type, "checkbox") || !strcmp(type, "radio"))) {
+                    /* Toggle controls ride INPUT rows with the checked
+                     * state folded in; the projector renders an item row,
+                     * not an editable field. */
+                    if (name[0]) {
+                        char checked[8] = "";
+                        int is_checked = tag_attrval(p, tag_end, "checked", checked, sizeof(checked));
+                        fprintf(out, "INPUT|%s|%s|%s|%s\n", name, type,
+                                is_checked ? "checked" : "", val[0] ? val : "on");
+                    }
                 } else if (in_form && !strcmp(type, "hidden")) {
                     /* Hidden defaults ride page.state untouched to submit
                      * time (projector renders nothing for HIDDEN); the
@@ -3373,6 +3380,8 @@ static void do_fetch(const char *url_in, int record_history) {
         char ff[PATH_BUF];
         snprintf(ff, sizeof(ff), "%s/#.desktop/network_browser_fields.txt", g_house);
         unlink(ff);
+        snprintf(ff, sizeof(ff), "%s/#.desktop/network_browser_checks.txt", g_house);
+        unlink(ff);
     }
 
     /* REAL, NEW 2026-09-12 (V3-B probe, NETWORK-BROWSER-VIDEO-V3-DESIGN.md
@@ -4457,6 +4466,39 @@ static void write_ui_projection(void) {
                     uisan(f[3], ph, sizeof(ph));
                     uisan(ph[0] ? ph : nm, lab_s, sizeof(lab_s));
                     if (!nm[0]) continue;
+                    if (!strcmp(f[1], "checkbox") || !strcmp(f[1], "radio")) {
+                        /* Toggle item: [x]/[ ] + name. Live state comes
+                         * from the checks file (toggled), falling back to
+                         * the page default (f[2]). f[3] is the submit value. */
+                        int on = (vv[0] != 0);
+                        {
+                            char cf[PATH_BUF];
+                            snprintf(cf, sizeof(cf), "%s/#.desktop/network_browser_checks.txt", g_house);
+                            FILE *ff = fopen(cf, "r");
+                            if (ff) {
+                                char ln[1024];
+                                while (fgets(ln, sizeof(ln), ff)) {
+                                    size_t L = strlen(ln);
+                                    while (L > 0 && (ln[L-1] == '\n' || ln[L-1] == '\r')) ln[--L] = 0;
+                                    char *t = strchr(ln, '\t');
+                                    if (!t) continue;
+                                    *t = 0;
+                                    if (!strcmp(ln, f[0])) on = !strcmp(t + 1, "on");
+                                }
+                                fclose(ff);
+                            }
+                        }
+                        char nm_sq[PATH_BUF], sv_sq[1024];
+                        shell_escape_squote(f[0], nm_sq, sizeof(nm_sq));
+                        shell_escape_squote(f[3][0] ? f[3] : "on", sv_sq, sizeof(sv_sq));
+                        char tlab[700];
+                        snprintf(tlab, sizeof(tlab), "[%s] %s", on ? "x" : " ", nm);
+                        UI_PUT("c_%d_kind=check\nc_%d_is_check=1\nc_%d_text=%s\n", rc, rc, rc, tlab);
+                        UI_PUT("c_%d_action='%s/ops/nb_write_toggle.sh' 'toggle' '%s' '%s' '%d'\n",
+                               rc, g_package_dir, nm_sq, sv_sq, on ? 1 : 0);
+                        rc++;
+                        continue;
+                    }
                     char nm_sq[PATH_BUF];
                     shell_escape_squote(f[0], nm_sq, sizeof(nm_sq));
                     UI_PUT("c_%d_kind=input\nc_%d_is_input=1\nc_%d_text=%s\n", rc, rc, rc, lab_s);

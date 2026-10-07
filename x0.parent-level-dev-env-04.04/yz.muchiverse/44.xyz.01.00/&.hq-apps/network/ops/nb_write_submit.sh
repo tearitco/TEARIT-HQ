@@ -23,17 +23,36 @@ fi
 DESKTOP_DIR="$HOUSE_ROOT/#.desktop"
 REQUEST_FILE="$DESKTOP_DIR/network_browser_request.txt"
 
-MERGED="$DESKTOP_DIR/network_browser_fields.txt"
-CLEANUP_MERGED=""
+MERGED_ACCUM="$(mktemp)"
+# 1. hidden defaults (page scope)
 if grep -q "^HIDDEN|" "$DESKTOP_DIR/network_browser_page.state.txt" 2>/dev/null; then
-    HIDDEN_TMP="$(mktemp)"
-    grep "^HIDDEN|" "$DESKTOP_DIR/network_browser_page.state.txt" | sed 's/^HIDDEN|//;s/|/\t/' > "$HIDDEN_TMP"
-    MERGED="$(mktemp)"
-    cat "$HIDDEN_TMP" "$DESKTOP_DIR/network_browser_fields.txt" 2>/dev/null > "$MERGED"
-    rm -f "$HIDDEN_TMP"
-    CLEANUP_MERGED=1
+    grep "^HIDDEN|" "$DESKTOP_DIR/network_browser_page.state.txt" | sed 's/^HIDDEN|//;s/|/\t/' >> "$MERGED_ACCUM"
 fi
-PAIRS=""
+# 2. checked boxes (submit values from live page.state INPUT rows)
+if [ -f "$DESKTOP_DIR/network_browser_checks.txt" ]; then
+    while IFS= read -r line; do
+        kind="${line%%|*}"
+        [ "$kind" = "INPUT" ] || continue
+        rest="${line#*|}"
+        nm="${rest%%|*}"
+        [ -n "$nm" ] || continue
+        st="$(awk -F'\t' -v n="$nm" '$1==n {s=$2} END {print s}' "$DESKTOP_DIR/network_browser_checks.txt" 2>/dev/null)"
+        if [ -z "$st" ]; then
+            # no toggle yet: page default (INPUT row field 3)
+            df="$(printf '%s' "$rest" | awk -F'|' '{print $3}')"
+            [ "$df" = "checked" ] && st="on" || st="off"
+        fi
+        [ "$st" = "on" ] || continue
+        sv="$(printf '%s' "$rest" | awk -F'|' '{print $4}')"
+        [ -n "$sv" ] || sv="on"
+        TAB2="$(printf '\t')"
+        printf '%s\t%s\n' "$nm" "$sv" >> "$MERGED_ACCUM"
+    done < "$DESKTOP_DIR/network_browser_page.state.txt"
+fi
+# 3. typed fields last (most interactive source wins ties)
+cat "$DESKTOP_DIR/network_browser_fields.txt" 2>/dev/null >> "$MERGED_ACCUM"
+MERGED="$MERGED_ACCUM"
+CLEANUP_MERGED=1
 if [ -f "$MERGED" ]; then
     if command -v python3 >/dev/null 2>&1; then
         PAIRS="$(python3 -c "

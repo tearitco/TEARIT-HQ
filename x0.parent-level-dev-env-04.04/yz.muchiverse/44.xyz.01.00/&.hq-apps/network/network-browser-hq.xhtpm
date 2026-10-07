@@ -81,6 +81,7 @@
           <cli_io id="ci${c.#}" class="nb-input" target_id="ci${c.#}" label="${c.text}"
                   content="${c.content}" action="${c.action}" show="${c.is_input}"/>
           <item id="cb${c.#}" class="nb-button" label="${c.text}" action="${c.action}" show="${c.is_button}"/>
+          <item id="ck${c.#}" class="nb-check" label="${c.text}" action="${c.action}" show="${c.is_check}"/>
           <item id="cm${c.#}" class="quiet sprite-flow" label="${c.label}" sprite="${c.sprite}" action="${c.action}"  show="${c.is_media}"/>
           <!-- V3 video (nb_video_play): live canvas row inside the content
                scrolllist. The op writes surface.raw + surface.receipt.txt
