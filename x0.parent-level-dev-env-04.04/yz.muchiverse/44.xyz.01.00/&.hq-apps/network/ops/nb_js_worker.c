@@ -3781,6 +3781,22 @@ static int nb_c2d_source(JSContext *ctx, JSValueConst v,
                          int *sw, int *sh, unsigned char **spx, int *owned) {
     *sw = 0; *sh = 0; *spx = NULL; *owned = 0;
     if (!JS_IsObject(v)) return 0;
+    /* img elements with decoded pixels (data: URLs decode inline during
+     * the walk; remote-src Image onload wiring is out of slice) */
+    {
+        NbNode *n = get_node(ctx, v);
+        if (n) {
+            int dw = 0, dh = 0;
+            if (img_get_decoded(n, &dw, &dh)) {
+                for (int i = 0; i < g_img_decoded_count; i++)
+                    if (g_img_decoded[i].n == n && g_img_decoded[i].data) {
+                        *sw = g_img_decoded[i].w; *sh = g_img_decoded[i].h;
+                        *spx = g_img_decoded[i].data;
+                        return 1;
+                    }
+            }
+        }
+    }
     JSValue cid = JS_GetPropertyStr(ctx, v, "__nb_ctx");
     int id = -1;
     if (JS_IsObject(cid)) {
