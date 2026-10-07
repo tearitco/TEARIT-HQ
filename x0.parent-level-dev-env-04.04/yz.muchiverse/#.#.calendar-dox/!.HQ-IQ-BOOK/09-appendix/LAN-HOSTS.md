@@ -17,3 +17,9 @@ Source of the addresses: the owner's note `/home/no/Desktop/🧩️Piecemark-IT/
 - A Mac shares APFS hazards (case-insensitive names, Unicode normalization); see the spec section 9.
 - The co-lab room (`&.hq-apps/co-lab-hai`) is a local transcript on one machine with human approval; it does not cross the LAN. Cross-machine agent talk needs ssh or the future hq-ftp/palnet path.
 - Update this table when a host is tested; keep the notes column factual.
+
+## Mac houses and the xyzfs/users install (2026-10-07)
+Key login to the Mac (`lfs.master@10.0.0.144`) and to `jb@10.0.0.187` was set up by the owner with `~/ssh-setup-lan.sh`; `debilu@10.0.0.16` failed with a CHANGED HOST KEY warning (verify the fingerprint on that machine before `ssh-keygen -R 10.0.0.16`); starfive not tried.
+Houses found on the Mac (folders containing `$.crypts`): `~/Desktop/MMEST.3000/.../44.xyz.01.00` (**no xyzfs/users**), `~/Desktop/OPEN_CODE/NNEST-11.17/.../44.xyz.01.00` and `.../44.xyz❤️‍🔥️00.17` (24 users each).
+**Install procedure** (script: `$.crypts/install-xyzfs-users.sh`, POSIX sh, works on macOS and Linux, dry run by default, never overwrites existing users, `--replace` moves aside to `users.bak-<time>`): on the Linux house make `tar -C <house>/xyzfs -czf xyzfs-users-<time>.tar.gz users` plus `<archive>.archive.sha256`; copy the archive, its `.archive.sha256` and the script to the target (`scp`); on the target run `sh install-xyzfs-users.sh <archive> <house_root>` (dry run: checksum, safe paths, case-collisions, plan), then the same with `--apply`; it checks the file count after unpacking; then `sh '$.crypts/button.sh' build` (compiled programs are in no branch); start the desktop only after looking. Transfer of 2026-10-07 15:51 archive: 2,425 files, sha256 `acb5aa00...bd56` matched on both machines; dry run against `MMEST.3000` passed; **not applied** (owner picks the house).
+
