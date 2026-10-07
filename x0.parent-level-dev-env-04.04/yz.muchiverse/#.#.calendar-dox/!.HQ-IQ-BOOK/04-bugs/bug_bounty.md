@@ -530,7 +530,9 @@ So this is a pure rendering bug, and **it's in a THIRD, different code path from
 
 ---
 
-## 🔴 OPEN 2026-10-06 (NOT root-caused): livedesk bottom bar / entity cells take ~20 s to appear when started from the desktop shortcut - never reproduced by the agent
+## ✅ CLOSED 2026-10-06 (owner confirmed on his hardware: "it's good and fixed"; commits f64f932f8 + b3ee8caca, on main): livedesk bottom bar / entity cells took ~20 s to appear after quit-then-start - the dock's 20 s forced-reparse backstop
+
+**FINAL RESOLUTION (2026-10-06):** the owner's own `boot_timeline.txt` showed the dock repainting at 0.5 s and then not again until 19.9 s (the 20 s backstop in `reparse_chtpm_if_changed()`), with all entities registered by ~6 s, i.e. a missed change signal that only the backstop recovered. Fix: the dock's backstop is 1 s for its first 60 s (steady state still 20 s), commit `f64f932f8`. Owner confirmed fast on his machine. Side fixes the same day: the start script's 1.9 s/call /proc shell scan -> one pgrep (`7c7401090`); the compile-progress strip is now started by `build_khtpm_strip.sh` itself, shows only during a real compile and closes when it ends (`7566e0752`, `b3ee8caca`); `$.restart` looked instant only because it leaves entities alive. **Never root-caused:** WHY the manager->dock change signal was missed (manager publish vs the dock's marker-size gate). The startup marks (`publish#N`, `SLOW ktb_reload`, dock redraw marks in `#.desktop/boot_timeline.txt`) stay in so a recurrence shows which side went quiet; reopen if the bar is slow again. The sprite theory (hq_sprite load / hq_blit_sprite XGetImage) was measured and DISPROVED (112 blits = 127 ms).
 
 **Reported (owner, repeatedly, "mine is still slow", same on every start):** after quitting from the HQ menu (X.quit) and starting from `start-temp` (right-click > run as program), everything else loads fast but the bottom bar's entity cells take ~20 s and show no loading signal. Owner cannot send data; "trust me".
 
