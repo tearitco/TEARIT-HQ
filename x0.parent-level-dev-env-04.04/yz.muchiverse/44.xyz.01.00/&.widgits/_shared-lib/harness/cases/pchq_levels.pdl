@@ -53,21 +53,25 @@ RUN     | grep | -Eq | ^MAP +[\p] +mineclonia_sample +[\p] | live/pieces/system/
 EXPECT_EXIT | 0 | maps-pdl-lists-mineclonia_sample
 RUN     | grep | -Eq | ^MAP +[\p] +cdda_sample +[\p] | live/pieces/system/maps.pdl
 EXPECT_EXIT | 0 | maps-pdl-lists-cdda_sample
-# FINDING (passes while the drift is exactly this): the unregistered set is exactly {test_terraces, test_walls}
-EXPECT_LACKS | live/pieces/system/maps.pdl | test_terraces | FINDING-drift-test_terraces-unregistered
-EXPECT_LACKS | live/pieces/system/maps.pdl | test_walls | FINDING-drift-test_walls-unregistered
-# FINDING: the registered PATH column of the two sample maps points at maps/<id>/map.txt, which does not exist (the real file is maps/<id>/desk1/map.txt)
-EXPECT_NOFILE | live/pieces/system/maps/mineclonia_sample/map.txt | FINDING-path-drift-mineclonia_sample-map.txt-absent
-EXPECT_NOFILE | live/pieces/system/maps/cdda_sample/map.txt | FINDING-path-drift-cdda_sample-map.txt-absent
 EXPECT_EXISTS | live/pieces/system/maps/mineclonia_sample/desk1/map.txt | mineclonia_sample-real-map-is-under-desk1
 EXPECT_EXISTS | live/pieces/system/maps/cdda_sample/desk1/map.txt | cdda_sample-real-map-is-under-desk1
-# STRICT cases: these FAIL today on purpose (the registry is incomplete / stale). They flip to PASS when the owner fixes maps.pdl.
+# STRICT registry cases (drift fixed 2026-10-07: maps.pdl now lists all 5 maps with KIND and correct desk1/map.txt paths; these guard against regression).
 RUN     | grep | -Eq | ^MAP +[\p] +test_terraces +[\p] | live/pieces/system/maps.pdl
 EXPECT_EXIT | 0 | registry_complete-test_terraces
 RUN     | grep | -Eq | ^MAP +[\p] +test_walls +[\p] | live/pieces/system/maps.pdl
 EXPECT_EXIT | 0 | registry_complete-test_walls
-EXPECT_EXISTS | live/pieces/system/maps/mineclonia_sample/map.txt | registry_paths_exist-mineclonia_sample
-EXPECT_EXISTS | live/pieces/system/maps/cdda_sample/map.txt | registry_paths_exist-cdda_sample
+EXPECT_EXISTS | live/pieces/system/maps/mineclonia_sample/desk1/map.txt | registry_paths_exist-mineclonia_sample
+EXPECT_EXISTS | live/pieces/system/maps/cdda_sample/desk1/map.txt | registry_paths_exist-cdda_sample
+EXPECT_HAS | live/pieces/system/maps.pdl | pieces/system/maps/default/desk1/map.txt | registry_index_path-default
+EXPECT_HAS | live/pieces/system/maps.pdl | planet | registry_index_kind-default
+EXPECT_HAS | live/pieces/system/maps.pdl | pieces/system/maps/mineclonia_sample/desk1/map.txt | registry_index_path-mineclonia_sample
+EXPECT_HAS | live/pieces/system/maps.pdl | sample | registry_index_kind-mineclonia_sample
+EXPECT_HAS | live/pieces/system/maps.pdl | pieces/system/maps/cdda_sample/desk1/map.txt | registry_index_path-cdda_sample
+EXPECT_HAS | live/pieces/system/maps.pdl | sample | registry_index_kind-cdda_sample
+EXPECT_HAS | live/pieces/system/maps.pdl | pieces/system/maps/test_terraces/desk1/map.txt | registry_index_path-test_terraces
+EXPECT_HAS | live/pieces/system/maps.pdl | test | registry_index_kind-test_terraces
+EXPECT_HAS | live/pieces/system/maps.pdl | pieces/system/maps/test_walls/desk1/map.txt | registry_index_path-test_walls
+EXPECT_HAS | live/pieces/system/maps.pdl | test | registry_index_kind-test_walls
 
 # ---------- case 2: ACTIVE MAP SOURCE ----------
 CASE    | active-map-source
