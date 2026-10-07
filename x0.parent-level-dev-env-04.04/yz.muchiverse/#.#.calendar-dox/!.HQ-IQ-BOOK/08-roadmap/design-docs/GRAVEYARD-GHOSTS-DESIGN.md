@@ -105,6 +105,20 @@ Consequences for the data model: a grave has its own board (`quests/` scoped to 
 ghost points at its roster folder via its pal's `pal.pdl`); the default board is `^.grave/quests/`. A ghost may be placed (visible,
 questing) or unplaced (resting in the roster). Placing a ghost is what "sends it out".
 
+### 6c. Assign, work, pending, judged (owner, 2026-10-06; DESIGN ONLY, nothing built)
+
+Owner's idea, recorded so it survives: a ghost has its own quests; it can take input from a headstone **or** from the user; a quest can be handed to a ghost by hand (drag it into the ghost's menu).
+A handed-over quest **stays in the headstone as `pending`**, is judged by the headstone's own first-pass "llm", and waits for the **official** LLM (or the owner) to approve or deny.
+
+- Two verbs: **assign** (push: owner or headstone picks an available ghost; phone event `task`, `ref` = quest id) and **work** (pull: an available ghost takes a quest from an available headstone; phone events
+  `lease` / `release`, both already in the message kinds). The server is the single writer of every inbox, so it grants a lease to ONE ghost: two ghosts cannot take the same quest.
+- Available ghost = idle (resting, or placed with no active quest). Available quest = status `open`. `work` lists only quests at or below the ghost's tier.
+- New status `pending` between `open` and `claimed`: `open -> pending (assigned or leased) -> claimed (approved) | open (denied, reason logged)`. Both verbs go through the same gate, so pulling does not skip approval.
+- The headstone judge only RECOMMENDS (verdict + reason, appended to the quest log); the official LLM or the owner approves/denies. This is also the answer shape for open question 2 (who approves gated actions).
+- v1 judge = rule-based (tier fits, ghost idle, quest unblocked, no conflicting lease) with the LLM slot left open: provider config (Q002) is not done. Tunable weights live in the server's `tunables.conf` like the router.
+- Drag a quest into a ghost menu: not verified that the renderer supports a cross-window drop. First build the keyboard form (select quest -> `assign` -> pick ghost); drag is sugar on top of the same `task` event.
+- Build order: (1) h-ai menu entries + placer for graves and ghosts (section 6b), (2) ghost inbox: quest -> `task` to the ghost's phone, (3) `pending` + judge + approve/deny, (4) `work`.
+
 ## 7. Training events (RL / IRL / FSM) — deliberately later, but designed in
 
 A **training event** is a quest whose scoring is deterministic: an FSM plan dropped in `plans/queue`, run by the existing runner,
