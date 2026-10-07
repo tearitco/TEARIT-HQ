@@ -74,6 +74,13 @@
 <text id="ct${c.#}" class="page-title" label="${c.text}" action="${c.click_action}"        show="${c.is_title}"/>
           <text id="cx${c.#}" class="nb-text"                   label="${c.text}" action="${c.click_action}"        show="${c.is_text}"/>
           <item id="cl${c.#}" class="nb-link" label="${c.text}"  action="${c.action}"                       show="${c.is_link}"/>
+          <!-- Milestone 4 slice 1 (2026-10-07): form controls. INPUT rows
+               are editable cli_io (commit appends name=value via the
+               field script); BUTTON rows submit through nb_write_submit
+               (GET builds the query, POST reports to console). -->
+          <cli_io id="ci${c.#}" class="nb-input" target_id="ci${c.#}" label="${c.text}"
+                  content="${c.content}" action="${c.action}" show="${c.is_input}"/>
+          <item id="cb${c.#}" class="nb-button" label="${c.text}" action="${c.action}" show="${c.is_button}"/>
           <item id="cm${c.#}" class="quiet sprite-flow" label="${c.label}" sprite="${c.sprite}" action="${c.action}"  show="${c.is_media}"/>
           <!-- V3 video (nb_video_play): live canvas row inside the content
                scrolllist. The op writes surface.raw + surface.receipt.txt

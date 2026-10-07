@@ -197,6 +197,7 @@ static void html_decode_entities(char *s) {
 }
 
 static void collapse_ws(char *s);
+static void strip_pipes(char *s);
 
 /* Sprite-grid item caption: longer than the old 22-char cut, entities
  * decoded (&gt; &lt; &amp; &#039; &quot; &nbsp; and numeric), raw http(s)
@@ -503,6 +504,43 @@ static int junk_visible_line(const char *s) {
 
 /* Extracts TITLE/TEXT/LINK rows straight into the already-open state
  * file (streaming, so PAGE_BUF_MAX bounds memory, not output size). */
+/* attribute value reader for the extractor loop: value of key= within
+ * [p, tag_end), unquoted or single/double quoted, entity-decoded. */
+static void tag_attrval(const char *p, const char *tag_end, const char *key, char *out, size_t outsz) {
+    if (outsz) out[0] = 0;
+    if (!p || !tag_end || !key || !out || !outsz) return;
+    size_t klen = strlen(key);
+    const char *k = p;
+    while (k && k < tag_end) {
+        k = strcasestr_local(k, key);
+        if (!k || k >= tag_end) return;
+        const char *after = k + klen;
+        if ((k > p && (isalnum((unsigned char)k[-1]) || k[-1] == '-' || k[-1] == '_')) ||
+            (*after != '=' && !isspace((unsigned char)*after) && *after != '>' && *after != '/')) {
+            k++;
+            continue;
+        }
+        while (after < tag_end && isspace((unsigned char)*after)) after++;
+        if (after >= tag_end) return;
+        if (*after != '=') {
+            /* bare attribute (e.g. checked): report present-but-empty */
+            snprintf(out, outsz, "%s", "");
+            return;
+        }
+        const char *v = after + 1;
+        while (v < tag_end && isspace((unsigned char)*v)) v++;
+        char q = 0;
+        if (v < tag_end && (*v == '"' || *v == '\'')) { q = *v; v++; }
+        const char *vend = v;
+        if (q) { while (vend < tag_end && *vend != q) vend++; }
+        else { while (vend < tag_end && !isspace((unsigned char)*vend) && *vend != '>' && *vend != '/') vend++; }
+        size_t n = (size_t)(vend - v);
+        if (n >= outsz) n = outsz - 1;
+        memcpy(out, v, n); out[n] = 0;
+        html_decode_entities(out);
+        return;
+    }
+}
 static void extract_and_publish(const char *html, const char *url, FILE *out) {
     fprintf(out, "URL|%s\n", url);
 
@@ -528,6 +566,13 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
     size_t linelen = 0;
     const char *p = page_body_start(html);
     int line_count = 0;
+    /* Milestone 4 slice 1 (2026-10-07): single-form GET support. Current
+     * form context while scanning; nested forms overwrite (HTML forbids
+     * nesting). <select> subtrees are skipped here - worker SEL rows own
+     * them (opencode-fix lane), no duplicate rows. */
+    char form_action[PATH_BUF] = "";
+    char form_method[16] = "";
+    int in_form = 0;
 
     #define TEXT_WRAP 88
     #define FLUSH_LINE() do { \
@@ -576,6 +621,117 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                     p = skip_named_element(p, tname);
                     continue;
                 }
+            }
+            if (strncasecmp(p, "<form", 5) == 0 && !isalnum((unsigned char)p[5])) {
+                FLUSH_LINE();
+                const char *tag_end = strchr(p, '>');
+                if (!tag_end) { p++; continue; }
+                char act[PATH_BUF] = "", meth[16] = "";
+                tag_attrval(p, tag_end, "action", act, sizeof(act));
+                tag_attrval(p, tag_end, "method", meth, sizeof(meth));
+                if (!act[0]) snprintf(act, sizeof(act), "%s", url);
+                else { char r[PATH_BUF]; resolve_url(url, act, r, sizeof(r)); snprintf(act, sizeof(act), "%s", r); }
+                for (char *c = meth; *c; c++) *c = (char)tolower((unsigned char)*c);
+                snprintf(form_action, sizeof(form_action), "%s", act);
+                snprintf(form_method, sizeof(form_method), "%s", meth[0] ? meth : "get");
+                in_form = 1;
+                p = tag_end + 1;
+                continue;
+            }
+            if (strncasecmp(p, "</form", 6) == 0) {
+                FLUSH_LINE();
+                form_action[0] = 0; form_method[0] = 0; in_form = 0;
+                const char *tag_end = strchr(p, '>');
+                p = tag_end ? tag_end + 1 : p + 1;
+                continue;
+            }
+            if (strncasecmp(p, "<select", 7) == 0 && !isalnum((unsigned char)p[7])) {
+                /* worker SEL rows own selects; skip the subtree so option
+                 * text never becomes paragraph TEXT. */
+                FLUSH_LINE();
+                p = skip_named_element(p, "select");
+                continue;
+            }
+            if (strncasecmp(p, "<input", 6) == 0 && !isalnum((unsigned char)p[6])) {
+                FLUSH_LINE();
+                const char *tag_end = strchr(p, '>');
+                if (!tag_end) { p++; continue; }
+                char type[32] = "", name[256] = "", val[1024] = "", ph[256] = "";
+                tag_attrval(p, tag_end, "type", type, sizeof(type));
+                tag_attrval(p, tag_end, "name", name, sizeof(name));
+                tag_attrval(p, tag_end, "value", val, sizeof(val));
+                tag_attrval(p, tag_end, "placeholder", ph, sizeof(ph));
+                for (char *c = type; *c; c++) *c = (char)tolower((unsigned char)*c);
+                strip_pipes(name); strip_pipes(val); strip_pipes(ph);
+                if (!type[0]) snprintf(type, sizeof(type), "%s", "text");
+                if (in_form && (!strcmp(type, "text") || !strcmp(type, "search"))) {
+                    if (name[0]) fprintf(out, "INPUT|%s|%s|%s|%s\n", name, type, val, ph);
+                } else if (in_form && (!strcmp(type, "submit") || !strcmp(type, "button") || !strcmp(type, "image"))) {
+                    char lab[256];
+                    snprintf(lab, sizeof(lab), "%s", val[0] ? val : "Submit");
+                    fprintf(out, "BUTTON|%s|%s|%s\n", form_action, form_method, lab);
+                }
+                /* hidden/other types: v1 drops them (noted); checkbox/radio
+                 * need checked-state rows (follow-up). */
+                p = tag_end + 1;
+                continue;
+            }
+            if (strncasecmp(p, "<button", 7) == 0 && !isalnum((unsigned char)p[7])) {
+                FLUSH_LINE();
+                const char *tag_end = strchr(p, '>');
+                if (!tag_end) { p++; continue; }
+                char type[32] = "";
+                tag_attrval(p, tag_end, "type", type, sizeof(type));
+                for (char *c = type; *c; c++) *c = (char)tolower((unsigned char)*c);
+                const char *bend = strcasestr_local(tag_end + 1, "</button>");
+                char lab[256] = "";
+                if (bend && bend > tag_end + 1) {
+                    const char *tp = tag_end + 1;
+                    size_t tw = 0;
+                    while (tp < bend && tw < sizeof(lab) - 1) {
+                        if (*tp == '<') { const char *g = strchr(tp, '>'); tp = g ? g + 1 : tp + 1; continue; }
+                        lab[tw++] = *tp++;
+                    }
+                    lab[tw] = 0;
+                    html_decode_entities(lab);
+                    collapse_ws(lab);
+                }
+                if (in_form && strcmp(type, "button") != 0) {
+                    strip_pipes(lab);
+                    fprintf(out, "BUTTON|%s|%s|%s\n", form_action, form_method, lab[0] ? lab : "Submit");
+                } else if (lab[0]) {
+                    /* out-of-form button label reads as plain text */
+                    size_t L = strlen(lab);
+                    if (linelen + L + 1 < sizeof(line)) {
+                        if (linelen > 0) line[linelen++] = ' ';
+                        memcpy(line + linelen, lab, L + 1);
+                        linelen += L;
+                    }
+                }
+                p = bend ? bend + 9 : tag_end + 1;
+                continue;
+            }
+            if (strncasecmp(p, "<textarea", 9) == 0 && !isalnum((unsigned char)p[9])) {
+                FLUSH_LINE();
+                const char *tag_end = strchr(p, '>');
+                if (!tag_end) { p++; continue; }
+                char name[256] = "";
+                tag_attrval(p, tag_end, "name", name, sizeof(name));
+                strip_pipes(name);
+                const char *tend = strcasestr_local(tag_end + 1, "</textarea>");
+                char val[1024] = "";
+                if (tend && tend > tag_end + 1) {
+                    size_t n = (size_t)(tend - (tag_end + 1));
+                    if (n >= sizeof(val)) n = sizeof(val) - 1;
+                    memcpy(val, tag_end + 1, n); val[n] = 0;
+                    html_decode_entities(val);
+                    collapse_ws(val);
+                    strip_pipes(val);
+                }
+                /* v1: single-line rendering; multi-line edit is follow-up */
+                if (in_form && name[0]) fprintf(out, "INPUT|%s|textarea|%s|\n", name, val);
+                p = tend ? tend + 11 : tag_end + 1;
+                continue;
             }
             if (strncasecmp(p, "<img", 4) == 0) {
                 FLUSH_LINE();
@@ -1097,7 +1253,9 @@ static int merge_render_rows(void) {
             while (L > 0 && (row[L-1]=='\n' || row[L-1]=='\r')) row[--L] = 0;
             /* Static image rows survive only when the worker brought
              * none (see worker_has_images above); TEXT/LINK/SEL always
-             * defer to the worker render. */
+             * defer to the worker render. TITLE/INPUT/BUTTON/VIDEO fall
+             * through: the worker doesn't model titles, form controls
+             * (selects arrive as SEL), or video rows. */
             if (strncmp(row, "TEXT|", 5) == 0 ||
                 strncmp(row, "LINK|", 5) == 0 ||
                 strncmp(row, "SEL|", 4) == 0 ||
@@ -3199,6 +3357,15 @@ static void do_fetch(const char *url_in, int record_history) {
     publish_status("loading");
     write_chtpm_projection(); /* live X11 window must show loading before curl blocks */
 
+    /* Milestone 4 slice 1: fresh page, fresh form state. Field commits
+     * append name=value lines; without this reset a same-named field on
+     * the next page would inherit stale values. */
+    {
+        char ff[PATH_BUF];
+        snprintf(ff, sizeof(ff), "%s/#.desktop/network_browser_fields.txt", g_house);
+        unlink(ff);
+    }
+
     /* REAL, NEW 2026-09-12 (V3-B probe, NETWORK-BROWSER-VIDEO-V3-DESIGN.md
      * §3): a bare video URL - youtu.be/..., /watch?v=, direct .mp4/.webm,
      * yt: shortcut - never yields a <video> tag in fetched HTML (YouTube's
@@ -4230,6 +4397,40 @@ static void write_ui_projection(void) {
                     shell_escape_squote(rest, url_sq, sizeof(url_sq));
                     UI_PUT("c_%d_kind=link\nc_%d_is_link=1\nc_%d_text=%s\n", rc, rc, rc, lab_s);
                     UI_PUT("c_%d_action='%s/ops/nb_write_go.sh' 'go' '%s'\n", rc, g_package_dir, url_sq);
+                } else if (strcmp(kind, "INPUT") == 0) {
+                    /* INPUT|name|type|value|placeholder -> editable cli_io.
+                     * Committing the field appends name=value to the fields
+                     * file (see nb_write_field.sh); submit reads it back. */
+                    char *f[4] = {"", "", "", ""};
+                    f[0] = rest;
+                    for (int fi = 0; fi < 3; fi++) {
+                        char *b = strchr(f[fi], '|');
+                        if (!b) break;
+                        *b = 0; f[fi + 1] = b + 1;
+                    }
+                    char nm[256], vv[1024], ph[256], lab_s[700];
+                    uisan(f[0], nm, sizeof(nm));
+                    uisan(f[2], vv, sizeof(vv));
+                    uisan(f[3], ph, sizeof(ph));
+                    uisan(ph[0] ? ph : nm, lab_s, sizeof(lab_s));
+                    if (!nm[0]) continue;
+                    char nm_sq[PATH_BUF];
+                    shell_escape_squote(f[0], nm_sq, sizeof(nm_sq));
+                    UI_PUT("c_%d_kind=input\nc_%d_is_input=1\nc_%d_text=%s\n", rc, rc, rc, lab_s);
+                    UI_PUT("c_%d_content=%s\n", rc, vv);
+                    UI_PUT("c_%d_action='%s/ops/nb_write_field.sh' 'field' '%s'\n", rc, g_package_dir, nm_sq);
+                } else if (strcmp(kind, "BUTTON") == 0) {
+                    /* BUTTON|action|method|label -> submit item. */
+                    char *b2 = strchr(rest, '|');
+                    char *b3 = b2 ? strchr(b2 + 1, '|') : NULL;
+                    if (!b2 || !b3) continue;
+                    *b2 = 0; *b3 = 0;
+                    char act_sq[PATH_BUF * 2], meth_sq[64], lab_s[700];
+                    shell_escape_squote(rest, act_sq, sizeof(act_sq));
+                    shell_escape_squote(b2 + 1, meth_sq, sizeof(meth_sq));
+                    uisan(b3 + 1, lab_s, sizeof(lab_s));
+                    UI_PUT("c_%d_kind=button\nc_%d_is_button=1\nc_%d_text=%s\n", rc, rc, rc, lab_s[0] ? lab_s : "Submit");
+                    UI_PUT("c_%d_action='%s/ops/nb_write_submit.sh' 'submit' '%s' '%s'\n", rc, g_package_dir, act_sq, meth_sq);
                 } else if (strcmp(kind, "IMG") == 0) {
                     char *q1 = strchr(rest, '|');
                     char *img_path = NULL; char *img_alt = NULL;

@@ -1,0 +1,9 @@
+URL|FIXDIR/fixtures/form-get.html
+TITLE|Search form
+TITLE|Search form fixture
+TEXT|Find:
+INPUT|search|search||Search Wikipedia
+BUTTON|https://en.wikipedia.org/w/index.php|get|Go
+TEXT|Post box:
+INPUT|q|text||
+BUTTON|https://example.com/post|post|Send it
