@@ -56,8 +56,6 @@ Feasibility: yes. Teleport, desk switch, the mode flag and the ledger all exist;
 
 Consequences for the build list (section 4): add (7) a per-game **menu setup .pdl** (header cells: id, label, which modes show it, what it opens, optional author-defined cells) read by both taskbars; (8) the **edit marker** on authored items and its check in play-test.
 
-**Still open**
+**Round 3 (owner, 2026-10-07):** refused-teleport feedback **depends on the event programming of the teleport** (engine refuses and logs; the event decides what the player sees). The marker name/location and the menu-cell action format "don't exist but can be inferred": inferred and written up in **`GAME-SETUP-PDL-DESIGN.md`** (`game.pdl`: `CELL`/`ROW`/`MAP`/`EDIT`/`GAME` rows; actions `livedesk:<verb>` / `sh <path>` / `event:<id>`).
 
-1. Does a refused teleport show a message to the player, or is the option just not offered? (Not answered yet.)
-2. The edit marker: its name, and where it lives (per item in its `meta.pdl`, or one list in the game's setup `.pdl`).
-3. The menu setup `.pdl`: one file per game, and how a game-added cell names the action it runs (an event, a shell op?).
+**Still open**: only the small questions at the end of `GAME-SETUP-PDL-DESIGN.md` (file name/place, hiding vs renaming built-in headers, combining `where=` and `modes=`).
