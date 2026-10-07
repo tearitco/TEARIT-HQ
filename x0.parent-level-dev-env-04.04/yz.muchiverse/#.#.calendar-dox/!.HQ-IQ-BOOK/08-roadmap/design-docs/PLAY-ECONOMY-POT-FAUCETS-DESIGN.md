@@ -45,3 +45,11 @@ Single writer per ledger; balances derived by replay; every mint/sink a row with
 3. Pot default off; entry stake sizes; rake percent; FFA payout split?
 4. Ads: the closed-loop (advertiser-funded) idea acceptable, or did you mean real outside ads?
 5. Should play-chain mining coins convert to cones one day, or never?
+
+## 8. Owner decisions (2026-10-07, later the same day)
+- **Chain escrow and a faucet: build them.** Spec `PAL-CHAIN-MULTICHAIN-ESCROW-FAUCET-DESIGN.md`; build in the alpha branch (report appended to that spec when done).
+- **Three kinds of chain:** `cones` (the real one, no faucet), **test chains**, and **user-created chains** ("lab around and figure stuff out"); **each test chain has its own faucet** (so the section 4 "play chain" becomes just a test chain).
+- **Ads: fake for now.** A placeholder ad screen that records `AD_VIEW` rows and pays from a test budget; the advertiser-funded loop stays the later design.
+- **Mining: real, with a daily cap** (per wallet per day, in the chain's `chain.pdl`; the cones chain gets no cap until the owner picks a number).
+- **Quests pay in three flavors:** (1) **house-sponsored tutorial rewards** (the house funds a reward for finishing a tutorial step); (2) **in-game quests** (issued by a game, e.g. a DSR store or castle, paid from its treasury); (3) **user quests** (a user posts a quest and a reward). **User and in-game quests use the new escrow:** the poster's reward is **locked** when the quest is posted, **paid out** when the deterministic check (`verify.sh` via `quest.score`) passes, **refunded** if the quest is cancelled or expires. So the escrow is not only for pots; it is the quest board's payment rail too. Needs a `reward` row in the task `.pdl` (`TASKS-AS-EVENT-DATA-DESIGN.md`) with fields `reward_amount`, `chain`, `sponsor` (house/game/user), `escrow_id`.
+- **Inflation control stays as designed** (caps, sinks, rake), per chain.
