@@ -9,4 +9,7 @@ Manager: claude. Status flow: open → claimed → active → review → done | 
 | [Q003](Q003-build-gate-include-list/QUEST.md) | build gate misses #included files (stale-binary bug) | student / worker | S | open | - | - |
 | [Q004](Q004-proc-shell-loop-audit/QUEST.md) | replace per-pid shell loops over /proc | student / worker | S–M | open | - | - |
 
-Next ids start at Q005. Copy `_TEMPLATE/` to add one. Design: `#.#.calendar-dox/!.HQ-IQ-BOOK/08-roadmap/design-docs/GRAVEYARD-GHOSTS-DESIGN.md`.
+| [Q005](Q005-phone-in-every-inventory/QUEST.md) | a phone (+ entity uid, number, wallet id) in every entity's inventory, new and retroactive | manager / outside-agent | M | open | - | owner OK before touching live entities |
+| [Q006](Q006-one-board-layout/QUEST.md) | one generic board layout for grave, roster, server, phone windows | manager / layout-capable agent | M | open | - | - |
+
+Next ids start at Q007. Copy `_TEMPLATE/` to add one. Design: `#.#.calendar-dox/!.HQ-IQ-BOOK/08-roadmap/design-docs/GRAVEYARD-GHOSTS-DESIGN.md`.

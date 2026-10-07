@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+PHONE        | number               | NNN-NNNN-NNNN
+PHONE        | owner_uid            | CHANGE-ME
+PHONE        | owner_label          | CHANGE-ME
+PHONE        | glyph                | 📱
+PHONE        | state                | idle
+PHONE        | created              | YYYY-MM-DD
+PHONE        | created_by           | server
+PHONE        | history_max_lines    | 2000
+PHONE        | history_max_bytes    | 262144
+PHONE        | rotate_keep          | 3
