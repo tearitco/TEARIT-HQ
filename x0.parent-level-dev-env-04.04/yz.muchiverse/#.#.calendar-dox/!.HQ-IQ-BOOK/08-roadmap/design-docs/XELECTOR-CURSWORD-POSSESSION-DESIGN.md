@@ -62,14 +62,34 @@ xelector (free cursor)  --9-->  cursword (possessor, default)  --later-->  desig
 8. **Play start**: on Player ON, reset the in-game state (vars, event progress; this is exactly what the **save slots** record, `SAVE-SLOTS-DESIGN.md`: a start is "load the initial state" and an audit trail row), put the possessor on the starting-position entity, then hand the player the screen that launched play (livedesk or pc-hq). Needs a definition of "in-game vars" (which files are reset and which are never touched: user desk data, wallets and histories must not be wiped by a game start).
 9. **Where the launch origin is remembered** (livedesk vs pc-hq): written when play is started, read by play start.
 
+**Answered, round 2 (owner, 2026-10-06)**
+
+- **Backspace** releases **one possession layer** (pop). Confirms the earlier "hide or backspace" as: cube hidden while possessed, Backspace steps back out one level.
+- **Debug** = the **normal build state** (not playing). The possess keys are a build-state tool. My reading of the flag: build state = `Player: OFF` in `#.desktop/khtpm_play_mode.state.txt` (`mode=off`). **Not confirmed**, because the owner's pc-hq showed `Player: ON` while building; do not gate on it until the owner says which value is the build state.
+- **`9` is not a release key any more; it CYCLES possession.** Precedent check (read in `bv_menu_input.c`, comment cites mutaclysm `dox/ctrl-legend.md`): the only precedent is "`9` = release / reverse-jump", so there is **no prebuilt cycling precedent**. The owner's rule replaces it: **possess cursword, then the hero, then nothing, and loop** ("it's fine to loop").
+- **Cursword is on every board.** While a hero is possessed, **cursword hides, inside that hero's inventory** (the hero's inventory holds cursword as an item/entity; location is state, same idea as the doc-entity in `TASKS-AS-EVENT-DATA-DESIGN.md`). Releasing the hero (Backspace) takes cursword back out onto the board.
+
+### The possession stack (consolidated rule)
+
+```
+layer 0  xelector      (nothing possessed; free cursor, cube drawn)
+layer 1  cursword      (xelector hidden; cursword on the board; hotbar = cursword)
+layer 2  hero          (cursword hidden inside the hero's inventory; hotbar = hero)
+```
+
+- `9`: 0 -> 1 -> 2 -> 0 -> ...  (a map with no designated hero skips layer 2: 0 -> 1 -> 0).
+- Backspace: pop one layer (2 -> 1 -> 0; at 0 nothing).
+- The **designated hero** (per db session, per game starting-position entity, see above) is what layer 2 enters. A game may **start** at layer 1 or 2 (starting-position entity says which).
+- State today is `possessed_id` + `last_possessed_id` in the xelector's `state.txt`; a stack of up to two layers needs one more key (e.g. `possess_layer` or a `possessed_stack` list). Today's code treats a single `possessed_id`; it must be reworked, not extended, because `9` no longer means release.
+- Cursword "inside the hero's inventory" needs the inventory write on entering layer 2 and the removal on exit, and the pc-hq hotbar holder resolution for `cursword` (build item 3).
+
 **Still open**
 
-1. Confirm the Backspace meaning above.
-2. Which flag means debug (non-play): `Player: OFF`, or something else? Not gated in code.
-3. Does `9` while possessed release (today's rule)?
-4. Does cursword get its own board cell, or is the starting-position entity its first cell?
-5. One starting position per map, or per game across maps?
-6. Which state counts as "in-game" and is reset on start (and which is protected, e.g. `xyzfs/users`).
+1. Is `mode=off` the build state (and is the owner's `Player: ON` simply the current setting while they test)?
+2. Does cursword get its own board cell, or is the starting-position entity its first cell? ("cursword is on every board": so it needs a cell wherever it is not in a hero.)
+3. One starting position per map, or per game across maps?
+4. Which state counts as "in-game" and is reset on play start (and which is protected, e.g. `xyzfs/users`)?
+5. Layer 2 when two heroes exist: the designated one only, or cycle through every possessable hero?
 
 ## 6. Related, queued (owner, 2026-10-06): more taskbar headers on the pc-hq top bar
 
