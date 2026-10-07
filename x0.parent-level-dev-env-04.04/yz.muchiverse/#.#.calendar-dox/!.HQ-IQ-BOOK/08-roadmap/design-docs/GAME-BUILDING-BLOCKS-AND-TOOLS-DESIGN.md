@@ -60,3 +60,20 @@ Each block gets, when it is worth it, one X11-HQ window in the existing three-pa
 2. Biome count and style for the first planet (earthlike ~8 biomes proposed)?
 3. Value noise (simple, cheap) or simplex (smoother, a bit more code) first?
 4. Should block ownership follow the lane split above?
+
+## 8. Plugins, events or ops? (owner question, 2026-10-07)
+The house has already ruled on this (khtpm standards, `PRISC-OPS-ARCHITECTURE.md`): **no `.so`/plugin loading, no linking to share behavior.** So a "plugin" here is an **op + event data**, never a loaded library:
+- **Behavior that changes per game = event pages + data rows** (what the game does, wired by `LINK`; swappable per page/planet/system). This is the default for nearly every block above.
+- **Heavy or stateful work = a compiled op** (one verb, self-contained, called from an event page via `exec`; stateful ones are separate ops reading ledgers by cursor). Built-in physics nodes, noise, chain, escrow are ops; an event page may override them.
+- **Pure shared math = a text-included `.c`** (noise, orbit, gravity formulas), never a header+link.
+- **"Plugin" for outside authors** = a folder carrying `NODE`/`BLOCK` rows + event pages + (optionally) its own op binary + a harness, dropped into a game. Registration is a row (the event command registry), not code loading.
+Rule of thumb: try data/events first; add an op only when speed or state demands it; add a shared include only when two or more ops need the same pure function.
+
+## 9. Recipes in Canvas-Craft (owner question, 2026-10-07)
+**Canvas-Craft is the house crafting bench** (`CANVAS-CRAFT-DESIGN.md`, 2026-09-06): a Satisfactory-style 3-panel UI over the **quark -> subatomic -> element -> compound -> bio recipe registry** (`elements]new=RECIPEZ+]z2.txt`, one recipe per line, parents by line index), with `canvascraft_items.pdl` (item prices/start stacks), a manager (`ops/canvascraft_manager.c`), a launcher (`open_canvas_craft.sh`) and a `user-pallet` category in `pallets.pdl`. I have only read its design header and file list, not the manager code, so I do not know how complete the built part is.
+**Yes: make it the one recipe source** for the blocks above, instead of mutaclysm's `recipes.txt`, the Grok crafting step and shop goods each having their own:
+- A **recipe block** = rows `RECIPE | id | out=<item>:<n> | in=<item>:<n>,... | tool=... | time=<ticks> | station=...` (`.pdl`), read by one `craft` command (the one in the mutaclysm and gathering designs).
+- **Layers on one tree:** the existing chemistry tree (atoms -> compounds -> bio) as the base layer; **survival recipes** (CDDA-style items, Mineclonia-style blocks) and **planet recipes** (refining, fuel for the rocket cost from the physics nodes) as added layers; **economy goods** (DSR commodities: food, water, clothes) are recipe outputs, so supply chains fall out of recipes.
+- **Canvas-Craft stays the viewer/editor** (the tool): browse a recipe, see inputs/outputs, edit recipe rows with audit rows and undo; the harness replays crafts.
+- **Physics tie:** `time`, `tool` and `station` can reference derived values (heat from the temperature node, pressure for boiling), so a recipe can behave differently on Mars.
+- **Next step:** read `canvascraft_manager.c` and the registry file, write the `RECIPE` row schema as a superset of the existing line format (with a converter, no loss), and add harness cases that replay the current registry through the new `craft` command.
