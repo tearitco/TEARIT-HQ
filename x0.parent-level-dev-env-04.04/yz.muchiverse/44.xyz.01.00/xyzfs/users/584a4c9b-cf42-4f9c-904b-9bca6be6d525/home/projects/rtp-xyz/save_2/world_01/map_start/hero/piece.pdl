@@ -1,0 +1,22 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | hero
+META         | version            | 1.0
+
+STATE        | name                 | hero
+STATE        | pos_x                | 4
+STATE        | pos_y                | 4
+STATE        | map_id               | map_start
+STATE        | possessable          | 1
+
+METHOD       | move                 | ops/+x/move_player.+x
+METHOD       | on_turn_end          | ops/+x/end_turn.+x
+METHOD       | pickup               | ops/+x/pickup.+x
+METHOD       | drop                 | ops/+x/drop.+x
+METHOD       | eat                  | ops/+x/eat.+x
+METHOD       | _craft               | ops/+x/craft.+x
+METHOD       | _examine             | ops/+x/examine.+x
+METHOD       | save                 | ops/+x/save_game.+x
+METHOD       | toggle_emoji         | ops/+x/toggle_emoji.+x
+
+RESPONSE     | default              | *waiting...*

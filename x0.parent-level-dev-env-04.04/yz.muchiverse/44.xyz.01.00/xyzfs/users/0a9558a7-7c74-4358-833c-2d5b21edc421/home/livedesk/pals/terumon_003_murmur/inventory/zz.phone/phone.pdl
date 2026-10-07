@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+PHONE        | number               | 791-8622-5175
+PHONE        | owner_uid            | f50b364b8c31c2e38f260b66b95ba6065477551356c95a752bf4f37360dbb0f3
+PHONE        | owner_label          | terumon_003_murmur
+PHONE        | glyph                | 📱
+PHONE        | state                | idle
+PHONE        | created              | migration
+PHONE        | created_by           | phone_ensure_op
+PHONE        | history_max_lines    | 2000
+PHONE        | history_max_bytes    | 262144
+PHONE        | rotate_keep          | 3

@@ -1,0 +1,4 @@
+# x|y|dest_map_id|dest_x|dest_y
+4|4|map_start|30|11
+36|13|map_gen_01|2|2
+28|7|building_01_gf|8|8

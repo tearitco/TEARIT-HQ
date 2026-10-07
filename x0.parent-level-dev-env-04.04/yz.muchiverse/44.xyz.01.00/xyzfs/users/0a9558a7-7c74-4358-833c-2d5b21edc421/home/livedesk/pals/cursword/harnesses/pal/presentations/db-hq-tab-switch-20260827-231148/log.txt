@@ -1,0 +1,20 @@
+[23:11:48] === step 0: zero stray db-hq processes before run ===
+[23:11:48] === step 1: launch real db-hq window via the real open_db_hq.sh ===
+[23:11:51] db-hq launched (render PID 794066, manager PID 794068)
+[23:11:52] === step 2: run the PAL harness via the real prisc+x VM ===
+[23:11:53] prisc+x rc=0
+[23:11:55] === step 3: verify the real PNG + verdict ===
+[23:11:55] PNG EXISTS: /tmp/db-hq-frame.png (362921 bytes)
+[23:11:55] PASS: real PNG produced and asserted genuine size: /tmp/db-hq-frame.png (362921 bytes)
+[23:11:55] copy saved: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/pal/presentations/db-hq-tab-switch-20260827-231148/final_proof_db_hq.png
+[23:11:55] current_tab sibling readback (should be current_tab=0):
+[23:11:55] PASS: sibling poll file shows current_tab=0 (Actors)
+[23:11:55] PASS: code-210 debug dump independently confirms Actors tab
+[23:11:55] PASS: PAL verdict: done=1 pass=1 (archive /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/pal/presentations/db-hq-tab-switch-20260827-231148)
+[23:11:55] === step 4: cleanup (explicit, then verified) ===
+[23:11:56] cleanup complete (trap re-entry is idempotent-guarded)
+[23:11:56] PASS: zero stray render/hq-manager processes after cleanup
+[23:11:56] PASS: restored git-clean: db_hq_history.txt (byte-exact)
+[23:11:56] PASS: restored git-clean: db_hq_common_events.state.txt (byte-exact)
+[23:11:56] PASS: restored git-clean: db_hq_action.txt (byte-exact)
+[23:11:56] Done. PNG to see: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/pal/presentations/db-hq-tab-switch-20260827-231148/final_proof_db_hq.png
