@@ -67,3 +67,7 @@ Written by claude. The owner said: "use common sense and taste to infer those an
 23. **Player-start path for one game end to end** (toy.pdl, spawn/install, play hook, beta relay check) per `ROADMAP-AND-STATE-OF-PLAY-2026-10-07.md`.
 24. **`eden-test` pre-design page** (owner: "we meant to use pre-design:eden-test"): copy of Eden via `desk_copy_op` for design, tests and delegated quests before the real Eden; not built (conductor doc section 13).
 25. **Build line for `json_parser`** in `build_entity_cli_ops.sh` (done 2026-10-07) so HORN can parse OpenRouter replies; HORN op error handling still open.
+26. **book:page harness** (`book_page_op`, creates `pre-design:eden-test`; "pre-design" is the BOOK s1): plan `EDEN-PLAYABLE-LOOP-AND-BOOK-PAGE-HARNESS-PLAN.md`; building in alpha.
+27. **Eden playable loop v1** (Start/Stop button, Asa, Ava, house, 2 chickens, plants, digging gold/silver, trading, talking via tomom, 100 save slots in a toolbar menu): building in alpha.
+28. **Music generation daemon** (seeded synth + sequencer for game background music; steal from `103.media-studio/103.daw`, `@.apps/media-daw(-hq)`, `@.apps/music-player-hq`): building in alpha.
+29. **Robot chat with OpenRouter on eden-test**; blocked by the free-tier daily limit and the HORN op hiding HTTP errors.
