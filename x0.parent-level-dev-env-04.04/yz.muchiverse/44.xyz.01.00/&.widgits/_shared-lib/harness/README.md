@@ -20,11 +20,22 @@ A harness is three small things:
 |---|---|---|---|
 | `pchq_playtest_action.pal` | `cases/pchq_playtest_action.pdl` | 8 | pc-hq `player` verbs `playtest` / `toggle` / `stop` on the real `pchq_board_action.sh` |
 | `transfer_map_access.pal` | `cases/transfer_map_access.pdl` | 17 | real `mr_transfer_desk.+x`: play-mode map access, refusal rc 3 + reason + ledger, build/missing-mode/no-MAP-rows unrestricted, play-test follows play |
+| `game_setup_parser.pal` | `cases/game_setup_parser.pdl` | 42 | the `game.pdl` parser (`khtpm_game_setup.c`) through `game_setup_query_op`: rows, maps, cells, edit marks, mode file, `gs_check_map_switch` + ledger |
+| `player_menu_playtest.pal` | `cases/player_menu_playtest.pdl` | 17 | taskbar Player menu play-test row, play-mode file transitions (via `player_menu_query_op`, white-box) |
+| `hotbar_minimize.pal` | `cases/hotbar_minimize.pdl` | 9 | a REAL `hotbar_manager` process: hide/show/toggle publish within 300 ms, two clicks 280 ms apart stay hidden |
+| `close_listed.pal` | `cases/close_listed.pdl` | 19 | `close_listed.sh` + `close_on_restart.pdl`: real sleeper processes, other-house/unlisted untouched, caller survives its own match, `--relaunch` |
+| `proc_ledger_add.pal` | `cases/proc_ledger_add.pdl` | 9 | `proc_ledger_add.sh` with the REAL reaper (`proc_reap_op`): registered pid reaped, PID-reuse guard, bad args |
+| `game_slots.pal` | `cases/game_slots.pdl` | 22 | `game_slot_op` save/load slots on a scratch entity tree (SUMTREE: save and load change no entity data) |
 
-A harness is only worth trusting if it can fail: a copy of `pchq_playtest_action.pdl` with one wrong expectation gave `VERDICT|FAIL|passed=7|failed=1` (2026-10-07).
+Run them all (from this folder, with a prisc binary): `for p in *.pal; do prisc+x $p; done`, then read every `results/*.verdict.txt`.
 
-## Not ported yet (still C / sh, candidates)
+**Extra ops** (all registered in `default_op.txt`, the house standard prisc reads from its cwd): `game_setup_query_op`, `player_menu_query_op`, `proc_reap_op`: thin front ends that let a case call code that is otherwise only reachable from C. Add one the same way when a new subject needs it.
 
-- `&.widgits/_shared-lib/tests/test_game_setup.c` (parser unit test; needs a small query op to call it from a case)
-- `_.monads/_.livedesk-taskbar/ops/test_playtest_menu.c` (white-box: includes the manager source)
-- `@.apps/hotbar-hq/ops/test_minimize.sh` (timing test against a running manager)
+**Lessons that are now guards in the op** (each one bit during the port): a `|` inside a field shifts the row, so use `\p` for a literal bar, an **empty expectation FAILs**, and a row with more fields than its verb takes FAILs; before the guards some ledger checks passed vacuously. A killed `SPAWN`ed child is reaped before `EXPECT_DEAD` (a zombie still answers `kill 0`). Generating a case file from a shell heredoc expands `$T`: use `<<'EOF'`.
+
+A harness is only worth trusting if it can fail: copies with one wrong expectation gave `VERDICT|FAIL` for `pchq_playtest_action` and `transfer_map_access`.
+
+## Not ported yet (still sh)
+
+- `@.apps/board-hq/verify.sh` (24 headless-renderer checks), `^.grave/quests/Q009-.../verify.sh` and `loop_test.sh` (phone ops and the router loop): heavier, need their own subjects wired in.
+- Others' harnesses (`^.hai-horn/halo_test_harness.sh`, `WSR_PAL-PREFERED/...`, Q003 `verify.sh`) are not mine and are untouched.

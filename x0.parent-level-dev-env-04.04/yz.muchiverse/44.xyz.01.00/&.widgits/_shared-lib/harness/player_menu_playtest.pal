@@ -1,0 +1,4 @@
+# player_menu_playtest.pal - pal harness for the taskbar Player menu play-test row (cases/player_menu_playtest.pdl). Read results/player_menu_playtest.txt.verdict.txt
+exec ./ops/+x/harness_case_op.+x cases/player_menu_playtest.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/player_menu_playtest.pdl
+halt

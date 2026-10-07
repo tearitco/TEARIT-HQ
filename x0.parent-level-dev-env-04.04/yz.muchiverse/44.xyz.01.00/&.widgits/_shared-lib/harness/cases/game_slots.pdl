@@ -1,0 +1,55 @@
+# game_slot_op (save-game / load-game slots) on a SCRATCH entity tree; never touches real user data. Replaces ops/game_slot_verify.sh.
+RESULTS | ../results/game_slots.txt
+CASE    | game-slots
+SCRATCH |
+COPY    | &.widgits/_shared-lib/ops/+x/game_slot_op.+x | bin/game_slot_op
+WRITE   | pals/ent_a/pal.pdl | alpha\n
+WRITE   | pals/ent_b/pal.pdl | beta\n
+WRITE   | pals/ent_a/inventory/stats.txt | hp=10\n
+SUMTREE | before | pals
+
+RUN | $T/bin/game_slot_op | $T/savegames | $T/pals | save | 3 | --now-ms | 1790000000000
+EXPECT_EXIT | 0 | save-rc-0
+EXPECT_OUT  | saved slot 3: 3 files | save-reports-files
+RUN | awk | END{print NR} | $T/savegames/slot_03/manifest.txt
+EXPECT_OUT_IS | 3 | manifest-has-3-lines
+EXPECT_HAS  | savegames/slot_03/meta.pdl | SLOT \p files \p 3 | meta-records-3-files
+EXPECT_HAS  | savegames/ledger.txt | 1790000000000\psave\p3\pfiles=3\pmanifest= | ledger-line-appended
+SUMTREE | afterSave | pals
+EXPECT_EQ | $before | $afterSave | save-changes-no-entity-data
+
+RUN | $T/bin/game_slot_op | $T/savegames | $T/pals | save | 3 | --now-ms | 1790000000001
+RUN | awk | END{print NR} | $T/savegames/ledger.txt
+EXPECT_OUT_IS | 2 | resave-appends-not-rewrites
+
+RUN | $T/bin/game_slot_op | $T/savegames | $T/pals | load | 3 | --now-ms | 1790000000002
+EXPECT_OUT | same=3 changed=0 missing=0 new=0 | load-identical-tree-all-same
+
+# change one file, delete one, add one, then load: 1 same, 1 changed, 1 missing, 1 new
+WRITE | pals/ent_a/inventory/stats.txt | hp=9\n
+RUN   | rm | -f | $T/pals/ent_b/pal.pdl
+WRITE | pals/ent_b/created.txt | new\n
+SUMTREE | afterChange | pals
+RUN | $T/bin/game_slot_op | $T/savegames | $T/pals | load | 3 | --now-ms | 1790000000003
+EXPECT_OUT | same=1 changed=1 missing=1 new=1 | load-counts-changed-missing-new
+EXPECT_HAS | savegames/last_load.txt | changed\pent_a/inventory/stats.txt | last-load-lists-changed
+EXPECT_HAS | savegames/last_load.txt | missing\pent_b/pal.pdl | last-load-lists-missing
+EXPECT_HAS | savegames/last_load.txt | new\pent_b/created.txt | last-load-lists-new
+SUMTREE | afterLoad | pals
+EXPECT_EQ | $afterChange | $afterLoad | load-restores-nothing
+EXPECT_FILE | savegames/loaded_slot.txt | 3\n | loaded-slot-recorded
+EXPECT_HAS | savegames/ledger.txt | \pload\p3\psame=1\pchanged=1\pmissing=1\pnew=1 | load-ledgered
+
+RUN | $T/bin/game_slot_op | $T/savegames | $T/pals | load | 7
+EXPECT_EXIT | 1 | load-empty-slot-rc-1
+EXPECT_OUT  | slot 7 is empty | load-empty-slot-says-so
+RUN | $T/bin/game_slot_op | $T/savegames | $T/pals | save | 17
+EXPECT_EXIT | 2 | slot-17-rejected
+RUN | $T/bin/game_slot_op | $T/savegames | $T/pals | save | 0
+EXPECT_EXIT | 2 | slot-0-rejected
+RUN | $T/bin/game_slot_op | $T/savegames | $T/pals | wipe | 1
+EXPECT_EXIT | 2 | unknown-verb-rejected
+RUN | $T/bin/game_slot_op | $T/savegames | $T/nope | save | 1
+EXPECT_EXIT | 1 | missing-pals-dir-rc-1
+EXPECT_NOFILE | savegames/slot_01 | missing-pals-dir-writes-nothing
+CLEAN |

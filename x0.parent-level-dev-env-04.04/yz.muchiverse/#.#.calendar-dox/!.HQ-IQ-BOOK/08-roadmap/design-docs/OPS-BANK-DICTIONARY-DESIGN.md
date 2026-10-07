@@ -44,6 +44,14 @@ The dictionary is **also a wiki**. Rule: **the bank data is the only source of t
 - **Human edits** go to the *source* (a description or a weight in the bank, via the validated promotion loop), never to the HTML; the page can carry a "propose a change" line that names the file to edit.
 - Build order (extends section 3): step 3b after the query op, because the pages are just the query results rendered.
 
+## 3c. Pal scripts are in the dictionary too (owner, 2026-10-07: "the pal scripts can be dictionaried as well; reuse standards and tricks")
+
+A `.pal` is a spoke like an op: it points at masters (what it orchestrates: `game-loop`, `harness`, `render-tick`, `ledger-poll`) and has **edges to the ops it `exec`s** (the dictionary can answer "which pals use `ledger_append`?" and "which ops does `halo_chat.pal` call?"). Reuse notes from what the harness work turned up:
+
+- **Reuse the existing standards instead of inventing registries**: `default_op.txt` (`name type handler {description}`, read by prisc from its cwd) is already a per-project op table, so the dictionary generator should **ingest the 45 existing files first** (name, handler path, description) and only then scan sources; the harness folder's own `default_op.txt` is the first fully-filled example. Likewise `#.ref/menu/event_commands.registry.pdl` is the event-side table to ingest.
+- **Reuse tricks**: a pal is `exec ./ops/+x/<op>` lines (so `exec` targets are parseable edges, relative to the pal's folder, as prisc resolves them); ops take a single argument (prisc `exec` passes one literal + one register), so a "front end op" (like `game_setup_query_op`) is the house trick for exposing code to a pal; results go into append-only ledgers, never exit codes (prisc ignores them): the dictionary's own scan results should follow that convention.
+- **Harness pals** (`harness/*.pal`) are the first spokes to seed: small, regular, and each already names the subject it covers.
+
 ## 4. Before building (house rule: read first)
 
 `feedback-check-docs-before-building-ai-track`: read `ROBOT-CHAT-BLUEPRINT.md` and the latest `2do.md` before touching Concept Bank code. This doc stays inside the existing bank format; it adds no new mechanism. Do **not** write into the real `concept-bank/data` until the owner approves the master list (a scratch bank folder first).

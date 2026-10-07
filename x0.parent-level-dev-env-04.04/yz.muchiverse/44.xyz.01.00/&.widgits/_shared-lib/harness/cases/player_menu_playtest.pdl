@@ -1,0 +1,48 @@
+# the taskbar Player menu's play-test row and the play-mode file transitions, on a SCRATCH house, through player_menu_query_op (white-box: it includes the manager source).
+# Replaces ops/test_playtest_menu.c. Not a click test: the click handler needs a live taskbar state.
+RESULTS | ../results/player_menu_playtest.txt
+CASE    | player-menu
+SCRATCH |
+COPY    | &.widgits/_shared-lib/harness/ops/+x/player_menu_query_op.+x | bin/pmq
+MKDIR   | #.desktop
+
+RUN | $T/bin/pmq | $T | cmd | livedesk:play-toggle
+EXPECT_OUT_IS | 1.play: OFF | no-file-play-off
+RUN | $T/bin/pmq | $T | cmd | livedesk:playtest-toggle
+EXPECT_OUT_IS | play-test: OFF | no-file-playtest-off
+RUN | $T/bin/pmq | $T | row | 0
+EXPECT_OUT_IS | 1.play: OFF\plivedesk:play-toggle | play-row-first
+RUN | $T/bin/pmq | $T | row | 1
+EXPECT_OUT_IS | play-test: OFF\plivedesk:playtest-toggle | playtest-row-right-after-play
+RUN | $T/bin/pmq | $T | cmd | livedesk:play-stop
+EXPECT_OUT_IS | stop | stop-row-still-there
+RUN | $T/bin/pmq | $T | cmd | livedesk:reset-entities
+EXPECT_OUT_IS | reset | reset-row-still-there
+RUN | $T/bin/pmq | $T | cmd | livedesk:synch-from-pchq
+EXPECT_OUT_IS | Synch | synch-row-still-there
+
+RUN | $T/bin/pmq | $T | set-playtest | 1
+EXPECT_FILE | #.desktop/khtpm_play_mode.state.txt | mode=on\nplaytest=1\n | playtest-on-writes-two-lines
+RUN | $T/bin/pmq | $T | load-play
+EXPECT_OUT_IS | 1 | older-reader-first-line-sees-on
+RUN | $T/bin/pmq | $T | cmd | livedesk:play-toggle
+EXPECT_OUT_IS | 1.play: ON | menu-play-on
+RUN | $T/bin/pmq | $T | cmd | livedesk:playtest-toggle
+EXPECT_OUT_IS | play-test: ON | menu-playtest-on
+
+RUN | $T/bin/pmq | $T | set-playtest | 0
+EXPECT_FILE | #.desktop/khtpm_play_mode.state.txt | mode=on\n | playtest-off-is-plain-play
+RUN | $T/bin/pmq | $T | load-playtest
+EXPECT_OUT_IS | 0 | plain-play-is-not-playtest
+
+RUN | $T/bin/pmq | $T | set-playtest | 1
+RUN | $T/bin/pmq | $T | set-play | 0
+EXPECT_FILE | #.desktop/khtpm_play_mode.state.txt | mode=off\n | play-toggle-or-stop-clears-playtest
+RUN | $T/bin/pmq | $T | load-playtest
+EXPECT_OUT_IS | 0 | playtest-gone-after-stop
+RUN | $T/bin/pmq | $T | load-play
+EXPECT_OUT_IS | 0 | play-off-after-stop
+RUN | $T/bin/pmq | $T | set-play | 1
+RUN | $T/bin/pmq | $T | load-playtest
+EXPECT_OUT_IS | 0 | plain-play-does-not-set-playtest
+CLEAN |

@@ -1,0 +1,9 @@
+
+# Custom operations for the harness pals (house standard: prisc reads default_op.txt from its cwd; format `name type handler {description}`).
+# Run a pal from THIS folder so this file is found: /path/to/prisc+x <name>.pal
+
+halt void builtin_halt {stop execution}
+harness_case_op void ops/+x/harness_case_op.+x {run one .pdl case file on a scratch tree, append PASS/FAIL rows to the results ledger}
+harness_verdict_op void ops/+x/harness_verdict_op.+x {turn the last run in the results ledger into a verdict file}
+game_setup_query_op void ops/+x/game_setup_query_op.+x {command-line front end to khtpm_game_setup.c (game.pdl parser, map/cell/edit/mode checks)}
+player_menu_query_op void ops/+x/player_menu_query_op.+x {command-line front end to the taskbar Player menu and play-mode file helpers (white-box)}

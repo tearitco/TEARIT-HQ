@@ -23,9 +23,9 @@ WRITE       | xyzfs/users/u1/home/livedesk/sessions/s1/game.pdl | MAP | town | a
 RUN | $T/bin/mr_transfer_desk | $T | s1 | secret
 EXPECT_EXIT | 3 | play-unlisted-refused-rc3
 EXPECT_OUT  | refused: map 'secret' is not available | play-unlisted-reason-line
-EXPECT_HAS  | xyzfs/users/u1/home/livedesk/sessions/s1/session.pdl | active_desk | a | refused-leaves-player-on-a
+EXPECT_HAS  | xyzfs/users/u1/home/livedesk/sessions/s1/session.pdl | active_desk \p a | refused-leaves-player-on-a
 EXPECT_LACKS| xyzfs/users/u1/home/livedesk/sessions/s1/session.pdl | secret | refused-did-not-switch
-EXPECT_HAS  | #.desktop/game_access_ledger.txt | |refused-map|play|secret| | refusal-ledgered
+EXPECT_HAS  | #.desktop/game_access_ledger.txt | \prefused-map\pplay\psecret\p | refusal-ledgered
 RUN | $T/bin/mr_transfer_desk | $T | s1 | town
 EXPECT_EXIT | 0 | play-listed-rc0
 EXPECT_HAS  | xyzfs/users/u1/home/livedesk/sessions/s1/session.pdl | town | play-listed-switched

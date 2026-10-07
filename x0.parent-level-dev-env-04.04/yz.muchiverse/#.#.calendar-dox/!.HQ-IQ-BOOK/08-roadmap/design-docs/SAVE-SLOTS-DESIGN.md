@@ -13,7 +13,7 @@ RPG Maker (time- and event-dependent) and **re-audited**. Needed before shipping
   - **load N**: compares the current tree with the slot's manifest (same / changed / missing / new), writes `last_load.txt` (first 200 differences), `loaded_slot.txt`, and a ledger line.
     **It restores nothing.** The result line is in `savegames/last_result.txt`.
 - Where: `xyzfs/users/<uuid>/home/livedesk/savegames/` — per user, so it lives in the user's data branch (`user/<name>`), never in code.
-- Proof: `sh &.widgits/_shared-lib/ops/build_phone_ensure_op.sh && bash &.widgits/_shared-lib/ops/game_slot_verify.sh` (13 checks on a scratch tree: counts, ledger append-only, entity tree
+- Proof: `sh &.widgits/_shared-lib/ops/build_phone_ensure_op.sh && the pal harness harness/game_slots.pal (run from &.widgits/_shared-lib/harness, README there)` (13 checks on a scratch tree: counts, ledger append-only, entity tree
   byte-identical after save and after load, empty slot fails cleanly, bad slot/verb rejected). The menu code was driven through the real `ktb_hq_open` / `ktb_hq_activate` in a scratch harness
   (save-game opens 17 rows, Cancel (back) returns to the player cell, a slot press closes the menu and runs the op, load reports the comparison).
 - Not yet seen on the real screen: the running taskbar still has the old binary; the new one is built and takes effect at the next taskbar start.

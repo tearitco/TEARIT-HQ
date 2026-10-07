@@ -1,6 +1,6 @@
 #!/bin/sh
 # build_phone_ensure_op.sh - builds the phone ops into +x/: phone_ensure_op (identity + phones, khtpm_phone.c), phone_send_op (the phone.send event),
-# server_route_op (the server.route event), game_slot_op (save-game/load-game slots, verify: game_slot_verify.sh). Checks:  ./+x/phone_ensure_op.+x --selftest   and   bash ../../../^.grave/quests/Q009-first-events-phone-send-and-route/verify.sh
+# server_route_op (the server.route event), game_slot_op (save-game/load-game slots, verify: the pal harness harness/game_slots.pal (run from &.widgits/_shared-lib/harness, README there)). Checks:  ./+x/phone_ensure_op.+x --selftest   and   bash ../../../^.grave/quests/Q009-first-events-phone-send-and-route/verify.sh
 set -e
 cd "$(dirname "$0")"
 mkdir -p +x

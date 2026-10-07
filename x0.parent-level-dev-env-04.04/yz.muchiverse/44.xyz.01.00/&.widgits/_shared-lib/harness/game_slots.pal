@@ -1,0 +1,4 @@
+# game_slots.pal - pal harness (cases/game_slots.pdl). Read results/game_slots.txt.verdict.txt
+exec ./ops/+x/harness_case_op.+x cases/game_slots.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/game_slots.pdl
+halt
