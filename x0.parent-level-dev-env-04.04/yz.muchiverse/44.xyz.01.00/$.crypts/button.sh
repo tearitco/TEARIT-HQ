@@ -131,7 +131,12 @@ case "$ACTION" in
         # argument limits it to scripts whose path contains that text, e.g.
         #   sh button.sh build board-viewer
         shift
+        # fresh clone: xyzfs/users is not tracked (Q007), so give the current user their starter files first (copy-if-missing, never overwrites)
+        [ -f "$SCRIPT_DIR/seed-user.sh" ] && bash "$SCRIPT_DIR/seed-user.sh" -q || true
         DISPLAY="${DISPLAY:-:0}" nice -n 15 bash "$SCRIPT_DIR/compile-runner.sh" "$@"
+        ;;
+    seed-user)
+        bash "$SCRIPT_DIR/seed-user.sh"
         ;;
     reset)
         sh "$SCRIPT_DIR/livedesk-icon-refresh.sh" </dev/null >/dev/null 2>&1 &   # icon follows the current theme colors
