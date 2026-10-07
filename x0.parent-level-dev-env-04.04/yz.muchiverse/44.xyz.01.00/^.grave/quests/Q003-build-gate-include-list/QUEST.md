@@ -35,7 +35,7 @@ real input file explicitly".
 ## Scorer (deterministic, no judgement needed)
 
 `bash verify.sh [core|manager|all]` reads the real `#include` graph and the real gate lists and prints `MISSING|...` lines and a `VERDICT|PASS|FAIL|...` line (exit 0/1).
-`bash verify.sh --selftest` proves the scorer itself (complete list passes, list missing one file fails). **Baseline 2026-10-06 (FAIL):** core missing 7
+`bash verify.sh --selftest` proves the scorer itself (complete list passes, list missing one file fails). **Baseline 2026-10-06 (FAIL; the manager gap was fixed the same day by Q005's hook commit, which added `khtpm_taskbar_manager.h` + `khtpm_phone.c` to `MGR_SRCS`, so only the core 7 remain):** core missing 7
 (`house_wait.h`, `kh_boot_mark.h`, `kh_proc_registry.h`, `khtpm_css_parser.h`, `khtpm_nav_echo.c`, `stb_image.h`, `stb_image_write.h`), manager missing 1
 (`ops/khtpm_taskbar_manager.h`, a gap not in the original list). Ops copies of shared-lib files are scored as the shared original. Done = `verify.sh all` prints PASS twice.
 

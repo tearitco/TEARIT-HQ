@@ -65,9 +65,9 @@ Everything in `^.grave/README.md`. Entity data is live: any apply on the real ho
 
 ## Still to do (not started)
 
-- [ ] Hook `ph_ensure()` into `livedesk_spawn_desk()` / `livedesk_ensure_cursword()` and measure the manager start (needs a rebuild + restart: owner OK).
+- [x] Hook written 2026-10-06: `livedesk_phone_ensure()` in `khtpm_taskbar_manager.c`, called per desk entity in `livedesk_spawn_desk()` (after the pal exists, before the already-live skip, so running entities get one too) and in `livedesk_ensure_cursword()`; Linux only. Manager compiles clean (exit 0, 0 phone warnings); `khtpm_phone.c` added to `MGR_SRCS`. NOT yet run live: the binary rebuilds on the owner's next hash-gated build/reset, and the first start then creates all 55 phones. Still to measure: manager start time before/after (`boot_timeline.txt`).
 - [ ] Phone sprite: `glyph.txt` is written but a spawned/placed phone needs the usual `sprite.csv`/`atlas.png` generation for the HUD to draw the 📱.
-- [ ] Exclude `entity_uid.txt` and `inventory/zz.phone/` from `livedesk_hash_dir()` (content-hash drift).
+- [x] `livedesk_hash_dir()` now excludes `entity_uid.txt` and `*/inventory/zz.phone/*` (same commit).
 - [ ] Live apply on the real house (owner OK; dry run first, as done).
 
 ## Result

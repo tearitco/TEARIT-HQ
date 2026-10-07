@@ -42,6 +42,25 @@
 #include <sys/stat.h>
 #endif
 
+#ifndef _WIN32
+/* Q005 (HAI-ROBOTS-PHONES-SERVER-DESIGN.md 3b): every entity gets a phone item at <entity>/inventory/zz.phone and an immutable entity_uid.txt.
+ * Text-included canonical helper, same pattern as the other _shared-lib .c files; listed in MGR_SRCS so editing it rebuilds this binary. */
+#include "khtpm_phone.c"
+static PhCtx s_phone_ctx;
+/* Idempotent. Steady state costs a handful of stat/read calls per entity (nothing is written when the phone and uid already exist). */
+static void livedesk_phone_ensure(const char *house_root, const char *entity_dir) {
+    if (!entity_dir || !entity_dir[0]) return;
+    s_phone_ctx.apply = 1;
+    s_phone_ctx.report = NULL;
+    s_phone_ctx.n_numbers = 0;   /* re-read the index each call: another process (phone_ensure_op) may have appended */
+    snprintf(s_phone_ctx.index_path, sizeof(s_phone_ctx.index_path), "%s/^.hai-server/phones.index", house_root);
+    ph_load_index(&s_phone_ctx);
+    ph_ensure(entity_dir, &s_phone_ctx, 0);
+}
+#else
+static void livedesk_phone_ensure(const char *house_root, const char *entity_dir) { (void)house_root; (void)entity_dir; }
+#endif
+
 /* Forward decl - ktb_init() (below) needs this before its own real
  * definition, further down this file (see that definition's own header
  * comment: cursword must always be running, checked/relaunched on every
@@ -2447,7 +2466,8 @@ static void livedesk_hash_dir(const char *dir, char *out, size_t sz) {
     out[0] = '\0';
     char cmd[KTB_PATH_BUF * 2];
     snprintf(cmd, sizeof(cmd),
-             "(cd '%s' && find . -type f -print0 2>/dev/null | sort -z | "
+             "(cd '%s' && find . -type f ! -name entity_uid.txt ! -path \"*/inventory/zz.phone/*\" -print0 2>/dev/null | sort -z | "  /* identity + phone are not content: they would drift the pal hash */
+
              "xargs -0 sha256sum 2>/dev/null) 2>/dev/null | sha256sum", dir);
     FILE *p = popen(cmd, "r");
     if (!p) return;
@@ -2652,6 +2672,7 @@ static void livedesk_ensure_cursword(const char *house_root) {
     char pal[KTB_PATH_BUF];
     snprintf(pal, sizeof(pal), "%s/cursword", pr);
     if (access(pal, F_OK) != 0) return; /* no cursword pal provisioned for this user - nothing to ensure */
+    livedesk_phone_ensure(house_root, pal);      /* Q005: cursword is skipped by the desk loop, so it gets its phone here */
 
     int pids[KTB_LIVEDESK_MAX_OPEN], idx[KTB_LIVEDESK_MAX_OPEN];
     char ents[KTB_LIVEDESK_MAX_OPEN][128], paths[KTB_LIVEDESK_MAX_OPEN][KTB_PATH_BUF];
@@ -2906,6 +2927,7 @@ static void livedesk_spawn_desk(const char *house_root, const char *sroot, const
             if (access(full, F_OK) != 0) continue;   /* not owned - skip */
             livedesk_ensure_pal(pr, base, full);      /* migrate into pals */
         }
+        livedesk_phone_ensure(house_root, pal);       /* Q005: a phone + uid for every desk entity (idempotent) */
         {
             int already_live = 0;
 #ifndef _WIN32
