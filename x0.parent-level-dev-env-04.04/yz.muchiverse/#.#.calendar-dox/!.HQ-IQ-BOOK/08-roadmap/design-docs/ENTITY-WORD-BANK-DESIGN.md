@@ -97,3 +97,26 @@ Design, in three pieces, matching how the chain already works:
 4. **Later:** tomom proposes bank maintenance itself, once review history exists (NIGHT 30). Dormant until then.
 
 **Not built:** nothing in this addendum. The scratch run touched nothing outside the session scratchpad.
+
+## 11. Addendum (owner, 2026-10-07): same behavior, different variables
+
+Owner: entities have "functionally similar behavior (stored in the hidden-layer bank) but take different variables (stored in the user)". So the split in section 10 is more precise than "meanings vs numbers":
+- **Shared bank set (hidden layer) = the behavior**: what `action:follow` *is*: its aliases, its keywords, and its **signature** (named parameters with type and default). One definition for every entity that behaves that way.
+- **Entity (user side) = the variables**: the values *this* entity binds to that behavior's parameters (who it follows, how close, how fast), plus its private scores and counts.
+
+Same idea NIGHT 15 already named for function crafting ("a function signature with named input slots, one input variable, one output variable") and that the event registry already has in practice: a registry `COMMAND` declares `PARAMS ...` and a `TEMPLATE` with `{placeholders}`; the behavior's signature **is** that parameter list, the entity's variables **fill** the placeholders. So resolving a phrase is deterministic:
+1. alias -> `CANON=action:<verb>` (entity spoke first, then shared set);
+2. the shared behavior row gives the registry command + parameter names/defaults;
+3. the entity's variable row fills the parameters (missing ones use the default; a typed value in the phrase may override, for that call only);
+4. the filled command is an ordinary event COMMAND, validated by deterministic code (nobody and no model decides).
+
+Proposed row shapes (new, not an existing format; names are a proposal):
+```
+shared set:  BEHAVIOR | canon=action:follow | command=<registry command> | PARAM target type=entity | PARAM distance type=int default=3 | PARAM speed type=float default=0.5
+entity:      VAR      | canon=action:follow | target=<entity_uid> | distance=5
+```
+Why it matters: two robots share one `follow` definition (change it once; both change) but follow different targets at different distances; a word-score still belongs to the entity (section 2), the variables are private data (section 10 rules), and the chain still sees only `entity_hash + canon + valence`.
+
+Checks this implies (each a harness case before building): an entity VAR naming a parameter the behavior does not declare is flagged, never silently used; a behavior signature change that drops a parameter flags every entity that bound it; defaults apply when a variable is absent; two entities with different variables resolve the same phrase to the same command with different arguments.
+
+Open: do variables live in the entity folder (recommended: with the rest of its private data) or on the phone? Is a per-call override allowed from typed text, or only entity-bound values?
