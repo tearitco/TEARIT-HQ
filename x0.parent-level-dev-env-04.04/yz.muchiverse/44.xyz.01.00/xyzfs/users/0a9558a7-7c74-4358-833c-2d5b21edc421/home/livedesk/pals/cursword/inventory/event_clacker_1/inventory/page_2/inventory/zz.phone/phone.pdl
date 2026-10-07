@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+PHONE        | number               | 648-1248-3024
+PHONE        | owner_uid            | 8345cb6fd0a3963f26fa46570e91c7039ee3e643c7ee314f29ce41d7db2355ff
+PHONE        | owner_label          | page_2
+PHONE        | glyph                | 📱
+PHONE        | state                | idle
+PHONE        | created              | migration
+PHONE        | created_by           | phone_ensure_op
+PHONE        | history_max_lines    | 2000
+PHONE        | history_max_bytes    | 262144
+PHONE        | rotate_keep          | 3

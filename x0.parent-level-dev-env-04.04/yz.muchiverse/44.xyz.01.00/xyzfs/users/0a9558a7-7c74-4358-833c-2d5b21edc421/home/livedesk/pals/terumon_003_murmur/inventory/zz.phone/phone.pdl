@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+PHONE        | number               | 671-1290-4938
+PHONE        | owner_uid            | f966334be82c9f2e0cd6a6b536e9d58077e8047cd426e3270ef76beed35487a7
+PHONE        | owner_label          | terumon_003_murmur
+PHONE        | glyph                | 📱
+PHONE        | state                | idle
+PHONE        | created              | migration
+PHONE        | created_by           | phone_ensure_op
+PHONE        | history_max_lines    | 2000
+PHONE        | history_max_bytes    | 262144
+PHONE        | rotate_keep          | 3

@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+PHONE        | number               | 203-8821-8622
+PHONE        | owner_uid            | 4fc4e8e5661eb3b3f5e27bcbb3ca14d91a715c8ef415114f1039bd60eda18452
+PHONE        | owner_label          | tax_robot
+PHONE        | glyph                | 📱
+PHONE        | state                | idle
+PHONE        | created              | migration
+PHONE        | created_by           | phone_ensure_op
+PHONE        | history_max_lines    | 2000
+PHONE        | history_max_bytes    | 262144
+PHONE        | rotate_keep          | 3

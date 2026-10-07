@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+PHONE        | number               | 562-3359-2393
+PHONE        | owner_uid            | fe0d5a953a034e17782dead98ad7ad526d4f13342cb5236887d6d0979202eccf
+PHONE        | owner_label          | page_1
+PHONE        | glyph                | 📱
+PHONE        | state                | idle
+PHONE        | created              | migration
+PHONE        | created_by           | phone_ensure_op
+PHONE        | history_max_lines    | 2000
+PHONE        | history_max_bytes    | 262144
+PHONE        | rotate_keep          | 3

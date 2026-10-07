@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+PHONE        | number               | 872-3351-1152
+PHONE        | owner_uid            | 9205fe8f91c269334ee2d6d4a97a9aed5bcf6cb2db4dc538242f6599063ca86b
+PHONE        | owner_label          | page_1
+PHONE        | glyph                | 📱
+PHONE        | state                | idle
+PHONE        | created              | migration
+PHONE        | created_by           | phone_ensure_op
+PHONE        | history_max_lines    | 2000
+PHONE        | history_max_bytes    | 262144
+PHONE        | rotate_keep          | 3

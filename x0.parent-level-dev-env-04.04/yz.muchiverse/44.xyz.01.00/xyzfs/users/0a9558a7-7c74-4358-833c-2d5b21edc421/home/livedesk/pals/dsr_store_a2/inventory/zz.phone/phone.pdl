@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+PHONE        | number               | 712-3188-5998
+PHONE        | owner_uid            | dd0be53288efea3b77932562756cffd56a20ca33cdf9731e302302be9478e963
+PHONE        | owner_label          | DSA2
+PHONE        | glyph                | 📱
+PHONE        | state                | idle
+PHONE        | created              | migration
+PHONE        | created_by           | phone_ensure_op
+PHONE        | history_max_lines    | 2000
+PHONE        | history_max_bytes    | 262144
+PHONE        | rotate_keep          | 3

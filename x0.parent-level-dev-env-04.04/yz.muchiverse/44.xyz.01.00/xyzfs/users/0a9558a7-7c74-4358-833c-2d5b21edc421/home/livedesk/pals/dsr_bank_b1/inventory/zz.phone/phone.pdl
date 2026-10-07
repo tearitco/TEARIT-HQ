@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+PHONE        | number               | 003-4145-1551
+PHONE        | owner_uid            | ef464b8d35bcc42b64af28a0a400eb91824a335652572319ec25de37940d6814
+PHONE        | owner_label          | DBB1
+PHONE        | glyph                | 📱
+PHONE        | state                | idle
+PHONE        | created              | migration
+PHONE        | created_by           | phone_ensure_op
+PHONE        | history_max_lines    | 2000
+PHONE        | history_max_bytes    | 262144
+PHONE        | rotate_keep          | 3

@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+PHONE        | number               | 009-5595-8393
+PHONE        | owner_uid            | 5555e4b8d901cd5bd56c1c0b9e85bda559ea19fb97af4f8d53913bd979821f18
+PHONE        | owner_label          | DSA3
+PHONE        | glyph                | 📱
+PHONE        | state                | idle
+PHONE        | created              | migration
+PHONE        | created_by           | phone_ensure_op
+PHONE        | history_max_lines    | 2000
+PHONE        | history_max_bytes    | 262144
+PHONE        | rotate_keep          | 3

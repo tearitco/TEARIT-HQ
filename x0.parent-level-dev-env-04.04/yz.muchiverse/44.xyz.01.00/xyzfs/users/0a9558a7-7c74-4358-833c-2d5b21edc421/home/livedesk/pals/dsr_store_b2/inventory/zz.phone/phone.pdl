@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+PHONE        | number               | 432-9323-9047
+PHONE        | owner_uid            | 9437693e8fd035fe4c55d398363435b21c24068812080ae8646f48bf34375fd4
+PHONE        | owner_label          | DSB2
+PHONE        | glyph                | 📱
+PHONE        | state                | idle
+PHONE        | created              | migration
+PHONE        | created_by           | phone_ensure_op
+PHONE        | history_max_lines    | 2000
+PHONE        | history_max_bytes    | 262144
+PHONE        | rotate_keep          | 3

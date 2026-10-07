@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+PHONE        | number               | 132-6771-4647
+PHONE        | owner_uid            | 83b62f5c8e0b5c9640e3837809da0e51240047286d844ebf04ef99841d11789c
+PHONE        | owner_label          | DCB0
+PHONE        | glyph                | 📱
+PHONE        | state                | idle
+PHONE        | created              | migration
+PHONE        | created_by           | phone_ensure_op
+PHONE        | history_max_lines    | 2000
+PHONE        | history_max_bytes    | 262144
+PHONE        | rotate_keep          | 3

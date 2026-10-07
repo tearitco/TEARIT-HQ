@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+PHONE        | number               | 289-4259-5444
+PHONE        | owner_uid            | 0318b9283c3acbbf22eebee08049b8ee584e6273d10312f26f936b200aba0485
+PHONE        | owner_label          | DSB3
+PHONE        | glyph                | 📱
+PHONE        | state                | idle
+PHONE        | created              | migration
+PHONE        | created_by           | phone_ensure_op
+PHONE        | history_max_lines    | 2000
+PHONE        | history_max_bytes    | 262144
+PHONE        | rotate_keep          | 3
