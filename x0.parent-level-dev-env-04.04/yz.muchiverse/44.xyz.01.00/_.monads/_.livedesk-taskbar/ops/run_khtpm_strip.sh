@@ -207,6 +207,9 @@ case "$ACTION" in
         (cd "$HOUSE" && $SETSID env DISPLAY="${DISPLAY:-:0}" "$PARSER" "$HOUSE" "$HEADER_CHTPM" \
             >> "$KHTPM_LOG" 2>&1 < /dev/null &)
         sleep 2
+        # restart the HQ windows listed in $.crypts/close_on_restart.pdl too (the hotbar): `new` only restarts the strip, so the OLD hotbar stayed on screen and nothing relaunched it
+        # (owner report 2026-10-06). Only rows that were running are brought back. Proof: sh '$.crypts/test_close_listed.sh'
+        [ -f "$HOUSE/\$.crypts/close_listed.sh" ] && sh "$HOUSE/\$.crypts/close_listed.sh" "$HOUSE" --relaunch </dev/null >/dev/null 2>&1
         pids="$(khtpm_pids)"
         if [ -n "$pids" ]; then
             echo "OK — khtpm running, PID(s): $(echo $pids | tr '\n' ' ')"

@@ -22,4 +22,19 @@ kill -0 "$D" 2>/dev/null && ck unlisted-process-untouched ok || ck unlisted-proc
 # the caller must survive even if its own command line matches: run the closer from a shell whose command line holds a listed substring
 sh -c 'sh "$0" "$1" >/dev/null 2>&1; echo alive' "$HERE/close_listed.sh" "$T/house/@.apps/hotbar-hq/hotbar-desk.xhtpm" | grep -q alive && ck caller-survives-own-match ok || ck caller-survives-own-match bad "caller killed"
 sh "$HERE/close_listed.sh" /nonexistent >/dev/null 2>&1; [ $? = 0 ] && ck bad-house-is-harmless ok || ck bad-house-is-harmless bad "nonzero exit"
+# --relaunch (the taskbar "$.restart"): a row that was running is relaunched, one that was not is left alone, a dry run relaunches nothing
+cat > "$T/list.pdl" <<EOL
+CLOSE | rl-running | $T/house/@.apps/relaunch-me/win.xhtpm | touch "$T/relaunched-running"
+CLOSE | rl-notrunning | $T/house/@.apps/not-running/win.xhtpm | touch "$T/relaunched-notrunning"
+CLOSE | rl-nocmd | $T/house/@.apps/no-command/win.xhtpm
+EOL
+E="$(sleeper "$T/house/@.apps/relaunch-me/win.xhtpm")"; F="$(sleeper "$T/house/@.apps/no-command/win.xhtpm")"; sleep 0.4
+CLOSE_LIST="$T/list.pdl" sh "$HERE/close_listed.sh" "$T/house" --dry-run --relaunch >/dev/null 2>&1; sleep 0.5
+[ ! -e "$T/relaunched-running" ] && kill -0 "$E" 2>/dev/null && ck dry-run-relaunches-and-kills-nothing ok || ck dry-run-relaunches-and-kills-nothing bad "dry run acted"
+CLOSE_LIST="$T/list.pdl" sh "$HERE/close_listed.sh" "$T/house" --relaunch >/dev/null 2>&1; sleep 2
+! kill -0 "$E" 2>/dev/null && ! kill -0 "$F" 2>/dev/null && ck relaunch-run-closes-the-windows ok || ck relaunch-run-closes-the-windows bad "windows still alive"
+[ -e "$T/relaunched-running" ] && ck running-row-is-relaunched ok || ck running-row-is-relaunched bad "no relaunch marker"
+[ ! -e "$T/relaunched-notrunning" ] && ck not-running-row-is-not-resurrected ok || ck not-running-row-is-not-resurrected bad "relaunched a window that was not running"
+rm -f "$T/relaunched-running"; CLOSE_LIST="$T/list.pdl" sh "$HERE/close_listed.sh" "$T/house" >/dev/null 2>&1
+[ ! -e "$T/relaunched-running" ] && ck no-relaunch-without-the-flag ok || ck no-relaunch-without-the-flag bad "relaunched without --relaunch"
 echo "VERDICT|$([ "$fail" = 0 ] && echo PASS || echo FAIL)"; exit "$fail"

@@ -1,10 +1,11 @@
 #!/bin/sh
-# close_listed.sh <house_root> [--dry-run] - close every process listed in close_on_restart.pdl (see that file for why). Called by button.sh on restart/run/reset/quit.
-# --dry-run prints what WOULD be closed and kills nothing. A process matches only if its command line holds the row's substring AND <house_root>.
+# close_listed.sh <house_root> [--dry-run] [--relaunch] - close every process listed in close_on_restart.pdl (see that file for why). Called by button.sh on restart/run/reset/quit.
+# --dry-run prints what WOULD be closed and kills nothing. --relaunch: after closing, run the row's optional 4th-field command (from the house root, detached) for every row that had a running process. A process matches only if its command line holds the row's substring AND <house_root>.
 # Safe against self-match: the process table is snapshotted to a file BEFORE the matcher runs, and this script's own pid and its parents are never signalled.
 # Prints one line per process: "close_listed: TERM <pid> (<name>)". Exit 0 always.
-HOUSE="${1:-}"; DRY=0; [ "${2:-}" = "--dry-run" ] && DRY=1
-[ -n "$HOUSE" ] && [ -d "$HOUSE" ] || { echo "usage: close_listed.sh <house_root> [--dry-run]" >&2; exit 0; }
+HOUSE="${1:-}"; DRY=0; RELAUNCH=0
+for a in "${2:-}" "${3:-}"; do case "$a" in --dry-run) DRY=1 ;; --relaunch) RELAUNCH=1 ;; esac; done
+[ -n "$HOUSE" ] && [ -d "$HOUSE" ] || { echo "usage: close_listed.sh <house_root> [--dry-run] [--relaunch]" >&2; exit 0; }
 HERE="$(cd "$(dirname "$0")" && pwd)"; LIST="${CLOSE_LIST:-$HERE/close_on_restart.pdl}"
 [ -f "$LIST" ] || exit 0
 SNAP="$(mktemp)"; HITS="$(mktemp)"; trap 'rm -f "$SNAP" "$HITS"' EXIT
@@ -28,5 +29,17 @@ if [ "$DRY" = 0 ] && [ -s "$HITS" ]; then
         case "$PROT" in *" $pid "*|*" $pid") continue ;; esac
         kill -0 "$pid" 2>/dev/null && { echo "close_listed: KILL $pid ($name)"; kill -KILL "$pid" 2>/dev/null; }
     done
+fi
+# relaunch the rows that were running (not in a dry run)
+if [ "$DRY" = 0 ] && [ "$RELAUNCH" = 1 ] && [ -s "$HITS" ]; then
+    sleep 0.5
+    while IFS= read -r line; do
+        case "$line" in CLOSE*) ;; *) continue ;; esac
+        NAME="$(echo "$line" | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/,"",$2); print $2}')"; CMD="$(echo "$line" | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/,"",$4); print $4}')"
+        [ -n "$CMD" ] || continue
+        awk -F'\t' -v n="$NAME" '$2 == n {f = 1} END {exit !f}' "$HITS" || continue
+        echo "close_listed: RELAUNCH ($NAME): $CMD"
+        (cd "$HOUSE" && setsid sh -c "$CMD" </dev/null >/dev/null 2>&1 &)
+    done < "$LIST"
 fi
 exit 0
