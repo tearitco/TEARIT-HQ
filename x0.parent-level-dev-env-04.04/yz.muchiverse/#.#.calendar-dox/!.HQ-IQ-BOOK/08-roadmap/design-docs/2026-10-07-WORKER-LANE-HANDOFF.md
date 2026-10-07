@@ -35,3 +35,13 @@ the lane has time: likely JS-timing/LOAD race in slice evaluation.
 `nb_js_worker.c`, `nb_host.h`, FETCH protocol, `tests/worker_*`,
 `network-browser-hq.xhtpm` contract (no segment rows added from our
 side). Manager handshake file shared as agreed.
+
+## 6. QuickJS refcount rule (read this before touching JSValues)
+
+Verified in this vendored tree (`set_value`, `add_fast_array_element`):
+**`JS_SetProperty*` CONSUMES the value — do NOT `JS_FreeValue` after a
+set.** `JS_GetProperty*` returns a new reference — MUST free. Getting
+this backwards is a premature-free UAF (ASan-caught live 2026-10-07:
+worker died on `addColorStop`). Our added canvas/WebGL code now follows
+consume semantics throughout; pre-existing `Set+Free` instances
+elsewhere in the file are latent use-after-frees for this lane to audit.
