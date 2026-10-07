@@ -256,6 +256,16 @@ case "$VERB" in
                 # board until Synch is clicked again.
                 sh "$PCHQ/ops/pc_synch_request.sh" taskbar
                 ;;
+            playtest)
+                # play-test (owner 2026-10-06): the game runs AND editing is allowed. The same file gets an optional SECOND line `playtest=1` next to `mode=on`;
+                # older readers only test the first line, so they see plain ON. From off or plain play -> play-test; from play-test -> plain play.
+                # (toggle/stop rewrite the file with `mode=...` only, which clears it.) Mirrors the taskbar's livedesk:playtest-toggle.
+                if grep -q 'playtest=1' "$PM" 2>/dev/null && grep -q '^mode=on' "$PM" 2>/dev/null; then
+                    printf 'mode=on\n' > "$PM"
+                else
+                    printf 'mode=on\nplaytest=1\n' > "$PM"
+                fi
+                ;;
             stop)
                 # Explicit force-off, distinct from toggle - "make sure
                 # it's definitely stopped" without needing to read the

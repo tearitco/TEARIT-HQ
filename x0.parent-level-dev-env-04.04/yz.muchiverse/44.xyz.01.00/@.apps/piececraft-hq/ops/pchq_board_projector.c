@@ -707,8 +707,14 @@ int main(int argc, char **argv) {
         char pm_mode[16] = "";
         read_kv(pm_path, "mode", pm_mode, sizeof(pm_mode));
         char player_label[32];
+        char playtest_label[24];
+        /* play-test = `mode=on` plus a second line `playtest=1` in the same file (PLAY-MODES-AND-MAP-ACCESS-DESIGN.md); label TEST, and the dropdown row's own label */
+        char pm_pt[16] = "";
+        read_kv(pm_path, "playtest", pm_pt, sizeof(pm_pt));
+        int is_playtest = strcmp(pm_mode, "on") == 0 && strcmp(pm_pt, "1") == 0;
         snprintf(player_label, sizeof(player_label), "Player: %s",
-                 strcmp(pm_mode, "on") == 0 ? "ON" : "OFF");
+                 is_playtest ? "TEST" : (strcmp(pm_mode, "on") == 0 ? "ON" : "OFF"));
+        snprintf(playtest_label, sizeof(playtest_label), "play-test: %s", is_playtest ? "ON" : "OFF");
         char book_label[80], page_label[80];
         char own_page[64];
         snprintf(own_page, sizeof(own_page), "%s",
@@ -752,12 +758,12 @@ int main(int argc, char **argv) {
         off += (size_t)snprintf(ui + off, UIBUF - off,
             "bv_session=%s\ncanvas_raw=%s\nno_session=%s\n"
             "bv_h1=%s\nbv_h2=%s\ninteract_class=%s\ninteract_armed=%d\n"
-            "interact_label=%s\nclock=%s\nplayer_label=%s\n"
+            "interact_label=%s\nclock=%s\nplayer_label=%s\nplaytest_label=%s\n"
             "book_label=%s\npage_label=%s\n"
             "menu_open=%s\nfile_menu_open=%s\ndesk_menu_open=%s\n",
             bv, raw, have ? "" : "1",
             h1, h2, interact ? "interact-active" : "", interact ? 1 : 0,
-            interact ? "ON" : "off", clock_s, player_label,
+            interact ? "ON" : "off", clock_s, player_label, playtest_label,
             book_label, page_label,
             menu_open,
             strcmp(menu_open, "file") == 0 ? "1" : "",

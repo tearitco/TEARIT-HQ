@@ -61,12 +61,32 @@ The engine **refuses and logs** (ledger row: mode, target, who asked), nothing m
 
 ## 8. Step 2 built (2026-10-07): the map access check
 
-- **Shared helpers** in `khtpm_game_setup.c`: `gs_current_mode(house)` (reads `#.desktop/khtpm_play_mode.state.txt`: `mode=on` -> `play`, `mode=playtest` -> `playtest` (reserved, nothing writes it yet), anything else/missing -> `build`) and `gs_check_map_switch(house, session_dir, target, reason, n)`.
+- **Shared helpers** in `khtpm_game_setup.c`: `gs_current_mode(house)` (reads `#.desktop/khtpm_play_mode.state.txt`: `mode=on` -> `play`, `mode=on` plus a `playtest=1` line -> `playtest`, anything else/missing -> `build`; see section 9) and `gs_check_map_switch(house, session_dir, target, reason, n)`.
   It refuses **only** in a play mode when `<session_dir>/game.pdl` lists at least one `MAP` and the target is not listed; every other case allows. A refusal appends one line to **`#.desktop/game_access_ledger.txt`**: `<epoch_ms>|refused-map|<mode>|<target>|<session dir>`.
 - **Event teleport**: `&.widgits/events-hq/ops/mr_transfer_desk.c` calls it **before it closes anything**, so a refused teleport leaves the player exactly where they were. Exit code **3** and one stdout line `refused: map '<x>' is not available in play`; the event can branch on that (section 4). Allowed: exit 0 as before.
 - **Menu switch**: `khtpm_taskbar_manager.c`, the `livedesk:switch-desk:<session>/<desk>` handler, skips `livedesk_switch_desk` when refused (the menu closes as usual). The delete-desk path that switches internally is not a player teleport and is unchanged. The manager's hash list in `build_khtpm_strip.sh` now includes `khtpm_game_setup.c`.
 - **Tests**: `tests/test_game_setup.c` 28/28 (adds mode reader, refusal, ledger append-only, no game.pdl). `&.widgits/events-hq/ops/test_transfer_map_access.sh` 8/8 against the real op on a **scratch house** (legacy house allowed; play+unlisted refused rc=3 with reason, player stays, ledgered; play+listed allowed; build ignores the list; missing mode file = build; game.pdl without MAP rows unrestricted). The previous op fails exactly the three refusal checks, so the test discriminates.
-- **Not yet exercised**: the taskbar menu path through the real manager UI (code is a four-line guard around the existing call; the running manager is still the old binary until the taskbar restarts). The free book/page tabs are not yet hidden in play modes (build step 4). Nobody writes `mode=playtest` yet (step 3).
+- **Not yet exercised**: the taskbar menu path through the real manager UI (code is a four-line guard around the existing call; the running manager is still the old binary until the taskbar restarts). The free book/page tabs are not yet hidden in play modes (build step 4). Play-test is written by the Player menus since step 3 (section 9).
 - Build note: one extra compiler warning appears in the manager (124 -> 125), inside the existing `livedesk_session_dir` (a `%s/%s` truncation notice), only because my new call site lets the compiler inline it. The new code itself adds none.
 
-Next: the third mode value (`playtest`) and its four readers, then cells in the taskbars.
+Next: cells in the taskbars (section 5, step 4).
+
+## 9. Step 3 built (2026-10-07): the third mode, play-test
+
+**Format change, designed to leave every existing reader alone.** The play-mode file stays `#.desktop/khtpm_play_mode.state.txt`:
+
+```
+mode=on|off          # on = the game runs (events fire), off = build        (unchanged)
+playtest=1           # OPTIONAL second line, only with mode=on: editing is also allowed (play-test)
+```
+
+I first planned a new value `mode=playtest`; reading the code showed that would silently break every reader. They all test the **first line** with `strstr(line, "mode=on")` (taskbar manager `khtpm_load_play_mode`, `khtpm_entity.c` and `khtpm_core_render.c` `desktop_load_play_mode`, the cursword harness, the pc-hq action's toggle), so `mode=playtest` would read as OFF and **events would stop firing during play-test**. With a second line they all see plain ON (events run) and nothing else changes. Every writer rewrites the whole file with `mode=...` only, so **toggle and stop clear play-test by themselves**.
+
+- **Readers**: `gs_current_mode()` returns `playtest` for `mode=on` + `playtest=1`, `play` for `mode=on`, else `build`. The map-access check, cell visibility and edit gate (section 2 rules) therefore treat play-test like play for maps, and play-test is the only mode where `EDIT`-marked items are editable.
+- **Taskbar Player menu** (hardcoded fallback rows; the pdl defines none): new row `play-test: ON/OFF` right after `1.play`, command `livedesk:playtest-toggle`. Off or plain play -> play-test; play-test -> plain play (use `stop` or `1.play` to leave play).
+- **pc-hq**: Player dropdown row `pm-playtest` (label `${playtest_label}`), new `player playtest` verb in `pchq_board_action.sh` (same transitions), the projector publishes `player_label` as `Player: TEST` in play-test and `playtest_label` = `play-test: ON/OFF`.
+- **Tests** (all on scratch houses, nothing live): `tests/test_game_setup.c` 32/32 (adds playtest reading, stale `playtest=1` under `mode=off` is build, plain rewrite clears it); `_.monads/_.livedesk-taskbar/ops/test_playtest_menu.c` 9/9 (menu rows/order/labels, older reader sees ON, off/stop clear it); `@.apps/piececraft-hq/ops/test_playtest_action.c` 6/6 (the real action script, fork/exec); the projector run for the three file states printed `Player: OFF`, `Player: ON`, `Player: TEST` with the matching `play-test:` label.
+- **Not seen**: the real click on either menu row (needs a taskbar restart and a pc-hq reopen; the running processes still have the old binaries), and nothing yet *uses* the edit permission (step 5: play-test save routing).
+- **Harness convention** (owner, 2026-10-07): new harnesses are compiled C (later pal + events), not shell; the two older `.sh` harnesses (`test_minimize.sh`, `test_transfer_map_access.sh`) are candidates to port.
+
+Next: cells in the taskbars (step 4), then the edit gate and play-test save routing (step 5).

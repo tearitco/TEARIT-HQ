@@ -56,6 +56,15 @@ int main(void) {
           CK("mode=off = build: allowed", gs_check_map_switch(house, buf, "cave", reason, sizeof reason) == 1 && !strcmp(gs_current_mode(house), "build"));
           f = fopen(mp, "w"); fputs("mode=on\n", f); fclose(f); }
         CK("mode=on reads as play", !strcmp(gs_current_mode(house), "play"));
+        { char mp[1200]; snprintf(mp, sizeof mp, "%s/#.desktop/khtpm_play_mode.state.txt", house);
+          f = fopen(mp, "w"); fputs("mode=on\nplaytest=1\n", f); fclose(f);
+          CK("mode=on + playtest=1 reads as playtest", !strcmp(gs_current_mode(house), "playtest"));
+          CK("playtest also restricts maps (same rule as play)", gs_check_map_switch(house, buf, "cave", reason, sizeof reason) == 0 && strstr(reason, "playtest"));
+          { char lq[1200]; snprintf(lq, sizeof lq, "%s/#.desktop/game_access_ledger.txt", house); unlink(lq); }   /* keep the ledger checks below starting from nothing */
+          f = fopen(mp, "w"); fputs("mode=off\nplaytest=1\n", f); fclose(f);
+          CK("playtest=1 without mode=on is build", !strcmp(gs_current_mode(house), "build"));
+          f = fopen(mp, "w"); fputs("mode=on\n", f); fclose(f);
+          CK("a plain mode=on rewrite clears playtest", !strcmp(gs_current_mode(house), "play")); }
         CK("play: listed map allowed, no ledger line", gs_check_map_switch(house, buf, "town", reason, sizeof reason) == 1);
         { char lp[1200]; snprintf(lp, sizeof lp, "%s/#.desktop/game_access_ledger.txt", house); CK("no ledger yet", access(lp, F_OK) != 0);
           ok = gs_check_map_switch(house, buf, "cave", reason, sizeof reason);

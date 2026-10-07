@@ -102,6 +102,9 @@
       <item id="pm-play" class="pchq-menu-row dropdown-child" target_id="tb-player"
             label="${player_label}"
             action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'toggle'"/>
+      <item id="pm-playtest" class="pchq-menu-row dropdown-child" target_id="tb-player"
+            label="${playtest_label}"
+            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'playtest'"/>
       <item id="pm-stop" class="pchq-menu-row dropdown-child" target_id="tb-player"
             label="Stop"
             action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'stop'"/>

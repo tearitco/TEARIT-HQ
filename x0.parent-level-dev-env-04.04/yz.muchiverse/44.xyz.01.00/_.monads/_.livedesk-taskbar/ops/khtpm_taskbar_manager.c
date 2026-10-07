@@ -4305,7 +4305,28 @@ static void khtpm_save_play_mode(const char *house_root, int on) {
     char path[KTB_PATH_BUF];
     path_join(path, sizeof(path), house_root, "#.desktop/khtpm_play_mode.state.txt");
     FILE *f = ktb_fopen(path, "w");
-    if (f) { fprintf(f, "mode=%s\n", on ? "on" : "off"); fclose(f); }
+    if (f) { fprintf(f, "mode=%s\n", on ? "on" : "off"); fclose(f); }   /* rewrites the whole file, so it also clears a play-test line */
+}
+/* Play-test (GAME-SETUP-PDL-DESIGN.md, PLAY-MODES-AND-MAP-ACCESS-DESIGN.md): the same file gains an optional SECOND line `playtest=1` next to `mode=on`.
+ * Every older reader tests only the first line for "mode=on", so play-test counts as "on" for them (events fire) and nothing else changes. */
+static int khtpm_load_playtest(const char *house_root) {
+    char path[KTB_PATH_BUF], line[64];
+    int on = 0, pt = 0;
+    path_join(path, sizeof(path), house_root, "#.desktop/khtpm_play_mode.state.txt");
+    FILE *f = ktb_fopen(path, "r");
+    if (!f) return 0;
+    while (fgets(line, sizeof(line), f)) {
+        if (strstr(line, "mode=on")) on = 1;
+        if (strstr(line, "playtest=1")) pt = 1;
+    }
+    fclose(f);
+    return on && pt;
+}
+static void khtpm_save_playtest(const char *house_root, int playtest) {
+    char path[KTB_PATH_BUF];
+    path_join(path, sizeof(path), house_root, "#.desktop/khtpm_play_mode.state.txt");
+    FILE *f = ktb_fopen(path, "w");
+    if (f) { fprintf(f, "mode=on\n%s", playtest ? "playtest=1\n" : ""); fclose(f); }
 }
 
 /* Static player-cell submenu (play/pause/reset). play/pause were ported
@@ -4428,6 +4449,12 @@ static int livedesk_build_player_menu(const char *house_root, HQMenuItem *menu, 
         int on = khtpm_load_play_mode(house_root);
         snprintf(menu[n].label, sizeof(menu[n].label), "1.play: %s", on ? "ON" : "OFF");
         snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:play-toggle");
+        n++;
+    }
+    /* play-test (owner 2026-10-06): the game runs AND editing is allowed. ON from off or plain play = play-test; OFF returns to plain play (use stop/play to leave). */
+    if (n < max) {
+        snprintf(menu[n].label, sizeof(menu[n].label), "play-test: %s", khtpm_load_playtest(house_root) ? "ON" : "OFF");
+        snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:playtest-toggle");
         n++;
     }
     /* REAL, NEW 2026-09-15, direct live report ("our tb hq dropdown
@@ -5310,6 +5337,11 @@ void ktb_hq_activate(KtbState *s, int row) {
          * reorder can't silently break this reopen the same way
          * again; 9 is kept only as the fallback for a missing row. */
         khtpm_save_play_mode(s->house_root, !khtpm_load_play_mode(s->house_root));
+        ktb_hq_open(s, ktb_cell_pos_by_id(s, "player", 9));
+        return;
+    }
+    if (strcmp(m->command, "livedesk:playtest-toggle") == 0) {
+        khtpm_save_playtest(s->house_root, !khtpm_load_playtest(s->house_root));
         ktb_hq_open(s, ktb_cell_pos_by_id(s, "player", 9));
         return;
     }

@@ -126,19 +126,23 @@ GS_FN int gs_edit_allowed(const GameSetup *g, const char *mode, const char *id_o
 
 /* ---- one-call helpers for the real switch points (mr_transfer_desk, the taskbar menu) ---- */
 
-/* The house-wide play flag: #.desktop/khtpm_play_mode.state.txt, `mode=on|off`. Returns "play" for on, "playtest" for playtest (reserved: the third value is not
- * written by anything yet), else "build". Missing file = build. */
+/* The house-wide play flag: #.desktop/khtpm_play_mode.state.txt. Format (every older reader keeps working, because they only test the FIRST line for "mode=on"):
+ *     mode=on|off          on = the game runs (events fire); off = build
+ *     playtest=1           optional second line, only meaningful with mode=on: editing is also allowed (play-test)
+ * Returns "playtest" for mode=on + playtest=1, "play" for mode=on, else "build". Missing file = build. Every writer rewrites the whole file, so toggling or stopping play
+ * (which writes only `mode=...`) clears playtest by itself. */
 GS_FN const char *gs_current_mode(const char *house_root) {
-    char p[4400], l[128]; FILE *f; const char *r = "build";
+    char p[4400], l[128]; FILE *f; int on = 0, pt = 0;
     snprintf(p, sizeof p, "%s/#.desktop/khtpm_play_mode.state.txt", house_root);
     if ((f = fopen(p, "r"))) {
         while (fgets(l, sizeof l, f)) {
             char *v = gs_trim(l);
-            if (!strncmp(v, "mode=", 5)) { v += 5; if (!strcmp(v, "on")) r = "play"; else if (!strcmp(v, "playtest")) r = "playtest"; }
+            if (!strcmp(v, "mode=on")) on = 1;
+            else if (!strcmp(v, "playtest=1")) pt = 1;
         }
         fclose(f);
     }
-    return r;
+    return on ? (pt ? "playtest" : "play") : "build";
 }
 
 /* May the player switch to desk `target` right now? 1 = yes, 0 = refused (reason filled). Refuses ONLY when the house is in a play mode AND sess_dir/game.pdl lists at least
