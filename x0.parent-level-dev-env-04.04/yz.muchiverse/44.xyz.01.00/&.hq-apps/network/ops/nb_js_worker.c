@@ -3342,6 +3342,270 @@ static void install_dom_classes(JSContext *ctx) {
     JS_FreeValue(ctx, ETp);
 }
 
+/* ---- minimal TTF (DejaVuSans, ASCII simple glyphs) for canvas fillText ----
+ * REAL, NEW 2026-10-07: fillText drew nothing (noop). No TTF library is
+ * vendored and none may be added (no new deps), so this reads the system
+ * DejaVuSans.ttf directly: sfnt directory, head/maxp/hhea/hmtx, cmap
+ * format 4, loca/glyf simple outlines, even-odd scanline raster. ASCII
+ * 32..126 only, composites skipped, no kerning/hinting. Enough for real
+ * canvas text pixels; full shaping is out of scope. */
+static void nb_px_over(unsigned char *d, const unsigned char s[4], double galpha);
+static unsigned char *g_font_data = NULL;
+static size_t g_font_len = 0;
+static unsigned g_font_upm = 2048;
+static int g_font_asc = 1901, g_font_desc = -483;
+static unsigned g_font_nglyph = 0;
+static const unsigned char *g_font_cmap4 = NULL;
+static const unsigned char *g_font_loca = NULL;
+static const unsigned char *g_font_glyf = NULL;
+static const unsigned char *g_font_hmtx = NULL;
+static int g_font_loca_short = 1, g_font_nhmtx = 0;
+static unsigned u16r(const unsigned char *p) { return ((unsigned)p[0] << 8) | p[1]; }
+static int i16r(const unsigned char *p) { int v = ((int)p[0] << 8) | p[1]; return v >= 32768 ? v - 65536 : v; }
+static unsigned u32r(const unsigned char *p) { return ((unsigned)p[0] << 24) | ((unsigned)p[1] << 16) | ((unsigned)p[2] << 8) | p[3]; }
+static int nb_font_tab(const char *tag, const unsigned char **out, unsigned *len) {
+    if (!g_font_data || g_font_len < 12) return 0;
+    unsigned n = u16r(g_font_data + 4);
+    for (unsigned i = 0; i < n; i++) {
+        const unsigned char *e = g_font_data + 12 + i * 16;
+        if (e + 16 > g_font_data + g_font_len) return 0;
+        if (!memcmp(e, tag, 4)) {
+            unsigned off = u32r(e + 8), ln = u32r(e + 12);
+            if ((size_t)off + ln > g_font_len) return 0;
+            *out = g_font_data + off; *len = ln;
+            return 1;
+        }
+    }
+    return 0;
+}
+static void nb_font_load(void) {
+    static int tried = 0;
+    if (g_font_data || tried) return;
+    tried = 1;
+    const char *paths[] = {
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed.ttf",
+        NULL
+    };
+    for (int i = 0; paths[i]; i++) {
+        FILE *f = fopen(paths[i], "rb");
+        if (!f) continue;
+        fseek(f, 0, SEEK_END);
+        long n = ftell(f);
+        fseek(f, 0, SEEK_SET);
+        if (n > 0 && n < 64 * 1024 * 1024) {
+            unsigned char *d = malloc((size_t)n);
+            if (d && fread(d, 1, (size_t)n, f) == (size_t)n) {
+                g_font_data = d; g_font_len = (size_t)n;
+                fclose(f);
+                break;
+            }
+            free(d);
+        }
+        fclose(f);
+    }
+    if (!g_font_data) return;
+    const unsigned char *t = NULL; unsigned ln = 0;
+    if (nb_font_tab("head", &t, &ln) && ln >= 54) {
+        g_font_upm = u16r(t + 18); if (!g_font_upm) g_font_upm = 2048;
+        g_font_loca_short = (u16r(t + 50) == 0);
+    }
+    if (nb_font_tab("maxp", &t, &ln) && ln >= 6) g_font_nglyph = u16r(t + 4);
+    if (nb_font_tab("hhea", &t, &ln) && ln >= 36) {
+        g_font_asc = i16r(t + 4); g_font_desc = i16r(t + 6);
+        g_font_nhmtx = u16r(t + 34);
+    }
+    nb_font_tab("loca", &g_font_loca, &ln);
+    nb_font_tab("glyf", &g_font_glyf, &ln);
+    nb_font_tab("hmtx", &g_font_hmtx, &ln);
+    /* cmap: prefer format 4, windows BMP (3,1) else unicode (0,3) */
+    if (nb_font_tab("cmap", &t, &ln) && ln >= 4) {
+        unsigned nn = u16r(t + 2);
+        const unsigned char *best = NULL;
+        for (unsigned i = 0; i < nn; i++) {
+            const unsigned char *e = t + 4 + i * 8;
+            if (e + 8 > t + ln) break;
+            unsigned pid = u16r(e), eid = u16r(e + 2);
+            unsigned off = u32r(e + 4);
+            if (off + 6 > ln) continue;
+            if (u16r(t + off) != 4) continue;
+            if (!best || (pid == 3 && eid == 1)) best = t + off;
+        }
+        g_font_cmap4 = best;
+    }
+    if (!g_font_cmap4 || !g_font_loca || !g_font_glyf || !g_font_nglyph) {
+        free(g_font_data); g_font_data = NULL;
+    }
+}
+/* glyph index for ASCII codepoint via cmap4; 0 = missing */
+static unsigned nb_font_gid(unsigned cp) {
+    if (!g_font_cmap4 || cp > 0xFFFF) return 0;
+    const unsigned char *t = g_font_cmap4;
+    unsigned segX2 = u16r(t + 6);
+    unsigned nseg = segX2 / 2;
+    const unsigned char *end = t + 14;
+    const unsigned char *start = end + nseg * 2 + 2; /* endCode[] + reservedPad */
+    const unsigned char *delta = start + nseg * 2;
+    const unsigned char *range = delta + nseg * 2;
+    for (unsigned i = 0; i < nseg; i++) {
+        unsigned e = u16r(end + i * 2), s = u16r(start + i * 2);
+        if (cp < s || cp > e) continue;
+        int dl = i16r(delta + i * 2);
+        unsigned ro = u16r(range + i * 2);
+        if (!ro) return (cp + dl) & 0xFFFF;
+        const unsigned char *gp = range + i * 2 + ro + 2 * (cp - s);
+        return (u16r(gp) + dl) & 0xFFFF;
+    }
+    return 0;
+}
+static int nb_font_advance(unsigned gid) {
+    if (!g_font_hmtx || !gid || gid >= g_font_nglyph) return 0;
+    unsigned idx = gid < (unsigned)g_font_nhmtx ? gid : (unsigned)(g_font_nhmtx - 1);
+    return u16r(g_font_hmtx + idx * 4);
+}
+/* decode simple-glyph outline points; returns 0 on composite/empty */
+#define NB_FONT_PTS_MAX 512
+static int nb_font_points(unsigned gid, double *xs, double *ys, int *contour_end, int *ncont) {
+    if (!g_font_loca || !g_font_glyf || gid >= g_font_nglyph) return 0;
+    size_t lo = g_font_loca_short ? (size_t)u16r(g_font_loca + gid * 2) * 2
+                                  : u32r(g_font_loca + gid * 4);
+    size_t hi = g_font_loca_short ? (size_t)u16r(g_font_loca + gid * 2 + 2) * 2
+                                  : u32r(g_font_loca + gid * 4 + 4);
+    if (hi <= lo) return 0;
+    const unsigned char *g = g_font_glyf + lo;
+    size_t glen = hi - lo;
+    if (glen < 10) return 0;
+    int ncontours = i16r(g);
+    if (ncontours <= 0) return 0;   /* composite or empty */
+    if (ncontours > 32) return 0;
+    const unsigned char *ep = g + 10;
+    int npts = 0;
+    for (int i = 0; i < ncontours; i++) {
+        if (ep + 2 > g + glen) return 0;
+        int last = u16r(ep); ep += 2;
+        if (last >= NB_FONT_PTS_MAX) return 0;
+        contour_end[i] = last;
+        npts = last + 1;
+    }
+    unsigned instr_len = u16r(ep);
+    ep += 2;
+    if ((size_t)(ep - g) + instr_len > glen) return 0;
+    /* flags run starts right after instructions */
+    const unsigned char *fp = ep + instr_len;
+    int fi = 0, x = 0, y = 0;
+    static unsigned char flags[NB_FONT_PTS_MAX];
+    while (fi < npts) {
+        if (fp >= g + glen) return 0;
+        unsigned char fl = *fp++;
+        flags[fi++] = fl;
+        if (fl & 8) {
+            if (fp >= g + glen) return 0;
+            int rep = *fp++;
+            while (rep-- > 0 && fi < npts) flags[fi++] = fl;
+        }
+    }
+    const unsigned char *xp = fp;
+    for (int i = 0; i < npts; i++) {
+        int dx = 0;
+        if (flags[i] & 2) {
+            if (xp >= g + glen) return 0;
+            dx = *xp++;
+            if (!(flags[i] & 16)) dx = -dx;
+        } else if (!(flags[i] & 16)) {
+            if (xp + 1 >= g + glen) return 0;
+            dx = (short)((xp[0] << 8) | xp[1]); xp += 2;
+        }
+        x += dx;
+        xs[i] = (double)x;
+    }
+    const unsigned char *yp = xp;
+    for (int i = 0; i < npts; i++) {
+        int dy = 0;
+        if (flags[i] & 4) {
+            if (yp >= g + glen) return 0;
+            dy = *yp++;
+            if (!(flags[i] & 32)) dy = -dy;
+        } else if (!(flags[i] & 32)) {
+            if (yp + 1 >= g + glen) return 0;
+            dy = (short)((yp[0] << 8) | yp[1]); yp += 2;
+        }
+        y += dy;
+        ys[i] = (double)y;
+    }
+    /* on-curve flags live in bit 0; off-curve quadratic midpoints implied.
+     * Slice 1 simplification: treat every point as on-curve polygon vertex
+     * (drops curve fidelity, keeps letterforms readable at small sizes). */
+    *ncont = ncontours;
+    return npts;
+}
+/* fill glyph polygon (even-odd) into canvas at pixel size */
+static void nb_font_blit(NbCanvas *cv, unsigned gid, double pen_x, double baseline,
+                         double scale, const unsigned char s[4], double galpha) {
+    static double xs[NB_FONT_PTS_MAX], ys[NB_FONT_PTS_MAX];
+    static int ends[32];
+    int ncont = 0;
+    int npts = nb_font_points(gid, xs, ys, ends, &ncont);
+    if (npts <= 0) return;
+    /* whole-glyph device bbox */
+    double gx0 = 1e18, gx1 = -1e18, gy0 = 1e18, gy1 = -1e18;
+    for (int i = 0; i < npts; i++) {
+        double px = pen_x + xs[i] * scale, py = baseline - ys[i] * scale;
+        if (px < gx0) gx0 = px; if (px > gx1) gx1 = px;
+        if (py < gy0) gy0 = py; if (py > gy1) gy1 = py;
+    }
+    int ix0 = (int)floor(gx0), iy0 = (int)floor(gy0);
+    int ix1 = (int)ceil(gx1), iy1 = (int)ceil(gy1);
+    if (ix0 < 0) ix0 = 0; if (iy0 < 0) iy0 = 0;
+    if (ix1 > cv->w) ix1 = cv->w; if (iy1 > cv->h) iy1 = cv->h;
+    int start = 0;
+    for (int yy = iy0; yy < iy1; yy++) {
+        for (int xx = ix0; xx < ix1; xx++) {
+            double px = xx + 0.5, py = yy + 0.5;
+            int inside = 0;
+            int si = 0;
+            for (int ci = 0; ci < ncont; ci++) {
+                int en = ends[ci];
+                for (int i = si; i <= en; i++) {
+                    int j = (i == en) ? si : i + 1;
+                    double ax = pen_x + xs[i] * scale, ay = baseline - ys[i] * scale;
+                    double bx = pen_x + xs[j] * scale, by = baseline - ys[j] * scale;
+                    if ((ay > py) != (by > py)) {
+                        double ix = ax + (py - ay) * (bx - ax) / (by - ay);
+                        if (ix > px) inside = !inside;
+                    }
+                }
+                si = en + 1;
+            }
+            if (inside)
+                nb_px_over(cv->px + ((size_t)yy * cv->w + xx) * 4, s, galpha);
+        }
+    }
+}
+/* "12px sans-serif" -> 12 (default 10) */
+static double nb_font_size_px(JSContext *ctx, JSValueConst o) {
+    JSValue v = JS_GetPropertyStr(ctx, o, "font");
+    const char *s = JS_IsString(v) ? JS_ToCString(ctx, v) : NULL;
+    double px = 10.0;
+    if (s) {
+        const char *p = s;
+        while (*p && (*p < '0' || *p > '9') && *p != '.') p++;
+        if (*p) {
+            px = strtod(p, NULL);
+            if (strstr(p, "pt")) px *= 96.0 / 72.0;
+            if (px < 1) px = 1; if (px > 256) px = 256;
+        }
+        JS_FreeCString(ctx, s);
+    }
+    JS_FreeValue(ctx, v);
+    return px;
+}
+static void nb_ctx_str(JSContext *ctx, JSValueConst o, const char *k, char *out, size_t n, const char *def) {
+    JSValue v = JS_GetPropertyStr(ctx, o, k);
+    const char *s = JS_IsString(v) ? JS_ToCString(ctx, v) : NULL;
+    snprintf(out, n, "%s", s ? s : def);
+    if (s) JS_FreeCString(ctx, s);
+    JS_FreeValue(ctx, v);
+}
 /* ---- canvas 2D ---- */
 static JSValue nb_c2d_noop(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) { (void)ctx; (void)this_val; (void)argc; (void)argv; return JS_UNDEFINED; }
 
@@ -3794,10 +4058,69 @@ static JSValue nb_c2d_createImageData(JSContext *ctx, JSValueConst this_val, int
 }
 static JSValue nb_c2d_measureText(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     JSValue m = JS_NewObject(ctx);
-    JS_SetPropertyStr(ctx, m, "width", JS_NewFloat64(ctx, 0));
-    JS_SetPropertyStr(ctx, m, "actualBoundingBoxAscent", JS_NewFloat64(ctx, 0));
-    JS_SetPropertyStr(ctx, m, "actualBoundingBoxDescent", JS_NewFloat64(ctx, 0));
+    nb_font_load();
+    double px = nb_font_size_px(ctx, this_val);
+    double scale = g_font_upm ? px / g_font_upm : 0;
+    double w = 0;
+    if (argc >= 1 && JS_IsString(argv[0])) {
+        const char *s = JS_ToCString(ctx, argv[0]);
+        if (s) {
+            for (const char *p = s; *p; p++) {
+                unsigned char c = (unsigned char)*p;
+                if (c < 32 || c > 126) continue;
+                w += nb_font_advance(nb_font_gid(c)) * scale;
+            }
+            JS_FreeCString(ctx, s);
+        }
+    }
+    JS_SetPropertyStr(ctx, m, "width", JS_NewFloat64(ctx, w));
+    JS_SetPropertyStr(ctx, m, "actualBoundingBoxAscent", JS_NewFloat64(ctx, g_font_asc * scale));
+    JS_SetPropertyStr(ctx, m, "actualBoundingBoxDescent", JS_NewFloat64(ctx, -g_font_desc * scale));
     return m;
+}
+/* fillText through the canvas transform is out of scope for slice 1
+ * (glyphs are axis-aligned); the translation part of the transform is
+ * honored so translated text lands correctly. */
+static JSValue nb_c2d_fillText(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbCanvas *cv = nb_canvas_get(ctx, this_val);
+    if (!cv || argc < 1) return JS_UNDEFINED;
+    nb_font_load();
+    if (!g_font_data) return JS_UNDEFINED;
+    const char *s = JS_IsString(argv[0]) ? JS_ToCString(ctx, argv[0]) : NULL;
+    if (!s) return JS_UNDEFINED;
+    double x = nb_c2d_argd(ctx, argv, argc, 1, 0), y = nb_c2d_argd(ctx, argv, argc, 2, 0);
+    double px = nb_font_size_px(ctx, this_val);
+    double scale = g_font_upm ? px / g_font_upm : 0;
+    char align[32], base[32];
+    nb_ctx_str(ctx, this_val, "textAlign", align, sizeof(align), "start");
+    nb_ctx_str(ctx, this_val, "textBaseline", base, sizeof(base), "alphabetic");
+    double total = 0;
+    for (const char *p = s; *p; p++) {
+        unsigned char c = (unsigned char)*p;
+        if (c < 32 || c > 126) continue;
+        total += nb_font_advance(nb_font_gid(c)) * scale;
+    }
+    double pen = x + cv->m[4];
+    if (!strcmp(align, "center")) pen -= total / 2;
+    else if (!strcmp(align, "right") || !strcmp(align, "end")) pen -= total;
+    double asc = g_font_asc * scale, desc = -g_font_desc * scale;
+    double baseline = y + cv->m[5];
+    if (!strcmp(base, "top") || !strcmp(base, "hanging")) baseline += asc;
+    else if (!strcmp(base, "middle")) baseline += asc / 2;
+    else if (!strcmp(base, "bottom") || !strcmp(base, "ideographic")) baseline -= desc;
+    unsigned char col[4];
+    nb_ctx_fill_rgb(ctx, this_val, col);
+    double ga = nb_ctx_num(ctx, this_val, "globalAlpha", 1);
+    for (const char *p = s; *p; p++) {
+        unsigned char c = (unsigned char)*p;
+        if (c < 32 || c > 126) { pen += 4 * scale; continue; }
+        unsigned gid = nb_font_gid(c);
+        if (gid) nb_font_blit(cv, gid, pen, baseline, scale, col, ga);
+        pen += nb_font_advance(gid) * scale;
+    }
+    JS_FreeCString(ctx, s);
+    if (cv) cv->dirty = 1;
+    return JS_UNDEFINED;
 }
 static JSValue nb_c2d_gradient(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     JSValue g = JS_NewObject(ctx);
@@ -3840,7 +4163,7 @@ static JSValue nb_el_getContext(JSContext *ctx, JSValueConst this_val, int argc,
     const char *noops[] = {
         "beginPath", "closePath", "moveTo",
         "lineTo", "rect", "arc", "arcTo", "bezierCurveTo", "quadraticCurveTo",
-        "fill", "stroke", "clip", "fillText", "strokeText", "setLineDash",
+        "fill", "stroke", "clip", "strokeText", "setLineDash",
         "reset", "isPointInPath", "setTransformMatrix", "drawFocusIfNeeded"
     };
     for (size_t i = 0; i < sizeof(noops) / sizeof(noops[0]); i++)
@@ -3858,6 +4181,7 @@ static JSValue nb_el_getContext(JSContext *ctx, JSValueConst this_val, int argc,
     JS_SetPropertyStr(ctx, c, "resetTransform", JS_NewCFunction(ctx, nb_c2d_resetTransform, "resetTransform", 0));
     JS_SetPropertyStr(ctx, c, "drawImage", JS_NewCFunction(ctx, nb_c2d_drawImage, "drawImage", 9));
     JS_SetPropertyStr(ctx, c, "putImageData", JS_NewCFunction(ctx, nb_c2d_putImageData, "putImageData", 7));
+    JS_SetPropertyStr(ctx, c, "fillText", JS_NewCFunction(ctx, nb_c2d_fillText, "fillText", 4));
     JS_SetPropertyStr(ctx, c, "getImageData", JS_NewCFunction(ctx, nb_c2d_getImageData_real, "getImageData", 4));
     JS_SetPropertyStr(ctx, c, "createImageData", JS_NewCFunction(ctx, nb_c2d_createImageData, "createImageData", 2));
     JS_SetPropertyStr(ctx, c, "getLineDash", JS_NewCFunction(ctx, nb_c2d_lineDash, "getLineDash", 0));
