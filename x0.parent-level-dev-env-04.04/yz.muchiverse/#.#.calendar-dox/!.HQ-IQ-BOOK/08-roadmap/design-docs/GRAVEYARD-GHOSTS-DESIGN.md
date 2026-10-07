@@ -67,7 +67,7 @@ Babysitter mapping (the original idea, applied to bots): **feeding** = give a gh
   roster/
     _TEMPLATE/                  copy this to appoint a ghost
     <ghost-id>/ghost.pdl        tier, brain, glyph, state (idle|questing|resting), current quest
-    <ghost-id>/history.log      append-only: one line per event (assigned, started, tool call summary, passed/failed, verdict)
+    <ghost-id>/history.txt      append-only: one line per event (assigned, started, tool call summary, passed/failed, verdict)
 ```
 
 Quest status values: `open` → `claimed` → `active` → `review` → `done` | `failed` | `abandoned`. Only the manager moves a quest to `done`
@@ -116,7 +116,7 @@ exists; the arena ("fighting") is two ghosts on the same plan, scored by the sam
 
 0. **Now (done with this doc):** folders, templates, first quests (HALO_CHAT, open-hai provider config, build-gate fix, /proc audit).
 1. A static gravestone + ghost pals; the board window reads `quests/` and `roster/` (read-only dashboard).
-2. A ghost runner: one worker ghost takes one quest through HORN (`horn_turn`), logs to `history.log`, writes the status header.
+2. A ghost runner: one worker ghost takes one quest through HORN (`horn_turn`), logs to `history.txt`, writes the status header.
 3. History view and quest posting from the window (cli_io, nav-numbered).
 4. Student ghosts (local model) and the first training events through the FSM queue.
 5. Visible ghosts on desktop/pc-hq: the entity-testing ghost from §6.

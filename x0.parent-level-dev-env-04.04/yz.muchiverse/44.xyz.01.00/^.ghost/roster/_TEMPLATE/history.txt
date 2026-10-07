@@ -1,0 +1,2 @@
+# append-only. one line per event:  <ISO time> | <event> | <quest or -> | <detail>
+# events: appointed, assigned, started, tool, passed, failed, review, verdict, retired

@@ -7,7 +7,7 @@ A **ghost** is one appointed bot: a pal (entity) with a glyph, a **tier**, a **b
 
 - Tiers: `worker` (HORN via OpenRouter and the other providers: `^.hai-horn`) and `student` (a local Ollama model, in training).
 - Appoint a ghost: copy `roster/_TEMPLATE/` to `roster/<ghost-id>/` and fill in `ghost.pdl`.
-- Every event for a ghost is appended to `roster/<ghost-id>/history.log` (never edited, never deleted). The gravestone's History
+- Every event for a ghost is appended to `roster/<ghost-id>/history.txt` (never edited, never deleted). The gravestone's History
   tab is just this file read in order.
 - The manager (Claude) appoints, retires, assigns quests and may schedule **training events** (deterministic FSM plans through
   `%.harnesses/harnecient-fsm/`): feeding = quests and context, cleaning = review/verify/revert, fighting = benchmark between ghosts.
