@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+PHONE        | number               | 284-2132-4886
+PHONE        | owner_uid            | 818f49a5ba34ba6113553255f9f2fda35ddd2dcb0f80be3521fad3d86835f20b
+PHONE        | owner_label          | page_1
+PHONE        | glyph                | 📱
+PHONE        | state                | idle
+PHONE        | created              | migration
+PHONE        | created_by           | phone_ensure_op
+PHONE        | history_max_lines    | 2000
+PHONE        | history_max_bytes    | 262144
+PHONE        | rotate_keep          | 3
