@@ -27,7 +27,7 @@ case "${1:-status}" in
         cd "$SERVER_DIR" || exit 1
         setsid nohup ./system/prisc+x ./router.run.pal >> router.log 2>&1 < /dev/null &
         echo $! > "$PIDFILE"
-        [ "$SERVER_DIR" = "$SCRIPT_DIR" ] && printf '%s %s 0 0 hai-router\n' "$(cat "$PIDFILE")" "$(cat "$PIDFILE")" >> "$HOUSE/#.desktop/livedesk_proc_list.txt" 2>/dev/null   # live only: a taskbar quit reaps it
+        [ "$SERVER_DIR" = "$SCRIPT_DIR" ] && sh "$HOUSE/&.widgits/_shared-lib/ops/proc_ledger_add.sh" "$HOUSE" "$(cat "$PIDFILE")" hai-router   # live only: a taskbar quit reaps it (real starttime: the reaper skips "0 0" lines)
         echo "router started (pid $(cat "$PIDFILE")), server dir $SERVER_DIR"
         ;;
     stop)

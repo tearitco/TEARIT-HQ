@@ -90,6 +90,8 @@ read_restore_mode() {
 case "$ACTION" in
     run|r|start|restart)
         sh "$SCRIPT_DIR/livedesk-icon-refresh.sh" </dev/null >/dev/null 2>&1 &   # icon follows the current theme colors
+        # close what restart's own sweep does not know (hotbar, board windows ...): close_on_restart.pdl. Without this the OLD hotbar survived a restart and the new one never showed.
+        sh "$SCRIPT_DIR/close_listed.sh" "$HOUSE" || true
         # restart == run: use the restore feature only when explicitly enabled in autostart.pdl
         if [ "$(read_restore_mode)" = "1" ] && [ -f "$RESTORE" ] && [ -x "$SCRIPT_DIR/scrypts/openall/run.sh" ]; then
             "$SCRIPT_DIR/scrypts/openall/run.sh"
@@ -102,6 +104,7 @@ case "$ACTION" in
     quit|close)
         # Kill all running toolbars and entities (no relaunch)
         all_khtpm_and_hq_pids | xargs -r kill -TERM
+        sh "$SCRIPT_DIR/close_listed.sh" "$HOUSE" || true   # processes listed in close_on_restart.pdl that the pattern kill does not know
         sleep 1
         # REAL, MERGED 2026-09-28: all_khtpm_and_hq_pids() (ee6afba47,
         # main) generically catches every HQ app manager compiled to
@@ -149,6 +152,7 @@ case "$ACTION" in
         # LAUNCH rows own the tool-bar AND all entity paths, no hardcoded
         # entity list duplicated here).
         all_khtpm_and_hq_pids | xargs -r kill -TERM
+        sh "$SCRIPT_DIR/close_listed.sh" "$HOUSE" || true   # processes listed in close_on_restart.pdl that the pattern kill does not know
         sleep 1
         all_khtpm_and_hq_pids | xargs -r kill -KILL 2>/dev/null || true
         # world_manager's own prisc+x loop isn't caught by the generic

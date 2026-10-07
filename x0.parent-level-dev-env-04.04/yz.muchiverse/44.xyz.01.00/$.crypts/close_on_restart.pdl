@@ -1,0 +1,10 @@
+# close_on_restart.pdl - extra processes that `button.sh restart | run | reset | quit` must close, read by close_listed.sh.
+# Why a list: restart's own sweep (ops/crypt_autostart.c) only knows the taskbar, tp_desktop_window and the open-entity registry, so a window that is just a
+# khtpm_core_render process (the hotbar, board windows) survived a restart and the NEW one never showed (owner report 2026-10-06). Add a row to cover any window or helper.
+#   CLOSE | <name> | <substring of the process command line>
+# A process is closed only if its command line contains BOTH the substring AND this house's root path (so another checkout's windows are never touched).
+# Substrings must be specific: a match is TERMed, then KILLed after 1 s. Never write a pattern that could match a shell or this script's own command line.
+CLOSE | hotbar-desk window  | @.apps/hotbar-hq/hotbar-desk.xhtpm
+CLOSE | hotbar manager      | @.apps/hotbar-hq/ops/+x/hotbar_manager.+x
+CLOSE | board windows       | @.apps/board-hq/board-
+CLOSE | board manager       | @.apps/board-hq/ops/+x/board_vars_op.+x

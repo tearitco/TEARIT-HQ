@@ -15,5 +15,5 @@ ops_x="$HERE/ops/+x/board_vars_op.+x"; [ -x "$ops_x" ] || sh "$HERE/ops/build_bo
 mkdir -p "$HERE/state/$NAME"
 setsid nohup "$BIN" "$HOUSE_ROOT" "$XHTPM" >"/tmp/board-$NAME.log" 2>&1 < /dev/null &
 echo $! > "$PIDF"
-printf '%s %s 0 0 board-%s\n' "$(cat "$PIDF")" "$(cat "$PIDF")" "$NAME" >> "$HOUSE_ROOT/#.desktop/livedesk_proc_list.txt" 2>/dev/null || true
+sh "$HOUSE_ROOT/&.widgits/_shared-lib/ops/proc_ledger_add.sh" "$HOUSE_ROOT" "$(cat "$PIDF")" "board-$NAME"   # real starttime: the quit/restart reaper skips "0 0" lines
 echo "board $NAME opened (pid $(cat "$PIDF"))"
