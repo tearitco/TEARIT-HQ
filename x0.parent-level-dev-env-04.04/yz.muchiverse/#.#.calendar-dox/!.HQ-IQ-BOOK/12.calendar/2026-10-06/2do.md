@@ -46,3 +46,5 @@ Plan and reasoning: `18.pc-hq/IN-GAME-LAYOUTS-PLAN.md`.
 - [ ] Autostart row for the desk hotbar is untested (needs a taskbar reset).
 - [ ] Chatbot reply window for the hotbar cli_io (needs a backend choice: entity Chat/OpenRouter or HORN).
 - [ ] Rotate keys (OpenRouter key is in git history; Groq/Poolside scratch keys were in a transcript).
+- [ ] **Q008 (^.grave):** two HORN transports live side by side in `^.hai-horn` since the opencode merge. The old `ops/horn_chat_openrouter.c` is NOT dead: `horn_chat.sh`, `halo_test_harness.sh`, `horn_chat_test.sh` still call it. Port or remove those, then delete it. Details: `44.xyz.01.00/^.grave/quests/Q008-retire-old-horn-transport/QUEST.md`.
+- [ ] **HALO (Q001):** ported + merged on local `claude` (`9028e0706`); still needs a LIVE `halo_chat.sh` run (provider key), HORN e2e, and the owner's call on auto-promotion (default is now OFF, `elementary_hs`). Owner also has to confirm the phone migration (`c41e7f935`) was intended (Q005 said it needed his OK first).

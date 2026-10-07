@@ -114,7 +114,7 @@ exists; the arena ("fighting") is two ghosts on the same plan, scored by the sam
 
 ## 8. Phases
 
-0. **Now (done with this doc):** folders, templates, first quests (HALO_CHAT, open-hai provider config, build-gate fix, /proc audit).
+0. **Now (done with this doc):** folders, templates, first quests (landing HALO_CHAT, open-hai provider config, build-gate fix, /proc audit). **Correction 2026-10-06:** HALO_CHAT v0.1 already exists on `origin/opencode` (`4b72a4bd7`); an earlier version of this doc said it did not exist.
 1. A static gravestone + ghost pals; the board window reads `quests/` and `roster/` (read-only dashboard).
 2. A ghost runner: one worker ghost takes one quest through HORN (`horn_turn`), logs to `history.txt`, writes the status header.
 3. History view and quest posting from the window (cli_io, nav-numbered).
@@ -133,7 +133,7 @@ exists; the arena ("fighting") is two ghosts on the same plan, scored by the sam
 
 1. Do ghosts get a **separate git worktree each** automatically (safest, per BRANCH-STRATEGY.md), or share one?
 2. Who approves a ghost's gated actions: the manager, the owner, or the manager with owner-visible log?
-3. First ghost and first quest to send out: HALO_CHAT (Q001) or the build-gate fix (Q003, a small safe warm-up)?
+3. First ghost and first quest to send out: landing HALO_CHAT (Q001) or the build-gate fix (Q003, a small safe warm-up)?
 4. A per-ghost spend cap for paid providers, and where it is configured.
 5. Glyph per tier (e.g. 👻 worker, 🫥 student) or one ghost glyph for all?
 6. Should the gravestone accept quests typed by the owner directly in its window (cli_io), or only via files at first?
