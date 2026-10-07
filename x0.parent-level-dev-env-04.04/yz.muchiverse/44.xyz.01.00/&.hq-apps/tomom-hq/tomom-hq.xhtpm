@@ -19,6 +19,7 @@
       <text id="who" label="tomom weights" class="tomom-who"/>
       <item id="tm" class="tomom-tab ${cls_meta}"  label="Meta-RL" action="'${PKG}/ops/tomom_item.sh' 'TAB meta'"/>
       <item id="tv" class="tomom-tab ${cls_vocab}" label="Vocab"   action="'${PKG}/ops/tomom_item.sh' 'TAB vocab'"/>
+      <item id="tj" class="tomom-tab ${cls_subject}" label="Subject" action="'${PKG}/ops/tomom_item.sh' 'TAB subject'"/>
       <item id="ta" class="tomom-tab ${cls_ask}"   label="Ask"     action="'${PKG}/ops/tomom_item.sh' 'TAB ask'"/>
       <item id="ti" class="tomom-tab" label="init scratch" action="'${PKG}/ops/tomom_item.sh' 'INIT'"/>
       <item id="tr" class="tomom-tab" label="reload"       action="'${PKG}/ops/tomom_item.sh' 'RELOAD'"/>
@@ -31,14 +32,18 @@
       <text id="s1" class="tomom-sel" label="${sel1}" show="${has_sel}"/>
       <text id="s2" class="tomom-kv"  label="${sel2}" show="${has_sel}"/>
       <text id="s3" class="tomom-kv"  label="${sel3}" show="${has_sel}"/>
-      <item id="b-dn"  class="tomom-btn" label="-  (0.05)"          action="'${PKG}/ops/tomom_item.sh' 'DOWN'"  show="${tab_edit}"/>
-      <item id="b-up"  class="tomom-btn" label="+  (0.05)"          action="'${PKG}/ops/tomom_item.sh' 'UP'"    show="${tab_edit}"/>
+      <item id="b-dn"  class="tomom-btn" label="-  (${step})"          action="'${PKG}/ops/tomom_item.sh' 'DOWN'"  show="${tab_edit}"/>
+      <item id="b-up"  class="tomom-btn" label="+  (${step})"          action="'${PKG}/ops/tomom_item.sh' 'UP'"    show="${tab_edit}"/>
       <item id="b-rs"  class="tomom-btn" label="reset to original"  action="'${PKG}/ops/tomom_item.sh' 'RESET'" show="${tab_edit}"/>
       <item id="b-un"  class="tomom-btn" label="undo last (${undo_n})" action="'${PKG}/ops/tomom_item.sh' 'UNDO'" show="${tab_edit}"/>
 
-      <!-- vocab: filter box + page nav -->
+      <!-- subject: breadcrumb + back (3 levels share the one list) -->
+      <text id="crumb" class="tomom-quiet" label="${crumb}" show="${crumb}"/>
+      <item id="bk" class="tomom-btn" label="&lt; back" action="'${PKG}/ops/tomom_item.sh' 'BACK'" show="${show_back}"/>
+
+      <!-- vocab / subject cells: filter box + page nav -->
       <cli_io id="flt" target_id="flt" rows="1" class="tomom-flt top" content="${flt}"
-              label="find word: " action="'${PKG}/ops/tomom_filter.sh'" show="${tab_vocab}"/>
+              label="find word: " action="'${PKG}/ops/tomom_filter.sh'" show="${show_flt}"/>
       <text id="pg" class="tomom-quiet" label="${page_txt}" show="${show_page}"/>
       <item id="pg-p" class="tomom-btn" label="&lt; prev page" action="'${PKG}/ops/tomom_item.sh' 'PGPREV'" show="${show_page}"/>
       <item id="pg-n" class="tomom-btn" label="next page &gt;" action="'${PKG}/ops/tomom_item.sh' 'PGNEXT'" show="${show_page}"/>

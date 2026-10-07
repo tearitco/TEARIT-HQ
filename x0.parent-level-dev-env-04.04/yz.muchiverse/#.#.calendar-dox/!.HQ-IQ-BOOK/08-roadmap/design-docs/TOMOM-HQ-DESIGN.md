@@ -31,10 +31,24 @@ other fields shown); Ask tab (builds `chatbot_moe_v1` into the scratch dir,
 fork+exec, 60 s watchdog, last `Response:` line). One generic scrolllist
 serves every tab (clip, not translate).
 
-**Known limit:** `chatbot_moe_v1` reads `curriculum/<Subject>/<Subject>.txt`
-(and `_train/` models), NOT top-level `vocab_model.txt` / `meta_rl_weights.txt`,
-so edits here do not change Ask answers yet. Owner decision: also expose the
-curriculum vocab files, or point Ask at a binary that uses the top-level files.
+**What chatbot_moe_v1 really reads (from chatbot_moe_v1.c):** the top-level
+`vocab_model.txt` and `meta_rl_weights.txt` are NOT read (meta_rl is not used
+by Ask at all; subjects are simply every line of `curriculum_bank.txt`).
+1. `curriculum_bank.txt`: one `curriculum/<S>/<S>.txt` per line (max 10) = the MoE experts.
+2. `curriculum/<S>/<S>.txt`: that subject's vocab (`number word embedding pe weight bias1-4`), ~60 words; words of all subjects are concatenated into the merged vocab.
+3. Prompt: last prompt word found in the merged vocab (first match wins) is the start; unknown => `start-token`.
+4. The subject that owns the current word's merged index is the expert; only its vocab and model score the next word.
+5. `curriculum/<S>_train/attention_model.txt`: 3 x (7x7) W_q, W_k, W_v (147 floats) turn the current word's 7 numbers into q/k/v.
+6. `mlp_model.txt`: 7x16 weights + 16 biases (128 floats), ReLU hidden layer on the attention context.
+7. `output_layer.txt`: 16 x vocab weights + vocab biases (1020 floats for 60 words); raw output = next-word scores.
+8. Next word = uniform random pick among the top-N scores (N=10; 5 if temperature < 0.5, 20 if > 2.0; Ask uses 0.5 so N=10); temperature only changes the softmax, not the ranking. `end-token` or length ends it.
+9. `srand(time(NULL))` => no fixed seed; the editor builds `chatbot_seed7` (the same source with that one call replaced by `srand(7)`, in the scratch dir) so one prompt gives one answer.
+10. `*_train/{m,v}.txt`, grads, loss, optimizer_state are training-only, never read by the chatbot.
 
-**v2 (not built):** bank view/editing (concept-bank spokes,
+**Subject tab** edits 5-7 (step 0.05 attention, 0.01 mlp, 0.05 output_layer; chosen from the value ranges +-0.6 / up to 0.2 / +-0.8). Audit file column = path relative to the scratch copy, key = `<flat index>:<label>` (e.g. `962:bias[gazes]`). The scratch orig snapshot is `state/work/orig/curriculum`. An edit splices exactly one token in the file.
+
+**Proof (fixed seed 7, prompt `start-token`, 12 tokens):** original => `shining cosmos millions the`; after +0.05 on Astronomy `bias[gazes]` (E13) => `holes nebulas traps billions gazes cosmos cosmos gazes holes gazes cosmos gazes`; after undo (E14) => original again, file identical to orig. Evidence: `state/evidence/edits.txt`, `state/ask_log.txt`.
+
+**v2 (not built):** editing the subject vocab `<S>.txt` (embedding/pe/weight/bias fields);
+bank view/editing (concept-bank spokes,
 words.txt/scores.txt/vars.txt); editing bias/embedding fields; live-target switch.

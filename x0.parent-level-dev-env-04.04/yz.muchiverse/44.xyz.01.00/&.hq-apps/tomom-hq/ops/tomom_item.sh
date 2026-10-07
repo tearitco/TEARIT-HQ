@@ -4,7 +4,7 @@ LINE="$1"; PKG="$2"
 case "$LINE" in
   "TAB "*)  CMD="TAB:${LINE#TAB }" ;;
   "SEL "*)  CMD="SEL:${LINE#SEL }" ;;
-  UP|DOWN|RESET|UNDO|INIT|RELOAD|FLTCLR) CMD="$LINE" ;;
+  UP|DOWN|BACK|RESET|UNDO|INIT|RELOAD|FLTCLR) CMD="$LINE" ;;
   PGNEXT)   CMD="PAGE+" ;;
   PGPREV)   CMD="PAGE-" ;;
   *) exit 0 ;;

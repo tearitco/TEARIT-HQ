@@ -40,9 +40,10 @@
  * only on INIT/RELOAD, never per tick.  Change detection of the action
  * file = seq growth, never mtime.
  *
- * Note: tomom's chatbot_moe_v1 reads curriculum/<Subject>/<Subject>.txt vocabs,
- * NOT the top-level vocab_model.txt / meta_rl_weights.txt, so the ASK tab
- * does not (yet) reflect edits made here - see the design doc. */
+ * SUBJECT tab edits the files chatbot_moe_v1 really reads
+ * (curriculum/<S>_train/{attention,mlp,output_layer}.txt); Meta-RL / Vocab
+ * edit tomom's top-level files, which the chatbot does NOT read.  Ask runs a
+ * fixed-seed copy (srand(7)) so before/after answers are comparable. */
 
 #define PL 4096
 #define MAXV 4096
@@ -71,8 +72,24 @@ static int  filt_idx[MAXV]; static int nfilt = 0;
 static char status[300] = "";
 static int  loaded = 0;                 /* target has been parsed */
 
+/* SUBJECT tab: the per-subject files chatbot_moe_v1 REALLY reads.  Three
+ * levels in ONE list: subjects (from curriculum_bank.txt) -> the three
+ * weight files of <S>_train -> cells (every float of one file).  A cell is
+ * edited as raw token text spliced into the file (all whitespace kept), so
+ * an edit/reset/undo changes exactly one token.  See TOMOM-HQ-DESIGN.md. */
+#define MAXC 1100
+#define MAXS 10
+static char subj[MAXS][48]; static int nsubj = 0;
+static int  sub_level = 0, sel_subj = -1, sel_file = -1, sel_c = -1;
+static const char *SFILE[3] = { "attention_model.txt", "mlp_model.txt", "output_layer.txt" };
+static const double SSTEP[3] = { 0.05, 0.01, 0.05 };   /* per-file step: ranges +-0.6 / +-0.05..0.2 / +-0.8 */
+static char *cbuf = NULL; static int cn = 0, coff[MAXC], clen[MAXC];
+static char cwords[256][100]; static int ncw = 0;      /* the subject's vocab words (labels for output_layer) */
+static char cur_rel[160] = "";                          /* rel path of the file in cbuf */
+static char orig_tok[48] = "";
+
 /* undo stack, rebuilt from edits.txt at start */
-typedef struct { char id[24], file[48], key[128], oldv[32], newv[32]; } Ed;
+typedef struct { char id[24], file[96], key[128], oldv[32], newv[32]; } Ed;
 static Ed ustack[4096]; static int nu = 0;
 static int n_edit_rows = 0;
 
@@ -276,7 +293,13 @@ static void append_edit(const char *file, const char *key, const char *oldv, con
 }
 
 /* apply file/key := newv ; returns 0 ok, fills oldv */
-static int apply_set(const char *file, const char *key, double newv, char *oldv) {
+static int stok_set(const char *rel, int idx, const char *newstr, char *oldv);
+static int apply_set_s(const char *file, const char *key, const char *newstr, char *oldv) {
+    double newv = atof(newstr);
+    if (!strncmp(file, "curriculum/", 11)) {
+        const char *c = strchr(key, ':'); if (!c) return -1;
+        return stok_set(file, atoi(key), newstr, oldv);
+    }
     if (strcmp(file, "meta_rl_weights.txt") == 0) {
         for (int i = 0; i < nm; i++) if (strcmp(mrows[i].key, key) == 0) {
             snprintf(oldv, 32, "%.6f", mrows[i].val); mrows[i].val = newv; return write_meta();
@@ -290,6 +313,95 @@ static int apply_set(const char *file, const char *key, double newv, char *oldv)
     }
     return -1;
 }
+
+/* ---- subject-file helpers ------------------------------------------ */
+static int tok_parse(char *b, int *off, int *len, int max) {
+    int n = 0; char *p = b;
+    while (*p && n < max) {
+        while (*p == ' ' || *p == '\n' || *p == '\r' || *p == '\t') p++;
+        if (!*p) break;
+        char *st = p; while (*p && *p != ' ' && *p != '\n' && *p != '\r' && *p != '\t') p++;
+        off[n] = (int)(st - b); len[n] = (int)(p - st); n++;
+    }
+    return n;
+}
+/* token idx of dir/rel as text; 0 ok */
+static int stok_get(const char *dir, const char *rel, int idx, char *out, size_t osz) {
+    char p[PL]; snprintf(p, sizeof(p), "%s/%s", dir, rel);
+    char *b = slurp(p, NULL); if (!b) return -1;
+    int off[MAXC], len[MAXC]; int n = tok_parse(b, off, len, MAXC);
+    int r = -1;
+    if (idx >= 0 && idx < n) { snprintf(out, osz, "%.*s", len[idx] < (int)osz - 1 ? len[idx] : (int)osz - 1, b + off[idx]); r = 0; }
+    free(b); return r;
+}
+/* splice newstr over token idx of target/rel, atomically; oldv gets the old token */
+static int stok_set(const char *rel, int idx, const char *newstr, char *oldv) {
+    char p[PL]; snprintf(p, sizeof(p), "%s/%s", target, rel);
+    size_t L; char *b = slurp(p, &L); if (!b) return -1;
+    int off[MAXC], len[MAXC]; int n = tok_parse(b, off, len, MAXC);
+    if (idx < 0 || idx >= n) { free(b); return -1; }
+    snprintf(oldv, 32, "%.*s", len[idx] < 31 ? len[idx] : 31, b + off[idx]);
+    size_t nl = strlen(newstr); char *nb = malloc(L + nl + 1);
+    memcpy(nb, b, (size_t)off[idx]); memcpy(nb + off[idx], newstr, nl);
+    memcpy(nb + off[idx] + nl, b + off[idx] + len[idx], L - (size_t)(off[idx] + len[idx]));
+    int r = atomic_write(p, nb, L - (size_t)len[idx] + nl);
+    free(nb); free(b); return r;
+}
+static void rel_file(char *out, size_t n, int si, int fi) { snprintf(out, n, "curriculum/%s_train/%s", subj[si], SFILE[fi]); }
+static void ensure_curriculum(void) {   /* whole tomom curriculum + chatbot source into scratch AND the orig snapshot */
+    char bank[PL], oc[PL]; snprintf(bank, sizeof(bank), "%s/curriculum_bank.txt", target); snprintf(oc, sizeof(oc), "%s/curriculum", orig_dir);
+    char a1[PL], a2[PL], a3[PL], a4[PL];
+    snprintf(a1, sizeof(a1), "%s/curriculum", tomom_live); snprintf(a2, sizeof(a2), "%s/curriculum_bank.txt", tomom_live);
+    snprintf(a3, sizeof(a3), "%s/chatbot_moe_v1.c", tomom_live); snprintf(a4, sizeof(a4), "%s/", target);
+    if (!exists(bank)) { char *cpv[] = { "cp", "-rn", a1, a2, a3, a4, NULL }; run_wait(cpv, NULL, 30); }
+    if (!exists(oc)) { char a5[PL]; snprintf(a5, sizeof(a5), "%s/", orig_dir); char *cpo[] = { "cp", "-rn", a1, a5, NULL }; mkdir_p(orig_dir); run_wait(cpo, NULL, 30); }
+}
+static void load_subjects(void) {
+    nsubj = 0; char p[PL]; snprintf(p, sizeof(p), "%s/curriculum_bank.txt", target);
+    char *b = slurp(p, NULL); if (!b) return;
+    for (char *ln = strtok(b, "\n"); ln && nsubj < MAXS; ln = strtok(NULL, "\n")) {
+        char *a = strchr(ln, '/'); if (!a) continue; a++;
+        char *e = strchr(a, '/'); if (!e) continue;
+        snprintf(subj[nsubj++], 48, "%.*s", (int)(e - a), a);
+    }
+    free(b);
+}
+static void load_cells(void) {
+    free(cbuf); cbuf = NULL; cn = 0; ncw = 0; cur_rel[0] = '\0';
+    if (sel_subj < 0 || sel_file < 0) return;
+    rel_file(cur_rel, sizeof(cur_rel), sel_subj, sel_file);
+    char p[PL]; snprintf(p, sizeof(p), "%s/%s", target, cur_rel);
+    cbuf = slurp(p, NULL); if (!cbuf) { cur_rel[0] = '\0'; return; }
+    cn = tok_parse(cbuf, coff, clen, MAXC);
+    snprintf(p, sizeof(p), "%s/curriculum/%s/%s.txt", target, subj[sel_subj], subj[sel_subj]);
+    char *v = slurp(p, NULL); if (!v) return;
+    int first = 1;
+    for (char *ln = strtok(v, "\n"); ln && ncw < 256; ln = strtok(NULL, "\n")) {
+        if (first) { first = 0; continue; }
+        char num[16], w[100]; if (sscanf(ln, "%15s %99s", num, w) == 2) snprintf(cwords[ncw++], 100, "%s", w);
+    }
+    free(v);
+}
+static void cell_label(int i, char *out, size_t n) {
+    const char *w;
+    if (sel_file == 0) { static const char *m[3] = { "W_q", "W_k", "W_v" }; snprintf(out, n, "%s[%d][%d]", m[(i / 49) % 3], (i % 49) / 7, i % 7); }
+    else if (sel_file == 1) { if (i < 112) snprintf(out, n, "w[%d][%d]", i / 16, i % 16); else snprintf(out, n, "b[%d]", i - 112); }
+    else {
+        int vs = ncw > 0 ? ncw : 1;
+        if (i < 16 * vs) { w = (i % vs) < ncw ? cwords[i % vs] : "?"; snprintf(out, n, "w[%d][%s]", i / vs, w); }
+        else { int j = i - 16 * vs; snprintf(out, n, "bias[%s]", j < ncw ? cwords[j] : "?"); }
+    }
+    sanitize(out);
+}
+static double cell_val(int i) { char t[48]; snprintf(t, sizeof(t), "%.*s", clen[i] < 47 ? clen[i] : 47, cbuf + coff[i]); return atof(t); }
+static void rebuild_cell_filter(void) {
+    nfilt = 0; char lb[160];
+    for (int i = 0; i < cn; i++) { cell_label(i, lb, sizeof(lb)); if (!flt[0] || strcasestr(lb, flt)) filt_idx[nfilt++] = i; }
+    int pages = nfilt ? (nfilt + PAGE - 1) / PAGE : 1;
+    if (vpage >= pages) vpage = pages - 1; if (vpage < 0) vpage = 0;
+}
+static double cur_step(void) { return !strcmp(tab, "subject") && sel_file >= 0 ? SSTEP[sel_file] : STEP; }
+static char sel_rel[160];
 static int cur_sel(const char **file, char *key, size_t ksz, double *val, double *orig, int *has_orig) {
     *has_orig = 0;
     if (!loaded) return -1;
@@ -304,23 +416,36 @@ static int cur_sel(const char **file, char *key, size_t ksz, double *val, double
         for (int i = 0; i < onv; i++) if (!strcmp(ovrows[i].num, vrows[sel_v].num)) { *orig = ovrows[i].weight; *has_orig = 1; }
         return 0;
     }
+    if (strcmp(tab, "subject") == 0 && sub_level == 2 && sel_c >= 0 && sel_c < cn && cbuf) {
+        char lb[160]; cell_label(sel_c, lb, sizeof(lb));
+        snprintf(sel_rel, sizeof(sel_rel), "%s", cur_rel); *file = sel_rel;
+        snprintf(key, ksz, "%d:%s", sel_c, lb); *val = cell_val(sel_c);
+        if (stok_get(orig_dir, cur_rel, sel_c, orig_tok, sizeof(orig_tok)) == 0) { *orig = atof(orig_tok); *has_orig = 1; }
+        return 0;
+    }
     return -1;
 }
-static void do_change(double newv) {
-    const char *file; char key[128], oldv[32], newbuf[32]; double val, orig; int ho;
+static void do_change_s(const char *newbuf) {
+    const char *file; char key[128], oldv[32]; double val, orig; int ho;
     if (cur_sel(&file, key, sizeof(key), &val, &orig, &ho) != 0) { snprintf(status, sizeof(status), "select a row first"); return; }
-    snprintf(newbuf, sizeof(newbuf), "%.6f", newv);
-    if (apply_set(file, key, newv, oldv) != 0) { snprintf(status, sizeof(status), "write failed for %s", key); return; }
+    if (apply_set_s(file, key, newbuf, oldv) != 0) { snprintf(status, sizeof(status), "write failed for %s", key); return; }
     char id[24]; append_edit(file, key, oldv, newbuf, NULL, id);
-    if (nu < 4096) { Ed *e = &ustack[nu++]; snprintf(e->id, 24, "%s", id); snprintf(e->file, 48, "%s", file);
+    if (nu < 4096) { Ed *e = &ustack[nu++]; snprintf(e->id, 24, "%s", id); snprintf(e->file, 96, "%s", file);
         snprintf(e->key, 128, "%s", key); snprintf(e->oldv, 32, "%s", oldv); snprintf(e->newv, 32, "%s", newbuf); }
+    if (!strncmp(file, "curriculum/", 11)) { int keep = sel_c; load_cells(); sel_c = keep; }
     snprintf(status, sizeof(status), "%s: %s %s -> %s", id, key, oldv, newbuf);
+}
+static void do_change(double newv) {
+    char nb[32];
+    if (!strcmp(tab, "subject")) snprintf(nb, sizeof(nb), "%.9g", newv); else snprintf(nb, sizeof(nb), "%.6f", newv);
+    do_change_s(nb);
 }
 static void do_undo(void) {
     if (nu <= 0) { snprintf(status, sizeof(status), "nothing to undo"); return; }
     Ed e = ustack[nu - 1]; char cur[32];
-    if (apply_set(e.file, e.key, atof(e.oldv), cur) != 0) { snprintf(status, sizeof(status), "undo of %s failed (key not in target)", e.id); nu--; return; }
+    if (apply_set_s(e.file, e.key, e.oldv, cur) != 0) { snprintf(status, sizeof(status), "undo of %s failed (key not in target)", e.id); nu--; return; }
     nu--;
+    if (!strncmp(e.file, "curriculum/", 11)) { int keep = sel_c; load_cells(); sel_c = keep; }
     char id[24]; append_edit(e.file, e.key, cur, e.oldv, e.id, id);
     snprintf(status, sizeof(status), "%s: undid %s (%s back to %s)", id, e.id, e.key, e.oldv);
 }
@@ -334,7 +459,7 @@ static void load_undo_stack(void) {
         while (nf < 10) { f[nf++] = s; char *c = strstr(s, " | "); if (!c) break; *c = '\0'; s = c + 3; }
         if (nf >= 9 && strncmp(f[8], "undo_of=", 8) == 0) { if (nu > 0) nu--; }
         else if (nf >= 7 && nu < 4096) {
-            Ed *e = &ustack[nu++]; snprintf(e->id, 24, "%s", f[1]); snprintf(e->file, 48, "%s", f[2]);
+            Ed *e = &ustack[nu++]; snprintf(e->id, 24, "%s", f[1]); snprintf(e->file, 96, "%s", f[2]);
             snprintf(e->key, 128, "%s", f[3]); snprintf(e->oldv, 32, "%s", f[4]); snprintf(e->newv, 32, "%s", f[5]);
         }
     }
@@ -400,21 +525,23 @@ static void do_ask(const char *prompt) {
     if (ask_pid > 0) { snprintf(ask_state, sizeof(ask_state), "still asking, wait"); return; }
     if (!in_scratch()) { snprintf(ask_state, sizeof(ask_state), "ask only runs on the scratch copy"); return; }
     if (!loaded) { snprintf(ask_state, sizeof(ask_state), "init the scratch copy first"); return; }
-    char bank[PL]; snprintf(bank, sizeof(bank), "%s/curriculum_bank.txt", target);
-    if (!exists(bank)) {   /* whole tomom folder (curriculum/ ~2 MB) minus the files already edited here */
-        snprintf(ask_state, sizeof(ask_state), "copying tomom curriculum ...");
-        char *cpv[] = { "cp", "-rn", NULL, NULL, NULL, NULL, NULL };
-        char a1[PL], a2[PL], a3[PL], a4[PL];
-        snprintf(a1, sizeof(a1), "%s/curriculum", tomom_live); snprintf(a2, sizeof(a2), "%s/curriculum_bank.txt", tomom_live);
-        snprintf(a3, sizeof(a3), "%s/chatbot_moe_v1.c", tomom_live); snprintf(a4, sizeof(a4), "%s/", target);
-        cpv[2] = a1; cpv[3] = a2; cpv[4] = a3; cpv[5] = a4;
-        run_wait(cpv, NULL, 30);
-    }
-    char bin[PL]; snprintf(bin, sizeof(bin), "%s/chatbot_moe_v1", target);
+    ensure_curriculum();
+    /* Reproducible asks: chatbot_moe_v1 seeds with srand(time(NULL)) and picks
+     * uniformly among the top-5 scores, so two runs differ. We compile a copy of
+     * the (live, unmodified) source with that ONE call replaced by srand(7) into
+     * the scratch dir: same prompt + same files => same answer. */
+    char bin[PL]; snprintf(bin, sizeof(bin), "%s/chatbot_seed7", target);
     if (!exists(bin)) {
-        char *gc[] = { "gcc", "-O2", "-w", "-o", "chatbot_moe_v1", "chatbot_moe_v1.c", "-lm", NULL };
+        char sp[PL]; snprintf(sp, sizeof(sp), "%s/chatbot_moe_v1.c", target);
+        size_t L; char *src = slurp(sp, &L); char *hit = src ? strstr(src, "srand(time(NULL))") : NULL;
+        if (!hit) { free(src); snprintf(ask_state, sizeof(ask_state), "cannot find srand(time(NULL)) in chatbot source"); return; }
+        char *ns = malloc(L + 16); size_t pre = (size_t)(hit - src);
+        memcpy(ns, src, pre); memcpy(ns + pre, "srand(7)", 8); strcpy(ns + pre + 8, hit + 17);
+        char dp[PL]; snprintf(dp, sizeof(dp), "%s/chatbot_seed7.c", target);
+        atomic_write(dp, ns, strlen(ns)); free(ns); free(src);
+        char *gc[] = { "gcc", "-O2", "-w", "-o", "chatbot_seed7", "chatbot_seed7.c", "-lm", NULL };
         run_wait(gc, target, 60);
-        if (!exists(bin)) { snprintf(ask_state, sizeof(ask_state), "build of chatbot_moe_v1 failed"); return; }
+        if (!exists(bin)) { snprintf(ask_state, sizeof(ask_state), "build of chatbot_seed7 failed"); return; }
     }
     snprintf(ask_prompt, sizeof(ask_prompt), "%s", prompt); ask_ans[0] = '\0';
     char out[PL]; snprintf(out, sizeof(out), "%s/ask_out.txt", work_root);
@@ -425,7 +552,7 @@ static void do_ask(const char *prompt) {
         int o = open(out, O_WRONLY | O_CREAT | O_TRUNC, 0644), dn = open("/dev/null", O_RDWR);
         if (dn >= 0) { dup2(dn, 0); dup2(dn, 2); }
         if (o >= 0) dup2(o, 1);
-        execl("./chatbot_moe_v1", "chatbot_moe_v1", "curriculum_bank.txt", prompt, "12", "0.5", (char *)NULL);
+        execl("./chatbot_seed7", "chatbot_seed7", "curriculum_bank.txt", prompt, "12", "0.5", (char *)NULL);
         _exit(127);
     }
     ask_pid = pid; ask_t0 = time(NULL);
@@ -454,16 +581,23 @@ static void wrap_rows(FILE *f, const char *text, int *n) {
 static void write_ui(void) {
     char dst[PL], tmp[PL]; snprintf(dst, sizeof(dst), "%s/tomom_ui.txt", pkg); snprintf(tmp, sizeof(tmp), "%s.tmp", dst);
     FILE *f = fopen(tmp, "w"); if (!f) return;
-    int tm = !strcmp(tab, "meta"), tv = !strcmp(tab, "vocab"), ta = !strcmp(tab, "ask");
+    int tm = !strcmp(tab, "meta"), tv = !strcmp(tab, "vocab"), ta = !strcmp(tab, "ask"), ts = !strcmp(tab, "subject");
     const char *tshow = target; size_t pl = strlen(pkg);
     if (!strncmp(target, pkg, pl) && target[pl] == '/') tshow = target + pl + 1;
     fprintf(f, "target=%s\n", tshow);
     fprintf(f, "safe=%s\n", in_scratch() ? "scratch" : "NOT-SCRATCH");
     fprintf(f, "status=%s\n", status);
     fprintf(f, "cur_tab=%s\n", tab);
-    fprintf(f, "cls_meta=%s\ncls_vocab=%s\ncls_ask=%s\n", tm ? "tab-active" : "", tv ? "tab-active" : "", ta ? "tab-active" : "");
-    fprintf(f, "tab_meta=%s\ntab_vocab=%s\ntab_ask=%s\n", tm ? "1" : "", tv ? "1" : "", ta ? "1" : "");
-    fprintf(f, "tab_edit=%s\n", ((tm || tv) && loaded) ? "1" : "");
+    fprintf(f, "cls_meta=%s\ncls_vocab=%s\ncls_ask=%s\ncls_subject=%s\n", tm ? "tab-active" : "", tv ? "tab-active" : "", ta ? "tab-active" : "", ts ? "tab-active" : "");
+    fprintf(f, "tab_meta=%s\ntab_vocab=%s\ntab_ask=%s\ntab_subject=%s\n", tm ? "1" : "", tv ? "1" : "", ta ? "1" : "", ts ? "1" : "");
+    fprintf(f, "tab_edit=%s\n", (((tm || tv) && loaded) || (ts && sub_level == 2)) ? "1" : "");
+    fprintf(f, "show_flt=%s\n", (tv || (ts && sub_level == 2)) ? "1" : "");
+    fprintf(f, "show_back=%s\n", (ts && sub_level > 0) ? "1" : "");
+    char crumb[300] = "";
+    if (ts) { snprintf(crumb, sizeof(crumb), "subject%s%s%s%s", sub_level >= 1 ? " / " : "", sub_level >= 1 && sel_subj >= 0 ? subj[sel_subj] : "",
+                       sub_level >= 2 ? " / " : "", sub_level >= 2 && sel_file >= 0 ? SFILE[sel_file] : ""); }
+    fprintf(f, "crumb=%s\n", crumb);
+    fprintf(f, "step=%g\n", cur_step());
     fprintf(f, "flt=%s\n", flt);
     fprintf(f, "undo_n=%d\n", nu);
 
@@ -472,7 +606,7 @@ static void write_ui(void) {
     char d1[400] = "", d2[400] = "", d3[400] = "";
     if (cur_sel(&file, key, sizeof(key), &val, &orig, &ho) == 0) {
         bar(val, b);
-        if (tm) { snprintf(d1, sizeof(d1), "%s", key); snprintf(d2, sizeof(d2), "value %s %+.6f", b, val); }
+        if (tm || ts) { snprintf(d1, sizeof(d1), "%s%s%s", ts ? cur_rel : "", ts ? "  " : "", key); snprintf(d2, sizeof(d2), "value %s %+.6f", b, val); }
         else {
             VRow *r = &vrows[sel_v]; char w[96]; snprintf(w, sizeof(w), "%s", r->word); sanitize(w);
             snprintf(d1, sizeof(d1), "#%s  %s", r->num, w);
@@ -483,7 +617,10 @@ static void write_ui(void) {
             snprintf(d3, sizeof(d3), "weight %s %+.6f", b, val);
         }
         char o3[120] = ""; if (ho) snprintf(o3, sizeof(o3), "   (original %+.6f%s)", orig, fabs(orig - val) < 5e-7 ? ", unchanged" : ", CHANGED");
-        if (tm) if (ho) snprintf(d3, sizeof(d3), "original %+.6f  -  %s", orig, fabs(orig - val) < 5e-7 ? "unchanged" : "CHANGED"); else snprintf(d3, sizeof(d3), "original: n/a"); else strncat(d3, o3, sizeof(d3) - strlen(d3) - 1);
+        if (tm || ts) {
+            if (ho) snprintf(d3, sizeof(d3), "original %+.6f  -  %s", orig, fabs(orig - val) < 5e-7 ? "unchanged" : "CHANGED");
+            else snprintf(d3, sizeof(d3), "original: n/a");
+        } else strncat(d3, o3, sizeof(d3) - strlen(d3) - 1);
     }
     fprintf(f, "sel1=%s\nsel2=%s\nsel3=%s\n", d1, d2, d3);
     fprintf(f, "has_sel=%s\n", d1[0] ? "1" : "");
@@ -510,6 +647,25 @@ static void write_ui(void) {
         int pages = nfilt ? (nfilt + PAGE - 1) / PAGE : 1;
         snprintf(pagetxt, sizeof(pagetxt), "%d match%s  -  page %d/%d  (rows %d-%d)", nfilt, nfilt == 1 ? "" : "es", vpage + 1, pages, nfilt ? from + 1 : 0, to);
         pshow = 1;
+    } else if (ts && nsubj == 0) {
+        fprintf(bf, "l_0_text=(no subjects - press init scratch, then reload)\nl_0_cls=row\nl_0_idx=-1\n"); n = 1;
+    } else if (ts && sub_level == 0) {
+        for (int i = 0; i < nsubj; i++) fprintf(bf, "l_%d_text=%s\nl_%d_cls=%s\nl_%d_idx=%d\n", i, subj[i], i, i == sel_subj ? "row-sel" : "row", i, i);
+        n = nsubj;
+    } else if (ts && sub_level == 1) {
+        for (int i = 0; i < 3; i++) fprintf(bf, "l_%d_text=%s   (step %g)\nl_%d_cls=row\nl_%d_idx=%d\n", i, SFILE[i], SSTEP[i], i, i, i);
+        n = 3;
+    } else if (ts && sub_level == 2) {
+        rebuild_cell_filter();
+        int from = vpage * PAGE, to = from + PAGE; if (to > nfilt) to = nfilt;
+        for (int j = from; j < to; j++) {
+            int i = filt_idx[j]; char bb[16], lb[160]; double v = cell_val(i); bar(v, bb); cell_label(i, lb, sizeof(lb));
+            fprintf(bf, "l_%d_text=%s %+.4f  %s\nl_%d_cls=%s\nl_%d_idx=%d\n", n, bb, v, lb, n, i == sel_c ? "row-sel" : "row", n, i);
+            n++;
+        }
+        int pages = nfilt ? (nfilt + PAGE - 1) / PAGE : 1;
+        snprintf(pagetxt, sizeof(pagetxt), "%d cell%s  -  page %d/%d  (rows %d-%d)", nfilt, nfilt == 1 ? "" : "s", vpage + 1, pages, nfilt ? from + 1 : 0, to);
+        pshow = 1;
     } else if (ta) {
         char line[1400];
         if (ask_prompt[0]) { snprintf(line, sizeof(line), "you: %s", ask_prompt); sanitize(line); wrap_rows(bf, line, &n); }
@@ -530,19 +686,25 @@ static void write_ui(void) {
 
 static void do_cmd(const char *cmd) {
     if (!strncmp(cmd, "TAB:", 4)) { snprintf(tab, sizeof(tab), "%s", cmd + 4); sanitize(tab);
-        if (strcmp(tab, "meta") && strcmp(tab, "vocab") && strcmp(tab, "ask")) snprintf(tab, sizeof(tab), "meta"); }
-    else if (!strncmp(cmd, "SEL:", 4)) { int i = atoi(cmd + 4); if (!strcmp(tab, "meta")) sel_m = i; else if (!strcmp(tab, "vocab")) sel_v = i; }
-    else if (!strcmp(cmd, "UP")) { const char *fl; char k[128]; double v, o; int h; if (cur_sel(&fl, k, sizeof(k), &v, &o, &h) == 0) do_change(v + STEP); else snprintf(status, sizeof(status), "select a row first"); }
-    else if (!strcmp(cmd, "DOWN")) { const char *fl; char k[128]; double v, o; int h; if (cur_sel(&fl, k, sizeof(k), &v, &o, &h) == 0) do_change(v - STEP); else snprintf(status, sizeof(status), "select a row first"); }
+        if (strcmp(tab, "meta") && strcmp(tab, "vocab") && strcmp(tab, "ask") && strcmp(tab, "subject")) snprintf(tab, sizeof(tab), "meta");
+        if (!strcmp(tab, "subject") && in_scratch() && loaded) { ensure_curriculum(); load_subjects(); } }
+    else if (!strncmp(cmd, "SEL:", 4)) { int i = atoi(cmd + 4); if (!strcmp(tab, "meta")) sel_m = i; else if (!strcmp(tab, "vocab")) sel_v = i;
+        else if (!strcmp(tab, "subject") && i >= 0) {
+            if (sub_level == 0 && i < nsubj) { sel_subj = i; sub_level = 1; }
+            else if (sub_level == 1 && i < 3) { sel_file = i; sel_c = -1; flt[0] = 0; vpage = 0; load_cells(); sub_level = 2; }
+            else if (sub_level == 2) sel_c = i; } }
+    else if (!strcmp(cmd, "BACK")) { if (sub_level > 0) { sub_level--; flt[0] = 0; vpage = 0; sel_c = -1; } }
+    else if (!strcmp(cmd, "UP")) { const char *fl; char k[128]; double v, o; int h; if (cur_sel(&fl, k, sizeof(k), &v, &o, &h) == 0) do_change(v + cur_step()); else snprintf(status, sizeof(status), "select a row first"); }
+    else if (!strcmp(cmd, "DOWN")) { const char *fl; char k[128]; double v, o; int h; if (cur_sel(&fl, k, sizeof(k), &v, &o, &h) == 0) do_change(v - cur_step()); else snprintf(status, sizeof(status), "select a row first"); }
     else if (!strcmp(cmd, "RESET")) { const char *fl; char k[128]; double v, o; int h;
         if (cur_sel(&fl, k, sizeof(k), &v, &o, &h) != 0) snprintf(status, sizeof(status), "select a row first");
         else if (!h) snprintf(status, sizeof(status), "no original snapshot for this row");
-        else if (fabs(o - v) < 5e-7) snprintf(status, sizeof(status), "already original");
-        else do_change(o); }
+        else if (fabs(o - v) < (!strcmp(tab, "subject") ? 1e-12 : 5e-7)) snprintf(status, sizeof(status), "already original");
+        else { if (!strcmp(tab, "subject")) do_change_s(orig_tok); else do_change(o); } }
     else if (!strcmp(cmd, "UNDO")) do_undo();
     else if (!strcmp(cmd, "INIT")) do_init();
-    else if (!strcmp(cmd, "RELOAD")) { load_target(); load_undo_stack(); }
-    else if (!strncmp(cmd, "FILTER:", 7)) { snprintf(flt, sizeof(flt), "%s", cmd + 7); vpage = 0; sel_v = -1; }
+    else if (!strcmp(cmd, "RELOAD")) { load_target(); load_undo_stack(); load_subjects(); load_cells(); }
+    else if (!strncmp(cmd, "FILTER:", 7)) { snprintf(flt, sizeof(flt), "%s", cmd + 7); vpage = 0; sel_v = -1; sel_c = -1; }
     else if (!strcmp(cmd, "FLTCLR")) { flt[0] = '\0'; vpage = 0; }
     else if (!strcmp(cmd, "PAGE+")) vpage++;
     else if (!strcmp(cmd, "PAGE-")) { if (vpage > 0) vpage--; }
@@ -587,7 +749,7 @@ int main(int argc, char **argv) {
     mkdir_p(work_root);
     signal(SIGTERM, on_term); signal(SIGINT, on_term); signal(SIGHUP, on_term);
     find_live_tomom(); load_config();
-    clear_action_file(); load_undo_stack(); load_target();
+    clear_action_file(); load_undo_stack(); load_target(); load_subjects();
     snprintf(ask_state, sizeof(ask_state), "idle");
     write_ui();
     int last_seq = 0;
