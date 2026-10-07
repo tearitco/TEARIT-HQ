@@ -119,4 +119,26 @@ Why it matters: two robots share one `follow` definition (change it once; both c
 
 Checks this implies (each a harness case before building): an entity VAR naming a parameter the behavior does not declare is flagged, never silently used; a behavior signature change that drops a parameter flags every entity that bound it; defaults apply when a variable is absent; two entities with different variables resolve the same phrase to the same command with different arguments.
 
-Open: do variables live in the entity folder (recommended: with the rest of its private data) or on the phone? Is a per-call override allowed from typed text, or only entity-bound values?
+**ANSWERED (owner 2026-10-07): the variables live with the bank's scores and synonyms, all related.** So `zz.wordbank/` holds `words.txt` (synonyms), `scores.txt` (scores) and `vars.txt` (the `VAR` rows above) together, all keyed by the same CANON, and the same rebuild/ensure op and hash-ignore cover all three. Still open: is a per-call override allowed from typed text, or only entity-bound values?
+
+## 12. Addendum (owner, 2026-10-07): swap tomom onto visual weights and banks
+
+Owner: "we're supposed to swap tomom to be able to use visual weights and banks." This is already the documented direction, not a new idea (`A-TEARIT-IS-ALL-YOU-NEED.md` section 2 table: the Concept Bank is the "hand-tunable substrate **replacing tomom's opaque attention/MLP matrices**"; section 3.5; `#.Z.HUMAN_LLM/^.feasibility_handtune_aug01_2026.txt`: tomom is the strongest candidate because its weights are already text, per-corpus and MoE, with a readable meta-RL file and a `web-interface/` editor). I read "visual" as **weights a person can see and edit in a viewer** (hand-tunable, auditable, NIGHT 22). If you meant something else by "visual" (the earlier undefined "3D"), say so; I have not assumed it.
+
+**What the existing design already says about the swap (A-TEARIT 3.5):**
+- Gradient descent is kept but its job **changes**: it may only adjust the *magnitude* of an already-named slot (like TransE-style knowledge-graph embeddings), never invent topology. A forward/backward pass over a curriculum becomes a **proposer** (`proposer=trainer_bp`) of `spoke_weight_delta` candidate edits, through the same validator -> review gate as every other proposer. One promotion pipeline, many proposers, never a second writer.
+- **QKV attention at inference is superseded**: context-dependent relatedness comes from the bank's **concept overlap** (a named lookup), not a learned projection. Its training signal (next-token loss) is redirected at the few named slots an example touches.
+- **OPEN in that doc, still open here:** the exact loss function and replay-batching for `trainer_bp`; and how generated *text* is produced once attention/MLP are gone (the bank scores relatedness; it is not by itself a generator). I am not inventing these.
+
+**Staged swap (each stage on a scratch copy, harness first, live tomom files never written):**
+0. *(section 10 items 1-3)* keep the dense model; the bank normalizes input, becomes a curriculum, seeds `VocabEntry.weight`.
+1. **Words as spokes.** Give each tomom vocab word `SLOT | POINTS_TO=<master> | WEIGHT` rows (derived from the bank sets, entity words included), via the same slotted-pointer type. Run both paths side by side on a fixed prompt list; the harness records the dense output vs the bank-overlap ranking (a Watch record per prompt). No change to what tomom says yet.
+2. **Overlap replaces attention scoring** in the scratch copy; compare to stage 1 on the same prompts; pass/fail rows in the ledger.
+3. **`trainer_bp` as proposer** of slot deltas, human review (no auto-promotion).
+4. Retire the dense matrices **only if** stages 1-3 hold up in the ledger. Until then both exist.
+
+**Viewing the weights ("visual"):** the bank's weights are rows in files, so a viewer is just a renderer over `words.txt` / `scores.txt` / `vars.txt` / spokes (the same way every `.xhtpm` window projects a manager's text file). Tomom already ships a `web-interface/` (php/js editor) for its text weights; whether to reuse it or build an HQ window (house standard: a manager `<module>` + `.xhtpm`, no per-app renderer C) is open.
+
+**Which model "sees all weights":** none, by design. With banks, a model sees a *named, bounded slice* (the candidate list for the corpus), and a person can see everything in the viewer. That is the point of the swap.
+
+**Not built:** nothing in this addendum.
