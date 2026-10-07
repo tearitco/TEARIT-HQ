@@ -305,10 +305,10 @@ int main(int argc, char **argv) {
             {   char op[4096]; struct stat ost; static long last_sz = -1; static double last_chg = 0;
                 snprintf(op, sizeof(op), "%s/#.desktop/dock_stack/draw_stamp.txt", house);
                 long sz = -1; if (stat(op, &ost) == 0) sz = (long)ost.st_size;
-                /* the dock appends a byte per redraw while it is still filling (khtpm_core_render.c); quiet for 5 s = settled (owner reports ~20 s starts with gaps).
+                /* the dock appends a byte per redraw while it is still filling (khtpm_core_render.c); quiet for 1.2 s = settled (was 5 s while the dock had a 20 s backstop; now 1 s).
                  * Hard cap 45 s so an always-redrawing bar can never pin the splash. */
                 if (sz != last_sz) { last_sz = sz; last_chg = el; }
-                if (dock && el_post >= 4.0 && (el - last_chg >= 5.0 || el_post >= 45.0) && done_at < 0) done_at = el;
+                if (dock && el_post >= 1.0 && (el - last_chg >= 1.2 || el_post >= 45.0) && done_at < 0) done_at = el;   /* the dock now repaints within ~1 s of a change (1 s startup backstop), so 1.2 s of quiet = settled */
                 if (dock && done_at < 0 && frac > 0.95) frac = 0.95;       /* bar window is up, cells still arriving */
             }
             if (done_at >= 0) frac = 1.0;
