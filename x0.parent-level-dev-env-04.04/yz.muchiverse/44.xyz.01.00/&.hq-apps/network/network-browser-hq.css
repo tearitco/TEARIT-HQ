@@ -21,6 +21,9 @@ window.network-browser { width: 784px; height: 504px; background-color: #141414;
 .toolbar { background-color: #2a2a2a; color: #eeeeee; }
 .quiet { background-color: #333333; color: #ffffff; }
 .nb-address { background-color: #0e0e0e; color: #ffffff; border: 1px solid #666666; }
+.nb-input { background-color: #0e0e0e; color: #ffffff; border: 1px solid #444444; }
+.nb-button { background-color: #2a4a2a; color: #ffffff; }
+.nb-check { background-color: #1a1a1a; color: #8fb8ff; }
 .nb-status { background-color: #101010; color: #88cc88; }
 .nb-content { background-color: #1a1a1a; color: #cccccc; }
 /* Milestone 1 (2026-10-05): keep a readable measure like a real page column. \
