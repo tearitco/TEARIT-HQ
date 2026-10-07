@@ -2,7 +2,7 @@
 
 | field | value |
 |---|---|
-| status | active — steps 1-3 done, test tree passed (see Log); steps 4+ on the REAL tree need the owner's OK |
+| status | active — steps 1-5 DONE on `claude` (2026-10-06); steps 6-8 + other branches open; data branches are LOCAL ONLY, do not push |
 | tier | manager (claude) or a careful outside-agent; touches every branch |
 | size | L |
 | assignee | - |
@@ -55,5 +55,9 @@ Everything in `^.grave/README.md` and `AGENTS.md`. No agent live in the checkout
   - B move a tree from a TRACKING commit to the UNTRACKED branch with `git checkout`: **all 1725 files deleted from disk** (the 2026-10-06 key-file failure, reproduced). Safe way: on a tree already at the parent commit, `git symbolic-ref HEAD refs/heads/<untracked-branch>; git reset --mixed <untracked-branch>` (index only): disk 1725 -> 1725 untouched (1 leftover status line to look at).
   - D orphan data branch restored from the backup tarball: commit has no parent (shares no history), 1,920 files = backup, checksum list MATCHES.
   - Rule that falls out: **never `git checkout`/`ff` a live tree from a tracking branch onto the untracking commit; use the index-only move above, or untrack with `git rm --cached` on the live tree itself. Do it on every active branch in one session.**
+
+2026-10-06 | claude | REAL TREE (owner: "lets do it"). Desktop quit first so the data was quiet. Backup `nnest_xyzfs_backup_20261006_quiet/` (tar + sha256, 1,920 files). Step 4: 24 orphan branches built with plumbing (temporary index, `--work-tree`, no working-tree writes): `user/jb` (owner, 1,446 files), `user/584a4c9b` (349), `user/e8bf229a` (23), ..., `user/guest-747d5f6c`; every branch verified blob-for-blob against the disk, total 1,920 = live, 0 problems, `user/jb` has no parent.
+2026-10-06 | claude | Step 5 on `claude` only (commit `09cd41ae4`): `git rm -r --cached xyzfs/users` + `.gitignore **/xyzfs/users/`; disk 1,920 files with identical fingerprint before/after, tracked 0, `git status` noise 0. Desktop relaunched and healthy (17 entities).
+2026-10-06 | claude | NOT done: other branches (opencode, kilo, grok, main, ...) still track the files: when merged into `claude`, resolve by keeping them deleted; NEVER `git checkout`/ff a live tree onto an untracked branch from a tracking one. Worktrees `NNEST-12.00-halo` and `.kilo/worktrees/attrition` still hold their own tracked copies. Steps 6 (template user), 7 (`jb` code branch) and 8 (data-commit op) open. Data branches are local only (they hold `wallet.txt`).
 
 ## Result

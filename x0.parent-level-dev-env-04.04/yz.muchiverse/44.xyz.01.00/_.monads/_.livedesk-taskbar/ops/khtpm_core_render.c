@@ -281,6 +281,34 @@ static Elem g_dock_plus_elem, g_dock_minus_elem;
  * see few packed entities and the clamp below would otherwise shrink the saved choice. Stored in #.desktop/dock_state.pdl:
  *     DOCK | bottom_visible_rows | <n>
  * One writer (this renderer), read once at the first layout, written on each +/- click. No change detection needed (no other process watches it). */
+/* Sideways slide offset of a "vars-positioned" window (the hotbar), remembered across restarts (owner, 2026-10-06: "hotbar snaps to middle instead of
+ * remembering its position"). The renderer used to keep the offset in a function-local static, so every launch started centred. Stored per window label in
+ *     #.desktop/slide_offsets.pdl      SLIDE | <label> | <dx pixels from the centred spot>
+ * Written atomically (tmp + rename) a moment after the user stops dragging; read once per process. */
+static int slide_dx_get(const char *label) {
+    char p[PATH_BUF + 40], line[512], want[300]; FILE *f; int dx = 0;
+    snprintf(p, sizeof(p), "%s/#.desktop/slide_offsets.pdl", g_house_root);
+    snprintf(want, sizeof(want), "SLIDE | %s | ", label);
+    if (!(f = fopen(p, "r"))) return 0;
+    while (fgets(line, sizeof(line), f)) if (!strncmp(line, want, strlen(want))) dx = atoi(line + strlen(want));
+    fclose(f); return dx;
+}
+static void slide_dx_put(const char *label, int dx) {
+    char p[PATH_BUF + 40], tmp[PATH_BUF + 50], line[512], want[300], keep[16][512]; int n = 0, i; FILE *f;
+    snprintf(p, sizeof(p), "%s/#.desktop/slide_offsets.pdl", g_house_root);
+    snprintf(tmp, sizeof(tmp), "%s.tmp", p);
+    snprintf(want, sizeof(want), "SLIDE | %s | ", label);
+    if ((f = fopen(p, "r"))) {
+        while (n < 16 && fgets(line, sizeof(line), f)) if (strncmp(line, want, strlen(want)) && !strncmp(line, "SLIDE | ", 8)) snprintf(keep[n++], 512, "%s", line);
+        fclose(f);
+    }
+    if (!(f = fopen(tmp, "w"))) return;
+    fprintf(f, "# slide offsets of vars-positioned windows (written by the renderer after a drag)\n");
+    for (i = 0; i < n; i++) fputs(keep[i], f);
+    fprintf(f, "%s%d\n", want, dx);
+    fclose(f);
+    rename(tmp, p);
+}
 static int g_dock_want_rows = 0, g_dock_rows_loaded = 0;
 static void dock_state_path(char *out, size_t n) { snprintf(out, n, "%s/#.desktop/dock_state.pdl", g_house_root); }
 static void dock_rows_load(void) {
@@ -12476,16 +12504,19 @@ static void hq_idle_tick(void) {
             /* Slide-only (owner 2026-10-05): the user may drag the window sideways; its vertical
              * position is always the anchor (top of the bottom bar's stack). The sideways offset
              * from the centred spot is remembered and re-applied as the anchor moves. */
-            static int s_dx = 0, s_last_x = -99999; static time_t s_t0 = 0;
+            static int s_dx = 0, s_last_x = -99999, s_dx_loaded = 0, s_dx_dirty = 0; static time_t s_t0 = 0, s_dx_t = 0;
             int cx0 = atoi(acx) - g_win_w / 2, ny = atoi(abt) - g_win_h, nx;
             Window ch; int rx = g_win_x, ry = g_win_y, have = 0;
             if (!s_t0) s_t0 = time(NULL);
+            if (!s_dx_loaded) { s_dx = slide_dx_get(g_window->label); s_dx_loaded = 1; }   /* remembered across restarts */
             have = XTranslateCoordinates(dpy, win, DefaultRootWindow(dpy), 0, 0, &rx, &ry, &ch);
             /* The window manager places a new window asynchronously, so for the first 3 s after
              * launch we only place it. After that any x the window is found at that we did not set is
              * the user sliding it: adopt it at once (live, so a drag is not fought). */
-            if (have && time(NULL) - s_t0 >= 3 && s_last_x != -99999 && rx != s_last_x) s_dx = rx - cx0;
+            if (have && time(NULL) - s_t0 >= 3 && s_last_x != -99999 && rx != s_last_x) { s_dx = rx - cx0; s_dx_dirty = 1; s_dx_t = time(NULL); }
+            if (s_dx_dirty && time(NULL) > s_dx_t) { slide_dx_put(g_window->label, s_dx); s_dx_dirty = 0; }   /* once the drag has settled for a second */
             nx = cx0 + s_dx;
+            { int scr_w = DisplayWidth(dpy, DefaultScreen(dpy)); if (nx > scr_w - g_win_w) nx = scr_w - g_win_w; }   /* a saved offset must not push it off a smaller screen */
             if (nx < 0) nx = 0;
             if (ny < 0) ny = 0;
             /* compare with the window's REAL position: y is always forced back to the anchor */

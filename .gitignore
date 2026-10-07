@@ -189,3 +189,7 @@ x0.parent-level-dev-env-04.04_*.7z
 
 # per-user desk data lives on user/<name> data branches, not in code history (Q007, USER-DATA-BRANCHES-DESIGN.md)
 **/xyzfs/users/
+
+# per-desk renderer state (bottom dock rows, hotbar slide offset): runtime, not code (Q007 3d)
+**/#.desktop/dock_state.pdl
+**/#.desktop/slide_offsets.pdl

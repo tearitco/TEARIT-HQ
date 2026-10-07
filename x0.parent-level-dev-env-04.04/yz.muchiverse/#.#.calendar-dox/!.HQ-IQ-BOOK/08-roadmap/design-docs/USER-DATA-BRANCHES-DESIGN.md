@@ -1,6 +1,6 @@
 # Per-user data branches (`jb` and every desk user) — design
 
-Written 2026-10-06 from an owner conversation. Design only: nothing in this document has been run. Every "today" claim was read from git or
+Written 2026-10-06 from an owner conversation. STATUS 2026-10-06 (later): steps 1-5 of §4 EXECUTED on `claude` (24 verified data branches, untrack commit `09cd41ae4`; details in Q007's log); §4 steps 6-8 and the other branches are still open. Every "today" claim was read from git or
 the filesystem on that date.
 
 ## 1. What the owner wants
