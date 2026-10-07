@@ -1,0 +1,5 @@
+# the phone directory (the server's view): rows = ^.hai-server/phones.index (number + owner label), detail = the tail of that phone's history.txt (its conversation). READ-ONLY view.
+BOARD  | title    | Phones
+BOARD  | subtitle | ^.hai-server phone directory
+SOURCE | pipe-index | ^.hai-server/phones.index | cols=0,2
+DETAIL | dir-file-tail | history.txt | 14

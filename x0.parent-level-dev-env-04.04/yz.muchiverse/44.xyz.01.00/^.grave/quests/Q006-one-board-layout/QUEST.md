@@ -2,7 +2,7 @@
 
 | field | value |
 |---|---|
-| status | built and scored: `@.apps/board-hq/verify.sh` PASS 13/13 (headless), selftest PASS; NOT shown on the real screen, not linked from the h-ai menu, grave/ghost windows not launched live |
+| status | built and scored: `@.apps/board-hq/verify.sh` PASS 15/15 (headless), selftest PASS; NOT shown on the real screen, not linked from the h-ai menu, grave/ghost windows not launched live |
 | tier | manager (claude) or outside-agent with layout experience |
 | size | M |
 | assignee | claude |
@@ -48,10 +48,12 @@ Everything in `^.grave/README.md`. Test windows are launched by you; do not rese
 2026-10-06 | claude | DEVIATION from the quest text: an instance is a STAMPED copy (a `vars=` path and a module argument are per window and cannot be parameterised in one literal file), so "one layout" means one TEMPLATE; `new_board.sh` regenerates every instance after an edit. Proven: instances differ only by name; one css edit in `board.css` reaches both after re-stamping.
 2026-10-06 | claude | `verify.sh` (headless render with the real renderer, `--headless`, no window or display; sandbox data + throwaway `vtest-*` instances, killed by pid and deleted afterwards): title/subtitle, row count, nav-numbered rows, chosen columns, detail = tail of the selected row's file, action button, keyboard select (nav 2 + Enter through the relay) switches the detail and saves the selection, second source (roster rows, `_template` hidden, detail from history.txt), instances differ only by name, one css edit restyles both. 13/13 PASS; selftest (a template with no rows) fails 9 checks. Bugs found on the way: the window module launcher prefixes EVERY argument with the house path and appends `<house> <package_dir> <module id>` (the op now ignores them in watch mode); a `watch` loop outlived its window (now exits when its parent or data file is gone); `sed` and `${//}` mangle the `&` in `&.widgits`/dash has no `${//}` (awk).
 
+2026-10-06 | claude | Third instance: `state/phones/board.pdl` = the phone directory (new source kind `pipe-index` over `^.hai-server/phones.index`: rows = number + owner label, detail = tail of that phone's `history.txt`; read-only). On the REAL index: 55 rows. `verify.sh` now 15 checks (phone rows + conversation detail on scratch data), selftest PASS, no stray processes.
+
 ## Not done
 
 - [ ] Not looked at on the real screen (only the headless ascii frame): colours/geometry unseen. Launching a live window is the owner's call.
-- [ ] Not linked from the h-ai menu / placed like a palette item; the server and phone windows are not instances yet (a `phones` source = the phone index + `history.txt` tail is the obvious next one).
+- [ ] Not linked from the h-ai menu / placed like a palette item. The phone directory exists as an instance; a 'server' instance (ledger + observations tail) is not made yet.
 - [ ] The quest board instance has no ACTION buttons configured (the mechanism is tested with a scratch action).
 - [ ] Windows/Linux only checked on Linux.
 

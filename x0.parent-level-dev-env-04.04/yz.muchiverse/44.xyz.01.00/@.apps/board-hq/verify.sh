@@ -25,6 +25,9 @@ mkdir -p "$T/quests/QA" "$T/quests/QB" "$T/quests/QC" "$T/roster/_template" "$T/
 printf '| id | quest | tier | size | status | assignee |\n|---|---|---|---|---|---|\n| [QA](QA/QUEST.md) | alpha job | w | S | open | - |\n| [QB](QB/QUEST.md) | beta job | w | S | done | x |\n| [QC](QC/QUEST.md) | gamma job | w | S | open | - |\n\nnext ids\n' > "$T/quests/INDEX.md"
 for q in QA QB QC; do printf '# %s\n## Log\nline one of %s\nline two of %s\nthe last line of %s\n' "$q" "$q" "$q" "$q" > "$T/quests/$q/QUEST.md"; done
 printf '1 started\n2 did a thing for ghost-a\n' > "$T/roster/ghost-a/history.txt"; printf '1 started\n2 did a thing for ghost-b\n' > "$T/roster/ghost-b/history.txt"
+mkdir -p "$T/ph/a" "$T/ph/b"
+printf '100-0000-0001|uid1|ALPHA|%s/ea|%s/ph/a\n100-0000-0002|uid2|BETA|%s/eb|%s/ph/b\n' "$T" "$T" "$T" "$T" > "$T/phones.index"
+printf '# header\n1|100-0000-0002|100-0000-0001|say|r|hello alpha from beta\n' > "$T/ph/a/history.txt"; printf '# header\n' > "$T/ph/b/history.txt"
 stamp() {   # stamp <name> <pdl-text>
     sh "$HERE/ops/new_board.sh" "$1" >/dev/null; printf '%s\n' "$2" > "$HERE/state/$1/board.pdl"; rm -f "$HERE/state/$1/ui.txt" "$HERE/state/$1/selected.txt"
 }
@@ -50,6 +53,10 @@ run_board() {   # run_board <instance> <seconds> -> sets RPID; leaves the render
 }
 relay() { printf 'KEY_PRESSED: %s\n' "$2" >> "$HOUSE/#.desktop/entity_menu_history/$1.txt"; }
 
+stamp vtest-phones "BOARD  | title    | Test phones
+BOARD  | subtitle | scratch directory
+SOURCE | pipe-index | $T/phones.index | cols=0,2
+DETAIL | dir-file-tail | history.txt | 5"
 run_board vtest-quests 30; FR="$(frame_of "$RPID")"
 echo "$FR" | grep -q 'Test quests' && ck title-from-pdl ok || ck title-from-pdl bad "title missing: $(echo "$FR" | head -3 | tr '\n' '/')"
 echo "$FR" | grep -q 'scratch - 3 rows' && ck row-count-from-source ok || ck row-count-from-source bad "no '3 rows' line"
@@ -65,6 +72,9 @@ run_board vtest-ghosts 20; FG="$(frame_of "$RPID")"
 echo "$FG" | grep -q 'Test ghosts' && [ "$(echo "$FG" | grep -cE '\] [0-9]+\. ghost-[ab]')" = 2 ] && ck second-source-roster-rows ok || ck second-source-roster-rows bad "roster rows: $(echo "$FG" | grep -c ghost)"
 ! echo "$FG" | grep -q '_template' && ck template-folder-hidden ok || ck template-folder-hidden bad "_template listed"
 echo "$FG" | grep -q 'did a thing for ghost-a' && ck second-source-detail ok || ck second-source-detail bad "roster detail missing"
+run_board vtest-phones 20; FP="$(frame_of "$RPID")"
+[ "$(echo "$FP" | grep -cE '\] [0-9]+\. 100-0000-000[12]  (ALPHA|BETA)')" = 2 ] && ck phone-directory-rows ok || ck phone-directory-rows bad "phone rows: $(echo "$FP" | grep -c 100-0000)"
+echo "$FP" | grep -q 'hello alpha from beta' && ck phone-conversation-detail ok || ck phone-conversation-detail bad "history tail missing"
 # ONE layout: both instances are the template with only the name substituted; one css edit restyles both
 diff <(sed 's/vtest-quests/NAME/g' "$HERE/board-vtest-quests.xhtpm") <(sed 's/vtest-ghosts/NAME/g' "$HERE/board-vtest-ghosts.xhtpm") >/dev/null && ck instances-differ-only-by-name ok || ck instances-differ-only-by-name bad "instances differ beyond the name"
 cp "$HERE/board.css" "$T/css.bak"; echo '.act-btn { color: #ff00ff; }' >> "$HERE/board.css"; sh "$HERE/ops/new_board.sh" vtest-quests >/dev/null; sh "$HERE/ops/new_board.sh" vtest-ghosts >/dev/null

@@ -1,0 +1,10 @@
+/* board.css - sibling css for the generic board layout (colour/border only; the generic layout engine owns geometry). One rule here restyles EVERY board instance. */
+window { width: 900px; height: 560px; background-color: #141414; }
+.sidebar { background-color: #161616; border-color: #333333; }
+.detail-panel { background-color: #181818; border: 1px solid #2a2a2a; }
+.quiet { color: #888888; }
+.detail-title { color: #e6e6e6; font-size: 16px; }
+.detail-line { color: #b8b8b8; }
+.board-row { color: #cccccc; }
+.board-sel { background-color: #2f5f8f; color: #ffffff; }
+.act-btn { background-color: #222222; border: 1px solid #3a3a3a; color: #dddddd; }

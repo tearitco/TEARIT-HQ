@@ -10,6 +10,7 @@
  *   BOARD  | title    | <window title>            BOARD | subtitle | <text>
  *   SOURCE | md-table | <path from house root, or absolute> | cols=0,1,4        rows = the data rows of the first markdown table; a cell like [Q001](dir/QUEST.md) gives
  *                                                                  id "Q001" and a link; row text = the listed cells joined with two spaces (default cols=0,1)
+ *   SOURCE | pipe-index | <path> | cols=0,2                  rows = lines of a pipe-delimited index (phones.index: number|uid|label|entity_dir|phone_dir); id = field 0, link = the last field (a folder)
  *   SOURCE | dirs     | <path from house root>                    rows = sub-folders (names not starting with '_' or '.'), sorted
  *   DETAIL | link-tail | <n>                    detail pane = last n lines of the selected row's linked file (md-table)
  *   DETAIL | dir-file-tail | <file> | <n>       detail pane = last n lines of <selected folder>/<file> (dirs)
@@ -79,6 +80,22 @@ static void load_rows(void) {
             r->text[0] = 0;
             { char cols[64], *c, *sv = NULL; snprintf(cols, sizeof(cols), "%s", src_cols);
               for (c = strtok_r(cols, ",", &sv); c; c = strtok_r(NULL, ",", &sv)) { int k = atoi(c); const char *v = (k == 0) ? r->id : (k < n ? cell[k] : ""); size_t l = strlen(r->text);
+                  snprintf(r->text + l, sizeof(r->text) - l, "%s%.70s", l ? "  " : "", v); } }
+            clean(r->text); clean(r->id); NR++;
+        }
+        fclose(f);
+    } else if (!strcmp(src_kind, "pipe-index")) {
+        /* a pipe-delimited index such as ^.hai-server/phones.index: number|uid|label|entity_dir|phone_dir. id = field 0, link = LAST field (a folder, so DETAIL dir-file-tail works),
+         * text = the fields listed in cols= (default 0,2 = number + label) */
+        if (!(f = fopen(p, "r"))) return;
+        while (NR < MAXR && fgets(line, sizeof(line), f)) {
+            char *fld[8]; int n = 0; char *t = line;
+            line[strcspn(line, "\r\n")] = 0; if (line[0] == '#' || !line[0]) continue;
+            while (n < 8) { fld[n++] = t; char *b = strchr(t, '|'); if (!b) break; *b = 0; t = b + 1; }
+            if (n < 2) continue;
+            Row *r = &R[NR]; snprintf(r->id, sizeof(r->id), "%.255s", fld[0]); snprintf(r->link, sizeof(r->link), "%.4000s", fld[n - 1]); r->text[0] = 0;
+            { char cols[64], *c, *sv = NULL; snprintf(cols, sizeof(cols), "%s", strcmp(src_cols, "0,1") ? src_cols : "0,2");
+              for (c = strtok_r(cols, ",", &sv); c; c = strtok_r(NULL, ",", &sv)) { int k = atoi(c); const char *v = k < n ? fld[k] : ""; size_t l = strlen(r->text);
                   snprintf(r->text + l, sizeof(r->text) - l, "%s%.70s", l ? "  " : "", v); } }
             clean(r->text); clean(r->id); NR++;
         }
