@@ -35,6 +35,9 @@ RUN | $T/bin/desk_copy_op | $T/livedesk | dsr.pdl | dsr-test.pdl | dsr_ | dsrtes
 EXPECT_EXIT | 0 | apply-rc-0
 EXPECT_HAS  | livedesk/pals/dsrtest_x1/pal.pdl | PAL \p name \p dsrtest_x1 | new-pal-name-set
 EXPECT_LACKS | livedesk/pals/dsrtest_x1/pal.pdl | dsr_x1 | old-name-gone-from-pal-pdl
+EXPECT_LACKS | livedesk/pals/dsrtest_x1/pal.pdl | PAL \p hash | original-pal-hash-not-copied-no-identity-collision
+EXPECT_HAS  | livedesk/pals/dsrtest_x1/pal.pdl | PAL \p glyph \p S | other-pal-lines-kept
+EXPECT_HAS  | livedesk/pals/dsr_x1/pal.pdl | PAL \p hash \p abc | source-pal-hash-intact
 EXPECT_HAS  | livedesk/pals/dsrtest_x1/meta.pdl | META \p piece_id \p dsrtest_x1 | piece-id-renamed
 EXPECT_LACKS | livedesk/pals/dsrtest_x1/menu.chtpm | dsr_x1 | menu-renamed
 EXPECT_EXISTS | livedesk/pals/dsrtest_x1/pieces/registry/phymoji_assets/dsrtest_x1/voxels.csv | phymoji-dir-renamed

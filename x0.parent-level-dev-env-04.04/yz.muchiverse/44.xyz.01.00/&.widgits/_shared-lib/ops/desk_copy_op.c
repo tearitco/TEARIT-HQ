@@ -13,7 +13,7 @@
  * Per copied pal: the folder is copied without runtime files (module_parent.pid, interact_relay.txt, last_signal.txt, kh_focus_debug.log, cli_io_state.txt,
  *   .hq_manager/) and WITHOUT identity (entity_uid.txt, inventory/zz.phone/): identity is minted by the spawn hook / phone_ensure_op, never duplicated. The
  *   old name is replaced by the new one in pal.pdl, meta.pdl and menu.chtpm, the folder pieces/registry/phymoji_assets/<old> is renamed, instance_id.txt gets a
- *   fresh unique DT<n> code. The PAL hash line is left as copied (the spawn path recomputes it). Each pal is built under a temp name and renamed into place.
+ *   fresh unique DT<n> code. The `PAL | hash` line is DROPPED from the copy's pal.pdl: khtpm_phone.c freezes that hash as the entity_uid, so a copied hash would give the copy the original's identity and phone number; without it the copy gets a fresh identity. Each pal is built under a temp name and renamed into place.
  * Source desk rows: the LAST row per name wins (a desk file is an append-only history of saves). Exit: 0 ok, 1 errors, 2 usage/refused.
  */
 #define _GNU_SOURCE
@@ -76,6 +76,18 @@ static int copy_tree(const char *src, const char *dst, const char *rel, long *fi
         else if (S_ISREG(st.st_mode)) { if (copy_file(s, t, st.st_mode) != 0) rc = -1; else (*files)++; }
     }
     closedir(d); return rc;
+}
+
+/* drop every line that starts with `prefix` (atomic rewrite); missing file is fine */
+static int drop_lines(const char *path, const char *prefix) {
+    FILE *f = fopen(path, "r"); if (!f) return 0;
+    char tmp[PB]; snprintf(tmp, sizeof(tmp), "%s.tmp_dl", path);
+    FILE *w = fopen(tmp, "w"); if (!w) { fclose(f); return -1; }
+    char line[PB * 2]; size_t pl = strlen(prefix); int rc = 0;
+    while (fgets(line, sizeof(line), f)) if (strncmp(line, prefix, pl)) { if (fputs(line, w) == EOF) rc = -1; }
+    fclose(f); if (fclose(w) != 0) rc = -1;
+    if (rc == 0) rc = rename(tmp, path); else remove(tmp);
+    return rc;
 }
 
 /* replace every occurrence of `from` by `to` in one file (whole-file read, atomic rewrite); missing file is fine */
@@ -155,6 +167,7 @@ static int copy_pal(const char *pals, const Row *r, const char *newpath_root) {
     if (copy_tree(src, tmp, "", &files) != 0) { say("ERROR copying %s\n", r->name); return -1; }
     const char *txt[] = { "pal.pdl", "meta.pdl", "menu.chtpm" };
     for (int i = 0; i < 3; i++) { snprintf(f, sizeof(f), "%s/%s", tmp, txt[i]); if (replace_in_file(f, r->name, r->newname) != 0) return -1; }
+    snprintf(f, sizeof(f), "%s/pal.pdl", tmp); if (drop_lines(f, "PAL | hash |") != 0) return -1;
     snprintf(f, sizeof(f), "%s/pieces/registry/phymoji_assets/%s", tmp, r->name); snprintf(g, sizeof(g), "%s/pieces/registry/phymoji_assets/%s", tmp, r->newname);
     if (exists(f) && rename(f, g) != 0) return -1;
     char iid[32]; new_instance_id(pals, iid, sizeof(iid));
