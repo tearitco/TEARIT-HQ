@@ -77,6 +77,7 @@
 #include <string.h>
 #include <strings.h>
 #include <ctype.h>
+#include <dirent.h>
 #include <time.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -1103,6 +1104,24 @@ static int merge_render_rows(void) {
             if ((strncmp(wline, "IMG|", 4) == 0 || strncmp(wline, "MEDIA|", 6) == 0) &&
                 img_url_is_furniture(wline))
                 continue;
+            /* Worker IMG rows carry remote URLs (or /tmp decode PNGs),
+             * never sprite dirs - route them through the MEDIA fetch
+             * pipeline so they become real tiles instead of dead sprite
+             * paths. Already-sprited rows pass through untouched. */
+            if (strncmp(wline, "IMG|", 4) == 0 && strstr(wline, "nb_sprites/") == NULL) {
+                char *src = wline + 4;
+                char *bar = strchr(src, '|');
+                char alt[1024] = "";
+                if (bar) {
+                    char *last = strrchr(bar + 1, '|');
+                    snprintf(alt, sizeof(alt), "%s", last ? last + 1 : bar + 1);
+                    *bar = 0;
+                }
+                if (src[0]) {
+                    fprintf(wf, "MEDIA|I|%s|%s\n", src, alt);
+                    continue;
+                }
+            }
             fprintf(wf, "%s\n", wline);
         }
     }
@@ -1226,13 +1245,30 @@ static void collect_page_media(const char *html, const char *page_url) {
     }
     mkdir_p_local(g_media_root);
 
+    /* Resume sprite numbering past dirs a previous pass already filled:
+     * this runs once for static MEDIA rows and again after the worker
+     * merge - restarting at m0 would clobber the first pass's sprites
+     * while their IMG rows still point at them. */
+    int media_i = 0;
+    {
+        DIR *md = opendir(g_media_root);
+        if (md) {
+            struct dirent *de;
+            while ((de = readdir(md)) != NULL) {
+                int v = 0;
+                if (sscanf(de->d_name, "m%d", &v) == 1 && v >= media_i)
+                    media_i = v + 1;
+            }
+            closedir(md);
+        }
+    }
+
     FILE *pf = fopen(g_page_state_path, "r");
     if (!pf) return;
     char tmp[PATH_BUF];
     FILE *wf = atomic_open(g_page_state_path, tmp, sizeof(tmp));
     if (!wf) { fclose(pf); return; }
 
-    int media_i = 0;
     char line[PATH_BUF + 512];
     while (fgets(line, sizeof(line), pf)) {
         size_t L = strlen(line);
@@ -1975,6 +2011,9 @@ static void run_page_scripts(const char *html, const char *url, const char *titl
      * DOM writer. A worker that fails leaves the static DOM in place. */
     worker_load(g_js_script_path, g_tmp_dom_path, url, title, g_js_style_path);
     (void)merge_render_rows();
+    /* Worker IMG rows arrived as MEDIA (see merge) - collect sprites for
+     * them now; numbering resumes past the static pass's m-dirs. */
+    collect_page_media(html, url);
 }
 
 
@@ -4082,9 +4121,10 @@ static void write_ui_projection(void) {
              * watch-page related-tile pattern) reads far enough ahead. */
             /* Milestone 2 (2026-10-07): 128 capped the projection to page
              * chrome - article bodies (Blockly: 689 rows) never reached
-             * the window. 400 matches the rc<400 loop bound below; the
-             * buffer is heap (400 x ~5KB), well within reason. */
-            enum { NB_UI_ROWS_MAX = 400 };
+             * the window. 2048 covers full long-form pages; the buffer
+             * is heap and freed per write. Raised again when m23's sprite
+             * row (line 405) still fell off the 400-row read. */
+            enum { NB_UI_ROWS_MAX = 2048 };
             char (*rows)[PATH_BUF + 512] = malloc(sizeof(*rows) * NB_UI_ROWS_MAX);
             if (!rows) { fclose(pf); pf = 0; }
             if (!pf) { UI_PUT("content_count=0\ncontent_empty=1\nempty_msg=Ready - enter a URL above\n"); }
@@ -4096,7 +4136,7 @@ static void write_ui_projection(void) {
              * belong to; the projector carries the selector forward so each
              * rendered row can offer a real DOM click. */
             char pending_sel[96] = "";
-            for (int ri = 0; ri < nrow && rc < 400; ri++) {
+            for (int ri = 0; ri < nrow && rc < 2048; ri++) {
                 char *line = rows[ri];
                 size_t n = strlen(line);
                 while (n > 0 && (line[n-1] == '\n' || line[n-1] == '\r')) line[--n] = 0;
