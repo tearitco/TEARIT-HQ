@@ -6997,6 +6997,13 @@ static void dock_paint_peer(void) {
             char sp[PATH_BUF]; FILE *sf;
             snprintf(sp, sizeof(sp), "%s/#.desktop/dock_stack/draw_stamp.txt", g_house_root);
             if (1) { if ((sf = fopen(sp, "a"))) { fputc('.', sf); fclose(sf); } }
+            {   /* where did this redraw's time go: sprite loads vs blits (cumulative), to boot_timeline.txt */
+                static int n_draw = 0; char m[160];
+                if (++n_draw <= 40) {
+                    snprintf(m, sizeof(m), "redraw#%d cum: sprite_loads=%d (%.1fms) blits=%d (%.1fms)", n_draw, g_hqs_loads, g_hqs_load_ms, g_hqs_blits, g_hqs_blit_ms);
+                    kh_boot_mark(g_house_root, "dock", m);
+                }
+            }
         }
     }
     /* Dock stack base (CURSWORD-POSSESSION-DESIGN.md 5c/5g, owner 2026-10-05): publish the
