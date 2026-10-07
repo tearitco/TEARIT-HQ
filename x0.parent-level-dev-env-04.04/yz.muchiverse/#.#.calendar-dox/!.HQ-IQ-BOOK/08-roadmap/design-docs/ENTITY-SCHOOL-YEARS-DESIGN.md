@@ -89,3 +89,10 @@ Owner: "learning is done as a 'play' of a particular 'page'; or can happen indep
 **7f. What this changes in the build order.** Add before step 1: define `school.pdl` and the school-as-inventory convention (with one hand-made test school and one scratch test entity in beta); add the three `mode` values to the ledger rows and one harness case per mode; the phone mode reuses `server.route` and `quest.score`. Report-card and year-end steps are unchanged except that `YEAR_END` + a human `DECISION=advance` is what increments age.
 
 **7g. New open questions.** (1) Confirm: passing one training year adds exactly 1 to age? (2) Is a "year" in a school a fixed list of classes that must all pass, or a pass mark across them? (3) What does an entity do while it is inside a school inventory (does it keep running, is it shown)? (4) Does the entity's age cap or unlock anything (tier, abilities) or is it only a label for now?
+
+## 8. Owner answers (2026-10-07, later): report-card ownership, "in school", age, care
+- **Report card is owned by both the entity and the teacher.** One card, derived from the entity's private ledger; a copy is written into the entity's `zz.school/report_cards/` and a **sealed snapshot** into the teacher's/school's records at term end. The entity's ledger stays the single authoritative source (the card is derived), so the two copies cannot disagree; the teacher's copy is read-only to the entity.
+- **"In school" = physically in the school's inventory.** An entity learning by **phone** is **not** in school (no school clock, no cafeteria); its lessons and grades still reach its ledger with `mode=phone`.
+- **Age is only a label for now** (answers 7g.4): it unlocks nothing; keep it as the derived `AGE` line.
+- **New requirement: needs and care** (hunger, hygiene, sleep, health, weight, optional death), accelerated by the school clock: see `ENTITY-NEEDS-AND-CARE-DESIGN.md`. The school's cafeteria and the day clock come from there.
+- Still open (7g): does one passed year add exactly 1 to age; all classes vs pass mark; what an enrolled entity is shown as.

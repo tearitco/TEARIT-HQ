@@ -1,0 +1,61 @@
+# 🍚 NIGHT 36 — The Daily Round 🍚
+# ====================================================================
+# Title: "🍚 NIGHT 36 — The Daily Round 🍚"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: Design night. Entities get hungry, dirty and tired; health and weight show it; death is a switch; and all of it is event data with banks and weights. Also: who owns the report card, and what "in school" means.
+# Long-form: architecture only. Nothing in this night is built.
+
+**THE NARRATOR:** NIGHT 35 made a school a place you put an entity. The owner added two things on top. Who owns the report card, and a daily life for the entities inside the school. Start with the card.
+
+**MAXINE:** Owned by both, the entity and the teacher. One card, derived from the entity's own ledger. A copy goes in the entity's school folder, and a sealed snapshot goes to the teacher at term end. The ledger stays the single source, so the two copies cannot disagree. And in school means physically in the school's inventory. An entity learning over the phone is not in school. Its grades still reach its ledger, marked as phone lessons. Age stays a label for now.
+
+---
+
+**THE NARRATOR:** Now the daily life. Say what the owner described.
+
+**TOMO:** Entities get hungry every day and must be fed, cleaned and put to sleep. In a school it runs fast, as the days tick by. Bad hygiene feeds a variable. If an entity goes without eating, from its inventory or a cafeteria or farming, you can tell: its health gets low and it loses weight. Dying can be switched on or off, along with the rest. And all of it should be events, with synonyms and weights.
+
+**RAHWEH:** Before designing, look at what the house already has. Pets carry hunger, energy and hit points in their state files. The genesis design has a daily tick that decays health and lets an entity eat grain from its inventory, and it asks the very question the owner just answered: if health reaches zero, is the player out or just badly off. The piececraft design ticks hunger on a timer so it does not need constant input.
+
+**MAXINE:** And NIGHT 30 said what is missing. There is no clock for one character, and no farming loop. Needs run on days, so the design has to bring a clock.
+
+---
+
+**THE NARRATOR:** Whose clock?
+
+**TOMO:** The place's. A day tick is one row appended to a ledger by whoever owns the clock: the world, with the game's own saved time, or a school, with its faster scale. Each entity reads the ticks it has not applied yet, by cursor, the way every ledger in this house is read. So no entity needs its own clock. Being in a school's inventory means following the school clock, and everyone else follows the world.
+
+**RAHWEH:** That also finishes the school's pacing question from last night. The school's accelerated year is just its clock running fast.
+
+---
+
+**THE NARRATOR:** The rules, kept small.
+
+**MAXINE:** Each day hunger, hygiene and energy fall. Feeding spends a food item from the inventory or the cafeteria. Cleaning restores hygiene, and low hygiene raises a sickness number that makes health fall faster. Sleep restores energy. When hunger is empty, health falls and weight falls with it, bounded, and both come back slowly when the entity is fed. And you can tell because those two numbers show in its menu, its phone status and its report card.
+
+**TOMO:** Death is a switch, and it defaults off. Off, health floors at a minimum and the entity keeps going, badly off. On, health at zero fires one event, entity died, and what happens next, a grave, a ghost, is a separate decision.
+
+**RAHWEH:** Every switch defaults off, so nothing that exists changes until a game turns it on. Needs, hunger, hygiene, sleep, death, each its own row, set for the whole world, for a school, or for one entity, and the most local setting wins.
+
+---
+
+**THE NARRATOR:** And events, as soon as possible.
+
+**MAXINE:** The rules are event pages that run on the tick, and the actions are registered commands, feed, clean, sleep, died, each one small op behind a template. A game author edits the rules without recompiling, the same shape as everything else in the event system. The driver is a pal loop calling ops, never a shell loop. And before adding any new op, check whether the commands already registered can express a decay or a restore.
+
+**TOMO:** Then the banks. Feed, clean and sleep are behaviors with signatures, what food, how long, in a shared set, with the entity's own variables kept private. Hungry, starving, dirty, tired are words with weights, scored by hand at creation like any entity word. Hunger, hygiene, rest and health become concept nodes in their own care corpus, hand-authored, since the real bank only has the physics ones. And a planner's preconditions and effects can point at those concepts, increases hunger, exactly as NIGHT 22 described.
+
+**RAHWEH:** When a robot decides to eat, that is a weighted pick among valid options, with tunable weights. A model never decides.
+
+---
+
+**THE NARRATOR:** Honesty checkpoint.
+
+**MAXINE:** What is real: pets with hunger and energy fields, the genesis and piececraft designs with daily ticks and feeding, the cursor-read ledger pattern, the event command registry, the word bank and school designs, and one new design file.
+
+**TOMO:** What is not: no day clock, no needs file, no feed or clean or sleep command, no cafeteria, no farming, no care concepts in the bank, no health or weight display, no death event. Nothing was built. Open: which way hunger runs, the decay numbers, what weight affects, what death does, whether the cafeteria feeds automatically, and whether bodiless phone-only learners get needs at all.
+
+**RAHWEH:** Say the line to carry on.
+
+**TOMO:** A day is one row on a place's clock, a need is a number that row moves, and a switch decides whether it matters. Everything else is events and weights. 🍚
