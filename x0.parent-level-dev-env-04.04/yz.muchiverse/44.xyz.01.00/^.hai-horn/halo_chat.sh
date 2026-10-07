@@ -48,6 +48,7 @@ build_bin "$HALO_DIR/ops/halo_chat_validate.c" "$HALO_VALIDATE_BIN"
 
 # HALO_CHAT uses the same entity dir concept - we'll use HALO_DIR as the entity
 ENTITY_DIR="$HALO_DIR"
+BANK_DIR="$HOUSE_ROOT/&.widgits/concept-bank"
 
 # Setup session dir
 mkdir -p "$HALO_DIR/.halo-sessions"
@@ -70,6 +71,8 @@ echo "╚═══════════════════════�
 echo ""
 echo "Commands: type a prompt, press Enter"
 echo "          type @ for completions"
+echo "          type /curriculum [grade] to show curriculum"
+echo "          type /curriculum-json [grade] for JSON output"
 echo "          type q or Ctrl+C to quit"
 echo ""
 
@@ -85,6 +88,27 @@ while true; do
     fi
 
     if [ -z "$user_input" ]; then
+        continue
+    fi
+
+    if [[ "$user_input" == "/curriculum"* ]]; then
+        # Extract grade argument robustly
+        if [[ "$user_input" == *" "* ]]; then
+            grade_arg=$(echo "$user_input" | cut -d' ' -f2-)
+        else
+            grade_arg="-1"
+        fi
+        "$HALO_DIR/ops/curricula_engine.+x" "$BANK_DIR" "$grade_arg" text
+        continue
+    fi
+
+    if [[ "$user_input" == "/curriculum-json"* ]]; then
+        if [[ "$user_input" == *" "* ]]; then
+            grade_arg=$(echo "$user_input" | cut -d' ' -f2-)
+        else
+            grade_arg="-1"
+        fi
+        "$HALO_DIR/ops/curricula_engine.+x" "$BANK_DIR" "$grade_arg" json
         continue
     fi
 
