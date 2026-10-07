@@ -1,0 +1,21 @@
+# pal/xod_setup_module.pal — Tournament Setup module for CHTPM.
+# Reads xod_setup_display.txt and provides ${variable} expansions.
+
+# Read display state
+read_word x1, pieces/apps/player_app/xod_setup_display.txt x28, 0
+
+# Parse variables for CHTPM substitution
+# num_agents, duration, status, ready_to_start, can_add_agent, can_remove_agent
+# agent_slots, piece_methods
+
+loop:
+    # Re-read display state each tick
+    read_word x1, pieces/apps/player_app/xod_setup_display.txt x28, 0
+    
+    # Sleep briefly
+    li x2, 100000
+    sleep x2
+    
+    j loop
+
+halt

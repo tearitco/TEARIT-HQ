@@ -1,0 +1,82 @@
+behavior: navigate_to
+op: wsr_fsm_driver.+x
+pal: navigate.pal
+params: [target]
+pre:
+  - at_main_menu: true
+post:
+  - cursor_on_item: target
+cost: 1
+
+---
+behavior: select_item
+op: wsr_fsm_driver.+x
+pal: select.pal
+params: [item]
+pre:
+  - cursor_on_item: item
+post:
+  - item_activated: true
+cost: 1
+
+---
+behavior: new_game
+op: wsr_fsm_driver.+x
+pal: new_game.pal
+params: []
+pre:
+  - at_main_menu: true
+post:
+  - world_reset: true
+  - turn_number: 0
+cost: 5
+
+---
+behavior: end_turn
+op: wsr_fsm_driver.+x
+pal: end_turn.pal
+params: []
+pre:
+  - in_game: true
+  - turn_active: true
+post:
+  - turn_advanced: true
+  - turn_number: "+1"
+cost: 2
+
+---
+behavior: buy_stock
+op: wsr_fsm_driver.+x
+pal: buy_stock.pal
+params: [ticker, qty]
+pre:
+  - at_trade_menu: true
+  - cash: ">= price * qty"
+post:
+  - shares[ticker]: "+qty"
+  - cash: "- price * qty"
+cost: 3
+
+---
+behavior: sell_stock
+op: wsr_fsm_driver.+x
+pal: sell_stock.pal
+params: [ticker, qty]
+pre:
+  - in_trade_menu: true
+  - shares[ticker]: ">= qty"
+post:
+  - shares[ticker]: "-qty"
+  - cash: "+ price * qty"
+cost: 3
+
+---
+behavior: check_market
+op: wsr_fsm_driver.+x
+pal: check_market.pal
+params: []
+pre:
+  - at_main_menu: true
+post:
+  - market_data_visible: true
+cost: 2
