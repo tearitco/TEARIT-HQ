@@ -47,8 +47,16 @@ The engine **refuses and logs** (ledger row: mode, target, who asked), nothing m
 5. `EDIT` gate and the play-test save routing.
 6. `event:<id>` action form.
 
-## 6. Still open (small)
+## 6. Decisions (owner delegated "I don't know, check/create/try not to break anything", 2026-10-07)
 
-1. Is `game.pdl` the right name and place (in the db session folder)? Cheap to rename now.
-2. May a game cell hide a **built-in** header only in play/play-test (inferred: yes), or can it also rename it?
-3. Do `where=` and `modes=` need to combine per cell (a cell visible in pc-hq play-test only), as written, or is one enough?
+1. **Name and place: `sessions/<id>/game.pdl`**, beside that session's `session.pdl` (checked on disk: a db session is `xyzfs/users/<uuid>/home/livedesk/sessions/<id>/` holding `session.pdl` and `desks/`). It is user data (untracked on `claude`, lives in the user's data branch), which fits: the game is the session.
+2. **A game can HIDE a built-in header in play/play-test, not rename it.** Hiding = a `CELL` row for the built-in id whose `modes=` leaves that mode out. (Rename can be added later without breaking files.)
+3. **`modes=` and `where=` combine** as written (visible only when both match). Defaults: all modes, both places.
+4. **"Don't break anything existing"** is built into the rules: no `game.pdl` = build defaults everywhere; a file with no `MAP` rows leaves maps unrestricted; a cell with no `CELL` row stays visible; build mode ignores every restriction.
+
+## 7. Built so far (2026-10-07)
+
+- `&.widgits/_shared-lib/khtpm_game_setup.c`: the text-include parser and the four checks (`gs_load`, `gs_map_available`, `gs_cell_visible`, `gs_edit_allowed`). **No consumer includes it yet**, so nothing existing changed behaviour.
+- `&.widgits/_shared-lib/tests/test_game_setup.c`: 19 checks on scratch files (every row type, comments/unknown rows, missing file, legacy defaults, mode/where combination, edit rules, capacity clamp). Run: `gcc -Wall -Wextra -o /tmp/tgs tests/test_game_setup.c && /tmp/tgs`.
+
+Next in the build order (section 5): the `MAP` check in the desk-switch op, the third mode value, then cells in the taskbars.
