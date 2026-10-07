@@ -27,3 +27,10 @@ RPG Maker (time- and event-dependent) and **re-audited**. Needed before shipping
 3. **Slot labels / thumbnails** and an "overwrite this slot?" confirm (the generic `confirm=` popup exists for windows; the taskbar menu has none yet).
 4. **Autosave slot**, and a HUD notice of `last_result.txt` (the result is only a file for now).
 5. Windows build: the `system()` / `nice` shell-outs are POSIX only (same as the neighbouring menu rows).
+
+## Scope of a slot (owner, 2026-10-06) - changes item 2 above
+
+A slot captures **game data only**. Everything else is default and **out of time** (not game time; a save, load or game start never touches it). **Game time** exists only during play and is **saved as state in the slot** and restored on load.
+Starting a play = loading the game's initial game-data state (same format as a slot) and putting the possessor on the game's single **starting-position entity** (`XELECTOR-CURSWORD-POSSESSION-DESIGN.md` section 5).
+
+What this means for the v1 op (`game_slot_op.c`): it currently scans the user's **whole entity tree** (wallets, histories, phones included). That is wider than the rule, so before any restore is built it needs (a) a definition of the game-data set (a list or a marker on those entities, to be decided with the owner) and (b) a `game_time` value stored in `meta.pdl`. Until then v1 stays compare-only and non-destructive, which is why it is safe.

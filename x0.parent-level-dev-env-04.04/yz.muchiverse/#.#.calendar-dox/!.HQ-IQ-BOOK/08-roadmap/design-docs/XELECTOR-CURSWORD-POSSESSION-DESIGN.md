@@ -83,13 +83,21 @@ layer 2  hero          (cursword hidden inside the hero's inventory; hotbar = he
 - State today is `possessed_id` + `last_possessed_id` in the xelector's `state.txt`; a stack of up to two layers needs one more key (e.g. `possess_layer` or a `possessed_stack` list). Today's code treats a single `possessed_id`; it must be reworked, not extended, because `9` no longer means release.
 - Cursword "inside the hero's inventory" needs the inventory write on entering layer 2 and the removal on exit, and the pc-hq hotbar holder resolution for `cursword` (build item 3).
 
+**Answered, round 3 (owner, 2026-10-06)**
+
+- **One starting position per game** (not per map). Placing a second one moves the first (a game has exactly one).
+- **"In-game" state = game data only, and exactly what the save-game / load-game slots capture.** Everything else is default and **"out of time"**: it is not part of game time and is never reset or restored by a game start or a load (user desk data, wallets, histories, menus stay as they are).
+- **Game time lives only during play.** It is kept while the player plays and is **saved as state in the save slot** (and restored by load). Outside play there is no game clock to speak of.
+- Consequence for play start (build item 8): start = load the game's initial game-data state (the same format as a save slot) + put the possessor on the starting-position entity. Nothing outside game data is touched.
+- Consequence for the save slots: see `SAVE-SLOTS-DESIGN.md`, "Scope of a slot". The v1 op hashes the user's WHOLE entity tree, which is wider than "game data only"; it must be narrowed before restore exists.
+
 **Still open**
 
 1. Is `mode=off` the build state (and is the owner's `Player: ON` simply the current setting while they test)?
 2. Does cursword get its own board cell, or is the starting-position entity its first cell? ("cursword is on every board": so it needs a cell wherever it is not in a hero.)
-3. One starting position per map, or per game across maps?
 4. Which state counts as "in-game" and is reset on play start (and which is protected, e.g. `xyzfs/users`)?
-5. Layer 2 when two heroes exist: the designated one only, or cycle through every possessable hero?
+3. Which files are "game data" in practice (what is the list a slot captures)? And what exactly is the game-time value and file?
+4. Layer 2 when two heroes exist: the designated one only, or cycle through every possessable hero?
 
 ## 6. Related, queued (owner, 2026-10-06): more taskbar headers on the pc-hq top bar
 
