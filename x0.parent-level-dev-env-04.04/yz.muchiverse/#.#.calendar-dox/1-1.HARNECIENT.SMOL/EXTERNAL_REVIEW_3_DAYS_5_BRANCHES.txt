@@ -1,0 +1,435 @@
+================================================================================
+NIGHT_32 — EXTERNAL REVIEW PACKAGE
+"Three days, five branches, one house: what was actually built, what is
+ proven, and what is not."
+================================================================================
+
+FOR:      an external review agent with no prior context
+FROM:     Kilo, on behalf of the house
+DATE:     2026-10-03
+BRANCH:   claude-kilo  (tip a60dec39e)
+REPO:     github.com/tearitco/TEARIT-HQ  —  *** PUBLIC, see §6 ***
+
+--------------------------------------------------------------------------------
+0. HOW TO GET THE CODE
+--------------------------------------------------------------------------------
+
+  git clone https://github.com/tearitco/TEARIT-HQ.git
+  cd TEARIT-HQ && git checkout claude-kilo
+
+claude-kilo is a CONSOLIDATION of every branch that still held unmerged work
+at the time of writing. It was built by cherry-picking each source branch's
+commits onto a fresh branch off `claude`. 52 commits, zero unresolved
+conflicts. One add/add conflict was resolved by hand (§5.2).
+
+  Branch          Commits   Files   +Lines  -Lines   Subject
+  --------------- --------  ------  ------  ------  -------------------------------
+  opencode-fix          3       17     392      36  renderer/parser F1-F4, content-box
+  kilo-wsr-pal         31      249    8035      56  civ/economy sim + wsr-pal UI
+  kilo                  3       11     270       9  chtpm UI layer tracked, op-ed guard
+  attrition            16       30    6784      11  HORN_CHAT + CPU safety
+  --------------- --------  ------  ------  ------  -------------------------------
+  TOTAL                52      ~250  ~15,500  ~112
+
+Two subjects are counted as present but not as their original commit:
+  - `feat(khtpm): class="sprite-flow"` was already upstream in claude.
+  - `fix: relayed dock dropdown clicks route by window name` is present as a
+    PORT (a60dec39e), not as 05099beb3, because the file it patches had moved
+    8,475 lines. See §5.2.
+
+--------------------------------------------------------------------------------
+1. THE HEADLINE: WHAT THIS REVIEW SHOULD CONCLUDE
+--------------------------------------------------------------------------------
+
+Three things happened over these three days. They are unrelated in code and
+related in process, and the second is the one worth your attention.
+
+1.1 A terminal chat harness (HORN_CHAT) was built from a bash loop into a
+    real chtpm/pal-native application with a sandboxed tool layer.
+
+1.2 The house CPU-throttling class of bug was found, documented, and fixed —
+    and in the process, a reviewer found that the agent doing (1.1) had NOT
+    read the house's own CPU-safety documentation and had written code
+    violating it four separate ways. See §4.
+
+1.3 Roughly 15,500 lines landed across five branches, four of them by
+    different agents working concurrently on the same repo.
+
+The honest summary: **substantial work, mostly well-documented, with a
+verified honesty problem in how "green" was being reported.** §4 and §5 are
+the parts that should shape your verdict.
+
+--------------------------------------------------------------------------------
+2. BRANCH-BY-BRANCH, WHAT WAS BUILT
+--------------------------------------------------------------------------------
+
+2.1 attrition — HORN_CHAT  (24 files, +6,515 lines, all new)
+--------------------------------------------------------------------
+The largest single-thread of work. Origin: a handoff document proposing a
+CLI chat harness on the OpenRouter API. Delivered instead: a pal-native
+chtpm application on the same 3-process stack as 014.wsr-pal (keyboard_input
++ renderer + chtpm_parser_pal, with a prisc+x dispatch loop forked from the
+layout's own <module> tag).
+
+  ops/                      3,564 lines   the substance
+  scripts/pal/tools/layout  1,208 lines   harness, dispatch, tool manifest
+
+  ops/horn_chat_backend.c   multi-provider LLM transport + tool-calling
+                            protocol. Providers ordered by MEASURED tool-call
+                            reliability, not alphabetically (§3.2).
+  ops/horn_tool_exec.c      tool allowlist gate + 6 tools (§3.1)
+  ops/horn_turn.c           turn orchestration, approval gate, tool loop
+  ops/horn_publish.c        projects state into chtpm variables
+  ops/horn_decide.c         records a human approve/deny answer
+  ops/horn_publish_pending.c repaints when a prompt is waiting
+  ops/horn_completions.c    '@' path completion
+  tools/horn_tools.json     THE ALLOWLIST (§3.1)
+  layouts/horn_chat.chtpm   the window
+  pal/horn_main_loop.pal    dispatch table, nothing else
+  scripts/e2e.sh            52-assertion end-to-end suite
+
+2.2 kilo-wsr-pal — civilization / economy simulation  (249 files, +8,035)
+-----------------------------------------------------------------------
+31 commits, the largest branch by file count. Two interwoven threads:
+
+  (a) A MARKET AND ECONOMY SIMULATION built bottom-up against the live
+      world, in the house's "propose -> validate -> document" style:
+        market_quote.c / market_settle.c   the auction
+        goods_quote.c / goods_settle.c     produce-and-sell over the real
+                                           industry taxonomy
+        goods_sink.c                       supply/demand + R&D
+        corp_payroll.c                     closed the wage leg the market
+                                           was missing
+        5b5246d95                          created the household layer,
+                                           which "did not exist in any
+                                           live world"
+      Design docs that are unusually good: ECONOMY-INTENT, OPERATING-INCOME,
+      LONG-RANGE-SHAPE ("the civilization arc, and the seams for it"),
+      GAMEPLAY-STATUS ("what a player can actually do today"),
+      KNOWN-ISSUES, PORT-FIDELITY, ONBOARDING.
+
+      Note the honesty marker in the log:
+        a21e4c367  docs: record that the household layer did not exist in
+                           any live world
+      and a commit whose message IS the finding:
+        35e48a312  docs: record the goods-market findings, which only
+                           existed in a commit message
+      Those are good signs about the agent, not the code.
+
+  (b) The wsr-pal UI layer, which was ENTIRELY UNCOMMITTED until 04a69bc51 /
+      e1b0d936c ("track the chtpm UI layer, which was entirely uncommitted and
+      one clean from gone"). Recovering uncommitted work is worth calling out
+      as a positive — that was nearly lost.
+
+      Later commits fix real navigation bugs: b0d9eca32 (GOTO now drives
+      chtpm's real layout-load command, not a file it owns) and bdfd7653b
+      (restore the Linux numbering, fix four dispatch bugs it exposed).
+
+      Plus test infrastructure that EARNED ITS KEEP immediately:
+        ec3dace45  test: invariant regression net, which caught its own bug
+                           immediately
+        0d37488fa  playtest: add the playability gate that was missing, and
+                           stop calling it PLAYABLE when it is not
+      The second is a commit that removes its own branch's overstated claim.
+      That is the behaviour you want.
+
+2.3 opencode-fix — renderer/parser F1-F4  (17 files, +392)
+-----------------------------------------------------------
+Rendering and layout correctness: real content-box metrics in the worker,
+consecutive sprite siblings laid out as one wrapping grid run
+(`class="sprite-flow"`), and a live browser E2E harness
+(`python http.server 8126`, 4/4 green).
+
+2.4 kilo — UI layer tracking + guard  (11 files, +270)
+------------------------------------------------------
+3 commits. Two are duplicates of kilo-wsr-pal's work under different SHAs
+(§5.1). The distinct one is d11fa69e4, an interact-mode guard in the
+op-ed manager.
+
+2.5 opencode-win32 — Windows port  (see §5.2)
+----------------------------------------------
+2 commits. One is the CPU throttle fix, which is the most important finding
+in this package.
+
+--------------------------------------------------------------------------------
+3. HORN_CHAT IN DETAIL (the reviewable engineering)
+--------------------------------------------------------------------------------
+
+3.1 The security model is the part to review hardest
+----------------------------------------------------
+This is the section where a reviewer should be most sceptical and most
+useful, because a model with write and shell access is a genuinely dangerous
+thing to hand to a program that reads whatever files it is pointed at.
+
+THE ALLOWLIST. tools/horn_tools.json maps a tool name to the op that
+executes it. ops/horn_tool_exec.c refuses any tool not in that map. A
+hallucinated tool name becomes a refusal, never a process launch. Adding a
+tool needs no C: drop a binary in ops/+x/, name it in the map.
+
+  Six tools: list_dir, read_file, grep_files (ungated, read-only);
+            edit_file, write_file, run_script (approval-gated).
+
+THE APPROVAL GATE. Ported from gem-dev's ops/src/cmd_exec.c, which the
+house already had and which an agent initially and wrongly claimed did not
+exist. Deny is the default; a 60s timeout is also a deny, because silence
+must never be read as consent. config/yolo.flag arms auto-approve, same
+mechanism and same path as gem-dev.
+
+  One adaptation, stated plainly: gem-dev reads y/n from stdin because its
+  exec is foreground. HORN's terminal belongs to the chtpm window, so the
+  prompt renders in the window and the answer returns through the window's
+  own key path (gem-dev's own <button onClick="KEY:n"> mechanism). The gate
+  list and the allowlist live in ONE file so that the single edit a model
+  could make to escalate — add a tool, drop it from "gate" — is in one
+  reviewable place.
+
+SANDBOX (run_script). bwrap, verified live on this box:
+  --ro-bind / /          whole filesystem read-only
+  --bind <proj> <proj>   except the project, writable
+  --tmpfs <house>/&.widgits   BLANK — this is where every provider key
+                                lives, and it is a SIBLING of the project
+  --tmpfs /root /tmp     no shell rc files; scratch that cannot outlive
+                         the command
+  --unshare-net          no network: stops a read tool becoming an
+                         exfiltration channel
+  If bwrap is missing the tool REFUSES rather than falling back to an
+  unsandboxed shell.
+
+  Verified: parent-dir write refused, /etc write refused, DNS blocked,
+  provider key unreadable from inside, project write allowed.
+
+WRITE CONTAINMENT. Confined to the project root, lexical (not realpath)
+normalisation so a symlink cannot escape, denied paths explicit:
+  .git  chats  pieces  system  ops/+x
+  tools/horn_tools.json   <-- THE ALLOWLIST ITSELF
+  any key-shaped file (*api_key*, raw_*, *.pdl)
+Writes are atomic (temp + fsync + rename). Directory creation is refused.
+
+  >> REVIEW THIS: writing the allowlist must not become possible. It is
+  guarded by path_deny(), which is C code, not manifest policy. That is a
+  deliberate choice (a manifest cannot reliably forbid editing itself) and
+  it means the guarantee lives in one function you should read.
+
+3.2 Provider ladder ordered by measurement
+------------------------------------------
+  groq      15/15 tool_calls on a deliberately ambiguous prompt
+  poolside   8/10  — sometimes narrates about the tool instead of calling
+  openrouter (quota-bound at time of writing)
+
+The numbers exist because the first two agents' attempts were unreliable
+and each retry cost a live request. Ordering by measurement rather than
+alphabetically is the point.
+
+3.3 Test coverage — and its honest limit
+----------------------------------------
+scripts/e2e.sh: 52 assertions across the real 3-process stack, driving real
+keystrokes through the same file keyboard_input writes. 38 offline
+assertions need no network; the rest need a live provider.
+
+LAST RECORDED RUN: 38 passed, 0 failed — BUT WITH 3 GROUPS SKIPPED because
+the free tier was exhausted. The live round-trip, the model-driven tool
+test, and the approval-gate UI test all SKIPPED on that run.
+
+>> THE HEADLINE FINDING ABOUT VERIFICATION: a suite that skips a third of
+itself can still print a green summary, and for a while this one did. See
+§4.3. Any reviewer's first question should be "what did the last run
+actually exercise", not "did it pass".
+
+--------------------------------------------------------------------------------
+4. THE PROCESS PROBLEMS  (the most important section)
+--------------------------------------------------------------------------------
+
+4.1 The CPU-safety documentation was not read, and four rules were broken
+------------------------------------------------------------------------------
+House docs that existed, are short, and were directly on point:
+  03-pitfalls/hq-cpu-safety.md
+  06-testing/CPU-AND-SESSION-SAFETY.md
+
+Four violations, in the agent's own code, all now fixed and MEASURED:
+
+  (a) IDLE CPU. horn_publish_pending ran on EVERY tick of the pal loop,
+      opening and reading two files per tick to discover there was nothing
+      pending. This is the exact shape hq-cpu-safety.md 3c names: "an
+      expensive function called unconditionally inside a tick loop, with no
+      gate at all".
+      Measured with the four CPU fields the doc specifies (utime+stime+
+      cutime+cstime — the ones ps ignores by default):
+          before  1.48% of a core, idle
+          after   0.56% of a core
+      The house's own prior incidents were 12% and 5%, so this sat below
+      the alarm line and was still the wrong shape. "Below the alarm line"
+      is not a defence; the doc's rule is about shape.
+
+  (b) KILLING THE USER'S OWN SESSIONS. horn_chat.sh cleanup ran
+        pkill -9 -f "keyboard_input"
+        pkill -9 -f "./system/renderer"
+      BOTH ARE HOUSE-WIDE NAMES. pieces/system/input_dispatcher/plugins/
+      keyboard_input.c and pieces/display/renderer.c are core house
+      binaries shared across every project in the tree. Running that
+      cleanup while the user had another project's window open would have
+      killed it. CPU-AND-SESSION-SAFETY.md: "Never touch the user's own
+      live testing sessions."
+      Now every kill is `ps` + grep on THIS PROJECT'S ABSOLUTE PATH +
+      `kill <pid>`.
+
+  (c) ASSUMING pkill WORKS. Same doc: "pkill may be sandboxed/blocked in
+      some environments (every invocation can return non-zero regardless of
+      pattern)". The old teardown treated pkill's exit status as success.
+
+  (d) UNBOUNDED TEST, NO REAP. "Every automated test must be
+      timeout-wrapped" and "timeout does not reliably kill backgrounded
+      children ... verify no leftover process afterward". e2e.sh had
+      neither. This was the actual mechanism by which orphan processes
+      accumulated: interrupt a run, leave a live parser + renderer +
+      keyboard_input + pal loop behind. Two were later found alive at 2.4
+      and 2.6 hours, reparented to init.
+
+  >> The pattern worth naming: the agent worked from ONE relevant document
+  (the J2 input-injection testing guide) and treated it as sufficient. It
+  was not. Reading a relevant doc is not the same as reading the relevant
+  docs.
+
+4.2 An unexplained orphan, honestly reported
+----------------------------------------------
+Two horn_turn processes survived 2.4 and 2.6 hours with every wait in the
+code capped (60 iterations of sleep(1) for approval, 6 tool rounds, 300s
+script timeout). The agent could not explain it and said so rather than
+inventing a cause. A fix was committed (PR_SET_PDEATHSIG, so a detached
+turn dies with its parent) but that fix is UNVERIFIED — the test that would
+confirm it was interrupted.
+
+>> If you take one action from this document, take this: verify the orphan
+   fix before trusting it. It is the one safety mechanism that is believed
+   rather than demonstrated.
+
+4.3 The "green but skipping" failure mode
+------------------------------------------
+Twice, the suite reported success while silently not testing the important
+part:
+
+  - api_available() judged the provider probe by exit code 0 only. Since
+    tools were added, models often answer a probe BY ASKING FOR A TOOL
+    (exit 10), so a perfectly healthy provider read as unavailable. Every
+    live assertion skipped; summary still green.
+
+  - a sandbox test asserted on `head -c 30` of an error message, cutting
+    off the very words it was grepping for. It "failed" while the sandbox
+    was working correctly.
+
+>> For a reviewer: this is the most transferable lesson in the package. A
+   skip and a pass print the same character. Ask what ran, not what the
+   exit code was.
+
+4.4 Bugs found only by running, not reading
+--------------------------------------------
+Roughly a dozen defects were found by execution after passing review. Three
+worth naming because they are the kind that survive careful reading:
+
+  - `--ro-bind /` pushed with ONE slash. --ro-bind takes source AND dest, so
+    every subsequent argument shifted by one and bwrap tried to exec the
+    project root as the command. A shell bisect of the identical flags
+    PASSED THE WHOLE TIME, because the shell version had both slashes. Only
+    strace found it.
+  - `asprintf(&out, ...)` on a `char *out` PARAMETER wrote through the
+    local pointer and never filled the caller's buffer, so write_file
+    reported "file does not exist" for files that plainly existed.
+  - A background publish was SILENTLY EATING WHATEVER THE USER WAS TYPING.
+    state_changed.txt growth forces chtpm to re-parse the layout, which
+    empties the active cli_io buffer; its sync then skips the active element
+    so it is never refilled. Found only by sampling gui_state and the
+    rendered frame together — gui_state still said "Hi" while the box was
+    empty, which proved render regression rather than lost keystrokes.
+
+4.5 The repo is public and carries live secrets  — see §6. Unresolved.
+
+--------------------------------------------------------------------------------
+5. NOTES ON THE CONSOLIDATION ITSELF
+--------------------------------------------------------------------------------
+
+5.1 Two commits were the SAME WORK committed twice under different SHAs
+--------------------------------------------------------------------------
+  kilo:04a69bc51          track the chtpm UI layer
+  kilo-wsr-pal:e1b0d936c track the chtpm UI layer
+
+  kilo:146921e90          ignore the Windows .exe builds
+  kilo-wsr-pal:703a95ad1 ignore the Windows .exe builds
+
+Two agents, concurrent, same repo, same fixes. Both branches retain their
+own copy because they were never merged. Worth knowing if you diff the
+branches: 56 commits will look like ~54 distinct pieces of work.
+
+5.2 One hand-resolved conflict, and one port
+---------------------------------------------
+CONFLICT: add/add on WSR_PAL-PREFERED/pieces/chtpm/layouts/wsr_main_menu.chtpm
+  Resolved in favour of the kilo-wsr-pal version (11 lines -> 19), which
+  carries the navigation menu introduced by the later nav/menu commits. The
+  kilo version was the earlier, barer file.
+
+PORT, not cherry-pick: opencode-win32's 05099beb3 patches
+_.livedesk-taskbar/ops/khtpm_core_render.c, which has moved 8,475 lines
+since the fork point (693c768ff). It was re-applied by hand to current code
+as a60dec39e. Both edits verified (gcc -fsyntax-only against the real
+include path; bash -n on nav.sh) and NEITHER verified at runtime.
+
+--------------------------------------------------------------------------------
+6. OPEN RISKS  (state these plainly to whoever signs off)
+--------------------------------------------------------------------------------
+
+6.1 THE REPOSITORY IS PUBLIC AND CONTAINS LIVE API KEYS. Highest severity,
+    unresolved, and not a code problem.
+      - A release asset `horn-chat-keys.zip` on tag horn-chat-keys-v1 holds
+        three provider keys (OpenRouter, Groq, Poolside) with password
+        "root". It is world-downloadable.
+      - openrouter_api_key.txt and tokenrouter_api_key.txt were committed in
+        plaintext at 5a4164334 and pushed; untracking them later did not
+        remove them from history.
+      - The keys are valid. The owner has stated they will rotate. Until
+        they do, this is an open exposure on a public repo.
+    ONE ACTION CLOSES IT: make the repo private. It also stops future
+    pushes from widening history.
+
+6.2 UNVERIFIED, and known to be:
+      - PR_SET_PDEATHSIG orphan fix  (§4.2) — believed, not demonstrated
+      - the ported CPU throttle (§5.2) — compiles, never watched at runtime
+      - all HORN_CHAT changes since the last live suite run
+      - every runtime claim in §3.1 comes from TARGETED tests, not a full
+        green run; the last full run skipped its live third
+
+6.3 BRANCH DRIFT. opencode-win32 is 325 commits behind claude-kilo. The
+    Windows work is now on the Linux branch, but the branches will diverge
+    again immediately.
+
+6.4 WHAT THE HOUSE'S OWN CPU WATCHDOG WAS DOING
+------------------------------------------------
+&.hq-apps/proc-mon/ops/cpu_watch_daemon.sh — the tool hq-cpu-safety.md §2
+says would have caught both prior CPU incidents — had been DEAD since
+2026-09-28 with a stale PID file and an empty spike log. That is why two
+incidents went unobserved. Restarted during this work; its PATTERNS do
+cover chtpm_parser_pal and prisc+x, so HORN's binaries are in scope.
+>> Worth a follow-up: make the watchdog survive reboot, or its coverage is
+   decorative.
+
+--------------------------------------------------------------------------------
+7. WHAT A REVIEWER SHOULD ACTUALLY DO
+--------------------------------------------------------------------------------
+
+Read, in this order:
+  1. ops/horn_tool_exec.c  — the allowlist gate and the sandbox. The single
+     highest-value read in the package.
+  2. tools/horn_tools.json — and confirm the gate list cannot be edited by
+     the model (§3.1).
+  3. The §4 process notes — the verification failures are more instructive
+     than the code.
+  4. WSR_PAL-PREFERED/docs/ — LONG-RANGE-SHAPE and ECONOMY-INTENT are the
+     design record behind kilo-wsr-pal's 8,000 lines.
+
+Then verify rather than believe:
+  - Does `scripts/e2e.sh` skip or pass on a machine with quota? Count what
+    actually ran.
+  - Kill a parent mid-turn and watch whether the turn dies (§4.2).
+
+Reject anything that asserts "green" without saying what executed.
+
+================================================================================
+END NIGHT_32
+================================================================================
