@@ -1,0 +1,24 @@
+# Behavior Bank entry for the harness `hotbar_minimize` (see HARNESS-BEHAVIOR-BANK-DESIGN.md). Weights on SYNONYM / SLOT / CORPUS rows are hand-seeded; only WEIGHT (from COUNTS) is measured.
+BEHAVIOR | harness.hotbar_minimize
+KIND | spoke
+KEYWORDS | hotbar, minimize, hide, show, toggle, pc-hq, manager, latency, double click
+SYNONYM | minimise | 0.90
+SYNONYM | collapse | 0.60
+SYNONYM | dock | 0.40
+SYNONYM | slide away | 0.40
+SYNONYM | inventory bar | 0.60
+SENTENCE | Starts a real hotbar_manager process on a scratch tree and flips visible.txt with the toggle script.
+SENTENCE | Checks that hide and show are published within 300 ms, that repeated hide stays hidden, and that two clicks 280 ms apart do not undo each other.
+SENTENCE | Regression test for the report that the pc-hq minimize button did nothing because a toggle cancelled itself.
+SLOT | 0 | POINTS_TO=hotbar | WEIGHT=0.95
+SLOT | 1 | POINTS_TO=timing | WEIGHT=0.70
+SLOT | 2 | POINTS_TO=state-file | WEIGHT=0.50
+SLOT | 3 | POINTS_TO=process-lifecycle | WEIGHT=0.40
+CORPUS | game-engine | WEIGHT=0.50
+CORPUS | debug-build | WEIGHT=0.60
+SEQUENCE | 1 | exec ./ops/+x/harness_case_op.+x cases/hotbar_minimize.pdl
+SEQUENCE | 2 | exec ./ops/+x/harness_verdict_op.+x cases/hotbar_minimize.pdl
+SEQUENCE | 3 | exec ./ops/+x/harness_bank_op.+x cases/hotbar_minimize.pdl
+SOURCE | hand-authored 2026-10-07 (claude); masters/synonyms/weights are seeds awaiting owner validation
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

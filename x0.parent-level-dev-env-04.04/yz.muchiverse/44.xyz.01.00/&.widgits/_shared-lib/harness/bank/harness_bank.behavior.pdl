@@ -1,0 +1,18 @@
+# Behavior Bank entry for the harness `harness_bank` (see HARNESS-BEHAVIOR-BANK-DESIGN.md). Weights on SYNONYM / SLOT / CORPUS rows are hand-seeded; only WEIGHT (from COUNTS) is measured.
+BEHAVIOR | harness.harness_bank
+KIND | spoke
+KEYWORDS | behavior bank, weights, laplace, synonyms, ranking, find, search, harness bank
+SYNONYM | seo | 0.7
+SYNONYM | lookup | 0.8
+SYNONYM | reward punish | 0.8
+SYNONYM | confidence | 0.6
+SENTENCE | Checks that a harness entry's weight is a live Laplace estimate from its own PASS and FAIL ledger rows, counted once through an append-only cursor.
+SENTENCE | Checks that find ranks entries by keyword, weighted synonym, concept name and sentence words, multiplied by the entry weight.
+SLOT | 0 | POINTS_TO=pal-harness | WEIGHT=0.70
+SLOT | 1 | POINTS_TO=ledger | WEIGHT=0.60
+SLOT | 2 | POINTS_TO=parser | WEIGHT=0.30
+CORPUS | ai-layers | WEIGHT=0.90
+SEQUENCE | 1 | exec ./ops/+x/harness_bank_op.+x cases/harness_bank.pdl
+SOURCE | hand-authored 2026-10-07 (claude); masters/synonyms/weights are seeds awaiting owner validation
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

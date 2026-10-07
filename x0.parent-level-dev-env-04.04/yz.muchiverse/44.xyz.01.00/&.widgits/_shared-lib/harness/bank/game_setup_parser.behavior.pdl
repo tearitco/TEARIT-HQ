@@ -1,0 +1,25 @@
+# Behavior Bank entry for the harness `game_setup_parser` (see HARNESS-BEHAVIOR-BANK-DESIGN.md). Weights on SYNONYM / SLOT / CORPUS rows are hand-seeded; only WEIGHT (from COUNTS) is measured.
+BEHAVIOR | harness.game_setup_parser
+KIND | spoke
+KEYWORDS | game.pdl, parser, game setup, cells, maps, edit marks, play mode, hide, visible
+SYNONYM | game file | 0.60
+SYNONYM | setup file | 0.70
+SYNONYM | menu cells | 0.60
+SYNONYM | header cells | 0.60
+SYNONYM | editable marks | 0.50
+SYNONYM | config | 0.40
+SENTENCE | Calls the game.pdl parser through a query op and checks every row type: GAME, MAP, CELL, ROW and EDIT, with comments and unknown rows ignored.
+SENTENCE | Checks the access rules: build mode unrestricted, play only lists the available maps, a cell hides by modes and where, edit marks only count in play-test.
+SENTENCE | Also checks the play-mode file reader and the map switch check with its append-only ledger.
+SLOT | 0 | POINTS_TO=parser | WEIGHT=0.90
+SLOT | 1 | POINTS_TO=map-access | WEIGHT=0.70
+SLOT | 2 | POINTS_TO=play-mode | WEIGHT=0.70
+SLOT | 3 | POINTS_TO=menu | WEIGHT=0.50
+CORPUS | game-engine | WEIGHT=0.80
+CORPUS | ai-layers | WEIGHT=0.30
+SEQUENCE | 1 | exec ./ops/+x/harness_case_op.+x cases/game_setup_parser.pdl
+SEQUENCE | 2 | exec ./ops/+x/harness_verdict_op.+x cases/game_setup_parser.pdl
+SEQUENCE | 3 | exec ./ops/+x/harness_bank_op.+x cases/game_setup_parser.pdl
+SOURCE | hand-authored 2026-10-07 (claude); masters/synonyms/weights are seeds awaiting owner validation
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

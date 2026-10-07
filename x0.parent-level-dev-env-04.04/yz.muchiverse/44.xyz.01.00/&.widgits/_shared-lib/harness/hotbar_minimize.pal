@@ -1,4 +1,5 @@
 # hotbar_minimize.pal - pal harness for the pc-hq hotbar minimize path (cases/hotbar_minimize.pdl). Read results/hotbar_minimize.txt.verdict.txt
 exec ./ops/+x/harness_case_op.+x cases/hotbar_minimize.pdl
 exec ./ops/+x/harness_verdict_op.+x cases/hotbar_minimize.pdl
+exec ./ops/+x/harness_bank_op.+x cases/hotbar_minimize.pdl
 halt

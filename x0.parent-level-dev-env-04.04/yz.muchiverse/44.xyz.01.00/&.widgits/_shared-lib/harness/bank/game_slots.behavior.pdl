@@ -1,0 +1,23 @@
+# Behavior Bank entry for the harness `game_slots` (see HARNESS-BEHAVIOR-BANK-DESIGN.md). Weights on SYNONYM / SLOT / CORPUS rows are hand-seeded; only WEIGHT (from COUNTS) is measured.
+BEHAVIOR | harness.game_slots
+KIND | spoke
+KEYWORDS | save game, load game, slots, savegames, manifest, progress, snapshot, audit
+SYNONYM | save slot | 1.00
+SYNONYM | load slot | 1.00
+SYNONYM | checkpoint | 0.70
+SYNONYM | quick save | 0.60
+SYNONYM | progress file | 0.60
+SYNONYM | game state | 0.50
+SENTENCE | Saves and loads slots on a scratch entity tree with the real game_slot_op and hashes the tree before and after to prove neither changes any entity data.
+SENTENCE | Checks the manifest and meta files, the append-only ledger, the changed missing and new counts on load, the empty-slot error and the bad slot and verb rejections.
+SLOT | 0 | POINTS_TO=save-load | WEIGHT=0.95
+SLOT | 1 | POINTS_TO=ledger | WEIGHT=0.60
+SLOT | 2 | POINTS_TO=state-file | WEIGHT=0.50
+CORPUS | game-engine | WEIGHT=0.90
+CORPUS | ai-layers | WEIGHT=0.30
+SEQUENCE | 1 | exec ./ops/+x/harness_case_op.+x cases/game_slots.pdl
+SEQUENCE | 2 | exec ./ops/+x/harness_verdict_op.+x cases/game_slots.pdl
+SEQUENCE | 3 | exec ./ops/+x/harness_bank_op.+x cases/game_slots.pdl
+SOURCE | hand-authored 2026-10-07 (claude); masters/synonyms/weights are seeds awaiting owner validation
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

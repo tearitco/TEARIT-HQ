@@ -2,4 +2,5 @@
 # into results/pchq_playtest_action.txt and the verdict into results/pchq_playtest_action.txt.verdict.txt (read that file). Run:  prisc+x pchq_playtest_action.pal   (from this folder)
 exec ./ops/+x/harness_case_op.+x cases/pchq_playtest_action.pdl
 exec ./ops/+x/harness_verdict_op.+x cases/pchq_playtest_action.pdl
+exec ./ops/+x/harness_bank_op.+x cases/pchq_playtest_action.pdl
 halt

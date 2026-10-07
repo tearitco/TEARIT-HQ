@@ -1,4 +1,5 @@
 # transfer_map_access.pal - pal harness for mr_transfer_desk map access (see cases/transfer_map_access.pdl). Read results/transfer_map_access.txt.verdict.txt.
 exec ./ops/+x/harness_case_op.+x cases/transfer_map_access.pdl
 exec ./ops/+x/harness_verdict_op.+x cases/transfer_map_access.pdl
+exec ./ops/+x/harness_bank_op.+x cases/transfer_map_access.pdl
 halt

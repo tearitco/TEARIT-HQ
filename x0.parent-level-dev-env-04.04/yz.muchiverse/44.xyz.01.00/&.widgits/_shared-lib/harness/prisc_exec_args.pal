@@ -1,0 +1,10 @@
+# prisc_exec_args.pal - proves prisc `exec` passes MANY literal arguments (owner 2026-10-07), and that the old forms still work. Read results/prisc_exec_args.txt.verdict.txt
+# 1) path + one literal (the form every other harness pal uses), 2) path + five literals, 3) path + literal + REGISTER + two literals (old register form mixed with the new extras)
+exec ./ops/+x/args_echo_op.+x results/args_echo_one.out only
+exec ./ops/+x/args_echo_op.+x results/args_echo_many.out one two three four five
+li x5, 42
+exec ./ops/+x/args_echo_op.+x results/args_echo_reg.out x5 left right
+exec ./ops/+x/harness_case_op.+x cases/prisc_exec_args.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/prisc_exec_args.pdl
+exec ./ops/+x/harness_bank_op.+x cases/prisc_exec_args.pdl
+halt

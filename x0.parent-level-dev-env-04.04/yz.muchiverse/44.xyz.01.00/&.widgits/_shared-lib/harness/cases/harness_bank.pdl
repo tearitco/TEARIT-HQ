@@ -1,0 +1,54 @@
+# harness_bank_op: the behavior bank's live weights (counts from a results ledger, Laplace estimate, append-only cursor) and its weighted ranking, on SCRATCH files.
+RESULTS | ../results/harness_bank.txt
+CASE    | harness-bank
+SCRATCH |
+COPY    | &.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x | bin/hbank
+WRITE   | h/cases/demo.pdl | RESULTS | ../results/demo.txt\n
+WRITE   | h/results/demo.txt | RUN\p1\px\nPASS\pd/a\nPASS\pd/b\nFAIL\pd/c\pwhy\nPASS\pd/d\n
+WRITE   | h/bank/demo.behavior.pdl | BEHAVIOR | harness.demo\nKEYWORDS | demo\nCOUNTS | reward=0 | punish=0 | cursor=0\nWEIGHT | 0.5000\n
+WRITE   | b/a.behavior.pdl | BEHAVIOR | demo.a\nKEYWORDS | teleport, door\nSYNONYM | warp | 0.7\nSENTENCE | Moves the player between maps.\nSLOT | 0 | POINTS_TO=map-access | WEIGHT=0.90\nWEIGHT | 0.5000\n
+WRITE   | b/b.behavior.pdl | BEHAVIOR | demo.b\nKEYWORDS | restart\nWEIGHT | 0.8000\n
+
+# the tracked seed is never rewritten; live counts go to bank/live/
+# update: 3 PASS rows -> reward 3, 1 FAIL -> punish 1, weight (3+1)/(3+1+2) = 0.6667
+RUN | $T/bin/hbank | $T/h/cases/demo.pdl
+EXPECT_OUT_IS | harness.demo reward=3 punish=1 weight=0.6667 | update-counts-and-laplace-weight
+EXPECT_NOFILE | h/bank/live/demo.behavior.pdl.tmp | no-temp-file-left-behind
+EXPECT_HAS | h/bank/live/demo.behavior.pdl | COUNTS \p reward=3 \p punish=1 \p cursor= | counts-written-to-the-sidecar
+EXPECT_HAS | h/bank/live/demo.behavior.pdl | WEIGHT \p 0.6667 | weight-written
+EXPECT_HAS | h/bank/live/demo.behavior.pdl | KEYWORDS \p demo | other-lines-untouched
+
+EXPECT_HAS | h/bank/demo.behavior.pdl | COUNTS \p reward=0 | seed-sidecar-untouched
+# running it again over the same ledger counts nothing twice (append-only cursor)
+RUN | $T/bin/hbank | $T/h/cases/demo.pdl
+EXPECT_OUT_IS | harness.demo reward=3 punish=1 weight=0.6667 | second-update-counts-nothing-twice
+
+# two new PASS rows are appended: only those are added -> reward 5, punish 1, weight 6/8
+APPEND | h/results/demo.txt | PASS\pd/e\nPASS\pd/f\n
+RUN | $T/bin/hbank | $T/h/cases/demo.pdl
+EXPECT_OUT_IS | harness.demo reward=5 punish=1 weight=0.7500 | appended-rows-only-are-added
+
+# a ledger that was replaced by a shorter one restarts the cursor instead of reading past the end
+WRITE | h/results/demo.txt | RUN\p2\py\nFAIL\pd/z\pwhy\n
+RUN | $T/bin/hbank | $T/h/cases/demo.pdl
+EXPECT_OUT | punish=2 | shrunk-ledger-restarts-the-cursor
+
+# find: keyword 1.0, weighted synonym, concept name via its slot weight, sentence word 0.25; times the entry weight; best first
+RUN | $T/bin/hbank | find | $T/b | teleport
+EXPECT_OUT_IS | 0.500\pdemo.a\pa.behavior.pdl | keyword-match-times-entry-weight
+RUN | $T/bin/hbank | find | $T/b | warp
+EXPECT_OUT_IS | 0.350\pdemo.a\pa.behavior.pdl | synonym-uses-its-weight
+RUN | $T/bin/hbank | find | $T/b | map
+EXPECT_OUT_IS | 0.270\pdemo.a\pa.behavior.pdl | concept-word-via-slot-weight-hyphen-split
+RUN | $T/bin/hbank | find | $T/b | player
+EXPECT_OUT_IS | 0.125\pdemo.a\pa.behavior.pdl | sentence-word-counts-a-quarter
+RUN | $T/bin/hbank | find | $T/b | teleport | door
+EXPECT_OUT_IS | 1.000\pdemo.a\pa.behavior.pdl | words-sum
+RUN | $T/bin/hbank | find | $T/b | restart | teleport
+EXPECT_OUT | 0.800\pdemo.b | higher-weighted-entry-ranks-first
+EXPECT_OUT | 0.500\pdemo.a | other-entry-also-listed
+RUN | $T/bin/hbank | find | $T/b | nothingmatches
+EXPECT_OUT_IS |  | unknown-word-finds-nothing
+RUN | $T/bin/hbank | find | $T/b | TELEPORT
+EXPECT_OUT | demo.a | query-is-case-insensitive
+CLEAN |

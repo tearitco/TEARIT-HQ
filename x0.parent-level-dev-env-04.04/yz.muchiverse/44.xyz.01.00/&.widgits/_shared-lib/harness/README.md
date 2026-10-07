@@ -12,7 +12,7 @@ A harness is three small things:
 
 **Case verbs** (details in the header of `ops/harness_case_op.c`): `RESULTS`, `CASE`, `SCRATCH` (a `/tmp/hc_*` dir = `$T`), `MKDIR`, `COPY` (from `$HOUSE` into `$T`, keeps the mode), `WRITE`, `RUN` (fork/exec, **no shell**, fields are argv entries), `EXPECT_EXIT`, `EXPECT_FILE`, `EXPECT_NOFILE`, `EXPECT_HAS`, `EXPECT_LACKS`, `EXPECT_OUT`, `CLEAN`. Every command runs with its cwd in `$T`; a case that forgets `CLEAN` is still cleaned up. **Never name a live path in a case; work under `$T`.** (Shell expansion bites when you *generate* a case file with an unquoted heredoc: `$T` becomes empty. Use `<<'EOF'`.)
 
-**Run (scratch prisc until a house one is built):** `gcc -O2 -w -o /tmp/prisc system/prisc+x.c -lm` from `&.widgits/_shared-lib/system/`, then `/tmp/prisc <name>.pal` here. It prints `[Prisc Error] Could not open ops file .../default_op.txt`; that is harmless (the harness uses no custom ops).
+**Run (scratch prisc until a house one is built; use the many-args VM, `prisc_exec_args.pal` tells you if the one you have is the old one):** `gcc -O2 -w -o /tmp/prisc system/prisc+x.c -lm` from `&.widgits/_shared-lib/system/`, then `/tmp/prisc <name>.pal` here. It prints `[Prisc Error] Could not open ops file .../default_op.txt`; that is harmless (the harness uses no custom ops).
 
 ## Harnesses
 
@@ -25,6 +25,8 @@ A harness is three small things:
 | `hotbar_minimize.pal` | `cases/hotbar_minimize.pdl` | 9 | a REAL `hotbar_manager` process: hide/show/toggle publish within 300 ms, two clicks 280 ms apart stay hidden |
 | `close_listed.pal` | `cases/close_listed.pdl` | 19 | `close_listed.sh` + `close_on_restart.pdl`: real sleeper processes, other-house/unlisted untouched, caller survives its own match, `--relaunch` |
 | `proc_ledger_add.pal` | `cases/proc_ledger_add.pdl` | 9 | `proc_ledger_add.sh` with the REAL reaper (`proc_reap_op`): registered pid reaped, PID-reuse guard, bad args |
+| `harness_bank.pal` | `cases/harness_bank.pdl` | 18 | the behavior bank op: live Laplace weights from a ledger (append-only cursor), `find` ranking |
+| `prisc_exec_args.pal` | `cases/prisc_exec_args.pdl` | 3 | prisc `exec` with one, five, and register+literal arguments (needs the many-args VM; the old VM fails all 3) |
 | `game_slots.pal` | `cases/game_slots.pdl` | 22 | `game_slot_op` save/load slots on a scratch entity tree (SUMTREE: save and load change no entity data) |
 
 Run them all (from this folder, with a prisc binary): `for p in *.pal; do prisc+x $p; done`, then read every `results/*.verdict.txt`.
@@ -34,6 +36,10 @@ Run them all (from this folder, with a prisc binary): `for p in *.pal; do prisc+
 **Lessons that are now guards in the op** (each one bit during the port): a `|` inside a field shifts the row, so use `\p` for a literal bar, an **empty expectation FAILs**, and a row with more fields than its verb takes FAILs; before the guards some ledger checks passed vacuously. A killed `SPAWN`ed child is reaped before `EXPECT_DEAD` (a zombie still answers `kill 0`). Generating a case file from a shell heredoc expands `$T`: use `<<'EOF'`.
 
 A harness is only worth trusting if it can fail: copies with one wrong expectation gave `VERDICT|FAIL` for `pchq_playtest_action` and `transfer_map_access`.
+
+## Behavior bank (weights, synonyms, sentences)
+
+Every harness has a seed `bank/<name>.behavior.pdl` (keywords, weighted synonyms, sentences about how it works, weighted slots to concept names = the hidden layer, corpus weights, the exec sequence). The last line of each pal, `exec ./ops/+x/harness_bank_op.+x cases/<name>.pdl`, adds this run's PASS rows to reward and FAIL rows to punish (cursor-based, counted once) and writes the live Laplace weight to the git-ignored `bank/live/`. Search: `ops/+x/harness_bank_op.+x find bank <word>...`. Design, inference and limits: `HARNESS-BEHAVIOR-BANK-DESIGN.md`. **Seed weights are guesses; only WEIGHT is measured.**
 
 ## Not ported yet (still sh)
 

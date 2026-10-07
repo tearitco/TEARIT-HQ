@@ -1,0 +1,9 @@
+# prisc exec argument passing: the pal ran args_echo_op three times; read what each run received. The ops' results files live in results/.
+RESULTS | ../results/prisc_exec_args.txt
+CASE    | prisc-exec-args
+RUN | cat | $HOUSE/&.widgits/_shared-lib/harness/results/args_echo_one.out
+EXPECT_OUT_IS | ARGS\ponly\nN=1 | one-literal-argument-old-form-still-works
+RUN | cat | $HOUSE/&.widgits/_shared-lib/harness/results/args_echo_many.out
+EXPECT_OUT_IS | ARGS\pone\ptwo\pthree\pfour\pfive\nN=5 | five-literal-arguments-all-delivered-in-order
+RUN | cat | $HOUSE/&.widgits/_shared-lib/harness/results/args_echo_reg.out
+EXPECT_OUT_IS | ARGS\p42\pleft\pright\nN=3 | register-argument-then-literals-mixed-form
