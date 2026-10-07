@@ -116,6 +116,12 @@ case "$ACTION" in
         [ -x "$HOUSE/&.hq-apps/world-manager/button.sh" ] && \
             "$HOUSE/&.hq-apps/world-manager/button.sh" kill 2>/dev/null || true
         echo "closed all toolbars, entities, HQ app managers, and world_manager"
+        # desk data is not in code history any more (Q007): commit it to the user/<name> data branches now that the data is quiet (local only, never pushed)
+        [ -f "$SCRIPT_DIR/save-user-data.sh" ] && bash "$SCRIPT_DIR/save-user-data.sh" -q || true
+        ;;
+    save-data)
+        # commit every desk user's data folder to its own local data branch (user/jb, ...); idempotent; see save-user-data.sh
+        bash "$SCRIPT_DIR/save-user-data.sh"
         ;;
     build|rebuild)
         # Compile EVERY house program (compile-runner.sh: each project's own
@@ -145,6 +151,8 @@ case "$ACTION" in
         # explicitly here too.
         [ -x "$HOUSE/&.hq-apps/world-manager/button.sh" ] && \
             "$HOUSE/&.hq-apps/world-manager/button.sh" kill 2>/dev/null || true
+        # desk data is not in code history any more (Q007): snapshot it to the local data branches while the data is quiet (a few seconds, never blocks the reset)
+        [ -f "$SCRIPT_DIR/save-user-data.sh" ] && bash "$SCRIPT_DIR/save-user-data.sh" -q || true
         # REAL FIX 2026-09-21, direct instruction ("i dont want it to run
         # the old binaries if theres a compile fail or it may mislead me
         # into thinking things are ok, when they aren't"): this used to
