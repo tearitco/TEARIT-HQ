@@ -38,7 +38,9 @@ SECTION      | hq_menu_11_cmd      | livedesk:open-palette:debug
 # string), just never updated for consistency until now.
 SECTION      | hq_menu_13_label    | proc-mon
 SECTION      | hq_menu_13_cmd      | sh _.monads/_.livedesk-taskbar/ops/open_mon.sh
-SECTION      | hq_menu_14_label    | cancel
+SECTION      | hq_menu_14_label    | tomom
+SECTION      | hq_menu_14_cmd      | sh _.monads/_.livedesk-taskbar/ops/open_tomom.sh
+SECTION      | hq_menu_15_label    | cancel
 
 SECTION      | file_menu_1_label   | new-desk
 SECTION      | file_menu_1_cmd     | livedesk:new-desk
@@ -88,7 +90,9 @@ SECTION      | ai_menu_6_label       | Ghost roster
 SECTION      | ai_menu_6_cmd         | sh @.apps/board-hq/ops/open_board_menu.sh ghosts
 SECTION      | ai_menu_7_label       | Phones
 SECTION      | ai_menu_7_cmd         | sh @.apps/board-hq/ops/open_board_menu.sh phones
-SECTION      | ai_menu_8_label       | Cancel
+SECTION      | ai_menu_8_label       | tomom
+SECTION      | ai_menu_8_cmd         | sh _.monads/_.livedesk-taskbar/ops/open_tomom.sh
+SECTION      | ai_menu_9_label       | Cancel
 
 # db cell (9.db) - converted from C-hardcoded 2026-09-08. The builder
 # still gates on an active livedesk session (no session -> no menu).

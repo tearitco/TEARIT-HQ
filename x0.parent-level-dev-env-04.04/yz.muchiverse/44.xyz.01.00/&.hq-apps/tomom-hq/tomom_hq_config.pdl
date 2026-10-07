@@ -1,0 +1,4 @@
+# tomom-hq config. target_dir = dir whose vocab_model.txt / meta_rl_weights.txt are edited.
+# Relative = against this package dir. Default = scratch copy (safe). Do not point at the live
+# tomom unless you mean it.
+SECTION      | target_dir          | state/work/tomom

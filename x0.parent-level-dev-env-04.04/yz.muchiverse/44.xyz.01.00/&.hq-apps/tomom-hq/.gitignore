@@ -1,0 +1,7 @@
+# runtime state - never tracked (scratch weight copy, audit, ask log, ui projection)
+state/
+audit/
+ops/+x/
+tomom_ui.txt
+tomom_action.txt
+tomom.seq
