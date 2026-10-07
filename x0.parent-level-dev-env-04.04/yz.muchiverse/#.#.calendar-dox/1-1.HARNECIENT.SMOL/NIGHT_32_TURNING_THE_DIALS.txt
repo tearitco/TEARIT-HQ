@@ -4,11 +4,11 @@
 # Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
 # Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
 # Topic: A how-to night. The first native X11-HQ window for tomom: what is on screen, how to change one weight, how to take it back, how to ask the model a question, how to read the audit log, and what the window does not do yet.
-# Long-form: practical, in the order a person would use it. Written from the window's own labels, its published state file and its real audit file. The agent's own end-to-end verification report was still pending when this was written, so anything not in those three sources is marked as not confirmed.
+# Long-form: practical, in the order a person would use it. Written from the window's own labels, its published state file and its real audit file. The agent that built it verified the Meta-RL and Vocab pages end to end through the window's input relay; the Ask tab runs but does not reflect weight edits (see below); the taskbar rows are confirmed only by reading the file.
 
 **THE NARRATOR:** NIGHT 22 said a model's weights should be something a person can read and tune by hand. NIGHT 30 said tomom, the hand-built local model, sits dormant waiting for something worth learning. Tonight is the first night someone can actually put a hand on it. Say what the thing is.
 
-**MAXINE:** A window. `tomom-hq`, in the X11-HQ family, the same three-part shape as the chain window: a layout file, a style file, and one compiled manager that owns the state. It opens from the tomom row in the HQ menu, and the h-ai cell row was being added alongside it. It edits tomom's text weights. Not a web page. Tomom's old `web-interface` folder turned out to be only a chat front end with a configuration panel and a debug log, so there was nothing to reuse.
+**MAXINE:** A window. `tomom-hq`, in the X11-HQ family, the same three-part shape as the chain window: a layout file, a style file, and one compiled manager that owns the state. It opens from the tomom row in the HQ menu and from a tomom row in the h-ai cell (the file is changed; a restarted taskbar was not used to confirm it live). It edits tomom's text weights. Not a web page. Tomom's old `web-interface` folder turned out to be only a chat front end with a configuration panel and a debug log, so there was nothing to reuse.
 
 **TOMO:** Say first what it will not touch, because that is the rule you learn before any button.
 
@@ -56,13 +56,15 @@
 
 **MAXINE:** Type a question into the `ask` box and press Enter. The window runs tomom's chatbot on the scratch copy and shows the final response line. Every question and answer is also appended to `state/ask_log.txt`, one row each, with a timestamp and the target it ran against.
 
-**TOMO:** That is the loop a tuner actually wants: change a weight, ask the same question, compare. Because the log keeps every answer, you do not have to remember what it said before the change.
+**TOMO:** That is the loop a tuner will want: change a weight, ask the same question, compare. But read the next two lines before relying on it.
+
+**RAHWEH:** Ask does not reflect the weights this window edits. The builder found it and the source confirms it. The chatbot loads each subject's own files, the text under `curriculum/<Subject>/` and the matrices in `curriculum/<Subject>_train/` (attention, MLP, output layer). It does not read the top-level `vocab_model.txt` or `meta_rl_weights.txt`. The Meta-RL file steers which curriculum a prompt goes to, and that router is a separate program from the chatbot. So today you can edit those two files and the Ask box will answer exactly as before.
 
 **RAHWEH:** Be honest about what comes back. Tonight's own earlier run, on a copy, asked "fetch the red robot" and got a string of astronomy words, and "what is force" got "defining covers temperature F". The logged answer in the window's own file, for a short prompt, is the same kind of thing: a run of curriculum words. Tomom today speaks in the vocabulary of the school subjects it was trained on.
 
 **MAXINE:** So say what a weight change can and cannot be expected to do.
 
-**TOMO:** A five-hundredths nudge to one word's weight is a small, real change to a toy model. It might shift which word comes out. It will not make tomom understand robots. Editing the dial and asking again is how you see what each weight does, and that is the whole point of making the weights legible. It is not a way to teach it new meaning; that is what the banks and the staged swap are for.
+**TOMO:** So the dials and the voice are not connected yet. The edits are real, saved and logged, and undoable; they just are not the weights the chatbot speaks from. Connecting them means one of two things, an owner decision: expose each subject's own files in this window as well, or point Ask at something that does read the top-level files. Either way, a small nudge to one weight is a small change to a toy model. It will not make tomom understand robots; that is what the banks and the staged swap are for.
 
 ---
 
@@ -79,7 +81,7 @@
 **THE NARRATOR:** Habits for using it. Say them as rules.
 
 **MAXINE:** One. Keep the target on scratch. If you ever point it at the live model, copy the live folder first, and say so in the status line you act on.
-Two. Change one weight, then ask the same question, then read the log. Two changes at once and you cannot tell which did it.
+Two. Do not expect an Ask answer to move when you edit a Meta-RL or Vocab weight yet. When the connection exists: change one weight, ask the same question, read the log; two changes at once and you cannot tell which did it.
 Three. Use reset to go back to the pristine copy when an experiment is over, and leave the audit file alone. It is your record of what you tried.
 Four. If the window looks stale, press reload before assuming something broke.
 
@@ -89,12 +91,12 @@ Four. If the window looks stale, press reload before assuming something broke.
 
 **THE NARRATOR:** Honesty checkpoint, the way this track ends.
 
-**MAXINE:** What is real. A native window with three tabs, a scratch target with a safety label, edits to Meta-RL and Vocab weights in steps of five hundredths, reset to original, undo that appends an inverse row, an append-only audit file with real rows, an Ask box that runs the chatbot on the scratch copy and logs every answer. The owner has seen it and said it looks good.
+**MAXINE:** What is real. A native window with three tabs, a scratch target with a safety label, edits to Meta-RL and Vocab weights in steps of five hundredths, reset to original, undo that appends an inverse row, an append-only audit file with real rows, an Ask box that runs the chatbot on the scratch copy and logs every answer, though its answers do not depend on the weights the other tabs edit. The owner has seen the window and said it looks good. The builder's checks, through the input relay: one Meta-RL weight raised, reset and undone back to equal to the live value; one Vocab weight changed, undone and reset; a word filter returning matches; a screenshot of the Vocab page.
 
-**TOMO:** What is not. Switching to the live model. Any view or editor for the Concept Bank, entity word banks or their variables. Any route from a hand edit into the validator or review file. A TEARIT review window and a Concept Bank window. The h-ai cell row was being added at the time of writing, and the agent's own end-to-end verification report had not yet arrived, so the exact wiring of that row is not confirmed here.
+**TOMO:** What is not. Switching to the live model. Any view or editor for the Concept Bank, entity word banks or their variables. Any route from a hand edit into the validator or review file. A TEARIT review window and a Concept Bank window. A live check of the taskbar and h-ai cell rows after a taskbar restart. A connection between the edited weights and the chatbot's answers.
 
 **RAHWEH:** And the larger point stays where NIGHT 22 and NIGHT 30 left it. This window makes tomom's weights visible and hand-tunable. It does not make tomom useful. That comes from banks giving it named things to be about, one stage at a time, with every stage checked against the same prompts.
 
 **MAXINE:** Say the line to carry into the next night.
 
-**TOMO:** You can now turn a dial, take it back, and hear what changed, and every turn leaves a row. The next work is giving the dials names. 🎛️
+**TOMO:** You can now turn a dial and take it back, and every turn leaves a row. The next work is wiring the dials to the voice, and giving them names. 🎛️
