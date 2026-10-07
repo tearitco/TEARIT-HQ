@@ -89,6 +89,7 @@ read_restore_mode() {
 
 case "$ACTION" in
     run|r|start|restart)
+        sh "$SCRIPT_DIR/livedesk-icon-refresh.sh" </dev/null >/dev/null 2>&1 &   # icon follows the current theme colors
         # restart == run: use the restore feature only when explicitly enabled in autostart.pdl
         if [ "$(read_restore_mode)" = "1" ] && [ -f "$RESTORE" ] && [ -x "$SCRIPT_DIR/scrypts/openall/run.sh" ]; then
             "$SCRIPT_DIR/scrypts/openall/run.sh"
@@ -127,6 +128,7 @@ case "$ACTION" in
         DISPLAY="${DISPLAY:-:0}" nice -n 15 bash "$SCRIPT_DIR/compile-runner.sh" "$@"
         ;;
     reset)
+        sh "$SCRIPT_DIR/livedesk-icon-refresh.sh" </dev/null >/dev/null 2>&1 &   # icon follows the current theme colors
         # Guaranteed-clean kill-everything-then-relaunch — for when the
         # normal autostart sweep (crypt_autostart's own /proc scan, which
         # only matches known taskbar/entity process names) isn't enough,

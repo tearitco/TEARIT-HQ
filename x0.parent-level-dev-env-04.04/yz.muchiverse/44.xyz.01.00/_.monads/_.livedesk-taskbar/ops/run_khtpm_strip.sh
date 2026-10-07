@@ -187,6 +187,8 @@ case "$ACTION" in
         # cd into HOUSE first — the parser's own children (the manager)
         # inherit this cwd, and relative menu commands (livedesk_taskbar.pdl)
         # depend on it being house root, not wherever this script was invoked from.
+        # the app icon follows the current theme colors after any (re)start (also the HQ "$.restart" = `new`)
+        [ -f "$HOUSE/\$.crypts/livedesk-icon-refresh.sh" ] && sh "$HOUSE/\$.crypts/livedesk-icon-refresh.sh" </dev/null >/dev/null 2>&1 &
         # startup timeline (kh_boot_mark.h): reset at the start of a boot; the manager and the bottom dock append their own marks
         rm -f "$HOUSE/#.desktop/dock_stack/draw_stamp.txt" 2>/dev/null
         { : > "$HOUSE/#.desktop/boot_timeline.txt"; echo "$(date +%s%3N) script boot started" >> "$HOUSE/#.desktop/boot_timeline.txt"; } 2>/dev/null

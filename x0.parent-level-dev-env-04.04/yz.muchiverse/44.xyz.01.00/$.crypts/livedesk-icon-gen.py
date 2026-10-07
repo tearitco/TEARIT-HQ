@@ -67,7 +67,7 @@ def main():
     for i in range(6):                                                                      # entity cells
         x = 84 + i * 62
         d.rounded_rectangle((x, S - 150, x + 44, S - 90), radius=10, fill=(fg if i % 2 == 0 else dim) + (255,))
-    im.resize((size, size), Image.LANCZOS).save(out)
+    im.resize((size, size), Image.LANCZOS).save(out, format="PNG")   # explicit: callers write to temp names like livedesk.png.new
     print("icon %dpx bg=%s fg=%s -> %s" % (size, bg_h, fg_h, out))
     return 0
 

@@ -16,15 +16,8 @@ HOUSE="$(dirname "$CRYPTS")"
 [ -n "${XAUTHORITY:-}" ] || { [ -r "$HOME/.Xauthority" ] && export XAUTHORITY="$HOME/.Xauthority"; }
 cd "$HOUSE" || exit 1
 LOG="$HOUSE/#.desktop/livedesk_launch.log"
-# Every press: re-read the CURRENT theme colors (#.desktop/livedesk_theme.pdl) and redraw the app icon in them, so the icon always
-# follows the last color settings (owner 2026-10-06). Done first and cheaply (~0.1 s); a missing Pillow keeps the previous icon.
-# The icon you see after this press has this press's colors; the .desktop file is touched so file managers re-read it.
-_ICON="$HOME/.local/share/icons/hicolor/256x256/apps/livedesk.png"
-if [ -f "$_ICON" ] && command -v python3 >/dev/null 2>&1; then
-    python3 "$CRYPTS/livedesk-icon-gen.py" "$HOUSE" "$_ICON.new" 256 >/dev/null 2>&1 && mv -f "$_ICON.new" "$_ICON"
-    rm -f "$_ICON.new"
-    touch "$HOME/.local/share/applications/livedesk.desktop" "$HOME/Desktop/Livedesk.desktop" 2>/dev/null
-fi
+# Every press: redraw the app icon in the CURRENT theme colors (see livedesk-icon-refresh.sh; a no-op without an installed icon / Pillow).
+sh "$CRYPTS/livedesk-icon-refresh.sh" </dev/null
 OPS="$HOUSE/_.monads/_.livedesk-taskbar/ops"
 # The loading strip starts FIRST (before any compile) so a compile is shown on it too; the build step is pinned to it (marker + rewritten
 # binaries), then it follows the manager and the bottom bar's own redraws to "Ready". (Owner 2026-10-06: the loading animation was
