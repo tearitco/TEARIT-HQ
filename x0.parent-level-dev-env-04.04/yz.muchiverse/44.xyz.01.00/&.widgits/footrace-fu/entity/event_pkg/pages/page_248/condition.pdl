@@ -1,0 +1,3 @@
+# Combat 19: death at 0 HP, log, the defender's stance is spent
+COND | trigger | combat
+COND | kv | variables.txt | ph_cmb | eq | 8

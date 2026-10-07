@@ -1,0 +1,3 @@
+# TurnStart 3: select the leading ninja of this army
+COND | trigger | turnstart
+COND | kv | switches.txt | game_over | eq | 0

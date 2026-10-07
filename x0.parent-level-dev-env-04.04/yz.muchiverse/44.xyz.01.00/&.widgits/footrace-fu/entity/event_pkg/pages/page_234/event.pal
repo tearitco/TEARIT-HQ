@@ -1,0 +1,7 @@
+# event.pal - Combat 5: defender may re-roll if it is still losing (trigger combat). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . gt d_lose a_roll d_roll
+exec ops/+x/var_math.+x . mul d_rr d_can d_lose
+exec ops/+x/var_math.+x . eq d_rrd0 d_rrd 0
+exec ops/+x/var_math.+x . mul d_rr d_rr d_rrd0
+exec ops/+x/var_math.+x . set ph_cmb 4
+halt

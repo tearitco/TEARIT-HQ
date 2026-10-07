@@ -1,0 +1,3 @@
+# Combat 4: next
+COND | trigger | combat
+COND | kv | variables.txt | ph_cmb | eq | 2

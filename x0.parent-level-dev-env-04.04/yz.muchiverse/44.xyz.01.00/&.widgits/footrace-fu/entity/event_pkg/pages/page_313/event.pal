@@ -1,0 +1,9 @@
+# event.pal - Move 14: melee combat (the mover attacks, distance 0) (trigger move). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set cmb_ap current
+exec ops/+x/var_math.+x . set cmb_an sel
+exec ops/+x/var_math.+x . set cmb_dp foe_1
+exec ops/+x/var_math.+x . set cmb_dn foe_2
+exec ops/+x/var_math.+x . set cmb_dist 0
+exec ops/+x/event_page_op.+x . . --trigger combat --state .
+exec ops/+x/var_math.+x . set ph_move 8
+halt

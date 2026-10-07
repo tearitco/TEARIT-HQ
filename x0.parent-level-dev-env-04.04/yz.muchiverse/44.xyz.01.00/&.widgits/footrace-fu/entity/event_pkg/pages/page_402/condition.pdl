@@ -1,0 +1,3 @@
+# CastCheck 3: roll doubles (2d6 equal)
+COND | trigger | castcheck
+COND | kv | variables.txt | cc_cond | eq | 1

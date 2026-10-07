@@ -1,0 +1,17 @@
+# event.pal - TurnStart 2: seat 1 - stances (Block, shield) and the free-Block flag end with the owner's new turn (trigger turnstart). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set guard_1_1 0
+exec ops/+x/var_math.+x . set shield_1_1 0
+exec ops/+x/var_math.+x . set fb_1_1 0
+exec ops/+x/var_math.+x . set guard_1_2 0
+exec ops/+x/var_math.+x . set shield_1_2 0
+exec ops/+x/var_math.+x . set fb_1_2 0
+exec ops/+x/var_math.+x . set guard_1_3 0
+exec ops/+x/var_math.+x . set shield_1_3 0
+exec ops/+x/var_math.+x . set fb_1_3 0
+exec ops/+x/var_math.+x . set guard_1_4 0
+exec ops/+x/var_math.+x . set shield_1_4 0
+exec ops/+x/var_math.+x . set fb_1_4 0
+exec ops/+x/var_math.+x . set guard_1_5 0
+exec ops/+x/var_math.+x . set shield_1_5 0
+exec ops/+x/var_math.+x . set fb_1_5 0
+halt

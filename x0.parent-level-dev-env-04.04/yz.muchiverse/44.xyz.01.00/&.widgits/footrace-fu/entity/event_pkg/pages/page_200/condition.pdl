@@ -1,0 +1,3 @@
+# Land 1: read the slide / climb of this space
+COND | trigger | land
+COND | kv | variables.txt | ph_land | eq | 0

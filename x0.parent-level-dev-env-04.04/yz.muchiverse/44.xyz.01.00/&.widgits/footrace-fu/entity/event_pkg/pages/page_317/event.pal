@@ -1,0 +1,3 @@
+# event.pal - Move 18: ...or both live and rules.pdl collide_share = 1 (trigger move). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set mv_go 1
+halt

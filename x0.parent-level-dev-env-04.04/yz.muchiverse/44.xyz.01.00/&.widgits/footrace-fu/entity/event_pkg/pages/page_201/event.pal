@@ -1,0 +1,4 @@
+# event.pal - Land 2: a slide moves the ninja back (trigger land). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set pos_{lp}_{ln} s_to
+exec ops/+x/row_append.+x . ledger.txt SLIDE {turn} {lp} {ln} {lpos} {s_to}
+halt

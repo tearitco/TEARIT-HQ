@@ -1,0 +1,9 @@
+# event.pal - Move 1: load the acting ninja (seat `current`, ninja `sel`), cost of this Move (trigger move). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set act_alive alive_{current}_{sel}
+exec ops/+x/var_math.+x . set act_cls cls_{current}_{sel}
+exec ops/+x/var_math.+x . set act_pos pos_{current}_{sel}
+exec ops/+x/var_math.+x . set move_cost rules.pdl:move_costs_action
+exec ops/+x/var_math.+x . gt has_free free_left 0
+exec ops/+x/var_math.+x . set fin_cancel 0
+exec ops/+x/var_math.+x . set ph_move 1
+halt

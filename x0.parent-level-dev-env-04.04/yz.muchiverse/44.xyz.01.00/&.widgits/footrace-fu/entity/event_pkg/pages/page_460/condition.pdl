@@ -1,0 +1,4 @@
+# Banish Foe 1: load, nearest enemy, gate (needs an enemy)
+COND | trigger | cast_banish
+COND | kv | variables.txt | ph_cast | eq | 0
+COND | kv | switches.txt | game_over | eq | 0

@@ -1,0 +1,5 @@
+# event.pal - Combat 21: the attacker died (trigger combat). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set kp cmb_ap
+exec ops/+x/var_math.+x . set kn cmb_an
+exec ops/+x/event_page_op.+x . . --trigger kill --state .
+halt

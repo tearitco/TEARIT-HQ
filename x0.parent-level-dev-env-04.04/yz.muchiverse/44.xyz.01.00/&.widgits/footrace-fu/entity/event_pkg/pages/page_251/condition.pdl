@@ -1,0 +1,3 @@
+# Combat 22: last army standing check (after BOTH deaths are applied), done
+COND | trigger | combat
+COND | kv | variables.txt | ph_cmb | eq | 9

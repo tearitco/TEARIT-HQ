@@ -1,0 +1,5 @@
+# event.pal - Banish Foe 5: to Start (default) (trigger cast_banish). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set bx_to 0
+exec ops/+x/var_math.+x . set bx_coin 1
+exec ops/+x/var_math.+x . set ph_cast 3
+halt

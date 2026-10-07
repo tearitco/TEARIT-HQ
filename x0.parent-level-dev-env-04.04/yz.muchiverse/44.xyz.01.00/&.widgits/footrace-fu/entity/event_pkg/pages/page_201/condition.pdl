@@ -1,0 +1,4 @@
+# Land 2: a slide moves the ninja back
+COND | trigger | land
+COND | kv | variables.txt | ph_land | eq | 1
+COND | kv | variables.txt | s_to | gt | 0

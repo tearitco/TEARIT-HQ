@@ -1,0 +1,3 @@
+# Move 20: log, done
+COND | trigger | move
+COND | kv | variables.txt | ph_move | eq | 8

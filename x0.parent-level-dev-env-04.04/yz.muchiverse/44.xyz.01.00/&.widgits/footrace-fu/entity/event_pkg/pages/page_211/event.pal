@@ -1,0 +1,5 @@
+# event.pal - Kill 2: an army with no ninja left is out of the race (trigger kill). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set seat_up_{kp} 0
+exec ops/+x/var_math.+x . sub seats_up seats_up 1
+exec ops/+x/row_append.+x . ledger.txt SEATOUT {turn} {kp}
+halt

@@ -1,0 +1,4 @@
+# event.pal - Banish Foe 4: no double sixes - fizzle (trigger cast_banish). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/row_append.+x . ledger.txt CAST {turn} {current} {sel} banish fizzle {bx_p} {bx_n}
+exec ops/+x/var_math.+x . set ph_cast 0
+halt

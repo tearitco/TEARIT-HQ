@@ -1,0 +1,5 @@
+# Move 15: no enemy there: the move goes through
+COND | trigger | move
+COND | kv | variables.txt | ph_move | eq | 7
+COND | kv | variables.txt | foe | eq | 0
+COND | kv | switches.txt | game_over | eq | 0

@@ -1,0 +1,4 @@
+# Move 11: an enemy ninja on the target space (not Start, not Finish, not where it already is)? -> collision
+COND | trigger | move
+COND | kv | variables.txt | ph_move | eq | 5
+COND | kv | switches.txt | game_over | eq | 0

@@ -1,0 +1,5 @@
+# Move 16: after a collision the mover does not go on...
+COND | trigger | move
+COND | kv | variables.txt | ph_move | eq | 8
+COND | kv | variables.txt | foe | gt | 0
+COND | kv | switches.txt | game_over | eq | 0

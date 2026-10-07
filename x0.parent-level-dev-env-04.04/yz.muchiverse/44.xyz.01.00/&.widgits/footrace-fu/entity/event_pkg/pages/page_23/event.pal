@@ -1,0 +1,24 @@
+# event.pal - Setup 2: seat 3 slot 3 - class from roster.pdl, HP from ninjas.pdl, on Start (trigger setup). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set cls_3_3 roster.pdl:r_3_3
+exec ops/+x/var_math.+x . set hp_3_3 ninjas.pdl:class_{cls_3_3}_hp
+exec ops/+x/var_math.+x . set pos_3_3 0
+exec ops/+x/var_math.+x . gt alive_3_3 hp_3_3 0
+exec ops/+x/var_math.+x . set guard_3_3 0
+exec ops/+x/var_math.+x . set shield_3_3 0
+exec ops/+x/var_math.+x . set fb_3_3 0
+exec ops/+x/var_math.+x . set rr_3_3 0
+exec ops/+x/var_math.+x . set tp_3_3 0
+exec ops/+x/var_math.+x . set use_1_3_3 0
+exec ops/+x/var_math.+x . set rdy_1_3_3 0
+exec ops/+x/var_math.+x . set use_2_3_3 0
+exec ops/+x/var_math.+x . set rdy_2_3_3 0
+exec ops/+x/var_math.+x . set use_3_3_3 0
+exec ops/+x/var_math.+x . set rdy_3_3_3 0
+exec ops/+x/var_math.+x . set use_4_3_3 0
+exec ops/+x/var_math.+x . set rdy_4_3_3 0
+exec ops/+x/var_math.+x . set use_5_3_3 0
+exec ops/+x/var_math.+x . set rdy_5_3_3 0
+exec ops/+x/var_math.+x . add army_hp_3 army_hp_3 hp_3_3
+exec ops/+x/var_math.+x . add alive_cnt_3 alive_cnt_3 alive_3_3
+exec ops/+x/var_math.+x . set seat_up_3 1
+halt

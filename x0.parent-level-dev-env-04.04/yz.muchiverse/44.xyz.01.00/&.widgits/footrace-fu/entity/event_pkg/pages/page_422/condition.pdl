@@ -1,0 +1,5 @@
+# Time Skip 3: pay, count the use, check the roll-doubles condition
+COND | trigger | cast_timeskip
+COND | kv | variables.txt | ph_cast | eq | 1
+COND | kv | variables.txt | gate_ok | eq | 1
+COND | kv | switches.txt | game_over | eq | 0

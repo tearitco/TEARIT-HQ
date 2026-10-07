@@ -1,0 +1,5 @@
+# event.pal - EndTurn 4: a lap (wrapped past the last seat) is a new round (trigger endturn). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . gt wany wr1 0
+exec ops/+x/var_math.+x . add round round wany
+exec ops/+x/var_math.+x . set ph_end 3
+halt

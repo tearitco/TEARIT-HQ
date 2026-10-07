@@ -1,0 +1,3 @@
+# event.pal - Move 9: floor the distance (trigger move). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set mv_dist rules.pdl:move_min
+halt

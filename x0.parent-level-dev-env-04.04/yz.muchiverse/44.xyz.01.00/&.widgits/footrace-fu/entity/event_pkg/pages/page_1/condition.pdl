@@ -1,0 +1,4 @@
+# Setup 1: clear the table (2 to 4 players: variable `players`); every slot starts off the track
+COND | trigger | setup
+COND | kv | variables.txt | players | ge | @rules.pdl:players_min
+COND | kv | variables.txt | players | le | @rules.pdl:players_max

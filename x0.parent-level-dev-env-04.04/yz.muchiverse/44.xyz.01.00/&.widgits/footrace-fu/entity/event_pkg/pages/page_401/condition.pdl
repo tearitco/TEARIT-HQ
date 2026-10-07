@@ -1,0 +1,3 @@
+# CastCheck 2: no condition
+COND | trigger | castcheck
+COND | kv | variables.txt | cc_cond | eq | 0

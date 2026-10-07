@@ -1,0 +1,3 @@
+# Land 4: is the ninja on Finish
+COND | trigger | land
+COND | kv | variables.txt | ph_land | eq | 1

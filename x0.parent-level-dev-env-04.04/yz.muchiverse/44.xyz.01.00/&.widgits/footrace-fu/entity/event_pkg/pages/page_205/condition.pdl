@@ -1,0 +1,3 @@
+# Land 6: done
+COND | trigger | land
+COND | kv | variables.txt | ph_land | eq | 2

@@ -1,0 +1,58 @@
+# ninjas.pdl - the five draft classes (ff-fu-IQ-a29-RULES v0.1 "Ninja Classes (Draft Roster)"), as `class_<id>_<field>=int` rows read by var_math `ninjas.pdl:class_{cls}_hp`.
+#   hp            starting HP (draft)                       move   the draft's "Move" stat (see rules.pdl move_baseline)
+#   attack/block  static combat bonus: the draft says "small static bonuses (+1 for class)" but gives none. PLACEHOLDER=1 (all 0 = a purely symmetric roll-off)
+#   rmin..rmax    Attack action reach in spaces (distance both ways). Draft: Ranged Mystic "attack at distance 2-3"; melee reach is not given: 0..1 (same space or adjacent). PLACEHOLDER=1 for the melee rows
+#   reroll        1 = once per game may re-roll its own die in a combat it is losing (Chrono-Weaver; draft: "re-roll any dice", Move rolls are NOT covered in v0)
+#   adj_attack    +N Attack when the enemy is within adjacent_dist (Blade Dancer, draft +1)
+#   free_block    1 = may Block as a free action once per turn (Ward Sentinel)
+#   (Shadow Step "Teleport self 1-2 spaces as move" is the cast ability 5 `blink` in abilities.pdl, restricted to class 5)
+CLASS | 1 | Chrono-Weaver | Controller | HP 3 | Move 4 | Once per game: re-roll any dice
+CLASS | 2 | Blade Dancer | Striker | HP 5 | Move 5 | +1 Attack when adjacent to enemy
+CLASS | 3 | Ward Sentinel | Tank | HP 6 | Move 3 | Can Block as free action 1x/turn
+CLASS | 4 | Ranged Mystic | Artillery | HP 4 | Move 4 | Attack at distance 2-3 spaces
+CLASS | 5 | Shadow Step | Scout | HP 3 | Move 6 | Teleport self 1-2 spaces as move
+class_1_hp=3
+class_1_move=4
+class_1_attack=0
+class_1_block=0
+class_1_rmin=0
+class_1_rmax=1
+class_1_reroll=1
+class_1_adj_attack=0
+class_1_free_block=0
+class_2_hp=5
+class_2_move=5
+class_2_attack=0
+class_2_block=0
+class_2_rmin=0
+class_2_rmax=1
+class_2_reroll=0
+class_2_adj_attack=1
+class_2_free_block=0
+class_3_hp=6
+class_3_move=3
+class_3_attack=0
+class_3_block=0
+class_3_rmin=0
+class_3_rmax=1
+class_3_reroll=0
+class_3_adj_attack=0
+class_3_free_block=1
+class_4_hp=4
+class_4_move=4
+class_4_attack=0
+class_4_block=0
+class_4_rmin=2
+class_4_rmax=3
+class_4_reroll=0
+class_4_adj_attack=0
+class_4_free_block=0
+class_5_hp=3
+class_5_move=6
+class_5_attack=0
+class_5_block=0
+class_5_rmin=0
+class_5_rmax=1
+class_5_reroll=0
+class_5_adj_attack=0
+class_5_free_block=0

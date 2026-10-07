@@ -1,0 +1,11 @@
+# event.pal - Banish Foe 3: pay (2 tokens), count, check double sixes (trigger cast_banish). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . sub tokens tokens g_cost
+exec ops/+x/var_math.+x . add use_{g_ab}_{current}_{sel} g_use 1
+exec ops/+x/var_math.+x . add tp_{current}_{sel} g_tp g_tele
+exec ops/+x/var_math.+x . set g_cdv abilities.pdl:ab_{g_ab}_cd
+exec ops/+x/var_math.+x . add rdy_{g_ab}_{current}_{sel} round g_cdv
+exec ops/+x/event_page_op.+x . . --trigger castcheck --state .
+exec ops/+x/var_math.+x . set bx_p foe_1
+exec ops/+x/var_math.+x . set bx_n foe_2
+exec ops/+x/var_math.+x . set ph_cast 2
+halt

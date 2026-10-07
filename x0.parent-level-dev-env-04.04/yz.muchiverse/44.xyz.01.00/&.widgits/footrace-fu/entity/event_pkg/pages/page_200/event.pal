@@ -1,0 +1,6 @@
+# event.pal - Land 1: read the slide / climb of this space (trigger land). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set lpos pos_{lp}_{ln}
+exec ops/+x/var_math.+x . set s_to track.pdl:slide_{lpos}
+exec ops/+x/var_math.+x . set c_to track.pdl:climb_{lpos}
+exec ops/+x/var_math.+x . set ph_land 1
+halt

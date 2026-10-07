@@ -1,0 +1,3 @@
+# Combat 8: higher total wins, equal is a tie
+COND | trigger | combat
+COND | kv | variables.txt | ph_cmb | eq | 5

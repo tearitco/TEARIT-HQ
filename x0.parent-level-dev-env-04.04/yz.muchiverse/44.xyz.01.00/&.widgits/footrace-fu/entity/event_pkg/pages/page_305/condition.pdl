@@ -1,0 +1,6 @@
+# Move 6: pay with action tokens
+COND | trigger | move
+COND | kv | variables.txt | ph_move | eq | 2
+COND | kv | variables.txt | act_ok | eq | 1
+COND | kv | variables.txt | has_free | eq | 0
+COND | kv | switches.txt | game_over | eq | 0

@@ -1,0 +1,4 @@
+# ArmyCheck 1: one army left -> find its seat
+COND | trigger | armycheck
+COND | kv | variables.txt | seats_up | eq | 1
+COND | kv | switches.txt | game_over | eq | 0

@@ -1,0 +1,4 @@
+# Combat 3: attacker re-roll
+COND | trigger | combat
+COND | kv | variables.txt | ph_cmb | eq | 2
+COND | kv | variables.txt | a_rr | eq | 1

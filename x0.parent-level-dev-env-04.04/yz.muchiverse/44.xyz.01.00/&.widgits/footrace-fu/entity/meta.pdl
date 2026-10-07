@@ -1,0 +1,23 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | footrace-fu-token
+STATE        | menu_stay_open     | 1
+STATE        | grab_pointer       | 1
+STATE        | grab_keyboard      | 1
+METHOD       | New Game                 | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger setup'
+METHOD       | Select Ninja 1           | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger select1'
+METHOD       | Select Ninja 2           | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger select2'
+METHOD       | Select Ninja 3           | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger select3'
+METHOD       | Select Ninja 4           | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger select4'
+METHOD       | Select Ninja 5           | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger select5'
+METHOD       | Move (1d6)               | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger move'
+METHOD       | Attack                   | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger attack'
+METHOD       | Block                    | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger block'
+METHOD       | Cast Time Skip           | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger cast_timeskip'
+METHOD       | Cast Warp Ally           | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger cast_warp'
+METHOD       | Cast Banish Foe          | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger cast_banish'
+METHOD       | Cast Chrono Shield       | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger cast_shield'
+METHOD       | Cast Shadow Blink        | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger cast_blink'
+METHOD       | End Turn                 | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger endturn'
+METHOD       | Close                    | CLOSE
+METHOD       | Cancel                   | void

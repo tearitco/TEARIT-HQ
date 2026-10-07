@@ -1,0 +1,7 @@
+# event.pal - ArmyCheck 2: last army standing wins (trigger armycheck). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set winner sole_1
+exec ops/+x/var_math.+x . set winner_n 0
+exec ops/+x/var_math.+x . set switches.txt:game_over 1
+exec ops/+x/var_math.+x . set game_over_reason 2
+exec ops/+x/row_append.+x . ledger.txt WIN {turn} {winner} 0
+halt

@@ -1,0 +1,4 @@
+# event.pal - Bot 4: pick 3 -> cast_shield (trigger autoturn). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/event_page_op.+x . . --trigger cast_shield --state .
+exec ops/+x/var_math.+x . set ph_bot 3
+halt

@@ -1,0 +1,4 @@
+# event.pal - CastCheck 1: the ability's roll condition (trigger castcheck). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set cc_cond abilities.pdl:ab_{g_ab}_cond
+exec ops/+x/var_math.+x . set cc_ok 0
+halt

@@ -1,0 +1,5 @@
+# Bot 2: End Turn
+COND | trigger | autoturn
+COND | kv | variables.txt | ph_bot | eq | 1
+COND | kv | variables.txt | bot_e | eq | 1
+COND | kv | switches.txt | game_over | eq | 0

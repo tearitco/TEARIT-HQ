@@ -1,0 +1,5 @@
+# Bot 4: pick 2 -> cast_banish
+COND | trigger | autoturn
+COND | kv | variables.txt | ph_bot | eq | 2
+COND | kv | variables.txt | bot_pick | eq | 2
+COND | kv | switches.txt | game_over | eq | 0

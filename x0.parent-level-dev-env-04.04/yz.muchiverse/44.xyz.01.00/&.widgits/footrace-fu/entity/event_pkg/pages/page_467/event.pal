@@ -1,0 +1,9 @@
+# event.pal - Banish Foe 8: place, land (an enemy on Finish wins), log (trigger cast_banish). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set b_from pos_{bx_p}_{bx_n}
+exec ops/+x/var_math.+x . set pos_{bx_p}_{bx_n} bx_to
+exec ops/+x/var_math.+x . set lp bx_p
+exec ops/+x/var_math.+x . set ln bx_n
+exec ops/+x/event_page_op.+x . . --trigger land --state .
+exec ops/+x/row_append.+x . ledger.txt CAST {turn} {current} {sel} banish ok {bx_p} {bx_n} {b_from} {bx_to}
+exec ops/+x/var_math.+x . set ph_cast 0
+halt

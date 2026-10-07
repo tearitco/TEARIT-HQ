@@ -1,0 +1,3 @@
+# event.pal - Combat 12: tie, rule coin - flip (trigger combat). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/rand_roll.+x . dice_seed rand_counter 2 coin
+halt

@@ -1,0 +1,4 @@
+# Select 1 3/3: dead or not in the army -> refused
+COND | trigger | select1
+COND | kv | variables.txt | sel_alive | eq | 0
+COND | kv | switches.txt | game_over | eq | 0

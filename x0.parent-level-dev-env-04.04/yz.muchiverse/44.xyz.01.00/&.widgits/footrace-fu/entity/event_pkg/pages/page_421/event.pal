@@ -1,0 +1,4 @@
+# event.pal - Time Skip 2: refused (trigger cast_timeskip). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/row_append.+x . ledger.txt REFUSE {turn} {current} {sel} timeskip {gate_ok}
+exec ops/+x/var_math.+x . set ph_cast 0
+halt

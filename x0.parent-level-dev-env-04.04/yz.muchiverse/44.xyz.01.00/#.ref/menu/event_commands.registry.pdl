@@ -955,3 +955,27 @@ COMMAND variable_sweep
   PARAMS prefix,from,to
   TEMPLATE exec "$D/&.widgits/ring-board-rmmv/ops/+x/var_sweep.+x" "$ENT" '{prefix}' '{from}' '{to}'
 END
+
+COMMAND random_roll
+  LABEL Random Roll (seeded die of N sides, 2 = coin)
+  FIELD1 Seed (number or variable):
+  FIELD2 Counter (number or variable):
+  PARAMS seed,counter,sides,out
+  TEMPLATE exec "$D/&.widgits/footrace-fu/ops/+x/rand_roll.+x" "$ENT" '{seed}' '{counter}' '{sides}' '{out}'
+END
+
+COMMAND variable_find
+  LABEL Variable Find (nearest variable by name prefix and value window)
+  FIELD1 Name prefix:
+  FIELD2 Center value:
+  PARAMS prefix,skip,center,dmin,dmax,out
+  TEMPLATE exec "$D/&.widgits/footrace-fu/ops/+x/var_find.+x" "$ENT" '{prefix}' '{skip}' '{center}' '{dmin}' '{dmax}' '{out}'
+END
+
+COMMAND row_append
+  LABEL Ledger Row (append one pipe row, {var} expanded)
+  FIELD1 Ledger file:
+  FIELD2 Fields:
+  PARAMS file,fields
+  TEMPLATE exec "$D/&.widgits/footrace-fu/ops/+x/row_append.+x" "$ENT" '{file}' {fields}
+END

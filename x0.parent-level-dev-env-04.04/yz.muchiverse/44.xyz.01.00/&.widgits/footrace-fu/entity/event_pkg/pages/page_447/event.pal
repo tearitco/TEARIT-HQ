@@ -1,0 +1,8 @@
+# event.pal - Warp Ally 8: place, land, log (trigger cast_warp). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set pos_{wp}_{wn} ftgt
+exec ops/+x/var_math.+x . set lp wp
+exec ops/+x/var_math.+x . set ln wn
+exec ops/+x/event_page_op.+x . . --trigger land --state .
+exec ops/+x/row_append.+x . ledger.txt CAST {turn} {current} {sel} warp ok {wp} {wn} {w_from} {ftgt}
+exec ops/+x/var_math.+x . set ph_cast 0
+halt

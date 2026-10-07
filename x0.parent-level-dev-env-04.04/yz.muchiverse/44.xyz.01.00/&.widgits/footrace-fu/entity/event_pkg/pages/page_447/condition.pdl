@@ -1,0 +1,3 @@
+# Warp Ally 8: place, land, log
+COND | trigger | cast_warp
+COND | kv | variables.txt | ph_cast | eq | 3

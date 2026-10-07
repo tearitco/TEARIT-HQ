@@ -1,0 +1,4 @@
+# event.pal - CastCheck 3: roll doubles (2d6 equal) (trigger castcheck). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/dice_roll.+x . dice_seed dice_counter
+exec ops/+x/var_math.+x . eq cc_ok dice1 dice2
+halt

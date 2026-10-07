@@ -1,0 +1,7 @@
+# Move 17: ...unless the enemy fell (and the mover lives)
+COND | trigger | move
+COND | kv | variables.txt | ph_move | eq | 8
+COND | kv | variables.txt | foe | gt | 0
+COND | kv | variables.txt | cmb_att_dead | eq | 0
+COND | kv | variables.txt | cmb_def_dead | eq | 1
+COND | kv | switches.txt | game_over | eq | 0

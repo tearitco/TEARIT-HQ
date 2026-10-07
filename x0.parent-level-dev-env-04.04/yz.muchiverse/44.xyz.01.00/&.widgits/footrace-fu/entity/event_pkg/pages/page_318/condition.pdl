@@ -1,0 +1,5 @@
+# Move 19: place the ninja and land (slide, climb, Finish)
+COND | trigger | move
+COND | kv | variables.txt | ph_move | eq | 8
+COND | kv | variables.txt | mv_go | eq | 1
+COND | kv | switches.txt | game_over | eq | 0

@@ -1,0 +1,5 @@
+# Attack 4: nobody to attack, or cannot act: refused, no token spent
+COND | trigger | attack
+COND | kv | variables.txt | ph_att | eq | 2
+COND | kv | variables.txt | tgt | eq | 0
+COND | kv | switches.txt | game_over | eq | 0

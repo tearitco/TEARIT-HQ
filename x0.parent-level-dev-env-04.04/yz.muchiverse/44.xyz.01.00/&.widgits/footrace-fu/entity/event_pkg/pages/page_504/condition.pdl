@@ -1,0 +1,3 @@
+# Blink 5: place, land, log
+COND | trigger | cast_blink
+COND | kv | variables.txt | ph_cast | eq | 3
