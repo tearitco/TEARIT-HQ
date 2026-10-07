@@ -4376,6 +4376,48 @@ no_game:
     return 2;
 }
 
+/* save-game / load-game slot pickers (2026-10-06, owner request): internal sub-menus of the player cell, same technique as the clock's 151-154 -
+ * a builder, a "Cancel (back)" row that reopens the player menu, no real header cell. Design/behaviour: &.widgits/_shared-lib/ops/game_slot_op.c. */
+#define PLAYER_MENU_SAVE     161
+#define PLAYER_MENU_LOAD     162
+#define GAME_SLOTS           16
+/* <user>/home/livedesk/savegames - per user, so slots live in the user's own data (data branch), never in code. 0 if no user. */
+static int livedesk_savegames_dir(const char *house_root, char *out, size_t sz) {
+    char uuid[128] = "";
+    out[0] = '\0';
+    livedesk_user_uuid(house_root, uuid, sizeof(uuid));
+    if (!uuid[0]) return 0;
+    snprintf(out, sz, "%s/xyzfs/users/%s/home/livedesk/savegames", house_root, uuid);
+    return 1;
+}
+
+/* the 16 slot rows: "slot NN  <saved_at>" or "slot NN  (empty)", read from slot_NN/meta.pdl (SLOT | saved_at | ...); then "Cancel (back)".
+ * save: every row is pressable (an occupied slot is overwritten; its old manifest is replaced, the ledger keeps both saves). load: empty slots are inert. */
+static int livedesk_build_game_slots_menu(const char *house_root, HQMenuItem *menu, int max, int save) {
+    char sg[KTB_PATH_BUF];
+    int n = 0, have_dir = livedesk_savegames_dir(house_root, sg, sizeof(sg));
+    for (int i = 1; i <= GAME_SLOTS && n < max - 1; i++) {
+        char mp[KTB_PATH_BUF + 32], line[256], at[48] = "";
+        if (have_dir) {
+            FILE *f;
+            snprintf(mp, sizeof(mp), "%s/slot_%02d/meta.pdl", sg, i);
+            f = fopen(mp, "r");
+            if (f) {
+                while (fgets(line, sizeof(line), f)) {
+                    if (strncmp(line, "SLOT | saved_at | ", 18) == 0) { snprintf(at, sizeof(at), "%.47s", line + 18); at[strcspn(at, "\r\n")] = '\0'; }
+                }
+                fclose(f);
+            }
+        }
+        snprintf(menu[n].label, sizeof(menu[n].label), "slot %02d  %.47s", i, at[0] ? at : "(empty)");
+        if (save || at[0]) snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:savegame:%s:%d", save ? "save" : "load", i);
+        else menu[n].command[0] = '\0';
+        n++;
+    }
+    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "Cancel (back)"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:savegame-back"); n++; }
+    return n;
+}
+
 static int livedesk_build_player_menu(const char *house_root, HQMenuItem *menu, int max) {
     int n = livedesk_pdl_menu_rows(house_root, "player", menu, max);
     if (n > 0) return n;
@@ -4397,6 +4439,9 @@ static int livedesk_build_player_menu(const char *house_root, HQMenuItem *menu, 
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "stop"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:play-stop"); n++; }
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "reset"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:reset-entities"); n++; }
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "Synch"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:synch-from-pchq"); n++; }
+    /* 2026-10-06 (owner request): save-game / load-game, each opens a 16-slot picker (PLAYER_MENU_SAVE / _LOAD) with Cancel (back). */
+    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "save-game"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:savegame-menu:save"); n++; }
+    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "load-game"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:savegame-menu:load"); n++; }
     /* REAL FIX 2026-09-15, direct live correction ("u gave player in tb
      * another notes-db (it already had one)") - a "notes-db" row here
      * duplicated the real, already-existing GENERIC "notes-<cell>" row
@@ -5085,6 +5130,8 @@ void ktb_hq_open(KtbState *s, int which) {
     else if (which == CLOCK_MENU_REMINDERS) n = livedesk_build_clock_reminders_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
     else if (which == CLOCK_MENU_GAME) n = livedesk_build_clock_game_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
     else if (which == CLOCK_MENU_CAL) n = livedesk_build_clock_cal_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    else if (which == PLAYER_MENU_SAVE) n = livedesk_build_game_slots_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX, 1);
+    else if (which == PLAYER_MENU_LOAD) n = livedesk_build_game_slots_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX, 0);
     else if (which == 100) n = livedesk_build_session_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX); /* 100 = internal-only "session picker", reached from the file cell's "load" row (livedesk:load), never a header click directly - see ktb_hq_activate() */
     else if (which == 101) n = livedesk_build_db_ez_sections_menu(s->hq_menu, KTB_LIVEDESK_DYN_MAX); /* 101 = internal-only db-ez 14-section list, reached from db cell's "db-ez" row */
     else if (which == 102) n = livedesk_build_db_common_events_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX); /* 102 = internal-only Common Events list (global, house_root-wide), reached from db-ez's "Common Events" row */
@@ -5273,6 +5320,30 @@ void ktb_hq_activate(KtbState *s, int row) {
          * and same ktb_cell_pos_by_id() fix. */
         khtpm_save_play_mode(s->house_root, 0);
         ktb_hq_open(s, ktb_cell_pos_by_id(s, "player", 9));
+        return;
+    }
+    if (strncmp(m->command, "livedesk:savegame", 17) == 0) {
+        /* 2026-10-06 save-game / load-game (see game_slot_op.c): -menu:<save|load> opens the 16-slot picker, -back returns to the player menu
+         * (the clock sub-menus' "back" technique), savegame:<save|load>:<N> runs the op in the background (niced: weak CPU, 1,400 files to hash)
+         * and leaves its one-line result in savegames/last_result.txt, then closes the menu. */
+        const char *rest = m->command + 17;
+        if (strcmp(rest, "-menu:save") == 0) { ktb_hq_open(s, PLAYER_MENU_SAVE); return; }
+        if (strcmp(rest, "-menu:load") == 0) { ktb_hq_open(s, PLAYER_MENU_LOAD); return; }
+        if (strcmp(rest, "-back") == 0) { ktb_hq_open(s, ktb_cell_pos_by_id(s, "player", 9)); return; }
+        if (strncmp(rest, ":save:", 6) == 0 || strncmp(rest, ":load:", 6) == 0) {
+            char sg[KTB_PATH_BUF], pals[KTB_PATH_BUF], sh[KTB_PATH_BUF * 4];
+            int slot = atoi(rest + 6);
+            if (slot >= 1 && slot <= GAME_SLOTS && livedesk_savegames_dir(s->house_root, sg, sizeof(sg)) && livedesk_pals_root(s->house_root, pals, sizeof(pals))) {
+                snprintf(sh, sizeof(sh),
+                         "mkdir -p '%s' && " KTB_SETSID "nohup nice -n 15 sh -c '\"%s/&.widgits/_shared-lib/ops/+x/game_slot_op.+x\" \"%s\" \"%s\" %s %d > \"%s/last_result.txt\" 2>&1' >/dev/null 2>&1 &",
+                         sg, s->house_root, sg, pals, rest[1] == 's' ? "save" : "load", slot, sg);
+                int src = system(sh);
+                (void)src;
+            }
+            ktb_hq_close(s);
+            return;
+        }
+        ktb_hq_close(s);
         return;
     }
     if (strcmp(m->command, "livedesk:synch-from-pchq") == 0) {
