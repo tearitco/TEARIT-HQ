@@ -116,7 +116,10 @@ A handed-over quest **stays in the headstone as `pending`**, is judged by the he
 - New status `pending` between `open` and `claimed`: `open -> pending (assigned or leased) -> claimed (approved) | open (denied, reason logged)`. Both verbs go through the same gate, so pulling does not skip approval.
 - The headstone judge only RECOMMENDS (verdict + reason, appended to the quest log); the official LLM or the owner approves/denies. This is also the answer shape for open question 2 (who approves gated actions).
 - v1 judge = rule-based (tier fits, ghost idle, quest unblocked, no conflicting lease) with the LLM slot left open: provider config (Q002) is not done. Tunable weights live in the server's `tunables.conf` like the router.
-- Drag a quest into a ghost menu: not verified that the renderer supports a cross-window drop. First build the keyboard form (select quest -> `assign` -> pick ghost); drag is sugar on top of the same `task` event.
+- Drag a quest into a ghost menu: the renderer DOES support dragging an *entity* onto a window that has `drop_action=` (XDND; payload = a folder path in `$DROP_PATH`; a keyboard form `mv <nav#> <nav#>` fires the same handler).
+  It cannot drag a plain list ROW. So: first the keyboard form, then a **quest card** entity (📜, `meta.pdl` `quest_object | 1`) dragged onto the ghost window (handler `ghost_drop.sh`, modelled on `events-hq/ops/event_drop_handler.sh`),
+  later optionally make rows draggable. All three options, the exact mechanism, limits, handler contract and test method: `02-architecture/DRAG-AND-DROP-BETWEEN-MENUS.md`.
+- `work` by drag: drag a ghost entity onto a headstone window (`drop_action` on the board window) = `lease`.
 - Build order: (1) h-ai menu entries + placer for graves and ghosts (section 6b), (2) ghost inbox: quest -> `task` to the ghost's phone, (3) `pending` + judge + approve/deny, (4) `work`.
 
 ## 7. Training events (RL / IRL / FSM) — deliberately later, but designed in
