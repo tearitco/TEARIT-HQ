@@ -30,6 +30,7 @@ A harness is three small things:
 | `prisc_exec_args.pal` | `cases/prisc_exec_args.pdl` | 3 | prisc `exec` with one, five, and register+literal arguments (needs the many-args VM; the old VM fails all 3) |
 | `game_slots.pal` | `cases/game_slots.pdl` | 22 | `game_slot_op` save/load slots on a scratch entity tree (SUMTREE: save and load change no entity data) |
 | `chain_escrow_faucet.pal` | `cases/chain_escrow_faucet.pdl` | 132 | pal-chain ops on scratch chain roots: `chain_new`, `chain_faucet`, escrow (`chain_escrow` + miner inclusion checks, conservation, rake to `_burn`), daily mining cap, legacy root unchanged |
+| `pchq_levels.pal` | `cases/pchq_levels.pdl` | 93 | pc-hq levels on scratch copies: maps.pdl registry drift (FAILS today by design: test_terraces/test_walls missing, stale PATH column), stale `board_config.txt`, default-world pieces, deterministic `pc_generate_chunk` (compiled in scratch), map-load argv per map |
 
 Run them all (from this folder, with a prisc binary): `for p in *.pal; do prisc+x $p; done`, then read every `results/*.verdict.txt`.
 
