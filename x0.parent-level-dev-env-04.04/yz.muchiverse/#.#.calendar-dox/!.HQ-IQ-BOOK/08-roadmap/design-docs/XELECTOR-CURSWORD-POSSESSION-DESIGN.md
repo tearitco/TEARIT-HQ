@@ -46,13 +46,30 @@ xelector (free cursor)  --9-->  cursword (possessor, default)  --later-->  desig
 5. **Start-possessed** per map/game: initial `possessed_id` written when a game/map loads.
 6. **Test**: scratch project (as done for the click helper): `9` possesses cursword, again releases, missing target is a no-op, hotbar publishes cursword's slots.
 
-## 5. Open questions for the owner
+## 5. Owner answers (2026-10-06, same day) and what is still open
 
-1. Which flag means "debug (non-play)": `Player: OFF`, or a separate build mode? (Today pc-hq shows `Player: ON` while the xelector moves freely, so I did **not** gate anything on it.)
-2. While possessed in cursword, does the xelector cube still draw (at cursword's cell), or hide (cursword is the picture)?
-3. Does `9` while possessed release (today's rule), or only Enter/another key releases?
-4. Is the designated hero a property of the map, of the game, or of the user's session?
-5. Should cursword get a real cell on the board, or is it a possessor with no body until a hero exists?
+**Answered**
+
+- **Q2, does the xelector cube draw while possessed?** Hide it ("hide, sure"). The owner added "or backspace": taken to mean Backspace is an acceptable way to get back out, or to hide it. **My reading, not confirmed:** cube hidden while possessed; Backspace is an extra release key next to `9`. Confirm which.
+- **Q4, where is the designated hero set?** Two places:
+  1. **Per "db" session**: the session's data names the designated body.
+  2. **Per game, as a "starting position" entity.** This is a real entity placed on the map, and **the option to place it appears when you click any empty space** (the empty-space context menu gets "Set starting position"). When the game is **played**, this entity is where the game **starts from**.
+- **What starting a play does** (owner): all in-game variables and events **restart**, and the player then plays **in livedesk or in pc-hq, depending on how it was started** (the play begins in the screen that launched it).
+
+**What this adds to the build list (§4), nothing built yet**
+
+7. **Starting-position entity**: kind e.g. `start`, one per game/map (placing a second moves the first, or is refused; decide). Stores a cell and, with the session's designated body, what the player enters (cursword now, hero later). Placed from the empty-space click menu in pc-hq (the in-board context menu `pc_entity_ctx.sh` / `pc_canvas_rclick.sh` already opens on a click; the empty-cell case needs the new row). A desk-side equivalent follows the same rule: entities are files, so it is a doc/entity folder (see `TASKS-AS-EVENT-DATA-DESIGN.md` for the doc-entity idea).
+8. **Play start**: on Player ON, reset the in-game state (vars, event progress; this is exactly what the **save slots** record, `SAVE-SLOTS-DESIGN.md`: a start is "load the initial state" and an audit trail row), put the possessor on the starting-position entity, then hand the player the screen that launched play (livedesk or pc-hq). Needs a definition of "in-game vars" (which files are reset and which are never touched: user desk data, wallets and histories must not be wiped by a game start).
+9. **Where the launch origin is remembered** (livedesk vs pc-hq): written when play is started, read by play start.
+
+**Still open**
+
+1. Confirm the Backspace meaning above.
+2. Which flag means debug (non-play): `Player: OFF`, or something else? Not gated in code.
+3. Does `9` while possessed release (today's rule)?
+4. Does cursword get its own board cell, or is the starting-position entity its first cell?
+5. One starting position per map, or per game across maps?
+6. Which state counts as "in-game" and is reset on start (and which is protected, e.g. `xyzfs/users`).
 
 ## 6. Related, queued (owner, 2026-10-06): more taskbar headers on the pc-hq top bar
 
