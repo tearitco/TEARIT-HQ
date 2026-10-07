@@ -56,3 +56,7 @@ Written by claude. The owner said: "use common sense and taste to infer those an
 
 ## C. Order I am following
 1 -> 2 -> 3 -> 5 -> 4 (clock + snapshots first because rewind, play-test, needs, schedules, DSR and the sandbox all sit on them), then 6, 7, 8, then content and economy. Each item: design check, alpha build, pal harness shown able to fail, report, commit on `claude-alpha`.
+
+## D. Lanes (owner, 2026-10-07)
+- **Grok:** the **CDDA and Mineclonia games** (survival/voxel content: gathering, farming, mining, water, the CDDA-style survival loop, the Mineclonia-asset planet). The existing Grok handoff docs cover it. Owner also said earlier "forget the grok commits, no one wants or trusts them": so claude **does not merge or cherry-pick from `origin/grok`**; Grok's work reaches claude only when the owner says so.
+- **claude:** **`dsr-test`** (the DSR page: clock, entities, stores/banks/castles/populations, routines, economy, schools, growth, politics) plus the shared blocks DSR needs (clock, snapshots, needs loop, chain/escrow). Items 6-9 and 10 of the backlog (pc-hq worlds beyond what DSR needs, voxel planet, CDDA/Mineclonia content, Canvas-Craft recipes) are **not claude's focus now**.
