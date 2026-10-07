@@ -133,6 +133,9 @@ static char g_status_path[PATH_BUF];
 static char g_tmp_html_path[PATH_BUF];
 static char g_tmp_dom_path[PATH_BUF];
 static char g_current_url[PATH_BUF] = "";
+/* POST body stashed by the post: request branch for do_fetch's curl
+ * config writer (cleared after each fetch). */
+static char g_post_body[8192] = "";
 
 static void path_join(char *out, size_t outsz, const char *a, const char *b) {
     snprintf(out, outsz, "%s/%s", a, b);
@@ -3401,6 +3404,15 @@ static void do_fetch(const char *url_in, int record_history) {
             fputc(*u, uf);
         }
         fprintf(uf, "\"\n");
+        if (g_post_body[0]) {
+            /* data = implies POST in curl config syntax. Same escaping. */
+            fprintf(uf, "data = \"");
+            for (const char *u = g_post_body; *u; u++) {
+                if (*u == '"' || *u == '\\') fputc('\\', uf);
+                fputc(*u, uf);
+            }
+            fprintf(uf, "\"\n");
+        }
         fclose(uf);
     }
     int rc = run_curl_interruptible(g_tmp_html_path, g_curl_url_path);
@@ -3595,7 +3607,32 @@ static void handle_request(void) {
         char target[PATH_BUF];
         go_target_or_search(target, sizeof(target), line + 3);
         stack_clear(g_forward_path);
+        g_post_body[0] = 0;
         do_fetch(target, 1);
+    } else if (strncmp(line, "post:", 5) == 0) {
+        /* Milestone 4 slice 2: POST form submission. Line shape is
+         * post:<action-url><TAB><url-encoded body> (written by
+         * nb_write_submit.sh). Flows through the same do_fetch with a
+         * body stashed for the curl config writer. */
+        char target[PATH_BUF];
+        const char *tab = strchr(line + 5, '\t');
+        if (tab) {
+            size_t ulen = (size_t)(tab - (line + 5));
+            if (ulen >= sizeof(target)) ulen = sizeof(target) - 1;
+            memcpy(target, line + 5, ulen); target[ulen] = 0;
+            snprintf(g_post_body, sizeof(g_post_body), "%s", tab + 1);
+        } else {
+            snprintf(target, sizeof(target), "%s", line + 5);
+            g_post_body[0] = 0;
+        }
+        stack_clear(g_forward_path);
+        if (g_current_url[0]) {
+            char resolved[PATH_BUF];
+            resolve_url(g_current_url, target, resolved, sizeof(resolved));
+            snprintf(target, sizeof(target), "%s", resolved);
+        }
+        do_fetch(target, 1);
+        g_post_body[0] = 0;
     } else if (strcmp(line, "back:") == 0 || strcmp(line, "back") == 0) {
         char prev[PATH_BUF];
         if (stack_pop(g_back_path, prev, sizeof(prev))) {

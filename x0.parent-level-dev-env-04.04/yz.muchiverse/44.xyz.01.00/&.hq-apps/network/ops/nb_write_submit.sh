@@ -51,6 +51,23 @@ print(urllib.parse.urlencode(v))
         fi
         ;;
     *)
-        printf 'submit: %s forms not yet supported (v1: GET only)\n' "$METHOD" >> "$CONSOLE_FILE"
+        PAIRS=""
+        if [ -f "$DESKTOP_DIR/network_browser_fields.txt" ]; then
+            if command -v python3 >/dev/null 2>&1; then
+                PAIRS="$(python3 -c "
+import sys, urllib.parse
+v = {}
+for line in open(sys.argv[1], errors='replace'):
+    if '\t' in line:
+        k, val = line.rstrip('\n').split('\t', 1)
+        v[k] = val
+print(urllib.parse.urlencode(v))
+" "$DESKTOP_DIR/network_browser_fields.txt")"
+            else
+                PAIRS="$(awk -F'\t' 'NF==2 {v[$1]=$2} END {first=1; for (k in v) { if (!first) printf "&"; first=0; printf "%s=%s", k, v[k] } }' "$DESKTOP_DIR/network_browser_fields.txt")"
+            fi
+        fi
+        TAB="$(printf '\t')"
+        printf 'post:%s\t%s\n' "$ACTION" "$PAIRS" > "$REQUEST_FILE"
         ;;
 esac
