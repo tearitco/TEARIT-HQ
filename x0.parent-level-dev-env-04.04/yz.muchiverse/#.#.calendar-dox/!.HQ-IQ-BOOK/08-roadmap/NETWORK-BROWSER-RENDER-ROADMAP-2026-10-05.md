@@ -35,10 +35,14 @@ the bar.
 - [x] Projection caps lifted (rows 128→2048, vars to 4096) so full articles render (`fd45a098f`, `20de0b6fc`)
 - [x] Worker IMG rows route through MEDIA→sprite; static fallback when worker imageless; bad resume reverted (`9ca69d596`)
 - [x] Fixtures: mini-article (fold/split/heading), media-grid (6-image tiling) — harness PASS
+- [x] Harness v2: multi-fixture loop, normalized goldens (machine/run-order stable) (`663400000`)
+- [x] Grid proven: 3x2 sprite-flow grid renders at wide window; narrow panes degrade to 1 column by design (no renderer change needed)
+- [x] Click safety: malformed LINK URLs never navigate; nav-jump on a content link lands correctly (`9665531b0`)
+- [x] Nested-tag link text spaced (`0f61a9c49`)
 
 ## Todo — Milestone 2 remaining
 
-- [ ] sprite-flow grid inside the panel path (`layout_fixed_rows_and_scrolllist` lacks the branch; tiles stack)
+- [x] ~~sprite-flow grid inside the panel path~~ — proven working (delegates to layout_scroll_region); narrow-pane stacking is 1-col degradation by design
 - [ ] True inline-clickable spans (segment row kind + renderer inline flow; needs xhtpm contract change)
 - [ ] `file://` worker image resolution (worker emits zero IMG rows on file pages; static fallback covers it, but JS-driven pages depend on the worker path)
 - [ ] Column width as computed layout state (CSS cap is a stand-in)
