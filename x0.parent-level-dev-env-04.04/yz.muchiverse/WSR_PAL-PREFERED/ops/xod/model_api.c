@@ -31,6 +31,10 @@
 
 static char project_root[PATH_BUF] = ".";
 
+/* read_file is defined further down but used earlier; without this prototype the
+ * implicit declaration makes the later `static` definition a compile error. */
+static int read_file(const char *path, char *buf, size_t sz);
+
 static void resolve_root(void) {
     const char *env = getenv("PRISC_PROJECT_ROOT");
     if (env && env[0]) snprintf(project_root, sizeof(project_root), "%s", env);
