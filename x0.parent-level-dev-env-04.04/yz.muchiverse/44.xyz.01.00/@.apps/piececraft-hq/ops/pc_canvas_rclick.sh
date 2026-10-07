@@ -37,4 +37,4 @@ MX=$RX; MY=$RY
 if [ "$CAM" = 1 ] && [ "$WW" -gt 0 ]; then
     MX=$((WX + WW / 2)); MY=$((WY + WH / 2))
 fi
-MENU_X=$MX MENU_Y=$MY sh "$PCHQ/ops/pc_entity_ctx.sh" "$PCHQ" "$SX" "$SY" "$SZ" "$KIND" "${ID:-_}"
+CTX_AT_X=$CX CTX_AT_Y=$CY MENU_X=$MX MENU_Y=$MY sh "$PCHQ/ops/pc_entity_ctx.sh" "$PCHQ" "$SX" "$SY" "$SZ" "$KIND" "${ID:-_}"

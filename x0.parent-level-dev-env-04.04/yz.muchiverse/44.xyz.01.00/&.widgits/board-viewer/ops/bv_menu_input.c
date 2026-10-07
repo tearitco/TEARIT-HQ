@@ -48,6 +48,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <ctype.h>
+#include "bv_move_range.c"   /* shared Move range finder file helpers */
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -343,6 +345,78 @@ static void send_action_to_host(const char *focused_project_root, const char *ac
  * ONE process (bv_menu_input.+x <k1> <k2> ...) instead of fork+exec+wait
  * per key. Each key is applied in sequence exactly as before - state is
  * re-read/re-written per key, same as when this ran once per process. */
+/* Move range finder keys (bv_move_range.c). Runs BEFORE the camera keys
+ * so letters/digits type a cell ref instead of turning the camera, exactly
+ * like the desk placer ("jump: c7_", Enter = jump, Enter again = place,
+ * Esc = cancel). The ref parser and buffer rules are the SHARED
+ * khtpm_grid_jump.c (same one csv-hq's <grid> and tp_arm_placer use).
+ * Arrow keys are NOT handled here - they keep the turn-relative placer
+ * movement further down. Returns 1 if the key was consumed. */
+static int range_key(int key, const char *froot) {
+    BvRange rng;
+    if (!froot[0] || !bvr_load(froot, &rng)) return 0;
+    char pp[PATH_BUF], jp[PATH_BUF], state_path_for_range[PATH_BUF];
+    snprintf(state_path_for_range, sizeof(state_path_for_range), "%s/pieces/system/bv_state.txt", project_root);
+    snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
+    snprintf(jp, sizeof(jp), "%s/pieces/display/move_jump.txt", project_root);
+    if (!read_kv_int(pp, "armed", 0)) bvr_arm_placer(pp, froot);
+
+    char buf[GJ_BUF_CAP] = "";
+    { FILE *f = fopen(jp, "r"); if (f) { if (fgets(buf, sizeof(buf), f)) buf[strcspn(buf, "\r\n")] = 0; fclose(f); } }
+    #define SAVE_BUF() do { FILE *f_ = fopen(jp, "w"); if (f_) { fprintf(f_, "%s\n", buf); fclose(f_); } } while (0)
+
+    if (key == 27) {                       /* Esc: cancel everything */
+        bvr_close(froot);
+        unlink(jp);
+        write_kv_int(pp, "armed", 0);
+        bump_screen_changed(project_root);
+        return 1;
+    }
+    if (key == 13) {
+        if (buf[0]) {                      /* Enter with a ref typed = jump */
+            int r, c;
+            if (gj_parse(buf, 0, 0, &r, &c)) { write_kv_int(pp, "x", c); write_kv_int(pp, "y", r); }
+            buf[0] = '\0'; SAVE_BUF();
+            bump_screen_changed(project_root);
+            return 1;
+        }
+        /* Enter with nothing pending = place here. Shared bvr_confirm checks
+         * the range AND the board edge, plans the animated path, closes. */
+        {
+            int bw = 0, bh = 0;
+            char bpath[PATH_BUF];
+            int cz = read_kv_int(state_path_for_range, "current_z", default_current_z(froot));
+            resolve_board_path(froot, cz, bpath, sizeof(bpath));
+            FILE *bf = fopen(bpath, "r");
+            if (bf) {
+                char bl[MAX_LINE];
+                while (bh < MAX_BOARD_DIM && fgets(bl, sizeof(bl), bf)) {
+                    bl[strcspn(bl, "\r\n")] = '\0';
+                    int len = (int)strlen(bl);
+                    if (len == 0) continue;
+                    if (len > bw) bw = len;
+                    bh++;
+                }
+                fclose(bf);
+            }
+            bvr_confirm(froot, project_root, bw, bh);
+        }
+        return 1;                          /* rejected (range/edge): stays open */
+    }
+    if ((key == 127 || key == 8) && buf[0]) {
+        buf[strlen(buf) - 1] = '\0'; SAVE_BUF();
+        bump_screen_changed(project_root);
+        return 1;
+    }
+    /* z/x stay the placer's z-down/up keys when no ref is being typed */
+    if (key > 0 && key < 128 && isalnum(key) && !(!buf[0] && (key == 'z' || key == 'x'))) {
+        if (gj_buf_append(buf, sizeof(buf), (char)key)) { SAVE_BUF(); bump_screen_changed(project_root); }
+        return 1;
+    }
+    #undef SAVE_BUF
+    return 0;
+}
+
 static int handle_one_key(int key) {
     char state_path[PATH_BUF];
     snprintf(state_path, sizeof(state_path), "%s/pieces/system/bv_state.txt", project_root);
@@ -357,6 +431,7 @@ static int handle_one_key(int key) {
      * element is the active one). See &.widgits/interact-fix-widget.txt. */
     char focused_project_root[PATH_BUF] = "";
     read_kv_str(state_path, "focused_project_root", focused_project_root, sizeof(focused_project_root));
+    if (range_key(key, focused_project_root)) return 0;
 
     /* REAL FIX 2026-08-04, direct user request ("put them in config
      * file instead of hardcoding them to prevent this from happening")
@@ -605,8 +680,13 @@ static int handle_one_key(int key) {
         if (board_w > 0 && board_h > 0) {
             int selector_x = read_kv_int(state_path, "selector_x", board_w / 2);
             int selector_y = read_kv_int(state_path, "selector_y", board_h / 2);
-            selector_x = clamp_int(selector_x + dx, 0, board_w - 1);
-            selector_y = clamp_int(selector_y + dy, 0, board_h - 1);
+            /* Owner 2026-10-05: the xelector stopped at the board file's own size (one 16x16 chunk, so it
+             * could not go below row 15 or past column 15, while the page's entities sit at x up to 23).
+             * It is a free cursor: the limit is the world limit (MAX_BOARD_DIM), not one chunk. */
+            int lim_w = board_w > MAX_BOARD_DIM ? board_w : MAX_BOARD_DIM;
+            int lim_h = board_h > MAX_BOARD_DIM ? board_h : MAX_BOARD_DIM;
+            selector_x = clamp_int(selector_x + dx, 0, lim_w - 1);
+            selector_y = clamp_int(selector_y + dy, 0, lim_h - 1);
             write_kv_int(state_path, "selector_x", selector_x);
             write_kv_int(state_path, "selector_y", selector_y);
 

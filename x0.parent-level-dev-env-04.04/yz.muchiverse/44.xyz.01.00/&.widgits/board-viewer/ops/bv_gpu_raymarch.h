@@ -32,7 +32,7 @@ typedef struct {
     float max_x, max_y, max_z;
     float r, g, b;               /* 0..1 flat colour (used when model < 0) */
     int   self_lit;              /* 1 = skip the ground-light multiply (sun/moon) */
-    int   wire;                  /* 1 = draw only the box edges */
+    int   wire;                  /* 0 = solid, 1 = edges only (wire_edge wide), 2 = thin edges (wire_thin wide) */
     int   model;                 /* >=0 -> raymarch phymoji model[model] inside the box instead of a flat fill */
 } BvGpuBox;
 
@@ -63,6 +63,7 @@ typedef struct {
     float light_level;           /* ground light 0..1 (ambient floor already applied) */
     float sky[3];                /* 0..1 */
 
+    float wire_edge, wire_thin;  /* edge half-widths in cells for wire 1 / wire 2; 0 = defaults (0.10 / 0.03) */
     int   box_n;
     BvGpuBox box[BV_GPU_MAX_BOX];
 

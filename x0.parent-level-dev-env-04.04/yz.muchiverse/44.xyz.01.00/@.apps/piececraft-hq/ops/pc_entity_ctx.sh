@@ -34,6 +34,13 @@ if [ ! -x "$BIN" ]; then
     exit 1
 fi
 
+# In-board menu (IN-GAME-LAYOUTS-PLAN.md): the running board's package dir is recorded by open_pchq_board.sh; a
+# board whose <dir>/state/ctx_overlay.on exists draws the generated menu itself (overlay id "ctx", spliced from
+# <dir>/state/ctx_menu.chtpm) instead of this script opening a floating window. CTX_AT_X/Y = click point in canvas
+# pixels (absent: the overlay centres itself). Desk entities' own menu.chtpm still opens as a window (below).
+CTXDIR="$(cat "$HOUSE/#.desktop/pchq_ctx_dir.txt" 2>/dev/null)"
+[ -n "$CTXDIR" ] && [ -f "$CTXDIR/state/ctx_overlay.on" ] || CTXDIR=""
+
 PICK="$ROOT/pieces/display/pick.txt"
 SX=0; SY=0; SZ=0; KIND=none; ID=""; TMPL=""; GLYPH=""
 NOTE=""
@@ -53,12 +60,49 @@ fi
 
 echo "$(date '+%H:%M:%S') open  kind=$KIND id=${ID:-.} cell=$SX,$SY,$SZ  $NOTE" >> "$LOG"
 
+# DESK ENTITIES GET THEIR OWN MENU, AUTOMATICALLY (2026-10-05, direct
+# instruction: cursword / the terumons / any page entity must have "the exact
+# same" context menu in pc-hq as on the desktop). The desk's rule
+# (khtpm_entity.c launch_khtpm_menu): if <entity dir>/menu.chtpm exists, open
+# THAT file with the shared khtpm_core_render at the click position. Do the
+# same here - no per-entity verb list, no copy of the menu: whatever the entity
+# defines (Move via Act, Chat, Play, Bookmarks, Events, Inventory, Cli-io, ...)
+# is what shows. A page row's path is <house>/xyzfs/users/*/home/livedesk/pals/<name>
+# (or #.desktop/entities/<name>), found here by name. pc-hq's own pieces
+# (hero_01, trees, chicken, voxels) have no such dir and keep the generated
+# menu below.
+DESK_MENU=""
+if [ -n "$ID" ]; then
+    for d in "$HOUSE"/xyzfs/users/*/home/livedesk/pals/"$ID" "$HOUSE/#.desktop/entities/$ID"; do
+        [ -f "$d/menu.chtpm" ] && { DESK_MENU="$d/menu.chtpm"; break; }
+    done
+fi
+if [ -n "$DESK_MENU" ]; then
+    PIDF="$ROOT/pieces/display/ctx_menu_desk.pid"
+    OLD=$(cat "$PIDF" 2>/dev/null)
+    case "$OLD" in ""|*[!0-9]*) ;; *) [ "$(cat /proc/$OLD/comm 2>/dev/null)" = khtpm_core_rend ] && kill "$OLD" 2>/dev/null ;; esac
+    # also drop a stale generated pc-hq menu, as the generated path does
+    for p in $(pgrep -f "khtpm_core_render.+x .*ctx-menu\.xhtpm" 2>/dev/null); do
+        [ "$(cat /proc/$p/comm 2>/dev/null)" = khtpm_core_rend ] && kill "$p" 2>/dev/null
+    done
+    if [ -n "${MENU_X:-}" ] && [ -n "${MENU_Y:-}" ]; then
+        setsid nohup "$BIN" "$HOUSE" "$DESK_MENU" "$MENU_X" "$MENU_Y" >/dev/null 2>&1 < /dev/null &
+    else
+        setsid nohup "$BIN" "$HOUSE" "$DESK_MENU" >/dev/null 2>&1 < /dev/null &
+    fi
+    echo $! > "$PIDF"
+    echo "$(date '+%H:%M:%S') desk menu  $DESK_MENU" >> "$LOG"
+    echo "pc_entity_ctx: desk entity menu up [$ID]  ->  $DESK_MENU"
+    exit 0
+fi
+
 case "$KIND" in
     none)          HEADER="nothing selected";        VERBS="EXIT" ;;
     air|"")        HEADER="nothing here @ $SX,$SY,$SZ"; VERBS="PLACE EXIT" ;;
     hero)          HEADER="hero: ${ID:-hero_01}";     VERBS="INSPECT POSSESS ACT STOP EVENTS INVENTORY DIR EXIT" ;;
     tree)          HEADER="tree: ${ID:-?}";           VERBS="INSPECT COPY PASTE DELETE TOENTITY ACT STOP EVENTS INVENTORY DIR EXIT" ;;
     chicken|entity) HEADER="${KIND}: ${ID:-?}";       VERBS="INSPECT COPY PASTE DELETE ACT STOP EVENTS INVENTORY DIR EXIT" ;;
+    xelector)      HEADER="xelector: ${ID:-xelector_01}"; VERBS="INSPECT DIR EXIT" ;;
     voxel)         HEADER="voxel '$GLYPH' @ $SX,$SY,$SZ"; VERBS="INSPECT COPY PASTE DELETE PLACE EXIT" ;;
     *)             HEADER="$KIND: ${ID:-?}";          VERBS="INSPECT EXIT" ;;
 esac
@@ -133,8 +177,24 @@ label_for() {
             "${KIND:-_}" "${GLYPH:-_}" "${TMPL:-_}"
     done
     printf '    <item label="Close" action="CLOSE"/>\n'
+    # Same cli_io field a desk entity's menu.chtpm embeds (action = the
+    # shared entity-cli commit script). cli.sh (below) supplies the entity
+    # dir the renderer cannot know: it passes this menu's own package dir.
+    # Entity-like kinds only - a bare voxel/air cell has no pieces/<id>.
+    [ -n "${ID:-}" ] && printf '    <cli_io id="cmd" target_id="cmd" label="Cli-io: " action="%s/cli.sh"/>\n' "$PKG"
     printf '  </page>\n</window>\n'
 } > "$PKG/ctx-menu.xhtpm"
+
+# argv from the renderer: package_dir house_root typed_text. Forwarded to the
+# SHARED entity_cli_commit.sh with the real entity dir as its target.
+if [ -n "${ID:-}" ]; then
+mkdir -p "$ROOT/pieces/$ID"
+cat > "$PKG/cli.sh" <<CLI
+#!/bin/sh
+exec sh "$HOUSE/&.widgits/entity-cli/ops/entity_cli_commit.sh" "$ROOT/pieces/$ID" "\$2" "\$3"
+CLI
+chmod +x "$PKG/cli.sh"
+fi
 
 cat > "$PKG/append.sh" <<APP
 #!/bin/sh
@@ -143,12 +203,23 @@ V="\$1"; X="\$2"; Y="\$3"; Z="\$4"; ID="\$5"; KIND="\$6"; GLYPH="\$7"; TMPL="\$8
 [ "\$V" != EXIT ] && printf 'CTX_%s %s %s %s %s %s %s %s\n' \
     "\$V" "\$X" "\$Y" "\$Z" "\${ID:-_}" "\${KIND:-_}" "\${GLYPH:-_}" "\${TMPL:-_}" >> "$INBOX"
 echo "\$(date '+%H:%M:%S') click \$V \$X,\$Y,\$Z \${ID} \${KIND}" >> "$LOG"
+[ -n "$CTXDIR" ] && printf 'ctx_visible=0\n' > "$CTXDIR/state/ctx.txt"
 for p in \$(pgrep -f "khtpm_core_render.+x .*ctx-menu\\.xhtpm" 2>/dev/null); do
     [ "\$(cat /proc/\$p/comm 2>/dev/null)" = khtpm_core_rend ] && kill "\$p" 2>/dev/null
 done
 APP
 chmod +x "$PKG/append.sh"
 
+if [ -n "$CTXDIR" ]; then
+    # publish into the board: the menu file (same markup the window would render), then the position + visible
+    cp "$PKG/ctx-menu.xhtpm" "$CTXDIR/state/ctx_menu.chtpm.tmp" && mv "$CTXDIR/state/ctx_menu.chtpm.tmp" "$CTXDIR/state/ctx_menu.chtpm"
+    printf 'ctx_visible=1\n' > "$CTXDIR/state/ctx.txt.tmp"
+    [ -n "${CTX_AT_X:-}" ] && printf 'ctx_x=%s\nctx_y=%s\n' "$CTX_AT_X" "${CTX_AT_Y:-0}" >> "$CTXDIR/state/ctx.txt.tmp"
+    mv "$CTXDIR/state/ctx.txt.tmp" "$CTXDIR/state/ctx.txt"
+    echo "$(date '+%H:%M:%S') overlay  [$HEADER] at ${CTX_AT_X:-center},${CTX_AT_Y:-}" >> "$LOG"
+    echo "pc_entity_ctx: in-board menu up [$HEADER]"
+    exit 0
+fi
 for p in $(pgrep -f "khtpm_core_render.+x .*ctx-menu\.xhtpm" 2>/dev/null); do
     [ "$(cat /proc/$p/comm 2>/dev/null)" = khtpm_core_rend ] && kill "$p" 2>/dev/null
 done

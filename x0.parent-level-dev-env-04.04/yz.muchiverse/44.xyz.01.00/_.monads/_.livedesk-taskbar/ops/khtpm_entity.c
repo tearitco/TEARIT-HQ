@@ -1030,6 +1030,10 @@ static void cursword_load_move_mode(const char *house_root) {
  * on Escape (real abort/disarm, must also ungrab). */
 static int g_cursword_awaiting_place = 0;
 
+/* Owner request 2026-10-05: re-arm cursword once the menu it stepped back for
+ * is gone (see the right-click branch). Pending flag only. */
+static int g_cursword_rearm = 0;
+
 /* REAL FIX 2026-08-05, direct instruction ("this is where we will
  * refactor the xwindow to be chtpm/master ledger compliant" -
  * MUCHI_RANCHER's own work item 2, see MUCHI_RANCHER_DESIGN.md §5 and
@@ -4694,6 +4698,22 @@ static int tp_main(int argc, char **argv) {
                                 0, win_depth, InputOutput, win_vis,
                                 CWColormap | CWEventMask | CWOverrideRedirect | CWBorderPixel | CWBackPixel, &swa);
     TP_TIMING_MARK("XCreateWindow");
+    /* REAL, NEW 2026-10-03 - Omarchy/Hyprland port, and the reason nav input
+     * never reached a pal. khtpm_core_render.c:16142 already documents the
+     * intent - Xwayland's `xwayland-grab-access-rules` allowlists by WM_CLASS,
+     * and this house's real class is "MuchiverseLivedesk" - but the class hint
+     * was only ever set on a few POPUP windows in that file, never on the pal's
+     * own top-level window. So every entity window reached Xwayland with an
+     * EMPTY WM_CLASS, which means: no compositor window rule can match it, no
+     * `hyprctl dispatch focuswindow class:...` can ever target it, and the
+     * grab-access allowlist can never name it. Confirmed live - `hyprctl
+     * clients` lists all nine running pals with class=''. Same compound-literal
+     * form already used at khtpm_core_render.c:17113. */
+    {   /* Hyprland-only: same runtime gate as khtpm_core_render.c's kh_is_hyprland() */
+        const char *kd = getenv("XDG_CURRENT_DESKTOP");
+        if (getenv("HYPRLAND_INSTANCE_SIGNATURE") || (kd && (strstr(kd, "Hyprland") || strstr(kd, "hyprland"))))
+            XSetClassHint(dpy, win, &(XClassHint){(char *)"MuchiverseLivedesk", (char *)"MuchiverseLivedesk"});
+    }
     /* REAL, NEW 2026-09-01 - when the pdl turns override_redirect off
      * (WM-managed pieces, so the taskbar's @ toggle can control their
      * real z-order on Xwayland/Mutter), Mutter would put a titlebar/frame
@@ -4707,7 +4727,7 @@ static int tp_main(int argc, char **argv) {
         long hints[5] = { 2, 0, 0, 0, 0 }; /* flags=MWM_HINTS_DECORATIONS, decorations=0 */
         XChangeProperty(dpy, win, motif_hints, motif_hints, 32, PropModeReplace,
                         (const unsigned char *)hints, 5);
-        XSetClassHint(dpy, win, &(XClassHint){(char *)"MuchiverseLivedesk", (char *)"MuchiverseLivedesk"});
+XSetClassHint(dpy, win, &(XClassHint){(char *)"MuchiverseLivedesk", (char *)"MuchiverseLivedesk"});
     }
     XMapWindow(dpy, win);
     TP_TIMING_MARK("motif_hints/XMapWindow");
@@ -5141,6 +5161,28 @@ static int tp_main(int argc, char **argv) {
          * writers to coordinate themselves. */
         int need_redraw = 0;
         if (g_frame_dirty) { need_redraw = 1; g_frame_dirty = 0; }
+        /* Cursword's own menu process is gone: take the keyboard back and
+         * re-arm. Keyboard grab only; click-to-place's pointer grab is not
+         * restored (a stray click would place the sword). */
+        if (g_cursword_rearm && g_khtpm_menu_pid <= 0) {
+            int grab_rc = 0;
+            g_cursword_rearm = 0;
+            for (int attempt = 0; attempt < 5 && !g_cursword_armed; attempt++) {
+                grab_rc = XGrabKeyboard(dpy, win, False, GrabModeAsync, GrabModeAsync, CurrentTime);
+                if (grab_rc == GrabSuccess) break;
+                XSync(dpy, False);
+                usleep(5000);
+            }
+            if (!g_cursword_armed && grab_rc == GrabSuccess) {
+                XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
+                g_cursword_armed = 1;
+                cursword_write_armed(g_house_root, 1);
+                append_history("CURSWORD_REARMED_MENU_CLOSED");
+                g_cursword_log_n = 0;
+                cursword_update_shape(dpy, win);
+                need_redraw = 1;
+            }
+        }
         /* REAL FIX 2026-09-01 (live report: after the @ always-on-top
          * toggle respawned every entity at once, all but cursword sat
          * blank until an unrelated click elsewhere happened to trip a
@@ -6475,6 +6517,28 @@ static int tp_main(int argc, char **argv) {
                     }
                     popup_x = xev.xbutton.x_root;
                     popup_y = xev.xbutton.y_root;
+                    /* Owner report 2026-10-05: an armed cursword must not take
+                     * focus from its own context menu. With a menu.chtpm the
+                     * menu is a SEPARATE khtpm_core_render process (popup_win
+                     * stays 0), so the armed display-wide XGrabKeyboard sent
+                     * every arrow/Esc to this window and the menu never saw a
+                     * key. Step back first, the same disarm sequence as the
+                     * Escape / focus-lost paths, so the menu opens exactly as
+                     * it does for an unarmed cursword. Re-arm with a click.
+                     * See 18.pc-hq/BUG-CURSWORD-ARMED-MENU-KEYS.md. */
+                    if (g_is_cursword && g_cursword_armed && g_use_khtpm_menu) {
+                        if (g_cursword_awaiting_place) {
+                            XUngrabPointer(dpy, CurrentTime);
+                            g_cursword_awaiting_place = 0;
+                        }
+                        kh_ungrab_kbd();
+                        g_cursword_armed = 0;
+                        cursword_write_armed(g_house_root, 0);
+                        append_history("CURSWORD_DISARMED_MENU_OPEN");
+                        cursword_update_shape(dpy, win);
+                        need_redraw = 1;
+                        g_cursword_rearm = 1;      /* re-arm when the menu is gone */
+                    }
                     popup_win = open_context_menu(dpy, popup_gc, &popup_x, &popup_y, n_methods, methods);
                     popup_nav_base = nav_claim_rows(g_house_root, getpid(), package_dir, methods, n_methods);
                     popup_focus_row = 0; popup_digit_accum = 0;

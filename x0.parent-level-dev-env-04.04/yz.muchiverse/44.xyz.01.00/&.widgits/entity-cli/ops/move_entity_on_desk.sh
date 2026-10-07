@@ -68,7 +68,13 @@ case "$ENT" in
     disp="$proj/pieces/display"
     mkdir -p "$disp"
     if [ -f "$MATRIX" ]; then
+      # move_range_matrix.txt PRESENT = range finder open (see
+      # board-viewer/ops/bv_move_range.c). The sidecar names who Enter
+      # relocates. Esc / a confirmed pick delete both. The entity-dir
+      # copy is scratch - drop it so it can't go stale.
+      printf 'entity=%s\n' "$(basename "$ENT")" > "$disp/move_range_entity.txt"
       cp "$MATRIX" "$disp/move_range_matrix.txt"
+      rm -f "$MATRIX"
     fi
     echo "pc-hq range stays in the 3D window: $disp/move_range_matrix.txt"
     exit 0

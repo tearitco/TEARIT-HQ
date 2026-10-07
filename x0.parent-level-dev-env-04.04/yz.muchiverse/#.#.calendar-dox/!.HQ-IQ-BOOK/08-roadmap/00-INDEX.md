@@ -37,6 +37,11 @@
 - `design-docs/MY-PALETTES-TILED-OHR-TILE-EDITOR-DESIGN.md` — Tiled +
   OHR pickers + import-only My Palettes + tile-editor v1 **landed
   2026-09-08** (MVP). Design still the contract for TMX/TSX and saver.
+- `../18.pc-hq/MOVE-AND-TAKE.md` — **2026-10-05 pc-hq Move status + roadmap**:
+  Move/range finder/placer built on a library shared with the desk
+  (desk = functional parent); open items in order: hero position row,
+  post-move tick hook, z-falloff decision, **Take** (inventory move),
+  Place/Mine/Build.
 - `design-docs/PIECECRAFT-HQ-GAME-EDITOR-AND-PLAY.md` — **2026-09-08
   studio vision + implementer briefing**: desktop is an RM map too;
   play does not hide chrome; Transfer/Shop/Battle/db guidance; CDDA /

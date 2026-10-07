@@ -86,7 +86,7 @@ if [ -n "${LIVEDESK_START_SPLASH:-}" ]; then
     _XDIR="$(pwd)/+x"
     # build the splash binary itself first (tiny, ~1s, X11+Xft only) so
     # it exists for THIS build and every later one.
-    if [ ! -x "+x/livedesk_splash.+x" ]; then
+    if [ ! -x "+x/livedesk_splash.+x" ] || [ livedesk_splash.c -nt "+x/livedesk_splash.+x" ]; then
         _sx="$(pkg-config --cflags --libs x11 xft 2>/dev/null)"
         [ -n "$_sx" ] || _sx="-I/usr/include/freetype2 -lX11 -lXft"
         "${CC:-gcc}" -std=c11 -O2 -o "+x/livedesk_splash.+x" livedesk_splash.c $_sx >/dev/null 2>&1 || true

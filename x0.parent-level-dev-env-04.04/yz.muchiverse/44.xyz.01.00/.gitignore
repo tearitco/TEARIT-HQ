@@ -5,3 +5,13 @@ pieces/sessions/
 /tmp/
 *.o
 tags
+
+# pc-hq generated per launch (open_pchq_board.sh) - never checked in (they held one machine's absolute paths)
+**/@.apps/piececraft-hq/pieces/system/house_root.txt
+**/@.apps/piececraft-hq/pieces/system/session_dir.txt
+**/@.apps/piececraft-hq/pieces/system/locations.pdl
+**/@.apps/layout-studio/sandbox/state/ctx_menu.chtpm
+**/@.apps/hotbar-hq/state/
+**/@.apps/layout-studio/sandbox/state/pchq/
+**/@.apps/piececraft-hq/pieces/display/ctx_menu/
+**/@.apps/piececraft-hq/pieces/display/open_book_page.txt

@@ -35,6 +35,8 @@
 #include <dirent.h>
 
 #include "bv_cjk_glyph.h"   /* view_2d_style=ascii: coloured CJK glyph per cell */
+#include "bv_move_range.c"   /* shared Move range finder file helpers */
+#include "../../_shared-lib/khtpm_locations.c"   /* loc_resolve_saved(): saved paths resolved against the live house root */
 
 #define MAX_LINE     1024
 #define PATH_BUF     4096
@@ -77,17 +79,7 @@ static int read_kv_int(const char *path, const char *key, int def) {
 }
 
 static void load_house_root(void) {
-    char path[PATH_BUF];
-    snprintf(path, sizeof(path), "%s/pieces/system/house_root.txt", project_root);
-    FILE *f = host_fopen(path, "r");
-    if (!f) return;
-    if (fgets(house_root, sizeof(house_root), f)) {
-        if ((unsigned char)house_root[0] == 0xEF && (unsigned char)house_root[1] == 0xBB &&
-            (unsigned char)house_root[2] == 0xBF)
-            memmove(house_root, house_root + 3, strlen(house_root + 3) + 1);
-        house_root[strcspn(house_root, "\r\n")] = '\0';
-    }
-    fclose(f);
+    loc_house_root(project_root, house_root, sizeof(house_root));   /* shared resolver (_shared-lib/khtpm_locations.c): locations.pdl / house_root.txt / walk up */
 }
 
 /* focused_project_root is usually absolute; if relative, resolve vs house_root */
@@ -438,10 +430,14 @@ static int page_bound_pdl(const char *house, char *out, int n) {
     }
     if (strcmp(source, "desk") != 0 && !stored[0]) return 0;
     if (!stored[0]) return 0;
-    FILE *t = host_fopen(stored, "r");
+    /* the saved pdl= may be house-relative or a stale absolute path (checkout moved): resolve against the LIVE house
+     * root - see _shared-lib/khtpm_locations.c */
+    char resolved[PATH_BUF];
+    loc_resolve_saved(house, stored, resolved, sizeof(resolved));
+    FILE *t = host_fopen(resolved, "r");
     if (!t) return 0;
     fclose(t);
-    snprintf(out, n, "%s", stored);
+    snprintf(out, n, "%s", resolved);
     return 1;
 }
 static int page_file(const char *house, char *out, int n) {
@@ -1077,22 +1073,17 @@ int main(void) {
         }
         /* Desk diamond: the same '#' file, one tile per '#', on the hero. */
         if (hx >= 0 && hy >= 0) {
-            char mp[PATH_BUF];
-            snprintf(mp, sizeof(mp), "%s/pieces/display/move_range_matrix.txt", project_root);
-            FILE *mf = host_fopen(mp, "r");
-            if (mf) {
-                char rows[16][64];
-                int nr = 0, nc = 0;
-                while (nr < 16 && fgets(rows[nr], sizeof(rows[nr]), mf)) {
-                    rows[nr][strcspn(rows[nr], "\r\n")] = 0;
-                    if ((int)strlen(rows[nr]) > nc) nc = (int)strlen(rows[nr]);
-                    nr++;
-                }
-                fclose(mf);
+            /* Range finder: open only while move_range_matrix.txt exists
+             * (see bv_move_range.c). Same origin + same test the 3D
+             * render and the Enter-confirm use. */
+            BvRange rng;
+            if (bvr_load(focused_root, &rng)) {
+                int nr = rng.nr, nc = rng.nc;
                 int cx0 = nc / 2, cy0 = nr / 2;
+                { int ex, ey, ez; if (bvr_origin(focused_root, &ex, &ey, &ez)) { hx = ex; hy = ey; hz = ez; } }   /* origin = the entity being moved, same as 3D */
                 for (int row = 0; row < nr; row++) {
-                    for (int col = 0; col < nc && rows[row][col]; col++) {
-                        if (rows[row][col] != '#') continue;
+                    for (int col = 0; col < nc && rng.rows[row][col]; col++) {
+                        if (rng.rows[row][col] != '#') continue;
                         int scx = (hx + col - cx0) - ox;
                         int scy = side_mode ? ((side_zcount - 1 - hz) - oy) : ((hy + row - cy0) - oy);
                         if (scx < 0 || scy < 0 || scx >= cols || scy >= rows) continue;
@@ -1134,7 +1125,9 @@ int main(void) {
                     int bz = side_mode ? (side_zcount - 1 - (oy + scy)) : cur_z;
                     char pp[PATH_BUF];
                     snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
-                    FILE *pf = host_fopen(pp, "w");
+                    FILE *pf = NULL;
+                    if (!bvr_click(focused_root, project_root, bx, by, 0, 0))   /* Move range open: select/place */
+                        pf = host_fopen(pp, "w");
                     if (pf) { fprintf(pf, "armed=1\nx=%d\ny=%d\nz=%d\n", bx, by, bz); fclose(pf); }
                     time_t now = time(NULL);
                     struct tm tmv; localtime_r(&now, &tmv);

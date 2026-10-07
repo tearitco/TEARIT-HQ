@@ -102,6 +102,17 @@ existing house conventions rather than inventing new ones:
 
 ---
 
+## Update 2026-10-06: where this goes next
+
+The owner wants layouts made here **rendered inside the user's game** (the pc-hq board window) and
+on the livedesk, saved by name and called from the pc-hq **Events** menu, working with pal, and
+editable in an x11-hq editor that an **agent** can use as well as a human. The plan, the placement
+and chrome mechanism that already exists (the canvas overlay strip the pc-hq hotbar uses), the phases
+and a command-first studio design (`layout_op` CLI, thin editor window over it) are in
+`18.pc-hq/IN-GAME-LAYOUTS-PLAN.md`. This doc stays the seed; that plan is the current design.
+
+---
+
 *Seed doc written 2026-09-29 from a direct owner correction/clarification
 during the attrition-model roadmap thread. Expand or supersede this
 doc once real design work starts — do not treat this as a finished

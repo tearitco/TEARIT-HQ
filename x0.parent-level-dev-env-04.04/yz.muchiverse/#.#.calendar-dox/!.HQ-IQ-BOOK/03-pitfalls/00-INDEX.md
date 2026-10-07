@@ -20,6 +20,12 @@
   and a human at once). Read this before touching cli_io/reparse code
   again.
 
+- `INCIDENT-2026-10-05-WORKING-TREE-WIPE.md` - the working tree was deleted
+  (cause not determined), what was and was not recoverable, the **recovery
+  runbook** (restore from git + snapshot, `button.sh build`, `git cherry`), and the
+  prevention that was added (tracked `+x` folders, safe full `rezip-house.sh`,
+  `button.sh build`). **Read first if `git status` shows thousands of ` D` files.**
+
 This is the live pitfalls tracker. When you hit a new landmine, add it
 to `HOUSE_CODE_PITFALLS.md` in the same shape as its existing entries
 (Symptom / Real cause / Real fix) rather than starting a new file.

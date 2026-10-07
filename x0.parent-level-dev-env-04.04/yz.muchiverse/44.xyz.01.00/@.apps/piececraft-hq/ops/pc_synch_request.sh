@@ -13,6 +13,17 @@ HOUSE=$(cd "$SELF/../../.." && pwd)
 FROM=${1:-pchq}
 PCHQ="$HOUSE/@.apps/piececraft-hq"
 OPEN="$PCHQ/pieces/display/open_book_page.txt"
+# The saved pdl= in open_book_page.txt is stored HOUSE-RELATIVE and resolved against the live house root on read
+# (same rule as _shared-lib/khtpm_locations.c, so a moved/renamed/copied checkout still finds its page file).
+rel_of() { case "$1" in "$HOUSE"/*) printf '%s' "${1#"$HOUSE"/}" ;; *) printf '%s' "$1" ;; esac; }
+abs_of() {
+    case "$1" in
+        "") printf '' ;;
+        /*) if [ -r "$1" ]; then printf '%s' "$1"
+            else case "$1" in */xyzfs/*) printf '%s' "$HOUSE/xyzfs/${1#*/xyzfs/}" ;; *) printf '%s' "$1" ;; esac; fi ;;
+        *) printf '%s' "$HOUSE/$1" ;;
+    esac
+}
 mkdir -p "$PCHQ/pieces/display" "$(dirname "$HOUSE/#.desktop/pc_synch_request.txt")"
 
 SROOT=""
@@ -46,7 +57,7 @@ set_state_field() {
 
 if [ "$FROM" = taskbar ]; then
     # The desk is the sender. Every board of this app is an inheritor.
-    printf 'source=desk\nbook=%s\npage=%s\npdl=%s\n' "$BOOK" "$DESK" "$PDL" > "$OPEN"
+    printf 'source=desk\nbook=%s\npage=%s\npdl=%s\n' "$BOOK" "$DESK" "$(rel_of "$PDL")" > "$OPEN"
     STATUS=board-follows-desk
 else
     # The board is the sender. Its page is open_book_page when that
@@ -67,7 +78,7 @@ else
         od=$(sed -n 's/^pdl=//p' "$OPEN" | head -1)
         [ -n "$ob" ] && BB=$ob
         [ -n "$op" ] && BP=$op
-        [ -n "$od" ] && BPDL=$od
+        [ -n "$od" ] && BPDL=$(abs_of "$od")
     fi
     WS="$PCHQ/pieces/world_01/state.txt"
     if { [ ! -f "$OPEN" ] || [ "$SRC" = board ]; } && [ -f "$WS" ]; then
@@ -104,7 +115,7 @@ else
         STATUS=page-not-in-book
     fi
     if [ "$STATUS" = desk-follows-board ]; then
-        printf 'source=desk\nbook=%s\npage=%s\npdl=%s\n' "$BOOK" "$DESK" "$PDL" > "$OPEN"
+        printf 'source=desk\nbook=%s\npage=%s\npdl=%s\n' "$BOOK" "$DESK" "$(rel_of "$PDL")" > "$OPEN"
     fi
 fi
 

@@ -24,13 +24,37 @@
 #    plus -mx=5, drop the archive ~60 MB -> ~29 MB. In-house image
 #    assets — the ~321 PNGs OUTSIDE #.NNEST_ASSETS — and all *.csv
 #    sprite data are KEPT.)
-# Deletes the previous house .7z so only the newest is kept.
+# Keeps only the newest house .7z - but ONLY after the new one is built and
+# checked (2026-10-05 incident: this script used to delete the previous good
+# archive FIRST, so running it on a wiped working tree replaced a good 34 MB
+# backup with a 1 KB one).
+#
+# USAGE:
+#   sh rezip-house.sh                full copy (DEFAULT, owner 2026-10-05): the whole
+#                                    working tree INCLUDING compiled programs (*.+x
+#                                    *.exe *.o *.a *.so) and *.mp3, so a restore
+#                                    needs no rebuild. Still excludes .git (GitHub /
+#                                    a `git bundle` is the history backup) and the
+#                                    vendored #.NNEST_ASSETS.
+#   sh rezip-house.sh --source-only  the old policy above: no compiled programs.
+# SAFETY: refuses to run if more than 100 tracked files are missing from the
+# working tree (it would archive a wipe), and refuses to replace the previous
+# archive with one that has fewer than 1000 entries.
 set -e
 cd "$(dirname "$0")"
 SRC="x0.parent-level-dev-env-04.04"
 OUT="${SRC}_$(date +%Y%m%d-%H%M%S).7z"
+OUTP="${OUT%.7z}.partial.7z"
+FULL=1
+[ "${1:-}" = "--source-only" ] && FULL=0
 
-rm -f ${SRC}_*.7z
+# pieces/sessions/ are tracked engine run copies that the engine deletes whenever
+# a pc-hq window closes - routinely "missing", not a sign of a wipe.
+MISSING=$(git ls-files --deleted 2>/dev/null | grep -v '/pieces/sessions/' | wc -l)
+if [ "$MISSING" -gt 100 ]; then
+    echo "rezip-house.sh: REFUSING - $MISSING tracked files are missing from the working tree (wiped?). Existing archives left untouched. Restore first: git ls-files -z --deleted | xargs -0 -n 4000 git checkout --" >&2
+    exit 1
+fi
 
 # REAL FIX 2026-09-24, direct live report ("ERROR: stat error for
 # .../livedesk_open.txt.tmp (No such file or directory)"): every open
@@ -45,11 +69,10 @@ rm -f ${SRC}_*.7z
 # a spurious exit. One retry is a real, sufficient fix: the same race
 # hitting twice in a row on two different files is not realistic.
 zip_once() {
-    7z a -mx=5 "$OUT" "$SRC" \
+    if [ "$FULL" = 1 ]; then set --; else set -- -xr'!*.+x' -xr'!*.exe' -xr'!*.o' -xr'!*.a' -xr'!*.so' -xr'!*.mp3'; fi
+    7z a -t7z -mx=5 "$OUTP" "$SRC" "$@" \
         -xr'!.git' \
         -xr'!#.NNEST_ASSETS' \
-        -xr'!*.+x' -xr'!*.exe' -xr'!*.o' -xr'!*.a' -xr'!*.so' \
-        -xr'!*.mp3' \
         -xr'!*.raw' -xr'!*.rgba32' \
         -xr'!ascii_frames' \
         -xr'!*.log' -xr'!*frame_history.txt' -xr'!gl_cli_out.txt' \
@@ -65,7 +88,14 @@ zip_once() {
 }
 if ! zip_once; then
     echo "rezip-house.sh: first pass hit a live-file race, retrying once..." >&2
-    rm -f "$OUT"
+    rm -f "$OUTP"
     zip_once
 fi
-echo "OK $OUT"
+N=$(7z l -ba "$OUTP" 2>/dev/null | wc -l)
+if [ "$N" -lt 1000 ]; then
+    echo "rezip-house.sh: new archive has only $N entries - REFUSING to replace the previous archive. Kept: $OUTP" >&2
+    exit 1
+fi
+mv "$OUTP" "$OUT"
+for old in ${SRC}_*.7z; do [ "$old" = "$OUT" ] || rm -f "$old"; done
+echo "OK $OUT ($N entries$([ "$FULL" = 1 ] && echo ', full: compiled programs included'), $(du -h "$OUT" | cut -f1))"

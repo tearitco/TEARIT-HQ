@@ -16,6 +16,15 @@ chapter `16.game`. This chapter owns the board itself.
   the livedesk page file. The hero is one entity row. The camera
   follows the xelector. The xelector and the camera become rows in
   that file.
+- `MOVE-AND-TAKE.md` — **status + roadmap (2026-10-05).** pc-hq Move is
+  built (range finder, placer, z levels, animation) on a library shared
+  with the desk. Lists what is verified vs only compiled, the open items
+  in order (hero position row, post-move tick hook, z-falloff decision,
+  Take, Place/Mine/Build), and the relay test recipe. Rule it follows:
+  the desk is the functional parent.
+- `XELECTOR-ENTITY.md` — the xelector is an entity in pc-hq (cell, possession,
+  menu), now on the bottom bar; the livedesk has none yet. Lists what to decide
+  before it gets one (cursword may be the desk analogue — unconfirmed).
 - `INTENDED.md` — what commit `38b775390` was supposed to do, the
   check that passed, and the taskbar-binary hole if the rows vanish.
 - `../09-appendix/PC-HQ-BOOK-PAGE-SYNCH.md` — older notes. The
@@ -30,8 +39,21 @@ chapter `16.game`. This chapter owns the board itself.
   questions asked before the row was built. Its "Not started" line
   is older than the row. Trust `LEARNINGS.md` for status.
 
+- `CURSWORD-POSSESSION-DESIGN.md` - cursword as a possessor (xelector is
+  its scaffolding), shared inventory/hearts/hunger HUD, and Place/Take
+  built on both. Design only, with what exists and what is missing.
+- `BUG-CURSWORD-ARMED-MENU-KEYS.md` - armed cursword eats the arrow keys
+  and Esc meant for its own context menu. Cause traced, fix proposed,
+  not applied.
+
 Older design notes under `08-roadmap/design-docs/` (`pc-hq-INDEX.md`,
 `PCHQ-3D-RAYCAST-AND-VOXEL-HIGHLIGHT-DESIGN.md`,
 `PCHQ-3D-MOVE-OVERLAY-DESIGN.md`) still say the ray and the move
 overlay are design-only. Those lines are stale. The code has moved
-past them.
+past them. The Move overlay is now built: see `MOVE-AND-TAKE.md` for what
+landed and what is still open.
+- `IN-GAME-LAYOUTS-PLAN.md` — **plan (2026-10-06).** Draw user-made menus and bars inside the
+  pc-hq board window (not floating windows), saved as layouts and called by name from the Events menu
+  (and on the livedesk), made in an agent-usable layout studio. Lists what exists (the canvas overlay
+  strip the hotbar uses), the gaps (no overlay chrome, one footer, floating menus leave the viewport),
+  the phases, and how it builds on the layout-studio seed doc.

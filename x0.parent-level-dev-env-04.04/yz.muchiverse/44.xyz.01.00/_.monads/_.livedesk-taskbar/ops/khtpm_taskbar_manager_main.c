@@ -706,6 +706,10 @@ static void publish_strip_ui(const KtbState *s, const char *house_root) {
         ui_put(body, &off, sizeof(body), key, oc);
     }
 
+    /* nav_digits: the nav digits typed so far (digit_buf), published as a
+     * variable so every surface (top bar, bottom bar, pc-hq windows) echoes
+     * the SAME buffer next to the focus mark. Drawn via khtpm_nav_echo.c. */
+    ui_put(body, &off, sizeof(body), "nav_digits", s->digit_buf);
     ui_put(body, &off, sizeof(body), "cliio_on", s->cliio_active ? "1" : "0");
     ui_put(body, &off, sizeof(body), "cliio_label",
            s->cliio_buffer[0] ? s->cliio_buffer : (s->cliio_op[0] ? s->cliio_op : "input"));

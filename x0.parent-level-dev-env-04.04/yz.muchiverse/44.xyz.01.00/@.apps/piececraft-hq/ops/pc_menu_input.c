@@ -33,6 +33,7 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include "win_posix_shim.h"
+#include "../../../&.widgits/_shared-lib/khtpm_locations.c"   /* loc_house_root() / loc_real_root(): one place that finds the house and real roots */
 
 #define MAX_LINE 512
 #define MAX_PATH 4096
@@ -492,28 +493,11 @@ static const char *host_project_id(void) {
  * the "View Board" button; that drift is removed here). */
 static void open_board_widget(const char *project_root, char *message, size_t message_sz) {
     char house_root_path[PATH_BUF], house_root[PATH_BUF] = "";
-    snprintf(house_root_path, sizeof(house_root_path), "%s/pieces/system/house_root.txt", project_root);
-    FILE *hf = fopen(house_root_path, "r");
-    if (hf) {
-        if (fgets(house_root, sizeof(house_root), hf))
-            house_root[strcspn(house_root, "\r\n")] = '\0';
-        fclose(hf);
-    }
+    (void)house_root_path;
+    loc_house_root(project_root, house_root, sizeof(house_root));   /* shared resolver, no file required */
 
-    char real_root_path[PATH_BUF], real_root[PATH_BUF] = "";
-    snprintf(real_root_path, sizeof(real_root_path), "%s/pieces/system/real_project_root.txt", project_root);
-    FILE *rf = fopen(real_root_path, "r");
-    if (rf) {
-        if (fgets(real_root, sizeof(real_root), rf))
-            real_root[strcspn(real_root, "\r\n")] = '\0';
-        fclose(rf);
-    }
-    if (!real_root[0]) {
-        /* session may only have "." root — fall back to real_root file or CWD */
-        char rr[PATH_BUF];
-        resolve_real_root(project_root, rr, sizeof(rr));
-        snprintf(real_root, sizeof(real_root), "%s", rr);
-    }
+    char real_root[PATH_BUF] = "";
+    loc_real_root(project_root, real_root, sizeof(real_root));   /* shared: absolute / house-relative / stale (rebased); falls back to project_root */
 
     const char *host = host_project_id();
     char ledger_id[256];
@@ -662,18 +646,7 @@ static void open_board_widget(const char *project_root, char *message, size_t me
  * (now actor-parameterized so an animal's own entries say so
  * honestly, not "player"). */
 static void resolve_real_root(const char *proj_root, char *out, size_t out_sz) {
-    snprintf(out, out_sz, "%s", proj_root);
-    char real_root_path[PATH_BUF];
-    snprintf(real_root_path, sizeof(real_root_path), "%s/pieces/system/real_project_root.txt", proj_root);
-    FILE *rf = fopen(real_root_path, "r");
-    if (rf) {
-        char buf[PATH_BUF];
-        if (fgets(buf, sizeof(buf), rf)) {
-            buf[strcspn(buf, "\r\n")] = '\0';
-            if (buf[0]) snprintf(out, out_sz, "%s", buf);
-        }
-        fclose(rf);
-    }
+    loc_real_root(proj_root, out, out_sz);   /* shared: _shared-lib/khtpm_locations.c */
 }
 
 static void tick_animals(const char *proj_root, int tick) {
@@ -1416,15 +1389,10 @@ int main(int argc, char **argv) {
                     snprintf(message, sizeof(message), "%s - no entity here", verb);
                 } else {
                     char house_root_path[PATH_BUF], house_root[PATH_BUF] = "";
-                    snprintf(house_root_path, sizeof(house_root_path), "%s/pieces/system/house_root.txt", rr_c);
-                    FILE *hf = fopen(house_root_path, "r");
-                    if (hf) {
-                        if (fgets(house_root, sizeof(house_root), hf))
-                            house_root[strcspn(house_root, "\r\n")] = '\0';
-                        fclose(hf);
-                    }
+                    (void)house_root_path;
+                    loc_house_root(rr_c, house_root, sizeof(house_root));   /* shared resolver, no file required */
                     if (!house_root[0]) {
-                        snprintf(message, sizeof(message), "%s - no house_root.txt for this project", verb);
+                        snprintf(message, sizeof(message), "%s - cannot find the house root for this project", verb);
                     } else {
                         char ent_dir[PATH_BUF];
                         snprintf(ent_dir, sizeof(ent_dir), "%s/pieces/%s", rr_c, id);

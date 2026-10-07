@@ -29,3 +29,4 @@ MOUNT        | mountpoint           | /media/no/b7ced73c-5231-4462-b98d-64e38fe2
 # by this change).
 LAUNCH       | tool-bar             | '_.monads/_.livedesk-taskbar/ops/run_khtpm_strip.sh' 'boot'
 LAUNCH       | world-manager        | '&.hq-apps/world-manager/button.sh' 'boot'
+LAUNCH       | hotbar-desk          | '@.apps/hotbar-hq/boot.sh'

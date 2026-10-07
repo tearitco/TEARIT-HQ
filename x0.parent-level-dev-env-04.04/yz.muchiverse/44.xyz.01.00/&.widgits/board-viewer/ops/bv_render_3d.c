@@ -61,6 +61,8 @@
 
 #ifdef BV_HAVE_GPU
 #include "bv_gpu_raymarch.h"   /* Path A - GPU raymarch backend (BV-GPU-RENDER-DESIGN.md) */
+#include "bv_move_range.c"    /* shared Move range finder file helpers */
+#include "../../_shared-lib/khtpm_locations.c"   /* loc_resolve_saved(): saved paths resolved against the live house root */
 #include <signal.h>
 #include <unistd.h>
 #include "../../_shared-lib/house_wait.h"
@@ -151,18 +153,7 @@ static void resolve_root(void) {
 
 static void load_house_root(void) {
     house_root[0] = '\0';
-    char path[PATH_BUF];
-    snprintf(path, sizeof(path), "%s/pieces/system/house_root.txt", project_root);
-    FILE *f = host_fopen(path, "r");
-    if (!f) return;
-    if (fgets(house_root, sizeof(house_root), f)) {
-        if ((unsigned char)house_root[0] == 0xEF &&
-            (unsigned char)house_root[1] == 0xBB &&
-            (unsigned char)house_root[2] == 0xBF)
-            memmove(house_root, house_root + 3, strlen(house_root + 3) + 1);
-        house_root[strcspn(house_root, "\r\n")] = '\0';
-    }
-    fclose(f);
+    loc_house_root(project_root, house_root, sizeof(house_root));   /* shared resolver (_shared-lib/khtpm_locations.c): locations.pdl / house_root.txt / walk up */
 }
 
 /* Relative host paths (e.g. @.apps/aomorai-editor) resolve against house_root. */
@@ -237,10 +228,14 @@ static int page_bound_pdl(const char *house, char *out, int n) {
     }
     if (strcmp(source, "desk") != 0 && !stored[0]) return 0;
     if (!stored[0]) return 0;
-    FILE *t = host_fopen(stored, "r");
+    /* the saved pdl= may be house-relative or a stale absolute path (checkout moved): resolve against the LIVE house
+     * root - see _shared-lib/khtpm_locations.c */
+    char resolved[PATH_BUF];
+    loc_resolve_saved(house, stored, resolved, sizeof(resolved));
+    FILE *t = host_fopen(resolved, "r");
     if (!t) return 0;
     fclose(t);
-    snprintf(out, n, "%s", stored);
+    snprintf(out, n, "%s", resolved);
     return 1;
 }
 static void page_entity_cells(const char *house, int *xs, int *ys, int *n, int max) {
@@ -921,6 +916,16 @@ static void load_hero(const char *root) {
         g_hero_x = xs[0];
         g_hero_y = ys[0];
         g_hero_z = read_kv_int(sp, "current_z", 0);
+        {   /* The hero keeps its own z like any desk entity (desktop_pos.txt z=);
+             * the page row has no z. Without one, the board's current level. */
+            char rp[PATH_BUF], hp[PATH_BUF];
+            int rx, ry;
+            if (pgr_get(house_root, "hero_01", &rx, &ry, rp, sizeof(rp))) {
+                snprintf(hp, sizeof(hp), "%s/%s/desktop_pos.txt", house_root, rp);
+                int hz = bvr_kv_int(hp, "z", -9999);
+                if (hz != -9999) g_hero_z = hz;
+            }
+        }
         g_hero_present = 1;
         return;
     }
@@ -1396,10 +1401,15 @@ static void place_desk_sprites(int z) {
  * shapes leave. The private txt files are only the piececraft map. */
 static void load_phymoji_world_entities(const char *root) {
     g_phymoji_world_entity_count = 0;
-    char sp[PATH_BUF], bound[PATH_BUF];
+    char bound[PATH_BUF];
     int xs[16], ys[16];
-    snprintf(sp, sizeof(sp), "%s/pieces/system/bv_state.txt", project_root);
-    int z = read_kv_int(sp, "current_z", 0);
+    /* Owner 2026-10-05: pressing z/x moved every entity on screen. This used the LIVE current_z (the level
+     * the xelector is viewing, which z/x change) as the entities' own level, so the whole set was re-placed on
+     * whatever level the cursor was on and rode along with it. Entities stay on the ground level instead:
+     * default_current_z() is the stable "where the world's ground is" (one below the hero's own z), not the
+     * viewed slice. (Still follows the hero if the hero itself changes level; a per-entity z belongs in the
+     * page row and is the real fix - see 18.pc-hq/IN-GAME-LAYOUTS-PLAN.md part 3 note.) */
+    int z = default_current_z(root);
     int desk_page = house_root[0] && page_bound_pdl(house_root, bound, sizeof(bound)) > 0;
     if (!desk_page && page_named_cells(house_root, "tree_small", xs, ys, 16) > 0)
         place_page_phymoji(root, "tree_small", z);
@@ -1982,10 +1992,23 @@ static void bv_draw_hud(const char *game_root, int current_z, int selx, int sely
             snprintf(lines[n++], sizeof(lines[0]), "time --:--");
         }
     }
+    /* Level numbering (owner 2026-10-05): when the world publishes floor_z (board_manifest.txt) the floor is
+     * level 0 and the xelector's own z is shown relative to it, so a board that loads at the spawn level
+     * reads "z=1". Without floor_z (older worlds) the absolute z is shown, unchanged. */
+    int hud_level = current_z;
+    {
+        char mp[PATH_BUF], xp[PATH_BUF];
+        snprintf(mp, sizeof(mp), "%s/pieces/system/board_manifest.txt", game_root);
+        int fz = read_kv_int(mp, "floor_z", -1);
+        if (fz >= 0) {
+            snprintf(xp, sizeof(xp), "%s/pieces/xelector_01/state.txt", game_root);
+            hud_level = read_kv_int(xp, "pos_z", current_z) - fz;
+        }
+    }
     if (hud_pdl_int(pdl, "hud_coords", 1) && n < 8)
-        snprintf(lines[n++], sizeof(lines[0]), "pos %d,%d,%d", selx, sely, current_z);
+        snprintf(lines[n++], sizeof(lines[0]), "pos %d,%d,%d", selx, sely, hud_level);
     if (hud_pdl_int(pdl, "hud_zlevel", 1) && n < 8)
-        snprintf(lines[n++], sizeof(lines[0]), "z=%d", current_z);
+        snprintf(lines[n++], sizeof(lines[0]), "z=%d", hud_level);
     if (hud_pdl_int(pdl, "hud_possess", 1) && n < 8)
         snprintf(lines[n++], sizeof(lines[0]), "poss %s", g_hero_present ? "hero_01" : "-");
     if (hud_pdl_int(pdl, "hud_pick", 1) && n < 8) {
@@ -2063,6 +2086,13 @@ static void bv_draw_hud(const char *game_root, int current_z, int selx, int sely
         if (!tm[0]) snprintf(tm, sizeof(tm), "-");
         snprintf(lines[n++], sizeof(lines[0]), "click %s %s", pos, tm);
         if (n < 12) snprintf(lines[n++], sizeof(lines[0]), "ray %s", ray);
+    }
+    {   /* Move range finder label (bv_move_range.c) - only while it is open */
+        BvRange rg;
+        if (bvr_load(game_root, &rg) && n < 11) {
+            bvr_label(game_root, project_root, lines[n], sizeof(lines[0]), lines[n + 1], sizeof(lines[0]));
+            n += 2;
+        }
     }
     if (n < 12) snprintf(lines[n++], sizeof(lines[0]), "pid %d", (int)getpid());
     double cscale = bv_hud_canvas_scale();
@@ -2961,8 +2991,11 @@ static int render_one_frame(void) {
             write_pick_txt(focused_project_root, board3d, board_w, board_h, z_count, hx, hy, hz);
             char pp[PATH_BUF];
             snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
-            FILE *pf = host_fopen(pp, "w");
-            if (pf) { fprintf(pf, "armed=1\nx=%d\ny=%d\nz=%d\n", hx, hy, hz); fclose(pf); }
+            /* Move range finder open: the click selects / places (desk behaviour). */
+            if (!bvr_click(focused_project_root, project_root, hx, hy, board_w, board_h)) {
+                FILE *pf = host_fopen(pp, "w");
+                if (pf) { fprintf(pf, "armed=1\nx=%d\ny=%d\nz=%d\n", hx, hy, hz); fclose(pf); }
+            }
         }
     }
 
@@ -3190,6 +3223,12 @@ static int render_one_frame(void) {
         #define ADDWIRE(x0,y0,z0,x1,y1,z1,cr,cg,cb) do { \
             ADDBOX(x0,y0,z0,x1,y1,z1,cr,cg,cb,1); \
             if (sc.box_n > 0) sc.box[sc.box_n-1].wire = 1; } while (0)
+        #define ADDWIRE_THIN(x0,y0,z0,x1,y1,z1,cr,cg,cb) do { \
+            ADDBOX(x0,y0,z0,x1,y1,z1,cr,cg,cb,1); \
+            if (sc.box_n > 0) sc.box[sc.box_n-1].wire = 2; } while (0)
+        BvrStyle rstyle;
+        bvr_style(focused_project_root, &rstyle);   /* external move_range_style.pdl */
+        sc.wire_edge = rstyle.placer_edge; sc.wire_thin = rstyle.range_edge;
         if (sun_body.present)
             ADDBOX(sun_body.x-2.0, sun_body.y-2.0, sun_body.z-2.0,
                    sun_body.x+2.0, sun_body.y+2.0, sun_body.z+2.0, 255,220,120, 1);
@@ -3206,12 +3245,14 @@ static int render_one_frame(void) {
         {
             char pp[PATH_BUF];
             snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
+            { BvRange rg; if (bvr_load(focused_project_root, &rg)) bvr_arm_placer(pp, focused_project_root); }
             if (read_kv_int(pp, "armed", 0)) {
                 int sx = read_kv_int(pp, "x", 0);
                 int sy = read_kv_int(pp, "y", 0);
                 int sz = read_kv_int(pp, "z", 0);
-                ADDWIRE(sx + 0.12, sz + 0.12, sy + 0.12,
-                        sx + 0.88, sz + 0.88, sy + 0.88, 40, 255, 80);
+                ADDWIRE(sx + 0.06, sz + 0.06, sy + 0.06,
+                        sx + 0.94, sz + 0.94, sy + 0.94,
+                        rstyle.placer_rgb[0], rstyle.placer_rgb[1], rstyle.placer_rgb[2]);
             }
         }
         for (int i=0; i<g_entity_count; i++)
@@ -3268,26 +3309,35 @@ static int render_one_frame(void) {
                    we->x+0.5+wsx/2.0, we->z+wsy, we->y+0.5+wsz/2.0, cr,cg,cb, 0);
             if (wm >= 0) sc.box[sc.box_n-1].model = wm;
         }
-        /* 3D diamond, range 2, on the xelector's cell. That cell is
-         * the possessed entity when possessed_id names one. */
+        /* Move range finder (the REAL range; 2D only renders it - see
+         * @.apps/piececraft-hq/RENDER-STANDARD.md). Drawn only while
+         * move_range_matrix.txt exists, one wire cell per in-range (x,y,z) -
+         * a true 3D diamond, so the placer/entity can move up and down - centred on the entity being moved
+         * (xelector/hero only as a fallback). Esc/Enter delete the
+         * file (bv_menu_input.c), which closes it. */
         if (g_xelector_present || g_hero_present) {
-            int ox = g_xelector_present ? g_xelector_x : g_hero_x;
-            int oy = g_xelector_present ? g_xelector_y : g_hero_y;
-            int oz = g_xelector_present ? g_xelector_z : g_hero_z;
-            int rad = 2;
-            for (int dz = -rad; dz <= rad; dz++) {
-                for (int dy = -rad; dy <= rad; dy++) {
-                    for (int dx = -rad; dx <= rad; dx++) {
-                        int man = (dx < 0 ? -dx : dx) + (dy < 0 ? -dy : dy) + (dz < 0 ? -dz : dz);
-                        if (man == 0 || man > rad) continue;
-                        ADDWIRE(ox + dx + 0.08, oz + dz + 0.08, oy + dy + 0.08,
-                                ox + dx + 0.92, oz + dz + 0.92, oy + dy + 0.92,
-                                255, 220, 40);
-                    }
-                }
+            BvRange rng;
+            if (bvr_load(focused_project_root, &rng)) {
+                int ox = g_xelector_present ? g_xelector_x : g_hero_x;
+                int oy = g_xelector_present ? g_xelector_y : g_hero_y;
+                int oz = g_xelector_present ? g_xelector_z : g_hero_z;
+                bvr_origin(focused_project_root, &ox, &oy, &oz);   /* the moving entity */
+                int R = (rng.nr > rng.nc ? rng.nr : rng.nc) / 2;   /* deepest level the matrix reaches */
+                for (int dz = -R; dz <= R; dz++)
+                    for (int dy = -(rng.nr / 2); dy <= rng.nr / 2; dy++)
+                        for (int dx = -(rng.nc / 2); dx <= rng.nc / 2; dx++) {
+                            if (!dx && !dy && !dz) continue;         /* the entity's own cell */
+                            if (!bvr_has3(&rng, dx, dy, dz)) continue;
+                            ADDWIRE_THIN(ox + dx + 0.04, oz + dz + 0.04, oy + dy + 0.04,
+                                         ox + dx + 0.96, oz + dz + 0.96, oy + dy + 0.96,
+                                         rstyle.range_rgb[0] * rstyle.range_dim,
+                                         rstyle.range_rgb[1] * rstyle.range_dim,
+                                         rstyle.range_rgb[2] * rstyle.range_dim);
+                        }
             }
         }
         #undef GPU_ADD_MODEL
+        #undef ADDWIRE_THIN
         #undef ADDWIRE
         #undef ADDBOX
         if (bv_gpu_raymarch(&sc, g_fbuf) == 0) gpu_done = 1;

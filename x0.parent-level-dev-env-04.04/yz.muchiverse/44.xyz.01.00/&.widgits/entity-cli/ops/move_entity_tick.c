@@ -44,6 +44,7 @@
 #include <signal.h>
 #include <time.h>
 
+#include "khtpm_move_range.c"
 #define MAX_PATH 4096
 
 int main(void) {
@@ -53,39 +54,19 @@ int main(void) {
         return 1;
     }
 
-    char cursor_path[MAX_PATH], queue_path[MAX_PATH];
-    snprintf(cursor_path, sizeof(cursor_path), "%s/animation_queue.cursor", entity_dir);
-    snprintf(queue_path, sizeof(queue_path), "%s/animation_queue.txt", entity_dir);
+    char cursor_path[MAX_PATH], queue_path[MAX_PATH];  /* cursor_path: kept for the paths helper */
+    mvr_queue_paths(entity_dir, queue_path, sizeof(queue_path), cursor_path, sizeof(cursor_path));
 
-    int cursor = 0;
-    FILE *cf = fopen(cursor_path, "r");
-    if (cf) {
-        if (fscanf(cf, "%d", &cursor) != 1) cursor = 0;
-        fclose(cf);
-    }
-
-    FILE *qf = fopen(queue_path, "r");
-    if (!qf) {
+    /* Queue read = the SHARED khtpm_move_range.c ledger+cursor helpers. */
+    if (access(queue_path, F_OK) != 0) {
         kill(getppid(), SIGTERM);
         return 0;
     }
-
-    char line[128];
-    int line_no = 0;
-    int target_x = -1, target_y = -1;
-    while (fgets(line, sizeof(line), qf)) {
-        line_no++;
-        if (line_no <= cursor) continue;
-        if (sscanf(line, "x=%d|y=%d", &target_x, &target_y) == 2) break;
-        target_x = -1;
-        target_y = -1;
-    }
-    fclose(qf);
-
-    if (target_x < 0 || target_y < 0) {
+    int target_x = -1, target_y = -1, target_z = -1, line_no = 0;
+    if (!mvr_queue_next(entity_dir, &target_x, &target_y, &target_z, &line_no)
+        || target_x < 0 || target_y < 0) {
         /* Queue drained: clean up ephemeral state, stop the loop. */
-        unlink(queue_path);
-        unlink(cursor_path);
+        mvr_queue_clear(entity_dir);
         kill(getppid(), SIGTERM);
         return 0;
     }
@@ -156,8 +137,7 @@ int main(void) {
     }
 
     /* Advance cursor. */
-    FILE *wc = fopen(cursor_path, "w");
-    if (wc) { fprintf(wc, "%d\n", line_no); fclose(wc); }
+    mvr_queue_advance(entity_dir, line_no);
 
     return 0;
 }

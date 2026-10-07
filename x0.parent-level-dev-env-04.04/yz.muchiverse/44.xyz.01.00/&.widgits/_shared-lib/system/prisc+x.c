@@ -1294,6 +1294,14 @@ int main(int argc, char **argv) {
             char exec_target_buf[512];
             int is_abs = (exec_target[0] == '/' || exec_target[0] == '\\');
 #ifdef _WIN32
+            /* On Windows a leading '/' means root-of-the-current-drive, not
+             * an absolute path - "C:\ops\foo" is the absolute form. Without
+             * this a genuinely absolute Windows target looks relative, gets
+             * re-resolved against g_pal_dir, and the path it builds does not
+             * exist. Lifted from 014.wsr-pal's own local prisc+x.c. */
+            if (!is_abs && exec_target[0] != '\0' && exec_target[1] == ':') is_abs = 1;
+#endif
+#ifdef _WIN32
             if (!is_abs && exec_target[0] != '\0' && exec_target[1] == ':') is_abs = 1;
 #endif
             if (!is_abs && exec_target[0] != '\0' && g_pal_dir[0] != '\0') {
@@ -1313,6 +1321,59 @@ int main(int argc, char **argv) {
              * of special characters (e.g., & in paths). This is critical for
              * projects in directories like &.hq-apps/ where & would be
              * interpreted as a background operator by the shell. */
+#ifdef _WIN32
+            /* Windows equivalent of the POSIX branch below, and CreateProcess
+             * rather than system() for exactly the same reason the POSIX side
+             * avoids system(): a shell mangles '&' in a path, and '&' is a
+             * command separator in cmd.exe just as it is in sh. This house has
+             * projects living under "&.widgits\_shared-lib" and "&.hq-apps",
+             * so a system() call against an exec target inside one of those
+             * directories would run the wrong command or nothing at all.
+             *
+             * The program is passed as lpApplicationName rather than as the
+             * first token of the command line, which matters twice over:
+             * cmd.exe resolves executables through PATHEXT, and this house's
+             * op convention is a ".+x" suffix that appears nowhere in it,
+             * while CreateProcess with an explicit lpApplicationName loads a
+             * PE by content and does not consult PATHEXT at all.
+             *
+             * Semantics are kept identical to the fork branch: start the
+             * child, do not consult its exit status, and stay silent if it
+             * cannot be started. The POSIX branch builds `cmd` with a
+             * "> /dev/null 2>&1" redirect; the Windows counterpart of
+             * /dev/null is the NUL device, handled by the STARTUPINFOA
+             * handles below. `cmd` itself is deliberately unused here, since
+             * it is a shell command line and everything on this path is
+             * deliberately not going through a shell. */
+            {
+                char cmdline[1400];
+                int n = 0;
+                n += snprintf(cmdline + n, sizeof(cmdline) - n, "\"%s\"", exec_target);
+                if (strlen(arg2) > 0)
+                    n += snprintf(cmdline + n, sizeof(cmdline) - n, " \"%s\" \"%s\"", arg1, arg2);
+                else if (strlen(arg1) > 0)
+                    n += snprintf(cmdline + n, sizeof(cmdline) - n, " \"%s\"", arg1);
+
+                STARTUPINFOA si;
+                PROCESS_INFORMATION pi;
+                memset(&si, 0, sizeof(si));
+                memset(&pi, 0, sizeof(pi));
+                si.cb = sizeof(si);
+                si.dwFlags = STARTF_USESTDHANDLES;
+                si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+                si.hStdOutput = CreateFileA("NUL", GENERIC_WRITE,
+                                            FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                            NULL, OPEN_EXISTING, 0, NULL);
+                si.hStdError = si.hStdOutput;
+                if (si.hStdOutput != INVALID_HANDLE_VALUE) {
+                    CreateProcessA(exec_target, cmdline, NULL, NULL, TRUE,
+                                   CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
+                    if (pi.hThread) CloseHandle(pi.hThread);
+                    if (pi.hProcess) CloseHandle(pi.hProcess);
+                    CloseHandle(si.hStdOutput);
+                }
+            }
+#else
             pid_t exec_pid = fork();
             if (exec_pid == 0) {
                 /* Child process: prepare args and exec */
@@ -1346,6 +1407,7 @@ int main(int argc, char **argv) {
                 waitpid(exec_pid, &exec_rc, 0);
                 (void)exec_rc; /* exec op's own exit status isn't consulted here */
             }
+#endif
 
         } else if (i.op == OP_HIT_FRAME) {
             char *proj_root = getenv("PRISC_PROJECT_ROOT");

@@ -41,7 +41,9 @@ KHTPM_PARSER="$TB_DIR/+x/khtpm_core_render.+x"
 # house's own consolidation). khtpm_core_render added; the two retired
 # names kept, harmless, in case an old build is somehow still running
 # mid-transition.
-KHTPM_PAT="khtpm_core_render\.\+x|khtpm_strip_parser\.\+x|khtpm_taskbar_manager_main\.\+x|khtpm_hq_render\.\+x|tp_desktop_window_rgb\.\+x|tp_desktop_window\.\+x"
+# 2026-10-05: khtpm_entity.+x added - entity windows run that binary (split out of
+# khtpm_core_render 2026-09-27); without it quit/reset left every entity running.
+KHTPM_PAT="khtpm_core_render\.\+x|khtpm_strip_parser\.\+x|khtpm_taskbar_manager_main\.\+x|khtpm_hq_render\.\+x|khtpm_entity\.\+x|tp_desktop_window_rgb\.\+x|tp_desktop_window\.\+x"
 khtpm_pids() { pgrep -f "$KHTPM_PAT" 2>/dev/null; }
 
 # REAL FIX 2026-09-23, direct live report ("reset should be killing
@@ -113,6 +115,16 @@ case "$ACTION" in
         [ -x "$HOUSE/&.hq-apps/world-manager/button.sh" ] && \
             "$HOUSE/&.hq-apps/world-manager/button.sh" kill 2>/dev/null || true
         echo "closed all toolbars, entities, HQ app managers, and world_manager"
+        ;;
+    build|rebuild)
+        # Compile EVERY house program (compile-runner.sh: each project's own
+        # build script, with the +x output folders recreated first). Use after a
+        # wipe, a fresh clone or a branch switch - compiled programs are in no git
+        # branch, so windows come up empty until this has run. An optional 2nd
+        # argument limits it to scripts whose path contains that text, e.g.
+        #   sh button.sh build board-viewer
+        shift
+        DISPLAY="${DISPLAY:-:0}" nice -n 15 bash "$SCRIPT_DIR/compile-runner.sh" "$@"
         ;;
     reset)
         # Guaranteed-clean kill-everything-then-relaunch — for when the
@@ -209,6 +221,7 @@ EOF
   sh button.sh run            # quit current livedesk, then mount+launch (autostart.pdl)
   sh button.sh restart        # same as run (clean restart for $ shortcut / focus tests)
   sh button.sh quit | close   # kill all running toolbars and entities (no relaunch)
+  sh button.sh build [text]   # compile every house program (after a wipe/clone/branch switch); text filters by path
   sh button.sh reset          # harder: guaranteed kill-everything + rebuild + relaunch via autostart.pdl
   sh button.sh on | off       # toggle STATE|enabled in autostart.pdl
   sh button.sh status         # show current enabled state + running processes

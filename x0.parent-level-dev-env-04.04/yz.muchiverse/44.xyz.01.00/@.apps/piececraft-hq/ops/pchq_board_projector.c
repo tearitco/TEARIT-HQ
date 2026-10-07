@@ -25,16 +25,43 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <time.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <limits.h>
+#include "../../../&.widgits/_shared-lib/khtpm_locations.c"   /* loc_resolve_saved(): saved paths resolved against the live house root */
 #include <dirent.h>
+#ifndef _WIN32
+#include <glob.h>
+#endif
+
+#ifdef _WIN32
+#include <direct.h>
+#endif
 
 #ifndef PATH_MAX
 #define PATH_MAX 4096
 #endif
 #define UIBUF 16384
+/* Windows-only throttle (a no-session probe popen()s a shell, and cmd.exe
+ * spawns made that a storm). Linux deliberately keeps rescanning every
+ * pass - a 30s blind window there would leave a relaunched board blank
+ * until the next probe even though the engine is already up. */
+#ifdef _WIN32
+#define PCHQ_BV_RESCAN_SEC 30
+#endif
+
+/* REAL FIX 2026-10-02 (Windows port) - this file created its state dir with
+ * system("mkdir -p '<pkg>/state'"). -p is a coreutils flag and '...' is POSIX
+ * quoting; cmd.exe has neither, so the dir was never made and every
+ * fopen(tmp_path,"w") + rename() below silently failed - the projector ran
+ * forever publishing nothing. Call the platform mkdir directly instead. */
+#ifdef _WIN32
+static void ensure_dir(const char *p) {
+    _mkdir(p);
+}
+#endif
 
 static void sanitize(char *s) {
     for (char *p = s; *p; p++) if (*p == '\n' || *p == '\r' || *p == '\t') *p = ' ';
@@ -62,6 +89,61 @@ static int read_pdl_opt(const char *path, const char *name, int def) {
 
 static void read_kv(const char *path, const char *key, char *out, size_t outsz);
 
+/* Entity images: for every "ent_<n>_id=<id>" row already in ui, append "ent_<n>_sprite=<entity dir>" when that entity has a
+ * sprite.csv (desk pals: xyzfs/users/<u>/home/livedesk/pals/<id>, #.desktop/entities/<id>, or this board's pieces/<id>). The
+ * board draws it with <item sprite="${ent.sprite}">, the same entity-sprite attribute the taskbar cells use. Entities
+ * without one (xelector, hero) simply get no key and show text only. Returns the new length. */
+static size_t append_entity_sprites(char *ui, size_t off, const char *house, const char *host_app) {
+    char add[4096]; size_t al = 0; const char *p = ui;
+    while ((p = strstr(p, "ent_")) != NULL) {
+        int n = 0; char id[128] = ""; const char *q = p + 4;
+        if ((p != ui && p[-1] != '\n') || !isdigit((unsigned char)*q)) { p += 4; continue; }
+        n = atoi(q); while (isdigit((unsigned char)*q)) q++;
+        if (strncmp(q, "_id=", 4) != 0) { p = q; continue; }
+        q += 4; { size_t k = 0; while (*q && *q != '\n' && k < sizeof(id) - 1) id[k++] = *q++; id[k] = '\0'; }
+        p = q;
+        if (!id[0]) continue;
+        char dir[PATH_MAX] = "", chk[PATH_MAX];
+#ifndef _WIN32
+        glob_t g; char pat[PATH_MAX];
+        snprintf(pat, sizeof(pat), "%s/xyzfs/users/*/home/livedesk/pals/%s/sprite.csv", house, id);
+        if (glob(pat, 0, NULL, &g) == 0 && g.gl_pathc > 0) {
+            snprintf(dir, sizeof(dir), "%s", g.gl_pathv[0]); char *sl = strrchr(dir, '/'); if (sl) *sl = '\0';
+        }
+        globfree(&g);
+#endif
+        if (!dir[0]) { snprintf(chk, sizeof(chk), "%s/#.desktop/entities/%s/sprite.csv", house, id); if (access(chk, R_OK) == 0) snprintf(dir, sizeof(dir), "%s/#.desktop/entities/%s", house, id); }
+        if (!dir[0]) { snprintf(chk, sizeof(chk), "%s/pieces/%s/sprite.csv", host_app, id); if (access(chk, R_OK) == 0) snprintf(dir, sizeof(dir), "%s/pieces/%s", host_app, id); }
+        if (dir[0] && al + strlen(dir) + 32 < sizeof(add)) al += (size_t)snprintf(add + al, sizeof(add) - al, "ent_%d_sprite=%s\n", n, dir);
+    }
+    if (al && off + al < UIBUF) { memcpy(ui + off, add, al); off += al; ui[off] = '\0'; }
+    return off;
+}
+
+/* The xelector is an ENTITY in pc-hq (it has a cell, a possessed_id, a menu); the
+ * livedesk has no such entity yet - see 18.pc-hq/XELECTOR-ENTITY.md. So it gets
+ * its own button on the bottom bar in BOTH modes (page-bound and the private
+ * lists), right after the map/hero. Cell comes from pieces/xelector_01/state.txt.
+ * Returns 1 if a row was written. */
+static int emit_xelector(char *ui, size_t *off, int n, const char *host_app_root) {
+    char sp[PATH_MAX], l[128], xx[16] = "", yy[16] = "", zz[16] = "";
+    snprintf(sp, sizeof(sp), "%s/pieces/xelector_01/state.txt", host_app_root);
+    FILE *f = fopen(sp, "r");
+    if (!f) return 0;
+    while (fgets(l, sizeof(l), f)) {
+        if (!strncmp(l, "pos_x=", 6)) sscanf(l + 6, "%15s", xx);
+        else if (!strncmp(l, "pos_y=", 6)) sscanf(l + 6, "%15s", yy);
+        else if (!strncmp(l, "pos_z=", 6)) sscanf(l + 6, "%15s", zz);
+    }
+    fclose(f);
+    if (!xx[0] || !yy[0]) return 0;
+    *off += (size_t)snprintf(ui + *off, UIBUF - *off,
+        "ent_%d_label=xelector\nent_%d_id=xelector_01\nent_%d_kind=xelector\n"
+        "ent_%d_x=%s\nent_%d_y=%s\nent_%d_z=%s\n",
+        n, n, n, n, xx, n, yy, n, zz[0] ? zz : "0");
+    return 1;
+}
+
 /* Footer rows from the synch pin's pdl= while source=desk (or an older
  * pin that still has pdl=). A later livedesk page change does not
  * move this strip. source=board means the board picked its own map:
@@ -74,7 +156,11 @@ static int emit_page_entities(char *ui, size_t *off, const char *house, const ch
     read_kv(ob, "pdl", pdl, sizeof(pdl));
     if (!strcmp(source, "board")) return -1;
     if (strcmp(source, "desk") != 0 && !pdl[0]) return -1;
-    (void)house;
+    {   /* the saved pdl= may be house-relative or a stale absolute path: resolve against the live house root */
+        char resolved[PATH_MAX];
+        loc_resolve_saved(house, pdl, resolved, sizeof(resolved));
+        snprintf(pdl, sizeof(pdl), "%s", resolved);
+    }
     FILE *f = fopen(pdl, "r");
     if (!f) return -1;
     int n = 0;
@@ -82,6 +168,7 @@ static int emit_page_entities(char *ui, size_t *off, const char *house, const ch
         "ent_0_label=map\nent_0_id=map\nent_0_kind=page\n"
         "ent_0_x=0\nent_0_y=0\nent_0_z=0\n");
     n = 1;
+    if (emit_xelector(ui, off, n, host_app_root)) n++;
     char line[512];
     while (n < 24 && fgets(line, sizeof(line), f)) {
         if (strncmp(line, "DESK", 4) != 0) continue;
@@ -141,6 +228,7 @@ static size_t emit_entities(char *ui, size_t off, const char *house, const char 
             n++;
         }
     }
+    if (emit_xelector(ui, &off, n, host_app_root)) n++;
     const char *files[2] = { "pieces/world_01/animals.txt",
                              "pieces/world_01/phymoji_entities.txt" };
     for (int fi = 0; fi < 2 && n < 16; fi++) {
@@ -281,6 +369,12 @@ static int find_board_session(const char *house, const char *host_id, char *out,
     FILE *hrf = fopen(hr_path, "w");
     if (hrf) { fprintf(hrf, "%s\n", house); fclose(hrf); }
 
+#ifdef _WIN32
+    char cmd[PATH_MAX * 3];
+    snprintf(cmd, sizeof(cmd),
+             "set \"PRISC_PROJECT_ROOT=%s\" && \"%s\\&.widgits\\board-viewer\\ops\\+x\\ledger_peers.exe\" widget 2>nul",
+             static_root, house);
+#else
     char cmd[PATH_MAX * 2];
     /* 2026-10-01, real live catch: this used to end in `2>/dev/null`.
      * board-viewer's ops/+x/ is gitignored (.gitignore:9 `*.+x`), so a
@@ -306,6 +400,7 @@ static int find_board_session(const char *house, const char *host_id, char *out,
     snprintf(cmd, sizeof(cmd),
              "PRISC_PROJECT_ROOT='%s' '%s/&.widgits/board-viewer/ops/+x/ledger_peers.+x' widget 2>/dev/null",
              static_root, house);
+#endif
     FILE *pf = popen(cmd, "r");
     if (!pf) return 0;
 
@@ -366,11 +461,21 @@ int main(int argc, char **argv) {
                         : host_from_a1 ? host_from_a1 : "piececraft-hq";
 
     char out_path[PATH_MAX], tmp_path[PATH_MAX], menu_path[PATH_MAX];
+#ifdef _WIN32
+    char state_dir[PATH_MAX];
+    snprintf(state_dir, sizeof(state_dir), "%s/state", pkg);
+    ensure_dir(pkg);
+    ensure_dir(state_dir);
+    snprintf(out_path, sizeof(out_path), "%s/ui.txt", state_dir);
+    snprintf(tmp_path, sizeof(tmp_path), "%s/ui.txt.tmp", state_dir);
+    snprintf(menu_path, sizeof(menu_path), "%s/menu.txt", state_dir);
+#else
     snprintf(out_path, sizeof(out_path), "%s/state/ui.txt", pkg);
     snprintf(tmp_path, sizeof(tmp_path), "%s/state/ui.txt.tmp", pkg);
     snprintf(menu_path, sizeof(menu_path), "%s/state/menu.txt", pkg);
     { char cmd[PATH_MAX + 32]; snprintf(cmd, sizeof(cmd), "mkdir -p '%s/state'", pkg);
       int r = system(cmd); (void)r; }
+#endif
 
     static char ui[UIBUF], last[UIBUF];
     last[0] = '\0';
@@ -381,12 +486,39 @@ int main(int argc, char **argv) {
      * then only re-scan when we don't have one or the cached dir has
      * disappeared (session ended). */
     static char bv_cache[PATH_MAX] = "";
+#ifdef _WIN32
+    static time_t bv_last_scan = 0;
+#endif
 
     for (;;) {
         char bv[PATH_MAX] = "";
         int have;
         {
             struct stat cst;
+            /* REAL BUG FIX 2026-10-02 (Windows, live: opening one pc-hq board
+             * spawned an unbounded stream of shell processes). bv_cache was
+             * only ever assigned on the SUCCESS path, so every iteration that
+             * found nothing re-entered find_board_session() -> popen() of
+             * ledger_peers - ~3.3x/second forever. The cache above this comment
+             * was added precisely to stop that, but it can only engage once a
+             * session EXISTS, and on a machine with no board-viewer session it
+             * never does - so the exact pathology it was written to prevent
+             * came straight back. Rate-limit the rescan instead: identical
+             * behaviour whenever a session is present (still zero rescans), and
+             * when there is none it drops to one probe per RESCAN window. */
+#ifdef _WIN32
+            time_t now = time(NULL);
+            if (bv_cache[0] && stat(bv_cache, &cst) == 0 && S_ISDIR(cst.st_mode)) {
+                snprintf(bv, sizeof(bv), "%s", bv_cache);
+                have = 1;
+            } else if (now - bv_last_scan >= PCHQ_BV_RESCAN_SEC) {
+                have = find_board_session(house, host_id, bv, sizeof(bv));
+                snprintf(bv_cache, sizeof(bv_cache), "%s", have ? bv : "");
+                bv_last_scan = now;
+            } else {
+                have = 0;
+            }
+#else
             if (bv_cache[0] && stat(bv_cache, &cst) == 0 && S_ISDIR(cst.st_mode)) {
                 snprintf(bv, sizeof(bv), "%s", bv_cache);
                 have = 1;
@@ -394,6 +526,7 @@ int main(int argc, char **argv) {
                 have = find_board_session(house, host_id, bv, sizeof(bv));
                 snprintf(bv_cache, sizeof(bv_cache), "%s", have ? bv : "");
             }
+#endif
         }
 
         char raw[PATH_MAX] = "", typing[PATH_MAX] = "", h1[PATH_MAX] = "", h2[PATH_MAX] = "";
@@ -685,6 +818,7 @@ int main(int argc, char **argv) {
             snprintf(pdl, sizeof(pdl), "%s/pieces/system/pchq.pdl", host_app);
             int ebar = read_pdl_opt(pdl, "entities_bar", 0);
             off = emit_entities(ui, off, house, host_app, ebar);
+            off = append_entity_sprites(ui, off, house, host_app);
         }
 
         if (strcmp(ui, last) != 0) {

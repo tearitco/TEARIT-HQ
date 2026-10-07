@@ -29,6 +29,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include "win_posix_shim.h"
+#include "../../../&.widgits/_shared-lib/khtpm_locations.c"   /* loc_house_root() / loc_real_root(): one place that finds the house and real roots */
 
 #define MAX_PATH 4096
 #define PATH_BUF (MAX_PATH + 256)
@@ -92,44 +93,7 @@ static void resolve_root(void) {
         if (env && env[0]) snprintf(project_root, sizeof(project_root), "%s", env);
     }
 
-    snprintf(real_root, sizeof(real_root), "%s", project_root);
-    char real_root_path[PATH_BUF];
-    snprintf(real_root_path, sizeof(real_root_path), "%s/pieces/system/real_project_root.txt", project_root);
-    FILE *rf = host_fopen(real_root_path, "r");
-    if (!rf) rf = fopen(real_root_path, "r");
-    if (rf) {
-        char buf[PATH_BUF];
-        if (fgets(buf, sizeof(buf), rf)) {
-            char *b = buf;
-            if ((unsigned char)b[0] == 0xEF && (unsigned char)b[1] == 0xBB && (unsigned char)b[2] == 0xBF)
-                b += 3;
-            b[strcspn(b, "\r\n")] = '\0';
-            if (b[0]) {
-                /* relative to house_root if not absolute */
-                if (!((b[0] && b[1] == ':') || b[0] == '/' || b[0] == '\\')) {
-                    char house_path[PATH_BUF], house[PATH_BUF] = "";
-                    snprintf(house_path, sizeof(house_path), "%s/pieces/system/house_root.txt", project_root);
-                    FILE *hf = host_fopen(house_path, "r");
-                    if (!hf) hf = fopen(house_path, "r");
-                    if (hf) {
-                        if (fgets(house, sizeof(house), hf)) {
-                            char *h = house;
-                            if ((unsigned char)h[0] == 0xEF && (unsigned char)h[1] == 0xBB && (unsigned char)h[2] == 0xBF)
-                                h += 3;
-                            h[strcspn(h, "\r\n")] = '\0';
-                            snprintf(real_root, sizeof(real_root), "%s/%s", h, b);
-                        }
-                        fclose(hf);
-                    } else {
-                        snprintf(real_root, sizeof(real_root), "%s", b);
-                    }
-                } else {
-                    snprintf(real_root, sizeof(real_root), "%s", b);
-                }
-            }
-        }
-        fclose(rf);
-    }
+    loc_real_root(project_root, real_root, sizeof(real_root));   /* shared: absolute / house-relative / stale (rebased) real_project_root.txt */
     /* If real_root is unusable (bad Unicode abs path), fall back to CWD
      * when it looks like the real project (has ops/+x and pieces). */
     if (host_access(real_root) != 0) {
@@ -476,6 +440,10 @@ int main(int argc, char **argv) {
     if (mf) {
         fprintf(mf, "z_base=pieces/system/chunks/chunk_%d_%d/chunk_%d_%d_z\n", chunk_x, chunk_y, chunk_x, chunk_y);
         fprintf(mf, "z_count=%d\n", Z_COUNT);
+        /* floor_z: the layer BELOW the spawn level. Owner 2026-10-05: "the floor represents level 0", the
+         * hero/xelector/entities live on level 1, and a board always loads at level 1. The HUD shows
+         * (z - floor_z); open_pchq_board.sh resets the hero and xelector to floor_z + 1 on launch. */
+        fprintf(mf, "floor_z=%d\n", FLAT_SURFACE_Z);
         fclose(mf);
     }
 
@@ -640,7 +608,11 @@ int main(int argc, char **argv) {
     write_kv_int(xelector_state_path, "pos_x", spawn_col);
     write_kv_int(xelector_state_path, "pos_y", spawn_row);
     write_kv_int(xelector_state_path, "pos_z", surface[spawn_row][spawn_col] + 1);
-    write_kv(xelector_state_path, "possessed_id", "hero_01");
+    /* Owner 2026-10-05: the xelector starts as a FREE cursor (possessed_id=none), so
+     * the arrow keys move the xelector and it can select the hero, cursword or any
+     * entity; possession is explicit (Enter on an entity). It used to be seeded as
+     * "hero_01", which made arrows drive the hero from the first keypress. */
+    write_kv(xelector_state_path, "possessed_id", "none");
     write_kv_int(xelector_state_path, "chunk_x", chunk_x);
     write_kv_int(xelector_state_path, "chunk_y", chunk_y);
 

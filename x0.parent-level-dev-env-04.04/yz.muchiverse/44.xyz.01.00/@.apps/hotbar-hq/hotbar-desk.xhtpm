@@ -1,0 +1,27 @@
+<!-- hotbar-desk.xhtpm - the hotbar as an ordinary HQ window (static template + manager).
+     A fixed row of 9 slots over the holder's inventory/; the selected slot is what Place
+     uses. ui.txt is published by ops/hotbar_manager.+x (started by <module>).
+     Design: 18.pc-hq/CURSWORD-POSSESSION-DESIGN.md 5b/5e.
+     Structure = sidebar rail + panel, like pchq-board.xhtpm: the generic layout only
+     lays out rows/items in a sidebar+panel window, and only sidebar+panel windows register
+     as HQ windows (bottom-bar cell, nav number, minimize). The rail is 2px, just the trigger.
+     class="vars-positioned": the manager publishes anchor_cx/anchor_bottom and the renderer
+     docks the window there (above the bottom bar on the desk). The "-pal" suffix keeps the
+     built-in g_is_* paths dormant. -->
+<window label="Hotbar (desk)" class="hotbar-pal database-window vars-positioned no-close no-fullscreen" vars="state/desk/ui.txt">
+  <module src="@.apps/hotbar-hq/ops/+x/hotbar_manager.+x desk"/>
+  <page name="main">
+    <sidebar id="rail" class="hb-rail sidebar"/>
+    <panel id="hb-panel" class="hb-panel">
+      <text label="${holder} - slot: ${sel_name}" class="hb-quiet"/>
+      <row class="toolbar hb-row">
+        <repeat count="${n_slots}" bind="s">
+          <item id="hb${s.#}" class="hb-slot sprite-inline ${s.cls}" label="${s.text}" sprite="${s.sprite}"
+                action="'${HOUSE}/@.apps/hotbar-hq/ops/hotbar_action.sh' '${s.#}' '${HOUSE}/@.apps/hotbar-hq/state/desk'"/>
+        </repeat>
+      </row>
+      <cli_io id="cmd" target_id="cmd" class="hb-cli" label="&gt; "
+              action="'${HOUSE}/@.apps/hotbar-hq/ops/hotbar_cli.sh' 'desk'"/>
+    </panel>
+  </page>
+</window>

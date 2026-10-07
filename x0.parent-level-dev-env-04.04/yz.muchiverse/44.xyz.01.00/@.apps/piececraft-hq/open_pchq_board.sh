@@ -46,6 +46,35 @@ if [ -n "${PCHQ_BOARD_HASCANVAS:-}" ] && [ -f "$PKG/pchq-board.hascanvas.xhtpm" 
 else
     BOARD_TPL="$PKG/pchq-board.xhtpm"
 fi
+# PCHQ_BOARD_TPL=<path to a template named pchq-board.xhtpm> launches that template instead (the in-game layouts
+# sandbox, @.apps/layout-studio/sandbox/); the name must stay pchq-board.xhtpm so the kill/match patterns still hit.
+if [ -n "${PCHQ_BOARD_TPL:-}" ] && [ -f "$PCHQ_BOARD_TPL" ]; then BOARD_TPL="$PCHQ_BOARD_TPL"; fi
+# which folder the running board treats as its package dir (state/ lives there): pc_entity_ctx.sh publishes an
+# in-board context menu there when <dir>/state/ctx_overlay.on exists (IN-GAME-LAYOUTS-PLAN.md, context menus)
+dirname "$BOARD_TPL" > "$HOUSE_ROOT/#.desktop/pchq_ctx_dir.txt" 2>/dev/null || true
+
+# ── locations: generated at EVERY launch from this script's own folder (TPMOS pattern: its location_kvp is generated,
+# never checked in; here pieces/system/locations.pdl). Nothing below depends on where the checkout lives: a saved pointer
+# is house-relative and resolved against house_root (_shared-lib/khtpm_locations.c). house_root.txt, which many ops read,
+# is refreshed here too (it used to be a tracked file with one machine's absolute path in it).
+mkdir -p "$PKG/pieces/system"
+_UH="$(ls -d "$HOUSE_ROOT"/xyzfs/users/*/home/livedesk 2>/dev/null | head -1)"
+{
+    printf 'SECTION      | KEY                | VALUE\n----------------------------------------\n'
+    printf 'LOCATION     | house_root         | %s\n' "$HOUSE_ROOT"
+    printf 'LOCATION     | pchq_root          | %s\n' "$PKG"
+    printf 'LOCATION     | board_dir          | %s\n' "$(dirname "$BOARD_TPL")"
+    printf 'LOCATION     | desk_user_home     | %s\n' "$_UH"
+} > "$PKG/pieces/system/locations.pdl" 2>/dev/null || true
+printf '%s\n' "$HOUSE_ROOT" > "$PKG/pieces/system/house_root.txt" 2>/dev/null || true
+# a template that carries the in-board menu row (id="ctx") needs its state files; <dir>/state/ is gitignored for the
+# live board, so create them when missing (the menu stays hidden until pc_entity_ctx.sh writes ctx_visible=1)
+if grep -q 'id="ctx"' "$BOARD_TPL" 2>/dev/null; then
+    _CD="$(dirname "$BOARD_TPL")/state"; mkdir -p "$_CD"
+    [ -f "$_CD/ctx.txt" ] || printf 'ctx_visible=0\n' > "$_CD/ctx.txt"
+    [ -f "$_CD/ctx_menu.chtpm" ] || printf '<window class="entity-menu"><page name="main"><text label="menu"/></page></window>\n' > "$_CD/ctx_menu.chtpm"
+    [ -f "$_CD/ctx_overlay.on" ] || echo 1 > "$_CD/ctx_overlay.on"
+fi
 
 # ── build-on-demand (same shape as open_stats_hq.sh) ─────────────────
 if [ ! -x "$BIN" ]; then
@@ -103,6 +132,21 @@ if [ ! -f "$BOARD_TPL" ]; then
     echo "open_pchq_board: missing $BOARD_TPL" >&2
     exit 1
 fi
+
+# ── always load at level 1 ────────────────────────────────────────
+# Owner 2026-10-05: the floor is level 0 and a board always opens at level 1 (the layer the hero, xelector and
+# entities live on), never up in the sky where the last session left the xelector. The world publishes
+# floor_z in board_manifest.txt (pc_generate_chunk.c); reset the hero and xelector to floor_z + 1 before
+# the engine starts. A world without floor_z is left exactly as it was.
+_FZ="$(sed -n 's/^floor_z=//p' "$PKG/pieces/system/board_manifest.txt" 2>/dev/null | head -1)"
+case "$_FZ" in
+    ""|*[!0-9]*) ;;
+    *) _LV=$((_FZ + 1))
+       for _p in xelector_01 hero_01; do
+           _f="$PKG/pieces/$_p/state.txt"
+           [ -f "$_f" ] && sed -i "s/^pos_z=.*/pos_z=$_LV/" "$_f"
+       done ;;
+esac
 
 # ── reap stale/orphaned engine sessions ────────────────────────────
 # `button.sh run`'s own EXIT trap (rm -rf $SESSION_DIR + kill_own_*)

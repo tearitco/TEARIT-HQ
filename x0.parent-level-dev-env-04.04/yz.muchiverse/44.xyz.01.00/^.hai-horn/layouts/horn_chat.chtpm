@@ -1,16 +1,31 @@
+<!-- Approve/deny for gated tools (edit_file, write_file, run_script).
+     The buttons inject KEY:1 / KEY:0 into the interact relay - the same
+     <button onClick="KEY:n"> mechanism gem-dev uses for its suggestion
+     buttons - and horn_main_loop.pal turns those into an answer.
+
+     Keys 1 and 0 are used rather than y/n so they can never be confused
+     with a keystroke aimed at the composer, and so the digits match the
+     numbering chtpm puts on every other navigable element in this box. -->
 <panel time_reactive="true">
-    <module>../horn_chat_main.pal</module>
-    <interact src="../.horn-sessions/relay.txt" />
-    <text label="╔════════════════════════════════════════════╗" /><br/>
-    <text label="║       H O R N   C H A T   v 0 . 1       ║" /><br/>
-    <text label="║     OpenRouter models, terminal UI       ║" /><br/>
-    <text label="╠════════════════════════════════════════════╣" /><br/>
-    <text label="${horn_status}" /><br/>
-    <text label="╠════════════════════════════════════════════╣" /><br/>
-    <text label="${horn_reply_area}" /><br/>
-    <text label="╠════════════════════════════════════════════╣" /><br/>
-    <text label="  " /><cli_io id="user_input" label="you: " /><br/>
-    <text label="╠════════════════════════════════════════════╣" /><br/>
-    <button label="[q] Quit" onClick="KEY:q" /><br/>
-    <text label="${horn_info}" /><br/>
+  <module>system/prisc+x pal/horn_main_loop.pal</module>
+  <interact src="pieces/apps/player_app/interact_relay.txt" />
+  <text label="╔══════════════════════════════════════════════════════════════╗" /><br/>
+  <text label="║  HORN_CHAT v0.2   OpenRouter · Groq · Poolside · tools  [/] quit  ║" /><br/>
+  <text label="╚══════════════════════════════════════════════════════════════╝" /><br/>
+  <text label="  model: ${horn_model}" /><br/>
+  <text label="  status: ${horn_status}    turns: ${horn_turns}" /><br/>
+  <text label="  @path = completion    !text = force a tool    Ctrl+C = quit" /><br/>
+  <text label="╟──────────────────────────────────────────────────────────────╢" /><br/>
+  <text label="${game_map}" /><br/>
+  <cli_io id="horn_prompt" target_id="horn_prompt" label="  you: " /><br/>
+  <text label="╟──────────────────────────────────────────────────────────────╢" /><br/>
+  <!-- Composer first, deliberately. chtpm puts initial focus on navigable
+       element 0, so any element above the cli_io steals the first Enter and
+       the window starts focused on a button with typing going nowhere.
+       The approve/deny buttons sit below it; they are reached with
+       arrows/Tab then Enter, which injects the KEY:1 / KEY:0. -->
+  <text label="  pending: ${horn_pending}" /><br/>
+  <button label="  [1] APPROVE this tool call" onClick="KEY:1" id="approve" /><br/>
+  <button label="  [0] DENY this tool call" onClick="KEY:0" id="deny" /><br/>
+  <text label="╚══════════════════════════════════════════════════════════════╝" /><br/>
 </panel>

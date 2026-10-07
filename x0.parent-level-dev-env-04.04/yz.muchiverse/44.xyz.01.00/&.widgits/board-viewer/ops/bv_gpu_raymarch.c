@@ -54,6 +54,8 @@ static const char *FS_SRC =
 "uniform float u_light;\n"
 "uniform vec3  u_sky;\n"
 "uniform int   u_nbox;\n"
+"uniform float u_wire_edge;\n"
+"uniform float u_wire_thin;\n"
 "uniform vec3  u_bmin[128];\n"
 "uniform vec3  u_bmax[128];\n"
 "uniform vec4  u_bcol[128];\n"     /* .rgb colour, .a: 1 = apply light, 0 = self-lit */
@@ -79,9 +81,8 @@ static const char *FS_SRC =
 "  return true;\n"
 "}\n"
 "\n"
-"bool on_edge(vec3 hp, vec3 bn, vec3 bx) {\n"
+"bool on_edge(vec3 hp, vec3 bn, vec3 bx, float e) {\n"
 "  vec3 q = min(abs(hp - bn), abs(hp - bx));\n"
-"  float e = 0.10;\n"
 "  return (int(q.x < e) + int(q.y < e) + int(q.z < e)) >= 2;\n"
 "}\n"
 "\n"
@@ -102,7 +103,8 @@ static const char *FS_SRC =
 "    int mdl = u_bmdl[i];\n"
 "    if (mdl < 0) {\n"
 "      bool wire = (u_bcol[i].a > 0.12 && u_bcol[i].a < 0.4);\n"
-"      if (wire && !on_edge(ro + rd * t, u_bmin[i], u_bmax[i])) continue;\n"
+"      float we = (u_bcol[i].a < 0.2) ? u_wire_thin : u_wire_edge;\n"
+"      if (wire && !on_edge(ro + rd * t, u_bmin[i], u_bmax[i], we)) continue;\n"
 "      bestT = t; col = u_bcol[i].rgb; hit = true;\n"
 "      self_lit = (u_bcol[i].a < 0.5); face = f;\n"
 "      continue;\n"
@@ -197,7 +199,7 @@ static int        s_terr_alloc = 0;           /* terrain-array storage created *
 static int        s_mdl_alloc = 0;
 /* cached uniform locations (glGetUniformLocation is a string lookup) */
 static struct {
-    GLint eye, fwd, right, up, focal, res, wext, grid, leg, terr, lbbox, light, sky, nbox, bmin, bmax, bcol, bmdl, mdl, mdim;
+    GLint eye, fwd, right, up, focal, res, wext, grid, leg, terr, lbbox, light, sky, nbox, bmin, bmax, bcol, bmdl, mdl, mdim, wire_edge, wire_thin;
 } s_u;
 
 static GLuint compile(GLenum type, const char *src) {
@@ -309,7 +311,7 @@ static int gl_ensure_context(void) {
     s_u.focal=UL("u_focal"); s_u.res=UL("u_res"); s_u.wext=UL("u_wext");
     s_u.grid=UL("u_grid"); s_u.leg=UL("u_leg"); s_u.terr=UL("u_terr"); s_u.lbbox=UL("u_lbbox");
     s_u.light=UL("u_light"); s_u.sky=UL("u_sky");
-    s_u.nbox=UL("u_nbox"); s_u.bmin=UL("u_bmin"); s_u.bmax=UL("u_bmax"); s_u.bcol=UL("u_bcol");
+    s_u.wire_edge=UL("u_wire_edge"); s_u.wire_thin=UL("u_wire_thin"); s_u.nbox=UL("u_nbox"); s_u.bmin=UL("u_bmin"); s_u.bmax=UL("u_bmax"); s_u.bcol=UL("u_bcol");
     s_u.bmdl=UL("u_bmdl"); s_u.mdl=UL("u_mdl"); s_u.mdim=UL("u_mdim");
     #undef UL
     return 0;
@@ -500,6 +502,8 @@ int bv_gpu_raymarch(const BvGpuScene *s, unsigned char *out) {
     {
         int nb = s->box_n; if (nb > BV_GPU_MAX_BOX) nb = BV_GPU_MAX_BOX; if (nb > 128) nb = 128;
         glUniform1i(s_u.nbox, nb);
+        glUniform1f(s_u.wire_edge, s->wire_edge > 0 ? s->wire_edge : 0.10f);
+        glUniform1f(s_u.wire_thin, s->wire_thin > 0 ? s->wire_thin : 0.03f);
         if (nb > 0) {
             float bmin[128*3], bmax[128*3], bcol[128*4];
             int bmdl[128];
@@ -507,7 +511,7 @@ int bv_gpu_raymarch(const BvGpuScene *s, unsigned char *out) {
                 bmin[i*3+0]=s->box[i].min_x; bmin[i*3+1]=s->box[i].min_y; bmin[i*3+2]=s->box[i].min_z;
                 bmax[i*3+0]=s->box[i].max_x; bmax[i*3+1]=s->box[i].max_y; bmax[i*3+2]=s->box[i].max_z;
                 bcol[i*4+0]=s->box[i].r; bcol[i*4+1]=s->box[i].g; bcol[i*4+2]=s->box[i].b;
-                bcol[i*4+3]=s->box[i].wire ? 0.25f : (s->box[i].self_lit ? 0.0f : 1.0f);
+                bcol[i*4+3]=s->box[i].wire == 2 ? 0.15f : s->box[i].wire ? 0.25f : (s->box[i].self_lit ? 0.0f : 1.0f);
                 bmdl[i] = (s->box[i].model >= 0 && s->box[i].model < BV_GPU_MAX_MODEL) ? s->box[i].model : -1;
             }
             glUniform3fv(s_u.bmin, nb, bmin);

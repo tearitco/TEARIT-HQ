@@ -44,6 +44,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "../../../&.widgits/_shared-lib/khtpm_locations.c"   /* loc_house_root() / loc_real_root(): one place that finds the house and real roots */
 
 #define MAX_PATH 4096
 #define PATH_BUF (MAX_PATH + 256)
@@ -88,18 +89,7 @@ static void resolve_root(void) {
     const char *env = getenv("PRISC_PROJECT_ROOT");
     if (env && env[0]) snprintf(project_root, sizeof(project_root), "%s", env);
 
-    snprintf(real_root, sizeof(real_root), "%s", project_root);
-    char real_root_path[MAX_PATH + 64];
-    snprintf(real_root_path, sizeof(real_root_path), "%s/pieces/system/real_project_root.txt", project_root);
-    FILE *rf = fopen(real_root_path, "r");
-    if (rf) {
-        char buf[MAX_PATH];
-        if (fgets(buf, sizeof(buf), rf)) {
-            buf[strcspn(buf, "\r\n")] = '\0';
-            if (buf[0]) snprintf(real_root, sizeof(real_root), "%s", buf);
-        }
-        fclose(rf);
-    }
+    loc_real_root(project_root, real_root, sizeof(real_root));   /* shared: absolute / house-relative / stale (rebased) real_project_root.txt */
 }
 
 /* Real box-filter downscale, ported from the house's own real
