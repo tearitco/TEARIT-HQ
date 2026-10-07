@@ -1,0 +1,5 @@
+# the quest board (grave): rows = the quest index table, detail = the tail of the selected quest's QUEST.md (its Log), see ops/board_vars_op.c
+BOARD  | title    | Quest board
+BOARD  | subtitle | ^.grave quests
+SOURCE | md-table | ^.grave/quests/INDEX.md | cols=0,1,4
+DETAIL | link-tail | 14

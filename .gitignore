@@ -206,3 +206,8 @@ x0.parent-level-dev-env-04.04_*.7z
 ^.hai-server/router.pid
 ^.hai-server/router.log
 ^.hai-server/system/
+
+# board-hq runtime (Q006): published vars, selection, module pid
+@.apps/board-hq/state/*/ui.txt
+@.apps/board-hq/state/*/selected.txt
+@.apps/board-hq/module_parent.pid
