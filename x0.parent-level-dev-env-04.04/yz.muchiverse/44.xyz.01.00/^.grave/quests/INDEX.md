@@ -12,7 +12,6 @@ Manager: claude. Status flow: open → claimed → active → review → done | 
 | [Q006](Q006-one-board-layout/QUEST.md) | one generic board layout for grave, roster, server, phone windows | manager / layout-capable agent | M | open | - | - |
 | [Q007](Q007-user-data-branches/QUEST.md) | per-user data branches: take `xyzfs/users` out of code history (`user/jb`), `jb` integration branch | manager / careful outside-agent | L | steps 1-6 and 8 done on `claude`; other branches + `jb` code branch left | claude | data branches are LOCAL ONLY |
 | [Q008](Q008-retire-old-horn-transport/QUEST.md) | retire the old HORN transport `horn_chat_openrouter` (4 scripts still call it; port them, then delete) | worker / outside-agent | S–M | open | - | opencode vs claude: who does it |
-
 | [Q009](Q009-first-events-phone-send-and-route/QUEST.md) | first events: `phone.send` + `server.route` with tunables and a ledger, proven by a verifier | worker / outside-agent | M | open | - | - |
 
 Next ids start at Q010. Copy `_TEMPLATE/` to add one. Design: `#.#.calendar-dox/!.HQ-IQ-BOOK/08-roadmap/design-docs/GRAVEYARD-GHOSTS-DESIGN.md`.
