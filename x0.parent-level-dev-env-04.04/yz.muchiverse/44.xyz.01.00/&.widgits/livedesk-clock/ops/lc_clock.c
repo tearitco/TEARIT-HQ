@@ -14,7 +14,15 @@
  *                      SECTION rows — a list of identical-shaped entities is
  *                      far easier to update record-at-a-time than multi-line
  *                      sections):
- *                        r<id>|clock=<id>|at=<ms>|text=<s>|event=<s>|note=<s>|enabled=1|fired=<ms>|repeat=<s>
+ *                        r<id>|clock=<id>|at=<ms>|text=<s>|event=<s>|note=<s>|enabled=1|fired=<ms>|repeat=<s>[|until=<ms>]
+ *                        repeat= empty = one-shot (fired= is its state); repeat=every:<n><min|hour|day|week|
+ *                        month|year> recurs on the game calendar (month/year keep the anchor day, clamped).
+ *      schedule_ledger.txt  append-only SCHED|<rid>|occurrence_ms|fired_wall_ms|ok|fail|timeout|caught up <N>.
+ *                        The ledger IS the recurrence cursor (never mtime). More than 400 missed occurrences
+ *                        in one poll: 400 fire in order, the rest collapse into one 'caught up N' row + a
+ *                        row in schedule_flags.txt. Events run fork+exec+waitpid with a 30 s watchdog.
+ *      Harness hooks (unset = unchanged): `step <real_ms>` subcommand, LC_CLOCK_NO_POPUP=1,
+ *                        LC_CLOCK_EVENT_RUNNER=<bin>, LC_CLOCK_EVENT_TIMEOUT_S=<n>.
  *      endturn.txt     daemon mailbox: one "endturn <id> [ms]" per line; the
  *                      daemon consumes (truncates) it every loop.
  *      daemon.pid      running daemon pid.
@@ -43,6 +51,7 @@
 #include <sys/file.h>
 #include <sys/time.h>
 #include <dirent.h>
+#include <sys/wait.h>
 
 #define MAX_LINE 1024
 #define MAX_PATH 4096
@@ -300,6 +309,160 @@ static void format_gamedate(long long epoch_ms, const char *lang, char *out, siz
     }
 }
 
+
+static long long days_from_civil(long long y, unsigned m, unsigned d) {
+    y -= (m <= 2);
+    long long era = (y >= 0 ? y : y - 399) / 400;
+    unsigned yoe = (unsigned)(y - era * 400);
+    unsigned doy = (153 * (m > 2 ? m - 3 : m + 9) + 2) / 5 + d - 1;
+    unsigned doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    return era * 146097 + (long long)doe - 719468;
+}
+
+static int is_leap(long long y) { return (y % 4 == 0 && y % 100 != 0) || y % 400 == 0; }
+static unsigned month_len(long long y, unsigned m) {
+    static const unsigned ml[] = {31,28,31,30,31,30,31,31,30,31,30,31};
+    return (m == 2 && is_leap(y)) ? 29 : ml[m - 1];
+}
+
+/* ------------------------------------------------------------------ */
+/* recurrence: repeat=every:<n><unit>  (CLOCK-AS-THE-PLAY-SPINE 3.3)   */
+/* occurrence k is a pure function of (anchor at, n, unit, k): month and */
+/* year steps follow the game calendar and keep the ANCHOR day-of-month  */
+/* (Jan 31 -> Feb 28/29 -> Mar 31), clamped to the month length.         */
+/* ------------------------------------------------------------------ */
+
+#define CATCHUP_CAP 400
+#define DAY_MS 86400000LL
+
+typedef struct { int n; long long step_ms; int months; } Repeat; /* months>0 => calendar unit */
+
+static int parse_repeat(const char *s, Repeat *rp) {
+    int n = 0; char unit[16] = "";
+    if (strncmp(s, "every:", 6) != 0) return -1;
+    if (sscanf(s + 6, "%d%15s", &n, unit) != 2 || n < 1) return -1;
+    rp->n = n; rp->step_ms = 0; rp->months = 0;
+    if (!strcmp(unit, "min")) rp->step_ms = 60000LL * n;
+    else if (!strcmp(unit, "hour")) rp->step_ms = 3600000LL * n;
+    else if (!strcmp(unit, "day")) rp->step_ms = DAY_MS * n;
+    else if (!strcmp(unit, "week")) rp->step_ms = 7 * DAY_MS * n;
+    else if (!strcmp(unit, "month")) rp->months = n;
+    else if (!strcmp(unit, "year")) rp->months = 12 * n;
+    else return -1;
+    return 0;
+}
+
+static void ms_to_ym(long long ms, long long *ym_total, unsigned *d, long long *tod) {
+    int y; unsigned m, dd;
+    civil_from_days(ms / DAY_MS - DAYS_YEAR0_TO_1970, &y, &m, &dd);
+    *ym_total = (long long)y * 12 + (m - 1);
+    *d = dd;
+    *tod = ms % DAY_MS;
+}
+
+static long long rep_occ(long long at, const Repeat *rp, long long k) {
+    if (!rp->months) return at + k * rp->step_ms;
+    long long tot; unsigned d; long long tod;
+    ms_to_ym(at, &tot, &d, &tod);
+    tot += k * rp->months;
+    long long y = tot >= 0 ? tot / 12 : -((-tot + 11) / 12);
+    unsigned m = (unsigned)(tot - y * 12) + 1;
+    unsigned ml = month_len(y, m);
+    if (d > ml) d = ml;
+    return (days_from_civil(y, m, d) + DAYS_YEAR0_TO_1970) * DAY_MS + tod;
+}
+
+/* largest k with occurrence(k) <= limit, or -1 if even occurrence 0 is later */
+static long long rep_kmax(long long at, const Repeat *rp, long long limit) {
+    if (limit < at) return -1;
+    long long k;
+    if (!rp->months) return (limit - at) / rp->step_ms;
+    long long a, l; unsigned d; long long tod;
+    ms_to_ym(at, &a, &d, &tod);
+    ms_to_ym(limit, &l, &d, &tod);
+    k = (l - a) / rp->months;
+    while (k > 0 && rep_occ(at, rp, k) > limit) k--;
+    while (rep_occ(at, rp, k + 1) <= limit) k++;
+    return k;
+}
+
+/* ------------------------------------------------------------------ */
+/* schedule ledger: append-only, the cursor (never mtime)              */
+/*   SCHED|<reminder id>|occurrence_ms|fired_wall_ms|result            */
+/* result: ok | fail | timeout | caught up <N>                         */
+/* ------------------------------------------------------------------ */
+
+typedef struct { char id[64]; long long last_occ; } LedgerCur;
+static LedgerCur *g_cur = NULL; static int g_ncur = 0, g_capcur = 0;
+static long long g_ledger_off = 0; /* bytes already folded into g_cur (size-growth cursor) */
+
+static void ledger_path(char *out, size_t sz, const char *house) {
+    char dir[PBUF];
+    clocks_dir(dir, sizeof(dir), house);
+    join3(out, sz, dir, "schedule_ledger.txt", "");
+}
+
+static void cur_note(const char *id, long long occ) {
+    for (int i = 0; i < g_ncur; i++)
+        if (strcmp(g_cur[i].id, id) == 0) { if (occ > g_cur[i].last_occ) g_cur[i].last_occ = occ; return; }
+    if (g_ncur == g_capcur) {
+        g_capcur = g_capcur ? g_capcur * 2 : 64;
+        g_cur = realloc(g_cur, (size_t)g_capcur * sizeof(LedgerCur));
+        if (!g_cur) { g_ncur = g_capcur = 0; return; }
+    }
+    snprintf(g_cur[g_ncur].id, sizeof(g_cur[g_ncur].id), "%s", id);
+    g_cur[g_ncur].last_occ = occ;
+    g_ncur++;
+}
+
+/* fold any rows appended since the last call into the in-memory cursor map */
+static void ledger_refresh(const char *house) {
+    char path[PBUF];
+    ledger_path(path, sizeof(path), house);
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    if (fseek(f, g_ledger_off, SEEK_SET) != 0) { fclose(f); return; }
+    char line[MAX_LINE];
+    while (fgets(line, sizeof(line), f)) {
+        size_t len = strlen(line);
+        if (len == 0 || line[len - 1] != '\n') break; /* partial row: re-read next time */
+        g_ledger_off += (long long)len;
+        char id[64]; long long occ;
+        if (sscanf(line, "SCHED|%63[^|]|%lld|", id, &occ) == 2) cur_note(id, occ);
+    }
+    fclose(f);
+}
+
+static int ledger_cursor(const char *id, long long *occ) {
+    for (int i = 0; i < g_ncur; i++)
+        if (strcmp(g_cur[i].id, id) == 0) { *occ = g_cur[i].last_occ; return 1; }
+    return 0;
+}
+
+static void ledger_append(const char *house, const char *id, long long occ, long long wall, const char *result) {
+    char path[PBUF];
+    ledger_path(path, sizeof(path), house);
+    int fd = open(path, O_WRONLY | O_CREAT | O_APPEND, 0644);
+    if (fd < 0) return;
+    flock(fd, LOCK_EX);
+    dprintf(fd, "SCHED|%s|%lld|%lld|%s\n", id, occ, wall, result);
+    flock(fd, LOCK_UN);
+    close(fd);
+    cur_note(id, occ); /* keep the in-memory cursor in step; refresh will skip nothing twice (max) */
+}
+
+static void flag_append(const char *house, const char *id, long long n, long long wall) {
+    char dir[PBUF], path[PBUF];
+    clocks_dir(dir, sizeof(dir), house);
+    join3(path, sizeof(path), dir, "schedule_flags.txt", "");
+    int fd = open(path, O_WRONLY | O_CREAT | O_APPEND, 0644);
+    if (fd < 0) return;
+    flock(fd, LOCK_EX);
+    dprintf(fd, "FLAG|%s|caught_up|%lld|%lld\n", id, n, wall);
+    flock(fd, LOCK_UN);
+    close(fd);
+}
+
 /* ------------------------------------------------------------------ */
 /* reminders                                                           */
 /* ------------------------------------------------------------------ */
@@ -314,6 +477,7 @@ typedef struct {
     int enabled;
     long long fired_ms;
     char repeat[64];
+    long long until_ms;   /* 0 = no end; only meaningful with repeat=every:... */
 } Reminder;
 
 static void reminders_path(char *out, size_t sz, const char *house) {
@@ -324,10 +488,13 @@ static void reminders_path(char *out, size_t sz, const char *house) {
 
 /* build a record line; values are | -free (sanitized on input). */
 static void rem_to_line(const Reminder *r, char *out, size_t sz) {
-    snprintf(out, sz,
+    int w = snprintf(out, sz,
              "%s|clock=%s|at=%lld|text=%s|event=%s|note=%s|enabled=%d|fired=%lld|repeat=%s",
              r->id, r->clock, r->at_ms, r->at_text, r->event, r->note,
              r->enabled, r->fired_ms, r->repeat);
+    /* until= is written only when set, so legacy lines stay byte-identical */
+    if (r->until_ms > 0 && w > 0 && (size_t)w < sz)
+        snprintf(out + w, sz - (size_t)w, "|until=%lld", r->until_ms);
 }
 
 static void sanitize_pipe(char *s) {
@@ -342,7 +509,7 @@ static int rem_parse(const char *line, Reminder *r) {
     if (!tok) return -1;
     snprintf(r->id, sizeof(r->id), "%s", tok);
     r->clock[0] = r->at_text[0] = r->event[0] = r->note[0] = r->repeat[0] = '\0';
-    r->at_ms = 0; r->enabled = 1; r->fired_ms = 0;
+    r->at_ms = 0; r->enabled = 1; r->fired_ms = 0; r->until_ms = 0;
     while ((tok = strtok_r(NULL, "|", &save)) != NULL) {
         if (strncmp(tok, "clock=", 6) == 0) snprintf(r->clock, sizeof(r->clock), "%s", tok + 6);
         else if (strncmp(tok, "at=", 3) == 0) r->at_ms = atoll(tok + 3);
@@ -352,6 +519,7 @@ static int rem_parse(const char *line, Reminder *r) {
         else if (strncmp(tok, "enabled=", 8) == 0) r->enabled = atoi(tok + 8);
         else if (strncmp(tok, "fired=", 6) == 0) r->fired_ms = atoll(tok + 6);
         else if (strncmp(tok, "repeat=", 7) == 0) snprintf(r->repeat, sizeof(r->repeat), "%s", tok + 7);
+        else if (strncmp(tok, "until=", 6) == 0) r->until_ms = atoll(tok + 6);
     }
     return 0;
 }
@@ -434,17 +602,24 @@ static int parse_when(int is_real, long long cur_ms, const char *when, long long
 static void next_rem_id(const char *house, char *out, size_t sz) {
     Reminder list[MAX_REMINDERS];
     int n = reminders_load(house, list, MAX_REMINDERS);
+    ledger_refresh(house);
     for (int i = 1; i < 10000; i++) {
         snprintf(out, sz, "r%d", i);
         int taken = 0;
+        long long dummy;
         for (int j = 0; j < n; j++)
             if (strcmp(list[j].id, out) == 0) { taken = 1; break; }
+        /* an id already in the schedule ledger is spent: reusing it would inherit its cursor */
+        if (!taken && ledger_cursor(out, &dummy)) taken = 1;
         if (!taken) return;
     }
     snprintf(out, sz, "r%d", (int)time(NULL));
 }
 
-static int add_reminder(const char *house, const char *clock, const char *when, const char *event, const char *note) {
+static int add_reminder(const char *house, const char *clock, const char *when, const char *event, const char *note,
+                        const char *repeat, long long until_ms) {
+    Repeat rp_chk;
+    if (repeat[0] && parse_repeat(repeat, &rp_chk) != 0) return -1; /* refuse unknown repeat syntax */
     int is_real = (strcmp(clock, "realclock") == 0);
     char dir[PBUF], state[PBUF];
     clocks_dir(dir, sizeof(dir), house);
@@ -470,6 +645,8 @@ static int add_reminder(const char *house, const char *clock, const char *when, 
     snprintf(r.note, sizeof(r.note), "%s", note);
     r.enabled = 1;
     r.fired_ms = 0;
+    snprintf(r.repeat, sizeof(r.repeat), "%s", repeat);
+    r.until_ms = until_ms;
     sanitize_pipe(r.note);
     sanitize_pipe(r.event);
     sanitize_pipe(r.at_text);
@@ -601,7 +778,61 @@ static int find_app_dir(const char *house_root, const char *app_name, char *out,
     return 0;
 }
 
-static void fire_reminder(const char *house, const Reminder *r) {
+/* Run the attached event: fork + exec (no shell) + waitpid with a watchdog.
+ * Returns "ok" | "fail" | "timeout". Timeout default 30 s (LC_CLOCK_EVENT_TIMEOUT_S
+ * overrides, mainly for the harness); on timeout the whole process group is killed.
+ * LC_CLOCK_EVENT_RUNNER=<bin> replaces `sh <muchi-pet>/ops/play_event.sh` and is
+ * called as <bin> <pkg> <house> (harness hook; unset = production behavior). */
+static const char *run_event(const char *house, const char *event) {
+    char pkg[PBUF] = "";
+    if (strncmp(event, "common:", 7) == 0) {
+        snprintf(pkg, sizeof(pkg), "%s/common_events/%s", house, event + 7);
+    } else if (strncmp(event, "clock:", 6) == 0) {
+        snprintf(pkg, sizeof(pkg), "%s/#.desktop/clocks/%s", house, event + 6);
+    } else {
+        snprintf(pkg, sizeof(pkg), "%s", event);
+    }
+    char script[PBUF] = "";
+    const char *runner = getenv("LC_CLOCK_EVENT_RUNNER");
+    if (!runner || !runner[0]) {
+        char muchi_pet_dir[PBUF];
+        find_app_dir(house, "muchi-pet", muchi_pet_dir, sizeof(muchi_pet_dir));
+        snprintf(script, sizeof(script), "%s/ops/play_event.sh", muchi_pet_dir);
+    }
+    long tmo = 30;
+    const char *te = getenv("LC_CLOCK_EVENT_TIMEOUT_S");
+    if (te && atol(te) > 0) tmo = atol(te);
+
+    pid_t pid = fork();
+    if (pid < 0) return "fail";
+    if (pid == 0) {
+        setpgid(0, 0);
+        int dn = open("/dev/null", O_RDWR);
+        if (dn >= 0) { dup2(dn, 0); dup2(dn, 1); dup2(dn, 2); if (dn > 2) close(dn); }
+        if (script[0]) execl("/bin/sh", "sh", script, pkg, house, (char *)NULL);
+        else execl(runner, runner, pkg, house, (char *)NULL);
+        _exit(127);
+    }
+    setpgid(pid, pid); /* also from the parent, closing the exec race */
+    long long deadline = mono_ms_now() + tmo * 1000LL;
+    int st = 0;
+    for (;;) {
+        pid_t w = waitpid(pid, &st, WNOHANG);
+        if (w == pid) return (WIFEXITED(st) && WEXITSTATUS(st) == 0) ? "ok" : "fail";
+        if (w < 0) return "fail";
+        if (mono_ms_now() >= deadline) {
+            kill(-pid, SIGKILL);
+            kill(pid, SIGKILL);
+            waitpid(pid, &st, 0);
+            return "timeout";
+        }
+        usleep(10000);
+    }
+}
+
+/* The daemon fires a reminder: popup (detached, it is a UI) + the attached event.
+ * LC_CLOCK_NO_POPUP=1 skips the popup (harness/scratch runs). Returns the event result. */
+static const char *fire_reminder(const char *house, const Reminder *r, int show_popup) {
     char dir[PBUF];
     clocks_dir(dir, sizeof(dir), house);
     ensure_dir(dir);
@@ -617,38 +848,25 @@ static void fire_reminder(const char *house, const Reminder *r) {
         fclose(mf);
     }
 
-    char lc_dir[PBUF];
-    find_app_dir(house, "livedesk-clock", lc_dir, sizeof(lc_dir));
-    char popup_bin[PBUF];
-    snprintf(popup_bin, sizeof(popup_bin), "%s/ops/+x/lc_reminder_popup.+x", lc_dir);
-    char sh[PBUF * 2];
-    /* house window standard: X11 RGB window + CSS (khtpm_css_parser),
-     * launched detached exactly like db-hq/events-hq/context-menu open
-     * (setsid nohup <bin> <house> <payload>) — NOT a GL window. */
-    snprintf(sh, sizeof(sh), "setsid nohup '%s' '%s' '%s' >/dev/null 2>&1 &",
-             popup_bin, house, msgpath);
-    int rc = system(sh);
-    (void)rc;
+    const char *np = getenv("LC_CLOCK_NO_POPUP");
+    if (show_popup && !(np && np[0] == '1')) {
+        char lc_dir[PBUF];
+        find_app_dir(house, "livedesk-clock", lc_dir, sizeof(lc_dir));
+        char popup_bin[PBUF];
+        snprintf(popup_bin, sizeof(popup_bin), "%s/ops/+x/lc_reminder_popup.+x", lc_dir);
+        char sh[PBUF * 2];
+        /* house window standard: X11 RGB window + CSS (khtpm_css_parser),
+         * launched detached exactly like db-hq/events-hq/context-menu open
+         * (setsid nohup <bin> <house> <payload>) — NOT a GL window. */
+        snprintf(sh, sizeof(sh), "setsid nohup '%s' '%s' '%s' >/dev/null 2>&1 &",
+                 popup_bin, house, msgpath);
+        int rc = system(sh);
+        (void)rc;
+    }
 
     /* run the attached event (.pal/events only, per user decision R5) */
-    if (r->event[0]) {
-        char pkg[PBUF] = "";
-        if (strncmp(r->event, "common:", 7) == 0) {
-            snprintf(pkg, sizeof(pkg), "%s/common_events/%s", house, r->event + 7);
-        } else if (strncmp(r->event, "clock:", 6) == 0) {
-            snprintf(pkg, sizeof(pkg), "%s/#.desktop/clocks/%s", house, r->event + 6);
-        } else {
-            snprintf(pkg, sizeof(pkg), "%s", r->event);
-        }
-        char muchi_pet_dir[PBUF];
-        find_app_dir(house, "muchi-pet", muchi_pet_dir, sizeof(muchi_pet_dir));
-        char evsh[PBUF * 2];
-        snprintf(evsh, sizeof(evsh),
-                 "setsid nohup sh '%s/ops/play_event.sh' '%s' '%s' >/dev/null 2>&1 &",
-                 muchi_pet_dir, pkg, house);
-        int rc2 = system(evsh);
-        (void)rc2;
-    }
+    if (r->event[0]) return run_event(house, r->event);
+    return "ok";
 }
 
 static void poll_reminders(const char *house) {
@@ -656,23 +874,90 @@ static void poll_reminders(const char *house) {
     int n = reminders_load(house, list, MAX_REMINDERS);
     int changed = 0;
     long long wall = wall_ms_now();
+    ledger_refresh(house);
     for (int i = 0; i < n; i++) {
-        if (!list[i].enabled || list[i].fired_ms != 0) continue;
+        Reminder *r = &list[i];
+        if (!r->enabled) continue;
+        Repeat rp;
+        int repeating = r->repeat[0] && parse_repeat(r->repeat, &rp) == 0;
+        if (!repeating && r->fired_ms != 0) continue;
         long long cur = wall;
-        if (strcmp(list[i].clock, "realclock") != 0) {
+        if (strcmp(r->clock, "realclock") != 0) {
             char dir[PBUF], state[PBUF];
             clocks_dir(dir, sizeof(dir), house);
-            join3(state, sizeof(state), dir, list[i].clock, ".pdl");
+            join3(state, sizeof(state), dir, r->clock, ".pdl");
             if (access(state, F_OK) != 0) continue; /* clock deleted */
             cur = read_kv_ll(state, "game_time_epoch_ms", 0);
         }
-        if (cur >= list[i].at_ms) {
-            list[i].fired_ms = wall;
-            fire_reminder(house, &list[i]);
+        long long last;
+        int have = ledger_cursor(r->id, &last);
+
+        if (!repeating) { /* legacy one-shot: fired= is the state; the ledger only guards replay */
+            if (cur < r->at_ms) continue;
+            r->fired_ms = wall;
             changed = 1;
+            if (have && last >= r->at_ms) continue; /* already ledgered (stale reminders.pdl): never twice */
+            const char *res = fire_reminder(house, r, 1);
+            ledger_append(house, r->id, r->at_ms, wall, res);
+            continue;
         }
+
+        long long limit = cur;
+        if (r->until_ms > 0 && r->until_ms < limit) limit = r->until_ms;
+        long long kmax = rep_kmax(r->at_ms, &rp, limit);
+        long long k0 = have ? rep_kmax(r->at_ms, &rp, last) + 1 : 0;
+        long long missed = kmax - k0 + 1;
+        if (missed <= 0) continue;
+        long long fire_n = missed > CATCHUP_CAP ? CATCHUP_CAP : missed;
+        for (long long j = 0; j < fire_n; j++) {
+            long long occ = rep_occ(r->at_ms, &rp, k0 + j);
+            /* one popup per batch (the last fired), events run for every occurrence */
+            const char *res = fire_reminder(house, r, j == fire_n - 1);
+            ledger_append(house, r->id, occ, wall_ms_now(), res);
+        }
+        if (missed > fire_n) {
+            long long collapsed = missed - fire_n;
+            char res[64];
+            snprintf(res, sizeof(res), "caught up %lld", collapsed);
+            ledger_append(house, r->id, rep_occ(r->at_ms, &rp, kmax), wall_ms_now(), res);
+            flag_append(house, r->id, collapsed, wall_ms_now());
+        }
+        r->fired_ms = wall;
+        changed = 1;
     }
     if (changed) reminders_save(house, list, n);
+}
+
+/* advance every running clock by `elapsed` real ms at its rate (daemon ticker body) */
+static void advance_clocks(const char *house, long long elapsed) {
+    char dir[PBUF];
+    clocks_dir(dir, sizeof(dir), house);
+    char ids[MAX_CLOCKS][128];
+    int n = clock_ids(house, ids, MAX_CLOCKS);
+    for (int i = 0; i < n; i++) {
+        char state[PBUF];
+        join3(state, sizeof(state), dir, ids[i], ".pdl");
+        if (access(state, F_OK) != 0) continue;
+        int running = read_kv_int(state, "running", 1);
+        char rate[16] = "off";
+        read_kv_str(state, "rate", rate, sizeof(rate));
+        double mult = rate_mult(rate);
+        if (running && mult > 0.0 && elapsed > 0) {
+            long long ms = read_kv_ll(state, "game_time_epoch_ms", 0);
+            long long old_min = ms / 60000LL;
+            double delta_game_cs = (double)elapsed * mult;
+            long long delta_game_ms = (long long)(delta_game_cs * 10.0);
+            if (delta_game_ms > 0) {
+                ms += delta_game_ms;
+                write_kv_ll(state, "game_time_epoch_ms", ms);
+                long long new_min = ms / 60000LL;
+                if (new_min != old_min) {
+                    int tick = read_kv_int(state, "tick", 0);
+                    write_kv_int(state, "tick", tick + 1);
+                }
+            }
+        }
+    }
 }
 
 static int cmd_daemon(const char *house) {
@@ -698,32 +983,7 @@ static int cmd_daemon(const char *house) {
         long long elapsed = now - last;
         last = now;
 
-        /* ticker: advance every running clock with a real rate */
-        int n = clock_ids(house, ids, MAX_CLOCKS);
-        for (int i = 0; i < n; i++) {
-            char state[PBUF];
-            join3(state, sizeof(state), dir, ids[i], ".pdl");
-            if (access(state, F_OK) != 0) continue;
-            int running = read_kv_int(state, "running", 1);
-            char rate[16] = "off";
-            read_kv_str(state, "rate", rate, sizeof(rate));
-            double mult = rate_mult(rate);
-            if (running && mult > 0.0 && elapsed > 0) {
-                long long ms = read_kv_ll(state, "game_time_epoch_ms", 0);
-                long long old_min = ms / 60000LL;
-                double delta_game_cs = (double)elapsed * mult;
-                long long delta_game_ms = (long long)(delta_game_cs * 10.0);
-                if (delta_game_ms > 0) {
-                    ms += delta_game_ms;
-                    write_kv_ll(state, "game_time_epoch_ms", ms);
-                    long long new_min = ms / 60000LL;
-                    if (new_min != old_min) {
-                        int tick = read_kv_int(state, "tick", 0);
-                        write_kv_int(state, "tick", tick + 1);
-                    }
-                }
-            }
-        }
+        advance_clocks(house, elapsed);
 
         consume_mailbox(house);
         poll_reminders(house);
@@ -779,7 +1039,10 @@ static void print_usage(const char *prog) {
         "  ticker <id> on|off              enable/disable continuous ticker\n"
         "  rate <id> <cent|sec|min|hour|day|off>\n"
         "  endturn <id> [ms]               queue one discrete advance (default 1 game hour)\n"
-        "  reminder-add <clock> <when> <event> [note]   when: HH:MM | +N[smhd] | ms | now\n"
+        "  reminder-add <clock> <when> <event> [note] [repeat] [until_ms]\n"
+        "                                  when: HH:MM | +N[smhd] | ms | now; repeat: every:<n><min|hour|day|week|month|year>\n"
+        "  step <real_ms>                  one deterministic pass (ticker for real_ms, mailbox, reminders); no daemon, no sleep\n"
+        "  sched-count <rid> [prefix]      count schedule-ledger rows of a reminder (result starting with prefix)\n"
         "  reminder-del <rid>              delete a reminder\n"
         "  reminders                       list reminders\n",
         prog);
@@ -868,7 +1131,9 @@ int main(int argc, char **argv) {
     if (strcmp(cmd, "reminder-add") == 0) {
         if (argc < 6) return 1;
         const char *note = argc >= 7 ? argv[6] : "";
-        if (add_reminder(house, argv[3], argv[4], argv[5], note) != 0) {
+        const char *rep = argc >= 8 ? argv[7] : "";
+        long long until = argc >= 9 ? atoll(argv[8]) : 0;
+        if (add_reminder(house, argv[3], argv[4], argv[5], note, rep, until) != 0) {
             fprintf(stderr, "reminder-add failed\n");
             return 1;
         }
@@ -877,6 +1142,31 @@ int main(int argc, char **argv) {
     if (strcmp(cmd, "reminder-del") == 0) {
         if (argc < 4) return 1;
         return del_reminder(house, argv[3]) == 0 ? 0 : 1;
+    }
+    if (strcmp(cmd, "step") == 0) { /* deterministic one pass; use only with no daemon running on this root */
+        if (argc < 4) return 1;
+        advance_clocks(house, atoll(argv[3]));
+        consume_mailbox(house);
+        poll_reminders(house);
+        return 0;
+    }
+    if (strcmp(cmd, "sched-count") == 0) {
+        if (argc < 4) return 1;
+        const char *pre = argc >= 5 ? argv[4] : "";
+        char lp[PBUF];
+        ledger_path(lp, sizeof(lp), house);
+        FILE *lf = fopen(lp, "r");
+        long long cnt = 0;
+        char ln[MAX_LINE];
+        while (lf && fgets(ln, sizeof(ln), lf)) {
+            char id[64], res[128]; long long a, b;
+            ln[strcspn(ln, "\r\n")] = '\0';
+            if (sscanf(ln, "SCHED|%63[^|]|%lld|%lld|%127[^\n]", id, &a, &b, res) == 4 &&
+                strcmp(id, argv[3]) == 0 && strncmp(res, pre, strlen(pre)) == 0) cnt++;
+        }
+        if (lf) fclose(lf);
+        printf("%lld\n", cnt);
+        return 0;
     }
     if (strcmp(cmd, "reminders") == 0) {
         Reminder list[MAX_REMINDERS];

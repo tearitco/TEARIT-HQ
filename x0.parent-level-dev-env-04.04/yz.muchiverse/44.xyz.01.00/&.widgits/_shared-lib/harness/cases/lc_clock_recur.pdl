@@ -1,0 +1,222 @@
+# lc_clock_recur (CLOCK-AS-THE-PLAY-SPINE-DESIGN.md 3.3, build steps 2-3): repeat=every:<n><unit>, calendar-aware month/year, until=, catch-up cap 400,
+# schedule ledger as cursor, event run safety (fork/exec/waitpid + watchdog). Same scratch + no-popup rules as lc_clock_base. Calendar: epoch 0 = year 0 Jan 1 (year 0 is leap).
+RESULTS | ../results/lc_clock_recur.txt
+ENV     | LC_CLOCK_NO_POPUP | 1
+ENV     | LC_CLOCK_EVENT_RUNNER | /usr/bin/true
+CASE    | daily-3-days
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 |  | d | every:1day
+EXPECT_EXIT | 0 | add-rc0
+RUN | $T/lc.+x | $T | endturn | g1 | 259200000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 3 | daily-over-3-game-days-fires-3
+EXPECT_HAS | #.desktop/clocks/schedule_ledger.txt | SCHED\pr1\p86400000\p | day1-row
+EXPECT_HAS | #.desktop/clocks/schedule_ledger.txt | SCHED\pr1\p259200000\p | day3-row
+EXPECT_LACKS | #.desktop/clocks/schedule_ledger.txt | SCHED\pr1\p345600000\p | no-day4-yet
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 4 | fourth-day-fires-exactly-one-more
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 4 | no-time-passed-no-refire
+CLEAN |
+CASE    | every-n-units
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 |  | a | every:2day
+RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 |  | b | every:1week
+RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 |  | c | every:90min
+RUN | $T/lc.+x | $T | endturn | g1 | 1209600000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 7 | every-2-days-days-1-3-5-7-9-11-13
+RUN | $T/lc.+x | $T | sched-count | r2
+EXPECT_OUT_IS | 2 | every-week-days-1-and-8-then-15-not-yet
+RUN | $T/lc.+x | $T | sched-count | r3
+EXPECT_OUT_IS | 209 | every-90min-days-1-to-14-is-209-occurrences-under-cap
+CLEAN |
+CASE    | monthly-non-leap
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | reminder-add | g1 | 34214400000 |  | m | every:1month
+RUN | $T/lc.+x | $T | endturn | g1 | 39312000000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 3 | jan31-feb28-mar31-is-3-rows
+EXPECT_HAS | #.desktop/clocks/schedule_ledger.txt | SCHED\pr1\p34214400000\p | jan31
+EXPECT_HAS | #.desktop/clocks/schedule_ledger.txt | SCHED\pr1\p36633600000\p | feb28-clamped-not-30-days
+EXPECT_HAS | #.desktop/clocks/schedule_ledger.txt | SCHED\pr1\p39312000000\p | mar31-anchor-day-restored
+CLEAN |
+CASE    | monthly-leap
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | reminder-add | g1 | 128822400000 |  | m | every:1month
+RUN | $T/lc.+x | $T | endturn | g1 | 136598400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 4 | leap-year-jan31-feb29-mar31-apr30
+EXPECT_HAS | #.desktop/clocks/schedule_ledger.txt | SCHED\pr1\p131328000000\p | leap-feb29
+EXPECT_HAS | #.desktop/clocks/schedule_ledger.txt | SCHED\pr1\p134006400000\p | mar31
+EXPECT_HAS | #.desktop/clocks/schedule_ledger.txt | SCHED\pr1\p136598400000\p | apr30-clamped
+RUN | $T/lc.+x | $T | gamedate | g1 | en
+EXPECT_OUT_IS | 0004-04-30 00:00:00 | calendar-check-year4-apr30
+CLEAN |
+CASE    | monthly-every-3
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | reminder-add | g1 | 34214400000 |  | q | every:3month
+RUN | $T/lc.+x | $T | endturn | g1 | 60134400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 4 | every-3-months-jan31-apr30-jul31-oct31
+CLEAN |
+CASE    | yearly-leap
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | reminder-add | g1 | 131328000000 |  | y | every:1year
+RUN | $T/lc.+x | $T | endturn | g1 | 257558400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 5 | feb29-year4-to-feb29-year8-is-5-rows
+EXPECT_HAS | #.desktop/clocks/schedule_ledger.txt | SCHED\pr1\p162864000000\p | year5-feb28-clamped
+EXPECT_HAS | #.desktop/clocks/schedule_ledger.txt | SCHED\pr1\p257558400000\p | year8-feb29-restored
+CLEAN |
+CASE    | catchup-1000-days
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 |  | big | every:1day
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r1 | ok
+EXPECT_OUT_IS | 400 | cap-400-fired-in-order
+RUN | $T/lc.+x | $T | sched-count | r1 | caught up
+EXPECT_OUT_IS | 1 | one-collapsed-row
+EXPECT_HAS | #.desktop/clocks/schedule_ledger.txt | \pcaught up 600 | collapsed-row-says-caught-up-600
+EXPECT_HAS | #.desktop/clocks/schedule_flags.txt | FLAG\pr1\pcaught_up\p600\p | collapse-flagged
+EXPECT_HAS | #.desktop/clocks/schedule_ledger.txt | SCHED\pr1\p34560000000\p | row-400-is-day-400
+EXPECT_LACKS | #.desktop/clocks/schedule_ledger.txt | SCHED\pr1\p34646400000\p | day-401-not-individually-fired
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 401 | no-refire-after-collapse
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 402 | day-1001-resumes-after-collapsed-cursor
+CLEAN |
+CASE    | restart-replay
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 | $T/ev.flag | r | every:1day
+RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 |  | one | 
+RUN | $T/lc.+x | $T | endturn | g1 | 259200000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 3 | first-run-3
+RUN | $T/lc.+x | $T | sched-count | r2
+EXPECT_OUT_IS | 1 | oneshot-first-run-1
+# a restore/stale reminders.pdl: both records back with fired=0, the ledger kept
+WRITE | #.desktop/clocks/reminders.pdl | r1\pclock=g1\pat=86400000\ptext=x\pevent=\pnote=r\penabled=1\pfired=0\prepeat=every:1day\nr2\pclock=g1\pat=86400000\ptext=x\pevent=\pnote=one\penabled=1\pfired=0\prepeat=\n
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 3 | replay-repeating-fires-0-new
+RUN | $T/lc.+x | $T | sched-count | r2
+EXPECT_OUT_IS | 1 | replay-oneshot-fires-0-new
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 4 | only-the-genuinely-new-day-fires
+RUN | $T/lc.+x | $T | sched-count | r2
+EXPECT_OUT_IS | 1 | oneshot-still-1
+CLEAN |
+CASE    | until
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 |  | u | every:1day | 216000000
+RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 |  | w | every:1day | 259200000
+RUN | $T/lc.+x | $T | endturn | g1 | 864000000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 2 | until-2.5-days-stops-after-day-2
+RUN | $T/lc.+x | $T | sched-count | r2
+EXPECT_OUT_IS | 3 | until-is-inclusive-day-3
+EXPECT_HAS | #.desktop/clocks/reminders.pdl | until=216000000 | until-stored
+RUN | $T/lc.+x | $T | endturn | g1 | 864000000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 2 | stays-stopped
+CLEAN |
+CASE    | legacy-one-shot
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+RUN | $T/lc.+x | $T | new | g1
+WRITE | #.desktop/clocks/reminders.pdl | r1\pclock=g1\pat=86400000\ptext=x\pevent=\pnote=old\penabled=1\pfired=0\prepeat=\nr2\pclock=g1\pat=86400000\ptext=x\pevent=\pnote=old2\penabled=1\pfired=0\prepeat=garbage\n
+RUN | $T/lc.+x | $T | endturn | g1 | 432000000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 1 | empty-repeat-is-one-shot
+RUN | $T/lc.+x | $T | sched-count | r2
+EXPECT_OUT_IS | 1 | unparseable-repeat-treated-as-one-shot
+RUN | $T/lc.+x | $T | endturn | g1 | 432000000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 1 | legacy-still-once
+EXPECT_LACKS | #.desktop/clocks/reminders.pdl | until= | legacy-line-gets-no-until-field
+CLEAN |
+CASE    | add-validation
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 |  | x | every:2fortnight
+EXPECT_EXIT | 1 | unknown-unit-refused
+RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 |  | x | every:0day
+EXPECT_EXIT | 1 | zero-n-refused
+RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 |  | x | daily
+EXPECT_EXIT | 1 | free-text-repeat-refused
+CLEAN |
+CASE    | event-run-safety
+SCRATCH |
+ENV | LC_CLOCK_EVENT_RUNNER | /usr/bin/touch
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 | $T/ev_ok.flag | ok | every:1day
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+EXPECT_EXISTS | ev_ok.flag | event-got-its-pkg-argument
+RUN | $T/lc.+x | $T | sched-count | r1 | ok
+EXPECT_OUT_IS | 1 | exit-0-recorded-ok
+ENV | LC_CLOCK_EVENT_RUNNER | /usr/bin/false
+RUN | $T/lc.+x | $T | reminder-add | g1 | 172800000 | x | bad | 
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r2 | fail
+EXPECT_OUT_IS | 1 | nonzero-exit-recorded-fail
+ENV | LC_CLOCK_EVENT_RUNNER | /nonexistent/runner
+RUN | $T/lc.+x | $T | reminder-add | g1 | 259200000 | x | gone | 
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r3 | fail
+EXPECT_OUT_IS | 1 | missing-runner-recorded-fail-not-hang
+ENV | LC_CLOCK_EVENT_RUNNER | /usr/bin/yes
+ENV | LC_CLOCK_EVENT_TIMEOUT_S | 1
+RUN | $T/lc.+x | $T | reminder-add | g1 | 345600000 | x | hang | 
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r4 | timeout
+EXPECT_OUT_IS | 1 | endless-event-killed-by-watchdog-recorded-timeout
+RUN | $T/lc.+x | $T | sched-count | r4
+EXPECT_OUT_IS | 1 | timeout-row-is-the-only-row
+ENV | LC_CLOCK_EVENT_TIMEOUT_S | 
+ENV | LC_CLOCK_EVENT_RUNNER | /usr/bin/true
+CLEAN |
