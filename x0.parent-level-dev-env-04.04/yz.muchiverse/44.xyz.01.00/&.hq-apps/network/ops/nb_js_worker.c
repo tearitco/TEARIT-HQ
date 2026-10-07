@@ -599,6 +599,21 @@ static void rw_sel(SB *b, const NbNode *n) {
 static void dom_walk_render(const NbNode *n, int *titled, SB *b) {
     if (!n) return;
     const char *tg = n->tag;
+    /* REAL, NEW 2026-10-07 (live scroll-through: Wikipedia's own footer
+     * farm rendered as article content) - prune chrome SUBTREES here,
+     * structurally: nav/footer/aside landmarks + ARIA sectioning roles.
+     * Same predicate family as the static extractor's tag_is_chrome()
+     * (worker side of the lane split) - never text matching, so no site
+     * can ever be hardcoded. Whole subtree unwalked. */
+    if (tg) {
+        if (!strcasecmp(tg, "nav") || !strcasecmp(tg, "footer") || !strcasecmp(tg, "aside"))
+            return;
+        const char *role = nb_attr_get(n, "role");
+        if (role && (!strcasecmp(role, "navigation") || !strcasecmp(role, "banner") ||
+                     !strcasecmp(role, "complementary") || !strcasecmp(role, "search") ||
+                     !strcasecmp(role, "contentinfo")))
+            return;
+    }
     int caption_used = 0;   /* element's own text already surfaced as TITLE/LINK/IMG */
     if (tg && !strcasecmp(tg, "title") && !*titled) {
         SB t = {0, 0, 0};
