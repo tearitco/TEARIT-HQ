@@ -71,3 +71,23 @@ I read "that menu" as the setup choices raised as open questions in section 7. T
 - **Reuse:** the New/Load/Save menu class and `game_slot_op` (save/load slots) for Load/Save; `desk_copy_op` and template entities for seeding; the harness framework for tests (defaults produce the same numbers as no `SETUP` rows; each option changes exactly what it names; locked options refuse changes after Start).
 
 **Build order addition (before step 1 of section 5):** define the `SETUP` rows and their defaults in the game setup parser (extend `khtpm_game_setup.c`, with pal harness cases), then the screen, then wire Start to the seeding. Open: is the New Game screen reached from the toy menu only, from a taskbar cell too, or both (recommended: both)?
+
+## 8b. Setup also chooses how many civilizations, their starting size, and their free buildings (owner, same day)
+Owner: the screen "will allow us to set up starting civ size, free buildings for each civ (can be 2, more, 4 player), etc."
+- **Number of civilizations: 2 to 4** (default 2). Each civilization is one **seat**: `human` or `ai` (a "4 player" game = up to 4 seats; how several humans share one desk or join over the network is not designed here; same-machine seats first).
+- **Starting size per civ:** the starting population of its pool (and so its starting demand, wage pool and number of promoted, watchable citizens).
+- **Free buildings per civ:** a list of buildings the civ **starts with at no cost** (not bought on the market), by kind and count (castle, bank, store, hotel, school, later more). Different lists per civ are allowed (a handicap or a scenario). Everything built **after** the start is paid for through the economy.
+- **Layout:** each civ gets a block of the board (e.g. A and B as today; C and D as two more blocks, quadrant style), entity names carry the civ letter (`dsrtest_store_a1` ... `dsrtest_store_c1`), and templates (`_seed` template entities per kind) are spawned for any building a civ does not already have (the 2-civ default is exactly the current 16 entities).
+- **Rows** (proposal; extends the `SETUP` rows of section 8, legacy-safe):
+```
+SETUP | civs         | 2
+SETUP | civ.a.seat   | human            # human | ai
+SETUP | civ.a.pop    | 1000
+SETUP | civ.a.free   | castle=1,bank=2,store=4,hotel=1,school=1
+SETUP | civ.b.seat   | ai
+SETUP | civ.b.pop    | 1000
+SETUP | civ.b.free   | castle=1,bank=2,store=4,hotel=1,school=1
+```
+- **Presets** are just named sets of these rows (Quick demo: 2 civs, small, few buildings; Standard; 4-civ Free-for-all).
+- **Cost risk, unmeasured:** every building is an entity (a process and possibly a window). 2 civs x about 10 buildings is 20-ish; 4 civs is 40-ish on a machine already CPU-constrained. Measure the real cost of N idle entities **before** committing to buildings-as-entities for 4 civs; the fallback is the same one as for citizens: buildings as data rows drawn on the board, opened as real entity windows only when selected. Add a cap (max civs/buildings) in the setup screen until measured.
+- **Harness cases to add:** 2-civ defaults equal the current entity set; changing `civ.a.free` changes only civ A's starting buildings; `civs=4` creates exactly 4 blocks with unique names and positions, no overlap; `civ.x.pop` sets the pool; a locked option refuses change after Start.
