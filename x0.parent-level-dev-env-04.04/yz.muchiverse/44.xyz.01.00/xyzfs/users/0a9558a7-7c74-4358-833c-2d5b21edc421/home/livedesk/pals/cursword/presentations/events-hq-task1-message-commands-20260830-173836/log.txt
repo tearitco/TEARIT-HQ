@@ -1,0 +1,129 @@
+[17:38:36] === step 0: preflight ===
+[17:38:36] prisc=/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/101.mutaclsym🧟‍♂️️+18.0G/system/prisc+x
+[17:38:36] === step 0: clean stray processes ===
+[17:38:36] === step 1: build sandbox package (under house root for $D walk) ===
+[17:38:36] === step 2: launch events-hq manager (standalone, real house root) ===
+[17:38:38] PASS: manager launched
+[17:38:38] === step 3: append erase_event via the REAL append: action (forces full recompile) ===
+[17:38:38] action sent: append:erase_event|
+[17:38:40] PASS: IR has 9 NODEs after append (show_text, show_choices, input_number, select_item, scrolling_text, transparency, followers, animation, erase)
+[17:38:40] === step 4: compile proof - event.pal + cmd_N.sh wrappers ===
+[17:38:40] PASS: event.pal compiled
+[17:38:40] event.pal:
+# event.pal - real prisc+x opcodes, COMPILED from event.ir.pdl by khtpm_events_hq_manager.c
+# pkg=task1-sandbox page=page_1 - regenerated fresh on every command save
+exec cmd_1.sh
+exec cmd_2.sh
+exec cmd_3.sh
+exec cmd_4.sh
+exec cmd_5.sh
+exec cmd_6.sh
+exec cmd_7.sh
+exec cmd_8.sh
+exec cmd_9.sh
+halt
+[17:38:40] IR node for show_text present
+[17:38:40] IR node for show_choices present
+[17:38:40] IR node for input_number present
+[17:38:40] IR node for select_item present
+[17:38:40] IR node for scrolling_text present
+[17:38:40] IR node for change_transparency present
+[17:38:40] IR node for followers present
+[17:38:40] IR node for show_animation present
+[17:38:40] IR node for erase_event present
+[17:38:40] cmd_N.sh wrappers: cmd_1.sh
+cmd_2.sh
+cmd_3.sh
+cmd_4.sh
+cmd_5.sh
+cmd_6.sh
+cmd_7.sh
+cmd_8.sh
+cmd_9.sh
+[17:38:40] PASS: 9 cmd_N.sh wrappers generated (one per node)
+cmd_3.sh:exec "$D/&.widgits/events-hq/ops/+x/mr_input_number.+x" "$ENT" "$D" 'hp' 1
+[17:38:40] PASS: wrappers call the NEW ops (mr_input_number/mr_select_item/mr_scrolling_text/mr_character)
+### /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task1_sandbox/20260830-173836/event_pkg/pages/page_1/cmd_1.sh
+#!/bin/sh
+cd "$(dirname "$0")/../../.." || exit 1
+ENT="$PWD"
+D="$ENT"
+while [ "$D" != "/" ] && [ ! -d "$D/xyzfs" ]; do D="$(dirname "$D")"; done
+exec "$D/&.widgits/events-hq/ops/+x/mr_show_text.+x" "$ENT" 'greeting.txt'
+### /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task1_sandbox/20260830-173836/event_pkg/pages/page_1/cmd_2.sh
+#!/bin/sh
+cd "$(dirname "$0")/../../.." || exit 1
+ENT="$PWD"
+D="$ENT"
+while [ "$D" != "/" ] && [ ! -d "$D/xyzfs" ]; do D="$(dirname "$D")"; done
+exec "$D/&.widgits/events-hq/ops/+x/mr_show_choices.+x" "$ENT" 'Fire,Ice,Volt' 2
+### /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task1_sandbox/20260830-173836/event_pkg/pages/page_1/cmd_3.sh
+#!/bin/sh
+cd "$(dirname "$0")/../../.." || exit 1
+ENT="$PWD"
+D="$ENT"
+while [ "$D" != "/" ] && [ ! -d "$D/xyzfs" ]; do D="$(dirname "$D")"; done
+exec "$D/&.widgits/events-hq/ops/+x/mr_input_number.+x" "$ENT" "$D" 'hp' 1
+### /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task1_sandbox/20260830-173836/event_pkg/pages/page_1/cmd_4.sh
+#!/bin/sh
+cd "$(dirname "$0")/../../.." || exit 1
+ENT="$PWD"
+D="$ENT"
+while [ "$D" != "/" ] && [ ! -d "$D/xyzfs" ]; do D="$(dirname "$D")"; done
+exec "$D/&.widgits/events-hq/ops/+x/mr_select_item.+x" "$ENT" "$D" 'pick_idx'
+### /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task1_sandbox/20260830-173836/event_pkg/pages/page_1/cmd_5.sh
+#!/bin/sh
+cd "$(dirname "$0")/../../.." || exit 1
+ENT="$PWD"
+D="$ENT"
+while [ "$D" != "/" ] && [ ! -d "$D/xyzfs" ]; do D="$(dirname "$D")"; done
+exec "$D/&.widgits/events-hq/ops/+x/mr_scrolling_text.+x" "$ENT" "$D" 'Room 5 is aflame'
+### /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task1_sandbox/20260830-173836/event_pkg/pages/page_1/cmd_6.sh
+#!/bin/sh
+cd "$(dirname "$0")/../../.." || exit 1
+ENT="$PWD"
+D="$ENT"
+while [ "$D" != "/" ] && [ ! -d "$D/xyzfs" ]; do D="$(dirname "$D")"; done
+exec "$D/&.widgits/events-hq/ops/+x/mr_character.+x" "$ENT" transparency 'on'
+### /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task1_sandbox/20260830-173836/event_pkg/pages/page_1/cmd_7.sh
+#!/bin/sh
+cd "$(dirname "$0")/../../.." || exit 1
+ENT="$PWD"
+D="$ENT"
+while [ "$D" != "/" ] && [ ! -d "$D/xyzfs" ]; do D="$(dirname "$D")"; done
+exec "$D/&.widgits/events-hq/ops/+x/mr_character.+x" "$ENT" followers 'hide'
+### /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task1_sandbox/20260830-173836/event_pkg/pages/page_1/cmd_8.sh
+#!/bin/sh
+cd "$(dirname "$0")/../../.." || exit 1
+ENT="$PWD"
+D="$ENT"
+while [ "$D" != "/" ] && [ ! -d "$D/xyzfs" ]; do D="$(dirname "$D")"; done
+exec "$D/&.widgits/events-hq/ops/+x/mr_character.+x" "$ENT" animation 'spin'
+### /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.task1_sandbox/20260830-173836/event_pkg/pages/page_1/cmd_9.sh
+#!/bin/sh
+cd "$(dirname "$0")/../../.." || exit 1
+ENT="$PWD"
+D="$ENT"
+while [ "$D" != "/" ] && [ ! -d "$D/xyzfs" ]; do D="$(dirname "$D")"; done
+exec "$D/&.widgits/events-hq/ops/+x/mr_character.+x" "$ENT" erase 1
+[17:38:40] === step 5: runtime proof - run the compiled bytecode under prisc+x ===
+[17:38:41] PASS: prisc+x ran the compiled event to halt (exit 0)
+[17:38:41] === step 6: text-state-dump verification ===
+[17:38:41] PASS: input_number stored hp=5 in variables.txt
+[17:38:41] PASS: select_item stored pick_idx=1 in variables.txt
+[17:38:41] PASS: show_choices picked index 1 (choice_result=1)
+[17:38:41] PASS: input_number_result.txt value=5
+[17:38:41] PASS: select_item_result key=sword
+[17:38:41] PASS: character_state.pdl: all 4 character commands recorded ( transparency=on followers=hide animation=spin erase=1)
+[17:38:41] PASS: scrolling_text wrote its text file
+[17:38:41] PASS: interact_relay.txt carries a SHOW_TEXT_FILE popup relay line
+[17:38:41] PASS: history.txt audit: SHOW_CHOICES result=1
+[17:38:41] PASS: history.txt audit: INPUT_NUMBER var=hp
+[17:38:41] PASS: history.txt audit: SELECT_ITEM var=pick_idx
+[17:38:41] PASS: history.txt audit: SCROLLING_TEXT queued
+[17:38:41] PASS: history.txt audit: CHARACTER transparency=on
+[17:38:41] PASS: history.txt audit: CHARACTER erase=1
+[17:38:41] PASS: gap-#0: game clock observed running=0 while a blocking dialog was open
+[17:38:41] PASS: game clock resumed (running=1 after event finished)
+[17:38:41] state dumps copied into /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/presentations/events-hq-task1-message-commands-20260830-173836
+cleanup done (gameclock0000 running restored to 1)

@@ -1,0 +1,2 @@
+# x|y|dest_map_id|dest_x|dest_y
+30|11|map_02|4|4

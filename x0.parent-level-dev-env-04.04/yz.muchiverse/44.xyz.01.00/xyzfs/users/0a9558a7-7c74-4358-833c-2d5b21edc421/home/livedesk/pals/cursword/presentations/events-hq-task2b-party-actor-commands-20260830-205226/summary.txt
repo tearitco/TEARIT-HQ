@@ -1,0 +1,28 @@
+PASS: manager launched
+PASS: event.pal compiled
+PASS: IR has 18 NODEs (15 numeric + 3 string Party/Actor commands)
+PASS: event.pal has inline PAL kv bytecode (GET/SET_KV_INT + negative addi delta)
+PASS: event.pal has compound-id keys (param_/state_/equip_) and item_ key verbatim
+PASS: 3 cmd_N.sh wrappers generated (change_name/nickname/profile string ops)
+PASS: all 3 string-command wrappers route to mr_actor_string.+x
+PASS: prisc+x ran the compiled event to halt (exit 0)
+PASS: change_items: item_1 1->6 (seeded delta)
+PASS: change_weapons: weapon_2=3
+PASS: change_armors: armor_3=7
+PASS: change_party_member: member_1=1
+PASS: actor_1_stats: hp=9999
+PASS: actor_1_stats: mp=9999
+PASS: actor_1_stats: tp=9999
+PASS: actor_1_stats: exp=120
+PASS: actor_1_stats: level=2
+PASS: actor_1_stats: class_id=2
+PASS: actor_1_stats: name=Officer Helena
+PASS: actor_1_stats: nickname=Hel
+PASS: actor_1_stats: profile=Guardian of the North
+PASS: actor_params.txt: param_1:2=5
+PASS: actor_states.txt: state_1:4=1
+PASS: actor_skills.txt: skill_1:3=1
+PASS: actor_equipment.txt: equip_1:0=8
+PASS: history.txt: ACTOR string command audits present
+
+harness done TS=20260830-205226 - see /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/presentations/events-hq-task2b-party-actor-commands-20260830-205226

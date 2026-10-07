@@ -1,0 +1,2 @@
+[1789416484] SHOW_CHOICES popup opened on /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/castle, choices=City,Production,Armed Forces,View,Happy,Rename default=0
+[1789416514] SHOW_CHOICES result=0 (City) (TIMED OUT, used default)
