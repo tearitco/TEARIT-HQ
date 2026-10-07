@@ -31,7 +31,7 @@ EXPECT_OUT_IS | &.widgits\ncommon_events\ngame\ngso\nlc.+x\nprisc\nstore | G-hol
 RUN | /usr/bin/ls | -A | $T/ld/pals
 EXPECT_OUT_IS | eden_button | pals-holds-only-eden_button
 RUN | /usr/bin/ls | -A | $T/ld/pals/eden_button
-EXPECT_OUT_IS | ctl.sh\nglyph.txt\nmeta.pdl\npal.pdl | pal-holds-exactly-ctl-glyph-meta-pal
+EXPECT_OUT_IS | atlas.png\nctl.sh\nglyph.txt\nmenu.chtpm\nmeta.pdl\npal.pdl\nsprite.csv | pal-holds-exactly-the-standard-files
 EXPECT_FILE | ld/pals/eden_button/pal.pdl | PAL \p name \p eden_button\nPAL \p glyph \p 🔘\n | pal-pdl-name-and-glyph
 EXPECT_LACKS | ld/pals/eden_button/pal.pdl | hash | pal-has-no-PAL-hash
 EXPECT_NOFILE | ld/pals/eden_button/entity_uid.txt | pal-has-no-uid
@@ -57,6 +57,15 @@ EXPECT_HAS | ld/pals/eden_button/meta.pdl | \p Save slot...  | menu-Save-slot
 EXPECT_HAS | ld/pals/eden_button/meta.pdl | \p Load slot...  | menu-Load-slot
 EXPECT_HAS | ld/pals/eden_button/meta.pdl | \p Close  | menu-Close
 EXPECT_HAS | ld/pals/eden_button/meta.pdl | \p Cancel  | menu-Cancel
+EXPECT_HAS | ld/pals/eden_button/meta.pdl | \p kind  | std-STATE-kind
+EXPECT_HAS | ld/pals/eden_button/meta.pdl | deskpal | std-STATE-deskpal
+EXPECT_HAS | ld/pals/eden_button/meta.pdl | \p Events (hq)  | std-row-Events
+EXPECT_HAS | ld/pals/eden_button/meta.pdl | \p Dir  | std-row-Dir
+EXPECT_HAS | ld/pals/eden_button/meta.pdl | \p Inventory  | std-row-Inventory
+EXPECT_LACKS | ld/pals/eden_button/meta.pdl | grab_pointer | no-pointer-grab-like-other-pals
+EXPECT_HAS | ld/pals/eden_button/menu.chtpm | entity-menu | menu-chtpm-is-the-entity-menu
+EXPECT_HAS | ld/pals/eden_button/menu.chtpm | Next day | menu-chtpm-has-Next-day
+EXPECT_HAS | ld/pals/eden_button/sprite.csv | resolution=64 | sprite-csv-written
 EXPECT_HAS | ld/pals/eden_button/meta.pdl | sh -c 'exec sh "$0/ctl.sh" nextday' | Next-day-row-calls-ctl-sh
 EXPECT_LACKS | ld/pals/eden_button/meta.pdl | event_page_op | rows-go-through-ctl-sh-only
 EXPECT_FILE | ld/sessions/s1/desks/d.pdl | DESK \p cursword \p pals/cursword \p 0 \p 0 \p 0 \p 0 \p K \p 1\n | the-installer-edits-no-desk-file

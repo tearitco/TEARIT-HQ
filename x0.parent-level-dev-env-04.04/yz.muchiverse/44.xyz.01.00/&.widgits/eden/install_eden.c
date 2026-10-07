@@ -27,6 +27,7 @@
 #include <stdarg.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 
 #define P 4096
 static int g_apply, g_files;
@@ -85,8 +86,12 @@ static int build_pal(const char *dir) {
     if (mkdirs(dir)) return -1;
     pjoin(p, dir, "pal.pdl"); if (put(p, "PAL | name | eden_button\nPAL | glyph | \xf0\x9f\x94\x98\n", 0644)) return -1;
     pjoin(p, dir, "glyph.txt"); if (put(p, "\xf0\x9f\x94\x98\n", 0644)) return -1;
-    o += snprintf(text + o, sizeof text - o, "SECTION      | KEY                | VALUE\n----------------------------------------\nMETA         | piece_id           | eden-button\nSTATE        | menu_stay_open     | 1\nSTATE        | grab_pointer       | 1\nSTATE        | grab_keyboard      | 1\n");
+    o += snprintf(text + o, sizeof text - o, "SECTION      | KEY                | VALUE\n----------------------------------------\nMETA         | piece_id           | eden-button\nSTATE        | kind                 | deskpal\nSTATE        | glyph                | \xf0\x9f\x94\x98\nSTATE        | menu_stay_open     | 1\n");
     for (int i = 0; ROWS[i][0]; i++) o += snprintf(text + o, sizeof text - o, "METHOD       | %-20s | sh -c 'exec sh \"$0/ctl.sh\" %s'\n", ROWS[i][0], ROWS[i][1]);
+    /* the standard desk-pal rows every entity menu carries (same strings as asa/robot meta.pdl), then Close/Cancel */
+    o += snprintf(text + o, sizeof text - o, "METHOD       | %-20s | sh -c 'exec \"$1/&.widgits/events-hq/button.sh\" \"$0\" \"$1\"'\n", "Events (hq)");
+    o += snprintf(text + o, sizeof text - o, "METHOD       | %-20s | sh -c 'exec xdg-open \"$0\"'\n", "Dir");
+    o += snprintf(text + o, sizeof text - o, "METHOD       | %-20s | sh -c 'H=\"$1\"; I=\"$H/&.widgits/file-explorer/instances/inv-$(basename \"$(dirname \"$0\")\")-$(basename \"$0\")\"; mkdir -p \"$0/inventory\" \"$I\"; printf \"mode=LOAD\\nstart_dir=%%s/inventory\\n\" \"$0\" > \"$I/fe_request.txt\"; exec sh \"$H/&.widgits/file-explorer/button.sh\" run-instance \"$I\"'\n", "Inventory");
     o += snprintf(text + o, sizeof text - o, "METHOD       | %-20s | CLOSE\nMETHOD       | %-20s | void\n", "Close", "Cancel");
     pjoin(p, dir, "meta.pdl"); if (put(p, text, 0644)) return -1;
     /* ctl.sh: G is ABSOLUTE (written by the installer). The first argument is a conductor trigger (an event page), or one of the slot verbs which go straight to eden_op. */
@@ -110,6 +115,14 @@ static int build_game(const char *dir, const Prog *pr, int np) {
     pjoin(d, dir, "store"); if (mkdirs(d)) return -1;
     pjoin(d, dir, "game/conductor/wiring.pdl");
     return append(d, "# --- written by install_eden: clock daemon + the runner env (see the commented rows above)\nWIRING | daemon       | 1\nWIRING | daemon_pid   | ../../eden_daemon.pid\nWIRING | prisc        | ../../prisc\nWIRING | event_runner | ../../&.widgits/digipet/ops/+x/event_page_op.+x\n");
+}
+
+/* best-effort finishing steps for the pal (fork+exec, output discarded): returns 0 when the program exited 0 */
+static int run_quiet(char *const argv[]) {
+    pid_t k = fork(); if (k < 0) return -1;
+    if (k == 0) { freopen("/dev/null", "w", stdout); freopen("/dev/null", "w", stderr); execv(argv[0], argv); _exit(127); }
+    int st = 0; if (waitpid(k, &st, 0) < 0) return -1;
+    return WIFEXITED(st) && WEXITSTATUS(st) == 0 ? 0 : -1;
 }
 
 int main(int argc, char **argv) {
@@ -146,6 +159,19 @@ int main(int argc, char **argv) {
     if (rename(GT, G)) { say("install_eden: rename to %s failed: %s\n", G, strerror(errno)); rm_tree(GT); rm_tree(PT); return 1; }
     if (rename(PT, PAL)) { say("install_eden: rename to %s failed: %s; removing %s again\n", PAL, strerror(errno), G); rm_tree(PT); rm_tree(G); return 1; }
     say("install_eden: installed %d files into %s and the pal %s\n  append the DESK row below to the desk page file yourself (this tool edits no desk file)\n", g_files, G, PAL);
-    printf("DESK | eden_button | pals/eden_button | 800 | 80 | 10 | 1 | \xf0\x9f\x94\x98 | \n");
+    /* sprite (without one the window is a plain coloured square) + the generated menu.chtpm chrome; a missing tool is reported, not fatal */
+    {
+        char gen[P], xt[P], atlas[P], csv[P], conv[P], hh[P], rel[P]; snprintf(hh, sizeof hh, "%s", hr);
+        snprintf(gen, sizeof gen, "%s/_.monads/_.livedesk-taskbar/ops/+x/emoji_gen_atlas.+x", hh);
+        snprintf(xt, sizeof xt, "%s/_.monads/_.livedesk-taskbar/ops/+x/emoji_xtract.+x", hh);
+        snprintf(conv, sizeof conv, "%s/_.monads/_.livedesk-taskbar/ops/meta_to_menu_chtpm.py", hh);
+        snprintf(atlas, sizeof atlas, "%s/atlas.png", PAL); snprintf(csv, sizeof csv, "%s/sprite.csv", PAL);
+        char *a1[] = { gen, "\xf0\x9f\x94\x98", atlas, NULL }; char *a2[] = { xt, atlas, "0", "64", csv, NULL };
+        if (isfile(gen) && isfile(xt) && !run_quiet(a1) && !run_quiet(a2)) say("install_eden: sprite written\n"); else say("install_eden: sprite NOT generated (emoji tools missing or failed): the window will be a plain square\n");
+        char *a3[] = { "/usr/bin/python3", "-I", conv, PAL, NULL };
+        if (isfile(conv) && !run_quiet(a3)) say("install_eden: menu.chtpm written\n"); else say("install_eden: menu.chtpm NOT generated (run meta_to_menu_chtpm.py on the pal)\n");
+        size_t hl = strlen(hh); snprintf(rel, sizeof rel, "%s", strncmp(PAL, hh, hl) == 0 && PAL[hl] == '/' ? PAL + hl + 1 : "pals/eden_button");
+        printf("DESK | eden_button | %s | 800 | 80 | 10 | 1 | \xf0\x9f\x94\x98 | \n", rel);
+    }
     return 0;
 }
