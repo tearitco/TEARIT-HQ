@@ -258,11 +258,43 @@ int main(int argc, char **argv) {
     }
 
     int tier = read_tier(entity_dir);
+
+    // Add candidate to promotion ledger and replay
+    char ledger_bin[4096];
+    snprintf(ledger_bin, sizeof(ledger_bin), "%s/ops/promotion_ledger.+x", entity_dir);
+    
+    // Add candidate to ledger
+    char add_cmd[8192];
+    snprintf(add_cmd, sizeof(add_cmd), "%s \"%s\" add_candidate \"%s\" 2>&1", ledger_bin, bank_dir, pending_path);
+    system(add_cmd);
+    
+    // Replay against obs feedback log
+    char obs_path[4096];
+    snprintf(obs_path, sizeof(obs_path), "%s/obs_feedback_log.txt", entity_dir);
+    char replay_cmd[8192];
+    snprintf(replay_cmd, sizeof(replay_cmd), "%s \"%s\" replay \"%s\" \"%s\" 2>&1", ledger_bin, bank_dir, id, obs_path);
+    system(replay_cmd);
+    
+    // Get score
+    char score_cmd[8192];
+    snprintf(score_cmd, sizeof(score_cmd), "%s \"%s\" score \"%s\" 2>&1", ledger_bin, bank_dir, id);
+    FILE *sf = popen(score_cmd, "r");
+    double score = 0.0;
+    int reward = 0, punish = 0;
+    if (sf) {
+        char sbuf[256];
+        if (fgets(sbuf, sizeof(sbuf), sf)) {
+            sscanf(sbuf, "%lf (reward=%d, punish=%d)", &score, &reward, &punish);
+        }
+        pclose(sf);
+    }
+    
+    // Auto-promote if score >= 0.9 and tier >= associate_bachelor (2)
     int auto_promote = 0;
-    if (tier >= 2) {
+    if (tier >= 2 && score >= 0.90) {
         auto_promote = 1;
     }
-
+    
     if (auto_promote) {
         if (promote_to_bank(bank_dir, target, slot, delta, reason)) {
             lines[candidate_idx][0] = '\0';

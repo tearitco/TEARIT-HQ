@@ -1,0 +1,7 @@
+# CONCEPT_SPOKE — kinetic_energy.pdl
+NODE | kinetic_energy
+KIND | spoke
+N_SLOTS | 8
+SLOT | 0 | POINTS_TO=energy | WEIGHT=0.6233
+GRADE | 3
+DEPENDS_ON | mass,velocity

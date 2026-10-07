@@ -1,0 +1,13 @@
+[2026-10-06 15:44:11] OBS | id=0a4a5008-13cf-4651-b376-a419562ef128 | target=explain gravity | outcome=user asked for gravity explanation
+[2026-10-06 15:45:06] OBS | id=a5a9b28f-1b3c-4087-9261-7f2a610a0079 | target=explain gravity | outcome=user asked for gravity explanation | valence=+1 | concept=force | intensity=0.8
+[2026-10-06 15:45:11] FEEDBACK | id=b99d2680-aa65-4d63-9102-60e133ecbf81 | target=gravity_constant | valence=+1 | concept=force | intensity=1.0
+[2026-10-06 15:56:10] FEEDBACK | id=6c0d21c7-f49c-4780-bf46-6fcf46b02382 | target=explain gravity | valence=+1 | concept=force | intensity=0.8
+[2026-10-06 16:32:40] FEEDBACK | id=ac285afe-1137-471e-9239-b06d338955cd | target=explain gravity | valence=+1 | concept=force | intensity=1.0
+[2026-10-06 16:32:40] FEEDBACK | id=af097c09-ec60-4990-bebb-169e296741c4 | target=explain gravity | valence=+1 | concept=force | intensity=1.0
+[2026-10-06 16:32:40] FEEDBACK | id=5d679064-9671-4800-adf7-c65e9f255a0f | target=explain gravity | valence=+1 | concept=force | intensity=1.0
+[2026-10-06 16:32:40] FEEDBACK | id=237becc7-6d5d-459f-897b-9702721cdfb6 | target=explain gravity | valence=+1 | concept=force | intensity=1.0
+[2026-10-06 16:32:40] FEEDBACK | id=8a8f098c-6536-4eac-be4e-ef5e0444d541 | target=explain gravity | valence=+1 | concept=force | intensity=1.0
+[2026-10-06 16:32:40] FEEDBACK | id=8e2dda48-28da-4f8a-acfe-2b9af2b2b4bf | target=explain gravity | valence=+1 | concept=force | intensity=1.0
+[2026-10-06 16:32:40] FEEDBACK | id=cbc4d212-f7d9-4ff3-a9d4-0a2824f9098c | target=explain gravity | valence=+1 | concept=force | intensity=1.0
+[2026-10-06 19:01:48] FEEDBACK | id=5166fcf4-6a65-4f0e-918a-379fb18112fe | target=test | valence=+1 | concept=force | intensity=1.0
+[2026-10-06 19:01:48] FEEDBACK | id=1252e1d5-d605-45a1-961e-93270e5913e3 | target=test | valence=+1 | concept=force | intensity=1.0

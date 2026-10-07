@@ -1,0 +1,12 @@
+{
+  "total_comparisons": 10,
+  "horn_wins": 2,
+  "halo_wins": 6,
+  "ties": 2,
+  "horn_win_rate": 0.2000,
+  "halo_win_rate": 0.6000,
+  "avg_scores_horn": [4.56, 3.89, 3.22, 3.33, 4.00],
+  "avg_scores_halo": [5.00, 4.89, 4.44, 4.44, 5.00],
+  "concept_bank_delta": 0.0400,
+  "signal_timestamp": 1791357698
+}

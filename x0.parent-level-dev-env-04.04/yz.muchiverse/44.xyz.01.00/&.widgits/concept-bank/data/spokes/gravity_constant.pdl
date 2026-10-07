@@ -16,4 +16,4 @@ KIND | spoke
 N_SLOTS | 8
 
 # SLOT | <idx> | POINTS_TO=<master name — MUST exist under data/masters/> | WEIGHT=<float>
-SLOT | 0 | POINTS_TO=force | WEIGHT=0.60
+SLOT | 0 | POINTS_TO=force | WEIGHT=1.0000

@@ -1,0 +1,8 @@
+HORN_CHAT Test Report - 2026-10-06 03:00:26 UTC
+==================================================
+Binary: /home/debil/Desktop/github/TEARIT-HQ/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/^.hai-horn/ops/horn_chat_openrouter.+x
+House root: /home/debil/Desktop/github/TEARIT-HQ/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00
+Prompt: Say the single word RECEIVED if you can read this.
+
+Reply: RECEIVED
+Result: PASS

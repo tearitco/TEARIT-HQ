@@ -1,0 +1,7 @@
+# CONCEPT_SPOKE — velocity.pdl
+NODE | velocity
+KIND | spoke
+N_SLOTS | 8
+SLOT | 0 | POINTS_TO=motion | WEIGHT=0.7733
+GRADE | 2
+DEPENDS_ON | 

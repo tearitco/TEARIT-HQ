@@ -2758,9 +2758,82 @@ static int publish_direct_image(const char *url) {
     return 1;
 }
 
+/* Milestone 4 (2026-10-07): JSON responses (API echoes, form results)
+ * are data, not markup - the HTML extractor flattens them into one giant
+ * unreadable TEXT row. Sniff for JSON and pretty-print one row per line
+ * instead, same direct-publish shape as images above. */
+static int looks_json_text(const char *html, size_t n) {
+    size_t i = 0;
+    while (i < n && isspace((unsigned char)html[i])) i++;
+    if (n - i >= 3 && !memcmp(html + i, "\xEF\xBB\xBF", 3)) i += 3;
+    while (i < n && isspace((unsigned char)html[i])) i++;
+    return i < n && (html[i] == '{' || html[i] == '[');
+}
+static int publish_json_text(const char *url, const char *html, size_t n) {
+    size_t i = 0;
+    while (i < n && isspace((unsigned char)html[i])) i++;
+    if (n - i >= 3 && !memcmp(html + i, "\xEF\xBB\xBF", 3)) i += 3;
+    char tmp[PATH_BUF];
+    FILE *out = atomic_open(g_page_state_path, tmp, sizeof(tmp));
+    if (!out) return 0;
+    fprintf(out, "URL|%s\nTITLE|JSON response\n", url);
+    int depth = 0, instr = 0, esc = 0, lines = 0;
+    char line[2048];
+    size_t llen = 0;
+    int need_indent = 1;
+#define JSON_FLUSH() do { \
+        if (llen > 0) { line[llen] = '\0'; fprintf(out, "TEXT|%s\n", line); \
+            if (++lines >= MAX_LINES) break; llen = 0; need_indent = 1; } \
+    } while (0)
+#define JSON_INDENT() do { \
+        if (need_indent) { for (int k = 0; k < depth && llen + 2 < sizeof(line); k++) { line[llen++] = ' '; line[llen++] = ' '; } need_indent = 0; } \
+    } while (0)
+    for (; i < n; i++) {
+        char c = html[i];
+        if (instr) {
+            if (llen + 1 < sizeof(line)) line[llen++] = c;
+            if (esc) esc = 0;
+            else if (c == '\\') esc = 1;
+            else if (c == '"') instr = 0;
+            continue;
+        }
+        if (c == '"') { JSON_INDENT(); if (llen + 1 < sizeof(line)) line[llen++] = c; instr = 1; continue; }
+        if (isspace((unsigned char)c)) continue;
+        if (c == '{' || c == '[') {
+            JSON_INDENT();
+            if (llen + 1 < sizeof(line)) line[llen++] = c;
+            JSON_FLUSH();
+            depth++;
+            continue;
+        }
+        if (c == '}' || c == ']') {
+            if (depth > 0) depth--;
+            JSON_FLUSH();
+            JSON_INDENT();
+            if (llen + 1 < sizeof(line)) line[llen++] = c;
+            continue;
+        }
+        if (c == ',') {
+            if (llen + 1 < sizeof(line)) line[llen++] = c;
+            JSON_FLUSH();
+            continue;
+        }
+        if (c == ':') {
+            if (llen + 2 < sizeof(line)) { line[llen++] = c; line[llen++] = ' '; }
+            continue;
+        }
+        JSON_INDENT();
+        if (llen + 1 < sizeof(line)) line[llen++] = c;
+    }
+    JSON_FLUSH();
+#undef JSON_FLUSH
+#undef JSON_INDENT
+    fclose(out);
+    atomic_commit(g_page_state_path, tmp);
+    return 1;
+}
 /* REAL, NEW 2026-09-12 (NETWORK-BROWSER-VIDEO-V3-DESIGN.md §3, V3-B
  * "YouTube URL" probe): a bare video URL - youtu.be/..., a /watch?v=,
- * a direct .mp4/.webm, or the yt: shortcut - never produces a <video>
  * tag in fetched HTML (YouTube's player is JS-driven, and a raw media
  * URL isn't HTML at all), so extract_and_publish() could never emit
  * the VIDEO| row video_start_if_page_has_video() keys on. The has_canvas
@@ -3458,6 +3531,22 @@ static void do_fetch(const char *url_in, int record_history) {
     if (looks_image_bytes((const unsigned char *)html, n)) {
         if (!publish_direct_image(url)) {
             publish_status("error: image decode failed");
+            return;
+        }
+        if (record_history && g_current_url[0] && strcmp(g_current_url, url) != 0)
+            stack_push(g_back_path, g_current_url);
+        snprintf(g_current_url, sizeof(g_current_url), "%s", url);
+        visit_log_append(url);
+        tab_after_fetch_ok(url);
+        publish_status("ready");
+        write_chtpm_projection();
+        return;
+    }
+
+    /* Milestone 4 (2026-10-07): JSON bodies are data, not markup. */
+    if (looks_json_text(html, n)) {
+        if (!publish_json_text(url, html, n)) {
+            publish_status("error: json publish failed");
             return;
         }
         if (record_history && g_current_url[0] && strcmp(g_current_url, url) != 0)
