@@ -1,9 +1,0 @@
-# vm-rv-li emulator configuration
-# RVLV_EMUL must be cloned as a sibling repo:
-#   /home/debil/Desktop/github/RVLV_EMUL
-
-emu_root | /home/debil/Desktop/github/RVLV_EMUL
-emu_bin  | build/main
-emu_args | --virtio-legacy -k images/xv6-kernel.bin -f images/xv6-fs.img
-cols     | 80
-rows     | 24

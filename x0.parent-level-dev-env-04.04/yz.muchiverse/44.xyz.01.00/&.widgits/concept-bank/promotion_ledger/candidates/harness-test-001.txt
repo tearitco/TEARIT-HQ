@@ -1,1 +1,0 @@
-EDIT | id=harness-test-001 | type=spoke_weight_delta | target=gravity_constant | slot=force | delta=0.05 | reason="test" | proposer=halo_chat | status=candidate

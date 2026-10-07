@@ -1,4 +1,0 @@
-EDIT | id=test-cand-001 | type=spoke_weight_delta | target=gravity_constant | slot=force | delta=0.0800 | reason="user asked about gravity" | proposer=halo_chat | reward=20 | punish=0 | replayed=1
-EDIT | id=test-cand-001 | type=spoke_weight_delta | target=gravity_constant | slot=force | delta=0.0800 | reason="user asked about gravity" | proposer=halo_chat | reward=0 | punish=0 | replayed=0
-EDIT | id=c497a158-9255-48dd-928d-86ce8d399265 | type=spoke_weight_delta | target=gravity_constant | slot=force | delta=0.1500 | reason="user asked about gravity" | proposer=halo_chat | reward=9 | punish=0 | replayed=1
-EDIT | id=harness-test-001 | type=spoke_weight_delta | target=gravity_constant | slot=force | delta=0.0500 | reason="test" | proposer=halo_chat | reward=11 | punish=0 | replayed=1

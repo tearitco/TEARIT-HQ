@@ -1,1 +1,0 @@
-[2026-10-06 19:01:48] EDIT | id=c497a158-9255-48dd-928d-86ce8d399265 | type=spoke_weight_delta | target=gravity_constant | slot=force | delta=0.1500 | reason="user asked about gravity" | proposer=halo_chat | status=candidate

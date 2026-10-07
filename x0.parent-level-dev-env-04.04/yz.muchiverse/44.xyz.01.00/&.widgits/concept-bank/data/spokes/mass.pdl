@@ -1,7 +1,0 @@
-# CONCEPT_SPOKE — mass.pdl
-NODE | mass
-KIND | spoke
-N_SLOTS | 8
-SLOT | 0 | POINTS_TO=force | WEIGHT=0.8233
-GRADE | 1
-DEPENDS_ON | gravity_constant

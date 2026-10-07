@@ -2467,7 +2467,7 @@ static void livedesk_hash_dir(const char *dir, char *out, size_t sz) {
     out[0] = '\0';
     char cmd[KTB_PATH_BUF * 2];
     snprintf(cmd, sizeof(cmd),
-             "(cd '%s' && find . -type f ! -name entity_uid.txt ! -path \"*/inventory/zz.phone/*\" ! -path \"*/inventory/zz.wordbank/*\" -print0 2>/dev/null | sort -z | "  /* identity + phone + wordbank are not content: they would drift the pal hash */
+             "(cd '%s' && find . -type f ! -name entity_uid.txt ! -path \"*/inventory/zz.phone/*\" -print0 2>/dev/null | sort -z | "  /* identity + phone are not content: they would drift the pal hash */
 
              "xargs -0 sha256sum 2>/dev/null) 2>/dev/null | sha256sum", dir);
     FILE *p = popen(cmd, "r");

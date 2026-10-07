@@ -1,7 +1,0 @@
-# CONCEPT_SPOKE — acceleration.pdl
-NODE | acceleration
-KIND | spoke
-N_SLOTS | 8
-SLOT | 0 | POINTS_TO=motion | WEIGHT=0.7233
-GRADE | 2
-DEPENDS_ON | force,mass

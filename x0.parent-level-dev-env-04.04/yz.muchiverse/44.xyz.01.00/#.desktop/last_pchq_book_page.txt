@@ -1,2 +1,0 @@
-book=test_walls
-page=Desk 1

@@ -1,2 +1,0 @@
-echo hello
-type:ls
