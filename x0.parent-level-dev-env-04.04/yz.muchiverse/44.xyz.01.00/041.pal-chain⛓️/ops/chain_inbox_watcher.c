@@ -26,6 +26,15 @@
  * logic here is intentionally duplicated from chain_balance.c/
  * chain_miner.c per this family's own no-shared-headers convention.
  *
+ * chain.pdl (optional, <root>/chain.pdl, PAL-CHAIN-MULTICHAIN-ESCROW-FAUCET-DESIGN.md
+ * sec. 3): MINING difficulty_hex_zeros is the PoW a received block must meet (wins
+ * over the CHAIN_DIFFICULTY_HEX_ZEROS env var, same rule as chain_miner); no
+ * chain.pdl = legacy env/default 5. Besides TX it now also queues FAUCET / LOCK /
+ * PAYOUT / REFUND lines (tx_id = the last field of every type). Peer blocks are
+ * NOT re-validated for escrow rules here (open item: only chain_miner enforces
+ * them at inclusion); escrow is local/test-chain only, and without signing the
+ * agent/by field is an honor field.
+ *
  * Usage: chain_inbox_watcher.+x (no args, reads net/inbox.txt relative
  * to PRISC_PROJECT_ROOT) */
 #define _GNU_SOURCE
@@ -52,7 +61,39 @@ static void resolve_root(void) {
     if (env && env[0]) snprintf(project_root, sizeof(project_root), "%s", env);
 }
 
+/* chain.pdl row reader, duplicated per op (house rule: no shared headers). */
+static int pdl_get(const char *section, const char *key, char *out, size_t out_sz) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/chain.pdl", project_root);
+    FILE *f = fopen(path, "r");
+    if (!f) return 0;
+    char line[MAX_LINE];
+    int found = 0;
+    while (!found && fgets(line, sizeof(line), f)) {
+        if (line[0] == '#') continue;
+        char *c = strstr(line, " #"); if (c) *c = '\0';
+        char *a = strchr(line, '|'); if (!a) continue;
+        char *b = strchr(a + 1, '|'); if (!b) continue;
+        *a = '\0'; *b = '\0';
+        char *sec = line, *k = a + 1, *v = b + 1;
+        while (*sec == ' ' || *sec == '\t') sec++;
+        char *e = sec + strlen(sec); while (e > sec && (e[-1] == ' ' || e[-1] == '\t')) *--e = '\0';
+        while (*k == ' ' || *k == '\t') k++;
+        e = k + strlen(k); while (e > k && (e[-1] == ' ' || e[-1] == '\t')) *--e = '\0';
+        while (*v == ' ' || *v == '\t') v++;
+        e = v + strlen(v); while (e > v && (e[-1] == ' ' || e[-1] == '\t' || e[-1] == '\n' || e[-1] == '\r')) *--e = '\0';
+        if (strcmp(sec, section) == 0 && strcmp(k, key) == 0) { snprintf(out, out_sz, "%s", v); found = 1; }
+    }
+    fclose(f);
+    return found;
+}
+
 static int difficulty_hex_zeros(void) {
+    char pv[64];
+    if (pdl_get("MINING", "difficulty_hex_zeros", pv, sizeof(pv))) {
+        int d = atoi(pv);
+        if (d > 0 && d < 16) return d;
+    }
     const char *env = getenv("CHAIN_DIFFICULTY_HEX_ZEROS");
     if (env && env[0]) {
         int v = atoi(env);
@@ -101,13 +142,11 @@ static void write_last_line(long v) {
 }
 
 static int tx_id_of(const char *tx_line, char *out, size_t out_sz) {
-    /* TX|<from>|<to>|<amount>|<timestamp>|<tx_id> - tx_id is the field
-     * after the 5th pipe. */
-    const char *p = tx_line;
-    int pipes = 0;
-    while (*p && pipes < 5) { if (*p == '|') pipes++; p++; }
-    if (pipes < 5) return 0;
-    snprintf(out, out_sz, "%s", p);
+    /* Every tx line ends with its tx_id: TX|from|to|amount|ts|id, FAUCET|w|amount|ts|id,
+     * LOCK|esc|from|amount|agent|ts|id, PAYOUT/REFUND|esc|by|to|amount|ts|id. */
+    const char *p = strrchr(tx_line, '|');
+    if (!p || !p[1]) return 0;
+    snprintf(out, out_sz, "%s", p + 1);
     return 1;
 }
 
@@ -321,7 +360,8 @@ int main(void) {
                  * relayed it. */
                 char *content = strchr(line, '|');
                 content = content ? content + 1 : line;
-                if (strncmp(content, "TX|", 3) == 0) handle_tx_line(content);
+                if (strncmp(content, "TX|", 3) == 0 || strncmp(content, "FAUCET|", 7) == 0 || strncmp(content, "LOCK|", 5) == 0 ||
+                    strncmp(content, "PAYOUT|", 7) == 0 || strncmp(content, "REFUND|", 7) == 0) handle_tx_line(content);
                 else if (strncmp(content, "BLOCK|", 6) == 0) handle_block_line(content, zeros);
             }
             last_line = cur;

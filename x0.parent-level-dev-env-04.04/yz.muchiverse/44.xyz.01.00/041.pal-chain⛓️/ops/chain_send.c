@@ -85,6 +85,11 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    if (strcmp(from, "_burn") == 0) {
+        fprintf(stderr, "_burn is the supply sink and can never be spent.\n");
+        return 1;
+    }
+
     long balance = current_balance(from);
     if (balance < 0) {
         fprintf(stderr, "Could not determine sender balance.\n");
