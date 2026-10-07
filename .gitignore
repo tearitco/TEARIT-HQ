@@ -197,3 +197,6 @@ x0.parent-level-dev-env-04.04_*.7z
 # server router runtime state (Q009): decisions log, cursors; the ledger is already ignored above
 ^.hai-server/observations.log
 ^.hai-server/cursors.txt
+
+# human input demonstrations log (renderer, real X events only; local, may contain typed text)
+**/#.desktop/human_input/

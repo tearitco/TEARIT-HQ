@@ -11962,17 +11962,37 @@ static int kh_key_history_code(KeySym ks, char ch) {
     if (ks == XK_Page_Up) return 204; if (ks == XK_Page_Down) return 205;
     return (int)ks;
 }
+/* HUMAN input log (owner 2026-10-06, "irl" demonstrations: HAI-ROBOTS-PHONES-SERVER-DESIGN.md 3f): entity_menu_history/<pid>.txt receives BOTH the human's real X input
+ * and the harness's relay writes in the same format, so it cannot say who did what. This second append-only log is written ONLY from the real X event handlers
+ * (kh_capture_click / kh_capture_key), never from the relay poll, so every line in it is something a person did on this window:
+ *     #.desktop/human_input/<pid>.txt     <epoch_ms>|<pid>|<window label>|KEY|<code>      or     <epoch_ms>|<pid>|<window label>|CLICK|<button>|<x>|<y>
+ * Same key codes as the relay (kh_key_history_code). One writer (this process). Local only (gitignored). NOTE: it records typed characters like the relay already does,
+ * including into text fields; a password-field exclusion is not implemented. */
+static void kh_human_log(const char *kind, const char *args) {
+    char dir[PATH_BUF + 40], path[PATH_BUF + 80], label[160]; struct timespec ts; FILE *f; char *c;
+    snprintf(dir, sizeof(dir), "%s/#.desktop/human_input", g_house_root);
+    mkdir(dir, 0777);
+    snprintf(path, sizeof(path), "%s/%d.txt", dir, (int)getpid());
+    snprintf(label, sizeof(label), "%s", (g_window && g_window->label[0]) ? g_window->label : g_current_page);
+    for (c = label; *c; c++) if (*c == '|' || *c == '\n' || *c == '\r') *c = ' ';
+    clock_gettime(CLOCK_REALTIME, &ts);
+    if (!(f = fopen(path, "a"))) return;
+    fprintf(f, "%lld|%d|%s|%s|%s\n", (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000, (int)getpid(), label, kind, args);
+    fclose(f);
+}
 static void kh_capture_click(int x, int y, int button) {
     char path[PATH_BUF]; history_path(path, sizeof(path));
     if (g_history_cursor < 0) { struct stat st; g_history_cursor = (stat(path,&st)==0)?st.st_size:0; }
     FILE *f = fopen(path, "a"); if (!f) return;
     fprintf(f, "MOUSE_EVENT: %d %d %d 1\n", button, x, y); fclose(f);
+    { char a[64]; snprintf(a, sizeof(a), "%d|%d|%d", button, x, y); kh_human_log("CLICK", a); }
 }
 static void kh_capture_key(KeySym ks, char ch) {
     char path[PATH_BUF]; history_path(path, sizeof(path));
     if (g_history_cursor < 0) { struct stat st; g_history_cursor = (stat(path,&st)==0)?st.st_size:0; }
     FILE *f = fopen(path, "a"); if (!f) return;
     fprintf(f, "KEY_PRESSED: %d\n", kh_key_history_code(ks, ch)); fclose(f);
+    { char a[16]; snprintf(a, sizeof(a), "%d", kh_key_history_code(ks, ch)); kh_human_log("KEY", a); }
 }
 
 static int poll_agent_history(void) {

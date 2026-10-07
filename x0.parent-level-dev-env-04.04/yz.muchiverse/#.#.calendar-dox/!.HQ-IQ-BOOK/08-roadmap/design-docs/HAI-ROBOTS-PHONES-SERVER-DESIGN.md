@@ -204,7 +204,15 @@ owner, caps still apply. A weight changes order and amount, never permission.
 **5. tomom is an optional advisor behind the server.** It reads `observations.log`, proposes joint values, and the server applies them as ordinary tunables under the same rules.
 Everything works with tomom off. Training events (rl / irl / fsm) are runs of the same events with a recorded verdict, so a ghost's history is also its training data.
 
-**Not built yet:** none of the events, the router, the tunables file or the ledger. First slice is quest Q009.
+**IRL (learning from the owner's demonstrations) — status 2026-10-06.** "IRL" here is read as inverse reinforcement learning (confirm with the owner): learn what the owner wants from
+what the owner does. Step 1 is built: **a human-only input log.** `entity_menu_history/<pid>.txt` receives both real X input and harness relay writes in one format, so it cannot say who did
+what; the renderer now also appends every REAL X key/click (only from `kh_capture_key` / `kh_capture_click`, never from the relay poll) to `#.desktop/human_input/<pid>.txt`:
+`<epoch_ms>|<pid>|<window label>|KEY|<code>` or `...|CLICK|<button>|<x>|<y>`. Tested live on the hotbar: a harness-written key did not appear in it; a real X key did (shift, 65505).
+Not tested: the click path. Caveats: it records typed characters like the relay already did, including into text fields (no password-field exclusion); local only, gitignored.
+Still needed before any learner: (2) demonstrations as event calls with context (which element, which nav number, what it did) rather than raw keys/pixels, (3) enough recorded demos with
+verdicts, (4) a learner (first: simple preference counts that only PROPOSE tunable values; real IRL later). tomom's `meta_rl` learns from 1-10 feedback by gradient ascent (README-level; code not read): reinforcement from scores, not IRL.
+
+**Built so far (Q009):** `phone_send_op`, `server_route_op`, `^.hai-server/tunables.conf`, ledger + observations rows, `verify.sh` (14 sandbox checks PASS). Not wired to a loop, not run on live phones.
 
 ## 4. The server (`^.hai-server`, 🖥️)
 
