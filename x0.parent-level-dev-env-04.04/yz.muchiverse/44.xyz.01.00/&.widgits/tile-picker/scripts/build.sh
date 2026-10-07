@@ -91,6 +91,13 @@ SHARED_LIB="$(cd "$SCRIPT_DIR/../_shared-lib" && pwd)"
 # khtpm_css_parser.h, both resolved from $SHARED_LIB.
 gcc -Wall -O2 -I "$SHARED_LIB" -o "ops/+x/khtpm_show_choices.+x" "ops/khtpm_show_choices.c" -lX11
 
+# khtpm_show_text.+x - the Show Text event command (book-stack's Bible verse
+# and Tao branches call it at ops/+x/khtpm_show_text.+x). It was never in
+# this script, so any fresh clone / wipe / rebuild left it missing and the
+# branches silently fell back to `cat` (verse never appeared in the window,
+# 2026-10-07). Pure libc, no X11 link, writes a relay command only.
+gcc -Wall -O2 -o "ops/+x/khtpm_show_text.+x" "ops/khtpm_show_text.c"
+
 echo "--- Copying system binaries (local copies for dev) ---"
 WSR="$(cd "$SCRIPT_DIR/../.." && pwd)/014.wsr-pal💸️📌️+2"
 if [ -d "$WSR" ]; then
