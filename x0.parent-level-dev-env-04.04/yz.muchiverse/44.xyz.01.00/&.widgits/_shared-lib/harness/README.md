@@ -65,3 +65,5 @@ Every harness has a seed `bank/<name>.behavior.pdl` (keywords, weighted synonyms
 - Others' harnesses (`^.hai-horn/halo_test_harness.sh`, `WSR_PAL-PREFERED/...`, Q003 `verify.sh`) are not mine and are untouched.
 
 | `quest_q001_clamp.pal` | `cases/quest_q001_clamp.pdl` | 37 | LOCKED acceptance harness of the first delegation-flywheel pilot quest (`&.widgits/quest-pilot/q001-clamp/`): compiles the worker's `clamp_op.c` with `-Wall -Wextra -Werror` and checks 25 runs (clamp, int64 limits, signs, 13 usage-error cases). Proven able to fail with a stub (25 failures) |
+
+| `quest_q002_weighted_pick.pal` | `cases/quest_q002_weighted_pick.pdl` | 125 | LOCKED acceptance harness of delegation pilot 2 (`&.widgits/quest-pilot/q002-weighted-pick/`): the worker's `weighted_pick.c` must match an exact splitmix64-based weighted choice (expected values from an independent Python reference), file-format edge cases and 13 usage/exit-code cases. Stub fails 68 checks |
