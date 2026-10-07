@@ -42,7 +42,7 @@ for i in $(seq 1 "${ITERATIONS}"); do
 
     # Step 1: LLM Brain observes state and decides
     echo "  [LLM] Thinking..."
-    decision=$(PRISC_PROJECT_ROOT="${XOD_DIR}" ./ops/+x/llm_brain.+x "${SESSION_DIR}" "${GOAL}" 2>/dev/null || echo '{"action":"wait"}')
+    decision=$(PRISC_PROJECT_ROOT="${XOD_DIR}" "${XOD_DIR}/ops/+x/llm_brain.+x" "${SESSION_DIR}" "${GOAL}" 2>/dev/null || echo '{"action":"wait"}')
     action=$(echo "${decision}" | grep -o '"action":"[^"]*"' | cut -d'"' -f4)
     reason=$(echo "${decision}" | grep -o '"reason":"[^"]*"' | cut -d'"' -f4)
     conf=$(echo "${decision}" | grep -o '"confidence":[0-9.]*' | cut -d: -f2)
@@ -50,15 +50,15 @@ for i in $(seq 1 "${ITERATIONS}"); do
 
     # Step 2: FSM Controller executes the decision
     echo "  [FSM] Executing ${action}..."
-    PRISC_PROJECT_ROOT="${XOD_DIR}" ./ops/+x/fsm_controller.+x 2>/dev/null || true
+    PRISC_PROJECT_ROOT="${XOD_DIR}" "${XOD_DIR}/ops/+x/fsm_controller.+x" 2>/dev/null || true
 
     # Step 3: TOM Layer updates beliefs about other agents
     echo "  [TOM] Updating beliefs..."
-    PRISC_PROJECT_ROOT="${XOD_DIR}" ./ops/+x/tom_layer.+x 2>/dev/null || true
+    PRISC_PROJECT_ROOT="${XOD_DIR}" "${XOD_DIR}/ops/+x/tom_layer.+x" 2>/dev/null || true
 
     # Step 4: Score the result (real fitness from corp_ORB)
     echo "  [FITNESS] Scoring..."
-    PRISC_PROJECT_ROOT="${XOD_DIR}" ./ops/+x/wsr_fitness.+x \
+    PRISC_PROJECT_ROOT="${XOD_DIR}" "${XOD_DIR}/ops/+x/wsr_fitness.+x" \
         "projects/wsr-pal/pieces/corp_ORB/state.txt" \
         "projects/wsr-pal/pieces/corp_ORB/price_history.txt" 2>/dev/null || true
 
@@ -73,4 +73,12 @@ done
 echo ""
 echo "=== Agent Run Complete ==="
 echo "Event bus:"
-tail -20 "${SESSION_DIR}/pieces/apps/player_app/interact_relay.txt" 2>/dev/null || true
+tail -20 "${XOD_DIR}/pieces/apps/player_app/interact_relay.txt" 2>/dev/null || true
+
+# Generate HTML chart from event log
+echo ""
+echo "=== Generating HTML Chart ==="
+PRISC_PROJECT_ROOT="${XOD_DIR}" "${XOD_DIR}/ops/+x/wsr_chart.+x" \
+    --events "${XOD_DIR}/pieces/apps/player_app/interact_relay.txt" \
+    "${XOD_DIR}/xod_chart.html" 2>/dev/null || true
+echo "Chart: ${XOD_DIR}/xod_chart.html"

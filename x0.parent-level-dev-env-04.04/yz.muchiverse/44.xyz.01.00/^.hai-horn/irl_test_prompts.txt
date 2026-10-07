@@ -1,0 +1,11 @@
+# IRL Harness test prompts - one per line, # for comments
+what is gravity
+explain quantum entanglement
+how does a neural network learn
+what is the capital of France
+describe photosynthesis
+explain general relativity simply
+what causes tides
+how do vaccines work
+what is the Pythagorean theorem
+explain blockchain in simple terms

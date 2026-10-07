@@ -50,6 +50,14 @@ gcc $CFLAGS -o "ops/+x/pc_world_manager.+x" "ops/pc_world_manager.c"
 gcc $CFLAGS -o "ops/+x/pc_trigger_watcher.+x" "ops/pc_trigger_watcher.c"   # started by pc_menu_input; was never built, so the bridge-watcher daemon silently never ran
 gcc $CFLAGS -o "ops/+x/pc_hq_status_manager.+x" "ops/pc_hq_status_manager.c"
 
+echo "--- Building entity-cli ops (move_entity_init/tick for placer animation) ---"
+ECLI_OPS="$_sr/&.widgits/entity-cli/ops"
+if [ -x "$ECLI_OPS/build_entity_cli_ops.sh" ]; then
+    sh "$ECLI_OPS/build_entity_cli_ops.sh" 2>&1 | grep -E "built|error|Error" | head -10
+else
+    echo "    WARN: entity-cli build script not found at $ECLI_OPS"
+fi
+
 echo "--- Copying real emoji_gen_atlas.+x + emoji_xtract.+x (real FreeType"
 echo "    rasterizer + real box-filter/crop extractor - board-viewer's own"
 echo "    build.sh copies these SAME real binaries from wsr-pal, not"

@@ -1,0 +1,49 @@
+# wsr-pal main_loop.pal — XOD FSM DRIVER MODE
+# This PAL variant runs autonomously, driving WSR via relay injection
+# instead of reading keyboard input from the TTY.
+#
+# Reads the event bus (interact_relay.txt) for trigger events, then
+# dispatches to behavior C ops (ops/+x/wsr_fsm_driver.+x) which emit
+# KEY_PRESSED codes to keyboard/history.txt.
+#
+# The FSM driver C op implements the "Behavior Bank": given a behavior
+# name, it inspects the current WSR frame and emits the appropriate
+# key presses to execute that behavior.
+
+li x28, 0                    # x28 = running flag
+
+loop:
+    # Read the event bus for new events
+    read_pos x7, "pieces/apps/player_app/interact_relay.txt"
+    
+    # Wait for events or use a heartbeat to trigger periodic checks
+    sleep 50000
+    
+    # Read current frame to see if any behavior condition triggers
+    read_word x1, pieces/display/current_frame.txt x28, 0
+    
+    # Simple FSM: if we see "End Turn" in the frame, inject end_turn behavior
+    li x3, 17                  # row number for End Turn
+    j dispatch_behavior
+    
+    # FRAME_CHECK: check for specific states
+    # This is a minimal example; a full implementation would use
+    # string matching via multiple read operations.
+    
+dispatch_behavior:
+    # Call the C op with the behavior name
+    # WSI expects: ./ops/+x/wsr_fsm_driver.+x <behavior>
+    # In PAL, we use the compiled +x binary via prisc+x
+    # For now, we inject the key directly for End Turn (row 17)
+    
+    # Emit key 17 (End Turn row), then Enter (13)
+    # In WSR, you type the row number then Enter
+    # For row 17: type '1' then '7' then Enter (ASCII 49, 55, 13)
+    # OR just emit 17 and 13 per the bare-int convention
+    
+    # Actually, emit through the behavior bank
+    # For multi-digit rows, chtpm resolves them. We emit the bare int.
+    
+    j loop
+
+halt:

@@ -77,7 +77,6 @@
 #include <string.h>
 #include <strings.h>
 #include <ctype.h>
-#include <dirent.h>
 #include <time.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -706,7 +705,10 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                     const char *tp = tag_end + 1;
                     size_t tw = 0;
                     while (tp < aend && tw < sizeof(text) - 1) {
-                        if (*tp == '<') { const char *g = strchr(tp, '>'); tp = g ? g + 1 : tp + 1; continue; }
+                        /* Separate text across inner tag boundaries with
+                         * a space (TOC "1"+"History" reads "1History"
+                         * otherwise); collapse_ws normalizes the runs. */
+                        if (*tp == '<') { const char *g = strchr(tp, '>'); tp = g ? g + 1 : tp + 1; if (tw > 0 && text[tw-1] != ' ') text[tw++] = ' '; continue; }
                         text[tw++] = *tp++;
                     }
                     text[tw] = '\0';
@@ -1077,13 +1079,29 @@ static int merge_render_rows(void) {
         return 0;
     }
     if (pf) {
+        /* Worker authority is per-domain: when its render carries no
+         * image rows at all (file:// pages, image fetch disabled), keep
+         * the static IMG/MEDIA rows instead of blanking media. */
+        int worker_has_images = 0;
+        {
+            const char *wr = g_worker_render;
+            while (*wr) {
+                if (strncmp(wr, "IMG|", 4) == 0 || strncmp(wr, "MEDIA|", 6) == 0) { worker_has_images = 1; break; }
+                const char *nl = strchr(wr, '\n');
+                wr = nl ? nl + 1 : wr + strlen(wr);
+            }
+        }
         char row[PATH_BUF];
         while (fgets(row, sizeof(row), pf)) {
             size_t L = strlen(row);
             while (L > 0 && (row[L-1]=='\n' || row[L-1]=='\r')) row[--L] = 0;
+            /* Static image rows survive only when the worker brought
+             * none (see worker_has_images above); TEXT/LINK/SEL always
+             * defer to the worker render. */
             if (strncmp(row, "TEXT|", 5) == 0 ||
-                strncmp(row, "LINK|", 5) == 0 || strncmp(row, "IMG|", 4) == 0 ||
-                strncmp(row, "MEDIA|", 6) == 0 || strncmp(row, "SEL|", 4) == 0)
+                strncmp(row, "LINK|", 5) == 0 ||
+                strncmp(row, "SEL|", 4) == 0 ||
+                ((strncmp(row, "IMG|", 4) == 0 || strncmp(row, "MEDIA|", 6) == 0) && worker_has_images))
                 continue;
             /* TITLE| from the manager stays: the worker RENDER usually
              * only covers TEXT/LINK/IMG, not document.title. */
@@ -1245,23 +1263,7 @@ static void collect_page_media(const char *html, const char *page_url) {
     }
     mkdir_p_local(g_media_root);
 
-    /* Resume sprite numbering past dirs a previous pass already filled:
-     * this runs once for static MEDIA rows and again after the worker
-     * merge - restarting at m0 would clobber the first pass's sprites
-     * while their IMG rows still point at them. */
     int media_i = 0;
-    {
-        DIR *md = opendir(g_media_root);
-        if (md) {
-            struct dirent *de;
-            while ((de = readdir(md)) != NULL) {
-                int v = 0;
-                if (sscanf(de->d_name, "m%d", &v) == 1 && v >= media_i)
-                    media_i = v + 1;
-            }
-            closedir(md);
-        }
-    }
 
     FILE *pf = fopen(g_page_state_path, "r");
     if (!pf) return;
@@ -2011,9 +2013,6 @@ static void run_page_scripts(const char *html, const char *url, const char *titl
      * DOM writer. A worker that fails leaves the static DOM in place. */
     worker_load(g_js_script_path, g_tmp_dom_path, url, title, g_js_style_path);
     (void)merge_render_rows();
-    /* Worker IMG rows arrived as MEDIA (see merge) - collect sprites for
-     * them now; numbering resumes past the static pass's m-dirs. */
-    collect_page_media(html, url);
 }
 
 
@@ -3397,9 +3396,13 @@ static void handle_request(void) {
     if (strncmp(line, "go:eval:", 8) == 0) {
         publish_status(worker_eval(line + 8) ? "ready" : "eval error");
         (void)merge_render_rows();
+        /* eval-drawn canvases arrive as MEDIA rows - sprite them here;
+         * the fetch path collects in do_fetch, eval never goes there. */
+        collect_page_media(NULL, NULL);
     } else if (strncmp(line, "eval:", 5) == 0) {
         publish_status(worker_eval(line + 5) ? "ready" : "eval error");
         (void)merge_render_rows();
+        collect_page_media(NULL, NULL);
     } else if (strncmp(line, "click:", 6) == 0) {
         /* khtpm click on a rendered content row -> a real DOM event in the
          * worker. Payload: "click:<selector>[:<type>]". The worker resolves the
@@ -4177,6 +4180,21 @@ static void write_ui_projection(void) {
                     if (b2) { *b2 = 0; snprintf(s2, sizeof(s2), "%s", b2 + 1); } else s2[0] = 0;
                     char url_sq[PATH_BUF * 2], lab_s[700];
                     uisan(s2[0] ? s2 : rest, lab_s, sizeof(lab_s));
+                    /* Milestone 2 (2026-10-07, live click test): a LINK
+                     * whose URL contains whitespace is malformed (emitted
+                     * as `LINK|<url> <label>` with a space, not a pipe -
+                     * the worker RENDER builder's shape). Clicking it
+                     * submitted the whole string as a YouTube search.
+                     * Never navigate on it; show the label as plain text
+                     * so nothing clickable lies. Emitter-side fix belongs
+                     * to the worker RENDER format (opencode-fix lane). */
+                    if (strpbrk(rest, " \t\r\n") != NULL) {
+                        if (lab_s[0] && strcmp(lab_s, rest) != 0 && !junk_visible_line(lab_s)) {
+                            UI_PUT("c_%d_kind=text\nc_%d_is_text=1\nc_%d_text=%s\n", rc, rc, rc, lab_s);
+                            rc++;
+                        }
+                        continue;
+                    }
                     /* Drop jump-links / sidebar nav links (worker rows bypass the extractor filter). */
                     if (junk_visible_line(lab_s)) continue;
                     /* Milestone 2 (2026-10-07): fragment-only hrefs (# with

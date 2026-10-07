@@ -1,0 +1,28 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | wsr_xod_setup
+META         | version            | 1.0
+META         | numbering_source   | XOD tournament setup
+
+METHOD       | Agent 1: Type [llm|goap|human|scripted] | SET_AGENT_TYPE|1
+METHOD       | Agent 1: Model (Ollama name)             | SET_AGENT_MODEL|1
+METHOD       | Agent 1: Goal (survive|grow|accumulate)    | SET_AGENT_GOAL|1
+METHOD       | Agent 1: Temperature                       | SET_AGENT_TEMP|1
+METHOD       | Agent 2: Type [llm|goap|human|scripted]    | SET_AGENT_TYPE|2
+METHOD       | Agent 2: Model (Ollama name)               | SET_AGENT_MODEL|2
+METHOD       | Agent 2: Goal (survive|grow|accumulate)    | SET_AGENT_GOAL|2
+METHOD       | Agent 2: Temperature                       | SET_AGENT_TEMP|2
+METHOD       | Agent 3: Type [llm|goap|human|scripted]    | SET_AGENT_TYPE|3
+METHOD       | Agent 3: Model (Ollama name)               | SET_AGENT_MODEL|3
+METHOD       | Agent 3: Goal (survive|grow|accumulate)    | SET_AGENT_GOAL|3
+METHOD       | Agent 3: Temperature                       | SET_AGENT_TEMP|3
+METHOD       | Agent 4: Type [llm|goap|human|scripted]    | SET_AGENT_TYPE|4
+METHOD       | Agent 4: Model (Ollama name)               | SET_AGENT_MODEL|4
+METHOD       | Agent 4: Goal (survive|grow|accumulate)    | SET_AGENT_GOAL|4
+METHOD       | Agent 4: Temperature                       | SET_AGENT_TEMP|4
+METHOD       | Tournament Duration (seconds)              | SET_DURATION
+METHOD       | Add Agent Slot                             | ADD_AGENT
+METHOD       | Remove Last Agent Slot                     | REMOVE_AGENT
+METHOD       | Reset All Config to Defaults               | RESET_CONFIG
+METHOD       | Start Tournament                           | START_TOURNAMENT
+METHOD       | Cancel and Exit                            | CANCEL

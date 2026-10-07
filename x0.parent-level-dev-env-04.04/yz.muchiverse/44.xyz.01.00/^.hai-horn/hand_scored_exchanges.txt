@@ -1,0 +1,12 @@
+# Hand-scored IRL exchanges — correction signal per IRL-BOOTSTRAP-RECURSION-SPEC.md
+# Format: EXCHANGE_N | U_TEXT | A_TEXT | NEXT_U_TEXT | SIGNAL | NOTES
+# Signal: POSITIVE (accepted, moved on) / NEGATIVE (corrected, re-asked)
+
+EXCHANGE_1 | U|Reply with exactly one word: pong | A|pong | U|Reply with exactly one word: pong | NEGATIVE | User repeated exact same prompt → not satisfied
+EXCHANGE_2 | U|Reply with exactly one word: pong | A|pong | U|List the files in &.widgits/ai-cell using your list_dir tool. | POSITIVE | User moved to new topic → accepted
+EXCHANGE_3 | U|List the files in &.widgits/ai-cell using your list_dir tool. | A|[list_dir] cannot open: /home/no/Desktop/... | U|List the files in &.widgits/ai-cell using your list_dir tool. | NEGATIVE | User repeated exact same prompt after error
+EXCHANGE_4 | U|List the files in &.widgits/ai-cell using your list_dir tool. | A|[tool_call requested by model] list_dir(...) - real API-native tool call, NOT executed | U|List the files in &.widgits/ai-cell using your list_dir tool. | NEGATIVE | User repeated exact same prompt after tool call placeholder
+EXCHANGE_5 | U|List the files in &.widgits/ai-cell using your list_dir tool. | A|[list_dir] /home/no/... listing of ai-cell directory... | U|Reply with exactly one word: beep | POSITIVE | User moved to new topic → accepted
+
+# Source: &.widgits/open-hai/sessions/1786880963/transcript.txt
+# Scored by: hand, per correction signal (next U| restates = NEGATIVE, new topic = POSITIVE)
