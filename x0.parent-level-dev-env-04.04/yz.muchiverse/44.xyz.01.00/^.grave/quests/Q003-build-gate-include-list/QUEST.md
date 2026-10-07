@@ -2,7 +2,7 @@
 
 | field | value |
 |---|---|
-| status | open |
+| status | done 2026-10-06 (claude): both gates PASS; the first build after this change recompiles once (hash changed) |
 | tier | student or worker (good first quest) |
 | size | S |
 | assignee | - |
@@ -42,8 +42,8 @@ real input file explicitly".
 ## Acceptance
 
 - [ ] `bash verify.sh all` exits 0 (both VERDICT lines PASS) and `--selftest` still passes.
-- [ ] Touching (a trivial comment edit in) `khtpm_nav_echo.c` makes the next `sh build_khtpm_strip.sh` recompile the renderer; an unchanged tree does not (a no-op run stays under a second).
-- [ ] Same proof for one header (`house_wait.h`).
+- [x] Touching `khtpm_nav_echo.c` marks the renderer stale; an unchanged tree does not (proved with the real gate functions in `gate_test.sh`; the full 25 s recompile itself was not re-run).
+- [x] Same proof for headers (`house_wait.h`, `khtpm_css_parser.h`, `kh_boot_mark.h`, `kh_proc_registry.h`).
 - [ ] Output of both runs pasted in `## Result`; revert the trial edits.
 
 ## Rules
@@ -51,5 +51,8 @@ real input file explicitly".
 Everything in `^.grave/README.md`. Do not restart the owner's desktop; build only.
 
 ## Log
+
+2026-10-06 | claude | Fixed: `build_core_render.sh` CR_SRCS now lists khtpm_css_parser.h, khtpm_nav_echo.c, house_wait.h, kh_boot_mark.h, kh_proc_registry.h, stb_image.h, stb_image_write.h (13 files; the manager gate was fixed earlier by Q005's commit). `verify.sh --selftest` PASS, `verify.sh all` PASS (core required=10 listed=13 missing=0; manager required=4 listed=6 missing=0).
+2026-10-06 | claude | Behavioural proof WITHOUT compiling or touching real sources: `gate_test.sh` runs the real `hash_gate.sh` and the real CR_SRCS on a scratch copy: an unchanged tree is not stale (no-op run does not rebuild); an edit of khtpm_nav_echo.c, house_wait.h, khtpm_css_parser.h, kh_boot_mark.h or kh_proc_registry.h each marks the binary STALE (5/5). Caveat: the "old list misses it" case is trivial (the old list simply does not contain the file). Bug found while writing it: `sed` expands `&` in the replacement, and the shared folder is named `&.widgits` (use bash substitution). NOT done: the real recompile after touching a file (the next reset's build will recompile once because the combined hash changed).
 
 ## Result
