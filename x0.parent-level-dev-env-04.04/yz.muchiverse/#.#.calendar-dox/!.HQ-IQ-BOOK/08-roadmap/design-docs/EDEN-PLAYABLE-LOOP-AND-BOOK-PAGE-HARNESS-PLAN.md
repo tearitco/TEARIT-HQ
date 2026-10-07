@@ -30,3 +30,6 @@ Conductor 🔘 button: **Start / Stop** (and Pause, Save, Load, Status). **Start
 
 ## 5. Build order
 1. `book_page_op` + harness (alpha). 2. Eden v1 events and the 100-slot save/load (alpha, scratch). 3. Music daemon v0 (alpha). 4. Beta rehearsal: relay-create `pre-design:eden-test`, install the conductor there, relay-test Start/Stop/Save/Load. 5. HORN op error fix, then the robot OpenRouter chat on the page. 6. Toolbar slot menu (beta). 7. Live, only on the owner's go-ahead. **Not verified yet:** everything in this plan.
+
+## 6. Done 2026-10-07: pre-design:eden-test created in the live book
+Owner approved ("create the real page in livebook"). Procedure: backup of the owner's `sessions/` (159 files, tarball + sha256 list in `/home/no/staging/backups/`, outside the repo; counts matched), then `book_page_op new-page pre-design:eden-test --root <live sessions root>` (alpha build, commit f33058088, harness book_page 55/0). Result: `sessions/s1/desks/eden-test.pdl` (empty) + one row in `sessions/book_page_ledger.txt`; a diff against the backup checksums shows ONLY those two new files; `active_desk` still `office`. **Not verified:** that the live taskbar lists the page in its page switcher (no GUI check).
