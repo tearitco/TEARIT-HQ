@@ -56,3 +56,18 @@ Mechanics are **events and registered commands**; state is **append-only ledgers
 5. Is a **fixed game seed** per scenario (reproducible) what you want, or free randomness?
 6. War v1: the stand-in "raid" (treasury transfer) acceptable until the ownership refactor?
 7. Do the two civilizations share one market and one bank system, or each have its own?
+
+## 8. The start menu: New Game setup (owner: "ideally we can access that menu on start of this game")
+I read "that menu" as the setup choices raised as open questions in section 7. They become **options on a New Game screen** shown when the game starts, so the owner decides per game (and I stop guessing).
+
+**What the house already has for this:** the per-game setup file `game.pdl` (`GAME-SETUP-PDL-DESIGN.md`) with `GAME` / `MAP` / `CELL` / `ROW` / `EDIT` rows, where a game can add its **own taskbar cells and dropdown rows** ("game title, new menus"); the play-start and reset behavior from the play-modes design (a starting-position entity; in-game variables restart); and the DSR toy's own menu bar (File, Game Options, Settings, Help) with the parallel-track **New / Load / Save / Save As** menu class (`2026-09-18/2do.md`, `projects/dsr/NOTES.md`).
+
+**Design:**
+- **Entry points:** *File -> New Game* in the DSR toy, and a game cell from `game.pdl` (`CELL | dsr-new | New Game | ... | cmd=...`) so it is also reachable from the desk/taskbar. Starting the game (play mode on) with no setup yet opens the screen first.
+- **The screen** is an X11-HQ panel (a manager `<module>` + `.xhtpm`, no renderer C), **bounded choices only** (steppers, toggles, pick lists; no free typing except a name), every option with a **default** so `Start` works immediately. Presets at the top: **Quick demo** (2 citizens, fast), **Standard**, **Custom**; a custom setup can be saved as a named preset file.
+- **Options (from sections 2 and 7), each defaulted:** citizens per civilization (3-8, default 4) and their representation; game seed (fixed number or random); hotels per civilization; shared market vs separate markets; schools: daily-attendance model; growth rule on/off; **war on/off (default off until built)**; needs toggles (hunger, hygiene, sleep, **death off**); day speed. Options a running game must not change (seed, civilization count) are locked after Start and shown read-only under *Game Options*; speed, pause and toggles stay adjustable.
+- **Where it is stored:** new `game.pdl` rows `SETUP | <key> | <value>` (proposed row type; legacy-safe: no `SETUP` rows = the defaults, so every existing game is unchanged). The setup, the seed and the clock start are the first rows of that game's world ledger, so a run is **reproducible** and a saved game restores its own setup.
+- **Start does:** validate -> write the `SETUP` rows -> create/seed the dsr-test entities from templates for the chosen counts -> reset the clock and all in-game state (the play-start reset) -> open the observer view (section 3).
+- **Reuse:** the New/Load/Save menu class and `game_slot_op` (save/load slots) for Load/Save; `desk_copy_op` and template entities for seeding; the harness framework for tests (defaults produce the same numbers as no `SETUP` rows; each option changes exactly what it names; locked options refuse changes after Start).
+
+**Build order addition (before step 1 of section 5):** define the `SETUP` rows and their defaults in the game setup parser (extend `khtpm_game_setup.c`, with pal harness cases), then the screen, then wire Start to the seeding. Open: is the New Game screen reached from the toy menu only, from a taskbar cell too, or both (recommended: both)?
