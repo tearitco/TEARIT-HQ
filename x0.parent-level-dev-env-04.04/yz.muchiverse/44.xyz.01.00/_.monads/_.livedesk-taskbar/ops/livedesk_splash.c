@@ -269,8 +269,15 @@ int main(int argc, char **argv) {
                 if (el > 120) break;
                 continue;
             }
-            if (build_failed(xdir)) { compile_seen = 1; compiling = 1; }
-            else if (compiling) { compiling = 0; t_post = el; }
+            {   static double marker_since = -1.0;
+                if (build_failed(xdir)) {
+                    if (marker_since < 0) marker_since = el;
+                    if (el - marker_since >= 0.8) { compile_seen = 1; compiling = 1; }   /* a real compile; a ~0.6 s no-op build never shows the bar */
+                } else {
+                    marker_since = -1.0;
+                    if (compiling) { compiling = 0; t_post = el; }
+                }
+            }
             if (compiling) {
                 int cdone = 0;
                 for (int i = 0; i < N_TARGETS; i++) {

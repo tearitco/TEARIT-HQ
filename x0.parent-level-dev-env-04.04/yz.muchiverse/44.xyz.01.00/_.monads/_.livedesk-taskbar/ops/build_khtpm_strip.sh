@@ -81,40 +81,28 @@ echo "BUILD IN PROGRESS - build_khtpm_strip.sh started $(date +%H:%M:%S) and has
 # fills a real progress bar as each build output binary lands in +x/.
 # zenity/xmessage stay only as the fallback for the first-ever build
 # (before livedesk_splash.+x itself exists) or a headless box.
-if [ -n "${LIVEDESK_START_SPLASH:-}" ]; then
+# The loading strip (livedesk_splash --boot, bottom of the screen) is started HERE, by the one script every path that compiles goes through
+# (desktop launcher, button.sh reset, run_khtpm_strip.sh new, HQ $.restart). Owner 2026-10-06: the compile bar must show DURING the compile -
+# when it was started only by the launcher / after the build, `button.sh reset` showed nothing while compiling and the strip appeared after
+# the bar was already up. The strip pins its first 60% to this build (marker .build_failed.txt + rewritten binaries; it only switches to
+# "Compiling..." when the marker has stood for 0.8 s, so a no-op build of ~0.6 s never flashes it), then follows the manager and the
+# bottom bar to Ready. If a strip is already running (the launcher started it first) it is left alone. LIVEDESK_NO_SPLASH=1 disables it.
+if [ -z "${LIVEDESK_NO_SPLASH:-}" ] && [ -n "${DISPLAY:-}" ]; then
     _HOUSE_DIR="$(cd ../../.. 2>/dev/null && pwd || echo .)"
     _XDIR="$(pwd)/+x"
-    # build the splash binary itself first (tiny, ~1s, X11+Xft only) so
-    # it exists for THIS build and every later one.
     if [ ! -x "+x/livedesk_splash.+x" ] || [ livedesk_splash.c -nt "+x/livedesk_splash.+x" ]; then
         _sx="$(pkg-config --cflags --libs x11 xft 2>/dev/null)"
         [ -n "$_sx" ] || _sx="-I/usr/include/freetype2 -lX11 -lXft"
         "${CC:-gcc}" -std=c11 -O2 -o "+x/livedesk_splash.+x" livedesk_splash.c $_sx >/dev/null 2>&1 || true
     fi
-    if [ -x "+x/livedesk_splash.+x" ] && [ -n "${DISPLAY:-}" ]; then
-        "+x/livedesk_splash.+x" "$_HOUSE_DIR" "$_XDIR" >/dev/null 2>&1 &
-        _splash_pid=$!
-        _real_splash=1
-    elif command -v xmessage >/dev/null 2>&1; then
-        xmessage -center -timeout 120 "Building livedesk…  (~30s)" >/dev/null 2>&1 &
-        _splash_pid=$!
-    elif command -v zenity >/dev/null 2>&1; then
-        zenity --info --width=320 --timeout=180 --title="livedesk" \
-               --text="Building livedesk…  (~30s the first time)" >/dev/null 2>&1 &
-        _splash_pid=$!
-    fi
-    # Only the real X11 splash (livedesk_splash.+x) knows how to poll
-    # +x/.build_failed.txt and switch to a "BUILD FAILED" state that
-    # waits for a real dismissal - so it alone is left running on
-    # failure. xmessage/zenity can't be told anything after they're
-    # launched, so a failure there is no worse than before (their own
-    # --timeout still closes them; the terminal/log has the real error).
-    if [ -n "${_splash_pid:-}" ]; then
-        if [ "${_real_splash:-}" = 1 ]; then
-            trap 'if [ -f "+x/.build_failed.txt" ]; then :; else kill "$_splash_pid" 2>/dev/null || true; fi' EXIT INT TERM
-        else
-            trap 'kill "$_splash_pid" 2>/dev/null || true' EXIT INT TERM
+    _bs_pid="$(cat "$_HOUSE_DIR/#.desktop/livedesk_boot_splash.pid" 2>/dev/null)"
+    if [ -x "+x/livedesk_splash.+x" ]; then
+        if [ -z "$_bs_pid" ] || ! grep -q livedesk_splash "/proc/$_bs_pid/comm" 2>/dev/null; then
+            rm -f "$_HOUSE_DIR/#.desktop/boot_build_failed.txt"
+            (setsid nohup "+x/livedesk_splash.+x" "$_HOUSE_DIR" "$_XDIR" --boot >/dev/null 2>&1 < /dev/null &)
         fi
+        # a build that ends without clearing its marker FAILED: tell the strip (it turns into a red BUILD FAILED banner and stays)
+        trap 'if [ -f "+x/.build_failed.txt" ]; then : > "$_HOUSE_DIR/#.desktop/boot_build_failed.txt"; fi' EXIT INT TERM
     fi
 fi
 
