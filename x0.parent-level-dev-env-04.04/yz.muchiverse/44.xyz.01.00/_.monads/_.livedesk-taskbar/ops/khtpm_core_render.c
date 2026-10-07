@@ -111,6 +111,9 @@ extern char **environ;
 static void nav_tab_unregister(void);
 static void nav_ledger_publish(void);
 static void popup_handle_click(int px, int py);
+/* Pending Backspace confirmation (2026-10-06): set by the Backspace branch for an item with confirm=, answered by the next key. */
+static char g_confirm_text[200];
+static char g_confirm_action[1536];
 static void handle_key(KeySym ks, char ch);
 static void grid_col_to_letters(int col, char *out, size_t outsz); /* defined near default_grid_handle_key() - needed earlier by dispatch()'s own CSVH_GRIDCOMMIT-style handlers */
 static void history_path(char *out, size_t outsz);
@@ -1170,6 +1173,12 @@ static void apply_attr(Elem *e, const char *name, const char *val) {
         snprintf(decoded, sizeof(decoded), "%s", val);
         decode_entities(decoded);
         snprintf(e->backspace_action, sizeof(e->backspace_action), "%s", decoded);
+    } else if (strcmp(name, "confirm") == 0) {
+        /* 2026-10-06 - see Elem's confirm field comment (khtpm_render_core.c): popup text shown before backspace_action runs. */
+        char decoded[sizeof(e->confirm)];
+        snprintf(decoded, sizeof(decoded), "%s", val);
+        decode_entities(decoded);
+        snprintf(e->confirm, sizeof(e->confirm), "%s", decoded);
     } else if (strcmp(name, "relay") == 0) {
         /* REAL, NEW 2026-09-04 - generic "Interact Mode" capability,
          * ported from pc-hq's own hand-rolled run_pchq_board_mode()
@@ -10383,6 +10392,7 @@ static void kh_write_ascii_frame(void) {
     fprintf(ms, "--- %s  pid %d  %s ---\n", base, (int)getpid(), ts);
     if (g_current_page[0]) fprintf(ms, "--- page: %s ---\n", g_current_page);
     dock_ascii_walk(ms, g_window, 0);
+    if (g_confirm_action[0]) fprintf(ms, "[CONFIRM] %s  -- Enter/y = yes, any other key = no\n", g_confirm_text);
     fclose(ms);
 
     FILE *f = fopen(fpath, "w");
@@ -10960,6 +10970,15 @@ static void redraw(void) {
                           (const FcChar8 *)"\xE2\x8C\x9F", 3);   /* U+231F ⌟ */
         XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &gcol);
     }
+    if (g_confirm_action[0] && xftdraw_buf && font_ui) {   /* confirm popup: centred box over everything, themed */
+        int bw = g_win_w - 40 < 460 ? g_win_w - 40 : 460, bh = 78, bx = (g_win_w - bw) / 2, by = (g_win_h - bh) / 2;
+        XftColor tcol = xft_color("#ffffff"), hcol = xft_color(g_theme_fg[0] ? g_theme_fg : "#8fb4e0");
+        XSetForeground(dpy, gc, alloc_pixel("#1b1b1b")); XFillRectangle(dpy, buf, gc, bx, by, (unsigned)bw, (unsigned)bh);
+        XSetForeground(dpy, gc, alloc_pixel(g_theme_fg[0] ? g_theme_fg : "#8fb4e0")); XDrawRectangle(dpy, buf, gc, bx, by, (unsigned)bw, (unsigned)bh);
+        XftDrawStringUtf8(xftdraw_buf, &tcol, font_ui, bx + 14, by + 30, (const FcChar8 *)g_confirm_text, (int)strlen(g_confirm_text));
+        XftDrawStringUtf8(xftdraw_buf, &hcol, font_ui, bx + 14, by + 58, (const FcChar8 *)"Enter / y = yes      any other key = no", 38);
+        XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &tcol); XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &hcol);
+    }
     XSync(dpy, False);
     XImage *frame = XGetImage(dpy, buf, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h, AllPlanes, ZPixmap);
     if (frame) {
@@ -11122,6 +11141,15 @@ static void dock_nav_step(int dir) {
 }
 
 static void handle_key(KeySym ks, char ch) {
+    if (g_confirm_action[0]) {   /* a confirm popup is up: it eats the next key. Enter / y = yes, anything else = no. */
+        char act[sizeof(g_confirm_action)];
+        int yes = (ks == XK_Return || ks == XK_KP_Enter || ch == 13 || ch == 'y' || ch == 'Y');
+        snprintf(act, sizeof(act), "%s", g_confirm_action);
+        g_confirm_action[0] = 0; g_confirm_text[0] = 0;
+        if (yes) dispatch_no_quit(act);
+        redraw();
+        return;
+    }
     /* PDL-configurable window close (#.desktop/hq_ui.pdl close_combo,
      * default ctrl+c). The deliberate close gesture for a focused
      * window - ESC deliberately does NOT close a real app window
@@ -11378,6 +11406,12 @@ static void handle_key(KeySym ks, char ch) {
      * routed away above if a field WAS actually armed). */
     if (ks == XK_BackSpace && g_focus_nav >= 1 && g_focus_nav <= g_n_nav) {
         Elem *focused = g_nav[g_focus_nav - 1];
+        if (focused->backspace_action[0] && focused->confirm[0]) {   /* ask first: the popup is drawn by redraw() */
+            snprintf(g_confirm_text, sizeof(g_confirm_text), "%s", focused->confirm);
+            snprintf(g_confirm_action, sizeof(g_confirm_action), "%s", focused->backspace_action);
+            redraw();
+            return;
+        }
         if (focused->backspace_action[0]) { dispatch_no_quit(focused->backspace_action); return; }
     }
     if (ks == XK_Up || ks == XK_Left) {

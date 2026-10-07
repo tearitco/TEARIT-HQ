@@ -180,6 +180,10 @@ typedef struct Elem {
      * branch). Empty/unused = zero behavior change for every existing
      * consumer - nothing currently reads or sets this. */
     char backspace_action[1536];
+    /* 2026-10-06 (direct request: "give the existing backspaces popup safeties"): optional confirm="Delete X?" on an <item>.
+     * When set, Backspace does NOT run backspace_action at once: the renderer shows a confirm popup and runs it only on Enter or y;
+     * any other key cancels. Empty = unchanged behaviour (items whose Backspace is a harmless toggle simply leave it unset). */
+    char confirm[200];
     /* REAL, NEW 2026-09-01 (direct instruction: "build word-wrap/multi-
      * line/emoji into the generic cli_io first" - real generic
      * capability, not chat-hai-specific) - a real, generic <cli_io

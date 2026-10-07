@@ -38,7 +38,8 @@
     <repeat count="${n_items}" bind="it">
       <item id="row${it.#}" class="ms-row ${it.cls}" label="${it.name}"
             action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'PICK:${it.#}'"
-            backspace_action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'DEL:${it.#}'"/>
+            backspace_action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'DEL:${it.#}'"
+            confirm="Delete ${it.name}?"/>
     </repeat>
   </page>
 </window>

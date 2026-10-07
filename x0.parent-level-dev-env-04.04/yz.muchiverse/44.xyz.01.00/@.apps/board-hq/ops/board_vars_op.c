@@ -14,7 +14,9 @@
  *   SOURCE | dirs     | <path from house root>                    rows = sub-folders (names not starting with '_' or '.'), sorted
  *   DETAIL | link-tail | <n>                    detail pane = last n lines of the selected row's linked file (md-table)
  *   DETAIL | dir-file-tail | <file> | <n>       detail pane = last n lines of <selected folder>/<file> (dirs)
- *   ACTION | <label> | <shell command>           a button; the command is run as given (it may use the placeholders {id} and {dir} = the selected row's id / folder)
+ *   ACTION | <label> | <shell command>           a button; the command is run as given (commands run from the house root) (it may use the placeholders {id} and {dir} = the selected row's id / folder)
+ *   CREATE | <label> | <command> | <default title>   a "+ <label>" button (creates with the default title at once) and a text field (cli_io) under the list; what is typed is passed to <command> as its ONLY argument ("$1", never interpolated into the shell)
+ *   DELETE | <command> | <confirm text>        Backspace on a row asks <confirm text> ({id} = the row id) in the renderer's confirm popup; Enter/y then runs <command> with the id as "$1"
  * Exit: 0 ok, 2 usage / unreadable board.pdl. No network, writes only inside <state_dir>. */
 #define _GNU_SOURCE
 #include <stdio.h>
@@ -24,16 +26,19 @@
 #include <dirent.h>
 #include <limits.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 
 #define MAXR 400
 #define PB 4352
 typedef struct { char id[256], text[300], link[PB]; } Row;
 static Row R[MAXR]; static int NR;
+static char create_text[2000];
 static char HOUSE[PB], STATE[PB], OPPATH[PB];
 static char title[200] = "Board", subtitle[200] = "";
 static char src_kind[16], src_path[PB], src_cols[64] = "0,1";
 static char det_kind[24], det_file[200]; static int det_n = 12;
 static char act_label[16][120], act_cmd[16][1500]; static int NA;
+static char create_label[120], create_default[160] = "New quest (rename me)", create_cmd[1500], delete_cmd[1500], delete_confirm[200] = "Delete {id}?";
 
 static void trim(char *s) { char *e = s + strlen(s); while (e > s && (e[-1] == ' ' || e[-1] == '\t' || e[-1] == '\r' || e[-1] == '\n')) *--e = 0; char *b = s; while (*b == ' ' || *b == '\t') b++; if (b != s) memmove(s, b, strlen(b) + 1); }
 static void clean(char *s) { for (; *s; s++) if (*s == '\n' || *s == '\r' || *s == '|' || *s == '=' ) *s = ' '; }
@@ -41,6 +46,8 @@ static int join(char *o, size_t n, const char *a, const char *b) { size_t la = s
 static int cmp(const void *a, const void *b) { return strcmp(((const Row *)a)->id, ((const Row *)b)->id); }
 
 static void load_pdl(void) {
+    NA = 0; src_kind[0] = 0; det_kind[0] = 0; create_cmd[0] = 0; create_label[0] = 0; snprintf(create_default, sizeof(create_default), "New item"); delete_cmd[0] = 0;
+    snprintf(delete_confirm, sizeof(delete_confirm), "Delete {id}?"); snprintf(src_cols, sizeof(src_cols), "0,1"); det_n = 12;
     char p[PB], line[2200]; FILE *f; join(p, sizeof(p), STATE, "board.pdl");
     if (!(f = fopen(p, "r"))) { fprintf(stderr, "board_vars_op: cannot read %s\n", p); exit(2); }
     while (fgets(line, sizeof(line), f)) {
@@ -51,6 +58,8 @@ static void load_pdl(void) {
         if (!strcmp(fld[0], "BOARD") && n >= 3) { if (!strcmp(fld[1], "title")) snprintf(title, sizeof(title), "%s", fld[2]); else if (!strcmp(fld[1], "subtitle")) snprintf(subtitle, sizeof(subtitle), "%s", fld[2]); }
         else if (!strcmp(fld[0], "SOURCE") && n >= 3) { snprintf(src_kind, sizeof(src_kind), "%s", fld[1]); snprintf(src_path, sizeof(src_path), "%s", fld[2]); if (n >= 4 && !strncmp(fld[3], "cols=", 5)) snprintf(src_cols, sizeof(src_cols), "%s", fld[3] + 5); }
         else if (!strcmp(fld[0], "DETAIL") && n >= 3) { snprintf(det_kind, sizeof(det_kind), "%s", fld[1]); if (!strcmp(fld[1], "link-tail")) det_n = atoi(fld[2]); else if (n >= 4) { snprintf(det_file, sizeof(det_file), "%s", fld[2]); det_n = atoi(fld[3]); } }
+        else if (!strcmp(fld[0], "CREATE") && n >= 3) { snprintf(create_label, sizeof(create_label), "%s", fld[1]); snprintf(create_cmd, sizeof(create_cmd), "%s", fld[2]); if (n >= 4) snprintf(create_default, sizeof(create_default), "%s", fld[3]); }
+        else if (!strcmp(fld[0], "DELETE") && n >= 2) { snprintf(delete_cmd, sizeof(delete_cmd), "%s", fld[1]); if (n >= 3) snprintf(delete_confirm, sizeof(delete_confirm), "%s", fld[2]); }
         else if (!strcmp(fld[0], "ACTION") && n >= 3 && NA < 16) { snprintf(act_label[NA], sizeof(act_label[0]), "%s", fld[1]); snprintf(act_cmd[NA], sizeof(act_cmd[0]), "%s", fld[2]); NA++; }
     }
     fclose(f);
@@ -120,6 +129,17 @@ static void tail_lines(const char *path, int n, char out[][400], int *cnt) {
     for (i = start; i < total; i++) { snprintf(out[*cnt], 400, "%s", ring[i % 64]); clean(out[*cnt]); (*cnt)++; }
 }
 
+/* run <cmd> with ONE data argument as "$1" (no shell interpolation of the data); wait for it */
+static int run_cmd(const char *cmd, const char *arg) {
+    char script[1600]; pid_t pid; int st = 0;
+    snprintf(script, sizeof(script), "%.1500s \"$1\"", cmd);
+    pid = fork();
+    if (pid == 0) { if (chdir(HOUSE) != 0) _exit(126); execl("/bin/sh", "sh", "-c", script, "sh", arg, (char *)NULL); _exit(127); }
+    if (pid < 0) return -1;
+    waitpid(pid, &st, 0);
+    return WIFEXITED(st) ? WEXITSTATUS(st) : -1;
+}
+
 static int publish(int selected) {
     static char buf[200000], old[200000]; int off = 0, i; char p[PB]; FILE *f; static char dl[64][400]; int nd = 0;
     char selid[256] = "", seldir[PB] = "";
@@ -130,6 +150,14 @@ static int publish(int selected) {
     off += snprintf(buf + off, sizeof(buf) - off, "title=%s\nsubtitle=%s\nsel_name=%s\nn_rows=%d\n", title, subtitle, selid[0] ? selid : "-", NR);
     for (i = 0; i < NR && off < (int)sizeof(buf) - 2000; i++)
         off += snprintf(buf + off, sizeof(buf) - off, "r_%d_text=%s\nr_%d_cls=%s\nr_%d_action='%s' '%s' --select %d\n", i, R[i].text, i, i == selected ? "board-row board-sel" : "board-row", i, OPPATH, STATE, i);
+    for (i = 0; i < NR && off < (int)sizeof(buf) - 2000; i++) {
+        char cf[260]; size_t ci = 0; cf[0] = 0;
+        if (delete_cmd[0]) for (const char *c = delete_confirm; *c && ci < sizeof(cf) - 70; ) { if (!strncmp(c, "{id}", 4)) { ci += (size_t)snprintf(cf + ci, sizeof(cf) - ci, "%.60s", R[i].id); c += 4; } else cf[ci++] = *c++; cf[ci] = 0; }
+        clean(cf);
+        if (delete_cmd[0]) off += snprintf(buf + off, sizeof(buf) - off, "r_%d_del_action='%s' '%s' --delete %d\nr_%d_confirm=%s\n", i, OPPATH, STATE, i, i, cf);
+        else off += snprintf(buf + off, sizeof(buf) - off, "r_%d_del_action=\nr_%d_confirm=\n", i, i);
+    }
+    off += snprintf(buf + off, sizeof(buf) - off, "can_create=%d\ncreate_label=%s\ncreate_action='%s' '%s' --create\ncreate_default_action='%s' '%s' --create-default\n", create_cmd[0] ? 1 : 0, create_label, OPPATH, STATE, OPPATH, STATE);
     off += snprintf(buf + off, sizeof(buf) - off, "n_detail=%d\n", nd);
     for (i = 0; i < nd; i++) off += snprintf(buf + off, sizeof(buf) - off, "d_%d_text=%s\n", i, dl[i]);
     off += snprintf(buf + off, sizeof(buf) - off, "n_actions=%d\n", NA);
@@ -152,11 +180,16 @@ static int publish(int selected) {
 }
 
 int main(int argc, char **argv) {
-    int sel = 0, watch = 0, do_select = 0; char *rp, here[PB], sp[PB]; FILE *f;
+    int sel = 0, watch = 0, do_select = 0, del_idx = -1, do_create = 0; char *rp, here[PB], sp[PB]; FILE *f;
     if (argc < 2) { fprintf(stderr, "usage: board_vars_op.+x <state_dir> [--select N] [--watch]\n"); return 2; }
     snprintf(STATE, sizeof(STATE), "%s", argv[1]);
-    for (int i = 2; i < argc; i++) { if (!strcmp(argv[i], "--select") && i + 1 < argc) { sel = atoi(argv[++i]); do_select = 1; } else if (!strcmp(argv[i], "--watch") || !strcmp(argv[i], "watch") || ((strrchr(argv[i], '/') ? strrchr(argv[i], '/') + 1 : argv[i])[0] == 'w' && !strcmp(strrchr(argv[i], '/') ? strrchr(argv[i], '/') + 1 : argv[i], "watch"))) watch = 1;   /* a window <module> launcher prefixes EVERY argument with the house path ("<house>/watch"), so match the last path component */
-        else { struct stat sb; if (watch || (stat(argv[i], &sb) == 0 && S_ISDIR(sb.st_mode))) continue;   /* module contract: the renderer appends <house_root> <package_dir> <module id> after our own args; in module mode (watch seen) ignore them */
+    for (int i = 2; i < argc; i++) { if (!strcmp(argv[i], "--select") && i + 1 < argc) { sel = atoi(argv[++i]); do_select = 1; }
+        else if (!strcmp(argv[i], "--delete") && i + 1 < argc) { del_idx = atoi(argv[++i]); }
+        else if (!strcmp(argv[i], "--create-default")) { snprintf(create_text, sizeof(create_text), "@default"); do_create = 1; }
+        else if (!strcmp(argv[i], "--create")) {   /* the renderer appends <package_dir> <house_root> <typed text...> to a cli_io action: skip the two, the rest is the text */
+            size_t l = 0; for (int k = i + 3; k < argc; k++) l += snprintf(create_text + l, sizeof(create_text) - l, "%s%s", l ? " " : "", argv[k]);
+            do_create = 1; break; } else if (!strcmp(argv[i], "--watch") || !strcmp(argv[i], "watch") || ((strrchr(argv[i], '/') ? strrchr(argv[i], '/') + 1 : argv[i])[0] == 'w' && !strcmp(strrchr(argv[i], '/') ? strrchr(argv[i], '/') + 1 : argv[i], "watch"))) watch = 1;   /* a window <module> launcher prefixes EVERY argument with the house path ("<house>/watch"), so match the last path component */
+        else { struct stat sb; if (watch || del_idx >= 0 || do_select || (stat(argv[i], &sb) == 0 && S_ISDIR(sb.st_mode))) continue;   /* module contract: the renderer appends <house_root> <package_dir> <module id> after our own args; in module mode (watch seen) ignore them */
                fprintf(stderr, "unknown argument %s\n", argv[i]); return 2; } }
     rp = realpath(argv[0], NULL); snprintf(OPPATH, sizeof(OPPATH), "%s", rp ? rp : argv[0]); free(rp);
     snprintf(here, sizeof(here), "%s", OPPATH);                           /* house root = nearest ancestor of this binary that holds &.widgits/_shared-lib */
@@ -171,10 +204,18 @@ int main(int argc, char **argv) {
     join(sp, sizeof(sp), STATE, "selected.txt");
     if (do_select) { if ((f = fopen(sp, "w"))) { fprintf(f, "%d\n", sel); fclose(f); } }
     else if ((f = fopen(sp, "r"))) { if (fscanf(f, "%d", &sel) != 1) sel = 0; fclose(f); }
-    load_rows(); publish(sel);
-    if (do_select || !watch) return 0;
+    load_rows();
+    if (do_create && create_cmd[0] && create_text[0]) { run_cmd(create_cmd, strcmp(create_text, "@default") ? create_text : create_default); NR = 0; load_rows(); }
+    if (del_idx >= 0 && delete_cmd[0] && del_idx < NR) {
+        char id[256]; snprintf(id, sizeof(id), "%.255s", R[del_idx].id);
+        run_cmd(delete_cmd, id); NR = 0; load_rows();
+        sel = del_idx < NR ? del_idx : NR - 1; if (sel < 0) sel = 0;
+        if ((f = fopen(sp, "w"))) { fprintf(f, "%d\n", sel); fclose(f); }
+    }
+    publish(sel);
+    if (do_select || do_create || del_idx >= 0 || !watch) return 0;
     {   /* orphan hygiene: a watch loop must not outlive its window - exit when the parent (the renderer) is gone or the data file disappears */
         pid_t pp = getppid(); char pdl[PB]; join(pdl, sizeof(pdl), STATE, "board.pdl");
-        for (;;) { sleep(1); if (getppid() != pp || access(pdl, R_OK) != 0) return 0; NR = 0; if ((f = fopen(sp, "r"))) { if (fscanf(f, "%d", &sel) != 1) sel = 0; fclose(f); } load_rows(); publish(sel); }
+        for (;;) { sleep(1); if (getppid() != pp || access(pdl, R_OK) != 0) return 0; NR = 0; load_pdl(); if ((f = fopen(sp, "r"))) { if (fscanf(f, "%d", &sel) != 1) sel = 0; fclose(f); } load_rows(); publish(sel); }   /* board.pdl is re-read every cycle: edits apply live */
     }
 }

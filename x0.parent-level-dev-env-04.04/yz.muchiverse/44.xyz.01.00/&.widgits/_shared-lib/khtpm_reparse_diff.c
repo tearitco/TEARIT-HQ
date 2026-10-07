@@ -155,6 +155,7 @@ static void kh_diff_apply_template(Elem *dst, const Elem *src) {
     snprintf(dst->relay, sizeof(dst->relay), "%s", src->relay);
     snprintf(dst->bg, sizeof(dst->bg), "%s", src->bg);
     snprintf(dst->backspace_action, sizeof(dst->backspace_action), "%s", src->backspace_action);
+    snprintf(dst->confirm, sizeof(dst->confirm), "%s", src->confirm);
     dst->rows = src->rows;
 
     /* Restore runtime state. */

@@ -211,3 +211,10 @@ x0.parent-level-dev-env-04.04_*.7z
 @.apps/board-hq/state/*/ui.txt
 @.apps/board-hq/state/*/selected.txt
 @.apps/board-hq/module_parent.pid
+
+# board-hq runtime (anchored with **/ - the app sits under x0.../44.xyz.01.00/)
+**/@.apps/board-hq/state/*/ui.txt
+**/@.apps/board-hq/state/*/selected.txt
+**/@.apps/board-hq/state/*/window.pid
+**/@.apps/board-hq/module_parent.pid
+**/@.apps/board-hq/.hq_manager/
