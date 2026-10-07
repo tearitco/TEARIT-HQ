@@ -73,9 +73,27 @@ Design, in three pieces, matching how the chain already works:
 
 ## 9. Open questions for the owner
 
-1. Is the CANON for an entity its **actions/menu rows** (recommended), its **kind and name**, or both?
+1. ~~Is the CANON for an entity its actions/menu rows, its kind and name, or both?~~ **ANSWERED (owner 2026-10-07): all of the above.** Three CANON classes, namespaced so they cannot collide: `CANON=action:<verb>`, `CANON=kind:<kind>`, `CANON=name:<entity name>`.
 2. Per-kind seed templates: who authors them (me from existing entity kinds, then you score)?
 3. Scoring screen: its own window, or a tab on the entity's menu / db-hq?
 4. Chain cap for the shared prior (how many pseudo-observations at most), and should chain rows ever override a hand score? (recommended: never)
 5. One bank per entity, or also one per user/world shared bank (the chain aggregate is the world level)?
 6. Are inventory items (the 23 phone-migration items) entities for this purpose, or only top-level pals?
+
+## 10. Addendum (owner, 2026-10-07): shared bank sets, private numbers, and what tomom actually is
+
+**Phones share a bank set through a hidden-layer pointer.** The shared part is a **bank set** (masters: the CANONs and their common aliases, one copy for many entities) and each phone/entity points at it: `zz.phone/bankset.txt` holds `BANKSET=<set id>` (a pointer, not a copy). This is NIGHT 22's hub-and-spoke exactly: the shared set is the **master/hub layer** ("hidden layer"), the entity is a **spoke**. Weights live only on the spoke; the set's mirror (everything pointing at it) is derived by rebuild. Changing a shared alias is one edit that every pointing entity sees; nobody keeps a drifting copy.
+
+**But each entity keeps its own user data and numbers** (owner: "they would have some user data / numbers"). Those live in the entity, never in the shared set: its `scores.txt` rows (hand, use, chain), counts of how often each alias was used, its own added aliases (`SOURCE=user`), its phone number and `entity_hash`. So an entity's bank = **pointer to a shared set + a private spoke record of numbers**. Consequences: (a) the shared sets are template data and may live in a code branch; the private numbers are live user data under `xyzfs/users/` and follow the AGENTS.md data rules (never `git add`, saved only by `save-data`, backup before bulk ops); (b) only `entity_hash + canon + valence` ever goes on the chain (section 6), never private text or wallets; (c) resolving a word = look up the entity's own spoke first, then the shared set it points at.
+
+**Tomom: what it is today (run, not assumed).** On a **scratch copy** (live folder untouched) I compiled `chatbot_moe_v1` and asked two questions: "fetch the red robot" -> `suns shining holes nebulas the millions holes millions shining suns suns holes` (vocabulary merged from the Astronomy/Physics/Programming curricula, 724 words); "what is force" -> `defining covers temperature F`. So today tomom is a small word-level model whose vocabulary is **school curricula**: it has no entity words, no concept of an action, and its replies are not usable answers. Its weights are dense matrices plus per-word `embedding/weight/bias` (`vocab_model.txt`, ~100 KB; `output_layer.txt`, ~260 KB; MLP/attention ~1 KB each) that nobody can read as meaning (NIGHT 22). Loading the banks into it is **not** "ask it a question and it knows": it would have to be (re)trained on a corpus that contains them, and that has not been done.
+
+**Is the model that views these a "tearit"?** No: a TEARIT is the *loop* (Watch -> DESCRIBE -> validate -> human review), not a model. In that loop the describer is **Gemma**, and Gemma sees **only the candidate node list**, never all weights. Tomom is the *downstream* learner, dormant until reviews exist (NIGHT 30). Nothing today has a "full view of all weights" of both spaces, and that is on purpose: the bank weights are sparse and named; tomom's are dense and opaque; tuning one against the other by hand is the legibility problem NIGHT 22 exists to avoid.
+
+**How the banks help tomom in a conversation (the honest, buildable version):**
+1. **Normalize before it speaks.** The user says "grab the red bot". The bank resolves alias -> CANON (`action:follow` via the entity's spoke then its shared set), deterministically, with a score. Tomom is handed the *resolved intent* in its own small vocabulary, so it never has to understand slang or entity names it was never trained on.
+2. **Banks become tomom's corpus and its starting weights.** Export aliases + scored usage as a curriculum file (same shape as `curriculum/<Name>/<Name>.txt`, a new "Entities" curriculum) so `vocab_model` includes entity words; and seed `VocabEntry.weight` from bank scores instead of `rand()` (NIGHT 10's cheapest item: swap random init for authored weights, no architecture change). Only then is "load them and ask it" meaningful.
+3. **Tomom's output is read back as observations, not trusted.** Run tomom on a prompt, record what it predicted as a Watch record, compare with the bank's score; disagreements become **candidate EDITs for human review** (the validator, bounded deltas). Tune the *bank* from that, not tomom's matrices by hand.
+4. **Later:** tomom proposes bank maintenance itself, once review history exists (NIGHT 30). Dormant until then.
+
+**Not built:** nothing in this addendum. The scratch run touched nothing outside the session scratchpad.
