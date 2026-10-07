@@ -1,0 +1,11 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+GHOST        | id                   | CHANGE-ME
+GHOST        | glyph                | 👻
+GHOST        | tier                 | worker
+GHOST        | brain                | horn:groq
+GHOST        | state                | idle
+GHOST        | current_quest        | -
+GHOST        | appointed            | YYYY-MM-DD
+GHOST        | appointed_by         | claude
+GHOST        | spend_cap_usd        | 0

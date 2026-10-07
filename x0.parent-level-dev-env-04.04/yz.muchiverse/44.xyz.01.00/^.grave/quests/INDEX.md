@@ -1,0 +1,12 @@
+# The board (what is written on the gravestone)
+
+Manager: claude. Status flow: open → claimed → active → review → done | failed | abandoned. Only the manager sets `done`.
+
+| id | quest | tier | size | status | assignee | blocked on |
+|---|---|---|---|---|---|---|
+| [Q001](Q001-halo-chat-v01/QUEST.md) | HALO_CHAT v0.1 (HORN + Concept Bank validation) | outside-agent / worker | L | open | - | 3 owner decisions |
+| [Q002](Q002-open-hai-provider-config/QUEST.md) | open-hai provider config (reuse HORN provider table) | worker / outside-agent | M | open | - | which providers in the UI |
+| [Q003](Q003-build-gate-include-list/QUEST.md) | build gate misses #included files (stale-binary bug) | student / worker | S | open | - | - |
+| [Q004](Q004-proc-shell-loop-audit/QUEST.md) | replace per-pid shell loops over /proc | student / worker | S–M | open | - | - |
+
+Next ids start at Q005. Copy `_TEMPLATE/` to add one. Design: `#.#.calendar-dox/!.HQ-IQ-BOOK/08-roadmap/design-docs/GRAVEYARD-GHOSTS-DESIGN.md`.
