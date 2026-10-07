@@ -11965,9 +11965,16 @@ static int kh_key_history_code(KeySym ks, char ch) {
 /* HUMAN input log (owner 2026-10-06, "irl" demonstrations: HAI-ROBOTS-PHONES-SERVER-DESIGN.md 3f): entity_menu_history/<pid>.txt receives BOTH the human's real X input
  * and the harness's relay writes in the same format, so it cannot say who did what. This second append-only log is written ONLY from the real X event handlers
  * (kh_capture_click / kh_capture_key), never from the relay poll, so every line in it is something a person did on this window:
- *     #.desktop/human_input/<pid>.txt     <epoch_ms>|<pid>|<window label>|KEY|<code>      or     <epoch_ms>|<pid>|<window label>|CLICK|<button>|<x>|<y>
+ *     #.desktop/human_input/<pid>.txt     <epoch_ms>|<pid>|<window label>|KEY|<code>|focus=<nav>|id=<element id>|label=<element label>
+ *                                         <epoch_ms>|<pid>|<window label>|CLICK|<button>|<x>|<y>|nav=<n>|id=<element id>|act=<its onclick>|label=<its label>
+ * The trailing fields are the CONTEXT (which element the key went to / the click landed on, nav-numbered), so a demonstration says what the human did, not just where they pressed.
  * Same key codes as the relay (kh_key_history_code). One writer (this process). Local only (gitignored). NOTE: it records typed characters like the relay already does,
  * including into text fields; a password-field exclusion is not implemented. */
+static void kh_ctx_clean(const char *in, char *out, size_t n, size_t maxlen) {
+    size_t i = 0; if (n == 0) return;
+    for (; in && in[i] && i < maxlen && i + 1 < n; i++) out[i] = (in[i] == '|' || in[i] == '\n' || in[i] == '\r' || in[i] == '\t') ? ' ' : in[i];
+    out[i] = '\0';
+}
 static void kh_human_log(const char *kind, const char *args) {
     char dir[PATH_BUF + 40], path[PATH_BUF + 80], label[160]; struct timespec ts; FILE *f; char *c;
     snprintf(dir, sizeof(dir), "%s/#.desktop/human_input", g_house_root);
@@ -11985,14 +11992,33 @@ static void kh_capture_click(int x, int y, int button) {
     if (g_history_cursor < 0) { struct stat st; g_history_cursor = (stat(path,&st)==0)?st.st_size:0; }
     FILE *f = fopen(path, "a"); if (!f) return;
     fprintf(f, "MOUSE_EVENT: %d %d %d 1\n", button, x, y); fclose(f);
-    { char a[64]; snprintf(a, sizeof(a), "%d|%d|%d", button, x, y); kh_human_log("CLICK", a); }
+    {   /* context: the element under the pointer (same first-match hit-test as the right-click path) */
+        Elem *hit = NULL; int nav = 0; char a[640], idc[80], act[160], lab[100];
+        for (int i = 0; i < g_n_nav; i++) {
+            Elem *it = g_nav[i];
+            if (!it || it->w <= 0) continue;
+            if (x >= it->x && x < it->x + it->w && y >= it->y && y < it->y + it->h) { hit = it; nav = i + 1; break; }
+        }
+        kh_ctx_clean(hit ? hit->id : "", idc, sizeof(idc), 64);
+        kh_ctx_clean(hit ? hit->onclick : "", act, sizeof(act), 150);
+        kh_ctx_clean(hit ? hit->label : "", lab, sizeof(lab), 90);
+        snprintf(a, sizeof(a), "%d|%d|%d|nav=%d|id=%s|act=%s|label=%s", button, x, y, nav, idc, act, lab);
+        kh_human_log("CLICK", a);
+    }
 }
 static void kh_capture_key(KeySym ks, char ch) {
     char path[PATH_BUF]; history_path(path, sizeof(path));
     if (g_history_cursor < 0) { struct stat st; g_history_cursor = (stat(path,&st)==0)?st.st_size:0; }
     FILE *f = fopen(path, "a"); if (!f) return;
     fprintf(f, "KEY_PRESSED: %d\n", kh_key_history_code(ks, ch)); fclose(f);
-    { char a[16]; snprintf(a, sizeof(a), "%d", kh_key_history_code(ks, ch)); kh_human_log("KEY", a); }
+    {   /* context: the element that has keyboard focus when this key arrives */
+        Elem *fe = (g_focus_nav >= 1 && g_focus_nav <= g_n_nav) ? g_nav[g_focus_nav - 1] : NULL;
+        char a[300], idc[80], lab[100];
+        kh_ctx_clean(fe ? fe->id : "", idc, sizeof(idc), 64);
+        kh_ctx_clean(fe ? fe->label : "", lab, sizeof(lab), 90);
+        snprintf(a, sizeof(a), "%d|focus=%d|id=%s|label=%s", kh_key_history_code(ks, ch), fe ? g_focus_nav : 0, idc, lab);
+        kh_human_log("KEY", a);
+    }
 }
 
 static int poll_agent_history(void) {
