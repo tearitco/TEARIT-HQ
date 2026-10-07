@@ -83,8 +83,9 @@ the bar.
 
 ## Non-goals, stated once
 
-- Chrome-pixel-parity for complex SPAs
-- Reimplementing a general media player / JS SPA host
+- Chrome-pixel-parity for complex SPAs as a launch bar (incremental SPA
+  support as we go and see fit — QuickJS bridge, box reflow, canvas/WebGL
+  surfaces each land when they land; no page class is refused up front)
 - New system dependencies for the surface-level browser
 
 ## Commitment (2026-10-05)
