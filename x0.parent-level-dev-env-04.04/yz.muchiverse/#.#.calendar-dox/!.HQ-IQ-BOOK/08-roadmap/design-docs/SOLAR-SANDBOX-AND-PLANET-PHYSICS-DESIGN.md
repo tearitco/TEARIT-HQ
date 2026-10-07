@@ -16,6 +16,8 @@ Owner (2026-10-07): a whole solar system on one page, each planet on its own pag
 - Travel rows: `TRAVEL | from | to | delta_v | duration`.
 
 ## 3. The physics layer: derived, never stored
+**CORRECTED by the owner, see section 8: each row of the table below is a swappable event-page node, not a fixed formula. The formulas are only the default contents of those nodes.**
+
 **Stored per body (a few numbers, seedable, editable in settings):** mass, radius, semi-major axis, rotation period, axial tilt, albedo, atmosphere (surface pressure and mean molar mass, greenhouse strength), water fraction. **Everything below is computed from those by pure functions** (the derived-mirror rule: nothing hand-edited, always recomputable; Earth, Moon and Mars are test vectors):
 | derived | formula (standard, simplified) | game effect |
 |---|---|---|
@@ -52,3 +54,14 @@ Pure formulas = **one text-included `.c`** (no header+link); stateful ticking (w
 2. Realism default for the sandbox: gravity only first (recommended) or everything at once?
 3. Scale: true proportions (unplayable) or a toy scale with true ratios shown in the info row?
 4. Does travel take game time, or instant first?
+
+## 8. Owner correction (2026-10-07): gravity is a node, not a built-in
+"Gravity is just a node that can be tuned, swapped out, etc., an event page, related to other event pages (orbit, whatever)." So physics is **not a hardwired formula layer**; it is **event pages wired together**, which is the house's own rule (NIGHT 20/26: everything is an event; as few hardcoded mechanics as possible).
+- **A physics node = an event page** with declared **inputs**, **outputs** and an **implementation**: `NODE | id | kind=gravity | in=mass,radius | out=g | impl=newton`. The formulas in section 3 become the **default implementations** (`impl=newton`, `impl=kepler`, `impl=stefan_boltzmann`, ...), shipped as ordinary pages; none is special.
+- **Swappable and tunable:** an `impl` can be replaced by `constant` (g = 9.81 forever), a `scaled` wrapper (multiply by a tunable), a table, a script page, or a model-free custom rule. Tunables are named joints in a `.pdl`, editable in an X11-HQ editor (the tomom-hq style: bounded steps, audit rows, undo). Changing the node changes everything downstream, with no code change.
+- **Related to other pages:** nodes link as rows (`LINK | orbit.period -> calendar.year`, `LINK | gravity.g -> player.jump`, `LINK | gravity.g -> atmosphere.scale_height`, `LINK | temperature -> weather.humidity`). The house already has the primitive: **"Call Common Event"** (`call_event_op`, an event page that runs another page by name and trigger). A downstream page calls or reads an upstream node's output; there is no global physics engine.
+- **Scope of an override:** resolution order **page > planet > system > house default**, so one planet can have a weird gravity page, or the sandbox can run "gravity off" while the rest stays real, or a person can swap in a different orbit model per system.
+- **Derived-not-stored still holds for outputs:** a node's outputs are recomputed (or cached from the ledger) and never hand-edited; what is stored is the **node wiring and tunables** and the body numbers.
+- **Cost rule:** nodes must be cheap and idempotent (pure in their inputs) because real-time mode (see `REAL-3D-PLANET-EXPLORATION-AND-REALTIME-MODE-DESIGN.md`) may read gravity every tick; cache an output until an input changes (an input-changed marker, not mtime).
+- **Updated build order step 2:** define the `NODE` / `LINK` row formats and a node-evaluation op (reads rows, runs the page for the chosen impl, writes the output row), then ship `newton` gravity and `kepler` orbit as the first two default pages, with harness vectors (Earth, Moon, Mars) **and** cases that swap the impl and prove downstream values change and a `constant` swap is honored.
+- **Open:** (a) is a node evaluated by a compiled op (fast, my recommendation for the built-in impls) or only as pal event pages (slower, fully swappable)? Likely both: built-in ops by default, a page can override; (b) wiring format: separate `LINK` rows (proposed) or inline `in=` references only?
