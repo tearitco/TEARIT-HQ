@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+PHONE        | number               | 927-5585-2860
+PHONE        | owner_uid            | d688ba3b507a6de975e222f490cc9a5b648065e1306d67e218af04dfb644ba8a
+PHONE        | owner_label          | page_2
+PHONE        | glyph                | 📱
+PHONE        | state                | idle
+PHONE        | created              | migration
+PHONE        | created_by           | phone_ensure_op
+PHONE        | history_max_lines    | 2000
+PHONE        | history_max_bytes    | 262144
+PHONE        | rotate_keep          | 3
