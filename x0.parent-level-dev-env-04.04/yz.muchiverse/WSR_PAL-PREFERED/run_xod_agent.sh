@@ -74,3 +74,11 @@ echo ""
 echo "=== Agent Run Complete ==="
 echo "Event bus:"
 tail -20 "${XOD_DIR}/pieces/apps/player_app/interact_relay.txt" 2>/dev/null || true
+
+# Generate HTML chart from event log
+echo ""
+echo "=== Generating HTML Chart ==="
+PRISC_PROJECT_ROOT="${XOD_DIR}" "${XOD_DIR}/ops/+x/wsr_chart.+x" \
+    --events "${XOD_DIR}/pieces/apps/player_app/interact_relay.txt" \
+    "${XOD_DIR}/xod_chart.html" 2>/dev/null || true
+echo "Chart: ${XOD_DIR}/xod_chart.html"
