@@ -71,3 +71,6 @@ Written by claude. The owner said: "use common sense and taste to infer those an
 27. **Eden playable loop v1** (Start/Stop button, Asa, Ava, house, 2 chickens, plants, digging gold/silver, trading, talking via tomom, 100 save slots in a toolbar menu): building in alpha.
 28. **Music generation daemon** (seeded synth + sequencer for game background music; steal from `103.media-studio/103.daw`, `@.apps/media-daw(-hq)`, `@.apps/music-player-hq`): building in alpha.
 29. **Robot chat with OpenRouter on eden-test**; blocked by the free-tier daily limit and the HORN op hiding HTTP errors.
+
+30. **xyzfs distribution through a GitHub repo and the store** (owner: "download and install it from 13.store"; `13.store` not found in the house): design `XYZFS-DISTRIBUTION-VIA-STORE-DESIGN.md`; interim = `install-xyzfs-users.sh` over ssh (Mac installed, debil dry-run passed).
+31. **Install the Eden button** on `pre-design:eden-test` (robot `eden_robot` placed; the live tree now has the Eden code via merge `8dc911beb`); set Eden save slots to 10; compile tomom when needed.
