@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+PHONE        | number               | 979-2815-8146
+PHONE        | owner_uid            | e973bebbdf4f062dcb4e7724255f5e3b963e4455c5d380bfb809a75595a34231
+PHONE        | owner_label          | G9JB
+PHONE        | glyph                | 📱
+PHONE        | state                | idle
+PHONE        | created              | migration
+PHONE        | created_by           | phone_ensure_op
+PHONE        | history_max_lines    | 2000
+PHONE        | history_max_bytes    | 262144
+PHONE        | rotate_keep          | 3

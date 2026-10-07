@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+PHONE        | number               | 806-3674-3463
+PHONE        | owner_uid            | a788b3f86acca38c0a74b598325aab5af43551fce2c613affe6c09e47fc75305
+PHONE        | owner_label          | event_clacker_1
+PHONE        | glyph                | 📱
+PHONE        | state                | idle
+PHONE        | created              | migration
+PHONE        | created_by           | phone_ensure_op
+PHONE        | history_max_lines    | 2000
+PHONE        | history_max_bytes    | 262144
+PHONE        | rotate_keep          | 3

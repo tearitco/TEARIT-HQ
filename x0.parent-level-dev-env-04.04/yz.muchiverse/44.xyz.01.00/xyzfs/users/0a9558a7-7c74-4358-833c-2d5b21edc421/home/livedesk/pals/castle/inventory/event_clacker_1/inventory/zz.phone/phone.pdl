@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+PHONE        | number               | 880-0815-0090
+PHONE        | owner_uid            | b939ecb716d17e85b97ba4cbadf59b7244098d115cf1ffdac49f7b83e8070b05
+PHONE        | owner_label          | event_clacker_1
+PHONE        | glyph                | 📱
+PHONE        | state                | idle
+PHONE        | created              | migration
+PHONE        | created_by           | phone_ensure_op
+PHONE        | history_max_lines    | 2000
+PHONE        | history_max_bytes    | 262144
+PHONE        | rotate_keep          | 3

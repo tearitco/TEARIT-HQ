@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+PHONE        | number               | 176-9775-8313
+PHONE        | owner_uid            | 379d0190753653d0358dee102294a276b2be834cff533d76cd127cf4171ccc70
+PHONE        | owner_label          | event_clacker_1
+PHONE        | glyph                | 📱
+PHONE        | state                | idle
+PHONE        | created              | migration
+PHONE        | created_by           | phone_ensure_op
+PHONE        | history_max_lines    | 2000
+PHONE        | history_max_bytes    | 262144
+PHONE        | rotate_keep          | 3

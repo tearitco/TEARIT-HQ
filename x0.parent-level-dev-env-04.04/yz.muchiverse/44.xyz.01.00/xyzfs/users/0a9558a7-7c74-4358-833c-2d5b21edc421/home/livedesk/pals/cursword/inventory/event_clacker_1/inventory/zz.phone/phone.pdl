@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+PHONE        | number               | 196-9686-3319
+PHONE        | owner_uid            | ad04bfa42361451a77584247e8ed792ea3fb00e1b44e25404597b1d4b331a669
+PHONE        | owner_label          | event_clacker_1
+PHONE        | glyph                | 📱
+PHONE        | state                | idle
+PHONE        | created              | migration
+PHONE        | created_by           | phone_ensure_op
+PHONE        | history_max_lines    | 2000
+PHONE        | history_max_bytes    | 262144
+PHONE        | rotate_keep          | 3

@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+PHONE        | number               | 297-2363-0074
+PHONE        | owner_uid            | e06724156b0f80a6035002087bece69a66a4f1f17d7ec77648ba177c854c1445
+PHONE        | owner_label          | self
+PHONE        | glyph                | 📱
+PHONE        | state                | idle
+PHONE        | created              | migration
+PHONE        | created_by           | phone_ensure_op
+PHONE        | history_max_lines    | 2000
+PHONE        | history_max_bytes    | 262144
+PHONE        | rotate_keep          | 3
