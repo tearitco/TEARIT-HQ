@@ -125,6 +125,8 @@ typedef struct {
     int apply;                       /* 0 = dry run: nothing is written */
     FILE *report;                    /* one line per entity, or NULL */
     char index_path[PH_BUF];        /* phones.index (append-only) */
+    char template_dir[PH_BUF];      /* optional: ^.hai-phone/_TEMPLATE; sprite.csv + atlas.png are copied into every phone that lacks them (the hotbar draws an item's sprite; the emoji glyph can be an empty box) */
+    int n_sprite_added, n_sprite_missing;
     char numbers[PH_MAX_NUMBERS][16];/* numbers already issued (index + this run) */
     int n_numbers;
     int n_entities, n_nested, n_have_phone, n_new_phone, n_have_uid, n_new_uid_from_hash, n_new_uid_random, n_errors;
@@ -143,6 +145,16 @@ static PH_UNUSED void ph_load_index(PhCtx *c) {
     fclose(f);
 }
 
+/* copy src -> dst only if dst does not exist; 1 = copied */
+static PH_UNUSED int ph_copy_if_missing(const char *src, const char *dst) {
+    FILE *in, *out; char buf[8192]; size_t n; int ok = 1;
+    if (ph_exists(dst) || !(in = fopen(src, "rb"))) return 0;
+    if (!(out = fopen(dst, "wb"))) { fclose(in); return 0; }
+    while ((n = fread(buf, 1, sizeof(buf), in)) > 0) if (fwrite(buf, 1, n, out) != n) { ok = 0; break; }
+    fclose(in); if (fclose(out) != 0) ok = 0;
+    if (!ok) remove(dst);
+    return ok;
+}
 static PH_UNUSED const char *ph_base(const char *p) { const char *s = strrchr(p, '/'); return s ? s + 1 : p; }
 
 static PH_UNUSED void ph_ensure(const char *dir, PhCtx *c, int depth) {
@@ -192,6 +204,14 @@ static PH_UNUSED void ph_ensure(const char *dir, PhCtx *c, int depth) {
             if (c->n_numbers < PH_MAX_NUMBERS) snprintf(c->numbers[c->n_numbers++], 16, "%s", number);
         } else if (!c->apply && c->n_numbers < PH_MAX_NUMBERS && strcmp(number, "COLLISION")) {
             snprintf(c->numbers[c->n_numbers++], 16, "%s", number);   /* reserve in the preview so two previews cannot collide */
+        }
+    }
+    if (c->template_dir[0] && (c->apply ? ph_exists(phone) : have_phone)) {   /* the phone's picture: copy-if-missing, never overwrites */
+        static const char *spr[2] = { "sprite.csv", "atlas.png" };
+        for (int k = 0; k < 2; k++) {
+            char src[PH_BUF], dst[PH_BUF];
+            if (!ph_join(src, sizeof(src), c->template_dir, spr[k]) || !ph_join(dst, sizeof(dst), phone, spr[k]) || !ph_exists(src) || ph_exists(dst)) continue;
+            if (c->apply) { if (ph_copy_if_missing(src, dst)) c->n_sprite_added++; else c->n_errors++; } else c->n_sprite_missing++;
         }
     }
     {   char pp[PH_BUF]; ph_join(pp, sizeof(pp), dir, "pal.pdl");

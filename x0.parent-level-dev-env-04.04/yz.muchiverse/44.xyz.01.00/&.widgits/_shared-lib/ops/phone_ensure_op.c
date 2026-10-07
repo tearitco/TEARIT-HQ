@@ -1,6 +1,6 @@
 /* phone_ensure_op - give every entity a phone and a permanent identity (Q005, design HAI-ROBOTS-PHONES-SERVER-DESIGN.md sec 3b/3c).
  *
- * Usage: phone_ensure_op.+x <house_root> [--apply] [--report FILE] [--pals-root DIR] [--index FILE] [--selftest]
+ * Usage: phone_ensure_op.+x <house_root> [--apply] [--report FILE] [--pals-root DIR] [--index FILE] [--template DIR] [--selftest]
  *   default is a DRY RUN: nothing is written, the report says what would happen.
  *   <house_root>      the 44.xyz.01.00 folder; pals are found at xyzfs/users/<uuid>/home/livedesk/pals/<entity>
  *   --pals-root DIR   scan this one pals folder instead (used to test --apply on a COPY of the pals tree)
@@ -36,12 +36,14 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i], "--report") && i + 1 < argc) report = argv[++i];
         else if (!strcmp(argv[i], "--pals-root") && i + 1 < argc) pals_root = argv[++i];
         else if (!strcmp(argv[i], "--index") && i + 1 < argc) index = argv[++i];
+        else if (!strcmp(argv[i], "--template") && i + 1 < argc) snprintf(ctx.template_dir, sizeof(ctx.template_dir), "%s", argv[++i]);
         else if (argv[i][0] != '-' && !house) house = argv[i];
         else { fprintf(stderr, "unknown argument: %s\n", argv[i]); return 2; }
     }
     if (!house && !pals_root) { fprintf(stderr, "usage: phone_ensure_op.+x <house_root> [--apply] [--report FILE] [--pals-root DIR] [--index FILE] [--selftest]\n"); return 2; }
     if (index) snprintf(ctx.index_path, sizeof(ctx.index_path), "%s", index);
     else snprintf(ctx.index_path, sizeof(ctx.index_path), "%s/^.hai-server/phones.index", house ? house : ".");
+    if (!ctx.template_dir[0] && house) { char t[PH_BUF]; ph_join(t, sizeof(t), house, "^.hai-phone/_TEMPLATE"); if (ph_is_dir(t)) snprintf(ctx.template_dir, sizeof(ctx.template_dir), "%s", t); }
     if (report && !(rf = fopen(report, "w"))) { fprintf(stderr, "cannot write %s\n", report); return 2; }
     ctx.report = rf ? rf : stdout;
     ph_load_index(&ctx);
@@ -72,9 +74,10 @@ int main(int argc, char **argv) {
     }
     fprintf(ctx.report, "\nSUMMARY (%s)\n  entities found:            %d  (top-level %d, items inside inventories %d)\n  already have a phone:      %d\n"
         "  phones %s:        %d\n  already have entity_uid:   %d\n  new uids from pal hash:    %d  (frozen, continuity with PAL | hash)\n"
-        "  new random uids:           %d\n  errors / collisions:       %d\n",
+        "  new random uids:           %d\n  phone sprites %s:    %d phones' files  (template: %s)\n  errors / collisions:       %d\n",
         ctx.apply ? "APPLIED" : "dry run", ctx.n_entities, ctx.n_entities - ctx.n_nested, ctx.n_nested, ctx.n_have_phone,
-        ctx.apply ? "created" : "to create", ctx.n_new_phone, ctx.n_have_uid, ctx.n_new_uid_from_hash, ctx.n_new_uid_random, ctx.n_errors);
+        ctx.apply ? "created" : "to create", ctx.n_new_phone, ctx.n_have_uid, ctx.n_new_uid_from_hash, ctx.n_new_uid_random,
+        ctx.apply ? "added" : "missing", ctx.apply ? ctx.n_sprite_added : ctx.n_sprite_missing, ctx.template_dir[0] ? ctx.template_dir : "none", ctx.n_errors);
     if (rf) fclose(rf);
     return ctx.n_errors ? 1 : 0;
 }

@@ -54,6 +54,7 @@ static void livedesk_phone_ensure(const char *house_root, const char *entity_dir
     s_phone_ctx.report = NULL;
     s_phone_ctx.n_numbers = 0;   /* re-read the index each call: another process (phone_ensure_op) may have appended */
     snprintf(s_phone_ctx.index_path, sizeof(s_phone_ctx.index_path), "%s/^.hai-server/phones.index", house_root);
+    snprintf(s_phone_ctx.template_dir, sizeof(s_phone_ctx.template_dir), "%s/^.hai-phone/_TEMPLATE", house_root);   /* phone picture for the hotbar */
     ph_load_index(&s_phone_ctx);
     ph_ensure(entity_dir, &s_phone_ctx, 0);
 }

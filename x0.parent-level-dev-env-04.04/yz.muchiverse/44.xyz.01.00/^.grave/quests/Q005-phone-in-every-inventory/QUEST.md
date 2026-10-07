@@ -2,7 +2,7 @@
 
 | field | value |
 |---|---|
-| status | active — op + dry run + copy-apply proven (see Log); spawn hook, HUD sprite and the live apply wait for owner OK |
+| status | DONE except the manager start-time measurement (op, hook, live apply and sprite are all in and proven) |
 | tier | manager (claude) or outside-agent; needs care (touches every entity) |
 | size | M |
 | assignee | - |
@@ -66,7 +66,7 @@ Everything in `^.grave/README.md`. Entity data is live: any apply on the real ho
 ## Still to do (not started)
 
 - [x] Hook written 2026-10-06: `livedesk_phone_ensure()` in `khtpm_taskbar_manager.c`, called per desk entity in `livedesk_spawn_desk()` (after the pal exists, before the already-live skip, so running entities get one too) and in `livedesk_ensure_cursword()`; Linux only. Manager compiles clean (exit 0, 0 phone warnings); `khtpm_phone.c` added to `MGR_SRCS`. NOT yet run live: the binary rebuilds on the owner's next hash-gated build/reset, and the first start then creates all 55 phones. Still to measure: manager start time before/after (`boot_timeline.txt`).
-- [ ] Phone sprite: `glyph.txt` is written but a spawned/placed phone needs the usual `sprite.csv`/`atlas.png` generation for the HUD to draw the 📱.
+- [x] Phone sprite (2026-10-06): the house emoji tools (`_.monads/_.livedesk-taskbar/ops/+x/emoji_gen_atlas.+x` + `emoji_xtract.+x`) made `atlas.png` + `sprite.csv` once into `^.hai-phone/_TEMPLATE/`; `ph_ensure` (and the manager hook) copy them into any phone that lacks them, never overwriting. Proven: dry run on live = 110 files missing; apply on a scratch restore twice = 110 added then 0, byte-identical to the template, all other files unchanged; applied live (55 phones x 2 files); a read-only frame dump of the hotbar shows the phone picture in slot 4. status of the manager change: compiles clean; it only takes effect after the next desktop restart.
 - [x] `livedesk_hash_dir()` now excludes `entity_uid.txt` and `*/inventory/zz.phone/*` (same commit).
 - [ ] Live apply on the real house (owner OK; dry run first, as done).
 
