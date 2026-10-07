@@ -45,3 +45,9 @@ Criteria to record after v0: setup effort; save/load reliability; can it spin up
 1. Are Asa and Ava the right first participants (man and woman glyphs on your desk), and may the conductor **grant kits to those real entities** later (after a beta rehearsal), or only to copies?
 2. Should the conductor be a **toy only** (Toys menu), a **desk button** only, or both (my suggestion: both)?
 3. For Eden's first scenario: just a field, a hut and weather (my suggestion), with the Bible framing (Garden of Eden, the missions map) added after the mechanics work?
+
+## 10. Owner answers (2026-10-07: "let's do that") and the taskbar clock
+1. **Real Asa and Ava:** granted kits **after a beta rehearsal with a backup** (v0 uses fresh scratch copies only).
+2. **Toy and desk button, both.**
+3. **First scenario: field, hut, weather first;** Bible framing and the Middle-East map come after the mechanics work.
+**Does it modify the taskbar clock?** **No, not in v0.** The v0 conductor runs its **own game clock on a scratch root** (harness only) and never touches the real Linux clock or the live `#.desktop/clocks/` files. What exists today (read in `khtpm_taskbar_manager.c`): the date/time cell (15) has **menu rows** (clocks and cals, reminders, game-clock controls, calendar view, and "gamedate: <id>" which runs `lc_clock <root> gamedate <id>`); **no persistent label** shows a game date in the taskbar. In alpha, `lc_clock` now has `master [id]` and `gamedate master` (the displayed clock), so the data side is ready. **A future optional step** (not started; needs the taskbar owner's care since `khtpm_taskbar_manager.c` is a shared file): show the **master game clock beside the real time while a game runs** (for example real `14:05` plus `Eden D3`), reading `gamedate master`; the real Linux clock stays as it is and is never changed. Until then the conductor's `Status` row prints the game date.
