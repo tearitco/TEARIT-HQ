@@ -1,0 +1,100 @@
+# 🎛️ NIGHT 32 — Turning the Dials: using tomom-hq 🎛️
+# ====================================================================
+# Title: "🎛️ NIGHT 32 — Turning the Dials: using tomom-hq 🎛️"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: A how-to night. The first native X11-HQ window for tomom: what is on screen, how to change one weight, how to take it back, how to ask the model a question, how to read the audit log, and what the window does not do yet.
+# Long-form: practical, in the order a person would use it. Written from the window's own labels, its published state file and its real audit file. The agent's own end-to-end verification report was still pending when this was written, so anything not in those three sources is marked as not confirmed.
+
+**THE NARRATOR:** NIGHT 22 said a model's weights should be something a person can read and tune by hand. NIGHT 30 said tomom, the hand-built local model, sits dormant waiting for something worth learning. Tonight is the first night someone can actually put a hand on it. Say what the thing is.
+
+**MAXINE:** A window. `tomom-hq`, in the X11-HQ family, the same three-part shape as the chain window: a layout file, a style file, and one compiled manager that owns the state. It opens from the tomom row in the HQ menu, and the h-ai cell row was being added alongside it. It edits tomom's text weights. Not a web page. Tomom's old `web-interface` folder turned out to be only a chat front end with a configuration panel and a debug log, so there was nothing to reuse.
+
+**TOMO:** Say first what it will not touch, because that is the rule you learn before any button.
+
+**RAHWEH:** The live tomom folder. The window header always shows two things, the target directory and a safety word. By default the target is a scratch copy under the app's own `state/work/`, and the safety word reads `scratch`. A config file names the target, and its own comment says not to point it at the live model unless you mean it. Nothing in version one switches it for you.
+
+---
+
+**THE NARRATOR:** Walk the window from the top, the way someone opening it for the first time would.
+
+**MAXINE:** The title bar reads `tomom` then the target then the safety word. Under it, two buttons, `init scratch` and `reload`, and a status line that tells you what just happened in plain words. Then three tabs: `Meta-RL`, `Vocab`, `Ask`. The active tab is highlighted.
+
+**TOMO:** `init scratch` is the first press on a fresh install. It builds the scratch copy from tomom's own files, and it keeps a pristine copy beside it, an `orig` folder, so "reset to original" always has something real to go back to. `reload` re-reads the files if anything changed underneath the window.
+
+**RAHWEH:** Say what the three tabs are for, in one line each.
+
+**MAXINE:** Meta-RL is the small file that decides which curriculum a prompt goes to: one bias and a list of numbered weights. Vocab is the big one, every word with its embedding, its position value, its weight and four biases. Ask is where you put a question to the model and read what it says back.
+
+---
+
+**THE NARRATOR:** The first real use. Change one number on the Meta-RL tab.
+
+**TOMO:** Select a row. The window shows the row's name and value, drawn as a bar, so size is visible without reading digits. Two buttons, minus and plus, each moves the value by five hundredths. Press once, the bar moves, the status line says which edit it was and what the value became.
+
+**RAHWEH:** Two more buttons sit next to them. `reset to original` puts that one value back to what the pristine copy holds. `undo last` takes back the most recent change, and it shows a count of how many undos are available.
+
+**MAXINE:** The Vocab tab works the same way on a different thing. A `find word` box filters the list. Page buttons move through it, because the file is about a hundred kilobytes and a few thousand words. Select a word, and the window shows its fields; plus and minus change its `weight` the same five hundredths.
+
+**TOMO:** One detail worth saying aloud: the step is small on purpose, the same instinct as the validator's bound in the Concept Bank. A hand-tuned weight should move by a visible, bounded amount, not be typed over with a guess.
+
+---
+
+**THE NARRATOR:** Say what happens underneath every press, because that is the part that keeps this honest.
+
+**RAHWEH:** Every change writes one row to an append-only file, `state/edits.txt`. Read a real one: `EDIT`, an id like `E10`, the file name, a key like `1:start-token.weight`, the old value, the new value, `proposer=human`, a timestamp. Rows are never edited or removed.
+
+**MAXINE:** Undo is not a deletion. Undo appends a new row that carries the inverse change and a pointer back, `undo_of=E11`. The real file shows exactly that: an edit from `0.394383` up to `0.444383`, then a later row that takes it back down and says which edit it undid. History stays whole.
+
+**TOMO:** So the way to read the audit log is top to bottom like a ledger. Each row says what was changed, from what, to what, by whom. If two rows touch the same key, the later one wins, and an `undo_of` tells you it was a deliberate reversal and not a new decision.
+
+**RAHWEH:** And the weight file itself is written safely, a temporary file renamed over the real one, so a crash cannot leave half a number.
+
+---
+
+**THE NARRATOR:** The third tab. Ask.
+
+**MAXINE:** Type a question into the `ask` box and press Enter. The window runs tomom's chatbot on the scratch copy and shows the final response line. Every question and answer is also appended to `state/ask_log.txt`, one row each, with a timestamp and the target it ran against.
+
+**TOMO:** That is the loop a tuner actually wants: change a weight, ask the same question, compare. Because the log keeps every answer, you do not have to remember what it said before the change.
+
+**RAHWEH:** Be honest about what comes back. Tonight's own earlier run, on a copy, asked "fetch the red robot" and got a string of astronomy words, and "what is force" got "defining covers temperature F". The logged answer in the window's own file, for a short prompt, is the same kind of thing: a run of curriculum words. Tomom today speaks in the vocabulary of the school subjects it was trained on.
+
+**MAXINE:** So say what a weight change can and cannot be expected to do.
+
+**TOMO:** A five-hundredths nudge to one word's weight is a small, real change to a toy model. It might shift which word comes out. It will not make tomom understand robots. Editing the dial and asking again is how you see what each weight does, and that is the whole point of making the weights legible. It is not a way to teach it new meaning; that is what the banks and the staged swap are for.
+
+---
+
+**THE NARRATOR:** How this window fits the attrition model.
+
+**RAHWEH:** A person's edit is a proposal from a human. The audit row says `proposer=human` for exactly that reason. In the loop from NIGHT 30, proposals come from Gemma, from the trainer, and from a person, and every one of them is supposed to land in a review file before anything is believed. This window is the person's side of that.
+
+**MAXINE:** Be careful with the next sentence. The row shape here is close in spirit to a candidate edit in the Concept Bank, but it is not the same schema. The Concept Bank's records name a type, a target spoke and a slot, and the validator checks them against real masters. These rows name a file and a key in tomom's text weights. They are not yet routed through the validator or the review file.
+
+**TOMO:** That gap is named, not hidden. Tomom's weights are dense and unnamed. Until the staged swap gives them named slots, there is nothing for the Concept Bank validator to check a delta against. The audit log is the honest stand-in: it makes every hand edit visible and reversible today.
+
+---
+
+**THE NARRATOR:** Habits for using it. Say them as rules.
+
+**MAXINE:** One. Keep the target on scratch. If you ever point it at the live model, copy the live folder first, and say so in the status line you act on.
+Two. Change one weight, then ask the same question, then read the log. Two changes at once and you cannot tell which did it.
+Three. Use reset to go back to the pristine copy when an experiment is over, and leave the audit file alone. It is your record of what you tried.
+Four. If the window looks stale, press reload before assuming something broke.
+
+**RAHWEH:** Five. Do not read a changed answer as proof the change is good. The log shows what happened. Whether it is better is a judgment, and in this house judgments about weights go to a human, which here means you.
+
+---
+
+**THE NARRATOR:** Honesty checkpoint, the way this track ends.
+
+**MAXINE:** What is real. A native window with three tabs, a scratch target with a safety label, edits to Meta-RL and Vocab weights in steps of five hundredths, reset to original, undo that appends an inverse row, an append-only audit file with real rows, an Ask box that runs the chatbot on the scratch copy and logs every answer. The owner has seen it and said it looks good.
+
+**TOMO:** What is not. Switching to the live model. Any view or editor for the Concept Bank, entity word banks or their variables. Any route from a hand edit into the validator or review file. A TEARIT review window and a Concept Bank window. The h-ai cell row was being added at the time of writing, and the agent's own end-to-end verification report had not yet arrived, so the exact wiring of that row is not confirmed here.
+
+**RAHWEH:** And the larger point stays where NIGHT 22 and NIGHT 30 left it. This window makes tomom's weights visible and hand-tunable. It does not make tomom useful. That comes from banks giving it named things to be about, one stage at a time, with every stage checked against the same prompts.
+
+**MAXINE:** Say the line to carry into the next night.
+
+**TOMO:** You can now turn a dial, take it back, and hear what changed, and every turn leaves a row. The next work is giving the dials names. 🎛️
