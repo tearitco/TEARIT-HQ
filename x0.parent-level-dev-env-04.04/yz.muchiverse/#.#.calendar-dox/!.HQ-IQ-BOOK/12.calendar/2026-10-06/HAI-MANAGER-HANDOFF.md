@@ -19,6 +19,8 @@ what is live vs not, what is waiting on the owner, and the landmines found. Read
 | **Dock + hotbar position memory** | `#.desktop/dock_state.pdl`, `#.desktop/slide_offsets.pdl` | restart the desk | committed; see §4 hotbar note |
 | **tb Player: save-game / load-game** | `khtpm_taskbar_manager.c` (ids 161/162), `&.widgits/_shared-lib/ops/game_slot_op.c` | `bash &.widgits/_shared-lib/ops/game_slot_verify.sh` (13 checks) | built; **running taskbar still has the old binary** (restart needed to see it); v1 does NOT restore |
 | **Drag and drop reference** | `02-architecture/DRAG-AND-DROP-BETWEEN-MENUS.md` | read | documentation only |
+| **h-ai menu rows** | `#.desktop/livedesk_taskbar.pdl` `ai_menu_5..7` (Quest board / Ghost roster / Phones) -> `@.apps/board-hq/ops/open_board_menu.sh <name>` | open the tb h-ai dropdown; menu built from the real pdl and the wrapper opened + closed a board (2026-10-06) | LIVE at once (menu rows are read when the menu opens, no restart). Not in pc-hq |
+| **Tasks as event-type pdl, doc entities, pc-hq answer** | `08-roadmap/design-docs/TASKS-AS-EVENT-DATA-DESIGN.md` (§5.5 doc = entity, location = state; §5.6 pc-hq table) | read | design only |
 | **Ghost design** | `08-roadmap/design-docs/GRAVEYARD-GHOSTS-DESIGN.md` (§6b placer, §6c assign/work/pending) | read | design only; roster has just `_TEMPLATE`; nothing placeable yet |
 | **Phones / robots / server design** | `HAI-ROBOTS-PHONES-SERVER-DESIGN.md` (§3b-3f incl. IRL status) | read | |
 | **Save slots design** | `SAVE-SLOTS-DESIGN.md` | read | |
