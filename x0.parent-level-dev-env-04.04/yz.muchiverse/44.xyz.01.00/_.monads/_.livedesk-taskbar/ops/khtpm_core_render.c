@@ -275,6 +275,33 @@ static Window g_dock_kbd_win;
 static int g_dock_visible_rows = 1;
 static int g_dock_packed_rows = 1;
 static Elem g_dock_plus_elem, g_dock_minus_elem;
+
+/* Bottom dock row count survives a restart (owner, 2026-10-06: "make sure tb restarts in old position"). g_dock_visible_rows is the live value;
+ * g_dock_want_rows is what the owner last chose (0 = never chosen -> default 1 row). The wanted value is re-applied at every layout, because early layouts
+ * see few packed entities and the clamp below would otherwise shrink the saved choice. Stored in #.desktop/dock_state.pdl:
+ *     DOCK | bottom_visible_rows | <n>
+ * One writer (this renderer), read once at the first layout, written on each +/- click. No change detection needed (no other process watches it). */
+static int g_dock_want_rows = 0, g_dock_rows_loaded = 0;
+static void dock_state_path(char *out, size_t n) { snprintf(out, n, "%s/#.desktop/dock_state.pdl", g_house_root); }
+static void dock_rows_load(void) {
+    char p[PATH_BUF + 40], line[256]; FILE *f;
+    g_dock_rows_loaded = 1;
+    dock_state_path(p, sizeof(p));
+    if (!(f = fopen(p, "r"))) return;
+    while (fgets(line, sizeof(line), f)) {
+        char *k = strstr(line, "bottom_visible_rows");
+        if (k && line[0] != '#') { char *bar = strchr(k, '|'); int v = bar ? atoi(bar + 1) : 0; if (v >= 1 && v <= 16) g_dock_want_rows = v; }
+    }
+    fclose(f);
+}
+static void dock_rows_save(void) {
+    char p[PATH_BUF + 40]; FILE *f;
+    g_dock_want_rows = g_dock_visible_rows;
+    dock_state_path(p, sizeof(p));
+    if (!(f = fopen(p, "w"))) return;
+    fprintf(f, "# bottom dock remembered state (written by the dock renderer on each +/- click)\nDOCK | bottom_visible_rows | %d\n", g_dock_visible_rows);
+    fclose(f);
+}
 /* MILESTONE B/C - generic <footer> row pager (same idea as the dock
  * +/- above, for any sidebar+panel window's footer). g_footer_vis_rows
  * survives redraws; clamped against g_footer_total_rows each layout. */
@@ -6728,6 +6755,8 @@ static int layout_dock_bar(Elem *page) {
             }
         }
         g_dock_packed_rows = (n_pack > 0) ? (r_max + 1) : 1;
+        if (!g_dock_rows_loaded) dock_rows_load();
+        if (g_dock_want_rows > 0) g_dock_visible_rows = g_dock_want_rows;   /* restore the owner's last choice, clamped just below */
         if (g_dock_visible_rows > g_dock_packed_rows) g_dock_visible_rows = g_dock_packed_rows;
         if (g_dock_visible_rows < 1) g_dock_visible_rows = 1;
         if (row_elem) {
@@ -8336,11 +8365,11 @@ static void dispatch(const char *action) {
      * (#.desktop/livedesk_hq_restore_<pid>.txt) the target renderer polls
      * and responds to by XMapWindow+XSetInputFocus on ITS OWN window. */
     if (strcmp(action, "PAGEROW:+1") == 0) {
-        if (g_dock_visible_rows < g_dock_packed_rows) g_dock_visible_rows++;
+        if (g_dock_visible_rows < g_dock_packed_rows) { g_dock_visible_rows++; dock_rows_save(); }
         return;
     }
     if (strcmp(action, "PAGEROW:-1") == 0) {
-        if (g_dock_visible_rows > 1) g_dock_visible_rows--;
+        if (g_dock_visible_rows > 1) { g_dock_visible_rows--; dock_rows_save(); }
         return;
     }
     if (strcmp(action, "FOOTER_ROWS:+1") == 0) {
