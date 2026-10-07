@@ -95,7 +95,8 @@ if [ -z "${LIVEDESK_NO_SPLASH:-}" ] && [ -n "${DISPLAY:-}" ]; then
         [ -n "$_sx" ] || _sx="-I/usr/include/freetype2 -lX11 -lXft"
         "${CC:-gcc}" -std=c11 -O2 -o "+x/livedesk_splash.+x" livedesk_splash.c $_sx >/dev/null 2>&1 || true
     fi
-    _bs_pid="$(cat "$_HOUSE_DIR/#.desktop/livedesk_boot_splash.pid" 2>/dev/null)"
+    # (set -e is on: a missing pid file must not abort the build, hence the || true)
+    _bs_pid="$(cat "$_HOUSE_DIR/#.desktop/livedesk_boot_splash.pid" 2>/dev/null || true)"
     if [ -x "+x/livedesk_splash.+x" ]; then
         if [ -z "$_bs_pid" ] || ! grep -q livedesk_splash "/proc/$_bs_pid/comm" 2>/dev/null; then
             rm -f "$_HOUSE_DIR/#.desktop/boot_build_failed.txt"
