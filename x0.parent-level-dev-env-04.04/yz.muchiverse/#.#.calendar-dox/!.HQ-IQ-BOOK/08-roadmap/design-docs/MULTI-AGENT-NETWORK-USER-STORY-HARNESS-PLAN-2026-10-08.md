@@ -72,3 +72,48 @@ Common rules: scratch houses under `/tmp`, **never** the live desk or `xyzfs/use
 ## 8. Decisions that belong to the owner
 
 The visit protocol's permissions (what a guest may do); the signing scheme and when real cones may be traded; whether the first public presentation is T0 honor play money or waits for T1; which agents (scripted, model-driven) appear in it; and whether Eden or a quest-board game is the setting.
+
+
+## 9. First cross-machine result (2026-10-08, later) and what it was NOT
+
+**Done:** `palnet_peer` no longer hardcodes `127.0.0.1`. It reads `PALNET_BIND` (listen address), `PALNET_ADVERTISE` (host peers dial) and `PALNET_SEEDS` (`host:port,...` to dial when the presence directory has nobody; the presence directory is a local folder, so seeds are how a remote peer is found). Default stays loopback because a non-loopback bind accepts any connection with no authentication. Commit `2652fdafd` (in `claude`, not pushed).
+**Verified by hand, with real ssh to the LAN hosts (key login works for all three: debil `10.0.0.16`, Mac `10.0.0.144`, jb desktop `10.0.0.187`; each has gcc):** one peer on this machine (`10.0.0.238`), one on debil, one on the Mac, each in a scratch folder under `/tmp` (only `palnet_peer.c` was copied; no user data, no keys), each bound to its own address. A line appended to the local outbox **arrived in both remote inboxes**. The Mac needed a fix (no `MSG_NOSIGNAL` on macOS). Scratch folders and processes were removed afterwards.
+**Found:** every message arrived **twice** on each remote (both sides dial each other, so there are two connections); needs a connection dedup by node id. The cones chain, mining, escrow and the IRC/forum windows were **not** involved yet.
+**What this was NOT, and why it is not yet the demo:** I injected the line by appending to a file, headless. That proves the transport, not the user story. The owner's requirement is that the evidence is **visible and relay-driven**: an agent opens the window's menu, reads its inventory and balance, and acts as a person would. Nothing in section 4's scenarios counts until it is shown that way.
+
+## 10. The visible version: IRC and Forum windows as the stage
+
+Network menu rows 1 and 2 are **IRC Chat** and **Forum** (`livedesk:open-network:irc|forum`); the apps are `&.hq-apps/irc-chat-hq` and `forum-hq`, backed by `044.pal-chat-irc` and `041.pal-forum`, which already use `palnet_peer` (the chat button script starts a persistent peer with `own_kind=irc_node`). So the first visible demo needs no new window: it is the existing IRC/Forum windows on this machine, debil and the Mac, each started with its own `PALNET_*` addresses, driven through the relay. Steps, each with a frame dump and the inbox/ledger text:
+1. Start each machine's own house build with this peer (the houses on debil and the Mac are older and need updating from `claude`; update through a scratch checkout, not over a live desk).
+2. Open IRC on each machine; relay-type a line on one; show it appearing in the others' windows.
+3. Open Forum; post; show it replicate.
+4. Add the chain windows (cones balance, send) and the quest board once those are on the same peer.
+**Open question for the owner:** use the existing `044.pal-chat-irc` stack (older, built on the legacy engine) or the newer `irc-chat-hq` window as the demo surface. I have not checked which of the two is wired to the peer today.
+
+## 11. File transfer, drag and drop, entities between houses (the FTP question)
+
+**Not figured out beyond a spec.** `HQ-FTP-LAN-SYNC-SPEC.md` (2026-10-07) designs a no-server LAN sync (framed TCP protocol `HQFTP/1` with HMAC, pairing with a human in the loop, shares and a deny-list for private data, sync semantics, Mac hazards, a pal loopback harness, a build order). `&.hq-apps/hq-ftp/` is a **placeholder window** (an `.xhtpm` and a launcher; the network menu row says "not built"). Nothing transfers bytes. Drag and drop **exists inside one house**: `02-architecture/DRAG-AND-DROP-BETWEEN-MENUS.md` (read from code, not exercised with a real drag) describes a placed entity as a drag source and a window with `drop_action` as a target, via X11 XDND carrying the entity's directory path. **Across houses nothing exists:** an entity is a folder with an identity (uid, hash, phone), so a transfer must regenerate identity, keep the type (the folder's `meta.pdl` kind) and refuse unsupported types; the spec's deny-list and the install doc's pack rules apply. Suggested order: build `ftp_manifest` + `ftp_apply` on scratch trees first (the spec's step 1), then the window, then drag-and-drop between a file explorer and a remote share.
+
+## 12. The screen recorder (`151.screen-rec+01.02`): how it fits, and what it needs to be drivable
+
+**Read 2026-10-08 (not run).** A small OBS-style recorder: asks the compositor for a screen-capture session through xdg-desktop-portal, receives video over PipeWire, previews it in a GL window, and encodes `.mp4` with libx264. Two binaries (`system/screen_rec`, `system/screen_rec_gui`), a `button.sh` with `deps | compile | run | kill`, file-based receipts and a control file `pieces/control/record_command.txt` (`start` / `stop`), plus a test harness (`tk_click`, `tk_screenshot`) with a scenario script. Built binaries date from Oct 5. **This machine runs Wayland (GNOME)**, which is why it uses the portal: classic X11 grabs are blocked.
+**Good for us:** it is already controllable by file (an agent writes `start`/`stop`), its output is a plain mp4, and it matches the house shape (daemon + receipts).
+**What blocks it as the evidence tool:**
+- The portal shows a **picker dialog the first time each daemon starts**; there is no persisted restore token (its own doc lists this). A person must click it, or a restore token must be stored, or the demo must start the recorder once by hand.
+- **Its last recorded test result is a FAIL from 2026-07-27** (`gui_display.receipt.txt` never reported `checksum_match=1`, "preview pipeline is broken"). I do not know whether that is still true; it must be re-run.
+- **No audio** (no mic or desktop audio, so no narration), **no RTMP/stream output**, thumbnails never cleaned.
+- It captures the compositor's monitor or window, so relay-driven khtpm windows are in the picture only if the picker is pointed at the whole screen; per-window capture is possible but needs the picker choice.
+**To make it drivable for presentations (proposed order):** (1) re-run its own scenario and report the real result; (2) store the portal restore token so `start` needs no click; (3) a `mark` command that writes a timestamped chapter row into the presentation timeline (S6) so the video and the evidence list line up; (4) add narration (audio) from the TTS pipeline already used for the NIGHT lessons, mixed in afterwards with ffmpeg; (5) optional RTMP for live sharing. Each step gets a pal harness case; the recorder is "visible" evidence only after it records a relay-driven session whose frames match the dumps.
+
+## 13. How soon, honestly (estimates, not commitments)
+
+| Milestone | What you would see | My estimate |
+|---|---|---|
+| A. Peer on 3 machines, harness S1 passing (loopback + LAN), duplicate-connection fix | text proof, no video | about a day |
+| B. IRC and Forum windows live on this machine + debil + Mac, relay-driven, frame dumps + timeline | **first shareable visual proof** of network chat across machines | about 3 to 5 working days (mostly updating the remote houses and getting the windows wired to the configured peer) |
+| C. Screen-rec re-run, restore token, chapter marks → **first video** of milestone B | mp4 of B for stakeholders | +2 to 3 days after B |
+| D. Cones mining and send between the three, shown in a chain window, with escrow on a test chain | the trade story | +1 week |
+| E. Auction and quest board with escrow (stone contracts) and an agent that opens its own menus and reads its own inventory | the full user story at T0 honor level | +2 to 3 weeks |
+| F. Install from the payload on a clean machine as the opening scene | "from install" | after A and the relative-path fixes; +3 to 5 days |
+| G. Signing and real value | "secure the user story" | owner decision on scheme first; not estimable yet |
+These assume steady work, no new surprises on the older houses, and that the open questions in section 8 and 10 are answered. The video milestone (C) is the first thing worth showing outside; B is the first thing worth showing the owner.
