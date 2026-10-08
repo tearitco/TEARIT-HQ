@@ -1,0 +1,13 @@
+You are filling a data file for a tiny farming game. Below is the CURRENT file. Reply with the COMPLETE new file inside ONE fenced code block and nothing else: it must start with the exact current text (every current line unchanged, same order), followed by NEW lines, one per row, each exactly `PHRASE | <text>`.
+Add between 34 and 50 new rows so the file ends with 40 to 60 PHRASE rows in total. Rules for each new text: 15 to 80 characters; starts with a capital letter; only letters, digits, spaces and these marks: apostrophe comma period question-mark exclamation-mark (no vertical bar, no quotes, no dashes, no accents, no emoji); no two phrases the same ignoring case (the current ones count); at least 12 of the new phrases mention a farm word (grain, seed, seeds, rain, plot, jug, hut, chicken, egg, eggs, field, water, hoe, spade, barn, cow, horse, harvest, plant, dig, gold, silver, stone, clay, garden, milk); at least 8 of the new phrases are questions containing a question mark; no more than 6 new phrases may start with the same first word; friendly, plain, no swearing. The phrases are what two villagers say to each other while farming.
+
+CURRENT FILE:
+```
+# phrases.pdl - what the talk act says (one seeded pick); plain text rows, no bars in the text
+PHRASE | The field looks green today
+PHRASE | Did the rain reach your plot
+PHRASE | I have grain to spare
+PHRASE | Come and see the hut
+PHRASE | Save a seed for me
+PHRASE | The jug is nearly dry
+```

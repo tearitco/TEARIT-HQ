@@ -1,0 +1,161 @@
+# quest q019 (Eden talk phrases, FREE-WORKER pilot 3): LOCKED cases. The JUDGE is ops/phrase_lint.c (deterministic); the worker may only append rows to worker/phrases.pdl.
+# Sections: judge compiles; each judge rule shown able to FAIL on a tiny fixture; then the real check of the worker's file against the real original (40 rows, 12 farm words, 8 questions).
+RESULTS | ../results/quest_q019_phrases.txt
+CASE | q019-judge-compiles
+SCRATCH |
+COPY | &.widgits/quest-pilot/q019-phrases/ops/phrase_lint.c | phrase_lint.c
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/phrase_lint.+x | $T/phrase_lint.c
+EXPECT_EXIT | 0 | judge-compiles-clean
+CASE | q019-judge-good
+SCRATCH |
+COPY | &.widgits/quest-pilot/q019-phrases/ops/phrase_lint.c | phrase_lint.c
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/phrase_lint.+x | $T/phrase_lint.c
+WRITE | orig.pdl | # c\nPHRASE \p Hello there friend\n
+WRITE | cand.pdl | # c\nPHRASE \p Hello there friend\nPHRASE \p The grain is ready today\nPHRASE \p Is the rain coming soon?\n
+RUN | $T/phrase_lint.+x | $T/orig.pdl | $T/cand.pdl | 3 | 1 | 1
+EXPECT_EXIT | 0 | rc-good
+EXPECT_OUT | LINT\pVERDICT\pPASS | verdict-good
+CASE | q019-judge-prefix-changed
+SCRATCH |
+COPY | &.widgits/quest-pilot/q019-phrases/ops/phrase_lint.c | phrase_lint.c
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/phrase_lint.+x | $T/phrase_lint.c
+WRITE | orig.pdl | # c\nPHRASE \p Hello there friend\n
+WRITE | cand.pdl | # c\nPHRASE \p Hello there foe\nPHRASE \p The grain is ready today\nPHRASE \p Is the rain coming soon?\n
+RUN | $T/phrase_lint.+x | $T/orig.pdl | $T/cand.pdl | 3 | 1 | 1
+EXPECT_EXIT | 1 | rc-prefix-changed
+EXPECT_OUT | LINT\pFAIL\pprefix | verdict-prefix-changed
+CASE | q019-judge-format-no-space
+SCRATCH |
+COPY | &.widgits/quest-pilot/q019-phrases/ops/phrase_lint.c | phrase_lint.c
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/phrase_lint.+x | $T/phrase_lint.c
+WRITE | orig.pdl | # c\nPHRASE \p Hello there friend\n
+WRITE | cand.pdl | # c\nPHRASE \p Hello there friend\nPHRASE \pThe grain is ready today\nPHRASE \p Is the rain coming soon?\n
+RUN | $T/phrase_lint.+x | $T/orig.pdl | $T/cand.pdl | 3 | 1 | 1
+EXPECT_EXIT | 1 | rc-format-no-space
+EXPECT_OUT | LINT\pFAIL\pformat | verdict-format-no-space
+CASE | q019-judge-bar-in-text
+SCRATCH |
+COPY | &.widgits/quest-pilot/q019-phrases/ops/phrase_lint.c | phrase_lint.c
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/phrase_lint.+x | $T/phrase_lint.c
+WRITE | orig.pdl | # c\nPHRASE \p Hello there friend\n
+WRITE | cand.pdl | # c\nPHRASE \p Hello there friend\nPHRASE \p The grain \p is ready today\nPHRASE \p Is the rain coming soon?\n
+RUN | $T/phrase_lint.+x | $T/orig.pdl | $T/cand.pdl | 3 | 1 | 1
+EXPECT_EXIT | 1 | rc-bar-in-text
+EXPECT_OUT | LINT\pFAIL\pchars | verdict-bar-in-text
+CASE | q019-judge-too-short
+SCRATCH |
+COPY | &.widgits/quest-pilot/q019-phrases/ops/phrase_lint.c | phrase_lint.c
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/phrase_lint.+x | $T/phrase_lint.c
+WRITE | orig.pdl | # c\nPHRASE \p Hello there friend\n
+WRITE | cand.pdl | # c\nPHRASE \p Hello there friend\nPHRASE \p Grain ok\nPHRASE \p Is the rain coming soon?\n
+RUN | $T/phrase_lint.+x | $T/orig.pdl | $T/cand.pdl | 3 | 1 | 1
+EXPECT_EXIT | 1 | rc-too-short
+EXPECT_OUT | LINT\pFAIL\plength | verdict-too-short
+CASE | q019-judge-too-long
+SCRATCH |
+COPY | &.widgits/quest-pilot/q019-phrases/ops/phrase_lint.c | phrase_lint.c
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/phrase_lint.+x | $T/phrase_lint.c
+WRITE | orig.pdl | # c\nPHRASE \p Hello there friend\n
+WRITE | cand.pdl | # c\nPHRASE \p Hello there friend\nPHRASE \p The grain is ready today and the whole valley will be talking about the harvest for weeks\nPHRASE \p Is the rain coming soon?\n
+RUN | $T/phrase_lint.+x | $T/orig.pdl | $T/cand.pdl | 3 | 1 | 1
+EXPECT_EXIT | 1 | rc-too-long
+EXPECT_OUT | LINT\pFAIL\plength | verdict-too-long
+CASE | q019-judge-duplicate
+SCRATCH |
+COPY | &.widgits/quest-pilot/q019-phrases/ops/phrase_lint.c | phrase_lint.c
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/phrase_lint.+x | $T/phrase_lint.c
+WRITE | orig.pdl | # c\nPHRASE \p Hello there friend\n
+WRITE | cand.pdl | # c\nPHRASE \p Hello there friend\nPHRASE \p The grain is ready today\nPHRASE \p the GRAIN is ready today\n
+RUN | $T/phrase_lint.+x | $T/orig.pdl | $T/cand.pdl | 3 | 1 | 0
+EXPECT_EXIT | 1 | rc-duplicate
+EXPECT_OUT | LINT\pFAIL\pdup | verdict-duplicate
+CASE | q019-judge-duplicate-of-original
+SCRATCH |
+COPY | &.widgits/quest-pilot/q019-phrases/ops/phrase_lint.c | phrase_lint.c
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/phrase_lint.+x | $T/phrase_lint.c
+WRITE | orig.pdl | # c\nPHRASE \p Hello there friend\n
+WRITE | cand.pdl | # c\nPHRASE \p Hello there friend\nPHRASE \p Hello there friend\nPHRASE \p Is the rain coming soon?\n
+RUN | $T/phrase_lint.+x | $T/orig.pdl | $T/cand.pdl | 3 | 1 | 1
+EXPECT_EXIT | 1 | rc-duplicate-of-original
+EXPECT_OUT | LINT\pFAIL\pdup | verdict-duplicate-of-original
+CASE | q019-judge-too-few-total
+SCRATCH |
+COPY | &.widgits/quest-pilot/q019-phrases/ops/phrase_lint.c | phrase_lint.c
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/phrase_lint.+x | $T/phrase_lint.c
+WRITE | orig.pdl | # c\nPHRASE \p Hello there friend\n
+WRITE | cand.pdl | # c\nPHRASE \p Hello there friend\nPHRASE \p The grain is ready today\nPHRASE \p Is the rain coming soon?\n
+RUN | $T/phrase_lint.+x | $T/orig.pdl | $T/cand.pdl | 9 | 1 | 1
+EXPECT_EXIT | 1 | rc-too-few-total
+EXPECT_OUT | LINT\pFAIL\ptotal | verdict-too-few-total
+CASE | q019-judge-no-farm-word
+SCRATCH |
+COPY | &.widgits/quest-pilot/q019-phrases/ops/phrase_lint.c | phrase_lint.c
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/phrase_lint.+x | $T/phrase_lint.c
+WRITE | orig.pdl | # c\nPHRASE \p Hello there friend\n
+WRITE | cand.pdl | # c\nPHRASE \p Hello there friend\nPHRASE \p Nice weather for a walk\nPHRASE \p Is the day going well?\n
+RUN | $T/phrase_lint.+x | $T/orig.pdl | $T/cand.pdl | 3 | 1 | 1
+EXPECT_EXIT | 1 | rc-no-farm-word
+EXPECT_OUT | LINT\pFAIL\pfarm | verdict-no-farm-word
+CASE | q019-judge-no-questions
+SCRATCH |
+COPY | &.widgits/quest-pilot/q019-phrases/ops/phrase_lint.c | phrase_lint.c
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/phrase_lint.+x | $T/phrase_lint.c
+WRITE | orig.pdl | # c\nPHRASE \p Hello there friend\n
+WRITE | cand.pdl | # c\nPHRASE \p Hello there friend\nPHRASE \p The grain is ready today\nPHRASE \p The rain stopped at noon\n
+RUN | $T/phrase_lint.+x | $T/orig.pdl | $T/cand.pdl | 3 | 1 | 1
+EXPECT_EXIT | 1 | rc-no-questions
+EXPECT_OUT | LINT\pFAIL\pquestions | verdict-no-questions
+CASE | q019-judge-banned-word
+SCRATCH |
+COPY | &.widgits/quest-pilot/q019-phrases/ops/phrase_lint.c | phrase_lint.c
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/phrase_lint.+x | $T/phrase_lint.c
+WRITE | orig.pdl | # c\nPHRASE \p Hello there friend\n
+WRITE | cand.pdl | # c\nPHRASE \p Hello there friend\nPHRASE \p The damn grain is ready today\nPHRASE \p Is the rain coming soon?\n
+RUN | $T/phrase_lint.+x | $T/orig.pdl | $T/cand.pdl | 3 | 1 | 1
+EXPECT_EXIT | 1 | rc-banned-word
+EXPECT_OUT | LINT\pFAIL\pbanned | verdict-banned-word
+CASE | q019-judge-lowercase-start
+SCRATCH |
+COPY | &.widgits/quest-pilot/q019-phrases/ops/phrase_lint.c | phrase_lint.c
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/phrase_lint.+x | $T/phrase_lint.c
+WRITE | orig.pdl | # c\nPHRASE \p Hello there friend\n
+WRITE | cand.pdl | # c\nPHRASE \p Hello there friend\nPHRASE \p the grain is ready today\nPHRASE \p Is the rain coming soon?\n
+RUN | $T/phrase_lint.+x | $T/orig.pdl | $T/cand.pdl | 3 | 1 | 1
+EXPECT_EXIT | 1 | rc-lowercase-start
+EXPECT_OUT | LINT\pFAIL\pchars | verdict-lowercase-start
+CASE | q019-judge-non-ascii
+SCRATCH |
+COPY | &.widgits/quest-pilot/q019-phrases/ops/phrase_lint.c | phrase_lint.c
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/phrase_lint.+x | $T/phrase_lint.c
+WRITE | orig.pdl | # c\nPHRASE \p Hello there friend\n
+WRITE | cand.pdl | # c\nPHRASE \p Hello there friend\nPHRASE \p The grain is ready today é\nPHRASE \p Is the rain coming soon?\n
+RUN | $T/phrase_lint.+x | $T/orig.pdl | $T/cand.pdl | 3 | 1 | 1
+EXPECT_EXIT | 1 | rc-non-ascii
+EXPECT_OUT | LINT\pFAIL\pchars | verdict-non-ascii
+CASE | q019-judge-variety
+SCRATCH |
+COPY | &.widgits/quest-pilot/q019-phrases/ops/phrase_lint.c | phrase_lint.c
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/phrase_lint.+x | $T/phrase_lint.c
+WRITE | orig.pdl | # c\nPHRASE \p Hello there friend\n
+WRITE | cand.pdl | # c\nPHRASE \p Hello there friend\nPHRASE \p The grain number one is here\nPHRASE \p The grain number two is here\nPHRASE \p The grain number three is here\nPHRASE \p The grain number four is here\nPHRASE \p The grain number five is here\nPHRASE \p The grain number six is here\nPHRASE \p The grain number seven is here\n
+RUN | $T/phrase_lint.+x | $T/orig.pdl | $T/cand.pdl | 3 | 1 | 0
+EXPECT_EXIT | 1 | rc-variety
+EXPECT_OUT | LINT\pFAIL\pvariety | verdict-variety
+CASE | q019-judge-blank-lines-ok
+SCRATCH |
+COPY | &.widgits/quest-pilot/q019-phrases/ops/phrase_lint.c | phrase_lint.c
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/phrase_lint.+x | $T/phrase_lint.c
+WRITE | orig.pdl | # c\nPHRASE \p Hello there friend\n
+WRITE | cand.pdl | # c\nPHRASE \p Hello there friend\n\nPHRASE \p The grain is ready today\nPHRASE \p Is the rain coming soon?\n
+RUN | $T/phrase_lint.+x | $T/orig.pdl | $T/cand.pdl | 3 | 1 | 1
+EXPECT_EXIT | 0 | rc-blank-lines-ok
+EXPECT_OUT | LINT\pVERDICT\pPASS | verdict-blank-lines-ok
+CASE | q019-WORKER-FILE-against-the-real-original
+SCRATCH |
+COPY | &.widgits/quest-pilot/q019-phrases/ops/phrase_lint.c | phrase_lint.c
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/phrase_lint.+x | $T/phrase_lint.c
+COPY | &.widgits/eden/conductor/phrases.pdl | orig.pdl
+COPY | &.widgits/quest-pilot/q019-phrases/worker/phrases.pdl | cand.pdl
+RUN | $T/phrase_lint.+x | $T/orig.pdl | $T/cand.pdl | 40 | 12 | 8
+EXPECT_EXIT | 0 | worker-file-passes-the-judge
+EXPECT_OUT | LINT\pVERDICT\pPASS | worker-verdict-PASS

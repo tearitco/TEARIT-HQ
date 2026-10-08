@@ -1,3 +1,4 @@
+```
 # phrases.pdl - what the talk act says (one seeded pick); plain text rows, no bars in the text
 PHRASE | The field looks green today
 PHRASE | Did the rain reach your plot
@@ -45,3 +46,4 @@ PHRASE | Could the spade break if we hit a stone?
 PHRASE | Please feed the cow and check her milk output
 PHRASE | Do you see the new barn roof shining in the sun?
 PHRASE | Set the jug on the table after you fill it
+```

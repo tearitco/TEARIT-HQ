@@ -1,0 +1,2 @@
+# q019 Eden talk phrases (pilot 3, free worker)
+Status: ACCEPTED on iteration 1. Judge: ops/phrase_lint.c. Locked harness: _shared-lib/harness/quest_q019_phrases.pal + cases/quest_q019_phrases.pdl. Ledger: quest_ledger.txt. Worker input: prompt.txt; worker output: worker/phrases.pdl (raw reply: reply_raw.txt). Honest note: for a task this small the harness cost as much as doing it by hand; the value is the reusable judge pattern for text-data tasks.
