@@ -664,7 +664,15 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                 for (char *c = type; *c; c++) *c = (char)tolower((unsigned char)*c);
                 strip_pipes(name); strip_pipes(val); strip_pipes(ph);
                 if (!type[0]) snprintf(type, sizeof(type), "%s", "text");
-                if (in_form && (!strcmp(type, "text") || !strcmp(type, "search"))) {
+                if (in_form && (!strcmp(type, "text") || !strcmp(type, "search")
+                                || !strcmp(type, "email") || !strcmp(type, "url")
+                                || !strcmp(type, "number") || !strcmp(type, "tel")
+                                || !strcmp(type, "password"))) {
+                    /* text-ish editable controls: rendered as fields and
+                     * validated at submit time (required flag in field 5).
+                     * password values are never echoed back into rows that
+                     * a projector might render, but they DO reach submit
+                     * through fields.txt exactly like any other input. */
                     if (name[0]) {
                         char rq[8] = "";
                         int req = tag_attrval(p, tag_end, "required", rq, sizeof(rq));

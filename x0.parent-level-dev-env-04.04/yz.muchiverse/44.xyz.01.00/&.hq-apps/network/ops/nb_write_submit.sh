@@ -53,29 +53,36 @@ fi
 cat "$DESKTOP_DIR/network_browser_fields.txt" 2>/dev/null >> "$MERGED_ACCUM"
 MERGED="$MERGED_ACCUM"
 CLEANUP_MERGED=1
-# Required-field gate: every INPUT text/search/textarea row flagged
-# required in the live page.state must have a non-empty committed value,
-# else refuse with a console note (never send a knowingly-invalid form).
-REQ_MISSING=""
+# Validation gate (2026-10-07, M4 follow-on): never send a knowingly-invalid
+# form. Two rules, both driven by the live page.state INPUT rows:
+#   1. required (field 5 == 1) text-ish fields must have a non-empty value
+#   2. email/url/number values must match a loose HTML-spec shape even when
+#      the field is optional - an empty optional field passes silently
+# BLOCKED accumulates " name" for rule 1, " name(reason)" for rule 2.
+BLOCKED=""
 while IFS= read -r line; do
-    kind="${line%%|*}"
-    [ "$kind" = "INPUT" ] || continue
-    rest="${line#*|}"
-    nm="${rest%%|*}"
-    typ="$(printf '%s' "$rest" | awk -F'|' '{print $2}')"
-    req="$(printf '%s' "$rest" | awk -F'|' '{print $5}')"
-    case "$typ" in text|search|textarea) ;; *) continue ;; esac
-    [ "$req" = "1" ] || continue
-    val=""
-    if [ -f "$DESKTOP_DIR/network_browser_fields.txt" ]; then
-        val="$(awk -F'\t' -v n="$nm" '$1==n {v=$2} END {print v}' "$DESKTOP_DIR/network_browser_fields.txt")"
-    fi
+    case "$line" in INPUT\|*) ;; *) continue ;; esac
+    nm="${line#INPUT|}";  nm="${nm%%|*}"
+    typ="${line#INPUT|*}"; typ="${typ#*|}";  typ="${typ%%|*}"
+    # required is the LAST field on text-ish INPUT rows ("...|name|type|val|ph|req").
+    # Toggle rows carry only 4 fields, so the tail is never "1" for them.
+    req="${line##*|}"; [ "$req" = "1" ] || req=0
+    case "$typ" in text|search|textarea|email|url|number) ;; *) continue ;; esac
+    val="$(awk -F'\t' -v n="$nm" '$1==n {v=$2} END {print v}' "$DESKTOP_DIR/network_browser_fields.txt" 2>/dev/null)"
     if [ -z "$val" ]; then
-        REQ_MISSING="$REQ_MISSING $nm"
+        [ "$req" = "1" ] && BLOCKED="$BLOCKED $nm"
+        continue
     fi
+    case "$typ" in
+        email) case "$val" in *@*.*) ;; *) BLOCKED="$BLOCKED $nm(email)" ;; esac ;;
+        url)   case "$val" in *://*) ;; *) BLOCKED="$BLOCKED $nm(url)" ;; esac ;;
+        number)
+            case "$val" in -*) v="${val#-}" ;; *) v="$val" ;; esac
+            case "$v" in ""|*[!0-9.]*) BLOCKED="$BLOCKED $nm(number)" ;; *) ;; esac ;;
+    esac
 done < "$DESKTOP_DIR/network_browser_page.state.txt"
-if [ -n "$REQ_MISSING" ]; then
-    printf 'submit: required field(s) empty:%s\n' "$REQ_MISSING" >> "$DESKTOP_DIR/network_browser_console.txt"
+if [ -n "$BLOCKED" ]; then
+    printf 'submit: blocked, invalid form:%s\n' "$BLOCKED" >> "$DESKTOP_DIR/network_browser_console.txt"
     [ -n "$CLEANUP_MERGED" ] && rm -f "$MERGED"
     exit 0
 fi
