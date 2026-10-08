@@ -1,0 +1,446 @@
+# quest q011 quest_check: LOCKED cases (the worker may not edit this file). Binary under test: &.widgits/quest-pilot/ops/+x/quest_check.+x (built by ops/build_quest_check.sh)
+# Every scenario builds a scratch git repo under $T: repo r/ (main) holds the packet q/ and src/; w/ is a worktree on branch work. quest_check q=r/q w=w ref=main.
+RESULTS | ../results/quest_q011_quest_check.txt
+CASE | q011-quest-check
+# ---- scenario: valid
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | qc.+x
+WRITE | r/q/harness/h1.txt | H1\n
+WRITE | r/q/harness/sub/h2.txt | H2\n
+WRITE | r/q/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n7fef2fea3c018a53a5c94d89cf269d390d812a7d9f874886e60455623d76618f  sub/h2.txt\n
+WRITE | r/q/scope.txt | # allowed paths\nsrc/\nREADME.md\nlib/prefix*\n
+WRITE | r/q/budget.pdl | BUDGET | max_attempts | 3\nBUDGET | max_seconds | 600\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/src/a.c | int a;\n
+WRITE | r/other/o.c | int o;\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | worktree | add | -q | -b | work | $T/w | main
+EXPECT_EXIT | 0 | worktree
+WRITE | w/src/a.c | int a2;\n
+WRITE | w/src/new/b.c | int b;\n
+WRITE | w/README.md | hi\n
+WRITE | w/lib/prefix_x.c | int p;\n
+MKDIR | r/q/attempts/001
+MKDIR | r/q/attempts/002
+RUN | $T/qc.+x | $T/r/q | $T/w | main
+EXPECT_EXIT | 0 | valid-exit
+EXPECT_OUT | QCHECK\pVERDICT\pPASS\pchecks=5\pfailed=0 | valid-out-QCHECK_VERDICT_PASS_chec
+EXPECT_OUT | QCHECK\pPASS\pLOCK\p | valid-out-QCHECK_PASS_LOCK_
+EXPECT_OUT | QCHECK\pPASS\pSCOPE\p4 changed | valid-out-QCHECK_PASS_SCOPE_4_chan
+EXPECT_OUT | QCHECK\pPASS\pBASE\p | valid-out-QCHECK_PASS_BASE_
+EXPECT_OUT | QCHECK\pPASS\pBUDGET\p | valid-out-QCHECK_PASS_BUDGET_
+EXPECT_OUT | QCHECK\pPASS\pATTEMPTS\p2 attempt | valid-out-QCHECK_PASS_ATTEMPTS_2_a
+EXPECT_OUT_LACKS | QCHECK\pFAIL | valid-no-QCHECK_FAIL
+CLEAN |
+# ---- scenario: forged-harness-byte
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | qc.+x
+WRITE | r/q/harness/h1.txt | H1\n
+WRITE | r/q/harness/sub/h2.txt | H2\n
+WRITE | r/q/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n7fef2fea3c018a53a5c94d89cf269d390d812a7d9f874886e60455623d76618f  sub/h2.txt\n
+WRITE | r/q/scope.txt | # allowed paths\nsrc/\nREADME.md\nlib/prefix*\n
+WRITE | r/q/budget.pdl | BUDGET | max_attempts | 3\nBUDGET | max_seconds | 600\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/src/a.c | int a;\n
+WRITE | r/other/o.c | int o;\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | worktree | add | -q | -b | work | $T/w | main
+EXPECT_EXIT | 0 | worktree
+WRITE | r/q/harness/h1.txt | H1x\n
+RUN | $T/qc.+x | $T/r/q | $T/w | main
+EXPECT_EXIT | 1 | forged-byte-exit
+EXPECT_OUT | QCHECK\pFAIL\pLOCK\phash mismatch (edited) h1.txt | forged-byte-out-QCHECK_FAIL_LOCK_hash_mi
+EXPECT_OUT | QCHECK\pVERDICT\pFAIL | forged-byte-out-QCHECK_VERDICT_FAIL
+EXPECT_OUT_LACKS | QCHECK\pFAIL\pSCOPE | forged-byte-no-QCHECK_FAIL_SCOPE
+EXPECT_OUT_LACKS | QCHECK\pFAIL\pBUDGET | forged-byte-no-QCHECK_FAIL_BUDGET
+CLEAN |
+# ---- scenario: extra-harness-file
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | qc.+x
+WRITE | r/q/harness/h1.txt | H1\n
+WRITE | r/q/harness/sub/h2.txt | H2\n
+WRITE | r/q/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n7fef2fea3c018a53a5c94d89cf269d390d812a7d9f874886e60455623d76618f  sub/h2.txt\n
+WRITE | r/q/scope.txt | # allowed paths\nsrc/\nREADME.md\nlib/prefix*\n
+WRITE | r/q/budget.pdl | BUDGET | max_attempts | 3\nBUDGET | max_seconds | 600\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/src/a.c | int a;\n
+WRITE | r/other/o.c | int o;\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | worktree | add | -q | -b | work | $T/w | main
+EXPECT_EXIT | 0 | worktree
+WRITE | r/q/harness/extra.pal | exec evil\n
+RUN | $T/qc.+x | $T/r/q | $T/w | main
+EXPECT_EXIT | 1 | extra-file-exit
+EXPECT_OUT | no lock row (added): extra.pal | extra-file-out-no_lock_row_(added):_ext
+CLEAN |
+# ---- scenario: missing-lock-row
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | qc.+x
+WRITE | r/q/harness/h1.txt | H1\n
+WRITE | r/q/harness/sub/h2.txt | H2\n
+WRITE | r/q/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n
+WRITE | r/q/scope.txt | # allowed paths\nsrc/\nREADME.md\nlib/prefix*\n
+WRITE | r/q/budget.pdl | BUDGET | max_attempts | 3\nBUDGET | max_seconds | 600\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/src/a.c | int a;\n
+WRITE | r/other/o.c | int o;\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | worktree | add | -q | -b | work | $T/w | main
+EXPECT_EXIT | 0 | worktree
+RUN | $T/qc.+x | $T/r/q | $T/w | main
+EXPECT_EXIT | 1 | missing-row-exit
+EXPECT_OUT | no lock row (added): sub/h2.txt | missing-row-out-no_lock_row_(added):_sub
+CLEAN |
+# ---- scenario: lock-row-for-deleted-file
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | qc.+x
+WRITE | r/q/harness/h1.txt | H1\n
+WRITE | r/q/harness/sub/h2.txt | H2\n
+WRITE | r/q/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n7fef2fea3c018a53a5c94d89cf269d390d812a7d9f874886e60455623d76618f  sub/h2.txt\n63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  gone.txt\n
+WRITE | r/q/scope.txt | # allowed paths\nsrc/\nREADME.md\nlib/prefix*\n
+WRITE | r/q/budget.pdl | BUDGET | max_attempts | 3\nBUDGET | max_seconds | 600\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/src/a.c | int a;\n
+WRITE | r/other/o.c | int o;\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | worktree | add | -q | -b | work | $T/w | main
+EXPECT_EXIT | 0 | worktree
+RUN | $T/qc.+x | $T/r/q | $T/w | main
+EXPECT_EXIT | 1 | deleted-file-row-exit
+EXPECT_OUT | lock row has no file (removed): gone.txt | deleted-file-row-out-lock_row_has_no_file_(re
+CLEAN |
+# ---- scenario: lock-missing
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | qc.+x
+WRITE | r/q/harness/h1.txt | H1\n
+WRITE | r/q/harness/sub/h2.txt | H2\n
+WRITE | r/q/LOCK.sha256 | 
+WRITE | r/q/scope.txt | # allowed paths\nsrc/\nREADME.md\nlib/prefix*\n
+WRITE | r/q/budget.pdl | BUDGET | max_attempts | 3\nBUDGET | max_seconds | 600\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/src/a.c | int a;\n
+WRITE | r/other/o.c | int o;\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | worktree | add | -q | -b | work | $T/w | main
+EXPECT_EXIT | 0 | worktree
+RUN | $T/qc.+x | $T/r/q | $T/w | main
+EXPECT_EXIT | 1 | empty-lock-exit
+EXPECT_OUT | no lock row (added) | empty-lock-out-no_lock_row_(added)
+CLEAN |
+# ---- scenario: diff-outside-scope
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | qc.+x
+WRITE | r/q/harness/h1.txt | H1\n
+WRITE | r/q/harness/sub/h2.txt | H2\n
+WRITE | r/q/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n7fef2fea3c018a53a5c94d89cf269d390d812a7d9f874886e60455623d76618f  sub/h2.txt\n
+WRITE | r/q/scope.txt | # allowed paths\nsrc/\nREADME.md\nlib/prefix*\n
+WRITE | r/q/budget.pdl | BUDGET | max_attempts | 3\nBUDGET | max_seconds | 600\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/src/a.c | int a;\n
+WRITE | r/other/o.c | int o;\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | worktree | add | -q | -b | work | $T/w | main
+EXPECT_EXIT | 0 | worktree
+WRITE | w/other/o.c | int o2;\n
+RUN | $T/qc.+x | $T/r/q | $T/w | main
+EXPECT_EXIT | 2 | outside-scope-exit
+EXPECT_OUT | QCHECK\pFAIL\pSCOPE\poutside scope: other/o.c | outside-scope-out-QCHECK_FAIL_SCOPE_outsid
+EXPECT_OUT_LACKS | QCHECK\pFAIL\pLOCK | outside-scope-no-QCHECK_FAIL_LOCK
+CLEAN |
+# ---- scenario: diff-touches-harness
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | qc.+x
+WRITE | r/q/harness/h1.txt | H1\n
+WRITE | r/q/harness/sub/h2.txt | H2\n
+WRITE | r/q/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n7fef2fea3c018a53a5c94d89cf269d390d812a7d9f874886e60455623d76618f  sub/h2.txt\n
+WRITE | r/q/scope.txt | # allowed paths\nsrc/\nREADME.md\nlib/prefix*\n
+WRITE | r/q/budget.pdl | BUDGET | max_attempts | 3\nBUDGET | max_seconds | 600\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/src/a.c | int a;\n
+WRITE | r/other/o.c | int o;\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | worktree | add | -q | -b | work | $T/w | main
+EXPECT_EXIT | 0 | worktree
+WRITE | r/q/scope.txt | q/\nsrc/\n
+WRITE | w/q/harness/h1.txt | H1 forged\n
+WRITE | w/q/scope.txt | q/\n
+WRITE | w/q/LOCK.sha256 | forged\n
+RUN | $T/qc.+x | $T/r/q | $T/w | main
+EXPECT_EXIT | 2 | touch-harness-exit
+EXPECT_OUT | always out of scope): q/harness/h1.txt | touch-harness-out-always_out_of_scope):_q/
+EXPECT_OUT | always out of scope): q/scope.txt | touch-harness-out-always_out_of_scope):_q/
+EXPECT_OUT | always out of scope): q/LOCK.sha256 | touch-harness-out-always_out_of_scope):_q/
+CLEAN |
+# ---- scenario: untracked-outside-scope
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | qc.+x
+WRITE | r/q/harness/h1.txt | H1\n
+WRITE | r/q/harness/sub/h2.txt | H2\n
+WRITE | r/q/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n7fef2fea3c018a53a5c94d89cf269d390d812a7d9f874886e60455623d76618f  sub/h2.txt\n
+WRITE | r/q/scope.txt | # allowed paths\nsrc/\nREADME.md\nlib/prefix*\n
+WRITE | r/q/budget.pdl | BUDGET | max_attempts | 3\nBUDGET | max_seconds | 600\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/src/a.c | int a;\n
+WRITE | r/other/o.c | int o;\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | worktree | add | -q | -b | work | $T/w | main
+EXPECT_EXIT | 0 | worktree
+WRITE | w/zzz.txt | stray\n
+RUN | $T/qc.+x | $T/r/q | $T/w | main
+EXPECT_EXIT | 2 | untracked-exit
+EXPECT_OUT | QCHECK\pFAIL\pSCOPE\poutside scope: zzz.txt | untracked-out-QCHECK_FAIL_SCOPE_outsid
+CLEAN |
+# ---- scenario: stale-base
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | qc.+x
+WRITE | r/q/harness/h1.txt | H1\n
+WRITE | r/q/harness/sub/h2.txt | H2\n
+WRITE | r/q/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n7fef2fea3c018a53a5c94d89cf269d390d812a7d9f874886e60455623d76618f  sub/h2.txt\n
+WRITE | r/q/scope.txt | # allowed paths\nsrc/\nREADME.md\nlib/prefix*\n
+WRITE | r/q/budget.pdl | BUDGET | max_attempts | 3\nBUDGET | max_seconds | 600\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/src/a.c | int a;\n
+WRITE | r/other/o.c | int o;\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | worktree | add | -q | -b | work | $T/w | main
+EXPECT_EXIT | 0 | worktree
+WRITE | r/src/c.c | int c;\n
+RUN | git | -C | $T/r | add | src/c.c
+EXPECT_EXIT | 0 | add-c
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | advance
+EXPECT_EXIT | 0 | advance
+RUN | $T/qc.+x | $T/r/q | $T/w | main
+EXPECT_EXIT | 4 | stale-base-exit
+EXPECT_OUT | QCHECK\pFAIL\pBASE\pstale base: merge-base  | stale-base-out-QCHECK_FAIL_BASE_stale_b
+EXPECT_OUT_LACKS | QCHECK\pFAIL\pSCOPE | stale-base-no-QCHECK_FAIL_SCOPE
+CLEAN |
+# ---- scenario: budget-missing-key
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | qc.+x
+WRITE | r/q/harness/h1.txt | H1\n
+WRITE | r/q/harness/sub/h2.txt | H2\n
+WRITE | r/q/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n7fef2fea3c018a53a5c94d89cf269d390d812a7d9f874886e60455623d76618f  sub/h2.txt\n
+WRITE | r/q/scope.txt | # allowed paths\nsrc/\nREADME.md\nlib/prefix*\n
+WRITE | r/q/budget.pdl | BUDGET | max_attempts | 3\nBUDGET | max_seconds | 600\nBUDGET | max_quota_units | 50\n
+WRITE | r/src/a.c | int a;\n
+WRITE | r/other/o.c | int o;\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | worktree | add | -q | -b | work | $T/w | main
+EXPECT_EXIT | 0 | worktree
+RUN | $T/qc.+x | $T/r/q | $T/w | main
+EXPECT_EXIT | 8 | budget-missing-exit
+EXPECT_OUT | QCHECK\pFAIL\pBUDGET\pmissing key escalate_to | budget-missing-out-QCHECK_FAIL_BUDGET_missi
+CLEAN |
+# ---- scenario: budget-non-numeric
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | qc.+x
+WRITE | r/q/harness/h1.txt | H1\n
+WRITE | r/q/harness/sub/h2.txt | H2\n
+WRITE | r/q/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n7fef2fea3c018a53a5c94d89cf269d390d812a7d9f874886e60455623d76618f  sub/h2.txt\n
+WRITE | r/q/scope.txt | # allowed paths\nsrc/\nREADME.md\nlib/prefix*\n
+WRITE | r/q/budget.pdl | BUDGET | max_attempts | 3\nBUDGET | max_seconds | soon\nBUDGET | max_quota_units | 0\nBUDGET | escalate_to | manager\n
+WRITE | r/src/a.c | int a;\n
+WRITE | r/other/o.c | int o;\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | worktree | add | -q | -b | work | $T/w | main
+EXPECT_EXIT | 0 | worktree
+RUN | $T/qc.+x | $T/r/q | $T/w | main
+EXPECT_EXIT | 8 | budget-nonnum-exit
+EXPECT_OUT | max_seconds must be a positive integer, got 'soon' | budget-nonnum-out-max_seconds_must_be_a_po
+EXPECT_OUT | max_quota_units must be a positive integer, got '0' | budget-nonnum-out-max_quota_units_must_be_
+CLEAN |
+# ---- scenario: attempts-gap
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | qc.+x
+WRITE | r/q/harness/h1.txt | H1\n
+WRITE | r/q/harness/sub/h2.txt | H2\n
+WRITE | r/q/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n7fef2fea3c018a53a5c94d89cf269d390d812a7d9f874886e60455623d76618f  sub/h2.txt\n
+WRITE | r/q/scope.txt | # allowed paths\nsrc/\nREADME.md\nlib/prefix*\n
+WRITE | r/q/budget.pdl | BUDGET | max_attempts | 3\nBUDGET | max_seconds | 600\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/src/a.c | int a;\n
+WRITE | r/other/o.c | int o;\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | worktree | add | -q | -b | work | $T/w | main
+EXPECT_EXIT | 0 | worktree
+MKDIR | r/q/attempts/001
+MKDIR | r/q/attempts/003
+RUN | $T/qc.+x | $T/r/q | $T/w | main
+EXPECT_EXIT | 16 | attempts-gap-exit
+EXPECT_OUT | QCHECK\pFAIL\pATTEMPTS\pgap or duplicate: expected 002, found 003 | attempts-gap-out-QCHECK_FAIL_ATTEMPTS_gap
+CLEAN |
+# ---- scenario: attempts-over-max
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | qc.+x
+WRITE | r/q/harness/h1.txt | H1\n
+WRITE | r/q/harness/sub/h2.txt | H2\n
+WRITE | r/q/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n7fef2fea3c018a53a5c94d89cf269d390d812a7d9f874886e60455623d76618f  sub/h2.txt\n
+WRITE | r/q/scope.txt | # allowed paths\nsrc/\nREADME.md\nlib/prefix*\n
+WRITE | r/q/budget.pdl | BUDGET | max_attempts | 3\nBUDGET | max_seconds | 600\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/src/a.c | int a;\n
+WRITE | r/other/o.c | int o;\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | worktree | add | -q | -b | work | $T/w | main
+EXPECT_EXIT | 0 | worktree
+MKDIR | r/q/attempts/001
+MKDIR | r/q/attempts/002
+MKDIR | r/q/attempts/003
+MKDIR | r/q/attempts/004
+RUN | $T/qc.+x | $T/r/q | $T/w | main
+EXPECT_EXIT | 16 | attempts-over-exit
+EXPECT_OUT | 4 attempts exceeds max_attempts=3 | attempts-over-out-4_attempts_exceeds_max_a
+CLEAN |
+# ---- scenario: scope-missing
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | qc.+x
+WRITE | r/q/harness/h1.txt | H1\n
+WRITE | r/q/harness/sub/h2.txt | H2\n
+WRITE | r/q/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n7fef2fea3c018a53a5c94d89cf269d390d812a7d9f874886e60455623d76618f  sub/h2.txt\n
+WRITE | r/q/budget.pdl | BUDGET | max_attempts | 3\nBUDGET | max_seconds | 600\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/src/a.c | int a;\n
+WRITE | r/other/o.c | int o;\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | worktree | add | -q | -b | work | $T/w | main
+EXPECT_EXIT | 0 | worktree
+RUN | $T/qc.+x | $T/r/q | $T/w | main
+EXPECT_EXIT | 2 | no-scope-exit
+EXPECT_OUT | QCHECK\pFAIL\pSCOPE\pscope.txt missing | no-scope-out-QCHECK_FAIL_SCOPE_scope.
+CLEAN |
+# ---- scenario: nonexistent-worktree
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | qc.+x
+WRITE | r/q/harness/h1.txt | H1\n
+WRITE | r/q/harness/sub/h2.txt | H2\n
+WRITE | r/q/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n7fef2fea3c018a53a5c94d89cf269d390d812a7d9f874886e60455623d76618f  sub/h2.txt\n
+WRITE | r/q/scope.txt | # allowed paths\nsrc/\nREADME.md\nlib/prefix*\n
+WRITE | r/q/budget.pdl | BUDGET | max_attempts | 3\nBUDGET | max_seconds | 600\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/src/a.c | int a;\n
+WRITE | r/other/o.c | int o;\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | worktree | add | -q | -b | work | $T/w | main
+EXPECT_EXIT | 0 | worktree
+RUN | $T/qc.+x | $T/r/q | $T/nowhere | main
+EXPECT_EXIT | 6 | no-worktree-exit
+EXPECT_OUT | QCHECK\pFAIL\pBASE\pworktree_dir missing | no-worktree-out-QCHECK_FAIL_BASE_worktre
+CLEAN |
+# ---- scenario: nonexistent-ref
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | qc.+x
+WRITE | r/q/harness/h1.txt | H1\n
+WRITE | r/q/harness/sub/h2.txt | H2\n
+WRITE | r/q/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n7fef2fea3c018a53a5c94d89cf269d390d812a7d9f874886e60455623d76618f  sub/h2.txt\n
+WRITE | r/q/scope.txt | # allowed paths\nsrc/\nREADME.md\nlib/prefix*\n
+WRITE | r/q/budget.pdl | BUDGET | max_attempts | 3\nBUDGET | max_seconds | 600\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/src/a.c | int a;\n
+WRITE | r/other/o.c | int o;\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | worktree | add | -q | -b | work | $T/w | main
+EXPECT_EXIT | 0 | worktree
+RUN | $T/qc.+x | $T/r/q | $T/w | nosuchbranch
+EXPECT_EXIT | 6 | no-ref-exit
+EXPECT_OUT | QCHECK\pFAIL\pBASE\ptarget ref missing: nosuchbranch | no-ref-out-QCHECK_FAIL_BASE_target_
+CLEAN |
+# ---- scenario: nonexistent-quest-dir
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | qc.+x
+WRITE | r/q/harness/h1.txt | H1\n
+WRITE | r/q/harness/sub/h2.txt | H2\n
+WRITE | r/q/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n7fef2fea3c018a53a5c94d89cf269d390d812a7d9f874886e60455623d76618f  sub/h2.txt\n
+WRITE | r/q/scope.txt | # allowed paths\nsrc/\nREADME.md\nlib/prefix*\n
+WRITE | r/q/budget.pdl | BUDGET | max_attempts | 3\nBUDGET | max_seconds | 600\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/src/a.c | int a;\n
+WRITE | r/other/o.c | int o;\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | worktree | add | -q | -b | work | $T/w | main
+EXPECT_EXIT | 0 | worktree
+RUN | $T/qc.+x | $T/nope | $T/w | main
+EXPECT_EXIT | 27 | no-quest-exit
+EXPECT_OUT | QCHECK\pFAIL\pLOCK\pquest_dir missing | no-quest-out-QCHECK_FAIL_LOCK_quest_d
+CLEAN |
+# ---- scenario: sha256 known vectors (selftest mode)
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | qc.+x
+RUN | $T/qc.+x | --selftest
+EXPECT_EXIT | 0 | selftest-exit
+EXPECT_OUT | sha256(abc)=ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad | selftest-abc
+EXPECT_OUT | QCHECK\pVERDICT\pPASS\pchecks=3\pfailed=0 | selftest-verdict
+CLEAN |
