@@ -200,16 +200,64 @@ int main(void) {
     }
 
     const char *tool = detect_tool(message);
-    write_state_field("detected_tool", tool);
 
     if (strcmp(tool, "none") == 0) {
-        /* No tool keyword detected - ordinary chat, straight to Gemma as
-         * plain conversation. Direct instruction: "gemma should never
-         * parse tool etc" - this used to route here into Strategy B
-         * (asking Gemma to try TOOL: format on every non-tool message,
-         * including a bare "hi"), which is exactly the behavior that
-         * instruction rules out. Gemma only ever sees plain text now;
-         * see check_response.c's gemma branch and prompt_keyword.txt. */
+        /* No built-in tool keyword matched. Before falling through to
+         * ordinary chat, consult this pal's wordbank (zz.wordbank/words.txt)
+         * to resolve the typed phrase to an entity action CANON via its
+         * ALIAS rows (ENTITY-WORD-BANK-DESIGN sec 7: "the parser's alias
+         * lookup for entity commands reads words.txt"). This is item 6 of
+         * the build order: use-scoring rows from the parser path. */
+        char entity_dir[PATH_BUF];
+        snprintf(entity_dir, sizeof(entity_dir), "%s", project_root);
+        char alias_op[PATH_BUF];
+        snprintf(alias_op, sizeof(alias_op), "%s/ops/+x/wordbank_alias_op.+x", project_root);
+        char cmd[PATH_BUF * 2];
+        snprintf(cmd, sizeof(cmd), "'%s' --lookup '%s' '%s' 2>/dev/null", alias_op, entity_dir, message);
+        FILE *pp = popen(cmd, "r");
+        if (pp) {
+            char line[MAX_LINE];
+            if (fgets(line, sizeof(line), pp)) {
+                line[strcspn(line, "\r\n")] = '\0';
+                if (strncmp(line, "CANON=", 6) == 0) {
+                    /* write the resolved CANON and record a USE score */
+                    char canon[512], alias[256];
+                    char *cbar = strchr(line, '|');
+                    if (cbar) {
+                        *cbar = '\0';
+                        snprintf(canon, sizeof(canon), "%s", line + 6);
+                        char *abar = strstr(cbar + 1, "ALIAS=");
+                        if (abar) {
+                            abar += 6;
+                            char *wbar = strchr(abar, '|');
+                            if (wbar) { *wbar = '\0'; snprintf(alias, sizeof(alias), "%s", abar); }
+                            else snprintf(alias, sizeof(alias), "%s", abar);
+                            write_state_field("detected_tool", "entity_action");
+                            write_state_field("detected_canon", canon);
+                            write_state_field("detected_alias", alias);
+                            write_state_field("selected_strategy", "A");
+                            char msg[256];
+                            snprintf(msg, sizeof(msg), "[Strategy A] Entity action: %s (alias: %s)", canon, alias);
+                            write_state_field("sys_msg", msg);
+                            append_log("A", "entity_action", canon);
+                            /* record use-score via the same op */
+                            char use_cmd[PATH_BUF * 2];
+                            snprintf(use_cmd, sizeof(use_cmd), "'%s' --use '%s' '%s' '%s' 1 2>/dev/null",
+                                     alias_op, entity_dir, canon, alias);
+                            FILE *up = popen(use_cmd, "r");
+                            if (up) pclose(up);
+                            pclose(pp);
+                            return 0;
+                        }
+                    }
+                }
+                pclose(pp);
+            } else {
+                pclose(pp);
+            }
+        }
+        /* No wordbank match either - ordinary chat to Gemma */
+        write_state_field("detected_tool", "none");
         write_state_field("selected_strategy", "A");
         write_state_field("sys_msg", "Chat (no tool)");
         append_log("A", NULL, NULL);

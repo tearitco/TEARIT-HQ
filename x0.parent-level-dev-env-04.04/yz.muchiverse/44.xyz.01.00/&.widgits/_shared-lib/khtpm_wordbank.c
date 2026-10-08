@@ -16,6 +16,9 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <time.h>
+#include <ctype.h>
 #include <glob.h>
 
 #define WB_UNUSED __attribute__((unused))
@@ -282,4 +285,101 @@ static WB_UNUSED void wb_ensure(const char *dir, WbCtx *c, int depth) {
     }
 }
 
+/* ---- parser path: alias lookup + use-scoring ---- */
+
+/* Case-insensitive whole-word search, same semantics as message_has_word()
+   in 045.muchi-pal-agent's send_message.c. Returns 1 if <word> appears as
+   a whole word in <text> (bounded by non-alphanumeric on both sides). */
+static WB_UNUSED int wb_word_present(const char *text, const char *word) {
+    size_t wlen = strlen(word);
+    if (wlen == 0) return 0;
+    size_t tlen = strlen(text);
+    char *lower_t = malloc(tlen + 1);
+    char *lower_w = malloc(wlen + 1);
+    if (!lower_t || !lower_w) { free(lower_t); free(lower_w); return 0; }
+    for (size_t i = 0; i < tlen; i++) lower_t[i] = (char)tolower((unsigned char)text[i]);
+    lower_t[tlen] = '\0';
+    for (size_t i = 0; i < wlen; i++) lower_w[i] = (char)tolower((unsigned char)word[i]);
+    lower_w[wlen] = '\0';
+    int found = 0;
+    char *p = lower_t;
+    while ((p = strstr(p, lower_w)) != NULL) {
+        char before = (p == lower_t) ? ' ' : *(p - 1);
+        char after = *(p + wlen);
+        if (!isalnum((unsigned char)before) && !isalnum((unsigned char)after)) { found = 1; break; }
+        p++;
+    }
+    free(lower_t); free(lower_w);
+    return found;
+}
+
+/* Look up the user's <input> text against an entity's words.txt.
+   Returns 1 and fills <out_canon>/<out_alias>/<out_weight> on the best match
+   (highest WEIGHT among matching SOURCE=seed or SOURCE=user rows).
+   The entity_dir is the entity's root folder (containing inventory/zz.wordbank/). */
+static WB_UNUSED int wb_alias_lookup(const char *entity_dir, const char *input,
+        char *out_canon, size_t canon_sz, char *out_alias, size_t alias_sz, double *out_weight) {
+    char words[WB_BUF];
+    wb_join(words, sizeof(words), entity_dir, "inventory");
+    wb_join(words, sizeof(words), words, WB_WORDBANK_DIR);
+    wb_join(words, sizeof(words), words, "words.txt");
+    FILE *f = fopen(words, "r");
+    if (!f) return 0;
+    char line[WB_BUF];
+    double best_weight = -1.0;
+    int best_canon = 0;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "CANON=", 6) != 0) continue;
+        char canon[512], alias[256];
+        char *cbar = strchr(line + 6, '|'); if (!cbar) continue;
+        size_t clen = (size_t)(cbar - (line + 6));
+        if (clen >= sizeof(canon)) clen = sizeof(canon) - 1;
+        memcpy(canon, line + 6, clen); canon[clen] = '\0';
+        char *abar = strstr(cbar, "ALIAS="); if (!abar) continue;
+        abar += 6; char *aend = strchr(abar, '|');
+        if (!aend) continue;
+        size_t alen = (size_t)(aend - abar);
+        if (alen >= sizeof(alias)) alen = sizeof(alias) - 1;
+        memcpy(alias, abar, alen); alias[alen] = '\0';
+        char *wbar = strstr(aend, "WEIGHT=");
+        double w = 0.5;
+        if (wbar) w = atof(wbar + 7);
+        char *sbar = strstr(aend, "SOURCE=");
+        if (!sbar) continue;
+        /* check whole-word match of alias in input */
+        if (wb_word_present(input, alias)) {
+            if (w >= best_weight) {  /* first match wins on ties */
+                best_weight = w;
+                if (!best_canon) {  /* copy on first match, update only if higher */
+                    snprintf(out_canon, canon_sz, "%s", canon);
+                    snprintf(out_alias, alias_sz, "%s", alias);
+                } else if (w > best_weight - 1) {  /* already set, update on strictly better */
+                    snprintf(out_canon, canon_sz, "%s", canon);
+                    snprintf(out_alias, alias_sz, "%s", alias);
+                }
+                best_canon = 1;
+            }
+        }
+    }
+    fclose(f);
+    if (best_canon) { *out_weight = best_weight; return 1; }
+    return 0;
+}
+
+/* Append a USE score: append a SCORE row with source=use to the entity's
+   scores.txt. The pal_hash is the entity_hash for chain verification (empty
+   for local-use row only). valence is +1 (match used) / -1 (user corrected) / 0 (neutral). */
+static WB_UNUSED void wb_use_score(const char *entity_dir, const char *canon, const char *alias,
+        int valence, const char *pal_hash) {
+    char scores[WB_BUF];
+    wb_join(scores, sizeof(scores), entity_dir, "inventory");
+    wb_join(scores, sizeof(scores), scores, WB_WORDBANK_DIR);
+    wb_join(scores, sizeof(scores), scores, "scores.txt");
+    char row[WB_BUF];
+    snprintf(row, sizeof(row), "SCORE|%s|%s|valence=%+d|source=use|pal_hash=%s|ts=%ld|id=%s\n",
+             canon, alias, valence, pal_hash ? pal_hash : "", (long)time(NULL), alias);
+    wb_append_file(scores, row);
+}
+
 #endif
+

@@ -45,6 +45,12 @@ for src in ops/*.c; do
     gcc $CFLAGS "$src" -o "ops/+x/$name.+x"
 done
 
+# wordbank_alias_op from the shared lib (used by gemma_strategy.c for parser-path alias lookup)
+if [ -f "$PRISC_CANON_SHARED_LIB/ops/wordbank_alias_op.c" ]; then
+    echo "  Compiling wordbank_alias_op (shared-lib)..."
+    gcc $CFLAGS "$PRISC_CANON_SHARED_LIB/ops/wordbank_alias_op.c" -o "ops/+x/wordbank_alias_op.+x"
+fi
+
 echo "--- Building emoji ops (on-demand FreeType emoji generator used by"
 echo "    chtpm_rgb_render's generic path - freetype headers required) ---"
 gcc $CFLAGS -I/usr/include/freetype2 -o "ops/+x/emoji_gen_atlas.+x" "ops/emoji_gen_atlas.c" -lfreetype -lm
