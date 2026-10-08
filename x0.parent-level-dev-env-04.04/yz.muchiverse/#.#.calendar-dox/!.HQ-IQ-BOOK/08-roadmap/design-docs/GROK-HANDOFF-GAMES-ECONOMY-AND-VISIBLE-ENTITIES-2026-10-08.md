@@ -230,3 +230,28 @@ First game after Eden (I recommend Pokemon-on-desk); whether Stop game should as
 ## 11. Where things are
 
 Book: `#.#.calendar-dox/!.HQ-IQ-BOOK/`. Key reads: `02-architecture/CENTROID_GOLD_STD.md`, `03-pitfalls/OPERATIONAL-LANDMINES.md`, `08-roadmap/TILESETS-EVENTS-AND-GAME-CLONES.md`, `08-roadmap/NB-DEBUG-QUICKREF.md`, `08-roadmap/design-docs/DOC-STATUS-AND-PATHS-FORWARD-2026-10-08.md`, `EDEN-STATE-RETENTION-DESIGN-2026-10-08.md`, `PIECECRAFT-HQ-GAME-EDITOR-AND-PLAY.md` sections 6-9 (Transfer/Shop/Battle). Reports: `XO/14.oct8/`. Night lessons (audio): `1-1.HARNECIENT.SMOL/NIGHT_40_*` and `NIGHT_41_*`.
+
+---
+
+## 12. Addendum (evening of 2026-10-08): what changed since section 7 was written, and where code starts
+
+**Changed:** step 15 is partly done. `palnet_peer` takes its address, advertise address and seeds from the environment, remembers peers (`known_peers.txt`, `peers_now.txt`), and drops duplicate lines; harness `palnet_peer_net` has 25 checks. `irc-chat-hq` is a three-pane window (rooms | chat | friends) with a read-only Friends list (harness `irc_friends_pane`, 13 checks), seen on three machines. The shared renderer and taskbar manager have macOS fixes. Message delivery *through the windows* across machines is still unproven.
+
+**New plans, all design only (read before touching the area):** `MACHINE-USERS-SCHOOLS-AND-FARM-ANIMATION-PLAN-2026-10-08.md` (own users per machine, install-script users and store purchases, the labeled-install harness, schools, farm animation mirrored in pc-hq), `SHARED-TRAINING-ACROSS-MACHINES-PLAN-2026-10-08.md`, `MULTI-AGENT-NETWORK-USER-STORY-HARNESS-PLAN-2026-10-08.md`, `HEADSTONES-AS-GAME-PROGRESSION-AND-CHAT-CONVENIENCES-2026-10-08.md`.
+
+**Where code starts, in two lanes that do not touch the same files:**
+
+*Lane 1, visible game (start immediately; needs none of the new plans):*
+1. Phase A step 2, **fix Status** (small; gives you the loop practice).
+2. Phase A step 1, **Eden World Viewer**. This is the first big item and the base for the farm animation and the pc-hq mirror (plan section 5).
+3. Then step 5 (move markers) and the retention work.
+
+*Lane 2, install and network proof (the plans' first code):*
+1. Hosts-by-data file and a `REMOTE` verb for the harness runner, with a loopback test.
+2. The install ledger op (next label, append, list).
+3. A local scratch install, label `local-v1`, with the payload leak check and its mutants. Then the same on debil and the Mac as `debil-v1` and `mac-v1`.
+4. Then the toy pack format and `xyzfs_pack_op`, the store window, and the first purchase.
+
+**Do not touch:** `network_browser_manager.c` and the opencode/worker lane files named in `AGENTS.md`; the owner's live desks and `xyzfs/users`; the live switch of debil and the Mac to their own users (owner decision, backup first); pushing the payload repo.
+
+**Still the owner's to decide:** see section 10 plus the decisions listed at the end of the machine-users plan (toy hosting and prices, whether each machine may use its own local Ollama, what to train first, when to switch the live desks to their own users).
