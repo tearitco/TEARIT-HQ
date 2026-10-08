@@ -111,6 +111,8 @@ RUN | /bin/sh | -c | kill "$(cat $T/h7/mgr.pid)"
 EXPECT_EXIT | 0 | stale-log-manager-cleaned
 WRITE | h8/_.monads/_.livedesk-taskbar/ops/build_khtpm_strip.sh | gcc -o x y\n
 WRITE | h8/_.monads/_.livedesk-taskbar/ops/+x/build_error.log | BUILD FAILED long ago\n
+RUN | touch | -d | @4102444800 | $T/h8/_.monads/_.livedesk-taskbar/ops/+x/build_error.log
+EXPECT_EXIT | 0 | stale-log-given-future-mtime
 WRITE | h8/$.crypts/button.sh | echo "unrelated failure"\nexit 7\n
 RUN | $T/op.+x | --house | $T/h8 | --wait | 5
 EXPECT_EXIT | 4 | stale-log-other-failure-rc4
