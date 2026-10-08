@@ -95,15 +95,25 @@ must be restored after it, never before.
 - [x] `nb_write_select.sh` written 644 — the renderer's direct exec failed
   silently. **House rule: `chmod +x` every new ops script.**
 
-## Done — Milestone 6: preformatted text (2026-10-07)
+## Done — Milestone 6: preformatted text (2026-10-07/08)
 
 - [x] `<pre>` emits one `CODE|<line>` row per source line; inline tags inside dropped
 - [x] `.nb-code` monospace via the generic per-element `font-family` path (zero renderer C)
 - [x] `tests/fixtures/code-block.html` + snapshot pin the row shape
+- [x] leading indentation preserved — shared renderer, quoted-value convention
+- [x] literal `\n` in a label no longer splits the row (shared renderer fix)
 
-- [ ] Leading indentation still lost: the shared `kh_load_vars()` trims leading
-  spaces off every value in every window. NBSP re-indent works on screen but
-  makes copied code break silently — rejected. Real fix is the renderer contract.
+## Done — Milestone 8: file uploads (2026-10-08, verified against httpbin)
+
+- [x] `<input type=file>` extracted as `FILE|name|accept|multiple`
+- [x] row opens the house file-explorer (`fe-pick.sh` modal contract), commits the path
+- [x] submit escalates to `upload:` multipart **only** when the value is a real file
+- [x] GET + file is forced to multipart rather than degraded to a query string
+- [x] `nb_write_file.sh` **chmod 755** — the renderer execs item actions directly
+
+Two bugs that both looked like working uploads: curl's `form-file` in a config
+file is silently dropped on curl 7.88.1 (use `form = "name=@path"`), and emitting
+both `form` and `form-file` for one name let the PATH win.
 
 ## Todo — Milestone 3: JS ↔ box tree reflow
 
