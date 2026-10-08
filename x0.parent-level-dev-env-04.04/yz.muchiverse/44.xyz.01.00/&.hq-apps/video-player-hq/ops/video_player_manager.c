@@ -21,6 +21,8 @@
 #define MAXQ 64
 static char pkg[1024], queue[MAXQ][1024]; static int nq, cur = -1;
 static int status;                       /* 0 stopped, 1 playing, 2 paused */
+#define NTH 12                       /* scene thumbnails along the timeline */
+static double dur; static pid_t tchild; static char thumbs_for[1024];
 static int side_on = 1;                  /* left panel shown; the footer button folds it away so the picture can use the width */
 #define BOXW 1100          /* the centre panel's pixel box: the picture is fitted into it, aspect kept, so it fills the screen area */
 #define BOXH 680
@@ -47,15 +49,15 @@ static const char *kv(const char *blob, const char *key, char *v, size_t n, int 
     return NULL;
 }
 static void check(const char *file) {                           /* fills info[] */
-    ninfo = 0; char out[4096], v[128], w[64], h[64], fps[64], vc[64], ac[64], dur[64], nf[64];
+    ninfo = 0; char out[4096], v[128], w[64], h[64], fps[64], vc[64], ac[64], durs[64], nf[64];
     char *const a[] = { "ffprobe", "-v", "error", "-show_entries", "format=duration:stream=codec_type,codec_name,width,height,avg_frame_rate,nb_frames", "-of", "default=nw=1", (char *)file, NULL };
     if (capture(a, out, sizeof out) != 0 || !out[0]) { snprintf(info[ninfo++], 200, "cannot read this file (ffprobe failed): not a video, or damaged"); return; }
     /* stream blocks come in file order: the first codec_name belongs to the first stream; find which is video by codec_type order */
     char t0[32], t1[32]; kv(out, "codec_type", t0, sizeof t0, 0); kv(out, "codec_type", t1, sizeof t1, 1);
     int vi = !strcmp(t0, "video") ? 0 : 1, ai = vi ? 0 : 1;
     kv(out, "codec_name", vc, sizeof vc, vi); kv(out, "codec_name", ac, sizeof ac, ai); kv(out, "width", w, sizeof w, 0); kv(out, "height", h, sizeof h, 0);
-    kv(out, "avg_frame_rate", fps, sizeof fps, vi); kv(out, "nb_frames", nf, sizeof nf, vi); kv(out, "duration", dur, sizeof dur, 0);
-    double d = atof(dur); long frames = atol(nf); vid_w = atoi(w); vid_h = atoi(h);
+    kv(out, "avg_frame_rate", fps, sizeof fps, vi); kv(out, "nb_frames", nf, sizeof nf, vi); kv(out, "duration", durs, sizeof durs, 0);
+    double d = atof(durs); long frames = atol(nf); vid_w = atoi(w); vid_h = atoi(h); dur = d;
     snprintf(info[ninfo++], 200, "video %s %sx%s   audio %s   %.1f s   avg fps %s   frames %s", vc[0] ? vc : "none", w, h, !strcmp(t0, "audio") || !strcmp(t1, "audio") ? ac : "none", d, fps, nf);
     (void)v;
     if (!vc[0]) snprintf(info[ninfo++], 200, "WARNING no video stream");
@@ -69,9 +71,19 @@ static void kill_one(pid_t *p) {      /* never block: a decoder stuck writing to
 }
 static void stop_child(void) { if (vfd >= 0) { close(vfd); vfd = -1; } kill_one(&child); kill_one(&achild); fgot = 0; status = 0; base_off = 0; }
 static double elapsed(void) { return status == 1 ? base_off + difftime(time(NULL), t_start) : status == 2 ? pos_at_pause : 0; }
+static void gen_thumbs(const char *file) {       /* NTH evenly spaced scene thumbnails as PNGs the generic items can draw; one low-priority ffmpeg per video */
+    if (!strcmp(thumbs_for, file) || dur <= 0) return; snprintf(thumbs_for, sizeof thumbs_for, "%s", file);
+    if (tchild > 0) { kill(tchild, SIGKILL); int st; waitpid(tchild, &st, 0); tchild = 0; }
+    char dir[1536], pat[1600], vf[96]; snprintf(dir, sizeof dir, "%s/thumbs", pkg); mkdir(dir, 0755);
+    for (int i = 1; i <= NTH + 2; i++) { snprintf(pat, sizeof pat, "%s/t_%02d.png", dir, i); unlink(pat); }
+    snprintf(pat, sizeof pat, "%s/t_%%02d.png", dir); snprintf(vf, sizeof vf, "fps=%.6f,scale=100:56", NTH / dur);
+    tchild = fork(); if (tchild == 0) { setpgid(0, 0); int nul = open("/dev/null", O_RDWR); dup2(nul, 0); dup2(nul, 1); dup2(nul, 2); nice(15);
+        execlp("ffmpeg", "ffmpeg", "-v", "error", "-y", "-i", file, "-an", "-vf", vf, "-frames:v", "12", pat, (char *)NULL); _exit(127); }
+}
 static void write_receipt(void) { char p[1536]; snprintf(p, sizeof p, "%s/frame.receipt.txt", pkg); FILE *f = fopen(p, "w"); if (f) { fprintf(f, "frame_w=%d\nframe_h=%d\n", fw, fh); fclose(f); } }
 static void play_at(int i, double off) {
     if (i < 0 || i >= nq) return; stop_child(); cur = i; if (off <= 0) check(queue[i]);
+    gen_thumbs(queue[i]);
     if (vid_w > 0 && vid_h > 0) { int bw = side_on ? BOXW : BIGW, bh = side_on ? BOXH : BIGH; double k = (double)bw / vid_w, k2 = (double)bh / vid_h; if (k2 < k) k = k2; fw = (int)(vid_w * k) & ~1; fh = (int)(vid_h * k) & ~1; if (fw < 2) fw = 2; if (fh < 2) fh = 2; } else { fw = side_on ? BOXW : BIGW; fh = side_on ? BOXH : BIGH; }
     write_receipt();
     char ss[32], vf[160]; snprintf(ss, sizeof ss, "%.2f", off < 0 ? 0 : off);
@@ -106,6 +118,8 @@ static void do_cmd(char *line) {
     else if (!strcmp(line, "stop")) { stop_child(); snprintf(logline, sizeof logline, "stopped"); }
     else if (!strcmp(line, "next")) { if (cur + 1 < nq) play(cur + 1); }
     else if (!strcmp(line, "prev")) { if (cur > 0) play(cur - 1); }
+    else if (!strcmp(line, "seek") && cur >= 0) { double e = atof(arg); if (e < 0) e = 0; if (dur > 0 && e > dur - 1) e = dur - 1; play_at(cur, e); }
+    else if ((!strcmp(line, "scene+") || !strcmp(line, "scene-")) && cur >= 0 && dur > 0) { double sl = dur / NTH; int k = (int)(elapsed() / sl) + (line[5] == '+' ? 1 : -1); if (k < 0) k = 0; if (k >= NTH) k = NTH - 1; play_at(cur, k * sl); }
     else if (!strcmp(line, "side")) { side_on = !side_on; if (status == 1 && cur >= 0) play_at(cur, elapsed()); }
     else if (!strcmp(line, "clear")) { stop_child(); nq = 0; cur = -1; ninfo = 0; snprintf(logline, sizeof logline, "queue cleared"); }
 }
@@ -115,6 +129,10 @@ static void publish(void) {
     double el = elapsed();
     fprintf(f, "head=Video Player  ·  %s\n", st[status]); fprintf(f, "status=%s%s%s   %d:%02d elapsed\n", st[status], cur >= 0 ? "   " : "", cur >= 0 ? (strrchr(queue[cur], '/') ? strrchr(queue[cur], '/') + 1 : queue[cur]) : "", (int)el / 60, (int)el % 60);
     fprintf(f, "canvas_raw=%s/frame.raw\nside_on=%s\nside_cls=%s\nside_label=%s\n", pkg, side_on ? "1" : "", side_on ? "vp-sidebar" : "vp-sidebar-min", side_on ? "hide panel" : "show panel"); fprintf(f, "hint=Drop a video file onto this window to add and play it. Numbers are the row numbers to press.\nlog=%s\n", logline);
+    { char bar[48]; int fill = dur > 0 ? (int)(el / dur * 30) : 0; if (fill > 30) fill = 30; for (int k = 0; k < 30; k++) bar[k] = k < fill ? '#' : '-'; bar[30] = 0;
+      fprintf(f, "prog=[%s] %d:%02d / %d:%02d\n", bar, (int)el / 60, (int)el % 60, (int)dur / 60, (int)dur % 60); }
+    { int nth = dur > 0 && cur >= 0 ? NTH : 0; double sl = dur > 0 ? dur / NTH : 1; int now = (int)(el / sl); fprintf(f, "n_th=%d\n", nth);
+      for (int k = 0; k < nth; k++) { int s = (int)(k * sl); fprintf(f, "th_%d_sprite=%s/thumbs/t_%02d.png\nth_%d_text=%d:%02d\nth_%d_cls=%s\nth_%d_act=seek %d\n", k, pkg, k + 1, k, s / 60, s % 60, k, k == now ? "th-cur" : "th", k, s); } }
     fprintf(f, "n_info=%d\n", ninfo); for (int i = 0; i < ninfo; i++) { fprintf(f, "i_%d_text=%s\n", i, info[i]); fprintf(f, "i_%d_cls=%s\n", i, !strncmp(info[i], "WARNING", 7) || !strncmp(info[i], "cannot", 6) ? "info-warn" : "info-ok"); }
     fprintf(f, "n_q=%d\n", nq); for (int i = 0; i < nq; i++) { const char *b = strrchr(queue[i], '/') ? strrchr(queue[i], '/') + 1 : queue[i]; fprintf(f, "q_%d_text=%s%d  %s\n", i, i == cur ? "> " : "  ", i, b); fprintf(f, "q_%d_cls=%s\n", i, i == cur ? "q-cur" : "q-row"); fprintf(f, "q_%d_act=play %d\n", i, i); }
     fclose(f); rename(tmp, dst);
@@ -127,11 +145,12 @@ int main(int argc, char **argv) {
     while (!quit_flag) {
         if (!stat(ap, &sb) && sb.st_size > cursor) { FILE *f = fopen(ap, "r"); if (f) { fseek(f, cursor, SEEK_SET); char ln[1200]; while (fgets(ln, sizeof ln, f)) { ln[strcspn(ln, "\n")] = 0; if (ln[0]) do_cmd(ln); } cursor = ftell(f); fclose(f); } }
         pump_frames();
+        if (tchild > 0) { int st; if (waitpid(tchild, &st, WNOHANG) == tchild) tchild = 0; }
         if (child > 0) { int st; if (waitpid(child, &st, WNOHANG) == child) { child = 0; pump_frames(); int nxt = cur + 1 < nq; stop_child(); snprintf(logline, sizeof logline, "finished"); if (nxt) play(cur + 1); } }
         { static struct timespec lastpub; struct timespec nw; clock_gettime(CLOCK_MONOTONIC, &nw);
           if ((nw.tv_sec - lastpub.tv_sec) * 1000 + (nw.tv_nsec - lastpub.tv_nsec) / 1000000 >= 300) { publish(); lastpub = nw; } }
         if (status == 1 && vfd >= 0) { struct pollfd pf = { vfd, POLLIN, 0 }; poll(&pf, 1, 40); }   /* wake as soon as the decoder has data (frames were limited to ~1/s by a fixed sleep) */
         else usleep(status == 1 ? 40000 : 100000);
     }
-    stop_child(); return 0;
+    stop_child(); if (tchild > 0) { kill(tchild, SIGKILL); int st; waitpid(tchild, &st, 0); } return 0;
 }

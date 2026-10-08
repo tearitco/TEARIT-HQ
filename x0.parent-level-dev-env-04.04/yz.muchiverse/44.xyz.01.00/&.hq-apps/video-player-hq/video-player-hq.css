@@ -18,7 +18,18 @@ window { width: 1150ui; height: 620ui; background-color: #14161c; font-family: D
 }
 .vp-footer {
     background-color: #0d0f14;
-    height: 36px;
+    height: 58px;
+}
+
+.vp-th {
+    width: 104px;
+    color: #ffd54a;
+    font-size: 10px;
+    padding: 1px 2px;
+}
+
+.vp-th.th-cur {
+    background-color: #2d4059;
 }
 .vp-btn {
     color: #cfd3de;

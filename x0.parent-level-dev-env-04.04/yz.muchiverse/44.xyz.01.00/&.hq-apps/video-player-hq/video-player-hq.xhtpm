@@ -14,6 +14,7 @@
       </repeat>
       <text id="ih0" class="vp-hdr" label="now" show="${side_on}"/>
       <text id="status" class="vp-status" label="${status}" show="${side_on}"/>
+      <text id="prog" class="vp-hint" label="${prog}" show="${side_on}"/>
       <text id="log" class="vp-hint" label="${log}" show="${side_on}"/>
       <text id="ih" class="vp-hdr" label="file check" show="${side_on}"/>
       <repeat count="${n_info}" bind="i">
@@ -27,12 +28,17 @@
       <item id="b-pause"  class="vp-btn" label="pause"    action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' pause"/>
       <item id="b-resume" class="vp-btn" label="resume"   action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' resume"/>
       <item id="b-stop"   class="vp-btn" label="stop"     action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' stop"/>
+      <item id="b-sm"     class="vp-btn" label="scene -" action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' scene-"/>
+      <item id="b-sp"     class="vp-btn" label="scene +" action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' scene+"/>
       <item id="b-back"   class="vp-btn" label="back 10s" action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' back"/>
       <item id="b-fwd"    class="vp-btn" label="fwd 10s"  action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' fwd"/>
       <item id="b-prev"   class="vp-btn" label="prev"     action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' prev"/>
       <item id="b-next"   class="vp-btn" label="next"     action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' next"/>
       <item id="b-side"   class="vp-btn" label="${side_label}" action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' side"/>
       <item id="b-clear"  class="vp-btn" label="clear"    action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' clear"/>
+      <repeat count="${n_th}" bind="h">
+        <item id="th${h.#}" class="vp-th sprite-inline sprite-big ${h.cls}" label="${h.text}" sprite="${h.sprite}" action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' ${h.act}"/>
+      </repeat>
     </footer>
   </page>
 </window>
