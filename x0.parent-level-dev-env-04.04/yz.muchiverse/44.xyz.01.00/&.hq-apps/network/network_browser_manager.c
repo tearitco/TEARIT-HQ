@@ -526,6 +526,24 @@ static int junk_visible_line(const char *s) {
     if (strcasestr_local(s, "Jump to search")) return 1;
     if (strcasestr_local(s, "Toggle the table of contents")) return 1;
     if (strcasestr_local(s, "From Wikipedia, the free encyclopedia")) return 0;
+    /* 2026-10-08: machine data is not prose. The worker's RENDER walk emits
+     * script payloads and unparsed markup templates as ordinary TEXT rows,
+     * so a real article showed a raw {"wt":...} blob and a {{Cite
+     * web|url=...}} template in the middle of sentences.
+     *
+     * These are STRUCTURAL tests, not site strings - the same rule the
+     * chrome filter above follows: look at the shape of the text, never at
+     * which page it came from.
+     *   - a JSON-ish object: braces AND a quoted key:value separator
+     *   - a markup template: {{ ... }} carrying key=value pairs
+     * Both are also required to be punctuation-dense, so a sentence that
+     * merely mentions a brace is not eaten. */
+    if (strchr(s, '{') && strchr(s, '}') && strstr(s, "\":\"")) return 1;
+    /* {{ is markup, never prose. Matching on the OPEN alone (not
+     * "{{...}}" balanced) matters: a template split across source lines
+     * leaks as fragments, each carrying "{{" but no "}}", and the
+     * balanced test let those through. */
+    if (strstr(s, "{{")) return 1;
     return 0;
 }
 
