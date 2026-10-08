@@ -1,0 +1,34 @@
+/* csv-lab-hq.css - khtpm_css_parser.c subset; classes follow knowledge-hq.css.
+   FONT: the window uses "Noto Sans CJK SC" (fonts-noto-cjk; fc-list :lang=zh lists NotoSansCJK-*.ttc and
+   uming.ttc on this machine) because DejaVu Sans has no Han glyphs.  It also covers Latin and pinyin tone
+   marks.  If the family is missing, Xft falls back to DejaVu Sans and Chinese shows as boxes (see README).
+   Main chrome widths/heights use the 'ui' unit (x UI scale, like the taskbar); font-size stays raw px. */
+window { width: 1280ui; height: 800ui; background-color: #14161c; font-family: Noto Sans CJK SC; font-size: 12px; }
+.cl-sidebar { background-color: #0d0f14; border: 1px solid #262a33; border-color: #262a33; width: 170ui; }
+.cl-panel   { background-color: #1b1e26; border: 1px solid #333846; border-color: #333846; }
+.cl-who     { color: #7c8399; font-size: 10px; padding: 6px 8px 4px 8px; }
+.cl-tab     { color: #cfd3de; font-size: 11px; padding: 5px 10px; }
+.cl-tab.tab-active { background-color: #2d4059; color: #ffffff; }
+.cl-run     { color: #7ee0a0; font-size: 13px; padding: 6px 10px 2px 10px; }
+.cl-prog    { color: #8fc1ff; font-size: 12px; font-family: DejaVu Sans Mono; padding: 2px 10px; }
+.cl-q       { color: #8a93a8; font-size: 11px; font-family: DejaVu Sans Mono; padding: 1px 10px; }
+.cl-q.cool  { color: #7ee0a0; }
+.cl-q.warm  { color: #ffd54a; }
+.cl-q.hot   { color: #ff6a5a; }
+.cl-q.quiet { color: #5c6478; }
+.cl-status  { color: #8a93a8; font-size: 10px; padding: 4px 10px; }
+.cl-msg     { color: #ffd54a; font-size: 11px; padding: 2px 10px; }
+.cl-log     { color: #7a8196; font-size: 10px; font-family: DejaVu Sans Mono; padding: 0px 10px; }
+.cl-cmd     { color: #8a93a8; font-size: 10px; padding: 4px 10px 1px 10px; }
+.cl-row     { color: #b9c0d4; font-size: 12px; padding: 2px 8px; }
+.cl-row.new-row  { color: #7a8196; }
+.cl-row.tr-row   { color: #8fc1ff; }
+.cl-row.ok-row   { color: #9fc4a8; }
+.cl-row.rej-row  { color: #8a7f7f; }
+.cl-row.bad-row  { color: #ff7a6a; background-color: #3a1e20; }
+.cl-row.warn-row { color: #ffd54a; background-color: #36301a; }
+.cl-row.quiet-row { color: #7a8196; }
+.cl-row.sel-row  { color: #ffffff; background-color: #2d4059; }
+.cl-row.card-row { color: #e6eaf5; background-color: #22283a; font-size: 13px; }
+.cl-row.card-btn { color: #ffffff; background-color: #2f7a4a; border: 1px solid #4aa86e; border-color: #4aa86e; }
+.cl-row.rej-btn  { background-color: #8a3a3a; border: 1px solid #c05a5a; border-color: #c05a5a; }

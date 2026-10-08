@@ -1,0 +1,356 @@
+# csv_lab_hq: LOCKED cases. Source under test: &.hq-apps/csv-lab-hq/ops/csv_lab_manager.c (driven with --once on a scratch house, plus one daemon section and source mutants).
+RESULTS | ../results/csv_lab_hq.txt
+CASE | csv-lab-hq
+SCRATCH |
+COPY | &.hq-apps/csv-lab-hq/ops/csv_lab_manager.c | csv_lab_manager.c
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -Wno-unknown-warning-option | -Wno-format-truncation | -O2 | -o | $T/cm.+x | $T/csv_lab_manager.c
+EXPECT_EXIT | 0 | compiles-clean
+COPY | &.hq-apps/csv-lab-hq/csv_lab_config.pdl | pkg/csv_lab_config.pdl
+MKDIR | house/&.widgits/concept-bank/state
+RUN | $T/cm.+x
+EXPECT_EXIT | 1 | no-args-usage-exit-1
+RUN | $T/cm.+x | --once | $T/house
+EXPECT_EXIT | 1 | once-missing-pkg-exit-1
+RUN | $T/cm.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | missing-feed-exit-0
+EXPECT_OUT | ui=written | missing-feed-publishes
+EXPECT_HAS | pkg/csv_lab_ui.txt | head=CSV Lab  -  waiting for pipeline | waiting-head
+EXPECT_HAS | pkg/csv_lab_ui.txt | feed_state=waiting | waiting-feed-state
+EXPECT_HAS | pkg/csv_lab_ui.txt | status=waiting for pipeline | waiting-status-line
+EXPECT_HAS | pkg/csv_lab_ui.txt | n_list=1 | waiting-one-placeholder-row
+EXPECT_HAS | pkg/csv_lab_ui.txt | l_0_text=Waiting for the pipeline | waiting-placeholder-text
+EXPECT_HAS | pkg/csv_lab_ui.txt | n_jobs=0 | waiting-zero-jobs
+EXPECT_NOFILE | house/&.widgits/concept-bank/state/csv_lab_ui.txt | missing-feed-never-created-by-manager
+COPY | &.widgits/_shared-lib/harness/fixtures/csv_lab_feed_fixture.txt | house/&.widgits/concept-bank/state/csv_lab_ui.txt
+SUMTREE | feed0 | house/&.widgits/concept-bank/state
+SUMTREE | feedf0 | house/&.widgits/concept-bank/state/csv_lab_ui.txt
+RUN | $T/cm.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | fixture-exit-0
+EXPECT_OUT | ui=written | fixture-publishes
+EXPECT_HAS | pkg/csv_lab_ui.txt | feed_state=ok | feed-state-ok
+EXPECT_HAS | pkg/csv_lab_ui.txt | head=CSV Lab  -  run-20261007-01 | head-run-id
+EXPECT_HAS | pkg/csv_lab_ui.txt | st_run=run run-20261007-01    bank chem    stage translate | status-run-bank-stage
+EXPECT_HAS | pkg/csv_lab_ui.txt | st_prog=[##########--------------] 18/45  40% | progress-bar-18-of-45
+EXPECT_HAS | pkg/csv_lab_ui.txt | q1=Groq requests  [##########--------------] 412/1000  41% | quota-groq-req-bar
+EXPECT_HAS | pkg/csv_lab_ui.txt | q1_cls=cool | quota-req-cool
+EXPECT_HAS | pkg/csv_lab_ui.txt | q2=Groq tokens/min [######################--] 5400/6000  90% | quota-groq-tok-bar
+EXPECT_HAS | pkg/csv_lab_ui.txt | q2_cls=hot | quota-tok-hot-at-90pct
+EXPECT_HAS | pkg/csv_lab_ui.txt | q3=Mac calls       37 calls | quota-mac-calls-no-bar
+EXPECT_HAS | pkg/csv_lab_ui.txt | n_jobs=45 | 45-jobs-parsed
+EXPECT_HAS | pkg/csv_lab_ui.txt | n_shown=45 | 45-shown
+EXPECT_HAS | pkg/csv_lab_ui.txt | n_list=45 | 45-list-rows
+EXPECT_HAS | pkg/csv_lab_ui.txt | n_bad=0 | clean-fixture-no-bad-rows
+EXPECT_HAS | pkg/csv_lab_ui.txt | status=45 jobs, 45 shown, 13 need review | status-counts-13-need-review
+EXPECT_HAS | pkg/csv_lab_ui.txt | n_banks=4 | banks-all-plus-3
+EXPECT_HAS | pkg/csv_lab_ui.txt | b_1_label=chem (20) | bank-chem-20
+EXPECT_HAS | pkg/csv_lab_ui.txt | b_2_label=bio (15) | bank-bio-15
+EXPECT_HAS | pkg/csv_lab_ui.txt | b_3_label=geo (10) | bank-geo-10
+EXPECT_HAS | pkg/csv_lab_ui.txt | b_0_cls=tab-active | bank-all-active
+EXPECT_HAS | pkg/csv_lab_ui.txt | s1_label=needs review (13) | needs-review-tab-count
+EXPECT_HAS | pkg/csv_lab_ui.txt | l_0_text=> 01  hydrogen   氢   qīng   4   translated | cjk-row-hydrogen-bytes-intact
+EXPECT_HAS | pkg/csv_lab_ui.txt | l_11_text=> 12  water   水   shuǐ   5   ok | cjk-row-water-bytes-intact
+EXPECT_HAS | pkg/csv_lab_ui.txt | l_29_text=> 30  protein   蛋白质   dànbáizhì   5   accepted | cjk-multichar-and-tone-marks-intact
+EXPECT_HAS | pkg/csv_lab_ui.txt | l_2_cls=bad-row | lint-fail-row-class
+EXPECT_HAS | pkg/csv_lab_ui.txt | l_8_cls=warn-row | low-score-row-class
+EXPECT_HAS | pkg/csv_lab_ui.txt | l_1_cls=ok-row | ok-row-class
+EXPECT_HAS | pkg/csv_lab_ui.txt | l_12_cls=ok-row | accepted-row-class-calm
+EXPECT_HAS | pkg/csv_lab_ui.txt | l_32_cls=rej-row | rejected-row-class
+EXPECT_HAS | pkg/csv_lab_ui.txt | l_0_cls=tr-row | translated-row-class
+EXPECT_HAS | pkg/csv_lab_ui.txt | l_3_cls=new-row | new-row-class
+EXPECT_HAS | pkg/csv_lab_ui.txt | l_0_act=SEL 1 | row-action-sel-1
+EXPECT_HAS | pkg/csv_lab_ui.txt | l_44_act=SEL 45 | last-row-action-sel-45
+EXPECT_LACKS | pkg/csv_lab_ui.txt | l_45_text | no-46th-row
+EXPECT_HAS | pkg/csv_lab_ui.txt | n_log=6 | log-shows-last-6
+EXPECT_HAS | pkg/csv_lab_ui.txt | g_0_text=10:21:28  translate batch 2 ok (15) | log-oldest-shown-at-top
+EXPECT_HAS | pkg/csv_lab_ui.txt | g_5_text=10:22:42  merge: 3 low items held for review | log-newest-at-bottom
+EXPECT_LACKS | pkg/csv_lab_ui.txt | extract 45 terms | log-older-lines-dropped
+EXPECT_HAS | pkg/csv_lab_ui.txt | cmdstat=type a command below | no-command-yet-hint
+SUMTREE | feed1 | house/&.widgits/concept-bank/state
+EXPECT_EQ | $feed0 | $feed1 | feed-never-modified-by-manager
+RUN | $T/cm.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | repub-exit-0
+EXPECT_OUT | ui=unchanged | unchanged-feed-no-rewrite
+RUN | $T/cm.+x | --once | $T/house | $T/pkg
+EXPECT_OUT | ui=unchanged | still-no-rewrite
+WRITE | pkg/csv_lab_action.txt | seq=1\ncmd=FILTER:REVIEW\n
+RUN | $T/cm.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | act1-runs
+EXPECT_HAS | pkg/csv_lab_ui.txt | n_shown=13 | filter-review-13
+EXPECT_HAS | pkg/csv_lab_ui.txt | n_list=13 | filter-review-13-rows
+EXPECT_HAS | pkg/csv_lab_ui.txt | cls_s1=tab-active | filter-review-tab-active
+EXPECT_HAS | pkg/csv_lab_ui.txt | bad-row | review-list-has-lint-fail
+EXPECT_HAS | pkg/csv_lab_ui.txt | warn-row | review-list-has-low-score
+EXPECT_LACKS | pkg/csv_lab_ui.txt | ok-row | review-list-has-no-ok
+EXPECT_LACKS | pkg/csv_lab_ui.txt | accepted | review-list-has-no-accepted
+WRITE | pkg/csv_lab_action.txt | seq=2\ncmd=FILTER:ACCEPTED\n
+RUN | $T/cm.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | act2-runs
+EXPECT_HAS | pkg/csv_lab_ui.txt | n_shown=3 | filter-accepted-3
+EXPECT_HAS | pkg/csv_lab_ui.txt | l_0_text=> 01  salt   盐   yán   5   accepted | filter-accepted-first-is-salt-cjk
+WRITE | pkg/csv_lab_action.txt | seq=3\ncmd=FILTER:REJECTED\n
+RUN | $T/cm.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | act3-runs
+EXPECT_HAS | pkg/csv_lab_ui.txt | n_shown=1 | filter-rejected-1
+EXPECT_HAS | pkg/csv_lab_ui.txt | animal   动物   dòngwù   2   rejected | filter-rejected-animal
+WRITE | pkg/csv_lab_action.txt | seq=4\ncmd=FILTER:NOPE\n
+RUN | $T/cm.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | act4-runs
+EXPECT_HAS | pkg/csv_lab_ui.txt | msg=ignored: unknown filter 'NOPE' | filter-unknown-ignored
+EXPECT_HAS | pkg/csv_lab_ui.txt | filter REJECTED | filter-unknown-keeps-previous
+WRITE | pkg/csv_lab_action.txt | seq=5\ncmd=FILTER:ALL\n
+RUN | $T/cm.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | act5-runs
+EXPECT_HAS | pkg/csv_lab_ui.txt | n_shown=45 | filter-all-45
+WRITE | pkg/csv_lab_action.txt | seq=6\ncmd=BANK:2\n
+RUN | $T/cm.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | act6-runs
+EXPECT_HAS | pkg/csv_lab_ui.txt | n_shown=15 | bank-bio-15-shown
+EXPECT_HAS | pkg/csv_lab_ui.txt | b_2_cls=tab-active | bank-bio-tab-active
+EXPECT_LACKS | pkg/csv_lab_ui.txt | hydrogen | bank-bio-has-no-chem
+EXPECT_HAS | pkg/csv_lab_ui.txt | l_0_text=> 01  cell   细胞   xìbāo | bank-bio-first-cell-cjk
+WRITE | pkg/csv_lab_action.txt | seq=7\ncmd=FILTER:REVIEW\n
+RUN | $T/cm.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | act7-runs
+EXPECT_HAS | pkg/csv_lab_ui.txt | n_shown=5 | bank-bio-plus-review-5
+WRITE | pkg/csv_lab_action.txt | seq=8\ncmd=BANK:3\n
+RUN | $T/cm.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | act8-runs
+EXPECT_HAS | pkg/csv_lab_ui.txt | n_shown=2 | bank-geo-plus-review-2
+WRITE | pkg/csv_lab_action.txt | seq=9\ncmd=BANK:9\n
+RUN | $T/cm.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | act9-runs
+EXPECT_HAS | pkg/csv_lab_ui.txt | msg=ignored: no bank tab 9 | bank-out-of-range-ignored
+WRITE | pkg/csv_lab_action.txt | seq=10\ncmd=BANK:0\n
+RUN | $T/cm.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | act10-runs
+EXPECT_HAS | pkg/csv_lab_ui.txt | n_shown=13 | bank-all-plus-review-13
+WRITE | pkg/csv_lab_action.txt | seq=11\ncmd=FILTER:ALL\n
+RUN | $T/cm.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | act11-runs
+EXPECT_HAS | pkg/csv_lab_ui.txt | n_shown=45 | back-to-45
+WRITE | pkg/csv_lab_action.txt | seq=12\ncmd=SEL:3\n
+RUN | $T/cm.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | act12-runs
+EXPECT_HAS | pkg/csv_lab_ui.txt | l_2_text=v 03  lithium   锂   lǐ   2   lint_fail | selected-row-marked-open
+EXPECT_HAS | pkg/csv_lab_ui.txt | l_3_cls=card-row | card-rows-follow-selected
+EXPECT_HAS | pkg/csv_lab_ui.txt | l_3_text=      English   lithium | card-english
+EXPECT_HAS | pkg/csv_lab_ui.txt | l_4_text=      Chinese   锂     pinyin lǐ | card-chinese-pinyin-cjk
+EXPECT_HAS | pkg/csv_lab_ui.txt | l_6_act=ACCEPT | card-accept-button
+EXPECT_HAS | pkg/csv_lab_ui.txt | l_7_act=REJECT | card-reject-button
+EXPECT_HAS | pkg/csv_lab_ui.txt | l_8_act=SEL 4 | rows-after-card-keep-numbering
+EXPECT_HAS | pkg/csv_lab_ui.txt | n_list=50 | card-adds-5-rows
+WRITE | pkg/csv_lab_action.txt | seq=13\ncmd=SEL:3\n
+RUN | $T/cm.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | act13-runs
+EXPECT_HAS | pkg/csv_lab_ui.txt | n_list=45 | second-click-collapses
+EXPECT_LACKS | pkg/csv_lab_ui.txt | card-row | collapsed-has-no-card
+WRITE | pkg/csv_lab_action.txt | seq=14\ncmd=SEL:999\n
+RUN | $T/cm.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | act14-runs
+EXPECT_HAS | pkg/csv_lab_ui.txt | msg=ignored: no job row 999 | sel-out-of-range-ignored
+EXPECT_NOFILE | house/&.widgits/concept-bank/state/csv_lab_review.txt | no-review-file-before-any-action
+WRITE | pkg/csv_lab_action.txt | seq=15\ncmd=ACCEPT\n
+RUN | $T/cm.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | act15-runs
+EXPECT_HAS | pkg/csv_lab_ui.txt | msg=refused: select a job first | accept-without-selection-refused
+EXPECT_NOFILE | house/&.widgits/concept-bank/state/csv_lab_review.txt | refused-accept-writes-nothing
+WRITE | pkg/csv_lab_action.txt | seq=16\ncmd=SEL:3\n
+RUN | $T/cm.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | act16-runs
+WRITE | pkg/csv_lab_action.txt | seq=17\ncmd=ACCEPT\n
+RUN | $T/cm.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | act17-runs
+EXPECT_HAS | pkg/csv_lab_ui.txt | msg=accept recorded for chem/c003 | accept-message
+EXPECT_FILE | house/&.widgits/concept-bank/state/csv_lab_review.txt | REVIEW\pchem\pc003\paccept\n | accept-appends-exactly-4-fields-no-timestamp
+EXPECT_HAS | pkg/csv_lab_ui.txt | l_2_text=v 03  lithium   锂   lǐ   2   accepted | review-overrides-status-in-row
+EXPECT_HAS | pkg/csv_lab_ui.txt | status=45 jobs, 45 shown, 12 need review | accepted-job-leaves-needs-review
+WRITE | pkg/csv_lab_action.txt | seq=18\ncmd=SEL:9\n
+RUN | $T/cm.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | act18-runs
+WRITE | pkg/csv_lab_action.txt | seq=19\ncmd=REJECT\n
+RUN | $T/cm.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | act19-runs
+EXPECT_FILE | house/&.widgits/concept-bank/state/csv_lab_review.txt | REVIEW\pchem\pc003\paccept\nREVIEW\pchem\pc009\preject\n | reject-appends-second-row-only
+WRITE | pkg/csv_lab_action.txt | seq=20\ncmd=FILTER:ACCEPTED\n
+RUN | $T/cm.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | act20-runs
+EXPECT_HAS | pkg/csv_lab_ui.txt | n_shown=4 | accepted-filter-counts-owner-accept
+EXPECT_HAS | pkg/csv_lab_ui.txt | lithium   锂   lǐ   2   accepted | accepted-filter-has-lithium
+WRITE | pkg/csv_lab_action.txt | seq=21\ncmd=FILTER:REJECTED\n
+RUN | $T/cm.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | act21-runs
+EXPECT_HAS | pkg/csv_lab_ui.txt | n_shown=2 | rejected-filter-counts-owner-reject
+WRITE | pkg/csv_lab_action.txt | seq=22\ncmd=FILTER:REVIEW\n
+RUN | $T/cm.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | act22-runs
+EXPECT_HAS | pkg/csv_lab_ui.txt | n_shown=11 | review-filter-drops-both-reviewed
+RUN | awk | -F | \p | { if (NF != 4) bad++ } END { print "badrows=" bad+0 } | house/&.widgits/concept-bank/state/csv_lab_review.txt
+EXPECT_OUT_IS | badrows=0 | every-review-row-has-exactly-4-fields
+SUMTREE | feed2 | house/&.widgits/concept-bank/state/csv_lab_ui.txt
+EXPECT_EQ | $feedf0 | $feed2 | feed-file-still-unmodified-after-reviews
+MKDIR | pkg2
+COPY | &.hq-apps/csv-lab-hq/csv_lab_config.pdl | pkg2/csv_lab_config.pdl
+RUN | $T/cm.+x | --once | $T/house | $T/pkg2
+EXPECT_EXIT | 0 | fresh-pkg-exit-0
+EXPECT_HAS | pkg2/csv_lab_ui.txt | status=45 jobs, 45 shown, 11 need review | reviews-reloaded-from-file-by-fresh-manager
+WRITE | pkg/csv_lab_action.txt | seq=23\ncmd=CMD:retry chem c004\n
+RUN | $T/cm.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | act23-runs
+EXPECT_FILE | house/&.widgits/concept-bank/state/csv_lab_cmd.txt | CMD\pretry chem c004\n | cmd-appended-as-CMD-line
+EXPECT_HAS | pkg/csv_lab_ui.txt | cmdstat=last command: retry chem c004   [queued] | status-shows-last-command-queued
+WRITE | pkg/csv_lab_action.txt | seq=24\ncmd=CMD:a\pb  中文 c\n
+RUN | $T/cm.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | act24-runs
+EXPECT_FILE | house/&.widgits/concept-bank/state/csv_lab_cmd.txt | CMD\pretry chem c004\nCMD\pa b  中文 c\n | cmd-bar-sanitized-cjk-intact-one-line-each
+WRITE | pkg/csv_lab_action.txt | seq=25\ncmd=CMD:   \n
+RUN | $T/cm.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | act25-runs
+EXPECT_FILE | house/&.widgits/concept-bank/state/csv_lab_cmd.txt | CMD\pretry chem c004\nCMD\pa b  中文 c\n | blank-command-not-recorded
+WRITE | house/&.widgits/concept-bank/state/csv_lab_ui.txt | HEAD|run-bad|chem|translate|x|45\nHEAD|run-1|chem|translate|3|10\nHEAD|run-2|chem\nQUOTA|groq_req|abc|10\nQUOTA|groq_req|5|10\nQUOTA|nope|1|2\nJOB|chem|x1|only|four\nJOB|chem|x2|a|b|c|9|ok\nJOB|chem|x3|a|b|c|3|weird\nJOB||x4|a|b|c|3|ok\nJOB|chem|x5|a|b|c|3|ok|extra\nNOPE|1|2|3\nLOG|only\ngarbage line without bars\nJOB|chem|g1|hydrogen|氢|qīng|5|ok\nJOB|chem|g1|hydrogen|氢气|qīngqì|4|translated\nLOG|09:00:00|line with | bars inside\n
+WRITE | pkg/csv_lab_action.txt | seq=26\ncmd=RELOAD\n
+RUN | $T/cm.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | act26-runs
+EXPECT_EXIT | 0 | malformed-feed-no-crash
+EXPECT_HAS | pkg/csv_lab_ui.txt | head=CSV Lab  -  run-1 | bad-head-skipped-good-head-kept
+EXPECT_HAS | pkg/csv_lab_ui.txt | st_prog=[#######-----------------] 3/10  30% | good-head-progress
+EXPECT_HAS | pkg/csv_lab_ui.txt | n_bad=11 | exactly-11-malformed-rows-counted
+EXPECT_HAS | pkg/csv_lab_ui.txt | n_jobs=1 | only-valid-job-kept-and-duplicate-merged
+EXPECT_HAS | pkg/csv_lab_ui.txt | l_0_text=> 01  hydrogen   氢气   qīngqì   4   translated | later-duplicate-job-replaces-earlier-cjk
+EXPECT_HAS | pkg/csv_lab_ui.txt | q1=Groq requests  [############------------] 5/10  50% | good-quota-kept
+EXPECT_LACKS | pkg/csv_lab_ui.txt | x1 | short-job-skipped
+EXPECT_LACKS | pkg/csv_lab_ui.txt | weird | bad-status-skipped
+EXPECT_HAS | pkg/csv_lab_ui.txt | g_0_text=09:00:00  line with   bars inside | log-line-with-bars-rejoined-and-sanitized
+EXPECT_HAS | pkg/csv_lab_ui.txt | skipped bad rows: 11 | skipped-count-shown-in-status
+WRITE | house/&.widgits/concept-bank/state/csv_lab_ui.txt | 
+WRITE | pkg/csv_lab_action.txt | seq=27\ncmd=RELOAD\n
+RUN | $T/cm.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | act27-runs
+EXPECT_HAS | pkg/csv_lab_ui.txt | feed_state=ok | empty-feed-is-ok-not-waiting
+EXPECT_HAS | pkg/csv_lab_ui.txt | st_run=feed present, no HEAD row yet | empty-feed-no-head-text
+EXPECT_HAS | pkg/csv_lab_ui.txt | n_list=1 | empty-feed-one-placeholder
+COPY | &.widgits/_shared-lib/harness/fixtures/csv_lab_feed_fixture.txt | house/&.widgits/concept-bank/state/csv_lab_ui.txt
+MKDIR | dpkg
+COPY | &.hq-apps/csv-lab-hq/csv_lab_config.pdl | dpkg/csv_lab_config.pdl
+SPAWN | dm | $T/cm.+x | $T/house | $T/dpkg
+WAIT_HAS | dpkg/csv_lab_ui.txt | n_jobs=45 | 3000 | daemon-publishes-initial-ui
+APPEND | house/&.widgits/concept-bank/state/csv_lab_ui.txt | JOB\pchem\pc999\pice\p冰\pbīng\p5\pok\n
+WAIT_HAS | dpkg/csv_lab_ui.txt | n_jobs=46 | 3000 | daemon-republishes-when-feed-grows-within-3s
+WAIT_HAS | dpkg/csv_lab_ui.txt | > 46  ice   冰   bīng   5   ok | 3000 | daemon-new-cjk-row-visible
+APPEND | house/&.widgits/concept-bank/state/csv_lab_review.txt | REVIEW\pchem\pc001\paccept\n
+WAIT_HAS | dpkg/csv_lab_ui.txt | 10 need review | 3000 | daemon-republishes-when-review-file-grows
+WRITE | dpkg/csv_lab_action.txt | seq=1\ncmd=FILTER:REJECTED\n
+WAIT_HAS | dpkg/csv_lab_ui.txt | n_shown=2 | 3000 | daemon-applies-action-file
+EXPECT_ALIVE | $dm | daemon-still-alive
+MKDIR | g/house/&.widgits/concept-bank/state
+MKDIR | g/pkg
+COPY | &.widgits/_shared-lib/harness/fixtures/csv_lab_feed_fixture.txt | g/house/&.widgits/concept-bank/state/csv_lab_ui.txt
+COPY | &.hq-apps/csv-lab-hq/csv_lab_config.pdl | g/pkg/csv_lab_config.pdl
+MKDIR | me/house/&.widgits/concept-bank/state
+MKDIR | me/pkg
+COPY | &.widgits/_shared-lib/harness/fixtures/csv_lab_feed_fixture.txt | me/house/&.widgits/concept-bank/state/csv_lab_ui.txt
+COPY | &.hq-apps/csv-lab-hq/csv_lab_config.pdl | me/pkg/csv_lab_config.pdl
+COPY | &.hq-apps/csv-lab-hq/ops/csv_lab_manager.c | me.c
+RUN | sed | -i | -e | s#if (same) {#if (0) {# | $T/me.c
+EXPECT_EXIT | 0 | mutant-e-patched
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/me.+x | $T/me.c
+EXPECT_EXIT | 0 | mutant-e-compiles
+RUN | $T/me.+x | --once | $T/me/house | $T/me/pkg
+RUN | $T/me.+x | --once | $T/me/house | $T/me/pkg
+EXPECT_OUT_LACKS | ui=unchanged | MUTANT-always-rewrite-is-caught-by-unchanged-check
+MKDIR | ma/house/&.widgits/concept-bank/state
+MKDIR | ma/pkg
+COPY | &.widgits/_shared-lib/harness/fixtures/csv_lab_feed_fixture.txt | ma/house/&.widgits/concept-bank/state/csv_lab_ui.txt
+COPY | &.hq-apps/csv-lab-hq/csv_lab_config.pdl | ma/pkg/csv_lab_config.pdl
+COPY | &.hq-apps/csv-lab-hq/ops/csv_lab_manager.c | ma.c
+RUN | sed | -i | -e | s#!strcmp(j->status, "low_score") \p\p ## | $T/ma.c
+EXPECT_EXIT | 0 | mutant-a-patched
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/ma.+x | $T/ma.c
+EXPECT_EXIT | 0 | mutant-a-compiles
+WRITE | g/pkg/csv_lab_action.txt | seq=1\ncmd=FILTER:REVIEW\n
+RUN | $T/cm.+x | --once | $T/g/house | $T/g/pkg
+RUN | grep | -h | ^n_shown= | $T/g/pkg/csv_lab_ui.txt
+CAPTURE | gA
+WRITE | ma/pkg/csv_lab_action.txt | seq=1\ncmd=FILTER:REVIEW\n
+RUN | $T/ma.+x | --once | $T/ma/house | $T/ma/pkg
+RUN | grep | -h | ^n_shown= | $T/ma/pkg/csv_lab_ui.txt
+CAPTURE | mA
+EXPECT_NE | $gA | $mA | MUTANT-low_score-dropped-from-review-filter-is-caught
+MKDIR | mb/house/&.widgits/concept-bank/state
+MKDIR | mb/pkg
+COPY | &.widgits/_shared-lib/harness/fixtures/csv_lab_feed_fixture.txt | mb/house/&.widgits/concept-bank/state/csv_lab_ui.txt
+COPY | &.hq-apps/csv-lab-hq/csv_lab_config.pdl | mb/pkg/csv_lab_config.pdl
+COPY | &.hq-apps/csv-lab-hq/ops/csv_lab_manager.c | mb.c
+RUN | sed | -i | -e | s#int r = review_of(j); return r == 1#int r = 0; return r == 1# | $T/mb.c
+EXPECT_EXIT | 0 | mutant-b-patched
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/mb.+x | $T/mb.c
+EXPECT_EXIT | 0 | mutant-b-compiles
+WRITE | g/pkg/csv_lab_action.txt | seq=2\ncmd=SEL:3\n
+RUN | $T/cm.+x | --once | $T/g/house | $T/g/pkg
+WRITE | g/pkg/csv_lab_action.txt | seq=3\ncmd=ACCEPT\n
+RUN | $T/cm.+x | --once | $T/g/house | $T/g/pkg
+WRITE | g/pkg/csv_lab_action.txt | seq=4\ncmd=FILTER:ACCEPTED\n
+RUN | $T/cm.+x | --once | $T/g/house | $T/g/pkg
+RUN | grep | -h | ^n_shown= | $T/g/pkg/csv_lab_ui.txt
+CAPTURE | gB
+WRITE | mb/pkg/csv_lab_action.txt | seq=1\ncmd=SEL:3\n
+RUN | $T/mb.+x | --once | $T/mb/house | $T/mb/pkg
+WRITE | mb/pkg/csv_lab_action.txt | seq=2\ncmd=ACCEPT\n
+RUN | $T/mb.+x | --once | $T/mb/house | $T/mb/pkg
+WRITE | mb/pkg/csv_lab_action.txt | seq=3\ncmd=FILTER:ACCEPTED\n
+RUN | $T/mb.+x | --once | $T/mb/house | $T/mb/pkg
+RUN | grep | -h | ^n_shown= | $T/mb/pkg/csv_lab_ui.txt
+CAPTURE | mB
+EXPECT_NE | $gB | $mB | MUTANT-review-ignored-in-status-is-caught
+MKDIR | mc/house/&.widgits/concept-bank/state
+MKDIR | mc/pkg
+COPY | &.widgits/_shared-lib/harness/fixtures/csv_lab_feed_fixture.txt | mc/house/&.widgits/concept-bank/state/csv_lab_ui.txt
+COPY | &.hq-apps/csv-lab-hq/csv_lab_config.pdl | mc/pkg/csv_lab_config.pdl
+COPY | &.hq-apps/csv-lab-hq/ops/csv_lab_manager.c | mc.c
+RUN | sed | -i | -e | s#\*p == '\p') \*p = ' ';#\*p == '\p' \p\p (unsigned char)\*p >= 0x80) \*p = ' ';# | $T/mc.c
+EXPECT_EXIT | 0 | mutant-c-patched
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/mc.+x | $T/mc.c
+EXPECT_EXIT | 0 | mutant-c-compiles
+WRITE | g/pkg/csv_lab_action.txt | seq=5\ncmd=FILTER:ALL\n
+RUN | $T/cm.+x | --once | $T/g/house | $T/g/pkg
+RUN | grep | -h | ^l_0_text= | $T/g/pkg/csv_lab_ui.txt
+CAPTURE | gC
+RUN | $T/mc.+x | --once | $T/mc/house | $T/mc/pkg
+RUN | grep | -h | ^l_0_text= | $T/mc/pkg/csv_lab_ui.txt
+CAPTURE | mC
+EXPECT_NE | $gC | $mC | MUTANT-cjk-bytes-stripped-is-caught
+MKDIR | md/house/&.widgits/concept-bank/state
+MKDIR | md/pkg
+COPY | &.widgits/_shared-lib/harness/fixtures/csv_lab_feed_fixture.txt | md/house/&.widgits/concept-bank/state/csv_lab_ui.txt
+COPY | &.hq-apps/csv-lab-hq/csv_lab_config.pdl | md/pkg/csv_lab_config.pdl
+COPY | &.hq-apps/csv-lab-hq/ops/csv_lab_manager.c | md.c
+RUN | sed | -i | -e | s#stat_idx(f\[7\]) < 0#0# | $T/md.c
+EXPECT_EXIT | 0 | mutant-d-patched
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/md.+x | $T/md.c
+EXPECT_EXIT | 0 | mutant-d-compiles
+WRITE | md/house/&.widgits/concept-bank/state/csv_lab_ui.txt | JOB\pchem\px3\pa\pb\pc\p3\pweird\nJOB\pchem\py1\pwater\p水\pshuǐ\p5\pok\n
+WRITE | g/house/&.widgits/concept-bank/state/csv_lab_ui.txt | JOB\pchem\px3\pa\pb\pc\p3\pweird\nJOB\pchem\py1\pwater\p水\pshuǐ\p5\pok\n
+RUN | $T/cm.+x | --once | $T/g/house | $T/g/pkg
+RUN | grep | -h | ^n_jobs= | $T/g/pkg/csv_lab_ui.txt
+CAPTURE | gD
+RUN | $T/md.+x | --once | $T/md/house | $T/md/pkg
+RUN | grep | -h | ^n_jobs= | $T/md/pkg/csv_lab_ui.txt
+CAPTURE | mD
+EXPECT_NE | $gD | $mD | MUTANT-bad-status-accepted-is-caught
+MKDIR | mf/house/&.widgits/concept-bank/state
+MKDIR | mf/pkg
+COPY | &.widgits/_shared-lib/harness/fixtures/csv_lab_feed_fixture.txt | mf/house/&.widgits/concept-bank/state/csv_lab_ui.txt
+COPY | &.hq-apps/csv-lab-hq/csv_lab_config.pdl | mf/pkg/csv_lab_config.pdl
+COPY | &.hq-apps/csv-lab-hq/ops/csv_lab_manager.c | mf.c
+RUN | sed | -i | -e | s#REVIEW\p%s\p%s\p%s#REVIEW\p%s\p%s\p%s\p9# | $T/mf.c
+EXPECT_EXIT | 0 | mutant-f-patched
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/mf.+x | $T/mf.c
+EXPECT_EXIT | 0 | mutant-f-compiles
+WRITE | mf/pkg/csv_lab_action.txt | seq=1\ncmd=SEL:3\n
+RUN | $T/mf.+x | --once | $T/mf/house | $T/mf/pkg
+WRITE | mf/pkg/csv_lab_action.txt | seq=2\ncmd=ACCEPT\n
+RUN | $T/mf.+x | --once | $T/mf/house | $T/mf/pkg
+RUN | cat | $T/mf/house/&.widgits/concept-bank/state/csv_lab_review.txt
+RUN | cat | $T/house/&.widgits/concept-bank/state/csv_lab_review.txt
+RUN | awk | -F | \p | { if (NF != 4) bad++ } END { print "badrows=" bad+0 } | $T/mf/house/&.widgits/concept-bank/state/csv_lab_review.txt
+EXPECT_OUT_IS | badrows=1 | MUTANT-5-field-row-fails-the-4-field-awk-check
+CLEAN |

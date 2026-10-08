@@ -1,0 +1,6 @@
+# csv-lab-hq config. Paths are relative to the house root (no absolute paths). Defaults are the values below.
+# feed   = written live by the CSV/Chinese translation pipeline (HEAD/QUOTA/JOB/LOG rows); read only.
+# review = owner accept/reject rows, append only (REVIEW|bank|id|accept|reject).  cmd = free-text cli_io lines (CMD|text), append only.
+SECTION      | feed    | &.widgits/concept-bank/state/csv_lab_ui.txt
+SECTION      | review  | &.widgits/concept-bank/state/csv_lab_review.txt
+SECTION      | cmd     | &.widgits/concept-bank/state/csv_lab_cmd.txt
