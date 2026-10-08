@@ -11350,6 +11350,17 @@ static void handle_key(KeySym ks, char ch) {
      * is_area-style branch inside default_cli_io_handle_key(). */
     if (g_default_input_elem && strcmp(g_default_input_elem->tag, "grid") == 0) { default_grid_handle_key(ks, ch); return; }
     if (g_default_input_elem) { default_cli_io_handle_key(ks, ch); return; } /* same real key-order exception - a real cli_io field needs 'p' as a literal typed character */
+    /* REAL, NEW 2026-10-07 (direct ask: copy article text out of the
+     * browser) - Ctrl+C with NO armed field copies the focused row's
+     * own label (content rows, links, buttons, tabs - anything
+     * nav-numbered) through the same kh_clipboard_copy() every armed
+     * field already uses. Armed fields keep their whole-buffer/
+     * selection path above untouched; nothing else consumed ch==3
+     * down here before. Generic: every window's rows, not per-app. */
+    if (ch == 3 && g_focus_nav >= 1 && g_focus_nav <= g_n_nav) {
+        Elem *f = g_nav[g_focus_nav - 1];
+        if (f && f->label[0]) { kh_clipboard_copy(f->label); return; }
+    }
     if (ch == 'p') { dump_frame_png(); return; }
     /* Anything past this point that isn't a bare digit ends a
      * pending multi-digit nav jump (tpmos digit_accum "reset on
