@@ -68,6 +68,7 @@ typedef struct {
     char node_id[128];
     int hello_sent;
     int hello_received;
+    int outbound;        /* 1 = we dialed this connection, 0 = we accepted it */
     int dup;             /* set when HELLO shows this node is already connected on another socket; the main loop closes it */
     char seed_key[96];   /* "host:port" of the PALNET_SEEDS entry this connection came from; HELLO never overwrites it */
 } PeerConn;
@@ -317,6 +318,7 @@ static void add_peer(int fd) {
     g_peers[g_peer_count].hello_received = 0;
     g_peers[g_peer_count].seed_key[0] = '\0';
     g_peers[g_peer_count].dup = 0;
+    g_peers[g_peer_count].outbound = 0;
     g_peer_count++;
 }
 
@@ -437,6 +439,18 @@ static void replay_backlog_to_peer(int fd) {
  * distinct event (a TX, a BLOCK, a post, a like...), not a value to be
  * mirrored - see read_outbox_new_lines()'s own header comment for the
  * live-caught bug this fixes at the same time. */
+/* Receiver-side dedup: a DATA line already delivered (same sender and content) is not written to the inbox again, so a backlog replayed
+ * on a reconnect cannot duplicate it. In-memory ring of 64-bit hashes, per process (consumers still dedup by their own ids across restarts). */
+static unsigned long long g_seen[8192]; static unsigned g_seen_n;
+static int seen_before(const char *sender, const char *content) {
+    unsigned long long h = 1469598103934665603ULL;
+    for (const char *p = sender; *p; p++) { h ^= (unsigned char)*p; h *= 1099511628211ULL; }
+    h ^= '|'; h *= 1099511628211ULL;
+    for (const char *p = content; *p; p++) { h ^= (unsigned char)*p; h *= 1099511628211ULL; }
+    unsigned n = g_seen_n < 8192 ? g_seen_n : 8192;
+    for (unsigned i = 0; i < n; i++) if (g_seen[i] == h) return 1;
+    g_seen[g_seen_n++ % 8192] = h; return 0;
+}
 static void write_inbox(const char *sender_node_id, const char *content) {
     FILE *f = fopen(g_inbox_path, "a");
     if (!f) return;
@@ -472,14 +486,21 @@ static void handle_peer_data(int idx, const char *buf, ssize_t n) {
                     remember_peer(host, port, g_peers[idx].node_id, kind);
                     if (!g_peers[idx].seed_key[0]) snprintf(g_peers[idx].seed_key, sizeof g_peers[idx].seed_key, "%s:%d", host, port);   /* inbound: now known by its listening address */
                 }
-                for (int j = 0; j < g_peer_count; j++) if (j != idx && g_peers[j].hello_received && !strcmp(g_peers[j].node_id, g_peers[idx].node_id)) { g_peers[idx].dup = 1; break; }   /* already connected on another socket */
+                /* Two sockets to the same node (both sides dialed): both ends keep the SAME one, the connection dialed by the node with the smaller
+                 * node_id, so they cannot close different ones and leave no link. */
+                for (int j = 0; j < g_peer_count; j++) {
+                    if (j == idx || !g_peers[j].hello_received || strcmp(g_peers[j].node_id, g_peers[idx].node_id)) continue;
+                    const char *init_idx = g_peers[idx].outbound ? g_node_id : g_peers[idx].node_id;
+                    const char *init_j   = g_peers[j].outbound   ? g_node_id : g_peers[j].node_id;
+                    if (strcmp(init_idx, init_j) <= 0) g_peers[j].dup = 1; else g_peers[idx].dup = 1;
+                }
             }
         } else if (strncmp(line, "DATA|", 5) == 0) {
             char *rest = line + 5;
             char *bar = strchr(rest, '|');
             if (bar) {
                 *bar = '\0';
-                write_inbox(rest, bar + 1);
+                if (!seen_before(rest, bar + 1)) write_inbox(rest, bar + 1);
             }
         }
         line = strtok(NULL, "\n");
@@ -576,7 +597,9 @@ int main(int argc, char **argv) {
                 }
                 buf[n] = '\0';
                 handle_peer_data(i, buf, n);
-                if (g_peers[i].dup) { remove_peer(i); i--; continue; }
+                { int removed = 0;
+                  for (int j = g_peer_count - 1; j >= 0; j--) if (g_peers[j].dup) { remove_peer(j); removed = 1; if (j <= i) i--; }
+                  if (removed) continue; }
             }
         }
 
@@ -610,6 +633,7 @@ int main(int argc, char **argv) {
                     addr.sin_port = htons((uint16_t)port);
                     if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) == 0) {
                         add_peer(fd);
+                        g_peers[g_peer_count - 1].outbound = 1;
                         snprintf(g_peers[g_peer_count - 1].node_id, sizeof(g_peers[0].node_id), "%s", node_id);
                         snprintf(g_peers[g_peer_count - 1].seed_key, sizeof(g_peers[0].seed_key), "%s", seed_key);
                         send_hello_if_needed(g_peer_count - 1);
