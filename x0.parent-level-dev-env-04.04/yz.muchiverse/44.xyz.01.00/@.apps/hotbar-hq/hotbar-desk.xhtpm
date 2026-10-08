@@ -20,7 +20,7 @@
       </row>
       <row class="toolbar hb-row">
         <repeat count="${n_slots}" bind="s">
-          <item id="hb${s.#}" class="hb-slot sprite-inline ${s.cls}" label="${s.text}" sprite="${s.sprite}"
+          <item id="hb${s.#}" class="hb-slot sprite-inline sprite-big ${s.cls}" label="${s.text}" sprite="${s.sprite}"
                 action="'${HOUSE}/@.apps/hotbar-hq/ops/hotbar_action.sh' '${s.#}' '${HOUSE}/@.apps/hotbar-hq/state/desk'"/>
         </repeat>
       </row>
