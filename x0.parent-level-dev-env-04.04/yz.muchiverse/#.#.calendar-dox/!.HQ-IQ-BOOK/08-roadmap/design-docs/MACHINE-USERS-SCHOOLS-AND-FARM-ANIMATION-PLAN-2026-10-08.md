@@ -51,3 +51,26 @@ What exists: Eden's history already records the farming (GROW, RIPE, ITEM, ACT r
 ## 7. Owner decisions
 
 Confirm the rule change (each machine may use its own local Ollama); whether to pull a tool-use model onto debil; when it is safe to switch the live desks to their own users (windows closed, backup taken); which courses and exams the first school runs.
+
+## 8. The users come from the install script, and the toys are bought from the store (OWNER, 2026-10-08)
+
+**OWNER:** the debil and mac users should be created by installing from the install script, and then "buy" the toys from the store, downloaded from GitHub. Set that up soon.
+
+This replaces the "sign up in the old copied house" idea in section 2: instead of editing the copied jb desks, each machine gets a **fresh install** with its own user, then acquires everything else through the store. It is also the "from install" opening scene of the network demo.
+
+**What exists (checked 2026-10-08):**
+- Both GitHub repos exist and are readable: `tearitco/tearit-install` (`install.sh`, the one-line bootstrap) and `tearitco/tearit-hq-payload` (the curated payload). Install is `curl … | sh -s -- <product>`; the product name picks the folder under the home directory (`$HOME/<product>`), so `tearit-mac` and `tearit-debil` would sit beside, not on top of, the existing houses. The payload ships the taskbar, login/signup, cursword and the clock; Linux only. I did not run the installer today and do not know how current the payload is: it was last built by hand from an older house.
+- The store: `&.widgits/store/catalog.pdl` lists **six items** (`xyzfs-jb`, `concept-bank-seed`, `delegation-bank-seed`, `eden-game`, `quest-pilot-kit`, `hidden-layer-seed`), each with kind, version, price (`free` or coins), requirements and root. Their status is **planned or data-ready; none is installable**. There is no checkout window, no `owned.pdl`, no pack builder and no installer for packs. The design's flow is: catalog, checkout, owned, install (`XYZFS-DISTRIBUTION-VIA-STORE-DESIGN.md` sections 9 and 10). The `xyzfs-jb` entry is a private user pack and must never be offered to anyone.
+- A buying path with coins exists only in part: `chain_send` and `chain_escrow` (test chains, honor-based, no signing).
+
+**The path, in order (each step a pal harness with a mutant, scratch folders only):**
+1. **Refresh and leak-check the payload.** Rebuild it with `make-payload.sh` from current `claude` (it now carries the macOS fixes). Add the leak check first: a harness that builds the payload into a scratch folder and fails on any provider key, wallet, `xyzfs/users/<uuid>` content or absolute home path. The payload repo is pushed only after that passes and only when the owner says so.
+2. **Toy pack format.** A toy is a pack with a manifest: id, version, price, requires, a file list with a sha256 per file, a build step (compiled programs are in no pack, each install builds), and a deny-list check. First toys: `irc-chat-hq` plus its peer, then `forum-hq`, then Eden. Hosted as folders in a GitHub repo (or release assets) the installer downloads; the downloader verifies every sha256 before extracting, extracts into the user's house only, and regenerates identity for anything that carries one.
+3. **`xyzfs_pack_op`**: pack, verify and install, dry run by default, `--apply` to write, idempotent, refusing paths outside the house and anything on the deny-list. (From the install doc build order, step 3.)
+4. **"Buy."** v1: a free toy is "bought" by appending an `OWNED | user | item | version | ts` row to the user's `owned.pdl`; a priced toy first needs a payment: on a test chain, `chain_send` to the store wallet plus the transaction id as proof, checked by the buy op before it writes the row (honor tier, T0). No real value until signing exists.
+5. **Store window (checkout-hq).** Lists the catalog (name, price, status, owned or not), a Buy row and an Install row, reachable by nav number so a relay can drive it. It is the thing a person watches in the demo.
+6. **First real run:** install `tearit-debil` and `tearit-mac` with the install script into fresh folders, sign up users "debil" and "mac" there, buy and install `irc-chat-hq` from the store, and open it; the Friends pane then shows three differently named users. Run beside the existing houses, not over them.
+
+**Risks and rules:** the installer downloads and runs code, so toys come only from the owner's repos and are hash-checked; macOS needs its own check in the harness (the Mac renderer now compiles, the install path is untested there); keys never enter a pack or the payload; installing never touches `xyzfs/users` of another install.
+
+**Decisions for the owner:** which repo and layout hosts toy packs; which toys are free and which cost coins; whether the payload repo may be rebuilt and pushed once the leak check passes; the product names for the two machines.
