@@ -1,0 +1,100 @@
+# quest q010: horn_chat_backend never hides a provider failure. Fake curl (fixtures/fake_curl.c) on PATH, fake key FAKEKEY123, scratch project root. Set OPSRC to test another copy.
+RESULTS | ../results/quest_q010_horn_errors.txt
+CASE | q010-horn-errors
+SCRATCH |
+COPY | ^.hai-horn/ops/horn_chat_backend.c | op.c
+COPY | &.widgits/_shared-lib/harness/fixtures/fake_curl.c | fake_curl.c
+MKDIR | bin
+MKDIR | proj/pieces/horn
+MKDIR | state
+RUN | gcc | -O2 | -w | -o | $T/bin/curl | $T/fake_curl.c
+EXPECT_EXIT | 0 | fixture-builds
+RUN | gcc | -Wall | -Wextra | -O2 | -o | $T/op.+x | $T/op.c
+EXPECT_EXIT | 0 | op-builds-clean
+WRITE | state/raw_groq.txt | FAKEKEY123
+WRITE | state/raw_poolside.txt | FAKEKEY123
+ENV | PATH | $T/bin:/usr/bin:/bin
+ENV | PRISC_PROJECT_ROOT | $T/proj
+ENV | HORN_ENTITY_DIR | $T/state
+ENV | HORN_TOOLS | off
+ENV | FAKE_CURL_RULES | $T/rules.txt
+ENV | FAKE_CURL_LOG | $T/calls.txt
+ENV | GROQ_API_KEY |
+ENV | HORN_POOLSIDE_KEY |
+ENV | HORN_API_KEY |
+# --- 200 ok
+WRITE | rules.txt | *\t200\t0\t{"choices":[{"message":{"role":"assistant","content":"hello there"}}]}
+RUN | $T/op.+x | hi
+EXPECT_EXIT | 0 | ok-rc0
+EXPECT_OUT | hello there | ok-reply
+EXPECT_NOFILE | proj/pieces/horn/last_error.txt | ok-writes-no-error-log
+EXPECT_OUT_LACKS | FAKEKEY123 | ok-no-key-in-output
+# --- 401 on every provider: class http = 4
+WRITE | rules.txt | *\t401\t0\t{"error":{"message":"Invalid API Key","code":401}}
+RUN | $T/op.+x | hi
+EXPECT_EXIT | 4 | http401-rc4
+EXPECT_OUT | http=401 | http401-status-on-stderr
+EXPECT_OUT | Invalid API Key | http401-reason-on-stderr
+EXPECT_OUT | provider=groq | http401-provider-on-stderr
+EXPECT_OUT_LACKS | FAKEKEY123 | http401-no-key-in-output
+EXPECT_HAS | proj/pieces/horn/last_error.txt | http=401 | http401-logged-status
+EXPECT_HAS | proj/pieces/horn/last_error.txt | Invalid API Key | http401-logged-reason
+EXPECT_HAS | proj/pieces/horn/last_error.txt | class=http | http401-logged-class
+EXPECT_LACKS | proj/pieces/horn/last_error.txt | FAKEKEY123 | http401-no-key-in-log
+# --- 200 whose body is an error object: class body = 5
+WRITE | rules.txt | *\t200\t0\t{"error":{"message":"model retired: no such slug","code":404}}
+RUN | $T/op.+x | hi
+EXPECT_EXIT | 5 | body200-rc5
+EXPECT_OUT | http=200 | body200-status
+EXPECT_OUT | model retired | body200-reason
+EXPECT_HAS | proj/pieces/horn/last_error.txt | class=body | body200-logged-class
+EXPECT_HAS | proj/pieces/horn/last_error.txt | model retired | body200-logged-reason
+# --- curl exit 28 (timeout): class curl = 6
+WRITE | rules.txt | *\t0\t28\t
+RUN | $T/op.+x | hi
+EXPECT_EXIT | 6 | timeout-rc6
+EXPECT_OUT | curl_rc=28 | timeout-curl-rc-on-stderr
+EXPECT_HAS | proj/pieces/horn/last_error.txt | class=curl | timeout-logged-class
+EXPECT_OUT_LACKS | FAKEKEY123 | timeout-no-key-in-output
+# --- 429 free-models-per-day on every provider: exhausted = 3, each provider hit once
+WRITE | calls.txt | -
+WRITE | rules.txt | *\t429\t0\t{"error":{"message":"Rate limit exceeded: free-models-per-day. Add 10 credits","code":429}}
+RUN | $T/op.+x | hi
+EXPECT_EXIT | 3 | exhausted-rc3
+EXPECT_OUT | EXHAUSTED groq | exhausted-groq-announced
+EXPECT_OUT | EXHAUSTED poolside | exhausted-poolside-announced
+EXPECT_OUT | free-models-per-day | exhausted-reason
+EXPECT_HAS | proj/pieces/horn/last_error.txt | class=exhausted | exhausted-logged-class
+EXPECT_HAS | proj/pieces/horn/last_error.txt | http=429 | exhausted-logged-status
+EXPECT_OUT_LACKS | FAKEKEY123 | exhausted-no-key-in-output
+EXPECT_LACKS | proj/pieces/horn/last_error.txt | FAKEKEY123 | exhausted-no-key-in-log
+RUN | grep | -c | api.groq.com | $T/calls.txt
+EXPECT_OUT_IS | 1 | exhausted-groq-called-once-not-per-model
+RUN | grep | -c | inference.poolside.ai | $T/calls.txt
+EXPECT_OUT_IS | 1 | exhausted-poolside-called-once
+# --- ladder: groq exhausted, poolside answers; groq not hit twice
+WRITE | calls.txt | -
+WRITE | rules.txt | api.groq.com\t429\t0\t{"error":{"message":"rate_limit_exceeded daily","code":429}}\n*\t200\t0\t{"choices":[{"message":{"role":"assistant","content":"from poolside"}}]}
+RUN | $T/op.+x | hi
+EXPECT_EXIT | 0 | ladder-rc0
+EXPECT_OUT | from poolside | ladder-reply
+EXPECT_OUT | EXHAUSTED groq | ladder-groq-exhausted
+RUN | grep | -c | api.groq.com | $T/calls.txt
+EXPECT_OUT_IS | 1 | ladder-groq-not-retried
+# --- env: timeout and max_tokens honoured; unset = unchanged defaults
+WRITE | calls.txt | -
+WRITE | rules.txt | *\t200\t0\t{"choices":[{"message":{"role":"assistant","content":"ok"}}]}
+RUN | $T/op.+x | hi
+EXPECT_HAS | calls.txt | m=60 | default-timeout-60
+EXPECT_LACKS | calls.txt | max_tokens | default-no-max-tokens
+WRITE | calls.txt | -
+ENV | HORN_CURL_TIMEOUT | 7
+ENV | HORN_MAX_TOKENS | 321
+RUN | $T/op.+x | hi
+EXPECT_EXIT | 0 | env-rc0
+EXPECT_HAS | calls.txt | m=7 | env-timeout-7
+EXPECT_HAS | calls.txt | "max_tokens":321 | env-max-tokens-321
+# --- last_error.txt is append-only: earlier lines survive later runs
+RUN | grep | -c | horn_error | $T/proj/pieces/horn/last_error.txt
+EXPECT_EXIT | 0 | log-kept-all-earlier-lines
+CLEAN |
