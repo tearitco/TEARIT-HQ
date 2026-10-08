@@ -13,7 +13,15 @@ Manager: claude. Status flow: open → claimed → active → review → done | 
 | [Q007](Q007-user-data-branches/QUEST.md) | per-user data branches: take `xyzfs/users` out of code history (`user/jb`), `jb` integration branch | manager / careful outside-agent | L | steps 1-6 and 8 done on `claude`; other branches + `jb` code branch left | claude | data branches are LOCAL ONLY |
 | [Q008](Q008-retire-old-horn-transport/QUEST.md) | retire the old HORN transport `horn_chat_openrouter` (4 scripts still call it; port them, then delete) | worker / outside-agent | S–M | open | - | opencode vs claude: who does it |
 | [Q009](Q009-first-events-phone-send-and-route/QUEST.md) | first events: `phone.send` + `server.route` with tunables and a ledger, proven by a verifier | worker / outside-agent | M | open | - | - |
-| Q010 | HORN error reporting | W | S | delegated | - | - |
-| Q011 | `quest_check`: gate that decides whether a delegated attempt counts (lock, scope, base, budget, attempts) | W/M | M | delegated | - | - |
+| Q010 | HORN error reporting: every provider failure logged + exit classes 0-6, 429 marks exhausted (`horn_chat_backend.c`; harness `quest_q010_horn_errors` 44/0; live check: bad key -> exit 4, `http=401`) | W | S | DONE 2026-10-07 (merged `1a5326372`) | free-model agent (Claude Sonnet worker) | - |
+| Q011 | `quest_check`: gate that decides whether a delegated attempt counts (lock, scope, base, budget, attempts); harness `quest_q011_quest_check` 127/0 | W/M | M | DONE 2026-10-07 (merged `9f35cd917`) | agent | - |
+| Q012 | `ghost_run`: one attempt of one quest end to end (precheck -> fresh worktree from tip -> backend -> extract code -> quest_check -> harness -> attempts/NNN) | M/W | L | delegated 2026-10-07 | agent | Q011 (done) |
+| Q013 | `quartermaster`: check/record free quota, cpu slots, review backlog, spawn limits before/after each attempt | W | S-M | delegated 2026-10-07 | agent | Q014 (done) |
+| Q014 | measure Groq free-tier limits from headers (`quest-pilot/q014-groq-limits/observed.md`: 1000 req/day, 8000 tok/min per model) | D | S | DONE 2026-10-07 | manager | - |
+| Q015 | Tester ghost v0: open one named entity via the relay/state files and report pass/fail on the stone (screenshots are blocked on this machine: use state files) | D->S | M | open | - | Q012 |
+| Q016 | `desk_restart`: safe remote restart (preflight refuses before killing, login shell, explicit display, UP/DOWN/TIMEOUT); harness `desk_restart` 47/0 | W/M | M | DONE 2026-10-07 (merged) | agent | - |
+| Q017 | `hq-ftp` transfer app (spec `HQ-FTP-LAN-SYNC-SPEC.md`) | W/M | L | open | - | - |
+| Q018 | store install op: `git clone` + unpack against a local test repo (design `XYZFS-DISTRIBUTION-VIA-STORE-DESIGN.md`) | W | M | open | - | - |
+| Q019 | pilot 3: Eden talk phrases by a free Groq worker behind a deterministic judge (`quest-pilot/q019-phrases`; harness `quest_q019_phrases` 35/0) | W | S | DONE 2026-10-07 (iteration 1) | Groq gpt-oss-120b | - |
 
-Next ids start at Q010. Copy `_TEMPLATE/` to add one. Design: `#.#.calendar-dox/!.HQ-IQ-BOOK/08-roadmap/design-docs/GRAVEYARD-GHOSTS-DESIGN.md`.
+Next ids start at Q020. Copy `_TEMPLATE/` to add one. Design: `#.#.calendar-dox/!.HQ-IQ-BOOK/08-roadmap/design-docs/GRAVEYARD-GHOSTS-DESIGN.md`.
