@@ -42,6 +42,12 @@
 #include <unistd.h>
 #include <errno.h>
 #include <ftw.h>
+#ifndef FTW_ACTIONRETVAL
+/* macOS has no nftw action return codes: a nonzero callback return STOPS the walk, so 'skip subtree' becomes 'continue' and .git files are filtered by path in visit(). */
+#define FTW_ACTIONRETVAL 0
+#define FTW_CONTINUE 0
+#define FTW_SKIP_SUBTREE 0
+#endif
 #include <dirent.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -98,6 +104,7 @@ static int visit(const char *fpath, const struct stat *sb, int type, struct FTW 
     if (type == FTW_D) return !strcmp(base, ".git") && ftw->level > 0 ? FTW_SKIP_SUBTREE : FTW_CONTINUE;
     if (type != FTW_F || !S_ISREG(sb->st_mode) || skipname(base)) return FTW_CONTINUE;      /* FTW_SL (symlink) is skipped: never followed */
     const char *rel = fpath + ROOTLEN; while (*rel == '/') rel++;
+    if (!strncmp(rel, ".git/", 5) || strstr(rel, "/.git/")) return FTW_CONTINUE;   /* same result as FTW_SKIP_SUBTREE on glibc, and the only way on macOS */
     if (strchr(rel, '|') || strchr(rel, '\n')) { fprintf(stderr, "game_snapshot_op: refused file name with '|' or newline: %s\n", rel); SCAN_ERR = 1; return FTW_CONTINUE; }
     char sha[65] = "-"; unsigned mode = sb->st_mode & 0777;
     if (HASHING) {

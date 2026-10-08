@@ -785,7 +785,7 @@ int main(int argc, char **argv) {
     { char probe[P]; snprintf(probe, sizeof probe, "%s/game.pdl", argv[1]); if (!exists(probe)) { snprintf(probe, sizeof probe, "%s/game/conductor/game.pdl", argv[1]);
         if (exists(probe)) { snprintf(probe, sizeof probe, "%s/game/conductor", argv[1]); if (!realpath(probe, C)) return 2; goto resolved; } } }
     if (!realpath(argv[1], C)) { fprintf(stderr, "eden_op: no conductor dir %s\n", argv[1]); return 2; }
-resolved:
+resolved:;   /* an empty statement: C11 forbids a declaration directly after a label (clang/macOS) */
     const char *v = argv[2], *a1 = argc > 3 ? argv[3] : NULL, *a2 = argc > 4 ? argv[4] : NULL;
     if (!strcmp(v, "toyread") && a1 && a2) return v_toyread(a1, a2);
     load_data();

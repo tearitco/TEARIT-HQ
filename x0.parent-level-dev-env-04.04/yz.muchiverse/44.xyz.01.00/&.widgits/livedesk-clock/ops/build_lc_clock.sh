@@ -23,7 +23,11 @@ echo "-- lc_clock (daemon + control plane, headless) -> +x/lc_clock.+x"
 $CC $CFLAGS -o +x/lc_clock.+x lc_clock.c
 
 echo "-- lc_reminder_popup (X11 RGB window + CSS) -> +x/lc_reminder_popup.+x"
-$CC $CFLAGS $(pkg-config --cflags xft) -I "$SHARED" -o +x/lc_reminder_popup.+x \
-  lc_reminder_popup.c "$SHARED/khtpm_css_parser.c" -lX11 $(pkg-config --libs xft)
-
-echo "OK +x/lc_clock.+x and +x/lc_reminder_popup.+x"
+# The popup is OPTIONAL (needs Xft; XQuartz/macOS may not have it). lc_clock runs fine without it (LC_CLOCK_NO_POPUP=1), so a failure here is a warning, not a build failure.
+if $CC $CFLAGS $(pkg-config --cflags xft 2>/dev/null) -I "$SHARED" -o +x/lc_reminder_popup.+x \
+  lc_reminder_popup.c "$SHARED/khtpm_css_parser.c" -lX11 $(pkg-config --libs xft 2>/dev/null); then
+  echo "OK +x/lc_clock.+x and +x/lc_reminder_popup.+x"
+else
+  rm -f +x/lc_reminder_popup.+x
+  echo "OK +x/lc_clock.+x (WARN: lc_reminder_popup NOT built - Xft or X11 headers missing; use LC_CLOCK_NO_POPUP=1)"
+fi

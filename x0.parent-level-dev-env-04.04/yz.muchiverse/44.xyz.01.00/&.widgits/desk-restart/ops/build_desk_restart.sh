@@ -3,5 +3,5 @@
 set -e
 cd "$(dirname "$0")"
 mkdir -p +x
-${CC:-gcc} -std=gnu11 -Wall -Wextra -Werror -Wno-format-truncation -O2 -o +x/desk_restart.+x desk_restart.c
+${CC:-gcc} -std=gnu11 -Wall -Wextra -Werror -Wno-unknown-warning-option -Wno-format-truncation -O2 -o +x/desk_restart.+x desk_restart.c
 echo "OK +x/desk_restart.+x"
