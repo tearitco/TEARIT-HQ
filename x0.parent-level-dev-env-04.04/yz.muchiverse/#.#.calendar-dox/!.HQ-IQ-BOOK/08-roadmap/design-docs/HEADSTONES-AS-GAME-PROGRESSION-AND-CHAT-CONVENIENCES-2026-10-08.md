@@ -1,6 +1,6 @@
 # Headstones as game progression, and chat-window conveniences (fork chats and more)
 
-Status: **NOTES + PROPOSALS, nothing built.** Written 2026-10-08 by Claude from the owner's brief. Sections marked **OWNER** are the owner's words or decisions; sections marked **PROPOSAL** are mine and are there to be accepted, changed or struck. Section 5 is empty on purpose: it is where the owner's nuances go.
+Status: **NOTES + PROPOSALS, nothing built** (section 1 updated with the owner's answers, same day). Written 2026-10-08 by Claude from the owner's brief. Sections marked **OWNER** are the owner's words or decisions; sections marked **PROPOSAL** are mine and are there to be accepted, changed or struck. Section 5 is empty on purpose: it is where the owner's nuances go.
 
 Owner brief (2026-10-08): "in future games, 'headstones' will be how the user progresses through games. We have it as the quest board in h-ai. I want to document some nuances I will want to add to chat windows, like 'fork' chats; and common/advanced other conveniences."
 
@@ -12,11 +12,36 @@ Owner brief (2026-10-08): "in future games, 'headstones' will be how the user pr
 
 **PROPOSAL, why that fits:** the shape already has what a progression system needs: an id, a deterministic check (`quest_check`), an owner, a status, and an append-only history. A game quest ("harvest 10 grain") and a robot quest ("write this op") differ only in who the owner is and what the check reads. The goals board proposed for entities (`GOAL | entity | text | check | status`) is the same row, so **one format serves robots, entities and players.**
 
-**PROPOSAL, nuances to decide before building:**
-- A headstone per *quest* or per *milestone*, and does a failed attempt leave its own stone (as robot quests do) or just a log line?
-- Is a headstone the player's, the entity's, or the game's? Whose desk holds the folder (user data, so never in git, see the install doc).
-- Do stones carry a visible marker in the game world (a tile at the place something happened), or only live in the board window? This is the "visually functioning" question.
-- Reward and level: grades, MP and levels already exist for entities (`entity_grade`); a cleared stone could be the evidence the grade tick reads.
+**OWNER answers (2026-10-08):**
+- **A stone can hold many quests.** A stone is a container, not a single task. The current board's one-folder-per-quest becomes: a stone folder with many quest entries inside it.
+- **A stone can become a communication board.** It carries a comments section between the quest's creator and its takers, kept with the quest (so the conversation that solved it is stored with it).
+- **Many people can take the same quest.** Taking a quest is a claim row, not an exclusive lock.
+- **The quest's pal script decides if the stone lives or dies when the quest is done.** The completion rule is code the quest brings (a `.pal` plus its deterministic check), not a global rule: the same stone may persist (a standing board), be archived, or be consumed, depending on its script.
+- **Where they live depends on where they apply:**
+  - quests on the **taskbar quest board** (the h-ai Quest board row) are in **user data** (the user's desk folder, never in git);
+  - quests on **levels and desks** (inside a game) are in the **book/pages** (the session's book:page structure, `EDEN-PLAYABLE-LOOP-AND-BOOK-PAGE-HARNESS-PLAN.md` section 1), so they travel with the level.
+
+**PROPOSAL: data model that fits those answers** (append-only, house style; nothing is edited in place, so many takers cannot conflict):
+```
+<stone>/
+  STONE.pdl        META | id | title | creator | scope=user|book:page | created
+                   SCRIPT | quest.pal | <path>          # decides lives/dies; see below
+  quests.pdl       QUEST | <qid> | <text> | <check op + args> | <reward> | <state>
+  claims.txt       CLAIM | <qid> | <taker> | <ts>        # append-only; many rows per qid allowed
+  comments.txt     COMMENT | <ts> | <author> | <qid or *> | <text>   # append-only board
+  results.txt      RESULT | <qid> | <taker> | <ts> | <check verdict> | <evidence path>
+  log.txt          every state change, one line (the existing quest ## Log, as data)
+```
+- **Taking:** append a `CLAIM` row. No lock. Whether the first finisher closes the quest for everyone, or each taker is judged separately, is the script's choice.
+- **Done:** the check op runs per `RESULT`; then `quest.pal` is executed with the stone's rows and returns one verdict line: `STONE | live`, `STONE | archive`, or `STONE | consume`. **Consume/archive never delete files**: they write a `CLOSED` row and hide the stone; this follows the house rule that finished and failed things are kept.
+- **Script safety:** the pal runs through the same fork/exec/waitpid-with-watchdog pattern as other ops (a hung script must not freeze the VM), with a read-only view of the stone and write access only through the verdict line.
+- **Comments board:** reuses the chat-window machinery in section 3 (append-only file, cursor reads), so a stone's comments can be forked, searched and pinned like any chat.
+- **Two homes, one format:** the user-data board and the book/page board use the identical folder shape; only the root differs. The Quest board window shows the user-data root, and a level shows the stones in its own pages. **Unverified:** the exact on-disk book:page paths; I read the plan doc, not the code.
+- **Migration:** existing `^.grave/quests/Q*` folders are stones with one quest. A converter wraps them with no data loss; the INDEX.md table becomes a projection.
+
+**Open (for the owner):** do takers see each other's comments by default or only the creator's? Can a taker abandon a claim (an `ABANDON` row), and does that count against their grade? Can the script ask for the stone to be re-posted (a standing quest, like a daily chore)?
+
+**Harness cases (write first):** two takers claim the same quest and both appear; `quest.pal` returning live/archive/consume writes the right `CLOSED` or no row and removes no file; a hung script is killed at the watchdog and the stone stays live; comments append in order and the creator's and taker's lines both survive; a converted legacy quest reads identically before and after. Mutant: make consume delete the folder, and the case must fail.
 
 ## 2. What the chat windows have today (checked)
 
