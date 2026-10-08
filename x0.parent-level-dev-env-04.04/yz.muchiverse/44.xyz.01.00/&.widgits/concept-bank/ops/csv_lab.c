@@ -636,7 +636,7 @@ static void lint_row(const char *src, const char *zh, const char *py, char *fail
     /* length sanity: Chinese characters vs English letters */
     int letters = 0; for (const char *s = src; *s; s++) if (isalnum((unsigned char)*s)) letters++;
     if (ncjk > 0) {
-        int lo = letters / 14; if (lo < 1) lo = 1; int hi = letters + 4;
+        int lo = letters / 10; if (lo < 1) lo = 1; int hi = letters + 4;
         if (ncjk < lo || ncjk > hi) FAILF("length:%dcjk-for-%dletters", ncjk, letters);
     }
     if (!*py) { FAILW("empty-pinyin"); return; }

@@ -114,4 +114,15 @@ RUN | sed | -i | s@qsort(g_pyd, (size_t)g_pyd_n, sizeof \*g_pyd, pyd_cmp);@(void
 RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m6.+x | $T/m6.c
 RUN | $T/m6.+x | lint | $T/d.tsv | $T/lm6.tsv | --pinyin-dict | $T/dict.tsv
 EXPECT_HAS | lm6.tsv | d2\tOK\t\t\n | mutant6-unsorted-dictionary-silently-inactive-is-detected
+# COMPLETENESS (length lower bound = one hanzi per 10 source letters): a long source translated as just its name is rejected, a short name is fine
+WRITE | len.tsv | l1\t多巴胺\tduō bā àn\tDopamine (C8H11NO2): Catecholamine neurotransmitter\nl2\t氢\tqīng\tHydrogen\nl3\t乙醇，伯醇\tyǐ chún bó chún\tEthanol (CH3CH2OH): Primary alcohol\n
+RUN | $T/cl.+x | lint | $T/len.tsv | $T/ll.tsv
+EXPECT_HAS | ll.tsv | l1\tFAIL\tlength: | long-source-translated-as-name-only-fails-length
+EXPECT_HAS | ll.tsv | l2\tOK\t\t\n | short-name-still-ok
+EXPECT_HAS | ll.tsv | l3\tOK\t\t\n | translation-with-description-ok
+RUN | cp | $T/csv_lab.c | $T/m7.c
+RUN | sed | -i | s@letters / 10@letters / 14@ | $T/m7.c
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m7.+x | $T/m7.c
+RUN | $T/m7.+x | lint | $T/len.tsv | $T/lm7.tsv
+EXPECT_HAS | lm7.tsv | l1\tOK\t\t\n | mutant7-old-lenient-bound-is-detected
 CLEAN |
