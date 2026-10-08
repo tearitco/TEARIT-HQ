@@ -9393,9 +9393,19 @@ static void kh_clipboard_copy(const char *text) {
     g_clip_copied_at = time(NULL);
 }
 
+static void kh_clipboard_insert_text(Elem *e, const char *text);
 static void kh_clipboard_request_paste(void) {
     kh_clipboard_init_atoms();
-    g_paste_pending = 1;
+    /* REAL FIX 2026-10-07 (self-paste silently died): when WE own
+     * CLIPBOARD, XConvertSelection asks ourselves, our own answer goes
+     * out via XSendEvent which never lands back (propagate skips
+     * windows not selecting the type), so no SelectionNotify ever
+     * arrives. Short-circuit: insert our own text directly. */
+    if (XGetSelectionOwner(dpy, g_atom_clipboard) == win && g_default_input_elem) {
+        kh_clipboard_insert_text(g_default_input_elem, g_clipboard_text);
+        if (!g_quit) redraw();
+        return;
+    }
     /* Ask the current CLIPBOARD owner to write UTF8_STRING into our own
      * KH_CLIP_PASTE property - answered async by a SelectionNotify. */
     XConvertSelection(dpy, g_atom_clipboard, g_atom_utf8, g_atom_paste_prop, win, CurrentTime);
