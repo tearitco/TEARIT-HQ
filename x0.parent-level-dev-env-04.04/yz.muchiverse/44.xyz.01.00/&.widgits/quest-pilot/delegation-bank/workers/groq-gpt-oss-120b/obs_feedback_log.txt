@@ -6,3 +6,4 @@
 [2026-10-07] FEEDBACK | id=q020-var-cmp#3 | target=groq-gpt-oss-120b | valence=-1 | concept=c_op | intensity=1 | layer=delegation | quest=q020-var-cmp | iter=3 | tokens=4873
 [2026-10-07] FEEDBACK | id=q020-var-cmp#4 | target=groq-gpt-oss-120b | valence=+1 | concept=c_op | intensity=1 | layer=delegation | quest=q020-var-cmp | iter=4 | tokens=4288
 [2026-10-07] FEEDBACK | id=phrase-assoc#1 | target=groq-gpt-oss-120b | valence=+1 | concept=assoc_rows | intensity=1 | layer=delegation | quest=phrase-assoc | iter=1 | tokens=1445
+[2026-10-07] FEEDBACK | id=chem-assoc#1 | target=groq-gpt-oss-120b | valence=+1 | concept=assoc_rows | intensity=1 | layer=delegation | quest=chem-assoc | iter=1 | tokens=4940

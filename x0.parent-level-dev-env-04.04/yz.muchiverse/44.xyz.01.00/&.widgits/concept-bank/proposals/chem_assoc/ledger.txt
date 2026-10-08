@@ -1,0 +1,2 @@
+QUEST|chem-assoc|2026-10-07|worker=openai/gpt-oss-120b via Groq (direct, free, reasoning_effort low)|judge=concept-bank/ops/assoc_lint.c (deterministic)
+ITER|1|prompt=1762 completion=3178 total=4940|verdict=PASS

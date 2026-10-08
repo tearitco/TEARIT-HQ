@@ -19,7 +19,8 @@ WORKERS="q001-clamp|nemotron-3-ultra|c_op
 q002-weighted-pick|groq-gpt-oss-120b|c_op
 q019-phrases|groq-gpt-oss-120b|data_rows
 q020-var-cmp|groq-gpt-oss-120b|c_op
-&.widgits/concept-bank/proposals/phrase_assoc/ledger.txt|groq-gpt-oss-120b|assoc_rows"
+&.widgits/concept-bank/proposals/phrase_assoc/ledger.txt|groq-gpt-oss-120b|assoc_rows
+&.widgits/concept-bank/proposals/chem_assoc/ledger.txt|groq-gpt-oss-120b|assoc_rows"
 echo "$WORKERS" | while IFS='|' read -r Q W F; do                 # 1. ledgers -> per-worker FEEDBACK logs (idempotent by id)
   mkdir -p "$BANK/workers/$W"
   printf '%s %s/%s: ' "$Q" "$W" "$F"; case "$Q" in */*) LED="$HOUSE/$Q";; *) LED="$QP/$Q/quest_ledger.txt";; esac; "$L2F" "$LED" "$BANK/workers/$W" "$F"

@@ -1,0 +1,88 @@
+# ASSOC drafts: how strongly each Eden phrase relates to the three masters. PROPOSED by groq-gpt-oss-120b, linted by assoc_lint; status=candidate until a person reviews every row.
+# ASSOC | n | phrase | energy | force | motion | proposer | status
+ASSOC | 1 | Acetic Acid (CH3COOH): Carboxylic acid, pKa=4.76 | energy=0.30 | force=0.10 | motion=0.20 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 2 | Ethanol (CH3CH2OH): Primary alcohol | energy=0.40 | force=0.00 | motion=0.50 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 3 | Acetone (CH3COCH3): Ketone, common solvent | energy=0.20 | force=0.00 | motion=0.60 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 4 | Methylamine (CH3NH2): Fishy odor, weak base | energy=0.10 | force=0.00 | motion=0.40 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 5 | Benzene (C6H6): Aromatic, resonance stabilized | energy=0.00 | force=0.30 | motion=0.10 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 6 | Citric Acid (C6H8O7): Triprotic acid in citrus | energy=0.30 | force=0.10 | motion=0.20 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 7 | Sodium Chloride (NaCl): Ionic compound, electrolyte | energy=0.00 | force=0.60 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 8 | Sulfuric Acid (H2SO4): Strong diprotic acid | energy=0.60 | force=0.20 | motion=0.10 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 9 | Glucose (C6H12O6): Aldohexose, blood sugar | energy=0.80 | force=0.00 | motion=0.20 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 10 | Dopamine (C8H11NO2): Catecholamine neurotransmitter | energy=0.10 | force=0.00 | motion=0.70 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 11 | Water (H2O): The universal solvent | energy=0.00 | force=0.20 | motion=0.50 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 12 | Ammonia (NH3): Pungent gas, weak base | energy=0.20 | force=0.00 | motion=0.60 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 13 | Methane (CH4): Primary component of natural gas | energy=0.90 | force=0.00 | motion=0.40 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 14 | Fructose (C6H12O6): Fruit sugar, a simple ketose | energy=0.80 | force=0.00 | motion=0.20 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 15 | Caffeine (C8H10N4O2): Stimulant found in coffee | energy=0.30 | force=0.00 | motion=0.50 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 16 | Hydrochloric Acid (HCl): Strong monoprotic acid in stomach | energy=0.50 | force=0.10 | motion=0.20 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 17 | Sodium Hydroxide (NaOH): Strong base, also known as lye | energy=0.40 | force=0.50 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 18 | Glycerol (C3H8O3): Polyol, component of lipids | energy=0.20 | force=0.10 | motion=0.30 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 19 | Aspirin (C9H8O4): Pain reliever, an ester of salicylic acid | energy=0.30 | force=0.20 | motion=0.20 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 20 | Formaldehyde (CH2O): Simplest aldehyde | energy=0.40 | force=0.00 | motion=0.50 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 21 | Sucrose (C12H22O11): Table sugar, a disaccharide | energy=0.70 | force=0.00 | motion=0.10 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 22 | Lactic Acid (C3H6O3): Found in sour milk and muscles | energy=0.40 | force=0.10 | motion=0.30 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 23 | Urea (CH4N2O): Main nitrogenous compound in urine | energy=0.20 | force=0.10 | motion=0.20 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 24 | Toluene (C7H8): Aromatic solvent, similar to benzene | energy=0.20 | force=0.30 | motion=0.40 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 25 | Potassium Chloride (KCl): Salt substitute, electrolyte | energy=0.00 | force=0.50 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 26 | Nitric Acid (HNO3): Highly corrosive strong acid | energy=0.70 | force=0.10 | motion=0.20 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 27 | Propane (C3H8): Alkane fuel used in grills | energy=0.80 | force=0.00 | motion=0.30 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 28 | Methanol (CH3OH): Simplest alcohol, toxic | energy=0.50 | force=0.00 | motion=0.50 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 29 | Phenol (C6H5OH): Aromatic alcohol, used as a disinfectant | energy=0.30 | force=0.20 | motion=0.40 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 30 | ATP (C10H16N5O13P3): Energy currency of the cell | energy=1.00 | force=0.00 | motion=0.30 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 31 | Formic Acid (HCOOH): Simplest carboxylic acid, in ant stings | energy=0.40 | force=0.00 | motion=0.30 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 32 | Butane (C4H10): Alkane fuel used in lighters | energy=0.80 | force=0.00 | motion=0.30 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 33 | Serotonin (C10H12N2O): Neurotransmitter related to mood | energy=0.10 | force=0.00 | motion=0.70 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 34 | Glycine (C2H5NO2): Simplest amino acid | energy=0.10 | force=0.00 | motion=0.40 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 35 | Ibuprofen (C13H18O2): NSAID pain reliever | energy=0.30 | force=0.20 | motion=0.20 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 36 | Calcium Carbonate (CaCO3): Found in shells, limestone, and chalk | energy=0.00 | force=0.60 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 37 | Perchloric Acid (HClO4): A powerful oxidizing strong acid | energy=0.90 | force=0.20 | motion=0.10 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 38 | Lactose (C12H22O11): Sugar found in milk | energy=0.60 | force=0.00 | motion=0.10 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 39 | TNT (C7H5N3O6): Well-known explosive compound | energy=1.00 | force=0.40 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 40 | Aniline (C6H5NH2): Precursor to many industrial chemicals | energy=0.20 | force=0.20 | motion=0.30 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 41 | Vitamin C (C6H8O6): An essential nutrient and antioxidant | energy=0.50 | force=0.00 | motion=0.30 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 42 | Isopropyl Alcohol (C3H8O): Rubbing alcohol, a disinfectant | energy=0.40 | force=0.00 | motion=0.50 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 43 | Vanillin (C8H8O3): Primary component of vanilla bean extract | energy=0.20 | force=0.10 | motion=0.40 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 44 | Histamine (C5H9N3): Involved in local immune responses | energy=0.10 | force=0.00 | motion=0.60 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 45 | Pyridine (C5H5N): Aromatic, used as a precursor and solvent | energy=0.20 | force=0.20 | motion=0.40 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 46 | Sodium Bicarbonate (NaHCO3): Baking soda, used in cooking and cleaning | energy=0.10 | force=0.30 | motion=0.20 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 47 | Phosphoric Acid (H3PO4): Weak acid used in soft drinks | energy=0.30 | force=0.10 | motion=0.20 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 48 | Octane (C8H18): Component of gasoline | energy=0.90 | force=0.00 | motion=0.30 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 49 | Ribose (C5H10O5): A key component of RNA | energy=0.50 | force=0.00 | motion=0.30 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 50 | Paracetamol (C8H9NO2): Common analgesic and antipyretic | energy=0.30 | force=0.20 | motion=0.20 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 51 | Methane (CH4): Simplest hydrocarbon; base for organic nomenclature and combustion reactions. | energy=0.90 | force=0.00 | motion=0.40 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 52 | Ethane (C2H6): Two-carbon chain; example of alkane properties like low reactivity. | energy=0.70 | force=0.00 | motion=0.30 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 53 | Ethylene (C2H4): Key in addition reactions; industrial precursor to polymers. | energy=0.40 | force=0.00 | motion=0.50 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 54 | Propylene (C3H6): Common in polymerization; tests alkene naming and reactivity. | energy=0.50 | force=0.00 | motion=0.50 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 55 | Methanol (CH3OH): Solvent and fuel; compares to ethanol in metabolism and toxicity. | energy=0.50 | force=0.00 | motion=0.50 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 56 | Ethanol (C2H5OH): Alcoholic beverage component; undergoes oxidation to acetaldehyde/acetic acid. | energy=0.40 | force=0.00 | motion=0.50 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 57 | Isopropanol ((CH3)2CHOH): Disinfectant; branched alcohol example for naming. | energy=0.40 | force=0.00 | motion=0.50 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 58 | Formaldehyde (HCHO): Simplest aldehyde; used in disinfection | energy=0.40 | force=0.00 | motion=0.50 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 59 | Acetaldehyde (CH3CHO): Glycolysis/fermentation product; oxidizes to acetic acid. | energy=0.50 | force=0.00 | motion=0.50 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 60 | Benzaldehyde (C6H5CHO): Aromatic carbonyl; in flavors | energy=0.30 | force=0.20 | motion=0.40 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 61 | Acetone ((CH3)2CO): Simplest ketone; solvent | energy=0.20 | force=0.00 | motion=0.60 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 62 | Formic Acid (HCOOH): Simplest acid; in ant venom | energy=0.40 | force=0.00 | motion=0.30 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 63 | Acetic Acid (CH3COOH): Vinegar component; buffers | energy=0.30 | force=0.10 | motion=0.20 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 64 | Benzoic Acid (C6H5COOH): Preservative; tests aromatic acid properties and salts. | energy=0.40 | force=0.20 | motion=0.20 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 65 | Glucose (C6H12O6): Aldehyde (open chain) | energy=0.80 | force=0.00 | motion=0.20 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 66 | Fructose-6-phosphate (C6H13O9P): Phosphate | energy=0.70 | force=0.00 | motion=0.30 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 67 | Fructose-1: -OH | energy=0.80 | force=0.00 | motion=0.20 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 68 | Dihydroxyacetone phosphate ((HOCH2)2C(O)OPO3H2): Phosphate | energy=0.60 | force=0.00 | motion=0.30 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 69 | Glyceraldehyde-3-phosphate: -OH | energy=0.60 | force=0.00 | motion=0.30 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 70 | Pyruvate (CH3C(O)COOH): -COOH | energy=0.70 | force=0.00 | motion=0.30 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 71 | Glycine: -NH2 | energy=0.10 | force=0.00 | motion=0.40 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 72 | Alanine: -NH2 | energy=0.20 | force=0.00 | motion=0.30 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 73 | Serine: -NH2 | energy=0.20 | force=0.00 | motion=0.30 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 74 | Cysteine: -NH2 | energy=0.30 | force=0.00 | motion=0.30 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 75 | Aspartic Acid: -NH2 | energy=0.30 | force=0.00 | motion=0.30 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 76 | Histidine: -NH2 | energy=0.20 | force=0.00 | motion=0.40 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 77 | Isoleucine: -NH2 | energy=0.30 | force=0.00 | motion=0.20 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 78 | Leucine: -NH2 | energy=0.30 | force=0.00 | motion=0.20 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 79 | Lysine: -NH2 | energy=0.20 | force=0.00 | motion=0.30 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 80 | Phenylalanine: -NH2 | energy=0.30 | force=0.10 | motion=0.20 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 81 | Tryptophan: -NH2 | energy=0.40 | force=0.10 | motion=0.20 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 82 | Acetylcholine: Ester | energy=0.50 | force=0.00 | motion=0.60 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 83 | Dopamine: -NH2 | energy=0.10 | force=0.00 | motion=0.70 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 84 | Serotonin: -NH2 | energy=0.10 | force=0.00 | motion=0.70 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 85 | GABA (H2NCH2CH2CH2COOH): -COOH | energy=0.20 | force=0.00 | motion=0.60 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 86 | Glutamate: -NH2 | energy=0.30 | force=0.00 | motion=0.60 | proposer=groq-gpt-oss-120b | status=candidate
