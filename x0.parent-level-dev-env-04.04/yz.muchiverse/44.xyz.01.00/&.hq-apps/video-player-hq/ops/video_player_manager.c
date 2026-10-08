@@ -15,6 +15,7 @@
 #include <fcntl.h>
 #include <time.h>
 #include <sys/wait.h>
+#include <poll.h>
 #include <sys/stat.h>
 
 #define MAXQ 64
@@ -78,7 +79,11 @@ static void play_at(int i, double off) {
     int fd[2]; if (pipe(fd)) return;
     child = fork(); if (child == 0) { setpgid(0, 0); int nul = open("/dev/null", O_RDWR); dup2(nul, 0); dup2(nul, 2); dup2(fd[1], 1); close(fd[0]); close(fd[1]);
         execlp("ffmpeg", "ffmpeg", "-v", "error", "-re", "-ss", ss, "-i", queue[i], "-an", "-vf", vf, "-f", "rawvideo", "-pix_fmt", "rgba", "pipe:1", (char *)NULL); _exit(127); }
-    close(fd[1]); vfd = fd[0]; fcntl(vfd, F_SETFL, fcntl(vfd, F_GETFL) | O_NONBLOCK); fgot = 0;
+    close(fd[1]); vfd = fd[0];
+#ifdef F_SETPIPE_SZ
+    fcntl(vfd, F_SETPIPE_SZ, 1 << 20);      /* the default 64 KB pipe holds a fraction of one frame; a bigger one lets the decoder run ahead */
+#endif
+    fcntl(vfd, F_SETFL, fcntl(vfd, F_GETFL) | O_NONBLOCK); fgot = 0;
     achild = fork(); if (achild == 0) { setpgid(0, 0); int nul = open("/dev/null", O_RDWR); dup2(nul, 0); dup2(nul, 1); dup2(nul, 2); close(vfd);
         execlp("ffplay", "ffplay", "-nodisp", "-vn", "-autoexit", "-loglevel", "error", "-ss", ss, queue[i], (char *)NULL); _exit(127); }
     status = 1; t_start = time(NULL); base_off = off < 0 ? 0 : off; snprintf(logline, sizeof logline, "playing %s", strrchr(queue[i], '/') ? strrchr(queue[i], '/') + 1 : queue[i]);
@@ -123,7 +128,10 @@ int main(int argc, char **argv) {
         if (!stat(ap, &sb) && sb.st_size > cursor) { FILE *f = fopen(ap, "r"); if (f) { fseek(f, cursor, SEEK_SET); char ln[1200]; while (fgets(ln, sizeof ln, f)) { ln[strcspn(ln, "\n")] = 0; if (ln[0]) do_cmd(ln); } cursor = ftell(f); fclose(f); } }
         pump_frames();
         if (child > 0) { int st; if (waitpid(child, &st, WNOHANG) == child) { child = 0; pump_frames(); int nxt = cur + 1 < nq; stop_child(); snprintf(logline, sizeof logline, "finished"); if (nxt) play(cur + 1); } }
-        publish(); usleep(status == 1 ? 40000 : 300000);
+        { static struct timespec lastpub; struct timespec nw; clock_gettime(CLOCK_MONOTONIC, &nw);
+          if ((nw.tv_sec - lastpub.tv_sec) * 1000 + (nw.tv_nsec - lastpub.tv_nsec) / 1000000 >= 300) { publish(); lastpub = nw; } }
+        if (status == 1 && vfd >= 0) { struct pollfd pf = { vfd, POLLIN, 0 }; poll(&pf, 1, 40); }   /* wake as soon as the decoder has data (frames were limited to ~1/s by a fixed sleep) */
+        else usleep(status == 1 ? 40000 : 100000);
     }
     stop_child(); return 0;
 }
