@@ -1,0 +1,87 @@
+# chem_compound_names.zh sidecar of &.widgits/concept-bank/data/chem/compounds_*.pdl - machine translation. status: ok/accepted are promotable; low_score, translated (unscored) and lint_fail wait for a person (review.tsv); rejected stays out. Scores are advisory. columns: id, source, zh, pinyin, score, status, translator, judge
+compounds_chem.pdl:chem1	Acetic Acid	醋酸	cù suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem2	Ethanol	乙醇	yǐ chún	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem3	Acetone	丙酮	bǐng tóng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem4	Methylamine	甲胺	jiǎ àn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem5	Benzene	苯	běn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem6	Citric Acid	柠檬酸	níng méng suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem7	Sodium Chloride	氯化钠	lǜ huà nà	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem8	Sulfuric Acid	硫酸	liú suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem9	Glucose	葡萄糖	pú táo táng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem10	Dopamine	多巴胺	duō bā àn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem11	Water	水	shuǐ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem12	Ammonia	氨	ān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem13	Methane	甲烷	jiǎ wán	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem14	Fructose	果糖	guǒ táng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem15	Caffeine	咖啡因	kā fēi yīn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem16	Hydrochloric Acid	盐酸	yán suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem17	Sodium Hydroxide	氢氧化钠	qīng yáng huà nà	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem18	Glycerol	甘油	gān yóu	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem19	Aspirin	阿司匹林	ā sī pǐ lín	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem20	Formaldehyde	甲醛	jiǎ quán	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem21	Sucrose	蔗糖	zhè táng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem22	Lactic Acid	乳酸	rǔ suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem23	Urea	尿素	niào sù	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem24	Toluene	甲苯	jiǎ běn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem25	Potassium Chloride	氯化钾	lǜ huà jiǎ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem26	Nitric Acid	硝酸	xiāo suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem27	Propane	丙烷	bǐng wán	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem28	Methanol	甲醇	jiǎ chún	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem29	Phenol	酚	fēn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem30	ATP	三磷酸腺苷	sān lín suān xiàn gān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem31	Formic Acid	甲酸	jiǎ suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem32	Butane	丁烷	dīng wán	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem33	Serotonin	血清素	xuè qīng sù	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem34	Glycine	甘氨酸	gān àn suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem35	Ibuprofen	布洛芬	bù luò fēn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem36	Calcium Carbonate	碳酸钙	tàn suān gài	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem37	Perchloric Acid	高氯酸	gāo lǜ suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem38	Lactose	乳糖	rǔ táng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem39	TNT	三硝基甲苯	sān xiāo jī jiǎ běn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem40	Aniline	苯胺	běn àn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem41	Vitamin C	抗坏血酸	kàng huài xuè suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem42	Isopropyl Alcohol	异丙醇	yì bǐng chún	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem43	Vanillin	香草醛	xiāng cǎo quán	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem44	Histamine	组胺	zǔ àn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem45	Pyridine	吡啶	pī dīng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem46	Sodium Bicarbonate	碳酸氢钠	tàn suān qīng nà	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem47	Phosphoric Acid	磷酸	lín suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem48	Octane	辛烷	xīn wán	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem49	Ribose	核糖	hé táng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem50	Paracetamol	对乙酰氨基酚	duì yǐ xiān ān jī fēn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat1	Methane	甲烷	jiǎ wán	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat2	Ethane	乙烷	yǐ wán	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat3	Ethylene	乙烯	yǐ xī	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat4	Propylene	丙烯	bǐng xī	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat5	Methanol	甲醇	jiǎ chún	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat6	Ethanol	乙醇	yǐ chún	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat7	Isopropanol	异丙醇	yì bǐng chún	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat8	Formaldehyde	甲醛	jiǎ quán	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat9	Acetaldehyde	乙醛	yǐ quán	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat10	Benzaldehyde	苯甲醛	běn jiǎ quán	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat11	Acetone	丙酮	bǐng tóng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat12	Formic Acid	甲酸	jiǎ suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat13	Acetic Acid	醋酸	cù suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat14	Benzoic Acid	苯甲酸	běn jiǎ suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat15	Glucose	葡萄糖	pú táo táng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat16	Fructose-6-phosphate	果糖-6-磷酸	guǒ táng 6 lín suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat17	Fructose-1	果糖-1	guǒ táng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat18	Dihydroxyacetone phosphate	二羟基丙酮磷酸	èr qiǎng jī bǐng tóng lín suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat19	Glyceraldehyde-3-phosphate	甘油醛-3-磷酸	gān yóu quán lín suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat20	Pyruvate	丙酮酸	bǐng tóng suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat21	Glycine	甘氨酸	gān ān suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat22	Alanine	丙氨酸	bǐng ān suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat23	Serine	丝氨酸	sī ān suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat24	Cysteine	半胱氨酸	bàn guāng ān suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat25	Aspartic Acid	天冬氨酸	tiān dōng ān suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat26	Histidine	组氨酸	zǔ ān suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat27	Isoleucine	异亮氨酸	yì liàng ān suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat28	Leucine	亮氨酸	liàng ān suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat29	Lysine	赖氨酸	lài ān suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat30	Phenylalanine	苯丙氨酸	běn bǐng ān suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat31	Tryptophan	色氨酸	sè ān suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat32	Acetylcholine	乙酰胆碱	yǐ xiān dǎn jiǎn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat33	Dopamine	多巴胺	duō bā àn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat34	Serotonin	血清素	xuè qīng sù	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat35	GABA	γ-氨基丁酸	ān jī dīng suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat36	Glutamate	谷氨酸	gǔ ān suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b

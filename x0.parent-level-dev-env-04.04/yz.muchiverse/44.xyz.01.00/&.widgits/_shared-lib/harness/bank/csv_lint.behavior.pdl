@@ -1,0 +1,20 @@
+# Behavior Bank entry for the harness `csv_lint` (see HARNESS-BEHAVIOR-BANK-DESIGN.md). Weights on SYNONYM / SLOT / CORPUS rows are hand-seeded; only WEIGHT (from COUNTS) is measured.
+BEHAVIOR | harness.csv_lint
+KIND | spoke
+KEYWORDS | lint, pinyin, tone marks, syllables, cjk, length, reference vocabulary, row numbering
+SYNONYM | validate pinyin | 0.90
+SYNONYM | check translation | 0.70
+SYNONYM | quality gate | 0.60
+SENTENCE | Deterministic checks on a Chinese translation and its pinyin: CJK present, tone marks, syllable shape and count, tone placement, length, complete row numbering and an optional advisory cross-check against a reference vocabulary.
+SENTENCE | Checks passing and failing pinyin forms row by row, numbering gaps, graceful skipping of a missing reference file and that disabling any check is noticed.
+SLOT | 0 | POINTS_TO=language-checks | WEIGHT=0.90
+SLOT | 1 | POINTS_TO=translation-pipeline | WEIGHT=0.80
+SLOT | 2 | POINTS_TO=chinese | WEIGHT=0.70
+CORPUS | translation | WEIGHT=0.80
+CORPUS | debug-build | WEIGHT=0.50
+SEQUENCE | 1 | exec ./ops/+x/harness_case_op.+x cases/csv_lint.pdl
+SEQUENCE | 2 | exec ./ops/+x/harness_verdict_op.+x cases/csv_lint.pdl
+SEQUENCE | 3 | exec ./ops/+x/harness_bank_op.+x cases/csv_lint.pdl
+SOURCE | hand-authored 2026-10-07 (claude); masters/synonyms/weights are seeds awaiting owner validation
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000
