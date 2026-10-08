@@ -2,7 +2,7 @@
    layout engine owns geometry. Window size is declared here (a window's own css
    width/height overrides the default window size). */
 window { background-color: #141414; width: 760ui; height: 150ui; }
-.hb-row  { background-color: #181818; }
+.hb-row  { background-color: #181818; height: 60ui; }
 .hb-slot { width: 80ui; height: 60ui; font-size: 14px; background-color: #222222; border: 1px solid #3a3a3a; border-width: 1; color: #cfd6e6; }
 .hb-head { background-color: #1d2630; color: #8b93a7; }
 .hb-sel  { background-color: #2f5f8f; color: #ffffff; border-color: #8fb4e0; }

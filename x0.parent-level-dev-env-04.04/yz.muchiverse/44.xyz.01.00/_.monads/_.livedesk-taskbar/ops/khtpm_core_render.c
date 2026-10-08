@@ -5214,8 +5214,16 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
 static void layout_toolbar_row(Elem *row, int x, int y, int w) {
     int j, n_items = 0, col = 0, iw;
     Elem *composer = NULL;
+    int rh = ROW_H;
     row->x = x; row->y = y; row->w = w; row->h = ROW_H; row->nav_index = 0;
     css_compute_style(&g_sheet, row->tag, row->id, row->classes, row->n_classes, 0, &row->style);
+    /* 2026-10-08 (owner: desktop hotbar cells tiny, pc-hq's big): a toolbar row is ONE fixed ROW_H and ignored any CSS height, so sprite-big had no room to grow.
+     * Opt-in per row: class "tall-cells" takes the row's CSS height (e.g. `.hb-row { height: 60ui }`) for the row AND its items. No class = unchanged (ROW_H). The caller
+     * advances y_cursor by row->h, which equals ROW_H for every other row. */
+    if (elem_has_class(row, "tall-cells") && row->style.has_height && !row->style.height_is_pct && row->style.height > ROW_H) {
+        rh = row->style.height;
+        row->h = rh;
+    }
     for (j = 0; j < row->n_children; j++) {
         if (strcmp(row->children[j]->tag, "item") == 0) n_items++;
         /* REAL, NEW 2026-09-28 (direct request: put a button - e.g. a
@@ -5250,7 +5258,7 @@ static void layout_toolbar_row(Elem *row, int x, int y, int w) {
         t->x = x + col * iw;
         t->y = y;
         t->w = iw;
-        t->h = ROW_H;
+        t->h = rh;
         css_compute_style(&g_sheet, t->tag, t->id, t->classes, t->n_classes, 0, &t->style);
         if (elem_has_class(t, "no-nav")) {
             /* 2026-10-06 (hotbar header picture): a display-only cell - laid out and drawn, but no nav number and not in g_nav[], so the typed digits of the
@@ -5366,7 +5374,7 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
                 layout_toolbar_row(c, x, y + h - composer_h, w - grip_w);
             } else {
                 layout_toolbar_row(c, x, y_cursor, w);
-                y_cursor += ROW_H;
+                y_cursor += c->h;   /* == ROW_H unless the row opted into tall-cells */
             }
         } else if (strcmp(c->tag, "cli_io") == 0 || strcmp(c->tag, "text_area") == 0) {
             int this_h = (c->rows > 0 ? c->rows : 1) * ROW_H;
