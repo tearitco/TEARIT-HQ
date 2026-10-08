@@ -1,0 +1,2 @@
+# knowledge-hq config. bank_dir = the concept-bank dir (has data/ and proposals/). Relative = against house root.
+SECTION      | bank_dir            | &.widgits/concept-bank
