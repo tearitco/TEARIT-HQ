@@ -45,6 +45,10 @@ Rules while sharing a checkout:
   work.
 - Before committing, run `git diff --cached --name-only` and read
   the list. It must be exactly your files.
+- Safer primitive that skips the check-then-add race: commit with an
+  explicit pathspec (`git commit -m ... -- <your paths>`) so other
+  agents' staged files can never ride along even if the index changed
+  under you. Two sweeps happened before this rule (2026-10-07).
 - If a commit lands that you did not author, do not amend or rewrite
   it. Add a follow-up commit that states the correction, and tell
   the user.
