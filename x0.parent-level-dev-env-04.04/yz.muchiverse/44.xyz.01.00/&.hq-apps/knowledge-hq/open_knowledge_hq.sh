@@ -7,7 +7,6 @@
 #
 #   sh open_knowledge_hq.sh <house_root>
 #
-# Wired into the taskbar HQ menu via
 # No taskbar shim yet (shared taskbar files are off limits for this app); launch by hand. Design: README.md.
 set -e
 
