@@ -60,7 +60,6 @@ a6066276334b4ac93acca074c6dd0cb7c1b96b15cc0db0b374698067fc4c9df5	zh	Ammonia	氨	
 1db810b0f1eefa1d147cda0f9158e7f4b01d1692f3144856d92af59d0464eb7d	zh	Fructose	果糖	guǒ táng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 f0663f9fc3e4bd142091600934e3732df4bf1729dfc7b8038eb259d3ab975cb8	zh	Caffeine	咖啡因	kā fēi yīn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 85ef8ac5ee67ff92c07eabd31e6b2645b148d155590749cbc73990cd4928514d	zh	Hydrochloric Acid	盐酸	yán suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
-63c5d56e1f1812d349bfca6bef8768c1495abb35568b7e10084c4c107d88ae15	zh	Sodium Hydroxide	氢氧化钠	qīng yáng huà nà	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 2589339604c35bdd84f0ff2a2a84405771892d0303387621e0c3eb8c3dfe75d6	zh	Glycerol	甘油	gān yóu	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 792ca5f153ca90e879f0e4f8ad0aaad7f676605196cfe7be75bd22402ee6f2b7	zh	Aspirin	阿司匹林	ā sī pǐ lín	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 2b68b20da2e757f45657b234843d37863797a9dbdd0dc8050e9d07862a2d0bea	zh	Formaldehyde	甲醛	jiǎ quán	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
@@ -77,7 +76,6 @@ bc85ec2766dd33d6365343eac52f9e82d0c0c7e6cedabca66f550851ee02180d	zh	Phenol	酚	f
 4c615bf27d1a75a068ec00db91d1e90a14a8f90dcbafc43d1695f18e4b1a4753	zh	Formic Acid	甲酸	jiǎ suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 27bfbd69d8418fcae9aca55d9a5ae6c6bea9b88e61d8394c7e8c8031d200978d	zh	Butane	丁烷	dīng wán	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 648fe5f9df3057c19b16f61c5e493212b281e9c0c411dc5aa3d00993b9ef6edc	zh	Serotonin	血清素	xuè qīng sù	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
-01a77fa71c76ed5b162ca7bbc44a67ef418f0265a0628726d794d80caa098795	zh	Glycine	甘氨酸	gān àn suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 371f93281150375bc5a1076af97d0073bf011678a0bf3c98e50ed4b3d7874418	zh	Ibuprofen	布洛芬	bù luò fēn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 7cab7243450e221fb50c1c97715c7971e5da5b665702345acc91b9961b1c2718	zh	Calcium Carbonate	碳酸钙	tàn suān gài	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 d8ed1d3348809c0517aa90b67908b12e29af71094172ae82cb2aa19b5ff3f867	zh	Perchloric Acid	高氯酸	gāo lǜ suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
@@ -88,7 +86,6 @@ d8ed1d3348809c0517aa90b67908b12e29af71094172ae82cb2aa19b5ff3f867	zh	Perchloric A
 a593f39746a987e5b9fff2799f54821f1caf43a19be6faf2b4bfaaa0eb8c95f7	zh	Isopropyl Alcohol	异丙醇	yì bǐng chún	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 b7e2980059feda345a5f5012b8f5810082ebdc8f0c11da6f1404340cd8bf9314	zh	Vanillin	香草醛	xiāng cǎo quán	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 191f186619d7449aeee3b02bb2acdbff4b914eeb5072e09e94a142f945a132f6	zh	Histamine	组胺	zǔ àn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
-793cfd52d01d0282b2efa99ea6fa7c5ce36d530c33b860ec004862b7063589fc	zh	Pyridine	吡啶	pī dīng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 2b79be56db20f92b47734adedd9f9aaba798ed4ffa52c8d1982dbd7a378a3110	zh	Sodium Bicarbonate	碳酸氢钠	tàn suān qīng nà	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 4d752329a7f0f9da3a97dbb25e998e37148460d0268a7ea09e875487617717ae	zh	Phosphoric Acid	磷酸	lín suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 862f09865cc676737b1f0687445784c0d07d0a79c6943685e38d4155a0f71038	zh	Octane	辛烷	xīn wán	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
@@ -135,3 +132,5 @@ b185886a7b533e4ba3f4a4092cc1560e335be81e31808477a2b04e7bf765a2b8	zh	describe	描
 22eeb2df5548240a0c3f809d0bd8aa0c67fbfd4a63bc55eaabd2abb527a4d4b0	zh	propose_edit	提议编辑	tí yì biān jí	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 774de6f777da3ed75a68eb98aaa92ffb75972567bbd3ba693aabb1a0093401f2	zh	review_edit	审查编辑	shěn chá biān jí	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 ca26989e091223e9088df567edc3558af2cf5410ff31de86a28d78bd4788ab30	zh	author_new_node	创建新节点	chuàng jiàn xīn jié diǎn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+63c5d56e1f1812d349bfca6bef8768c1495abb35568b7e10084c4c107d88ae15	zh	Sodium Hydroxide	氢氧化钠	qīng yǎng huà nà	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+793cfd52d01d0282b2efa99ea6fa7c5ce36d530c33b860ec004862b7063589fc	zh	Pyridine	吡啶	bǐ dìng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b

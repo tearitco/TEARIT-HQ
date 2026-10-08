@@ -15,7 +15,7 @@ compounds_chem.pdl:chem13	Methane	甲烷	jiǎ wán	5	ok	openai/gpt-oss-120b	qwen
 compounds_chem.pdl:chem14	Fructose	果糖	guǒ táng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 compounds_chem.pdl:chem15	Caffeine	咖啡因	kā fēi yīn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 compounds_chem.pdl:chem16	Hydrochloric Acid	盐酸	yán suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
-compounds_chem.pdl:chem17	Sodium Hydroxide	氢氧化钠	qīng yáng huà nà	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem17	Sodium Hydroxide	氢氧化钠	qīng yǎng huà nà	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 compounds_chem.pdl:chem18	Glycerol	甘油	gān yóu	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 compounds_chem.pdl:chem19	Aspirin	阿司匹林	ā sī pǐ lín	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 compounds_chem.pdl:chem20	Formaldehyde	甲醛	jiǎ quán	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
@@ -32,7 +32,7 @@ compounds_chem.pdl:chem30	ATP	三磷酸腺苷	sān lín suān xiàn gān	5	ok	op
 compounds_chem.pdl:chem31	Formic Acid	甲酸	jiǎ suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 compounds_chem.pdl:chem32	Butane	丁烷	dīng wán	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 compounds_chem.pdl:chem33	Serotonin	血清素	xuè qīng sù	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
-compounds_chem.pdl:chem34	Glycine	甘氨酸	gān àn suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem34	Glycine	甘氨酸	gān ān suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 compounds_chem.pdl:chem35	Ibuprofen	布洛芬	bù luò fēn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 compounds_chem.pdl:chem36	Calcium Carbonate	碳酸钙	tàn suān gài	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 compounds_chem.pdl:chem37	Perchloric Acid	高氯酸	gāo lǜ suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
@@ -43,7 +43,7 @@ compounds_chem.pdl:chem41	Vitamin C	抗坏血酸	kàng huài xuè suān	5	ok	ope
 compounds_chem.pdl:chem42	Isopropyl Alcohol	异丙醇	yì bǐng chún	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 compounds_chem.pdl:chem43	Vanillin	香草醛	xiāng cǎo quán	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 compounds_chem.pdl:chem44	Histamine	组胺	zǔ àn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
-compounds_chem.pdl:chem45	Pyridine	吡啶	pī dīng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+compounds_chem.pdl:chem45	Pyridine	吡啶	bǐ dìng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 compounds_chem.pdl:chem46	Sodium Bicarbonate	碳酸氢钠	tàn suān qīng nà	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 compounds_chem.pdl:chem47	Phosphoric Acid	磷酸	lín suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 compounds_chem.pdl:chem48	Octane	辛烷	xīn wán	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
