@@ -276,3 +276,5 @@ pointers were the only outright deletions.
   rtp-xyz) each carry their own `ARCHITECTURE.md`/`PROMPT.md`/
   `README.md` — left in place (per-app docs, out of this migration's
   scope), but worth a future roadmap pass to summarize status here.
+
+> **2026-10-08:** per-doc status, next steps and tiers for the Oct 7 to 8 design docs: `design-docs/DOC-STATUS-AND-PATHS-FORWARD-2026-10-08.md`.

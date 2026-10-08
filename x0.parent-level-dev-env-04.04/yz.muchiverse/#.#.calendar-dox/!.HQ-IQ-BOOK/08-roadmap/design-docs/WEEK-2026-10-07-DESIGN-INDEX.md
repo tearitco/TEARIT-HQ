@@ -18,3 +18,5 @@ Status key: BUILT (alpha, harness passing, local branch), DESIGN (docs only).
 | harness store | HARNESS-STORE-AND-SCORING-DESIGN | design |
 Unpushed/local: branches claude-alpha, claude-staging-opencode, user-import/*; user/* data branches are local-only by rule.
 Open owner decisions are listed at the end of each doc (grep "Open questions").
+
+**Status of every design doc, with the next step and who can do it (updated 2026-10-08): [DOC-STATUS-AND-PATHS-FORWARD-2026-10-08.md](DOC-STATUS-AND-PATHS-FORWARD-2026-10-08.md).** It also lists docs missing from this index (ring-board-rmmv, footrace-fu, solar-sandbox, physics-nodes).
