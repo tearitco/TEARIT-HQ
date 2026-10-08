@@ -1,0 +1,108 @@
+# 🎓🧪 NIGHT 39 — The Learner and the Lab 🧪🎓
+# ====================================================================
+# Title: "🎓🧪 NIGHT 39 — The Learner and the Lab 🧪🎓"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: The missing link in auto-promotion, the entity as the learner with grades, levels and magic points, and the first knowledge domain: chemistry, built from assets the house already had. Also: two mistakes, owned.
+# Long-form: a work log with an honesty checkpoint. Every number is one measured on disk today.
+# Companion documents: XO/13.phymoji-engine/meta-models.md (and .html), 08-roadmap/design-docs/ROADMAP-AND-STATE-OF-PLAY-2026-10-07.md section 7, LEARNING-LOOP-BANKS-WEIGHTS-NO-REPROMPT-DESIGN.md.
+
+**THE NARRATOR:** NIGHT 38 opened the pipe. Tonight the owner asked where promotion is still missing a link, and then said something that changed the picture: the entity is the one who is learning. Progress it like a role-playing game.
+
+**MAXINE:** Start with the link.
+
+---
+
+**THE NARRATOR:** Part one, the missing link.
+
+**TOMO:** The rule on paper says an edit may promote itself only when three things are true together: the entity's grade is high enough, the edit's score in the ledger is at least point nine, and at least twenty observations stand behind that score. The code checked only the grade. It never opened the ledger. Last night we closed the whole path with a switch. Tonight we built the part that was missing.
+
+**RAHWEH:** What does it do now?
+
+**TOMO:** It needs the house policy line saying promotion is on, which ships off. It registers every valid candidate in the ledger with zero counts, so evidence has somewhere to land. It promotes only if that candidate's own row has the score and the count. And every promotion writes an audit row with the weight before and after, so it can be undone.
+
+**MAXINE:** And is anything going to promote?
+
+**TOMO:** No. And that is correct. Nothing yet produces twenty graded observations for a physics edit. The link is closed, and the road behind it is empty on purpose.
+
+---
+
+**THE NARRATOR:** Part two, the learner.
+
+**RAHWEH:** The owner said: the entity is what is learning and gaining skills. Levels of learning, and how much magic a skill costs.
+
+**TOMO:** So there are two separate ladders. The grade is the school year: preschool, elementary, associate, master. It is earned only by exams, meaning graded evidence in the entity's own log, per subject, with a minimum number of rows and a minimum score. Higher grades also need an extracurricular subject, because play counts. The level is experience: using skills gives points, points raise the level.
+
+**MAXINE:** And the magic points?
+
+**TOMO:** The budget for any skill that costs a model call. Observe costs one, describe costs three, propose an edit costs two, review costs two, authoring a new concept costs five. Each skill needs a grade, a level and enough points. A day's rest refills them, and a higher level raises the maximum.
+
+**RAHWEH:** Why two ladders?
+
+**TOMO:** Because they answer different questions. Level says how much you have done. Grade says what you have proven. Power follows grade: the right to promote edits only arrives at the upper grades, and those grades need a person's signature, not just a score.
+
+**MAXINE:** Is it in the engine?
+
+**TOMO:** It is built as one operation with forty-four checks, and it fails when its approval rule or its magic point cost is removed. Four event commands are in the registry, and a Grade Tick package copies the shape of the Eden day tick. We have not yet run it through the real clock.
+
+---
+
+**THE NARRATOR:** Part three, the lab, and a mistake.
+
+**RAHWEH:** The owner asked whether this includes materials, chemical compounds and anatomy. I said none of that existed. That was wrong.
+
+**TOMO:** I had searched a few file types and skipped the palettes. The house has a recipe file with all one hundred and eighteen elements and their protons and neutrons, fifty compounds with emoji and formulas, a list of thirty-six organic compounds, and tile sets from two other games. The owner said: we are literally going to use that, and the emojis.
+
+**MAXINE:** So what did you build on it?
+
+**TOMO:** First a locked element table, derived from the recipe file, not typed by any model. Every proton count equals the element number; iron is twenty-six plus thirty, fifty-six; gold is seventy-nine plus one hundred eighteen.
+
+**RAHWEH:** Then a labeler.
+
+**TOMO:** A small program that reads each compound's formula, including the Unicode subscripts, checks every symbol against the table, counts atoms, adds mass numbers, and scores two exams. Water comes out as three atoms and eighteen. Sulfuric acid is seven atoms and ninety-eight. Calcium hydroxide, with its parentheses, is five atoms and seventy-four.
+
+**MAXINE:** And the scores?
+
+**TOMO:** The formula exam: sixty-nine passes and seventeen failures. The property exam, boiling point above melting point: eight and one. And the exams found real defects in the source. One name with a comma split a row in two. Fifteen rows hold amino acid codes or structure strings where a formula belongs. Caffeine was flagged, but that is real: caffeine sublimes.
+
+---
+
+**THE NARRATOR:** Part four, the hidden layer for chemistry.
+
+**TOMO:** The free Groq model proposed three numbers for each of the eighty-six rows: energy, force, motion. The first try passed the format judge. Then the review. Seventy-three rows were approved, one was adjusted, benzene, which is a volatile flammable solvent and not inert. Thirteen were rejected, because they came from the malformed rows, so the model had only a name to go on. That is noise, not evidence.
+
+**RAHWEH:** Does it generalize?
+
+**TOMO:** A little. Calcium oxide described as a crystalline ionic solid comes out strong on force. Hydrogen gas, highly flammable, comes out strong on energy. Dopamine and serotonin signalling comes out strong on motion. Two hundred and fifty words in the table, from seventy-three rows. It is small and it is honest.
+
+---
+
+**THE NARRATOR:** Part five, the plan, and the second mistake.
+
+**MAXINE:** Where does this go?
+
+**TOMO:** The roadmap now has a section on it. The key idea is to split knowledge into what code can verify and what only a person can judge. A formula can be parsed. A mass number can be computed. A tree of body parts can be checked for cycles. Those exams can be generated and graded by code, so the loop may run itself there, and that is where automatic promotion can first be justified. A function of a body part, or what a material is good for, stays with a person.
+
+**RAHWEH:** And the second mistake.
+
+**TOMO:** The small comparison program a free worker wrote last night, I called an engine gap. The registry already had a variable math command that compares numbers. I had seen it in a search and not connected it. The process data from that pilot stays valid. The program is marked a duplicate and is not registered.
+
+**MAXINE:** And the window?
+
+**TOMO:** A Knowledge window is being built by a separate agent, on its own branch, so the owner can browse the elements and compounds, see the labels and scores, and accept or reject proposed rows. Nothing about it is verified yet, and it is not merged.
+
+---
+
+**THE NARRATOR:** The honesty checkpoint.
+
+**MAXINE:** What is real?
+
+**TOMO:** The ledger-checking promotion rule, tested ten ways. The grade, level and magic point operation, with forty-four checks. The locked element table. The chemistry labeler with twenty-one checks. Eighty-six labeled compounds, seventy-three approved association rows, a two hundred and fifty word table. Every harness shown able to fail.
+
+**RAHWEH:** And what is not?
+
+**TOMO:** The Grade Tick has not run through the clock. Nothing yet feeds a physics edit twenty observations, so nothing will promote. The reviews were made by the manager, not the owner. The window is unfinished. Image and word generation with Stable Diffusion is only a plan; we have not checked that a model or a graphics card is even available. Anatomy has no data at all. And two of my claims today were wrong until the owner or the files corrected them.
+
+**MAXINE:** Say the line to carry on.
+
+**TOMO:** The entity learns, the exams grade, a person signs the upper grades, and when we are unsure, we search wider before we say it does not exist. 🎓🧪
