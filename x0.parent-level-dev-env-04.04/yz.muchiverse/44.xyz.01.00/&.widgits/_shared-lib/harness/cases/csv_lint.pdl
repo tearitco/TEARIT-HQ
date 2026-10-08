@@ -81,4 +81,37 @@ RUN | sed | -i | s@if (want != ti)@if (0)@ | $T/m3.c
 RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m3.+x | $T/m3.c
 RUN | $T/m3.+x | lint | $T/t.tsv | $T/lm3.tsv
 EXPECT_LACKS | lm3.tsv | tone-placement | mutant3-placement-check-removed-is-detected
+# PINYIN DICTIONARY (--pinyin-dict): pinyin must be placeable over the hanzi using each character's own readings; heteronyms allow all, neutral tone allowed, unknown hanzi = not checkable
+WRITE | dict.tsv | # test dictionary\n氨\tān\n甘\tgān\n酸\tsuān\n一\tyī,yí,yì\n粒\tlì\n个\tgè,gě\n头\ttóu,tou\n锄\tchú\n氧\tyǎng\n
+WRITE | d.tsv | d1\t甘氨酸\tgān ān suān\tGlycine\nd2\t甘氨酸\tgān àn suān\tGlycine\nd3\t一粒\tyì lì\tone grain\nd4\t一个\tyí gè\tone thing\nd5\t锄头\tchú tou\tthe hoe\nd6\t锄头\tchú tóu\tthe hoe\nd7\t氧\tyáng\tOxygen\nd8\t氧气\tyáng qì\tOxygen gas\nd9\t水\tshuǐ\tWater\n
+RUN | $T/cl.+x | lint | $T/d.tsv | $T/ld.tsv | --pinyin-dict | $T/dict.tsv
+EXPECT_EXIT | 0 | dict-lint-runs
+EXPECT_OUT_IS | ok=7 fail=2 warn=0 ref=not requested | dict-counts
+EXPECT_HAS | ld.tsv | d1\tOK\t\t\n | dict-ok-correct-reading-an1
+EXPECT_HAS | ld.tsv | d2\tFAIL\tpinyin-char-mismatch:氨 | dict-fails-wrong-reading-and-names-the-hanzi
+EXPECT_HAS | ld.tsv | d3\tOK\t\t\n | dict-ok-polyphone-before-another-char-needs-backtracking
+EXPECT_HAS | ld.tsv | d4\tOK\t\t\n | dict-ok-polyphone-yi2
+EXPECT_HAS | ld.tsv | d5\tOK\t\t\n | dict-ok-neutral-tone-without-mark
+EXPECT_HAS | ld.tsv | d6\tOK\t\t\n | dict-ok-marked-reading
+EXPECT_HAS | ld.tsv | d7\tFAIL\tpinyin-char-mismatch:氧 | dict-fails-yang2-for-yang3
+EXPECT_HAS | ld.tsv | d8\tOK\t\t\n | dict-unknown-hanzi-means-not-checkable
+EXPECT_HAS | ld.tsv | d9\tOK\t\t\n | dict-hanzi-not-in-table-passes
+RUN | $T/cl.+x | lint | $T/d.tsv | $T/ld0.tsv | --pinyin-dict | $T/no_such_dict.tsv
+EXPECT_HAS | ld0.tsv | d2\tOK\t\t\n | no-dictionary-means-unchanged-behaviour
+RUN | cp | $T/csv_lab.c | $T/m4.c
+RUN | sed | -i | s@if (g_pyd_n \&\& !fail\[0\]@if (0 \&\& g_pyd_n \&\& !fail[0]@ | $T/m4.c
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m4.+x | $T/m4.c
+RUN | $T/m4.+x | lint | $T/d.tsv | $T/lm4.tsv | --pinyin-dict | $T/dict.tsv
+EXPECT_HAS | lm4.tsv | d2\tOK\t\t\n | mutant4-dictionary-check-removed-is-detected
+RUN | cp | $T/csv_lab.c | $T/m5.c
+RUN | sed | -i | s@strtok_r(rd, ",", \&sv)@strtok(rd, ",")@ | $T/m5.c
+RUN | sed | -i | s@strtok_r(NULL, ",", \&sv)@strtok(NULL, ",")@ | $T/m5.c
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m5.+x | $T/m5.c
+RUN | $T/m5.+x | lint | $T/d.tsv | $T/lm5.tsv | --pinyin-dict | $T/dict.tsv
+EXPECT_HAS | lm5.tsv | d3\tFAIL\tpinyin-char-mismatch | mutant5-global-strtok-bug-is-detected
+RUN | cp | $T/csv_lab.c | $T/m6.c
+RUN | sed | -i | s@qsort(g_pyd, (size_t)g_pyd_n, sizeof \*g_pyd, pyd_cmp);@(void)pyd_cmp;@ | $T/m6.c
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m6.+x | $T/m6.c
+RUN | $T/m6.+x | lint | $T/d.tsv | $T/lm6.tsv | --pinyin-dict | $T/dict.tsv
+EXPECT_HAS | lm6.tsv | d2\tOK\t\t\n | mutant6-unsorted-dictionary-silently-inactive-is-detected
 CLEAN |

@@ -552,6 +552,69 @@ static void py_squash(const char *in, char *out, size_t n) {   /* lowercase, dro
 }
 static const char *TRAD = "這個們說話嗎來時會對裡麼學從還為過種機樣長間發問題東車開關愛電從點無與認讓";   /* a sample of traditional-only forms; a hit is a hard FAIL */
 
+
+/* Per-character pinyin dictionary (optional): char_pinyin.tsv = "<hanzi>\t<reading,reading,..>" sorted by codepoint (pypinyin data, see its header). With it, lint fails a row whose
+ * pinyin cannot be laid out over the hanzi so that every character gets one of ITS readings (e.g. 氨 is only ān, 啶 only dìng). Heteronyms allow all readings, so a wrong-but-
+ * valid reading is not caught; neutral tone (no mark) is always accepted. Skipped for rows with latin/digits or erhua, and when any hanzi is missing from the table. */
+typedef struct { unsigned cp; char *rd; } PydEnt;
+static PydEnt *g_pyd; static int g_pyd_n;
+static int pyd_cmp(const void *a, const void *b) { unsigned x = ((const PydEnt *)a)->cp, y = ((const PydEnt *)b)->cp; return x < y ? -1 : x > y; }
+static int pyd_load(const char *path) {
+    char *buf = slurp(path, NULL); if (!buf) return -1;
+    int cap = 24000; free(g_pyd); g_pyd = malloc((size_t)cap * sizeof *g_pyd); g_pyd_n = 0;
+    for (char *p = buf; *p; ) {
+        char *e = strchr(p, '\n'); if (e) *e = 0;
+        if (*p && *p != '#') {
+            const char *q = p; unsigned cp; char *tab = strchr(p, '\t');
+            if (tab && u8dec(&q, &cp) && q == tab && g_pyd_n < cap) { g_pyd[g_pyd_n].cp = cp; g_pyd[g_pyd_n++].rd = tab + 1; }
+        }
+        if (!e) break;
+        p = e + 1;
+    }
+    qsort(g_pyd, (size_t)g_pyd_n, sizeof *g_pyd, pyd_cmp);   /* never trust the file's order: the lookup is a binary search */
+    return g_pyd_n ? 0 : -1;   /* buf is kept alive on purpose: g_pyd[].rd points into it */
+}
+static int pyd_find(unsigned cp) {
+    int lo = 0, hi = g_pyd_n - 1;
+    while (lo <= hi) { int m = (lo + hi) / 2; if (g_pyd[m].cp == cp) return m; if (g_pyd[m].cp < cp) lo = m + 1; else hi = m - 1; }
+    return -1;
+}
+/* canonical form: lowercase letters, u-umlaut as 'v', the tone as a digit right after its vowel; everything that is not a letter is dropped (spaces, punctuation, apostrophes) */
+static void pyd_canon(const char *in, char *out, size_t n, int keep_tone) {
+    size_t o = 0; unsigned cp; const char *p = in;
+    while (u8dec(&p, &cp) && o + 3 < n) {
+        char b; int t = tone_of(cp, &b);
+        if (t) { out[o++] = b; if (keep_tone) out[o++] = (char)('0' + t); }
+        else if (cp == 0xFC || cp == 0xDC) out[o++] = 'v';
+        else if (cp < 0x80 && isalpha((int)cp)) out[o++] = (char)tolower((int)cp);
+    }
+    out[o] = 0;
+}
+static int pyd_dfs(const unsigned *chs, int n, int ci, const char *s, int *maxci) {
+    if (ci > *maxci) *maxci = ci;
+    if (ci == n) return *s == 0;
+    int k = pyd_find(chs[ci]); char rd[160]; snprintf(rd, sizeof rd, "%s", g_pyd[k].rd);
+    char *sv = NULL;   /* strtok_r: this function recurses, a global strtok state would be clobbered by the inner calls */
+    for (char *r = strtok_r(rd, ",", &sv); r; r = strtok_r(NULL, ",", &sv)) {
+        for (int keep = 1; keep >= 0; keep--) {   /* the marked reading first, then the same syllable without its tone (neutral) */
+            char c[64]; pyd_canon(r, c, sizeof c, keep); size_t l = strlen(c);
+            if (l && !strncmp(s, c, l) && pyd_dfs(chs, n, ci + 1, s + l, maxci)) return 1;
+        }
+    }
+    return 0;
+}
+/* 1 = ok or not checkable, 0 = mismatch (bad[] = the first hanzi that could not be placed) */
+static int pyd_check(const char *zh, const char *py, char *bad, size_t bn) {
+    unsigned chs[96]; int n = 0; unsigned cp; const char *p = zh;
+    while (u8dec(&p, &cp)) if (is_cjk(cp)) { if (n >= 96 || pyd_find(cp) < 0) return 1; chs[n++] = cp; }
+    if (!n) return 1;
+    char sq[512]; pyd_canon(py, sq, sizeof sq, 1);
+    int maxci = 0;   /* a marked syllable carries its tone digit, an unmarked one (neutral) does not: pyd_dfs tries both forms of every reading */
+    if (pyd_dfs(chs, n, 0, sq, &maxci)) return 1;
+    { char tmp[8] = {0}; u8enc(chs[maxci < n ? maxci : n - 1], tmp); snprintf(bad, bn, "%s", tmp); }
+    return 0;
+}
+
 static int is_protected_run(const char *run, const char *src) { return strstr(src, run) != NULL; }
 static void lint_row(const char *src, const char *zh, const char *py, char *fail, size_t fn, char *warn, size_t wn) {
     fail[0] = 0; warn[0] = 0;
@@ -599,6 +662,7 @@ static void lint_row(const char *src, const char *zh, const char *py, char *fail
     if (syl != ncjk && syl != ncjk - nerhua && ncjk > 0) FAILF("syllable-count:cjk=%d,pinyin=%d", ncjk, syl);
     if (marked == 0) FAILW("no-tone-marks");
     else if (syl - marked > (syl + 2) / 3) FAILF("too-few-tone-marks:%d/%d", marked, syl);
+    if (g_pyd_n && !fail[0] && nlat == 0 && nerhua == 0) { char badc[8] = ""; if (!pyd_check(zh, py, badc, sizeof badc)) FAILF("pinyin-char-mismatch:%s", badc); }
 done_py:;
 #undef FAILW
 #undef FAILF
@@ -625,6 +689,9 @@ static int v_lint(int argc, char **argv) {
     Tab t; if (tab_load(argv[0], &t)) { fprintf(stderr, "csv_lab lint: cannot read %s\n", argv[0]); return 2; }
     const char *refp, *expp; char rstat[160] = "not requested";
     if (argval(argc, argv, "--ref", &refp)) ref_load(refp, rstat, sizeof rstat);
+    { const char *pd = NULL; char dflt[PB]; char root[PB];
+      if (!argval(argc, argv, "--pinyin-dict", &pd) && !((pd = getenv("CSV_LAB_PYDICT")) && *pd)) { house_root(argc, argv, root, sizeof root); snprintf(dflt, sizeof dflt, "%s/&.widgits/concept-bank/data/zh/char_pinyin.tsv", root); pd = access(dflt, R_OK) == 0 ? dflt : NULL; }
+      if (pd) { if (pyd_load(pd)) fprintf(stderr, "csv_lab lint: pinyin dictionary %s unusable, skipped\n", pd); } }
     Tab src = {0}; int have_src = 0;
     if (argval(argc, argv, "--expect", &expp)) { if (tab_load(expp, &src)) { fprintf(stderr, "csv_lab lint: cannot read %s\n", expp); return 2; } have_src = 1; }
     FILE *o = fopen(argv[1], "w"); if (!o) return 2;
