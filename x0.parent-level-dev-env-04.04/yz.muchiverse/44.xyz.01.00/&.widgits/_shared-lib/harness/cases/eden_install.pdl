@@ -45,7 +45,9 @@ EXPECT_EXISTS | ld/eden_game/gso | gso-copied
 EXPECT_EXISTS | ld/eden_game/store | store-dir
 EXPECT_HAS | ld/eden_game/game/conductor/wiring.pdl | daemon       \p 1 | wiring-enables-the-daemon
 EXPECT_NOFILE | ld/eden_game/game/conductor/entity_uid.txt | conductor-has-no-uid
-EXPECT_HAS | ld/pals/eden_button/ctl.sh | G='$T/ld/eden_game' | ctl-sh-holds-G-as-an-absolute-path
+EXPECT_HAS | ld/pals/eden_button/ctl.sh | G="$(cd "$(dirname "$0")/../../eden_game" && pwd)" | ctl-sh-derives-G-from-its-own-location
+EXPECT_LACKS | ld/pals/eden_button/ctl.sh | $T | ctl-sh-holds-no-absolute-scratch-path
+EXPECT_LACKS | ld/pals/eden_button/ctl.sh | /home/ | ctl-sh-holds-no-absolute-home-path
 EXPECT_HAS | ld/pals/eden_button/ctl.sh | event_page_op.+x" "$C" "$G" --trigger "$1" | ctl-sh-execs-event_page_op-with-the-trigger
 EXPECT_HAS | ld/pals/eden_button/meta.pdl | \p Start game  | menu-Start-game
 EXPECT_HAS | ld/pals/eden_button/meta.pdl | \p Stop game  | menu-Stop-game
@@ -207,3 +209,15 @@ EXPECT_EXIT | 1 | daemon-stop-refuses-to-signal-a-process-that-is-not-the-clock
 EXPECT_ALIVE | $sl | the-foreign-process-is-untouched
 EXPECT_HAS | ld/eden_game/game/conductor/op_errors.txt | NOT signalled | refusal-logged
 CLEAN   |
+
+CASE    | ctl-sh-survives-a-moved-desk
+SCRATCH |
+MKDIR   | ld
+MKDIR   | ld/sessions/s1/desks
+WRITE   | ld/sessions/s1/desks/d.pdl | DESK \p cursword \p pals/cursword \p 0 \p 0 \p 0 \p 0 \p K \p 1\n
+RUN | $HOUSE/&.widgits/eden/+x/install_eden.+x | --livedesk | $T/ld | --house | $HOUSE | --apply
+EXPECT_EXIT | 0 | installs-for-the-move-test
+RUN | /bin/cp | -a | $T/ld | $T/ld2
+EXPECT_EXIT | 0 | desk-copied-to-another-path
+RUN | /bin/sh | -c | cd "$0/pals/eden_button" && sh -c "$(grep ^G= ctl.sh); echo \$G" ./ctl.sh | $T/ld2
+EXPECT_OUT | ld2/eden_game | G-follows-the-moved-desk-not-the-installed-one
