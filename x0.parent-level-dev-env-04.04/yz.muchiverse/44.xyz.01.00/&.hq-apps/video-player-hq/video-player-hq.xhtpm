@@ -1,35 +1,38 @@
-<!-- video-player-hq.xhtpm - X11-HQ "Video Player": a queue you drop video files onto, played in an ffplay window, with a file check.
+<!-- video-player-hq.xhtpm - X11-HQ "Video Player": a queue you drop video files onto, played IN this window (ffmpeg frames blitted by the generic <canvas>, sound by an ffplay -nodisp child), with a file check.
      Drop = the renderer's generic XDND support (<window drop_action>, $DROP_PATH = first dropped path; ZERO renderer C); the handler is the
      compiled op ops/+x/video_player_op.+x (verb drop). One <module>: ops/+x/video_player_manager.+x publishes video_player_ui.txt (vars=).
      Every control is a numbered row, so the relay can drive it. Shape = eden-viewer-hq / csv-lab-hq. -->
 <window label="${head}" class="vp-window database-window" vars="video_player_ui.txt" drop_highlight="#88ff66"
         drop_action="sh -c 'exec &quot;$0/ops/+x/video_player_op.+x&quot; &quot;$0&quot; drop'">
   <module src="&.hq-apps/video-player-hq/ops/+x/video_player_manager.+x"/>
-  <page name="main">
+  <page name="main" class="vp-cols">
+    <!-- left: the queue; centre: the screen (a generic canvas fed raw frames); right: status and the file check; bottom: transport buttons -->
     <sidebar id="sidebar" class="vp-sidebar">
-      <text id="who" label="video player" class="vp-who"/>
-      <item id="b-play"   class="vp-tab" label="play"   action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' play"/>
-      <item id="b-pause"  class="vp-tab" label="pause"  action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' pause"/>
-      <item id="b-resume" class="vp-tab" label="resume" action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' resume"/>
-      <item id="b-stop"   class="vp-tab" label="stop"   action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' stop"/>
-      <item id="b-prev"   class="vp-tab" label="prev"   action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' prev"/>
-      <item id="b-next"   class="vp-tab" label="next"   action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' next"/>
-      <item id="b-clear"  class="vp-tab" label="clear"  action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' clear"/>
+      <text id="who" label="queue (press a row)" class="vp-who"/>
+      <repeat count="${n_q}" bind="q">
+        <item id="q${q.#}" class="vp-q ${q.cls}" label="${q.text}" action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' ${q.act}"/>
+      </repeat>
     </sidebar>
-    <panel id="content" class="vp-panel">
+    <panel id="content" class="vp-panel"><canvas id="screen" sprite="${canvas_raw}"/></panel>
+    <panel id="info" class="vp-info-panel">
       <text id="status" class="vp-status" label="${status}"/>
-      <text id="hint" class="vp-hint" label="${hint}"/>
       <text id="log" class="vp-hint" label="${log}"/>
       <text id="ih" class="vp-hdr" label="file check"/>
       <repeat count="${n_info}" bind="i">
         <text id="i${i.#}" class="vp-info ${i.cls}" label="${i.text}"/>
       </repeat>
-      <text id="qh" class="vp-hdr" label="queue (press a row to play it)"/>
-      <scrolllist class="from-top">
-        <repeat count="${n_q}" bind="q">
-          <item id="q${q.#}" class="vp-q ${q.cls}" label="${q.text}" action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' ${q.act}"/>
-        </repeat>
-      </scrolllist>
+      <text id="hint" class="vp-hint" label="${hint}"/>
     </panel>
+    <footer id="transport" class="vp-footer">
+      <item id="b-play"   class="vp-btn" label="play"     action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' play"/>
+      <item id="b-pause"  class="vp-btn" label="pause"    action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' pause"/>
+      <item id="b-resume" class="vp-btn" label="resume"   action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' resume"/>
+      <item id="b-stop"   class="vp-btn" label="stop"     action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' stop"/>
+      <item id="b-back"   class="vp-btn" label="back 10s" action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' back"/>
+      <item id="b-fwd"    class="vp-btn" label="fwd 10s"  action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' fwd"/>
+      <item id="b-prev"   class="vp-btn" label="prev"     action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' prev"/>
+      <item id="b-next"   class="vp-btn" label="next"     action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' next"/>
+      <item id="b-clear"  class="vp-btn" label="clear"    action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' clear"/>
+    </footer>
   </page>
 </window>

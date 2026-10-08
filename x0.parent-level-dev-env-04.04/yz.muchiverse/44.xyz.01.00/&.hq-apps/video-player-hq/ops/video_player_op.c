@@ -1,5 +1,5 @@
 /* video_player_op.c - the window's tiny command line: appends one command row to <pkg>/video_player_action.txt.
- *   video_player_op <package_dir> <VERB> [arg]      VERB: drop add play pause resume stop next prev clear
+ *   video_player_op <package_dir> <VERB> [arg]      VERB: drop add play pause resume stop back fwd next prev clear
  * `drop` takes the path from $DROP_PATH (set by the renderer's XDND drop_action, first dropped path). Append only; the manager reads by cursor. */
 #include <stdio.h>
 #include <stdlib.h>
