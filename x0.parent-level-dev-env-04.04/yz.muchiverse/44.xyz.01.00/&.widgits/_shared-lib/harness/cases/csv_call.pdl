@@ -56,6 +56,31 @@ EXPECT_HAS | led.txt | \p0\p0\p1\p3\n | failed-request-still-counted-with-rc
 ENV | CSV_STUB_MODE | fail
 RUN | $T/cl.+x | call | groq | $T/p.txt | $T/r5.txt | --key-dir | $T/keys
 EXPECT_EXIT | 4 | provider-failure-exit-4
+# RETRY AFTER A PROVIDER 429 (--retry-429 N, opt-in): wait out the window, call again, up to N times; default 0 keeps the single-call behaviour above
+ENV | CSV_STUB_MODE | quota1
+ENV | CSV_STUB_COUNT | $T/count_r1.txt
+RUN | $T/cl.+x | call | groq | $T/p.txt | $T/rr1.txt | --key-dir | $T/keys | --ledger | $T/led_r1.txt | --retry-429 | 1
+EXPECT_EXIT | 0 | retry-after-429-succeeds-on-second-call
+EXPECT_FILE | count_r1.txt | xx | exactly-two-backend-calls-made
+EXPECT_FILE | rr1.txt | 1\t水\tshuǐ\n2\t火\thuǒ\n | retried-reply-saved
+EXPECT_HAS | led_r1.txt | \p0\p0\p1\p3\n | the-429-attempt-is-in-the-ledger
+ENV | CSV_STUB_MODE | quota
+ENV | CSV_STUB_COUNT | $T/count_r2.txt
+RUN | $T/cl.+x | call | groq | $T/p.txt | $T/rr2.txt | --key-dir | $T/keys | --ledger | $T/led_r2.txt | --retry-429 | 2
+EXPECT_EXIT | 3 | retries-exhausted-still-exit-3
+EXPECT_FILE | count_r2.txt | xxx | one-call-plus-two-retries
+ENV | CSV_STUB_MODE | quota1
+ENV | CSV_STUB_COUNT | $T/count_r3.txt
+RUN | $T/cl.+x | call | groq | $T/p.txt | $T/rr3.txt | --key-dir | $T/keys | --ledger | $T/led_r3.txt
+EXPECT_EXIT | 3 | no-retry-flag-means-no-retry
+EXPECT_FILE | count_r3.txt | x | single-call-by-default
+RUN | cp | $T/csv_lab.c | $T/m6.c
+RUN | sed | -i | s@attempt >= retries@1@ | $T/m6.c
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m6.+x | $T/m6.c
+ENV | CSV_STUB_MODE | quota1
+ENV | CSV_STUB_COUNT | $T/count_r4.txt
+RUN | $T/m6.+x | call | groq | $T/p.txt | $T/rr4.txt | --key-dir | $T/keys | --ledger | $T/led_r4.txt | --retry-429 | 1
+EXPECT_EXIT | 3 | mutant6-retry-loop-removed-is-detected
 ENV | CSV_STUB_MODE | sleep
 RUN | $T/cl.+x | call | groq | $T/p.txt | $T/r6.txt | --key-dir | $T/keys | --timeout | 1
 EXPECT_EXIT | 6 | hung-backend-killed-by-watchdog-exit-6

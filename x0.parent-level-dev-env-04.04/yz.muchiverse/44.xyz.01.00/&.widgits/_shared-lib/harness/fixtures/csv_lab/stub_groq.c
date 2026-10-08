@@ -2,11 +2,12 @@
  * Same contract as the real backend: argv[1] = prompt, reply written to $HORN_REPLY_FILE, usage numbers left in $PRISC_PROJECT_ROOT/pieces/horn/.req_raw.json.
  * Reads the rows after the line "INPUT" (N<TAB>English<TAB>context) and answers "N<TAB>Chinese<TAB>pinyin" from a tiny dictionary.
  * Special sources: "Tonefail" answers pinyin without tone marks unless the context holds FIX:, "Nevergood" is always wrong, "Missingrow" is never answered.
- * $CSV_STUB_MODE=quota exits 3 (rate limit), =fail exits 4, =sleep sleeps 30 s, =leak writes the key file text to stderr (to prove csv_lab never prints it).
+ * $CSV_STUB_MODE=quota exits 3 (rate limit), =quota1 exits 3 on the first call only, =fail exits 4, =sleep sleeps 30 s, =leak writes the key file text to stderr (to prove csv_lab never prints it).
  * $CSV_STUB_COUNT = file that gets one byte appended per call (call counter). Build: gcc -std=gnu11 -Wall -Wextra -Werror -O2 -o stub_groq stub_groq.c */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 static const char *D[][3] = {
     {"Water", "水", "shuǐ"}, {"Fire", "火", "huǒ"}, {"Acetic Acid", "乙酸", "yǐ suān"}, {"Ethanol", "乙醇", "yǐ chún"}, {"Hydrogen", "氢", "qīng"}, {"Salt", "盐", "yán"},
@@ -18,6 +19,7 @@ int main(int argc, char **argv) {
     if (argc < 2 || !rf) return 1;
     if (mode && !strcmp(mode, "leak") && ed) { char p[4096], k[256] = ""; snprintf(p, sizeof p, "%s/raw_groq.txt", ed); FILE *f = fopen(p, "r"); if (f) { if (!fgets(k, sizeof k, f)) k[0] = 0; fclose(f); } fprintf(stderr, "backend debug: key=%s\n", k); }
     if (mode && !strcmp(mode, "quota")) return 3;
+    if (mode && !strcmp(mode, "quota1") && cnt) { struct stat st; if (stat(cnt, &st) == 0 && st.st_size == 1) return 3; }   /* rate limit on the FIRST call only (the counter already holds this call's byte) */
     if (mode && !strcmp(mode, "fail")) return 4;
     if (mode && !strcmp(mode, "sleep")) sleep(30);
     FILE *o = fopen(rf, "w"); if (!o) return 1;

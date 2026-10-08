@@ -914,11 +914,18 @@ static int v_call(int argc, char **argv) {
         if (ledger) {   /* day limit and per-minute pacing are enforced HERE so no caller can forget them */
             long used, tm; long long old; quota_state(ledger, now_s(), &used, &tm, &old);
             if (used >= argnum(argc, argv, "--day-limit", 1000)) { fprintf(stderr, "csv_lab call: groq day limit reached (%ld requests today)\n", used); free(prompt); return 3; }
-            long need = est_tokens(prompt) + 2500; long tpm = argnum(argc, argv, "--tpm", 7000); if (need > tpm) need = tpm;
+            long need = est_tokens(prompt) + argnum(argc, argv, "--max-tokens", 4000); long tpm = argnum(argc, argv, "--tpm", 7000); if (need > tpm) need = tpm;
             for (int g = 0; g < 100; g++) { quota_state(ledger, now_s(), &used, &tm, &old); if (tm + need <= tpm || !old) break; if (getenv("CSV_LAB_NO_SLEEP")) break; sleep(2); }
         }
-        rc = call_groq(argc, argv, prompt, &reply, &tin, &tout, &est);
-        ledger_add(ledger, "groq", model ? model : "openai/gpt-oss-120b", tin, tout, est, rc);
+        long retries = argnum(argc, argv, "--retry-429", 0);   /* provider rate limit (HTTP 429, exit 3): wait out the minute window and try again, up to N times */
+        for (long attempt = 0; ; attempt++) {
+            free(reply); reply = NULL; tin = tout = 0; est = 0;
+            rc = call_groq(argc, argv, prompt, &reply, &tin, &tout, &est);
+            ledger_add(ledger, "groq", model ? model : "openai/gpt-oss-120b", tin, tout, est, rc);
+            if (rc != 3 || attempt >= retries) break;
+            fprintf(stderr, "csv_lab call: groq rate limited, waiting for the next minute window (retry %ld of %ld)\n", attempt + 1, retries);
+            if (!getenv("CSV_LAB_NO_SLEEP")) sleep(65);
+        }
     } else if (!strcmp(argv[0], "mac")) {
         rc = call_mac(argc, argv, prompt, &reply, &tin, &tout);
         ledger_add(ledger, "mac", model ? model : "qwen2.5-coder:7b", tin, tout, 0, rc);
@@ -1123,6 +1130,7 @@ static int run_model(int pargc, char **pargv, const char *prov, const char *mode
     if (keydir) { av[n++] = "--key-dir"; av[n++] = (char *)keydir; }
     const char *v; if (argval(pargc, pargv, "--root", &v)) { av[n++] = "--root"; av[n++] = (char *)v; }
     if (argval(pargc, pargv, "--timeout", &v)) { av[n++] = "--timeout"; av[n++] = (char *)v; }
+    if (!strcmp(prov, "groq")) { av[n++] = "--retry-429"; av[n++] = "2"; }
     FILE *cap = tmpfile(); char *bp;
     fflush(stdout); int so = dup(1); dup2(fileno(cap), 1);   /* capture the call verb's one-line report */
     long long t0 = mono_ms();
