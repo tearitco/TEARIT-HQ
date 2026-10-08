@@ -6,3 +6,6 @@ window { width: 900ui; height: 520ui; background-color: #14161c; font-family: De
 .ev-tiles  { color: #ffd54a; font-size: 13px; font-family: DejaVu Sans Mono; padding: 4px 10px; }
 .ev-person { color: #cfd3de; font-size: 12px; font-family: DejaVu Sans Mono; padding: 2px 10px; }
 .ev-log    { color: #8a93a8; font-size: 11px; font-family: DejaVu Sans Mono; padding: 0px 10px; }
+.ev-sidebar { background-color: #0d0f14; border: 1px solid #262a33; border-color: #262a33; width: 150ui; }
+.ev-who     { color: #7c8399; font-size: 10px; padding: 6px 8px 4px 8px; }
+.ev-note    { color: #5c6478; font-size: 10px; padding: 2px 8px; }

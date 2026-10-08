@@ -5,6 +5,12 @@
 <window label="${head}" class="ev-window database-window" vars="eden_viewer_ui.txt">
   <module src="&.hq-apps/eden-viewer-hq/ops/+x/eden_viewer_manager.+x"/>
   <page name="main">
+    <sidebar id="sidebar" class="ev-sidebar">
+      <text id="who" label="eden world" class="ev-who"/>
+      <text id="k1" label="read only" class="ev-note"/>
+      <text id="k2" label="first slice" class="ev-note"/>
+    </sidebar>
+
     <panel id="content" class="ev-panel">
       <text id="state" class="ev-state" label="${state}"/>
       <text id="th" class="ev-hdr" label="farm"/>

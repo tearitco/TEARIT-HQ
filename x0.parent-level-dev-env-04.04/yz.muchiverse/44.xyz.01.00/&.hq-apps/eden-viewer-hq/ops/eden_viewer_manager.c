@@ -75,14 +75,14 @@ static void build(void) {
         ln = strtok_r(NULL, "\n", &save); }
     for (int i = 0; i < nt; i++) { strncat(tiles, cells[i], sizeof tiles - strlen(tiles) - 2); strncat(tiles, " ", sizeof tiles - strlen(tiles) - 1); }
     put("tiles=%s\nn_tiles=%d\n", tiles, nt); put("n_people=%d\n", np);
-    for (int i = 0; i < np; i++) put("pp_%d_text=%s\n", i, people[i]);
+    for (int i = 0; i < np; i++) put("p_%d_text=%s\n", i, people[i]);
     /* ticker: last NL history rows (newest at the bottom), read from the file tail only - the file is large */
     snprintf(p, sizeof p, "%s/eden_history.txt", cond); FILE *f = fopen(p, "r"); int nlog = 0;
     if (f) { static char tail[8192]; fseek(f, 0, SEEK_END); long sz = ftell(f); long from = sz > (long)sizeof tail - 1 ? sz - ((long)sizeof tail - 1) : 0; fseek(f, from, SEEK_SET);
         size_t k = fread(tail, 1, sizeof tail - 1, f); tail[k] = 0; fclose(f);
         char *rows[256]; int nr = 0; char *s2 = NULL, *r = strtok_r(from ? strchr(tail, '\n') : tail, "\n", &s2);
         while (r && nr < 256) { rows[nr++] = r; r = strtok_r(NULL, "\n", &s2); }
-        int a = nr > NL ? nr - NL : 0; for (int i = a; i < nr; i++) put("lg_%d_text=%s\n", nlog++, rows[i]); }
+        int a = nr > NL ? nr - NL : 0; for (int i = a; i < nr; i++) { for (char *c = rows[i]; *c; c++) if (*c == '|') *c = ' '; put("g_%d_text=%s\n", nlog++, rows[i]); } }
     put("n_log=%d\n", nlog);
 }
 
