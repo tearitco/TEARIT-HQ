@@ -1,0 +1,4 @@
+# quartermaster.pal - LOCKED acceptance harness for quest q013. Read results/quartermaster.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/quartermaster.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/quartermaster.pdl
+halt

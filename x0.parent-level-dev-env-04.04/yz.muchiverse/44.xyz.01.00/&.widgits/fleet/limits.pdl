@@ -1,0 +1,9 @@
+# fleet limits (quartermaster). LIMIT | provider | unit | max | window_seconds [| allow_unmeasured=1]
+# max 0 = UNMEASURED = denied unless the row says allow_unmeasured=1. window 0 = no window (concurrent / lifetime).
+LIMIT | openrouter | requests | 50 | 86400
+LIMIT | groq | requests | 0 | 0
+LIMIT | cpu | slots | 2 | 0
+LIMIT | review | pending | 10 | 0
+LIMIT | spawn | depth | 3 | 0
+LIMIT | spawn | children | 5 | 0
+LIMIT | spawn | total | 20 | 0

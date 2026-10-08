@@ -1,0 +1,144 @@
+# quest q013 quartermaster: LOCKED cases. Binary under test: &.widgits/fleet/ops/+x/quartermaster.+x (built by fleet/ops/build_quartermaster.sh)
+RESULTS | ../results/quartermaster.txt
+CASE | q013-quartermaster
+SCRATCH |
+COPY | &.widgits/fleet/ops/+x/quartermaster.+x | qm.+x
+MKDIR | x
+WRITE | lim.pdl | LIMIT | openrouter | requests | 50 | 86400\nLIMIT | groq | requests | 0 | 0\nLIMIT | cpu | slots | 2 | 0\nLIMIT | review | pending | 10 | 0\nLIMIT | spawn | depth | 3 | 0\nLIMIT | spawn | children | 5 | 0\nLIMIT | spawn | total | 20 | 0\n
+WRITE | lim2.pdl | LIMIT | openrouter | requests | 50 | 86400\nLIMIT | groq | requests | 0 | 0 | allow_unmeasured=1\nLIMIT | cpu | slots | 2 | 0\nLIMIT | review | pending | 10 | 0\nLIMIT | spawn | depth | 3 | 0\nLIMIT | spawn | children | 5 | 0\nLIMIT | spawn | total | 20 | 0\n
+# ---- allow under quota
+WRITE | l.txt | USE | 1000 | openrouter | requests | 1 | g1 | q1\nUSE | 1100 | openrouter | requests | 2 | g1 | q1\n
+RUN | $T/qm.+x | check | openrouter | requests | 1 | --ledger | $T/l.txt | --limits | $T/lim.pdl | --now | 2000
+EXPECT_EXIT | 0 | under-quota-exit
+EXPECT_OUT | QM\pALLOW\popenrouter\pused=3\pmax=50 | under-quota
+# ---- boundary: 49 used, 50th allowed, 51st denied
+WRITE | l.txt | USE | 1000 | openrouter | requests | 49 | g1 | q1\n
+RUN | $T/qm.+x | check | openrouter | requests | 1 | --ledger | $T/l.txt | --limits | $T/lim.pdl | --now | 2000
+EXPECT_EXIT | 0 | 50th-allowed-exit
+EXPECT_OUT | QM\pALLOW\popenrouter\pused=49\pmax=50 | 50th-allowed
+RUN | $T/qm.+x | check | openrouter | requests | 2 | --ledger | $T/l.txt | --limits | $T/lim.pdl | --now | 2000
+EXPECT_EXIT | 3 | n2-over-exit
+EXPECT_OUT | QM\pDENY\popenrouter\pquota\pused=49\pmax=50 | n2-over
+RUN | $T/qm.+x | record | use | openrouter | requests | 1 | g1 | q1 | --ledger | $T/l.txt | --limits | $T/lim.pdl | --now | 1500
+EXPECT_EXIT | 0 | rec-50th-exit
+EXPECT_OUT | QM\pRECORDED | rec-50th
+RUN | $T/qm.+x | check | openrouter | requests | 1 | --ledger | $T/l.txt | --limits | $T/lim.pdl | --now | 2000
+EXPECT_EXIT | 3 | 51st-denied-retry-exit
+EXPECT_OUT | QM\pDENY\popenrouter\pquota\pused=50\pmax=50\pretry_after=85400 | 51st-denied-retry
+# ---- retry_after tracks the oldest counted USE (partial roll-off needs only enough freed)
+WRITE | l.txt | USE | 1000 | openrouter | requests | 30 | g | q\nUSE | 3000 | openrouter | requests | 20 | g | q\n
+RUN | $T/qm.+x | check | openrouter | requests | 1 | --ledger | $T/l.txt | --limits | $T/lim.pdl | --now | 4000
+EXPECT_EXIT | 3 | retry-oldest-exit
+EXPECT_OUT | QM\pDENY\popenrouter\pquota\pused=50\pmax=50\pretry_after=83400 | retry-oldest
+# ---- window roll-off
+WRITE | l.txt | USE | 1000 | openrouter | requests | 50 | g | q\n
+RUN | $T/qm.+x | check | openrouter | requests | 1 | --ledger | $T/l.txt | --limits | $T/lim.pdl | --now | 87399
+EXPECT_EXIT | 3 | not-yet-rolled-exit
+EXPECT_OUT | QM\pDENY\popenrouter\pquota\pused=50\pmax=50\pretry_after=1 | not-yet-rolled
+RUN | $T/qm.+x | check | openrouter | requests | 1 | --ledger | $T/l.txt | --limits | $T/lim.pdl | --now | 87400
+EXPECT_EXIT | 0 | rolled-off-exit
+EXPECT_OUT | QM\pALLOW\popenrouter\pused=0\pmax=50 | rolled-off
+# ---- unmeasured
+WRITE | l.txt | 
+RUN | $T/qm.+x | check | groq | requests | 1 | --ledger | $T/l.txt | --limits | $T/lim.pdl | --now | 2000
+EXPECT_EXIT | 3 | groq-unmeasured-exit
+EXPECT_OUT | QM\pDENY\pgroq\punmeasured\pused=0\pmax=0 | groq-unmeasured
+RUN | $T/qm.+x | check | groq | requests | 1 | --ledger | $T/l.txt | --limits | $T/lim2.pdl | --now | 2000
+EXPECT_EXIT | 0 | groq-allowed-flag-exit
+EXPECT_OUT | QM\pALLOW\pgroq\pused=0\pmax=0 | groq-allowed-flag
+# ---- exhausted blocks until its window ends
+WRITE | l.txt | EXHAUSTED | 5000 | openrouter | free-models-per-day\n
+RUN | $T/qm.+x | check | openrouter | requests | 1 | --ledger | $T/l.txt | --limits | $T/lim.pdl | --now | 6000
+EXPECT_EXIT | 3 | exhausted-blocks-exit
+EXPECT_OUT | QM\pDENY\popenrouter\pexhausted\pused=0\pmax=50\pretry_after=85400 | exhausted-blocks
+RUN | $T/qm.+x | check | openrouter | requests | 1 | --ledger | $T/l.txt | --limits | $T/lim.pdl | --now | 91399
+EXPECT_EXIT | 3 | exhausted-last-second-exit
+EXPECT_OUT | QM\pDENY\popenrouter\pexhausted\pused=0\pmax=50\pretry_after=1 | exhausted-last-second
+RUN | $T/qm.+x | check | openrouter | requests | 1 | --ledger | $T/l.txt | --limits | $T/lim.pdl | --now | 91400
+EXPECT_EXIT | 0 | exhausted-over-exit
+EXPECT_OUT | QM\pALLOW\popenrouter\pused=0\pmax=50 | exhausted-over
+# ---- cpu slots: stale pid does not count; two live sleeps fill the 2 slots; a release frees one
+SPAWN | p1 | /bin/sleep | 60
+SPAWN | p2 | /bin/sleep | 60
+WRITE | l.txt | SLOT | 1000 | acquire | g0 | q0 | 2000000000\n
+RUN | $T/qm.+x | check | cpu | slots | 1 | --ledger | $T/l.txt | --limits | $T/lim.pdl | --now | 2000
+EXPECT_EXIT | 0 | stale-not-counted-exit
+EXPECT_OUT | QM\pALLOW\pcpu\pused=0\pmax=2 | stale-not-counted
+WRITE | l.txt | SLOT | 1000 | acquire | g1 | q1 | $p1\nSLOT | 1001 | acquire | g0 | q0 | 2000000000\n
+RUN | $T/qm.+x | check | cpu | slots | 1 | --ledger | $T/l.txt | --limits | $T/lim.pdl | --now | 2000
+EXPECT_EXIT | 0 | one-live-exit
+EXPECT_OUT | QM\pALLOW\pcpu\pused=1\pmax=2 | one-live
+WRITE | l.txt | SLOT | 1000 | acquire | g1 | q1 | $p1\nSLOT | 1001 | acquire | g2 | q2 | $p2\nSLOT | 1002 | acquire | g0 | q0 | 2000000000\n
+RUN | $T/qm.+x | check | cpu | slots | 1 | --ledger | $T/l.txt | --limits | $T/lim.pdl | --now | 2000
+EXPECT_EXIT | 3 | two-live-denied-exit
+EXPECT_OUT | QM\pDENY\pcpu\pcpu-slots\pused=2\pmax=2 | two-live-denied
+WRITE | l.txt | SLOT | 1000 | acquire | g1 | q1 | $p1\nSLOT | 1001 | acquire | g2 | q2 | $p2\nSLOT | 1500 | release | g1 | q1 | $p1\n
+RUN | $T/qm.+x | check | cpu | slots | 1 | --ledger | $T/l.txt | --limits | $T/lim.pdl | --now | 2000
+EXPECT_EXIT | 0 | released-frees-exit
+EXPECT_OUT | QM\pALLOW\pcpu\pused=1\pmax=2 | released-frees
+EXPECT_ALIVE | $p1 | spawned-sleep-alive
+# ---- review backlog
+WRITE | l.txt | REVIEW | 100 | add | a0\nREVIEW | 100 | add | a1\nREVIEW | 100 | add | a2\nREVIEW | 100 | add | a3\nREVIEW | 100 | add | a4\nREVIEW | 100 | add | a5\nREVIEW | 100 | add | a6\nREVIEW | 100 | add | a7\nREVIEW | 100 | add | a8\nREVIEW | 100 | add | a9\n
+RUN | $T/qm.+x | check | review | pending | 1 | --ledger | $T/l.txt | --limits | $T/lim.pdl | --now | 2000
+EXPECT_EXIT | 3 | backlog-denied-exit
+EXPECT_OUT | QM\pDENY\preview\preview-backlog\pused=10\pmax=10 | backlog-denied
+APPEND | l.txt | REVIEW | 200 | done | a3\n
+RUN | $T/qm.+x | check | review | pending | 1 | --ledger | $T/l.txt | --limits | $T/lim.pdl | --now | 2000
+EXPECT_EXIT | 0 | done-frees-exit
+EXPECT_OUT | QM\pALLOW\preview\pused=9\pmax=10 | done-frees
+# ---- spawn-check boundaries
+RUN | $T/qm.+x | spawn-check | 3 | 5 | 20 | --limits | $T/lim.pdl | --now | 2000
+EXPECT_EXIT | 0 | spawn-at-max-exit
+EXPECT_OUT | QM\pALLOW\pspawn\pdepth=3\pchildren=5\ptotal=20 | spawn-at-max
+RUN | $T/qm.+x | spawn-check | 4 | 1 | 1 | --limits | $T/lim.pdl | --now | 2000
+EXPECT_EXIT | 3 | spawn-depth-exit
+EXPECT_OUT | QM\pDENY\pspawn\pdepth\pdepth=4\pmax=3 | spawn-depth
+RUN | $T/qm.+x | spawn-check | 1 | 6 | 1 | --limits | $T/lim.pdl | --now | 2000
+EXPECT_EXIT | 3 | spawn-children-exit
+EXPECT_OUT | QM\pDENY\pspawn\pchildren\pchildren=6\pmax=5 | spawn-children
+RUN | $T/qm.+x | spawn-check | 1 | 1 | 21 | --limits | $T/lim.pdl | --now | 2000
+EXPECT_EXIT | 3 | spawn-total-exit
+EXPECT_OUT | QM\pDENY\pspawn\ptotal\ptotal=21\pmax=20 | spawn-total
+# ---- record appends exactly one line each, earlier bytes untouched (exact whole-file compare)
+WRITE | l.txt | USE | 900 | groq | requests | 1 | g | q\n
+RUN | $T/qm.+x | record | use | openrouter | requests | 1 | g1 | q13 | --ledger | $T/l.txt | --limits | $T/lim.pdl | --now | 3000
+EXPECT_FILE | l.txt | USE \p 900 \p groq \p requests \p 1 \p g \p q\nUSE \p 3000 \p openrouter \p requests \p 1 \p g1 \p q13\n | record-use-one-line
+RUN | $T/qm.+x | record | slot | acquire | g1 | q13 | 4242 | --ledger | $T/l.txt | --limits | $T/lim.pdl | --now | 3001
+RUN | $T/qm.+x | record | review | add | att-1 | --ledger | $T/l.txt | --limits | $T/lim.pdl | --now | 3002
+RUN | $T/qm.+x | record | exhausted | groq | 429 limit | --ledger | $T/l.txt | --limits | $T/lim.pdl | --now | 3003
+EXPECT_FILE | l.txt | USE \p 900 \p groq \p requests \p 1 \p g \p q\nUSE \p 3000 \p openrouter \p requests \p 1 \p g1 \p q13\nSLOT \p 3001 \p acquire \p g1 \p q13 \p 4242\nREVIEW \p 3002 \p add \p att-1\nEXHAUSTED \p 3003 \p groq \p 429 limit\n | record-all-append-only
+# a record with a bar in a field is rejected (exit 2) and the ledger is untouched
+RUN | $T/qm.+x | status | --ledger | $T/l.txt | --limits | $T/lim.pdl | --now | 3100
+EXPECT_EXIT | 0 | status-exit
+RUN | $T/qm.+x | record | use | openrouter | requests | bad\px | g | q | --ledger | $T/l.txt | --now | 3100
+EXPECT_EXIT | 2 | record-bar-rejected
+EXPECT_HAS | l.txt | EXHAUSTED \p 3003 | ledger-untouched-by-bad-record
+# ---- torn last row (no trailing newline) is not glued to the new row
+WRITE | l.txt | USE | 900 | groq | requests | 1 | g | q
+RUN | $T/qm.+x | record | review | add | t1 | --ledger | $T/l.txt | --limits | $T/lim.pdl | --now | 3200
+EXPECT_FILE | l.txt | USE \p 900 \p groq \p requests \p 1 \p g \p q\nREVIEW \p 3200 \p add \p t1\n | torn-row-fresh-line
+# ---- malformed ledger lines skipped and counted
+WRITE | l.txt | garbage\nUSE | notanumber | openrouter | requests | 1 | g | q\nUSE | 1000 | openrouter | requests | 4 | g | q\nSLOT | 1 | sideways | g | q | 1\n\n# comment\n
+RUN | $T/qm.+x | status | --ledger | $T/l.txt | --limits | $T/lim.pdl | --now | 2000
+EXPECT_EXIT | 0 | bad-status-exit
+EXPECT_OUT | QM\pSTATUS\pok\pwarnings=0\pbad_lines=3 | bad_lines-counted
+EXPECT_OUT | QM\pLIMIT\popenrouter\prequests\pused=4\pmax=50 | good-row-still-counted
+# ---- status warns at >= 80 percent
+WRITE | l.txt | USE | 1000 | openrouter | requests | 40 | g | q\n
+RUN | $T/qm.+x | status | --ledger | $T/l.txt | --limits | $T/lim.pdl | --now | 2000
+EXPECT_OUT | QM\pSTATUS\pok\pwarnings=1\pbad_lines=0 | warn-at-80
+WRITE | l.txt | USE | 1000 | openrouter | requests | 39 | g | q\n
+RUN | $T/qm.+x | status | --ledger | $T/l.txt | --limits | $T/lim.pdl | --now | 2000
+EXPECT_OUT | QM\pSTATUS\pok\pwarnings=0\pbad_lines=0 | no-warn-at-78
+# ---- unknown provider, usage errors
+WRITE | l.txt | 
+RUN | $T/qm.+x | check | nosuch | requests | 1 | --ledger | $T/l.txt | --limits | $T/lim.pdl | --now | 2000
+EXPECT_EXIT | 3 | unknown-provider-exit
+EXPECT_OUT | QM\pDENY\pnosuch\pno-limit-row | unknown-provider
+RUN | $T/qm.+x | check | openrouter | requests | 1 | --ledger | $T/l.txt | --limits | $T/lim.pdl
+EXPECT_EXIT | 2 | missing-now-exit2
+RUN | $T/qm.+x | check | openrouter | requests | 0 | --ledger | $T/l.txt | --limits | $T/lim.pdl | --now | 5
+EXPECT_EXIT | 2 | n-zero-exit2
+RUN | $T/qm.+x | frobnicate | --now | 5
+EXPECT_EXIT | 2 | unknown-cmd-exit2
+CLEAN |
