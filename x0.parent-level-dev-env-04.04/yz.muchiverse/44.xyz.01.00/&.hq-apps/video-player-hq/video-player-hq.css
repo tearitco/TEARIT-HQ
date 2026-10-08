@@ -18,18 +18,25 @@ window { width: 1150ui; height: 620ui; background-color: #14161c; font-family: D
 }
 .vp-footer {
     background-color: #0d0f14;
-    height: 58px;
+    height: 36px;
 }
 
-.vp-th {
-    width: 104px;
+.vp-sc {
+    height: 64px;
     color: #ffd54a;
-    font-size: 10px;
-    padding: 1px 2px;
+    font-size: 11px;
+    padding: 4px;
 }
 
-.vp-th.th-cur {
+.vp-sc.sc-cur {
     background-color: #2d4059;
+    color: #ffffff;
+}
+
+.vp-tab {
+    color: #cfd3de;
+    font-size: 11px;
+    padding: 4px 8px;
 }
 .vp-btn {
     color: #cfd3de;

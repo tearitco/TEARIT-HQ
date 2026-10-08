@@ -21,7 +21,9 @@
 #define MAXQ 64
 static char pkg[1024], queue[MAXQ][1024]; static int nq, cur = -1;
 static int status;                       /* 0 stopped, 1 playing, 2 paused */
-#define NTH 12                       /* scene thumbnails along the timeline */
+#define SCENE_S 10                    /* one scene (thumbnail + time row) every 10 seconds */
+#define MAXSC 120                     /* capped: 120 scenes = the first 20 minutes at this step */
+static int follow;                    /* 1: the scene list starts at the current scene, so it follows playback */
 static double dur; static pid_t tchild; static char thumbs_for[1024];
 static int side_on = 1;                  /* left panel shown; the footer button folds it away so the picture can use the width */
 #define BOXW 1100          /* the centre panel's pixel box: the picture is fitted into it, aspect kept, so it fills the screen area */
@@ -75,10 +77,10 @@ static void gen_thumbs(const char *file) {       /* NTH evenly spaced scene thum
     if (!strcmp(thumbs_for, file) || dur <= 0) return; snprintf(thumbs_for, sizeof thumbs_for, "%s", file);
     if (tchild > 0) { kill(tchild, SIGKILL); int st; waitpid(tchild, &st, 0); tchild = 0; }
     char dir[1536], pat[1600], vf[96]; snprintf(dir, sizeof dir, "%s/thumbs", pkg); mkdir(dir, 0755);
-    for (int i = 1; i <= NTH + 2; i++) { snprintf(pat, sizeof pat, "%s/t_%02d.png", dir, i); unlink(pat); }
-    snprintf(pat, sizeof pat, "%s/t_%%02d.png", dir); snprintf(vf, sizeof vf, "fps=%.6f,scale=100:56", NTH / dur);
+    for (int i = 1; i <= MAXSC + 2; i++) { snprintf(pat, sizeof pat, "%s/t_%03d.png", dir, i); unlink(pat); }
+    snprintf(pat, sizeof pat, "%s/t_%%03d.png", dir); snprintf(vf, sizeof vf, "fps=1/%d,scale=100:56", SCENE_S);
     tchild = fork(); if (tchild == 0) { setpgid(0, 0); int nul = open("/dev/null", O_RDWR); dup2(nul, 0); dup2(nul, 1); dup2(nul, 2); nice(15);
-        execlp("ffmpeg", "ffmpeg", "-v", "error", "-y", "-i", file, "-an", "-vf", vf, "-frames:v", "12", pat, (char *)NULL); _exit(127); }
+        execlp("ffmpeg", "ffmpeg", "-v", "error", "-y", "-i", file, "-an", "-vf", vf, "-frames:v", "120", pat, (char *)NULL); _exit(127); }
 }
 static void write_receipt(void) { char p[1536]; snprintf(p, sizeof p, "%s/frame.receipt.txt", pkg); FILE *f = fopen(p, "w"); if (f) { fprintf(f, "frame_w=%d\nframe_h=%d\n", fw, fh); fclose(f); } }
 static void play_at(int i, double off) {
@@ -119,7 +121,8 @@ static void do_cmd(char *line) {
     else if (!strcmp(line, "next")) { if (cur + 1 < nq) play(cur + 1); }
     else if (!strcmp(line, "prev")) { if (cur > 0) play(cur - 1); }
     else if (!strcmp(line, "seek") && cur >= 0) { double e = atof(arg); if (e < 0) e = 0; if (dur > 0 && e > dur - 1) e = dur - 1; play_at(cur, e); }
-    else if ((!strcmp(line, "scene+") || !strcmp(line, "scene-")) && cur >= 0 && dur > 0) { double sl = dur / NTH; int k = (int)(elapsed() / sl) + (line[5] == '+' ? 1 : -1); if (k < 0) k = 0; if (k >= NTH) k = NTH - 1; play_at(cur, k * sl); }
+    else if ((!strcmp(line, "scene+") || !strcmp(line, "scene-")) && cur >= 0 && dur > 0) { int ns = (int)(dur / SCENE_S) + 1; if (ns > MAXSC) ns = MAXSC; int k = (int)(elapsed() / SCENE_S) + (line[5] == '+' ? 1 : -1); if (k < 0) k = 0; if (k >= ns) k = ns - 1; play_at(cur, (double)k * SCENE_S); }
+    else if (!strcmp(line, "follow")) { follow = !follow; }
     else if (!strcmp(line, "side")) { side_on = !side_on; if (status == 1 && cur >= 0) play_at(cur, elapsed()); }
     else if (!strcmp(line, "clear")) { stop_child(); nq = 0; cur = -1; ninfo = 0; snprintf(logline, sizeof logline, "queue cleared"); }
 }
@@ -131,8 +134,10 @@ static void publish(void) {
     fprintf(f, "canvas_raw=%s/frame.raw\nside_on=%s\nside_cls=%s\nside_label=%s\n", pkg, side_on ? "1" : "", side_on ? "vp-sidebar" : "vp-sidebar-min", side_on ? "hide panel" : "show panel"); fprintf(f, "hint=Drop a video file onto this window to add and play it. Numbers are the row numbers to press.\nlog=%s\n", logline);
     { char bar[48]; int fill = dur > 0 ? (int)(el / dur * 30) : 0; if (fill > 30) fill = 30; for (int k = 0; k < 30; k++) bar[k] = k < fill ? '#' : '-'; bar[30] = 0;
       fprintf(f, "prog=[%s] %d:%02d / %d:%02d\n", bar, (int)el / 60, (int)el % 60, (int)dur / 60, (int)dur % 60); }
-    { int nth = dur > 0 && cur >= 0 ? NTH : 0; double sl = dur > 0 ? dur / NTH : 1; int now = (int)(el / sl); fprintf(f, "n_th=%d\n", nth);
-      for (int k = 0; k < nth; k++) { int s = (int)(k * sl); fprintf(f, "th_%d_sprite=%s/thumbs/t_%02d.png\nth_%d_text=%d:%02d\nth_%d_cls=%s\nth_%d_act=seek %d\n", k, pkg, k + 1, k, s / 60, s % 60, k, k == now ? "th-cur" : "th", k, s); } }
+    { int ns = dur > 0 && cur >= 0 ? (int)(dur / SCENE_S) + 1 : 0; if (ns > MAXSC) ns = MAXSC; int now = (int)(el / SCENE_S); int first = follow && now > 0 ? now - 1 : 0; if (first > ns) first = ns;
+      fprintf(f, "n_sc=%d\nfollow_label=%s\n", ns - first, follow ? "follow: on" : "follow: off");
+      for (int k = first; k < ns; k++) { int s = k * SCENE_S, r = k - first; char tp[1600]; snprintf(tp, sizeof tp, "%s/thumbs/t_%03d.png", pkg, k + 1);
+        fprintf(f, "c_%d_sprite=%s\nc_%d_text=%d:%02d\nc_%d_cls=%s\nc_%d_act=seek %d\n", r, access(tp, R_OK) ? "" : tp, r, s / 60, s % 60, r, k == now ? "sc-cur" : "sc", r, s); } }
     fprintf(f, "n_info=%d\n", ninfo); for (int i = 0; i < ninfo; i++) { fprintf(f, "i_%d_text=%s\n", i, info[i]); fprintf(f, "i_%d_cls=%s\n", i, !strncmp(info[i], "WARNING", 7) || !strncmp(info[i], "cannot", 6) ? "info-warn" : "info-ok"); }
     fprintf(f, "n_q=%d\n", nq); for (int i = 0; i < nq; i++) { const char *b = strrchr(queue[i], '/') ? strrchr(queue[i], '/') + 1 : queue[i]; fprintf(f, "q_%d_text=%s%d  %s\n", i, i == cur ? "> " : "  ", i, b); fprintf(f, "q_%d_cls=%s\n", i, i == cur ? "q-cur" : "q-row"); fprintf(f, "q_%d_act=play %d\n", i, i); }
     fclose(f); rename(tmp, dst);

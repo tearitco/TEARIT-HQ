@@ -21,6 +21,12 @@
       <text id="i${i.#}" class="vp-info ${i.cls}" label="${i.text}" show="${side_on}"/>
       </repeat>
       <text id="hint" class="vp-hint" label="${hint}" show="${side_on}"/>
+      <item id="b-follow" class="vp-tab" label="${follow_label}" action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' follow" show="${side_on}"/>
+      <scrolllist class="from-top">
+        <repeat count="${n_sc}" bind="c">
+          <item id="sc${c.#}" class="vp-sc sprite-inline sprite-big ${c.cls}" label="${c.text}" sprite="${c.sprite}" action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' ${c.act}" show="${side_on}"/>
+        </repeat>
+      </scrolllist>
     </sidebar>
     <panel id="content" class="vp-panel"><canvas id="screen" sprite="${canvas_raw}"/></panel>
     <footer id="transport" class="vp-footer">
@@ -36,9 +42,6 @@
       <item id="b-next"   class="vp-btn" label="next"     action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' next"/>
       <item id="b-side"   class="vp-btn" label="${side_label}" action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' side"/>
       <item id="b-clear"  class="vp-btn" label="clear"    action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' clear"/>
-      <repeat count="${n_th}" bind="h">
-        <item id="th${h.#}" class="vp-th sprite-inline sprite-big ${h.cls}" label="${h.text}" sprite="${h.sprite}" action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' ${h.act}"/>
-      </repeat>
     </footer>
   </page>
 </window>

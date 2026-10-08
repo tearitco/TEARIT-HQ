@@ -1,5 +1,7 @@
 # Entity-driven gameplay: play through entities, their context menus and the taskbar relay (plan, 2026-10-08)
 
+> **PROVISIONAL, partly wrong (owner correction, 2026-10-08, later the same day): "you are misunderstanding what I mean by entities and movement; look at the move placer work, events etc.; Grok is better at RPG Maker, we just have to get everything set up and documented better."** Sections 2 and 3 were written from the pc-hq hero and chicken code and from `meta.pdl` menus, and they did NOT start from the *move placer* (the placer/xelector that picks a cell and moves an entity, `tp_arm_placer_rmmv`, `move_entity_on_desk.sh`, `MOVE-RANGE-SURVEY.md`), from the *events* system (RPG Maker style event pages, move routes, common events) or from the way entities are already moved on the desk. Do not build from section 3 until it is redone from those. What stays true: the facts in section 2 about what was read and observed live.
+
 Status: **PLAN, nothing of this design is built.** Owner (2026-10-08): "drive all gameplay thru entities and tb relay nav; use the entities' context menus to drive their NPC/AI-like behavior; scores, FSM etc.; use entities on the desk or synced pc-hq"; "we want farming animations, visual chat bubbles". This is the main push for Grok. The owner's words are marked; the rest is my reading, to be confirmed.
 
 ## 1. The vision, as I read it
