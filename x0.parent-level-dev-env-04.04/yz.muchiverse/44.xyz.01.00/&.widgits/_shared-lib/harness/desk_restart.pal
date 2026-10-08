@@ -1,0 +1,5 @@
+# desk_restart.pal - LOCKED acceptance harness for desk_restart (restart a house desktop without ever leaving it silently down). Read results/desk_restart.txt.verdict.txt.
+# Delete results/desk_restart.txt and .txt.verdict.txt before every re-run (results accumulate). Set OPSRC-style testing by editing a temp copy of cases/desk_restart.pdl.
+exec ./ops/+x/harness_case_op.+x cases/desk_restart.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/desk_restart.pdl
+halt
