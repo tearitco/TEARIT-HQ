@@ -145,41 +145,40 @@ static int action_to_row(const char *action, const char *layout) {
     return 0;
 }
 
-/* Emit key codes for a row number into the keyboard history. */
+/* Emit the resolved item number as a single keycode into the keyboard
+ * history. wsr_menu_input.+x accepts BOTH ASCII digits (48-57 → items
+ * 1-9 via subtraction) AND raw numbers >9 (→ items 10+ directly). So:
+ *   row 8  → emit 56  (ASCII '8' → resolved_item 8)
+ *   row 17 → emit 17  (raw → resolved_item 17)
+ *   row 30 → emit 30  (raw → resolved_item 30)
+ * This avoids the digit-accumulation bug where row 17 split into '1','7'
+ * selected items 1 and 7 separately. No Enter key is emitted — wsr_menu_input
+ * processes each key as a fully-resolved selection. */
 static void emit_row(int row, const char *action) {
     char kpath[PATH_BUF], hpath[PATH_BUF], epath[PATH_BUF];
     snprintf(kpath, sizeof(kpath), "%s/pieces/keyboard/history.txt", project_root);
     snprintf(hpath, sizeof(hpath), "%s/pieces/apps/player_app/history.txt", project_root);
     snprintf(epath, sizeof(epath), "%s/pieces/apps/player_app/interact_relay.txt", project_root);
 
-    char seq[32];
-    if (row >= 1 && row <= 9)
-        snprintf(seq, sizeof(seq), "%c\n%d", '0' + row, 13);
-    else if (row >= 10 && row <= 99)
-        snprintf(seq, sizeof(seq), "%d\n%d", row, 13);
-    else
+    FILE *kf = fopen(kpath, "a");
+    FILE *hf = fopen(hpath, "a");
+    if (!kf || !hf) {
+        if (kf) fclose(kf);
+        if (hf) fclose(hf);
         return;
+    }
 
-    {
-        FILE *f = fopen(kpath, "a");
-        if (f) {
-            for (int i = 0; seq[i]; i++) {
-                if (seq[i] == '\n') continue;
-                fprintf(f, "KEY_PRESSED: %d\n", (unsigned char)seq[i]);
-            }
-            fclose(f);
-        }
+    if (row >= 1 && row <= 9) {
+        int ascii_key = '0' + row;
+        fprintf(hf, "%d\n", ascii_key);
+        fprintf(kf, "KEY_PRESSED: %d\n", ascii_key);
+    } else if (row >= 10 && row <= 9999) {
+        fprintf(hf, "%d\n", row);
+        fprintf(kf, "KEY_PRESSED: %d\n", row);
     }
-    {
-        FILE *f = fopen(hpath, "a");
-        if (f) {
-            for (int i = 0; seq[i]; i++) {
-                if (seq[i] == '\n') continue;
-                fprintf(f, "%d\n", (unsigned char)seq[i]);
-            }
-            fclose(f);
-        }
-    }
+
+    fclose(kf);
+    fclose(hf);
 
     char evt[MAX_LINE];
     snprintf(evt, sizeof(evt), "KEY_INJECTED|%d|%s", row, action);
@@ -215,88 +214,52 @@ int main(int argc, char **argv) {
     snprintf(layout_path, sizeof(layout_path), "%s/pieces/display/current_layout.txt", project_root);
     snprintf(frame_path, sizeof(frame_path), "%s/pieces/display/current_frame.txt", project_root);
 
+    /* Main control loop — called repeatedly by run_xod_agent.sh.
+     * Single-shot: each invocation reads the latest LLM decision from
+     * the event bus, maps it to a row, and emits the key codes. */
     fsm_state_t state = FSM_IDLE;
     char current_action[64] = "";
     double last_confidence = 0.0;
     char last_reason[256] = "";
 
-    /* Main control loop — called repeatedly by an external driver. */
-    /* key=0 means "tick, don't dispatch a real key" (same convention as wsr_menu_input.c). */
-    int key = 0;
-
-    switch (state) {
-        case FSM_IDLE:
-            /* Check for a fresh LLM decision on the event bus. */
-            {
-                char action[64] = "", reason[256] = "";
-                double conf = 0.0;
-                if (read_latest_decision(relay_path, action, sizeof(action),
-                                         reason, sizeof(reason), &conf)) {
-                    snprintf(current_action, sizeof(current_action), "%s", action);
-                    last_confidence = conf;
-                    snprintf(last_reason, sizeof(last_reason), "%s", reason);
-                    state = FSM_EXECUTING;
-                } else {
-                    state = FSM_AWAITING_LLM;
-                }
-            }
-            break;
-
-        case FSM_AWAITING_LLM:
-            /* No LLM decision yet — just tick and emit state. */
-            {
-                char evt[MAX_LINE];
-                snprintf(evt, sizeof(evt), "FSM_STATE|%s|awaiting_llm|confidence=%.2f",
-                         fsm_state_name(state), last_confidence);
-                append_line(relay_path, evt);
-            }
-            break;
-
-        case FSM_EXECUTING:
-            /* We have an LLM decision. Map it to a row and emit keys. */
-            {
-                char layout[MAX_LINE] = "";
-                read_first_line(layout_path, layout, sizeof(layout));
-                int row = action_to_row(current_action, layout);
-                if (row > 0) {
-                    emit_row(row, current_action);
-                    state = FSM_WAITING_RESULT;
-                } else {
-                    /* Action not valid in this layout — error state. */
-                    state = FSM_ERROR;
-                }
-            }
-            break;
-
-        case FSM_WAITING_RESULT:
-            /* Wait for the frame to change (frame_changed.txt marker). */
-            {
-                char evt[MAX_LINE];
-                snprintf(evt, sizeof(evt), "FSM_STATE|%s|action=%s|confidence=%.2f|reason=%s",
-                         fsm_state_name(state), current_action, last_confidence, last_reason);
-                append_line(relay_path, evt);
-                state = FSM_IDLE;
-            }
-            break;
-
-        case FSM_ERROR:
-            {
-                char evt[MAX_LINE];
-                snprintf(evt, sizeof(evt), "FSM_STATE|error|action=%s|invalid_for_layout",
-                         current_action);
-                append_line(relay_path, evt);
-                state = FSM_IDLE;
-            }
-            break;
+    /* Read the latest decision from the event bus */
+    char action[64] = "", reason[256] = "";
+    double conf = 0.0;
+    if (read_latest_decision(relay_path, action, sizeof(action),
+                             reason, sizeof(reason), &conf)) {
+        snprintf(current_action, sizeof(current_action), "%s", action);
+        last_confidence = conf;
+        snprintf(last_reason, sizeof(last_reason), "%s", reason);
+        state = FSM_EXECUTING;
+    } else {
+        state = FSM_AWAITING_LLM;
     }
 
-    /* Always emit the current FSM state for TOM/dashboard consumers. */
-    if (key == 0) {
+    /* Execute: map action to row in current layout, emit key codes */
+    if (state == FSM_EXECUTING) {
+        char layout[MAX_LINE] = "";
+        read_first_line(layout_path, layout, sizeof(layout));
+        int row = action_to_row(current_action, layout);
+        if (row > 0) {
+            emit_row(row, current_action);
+        }
+    }
+
+    /* Emit FSM state for TOM/dashboard consumers */
+    {
+        char layout_for_log[MAX_LINE] = "";
+        read_first_line(layout_path, layout_for_log, sizeof(layout_for_log));
         char evt[MAX_LINE];
-        snprintf(evt, sizeof(evt), "FSM_STATE|%s|action=%s|confidence=%.2f",
-                 fsm_state_name(state),
-                 current_action[0] ? current_action : "none",
-                 last_confidence);
+        if (state == FSM_EXECUTING && current_action[0]) {
+            int row = action_to_row(current_action, layout_for_log);
+            snprintf(evt, sizeof(evt), "FSM_STATE|%s|action=%s|row=%d|confidence=%.2f|reason=%s",
+                     fsm_state_name(state), current_action, row, last_confidence, last_reason);
+        } else {
+            snprintf(evt, sizeof(evt), "FSM_STATE|%s|action=%s|confidence=%.2f",
+                     fsm_state_name(state),
+                     current_action[0] ? current_action : "none",
+                     last_confidence);
+        }
         append_line(relay_path, evt);
     }
 
