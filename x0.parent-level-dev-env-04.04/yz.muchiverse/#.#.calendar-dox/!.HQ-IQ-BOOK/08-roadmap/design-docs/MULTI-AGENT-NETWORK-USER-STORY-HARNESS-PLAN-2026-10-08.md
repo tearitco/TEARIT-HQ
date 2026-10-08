@@ -117,3 +117,33 @@ Network menu rows 1 and 2 are **IRC Chat** and **Forum** (`livedesk:open-network
 | F. Install from the payload on a clean machine as the opening scene | "from install" | after A and the relative-path fixes; +3 to 5 days |
 | G. Signing and real value | "secure the user story" | owner decision on scheme first; not estimable yet |
 These assume steady work, no new surprises on the older houses, and that the open questions in section 8 and 10 are answered. The video milestone (C) is the first thing worth showing outside; B is the first thing worth showing the owner.
+
+
+## 14. A Friends pane in the IRC window: users, friends, addresses, profiles (OWNER request, 2026-10-08)
+
+**OWNER:** the chat should have a list of users and friends, with their IPs, profiles and so on; "or is that for forum?"; there should be ways to hook up with friends; a new pane, on the right.
+
+**What exists today (checked in the files, not run):**
+- **IRC window (`irc-chat-hq`) has no member or friends list.** Its template has a left sidebar (rooms, a "join/new #" field) and a main panel (status line, messages, a "you" user field, the composer). The only user concept is the current user name.
+- **The forum has the social half:** per-user `users/<name>/following.txt` (the "follow" screen), a global feed from the users you follow, and DM rows (`DM|from|to|time|text`). So follows and DMs are forum features; an IRC friends pane can reuse the same files rather than invent new ones.
+- **Entities have phones** (`zz.phone`, `^.hai-phone`): a phone number per entity, a contact model for agents.
+- **Addresses:** the peer now writes `known_peers.txt` (`host|port|node_id|kind|last_seen`), which is exactly the "IPs and ports of people I have met". It does not yet record a human name or profile.
+- **Not present anywhere:** a profile record (display name, status line, avatar glyph, notes) and a place to keep "friends" distinct from "peers I happened to meet".
+
+**PROPOSAL: a right pane (third column) in `irc-chat-hq` with three tabs: Online, Friends, Me.**
+- **Online** = who is on the network now: every node in `known_peers.txt` whose heartbeat or connection is live, with the user names seen in the room's recent messages. Columns: name, address (`host:port`), kind, last seen, a dot for connected.
+- **Friends** = people you chose to keep: `friends.pdl` in the *user's* data (never in git, per the install doc):
+  `FRIEND | name | node_id | host | port | note | added`. Rows are appended; removing writes an `UNFRIEND` row. A friend stays listed offline, with last-seen, and their address is remembered so reconnecting is automatic (the peer already redials remembered addresses).
+- **Me** = your own profile, shown to peers: `profile.pdl` (`NAME`, `STATUS`, `GLYPH`, `ABOUT`, optionally a public key later). It is sent to a peer in a `PROFILE|...` line right after HELLO and cached by the receiver as `profiles/<node_id>.pdl`, so a profile you see is the last one that peer sent, not something you typed about them.
+- **Actions (each a cli_io or button row, reachable by nav number so a relay can drive it):** *Add friend* (from an Online row), *Remove*, *DM* (opens the DM thread; reuses the forum's DM rows), *Follow* (writes the forum's `following.txt` line), *Copy address*, *Connect by address* (a field that takes `host:port` and adds it to `known_peers.txt`; this is "hooking up with a friend").
+- **Presence wording:** "online" means connected or seen within the stale window (the peer's `STALE_SEC`, 15 s); never claim more.
+- **Privacy rules:** a profile is whatever the user put in `profile.pdl`, nothing is read from the rest of their desk; wallets, histories and keys are never part of a profile; friends and cached profiles live in user data.
+- **Safe default for the demo:** with no profile, send only the node's name and kind.
+
+**Layout and renderer note:** this should be a template change only (`irc-chat-hq.xhtpm` gains a `<panel>` on the right and `vars=` rows from `irc_chat_ui.txt`), plus manager output. Do not add a `layout_*` branch to the shared renderer; if the three-column width needs a window default, set it in the app's config. **Unverified:** whether the sidebar/panel path handles a third column without a CSS change; try it on the swatch/scroll paths first.
+
+**Where friends meet the other plans:** headstone comments (quest takers appear as Online rows), visits (a guest is a friend with a grant), auctions and trades (pick a friend as counterparty), and the Friends tab is the natural place to show a peer's cones address once chain wallets are linked to profiles.
+
+**Harness cases (write first, scratch houses):** a peer meeting writes `known_peers.txt`; `PROFILE` after HELLO is cached and a second `PROFILE` replaces it; add/remove friend appends rows and the list shows them offline; connect-by-address with a bad value is refused; a profile never contains a path or a key. Mutant: let the receiver trust a peer-supplied `node_id` field that does not match the connection, and the case for spoofing must fail.
+
+**Build order:** (1) manager reads `known_peers.txt` and publishes Online rows; (2) the right pane in the template, read-only; (3) friends add/remove; (4) profile send/receive; (5) DM and follow links. Steps 1 and 2 give a visible pane in the first demo.
