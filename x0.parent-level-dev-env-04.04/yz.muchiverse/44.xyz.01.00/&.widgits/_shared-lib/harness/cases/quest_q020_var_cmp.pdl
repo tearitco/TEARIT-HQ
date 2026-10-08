@@ -1,0 +1,275 @@
+# quest q020 var_cmp: LOCKED cases (the worker may not edit this file). Source under test: &.widgits/quest-pilot/q020-var-cmp/worker/var_cmp.c
+RESULTS | ../results/quest_q020_var_cmp.txt
+CASE | quest-q020-var-cmp
+SCRATCH |
+COPY | &.widgits/quest-pilot/q020-var-cmp/worker/var_cmp.c | var_cmp.c
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/var_cmp.+x | $T/var_cmp.c
+EXPECT_EXIT | 0 | compiles-clean-Wall-Wextra-Werror
+MKDIR | s
+WRITE | s/variables.txt | 
+RUN | $T/var_cmp.+x | $T/s | 5 | == | 5 | r
+EXPECT_EXIT | 0 | rc-eq-5-5
+EXPECT_OUT_IS | 1 | out-eq-5-5
+EXPECT_FILE | s/variables.txt | r=1\n | file-eq-5-5
+WRITE | s/variables.txt | 
+RUN | $T/var_cmp.+x | $T/s | 5 | == | 6 | r
+EXPECT_EXIT | 0 | rc-eq-5-6
+EXPECT_OUT_IS | 0 | out-eq-5-6
+EXPECT_FILE | s/variables.txt | r=0\n | file-eq-5-6
+WRITE | s/variables.txt | 
+RUN | $T/var_cmp.+x | $T/s | 5 | eq | 5 | r
+EXPECT_EXIT | 0 | rc-word-eq
+EXPECT_OUT_IS | 1 | out-word-eq
+EXPECT_FILE | s/variables.txt | r=1\n | file-word-eq
+WRITE | s/variables.txt | 
+RUN | $T/var_cmp.+x | $T/s | 5 | != | 6 | r
+EXPECT_EXIT | 0 | rc-ne-5-6
+EXPECT_OUT_IS | 1 | out-ne-5-6
+EXPECT_FILE | s/variables.txt | r=1\n | file-ne-5-6
+WRITE | s/variables.txt | 
+RUN | $T/var_cmp.+x | $T/s | 5 | != | 5 | r
+EXPECT_EXIT | 0 | rc-ne-5-5
+EXPECT_OUT_IS | 0 | out-ne-5-5
+EXPECT_FILE | s/variables.txt | r=0\n | file-ne-5-5
+WRITE | s/variables.txt | 
+RUN | $T/var_cmp.+x | $T/s | 5 | ne | 6 | r
+EXPECT_EXIT | 0 | rc-word-ne
+EXPECT_OUT_IS | 1 | out-word-ne
+EXPECT_FILE | s/variables.txt | r=1\n | file-word-ne
+WRITE | s/variables.txt | 
+RUN | $T/var_cmp.+x | $T/s | 3 | < | 4 | r
+EXPECT_EXIT | 0 | rc-lt-3-4
+EXPECT_OUT_IS | 1 | out-lt-3-4
+EXPECT_FILE | s/variables.txt | r=1\n | file-lt-3-4
+WRITE | s/variables.txt | 
+RUN | $T/var_cmp.+x | $T/s | 4 | < | 4 | r
+EXPECT_EXIT | 0 | rc-lt-4-4
+EXPECT_OUT_IS | 0 | out-lt-4-4
+EXPECT_FILE | s/variables.txt | r=0\n | file-lt-4-4
+WRITE | s/variables.txt | 
+RUN | $T/var_cmp.+x | $T/s | 5 | < | 4 | r
+EXPECT_EXIT | 0 | rc-lt-5-4
+EXPECT_OUT_IS | 0 | out-lt-5-4
+EXPECT_FILE | s/variables.txt | r=0\n | file-lt-5-4
+WRITE | s/variables.txt | 
+RUN | $T/var_cmp.+x | $T/s | 3 | lt | 4 | r
+EXPECT_EXIT | 0 | rc-word-lt
+EXPECT_OUT_IS | 1 | out-word-lt
+EXPECT_FILE | s/variables.txt | r=1\n | file-word-lt
+WRITE | s/variables.txt | 
+RUN | $T/var_cmp.+x | $T/s | 4 | <= | 4 | r
+EXPECT_EXIT | 0 | rc-le-4-4
+EXPECT_OUT_IS | 1 | out-le-4-4
+EXPECT_FILE | s/variables.txt | r=1\n | file-le-4-4
+WRITE | s/variables.txt | 
+RUN | $T/var_cmp.+x | $T/s | 3 | <= | 4 | r
+EXPECT_EXIT | 0 | rc-le-3-4
+EXPECT_OUT_IS | 1 | out-le-3-4
+EXPECT_FILE | s/variables.txt | r=1\n | file-le-3-4
+WRITE | s/variables.txt | 
+RUN | $T/var_cmp.+x | $T/s | 5 | <= | 4 | r
+EXPECT_EXIT | 0 | rc-le-5-4
+EXPECT_OUT_IS | 0 | out-le-5-4
+EXPECT_FILE | s/variables.txt | r=0\n | file-le-5-4
+WRITE | s/variables.txt | 
+RUN | $T/var_cmp.+x | $T/s | 4 | le | 4 | r
+EXPECT_EXIT | 0 | rc-word-le
+EXPECT_OUT_IS | 1 | out-word-le
+EXPECT_FILE | s/variables.txt | r=1\n | file-word-le
+WRITE | s/variables.txt | 
+RUN | $T/var_cmp.+x | $T/s | 5 | > | 4 | r
+EXPECT_EXIT | 0 | rc-gt-5-4
+EXPECT_OUT_IS | 1 | out-gt-5-4
+EXPECT_FILE | s/variables.txt | r=1\n | file-gt-5-4
+WRITE | s/variables.txt | 
+RUN | $T/var_cmp.+x | $T/s | 4 | > | 4 | r
+EXPECT_EXIT | 0 | rc-gt-4-4
+EXPECT_OUT_IS | 0 | out-gt-4-4
+EXPECT_FILE | s/variables.txt | r=0\n | file-gt-4-4
+WRITE | s/variables.txt | 
+RUN | $T/var_cmp.+x | $T/s | 3 | > | 4 | r
+EXPECT_EXIT | 0 | rc-gt-3-4
+EXPECT_OUT_IS | 0 | out-gt-3-4
+EXPECT_FILE | s/variables.txt | r=0\n | file-gt-3-4
+WRITE | s/variables.txt | 
+RUN | $T/var_cmp.+x | $T/s | 5 | gt | 4 | r
+EXPECT_EXIT | 0 | rc-word-gt
+EXPECT_OUT_IS | 1 | out-word-gt
+EXPECT_FILE | s/variables.txt | r=1\n | file-word-gt
+WRITE | s/variables.txt | 
+RUN | $T/var_cmp.+x | $T/s | 4 | >= | 4 | r
+EXPECT_EXIT | 0 | rc-ge-4-4
+EXPECT_OUT_IS | 1 | out-ge-4-4
+EXPECT_FILE | s/variables.txt | r=1\n | file-ge-4-4
+WRITE | s/variables.txt | 
+RUN | $T/var_cmp.+x | $T/s | 5 | >= | 4 | r
+EXPECT_EXIT | 0 | rc-ge-5-4
+EXPECT_OUT_IS | 1 | out-ge-5-4
+EXPECT_FILE | s/variables.txt | r=1\n | file-ge-5-4
+WRITE | s/variables.txt | 
+RUN | $T/var_cmp.+x | $T/s | 3 | >= | 4 | r
+EXPECT_EXIT | 0 | rc-ge-3-4
+EXPECT_OUT_IS | 0 | out-ge-3-4
+EXPECT_FILE | s/variables.txt | r=0\n | file-ge-3-4
+WRITE | s/variables.txt | 
+RUN | $T/var_cmp.+x | $T/s | 4 | ge | 4 | r
+EXPECT_EXIT | 0 | rc-word-ge
+EXPECT_OUT_IS | 1 | out-word-ge
+EXPECT_FILE | s/variables.txt | r=1\n | file-word-ge
+WRITE | s/variables.txt | 
+RUN | $T/var_cmp.+x | $T/s | -5 | < | 3 | r
+EXPECT_EXIT | 0 | rc-neg-lt
+EXPECT_OUT_IS | 1 | out-neg-lt
+EXPECT_FILE | s/variables.txt | r=1\n | file-neg-lt
+WRITE | s/variables.txt | 
+RUN | $T/var_cmp.+x | $T/s | +7 | == | 7 | r
+EXPECT_EXIT | 0 | rc-plus-sign
+EXPECT_OUT_IS | 1 | out-plus-sign
+EXPECT_FILE | s/variables.txt | r=1\n | file-plus-sign
+WRITE | s/variables.txt | 
+RUN | $T/var_cmp.+x | $T/s | -7 | == | 7 | r
+EXPECT_EXIT | 0 | rc-minus-vs-plus
+EXPECT_OUT_IS | 0 | out-minus-vs-plus
+EXPECT_FILE | s/variables.txt | r=0\n | file-minus-vs-plus
+WRITE | s/variables.txt | 
+RUN | $T/var_cmp.+x | $T/s | 9223372036854775807 | > | 9223372036854775806 | r
+EXPECT_EXIT | 0 | rc-int64-max
+EXPECT_OUT_IS | 1 | out-int64-max
+EXPECT_FILE | s/variables.txt | r=1\n | file-int64-max
+WRITE | s/variables.txt | 
+RUN | $T/var_cmp.+x | $T/s | -9223372036854775808 | < | 0 | r
+EXPECT_EXIT | 0 | rc-int64-min
+EXPECT_OUT_IS | 1 | out-int64-min
+EXPECT_FILE | s/variables.txt | r=1\n | file-int64-min
+WRITE | s/variables.txt | x=10\nhp_max=30\nrr=7\n
+RUN | $T/var_cmp.+x | $T/s | x | > | 5 | r
+EXPECT_EXIT | 0 | rc-var-left
+EXPECT_OUT_IS | 1 | out-var-left
+EXPECT_FILE | s/variables.txt | x=10\nhp_max=30\nrr=7\nr=1\n | file-var-left
+WRITE | s/variables.txt | x=10\nhp_max=30\nrr=7\n
+RUN | $T/var_cmp.+x | $T/s | 5 | < | x | r
+EXPECT_EXIT | 0 | rc-var-right
+EXPECT_OUT_IS | 1 | out-var-right
+EXPECT_FILE | s/variables.txt | x=10\nhp_max=30\nrr=7\nr=1\n | file-var-right
+WRITE | s/variables.txt | x=10\nhp_max=30\nrr=7\n
+RUN | $T/var_cmp.+x | $T/s | x | < | hp_max | r
+EXPECT_EXIT | 0 | rc-var-vs-var-underscore
+EXPECT_OUT_IS | 1 | out-var-vs-var-underscore
+EXPECT_FILE | s/variables.txt | x=10\nhp_max=30\nrr=7\nr=1\n | file-var-vs-var-underscore
+WRITE | s/variables.txt | x=10\nhp_max=30\nrr=7\n
+RUN | $T/var_cmp.+x | $T/s | nosuch | == | 0 | r
+EXPECT_EXIT | 0 | rc-missing-var-is-zero
+EXPECT_OUT_IS | 1 | out-missing-var-is-zero
+EXPECT_FILE | s/variables.txt | x=10\nhp_max=30\nrr=7\nr=1\n | file-missing-var-is-zero
+WRITE | s/variables.txt | x=10\nhp_max=30\nrr=7\n
+RUN | $T/var_cmp.+x | $T/s | nosuch | == | alsonosuch | r
+EXPECT_EXIT | 0 | rc-two-missing-equal
+EXPECT_OUT_IS | 1 | out-two-missing-equal
+EXPECT_FILE | s/variables.txt | x=10\nhp_max=30\nrr=7\nr=1\n | file-two-missing-equal
+WRITE | s/variables.txt | x=10\nhp_max=30\nrr=7\n
+RUN | $T/var_cmp.+x | $T/s | x | == | nosuch | r
+EXPECT_EXIT | 0 | rc-var-vs-missing
+EXPECT_OUT_IS | 0 | out-var-vs-missing
+EXPECT_FILE | s/variables.txt | x=10\nhp_max=30\nrr=7\nr=0\n | file-var-vs-missing
+WRITE | s/variables.txt | xx=5\nx=1\n
+RUN | $T/var_cmp.+x | $T/s | x | == | 1 | r
+EXPECT_EXIT | 0 | rc-name-prefix-trap-x-vs-xx
+EXPECT_OUT_IS | 1 | out-name-prefix-trap-x-vs-xx
+EXPECT_FILE | s/variables.txt | xx=5\nx=1\nr=1\n | file-name-prefix-trap-x-vs-xx
+WRITE | s/variables.txt | x=abc\n
+RUN | $T/var_cmp.+x | $T/s | x | == | 0 | r
+EXPECT_EXIT | 0 | rc-non-numeric-value-reads-zero
+EXPECT_OUT_IS | 1 | out-non-numeric-value-reads-zero
+EXPECT_FILE | s/variables.txt | x=abc\nr=1\n | file-non-numeric-value-reads-zero
+WRITE | s/variables.txt | x=-4\n
+RUN | $T/var_cmp.+x | $T/s | x | < | 0 | r
+EXPECT_EXIT | 0 | rc-negative-var-value
+EXPECT_OUT_IS | 1 | out-negative-var-value
+EXPECT_FILE | s/variables.txt | x=-4\nr=1\n | file-negative-var-value
+WRITE | s/variables.txt | a=1\nr=9\nb=2\n
+RUN | $T/var_cmp.+x | $T/s | 1 | == | 1 | r
+EXPECT_EXIT | 0 | rc-out-replaced-in-place-order-kept
+EXPECT_OUT_IS | 1 | out-out-replaced-in-place-order-kept
+EXPECT_FILE | s/variables.txt | a=1\nr=1\nb=2\n | file-out-replaced-in-place-order-kept
+WRITE | s/variables.txt | rr=7\n
+RUN | $T/var_cmp.+x | $T/s | 1 | == | 1 | r
+EXPECT_EXIT | 0 | rc-out-prefix-trap-r-vs-rr-appends
+EXPECT_OUT_IS | 1 | out-out-prefix-trap-r-vs-rr-appends
+EXPECT_FILE | s/variables.txt | rr=7\nr=1\n | file-out-prefix-trap-r-vs-rr-appends
+WRITE | s/variables.txt | a=1\nb=2
+RUN | $T/var_cmp.+x | $T/s | 1 | == | 2 | c
+EXPECT_EXIT | 0 | rc-no-trailing-newline-in-file
+EXPECT_OUT_IS | 0 | out-no-trailing-newline-in-file
+EXPECT_FILE | s/variables.txt | a=1\nb=2\nc=0\n | file-no-trailing-newline-in-file
+WRITE | s/variables.txt | r=1\nr=5\n
+RUN | $T/var_cmp.+x | $T/s | 2 | > | 1 | r
+EXPECT_EXIT | 0 | rc-duplicates-first-replaced-later-kept
+EXPECT_OUT_IS | 1 | out-duplicates-first-replaced-later-kept
+EXPECT_FILE | s/variables.txt | r=1\nr=5\n | file-duplicates-first-replaced-later-kept
+WRITE | s/variables.txt | r=1\nr=5\n
+RUN | $T/var_cmp.+x | $T/s | 1 | > | 2 | r
+EXPECT_EXIT | 0 | rc-duplicates-first-replaced-to-zero
+EXPECT_OUT_IS | 0 | out-duplicates-first-replaced-to-zero
+EXPECT_FILE | s/variables.txt | r=0\nr=5\n | file-duplicates-first-replaced-to-zero
+MKDIR | s2
+RUN | $T/var_cmp.+x | $T/s2 | 1 | == | 1 | r
+EXPECT_EXIT | 0 | rc-no-variables-file-is-created
+EXPECT_OUT_IS | 1 | out-no-variables-file-is-created
+EXPECT_FILE | s2/variables.txt | r=1\n | file-no-variables-file-is-created
+WRITE | s/variables.txt | keep=1\n
+RUN | $T/var_cmp.+x | $T/s | 1 | => | 1 | r
+EXPECT_EXIT | 2 | rc-bad-op-arrow
+EXPECT_FILE | s/variables.txt | keep=1\n | file-bad-op-arrow
+EXPECT_HAS | s/op_errors.txt | ERR\pvar_cmp\pbad-operator | errrow-bad-op-arrow
+WRITE | s/variables.txt | keep=1\n
+RUN | $T/var_cmp.+x | $T/s | 1 | equals | 1 | r
+EXPECT_EXIT | 2 | rc-bad-op-empty-word
+EXPECT_FILE | s/variables.txt | keep=1\n | file-bad-op-empty-word
+EXPECT_HAS | s/op_errors.txt | ERR\pvar_cmp\pbad-operator | errrow-bad-op-empty-word
+WRITE | s/variables.txt | keep=1\n
+RUN | $T/var_cmp.+x | $T/s | 12x | == | 1 | r
+EXPECT_EXIT | 2 | rc-operand-trailing-junk
+EXPECT_FILE | s/variables.txt | keep=1\n | file-operand-trailing-junk
+EXPECT_HAS | s/op_errors.txt | ERR\pvar_cmp\pbad-operand | errrow-operand-trailing-junk
+WRITE | s/variables.txt | keep=1\n
+RUN | $T/var_cmp.+x | $T/s | 0x10 | == | 16 | r
+EXPECT_EXIT | 2 | rc-operand-hex
+EXPECT_FILE | s/variables.txt | keep=1\n | file-operand-hex
+EXPECT_HAS | s/op_errors.txt | ERR\pvar_cmp\pbad-operand | errrow-operand-hex
+WRITE | s/variables.txt | keep=1\n
+RUN | $T/var_cmp.+x | $T/s | --5 | == | 1 | r
+EXPECT_EXIT | 2 | rc-operand-double-sign
+EXPECT_FILE | s/variables.txt | keep=1\n | file-operand-double-sign
+EXPECT_HAS | s/op_errors.txt | ERR\pvar_cmp\pbad-operand | errrow-operand-double-sign
+WRITE | s/variables.txt | keep=1\n
+RUN | $T/var_cmp.+x | $T/s | 1.5 | < | 2 | r
+EXPECT_EXIT | 2 | rc-operand-float
+EXPECT_FILE | s/variables.txt | keep=1\n | file-operand-float
+EXPECT_HAS | s/op_errors.txt | ERR\pvar_cmp\pbad-operand | errrow-operand-float
+WRITE | s/variables.txt | keep=1\n
+RUN | $T/var_cmp.+x | $T/s | 9223372036854775808 | < | 1 | r
+EXPECT_EXIT | 2 | rc-operand-overflow
+EXPECT_FILE | s/variables.txt | keep=1\n | file-operand-overflow
+EXPECT_HAS | s/op_errors.txt | ERR\pvar_cmp\pbad-operand | errrow-operand-overflow
+WRITE | s/variables.txt | keep=1\n
+RUN | $T/var_cmp.+x | $T/s | 1 | < | 9x | r
+EXPECT_EXIT | 2 | rc-right-operand-bad
+EXPECT_FILE | s/variables.txt | keep=1\n | file-right-operand-bad
+EXPECT_HAS | s/op_errors.txt | ERR\pvar_cmp\pbad-operand | errrow-right-operand-bad
+WRITE | s/variables.txt | keep=1\n
+RUN | $T/var_cmp.+x | $T/s | 1 | == | 1 | 1bad
+EXPECT_EXIT | 2 | rc-out-starts-with-digit
+EXPECT_FILE | s/variables.txt | keep=1\n | file-out-starts-with-digit
+EXPECT_HAS | s/op_errors.txt | ERR\pvar_cmp\pbad-out-name | errrow-out-starts-with-digit
+WRITE | s/variables.txt | keep=1\n
+RUN | $T/var_cmp.+x | $T/s | 1 | == | 1 | a-b
+EXPECT_EXIT | 2 | rc-out-has-dash
+EXPECT_FILE | s/variables.txt | keep=1\n | file-out-has-dash
+EXPECT_HAS | s/op_errors.txt | ERR\pvar_cmp\pbad-out-name | errrow-out-has-dash
+WRITE | s/variables.txt | keep=1\n
+RUN | $T/var_cmp.+x | $T/s | 1 | == | 1
+EXPECT_EXIT | 2 | rc-too-few-args
+EXPECT_FILE | s/variables.txt | keep=1\n | file-too-few-args-unchanged
+RUN | $T/var_cmp.+x | $T/nosuchdir | 1 | == | 1 | r
+EXPECT_EXIT | 2 | rc-missing-state-dir
+EXPECT_NOFILE | nosuchdir/variables.txt | no-file-created-in-missing-dir

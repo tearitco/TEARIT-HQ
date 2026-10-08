@@ -1,0 +1,5 @@
+quest-pilot/q020-var-cmp/iter3_var_cmp.c: In function ‘write_result’:
+quest-pilot/q020-var-cmp/iter3_var_cmp.c:144:19: error: unused variable ‘orig’ [-Werror=unused-variable]
+  144 |             char *orig = line;
+      |                   ^~~~
+cc1: all warnings being treated as errors

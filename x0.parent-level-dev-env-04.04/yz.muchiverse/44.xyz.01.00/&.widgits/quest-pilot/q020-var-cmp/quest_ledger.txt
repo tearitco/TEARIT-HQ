@@ -1,0 +1,13 @@
+QUEST|q020-var-cmp|2026-10-07|worker=openai/gpt-oss-120b via Groq chat/completions (direct, free tier, reasoning_effort low)|runner=claude by hand (ghost_run not merged yet)|judge=locked harness quest_q020_var_cmp (161 checks)
+LOCK|_shared-lib/harness/cases/quest_q020_var_cmp.pdl|sha256=875e1fdab0474528a1a845ca56cd5b9e9d2ac6d89ea2b052855ddd160359f266
+LOCK|_shared-lib/harness/quest_q020_var_cmp.pal|sha256=2b2c0053562c4532fe0e8864d9482522d3c49c70be6e7a2f873c095b7e059b2d
+HARNESS_CHECK|sealed reference (claude) PASS 161/0; always-prints-1 stub FAIL passed=86 failed=75
+ITER|1|prompt=717 completion=1923 total=2640|verdict=FAIL passed=13 failed=148 (does not compile: PATH_MAX undeclared, unused variable)
+ITER|2|prompt=3107 completion=2146 total=5253|feedback=compiler output + full previous reply re-sent|verdict=FAIL passed=160 failed=1 (no-trailing-newline case: wrote b=2c=0)
+ITER|3|prompt=2762 completion=2111 total=4873|feedback=exact failing example|verdict=FAIL passed=13 failed=148 (compiles no longer: unused variable 'orig')
+ITER|4|prompt=2222 completion=2066 total=4288|LEAN repair prompt: only the failing file + the compiler line (no task text, no old reply)|verdict=PASS passed=161 failed=0
+TOTAL|tokens=17054 prompt=8808 completion=8246|iterations=4|cost=0|wall_s_per_call=4.2-5.4
+WASTE|iter2 re-sent the task+previous reply: about 2700 of its 3107 prompt tokens were tokens already sent (87%)|each iteration re-emitted the WHOLE file (about 2100 completion tokens) to change 1-2 lines (about 6300 of 8246 completion tokens were re-emission)
+LESSONS_OBSERVED|compile: include <limits.h> for PATH_MAX; no unused variables under -Werror|logic: a last line without a newline must get one before appending
+REVIEW|diff scan: stdio stdlib string errno ctype sys/stat unistd; no system/popen/exec; claude did not read the code line by line (harness-judged)
+RESULT|ACCEPTED_BY_HARNESS|iterations=4|merge=live claude (quest-pilot/q020-var-cmp/worker/var_cmp.c; NOT yet registered as an event command: needs a registry row + build script)

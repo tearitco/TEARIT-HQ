@@ -1,0 +1,4 @@
+# quest_q020_var_cmp.pal - LOCKED acceptance harness for quest q020 (var_cmp). Read results/quest_q020_var_cmp.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/quest_q020_var_cmp.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/quest_q020_var_cmp.pdl
+halt
