@@ -31,6 +31,16 @@ LIBS="-lX11 -lXext $(pkg-config --libs xft) -lm"
 # vendored third-party header (not house code, ~zero drift risk) and is
 # still copied for now — out of scope for this pass.
 SHARED="$(cd "$(dirname "$0")/../../../&.widgits/_shared-lib" && pwd)"
+
+# 2026-10-08: a stale same-named copy in THIS dir shadows $SHARED, because
+# `#include "x.h"` looks beside the including file before -I. It broke the
+# build once (ops/khtpm_css_parser.h lacked the new css_len/g_css_ui_pct).
+# The shared files are compiled in place, so any local copy of one is
+# vestigial: delete it instead of letting it win.
+for _f in "$SHARED"/khtpm_*.[ch] "$SHARED"/kh_*.[ch]; do
+    _b="$(basename "$_f")"
+    [ -f "./$_b" ] && ! [ "./$_b" -ef "$_f" ] && { echo "build: removing stale shadow copy ./$_b (compiled from $SHARED)"; rm -f "./$_b"; }
+done
 mkdir -p lib
 cp "$SHARED/stb_image_write.h" lib/stb_image_write.h
 
