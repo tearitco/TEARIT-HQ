@@ -98,6 +98,11 @@
           <text id="tr${c.#}" class="nb-trow thead" label="${c.text}" show="${c.is_thead}"/>
           <!-- 2026-10-08: <ul>/<ol> items keep their marker and nesting. -->
           <text id="li${c.#}" class="nb-list" label="${c.text}" show="${c.is_list}"/>
+          <!-- 2026-10-08: <dl> term/definition pairs, and the always-visible
+               label of a collapsed <details>. The collapsed BODY is not
+               emitted at all - it is not visible on the page either. -->
+          <text id="dl${c.#}" class="nb-drow"     label="${c.text}" show="${c.is_drow}"/>
+          <text id="ds${c.#}" class="nb-summary" label="${c.text}" show="${c.is_summary}"/>
           <text id="tw${c.#}" class="nb-trow"         label="${c.text}" show="${c.is_trow}"/>
           <!-- 2026-10-08: <input type=file>. Opens the house file-explorer
                and commits the chosen absolute path to the fields file;

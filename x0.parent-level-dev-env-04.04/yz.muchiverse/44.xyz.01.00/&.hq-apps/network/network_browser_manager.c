@@ -865,6 +865,88 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                 p = bend ? bend + 9 : tag_end + 1;
                 continue;
             }
+            /* <details> (2026-10-08): a collapsed <details> used to render its
+             * hidden body as ordinary visible text. That is not a styling
+             * difference, it is a fidelity lie - the page does not show
+             * that content until the user opens it, and we were showing it
+             * anyway with no sign that it was hidden. Emit the <summary> as
+             * a row and SKIP the body, unless the author wrote `open`, in
+             * which case the content really is visible on the page. */
+            if (strncasecmp(p, "<details", 8) == 0 && !isalnum((unsigned char)p[8])) {
+                FLUSH_LINE();
+                const char *dopen = strchr(p, '>');
+                const char *dend = skip_named_element(p, "details");
+                int is_open = 0;
+                if (dopen) {
+                    char ok[8] = "";
+                    is_open = tag_attrval(p, dopen, "open", ok, sizeof(ok)) > 0;
+                }
+                if (is_open) { p = dopen + 1; continue; }  /* content is visible: keep walking */
+                /* <summary> is the always-visible label */
+                if (dopen) {
+                    const char *so = strcasestr_local(dopen + 1, "<summary");
+                    const char *se = so ? strcasestr_local(so, "</summary>") : NULL;
+                    if (so && se) {
+                        const char *sg = strchr(so, '>');
+                        if (sg && sg < se) {
+                            char lab[512]; size_t lo = 0;
+                            for (const char *r = sg + 1; r < se && lo + 1 < sizeof(lab); ) {
+                                if (*r == '<') { const char *g = strchr(r, '>'); if (!g) break; r = g + 1; continue; }
+                                lab[lo++] = *r++;
+                            }
+                            lab[lo] = 0;
+                            html_decode_entities(lab); collapse_ws(lab); strip_pipes(lab);
+                            if (lab[0] && line_count < MAX_LINES) {
+                                fprintf(out, "SUMMARY|%s\n", lab); line_count++;
+                            }
+                        }
+                    }
+                }
+                p = dend;
+                continue;
+            }
+            /* <dl> (2026-10-08): definition lists welded into prose the way
+             * tables did - "TermDefinition text". Emit DROW|term|definition
+             * per dt/dd pair so the pairing survives. */
+            if (strncasecmp(p, "<dl", 3) == 0 && !isalnum((unsigned char)p[3])) {
+                FLUSH_LINE();
+                const char *dl_end = skip_named_element(p, "dl");
+                char term[512] = "";
+                const char *q = p;
+                while (q < dl_end && line_count < MAX_LINES) {
+                    int is_dt = (strncasecmp(q, "<dt", 3) == 0 && !isalnum((unsigned char)q[3]));
+                    int is_dd = (strncasecmp(q, "<dd", 3) == 0 && !isalnum((unsigned char)q[3]));
+                    if (!is_dt && !is_dd) { q++; continue; }
+                    const char *qopen = strchr(q, '>');
+                    const char *tagend = is_dt ? "</dt>" : "</dd>";
+                    const char *qclose = qopen ? strcasestr_local(qopen + 1, tagend) : NULL;
+                    const char *cell_end = qclose ? qclose : dl_end;
+                    if (!qopen) break;
+                    char txt[512]; size_t to = 0;
+                    for (const char *r = qopen + 1; r < cell_end && to + 1 < sizeof(txt); ) {
+                        if (*r == '<') { const char *g = strchr(r, '>'); if (!g) break; r = g + 1; continue; }
+                        txt[to++] = *r++;
+                    }
+                    txt[to] = 0;
+                    html_decode_entities(txt); collapse_ws(txt); strip_pipes(txt);
+                    if (is_dt) { snprintf(term, sizeof(term), "%s", txt); }
+                    else if (txt[0] || term[0]) {
+                        fprintf(out, "DROW|%s|%s\n", term, txt);
+                        line_count++;
+                        term[0] = 0;
+                    }
+                    q = cell_end + (qclose ? strlen(tagend) : 0);
+                    if (!qclose) break;
+                }
+                /* a <dt> with no following <dd> is malformed but real; drop it
+                 * and the term's text vanishes from the page entirely */
+                if (term[0] && line_count < MAX_LINES) {
+                    fprintf(out, "DROW|%s|\n", term);
+                    line_count++;
+                }
+                p = dl_end;
+                continue;
+            }
             /* Lists (2026-10-08): <ul>/<ol> open a level, <li> opens an item.
              * FLUSH_LINE turns the item's accumulated text into a LIST row,
              * so the marker and the nesting depth come for free. The stack
@@ -5052,6 +5134,30 @@ static void write_ui_projection(void) {
                     uisan(rest, t, sizeof(t));
                     UI_PUT("c_%d_kind=title\nc_%d_is_title=1\nc_%d_text=%s\n", rc, rc, rc, t);
                     if (click_action[0]) UI_PUT("c_%d_sel=%s\nc_%d_click_action=%s", rc, pending_sel, rc, click_action);
+                } else if (strcmp(kind, "SUMMARY") == 0) {
+                    /* The always-visible label of a collapsed <details>.
+                     * Drawn with a marker so it reads as "there is more
+                     * behind this", not as a heading we invented. */
+                    uisan(rest, t, sizeof(t));
+                    if (!t[0] || junk_visible_line(t)) continue;
+                    UI_PUT("c_%d_kind=summary\nc_%d_is_summary=1\nc_%d_text=%s\n", rc, rc, rc, t);
+                } else if (strcmp(kind, "DROW") == 0) {
+                    /* DROW|<term>|<definition> - the pairing is the whole
+                     * point of a definition list. An empty term (a <dd> with
+                     * no <dt>) still shows its definition. */
+                    char *eq = strchr(rest, '|');
+                    if (!eq) continue;
+                    *eq = 0;
+                    char tm[512], df[1024], lab_s[1600];
+                    uisan(rest, tm, sizeof(tm));
+                    uisan(eq + 1, df, sizeof(df));
+                    if (!tm[0] && !df[0]) continue;
+                    if (tm[0] && df[0]) snprintf(lab_s, sizeof(lab_s), "%s \xc2\xbb %s", tm, df);
+                    else if (tm[0]) snprintf(lab_s, sizeof(lab_s), "%s", tm);
+                    else snprintf(lab_s, sizeof(lab_s), "%s", df);
+                    uisan(lab_s, t, sizeof(t));
+                    if (!t[0] || junk_visible_line(t)) continue;
+                    UI_PUT("c_%d_kind=drow\nc_%d_is_drow=1\nc_%d_text=%s\n", rc, rc, rc, t);
                 } else if (strcmp(kind, "LIST") == 0) {
                     /* LIST|<depth>|<marker>|<text>
                      * Marker and indent are the structure the extractor saw;

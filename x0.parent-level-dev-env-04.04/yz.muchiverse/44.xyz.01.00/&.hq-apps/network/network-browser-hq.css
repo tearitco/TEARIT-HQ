@@ -59,6 +59,9 @@ sidebar { width: 200px; background-color: #1a1a1a; color: #cccccc; }
 .nb-trow.thead { color: #8fb8ff; }
 /* 2026-10-08: <ul>/<ol> items, marker + indent carried from the extractor. */
 .nb-list { color: #c8c8c8; }
+/* 2026-10-08: <dl> pairs and collapsed-<details> labels. */
+.nb-drow { color: #c8d0b8; }
+.nb-summary { color: #9ab8d8; }
 .nb-console-text { color: #8fbf8f; }
 .page-title { color: #eeeeee; }
 

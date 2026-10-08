@@ -1,0 +1,12 @@
+URL|FIXDIR/fixtures/struct-blocks.html
+TITLE|Struct
+TITLE|Section A
+TEXT|Quoted wisdom here.
+DROW|Term|Definition text
+DROW|Loose term|
+DROW||Orphan definition
+SUMMARY|Collapsed section
+TEXT|Open section
+TEXT|Visible detail
+TITLE|Sub A1
+TEXT|Ends.
