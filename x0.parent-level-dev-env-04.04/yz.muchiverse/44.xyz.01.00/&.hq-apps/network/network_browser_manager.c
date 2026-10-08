@@ -4930,9 +4930,30 @@ static void write_ui_projection(void) {
     char *buf = malloc(262144);
     if (!buf) return;
     size_t cap = 262144, len = 0;
-#define UI_PUT(...) do { \
+/* REAL FIX 2026-10-08 - UI_PUT underflowed when the buffer filled.
+     * `cap - len - 1` with cap == len is (size_t)-1, so `len` jumped to
+     * SIZE_MAX and every later write became a wild pointer. The symptom was
+     * a ui.txt truncated mid-token with NO content_count at the end, i.e. an
+     * EMPTY content pane on a page that had loaded fine (Wikipedia) - a
+     * silent failure that looks like a rendering bug and is not one.
+     * Clamp properly, and record that we ran out so the next tick can say so
+     * out loud instead of quietly showing half a page. */
+    int g_ui_truncated = 0;
+    #define UI_MAX_CAP (8u * 1024u * 1024u)
+    #define UI_PUT(...) do { \
+        if (len + 1 >= cap) { \
+            if (cap >= UI_MAX_CAP) { g_ui_truncated = 1; break; } \
+            size_t _nc = cap * 2; \
+            char *_nb = (char *)realloc(buf, _nc); \
+            if (!_nb) { g_ui_truncated = 1; break; } \
+            buf = _nb; cap = _nc; \
+        } \
         int _n = snprintf(buf + len, cap - len, __VA_ARGS__); \
-        if (_n > 0) len += (size_t)_n < cap - len ? (size_t)_n : cap - len - 1; \
+        if (_n < 0) break; \
+        if ((size_t)_n >= cap - len) { \
+            if (cap < UI_MAX_CAP) { g_ui_truncated = 1; len = cap - 1; break; } \
+        } \
+        len += (size_t)_n; \
     } while (0)
 
     /* fixed toolbar action strings (were baked into the markup before) */
@@ -5661,7 +5682,10 @@ static void write_ui_projection(void) {
         }
         UI_PUT("content_count=%d\n", rc);
         UI_PUT("content_empty=%d\n", rc == 0 ? 1 : 0);
-        UI_PUT("empty_msg=Ready - enter a URL above\n");
+        if (g_ui_truncated)
+            UI_PUT("empty_msg=Page too large for the projection buffer - showing what fits\n");
+        else
+            UI_PUT("empty_msg=Ready - enter a URL above\n");
     }
 
     /* devtools console - the worker's NBW_CONSOLE capture tail (console.*
