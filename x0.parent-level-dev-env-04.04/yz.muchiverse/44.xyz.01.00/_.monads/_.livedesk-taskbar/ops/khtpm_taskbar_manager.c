@@ -28,6 +28,10 @@
 #endif
 #include <ctype.h>
 #include <errno.h>
+#ifdef __APPLE__
+#include <sys/types.h>
+#include <sys/sysctl.h>   /* KERN_PROCARGS2 - pal argv identity on macOS (no /proc) */
+#endif
 #include <time.h> /* clock_gettime/CLOCK_MONOTONIC - ktb_self_heal_active_desk_registry()'s own ~10s gate */
 
 /* Orchestrator-owned PID-tracked teardown (TPMOS parity) —
@@ -523,7 +527,39 @@ static int ktb_pid_is_this_pal(int pid, const char *pal_path) {
     cmdbuf[nb] = '\0';
     for (size_t i = 0; i < nb; i++) if (cmdbuf[i] == '\0') cmdbuf[i] = ' ';
     return strstr(cmdbuf, pal_path) != NULL;
-#else
+#elif defined(__APPLE__)
+    /* macOS identity check (2026-10-07): same contract as the Linux branch
+     * above - the pal's own package_dir must appear in the process's argv.
+     * macOS has no /proc, so argv comes from sysctl(KERN_PROCARGS2), the
+     * same data `ps -o args` reads. Buffer layout: int argc, exec path
+     * NUL-terminated, NUL padding, then argc NUL-terminated argv strings
+     * (then env, which is ignored). Fail closed on any read error. */
+    int mib[3] = { CTL_KERN, KERN_PROCARGS2, pid };
+    size_t len = 0;
+    if (sysctl(mib, 3, NULL, &len, NULL, 0) != 0 || len <= sizeof(int)) return 0;
+    char *pbuf = malloc(len);
+    if (!pbuf) return 1; /* out of memory - fail open, same as the unreadable-/proc case */
+    if (sysctl(mib, 3, pbuf, &len, NULL, 0) != 0) { free(pbuf); return 0; }
+    int argc = 0;
+    memcpy(&argc, pbuf, sizeof(argc));
+    char *ap = pbuf + sizeof(argc);
+    char *aend = pbuf + len;
+    while (ap < aend && *ap) ap++;   /* skip exec path */
+    while (ap < aend && !*ap) ap++;  /* skip NUL padding */
+    char argvbuf[KTB_PATH_BUF * 2];
+    size_t an = 0;
+    for (int i = 0; i < argc && ap < aend; i++) {
+        size_t al = strlen(ap);
+        if (an + al + 1 >= sizeof(argvbuf)) break;
+        memcpy(argvbuf + an, ap, al);
+        an += al;
+        argvbuf[an++] = ' ';
+        ap += al + 1;
+    }
+    argvbuf[an] = '\0';
+    free(pbuf);
+    return strstr(argvbuf, pal_path) != NULL;
+#elif defined(_WIN32)
     /* Windows identity check - REAL FIX 2026-09-28 (the flicker). The
      * Linux branch above reads /proc/<pid>/cmdline and requires the pal's
      * own package_dir to be in it. The old Windows branch returned 1 for

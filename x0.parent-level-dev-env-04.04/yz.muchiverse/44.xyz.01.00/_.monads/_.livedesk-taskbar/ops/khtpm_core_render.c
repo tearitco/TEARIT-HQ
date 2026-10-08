@@ -1,4 +1,9 @@
 #define _GNU_SOURCE /* REAL, NEW 2026-10-03 - Omarchy/glibc 2.44 port. _POSIX_C_SOURCE 200809L below pins the feature set on its own, so usleep() (ktb_toggle_zorder_respawn()'s real 30ms stagger, ~line 2808) stayed undeclared: POSIX.1-2008 DROPPED usleep, and glibc only exposes it via _DEFAULT_SOURCE/_BSD_SOURCE/_SVID_SOURCE/_XOPEN_SOURCE<700 - none implied by a bare _POSIX_C_SOURCE. _GNU_SOURCE implies all of those, so the one-line fix is to ask for them rather than patch each call site. Kept as a source fix, not a build-flag one, so EVERY build path (build_core_render.sh, build_khtpm_strip.sh, ...) gets it. */
+/* macOS leg (2026-10-07): _POSIX_C_SOURCE below hides BSD APIs on Apple
+ * (flock(), LOCK_EX/LOCK_UN). _DARWIN_C_SOURCE restores them; Linux unaffected. */
+#ifdef __APPLE__
+#define _DARWIN_C_SOURCE
+#endif
 #define _POSIX_C_SOURCE 200809L /* CLOCK_MONOTONIC + getline() under -std=c11 strict mode - bumped from 199309L 2026-08-16 for chai_load_ledger()'s real getline() fix, see that function's own header comment */
 #include <stdarg.h> /* 2026-09-11 - kh_focus_debug_log()'s va_list, TEMPORARY diagnostic logging */
 #include "house_wait.h"
@@ -73,6 +78,10 @@
 #include <unistd.h>
 #include <sys/resource.h> /* REAL, NEW 2026-10-03 - nice(), ktb_toggle_zorder_respawn()'s real mild CPU-priority yield (~line 2869). glibc declares nice() HERE, not in <unistd.h>, so this include is the whole fix for that "implicit declaration" error. */
 #include <sys/stat.h>
+#ifdef __APPLE__
+/* macOS leg (2026-10-07): BSD stat names mtime st_mtimespec, not st_mtim. */
+#define st_mtim st_mtimespec
+#endif
 #include <sys/select.h>
 #include <sys/time.h> /* REAL, NEW 2026-09-01 - tile mode's own real gettimeofday() frame-pacing/click-vs-drag timing */
 #include <sys/wait.h> /* REAL, db-hq mode only - launch_module()/cleanup_module(), real fork()+execl() */
