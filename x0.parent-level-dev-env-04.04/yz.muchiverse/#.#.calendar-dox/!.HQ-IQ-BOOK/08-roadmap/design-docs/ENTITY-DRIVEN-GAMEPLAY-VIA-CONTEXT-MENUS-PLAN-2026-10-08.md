@@ -18,6 +18,8 @@ An entity is the character. Everything it does in a game is an **action row in i
 - **Live check on the owner's screen:** the pc-hq board opens with `open_pchq_board.sh`; its book dropdown lists default, File Explorer, mineclonia_sample, cdda_sample, test_walls, test_terraces, default-legacy (opened and cancelled with Escape; nothing was chosen). **There is no `eden-test` book or page yet.**
 - **Not yet read:** `ENTITY-NEEDS-AND-CARE-DESIGN.md`, `PLAY-MODE-ENTITY-HARNESS-DESIGN.md`, `GAME-CONDUCTOR-ENTITY-AND-EDEN-DESIGN.md`, `ROBOT-CHAT-BLUEPRINT.md`, `PCHQ-ENTITY-MENU-AND-TASKBAR-DESIGN.md` (read these first; this plan must be reconciled with them, not replace them).
 
+- **Live proof of the tick (2026-10-08, on the owner's machine, files backed up and restored byte for byte):** with `autotick_enabled=1` in `pieces/world_01/state.txt`, starting `ops/+x/pc_clock_daemon.+x` by hand made `tick` climb about one per second (378, 381, 385, 387 over 12 s; default speed `min` = one game minute per real second), and `animals.txt` changed from `chicken,14,12,17` to `14,13`, `13,13`, `14,14`, `15,13`, with a `chicken|wander|x:..,y:..` ledger row for each move. So the NPC loop works when the daemon runs with autotick on; the current board launcher starts neither. The daemon also writes the sun and moon positions every loop. The tick (world tick, HUD "tick 375") and game time (`game_time_epoch_ms`) are one clock the daemon owns. Not yet shown: the chicken moving on screen (the first frame showed no chicken in view) and the hero's Move through the relay.
+
 ## 3. The design (proposal)
 
 1. **Action rows.** Each Eden participant's `meta.pdl` gains METHOD rows per action: `Walk to...`, `Plant`, `Water`, `Dig`, `Collect`, `Eat`, `Talk to...`, `Trade...`, `Repair`. A row calls the existing conductor event page for that action with the entity as actor, so the effect and the history row are unchanged; what changes is *who presses it*. Rows with a target (a plot, a person) use the existing numbered second-level menu.
@@ -30,8 +32,8 @@ An entity is the character. Everything it does in a game is an **action row in i
 
 ## 4. Build order, each step with an exit proof (scratch house first; relay driven; frame dump looked at)
 
-1. **Read the five docs above and the Synch path; write the reconciliation as a short addendum.** (me)
-2. **Wire and prove the pc-hq pattern live:** start the clock daemon (or an equivalent tick) from the current board launcher, drive the hero's Move through the relay and show the chicken step with a ledger row. *Exit:* before/after frame dumps and the ledger rows.
+1. **Read the five docs above and the Synch path; write the reconciliation as a short addendum.** (Grok or me; not done)
+2. **Wire and prove the pc-hq pattern live:** start the clock daemon (or an equivalent tick) from the current board launcher, drive the hero's Move through the relay and show the chicken step with a ledger row. *Partly proven (see section 2): the daemon moves the chicken in data and the ledger. Remaining: start it from the board launcher and show it on screen, plus the hero Move through the relay. Exit:* before/after frame dumps and the ledger rows.
 3. **Positions and `Walk to`:** x,y,z for Asa, Ava and the plots in a scratch game; the Walk row moves the tile on the desk. *Exit:* the tile's `desktop_pos.txt` and screen position change; a harness checks clamp, the ledger row and no write outside the entity.
 4. **Action rows on Asa and Ava** (Plant, Water, Collect, Eat, Talk) calling the existing event pages. *Exit:* pressing the rows through the relay produces the same history rows as the day tick did.
 5. **FSM v0:** need-driven choice of rows, one entity, deterministic seed. *Exit:* a harness replays N ticks and gets the same row sequence; a mutant that skips the need check fails.
