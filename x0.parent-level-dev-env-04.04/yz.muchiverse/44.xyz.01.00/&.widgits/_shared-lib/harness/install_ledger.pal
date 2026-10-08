@@ -1,0 +1,4 @@
+# install_ledger.pal - judge for install-harness/ops/install_ledger_op.c (labeled installs: next label, append-only ledger, list, hosts lookup), cases in cases/install_ledger.pdl
+exec ./ops/+x/harness_case_op.+x cases/install_ledger.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/install_ledger.pdl
+halt

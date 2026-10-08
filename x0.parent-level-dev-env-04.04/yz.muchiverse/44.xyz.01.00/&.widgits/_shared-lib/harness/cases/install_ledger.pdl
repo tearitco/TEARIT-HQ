@@ -1,0 +1,106 @@
+# install_ledger: the labeled-install ledger and hosts lookup (install-harness/ops/install_ledger_op.c, spec in install-harness/SPEC.md). Scratch folders only.
+RESULTS | ../results/install_ledger.txt
+ENV | LC_ALL | C
+
+CASE    | build
+SCRATCH |
+RUN | /usr/bin/gcc | -std=c11 | -O2 | -w | -o | $T/ilo | $HOUSE/&.widgits/install-harness/ops/install_ledger_op.c
+EXPECT_EXIT | 0 | compiles
+
+CASE    | next-label
+SCRATCH |
+RUN | /usr/bin/gcc | -std=c11 | -O2 | -w | -o | $T/ilo | $HOUSE/&.widgits/install-harness/ops/install_ledger_op.c
+RUN | $T/ilo | next | $T/none.pdl | mac
+EXPECT_OUT_IS | mac-v1 | missing-ledger-starts-at-v1
+EXPECT_NOFILE | none.pdl | next-never-writes
+WRITE | l.pdl | INSTALL\pmac-v1\pmac\p1791500000\pmain\pPASS\nINSTALL\pmac-v7\pmac\p1791500100\pmain\pFAIL\nINSTALL\pdebil-v2\pdebil\p1791500200\pmain\pPASS\nREMOVE\pmac-v7\p1791500300\n
+RUN | $T/ilo | next | $T/l.pdl | mac
+EXPECT_OUT_IS | mac-v8 | highest-plus-one-and-a-removed-number-is-not-reused
+RUN | $T/ilo | next | $T/l.pdl | debil
+EXPECT_OUT_IS | debil-v3 | per-name-numbering
+RUN | $T/ilo | next | $T/l.pdl | local
+EXPECT_OUT_IS | local-v1 | unseen-name-starts-at-v1
+RUN | $T/ilo | next | $T/l.pdl | mac-v
+EXPECT_EXIT | 0 | odd-name-is-just-a-name
+CLEAN |
+
+CASE    | append-install
+SCRATCH |
+RUN | /usr/bin/gcc | -std=c11 | -O2 | -w | -o | $T/ilo | $HOUSE/&.widgits/install-harness/ops/install_ledger_op.c
+RUN | $T/ilo | append | $T/l.pdl | INSTALL | mac-v1 | mac | main | PASS
+EXPECT_EXIT | 0 | first-install-accepted
+EXPECT_HAS | l.pdl | INSTALL\pmac-v1\pmac\p | row-written-with-label-and-host
+EXPECT_HAS | l.pdl | \pmain\pPASS | row-has-ref-and-result
+RUN | $T/ilo | append | $T/l.pdl | INSTALL | mac-v1 | mac | main | PASS
+EXPECT_EXIT | 1 | same-label-twice-refused
+RUN | $T/ilo | next | $T/l.pdl | mac
+EXPECT_OUT_IS | mac-v2 | next-follows-the-append
+RUN | $T/ilo | append | $T/l.pdl | INSTALL | Mac-v2 | mac | main | PASS
+EXPECT_EXIT | 2 | uppercase-label-rejected
+RUN | $T/ilo | append | $T/l.pdl | INSTALL | mac2 | mac | main | PASS
+EXPECT_EXIT | 2 | label-without-version-rejected
+RUN | $T/ilo | append | $T/l.pdl | INSTALL | mac-v0 | mac | main | PASS
+EXPECT_EXIT | 2 | version-zero-rejected
+RUN | $T/ilo | append | $T/l.pdl | INSTALL | mac-v3 | ma\pc | main | PASS
+EXPECT_EXIT | 2 | bar-in-a-field-rejected
+RUN | $T/ilo | append | $T/l.pdl | INSTALL | mac-v3 | mac | main
+EXPECT_EXIT | 2 | too-few-arguments-rejected
+RUN | $T/ilo | append | $T/l.pdl | BOGUS | mac-v3
+EXPECT_EXIT | 2 | unknown-row-kind-rejected
+EXPECT_LACKS | l.pdl | mac-v3 | rejected-inputs-wrote-nothing
+CLEAN |
+
+CASE    | remove-and-list
+SCRATCH |
+RUN | /usr/bin/gcc | -std=c11 | -O2 | -w | -o | $T/ilo | $HOUSE/&.widgits/install-harness/ops/install_ledger_op.c
+RUN | $T/ilo | list | $T/none.pdl
+EXPECT_EXIT | 0 | list-of-a-missing-ledger-is-ok
+RUN | $T/ilo | append | $T/l.pdl | REMOVE | mac-v1
+EXPECT_EXIT | 1 | remove-of-unknown-label-refused
+RUN | $T/ilo | append | $T/l.pdl | INSTALL | mac-v1 | mac | main | PASS
+RUN | $T/ilo | append | $T/l.pdl | INSTALL | debil-v1 | debil | main | FAIL
+RUN | $T/ilo | list | $T/l.pdl
+EXPECT_OUT | mac-v1 mac PASS kept | kept-install-listed
+EXPECT_OUT | debil-v1 debil FAIL kept | failed-install-is-still-listed
+RUN | $T/ilo | append | $T/l.pdl | REMOVE | mac-v1
+EXPECT_EXIT | 0 | remove-accepted
+RUN | $T/ilo | append | $T/l.pdl | REMOVE | mac-v1
+EXPECT_EXIT | 1 | second-remove-refused
+RUN | $T/ilo | list | $T/l.pdl
+EXPECT_OUT | mac-v1 mac PASS removed | removed-state-shown
+EXPECT_OUT | debil-v1 debil FAIL kept | other-label-unchanged
+RUN | $T/ilo | next | $T/l.pdl | mac
+EXPECT_OUT_IS | mac-v2 | removed-label-number-not-reused
+RUN | $T/ilo | append | $T/l.pdl | INSTALL | mac-v1 | mac | main | PASS
+EXPECT_EXIT | 1 | removed-label-cannot-be-installed-again
+CLEAN |
+
+CASE    | append-only-and-tolerant
+SCRATCH |
+RUN | /usr/bin/gcc | -std=c11 | -O2 | -w | -o | $T/ilo | $HOUSE/&.widgits/install-harness/ops/install_ledger_op.c
+WRITE | l.pdl | garbage line\nINSTALL\pmac-v4\pmac\p1791500000\pmain\pPASS\n\n
+RUN | $T/ilo | list | $T/l.pdl
+EXPECT_EXIT | 0 | unparseable-lines-skipped
+EXPECT_OUT | mac-v4 mac PASS kept | good-row-still-listed
+RUN | $T/ilo | next | $T/l.pdl | mac
+EXPECT_OUT_IS | mac-v5 | garbage-does-not-break-numbering
+RUN | $T/ilo | append | $T/l.pdl | INSTALL | mac-v5 | mac | main | PASS
+EXPECT_HAS | l.pdl | garbage line | existing-lines-are-never-rewritten
+EXPECT_HAS | l.pdl | INSTALL\pmac-v4\pmac\p1791500000\pmain\pPASS | earlier-row-byte-identical
+CLEAN |
+
+CASE    | resolve-hosts
+SCRATCH |
+RUN | /usr/bin/gcc | -std=c11 | -O2 | -w | -o | $T/ilo | $HOUSE/&.widgits/install-harness/ops/install_ledger_op.c
+WRITE | h.pdl | # hosts by data\n\nHOST\pmac\plfs.master@mac.example\nHOST\pdebil\pdebil@deb.example\nHOST\plocal\plocal\nHOST\pmac\pother@x\n
+RUN | $T/ilo | resolve | $T/h.pdl | mac
+EXPECT_OUT_IS | lfs.master@mac.example | first-match-wins
+RUN | $T/ilo | resolve | $T/h.pdl | local
+EXPECT_OUT_IS | local | local-target
+RUN | $T/ilo | resolve | $T/h.pdl | nobody
+EXPECT_EXIT | 1 | unknown-name-exit-1
+RUN | $T/ilo | resolve | $T/missing.pdl | mac
+EXPECT_EXIT | 1 | missing-hosts-file-exit-1
+RUN | $T/ilo | resolve | $T/h.pdl
+EXPECT_EXIT | 2 | usage-error-exit-2
+CLEAN |
