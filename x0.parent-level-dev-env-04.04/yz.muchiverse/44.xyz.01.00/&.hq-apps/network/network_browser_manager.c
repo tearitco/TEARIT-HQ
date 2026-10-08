@@ -4999,6 +4999,19 @@ static void write_ui_projection(void) {
                      * MEANS, the worst kind of wrong. */
                     uisan(code_s, t, sizeof(t));
                     for (char *c2 = t; *c2; c2++) if (*c2 == 0x7f) *c2 = '|';
+                    /* Backslash-escape literal quotes so the renderer's quoted-value
+                     * convention does not eat the quotes of a line that is
+                     * exactly "foo". Backslashes are LEFT ALONE: the renderer
+                     * reads <backslash><backslash>n as a real line break, so
+                     * doubling a code line's own `\n` would corrupt the very
+                     * string literal we are trying to display. */
+                    { char esc[4096]; size_t eo = 0;
+                      for (const char *r = t; *r && eo + 2 < sizeof(esc); r++) {
+                          if (*r == '"') esc[eo++] = '\\';
+                          esc[eo++] = *r;
+                      }
+                      esc[eo] = 0;
+                      snprintf(t, sizeof(t), "%s", esc); }
                     /* Leading indentation is dropped downstream: the
                      * shared var loader (kh_load_vars in
                      * khtpm_core_render.c) trims ' ' and '\t' off the front
@@ -5011,7 +5024,14 @@ static void write_ui_projection(void) {
                      * source line) is the win that costs nothing; the
                      * indent is a renderer-contract follow-up. */
                     if (!t[0]) continue;
-                    UI_PUT("c_%d_kind=code\nc_%d_is_code=1\nc_%d_text=%s\n", rc, rc, rc, t);
+                    /* Quote the value so the renderer's kh_load_vars() treats it as
+                     * LITERAL and keeps the leading indentation. That loader
+                     * trims a padded `key= value` for every window in the
+                     * house, and a value beginning with a double quote is
+                     * the opt-out (measured: no existing ui/state file uses
+                     * one). Without this a code block's shape is gone by the
+                     * time it reaches the row. */
+                    UI_PUT("c_%d_kind=code\nc_%d_is_code=1\nc_%d_text=\"%s\"\n", rc, rc, rc, t);
                 } else if (strcmp(kind, "TEXT") == 0) {
                     uisan(rest, t, sizeof(t));
                     /* Walker pass: drop wiki chrome / jump links even when they arrived via the worker RENDER rows, which bypass junk_visible_line() in the extractor. */
