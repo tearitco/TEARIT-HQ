@@ -10,6 +10,9 @@
 #ifndef KHTPM_CSS_PARSER_H
 #define KHTPM_CSS_PARSER_H
 
+extern int g_css_ui_pct;      /* UI scale %, set by the renderer; 100 = identity */
+int css_len(const char *v);  /* "36ui" scales by g_css_ui_pct, "36"/"36px" raw */
+
 #define CSS_MAX_RULES 256
 #define CSS_MAX_CLASSES 8
 

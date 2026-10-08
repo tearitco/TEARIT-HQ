@@ -3502,6 +3502,7 @@ static void kh_ui_apply_scale(void) {
     if (p < 25) p = 25;
     if (p > 400) p = 400;
     g_ui_scale_pct = p;
+    g_css_ui_pct = p; /* CSS "ui" unit follows the same factor as scaled() */
     g_ui_scale_ready = 1;
 }
 
@@ -14125,6 +14126,7 @@ static void desktop_set_font_scale(const char *house_root, int pct) {
     if (!replaced) fprintf(wf, "font_scale=%.2f\n", pct / 100.0);
     fclose(wf);
     g_ui_scale_pct = pct;
+    g_css_ui_pct = pct;
     hq_ui_pdl_touch_marker(house_root);
 }
 
@@ -21035,6 +21037,7 @@ int main(int argc, char **argv) {
         snprintf(css_path, sizeof(css_path), "%s/_.monads/_.livedesk-taskbar/ops/entity_menu_default.css",
                  g_house_root);
         memset(&g_sheet, 0, sizeof(g_sheet));
+        if (!g_ui_scale_ready) kh_ui_apply_scale(); /* CSS "ui" unit needs the scale before the first parse */
         css_load(css_path, &g_sheet);
         /* REAL, NEW 2026-09-02 - merge the .css sitting next to the
          * loaded .chtpm (same stem). Data-driven: any app can ship
