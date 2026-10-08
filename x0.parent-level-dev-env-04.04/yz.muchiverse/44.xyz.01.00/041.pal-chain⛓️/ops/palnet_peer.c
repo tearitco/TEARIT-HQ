@@ -49,6 +49,9 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 
+#ifndef MSG_NOSIGNAL        /* macOS has no MSG_NOSIGNAL; SIGPIPE is ignored in main() instead */
+#define MSG_NOSIGNAL 0
+#endif
 #define MAX_PATH 4096
 #define PATH_BUF (MAX_PATH + 256)
 #define MAX_LINE 4096
@@ -65,6 +68,7 @@ typedef struct {
     char node_id[128];
     int hello_sent;
     int hello_received;
+    char seed_key[96];   /* "host:port" of the PALNET_SEEDS entry this connection came from; HELLO never overwrites it */
 } PeerConn;
 
 static PeerConn g_peers[MAX_PEERS];
@@ -125,6 +129,19 @@ static void set_nonblocking(int fd) {
  * fixed, human-pre-configured port and just fails otherwise - checked
  * directly, see PAL-NET-STANDARD.txt sec. 3 for why that doesn't fit
  * this task's own unpredictable process lifecycle). */
+/* Addresses come from the environment, never from this file (owner rule: no hardcoded addresses, so the same binary runs on this
+ * machine, debil and the Mac with each one's own address):
+ *   PALNET_BIND       address to listen on (default 127.0.0.1 = this machine only; a LAN address or 0.0.0.0 to accept other machines).
+ *   PALNET_ADVERTISE  host written to the presence file for peers to dial (default: PALNET_BIND; required when binding 0.0.0.0).
+ *   PALNET_SEEDS      comma list of host:port to dial when the presence directory has nobody (cross-machine discovery:
+ *                     the presence directory is a local folder, so a remote peer is only reachable by a seed). Used with seek_kind.
+ * NOTE: a non-loopback bind accepts any connection; there is no authentication yet (PAL-NET-STANDARD sec. 7). LAN test use only. */
+static const char *bind_host(void) { const char *e = getenv("PALNET_BIND"); return (e && e[0]) ? e : "127.0.0.1"; }
+static const char *advertise_host(void) {
+    const char *e = getenv("PALNET_ADVERTISE"); if (e && e[0]) return e;
+    const char *b = bind_host(); return strcmp(b, "0.0.0.0") == 0 ? "127.0.0.1" : b;
+}
+
 static int bind_with_retry(int base_port, int *out_port) {
     for (int attempt = 0; attempt < 200; attempt++) {
         int fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -135,7 +152,8 @@ static int bind_with_retry(int base_port, int *out_port) {
         struct sockaddr_in addr;
         memset(&addr, 0, sizeof(addr));
         addr.sin_family = AF_INET;
-        addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+        addr.sin_addr.s_addr = strcmp(bind_host(), "0.0.0.0") == 0 ? htonl(INADDR_ANY) : inet_addr(bind_host());
+        if (addr.sin_addr.s_addr == INADDR_NONE && strcmp(bind_host(), "255.255.255.255") != 0) { close(fd); fprintf(stderr, "palnet_peer: bad PALNET_BIND '%s'\n", bind_host()); return -1; }
         addr.sin_port = htons((uint16_t)(base_port + attempt));
 
         if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) == 0 && listen(fd, 8) == 0) {
@@ -163,7 +181,7 @@ static void write_presence_file(void) {
     fprintf(f, "kind=%s\n", g_own_kind);
     fprintf(f, "project_id=%s\n", g_project_id);
     fprintf(f, "piece_id=%s\n", g_piece_id);
-    fprintf(f, "host=127.0.0.1\n");
+    fprintf(f, "host=%s\n", advertise_host());
     fprintf(f, "port=%d\n", g_bound_port);
     fprintf(f, "pid=%d\n", (int)getpid());
     fprintf(f, "last_seen=%ld\n", (long)time(NULL));
@@ -251,6 +269,9 @@ static int find_seek_candidate(char *out_host, size_t host_sz, int *out_port, ch
     return found;
 }
 
+/* Next PALNET_SEEDS entry that is not currently connected and has not been tried in the last STALE_SEC seconds. */
+static time_t g_seed_tried[16];
+static int next_seed(char *out_host, size_t host_sz, int *out_port, char *out_key, size_t key_sz);
 static void add_peer(int fd) {
     if (g_peer_count >= MAX_PEERS) { close(fd); return; }
     set_nonblocking(fd);
@@ -258,7 +279,25 @@ static void add_peer(int fd) {
     g_peers[g_peer_count].node_id[0] = '\0';
     g_peers[g_peer_count].hello_sent = 0;
     g_peers[g_peer_count].hello_received = 0;
+    g_peers[g_peer_count].seed_key[0] = '\0';
     g_peer_count++;
+}
+
+static int next_seed(char *out_host, size_t host_sz, int *out_port, char *out_key, size_t key_sz) {
+    const char *e = getenv("PALNET_SEEDS"); if (!e || !e[0]) return 0;
+    char copy[512]; snprintf(copy, sizeof copy, "%s", e);
+    time_t now = time(NULL); int idx = 0; char *save = NULL;
+    for (char *tok = strtok_r(copy, ",", &save); tok && idx < 16; tok = strtok_r(NULL, ",", &save), idx++) {
+        char *colon = strrchr(tok, ':'); if (!colon) continue;
+        *colon = '\0'; int port = atoi(colon + 1); if (port <= 0 || !tok[0]) continue;
+        char key[96]; snprintf(key, sizeof key, "%s:%d", tok, port);
+        int connected = 0;
+        for (int i = 0; i < g_peer_count; i++) if (strcmp(g_peers[i].seed_key, key) == 0) { connected = 1; break; }
+        if (connected || now - g_seed_tried[idx] < STALE_SEC) continue;
+        g_seed_tried[idx] = now;
+        snprintf(out_host, host_sz, "%s", tok); *out_port = port; snprintf(out_key, key_sz, "%s", key); return 1;
+    }
+    return 0;
 }
 
 static void remove_peer(int idx) {
@@ -429,6 +468,7 @@ int main(int argc, char **argv) {
     if (argc >= 7) snprintf(g_seek_kind, sizeof(g_seek_kind), "%s", argv[6]);
 
     resolve_root();
+    signal(SIGPIPE, SIG_IGN);
     signal(SIGINT, handle_signal);
     signal(SIGTERM, handle_signal);
 
@@ -511,7 +551,10 @@ int main(int argc, char **argv) {
         if (g_seek_kind[0] && g_peer_count < MAX_PEERS) {
             char host[64], node_id[128];
             int port;
-            if (find_seek_candidate(host, sizeof(host), &port, node_id, sizeof(node_id))) {
+            char seed_key[96]; seed_key[0] = '\0';
+            int have = find_seek_candidate(host, sizeof(host), &port, node_id, sizeof(node_id));
+            if (!have && next_seed(host, sizeof(host), &port, seed_key, sizeof(seed_key))) { have = 1; snprintf(node_id, sizeof node_id, "seed-%s", seed_key); }
+            if (have) {
                 int fd = socket(AF_INET, SOCK_STREAM, 0);
                 if (fd >= 0) {
                     struct sockaddr_in addr;
@@ -522,6 +565,7 @@ int main(int argc, char **argv) {
                     if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) == 0) {
                         add_peer(fd);
                         snprintf(g_peers[g_peer_count - 1].node_id, sizeof(g_peers[0].node_id), "%s", node_id);
+                        snprintf(g_peers[g_peer_count - 1].seed_key, sizeof(g_peers[0].seed_key), "%s", seed_key);
                         send_hello_if_needed(g_peer_count - 1);
                         replay_backlog_to_peer(fd);
                     } else {
