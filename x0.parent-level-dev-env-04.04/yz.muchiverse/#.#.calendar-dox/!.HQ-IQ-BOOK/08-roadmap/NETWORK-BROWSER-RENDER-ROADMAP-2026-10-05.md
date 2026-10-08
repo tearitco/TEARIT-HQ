@@ -103,6 +103,29 @@ must be restored after it, never before.
 - [x] leading indentation preserved — shared renderer, quoted-value convention
 - [x] literal `\n` in a label no longer splits the row (shared renderer fix)
 
+## Done — Milestone 9: tables (2026-10-08)
+
+- [x] `TROW|<header>|<cell>…` per `<tr>`; header rows flagged and tinted
+- [x] `<caption>` emitted as TEXT (was silently dropped with the subtree)
+- [x] cells joined with U+00B7 — **not** `|`, which `uisan()` rewrites to `/`
+- [ ] rowspan/colspan not honoured (cells in document order) — real column
+  layout is a renderer slice, deliberately not faked
+
+## Lane note (2026-10-08)
+
+WebGL stencil/queries stay in the **opencode-fix** lane: `nb_js_worker.c` and the
+`ops/` worker/fetch C files are theirs per AGENTS.md, and that lane is actively
+committing. Manager-side work (extractor → rows → xhtpm → css) stays here.
+When a browser slice needs worker rows, it goes through the handoff doc rather
+than a direct edit.
+
+## Test-harness gotcha (cost me two false "PASS" rounds)
+
+`nb_layout_test.sh` drives the **already-running** manager through the request
+file — it does not launch one. After a rebuild, relaunch the browser before
+`NB_SNAPSHOT_UPDATE=1`, or the snapshot is re-cut from a stale binary and looks
+like a real regression.
+
 ## Done — Milestone 8: file uploads (2026-10-08, verified against httpbin)
 
 - [x] `<input type=file>` extracted as `FILE|name|accept|multiple`
