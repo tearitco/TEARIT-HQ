@@ -3438,6 +3438,92 @@ static int ingest_youtube_watch(const char *html, const char *url, FILE *out) {
     return 1;
 }
 
+/* Spans phase 1 (2026-10-07, design 2026-10-07-INLINE-SPANS-DESIGN.md):
+ * re-derive rich paragraphs from the split rows the extractor already
+ * emitted. A maximal TEXT/LINK run containing >=1 LINK becomes one RICH
+ * group appended at the end (order-irrelevant: the projector ignores
+ * RICH rows until the renderer half lands, so current rendering is
+ * byte-identical). Segment text is pipe-sanitized for the row wire
+ * format. Runs capped at 24 segments; bare TEXT runs skipped. */
+#define RICH_MAX_SEG 24
+#define RICH_RUN_MAX 64
+static void flush_rich_run(char (*pending)[PATH_BUF + 512], int npend) {
+    typedef struct { int is_link; char text[1024]; char url[PATH_BUF]; } Seg;
+    static Seg segs[RICH_MAX_SEG + 1];
+    int nseg = 0, has_link = 0;
+
+            nseg = 0; has_link = 0;
+            for (int i = 0; i < npend && nseg < RICH_MAX_SEG; i++) {
+                if (strncmp(pending[i], "TEXT|", 5) == 0) {
+                    char t[1024];
+                    snprintf(t, sizeof(t), "%s", pending[i] + 5);
+                    for (char *c = t; *c; c++) if (*c == '|') *c = ' ';
+                    snprintf(segs[nseg].text, sizeof(segs[nseg].text), "%s", t);
+                    segs[nseg].is_link = 0; segs[nseg].url[0] = 0;
+                    nseg++;
+                } else if (strncmp(pending[i], "LINK|", 5) == 0) {
+                    char *b2 = strchr(pending[i] + 5, '|');
+                    char u[PATH_BUF] = "", lb[1024] = "";
+                    if (b2) {
+                        *b2 = 0;
+                        snprintf(lb, sizeof(lb), "%s", b2 + 1);
+                        snprintf(u, sizeof(u), "%s", pending[i] + 5);
+                    } else {
+                        snprintf(u, sizeof(u), "%s", pending[i] + 5);
+                        snprintf(lb, sizeof(lb), "%s", pending[i] + 5);
+                    }
+                    for (char *c = u; *c; c++) if (*c == '|') *c = ' ';
+                    for (char *c = lb; *c; c++) if (*c == '|') *c = ' ';
+                    if (strpbrk(u, " \t\r\n") != NULL) continue;
+                    snprintf(segs[nseg].text, sizeof(segs[nseg].text), "%s", lb);
+                    snprintf(segs[nseg].url, sizeof(segs[nseg].url), "%s", u);
+                    segs[nseg].is_link = 1;
+                    nseg++;
+                    has_link = 1;
+                }
+            }
+            if (has_link && nseg > 0) {
+                FILE *af = fopen(g_page_state_path, "a");
+                if (af) {
+                    fprintf(af, "RICH|%d\n", nseg);
+                    for (int i = 0; i < nseg; i++)
+                        fprintf(af, "RICHSEG|%s|%s|%s\n",
+                                segs[i].is_link ? "link" : "text",
+                                segs[i].text, segs[i].is_link ? segs[i].url : "");
+                    fclose(af);
+                }
+            }
+            npend = 0;
+        }
+static void append_rich_rows(void) {
+    FILE *pf = fopen(g_page_state_path, "r");
+    if (!pf) return;
+    typedef struct { int is_link; char text[1024]; char url[PATH_BUF]; } Seg;
+    static Seg segs[RICH_MAX_SEG + 1];
+    int nseg = 0, has_link = 0;
+    char (*pending)[PATH_BUF + 512] = malloc(sizeof(*pending) * RICH_RUN_MAX);
+    if (!pending) { fclose(pf); return; }
+    int npend = 0;
+    char line[PATH_BUF + 512];
+    while (fgets(line, sizeof(line), pf)) {
+        size_t L = strlen(line);
+        while (L > 0 && (line[L-1] == '\n' || line[L-1] == '\r')) line[--L] = 0;
+        int is_t = strncmp(line, "TEXT|", 5) == 0;
+        int is_l = strncmp(line, "LINK|", 5) == 0;
+        if ((is_t || is_l) && npend < RICH_RUN_MAX) {
+            snprintf(pending[npend], sizeof(pending[0]), "%s", line);
+            npend++;
+            continue;
+        }
+        flush_rich_run(pending, npend);
+        npend = 0;
+
+    }
+    flush_rich_run(pending, npend);
+    fclose(pf);
+    free(pending);
+}
+
 static void do_fetch(const char *url_in, int record_history) {
     char url[PATH_BUF];
     if (g_current_url[0]) resolve_url(g_current_url, url_in, url, sizeof(url));
@@ -3614,12 +3700,14 @@ static void do_fetch(const char *url_in, int record_history) {
         return;
     }
 
+
     char tmp[PATH_BUF];
     FILE *out = atomic_open(g_page_state_path, tmp, sizeof(tmp));
     if (!out) { publish_status("error: could not write page state"); return; }
     extract_and_publish(html, url, out);
     fclose(out);
     atomic_commit(g_page_state_path, tmp);
+    append_rich_rows();
 
     write_fetch_dom(html, n);
 
