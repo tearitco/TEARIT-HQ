@@ -18,6 +18,7 @@ A harness is three small things:
 
 | pal | cases | checks | covers |
 |---|---|---|---|
+| `irc_friends_pane.pal` | `cases/irc_friends_pane.pdl` | 13 | irc-chat-hq Friends pane (right region) step 1: the manager's `--peers-dump` over fixture `peers_now.txt` / `known_peers.txt` (live first, remembered shown offline, no double listing), the three-region flex template and CSS, plus a mutant self-check |
 | `palnet_peer_net.pal` | `cases/palnet_peer_net.pdl` | 22 | `041.pal-chain` `palnet_peer` on three scratch peers over loopback 127.0.0.2/.3/.4: bind/advertise address from `PALNET_BIND`/`PALNET_ADVERTISE` (no hardcoded host), `PALNET_SEEDS`, a line arrives in the other inboxes exactly once, `known_peers.txt` memory, restart with NO seeds still delivers, plus a mutant self-check (hardcoded host is caught). Previous (pre-dedup) code fails the exactly-once check. |
 | `pchq_playtest_action.pal` | `cases/pchq_playtest_action.pdl` | 8 | pc-hq `player` verbs `playtest` / `toggle` / `stop` on the real `pchq_board_action.sh` |
 | `transfer_map_access.pal` | `cases/transfer_map_access.pdl` | 17 | real `mr_transfer_desk.+x`: play-mode map access, refusal rc 3 + reason + ledger, build/missing-mode/no-MAP-rows unrestricted, play-test follows play |

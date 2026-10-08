@@ -1,0 +1,4 @@
+# irc_friends_pane.pal - irc-chat-hq Friends pane step 1 (online + remembered peers from peers_now.txt / known_peers.txt) via the manager's --peers-dump hook, plus the three-region template, see cases/irc_friends_pane.pdl
+exec ./ops/+x/harness_case_op.+x cases/irc_friends_pane.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/irc_friends_pane.pdl
+halt

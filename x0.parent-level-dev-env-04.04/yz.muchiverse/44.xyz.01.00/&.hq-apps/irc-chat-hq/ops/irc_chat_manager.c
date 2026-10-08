@@ -306,6 +306,65 @@ static void read_ledger(void) {
     add_room(cur_room);
 }
 
+/* ------------------------------------------------------------------ */
+/* Online / remembered peers (the Friends pane, step 1: read only).
+ * palnet_peer writes <session_root>/peers_now.txt (`host|port|node_id|kind|since`, connected right now) and
+ * <session_root>/known_peers.txt (`host|port|node_id|kind|last_seen`, every address it has ever met). Live rows come
+ * first; remembered peers that are not connected show as offline with how long ago they were seen. */
+#define MAX_PEERS_SHOWN 32
+typedef struct { char label[200]; int live; } PeerRow;
+static PeerRow peer_rows[MAX_PEERS_SHOWN];
+static int n_peer_rows = 0, n_peers_live = 0;
+
+static void ago(char *out, size_t osz, long then) {
+    long d = (long)time(NULL) - then;
+    if (then <= 0) snprintf(out, osz, "never");
+    else if (d < 90) snprintf(out, osz, "%lds ago", d < 0 ? 0 : d);
+    else if (d < 5400) snprintf(out, osz, "%ldm ago", d / 60);
+    else if (d < 172800) snprintf(out, osz, "%ldh ago", d / 3600);
+    else snprintf(out, osz, "%ldd ago", d / 86400);
+}
+
+static void load_peers(void) {
+    char path[PL], ln[512];
+    char live_keys[MAX_PEERS_SHOWN][96]; int nlive = 0;
+    n_peer_rows = 0; n_peers_live = 0;
+    snprintf(path, sizeof(path), "%s/peers_now.txt", session_root);
+    FILE *f = fopen(path, "r");
+    if (f) {
+        while (n_peer_rows < MAX_PEERS_SHOWN && fgets(ln, sizeof(ln), f)) {
+            ln[strcspn(ln, "\r\n")] = 0;
+            char *host = strtok(ln, "|"), *port = strtok(NULL, "|"), *nid = strtok(NULL, "|"), *kind = strtok(NULL, "|"), *since = strtok(NULL, "|");
+            (void)nid;
+            if (!host || !port) continue;
+            snprintf(live_keys[nlive++], 96, "%s:%s", host, port);
+            char a[32]; ago(a, sizeof(a), since ? atol(since) : 0);
+            snprintf(peer_rows[n_peer_rows].label, sizeof(peer_rows[0].label), "* %s:%s  %s  here %s", host, port, kind ? kind : "", a);
+            sanitize(peer_rows[n_peer_rows].label);
+            peer_rows[n_peer_rows++].live = 1; n_peers_live++;
+        }
+        fclose(f);
+    }
+    snprintf(path, sizeof(path), "%s/known_peers.txt", session_root);
+    f = fopen(path, "r");
+    if (f) {
+        while (n_peer_rows < MAX_PEERS_SHOWN && fgets(ln, sizeof(ln), f)) {
+            ln[strcspn(ln, "\r\n")] = 0;
+            char *host = strtok(ln, "|"), *port = strtok(NULL, "|"), *nid = strtok(NULL, "|"), *kind = strtok(NULL, "|"), *seen = strtok(NULL, "|");
+            (void)nid;
+            if (!host || !port) continue;
+            char key[96]; snprintf(key, sizeof(key), "%s:%s", host, port);
+            int is_live = 0; for (int i = 0; i < nlive; i++) if (!strcmp(live_keys[i], key)) { is_live = 1; break; }
+            if (is_live) continue;
+            char a[32]; ago(a, sizeof(a), seen ? atol(seen) : 0);
+            snprintf(peer_rows[n_peer_rows].label, sizeof(peer_rows[0].label), "o %s:%s  %s  seen %s", host, port, kind ? kind : "", a);
+            sanitize(peer_rows[n_peer_rows].label);
+            peer_rows[n_peer_rows++].live = 0;
+        }
+        fclose(f);
+    }
+}
+
 static void write_ui(void) {
     read_bound_port();
     char cu[96];
@@ -324,6 +383,14 @@ static void write_ui(void) {
         char rn[128]; snprintf(rn, sizeof(rn), "%s", rooms[i]); sanitize(rn);
         fprintf(f, "r_%d_name=%s\n", i, rn);
         fprintf(f, "r_%d_cls=%s\n", i, (strcmp(rooms[i], cur_room) == 0) ? "room-active" : "");
+    }
+    load_peers();
+    fprintf(f, "peers_hdr=Online (%d)  ·  known (%d)\n", n_peers_live, n_peer_rows);
+    fprintf(f, "n_peers=%d\n", n_peer_rows);
+    fprintf(f, "peers_empty=%s\n", n_peer_rows ? "" : "Nobody else yet. Start a peer on another machine (or give this one PALNET_SEEDS).");
+    for (int i = 0; i < n_peer_rows; i++) {
+        fprintf(f, "p_%d_text=%s\n", i, peer_rows[i].label);
+        fprintf(f, "p_%d_cls=%s\n", i, peer_rows[i].live ? "peer-live" : "peer-off");
     }
     fprintf(f, "cur_room=%s\n", cur_room);
     fprintf(f, "cur_user=%s\n", cur_user);
@@ -403,6 +470,13 @@ static void cleanup_and_exit(int sig) {
 }
 
 int main(int argc, char *argv[]) {
+    if (argc >= 3 && !strcmp(argv[1], "--peers-dump")) {     /* harness hook: print the Friends-pane rows for a session folder, no window */
+        snprintf(session_root, sizeof(session_root), "%s", argv[2]);
+        load_peers();
+        printf("live=%d total=%d\n", n_peers_live, n_peer_rows);
+        for (int i = 0; i < n_peer_rows; i++) printf("%s|%s\n", peer_rows[i].live ? "LIVE" : "OFF", peer_rows[i].label);
+        return 0;
+    }
     if (argc < 3) {
         fprintf(stderr, "Usage: %s <house_root> <package_dir> [arg3]\n", argv[0]);
         return 1;

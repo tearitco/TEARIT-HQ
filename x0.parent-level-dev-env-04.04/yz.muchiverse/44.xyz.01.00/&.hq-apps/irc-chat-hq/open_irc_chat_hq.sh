@@ -47,7 +47,9 @@ if [ -n "$pids" ]; then
     [ -n "$pids" ] && { echo "$pids" | xargs -r kill -KILL; sleep 1; }
 fi
 
-setsid nohup "$BIN" "$HOUSE_ROOT" "$XHTPM" \
+# macOS has no setsid; fall back to plain nohup there
+SETSID=""; command -v setsid >/dev/null 2>&1 && SETSID=setsid
+$SETSID nohup "$BIN" "$HOUSE_ROOT" "$XHTPM" \
     >"$LOG_DIR/irc-chat-hq.log" 2>&1 < /dev/null &
 printf '%s %s 0 0 irc-chat-hq\n' "$!" "$!" >> "$HOUSE_ROOT/#.desktop/livedesk_proc_list.txt" 2>/dev/null || true
 disown 2>/dev/null || true

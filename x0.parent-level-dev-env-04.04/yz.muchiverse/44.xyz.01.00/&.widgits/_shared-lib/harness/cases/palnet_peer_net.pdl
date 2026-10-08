@@ -60,6 +60,9 @@ EXPECT_OUT_IS | 1 | c-got-it-exactly-once
 APPEND | c/out.txt | TXtwo-from-c\n
 WAIT_HAS | a/in.txt | TXtwo-from-c | 25000 | a-receives-a-line-from-c
 WAIT_HAS | b/in.txt | TXtwo-from-c | 25000 | b-receives-a-line-from-c
+EXPECT_HAS | a/proj/peers_now.txt | 127.0.0.3\p9950 | a-lists-b-as-connected-now
+EXPECT_HAS | a/proj/peers_now.txt | 127.0.0.4\p9950 | a-lists-c-as-connected-now
+EXPECT_HAS | c/proj/peers_now.txt | 127.0.0.2\p9950 | c-lists-a-as-connected-now
 EXPECT_HAS | a/proj/known_peers.txt | 127.0.0.3\p9950 | a-remembers-b
 EXPECT_HAS | a/proj/known_peers.txt | 127.0.0.4\p9950 | a-remembers-c
 EXPECT_HAS | c/proj/known_peers.txt | 127.0.0.2\p9950 | c-remembers-a

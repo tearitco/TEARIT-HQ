@@ -68,6 +68,7 @@ typedef struct {
     char node_id[128];
     int hello_sent;
     int hello_received;
+    char host[64]; int port; char kind[64]; long since;   /* from HELLO; shown by peers_now.txt */
     int outbound;        /* 1 = we dialed this connection, 0 = we accepted it */
     int dup;             /* set when HELLO shows this node is already connected on another socket; the main loop closes it */
     char seed_key[96];   /* "host:port" of the PALNET_SEEDS entry this connection came from; HELLO never overwrites it */
@@ -319,7 +320,20 @@ static void add_peer(int fd) {
     g_peers[g_peer_count].seed_key[0] = '\0';
     g_peers[g_peer_count].dup = 0;
     g_peers[g_peer_count].outbound = 0;
+    g_peers[g_peer_count].host[0] = '\0'; g_peers[g_peer_count].port = 0; g_peers[g_peer_count].kind[0] = '\0'; g_peers[g_peer_count].since = 0;
     g_peer_count++;
+}
+
+/* peers_now.txt: who is connected RIGHT NOW (peers that said HELLO), `host|port|node_id|kind|since`, rewritten whenever the set changes and on every
+ * heartbeat. Windows read it for an "Online" list; known_peers.txt (remembered) minus this file = offline friends. */
+static void write_peers_now(void) {
+    char path[PATH_BUF], tmp[PATH_BUF];
+    snprintf(path, sizeof path, "%s/peers_now.txt", project_root); snprintf(tmp, sizeof tmp, "%s/peers_now.txt.tmp", project_root);
+    FILE *f = fopen(tmp, "w"); if (!f) return;
+    for (int i = 0; i < g_peer_count; i++)
+        if (g_peers[i].hello_received && g_peers[i].host[0] && g_peers[i].port > 0 && !g_peers[i].dup)
+            fprintf(f, "%s|%d|%s|%s|%ld\n", g_peers[i].host, g_peers[i].port, g_peers[i].node_id, g_peers[i].kind, g_peers[i].since);
+    fclose(f); rename(tmp, path);
 }
 
 static int next_seed(char *out_host, size_t host_sz, int *out_port, char *out_key, size_t key_sz) {
@@ -339,10 +353,12 @@ static int next_seed(char *out_host, size_t host_sz, int *out_port, char *out_ke
     return 0;
 }
 
+static void write_peers_now(void);
 static void remove_peer(int idx) {
     close(g_peers[idx].fd);
     for (int i = idx; i < g_peer_count - 1; i++) g_peers[i] = g_peers[i + 1];
     g_peer_count--;
+    write_peers_now();
 }
 
 static void send_line(int fd, const char *line) {
@@ -483,6 +499,8 @@ static void handle_peer_data(int idx, const char *buf, ssize_t n) {
                 char *kind = bar + 1, *host = NULL; int port = 0;
                 char *b2 = strchr(kind, '|'); if (b2) { *b2 = '\0'; host = b2 + 1; char *b3 = strchr(host, '|'); if (b3) { *b3 = '\0'; port = atoi(b3 + 1); } }
                 if (host && port > 0) {
+                    snprintf(g_peers[idx].host, sizeof g_peers[idx].host, "%s", host); g_peers[idx].port = port;
+                    snprintf(g_peers[idx].kind, sizeof g_peers[idx].kind, "%s", kind); if (!g_peers[idx].since) g_peers[idx].since = (long)time(NULL);
                     remember_peer(host, port, g_peers[idx].node_id, kind);
                     if (!g_peers[idx].seed_key[0]) snprintf(g_peers[idx].seed_key, sizeof g_peers[idx].seed_key, "%s:%d", host, port);   /* inbound: now known by its listening address */
                 }
@@ -552,6 +570,7 @@ int main(int argc, char **argv) {
     snprintf(g_presence_path, sizeof(g_presence_path), "%s/%s.txt", g_presence_dir, g_node_id);
 #pragma GCC diagnostic pop
     write_presence_file();
+    write_peers_now();
 
     time_t last_heartbeat = time(NULL);
 
@@ -597,6 +616,7 @@ int main(int argc, char **argv) {
                 }
                 buf[n] = '\0';
                 handle_peer_data(i, buf, n);
+                write_peers_now();
                 { int removed = 0;
                   for (int j = g_peer_count - 1; j >= 0; j--) if (g_peers[j].dup) { remove_peer(j); removed = 1; if (j <= i) i--; }
                   if (removed) continue; }
@@ -649,6 +669,7 @@ int main(int argc, char **argv) {
         if (now - last_heartbeat >= HEARTBEAT_SEC) {
             last_heartbeat = now;
             write_presence_file();
+            write_peers_now();
         }
     }
 
