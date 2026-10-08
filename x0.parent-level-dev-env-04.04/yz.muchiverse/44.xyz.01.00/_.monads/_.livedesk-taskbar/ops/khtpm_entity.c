@@ -1,3 +1,7 @@
+/* macOS leg (2026-10-07): _POSIX_C_SOURCE hides BSD flock()/LOCK_* on Apple. */
+#ifdef __APPLE__
+#define _DARWIN_C_SOURCE
+#endif
 #define _POSIX_C_SOURCE 200809L /* CLOCK_MONOTONIC + getline() under -std=c11 strict mode */
 #define _DEFAULT_SOURCE 1 /* usleep() */
 /* khtpm_entity.c - the desktop pal / entity process (khtpm_entity.+x).
