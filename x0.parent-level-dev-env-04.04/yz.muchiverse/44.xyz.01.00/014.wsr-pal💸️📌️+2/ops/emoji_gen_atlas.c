@@ -48,10 +48,24 @@ int main(int argc, char *argv[]) {
     FT_Library ft;
     FT_Face face;
     if (FT_Init_FreeType(&ft)) return 1;
-    if (FT_New_Face(ft, "/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf", 0, &face)) return 1;
-    
+    /* 2026-10-07: was a single hard-coded Linux path and a silent return 1, so the Mac (Apple's own emoji font) never made a sprite. Search order:
+     * $EMOJI_FONT, Noto (Linux), Apple Color Emoji (macOS); say which font was missing instead of failing silently. */
+    {
+        const char *envf = getenv("EMOJI_FONT");
+        const char *fonts[] = { envf, "/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf", "/usr/share/fonts/noto/NotoColorEmoji.ttf",
+                                "/System/Library/Fonts/Apple Color Emoji.ttc", "/Library/Fonts/Apple Color Emoji.ttc", NULL };
+        int loaded = 0;
+        for (int fi = 0; fi < 5 && !loaded; fi++)
+            if (fonts[fi] && fonts[fi][0] && FT_New_Face(ft, fonts[fi], 0, &face) == 0) loaded = 1;
+        if (!loaded) { fprintf(stderr, "emoji_gen_atlas: no color emoji font found (set EMOJI_FONT, or install Noto Color Emoji / use macOS Apple Color Emoji)\n"); return 3; }
+    }
+
     if (face->num_fixed_sizes > 0) {
-        FT_Select_Size(face, 0);
+        /* bitmap-strike fonts: Noto has one strike (index 0, unchanged); Apple Color Emoji has several, so take the LARGEST (index 0 is tiny) */
+        int best = 0;
+        for (int si = 1; si < face->num_fixed_sizes; si++)
+            if (face->available_sizes[si].height > face->available_sizes[best].height) best = si;
+        FT_Select_Size(face, best);
     } else {
         FT_Set_Pixel_Sizes(face, 0, EMOJI_SIZE);
     }
