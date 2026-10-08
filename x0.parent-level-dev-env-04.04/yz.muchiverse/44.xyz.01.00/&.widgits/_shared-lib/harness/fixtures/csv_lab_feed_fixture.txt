@@ -1,0 +1,61 @@
+HEAD|run-20261007-01|chem|translate|18|45
+QUOTA|groq_req|412|1000
+QUOTA|groq_tok_min|5400|6000
+QUOTA|mac_calls|37|0
+JOB|chem|c001|hydrogen|氢|qīng|4|translated
+JOB|chem|c002|helium|氦|hài|5|ok
+JOB|chem|c003|lithium|锂|lǐ|2|lint_fail
+JOB|chem|c004|carbon|碳|tàn|-|new
+JOB|chem|c005|nitrogen|氮|dàn|5|ok
+JOB|chem|c006|oxygen|氧|yǎng|5|ok
+JOB|chem|c007|sodium|钠|nà|4|translated
+JOB|chem|c008|iron|铁|tiě|5|ok
+JOB|chem|c009|copper|铜|tóng|2|low_score
+JOB|chem|c010|gold|金|jīn|5|ok
+JOB|chem|c011|silver|银|yín|4|translated
+JOB|chem|c012|water|水|shuǐ|5|ok
+JOB|chem|c013|salt|盐|yán|5|accepted
+JOB|chem|c014|acid|酸|suān|-|new
+JOB|chem|c015|base|碱|jiǎn|5|ok
+JOB|chem|c016|gas|气体|qìtǐ|5|ok
+JOB|chem|c017|liquid|液体|yètǐ|4|translated
+JOB|chem|c018|solid|固体|gùtǐ|5|ok
+JOB|chem|c019|atom|原子|yuánzǐ|5|ok
+JOB|chem|c020|molecule|分子|fēnzǐ|5|ok
+JOB|bio|b001|cell|细胞|xìbāo|-|new
+JOB|bio|b002|blood|血|xuè|5|ok
+JOB|bio|b003|heart|心脏|xīnzàng|5|ok
+JOB|bio|b004|lung|肺|fèi|4|translated
+JOB|bio|b005|brain|大脑|dànǎo|1|low_score
+JOB|bio|b006|bone|骨头|gǔtou|5|ok
+JOB|bio|b007|skin|皮肤|pífū|5|ok
+JOB|bio|b008|muscle|肌肉|jīròu|4|translated
+JOB|bio|b009|gene|基因|jīyīn|5|ok
+JOB|bio|b010|protein|蛋白质|dànbáizhì|5|accepted
+JOB|bio|b011|virus|病毒|bìngdú|3|lint_fail
+JOB|bio|b012|plant|植物|zhíwù|5|ok
+JOB|bio|b013|animal|动物|dòngwù|2|rejected
+JOB|bio|b014|seed|种子|zhǒngzi|4|translated
+JOB|bio|b015|root|根|gēn|5|ok
+JOB|geo|g001|mountain|山|shān|5|ok
+JOB|geo|g002|river|河|hé|4|translated
+JOB|geo|g003|ocean|海洋|hǎiyáng|5|ok
+JOB|geo|g004|desert|沙漠|shāmò|5|ok
+JOB|geo|g005|forest|森林|sēnlín|5|ok
+JOB|geo|g006|island|岛|dǎo|4|translated
+JOB|geo|g007|lake|湖|hú|5|ok
+JOB|geo|g008|volcano|火山|huǒshān|5|accepted
+JOB|geo|g009|earthquake|地震|dìzhèn|-|new
+JOB|geo|g010|valley|山谷|shāngǔ|5|ok
+LOG|10:20:00|extract 45 terms from chem.csv
+LOG|10:20:14|batch 1/3 sent to groq
+LOG|10:20:28|translate batch 1 ok (15)
+LOG|10:20:42|lint: chem c003 failed tone check
+LOG|10:21:00|score: chem c009 = 2
+LOG|10:21:14|batch 2/3 sent to groq
+LOG|10:21:28|translate batch 2 ok (15)
+LOG|10:21:42|lint: bio b011 failed length check
+LOG|10:22:00|score: bio b005 = 1
+LOG|10:22:14|batch 3/3 sent to groq
+LOG|10:22:28|translate batch 3 ok (15)
+LOG|10:22:42|merge: 3 low items held for review

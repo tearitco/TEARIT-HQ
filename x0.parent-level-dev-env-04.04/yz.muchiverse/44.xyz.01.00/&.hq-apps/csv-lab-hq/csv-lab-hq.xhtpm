@@ -1,0 +1,53 @@
+<!-- csv-lab-hq.xhtpm - X11-HQ "CSV Lab": a LIVE view of the CSV / Chinese translation pipeline
+     (HEAD/QUOTA/JOB/LOG rows in &.widgits/concept-bank/state/csv_lab_ui.txt) with owner
+     Accept / Reject on a selected job.  Static layout; shared khtpm_core_render.+x;
+     class="cl-window database-window" hits no g_is_* trigger - ZERO renderer C.
+     Shape = knowledge-hq.xhtpm: <sidebar> tabs + <panel> with fixed text rows (status, progress,
+     quota bars, log pane, cli_io) and ONE trailing <scrolllist> (the JOB rows; the selected job is
+     followed by its card rows and the Accept / Reject rows).  Text bars ([####----]) instead of
+     painted panels: <panel> backgrounds do not paint in database-window.
+     One <module>: ops/+x/csv_lab_manager.+x publishes csv_lab_ui.txt (vars=) and polls
+     csv_lab_action.txt (written by ops/csv_lab_item.sh).  Newest LOG line is at the BOTTOM. -->
+<window label="${head}" class="cl-window database-window" vars="csv_lab_ui.txt">
+  <module src="&.hq-apps/csv-lab-hq/ops/+x/csv_lab_manager.+x"/>
+  <page name="main">
+
+    <sidebar id="sidebar" class="cl-sidebar">
+      <text id="who" label="csv lab" class="cl-who"/>
+      <text id="bl" label="bank" class="cl-who"/>
+      <repeat count="${n_banks}" bind="b">
+        <item id="bt${b.#}" class="cl-tab ${b.cls}" label="${b.label}"
+              action="'${PKG}/ops/csv_lab_item.sh' '${b.act}'"/>
+      </repeat>
+      <text id="fl" label="status" class="cl-who"/>
+      <item id="f0" class="cl-tab ${cls_s0}" label="ALL"            action="'${PKG}/ops/csv_lab_item.sh' 'FILTER ALL'"/>
+      <item id="f1" class="cl-tab ${cls_s1}" label="${s1_label}"    action="'${PKG}/ops/csv_lab_item.sh' 'FILTER REVIEW'"/>
+      <item id="f2" class="cl-tab ${cls_s2}" label="accepted"       action="'${PKG}/ops/csv_lab_item.sh' 'FILTER ACCEPTED'"/>
+      <item id="f3" class="cl-tab ${cls_s3}" label="rejected"       action="'${PKG}/ops/csv_lab_item.sh' 'FILTER REJECTED'"/>
+      <item id="tr" class="cl-tab" label="reload" action="'${PKG}/ops/csv_lab_item.sh' 'RELOAD'"/>
+    </sidebar>
+
+    <panel id="content" class="cl-panel">
+      <text id="run"  class="cl-run"  label="${st_run}"/>
+      <text id="prog" class="cl-prog" label="${st_prog}"/>
+      <text id="q1" class="cl-q ${q1_cls}" label="${q1}"/>
+      <text id="q2" class="cl-q ${q2_cls}" label="${q2}"/>
+      <text id="q3" class="cl-q ${q3_cls}" label="${q3}"/>
+      <text id="status" class="cl-status" label="${status}"/>
+      <text id="msg" class="cl-msg" label="${msg}" show="${msg}"/>
+      <repeat count="${n_log}" bind="g">
+        <text id="g${g.#}" class="cl-log" label="${g.text}"/>
+      </repeat>
+      <text id="cmdstat" class="cl-cmd" label="${cmdstat}"/>
+      <cli_io id="cmdline" target_id="cmdline" rows="1" label="cmd&gt; "
+              action="'${PKG}/ops/csv_lab_item.sh'"/>
+
+      <scrolllist class="from-top">
+        <repeat count="${n_list}" bind="l">
+          <item id="l${l.#}" class="cl-row ${l.cls}" label="${l.text}"
+                action="'${PKG}/ops/csv_lab_item.sh' '${l.act}'"/>
+        </repeat>
+      </scrolllist>
+    </panel>
+  </page>
+</window>
