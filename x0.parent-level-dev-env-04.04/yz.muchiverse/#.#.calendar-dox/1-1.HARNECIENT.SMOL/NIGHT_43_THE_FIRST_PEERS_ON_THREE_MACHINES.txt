@@ -1,0 +1,104 @@
+# 🌐🖥️ NIGHT 43 — The First Peers on Three Machines 🖥️🌐
+# ====================================================================
+# Title: "🌐🖥️ NIGHT 43 — The First Peers on Three Machines 🖥️🌐"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: The first real network experiment. The peer stops hardcoding its address, finds peers by seeds, remembers them, and drops duplicates; a pal harness covers it; the same peers run inside the IRC window on this desk, debil and the Mac; the friends pane comes first; the file transfer question; the screen recorder; and how soon a video can exist.
+# Long-form: a work log with an honesty checkpoint. What was proven, what was only seen, and what was not done.
+# Companion documents: 08-roadmap/design-docs/MULTI-AGENT-NETWORK-USER-STORY-HARNESS-PLAN-2026-10-08.md (sections nine to fourteen), HQ-FTP-LAN-SYNC-SPEC.md, harness README section on palnet peer over the LAN.
+
+**THE NARRATOR:** Last night we planned the layer under the games. Tonight the owner said: stop worrying about it being hidden, make the machines remember each other, and let me see chat on all three. So we ran the first real network experiment.
+
+**MAXINE:** Start with the problem.
+
+---
+
+**THE NARRATOR:** Part one. The hardcoded address.
+
+**TOMO:** The peer program is the house's one reusable network companion. A window never touches a socket. It writes an outbox file and reads an inbox file, and the peer does the networking. The program listened on one fixed address, the local machine only, and wrote that same fixed address into its presence file. Its discovery was a folder of presence files on the local disk. So two machines could never find each other.
+
+**RAHWEH:** The owner's rule?
+
+**TOMO:** No address hardcoding. The same program must run on this desk, on debil, and on the Mac, each with its own address, and the harness must be able to run there. So the address now comes from three environment variables. One for the address to listen on. One for the address to advertise to others. And one for seeds, a list of host and port pairs to dial when the local presence folder has nobody. The default is still the local machine, because a non loopback listener accepts any connection and has no login. The owner said the network is hidden, so for the tests that is acceptable, and it is written down.
+
+---
+
+**THE NARRATOR:** Part two. Remembering friends.
+
+**TOMO:** The owner then said, they should remember each other's addresses and ports. So the hello message now carries the sender's listening host and port. Every peer writes what it learns to a file called known peers, in the project folder, one row per address with the node name, kind and last seen. After a restart, with no seeds at all, the peer dials those remembered addresses.
+
+**MAXINE:** And the first test?
+
+**TOMO:** On October eighth, with real secure shell, to three machines. This desk at the address ending two thirty eight. Debil, ending sixteen. The Mac, ending one forty four. I copied only the one source file to a scratch folder under temp on each, compiled it, and ran one peer per machine, each bound to its own address. A line appended to this desk's outbox arrived in both remote inboxes. The Mac needed a fix, because macOS has no flag for suppressing pipe signals. Then I restarted all three with no seeds, and the line still arrived. And a line from debil reached the other two. Then I cleaned everything up.
+
+**RAHWEH:** Was it clean?
+
+**TOMO:** No. The first run delivered every message twice. Both machines dialed each other, so there were two connections, and each message crossed both.
+
+---
+
+**THE NARRATOR:** Part three. The duplicate bug, and what the harness found.
+
+**TOMO:** My first fix dropped the second connection when the hello showed the same node twice. It looked right in the real test. But the owner's rule is that the harness comes first, and I wrote the harness after, a pal program with a case file: three peers on three loopback addresses, which are all local on Linux. It had checks for the advertised address, for delivery, for the remembered peers, and for a restart with no seeds. It failed. A line arrived twice.
+
+**MAXINE:** Why?
+
+**TOMO:** Two real flaws. First, both ends might close different connections, leaving no link, and the reconnect replays the whole backlog, so lines come again. Second, the receiver never remembered what it had already delivered. The fix has two parts. Both ends now keep the connection that was dialed by the node with the smaller name, so they always agree. And the receiver keeps a small set of hashes of recent lines and drops a replayed duplicate. The harness now passes twenty two checks, including a self check where a deliberately broken copy, with a hardcoded address, is shown to be wrong. And the previous code fails the exactly once check. That is the point of a mutant.
+
+**RAHWEH:** Is it a pal harness?
+
+**TOMO:** The owner asked that. Yes. A small pal file executes two compiled programs, one that runs the case file and one that gives the verdict. The cases are a data file. There is no shell script. What it is not: it is not an RPG Maker event page. The house's harness README says pal plus data cases. If the owner wants the cases wrapped as event pages, that is a separate step.
+
+**MAXINE:** And the real machine run?
+
+**TOMO:** It is recorded as a manual procedure in the harness README. The case runner has no remote shell verb, and a case file must not hardcode addresses, so the three machine run is not automated. It is the next harness to build.
+
+---
+
+**THE NARRATOR:** Part four. Chat on three desks.
+
+**TOMO:** The visible version is the IRC window, because the owner chose that one. It starts its own peer, and the environment variables flow through to it. I built a slim copy of the house, about twelve megabytes, from the committed source: the renderer, the shared library, the IRC window, its chat program, and the launcher. On this desk, debil, and the Mac, each in a scratch folder under temp, not over anyone's live desk. I built the renderer on this desk and debil. On the Mac, the current renderer source does not compile, because of two macOS differences, the file lock call and the field name for modification time. The Mac house already has a renderer built a day earlier, so I copied that binary read only into the scratch house. I also found the launcher used a command macOS does not have, fixed it, and launched.
+
+**RAHWEH:** And what did the owner see?
+
+**TOMO:** The owner said, I see chat on our desk, and then, I see the chat on debil and mac now. The windows are up on all three screens. The sockets show all three connected in a full mesh, and each node saved the other two in its known peers file.
+
+**MAXINE:** And messages through the windows?
+
+**TOMO:** Not proven. My relay typing into the new window did not land the way it did in the first window. Keys the owner typed on their own screen go into the same relay file, so they interleave with mine. One of my sequences created a room by accident in the scratch house. So the honest state: the windows run, the peers are meshed, and a message sent from one window to another through the interface is still to be shown, driven cleanly.
+
+---
+
+**THE NARRATOR:** Part five. The friends pane comes first.
+
+**TOMO:** The owner asked for a list of users and friends, with addresses and profiles, in a pane on the right, and then said, we will do the friends panel first. What exists: the IRC window has rooms and a user field, no member list. The forum has follows and direct messages. Entities have phones. And the peers now save addresses.
+
+**RAHWEH:** The design?
+
+**TOMO:** Three tabs in a right hand pane. Online, from the known peers file and live connections. Friends, kept in a friends file in the user's data. And Me, your own profile, sent right after the hello and cached by the receiver. Actions: add and remove, direct message, follow, copy address, and connect by typing an address. The first visible slice is just the online list, read only, then friends, then profiles.
+
+---
+
+**THE NARRATOR:** Part six. Files and drag between houses.
+
+**TOMO:** The owner asked if we ever figured out FTP, dragging files and even entities between houses, knowing the type. There is a written specification for a no server transfer. The window called hq ftp is a placeholder. Nothing moves bytes. Dragging an entity works inside one house. Across houses nothing exists, and an entity has an identity that has to be regenerated on arrival. The plan: manifest and apply programs first, on scratch trees, then the window, then drag.
+
+---
+
+**THE NARRATOR:** Part seven. The screen recorder, and how soon.
+
+**TOMO:** The owner pointed to the screen recorder app. It captures through the Wayland portal and a media pipeline, previews in a window, and encodes video. A text file can start and stop it. But the portal shows a picker every time the daemon starts, there is no saved token, its last recorded test result is a failure from July, and it has no audio. To make it drivable: re run its own test, store the token, add chapter marks tied to the harness timeline, and add narration from the same voices as these lessons.
+
+**MAXINE:** The schedule?
+
+**TOMO:** My estimates. The peer on three machines with a harness, about a day, mostly done. The IRC windows relay driven on three machines with evidence, about three to five working days. The first video, two to three days after that. Cones mining and trading shown in a window, about a week more. The auction and quest board with escrow and an agent that opens its own menus and reads its own inventory, two to three weeks more. Signing waits on the owner's choice.
+
+---
+
+**THE NARRATOR:** Honesty checkpoint.
+
+**MAXINE:** What is proven?
+
+**TOMO:** Proven by test: the peer's configurable address, seeds, exactly once delivery, address memory, restart with no seeds, on loopback in the harness, twenty two checks, and by hand on the three real machines before the dedup fix. Proven by sight: the owner sees the windows on all three. Not proven: a message crossing the windows through the interface; the final dedup fix on the real machines; the Mac renderer built from current source; the screen recorder. Also not done: no authentication, by the owner's choice for now.
+
+**THE NARRATOR:** And, as before, this lesson replaces a thin first version. It is the full script, with the voices read from the header.

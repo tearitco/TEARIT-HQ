@@ -3,74 +3,114 @@
 # Title: "📦🔐 NIGHT 41 — Install, Store, and Whose Data Is It 🔐📦"
 # Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
 # Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
-# Topic: The four things that must coexist (code, compiled programs, user data, content packs), what has gone wrong, why a copied desk breaks, and the order to fix it.
+# Topic: The layer under the games. The four things that must coexist, how install works today, how users and logins map to folders, how user data and git collide, the incidents so far, why a copied desk breaks and the path fix, the store, and the build order.
 # Long-form: a post-mortem plus a build order. Numbers are from files and commits checked on October eighth.
-# Companion documents: 08-roadmap/design-docs/INSTALL-STORE-ACCOUNTS-AND-USER-DATA-COMPLICATIONS-2026-10-08.md, USER-DATA-BRANCHES-DESIGN.md, XYZFS-DISTRIBUTION-VIA-STORE-DESIGN.md, 03-pitfalls/INCIDENT-2026-10-05-WORKING-TREE-WIPE.md.
+# Companion documents: 08-roadmap/design-docs/INSTALL-STORE-ACCOUNTS-AND-USER-DATA-COMPLICATIONS-2026-10-08.md, USER-DATA-BRANCHES-DESIGN.md, XYZFS-DISTRIBUTION-VIA-STORE-DESIGN.md, HQ-FTP-LAN-SYNC-SPEC.md, 03-pitfalls/INCIDENT-2026-10-05-WORKING-TREE-WIPE.md.
 
-**THE NARRATOR:** Last night we handed Grok the games. Tonight, the layer under the games: how it gets installed, what the store is, who the users are, and whose data is whose.
+**THE NARRATOR:** Last night we handed Grok the games. Tonight is the layer under the games: how the house gets installed, what the store really is, who the users are, and whose data is whose. The owner pointed out that the earlier documents did not speak about these complications, and they were right.
 
 **RAHWEH:** Where do we start?
 
 ---
 
-**THE NARRATOR:** Part one, four things that must coexist.
+**THE NARRATOR:** Part one. Four things that must coexist.
 
-**TOMO:** Code, which lives in git with many agents on many branches. Compiled programs, which are in no branch and are built on each machine. User data: entities, histories, phones, wallets, pages, and keys. And content packs, which is what a store would share or sell.
+**TOMO:** Code, which lives in git, with many agents on many branches. Compiled programs, which are in no branch and get built on each machine. User data: entities, histories, phones, wallets, pages, books, and keys. And content packs, which is what a store would share or sell.
 
-**MAXINE:** And the bug?
+**MAXINE:** And the recurring bug?
 
-**TOMO:** Treating any one of them like another. User data got tracked like code. Compiled programs got assumed to be in the repository. A copied entity got treated like a content pack, with its identity inside.
-
----
-
-**THE NARRATOR:** Part two, what has gone wrong.
-
-**TOMO:** On October fifth a bulk script wiped the working tree. Thirty one thousand, five hundred and seventy one files. On October sixth and seventh, stopping the tracking of user data meant that switching branches deleted tracked files from disk, including the owner's key files. The same week a full disk produced the emergency save branches. In September, two agents shared one index, and one committed the other's staged rename of two hundred and fifty four files. And on October eighth a reset left the desktop down because a stale copy of a header broke the build.
-
-**MAXINE:** What are the rules that came out of that?
-
-**TOMO:** Commit by explicit path. One work tree per agent. Never move a live checkout between branches that track user data differently. After any reset or bulk script, count the deleted files. More than a few dozen means stop. Take a tarball and a checksum list of user data outside the repository before any bulk operation.
+**TOMO:** Treating any one of those like another. User data got tracked like code. Compiled programs were assumed to be in the repository. A copied entity was treated like a content pack, with its identity still inside it.
 
 ---
 
-**THE NARRATOR:** Part three, users and accounts.
+**THE NARRATOR:** Part two. Install today.
 
-**TOMO:** User data now lives on local branches, one per user: twenty four of them, verified. The owner is user slash j b. A command called save data commits them with plumbing, and never touches your work tree. They hold wallets and private chat history, so they are never pushed.
+**TOMO:** There is a two repository pipeline. A small installer repository has a one line bootstrap: you pipe a download into the shell and name the product. It fetches a payload repository, which is assembled from the live house by a script called make payload. The payload is a curated minimal desktop: the taskbar, login and signup, the cursword helper, and the clock. It compiles in place and writes a launcher into your local bin. It is Linux only for now.
 
-**RAHWEH:** And a new user?
+**RAHWEH:** What is the weak point?
 
-**TOMO:** A script copies the tracked starter files into the current user's folder, only if missing. It never seeds identity or runtime files, so two installs can never share an entity identity or a phone number.
-
-**MAXINE:** What is missing?
-
-**TOMO:** Account recovery. Moving a user between machines. A written key policy. And a clear answer to which user a running game belongs to when two are logged in. The login mapping I have now read. A file called current login holds the user name, the user identifier, and a relative path to the user's folder. The seed script and the tile picker use it. But there is a second record, the session file, last changed on September first, naming a different user whose folder does not exist. Two records disagree, and one should win.
+**TOMO:** Two. First, the payload builder has an exclude list for archives and test folders, but I did not find an explicit rule keeping the provider key folder out. I read the list; I did not prove a leak. So a leak test comes early in the build order. Second, the older user journey graph that walks install to publish a toy is five weeks old. Its statuses need re checking before anyone relies on them.
 
 ---
 
-**THE NARRATOR:** Part four, why a copied desk breaks.
+**THE NARRATOR:** Part three. Users and logins. We checked this tonight.
 
-**TOMO:** Absolute paths. The Eden button script sets its game folder to a full path in the owner's home. The entity registry has full paths too. Install the house anywhere else, and they point at the wrong place. The rule is: never write an absolute path. I fixed the Eden button today. Its script now finds its game folder from its own location, and a test copies the desk to a new place and checks it follows. The original installer fails that test. Twenty one tracked files still hold the owner's home path: generated windows, an index of phones, and seven asset location files. Those are next.
+**TOMO:** There are twenty four user folders under the user data directory, named by identifier. One file decides who is current: the login file, current login, inside the login and signup app. It holds the user name, the user identifier, and a relative path to that user's folder. The seed script reads it and copies the tracked starter files into that user's folder, only where files are missing, and never seeds identity or runtime files. So two installs can never share an entity identity or a phone number. The tile picker reads the same file.
 
-**RAHWEH:** And the store?
+**MAXINE:** Then what was unclear?
 
-**TOMO:** Data only. A catalog file lists items. There is no pack operation, no install, no uninstall. The design says there are three kinds of pack that must never ship the same way. A seed pack, public and safe. A user pack, private, with consent, wallets inside, never a public repository. And content packs, small, with a manifest. Those are the real store items.
-
-**MAXINE:** And cross machine play?
-
-**TOMO:** Not real yet. The peer code is hard coded to the local machine. So two players in one auction needs a transport fix first.
+**TOMO:** There is a second record. A session file, last changed on September first, names a different user, with an identifier whose folder does not exist. So there are two records of who is logged in, and one of them points at nothing. Anything that trusted the session file would be lost. The decision for the owner: make the login file the single source, and have the payload write both consistently. Beyond that, there is no account recovery, no way to move a user between machines, and no written policy for keys.
 
 ---
 
-**THE NARRATOR:** Part five, the build order.
+**THE NARRATOR:** Part four. User data and git.
 
-**TOMO:** One, a test that installs into a scratch folder and fails if it finds the source house's path. Two, a payload leak check that fails on any key file or wallet. I did not verify whether the payload builder excludes the provider key folder, so that test comes early. Three, a pack operation that regenerates identity, dry run by default. Four, a backup operation for user data. Five, a configurable transport and a test on two machines. Six, an account design from the owner.
+**TOMO:** User data used to be tracked in some branches. On October sixth the main working branch stopped tracking it. Each user's files now live on local orphan branches, one per user. The owner is user slash j b. Twenty four were verified. A command called save data commits them with plumbing, so it never touches your work tree. They hold wallets and private chat history, so they are never pushed.
 
-**RAHWEH:** Who can do these?
+**RAHWEH:** And the danger?
 
-**TOMO:** The first, second and fourth are small, with deterministic checks, so a free worker behind a harness can do them. The pack operation needs review.
+**TOMO:** Other branches may still track those files. Switching a live checkout from one of those to a branch that does not will delete the files from disk. That reproduced on a test tree. The same mechanism once deleted the owner's key files. So you merge in a scratch work tree, and you move the live tree only with a verified backup.
 
-**MAXINE:** And the decisions?
+---
 
-**TOMO:** Whether the store may sell harnesses. How save restore works. Who may publish a user pack, and where. Whether keys ever leave a machine. My advice is never. And the chain signing gate.
+**THE NARRATOR:** Part five. What has gone wrong.
+
+**TOMO:** On October fifth a bulk script wiped the working tree. Thirty one thousand, five hundred and seventy one files. On the sixth and seventh, stopping the tracking of user data meant branch switches deleted tracked files, including key files. That same week a full disk produced the emergency save branches. In September, two agents shared one index, and one committed the other's staged rename of two hundred and fifty four files. On October eighth a desktop reset left the desktop down because a stale copy of a header broke the build.
+
+**MAXINE:** And the rules that came out of that?
+
+**TOMO:** Commit by explicit path. One work tree per agent. Never move a live checkout between branches that track user data differently. After a reset or bulk script, count deleted files, and stop if it is more than a few dozen. Take a tarball and a checksum list of user data outside the repository before any bulk operation.
+
+---
+
+**THE NARRATOR:** Part six. Why a copied desk breaks, and the fix.
+
+**TOMO:** Absolute paths. The Eden button's control script set its game folder to a full path inside the owner's home. The entity registry has full paths too. Install the house anywhere else, and they point at the wrong place. The rule is: never write an absolute path into a generated or tracked file.
+
+**RAHWEH:** And what did we do?
+
+**TOMO:** I fixed the Eden button today. Its script now finds its game folder from its own location. A new test installs a desk, copies it to a different path, and checks that the script follows the copy. The original installer fails that test. The fixed one passes. The owner's live button script still has the old path, because it is generated user data and I did not edit it without asking.
+
+**MAXINE:** What is left?
+
+**TOMO:** Twenty one tracked files still hold the owner's home path. Generated window layouts, generated test event packages, an index of phones with seventy three lines of absolute paths, seven asset location files, and the entity registry. Each needs the same fix and the same test.
+
+---
+
+**THE NARRATOR:** Part seven. The store, and moving things between houses.
+
+**TOMO:** The store is data only. A catalog file lists items. There is no pack operation, no install, and no uninstall. The design says there are three kinds of pack that must never ship the same way. A seed pack: public and safe. A user pack: private, with consent, with wallets inside, never a public repository. And content packs: small, with a manifest, the real store items.
+
+**RAHWEH:** And file transfer between houses?
+
+**TOMO:** That is the FTP question. There is a written specification for a no server LAN sync with a framed protocol, message authentication, pairing with a human in the loop, a list of what may move and what is denied, and a loopback harness. The window called hq ftp is only a placeholder that says not built. Nothing transfers bytes. Dragging an entity works inside one house, using the standard drag and drop between windows, where the payload is the entity's folder path. Across houses it does not exist. An entity carries an identity, so a transfer must regenerate it, keep the entity's type, and refuse unsupported types.
+
+---
+
+**THE NARRATOR:** Part eight. What the games need from this layer.
+
+**TOMO:** A new player needs a starter desk: seed pack, seed script, and login. That works in part. A game installed as a pack needs a manifest, regenerated identity and relative paths, and there is no pack operation yet. Two players in one auction need two users, one transport and one ledger. The transport was hard coded to the local machine; we fixed that tonight and I will describe it next time. A wallet and a price on the chain need a signing gate, which does not exist. Saving and loading a player's game has a first version of slots, but the restore model is undecided. Sharing a character without leaking data needs a user pack with consent, and that is design only.
+
+---
+
+**THE NARRATOR:** Part nine. The build order.
+
+**TOMO:** One, the relative path fix for the remaining generators, each with a test that installs into a scratch folder, moves it, and searches for the old path. Two, a payload leak check that fails on any key file or wallet. Three, a pack operation that regenerates identity and runs as a dry run by default. Four, a backup operation for user data, with a tarball and a checksum list, run before any bulk operation. Five, a transport with a configurable address, tested on two machines. Six, an account design from the owner.
+
+**MAXINE:** Who can do these?
+
+**TOMO:** The first, second and fourth are small, with deterministic checks, so a free worker behind a locked test can do them. The pack operation needs a careful agent and review.
+
+**RAHWEH:** And the owner's decisions?
+
+**TOMO:** Whether the store may sell harnesses. How save restore works. Who may publish a user pack, and where. Whether keys ever leave a machine; my advice is never. And the signing gate for the chain.
+
+---
+
+**THE NARRATOR:** Honesty checkpoint.
+
+**MAXINE:** What is unverified?
+
+**TOMO:** Whether the payload builder can copy a key file. Which other programs read the stale session file. And the older install journey statuses. The login mapping and the path fix I did check, with evidence. And again: the first audio for this lesson used the wrong voices and a short script. This is the full version, with the voices from the header.
 
 **THE NARRATOR:** That is the layer under the games. Without it, the games cannot be shared, and nobody else can play.
