@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+SOURCE       | vocab_file         | /media/no/b7ced73c-5231-4462-b98d-64e38fe2df9e/home/jbez/Desktop/^.📶️.SHARE]/^.🦾️]fullsharezip/💪🏾️].no-desk.sharezip/📲️📵️.GTFO.flxbx.📦️arcbit♏️/#.⛷️LOOSE-TANGENT]2wild]🎄️⛷️/🪆️.a0/🪆️.📟️.a0/📚️/1k.freak.chinese-core-vocab.txt
+NOTE         | why                | Reference Mandarin vocabulary (Cambridge Pre-U 9778 core list, ~845 distinct headwords): lines are hanzi, pinyin (space-separated syllables, tone marks), English gloss, separated by 2+ spaces. EXAM-BOARD MATERIAL: used read-only by csv_lab lint for ADVISORY cross-checks of pinyin and gloss, NEVER copied into the repo.
+NOTE         | where              | External drive (outside the repo and the house zip). If the file is missing csv_lab lint prints ref=skipped and every other check still runs.
+NOTE         | used by            | &.widgits/concept-bank/ops/csv_lab.c (lint --ref <this file>); design: CSV-MODEL-SCORING-AND-CHINESE-PIPELINE-DESIGN.md
+NOTE         | derived lookup     | none stored: csv_lab reads the file each run (a few ms). Nothing derived goes into #.NNEST_ASSETS.
