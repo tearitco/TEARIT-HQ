@@ -94,7 +94,10 @@ SECTION      | ai_menu_8_label       | tomom
 SECTION      | ai_menu_8_cmd         | sh _.monads/_.livedesk-taskbar/ops/open_tomom.sh
 SECTION      | ai_menu_9_label       | Concept Bank
 SECTION      | ai_menu_9_cmd         | sh _.monads/_.livedesk-taskbar/ops/open_concept_bank.sh
-SECTION      | ai_menu_10_label      | Cancel
+# Knowledge HQ (2026-10-07): browse/label/score the chemistry data and accept or reject proposed rows (review_owner.txt). Data-driven row, no C change.
+SECTION      | ai_menu_10_label      | Knowledge
+SECTION      | ai_menu_10_cmd        | sh _.monads/_.livedesk-taskbar/ops/open_knowledge.sh
+SECTION      | ai_menu_11_label      | Cancel
 
 # db cell (9.db) - converted from C-hardcoded 2026-09-08. The builder
 # still gates on an active livedesk session (no session -> no menu).
