@@ -740,7 +740,14 @@ static int launch_one(const char *house_root, const char *label, const char *cmd
             pos += (size_t)snprintf(cmd + pos, sizeof(cmd) - pos, "'%s'", resolved[i]);
         }
         char full[MAX_LINE * 2 + 64];
-        snprintf(full, sizeof(full), "setsid nohup %s >/dev/null 2>&1 &", cmd);
+#ifdef __APPLE__
+        /* 2026-10-07: macOS has no setsid binary, so "setsid nohup ..." ran as a backgrounded `command not found` (exit 127) while system()
+         * still returned 0: autostart reported success and started nothing. Same fix run_khtpm_strip.sh made on 2026-08-23. */
+        const char *detach = "nohup";
+#else
+        const char *detach = "setsid nohup";
+#endif
+        snprintf(full, sizeof(full), "%s %s >/dev/null 2>&1 &", detach, cmd);
         int rc = system(full);
         return rc;
     }
