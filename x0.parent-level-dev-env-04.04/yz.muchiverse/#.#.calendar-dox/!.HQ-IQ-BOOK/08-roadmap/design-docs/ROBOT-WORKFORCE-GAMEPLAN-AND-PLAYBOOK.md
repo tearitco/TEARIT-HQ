@@ -176,7 +176,7 @@ what Tier W/M already solved. The house model (NIGHT 30): `Watch → DESCRIBE (f
 
 Four real ceilings. The Quartermaster 🧾 enforces them; none is a model's opinion.
 
-1. **🆓 Free quota.** OpenRouter free: **50 requests/day per account** (observed, HTTP 429 `free-models-per-day`). Groq works; its limits are **not measured yet** (measure before planning on them). More free sources = more capacity; each gets its own provider row.
+1. **🆓 Free quota.** OpenRouter free: **50 requests/day per account** (observed, HTTP 429 `free-models-per-day`). Groq works; measured 2026-10-07 from headers (Q014, `&.widgits/quest-pilot/q014-groq-limits/observed.md`): **1000 requests/day and 8000 tokens/minute per model**; the binding limit is tokens per minute (one 4,000-token reply is half a minute's budget). More free sources = more capacity; each gets its own provider row.
 2. **🖥️ CPU.** Weak machine. Heavy ghosts run `nice -n 15 ionice -c3`; at most *N* concurrent worker processes (start N=2); builds are serialized.
 3. **👁️ Review attention.** Every attempt costs someone to read it. A Reviewer ghost 🔍 filters first; the manager reads only attempts that passed harness + review.
 4. **🔀 Merge safety.** Ghosts commit only to `ghost/<id>/<quest>` in their **own worktree**; only the manager merges; never `main`, never another tool's branch, never user data.
@@ -325,7 +325,7 @@ live traffic bars from the ledger → p2p and `hq-ftp` panels. It is **P7**, aft
 | Q011 | quest packet: `scope.txt`, `LOCK.sha256`, `budget.pdl` + `quest_check` op | W/M | M | forged harness rejected; out-of-scope diff rejected |
 | Q012 | ghost runner v0 (claim → fresh worktree from tip → HORN → attempt folder → harness → verdict) | M→W | L | q001-class quest end to end |
 | Q013 | Quartermaster op: read ledgers, stop the fleet at quota/CPU limits | D | S | stops at a set limit in a scratch run |
-| Q014 | measure Groq limits (documented, not assumed) | D | S | table of observed limits |
+| Q014 | measure Groq limits (documented, not assumed) | D | S | **DONE 2026-10-07**: table in `observed.md` (1000 req/day, 8000 tok/min) |
 | Q015 | Tester ghost v0: open one entity via relay, report pass/fail | D→S | M | passes on a good entity, fails on a broken fixture |
 | Q016 | restart-desktop ops harness (login shell, relaunch-or-loud-fail) | D | M | stub build fails → harness says so and relaunches the old binary |
 | Q017 | `hq-ftp` transfer app (spec exists) | W/M | L | pack arrives with matching sha on a second host |

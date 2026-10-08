@@ -93,3 +93,7 @@ Owner: "I'd rather use the models that don't need pay. We can also always add mo
 
 ## 14. Groq works (2026-10-07)
 The owner supplied a Groq key; it is stored only in `&.widgits/open-hai/state/raw_groq.txt` (mode 600, git-ignored by `**/state/raw_*.txt`; never committed or copied into docs). `horn_chat_backend.+x` run from a SCRATCH project root (it needs `pieces/horn/convo.json` and reads keys under `<root>/&.widgits/open-hai/state/`, so the live HORN runtime folder is not touched) answered "pong" from `groq (openai/gpt-oss-120b)` in 0.68 s, rc 0. The old `horn_chat_openrouter` op is superseded by `horn_chat_backend` for delegation. Because the key was pasted in a chat transcript, the owner may wish to rotate it at console.groq.com/keys. Groq free-tier daily/minute limits are not yet measured: the router must read them from response headers and mark the provider exhausted on a 429.
+
+## 15. Groq limits measured (2026-10-07, Q014)
+1000 requests/day and 8000 tokens/minute per model (gpt-oss-120b, gpt-oss-20b, qwen3.8-27b), read from response headers; table and caveats in `&.widgits/quest-pilot/q014-groq-limits/observed.md`. Section 14's "limits not yet measured" is superseded. Token-per-minute, not requests, is what the router and the quartermaster must budget.
+
