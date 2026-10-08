@@ -130,3 +130,8 @@ d6bd5197c39688243e96dbc47feea8b824cbf5b7ae878f88cb81ce9ab6f7ec25	zh	Tryptophan	�
 648fe5f9df3057c19b16f61c5e493212b281e9c0c411dc5aa3d00993b9ef6edc	zh	Serotonin	血清素	xuè qīng sù	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 434453c0eb9f8f98f601daf3dc4eb5322d4157ca5ff5b1b46cf4c492b4bb5246	zh	GABA	γ-氨基丁酸	ān jī dīng suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 2c4e93fc31d0d23416e48eac4306e32d8e892e9e3f7fa4c119e0199e893b98a1	zh	Glutamate	谷氨酸	gǔ ān suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+832e2318f05b75e873a63db0fdf65363f41a3a6c7282edc968fe62ccefcff5e2	zh	observe	观察	guān chá	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+b185886a7b533e4ba3f4a4092cc1560e335be81e31808477a2b04e7bf765a2b8	zh	describe	描述	miáo shù	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+22eeb2df5548240a0c3f809d0bd8aa0c67fbfd4a63bc55eaabd2abb527a4d4b0	zh	propose_edit	提议编辑	tí yì biān jí	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+774de6f777da3ed75a68eb98aaa92ffb75972567bbd3ba693aabb1a0093401f2	zh	review_edit	审查编辑	shěn chá biān jí	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+ca26989e091223e9088df567edc3558af2cf5410ff31de86a28d78bd4788ab30	zh	author_new_node	创建新节点	chuàng jiàn xīn jié diǎn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b

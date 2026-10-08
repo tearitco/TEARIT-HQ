@@ -1,0 +1,6 @@
+# skillbook_skills.zh sidecar of ^.hai-horn/skillbook.pdl - machine translation. status: ok/accepted are promotable; low_score, translated (unscored) and lint_fail wait for a person (review.tsv); rejected stays out. Scores are advisory. columns: id, source, zh, pinyin, score, status, translator, judge
+observe	observe	观察	guān chá	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+describe	describe	描述	miáo shù	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+propose_edit	propose_edit	提议编辑	tí yì biān jí	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+review_edit	review_edit	审查编辑	shěn chá biān jí	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+author_new_node	author_new_node	创建新节点	chuàng jiàn xīn jié diǎn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
