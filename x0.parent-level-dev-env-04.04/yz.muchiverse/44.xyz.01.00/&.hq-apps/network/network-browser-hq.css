@@ -45,6 +45,10 @@ sidebar { width: 200px; background-color: #1a1a1a; color: #cccccc; }
 .block-title { color: #9a9a9a; }
 .nb-link { color: #8fb8ff; }
 .nb-text { color: #cccccc; }
+/* 2026-10-07: <pre> rows. Monospace family + a dimmer tint than body
+   text so a code block reads as a different kind of content; the row
+   itself already carries one source line and its indentation. */
+.nb-code { color: #a8c8a8; font-family: DejaVu Sans Mono; }
 .nb-console-text { color: #8fbf8f; }
 .page-title { color: #eeeeee; }
 

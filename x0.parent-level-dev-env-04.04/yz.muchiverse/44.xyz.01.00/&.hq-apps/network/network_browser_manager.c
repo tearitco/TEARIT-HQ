@@ -739,6 +739,47 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                 p = bend ? bend + 9 : tag_end + 1;
                 continue;
             }
+            /* <pre> / <code> as a block (2026-10-07): preformatted text is
+             * the one place where whitespace IS content. collapse_ws()
+             * turned every code sample on the web into one run-on line, so
+             * indentation and line structure were simply gone. Emit one
+             * CODE|<line> row per source line instead - leading spaces kept
+             * (capped), pipes escaped to 0x7f like textarea values. */
+            if (strncasecmp(p, "<pre", 4) == 0 && !isalnum((unsigned char)p[4])) {
+                FLUSH_LINE();
+                const char *tag_end = strchr(p, '>');
+                if (!tag_end) { p++; continue; }
+                const char *pend = strcasestr_local(tag_end + 1, "</pre>");
+                const char *body_end = pend ? pend : tag_end + 1 + strlen(tag_end + 1);
+                const char *cp = tag_end + 1;
+                char codebuf[4096];
+                while (cp < body_end && line_count < MAX_LINES) {
+                    const char *nl = memchr(cp, '\n', (size_t)(body_end - cp));
+                    const char *le = nl ? nl : body_end;
+                    size_t n = (size_t)(le - cp);
+                    if (n >= sizeof(codebuf)) n = sizeof(codebuf) - 1;
+                    memcpy(codebuf, cp, n); codebuf[n] = 0;
+                    /* Inline markup inside a code block (<code>, <span>,
+                     * <a>) is presentation, not content: drop the tags so
+                     * the row reads as the source does. */
+                    { char *w2 = codebuf, *r2 = codebuf;
+                      while (*r2) {
+                          if (*r2 == '<') { const char *g = strchr(r2, '>'); if (!g) break; r2 = g + 1; continue; }
+                          *w2++ = *r2++;
+                      }
+                      *w2 = 0; }
+                    size_t L = strlen(codebuf);
+                    while (L > 0 && (codebuf[L-1] == '\r' || codebuf[L-1] == ' ')) codebuf[--L] = 0;
+                    html_decode_entities(codebuf);
+                    for (char *c2 = codebuf; *c2; c2++)
+                        if (*c2 == '|') *c2 = 0x7f;
+                    if (codebuf[0]) { fprintf(out, "CODE|%s\n", codebuf); line_count++; }
+                    if (!nl) break;
+                    cp = nl + 1;
+                }
+                p = pend ? pend + 5 : body_end;
+                continue;
+            }
             if (strncasecmp(p, "<textarea", 9) == 0 && !isalnum((unsigned char)p[9])) {
                 FLUSH_LINE();
                 const char *tag_end = strchr(p, '>');
@@ -4591,6 +4632,35 @@ static void write_ui_projection(void) {
                     uisan(rest, t, sizeof(t));
                     UI_PUT("c_%d_kind=title\nc_%d_is_title=1\nc_%d_text=%s\n", rc, rc, rc, t);
                     if (click_action[0]) UI_PUT("c_%d_sel=%s\nc_%d_click_action=%s", rc, pending_sel, rc, click_action);
+                } else if (strcmp(kind, "CODE") == 0) {
+                    /* CODE|<line> - one row per source line of a <pre>.
+                     * Pipes come through as 0x7f (extractor escape); uisan
+                     * already turns a raw '|' into '/', so restore the
+                     * character here or C code would read 'x / y'. */
+                    char code_s[2048];
+                    snprintf(code_s, sizeof(code_s), "%s", rest);
+                    /* Order matters: uisan() rewrites '|' to '/' because a
+                     * raw pipe would break the pipe-delimited frame dump.
+                     * Run uisan FIRST on the 0x7f-escaped text (uisan does
+                     * not touch 0x7f), then restore the pipe afterwards -
+                     * doing it the other way round silently rendered C's
+                     * `1 | 2` as `1 / 2`, which changes what the code
+                     * MEANS, the worst kind of wrong. */
+                    uisan(code_s, t, sizeof(t));
+                    for (char *c2 = t; *c2; c2++) if (*c2 == 0x7f) *c2 = '|';
+                    /* Leading indentation is dropped downstream: the
+                     * shared var loader (kh_load_vars in
+                     * khtpm_core_render.c) trims ' ' and '\t' off the front
+                     * of every value in every window, and changing that is
+                     * a shared-renderer blast radius well past this lane.
+                     * Workaround considered and rejected: re-indent with
+                     * U+00A0, which survives the trim - but then Ctrl+C on
+                     * a code row hands the user invisible NBSPs and their
+                     * code breaks silently. Line STRUCTURE (one row per
+                     * source line) is the win that costs nothing; the
+                     * indent is a renderer-contract follow-up. */
+                    if (!t[0]) continue;
+                    UI_PUT("c_%d_kind=code\nc_%d_is_code=1\nc_%d_text=%s\n", rc, rc, rc, t);
                 } else if (strcmp(kind, "TEXT") == 0) {
                     uisan(rest, t, sizeof(t));
                     /* Walker pass: drop wiki chrome / jump links even when they arrived via the worker RENDER rows, which bypass junk_visible_line() in the extractor. */

@@ -73,6 +73,10 @@
         <repeat count="${content_count}" bind="c">
 <text id="ct${c.#}" class="page-title" label="${c.text}" action="${c.click_action}"        show="${c.is_title}"/>
           <text id="cx${c.#}" class="nb-text"                   label="${c.text}" action="${c.click_action}"        show="${c.is_text}"/>
+          <!-- 2026-10-07: <pre> blocks keep their line structure and
+               indentation (CODE rows, one per source line) instead of
+               being collapsed into one run-on line. -->
+          <text id="cd${c.#}" class="nb-code"                   label="${c.text}" show="${c.is_code}"/>
           <item id="cl${c.#}" class="nb-link" label="${c.text}"  action="${c.action}"                       show="${c.is_link}"/>
           <!-- Milestone 4 slice 1 (2026-10-07): form controls. INPUT rows
                are editable cli_io (commit appends name=value via the
