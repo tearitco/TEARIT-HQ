@@ -14,14 +14,15 @@ L2F="$HERE/+x/ledger_to_feedback.+x"; PL="$HOUSE/^.hai-horn/ops/+x/promotion_led
 # promotion_ledger "replay" ADDS to the candidate's counts (replaying one log twice double-counts), so the ledger is DERIVED data here:
 # it is rebuilt from the append-only per-worker logs on every run, each candidate replayed exactly once. The logs are the source of truth.
 rm -rf "$BANK/promotion_ledger"; mkdir -p "$BANK/candidates"; "$PL" "$BANK" init >/dev/null
-# quest-dir | worker | task family
+# quest-dir (under quest-pilot/) or a ledger path relative to the house root (contains a /) | worker | task family
 WORKERS="q001-clamp|nemotron-3-ultra|c_op
 q002-weighted-pick|groq-gpt-oss-120b|c_op
 q019-phrases|groq-gpt-oss-120b|data_rows
-q020-var-cmp|groq-gpt-oss-120b|c_op"
+q020-var-cmp|groq-gpt-oss-120b|c_op
+&.widgits/concept-bank/proposals/phrase_assoc/ledger.txt|groq-gpt-oss-120b|assoc_rows"
 echo "$WORKERS" | while IFS='|' read -r Q W F; do                 # 1. ledgers -> per-worker FEEDBACK logs (idempotent by id)
   mkdir -p "$BANK/workers/$W"
-  printf '%s %s/%s: ' "$Q" "$W" "$F"; "$L2F" "$QP/$Q/quest_ledger.txt" "$BANK/workers/$W" "$F"
+  printf '%s %s/%s: ' "$Q" "$W" "$F"; case "$Q" in */*) LED="$HOUSE/$Q";; *) LED="$QP/$Q/quest_ledger.txt";; esac; "$L2F" "$LED" "$BANK/workers/$W" "$F"
 done
 echo "$WORKERS" | cut -d'|' -f2,3 | sort -u | while IFS='|' read -r W F; do   # 2. one candidate per worker x family, replayed once
   ID="g-$W-$F"; C="$BANK/candidates/$ID.txt"

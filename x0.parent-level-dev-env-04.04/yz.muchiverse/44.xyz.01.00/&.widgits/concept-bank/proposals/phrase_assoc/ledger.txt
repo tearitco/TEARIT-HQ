@@ -1,0 +1,6 @@
+QUEST|phrase-assoc|2026-10-07|worker=openai/gpt-oss-120b via Groq (direct, free, reasoning_effort low)|judge=concept-bank/ops/assoc_lint.c (deterministic)
+ITER|1|prompt=777 completion=668 total=1445|verdict=PASS (the reply was well formed; the first version of the judge rejected trailing blanks and wrongly failed it; the fixed judge passes reply_1.txt)
+JUDGE_FIX|assoc_lint now trims blanks around lines and fields; reply_1 and reply_2 give byte-identical drafts
+WASTE|the retry (prompt=1647 completion=676 total=2323) was caused by the judge, not the worker: a too-strict judge costs tokens too
+TOTAL|tokens needed=1445 tokens spent=3768
+REVIEW|draft.txt holds 46 ASSOC rows, all status=candidate; a person reviews every row (nothing is applied to any weight)

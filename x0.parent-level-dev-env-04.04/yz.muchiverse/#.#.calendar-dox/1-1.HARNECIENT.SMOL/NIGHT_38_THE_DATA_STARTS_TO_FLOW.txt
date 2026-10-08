@@ -1,0 +1,132 @@
+# 🧠📒 NIGHT 38 — The Data Starts to Flow 📒🧠
+# ====================================================================
+# Title: "🧠📒 NIGHT 38 — The Data Starts to Flow 📒🧠"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: The owner asked whether the house is really recording banks, answers and scores by hand, and whether any weights are trained. The audit said mostly no. So tonight the pipe was opened: delegation results became scored feedback, the bank got hand-recorded entries, and the tuning of weights became a labeled layer of its own. Also: the pull of the other branches.
+# Long-form: a work log with an honesty checkpoint. Numbers are the ones measured on disk today.
+# Companion documents: XO/13.phymoji-engine/meta-models.md (and .html), META-MODELS-VISION-ALIGNMENT-AND-SOLUTIONS.md, 08-roadmap/design-docs/LEARNING-LOOP-BANKS-WEIGHTS-NO-REPROMPT-DESIGN.md, XYZFS-DISTRIBUTION-VIA-STORE-DESIGN.md.
+
+**THE NARRATOR:** NIGHT 37 designed a robot workforce. Tonight the owner asked the question underneath it. Are we really recording the banks, the questions and answers, the hidden layer associations and the scores, by hand? Are we training any weights? And do we waste tokens asking the same thing twice?
+
+**MAXINE:** Start with the honest answers. What did the audit find?
+
+---
+
+**THE NARRATOR:** Part one, the audit.
+
+**TOMO:** The concept bank held three masters, one spoke, and three test edits. That is all. A separate harness bank held ten hand-seeded entries. Nothing was recorded per entity. There was no question and answer bank file at all, only five hand-scored exchanges, ten paragraphs for tomom, and forty-six phrase rows.
+
+**RAHWEH:** And the scoring?
+
+**TOMO:** The scoring tools were built and compiled. They had written zero rows. Not one observation had ever flowed through. Weights are trained in exactly one place, inside tomom, on ten tiny paragraphs, outside the loop, and its programs are not even compiled.
+
+**MAXINE:** So the pipe existed and was empty.
+
+**TOMO:** Yes. And one code path contradicted the house doctrine. The validator promotes straight into the bank at tier two or higher. The doctrine says a person promotes. That is the owner's decision, so we left it alone.
+
+---
+
+**THE NARRATOR:** Part two, the waste.
+
+**RAHWEH:** Pilot four gave the number. A free Groq model wrote a small program that compares numbers for event pages. It took four tries and seventeen thousand and fifty-four tokens.
+
+**TOMO:** The first try did not compile. The second came within one check of passing, and the missing piece was a newline. The third broke the build again with an unused variable. The fourth passed.
+
+**MAXINE:** Where did the tokens go?
+
+**TOMO:** Two places. When we repaired, we re-sent the task and the whole earlier answer, so almost nine tenths of one repair prompt was text the model had already seen. And every try wrote the whole file again to change one or two lines.
+
+**RAHWEH:** And the fix that worked?
+
+**TOMO:** The last try sent only the failing file and the exact compiler line. It was the smallest prompt of the repairs and it passed. That is the first lesson in the new lessons bank.
+
+**MAXINE:** So, do we already have answer banks that stop us re-asking?
+
+**TOMO:** No. We have designs for one. Today the answer is no.
+
+---
+
+**THE NARRATOR:** Part three, trust but check.
+
+**RAHWEH:** Another session wrote a solutions document from the audit. It was useful, and we still checked every number against the disk.
+
+**TOMO:** Five things were wrong. It said forty iteration lines; there are eight. It scored the first quest as a perfect one, but one pass is two thirds, not one. It listed the eating weight as seven; the file says three. It named three spokes whose source keys do not exist. And it proposed putting worker lessons into the concept bank, which the validator would refuse, because every spoke must point at one of the three physics masters.
+
+**MAXINE:** So the errors are written down.
+
+**TOMO:** In the errata section of the learning loop document. A good plan with five wrong numbers is still a good plan, once the numbers are fixed.
+
+---
+
+**THE NARRATOR:** Part four, opening the pipe.
+
+**TOMO:** First, a small converter. It reads a quest ledger and writes one feedback row per iteration into a log for that worker. A pass is plus one, a fail is minus one. Running it twice adds nothing, because every row has an identity.
+
+**RAHWEH:** Then the scoring tool grades each worker on each kind of task.
+
+**TOMO:** Yes. The Groq model on writing small programs: two passes and four fails, a grade of zero point three seven five. The same model on writing data rows: one pass, two thirds. The Nemotron model on one small program: one pass, two thirds.
+
+**MAXINE:** Different jobs, different grades, as the design predicted.
+
+**TOMO:** And we found a trap. The scoring tool's replay command adds to the counts. Run it twice on the same log and every number is doubled. Our first run read three and five instead of two and four. So the driver now treats the ledger as derived data, rebuilt from the logs each time. The logs are the truth.
+
+---
+
+**THE NARRATOR:** Part five, by hand.
+
+**RAHWEH:** Four spokes were recorded by hand: mass, acceleration, velocity and kinetic energy. The house had already named those pairs inside an old learning script, and they were never loaded. Their weights are starting guesses, labeled as that, and one human edit passed the real validator.
+
+**TOMO:** Five lessons were recorded too, each with where it came from and two counters that start at zero: how often it was used, and how often it helped. Only counting changes those numbers. A model never edits them.
+
+**MAXINE:** And the store?
+
+**TOMO:** A catalog now exists with five listed items, including the banks themselves as content packs. Nothing in it can be installed yet. There is no checkout, no owned list, and no installer. The catalog says so in its own status column.
+
+---
+
+**THE NARRATOR:** Part six, the recursion.
+
+**RAHWEH:** The owner said the process of managing the weights should be labeled and trained too.
+
+**TOMO:** So there is a small tool for it. Every change to a weight goes through one command. It checks the bounds. A weight with autonomy zero can only be moved by a human. Each move leaves a row labeled with its layer, and the row waits for an outcome. Later, a feedback row says whether the move helped. That is how the tuner itself gets a grade.
+
+**MAXINE:** Give me the levels.
+
+**TOMO:** Level zero, the world: entities acting. Level one, the weights that choose actions. Level two, the tuner that changes the weights. Level three, the worker models that write code and proposals. Level four, the rules that grade all of it, and only a person changes those.
+
+**RAHWEH:** A level is graded by the one below it. It never rewrites its own rules.
+
+**TOMO:** Twelve Eden weights are declared that way, all at autonomy zero. We did not change one of them. Choosing the numbers is the owner's job. The tool exists so that when the owner does, it is bounded and remembered.
+
+---
+
+**THE NARRATOR:** Part seven, the pull.
+
+**MAXINE:** The other branches.
+
+**TOMO:** We fetched everything again. The opencode branch had six new commits: the entity word bank and its spawn hook, copy on the focused row, the model interface for the small brain, and a design note. Three files conflicted. Two were additions on both sides, so we kept both. In the third, the other side had removed two unused definitions, and we accepted that while keeping the one declaration the compiler needs.
+
+**RAHWEH:** And you proved it?
+
+**TOMO:** We merged in a scratch tree first and built the whole taskbar from scratch. It built. Then the live branch moved forward to it. No file vanished. The running desktop was not rebuilt.
+
+**MAXINE:** The debian branches?
+
+**TOMO:** Skipped again. They carry saved user desk data and one old camera revert. The data rule stands. And the grok branch is skipped by standing instruction.
+
+---
+
+**THE NARRATOR:** The honesty checkpoint.
+
+**MAXINE:** What is real?
+
+**TOMO:** The converter and the driver, with grades computed on real ledgers and stable across reruns. The four spokes, the five lessons, the tuning tool with thirty checks that fail when its autonomy rule is removed, the Eden joints file, the catalog, and the merged branch.
+
+**RAHWEH:** What is not?
+
+**TOMO:** No model has proposed any weights. Tomom is untouched and idle. The old learning script still hard-codes a path on the debil machine, and it will be fixed when twenty real observations exist. The auto-promote contradiction is still open. The store cannot sell or install anything. And no ghost has been appointed.
+
+**MAXINE:** Say the line to carry on.
+
+**TOMO:** The pipe is open and the first data is in it. Count first, tune by hand, let a person promote, and write down every number so the next error is cheaper. 🧠📒
