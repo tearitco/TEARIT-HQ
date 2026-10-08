@@ -1,0 +1,11 @@
+# catalog.pdl - what the Store cell (taskbar cell 13) will list. Build step (a) of XYZFS-DISTRIBUTION-VIA-STORE-DESIGN.md section 10. DATA ONLY: no builder, no checkout, no installer exists yet.
+# ITEM | id | name | kind | version | price | requires | root (relative to the house root, never absolute) | status | note
+#   kind   user-pack (one user's xyzfs, private) | content (entities / banks / harnesses / quests) | seed (starter desk for a new user)
+#   price  free | <coins>      requires  none | role:<role>
+#   status planned (nothing packed) | data-ready (the files exist, no pack builder yet) | installable (pack + manifest + installer verified) -- NOTHING is installable yet
+# An owned item shows in the Store as <user>:x<qty> from the user's owned.pdl (build step b). Deny-list for every pack: provider keys, .env, private keys, wallets without sensitive=1.
+ITEM | xyzfs-jb | xyzfs-jb (the owner's desk) | user-pack | 0.1 | free | role:dev | xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421 | planned | private by default; wallet.txt and histories need the sensitive confirm
+ITEM | concept-bank-seed | Concept bank seed (masters, spokes, edits) | content | 0.1 | free | none | &.widgits/concept-bank/data | data-ready | 3 masters + 5 hand-recorded spokes + candidate EDITs; regenerate mirrors with concept_mirror_rebuild.sh after install
+ITEM | delegation-bank-seed | Delegation bank (worker logs, grades, lessons) | content | 0.1 | free | none | &.widgits/quest-pilot/delegation-bank | data-ready | per-worker FEEDBACK logs + lessons.txt; the promotion ledger is derived (rebuilt by record_delegation.sh)
+ITEM | eden-game | Eden (conductor data, weights, joints, phrases) | content | 0.1 | free | none | &.widgits/eden/conductor | data-ready | weights.pdl is the live value file; joints.pdl holds its bounds
+ITEM | quest-pilot-kit | Quest pilot kit (quest packets + locked harnesses) | content | 0.1 | free | none | &.widgits/quest-pilot | data-ready | needs the harness runner and ops built (button.sh build)

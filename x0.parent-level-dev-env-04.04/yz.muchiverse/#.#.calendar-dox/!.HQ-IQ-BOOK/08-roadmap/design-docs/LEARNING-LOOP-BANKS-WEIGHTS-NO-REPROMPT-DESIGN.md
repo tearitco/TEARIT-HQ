@@ -25,3 +25,30 @@ FSM / IRL fit: a quest attempt is an FSM (PRECHECK -> CALL -> EXTRACT -> CHECK -
 
 ## 4. Rules
 Banks and ledgers are append-only. Only harness-verified answers are reusable. Models propose, code and a person decide: no automatic promotion of lessons or weights. Free models only.
+
+## 5. The recursion, labeled (owner, 2026-10-07: "the process of managing the ml weights should be labeled and trained as well")
+Every row that scores or moves something carries `layer=<name>`, so the same two files (an append-only FEEDBACK log and the promotion ledger) can grade each level by the level below it. No new format: `layer=` is one more `| k=v` field.
+| level | what acts | what it changes | scored by | row label |
+|---|---|---|---|---|
+| L0 | Eden agents, entities | world state (acts taken) | the game / IRL signals | `layer=world` (future) |
+| L1 | weights and joints (`weights.pdl`, spokes) | which act is picked | harness + IRL outcomes | `layer=weights` |
+| L2 | the **tuner**: a person, a model proposer, `joint_tune` | the weights (bounded, ledgered) | each `TUNE` row's later outcome (FEEDBACK, `layer=weights-manager`, `concept=<key>`) | `TUNE ... layer=weights-manager` |
+| L3 | the **worker models** that write code, phrases, proposals | files, candidate EDITs | locked harness verdicts (Laplace per worker x task family) | `layer=delegation` |
+| L4 | the **rules that grade** (harness, bounds, autonomy, thresholds) | what counts as pass | a person only (never a model) | decisions logged in the nights/docs |
+A tuning move that was followed by a worse outcome earns the tuner a punish; a model proposer's grade per joint decides whether its `autonomy` may rise from 0. The grade of a level never rewrites that level's own rules; only the level above (and finally the owner) does.
+
+## 6. Started 2026-10-07 (first data through the pipe)
+- `quest-pilot/ops/ledger_to_feedback` + `record_delegation.sh`: the four finished quest ledgers (8 iteration rows) became FEEDBACK rows under `quest-pilot/delegation-bank/workers/<worker>/obs_feedback_log.txt`; `promotion_ledger` grades each worker x task family: groq-gpt-oss-120b on `c_op` **0.375** (reward 2, punish 4), groq on `data_rows` **0.667**, nemotron-3-ultra on `c_op` **0.667** (one run). Paths all derive from the script's own location (or `HOUSE`/an argument).
+- `promotion_ledger replay` ADDS to a candidate's counts: replaying one log twice double-counts (found while building this: the first run read 3/5 instead of 2/4). The driver therefore treats the ledger as derived data and rebuilds it from the append-only logs each run.
+- `concept-bank/data/spokes/`: 4 hand-recorded spokes (mass->force 0.75, acceleration->motion 0.70, velocity->motion 0.65, kinetic_energy->energy 0.60), the four pairs the house had hard-coded in `irl_apply_signal.sh`; weights are hand-set starting values; mirror tables regenerated; one human EDIT validated (`edit_0004`).
+- `quest-pilot/delegation-bank/lessons.txt`: 5 hand-recorded lessons (design item Q022, first version).
+- `concept-bank/ops/joint_tune` + `eden/conductor/joints.pdl` (12 joints, autonomy 0) = the L2 weights-manager; harness `joint_tune` 30/0 (and 27/3 with the autonomy rule removed).
+- `store/catalog.pdl`: five listed items (nothing installable yet).
+Not touched on purpose: tomom (no data yet), the IRL ops (`irl_apply_signal.sh` still hard-codes `/home/debil/...`; derive it from its own location when the first 20 observations exist), and the auto-promote gate in `halo_chat_validate.c` (owner decision).
+
+## 7. Errata found in `XO/13.phymoji-engine/META-MODELS-VISION-ALIGNMENT-AND-SOLUTIONS.md` (checked against disk)
+1. "40 ITER lines": there are **8** across the four quest ledgers (1+2+1+4).
+2. Worker grades: q001 with one pass is (1+1)/(1+0+2) = **0.67**, not 1.00; q020 had 1 pass and 3 fails = (1+1)/(1+3+2) = 0.33, not "(1+3)/...". Per task family the groq `c_op` grade pools q002 and q020: **0.375**.
+3. `w_eat` is **3** in `weights.pdl` (the doc says 7); `hunger_level`, `water_level`, `plant_growth` are not keys in `weights.pdl` (so those proposed spokes had no real source and were not recorded).
+4. Worker lessons cannot be concept-bank EDITs with `target=c-op-worker-output`: the validator only accepts a spoke that resolves to one of the 3 physics masters. Lessons go to `lessons.txt`; grades go to the `delegation-bank` promotion ledger.
+5. "159 history files" is correct (counted). "phrases.pdl 47 rows" is **46**, 40 of them written by the Groq worker.
