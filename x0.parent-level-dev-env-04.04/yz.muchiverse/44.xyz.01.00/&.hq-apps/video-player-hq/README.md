@@ -8,3 +8,11 @@ An in-house player for testing videos (first slice). Drop a video file onto the 
 - Opens from the Toys menu (`toy.pdl`, launcher walks up to the house root when given `run`).
 - Cost: the renderer used about 30% of a core while a 980x680 picture played; lower `BOXW`/`BOXH` in the manager on a weak machine. Pause and seek restart ffmpeg and ffplay at the remembered second.
 - Not done: no seek bar (only +-10 s rows); no taskbar entry besides Toys; the XDND drop was not exercised with a real drag by the author (the renderer's drop path is the same one File Explorer and events-hq use). Other video code: `103.media-studio/103.vid-edit` (a timeline editor with a preview and ffmpeg export).
+
+## Bug fixed 2026-10-08: the player froze when a second video was dropped (and then played the wrong one)
+**Symptom:** the first video played; dropping or choosing another showed "playing ... 0:32 elapsed" but the picture stayed on the old video and nothing moved; the Play button restarted item 0.
+**Cause (found with `ps` wait channel and `/proc/<pid>/fd`):** switching videos stops the old decoder with SIGTERM and then `waitpid`s for it. The ffmpeg child was blocked writing a frame into the pipe whose read end the manager still held, so it could not exit, and the manager sat in `do_wait` forever (a live deadlock: the manager waits for the child, the child waits for the manager to read). The sound child stayed a zombie because it was reaped after the stuck wait. Separately, the footer buttons pass extra words after the verb, and `play <words>` was read as number 0.
+**Fix:** `stop_child()` closes the pipe first so the decoder gets EPIPE; `kill_one()` never blocks (SIGTERM, poll `WNOHANG` for 300 ms, then SIGKILL); `play` only takes an argument that starts with a digit, otherwise it means the current item. **Rule for any manager that owns a child writing to a pipe:** close your read end before you wait for the child, and never `waitpid` without a timeout.
+
+## Hide panel
+The footer's `hide panel` / `show panel` button folds the left panel (queue, status, file check) to a thin strip and lets the picture use the full width (frame box 1420x690 instead of 1100x680; the decoder restarts at the same second). The manager publishes `side_on`, `side_cls` and `side_label`; the sidebar takes its class from `${side_cls}` and its rows use `show="${side_on}"`.

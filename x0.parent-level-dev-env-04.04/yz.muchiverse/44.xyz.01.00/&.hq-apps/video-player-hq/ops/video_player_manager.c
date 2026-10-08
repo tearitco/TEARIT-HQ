@@ -2,7 +2,7 @@
  *   run:    video_player_manager <house_root> <package_dir>      publishes video_player_ui.txt, reads video_player_action.txt by cursor
  *   probe:  video_player_manager --probe <file>                  prints the file check (harness hook, no window)
  * Why a check: a presentation video that played nowhere turned out to hold 3 video frames over 23 s (variable frame rate); the check says so.
- * Playback is IN the window: ffmpeg decodes the picture to raw RGBA frames (10 fps, fitted into 1100x680 keeping the aspect) that the manager writes atomically to
+ * Playback is IN the window: ffmpeg decodes the picture to raw RGBA frames (10 fps, fitted into 1100x680, or 1420x690 with the left panel folded, keeping the aspect) that the manager writes atomically to
  * <package_dir>/frame.raw + frame.receipt.txt, which the generic <canvas> blits (canvas_raw var, ZERO renderer C); the sound is a separate
  * `ffplay -nodisp` child started with the picture. Pause stops both and remembers the second; Resume and Seek restart both at that second
  * (so picture and sound stay together). All fork+exec, no shell; the children are stopped when the manager quits. */
@@ -20,10 +20,13 @@
 #define MAXQ 64
 static char pkg[1024], queue[MAXQ][1024]; static int nq, cur = -1;
 static int status;                       /* 0 stopped, 1 playing, 2 paused */
+static int side_on = 1;                  /* left panel shown; the footer button folds it away so the picture can use the width */
 #define BOXW 1100          /* the centre panel's pixel box: the picture is fitted into it, aspect kept, so it fills the screen area */
 #define BOXH 680
+#define BIGW 1420         /* with the left panel folded away the picture gets the whole width */
+#define BIGH 690
 static int fw = BOXW, fh = BOXH, vid_w, vid_h;
-static pid_t child, achild; static int vfd = -1; static unsigned char fbuf[BOXW * BOXH * 4]; static size_t fgot;
+static pid_t child, achild; static int vfd = -1; static unsigned char fbuf[BIGW * BIGH * 4]; static size_t fgot;
 static time_t t_start; static double base_off, pos_at_pause;
 static char info[8][200]; static int ninfo; static char logline[200];
 static volatile sig_atomic_t quit_flag;
@@ -58,13 +61,17 @@ static void check(const char *file) {                           /* fills info[] 
     else if (frames > 0 && d > 5 && (double)frames / d < 1.0) snprintf(info[ninfo++], 200, "WARNING only %ld video frames over %.0f s: sparse variable frame rate, some players stall or show nothing; re-encode at a constant frame rate", frames, d);
     else snprintf(info[ninfo++], 200, "check ok: frame rate looks regular");
 }
-static void kill_one(pid_t *p) { if (*p > 0) { kill(*p, SIGCONT); kill(*p, SIGTERM); int st; waitpid(*p, &st, 0); *p = 0; } }
-static void stop_child(void) { kill_one(&child); kill_one(&achild); if (vfd >= 0) { close(vfd); vfd = -1; } fgot = 0; status = 0; base_off = 0; }
+static void kill_one(pid_t *p) {      /* never block: a decoder stuck writing to our pipe ignores SIGTERM until it is read or the pipe closes */
+    if (*p <= 0) return; int st; kill(*p, SIGCONT); kill(*p, SIGTERM);
+    for (int i = 0; i < 15; i++) { if (waitpid(*p, &st, WNOHANG) == *p) { *p = 0; return; } usleep(20000); }
+    kill(*p, SIGKILL); waitpid(*p, &st, 0); *p = 0;
+}
+static void stop_child(void) { if (vfd >= 0) { close(vfd); vfd = -1; } kill_one(&child); kill_one(&achild); fgot = 0; status = 0; base_off = 0; }
 static double elapsed(void) { return status == 1 ? base_off + difftime(time(NULL), t_start) : status == 2 ? pos_at_pause : 0; }
 static void write_receipt(void) { char p[1536]; snprintf(p, sizeof p, "%s/frame.receipt.txt", pkg); FILE *f = fopen(p, "w"); if (f) { fprintf(f, "frame_w=%d\nframe_h=%d\n", fw, fh); fclose(f); } }
 static void play_at(int i, double off) {
     if (i < 0 || i >= nq) return; stop_child(); cur = i; if (off <= 0) check(queue[i]);
-    if (vid_w > 0 && vid_h > 0) { double k = (double)BOXW / vid_w, k2 = (double)BOXH / vid_h; if (k2 < k) k = k2; fw = (int)(vid_w * k) & ~1; fh = (int)(vid_h * k) & ~1; if (fw < 2) fw = 2; if (fh < 2) fh = 2; } else { fw = BOXW; fh = BOXH; }
+    if (vid_w > 0 && vid_h > 0) { int bw = side_on ? BOXW : BIGW, bh = side_on ? BOXH : BIGH; double k = (double)bw / vid_w, k2 = (double)bh / vid_h; if (k2 < k) k = k2; fw = (int)(vid_w * k) & ~1; fh = (int)(vid_h * k) & ~1; if (fw < 2) fw = 2; if (fh < 2) fh = 2; } else { fw = side_on ? BOXW : BIGW; fh = side_on ? BOXH : BIGH; }
     write_receipt();
     char ss[32], vf[160]; snprintf(ss, sizeof ss, "%.2f", off < 0 ? 0 : off);
     snprintf(vf, sizeof vf, "fps=10,scale=%d:%d", fw, fh);
@@ -87,13 +94,14 @@ static void do_cmd(char *line) {
     char *sp = strchr(line, ' '); char *arg = sp ? sp + 1 : ""; if (sp) *sp = 0;
     if (!strcmp(line, "add")) { if (nq < MAXQ && arg[0]) { struct stat sb; if (stat(arg, &sb) || !S_ISREG(sb.st_mode)) { snprintf(logline, sizeof logline, "not a file: %s", arg); return; }
             snprintf(queue[nq], sizeof queue[0], "%s", arg); nq++; cur = nq - 1; check(queue[cur]); snprintf(logline, sizeof logline, "added %s", arg); if (status == 0) play(cur); } }
-    else if (!strcmp(line, "play")) { int i = arg[0] ? atoi(arg) : (cur >= 0 ? cur : 0); play(i); }
-    else if (!strcmp(line, "pause") && status == 1) { double e = elapsed(); kill_one(&child); kill_one(&achild); if (vfd >= 0) { close(vfd); vfd = -1; } status = 2; pos_at_pause = e; }
+    else if (!strcmp(line, "play")) { int i = (arg[0] >= '0' && arg[0] <= '9') ? atoi(arg) : (cur >= 0 ? cur : 0); play(i); }
+    else if (!strcmp(line, "pause") && status == 1) { double e = elapsed(); if (vfd >= 0) { close(vfd); vfd = -1; } kill_one(&child); kill_one(&achild); status = 2; pos_at_pause = e; }
     else if (!strcmp(line, "resume") && status == 2) { play_at(cur, pos_at_pause); }
     else if ((!strcmp(line, "fwd") || !strcmp(line, "back")) && cur >= 0) { double e = elapsed() + (line[0] == 'f' ? 10 : -10); if (e < 0) e = 0; play_at(cur, e); }
     else if (!strcmp(line, "stop")) { stop_child(); snprintf(logline, sizeof logline, "stopped"); }
     else if (!strcmp(line, "next")) { if (cur + 1 < nq) play(cur + 1); }
     else if (!strcmp(line, "prev")) { if (cur > 0) play(cur - 1); }
+    else if (!strcmp(line, "side")) { side_on = !side_on; if (status == 1 && cur >= 0) play_at(cur, elapsed()); }
     else if (!strcmp(line, "clear")) { stop_child(); nq = 0; cur = -1; ninfo = 0; snprintf(logline, sizeof logline, "queue cleared"); }
 }
 static void publish(void) {
@@ -101,7 +109,7 @@ static void publish(void) {
     FILE *f = fopen(tmp, "w"); if (!f) return; const char *st[] = { "stopped", "playing", "paused" };
     double el = elapsed();
     fprintf(f, "head=Video Player  ·  %s\n", st[status]); fprintf(f, "status=%s%s%s   %d:%02d elapsed\n", st[status], cur >= 0 ? "   " : "", cur >= 0 ? (strrchr(queue[cur], '/') ? strrchr(queue[cur], '/') + 1 : queue[cur]) : "", (int)el / 60, (int)el % 60);
-    fprintf(f, "canvas_raw=%s/frame.raw\n", pkg); fprintf(f, "hint=Drop a video file onto this window to add and play it. Numbers are the row numbers to press.\nlog=%s\n", logline);
+    fprintf(f, "canvas_raw=%s/frame.raw\nside_on=%s\nside_cls=%s\nside_label=%s\n", pkg, side_on ? "1" : "", side_on ? "vp-sidebar" : "vp-sidebar-min", side_on ? "hide panel" : "show panel"); fprintf(f, "hint=Drop a video file onto this window to add and play it. Numbers are the row numbers to press.\nlog=%s\n", logline);
     fprintf(f, "n_info=%d\n", ninfo); for (int i = 0; i < ninfo; i++) { fprintf(f, "i_%d_text=%s\n", i, info[i]); fprintf(f, "i_%d_cls=%s\n", i, !strncmp(info[i], "WARNING", 7) || !strncmp(info[i], "cannot", 6) ? "info-warn" : "info-ok"); }
     fprintf(f, "n_q=%d\n", nq); for (int i = 0; i < nq; i++) { const char *b = strrchr(queue[i], '/') ? strrchr(queue[i], '/') + 1 : queue[i]; fprintf(f, "q_%d_text=%s%d  %s\n", i, i == cur ? "> " : "  ", i, b); fprintf(f, "q_%d_cls=%s\n", i, i == cur ? "q-cur" : "q-row"); fprintf(f, "q_%d_act=play %d\n", i, i); }
     fclose(f); rename(tmp, dst);

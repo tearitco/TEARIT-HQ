@@ -6,6 +6,11 @@ window { width: 1150ui; height: 620ui; background-color: #14161c; font-family: D
     border: 1px solid #262a33;
     border-color: #262a33;
 }
+.vp-sidebar-min {
+    width: 4px;
+    background-color: #0d0f14;
+}
+
 .vp-panel {
         background-color: #000000;
     border: 1px solid #333846;

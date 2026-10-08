@@ -7,19 +7,19 @@
   <module src="&.hq-apps/video-player-hq/ops/+x/video_player_manager.+x"/>
   <page name="main">
     <!-- left: the queue, status and the file check; centre: the screen (a generic canvas fed raw frames, fills the region); bottom: transport buttons (footer, like pc-hq) -->
-    <sidebar id="sidebar" class="vp-sidebar">
-      <text id="who" label="queue (press a row)" class="vp-who"/>
+    <sidebar id="sidebar" class="${side_cls}">
+      <text id="who" label="queue (press a row)" class="vp-who" show="${side_on}"/>
       <repeat count="${n_q}" bind="q">
-        <item id="q${q.#}" class="vp-q ${q.cls}" label="${q.text}" action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' ${q.act}"/>
+        <item id="q${q.#}" class="vp-q ${q.cls}" label="${q.text}" action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' ${q.act}" show="${side_on}" show="${side_on}"/>
       </repeat>
-      <text id="ih0" class="vp-hdr" label="now"/>
-      <text id="status" class="vp-status" label="${status}"/>
-      <text id="log" class="vp-hint" label="${log}"/>
-      <text id="ih" class="vp-hdr" label="file check"/>
+      <text id="ih0" class="vp-hdr" label="now" show="${side_on}"/>
+      <text id="status" class="vp-status" label="${status}" show="${side_on}"/>
+      <text id="log" class="vp-hint" label="${log}" show="${side_on}"/>
+      <text id="ih" class="vp-hdr" label="file check" show="${side_on}"/>
       <repeat count="${n_info}" bind="i">
-      <text id="i${i.#}" class="vp-info ${i.cls}" label="${i.text}"/>
+      <text id="i${i.#}" class="vp-info ${i.cls}" label="${i.text}" show="${side_on}"/>
       </repeat>
-      <text id="hint" class="vp-hint" label="${hint}"/>
+      <text id="hint" class="vp-hint" label="${hint}" show="${side_on}"/>
     </sidebar>
     <panel id="content" class="vp-panel"><canvas id="screen" sprite="${canvas_raw}"/></panel>
     <footer id="transport" class="vp-footer">
@@ -31,6 +31,7 @@
       <item id="b-fwd"    class="vp-btn" label="fwd 10s"  action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' fwd"/>
       <item id="b-prev"   class="vp-btn" label="prev"     action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' prev"/>
       <item id="b-next"   class="vp-btn" label="next"     action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' next"/>
+      <item id="b-side"   class="vp-btn" label="${side_label}" action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' side"/>
       <item id="b-clear"  class="vp-btn" label="clear"    action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' clear"/>
     </footer>
   </page>
