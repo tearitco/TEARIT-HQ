@@ -158,6 +158,8 @@ db-hq: `&.hq-apps/db-hq-pal/dashboard.xhtpm` has all 15 RMMV tabs;
 
 ---
 
+**Update 2026-10-08:** this table has no row for 007 or for the multiplayer economy (stocks, auctions, bidding, chain prices). The ordered plan joining all of these is `design-docs/GROK-HANDOFF-GAMES-ECONOMY-AND-VISIBLE-ENTITIES-2026-10-08.md`; install/store/accounts constraints are in `design-docs/INSTALL-STORE-ACCOUNTS-AND-USER-DATA-COMPLICATIONS-2026-10-08.md`.
+
 ## 6. Known gaps (do not paper over)
 
 1. Palettes `arm-pc` / `arm-cdda` write brush files; **no drop onto pchq canvas**. Mutaclysm Xdnd harness (`101.drag-drop-test=ON🀄️`) is a different window.

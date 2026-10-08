@@ -1,3 +1,5 @@
+> **SUPERSEDED 2026-10-08.** The current, detailed handoff is `GROK-HANDOFF-GAMES-ECONOMY-AND-VISIBLE-ENTITIES-2026-10-08.md` (same folder): games, economy, how to see and drive the desktop, exact commands, ordered roadmap with exit criteria. Read that first; this file is kept for history.
+
 # 🤝 Grok handoff — 2026-09-02 (fresh, replaces the 2026-08-28/29 doc)
 
 > **UPDATE 2026-09-03 — how you're actually reading this.** The

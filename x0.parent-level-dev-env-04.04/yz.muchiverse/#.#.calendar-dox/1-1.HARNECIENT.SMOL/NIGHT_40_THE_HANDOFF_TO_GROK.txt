@@ -1,0 +1,88 @@
+# 🤝🎮 NIGHT 40 — The Handoff to Grok 🎮🤝
+# ====================================================================
+# Title: "🤝🎮 NIGHT 40 — The Handoff to Grok 🎮🤝"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: What the owner wants built (game clones and a shared economy), what was actually written down, why the last handoff to Grok was weak, and how the new one tells Grok to build, see, drive and prove.
+# Long-form: a work log with an honesty checkpoint. Every claim here is from files checked on October eighth.
+# Companion documents: 08-roadmap/design-docs/GROK-HANDOFF-GAMES-ECONOMY-AND-VISIBLE-ENTITIES-2026-10-08.md, TILESETS-EVENTS-AND-GAME-CLONES.md, DOC-STATUS-AND-PATHS-FORWARD-2026-10-08.md.
+
+**THE NARRATOR:** Tonight the owner asked for a handoff document for Grok. Grok is going to build clones of games on this desktop, and then run an economy on top of them.
+
+**MAXINE:** Which games?
+
+---
+
+**THE NARRATOR:** Part one, the list.
+
+**RAHWEH:** A Pokemon style role playing game on the desk, and in three dimensions in the piece craft board. Civilization. Minecraft. Cataclysm, which the house calls mutaclysm. Later a two and three dimensional G T A, and a James Bond style game. And on top of all that, a shared economy: a stock market, auctions, bidding on goods, and prices on a blockchain.
+
+**MAXINE:** Did we ever write that down as a goal?
+
+**TOMO:** Partly. One document has a table for six of the games: role playing, Minecraft, Cataclysm, Civilization, Pokemon and G T A. It lists the tileset, the events, the board, and what still blocks play. For the economy there are separate documents: the auction screen is a design only, the chain has a faucet, an escrow and a miner, the stock game is real, and the play economy is partly built. For the Bond game there is nothing. I searched.
+
+**THE NARRATOR:** And nothing joined them. No single page said: here is one engine, here is one order to build in.
+
+---
+
+**THE NARRATOR:** Part two, why the last handoff was weak.
+
+**MAXINE:** What was wrong with it?
+
+**TOMO:** It was six kilobytes. It told Grok to read another document for the real plan. It said, build a status graph first, but never said what finished looks like. It had no commands. And it never said how to see the desktop, or how to drive it.
+
+**RAHWEH:** So an agent could read it and still not know what to type.
+
+**TOMO:** Exactly. The new one fixes that in five ways. It has a contract. It has a shared engine table. It has the exact verification loop. It has an ordered roadmap with exit criteria. And it lists the rules that lose work if broken.
+
+---
+
+**THE NARRATOR:** Part three, the contract.
+
+**TOMO:** Done means five things, with evidence. One, a fresh build in a clean worktree. Two, a harness with a mutant that fails it, then passing. Three, a real run, driven through the relay. Four, a frame or screenshot you actually looked at, and a text state that agrees. Five, a note about what was not verified.
+
+**MAXINE:** Why the mutant?
+
+**TOMO:** A harness that cannot fail proves nothing. You break the code on purpose, and the harness must notice.
+
+**RAHWEH:** And the owner's goal?
+
+**TOMO:** Visually functioning entities. The house keeps building the engine and never the picture. The Eden game ran sixty two thousand days of farming, and nobody can see any of it.
+
+---
+
+**THE NARRATOR:** Part four, seeing and driving the desktop.
+
+**TOMO:** Every window polls its own relay file, named by its process id. You append a line: a key code, or a mouse event. Real input and your input take the same path. You find the process id without using pgrep with the minus f flag, because that pattern can match its own shell and kill it. You dump the frame first, and read the real navigation numbers, because they are global across all open windows. You send the events. You check the text state. Only then you look at pixels. And you reach for x dotool last.
+
+**MAXINE:** And the trap?
+
+**TOMO:** The relay can pass while real hardware still fails, on focus and keyboard grab. So you write relay verified, hardware unverified, and ask the owner for one real try.
+
+---
+
+**THE NARRATOR:** Part five, the order.
+
+**RAHWEH:** First, make what exists visible. An Eden world viewer, a window that draws the entities and has pause and resume. Then fix the status button, which writes no reply. Then one real session from the h A I window to a free worker and back. Then Eden retention.
+
+**TOMO:** Second, movement, goals and purpose. Entities move on the clock. A goals board, in the same shape as the quest rows. A first ghost that reads it.
+
+**MAXINE:** Then a game?
+
+**TOMO:** Pokemon on the desk first. It is the cheapest: role playing events, the desk as a map, a grass event that leads to a battle, a mart, a gym. Then the same world in three dimensions. Then Minecraft, Cataclysm, Civilization. G T A and Bond need a tileset and a design first.
+
+**RAHWEH:** And the economy?
+
+**TOMO:** In parallel, one economy made real: the auction. A ledger op with a harness, then a window, then play money, then a chain price behind a signing gate. And a transport that is not hard coded to the local machine.
+
+---
+
+**THE NARRATOR:** Honesty checkpoint.
+
+**TOMO:** Three things I did not check. Whether the payload builder could ever copy a key file. How the login maps a session name onto the user folders. And whether delegation works through the window, because no person has ever driven it.
+
+**MAXINE:** And the old handoff?
+
+**TOMO:** It is marked superseded, and kept for history. This one replaces it.
+
+**THE NARRATOR:** Next night: the install, the store, the accounts, and the user data.

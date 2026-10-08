@@ -278,3 +278,5 @@ pointers were the only outright deletions.
   scope), but worth a future roadmap pass to summarize status here.
 
 > **2026-10-08:** per-doc status, next steps and tiers for the Oct 7 to 8 design docs: `design-docs/DOC-STATUS-AND-PATHS-FORWARD-2026-10-08.md`.
+
+> **2026-10-08, Grok handoff:** `design-docs/GROK-HANDOFF-GAMES-ECONOMY-AND-VISIBLE-ENTITIES-2026-10-08.md` (supersedes the 2026-09-02 one) and `design-docs/INSTALL-STORE-ACCOUNTS-AND-USER-DATA-COMPLICATIONS-2026-10-08.md`; Eden retention: `design-docs/EDEN-STATE-RETENTION-DESIGN-2026-10-08.md`.
