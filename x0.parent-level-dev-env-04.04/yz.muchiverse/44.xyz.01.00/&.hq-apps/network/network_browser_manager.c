@@ -524,7 +524,14 @@ static int tag_attrval(const char *p, const char *tag_end, const char *key, char
             continue;
         }
         while (after < tag_end && isspace((unsigned char)*after)) after++;
-        if (after >= tag_end) return 0;
+        /* Bare attribute immediately before '>' (the common
+         * `<option value="grn" selected>` spelling): `after` has walked
+         * onto the '>' itself, and the old `after >= tag_end -> return 0`
+         * reported the attribute as ABSENT. Every valueless boolean in
+         * that position - selected, checked, required, disabled - was
+         * silently dropped. Presence is the answer here; the value is
+         * meaningless for a boolean. */
+        if (after >= tag_end || *after == '>') return 1;
         if (*after != '=') return 1;
         const char *v = after + 1;
         while (v < tag_end && isspace((unsigned char)*v)) v++;
@@ -646,10 +653,73 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                 continue;
             }
             if (strncasecmp(p, "<select", 7) == 0 && !isalnum((unsigned char)p[7])) {
-                /* worker SEL rows own selects; skip the subtree so option
-                 * text never becomes paragraph TEXT. */
+                /* <select> (2026-10-07): the worker SEL rows still own
+                 * selects on JS pages (opencode-fix lane, they emit the
+                 * live DOM value). But a plain static page had its whole
+                 * select subtree skipped, so the control simply did not
+                 * exist and the form submitted without it. Emit the
+                 * options here as SELECT rows; the projector renders one
+                 * clickable item per option and the choice lands in the
+                 * same fields file the text inputs use, so submit needs
+                 * no new concept. `selected` marks the page default. */
                 FLUSH_LINE();
-                p = skip_named_element(p, "select");
+                const char *sel_end = strchr(p, '>');
+                if (!sel_end) { p++; continue; }
+                char sname[256] = "";
+                tag_attrval(p, sel_end, "name", sname, sizeof(sname));
+                strip_pipes(sname);
+                const char *body = skip_named_element(p, "select");
+                if (in_form && sname[0]) {
+                    const char *op = sel_end + 1;
+                    int first_opt = 1;
+                    while (op < body) {
+                        if (strncasecmp(op, "<option", 7) == 0 && !isalnum((unsigned char)op[7])) {
+                            const char *oend = strchr(op, '>');
+                            if (!oend) break;
+                            char oval[1024] = "", olab[512] = "";
+                            if (tag_attrval(op, oend, "value", oval, sizeof(oval)) == 0) oval[0] = 0;
+                            char selchk[8] = "";
+                            int selected = tag_attrval(op, oend, "selected", selchk, sizeof(selchk)) > 0;
+                            /* Text runs from just after this <option...>
+                             * to ITS OWN </option> - not to the end of the
+                             * select. Stopping at `body` swallowed every
+                             * following option into each label. */
+                            const char *oclose = strcasestr_local(oend + 1, "</option>");
+                            const char *otext_end = oclose ? oclose : body;
+                            const char *otext = oend + 1;
+                            size_t ow = 0;
+                            while (otext < otext_end && ow < sizeof(olab) - 1) {
+                                if (otext[0] == '<') {
+                                    if (otext[1] == '/') break;          /* </option> */
+                                    const char *g = strchr(otext, '>');  /* inline tag */
+                                    if (!g) break;
+                                    otext = g + 1;
+                                    continue;
+                                }
+                                olab[ow++] = *otext++;
+                            }
+                            olab[ow] = 0;
+                            html_decode_entities(olab);
+                            collapse_ws(olab);
+                            strip_pipes(olab);
+                            /* An <option> with no value attribute submits
+                             * its TEXT, per the HTML spec. */
+                            if (!oval[0]) snprintf(oval, sizeof(oval), "%s", olab);
+                            strip_pipes(oval);
+                            if (oval[0] || olab[0]) {
+                                fprintf(out, "SELECT|%s|%s|%s|%d\n", sname,
+                                        oval[0] ? oval : olab, olab[0] ? olab : oval,
+                                        selected ? 1 : 0);
+                            }
+                            first_opt = 0;
+                            op = oclose ? oclose + 9 : oend + 1;
+                            continue;
+                        }
+                        op++;
+                    }
+                    fprintf(out, "SELECTEND|%s\n", sname);
+                }
+                p = body;
                 continue;
             }
             if (strncasecmp(p, "<input", 6) == 0 && !isalnum((unsigned char)p[6])) {
@@ -762,7 +832,7 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                     /* Inline markup inside a code block (<code>, <span>,
                      * <a>) is presentation, not content: drop the tags so
                      * the row reads as the source does. */
-                    { char *w2 = codebuf, *r2 = codebuf;
+                    { char *w2 = codebuf; const char *r2 = codebuf;
                       while (*r2) {
                           if (*r2 == '<') { const char *g = strchr(r2, '>'); if (!g) break; r2 = g + 1; continue; }
                           *w2++ = *r2++;
@@ -4632,6 +4702,58 @@ static void write_ui_projection(void) {
                     uisan(rest, t, sizeof(t));
                     UI_PUT("c_%d_kind=title\nc_%d_is_title=1\nc_%d_text=%s\n", rc, rc, rc, t);
                     if (click_action[0]) UI_PUT("c_%d_sel=%s\nc_%d_click_action=%s", rc, pending_sel, rc, click_action);
+                } else if (strcmp(kind, "SELECT") == 0) {
+                    /* SELECT|<name>|<value>|<label>|<selected>
+                     * One clickable row per option. Choosing it appends
+                     * name=value to the fields file - the same file text
+                     * inputs use - so submit and validation need no new
+                     * concept. The label shows which option is live: the
+                     * projector tracks the choice from the fields file,
+                     * falling back to the page default (selected attr). */
+                    char *q[4] = {"", "", "", ""};
+                    q[0] = rest;
+                    for (int qi = 0; qi < 3; qi++) {
+                        char *b = strchr(q[qi], '|');
+                        if (!b) break;
+                        *b = 0; q[qi + 1] = b + 1;
+                    }
+                    if (!q[0][0]) continue;
+                    char nm[256], vv[1024], lb[700], lab_s[700];
+                    uisan(q[0], nm, sizeof(nm));
+                    uisan(q[1], vv, sizeof(vv));
+                    uisan(q[2][0] ? q[2] : q[1], lb, sizeof(lb));
+                    int is_def = (q[3] && q[3][0] == '1');
+                    /* live choice wins over the page default */
+                    int live = 0;
+                    {
+                        char cf[PATH_BUF];
+                        snprintf(cf, sizeof(cf), "%s/#.desktop/network_browser_fields.txt", g_house);
+                        FILE *ff = fopen(cf, "r");
+                        if (ff) {
+                            char ln[2048];
+                            while (fgets(ln, sizeof(ln), ff)) {
+                                size_t L = strlen(ln);
+                                while (L > 0 && (ln[L-1] == '\n' || ln[L-1] == '\r')) ln[--L] = 0;
+                                char *t = strchr(ln, '\t');
+                                if (!t) continue;
+                                *t = 0;
+                                if (!strcmp(ln, nm)) live = !strcmp(t + 1, vv);
+                            }
+                            fclose(ff);
+                        }
+                    }
+                    snprintf(lab_s, sizeof(lab_s), "%s%s%s",
+                             live ? "[v] " : (is_def ? "[*] " : "[ ] "), lb[0] ? lb : vv, "");
+                    char nm_sq[PATH_BUF], vv_sq[PATH_BUF];
+                    shell_escape_squote(nm, nm_sq, sizeof(nm_sq));
+                    shell_escape_squote(vv, vv_sq, sizeof(vv_sq));
+                    UI_PUT("c_%d_kind=selopt\nc_%d_is_selopt=1\nc_%d_text=%s\n", rc, rc, rc, lab_s);
+                    UI_PUT("c_%d_action='%s/ops/nb_write_select.sh' 'select' '%s' '%s'\n",
+                            rc, g_package_dir, nm_sq, vv_sq);
+                } else if (strcmp(kind, "SELECTEND") == 0) {
+                    /* SELECTEND closes a group only so the projector can
+                     * tell two selects with the same option text apart in
+                     * a frame dump; nothing renders. */
                 } else if (strcmp(kind, "CODE") == 0) {
                     /* CODE|<line> - one row per source line of a <pre>.
                      * Pipes come through as 0x7f (extractor escape); uisan

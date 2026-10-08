@@ -56,6 +56,13 @@ if [ -f "$DESKTOP_DIR/network_browser_page.state.txt" ]; then
         printf '%s\t%s\n' "$nm" "$sv" >> "$MERGED_ACCUM"
     done < "$DESKTOP_DIR/network_browser_page.state.txt"
 fi
+# 2c. <select> with nothing chosen submits its page default - the option
+# carrying the `selected` attribute. An <option> with no value attribute
+# submits its text, which the extractor already folded in.
+awk -F'|' '$1=="SELECT" && $5=="1" {
+    v=$3; gsub("\177", "|", v);
+    if (v != "") printf "%s\t%s\n", $2, v
+}' "$DESKTOP_DIR/network_browser_page.state.txt" >> "$MERGED_ACCUM"
 # 2b. untouched text-ish inputs submit their page default (INPUT row field 3)
 # the way a real browser does. Typed values land in step 3 and win ties.
 # Pipes are 0x7f on the wire (see extractor) so a value can never split a

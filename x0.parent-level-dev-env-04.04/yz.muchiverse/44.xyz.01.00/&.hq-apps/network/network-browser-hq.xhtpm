@@ -86,6 +86,11 @@
                   content="${c.content}" action="${c.action}" show="${c.is_input}"/>
           <item id="cb${c.#}" class="nb-button" label="${c.text}" action="${c.action}" show="${c.is_button}"/>
           <item id="ck${c.#}" class="nb-check" label="${c.text}" action="${c.action}" show="${c.is_check}"/>
+          <!-- 2026-10-07: <select> options, one clickable row each.
+               [v] = chosen live, [*] = the page's own default, [ ] = not
+               chosen. Picking one appends name=value to the fields file,
+               exactly like a text input, so submit needs no new concept. -->
+          <item id="cs${c.#}" class="nb-selopt" label="${c.text}" action="${c.action}" show="${c.is_selopt}"/>
           <item id="cm${c.#}" class="quiet sprite-flow" label="${c.label}" sprite="${c.sprite}" action="${c.action}"  show="${c.is_media}"/>
           <!-- V3 video (nb_video_play): live canvas row inside the content
                scrolllist. The op writes surface.raw + surface.receipt.txt

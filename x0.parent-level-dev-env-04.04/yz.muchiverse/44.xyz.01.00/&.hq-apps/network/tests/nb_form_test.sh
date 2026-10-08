@@ -121,6 +121,39 @@ case "$REQ" in
     *cb=*) echo "FAIL: toggle off still submitted cb"; FAIL=$((FAIL+1)) ;;
     *)     echo "PASS: toggle off suppresses cb"; PASS=$((PASS+1)) ;;
 esac
+# <select>: options ride SELECT rows, the choice lands in the fields file,
+# and submit falls back to the `selected` option when nothing was chosen.
+cat > "$STATE" <<'EOF'
+URL|file:///tmp/form-select.html
+TITLE|Select
+SELECT|col|red|Red|0
+SELECT|col|grn|Green|1
+SELECT|col|NoValueText|NoValueText|0
+SELECTEND|col
+SELECT|sz|s|Small|0
+SELECT|sz|l|Large|0
+SELECTEND|sz
+BUTTON|https://httpbin.org/get|get|Go
+EOF
+echo "== select"
+expect_submit "unchosen select sends its selected option"   ""                     "" "col=grn"
+# A select whose options are all unselected sends nothing (no browser
+# invents a default) - negative check, so not via expect_submit.
+cat > "$STATE" <<'EOF'
+SELECT|sz|s|Small|0
+SELECT|sz|l|Large|0
+SELECTEND|sz
+EOF
+run 'col\tred\n' ""
+case "$REQ" in
+    *sz=*) echo "FAIL: unselected select invented a default ($REQ)"; FAIL=$((FAIL+1)) ;;
+    *)     echo "PASS: unselected select sends nothing"; PASS=$((PASS+1)) ;;
+esac
+expect_submit "chosen option beats the page default"        'col\tred\n'           "" "col=red"
+expect_submit "option text becomes the value when no attr"  'col\tNoValueText\n'   "" "col=NoValueText"
+expect_submit "two selects on one page both submit"         'col\tred\nsz\tl\n'     "" "col=red&sz=l"
+expect_submit "later pick for one select replaces earlier"  'col\tred\ncol\tgrn\n'  "" "col=grn"
+
 cat > "$STATE" <<'EOF'
 URL|file:///tmp/form-types.html
 TITLE|Type validation
