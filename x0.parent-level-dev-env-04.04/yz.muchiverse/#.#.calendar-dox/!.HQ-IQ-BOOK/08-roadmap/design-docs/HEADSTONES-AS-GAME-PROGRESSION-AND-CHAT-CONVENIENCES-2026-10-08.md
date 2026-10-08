@@ -64,6 +64,30 @@ SYMBOL | stone  | emoji=🪦 | ascii=[+] | hanzi=碑 | pinyin=bei  | note=headst
 
 **Calendar tie (when wanted):** the clock already has `reminders.pdl` and `SCHED` rows (`lc_clock`, scheduled occurrences with fired/result). A quest or stone can carry an optional `DUE | <date or game day> | <reminder id>` row; the reminder fires the existing popup or an event; recurring chores are a stone whose `quest.pal` answers `STONE | live` and re-posts. The calendar book (`#.#.calendar-dox`) is the real-time side; the game clock (`lc_clock`) is the in-game side, and the same `DUE` row can point at either. **Unverified:** the reminder record format; I read only the header comments of `lc_clock.c`.
 
+### 1c. Quests as contracts: rewards, escrow, task-for-task (OWNER, 2026-10-08)
+
+**OWNER:** quests are like Ethereum contracts. Rewards can be blockchain coins, items, goods, or any agreement ("task for task"), with escrow.
+
+**What exists (checked):** `041.pal-chain/ops/chain_escrow.c` already implements the coin half. Lines `LOCK | escrow_id | from | amount | agent`, `PAYOUT | escrow_id | by | to | amount`, `REFUND | ...`; payout and refund are valid only when `by` equals the lock's `agent` and the amount does not exceed what remains; spendable balance excludes locked coins; `chain_escrow audit` replays the chain and prints `conserved=1|0`. Escrow is off unless `chain.pdl` says `ESCROW enabled = 1`. **Hard limit, stated in its own header:** without signing, the `agent`/`by` field is an **honor field**: anyone who can write the pending file can claim to be the agent. So escrow is trustworthy on local and test chains only, and the real chain stays behind the signing gate (not built). Items and goods have ledgers in the Eden conductor (grants, `item_add`, write-offs so the ledger balances) but **no escrow for items**, and nothing connects a quest to either.
+
+**PROPOSAL: a quest is a contract with five clauses**, stored in `quests.pdl` as extra fields on the QUEST row (or `CLAUSE` rows):
+1. **Parties:** creator, takers (many, section 1), and the *arbiter* (the stone's `quest.pal`).
+2. **Obligation:** the task text and its deterministic check (`quest_check`).
+3. **Consideration (the reward), any mix of:** `COIN | chain | amount`, `ITEM | item_id | n`, `GOOD | good_id | n`, `QUEST | qid-or-stone` (**task for task**: finishing this quest posts or unlocks another), `GRADE | points`, `NONE`.
+4. **Escrow:** at posting, the creator's consideration is **locked**: coins via `chain_escrow lock`, items and goods by moving them into the stone's own `escrow/` inventory (a ledger move with a matching `HELD` row, never a copy). Rewards for the QUEST kind are locked as the sub-quest being *posted but sealed* until release.
+5. **Settlement:** when a `RESULT` passes its check, `quest.pal` returns the verdict line (section 1) plus a settlement line per taker: `PAY | taker | clause | share`. The op layer then performs `PAYOUT`/item transfer/unseal and writes a `SETTLED` row. If the quest dies unfinished or expires (the calendar `DUE` row, 1b), `REFUND` returns everything to the creator. **Split rules** for many takers are the script's choice: first finisher, equal split, or by contribution weight; the check op must be able to attribute each `RESULT` to a taker.
+
+**Invariants (each a harness case with a mutant):**
+- *Conservation:* for every asset, held + paid + refunded equals what was locked; `chain_escrow audit` stays `conserved=1`; items use the same rule the Eden write-off already enforces.
+- *No double settlement:* a `SETTLED` row for a clause blocks a second one (idempotent re-run of the settle op).
+- *Dry run first:* the settle op prints what it would move and changes nothing without `--apply`, like the other ops.
+- *The arbiter cannot mint:* the script may only direct amounts that were locked; any `PAY` above the locked remainder is refused (the chain's `amount <= remaining` rule, extended to items).
+- *Everything kept:* settled, refunded and failed contracts stay on the stone.
+
+**Trust model, by environment (be explicit):** play-money and test chains: honor-based escrow is acceptable. Real value (the cones chain): **blocked until signing exists**, and a stone's script must not be the signer. User packs and store items (install doc) must never carry live escrow or wallet data.
+
+**Open (owner):** who may act as arbiter besides the script (the creator, a third party, a vote)? Can a taker be penalized for abandoning (stake)? Are item rewards created by the creator only, or may the game mint them (a faucet-like rule with a daily cap, as the chain faucet has)?
+
 ## 2. What the chat windows have today (checked)
 
 | Window | What it does | Evidence |
