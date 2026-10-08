@@ -845,6 +845,106 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                 p = bend ? bend + 9 : tag_end + 1;
                 continue;
             }
+            /* <table> (2026-10-08): tables used to arrive as one run-on TEXT row per
+             * table row with the cells welded together - "PlanPrice",
+             * "Free0" - which is unreadable and destroys the one thing a
+             * table is for, the correspondence between a cell and its
+             * column. Emit one TROW row per <tr>, cells pipe-delimited, and
+             * a leading 1 when the row is a header row (<th> anywhere in
+             * it). The projector draws a row at a time; a real grid needs
+             * renderer column layout, which is a separate slice.
+             *
+             * Rowspan/colspan are NOT honoured - cells are emitted in
+             * document order. Inventing phantom cells to fill a grid we
+             * cannot draw would be worse than a flat row. */
+            if (strncasecmp(p, "<table", 6) == 0 && !isalnum((unsigned char)p[6])) {
+                FLUSH_LINE();
+                const char *tbody_end = skip_named_element(p, "table");
+                if (line_count < MAX_LINES) {
+                    const char *rp = p;
+                    /* <caption> is real content and used to vanish with the
+                     * rest of the table region - emit it as a TEXT row so
+                     * the table keeps its title. */
+                    /* Search for the caption INSIDE this table only. An unbounded
+                     * strcasestr would run past </table> into the next
+                     * table's caption and, because I was moving the row
+                     * cursor onto it, silently swallowed every row of the
+                     * table being processed. Own pointer, own bound. */
+                    const char *cap = NULL;
+                    {
+                        const char *scan = p;
+                        while (scan < tbody_end) {
+                            const char *f = strcasestr_local(scan, "<caption");
+                            if (!f || f >= tbody_end) break;
+                            if (!isalnum((unsigned char)f[8])) { cap = f; break; }
+                            scan = f + 8;
+                        }
+                    }
+                    if (cap) {
+                        const char *copen = strchr(cap, '>');
+                        const char *cclose = copen ? strcasestr_local(copen + 1, "</caption>") : NULL;
+                        if (copen && cclose) {
+                            char capt[512];
+                            size_t co = 0;
+                            for (const char *r = copen + 1; r < cclose && co + 1 < sizeof(capt); ) {
+                                if (*r == '<') { const char *g = strchr(r, '>'); if (!g) break; r = g + 1; continue; }
+                                capt[co++] = *r++;
+                            }
+                            capt[co] = 0;
+                            html_decode_entities(capt);
+                            collapse_ws(capt);
+                            strip_pipes(capt);
+                            if (capt[0]) { fprintf(out, "TEXT|%s\n", capt); line_count++; }
+                        }
+                    }
+                    while (rp < tbody_end) {
+                        if (strncasecmp(rp, "<tr", 3) == 0 && !isalnum((unsigned char)rp[3])) {
+                            const char *tr_end = rp;
+                            /* find this row's own </tr> (rows cannot nest) */
+                            { const char *c = strcasestr_local(rp, "</tr>");
+                              tr_end = c ? c + 5 : tbody_end; }
+                            int header = 0;
+                            char cells[64][256];
+                            int ncells = 0;
+                            const char *cp = rp;
+                            while (cp < tr_end && ncells < 64) {
+                                int is_th = (strncasecmp(cp, "<th", 3) == 0 && !isalnum((unsigned char)cp[3]));
+                                int is_td = (strncasecmp(cp, "<td", 3) == 0 && !isalnum((unsigned char)cp[3]));
+                                if (!is_th && !is_td) { cp++; continue; }
+                                const char *cell_end = cp;
+                                { const char *closer = is_th ? "</th" : "</td";
+                                  const char *c = strcasestr_local(cp, closer);
+                                  if (c) { const char *g = strchr(c, '>'); cell_end = g ? g + 1 : c; } }
+                                char txt[256];
+                                size_t to = 0;
+                                for (const char *r = cp; r < cell_end && to + 1 < sizeof(txt); ) {
+                                    if (*r == '<') { const char *g = strchr(r, '>'); if (!g) break; r = g + 1; continue; }
+                                    txt[to++] = *r++;
+                                }
+                                txt[to] = 0;
+                                html_decode_entities(txt);
+                                collapse_ws(txt);
+                                strip_pipes(txt);
+                                if (is_th) header = 1;
+                                snprintf(cells[ncells], sizeof(cells[0]), "%s", txt);
+                                ncells++;
+                                cp = cell_end;
+                            }
+                            if (ncells > 0) {
+                                fprintf(out, "TROW|%d", header);
+                                for (int ci = 0; ci < ncells; ci++) fprintf(out, "|%s", cells[ci]);
+                                fprintf(out, "\n");
+                                line_count++;
+                            }
+                            rp = tr_end;
+                            continue;
+                        }
+                        rp++;
+                    }
+                }
+                p = tbody_end;
+                continue;
+            }
             /* <pre> / <code> as a block (2026-10-07): preformatted text is
              * the one place where whitespace IS content. collapse_ws()
              * turned every code sample on the web into one run-on line, so
@@ -4881,6 +4981,53 @@ static void write_ui_projection(void) {
                     uisan(rest, t, sizeof(t));
                     UI_PUT("c_%d_kind=title\nc_%d_is_title=1\nc_%d_text=%s\n", rc, rc, rc, t);
                     if (click_action[0]) UI_PUT("c_%d_sel=%s\nc_%d_click_action=%s", rc, pending_sel, rc, click_action);
+                } else if (strcmp(kind, "TROW") == 0) {
+                    /* TROW|<header>|<cell>|<cell>...
+                     * One row per <tr>, cells joined so the correspondence
+                     * between a cell and its column survives. The separator
+                     * is U+00B7, NOT '|': a pipe is the frame-dump field
+                     * delimiter and uisan() rewrites it to '/'. My first
+                     * version used " | " and shipped "Plan / Price".
+                     * A leading 1 marks a header row. */
+                    char *parts[68];
+                    int nparts = 0;
+                    char *cur = rest;
+                    parts[nparts++] = cur;
+                    while (*cur && nparts < 68) {
+                        if (*cur == '|') { *cur = 0; parts[nparts++] = cur + 1; }
+                        cur++;
+                    }
+                    if (nparts < 2) continue;
+                    int is_hdr = (parts[0][0] == '1');
+                    char joined[2048];
+                    size_t jo = 0;
+                    for (int ci = 1; ci < nparts; ci++) {
+                        char cell[512], cellu[520];
+                        uisan(parts[ci], cell, sizeof(cell));
+                        /* drop empty cells: a trailing <td></td> should not
+                         * read as a dangling separator */
+                        if (!cell[0]) continue;
+                        snprintf(cellu, sizeof(cellu), "%s", cell);
+                        size_t need = strlen(cellu);
+                        if (jo) need += 4;
+                        if (jo + need + 1 >= sizeof(joined)) break;
+                        if (jo) { memcpy(joined + jo, " \xc2\xb7 ", 4); jo += 4; }  /* U+00B7 */
+                        memcpy(joined + jo, cellu, strlen(cellu));
+                        jo += strlen(cellu);
+                        joined[jo] = 0;
+                    }
+                    if (!jo) continue;
+                    char rowlab[2100];
+                    snprintf(rowlab, sizeof(rowlab), "%s%s", is_hdr ? "" : "", joined);
+                    uisan(rowlab, t, sizeof(t));
+                    if (!t[0] || junk_visible_line(t)) continue;
+                    if (is_hdr)
+                        /* is_trow stays 0 on a header row: both flags set
+                         * would render the row twice (the template has one
+                         * element per flag). */
+                        UI_PUT("c_%d_kind=trow\nc_%d_is_thead=1\nc_%d_text=%s\n", rc, rc, rc, t);
+                    else
+                        UI_PUT("c_%d_kind=trow\nc_%d_is_trow=1\nc_%d_text=%s\n", rc, rc, rc, t);
                 } else if (strcmp(kind, "FILE") == 0) {
                     /* FILE|<name>|<accept>|<multiple>
                      * Not an editable field - there is no text to type. The

@@ -53,6 +53,10 @@ sidebar { width: 200px; background-color: #1a1a1a; color: #cccccc; }
 .nb-selopt { color: #d8c8a8; }
 /* 2026-10-08: <input type=file> picker rows. */
 .nb-file { color: #c8a8d8; }
+/* 2026-10-08: <table> rows. Header tinted apart so the eye can find the
+   column names without a real grid. */
+.nb-trow { color: #b8c8d8; }
+.nb-trow.thead { color: #8fb8ff; }
 .nb-console-text { color: #8fbf8f; }
 .page-title { color: #eeeeee; }
 

@@ -91,6 +91,12 @@
                chosen. Picking one appends name=value to the fields file,
                exactly like a text input, so submit needs no new concept. -->
           <item id="cs${c.#}" class="nb-selopt" label="${c.text}" action="${c.action}" show="${c.is_selopt}"/>
+          <!-- 2026-10-08: <table> rows, one <tr> per row, cells joined so
+               a cell still reads as belonging to its column. Header rows
+               are their own kind so they can be tinted apart. A real grid
+               needs renderer column layout - separate slice. -->
+          <text id="tr${c.#}" class="nb-trow thead" label="${c.text}" show="${c.is_thead}"/>
+          <text id="tw${c.#}" class="nb-trow"         label="${c.text}" show="${c.is_trow}"/>
           <!-- 2026-10-08: <input type=file>. Opens the house file-explorer
                and commits the chosen absolute path to the fields file;
                submit sends multipart when any committed value is a real
