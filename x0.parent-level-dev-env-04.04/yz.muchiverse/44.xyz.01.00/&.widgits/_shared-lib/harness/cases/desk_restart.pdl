@@ -1,0 +1,103 @@
+# desk_restart: all cases run on fake houses under $T (no real desktop, no real process is touched). Fake managers are copies of /bin/sleep named khtpm_taskbar_manager whose argv[0] holds the fake house path.
+RESULTS | ../results/desk_restart.txt
+CASE | desk-restart
+SCRATCH |
+COPY | &.widgits/desk-restart/ops/desk_restart.c | op.c
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -Wno-format-truncation | -O2 | -o | $T/op.+x | $T/op.c
+EXPECT_EXIT | 0 | op-builds-clean
+ENV | DISPLAY | :99
+# ---------- usage errors
+RUN | $T/op.+x | --bogus
+EXPECT_EXIT | 2 | unknown-flag-rc2
+RUN | $T/op.+x | --dry-run
+EXPECT_EXIT | 2 | missing-house-rc2
+EXPECT_OUT | --house is required | missing-house-says-so
+# ---------- h1: good house, dry-run proceeds and kills nothing
+MKDIR | h1/bin
+WRITE | h1/_.monads/_.livedesk-taskbar/ops/build_khtpm_strip.sh | # comment mentions nothing\ngcc -o x y $(pkg-config --cflags x11)\n
+WRITE | h1/_.monads/_.livedesk-taskbar/ops/build_core_render.sh | make -C . all\n
+WRITE | h1/$.crypts/button.sh | exit 0\n
+RUN | $T/op.+x | --house | $T/h1 | --dry-run
+EXPECT_EXIT | 0 | dryrun-good-house-rc0
+EXPECT_OUT | RESTART\pPREFLIGHT\pok\ppre-manager=0 | dryrun-says-preflight-ok
+EXPECT_OUT | pkg-config | dryrun-derived-pkg-config-from-build-scripts
+EXPECT_OUT | make | dryrun-derived-make-from-build-scripts
+EXPECT_NOFILE | h1/#.desktop/desk_restart.log | dryrun-runs-nothing
+# ---------- h2: REFUSED must not kill the pre-existing manager (button.sh would kill it, like the real reset)
+MKDIR | h2/bin
+RUN | cp | /bin/sleep | $T/h2/bin/khtpm_taskbar_manager
+SPAWN | M2 | $T/h2/bin/khtpm_taskbar_manager | 120
+SLEEP | 300
+WRITE | h2/mgr.pid | $M2
+WRITE | h2/_.monads/_.livedesk-taskbar/ops/build_khtpm_strip.sh | gcc -o x y\n
+WRITE | h2/$.crypts/button.sh | H="$(cd "$(dirname "$0")/.." && pwd)"\nkill "$(cat "$H/mgr.pid")"\necho "BUILD FAILED"\nexit 1\n
+RUN | $T/op.+x | --house | $T/h2 | --wait | 5 | --require | nosuchtool_q016
+EXPECT_EXIT | 3 | refused-missing-tool-rc3
+EXPECT_OUT | RESTART\pREFUSED\ptool-not-on-PATH:nosuchtool_q016 | refused-names-the-tool
+EXPECT_ALIVE | $M2 | refused-left-manager-alive
+RUN | /bin/sh | -c | kill -0 $M2
+EXPECT_EXIT | 0 | refused-manager-answers-kill0
+EXPECT_NOFILE | h2/#.desktop/desk_restart.log | refused-started-no-child
+RUN | $T/op.+x | --house | $T/h2 | --button | $T/h2/nope.sh
+EXPECT_EXIT | 3 | refused-missing-button-rc3
+EXPECT_OUT | button-sh-missing | refused-missing-button-says-so
+ENV | DISPLAY |
+RUN | $T/op.+x | --house | $T/h2
+EXPECT_EXIT | 3 | refused-no-display-rc3
+EXPECT_OUT | no-display | refused-no-display-says-so
+EXPECT_ALIVE | $M2 | refused-no-display-left-manager-alive
+RUN | $T/op.+x | --house | $T/nosuchhouse | --display | :1
+EXPECT_EXIT | 3 | refused-missing-house-rc3
+ENV | DISPLAY | :99
+# ---------- h3: success variant (a): UP, PATH-extra and DISPLAY reach the child, log written
+MKDIR | h3/bin
+MKDIR | extra
+RUN | cp | /bin/sleep | $T/h3/bin/khtpm_taskbar_manager
+WRITE | h3/_.monads/_.livedesk-taskbar/ops/build_khtpm_strip.sh | gcc -o x y\n
+WRITE | h3/$.crypts/button.sh | H="$(cd "$(dirname "$0")/.." && pwd)"\necho "$PATH" > "$H/child_path.txt"\necho "$DISPLAY" > "$H/child_display.txt"\necho "fake reset start"\n"$H/bin/khtpm_taskbar_manager" 120 </dev/null >/dev/null 2>&1 &\necho $! > "$H/mgr.pid"\nsleep 1\necho "fake reset done"\nexit 0\n
+RUN | $T/op.+x | --house | $T/h3 | --wait | 30 | --path-extra | $T/extra | --display | :77
+EXPECT_EXIT | 0 | up-rc0
+EXPECT_OUT | RESTART\pUP\ppid= | up-verdict
+EXPECT_OUT_LACKS | DOWN | up-not-down
+EXPECT_HAS | h3/child_path.txt | $T/extra | child-path-has-path-extra
+EXPECT_HAS | h3/child_display.txt | :77 | child-display-propagated
+EXPECT_HAS | h3/#.desktop/desk_restart.log | fake reset done | log-has-child-output
+EXPECT_EXISTS | h3/mgr.pid | up-manager-pid-recorded
+RUN | /bin/sh | -c | kill "$(cat $T/h3/mgr.pid)"
+EXPECT_EXIT | 0 | up-manager-cleaned
+# ---------- h4: build-fail variant (b) = the real incident: the old manager is killed, the build fails, the desktop stays down. Must be LOUD.
+MKDIR | h4/bin
+RUN | cp | /bin/sleep | $T/h4/bin/khtpm_taskbar_manager
+SPAWN | M4 | $T/h4/bin/khtpm_taskbar_manager | 120
+SLEEP | 300
+WRITE | h4/mgr.pid | $M4
+WRITE | h4/_.monads/_.livedesk-taskbar/ops/build_khtpm_strip.sh | gcc -o x y\n
+WRITE | h4/$.crypts/button.sh | H="$(cd "$(dirname "$0")/.." && pwd)"\nkill "$(cat "$H/mgr.pid")"\nsleep 1\nmkdir -p "$H/_.monads/_.livedesk-taskbar/ops/+x"\necho "pkg-config: command not found" > "$H/_.monads/_.livedesk-taskbar/ops/+x/build_error.log"\necho "BUILD FAILED - desktop left stopped"\nexit 1\n
+RUN | $T/op.+x | --house | $T/h4 | --wait | 30
+EXPECT_EXIT | 4 | down-rc4
+EXPECT_OUT | RESTART\pDOWN\pbuild-failed | down-says-build-failed
+EXPECT_OUT | THE DESKTOP IS DOWN | down-is-loud
+EXPECT_OUT | BUILD FAILED - desktop left stopped | down-echoes-log-tail
+EXPECT_OUT | pkg-config: command not found | down-echoes-build-error-log
+EXPECT_OUT | desk_restart.log | down-names-the-log
+EXPECT_DEAD | $M4 | down-fake-reset-did-kill-manager
+# ---------- h5: hang variant (c): TIMEOUT, child still running
+MKDIR | h5/bin
+WRITE | h5/_.monads/_.livedesk-taskbar/ops/build_khtpm_strip.sh | gcc -o x y\n
+WRITE | h5/$.crypts/button.sh | H="$(cd "$(dirname "$0")/.." && pwd)"\necho $$ > "$H/btn.pid"\nexec sleep 40\n
+RUN | $T/op.+x | --house | $T/h5 | --wait | 2
+EXPECT_EXIT | 5 | timeout-rc5
+EXPECT_OUT | RESTART\pTIMEOUT | timeout-verdict
+RUN | /bin/sh | -c | kill -0 "$(cat $T/h5/btn.pid)"
+EXPECT_EXIT | 0 | timeout-child-still-running
+RUN | /bin/sh | -c | kill "$(cat $T/h5/btn.pid)"
+EXPECT_EXIT | 0 | timeout-child-cleaned
+# ---------- h6: child exits 0 but no manager ever appears
+MKDIR | h6
+WRITE | h6/_.monads/_.livedesk-taskbar/ops/build_khtpm_strip.sh | gcc -o x y\n
+WRITE | h6/$.crypts/button.sh | echo "nothing started"\nexit 0\n
+RUN | $T/op.+x | --house | $T/h6 | --wait | 2
+EXPECT_EXIT | 4 | notaskbar-rc4
+EXPECT_OUT | no-taskbar-after-wait | notaskbar-reason
+# ---------- end: kill only recorded pids (SPAWNed M2; h3 manager and h5 child were killed above), then remove the scratch
+CLEAN |
