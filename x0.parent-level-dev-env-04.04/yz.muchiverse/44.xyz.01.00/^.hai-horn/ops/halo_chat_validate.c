@@ -12,6 +12,7 @@
  */
 #define _GNU_SOURCE
 #include <stdio.h>
+#include <sys/stat.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -79,14 +80,42 @@ static int spoke_has_slot_to(const char *spoke_path, const char *master_name) {
     return found;
 }
 
-/* Auto-promotion is OFF unless the HOUSE-level learning_limits.pdl (not an entity's own file) has a line `AUTO_PROMOTE | enabled=true ...`.
- * Promotion is a person's act (owner decision 2026-10-07: the old `tier >= 2` shortcut contradicted that). Missing file / line / anything else = off. */
-static int house_auto_promote_enabled(const char *house_root) {
-    char path[4096], line[512]; int on = 0;
+/* AUTO-PROMOTION POLICY (house level, never an entity's own file). Auto-promotion needs ALL of: the house line `AUTO_PROMOTE | enabled=true`, tier >= associate_bachelor,
+ * and LEDGER EVIDENCE for this very candidate: Laplace score (reward+1)/(reward+punish+2) >= min_score AND reward+punish >= min_n (AUTO-PROMOTION-RULE.md: 0.90 and 20;
+ * both may be tuned on the AUTO_PROMOTE line as `min_score=` / `min_n=`). Promotion is a person's act: missing file / line / ledger entry = queue for review. */
+typedef struct { int enabled; double min_score; int min_n; } Policy;
+static Policy read_policy(const char *house_root) {
+    Policy p = { 0, 0.90, 20 }; char path[4096], line[512];
     snprintf(path, sizeof(path), "%s/^.hai-horn/learning_limits.pdl", house_root);
+    FILE *f = fopen(path, "r"); if (!f) return p;
+    while (fgets(line, sizeof(line), f)) if (!strncmp(line, "AUTO_PROMOTE", 12)) {
+        char *x;
+        p.enabled = strstr(line, "enabled=true") != NULL;
+        if ((x = strstr(line, "min_score="))) p.min_score = strtod(x + 10, NULL);
+        if ((x = strstr(line, "min_n="))) p.min_n = atoi(x + 6);
+    }
+    fclose(f); return p;
+}
+/* the candidate's row in <bank>/promotion_ledger/ledger.txt (same format promotion_ledger.+x writes): 1 = found */
+static int ledger_lookup(const char *bank_dir, const char *id, int *reward, int *punish) {
+    char path[4096], line[MAXLINE], key[160]; int found = 0;
+    snprintf(path, sizeof(path), "%s/promotion_ledger/ledger.txt", bank_dir);
     FILE *f = fopen(path, "r"); if (!f) return 0;
-    while (fgets(line, sizeof(line), f)) if (!strncmp(line, "AUTO_PROMOTE", 12) && strstr(line, "enabled=true")) on = 1;
-    fclose(f); return on;
+    snprintf(key, sizeof(key), "id=%s ", id);
+    while (fgets(line, sizeof(line), f)) if (strstr(line, key)) {
+        char v[32]; *reward = get_field(line, "reward", v, sizeof(v)) ? atoi(v) : 0; *punish = get_field(line, "punish", v, sizeof(v)) ? atoi(v) : 0; found = 1; break;
+    }
+    fclose(f); return found;
+}
+/* a validated candidate must be KNOWN to the ledger so evidence (promotion_ledger replay) can attach to it; append-only, idempotent, same row format as promotion_ledger */
+static void ledger_register(const char *bank_dir, const char *id, const char *type, const char *target, const char *slot, double delta, const char *reason, const char *proposer) {
+    char dir[4096], path[4096]; int r, p;
+    if (ledger_lookup(bank_dir, id, &r, &p)) return;
+    snprintf(dir, sizeof(dir), "%s/promotion_ledger", bank_dir); mkdir(dir, 0755);
+    snprintf(path, sizeof(path), "%s/ledger.txt", dir);
+    FILE *f = fopen(path, "a"); if (!f) return;
+    fprintf(f, "EDIT | id=%s | type=%s | target=%s | slot=%s | delta=%.4f | reason=\"%s\" | proposer=%s | reward=0 | punish=0 | replayed=0\n", id, type, target, slot, delta, reason, proposer);
+    fclose(f);
 }
 
 static int read_tier(const char *entity_dir) {
@@ -113,7 +142,7 @@ static int read_tier(const char *entity_dir) {
     return 0;
 }
 
-static int promote_to_bank(const char *bank_dir, const char *target, const char *slot, double delta, const char *reason) {
+static int promote_to_bank(const char *bank_dir, const char *target, const char *slot, double delta, const char *reason, double *before, double *after) {
     char spoke_path[4096];
     snprintf(spoke_path, sizeof(spoke_path), "%s/data/spokes/%s.pdl", bank_dir, target);
     FILE *f = fopen(spoke_path, "r");
@@ -168,6 +197,7 @@ static int promote_to_bank(const char *bank_dir, const char *target, const char 
         fputs(lines[i], f);
     }
     fclose(f);
+    *before = current; *after = new_weight;
     return 1;
 }
 
@@ -268,13 +298,24 @@ int main(int argc, char **argv) {
     }
 
     int tier = read_tier(entity_dir);
-    int auto_promote = 0;
-    if (tier >= 2 && house_auto_promote_enabled(house_root)) {
-        auto_promote = 1;
+    Policy pol = read_policy(house_root);
+    int auto_promote = 0, led_r = 0, led_p = 0; char why[96] = "off";
+    ledger_register(bank_dir, id, type, target, slot, delta, reason, proposer);
+    if (!pol.enabled) snprintf(why, sizeof(why), "off");
+    else if (tier < 2) snprintf(why, sizeof(why), "tier-too-low");
+    else if (!ledger_lookup(bank_dir, id, &led_r, &led_p)) snprintf(why, sizeof(why), "no-ledger-entry");
+    else {
+        double score = (double)(led_r + 1) / (double)(led_r + led_p + 2); int nobs = led_r + led_p;
+        if (score < pol.min_score) snprintf(why, sizeof(why), "score-%.2f<%.2f", score, pol.min_score);
+        else if (nobs < pol.min_n) snprintf(why, sizeof(why), "n-%d<%d", nobs, pol.min_n);
+        else { auto_promote = 1; snprintf(why, sizeof(why), "score-%.3f-n-%d", score, nobs); }
     }
 
     if (auto_promote) {
-        if (promote_to_bank(bank_dir, target, slot, delta, reason)) {
+        double wb = 0, wa = 0;
+        if (promote_to_bank(bank_dir, target, slot, delta, reason, &wb, &wa)) {
+            { char ap[4096]; snprintf(ap, sizeof(ap), "%s/promotion_ledger/promoted.txt", bank_dir); FILE *af = fopen(ap, "a");
+              if (af) { fprintf(af, "PROMOTED | id=%s | target=%s | slot=%s | before=%.4f | after=%.4f | delta=%.4f | tier=%d | evidence=%s | by=auto\n", id, target, slot, wb, wa, delta, tier, why); fclose(af); } }
             lines[candidate_idx][0] = '\0';
             char *bracket = strchr(lines[candidate_idx], '[');
             if (bracket) {
@@ -291,11 +332,11 @@ int main(int argc, char **argv) {
                 }
                 fclose(pf);
             }
-            printf("PROMOTED target=%s slot=%s delta=%.4f\n", target, slot, delta);
+            printf("PROMOTED target=%s slot=%s delta=%.4f (%s)\n", target, slot, delta, why);
             return 0;
         }
     }
 
-    printf("QUEUED_FOR_REVIEW target=%s slot=%s delta=%.4f (tier=%d)\n", target, slot, delta, tier);
+    printf("QUEUED_FOR_REVIEW target=%s slot=%s delta=%.4f (tier=%d; auto: %s)\n", target, slot, delta, tier, why);
     return 0;
 }

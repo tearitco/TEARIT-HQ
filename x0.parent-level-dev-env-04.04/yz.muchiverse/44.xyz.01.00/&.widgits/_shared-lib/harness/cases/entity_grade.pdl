@@ -1,0 +1,83 @@
+# entity_grade: LOCKED cases. Source under test: &.widgits/concept-bank/ops/entity_grade.c
+RESULTS | ../results/entity_grade.txt
+CASE | entity-grade
+SCRATCH |
+COPY | &.widgits/concept-bank/ops/entity_grade.c | entity_grade.c
+COPY | ^.hai-horn/curriculum.pdl | curriculum.pdl
+COPY | ^.hai-horn/skillbook.pdl | skillbook.pdl
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/eg.+x | $T/entity_grade.c
+EXPECT_EXIT | 0 | compiles-clean
+MKDIR | e1
+MKDIR | e2
+MKDIR | e3
+MKDIR | e4
+MKDIR | pt
+MKDIR | pt/a
+MKDIR | pt/b
+RUN | $T/eg.+x | use | $T/e1 | $T/skillbook.pdl | observe
+EXPECT_EXIT | 0 | observe
+EXPECT_OUT_IS | USED observe mp=6->5 exp=0->1 level=1 | out-observe
+RUN | $T/eg.+x | use | $T/e1 | $T/skillbook.pdl | describe
+EXPECT_EXIT | 0 | describe
+EXPECT_OUT_IS | USED describe mp=5->2 exp=1->3 level=1 | out-describe
+RUN | $T/eg.+x | use | $T/e1 | $T/skillbook.pdl | describe
+EXPECT_EXIT | 4 | describe-no-mp
+EXPECT_OUT_IS | REFUSED describe costs 3 MP (this entity has 2) | out-describe-no-mp
+RUN | $T/eg.+x | use | $T/e1 | $T/skillbook.pdl | propose_edit
+EXPECT_EXIT | 4 | grade-too-low
+EXPECT_OUT_IS | REFUSED propose_edit needs grade elementary_hs (this entity: preschool) | out-grade-too-low
+RUN | $T/eg.+x | use | $T/e1 | $T/skillbook.pdl | nonesuch
+EXPECT_EXIT | 3 | unknown-skill
+EXPECT_OUT_IS | UNKNOWN_SKILL nonesuch | out-unknown-skill
+RUN | $T/eg.+x | rest | $T/e1 | $T/skillbook.pdl
+EXPECT_EXIT | 0 | rest
+EXPECT_OUT_IS | RESTED level=1 mp=6/6 | out-rest
+WRITE | e2/variables.txt | rpg_level=1\nrpg_exp=9\nrpg_mp=6\nrpg_mp_max=6\nkeep=7\n
+RUN | $T/eg.+x | use | $T/e2 | $T/skillbook.pdl | describe
+EXPECT_EXIT | 0 | level-up
+EXPECT_OUT_IS | USED describe mp=6->3 exp=9->11 level=2 LEVEL_UP | out-level-up
+EXPECT_HAS | e2/variables.txt | rpg_mp_max=8\n | mp-max-raised
+EXPECT_HAS | e2/variables.txt | rpg_mp=5\n | mp-gains-the-increase
+EXPECT_HAS | e2/variables.txt | keep=7\n | other-variables-kept
+RUN | $T/eg.+x | use | $T/e2 | $T/skillbook.pdl | propose_edit
+EXPECT_EXIT | 4 | level-gate-after-levelup-but-grade-low
+EXPECT_OUT_IS | REFUSED propose_edit needs grade elementary_hs (this entity: preschool) | out-level-gate-after-levelup-but-grade-low
+WRITE | e3/obs_feedback_log.txt | [t] FEEDBACK \p id=gra0 \p target=e \p valence=+1 \p concept=gravity \p intensity=1 \p layer=curriculum\n[t] FEEDBACK \p id=gra1 \p target=e \p valence=+1 \p concept=gravity \p intensity=1 \p layer=curriculum\n[t] FEEDBACK \p id=gra2 \p target=e \p valence=+1 \p concept=gravity \p intensity=1 \p layer=curriculum\n[t] FEEDBACK \p id=gra3 \p target=e \p valence=+1 \p concept=gravity \p intensity=1 \p layer=curriculum\n[t] FEEDBACK \p id=gra4 \p target=e \p valence=+1 \p concept=gravity \p intensity=1 \p layer=curriculum\n[t] FEEDBACK \p id=gra5 \p target=e \p valence=+1 \p concept=gravity \p intensity=1 \p layer=curriculum\n
+RUN | $T/eg.+x | check | $T/e3 | $T/curriculum.pdl
+EXPECT_EXIT | 0 | check-ready
+EXPECT_HAS | e3/variables.txt | grade_ready=1\n | has-check-ready
+EXPECT_HAS | e3/variables.txt | grade_needs_person=0\n | auto-grade
+RUN | $T/eg.+x | advance | $T/e3 | $T/curriculum.pdl | auto
+EXPECT_EXIT | 0 | graduate-auto
+EXPECT_HAS | e3/learning_limits.pdl | strength_of_training.max_tier: elementary_hs | tier-written
+EXPECT_HAS | e3/transcript.txt | GRADUATED \p from=preschool \p to=elementary_hs \p by=auto | transcript-row
+RUN | $T/eg.+x | advance | $T/e3 | $T/curriculum.pdl | auto
+EXPECT_EXIT | 3 | no-evidence-for-next-grade
+EXPECT_OUT | NOT_READY elementary_hs | out-no-evidence-for-next-grade
+WRITE | e4/learning_limits.pdl | # keep me\nstrength_of_training.max_tier: elementary_hs\nother_line: 1\n
+WRITE | e4/obs_feedback_log.txt | [t] FEEDBACK \p id=gra0 \p target=e \p valence=+1 \p concept=gravity \p intensity=1 \p layer=curriculum\n[t] FEEDBACK \p id=gra1 \p target=e \p valence=+1 \p concept=gravity \p intensity=1 \p layer=curriculum\n[t] FEEDBACK \p id=gra2 \p target=e \p valence=+1 \p concept=gravity \p intensity=1 \p layer=curriculum\n[t] FEEDBACK \p id=gra3 \p target=e \p valence=+1 \p concept=gravity \p intensity=1 \p layer=curriculum\n[t] FEEDBACK \p id=gra4 \p target=e \p valence=+1 \p concept=gravity \p intensity=1 \p layer=curriculum\n[t] FEEDBACK \p id=gra5 \p target=e \p valence=+1 \p concept=gravity \p intensity=1 \p layer=curriculum\n[t] FEEDBACK \p id=gra6 \p target=e \p valence=+1 \p concept=gravity \p intensity=1 \p layer=curriculum\n[t] FEEDBACK \p id=gra7 \p target=e \p valence=+1 \p concept=gravity \p intensity=1 \p layer=curriculum\n[t] FEEDBACK \p id=gra8 \p target=e \p valence=+1 \p concept=gravity \p intensity=1 \p layer=curriculum\n[t] FEEDBACK \p id=gra9 \p target=e \p valence=+1 \p concept=gravity \p intensity=1 \p layer=curriculum\n[t] FEEDBACK \p id=mot0 \p target=e \p valence=+1 \p concept=motion \p intensity=1 \p layer=curriculum\n[t] FEEDBACK \p id=mot1 \p target=e \p valence=+1 \p concept=motion \p intensity=1 \p layer=curriculum\n[t] FEEDBACK \p id=mot2 \p target=e \p valence=+1 \p concept=motion \p intensity=1 \p layer=curriculum\n[t] FEEDBACK \p id=mot3 \p target=e \p valence=+1 \p concept=motion \p intensity=1 \p layer=curriculum\n[t] FEEDBACK \p id=mot4 \p target=e \p valence=+1 \p concept=motion \p intensity=1 \p layer=curriculum\n[t] FEEDBACK \p id=mot5 \p target=e \p valence=+1 \p concept=motion \p intensity=1 \p layer=curriculum\n[t] FEEDBACK \p id=mot6 \p target=e \p valence=+1 \p concept=motion \p intensity=1 \p layer=curriculum\n[t] FEEDBACK \p id=mot7 \p target=e \p valence=+1 \p concept=motion \p intensity=1 \p layer=curriculum\n[t] FEEDBACK \p id=mot8 \p target=e \p valence=+1 \p concept=motion \p intensity=1 \p layer=curriculum\n[t] FEEDBACK \p id=mot9 \p target=e \p valence=+1 \p concept=motion \p intensity=1 \p layer=curriculum\n[t] FEEDBACK \p id=pla0 \p target=e \p valence=+1 \p concept=play \p intensity=1 \p layer=extracurricular\n[t] FEEDBACK \p id=pla1 \p target=e \p valence=+1 \p concept=play \p intensity=1 \p layer=extracurricular\n[t] FEEDBACK \p id=pla2 \p target=e \p valence=+1 \p concept=play \p intensity=1 \p layer=extracurricular\n[t] FEEDBACK \p id=pla3 \p target=e \p valence=+1 \p concept=play \p intensity=1 \p layer=extracurricular\n[t] FEEDBACK \p id=pla4 \p target=e \p valence=+1 \p concept=play \p intensity=1 \p layer=extracurricular\n[t] FEEDBACK \p id=pla5 \p target=e \p valence=+1 \p concept=play \p intensity=1 \p layer=extracurricular\n[t] FEEDBACK \p id=pla6 \p target=e \p valence=+1 \p concept=play \p intensity=1 \p layer=extracurricular\n[t] FEEDBACK \p id=pla7 \p target=e \p valence=+1 \p concept=play \p intensity=1 \p layer=extracurricular\n[t] FEEDBACK \p id=pla8 \p target=e \p valence=+1 \p concept=play \p intensity=1 \p layer=extracurricular\n[t] FEEDBACK \p id=pla9 \p target=e \p valence=+1 \p concept=play \p intensity=1 \p layer=extracurricular\n
+RUN | $T/eg.+x | advance | $T/e4 | $T/curriculum.pdl | auto
+EXPECT_EXIT | 4 | person-grade-refuses-auto
+EXPECT_OUT | REFUSED elementary_hs -> associate_bachelor needs a person's approval (by=auto is not enough) | out-person-grade-refuses-auto
+RUN | $T/eg.+x | advance | $T/e4 | $T/curriculum.pdl | owner
+EXPECT_EXIT | 0 | person-can-sign
+EXPECT_HAS | e4/learning_limits.pdl | strength_of_training.max_tier: associate_bachelor | e4-tier
+EXPECT_HAS | e4/learning_limits.pdl | other_line: 1 | other-lines-kept
+EXPECT_HAS | e4/learning_limits.pdl | # keep me | comment-kept
+EXPECT_HAS | e4/transcript.txt | by=owner | signed-by-owner
+MKDIR | e5
+WRITE | e5/learning_limits.pdl | strength_of_training.max_tier: master_phd\n
+RUN | $T/eg.+x | advance | $T/e5 | $T/curriculum.pdl | owner
+EXPECT_EXIT | 5 | last-grade
+EXPECT_OUT | LAST_GRADE master_phd | out-last-grade
+WRITE | pt/a/obs_feedback_log.txt | [t] FEEDBACK \p id=gra0 \p target=e \p valence=+1 \p concept=gravity \p intensity=1 \p layer=curriculum\n[t] FEEDBACK \p id=gra1 \p target=e \p valence=+1 \p concept=gravity \p intensity=1 \p layer=curriculum\n[t] FEEDBACK \p id=gra2 \p target=e \p valence=+1 \p concept=gravity \p intensity=1 \p layer=curriculum\n[t] FEEDBACK \p id=gra3 \p target=e \p valence=+1 \p concept=gravity \p intensity=1 \p layer=curriculum\n[t] FEEDBACK \p id=gra4 \p target=e \p valence=+1 \p concept=gravity \p intensity=1 \p layer=curriculum\n[t] FEEDBACK \p id=gra5 \p target=e \p valence=+1 \p concept=gravity \p intensity=1 \p layer=curriculum\n
+RUN | $T/eg.+x | tick | $T | $T/pt
+EXPECT_EXIT | 0 | tick
+EXPECT_HAS | pt/a/learning_limits.pdl | max_tier: elementary_hs | tick-graduated-a
+EXPECT_HAS | pt/a/variables.txt | rpg_mp=6\n | tick-rested-a
+EXPECT_HAS | pt/b/variables.txt | rpg_mp_max=6\n | tick-rested-b
+EXPECT_NOFILE | pt/b/learning_limits.pdl | tick-b-not-graduated
+RUN | $T/eg.+x | bogus | x | y
+EXPECT_EXIT | 2 | usage
+RUN | $T/eg.+x | check | $T/e1 | $T/nosuch.pdl
+EXPECT_EXIT | 2 | missing-curriculum

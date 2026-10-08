@@ -987,3 +987,37 @@ COMMAND eden_verb
   PARAMS verb,args
   TEMPLATE exec "$D/&.widgits/eden/ops/+x/eden_op.+x" "$ENT" '{verb}'[ {args}]
 END
+
+# ---- entity as learner (grades, levels, MP; 2026-10-07): one compiled op, &.widgits/concept-bank/ops/entity_grade.c (header lists exit codes). $ENT is the entity's state dir
+# (its variables.txt gets rpg_level / rpg_exp / rpg_mp / rpg_mp_max / grade_*, so a page can branch on them with variable_math lt/ge/eq). Data: ^.hai-horn/skillbook.pdl, curriculum.pdl.
+COMMAND use_skill
+  LABEL Use Skill (costs MP, gives EXP)
+  FIELD1 Skill name (observe describe propose_edit review_edit author_new_node):
+  FIELD2 -
+  PARAMS skill
+  TEMPLATE exec "$D/&.widgits/concept-bank/ops/+x/entity_grade.+x" use "$ENT" "$D/^.hai-horn/skillbook.pdl" '{skill}'
+END
+
+COMMAND rest_mp
+  LABEL Rest (refill MP)
+  FIELD1 -
+  FIELD2 -
+  PARAMS
+  TEMPLATE exec "$D/&.widgits/concept-bank/ops/+x/entity_grade.+x" rest "$ENT" "$D/^.hai-horn/skillbook.pdl"
+END
+
+COMMAND grade_report
+  LABEL Report Card (grade check)
+  FIELD1 -
+  FIELD2 -
+  PARAMS
+  TEMPLATE exec "$D/&.widgits/concept-bank/ops/+x/entity_grade.+x" check "$ENT" "$D/^.hai-horn/curriculum.pdl"
+END
+
+COMMAND graduate
+  LABEL Graduate (advance one grade)
+  FIELD1 Signed by (auto, or a person's name for grades that need a person):
+  FIELD2 -
+  PARAMS by
+  TEMPLATE exec "$D/&.widgits/concept-bank/ops/+x/entity_grade.+x" advance "$ENT" "$D/^.hai-horn/curriculum.pdl" '{by}'
+END

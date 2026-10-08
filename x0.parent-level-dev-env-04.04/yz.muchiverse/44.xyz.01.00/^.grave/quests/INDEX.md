@@ -23,7 +23,7 @@ Manager: claude. Status flow: open → claimed → active → review → done | 
 | Q017 | `hq-ftp` transfer app (spec `HQ-FTP-LAN-SYNC-SPEC.md`) | W/M | L | open | - | - |
 | Q018 | store install op: `git clone` + unpack against a local test repo (design `XYZFS-DISTRIBUTION-VIA-STORE-DESIGN.md`) | W | M | open | - | - |
 | Q019 | pilot 3: Eden talk phrases by a free Groq worker behind a deterministic judge (`quest-pilot/q019-phrases`; harness `quest_q019_phrases` 35/0) | W | S | DONE 2026-10-07 (iteration 1) | Groq gpt-oss-120b | - |
-| Q020 | pilot 4: `var_cmp` (compare numbers/variables so event pages can branch) by a free Groq worker; harness `quest_q020_var_cmp` 161/0; 4 iterations, 17,054 tokens (see `quest-pilot/q020-var-cmp/quest_ledger.txt`) | W | S | DONE 2026-10-07 (not yet an event command) | Groq gpt-oss-120b | registry row + build script |
+| Q020 | pilot 4: `var_cmp` (compare numbers/variables so event pages can branch) by a free Groq worker; harness `quest_q020_var_cmp` 161/0; 4 iterations, 17,054 tokens (see `quest-pilot/q020-var-cmp/quest_ledger.txt`) | W | S | DONE 2026-10-07 as a process pilot; **the op duplicates `variable_math` (do not register)** | Groq gpt-oss-120b | - |
 | Q021 | patch-style repairs: send only the failing lines + error, accept a patch/function replacement instead of re-emitting the whole file (measured waste in q020) | W | M | open | - | - |
 | Q022 | lessons bank + `prompt_compose` (learned preamble lines with hit counts, token-budgeted) | M/W | M | open | - | see `LEARNING-LOOP-BANKS-WEIGHTS-NO-REPROMPT-DESIGN.md` |
 | Q023 | answer bank: `bank_get/bank_put` keyed by sha256(spec+harness+model), harness-verified entries only | W | M | open | - | - |

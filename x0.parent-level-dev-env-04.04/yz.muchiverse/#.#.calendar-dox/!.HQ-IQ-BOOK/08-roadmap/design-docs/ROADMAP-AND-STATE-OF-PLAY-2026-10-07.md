@@ -55,3 +55,61 @@ Written by claude after the owner asked: "where is it (pages? toys?), can it sta
 - **Order of work:** P0 fix sensors (HORN error reporting, quest packet) -> P1 first ghost runner -> P2 board + phones live -> P3 pending/judge -> P4 specialize -> P5 students (tomom) -> P6 IRL (Eden simulator) -> P7 network console. Details and exit tests: the playbook sections 10 and 15; first quests Q010-Q018 in its appendix.
 - **Pull on 2026-10-07:** `opencode` (network browser forms, worker canvas/webgl, TOM layer fix) and `claude-staging-opencode` (night-32 materials) merged into `claude` after a scratch rehearsal (0 conflicts, 0 deletions, no user data); `debian`/`debian-clean` (299 user-data files each, older than the installed 2,425-file archive) and `grok` deliberately not merged; `attrition`/`claude-kilo` code already resolved to the staging side. Built, not exercised.
 
+
+## 7. Knowledge domains: materials, compounds, anatomy (the bootstrapping path; added 2026-10-07, owner question)
+**Owner's question:** do the grades and skills include materials, chemical-compound strings and anatomy, as things an entity can learn with tuned weights, and can the house build this out itself ("bootstrapping, as allowed")? **Honest state (corrected the same day after the owner pointed at the palettes): the raw material already exists as ASSETS; what does not exist is the labeling, scoring and hidden-layer on top of it.** My first draft of this section said no element or compound data existed; that was wrong, because I had only searched a few file types. What is on disk (checked 2026-10-07):
+| asset | where (under `44.xyz.01.00/`) | what it holds (verified) |
+|---|---|---|
+| Elements | `#.ref/menu/palletes/elements]new=RECIPEZ+]z2.txt`, symbols in `&.widgits/palettes/ops/elements_palette_manager.c`, Drude colors in `chem-viz.txt` | 118 elements in Z order with proton / neutron counts (so the mass NUMBER is computable), canonical symbols, a periodic-table picker window (`palettes-elements.xhtpm`) |
+| Compounds | `#.ref/menu/palletes/chemistry_tiles.csv` | 50 compounds: emoji, name, formula (Unicode subscripts), category number, hint. **All 50 formulas parse and use only real element symbols** (checked) |
+| Compound properties | `chemistry_tiles_expanded.csv` | same 50 + color, state, melting point, boiling point, density, toxicity, reactivity, icon tile, animation frames; **only 12 of 50 rows are filled** |
+| Organic / MCAT list | `mcat_compounds.csv` | 36 rows (name, formula, type, functional groups, relevance); 19 have a plain formula, the rest are names, amino acids or structural strings |
+| Combination play | `little-alchemy-mockup.html`, `satisfactory-crafting.png` | element combination and crafting-recipe references |
+| LOD voxel design | `chem-viz.txt` | element macro-voxel -> protons / neutrons / electrons / quarks zoom, with a CSV schema |
+| Tile sets | `&.widgits/palettes/` (`pallets.pdl`): emojis, CDDA (`shared/CDDA-ASSET-SOURCE-LOCATION.pdl`, terrain / furniture / items / monsters), Mineclonia (`shared/MINECLONIA-ASSET-SOURCE-LOCATION.pdl`, `mcl_core` ...), RPG Maker, Piececraft blocks, Dwarf Fortress, Tiled, OHR | named texture folders = material and creature names with images (assets live outside the zip, license notes in the source-location files) |
+| Mechanisms | concept bank, hidden layer v0, review gates, `entity_grade`, `curriculum.pdl`, `skillbook.pdl`, scoring ledger, free-worker pipeline, quartermaster | built and tested |
+Owner direction (2026-10-07): *"we are literally gonna use that stuff and emojis"* and *"label it, score it, hidden layer it; we will do image (Stable Diffusion) and word generation with it too"*, with an X11-HQ window for it. Everything below is the plan; the labeling run is section 7.6.
+
+### 7.1 The principle that makes bootstrapping safe: verifiable vs judged knowledge
+| kind | examples | who can grade it | consequence |
+|---|---|---|---|
+| **Verifiable by code** | a formula string (`H2O`, `Ca(OH)2`): grammar, element symbols, atom counts; molar mass computed from the element table; atom conservation in a reaction; a body-part tree being acyclic with every parent existing | a deterministic op (no model, no person) | the exam is self-grading, so a model may propose freely; this is where the loop can run by itself and where auto-promotion can first be justified |
+| **Judged** | properties ("salt dissolves in water"), function of a body part, how a material relates to the masters (energy / force / motion), "what is this good for" | a person reviewing against a gold set | model proposes, person approves; never auto-promoted |
+The root of trust is a **hash-locked ground truth** (the element table from the house recipe file). Nothing a model says can change it; masses are never taken from a model.
+
+### 7.2 Data model (reuse, do not invent)
+- `elements.pdl`: `ELEMENT | Z | symbol | name | protons | neutrons | color`. **Derived from the house recipe file and the manager's symbol list (already on disk), not typed by a model**; locked by sha256 like a quest harness. Mass number = protons + neutrons (an integer approximation; a real atomic-mass column can be added by a person later).
+- Compound / material nodes are **spokes** of the concept bank with extra rows: `FORMULA | H2O` and a stated `MASS | 18.015`. A deterministic `formula_lint` op parses the string, checks every symbol exists in `elements.pdl`, counts are positive integers, parentheses balance, and recomputes the mass (tolerance set in the file); a proposed row that fails is rejected before any person sees it.
+- Anatomy: `PART | name | part_of=<name> | system=<name> | function="..."`. Deterministic checks: `part_of` resolves, the tree is acyclic, no part is its own ancestor, names unique. The facts (function, relations) are judged and reviewed.
+- Masters: today only energy / force / motion exist. These domains need at most two more hubs, **`matter`** (substance and composition) and **`structure`** (part-of / connected-to). A new master is an owner decision (hubs are few by design); spokes then point at them exactly like `mass -> force` does today.
+- Weights: each node's association to the masters is a hand-reviewed starting weight (the hidden layer v0 method: model proposes numbered rows, `assoc_lint` judges, a review row approves, the word table is rebuilt). Tuning later goes through `joint_tune` (bounded, ledgered, autonomy 0).
+
+### 7.3 How it builds itself out, and what "as allowed" means
+The loop is the one already built, repeated on a bigger corpus; **every arrow below is an existing op or one small new op**:
+1. A skill (`study_chemistry`, `study_anatomy`, costing MP, gated by grade and level) makes an entity or a worker propose rows: *Watch -> DESCRIBE -> candidate*.
+2. **Deterministic lint** (`formula_lint`, `part_tree_lint`, `assoc_lint`) rejects malformed or false-by-computation rows. Cost of a bad row is zero attention.
+3. **Exams are generated by code** from the locked tables (`exam_make`: seeded questions such as "molar mass of Ca(OH)2", "which of these formulas is valid", "what is the parent of the femur in the tree"); answers are graded by code (`exam_grade`) into `FEEDBACK` rows (`layer=curriculum`, `concept=chemistry`). The same rows feed the report card, so a model or entity that answers well *earns* grade and level; one that answers badly is visibly graded down. No person is needed for the verifiable part.
+4. Judged rows wait in `status=candidate` for a person's review (`REVIEW` rows, overruleable). Approved rows rebuild the hidden-layer word table.
+5. Higher grades unlock `author_new_node` (propose a new spoke), so the corpus can grow from inside, still as candidates.
+**Allowed means:** autonomy 0 by default; candidates only until reviewed; the ground truth is read-only to models; bounded weight moves with a ledger; free models only, within the quartermaster's limits; grades above elementary need a person's signature (`approval=person`); and **auto-promotion is justified only for verifiable domains** (chemistry formulas, anatomy structure), only at grade >= associate_bachelor, only with score >= 0.90 over >= 20 exam rows, never for judged knowledge. Anatomy here is for game and education content, not medical advice.
+
+### 7.4 Phases (each with a locked harness; the deterministic ones are good free-worker pilots)
+| phase | deliverable | verdict by | delegable to a free worker |
+|---|---|---|---|
+| P0 | owner decisions: add masters `matter` and `structure`? element source; which grades unlock which skills | owner | no |
+| P1 | `elements.pdl` (hand-sourced, locked) + `formula_lint` (grammar, symbols, mass) | harness with valid/invalid formulas | yes (pure parsing; the op, not the data) |
+| P2 | `exam_make` / `exam_grade`: seeded, deterministic, FEEDBACK rows | harness (same seed = same exam byte for byte) | yes |
+| P3 | first 30 compounds and materials proposed by a free model, linted, reviewed, weights set, hidden layer rebuilt | lint + review | proposals yes, review no |
+| P4 | anatomy v0: ~40 parts, `part_tree_lint`, review of functions | lint + review | lint yes, facts no |
+| P5 | skills `study_chemistry` / `study_anatomy` in the skillbook; exams wired to the report card; entities take them | `entity_grade` harness + a scratch entity | yes |
+| P6 | link Eden items to materials (clay, grain get a `FORMULA`/material row) so crafting rules can read composition | Eden harness stays green | owner decision first |
+| P7 | bootstrapping: `author_new_node` at higher grades, the lessons bank and answer bank so the same question is never paid for twice | quartermaster + ledger | partly |
+
+### 7.5 What this plan does not claim
+No domain data exists yet; the exams, the lints and the two new masters are unbuilt; a model's chemistry or anatomy claims are never trusted without the lint or a review; the grade numbers in `curriculum.pdl` are first guesses; and the whole thing stays small on purpose (a few hundred rows) until the loop has produced graded evidence for it.
+
+### 7.6 Label, score, hidden-layer: the first run, and the HQ window
+- **Label:** every compound row gets a deterministic label block computed by code from the locked table (`formula_ok`, `atoms`, `mass_number`, `elements`), plus its emoji and (where present) state / melting / boiling point / density; a free model proposes `energy / force / motion` association weights per compound (the hidden-layer v0 method), judged by `assoc_lint`, reviewed, then trained into the word table.
+- **Score:** the deterministic checks are exams (one FEEDBACK row per check, `layer=curriculum`, `concept=chemistry`), and the model's proposal is scored in the delegation bank like every other attempt.
+- **Image and word generation (planned, not built, not verified on this machine):** a labeled node yields an image prompt from its emoji, name, state, color and tile name, and a word prompt from the hidden-layer word table; Stable Diffusion needs a local model and GPU or a free API, neither of which has been checked here, so it is a later phase. Generated images enter as candidates like any other row.
+- **The X11-HQ window (`knowledge-hq`):** a khtpm HQ app (layout `.chtpm` + css + one compiled manager, nav-numbered, relay-drivable) that browses the labeled nodes (elements, compounds, materials, later anatomy), shows each card (emoji, formula, label block, scores, hidden-layer vector), and lets a person approve / adjust / reject proposed rows by writing `REVIEW` rows. It reads the same files the ops write; it holds no logic of its own.

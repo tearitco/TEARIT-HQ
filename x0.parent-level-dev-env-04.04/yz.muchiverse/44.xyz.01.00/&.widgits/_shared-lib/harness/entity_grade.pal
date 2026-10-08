@@ -1,0 +1,4 @@
+# entity_grade.pal - LOCKED acceptance harness for the grade / level / MP op. Read results/entity_grade.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/entity_grade.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/entity_grade.pdl
+halt

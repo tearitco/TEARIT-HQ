@@ -1,0 +1,9 @@
+# curriculum.pdl - the SCHOOL: what an entity's report card must show to graduate to the next grade. Read by &.widgits/concept-bank/ops/entity_grade.
+# Grades (tiers): preschool < elementary_hs < associate_bachelor < master_phd; the entity's current grade is strength_of_training.max_tier in its learning_limits.pdl.
+# A SUBJECT is a layer/concept pair in the entity's obs_feedback_log.txt (layer=curriculum: exams = harness verdicts, quests; layer=extracurricular: play, IRL, Eden skills).
+# A subject PASSES with n >= min_n graded rows and Laplace score (reward+1)/(reward+punish+2) >= min_score. Ready = enough passing subjects AND enough passing extracurricular ones.
+# approval=person: the entity never graduates into that grade on its own: higher grades carry more power (associate_bachelor+ may be allowed to auto-promote bank edits), so a person signs.
+# ALL NUMBERS ARE FIRST HAND-SET GUESSES, not measured. Tune them here; no code reads a constant.
+GRADE | from=preschool | to=elementary_hs | min_subjects=1 | min_score=0.60 | min_n=5 | min_extra=0 | approval=auto
+GRADE | from=elementary_hs | to=associate_bachelor | min_subjects=2 | min_score=0.75 | min_n=10 | min_extra=1 | approval=person
+GRADE | from=associate_bachelor | to=master_phd | min_subjects=3 | min_score=0.85 | min_n=20 | min_extra=2 | approval=person

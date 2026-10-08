@@ -1,0 +1,11 @@
+# skillbook.pdl - the entity's SKILLS and LEVELS (RPG-Maker style). Read by &.widgits/concept-bank/ops/entity_grade (use / rest).
+# MP is the entity's budget for work that costs a model call: skills with mp= cost it, `rest` (the day tick) refills it, and a higher level raises the maximum.
+# A skill needs the entity's GRADE (tier=0..3 = preschool..master_phd), its LEVEL, and enough MP; using it gives EXP; EXP raises the level. Using a skill is experience, not an exam:
+# it never changes the grade, only the graded evidence in obs_feedback_log.txt does (see curriculum.pdl).
+# The skills are the steps of the learning pipeline: Watch -> DESCRIBE (one fixed line) -> propose an EDIT -> review -> author a new concept. ALL NUMBERS ARE FIRST HAND-SET GUESSES.
+LEVEL | exp_per_level=10 | base_mp=6 | mp_per_level=2 | max_level=20
+SKILL | observe          | tier=0 | level=1 | mp=1 | exp=1
+SKILL | describe         | tier=0 | level=1 | mp=3 | exp=2
+SKILL | propose_edit     | tier=1 | level=2 | mp=2 | exp=3
+SKILL | review_edit      | tier=2 | level=4 | mp=2 | exp=4
+SKILL | author_new_node  | tier=3 | level=6 | mp=5 | exp=6
