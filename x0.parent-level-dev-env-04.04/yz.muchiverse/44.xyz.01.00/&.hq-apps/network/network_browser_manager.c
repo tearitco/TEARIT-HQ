@@ -605,6 +605,18 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
     char form_method[16] = "";
     int in_form = 0;
 
+    /* List state (2026-10-08). A small explicit stack rather than
+     * recursion, because the walker is a linear scan. `g_li_depth` counts
+     * open <li>s (nesting depth of the item being built), `g_li_ordered`
+     * whether the innermost list numbers its items, and `g_li_marker` the
+     * ordinal text for that item. Ordinals restart per list, so the stack
+     * keeps a counter per level. */
+    int g_li_depth = 0;
+    int g_li_ordered = 0;
+    char g_li_marker[16] = "-";
+    int g_list_stack[8][2];   /* [level][0]=ordered, [1]=ordinal so far */
+    int g_list_sp = 0;
+
     #define TEXT_WRAP 88
     #define FLUSH_LINE() do { \
         if (linelen > 0) { \
@@ -616,7 +628,15 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
             else if (line[0] && line_count < MAX_LINES) { \
                 /* Milestone 1 (2026-10-05): one TEXT row per paragraph; scroll_row_span wraps. \
                  * Avoid the old fixed-88-col pre-split which ignored pane width. */ \
-                fprintf(out, "TEXT|%s\n", line); \
+                /* Lists (2026-10-08): a list item is a LIST row, not a \
+                 * paragraph. Without this a <ul> was indistinguishable from \
+                 * running prose - no bullet, no ordinal, and a <li> that only \
+                 * wraps a nested list leaked its own stray "Nested" row. */ \
+                if (g_li_depth > 0) \
+                    fprintf(out, "LIST|%d|%s|%s\n", g_li_depth, \
+                            g_li_ordered ? g_li_marker : "-", line); \
+                else \
+                    fprintf(out, "TEXT|%s\n", line); \
                 line_count++; \
                 linelen = 0; \
             } else { linelen = 0; } \
@@ -843,6 +863,57 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                     }
                 }
                 p = bend ? bend + 9 : tag_end + 1;
+                continue;
+            }
+            /* Lists (2026-10-08): <ul>/<ol> open a level, <li> opens an item.
+             * FLUSH_LINE turns the item's accumulated text into a LIST row,
+             * so the marker and the nesting depth come for free. The stack
+             * is bounded at 8 levels and overflow just stops nesting - a
+             * page cannot make us loop or overflow. */
+            if (strncasecmp(p, "<ul", 3) == 0 && !isalnum((unsigned char)p[3])) {
+                FLUSH_LINE();
+                if (g_list_sp < 8) { g_list_stack[g_list_sp][0] = 0; g_list_stack[g_list_sp][1] = 0; g_list_sp++; }
+                p = strchr(p, '>'); if (!p) break; p++;
+                continue;
+            }
+            if (strncasecmp(p, "<ol", 3) == 0 && !isalnum((unsigned char)p[3])) {
+                FLUSH_LINE();
+                if (g_list_sp < 8) { g_list_stack[g_list_sp][0] = 1; g_list_stack[g_list_sp][1] = 0; g_list_sp++; }
+                p = strchr(p, '>'); if (!p) break; p++;
+                continue;
+            }
+            if (strncasecmp(p, "<li", 3) == 0 && !isalnum((unsigned char)p[3])) {
+                FLUSH_LINE();
+                g_li_depth++;
+                if (g_list_sp > 0) {
+                    int lvl = g_list_sp - 1;
+                    g_list_stack[lvl][1]++;
+                    g_li_ordered = g_list_stack[lvl][0];
+                    if (g_li_ordered) snprintf(g_li_marker, sizeof(g_li_marker), "%d.", g_list_stack[lvl][1]);
+                    else snprintf(g_li_marker, sizeof(g_li_marker), "-");
+                } else {
+                    g_li_ordered = 0;
+                    snprintf(g_li_marker, sizeof(g_li_marker), "-");
+                }
+                p = strchr(p, '>'); if (!p) break; p++;
+                continue;
+            }
+            if (strncasecmp(p, "</li", 4) == 0 && (p[4] == '>' || isspace((unsigned char)p[4]))) {
+                FLUSH_LINE();
+                if (g_li_depth > 0) g_li_depth--;
+                p = strchr(p, '>'); if (!p) break; p++;
+                continue;
+            }
+            if (strncasecmp(p, "</ul", 4) == 0 && (p[4] == '>' || isspace((unsigned char)p[4]))) {
+                FLUSH_LINE();
+                if (g_list_sp > 0) g_list_sp--;
+                p = strchr(p, '>'); if (!p) break; p++;
+                continue;
+            }
+            if (strncasecmp(p, "</ol", 4) == 0 && (p[4] == '>' || isspace((unsigned char)p[4]))) {
+                FLUSH_LINE();
+                if (g_list_sp > 0) g_list_sp--;
+                p = strchr(p, '>'); if (!p) break; p++;
                 continue;
             }
             /* <table> (2026-10-08): tables used to arrive as one run-on TEXT row per
@@ -4981,6 +5052,48 @@ static void write_ui_projection(void) {
                     uisan(rest, t, sizeof(t));
                     UI_PUT("c_%d_kind=title\nc_%d_is_title=1\nc_%d_text=%s\n", rc, rc, rc, t);
                     if (click_action[0]) UI_PUT("c_%d_sel=%s\nc_%d_click_action=%s", rc, pending_sel, rc, click_action);
+                } else if (strcmp(kind, "LIST") == 0) {
+                    /* LIST|<depth>|<marker>|<text>
+                     * Marker and indent are the structure the extractor saw;
+                     * the text itself is unindented so copying an item gives
+                     * you the item, not the whitespace around it. Indent is
+                     * applied as U+00A0-free real spaces (this row kind is
+                     * NOT the quoted-literal convention, so plain spaces
+                     * would be trimmed by kh_load_vars - which is correct
+                     * here, since the marker already carries the meaning). */
+                    char *d1 = strchr(rest, '|');
+                    if (!d1) continue;
+                    *d1 = 0;
+                    char *d2 = strchr(d1 + 1, '|');
+                    if (!d2) continue;
+                    *d2 = 0;
+                    int depth = atoi(rest);
+                    if (depth < 1) depth = 1;
+                    if (depth > 6) depth = 6;
+                    char mk[32], tx[1024], lab_s[1200];
+                    uisan(d1 + 1, mk, sizeof(mk));
+                    uisan(d2 + 1, tx, sizeof(tx));
+                    if (!tx[0]) continue;
+                    /* indent = 2 spaces per level past the first */
+                    char ind[32]; size_t io = 0;
+                    for (int li = 1; li < depth && io + 2 < sizeof(ind); li++) { ind[io++] = ' '; ind[io++] = ' '; }
+                    ind[io] = 0;
+                    snprintf(lab_s, sizeof(lab_s), "%s%s %s", ind, mk, tx);
+                    uisan(lab_s, t, sizeof(t));
+                    if (!t[0] || junk_visible_line(t)) continue;
+                    /* Quoted literal, like CODE rows: the leading indent is
+                     * the whole point of a nested list, and an unquoted
+                     * value has its leading spaces trimmed by the loader.
+                     * Quotes inside are backslash-escaped so an item that is
+                     * itself exactly "foo" keeps them. */
+                    { char esc[1400]; size_t eo = 0;
+                      for (const char *r = t; *r && eo + 2 < sizeof(esc); r++) {
+                          if (*r == '"') esc[eo++] = '\\';
+                          esc[eo++] = *r;
+                      }
+                      esc[eo] = 0;
+                      UI_PUT("c_%d_kind=list\nc_%d_is_list=1\nc_%d_text=\"%s\"\n", rc, rc, rc, esc);
+                    }
                 } else if (strcmp(kind, "TROW") == 0) {
                     /* TROW|<header>|<cell>|<cell>...
                      * One row per <tr>, cells joined so the correspondence
@@ -5333,7 +5446,15 @@ static void write_ui_projection(void) {
                         uisan(rest, s1, sizeof(s1));
                         s2[0] = '\0';
                     }
-                    char lab_s[700]; uisan(s2[0] ? s2 : " ", lab_s, sizeof(lab_s));
+                    /* An image with no alt text (or alt="") used to render as a row with an
+                     * EMPTY label - a silent blank strip that reads like a
+                     * rendering bug rather than like "there is a picture
+                     * here". alt="" is the HTML way of saying decorative,
+                     * so we keep the row but say so plainly instead of
+                     * pretending the page is empty. */
+                    char lab_s[700];
+                    if (s2[0]) uisan(s2, lab_s, sizeof(lab_s));
+                    else snprintf(lab_s, sizeof(lab_s), "[image, no alt text]");
                     UI_PUT("c_%d_kind=img\nc_%d_is_media=1\nc_%d_sprite=%s\nc_%d_label=%s\n", rc, rc, rc, s1, rc, lab_s);
                     if (click_action[0]) UI_PUT("c_%d_sel=%s\nc_%d_click_action=%s", rc, pending_sel, rc, click_action);
                     /* V4 2026-09-12: an IMG immediately tailed by a LINK

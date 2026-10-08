@@ -1,0 +1,15 @@
+URL|FIXDIR/fixtures/lists.html
+TITLE|Lists
+TITLE|Shopping
+TEXT|Before.
+LIST|1|-|Apples
+LIST|1|-|Pears
+LIST|1|1.|First
+LIST|1|2.|Second
+LIST|1|-|Nested
+LIST|2|-|Deep item
+LIST|1|1.|Outer
+LIST|2|1.|Inner one
+LIST|2|2.|Inner two
+LIST|1|-|Wrapped bold text
+TEXT|After.

@@ -57,6 +57,8 @@ sidebar { width: 200px; background-color: #1a1a1a; color: #cccccc; }
    column names without a real grid. */
 .nb-trow { color: #b8c8d8; }
 .nb-trow.thead { color: #8fb8ff; }
+/* 2026-10-08: <ul>/<ol> items, marker + indent carried from the extractor. */
+.nb-list { color: #c8c8c8; }
 .nb-console-text { color: #8fbf8f; }
 .page-title { color: #eeeeee; }
 
