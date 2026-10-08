@@ -29,13 +29,6 @@
 #define MAX_LINE 8192
 #define PATH_BUF (4096 + 512)
 
-static char project_root[PATH_BUF] = ".";
-
-static void resolve_root(void) {
-    const char *env = getenv("PRISC_PROJECT_ROOT");
-    if (env && env[0]) snprintf(project_root, sizeof(project_root), "%s", env);
-}
-
 struct model_api {
     model_api_type_t type;
     char *base_url;
@@ -112,9 +105,9 @@ static void build_payload(model_api_t *api, const char *system_prompt, const cha
 
     char *esc_sys = malloc(strlen(system_prompt) * 2 + 1);
     char *esc_usr = malloc(strlen(user_prompt) * 2 + 1);
-    char *p = esc_sys, *s = system_prompt;
+    char *p = esc_sys; const char *s = system_prompt;
     while (*s) { if (*s == '"' || *s == '\\') *p++ = '\\'; *p++ = *s++; } *p = '\0';
-    p = esc_usr; s = user_prompt;
+    p = esc_usr; s = (const char *)user_prompt;
     while (*s) { if (*s == '"' || *s == '\\') *p++ = '\\'; *p++ = *s++; } *p = '\0';
 
     switch (api->type) {
@@ -170,30 +163,19 @@ static char *extract_content(const char *response_file, char *out, size_t out_sz
     snprintf(parser_path, sizeof(parser_path), "%s/ops/+x/json_parser.+x", proj);
     
     char cmd[PATH_BUF];
-    char tmp_content[PATH_BUF];
-    snprintf(tmp_content, sizeof(tmp_content), "/tmp/llm_content_%d.json", (int)time(NULL));
-    snprintf(cmd, sizeof(cmd), "%s %s message.content > %s 2>/dev/null",
-             parser_path, response_file, tmp_content);
-    if (system(cmd) != 0) return NULL;
-    
-    /* Strip markdown if present */
-    char strip_cmd[PATH_BUF];
-    snprintf(strip_cmd, sizeof(strip_cmd),
-        "sed -i 's/^```json//; s/^```//; s/```$//' %s 2>/dev/null", tmp_content);
-    system(strip_cmd);
-    
-    if (!read_file(tmp_content, out, out_sz)) return NULL;
-    unlink(tmp_content);
+    snprintf(cmd, sizeof(cmd), "%s %s message.content", parser_path, response_file);
+    FILE *pipe = POPEN(cmd, "r");
+    if (!pipe) return NULL;
+    size_t total = 0;
+    while (total < out_sz - 1) {
+        size_t n = fread(out + total, 1, out_sz - 1 - total, pipe);
+        if (n == 0) break;
+        total += n;
+    }
+    out[total] = '\0';
+    PCLOSE(pipe);
+    if (total == 0) return NULL;
     return out;
-}
-
-static int read_file(const char *path, char *buf, size_t sz) {
-    FILE *f = fopen(path, "r");
-    if (!f) return 0;
-    size_t n = fread(buf, 1, sz - 1, f);
-    buf[n] = '\0';
-    fclose(f);
-    return n > 0;
 }
 
 model_response_t *model_api_chat(model_api_t *api,
@@ -285,7 +267,6 @@ int model_extract_action(const char *content, char *action, size_t action_sz,
     if (access(parser_path, F_OK) == 0) {
         char tmp_content[PATH_BUF];
         snprintf(tmp_content, sizeof(tmp_content), "/tmp/llm_content_%d.json", (int)time(NULL));
-        char cmd[PATH_BUF];
         
         /* Write content to temp file */
         FILE *f = fopen(tmp_content, "w");
@@ -294,11 +275,11 @@ int model_extract_action(const char *content, char *action, size_t action_sz,
             fclose(f);
         }
         
-        char *fields[] = {"action", "reason", "confidence"};
+        const char *fields[] = {"action", "reason", "confidence"};
         for (int i = 0; i < 3; i++) {
             char cmd[PATH_BUF];
             snprintf(cmd, sizeof(cmd), "%s %s %s 2>/dev/null",
-                     parser_path, tmp_content, i == 0 ? "action" : (i == 1 ? "reason" : "confidence"));
+                     parser_path, tmp_content, fields[i]);
             FILE *p = POPEN(cmd, "r");
             if (p) {
                 char buf[256];
@@ -316,7 +297,7 @@ int model_extract_action(const char *content, char *action, size_t action_sz,
     }
 
     /* Fallback: simple string extraction */
-    char *p = content;
+    const char *p = content;
     char *action_ptr = strstr(p, "\"action\"");
     if (action_ptr) {
         char *colon = strchr(action_ptr, ':');

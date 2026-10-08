@@ -69,5 +69,19 @@ for src in ops/*.c; do
     gcc $CFLAGS "$src" -o "ops/+x/$name.+x" -lm -lfreetype
 done
 
+echo "--- Building XOD ops (xod/) ---"
+for src in ops/xod/*.c; do
+    name="$(basename "$src" .c)"
+    echo "  Compiling $name..."
+    case "$name" in
+        llm_brain)
+            gcc $CFLAGS "$src" ops/xod/model_api.c -o "ops/+x/$name.+x" -lm
+            ;;
+        *)
+            gcc $CFLAGS "$src" -o "ops/+x/$name.+x" -lm
+            ;;
+    esac
+done
+
 echo "--- Build Complete ---"
 ls -l system/prisc+x ops/+x/

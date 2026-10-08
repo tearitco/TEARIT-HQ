@@ -140,7 +140,9 @@ case "$ACTION" in
         for b in system/prisc+x system/keyboard_input system/renderer \
                  ops/+x/corp_tick_idle.+x ops/+x/corp_decide.+x ops/+x/corp_trade.+x \
                  ops/+x/wsr_menu_input.+x ops/+x/wsr_compose_frame.+x \
-                 ops/+x/connect_op.+x ops/+x/json_parser.+x; do
+                 ops/+x/connect_op.+x ops/+x/json_parser.+x \
+                 ops/+x/llm_brain.+x ops/+x/fsm_controller.+x ops/+x/tom_layer.+x \
+                 ops/+x/wsr_fitness.+x ops/+x/wsr_chart.+x ops/+x/wsr_attrition.+x; do
             if [ -x "$SCRIPT_DIR/$b" ]; then echo "OK   $b"; else echo "MISSING $b"; fi
         done
         ;;
