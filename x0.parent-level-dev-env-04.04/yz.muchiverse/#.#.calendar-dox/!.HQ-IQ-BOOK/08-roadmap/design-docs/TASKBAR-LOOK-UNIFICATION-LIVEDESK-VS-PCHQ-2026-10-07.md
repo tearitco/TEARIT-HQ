@@ -109,3 +109,29 @@ are a real migration and should be scheduled, not slipped in.
 `_.monads/_.livedesk-taskbar/khtpm_strip_{header,bottom}.css`,
 `@.apps/piececraft-hq/pchq-board.{xhtpm,css}`, `apply_theme_op.c`,
 `#.desktop/livedesk_theme.pdl`.
+
+## 7. Update (owner: "mostly the sizes", resizing differs per machine, hotbar can be bigger than the taskbar)
+
+Found by reading code (not yet measured on two screens): **two sizing systems.**
+
+- The strip sizes itself in C through `scaled(base_px)` (`khtpm_core_render.c`
+  ~3460, 60 call sites, e.g. `DOCK_BAR_H = scaled(36)`). `scaled()` follows
+  `font_scale` (1.25) and the screen-relative `ui_scale` (auto = min(screen_w /
+  ui_ref_width, screen_h / ui_ref_height), 0.5 to 3.0), so the strip grows and
+  shrinks with each monitor.
+- CSS windows use literal pixels that nothing in the shared CSS parser scales:
+  `.pchq-footer { height:44px }`, hotbar `window 760x150`, `.hb-slot 80x60`,
+  font-size 14px. `khtpm_css_parser.c` has no reference to `ui_scale`.
+
+So on the reference screen they look roughly matched, and on any other monitor
+the strip scales while the pc-hq footer and hotbar stay fixed. That is exactly
+"hotbar bigger than tb" and "resizing differs per machine".
+
+**Fix (added to Step A):** make the CSS length parser apply the same
+`scaled()` factor to px lengths (width, height, padding, border, font-size), or
+add a `ui` unit (`height: 36ui`) and convert the dock/hotbar/pchq CSS to it.
+One scale function for both worlds. It touches the shared parser, so it needs
+the dock-first, idempotent-layout rollout rules in section 4, and a check that
+windows already tuned in raw px do not change on the reference screen (they
+would not, since auto scale = 1.0 there). Verify with `dump_frame_png_op.+x`
+on this screen and on the Mac with the same `ui_scale` override.
