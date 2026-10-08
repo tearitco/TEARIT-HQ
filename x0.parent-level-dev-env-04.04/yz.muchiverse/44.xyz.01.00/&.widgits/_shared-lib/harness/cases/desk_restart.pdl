@@ -99,5 +99,22 @@ WRITE | h6/$.crypts/button.sh | echo "nothing started"\nexit 0\n
 RUN | $T/op.+x | --house | $T/h6 | --wait | 2
 EXPECT_EXIT | 4 | notaskbar-rc4
 EXPECT_OUT | no-taskbar-after-wait | notaskbar-reason
+# ---------- h7/h8: a STALE build_error.log (written just before the run, same second, containing BUILD FAILED) must not change any verdict (byte offset, never mtime)
+MKDIR | h7/bin
+RUN | cp | /bin/sleep | $T/h7/bin/khtpm_taskbar_manager
+WRITE | h7/_.monads/_.livedesk-taskbar/ops/build_khtpm_strip.sh | gcc -o x y\n
+WRITE | h7/_.monads/_.livedesk-taskbar/ops/+x/build_error.log | BUILD FAILED long ago\n
+WRITE | h7/$.crypts/button.sh | H="$(cd "$(dirname "$0")/.." && pwd)"\n"$H/bin/khtpm_taskbar_manager" 120 </dev/null >/dev/null 2>&1 &\necho $! > "$H/mgr.pid"\nsleep 1\nexit 0\n
+RUN | $T/op.+x | --house | $T/h7 | --wait | 30
+EXPECT_EXIT | 0 | stale-log-success-stays-up
+RUN | /bin/sh | -c | kill "$(cat $T/h7/mgr.pid)"
+EXPECT_EXIT | 0 | stale-log-manager-cleaned
+WRITE | h8/_.monads/_.livedesk-taskbar/ops/build_khtpm_strip.sh | gcc -o x y\n
+WRITE | h8/_.monads/_.livedesk-taskbar/ops/+x/build_error.log | BUILD FAILED long ago\n
+WRITE | h8/$.crypts/button.sh | echo "unrelated failure"\nexit 7\n
+RUN | $T/op.+x | --house | $T/h8 | --wait | 5
+EXPECT_EXIT | 4 | stale-log-other-failure-rc4
+EXPECT_OUT | RESTART\pDOWN\pchild-exit-7 | stale-log-not-blamed-build-failed
+EXPECT_OUT_LACKS | build-failed | stale-log-no-build-failed-word
 # ---------- end: kill only recorded pids (SPAWNed M2; h3 manager and h5 child were killed above), then remove the scratch
 CLEAN |

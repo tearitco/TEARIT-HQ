@@ -214,6 +214,7 @@ int main(int argc, char **argv) {
     /* ---- (2) RUN: detached child, login shell, log appended ---- */
     { char d[P]; snprintf(d, sizeof d, "%s/#.desktop", hroot); mkdirs(d); }
     long log_from = 0; { struct stat ls; if (stat(dlog, &ls) == 0) log_from = (long)ls.st_size; }
+    long berr_from = 0; { struct stat bs; if (stat(berr, &bs) == 0) berr_from = (long)bs.st_size; }   /* marker rule: judge only bytes that appear after this offset (never mtime) */
     time_t t_start = time(NULL);
     { FILE *lf = fopen(dlog, "a"); if (lf) { fprintf(lf, "=== desk_restart %ld house=%s pre-manager=%d ===\n", (long)t_start, hroot, pre); fclose(lf); } }
     { struct stat ls; if (stat(dlog, &ls) == 0) log_from = (long)ls.st_size; }   /* tail only what this run adds */
@@ -255,8 +256,15 @@ int main(int argc, char **argv) {
         if (fd >= 0) { if (log_from > 0) lseek(fd, log_from, SEEK_SET); b = slurp_fd(fd, NULL); close(fd); }
         if (b && (strstr(b, "BUILD FAILED") || strstr(b, "MISSING "))) blog = 1;
         free(b);
-        struct stat es;   /* secondary signal: a build_error.log written during this run (mtime is only a hint here, the primary signal is the log text above) */
-        if (!blog && code != 0 && stat(berr, &es) == 0 && es.st_size > 0 && es.st_mtime >= t_start) blog = 1;
+        /* build_error.log: only bytes after the pre-run offset count (tee truncates it, so a smaller file means read from 0) */
+        fd = open(berr, O_RDONLY);
+        if (fd >= 0) {
+            struct stat es; long from = (fstat(fd, &es) == 0 && (long)es.st_size >= berr_from) ? berr_from : 0;
+            if (from > 0) lseek(fd, from, SEEK_SET);
+            b = slurp_fd(fd, NULL); close(fd);
+            if (b && (strstr(b, "BUILD FAILED") || strstr(b, "MISSING ") || (code != 0 && b[0]))) blog = 1;
+            free(b);
+        }
     }
     if (blog) snprintf(why, sizeof why, "build-failed");
     else if (code != 0) snprintf(why, sizeof why, "child-exit-%d", code);
