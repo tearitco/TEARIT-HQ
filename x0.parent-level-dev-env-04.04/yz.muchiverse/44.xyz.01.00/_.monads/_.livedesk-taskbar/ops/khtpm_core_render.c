@@ -1610,6 +1610,44 @@ static void kh_load_vars(const char *path) {
         *ke = '\0';
         char *val = eq + 1;
         while (*val == ' ' || *val == '\t') val++;
+        /* REAL, NEW 2026-10-08 - quoted values are LITERAL.
+         *
+         * The trim above is load-bearing for every existing window: managers
+         * write `key= value` with a habitually padded space and have always
+         * meant "value". So removing it outright to preserve leading
+         * indentation would shift content in every other window in the house.
+         *
+         * Instead a value wrapped in double quotes opts OUT of trimming:
+         *   key="    indented"   -> the four spaces are the value
+         *   key=   indented      -> trimmed, exactly as before
+         *
+         * Measured before changing this: zero values in any *_ui.txt or
+         * *.state.txt in the house begin with a double quote, so no
+         * existing producer can be affected - the convention is purely
+         * additive. Callers that need real leading whitespace (the
+         * network browser's <pre> CODE rows) quote and get it.
+         *
+         * Only the outer pair is stripped; interior quotes and all other
+         * whitespace are left exactly as written. */
+        size_t vlen = strlen(val);
+        if (vlen >= 2 && val[0] == '"' && val[vlen - 1] == '"') {
+            val[vlen - 1] = '\0';
+            val++;
+            /* A literal quote inside the quoted value is written backslash-escaped
+             * by the producer, so a value that is ITSELF exactly "foo" does
+             * not get its quotes stripped as if they were the delimiters.
+             * Backslash is deliberately NOT collapsed here: kh_substitute_vars
+             * is what turns <backslash><backslash>n into a real line break,
+             * and collapsing it in the loader would make a real newline
+             * unreachable while a literal backslash-n in a code string would
+             * still be indistinguishable from it. */
+            char *w = val;
+            for (char *r = val; *r; r++) {
+                if (*r == '\\' && r[1] == '"') r++;
+                *w++ = *r;
+            }
+            *w = '\0';
+        }
         if (s[0]) kh_set_var(s, val);
     }
     fclose(f);
@@ -1740,7 +1778,22 @@ static void kh_substitute_vars(const char *src, char *dst, size_t max_len) {
                 memcpy(name, p + 2, n); name[n] = '\0';
                 const char *v = kh_get_var(name);
                 while (*v && o < end) {
-                    if (v[0] == '\\' && v[1] == 'n') { kh_sv_emit(&o, end, '\n', 0); v += 2; }
+                    /* REAL FIX 2026-10-08 - `\n` inside a substituted
+                     * value used to become a REAL newline, silently. Any
+                     * label carrying a literal backslash-n was split into
+                     * two rows: the network browser's `<pre>` blocks lose
+                     * every `printf("...\n")` line, and the second half is
+                     * dropped as a malformed frame line. Live proof:
+                     * a plain paragraph "alpha \n omega" rendered as
+                     * "alpha" and nothing else.
+                     *
+                     * A newline is still available, but only via the
+                     * form that cannot collide with real content: a
+                     * QUOTED var value (kh_load_vars) may spell a line
+                     * break as the two characters <backslash><backslash>n.
+                     * An unquoted value - every value in the house today -
+                     * passes through byte for byte. */
+                    if (v[0] == '\\' && v[1] == '\\' && v[2] == 'n') { kh_sv_emit(&o, end, '\n', 0); v += 3; }
                     else kh_sv_emit(&o, end, *v++, in_attr_quote);
                 }
                 p = close + 1;
@@ -9402,9 +9455,19 @@ static void kh_clipboard_copy(const char *text) {
     g_clip_copied_at = time(NULL);
 }
 
+static void kh_clipboard_insert_text(Elem *e, const char *text);
 static void kh_clipboard_request_paste(void) {
     kh_clipboard_init_atoms();
-    g_paste_pending = 1;
+    /* REAL FIX 2026-10-07 (self-paste silently died): when WE own
+     * CLIPBOARD, XConvertSelection asks ourselves, our own answer goes
+     * out via XSendEvent which never lands back (propagate skips
+     * windows not selecting the type), so no SelectionNotify ever
+     * arrives. Short-circuit: insert our own text directly. */
+    if (XGetSelectionOwner(dpy, g_atom_clipboard) == win && g_default_input_elem) {
+        kh_clipboard_insert_text(g_default_input_elem, g_clipboard_text);
+        if (!g_quit) redraw();
+        return;
+    }
     /* Ask the current CLIPBOARD owner to write UTF8_STRING into our own
      * KH_CLIP_PASTE property - answered async by a SelectionNotify. */
     XConvertSelection(dpy, g_atom_clipboard, g_atom_utf8, g_atom_paste_prop, win, CurrentTime);

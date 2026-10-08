@@ -28,15 +28,22 @@ MERGED_ACCUM="$(mktemp)"
 if grep -q "^HIDDEN|" "$DESKTOP_DIR/network_browser_page.state.txt" 2>/dev/null; then
     grep "^HIDDEN|" "$DESKTOP_DIR/network_browser_page.state.txt" | sed 's/^HIDDEN|//;s/|/\t/' >> "$MERGED_ACCUM"
 fi
-# 2. checked boxes (submit values from live page.state INPUT rows)
-if [ -f "$DESKTOP_DIR/network_browser_checks.txt" ]; then
+# 2. checked boxes. The checks file is OPTIONAL - a page whose boxes are
+# all page-defaults never produces one, and gating on it silently dropped
+# every pre-checked box. A missing file reads as "no toggle yet".
+: > /dev/null
+CHECKS_FILE="$DESKTOP_DIR/network_browser_checks.txt"
+[ -f "$CHECKS_FILE" ] || CHECKS_FILE=/dev/null
+if [ -f "$DESKTOP_DIR/network_browser_page.state.txt" ]; then
     while IFS= read -r line; do
         kind="${line%%|*}"
         [ "$kind" = "INPUT" ] || continue
         rest="${line#*|}"
         nm="${rest%%|*}"
         [ -n "$nm" ] || continue
-        st="$(awk -F'\t' -v n="$nm" '$1==n {s=$2} END {print s}' "$DESKTOP_DIR/network_browser_checks.txt" 2>/dev/null)"
+        typ="${rest#*|}"; typ="${typ%%|*}"
+        case "$typ" in checkbox|radio) ;; *) continue ;; esac
+        st="$(awk -F'\t' -v n="$nm" '$1==n {s=$2} END {print s}' "$CHECKS_FILE" 2>/dev/null)"
         if [ -z "$st" ]; then
             # no toggle yet: page default (INPUT row field 3)
             df="$(printf '%s' "$rest" | awk -F'|' '{print $3}')"
@@ -49,10 +56,58 @@ if [ -f "$DESKTOP_DIR/network_browser_checks.txt" ]; then
         printf '%s\t%s\n' "$nm" "$sv" >> "$MERGED_ACCUM"
     done < "$DESKTOP_DIR/network_browser_page.state.txt"
 fi
+# 2c. <select> with nothing chosen submits its page default - the option
+# carrying the `selected` attribute. An <option> with no value attribute
+# submits its text, which the extractor already folded in.
+awk -F'|' '$1=="SELECT" && $5=="1" {
+    v=$3; gsub("\177", "|", v);
+    if (v != "") printf "%s\t%s\n", $2, v
+}' "$DESKTOP_DIR/network_browser_page.state.txt" >> "$MERGED_ACCUM"
+# 2b. untouched text-ish inputs submit their page default (INPUT row field 3)
+# the way a real browser does. Typed values land in step 3 and win ties.
+# Pipes are 0x7f on the wire (see extractor) so a value can never split a
+# field; translate back here, at the last moment before urlencoding.
+awk -F'|' '$1=="INPUT" && ($3=="text"||$3=="search"||$3=="email"||$3=="url"||$3=="number"||$3=="tel"||$3=="password"||$3=="textarea") {
+    v=$4; gsub("\177", "|", v);
+    if (v != "") printf "%s\t%s\n", $2, v
+}' "$DESKTOP_DIR/network_browser_page.state.txt" >> "$MERGED_ACCUM"
 # 3. typed fields last (most interactive source wins ties)
 cat "$DESKTOP_DIR/network_browser_fields.txt" 2>/dev/null >> "$MERGED_ACCUM"
 MERGED="$MERGED_ACCUM"
 CLEANUP_MERGED=1
+# Validation gate (2026-10-07, M4 follow-on): never send a knowingly-invalid
+# form. Two rules, both driven by the live page.state INPUT rows:
+#   1. required (field 5 == 1) text-ish fields must have a non-empty value
+#   2. email/url/number values must match a loose HTML-spec shape even when
+#      the field is optional - an empty optional field passes silently
+# BLOCKED accumulates " name" for rule 1, " name(reason)" for rule 2.
+BLOCKED=""
+while IFS= read -r line; do
+    case "$line" in INPUT\|*) ;; *) continue ;; esac
+    nm="${line#INPUT|}";  nm="${nm%%|*}"
+    typ="${line#INPUT|*}"; typ="${typ#*|}";  typ="${typ%%|*}"
+    # required is the LAST field on text-ish INPUT rows ("...|name|type|val|ph|req").
+    # Toggle rows carry only 4 fields, so the tail is never "1" for them.
+    req="${line##*|}"; [ "$req" = "1" ] || req=0
+    case "$typ" in text|search|textarea|email|url|number) ;; *) continue ;; esac
+    val="$(awk -F'\t' -v n="$nm" '$1==n {v=$2} END {print v}' "$DESKTOP_DIR/network_browser_fields.txt" 2>/dev/null)"
+    if [ -z "$val" ]; then
+        [ "$req" = "1" ] && BLOCKED="$BLOCKED $nm"
+        continue
+    fi
+    case "$typ" in
+        email) case "$val" in *@*.*) ;; *) BLOCKED="$BLOCKED $nm(email)" ;; esac ;;
+        url)   case "$val" in *://*) ;; *) BLOCKED="$BLOCKED $nm(url)" ;; esac ;;
+        number)
+            case "$val" in -*) v="${val#-}" ;; *) v="$val" ;; esac
+            case "$v" in ""|*[!0-9.]*) BLOCKED="$BLOCKED $nm(number)" ;; *) ;; esac ;;
+    esac
+done < "$DESKTOP_DIR/network_browser_page.state.txt"
+if [ -n "$BLOCKED" ]; then
+    printf 'submit: blocked, invalid form:%s\n' "$BLOCKED" >> "$DESKTOP_DIR/network_browser_console.txt"
+    [ -n "$CLEANUP_MERGED" ] && rm -f "$MERGED"
+    exit 0
+fi
 if [ -f "$MERGED" ]; then
     if command -v python3 >/dev/null 2>&1; then
         PAIRS="$(python3 -c "
@@ -69,6 +124,31 @@ print(urllib.parse.urlencode(v))
     fi
 fi
 [ -n "$CLEANUP_MERGED" ] && rm -f "$MERGED"
+
+# File uploads (2026-10-08): if any committed value is an existing regular
+# file, the form MUST be multipart - a urlencoded body can only carry the
+# path string, and the server would store the path as if it were the file.
+# Emits upload:<url><TAB><encoded><TAB><name>=<path>... instead of post:.
+#
+# This is a forced POST even when the form's method says GET: a GET with a
+# file body has no meaning, and silently downgrading to a query string
+# would upload nothing while looking like it worked.
+UPFILES=""
+if [ -f "$DESKTOP_DIR/network_browser_page.state.txt" ]; then
+    while IFS= read -r line; do
+        case "$line" in FILE\|*) ;; *) continue ;; esac
+        fnm="${line#FILE|}"; fnm="${fnm%%|*}"
+        [ -n "$fnm" ] || continue
+        fval="$(awk -F'\t' -v n="$fnm" '$1==n {v=$2} END {print v}' "$DESKTOP_DIR/network_browser_fields.txt" 2>/dev/null)"
+        [ -n "$fval" ] || continue
+        [ -f "$fval" ] || continue
+        UPFILES="$UPFILES	$fnm=$fval"
+    done < "$DESKTOP_DIR/network_browser_page.state.txt"
+fi
+if [ -n "$UPFILES" ]; then
+    printf 'upload:%s\t%s%s\n' "$ACTION" "$PAIRS" "$UPFILES" > "$REQUEST_FILE"
+    exit 0
+fi
 
 case "$METHOD" in
     ""|get|GET)

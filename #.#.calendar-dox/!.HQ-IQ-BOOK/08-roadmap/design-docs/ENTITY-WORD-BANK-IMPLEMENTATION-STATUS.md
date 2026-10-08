@@ -9,8 +9,8 @@
 | 1 | `wordbank` core (text-include): seed from on-disk, write `words.txt`/`scores.txt`/`vars.txt`, rebuild mirror | DONE |
 | 2 | `wordbank_ensure_op` dry run + report on a copy of the pals tree | DONE |
 | 3 | Hash-ignore entry (exclude `zz.wordbank/` from `livedesk_hash_dir`) | DONE |
-| 4 | Spawn-hook call (auto-seed on new entity creation) | TODO |
-| 5 | Hand-scoring screen (bounded rows) + to-score queue | TODO |
+| 4 | Spawn-hook call (auto-seed on new entity creation) | DONE |
+| 5 | Hand-scoring screen (bounded rows) + to-score queue | DONE |
 | 6 | Use-scoring rows from the parser path | TODO |
 | 7 | Real-tree `--apply` after backup + sha256 + count | TODO |
 | 8 | Chain: SCORE record type, balance-ignores-SCORE case, `chain_bank_query`, advisory derive | TODO |
@@ -45,15 +45,46 @@ Flags (same contract as `phone_ensure_op`):
 
 `khtpm_taskbar_manager.c:livedesk_hash_dir()` — added `! -path "*/inventory/zz.wordbank/*"` so the bank folder does not drift the entity's `PAL | hash`.
 
+## Spawn hook (commit `6a56da126`)
+
+`khtpm_taskbar_manager.c` now `#include "khtpm_wordbank.c"` and calls `livedesk_wordbank_ensure(child_dir, &ctx)` at both entity-creation sites:
+- line 2687 (cursword / desk-pal spawn)
+- line 2943 (inventory entity spawn)
+
+`build_phone_ensure_op.sh` `MGR_SRCS` updated to include `$SHARED/khtpm_wordbank.c`.
+
+## Hand-scoring op (commit `f32b874c5`)
+
+### `wordbank_score_op.c` — bounded console review + to-score queue
+
+A console-based review tool (mirrors `concept_edit_validate.c` / `pending_review.txt` conventions from HALO):
+
+- `--queue` — scans all entities, lists every `SOURCE=seed` row across all wordbanks. Output: `<entity_relpath>|<canon>|<alias>|<weight>`. Sorted by entity then canon.
+- `--apply <file>` — reads a batch score file (`entity_relpath|canon|alias|valence`), changes `SOURCE=seed`→`SOURCE=user` in `words.txt`, sets `WEIGHT=1.0` (+1) / `0.0` (-1) / `0.5` (0), and appends a `SCORE|...` row to `scores.txt` with `source=hand`.
+- `--interactive` — bounded console review: one row at a time, keys `+`/`-`/`0`/`s` (skip), writes to words.txt + scores.txt.
+- `--selftest` — verifies parse + apply + append on a temp tree.
+
+Batch score file format:
+```
+# entity_relpath | canon | alias | valence(-1/0/1)
+asa|name:asa|asa|1
+asa|action:Chat|Chat|0
+terumon_003_murmur|name:terumon_003_murmur|-1
+```
+
+`build_phone_ensure_op.sh` updated to compile `wordbank_score_op` alongside `wordbank_ensure_op`.
+
 ## Verified
 
 On a copy of the pals tree (85 entities: 32 top-level + 53 inventory items):
-- `--selftest`: passes (parsing + dedup)
+- `wordbank_ensure_op --selftest`: passes (parsing + dedup)
 - Dry run → `--apply` on copy → second `--apply`:
   - 85 banks created, 0 on re-run (idempotent, 0 errors)
-- Sample `words.txt` row format: `CANON=name:dsr_castle_b|ALIAS=dsr_castle_b|WEIGHT=0.5000|SOURCE=seed`
-- `kind:deskpal`, `action:Events (hq)` etc. all present
+- `wordbank_score_op --selftest`: passes (update, dedup, append)
+- `--queue`: lists 297 un-scored seed rows across all entities
+- `--apply` on a batch of 4 scores: all applied, `words.txt` updated (SOURCE=seed→user, WEIGHT set), `SCORE` rows appended to `scores.txt`
+- Idempotency: after scoring 4 rows, `--queue` reports 293 (4 scored rows gone)
+- `--interactive`: 3/5 scored + 1 skipped on piped input; results verified in words.txt and scores.txt
+- SCORE record format: `SCORE|name:asa|asa|valence=+1|source=hand|ts=<unix>|id=asa`
 
-## Next
-
-Spawn hook wiring (sec 8.4) — call `wb_ensure()` from the entity spawn script.
+Sample `words.txt` row format: `CANON=name:dsr_castle_b|ALIAS=dsr_castle_b|WEIGHT=0.5000|SOURCE=seed`

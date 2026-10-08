@@ -58,6 +58,86 @@ the bar.
 - [x] ~~Word-wrap spans~~ — renderer-side wrap suffices for now; true spans need segment rows (listed above)
 - [ ] Inline media tiles (sprite-flow grid) — open (panel-path branch missing)
 
+## Done — Milestone 5: forms parity (2026-10-07, verified live + hermetic tests)
+
+- [x] `required` on text-ish fields, `*` marker on the label, submit refuses with a console note
+- [x] `email` / `url` / `number` extracted as INPUT rows (they used to be dropped entirely) and format-checked at submit
+- [x] `<textarea>` rows carry required + placeholder; newlines/tabs collapsed, pipes escaped 0x7f
+- [x] untouched inputs submit their `value=` default the way a browser does
+- [x] pre-checked checkboxes/radios submit even when the checks file never existed (this was a live bug)
+- [x] `tests/nb_form_test.sh` — 18 hermetic cases (sandbox house root, no X11, no relay)
+
+Two off-by-one traps in this area, both found by tests and both shipped once:
+awk field `$N` counts the leading `INPUT` token, so the required flag is the
+LAST field, not `$5`; and `uisan()` rewrites `|` to `/`, so a restored pipe
+must be restored after it, never before.
+
+## Done — Milestone 7: `<select>` (2026-10-08, manager side)
+
+- [x] static pages emit `SELECT|name|value|label|selected` per option; option text stops at its own `</option>`
+- [x] one clickable row per option, marked `[v]` chosen / `[*]` page default / `[ ]` neither
+- [x] choice lands in the same fields file text inputs use — no new submit concept
+- [x] submit falls back to the `selected` option; a select with no default sends nothing
+- [ ] worker `SEL` rows still own selects on JS pages (opencode-fix lane) — untouched
+
+## Bugs found by the form work (2026-10-07/08, all shipped once)
+
+- [x] `tag_attrval` reported a bare boolean attribute as **absent** when it sat
+  immediately before `>` (`after` walks onto the `>`, and the old
+  `after >= tag_end → return 0` fired). Silently dropped `selected`, `checked`,
+  `required`, `disabled` in their most common spelling.
+- [x] required-flag read as awk `$5` — `$N` counts the leading `INPUT` token, so
+  every required field was treated as optional and an empty one submitted.
+- [x] `uisan()` rewrites `|` to `/`; restoring an escaped pipe *before* it
+  rendered C's `1 | 2` as `1 / 2`, changing what the code means.
+- [x] untouched inputs submitted nothing (no `value=` default merge).
+- [x] pre-checked checkboxes dropped whenever the checks file didn't exist.
+- [x] `nb_write_select.sh` written 644 — the renderer's direct exec failed
+  silently. **House rule: `chmod +x` every new ops script.**
+
+## Done — Milestone 6: preformatted text (2026-10-07/08)
+
+- [x] `<pre>` emits one `CODE|<line>` row per source line; inline tags inside dropped
+- [x] `.nb-code` monospace via the generic per-element `font-family` path (zero renderer C)
+- [x] `tests/fixtures/code-block.html` + snapshot pin the row shape
+- [x] leading indentation preserved — shared renderer, quoted-value convention
+- [x] literal `\n` in a label no longer splits the row (shared renderer fix)
+
+## Done — Milestone 9: tables (2026-10-08)
+
+- [x] `TROW|<header>|<cell>…` per `<tr>`; header rows flagged and tinted
+- [x] `<caption>` emitted as TEXT (was silently dropped with the subtree)
+- [x] cells joined with U+00B7 — **not** `|`, which `uisan()` rewrites to `/`
+- [ ] rowspan/colspan not honoured (cells in document order) — real column
+  layout is a renderer slice, deliberately not faked
+
+## Lane note (2026-10-08)
+
+WebGL stencil/queries stay in the **opencode-fix** lane: `nb_js_worker.c` and the
+`ops/` worker/fetch C files are theirs per AGENTS.md, and that lane is actively
+committing. Manager-side work (extractor → rows → xhtpm → css) stays here.
+When a browser slice needs worker rows, it goes through the handoff doc rather
+than a direct edit.
+
+## Test-harness gotcha (cost me two false "PASS" rounds)
+
+`nb_layout_test.sh` drives the **already-running** manager through the request
+file — it does not launch one. After a rebuild, relaunch the browser before
+`NB_SNAPSHOT_UPDATE=1`, or the snapshot is re-cut from a stale binary and looks
+like a real regression.
+
+## Done — Milestone 8: file uploads (2026-10-08, verified against httpbin)
+
+- [x] `<input type=file>` extracted as `FILE|name|accept|multiple`
+- [x] row opens the house file-explorer (`fe-pick.sh` modal contract), commits the path
+- [x] submit escalates to `upload:` multipart **only** when the value is a real file
+- [x] GET + file is forced to multipart rather than degraded to a query string
+- [x] `nb_write_file.sh` **chmod 755** — the renderer execs item actions directly
+
+Two bugs that both looked like working uploads: curl's `form-file` in a config
+file is silently dropped on curl 7.88.1 (use `form = "name=@path"`), and emitting
+both `form` and `form-file` for one name let the PATH win.
+
 ## Todo — Milestone 3: JS ↔ box tree reflow
 
 - [ ] Manager owns the box tree; worker mutations (`textContent`, appendChild) reflow the subtree, not just rewrite a text row

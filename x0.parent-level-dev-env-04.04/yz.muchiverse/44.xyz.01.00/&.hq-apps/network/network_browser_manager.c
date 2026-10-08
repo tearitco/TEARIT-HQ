@@ -136,6 +136,10 @@ static char g_current_url[PATH_BUF] = "";
 /* POST body stashed by the post: request branch for do_fetch's curl
  * config writer (cleared after each fetch). */
 static char g_post_body[8192] = "";
+/* Multipart upload plan (2026-10-08): "<name>=<path>" entries joined by
+ * \x1f, set from an `upload:` request line and consumed by the curl
+ * config writer. Empty means "no files, ordinary urlencoded body". */
+static char g_multipart[PATH_BUF * 4] = "";
 
 static void path_join(char *out, size_t outsz, const char *a, const char *b) {
     snprintf(out, outsz, "%s/%s", a, b);
@@ -200,6 +204,26 @@ static void html_decode_entities(char *s) {
 }
 
 static void collapse_ws(char *s);
+
+/* Percent-decode in place-safe fashion (2026-10-08, multipart upload).
+ * The submit script urlencodes the ordinary fields; curl's `form` option
+ * does its OWN encoding, so handing it the still-encoded string would
+ * double-encode every value. Decode before it reaches the config.
+ * '+' means space in an urlencoded string, per application/x-www-form-urlencoded. */
+static void url_decode(const char *in, char *out, size_t outsz) {
+    size_t o = 0;
+    for (const char *p = in; *p && o + 1 < outsz; p++) {
+        if (*p == '+') { out[o++] = ' '; continue; }
+        if (*p == '%' && isxdigit((unsigned char)p[1]) && isxdigit((unsigned char)p[2])) {
+            char hex[3] = { p[1], p[2], 0 };
+            out[o++] = (char)strtol(hex, NULL, 16);
+            p += 2;
+            continue;
+        }
+        out[o++] = *p;
+    }
+    out[o] = 0;
+}
 static void strip_pipes(char *s);
 
 /* Sprite-grid item caption: longer than the old 22-char cut, entities
@@ -524,7 +548,14 @@ static int tag_attrval(const char *p, const char *tag_end, const char *key, char
             continue;
         }
         while (after < tag_end && isspace((unsigned char)*after)) after++;
-        if (after >= tag_end) return 0;
+        /* Bare attribute immediately before '>' (the common
+         * `<option value="grn" selected>` spelling): `after` has walked
+         * onto the '>' itself, and the old `after >= tag_end -> return 0`
+         * reported the attribute as ABSENT. Every valueless boolean in
+         * that position - selected, checked, required, disabled - was
+         * silently dropped. Presence is the answer here; the value is
+         * meaningless for a boolean. */
+        if (after >= tag_end || *after == '>') return 1;
         if (*after != '=') return 1;
         const char *v = after + 1;
         while (v < tag_end && isspace((unsigned char)*v)) v++;
@@ -646,10 +677,71 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                 continue;
             }
             if (strncasecmp(p, "<select", 7) == 0 && !isalnum((unsigned char)p[7])) {
-                /* worker SEL rows own selects; skip the subtree so option
-                 * text never becomes paragraph TEXT. */
+                /* <select> (2026-10-07): the worker SEL rows still own
+                 * selects on JS pages (opencode-fix lane, they emit the
+                 * live DOM value). But a plain static page had its whole
+                 * select subtree skipped, so the control simply did not
+                 * exist and the form submitted without it. Emit the
+                 * options here as SELECT rows; the projector renders one
+                 * clickable item per option and the choice lands in the
+                 * same fields file the text inputs use, so submit needs
+                 * no new concept. `selected` marks the page default. */
                 FLUSH_LINE();
-                p = skip_named_element(p, "select");
+                const char *sel_end = strchr(p, '>');
+                if (!sel_end) { p++; continue; }
+                char sname[256] = "";
+                tag_attrval(p, sel_end, "name", sname, sizeof(sname));
+                strip_pipes(sname);
+                const char *body = skip_named_element(p, "select");
+                if (in_form && sname[0]) {
+                    const char *op = sel_end + 1;
+                    while (op < body) {
+                        if (strncasecmp(op, "<option", 7) == 0 && !isalnum((unsigned char)op[7])) {
+                            const char *oend = strchr(op, '>');
+                            if (!oend) break;
+                            char oval[1024] = "", olab[512] = "";
+                            if (tag_attrval(op, oend, "value", oval, sizeof(oval)) == 0) oval[0] = 0;
+                            char selchk[8] = "";
+                            int selected = tag_attrval(op, oend, "selected", selchk, sizeof(selchk)) > 0;
+                            /* Text runs from just after this <option...>
+                             * to ITS OWN </option> - not to the end of the
+                             * select. Stopping at `body` swallowed every
+                             * following option into each label. */
+                            const char *oclose = strcasestr_local(oend + 1, "</option>");
+                            const char *otext_end = oclose ? oclose : body;
+                            const char *otext = oend + 1;
+                            size_t ow = 0;
+                            while (otext < otext_end && ow < sizeof(olab) - 1) {
+                                if (otext[0] == '<') {
+                                    if (otext[1] == '/') break;          /* </option> */
+                                    const char *g = strchr(otext, '>');  /* inline tag */
+                                    if (!g) break;
+                                    otext = g + 1;
+                                    continue;
+                                }
+                                olab[ow++] = *otext++;
+                            }
+                            olab[ow] = 0;
+                            html_decode_entities(olab);
+                            collapse_ws(olab);
+                            strip_pipes(olab);
+                            /* An <option> with no value attribute submits
+                             * its TEXT, per the HTML spec. */
+                            if (!oval[0]) snprintf(oval, sizeof(oval), "%s", olab);
+                            strip_pipes(oval);
+                            if (oval[0] || olab[0]) {
+                                fprintf(out, "SELECT|%s|%s|%s|%d\n", sname,
+                                        oval[0] ? oval : olab, olab[0] ? olab : oval,
+                                        selected ? 1 : 0);
+                            }
+                            op = oclose ? oclose + 9 : oend + 1;
+                            continue;
+                        }
+                        op++;
+                    }
+                    fprintf(out, "SELECTEND|%s\n", sname);
+                }
+                p = body;
                 continue;
             }
             if (strncasecmp(p, "<input", 6) == 0 && !isalnum((unsigned char)p[6])) {
@@ -664,8 +756,20 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                 for (char *c = type; *c; c++) *c = (char)tolower((unsigned char)*c);
                 strip_pipes(name); strip_pipes(val); strip_pipes(ph);
                 if (!type[0]) snprintf(type, sizeof(type), "%s", "text");
-                if (in_form && (!strcmp(type, "text") || !strcmp(type, "search"))) {
-                    if (name[0]) fprintf(out, "INPUT|%s|%s|%s|%s\n", name, type, val, ph);
+                if (in_form && (!strcmp(type, "text") || !strcmp(type, "search")
+                                || !strcmp(type, "email") || !strcmp(type, "url")
+                                || !strcmp(type, "number") || !strcmp(type, "tel")
+                                || !strcmp(type, "password"))) {
+                    /* text-ish editable controls: rendered as fields and
+                     * validated at submit time (required flag in field 5).
+                     * password values are never echoed back into rows that
+                     * a projector might render, but they DO reach submit
+                     * through fields.txt exactly like any other input. */
+                    if (name[0]) {
+                        char rq[8] = "";
+                        int req = tag_attrval(p, tag_end, "required", rq, sizeof(rq));
+                        fprintf(out, "INPUT|%s|%s|%s|%s|%d\n", name, type, val, ph, req ? 1 : 0);
+                    }
                 } else if (in_form && (!strcmp(type, "checkbox") || !strcmp(type, "radio"))) {
                     /* Toggle controls ride INPUT rows with the checked
                      * state folded in; the projector renders an item row,
@@ -675,6 +779,20 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                         int is_checked = tag_attrval(p, tag_end, "checked", checked, sizeof(checked));
                         fprintf(out, "INPUT|%s|%s|%s|%s\n", name, type,
                                 is_checked ? "checked" : "", val[0] ? val : "on");
+                    }
+                } else if (in_form && !strcmp(type, "file")) {
+                    /* <input type=file> (2026-10-08): the control itself is
+                     * a FILE row, not an INPUT row. It has no text value to
+                     * type - the path arrives from the house file-explorer
+                     * picker (fe-pick.sh), which the row's action opens.
+                     * accept/multiple are carried for the picker and for
+                     * submit's multipart decision. */
+                    if (name[0]) {
+                        char acc[256] = "", mul[8] = "";
+                        tag_attrval(p, tag_end, "accept", acc, sizeof(acc));
+                        int multi = tag_attrval(p, tag_end, "multiple", mul, sizeof(mul)) > 0;
+                        strip_pipes(acc);
+                        fprintf(out, "FILE|%s|%s|%d\n", name, acc, multi ? 1 : 0);
                     }
                 } else if (in_form && !strcmp(type, "hidden")) {
                     /* Hidden defaults ride page.state untouched to submit
@@ -727,6 +845,147 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                 p = bend ? bend + 9 : tag_end + 1;
                 continue;
             }
+            /* <table> (2026-10-08): tables used to arrive as one run-on TEXT row per
+             * table row with the cells welded together - "PlanPrice",
+             * "Free0" - which is unreadable and destroys the one thing a
+             * table is for, the correspondence between a cell and its
+             * column. Emit one TROW row per <tr>, cells pipe-delimited, and
+             * a leading 1 when the row is a header row (<th> anywhere in
+             * it). The projector draws a row at a time; a real grid needs
+             * renderer column layout, which is a separate slice.
+             *
+             * Rowspan/colspan are NOT honoured - cells are emitted in
+             * document order. Inventing phantom cells to fill a grid we
+             * cannot draw would be worse than a flat row. */
+            if (strncasecmp(p, "<table", 6) == 0 && !isalnum((unsigned char)p[6])) {
+                FLUSH_LINE();
+                const char *tbody_end = skip_named_element(p, "table");
+                if (line_count < MAX_LINES) {
+                    const char *rp = p;
+                    /* <caption> is real content and used to vanish with the
+                     * rest of the table region - emit it as a TEXT row so
+                     * the table keeps its title. */
+                    /* Search for the caption INSIDE this table only. An unbounded
+                     * strcasestr would run past </table> into the next
+                     * table's caption and, because I was moving the row
+                     * cursor onto it, silently swallowed every row of the
+                     * table being processed. Own pointer, own bound. */
+                    const char *cap = NULL;
+                    {
+                        const char *scan = p;
+                        while (scan < tbody_end) {
+                            const char *f = strcasestr_local(scan, "<caption");
+                            if (!f || f >= tbody_end) break;
+                            if (!isalnum((unsigned char)f[8])) { cap = f; break; }
+                            scan = f + 8;
+                        }
+                    }
+                    if (cap) {
+                        const char *copen = strchr(cap, '>');
+                        const char *cclose = copen ? strcasestr_local(copen + 1, "</caption>") : NULL;
+                        if (copen && cclose) {
+                            char capt[512];
+                            size_t co = 0;
+                            for (const char *r = copen + 1; r < cclose && co + 1 < sizeof(capt); ) {
+                                if (*r == '<') { const char *g = strchr(r, '>'); if (!g) break; r = g + 1; continue; }
+                                capt[co++] = *r++;
+                            }
+                            capt[co] = 0;
+                            html_decode_entities(capt);
+                            collapse_ws(capt);
+                            strip_pipes(capt);
+                            if (capt[0]) { fprintf(out, "TEXT|%s\n", capt); line_count++; }
+                        }
+                    }
+                    while (rp < tbody_end) {
+                        if (strncasecmp(rp, "<tr", 3) == 0 && !isalnum((unsigned char)rp[3])) {
+                            const char *tr_end = rp;
+                            /* find this row's own </tr> (rows cannot nest) */
+                            { const char *c = strcasestr_local(rp, "</tr>");
+                              tr_end = c ? c + 5 : tbody_end; }
+                            int header = 0;
+                            char cells[64][256];
+                            int ncells = 0;
+                            const char *cp = rp;
+                            while (cp < tr_end && ncells < 64) {
+                                int is_th = (strncasecmp(cp, "<th", 3) == 0 && !isalnum((unsigned char)cp[3]));
+                                int is_td = (strncasecmp(cp, "<td", 3) == 0 && !isalnum((unsigned char)cp[3]));
+                                if (!is_th && !is_td) { cp++; continue; }
+                                const char *cell_end = cp;
+                                { const char *closer = is_th ? "</th" : "</td";
+                                  const char *c = strcasestr_local(cp, closer);
+                                  if (c) { const char *g = strchr(c, '>'); cell_end = g ? g + 1 : c; } }
+                                char txt[256];
+                                size_t to = 0;
+                                for (const char *r = cp; r < cell_end && to + 1 < sizeof(txt); ) {
+                                    if (*r == '<') { const char *g = strchr(r, '>'); if (!g) break; r = g + 1; continue; }
+                                    txt[to++] = *r++;
+                                }
+                                txt[to] = 0;
+                                html_decode_entities(txt);
+                                collapse_ws(txt);
+                                strip_pipes(txt);
+                                if (is_th) header = 1;
+                                snprintf(cells[ncells], sizeof(cells[0]), "%s", txt);
+                                ncells++;
+                                cp = cell_end;
+                            }
+                            if (ncells > 0) {
+                                fprintf(out, "TROW|%d", header);
+                                for (int ci = 0; ci < ncells; ci++) fprintf(out, "|%s", cells[ci]);
+                                fprintf(out, "\n");
+                                line_count++;
+                            }
+                            rp = tr_end;
+                            continue;
+                        }
+                        rp++;
+                    }
+                }
+                p = tbody_end;
+                continue;
+            }
+            /* <pre> / <code> as a block (2026-10-07): preformatted text is
+             * the one place where whitespace IS content. collapse_ws()
+             * turned every code sample on the web into one run-on line, so
+             * indentation and line structure were simply gone. Emit one
+             * CODE|<line> row per source line instead - leading spaces kept
+             * (capped), pipes escaped to 0x7f like textarea values. */
+            if (strncasecmp(p, "<pre", 4) == 0 && !isalnum((unsigned char)p[4])) {
+                FLUSH_LINE();
+                const char *tag_end = strchr(p, '>');
+                if (!tag_end) { p++; continue; }
+                const char *pend = strcasestr_local(tag_end + 1, "</pre>");
+                const char *body_end = pend ? pend : tag_end + 1 + strlen(tag_end + 1);
+                const char *cp = tag_end + 1;
+                char codebuf[4096];
+                while (cp < body_end && line_count < MAX_LINES) {
+                    const char *nl = memchr(cp, '\n', (size_t)(body_end - cp));
+                    const char *le = nl ? nl : body_end;
+                    size_t n = (size_t)(le - cp);
+                    if (n >= sizeof(codebuf)) n = sizeof(codebuf) - 1;
+                    memcpy(codebuf, cp, n); codebuf[n] = 0;
+                    /* Inline markup inside a code block (<code>, <span>,
+                     * <a>) is presentation, not content: drop the tags so
+                     * the row reads as the source does. */
+                    { char *w2 = codebuf; const char *r2 = codebuf;
+                      while (*r2) {
+                          if (*r2 == '<') { const char *g = strchr(r2, '>'); if (!g) break; r2 = g + 1; continue; }
+                          *w2++ = *r2++;
+                      }
+                      *w2 = 0; }
+                    size_t L = strlen(codebuf);
+                    while (L > 0 && (codebuf[L-1] == '\r' || codebuf[L-1] == ' ')) codebuf[--L] = 0;
+                    html_decode_entities(codebuf);
+                    for (char *c2 = codebuf; *c2; c2++)
+                        if (*c2 == '|') *c2 = 0x7f;
+                    if (codebuf[0]) { fprintf(out, "CODE|%s\n", codebuf); line_count++; }
+                    if (!nl) break;
+                    cp = nl + 1;
+                }
+                p = pend ? pend + 5 : body_end;
+                continue;
+            }
             if (strncasecmp(p, "<textarea", 9) == 0 && !isalnum((unsigned char)p[9])) {
                 FLUSH_LINE();
                 const char *tag_end = strchr(p, '>');
@@ -744,8 +1003,22 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                     collapse_ws(val);
                     strip_pipes(val);
                 }
-                /* v1: single-line rendering; multi-line edit is follow-up */
-                if (in_form && name[0]) fprintf(out, "INPUT|%s|textarea|%s|\n", name, val);
+                /* Newlines are collapsed to spaces (row wire format is
+                 * one line per row) and \r / \t / | are escaped so a
+                 * pasted multi-line value can never forge a row boundary
+                 * or split the fields file at submit time. */
+                for (char *c = val; *c; c++) {
+                    if (*c == '\r' || *c == '\n' || *c == '\t') *c = ' ';
+                    if (*c == '|') *c = 0x7f;
+                }
+                if (in_form && name[0]) {
+                    char rq[8] = "";
+                    int req = tag_attrval(p, tag_end, "required", rq, sizeof(rq));
+                    char pht[256] = "";
+                    tag_attrval(p, tag_end, "placeholder", pht, sizeof(pht));
+                    strip_pipes(pht);
+                    fprintf(out, "INPUT|%s|textarea|%s|%s|%d\n", name, val, pht, req ? 1 : 0);
+                }
                 p = tend ? tend + 11 : tag_end + 1;
                 continue;
             }
@@ -3438,6 +3711,92 @@ static int ingest_youtube_watch(const char *html, const char *url, FILE *out) {
     return 1;
 }
 
+/* Spans phase 1 (2026-10-07, design 2026-10-07-INLINE-SPANS-DESIGN.md):
+ * re-derive rich paragraphs from the split rows the extractor already
+ * emitted. A maximal TEXT/LINK run containing >=1 LINK becomes one RICH
+ * group appended at the end (order-irrelevant: the projector ignores
+ * RICH rows until the renderer half lands, so current rendering is
+ * byte-identical). Segment text is pipe-sanitized for the row wire
+ * format. Runs capped at 24 segments; bare TEXT runs skipped. */
+#define RICH_MAX_SEG 24
+#define RICH_RUN_MAX 64
+static void flush_rich_run(char (*pending)[PATH_BUF + 512], int npend) {
+    typedef struct { int is_link; char text[1024]; char url[PATH_BUF]; } Seg;
+    static Seg segs[RICH_MAX_SEG + 1];
+    int nseg = 0, has_link = 0;
+
+            nseg = 0; has_link = 0;
+            for (int i = 0; i < npend && nseg < RICH_MAX_SEG; i++) {
+                if (strncmp(pending[i], "TEXT|", 5) == 0) {
+                    char t[1024];
+                    snprintf(t, sizeof(t), "%s", pending[i] + 5);
+                    for (char *c = t; *c; c++) if (*c == '|') *c = ' ';
+                    snprintf(segs[nseg].text, sizeof(segs[nseg].text), "%s", t);
+                    segs[nseg].is_link = 0; segs[nseg].url[0] = 0;
+                    nseg++;
+                } else if (strncmp(pending[i], "LINK|", 5) == 0) {
+                    char *b2 = strchr(pending[i] + 5, '|');
+                    char u[PATH_BUF] = "", lb[1024] = "";
+                    if (b2) {
+                        *b2 = 0;
+                        snprintf(lb, sizeof(lb), "%s", b2 + 1);
+                        snprintf(u, sizeof(u), "%s", pending[i] + 5);
+                    } else {
+                        snprintf(u, sizeof(u), "%s", pending[i] + 5);
+                        snprintf(lb, sizeof(lb), "%s", pending[i] + 5);
+                    }
+                    for (char *c = u; *c; c++) if (*c == '|') *c = ' ';
+                    for (char *c = lb; *c; c++) if (*c == '|') *c = ' ';
+                    if (strpbrk(u, " \t\r\n") != NULL) continue;
+                    snprintf(segs[nseg].text, sizeof(segs[nseg].text), "%s", lb);
+                    snprintf(segs[nseg].url, sizeof(segs[nseg].url), "%s", u);
+                    segs[nseg].is_link = 1;
+                    nseg++;
+                    has_link = 1;
+                }
+            }
+            if (has_link && nseg > 0) {
+                FILE *af = fopen(g_page_state_path, "a");
+                if (af) {
+                    fprintf(af, "RICH|%d\n", nseg);
+                    for (int i = 0; i < nseg; i++)
+                        fprintf(af, "RICHSEG|%s|%s|%s\n",
+                                segs[i].is_link ? "link" : "text",
+                                segs[i].text, segs[i].is_link ? segs[i].url : "");
+                    fclose(af);
+                }
+            }
+            npend = 0;
+        }
+static void append_rich_rows(void) {
+    FILE *pf = fopen(g_page_state_path, "r");
+    if (!pf) return;
+    typedef struct { int is_link; char text[1024]; char url[PATH_BUF]; } Seg;
+    static Seg segs[RICH_MAX_SEG + 1];
+    int nseg = 0, has_link = 0;
+    char (*pending)[PATH_BUF + 512] = malloc(sizeof(*pending) * RICH_RUN_MAX);
+    if (!pending) { fclose(pf); return; }
+    int npend = 0;
+    char line[PATH_BUF + 512];
+    while (fgets(line, sizeof(line), pf)) {
+        size_t L = strlen(line);
+        while (L > 0 && (line[L-1] == '\n' || line[L-1] == '\r')) line[--L] = 0;
+        int is_t = strncmp(line, "TEXT|", 5) == 0;
+        int is_l = strncmp(line, "LINK|", 5) == 0;
+        if ((is_t || is_l) && npend < RICH_RUN_MAX) {
+            snprintf(pending[npend], sizeof(pending[0]), "%s", line);
+            npend++;
+            continue;
+        }
+        flush_rich_run(pending, npend);
+        npend = 0;
+
+    }
+    flush_rich_run(pending, npend);
+    fclose(pf);
+    free(pending);
+}
+
 static void do_fetch(const char *url_in, int record_history) {
     char url[PATH_BUF];
     if (g_current_url[0]) resolve_url(g_current_url, url_in, url, sizeof(url));
@@ -3492,7 +3851,92 @@ static void do_fetch(const char *url_in, int record_history) {
             fputc(*u, uf);
         }
         fprintf(uf, "\"\n");
-        if (g_post_body[0]) {
+        if (g_multipart[0]) {
+            /* Multipart (2026-10-08). curl's config syntax takes one
+             * `form` / `form-file` per line; both imply POST. The ordinary
+             * fields ride as urlencoded text parts so the server sees the
+             * same field names it would for a normal form post, and each
+             * uploaded file rides as form-file = "<name>=@<path>".
+             * Values are written verbatim into the config (paths come
+             * from our own picker), but " and \ are still escaped so a
+             * path can never break out of the quoted value. */
+            /* urlencoded body: split name=value pairs into real parts.
+             * A name that is ALSO an uploaded file is SKIPPED here. curl
+             * lets the first `form`/`form-file` for a name win, so
+             * emitting both made the PATH the surviving value and the
+             * server received `"doc": "/tmp/upload-me.txt"` as a text
+             * field with an empty "files" - an upload that looked like
+             * it worked and stored nothing. */
+            if (g_post_body[0]) {
+                const char *b = g_post_body;
+                while (*b) {
+                    const char *amp = strchr(b, '&');
+                    size_t seg = amp ? (size_t)(amp - b) : strlen(b);
+                    char kv[2048];
+                    if (seg >= sizeof(kv)) seg = sizeof(kv) - 1;
+                    memcpy(kv, b, seg); kv[seg] = 0;
+                    /* kv is urlencoded name=value; hand it to curl as a
+                     * text part and let curl do its own encoding. */
+                    char *eq = strchr(kv, '=');
+                    if (eq) {
+                        *eq = 0;
+                        /* percent-decode the name (curl re-encodes names) */
+                        char nm[512];
+                        url_decode(kv, nm, sizeof(nm));
+                        /* is this name one of the uploads? */
+                        int is_file = 0;
+                        {
+                            char mwork[PATH_BUF * 4];
+                            snprintf(mwork, sizeof(mwork), "%s", g_multipart);
+                            for (char *seg2 = mwork; ; ) {
+                                char *n2 = strchr(seg2, '\x1f');
+                                if (n2) *n2 = 0;
+                                char *e2 = strchr(seg2, '=');
+                                if (e2) { *e2 = 0; if (!strcmp(seg2, nm)) is_file = 1; }
+                                if (!n2) break;
+                                seg2 = n2 + 1;
+                            }
+                        }
+                        if (!is_file) {
+                            char val[2048];
+                            url_decode(eq + 1, val, sizeof(val));
+                            fprintf(uf, "form = \"%s=%s\"\n", nm, val);
+                        }
+                    }
+                    if (!amp) break;
+                    b = amp + 1;
+                }
+            }
+            /* the files themselves */
+            {
+                char work[PATH_BUF * 4];
+                snprintf(work, sizeof(work), "%s", g_multipart);
+                for (char *seg = work; ; ) {
+                    char *nxt = strchr(seg, '\x1f');
+                    if (nxt) *nxt = 0;
+                    char *eq = strchr(seg, '=');
+                    if (eq && eq[1]) {
+                        *eq = 0;
+                        /* `form = "name=@path"`, NOT `form-file`. Measured
+                         * on this box's curl 7.88.1: `form-file` in a config
+                         * file is accepted and then SILENTLY DROPPED - the
+                         * request goes out with no file at all and the
+                         * server reports an empty "files". The `@` prefix
+                         * on a plain `form` is the spelling that actually
+                         * uploads. Same meaning, one fewer way to look
+                         * successful while shipping nothing. */
+                        fprintf(uf, "form = \"%s=@", seg);
+                        for (const char *u = eq + 1; *u; u++) {
+                            if (*u == '"' || *u == '\\') fputc('\\', uf);
+                            fputc(*u, uf);
+                        }
+                        fprintf(uf, "\"\n");
+                    }
+                    if (!nxt) break;
+                    seg = nxt + 1;
+                }
+            }
+        } else if (g_post_body[0]) {
             /* data = implies POST in curl config syntax. Same escaping. */
             fprintf(uf, "data = \"");
             for (const char *u = g_post_body; *u; u++) {
@@ -3614,12 +4058,14 @@ static void do_fetch(const char *url_in, int record_history) {
         return;
     }
 
+
     char tmp[PATH_BUF];
     FILE *out = atomic_open(g_page_state_path, tmp, sizeof(tmp));
     if (!out) { publish_status("error: could not write page state"); return; }
     extract_and_publish(html, url, out);
     fclose(out);
     atomic_commit(g_page_state_path, tmp);
+    append_rich_rows();
 
     write_fetch_dom(html, n);
 
@@ -3713,6 +4159,64 @@ static void handle_request(void) {
         stack_clear(g_forward_path);
         g_post_body[0] = 0;
         do_fetch(target, 1);
+    } else if (strncmp(line, "upload:", 7) == 0) {
+        /* Multipart upload with real files (2026-10-08). Line shape is
+         *   upload:<action-url><TAB><url-encoded body><TAB><name>=<path>...
+         * written by nb_write_submit.sh when any committed FILE value is
+         * an existing regular file. The encoded body carries the ordinary
+         * fields; each name=path pair becomes a curl `form` (text) +
+         * `form-file` (the bytes), so the server receives the FILE, not
+         * the path string. */
+        char target[PATH_BUF];
+        const char *rest = line + 7;
+        const char *tab1 = strchr(rest, '\t');
+        if (!tab1) { publish_status("error: malformed upload"); return; }
+        size_t ulen = (size_t)(tab1 - rest);
+        if (ulen >= sizeof(target)) ulen = sizeof(target) - 1;
+        memcpy(target, rest, ulen); target[ulen] = 0;
+
+        /* clear the stash, then fill it with the multipart plan */
+        g_post_body[0] = 0;
+        /* tab2 = body, then repeated TAB name=path */
+        const char *tab2 = strchr(tab1 + 1, '\t');
+        if (tab2) {
+            size_t blen = (size_t)(tab2 - (tab1 + 1));
+            if (blen >= sizeof(g_post_body)) blen = sizeof(g_post_body) - 1;
+            memcpy(g_post_body, tab1 + 1, blen); g_post_body[blen] = 0;
+            const char *p = tab2 + 1;
+            while (*p) {
+                const char *nl = strchr(p, '\n');
+                size_t l = nl ? (size_t)(nl - p) : strlen(p);
+                if (l > 1 && *p != '=') {
+                    char pair[PATH_BUF * 2];
+                    if (l >= sizeof(pair)) l = sizeof(pair) - 1;
+                    memcpy(pair, p, l); pair[l] = 0;
+                    char *eq = strchr(pair, '=');
+                    if (eq) {
+                        *eq = 0;
+                        /* files are joined with \x1f so one request can
+                         * carry several, and the curl writer below turns
+                         * each into a form-file entry. */
+                        if (!g_multipart[0]) snprintf(g_multipart, sizeof(g_multipart), "%s=%s", pair, eq + 1);
+                        else {
+                            size_t ml = strlen(g_multipart);
+                            snprintf(g_multipart + ml, sizeof(g_multipart) - ml, "\x1f%s=%s", pair, eq + 1);
+                        }
+                    }
+                }
+                if (!nl) break;
+                p = nl + 1;
+            }
+        }
+        stack_clear(g_forward_path);
+        if (g_current_url[0]) {
+            char resolved[PATH_BUF];
+            resolve_url(g_current_url, target, resolved, sizeof(resolved));
+            snprintf(target, sizeof(target), "%s", resolved);
+        }
+        do_fetch(target, 1);
+        g_post_body[0] = 0;
+        g_multipart[0] = 0;
     } else if (strncmp(line, "post:", 5) == 0) {
         /* Milestone 4 slice 2: POST form submission. Line shape is
          * post:<action-url><TAB><url-encoded body> (written by
@@ -4477,6 +4981,204 @@ static void write_ui_projection(void) {
                     uisan(rest, t, sizeof(t));
                     UI_PUT("c_%d_kind=title\nc_%d_is_title=1\nc_%d_text=%s\n", rc, rc, rc, t);
                     if (click_action[0]) UI_PUT("c_%d_sel=%s\nc_%d_click_action=%s", rc, pending_sel, rc, click_action);
+                } else if (strcmp(kind, "TROW") == 0) {
+                    /* TROW|<header>|<cell>|<cell>...
+                     * One row per <tr>, cells joined so the correspondence
+                     * between a cell and its column survives. The separator
+                     * is U+00B7, NOT '|': a pipe is the frame-dump field
+                     * delimiter and uisan() rewrites it to '/'. My first
+                     * version used " | " and shipped "Plan / Price".
+                     * A leading 1 marks a header row. */
+                    char *parts[68];
+                    int nparts = 0;
+                    char *cur = rest;
+                    parts[nparts++] = cur;
+                    while (*cur && nparts < 68) {
+                        if (*cur == '|') { *cur = 0; parts[nparts++] = cur + 1; }
+                        cur++;
+                    }
+                    if (nparts < 2) continue;
+                    int is_hdr = (parts[0][0] == '1');
+                    char joined[2048];
+                    size_t jo = 0;
+                    for (int ci = 1; ci < nparts; ci++) {
+                        char cell[512], cellu[520];
+                        uisan(parts[ci], cell, sizeof(cell));
+                        /* drop empty cells: a trailing <td></td> should not
+                         * read as a dangling separator */
+                        if (!cell[0]) continue;
+                        snprintf(cellu, sizeof(cellu), "%s", cell);
+                        size_t need = strlen(cellu);
+                        if (jo) need += 4;
+                        if (jo + need + 1 >= sizeof(joined)) break;
+                        if (jo) { memcpy(joined + jo, " \xc2\xb7 ", 4); jo += 4; }  /* U+00B7 */
+                        memcpy(joined + jo, cellu, strlen(cellu));
+                        jo += strlen(cellu);
+                        joined[jo] = 0;
+                    }
+                    if (!jo) continue;
+                    char rowlab[2100];
+                    snprintf(rowlab, sizeof(rowlab), "%s%s", is_hdr ? "" : "", joined);
+                    uisan(rowlab, t, sizeof(t));
+                    if (!t[0] || junk_visible_line(t)) continue;
+                    if (is_hdr)
+                        /* is_trow stays 0 on a header row: both flags set
+                         * would render the row twice (the template has one
+                         * element per flag). */
+                        UI_PUT("c_%d_kind=trow\nc_%d_is_thead=1\nc_%d_text=%s\n", rc, rc, rc, t);
+                    else
+                        UI_PUT("c_%d_kind=trow\nc_%d_is_trow=1\nc_%d_text=%s\n", rc, rc, rc, t);
+                } else if (strcmp(kind, "FILE") == 0) {
+                    /* FILE|<name>|<accept>|<multiple>
+                     * Not an editable field - there is no text to type. The
+                     * row opens the house file-explorer and commits the
+                     * chosen ABSOLUTE PATH to the fields file; submit then
+                     * sees an existing file and sends multipart. Label
+                     * shows the live pick so the row is honest about what
+                     * will actually be uploaded. */
+                    char *q[3] = {"", "", ""};
+                    q[0] = rest;
+                    for (int qi = 0; qi < 2; qi++) {
+                        char *b = strchr(q[qi], '|');
+                        if (!b) break;
+                        *b = 0; q[qi + 1] = b + 1;
+                    }
+                    if (!q[0][0]) continue;
+                    char nm[256], acc[256], lab_s[900];
+                    uisan(q[0], nm, sizeof(nm));
+                    uisan(q[1], acc, sizeof(acc));
+                    char cur[PATH_BUF] = "";
+                    {
+                        char cf[PATH_BUF];
+                        snprintf(cf, sizeof(cf), "%s/#.desktop/network_browser_fields.txt", g_house);
+                        FILE *ff = fopen(cf, "r");
+                        if (ff) {
+                            char ln[PATH_BUF + 512];
+                            while (fgets(ln, sizeof(ln), ff)) {
+                                size_t L = strlen(ln);
+                                while (L > 0 && (ln[L-1] == '\n' || ln[L-1] == '\r')) ln[--L] = 0;
+                                char *t = strchr(ln, '\t');
+                                if (!t) continue;
+                                *t = 0;
+                                if (!strcmp(ln, nm)) snprintf(cur, sizeof(cur), "%s", t + 1);
+                            }
+                            fclose(ff);
+                        }
+                    }
+                    if (cur[0]) {
+                        const char *base = strrchr(cur, '/');
+                        snprintf(lab_s, sizeof(lab_s), "%s%s: %s",
+                                 acc[0] ? acc : nm, cur[0] ? " (picked)" : "", base ? base + 1 : cur);
+                    } else {
+                        snprintf(lab_s, sizeof(lab_s), "%s: [choose file]",
+                                 acc[0] ? acc : nm);
+                    }
+                    char nm_sq[PATH_BUF];
+                    shell_escape_squote(nm, nm_sq, sizeof(nm_sq));
+                    UI_PUT("c_%d_kind=file\nc_%d_is_file=1\nc_%d_text=%s\n", rc, rc, rc, lab_s);
+                    UI_PUT("c_%d_action='%s/ops/nb_write_file.sh' 'file' '%s'\n",
+                            rc, g_package_dir, nm_sq);
+                } else if (strcmp(kind, "SELECT") == 0) {
+                    /* SELECT|<name>|<value>|<label>|<selected>
+                     * One clickable row per option. Choosing it appends
+                     * name=value to the fields file - the same file text
+                     * inputs use - so submit and validation need no new
+                     * concept. The label shows which option is live: the
+                     * projector tracks the choice from the fields file,
+                     * falling back to the page default (selected attr). */
+                    char *q[4] = {"", "", "", ""};
+                    q[0] = rest;
+                    for (int qi = 0; qi < 3; qi++) {
+                        char *b = strchr(q[qi], '|');
+                        if (!b) break;
+                        *b = 0; q[qi + 1] = b + 1;
+                    }
+                    if (!q[0][0]) continue;
+                    char nm[256], vv[1024], lb[700], lab_s[700];
+                    uisan(q[0], nm, sizeof(nm));
+                    uisan(q[1], vv, sizeof(vv));
+                    uisan(q[2][0] ? q[2] : q[1], lb, sizeof(lb));
+                    int is_def = (q[3] && q[3][0] == '1');
+                    /* live choice wins over the page default */
+                    int live = 0;
+                    {
+                        char cf[PATH_BUF];
+                        snprintf(cf, sizeof(cf), "%s/#.desktop/network_browser_fields.txt", g_house);
+                        FILE *ff = fopen(cf, "r");
+                        if (ff) {
+                            char ln[2048];
+                            while (fgets(ln, sizeof(ln), ff)) {
+                                size_t L = strlen(ln);
+                                while (L > 0 && (ln[L-1] == '\n' || ln[L-1] == '\r')) ln[--L] = 0;
+                                char *t = strchr(ln, '\t');
+                                if (!t) continue;
+                                *t = 0;
+                                if (!strcmp(ln, nm)) live = !strcmp(t + 1, vv);
+                            }
+                            fclose(ff);
+                        }
+                    }
+                    snprintf(lab_s, sizeof(lab_s), "%s%s%s",
+                             live ? "[v] " : (is_def ? "[*] " : "[ ] "), lb[0] ? lb : vv, "");
+                    char nm_sq[PATH_BUF], vv_sq[PATH_BUF];
+                    shell_escape_squote(nm, nm_sq, sizeof(nm_sq));
+                    shell_escape_squote(vv, vv_sq, sizeof(vv_sq));
+                    UI_PUT("c_%d_kind=selopt\nc_%d_is_selopt=1\nc_%d_text=%s\n", rc, rc, rc, lab_s);
+                    UI_PUT("c_%d_action='%s/ops/nb_write_select.sh' 'select' '%s' '%s'\n",
+                            rc, g_package_dir, nm_sq, vv_sq);
+                } else if (strcmp(kind, "SELECTEND") == 0) {
+                    /* SELECTEND closes a group only so the projector can
+                     * tell two selects with the same option text apart in
+                     * a frame dump; nothing renders. */
+                } else if (strcmp(kind, "CODE") == 0) {
+                    /* CODE|<line> - one row per source line of a <pre>.
+                     * Pipes come through as 0x7f (extractor escape); uisan
+                     * already turns a raw '|' into '/', so restore the
+                     * character here or C code would read 'x / y'. */
+                    char code_s[2048];
+                    snprintf(code_s, sizeof(code_s), "%s", rest);
+                    /* Order matters: uisan() rewrites '|' to '/' because a
+                     * raw pipe would break the pipe-delimited frame dump.
+                     * Run uisan FIRST on the 0x7f-escaped text (uisan does
+                     * not touch 0x7f), then restore the pipe afterwards -
+                     * doing it the other way round silently rendered C's
+                     * `1 | 2` as `1 / 2`, which changes what the code
+                     * MEANS, the worst kind of wrong. */
+                    uisan(code_s, t, sizeof(t));
+                    for (char *c2 = t; *c2; c2++) if (*c2 == 0x7f) *c2 = '|';
+                    /* Backslash-escape literal quotes so the renderer's quoted-value
+                     * convention does not eat the quotes of a line that is
+                     * exactly "foo". Backslashes are LEFT ALONE: the renderer
+                     * reads <backslash><backslash>n as a real line break, so
+                     * doubling a code line's own `\n` would corrupt the very
+                     * string literal we are trying to display. */
+                    { char esc[4096]; size_t eo = 0;
+                      for (const char *r = t; *r && eo + 2 < sizeof(esc); r++) {
+                          if (*r == '"') esc[eo++] = '\\';
+                          esc[eo++] = *r;
+                      }
+                      esc[eo] = 0;
+                      snprintf(t, sizeof(t), "%s", esc); }
+                    /* Leading indentation is dropped downstream: the
+                     * shared var loader (kh_load_vars in
+                     * khtpm_core_render.c) trims ' ' and '\t' off the front
+                     * of every value in every window, and changing that is
+                     * a shared-renderer blast radius well past this lane.
+                     * Workaround considered and rejected: re-indent with
+                     * U+00A0, which survives the trim - but then Ctrl+C on
+                     * a code row hands the user invisible NBSPs and their
+                     * code breaks silently. Line STRUCTURE (one row per
+                     * source line) is the win that costs nothing; the
+                     * indent is a renderer-contract follow-up. */
+                    if (!t[0]) continue;
+                    /* Quote the value so the renderer's kh_load_vars() treats it as
+                     * LITERAL and keeps the leading indentation. That loader
+                     * trims a padded `key= value` for every window in the
+                     * house, and a value beginning with a double quote is
+                     * the opt-out (measured: no existing ui/state file uses
+                     * one). Without this a code block's shape is gone by the
+                     * time it reaches the row. */
+                    UI_PUT("c_%d_kind=code\nc_%d_is_code=1\nc_%d_text=\"%s\"\n", rc, rc, rc, t);
                 } else if (strcmp(kind, "TEXT") == 0) {
                     uisan(rest, t, sizeof(t));
                     /* Walker pass: drop wiki chrome / jump links even when they arrived via the worker RENDER rows, which bypass junk_visible_line() in the extractor. */
@@ -4542,9 +5244,9 @@ static void write_ui_projection(void) {
                     /* INPUT|name|type|value|placeholder -> editable cli_io.
                      * Committing the field appends name=value to the fields
                      * file (see nb_write_field.sh); submit reads it back. */
-                    char *f[4] = {"", "", "", ""};
+                    char *f[5] = {"", "", "", "", ""};
                     f[0] = rest;
-                    for (int fi = 0; fi < 3; fi++) {
+                    for (int fi = 0; fi < 4; fi++) {
                         char *b = strchr(f[fi], '|');
                         if (!b) break;
                         *b = 0; f[fi + 1] = b + 1;
@@ -4555,6 +5257,10 @@ static void write_ui_projection(void) {
                     uisan(f[3], ph, sizeof(ph));
                     uisan(ph[0] ? ph : nm, lab_s, sizeof(lab_s));
                     if (!nm[0]) continue;
+                    if (f[4][0] == '1') {
+                        size_t ll = strlen(lab_s);
+                        if (ll + 3 < sizeof(lab_s)) { lab_s[ll] = ' '; lab_s[ll+1] = '*'; lab_s[ll+2] = 0; }
+                    }
                     if (!strcmp(f[1], "checkbox") || !strcmp(f[1], "radio")) {
                         /* Toggle item: [x]/[ ] + name. Live state comes
                          * from the checks file (toggled), falling back to

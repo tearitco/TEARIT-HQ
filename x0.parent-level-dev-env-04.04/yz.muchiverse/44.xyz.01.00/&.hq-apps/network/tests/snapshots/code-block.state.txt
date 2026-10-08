@@ -1,0 +1,13 @@
+URL|FIXDIR/fixtures/code-block.html
+TITLE|Pre Block
+TITLE|Code sample
+TEXT|Before the block.
+CODE|int main(void) {
+CODE|    int x = 1  2;
+CODE|    if (x == 3) {
+CODE|        printf("ok\n");
+CODE|    }
+CODE|    return 0;
+CODE|}
+TEXT|>
+TEXT|After the block.

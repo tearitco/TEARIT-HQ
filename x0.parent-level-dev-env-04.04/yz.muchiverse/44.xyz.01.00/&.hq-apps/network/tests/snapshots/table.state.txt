@@ -1,0 +1,12 @@
+URL|FIXDIR/fixtures/table.html
+TITLE|Table
+TITLE|Price list
+TEXT|Intro paragraph.
+TROW|1|Plan|Price
+TROW|0|Free|0
+TROW|0|Pro|9.99
+TROW|0|Team|
+TEXT|Second table
+TROW|1|Key|Value
+TROW|0|a & b|1
+TEXT|Outro paragraph.

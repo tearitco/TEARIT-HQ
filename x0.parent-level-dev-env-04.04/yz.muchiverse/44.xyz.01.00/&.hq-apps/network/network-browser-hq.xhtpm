@@ -73,6 +73,10 @@
         <repeat count="${content_count}" bind="c">
 <text id="ct${c.#}" class="page-title" label="${c.text}" action="${c.click_action}"        show="${c.is_title}"/>
           <text id="cx${c.#}" class="nb-text"                   label="${c.text}" action="${c.click_action}"        show="${c.is_text}"/>
+          <!-- 2026-10-07: <pre> blocks keep their line structure and
+               indentation (CODE rows, one per source line) instead of
+               being collapsed into one run-on line. -->
+          <text id="cd${c.#}" class="nb-code"                   label="${c.text}" show="${c.is_code}"/>
           <item id="cl${c.#}" class="nb-link" label="${c.text}"  action="${c.action}"                       show="${c.is_link}"/>
           <!-- Milestone 4 slice 1 (2026-10-07): form controls. INPUT rows
                are editable cli_io (commit appends name=value via the
@@ -82,6 +86,22 @@
                   content="${c.content}" action="${c.action}" show="${c.is_input}"/>
           <item id="cb${c.#}" class="nb-button" label="${c.text}" action="${c.action}" show="${c.is_button}"/>
           <item id="ck${c.#}" class="nb-check" label="${c.text}" action="${c.action}" show="${c.is_check}"/>
+          <!-- 2026-10-07: <select> options, one clickable row each.
+               [v] = chosen live, [*] = the page's own default, [ ] = not
+               chosen. Picking one appends name=value to the fields file,
+               exactly like a text input, so submit needs no new concept. -->
+          <item id="cs${c.#}" class="nb-selopt" label="${c.text}" action="${c.action}" show="${c.is_selopt}"/>
+          <!-- 2026-10-08: <table> rows, one <tr> per row, cells joined so
+               a cell still reads as belonging to its column. Header rows
+               are their own kind so they can be tinted apart. A real grid
+               needs renderer column layout - separate slice. -->
+          <text id="tr${c.#}" class="nb-trow thead" label="${c.text}" show="${c.is_thead}"/>
+          <text id="tw${c.#}" class="nb-trow"         label="${c.text}" show="${c.is_trow}"/>
+          <!-- 2026-10-08: <input type=file>. Opens the house file-explorer
+               and commits the chosen absolute path to the fields file;
+               submit sends multipart when any committed value is a real
+               file. Label shows the live pick, never a fake one. -->
+          <item id="cf${c.#}" class="nb-file" label="${c.text}" action="${c.action}" show="${c.is_file}"/>
           <item id="cm${c.#}" class="quiet sprite-flow" label="${c.label}" sprite="${c.sprite}" action="${c.action}"  show="${c.is_media}"/>
           <!-- V3 video (nb_video_play): live canvas row inside the content
                scrolllist. The op writes surface.raw + surface.receipt.txt

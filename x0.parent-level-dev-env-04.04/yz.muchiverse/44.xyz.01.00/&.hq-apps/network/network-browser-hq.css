@@ -45,6 +45,18 @@ sidebar { width: 200px; background-color: #1a1a1a; color: #cccccc; }
 .block-title { color: #9a9a9a; }
 .nb-link { color: #8fb8ff; }
 .nb-text { color: #cccccc; }
+/* 2026-10-07: <pre> rows. Monospace family + a dimmer tint than body
+   text so a code block reads as a different kind of content; the row
+   itself already carries one source line and its indentation. */
+.nb-code { color: #a8c8a8; font-family: DejaVu Sans Mono; }
+/* 2026-10-07: <select> option rows. */
+.nb-selopt { color: #d8c8a8; }
+/* 2026-10-08: <input type=file> picker rows. */
+.nb-file { color: #c8a8d8; }
+/* 2026-10-08: <table> rows. Header tinted apart so the eye can find the
+   column names without a real grid. */
+.nb-trow { color: #b8c8d8; }
+.nb-trow.thead { color: #8fb8ff; }
 .nb-console-text { color: #8fbf8f; }
 .page-title { color: #eeeeee; }
 
