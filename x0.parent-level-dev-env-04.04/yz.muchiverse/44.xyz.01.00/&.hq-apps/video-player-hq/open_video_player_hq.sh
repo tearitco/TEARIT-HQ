@@ -12,9 +12,12 @@ set -e
 
 HOUSE_ROOT="${1:-}"
 if [ -z "$HOUSE_ROOT" ] || [ ! -d "$HOUSE_ROOT" ]; then
-    echo "open_video_player_hq.sh: need house_root as argv[1]" >&2
-    exit 1
+    # not a directory (the Toys menu passes the literal "run", or nothing): walk up from this script to the dir holding #.desktop + &.widgits
+    _d="$(cd "$(dirname "$0")" && pwd)"
+    while [ "$_d" != "/" ] && { [ ! -d "$_d/#.desktop" ] || [ ! -d "$_d/&.widgits" ]; }; do _d="$(dirname "$_d")"; done
+    HOUSE_ROOT="$_d"
 fi
+[ -d "$HOUSE_ROOT/#.desktop" ] || { echo "open_video_player_hq.sh: could not resolve the house root" >&2; exit 1; }
 HOUSE_ROOT="$(cd "$HOUSE_ROOT" && pwd)"
 
 HERE="$(cd "$(dirname "$0")" && pwd)"

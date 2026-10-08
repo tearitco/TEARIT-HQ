@@ -1,0 +1,4 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+SECTION      | title              | Video Player
+SECTION      | launch             | open_video_player_hq.sh

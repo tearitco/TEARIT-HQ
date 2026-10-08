@@ -2,7 +2,7 @@
  *   run:    video_player_manager <house_root> <package_dir>      publishes video_player_ui.txt, reads video_player_action.txt by cursor
  *   probe:  video_player_manager --probe <file>                  prints the file check (harness hook, no window)
  * Why a check: a presentation video that played nowhere turned out to hold 3 video frames over 23 s (variable frame rate); the check says so.
- * Playback is IN the window: ffmpeg decodes the picture to raw RGBA frames (10 fps, 720x405, letterboxed) that the manager writes atomically to
+ * Playback is IN the window: ffmpeg decodes the picture to raw RGBA frames (10 fps, fitted into 1100x680 keeping the aspect) that the manager writes atomically to
  * <package_dir>/frame.raw + frame.receipt.txt, which the generic <canvas> blits (canvas_raw var, ZERO renderer C); the sound is a separate
  * `ffplay -nodisp` child started with the picture. Pause stops both and remembers the second; Resume and Seek restart both at that second
  * (so picture and sound stay together). All fork+exec, no shell; the children are stopped when the manager quits. */
@@ -20,9 +20,10 @@
 #define MAXQ 64
 static char pkg[1024], queue[MAXQ][1024]; static int nq, cur = -1;
 static int status;                       /* 0 stopped, 1 playing, 2 paused */
-#define FW 720
-#define FH 405
-static pid_t child, achild; static int vfd = -1; static unsigned char fbuf[FW * FH * 4]; static size_t fgot;
+#define BOXW 1100          /* the centre panel's pixel box: the picture is fitted into it, aspect kept, so it fills the screen area */
+#define BOXH 680
+static int fw = BOXW, fh = BOXH, vid_w, vid_h;
+static pid_t child, achild; static int vfd = -1; static unsigned char fbuf[BOXW * BOXH * 4]; static size_t fgot;
 static time_t t_start; static double base_off, pos_at_pause;
 static char info[8][200]; static int ninfo; static char logline[200];
 static volatile sig_atomic_t quit_flag;
@@ -50,7 +51,7 @@ static void check(const char *file) {                           /* fills info[] 
     int vi = !strcmp(t0, "video") ? 0 : 1, ai = vi ? 0 : 1;
     kv(out, "codec_name", vc, sizeof vc, vi); kv(out, "codec_name", ac, sizeof ac, ai); kv(out, "width", w, sizeof w, 0); kv(out, "height", h, sizeof h, 0);
     kv(out, "avg_frame_rate", fps, sizeof fps, vi); kv(out, "nb_frames", nf, sizeof nf, vi); kv(out, "duration", dur, sizeof dur, 0);
-    double d = atof(dur); long frames = atol(nf);
+    double d = atof(dur); long frames = atol(nf); vid_w = atoi(w); vid_h = atoi(h);
     snprintf(info[ninfo++], 200, "video %s %sx%s   audio %s   %.1f s   avg fps %s   frames %s", vc[0] ? vc : "none", w, h, !strcmp(t0, "audio") || !strcmp(t1, "audio") ? ac : "none", d, fps, nf);
     (void)v;
     if (!vc[0]) snprintf(info[ninfo++], 200, "WARNING no video stream");
@@ -60,11 +61,13 @@ static void check(const char *file) {                           /* fills info[] 
 static void kill_one(pid_t *p) { if (*p > 0) { kill(*p, SIGCONT); kill(*p, SIGTERM); int st; waitpid(*p, &st, 0); *p = 0; } }
 static void stop_child(void) { kill_one(&child); kill_one(&achild); if (vfd >= 0) { close(vfd); vfd = -1; } fgot = 0; status = 0; base_off = 0; }
 static double elapsed(void) { return status == 1 ? base_off + difftime(time(NULL), t_start) : status == 2 ? pos_at_pause : 0; }
-static void write_receipt(void) { char p[1536]; snprintf(p, sizeof p, "%s/frame.receipt.txt", pkg); FILE *f = fopen(p, "w"); if (f) { fprintf(f, "frame_w=%d\nframe_h=%d\n", FW, FH); fclose(f); } }
+static void write_receipt(void) { char p[1536]; snprintf(p, sizeof p, "%s/frame.receipt.txt", pkg); FILE *f = fopen(p, "w"); if (f) { fprintf(f, "frame_w=%d\nframe_h=%d\n", fw, fh); fclose(f); } }
 static void play_at(int i, double off) {
-    if (i < 0 || i >= nq) return; stop_child(); cur = i; if (off <= 0) check(queue[i]); write_receipt();
+    if (i < 0 || i >= nq) return; stop_child(); cur = i; if (off <= 0) check(queue[i]);
+    if (vid_w > 0 && vid_h > 0) { double k = (double)BOXW / vid_w, k2 = (double)BOXH / vid_h; if (k2 < k) k = k2; fw = (int)(vid_w * k) & ~1; fh = (int)(vid_h * k) & ~1; if (fw < 2) fw = 2; if (fh < 2) fh = 2; } else { fw = BOXW; fh = BOXH; }
+    write_receipt();
     char ss[32], vf[160]; snprintf(ss, sizeof ss, "%.2f", off < 0 ? 0 : off);
-    snprintf(vf, sizeof vf, "fps=10,scale=%d:%d:force_original_aspect_ratio=decrease,pad=%d:%d:(ow-iw)/2:(oh-ih)/2:color=black", FW, FH, FW, FH);
+    snprintf(vf, sizeof vf, "fps=10,scale=%d:%d", fw, fh);
     int fd[2]; if (pipe(fd)) return;
     child = fork(); if (child == 0) { setpgid(0, 0); int nul = open("/dev/null", O_RDWR); dup2(nul, 0); dup2(nul, 2); dup2(fd[1], 1); close(fd[0]); close(fd[1]);
         execlp("ffmpeg", "ffmpeg", "-v", "error", "-re", "-ss", ss, "-i", queue[i], "-an", "-vf", vf, "-f", "rawvideo", "-pix_fmt", "rgba", "pipe:1", (char *)NULL); _exit(127); }
@@ -76,9 +79,9 @@ static void play_at(int i, double off) {
 static void play(int i) { play_at(i, 0); }
 static void pump_frames(void) {          /* read what the decoder has produced; publish each whole frame atomically */
     if (vfd < 0) return; ssize_t r;
-    while ((r = read(vfd, fbuf + fgot, sizeof fbuf - fgot)) > 0) { fgot += (size_t)r;
-        if (fgot == sizeof fbuf) { char p[1536], tmp[1600]; snprintf(p, sizeof p, "%s/frame.raw", pkg); snprintf(tmp, sizeof tmp, "%s.tmp", p);
-            FILE *f = fopen(tmp, "wb"); if (f) { fwrite(fbuf, 1, sizeof fbuf, f); fclose(f); rename(tmp, p); } fgot = 0; } }
+    while ((r = read(vfd, fbuf + fgot, (size_t)fw * fh * 4 - fgot)) > 0) { fgot += (size_t)r;
+        if (fgot == (size_t)fw * fh * 4) { char p[1536], tmp[1600]; snprintf(p, sizeof p, "%s/frame.raw", pkg); snprintf(tmp, sizeof tmp, "%s.tmp", p);
+            FILE *f = fopen(tmp, "wb"); if (f) { fwrite(fbuf, 1, (size_t)fw * fh * 4, f); fclose(f); rename(tmp, p); } fgot = 0; } }
 }
 static void do_cmd(char *line) {
     char *sp = strchr(line, ' '); char *arg = sp ? sp + 1 : ""; if (sp) *sp = 0;

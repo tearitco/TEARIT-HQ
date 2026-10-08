@@ -5,24 +5,23 @@
 <window label="${head}" class="vp-window database-window" vars="video_player_ui.txt" drop_highlight="#88ff66"
         drop_action="sh -c 'exec &quot;$0/ops/+x/video_player_op.+x&quot; &quot;$0&quot; drop'">
   <module src="&.hq-apps/video-player-hq/ops/+x/video_player_manager.+x"/>
-  <page name="main" class="vp-cols">
-    <!-- left: the queue; centre: the screen (a generic canvas fed raw frames); right: status and the file check; bottom: transport buttons -->
+  <page name="main">
+    <!-- left: the queue, status and the file check; centre: the screen (a generic canvas fed raw frames, fills the region); bottom: transport buttons (footer, like pc-hq) -->
     <sidebar id="sidebar" class="vp-sidebar">
       <text id="who" label="queue (press a row)" class="vp-who"/>
       <repeat count="${n_q}" bind="q">
         <item id="q${q.#}" class="vp-q ${q.cls}" label="${q.text}" action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' ${q.act}"/>
       </repeat>
-    </sidebar>
-    <panel id="content" class="vp-panel"><canvas id="screen" sprite="${canvas_raw}"/></panel>
-    <panel id="info" class="vp-info-panel">
+      <text id="ih0" class="vp-hdr" label="now"/>
       <text id="status" class="vp-status" label="${status}"/>
       <text id="log" class="vp-hint" label="${log}"/>
       <text id="ih" class="vp-hdr" label="file check"/>
       <repeat count="${n_info}" bind="i">
-        <text id="i${i.#}" class="vp-info ${i.cls}" label="${i.text}"/>
+      <text id="i${i.#}" class="vp-info ${i.cls}" label="${i.text}"/>
       </repeat>
       <text id="hint" class="vp-hint" label="${hint}"/>
-    </panel>
+    </sidebar>
+    <panel id="content" class="vp-panel"><canvas id="screen" sprite="${canvas_raw}"/></panel>
     <footer id="transport" class="vp-footer">
       <item id="b-play"   class="vp-btn" label="play"     action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' play"/>
       <item id="b-pause"  class="vp-btn" label="pause"    action="'${PKG}/ops/+x/video_player_op.+x' '${PKG}' pause"/>
