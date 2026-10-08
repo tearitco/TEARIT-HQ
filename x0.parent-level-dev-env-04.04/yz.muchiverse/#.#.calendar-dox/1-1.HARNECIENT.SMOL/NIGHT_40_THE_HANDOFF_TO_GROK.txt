@@ -19,7 +19,7 @@
 
 **MAXINE:** Did we ever write that down as a goal?
 
-**TOMO:** Partly. One document has a table for six of the games: role playing, Minecraft, Cataclysm, Civilization, Pokemon and G T A. It lists the tileset, the events, the board, and what still blocks play. For the economy there are separate documents: the auction screen is a design only, the chain has a faucet, an escrow and a miner, the stock game is real, and the play economy is partly built. For the Bond game there is nothing. I searched.
+**TOMO:** Partly. One document has a table for six of the games: role playing, Minecraft, Cataclysm, Civilization, Pokemon and G T A. It lists the tileset, the events, the board, and what still blocks play. For the economy there are separate documents: the auction screen is a design only, the chain has a faucet, an escrow and a miner, the stock game is real, and the play economy is partly built. For the Bond game I first said there was nothing, because I searched only the book. The owner pointed me to a folder called zero zero seven goldeye: a July prototype, a voxel GoldenEye split screen game in C and OpenGL. It exists, but it is not connected to the engine, and it has no design document.
 
 **THE NARRATOR:** And nothing joined them. No single page said: here is one engine, here is one order to build in.
 
@@ -79,10 +79,14 @@
 
 **THE NARRATOR:** Honesty checkpoint.
 
-**TOMO:** Three things I did not check. Whether the payload builder could ever copy a key file. How the login maps a session name onto the user folders. And whether delegation works through the window, because no person has ever driven it.
+**TOMO:** Two things I did not check. Whether the payload builder could ever copy a key file. And whether delegation works through the window, because no person has ever driven it. The login mapping I did check, and it is in the next lesson.
 
 **MAXINE:** And the old handoff?
 
 **TOMO:** It is marked superseded, and kept for history. This one replaces it.
+
+**RAHWEH:** And later?
+
+**TOMO:** The creative tools. A folder called media studio holds a digital audio workstation, an image editor, a three dimensional editor and a video editor, fifty four files, all unported prototypes. They have not been fleshed out for navigation: numbered controls, keys, and the relay. A tool the relay cannot drive, nobody can verify. So the first job for each is a table of controls and a harness that drives three of them.
 
 **THE NARRATOR:** Next night: the install, the store, the accounts, and the user data.

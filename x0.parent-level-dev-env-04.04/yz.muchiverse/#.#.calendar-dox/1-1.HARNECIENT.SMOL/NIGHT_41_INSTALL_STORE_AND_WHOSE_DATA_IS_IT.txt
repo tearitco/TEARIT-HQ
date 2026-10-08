@@ -43,13 +43,13 @@
 
 **MAXINE:** What is missing?
 
-**TOMO:** Account recovery. Moving a user between machines. A written key policy. And a clear answer to which user a running game belongs to when two are logged in. I did not read how the login maps its session name to the folders, so I mark that unverified.
+**TOMO:** Account recovery. Moving a user between machines. A written key policy. And a clear answer to which user a running game belongs to when two are logged in. The login mapping I have now read. A file called current login holds the user name, the user identifier, and a relative path to the user's folder. The seed script and the tile picker use it. But there is a second record, the session file, last changed on September first, naming a different user whose folder does not exist. Two records disagree, and one should win.
 
 ---
 
 **THE NARRATOR:** Part four, why a copied desk breaks.
 
-**TOMO:** Absolute paths. The Eden button script sets its game folder to a full path in the owner's home. The entity registry has full paths too. Install the house anywhere else, and they point at the wrong place. Generators must write paths relative to the house, or work them out at run time.
+**TOMO:** Absolute paths. The Eden button script sets its game folder to a full path in the owner's home. The entity registry has full paths too. Install the house anywhere else, and they point at the wrong place. The rule is: never write an absolute path. I fixed the Eden button today. Its script now finds its game folder from its own location, and a test copies the desk to a new place and checks it follows. The original installer fails that test. Twenty one tracked files still hold the owner's home path: generated windows, an index of phones, and seven asset location files. Those are next.
 
 **RAHWEH:** And the store?
 

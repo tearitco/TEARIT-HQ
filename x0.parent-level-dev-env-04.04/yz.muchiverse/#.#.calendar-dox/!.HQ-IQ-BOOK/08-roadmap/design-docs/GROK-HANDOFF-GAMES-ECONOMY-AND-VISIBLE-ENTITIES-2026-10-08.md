@@ -28,7 +28,7 @@ The owner's list: a Pokemon-style 2D RPG on the desk and in 3D in pc-hq; Civiliz
 **Honest coverage as of today:**
 - ✅ Written down with a plan: RPG Maker, Minecraft, CDDA, Civ, Pokemon, GTA, in one table: `08-roadmap/TILESETS-EVENTS-AND-GAME-CLONES.md` section 5 (what tileset, what events, what is blocking). GTA's row says "do not start without a tileset PDL."
 - 🟡 Written down separately, no unifying plan: stock market (WSR, a working game; the XOD tournament drives it with agents), auctions (`AUCTION-SCREEN-DESIGN.md`, design only), blockchain (`041.pal-chain`: faucet, escrow, miner built), play economy (`PLAY-ECONOMY-POT-FAUCETS-DESIGN.md`, partial), DSR (a second stock-like economy, `DSR-*` docs).
-- ❌ **007: no document at all.** I searched the book. Nothing.
+- 🟡 **007: a standalone prototype exists, but no design document and no link to the engine.** I first said "nothing" because I searched only the book; the owner pointed me to `44.xyz.01.00/007-goldeye+01.00/` (verify-absence mistake, corrected). It is a voxel GoldenEye split-screen deathmatch in C/OpenGL (freeglut), one `src/main.c`, last log 2026-07-28: 100×100×28 island map, 4 biomes, tanks and helicopters, K/D HUD, first/third-person camera, run with `sh button.sh compile|run|kill`. It is **not** a khtpm window, entity or event game; treat it as reference for rules and map generation, and rebuild it on the house engine (steps 13 below). Needs a one-page design from the owner first.
 - ❌ **No single document connects these games to one shared engine and one build order.** This document is that connection; sections 2 and 7.
 
 The full per-doc status (what exists, what is next, who can do it) is `DOC-STATUS-AND-PATHS-FORWARD-2026-10-08.md` in this folder. Read its rows for the docs you touch.
@@ -112,6 +112,7 @@ Real keyboard/mouse input and your writes arrive through the **same code path**.
 
 ## 4. How to build things here (conventions, not suggestions)
 
+- **Never write an absolute path** into any file the program generates or tracks (scripts, `.chtpm`, indexes, registries). Resolve at run time from the file's own location (`dirname "$0"`) or `argv[0]`, or take the house root as an argument. Fixed so far: the Eden button's `ctl.sh` (commit `3d4d45973`, harness proves a copied desk follows its new location). **Still open:** the audit list in `INSTALL-STORE-ACCOUNTS-AND-USER-DATA-COMPLICATIONS-2026-10-08.md` §6. Add a harness check for any new generator you write: install into a scratch dir, move it, grep for the old path.
 - **Language split.** Orchestration is `.pal` (RISC-V assembly run by `prisc+x`), real work is compiled C **ops** in `ops/`. No shell scripts as ops. Harnesses are pal too (below). Derive paths from `argv[0]`; never hardcode absolute paths (several generated files still do, see the install doc).
 - **State = append-only ledgers + cursor polling.** One source of truth per fact; readers keep a cursor. This is why nothing races.
 - **Sharing code, in this order:** inline if one consumer; text-include a pure `.c` in `_shared-lib` if two or more; for stateful things use an op with fork/exec/IPC. **Never a header plus link step.** Includes are a transitional measure; the end state is a shared in-memory DB.
@@ -194,6 +195,10 @@ Reason: it is the cheapest, it reuses RPG Maker events, the desk as a map, and t
 14. Pick one economy to make multiplayer-real: **the auction**. Order: `auction_state` ledger op with a harness (step 1 of its design) → window → play-money ledger (`PLAY-ECONOMY` step 1) → chain price (`chain_*` ops) behind the chain signing gate.
 15. **Cross-machine transport**: replace 127.0.0.1 hardcoding in `palnet_peer.c`. Plan only today (`cross-machine networking plan`). *Exit:* two machines (the Mac is `10.0.0.144`) see one auction.
 16. WSR/XOD tournament goes live against real WSR (its own roadmap lists the steps; mock fitness only so far).
+
+**Phase G: long term, creative tools (do not start before Phase C works)**
+17. **`103.media-studio`** holds a DAW (`103.daw`), an image editor (`103.img-editor`), a 3D editor (`103.3d=blender-clone`), a video editor (`103.vid-edit`) and `100.tts-point-2-anything`: 54 files, **unported prototypes**. The plan is `MEDIA-STUDIO-XHTPM-PORT.md` (written 2026-09-03; "next agent starts at §9"): migrate each into the house shape (static `.xhtpm` + a projector + `khtpm_core_render.+x`), *not* a rewrite of the C editor. `MUSIC-PLAYER-HQ-DESIGN.md` (design only) is the small first step on the audio side, and `&.widgits/music-daemon` already generates and synthesizes game music (headless-tested, **nobody has listened to it**).
+18. **What is thin, and where the owner expects more:** these tools have not been fleshed out for **navigation use** (numbered nav, keyboard reachability, relay driving). A tool that cannot be driven through the relay cannot be verified by anyone, so for each tool the first deliverable is: every control reachable by nav number or key, listed in a table, with a harness that drives three of them through the relay. Then the image editor's AI add-on (Stable Diffusion) is **blocked on hardware** (no GPU on this machine) and stays a later item.
 
 **Phase F: ship it** (see `INSTALL-STORE-ACCOUNTS-AND-USER-DATA-COMPLICATIONS-2026-10-08.md`): make all of the above installable by someone else without touching the owner's data.
 
