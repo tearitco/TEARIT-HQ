@@ -72,6 +72,29 @@ awk field `$N` counts the leading `INPUT` token, so the required flag is the
 LAST field, not `$5`; and `uisan()` rewrites `|` to `/`, so a restored pipe
 must be restored after it, never before.
 
+## Done — Milestone 7: `<select>` (2026-10-08, manager side)
+
+- [x] static pages emit `SELECT|name|value|label|selected` per option; option text stops at its own `</option>`
+- [x] one clickable row per option, marked `[v]` chosen / `[*]` page default / `[ ]` neither
+- [x] choice lands in the same fields file text inputs use — no new submit concept
+- [x] submit falls back to the `selected` option; a select with no default sends nothing
+- [ ] worker `SEL` rows still own selects on JS pages (opencode-fix lane) — untouched
+
+## Bugs found by the form work (2026-10-07/08, all shipped once)
+
+- [x] `tag_attrval` reported a bare boolean attribute as **absent** when it sat
+  immediately before `>` (`after` walks onto the `>`, and the old
+  `after >= tag_end → return 0` fired). Silently dropped `selected`, `checked`,
+  `required`, `disabled` in their most common spelling.
+- [x] required-flag read as awk `$5` — `$N` counts the leading `INPUT` token, so
+  every required field was treated as optional and an empty one submitted.
+- [x] `uisan()` rewrites `|` to `/`; restoring an escaped pipe *before* it
+  rendered C's `1 | 2` as `1 / 2`, changing what the code means.
+- [x] untouched inputs submitted nothing (no `value=` default merge).
+- [x] pre-checked checkboxes dropped whenever the checks file didn't exist.
+- [x] `nb_write_select.sh` written 644 — the renderer's direct exec failed
+  silently. **House rule: `chmod +x` every new ops script.**
+
 ## Done — Milestone 6: preformatted text (2026-10-07)
 
 - [x] `<pre>` emits one `CODE|<line>` row per source line; inline tags inside dropped
