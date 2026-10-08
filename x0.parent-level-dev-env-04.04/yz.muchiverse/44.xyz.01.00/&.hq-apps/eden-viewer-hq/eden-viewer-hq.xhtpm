@@ -1,0 +1,22 @@
+<!-- eden-viewer-hq.xhtpm - X11-HQ "Eden World": a READ-ONLY view of the current user's Eden game (first slice).
+     Day and running flag, the farm as a row of tiles (house, chickens, garden plots), the people with their needs
+     and coin, and a ticker of the last history rows. Static layout on the shared khtpm_core_render.+x, no renderer C.
+     One <module>: ops/+x/eden_viewer_manager.+x publishes eden_viewer_ui.txt (vars=). Design: README.md. -->
+<window label="${head}" class="ev-window database-window" vars="eden_viewer_ui.txt">
+  <module src="&.hq-apps/eden-viewer-hq/ops/+x/eden_viewer_manager.+x"/>
+  <page name="main">
+    <panel id="content" class="ev-panel">
+      <text id="state" class="ev-state" label="${state}"/>
+      <text id="th" class="ev-hdr" label="farm"/>
+      <text id="tiles" class="ev-tiles" label="${tiles}"/>
+      <text id="ph" class="ev-hdr" label="people"/>
+      <repeat count="${n_people}" bind="p">
+        <text id="pp${p.#}" class="ev-person" label="${p.text}"/>
+      </repeat>
+      <text id="lh" class="ev-hdr" label="what just happened (newest at the bottom)"/>
+      <repeat count="${n_log}" bind="g">
+        <text id="lg${g.#}" class="ev-log" label="${g.text}"/>
+      </repeat>
+    </panel>
+  </page>
+</window>
