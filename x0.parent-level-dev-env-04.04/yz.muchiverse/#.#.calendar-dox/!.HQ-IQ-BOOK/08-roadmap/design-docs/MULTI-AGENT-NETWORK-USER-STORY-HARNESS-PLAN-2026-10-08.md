@@ -1,0 +1,74 @@
+# Multi-agent network experiments and the full user-story harness (plan, 2026-10-08)
+
+Status: **PLAN, nothing built.** Written by Claude from the owner's direction (2026-10-08): "we should be experimenting with multi agents, on networks, visiting each other's desks, doing quests, trading mined cones from the blockchain. Full harness presentations of this soon, even from install. Then we can secure the entire user story."
+
+Marks: ✅ exists and was checked, 🟡 partial, ❌ missing. "Unverified" means I read it but did not run it.
+
+## 1. The user story, end to end
+
+Install → log in → get a desk → meet another agent on a network → visit their desk → take a quest from a stone → do it → be paid in cones (escrow) → trade cones → leave. Each arrow is a step a harness must drive and a person must be able to watch.
+
+## 2. What exists for each step (checked)
+
+| Step | What exists | State |
+|---|---|---|
+| Install | `tearit-install` `curl | sh` + payload repo; `make-payload.sh` builds the payload from the live house; the older journey graph `07-install-and-ship/USER-JOURNEY-COMPLETION-GRAPH.md` (2026-09-02) walks install → publish-a-toy with per-step status | 🟡 Linux only; the graph's statuses are 5 weeks old, re-check before use |
+| Users on one machine | many uuid users under `xyzfs/users`, `current_login.txt` selects the current one | ✅ one *current* user at a time |
+| Peers | `palnet_peer.c`: symmetric peer process, discovery by a presence directory, TCP data; **address hardcoded to 127.0.0.1** (lines 138 and 166) | 🟡 same machine only |
+| Mining | `chain_miner`, `chain_new`, faucet; several chains incl. test chains and **cones** | 🟡 cones has an open block-0 bug (per the audit) |
+| Trading | `chain_send` checks derived balance and propagates via the peer outbox; `chain_escrow` lock/payout/refund | 🟡 **no signing**: `tx_id` is a dedup key, the `agent`/`from` fields are honor fields |
+| Quests | `^.grave` board (user data), stone design (headstones doc, 1c: contract + escrow) | 🟡 board real; stones/contracts designed only |
+| Visiting a desk | Transfer Player / `mr_transfer_desk` moves state between maps; harness `transfer_map_access` (17 checks) | 🟡 state files, not a visit protocol; **no concept of a guest on someone else's desk** |
+| Agents that act | XOD stack (LLM brain + FSM + TOM) drives WSR; Eden entities act by event pages; ghosts not yet | 🟡 |
+| Watching it | CSV Lab-style windows; no network, trade or visit viewer | ❌ |
+
+## 3. The core security gap, stated first
+
+**There is no identity proof anywhere between two machines or two users.** Chain transactions are unsigned, escrow trusts a field, and a visitor would act on another user's desk. So every scenario below runs in one of three **trust tiers**, and the harness labels which tier it proves:
+- **T0 honor/play money, same machine, scratch houses** (everything here can start now).
+- **T1 same machine, real separate OS users or containers, signed messages** (needs the signing gate).
+- **T2 two machines (the Mac at 10.0.0.144), signed** (needs configurable peer address + T1).
+
+Real value (the cones chain with real mining) stays out of T0. Securing the user story means moving each scenario up a tier with the same harness; the scenario text does not change.
+
+## 4. The scenarios (each is a pal harness on scratch houses, written before the feature)
+
+Common rules: scratch houses under `/tmp`, **never** the live desk or `xyzfs/users`; deterministic seeds; a mutant per scenario; a timeline file the presentation reads; key files and wallets never leave the scratch tree.
+
+- **S0, install.** Build a payload with `make-payload.sh` into a scratch dir, install it into `/tmp/h1` and `/tmp/h2` with the real `bootstrap.sh`, create user A and user B (`seed-user.sh`). *Pass:* both start, paths contain no source-house absolute path (the relative-path rule), no key or wallet file in the payload. Also catches the leak check from the install doc.
+- **S1, discover.** Two houses, two peers on different local ports (needs the peer to take a port argument; today it is fixed). *Pass:* each lists the other in its presence directory; kill one and the other notices.
+- **S2, mine and trade.** On a *test* chain, A mines (faucet/miner), sends N cones to B via `chain_send`, B's derived balance rises, `chain_escrow audit` says `conserved=1`. *Mutant:* a send larger than the balance must be refused.
+- **S3, visit.** Define a minimal **visit protocol** (new): B writes a `VISIT | guest | grants | expires` row in A's `visits.txt`; B's agent gets a *guest mailbox* on A's desk, not access to A's user data; everything B does there is `GUEST_ACT` rows in A's ledger. *Pass:* a visit without a grant is refused; the grant expires; A's files are untouched except the mailbox and ledger.
+- **S4, quest across desks.** A posts a stone with one quest and an escrowed reward; B visits, claims, does it; the check passes; `quest.pal` returns a verdict; payout; stone live/archive/consume per script; A and B balances and the audit agree. *Mutants:* settle twice; pay above the lock; a refund after payout.
+- **S5, three agents.** Add C: two takers on the same quest with an equal-split rule; one abandons. Checks fairness and the claim log.
+- **S6, the presentation.** One scripted run of S0 to S5 that writes a **timeline** (`TIME | actor | action | evidence path`), takes frame dumps of the windows involved (relay-driven, per the handoff recipe), and generates one HTML report (the same builder as the session report: tabs, collapsible, search). This is the thing shown to a person; it is also the regression suite.
+- **S7, two machines.** Same scripts with the peer pointed at the Mac (`10.0.0.144`); needs the configurable address first. Report which scenarios pass on T0 versus T2.
+
+## 5. Agents that play the scenarios
+
+1. **Scripted FSM agents first** (deterministic, no model): S0 to S5 must pass with these, or the harness is testing the model, not the system.
+2. **Then model-driven agents** using the XOD shape (LLM brain, FSM controller, TOM layer, GOAP fitness): free providers only, Gemma on the Mac (`gemma3` is on the Mac Ollama), Groq/OpenRouter free models tested today. Give each agent a persona, a goal on a stone, and a budget (MP).
+3. Compare scripted versus model runs on the same seed; differences go to the delegation bank's feedback ledger as graded rows.
+
+## 6. What must be built, in order (each step has a harness and a mutant)
+
+1. **Peer takes address and port as arguments** (replace the two hardcoded 127.0.0.1 lines) and a harness for S1. Tier W/M.
+2. **S0 install harness**, including the payload leak check and relative-path check. Tier W.
+3. **S2 trade harness** on a test chain; fix or document the cones block-0 bug first. Tier M.
+4. **Stone contract ops** (settle with escrow, items via held rows) per headstones doc 1c, with S4's mutants. Tier M.
+5. **Visit protocol** (S3): small, new, security-critical; design review by the owner before code. Tier C then M.
+6. **Signing gate** (T1): a signing scheme for chain tx and visit grants; until it exists, every report says "T0 honor". Owner decision.
+7. **Presentation builder** (S6) and a **network/trade/visit viewer window** in the khtpm house shape so a person can watch it. Tier M.
+8. **Two-machine run** (S7).
+
+## 7. Risks and rules specific to this work
+
+- A visiting agent is untrusted input. Treat everything it writes as data, never as a command; the guest mailbox is the only writable place.
+- Never run these against the live desk; they create users, chains and wallets. Scratch houses only, torn down after, with a count of files created.
+- Free-tier budget: 200,000 tokens/day per Groq model; S5/S6 with model agents must meter tokens and stop at the quota (exit code 3 pattern from `csv_lab`).
+- Heavy runs wrapped in `nice -n 15 ionice -c3` (weak machine).
+- Cross-machine run touches the Mac: only with the owner's go-ahead and only inside a scratch folder there.
+
+## 8. Decisions that belong to the owner
+
+The visit protocol's permissions (what a guest may do); the signing scheme and when real cones may be traded; whether the first public presentation is T0 honor play money or waits for T1; which agents (scripted, model-driven) appear in it; and whether Eden or a quest-board game is the setting.
