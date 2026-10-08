@@ -5105,6 +5105,7 @@ static void write_ui_projection(void) {
     {
         FILE *pf = fopen(g_page_state_path, "r");
         int rc = 0;
+        int total_rows = 0, processed = 0, dropped_rows = 0;
         if (pf) {
             /* in-memory rows so an IMG depleted by an adjacent LINK (the
              * watch-page related-tile pattern) reads far enough ahead. */
@@ -5120,12 +5121,36 @@ static void write_ui_projection(void) {
             else {
             int nrow = 0;
             while (nrow < NB_UI_ROWS_MAX && fgets(rows[nrow], sizeof(rows[0]), pf)) nrow++;
+            /* Count the rows we did NOT store, so the "showing N of M"
+             * notice states the page's real size instead of the size of
+             * our read buffer. (My first cut read past rows[] here and
+             * corrupted the heap - free(): invalid size.) */
+            total_rows = nrow;
+            if (nrow >= NB_UI_ROWS_MAX) {
+                char sink[PATH_BUF + 512];
+                while (fgets(sink, sizeof(sink), pf)) total_rows++;
+            }
             fclose(pf);
+            /* PROJECTION WINDOW (2026-10-08). The renderer turns each
+             * content row into one layout element, and its pool is
+             * MAX_ELEMS (1024) for the WHOLE window - chrome included.
+             * A 1440-row page therefore overflowed it and the renderer
+             * dropped the overflow SILENTLY: ui.txt said content_count
+             * =1440 while the frame held zero content rows, i.e. a blank
+             * pane on a page that reported "ready".
+             *
+             * Raising the constant is the treadmill the roadmap forbids
+             * ("stop raising caps, window the page"), so the windowing
+             * happens HERE: emit what fits and say plainly how much did
+             * not. A visible partial page beats an invisible whole one -
+             * the user can at least see the article exists. */
+            enum { NB_UI_ELEM_BUDGET = 900 };  /* pool headroom for chrome */
             /* SEL rows are emitted by the worker immediately before the row they
              * belong to; the projector carries the selector forward so each
              * rendered row can offer a real DOM click. */
             char pending_sel[96] = "";
-            for (int ri = 0; ri < nrow && rc < 2048; ri++) {
+            for (int ri = 0; ri < nrow && rc < NB_UI_ELEM_BUDGET; ri++) {
+                processed++;
                 char *line = rows[ri];
                 size_t n = strlen(line);
                 while (n > 0 && (line[n-1] == '\n' || line[n-1] == '\r')) line[--n] = 0;
@@ -5680,10 +5705,19 @@ static void write_ui_projection(void) {
             free(rows);
             }
         }
+        if (total_rows > processed) dropped_rows = total_rows - processed;
         UI_PUT("content_count=%d\n", rc);
         UI_PUT("content_empty=%d\n", rc == 0 ? 1 : 0);
         if (g_ui_truncated)
             UI_PUT("empty_msg=Page too large for the projection buffer - showing what fits\n");
+        else if (dropped_rows > 0) {
+            char note[256];
+            snprintf(note, sizeof(note),
+                     "[showing %d of %d rows - the rest did not fit this window]", rc, rc + dropped_rows);
+            UI_PUT("c_%d_kind=text\nc_%d_is_text=1\nc_%d_text=%s\n", rc, rc, rc, note);
+            rc++;
+            UI_PUT("content_count=%d\n", rc);
+        }
         else
             UI_PUT("empty_msg=Ready - enter a URL above\n");
     }
