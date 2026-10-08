@@ -1,0 +1,62 @@
+# hidden_layer: LOCKED cases. Source under test: &.widgits/concept-bank/ops/hidden_layer.c
+RESULTS | ../results/hidden_layer.txt
+CASE | hidden-layer
+SCRATCH |
+COPY | &.widgits/concept-bank/ops/hidden_layer.c | hidden_layer.c
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/hl.+x | $T/hidden_layer.c
+EXPECT_EXIT | 0 | compiles-clean
+WRITE | draft.txt | ASSOC \p 1 \p Dig the plot \p energy=0.10 \p force=0.80 \p motion=0.00 \p proposer=t \p status=candidate\nASSOC \p 2 \p Eat the grain \p energy=0.70 \p force=0.00 \p motion=0.00 \p proposer=t \p status=candidate\nASSOC \p 3 \p Walk to the well \p energy=0.00 \p force=0.00 \p motion=0.60 \p proposer=t \p status=candidate\nASSOC \p 4 \p Fix the hut \p energy=0.00 \p force=0.50 \p motion=0.00 \p proposer=t \p status=candidate\nASSOC \p 5 \p Dig the well \p energy=0.20 \p force=0.60 \p motion=0.20 \p proposer=t \p status=candidate\nASSOC \p 6 \p Rest the horse \p energy=0.40 \p force=0.00 \p motion=0.10 \p proposer=t \p status=candidate\n
+WRITE | review.txt | # c\nREVIEW \p 1 \p accept \p by=t \p x\nREVIEW \p 3 \p accept \p by=t \p x\nREVIEW \p 4 \p accept \p by=t \p x\nREVIEW \p 5 \p accept \p by=t \p x\nREVIEW \p 2 \p adjust \p energy=0.50 force=0.00 motion=0.00 \p by=t \p x\nREVIEW \p 6 \p reject \p by=t \p x\n
+RUN | $T/hl.+x | apply | $T/draft.txt | $T/review.txt | $T/appr.txt
+EXPECT_EXIT | 0 | apply-ok
+EXPECT_OUT_IS | approved=5 adjusted=1 rejected=1 | out-apply-ok
+EXPECT_HAS | appr.txt | APPROVED \p 1 \p Dig the plot \p energy=0.10 \p force=0.80 \p motion=0.00 \p by=t \p basis=accept | row1-kept
+EXPECT_HAS | appr.txt | APPROVED \p 2 \p Eat the grain \p energy=0.50 \p force=0.00 \p motion=0.00 \p by=t \p basis=adjust | row2-adjusted-weights
+EXPECT_LACKS | appr.txt | Rest the horse | row6-rejected-absent
+RUN | $T/hl.+x | train | $T/appr.txt | $T/words.txt
+EXPECT_EXIT | 0 | train-ok
+EXPECT_HAS | words.txt | WORD \p dig \p n=2 \p energy=0.15 \p force=0.70 \p motion=0.10 \p stop=1 | dig-mean-and-stop
+EXPECT_HAS | words.txt | WORD \p fix \p n=1 \p energy=0.00 \p force=0.50 \p motion=0.00 \p stop=0 | fix-single
+EXPECT_HAS | words.txt | WORD \p the \p n=5 | the-counted-5
+EXPECT_LACKS | words.txt | WORD \p horse | rejected-phrase-words-absent
+RUN | $T/hl.+x | forward | $T/words.txt | $T/appr.txt | dig the plot!
+EXPECT_EXIT | 0 | fwd-exact
+EXPECT_OUT_IS | HIDDEN \p energy=0.10 \p force=0.80 \p motion=0.00 \p source=exact \p known=0 \p words=0 | out-fwd-exact
+RUN | $T/hl.+x | forward | $T/words.txt | $T/appr.txt | Fix | the | plot
+EXPECT_EXIT | 0 | fwd-words
+EXPECT_OUT_IS | HIDDEN \p energy=0.05 \p force=0.65 \p motion=0.00 \p source=words \p known=2 \p words=2 | out-fwd-words
+RUN | $T/hl.+x | forward | $T/words.txt | $T/appr.txt | zzz | qqq
+EXPECT_EXIT | 0 | fwd-none
+EXPECT_OUT_IS | HIDDEN \p energy=0.00 \p force=0.00 \p motion=0.00 \p source=none \p known=0 \p words=2 | out-fwd-none
+RUN | $T/hl.+x | forward | $T/words.txt | $T/appr.txt | the | the
+EXPECT_EXIT | 0 | fwd-only-filler
+EXPECT_OUT_IS | HIDDEN \p energy=0.00 \p force=0.00 \p motion=0.00 \p source=none \p known=0 \p words=0 | out-fwd-only-filler
+WRITE | r_missing.txt | REVIEW \p 1 \p accept \p by=t\n
+RUN | $T/hl.+x | apply | $T/draft.txt | $T/r_missing.txt | $T/o1.txt
+EXPECT_EXIT | 3 | apply-incomplete-review
+EXPECT_NOFILE | o1.txt | no-output-when-incomplete
+WRITE | r_noadj.txt | # c\nREVIEW \p 1 \p accept \p by=t \p x\nREVIEW \p 3 \p accept \p by=t \p x\nREVIEW \p 4 \p accept \p by=t \p x\nREVIEW \p 5 \p accept \p by=t \p x\nREVIEW \p 2 \p adjust \p by=t \p x\nREVIEW \p 6 \p reject \p by=t \p x\n
+RUN | $T/hl.+x | apply | $T/draft.txt | $T/r_noadj.txt | $T/o2.txt
+EXPECT_EXIT | 3 | adjust-without-weights
+WRITE | r_range.txt | # c\nREVIEW \p 1 \p accept \p by=t \p x\nREVIEW \p 3 \p accept \p by=t \p x\nREVIEW \p 4 \p accept \p by=t \p x\nREVIEW \p 5 \p accept \p by=t \p x\nREVIEW \p 2 \p adjust \p energy=1.50 force=0.00 motion=0.00 \p by=t \p x\nREVIEW \p 6 \p reject \p by=t \p x\n
+RUN | $T/hl.+x | apply | $T/draft.txt | $T/r_range.txt | $T/o3.txt
+EXPECT_EXIT | 3 | adjust-out-of-range
+WRITE | r_verb.txt | # c\nREVIEW \p 1 \p accept \p by=t \p x\nREVIEW \p 3 \p accept \p by=t \p x\nREVIEW \p 4 \p accept \p by=t \p x\nREVIEW \p 5 \p accept \p by=t \p x\nREVIEW \p 2 \p adjust \p energy=0.50 force=0.00 motion=0.00 \p by=t \p x\nREVIEW \p 6 \p maybe \p by=t \p x\n
+RUN | $T/hl.+x | apply | $T/draft.txt | $T/r_verb.txt | $T/o4.txt
+EXPECT_EXIT | 3 | unknown-verdict
+WRITE | r_unk.txt | # c\nREVIEW \p 1 \p accept \p by=t \p x\nREVIEW \p 3 \p accept \p by=t \p x\nREVIEW \p 4 \p accept \p by=t \p x\nREVIEW \p 5 \p accept \p by=t \p x\nREVIEW \p 2 \p adjust \p energy=0.50 force=0.00 motion=0.00 \p by=t \p x\nREVIEW \p 6 \p reject \p by=t \p x\nREVIEW \p 99 \p accept \p by=t \p x\n
+RUN | $T/hl.+x | apply | $T/draft.txt | $T/r_unk.txt | $T/o5.txt
+EXPECT_EXIT | 3 | review-for-unknown-row
+WRITE | r_later.txt | # c\nREVIEW \p 1 \p accept \p by=t \p x\nREVIEW \p 3 \p accept \p by=t \p x\nREVIEW \p 4 \p accept \p by=t \p x\nREVIEW \p 5 \p accept \p by=t \p x\nREVIEW \p 2 \p adjust \p energy=0.50 force=0.00 motion=0.00 \p by=t \p x\nREVIEW \p 6 \p reject \p by=t \p x\nREVIEW \p 1 \p reject \p by=owner \p overrule\n
+RUN | $T/hl.+x | apply | $T/draft.txt | $T/r_later.txt | $T/o6.txt
+EXPECT_EXIT | 0 | later-review-wins
+EXPECT_OUT_IS | approved=4 adjusted=1 rejected=2 | out-later-review-wins
+EXPECT_LACKS | o6.txt | Dig the plot | overruled-row-absent
+RUN | $T/hl.+x | apply | $T/nosuch.txt | $T/review.txt | $T/o7.txt
+EXPECT_EXIT | 2 | missing-draft
+RUN | $T/hl.+x | train | $T/nosuch.txt | $T/words.txt
+EXPECT_EXIT | 2 | missing-approved
+RUN | $T/hl.+x | forward | $T/nosuch.txt | $T/appr.txt | x y
+EXPECT_EXIT | 2 | missing-words
+RUN | $T/hl.+x | bogus
+EXPECT_EXIT | 2 | usage

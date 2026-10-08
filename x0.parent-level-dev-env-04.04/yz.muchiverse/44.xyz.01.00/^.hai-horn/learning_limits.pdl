@@ -2,3 +2,5 @@
 # Auto-promotion is OFF by default (owner approval pending, Q001): elementary_hs queues every validated edit for review.
 # Tiers: preschool < elementary_hs < associate_bachelor < master_phd; halo_chat_validate promotes automatically at associate_bachelor and above.
 strength_of_training.max_tier: elementary_hs
+# Auto-promotion into the concept bank is OFF by default (promotion is a person's act). A person turns it on by changing enabled=false to enabled=true on this line.
+AUTO_PROMOTE | enabled=false | gate=owner_explicit

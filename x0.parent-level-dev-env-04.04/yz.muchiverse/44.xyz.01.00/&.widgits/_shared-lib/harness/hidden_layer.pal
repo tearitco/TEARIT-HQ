@@ -1,0 +1,4 @@
+# hidden_layer.pal - LOCKED acceptance harness for the hidden layer op. Read results/hidden_layer.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/hidden_layer.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/hidden_layer.pdl
+halt

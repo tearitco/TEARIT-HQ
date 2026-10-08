@@ -1,0 +1,49 @@
+# review.txt - the REVIEW of draft.txt, one row per ASSOC row. REVIEW | n | accept|adjust|reject | [energy= force= motion=] (adjust only: the replacement weights) | by=<who> | why
+# Reviewer: claude acting as the owner's delegated manager (2026-10-07). The owner may overrule any row; a later REVIEW row for the same n wins.
+# Scale used: energy = food, hunger, rest, growth, effort, resources; force = building, digging, pushing, repairing, strength; motion = moving, going, wandering, fetching.
+REVIEW | 1 | accept | by=claude-manager | plausible against the scale
+REVIEW | 2 | accept | by=claude-manager | plausible against the scale
+REVIEW | 3 | accept | by=claude-manager | plausible against the scale
+REVIEW | 4 | accept | by=claude-manager | plausible against the scale
+REVIEW | 5 | accept | by=claude-manager | plausible against the scale
+REVIEW | 6 | accept | by=claude-manager | plausible against the scale
+REVIEW | 7 | accept | by=claude-manager | plausible against the scale
+REVIEW | 8 | accept | by=claude-manager | plausible against the scale
+REVIEW | 9 | accept | by=claude-manager | plausible against the scale
+REVIEW | 10 | accept | by=claude-manager | plausible against the scale
+REVIEW | 11 | accept | by=claude-manager | plausible against the scale
+REVIEW | 12 | accept | by=claude-manager | plausible against the scale
+REVIEW | 13 | accept | by=claude-manager | plausible against the scale
+REVIEW | 14 | accept | by=claude-manager | plausible against the scale
+REVIEW | 15 | accept | by=claude-manager | plausible against the scale
+REVIEW | 16 | accept | by=claude-manager | plausible against the scale
+REVIEW | 17 | accept | by=claude-manager | plausible against the scale
+REVIEW | 18 | accept | by=claude-manager | plausible against the scale
+REVIEW | 19 | accept | by=claude-manager | plausible against the scale
+REVIEW | 20 | accept | by=claude-manager | plausible against the scale
+REVIEW | 21 | accept | by=claude-manager | plausible against the scale
+REVIEW | 22 | accept | by=claude-manager | plausible against the scale
+REVIEW | 23 | accept | by=claude-manager | plausible against the scale
+REVIEW | 24 | adjust | energy=0.00 force=0.30 motion=0.00 | by=claude-manager | setting a tool aside is finishing work, not applying force
+REVIEW | 25 | accept | by=claude-manager | plausible against the scale
+REVIEW | 26 | accept | by=claude-manager | plausible against the scale
+REVIEW | 27 | accept | by=claude-manager | plausible against the scale
+REVIEW | 28 | accept | by=claude-manager | plausible against the scale
+REVIEW | 29 | accept | by=claude-manager | plausible against the scale
+REVIEW | 30 | accept | by=claude-manager | plausible against the scale
+REVIEW | 31 | adjust | energy=0.00 force=0.00 motion=0.50 | by=claude-manager | a cow wandering is movement
+REVIEW | 32 | accept | by=claude-manager | plausible against the scale
+REVIEW | 33 | accept | by=claude-manager | plausible against the scale
+REVIEW | 34 | accept | by=claude-manager | plausible against the scale
+REVIEW | 35 | accept | by=claude-manager | plausible against the scale
+REVIEW | 36 | adjust | energy=0.70 force=0.00 motion=0.30 | by=claude-manager | fetching water involves going to the well
+REVIEW | 37 | accept | by=claude-manager | plausible against the scale
+REVIEW | 38 | accept | by=claude-manager | plausible against the scale
+REVIEW | 39 | accept | by=claude-manager | plausible against the scale
+REVIEW | 40 | accept | by=claude-manager | plausible against the scale
+REVIEW | 41 | accept | by=claude-manager | plausible against the scale
+REVIEW | 42 | accept | by=claude-manager | plausible against the scale
+REVIEW | 43 | accept | by=claude-manager | plausible against the scale
+REVIEW | 44 | accept | by=claude-manager | plausible against the scale
+REVIEW | 45 | adjust | energy=0.00 force=0.30 motion=0.10 | by=claude-manager | admiring a finished roof is weakly about building
+REVIEW | 46 | accept | by=claude-manager | plausible against the scale

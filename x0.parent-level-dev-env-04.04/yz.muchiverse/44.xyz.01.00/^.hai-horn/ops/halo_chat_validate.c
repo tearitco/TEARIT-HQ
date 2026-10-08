@@ -79,6 +79,16 @@ static int spoke_has_slot_to(const char *spoke_path, const char *master_name) {
     return found;
 }
 
+/* Auto-promotion is OFF unless the HOUSE-level learning_limits.pdl (not an entity's own file) has a line `AUTO_PROMOTE | enabled=true ...`.
+ * Promotion is a person's act (owner decision 2026-10-07: the old `tier >= 2` shortcut contradicted that). Missing file / line / anything else = off. */
+static int house_auto_promote_enabled(const char *house_root) {
+    char path[4096], line[512]; int on = 0;
+    snprintf(path, sizeof(path), "%s/^.hai-horn/learning_limits.pdl", house_root);
+    FILE *f = fopen(path, "r"); if (!f) return 0;
+    while (fgets(line, sizeof(line), f)) if (!strncmp(line, "AUTO_PROMOTE", 12) && strstr(line, "enabled=true")) on = 1;
+    fclose(f); return on;
+}
+
 static int read_tier(const char *entity_dir) {
     char path[4096];
     snprintf(path, sizeof(path), "%s/learning_limits.pdl", entity_dir);
@@ -259,7 +269,7 @@ int main(int argc, char **argv) {
 
     int tier = read_tier(entity_dir);
     int auto_promote = 0;
-    if (tier >= 2) {
+    if (tier >= 2 && house_auto_promote_enabled(house_root)) {
         auto_promote = 1;
     }
 

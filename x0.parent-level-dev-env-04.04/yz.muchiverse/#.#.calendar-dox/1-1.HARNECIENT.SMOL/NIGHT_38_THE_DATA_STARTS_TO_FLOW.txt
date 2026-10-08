@@ -4,6 +4,7 @@
 # Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
 # Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
 # Topic: The owner asked whether the house is really recording banks, answers and scores by hand, and whether any weights are trained. The audit said mostly no. So tonight the pipe was opened: delegation results became scored feedback, the bank got hand-recorded entries, and the tuning of weights became a labeled layer of its own. Also: the pull of the other branches.
+# Updated later the same night: the hidden layer was built, the auto-promote gate closed, the old path fixed.
 # Long-form: a work log with an honesty checkpoint. Numbers are the ones measured on disk today.
 # Companion documents: XO/13.phymoji-engine/meta-models.md (and .html), META-MODELS-VISION-ALIGNMENT-AND-SOLUTIONS.md, 08-roadmap/design-docs/LEARNING-LOOP-BANKS-WEIGHTS-NO-REPROMPT-DESIGN.md, XYZFS-DISTRIBUTION-VIA-STORE-DESIGN.md.
 
@@ -101,7 +102,7 @@
 
 ---
 
-**THE NARRATOR:** Part seven, the pull.
+**THE NARRATOR:** Part nine, the pull.
 
 **MAXINE:** The other branches.
 
@@ -117,16 +118,58 @@
 
 ---
 
+**THE NARRATOR:** Part seven, the hidden layer.
+
+**RAHWEH:** The owner wanted the hidden layer as soon as possible. So the same night, the first one was built.
+
+**TOMO:** The free Groq model was handed the forty-six Eden phrases, numbered, so it never retypes a word. For each one it proposed three numbers: how much the line relates to energy, to force, and to motion. Those are the three masters, the hidden layer's nodes.
+
+**MAXINE:** And a judge checked it.
+
+**TOMO:** A small deterministic program. Every phrase exactly once, every weight between minus one and one, two decimals at most. It wrote the draft only when everything passed. And we found its own bug: it rejected a perfectly good answer because of trailing spaces. A judge that is too strict wastes tokens too. Fixed, and written in the ledger.
+
+**RAHWEH:** Then a review.
+
+**TOMO:** Every row got a review line. Forty-two were accepted. Four were adjusted: setting a tool aside is not applying force, a cow wandering is movement, fetching water involves going to the well, and admiring a roof is only weakly building. The reviewer was the manager, acting for the owner, and it is written on every row. The owner can overrule any row, and a later review wins.
+
+**MAXINE:** Then what is the layer itself?
+
+**TOMO:** A table. For every word, the average of the approved phrases that contain it. A word found in more than a fifth of the phrases, like the word the, is marked as filler and ignored. Hundred and eighty-seven words. No random start and no gradient, just counting from reviewed data. We call it hand-trained.
+
+**RAHWEH:** And you can ask it a question.
+
+**TOMO:** Give it any text. If the text is an approved phrase, it answers exactly. Otherwise it averages the words it knows, and says how many it knew. A phrase with no known words gets zeros and the label none, never a guess.
+
+**MAXINE:** Does it work?
+
+**TOMO:** A little. Fetch water for the chicken comes out mostly energy. Dig a hole by the well leans toward force more than before the filler rule. But forty-six phrases, mostly about farming, is a thin corpus. Wandering was never seen, so the horse sentence barely moves. The layer is real and small, and more reviewed data is the only cure.
+
+**MAXINE:** Is it plugged into the game?
+
+**TOMO:** No. Nothing reads it yet. Plugging it into how Eden characters pick what to say would change gameplay and break the seeded tests, so that is the owner's decision.
+
+---
+
+**THE NARRATOR:** Part eight, two small fixes.
+
+**TOMO:** The auto-promote contradiction is closed in code. The validator now promotes on its own only if the house-level limits file contains a line saying so, and the shipped line says false. A missing file means off, and an entity cannot switch it on for itself. It compiles; we have not yet run a promotion through it.
+
+**RAHWEH:** And the old path.
+
+**TOMO:** The learning script that hard-coded a path on the debil machine now finds the concept bank from its own location, with an override for the environment.
+
+---
+
 **THE NARRATOR:** The honesty checkpoint.
 
 **MAXINE:** What is real?
 
-**TOMO:** The converter and the driver, with grades computed on real ledgers and stable across reruns. The four spokes, the five lessons, the tuning tool with thirty checks that fail when its autonomy rule is removed, the Eden joints file, the catalog, and the merged branch.
+**TOMO:** The converter and the driver, with grades computed on real ledgers and stable across reruns. The four spokes, the five lessons, the tuning tool with thirty checks that fail when its autonomy rule is removed, the Eden joints file, the catalog, and the merged branch. The hidden layer: reviewed rows, a table of a hundred and eighty-seven words, and a forward pass, with thirty-two checks that fail when its filler rule or its review order is broken.
 
 **RAHWEH:** What is not?
 
-**TOMO:** No model has proposed any weights. Tomom is untouched and idle. The old learning script still hard-codes a path on the debil machine, and it will be fixed when twenty real observations exist. The auto-promote contradiction is still open. The store cannot sell or install anything. And no ghost has been appointed.
+**TOMO:** The hidden layer is tiny and nothing reads it. The four reviews were made by the manager, not the owner. The new auto-promote gate compiles but has not carried a real promotion. Tomom is untouched and idle. The store cannot sell or install anything. And no ghost has been appointed.
 
 **MAXINE:** Say the line to carry on.
 
-**TOMO:** The pipe is open and the first data is in it. Count first, tune by hand, let a person promote, and write down every number so the next error is cheaper. 🧠📒
+**TOMO:** The pipe is open, the first hidden layer is small and honest, and a person can overrule every row. Count first, tune by hand, let a person promote, and write down every number so the next error is cheaper. 🧠📒
