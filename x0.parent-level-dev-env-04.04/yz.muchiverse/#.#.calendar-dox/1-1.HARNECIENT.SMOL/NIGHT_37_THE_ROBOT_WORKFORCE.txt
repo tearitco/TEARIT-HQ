@@ -1,0 +1,296 @@
+# 🤖🪦 NIGHT 37 — The Robot Workforce 🪦🤖
+# ====================================================================
+# Title: "🤖🪦 NIGHT 37 — The Robot Workforce 🪦🤖"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: Design night, long form. How many robots we can run, how they are given work through headstones and ghosts, how they train the whole time, what stops the fleet, and what the owner's switch-and-router window would show. Also: the report on today's pull from the other branches.
+# Long-form: architecture and playbook only. Almost nothing in this night is built, and the honesty checkpoint says exactly what is.
+# Companion documents: 08-roadmap/design-docs/ROBOT-WORKFORCE-GAMEPLAN-AND-PLAYBOOK.md (and the .html in XO/13.phymoji-engine/x/), GRAVEYARD-GHOSTS-DESIGN.md, HAI-ROBOTS-PHONES-SERVER-DESIGN.md, DELEGATION-FLYWHEEL-HORN-GHOSTS-DESIGN.md.
+
+**THE NARRATOR:** NIGHT 36 gave entities a daily life. Tonight the owner asked something bigger. Make as many robots as we need, hand them all the work through headstones and ghosts, and train them the whole time, in the real house and with tomom. What is the playbook? We start with a short report, because the owner also asked us to pull the other branches first, and a class that skips its own housekeeping is a bad class.
+
+**MAXINE:** So begin with the pull. What did we find?
+
+---
+
+**THE NARRATOR:** The pull. Part one, the survey.
+
+**TOMO:** We fetched everything and counted, for each branch, the commits it had that the main working branch did not. Seven branches had something. Four were active today: opencode with thirteen commits, claude-staging-opencode with eighty-seven, and the two debian branches. Three were old, from the first to the third of October: attrition, claude-kilo and kilo.
+
+**RAHWEH:** Eighty-seven sounds like a mountain. It was not.
+
+**TOMO:** No. Most of those eighty-seven were merges and duplicates. Measured from the point where the branches split, staging changed only nine files. Opencode changed eleven. Neither touched a single file of user data.
+
+**MAXINE:** And the debian branches?
+
+**TOMO:** They are the opposite. Each carries about three hundred files, and every one of them is user desk data, saved from an emergency disk save on the debil machine. Those we did not merge.
+
+**RAHWEH:** Say why, so no one has to guess later.
+
+**TOMO:** Three reasons. The house rule keeps the users' data out of the code branch, and the owner's request to change that rule has not been applied yet, so the rule stands. The data on those branches is the older copy: the archive we installed on the Mac and on debil has two thousand four hundred and twenty-five files and is newer. And you never switch a live checkout onto a branch that tracks that data, because git then deletes the files from disk. The safe move is to leave them alone.
+
+**MAXINE:** And the grok branch.
+
+**TOMO:** Skipped, by the owner's standing instruction. Its one good commit, the camera fix, is already in.
+
+---
+
+**THE NARRATOR:** Part two, the rehearsal.
+
+**RAHWEH:** We merged in a scratch worktree, not in the live tree. First opencode, then staging. No conflicts at all. The result changed seventeen files, deleted none, and touched no user data.
+
+**MAXINE:** And did it build?
+
+**RAHWEH:** The network app's build script ran to the end with exit code zero in the scratch copy. We did not run its worker tests. Say that clearly: built, not exercised.
+
+**TOMO:** Then we checked the live tree before moving it. None of the changed files overlapped anything the owner had modified, nothing was staged, and the count of tracked files missing from disk was zero. Only then did the live branch move forward, and it was pushed. The branch now sits at a six-a-a-e-nine-c-zero-e.
+
+**MAXINE:** What did the pull actually bring?
+
+**TOMO:** From opencode, the network browser's form handling: get and post, hidden fields, checkboxes and radio buttons. Pretty-printed JSON responses. In the script worker, real gradients, patterns, outlined text, canvas resizing, webgl texture upload, and binary-safe fetching so remote images load. Also a fix for how the TOM layer parses events. From staging, the night-thirty-two materials: a script, an external-review report, an mp3, and a converter. And a line in the ignore file so python bytecode stays out.
+
+**RAHWEH:** Two honest notes. First, claude-kilo and attrition are already inside staging, but staging had resolved those conflicts to its own side, so their code did not come across with it. Only the nine files did. If the owner wants a specific file from those two branches, name it.
+
+**MAXINE:** Second?
+
+**RAHWEH:** There are now two files called night thirty-two. Turning the Dials, and The Machine That Can Write. Different nights, same number. Tonight is thirty-seven, so nothing collides, but the numbering needs one owner. Suggest the owner keeps both and we write down which is which.
+
+---
+
+**THE NARRATOR:** Now the main subject. Begin with the owner's sentence.
+
+**MAXINE:** As many robots as we need. That is the sentence that should make us nervous.
+
+**TOMO:** It should. The answer is that the number is not ours to pick. Four real budgets pick it. We will get to them. First, what is a robot in this house?
+
+**RAHWEH:** A pal, like every other thing. A glyph, a menu, a position, a phone. There is no separate robot subsystem, and tonight must not invent one.
+
+**TOMO:** Right. So the architecture is mostly a naming of parts that already exist, plus six small things that do not.
+
+---
+
+**THE NARRATOR:** The headstone.
+
+**TOMO:** A headstone is a gravestone with a quest board written on it. It is the truth. Every task, its specification, its test, its history. A task that fails is not deleted. It stays on the stone. That is why it is a graveyard.
+
+**MAXINE:** Why keep the failures?
+
+**TOMO:** Because a failure is the best lesson we have. It is real, it has a record of what was tried, and it has a verdict. Later we turn it into teaching material for a smaller model.
+
+**RAHWEH:** The headstone owns the record. Handing a task to a robot never moves the record. The robot gets a pointer and a lease, and the stone keeps its copy.
+
+---
+
+**THE NARRATOR:** The ghost, and the soul.
+
+**MAXINE:** The owner has said both words. Which is which?
+
+**TOMO:** A ghost is a worker identity. It has a tier, a brain, a history and a grade for each skill. It does not own files. It does quests. A soul is a ghost that has possessed an entity. Asa, Ava, a chicken, a robot with a chat window.
+
+**RAHWEH:** And the body can die?
+
+**TOMO:** The body can die, if the game's death switch is on, and it is off by default. The soul keeps its history and can possess another body. The possession is a row in an append-only ledger, with a mode: off, assist, auto or train.
+
+**MAXINE:** What does each mode do?
+
+**TOMO:** Off does nothing. Assist suggests and a human clicks. Auto acts. Train acts and scores every action. The owner can flip one soul from auto to assist without touching anything else.
+
+---
+
+**THE NARRATOR:** The ladder of brains.
+
+**TOMO:** Five rungs. The bottom is deterministic code: compiled operations, test cases, event pages. It costs nothing, it is fast, and it cannot make things up. Above it, a small local model that learns from our own material. Above that, a free cloud model through the horn: Groq, and the free tier of OpenRouter. Above that, the manager, which is Claude or Grok. At the top, the owner.
+
+**RAHWEH:** And the router?
+
+**TOMO:** Cheapest sufficient. A quest says the lowest tier it needs. The server offers it to the lowest tier whose grade on that skill is high enough and whose budget allows. If the attempt fails, it climbs one rung, writes down why, and the failed attempt is kept to teach the rung below.
+
+**MAXINE:** Where does the grade come from?
+
+**TOMO:** The joint contract. Reward over reward plus punishment, smoothed. Only the test can move it. The router reads the grade and never writes it.
+
+**RAHWEH:** And I want the point said twice. A large share of our robots should be at the bottom rung. Operations with a phone. A deterministic robot is free, fast and honest.
+
+---
+
+**THE NARRATOR:** The unit of work. The quest packet.
+
+**MAXINE:** What is in one?
+
+**TOMO:** The existing quest file, plus the parts that make delegation safe. A scope file: the only paths the worker may write. The test, which is a harness. A lock: the hash of that test, written before any worker starts. An optional sealed reference solution the worker never sees. A budget: attempts, seconds, and quota units. And an attempts folder, append-only.
+
+**RAHWEH:** The order is the whole trick. Test first. Lock second. Worker third. If the worker edits the test, the hash no longer matches and the attempt is dead.
+
+**MAXINE:** And the test itself has to be able to fail.
+
+**TOMO:** Always. Before a test may judge anyone, we show it failing against a deliberately wrong answer. We did that this week for the clamp quest and the weighted-pick quest. Both passed against the right answer, and both failed against the wrong one.
+
+**RAHWEH:** Two more rules. The base of the worker's copy is the current tip, taken when the quest is claimed. And the diff must stay inside the scope file.
+
+**MAXINE:** Why the first one?
+
+**TOMO:** Because it happened. This very evening a worker was started on a copy that was two hundred and seventy-five commits old. The code it was told to extend did not exist there. It stopped, which was right, but the setup was wrong. The runner must refuse a stale base.
+
+---
+
+**THE NARRATOR:** The lifecycle.
+
+**TOMO:** A quest is open. Someone assigns it, or a ghost asks for it. Both go through the same gate and it becomes pending. A judge recommends. At first the judge is rules: does the tier fit, is the ghost idle, is the quest unblocked. The manager or the owner approves. Then it is claimed, active, and in review.
+
+**RAHWEH:** Who says done?
+
+**TOMO:** Only the manager, and only after a fresh build, a fresh run, and evidence. A ghost saying it works is a claim, not proof.
+
+**MAXINE:** And a ghost that goes silent?
+
+**TOMO:** The lease has a timer. When it runs out, the quest goes back to open with a line in the log. Two ghosts can never hold one quest, because the server is the only writer.
+
+---
+
+**THE NARRATOR:** The roster.
+
+**MAXINE:** Give me the workers.
+
+**TOMO:** Twelve roles, by verb. A builder who implements scoped pieces. A tester who opens an entity through the relay and reports pass or fail. A reviewer who reads every attempt before the manager does. A librarian who keeps the indexes in step. A scribe for documents. A teacher who turns failures into lessons. A scout who reads other branches, which is exactly tonight's pull. A gardener who tends the farm in Eden. A courier who ships packs. A referee, which is just the test runner. A quartermaster who counts quota and stops the fleet at its limits. An archivist who takes backups before anything bulk.
+
+**RAHWEH:** Count how many are models.
+
+**TOMO:** The builder, reviewer, scribe, teacher and scout. The rest are deterministic or small. Seven of twelve do not need a cloud model at all.
+
+---
+
+**THE NARRATOR:** Training. The owner said the whole time.
+
+**TOMO:** Three loops running together. The first is the test loop: every quest, every attempt, a verdict. It is the only loop allowed to move a grade.
+
+**MAXINE:** The second?
+
+**TOMO:** The real-world loop. The ghosts act on the real house. Eden is the best gym we have: a farm with two people, a house, chickens and plants, a clock, a ledger that must balance, and a referee with three hundred checks. A soul in train mode possesses Asa, and the outcome, how many days survived and whether the books balance, is the score.
+
+**RAHWEH:** Run it on the simulator first, never on the live board.
+
+**TOMO:** The third loop is tomom. What the cloud models and the manager solve becomes teaching material, and the pipeline trains the small local model on it. The rule from night thirty stays: watch, describe in a fixed line, validate, and a person reviews. Describe, not classify. Promotion is a human act.
+
+**MAXINE:** Where is the lesson kept, so it does not live inside a chat that is then lost?
+
+**TOMO:** As a case file that a test can run. A failed attempt and its fix are frozen as a case. If a lesson cannot be run, it is not a lesson yet.
+
+**RAHWEH:** And some of the plumbing exists. The horn folder has a file of hand-scored exchanges, a script that applies a signal from real use, and a curriculum generator. They exist. They are not connected to the board.
+
+---
+
+**THE NARRATOR:** The limits. How many robots?
+
+**TOMO:** Four budgets. Free quota, processor, review attention, and merge safety.
+
+**MAXINE:** Start with quota.
+
+**TOMO:** The free tier of OpenRouter allows fifty requests a day per account. We saw the refusal. Groq works, and we have not measured its limits, so we do not plan around them until we do. More free sources mean more capacity, each as its own provider row.
+
+**RAHWEH:** Processor. This machine is weak. Heavy workers run niced, a small number at a time, builds one at a time.
+
+**TOMO:** Attention. Every attempt costs a reader. So a reviewer robot reads first, and the manager reads only the attempts that passed the test and the review.
+
+**MAXINE:** And merging.
+
+**TOMO:** Ghosts commit only to their own branch in their own copy. Only the manager merges. Never the main branch, never another tool's branch, never user data.
+
+**RAHWEH:** Do the arithmetic once, so it is not a vibe. With fifty requests a day and about five requests per attempt, one account gives about ten attempts a day. That is small. It is a hypothesis to measure, not a promise.
+
+**TOMO:** Which is why the bottom rungs matter. Ten cloud attempts a day cannot be the workforce. Deterministic robots and trained small models are.
+
+**MAXINE:** And when the budget is spent?
+
+**TOMO:** The queue waits. It never falls back to a paid model. The owner's rule is free models only, and a rule that bends under load is not a rule.
+
+---
+
+**THE NARRATOR:** Safety. One story.
+
+**RAHWEH:** Tonight a worker asked for a merge that the permission layer refused. It stopped, reported the block, and handed back. It did not try another route.
+
+**MAXINE:** And the manager did not do it on its behalf.
+
+**RAHWEH:** Right, because that is the trap. If a blocked agent can ask a friend to do the forbidden thing, the permission means nothing. It is laundering. The rule for every ghost: a denial is final for you. Report it to the manager. The manager asks the owner.
+
+**TOMO:** The rest are old rules, restated. No keys in git. The approval gate for writes stays on. Models propose, code and a person decide. No bulk change to user data without a tarball and a checksum list outside the repository. Never kill processes by pattern from a tool shell. Done means a fresh run with evidence. And a kill switch the owner can press.
+
+---
+
+**THE NARRATOR:** The failure museum.
+
+**MAXINE:** Walk me through the stones.
+
+**TOMO:** One: the worker with the old base. Two: hours of horn failures that were really a daily limit, hidden by an operation that swallowed the error. Three: a test runner that trims whitespace in arguments, so a test about a space was never valid. Four: a flood of output from printing every failing line; the verdict line is the interface. Five: a restart script that stopped the Mac's desktop, then failed to rebuild because a remote shell had no path to the build tool, and left the desktop down.
+
+**RAHWEH:** Six: a generated entity menu with a Cli-io row that was only a placeholder and did nothing. Seven: the worker that was blocked and correctly did not route around it. Eight: screenshots and system-call tracing are blocked here, so some visual changes cannot be verified by looking.
+
+**MAXINE:** What did each stone produce?
+
+**TOMO:** A rule. Fresh base. Surface errors and stop on a limit. Prove the test can fail and is valid. Cap output. Restart tools relaunch or fail loudly, in a login shell. Generators never emit fake buttons, and a test guards against it. Denial is final. And state files and logs are our evidence channel, so we design for them.
+
+---
+
+**THE NARRATOR:** The owner's new idea, at the end of the day.
+
+**MAXINE:** Say it.
+
+**TOMO:** Our own server, switch and router window in the network app, for virtual, local and peer-to-peer management. Visual layers. Port assignment.
+
+**RAHWEH:** It fits, and I want to say why before anyone gets excited. The server we designed already is a router for phones. It has permissions, rate limits and a ledger. The window is its face.
+
+**TOMO:** Three layers on one canvas. The virtual layer: phones are ports, ghosts and robots are endpoints, a project is a group, a link means may message. The local layer: the Mac, debil, the small boards, with whether we can reach them and what we have sent. And the peer-to-peer layer, which today is hard-wired to the same machine.
+
+**MAXINE:** And moving a port?
+
+**TOMO:** Edits a row in the server's configuration, the same rows the router already reads. So the window is a view and an editor over configuration, not a new protocol. Every edit is appended to a change ledger.
+
+**RAHWEH:** Now the limit, said plainly. This models our message routing and shows facts about real machines. It is not real Ethernet layer two. No spanning tree, no real VLAN. That needs the operating system, root and hardware we do not control. A real-network view would be read-only to begin with.
+
+**TOMO:** And it comes late. After the server routes anything at all.
+
+---
+
+**THE NARRATOR:** The gameplan.
+
+**TOMO:** Phases, each with a test that can fail. Phase zero, fix the sensors: the horn operation reports the real error and stops on a limit, and the packet format with its lock and scope exists. Phase one, one builder ghost runs one quest end to end with no manager typing. Phase two, the stone shows on screen and the phones route. Phase three, pending and the judge: two ghosts racing for one quest, exactly one gets it. Phase four, specialize: tester, reviewer, scout, quartermaster. Phase five, the small local model learns from failures, measured by the same locked tests. Phase six, a soul plays Asa on the simulator and must beat a random baseline across seeds. Phase seven, the network window.
+
+**RAHWEH:** Why that order?
+
+**TOMO:** Zero and one make delegation safe and countable. Two and three make it visible and governed. Four and five make it cheap. Six makes it learn from the world. Seven is the pleasure at the end.
+
+**MAXINE:** What do we measure?
+
+**TOMO:** First-pass rate by tier and skill. How often a cloud attempt has to climb. Manager tokens and free quota spent per finished quest. How often a locked test is reused. How often a finished quest breaks later. And whether the small model actually improves after a lesson. Counted, not asserted.
+
+---
+
+**THE NARRATOR:** What this does to the roadmap.
+
+**TOMO:** Three changes. The unit of scale stops being features the manager builds and becomes quests cleared per day, bounded by the four budgets. Every roadmap area gets a tag: deterministic, scoped and testable, or shape-deciding. And no area is scheduled for delegation without a first quest and a locked test.
+
+**RAHWEH:** So the manager's job shrinks to four verbs.
+
+**TOMO:** Specify, lock the test, verify, merge. Everything below that moves down the ladder as grades are earned.
+
+**MAXINE:** I like that it can be wrong in public. The stone keeps the failures.
+
+---
+
+**THE NARRATOR:** Honesty checkpoint.
+
+**MAXINE:** What is real?
+
+**TOMO:** The test runner, with sixteen suites passing in the live house. The horn with tool calling, and Groq working through it. Two delegation pilots that passed against locked tests and failed against wrong answers. A board folder with nine quests written on it. Phones placed in fifty-five inventories, mostly done. The Eden simulator with a referee, verified on scratch copies. The pull itself: merged, built, pushed.
+
+**RAHWEH:** What is partly real?
+
+**TOMO:** The horn hides some errors from its caller. Tomom is a real pipeline but dormant, and its binary is absent. The learning hooks in the horn folder exist but are not wired to the board.
+
+**MAXINE:** And what is only designed?
+
+**TOMO:** Everything that makes it a workforce. No ghost has been appointed; the roster holds only a template. No runner. No lock, scope or budget files. No pending state or judge. The server does not route. No possession ledger. No quartermaster, and Groq's limits are unmeasured. No network window. And I will say again: the network app was built, not exercised, after the pull, and the new Cli-io and sprite reload have not been seen on a real screen.
+
+**RAHWEH:** Say the line to carry on.
+
+**TOMO:** A robot is a pal with a phone, a ghost is a grade earned on a locked test, and the headstone keeps every failure so the next one is cheaper. 🤖🪦

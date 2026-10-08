@@ -74,3 +74,10 @@ Written by claude. The owner said: "use common sense and taste to infer those an
 
 30. **xyzfs distribution through a GitHub repo and the store** (owner: "download and install it from 13.store"; `13.store` not found in the house): design `XYZFS-DISTRIBUTION-VIA-STORE-DESIGN.md`; interim = `install-xyzfs-users.sh` over ssh (Mac installed, debil dry-run passed).
 31. **Install the Eden button** on `pre-design:eden-test` (robot `eden_robot` placed; the live tree now has the Eden code via merge `8dc911beb`); set Eden save slots to 10; compile tomom when needed.
+32. **Robot workforce** (owner 2026-10-07: "as many robots as we need ... headstones/ghosts ... training IRL/tomom the entire time"): playbook `ROBOT-WORKFORCE-GAMEPLAN-AND-PLAYBOOK.md`, NIGHT 37. Phases P0-P7; first quests Q010-Q018 are proposed there (not posted on the board yet).
+33. **Quest packet** (`scope.txt`, `LOCK.sha256`, `budget.pdl`, `attempts/`) + `quest_check` op; runner refuses a stale worktree base.
+34. **Failure museum** as a kept doc section; each stone has produced a rule (playbook section 12).
+35. **Network console** (owner 2026-10-07: own server/switch/router GUI in the network app for virtual/LAN/p2p, port assignment): a view+editor over `server.pdl`; virtual layer first; real layer 2 is out of scope (read-only host facts only). Phase P7.
+36. **Restart-desktop ops harness** (login shell for the ssh PATH, relaunch-or-loud-fail, never leave the desktop down; the Mac was left down once on 2026-10-07 by a failed rebuild) + fix `save-user-data.sh` on macOS bash 3.2 (`parent[@]: unbound variable`).
+37. **Numbering:** two files are called NIGHT 32 (Turning the Dials; The Machine That Can Write); the owner decides which keeps the number. Measure Groq limits (Q014) before planning on them.
+
