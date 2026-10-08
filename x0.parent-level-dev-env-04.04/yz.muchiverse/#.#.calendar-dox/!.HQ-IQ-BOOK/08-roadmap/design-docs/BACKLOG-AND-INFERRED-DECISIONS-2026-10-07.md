@@ -78,6 +78,6 @@ Written by claude. The owner said: "use common sense and taste to infer those an
 33. **Quest packet** (`scope.txt`, `LOCK.sha256`, `budget.pdl`, `attempts/`) + `quest_check` op; runner refuses a stale worktree base.
 34. **Failure museum** as a kept doc section; each stone has produced a rule (playbook section 12).
 35. **Network console** (owner 2026-10-07: own server/switch/router GUI in the network app for virtual/LAN/p2p, port assignment): a view+editor over `server.pdl`; virtual layer first; real layer 2 is out of scope (read-only host facts only). Phase P7.
-36. **Restart-desktop ops harness** (login shell for the ssh PATH, relaunch-or-loud-fail, never leave the desktop down; the Mac was left down once on 2026-10-07 by a failed rebuild) + fix `save-user-data.sh` on macOS bash 3.2 (`parent[@]: unbound variable`).
+36. **[DONE 2026-10-07: `desk_restart` + `desk_restart.pal` 47/0, merged; still to do: build/run it on the Mac and debil, pull the `crypt_autostart` macOS fix (ca10ca105) onto the Mac house (it has 193 locally modified tracked files: no blind pull), fix `save-user-data.sh` on bash 3.2] Restart-desktop ops harness (login shell for the ssh PATH, relaunch-or-loud-fail, never leave the desktop down; the Mac was left down once on 2026-10-07 by a failed rebuild) + fix `save-user-data.sh` on macOS bash 3.2 (`parent[@]: unbound variable`).
 37. **Numbering:** two files are called NIGHT 32 (Turning the Dials; The Machine That Can Write); the owner decides which keeps the number. Measure Groq limits (Q014) before planning on them.
 

@@ -97,6 +97,14 @@ involving live windows or shared files.*
     commits, check first (`git merge-base --is-ancestor` /
     `git log A..B`) rather than assuming either way.
 
+12. **Remote restart and delegation (2026-10-07).** (a) Never run `button.sh reset` over a plain `ssh host 'cmd'`: it kills the desktop FIRST,
+    and a non-login shell lacks `/usr/local/bin` (`pkg-config`), so the rebuild fails and the house stays down. Use
+    `&.widgits/desk-restart/ops/+x/desk_restart.+x` (preflight refuses before killing; login shell; explicit display; loud verdict), or relaunch just
+    the one dead component. (b) macOS has no `setsid`; a `system("setsid ... &")` launcher reports rc=0 and starts nothing: verify by process name
+    and a state-file timestamp, never by a launcher's return code. (c) A worker's report is a claim: the manager re-runs the build and the harness
+    fresh, checks the diff scope and greps it for secrets, before merging. (d) Worker worktrees are created by the manager from the CURRENT tip.
+    Full record, exact commands and the harness locations table: `REMOTE-HOUSE-RESTART-AND-DELEGATION-EXPERIENCE-2026-10-07.md`.
+
 ## Verification discipline (non-negotiable)
 
 - Never say something is fixed without a fresh build + a fresh live/
