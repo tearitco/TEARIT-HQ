@@ -43,6 +43,27 @@ Owner brief (2026-10-08): "in future games, 'headstones' will be how the user pr
 
 **Harness cases (write first):** two takers claim the same quest and both appear; `quest.pal` returning live/archive/consume writes the right `CLOSED` or no row and removes no file; a hung script is killed at the watchdog and the stone stays live; comments append in order and the creator's and taker's lines both survive; a converted legacy quest reads identically before and after. Mutant: make consume delete the folder, and the case must fail.
 
+### 1b. Symbols for boards and stones, ASCII-only games, and the calendar (OWNER, 2026-10-08)
+
+**OWNER:** 🪧 can also mark quest boards, with its **Chinese symbol** in ASCII-only games. Quests tie closely to the calendar when wanted.
+
+**What exists (checked):**
+- 🪧 appears **nowhere** in the tracked house code. Today's board uses the 🪦 tombstone in `^.grave`.
+- pc-hq has an ASCII/Chinese view (`` ` `` key sets `view_2d_style=ascii`, `BOARD-CONTROLS.md`). Its glyph registry is `@.apps/piececraft-hq/pieces/registry/fonts/ascii/<id>/` (`glyph.txt` + `piece.pdl`): **95 printable-ASCII bitmap glyphs, 8×16**, and no Chinese font set. Entities have one emoji each in `glyph.txt` (asa 👨, eden_button 🔘).
+- The old fuzz-op blueprint (`fuzz-op-gltpm-feature-blueprint`) kept an **Asset Legend** mapping ASCII characters to colors and extrusions; the fuzzpet TPMOS recorded every action as a `MethodCall` row in a **master ledger**. The house still has the ledger (`#.desktop/master_ledger.txt`, 27 rows, newest 2026-09-26, so it is barely used now) and legends exist only as per-game documents (`terrain_legend` in mutaclysm, `ctrl-legend.md`). **There is no single registry that records a symbol, its ASCII form and its Chinese form together.** I read these files; I did not run the old fuzz programs.
+
+**PROPOSAL: one symbol registry, append-only, one row per concept** (`symbols.pdl`, shared by every game and window):
+```
+SYMBOL | board  | emoji=🪧 | ascii=[=] | hanzi=榜 | pinyin=bang | note=quest/notice board
+SYMBOL | stone  | emoji=🪦 | ascii=[+] | hanzi=碑 | pinyin=bei  | note=headstone
+```
+- A window or the pc-hq board asks the registry for the form that fits the view: emoji in the normal view, `ascii` in 8×16 bitmap or terminal view, `hanzi` in the Chinese view. The registry is data, so a game can override a row.
+- The Chinese forms above are **my suggestions** (榜 notice list/board, 碑 stele or headstone, 墓碑 gravestone, 牌 sign or plaque). The CSV Lab pipeline's pinyin check can validate the pinyin, but the owner or a native reader should choose the character.
+- "Recorded like the old way": each use of a board or stone can append one row to the ledger (`BOARD_OPEN`, `QUEST_TAKEN`, `STONE_CLOSED`); the master ledger format already supports it, and the stone's own `log.txt` stays the detailed record.
+- A Chinese 8×16 bitmap set is a separate, larger job (thousands of glyphs). For a handful of symbols, draw them as sprites and register them as tile ids.
+
+**Calendar tie (when wanted):** the clock already has `reminders.pdl` and `SCHED` rows (`lc_clock`, scheduled occurrences with fired/result). A quest or stone can carry an optional `DUE | <date or game day> | <reminder id>` row; the reminder fires the existing popup or an event; recurring chores are a stone whose `quest.pal` answers `STONE | live` and re-posts. The calendar book (`#.#.calendar-dox`) is the real-time side; the game clock (`lc_clock`) is the in-game side, and the same `DUE` row can point at either. **Unverified:** the reminder record format; I read only the header comments of `lc_clock.c`.
+
 ## 2. What the chat windows have today (checked)
 
 | Window | What it does | Evidence |
