@@ -58,6 +58,30 @@ the bar.
 - [x] ~~Word-wrap spans~~ — renderer-side wrap suffices for now; true spans need segment rows (listed above)
 - [ ] Inline media tiles (sprite-flow grid) — open (panel-path branch missing)
 
+## Done — Milestone 5: forms parity (2026-10-07, verified live + hermetic tests)
+
+- [x] `required` on text-ish fields, `*` marker on the label, submit refuses with a console note
+- [x] `email` / `url` / `number` extracted as INPUT rows (they used to be dropped entirely) and format-checked at submit
+- [x] `<textarea>` rows carry required + placeholder; newlines/tabs collapsed, pipes escaped 0x7f
+- [x] untouched inputs submit their `value=` default the way a browser does
+- [x] pre-checked checkboxes/radios submit even when the checks file never existed (this was a live bug)
+- [x] `tests/nb_form_test.sh` — 18 hermetic cases (sandbox house root, no X11, no relay)
+
+Two off-by-one traps in this area, both found by tests and both shipped once:
+awk field `$N` counts the leading `INPUT` token, so the required flag is the
+LAST field, not `$5`; and `uisan()` rewrites `|` to `/`, so a restored pipe
+must be restored after it, never before.
+
+## Done — Milestone 6: preformatted text (2026-10-07)
+
+- [x] `<pre>` emits one `CODE|<line>` row per source line; inline tags inside dropped
+- [x] `.nb-code` monospace via the generic per-element `font-family` path (zero renderer C)
+- [x] `tests/fixtures/code-block.html` + snapshot pin the row shape
+
+- [ ] Leading indentation still lost: the shared `kh_load_vars()` trims leading
+  spaces off every value in every window. NBSP re-indent works on screen but
+  makes copied code break silently — rejected. Real fix is the renderer contract.
+
 ## Todo — Milestone 3: JS ↔ box tree reflow
 
 - [ ] Manager owns the box tree; worker mutations (`textContent`, appendChild) reflow the subtree, not just rewrite a text row
