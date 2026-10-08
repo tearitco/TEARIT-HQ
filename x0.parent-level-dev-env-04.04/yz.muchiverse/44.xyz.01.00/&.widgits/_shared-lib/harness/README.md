@@ -18,6 +18,7 @@ A harness is three small things:
 
 | pal | cases | checks | covers |
 |---|---|---|---|
+| `palnet_peer_net.pal` | `cases/palnet_peer_net.pdl` | 22 | `041.pal-chain` `palnet_peer` on three scratch peers over loopback 127.0.0.2/.3/.4: bind/advertise address from `PALNET_BIND`/`PALNET_ADVERTISE` (no hardcoded host), `PALNET_SEEDS`, a line arrives in the other inboxes exactly once, `known_peers.txt` memory, restart with NO seeds still delivers, plus a mutant self-check (hardcoded host is caught). Previous (pre-dedup) code fails the exactly-once check. |
 | `pchq_playtest_action.pal` | `cases/pchq_playtest_action.pdl` | 8 | pc-hq `player` verbs `playtest` / `toggle` / `stop` on the real `pchq_board_action.sh` |
 | `transfer_map_access.pal` | `cases/transfer_map_access.pdl` | 17 | real `mr_transfer_desk.+x`: play-mode map access, refusal rc 3 + reason + ledger, build/missing-mode/no-MAP-rows unrestricted, play-test follows play |
 | `solar_sandbox.pal` | `cases/solar_sandbox.pdl` | 41 | solar-sandbox entity menu rows (the real METHOD strings) through the real `mr_transfer_desk.+x`: Enter, Leave orbit, Teleport, access list, unlisted page refused rc 3 |
@@ -76,3 +77,14 @@ Every harness has a seed `bank/<name>.behavior.pdl` (keywords, weighted synonyms
 | `csv_call.pal` | `cases/csv_call.pdl` | 43 | csv_lab `call` / `quota` against test doubles (`fixtures/csv_lab/stub_groq.c`, `stub_mac.c`; NO real model): usage accounting, ledger, day limit, rate-limit / failure / hang (watchdog) / empty / HTTP 500 exit codes, key never printed, local Ollama port 11434 and any host but the Mac refused. One mutant |
 | `csv_merge.pal` | `cases/csv_merge.pdl` | 66 | csv_lab `merge` / `ui`: sidecar next to the source, ok / review / lintfail statuses, threshold, review queue, answer bank (no duplicates on re-run, no lint failures), FEEDBACK rows in the `ledger_to_feedback` shape, `csv_lab_ui.txt` feed. Three mutants. Also the owner review decisions (REVIEW rows: accept, reject, last wins, other bank ignored) and the live feed rewrite |
 | `csv_pipeline.pal` | `cases/csv_pipeline.pdl` | 58 | csv_lab `pipeline` end to end on a CSV bank with both models replaced by doubles: repair resends only failed rows, judge never sees lint failures and must differ from the translator, second run answered from the answer bank, quota stop, `--no-judge`. Two mutants. NOTE: `harness_case_op` passes at most 15 arguments to a RUN, so the house root and key dir are given as `ENV` |
+
+
+## palnet_peer over the LAN (manual procedure, 2026-10-08)
+
+The loopback harness above proves the logic; this is how it was checked across real machines (this desk 10.0.0.238, debil 10.0.0.16, the Mac 10.0.0.144, key login for all). Not automated yet: the case runner has no ssh verb and a case file must not hardcode addresses. To turn it into a harness, add a hosts data file and an ssh-capable case verb.
+1. On each machine, in a scratch folder under /tmp, compile only `palnet_peer.c` (on macOS use PATH with /usr/local/bin and /opt/X11/bin; the program is macOS-safe).
+2. Start one peer per machine with its OWN address: `PALNET_BIND=<ip> PALNET_ADVERTISE=<ip> PALNET_SEEDS=<other ip>:9950,<other ip>:9950 PRISC_PROJECT_ROOT=<scratch>/proj PRISC_NET_ROOT=<scratch>/net palnet_peer chain t - <scratch>/out.txt <scratch>/in.txt chain` (detach it with `nohup` inside a subshell and `ssh -n`, or ssh hangs).
+3. Append `TX|...` to one machine's out.txt; read the others' in.txt: each must have the line exactly once. Append on a second machine to check the reverse direction.
+4. Stop all, restart WITHOUT `PALNET_SEEDS` (keep the proj folders): the message must still arrive once (address memory).
+5. Stop by the pid in each presence file, delete the scratch folders. Result of the run on 2026-10-08: phase 1 once each, 2 remembered peers per node; phase 2 once each with no seeds; debil to the other two once each. Both ends keep the connection dialed by the smaller node id (commit after 9ed0c3693) and the receiver drops a replayed duplicate.
+The IRC window version (the same peers started by `irc-chat-hq`, one scratch house per machine, relay-driven) is described in `08-roadmap/design-docs/MULTI-AGENT-NETWORK-USER-STORY-HARNESS-PLAN-2026-10-08.md` sections 9 and 10.

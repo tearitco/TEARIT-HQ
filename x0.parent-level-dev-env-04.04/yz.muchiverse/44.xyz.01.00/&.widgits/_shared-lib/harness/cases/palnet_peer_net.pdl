@@ -1,0 +1,122 @@
+# palnet_peer_net: three palnet_peer processes on loopback addresses 127.0.0.2, 127.0.0.3, 127.0.0.4 (each its own scratch project dir, presence dir, outbox and inbox), all under $T.
+# Proves: the bind/advertise address comes from PALNET_BIND/PALNET_ADVERTISE (no hardcoded 127.0.0.1); PALNET_SEEDS finds peers the presence directory cannot; a line appended to one outbox arrives in the other two inboxes EXACTLY once
+# (duplicate connections are dropped); peers remember each other (known_peers.txt) and, restarted with NO seeds, reconnect and deliver again. A mutant copy that writes a hardcoded host must be caught (the self-check at the end).
+# Needs: gcc. Loopback 127.0.0.0/8 is local on Linux. About 40 s. The same program is also checked by hand across real machines: see ../README.md "palnet_peer over the LAN".
+RESULTS | ../results/palnet_peer_net.txt
+ENV | LC_ALL | C
+
+CASE    | build-and-bind
+SCRATCH |
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/pp | $HOUSE/041.pal-chain⛓️/ops/palnet_peer.c
+EXPECT_EXIT | 0 | peer-compiles
+MKDIR | a/proj
+MKDIR | a/net
+MKDIR | b/proj
+MKDIR | b/net
+MKDIR | c/proj
+MKDIR | c/net
+WRITE | a/out.txt |
+WRITE | a/in.txt |
+WRITE | b/out.txt |
+WRITE | b/in.txt |
+WRITE | c/out.txt |
+WRITE | c/in.txt |
+ENV | PALNET_BIND | 127.0.0.2
+ENV | PALNET_ADVERTISE | 127.0.0.2
+ENV | PALNET_SEEDS | 127.0.0.3:9950,127.0.0.4:9950
+ENV | PRISC_PROJECT_ROOT | $T/a/proj
+ENV | PRISC_NET_ROOT | $T/a/net
+SPAWN | PA | $T/pp | chain | t | - | $T/a/out.txt | $T/a/in.txt | chain
+ENV | PALNET_BIND | 127.0.0.3
+ENV | PALNET_ADVERTISE | 127.0.0.3
+ENV | PALNET_SEEDS | 127.0.0.2:9950,127.0.0.4:9950
+ENV | PRISC_PROJECT_ROOT | $T/b/proj
+ENV | PRISC_NET_ROOT | $T/b/net
+SPAWN | PB | $T/pp | chain | t | - | $T/b/out.txt | $T/b/in.txt | chain
+ENV | PALNET_BIND | 127.0.0.4
+ENV | PALNET_ADVERTISE | 127.0.0.4
+ENV | PALNET_SEEDS | 127.0.0.2:9950,127.0.0.3:9950
+ENV | PRISC_PROJECT_ROOT | $T/c/proj
+ENV | PRISC_NET_ROOT | $T/c/net
+SPAWN | PC | $T/pp | chain | t | - | $T/c/out.txt | $T/c/in.txt | chain
+SLEEP | 1500
+EXPECT_ALIVE | $PA | peer-a-alive
+EXPECT_ALIVE | $PB | peer-b-alive
+EXPECT_ALIVE | $PC | peer-c-alive
+RUN | /usr/bin/grep | -rh | ^host= | $T/a/net
+EXPECT_OUT_IS | host=127.0.0.2 | presence-advertises-the-configured-address-not-127.0.0.1
+RUN | /usr/bin/grep | -rh | ^host= | $T/c/net
+EXPECT_OUT_IS | host=127.0.0.4 | presence-of-c-advertises-its-own-address
+
+CASE    | seeds-delivery-exactly-once
+APPEND | a/out.txt | TXone-from-a\n
+WAIT_HAS | b/in.txt | TXone-from-a | 25000 | b-receives-a-line-from-a
+WAIT_HAS | c/in.txt | TXone-from-a | 25000 | c-receives-a-line-from-a
+SLEEP | 3000
+RUN | /usr/bin/grep | -c | from-a | $T/b/in.txt
+EXPECT_OUT_IS | 1 | b-got-it-exactly-once
+RUN | /usr/bin/grep | -c | from-a | $T/c/in.txt
+EXPECT_OUT_IS | 1 | c-got-it-exactly-once
+APPEND | c/out.txt | TXtwo-from-c\n
+WAIT_HAS | a/in.txt | TXtwo-from-c | 25000 | a-receives-a-line-from-c
+WAIT_HAS | b/in.txt | TXtwo-from-c | 25000 | b-receives-a-line-from-c
+EXPECT_HAS | a/proj/known_peers.txt | 127.0.0.3\p9950 | a-remembers-b
+EXPECT_HAS | a/proj/known_peers.txt | 127.0.0.4\p9950 | a-remembers-c
+EXPECT_HAS | c/proj/known_peers.txt | 127.0.0.2\p9950 | c-remembers-a
+
+CASE    | restart-with-no-seeds-uses-memory
+RUN | /bin/kill | $PA
+RUN | /bin/kill | $PB
+RUN | /bin/kill | $PC
+SLEEP | 1500
+EXPECT_DEAD | $PA | a-stopped
+WRITE | a/in.txt |
+WRITE | b/in.txt |
+WRITE | c/in.txt |
+RUN | /usr/bin/rm | -rf | $T/a/net | $T/b/net | $T/c/net
+MKDIR | a/net
+MKDIR | b/net
+MKDIR | c/net
+ENV | PALNET_SEEDS |
+ENV | PALNET_BIND | 127.0.0.2
+ENV | PALNET_ADVERTISE | 127.0.0.2
+ENV | PRISC_PROJECT_ROOT | $T/a/proj
+ENV | PRISC_NET_ROOT | $T/a/net
+SPAWN | QA | $T/pp | chain | t | - | $T/a/out2.txt | $T/a/in.txt | chain
+ENV | PALNET_BIND | 127.0.0.3
+ENV | PALNET_ADVERTISE | 127.0.0.3
+ENV | PRISC_PROJECT_ROOT | $T/b/proj
+ENV | PRISC_NET_ROOT | $T/b/net
+SPAWN | QB | $T/pp | chain | t | - | $T/b/out2.txt | $T/b/in.txt | chain
+ENV | PALNET_BIND | 127.0.0.4
+ENV | PALNET_ADVERTISE | 127.0.0.4
+ENV | PRISC_PROJECT_ROOT | $T/c/proj
+ENV | PRISC_NET_ROOT | $T/c/net
+SPAWN | QC | $T/pp | chain | t | - | $T/c/out2.txt | $T/c/in.txt | chain
+SLEEP | 1500
+APPEND | a/out2.txt | TXthree-from-a-after-restart\n
+WAIT_HAS | b/in.txt | from-a-after-restart | 30000 | b-gets-it-with-no-seeds-configured
+WAIT_HAS | c/in.txt | from-a-after-restart | 30000 | c-gets-it-with-no-seeds-configured
+SLEEP | 3000
+RUN | /usr/bin/grep | -c | from-a-after-restart | $T/b/in.txt
+EXPECT_OUT_IS | 1 | still-exactly-once-after-restart
+
+CASE    | mutant-self-check
+COPY | 041.pal-chain⛓️/ops/palnet_peer.c | m.c
+RUN | /usr/bin/sed | -i | s/advertise_host());/"127.0.0.1");/ | $T/m.c
+EXPECT_EXIT | 0 | mutant-made
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/ppm | $T/m.c
+EXPECT_EXIT | 0 | mutant-compiles
+MKDIR | m/proj
+MKDIR | m/net
+WRITE | m/out.txt |
+WRITE | m/in.txt |
+ENV | PALNET_BIND | 127.0.0.5
+ENV | PALNET_ADVERTISE | 127.0.0.5
+ENV | PRISC_PROJECT_ROOT | $T/m/proj
+ENV | PRISC_NET_ROOT | $T/m/net
+SPAWN | PM | $T/ppm | chain | t | - | $T/m/out.txt | $T/m/in.txt | chain
+SLEEP | 1200
+RUN | /usr/bin/grep | -rh | ^host= | $T/m/net
+EXPECT_OUT_IS | host=127.0.0.1 | MUTANT-with-a-hardcoded-host-is-visibly-wrong-so-the-presence-check-above-would-fail-on-it
+CLEAN |

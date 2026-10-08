@@ -1,0 +1,4 @@
+# palnet_peer_net.pal - palnet_peer (041.pal-chain) on three SCRATCH peers over loopback addresses 127.0.0.2/.3/.4 (configurable bind, seeds, address memory, no duplicate delivery), see cases/palnet_peer_net.pdl
+exec ./ops/+x/harness_case_op.+x cases/palnet_peer_net.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/palnet_peer_net.pdl
+halt
