@@ -756,8 +756,22 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                     collapse_ws(val);
                     strip_pipes(val);
                 }
-                /* v1: single-line rendering; multi-line edit is follow-up */
-                if (in_form && name[0]) fprintf(out, "INPUT|%s|textarea|%s|\n", name, val);
+                /* Newlines are collapsed to spaces (row wire format is
+                 * one line per row) and \r / \t / | are escaped so a
+                 * pasted multi-line value can never forge a row boundary
+                 * or split the fields file at submit time. */
+                for (char *c = val; *c; c++) {
+                    if (*c == '\r' || *c == '\n' || *c == '\t') *c = ' ';
+                    if (*c == '|') *c = 0x7f;
+                }
+                if (in_form && name[0]) {
+                    char rq[8] = "";
+                    int req = tag_attrval(p, tag_end, "required", rq, sizeof(rq));
+                    char pht[256] = "";
+                    tag_attrval(p, tag_end, "placeholder", pht, sizeof(pht));
+                    strip_pipes(pht);
+                    fprintf(out, "INPUT|%s|textarea|%s|%s|%d\n", name, val, pht, req ? 1 : 0);
+                }
                 p = tend ? tend + 11 : tag_end + 1;
                 continue;
             }

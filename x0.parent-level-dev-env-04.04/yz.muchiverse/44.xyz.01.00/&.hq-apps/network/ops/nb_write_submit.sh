@@ -28,15 +28,22 @@ MERGED_ACCUM="$(mktemp)"
 if grep -q "^HIDDEN|" "$DESKTOP_DIR/network_browser_page.state.txt" 2>/dev/null; then
     grep "^HIDDEN|" "$DESKTOP_DIR/network_browser_page.state.txt" | sed 's/^HIDDEN|//;s/|/\t/' >> "$MERGED_ACCUM"
 fi
-# 2. checked boxes (submit values from live page.state INPUT rows)
-if [ -f "$DESKTOP_DIR/network_browser_checks.txt" ]; then
+# 2. checked boxes. The checks file is OPTIONAL - a page whose boxes are
+# all page-defaults never produces one, and gating on it silently dropped
+# every pre-checked box. A missing file reads as "no toggle yet".
+: > /dev/null
+CHECKS_FILE="$DESKTOP_DIR/network_browser_checks.txt"
+[ -f "$CHECKS_FILE" ] || CHECKS_FILE=/dev/null
+if [ -f "$DESKTOP_DIR/network_browser_page.state.txt" ]; then
     while IFS= read -r line; do
         kind="${line%%|*}"
         [ "$kind" = "INPUT" ] || continue
         rest="${line#*|}"
         nm="${rest%%|*}"
         [ -n "$nm" ] || continue
-        st="$(awk -F'\t' -v n="$nm" '$1==n {s=$2} END {print s}' "$DESKTOP_DIR/network_browser_checks.txt" 2>/dev/null)"
+        typ="${rest#*|}"; typ="${typ%%|*}"
+        case "$typ" in checkbox|radio) ;; *) continue ;; esac
+        st="$(awk -F'\t' -v n="$nm" '$1==n {s=$2} END {print s}' "$CHECKS_FILE" 2>/dev/null)"
         if [ -z "$st" ]; then
             # no toggle yet: page default (INPUT row field 3)
             df="$(printf '%s' "$rest" | awk -F'|' '{print $3}')"
@@ -49,6 +56,14 @@ if [ -f "$DESKTOP_DIR/network_browser_checks.txt" ]; then
         printf '%s\t%s\n' "$nm" "$sv" >> "$MERGED_ACCUM"
     done < "$DESKTOP_DIR/network_browser_page.state.txt"
 fi
+# 2b. untouched text-ish inputs submit their page default (INPUT row field 3)
+# the way a real browser does. Typed values land in step 3 and win ties.
+# Pipes are 0x7f on the wire (see extractor) so a value can never split a
+# field; translate back here, at the last moment before urlencoding.
+awk -F'|' '$1=="INPUT" && ($3=="text"||$3=="search"||$3=="email"||$3=="url"||$3=="number"||$3=="tel"||$3=="password"||$3=="textarea") {
+    v=$4; gsub("\177", "|", v);
+    if (v != "") printf "%s\t%s\n", $2, v
+}' "$DESKTOP_DIR/network_browser_page.state.txt" >> "$MERGED_ACCUM"
 # 3. typed fields last (most interactive source wins ties)
 cat "$DESKTOP_DIR/network_browser_fields.txt" 2>/dev/null >> "$MERGED_ACCUM"
 MERGED="$MERGED_ACCUM"
