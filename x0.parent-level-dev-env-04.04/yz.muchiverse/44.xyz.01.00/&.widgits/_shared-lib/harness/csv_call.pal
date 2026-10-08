@@ -1,0 +1,5 @@
+# csv_call.pal - LOCKED acceptance harness for the csv_lab model-call wrapper and quota ledger (`call groq|mac`, `quota`), against local TEST DOUBLES only: a stub in place of horn_chat_backend and a loopback HTTP stub in place of the Mac Ollama. No real model is contacted. Read results/csv_call.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/csv_call.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/csv_call.pdl
+exec ./ops/+x/harness_bank_op.+x cases/csv_call.pdl
+halt

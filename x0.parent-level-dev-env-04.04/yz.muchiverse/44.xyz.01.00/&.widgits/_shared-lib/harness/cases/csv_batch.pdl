@@ -1,0 +1,72 @@
+# csv_batch: LOCKED cases. Source under test: &.widgits/concept-bank/ops/csv_lab.c, verbs batch / prompt / parse.
+RESULTS | ../results/csv_batch.txt
+CASE | csv-batch
+SCRATCH |
+COPY | &.widgits/concept-bank/ops/csv_lab.c | csv_lab.c
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -Wno-format-truncation | -O2 | -o | $T/cl.+x | $T/csv_lab.c
+EXPECT_EXIT | 0 | compiles-clean
+WRITE | jobs.tsv | a1\tWater\tliquid\na2\tFire\t\na3\tEarth\t\na4\tAir\t\na5\tSalt\tNaCl\n
+RUN | $T/cl.+x | batch | $T/jobs.tsv | $T/b2 | --rows | 2
+EXPECT_OUT_IS | batches=3 rows=5 | row-cap-gives-3-batches
+EXPECT_FILE | b2/b001.tsv | 1\ta1\tWater\tliquid\n2\ta2\tFire\t\n | batch1-numbered-from-1
+EXPECT_FILE | b2/b002.tsv | 1\ta3\tEarth\t\n2\ta4\tAir\t\n | batch2-restarts-numbering
+EXPECT_FILE | b2/b003.tsv | 1\ta5\tSalt\tNaCl\n | batch3-holds-the-rest-in-order
+RUN | $T/cl.+x | batch | $T/jobs.tsv | $T/b1
+EXPECT_OUT_IS | batches=1 rows=5 | default-budget-one-batch
+WRITE | long.tsv | l1\tAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\t\nl2\tBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\t\nl3\tC\t\n
+RUN | $T/cl.+x | batch | $T/long.tsv | $T/bl | --tokens | 100
+EXPECT_OUT_IS | batches=2 rows=3 | token-budget-splits-big-rows
+EXPECT_HAS | bl/b002.tsv | 2\tl3\tC | small-row-joins-after-the-split
+RUN | $T/cl.+x | batch | $T/long.tsv | $T/bl2 | --tokens | 600
+EXPECT_OUT_IS | batches=1 rows=3 | big-budget-keeps-them-together
+WRITE | empty.tsv |
+RUN | $T/cl.+x | batch | $T/empty.tsv | $T/be
+EXPECT_OUT_IS | batches=0 rows=0 | empty-input
+RUN | $T/cl.+x | batch | $T/nosuch.tsv | $T/bn
+EXPECT_EXIT | 2 | missing-input
+RUN | $T/cl.+x | prompt | translate | $T/b2/b001.tsv | $T/p1.txt
+EXPECT_EXIT | 0 | prompt-translate
+EXPECT_HAS | p1.txt | Simplified Chinese | prompt-names-the-target
+EXPECT_HAS | p1.txt | tone marks | prompt-demands-tone-marks
+EXPECT_HAS | p1.txt | INPUT | prompt-has-input-marker
+EXPECT_HAS | p1.txt | 1\tWater\tliquid\n2\tFire\t\n | prompt-rows-numbered-with-context
+EXPECT_LACKS | p1.txt | a1 | prompt-never-shows-the-job-ids
+WRITE | srows.tsv | 1\tWater\t水\tshuǐ\n2\tFire\t火\thuǒ\n
+RUN | $T/cl.+x | prompt | score | $T/srows.tsv | $T/p2.txt
+EXPECT_HAS | p2.txt | strict bilingual reviewer | score-prompt-role
+EXPECT_HAS | p2.txt | ROWS | score-prompt-rows-marker
+EXPECT_HAS | p2.txt | 1\tWater\t水\tshuǐ\n | score-prompt-row-has-en-zh-pinyin
+RUN | $T/cl.+x | prompt | other | $T/srows.tsv | $T/p3.txt
+EXPECT_EXIT | 0 | unknown-prompt-kind-falls-to-score-layout
+RUN | $T/cl.+x | prompt | translate
+EXPECT_EXIT | 2 | prompt-usage
+WRITE | reply.txt | ```\n1\t水\tshuǐ\n2.  火 | huǒ\n3\t土\ttǔ\n3\t土地\ttǔ dì\n99\t鬼\tguǐ\nsorry about the delay\n5\t盐\tyán\n```\n
+RUN | $T/cl.+x | parse | translate | $T/reply.txt | $T/b2/b001.tsv | $T/o1.tsv
+EXPECT_OUT_IS | parsed=2 missing=0 duplicate=0 unparsed_lines=5 | parse-only-rows-of-this-batch
+EXPECT_FILE | o1.tsv | a1\t水\tshuǐ\na2\t火\thuǒ\n | parse-maps-n-to-job-id-and-tolerates-fence-and-bar-form
+WRITE | b3.tsv | 1\ta1\tWater\t\n2\ta2\tFire\t\n3\ta3\tEarth\t\n4\ta4\tAir\t\n5\ta5\tSalt\t\n
+RUN | $T/cl.+x | parse | translate | $T/reply.txt | $T/b3.tsv | $T/o2.tsv
+EXPECT_OUT_IS | parsed=4 missing=1 duplicate=1 unparsed_lines=2 | parse-counts-missing-duplicate-unparsed
+EXPECT_HAS | o2.tsv | a3\t土\ttǔ\n | first-duplicate-wins
+EXPECT_LACKS | o2.tsv | 土地 | second-duplicate-dropped
+EXPECT_HAS | o2.tsv | a5\t盐\tyán | row-5-found
+WRITE | sreply.txt | 1\t5\tfine\n2\t4/5 ok\n3\tgood\n4  3  so-so\n
+RUN | $T/cl.+x | parse | score | $T/sreply.txt | $T/b3.tsv | $T/o3.tsv
+EXPECT_OUT_IS | parsed=3 missing=2 duplicate=0 unparsed_lines=1 | score-parse-counts
+EXPECT_FILE | o3.tsv | a1\t5\tfine\na2\t4\tok\na4\t3\tso-so\n | score-first-digit-1to5-wins-and-reason-kept
+RUN | $T/cl.+x | parse | translate | $T/nosuch.txt | $T/b3.tsv | $T/o4.tsv
+EXPECT_EXIT | 2 | parse-missing-reply
+CAPTURE | good_rows
+# MUTANT 1: ignoring the row cap must be visible in the batch count
+RUN | cp | $T/csv_lab.c | $T/m1.c
+RUN | sed | -i | s@rows >= maxrows@0@ | $T/m1.c
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m1.+x | $T/m1.c
+RUN | $T/m1.+x | batch | $T/jobs.tsv | $T/m1b | --rows | 2
+EXPECT_OUT_LACKS | batches=3 | mutant1-row-cap-ignored-is-detected
+# MUTANT 2: accepting duplicate numbers must change the parse counts
+RUN | cp | $T/csv_lab.c | $T/m2.c
+RUN | sed | -i | s@if (seen\[i\]++) { dup++; isdup = 1; row = NULL; }@if (0) { dup++; isdup = 1; row = NULL; }@ | $T/m2.c
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m2.+x | $T/m2.c
+RUN | $T/m2.+x | parse | translate | $T/reply.txt | $T/b3.tsv | $T/o5.tsv
+EXPECT_OUT_LACKS | duplicate=1 | mutant2-duplicates-accepted-is-detected
+CLEAN |

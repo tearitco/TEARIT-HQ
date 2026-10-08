@@ -1,0 +1,5 @@
+# csv_lint.pal - LOCKED acceptance harness for the csv_lab `lint` verb (deterministic checks: CJK, pinyin tone marks / syllable shape / count / tone placement, length, row numbering, optional reference cross-check). Read results/csv_lint.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/csv_lint.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/csv_lint.pdl
+exec ./ops/+x/harness_bank_op.+x cases/csv_lint.pdl
+halt

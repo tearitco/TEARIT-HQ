@@ -1,0 +1,20 @@
+# Behavior Bank entry for the harness `csv_pipeline` (see HARNESS-BEHAVIOR-BANK-DESIGN.md). Weights on SYNONYM / SLOT / CORPUS rows are hand-seeded; only WEIGHT (from COUNTS) is measured.
+BEHAVIOR | harness.csv_pipeline
+KIND | spoke
+KEYWORDS | pipeline, translate, repair, score, driver, end to end, quota
+SYNONYM | run the pipeline | 0.80
+SYNONYM | repair failed rows | 0.70
+SYNONYM | translate a bank | 0.70
+SENTENCE | Runs extract, batch, translate, lint, repair of failed rows only, a second-model score and merge end to end, with token and request ledgers.
+SENTENCE | Uses test doubles for both models: checks repair resends only failures, the judge never sees lint failures or equals the translator, quota stop, a second run reusing the answer bank.
+SLOT | 0 | POINTS_TO=translation-pipeline | WEIGHT=0.95
+SLOT | 1 | POINTS_TO=orchestration | WEIGHT=0.70
+SLOT | 2 | POINTS_TO=quota | WEIGHT=0.60
+CORPUS | translation | WEIGHT=0.80
+CORPUS | debug-build | WEIGHT=0.50
+SEQUENCE | 1 | exec ./ops/+x/harness_case_op.+x cases/csv_pipeline.pdl
+SEQUENCE | 2 | exec ./ops/+x/harness_verdict_op.+x cases/csv_pipeline.pdl
+SEQUENCE | 3 | exec ./ops/+x/harness_bank_op.+x cases/csv_pipeline.pdl
+SOURCE | hand-authored 2026-10-07 (claude); masters/synonyms/weights are seeds awaiting owner validation
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

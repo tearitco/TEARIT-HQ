@@ -1,0 +1,84 @@
+# csv_lint: LOCKED cases. Source under test: &.widgits/concept-bank/ops/csv_lab.c, verb `lint`. trans.tsv columns: jobid, zh, pinyin, source.
+RESULTS | ../results/csv_lint.txt
+CASE | csv-lint
+SCRATCH |
+COPY | &.widgits/concept-bank/ops/csv_lab.c | csv_lab.c
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -Wno-format-truncation | -O2 | -o | $T/cl.+x | $T/csv_lab.c
+EXPECT_EXIT | 0 | compiles-clean
+WRITE | t.tsv | ok1\t水\tshuǐ\tWater\nok2\t乙酸\tyǐ suān\tAcetic Acid\nok3\t西安\txī'ān\tXian city\nok4\t学习\txué xí\tstudy\nok5\t东西\tdōngxi\tthing\nok6\t硫酸 H2SO4\tliú suān H2SO4\tSulfuric Acid (H2SO4)\nok7\t略\tlüè\tstrategy\nok8\t女儿\tnǚ ér\tdaughter\nok9\t柳\tliǔ\tWillow\nok10\t鬼\tguǐ\tghost\nok11\t好吗\thǎo ma\tAll good\nok12\t花儿\thuār\tflower\nf1\t\tshuǐ\tWater\nf2\tabc\tshuǐ\tWater\nf3\tひ\thī\tWater\nf4\t這個\tzhè gè\tthis one\nf5\t水abc\tshuǐ abc\tWater\nf6\t水\t\tWater\nf7\t水\tshui3\tWater\nf8\t水\tshuǐ lv\tWater\nf9\t水\tshui\tWater\nf10\t水\txyz\tWater\nf11\t水\tshuǐ yī\tWater\nf12\t好\thaǒ\tgood\nf13\t鬼\tgǔi\tghost\nf14\t柳\tlǐu\tWillow\nf15\t你好你好你好你好你好\tnǐ hǎo nǐ hǎo nǐ hǎo nǐ hǎo nǐ hǎo\tHi\nf16\t水\tshuǐ\tThe quick brown fox jumps over the lazy dog again and again today\nf17\t我们去学校学习汉语\two men qu xue xiao xue xi han yǔ\tWe go to school to study Chinese\nf18\t水\tshuǐǐ\tWater
+RUN | $T/cl.+x | lint | $T/t.tsv | $T/l.tsv
+EXPECT_EXIT | 0 | lint-runs
+EXPECT_OUT_IS | ok=12 fail=18 warn=0 ref=not requested | counts
+EXPECT_HAS | l.tsv | ok1\tOK\t\t\n | ok-water
+EXPECT_HAS | l.tsv | ok2\tOK\t\t\n | ok-two-syllables
+EXPECT_HAS | l.tsv | ok3\tOK\t\t\n | ok-apostrophe-xi-an
+EXPECT_HAS | l.tsv | ok4\tOK\t\t\n | ok-xue-xi
+EXPECT_HAS | l.tsv | ok5\tOK\t\t\n | ok-neutral-tone-dongxi
+EXPECT_HAS | l.tsv | ok6\tOK\t\t\n | ok-formula-kept-as-latin-run-from-source
+EXPECT_HAS | l.tsv | ok7\tOK\t\t\n | ok-u-umlaut-with-tone-on-e
+EXPECT_HAS | l.tsv | ok8\tOK\t\t\n | ok-nu3-with-umlaut-mark
+EXPECT_HAS | l.tsv | ok9\tOK\t\t\n | ok-iu-mark-on-u
+EXPECT_HAS | l.tsv | ok10\tOK\t\t\n | ok-ui-mark-on-i
+EXPECT_HAS | l.tsv | ok11\tOK\t\t\n | ok-one-neutral-of-two-allowed
+EXPECT_HAS | l.tsv | ok12\tOK\t\t\n | ok-erhua-r-merged
+EXPECT_HAS | l.tsv | f1\tFAIL\tempty-zh | fail-empty-zh
+EXPECT_HAS | l.tsv | f2\tFAIL\tno-cjk | fail-no-cjk
+EXPECT_HAS | l.tsv | f3\tFAIL\tkana-or-hangul | fail-kana
+EXPECT_HAS | l.tsv | f4\tFAIL\ttraditional-char: | fail-traditional-form
+EXPECT_HAS | l.tsv | f5\tFAIL\tlatin-in-zh:abc | fail-latin-not-from-source
+EXPECT_HAS | l.tsv | f6\tFAIL\tempty-pinyin | fail-empty-pinyin
+EXPECT_HAS | l.tsv | f7\tFAIL\ttone-number:shui3 | fail-tone-number
+EXPECT_HAS | l.tsv | f8\tFAIL\tletter-v-instead-of-u-umlaut | fail-letter-v
+EXPECT_HAS | l.tsv | f9\tFAIL\tno-tone-marks | fail-no-tone-marks
+EXPECT_HAS | l.tsv | f10\tFAIL\tno-vowel:x | fail-bad-syllable-shape
+EXPECT_HAS | l.tsv | f11\tFAIL\tsyllable-count:cjk=1,pinyin=2 | fail-syllable-count
+EXPECT_HAS | l.tsv | f12\tFAIL\ttone-placement:hao | fail-tone-on-wrong-vowel-ao
+EXPECT_HAS | l.tsv | f13\tFAIL\ttone-placement:gui | fail-tone-on-wrong-vowel-ui
+EXPECT_HAS | l.tsv | f14\tFAIL\ttone-placement:liu | fail-tone-on-wrong-vowel-iu
+EXPECT_HAS | l.tsv | f15\tFAIL\tlength:10cjk-for-2letters | fail-length-too-long
+EXPECT_HAS | l.tsv | f16\tFAIL\tlength:1cjk-for-53letters | fail-length-too-short
+EXPECT_HAS | l.tsv | f17\tFAIL\ttoo-few-tone-marks:1/9 | fail-mostly-unmarked
+EXPECT_HAS | l.tsv | f18\tFAIL\ttwo-marks:shuii | fail-two-marks-in-one-syllable
+WRITE | jobs.tsv | ok1\tWater\t\nok2\tAcetic Acid\t\nmiss1\tFire\t\ndup1\tSalt\t\n
+WRITE | t2.tsv | ok1\t水\tshuǐ\nok2\t乙酸\tyǐ suān\ndup1\t盐\tyán\ndup1\t盐\tyán\nextra9\t火\thuǒ\n
+RUN | $T/cl.+x | lint | $T/t2.tsv | $T/l2.tsv | --expect | $T/jobs.tsv
+EXPECT_OUT_IS | ok=2 fail=3 warn=0 ref=not requested | numbering-counts
+EXPECT_HAS | l2.tsv | miss1\tFAIL\tmissing-row | row-numbering-missing-detected
+EXPECT_HAS | l2.tsv | dup1\tFAIL\tduplicate-row | row-numbering-duplicate-detected
+EXPECT_HAS | l2.tsv | extra9\tFAIL\tunexpected-row | row-numbering-unexpected-detected
+EXPECT_HAS | l2.tsv | ok1\tOK | numbering-ok-rows-pass
+WRITE | ref.txt |    List of core vocabulary\n\n学习                   xué xí                  to study\n\n水                     shuǐ                    water\n\n硫酸                   liú suān                sulphuric acid\n
+WRITE | ptr.pdl | SECTION \p KEY \p VALUE\nSOURCE \p vocab_file \p $T/ref.txt\n
+WRITE | t3.tsv | r1\t学习\txuě xí\tstudy hard\nr2\t读书\tdú shū\tstudy\nr3\t学习\txué xí\tstudy\n
+RUN | $T/cl.+x | lint | $T/t3.tsv | $T/l3.tsv | --ref | $T/ptr.pdl
+EXPECT_OUT_IS | ok=3 fail=0 warn=2 ref=loaded 3 entries | ref-loaded-warnings-do-not-fail-rows
+EXPECT_HAS | l3.tsv | r1\tOK\t\tref-pinyin:学习 | ref-pinyin-mismatch-is-a-warning
+EXPECT_HAS | l3.tsv | r2\tOK\t\tref-gloss:study=学习 | ref-gloss-mismatch-is-a-warning
+EXPECT_HAS | l3.tsv | r3\tOK\t\t\n | ref-agrees-no-warning
+WRITE | ptr2.pdl | SOURCE \p vocab_file \p $T/nosuchvocab.txt\n
+RUN | $T/cl.+x | lint | $T/t3.tsv | $T/l4.tsv | --ref | $T/ptr2.pdl
+EXPECT_EXIT | 0 | missing-ref-file-is-not-an-error
+EXPECT_OUT_IS | ok=3 fail=0 warn=0 ref=skipped (vocab file missing) | missing-ref-file-skips-gracefully
+RUN | $T/cl.+x | lint | $T/t3.tsv | $T/l5.tsv | --ref | $T/nopointer.pdl
+EXPECT_OUT_IS | ok=3 fail=0 warn=0 ref=skipped (pointer $T/nopointer.pdl unreadable) | missing-pointer-skips-gracefully
+RUN | $T/cl.+x | lint | $T/nosuch.tsv | $T/l6.tsv
+EXPECT_EXIT | 2 | missing-input
+RUN | $T/cl.+x | lint
+EXPECT_EXIT | 2 | usage
+# MUTANTS: each disabled check must change the verdict on its row, so the real check can fail
+RUN | cp | $T/csv_lab.c | $T/m1.c
+RUN | sed | -i | s@if (marked == 0) FAILW@if (marked == 99) FAILW@ | $T/m1.c
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m1.+x | $T/m1.c
+RUN | $T/m1.+x | lint | $T/t.tsv | $T/lm1.tsv
+EXPECT_HAS | lm1.tsv | f9\tOK | mutant1-no-tone-marks-check-removed-is-detected
+RUN | cp | $T/csv_lab.c | $T/m2.c
+RUN | sed | -i | s@syl != ncjk \&\& syl != ncjk - nerhua@0@ | $T/m2.c
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m2.+x | $T/m2.c
+RUN | $T/m2.+x | lint | $T/t.tsv | $T/lm2.tsv
+EXPECT_LACKS | lm2.tsv | syllable-count | mutant2-count-check-removed-is-detected
+RUN | cp | $T/csv_lab.c | $T/m3.c
+RUN | sed | -i | s@if (want != ti)@if (0)@ | $T/m3.c
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m3.+x | $T/m3.c
+RUN | $T/m3.+x | lint | $T/t.tsv | $T/lm3.tsv
+EXPECT_LACKS | lm3.tsv | tone-placement | mutant3-placement-check-removed-is-detected
+CLEAN |
