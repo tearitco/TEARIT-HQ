@@ -74,3 +74,19 @@ This replaces the "sign up in the old copied house" idea in section 2: instead o
 **Risks and rules:** the installer downloads and runs code, so toys come only from the owner's repos and are hash-checked; macOS needs its own check in the harness (the Mac renderer now compiles, the install path is untested there); keys never enter a pack or the payload; installing never touches `xyzfs/users` of another install.
 
 **Decisions for the owner:** which repo and layout hosts toy packs; which toys are free and which cost coins; whether the payload repo may be rebuilt and pushed once the leak check passes; the product names for the two machines.
+
+## 9. A reusable install harness with labeled installs (OWNER, 2026-10-08)
+
+**OWNER:** a reusable install harness so installs can be labeled per machine and version (mac-v1 … mac-v1000) for experimenting with fresh installs.
+
+**What the installer already gives us (read `install.sh`):** argument 1 is the product name and picks the folder (`PREFIX` defaults to `$HOME/<product>`); `BINDIR` defaults to `$HOME/.local/bin`, where it writes a launcher named after the product. So a **label is just a product name** (`mac-v1`, `debil-v7`): each label is its own folder and its own launcher, installs never collide, and removing one is `uninstall.sh` for that label.
+
+**Design, a pal harness with data cases (never a new .sh):**
+- **Install ledger** `installs.pdl` (append-only, kept outside any install): `INSTALL | label | host | ts | payload_ref | result` and `REMOVE | label | ts`. The next free label is computed from it (`mac-v` + highest + 1), so numbering is never reused and the history of experiments is kept.
+- **Targets by data, no hardcoded address:** a hosts file maps a short name to `user@host` for ssh (`mac`, `debil`, and `local` for this desk); the case file names the target, never an address. Needs one new case verb: `REMOTE <target> <command>` (ssh `-n -o BatchMode=yes`, with a timeout), so one case file runs on any machine. This is also the verb the three-machine chat harness is missing.
+- **Case steps, per label:** pick the next label; run the installer for that label into a fresh folder (payload ref chosen by the case: `main`, or a branch to test a candidate); check the folder, launcher and build outputs exist; run the **leak check** over the installed tree (no provider key, no wallet, no `xyzfs/users/<uuid>` of another install, no absolute home path of another user); sign up the label's user through the real signup path and check a fresh uuid differs from jb's; start the desk; check the taskbar window is up (frame dump or its state file); optionally "buy" and install a toy from the store and open it; then either keep the install (a numbered experiment) or `uninstall` it. Teardown only ever touches that label's own folder and launcher, never another install or the existing houses.
+- **Mutants:** an installer that writes a key into the tree must fail the leak check; two installs of the same label must be refused; an install that skips the build must fail the "window is up" step.
+- **Evidence:** every run copies its transcript, the file listing with sha256 and a frame dump into `results/`; the ledger row records pass or fail, so "mac-v12 failed at build, mac-v13 passed" is answerable later.
+- **Safety:** the harness never uses `PREFIX` outside `$HOME/<label>`, never deletes unlabeled folders, and does the live macOS and debil installs only after the same cases pass on a local scratch label first.
+
+**Order:** (1) hosts file plus the `REMOTE` verb with a loopback test; (2) the ledger op (next label, append, list); (3) the local scratch install case (label `local-v1`, nothing remote), including the leak check with its mutant; (4) the same case on debil, then the Mac, as `debil-v1` and `mac-v1`; (5) toy purchase steps once the store has a pack to buy. Step 3 is also the payload leak-check harness already listed in section 8.
