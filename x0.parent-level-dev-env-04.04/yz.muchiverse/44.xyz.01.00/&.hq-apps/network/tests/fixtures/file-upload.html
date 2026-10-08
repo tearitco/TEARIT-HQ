@@ -1,0 +1,9 @@
+<!doctype html>
+<html><head><title>Upload</title></head><body>
+<h1>Upload</h1>
+<form action="https://httpbin.org/post" method="post" enctype="multipart/form-data">
+<p>Caption: <input type="text" name="cap" value="my caption"/></p>
+<p>Doc: <input type="file" name="doc" accept=".txt"/></p>
+<p>Multi: <input type="file" name="many" multiple/></p>
+<p><input type="submit" value="Send"/></p>
+</form></body></html>

@@ -1,0 +1,10 @@
+URL|FIXDIR/fixtures/file-upload.html
+TITLE|Upload
+TITLE|Upload
+TEXT|Caption:
+INPUT|cap|text|my caption||0
+TEXT|Doc:
+FILE|doc|.txt|0
+TEXT|Multi:
+FILE|many||1
+BUTTON|https://httpbin.org/post|post|Send

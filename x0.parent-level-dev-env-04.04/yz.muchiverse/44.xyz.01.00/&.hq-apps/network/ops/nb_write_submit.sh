@@ -125,6 +125,31 @@ print(urllib.parse.urlencode(v))
 fi
 [ -n "$CLEANUP_MERGED" ] && rm -f "$MERGED"
 
+# File uploads (2026-10-08): if any committed value is an existing regular
+# file, the form MUST be multipart - a urlencoded body can only carry the
+# path string, and the server would store the path as if it were the file.
+# Emits upload:<url><TAB><encoded><TAB><name>=<path>... instead of post:.
+#
+# This is a forced POST even when the form's method says GET: a GET with a
+# file body has no meaning, and silently downgrading to a query string
+# would upload nothing while looking like it worked.
+UPFILES=""
+if [ -f "$DESKTOP_DIR/network_browser_page.state.txt" ]; then
+    while IFS= read -r line; do
+        case "$line" in FILE\|*) ;; *) continue ;; esac
+        fnm="${line#FILE|}"; fnm="${fnm%%|*}"
+        [ -n "$fnm" ] || continue
+        fval="$(awk -F'\t' -v n="$fnm" '$1==n {v=$2} END {print v}' "$DESKTOP_DIR/network_browser_fields.txt" 2>/dev/null)"
+        [ -n "$fval" ] || continue
+        [ -f "$fval" ] || continue
+        UPFILES="$UPFILES	$fnm=$fval"
+    done < "$DESKTOP_DIR/network_browser_page.state.txt"
+fi
+if [ -n "$UPFILES" ]; then
+    printf 'upload:%s\t%s%s\n' "$ACTION" "$PAIRS" "$UPFILES" > "$REQUEST_FILE"
+    exit 0
+fi
+
 case "$METHOD" in
     ""|get|GET)
         case "$ACTION" in

@@ -136,6 +136,10 @@ static char g_current_url[PATH_BUF] = "";
 /* POST body stashed by the post: request branch for do_fetch's curl
  * config writer (cleared after each fetch). */
 static char g_post_body[8192] = "";
+/* Multipart upload plan (2026-10-08): "<name>=<path>" entries joined by
+ * \x1f, set from an `upload:` request line and consumed by the curl
+ * config writer. Empty means "no files, ordinary urlencoded body". */
+static char g_multipart[PATH_BUF * 4] = "";
 
 static void path_join(char *out, size_t outsz, const char *a, const char *b) {
     snprintf(out, outsz, "%s/%s", a, b);
@@ -200,6 +204,26 @@ static void html_decode_entities(char *s) {
 }
 
 static void collapse_ws(char *s);
+
+/* Percent-decode in place-safe fashion (2026-10-08, multipart upload).
+ * The submit script urlencodes the ordinary fields; curl's `form` option
+ * does its OWN encoding, so handing it the still-encoded string would
+ * double-encode every value. Decode before it reaches the config.
+ * '+' means space in an urlencoded string, per application/x-www-form-urlencoded. */
+static void url_decode(const char *in, char *out, size_t outsz) {
+    size_t o = 0;
+    for (const char *p = in; *p && o + 1 < outsz; p++) {
+        if (*p == '+') { out[o++] = ' '; continue; }
+        if (*p == '%' && isxdigit((unsigned char)p[1]) && isxdigit((unsigned char)p[2])) {
+            char hex[3] = { p[1], p[2], 0 };
+            out[o++] = (char)strtol(hex, NULL, 16);
+            p += 2;
+            continue;
+        }
+        out[o++] = *p;
+    }
+    out[o] = 0;
+}
 static void strip_pipes(char *s);
 
 /* Sprite-grid item caption: longer than the old 22-char cut, entities
@@ -671,7 +695,6 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                 const char *body = skip_named_element(p, "select");
                 if (in_form && sname[0]) {
                     const char *op = sel_end + 1;
-                    int first_opt = 1;
                     while (op < body) {
                         if (strncasecmp(op, "<option", 7) == 0 && !isalnum((unsigned char)op[7])) {
                             const char *oend = strchr(op, '>');
@@ -711,7 +734,6 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                                         oval[0] ? oval : olab, olab[0] ? olab : oval,
                                         selected ? 1 : 0);
                             }
-                            first_opt = 0;
                             op = oclose ? oclose + 9 : oend + 1;
                             continue;
                         }
@@ -757,6 +779,20 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                         int is_checked = tag_attrval(p, tag_end, "checked", checked, sizeof(checked));
                         fprintf(out, "INPUT|%s|%s|%s|%s\n", name, type,
                                 is_checked ? "checked" : "", val[0] ? val : "on");
+                    }
+                } else if (in_form && !strcmp(type, "file")) {
+                    /* <input type=file> (2026-10-08): the control itself is
+                     * a FILE row, not an INPUT row. It has no text value to
+                     * type - the path arrives from the house file-explorer
+                     * picker (fe-pick.sh), which the row's action opens.
+                     * accept/multiple are carried for the picker and for
+                     * submit's multipart decision. */
+                    if (name[0]) {
+                        char acc[256] = "", mul[8] = "";
+                        tag_attrval(p, tag_end, "accept", acc, sizeof(acc));
+                        int multi = tag_attrval(p, tag_end, "multiple", mul, sizeof(mul)) > 0;
+                        strip_pipes(acc);
+                        fprintf(out, "FILE|%s|%s|%d\n", name, acc, multi ? 1 : 0);
                     }
                 } else if (in_form && !strcmp(type, "hidden")) {
                     /* Hidden defaults ride page.state untouched to submit
@@ -3715,7 +3751,92 @@ static void do_fetch(const char *url_in, int record_history) {
             fputc(*u, uf);
         }
         fprintf(uf, "\"\n");
-        if (g_post_body[0]) {
+        if (g_multipart[0]) {
+            /* Multipart (2026-10-08). curl's config syntax takes one
+             * `form` / `form-file` per line; both imply POST. The ordinary
+             * fields ride as urlencoded text parts so the server sees the
+             * same field names it would for a normal form post, and each
+             * uploaded file rides as form-file = "<name>=@<path>".
+             * Values are written verbatim into the config (paths come
+             * from our own picker), but " and \ are still escaped so a
+             * path can never break out of the quoted value. */
+            /* urlencoded body: split name=value pairs into real parts.
+             * A name that is ALSO an uploaded file is SKIPPED here. curl
+             * lets the first `form`/`form-file` for a name win, so
+             * emitting both made the PATH the surviving value and the
+             * server received `"doc": "/tmp/upload-me.txt"` as a text
+             * field with an empty "files" - an upload that looked like
+             * it worked and stored nothing. */
+            if (g_post_body[0]) {
+                const char *b = g_post_body;
+                while (*b) {
+                    const char *amp = strchr(b, '&');
+                    size_t seg = amp ? (size_t)(amp - b) : strlen(b);
+                    char kv[2048];
+                    if (seg >= sizeof(kv)) seg = sizeof(kv) - 1;
+                    memcpy(kv, b, seg); kv[seg] = 0;
+                    /* kv is urlencoded name=value; hand it to curl as a
+                     * text part and let curl do its own encoding. */
+                    char *eq = strchr(kv, '=');
+                    if (eq) {
+                        *eq = 0;
+                        /* percent-decode the name (curl re-encodes names) */
+                        char nm[512];
+                        url_decode(kv, nm, sizeof(nm));
+                        /* is this name one of the uploads? */
+                        int is_file = 0;
+                        {
+                            char mwork[PATH_BUF * 4];
+                            snprintf(mwork, sizeof(mwork), "%s", g_multipart);
+                            for (char *seg2 = mwork; ; ) {
+                                char *n2 = strchr(seg2, '\x1f');
+                                if (n2) *n2 = 0;
+                                char *e2 = strchr(seg2, '=');
+                                if (e2) { *e2 = 0; if (!strcmp(seg2, nm)) is_file = 1; }
+                                if (!n2) break;
+                                seg2 = n2 + 1;
+                            }
+                        }
+                        if (!is_file) {
+                            char val[2048];
+                            url_decode(eq + 1, val, sizeof(val));
+                            fprintf(uf, "form = \"%s=%s\"\n", nm, val);
+                        }
+                    }
+                    if (!amp) break;
+                    b = amp + 1;
+                }
+            }
+            /* the files themselves */
+            {
+                char work[PATH_BUF * 4];
+                snprintf(work, sizeof(work), "%s", g_multipart);
+                for (char *seg = work; ; ) {
+                    char *nxt = strchr(seg, '\x1f');
+                    if (nxt) *nxt = 0;
+                    char *eq = strchr(seg, '=');
+                    if (eq && eq[1]) {
+                        *eq = 0;
+                        /* `form = "name=@path"`, NOT `form-file`. Measured
+                         * on this box's curl 7.88.1: `form-file` in a config
+                         * file is accepted and then SILENTLY DROPPED - the
+                         * request goes out with no file at all and the
+                         * server reports an empty "files". The `@` prefix
+                         * on a plain `form` is the spelling that actually
+                         * uploads. Same meaning, one fewer way to look
+                         * successful while shipping nothing. */
+                        fprintf(uf, "form = \"%s=@", seg);
+                        for (const char *u = eq + 1; *u; u++) {
+                            if (*u == '"' || *u == '\\') fputc('\\', uf);
+                            fputc(*u, uf);
+                        }
+                        fprintf(uf, "\"\n");
+                    }
+                    if (!nxt) break;
+                    seg = nxt + 1;
+                }
+            }
+        } else if (g_post_body[0]) {
             /* data = implies POST in curl config syntax. Same escaping. */
             fprintf(uf, "data = \"");
             for (const char *u = g_post_body; *u; u++) {
@@ -3938,6 +4059,64 @@ static void handle_request(void) {
         stack_clear(g_forward_path);
         g_post_body[0] = 0;
         do_fetch(target, 1);
+    } else if (strncmp(line, "upload:", 7) == 0) {
+        /* Multipart upload with real files (2026-10-08). Line shape is
+         *   upload:<action-url><TAB><url-encoded body><TAB><name>=<path>...
+         * written by nb_write_submit.sh when any committed FILE value is
+         * an existing regular file. The encoded body carries the ordinary
+         * fields; each name=path pair becomes a curl `form` (text) +
+         * `form-file` (the bytes), so the server receives the FILE, not
+         * the path string. */
+        char target[PATH_BUF];
+        const char *rest = line + 7;
+        const char *tab1 = strchr(rest, '\t');
+        if (!tab1) { publish_status("error: malformed upload"); return; }
+        size_t ulen = (size_t)(tab1 - rest);
+        if (ulen >= sizeof(target)) ulen = sizeof(target) - 1;
+        memcpy(target, rest, ulen); target[ulen] = 0;
+
+        /* clear the stash, then fill it with the multipart plan */
+        g_post_body[0] = 0;
+        /* tab2 = body, then repeated TAB name=path */
+        const char *tab2 = strchr(tab1 + 1, '\t');
+        if (tab2) {
+            size_t blen = (size_t)(tab2 - (tab1 + 1));
+            if (blen >= sizeof(g_post_body)) blen = sizeof(g_post_body) - 1;
+            memcpy(g_post_body, tab1 + 1, blen); g_post_body[blen] = 0;
+            const char *p = tab2 + 1;
+            while (*p) {
+                const char *nl = strchr(p, '\n');
+                size_t l = nl ? (size_t)(nl - p) : strlen(p);
+                if (l > 1 && *p != '=') {
+                    char pair[PATH_BUF * 2];
+                    if (l >= sizeof(pair)) l = sizeof(pair) - 1;
+                    memcpy(pair, p, l); pair[l] = 0;
+                    char *eq = strchr(pair, '=');
+                    if (eq) {
+                        *eq = 0;
+                        /* files are joined with \x1f so one request can
+                         * carry several, and the curl writer below turns
+                         * each into a form-file entry. */
+                        if (!g_multipart[0]) snprintf(g_multipart, sizeof(g_multipart), "%s=%s", pair, eq + 1);
+                        else {
+                            size_t ml = strlen(g_multipart);
+                            snprintf(g_multipart + ml, sizeof(g_multipart) - ml, "\x1f%s=%s", pair, eq + 1);
+                        }
+                    }
+                }
+                if (!nl) break;
+                p = nl + 1;
+            }
+        }
+        stack_clear(g_forward_path);
+        if (g_current_url[0]) {
+            char resolved[PATH_BUF];
+            resolve_url(g_current_url, target, resolved, sizeof(resolved));
+            snprintf(target, sizeof(target), "%s", resolved);
+        }
+        do_fetch(target, 1);
+        g_post_body[0] = 0;
+        g_multipart[0] = 0;
     } else if (strncmp(line, "post:", 5) == 0) {
         /* Milestone 4 slice 2: POST form submission. Line shape is
          * post:<action-url><TAB><url-encoded body> (written by
@@ -4702,6 +4881,56 @@ static void write_ui_projection(void) {
                     uisan(rest, t, sizeof(t));
                     UI_PUT("c_%d_kind=title\nc_%d_is_title=1\nc_%d_text=%s\n", rc, rc, rc, t);
                     if (click_action[0]) UI_PUT("c_%d_sel=%s\nc_%d_click_action=%s", rc, pending_sel, rc, click_action);
+                } else if (strcmp(kind, "FILE") == 0) {
+                    /* FILE|<name>|<accept>|<multiple>
+                     * Not an editable field - there is no text to type. The
+                     * row opens the house file-explorer and commits the
+                     * chosen ABSOLUTE PATH to the fields file; submit then
+                     * sees an existing file and sends multipart. Label
+                     * shows the live pick so the row is honest about what
+                     * will actually be uploaded. */
+                    char *q[3] = {"", "", ""};
+                    q[0] = rest;
+                    for (int qi = 0; qi < 2; qi++) {
+                        char *b = strchr(q[qi], '|');
+                        if (!b) break;
+                        *b = 0; q[qi + 1] = b + 1;
+                    }
+                    if (!q[0][0]) continue;
+                    char nm[256], acc[256], lab_s[900];
+                    uisan(q[0], nm, sizeof(nm));
+                    uisan(q[1], acc, sizeof(acc));
+                    char cur[PATH_BUF] = "";
+                    {
+                        char cf[PATH_BUF];
+                        snprintf(cf, sizeof(cf), "%s/#.desktop/network_browser_fields.txt", g_house);
+                        FILE *ff = fopen(cf, "r");
+                        if (ff) {
+                            char ln[PATH_BUF + 512];
+                            while (fgets(ln, sizeof(ln), ff)) {
+                                size_t L = strlen(ln);
+                                while (L > 0 && (ln[L-1] == '\n' || ln[L-1] == '\r')) ln[--L] = 0;
+                                char *t = strchr(ln, '\t');
+                                if (!t) continue;
+                                *t = 0;
+                                if (!strcmp(ln, nm)) snprintf(cur, sizeof(cur), "%s", t + 1);
+                            }
+                            fclose(ff);
+                        }
+                    }
+                    if (cur[0]) {
+                        const char *base = strrchr(cur, '/');
+                        snprintf(lab_s, sizeof(lab_s), "%s%s: %s",
+                                 acc[0] ? acc : nm, cur[0] ? " (picked)" : "", base ? base + 1 : cur);
+                    } else {
+                        snprintf(lab_s, sizeof(lab_s), "%s: [choose file]",
+                                 acc[0] ? acc : nm);
+                    }
+                    char nm_sq[PATH_BUF];
+                    shell_escape_squote(nm, nm_sq, sizeof(nm_sq));
+                    UI_PUT("c_%d_kind=file\nc_%d_is_file=1\nc_%d_text=%s\n", rc, rc, rc, lab_s);
+                    UI_PUT("c_%d_action='%s/ops/nb_write_file.sh' 'file' '%s'\n",
+                            rc, g_package_dir, nm_sq);
                 } else if (strcmp(kind, "SELECT") == 0) {
                     /* SELECT|<name>|<value>|<label>|<selected>
                      * One clickable row per option. Choosing it appends

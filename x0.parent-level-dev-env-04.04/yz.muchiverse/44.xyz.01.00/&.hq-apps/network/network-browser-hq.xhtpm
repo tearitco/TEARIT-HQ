@@ -91,6 +91,11 @@
                chosen. Picking one appends name=value to the fields file,
                exactly like a text input, so submit needs no new concept. -->
           <item id="cs${c.#}" class="nb-selopt" label="${c.text}" action="${c.action}" show="${c.is_selopt}"/>
+          <!-- 2026-10-08: <input type=file>. Opens the house file-explorer
+               and commits the chosen absolute path to the fields file;
+               submit sends multipart when any committed value is a real
+               file. Label shows the live pick, never a fake one. -->
+          <item id="cf${c.#}" class="nb-file" label="${c.text}" action="${c.action}" show="${c.is_file}"/>
           <item id="cm${c.#}" class="quiet sprite-flow" label="${c.label}" sprite="${c.sprite}" action="${c.action}"  show="${c.is_media}"/>
           <!-- V3 video (nb_video_play): live canvas row inside the content
                scrolllist. The op writes surface.raw + surface.receipt.txt

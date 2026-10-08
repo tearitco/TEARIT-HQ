@@ -51,6 +51,8 @@ sidebar { width: 200px; background-color: #1a1a1a; color: #cccccc; }
 .nb-code { color: #a8c8a8; font-family: DejaVu Sans Mono; }
 /* 2026-10-07: <select> option rows. */
 .nb-selopt { color: #d8c8a8; }
+/* 2026-10-08: <input type=file> picker rows. */
+.nb-file { color: #c8a8d8; }
 .nb-console-text { color: #8fbf8f; }
 .page-title { color: #eeeeee; }
 

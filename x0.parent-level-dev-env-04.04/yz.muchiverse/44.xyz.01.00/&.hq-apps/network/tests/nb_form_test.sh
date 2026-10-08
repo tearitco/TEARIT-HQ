@@ -38,7 +38,7 @@ run() {
           "$HV/#.desktop/network_browser_checks.txt"
     [ -n "${1:-}" ] && printf '%b' "$1" > "$HV/#.desktop/network_browser_fields.txt"
     [ -n "${2:-}" ] && printf '%b' "$2" > "$HV/#.desktop/network_browser_checks.txt"
-    sh "$PKG/ops/nb_write_submit.sh" submit "https://httpbin.org/get" get "$PKG" "$HV" >/dev/null 2>&1
+    sh "$PKG/ops/nb_write_submit.sh" submit "https://httpbin.org/get" "${METHOD:-get}" "$PKG" "$HV" >/dev/null 2>&1
     NOTE="$(tail -1 "$HV/#.desktop/network_browser_console.txt" 2>/dev/null)"
     REQ="$(tail -1 "$HV/#.desktop/network_browser_request.txt" 2>/dev/null)"
 }
@@ -52,6 +52,30 @@ expect_blocked() {
     esac
     [ -n "$REQ" ] && { echo "FAIL: $1 - blocked but a request was still written: $REQ"; FAIL=$((FAIL+1)); return; }
     echo "PASS: $1"; PASS=$((PASS+1))
+}
+
+# expect_post_type <label> <fields> <method> <expected request prefix>
+# Runs submit and checks the request line's verb - the whole point of the
+# file work is WHICH verb comes out.
+expect_post_type() {
+    METHOD="$3"
+    run "$2" ""
+    METHOD=""
+    case "$REQ" in
+        "$4"*) echo "PASS: $1"; PASS=$((PASS+1)) ;;
+        *) echo "FAIL: $1 - request '$(echo "$REQ" | cut -c1-60)' is not '$4'"; FAIL=$((FAIL+1)) ;;
+    esac
+}
+
+# expect_upload_has <label> <fields> <method> <needle>
+expect_upload_has() {
+    METHOD="$3"
+    run "$2" ""
+    METHOD=""
+    case "$REQ" in
+        upload:*"$4"*) echo "PASS: $1"; PASS=$((PASS+1)) ;;
+        *) echo "FAIL: $1 - upload line lacks '$4'"; FAIL=$((FAIL+1)) ;;
+    esac
 }
 
 # expect_submit <label> <fields> [<checks-file-contents>] <needle>
@@ -153,6 +177,46 @@ expect_submit "chosen option beats the page default"        'col\tred\n'        
 expect_submit "option text becomes the value when no attr"  'col\tNoValueText\n'   "" "col=NoValueText"
 expect_submit "two selects on one page both submit"         'col\tred\nsz\tl\n'     "" "col=red&sz=l"
 expect_submit "later pick for one select replaces earlier"  'col\tred\ncol\tgrn\n'  "" "col=grn"
+
+cat > "$STATE" <<'EOF'
+URL|file:///tmp/form-types.html
+TITLE|Type validation
+INPUT|em|email||Email|0
+INPUT|hm|url||Home|0
+INPUT|qt|number||Qty|0
+INPUT|nm|text||Name|1
+INPUT|note|textarea||Notes|0
+BUTTON|https://httpbin.org/get|get|Go
+EOF
+
+# <input type=file>: the picked path rides the fields file, and submit
+# escalates to `upload:` ONLY when the committed value is a real file.
+cat > "$STATE" <<'EOF'
+URL|file:///tmp/form-file.html
+TITLE|Upload
+INPUT|cap|text|my caption||0
+FILE|doc|.txt|0
+BUTTON|https://httpbin.org/post|post|Send
+EOF
+UPFILE="$(mktemp)"
+printf 'hello upload payload\n' > "$UPFILE"
+cat > "$STATE" <<EOF
+URL|file:///tmp/form-file.html
+TITLE|Upload
+INPUT|cap|text|my caption||0
+FILE|doc|.txt|0
+BUTTON|https://httpbin.org/post|post|Send
+EOF
+echo "== file input"
+expect_post_type "no pick stays an ordinary post"    ""                          "post"        "post:"
+expect_post_type "pick escalates to upload"          "doc\t$UPFILE\n"           ""            "upload:"
+expect_post_type "text field rides the upload too"   "doc\t$UPFILE\ncap\tx y\n" ""            "upload:"
+expect_post_type "path that is not a file stays post" "doc\t/tmp/no-such-file\n" "post"        "post:"
+expect_post_type "GET method + file is forced POST"   "doc\t$UPFILE\n"           "get"         "upload:"
+# a GET with a file must not quietly degrade to a query string: that
+# uploads nothing while looking like it worked
+expect_upload_has "upload line names the file"        "doc\t$UPFILE\n"           ""            "$UPFILE"
+rm -f "$UPFILE"
 
 cat > "$STATE" <<'EOF'
 URL|file:///tmp/form-types.html
