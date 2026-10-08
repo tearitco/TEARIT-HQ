@@ -53,6 +53,32 @@ fi
 cat "$DESKTOP_DIR/network_browser_fields.txt" 2>/dev/null >> "$MERGED_ACCUM"
 MERGED="$MERGED_ACCUM"
 CLEANUP_MERGED=1
+# Required-field gate: every INPUT text/search/textarea row flagged
+# required in the live page.state must have a non-empty committed value,
+# else refuse with a console note (never send a knowingly-invalid form).
+REQ_MISSING=""
+while IFS= read -r line; do
+    kind="${line%%|*}"
+    [ "$kind" = "INPUT" ] || continue
+    rest="${line#*|}"
+    nm="${rest%%|*}"
+    typ="$(printf '%s' "$rest" | awk -F'|' '{print $2}')"
+    req="$(printf '%s' "$rest" | awk -F'|' '{print $5}')"
+    case "$typ" in text|search|textarea) ;; *) continue ;; esac
+    [ "$req" = "1" ] || continue
+    val=""
+    if [ -f "$DESKTOP_DIR/network_browser_fields.txt" ]; then
+        val="$(awk -F'\t' -v n="$nm" '$1==n {v=$2} END {print v}' "$DESKTOP_DIR/network_browser_fields.txt")"
+    fi
+    if [ -z "$val" ]; then
+        REQ_MISSING="$REQ_MISSING $nm"
+    fi
+done < "$DESKTOP_DIR/network_browser_page.state.txt"
+if [ -n "$REQ_MISSING" ]; then
+    printf 'submit: required field(s) empty:%s\n' "$REQ_MISSING" >> "$DESKTOP_DIR/network_browser_console.txt"
+    [ -n "$CLEANUP_MERGED" ] && rm -f "$MERGED"
+    exit 0
+fi
 if [ -f "$MERGED" ]; then
     if command -v python3 >/dev/null 2>&1; then
         PAIRS="$(python3 -c "

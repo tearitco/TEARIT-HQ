@@ -665,7 +665,11 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                 strip_pipes(name); strip_pipes(val); strip_pipes(ph);
                 if (!type[0]) snprintf(type, sizeof(type), "%s", "text");
                 if (in_form && (!strcmp(type, "text") || !strcmp(type, "search"))) {
-                    if (name[0]) fprintf(out, "INPUT|%s|%s|%s|%s\n", name, type, val, ph);
+                    if (name[0]) {
+                        char rq[8] = "";
+                        int req = tag_attrval(p, tag_end, "required", rq, sizeof(rq));
+                        fprintf(out, "INPUT|%s|%s|%s|%s|%d\n", name, type, val, ph, req ? 1 : 0);
+                    }
                 } else if (in_form && (!strcmp(type, "checkbox") || !strcmp(type, "radio"))) {
                     /* Toggle controls ride INPUT rows with the checked
                      * state folded in; the projector renders an item row,
@@ -4630,9 +4634,9 @@ static void write_ui_projection(void) {
                     /* INPUT|name|type|value|placeholder -> editable cli_io.
                      * Committing the field appends name=value to the fields
                      * file (see nb_write_field.sh); submit reads it back. */
-                    char *f[4] = {"", "", "", ""};
+                    char *f[5] = {"", "", "", "", ""};
                     f[0] = rest;
-                    for (int fi = 0; fi < 3; fi++) {
+                    for (int fi = 0; fi < 4; fi++) {
                         char *b = strchr(f[fi], '|');
                         if (!b) break;
                         *b = 0; f[fi + 1] = b + 1;
@@ -4643,6 +4647,10 @@ static void write_ui_projection(void) {
                     uisan(f[3], ph, sizeof(ph));
                     uisan(ph[0] ? ph : nm, lab_s, sizeof(lab_s));
                     if (!nm[0]) continue;
+                    if (f[4][0] == '1') {
+                        size_t ll = strlen(lab_s);
+                        if (ll + 3 < sizeof(lab_s)) { lab_s[ll] = ' '; lab_s[ll+1] = '*'; lab_s[ll+2] = 0; }
+                    }
                     if (!strcmp(f[1], "checkbox") || !strcmp(f[1], "radio")) {
                         /* Toggle item: [x]/[ ] + name. Live state comes
                          * from the checks file (toggled), falling back to
