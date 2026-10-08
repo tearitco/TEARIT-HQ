@@ -103,7 +103,7 @@ involving live windows or shared files.*
     the one dead component. (b) macOS has no `setsid`; a `system("setsid ... &")` launcher reports rc=0 and starts nothing: verify by process name
     and a state-file timestamp, never by a launcher's return code. (c) A worker's report is a claim: the manager re-runs the build and the harness
     fresh, checks the diff scope and greps it for secrets, before merging. (d) Worker worktrees are created by the manager from the CURRENT tip.
-    Full record, exact commands and the harness locations table: `REMOTE-HOUSE-RESTART-AND-DELEGATION-EXPERIENCE-2026-10-07.md`.
+    (e) macOS: no `setsid`, no `/proc`, no `FTW_SKIP_SUBTREE`, clang rejects unknown `-Wno-*`, Apple emoji font path differs: section E of the record lists all ten problems found on 2026-10-07 with their fixes. Full record, exact commands and the harness locations table: `REMOTE-HOUSE-RESTART-AND-DELEGATION-EXPERIENCE-2026-10-07.md`.
 
 ## Verification discipline (non-negotiable)
 

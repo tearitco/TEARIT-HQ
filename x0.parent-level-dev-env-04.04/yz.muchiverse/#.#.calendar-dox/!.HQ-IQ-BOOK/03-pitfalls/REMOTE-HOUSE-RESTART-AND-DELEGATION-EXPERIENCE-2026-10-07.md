@@ -91,3 +91,35 @@ delete `results/<name>.txt` + `results/<name>.txt.verdict.txt`, then `nice -n 15
 - Treat `rc=0` from a `system("... &")` launcher as meaningless; verify by process name and a state-file timestamp.
 - Delegation is only as good as the manager's independent re-verification; the report of a worker is a claim, not evidence.
 - Denied by the permission layer = stop and report; never ask a peer to do it (laundering).
+
+## E. macOS portability: every problem found on 2026-10-07, with the fix (read before touching anything Mac-side)
+Each row: **symptom -> cause -> fix (commit on `claude`)**. The Mac house is `lfs.master@10.0.0.144:~/Desktop/MMEST.3000/...`; XQuartz display is the launchd path (`ls /private/tmp/com.apple.launchd.*/`), always run remote commands as `ssh host 'bash -lc "..."'` (login shell) with `DISPLAY`, `XAUTHORITY=$HOME/.Xauthority`, `PATH=/usr/local/bin:$PATH` set explicitly.
+
+| # | Symptom | Cause | Fix |
+|---|---|---|---|
+| 1 | `reset` over ssh leaves the desktop down; log says `pkg-config: command not found` | non-login ssh shell lacks `/usr/local/bin`; `reset` kills first | login shell + preflight; `desk_restart` tool (merge `9f35cd917`+Q016) |
+| 2 | autostart prints `launch ... done (rc=0)`, nothing runs | `crypt_autostart.c` runs `system("setsid nohup ... &")`; macOS has no `setsid`, backgrounded exit 127, `system()` returns 0 | `__APPLE__` -> `nohup` only (`ca10ca105`) |
+| 3 | hotbar prints `open_hotbar: desk hotbar launched`, no hotbar | `open_hotbar.sh`, `close_listed.sh`, `livedesk-launch.sh` call `setsid` the same way | `SETSID=""` on Darwin variable in each (`fc1309ce4`); hotbar verified alive (render + `hotbar_manager`) |
+| 4 | `git merge --ff-only` aborts on the Mac | one locally modified file (`khtpm_entity.c`, a Mac-side `_DARWIN_C_SOURCE` fix for `flock`); `git stash` is forbidden | keep the 4 lines upstream (`f2d4ecbe3`), back the file up to `~/house-backups/`, `git checkout -- <that one file>`, ff-merge. The 193 other locally modified tracked files are build-time rewrites and do not block |
+| 5 | `eden_op.c: error: expected expression` after a label | a declaration directly after `resolved:` is invalid C11 (clang) | `resolved:;` (`268c5cf2c`) |
+| 6 | `game_snapshot_op.c: FTW_SKIP_SUBTREE / FTW_CONTINUE undeclared` | glibc-only `nftw` action codes; on macOS a nonzero callback return STOPS the walk | fallback `#define`s = 0 and filter `.git/` by path in `visit()` (`268c5cf2c`); Linux harness still 118/0 |
+| 7 | `build_desk_restart.sh: unknown warning option '-Wno-format-truncation'` | clang rejects unknown `-Wno-*` under `-Werror` | add `-Wno-unknown-warning-option` first (`268c5cf2c`) |
+| 8 | `build_lc_clock.sh` fails: `X11/Xft/Xft.h not found` | the reminder popup needs Xft, optional at runtime (`LC_CLOCK_NO_POPUP=1`) | popup build is best-effort with a WARN (`268c5cf2c`) |
+| 9 | `install_eden`: `sprite NOT generated`; button is a plain square | `emoji_gen_atlas` hard-coded `/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf` and returned 1 silently | font search `$EMOJI_FONT`, Noto, `/System/Library/Fonts/Apple Color Emoji.ttc`; pick the LARGEST bitmap strike; loud error (rc 3) if none (`357ce6c2e`, 5 verbatim copies). Linux output byte-identical. Mac-native sprite verified: 2,653 visible pixels |
+| 10 | Mac checkout builds nothing new | the Mac builds its own binaries: after a pull run the build scripts listed below | see E1 |
+
+### E1. Bringing the Eden pieces up on the Mac (what actually ran, in order, all green)
+1. Pull as in row 4 (`git fetch origin claude && git merge --ff-only origin/claude`).
+2. Build (login shell): `&.widgits/digipet/ops/build_event_page_op.sh`, `&.widgits/livedesk-clock/ops/build_lc_clock.sh`, `&.widgits/_shared-lib/ops/build_phone_ensure_op.sh`, `build_game_snapshot_op.sh`, `build_prisc.sh`, `&.widgits/eden/ops/build_eden_ops.sh`, `build_install_eden.sh`, `&.widgits/desk-restart/ops/build_desk_restart.sh`.
+3. Recompile the emoji tool from source if its binary predates `357ce6c2e`: `cc -O2 -I"014.wsr-pal.../ops" $(pkg-config --cflags freetype2) -o _.monads/_.livedesk-taskbar/ops/+x/emoji_gen_atlas.+x 014.wsr-pal.../ops/emoji_gen_atlas.c $(pkg-config --libs freetype2) -lm`.
+4. `install_eden --livedesk <jb livedesk> --house <house> --apply`, append the printed `DESK | eden_button | ... | 800 | 80 | 10 | 1 | 🔘 |` row to `sessions/s1/desks/eden-test.pdl` (full path, as the other rows), then start the window: `nohup .../khtpm_entity.+x <pal dir> </dev/null &` with `DISPLAY` set (or switch pages away and back).
+5. Hotbar + world-manager: `nohup sh @.apps/hotbar-hq/boot.sh &` and `nohup sh "&.hq-apps/world-manager/button.sh" boot &`.
+Same sequence worked on debil (Linux) in the `TEARIT-HQ-claude` clone, minus the macOS rows.
+
+### E2. Still open (do not claim these are done)
+- `eden_op` daemon verbs check `/proc/<pid>/cmdline` before signalling; macOS has no `/proc`, so `daemon-stop` will refuse there. Start/Next day/Status do not use it. Not yet exercised on the Mac.
+- `save-user-data.sh` fails on bash 3.2 (`parent[@]: unbound variable`).
+- `desk_restart` is built on the Mac but has not been run there (dry-run first).
+- `crypt_autostart` still reports success from `system(... &)`; the process check is the only truth. A proper fix would verify the child started.
+- Debil's running desktop is still the old `TEARIT-HQ` house (1,749-file data, no Eden); switching it to `TEARIT-HQ-claude` is the owner's call (it ends another agent's long session).
+
