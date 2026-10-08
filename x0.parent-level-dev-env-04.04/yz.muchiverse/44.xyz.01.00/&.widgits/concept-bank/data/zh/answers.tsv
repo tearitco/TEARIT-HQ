@@ -134,3 +134,310 @@ b185886a7b533e4ba3f4a4092cc1560e335be81e31808477a2b04e7bf765a2b8	zh	describe	描
 ca26989e091223e9088df567edc3558af2cf5410ff31de86a28d78bd4788ab30	zh	author_new_node	创建新节点	chuàng jiàn xīn jié diǎn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 63c5d56e1f1812d349bfca6bef8768c1495abb35568b7e10084c4c107d88ae15	zh	Sodium Hydroxide	氢氧化钠	qīng yǎng huà nà	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
 793cfd52d01d0282b2efa99ea6fa7c5ce36d530c33b860ec004862b7063589fc	zh	Pyridine	吡啶	bǐ dìng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+4403ae6fcb14f2dbb86669d65f8c0ec34e42d3d59a7e176e90ef3a03a395a429	zh	energy	能量	néng liàng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+ecd632ee3589970dcc25adffaa3b8da783639f1b5e18e62de10b339b4595de52	zh	force	力	lì	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+9ebf78ebd33c75d973688b6c7589f2318d771b294d0c47240d375a926f341316	zh	motion	运动	yùn dòng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+2986e6bdc50385abe08056374939050ef0ecc743ff6c5cacda921bb423472811	zh	acceleration	加速度	jiā sù dù	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+d23e76ef421e4b83645a7fe743987cb65a5302d25f5ec90b0166046f7baa4ce0	zh	gravity_constant	重力常数	zhòng lì cháng shù	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+124cc4736f1fb2d4382cc7e586c7a98b3bb7c1e3820264aa8e0f7d9bb40143cc	zh	kinetic_energy	动能	dòng néng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+cf2a625a8cf7de78f2de358a5461d297489b6d844bd40e2a4d1184d92cf68b12	zh	mass	质量	zhì liàng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+96e8e47136c5e87a86bbbd93c083b2f62ec002679c9de7e81aedc38f7f509c12	zh	velocity	速度	sù dù	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+a0fef9c5b183b362128c5c3aca1a3d468410af84626302e683b8d5c851358288	zh	Hydrogen	氢	qīng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+2081edf6ab3c7d033da1922ca1ce93f2f2c132e65b0a1f5c64d815967b1ff248	zh	Helium	氦	hài	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+3aaad6fdc9ce4b14f56c599b3cfa04a8a1c5b0d6c7246ff6f8395fab5fed38f0	zh	Lithium	锂	lǐ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+b383dd7ca21f39893bfb5af81e052b97c05e116db432333eb60fdd4a2180a709	zh	Beryllium	铍	pí	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+cd72aa009e2e2453f6cde9418e6464d3d9180a3d876687b7cd6d65439c215d50	zh	Boron	硼	péng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+6afe88bbf681486388c99a9a7ad2dad40de89f78fb15a4eabb674a6057c29d86	zh	Carbon	碳	tàn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+fb235e9830a028380fb7b09de2889172f33e4e3bc67c3e5215994bccf70a4b7c	zh	Nitrogen	氮	dàn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+84e54df095a968e093eeb3a4659c52502df07f9a005d1b8bffabe7d0830f3dda	zh	Oxygen	氧	yǎng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+85f1a9b337b93c33a3d5b1a155912432e4f12ae4167cd91530339b3ee77a04b7	zh	Fluorine	氟	fú	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+c7e07d7120ab201c3cb75316b59fcdee709e0f11a6b46a3f191056e71d08416d	zh	Neon	氖	nǎi	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+cce1edf9a4ff559a2c3f29dd7ff4c006226ee196efe221dacbea3178db8ed7be	zh	Sodium	钠	nà	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+700be6966e61a8d1167db53711ccbe18b05e8617b35ded4b18885892780062ab	zh	Magnesium	镁	měi	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+f999b3e512d7a1543fa012d6ca75d50ab073a123707fcbffea921fd6ce27b69c	zh	Aluminum	铝	lǚ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+a10aadbccab22bc2df81960dacd52edc9826801d9304b20186567a8bc1f5db8e	zh	Silicon	硅	guī	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+eb8dd04936545c26317d34a5a05e9b5d5328c674dfc05a5033b8a321ced1c1c4	zh	Phosphorus	磷	lín	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+36a8b4130443a96b5e77dc079b4d7eacbd6b65a5f188d993b323c1ff37629218	zh	Sulfur	硫	liú	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+1217b3dae9e6de871a430a32e7ff7f95f426fc792b80d41a7738c20f2b938090	zh	Chlorine	氯	lǜ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+aafd7a47bedff94c2366e0e087a82f778d9b9391eac5112ec3e67b9f6ec22aaf	zh	Argon	氩	yà	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+123d9b303025a4f184069ceaafe58cc848107d08bf46c94b9ebe565dfa20a5ac	zh	Potassium	钾	jiǎ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+ffa276e9cd9258bd4e7716e19e3a7751566adc37444e1acf8fcc443684178c82	zh	Calcium	钙	gài	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+b17fcd73e12a67911bee81654f91a9b87361d7f43741d69a4bc6771201e769ba	zh	Scandium	钪	kàng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+9d9ec88bc22f867d735d903b6323f1cb06d81b252c23c8eaf0c98d14e533477d	zh	Titanium	钛	tài	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+779d14524ee6ac8c74f389f7853391efe405ef197ea499c56a71a59292a69bbe	zh	Vanadium	钒	fán	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+10912611479a027e8221c2cc0b542679c010d1b13eac963477606981a9bef3be	zh	Chromium	铬	gè	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+d9bb2b356514dceb106c9f25e285554c93a295007489f8a98d9094bac271f25f	zh	Manganese	锰	měng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+a7fd4087f594d4a691073aee9bc34a35e7c72253f6b87de20178e06d40e444ce	zh	Iron	铁	tiě	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+b22f11e8e7c4e7c6670d6a4686884b23e60513e2d6f1558e5940eb17bab7f869	zh	Cobalt	钴	gǔ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+b0bd8b55404fbc1cd1815acb0938ebb6a0f47550747d7c17a6be843a7a9c8de2	zh	Nickel	镍	niè	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+159fa5ad95c199296dd5859cf39ebd93ea62a1d20a131be421851b14c4209d72	zh	Copper	铜	tóng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+dc2dcafd8bf9bcc4eda977276052490479ba9b882c1c34812346512c8182a7be	zh	Zinc	锌	xīn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+8fc4435fa02342c0996435cca692cb4124d424dd5fee1198704bb580e9fcee05	zh	Gallium	镓	jiā	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+6859706100469c6daa915789581c592452d5fcff011d020cc8de2997a4484b22	zh	Germanium	锗	zhě	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+db83eb0aaa39c90e79430d2419c4ae86410793ce86ed583bfcaa3c5b77cce3b2	zh	Arsenic	砷	shēn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+9642f4e45d7f95011377f79e4b974aeb39a3fc0debc39d872c1395c797f65ccb	zh	Selenium	硒	xī	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+f048ce6fecafefd1207aedf6fdcfc976c26beba14596720e652c9969f974d7e1	zh	Bromine	溴	xiù	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+3b875c480be7a52f220a6cfb5a580a6d3548b8f061f37cabfa2091bb067f2490	zh	Krypton	氪	kè	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+2f2fa0806da0737c3e015a2f083f7b3ee7babc97b9b269b775c9d434a4848361	zh	Rubidium	铷	rú	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+5f8c044486fbd0e6215743097a77cdcb04792a0a13058852d19ec9da413a7e06	zh	Strontium	锶	sī	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+7e4ee0cc95cd3644c14b7628b42de38bafdaf68065e8ae6c4c1ba51943b8ab51	zh	Yttrium	钇	yǐ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+4d4effa9cb44d8a84830ca5d2651521667d9211fc2e5b5ffb4bf23838a0ce204	zh	Zirconium	锆	gào	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+29935670a2e4ff82047a0edc8beddee49b4ab9d57484712f6fcf976ede2f446d	zh	Niobium	铌	ní	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+362ea5452ad9e16413374360fd2b08004878af5b4bc7e83c2a6de631e515db82	zh	Molybdenum	锰	měng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+d35a9f27d78ab3ee24dbe3250b95d7efbe02cdd5474e2c4646b5a337b0a5a6e4	zh	Technetium	锝	dé	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+0e9ee603a07fcff4520f779a9ed0b868818acbfd357e3023b4d37eb8cbf30ab4	zh	Ruthenium	钌	liǎo	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+7b78b4617aca9cc627e75c1792c75d05e8647cc37e93b9a63ded648ce7ad6630	zh	Rhodium	钌	liǎo	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+e30a07004344baea60b67de1710714d7548552052b038730678f77dd8805c3c0	zh	Palladium	钯	bǎ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+b25ed863dc952bba2dba82778bd53a2f6c488a0d06903bc3b8a78c5b3c071be2	zh	Silver	银	yín	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+1b56d38d94c32498fbeb877b682ce2aac939addac948f03440fda44d6b3f474f	zh	Cadmium	镉	gé	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+2c5bc02e993c838e8aa12da42a82e8fd302dc9fd3a6a9f89dd139119c68a7c82	zh	Indium	铟	yīn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+1f88e62ce05a26bdab8ca8d40aaf7d6d1b9150ebd84305d27020cb1b02de9613	zh	Tin	锡	xī	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+5a60e67f3d5cc6a0a705b228224015024a4fcf112b48e68419df965b943a872d	zh	Antimony	锑	tī	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+f3b35943e9e7eb2ae5fffaa5023b5ea420710a486ec2d26fe83621fca89aa984	zh	Tellurium	碲	dì	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+52fd8308d2b1280ec41a1fbe0cf7a6c6c0d1ebc344ffd6574319d5ee9dc70aaa	zh	Iodine	碘	diǎn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+30de3028a212d27ef33d343aff9938144e162e493fc97f6a51223bd5cec9d86c	zh	Xenon	氙	xiān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+dc88ae22076af9ab01b69e8f6a63a228715c5b88a497f52c1096a361f83fbe32	zh	Cesium	铯	sè	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+5b2790867b1be5243505e8bf599aca2e18035cf23921e609b7257a99e71c5a02	zh	Barium	钡	bèi	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+a6bfbad276b5dbd84ddeb51fd92454554e3cf5ea63222c2c767f63b8b52ef67f	zh	Lanthanum	镧	lán	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+9c187f957b214822fb2d4ae23831a001033222e5a0ebf809b56d52a095f7663d	zh	Cerium	铈	shì	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+442d53118eaa4a180badcee6462e06b84896ae7470d310afb7250d3250919e66	zh	Praseodymium	镨	pǔ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+17c90d7b843fd6abfc138444b305b2bc819d5228c181c89d37a74c0b936fdc5b	zh	Neodymium	钕	nǚ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+4c8b1f4909cb24c82490a6b0250f1c3dc8b06629b407d74f9cbdf77927a736c6	zh	Promethium	镨	pǔ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+03c494e9f4b86420b1908471171ce845c2da6ef37d5520678fbc9a5cacf9e998	zh	Samarium	钐	shàn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+59eab6b97c02d3163033606e423b526fac03ab48181670944742971c0430c466	zh	Europium	铕	yǒu	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+387e7c9f62368694b4cb5a2f8ae4060650101b057af95beecdae7c4741e5e502	zh	Gadolinium	钆	gá	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+ee8ffb21f7b9bfdab1d4e65c4771f893539e0e217afc0e81a521aa60e3230506	zh	Terbium	铽	tè	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+fea24bd46b80c676920307a35dca7447845f4ab438952b6cfbdef4ef40701995	zh	Dysprosium	镝	dí	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+54d1650e4c7832d0d1bdd046d19ecaaca50cd50f815e581a398d7032e06541da	zh	Holmium	钬	huǒ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+68ac8bf2150284b08713330c8790aee064c80f73df432b079c4c2866e0298898	zh	Erbium	铒	ěr	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+32c2e51c6643734e6a522fb3cbdf4669000c1a69f6c48b5a864b786f0cb408a0	zh	Thulium	铥	diū	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+bc56c96b32eac55bb172f5ba8d59b6554b20894554103247a41f93329efb6eeb	zh	Ytterbium	镱	yì	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+822f820a0158bd84694fd878f195a3296ba8f0d5a395d0da96fcd20e46c34b6a	zh	Lutetium	镥	lǔ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+632c43e82a241f69988f7ab33ad4e4be29937b4a5f945569405236ab55ab1fcf	zh	Hafnium	铪	hā	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+dd2b1b81e8d1f7c596886c4755b9ef7b43857b13859e639cbc89622697f0e4aa	zh	Tantalum	钽	tǎn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+840a9cb5b8bcff8aee26955d34299de042c9f50030d0b70739df83c6e86cbaa3	zh	Tungsten	钨	wū	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+7982a80b28d91c4d559870f3de6395130bf9c1324a92167d91014fc3ab0920ca	zh	Rhenium	铼	lái	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+4b9c88934510a67ec1a0b70ae27ec531d9ea2e2a2e5352173bea9cf19ec7edde	zh	Osmium	锇	é	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+4264260f697e6750db418186fe34d6b5f0322d8fdf2450f744b93747d1e5911c	zh	Iridium	铱	yī	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+d08bdf3c503a37a54e0f89e76afe5880bcefa77b4e25935960c9f833e08b2b00	zh	Platinum	铂	bó	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+ea7bfe570c9a6cc62549c6c47c5e632e63e3d870401bd5096ad95a047b6fbf5d	zh	Gold	金	jīn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+b31ef510eb383d18580353ab8d0930dc80cc63be38de75d6537b0c95d6c94678	zh	Mercury	汞	gǒng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+e28f1ed795c3bcd2264669fa957ffc4115a84ccc61a304fc64b5707cae6ad882	zh	Thallium	铊	tā	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+f338e3b64560505a20521318a340409947b07201d0a78a217a68a67bdd7f966e	zh	Lead	铅	qiān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+86c49aa846fe650bd47591f808a68ff010e5b7b92357166f6238e75eec0a3a80	zh	Bismuth	铋	bì	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+a8f759780585cefb86f198b5b7fde747680672fbbafdb12495d08b383be871ad	zh	Polonium	钋	pō	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+2a7f6dcc0553232ecb206ec575a2dfc39c59e1c89734423815595eb74fd2dffb	zh	Astatine	砹	ài	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+f57a5e482d11a3299744b5fe58990c86a737089a288073719365ddc1f49b8f6e	zh	Radon	氡	dōng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+00cf1dc14cf8bae803001c5c00ad11ffd0c08c74399a7ceb25b0ed03cbe3d89b	zh	Francium	钫	fāng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+74337075645bb3da30be3718ceee641f38c05e5aa6a8b5fe5e7eae2e49c8c7d6	zh	Radium	镭	léi	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+a7168ccc57a9e56928267d1313591d0d350f5f9ed25f20c3e320fb7ffb3ab463	zh	Actinium	锕	ā	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+54125ea4822d056f3f7b600edf45c601d028c1112d0c6776f0e3ef3315c41500	zh	Thorium	钍	tǔ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+e8a88fd48bce5573478dacf60de9640a1cb493359e66e5793976ed3c14ba9857	zh	Protactinium	镤	pú	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+e0cef560b945b1afa904f828d3fc72c9609defa48207d55f4739023edcc9a2cb	zh	Uranium	铀	yóu	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+eb3119f993a0c3e9dbf4ffcee2535dc8afb1768e75ccedba06a59b9e98a466ac	zh	Neptunium	镎	ná	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+9a8b7054f8ea19378f009857e8453c150f6eee9915737210337854e69a6c37da	zh	Plutonium	钚	bù	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+06ec5a363c89861ff3a25f2117d050676082f54fb39f5b740de411c7c50de41a	zh	Americium	锕	ā	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+fa60ccfc504e982f639f7c95019ba94300a6398c727b5de5b9bf7327b518be39	zh	Curium	锔	jū	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+a371e41178f11c20dbc11dfc786727717275dc1db25f9ef8dbd1cfddf2dc7f38	zh	Berkelium	锫	péi	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+1a0f9fb662f44f836ca9cd525249982b5f859a04950090767a2540e4e81ef8be	zh	Californium	锎	kāi	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+86d84cd1b4d656e09d654b705e08a2d02d93f55dec88aad52dada857a2e04600	zh	Einsteinium	锿	āi	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+077829628396c6554e684cbddcb1d3563cd6edb0aa1edfbaa83b99b9eb3b0544	zh	Fermium	镄	fèi	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+91f3a35ed1b4f68494a99e92fa6404f058861a0380164485d5a0b4efd828c52e	zh	Mendelevium	镆	mò	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+087c84e6a664291fa8a1e812f10954de284cd1c720d65744cd29f4cc53197cf2	zh	Nobelium	诺贝尔	nuò bèi ěr	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+5ba29a23ea4c5026a56fee2d13e48f645b1444f0664f788cbeb9ca537a01a31f	zh	Lawrencium	拉尔恩	lā ěr ēn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+72706687093f04caebb6ca1e9ff2b2816bbf48aacb0b3cdfe8372bc66be32dd7	zh	Rutherfordium	鲁弗	lǔ fú	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+483a5b51fdaa98664c3640c518faec4c301380dea575afadf270824387e97019	zh	Dubnium	杜比	dù bǐ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+2322f6166574532dca0e0c8ba45730e3f266138cd6a56934f980e0d3092626ed	zh	Seaborgium	塞伯	sè bó	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+f7e94b40d55c6cd1e3a6b95a8859ec278fc28b93ab82c586a87c9f6b5ea27b5b	zh	Bohrium	波里	bō lǐ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+4b17f6fea41b18789c252d7a0f6008e4f4422db2904edbf37bceec3191c5b3e1	zh	Hassium	哈西	hā xī	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+5f2c81bc6b049de809dd4b4b3fb81f4787eaeb8f518a0b86da12270a15fdef82	zh	Meitnerium	美特纳	měi tè nà	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+21b1e7ddbf390c24f6bb270a835970b796cc2f18a18286e1259d6ac81ae13d0d	zh	Darmstadtium	达姆斯塔特	dá mǔ sī tǎ tè	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+08d9a53c265b8eb2ef3f4cd5e665fc4a0f9b2888ff953a96663221336514219f	zh	Roentgenium	伦琴	lún qín	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+d36074e9c408377ee48539270348537214ec99bf9b40e67efdfb1242626bb1c3	zh	Copernicium	哥白尼	gē bái ní	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+b11c45c29e41628d1dc353add1846202db9bde55d32a12436a8aa5e687f120d4	zh	Nihonium	日本	rì běn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+d19e6845696bce44a32dddc4768160173cb53beaea4969d40bdaa7d5a39d53a9	zh	Flerovium	弗勒罗	fú lè luó	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+90ed8062d76ee4e41f763c674d976435037736527cb68a723a9157a6962b1b1d	zh	Moscovium	莫斯科	mò sī kē	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+eb7ae96834a4c2441754cb2da8a84be2aee8d4246330e1a209a83673ce5ff0c5	zh	Livermorium	里弗莫	lǐ fú mò	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+505c591b767934ba423d31bd2d5dbc63f56a5da6353ef7486d38717bb81555f9	zh	Tennessine	泰恩	tài ēn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+b5d42a2a3113eddef97aef7beb21035262368bd029d20d092b3630719cf63f41	zh	Oganesson	奥加尼松	ào jiā ní sōng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+07963b481d1c397b63c3c2545f58d537168825322c052e2de26691dbd2ac814e	zh	Carboxylic acid, pKa=4.76	羧酸	suō suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+a7c7b24e58034a635767b974e504548dd05d797463be0a4ce1176a82da9a73db	zh	Primary alcohol	伯醇	bó chún	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+b0aa7e4cb317b8ef0e8719111a0203fe615e068ad7b0ac1a809af6ba4ffd0543	zh	Ketone, common solvent	酮	tóng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+ef045dd5282fdb3e846075475499b12b79edfacccc5db01d71f5688015384f74	zh	Fishy odor, weak base	甲胺	jiǎ àn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+db6345ecdcbe12210977f3e6cbf424ff048e122806cd00368a329bdb68b2a0e5	zh	Triprotic acid in citrus	柠檬酸	níng méng suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+56bdb588fb7c4fce0d87e0aa7b962e64d28a58efcfaf390d779c4a1693f2c1d0	zh	Ionic compound, electrolyte	氯化钠	lǜ huà nà	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+63f4706e57237c7174e0e6975c6cad6b47d3d1fee8e7aa7399d3608909e79f01	zh	Strong diprotic acid	硫酸	liú suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+f0be1fa203864770f171794d11fe3fad4b048ffdd9f442bf96002df3f86d4f24	zh	Aldohexose, blood sugar	葡萄糖	pú táo táng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+dd3946e5f03b30541cc982fa27253099f4d900a70fe0e170f8069fde219ddc7e	zh	Catecholamine neurotransmitter	多巴胺	duō bā àn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+8c95c33c51c04b29dec010ce8f3d2c63e858a572403f0dc4013c895e00a3ad30	zh	The universal solvent	水	shuǐ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+ec59f761ead7da0ea6d6707658d595107148adf1c7f91e048130ab50da95ff15	zh	Pungent gas, weak base	氨	ān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+2699dfb764f497116ab370ab5f525ae076662445b044f6e2a3dd8c33d24b3164	zh	Primary component of natural gas	甲烷	jiǎ wán	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+410020b499545ad57f64cdbaf543b1d84b4dd07967fb19e32031c94201dbfafc	zh	Fruit sugar, a simple ketose	果糖	guǒ táng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+3c262286ab0587140c5e97ff42807dfc53bb46e6331686ab563ba7915dc157fc	zh	Stimulant found in coffee	咖啡因	kā fēi yīn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+db07afaddcf900dd41a2fefdf2da9d7ad0e8005e633c5b821d5368fdab71747d	zh	Strong monoprotic acid in stomach	盐酸	yán suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+786da8c597d968a47fa55fcb904dc4478053dc97982ccc584d7940d984bce587	zh	Strong base, also known as lye	氢氧化钠	qīng yǎng huà nà	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+a006b00d2c670ea3c6dd653f6466959898b3001dc2c21dc19d7bcb2db62f09cc	zh	Polyol, component of lipids	甘油	gān yóu	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+3fb56bd6bbb7bc58c09fc2f61f81639c78aec8740bc30b65b1bff0701beb7271	zh	Simplest aldehyde	甲醛	jiǎ quán	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+c7edf23dd5526d57d912d781732405161fce78ffcdf2874125eadb9d7e93f83d	zh	Table sugar, a disaccharide	蔗糖	zhè táng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+e2993651f93bb935bf9e2097dfebf3998341aec2c9072005a427a8f72b211fbc	zh	Found in sour milk and muscles	乳酸	rǔ suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+4af524a8b565d300d9e72bd95a880686476d58d016eb6f236419367673e2b878	zh	Salt substitute, electrolyte	氯化钾	lǜ huà jiǎ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+e48e69a49c1dbf452dd9ed025f31364a6e54c8d5505d805cec9a2b57a591160b	zh	Highly corrosive strong acid	强腐蚀性强酸	qiáng fǔ shí xìng qiáng suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+5c23495441bd32430ce84689b3834029982770831bd8457ca33f085257626948	zh	Alkane fuel used in grills	烤架用烷烃燃料	kǎo jià yòng wán tīng rán liào	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+8392a4cd6192d85c98b83563cfc3559d9cc2e6e7ed7cacd86acdfb3fe7f59528	zh	Simplest alcohol, toxic	最简醇，毒性	zuì jiǎn chún dú xìng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+59cfa5367ecc439edc1d3524538d5e7e945b1c9cc50e1363fa5e0027eef27bc2	zh	Aromatic alcohol, used as a disinfectant	芳香醇，用作消毒剂	fāng xiāng chún yòng zuò xiāo dú jì	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+11f586dc8ebfade69d79bca73210ecc54d6666256b40be2f9eff6d08e97d1506	zh	Energy currency of the cell	细胞的能量货币	xì bāo de néng liàng huò bì	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+3e47d16bbf08d392f1dd39a38eecf65670be7a7cd704051c97d6753434e386d5	zh	Simplest carboxylic acid, in ant stings	最简羧酸，蚂蚁叮咬中	zuì jiǎn suō suān mǎ yǐ dīng yǎo zhōng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+47a40876144d4a3e76df4674562018f299848a4ac454170e2b08ef75a5946914	zh	Alkane fuel used in lighters	打火机用烷烃燃料	dǎ huǒ jī yòng wán tīng rán liào	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+864eac23d345e99791519a6d7c21d108b66ad57eda485f4dc1865184a7c53a04	zh	Neurotransmitter related to mood	与情绪相关的神经递质	yǔ qíng xù xiāng guān de shén jīng dì zhì	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+646f500f50fdb7d694c80b076acaa8c956b1d5d3f75b6ee5431cfef19343cfff	zh	Simplest amino acid	最简氨基酸	zuì jiǎn ān jī suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+e30a6b721fece55b057707603ea4acbb342e3ed549f14c87d08ab2bf062ce3cd	zh	NSAID pain reliever	非甾体抗炎止痛药	fēi zāi tǐ kàng yán zhǐ tòng yào	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+0403fddac62ef9efc14ad057ac84b3cc3d4a65a54d0b50b5d5d45d111a7f7239	zh	Found in shells, limestone, and chalk	存在于贝壳、石灰石和粉笔中	cún zài yú bèi ké shí huī shí hé fěn bǐ zhōng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+b946c7f7a401df5a05afd811b2379c6dc5611b6bc1bad56b5d279cfb62d72a58	zh	A powerful oxidizing strong acid	强氧化性强酸	qiáng yǎng huà xìng qiáng suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+e163b3f0719d50e88cc6b60cab9fedd7da0a0abbefefbb79c535db4110b607f9	zh	Sugar found in milk	牛奶中发现的糖	niú nǎi zhōng fā xiàn de táng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+bfebb9e70819d77174aff4fdde575d66ecc49bdaa1f2f111ab8c7b4d4b4b0ec1	zh	Well-known explosive compound	著名的爆炸化合物	zhù míng de bào zhà huà hé wù	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+819a9f5e70c42128a8989733d2e175f906cd0d165c5e9cea29539d6ef8ef45c2	zh	Precursor to many industrial chemicals	许多工业化学品的前体	xǔ duō gōng yè huà xué pǐn de qián tǐ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+fdfbc91ecd7ae0aa6173f1f34929cf083541cb1699be7fb975118e29f96a6876	zh	An essential nutrient and antioxidant	必需的营养素和抗氧化剂	bì xū de yíng yǎng sù hé kàng yǎng huà jì	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+6f2911709760d3838d893d24ff4fc77779e3df0569fa79abce1fa0351e182ea6	zh	Rubbing alcohol, a disinfectant	擦拭酒精，消毒剂	cā shì jiǔ jīng xiāo dú jì	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+b9b8f28a4a571cd7d1de209b2b40141f2b69b13d794218935eb8c30c5c2ebf30	zh	Primary component of vanilla bean extract	香草豆提取物的主要成分	xiāng cǎo dòu tí qǔ wù de zhǔ yào chéng fèn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+ba836737a7c8b42bd0653ae29efc74804be37645b3e39d9c6591f8fa0b1e4d22	zh	Involved in local immune responses	参与局部免疫反应	cān yǔ jú bù miǎn yì fǎn yìng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+f98664b52b440a25df7c06a6fd663ec1b32a6b6c2edafe68df89d263e3aa4309	zh	Aromatic, used as a precursor and solvent	芳香的，用作前体和溶剂	fāng xiāng de yòng zuò qián tǐ hé róng jì	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+190660444e220598e03c8e7ddfb81d871cf53ad5d09d0d99e0af1d612c75a022	zh	Baking soda, used in cooking and cleaning	烘焙苏打，用于烹饪和清洁	hōng bèi sū dǎ yòng yú pēng rèn hé qīng jié	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+e93e4eed9b0447ea6a7f491de17559c5ba27150e31734ce6a2332e9021e2de3c	zh	Weak acid used in soft drinks	软饮料中使用的弱酸	ruǎn yǐn liào zhōng shǐ yòng de ruò suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+1a72c65b34c19d8d220f0de2273c61b3927c85e7e10dabcee0e7b16c1afe315a	zh	Component of gasoline	汽油的成分	qì yóu de chéng fèn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+2003b73e29278dd5bbc8d1a8cdc7eccee8a482e307c9ca9061b527aec3cc565b	zh	A key component of RNA	RNA的关键组成部分	de guān jiàn zǔ chéng bù fèn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+b776f69ac4c0fd31deafe9eaffb5554b2cbb8ad37e3d1316d66f23b5cc181f15	zh	Common analgesic and antipyretic	常用止痛退烧药	cháng yòng zhǐ tòng tuì shāo yào	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+87067332d64b2b9cc16cfd7231d46b65fbca9fc0b35f9606ca17c534015460b6	zh	-NH2	氨基	ān jī	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+87067332d64b2b9cc16cfd7231d46b65fbca9fc0b35f9606ca17c534015460b6	zh	-NH2	氨基	ān jī	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+87067332d64b2b9cc16cfd7231d46b65fbca9fc0b35f9606ca17c534015460b6	zh	-NH2	氨基	ān jī	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+87067332d64b2b9cc16cfd7231d46b65fbca9fc0b35f9606ca17c534015460b6	zh	-NH2	氨基	ān jī	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+87067332d64b2b9cc16cfd7231d46b65fbca9fc0b35f9606ca17c534015460b6	zh	-NH2	氨基	ān jī	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+87067332d64b2b9cc16cfd7231d46b65fbca9fc0b35f9606ca17c534015460b6	zh	-NH2	氨基	ān jī	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+6b6ceef9d4002946025cbb5fcb8e2c6e5f6b90f4436d0063cdbad2099b99ef9c	zh	 Ester	酯	zhǐ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+2a48d8839a872c5a9e374b6e7489f899e1d6c28e974cf0a22da17f61785a9477	zh	 -NH2	氨基	ān jī	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+2a48d8839a872c5a9e374b6e7489f899e1d6c28e974cf0a22da17f61785a9477	zh	 -NH2	氨基	ān jī	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+36ce685d80c4028ae3b87fc6700b2df0b494eb5f8b6a5ba7033d3403209f937a	zh	 -COOH	羧基	suō jī	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+87067332d64b2b9cc16cfd7231d46b65fbca9fc0b35f9606ca17c534015460b6	zh	-NH2	氨基	ān jī	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+c19da85d9211e83e517edfa8c74dc212095e6d0f7266bee6b09c9be62c7c9647	zh	Ethanol (CH3CH2OH): Primary alcohol	乙醇	yǐ chún	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+1f74b6c1738fc7e4abbdc446bd0dd915578880bf1dde36b9d9463c5ae2d7dea9	zh	Citric Acid (C6H8O7): Triprotic acid in citrus	柠檬酸	níng méng suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+1f5bbccd5c12a4b583052bfa5f535d7283e8a456eb86197870ccf6a69624d786	zh	Glucose (C6H12O6): Aldohexose, blood sugar	葡萄糖	pú táo táng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+609bf274265211bfa6f964de10db4efd88803d693542e5508aa0cead99055a11	zh	Caffeine (C8H10N4O2): Stimulant found in coffee	咖啡因	kā fēi yīn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+09896b0fa2489c2f812d2731ed95ec793a17278bb5b12875368154a5b63021be	zh	Sodium Hydroxide (NaOH): Strong base, also known as lye	氢氧化钠	qīng yǎng huà nà	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+9148e665916d9a7b6d91350749db3109c0e854f28dc96b1854df3d8bb9299d47	zh	Pain reliever, an ester of salicylic acid	止痛药，水杨酸酯	zhǐ tòng yào shuǐ yáng suān zhǐ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+a3c8cebae3140b02dfa15d421f6774eb8ebf25cce9d7b1e5a4d8103bc17e3781	zh	Simplest hydrocarbon; base for organic nomenclature and combustion reactions.	最简单的烃；有机命名和燃烧反应的基础。	zuì jiǎn dān de tīng yǒu jī mìng míng hé rán shāo fǎn yìng de jī chǔ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+dc67c9d663667406fb9eac3cb7a68cdb151b9d162d7acd0cda7a68c0a7b76bd0	zh	Two-carbon chain; example of alkane properties like low reactivity.	两碳链；展示烷烃性质，例如低反应性。	liǎng tàn liàn zhǎn shì wán tīng xìng zhì ， lì rú dī fǎn yìng xìng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+e92abde820fd61d92986faf14ae2d98e06c7384632c5109f69dd6b8c17a35a51	zh	Key in addition reactions; industrial precursor to polymers.	加成反应的关键；工业上聚合物的前体	jiā chéng fǎn yìng de guān jiàn ; gōng yè shàng jù hé wù de qián tǐ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+c814bfdafcc10d89686d41131bf5bb970a6c578f62f804b12730821564e216f8	zh	Common in polymerization; tests alkene naming and reactivity.	在聚合中常见；用于检验烯烃的命名和反应性。	zài jù hé zhōng cháng jiàn yòng yú jiǎn yàn xī tīng de mìng míng hé fǎn yìng xìng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+0062b019a218e7539d5749e9e4c67b3716c30d679b67dbcefcdc1cf631be1faa	zh	Solvent and fuel; compares to ethanol in metabolism and toxicity.	溶剂与燃料；在代谢和毒性上与乙醇比较	róng jì yǔ rán liào ; zài dài xiè hé dú xìng shàng yǔ yǐ chún bǐ jiào	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+7e4420cab5c4d22a56f8b26c3db4b63aeac6b4794cd11c5d5d7bf023e7dc31f1	zh	Disinfectant; branched alcohol example for naming.	消毒剂；用于命名的支链醇示例	xiāo dú jì ; yòng yú mìng míng de zhī liàn chún shì lì	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+eac66c2c900642c2c3e51822f8ce73f1973e6f7e875a3c4f6a17713890b6707d	zh	Simplest aldehyde; used in disinfection	最简醛；用于消毒	zuì jiǎn quán ; yòng yú xiāo dú	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+c039a55ee236b765398d8b3574ed9073c7e252dddbd204e250262575c01562cc	zh	Simplest ketone; solvent	最简酮；溶剂	zuì jiǎn tóng ; róng jì	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+eca8326a071df578aec924b153ac9cbc487cc0c3a9195564375a24294dad1b2d	zh	Simplest acid; in ant venom	最简酸；存在于蚂蚁毒液	zuì jiǎn suān ; cún zài yú mā yǐ dú yè	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+db8774a63ae5ab92740f4b8f91a52f0f51fac360eca4f445ee170d1d00cc0a66	zh	Vinegar component; buffers	醋的成分；用作缓冲剂	cù de chéng fèn ; yòng zuò huǎn chòng jì	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+a293f454d221023ff3a3414609dfd27f40e79a957ee76dd5625db14bcb7e4d3e	zh	Preservative; tests aromatic acid properties and salts.	防腐剂；用于测试芳香酸及其盐的特性	fáng fǔ jì ; yòng yú cè shì fāng xiāng suān jí qí yán de tè xìng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+932707538492df743f6a3ea7d81b80e6e5dcc2cc6c5e13e86ab29a3d356311af	zh	 Aldehyde (open chain)	醛（链状）	quán ( liàn zhuàng )	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+c16997a68f71b183458b1bb89ad83502c51886a10eb7352312d090a3edc61b35	zh	 Phosphate	磷酸盐	lín suān yán	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+4903d26742c44c5cb8fb68dafc2d1274e793fc14485b90afcf354643727e6d5f	zh	-OH	羟基	qiǎng jī	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+c16997a68f71b183458b1bb89ad83502c51886a10eb7352312d090a3edc61b35	zh	 Phosphate	磷酸盐	lín suān yán	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+819eab8afebe0ba015f68c73d168205a85a4897f641547fb37f340c25f54bd63	zh	 -OH	羟基	qiǎng jī	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+4e75cae81177dd0e80a4bc21f0da1f9bb238b48d1931ae6ad7d1d7d57ccec2c6	zh	Glycine: -NH2	甘氨酸: -NH2	gān àn suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+7684478a8d0fa88b0a7e1d12411721d967c283336cfae4b02b6acd9692952d80	zh	Alanine: -NH2	丙氨酸: -NH2	bǐng àn suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+1a0eaa82cebef096cf913a14e86136b6e1cfe091ef143f88db92305c3c77e4ad	zh	Serine: -NH2	丝氨酸: -NH2	sī àn suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+c2a71d199a958c36bb936343fe006760a70cb6826acaeb6062db3370e6c2400b	zh	Cysteine: -NH2	半胱氨酸: -NH2	bàn guāng àn suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+3b0584181d5c555d749af2e1f798e23a755cba13a3d4052bd9c54aac477f633a	zh	Aspartic Acid: -NH2	天冬氨酸: -NH2	tiān dōng àn suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+5aec1e607d54eec1be13232980e8b5ac382a7de1d08319b0233dd8670bd6caa3	zh	Histidine: -NH2	组氨酸: -NH2	zǔ ān suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+d4ed0ab290e10241d4be8be93a6658fb0f3d571650d85f87a0471c45bf7fc9cd	zh	Isoleucine: -NH2	异亮氨酸: -NH2	yì liàng ān suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+48635db3b2c0f04fffe9c6016f3047b7ddec90fe170d0566afd3a38e2943a807	zh	Leucine: -NH2	亮氨酸: -NH2	liàng ān suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+1daab169f147c5f020a111fcc63161c7e13b52fb05eb59d6e0dfc7edd86509de	zh	Lysine: -NH2	赖氨酸: -NH2	lài ān suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+b8a6612c3f58208a253df74fd8be121be0dd51f9ae8363b69fd36018af018eb6	zh	Phenylalanine: -NH2	苯丙氨酸: -NH2	běn bǐng ān suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+bcc4133135b40e21f3c6491d8abdc00135ec55ea70963980468a64cd95fabbbb	zh	Tryptophan: -NH2	色氨酸: -NH2	sè ān suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+5c5ecc935c9e85e38d4d4311b4d3b01d2840bbbd2c4d08509eb312e85b6452f1	zh	Acetylcholine: Ester	乙酰胆碱: Ester	yǐ xiān dǎn jiǎn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+f1fcac808c33ae0c0f89017cc09da807984bc2ca7c5378ac8ba4151d83abf160	zh	Dopamine: -NH2	多巴胺: -NH2	duō bā àn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+cddb0e4b7cff8fc255cdea6eb4901ea34d0ba0300a672735a10d0b2f6b099ed2	zh	Serotonin: -NH2	血清素: -NH2	xuè qīng sù	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+b5c718e9db716187ac7f6b4ea0b0975c25edc0b95d8cc5543dcd3bf9765be432	zh	GABA (H2NCH2CH2CH2COOH): -COOH	γ-氨基丁酸 (H2NCH2CH2CH2COOH): -COOH	ān jī dīng suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+53f6119a450ea7ea6216ad7ea9c2236215bf13039a9e076a11941986dd05e651	zh	Glutamate: -NH2	谷氨酸: -NH2	gǔ ān suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+fbf6a2d0019f19562e78cc9cd064966c702c6427d10684aca74bb92db0a3ed66	zh	Alcoholic beverage component; undergoes oxidation to acetaldehyde/acetic acid.	酒精饮料成分；氧化生成乙醛/醋酸。	jiǔ jīng yǐn liào chéng fèn yǎng huà shēng chéng yǐ quán cù suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+a939a82939730f394de947e3b141f31cb7c125482fc8af9cc8a0137efdfac75e	zh	Glycolysis/fermentation product; oxidizes to acetic acid.	糖解/发酵产物；氧化生成醋酸。	táng jiě fā jiào chǎn wù yǎng huà shēng chéng cù suān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+53bbf3f7e46cd9e7a454e0c6e08af3c8bb9badd9ce57d01e3a85edb4baaf8d3c	zh	Benzene (C6H6): Aromatic, resonance stabilized	苯 (C6H6)：芳香，受共振稳定	běn fāng xiāng shòu gòng zhèn wěn dìng	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+c4d23537eaa66681a5dd512af5e074d8abbaf3a17fb4a2832269e13d587c953a	zh	Ammonia (NH3): Pungent gas, weak base	氨 (NH3)：刺鼻气体，弱碱	ān cì bí qì tǐ ruò jiǎn	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+1439e3df5976a9d6f2f7cbcbeea2d477d2df050062e93bbf7720abf46217d58c	zh	Hydrochloric Acid (HCl): Strong monoprotic acid in stomach	盐酸 (HCl)：胃内强单质酸	yán suān wèi nèi qiáng dān zhì suān	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+488b906d7dc1d0a7285b189e271c06aa0fd4be61f10cff2f175e3a5f4b2cb24e	zh	Aspirin (C9H8O4): Pain reliever, an ester of salicylic acid	阿司匹林 (C9H8O4)：止痛剂，水杨酸酯	ā sī pǐ lín zhǐ tòng jì shuǐ yáng suān zhǐ	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+9a0f1dc2f452bf21112307cad474ac1ff5700170b15b80135a450dc9abb41fdf	zh	Toluene (C7H8): Aromatic solvent, similar to benzene	甲苯 (C7H8)：芳香溶剂，类似苯	jiǎ běn fāng xiāng róng jì lèi sì běn	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+0c80d66adabb314d23867a25964d346de2a2dd2a7c4374b1e81e9f5c981f8bd6	zh	Nitric Acid (HNO3): Highly corrosive strong acid	硝酸 (HNO3)：强腐蚀性酸	xiāo suān qiáng fǔ shì xìng suān	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+5b6689f486c0deef8128a0fdd58a9b57ea46bbf7429c467b878d64fa8832c5ba	zh	Propane (C3H8): Alkane fuel used in grills	丙烷 (C3H8)：烤架使用的烃燃料	bǐng wán kǎo jià shǐ yòng de tīng rán liào	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+25abfa7dee3bcca10354ac2b236eccc2e7e7547d84fbe008bbf6574a49c5da65	zh	Methanol (CH3OH): Simplest alcohol, toxic	甲醇 (CH3OH)：最简单的酒精，毒性	jiǎ chún zuì jiǎn dān de jiǔ jīng dú xìng	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+d1cf2bd870af74175f57792b0edd8da414d76d6547d9ead6f8f6923f028d2ecd	zh	Phenol (C6H5OH): Aromatic alcohol, used as a disinfectant	苯酚 (C6H5OH)：芳香族醇，用作消毒剂	bēn fēn (C6H5OH)：fāng xiāng zú chún yòng zuò xiāo dú jì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+9866059c9e9da6530b4263bd09978252303789be4b6f5f9573e37bd3e9a42a57	zh	ATP (C10H16N5O13P3): Energy currency of the cell	ATP (C10H16N5O13P3)：细胞的能量货币	xì bāo de néng liàng huò bì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+9d3ab7465a75431fe2e056c8623d3707c01767471b5f60383b808e4ae1d3abce	zh	Butane (C4H10): Alkane fuel used in lighters	丁烷 (C4H10)：在打火机中用作燃料	dīng wán (C4H10)：zài dǎ huǒ jī zhōng yòng zuò rán liào	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+f04eebd80d69ed14fb80be426008345867574e8440c0d56b3b9f13b9d8309feb	zh	Serotonin (C10H12N2O): Neurotransmitter related to mood	血清素 (C10H12N2O)：与情绪相关的神经递质	xiě qīng sù (C10H12N2O)：yǔ qíng xù xiāng guān de shén jīng dì zhì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+d0d0ee7a59f992e6053ab8c0caa4ba397b5bbe7f02533eae4cb9d4453fc3b154	zh	Ibuprofen (C13H18O2): NSAID pain reliever	布洛芬 (C13H18O2)：非甾体抗炎镇痛药	bù luò fēn (C13H18O2)：fēi zāi tǐ kàng yán zhèn tòng yào	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+56ad922f1e9bacd87dbf3a3059963fce45573639feaf14c4710b6f2a42808dd1	zh	Calcium Carbonate (CaCO3): Found in shells, limestone, and chalk	碳酸钙 (CaCO3)：存在于贝壳、石灰石和粉笔中	tàn suān gài (CaCO3)：cún zài yú bèi ké shí huī shí hé fěn bǐ zhōng	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+0591bb7e6003fa86b28fe67c385b2371cde145dc86bb598cb12ed9fbbe6690d2	zh	Pyridine (C5H5N): Aromatic, used as a precursor and solvent	吡啶 (C5H5N): 芳香族，作为前体和溶剂	bǐ dǐng fāng xiāng zú zuò wèi qián tǐ hé róng jì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+4b8097cd6f1746572c7a7d99d7380c16e9efe1f04f9f1c98248afe174a3e01f5	zh	Sodium Bicarbonate (NaHCO3): Baking soda, used in cooking and cleaning	碳酸氢盐 (NaHCO3): 小苏打，用于烹饪和清洁	tàn suān qīng yán xiǎo sū dǎ yòng yú pēng rèn hé qīng jié	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+2120d4ba046c3eb4d89792f60f33df025dc6b06b0620a8af43fa640651dfc78b	zh	Phosphoric Acid (H3PO4): Weak acid used in soft drinks	磷酸 (H3PO4): 弱酸，用于软饮料	lín suān ruò suān yòng yú ruǎn yǐn liào	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+f6cc2f391f85852a4b7aef3c5b420fe9db08fd4c3a14b5a23817748afd14b436	zh	Octane (C8H18): Component of gasoline	辛烷 (C8H18): 汽油成分	xīn wán qì yóu chéng fèn	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+6a82183f5ca4ae66eea2132b3a63b95d806f673543e58001281268843debaef6	zh	Ribose (C5H10O5): A key component of RNA	核糖 (C5H10O5): RNA的关键组分	hé táng RNA de guān jiàn zǔ fèn	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+f4bf74227d14075ebedc0b191a8ca609854509843be81c5307870e49249a1fb6	zh	Paracetamol (C8H9NO2): Common analgesic and antipyretic	对乙酰氨基酚 (C8H9NO2): 常用镇痛剂和退烧药	duì yǐ xiān ān jī fēn cháng yòng zhèn tòng jì hé tuì shāo yào	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+4c857885e7f474d132fc585099cfb109209866a98085e6885414df63ac08125c	zh	Methane (CH4): Simplest hydrocarbon; base for organic nomenclature and combustion reactions.	甲烷 (CH4): 最简单的烃，作为有机命名和燃烧反应的基础	jiǎ wán zuì jiǎn dān de tīng zuò wèi yǒu jī mìng míng hé rán shāo fǎn yìng de jī chǔ	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+3aa98873ad301491b3b93f69cb649797bab7dd07c4e461b252fb613cab5da058	zh	Ethane (C2H6): Two-carbon chain; example of alkane properties like low reactivity.	乙烷 (C2H6): 二碳链，低反应性的烃类示例	yǐ wán èr tàn liàn dī fǎn yìng xìng de tīng lèi shì lì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+c9955c4c54aa055d58bea34fd75f06ef0c1ab7d90b983aa72944c8ab8a948ea6	zh	Ethylene (C2H4): Key in addition reactions; industrial precursor to polymers.	乙烯 (C2H4)：在加成反应中关键；工业聚合物的前体。	yǐ xī (C2H4)：zài jiā chéng fǎn yìng zhōng guān jiàn；gōng yè jù hé wù de qián tǐ。	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+82c6a814d6c570300729f2579fd814cf07f32dc1ff50bf048d90fc4d4f3aa119	zh	Propylene (C3H6): Common in polymerization; tests alkene naming and reactivity.	丙烯 (C3H6)：聚合反应中的常见物；用于测试烯烃命名与反应性。	bǐng xī (C3H6)：jù hé fǎn yìng zhōng de cháng jiàn wù；yòng yú cè shì xī chōng mìng míng yǔ fǎn yìng xìng。	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+b7f0aa78d40dc36677e5a00c09d2a63559c43c9d4897c7641e7bf6a06091fadc	zh	Methanol (CH3OH): Solvent and fuel; compares to ethanol in metabolism and toxicity.	甲醇 (CH3OH)：溶剂和燃料；与乙醇在代谢与毒性上进行比较。	jiǎ chún (CH3OH)：róng jì hé rán liào；yǔ yǐ chún zài dài xiè yǔ dú xìng shàng jìn xíng bǐ jiào。	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+39455f16d71afc98277b3e222e3eab4cd2852ab57b8356e3aa24e7ba51f6948f	zh	Isopropanol ((CH3)2CHOH): Disinfectant; branched alcohol example for naming.	异丙醇 ((CH3)2CHOH)：消毒剂；分支醇的命名示例。	yì bǐng chún ((CH3)2CHOH)：xiāo dú jì；fēn zhī chún de mìng míng shì lì。	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+c96ce132b2836161e5e8e152cac62d2a87c2ade2e45584506fe1419ab87aa4d4	zh	Formaldehyde (HCHO): Simplest aldehyde; used in disinfection	甲醛 (HCHO)：最简单的醛类；用于消毒。	jiǎ chán (HCHO)：zuì jiǎn dān de quán lèi；yòng yú xiāo dú。	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+0c0653029207f739f55ce5fd072e95ee8ced0e0325cbb3cfa335ead546918a53	zh	Benzaldehyde (C6H5CHO): Aromatic carbonyl; in flavors	苯甲醛 (C6H5CHO)：芳香族羰基化合物；用于香料。	běn jiǎ chán (C6H5CHO)：fāng xiāng zú táng jī huà hé wù；yòng yú xiāng liào。	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+e09952aaee9f51c0e0388706c521ca8225c0a963fdcd3c976d40e676e157e401	zh	Acetone ((CH3)2CO): Simplest ketone; solvent	乙酮 ((CH3)2CO)：最简单的酮；溶剂	yǐ tóng ((CH3)2CO)：zuì jiǎn dān de tóng；róng jì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+a21563ee6fd0324a08411c7e03bf79387877e87fcc3848eb131e5af0a2ccf8eb	zh	Formic Acid (HCOOH): Simplest acid; in ant venom	甲酸 (HCOOH)：最简单的酸；存在于蚂蚁毒液	jiǎ suān (HCOOH)：zuì jiǎn dān de suān；cún zài yú mǎ yǐ dú yè	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+74f6a6c86921c10268e5753118fad1ff1ca543deede868ee877510fd2ce3af11	zh	Acetic Acid (CH3COOH): Vinegar component; buffers	乙酸 (CH3COOH)：醋的主要成分；缓冲剂	yǐ suān (CH3COOH)：cù de zhǔ yào chéng fèn；huǎn chōng jì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+4058618b1cc7fd82f68cfa718de862a92bd5feb396c31fa7334db30bc771ec3c	zh	Benzoic Acid (C6H5COOH): Preservative; tests aromatic acid properties and salts.	苯甲酸 (C6H5COOH)：防腐剂；用于检验芳香族酸的性质与盐	bēn jiǎ suān (C6H5COOH)：fáng fǔ jì；yòng yú jiǎn yàn fāng xiāng zú suān de xìng zhì yǔ yán	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+ad49d722d8fda06d6072d76027a688bd7368e3b36dd345472b5fa3ee00065c2d	zh	Glucose (C6H12O6): Aldehyde (open chain)	葡萄糖 (C6H12O6)：醛（开链）	pú táo táng (C6H12O6)：quán (kāi liàn)	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+a64f565d565f41326106526f1c01fd933afad86b71870086492e693f79270a04	zh	Dihydroxyacetone phosphate ((HOCH2)2C(O)OPO3H2): Phosphate	双羟基乙酮磷酸 ((HOCH2)2C(O)OPO3H2)：磷酸	shuāng qiǎng jī yǐ tóng lín suān ((HOCH2)2C(O)OPO3H2)：lín suān	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+d3e60201bbb30dfc782bbee3982e83e5b0769872cf2b2f5cb5e2bb21310c79a2	zh	Checks that listed windows inside the house close, another house and unlisted processes survive, the caller survives its own match, and relaunch only brings back rows that were running.	检查房屋内列出的窗口是否已关闭，另一处房屋和未列出的进程是否存活，调用者自身的匹配是否存活，并且重新启动仅恢复之前正在运行的行。	jiǎn chá fáng wū nèi liè chū de chuāng kǒu shì fǒu yǐ guān bì lìng yī chù fáng wū hé wèi liè chū de jìn chéng shì fǒu cún huó diào yòng zhě zì shēn de pǐ pèi shì fǒu cún huó bìng qiě chóng xīn qǐ dòng jǐn huī fù zhī qián zhèng zài yùn xíng de háng	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+e97e71b03bf804d76d0c12b465b16129bde9097c2d3e653ac0fa383a0687cf6a	zh	batch, prompt, parse, token budget, reply parsing, rows	批次，提示，解析，令牌预算，回复解析，行	pī cì tí shì jiě xī lìng pái yù suàn huí fù jiě xī xíng	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+23d647014389e5819f5d3ccfe470a339532147ba76b01caa5f5960c5ac696ce8	zh	split into batches	分成批次	fēn chéng pī cì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+a8e01ec6074ea04cd79cddd1bee9ed0fc5dd145fa3ae74b544c502ebf52442d1	zh	parse model reply	解析模型回复	jiě xī mó xíng huí fù	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+df1927bdf902f382e588382dc6146963c7e8e86fd37282ea4597221eee532a7c	zh	build prompt	构建提示	gòu jiàn tí shì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+be58ad6ddac259427fe9f6b51723ba29f830641e0b80bd3a26d21d7514e6e470	zh	call, groq, ollama, mac, quota, timeout, ledger, rate limit	调用，groq，ollama，mac，配额，超时，分类账，速率限制	diào yòng groq ollama mac pèi é chāo shí fēn lèi zhàng sù lǜ xiàn zhì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+ef5e8d3e0fd0cb31fa91e8048c352df22a01d4e002007be131dbf770be9e1e2d	zh	call a model	调用模型	diào yòng mó xíng	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+75835c35dd583067b52b0fbe53a314bcbf2d27596af83664d309f6de0b316aa3	zh	rate limit	速率限制	sù lǜ xiàn zhì	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+7bbfe219dae70c3969a28ba76ce7069f521aaa95e6ed368385c603f13253a796	zh	token budget	令牌预算	lìng pái yù suàn	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+d69e8f6694ea53f73aa9668cfd94abc2493ba03a5759fc46d4abeb189850b102	zh	write results	写结果	xiě jié guǒ	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+060df8b3ef4bfa1e2d39ca87776a53e385123650e39064d887e769cfbc46424e	zh	review queue	审核队列	shěn hé duì liè	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+4ba9b14e69700f5ecb208a99c135ee3031db08551f7bfbbf383d9fd7a5463dfd	zh	scoring feed	评分流	píng fēn liú	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+b65313b271e5e9ef03724ff209fe78a554656606c742035817ab5498ceda3476	zh	pipeline, translate, repair, score, driver, end to end, quota	流程, 翻译, 修复, 评分, 驱动, 端到端, 配额	liú chéng, fān yì, xiū fù, píng fēn, qū dòng, duān dào duān, pèi é	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+a32b6ffbed0b81aa3c4bfd5596a0b35c5b663b46ac68dac7195d78f3f0d497b1	zh	load slot	载入槽	zài rù cáo	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+4ebae78ff2fe4b74a284e8a237f7ae2ba676a76bafcef0d9bc8c8454181e2402	zh	checkpoint	检查点	jiǎn chá diǎn	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+fcb757b23ce0b5b028286af65fb5ade46d0a812e632fd010ef6e69c29574e63e	zh	progress file	进度文件	jìn dù wén jiàn	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+eaa3f19f659299fb3f56f5dd245f7e3d19843661a21a8e6a661572958a4969f8	zh	game state	游戏状态	yóu xì zhuàng tài	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+12746cf219481d500eb93c3372951ab36a4e7443dd15e0f21b38f5f179d829a1	zh	behavior bank, weights, laplace, synonyms, ranking, find, search, harness bank	行为库，权重，拉普拉斯，同义词，排名，查找，搜索，束缚库	xíng wéI kù quán zhòng lā pǔ lǎ sī tóng yì cí pái míng chá zhǎo sōu suǒ shù fù kù	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+19c0407300f9398d0c01578d1350eea35818d374a2313b6e87b75ace29f7ec99	zh	seo	搜索引擎优化	sōu suǒ yǐn qíng yōu huà	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+f6e8310eeee29e1e248cd0e6e8184d2e5c4066723c339d6bb09438d76c0c6f29	zh	lookup	查询	chá xún	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+83dfafc77b9140e2386b7a913605c62246f41ef842c8e177db0f6fd8e640bf69	zh	reward punish	奖励惩罚	jiǎng lì chéng fá	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+29782cc655981d0aa8139b1ef59e522166947cef3d765769ac0242b4b58ea0b7	zh	confidence	置信度	zhì xìn dù	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+6da049f54ac57dfaf0feecf6ba5c3039116bdc877fe0abb8192defae50579296	zh	Checks that a harness entry's weight is a live Laplace estimate from its own PASS and FAIL ledger rows, counted once through an append-only cursor.	检查束缚条目的权重是否为其自身PASS和FAIL账簿行的实时拉普拉斯估计，通过仅追加的游标计数一次。	jiǎn chá shù fù tiáo mù de quán zhòng shì fǒu wèi qí zì shēn PASS hé FAIL zhàng bù háng de shí shí lā pǔ lǎ sī gū jì, tōng guò jǐn jiā zǐ de yóu biāo jì shù yí cì	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+9e3e4033309fd1e665aa689e4a5dcebf0046a7c2ea6d945585e480b36d0f28e5	zh	Checks that find ranks entries by keyword, weighted synonym, concept name and sentence words, multiplied by the entry weight.	检查 find 的排名依据关键词、加权同义词、概念名称和句子词语，乘以条目权重。	jiǎn chá find de páimíng yīyóu guān yào cí, jiā quán tóng yì cí, gài nǐng míng chēng hé jù zǐ cí yǔ, chéng yǐ tiáo mù quán zhòng	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+25bb9a5b80b963a2b5a0dd82295026f2f65b5c95b3225142fbb50e8ef4f61986	zh	minimise	最小化	zuì xiǎo huà	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+94142edadf0849bf41db9a08804bbc067ea570ea8e04a70ceea5b72af6484f54	zh	collapse	折叠	zhé dié	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+432d8723eba04600b84aca4a072837fd5afead8419186217faedfe4db647018f	zh	dock	停靠	tíng kào	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+4f6c31d086ab6956e7959bbdba44ed46e9b46819332d18e843e1090fa966dff6	zh	slide away	滑走	huá zǒu	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+4b50ce4e0cf26bc4f72850d34fdba8bdc4c8e4cd7885ea05628144d59e1b7143	zh	inventory bar	库存栏	kù cún lán	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+59c079235dbc86653c84fd0e96ca25132271796ee924ce0582b39fd2ccb31a1f	zh	Starts a real hotbar_manager process on a scratch tree and flips visible.txt with the toggle script.	在scratch树上启动真实的 hotbar_manager 进程，并用切换脚本翻转 visible.txt。	zài shù shàng qǐdòng zhēnshí de jìnxíng bìng yòng qiēhuàn jiǎoběn fānzhuǎn	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+c3ef3e38873da7a283299a055c97d17adfd67ee0155a16f0037c60644c2cec1d	zh	playtest	播放测试	bōfàng cèshì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+350376700ed328e4f026ac467f2f3bfdb03e625e00bc0615383f269463fb4804	zh	play-test	播放测试	bōfàng cèshì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+a16b02cae63ad8d7d933af14f636da3d711b183ffb213267bd4160c5daafb563	zh	test mode	测试模式	cèshì móshì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+5624b0dcabeb8db0b36fcfee96f5b975234843faeb1635f41ac5d3503f7661b4	zh	edit while playing	编辑时播放	biānjí shí bōfàng	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+e6b540a5abcf88a2cc35a1bfd3e66c19578dcaaa26016124c11f10f1e6d0319b	zh	parameters	参数	cān shù	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+4373e37ecfeeb0867fd2e6700a8904e3f2e3e281a25e7a842b8aeef7bdeaee2c	zh	argument list	参数列表	cān shù liè biǎo	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+c1632af33d9135e2376c2297d5094fe1506c8be08d8aa76b5d095b3cfab2f46e	zh	command line	命令行	mìng lìng háng	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+95dbb2af8bfde665fad6cf6b5f402b103a21122a01d44e0085b99789850b78dc	zh	pid registry	pid 注册表	pid zhù cè biǎo	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+0469cc68f2692a9da3a0e413ec072ecc38f51e16a35446faf3499c3e91bca102	zh	process registry	进程注册表	jìn chéng zhù cè biǎo	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+1053b7ac9346fe5e8e29e97848f05a4547022cec267d25c02550a3be23408aa5	zh	stray process	漂移进程	piāo yí jìn chéng	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+3314efdf4a20c33bb50a31ace878ca198fceeaf6a73cc36603b0f684043da4a2	zh	leak	泄漏	xiè lòu	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+b61597cb9181558a3f19eb25e709649dee85a81d5eeea2c7e708cb5dffabc86b	zh	teleport, transfer, map access, available maps, refused, game.pdl, play mode, ledger	传送，转移，地图访问，可用地图，拒绝，game.pdl，游戏模式，账本	chuán sòng ， zhuǎn yí ， dì tú fǎng wèn ， kě yòng dì tú ， jù jué ， game.pdl ， yóu xì mó shì ， zhàng běn	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+34a0ff6af50eff6c4a77ef4d2181cb384511b3b86ce8da846538a12f0eb90766	zh	teleport	传送	chuán sòng	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+8b7d7fb31d853674b2d295acb9c80ed053d7ca3b07dd4dbede34dd01a679c915	zh	door	门	mén	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+4e8c5a2ea43a618552e02d3e15d938564cbcb1abd7b8257ca981c384a7536174	zh	warp	扭曲	niǔ qū	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+28e12020be44be42087e391cb1aa88bce0d2e08579fdb453734dce6229950fc2	zh	level gate	关卡门	guān kǎ mén	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+3453b43bc9a15558bd3b61ce1be2c2da4e90799e3f4909a1fbbe08dfa115c6d3	zh	transfer player	转移玩家	zhuǎn yí wán jiā	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+70aed8d6a1099a01bcd3bef972e768d8c6ed6e1265dc2b04e7720780ad15a930	zh	Runs the real mr_transfer_desk op against a scratch house with a session, desks and a game.pdl that lists the available maps.	在带有 session、desks 和列出可用地图的 game.pdl 的 scratch house 中运行真实的 mr_transfer_desk 操作	zài dài yǒu hé liè chū kě yòng dì tú de de zhōng yùn xíng zhēn shí de cāo zuò	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b074ef49e60785f4e7561b4a560baff976a2c38dd1fea895f49dc503e47560265	zh	Aromatic, resonance stabilized	芳香且共振稳定	fāng xiāng qiě gòng zhèn wěn dìng	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+f319156ade5ffb9cf08c566ca5bb1d8d68897f38b98f00934c1190260841b7a4	zh	Main nitrogenous compound in urine	尿中主要含氮化合物	niào zhōng zhǔ yào hán dàn huà hé wù	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+360c58e93b72db2c863e72362d496d923f02f0019ddf1fee25710f12b261509d	zh	Aromatic carbonyl; in flavors	芳香醛常用于香料	fāng xiāng quán cháng yòng yú xiāng liào	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b

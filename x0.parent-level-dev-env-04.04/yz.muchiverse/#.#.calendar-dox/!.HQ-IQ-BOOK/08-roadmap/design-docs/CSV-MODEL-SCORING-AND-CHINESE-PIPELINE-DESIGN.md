@@ -161,3 +161,21 @@ The other rows read as correct to the author (common chemical names, standard Ma
 - Token usage for Groq includes hidden reasoning; the per-minute pacing uses the previous calls' real counts and an estimate for the next, so a very large batch can still hit the 8,000 limit once (the driver then stops and resumes later).
 - One sidecar format, one answer bank for all banks (keyed by text, so two banks with the same English word share one translation: good for consistency, wrong if the sense differs; use `context` columns and `--lang` variants to separate them).
 - Not done here: the other seven banks (concept, behavior, elements, hints, chem phrases, skillbook) were extracted and counted but not translated; no promotion of any translation into live data; no X11 window (the feed is ready for it).
+
+## Operating notes from the first full run (2026-10-08)
+
+What running every bank for real taught us. Numbers are from the live run.
+
+**Quota: the binding limit is tokens per day, not requests.** Groq free tier for each of `openai/gpt-oss-120b` and `openai/gpt-oss-20b` is 1000 requests/day, 8000 tokens/minute and **200,000 tokens/day**. These models are reasoning models: one call spends up to its whole 4000-token output cap on thinking, so a batch costs about 4,800 tokens and one model gives roughly 40 batches a day. A call that comes back HTTP 200 with *no content* (reasoning ate the cap) still burns those tokens, but the usage numbers show nothing, so our ledger undercounted by about 2.5x (79k recorded vs 199.5k real). Both models were exhausted in one session. Plan token budgets per day, and expect `exit 3` with `class=exhausted ... tokens per day (TPD)` in `<work>/csv_lab_horn/stderr.txt`.
+
+**Pacing and retry.** `csv_lab call groq` paces on `est_tokens(prompt) + --max-tokens` (default 4000), i.e. about one call per minute, and `--retry-429 N` waits 65 s and retries a provider 429 (the pipeline passes 2). A daily-limit 429 will not clear by retrying.
+
+**Batch size.** Use `--rows 8 --tokens 600` for banks of long phrases. Big batches make the model think longer and return nothing.
+
+**Pinyin dictionary check** (`lint --pinyin-dict`, default `data/zh/char_pinyin.tsv`, generated once from pypinyin 0.53.0 data, MIT): fails a row when no reading of some character fits the pinyin. It found three real errors the shape lint and the judge both passed (氧 yáng, 氨 àn, 啶 dīng). It cannot catch a wrong reading of a heteronym. The file is sorted on load (never trust file order) and rows containing latin, digits or erhua are skipped.
+
+**Completeness bound.** The length lower bound is one hanzi per 10 source letters (was 14). At 14, "Dopamine (C8H11NO2): Catecholamine neurotransmitter" -> 多巴胺 passed; 18 such rows were found and pulled back out of the answer bank. The judge (Mac `qwen2.5-coder:7b`) scored all of them 5: **its score is not evidence of completeness or correctness**, only the deterministic lints are.
+
+**Re-running.** Use a fresh `--work` folder per run. Answer-bank rows are served first, so a re-run only translates what is missing. Remove a wrong answer from `data/zh/answers.tsv` (one line per source text) to force a re-translation; the same source text must not appear twice with different answers.
+
+**State at the end of the day** (rows ok / total): concept masters 3/3, spokes 5/5, chem elements 118/118, compound names 86/86, compound hints 85/86, chem phrases 55/86, Eden phrases 46/46, skillbook 5/5, harness behavior 28/120 (20 translated but unscored, 72 failed lint: the 20b model wrote tone digits instead of tone marks or miscounted syllables). The remaining rows need the next day's token allowance. Run: `csv_lab pipeline banks.pdl <bank> --work <fresh dir> --answers data/zh/answers.tsv --rows 8 --tokens 600 ...`.
