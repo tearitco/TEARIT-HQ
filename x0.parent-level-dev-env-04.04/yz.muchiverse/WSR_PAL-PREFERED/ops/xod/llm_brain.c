@@ -1,10 +1,9 @@
 /* llm_brain — LLM Brain for XOD (C op, house pattern).
  *
- * Observes WSR state, builds Ollama payload, calls curl via run_tool pattern,
+ * Observes WSR state, builds prompts, calls model_api (Ollama),
  * reads response via json_parser, emits LLM_DECISION to event bus.
  *
- * House pattern: payload → tmp file → curl → response tmp → json_parser.+x → decision.
- * Uses json_parser.+x for both message.content extraction and inner JSON field parsing.
+ * House pattern: state → prompt → model_api chat → json_parser → decision.
  *
  * Usage: llm_brain.+x <session_dir> <goal> [model] [tom_file]
  */
@@ -28,6 +27,8 @@
 #define POPEN popen
 #define PCLOSE pclose
 #endif
+
+#include "model_api.h"
 
 #define MAX_LINE 8192
 #define PATH_BUF (4096 + 512)
@@ -65,38 +66,26 @@ static int read_first_line(const char *path, char *buf, size_t sz) {
     return buf[0] != '\0';
 }
 
-/* run_tool pattern: fork + exec, capture stdout. */
-static char *run_tool(const char *tool, char *const args[]) {
-    FILE *p = POPEN(args[0], "r");
-    if (!p) return NULL;
-    char *out = malloc(16384);
-    if (!out) { PCLOSE(p); return NULL; }
-    size_t total = 0;
-    char buf[1024];
-    while (1) {
-        size_t n = fread(buf, 1, sizeof(buf), p);
-        if (n == 0) break;
-        if (total + n < 16383) {
-            memcpy(out + total, buf, n);
-            total += n;
+static void json_escape(char *out, size_t out_sz, const char *in) {
+    char *p = out;
+    const char *end = out + out_sz - 1;
+    for (; *in && p < end; in++) {
+        switch (*in) {
+            case '"': *p++ = '\\'; *p++ = '"'; break;
+            case '\\': *p++ = '\\'; *p++ = '\\'; break;
+            case '\n': *p++ = '\\'; *p++ = 'n'; break;
+            case '\r': *p++ = '\\'; *p++ = 'r'; break;
+            case '\t': *p++ = '\\'; *p++ = 't'; break;
+            default: *p++ = *in; break;
         }
     }
-    out[total] = '\0';
-    PCLOSE(p);
-    char *nl = strchr(out, '\n');
-    if (nl) *nl = '\0';
-    return out;
+    *p = '\0';
 }
 
-/* Build payload JSON to a temp file. */
-static void build_payload(const char *session_dir, const char *goal,
-                          const char *model, const char *tom_file,
-                          char *payload_file, size_t pf_sz,
-                          char *response_file, size_t rf_sz) {
-    snprintf(payload_file, pf_sz, "%s/state/llm_payload.json", session_dir);
-    snprintf(response_file, rf_sz, "%s/state/llm_response.json", session_dir);
-
-    /* Read state files */
+/* Build system + user prompts from current WSR state. */
+static void build_prompts(const char *session_dir, const char *goal,
+                          char *system_prompt, size_t sp_sz,
+                          char *user_prompt, size_t up_sz) {
     char frame[4096] = "", layout[256] = "";
     char corp_state[2048] = "", fitness[1024] = "", events[2048] = "";
     char tom_context[2048] = "{}";
@@ -124,23 +113,6 @@ static void build_payload(const char *session_dir, const char *goal,
             read_file(tom_path, tom_context, sizeof(tom_context));
     }
 
-    /* Escape JSON strings - minimal escaper */
-    auto void json_escape(char *out, size_t out_sz, const char *in) {
-        char *p = out;
-        const char *end = out + out_sz - 1;
-        for (; *in && p < end; in++) {
-            switch (*in) {
-                case '"': *p++ = '\\'; *p++ = '"'; break;
-                case '\\': *p++ = '\\'; *p++ = '\\'; break;
-                case '\n': *p++ = '\\'; *p++ = 'n'; break;
-                case '\r': *p++ = '\\'; *p++ = 'r'; break;
-                case '\t': *p++ = '\\'; *p++ = 't'; break;
-                default: *p++ = *in; break;
-            }
-        }
-        *p = '\0';
-    }
-
     char esc_frame[8192], esc_corp[4096], esc_fit[2048], esc_evt[4096], esc_tom[4096];
     json_escape(esc_frame, sizeof(esc_frame), frame);
     json_escape(esc_corp, sizeof(esc_corp), corp_state);
@@ -148,101 +120,28 @@ static void build_payload(const char *session_dir, const char *goal,
     json_escape(esc_evt, sizeof(esc_evt), events);
     json_escape(esc_tom, sizeof(esc_tom), tom_context);
 
-    /* Build payload JSON */
-    FILE *f = fopen(payload_file, "w");
-    if (!f) return;
-    fprintf(f, "{"
-        "\"model\":\"gemma3:1b\","
-        "\"stream\":false,"
-        "\"options\":{\"temperature\":0.3,\"num_ctx\":2048},"
-        "\"messages\":["
-        "{\"role\":\"system\",\"content\":\"You are the decision-making brain of an autonomous agent driving a stock-market simulation (WSR).\\nYou observe the current screen frame, the active layout, the corporation state, and recent events.\\nYou must decide exactly ONE action to take right now.\\n\\nVALID ACTIONS (choose one):\\n- end_turn\\n- buy_stock\\n- sell_stock\\n- buy_sell\\n- new_game\\n- cycle_corp\\n- list_portfolio\\n- check_market\\n- back_to_main\\n- wait\\n\\nOUTPUT FORMAT (strict JSON, no extra text):\\n{\\\"action\\\":\\\"<action_name>\\\",\\\"reason\\\":\\\"<one-line reason>\\\",\\\"confidence\\\":0.0-1.0}\\n\\nDO NOT output anything except valid JSON.\"},"
-        "{\"role\":\"user\",\"content\":\"GOAL: %s\\n\\nCURRENT LAYOUT: %s\\n\\nCURRENT FRAME:\\n%s\\n\\nCORP STATE:\\n%s\\n\\nFITNESS:\\n%s\\n\\nRECENT EVENTS:\\n%s\\n\\nTOM CONTEXT:\\n%s\\n\\nDecide the single best action now. Output only valid JSON.\"}"
-        "]}",
+    snprintf(system_prompt, sp_sz,
+        "You are the decision-making brain of an autonomous agent driving a "
+        "stock-market simulation (WSR). You observe the current screen frame, "
+        "the active layout, the corporation state, and recent events.\n\n"
+        "VALID ACTIONS: end_turn, buy_stock, sell_stock, buy_sell, new_game, "
+        "cycle_corp, list_portfolio, check_market, back_to_main, wait\n\n"
+        "OUTPUT FORMAT (strict JSON, no extra text):\n"
+        "{\"action\":\"<action>\",\"reason\":\"<reason>\",\"confidence\":<float>}\n\n"
+        "Example: {\"action\":\"buy_stock\",\"reason\":\"market looks favorable\","
+        "\"confidence\":0.85}\n\n"
+        "DO NOT output anything except valid JSON. The confidence field is required.");
+
+    snprintf(user_prompt, up_sz,
+        "GOAL: %s\n\n"
+        "CURRENT LAYOUT: %s\n\n"
+        "CURRENT FRAME:\n%s\n\n"
+        "CORP STATE:\n%s\n\n"
+        "FITNESS:\n%s\n\n"
+        "RECENT EVENTS:\n%s\n\n"
+        "TOM CONTEXT:\n%s\n\n"
+        "Decide the single best action now. Output only valid JSON.",
         goal, layout, esc_frame, esc_corp, esc_fit, esc_evt, esc_tom);
-    fclose(f);
-}
-
-/* Run curl via system (fire-and-forget, writes response to file). */
-static int run_ollama(const char *payload_file, const char *response_file) {
-    char cmd[2048];
-    snprintf(cmd, sizeof(cmd),
-        "curl -sS --max-time 30 -H 'Content-Type: application/json' "
-        "-d @%s http://10.0.0.144:11434/api/chat -o %s 2>/dev/null",
-        payload_file, response_file);
-    return system(cmd);
-}
-
-/* Parse the Ollama response JSON using json_parser.+x.
- * Two-step: extract message.content (unescapes + strips markdown),
- * then use json_parser to extract action/reason/confidence from inner JSON.
- * Uses the C op json_parser.+x via popen, matching the house pattern. */
-static char *run_capture(const char *cmd) {
-    FILE *pipe = POPEN(cmd, "r");
-    if (!pipe) return NULL;
-    char *buf = malloc(16384);
-    if (!buf) { PCLOSE(pipe); return NULL; }
-    size_t total = 0, n;
-    while ((n = fread(buf + total, 1, 16383 - total, pipe)) > 0) {
-        total += n;
-        if (total >= 16383) break;
-    }
-    buf[total] = '\0';
-    PCLOSE(pipe);
-    return buf;
-}
-
-static void parse_response(const char *response_file,
-                           char *action, size_t action_sz,
-                           char *reason, size_t reason_sz,
-                           double *conf,
-                           const char *session_dir,
-                           const char *proj_root) {
-    *conf = 0.5;
-    action[0] = '\0';
-    reason[0] = '\0';
-
-    /* Step 1: Extract message.content (unescaped + markdown-stripped JSON) */
-    char cmd[PATH_BUF * 2];
-    snprintf(cmd, sizeof(cmd), "'%s/ops/+x/json_parser.+x' '%s' 'message.content'", proj_root, response_file);
-    char *content = run_capture(cmd);
-    if (!content || !*content) {
-        if (content) free(content);
-        return;
-    }
-
-    /* Step 2: Write inner JSON to temp file for json_parser */
-    char inner_path[PATH_BUF];
-    snprintf(inner_path, sizeof(inner_path), "%s/state/llm_inner.json", session_dir);
-    FILE *f = fopen(inner_path, "w");
-    if (!f) { free(content); return; }
-    fputs(content, f);
-    fclose(f);
-    free(content);
-
-    /* Step 3: Extract action, reason, confidence via json_parser */
-    snprintf(cmd, sizeof(cmd), "'%s/ops/+x/json_parser.+x' '%s' 'action'", proj_root, inner_path);
-    char *val = run_capture(cmd);
-    if (val && val[0]) {
-        strncpy(action, val, action_sz - 1); action[action_sz-1] = '\0';
-    }
-    if (val) free(val);
-
-    snprintf(cmd, sizeof(cmd), "'%s/ops/+x/json_parser.+x' '%s' 'reason'", proj_root, inner_path);
-    val = run_capture(cmd);
-    if (val && val[0]) {
-        strncpy(reason, val, reason_sz - 1); reason[reason_sz-1] = '\0';
-    }
-    if (val) free(val);
-
-    snprintf(cmd, sizeof(cmd), "'%s/ops/+x/json_parser.+x' '%s' 'confidence'", proj_root, inner_path);
-    val = run_capture(cmd);
-    if (val && val[0]) {
-        *conf = atof(val);
-    }
-    if (val) free(val);
-
-    remove(inner_path);
 }
 
 int main(int argc, char **argv) {
@@ -254,23 +153,40 @@ int main(int argc, char **argv) {
 
     const char *session_dir = argv[1];
     const char *goal = argv[2];
-    const char *model = argc >= 4 ? argv[3] : "gemma3:1b";
-    const char *tom_file = argc >= 5 ? argv[4] : NULL;
+    const char *model_name = argc >= 4 ? argv[3] : "gemma3:1b";
 
-    char payload_file[PATH_BUF], response_file[PATH_BUF];
-    build_payload(session_dir, goal, model, tom_file, payload_file, sizeof(payload_file),
-                  response_file, sizeof(response_file));
+    /* Use model_api for provider-agnostic LLM access */
+    const char *ollama_url = "http://10.0.0.144:11434";
+    const char *api_key = getenv("OLLAMA_API_KEY");  /* usually unset for local */
 
-    int rc = run_ollama(payload_file, response_file);
-    if (rc != 0) {
-        fprintf(stderr, "Ollama call failed\n");
+    model_api_t *api = model_api_init(MODEL_API_OLLAMA, ollama_url, model_name, api_key);
+    if (!api) {
+        fprintf(stderr, "Failed to init model_api\n");
+        return 1;
+    }
+
+    char system_prompt[4096];
+    char user_prompt[8192];
+    build_prompts(session_dir, goal, system_prompt, sizeof(system_prompt),
+                  user_prompt, sizeof(user_prompt));
+
+    model_response_t *resp = model_api_chat(api, system_prompt, user_prompt, 0.3, 2048);
+    if (!resp || resp->error_code) {
+        fprintf(stderr, "LLM call failed: %s\n", resp ? resp->error_msg : "no response");
+        if (resp) model_response_free(resp);
+        model_api_free(api);
         return 1;
     }
 
     char action[64] = "wait";
     char reason[256] = "";
     double conf = 0.5;
-    parse_response(response_file, action, sizeof(action), reason, sizeof(reason), &conf, session_dir, project_root);
+
+    /* model_extract_action uses json_parser.+x internally */
+    model_extract_action(resp->content, action, sizeof(action), reason, sizeof(reason), &conf);
+
+    model_response_free(resp);
+    model_api_free(api);
 
     /* Emit LLM_DECISION to event bus */
     char event_path[PATH_BUF];

@@ -47,7 +47,9 @@
  * Text-included canonical helper, same pattern as the other _shared-lib .c files; listed in MGR_SRCS so editing it rebuilds this binary. */
 #include "khtpm_phone.c"
 #include "khtpm_game_setup.c"   /* gs_check_map_switch: play-mode map access (GAME-SETUP-PDL-DESIGN.md) */
+#include "khtpm_wordbank.c"
 static PhCtx s_phone_ctx;
+static WbCtx s_wordbank_ctx;
 /* Idempotent. Steady state costs a handful of stat/read calls per entity (nothing is written when the phone and uid already exist). */
 static void livedesk_phone_ensure(const char *house_root, const char *entity_dir) {
     if (!entity_dir || !entity_dir[0]) return;
@@ -59,8 +61,16 @@ static void livedesk_phone_ensure(const char *house_root, const char *entity_dir
     ph_load_index(&s_phone_ctx);
     ph_ensure(entity_dir, &s_phone_ctx, 0);
 }
+/* Q007 wordbank: idempotent seed of zz.wordbank/ for every desk entity. */
+static void livedesk_wordbank_ensure(const char *entity_dir) {
+    if (!entity_dir || !entity_dir[0]) return;
+    s_wordbank_ctx.apply = 1;
+    s_wordbank_ctx.report = NULL;
+    wb_ensure(entity_dir, &s_wordbank_ctx, 0);
+}
 #else
 static void livedesk_phone_ensure(const char *house_root, const char *entity_dir) { (void)house_root; (void)entity_dir; }
+static void livedesk_wordbank_ensure(const char *entity_dir) { (void)entity_dir; }
 #endif
 
 /* Forward decl - ktb_init() (below) needs this before its own real
@@ -2468,7 +2478,7 @@ static void livedesk_hash_dir(const char *dir, char *out, size_t sz) {
     out[0] = '\0';
     char cmd[KTB_PATH_BUF * 2];
     snprintf(cmd, sizeof(cmd),
-             "(cd '%s' && find . -type f ! -name entity_uid.txt ! -path \"*/inventory/zz.phone/*\" -print0 2>/dev/null | sort -z | "  /* identity + phone are not content: they would drift the pal hash */
+             "(cd '%s' && find . -type f ! -name entity_uid.txt ! -path \"*/inventory/zz.phone/*\" ! -path \"*/inventory/zz.wordbank/*\" -print0 2>/dev/null | sort -z | "  /* identity + phone + wordbank are not content: they would drift the pal hash */
 
              "xargs -0 sha256sum 2>/dev/null) 2>/dev/null | sha256sum", dir);
     FILE *p = popen(cmd, "r");
@@ -2675,6 +2685,7 @@ static void livedesk_ensure_cursword(const char *house_root) {
     snprintf(pal, sizeof(pal), "%s/cursword", pr);
     if (access(pal, F_OK) != 0) return; /* no cursword pal provisioned for this user - nothing to ensure */
     livedesk_phone_ensure(house_root, pal);      /* Q005: cursword is skipped by the desk loop, so it gets its phone here */
+    livedesk_wordbank_ensure(pal);               /* Q007: seed wordbank for cursword too */
 
     int pids[KTB_LIVEDESK_MAX_OPEN], idx[KTB_LIVEDESK_MAX_OPEN];
     char ents[KTB_LIVEDESK_MAX_OPEN][128], paths[KTB_LIVEDESK_MAX_OPEN][KTB_PATH_BUF];
@@ -2930,6 +2941,7 @@ static void livedesk_spawn_desk(const char *house_root, const char *sroot, const
             livedesk_ensure_pal(pr, base, full);      /* migrate into pals */
         }
         livedesk_phone_ensure(house_root, pal);       /* Q005: a phone + uid for every desk entity (idempotent) */
+        livedesk_wordbank_ensure(pal);                /* Q007: seed wordbank (idempotent) */
         {
             int already_live = 0;
 #ifndef _WIN32

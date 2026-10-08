@@ -144,7 +144,7 @@ SHARED="$(cd "$(dirname "$0")/../../../&.widgits/_shared-lib" && pwd)"
 # itself, listed as a real input so a change there correctly rebuilds
 # this binary too (same fan-out handling -I'd shared files already get
 # in build_core_render.sh).
-MGR_SRCS="khtpm_taskbar_manager_main.c khtpm_taskbar_manager.c khtpm_taskbar_manager.h $SHARED/kh_proc_registry.h $SHARED/kh_boot_mark.h $SHARED/khtpm_phone.c $SHARED/khtpm_game_setup.c"
+MGR_SRCS="khtpm_taskbar_manager_main.c khtpm_taskbar_manager.c khtpm_taskbar_manager.h $SHARED/kh_proc_registry.h $SHARED/kh_boot_mark.h $SHARED/khtpm_phone.c $SHARED/khtpm_game_setup.c $SHARED/khtpm_wordbank.c"
 if hash_gate_stale "$MANIFEST" +x/khtpm_taskbar_manager_main.+x $MGR_SRCS; then
     echo "-- khtpm manager driver (pure logic, no Xlib) -> +x/khtpm_taskbar_manager_main.+x"
     $CC $CFLAGS -I "$SHARED" -o +x/khtpm_taskbar_manager_main.+x \
