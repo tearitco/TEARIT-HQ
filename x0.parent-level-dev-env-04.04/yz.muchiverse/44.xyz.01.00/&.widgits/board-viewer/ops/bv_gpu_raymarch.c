@@ -42,6 +42,7 @@ static const char *FS_SRC =
 "precision highp sampler3D;\n"
 "precision highp sampler2D;\n"
 "precision highp sampler2DArray;\n"
+"precision highp usampler2D;\n"
 "out vec4 o_col;\n"
 "uniform vec3  u_eye, u_fwd, u_right, u_up;\n"
 "uniform float u_focal;\n"
@@ -54,6 +55,10 @@ static const char *FS_SRC =
 "uniform float u_light;\n"
 "uniform vec3  u_sky;\n"
 "uniform float u_fog_start, u_fog_end;\n"
+"uniform int   u_maker;\n"
+"uniform ivec2 u_mk;\n"
+"uniform sampler2D u_atlas;\n"
+"uniform highp usampler2D u_cells;\n"
 "uniform int   u_nbox;\n"
 "uniform float u_wire_edge;\n"
 "uniform float u_wire_thin;\n"
@@ -170,6 +175,18 @@ static const char *FS_SRC =
 "          ivec2 ti = clamp(ivec2(tuv * 16.0), ivec2(0), ivec2(15));\n"
 "          vec4 tx = texelFetch(u_terr, ivec3(ti, lay), 0);\n"
 "          col = (tx.a > 0.04) ? tx.rgb : L.rgb;\n"
+"          if (u_maker != 0) {\n"
+"            uvec2 sl = texelFetch(u_cells, ivec2(c.x, c.z), 0).rg;\n"
+"            uint slot = (c.y == 0) ? sl.x : sl.y;\n"
+"            ivec2 ap = ivec2(int(slot) % u_mk.x, int(slot) / u_mk.x) * u_mk.y + ivec2(clamp(uv, 0.0, 0.999) * float(u_mk.y));\n"
+"            vec4 at = texelFetch(u_atlas, ap, 0);\n"
+"            if ((slot == 0u || at.a <= 0.5) && c.y > 0) {\n"
+"              slot = sl.x;\n"                     /* transparent wall tile (prop): show the floor tile under it, not a black box */
+"              ap = ivec2(int(slot) % u_mk.x, int(slot) / u_mk.x) * u_mk.y + ivec2(clamp(uv, 0.0, 0.999) * float(u_mk.y));\n"
+"              at = texelFetch(u_atlas, ap, 0);\n"
+"            }\n"
+"            col = (slot != 0u && at.a > 0.5) ? at.rgb : vec3(0.10, 0.10, 0.12);\n"
+"          }\n"
 "        }\n"
 "        break;\n"
 "      }\n"
@@ -193,7 +210,8 @@ static const char *FS_SRC =
 static int        s_persist = 0;
 static EGLDisplay s_dpy = EGL_NO_DISPLAY;
 static EGLContext s_ctx = EGL_NO_CONTEXT;
-static GLuint     s_prog = 0, s_vao = 0, s_fbo = 0, s_rbo = 0, s_tex_grid = 0, s_tex_leg = 0, s_tex_terr = 0, s_tex_mdl = 0;
+static GLuint     s_prog = 0, s_vao = 0, s_fbo = 0, s_rbo = 0, s_tex_grid = 0, s_tex_leg = 0, s_tex_terr = 0, s_tex_mdl = 0, s_tex_atlas = 0, s_tex_cells = 0;
+static int        s_maker_id = -1;            /* maker_id currently uploaded to s_tex_atlas / s_tex_cells */
 static int        s_fw = 0, s_fh = 0;          /* current FBO size */
 static int        s_gw = 0, s_gh = 0, s_gd = 0; /* current grid-tex dims */
 static int        s_leg_alloc = 0;            /* legend tex storage created */
@@ -201,7 +219,7 @@ static int        s_terr_alloc = 0;           /* terrain-array storage created *
 static int        s_mdl_alloc = 0;
 /* cached uniform locations (glGetUniformLocation is a string lookup) */
 static struct {
-    GLint eye, fwd, right, up, focal, res, wext, grid, leg, terr, lbbox, light, sky, fog_start, fog_end, nbox, bmin, bmax, bcol, bmdl, mdl, mdim, wire_edge, wire_thin;
+    GLint maker, mk, atlas, cells, eye, fwd, right, up, focal, res, wext, grid, leg, terr, lbbox, light, sky, fog_start, fog_end, nbox, bmin, bmax, bcol, bmdl, mdl, mdim, wire_edge, wire_thin;
 } s_u;
 
 static GLuint compile(GLenum type, const char *src) {
@@ -305,7 +323,24 @@ static int gl_ensure_context(void) {
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
-    s_dpy = dpy; s_ctx = ctx; s_prog = prog; s_vao = vao; s_tex_leg = leg; s_tex_terr = terr; s_tex_mdl = mdl;
+    /* maker_view atlas + cell map: 1x1 placeholders until a maker frame uploads the real ones (a sampler must never be left on a
+     * unit another sampler type uses, or the draw fails with INVALID_OPERATION). */
+    GLuint atl = 0, cel = 0;
+    glGenTextures(1, &atl);
+    glActiveTexture(GL_TEXTURE4);
+    glBindTexture(GL_TEXTURE_2D, atl);
+    { unsigned char px[4] = {0,0,0,0}; glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, px); }
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glGenTextures(1, &cel);
+    glActiveTexture(GL_TEXTURE5);
+    glBindTexture(GL_TEXTURE_2D, cel);
+    { unsigned short px[2] = {0,0}; glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16UI, 1, 1, 0, GL_RG_INTEGER, GL_UNSIGNED_SHORT, px); }
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    s_maker_id = -1;
+
+    s_dpy = dpy; s_ctx = ctx; s_prog = prog; s_vao = vao; s_tex_leg = leg; s_tex_terr = terr; s_tex_mdl = mdl; s_tex_atlas = atl; s_tex_cells = cel;
     s_leg_alloc = 0; s_terr_alloc = 0; s_mdl_alloc = 0;
 
     #define UL(n) glGetUniformLocation(prog, n)
@@ -313,6 +348,7 @@ static int gl_ensure_context(void) {
     s_u.focal=UL("u_focal"); s_u.res=UL("u_res"); s_u.wext=UL("u_wext");
     s_u.grid=UL("u_grid"); s_u.leg=UL("u_leg"); s_u.terr=UL("u_terr"); s_u.lbbox=UL("u_lbbox");
     s_u.light=UL("u_light"); s_u.sky=UL("u_sky"); s_u.fog_start=UL("u_fog_start"); s_u.fog_end=UL("u_fog_end");
+    s_u.maker=UL("u_maker"); s_u.mk=UL("u_mk"); s_u.atlas=UL("u_atlas"); s_u.cells=UL("u_cells");
     s_u.wire_edge=UL("u_wire_edge"); s_u.wire_thin=UL("u_wire_thin"); s_u.nbox=UL("u_nbox"); s_u.bmin=UL("u_bmin"); s_u.bmax=UL("u_bmax"); s_u.bcol=UL("u_bcol");
     s_u.bmdl=UL("u_bmdl"); s_u.mdl=UL("u_mdl"); s_u.mdim=UL("u_mdim");
     #undef UL
@@ -367,6 +403,8 @@ void bv_gpu_shutdown(void) {
     if (s_tex_grid) glDeleteTextures(1, &s_tex_grid);
     if (s_tex_leg) glDeleteTextures(1, &s_tex_leg);
     if (s_tex_terr) glDeleteTextures(1, &s_tex_terr);
+    if (s_tex_atlas) glDeleteTextures(1, &s_tex_atlas);
+    if (s_tex_cells) glDeleteTextures(1, &s_tex_cells);
     if (s_tex_mdl) glDeleteTextures(1, &s_tex_mdl);
     if (s_rbo) glDeleteRenderbuffers(1, &s_rbo);
     if (s_fbo) glDeleteFramebuffers(1, &s_fbo);
@@ -374,7 +412,7 @@ void bv_gpu_shutdown(void) {
     if (s_ctx != EGL_NO_CONTEXT) eglDestroyContext(s_dpy, s_ctx);
     eglTerminate(s_dpy);
     s_dpy = EGL_NO_DISPLAY; s_ctx = EGL_NO_CONTEXT;
-    s_prog = s_vao = s_fbo = s_rbo = s_tex_grid = s_tex_leg = s_tex_terr = s_tex_mdl = 0;
+    s_prog = s_vao = s_fbo = s_rbo = s_tex_grid = s_tex_leg = s_tex_terr = s_tex_mdl = s_tex_atlas = s_tex_cells = 0;
     s_fw = s_fh = s_gw = s_gh = s_gd = 0;
     s_leg_alloc = 0;
     s_terr_alloc = 0;
@@ -499,6 +537,22 @@ int bv_gpu_raymarch(const BvGpuScene *s, unsigned char *out) {
     glUniform1i (s_u.grid,  0);
     glUniform1i (s_u.leg,   1);
     glUniform1i (s_u.terr,  2);
+    /* maker_view: upload the atlas + cell map only when maker_id changed; samplers always point at their own units */
+    if (s->maker && s->atlas && s->cells && s->maker_id != s_maker_id) {
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        glActiveTexture(GL_TEXTURE4);
+        glBindTexture(GL_TEXTURE_2D, s_tex_atlas);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, s->atlas_w, s->atlas_h, 0, GL_RGBA, GL_UNSIGNED_BYTE, s->atlas);
+        glActiveTexture(GL_TEXTURE5);
+        glBindTexture(GL_TEXTURE_2D, s_tex_cells);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16UI, s->cells_w, s->cells_h, 0, GL_RG_INTEGER, GL_UNSIGNED_SHORT, s->cells);
+        s_maker_id = s->maker_id;
+    }
+    glUniform1i (s_u.atlas, 4);
+    glUniform1i (s_u.cells, 5);
+    glUniform1i (s_u.maker, (s->maker && s->atlas && s->cells) ? 1 : 0);
+    glUniform2i (s_u.mk, s->atlas_cols > 0 ? s->atlas_cols : 1, s->tile_px > 0 ? s->tile_px : 24);
+    glActiveTexture(GL_TEXTURE0);
     glUniform1f (s_u.light, s->light_level);
     glUniform3fv(s_u.sky,   1, s->sky);
     glUniform1f(s_u.fog_start, s->fog_start);

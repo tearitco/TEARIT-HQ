@@ -63,6 +63,13 @@ typedef struct {
     float light_level;           /* ground light 0..1 (ambient floor already applied) */
     float sky[3];                /* 0..1 */
 
+    /* maker_view (RPG Maker tile terrain): per-cell atlas. When maker != 0 the grid holds solid voxels (legend glyph 1) and each hit
+     * voxel is textured from the atlas: level 0 uses the cell's floor slot, levels above use its wall slot. cells = cells_w*cells_h
+     * pairs of uint16 {floor_slot, wall_slot} (slot 0 = blank); atlas = RGBA8 atlas_w x atlas_h, atlas_cols tiles per row of tile_px px.
+     * maker_id changes whenever the atlas/cell data changes (the GL textures are re-uploaded only then). */
+    int   maker, maker_id, atlas_w, atlas_h, atlas_cols, tile_px, cells_w, cells_h;
+    const unsigned char  *atlas;
+    const unsigned short *cells;
     float fog_start, fog_end;    /* distance fog in cells: hits fade to the sky colour between start and end; fog_end <= fog_start = off */
     float wire_edge, wire_thin;  /* edge half-widths in cells for wire 1 / wire 2; 0 = defaults (0.10 / 0.03) */
     int   box_n;

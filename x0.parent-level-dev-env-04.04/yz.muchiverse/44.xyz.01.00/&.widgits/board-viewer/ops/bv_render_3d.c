@@ -333,6 +333,84 @@ static double read_kv_double(const char *path, const char *key, double def) {
     return buf[0] ? atof(buf) : def;
 }
 
+/* ---- maker_view (RPG Maker tile terrain, owner key 7): per-desk cell atlas written by tsots-map-convert/tsots_paint.py ----
+ * <map>/<desk>/cells.txt : width= height= tile_px= atlas_cols= atlas_tiles= then 'cells' + H rows of W tokens "F,Wl"
+ *                          (F = floor atlas slot, Wl = wall atlas slot or 0; slot 0 = blank)
+ * <map>/<desk>/cells.rgba: the atlas as raw RGBA8, atlas_cols*tile_px wide (no PNG decoder in this binary on purpose).
+ * Cached by path: the daemon re-reads only when the focused desk changes. Returns 1 when g_mk is usable. */
+typedef struct {
+    char key[4352];
+    int  ok, id, w, h, tile_px, cols, tiles, aw, ah;
+    unsigned char  *atlas;
+    unsigned short *cells;      /* w*h*2 uint16: floor slot, wall slot */
+} MakerAtlas;
+static MakerAtlas g_mk;
+
+static int maker_load(const char *root) {
+    char wpath[4352], map_id[128] = "", desk_id[128] = "";
+    snprintf(wpath, sizeof(wpath), "%s/pieces/world_01/state.txt", root);
+    read_kv_str(wpath, "map_id", map_id, sizeof(map_id));
+    read_kv_str(wpath, "desk_id", desk_id, sizeof(desk_id));
+    if (!map_id[0] || !desk_id[0]) return 0;
+    char dir[4352];
+    snprintf(dir, sizeof(dir), "%s/pieces/system/maps/%s/%s", root, map_id, desk_id);
+    if (g_mk.key[0] && strcmp(g_mk.key, dir) == 0) return g_mk.ok;
+    free(g_mk.atlas); free(g_mk.cells);
+    int prev_id = g_mk.id;
+    memset(&g_mk, 0, sizeof(g_mk));
+    g_mk.id = prev_id + 1;
+    snprintf(g_mk.key, sizeof(g_mk.key), "%s", dir);
+    char path[4400];
+    snprintf(path, sizeof(path), "%s/cells.txt", dir);
+    FILE *f = fopen(path, "r");
+    if (!f) return 0;
+    char line[16384];
+    int in_cells = 0, row = 0;
+    while (fgets(line, sizeof(line), f)) {
+        if (!in_cells) {
+            if (strncmp(line, "width=", 6) == 0) g_mk.w = atoi(line + 6);
+            else if (strncmp(line, "height=", 7) == 0) g_mk.h = atoi(line + 7);
+            else if (strncmp(line, "tile_px=", 8) == 0) g_mk.tile_px = atoi(line + 8);
+            else if (strncmp(line, "atlas_cols=", 11) == 0) g_mk.cols = atoi(line + 11);
+            else if (strncmp(line, "atlas_tiles=", 12) == 0) g_mk.tiles = atoi(line + 12);
+            else if (strncmp(line, "cells", 5) == 0) {
+                if (g_mk.w < 1 || g_mk.h < 1 || g_mk.w > 512 || g_mk.h > 512 || g_mk.cols < 1 || g_mk.tile_px < 1) { fclose(f); return 0; }
+                g_mk.cells = (unsigned short *)calloc((size_t)g_mk.w * (size_t)g_mk.h * 2, sizeof(unsigned short));
+                if (!g_mk.cells) { fclose(f); return 0; }
+                in_cells = 1;
+            }
+            continue;
+        }
+        if (row >= g_mk.h) break;
+        const char *q = line;
+        for (int x = 0; x < g_mk.w; x++) {
+            char *e;
+            long fl = strtol(q, &e, 10);
+            if (e == q || *e != ',') break;
+            q = e + 1;
+            long wl = strtol(q, &e, 10);
+            q = e;
+            g_mk.cells[((size_t)row * g_mk.w + x) * 2 + 0] = (unsigned short)fl;
+            g_mk.cells[((size_t)row * g_mk.w + x) * 2 + 1] = (unsigned short)wl;
+        }
+        row++;
+    }
+    fclose(f);
+    if (!in_cells || row < g_mk.h) return 0;
+    g_mk.aw = g_mk.cols * g_mk.tile_px;
+    g_mk.ah = ((g_mk.tiles + g_mk.cols - 1) / g_mk.cols) * g_mk.tile_px;
+    if (g_mk.ah < 1) return 0;
+    snprintf(path, sizeof(path), "%s/cells.rgba", dir);
+    f = fopen(path, "rb");
+    if (!f) return 0;
+    size_t need = (size_t)g_mk.aw * (size_t)g_mk.ah * 4;
+    g_mk.atlas = (unsigned char *)malloc(need);
+    if (!g_mk.atlas || fread(g_mk.atlas, 1, need, f) != need) { fclose(f); return 0; }
+    fclose(f);
+    g_mk.ok = 1;
+    return 1;
+}
+
 static long long read_kv_ll(const char *path, const char *key, long long def) {
     char buf[64];
     read_kv_str(path, key, buf, sizeof(buf));
@@ -3275,6 +3353,29 @@ static int render_one_frame(void) {
                 }
             }
             sc.legend_n++;
+        }
+        /* maker_view: replace the glyph world with RPG Maker tile terrain (floor level 0, walls = 2 more levels where the cell has a
+         * wall slot). GPU path only; the camera, entities and fog are untouched. bv_state.txt maker_view=1 is written by key 7. */
+        if (read_kv_int(state_path, "maker_view", 0) && maker_load(focused_project_root)) {
+            int mw = g_mk.w > MAX_BOARD_DIM ? MAX_BOARD_DIM : g_mk.w;
+            int mh = g_mk.h > MAX_BOARD_DIM ? MAX_BOARD_DIM : g_mk.h;
+            memset(gpu_grid, 0, (size_t)mw * (size_t)mh * 3);
+            for (int row = 0; row < mh; row++)
+                for (int col = 0; col < mw; col++) {
+                    gpu_grid[col + row * mw] = 1;                                   /* level 0: floor */
+                    if (g_mk.cells[((size_t)row * g_mk.w + col) * 2 + 1]) {
+                        gpu_grid[col + row * mw + mw * mh] = 1;                     /* levels 1-2: wall */
+                        gpu_grid[col + row * mw + 2 * mw * mh] = 1;
+                    }
+                }
+            sc.board_w = mw; sc.board_h = mh; sc.z_count = 3;
+            sc.grid = gpu_grid;
+            sc.legend_n = 1; sc.legend_glyph[0] = 1;
+            sc.legend_rgb[0][0] = sc.legend_rgb[0][1] = sc.legend_rgb[0][2] = 0.5f;
+            sc.legend_has_tex[0] = 0;
+            sc.maker = 1; sc.maker_id = g_mk.id;
+            sc.atlas = g_mk.atlas; sc.atlas_w = g_mk.aw; sc.atlas_h = g_mk.ah; sc.atlas_cols = g_mk.cols; sc.tile_px = g_mk.tile_px;
+            sc.cells = g_mk.cells; sc.cells_w = g_mk.w; sc.cells_h = g_mk.h;
         }
         double ll = lighting_enabled ? game_light_level_sky : 1.0;
         if (ll < 0.15) ll = 0.15;
