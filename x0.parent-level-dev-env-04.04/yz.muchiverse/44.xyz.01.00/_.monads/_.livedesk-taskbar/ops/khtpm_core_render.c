@@ -51,6 +51,7 @@
  * eventual integration point doesn't need a different argv shape). */
 #include "khtpm_css_parser.h"
 #include "khtpm_render_core.c" /* real .c, not a header - see that file's own comment */
+#include "khtpm_menu_window.c" /* mw_*: one windowing rule (rows shown, pinned last row, thumb) for every long dropdown */
 #include "khtpm_nav_echo.c" /* nve_text(): nav box = focus mark + typed nav digits, one shared buffer (18.pc-hq/CURSWORD-POSSESSION-DESIGN.md 5d) */
 #include "khtpm_reparse_diff.c" /* 2026-09-11 - real keyed tree diff/patch, see 08-roadmap/design-docs/CHTPM-INCREMENTAL-REPARSE-DESIGN.md. Wired in behind g_use_incremental_reparse, OFF by default - see that flag's own declaration comment. */
 /* khtpm_taskbar_manager.h/.c removed 2026-09-01 - real, confirmed dead
@@ -4092,7 +4093,7 @@ static void kh_serialize_frame_elem(FILE *f, Elem *e) {
  * non-dock dropdown-child tree-wide during the first pass and flush it
  * AFTER everything (canvas, footer, chrome) via
  * kh_serialize_frame_deferred(). */
-static Elem *g_ser_dd[32];
+static Elem *g_ser_dd[128];
 static int g_ser_dd_n = 0;
 static void kh_serialize_frame_subtree(FILE *f, Elem *e);
 static void kh_serialize_frame_deferred(FILE *f) {
@@ -4121,7 +4122,7 @@ static void kh_serialize_frame_subtree(FILE *f, Elem *e) {
         if (elem_has_class(c, "dropdown-child")) {
             /* dock keeps its own in-place menu paint; every other window
              * defers tree-wide (flushed last by the caller). */
-            if (!window_is_dock() && g_ser_dd_n < 32) g_ser_dd[g_ser_dd_n++] = c;
+            if (!window_is_dock() && g_ser_dd_n < 128 && c->w > 0 && c->y > -50000) g_ser_dd[g_ser_dd_n++] = c;   /* open rows only: the list used to hold 32 incl. hidden ones, so row 33+ (and a pinned cancel) never painted */
             continue;
         }
         kh_serialize_frame_elem(f, c);
@@ -4671,7 +4672,7 @@ static int g_n_generic_sbars;
  * "SCROLLDOWN:<i>"), so an AI/keyboard-only session (this house's own
  * digit-jump nav convention) can actually reach and use them - the
  * existing thumb/track was mouse-only. */
-static Elem g_sbar_up_elem[8], g_sbar_down_elem[8], g_sbar_thumb_elem[8];
+static Elem g_sbar_up_elem[8], g_sbar_down_elem[8];
 static int g_sbar_drag = -1;   /* index into g_generic_sbars[] while button 1 drags its thumb / track */
 
 static void generic_sbar_reset(void) { g_n_generic_sbars = 0; }
@@ -4732,7 +4733,7 @@ static void generic_sbar_register(int x, int y, int w, int h, int *scroll,
     b->thumb_h = th;
     b->thumb_y = b->track_y + ((max_scroll > 0 && usable > 0) ? (sc * usable) / max_scroll : 0);
 
-    if (!have_arrows) { g_sbar_up_elem[slot].w = 0; g_sbar_down_elem[slot].w = 0; g_sbar_thumb_elem[slot].w = 0; return; }
+    if (!have_arrows) { g_sbar_up_elem[slot].w = 0; g_sbar_down_elem[slot].w = 0; return; }
     Elem *up = &g_sbar_up_elem[slot], *dn = &g_sbar_down_elem[slot];
     memset(up, 0, sizeof(*up)); memset(dn, 0, sizeof(*dn));
     snprintf(up->tag, sizeof(up->tag), "item"); snprintf(dn->tag, sizeof(dn->tag), "item");
@@ -4760,24 +4761,6 @@ static void generic_sbar_register(int x, int y, int w, int h, int *scroll,
     css_compute_style(&g_sheet, dn->tag, dn->id, dn->classes, dn->n_classes, 0, &dn->style);
     up->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = up;
     dn->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = dn;
-    {   /* the draggable thumb is a numbered nav item too (owner 2026-10-08: "drag also should have a nav index number") -
-         * Enter/click only focuses it (SCROLLTHUMB is a no-op action); mouse drag and Up/Down scroll. */
-        Elem *th = &g_sbar_thumb_elem[slot];
-        memset(th, 0, sizeof(*th));
-        snprintf(th->tag, sizeof(th->tag), "item");
-        snprintf(th->id, sizeof(th->id), "sbar-thumb-%d", slot);
-        snprintf(th->classes[0], sizeof(th->classes[0]), "sbar-arrow"); th->n_classes = 1;
-        snprintf(th->label, sizeof(th->label), "=");
-        snprintf(th->onclick, sizeof(th->onclick), "SCROLLTHUMB:%d", slot);
-        th->w = aw; th->h = ah;
-        th->x = b->track_x + b->track_w - aw;
-        th->y = b->thumb_y + (b->thumb_h - ah) / 2;
-        if (th->y < b->track_y) th->y = b->track_y;
-        if (th->y > b->track_y + b->track_h - ah) th->y = b->track_y + b->track_h - ah;
-        kh_clamp_elem_onscreen(th);
-        css_compute_style(&g_sheet, th->tag, th->id, th->classes, th->n_classes, 0, &th->style);
-        th->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = th;
-    }
 }
 
 /* Pointer y -> scroll value for generic scrollbar i (thumb centred on the pointer). */
@@ -5622,6 +5605,8 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
         static int s_dd_scroll = 0;
         static char s_dd_open_target[64] = "";
         int grp_n = 0, dd_scrolling = 0, dd_vis = 0;
+        MwPlan dd_plan;
+        memset(&dd_plan, 0, sizeof(dd_plan));
         for (int i = 0; i < container->n_children; i++) {
             Elem *c = container->children[i];
             if (!elem_has_class(c, "dropdown-child")) continue;
@@ -5639,15 +5624,8 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
                 }
                 if (open) {
                     if (strcmp(s_dd_open_target, c->target_id) != 0) { s_dd_scroll = 0; snprintf(s_dd_open_target, sizeof(s_dd_open_target), "%s", c->target_id); }
-                    int avail = g_win_h - (trigger->y + trigger->h) - 10;
-                    int cap = avail / ROW_H;
-                    if (grp_n > cap && cap >= 3) {
-                        dd_scrolling = 1;
-                        dd_vis = cap - 1;                       /* content rows shown; one slot is the pinned last row */
-                        int max_sc = (grp_n - 1) - dd_vis;
-                        if (s_dd_scroll > max_sc) s_dd_scroll = max_sc;
-                        if (s_dd_scroll < 0) s_dd_scroll = 0;
-                    }
+                    mw_plan(&dd_plan, grp_n, (g_win_h - (trigger->y + trigger->h) - 10) / ROW_H, &s_dd_scroll);
+                    dd_scrolling = dd_plan.scrolling; dd_vis = dd_plan.vis;
                 } else if (strcmp(s_dd_open_target, c->target_id) == 0) {
                     s_dd_open_target[0] = '\0'; s_dd_scroll = 0;   /* this list closed: next open starts at the top */
                 }
@@ -5656,13 +5634,14 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
             int slot = stack_n;
             int shown = 1;
             if (open && dd_scrolling) {
-                if (stack_n == grp_n - 1) slot = dd_vis;
-                else if (stack_n >= s_dd_scroll && stack_n < s_dd_scroll + dd_vis) slot = stack_n - s_dd_scroll;
-                else shown = 0;
+                slot = mw_slot(&dd_plan, stack_n, s_dd_scroll);
+                shown = slot >= 0;
             }
+            /* menu shape: a windowed (long) list is a narrow menu with the bar to the right of the rows, not a full-width
+             * strip with the arrows lying on top of the labels */
+            int dw = trigger ? (trigger->w > 0 ? trigger->w : w) : w;
+            if (dd_scrolling && dw > 320) dw = 320;
             if (open && shown) {
-                int dw = trigger->w > 0 ? trigger->w : w;
-                if (dd_scrolling) dw += 60;   /* room for the thumb and ^/v arrows to the right of the labels */
                 c->x = trigger->x; c->y = trigger->y + trigger->h + slot * ROW_H; c->w = dw; c->h = ROW_H;
                 c->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = c;
                 if (!g_dock_drop_lo) g_dock_drop_lo = c->nav_index;
@@ -5670,11 +5649,9 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
             } else {
                 c->x = x; c->y = -100000; c->w = 0; c->h = 0; c->nav_index = 0;
             }
-            if (open && dd_scrolling && stack_n == grp_n - 1) {
-                int dw = (trigger->w > 0 ? trigger->w : w) + 60;
-                generic_sbar_register(trigger->x, trigger->y + trigger->h, dw, dd_vis * ROW_H, &s_dd_scroll,
-                                      grp_n - 1, dd_vis, (grp_n - 1) - dd_vis);
-            }
+            if (open && dd_scrolling && stack_n == grp_n - 1)
+                generic_sbar_register(trigger->x, trigger->y + trigger->h, dw + 66, dd_vis * ROW_H, &s_dd_scroll,
+                                      grp_n - 1, dd_vis, dd_plan.max_sc);
             stack_n++;
         }
     }
@@ -7077,22 +7054,16 @@ static int layout_dock_bar(Elem *page) {
         }
         if (!is_bottom) { g_dock_dd_scrolling = 0; g_dock_dd_vis = 0; g_dock_dd_total = n_open; }   /* the bottom pass must not clear the top menu's state */
         if (trig0 && !is_bottom) {
-            int sh_dd = kh_screen_h();
-            int cap = (sh_dd - (trig0->y + trig0->h) - 8) / DOCK_BAR_H;
+            MwPlan mp;
+            int cap = (kh_screen_h() - (trig0->y + trig0->h) - 8) / DOCK_BAR_H;
             {   /* test hook: KHTPM_DD_TEST_ROWS=N caps visible dropdown rows (lets a short real list prove the scrolling) */
                 const char *tr = getenv("KHTPM_DD_TEST_ROWS");
                 if (tr && atoi(tr) >= 3 && atoi(tr) < cap) cap = atoi(tr);
             }
             if (strcmp(g_dock_dd_target, trig0->id) != 0) { g_dock_dd_scroll = 0; snprintf(g_dock_dd_target, sizeof(g_dock_dd_target), "%s", trig0->id); }
-            if (n_open > cap && cap >= 3) {
-                int max_sc;
-                g_dock_dd_scrolling = 1;
-                g_dock_dd_vis = cap - 1;               /* content rows shown; one slot is the pinned last row */
-                max_sc = (n_open - 1) - g_dock_dd_vis;
-                if (g_dock_dd_scroll > max_sc) g_dock_dd_scroll = max_sc;
-                if (g_dock_dd_scroll < 0) g_dock_dd_scroll = 0;
-                col_w += 24;                           /* room for the thumb at the right edge */
-            }
+            mw_plan(&mp, n_open, cap, &g_dock_dd_scroll);
+            g_dock_dd_scrolling = mp.scrolling; g_dock_dd_vis = mp.vis;
+            if (mp.scrolling) col_w += 24;             /* room for the thumb at the right edge */
         } else if (!trig0 && !is_bottom) { g_dock_dd_target[0] = '\0'; g_dock_dd_scroll = 0; }
         if (col_w < 48) col_w = 48;
         if (trig0 && trig0->x + col_w > sw - 8) {
@@ -7118,9 +7089,9 @@ static int layout_dock_bar(Elem *page) {
             stack_n = (ki < n_stack_keys) ? stack_counts[ki] : 0;
             css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
             if (open && trigger && g_dock_dd_scrolling) {
-                int slot = -1;
-                if (open_idx == n_open - 1) slot = g_dock_dd_vis;
-                else if (open_idx >= g_dock_dd_scroll && open_idx < g_dock_dd_scroll + g_dock_dd_vis) slot = open_idx - g_dock_dd_scroll;
+                MwPlan mp; int slot;
+                mw_plan(&mp, n_open, n_open > g_dock_dd_vis + 1 ? g_dock_dd_vis + 1 : n_open, &g_dock_dd_scroll);
+                slot = mw_slot(&mp, open_idx, g_dock_dd_scroll);
                 open_idx++;
                 if (slot < 0) { c->x = 0; c->y = -100000; c->w = 0; c->h = 0; c->nav_index = 0; if (ki < n_stack_keys) stack_counts[ki]++; continue; }
                 stack_n = slot;
@@ -7370,18 +7341,10 @@ static int g_dock_menu_mw = 0, g_dock_menu_mh = 0;
 /* Thumb / track drag of the long dock dropdown: pointer y inside the menu window -> first visible content row. Same thumb
  * geometry as the painter in dock_paint_menu (track = the visible rows, thumb = visible/total of it, min 14 px). */
 static void dock_dd_scroll_from_y(int y) {
-    int content = g_dock_dd_total - 1, max_sc = content - g_dock_dd_vis;
-    int th_all = g_dock_dd_vis * DOCK_BAR_H, thumb_h, span, sc;
-    if (!g_dock_dd_scrolling || max_sc < 1 || th_all < 1) return;
-    thumb_h = (th_all * g_dock_dd_vis) / content;
-    if (thumb_h < 14) thumb_h = 14;
-    if (thumb_h > th_all) thumb_h = th_all;
-    span = th_all - thumb_h;
-    if (span < 1) return;
-    sc = ((y - thumb_h / 2) * max_sc + span / 2) / span;
-    if (sc < 0) sc = 0;
-    if (sc > max_sc) sc = max_sc;
-    g_dock_dd_scroll = sc;
+    MwPlan mp;
+    if (!g_dock_dd_scrolling) return;
+    mw_plan(&mp, g_dock_dd_total, g_dock_dd_vis + 1, NULL);
+    g_dock_dd_scroll = mw_scroll_from_y(&mp, g_dock_dd_vis * DOCK_BAR_H, y);
 }
 
 static void dock_paint_menu(void) {
@@ -7497,11 +7460,10 @@ static void dock_paint_menu(void) {
         }
         if (g_dock_dd_scrolling && g_dock_dd_vis > 0 && g_dock_dd_total > 1) {
             int tx = g_win_w - 22, ty = 0, th_all = g_dock_dd_vis * DOCK_BAR_H;
-            int content = g_dock_dd_total - 1, max_sc = content - g_dock_dd_vis;
-            int thumb_h = (th_all * g_dock_dd_vis) / content, thumb_y;
-            if (thumb_h < 14) thumb_h = 14;
-            if (thumb_h > th_all) thumb_h = th_all;
-            thumb_y = (max_sc > 0) ? ty + ((th_all - thumb_h) * g_dock_dd_scroll) / max_sc : ty;
+            MwPlan mp; int thumb_y, thumb_h;
+            mw_plan(&mp, g_dock_dd_total, g_dock_dd_vis + 1, NULL);
+            mw_thumb(&mp, th_all, g_dock_dd_scroll, &thumb_y, &thumb_h);
+            thumb_y += ty;
             XSetForeground(dpy, gc, alloc_pixel("#2a2a2a"));
             XFillRectangle(dpy, buf, gc, tx, ty, 18, (unsigned)th_all);
             XSetForeground(dpy, gc, alloc_pixel("#aaaaaa"));
@@ -8508,7 +8470,6 @@ static void assign_nav_and_layout(void) {
             g_generic_sbars[i].thumb_y += fb;
             if (g_sbar_up_elem[i].w > 0)   { g_sbar_up_elem[i].x += fb;   g_sbar_up_elem[i].y += fb; }
             if (g_sbar_down_elem[i].w > 0) { g_sbar_down_elem[i].x += fb; g_sbar_down_elem[i].y += fb; }
-            if (g_sbar_thumb_elem[i].w > 0) { g_sbar_thumb_elem[i].x += fb; g_sbar_thumb_elem[i].y += fb; }
         }
         g_win_w += 2 * fb; g_win_h += 2 * fb;
         g_window->w = g_win_w; g_window->h = g_win_h;
@@ -10183,7 +10144,6 @@ static void activate_focused(void) {
      * never see them. Index-matched into g_generic_sbars[], the SAME
      * array this frame's own layout pass just populated - clamped
      * against its own real max_scroll, not a guessed bound. */
-    if (strncmp(item->onclick, "SCROLLTHUMB:", 12) == 0) return;   /* focus only: drag / Up / Down move it */
     if (strncmp(item->onclick, "SCROLLUP:", 9) == 0 || strncmp(item->onclick, "SCROLLDOWN:", 11) == 0) {
         int up = item->onclick[6] == 'U';
         int i = atoi(item->onclick + (up ? 9 : 11));
@@ -11043,7 +11003,6 @@ static void redraw(void) {
             for (int sbi = 0; sbi < g_n_generic_sbars; sbi++) {
                 if (g_sbar_up_elem[sbi].w > 0) kh_serialize_frame_elem(ff, &g_sbar_up_elem[sbi]);
                 if (g_sbar_down_elem[sbi].w > 0) kh_serialize_frame_elem(ff, &g_sbar_down_elem[sbi]);
-                if (g_sbar_thumb_elem[sbi].w > 0) kh_serialize_frame_elem(ff, &g_sbar_thumb_elem[sbi]);
             }
             fclose(ff); rename(tmpp, fpath);
         }
