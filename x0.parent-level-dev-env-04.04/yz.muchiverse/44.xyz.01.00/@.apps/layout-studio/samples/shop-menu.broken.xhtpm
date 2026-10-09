@@ -1,0 +1,14 @@
+<!-- a shop menu written by a hurried agent: every line below has a mistake layout_check catches -->
+<row id="shop" class="canvas-overlay-right ov-chrome">
+  <text label="Shop"/>
+  <item id="buy1" action="sh '${HOUSE}/shop.sh' buy sword"/>
+  <item id="buy1" label="Buy shield" action="sh '${HOUSE}/shop.sh' buy shield"/>
+  <item id="buy 3" label="Buy potion"/>
+  <cli_io id="q" label="search: "/>
+  <cli_io id="q2" target_id="q" label="filter: "/>
+  <repeat count="${n_items}">
+    <item id="r" label="${r_label}" action="true"/>
+  </repeat>
+  <slider id="vol" label="Volume"/>
+  <item id="close" label="Close" color="red" action="sh '${HOUSE}/shop.sh' close"/>
+</row>

@@ -1,0 +1,3 @@
+n_items=3
+r_0_label=a
+r_1_label=b

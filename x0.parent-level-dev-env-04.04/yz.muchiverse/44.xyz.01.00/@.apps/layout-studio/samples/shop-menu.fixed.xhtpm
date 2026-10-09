@@ -1,0 +1,13 @@
+<!-- the same shop menu after following the fix lines -->
+<row id="shop" class="canvas-overlay-right ov-chrome">
+  <text label="Shop"/>
+  <item id="buy1" label="Buy sword" action="sh '${HOUSE}/shop.sh' buy sword"/>
+  <item id="buy2" label="Buy shield" action="sh '${HOUSE}/shop.sh' buy shield"/>
+  <item id="buy3" label="Buy potion" action="sh '${HOUSE}/shop.sh' buy potion"/>
+  <cli_io id="q" target_id="shop-search" label="search: "/>
+  <cli_io id="q2" target_id="shop-filter" label="filter: "/>
+  <repeat count="${n_items}" bind="r_">
+    <item id="r" label="${r_label}" action="sh '${HOUSE}/shop.sh' pick"/>
+  </repeat>
+  <item id="close" label="Close" action="sh '${HOUSE}/shop.sh' close"/>
+</row>
