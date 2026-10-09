@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+META         | map_id             | tsots
+META         | desk_id            | map004
+META         | note               | Map004 Outside. W blocked, ~ A1 water.
+EXTRUDE      | W                  | 3
+EXTRUDE      | default             | 0
