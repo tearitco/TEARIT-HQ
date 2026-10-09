@@ -77,6 +77,33 @@ if [ "$KIND" = mapev ] && [ -n "$ID" ]; then
         echo "$(date '+%H:%M:%S') $VERB mapev $ID" >> "$LOG"
         exit 0
     fi
+    # Desk events.pdl is the cell-32 list. The ev/ package was built on
+    # the old grid and its verb often disagrees. Play the pdl command.
+    EVF="$ROOT/pieces/system/maps/$MAP/$DESK/events.pdl"
+    if [ -f "$EVF" ] && grep -q '^mode=on' "$HOUSE/#.desktop/khtpm_play_mode.state.txt" 2>/dev/null; then
+        CMD=$(awk -v id="$ID" '
+            BEGIN { n=0 }
+            $1=="EVENT" {
+                n++
+                if (n == id+0) {
+                    for (i = 1; i <= NF; i++) {
+                        if ($i ~ /^cmds=/) { split($i, a, "="); print a[2]; exit }
+                    }
+                }
+            }
+        ' "$EVF")
+        case "$CMD" in
+            change_hp|change_armor|nukage|change_ammo|change_items|start_battle|next_level|player_start)
+                sh "$ROOT/ops/doom_event.sh" "$CMD"
+                case "$CMD" in
+                    player_start|next_level) ;;
+                    *) sh "$ROOT/ops/doom_event.sh" kill_event "$DESK" "$ID" ;;
+                esac
+                echo "$(date '+%H:%M:%S') pdl $CMD mapev $ID" >> "$LOG"
+                exit 0
+                ;;
+        esac
+    fi
     DP="$ROOT/pieces/system/maps/$MAP/deadpool.pdl"
     if [ -f "$DP" ] && awk -F'|' -v desk="$DESK" -v id="$ID" '
         { gsub(/^[ \t]+|[ \t]+$/, "", $2); gsub(/^[ \t]+|[ \t]+$/, "", $3) }
