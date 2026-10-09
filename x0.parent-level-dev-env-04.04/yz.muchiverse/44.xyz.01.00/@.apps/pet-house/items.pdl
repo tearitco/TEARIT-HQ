@@ -1,0 +1,7 @@
+# items.pdl - what the player can give the pet. Columns: ITEM | name | kind | effect numbers. kind=food lowers hunger; toy raises happy and counts as play;
+# soap raises clean. A given item is spent from items.txt (the pantry). Add a row to add an item; no code change.
+ITEM | apple | food | hunger=-3 | happy=+1
+ITEM | fish  | food | hunger=-5 | happy=+2
+ITEM | cake  | food | hunger=-4 | happy=+5
+ITEM | ball  | toy  | happy=+6  | energy=-10
+ITEM | soap  | soap | clean=+40

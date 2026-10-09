@@ -1,0 +1,13 @@
+# joints.pdl - which weights may be tuned, how far, and by whom (read by &.widgits/concept-bank/ops/joint_tune). JOINT | id | area | key | value | step | min | max | autonomy | owner_seat | note
+# autonomy=1: the pet itself may nudge it by at most step per move (a learned preference). autonomy=0: only the owner (proposer human) may move it.
+JOINT | j_pref_apple | pet-prefs | pref_apple | 5 | step=1 | min=0 | max=10 | autonomy=1 | owner_seat=0 | note="how much the pet likes apples"
+JOINT | j_pref_fish  | pet-prefs | pref_fish  | 5 | step=1 | min=0 | max=10 | autonomy=1 | owner_seat=0 | note="how much the pet likes fish"
+JOINT | j_pref_cake  | pet-prefs | pref_cake  | 5 | step=1 | min=0 | max=10 | autonomy=1 | owner_seat=0 | note="how much the pet likes cake"
+JOINT | j_pref_ball  | pet-prefs | pref_ball  | 5 | step=1 | min=0 | max=10 | autonomy=1 | owner_seat=0 | note="how much the pet likes the ball"
+JOINT | j_pref_soap  | pet-prefs | pref_soap  | 5 | step=1 | min=0 | max=10 | autonomy=1 | owner_seat=0 | note="how much the pet likes baths"
+JOINT | j_sleep      | pet-body  | sleep_energy | 40 | step=5 | min=10 | max=80 | autonomy=0 | owner_seat=1 | note="energy gained by one sleep, owner only"
+JOINT | j_tick_hunger| pet-body  | tick_hunger  | 6 | step=1 | min=1 | max=15 | autonomy=0 | owner_seat=1 | note="hunger gained per day tick, owner only"
+JOINT | j_w_feed | pet-priorities | w_feed | 10 | step=1 | min=3 | max=30 | autonomy=1 | owner_seat=0 | note="how urgently the pet does feed on its own (learned)"
+JOINT | j_w_sleep | pet-priorities | w_sleep | 10 | step=1 | min=3 | max=30 | autonomy=1 | owner_seat=0 | note="how urgently the pet does sleep on its own (learned)"
+JOINT | j_w_wash | pet-priorities | w_wash | 10 | step=1 | min=3 | max=30 | autonomy=1 | owner_seat=0 | note="how urgently the pet does wash on its own (learned)"
+JOINT | j_w_play | pet-priorities | w_play | 10 | step=1 | min=3 | max=30 | autonomy=1 | owner_seat=0 | note="how urgently the pet does play on its own (learned)"

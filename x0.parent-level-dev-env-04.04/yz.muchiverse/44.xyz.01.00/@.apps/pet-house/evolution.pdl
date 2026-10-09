@@ -1,0 +1,8 @@
+# evolution.pdl - how level and habits change the pet's looks. Read by pet_event.sh (evolve). The pins go to ops pet_gen (scale, ear_len, ear_w, body_r/g/b).
+# A STAGE applies from its level up (the highest matching stage wins). A TRAIT adds to a pin per N uses of a habit counter (capped).
+STAGE | baby  | level=1 | scale=70  | ear_len=30
+STAGE | child | level=3 | scale=85  | ear_len=50
+STAGE | adult | level=6 | scale=100 | ear_len=80
+STAGE | elder | level=10 | scale=108 | ear_len=90 | body_r=170 | body_g=170 | body_b=190
+TRAIT | counter=play_total | per=3 | pin=ear_len | add=5 | cap=20
+TRAIT | counter=fed_total  | per=5 | pin=scale   | add=2 | cap=12
