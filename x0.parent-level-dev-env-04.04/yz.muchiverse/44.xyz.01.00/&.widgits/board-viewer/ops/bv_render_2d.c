@@ -1005,23 +1005,32 @@ int main(void) {
             load_rgba_png(mp, &map_px, &map_w, &map_h) &&
             map_cols > 0 && map_w % map_cols == 0) {
             map_tile = map_w / map_cols;
+            /* On-screen tile is desk_grid.pdl cell_px (the settings
+             * grid step). 24 draws the export 1:1. 80 draws the same
+             * pixels larger. Source art stays the PNG's own tile. */
+            int draw = cell;
+            if (draw < 8) draw = 8;
             if (map_tile >= 8 && map_tile <= 96 && (map_h % map_tile) == 0) {
                 int cx = sel_x >= 0 ? sel_x : (map_cols / 2);
                 int cy = sel_y >= 0 ? sel_y : ((map_h / map_tile) / 2);
-                map_px0 = cx * map_tile - W / 2;
-                map_py0 = cy * map_tile - H / 2;
-                if (map_w > W) {
+                int view_w = W * map_tile / draw;
+                int view_h = H * map_tile / draw;
+                if (view_w < 1) view_w = 1;
+                if (view_h < 1) view_h = 1;
+                map_px0 = cx * map_tile - view_w / 2;
+                map_py0 = cy * map_tile - view_h / 2;
+                if (map_w > view_w) {
                     if (map_px0 < 0) map_px0 = 0;
-                    if (map_px0 > map_w - W) map_px0 = map_w - W;
-                } else map_px0 = -(W - map_w) / 2;
-                if (map_h > H) {
+                    if (map_px0 > map_w - view_w) map_px0 = map_w - view_w;
+                } else map_px0 = -(view_w - map_w) / 2;
+                if (map_h > view_h) {
                     if (map_py0 < 0) map_py0 = 0;
-                    if (map_py0 > map_h - H) map_py0 = map_h - H;
-                } else map_py0 = -(H - map_h) / 2;
+                    if (map_py0 > map_h - view_h) map_py0 = map_h - view_h;
+                } else map_py0 = -(view_h - map_h) / 2;
                 for (int y = 0; y < H; y++) {
-                    int sy = map_py0 + y;
+                    int sy = map_py0 + y * map_tile / draw;
                     for (int x = 0; x < W; x++) {
-                        int sx = map_px0 + x;
+                        int sx = map_px0 + x * map_tile / draw;
                         unsigned char *p = VP_PXR(x, y);
                         if (sx < 0 || sy < 0 || sx >= map_w || sy >= map_h) continue;
                         const unsigned char *s = map_px + ((size_t)sy * (size_t)map_w + (size_t)sx) * 4;
@@ -1029,6 +1038,8 @@ int main(void) {
                     }
                 }
                 map_ok = 1;
+                /* map_px0/map_py0 stay in source pixels. map_tile stays
+                 * the PNG tile. The selector uses `cell` for the box. */
             }
         }
         if (!map_ok) { free(map_px); map_px = NULL; }
@@ -1144,20 +1155,21 @@ int main(void) {
      * position to draw its highlight at on this view's vertical
      * (height) axis. Ground/entities above already draw fully. */
     if (!side_mode && map_ok && sel_x >= 0 && sel_y >= 0 && map_tile > 0) {
-        int x0 = sel_x * map_tile - map_px0;
-        int y0 = sel_y * map_tile - map_py0;
-        if (x0 < W && y0 < H && x0 + map_tile > 0 && y0 + map_tile > 0) {
+        int box = cell > 0 ? cell : map_tile;
+        int x0 = (sel_x * map_tile - map_px0) * box / map_tile;
+        int y0 = (sel_y * map_tile - map_py0) * box / map_tile;
+        if (x0 < W && y0 < H && x0 + box > 0 && y0 + box > 0) {
             unsigned char xr = 255, xg = 204, xb = 0;
             for (int t = 0; t < 2; t++) {
-                for (int x = x0; x < x0 + map_tile; x++) {
+                for (int x = x0; x < x0 + box; x++) {
                     if (x < 0 || x >= W) continue;
-                    int yA = y0 + t, yB = y0 + map_tile - 1 - t;
+                    int yA = y0 + t, yB = y0 + box - 1 - t;
                     if (yA >= 0 && yA < H) { unsigned char *a = VP_PXR(x, yA); a[0]=xr; a[1]=xg; a[2]=xb; a[3]=255; }
                     if (yB >= 0 && yB < H) { unsigned char *a = VP_PXR(x, yB); a[0]=xr; a[1]=xg; a[2]=xb; a[3]=255; }
                 }
-                for (int y = y0; y < y0 + map_tile; y++) {
+                for (int y = y0; y < y0 + box; y++) {
                     if (y < 0 || y >= H) continue;
-                    int xA = x0 + t, xB = x0 + map_tile - 1 - t;
+                    int xA = x0 + t, xB = x0 + box - 1 - t;
                     if (xA >= 0 && xA < W) { unsigned char *a = VP_PXR(xA, y); a[0]=xr; a[1]=xg; a[2]=xb; a[3]=255; }
                     if (xB >= 0 && xB < W) { unsigned char *a = VP_PXR(xB, y); a[0]=xr; a[1]=xg; a[2]=xb; a[3]=255; }
                 }
