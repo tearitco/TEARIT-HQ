@@ -360,6 +360,11 @@ static Window g_dock_menu_win;
 static int g_dock_dd_scroll = 0, g_dock_dd_scrolling = 0, g_dock_dd_vis = 0, g_dock_dd_total = 0;
 static char g_dock_dd_target[64] = "";
 static int g_dock_dd_drag = 0;   /* 1 while button 1 drags the thumb / track of the long dropdown */
+/* Long dock dropdown furniture: a DD_STRIP_W-wide strip right of the rows holds numbered ^ / v arrows (nav items, like the
+ * generic scrollbar's) at its ends and the thumb track between them. */
+#define DD_STRIP_W 62
+#define DD_ARROW_H 22
+static Elem g_dd_up_elem, g_dd_dn_elem;
 static Pixmap g_dock_menu_buf;
 static XftDraw *g_dock_menu_xft;
 static GC g_dock_menu_gc;
@@ -3440,6 +3445,13 @@ static void dock_relay_focus_code(int code) {
 }
 static int click_focus_then_activate(Elem *hit) {
     if (!hit) return 0;
+    if (window_is_dock() && strncmp(hit->onclick, "DDSCROLL:", 9) == 0) {
+        /* the long dropdown's ^ / v: scroll on the first click. They are not rows the strip manager knows, so the generic
+         * "first click = focus + relay focus code 6000+n" step made the manager reset focus to row 1 (owner: "jumping
+         * back ... outside of its natural index"). */
+        g_focus_nav = hit->nav_index;
+        return 1;
+    }
     /* Out-of-scope rows stay numbered and drawn, but a click must not
      * steal focus or fire - same as chtpm_parser.c is_navigable().
      * REAL FIX 2026-09-30 (live report: "tried opening pc-hq from toys
@@ -7063,7 +7075,7 @@ static int layout_dock_bar(Elem *page) {
             if (strcmp(g_dock_dd_target, trig0->id) != 0) { g_dock_dd_scroll = 0; snprintf(g_dock_dd_target, sizeof(g_dock_dd_target), "%s", trig0->id); }
             mw_plan(&mp, n_open, cap, &g_dock_dd_scroll);
             g_dock_dd_scrolling = mp.scrolling; g_dock_dd_vis = mp.vis;
-            if (mp.scrolling) col_w += 24;             /* room for the thumb at the right edge */
+            if (mp.scrolling) col_w += DD_STRIP_W;     /* room for the ^/v arrows and the thumb right of the rows */
         } else if (!trig0 && !is_bottom) { g_dock_dd_target[0] = '\0'; g_dock_dd_scroll = 0; }
         if (col_w < 48) col_w = 48;
         if (trig0 && trig0->x + col_w > sw - 8) {
@@ -7099,7 +7111,7 @@ static int layout_dock_bar(Elem *page) {
             if (open && trigger) {
                 c->x = 0;
                 c->y = stack_n * DOCK_BAR_H;
-                c->w = col_w;
+                c->w = col_w - (g_dock_dd_scrolling ? DD_STRIP_W : 0);
                 c->h = DOCK_BAR_H;
                 c->nav_index = ++g_n_nav;
                 g_nav[g_n_nav - 1] = c;
@@ -7110,9 +7122,28 @@ static int layout_dock_bar(Elem *page) {
             }
             if (ki < n_stack_keys) stack_counts[ki]++;
         }
+        int dd_rows_only = g_dock_drop_lo ? g_dock_drop_hi - g_dock_drop_lo + 1 : 0;
+        if (trig0 && g_dock_dd_scrolling && g_dock_drop_lo) {
+            int rows_px = g_dock_dd_vis * DOCK_BAR_H;
+            Elem *ar[2] = { &g_dd_up_elem, &g_dd_dn_elem };
+            for (int k = 0; k < 2; k++) {
+                Elem *a = ar[k];
+                memset(a, 0, sizeof(*a));
+                snprintf(a->tag, sizeof(a->tag), "item");
+                snprintf(a->id, sizeof(a->id), k ? "dd-down" : "dd-up");
+                snprintf(a->classes[0], sizeof(a->classes[0]), "sbar-arrow"); a->n_classes = 1;
+                snprintf(a->label, sizeof(a->label), k ? "v" : "^");
+                snprintf(a->onclick, sizeof(a->onclick), k ? "DDSCROLL:1" : "DDSCROLL:-1");
+                a->x = col_w - DD_STRIP_W + 4; a->w = DD_STRIP_W - 6; a->h = DD_ARROW_H;
+                a->y = k ? rows_px - DD_ARROW_H : 0;
+                css_compute_style(&g_sheet, a->tag, a->id, a->classes, a->n_classes, 0, &a->style);
+                a->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = a;
+                g_dock_drop_hi = a->nav_index;
+            }
+        }
         if (!is_bottom) {
             if (trig0 && g_dock_drop_lo) {
-                int n_rows = g_dock_drop_hi - g_dock_drop_lo + 1;
+                int n_rows = dd_rows_only;
                 g_dock_menu_w = col_w;
                 g_dock_menu_h = n_rows * DOCK_BAR_H;
                 if (g_dock_menu_w < 40) g_dock_menu_w = 40;
@@ -7344,7 +7375,7 @@ static void dock_dd_scroll_from_y(int y) {
     MwPlan mp;
     if (!g_dock_dd_scrolling) return;
     mw_plan(&mp, g_dock_dd_total, g_dock_dd_vis + 1, NULL);
-    g_dock_dd_scroll = mw_scroll_from_y(&mp, g_dock_dd_vis * DOCK_BAR_H, y);
+    g_dock_dd_scroll = mw_scroll_from_y(&mp, g_dock_dd_vis * DOCK_BAR_H - 2 * DD_ARROW_H, y - DD_ARROW_H);
 }
 
 static void dock_paint_menu(void) {
@@ -7459,7 +7490,7 @@ static void dock_paint_menu(void) {
             }
         }
         if (g_dock_dd_scrolling && g_dock_dd_vis > 0 && g_dock_dd_total > 1) {
-            int tx = g_win_w - 22, ty = 0, th_all = g_dock_dd_vis * DOCK_BAR_H;
+            int tx = g_win_w - 22, ty = DD_ARROW_H, th_all = g_dock_dd_vis * DOCK_BAR_H - 2 * DD_ARROW_H;
             MwPlan mp; int thumb_y, thumb_h;
             mw_plan(&mp, g_dock_dd_total, g_dock_dd_vis + 1, NULL);
             mw_thumb(&mp, th_all, g_dock_dd_scroll, &thumb_y, &thumb_h);
@@ -10144,6 +10175,7 @@ static void activate_focused(void) {
      * never see them. Index-matched into g_generic_sbars[], the SAME
      * array this frame's own layout pass just populated - clamped
      * against its own real max_scroll, not a guessed bound. */
+    if (strncmp(item->onclick, "DDSCROLL:", 9) == 0) { g_dock_dd_scroll += atoi(item->onclick + 9); return; }   /* dock dropdown ^ / v */
     if (strncmp(item->onclick, "SCROLLUP:", 9) == 0 || strncmp(item->onclick, "SCROLLDOWN:", 11) == 0) {
         int up = item->onclick[6] == 'U';
         int i = atoi(item->onclick + (up ? 9 : 11));
@@ -13496,7 +13528,8 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
                 }
             }
             if (window_is_dock() && g_dock_menu_win && cw == g_dock_menu_win && ev->xbutton.button == 1 &&
-                g_dock_dd_scrolling && ev->xbutton.x >= g_dock_menu_w - 26 && ev->xbutton.y < g_dock_dd_vis * DOCK_BAR_H) {
+                g_dock_dd_scrolling && ev->xbutton.x >= g_dock_menu_w - DD_STRIP_W &&
+                ev->xbutton.y >= DD_ARROW_H && ev->xbutton.y < g_dock_dd_vis * DOCK_BAR_H - DD_ARROW_H) {
                 g_dock_dd_drag = 1;                       /* press on the thumb / track: drag it (no row activation) */
                 dock_dd_scroll_from_y(ev->xbutton.y);
                 if (!g_quit) { assign_nav_and_layout(); redraw(); }
