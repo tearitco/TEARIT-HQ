@@ -349,7 +349,7 @@ typedef struct {
     int para_w, para_h, para_lx, para_ly;
     /* Visible map events (events.txt). Capped: the GPU scene holds 128
      * boxes and the selector, hero and range wires share that list. */
-    struct { int x, y, r, g, b; } ev[64];
+    struct { int x, y, r, g, b, index, dir, pat; char name[40]; } ev[64];
     int ev_n;
 } MakerAtlas;
 static MakerAtlas g_mk;
@@ -454,13 +454,19 @@ static int maker_load(const char *root) {
     f = fopen(path, "r");
     if (f) {
         while (g_mk.ev_n < 64 && fgets(line, sizeof(line), f)) {
-            int x, y, r, g, b;
-            if (sscanf(line, "%d %d %d %d %d", &x, &y, &r, &g, &b) != 5) continue;
+            int x, y, r, g, b, index, dir, pat;
+            char name[40];
+            if (sscanf(line, "%d %d %d %d %d %39s %d %d %d",
+                       &x, &y, &r, &g, &b, name, &index, &dir, &pat) != 9) continue;
             g_mk.ev[g_mk.ev_n].x = x;
             g_mk.ev[g_mk.ev_n].y = y;
             g_mk.ev[g_mk.ev_n].r = r;
             g_mk.ev[g_mk.ev_n].g = g;
             g_mk.ev[g_mk.ev_n].b = b;
+            g_mk.ev[g_mk.ev_n].index = index;
+            g_mk.ev[g_mk.ev_n].dir = dir;
+            g_mk.ev[g_mk.ev_n].pat = pat;
+            snprintf(g_mk.ev[g_mk.ev_n].name, sizeof(g_mk.ev[0].name), "%s", name);
             g_mk.ev_n++;
         }
         fclose(f);
@@ -3458,15 +3464,6 @@ static int render_one_frame(void) {
         #define ADDWIRE_THIN(x0,y0,z0,x1,y1,z1,cr,cg,cb) do { \
             ADDBOX(x0,y0,z0,x1,y1,z1,cr,cg,cb,1); \
             if (sc.box_n > 0) sc.box[sc.box_n-1].wire = 2; } while (0)
-        /* Map events stand on the floor (the floor voxel is y 0..1).
-         * Cap at 48 so the selector and hero still get a box. */
-        if (sc.maker) {
-            int budget = 48;
-            for (int i = 0; i < g_mk.ev_n && budget > 0; i++, budget--)
-                ADDBOX(g_mk.ev[i].x + 0.2, 1.0, g_mk.ev[i].y + 0.2,
-                       g_mk.ev[i].x + 0.8, 2.4, g_mk.ev[i].y + 0.8,
-                       g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b, 0);
-        }
         BvrStyle rstyle;
         bvr_style(focused_project_root, &rstyle);   /* external move_range_style.pdl */
         sc.wire_edge = rstyle.placer_edge; sc.wire_thin = rstyle.range_edge;
@@ -3520,6 +3517,69 @@ static int render_one_frame(void) {
                     sc.model_vox[_m][_o+0]=(VOX)[_i].r; sc.model_vox[_m][_o+1]=(VOX)[_i].g; \
                     sc.model_vox[_m][_o+2]=(VOX)[_i].b; sc.model_vox[_m][_o+3]=255; } \
             } _m; })
+
+        /* Map events. A 16x24 frame (written by tsots_events.py) is one
+         * voxel slice. The shader stretches that slice through the box,
+         * which is the same extrusion a phymoji model gets. No frame
+         * file, or no free model slot: the old flat colour box. */
+        if (sc.maker) {
+            int budget = 48;
+            int used_model[64];
+            char used_key[64][64];
+            int used_n = 0;
+            for (int i = 0; i < g_mk.ev_n && budget > 0; i++, budget--) {
+                int hm = -1;
+                char key[64];
+                snprintf(key, sizeof(key), "%s_%d_%d_%d",
+                         g_mk.ev[i].name, g_mk.ev[i].index, g_mk.ev[i].dir, g_mk.ev[i].pat);
+                for (int k = 0; k < used_n; k++)
+                    if (strcmp(used_key[k], key) == 0) hm = used_model[k];
+                if (hm < 0 && used_n < 64 && sc.model_n < BV_GPU_MAX_MODEL - 4) {
+                    unsigned char frame[16 * 24 * 4];
+                    char walk[4352], fp[4400];
+                    int got = 0;
+                    snprintf(walk, sizeof(walk), "%s", g_mk.key);
+                    for (int up = 0; up < 16 && !got; up++) {
+                        char *sl = strrchr(walk, '/');
+                        if (!sl) break;
+                        *sl = 0;
+                        snprintf(fp, sizeof(fp),
+                                 "%s/#.NNEST_ASSETS/tsots-characters/frames/%s.rgba",
+                                 walk, key);
+                        FILE *ff = fopen(fp, "rb");
+                        if (!ff) continue;
+                        got = fread(frame, 1, sizeof(frame), ff) == sizeof(frame);
+                        fclose(ff);
+                    }
+                    if (got) {
+                        PhymojiVoxel vox[16 * 24];
+                        int nv = 0;
+                        for (int py = 0; py < 24; py++)
+                            for (int px = 0; px < 16; px++) {
+                                const unsigned char *s = frame + ((py * 16 + px) * 4);
+                                if (s[3] < 16 || nv >= 16 * 24) continue;
+                                vox[nv].lx = (unsigned char)px;
+                                vox[nv].ly = (unsigned char)(23 - py);
+                                vox[nv].lz = 0;
+                                vox[nv].r = s[0]; vox[nv].g = s[1]; vox[nv].b = s[2];
+                                nv++;
+                            }
+                        if (nv > 0) {
+                            hm = GPU_ADD_MODEL(vox, nv, 15, 23, 0);
+                            if (hm >= 0) {
+                                snprintf(used_key[used_n], sizeof(used_key[0]), "%s", key);
+                                used_model[used_n++] = hm;
+                            }
+                        }
+                    }
+                }
+                float top = (g_mk.ev[i].name[0] == '!') ? 1.9f : 2.6f;
+                ADDBOX(g_mk.ev[i].x + 0.15, 1.0, g_mk.ev[i].y + 0.15,
+                       g_mk.ev[i].x + 0.85, top, g_mk.ev[i].y + 0.85,
+                       g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b, 0);
+                if (hm >= 0 && sc.box_n > 0) sc.box[sc.box_n - 1].model = hm;
+            }
+        }
 
         if (g_hero_present && camera_mode != 1) {
             int hm = -1;

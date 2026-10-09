@@ -74,6 +74,34 @@ def frame_box(im, name, index, direction, pattern):
     return px[0], px[1], px[2]
 
 
+def write_frame(im, name, index, direction, pattern, store):
+    """16x24 raw RGBA of that charset frame. The 3D daemon has no PNG
+    decoder. One opaque slice of this grid is extruded through the
+    event's box, the same way a phymoji voxel model fills asa/ava."""
+    big = name[:1] == "$"
+    sw, sh = im.size
+    row = {2: 0, 4: 1, 6: 2, 8: 3}.get(int(direction), 0)
+    pattern = max(0, min(2, int(pattern)))
+    if big:
+        pw, ph = sw // 3, sh // 4
+        sx, sy = pattern * pw, row * ph
+    else:
+        pw, ph = sw // 12, sh // 8
+        index = max(0, min(7, int(index)))
+        sx = ((index % 4) * 3 + pattern) * pw
+        sy = ((index // 4) * 4 + row) * ph
+    if pw < 1 or ph < 1:
+        return
+    out_dir = os.path.join(store, "frames")
+    os.makedirs(out_dir, exist_ok=True)
+    out = os.path.join(out_dir, "%s_%d_%d_%d.rgba" % (name, int(index), int(direction), int(pattern)))
+    if os.path.isfile(out):
+        return
+    crop = im.crop((sx, sy, sx + pw, sy + ph)).resize((16, 24), Image.NEAREST)
+    with open(out, "wb") as f:
+        f.write(crop.tobytes())
+
+
 def main():
     data = find_data()
     chars = os.path.join(os.path.dirname(data), "img", "characters")
@@ -108,6 +136,8 @@ def main():
                 cache[name] = Image.open(src).convert("RGBA")
             r, g, b = frame_box(cache[name], name, im.get("characterIndex") or 0,
                                 im.get("direction") or 2, im.get("pattern") or 1)
+            write_frame(cache[name], name, im.get("characterIndex") or 0,
+                        im.get("direction") or 2, im.get("pattern") or 1, store)
             lines.append("%d %d %d %d %d %s %d %d %d\n" % (
                 int(ev["x"]), int(ev["y"]), r, g, b, name,
                 int(im.get("characterIndex") or 0),
