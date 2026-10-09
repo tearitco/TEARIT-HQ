@@ -46,6 +46,7 @@ static float rnd(void) { rng_s = rng_s * 1664525u + 1013904223u; return (float)(
 
 static int g_body[3], g_belly[3] = { 245, 235, 215 }, g_dark[3] = { 40, 30, 40 }, g_cheek[3] = { 255, 140, 150 };
 static float g_ear_len = 0.5f, g_ear_w = 0.22f, g_scale = 1.0f;
+static int g_species = 0;      /* 0 bunny, 1 bear, 2 cat, 3 frog, 4 mouse, 5 dragon: silhouettes differ, not only colours */
 
 static void add_ellipsoid(Mesh *m, const Part *p) {
     int base = m->nv;
@@ -100,8 +101,25 @@ static void build(Mesh *m, const Pose *po) {
     /* legs: short feet under the body; walk swings one forward (+z, up) and one back */
     Part legL = { -0.22f * s, 0.1f * s + 0.04f * s * fmaxf(0.0f, po->walk), 0.08f * s + 0.14f * s * po->walk, 0.14f * s, 0.1f * s, 0.18f * s, 0 };
     Part legR = legL; legR.cx = 0.22f * s; legR.cy = 0.1f * s + 0.04f * s * fmaxf(0.0f, -po->walk); legR.cz = 0.08f * s - 0.14f * s * po->walk;
-    Part parts[] = { body, belly, head, earL, earR, eyeL, eyeR, browL, browR, mouth, tail, cheekL, cheekR, armL, armR, legL, legR };
-    for (int i = 0; i < (int)(sizeof parts / sizeof parts[0]); i++) add_ellipsoid(m, &parts[i]);
+    /* species silhouette: body width/height, head size, eye size, tail, ear placement, wings */
+    float bw = 1, bh = 1, hs = 1, es = 1, tl = 1, tr = 1, eo = 0, ey_up = 0; int wings = 0;
+    switch (g_species) {
+        case 1: bw = 1.2f; bh = 0.95f; hs = 1.15f; tr = 0.8f; eo = 0.12f; break;                                   /* bear: round, wide, small round ears at the sides */
+        case 2: bw = 0.82f; bh = 1.1f; hs = 0.95f; tl = 2.4f; tr = 0.6f; break;                                      /* cat: slim, long tail, pointy ears */
+        case 3: bw = 1.35f; bh = 0.75f; hs = 1.1f; es = 1.9f; ey_up = 0.1f; tl = 0.3f; break;                        /* frog: wide and low, big eyes on top, no tail */
+        case 4: bw = 0.8f; bh = 0.8f; hs = 0.9f; tl = 2.2f; tr = 0.45f; eo = 0.18f; break;                          /* mouse: small, big round ears, thin long tail */
+        case 5: bw = 1.05f; bh = 1.05f; hs = 1.0f; tl = 2.0f; tr = 1.3f; wings = 1; break;                          /* dragon: horns, thick tail, wings */
+        default: break;
+    }
+    body.rx *= bw; body.rz *= bw; body.ry *= bh; belly.rx *= bw; belly.ry *= bh;
+    head.rx *= hs; head.ry *= hs; head.rz *= hs; eyeL.rx *= es; eyeL.ry *= es; eyeR.rx *= es; eyeR.ry *= es; eyeL.cy += ey_up * s; eyeR.cy += ey_up * s;
+    tail.rz *= tl; tail.cz -= 0.1f * s * (tl - 1); tail.rx *= tr; tail.ry *= tr; if (g_species == 2) tail.cy += 0.15f * s;
+    earL.cx -= eo * s; earR.cx += eo * s; if (g_species == 4 || g_species == 1) { earL.cy -= 0.12f * s; earR.cy -= 0.12f * s; earL.rz = earR.rz = 0.14f * s; }
+    if (g_species == 3) { earL.ry = earR.ry = 0.02f * s; earL.rx = earR.rx = 0.02f * s; }
+    Part wingL = { -0.62f * s, lift + 0.95f * s * sq, -0.3f * s, 0.05f * s, 0.32f * s, 0.34f * s, 3 }, wingR = wingL; wingR.cx = 0.62f * s;
+    Part parts[] = { body, belly, head, earL, earR, eyeL, eyeR, browL, browR, mouth, tail, cheekL, cheekR, armL, armR, legL, legR, wingL, wingR };
+    int np = (int)(sizeof parts / sizeof parts[0]) - (wings ? 0 : 2);
+    for (int i = 0; i < np; i++) add_ellipsoid(m, &parts[i]);
 }
 
 static void mat_rgb(int mat, int out[3]) {
@@ -206,6 +224,11 @@ int main(int argc, char **argv) {
     rng_s = seed * 2654435761u + 12345u;
     g_body[0] = 120 + (int)(rnd() * 120); g_body[1] = 120 + (int)(rnd() * 120); g_body[2] = 120 + (int)(rnd() * 120);
     g_ear_len = 0.35f + rnd() * 0.5f; g_ear_w = 0.16f + rnd() * 0.14f; g_scale = 0.9f + rnd() * 0.2f;
+    g_species = pdl_int(pdl, "species", (int)(seed % 6));
+    { static const int base[6][3] = { { 235, 205, 215 }, { 165, 112, 72 }, { 232, 150, 62 }, { 92, 192, 96 }, { 172, 172, 188 }, { 92, 112, 205 } };
+      static const float ear_l[6] = { 0.85f, 0.2f, 0.4f, 0.04f, 0.3f, 0.55f }, ear_ww[6] = { 0.17f, 0.22f, 0.15f, 0.04f, 0.3f, 0.07f };
+      for (int k = 0; k < 3; k++) { int j = (int)((rnd() - 0.5f) * 34); int v = base[g_species][k] + j; g_body[k] = v < 20 ? 20 : v > 255 ? 255 : v; }
+      g_ear_len = ear_l[g_species]; g_ear_w = ear_ww[g_species]; }
     g_body[0] = pdl_int(pdl, "body_r", g_body[0]); g_body[1] = pdl_int(pdl, "body_g", g_body[1]); g_body[2] = pdl_int(pdl, "body_b", g_body[2]);
     g_ear_len = (float)pdl_int(pdl, "ear_len", (int)(g_ear_len * 100)) / 100.0f;
     g_ear_w = (float)pdl_int(pdl, "ear_w", (int)(g_ear_w * 100)) / 100.0f;
@@ -313,7 +336,7 @@ int main(int argc, char **argv) {
     snprintf(p, sizeof p, "%s/pet.pdl", out);
     FILE *pf = fopen(p, "w");
     if (pf) {
-        fprintf(pf, "SECTION | KEY | VALUE\n---------------------------------\nPET | seed | %u\nPET | body_r | %d\nPET | body_g | %d\nPET | body_b | %d\n", seed, g_body[0], g_body[1], g_body[2]);
+        fprintf(pf, "SECTION | KEY | VALUE\n---------------------------------\nPET | seed | %u\nPET | species | %d\nPET | body_r | %d\nPET | body_g | %d\nPET | body_b | %d\n", seed, g_species, g_body[0], g_body[1], g_body[2]);
         fprintf(pf, "PET | ear_len | %d\nPET | ear_w | %d\nPET | scale | %d\n", (int)(g_ear_len * 100), (int)(g_ear_w * 100), (int)(g_scale * 100));
         for (int a = 0; a < NA; a++) fprintf(pf, "ANIM | %s | %d\n", anims[a].name, anims[a].n);
         fclose(pf);
