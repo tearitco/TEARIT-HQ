@@ -4208,12 +4208,23 @@ static void kh_serialize_frame_elem(FILE *f, Elem *e) {
      * invisible there. Pipe-escaped like label/relay/bg: a shell-quoted
      * URL inside a payload can legitimately contain a literal '|'. */
     char segments_esc[8192];
-    frame_field_escape_pipe(e->segments, segments_esc, sizeof(segments_esc));
+    /* INLINE TABLE COLUMNS hardening (2026-10-09): the frame line is
+     * read back with fgets into 9000 bytes - a payload past ~4KB pushes
+     * the line over and the reader honestly skips the whole row (it
+     * vanishes, siblings unharmed). Our projector caps payloads at 3000
+     * so this only ever bites hostile/generic input; serialize those
+     * empty so the row draws its plain label instead of vanishing.
+     * (text_area_esc above has the same theoretical shape at 8KB, but
+     * text_area rows never carry spans/cells - out of scope.) */
+    if (strlen(e->segments) > 4096) segments_esc[0] = '\0';
+    else frame_field_escape_pipe(e->segments, segments_esc, sizeof(segments_esc));
     /* INLINE TABLE COLUMNS: cells= rides the same trailing-field pattern
      * (pipe-escaped; a cell could hold a literal '|' only if a future
      * producer forgets to strip it - belt and braces). */
     char cells_esc[8192];
-    frame_field_escape_pipe(e->cells, cells_esc, sizeof(cells_esc));
+    /* same 4KB honest-fallback cap as segments_esc just above. */
+    if (strlen(e->cells) > 4096) cells_esc[0] = '\0';
+    else frame_field_escape_pipe(e->cells, cells_esc, sizeof(cells_esc));
     fprintf(f, "%s|%s|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d|%s|%s|%s|%s|%d|%s|%d|%d|%d|%s|%s|%d|%s|%s\n",
             e->tag, e->id, classes_joined, label_esc, e->sprite, e->onclick,
             e->nav_index, e->active, e->x, e->y, e->w, e->h,
