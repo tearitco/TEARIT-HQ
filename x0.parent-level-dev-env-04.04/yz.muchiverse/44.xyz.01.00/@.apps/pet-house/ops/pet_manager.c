@@ -5,7 +5,8 @@
  * into state/scene.raw (the window's <canvas sprite=...>). About once a second it refreshes ui.txt (pet_event.sh status); every `tick_s` seconds (default 30) it runs
  * the day tick (needs, self care, evolution). It runs until the window closes (the parent pid changes) or it is killed.
  * Every path is derived from argv[0]: <house>/@.apps/pet-house/ops/+x/pet_manager.+x. Env: PET_DIR (state dir), PET_TICK_S, PET_SCENE_W/H.
- * Build: gcc -std=c11 -O2 -Wall -Wextra -D_DEFAULT_SOURCE -o ops/+x/pet_manager.+x ops/pet_manager.c */
+ * The registry file gives the window id (win=0x...); its LIVE root position comes from X (XTranslateCoordinates), because the registry's x/y are only written at layout time.
+ * Build: gcc -std=c11 -O2 -Wall -Wextra -D_DEFAULT_SOURCE -o ops/+x/pet_manager.+x ops/pet_manager.c -lX11 */
 #include <limits.h>
 #include <signal.h>
 #include <stdio.h>
@@ -14,6 +15,7 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
+#include <X11/Xlib.h>
 
 static long long now_ms(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return (long long)t.tv_sec * 1000 + t.tv_nsec / 1000000; }
 static int sh(const char *cmd, char *out, size_t n) {
@@ -40,13 +42,20 @@ int main(int argc, char **argv) {
     mkdir(pet, 0755);
     char cmd[4096], buf[4096];
     snprintf(cmd, sizeof cmd, "PET_DIR='%s' sh '%s/ops/pet_event.sh' status", pet, app); sh(cmd, buf, sizeof buf);       /* creates the pet if needed */
+    Display *xd = XOpenDisplay(NULL);
     long long t_last = now_ms(), t_status = 0, t_tick = now_ms();
     char anim_ui[32] = "idle";
     while (getppid() == parent) {
         long long t = now_ms(), dt = t - t_last; t_last = t;
         int wx = 0, wy = 0;
         char rp[PATH_MAX]; snprintf(rp, sizeof rp, "%s/#.desktop/livedesk_hq_windows_%d.txt", house, (int)parent);
-        FILE *rf = fopen(rp, "r"); int got = rf != NULL; if (rf) { char l[512]; if (fgets(l, sizeof l, rf)) { char t2[600]; snprintf(t2, sizeof t2, "|%s", l); wx = field(t2, "x"); wy = field(t2, "y"); } fclose(rf); }
+        FILE *rf = fopen(rp, "r"); int got = rf != NULL;
+        if (rf) {
+            char l[512]; unsigned long wid = 0;
+            if (fgets(l, sizeof l, rf)) { char t2[600]; snprintf(t2, sizeof t2, "|%s", l); wx = field(t2, "x"); wy = field(t2, "y"); const char *w = strstr(l, "win=0x"); if (w) wid = strtoul(w + 4, NULL, 16); }
+            fclose(rf);
+            if (xd && wid) { Window ch; int rx = 0, ry = 0; if (XTranslateCoordinates(xd, (Window)wid, DefaultRootWindow(xd), 0, 0, &rx, &ry, &ch)) { wx = rx; wy = ry; } }
+        }
         int floor_h = H - 30;
         static int have_pos = 0, last_wx = 0, last_wy = 0;
         if (got) { have_pos = 1; last_wx = wx; last_wy = wy; }

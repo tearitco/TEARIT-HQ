@@ -1,0 +1,15 @@
+# menu.pdl - the pet window's menu, as DATA. MENU | id | group | label | verb | arg | needs_level. pet_event.sh status publishes the rows the pet's level allows into ui.txt
+# (n_menu, menu_<i>_label, menu_<i>_verb, menu_<i>_arg); the layout repeats them. The menu stays hidden until the Menu row (or its hotbar key) toggles it.
+# Add an option = add a row (a verb pet_event.sh knows). A row with a higher needs_level appears when the pet levels up: abilities unlock menu entries.
+MENU | feed_apple | care  | Fridge: apple | give    | apple | 1
+MENU | feed_fish  | care  | Fridge: fish  | give    | fish  | 1
+MENU | feed_cake  | care  | Fridge: cake  | give    | cake  | 1
+MENU | sleep      | care  | Bed: sleep    | sleep   | -     | 1
+MENU | wash       | care  | Bath: wash    | give    | soap  | 1
+MENU | ball       | care  | Give ball     | give    | ball  | 1
+MENU | play       | care  | Play          | play    | -     | 1
+MENU | pat        | touch | Pat head      | touch   | head  | 1
+MENU | tickle     | touch | Tickle belly  | touch   | belly | 1
+MENU | praise     | judge | Praise        | praise  | -     | 1
+MENU | scold      | judge | Scold         | scold   | -     | 1
+MENU | self_care  | skill | Self care now | self_care | -   | 4

@@ -5,19 +5,12 @@
   <module src="@.apps/pet-house/ops/+x/pet_manager.+x" id="_"/>
   <page name="main">
     <sidebar id="side" class="sidebar">
-      <text label="Care" class="ph-title"/>
-      <item id="feed1" class="ph-row" label="Fridge: apple" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' give apple"/>
-      <item id="feed2" class="ph-row" label="Fridge: fish" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' give fish"/>
-      <item id="feed3" class="ph-row" label="Fridge: cake" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' give cake"/>
-      <item id="bed" class="ph-row" label="Bed: sleep" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' sleep"/>
-      <item id="bath" class="ph-row" label="Bath: wash" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' give soap"/>
-      <item id="ball" class="ph-row" label="Give ball" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' give ball"/>
-      <item id="play" class="ph-row" label="Play" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' play"/>
-      <text label="Touch" class="ph-title"/>
-      <item id="tc1" class="ph-row" label="Pat head" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' touch head"/>
-      <item id="tc2" class="ph-row" label="Tickle belly" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' touch belly"/>
-      <item id="good" class="ph-row" label="Praise" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' praise"/>
-      <item id="bad" class="ph-row" label="Scold" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' scold"/>
+      <item id="menu_btn" class="ph-row" label="Menu (${n_menu})" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' menu_toggle"/>
+      <scrolllist>
+        <repeat count="${n_menu_shown}" bind="menu">
+          <item id="mn${menu.#}" class="ph-row" label="${menu.label}" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' ${menu.verb} ${menu.arg}"/>
+        </repeat>
+      </scrolllist>
       <text label="Chat" class="ph-title"/>
       <text label="${chat_0}" class="ph-chat"/>
       <text label="${chat_1}" class="ph-chat"/>

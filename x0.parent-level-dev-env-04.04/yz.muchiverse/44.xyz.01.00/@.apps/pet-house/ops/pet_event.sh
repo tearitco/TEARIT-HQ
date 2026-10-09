@@ -155,6 +155,14 @@ status() {
         printf 'pet_sprite=%s/art/sprites_csv/%s_%02d\n' "$PET" "$anim" "$frame"
         printf 'grade=%s\n' "$(sed -n 's/.*max_tier: *//p' "$PET/learning_limits.pdl" 2>/dev/null | head -1)"
         printf 'likes=%s\n' "$(sed -n 's/^pref_\([a-z]*\)=\(.*\)/\1:\2/p' "$W" | tr '\n' ' ')"
+        { lv=$(getv rpg_level); i=0; : > "$PET/menu.tmp"
+          while IFS='|' read -r tag id grp label verb arg need; do
+              case "$tag" in MENU*) ;; *) continue;; esac
+              need=$(echo "$need" | tr -d ' '); [ "${need:-1}" -le "${lv:-1}" ] || continue
+              printf 'menu_%s_label=%s\nmenu_%s_verb=%s\nmenu_%s_arg=%s\n' "$i" "$(echo $label)" "$i" "$(echo $verb)" "$i" "$(echo $arg | sed 's/^-$//')" >> "$PET/menu.tmp"; i=$((i+1))
+          done < "$HERE/menu.pdl"
+          mo=$(cat "$PET/menu_open.txt" 2>/dev/null || echo 0); shown=0; [ "$mo" = 1 ] && shown=$i
+          printf 'n_menu=%s\nn_menu_shown=%s\nmenu_visible=%s\n' "$i" "$shown" "$mo"; cat "$PET/menu.tmp"; }
         printf 'anim=%s\nscene_raw=%s/scene.raw\n' "$anim" "$PET"
         n=0; tail -4 "$CHAT" 2>/dev/null | while IFS= read -r line; do printf 'chat_%s=%s\n' "$n" "$line"; n=$((n+1)); done
         printf 'known_words=%s\n' "$(awk -F'|' '/^LEX/{p=$2; gsub(/^ +| +$/,"",p); printf "%s ", p}' "$LEXF" 2>/dev/null)"
@@ -196,6 +204,7 @@ case "$VERB" in
     praise) do_judge 2; status >/dev/null ;;
     scold) do_judge -2; status >/dev/null ;;
     touch) do_touch "$ARG"; status >/dev/null ;;
+    menu_toggle) need_pet; if [ "$(cat "$PET/menu_open.txt" 2>/dev/null)" = 1 ]; then echo 0 > "$PET/menu_open.txt"; else echo 1 > "$PET/menu_open.txt"; fi; status >/dev/null ;;
     self_care) need_pet; self_care; status >/dev/null ;;
     tick)  need_pet; addv hunger "$(getw tick_hunger)"; addv energy -"$(getw tick_energy)"; addv clean -"$(getw tick_clean)"
            if [ -x "$GRADE" ]; then "$GRADE" rest "$PET" "$HERE/skillbook.pdl" >/dev/null 2>&1; "$GRADE" check "$PET" "$HERE/curriculum.pdl" >/dev/null 2>&1; "$GRADE" advance "$PET" "$HERE/curriculum.pdl" auto >/dev/null 2>&1; fi

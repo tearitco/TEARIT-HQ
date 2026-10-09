@@ -8,7 +8,7 @@ BIN="$HOUSE_ROOT/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
 XHTPM="$SCRIPT_DIR/pet-house.xhtpm"
 [ "${1:-run}" = run ] || exit 0
 for b in pet_manager pet_scene pet_physics; do
-  [ -x "$SCRIPT_DIR/ops/+x/$b.+x" ] || gcc -std=c11 -O2 -D_DEFAULT_SOURCE -o "$SCRIPT_DIR/ops/+x/$b.+x" "$SCRIPT_DIR/ops/$b.c" -lm 2>/dev/null || true
+  [ -x "$SCRIPT_DIR/ops/+x/$b.+x" ] || gcc -std=c11 -O2 -D_DEFAULT_SOURCE -o "$SCRIPT_DIR/ops/+x/$b.+x" "$SCRIPT_DIR/ops/$b.c" -lm -lX11 2>/dev/null || true
 done
 [ -x "$HOUSE_ROOT/@.apps/layout-studio/ops/+x/pet_gen.+x" ] || sh "$HOUSE_ROOT/@.apps/layout-studio/ops/build_pet_gen.sh" >/dev/null 2>&1 || true
 old="$(ps -eo pid,args | awk '/khtpm_core_render.\+x.*pet-house\.xhtpm/ && !/awk/{print $1}')"
