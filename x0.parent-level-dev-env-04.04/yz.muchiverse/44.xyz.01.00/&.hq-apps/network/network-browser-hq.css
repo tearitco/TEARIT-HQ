@@ -58,10 +58,17 @@ sidebar { width: 200px; background-color: #1a1a1a; color: #cccccc; }
 .nb-selopt { color: #d8c8a8; }
 /* 2026-10-08: <input type=file> picker rows. */
 .nb-file { color: #c8a8d8; }
-/* 2026-10-08: <table> rows. Header tinted apart so the eye can find the
+/* 2026-10-09: <table> rows. Header tinted apart so the eye can find the
    column names without a real grid. */
 .nb-trow { color: #b8c8d8; }
 .nb-trow.thead { color: #8fb8ff; }
+/* 2026-10-09: Word bank viewer weight/source tints (classes emitted by
+   wordbank_view_op): high (user-confirmed) green, low (rejected) red,
+   seed rows on neutral yellow. User-scored canon rows bold. */
+.wb-weight-high { background-color: #1a2e1a; color: #b8e8b8; }
+.wb-weight-low { background-color: #2e1a1a; color: #e8b8b8; }
+.wb-weight-mid { background-color: #1e1e12; color: #d8d8a8; }
+.wb-source-user { font-weight: 700; }
 /* 2026-10-08: <ul>/<ol> items, marker + indent carried from the extractor. */
 .nb-list { color: #c8c8c8; }
 /* 2026-10-08: <dl> pairs and collapsed-<details> labels. */
