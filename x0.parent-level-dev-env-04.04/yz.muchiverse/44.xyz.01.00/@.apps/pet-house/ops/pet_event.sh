@@ -233,6 +233,13 @@ case "$VERB" in
         rm -rf "$PET/inventory" "$PET/used"; mkdir -p "$PET/inventory"; : > "$PET/log.txt"; rm -f "$PET/evolve_sig.txt"
         for it in $(awk -F'|' '/^ITEM/{n=$2;gsub(/^ +| +$/,"",n);print n}' "$HERE/items.pdl"); do st=$(pdlval "$HERE/items.pdl" "$it" start); [ -n "$st" ] && [ "$st" -gt 0 ] && inv_add "$it" "$st"; done
         echo 0 > "$PET/running.txt"; rm -rf "$PET/event_pkg"; gen_events
+        # meta.pdl: the same METHOD rows an entity like asa has, so the pet is a normal house entity (context menu: Events opens events-hq on its event_pkg, exactly asa's row)
+        { printf 'SECTION      | KEY                  | VALUE\n----------------------------------------\nMETA         | piece_id           | pet\nSTATE        | kind                 | deskpal\nSTATE        | glyph                | 🐾\n'
+          printf 'METHOD       | Events               | sh -c '"'"'exec "$1/&.widgits/events-hq/button.sh" "$0" "$1"'"'"'\n'
+          printf 'METHOD       | Play                 | sh -c '"'"'exec sh "$1/@.apps/pet-house/ops/pet_event.sh" fire start'"'"'\n'
+          printf 'METHOD       | Stop                 | sh -c '"'"'exec sh "$1/@.apps/pet-house/ops/pet_event.sh" fire stop'"'"'\n'
+          printf 'METHOD       | Open house           | sh -c '"'"'exec sh "$1/@.apps/pet-house/button.sh" run'"'"'\n'
+          printf 'METHOD       | Close                | CLOSE\nMETHOD       | Cancel               | void\n'; } > "$PET/meta.pdl"
         evolve; status >/dev/null ;;
     feed|give)
         need_pet; item="${ARG:-apple}"
