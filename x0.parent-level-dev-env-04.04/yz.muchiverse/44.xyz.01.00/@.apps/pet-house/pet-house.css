@@ -1,0 +1,11 @@
+/* pet-house.css - merged on top of the default (same stem as pet-house.xhtpm). */
+window { width: 640px; height: 820px; }
+.sidebar { background-color: #161616; border-color: #333333; }
+.ph-panel { background-color: #181818; border: 1px solid #2a2a2a; }
+.ph-title { color: #ffffff; font-weight: bold; }
+.ph-row { color: #cccccc; }
+.ph-quiet { color: #aaaaaa; }
+.ph-chat { color: #9fd8ff; }
+
+#room { width: 360px; height: 280px; }
+.ph-room { width: 360px; height: 280px; }

@@ -66,7 +66,7 @@ int main(int argc, char **argv) {
     if (s.y < 40) { s.y = 40; s.vy = -s.vy * rest; }                        /* ceiling: the head height */
     if (s.y >= H) {
         s.y = H;
-        if (s.vy > vrest * 4) { s.vy = -s.vy * rest; s.bounces++; landed = 1; } else { s.vy = 0; }
+        if (s.vy > vrest + g * dt * 1.5) { s.vy = -s.vy * rest; s.bounces++; landed = 1; } else { s.vy = 0; }   /* below one gravity step of speed = resting contact, not a bounce */
         s.vx *= (1.0 - fr * dt);
         if (fabs(s.vx) < vrest) s.vx = 0;
     }

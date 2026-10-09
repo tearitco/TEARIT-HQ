@@ -75,6 +75,11 @@ lex_set() { # lex_set <phrase> <verb> <item> <delta> <initial>: add the word (in
 do_chat() { # the master talks: the pet matches known words, does the thing, answers; unknown words are remembered so the master can teach them
     need_pet; text="$1"; [ -z "$text" ] && return 0
     printf 'YOU: %s\n' "$text" >> "$CHAT"
+    case "$text" in    # typed shortcuts: "teach <words> = <verb> [item]", "good", "bad"
+        teach\ *=*) body=${text#teach }; ph=${body%%=*}; rest=${body#*=}; set -- $rest; do_teach "$ph" "$1" "$2"; return 0 ;;
+        good|"good pet"|"well done") do_judge 2; return 0 ;;
+        bad|"bad pet"|no) do_judge -2; return 0 ;;
+    esac
     hit=$(lex_best "$text")
     if [ -z "$hit" ]; then printf '%s\n' "$text" > "$PET/last_unknown.txt"; reply unknown; expr surprised 5; return 0; fi
     vb=${hit%%|*}; rest=${hit#*|}; it=${rest%%|*}; rest=${rest#*|}; ph=${rest%%|*}
@@ -150,7 +155,7 @@ status() {
         printf 'pet_sprite=%s/art/sprites_csv/%s_%02d\n' "$PET" "$anim" "$frame"
         printf 'grade=%s\n' "$(sed -n 's/.*max_tier: *//p' "$PET/learning_limits.pdl" 2>/dev/null | head -1)"
         printf 'likes=%s\n' "$(sed -n 's/^pref_\([a-z]*\)=\(.*\)/\1:\2/p' "$W" | tr '\n' ' ')"
-        printf 'anim=%s\n' "$anim"
+        printf 'anim=%s\nscene_raw=%s/scene.raw\n' "$anim" "$PET"
         n=0; tail -4 "$CHAT" 2>/dev/null | while IFS= read -r line; do printf 'chat_%s=%s\n' "$n" "$line"; n=$((n+1)); done
         printf 'known_words=%s\n' "$(awk -F'|' '/^LEX/{p=$2; gsub(/^ +| +$/,"",p); printf "%s ", p}' "$LEXF" 2>/dev/null)"
         printf 'pantry=%s\n' "$(tr '\n' ' ' < "$PET/pantry.txt" 2>/dev/null)"
@@ -186,6 +191,7 @@ case "$VERB" in
     wash)  need_pet; c0=$(getv clean); addv clean "$(getw wash_clean)"; addv happy -2; skill wash; v=-1; [ "$c0" -lt 50 ] && v=1; feedback "$v" wash; evolve; status >/dev/null ;;
     play)  need_pet; e0=$(getv energy); addv happy "$(getw play_happy)"; addv energy -12; addv play_total 1; skill play; v=-1; [ "$e0" -gt 20 ] && v=1; feedback "$v" play; evolve; status >/dev/null ;;
     chat) do_chat "$ARG"; status >/dev/null ;;
+    chat_input) do_chat "$4"; status >/dev/null ;;      # a layout cli_io appends: <package_dir> <house_root> <typed text>
     teach) do_teach "$ARG" "$3" "$4"; status >/dev/null ;;
     praise) do_judge 2; status >/dev/null ;;
     scold) do_judge -2; status >/dev/null ;;

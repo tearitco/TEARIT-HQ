@@ -1,0 +1,35 @@
+<!-- pet-house.xhtpm - the pet's room and its controls (layout studio first consumer). Static layout: pet_manager (the module) owns the state and publishes
+     state/ui.txt; the canvas shows the room + pet drawn by pet_scene (gravity when this window is moved). RULES: one sidebar plus one panel; no angle
+     brackets inside comments. Everything the player can do is a pet_event.sh verb; the field at the bottom takes chat, "teach words = verb item", good, bad. -->
+<window label="Pet house - ${name}" class="pet-house database-window fixed-size" vars="state/ui.txt">
+  <module src="@.apps/pet-house/ops/+x/pet_manager.+x" id="_"/>
+  <page name="main">
+    <sidebar id="side" class="sidebar">
+      <text label="Care" class="ph-title"/>
+      <item id="feed1" class="ph-row" label="Fridge: apple" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' give apple"/>
+      <item id="feed2" class="ph-row" label="Fridge: fish" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' give fish"/>
+      <item id="feed3" class="ph-row" label="Fridge: cake" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' give cake"/>
+      <item id="bed" class="ph-row" label="Bed: sleep" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' sleep"/>
+      <item id="bath" class="ph-row" label="Bath: wash" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' give soap"/>
+      <item id="ball" class="ph-row" label="Give ball" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' give ball"/>
+      <item id="play" class="ph-row" label="Play" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' play"/>
+      <text label="Touch" class="ph-title"/>
+      <item id="tc1" class="ph-row" label="Pat head" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' touch head"/>
+      <item id="tc2" class="ph-row" label="Tickle belly" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' touch belly"/>
+      <item id="good" class="ph-row" label="Praise" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' praise"/>
+      <item id="bad" class="ph-row" label="Scold" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' scold"/>
+      <text label="Chat" class="ph-title"/>
+      <text label="${chat_0}" class="ph-chat"/>
+      <text label="${chat_1}" class="ph-chat"/>
+      <text label="${chat_2}" class="ph-chat"/>
+      <text label="${chat_3}" class="ph-chat"/>
+      <cli_io id="say" target_id="pet-say" label="say: " action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' chat_input"/>
+      <text label="${stage} lv ${level} ${state}" class="ph-quiet"/>
+      <text label="hunger ${hunger} energy ${energy}" class="ph-quiet"/>
+      <text label="clean ${clean} happy ${happy}" class="ph-quiet"/>
+    </sidebar>
+    <panel id="room_p" class="ph-panel">
+      <canvas id="room" class="ph-room" sprite="${scene_raw}"/>
+    </panel>
+  </page>
+</window>
