@@ -1,7 +1,7 @@
 SECTION      | KEY                | VALUE
 ----------------------------------------------------------------------
 META         | map_id             | tsots
-META         | desk_id            | map004
-META         | note               | march 2 the palace ext close (night)
+META         | desk_id            | map008
+META         | note               | Lunar hangar cut scene
 EXTRUDE      | W                  | 3
 EXTRUDE      | default             | 0

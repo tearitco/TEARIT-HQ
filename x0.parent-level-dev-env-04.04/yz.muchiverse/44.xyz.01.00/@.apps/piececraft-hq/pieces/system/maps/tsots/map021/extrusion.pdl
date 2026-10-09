@@ -1,7 +1,7 @@
 SECTION      | KEY                | VALUE
 ----------------------------------------------------------------------
 META         | map_id             | tsots
-META         | desk_id            | map004
-META         | note               | march 2 the palace ext close (night)
+META         | desk_id            | map021
+META         | note               | clone room 2
 EXTRUDE      | W                  | 3
 EXTRUDE      | default             | 0

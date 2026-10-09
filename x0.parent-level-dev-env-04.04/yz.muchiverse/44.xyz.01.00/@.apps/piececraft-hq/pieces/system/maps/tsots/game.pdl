@@ -3,7 +3,7 @@ SECTION      | KEY                | VALUE
 GAME         | type               | board-game
 GAME         | icon               | 🗺️
 GAME         | label              | TSOTS
-GAME         | n_chunks           | 12
+GAME         | n_chunks           | 56
 GAME         | chunk_0_x          | 0
 GAME         | chunk_0_y          | 0
 GAME         | chunk_1_x          | 1
@@ -12,22 +12,304 @@ GAME         | chunk_2_x          | 2
 GAME         | chunk_2_y          | 0
 GAME         | chunk_3_x          | 3
 GAME         | chunk_3_y          | 0
-GAME         | chunk_4_x          | 0
-GAME         | chunk_4_y          | 1
-GAME         | chunk_5_x          | 1
-GAME         | chunk_5_y          | 1
-GAME         | chunk_6_x          | 2
-GAME         | chunk_6_y          | 1
-GAME         | chunk_7_x          | 3
-GAME         | chunk_7_y          | 1
+GAME         | chunk_4_x          | 4
+GAME         | chunk_4_y          | 0
+GAME         | chunk_5_x          | 5
+GAME         | chunk_5_y          | 0
+GAME         | chunk_6_x          | 6
+GAME         | chunk_6_y          | 0
+GAME         | chunk_7_x          | 7
+GAME         | chunk_7_y          | 0
 GAME         | chunk_8_x          | 0
-GAME         | chunk_8_y          | 2
+GAME         | chunk_8_y          | 1
 GAME         | chunk_9_x          | 1
-GAME         | chunk_9_y          | 2
-GAME         | chunk_10_x         | 2
-GAME         | chunk_10_y         | 2
-GAME         | chunk_11_x         | 3
-GAME         | chunk_11_y         | 2
-GAME         | n_desks            | 1
-GAME         | desk_1_id          | map004
-GAME         | desk_1_label       | Map 004
+GAME         | chunk_9_y          | 1
+GAME         | chunk_10_x          | 2
+GAME         | chunk_10_y          | 1
+GAME         | chunk_11_x          | 3
+GAME         | chunk_11_y          | 1
+GAME         | chunk_12_x          | 4
+GAME         | chunk_12_y          | 1
+GAME         | chunk_13_x          | 5
+GAME         | chunk_13_y          | 1
+GAME         | chunk_14_x          | 6
+GAME         | chunk_14_y          | 1
+GAME         | chunk_15_x          | 7
+GAME         | chunk_15_y          | 1
+GAME         | chunk_16_x          | 0
+GAME         | chunk_16_y          | 2
+GAME         | chunk_17_x          | 1
+GAME         | chunk_17_y          | 2
+GAME         | chunk_18_x          | 2
+GAME         | chunk_18_y          | 2
+GAME         | chunk_19_x          | 3
+GAME         | chunk_19_y          | 2
+GAME         | chunk_20_x          | 4
+GAME         | chunk_20_y          | 2
+GAME         | chunk_21_x          | 5
+GAME         | chunk_21_y          | 2
+GAME         | chunk_22_x          | 6
+GAME         | chunk_22_y          | 2
+GAME         | chunk_23_x          | 7
+GAME         | chunk_23_y          | 2
+GAME         | chunk_24_x          | 0
+GAME         | chunk_24_y          | 3
+GAME         | chunk_25_x          | 1
+GAME         | chunk_25_y          | 3
+GAME         | chunk_26_x          | 2
+GAME         | chunk_26_y          | 3
+GAME         | chunk_27_x          | 3
+GAME         | chunk_27_y          | 3
+GAME         | chunk_28_x          | 4
+GAME         | chunk_28_y          | 3
+GAME         | chunk_29_x          | 5
+GAME         | chunk_29_y          | 3
+GAME         | chunk_30_x          | 6
+GAME         | chunk_30_y          | 3
+GAME         | chunk_31_x          | 7
+GAME         | chunk_31_y          | 3
+GAME         | chunk_32_x          | 0
+GAME         | chunk_32_y          | 4
+GAME         | chunk_33_x          | 1
+GAME         | chunk_33_y          | 4
+GAME         | chunk_34_x          | 2
+GAME         | chunk_34_y          | 4
+GAME         | chunk_35_x          | 3
+GAME         | chunk_35_y          | 4
+GAME         | chunk_36_x          | 4
+GAME         | chunk_36_y          | 4
+GAME         | chunk_37_x          | 5
+GAME         | chunk_37_y          | 4
+GAME         | chunk_38_x          | 6
+GAME         | chunk_38_y          | 4
+GAME         | chunk_39_x          | 7
+GAME         | chunk_39_y          | 4
+GAME         | chunk_40_x          | 0
+GAME         | chunk_40_y          | 5
+GAME         | chunk_41_x          | 1
+GAME         | chunk_41_y          | 5
+GAME         | chunk_42_x          | 2
+GAME         | chunk_42_y          | 5
+GAME         | chunk_43_x          | 3
+GAME         | chunk_43_y          | 5
+GAME         | chunk_44_x          | 4
+GAME         | chunk_44_y          | 5
+GAME         | chunk_45_x          | 5
+GAME         | chunk_45_y          | 5
+GAME         | chunk_46_x          | 6
+GAME         | chunk_46_y          | 5
+GAME         | chunk_47_x          | 7
+GAME         | chunk_47_y          | 5
+GAME         | chunk_48_x          | 0
+GAME         | chunk_48_y          | 6
+GAME         | chunk_49_x          | 1
+GAME         | chunk_49_y          | 6
+GAME         | chunk_50_x          | 2
+GAME         | chunk_50_y          | 6
+GAME         | chunk_51_x          | 3
+GAME         | chunk_51_y          | 6
+GAME         | chunk_52_x          | 4
+GAME         | chunk_52_y          | 6
+GAME         | chunk_53_x          | 5
+GAME         | chunk_53_y          | 6
+GAME         | chunk_54_x          | 6
+GAME         | chunk_54_y          | 6
+GAME         | chunk_55_x          | 7
+GAME         | chunk_55_y          | 6
+GAME         | n_desks            | 98
+GAME         | desk_1_id          | map001
+GAME         | desk_1_label       | Blank page
+GAME         | desk_2_id          | map002
+GAME         | desk_2_label       | 1. Grey OP base
+GAME         | desk_3_id          | map003
+GAME         | desk_3_label       | Unlukky vision
+GAME         | desk_4_id          | map004
+GAME         | desk_4_label       | march 2 the palace ext close (night)
+GAME         | desk_5_id          | map005
+GAME         | desk_5_label       | God mini game lvl
+GAME         | desk_6_id          | map006
+GAME         | desk_6_label       | RABBIT HOLE
+GAME         | desk_7_id          | map007
+GAME         | desk_7_label       | LUKY ROOM
+GAME         | desk_8_id          | map008
+GAME         | desk_8_label       | Lunar hangar cut scene
+GAME         | desk_9_id          | map009
+GAME         | desk_9_label       | mars gym for training
+GAME         | desk_10_id          | map010
+GAME         | desk_10_label       | empty afgani desert pan walkie talkie
+GAME         | desk_11_id          | map011
+GAME         | desk_11_label       | dojo
+GAME         | desk_12_id          | map012
+GAME         | desk_12_label       | OUT OF THIS WORLD
+GAME         | desk_13_id          | map013
+GAME         | desk_13_label       | halo trauma
+GAME         | desk_14_id          | map014
+GAME         | desk_14_label       | FINAL BATTLE
+GAME         | desk_15_id          | map015
+GAME         | desk_15_label       | lab in zooo
+GAME         | desk_16_id          | map016
+GAME         | desk_16_label       | classic board MARS VERSION
+GAME         | desk_17_id          | map017
+GAME         | desk_17_label       | classic board
+GAME         | desk_18_id          | map018
+GAME         | desk_18_label       | the radius rail right
+GAME         | desk_19_id          | map019
+GAME         | desk_19_label       | Tearitory mode - small
+GAME         | desk_20_id          | map020
+GAME         | desk_20_label       | clone wing
+GAME         | desk_21_id          | map021
+GAME         | desk_21_label       | clone room 2
+GAME         | desk_22_id          | map022
+GAME         | desk_22_label       | clone bathrooms
+GAME         | desk_23_id          | map023
+GAME         | desk_23_label       | SS ONLINE
+GAME         | desk_24_id          | map024
+GAME         | desk_24_label       | the nothing room
+GAME         | desk_25_id          | map025
+GAME         | desk_25_label       | killing rooms ENGINE
+GAME         | desk_26_id          | map026
+GAME         | desk_26_label       | guest rooms
+GAME         | desk_27_id          | map027
+GAME         | desk_27_label       | LIBRARY
+GAME         | desk_28_id          | map028
+GAME         | desk_28_label       | finance district
+GAME         | desk_29_id          | map029
+GAME         | desk_29_label       | MAP029
+GAME         | desk_30_id          | map030
+GAME         | desk_30_label       | mars
+GAME         | desk_31_id          | map031
+GAME         | desk_31_label       | mars city LANDING HANGAR
+GAME         | desk_32_id          | map032
+GAME         | desk_32_label       | illuminiti party palace
+GAME         | desk_33_id          | map033
+GAME         | desk_33_label       | mars labs
+GAME         | desk_34_id          | map034
+GAME         | desk_34_label       | mars clone slums
+GAME         | desk_35_id          | map035
+GAME         | desk_35_label       | mars city square
+GAME         | desk_36_id          | map036
+GAME         | desk_36_label       | Red bone suburb
+GAME         | desk_37_id          | map037
+GAME         | desk_37_label       | home in castle
+GAME         | desk_38_id          | map038
+GAME         | desk_38_label       | home 2
+GAME         | desk_39_id          | map039
+GAME         | desk_39_label       | home 3
+GAME         | desk_40_id          | map040
+GAME         | desk_40_label       | The spirit server
+GAME         | desk_41_id          | map041
+GAME         | desk_41_label       | balcony mars party
+GAME         | desk_42_id          | map042
+GAME         | desk_42_label       | Console plug in test space
+GAME         | desk_43_id          | map043
+GAME         | desk_43_label       | MAP043
+GAME         | desk_44_id          | map044
+GAME         | desk_44_label       | Celestias Wing
+GAME         | desk_45_id          | map045
+GAME         | desk_45_label       | AFGANI TOWN
+GAME         | desk_46_id          | map046
+GAME         | desk_46_label       | Rabbit hole caves
+GAME         | desk_47_id          | map047
+GAME         | desk_47_label       | launch plataue
+GAME         | desk_48_id          | map048
+GAME         | desk_48_label       | mars final battle
+GAME         | desk_49_id          | map049
+GAME         | desk_49_label       | inside saucer
+GAME         | desk_50_id          | map050
+GAME         | desk_50_label       | Book of life(and death)
+GAME         | desk_51_id          | map051
+GAME         | desk_51_label       | THE NOTHING
+GAME         | desk_52_id          | map052
+GAME         | desk_52_label       | CLASSIC MODE
+GAME         | desk_53_id          | map053
+GAME         | desk_53_label       | ONLINE APP
+GAME         | desk_54_id          | map054
+GAME         | desk_54_label       | Territory med
+GAME         | desk_55_id          | map055
+GAME         | desk_55_label       | territory mode large
+GAME         | desk_56_id          | map056
+GAME         | desk_56_label       | XL DLC ONLY
+GAME         | desk_57_id          | map057
+GAME         | desk_57_label       | ONLINE LOBBY (S)
+GAME         | desk_58_id          | map058
+GAME         | desk_58_label       | The Tree of lyfe
+GAME         | desk_59_id          | map059
+GAME         | desk_59_label       | SS ONLINE
+GAME         | desk_60_id          | map060
+GAME         | desk_60_label       | hall 1
+GAME         | desk_61_id          | map061
+GAME         | desk_61_label       | HEART GEM
+GAME         | desk_62_id          | map062
+GAME         | desk_62_label       | MAP062
+GAME         | desk_63_id          | map063
+GAME         | desk_63_label       | Board game version
+GAME         | desk_64_id          | map064
+GAME         | desk_64_label       | Ocean Expanse MMO
+GAME         | desk_65_id          | map065
+GAME         | desk_65_label       | SPaCe expance MMO
+GAME         | desk_66_id          | map066
+GAME         | desk_66_label       | Mars xpans MMO
+GAME         | desk_67_id          | map067
+GAME         | desk_67_label       | afgan hills
+GAME         | desk_68_id          | map068
+GAME         | desk_68_label       | Church on ss.GODS TEMPLE
+GAME         | desk_69_id          | map069
+GAME         | desk_69_label       | Circuit board room SS
+GAME         | desk_70_id          | map070
+GAME         | desk_70_label       | HOLY IMGINATION
+GAME         | desk_71_id          | map071
+GAME         | desk_71_label       | classic board4 plys
+GAME         | desk_72_id          | map072
+GAME         | desk_72_label       | room right
+GAME         | desk_73_id          | map073
+GAME         | desk_73_label       | lunar city
+GAME         | desk_74_id          | map074
+GAME         | desk_74_label       | MAP074
+GAME         | desk_75_id          | map075
+GAME         | desk_75_label       | Basic
+GAME         | desk_76_id          | map076
+GAME         | desk_76_label       | Console2
+GAME         | desk_77_id          | map077
+GAME         | desk_77_label       | unlucky vision 2
+GAME         | desk_78_id          | map078
+GAME         | desk_78_label       | ss solomon luckies YARD
+GAME         | desk_79_id          | map079
+GAME         | desk_79_label       | sss mess hall
+GAME         | desk_80_id          | map080
+GAME         | desk_80_label       | Troop Event
+GAME         | desk_81_id          | map081
+GAME         | desk_81_label       | Item Shop
+GAME         | desk_82_id          | map082
+GAME         | desk_82_label       | lunar roof
+GAME         | desk_83_id          | map083
+GAME         | desk_83_label       | dtest
+GAME         | desk_84_id          | map084
+GAME         | desk_84_label       | Forge
+GAME         | desk_85_id          | map085
+GAME         | desk_85_label       | LUNAR BLDG FIRST FLOOR TRAIDING
+GAME         | desk_86_id          | map088
+GAME         | desk_86_label       | wite nite
+GAME         | desk_87_id          | map089
+GAME         | desk_87_label       | lunas roof floor
+GAME         | desk_88_id          | map093
+GAME         | desk_88_label       | the radius rail left
+GAME         | desk_89_id          | map095
+GAME         | desk_89_label       | mars roof floor
+GAME         | desk_90_id          | map102
+GAME         | desk_90_label       | rail way motion right
+GAME         | desk_91_id          | map103
+GAME         | desk_91_label       | mech garage
+GAME         | desk_92_id          | map104
+GAME         | desk_92_label       | ghettto outskirt guarded by robots
+GAME         | desk_93_id          | map105
+GAME         | desk_93_label       | slums shopping area
+GAME         | desk_94_id          | map106
+GAME         | desk_94_label       | RollerCoin Room
+GAME         | desk_95_id          | map1001
+GAME         | desk_95_label       | Map 1001
+GAME         | desk_96_id          | map1002
+GAME         | desk_96_label       | Map 1002
+GAME         | desk_97_id          | map1003
+GAME         | desk_97_label       | Map 1003
+GAME         | desk_98_id          | map1004
+GAME         | desk_98_label       | Map 1004
