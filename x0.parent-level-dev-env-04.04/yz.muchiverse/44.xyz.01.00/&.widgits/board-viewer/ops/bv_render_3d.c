@@ -2425,6 +2425,45 @@ static unsigned long long bv_fnv1a64(const unsigned char *p, size_t n) {
  * every frame right alongside the RGBA overlay, same file, same root -
  * a text-only agent can read this instead of decoding rgb_frame_3d_
  * overlay.raw. Cheap: one snprintf'd buffer, one atomic write. */
+/* A page stays one map in memory (Doom). The GPU rasterizes an
+ * 8-chunk window around the eye (Minecraft render distance). Fog
+ * ends at 48, and 8*16 is 128, so the eye stays inside the fog ball
+ * until the window steps a chunk. A map that already fits is drawn
+ * whole, origin 0. Camera yaw, pitch, and the stored eye are not
+ * written. The GPU copy of the eye moves with the window. */
+#define BV_VIEW_CHUNK 16
+#define BV_VIEW_DIM   (BV_VIEW_CHUNK * 8)
+static int g_view_ox, g_view_oy, g_view_w, g_view_h;
+
+static int bv_snap_chunk(int v) {
+    if (v >= 0) return (v / BV_VIEW_CHUNK) * BV_VIEW_CHUNK;
+    return -(((-v + BV_VIEW_CHUNK - 1) / BV_VIEW_CHUNK) * BV_VIEW_CHUNK);
+}
+
+static void bv_view_window(int map_w, int map_h, double eye_x, double eye_z,
+                           int *ox, int *oy, int *vw, int *vh) {
+    if (map_w < 1) map_w = 1;
+    if (map_h < 1) map_h = 1;
+    if (map_w <= BV_VIEW_DIM && map_h <= BV_VIEW_DIM) {
+        *ox = 0; *oy = 0; *vw = map_w; *vh = map_h;
+        return;
+    }
+    int oc = 0, orow = 0;
+    if (map_w > BV_VIEW_DIM) {
+        oc = bv_snap_chunk((int)eye_x - BV_VIEW_DIM / 2);
+        if (oc < 0) oc = 0;
+        if (oc > map_w - BV_VIEW_DIM) oc = map_w - BV_VIEW_DIM;
+    }
+    if (map_h > BV_VIEW_DIM) {
+        orow = bv_snap_chunk((int)eye_z - BV_VIEW_DIM / 2);
+        if (orow < 0) orow = 0;
+        if (orow > map_h - BV_VIEW_DIM) orow = map_h - BV_VIEW_DIM;
+    }
+    *ox = oc; *oy = orow;
+    *vw = map_w - oc; if (*vw > BV_VIEW_DIM) *vw = BV_VIEW_DIM;
+    *vh = map_h - orow; if (*vh > BV_VIEW_DIM) *vh = BV_VIEW_DIM;
+}
+
 static void bv_write_scene_receipt(const char *game_root, int board_w, int board_h, int z_count,
                                    int current_z, int selx, int sely,
                                    int camera_mode, int cam_yaw, int cam_pitch,
@@ -2444,6 +2483,8 @@ static void bv_write_scene_receipt(const char *game_root, int board_w, int board
     fprintf(r, "generated_at_epoch=%ld\n", (long)now);
     fprintf(r, "viewport_w=%d\nviewport_h=%d\n", g_fw, g_fh);
     fprintf(r, "board_w=%d\nboard_h=%d\nz_count=%d\n", board_w, board_h, z_count);
+    fprintf(r, "view_ox=%d\nview_oy=%d\nview_w=%d\nview_h=%d\n",
+            g_view_ox, g_view_oy, g_view_w, g_view_h);
     fprintf(r, "current_z=%d\n", current_z);
     fprintf(r, "selector_x=%d\nselector_y=%d\n", selx, sely);
     fprintf(r, "camera_mode=%d\ncam_yaw=%d\ncam_pitch=%d\n", camera_mode, cam_yaw, cam_pitch);
@@ -3425,12 +3466,16 @@ static int render_one_frame(void) {
         sc.fwd[0]=(float)cam.forward.x; sc.fwd[1]=(float)cam.forward.y; sc.fwd[2]=(float)cam.forward.z;
         sc.right[0]=(float)cam.right.x; sc.right[1]=(float)cam.right.y; sc.right[2]=(float)cam.right.z;
         sc.up[0]=(float)cam.up.x;     sc.up[1]=(float)cam.up.y;     sc.up[2]=(float)cam.up.z;
-        sc.board_w=board_w; sc.board_h=board_h; sc.z_count=z_count;
+        int vox = 0, voy = 0, vww = board_w, vwh = board_h;
+        bv_view_window(board_w, board_h, cam.eye.x, cam.eye.z, &vox, &voy, &vww, &vwh);
+        sc.board_w = vww; sc.board_h = vwh; sc.z_count = z_count;
+        sc.eye[0] = (float)(cam.eye.x - vox);
+        sc.eye[2] = (float)(cam.eye.z - voy);
         for (int lvl=0; lvl<z_count; lvl++)
-          for (int row=0; row<board_h; row++)
-            for (int col=0; col<board_w; col++)
-              gpu_grid[col + row*board_w + lvl*board_w*board_h] =
-                  (unsigned char)board3d[lvl][row][col];
+          for (int row=0; row<vwh; row++)
+            for (int col=0; col<vww; col++)
+              gpu_grid[col + row*vww + lvl*vww*vwh] =
+                  (unsigned char)board3d[lvl][row + voy][col + vox];
         sc.grid = gpu_grid;
         /* legend: SOLID glyphs only (air -> not in the LUT -> no hit).
          * Each gets a 16x16 emoji-texture slice from its asset_hex so
@@ -3473,25 +3518,34 @@ static int render_one_frame(void) {
          * fail maker_load and stay the old letter blocks. Camera locals
          * above are not written here. */
         if (maker_load(focused_project_root)) {
-            int mw = g_mk.w > MAX_BOARD_DIM ? MAX_BOARD_DIM : g_mk.w;
-            int mh = g_mk.h > MAX_BOARD_DIM ? MAX_BOARD_DIM : g_mk.h;
-            memset(gpu_grid, 0, (size_t)mw * (size_t)mh * 3);
-            for (int row = 0; row < mh; row++)
-                for (int col = 0; col < mw; col++) {
-                    gpu_grid[col + row * mw] = 1;                                   /* level 0: floor */
-                    if (g_mk.cells[((size_t)row * g_mk.w + col) * 2 + 1]) {
-                        gpu_grid[col + row * mw + mw * mh] = 1;                     /* levels 1-2: wall */
-                        gpu_grid[col + row * mw + 2 * mw * mh] = 1;
+            bv_view_window(g_mk.w, g_mk.h, cam.eye.x, cam.eye.z, &vox, &voy, &vww, &vwh);
+            sc.eye[0] = (float)(cam.eye.x - vox);
+            sc.eye[2] = (float)(cam.eye.z - voy);
+            static unsigned short view_cells[BV_VIEW_DIM * BV_VIEW_DIM * 2];
+            int cropped = (vox || voy || vww != g_mk.w || vwh != g_mk.h);
+            memset(gpu_grid, 0, (size_t)vww * (size_t)vwh * 3);
+            for (int row = 0; row < vwh; row++)
+                for (int col = 0; col < vww; col++) {
+                    size_t src = ((size_t)(row + voy) * g_mk.w + (size_t)(col + vox)) * 2;
+                    gpu_grid[col + row * vww] = 1;                                   /* level 0: floor */
+                    if (g_mk.cells[src + 1]) {
+                        gpu_grid[col + row * vww + vww * vwh] = 1;                 /* levels 1-2: wall */
+                        gpu_grid[col + row * vww + 2 * vww * vwh] = 1;
+                    }
+                    if (cropped) {
+                        view_cells[((size_t)row * vww + col) * 2] = g_mk.cells[src];
+                        view_cells[((size_t)row * vww + col) * 2 + 1] = g_mk.cells[src + 1];
                     }
                 }
-            sc.board_w = mw; sc.board_h = mh; sc.z_count = 3;
+            sc.board_w = vww; sc.board_h = vwh; sc.z_count = 3;
             sc.grid = gpu_grid;
             sc.legend_n = 1; sc.legend_glyph[0] = 1;
             sc.legend_rgb[0][0] = sc.legend_rgb[0][1] = sc.legend_rgb[0][2] = 0.5f;
             sc.legend_has_tex[0] = 0;
             sc.maker = 1; sc.maker_id = g_mk.id;
             sc.atlas = g_mk.atlas; sc.atlas_w = g_mk.aw; sc.atlas_h = g_mk.ah; sc.atlas_cols = g_mk.cols; sc.tile_px = g_mk.tile_px;
-            sc.cells = g_mk.cells; sc.cells_w = g_mk.w; sc.cells_h = g_mk.h;
+            sc.cells = cropped ? view_cells : g_mk.cells;
+            sc.cells_w = vww; sc.cells_h = vwh;
             sc.para = g_mk.para; sc.para_w = g_mk.para_w; sc.para_h = g_mk.para_h;
             sc.para_loop_x = g_mk.para_lx; sc.para_loop_y = g_mk.para_ly;
         }
@@ -3706,6 +3760,13 @@ static int render_one_frame(void) {
         #undef ADDWIRE_THIN
         #undef ADDWIRE
         #undef ADDBOX
+        if (vox || voy) {
+            for (int bi = 0; bi < sc.box_n; bi++) {
+                sc.box[bi].min_x -= (float)vox; sc.box[bi].max_x -= (float)vox;
+                sc.box[bi].min_z -= (float)voy; sc.box[bi].max_z -= (float)voy;
+            }
+        }
+        g_view_ox = vox; g_view_oy = voy; g_view_w = vww; g_view_h = vwh;
         if (bv_gpu_raymarch(&sc, g_fbuf) == 0) gpu_done = 1;
         else fprintf(stderr, "bv_render_3d: GPU backend failed, using CPU\n");
         g_prof_gpu_ms = bv_now_ms_() - gpu_t0;
