@@ -43,7 +43,7 @@
 #ifndef PATH_MAX
 #define PATH_MAX 4096
 #endif
-#define UIBUF 16384
+#define UIBUF 65536   /* a 98-desk book (TSOTS) publishes ~7 KB of desk rows alone */
 /* Windows-only throttle (a no-session probe popen()s a shell, and cmd.exe
  * spawns made that a storm). Linux deliberately keeps rescanning every
  * pass - a 30s blind window there would leave a relaunched board blank
@@ -640,7 +640,7 @@ int main(int argc, char **argv) {
         read_pdl_kv(game_pdl, "n_desks", n_desks_s, sizeof(n_desks_s));
         int n_desks = n_desks_s[0] ? atoi(n_desks_s) : 1;
         if (n_desks < 1) n_desks = 1;
-        if (n_desks > 8) n_desks = 8;   /* real, generous v1 cap */
+        if (n_desks > 128) n_desks = 128;   /* was 8 ("v1 cap"): a book such as TSOTS has 98 pages; the Desk dropdown scrolls when long */
         char cur_desk_label[64] = "";
         for (int di = 1; di <= n_desks; di++) {
             char k_id[32], k_lbl[32];
@@ -770,7 +770,7 @@ int main(int argc, char **argv) {
             strcmp(menu_open, "desk") == 0 ? "1" : "");
 
         off += (size_t)snprintf(ui + off, UIBUF - off,
-            "n_file_opts=7\n"
+            "n_file_opts=8\n"
             /* REAL, NEW 2026-09-15, direct live report ("it should be a
              * 'default' folder availiable in File menu till user makes
              * new(palcraft) then can load palcraft from file menu") -
@@ -789,12 +789,16 @@ int main(int argc, char **argv) {
              * projects, not just the pre-existing three. */
             "f_4_label=\xF0\x9F\x95\xB9\xEF\xB8\x8F test_walls\nf_4_verb=load-map\nf_4_arg=test_walls\nf_4_active=%s\n"
             "f_5_label=\xF0\x9F\x95\xB9\xEF\xB8\x8F test_terraces\nf_5_verb=load-map\nf_5_arg=test_terraces\nf_5_active=%s\n"
-            "f_6_label=default-legacy\nf_6_verb=file\nf_6_arg=1\nf_6_active=%s\n",
+            /* RPG Maker MV "The Sword of the Spirit" book: one project, a desk (page) per converted map (owner 2026-10-08;
+             * design: 08-roadmap/design-docs/RMMV-MAPS-TO-HOUSE-2D-3D-HANDOFF-2026-10-08.md). */
+            "f_6_label=\xF0\x9F\x97\xBA\xEF\xB8\x8F TSOTS\nf_6_verb=load-map\nf_6_arg=tsots\nf_6_active=%s\n"
+            "f_7_label=default-legacy\nf_7_verb=file\nf_7_arg=1\nf_7_active=%s\n",
             active_level[0] ? "" : "pchq-menu-active",
             strcmp(active_level, "mineclonia_sample") == 0 ? "pchq-menu-active" : "",
             strcmp(active_level, "cdda_sample") == 0 ? "pchq-menu-active" : "",
             strcmp(active_level, "test_walls") == 0 ? "pchq-menu-active" : "",
             strcmp(active_level, "test_terraces") == 0 ? "pchq-menu-active" : "",
+            strcmp(active_level, "tsots") == 0 ? "pchq-menu-active" : "",
             is_legacy ? "pchq-menu-active" : "");
 
         /* REAL, NEW 2026-09-15 (2) - real, per-desk rows (was always
