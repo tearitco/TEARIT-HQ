@@ -357,7 +357,7 @@ in parentheses. Those `Dungeon_b` files exist. I did not re-decode the
 | Pair | Left | Middle | Right | Why |
 | --- | --- | --- | --- | --- |
 | Wood rail, `Dungeon_B` | 0,14 (224) | 1,14 (225) | 4,14 (228) | A post closes each end. The middle is a plain plank that can repeat. |
-| Iron rail, `Dungeon_B` | 11,14 (235) | 12,14 (236) | 15,14 (239) | Same shape in metal. Middle bars repeat. Ends close the run. |
+| Iron rail, `Dungeon_B` | none | 12,14 (236) | none | Columns 12 through 15 are the same railing cell. There is no end cap. Column 11 is a table, not a rail. |
 | Neon, `SF_Outside_B` | 8,5 | 9,5 | mirror of 8,5 | A thin glowing tube. There is no separate right-cap cell. |
 | White panel, `SF_Outside_B` | 8,8 | 9,8 | 8,8 | A low white rectangle. The end cell has an oval fixture, so it is the weakest bar. |
 
