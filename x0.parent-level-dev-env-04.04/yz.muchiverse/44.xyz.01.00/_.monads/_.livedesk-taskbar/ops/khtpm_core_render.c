@@ -2832,6 +2832,17 @@ static int reparse_chtpm_if_changed(void) {
     g_default_active_scope_root = NULL;
     g_default_scope_confine = 0;
     g_n_elems = 0;
+    /* REAL FIX 2026-10-08 (self-correction) - the truncation counters were
+     * cumulative for the whole process lifetime, never reset. So a warning
+     * read "1 element(s) did not fit" forever after the cause was gone, and
+     * a stale count masqueraded as a current one. I spent a turn reading
+     * "exactly 3 dropped, at every budget" as a fixed cost when it was
+     * simply a historical total that nothing new had added to.
+     * Counters now describe the layout currently being BUILT. */
+    g_pool_overflow_count = 0;
+    g_repeat_clamped = 0;
+    g_repeat_clamp_last = 0;
+    g_vars_dropped = 0;
     Elem *new_window = parse_chtpm(g_chtpm_path);
     if (!new_window) return 0;
     g_window = new_window;
