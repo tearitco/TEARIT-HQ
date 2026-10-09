@@ -4786,6 +4786,16 @@ static void generic_sbar_scroll_from_y(int i, int y) {
     *b->scroll = sc;
 }
 
+/* Index of the generic scrollbar whose track / thumb (+6 px slack) contains the point, or -1. */
+static int kh_sbar_track_at(int x, int y) {
+    for (int si = 0; si < g_n_generic_sbars; si++) {
+        GenericScrollBar *sb = &g_generic_sbars[si];
+        if (!sb->scroll || sb->max_scroll < 1) continue;
+        if (x >= sb->track_x - 6 && x <= sb->track_x + sb->track_w + 6 && y >= sb->track_y && y < sb->track_y + sb->track_h) return si;
+    }
+    return -1;
+}
+
 static void draw_generic_scrollbars(void) {
     int i;
     for (i = 0; i < g_n_generic_sbars; i++) {
@@ -13503,7 +13513,7 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
                 g_x11_window_focused = 1;
                 /* Play-screen engage: canvas bbox, not g_nav. Never
                  * verb interact (toggle-off). */
-                if (kh_canvas_hit(ev->xbutton.x, ev->xbutton.y)) {
+                if (kh_canvas_hit(ev->xbutton.x, ev->xbutton.y) && kh_sbar_track_at(ev->xbutton.x, ev->xbutton.y) < 0) {
                     if (g_win_managed_focus && kh_page_has_relay_item())
                         kh_interact_engage_if_needed();
                     /* The board window is not managed-focus, so the old
@@ -13515,16 +13525,12 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
                 }
             }
             if (ev->xbutton.button == 1 && cw == win && !g_dock_click_menu) {
-                for (int si = 0; si < g_n_generic_sbars; si++) {
-                    GenericScrollBar *sb = &g_generic_sbars[si];
-                    if (!sb->scroll || sb->max_scroll < 1) continue;
-                    if (ev->xbutton.x >= sb->track_x - 6 && ev->xbutton.x <= sb->track_x + sb->track_w + 6 &&
-                        ev->xbutton.y >= sb->track_y && ev->xbutton.y < sb->track_y + sb->track_h) {
-                        g_sbar_drag = si;                 /* press on a scrollbar track / thumb: drag it */
-                        generic_sbar_scroll_from_y(si, ev->xbutton.y);
-                        if (!g_quit) { assign_nav_and_layout(); redraw(); }
-                        return;
-                    }
+                int si = kh_sbar_track_at(ev->xbutton.x, ev->xbutton.y);
+                if (si >= 0) {
+                    g_sbar_drag = si;                 /* press on a scrollbar track / thumb: drag it */
+                    generic_sbar_scroll_from_y(si, ev->xbutton.y);
+                    if (!g_quit) { assign_nav_and_layout(); redraw(); }
+                    return;
                 }
             }
             if (window_is_dock() && g_dock_menu_win && cw == g_dock_menu_win && ev->xbutton.button == 1 &&
