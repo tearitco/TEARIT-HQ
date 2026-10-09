@@ -153,5 +153,48 @@ else
     fi
 fi
 
+# ---- var-table overflow stability -------------------------------------
+# 850 input rows overflow the 4096 var slots: the frame must report a
+# nonzero drop count, and - critically - the IDENTICAL text seconds
+# later. Drops are re-derivable per bulk load, and the counter resets
+# per load next to the table clear (2026-10-09, same cumulative class
+# as the 2026-10-08 truncation fix): pre-fix, every idle tick re-added
+# a full load's drops, so the second frame read thousands. Both frames
+# go through dump_frame, so neither can be stale or another window's.
+echo "== var-table overflow (identical WARN across idle ticks)"
+BIGI="$(mktemp /tmp/nb_biginputs_XXXXXX.html)"
+{
+    echo '<!doctype html><html><head><title>BigInputs</title></head><body><h1>Many inputs</h1><form action="/s">'
+    i=1
+    while [ "$i" -le 850 ]; do
+        echo "<input name=\"n$i\" value=\"v$i\">"
+        i=$((i + 1))
+    done
+    echo '</form></body></html>'
+} > "$BIGI"
+if ! load "file://$BIGI"; then
+    echo "FAIL: inputs page did not settle"; FAIL=1
+else
+    if dump_frame; then
+        W1="$(grep -a "WARN" "$FRAME_FILE" 2>/dev/null)"
+    else
+        W1=""; FAIL=1
+    fi
+    sleep 8
+    if dump_frame; then
+        W2="$(grep -a "WARN" "$FRAME_FILE" 2>/dev/null)"
+    else
+        W2=""; FAIL=1
+    fi
+    if [ -z "$W1" ]; then
+        echo "FAIL: overflow page drew no WARN lines - fixture does not overflow (vacuous)"; FAIL=1
+    elif [ "$W1" = "$W2" ]; then
+        echo "PASS: WARN counts identical across idle ticks"
+    else
+        echo "FAIL: WARN counts drifted between frames (cumulative counter?)"; FAIL=1
+    fi
+fi
+rm -f "$BIGI"
+
 [ "$FAIL" -eq 0 ] && echo "PROJECTION PASS" || echo "PROJECTION FAIL"
 exit $FAIL

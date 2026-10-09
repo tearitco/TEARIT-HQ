@@ -32,6 +32,10 @@ echo "########## table columns (needs the browser)"
 sh "$HERE/nb_table_test.sh" || RC=1
 
 echo
+echo "########## history bound (needs the browser)"
+sh "$HERE/nb_history_test.sh" || RC=1
+
+echo
 echo "########## form gate (hermetic)"
 sh "$HERE/nb_form_test.sh" || RC=1
 

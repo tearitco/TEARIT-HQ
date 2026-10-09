@@ -1727,6 +1727,16 @@ static void kh_load_vars(const char *path) {
  * once, then appends each. */
 static void kh_load_vars_multi(const char *paths) {
     g_kh_nvars = 0;
+    /* REAL FIX 2026-10-09 (same cumulative-counter class as the 2026-10-08
+     * truncation fix, one layer up): this runs on EVERY idle tick as well
+     * as at reparse, so a vars_dropped counter reset only at reparse
+     * accumulated one bulk load's drops per tick for any window over the
+     * table cap - the count grew forever while the content never changed.
+     * Reset per LOAD, next to the table clear: the count describes this
+     * load (stable across identical ticks), and the reparse-site publish
+     * of render_warn reads a truthful number. Ad-hoc kh_set_var() calls
+     * outside loads can still only bump it upward (conservative). */
+    g_vars_dropped = 0;
     if (!paths || !paths[0]) return;
     char work[PATH_BUF * 4];
     snprintf(work, sizeof(work), "%s", paths);

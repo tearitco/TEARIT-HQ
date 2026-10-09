@@ -2737,6 +2737,48 @@ static void visit_log_append(const char *url) {
     if (!f) return;
     fprintf(f, "%s\n", url);
     fclose(f);
+    /* REAL FIX 2026-10-09 (live root-caused: sidebar frozen on ancient
+     * history while new visits vanished): this file grew unboundedly,
+     * but both readers take only the FIRST 256 lines - oldest-first -
+     * so past 256 entries every new visit was stored yet never shown.
+     * Trim to the newest 256 on append (cheap: ~25KB file): the readers
+     * then always see everything, and the newest-relative delhist index
+     * math is untouched (trimming oldest shifts nothing it addresses).
+     * Back/forward stacks live in separate files, unaffected. */
+    {
+        FILE *rf = fopen(g_visit_log_path, "r");
+        long nlines = 0;
+        if (rf) {
+            int ch;
+            int last_nl = 1;
+            while ((ch = fgetc(rf)) != EOF) {
+                if (ch == '\n') { nlines++; last_nl = 1; }
+                else last_nl = 0;
+            }
+            if (!last_nl) nlines++;
+            fclose(rf);
+        }
+        if (nlines > 256) {
+            long skip = nlines - 256;
+            rf = fopen(g_visit_log_path, "r");
+            if (rf) {
+                char tmp[PATH_BUF];
+                FILE *wf = NULL;
+                snprintf(tmp, sizeof(tmp), "%s.trim", g_visit_log_path);
+                wf = fopen(tmp, "w");
+                if (wf) {
+                    char line[PATH_BUF + 512];
+                    while (fgets(line, sizeof(line), rf)) {
+                        if (skip > 0) { skip--; continue; }
+                        fputs(line, wf);
+                    }
+                    fclose(wf);
+                    rename(tmp, g_visit_log_path);
+                }
+                fclose(rf);
+            }
+        }
+    }
 }
 
 static void copy_file_if_missing(const char *src, const char *dst) {
