@@ -769,37 +769,60 @@ int main(int argc, char **argv) {
             strcmp(menu_open, "file") == 0 ? "1" : "",
             strcmp(menu_open, "desk") == 0 ? "1" : "");
 
-        off += (size_t)snprintf(ui + off, UIBUF - off,
-            "n_file_opts=8\n"
-            /* REAL, NEW 2026-09-15, direct live report ("it should be a
-             * 'default' folder availiable in File menu till user makes
-             * new(palcraft) then can load palcraft from file menu") -
-             * a real, always-available way back to the flat/procedural
-             * starting world - now a real desk-backed project dir
-             * (pieces/system/maps/default/desk1/), same load-map path
-             * every other real project uses (see PALCRAFT-DESIGN.md's
-             * own "file = dir, desk = map" convention, same date). */
-            "f_0_label=\xF0\x9F\x95\xB9\xEF\xB8\x8F default\nf_0_verb=load-map\nf_0_arg=default\nf_0_active=%s\n"
-            "f_1_label=Open File Explorer\nf_1_verb=file-hq\nf_1_arg=\nf_1_active=\n"
-            "f_2_label=mineclonia_sample\nf_2_verb=load-map\nf_2_arg=mineclonia_sample\nf_2_active=%s\n"
-            "f_3_label=cdda_sample\nf_3_verb=load-map\nf_3_arg=cdda_sample\nf_3_active=%s\n"
-            /* REAL, NEW 2026-09-15 - two real test projects, same date,
-             * proving the desk-backed load path + the generalized
-             * multi-glyph extrusion table both work for genuinely new
-             * projects, not just the pre-existing three. */
-            "f_4_label=\xF0\x9F\x95\xB9\xEF\xB8\x8F test_walls\nf_4_verb=load-map\nf_4_arg=test_walls\nf_4_active=%s\n"
-            "f_5_label=\xF0\x9F\x95\xB9\xEF\xB8\x8F test_terraces\nf_5_verb=load-map\nf_5_arg=test_terraces\nf_5_active=%s\n"
-            /* RPG Maker MV "The Sword of the Spirit" book: one project, a desk (page) per converted map (owner 2026-10-08;
-             * design: 08-roadmap/design-docs/RMMV-MAPS-TO-HOUSE-2D-3D-HANDOFF-2026-10-08.md). */
-            "f_6_label=\xF0\x9F\x97\xBA\xEF\xB8\x8F TSOTS\nf_6_verb=load-map\nf_6_arg=tsots\nf_6_active=%s\n"
-            "f_7_label=default-legacy\nf_7_verb=file\nf_7_arg=1\nf_7_active=%s\n",
-            active_level[0] ? "" : "pchq-menu-active",
-            strcmp(active_level, "mineclonia_sample") == 0 ? "pchq-menu-active" : "",
-            strcmp(active_level, "cdda_sample") == 0 ? "pchq-menu-active" : "",
-            strcmp(active_level, "test_walls") == 0 ? "pchq-menu-active" : "",
-            strcmp(active_level, "test_terraces") == 0 ? "pchq-menu-active" : "",
-            strcmp(active_level, "tsots") == 0 ? "pchq-menu-active" : "",
-            is_legacy ? "pchq-menu-active" : "");
+        /* File menu = the books on disk (owner 2026-10-09: a new book must appear without a code change). Fixed head: "default" (the
+         * always-available way back to the flat starting world, 2026-09-15) and Open File Explorer; then EVERY folder under
+         * pieces/system/maps/ that has a game.pdl (except "default"), sorted by folder name, labelled "<icon> <label>" from its own
+         * game.pdl GAME rows (folder name when there is no label); fixed tail: default-legacy. Verb load-map, arg = the folder name. */
+        {
+            char maps_dir[PATH_MAX];
+            snprintf(maps_dir, sizeof(maps_dir), "%s/pieces/system/maps", pkg);
+            static char book_ids[64][64];
+            int n_books = 0;
+            DIR *md = opendir(maps_dir);
+            if (md) {
+                struct dirent *de;
+                while ((de = readdir(md)) != NULL && n_books < 64) {
+                    if (de->d_name[0] == '.' || strcmp(de->d_name, "default") == 0 || strlen(de->d_name) >= sizeof(book_ids[0])) continue;
+                    char gp[PATH_MAX];
+                    snprintf(gp, sizeof(gp), "%s/%s/game.pdl", maps_dir, de->d_name);
+                    if (access(gp, R_OK) != 0) continue;
+                    snprintf(book_ids[n_books++], sizeof(book_ids[0]), "%s", de->d_name);
+                }
+                closedir(md);
+            }
+            for (int bi = 1; bi < n_books; bi++) {          /* insertion sort: stable menu order, no qsort needed */
+                char tmp[64]; snprintf(tmp, sizeof(tmp), "%s", book_ids[bi]);
+                int bj = bi - 1;
+                while (bj >= 0 && strcmp(book_ids[bj], tmp) > 0) { snprintf(book_ids[bj + 1], sizeof(book_ids[0]), "%s", book_ids[bj]); bj--; }
+                snprintf(book_ids[bj + 1], sizeof(book_ids[0]), "%s", tmp);
+            }
+            size_t off_fn = off;                            /* n_file_opts is patched in once the books are counted */
+            off += (size_t)snprintf(ui + off, UIBUF - off, "n_file_opts=000\n");
+            off += (size_t)snprintf(ui + off, UIBUF - off,
+                "f_0_label=\xF0\x9F\x95\xB9\xEF\xB8\x8F default\nf_0_verb=load-map\nf_0_arg=default\nf_0_active=%s\n"
+                "f_1_label=Open File Explorer\nf_1_verb=file-hq\nf_1_arg=\nf_1_active=\n",
+                active_level[0] ? "" : "pchq-menu-active");
+            int nf = 2;
+            for (int bi = 0; bi < n_books; bi++) {
+                char gp[PATH_MAX], icon[32] = "", lbl[64] = "", full[112];
+                snprintf(gp, sizeof(gp), "%s/%s/game.pdl", maps_dir, book_ids[bi]);
+                read_pdl_kv(gp, "icon", icon, sizeof(icon));
+                read_pdl_kv(gp, "label", lbl, sizeof(lbl));
+                if (!lbl[0]) snprintf(lbl, sizeof(lbl), "%s", book_ids[bi]);
+                if (icon[0]) snprintf(full, sizeof(full), "%s %s", icon, lbl); else snprintf(full, sizeof(full), "%s", lbl);
+                sanitize(full);
+                off += (size_t)snprintf(ui + off, UIBUF - off,
+                    "f_%d_label=%s\nf_%d_verb=load-map\nf_%d_arg=%s\nf_%d_active=%s\n",
+                    nf, full, nf, nf, book_ids[bi], nf,
+                    strcmp(active_level, book_ids[bi]) == 0 ? "pchq-menu-active" : "");
+                nf++;
+            }
+            off += (size_t)snprintf(ui + off, UIBUF - off,
+                "f_%d_label=default-legacy\nf_%d_verb=file\nf_%d_arg=1\nf_%d_active=%s\n",
+                nf, nf, nf, nf, is_legacy ? "pchq-menu-active" : "");
+            nf++;
+            { char cnt[16]; snprintf(cnt, sizeof(cnt), "%03d", nf > 999 ? 999 : nf); memcpy(ui + off_fn + strlen("n_file_opts="), cnt, 3); }
+        }
 
         /* REAL, NEW 2026-09-15 (2) - real, per-desk rows (was always
          * exactly one fake row). Re-reads game.pdl's desk_N_id/

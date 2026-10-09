@@ -45,8 +45,8 @@ before writing 40 folders.
 ## 4. Rules (carried over)
 
 - Do not edit: `bv_render_3d.c`, `bv_gpu_raymarch.*`, `bv_menu_input.c`, `khtpm_core_render.c`, `pchq_board_projector.c`, `keybinds.pdl`, `bv_state.txt`, camera anything.
-  **The File menu list is hardcoded in the projector today**: after you finish a book, tell claude its id and label; claude adds the row (and plans to make
-  that menu read the maps folder so no code is needed).
+  **The File menu now reads `pieces/system/maps/*/game.pdl` (claude, 2026-10-09)**: a new book folder with a `game.pdl` appears in File automatically,
+  labelled `<icon> <label>` from its own `GAME` rows (folder name if no label), sorted by folder name. No code row is needed; just make `game.pdl` correct.
 - Do not run Synch by hand, do not push or merge, do not commit `xyzfs/users`. Commit from `/tmp/grok-bars` on branch `grok` with an explicit path list.
   Keep `pc_generate_chunk.c` untouched except the shared hunk already discussed.
 - Do not generate large binaries; maps are text.
@@ -62,8 +62,7 @@ and what is missing from Eden's template to host it. Do not write rules or ops. 
 
 ## 6. Evidence the owner expects (house priority)
 
-Per game, in `XO/15.GROCT/clone-books/`: (1) the file list; (2) a note with the click path **File -> <game> -> Desk -> <page>**; (3) after claude adds the
-File row, claude runs pc-hq and sends the PNGs of the Desk menu and one level in 2D and one in 3D. A compile or a file listing alone is not "done".
+Per game, in `XO/15.GROCT/clone-books/`: (1) the file list; (2) a note with the click path **File -> <game> -> Desk -> <page>**; (3) claude runs pc-hq and sends the PNGs of the Desk menu and one level in 2D and one in 3D. A compile or a file listing alone is not "done".
 
 ## 7. Open questions for the owner (claude will ask)
 
