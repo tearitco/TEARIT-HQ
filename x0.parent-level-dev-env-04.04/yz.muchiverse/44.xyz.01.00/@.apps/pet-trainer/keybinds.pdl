@@ -1,0 +1,22 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | note               | Pet trainer keybinds. Same codes and names as piececraft-hq pieces/system/keybinds.pdl, so the village can become a pc-hq board (2D/3D, POV) later without changing a key. Read by pet_manager every key. Edit, no rebuild.
+# Interact mode (Keys: on): the khtpm window forwards keys to state/interact_relay.txt as "<code> <ms>". Arrows arrive as 1000 left, 1001 right, 1002 up, 1003 down.
+KEY          | arrow_left         | 1000
+KEY          | arrow_right        | 1001
+KEY          | arrow_up           | 1002
+KEY          | arrow_down         | 1003
+KEY          | render_mode_toggle | 48        # '0'  2D <-> 3D (camera.st mode)
+KEY          | pov_mode_1         | 49        # '1'  first person
+KEY          | pov_mode_2         | 50        # '2'  third person
+KEY          | pov_mode_3         | 51        # '3'  free roam
+KEY          | pov_mode_4         | 52        # '4'  bird's eye
+KEY          | yaw_left           | 113       # 'q'
+KEY          | yaw_right          | 101       # 'e'
+KEY          | pitch_down         | 114       # 'r'
+KEY          | pitch_up           | 116       # 't'
+KEY          | cam_height_down    | 99        # 'c'
+KEY          | cam_height_up      | 118       # 'v'
+KEY          | reset_view         | 102       # 'f'
+OPT          | stale_ms           | 800       # a queued key older than this is dropped (held key piled up behind a slow frame)
+OPT          | arrow_run_cap      | 3         # max moves per tick

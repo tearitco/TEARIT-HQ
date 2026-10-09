@@ -1,0 +1,10 @@
+# skillbook.pdl - the pet's skills, read by &.widgits/concept-bank/ops/entity_grade (use / rest). Same format as ^.hai-horn/skillbook.pdl.
+# Every care action is a skill: it costs MP (the pet's energy budget for effort), gives EXP, and EXP raises the LEVEL. Level drives evolution (evolution.pdl).
+# ALL NUMBERS ARE FIRST GUESSES. Tune them here; no code holds a constant.
+LEVEL | exp_per_level=8 | base_mp=6 | mp_per_level=2 | max_level=12
+SKILL | eat   | tier=0 | level=1 | mp=0 | exp=2
+SKILL | sleep | tier=0 | level=1 | mp=0 | exp=1
+SKILL | wash  | tier=0 | level=1 | mp=0 | exp=1
+SKILL | play  | tier=0 | level=1 | mp=2 | exp=3
+SKILL | trick | tier=0 | level=3 | mp=3 | exp=4
+SKILL | self_care | tier=0 | level=4 | mp=2 | exp=3

@@ -1,0 +1,44 @@
+<!-- pet-trainer.xhtpm - the trainer window: the pet house, the Manage party strip (six pets from the RPG Maker DB) and the World village; sidebar buttons come from nav.pdl (nav_N rows). Static layout: pet_manager (the module) owns the state and publishes
+     state/ui.txt; the canvas shows the room + pet drawn by pet_scene (gravity when this window is moved). RULES: one sidebar plus one panel; no angle
+     brackets inside comments. Everything the player can do is a pet_event.sh verb; the field at the bottom takes chat, "teach words = verb item", good, bad. -->
+<window label="Pet trainer - ${name}" class="pet-trainer database-window fixed-size" vars="state/ui.txt">
+  <module src="@.apps/pet-trainer/ops/+x/pet_manager.+x" id="_"/>
+  <page name="main">
+    <tabbar class="tab-bar">
+      <tab id="t_save" class="tab" label="Save" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' fire save_1"/>
+      <tab id="t_load" class="tab" label="Load" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' fire load_1"/>
+      <tab id="t_play" class="tab" label="Play" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' fire start"/>
+      <tab id="t_stop" class="tab" label="Stop" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' fire stop"/>
+      <tab id="t_manage" class="tab" label="Manage" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' fire view_manage"/>
+      <tab id="t_world" class="tab" label="World" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' fire view_world"/>
+      <tab id="t_player" class="tab" label="Player" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' player"/>
+    </tabbar>
+    <sidebar id="side" class="sidebar">
+      <text id="light" label="${run_label}" class="${run_cls}"/>
+      <item id="tb-in" class="ph-row ${interact_class}" label="Keys (arrows, camera): ${interact_label}" relay="${bv_h1},${bv_h2}" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' interact"/>
+      <repeat count="${n_nav}" bind="nav">
+        <item id="nv${nav.#}" class="ph-row" label="${nav.label}" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' ${nav.verb} ${nav.arg}"/>
+      </repeat>
+      <scrolllist>
+        <repeat count="${n_menu_shown}" bind="menu">
+          <item id="mn${menu.#}" class="ph-row" label="${menu.label}" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' ${menu.verb} ${menu.arg}"/>
+        </repeat>
+      </scrolllist>
+      <scrolllist>
+        <repeat count="${inv_shown}" bind="inv">
+          <item id="iv${inv.#}" class="ph-row" label="${inv.text}" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' inv_use ${inv.#}"/>
+        </repeat>
+      </scrolllist>
+      <text label="Chat" class="ph-title"/>
+      <text label="${chat_1}" class="ph-chat"/>
+      <text label="${chat_2}" class="ph-chat"/>
+      <text label="${chat_3}" class="ph-chat"/>
+      <cli_io id="say" target_id="pet-say" label="say: " action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' chat_input"/>
+      <text label="${stage} lv ${level} ${state}" class="ph-quiet"/>
+      <text label="hg ${hunger} en ${energy} cl ${clean} hp ${happy}" class="ph-quiet"/>
+    </sidebar>
+    <panel id="room_p" class="ph-panel">
+      <canvas id="room" class="ph-room" sprite="${scene_raw}"/>
+    </panel>
+  </page>
+</window>

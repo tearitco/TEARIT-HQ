@@ -1,0 +1,16 @@
+# replies.pdl - what the pet says after it does something. REPLY | verb | mood | text. mood is happy or sad (from the happy meter). The pet only SPEAKS words the master taught it
+# (lexicon); these are its fixed reactions. Add rows to give it more to say. The master teaches words with: pet_event.sh teach "<phrase>" <verb> [item]
+REPLY | feed   | happy | yum yum!
+REPLY | feed   | sad   | ...thanks
+REPLY | sleep  | happy | zzz... nice
+REPLY | sleep  | sad   | zzz
+REPLY | wash   | happy | splash! so clean
+REPLY | wash   | sad   | brr
+REPLY | play   | happy | wheee!
+REPLY | play   | sad   | ok...
+REPLY | touch  | happy | hehe!
+REPLY | touch  | sad   | hm?
+REPLY | unknown| happy | ? (teach me: say what it means)
+REPLY | unknown| sad   | ?
+REPLY | hello  | happy | hi master!
+REPLY | hello  | sad   | hi...

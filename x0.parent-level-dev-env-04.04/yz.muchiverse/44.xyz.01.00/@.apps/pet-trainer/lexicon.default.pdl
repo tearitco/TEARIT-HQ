@@ -1,0 +1,4 @@
+# lexicon.default.pdl - what the pet knows at birth (copied to its state as lexicon.pdl). LEX | phrase | verb | item | weight (0..10).
+# A new pet knows only "hi" and "food". Everything else it learns from the master (teach), and weights move with praise and scolding.
+LEX | hi    | hello |       | 5
+LEX | food  | feed  | apple | 3

@@ -25,3 +25,11 @@ SYSTEM       | opt_side_view      | 1
 SYSTEM       | opt_display_tp     | 1
 SYSTEM       | opt_followers      | 1
 SYSTEM       | opt_draw_title     | 1
+SYSTEM       | id                 | 5
+SYSTEM       | name               | PetParty
+SYSTEM       | member1            | Pochi
+SYSTEM       | member2            | Momo
+SYSTEM       | member3            | Kuro
+SYSTEM       | member4            | Gumi
+SYSTEM       | member5            | Rin
+SYSTEM       | member6            | Dai

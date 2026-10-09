@@ -289,3 +289,165 @@ ACTOR        | luk                | 7
 ACTOR        | note               | skills 1 = Attack
 ACTOR        | id                 | 12
 ACTOR        | name               |
+ACTOR        | id                 | 13
+ACTOR        | name               | Pochi
+ACTOR        | nickname           | Bunny
+ACTOR        | class              | Pet
+ACTOR        | init_lv            | 1
+ACTOR        | max_lv             | 99
+ACTOR        | exp                | 0
+ACTOR        | exp_to_next        | 0
+ACTOR        | skills             | eat sleep wash play trick
+ACTOR        | profile            | a small grey bunny with long ears
+ACTOR        | face               | 
+ACTOR        | character          | 
+ACTOR        | battler            | 
+ACTOR        | weapon             | 
+ACTOR        | shield             | 
+ACTOR        | head               | 
+ACTOR        | body               | 
+ACTOR        | accessory          | 
+ACTOR        | mhp                | 30
+ACTOR        | mmp                | 6
+ACTOR        | atk                | 4
+ACTOR        | def                | 4
+ACTOR        | mat                | 4
+ACTOR        | mdf                | 4
+ACTOR        | agi                | 6
+ACTOR        | luk                | 5
+ACTOR        | note               | pet species 0 seed 11
+ACTOR        | id                 | 14
+ACTOR        | name               | Momo
+ACTOR        | nickname           | Bear
+ACTOR        | class              | Pet
+ACTOR        | init_lv            | 1
+ACTOR        | max_lv             | 99
+ACTOR        | exp                | 0
+ACTOR        | exp_to_next        | 0
+ACTOR        | skills             | eat sleep wash play trick
+ACTOR        | profile            | a round brown bear
+ACTOR        | face               | 
+ACTOR        | character          | 
+ACTOR        | battler            | 
+ACTOR        | weapon             | 
+ACTOR        | shield             | 
+ACTOR        | head               | 
+ACTOR        | body               | 
+ACTOR        | accessory          | 
+ACTOR        | mhp                | 30
+ACTOR        | mmp                | 6
+ACTOR        | atk                | 4
+ACTOR        | def                | 4
+ACTOR        | mat                | 4
+ACTOR        | mdf                | 4
+ACTOR        | agi                | 6
+ACTOR        | luk                | 5
+ACTOR        | note               | pet species 1 seed 12
+ACTOR        | id                 | 15
+ACTOR        | name               | Kuro
+ACTOR        | nickname           | Cat
+ACTOR        | class              | Pet
+ACTOR        | init_lv            | 1
+ACTOR        | max_lv             | 99
+ACTOR        | exp                | 0
+ACTOR        | exp_to_next        | 0
+ACTOR        | skills             | eat sleep wash play trick
+ACTOR        | profile            | an orange cat with a long tail
+ACTOR        | face               | 
+ACTOR        | character          | 
+ACTOR        | battler            | 
+ACTOR        | weapon             | 
+ACTOR        | shield             | 
+ACTOR        | head               | 
+ACTOR        | body               | 
+ACTOR        | accessory          | 
+ACTOR        | mhp                | 30
+ACTOR        | mmp                | 6
+ACTOR        | atk                | 4
+ACTOR        | def                | 4
+ACTOR        | mat                | 4
+ACTOR        | mdf                | 4
+ACTOR        | agi                | 6
+ACTOR        | luk                | 5
+ACTOR        | note               | pet species 2 seed 13
+ACTOR        | id                 | 16
+ACTOR        | name               | Gumi
+ACTOR        | nickname           | Frog
+ACTOR        | class              | Pet
+ACTOR        | init_lv            | 1
+ACTOR        | max_lv             | 99
+ACTOR        | exp                | 0
+ACTOR        | exp_to_next        | 0
+ACTOR        | skills             | eat sleep wash play trick
+ACTOR        | profile            | a green frog with big eyes
+ACTOR        | face               | 
+ACTOR        | character          | 
+ACTOR        | battler            | 
+ACTOR        | weapon             | 
+ACTOR        | shield             | 
+ACTOR        | head               | 
+ACTOR        | body               | 
+ACTOR        | accessory          | 
+ACTOR        | mhp                | 30
+ACTOR        | mmp                | 6
+ACTOR        | atk                | 4
+ACTOR        | def                | 4
+ACTOR        | mat                | 4
+ACTOR        | mdf                | 4
+ACTOR        | agi                | 6
+ACTOR        | luk                | 5
+ACTOR        | note               | pet species 3 seed 14
+ACTOR        | id                 | 17
+ACTOR        | name               | Rin
+ACTOR        | nickname           | Mouse
+ACTOR        | class              | Pet
+ACTOR        | init_lv            | 1
+ACTOR        | max_lv             | 99
+ACTOR        | exp                | 0
+ACTOR        | exp_to_next        | 0
+ACTOR        | skills             | eat sleep wash play trick
+ACTOR        | profile            | a grey mouse with big round ears
+ACTOR        | face               | 
+ACTOR        | character          | 
+ACTOR        | battler            | 
+ACTOR        | weapon             | 
+ACTOR        | shield             | 
+ACTOR        | head               | 
+ACTOR        | body               | 
+ACTOR        | accessory          | 
+ACTOR        | mhp                | 30
+ACTOR        | mmp                | 6
+ACTOR        | atk                | 4
+ACTOR        | def                | 4
+ACTOR        | mat                | 4
+ACTOR        | mdf                | 4
+ACTOR        | agi                | 6
+ACTOR        | luk                | 5
+ACTOR        | note               | pet species 4 seed 15
+ACTOR        | id                 | 18
+ACTOR        | name               | Dai
+ACTOR        | nickname           | Dragon
+ACTOR        | class              | Pet
+ACTOR        | init_lv            | 1
+ACTOR        | max_lv             | 99
+ACTOR        | exp                | 0
+ACTOR        | exp_to_next        | 0
+ACTOR        | skills             | eat sleep wash play trick
+ACTOR        | profile            | a small blue dragon with wings
+ACTOR        | face               | 
+ACTOR        | character          | 
+ACTOR        | battler            | 
+ACTOR        | weapon             | 
+ACTOR        | shield             | 
+ACTOR        | head               | 
+ACTOR        | body               | 
+ACTOR        | accessory          | 
+ACTOR        | mhp                | 30
+ACTOR        | mmp                | 6
+ACTOR        | atk                | 4
+ACTOR        | def                | 4
+ACTOR        | mat                | 4
+ACTOR        | mdf                | 4
+ACTOR        | agi                | 6
+ACTOR        | luk                | 5
+ACTOR        | note               | pet species 5 seed 16

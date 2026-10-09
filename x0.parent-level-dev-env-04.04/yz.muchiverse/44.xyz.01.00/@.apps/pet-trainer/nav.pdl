@@ -1,0 +1,22 @@
+SECTION | KEY | VALUE
+----------------------------------------
+# nav.pdl - the sidebar buttons of the pet trainer window, per view. Edit here (or in the layout studio); pet_event.sh status turns every row into nav_<i>_label/verb/arg.
+# NAV | view | label | verb | arg      view = room | manage | world. Special label {party} = one row per pet (label "<n> <name>", arg = pet id). A verb runs: pet_event.sh <verb> <arg>.
+NAV | room   | Manage pets          | view       | manage
+NAV | room   | Go outside (World)   | view       | world
+NAV | room   | Player menu          | menu_toggle | -
+NAV | room   | Inventory            | inv_toggle | -
+NAV | room   | Events (show all)    | open_events | -
+NAV | room   | + New event page     | new_event  | -
+NAV | manage | {party}              | select     | {id}
+NAV | manage | < Back to the house  | view       | room
+NAV | world  | Up                   | world_move | up
+NAV | world  | Down                 | world_move | down
+NAV | world  | Left                 | world_move | left
+NAV | world  | Right                | world_move | right
+NAV | world  | Talk to who is near  | world_talk | -
+NAV | world  | Tii-monsters (Player) | party_toggle | -
+NAV | world  | < Back to the house  | view       | room
+# worldparty = the village with the Player menu open: the trainer's inventory is the six tii-monsters; picking one goes into its room.
+NAV | worldparty | {party}            | select       | {id}
+NAV | worldparty | < Close the list   | party_toggle | -

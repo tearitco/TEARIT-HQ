@@ -1,0 +1,16 @@
+# player_bank.pdl - the META HARNESS's behavior bank: how an outside player (the harness) plays the pet. Same shape as the harness behavior bank
+# (HARNESS-BEHAVIOR-BANK-DESIGN.md): weight = (reward + 1) / (reward + punish + 2), a fresh behavior starts at 0.5. The harness rewrites r= and p= after every step.
+# BEHAVIOR | id | when (comma = AND; var op number from ui.txt: hunger energy clean happy level; has:<item> = pantry count > 0) | do | r | p
+#   do = menu:<verb>:<arg>  (press that menu row), or chat:<text> (type that into the say field)
+BEHAVIOR | feed_apple_hungry | hunger>=40,has:apple | menu:give:apple | 0 | 0
+BEHAVIOR | feed_fish_hungry  | hunger>=40,has:fish  | menu:give:fish  | 0 | 0
+BEHAVIOR | feed_cake_hungry  | hunger>=40,has:cake  | menu:give:cake  | 0 | 0
+BEHAVIOR | sleep_tired       | energy<=50             | menu:sleep:     | 0 | 0
+BEHAVIOR | wash_dirty        | clean<=50,has:soap     | menu:give:soap  | 0 | 0
+BEHAVIOR | play_bored        | happy<=70,energy>=30   | menu:play:      | 0 | 0
+BEHAVIOR | ball_bored        | happy<=70,has:ball     | menu:give:ball  | 0 | 0
+BEHAVIOR | pat_sad           | happy<=60              | menu:touch:head | 0 | 0
+BEHAVIOR | tickle_sad        | happy<=60              | menu:touch:belly | 0 | 0
+BEHAVIOR | say_hello         | happy<=90              | chat:hello      | 0 | 0
+BEHAVIOR | praise_any        | level>=1               | menu:praise:    | 0 | 0
+BEHAVIOR | scold_any         | level>=1               | menu:scold:     | 0 | 0

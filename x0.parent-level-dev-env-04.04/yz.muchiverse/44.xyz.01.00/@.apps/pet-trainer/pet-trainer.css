@@ -1,0 +1,17 @@
+/* pet-trainer.css - merged on top of the default (same stem as pet-trainer.xhtpm). */
+window { width: 600px; height: 540px; }
+.sidebar { background-color: #161616; border-color: #333333; }
+.ph-panel { background-color: #181818; border: 1px solid #2a2a2a; }
+.ph-title { color: #ffffff; font-weight: bold; }
+.ph-row { color: #cccccc; }
+.ph-quiet { color: #aaaaaa; }
+.ph-chat { color: #9fd8ff; }
+
+#room { width: 360px; height: 280px; }
+.ph-room { width: 360px; height: 280px; }
+
+.ph-green { color: #33dd55; font-weight: bold; }
+.ph-red { color: #ff4444; font-weight: bold; }
+.tab-bar { background-color: #1a1a1a; border-color: #444444; border: 1px solid #444444; }
+.tab { background-color: #1a1a1a; color: #aaaaaa; border: 1px solid #444444; padding: 2px 2px; width: 60px; }
+.tab.active { background-color: #2a2a2a; color: #ffffff; font-weight: bold; }

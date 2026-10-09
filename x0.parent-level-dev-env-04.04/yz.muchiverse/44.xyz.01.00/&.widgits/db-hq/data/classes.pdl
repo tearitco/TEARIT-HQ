@@ -32,3 +32,7 @@ CLASS        | id                 | 11
 CLASS        | name               | 
 CLASS        | id                 | 12
 CLASS        | name               | 
+CLASS        | id                 | 13
+CLASS        | name               | Pet
+CLASS        | exp_curve          | Normal
+CLASS        | note               | a creature the trainer raises (pet-trainer)
