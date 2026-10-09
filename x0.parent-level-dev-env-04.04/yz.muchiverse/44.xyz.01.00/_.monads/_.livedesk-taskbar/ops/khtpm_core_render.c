@@ -360,6 +360,11 @@ static Window g_dock_menu_win;
 static int g_dock_dd_scroll = 0, g_dock_dd_scrolling = 0, g_dock_dd_vis = 0, g_dock_dd_total = 0;
 static char g_dock_dd_target[64] = "";
 static int g_dock_dd_drag = 0;   /* 1 while button 1 drags the thumb / track of the long dropdown */
+/* #.desktop/hq_ui.pdl `dropdown_max_rows=N` (N >= 3): a dropdown with more rows than this scrolls (window of N-1 rows + pinned last row +
+ * thumb) even when it would fit on screen. 0 / absent = only when it would run off the screen. Applies to the livedesk dock menus and
+ * the in-window dropdowns (pc-hq tabs). Live: the loader re-runs on the hq_ui_pdl_changed marker. Debug sheet:
+ * 08-roadmap/design-docs/DROPDOWN-SCROLL-DEBUG-SHEET.md. */
+static int g_dropdown_max_rows = 0;
 /* Long dock dropdown furniture: a DD_STRIP_W-wide strip right of the rows holds numbered ^ / v arrows (nav items, like the
  * generic scrollbar's) at its ends and the thumb track between them. */
 #define DD_STRIP_W 62
@@ -5646,7 +5651,11 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
                 }
                 if (open) {
                     if (strcmp(s_dd_open_target, c->target_id) != 0) { s_dd_scroll = 0; snprintf(s_dd_open_target, sizeof(s_dd_open_target), "%s", c->target_id); }
-                    mw_plan(&dd_plan, grp_n, (g_win_h - (trigger->y + trigger->h) - 10) / ROW_H, &s_dd_scroll);
+                    {
+                        int cap_rows = (g_win_h - (trigger->y + trigger->h) - 10) / ROW_H;
+                        if (g_dropdown_max_rows >= 3 && g_dropdown_max_rows < cap_rows) cap_rows = g_dropdown_max_rows;   /* hq_ui.pdl dropdown_max_rows */
+                        mw_plan(&dd_plan, grp_n, cap_rows, &s_dd_scroll);
+                    }
                     dd_scrolling = dd_plan.scrolling; dd_vis = dd_plan.vis;
                 } else if (strcmp(s_dd_open_target, c->target_id) == 0) {
                     s_dd_open_target[0] = '\0'; s_dd_scroll = 0;   /* this list closed: next open starts at the top */
@@ -7078,10 +7087,7 @@ static int layout_dock_bar(Elem *page) {
         if (trig0 && !is_bottom) {
             MwPlan mp;
             int cap = (kh_screen_h() - (trig0->y + trig0->h) - 8) / DOCK_BAR_H;
-            {   /* test hook: KHTPM_DD_TEST_ROWS=N caps visible dropdown rows (lets a short real list prove the scrolling) */
-                const char *tr = getenv("KHTPM_DD_TEST_ROWS");
-                if (tr && atoi(tr) >= 3 && atoi(tr) < cap) cap = atoi(tr);
-            }
+            if (g_dropdown_max_rows >= 3 && g_dropdown_max_rows < cap) cap = g_dropdown_max_rows;   /* hq_ui.pdl dropdown_max_rows */
             if (strcmp(g_dock_dd_target, trig0->id) != 0) { g_dock_dd_scroll = 0; snprintf(g_dock_dd_target, sizeof(g_dock_dd_target), "%s", trig0->id); }
             mw_plan(&mp, n_open, cap, &g_dock_dd_scroll);
             g_dock_dd_scrolling = mp.scrolling; g_dock_dd_vis = mp.vis;
@@ -14497,6 +14503,7 @@ static void desktop_load_click_two_step(const char *house_root) {
     FILE *f = fopen(path, "r");
     if (!f) return;
     char line[128];
+    g_dropdown_max_rows = 0;   /* key removed from the pdl = back to screen-limited */
     while (fgets(line, sizeof(line), f)) {
         char *eq = strchr(line, '=');
         if (!eq) continue;
@@ -14505,6 +14512,7 @@ static void desktop_load_click_two_step(const char *house_root) {
         char *nl = strchr(val, '\n');
         if (nl) *nl = '\0';
         if (strcmp(line, "click_two_step") == 0) g_click_two_step = atoi(val) != 0;
+        else if (strcmp(line, "dropdown_max_rows") == 0) g_dropdown_max_rows = atoi(val) >= 3 ? atoi(val) : 0;
         /* 2026-09-11, CHTPM-INCREMENTAL-REPARSE-DESIGN.md - runtime
          * toggle for the incremental reparse path, OFF (0) unless this
          * key is present and non-zero. A real PDL key, not a
