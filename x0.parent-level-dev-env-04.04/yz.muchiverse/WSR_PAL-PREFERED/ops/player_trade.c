@@ -115,6 +115,25 @@ static int update_holdings(const char *holdings_path, const char *ticker, int de
     return current;
 }
 
+/* Recompute total shares held across all tickers from holdings.txt
+ * and persist to player_you/state.txt's shares_held field.
+ * wsr_compose_frame reads shares_held for the wallet display. */
+static void update_total_shares(const char *holdings_path, const char *player_state) {
+    FILE *f = fopen(holdings_path, "r");
+    int total = 0;
+    if (f) {
+        char line[MAX_LINE];
+        while (fgets(line, sizeof(line), f)) {
+            char *pipe = strchr(line, '|');
+            if (pipe) total += atoi(pipe + 1);
+        }
+        fclose(f);
+    }
+    char total_str[64];
+    snprintf(total_str, sizeof(total_str), "%d", total);
+    write_state_field(player_state, "shares_held", total_str);
+}
+
 static void log_transaction(const char *project_root_, const char *ticker, const char *action, int shares, float price) {
     char tx_path[PATH_BUF];
     snprintf(tx_path, sizeof(tx_path), "%s/projects/wsr-pal/pieces/player_you/transactions.txt", project_root_);
@@ -161,6 +180,7 @@ int main(int argc, char *argv[]) {
         int held = update_holdings(holdings_path, ticker, shares);
         char cash_str[64]; snprintf(cash_str, sizeof(cash_str), "%.2f", cash);
         write_state_field(player_state, "cash", cash_str);
+        update_total_shares(holdings_path, player_state);
         log_transaction(project_root, ticker, "buy", shares, price);
         printf("Bought %d shares of %s at $%.2f (cost $%.2f). You now hold %d.\n", shares, ticker, price, cost, held);
     } else if (strcmp(action, "sell") == 0) {
@@ -183,6 +203,7 @@ int main(int argc, char *argv[]) {
         int held = update_holdings(holdings_path, ticker, -shares);
         char cash_str[64]; snprintf(cash_str, sizeof(cash_str), "%.2f", cash);
         write_state_field(player_state, "cash", cash_str);
+        update_total_shares(holdings_path, player_state);
         log_transaction(project_root, ticker, "sell", shares, price);
         printf("Sold %d shares of %s at $%.2f (proceeds $%.2f). You now hold %d.\n", shares, ticker, price, cost, held);
     } else if (strcmp(action, "short") == 0) {
@@ -190,6 +211,7 @@ int main(int argc, char *argv[]) {
         int held = update_holdings(holdings_path, ticker, -shares);
         char cash_str[64]; snprintf(cash_str, sizeof(cash_str), "%.2f", cash);
         write_state_field(player_state, "cash", cash_str);
+        update_total_shares(holdings_path, player_state);
         log_transaction(project_root, ticker, "short", shares, price);
         printf("Opened short: sold %d shares of %s at $%.2f (proceeds $%.2f). Position now %d.\n", shares, ticker, price, cost, held);
     } else if (strcmp(action, "cover") == 0) {
@@ -212,6 +234,7 @@ int main(int argc, char *argv[]) {
         int held = update_holdings(holdings_path, ticker, shares);
         char cash_str[64]; snprintf(cash_str, sizeof(cash_str), "%.2f", cash);
         write_state_field(player_state, "cash", cash_str);
+        update_total_shares(holdings_path, player_state);
         log_transaction(project_root, ticker, "cover", shares, price);
         printf("Covered %d shares of %s at $%.2f (cost $%.2f). Position now %d.\n", shares, ticker, price, cost, held);
     } else {
