@@ -5755,6 +5755,33 @@ static void write_ui_projection(void) {
                     snprintf(rowlab, sizeof(rowlab), "%s%s", is_hdr ? "" : "", joined);
                     uisan(rowlab, t, sizeof(t));
                     if (!t[0] || junk_visible_line(t)) continue;
+                    /* INLINE TABLE COLUMNS (2026-10-09): the positional
+                     * cell payload for the renderer's equal-column draw
+                     * (see Elem.cells). EMPTY cells are preserved here
+                     * (unlike the joined label above, which drops them):
+                     * column i of every row must mean the same column.
+                     * uisan() leaves \x1E/\x1F alone and they are the
+                     * payload's own delimiters, so they are stripped
+                     * outright; overlong payloads fall back to the joined
+                     * label exactly as today. Raw (no entities): the
+                     * template splice escapes and apply_attr decodes,
+                     * the same pipeline segments= already uses. */
+                    char cellpay[3000];
+                    size_t po = 0;
+                    int pok = 1;
+                    for (int ci = 1; ci < nparts && pok; ci++) {
+                        char cell[512];
+                        uisan(parts[ci], cell, sizeof(cell));
+                        for (char *c = cell; *c; c++)
+                            if (*c == '\x1e' || *c == '\x1f') *c = ' ';
+                        size_t cl = strlen(cell);
+                        if (po + (po ? 1 : 0) + cl + 1 >= sizeof(cellpay)) { pok = 0; break; }
+                        if (po) cellpay[po++] = '\x1f';
+                        memcpy(cellpay + po, cell, cl);
+                        po += cl;
+                    }
+                    cellpay[po] = '\0';
+                    if (!pok) cellpay[0] = '\0';
                     if (is_hdr)
                         /* is_trow stays 0 on a header row: both flags set
                          * would render the row twice (the template has one
@@ -5762,6 +5789,7 @@ static void write_ui_projection(void) {
                         UI_PUT("c_%d_kind=trow\nc_%d_is_thead=1\nc_%d_text=%s\n", rc, rc, rc, t);
                     else
                         UI_PUT("c_%d_kind=trow\nc_%d_is_trow=1\nc_%d_text=%s\n", rc, rc, rc, t);
+                    if (cellpay[0]) UI_PUT("c_%d_cells=%s\n", rc, cellpay);
                 } else if (strcmp(kind, "FILE") == 0) {
                     /* FILE|<name>|<accept>|<multiple>
                      * Not an editable field - there is no text to type. The

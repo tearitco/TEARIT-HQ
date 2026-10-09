@@ -122,15 +122,23 @@ static void build_prompts(const char *session_dir, const char *goal,
 
     snprintf(system_prompt, sp_sz,
         "You are the decision-making brain of an autonomous agent driving a "
-        "stock-market simulation (WSR). You observe the current screen frame, "
-        "the active layout, the corporation state, and recent events.\n\n"
+        "stock-market simulation (WSR: Wall Street Raider).\n\n"
+        "GOAL: %s\n\n"
+        "You observe the current screen frame, active layout, corp state, "
+        "fitness score, and recent events on the event bus.\n\n"
         "VALID ACTIONS: end_turn, buy_stock, sell_stock, buy_sell, new_game, "
         "cycle_corp, list_portfolio, check_market, back_to_main, wait\n\n"
+        "GOAL STRATEGY:\n"
+        "- \"survive\": Keep cash reserves > 20%%. Prefer end_turn when cash is low.\n"
+        "- \"accumulate\": Buy aggressively when price < book_value.\n"
+        "- \"grow\": Cycle corps, explore markets, diversify.\n\n"
+        "IMPORTANT: Choose an action from the VALID ACTIONS list that "
+        "matches your goal strategy, considering the CURRENT FRAME "
+        "and recent events. Do not always default to buy_stock.\n\n"
         "OUTPUT FORMAT (strict JSON, no extra text):\n"
-        "{\"action\":\"<action>\",\"reason\":\"<reason>\",\"confidence\":<float>}\n\n"
-        "Example: {\"action\":\"buy_stock\",\"reason\":\"market looks favorable\","
-        "\"confidence\":0.85}\n\n"
-        "DO NOT output anything except valid JSON. The confidence field is required.");
+        "{\"action\":\"<action>\",\"reason\":\"<reason>\","
+        "\"confidence\":<float>}\n\n"
+        "Only output valid JSON. The confidence field is required.", goal);
 
     snprintf(user_prompt, up_sz,
         "GOAL: %s\n\n"
@@ -184,6 +192,67 @@ int main(int argc, char **argv) {
 
     /* model_extract_action uses json_parser.+x internally */
     model_extract_action(resp->content, action, sizeof(action), reason, sizeof(reason), &conf);
+
+    /*
+     * Fallback policy: small local models (gemma3:1b) tend to default
+     * to buy_stock regardless of goal. Apply a lightweight rule-based
+     * override when the LLM action conflicts with the stated goal or
+     * when it's repeating the same action.
+     */
+    static const char *last_goal = NULL;
+    static const char *last_action = NULL;
+
+    int override = 0;
+    char override_action[64] = "";
+    char override_reason[256] = "";
+
+    if (strcmp(goal, "survive") == 0) {
+        /* Survive: prefer end_turn/wait/check_market over trading actions */
+        if (strcmp(action, "end_turn") != 0 &&
+            strcmp(action, "wait") != 0 &&
+            strcmp(action, "check_market") != 0) {
+            override = 1;
+        }
+    } else if (strcmp(goal, "accumulate") == 0) {
+        /* Accumulate: prefer buy_stock/sell_stock over passive actions */
+        if (strcmp(action, "buy_stock") != 0 &&
+            strcmp(action, "sell_stock") != 0) {
+            override = 1;
+        }
+    } else if (strcmp(goal, "grow") == 0) {
+        /* Grow: prefer cycle_corp/new_game over buy_stock/end_turn */
+        if (strcmp(action, "buy_stock") == 0 ||
+            strcmp(action, "end_turn") == 0) {
+            override = 1;
+        }
+
+    /* If the model is stuck in a loop, diversify */
+    if (last_goal && strcmp(last_goal, goal) == 0 &&
+        last_action && strcmp(last_action, action) == 0) {
+        override = 1;
+    }
+
+    if (override) {
+        if (strcmp(goal, "survive") == 0) {
+            snprintf(override_action, sizeof(override_action), "end_turn");
+            snprintf(override_reason, sizeof(override_reason),
+                "survive: preserving cash for market timing");
+        } else if (strcmp(goal, "grow") == 0) {
+            snprintf(override_action, sizeof(override_action), "cycle_corp");
+            snprintf(override_reason, sizeof(override_reason),
+                "grow: exploring alternative corporations");
+        } else {
+            snprintf(override_action, sizeof(override_action), "list_portfolio");
+            snprintf(override_reason, sizeof(override_reason),
+                "gathering more information before acting");
+        }
+        snprintf(action, sizeof(action), "%s", override_action);
+        snprintf(reason, sizeof(reason), "%s", override_reason);
+        conf = 0.6;
+    }
+
+    last_goal = goal;
+    last_action = action;
 
     model_response_free(resp);
     model_api_free(api);

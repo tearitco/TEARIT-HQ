@@ -1141,6 +1141,14 @@ static void apply_attr(Elem *e, const char *name, const char *val) {
         snprintf(decoded, sizeof(decoded), "%s", val);
         decode_entities(decoded);
         snprintf(e->segments, sizeof(e->segments), "%s", decoded);
+    } else if (strcmp(name, "cells") == 0) {
+        /* INLINE TABLE COLUMNS (2026-10-09): positional cell payload,
+         * same additive contract as segments= above (empty by default,
+         * entities decoded, delimiters structural). */
+        char decoded[sizeof(e->cells)];
+        snprintf(decoded, sizeof(decoded), "%s", val);
+        decode_entities(decoded);
+        snprintf(e->cells, sizeof(e->cells), "%s", decoded);
     } else if (strcmp(name, "action") == 0 || strcmp(name, "onClick") == 0 || strcmp(name, "onclick") == 0) {
         /* REAL FIX 2026-08-25 (Stage 2 palettes migration, direct live
          * report: "no emojis just blank glyph... no navs"). This parser
@@ -4191,12 +4199,17 @@ static void kh_serialize_frame_elem(FILE *f, Elem *e) {
      * URL inside a payload can legitimately contain a literal '|'. */
     char segments_esc[8192];
     frame_field_escape_pipe(e->segments, segments_esc, sizeof(segments_esc));
-    fprintf(f, "%s|%s|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d|%s|%s|%s|%s|%d|%s|%d|%d|%d|%s|%s|%d|%s\n",
+    /* INLINE TABLE COLUMNS: cells= rides the same trailing-field pattern
+     * (pipe-escaped; a cell could hold a literal '|' only if a future
+     * producer forgets to strip it - belt and braces). */
+    char cells_esc[8192];
+    frame_field_escape_pipe(e->cells, cells_esc, sizeof(cells_esc));
+    fprintf(f, "%s|%s|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d|%s|%s|%s|%s|%d|%s|%d|%d|%d|%s|%s|%d|%s|%s\n",
             e->tag, e->id, classes_joined, label_esc, e->sprite, e->onclick,
             e->nav_index, e->active, e->x, e->y, e->w, e->h,
             target_id_esc, input_buffer_esc, relay_esc, bg_esc, e->cursor, text_area_esc,
             e->grid_cur_row, e->grid_cur_col, e->grid_edit_mode, grid_jump_esc, grid_cell_esc,
-            e->sel_anchor, segments_esc);
+            e->sel_anchor, segments_esc, cells_esc);
 }
 
 /* Real recursive serializer, same traversal order render_tree() itself
@@ -4321,12 +4334,14 @@ static void kh_paint_frame_line(const char *line) {
      * REAL, NEW 2026-09-05, TEXT_AREA-SCROLL-GUTTER-SELECTION-DESIGN.md)
      * [18]=segments (pipe-escaped, REAL, NEW 2026-10-09 - INLINE SPANS
      * phase 2; see kh_serialize_frame_elem()'s matching comment for why
-     * draw_elem() can only ever see this on the tmp Elem) - a frame file
-     * written by an older binary (before these fields existed) simply has
-     * fewer tail fields - the loop below returns (honest skip) rather
-     * than misparse it, matching this function's existing "malformed
-     * line" convention exactly. */
-    char *tail[19];
+     * draw_elem() can only ever see this on the tmp Elem)
+     * [19]=cells (pipe-escaped, REAL, NEW 2026-10-09 - INLINE TABLE
+     * COLUMNS, same trap, same pattern) - a frame file written by an
+     * older binary (before these fields existed) simply has fewer tail
+     * fields - the loop below returns (honest skip) rather than misparse
+     * it, matching this function's existing "malformed line" convention
+     * exactly. */
+    char *tail[20];
     /* REAL FIX 2026-08-28, same-day self-correction (first attempt at
      * this fix broke EVERY entity menu, not just book-stack's - see
      * git blame if this comment ever needs re-deriving why): the front
@@ -4338,7 +4353,7 @@ static void kh_paint_frame_line(const char *line) {
      * onward), so `p + strlen(p)` is the real end - `buf2 +
      * strlen(buf2)` is not. */
     char *scan_end = p + strlen(p);
-    for (int i = 18; i >= 0; i--) {
+    for (int i = 19; i >= 0; i--) {
         char *bar = NULL;
         for (char *q = scan_end - 1; q >= p; q--) { if (*q == '|') { bar = q; break; } }
         if (!bar) return; /* malformed line - honest skip, not a crash */
@@ -4419,6 +4434,9 @@ static void kh_paint_frame_line(const char *line) {
      * trailing field; see kh_serialize_frame_elem()'s matching comment
      * for why it must exist (draw_elem() reads tmp.segments). */
     frame_field_unescape_pipe(tail[18], tmp.segments, sizeof(tmp.segments));
+    /* INLINE TABLE COLUMNS (2026-10-09) - the writer's own new trailing
+     * field, same pattern as segments= just above. */
+    frame_field_unescape_pipe(tail[19], tmp.cells, sizeof(tmp.cells));
 
     css_compute_style(&g_sheet, tmp.tag, tmp.id[0] ? tmp.id : NULL, tmp.classes, tmp.n_classes, tmp.active, &tmp.style);
     if (window_is_dock()) {
@@ -13235,7 +13253,11 @@ static void popup_handle_click(int px, int py) {
              * through to the normal row-level path below. */
             if (it->segments[0] && it->nav_index > 0) {
                 char segact[1024];
-                if (seg_hit_action(it, px, segact, sizeof(segact)) &&
+                int seghit = seg_hit_action(it, px, segact, sizeof(segact));
+                /* step 7: single-line miss can still be a wrapped span -
+                 * same two-step/focus discipline, same dispatch. */
+                if (!seghit) seghit = seg_hit_wrapped(it, px, py, segact, sizeof(segact));
+                if (seghit &&
                     (!g_click_two_step || (g_window && elem_has_class(g_window, "single-click")) ||
                      g_focus_nav == it->nav_index)) {
                     g_focus_nav = it->nav_index;

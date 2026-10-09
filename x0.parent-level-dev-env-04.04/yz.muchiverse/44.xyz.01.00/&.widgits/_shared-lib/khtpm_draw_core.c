@@ -2116,7 +2116,72 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                 }
             }
         }
-        if (!drew_segments && !drew_segwrap && is_multiline_box) {
+        int drew_cells = 0;
+        if (!drew_segments && !drew_segwrap && e->cells[0] && !drew_sprite && avail_w > 0) {
+            /* INLINE TABLE COLUMNS (2026-10-09): equal-column table
+             * rows. cells= carries \x1F-joined cell texts (positional -
+             * empty cells significant, ragged rows grid differently per
+             * row, honestly). N columns share avail_w equally
+             * (toolbar-row precedent: w / n_items, no cross-row state,
+             * no measurement feedback loop); cells draw left-aligned on
+             * the row's first line, ellipsis-clipped to their column.
+             * The clip mirrors the single-line path's own
+             * measure/back-off/UTF-8-safe logic - duplicated, not
+             * refactored, so the proven hot path stays byte-identical.
+             * No wrapping, no per-cell clicks (cell links are already
+             * folded at extract), no nav change. Overlong payloads
+             * (>64 cells) or hairline columns fall back to the joined
+             * label exactly as today. */
+            int ncols = 1;
+            const char *cc;
+            for (cc = e->cells; *cc; cc++) if (*cc == '\x1f') ncols++;
+            if (ncols >= 1 && ncols <= 64) {
+                int cw = avail_w / ncols;
+                if (cw > 0) {
+                    int cty = is_multiline_box ? e->y + font->ascent + 2
+                              : e->y + (e->h + font->ascent - font->descent) / 2;
+                    const char *cp = e->cells;
+                    int ci;
+                    if (cty < e->y + font->ascent) cty = e->y + font->ascent + pad / 2;
+                    for (ci = 0; ci < ncols; ci++) {
+                        const char *ce = strchr(cp, '\x1f');
+                        size_t clen = ce ? (size_t)(ce - cp) : strlen(cp);
+                        if (clen > 0) {
+                            char cellbuf[1024];
+                            XGlyphInfo cw_ext;
+                            static const char *CELL_ELLIPSIS = "...";
+                            if (clen >= sizeof(cellbuf)) clen = sizeof(cellbuf) - 1;
+                            memcpy(cellbuf, cp, clen);
+                            cellbuf[clen] = '\0';
+                            XftTextExtentsUtf8(dpy, font, (const FcChar8 *)cellbuf, (int)clen, &cw_ext);
+                            if (cw_ext.width > cw) {
+                                XGlyphInfo ell_ext;
+                                size_t len = clen;
+                                XftTextExtentsUtf8(dpy, font, (const FcChar8 *)CELL_ELLIPSIS, 3, &ell_ext);
+                                {
+                                    int target_w = cw - ell_ext.width;
+                                    if (target_w < 0) target_w = 0;
+                                    while (len > 0) {
+                                        XGlyphInfo cur_ext;
+                                        XftTextExtentsUtf8(dpy, font, (const FcChar8 *)cellbuf, (int)len, &cur_ext);
+                                        if (cur_ext.width <= target_w) break;
+                                        len--;
+                                        while (len > 0 && ((unsigned char)cellbuf[len] & 0xC0) == 0x80) len--;
+                                    }
+                                }
+                                cellbuf[len] = '\0';
+                                snprintf(cellbuf + len, sizeof(cellbuf) - len, "%s", CELL_ELLIPSIS);
+                            }
+                            draw_text_emoji(font, &col, badge_label_x + ci * cw, cty, cellbuf);
+                        }
+                        if (!ce) break;
+                        cp = ce + 1;
+                    }
+                    drew_cells = 1;
+                }
+            }
+        }
+        if (!drew_segments && !drew_segwrap && !drew_cells && is_multiline_box) {
             /* Real, generic greedy word-wrap: pack words onto each line
              * (measuring real glyph width via Xft, not a char-count
              * guess - same discipline chai_measure_text_px() already
@@ -2250,7 +2315,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                 while (*p == ' ') p++; /* real, plain word-wrap convention - a consumed break space never starts the next line */
                 if (is_last_visible_line) break;
             }
-        } else if (!drew_segments && !drew_segwrap) {
+        } else if (!drew_segments && !drew_segwrap && !drew_cells) {
             /* REAL, NEW 2026-09-01 (found live testing open-hai's own
              * real sidebar - a real session snippet longer than the
              * sidebar's own real 220px width drew straight past its own
