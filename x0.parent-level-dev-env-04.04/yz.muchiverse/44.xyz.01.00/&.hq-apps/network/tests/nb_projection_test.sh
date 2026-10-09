@@ -43,6 +43,37 @@ load() {   # load <url> - wait until the manager reports ready
 cc()  { grep '^content_count=' "$UI" 2>/dev/null | tail -1 | cut -d= -f2; }
 note(){ grep -c 'did not fit this window' "$UI" 2>/dev/null; }
 
+# Ask the renderer for a frame dump and WAIT for one that provably belongs to
+# this window and is newer than the request.
+#
+# Why this is not "sleep 2 and read the file": that is exactly how I spent
+# three turns drawing confident conclusions from nothing. The renderer writes
+# ascii_frames/<pid>.frame.txt lazily; right after a launch the file is often
+# not there yet, and `grep -c WARN missing-file` prints nothing, which reads
+# as "0 warnings" and invents a clean result. With two clones on this box a
+# naive "newest frame on disk" can also be SOME OTHER WINDOW'S.
+#
+# Sets FRAME_FILE and FRAME_WARN. Returns non-zero if no fresh frame arrives.
+dump_frame() {
+    FRAME_FILE="$HR/#.desktop/ascii_frames/$PID.frame.txt"
+    local marker now
+    marker="$(date +%s)"
+    printf '112\n' >> "$HR/#.desktop/entity_menu_history/$PID.txt"
+    for _ in $(seq 1 30); do
+        if [ -f "$FRAME_FILE" ]; then
+            now="$(stat -c %Y "$FRAME_FILE" 2>/dev/null || echo 0)"
+            if [ "$now" -ge "$marker" ]; then
+                FRAME_WARN="$(grep -c WARN "$FRAME_FILE" 2>/dev/null)"
+                [ -n "$FRAME_WARN" ] || FRAME_WARN=0
+                return 0
+            fi
+        fi
+        sleep 1
+    done
+    echo "FAIL: no FRESH ascii frame for pid $PID (stale or missing) - refusing to guess"
+    return 1
+}
+
 # ---- big page ---------------------------------------------------------
 BIG="$(mktemp /tmp/nb_big_XXXXXX.html)"
 {
@@ -109,17 +140,16 @@ else
     # lines into the ascii frame dump. Those counters were cumulative for the
     # process lifetime, so a small page reported drops it never had - which
     # made me mis-diagnose the cause twice. A page that fits MUST be silent.
-    MYF="$HR/#.desktop/ascii_frames/$PID.frame.txt"
-    if [ -f "$MYF" ]; then
-        W="$(grep -c WARN "$MYF" 2>/dev/null)"
-        [ -n "$W" ] || W=0
-        if [ "$W" -eq 0 ]; then
+    # dump_frame refuses to return a stale or missing frame, so "0 warnings"
+    # here is a real observation and not an absent file.
+    if dump_frame; then
+        if [ "$FRAME_WARN" -eq 0 ]; then
             echo "PASS: renderer reports no truncation on a page that fits"
         else
-            echo "FAIL: small page drew $W renderer WARN line(s) - stale/cumulative counter?"; FAIL=1
+            echo "FAIL: small page drew $FRAME_WARN renderer WARN line(s) - stale/cumulative counter?"; FAIL=1
         fi
     else
-        echo "FAIL: no ascii frame for pid $PID"; FAIL=1
+        FAIL=1
     fi
 fi
 
