@@ -104,6 +104,22 @@ COMMAND control_variable
   PAL ecall "{STATE_DIR}/variables.txt" "{var_name}"
 END
 
+# RPG Maker "Control Variables" with the ADD operation (2026-10-07, digipet build): control_variable above only SETS. Same get/addi/set
+# shape as change_items/change_hp; negative {amount} subtracts. A tunable-sized step has no registry form (addi takes a literal): see
+# &.widgits/digipet/README.md "idioms".
+COMMAND change_variable
+  LABEL Change Variable (add)
+  FIELD1 Variable name:
+  FIELD2 Amount (+/-):
+  PARAMS var_name,amount
+  PAL li x15, 6
+  PAL li x13, 0
+  PAL ecall "{STATE_DIR}/variables.txt" "{var_name}"
+  PAL addi x12, x12, {amount}
+  PAL li x15, 7
+  PAL ecall "{STATE_DIR}/variables.txt" "{var_name}"
+END
+
 COMMAND call_common_event
   LABEL Call Common Event
   FIELD1 Target event name:
@@ -842,4 +858,182 @@ COMMAND change_encounter
   PAL li x15, 7
   PAL li x12, {enabled}
   PAL ecall "{STATE_DIR}/system_flags.txt" "encounter_enabled"
+END
+
+COMMAND phone_send
+  LABEL Phone: Send Message
+  FIELD1 To number (NNN-NNNN-NNNN):
+  FIELD2 Text:
+  PARAMS to,text
+  TEMPLATE exec "$D/&.widgits/_shared-lib/ops/+x/phone_send_op.+x" "$ENT/inventory/zz.phone" '{to}' say '' '{text}'
+END
+
+# Clock commands (CLOCK-AS-THE-PLAY-SPINE-DESIGN.md 3.4): an event changes game time from inside the game. Each row only QUEUES a command in the clock's
+# mailbox through the lc_clock control plane; the clock daemon pass applies it (sole writer) under that clock's limits (limit_min_rate / limit_max_rate /
+# allow_settime_back / allow_commands) and appends an audit row (clock_audit.txt) whether accepted or refused. Time never runs backwards by command
+# (set_clock_time earlier than now is refused unless the clock sets allow_settime_back=1). rate: off|cent|sec|min|hour|day|x<ratio> (x1 = real time).
+# advance amount: milliseconds, or N + s|m|h|d (e.g. 8h). A chained child clock follows its parent: give rate/pause to the parent.
+COMMAND set_clock_rate
+  LABEL Clock: Set Rate
+  FIELD1 Clock id:
+  FIELD2 Rate (off|cent|sec|min|hour|day|x<ratio>):
+  PARAMS clock,rate
+  TEMPLATE exec "$D/&.widgits/livedesk-clock/ops/+x/lc_clock.+x" "$D" cmd '{clock}' rate '{rate}' --source "event:$ENT"
+END
+
+COMMAND pause_clock
+  LABEL Clock: Pause
+  FIELD1 Clock id:
+  FIELD2 -
+  PARAMS clock
+  TEMPLATE exec "$D/&.widgits/livedesk-clock/ops/+x/lc_clock.+x" "$D" cmd '{clock}' pause --source "event:$ENT"
+END
+
+COMMAND resume_clock
+  LABEL Clock: Resume
+  FIELD1 Clock id:
+  FIELD2 -
+  PARAMS clock
+  TEMPLATE exec "$D/&.widgits/livedesk-clock/ops/+x/lc_clock.+x" "$D" cmd '{clock}' resume --source "event:$ENT"
+END
+
+COMMAND advance_clock
+  LABEL Clock: Advance
+  FIELD1 Clock id:
+  FIELD2 Amount (ms or Ns|Nm|Nh|Nd):
+  PARAMS clock,amount
+  TEMPLATE exec "$D/&.widgits/livedesk-clock/ops/+x/lc_clock.+x" "$D" cmd '{clock}' advance '{amount}' --source "event:$ENT"
+END
+
+COMMAND set_clock_time
+  LABEL Clock: Set Time
+  FIELD1 Clock id:
+  FIELD2 Game epoch ms:
+  PARAMS clock,time
+  TEMPLATE exec "$D/&.widgits/livedesk-clock/ops/+x/lc_clock.+x" "$D" cmd '{clock}' settime '{time}' --source "event:$ENT"
+END
+
+# ---- ring board game ops (ring-board-rmmv, 2026-10-07): five tiny single-verb compiled ops; each takes the entity state dir ($ENT) first and reads/writes the same
+# `key=int` variables.txt mechanism change_variable uses. Operands: an integer, or [file:]name read as a variable; a name may hold {var} (cash_{current}).
+# Headers in &.widgits/ring-board-rmmv/ops/*.c list the exit codes. (Pages in that widget call the ops from event.pal with `exec ops/+x/<op>.+x . ...`.)
+COMMAND variable_math
+  LABEL Variable Math
+  FIELD1 Operation (set add sub mul mod lt le gt ge eq ne):
+  FIELD2 Target variable:
+  PARAMS op,target,a,b
+  TEMPLATE exec "$D/&.widgits/ring-board-rmmv/ops/+x/var_math.+x" "$ENT" '{op}' '{target}' '{a}'[ '{b}']
+END
+
+COMMAND roll_dice
+  LABEL Roll Dice (seeded 2d6)
+  FIELD1 Seed (number or variable):
+  FIELD2 Counter (number or variable):
+  PARAMS seed,counter
+  TEMPLATE exec "$D/&.widgits/ring-board-rmmv/ops/+x/dice_roll.+x" "$ENT" '{seed}' '{counter}'
+END
+
+COMMAND cash_transfer
+  LABEL Cash Transfer
+  FIELD1 From (bank, mint, seat or variable):
+  FIELD2 To:
+  PARAMS from,to,amount,reason
+  TEMPLATE exec "$D/&.widgits/ring-board-rmmv/ops/+x/cash_transfer.+x" "$ENT" '{from}' '{to}' '{amount}'[ '{reason}']
+END
+
+COMMAND tile_lookup
+  LABEL Tile Lookup
+  FIELD1 Tile (number or variable):
+  FIELD2 Field (kind kindname name price rent group tax):
+  PARAMS tile,field,var_name
+  TEMPLATE exec "$D/&.widgits/ring-board-rmmv/ops/+x/tile_lookup.+x" "$ENT" '{tile}' '{field}'[ '{var_name}']
+END
+
+COMMAND variable_sweep
+  LABEL Variable Sweep (rewrite matching values)
+  FIELD1 Name prefix:
+  FIELD2 From value:
+  PARAMS prefix,from,to
+  TEMPLATE exec "$D/&.widgits/ring-board-rmmv/ops/+x/var_sweep.+x" "$ENT" '{prefix}' '{from}' '{to}'
+END
+
+COMMAND random_roll
+  LABEL Random Roll (seeded die of N sides, 2 = coin)
+  FIELD1 Seed (number or variable):
+  FIELD2 Counter (number or variable):
+  PARAMS seed,counter,sides,out
+  TEMPLATE exec "$D/&.widgits/footrace-fu/ops/+x/rand_roll.+x" "$ENT" '{seed}' '{counter}' '{sides}' '{out}'
+END
+
+COMMAND variable_find
+  LABEL Variable Find (nearest variable by name prefix and value window)
+  FIELD1 Name prefix:
+  FIELD2 Center value:
+  PARAMS prefix,skip,center,dmin,dmax,out
+  TEMPLATE exec "$D/&.widgits/footrace-fu/ops/+x/var_find.+x" "$ENT" '{prefix}' '{skip}' '{center}' '{dmin}' '{dmax}' '{out}'
+END
+
+COMMAND row_append
+  LABEL Ledger Row (append one pipe row, {var} expanded)
+  FIELD1 Ledger file:
+  FIELD2 Fields:
+  PARAMS file,fields
+  TEMPLATE exec "$D/&.widgits/footrace-fu/ops/+x/row_append.+x" "$ENT" '{file}' {fields}
+END
+
+COMMAND eden_verb
+  LABEL Eden Conductor Verb (setup, daytick, act, save, load, ... see eden_op.c)
+  FIELD1 Verb:
+  FIELD2 Arguments:
+  PARAMS verb,args
+  TEMPLATE exec "$D/&.widgits/eden/ops/+x/eden_op.+x" "$ENT" '{verb}'[ {args}]
+END
+
+# ---- entity as learner (grades, levels, MP; 2026-10-07): one compiled op, &.widgits/concept-bank/ops/entity_grade.c (header lists exit codes). $ENT is the entity's state dir
+# (its variables.txt gets rpg_level / rpg_exp / rpg_mp / rpg_mp_max / grade_*, so a page can branch on them with variable_math lt/ge/eq). Data: ^.hai-horn/skillbook.pdl, curriculum.pdl.
+COMMAND use_skill
+  LABEL Use Skill (costs MP, gives EXP)
+  FIELD1 Skill name (observe describe propose_edit review_edit author_new_node):
+  FIELD2 -
+  PARAMS skill
+  TEMPLATE exec "$D/&.widgits/concept-bank/ops/+x/entity_grade.+x" use "$ENT" "$D/^.hai-horn/skillbook.pdl" '{skill}'
+END
+
+COMMAND rest_mp
+  LABEL Rest (refill MP)
+  FIELD1 -
+  FIELD2 -
+  PARAMS
+  TEMPLATE exec "$D/&.widgits/concept-bank/ops/+x/entity_grade.+x" rest "$ENT" "$D/^.hai-horn/skillbook.pdl"
+END
+
+COMMAND grade_report
+  LABEL Report Card (grade check)
+  FIELD1 -
+  FIELD2 -
+  PARAMS
+  TEMPLATE exec "$D/&.widgits/concept-bank/ops/+x/entity_grade.+x" check "$ENT" "$D/^.hai-horn/curriculum.pdl"
+END
+
+COMMAND start_game
+  LABEL Start Game
+  FIELD1 Book id:
+  FIELD2 First desk id:
+  PARAMS book,desk
+  TEMPLATE exec "$D/@.apps/piececraft-hq/ops/doom_event.sh" start_game '{book}' '{desk}'
+END
+
+COMMAND stop_game
+  LABEL Stop Game
+  FIELD1 -
+  FIELD2 -
+  PARAMS
+  TEMPLATE exec "$D/@.apps/piececraft-hq/ops/doom_event.sh" stop_game
+END
+
+COMMAND graduate
+  LABEL Graduate (advance one grade)
+  FIELD1 Signed by (auto, or a person's name for grades that need a person):
+  FIELD2 -
+  PARAMS by
+  TEMPLATE exec "$D/&.widgits/concept-bank/ops/+x/entity_grade.+x" advance "$ENT" "$D/^.hai-horn/curriculum.pdl" '{by}'
 END

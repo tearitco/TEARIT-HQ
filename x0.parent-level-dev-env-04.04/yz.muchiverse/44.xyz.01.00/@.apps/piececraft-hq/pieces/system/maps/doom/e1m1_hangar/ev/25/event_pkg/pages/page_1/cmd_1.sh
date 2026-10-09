@@ -1,3 +1,7 @@
 #!/bin/sh
-# change_items x=45 y=29 glyph=K
-exit 0
+# change_items
+cd "$(dirname "$0")/../../.." || exit 1
+ENT="$PWD"
+D="$ENT"
+while [ "$D" != / ] && [ ! -d "$D/xyzfs" ]; do D="$(dirname "$D")"; done
+exec "$D/@.apps/piececraft-hq/ops/doom_event.sh" change_items
