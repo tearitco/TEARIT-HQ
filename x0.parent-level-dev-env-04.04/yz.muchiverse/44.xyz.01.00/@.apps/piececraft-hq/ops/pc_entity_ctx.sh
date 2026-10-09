@@ -80,7 +80,8 @@ if [ "$KIND" = mapev ] && [ -n "$ID" ]; then
     # Desk events.pdl is the cell-32 list. The ev/ package was built on
     # the old grid and its verb often disagrees. Play the pdl command.
     EVF="$ROOT/pieces/system/maps/$MAP/$DESK/events.pdl"
-    if [ -f "$EVF" ] && grep -q '^mode=on' "$HOUSE/#.desktop/khtpm_play_mode.state.txt" 2>/dev/null; then
+    CMD=""
+    if [ -f "$EVF" ]; then
         CMD=$(awk -v id="$ID" '
             BEGIN { n=0 }
             $1=="EVENT" {
@@ -92,7 +93,21 @@ if [ "$KIND" = mapev ] && [ -n "$ID" ]; then
                 }
             }
         ' "$EVF")
+    fi
+    case "$CMD" in
+        start_standard|start_computer|start_player|start_king_pawn|start_endgame|stop_game|show_elo)
+            sh "$ROOT/ops/chess_event.sh" "$CMD"
+            echo "$(date '+%H:%M:%S') chess $CMD mapev $ID" >> "$LOG"
+            exit 0
+            ;;
+    esac
+    if [ -n "$CMD" ] && grep -q '^mode=on' "$HOUSE/#.desktop/khtpm_play_mode.state.txt" 2>/dev/null; then
         case "$CMD" in
+            select|land)
+                sh "$ROOT/ops/chess_event.sh" "$CMD" "$DESK" "$ID"
+                echo "$(date '+%H:%M:%S') chess $CMD mapev $ID" >> "$LOG"
+                exit 0
+                ;;
             change_hp|change_armor|nukage|change_ammo|change_items|start_battle|next_level|player_start)
                 sh "$ROOT/ops/doom_event.sh" "$CMD"
                 case "$CMD" in
