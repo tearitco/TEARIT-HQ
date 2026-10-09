@@ -90,6 +90,22 @@ typedef struct Elem {
      * assumption reads this field elsewhere; every real site already
      * uses sizeof(e->label)). */
     char label[2048];
+    /* REAL, NEW 2026-10-08 (inline clickable spans, phase 2 step 1) -
+     * OPTIONAL inline segment payload on a <text> element. Additive by
+     * construction: empty (the default, and the case for every existing
+     * element in the house) means the element draws exactly as it always
+     * has, from `label`. Nothing switches on a new tag, so the ~137
+     * tag-dispatch sites are untouched.
+     *
+     * Encoding is mandatory and was ambiguous in the first draft:
+     *   segments joined by \x1E (record separator)
+     *   the three fields inside a segment by \x1F
+     * Using one byte for both makes the stream unparseable - a 3-segment
+     * group then emits 8 separators with no way to find a segment
+     * boundary. See 2026-10-07-INLINE-SPANS-DESIGN.md.
+     * Sizes are deliberately generous: a paragraph with two links runs to
+     * a few hundred bytes once URLs are shell-quoted into the payload. */
+    char segments[8192];
     /* REAL FIX 2026-08-16 (found live building khtpm_core_render.c,
      * Stage 2c proof): 64 was too small for a real objects.pdl-style
      * action= shell command (e.g. ava's real "Play" action is 200+

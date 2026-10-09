@@ -1128,6 +1128,19 @@ static void apply_attr(Elem *e, const char *name, const char *val) {
         snprintf(decoded, sizeof(decoded), "%s", val);
         decode_entities(decoded);
         snprintf(e->label, sizeof(e->label), "%s", decoded);
+    } else if (strcmp(name, "segments") == 0) {
+        /* REAL, NEW 2026-10-08 (inline clickable spans, phase 2 step 1) -
+         * optional inline segment payload. Additive: an element without
+         * this attribute keeps segments="" and draws from `label` exactly
+         * as before, so every existing window is byte-identical.
+         *
+         * Entities are decoded like label= above, but the \x1E/\x1F
+         * delimiters are NOT - they are structural, not text, and no
+         * label can contain either after uisan(). */
+        char decoded[sizeof(e->segments)];
+        snprintf(decoded, sizeof(decoded), "%s", val);
+        decode_entities(decoded);
+        snprintf(e->segments, sizeof(e->segments), "%s", decoded);
     } else if (strcmp(name, "action") == 0 || strcmp(name, "onClick") == 0 || strcmp(name, "onclick") == 0) {
         /* REAL FIX 2026-08-25 (Stage 2 palettes migration, direct live
          * report: "no emojis just blank glyph... no navs"). This parser
