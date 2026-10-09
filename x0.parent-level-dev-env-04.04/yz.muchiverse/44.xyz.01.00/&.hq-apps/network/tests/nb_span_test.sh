@@ -38,6 +38,21 @@ span_candidate_windows() {
     done | sort -n | awk '{print $2}'
 }
 
+# Fresh ascii frame, delete-first: existence (not second-resolution
+# mtime) proves freshness. The M=$(date +%s)/mtime pattern raced same-
+# second stale files mid-suite and misread badges. $1=history file,
+# $2=frame file. Returns 0 on a fresh frame.
+span_fresh_frame() {
+    rm -f "$2"
+    sleep 0.5
+    printf '112\n' >> "$1"
+    for _ in $(seq 1 20); do
+        [ -f "$2" ] && { sleep 1; return 0; }
+        sleep 0.5
+    done
+    return 1
+}
+
 [ -f "$UI" ] || { echo "FAIL: no browser running"; exit 1; }
 
 FX="$HERE/fixtures/mini-article.html"
@@ -155,6 +170,14 @@ else
     DUMPOP="$HR/&.widgits/_shared-lib/ops/+x/dump_frame_png_op.+x"
     BANDPY="$HERE/bluebands.py"
     CLICKDONE=0
+    # Disarm first (2026-10-09: an armed address bar eats every relay
+    # key - digits/arrows/Enter get typed, and even the 112 frame probe
+    # types 'p' - so nav/click proofs fail with zero code involvement.
+    # Bare Esc is a no-op when nothing is armed; twice covers cursor+
+    # field stacked. kh_focus_debug.log proved the mechanism.)
+    if [ -n "$BPID" ]; then
+        printf '27\n27\n' >> "$HR/#.desktop/entity_menu_history/$BPID.txt"; sleep 2
+    fi
     if [ -n "$BPID" ] && [ -x "$DUMPOP" ] && [ -f "$BANDPY" ]; then
         # Flake guard (2026-10-09: one full-suite run found no window
         # while a later section did - transient X capture races under
@@ -203,7 +226,7 @@ else
                         printf 'MOUSE_EVENT: 1 %d %d 1\n' "$CX" "$CY" >> "$HF"; sleep 3
                         printf 'MOUSE_EVENT: 1 %d %d 1\n' "$CX" "$CY" >> "$HF"
                         NAVED=0
-                        for _ in $(seq 1 60); do
+                        for _ in $(seq 1 150); do
                             if grep -q "^URL|https://example.com" "$PF" 2>/dev/null; then NAVED=1; break; fi
                             sleep 1
                         done
@@ -259,6 +282,9 @@ else
     else
         HF="$HR/#.desktop/entity_menu_history/$BPID.txt"
         FF="$HR/#.desktop/ascii_frames/$BPID.frame.txt"
+        # Disarm first - see click section: an armed address bar eats
+        # every relay key.
+        printf '27\n27\n' >> "$HF"; sleep 2
         grep -q "^URL|file://$FX\$" "$PF" 2>/dev/null || {
             printf 'go:file://%s\n' "$FX" > "$REQ"
             for _ in $(seq 1 40); do
@@ -268,22 +294,22 @@ else
             done
             sleep 2
         }
-        M="$(date +%s)"; printf '112\n' >> "$HF"
-        for _ in $(seq 1 20); do
-            [ -f "$FF" ] && [ "$(stat -c %Y "$FF" 2>/dev/null || echo 0)" -ge "$M" ] && break
-            sleep 0.5
-        done
-        RN="$(grep "See the docs for more" "$FF" 2>/dev/null | head -1 | sed -n 's/.*\[.\] \([0-9][0-9]*\)\. See the docs.*/\1/p')"
-        if [ -z "$RN" ]; then
-            echo "FAIL: rich row badge not found in frame"; FAIL=1
-        else
-            # Flake guard: a transient fetch failure looks exactly like
-            # a dispatch failure from outside (no nav either way), so a
-            # failed attempt reloads and retries once; a real bug fails
-            # twice, loudly. Request-file state on failure tells the two
-            # apart (go-request written = dispatched, fetch failed).
-            KNAVED=0
-            for KATT in 1 2; do
+        span_fresh_frame "$HF" "$FF" || {
+            echo "FAIL: no fresh frame for badge read"; FAIL=1
+        }
+        # Relay digits are ASCII codes (50='2'), NOT the digit
+        # itself: bare "2"/"0" lines decode to Ctrl+B/NUL (a real
+        # committed-test bug that passed spuriously on stale focus).
+        # Step away first so the focus assert below proves movement.
+        # RN is (re-)parsed every attempt: a reload can renumber rows.
+        printf '200\n' >> "$HF"; sleep 2
+        # Flake guard: a transient fetch failure looks exactly like
+        # a dispatch failure from outside (no nav either way), so a
+        # failed attempt reloads and retries once; a real bug fails
+        # twice, loudly. Request-file state on failure tells the two
+        # apart (go-request written = dispatched, fetch failed).
+        KNAVED=0
+        for KATT in 1 2; do
                 [ "$KATT" -gt 1 ] && {
                     echo "kbd attempt $KATT: reloading and retrying"
                     printf 'go:file://%s\n' "$FX" > "$REQ"
@@ -294,23 +320,36 @@ else
                     done
                     sleep 2
                 }
-                printf '%s' "$RN" | fold -w1 | while read -r D; do printf '%s\n' "$D" >> "$HF"; sleep 1; done
+                span_fresh_frame "$HF" "$FF" || {
+                    echo "kbd attempt $KATT: no fresh frame for badge read"
+                    continue
+                }
+                RN="$(grep "See the docs for more" "$FF" 2>/dev/null | head -1 | sed -n 's/.*\[.\] \([0-9][0-9]*\)\. See the docs.*/\1/p')"
+                PREFOCUS="$(grep -E '\[>\]' "$FF" 2>/dev/null | head -1 | cut -c1-50)"
+                if [ -z "$RN" ]; then
+                    echo "kbd attempt $KATT: rich row badge not found"
+                    continue
+                fi
+                # fold emits no trailing newline without one on input, and
+                # `while read` skips the unterminated tail - the "%s\n"
+                # below is load-bearing (a real committed-test bug: only
+                # the first digit ever sent, focus landed on row 2).
+                printf '%s\n' "$RN" | fold -w1 | while read -r D; do printf '%d\n' "'$D" >> "$HF"; sleep 1; done
                 sleep 3
-                M="$(date +%s)"; printf '112\n' >> "$HF"
-                for _ in $(seq 1 20); do
-                    [ -f "$FF" ] && [ "$(stat -c %Y "$FF" 2>/dev/null || echo 0)" -ge "$M" ] && break
-                    sleep 0.5
-                done
+                span_fresh_frame "$HF" "$FF" || {
+                    echo "kbd attempt $KATT: no fresh frame for focus check"
+                    continue
+                }
                 if grep -Eq "\[>\] $RN\. See the docs" "$FF" 2>/dev/null; then
                     [ "$KATT" = "1" ] && echo "PASS: digits focused the rich row"
                 else
-                    echo "kbd attempt $KATT: digits did not focus row $RN"
+                    echo "kbd attempt $KATT: digits did not focus row $RN (was: $PREFOCUS)"
                     continue
                 fi
                 printf '203\n' >> "$HF"; sleep 2
                 printf '13\n' >> "$HF"
                 NAVED=0
-                for _ in $(seq 1 60); do
+                for _ in $(seq 1 150); do
                     if grep -q "^URL|https://example.com" "$PF" 2>/dev/null; then NAVED=1; break; fi
                     sleep 1
                 done
@@ -322,11 +361,7 @@ else
                     # the request file is truncated on consume, so its
                     # state says nothing; the page URL is the signal.
                     # Frame focus + ui rich state pin down WHERE it died.
-                    M2="$(date +%s)"; printf '112\n' >> "$HF"
-                    for _ in $(seq 1 10); do
-                        [ -f "$FF" ] && [ "$(stat -c %Y "$FF" 2>/dev/null || echo 0)" -ge "$M2" ] && break
-                        sleep 0.5
-                    done
+                    span_fresh_frame "$HF" "$FF"
                     echo "kbd attempt $KATT: no nav (page now: $(grep '^URL|' "$PF" 2>/dev/null | tail -1); focus: $(grep -E '\[>\]' "$FF" 2>/dev/null | head -1 | cut -c1-60); rich rows: $(grep -c 'is_rich=1' "$UI" 2>/dev/null))"
                 fi
             done
@@ -340,7 +375,6 @@ else
                 sleep 0.5
             done
             sleep 2
-        fi
     fi
 fi
 
@@ -392,6 +426,124 @@ else
         done
     fi
     [ "$WRAPDONE" = "1" ] || { echo "FAIL: no multi-line span tint found"; FAIL=1; }
+fi
+
+echo "== span wrapped click + cursor (longlinks, needs X)"
+# The row is wrapped (9 visual lines), so single-line cumulative x can
+# never resolve these spans: a click must map py to a line first. The
+# LAST underline band is link2 on a late line - clicking its center
+# proves the wrapped path (single-line geometry addresses a different
+# x universe), and arriving at /second (not /first) proves the right
+# segment. Then digits + Right + Right walks idx0->idx1 with the white
+# cursor following onto link2's line, and Enter dispatches it.
+if [ -z "${DISPLAY:-}" ] || ! command -v xwininfo >/dev/null 2>&1; then
+    echo "SKIP: no X display for the wrapped proof"
+else
+    BPID="$(pgrep -f 'khtpm_core_render.+x .*network-browser-hq' | head -1)"
+    DUMPOP="$HR/&.widgits/_shared-lib/ops/+x/dump_frame_png_op.+x"
+    BANDPY="$HERE/bluebands.py"
+    HF="$HR/#.desktop/entity_menu_history/$BPID.txt"
+    FF="$HR/#.desktop/ascii_frames/$BPID.frame.txt"
+    # Disarm first - see click section.
+    if [ -n "$BPID" ]; then
+        printf '27\n27\n' >> "$HF"; sleep 2
+    fi
+    grep -q "^URL|file://$LONGFX\$" "$PF" 2>/dev/null || {
+        printf 'go:file://%s\n' "$LONGFX" > "$REQ"
+        for _ in $(seq 1 40); do
+            grep -q "^URL|file://$LONGFX\$" "$PF" 2>/dev/null \
+                && grep -q "status=Status: ready" "$UI" 2>/dev/null && break
+            sleep 0.5
+        done
+        sleep 2
+    }
+    WDONE=0
+    SPANWIN=""
+    if [ -n "$BPID" ] && [ -x "$DUMPOP" ] && [ -f "$BANDPY" ]; then
+        for W in $(span_candidate_windows); do
+            VW="$(xwininfo -id "$W" 2>/dev/null | grep "Map State" | grep -c IsViewable)"
+            [ "$VW" = "1" ] || continue
+            PNG="$(mktemp /tmp/nb_wclick_XXXXXX.png)"
+            if "$DUMPOP" "$W" "$PNG" >/dev/null 2>&1; then
+                UL2="$(python3 "$BANDPY" "$PNG" 2>/dev/null | awk '$2==$1 && ($4-$3)>=15' | tail -1)"
+                if [ -n "$UL2" ]; then
+                    SPANWIN="$W"
+                    UY="$(printf '%s' "$UL2" | cut -d' ' -f1)"
+                    GLYPH="$(python3 "$BANDPY" "$PNG" 2>/dev/null | awk -v u="$UY" '$2<u && u-$2<=5 && ($2-$1)>=6 {print $1, $2, $3, $4}' | tail -1)"
+                    if [ -n "$GLYPH" ]; then
+                        GY0="$(printf '%s' "$GLYPH" | cut -d' ' -f1)"; GY1="$(printf '%s' "$GLYPH" | cut -d' ' -f2)"
+                        GX0="$(printf '%s' "$GLYPH" | cut -d' ' -f3)"; GX1="$(printf '%s' "$GLYPH" | cut -d' ' -f4)"
+                        CX=$(( (GX0 + GX1) / 2 )); CY=$(( (GY0 + GY1) / 2 ))
+                        printf 'MOUSE_EVENT: 1 %d %d 1\n' "$CX" "$CY" >> "$HF"; sleep 3
+                        printf 'MOUSE_EVENT: 1 %d %d 1\n' "$CX" "$CY" >> "$HF"
+                        NAVED=0
+                        for _ in $(seq 1 150); do
+                            if grep -q "example.com/second" "$PF" 2>/dev/null; then NAVED=1; break; fi
+                            sleep 1
+                        done
+                        if [ "$NAVED" = "1" ]; then
+                            echo "PASS: wrapped-span click navigated to /second"
+                            WDONE=1
+                        else
+                            echo "wrapped click attempt: no nav at ($CX,$CY)"
+                        fi
+                    fi
+                fi
+            fi
+            rm -f "$PNG"
+            [ "$WDONE" = "1" ] && break
+        done
+    fi
+    if [ "$WDONE" != "1" ]; then
+        echo "FAIL: wrapped-span click did not navigate"; FAIL=1
+    else
+        printf 'go:file://%s\n' "$LONGFX" > "$REQ"
+        for _ in $(seq 1 40); do
+            grep -q "^URL|file://$LONGFX\$" "$PF" 2>/dev/null \
+                && grep -q "status=Status: ready" "$UI" 2>/dev/null && break
+            sleep 0.5
+        done
+        sleep 2
+        span_fresh_frame "$HF" "$FF" || echo "WARN: no fresh frame for badge read"
+        RN="$(grep "deliberately" "$FF" 2>/dev/null | head -1 | sed -n 's/.*\[.\] \([0-9][0-9]*\)\. This.*/\1/p')"
+        if [ -z "$RN" ]; then
+            echo "FAIL: wrapped rich row badge not found"; FAIL=1
+        else
+            printf '%s\n' "$RN" | fold -w1 | while read -r D; do printf '%d\n' "'$D" >> "$HF"; sleep 1; done
+            sleep 3
+            printf '203\n' >> "$HF"; sleep 2
+            printf '203\n' >> "$HF"; sleep 3
+            PNG="$(mktemp /tmp/nb_wcur_XXXXXX.png)"
+            if [ -n "$SPANWIN" ] && "$DUMPOP" "$SPANWIN" "$PNG" >/dev/null 2>&1; then
+                if python3 "$BANDPY" "$PNG" ffffff 2>/dev/null | awk -v u="$UY" '$1<=u+2 && $2>=u-2' | grep -q .; then
+                    echo "PASS: cursor underline followed onto link2's line"
+                else
+                    echo "FAIL: no cursor underline on link2's line"; FAIL=1
+                fi
+            else
+                echo "FAIL: could not capture browser for cursor check"; FAIL=1
+            fi
+            rm -f "$PNG"
+            printf '13\n' >> "$HF"
+            NAVED=0
+            for _ in $(seq 1 150); do
+                if grep -q "example.com/second" "$PF" 2>/dev/null; then NAVED=1; break; fi
+                sleep 1
+            done
+            if [ "$NAVED" = "1" ]; then
+                echo "PASS: Right+Right+Enter walked to link2 and dispatched"
+            else
+                echo "FAIL: wrapped cursor dispatch did not navigate"; FAIL=1
+            fi
+            printf 'go:file://%s\n' "$LONGFX" > "$REQ"
+            for _ in $(seq 1 40); do
+                grep -q "^URL|file://$LONGFX\$" "$PF" 2>/dev/null \
+                    && grep -q "status=Status: ready" "$UI" 2>/dev/null && break
+                sleep 0.5
+            done
+            sleep 2
+        fi
+    fi
 fi
 
 echo

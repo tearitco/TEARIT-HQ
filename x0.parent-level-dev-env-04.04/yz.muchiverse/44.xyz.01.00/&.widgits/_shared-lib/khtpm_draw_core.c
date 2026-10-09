@@ -843,6 +843,10 @@ typedef struct {
     const char *act;     /* into e->segments, "" when absent */
     size_t actlen;
 } SegRun;
+/* cached white, one X round-trip ever: the keyboard cursor's underline,
+ * shared by the single-line and wrapped span draw loops. Same convention
+ * as the badge font caches. */
+static unsigned long seg_focus_px = 0;
 static int seg_measure_runs(Elem *e, XftFont *font, int x0, SegRun *runs, int maxruns) {
     const char *sp = e->segments;
     int n = 0;
@@ -967,12 +971,149 @@ static int seg_cursor_on(const Elem *e) {
     return e && g_seg_idx >= 0 && g_seg_nav == e->nav_index &&
            e->nav_index > 0 && e->id[0] && strcmp(g_seg_id, e->id) == 0;
 }
-/* actionable runs for an element: 0 when span geometry must not apply
- * (same gates as draw/click - overlong rows keep row-level keys). */
+/* INLINE SPANS step 7 (wrapped hit-testing): wrapped geometry for
+ * click/keys, mirroring the segwrap draw block's own entry conditions
+ * exactly (segments, label, sprite, font, decoded fit-miss, multiline
+ * box, parseable, storable, box-fitting). Fills runs (absolute screen
+ * x via the badge helper), line cuts, line count, first-baseline ty
+ * and line_h. Returns run count, or -1 when the row does NOT draw
+ * wrapped spans (single-line case included - seg_fitting_runs owns
+ * that; unparseable/unstorable rows fall back to plain). Click maps py
+ * to a line then x to a slice; keys only need to know spans draw at
+ * all (Enter dispatches by run index, geometry-free). */
+static int seg_wrapped_geom(Elem *e, SegRun *runs, int maxruns,
+                            int (*cuts)[2], int maxlines,
+                            int *nlines_out, int *ty0_out, int *line_h_out) {
+    XftFont *font;
+    int pad, x0, avail_w, line_h, nlines, max_ln, nrun;
+    XGlyphInfo extents;
+    char shown[2048];
+    if (!e || !e->segments[0] || !e->label[0] || e->sprite[0] ||
+        !runs || maxruns <= 0 || !cuts || !nlines_out) return -1;
+    font = font_for(&e->style);
+    if (!font) return -1;
+    snprintf(shown, sizeof(shown), "%s", e->label);
+    khtpm_decode_label_entities(shown);
+    if (!shown[0]) return -1;
+    x0 = kh_elem_badge_label_x(e);
+    pad = e->style.has_padding ? e->style.padding : 4;
+    avail_w = e->w > 0 ? (e->x + e->w) - x0 - pad : -1;
+    if (avail_w <= 0) return -1;
+    XftTextExtentsUtf8(dpy, font, (const FcChar8 *)shown, (int)strlen(shown), &extents);
+    if (extents.width <= avail_w) return -1; /* single-line owns this row */
+    line_h = font->ascent - font->descent > 0 ? font->ascent - font->descent : 12;
+    line_h += 4;
+    if (!((e->h > (line_h * 3) / 2) && avail_w > 0)) return -1;
+    nrun = seg_measure_runs(e, font, x0, runs, maxruns);
+    if (nrun <= 0) return -1;
+    nlines = wrap_line_bounds(font, shown, avail_w, cuts, maxlines);
+    max_ln = (e->h + line_h - 1) / line_h;
+    if (max_ln < 1) max_ln = 1;
+    if (nlines > max_ln) nlines = max_ln;
+    /* storable check mirrors draw: more lines than storage falls back
+     * to the plain path (which ellipsizes honestly). */
+    {
+        int full = wrap_line_bounds(font, shown, avail_w, NULL, 0);
+        if (full > maxlines) return -1;
+    }
+    *nlines_out = nlines;
+    if (ty0_out) *ty0_out = e->y + font->ascent + 2;
+    if (line_h_out) *line_h_out = line_h;
+    return nrun;
+}
+
+/* step 7: click resolution on a WRAPPED spans row. py selects the
+ * visual line (clamped - box padding past the text belongs to the
+ * edge lines, the same whole-row mapping single-line uses for x),
+ * then x walks that line's slices with the draw loop's own
+ * (ri,rstart)/pos discipline, measuring each slice identically. */
+static int seg_hit_wrapped(Elem *e, int px, int py, char *actout, size_t actsz) {
+    SegRun runs[64];
+    int cuts[64][2];
+    int nlines = 0, ty0 = 0, line_h = 0;
+    int nrun, li, ls, le, ri, lx;
+    size_t rstart, pos;
+    XftFont *font;
+    if (!actout || actsz == 0) return 0;
+    nrun = seg_wrapped_geom(e, runs, 64, cuts, 64, &nlines, &ty0, &line_h);
+    if (nrun < 0 || nlines < 1 || line_h <= 0) return 0;
+    /* Glyphs render ABOVE their baseline (ty-ascent..ty+descent), so a
+     * bare floor((py-ty0)/line_h) credits the top ~ascent pixels of
+     * every line to the line above - almost every click landed one
+     * line high (live symptom: wrapped span clicks never dispatched).
+     * Offset by the ascent first, then clamp (box padding past the text
+     * belongs to the edge lines). */
+    {
+        XftFont *font = font_for(&e->style);
+        int ascent = font ? font->ascent : 12;
+        li = (py - ty0 + ascent) / line_h;
+    }
+    if (li < 0) li = 0;
+    if (li >= nlines) li = nlines - 1;
+    ls = cuts[li][0]; le = cuts[li][1];
+    font = font_for(&e->style);
+    if (!font) return 0;
+    lx = kh_elem_badge_label_x(e);
+    ri = 0; rstart = 0;
+    while (ri < nrun && rstart + runs[ri].tlen <= (size_t)ls) {
+        rstart += runs[ri].tlen;
+        ri++;
+    }
+    pos = rstart > (size_t)ls ? rstart : (size_t)ls;
+    while (ri < nrun && pos < (size_t)le) {
+        size_t rend = rstart + runs[ri].tlen;
+        size_t se = rend < (size_t)le ? rend : (size_t)le;
+        if (se > pos) {
+            size_t slen = se - pos;
+            char slice[2048];
+            XGlyphInfo sl_ext;
+            if (slen >= sizeof(slice)) slen = sizeof(slice) - 1;
+            memcpy(slice, runs[ri].text + (pos - rstart), slen);
+            slice[slen] = '\0';
+            XftTextExtentsUtf8(dpy, font, (const FcChar8 *)slice, (int)slen, &sl_ext);
+            if (runs[ri].is_link && runs[ri].actlen > 0 &&
+                px >= lx && px < lx + sl_ext.xOff) {
+                size_t n = runs[ri].actlen;
+                if (n >= actsz) n = actsz - 1;
+                memcpy(actout, runs[ri].act, n);
+                actout[n] = '\0';
+                return 1;
+            }
+            lx += sl_ext.xOff;
+            pos = se;
+        }
+        if (se >= rend) {
+            rstart = rend;
+            ri++;
+            pos = rstart;
+        } else {
+            break;
+        }
+    }
+    return 0;
+}
+
+/* runs for an element by EITHER geometry (single fit first, then
+ * wrapped-drawn): the payload walk behind the cursor count and
+ * Enter-dispatch, both geometry-free once runs exist. -1 when span
+ * geometry must not apply anywhere. */
+static int seg_any_runs(Elem *e, SegRun *runs, int maxruns) {
+    int nrun;
+    nrun = seg_fitting_runs(e, NULL, runs, maxruns);
+    if (nrun < 0) {
+        int cuts[64][2], nl = 0;
+        nrun = seg_wrapped_geom(e, runs, maxruns, cuts, 64, &nl, NULL, NULL);
+    }
+    return nrun;
+}
+
+/* actionable runs for an element: single-line fit first (the common
+ * case, one walk), else wrapped-drawn (step 7). 0 when span geometry
+ * must not apply anywhere - row-level keys/clicks proceed. */
 static int seg_actionable_count(Elem *e) {
     SegRun runs[64];
     int nrun, ri, n = 0;
-    nrun = seg_fitting_runs(e, NULL, runs, 64);
+    nrun = seg_any_runs(e, runs, 64);
     if (nrun < 0) return 0;
     for (ri = 0; ri < nrun; ri++)
         if (runs[ri].is_link && runs[ri].actlen > 0) n++;
@@ -984,7 +1125,7 @@ static int seg_action_at_idx(Elem *e, int idx, char *actout, size_t actsz) {
     SegRun runs[64];
     int nrun, ri, n = 0;
     if (!actout || actsz == 0 || idx < 0) return 0;
-    nrun = seg_fitting_runs(e, NULL, runs, 64);
+    nrun = seg_any_runs(e, runs, 64);
     if (nrun < 0) return 0;
     for (ri = 0; ri < nrun; ri++) {
         size_t len;
@@ -1844,9 +1985,6 @@ static void draw_elem(Elem *e, int hover_id_hash) {
             nrun = seg_measure_runs(e, font, badge_label_x, runs, 64);
             if (nrun >= 0) {
                 int ri, link_no = -1;
-                /* cached white, one X round-trip ever: the focused span's
-                 * underline. Same convention as the badge font caches. */
-                static unsigned long seg_focus_px = 0;
                 if (!seg_focus_px) seg_focus_px = alloc_pixel("#ffffff");
                 for (ri = 0; ri < nrun; ri++) {
                     char seg_text[1024];
@@ -1895,9 +2033,10 @@ static void draw_elem(Elem *e, int hover_id_hash) {
              * needing more than 64 stored lines fall back to the plain
              * path (which ellipsizes honestly) - our projector caps
              * labels at 1500 chars (~30 lines), so only hostile input
-             * takes that branch. Click/keys stay single-line-gated
-             * (seg_fitting_runs): wrapped rows click through their LINK
-             * items until wrapped hit-testing lands. */
+             * takes that branch. Clicks map py to a line then x to a
+             * slice (seg_hit_wrapped); the keyboard cursor walks
+             * actionable runs in payload order with its underline
+             * following across lines. */
             SegRun sgruns[64];
             int sgn = seg_measure_runs(e, font, 0, sgruns, 64);
             if (sgn > 0) {
@@ -1918,15 +2057,20 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                          * ends from the cursor (roff + tlen) silently
                          * stretched every run by its already-drawn prefix
                          * and froze ri at 0 forever - live symptom: full
-                         * grey box, zero tint, reads past run ends. */
+                         * grey box, zero tint, reads past run ends.
+                         * act_seen counts actionable runs strictly before
+                         * runs[ri] (payload order = cursor index domain,
+                         * same as the single-line loop's link_no). */
                         int ri = 0;
                         size_t rstart = 0;
+                        int act_seen = 0;
                         for (li = 0; li < nlines; li++) {
                             int ty_line = e->y + font->ascent + 2 + li * line_h;
                             int lx = badge_label_x;
                             int ls = cuts[li][0], le = cuts[li][1];
                             size_t pos;
                             while (ri < sgn && rstart + sgruns[ri].tlen <= (size_t)ls) {
+                                if (sgruns[ri].is_link && sgruns[ri].actlen > 0) act_seen++;
                                 rstart += sgruns[ri].tlen;
                                 ri++;
                             }
@@ -1939,6 +2083,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                                     char slice[2048];
                                     XGlyphInfo sl_ext;
                                     XftColor ssc;
+                                    int focused = 0;
                                     if (slen >= sizeof(slice)) slen = sizeof(slice) - 1;
                                     memcpy(slice, sgruns[ri].text + (pos - rstart), slen);
                                     slice[slen] = '\0';
@@ -1947,7 +2092,9 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                                     XftTextExtentsUtf8(dpy, font, (const FcChar8 *)slice,
                                                        (int)slen, &sl_ext);
                                     if (sgruns[ri].is_link) {
-                                        XSetForeground(dpy, gc, link_col.pixel);
+                                        if (sgruns[ri].actlen > 0)
+                                            focused = seg_cursor_on(e) && act_seen == g_seg_idx;
+                                        XSetForeground(dpy, gc, focused ? seg_focus_px : link_col.pixel);
                                         XFillRectangle(dpy, buf, gc, lx, ty_line + 2,
                                                        (unsigned)sl_ext.xOff, 1);
                                     }
@@ -1955,6 +2102,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                                     pos = se;
                                 }
                                 if (se >= rend) {
+                                    if (sgruns[ri].is_link && sgruns[ri].actlen > 0) act_seen++;
                                     rstart = rend;
                                     ri++;
                                     pos = rstart;

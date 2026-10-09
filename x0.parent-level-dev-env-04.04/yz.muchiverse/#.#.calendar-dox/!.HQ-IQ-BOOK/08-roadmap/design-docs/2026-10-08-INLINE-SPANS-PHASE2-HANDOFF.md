@@ -39,10 +39,32 @@
 > Fixture recipe corrections (§4): needs `<page id="main">` (else
 > `find_page` misses and the window is 38px tall), `<text>` DIRECT
 > children of `<page>` (a `<panel>` wrapper never gets laid out), and NO
-> `<!doctype html>` first line — `parse_element` treats any `<!` as a
-> comment scanning for `-->`, so a doctype with no later comment parses to
-> nothing. That parser bug is RECORDED, NOT fixed (zero real `.xhtpm`
-> files use a doctype, so it is latent).
+> `<!doctype html>` first line — `parse_element` treated any `<!` as a
+> comment scanning for `-->`, so a doctype with no later comment parsed to
+> nothing. FIXED 2026-10-09 (own commit, step 7 block): only `<!--` scans
+> for `-->`; verified headless four ways.
+>
+> **ADDENDUM 2026-10-09, evening — steps 5–7 landed.**
+> - *Parser bug FIXED* (own commit): only `<!--` scans for `-->`.
+> - *Keyboard nav*: segment cursor (lazy nav/index/id), Left/Right walk
+>   actionable links, Enter dispatches, Esc drops out, white underline
+>   marks it. Relay digits/arrows/Enter drive it. Cursor clears on
+>   reparse + on dispatch - a STALE cursor (stable repeat ids across
+>   pages) once white-washed underlines suite-wide and inverted Right;
+>   an ARMED address bar eats relay keys (even 112 types 'p') - tests
+>   disarm with Esc first. Relay digit codes are ASCII ('2'=50): bare
+>   "2" lines decode to Ctrl+B; `fold` needs trailing `\n` or `while
+>   read` skips the last digit (row 2 focused instead of 20 - every
+>   earlier kbd PASS was spurious).
+> - *Wrapping*: `wrap_line_bounds()` (one loop for layout count + draw
+>   bounds), layout upper-bounds the box, slices map back by text offset
+>   with (run,start) - never cursor-derived ends (two live bugs: whole-
+>   run advance starved lines; cursor-derived ends froze ri at 0).
+>   Click maps py to a line with +ascent (glyphs sit above baseline -
+>   bare floor lands one line high). Enter dispatches by index via
+>   seg_any_runs (single-fit first, else wrapped). Relay digits address
+>   ROWS; per-segment digit slots still need the slot model (future).
+>   Selection across segments stays out of scope per the design.
 
 Where the inline-clickable-spans feature stands after a long session, and
 exactly what the next person has to do. Read

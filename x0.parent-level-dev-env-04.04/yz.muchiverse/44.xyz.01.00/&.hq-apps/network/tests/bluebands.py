@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-# bluebands.py - find contiguous y-bands of near-#8fb8ff pixels in a PNG.
+# bluebands.py - find contiguous y-bands of near-target pixels in a PNG.
 # Test asset for nb_span_test.sh's click-through section: the 1px-tall
 # underline band under a link span identifies the rich row in a captured
 # frame without trusting any layout guess. Stdlib only (struct+zlib),
 # no new dependencies.
-# Usage: bluebands.py <png>  ->  "y0 y1 x0 x1 count" per band, top-down.
+# Usage: bluebands.py <png> [hexcolor]  ->  "y0 y1 x0 x1 count" per band,
+# top-down. Default color #8fb8ff (link tint); ffffff finds the white
+# keyboard-cursor underline.
 import struct
 import sys
 import zlib
@@ -60,7 +62,8 @@ def decode(png):
 
 def main(png):
     w, h, px = decode(png)
-    match = (0x8f, 0xb8, 0xff)
+    hexcolor = sys.argv[2] if len(sys.argv) > 2 else "8fb8ff"
+    match = (int(hexcolor[0:2], 16), int(hexcolor[2:4], 16), int(hexcolor[4:6], 16))
     tol = 12
     bands = []
     cur = None
