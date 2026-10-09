@@ -187,6 +187,90 @@ under `&.widgits/palettes/sprites/rmmv/`. Picking the skin is a
 later step, from that same window, and only after a real sheet has
 been looked at.
 
+## Checked — 2026-10-09, after the co-lab reply
+
+Opened:
+
+- `Window.png` at `NNEST-12.00/#.NNEST_ASSETS/rmmv-www-img/system/Window.png`.
+  Pillow reports **192×192 RGBA**.
+- `rpg_core.js` from the local MV tree
+  `rpg-maker-mv-og-mt/js/rpg_core.js`. Line numbers below are that file.
+
+### Window frame and fill
+
+`Window.prototype._refreshFrame` (line 6696): margin `m = 24`, `p = 96`.
+The frame is the **top-right** 96×96, origin x=96, not the top-left.
+The earlier primer had that rectangle on the wrong half.
+
+Each `blt` stretches the source to the destination size:
+
+- Top edge source `(120, 0)` size `48×24`, drawn to width `w-48`, height 24.
+- Bottom edge source `(120, 72)` size `48×24`, drawn along the bottom.
+- Side edges source width 24, height 48, drawn to height `h-48`.
+- Four corners stay `24×24`: `(96,0)`, `(168,0)`, `(96,72)`, `(168,72)`.
+
+`_refreshBack` (line 6669): the back is inset by `this._margin`.
+First it **stretches** `(0,0,96,96)` across the whole back. Then it
+**tiles** `(0,96,96,96)` in 96px steps over that. Then it applies
+`_colorTone`.
+
+Sampled pixels on this `Window.png`: the top-edge row at y=4 is black
+`(0,0,0)` across the 48px width. y=12 is one white pixel then black.
+The corner at `(96,0)` is transparent. This skin is a thin border, not
+a filled bar.
+
+### Can that frame be a 48px cap and middle?
+
+No. The pieces are 24px corners and a 48×24 edge, and the engine
+stretches the edge. A 48×48 block cut out of that region mixes the
+border with empty black. Repeating it will not make a solid rectangle
+bar. A plain B–E tile that is already a horizontal rail is the better
+source. Which cell that is remains unpicked. I did not open a B–E sheet
+in this pass.
+
+### A1 frames and the column split
+
+`Tilemap.prototype.update` (line 4703): `animationCount++`, then
+`animationFrame = floor(animationCount / 30)`. One frame step per 30
+tilemap updates.
+
+`_drawAutotile` (line 5040), when `isTileA1`:
+
+- Water uses `waterSurfaceIndex = [0,1,2,1][animationFrame % 4]`.
+  That is **three pictures**, ping-pong, not four distinct frames.
+  Kinds 0 and 1, and even kinds in the later block, step `bx` by
+  `waterSurfaceIndex * 2`.
+- Waterfall is the odd kind in that later block (`kind % 2 === 1`):
+  table switches to `WATERFALL_AUTOTILE_TABLE`, and `by` adds
+  `animationFrame % 3`. **Three frames.**
+- `isWaterfallTile` (line 5340) is true only for tile ids in
+  `[TILE_ID_A1+192, TILE_ID_A2)` whose autotile kind is odd.
+
+A2 (line 5078): floor table, `bx = tx*2`, `by = (ty-2)*3`.
+A3 (line 5083): **always** `WALL_AUTOTILE_TABLE`, block height 2 tiles
+(`by = (ty-6)*2`).
+A4 (line 5088): wall table only when `ty % 2 === 1`. Otherwise it
+keeps the floor table. So "A3 and A4 both use the 16-row wall table"
+was too coarse. Wall tops on A4 (`isWallTopTile`, kind `% 16 < 8`)
+are floor-type. `isFloorTypeAutotile` (line 5373) says the same:
+A1 that is not a waterfall, A2, and A4 wall tops.
+
+The first floor-table row in `rpg_core.js` line 5389 matches the first
+row of `FLOOR_AUTOTILE_TABLE` in `tile_autotile.c`. I compared that
+one row only, not all 48.
+
+### tile_autotile.c claims, now that the JS was open
+
+- 48 / 16 / 4 table sizes: the JS names those three tables. I did not
+  recount every JS row against every C row.
+- Quadrant blit `(bx*2+qsx)*w1` and dest `(i%2)*w1`, `(i/2)*h1` match
+  `_drawAutotile` lines 5101–5109.
+- The C file still does not implement the A1 water index, the A1
+  waterfall `by` shift, or the A4 even/odd table switch. Those stay
+  outside what the C port claims to draw.
+- `autotile_pick_quadrant` is still not in this JS. The runtime reads
+  `getAutotileShape(tileId)`. The neighbor-to-shape gap stands.
+
 ## What I did not check
 
 - I did not re-run `test_tile_autotile`.
