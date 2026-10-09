@@ -3007,6 +3007,26 @@ static int render_one_frame(void) {
         }
     }
     load_phymoji_world_entities(focused_project_root);
+    /* Hero, chicken and trees belong to the one piececraft test level.
+     * A painted desk is its own map: those three stay off it. The
+     * xelector still stands on the floor (z = 1) so POV 1/2 look at
+     * the board, not at the test level's height 20. Saved pos_z and
+     * the camera keys are not written. */
+    int maker_ground = maker_load(focused_project_root);
+    if (maker_ground) {
+        g_hero_present = 0;
+        if (g_xelector_present) g_xelector_z = 1;
+        int kept = 0;
+        for (int i = 0; i < g_phymoji_world_entity_count; i++) {
+            const char *id = g_phymoji_world_entities[i].entity_id;
+            if (!strcmp(id, "chicken") || !strcmp(id, "tree_small") || !strcmp(id, "hero_01"))
+                continue;
+            if (kept != i) g_phymoji_world_entities[kept] = g_phymoji_world_entities[i];
+            g_phymoji_world_entities[kept].z = 1;
+            kept++;
+        }
+        g_phymoji_world_entity_count = kept;
+    }
     load_terrain_legend(focused_project_root);
     ensure_digit_glyphs_loaded(project_root);
 
@@ -3018,7 +3038,8 @@ static int render_one_frame(void) {
      * bv_state.txt copy of it is a mirror, read back here as the
      * selector's own real vertical position, clamped into the loaded
      * grid's own real z_count range. */
-    int current_z = read_kv_int(state_path, "current_z", default_current_z(focused_project_root));
+    int current_z = maker_ground ? 1
+        : read_kv_int(state_path, "current_z", default_current_z(focused_project_root));
     if (current_z >= z_count) current_z = z_count - 1;
     if (current_z < 0) current_z = 0;
 
