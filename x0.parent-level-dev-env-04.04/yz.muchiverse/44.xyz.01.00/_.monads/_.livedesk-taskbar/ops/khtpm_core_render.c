@@ -10676,6 +10676,8 @@ static void redraw(void) {
          * washed so the list is visibly not the same slab as chrome. */
         XSetForeground(dpy, gc, alloc_pixel(kh_shade_hex(g_theme_bg, 18)));
         XFillRectangle(dpy, buf, gc, 0, 0, (unsigned)g_win_w, CHROME_H);
+        /* RPG Maker tile skin on the header strip (bar_skin=, off = untouched); title text and chrome buttons draw after */
+        kh_draw_selected_skin(0, 0, g_win_w, CHROME_H, alloc_pixel(kh_shade_hex(g_theme_bg, 18)));
         {
             const char *body = (g_drop_highlight && g_drop_highlight_color[0])
                 ? g_drop_highlight_color

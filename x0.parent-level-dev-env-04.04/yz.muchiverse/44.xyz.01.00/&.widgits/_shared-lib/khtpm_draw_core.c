@@ -374,6 +374,29 @@ static void kh_bar_skin_load(const char *house_root) {
     fclose(f);
 }
 
+/* Paint a run of whole blocks into any rectangle: block = height (square), n = width / block (>= 2), the run is
+ * centred, the sub-block remainder keeps whatever is already painted there. Returns 1 when it painted. */
+static int kh_draw_skin_rect(const char (*dirs)[400], int x, int y, int w, int h, unsigned long bg_pixel) {
+    int b = h;
+    if (b < 8) return 0;
+    int n = w / b;
+    if (n < 2) return 0;
+    HqSprite *l = hq_sprite(dirs[0]);
+    HqSprite *m = hq_sprite(dirs[1]);
+    HqSprite *r = hq_sprite(dirs[2]);
+    if (!l || !m || !r) return 0;
+    int x0 = x + (w - n * b) / 2;
+    for (int i = 0; i < n; i++)
+        hq_blit_sprite(i == 0 ? l : (i == n - 1 ? r : m), x0 + i * b, y, b, bg_pixel, 0);
+    return 1;
+}
+
+/* the selected skin over a rectangle (window header strips, bars); no-op while the skin is off */
+static int kh_draw_selected_skin(int x, int y, int w, int h, unsigned long bg_pixel) {
+    if (!g_bar_skin_id[0]) return 0;
+    return kh_draw_skin_rect((const char (*)[400])g_bar_skin_dir, x, y, w, h, bg_pixel);
+}
+
 /* true when it painted the blocks (caller still draws border + label on top). An element with
  * class="skin-for-<id>" draws that catalog skin even when the global skin is off (the picker's swatches). */
 static int kh_draw_bar_skin(Elem *e, unsigned long bg_pixel) {
@@ -385,18 +408,7 @@ static int kh_draw_bar_skin(Elem *e, unsigned long bg_pixel) {
             for (int k = 0; k < g_n_skin_cat; k++)
                 if (strcmp(g_skin_cat[k].id, e->classes[c] + 9) == 0) { dirs = (const char (*)[400])g_skin_cat[k].dir; own = 1; break; }
     if (!own && !g_bar_skin_id[0]) return 0;
-    int b = e->h;
-    if (b < 8) return 0;
-    int n = e->w / b;
-    if (n < 2) return 0;
-    HqSprite *l = hq_sprite(dirs[0]);
-    HqSprite *m = hq_sprite(dirs[1]);
-    HqSprite *r = hq_sprite(dirs[2]);
-    if (!l || !m || !r) return 0;
-    int x0 = e->x + (e->w - n * b) / 2;
-    for (int i = 0; i < n; i++)
-        hq_blit_sprite(i == 0 ? l : (i == n - 1 ? r : m), x0 + i * b, e->y, b, bg_pixel, 0);
-    return 1;
+    return kh_draw_skin_rect(dirs, e->x, e->y, e->w, e->h, bg_pixel);
 }
 
 /* Real, generic, CSS-driven single-element draw: background fill,
