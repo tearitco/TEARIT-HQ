@@ -3087,6 +3087,35 @@ static int render_one_frame(void) {
      * exactly; a tall one gets real overhead clearance. */
     int default_z_level = (current_z > 12) ? ((current_z - 12 + 6) / 2) : 0;
     int cam_z_level = read_kv_int(state_path, "cam_z_level", default_z_level);
+    /* Painted desk: the saved lift is the piececraft test stack
+     * (cam_z_level 14 makes mode 3/4 eye.y = 12+28 = 40; pan 11/13/20
+     * is that same stack). The desk itself is 3 cells tall. Remember
+     * the numbers from the frame this desk opened and subtract them,
+     * so the eye starts at the shallow-board height over the selector.
+     * Keys pressed after that still move it: c/v and wasd change the
+     * file, and only the change survives the subtract. Yaw and pitch
+     * are not touched. The file itself is not rewritten. */
+    {
+        static int floor_cam_desk = -1;
+        static int floor_cam_z = 0, floor_pan_x = 0, floor_pan_y = 0, floor_pan_z = 0;
+        if (maker_ground) {
+            if (floor_cam_desk != g_mk.id) {
+                floor_cam_desk = g_mk.id;
+                floor_cam_z = cam_z_level;
+                floor_pan_x = cam_pan_x;
+                floor_pan_y = cam_pan_y;
+                floor_pan_z = cam_pan_z;
+            }
+            cam_z_level -= floor_cam_z;
+            cam_pan_x -= floor_pan_x;
+            cam_pan_y -= floor_pan_y;
+            cam_pan_z -= floor_pan_z;
+            if (camera_mode == 4) {
+                cam_pan_x += selector_x;
+                cam_pan_y += selector_y;
+            }
+        }
+    }
 
     double anchor_x = selector_x + 0.5, anchor_z = selector_y + 0.5;
     /* Modes 1 and 2 follow the xelector. Possessing an entity already
