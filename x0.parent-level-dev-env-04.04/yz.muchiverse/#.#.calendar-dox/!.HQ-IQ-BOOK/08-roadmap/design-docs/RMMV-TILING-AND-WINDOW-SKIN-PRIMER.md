@@ -342,6 +342,28 @@ one row only, not all 48.
 - `autotile_pick_quadrant` is still not in this JS. The runtime reads
   `getAutotileShape(tileId)`. The neighbor-to-shape gap stands.
 
+## Rail candidates — 2026-10-09
+
+Looked at the B and C sheets under
+`#.NNEST_ASSETS/rmmv-www-img/tilesets` (768×768, 16×16 cells of 48px).
+A contact sheet of the four pairs is `/tmp/rmmv-rail-candidates.png`.
+It is not in git.
+
+Columns are 0-based. Crop id, if the palette uses `row * 16 + col`, is
+in parentheses. Those `Dungeon_b` files exist. I did not re-decode the
+`sprite.csv` pixels, so the id match is the numbering assumption only.
+`SF_Outside_B` is not under `&.widgits/palettes/sprites/rmmv/`.
+
+| Pair | Left | Middle | Right | Why |
+| --- | --- | --- | --- | --- |
+| Wood rail, `Dungeon_B` | 0,14 (224) | 1,14 (225) | 4,14 (228) | A post closes each end. The middle is a plain plank that can repeat. |
+| Iron rail, `Dungeon_B` | 11,14 (235) | 12,14 (236) | 15,14 (239) | Same shape in metal. Middle bars repeat. Ends close the run. |
+| Neon, `SF_Outside_B` | 8,5 | 9,5 | mirror of 8,5 | A thin glowing tube. There is no separate right-cap cell. |
+| White panel, `SF_Outside_B` | 8,8 | 9,8 | 8,8 | A low white rectangle. The end cell has an oval fixture, so it is the weakest bar. |
+
+The wood rail is the one that already has a real left, a repeatable
+middle, and a real right. The owner picks. Nothing is wired.
+
 ## What I did not check
 
 - I did not re-run `test_tile_autotile`.
