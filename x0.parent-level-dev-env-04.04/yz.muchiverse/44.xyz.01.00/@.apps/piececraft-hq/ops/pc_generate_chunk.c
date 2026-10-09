@@ -288,20 +288,24 @@ static void load_extrusion_table(const char *map_id, const char *desk_id, char g
  * was hardcoded "desk1" above; now a real, caller-supplied desk_id
  * (defaults to "desk1" in main() below when none given) so a second
  * desk is genuinely loadable, not just a folder that's never read. */
-static int load_map_surface(const char *map_id, const char *desk_id, int surface[CHUNK_DIM][CHUNK_DIM], char surface_glyph[CHUNK_DIM][CHUNK_DIM]) {
+static int load_map_surface(const char *map_id, const char *desk_id, int ox, int oy, int surface[CHUNK_DIM][CHUNK_DIM], char surface_glyph[CHUNK_DIM][CHUNK_DIM]) {
     char map_path[PATH_BUF];
     snprintf(map_path, sizeof(map_path), "%s/pieces/system/maps/%s/%s/map.txt", real_root, map_id, desk_id);
     FILE *f = host_fopen(map_path, "r");
     if (!f) return 1;
     char ex_glyphs[MAX_EXTRUDE_GLYPHS]; int ex_deltas[MAX_EXTRUDE_GLYPHS], ex_n, ex_default;
     load_extrusion_table(map_id, desk_id, ex_glyphs, ex_deltas, &ex_n, &ex_default);
-    char line[CHUNK_DIM + 8];
+    char line[128];
+    int file_row = 0;
     int row = 0;
-    while (row < CHUNK_DIM && fgets(line, sizeof(line), f)) {
+    while (fgets(line, sizeof(line), f)) {
         line[strcspn(line, "\r\n")] = '\0';
+        if (file_row++ < oy) continue;
+        if (row >= CHUNK_DIM) break;
         int len = (int)strlen(line);
         for (int col = 0; col < CHUNK_DIM; col++) {
-            char glyph = (col < len) ? line[col] : 'f';
+            int src = ox + col;
+            char glyph = (src < len) ? line[src] : 'f';
             int delta = ex_n > 0 ? ex_default : (glyph == 'W' ? 3 : 0); /* no table at all = old hardcoded rule */
             for (int i = 0; i < ex_n; i++) if (ex_glyphs[i] == glyph) { delta = ex_deltas[i]; break; }
             surface[row][col] = FLAT_SURFACE_Z + delta;
@@ -329,6 +333,85 @@ static int load_map_surface(const char *map_id, const char *desk_id, int surface
             surface_glyph[row][col] = ',';
         }
     return 0;
+}
+
+static void emit_chunk(int cx, int cy, int surface[CHUNK_DIM][CHUNK_DIM], char surface_glyph[CHUNK_DIM][CHUNK_DIM]) {
+    char chunk_dir[PATH_BUF];
+    char mkdir_cmd[PATH_BUF + 16];
+    snprintf(chunk_dir, sizeof(chunk_dir), "%s/pieces/system/chunks/chunk_%d_%d", real_root, cx, cy);
+#ifndef _WIN32
+    snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p '%s'", chunk_dir);
+    { int _rc = system(mkdir_cmd); (void)_rc; }
+#endif
+    for (int z = 0; z < Z_COUNT; z++) {
+        char z_path[PATH_BUF];
+        snprintf(z_path, sizeof(z_path), "%s/chunk_%d_%d_z%d.txt", chunk_dir, cx, cy, z);
+        FILE *zf = host_fopen(z_path, "w");
+        if (!zf) continue;
+        for (int row = 0; row < CHUNK_DIM; row++) {
+            for (int col = 0; col < CHUNK_DIM; col++) {
+                int sh = surface[row][col];
+                char glyph = (z > sh) ? '_' : (z == sh) ? surface_glyph[row][col] : (z >= sh - 3) ? '.' : 's';
+                fputc(glyph, zf);
+            }
+            fputc('\n', zf);
+        }
+        fclose(zf);
+    }
+}
+
+/* A map wider or taller than one chunk is also written as one board the
+ * existing 2D/3D readers already accept (up to 64). A 16x16 map does not
+ * take this path, so its chunk files stay the only board. */
+static int emit_full_board(const char *map_id, const char *desk_id) {
+    char map_path[PATH_BUF];
+    snprintf(map_path, sizeof(map_path), "%s/pieces/system/maps/%s/%s/map.txt", real_root, map_id, desk_id);
+    FILE *f = host_fopen(map_path, "r");
+    if (!f) return 0;
+    char ex_glyphs[MAX_EXTRUDE_GLYPHS]; int ex_deltas[MAX_EXTRUDE_GLYPHS], ex_n, ex_default;
+    load_extrusion_table(map_id, desk_id, ex_glyphs, ex_deltas, &ex_n, &ex_default);
+    char lines[64][80];
+    int nrows = 0, ncols = 0;
+    char buf[128];
+    while (nrows < 64 && fgets(buf, sizeof(buf), f)) {
+        buf[strcspn(buf, "\r\n")] = '\0';
+        int len = (int)strlen(buf);
+        if (len > 64) len = 64;
+        memcpy(lines[nrows], buf, (size_t)len);
+        lines[nrows][len] = '\0';
+        if (len > ncols) ncols = len;
+        nrows++;
+    }
+    fclose(f);
+    /* Taller-but-still-16-wide maps (test_terraces has filler rows) stay
+     * on the single chunk. Only a wider map becomes the full board. */
+    if (ncols <= CHUNK_DIM) return 0;
+    char dir[PATH_BUF], cmd[PATH_BUF + 16];
+    snprintf(dir, sizeof(dir), "%s/pieces/system/chunks/board_full", real_root);
+#ifndef _WIN32
+    snprintf(cmd, sizeof(cmd), "mkdir -p '%s'", dir);
+    { int _rc = system(cmd); (void)_rc; }
+#endif
+    for (int z = 0; z < Z_COUNT; z++) {
+        char z_path[PATH_BUF];
+        snprintf(z_path, sizeof(z_path), "%s/board_full_z%d.txt", dir, z);
+        FILE *zf = host_fopen(z_path, "w");
+        if (!zf) continue;
+        for (int row = 0; row < nrows; row++) {
+            int len = (int)strlen(lines[row]);
+            for (int col = 0; col < ncols; col++) {
+                char glyph = (col < len && lines[row][col]) ? lines[row][col] : 'f';
+                int delta = ex_n > 0 ? ex_default : (glyph == 'W' ? 3 : 0);
+                for (int i = 0; i < ex_n; i++) if (ex_glyphs[i] == glyph) { delta = ex_deltas[i]; break; }
+                int sh = FLAT_SURFACE_Z + delta;
+                char out = (z > sh) ? '_' : (z == sh) ? ((glyph == 'f') ? ',' : glyph) : (z >= sh - 3) ? '.' : 's';
+                fputc(out, zf);
+            }
+            fputc('\n', zf);
+        }
+        fclose(zf);
+    }
+    return 1;
 }
 
 int main(int argc, char **argv) {
@@ -384,7 +467,7 @@ int main(int argc, char **argv) {
             surface_glyph[row][col] = ',';   /* real default: plain grass, same look as before this fix */
     int map_load_failed = 0;
     if (map_id) {
-        map_load_failed = load_map_surface(map_id, desk_id, surface, surface_glyph);
+        map_load_failed = load_map_surface(map_id, desk_id, chunk_x * CHUNK_DIM, chunk_y * CHUNK_DIM, surface, surface_glyph);
     }
     if (!map_id || map_load_failed) {
         for (int row = 0; row < CHUNK_DIM; row++) {
@@ -445,6 +528,45 @@ int main(int argc, char **argv) {
          * (z - floor_z); open_pchq_board.sh resets the hero and xelector to floor_z + 1 on launch. */
         fprintf(mf, "floor_z=%d\n", FLAT_SURFACE_Z);
         fclose(mf);
+    }
+    if (map_id && emit_full_board(map_id, desk_id_buf)) {
+        /* Other 16x16 slices listed in game.pdl. The window reads the
+         * full board written above, not one slice. */
+        char gp[PATH_BUF];
+        snprintf(gp, sizeof(gp), "%s/pieces/system/maps/%s/game.pdl", real_root, map_id);
+        FILE *gf = host_fopen(gp, "r");
+        int cxs[64], cys[64], seen[64];
+        for (int i = 0; i < 64; i++) { cxs[i] = cys[i] = 0; seen[i] = 0; }
+        if (gf) {
+            char gl[256];
+            while (fgets(gl, sizeof(gl), gf)) {
+                char *ck = strstr(gl, "chunk_");
+                if (!ck) continue;
+                int idx = -1;
+                char axis = 0;
+                if (sscanf(ck, "chunk_%d_%c", &idx, &axis) != 2 || idx < 0 || idx >= 64) continue;
+                char *bar = strrchr(gl, '|');
+                if (!bar) continue;
+                int coord = atoi(bar + 1);
+                seen[idx] = 1;
+                if (axis == 'x') cxs[idx] = coord;
+                if (axis == 'y') cys[idx] = coord;
+            }
+            fclose(gf);
+            for (int i = 0; i < 64; i++) if (seen[i]) {
+                int surface2[CHUNK_DIM][CHUNK_DIM];
+                char glyphs2[CHUNK_DIM][CHUNK_DIM];
+                if (load_map_surface(map_id, desk_id_buf, cxs[i] * CHUNK_DIM, cys[i] * CHUNK_DIM, surface2, glyphs2) == 0)
+                    emit_chunk(cxs[i], cys[i], surface2, glyphs2);
+            }
+        }
+        mf = host_fopen(manifest_path, "w");
+        if (mf) {
+            fprintf(mf, "z_base=pieces/system/chunks/board_full/board_full_z\n");
+            fprintf(mf, "z_count=%d\n", Z_COUNT);
+            fprintf(mf, "floor_z=%d\n", FLAT_SURFACE_Z);
+            fclose(mf);
+        }
     }
 
     /* world_01/state.txt - real world/tick state (design §5). */

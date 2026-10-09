@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+META         | map_id             | tsots
+META         | desk_id            | map025
+META         | note               | killing rooms ENGINE
+EXTRUDE      | W                  | 3
+EXTRUDE      | default             | 0

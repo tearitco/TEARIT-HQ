@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+META         | map_id             | tsots
+META         | desk_id            | map042
+META         | note               | Console plug in test space
+EXTRUDE      | W                  | 3
+EXTRUDE      | default             | 0

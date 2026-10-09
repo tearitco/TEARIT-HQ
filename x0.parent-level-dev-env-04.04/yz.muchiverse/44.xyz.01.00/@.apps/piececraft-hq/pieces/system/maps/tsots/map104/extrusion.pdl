@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+META         | map_id             | tsots
+META         | desk_id            | map104
+META         | note               | ghettto outskirt guarded by robots
+EXTRUDE      | W                  | 3
+EXTRUDE      | default             | 0

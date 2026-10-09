@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+META         | map_id             | tsots
+META         | desk_id            | map031
+META         | note               | mars city LANDING HANGAR
+EXTRUDE      | W                  | 3
+EXTRUDE      | default             | 0

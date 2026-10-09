@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+META         | map_id             | tsots
+META         | desk_id            | map074
+META         | note               | MAP074
+EXTRUDE      | W                  | 3
+EXTRUDE      | default             | 0
