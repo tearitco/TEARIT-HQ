@@ -106,6 +106,14 @@ typedef struct Elem {
      * Sizes are deliberately generous: a paragraph with two links runs to
      * a few hundred bytes once URLs are shell-quoted into the payload. */
     char segments[8192];
+    /* INLINE TABLE COLUMNS (2026-10-09): positional cell payload for
+     * equal-column table rows. Cells joined by \x1F (no kinds/urls -
+     * plain text per cell, same escaping contract as segments: the
+     * template splice escapes, apply_attr decodes). Empty cells are
+     * significant (column i must mean the same column in every row),
+     * so a trailing delimiter still opens a column. Rows without this
+     * attribute draw from `label` exactly as before. */
+    char cells[8192];
     /* REAL FIX 2026-08-16 (found live building khtpm_core_render.c,
      * Stage 2c proof): 64 was too small for a real objects.pdl-style
      * action= shell command (e.g. ava's real "Play" action is 200+
