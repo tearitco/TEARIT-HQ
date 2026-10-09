@@ -1,5 +1,49 @@
 # INLINE SPANS — PHASE 2 HANDOFF (written 2026-10-08)
 
+> **ADDENDUM 2026-10-09 — read this first, it corrects §2 below.**
+> The draw snippet reproduced in §2 has two real bugs; trust the committed
+> tree, not the snippet:
+> 1. **Field order.** Line 69 tests the SECOND field for `"link"` AND draws
+>    that same field as the text — kind is the FIRST field (`sp..f1`), text
+>    the second. As written a link is looked for in its own label and can
+>    never match. Committed as `327d9f7e8` with kind-first.
+> 2. **Placement.** The snippet sits in the single-line `else`, which never
+>    runs for real rows: a flat-list row is `ROW_H` tall so it always takes
+>    the multiline wrap path. The committed branch runs BEFORE the
+>    multiline/single-line split, fit-gated (`extents.width <= avail_w`).
+>
+> The actual blocker was neither snippet bug but the **frame round-trip**:
+> default-mode windows never call `render_tree()`; they serialize each
+> `Elem` through `kh_serialize_frame_elem()` and rebuild a stack `tmp` in
+> `kh_paint_frame_line()`. `segments` was in neither half, so `draw_elem()`
+> could never see it. Both halves landed in `327d9f7e8` (trailing field,
+> pipe-escaped; old short lines still honestly skip).
+>
+> **Encoder also landed 2026-10-09** (this doc's §6, committed separately):
+> `write_ui_projection()` pre-passes `RICH|<nseg>|<para>` groups (para
+> stamp added; groups that don't cover their whole run, lone links, and
+> overlong/hostile payloads get NO group), verifies each run row-by-row,
+> and emits one `c_*_is_rich` row (`label` = whole sentence,
+> `segments=` = wire payload) via a new show-gated candidate in
+> `network-browser-hq.xhtpm`. The run's `TEXT` rows suppress; its `LINK`
+> rows still emit as clickable items. Anything unverified renders exactly
+> as before. Two live-found bugs fixed in the same block: groups were
+> stamped with the FOLLOWING paragraph's number (`RICH|3|7` for a para-6
+> run — flush-then-advance, not advance-then-flush), and the extractor
+> trimmed sentence spaces at inline-`<a>` splits (`See thedocsfor more.`)
+> — boundary spaces are now kept (single, HTML-collapse semantics), checks
+> still run on the trimmed form. Pixel proof: two blue bands, sentence
+> span + kept item. Suites: `nb_all_tests.sh` ALL PASS (span suite now 10
+> assertions incl. byte-exact payload).
+>
+> Fixture recipe corrections (§4): needs `<page id="main">` (else
+> `find_page` misses and the window is 38px tall), `<text>` DIRECT
+> children of `<page>` (a `<panel>` wrapper never gets laid out), and NO
+> `<!doctype html>` first line — `parse_element` treats any `<!` as a
+> comment scanning for `-->`, so a doctype with no later comment parses to
+> nothing. That parser bug is RECORDED, NOT fixed (zero real `.xhtpm`
+> files use a doctype, so it is latent).
+
 Where the inline-clickable-spans feature stands after a long session, and
 exactly what the next person has to do. Read
 `2026-10-07-INLINE-SPANS-DESIGN.md` first for the original design; this

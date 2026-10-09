@@ -9,13 +9,13 @@ PARA|4
 TEXT|Second paragraph with a link inline.
 PARA|5
 PARA|6
-TEXT|See the
+TEXT|See the 
 LINK|https://example.com|docs
-TEXT|for more.
+TEXT| for more.
 PARA|7
 LIST|1|-|Item one
 LIST|1|-|Item two
-RICH|3
-RICHSEG|text|See the|
+RICH|3|6
+RICHSEG|text|See the |
 RICHSEG|link|docs|https://example.com
-RICHSEG|text|for more.|
+RICHSEG|text| for more.|

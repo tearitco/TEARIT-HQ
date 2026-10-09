@@ -630,6 +630,12 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
      * ordinal text for that item. Ordinals restart per list, so the stack
      * keeps a counter per level. */
     int g_para_no = 0;   /* paragraph counter, emits PARA| markers */
+    /* INLINE SPANS step 3b (2026-10-09): set by the inline-<a> split
+     * below, consumed by the next FLUSH_LINE (any site, even an empty
+     * one - otherwise it would leak into the next paragraph). A sentence
+     * split mid-stream keeps its boundary spaces; block flushes never
+     * set it and trim exactly as before. See FLUSH_LINE's own comment. */
+    int g_keep_edge_ws = 0;
     int g_li_depth = 0;
     int g_li_ordered = 0;
     char g_li_marker[16] = "-";
@@ -638,9 +644,20 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
 
     #define TEXT_WRAP 88
     #define FLUSH_LINE() do { \
+        int keep_edges = g_keep_edge_ws; g_keep_edge_ws = 0; \
         if (linelen > 0) { \
             line[linelen] = '\0'; \
             html_decode_entities(line); \
+            /* INLINE SPANS step 3b: this flush closes a piece cut by an
+             * inline <a> split, so its boundary spaces are CONTENT, not
+             * source indent - HTML collapses them to exactly one space,
+             * which is what the emit below restores. Block flushes arrive
+             * with keep_edges == 0 and trim exactly as before. The
+             * title-dup and junk checks run on the trimmed form, so no
+             * chrome rule can leak on a trailing space. */ \
+            int keep_lead = keep_edges && isspace((unsigned char)line[0]); \
+            size_t keeplen = strlen(line); \
+            int keep_trail = keep_edges && keeplen > 0 && isspace((unsigned char)line[keeplen-1]); \
             collapse_ws(line); \
             if (line[0] && title[0] && strcmp(line, title) == 0) { linelen = 0; } \
             else if (line[0] && junk_visible_line(line)) { linelen = 0; } \
@@ -652,10 +669,10 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                  * running prose - no bullet, no ordinal, and a <li> that only \
                  * wraps a nested list leaked its own stray "Nested" row. */ \
                 if (g_li_depth > 0) \
-                    fprintf(out, "LIST|%d|%s|%s\n", g_li_depth, \
-                            g_li_ordered ? g_li_marker : "-", line); \
+                    fprintf(out, "LIST|%d|%s|%s%s%s\n", g_li_depth, \
+                            g_li_ordered ? g_li_marker : "-", keep_lead ? " " : "", line, keep_trail ? " " : ""); \
                 else \
-                    fprintf(out, "TEXT|%s\n", line); \
+                    fprintf(out, "TEXT|%s%s%s\n", keep_lead ? " " : "", line, keep_trail ? " " : ""); \
                 line_count++; \
                 linelen = 0; \
             } else { linelen = 0; } \
@@ -1343,11 +1360,16 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                  * Readable-flow spans are the follow-up (segment rows). */
                 if (href[0] && href[0] != '#' && strncasecmp(href, "javascript:", 11) != 0 && strncasecmp(href, "mailto:", 7) != 0 && strncasecmp(href, "tel:", 4) != 0) {
                     /* Navigable href: flush pre-link text first so the
-                     * LINK becomes its own clickable row (see note). */
-                    if (linelen > 0) FLUSH_LINE();
+                     * LINK becomes its own clickable row (see note).
+                     * INLINE SPANS step 3b: the pre-link piece keeps its
+                     * trailing boundary space, and the flag set after the
+                     * LINK row keeps the post-link piece's leading one -
+                     * both are sentence content (see FLUSH_LINE). */
+                    if (linelen > 0) { g_keep_edge_ws = 1; FLUSH_LINE(); }
                     char resolved[PATH_BUF];
                     resolve_url(url, href, resolved, sizeof(resolved));
                     fprintf(out, "LINK|%s|%s\n", resolved, text[0] ? text : resolved);
+                    g_keep_edge_ws = 1;
                 } else if (text[0]) {
                     if (linelen > 0 && linelen < sizeof(line) - 1 && line[linelen - 1] != ' ') line[linelen++] = ' ';
                     size_t ti;
@@ -3906,16 +3928,23 @@ static int ingest_youtube_watch(const char *html, const char *url, FILE *out) {
     return 1;
 }
 
-/* Spans phase 1 (2026-10-07, design 2026-10-07-INLINE-SPANS-DESIGN.md):
- * re-derive rich paragraphs from the split rows the extractor already
- * emitted. A maximal TEXT/LINK run containing >=1 LINK becomes one RICH
- * group appended at the end (order-irrelevant: the projector ignores
- * RICH rows until the renderer half lands, so current rendering is
- * byte-identical). Segment text is pipe-sanitized for the row wire
- * format. Runs capped at 24 segments; bare TEXT runs skipped. */
+/* Spans phase 1 (2026-10-07, design 2026-10-07-INLINE-SPANS-DESIGN.md),
+ * encoder wired 2026-10-09: re-derive rich paragraphs from the split rows
+ * the extractor already emitted. A maximal TEXT/LINK run containing >=1
+ * LINK becomes one RICH group appended at the end (order-irrelevant: the
+ * projector matches groups to runs by paragraph number, not position).
+ *
+ * ALL-OR-NOTHING: a group is emitted only when every pending row became
+ * a segment (nseg == npend) and the run holds >= 2 segments. A truncated
+ * group (run longer than RICH_MAX_SEG) or a skipped row (malformed LINK
+ * URL) would make the projector's concatenated label disagree with the
+ * rows it replaces - so those runs get NO group and render exactly as
+ * before. A lone LINK (1 segment) gains nothing from a group row, so it
+ * gets none either. Segment text is pipe-sanitized for the row wire
+ * format. Bare TEXT runs are skipped, as before. */
 #define RICH_MAX_SEG 24
 #define RICH_RUN_MAX 64
-static void flush_rich_run(char (*pending)[PATH_BUF + 512], int npend) {
+static void flush_rich_run(char (*pending)[PATH_BUF + 512], int npend, int para_no) {
     typedef struct { int is_link; char text[1024]; char url[PATH_BUF]; } Seg;
     static Seg segs[RICH_MAX_SEG + 1];
     int nseg = 0, has_link = 0;
@@ -3950,10 +3979,10 @@ static void flush_rich_run(char (*pending)[PATH_BUF + 512], int npend) {
                     has_link = 1;
                 }
             }
-            if (has_link && nseg > 0) {
+            if (has_link && nseg >= 2 && nseg == npend) {
                 FILE *af = fopen(g_page_state_path, "a");
                 if (af) {
-                    fprintf(af, "RICH|%d\n", nseg);
+                    fprintf(af, "RICH|%d|%d\n", nseg, para_no);
                     for (int i = 0; i < nseg; i++)
                         fprintf(af, "RICHSEG|%s|%s|%s\n",
                                 segs[i].is_link ? "link" : "text",
@@ -3972,10 +4001,24 @@ static void append_rich_rows(void) {
     char (*pending)[PATH_BUF + 512] = malloc(sizeof(*pending) * RICH_RUN_MAX);
     if (!pending) { fclose(pf); return; }
     int npend = 0;
+    int cur_para = 0;
     char line[PATH_BUF + 512];
     while (fgets(line, sizeof(line), pf)) {
         size_t L = strlen(line);
         while (L > 0 && (line[L-1] == '\n' || line[L-1] == '\r')) line[--L] = 0;
+        if (strncmp(line, "PARA|", 5) == 0) {
+            /* Paragraph boundary closes the previous paragraph's run
+             * under ITS number (not the new one): the stamp must equal
+             * the number the run's own rows carry in the projector's
+             * sweep, or the group can never match. Updating cur_para
+             * before flushing stamped every group with the FOLLOWING
+             * paragraph's number - live proof: RICH|3|7 for a run whose
+             * rows sit between PARA|6 and PARA|7. */
+            flush_rich_run(pending, npend, cur_para);
+            npend = 0;
+            cur_para = atoi(line + 5);
+            continue;
+        }
         int is_t = strncmp(line, "TEXT|", 5) == 0;
         int is_l = strncmp(line, "LINK|", 5) == 0;
         if ((is_t || is_l) && npend < RICH_RUN_MAX) {
@@ -3983,11 +4026,11 @@ static void append_rich_rows(void) {
             npend++;
             continue;
         }
-        flush_rich_run(pending, npend);
+        flush_rich_run(pending, npend, cur_para);
         npend = 0;
 
     }
-    flush_rich_run(pending, npend);
+    flush_rich_run(pending, npend, cur_para);
     fclose(pf);
     free(pending);
 }
@@ -5148,6 +5191,24 @@ static void write_ui_projection(void) {
         FILE *pf = fopen(g_page_state_path, "r");
         int rc = 0;
         int total_rows = 0, processed = 0, dropped_rows = 0;
+        /* INLINE SPANS phase 2 step 3 (2026-10-09): a verified RICH group
+         * becomes one c_*_is_rich row. Types + state live here
+         * (content-block scope) so both the pre-pass below and the emit
+         * walk can see them; everything is heap and freed next to
+         * free(rows) - no big stack locals (the 2026-10-08
+         * stack-pressure lesson). */
+        typedef struct { int is_link; char *text; char *url; } NBRichSeg;
+        typedef struct {
+            int para, nseg, usable;
+            NBRichSeg *segs;
+            char *label;    /* concatenated segment texts, uisan'd */
+            char *payload;  /* kind \x1F text \x1F url, segs joined \x1E */
+        } NBRichGroup;
+        NBRichGroup *nb_rg = NULL;
+        int nb_nrg = 0;
+        int *nb_row_para = NULL, *nb_row_rich = NULL;
+        char *nb_row_tl = NULL;
+        char *nb_scratch = NULL, *nb_scratch2 = NULL;
         if (pf) {
             /* in-memory rows so an IMG depleted by an adjacent LINK (the
              * watch-page related-tile pattern) reads far enough ahead. */
@@ -5173,6 +5234,286 @@ static void write_ui_projection(void) {
                 while (fgets(sink, sizeof(sink), pf)) total_rows++;
             }
             fclose(pf);
+            /* INLINE SPANS phase 2 step 3 (2026-10-09): rich-group
+             * pre-pass. append_rich_rows() appended RICH|<nseg>|<para> +
+             * RICHSEG rows at END of page.state, after the inline rows -
+             * so the emit walk below can never see a group before the run
+             * it describes. Groups are collected here first (sweep 1);
+             * each TEXT/LINK run start is then matched to its paragraph's
+             * group and VERIFIED row-by-row (sweep 2) before one
+             * c_*_is_rich row is armed for it (nb_row_rich[run_start] =
+             * group index). Anything unverified - stale file, old
+             * RICH|<n> format with no paragraph, ambiguous paragraph,
+             * overlong payload, hostile bytes - stays -1 and renders
+             * through the plain TEXT/LINK rows exactly as today.
+             * Deliberately NOT in write_chtpm_projection(): that path is
+             * the static-markup rollback; the live window uses this UI
+             * projection.
+             *
+             * Read-only over rows[]: the main walk zeroes each line's
+             * first bar as it goes, so the raw kind tokens needed below
+             * would be gone if this ran second. */
+            if (rows && nrow > 0) {
+                nb_row_para = malloc(sizeof(int) * (size_t)nrow);
+                nb_row_rich = malloc(sizeof(int) * (size_t)nrow);
+                nb_row_tl = malloc((size_t)nrow);
+                nb_scratch = malloc(PATH_BUF + 512);
+                nb_scratch2 = malloc(PATH_BUF + 512);
+            }
+            if (nb_row_para && nb_row_rich && nb_row_tl && nb_scratch && nb_scratch2) {
+                int i, k;
+                for (i = 0; i < nrow; i++) { nb_row_para[i] = 0; nb_row_rich[i] = -1; nb_row_tl[i] = 0; }
+                /* sweep 1: paragraph numbers, run membership, groups. */
+                {
+                    int cur_para = 0;
+                    for (i = 0; i < nrow; i++) {
+                        char *ln = rows[i];
+                        if (strncmp(ln, "PARA|", 5) == 0) {
+                            cur_para = atoi(ln + 5);
+                            nb_row_para[i] = cur_para;
+                        } else if (strncmp(ln, "RICH|", 5) == 0) {
+                            nb_row_para[i] = cur_para;
+                            /* RICH|<nseg>|<para>. No |para (older
+                             * producer) stays unmatchable: para = -1
+                             * never equals a real paragraph number. */
+                            char *ep = NULL;
+                            long nseg = strtol(ln + 5, &ep, 10);
+                            int para = -1;
+                            if (ep && *ep == '|') para = (int)strtol(ep + 1, NULL, 10);
+                            if (nseg < 2 || nseg > RICH_MAX_SEG || para < 0 || nb_nrg >= 512)
+                                continue;
+                            {
+                                NBRichGroup ng;
+                                ng.para = para; ng.nseg = (int)nseg; ng.usable = 1;
+                                ng.segs = calloc((size_t)nseg, sizeof(NBRichSeg));
+                                ng.label = NULL; ng.payload = NULL;
+                                if (!ng.segs) continue;
+                                for (k = 0; k < ng.nseg; k++) {
+                                    ng.segs[k].is_link = 0;
+                                    ng.segs[k].text = NULL;
+                                    ng.segs[k].url = NULL;
+                                }
+                                int ok = 1;
+                                for (k = 0; ok && k < ng.nseg; k++) {
+                                    if (i + 1 + k >= nrow) { ok = 0; break; }
+                                    char *sl = rows[i + 1 + k];
+                                    if (strncmp(sl, "RICHSEG|", 8) != 0) { ok = 0; break; }
+                                    char *q1 = strchr(sl + 8, '|');
+                                    char *q2 = q1 ? strchr(q1 + 1, '|') : NULL;
+                                    if (!q1 || !q2) { ok = 0; break; }
+                                    size_t klen = (size_t)(q1 - (sl + 8));
+                                    int is_link;
+                                    if (klen == 4 && strncmp(sl + 8, "link", 4) == 0) is_link = 1;
+                                    else if (klen == 4 && strncmp(sl + 8, "text", 4) == 0) is_link = 0;
+                                    else { ok = 0; break; }
+                                    size_t tlen = (size_t)(q2 - (q1 + 1));
+                                    size_t slen = strcspn(q2 + 1, "\r\n");
+                                    /* producer bounds (Seg.text[1024]);
+                                     * the URL bound is tighter than the
+                                     * producer's PATH_BUF: a RICHSEG line
+                                     * near 5KB would not survive the fgets
+                                     * row buffer whole. */
+                                    if (tlen > 1023 || slen > 2048) { ok = 0; break; }
+                                    char *tx = malloc(tlen + 1);
+                                    char *ur = malloc(slen + 1);
+                                    if (!tx || !ur) { free(tx); free(ur); ok = 0; break; }
+                                    memcpy(tx, q1 + 1, tlen); tx[tlen] = 0;
+                                    memcpy(ur, q2 + 1, slen); ur[slen] = 0;
+                                    /* structural bytes can never appear in
+                                     * real text; a group carrying them is
+                                     * corrupt input, not a group. */
+                                    if (memchr(tx, 0x1e, tlen) || memchr(tx, 0x1f, tlen) ||
+                                        memchr(ur, 0x1e, slen) || memchr(ur, 0x1f, slen)) {
+                                        free(tx); free(ur); ok = 0; break;
+                                    }
+                                    ng.segs[k].is_link = is_link;
+                                    ng.segs[k].text = tx;
+                                    ng.segs[k].url = ur;
+                                }
+                                if (!ok) {
+                                    for (k = 0; k < ng.nseg; k++) {
+                                        free(ng.segs[k].text); free(ng.segs[k].url);
+                                    }
+                                    free(ng.segs);
+                                    continue;
+                                }
+                                {
+                                    NBRichGroup *nn = realloc(nb_rg, sizeof(*nn) * (size_t)(nb_nrg + 1));
+                                    if (!nn) {
+                                        for (k = 0; k < ng.nseg; k++) {
+                                            free(ng.segs[k].text); free(ng.segs[k].url);
+                                        }
+                                        free(ng.segs);
+                                        continue;
+                                    }
+                                    nb_rg = nn;
+                                    nb_rg[nb_nrg++] = ng;
+                                }
+                            }
+                        } else {
+                            nb_row_para[i] = cur_para;
+                            if (strncmp(ln, "TEXT|", 5) == 0 || strncmp(ln, "LINK|", 5) == 0)
+                                nb_row_tl[i] = 1;
+                        }
+                    }
+                }
+                /* sweep 2: match each TEXT/LINK run start to its
+                 * paragraph's group and verify row-by-row. */
+                for (i = 0; i < nrow; i++) {
+                    int e, gi, gcount = 0, ok;
+                    NBRichGroup *gm = NULL;
+                    size_t lab_len, pay_len;
+                    char *label, *payload;
+                    if (!nb_row_tl[i]) continue;
+                    if (i > 0 && nb_row_tl[i-1] && nb_row_para[i-1] == nb_row_para[i])
+                        continue; /* mid-run, not a start */
+                    e = i;
+                    while (e < nrow && nb_row_tl[e] && nb_row_para[e] == nb_row_para[i]) e++;
+                    for (gi = 0; gi < nb_nrg; gi++)
+                        if (nb_rg[gi].usable && nb_rg[gi].para == nb_row_para[i]) {
+                            gcount++; gm = &nb_rg[gi];
+                        }
+                    /* ambiguous paragraph (two runs, one para) or a group
+                     * that does not cover the whole run: plain rows. */
+                    if (gcount != 1 || !gm || gm->nseg != e - i) continue;
+                    /* verify every row against its segment. Mirror of
+                     * flush_rich_run()'s TEXT/LINK -> seg mapping plus the
+                     * emit walk's own drop rules below: the rich row must
+                     * reproduce EXACTLY what the rows show, tint aside. */
+                    lab_len = 0; pay_len = 0; ok = 1;
+                    for (k = 0; ok && k < gm->nseg; k++) {
+                        char *rl = rows[i + k];
+                        size_t rlen = strcspn(rl, "\r\n");
+                        if (strncmp(rl, "TEXT|", 5) == 0) {
+                            size_t tlen = (rlen > 5) ? rlen - 5 : 0;
+                            /* producer truncates seg text to 1023, and a
+                             * pipe would display uisan'd (/) in the row
+                             * but spaced in the group: either way the
+                             * group cannot reproduce this row. */
+                            if (tlen > 1023 || gm->segs[k].is_link ||
+                                memchr(rl + 5, '|', tlen)) { ok = 0; break; }
+                            memcpy(nb_scratch, rl + 5, tlen);
+                            nb_scratch[tlen] = 0;
+                            if (strcmp(nb_scratch, gm->segs[k].text) != 0) { ok = 0; break; }
+                            {
+                                char jb[1024];
+                                uisan(nb_scratch, jb, sizeof(jb));
+                                if (junk_visible_line(jb)) { ok = 0; break; }
+                            }
+                            lab_len += strlen(gm->segs[k].text);
+                            pay_len += 4 + 1 + strlen(gm->segs[k].text) + 1 + 1;
+                        } else {
+                            /* LINK|url|label, first-bar split exactly like
+                             * flush_rich_run() and the emit walk below. */
+                            char *rr = rl + 5;
+                            size_t rrest = (rlen > 5) ? rlen - 5 : 0;
+                            char *b2 = memchr(rr, '|', rrest);
+                            const char *up = rr;
+                            size_t ulen = b2 ? (size_t)(b2 - rr) : rrest;
+                            const char *lp = b2 ? b2 + 1 : rr;
+                            size_t llen = b2 ? rrest - ulen - 1 : rrest;
+                            /* lab_s[700] below truncates the displayed
+                             * label: a longer one would show MORE text in
+                             * the tinted span than in its own item row. A
+                             * pipe in the label would display uisan'd (/)
+                             * in the row but spaced in the group. */
+                            if (ulen > 4351 || llen > 699 || !gm->segs[k].is_link) { ok = 0; break; }
+                            if (b2 && memchr(lp, '|', llen)) { ok = 0; break; }
+                            memcpy(nb_scratch, up, ulen);
+                            nb_scratch[ulen] = 0;
+                            /* the emit walk renders a whitespace-URL link
+                             * as plain text and drops junk, fragment-only
+                             * and duplicate links: any of those means the
+                             * group cannot reproduce this run. No pipe can
+                             * be present (checked above), so the raw bytes
+                             * compare exactly as the walk's own collapse
+                             * check does. */
+                            if (strpbrk(nb_scratch, " \t\r\n")) { ok = 0; break; }
+                            memcpy(nb_scratch2, lp, llen);
+                            nb_scratch2[llen] = 0;
+                            if (strcmp(nb_scratch2, gm->segs[k].text) != 0 ||
+                                strcmp(nb_scratch, gm->segs[k].url) != 0) { ok = 0; break; }
+                            {
+                                char jb[1024];
+                                uisan(nb_scratch2, jb, sizeof(jb));
+                                if (junk_visible_line(jb)) { ok = 0; break; }
+                            }
+                            {
+                                const char *uu = nb_scratch;
+                                while (*uu == ' ') uu++;
+                                if (*uu == '#' || *uu == '\0') { ok = 0; break; }
+                            }
+                            {
+                                int k2;
+                                for (k2 = 0; k2 < k; k2++) {
+                                    char *r2 = rows[i + k2];
+                                    size_t r2len, ulen2, llen2;
+                                    const char *up2, *lp2;
+                                    char *b22;
+                                    if (strncmp(r2, "LINK|", 5) != 0) continue;
+                                    r2len = strcspn(r2, "\r\n");
+                                    if (r2len <= 5) continue;
+                                    b22 = memchr(r2 + 5, '|', r2len - 5);
+                                    up2 = r2 + 5;
+                                    ulen2 = b22 ? (size_t)(b22 - up2) : r2len - 5;
+                                    lp2 = b22 ? b22 + 1 : up2;
+                                    llen2 = b22 ? r2len - 5 - ulen2 - 1 : r2len - 5;
+                                    if (ulen2 == ulen && llen2 == llen &&
+                                        memcmp(up2, up, ulen) == 0 &&
+                                        memcmp(lp2, lp, llen) == 0) { ok = 0; break; }
+                                }
+                                if (!ok) break;
+                            }
+                            lab_len += strlen(gm->segs[k].text);
+                            pay_len += 4 + 1 + strlen(gm->segs[k].text) + 1 + strlen(gm->segs[k].url) + 1;
+                        }
+                    }
+                    if (!ok) continue;
+                    /* A group arms at most one label/payload pair: two
+                     * identical runs in one paragraph share it. */
+                    if (!gm->label) {
+                        /* size caps: the frame round-trip line is 9000
+                         * bytes and the var-loader line is 16384 - stay
+                         * far under both, or the row truncates mid-payload
+                         * and the whole row misparses. Overlong runs
+                         * render plain. */
+                        if (lab_len > 1500 || pay_len > 3000) continue;
+                        label = malloc(lab_len + 1);
+                        payload = malloc(pay_len + 1);
+                        if (!label || !payload) { free(label); free(payload); continue; }
+                        {
+                            char *lw = label, *pw = payload;
+                            for (k = 0; k < gm->nseg; k++) {
+                                size_t tl = strlen(gm->segs[k].text);
+                                size_t ul = strlen(gm->segs[k].url);
+                                memcpy(lw, gm->segs[k].text, tl); lw += tl;
+                                if (k) *pw++ = '\x1e';
+                                memcpy(pw, gm->segs[k].is_link ? "link" : "text", 4); pw += 4;
+                                *pw++ = '\x1f';
+                                memcpy(pw, gm->segs[k].text, tl); pw += tl;
+                                *pw++ = '\x1f';
+                                memcpy(pw, gm->segs[k].url, ul); pw += ul;
+                            }
+                            *lw = 0; *pw = 0;
+                        }
+                        /* whole-paragraph junk: today's TEXT rows would
+                         * each drop, so the rich row must drop too. Label
+                         * stored uisan'd, exactly like the TEXT branch
+                         * emits. Payload stays RAW: the template splice
+                         * escapes it and apply_attr decodes it back. */
+                        {
+                            char jl[1600];
+                            uisan(label, jl, sizeof(jl));
+                            if (junk_visible_line(jl)) { free(label); free(payload); continue; }
+                            free(label);
+                            label = strdup(jl);
+                            if (!label) { free(payload); continue; }
+                        }
+                        gm->label = label; gm->payload = payload;
+                    }
+                    nb_row_rich[i] = (int)(gm - nb_rg);
+                }
+            }
             /* PROJECTION WINDOW (2026-10-08). The renderer turns each
              * content row into one layout element, and its pool is
              * MAX_ELEMS (1024) for the WHOLE window - chrome included.
@@ -5191,6 +5532,9 @@ static void write_ui_projection(void) {
              * belong to; the projector carries the selector forward so each
              * rendered row can offer a real DOM click. */
             char pending_sel[96] = "";
+            /* INLINE SPANS step 3: end index of the run a rich row just
+             * swallowed (TEXT rows below it suppress, LINK rows emit). */
+            int rich_until = -1;
             for (int ri = 0; ri < nrow && rc < NB_UI_ELEM_BUDGET; ri++) {
                 processed++;
                 char *line = rows[ri];
@@ -5216,6 +5560,27 @@ static void write_ui_projection(void) {
                     snprintf(click_action, sizeof(click_action),
                              "'%s/ops/nb_write_click.sh' 'click' '%s' 'click'\n",
                              g_package_dir, sel_sq);
+                }
+
+                /* INLINE SPANS step 3: run start verified against its
+                 * paragraph's RICH group in the pre-pass above. One
+                 * tinted sentence row for the whole run; the run's TEXT
+                 * rows suppress below (rich_until) while its LINK rows
+                 * still emit as items - their clicks stay live until
+                 * per-segment hit-testing lands. SEL breaks runs, so the
+                 * click_action here is exactly what the run's first TEXT
+                 * row would have carried. */
+                if (nb_row_rich && nb_row_rich[ri] >= 0 &&
+                    (strcmp(kind, "TEXT") == 0 || strcmp(kind, "LINK") == 0)) {
+                    NBRichGroup *gr = &nb_rg[nb_row_rich[ri]];
+                    int re = ri;
+                    while (re < nrow && nb_row_tl[re] && nb_row_para[re] == nb_row_para[ri]) re++;
+                    rich_until = re;
+                    UI_PUT("c_%d_kind=rich\nc_%d_is_rich=1\nc_%d_text=%s\n", rc, rc, rc, gr->label);
+                    UI_PUT("c_%d_segments=%s\n", rc, gr->payload);
+                    if (click_action[0]) UI_PUT("c_%d_sel=%s\nc_%d_click_action=%s", rc, pending_sel, rc, click_action);
+                    rc++;
+                    continue;
                 }
 
                 if (strcmp(kind, "TITLE") == 0) {
@@ -5502,6 +5867,8 @@ static void write_ui_projection(void) {
                      * time it reaches the row. */
                     UI_PUT("c_%d_kind=code\nc_%d_is_code=1\nc_%d_text=\"%s\"\n", rc, rc, rc, t);
                 } else if (strcmp(kind, "TEXT") == 0) {
+                    /* swallowed by a rich-paragraph row above */
+                    if (ri < rich_until) continue;
                     uisan(rest, t, sizeof(t));
                     /* Walker pass: drop wiki chrome / jump links even when they arrived via the worker RENDER rows, which bypass junk_visible_line() in the extractor. */
                     if (junk_visible_line(t)) continue;
@@ -5760,6 +6127,28 @@ static void write_ui_projection(void) {
                 rc++;
             }
             free(rows);
+            /* INLINE SPANS step 3: free the pre-pass above (NULL-safe -
+             * every path that skips it leaves these NULL). */
+            if (nb_rg) {
+                int gi, k;
+                for (gi = 0; gi < nb_nrg; gi++) {
+                    if (nb_rg[gi].segs) {
+                        for (k = 0; k < nb_rg[gi].nseg; k++) {
+                            free(nb_rg[gi].segs[k].text);
+                            free(nb_rg[gi].segs[k].url);
+                        }
+                        free(nb_rg[gi].segs);
+                    }
+                    free(nb_rg[gi].label);
+                    free(nb_rg[gi].payload);
+                }
+                free(nb_rg);
+            }
+            free(nb_row_para);
+            free(nb_row_rich);
+            free(nb_row_tl);
+            free(nb_scratch);
+            free(nb_scratch2);
             }
         }
         if (total_rows > processed) dropped_rows = total_rows - processed;

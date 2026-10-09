@@ -1,17 +1,14 @@
 #!/bin/bash
-# nb_span_test.sh - pins the INLINE SPAN grouping contract.
+# nb_span_test.sh - pins the INLINE SPAN grouping contract AND the
+# projector encoder (phase 2 step 3).
 #
-# The rich-span rows (RICH/RICHSEG) are still inert - the renderer half has
-# not landed - so nothing on screen depends on them yet. That is exactly why
-# they are worth pinning NOW: the renderer will be built on this grouping, and
-# a wrong grouping would surface much later as a baffling layout bug.
+# Grouping (page.state RICH/RICHSEG rows): one span group == ONE paragraph,
+# surrounding text kept on both sides of the link, linkless paragraphs
+# produce nothing, PARA markers never reach the projection.
 #
-# The contract, from 2026-10-07-INLINE-SPANS-DESIGN.md:
-#   1. one span group == ONE paragraph (never two welded together)
-#   2. a paragraph containing a link keeps its surrounding text in the SAME
-#      group, on both sides of the link
-#   3. a paragraph with no link produces no group at all
-#   4. PARA| markers never reach the projection (they cost zero elements)
+# Encoder (ui.txt c_* rows): a verified group becomes one is_rich row
+# carrying the exact segments= wire payload, the run's TEXT pieces are
+# swallowed, and the LINK row stays a clickable item.
 #
 # Usage: sh nb_span_test.sh    (needs a running network browser)
 set -u
@@ -50,10 +47,19 @@ else
 fi
 # whole-line exact match: every segment line ends with the '|' field
 # separator, so an anchored regex reading "for more.$" never matches.
-if grep -Fxq 'RICHSEG|text|See the|' "$PF" && grep -Fxq 'RICHSEG|text|for more.|' "$PF"; then
+# (2026-10-09: boundary spaces are sentence content - the extractor keeps
+# exactly one at an inline-<a> split, so the pieces rejoin whole.)
+if grep -Fxq 'RICHSEG|text|See the |' "$PF" && grep -Fxq 'RICHSEG|text| for more.|' "$PF"; then
     echo "PASS: text kept on BOTH sides of the link, same group"
 else
     echo "FAIL: text around the link was dropped or split"; FAIL=1
+fi
+# the group is stamped with its paragraph number (projector matches by
+# number, not position - the 2026-10-09 RICH|3|7 mis-stamp).
+if grep -Eq '^RICH\|[0-9]+\|[0-9]+$' "$PF"; then
+    echo "PASS: group carries its paragraph number"
+else
+    echo "FAIL: group has no paragraph stamp"; FAIL=1
 fi
 
 # 3: the two linkless paragraphs must NOT appear as groups.
@@ -69,6 +75,46 @@ if grep -q 'PARA' "$UI" 2>/dev/null; then
     echo "FAIL: PARA marker leaked into the projection (costs an element)"; FAIL=1
 else
     echo "PASS: PARA markers cost zero projection elements"
+fi
+
+echo "== rich projection in ui.txt (encoder)"
+# the verified group becomes one is_rich row ...
+RICHN="$(grep -E '^c_[0-9]+_is_rich=1$' "$UI" 2>/dev/null | head -1 | sed 's/^c_\([0-9]*\)_.*/\1/')"
+if [ -n "$RICHN" ] \
+    && grep -Fxq "c_${RICHN}_kind=rich" "$UI" \
+    && grep -Fxq "c_${RICHN}_text=See the docs for more." "$UI"; then
+    echo "PASS: verified group emitted as one rich sentence row"
+else
+    echo "FAIL: no rich sentence row in the projection"; FAIL=1
+fi
+# ... carrying the exact wire payload: kind \x1F text \x1F url per
+# segment, segments joined by \x1E (the renderer decodes this).
+if [ -n "$RICHN" ]; then
+    FS="$(printf '\037')"; RS="$(printf '\036')"
+    EXPECTED="text${FS}See the ${FS}${RS}link${FS}docs${FS}https://example.com${RS}text${FS} for more.${FS}"
+    SEGVAL="$(grep -E "^c_${RICHN}_segments=" "$UI" | head -1 | sed "s/^c_${RICHN}_segments=//")"
+    if [ "$SEGVAL" = "$EXPECTED" ]; then
+        echo "PASS: segments payload is byte-exact"
+    else
+        echo "FAIL: segments payload mismatch (got [$SEGVAL])"; FAIL=1
+    fi
+fi
+# ... the run's TEXT pieces are swallowed (no standalone piece rows) ...
+if grep -Eq '^c_[0-9]+_text=See the $' "$UI" 2>/dev/null \
+    || grep -Eq '^c_[0-9]+_text= for more\.$' "$UI" 2>/dev/null; then
+    echo "FAIL: run TEXT pieces still projected alongside the rich row"; FAIL=1
+else
+    echo "PASS: run TEXT pieces swallowed by the rich row"
+fi
+# ... and the LINK row stays a clickable item (clicks live until
+# per-segment hit-testing lands).
+LINKN="$(grep -E '^c_[0-9]+_text=docs$' "$UI" 2>/dev/null | head -1 | sed 's/^c_\([0-9]*\)_.*/\1/')"
+if [ -n "$LINKN" ] \
+    && grep -Fxq "c_${LINKN}_kind=link" "$UI" \
+    && grep -Eq "^c_${LINKN}_action=.*nb_write_go\.sh" "$UI"; then
+    echo "PASS: link row kept as a clickable item"
+else
+    echo "FAIL: link item row missing or not clickable"; FAIL=1
 fi
 
 echo

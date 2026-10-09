@@ -78,6 +78,14 @@
         <repeat count="${content_count}" bind="c">
 <text id="ct${c.#}" class="page-title" label="${c.text}" action="${c.click_action}"        show="${c.is_title}"/>
           <text id="cx${c.#}" class="nb-text"                   label="${c.text}" action="${c.click_action}"        show="${c.is_text}"/>
+          <!-- 2026-10-09: inline clickable spans, phase 2 step 3. One
+               verified RICH paragraph renders as a single sentence row;
+               link segments draw tinted via segments= (see
+               khtpm_render_core.c's Elem.segments). LINK item rows for the
+               same run still emit, so clicks stay live until per-segment
+               hit-testing lands. Rows without segments= take the
+               proven-inert path - every other row is byte-identical. -->
+          <text id="cr${c.#}" class="nb-rich" label="${c.text}" segments="${c.segments}" action="${c.click_action}" show="${c.is_rich}"/>
           <!-- 2026-10-07: <pre> blocks keep their line structure and
                indentation (CODE rows, one per source line) instead of
                being collapsed into one run-on line. -->

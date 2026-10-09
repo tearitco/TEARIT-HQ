@@ -109,7 +109,7 @@ else
     # 3. THE regression: content_count>0 must mean a NON-EMPTY pane
     printf '112\n' >> "$HR/#.desktop/entity_menu_history/$PID.txt"
     sleep 2
-    ROWS="$(grep -cE '\|(nb-text|nb-list|nb-trow|nb-link|nb-title)' "$FRAME" 2>/dev/null || echo 0)"
+    ROWS="$(grep -cE '\|(nb-text|nb-list|nb-trow|nb-link|nb-title|nb-rich)' "$FRAME" 2>/dev/null || echo 0)"
     echo "  content rows in frame: $ROWS"
     if [ "$ROWS" -gt 0 ]; then
         echo "PASS: frame is not blank"
