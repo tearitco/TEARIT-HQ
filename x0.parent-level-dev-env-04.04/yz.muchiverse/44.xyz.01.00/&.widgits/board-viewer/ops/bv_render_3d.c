@@ -1409,8 +1409,10 @@ static void load_phymoji_world_entities(const char *root) {
      * default_current_z() is the stable "where the world's ground is" (one below the hero's own z), not the
      * viewed slice. (Still follows the hero if the hero itself changes level; a per-entity z belongs in the
      * page row and is the real fix - see 18.pc-hq/IN-GAME-LAYOUTS-PLAN.md part 3 note.) */
-    int z = default_current_z(root);
     int desk_page = house_root[0] && page_bound_pdl(house_root, bound, sizeof(bound)) > 0;
+    /* A desk page is ONE floor layer (index 0), so its entities stand on top of it (z = 1). default_current_z() is the chunk
+     * world's ground (hero pos_z - 1 = 16): used for a desk page it left every entity 16 voxels above the floor. */
+    int z = desk_page ? 1 : default_current_z(root);
     if (!desk_page && page_named_cells(house_root, "tree_small", xs, ys, 16) > 0)
         place_page_phymoji(root, "tree_small", z);
     else if (!desk_page)
@@ -2762,9 +2764,18 @@ static int render_one_frame(void) {
         memset(board3d, '_', sizeof(board3d));
         board_w = 16;
         board_h = 16;
+        {   /* the floor covers the page: at least 16x16, wider/taller when a row sits further out (pgr_extent) */
+            int mx = 0, my = 0;
+            if (pgr_extent(house_root, &mx, &my)) {
+                if (mx + 1 > board_w) board_w = mx + 1;
+                if (my + 1 > board_h) board_h = my + 1;
+            }
+            if (board_w > MAX_BOARD_DIM) board_w = MAX_BOARD_DIM;
+            if (board_h > MAX_BOARD_DIM) board_h = MAX_BOARD_DIM;
+        }
         z_count = 1;
-        for (int row = 0; row < 16; row++)
-            for (int col = 0; col < 16; col++)
+        for (int row = 0; row < board_h; row++)
+            for (int col = 0; col < board_w; col++)
                 board3d[0][row][col] = '.';
     } else {
         z_count = load_voxel_chunk(focused_project_root, board3d, &board_w, &board_h);
@@ -2819,6 +2830,10 @@ static int render_one_frame(void) {
     load_entities(focused_project_root);
     load_xelector(focused_project_root);
     load_hero(focused_project_root);
+    if (desk_page) {   /* one floor layer: the cursor stands in the air tile just above it (z = 1) */
+        if (g_xelector_present) g_xelector_z = 1;
+        if (g_hero_present) g_hero_z = 1;
+    }
 
     /* Real hero phymoji model - "hero_humanoid" is today's real, fixed
      * placeholder source asset (direct instruction: "use the humanoid

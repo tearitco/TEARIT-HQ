@@ -821,8 +821,17 @@ int main(void) {
         memset(g_board, 0, sizeof(g_board));
         g_bw = 16;
         g_bh = 16;
-        for (int y = 0; y < 16; y++)
-            for (int x = 0; x < 16; x++)
+        {   /* the floor covers the page (pgr_extent), not a fixed 16x16 */
+            int mx = 0, my = 0;
+            if (pgr_extent(house_root, &mx, &my)) {
+                if (mx + 1 > g_bw) g_bw = mx + 1;
+                if (my + 1 > g_bh) g_bh = my + 1;
+            }
+            if (g_bw > MAX_DIM) g_bw = MAX_DIM;
+            if (g_bh > MAX_DIM) g_bh = MAX_DIM;
+        }
+        for (int y = 0; y < g_bh; y++)
+            for (int x = 0; x < g_bw; x++)
                 g_board[y][x] = '.';
         side_zcount = 1;
     } else if (side_mode) {
