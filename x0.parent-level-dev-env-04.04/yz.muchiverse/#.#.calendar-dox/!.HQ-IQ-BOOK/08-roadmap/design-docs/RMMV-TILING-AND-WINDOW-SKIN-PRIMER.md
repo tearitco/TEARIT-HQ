@@ -172,6 +172,42 @@ one-row skin.
 The two widths differ by `4 * B` and by nothing else. There is no
 half block.
 
+## The look is the whole MV window, including the font
+
+Owner, 2026-10-09: the bars are not a tile skin dropped on the current
+house type. When the setting is on, the taskbar, the x11-hq menus, and
+the other screens that use those bars should look as if they were built
+from RPG Maker MV assets. That includes the font.
+
+Checked in `rpg_windows.js` (`Window_Base`, same MV tree as the core
+file above):
+
+| What | MV value |
+| --- | --- |
+| `standardFontFace` | `GameFont` (SimHei / Heiti TC when the system is Chinese, Dotum / AppleGothic when Korean) |
+| `standardFontSize` | 28 |
+| `lineHeight` | 36 |
+| `standardPadding` | 18 |
+| `textPadding` | 6 |
+| `standardBackOpacity` | 192 |
+
+`GameFont` is the face MV ships as `fonts/gamefont.css` pointing at
+`GameFont.ttf` (the RTP mplus face). **Unsure:** that css and the ttf
+were not opened in this pass. The numbers above were read from the JS.
+
+When `bar_skin` is set, labels inside those bars use that face at 28px,
+with 6px of text padding inside the 18px window padding, and a line
+height of 36. The block grid still decides the bar size. The font does
+not stretch the tiles. A label that does not fit grows the bar by whole
+middle blocks, or clips, once the owner picks which. It does not switch
+to the house UI font to squeeze in.
+
+When `bar_skin` is empty, the house font (`hq_ui.pdl` `font_family` and
+`font_scale`) stays as it is. Item 22 is still the only switch.
+
+This is a skin for bars and their labels. It is not a port of MV's
+`Window_Menu` command list, gold window, or scene stack.
+
 ## Settings
 
 Still only HQ item 22 (`livedesk:open-settings`). Proposed key in

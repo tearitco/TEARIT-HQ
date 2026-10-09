@@ -1,5 +1,10 @@
 # Tiled bars from RPG Maker tiles — task — 2026-10-09
 
+Superseded for the paint and the type by
+`RMMV-TILING-AND-WINDOW-SKIN-PRIMER.md` in this folder. Bars are whole
+blocks, not a stretched tile. When the setting is on, labels use MV
+`GameFont` at 28px (line height 36). Off restores the house font.
+
 Status: researched, not wired into the renderer. The live taskbar and
 the x11-hq menus stay on solid fills until this is built and the
 setting is turned on. A throwaway visual is
