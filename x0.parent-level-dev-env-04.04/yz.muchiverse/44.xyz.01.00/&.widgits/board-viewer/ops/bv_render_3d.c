@@ -3076,6 +3076,20 @@ static int render_one_frame(void) {
     if (lighting_enabled) clear_sky(game_light_level_sky);
     else { for (int yy = 0; yy < g_fh; yy++) for (int xx = 0; xx < g_fw; xx++) { unsigned char *p = FB(xx, yy); p[0]=135; p[1]=180; p[2]=220; p[3]=255; } }
 
+    /* Distance fog (owner 2026-10-08, "show things in the distance like GTA"): #.desktop/hq_ui.pdl view_fog_start / view_fog_end in
+     * cells; hits between them fade to the sky colour, beyond fog_end they are all sky colour. 0 / absent = off. Same two numbers
+     * drive the GPU shader (u_fog_*) and this CPU loop. */
+    double fog_start = 0, fog_end = 0;
+    unsigned char fog_sky[3] = {135, 180, 220};
+    if (house_root[0]) {
+        char hqp[PATH_BUF];
+        snprintf(hqp, sizeof(hqp), "%s/#.desktop/hq_ui.pdl", house_root);
+        fog_start = (double)read_kv_int(hqp, "view_fog_start", 0);
+        fog_end   = (double)read_kv_int(hqp, "view_fog_end", 0);
+        if (fog_start < 0) fog_start = 0;
+    }
+    { unsigned char *fp = FB(g_fw / 2, g_fh / 2); fog_sky[0] = fp[0]; fog_sky[1] = fp[1]; fog_sky[2] = fp[2]; }   /* sky just filled, before any hit */
+
     CelestialBody sun_body = lighting_enabled ? load_celestial_body(focused_project_root, "sun_01") : (CelestialBody){0,0,0,0};
     CelestialBody moon_body = lighting_enabled ? load_celestial_body(focused_project_root, "moon_01") : (CelestialBody){0,0,0,0};
 
@@ -3265,6 +3279,7 @@ static int render_one_frame(void) {
         double ll = lighting_enabled ? game_light_level_sky : 1.0;
         if (ll < 0.15) ll = 0.15;
         sc.light_level = (float)ll;
+        sc.fog_start = (float)fog_start; sc.fog_end = (float)fog_end;
         { unsigned char *cp = FB(g_fw/2, g_fh/2);   /* clear_sky already ran */
           sc.sky[0]=cp[0]/255.0f; sc.sky[1]=cp[1]/255.0f; sc.sky[2]=cp[2]/255.0f; }
         /* boxes: xelector, sun, moon, entities, hero, world phymoji.
@@ -3960,6 +3975,15 @@ static int render_one_frame(void) {
             r = (unsigned char)(r * light_level);
             g = (unsigned char)(g * light_level);
             bl = (unsigned char)(bl * light_level);
+            if (fog_end > fog_start && best_t < 1e17) {   /* distance fog: same smoothstep as the GPU shader */
+                double ff = (best_t - fog_start) / (fog_end - fog_start);
+                if (ff < 0) ff = 0;
+                if (ff > 1) ff = 1;
+                ff = ff * ff * (3.0 - 2.0 * ff);
+                r  = (unsigned char)(r  + (fog_sky[0] - r)  * ff);
+                g  = (unsigned char)(g  + (fog_sky[1] - g)  * ff);
+                bl = (unsigned char)(bl + (fog_sky[2] - bl) * ff);
+            }
             /* block-fill the g_lod_step x g_lod_step cell this sample
              * covers (exactly one pixel when g_lod_step == 1). Sky
              * samples hit the `continue` above and keep the full-res

@@ -63,6 +63,7 @@ typedef struct {
     float light_level;           /* ground light 0..1 (ambient floor already applied) */
     float sky[3];                /* 0..1 */
 
+    float fog_start, fog_end;    /* distance fog in cells: hits fade to the sky colour between start and end; fog_end <= fog_start = off */
     float wire_edge, wire_thin;  /* edge half-widths in cells for wire 1 / wire 2; 0 = defaults (0.10 / 0.03) */
     int   box_n;
     BvGpuBox box[BV_GPU_MAX_BOX];

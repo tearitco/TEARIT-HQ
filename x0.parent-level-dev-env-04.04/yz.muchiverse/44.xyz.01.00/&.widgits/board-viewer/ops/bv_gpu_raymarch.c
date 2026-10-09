@@ -53,6 +53,7 @@ static const char *FS_SRC =
 "uniform vec4  u_lbbox[64];\n"     /* per-layer opaque bbox (u0,v0,u1,v1) in 0..1 */
 "uniform float u_light;\n"
 "uniform vec3  u_sky;\n"
+"uniform float u_fog_start, u_fog_end;\n"
 "uniform int   u_nbox;\n"
 "uniform float u_wire_edge;\n"
 "uniform float u_wire_thin;\n"
@@ -184,6 +185,7 @@ static const char *FS_SRC =
 "    if (face != 3) col *= 0.75;\n"   /* top = face 3 (Y slab, swapped case) - matches bv_render_3d CPU */
 "    col *= u_light;\n"
 "  }\n"
+"  if (hit && u_fog_end > u_fog_start) col = mix(col, u_sky, smoothstep(u_fog_start, u_fog_end, bestT));\n"
 "  o_col = vec4(clamp(col, 0.0, 1.0), 1.0);\n"
 "}\n";
 
@@ -199,7 +201,7 @@ static int        s_terr_alloc = 0;           /* terrain-array storage created *
 static int        s_mdl_alloc = 0;
 /* cached uniform locations (glGetUniformLocation is a string lookup) */
 static struct {
-    GLint eye, fwd, right, up, focal, res, wext, grid, leg, terr, lbbox, light, sky, nbox, bmin, bmax, bcol, bmdl, mdl, mdim, wire_edge, wire_thin;
+    GLint eye, fwd, right, up, focal, res, wext, grid, leg, terr, lbbox, light, sky, fog_start, fog_end, nbox, bmin, bmax, bcol, bmdl, mdl, mdim, wire_edge, wire_thin;
 } s_u;
 
 static GLuint compile(GLenum type, const char *src) {
@@ -310,7 +312,7 @@ static int gl_ensure_context(void) {
     s_u.eye=UL("u_eye"); s_u.fwd=UL("u_fwd"); s_u.right=UL("u_right"); s_u.up=UL("u_up");
     s_u.focal=UL("u_focal"); s_u.res=UL("u_res"); s_u.wext=UL("u_wext");
     s_u.grid=UL("u_grid"); s_u.leg=UL("u_leg"); s_u.terr=UL("u_terr"); s_u.lbbox=UL("u_lbbox");
-    s_u.light=UL("u_light"); s_u.sky=UL("u_sky");
+    s_u.light=UL("u_light"); s_u.sky=UL("u_sky"); s_u.fog_start=UL("u_fog_start"); s_u.fog_end=UL("u_fog_end");
     s_u.wire_edge=UL("u_wire_edge"); s_u.wire_thin=UL("u_wire_thin"); s_u.nbox=UL("u_nbox"); s_u.bmin=UL("u_bmin"); s_u.bmax=UL("u_bmax"); s_u.bcol=UL("u_bcol");
     s_u.bmdl=UL("u_bmdl"); s_u.mdl=UL("u_mdl"); s_u.mdim=UL("u_mdim");
     #undef UL
@@ -499,6 +501,8 @@ int bv_gpu_raymarch(const BvGpuScene *s, unsigned char *out) {
     glUniform1i (s_u.terr,  2);
     glUniform1f (s_u.light, s->light_level);
     glUniform3fv(s_u.sky,   1, s->sky);
+    glUniform1f(s_u.fog_start, s->fog_start);
+    glUniform1f(s_u.fog_end,   s->fog_end);
     {
         int nb = s->box_n; if (nb > BV_GPU_MAX_BOX) nb = BV_GPU_MAX_BOX; if (nb > 128) nb = 128;
         glUniform1i(s_u.nbox, nb);
