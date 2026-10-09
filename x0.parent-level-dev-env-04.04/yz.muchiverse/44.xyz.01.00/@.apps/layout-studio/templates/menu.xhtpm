@@ -1,0 +1,19 @@
+<!-- TEMPLATE menu: a title, three action rows, Close.
+     RULE 1: a window body is one sidebar (the clickable list) next to one panel (info text). Both are needed or nothing draws.
+     RULE 2: no angle brackets inside comments. Copy this file, change the labels and the action= commands.
+     An action= is a shell command line ('sh ...') or a dispatch verb. Every item gets a nav number automatically.
+     Check it with: layout_op check FILE -->
+<window label="${title}" class="ls-window database-window" vars="ui.txt">
+  <page name="main">
+    <sidebar id="side" class="sidebar">
+      <text label="${title}" class="ls-title"/>
+      <item id="a1" class="ls-row" label="${a1_label}" action="sh '${HOUSE}/TODO.sh' a1"/>
+      <item id="a2" class="ls-row" label="${a2_label}" action="sh '${HOUSE}/TODO.sh' a2"/>
+      <item id="a3" class="ls-row" label="${a3_label}" action="sh '${HOUSE}/TODO.sh' a3"/>
+      <item id="close" class="ls-row" label="Close" action="sh '${HOUSE}/TODO.sh' close"/>
+    </sidebar>
+    <panel id="info" class="ls-panel">
+      <text label="${hint}" class="ls-quiet"/>
+    </panel>
+  </page>
+</window>

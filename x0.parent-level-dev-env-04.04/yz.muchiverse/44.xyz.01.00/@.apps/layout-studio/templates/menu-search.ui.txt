@@ -1,0 +1,7 @@
+title=Pick food
+hint=Type to narrow the list.
+n_items=4
+r_0_label=Apple
+r_1_label=Bread
+r_2_label=Fish
+r_3_label=Cake

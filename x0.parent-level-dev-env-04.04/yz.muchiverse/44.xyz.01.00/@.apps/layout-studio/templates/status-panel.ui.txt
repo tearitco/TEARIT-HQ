@@ -1,0 +1,5 @@
+title=Pet status
+name=Pochi
+hunger=3
+hp=10
+state=Hungry

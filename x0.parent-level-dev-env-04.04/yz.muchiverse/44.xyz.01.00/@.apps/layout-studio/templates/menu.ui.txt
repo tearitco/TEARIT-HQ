@@ -1,0 +1,5 @@
+title=Pet menu
+a1_label=Feed
+a2_label=Status
+a3_label=Play
+hint=Pick an action on the left.

@@ -11,3 +11,14 @@ a layout (`.xhtpm`/`.chtpm`) safely.
   .chtpm, `cli_io` without `target_id` is only a warning).
 
 Next (strategy table): templates + `layout_op preview`, then `layout_op` CLI, manager scaffolds, then the studio window that loads a `.xhtpm` and edits it.
+
+## Templates and the pet generator (2026-10-09)
+
+- `templates/` has five starter layouts that pass `layout_check`: `menu`, `menu-search`, `hud-strip`, `confirm`, `status-panel`. Each has a sample
+  `<name>.ui.txt` (the manager keys it reads) and all share `template.css`. **A window body is one `<sidebar>` (the clickable list) next to one
+  `<panel>`; with only one of them nothing draws** (found by rendering). Use `class="... database-window"` on the `<window>` or it opens 264x42. No angle
+  brackets inside comments.
+- `ops/pet_gen.c` (`sh ops/build_pet_gen.sh`) generates an animated tamagotchi-style pet from a seed, no downloads: `pet_gen <out_dir> [seed] [pet.pdl]`
+  writes `obj/<anim>_<NN>.obj` + `pet.mtl` (idle, eat, hungry: 8 poses each, OBJ has no animation so play the numbered poses in order), 16x24 `sprites/*.rgba`,
+  `sprites_csv/<anim>_<NN>/sprite.csv` (what `<item sprite="DIR">` loads, verified in a window) and `sheet.png`. Pin colour/ears/size with `KEY | body_r | 230` rows.
+  No FBX yet (binary container); an ASCII-FBX exporter can reuse the same mesh list.

@@ -1,0 +1,15 @@
+<!-- TEMPLATE status-panel: read-only lines (name and value) plus a Back button. To add a line, add a text row and a key in ui.txt. -->
+<window label="${title}" class="ls-window database-window" vars="ui.txt">
+  <page name="main">
+    <sidebar id="side" class="sidebar">
+      <text label="${title}" class="ls-title"/>
+      <item id="back" class="ls-row" label="Back" action="sh '${HOUSE}/TODO.sh' back"/>
+    </sidebar>
+    <panel id="info" class="ls-panel">
+      <text label="Name: ${name}" class="ls-quiet"/>
+      <text label="Hunger: ${hunger}" class="ls-quiet"/>
+      <text label="HP: ${hp}" class="ls-quiet"/>
+      <text label="State: ${state}" class="ls-quiet"/>
+    </panel>
+  </page>
+</window>
