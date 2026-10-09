@@ -1,0 +1,3 @@
+#!/bin/sh
+# start_battle x=22 y=47 glyph=E
+exit 0

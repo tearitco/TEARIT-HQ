@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+ASSET        | name               | Freedoom Phase 1
+ASSET        | file               | freedoom1.wad
+ASSET        | version            | 0.13.0
+ASSET        | url                | https://github.com/freedoom/freedoom/releases/download/v0.13.0/freedoom-0.13.0.zip
+ASSET        | zip_sha256         | 3f9b264f3e3ce503b4fb7f6bdcb1f419d93c7b546f4df3e874dd878db9688f59
+ASSET        | wad_sha256         | 7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d
+ASSET        | license            | BSD-3-Clause
+ASSET        | license_file       | COPYING.txt
+ASSET        | on_disk            | #.NNEST_ASSETS/doom/freedoom1.wad
+NOTE         | load               | The File menu loads this book (game.pdl and the desk folders). It does not run a .py. Another player's project is the same shape: a folder of pals and events under pieces/system/maps/.
