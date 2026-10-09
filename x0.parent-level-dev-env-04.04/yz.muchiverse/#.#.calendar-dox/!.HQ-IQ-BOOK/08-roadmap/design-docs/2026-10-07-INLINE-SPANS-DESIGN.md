@@ -1,5 +1,11 @@
 # INLINE SPANS DESIGN — clickable links inside flowing sentences
 
+> **START HERE IF YOU ARE PICKING THIS UP:**
+> **`2026-10-08-INLINE-SPANS-PHASE2-HANDOFF.md`** — current state, the
+> uncommitted draw branch reproduced in full, the exact fixture recipe, and
+> the one-command blocker (screenshotting the right window). This document is
+> the original design and its phase ordering, which the handoff supersedes.
+
 **Status:** design only (2026-10-07). No code. Needs renderer + xhtpm
 contract work, so it waits for lane alignment — do NOT start building
 unilaterally.
