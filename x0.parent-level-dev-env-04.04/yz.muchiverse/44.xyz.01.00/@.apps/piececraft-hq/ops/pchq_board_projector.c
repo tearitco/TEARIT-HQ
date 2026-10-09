@@ -805,7 +805,21 @@ int main(int argc, char **argv) {
          * exactly one fake row). Re-reads game.pdl's desk_N_id/
          * desk_N_label rows (same n_desks computed above) so every
          * declared desk shows up as its own clickable row. */
-        off += (size_t)snprintf(ui + off, UIBUF - off, "n_desk_opts=%d\n", n_desks);
+        /* Desk search: the Desk dropdown's search field (cli_io dm-search, target_id tb-desk) is live-synced by the renderer to
+         * <pkg>/cli_io_state.txt as `tb-desk=<typed text>` on every keystroke. Only desks whose label contains that text
+         * (case-insensitive) are published, so the dropdown narrows as the owner types; empty = the full list. desk_first_id
+         * (the first match) is what the field's Enter action opens. */
+        char desk_q[64] = "", desk_q_lc[64] = "", desk_first_id[64] = "";
+        {
+            char qpath[PATH_MAX];
+            snprintf(qpath, sizeof(qpath), "%s/cli_io_state.txt", pkg);
+            read_kv(qpath, "tb-desk", desk_q, sizeof(desk_q));
+            for (size_t qi = 0; desk_q[qi] && qi < sizeof(desk_q_lc) - 1; qi++)
+                desk_q_lc[qi] = (desk_q[qi] >= 'A' && desk_q[qi] <= 'Z') ? (char)(desk_q[qi] + 32) : desk_q[qi];
+        }
+        size_t off_n = off;                              /* n_desk_opts is written after the matches are counted */
+        off += (size_t)snprintf(ui + off, UIBUF - off, "n_desk_opts=000\n");
+        int n_shown = 0;
         for (int di = 1; di <= n_desks; di++) {
             char k_id[32], k_lbl[32];
             snprintf(k_id, sizeof(k_id), "desk_%d_id", di);
@@ -815,11 +829,23 @@ int main(int argc, char **argv) {
             read_pdl_kv(game_pdl, k_lbl, d_lbl, sizeof(d_lbl));
             if (!d_id[0]) snprintf(d_id, sizeof(d_id), "desk%d", di);
             if (!d_lbl[0]) snprintf(d_lbl, sizeof(d_lbl), "Page %d", di);
+            if (desk_q_lc[0]) {
+                char lbl_lc[64];
+                size_t li = 0;
+                for (; d_lbl[li] && li < sizeof(lbl_lc) - 1; li++)
+                    lbl_lc[li] = (d_lbl[li] >= 'A' && d_lbl[li] <= 'Z') ? (char)(d_lbl[li] + 32) : d_lbl[li];
+                lbl_lc[li] = '\0';
+                if (!strstr(lbl_lc, desk_q_lc)) continue;
+            }
+            if (!n_shown) snprintf(desk_first_id, sizeof(desk_first_id), "%s", d_id);
             off += (size_t)snprintf(ui + off, UIBUF - off,
                 "d_%d_id=%s\nd_%d_label=%s\nd_%d_active=%s\n",
-                di - 1, d_id, di - 1, d_lbl, di - 1,
+                n_shown, d_id, n_shown, d_lbl, n_shown,
                 strcmp(d_id, active_desk_id) == 0 ? "pchq-menu-active" : "");
+            n_shown++;
         }
+        { char cnt[16]; snprintf(cnt, sizeof(cnt), "%03d", n_shown > 999 ? 999 : n_shown); memcpy(ui + off_n + strlen("n_desk_opts="), cnt, 3); }
+        off += (size_t)snprintf(ui + off, UIBUF - off, "desk_first_id=%s\n", desk_first_id);
 
         /* MILESTONE C - the <footer> entities bar */
         {

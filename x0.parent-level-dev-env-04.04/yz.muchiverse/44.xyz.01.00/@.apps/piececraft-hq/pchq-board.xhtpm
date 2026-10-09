@@ -86,6 +86,12 @@
       </repeat>
       <item id="dm-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-desk"
             label="- cancel -" action="void"/>
+      <!-- Desk search (owner 2026-10-09): pinned under "- cancel -". Typing is live-synced to cli_io_state.txt as tb-desk=<text>
+           (the field's state key is its target_id); pchq_board_projector narrows the published desk rows to labels containing it
+           and publishes desk_first_id = the first match, which Enter opens (same pchq_board_action.sh desk verb as a row click).
+           The dropdown jumps nav focus here when it opens. Empty text = full list; empty desk_first_id = the script exits. -->
+      <cli_io id="dm-search" target_id="tb-desk" class="pchq-menu-row dropdown-child" label="search: "
+              action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'desk' '${desk_first_id}'"/>
       <item id="mn-entbar" class="pchq-menu-row dropdown-child" target_id="tb-menu"
             label="Entities bar on/off"
             action="sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_toggle_pdl_opt.sh' '${HOUSE}/@.apps/piececraft-hq/pieces/system/pchq.pdl' 'entities_bar'"/>

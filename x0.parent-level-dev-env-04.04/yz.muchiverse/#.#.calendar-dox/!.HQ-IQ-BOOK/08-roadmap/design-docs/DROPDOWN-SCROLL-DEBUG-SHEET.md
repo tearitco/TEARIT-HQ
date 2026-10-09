@@ -52,3 +52,14 @@ never change.
 - Dragging with the pointer outside the menu window (pc-hq keeps following across the screen; livedesk was not investigated).
 - Entity context menus (`khtpm_entity.c`) still have their own scroll-less path (step 3 of the refactor).
 - Narrow in-window menu wraps long labels onto two lines.
+
+## Desk search field (2026-10-09, pc-hq Desk dropdown)
+`pchq-board.xhtpm` row `dm-search` is a `cli_io` with `class="dropdown-child"` and `target_id="tb-desk"`, placed directly under `dm-cancel`.
+- Layout: `mw_plan_pin(m,total,cap,pin,&scroll)` pins the last `pin` rows (cancel + search = 2); the generic overlay sets `pin=2` when the
+  group's last child is a `cli_io`. `mw_plan` = pin 1 (dock menus unchanged). Tested with asserts + mutant (scratch test, not kept).
+- Typing is live-synced by the renderer to `@.apps/piececraft-hq/cli_io_state.txt` as `tb-desk=<text>` (the state key is the field's
+  target_id). `pchq_board_projector.c` (300 ms loop) publishes only desks whose label contains it (case-insensitive) and
+  `desk_first_id`; Enter runs `pchq_board_action.sh <session> desk ${desk_first_id}` (empty id = the script exits).
+- Opening the dropdown jumps nav focus to the search field once (`s_dd_jump`). The field is focused, not armed: Enter arms it.
+- Proof: XO/15.GROCT/pchq-desk-search-field-map022-maker-view.png (a no-match query leaves only cancel + search).
+- Window lookup trap: khtpm windows have NO X name - `xwininfo ... | grep name` finds nothing; select by size (>=1000x600).

@@ -14,14 +14,15 @@
 #ifndef KHTPM_MENU_WINDOW_C
 #define KHTPM_MENU_WINDOW_C
 
-typedef struct { int scrolling, vis, total, max_sc; } MwPlan;
+typedef struct { int scrolling, vis, total, max_sc, pin; } MwPlan;   /* pin = trailing rows that never scroll (default 1: "- cancel -") */
 
-static void mw_plan(MwPlan *m, int total, int cap, int *scroll) {
-    m->total = total; m->scrolling = 0; m->vis = total; m->max_sc = 0;
-    if (total > cap && cap >= 3) {
+static void mw_plan_pin(MwPlan *m, int total, int cap, int pin, int *scroll) {
+    if (pin < 1) pin = 1;
+    m->total = total; m->scrolling = 0; m->vis = total; m->max_sc = 0; m->pin = pin;
+    if (total > cap && cap >= pin + 2) {
         m->scrolling = 1;
-        m->vis = cap - 1;                       /* content rows shown; one slot is the pinned last row */
-        m->max_sc = (total - 1) - m->vis;
+        m->vis = cap - pin;                     /* content rows shown; the last `pin` slots are the pinned trailing rows */
+        m->max_sc = (total - pin) - m->vis;
     }
     if (scroll) {
         if (*scroll > m->max_sc) *scroll = m->max_sc;
@@ -29,15 +30,17 @@ static void mw_plan(MwPlan *m, int total, int cap, int *scroll) {
     }
 }
 
+static void mw_plan(MwPlan *m, int total, int cap, int *scroll) { mw_plan_pin(m, total, cap, 1, scroll); }
+
 static int mw_slot(const MwPlan *m, int idx, int scroll) {
     if (!m->scrolling) return idx;
-    if (idx == m->total - 1) return m->vis;
+    if (idx >= m->total - m->pin) return m->vis + (idx - (m->total - m->pin));   /* pinned trailing rows keep their order below the window */
     if (idx >= scroll && idx < scroll + m->vis) return idx - scroll;
     return -1;
 }
 
 static void mw_thumb(const MwPlan *m, int track_h, int scroll, int *ty, int *th) {
-    int content = m->total - 1, h, y;
+    int content = m->total - m->pin, h, y;
     if (content < 1 || track_h < 1) { *ty = 0; *th = track_h; return; }
     h = (track_h * m->vis) / content;
     if (h < 14) h = 14;
@@ -47,7 +50,7 @@ static void mw_thumb(const MwPlan *m, int track_h, int scroll, int *ty, int *th)
 }
 
 static int mw_scroll_from_y(const MwPlan *m, int track_h, int y) {
-    int content = m->total - 1, h, span, sc;
+    int content = m->total - m->pin, h, span, sc;
     if (!m->scrolling || m->max_sc < 1 || track_h < 1 || content < 1) return 0;
     h = (track_h * m->vis) / content;
     if (h < 14) h = 14;

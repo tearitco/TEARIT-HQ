@@ -142,6 +142,8 @@ static pid_t g_khtpm_menu_pid; /* fwd - hq_idle_tick() reaps this; real definiti
 static int kh_key_history_code(KeySym ks, char ch); /* fwd - handle_key()'s interact-relay forward uses it before its real definition, near kh_capture_key */
 static void desktop_toggle_click_two_step(const char *house_root); /* fwd - dispatch()'s CLICK_TWOSTEP_TOGGLE handler uses it before its real definition, near desktop_load_click_two_step */
 static void desktop_set_font_scale(const char *house_root, int pct); /* fwd - dispatch()'s UI_SCALE_MINUS/PLUS handlers */
+static void desktop_set_grid_cell(const char *house_root, int px); /* fwd - GRID_CELL_MINUS/PLUS, desk_grid.pdl cell_px */
+static int read_grid_cell_px(const char *house_root);
 static void desktop_set_bar_skin(const char *house_root, const char *id); /* fwd - BAR_SKIN_SET: */
 static void desktop_cycle_bar_skin(const char *house_root, int dir); /* fwd - dispatch()'s BAR_SKIN_NEXT/PREV */
 static void desktop_set_font_family(const char *house_root, const char *name); /* fwd - dispatch()'s UI_FONT_FAMILY_NEXT/PREV handlers */
@@ -5631,7 +5633,8 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
          * scrollbar's own (thumb, ^/v arrows, wheel, Page_Up/Down). One dropdown is open at a time. */
         static int s_dd_scroll = 0;
         static char s_dd_open_target[64] = "";
-        int grp_n = 0, dd_scrolling = 0, dd_vis = 0;
+        static int s_dd_jump = 0;     /* 1 = a dropdown just opened: land nav focus on its search field (cli_io), once */
+        int grp_n = 0, dd_scrolling = 0, dd_vis = 0, dd_pin = 1;
         MwPlan dd_plan;
         memset(&dd_plan, 0, sizeof(dd_plan));
         for (int i = 0; i < container->n_children; i++) {
@@ -5643,18 +5646,19 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
                  strcmp(g_default_active_scope_id, trigger->id) == 0));
             if (strcmp(last_target, c->target_id) != 0) {
                 stack_n = 0; snprintf(last_target, sizeof(last_target), "%s", c->target_id);
-                grp_n = 0; dd_scrolling = 0; dd_vis = 0;
+                grp_n = 0; dd_scrolling = 0; dd_vis = 0; dd_pin = 1;
                 for (int j = i; j < container->n_children; j++) {
                     Elem *g = container->children[j];
                     if (!elem_has_class(g, "dropdown-child") || strcmp(g->target_id, c->target_id) != 0) break;
                     grp_n++;
+                    if (strcmp(g->tag, "cli_io") == 0 && grp_n >= 2) dd_pin = 2;   /* "- cancel -" then a search field: both stay pinned */
                 }
                 if (open) {
-                    if (strcmp(s_dd_open_target, c->target_id) != 0) { s_dd_scroll = 0; snprintf(s_dd_open_target, sizeof(s_dd_open_target), "%s", c->target_id); }
+                    if (strcmp(s_dd_open_target, c->target_id) != 0) { s_dd_scroll = 0; s_dd_jump = (dd_pin == 2); snprintf(s_dd_open_target, sizeof(s_dd_open_target), "%s", c->target_id); }
                     {
                         int cap_rows = (g_win_h - (trigger->y + trigger->h) - 10) / ROW_H;
                         if (g_dropdown_max_rows >= 3 && g_dropdown_max_rows < cap_rows) cap_rows = g_dropdown_max_rows;   /* hq_ui.pdl dropdown_max_rows */
-                        mw_plan(&dd_plan, grp_n, cap_rows, &s_dd_scroll);
+                        mw_plan_pin(&dd_plan, grp_n, cap_rows, dd_pin, &s_dd_scroll);
                     }
                     dd_scrolling = dd_plan.scrolling; dd_vis = dd_plan.vis;
                 } else if (strcmp(s_dd_open_target, c->target_id) == 0) {
@@ -5677,12 +5681,13 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
                 c->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = c;
                 if (!g_dock_drop_lo) g_dock_drop_lo = c->nav_index;
                 g_dock_drop_hi = c->nav_index;
+                if (s_dd_jump && strcmp(c->tag, "cli_io") == 0) { g_focus_nav = c->nav_index; s_dd_jump = 0; }   /* open -> focus lands on the search field */
             } else {
                 c->x = x; c->y = -100000; c->w = 0; c->h = 0; c->nav_index = 0;
             }
             if (open && dd_scrolling && stack_n == grp_n - 1)
                 generic_sbar_register(trigger->x, trigger->y + trigger->h, dw + 66, dd_vis * ROW_H, &s_dd_scroll,
-                                      grp_n - 1, dd_vis, dd_plan.max_sc);
+                                      grp_n - dd_plan.pin, dd_vis, dd_plan.max_sc);
             stack_n++;
         }
     }
@@ -9004,6 +9009,19 @@ static void dispatch(const char *action) {
         write_theme_opacity(opacity);
         set_window_opacity(dpy, win, opacity);
         redraw();
+        return;
+    }
+    if (strcmp(action, "GRID_CELL_MINUS") == 0 || strcmp(action, "GRID_CELL_PLUS") == 0) {
+        /* desk_grid.pdl cell_px. 80 and 24 are two values of this one
+         * number. Step 8 so both are reachable. Open windows keep their
+         * current pixel positions; the next snap and the map view use
+         * the new size. */
+        int v = read_grid_cell_px(g_house_root);
+        v += (action[10] == 'P') ? 8 : -8;
+        if (v < 16) v = 16;
+        if (v > 160) v = 160;
+        desktop_set_grid_cell(g_house_root, v);
+        if (!g_quit) { assign_nav_and_layout(); redraw(); }
         return;
     }
     if (strcmp(action, "UI_SCALE_MINUS") == 0 || strcmp(action, "UI_SCALE_PLUS") == 0) {
@@ -15688,6 +15706,30 @@ static int read_grid_cell_px(const char *house_root) {
     }
     fclose(f);
     return result;
+}
+
+/* Settings +/- writes this same row. 16..160, step 8. Does not move
+ * windows that are already open. */
+static void desktop_set_grid_cell(const char *house_root, int px) {
+    if (px < 16) px = 16;
+    if (px > 160) px = 160;
+    char path[TP_PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/desk_grid.pdl", house_root);
+    char lines[32][256];
+    int n = 0, replaced = 0;
+    FILE *f = fopen(path, "r");
+    if (f) { while (n < 32 && fgets(lines[n], sizeof(lines[n]), f)) n++; fclose(f); }
+    for (int i = 0; i < n; i++) {
+        if (strncmp(lines[i], "GRID", 4) == 0 && strstr(lines[i], "cell_px")) {
+            snprintf(lines[i], sizeof(lines[i]), "GRID | cell_px | %d\n", px);
+            replaced = 1;
+        }
+    }
+    FILE *wf = fopen(path, "w");
+    if (!wf) return;
+    for (int i = 0; i < n; i++) fputs(lines[i], wf);
+    if (!replaced) fprintf(wf, "GRID | cell_px | %d\n", px);
+    fclose(wf);
 }
 
 /* REAL, NEW 2026-08-31, direct instruction ("we are going to make a
