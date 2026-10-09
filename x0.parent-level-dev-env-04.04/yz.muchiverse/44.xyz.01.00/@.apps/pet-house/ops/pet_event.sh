@@ -11,9 +11,9 @@ VERB="${1:-}"; ARG="${2:-}"
 V="$PET/variables.txt"
 
 getv() { sed -n "s/^$1=//p" "$V" 2>/dev/null | head -1; }
-setv() { # setv key value (clamped 0..100 for the care meters)
-    n="$2"; case "$1" in hunger|energy|clean|happy) [ "$n" -lt 0 ] && n=0; [ "$n" -gt 100 ] && n=100;; esac
-    if grep -q "^$1=" "$V" 2>/dev/null; then sed -i "s/^$1=.*/$1=$n/" "$V"; else printf '%s=%s\n' "$1" "$n" >> "$V"; fi
+setv() { # setv key value (clamped 0..100 for the care meters). Uses _sv so it never clobbers a caller's variable.
+    _sv="$2"; case "$1" in hunger|energy|clean|happy) [ "$_sv" -lt 0 ] && _sv=0; [ "$_sv" -gt 100 ] && _sv=100;; esac
+    if grep -q "^$1=" "$V" 2>/dev/null; then sed -i "s/^$1=.*/$1=$_sv/" "$V"; else printf '%s=%s\n' "$1" "$_sv" >> "$V"; fi
 }
 addv() { cur=$(getv "$1"); setv "$1" $(( ${cur:-0} + $2 )); }
 pdlval() { # pdlval file rowkey name field -> value of field=N on the row "<kind> | <name> | ..."
@@ -55,6 +55,54 @@ self_care() { # the pet chooses its own care: a WEIGHTED choice among valid acti
     return 0
 }
 
+LEXF="$PET/lexicon.pdl"; CHAT="$PET/chat.txt"
+say() { printf 'PET: %s\n' "$1" >> "$CHAT"; }
+mood() { p=$(getv happy); if [ "${p:-50}" -ge 40 ]; then echo happy; else echo sad; fi; }
+reply() { # reply <verb>: the pet's fixed reaction text for the verb and mood
+    t=$(awk -F'|' -v v="$1" -v m="$(mood)" '/^REPLY/{a=$2;b=$3;gsub(/^ +| +$/,"",a);gsub(/^ +| +$/,"",b); if(a==v&&b==m){x=$4; gsub(/^ +| +$/,"",x); print x; exit}}' "$HERE/replies.pdl")
+    [ -n "$t" ] && say "$t"
+}
+expr() { printf '%s %s\n' "$1" "$(( $(date +%s) + ${2:-6} ))" > "$PET/expression.txt"; }
+lex_best() { # lex_best <text>: best LEX row for the words in the text -> "verb|item|phrase|weight" (score = weight x words matched), empty if none scores
+    printf '%s' "$1" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9\n' ' ' | awk -v lf="$LEXF" 'BEGIN{FS="|"} {n=split($0,w," "); for(i=1;i<=n;i++) words[w[i]]=1}
+        END { while ((getline line < lf) > 0) { if (line !~ /^LEX/) continue; split(line, c, "|"); ph=c[2]; vb=c[3]; it=c[4]; wt=c[5]; gsub(/^ +| +$/,"",ph); gsub(/^ +| +$/,"",vb); gsub(/^ +| +$/,"",it); wt+=0
+            k=split(ph, pw, " "); hit=0; for(j=1;j<=k;j++) if (pw[j] in words) hit++; if (hit==0) continue; sc=wt*hit/k; if (sc>best) {best=sc; out=vb"|"it"|"ph"|"wt} } if (out!="") print out }'
+}
+lex_set() { # lex_set <phrase> <verb> <item> <delta> <initial>: add the word (initial weight) or move its weight by delta, bounded 0..10
+    awk -F'|' -v ph="$1" -v vb="$2" -v it="$3" -v d="$4" -v ini="$5" 'BEGIN{OFS="|"} /^LEX/{p=$2;gsub(/^ +| +$/,"",p); if(p==ph){w=$5+0+d; if(w>10)w=10; if(w<0)w=0; oi=$4; gsub(/^ +| +$/,"",oi); if(it!="") oi=it; print "LEX | "ph" | "vb" | "oi" | "w; seen=1; next}} {print} END{if(!seen) print "LEX | "ph" | "vb" | "it" | "ini}' "$LEXF" > "$LEXF.tmp" && mv -f "$LEXF.tmp" "$LEXF"
+    printf '%s | lex %s -> %s (%s) %s\n' "$(date '+%H:%M:%S')" "$1" "$2" "$3" "$4" >> "$PET/chat_ledger.txt"
+}
+do_chat() { # the master talks: the pet matches known words, does the thing, answers; unknown words are remembered so the master can teach them
+    need_pet; text="$1"; [ -z "$text" ] && return 0
+    printf 'YOU: %s\n' "$text" >> "$CHAT"
+    hit=$(lex_best "$text")
+    if [ -z "$hit" ]; then printf '%s\n' "$text" > "$PET/last_unknown.txt"; reply unknown; expr surprised 5; return 0; fi
+    vb=${hit%%|*}; rest=${hit#*|}; it=${rest%%|*}; rest=${rest#*|}; ph=${rest%%|*}
+    printf '%s|%s\n' "$ph" "$vb" > "$PET/last_word.txt"
+    case "$vb" in
+        hello) reply hello; expr wave 6 ;;
+        feed) sh "$0" give "${it:-apple}" >/dev/null; reply feed ;;
+        sleep|wash|play) sh "$0" "$vb" >/dev/null; reply "$vb" ;;
+        touch) sh "$0" touch >/dev/null ;;
+    esac
+}
+do_teach() { # teach "<phrase>" <verb> [item]: the master teaches a word (starts weak, weight 3); teaching it again strengthens it
+    need_pet; ph=$(printf '%s' "$1" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9 \n' ' ' | tr -s ' ' | sed 's/^ //;s/ $//'); vb="$2"; it="${3:-}"
+    case "$vb" in hello|feed|sleep|wash|play|touch) ;; *) return 0;; esac
+    [ -z "$ph" ] && return 0
+    lex_set "$ph" "$vb" "$it" 1 3; printf 'YOU: (teaches "%s" = %s)\n' "$ph" "$vb" >> "$CHAT"; say "oh! $ph"; expr happy 5
+}
+do_judge() { # praise / scold: moves the weight of the last word the pet acted on, +-2, and its mood
+    need_pet; [ -f "$PET/last_word.txt" ] || return 0; d="$1"; ph=$(cut -d'|' -f1 "$PET/last_word.txt"); vb=$(cut -d'|' -f2 "$PET/last_word.txt")
+    lex_set "$ph" "$vb" "" "$d" 3; feedback "$( [ "$d" -gt 0 ] && echo +1 || echo -1 )" "chat"
+    if [ "$d" -gt 0 ]; then addv happy 5; expr happy 6; say "^_^"; else addv happy -4; expr sad 6; say "T_T"; fi
+}
+do_touch() { # touched: head = pleased, belly = giggle; many touches in a row annoy it (valence -1)
+    need_pet; part="${1:-head}"; now=$(date +%s); last=$(getv touch_t); n=$(getv touch_n); n=${n:-0}
+    if [ -n "$last" ] && [ $((now - last)) -le 10 ]; then n=$((n + 1)); else n=1; fi
+    setv touch_t "$now"; setv touch_n "$n"
+    if [ "$n" -gt 5 ]; then addv happy -3; feedback -1 touch; expr sad 5; say "stop it!"; else addv happy 3; [ "$part" = belly ] && addv happy 1; feedback +1 touch; expr happy 5; reply touch; fi
+}
 stage_pins() { # prints "pin=value" lines for the current level + habit traits
     lvl=$(getv rpg_level); lvl=${lvl:-1}
     awk -F'|' -v lvl="$lvl" '/^STAGE/{ l=0; for(i=2;i<=NF;i++){x=$i; gsub(/^ +| +$/,"",x); if (x ~ /^level=/) {sub(/level=/,"",x); l=x+0}}
@@ -91,7 +139,9 @@ status() {
     need_pet
     h=$(getv hunger); e=$(getv energy); c=$(getv clean); p=$(getv happy)
     state=Fine; [ "${h:-0}" -ge 60 ] && state=Hungry; [ "${e:-100}" -le 25 ] && state=Sleepy; [ "${c:-100}" -le 25 ] && state=Dirty
-    anim=idle; [ "$state" = Hungry ] && anim=hungry
+    anim=idle; [ "$state" = Hungry ] && anim=hungry; [ "$state" = Sleepy ] && anim=sleepy; [ "$state" = Dirty ] && anim=sad
+    [ "${p:-50}" -ge 85 ] && [ "$state" = Fine ] && anim=happy
+    if [ -f "$PET/expression.txt" ]; then set -- $(cat "$PET/expression.txt"); [ "$(date +%s)" -le "${2:-0}" ] && anim=$1; fi
     frame=$(( $(date +%s) % 8 ))
     {
         [ -z "$(getv name_id)" ] && setv name_id Pochi
@@ -100,6 +150,9 @@ status() {
         printf 'pet_sprite=%s/art/sprites_csv/%s_%02d\n' "$PET" "$anim" "$frame"
         printf 'grade=%s\n' "$(sed -n 's/.*max_tier: *//p' "$PET/learning_limits.pdl" 2>/dev/null | head -1)"
         printf 'likes=%s\n' "$(sed -n 's/^pref_\([a-z]*\)=\(.*\)/\1:\2/p' "$W" | tr '\n' ' ')"
+        printf 'anim=%s\n' "$anim"
+        n=0; tail -4 "$CHAT" 2>/dev/null | while IFS= read -r line; do printf 'chat_%s=%s\n' "$n" "$line"; n=$((n+1)); done
+        printf 'known_words=%s\n' "$(awk -F'|' '/^LEX/{p=$2; gsub(/^ +| +$/,"",p); printf "%s ", p}' "$LEXF" 2>/dev/null)"
         printf 'pantry=%s\n' "$(tr '\n' ' ' < "$PET/pantry.txt" 2>/dev/null)"
     } > "$PET/ui.txt"
     cat "$PET/ui.txt"
@@ -109,7 +162,7 @@ case "$VERB" in
     new_pet)
         mkdir -p "$PET"; seed="${ARG:-1}"
         printf 'hunger=30\nenergy=80\nclean=70\nhappy=50\nplay_total=0\nfed_total=0\nseed=%s\nrpg_level=1\nrpg_exp=0\nrpg_mp=6\nrpg_mp_max=6\n' "$seed" > "$V"
-        cp "$HERE/weights.default.pdl" "$PET/weights.pdl"; : > "$PET/obs_feedback_log.txt"; : > "$PET/tuning_ledger.txt"
+        cp "$HERE/weights.default.pdl" "$PET/weights.pdl"; cp "$HERE/lexicon.default.pdl" "$PET/lexicon.pdl"; : > "$PET/chat.txt"; : > "$PET/chat_ledger.txt"; : > "$PET/obs_feedback_log.txt"; : > "$PET/tuning_ledger.txt"
         printf 'apple 3\nfish 1\nball 1\nsoap 2\n' > "$PET/pantry.txt"; : > "$PET/log.txt"; rm -f "$PET/evolve_sig.txt"
         evolve; status >/dev/null ;;
     feed|give)
@@ -132,6 +185,11 @@ case "$VERB" in
     sleep) need_pet; e0=$(getv energy); addv energy "$(getw sleep_energy)"; addv hunger 5; skill sleep; v=-1; [ "$e0" -lt 50 ] && v=1; feedback "$v" sleep; evolve; status >/dev/null ;;
     wash)  need_pet; c0=$(getv clean); addv clean "$(getw wash_clean)"; addv happy -2; skill wash; v=-1; [ "$c0" -lt 50 ] && v=1; feedback "$v" wash; evolve; status >/dev/null ;;
     play)  need_pet; e0=$(getv energy); addv happy "$(getw play_happy)"; addv energy -12; addv play_total 1; skill play; v=-1; [ "$e0" -gt 20 ] && v=1; feedback "$v" play; evolve; status >/dev/null ;;
+    chat) do_chat "$ARG"; status >/dev/null ;;
+    teach) do_teach "$ARG" "$3" "$4"; status >/dev/null ;;
+    praise) do_judge 2; status >/dev/null ;;
+    scold) do_judge -2; status >/dev/null ;;
+    touch) do_touch "$ARG"; status >/dev/null ;;
     self_care) need_pet; self_care; status >/dev/null ;;
     tick)  need_pet; addv hunger "$(getw tick_hunger)"; addv energy -"$(getw tick_energy)"; addv clean -"$(getw tick_clean)"
            if [ -x "$GRADE" ]; then "$GRADE" rest "$PET" "$HERE/skillbook.pdl" >/dev/null 2>&1; "$GRADE" check "$PET" "$HERE/curriculum.pdl" >/dev/null 2>&1; "$GRADE" advance "$PET" "$HERE/curriculum.pdl" auto >/dev/null 2>&1; fi

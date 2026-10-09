@@ -1,0 +1,7 @@
+# physics.pdl - the pet's gravity when its window is moved. KEY | name | value (integers). Read by ops/pet_physics every step.
+KEY | gravity     | 2400   # px/s^2 pulling the pet down inside the window
+KEY | restitution | 45     # % of the speed kept after a bounce off the floor or a wall
+KEY | inertia     | 45     # % of the window's own movement the pet is "left behind" by (0 = glued to the window, 100 = floats free)
+KEY | friction    | 220    # % of horizontal speed lost per second while on the floor
+KEY | max_speed   | 2600   # px/s clamp so a fling cannot teleport it
+KEY | rest_speed  | 40     # px/s below which a landed pet is at rest
