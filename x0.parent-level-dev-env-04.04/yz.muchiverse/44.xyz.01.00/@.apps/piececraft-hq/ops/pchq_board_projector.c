@@ -198,14 +198,64 @@ static int emit_page_entities(char *ui, size_t *off, const char *house, const ch
     return n;
 }
 
+/* Open desk bar.txt. Numbers start at 1. First rows share the main
+ * bar. The rest are the subbar. */
+static int emit_map_events(char *ui, size_t *off, int n, const char *host, int *n_sub) {
+    *n_sub = 0;
+    char w[PATH_MAX], map[64] = "", desk[64] = "";
+    snprintf(w, sizeof(w), "%s/pieces/world_01/state.txt", host);
+    FILE *sf = fopen(w, "r");
+    if (sf) {
+        char l[256];
+        while (fgets(l, sizeof(l), sf)) {
+            if (!strncmp(l, "map_id=", 7)) sscanf(l + 7, "%63s", map);
+            else if (!strncmp(l, "desk_id=", 8)) sscanf(l + 8, "%63s", desk);
+        }
+        fclose(sf);
+    }
+    if (!map[0] || !desk[0] || strchr(map, '/') || strchr(desk, '/')) return n;
+    char bar[PATH_MAX];
+    snprintf(bar, sizeof(bar), "%s/pieces/system/maps/%s/%s/bar.txt", host, map, desk);
+    FILE *f = fopen(bar, "r");
+    if (!f) return n;
+    char line[256];
+    int num = 1;
+    while (fgets(line, sizeof(line), f)) {
+        int id = 0, x = 0, y = 0;
+        char name[48] = "", trig[32] = "";
+        if (sscanf(line, "%d\t%47[^\t]\t%d\t%d\t%31s", &id, name, &x, &y, trig) < 5) continue;
+        char label[64];
+        snprintf(label, sizeof(label), "%d %s", num, name);
+        if (n < 16) {
+            *off += (size_t)snprintf(ui + *off, UIBUF - *off,
+                "ent_%d_label=%s\nent_%d_id=%d\nent_%d_kind=mapev\n"
+                "ent_%d_x=%d\nent_%d_y=%d\nent_%d_z=0\n",
+                n, label, n, id, n, n, x, n, y, n);
+            n++;
+        } else if (*n_sub < 80) {
+            int s = *n_sub;
+            *off += (size_t)snprintf(ui + *off, UIBUF - *off,
+                "sub_%d_label=%s\nsub_%d_id=%d\nsub_%d_kind=mapev\n"
+                "sub_%d_x=%d\nsub_%d_y=%d\nsub_%d_z=0\n",
+                s, label, s, id, s, s, x, s, y, s);
+            (*n_sub)++;
+        }
+        num++;
+    }
+    fclose(f);
+    return n;
+}
+
 /* MILESTONE C - append entities-bar rows for the <footer>.
  * The open desk page wins. The private hero/animal lists are only
  * the fallback when no page file is bound. Capped at 16. */
 static size_t emit_entities(char *ui, size_t off, const char *house, const char *host_app_root, int on) {
     int n = emit_page_entities(ui, &off, house, host_app_root);
     if (n >= 0) {
+        int n_sub = 0;
+        n = emit_map_events(ui, &off, n, host_app_root, &n_sub);
         off += (size_t)snprintf(ui + off, UIBUF - off,
-            "n_ent=%d\nentities_bar_on=%s\n", n, on ? "1" : "");
+            "n_ent=%d\nn_sub=%d\nentities_bar_on=%s\n", n, n_sub, on ? "1" : "");
         return off;
     }
     n = 0;
@@ -250,8 +300,10 @@ static size_t emit_entities(char *ui, size_t off, const char *house, const char 
         }
         fclose(f);
     }
+    int n_sub = 0;
+    n = emit_map_events(ui, &off, n, host_app_root, &n_sub);
     off += (size_t)snprintf(ui + off, UIBUF - off,
-        "n_ent=%d\nentities_bar_on=%s\n", n, on ? "1" : "");
+        "n_ent=%d\nn_sub=%d\nentities_bar_on=%s\n", n, n_sub, on ? "1" : "");
     return off;
 }
 

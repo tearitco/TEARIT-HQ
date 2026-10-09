@@ -60,6 +60,23 @@ fi
 
 echo "$(date '+%H:%M:%S') open  kind=$KIND id=${ID:-.} cell=$SX,$SY,$SZ  $NOTE" >> "$LOG"
 
+# A numbered map event. Play mode fires its on-click page (action
+# button). Edit mode falls through to the context menu, whose Events
+# row opens the same package in events-hq.
+if [ "$KIND" = mapev ] && [ -n "$ID" ]; then
+    if grep -q '^mode=on' "$HOUSE/#.desktop/khtpm_play_mode.state.txt" 2>/dev/null; then
+        W="$ROOT/pieces/world_01/state.txt"
+        MAP=$(sed -n 's/^map_id=//p' "$W" | head -1)
+        DESK=$(sed -n 's/^desk_id=//p' "$W" | head -1)
+        PKG="$ROOT/pieces/system/maps/$MAP/$DESK/ev/$ID"
+        if [ -d "$PKG/event_pkg" ]; then
+            sh "$HOUSE/&.widgits/events-hq/ops/play_event.sh" "$PKG" "$HOUSE" on-click
+            echo "$(date '+%H:%M:%S') play mapev $ID" >> "$LOG"
+            exit 0
+        fi
+    fi
+fi
+
 # DESK ENTITIES GET THEIR OWN MENU, AUTOMATICALLY (2026-10-05, direct
 # instruction: cursword / the terumons / any page entity must have "the exact
 # same" context menu in pc-hq as on the desktop). The desk's rule
@@ -103,6 +120,7 @@ case "$KIND" in
     tree)          HEADER="tree: ${ID:-?}";           VERBS="INSPECT COPY PASTE DELETE TOENTITY ACT STOP EVENTS INVENTORY DIR EXIT" ;;
     chicken|entity) HEADER="${KIND}: ${ID:-?}";       VERBS="INSPECT COPY PASTE DELETE ACT STOP EVENTS INVENTORY DIR EXIT" ;;
     xelector)      HEADER="xelector: ${ID:-xelector_01}"; VERBS="INSPECT DIR EXIT" ;;
+    mapev)         HEADER="event ${ID}"; VERBS="INSPECT COPY PASTE DELETE ACT STOP EVENTS INVENTORY DIR EXIT" ;;
     voxel)         HEADER="voxel '$GLYPH' @ $SX,$SY,$SZ"; VERBS="INSPECT COPY PASTE DELETE PLACE EXIT" ;;
     *)             HEADER="$KIND: ${ID:-?}";          VERBS="INSPECT EXIT" ;;
 esac
@@ -125,6 +143,8 @@ label_for() {
         # added to entity-like kinds above (hero/tree/chicken/entity),
         # never voxel/air which have no real pieces/<id> dir.
         EVENTS) echo "Events (hq)" ;; INVENTORY) echo "Inventory" ;;
+        # Map events have no pieces/<id>. Events (hq) opens the package
+        # the converter wrote under the desk. Play mode never gets here.
         DIR) echo "Dir" ;;
         # REAL, NEW 2026-09-29, direct instruction ("give it all the
         # context options asa has... act and its sub options") - same
@@ -166,6 +186,15 @@ label_for() {
         # not an inconsistency: STOP still routes through the inbox
         # (kept a real, dispatchable game verb, matching asa/ava's own
         # meta.pdl shape) even though it's a stub today.
+        if [ "$v" = EVENTS ] && [ "$KIND" = mapev ] && [ -n "$ID" ]; then
+            W="$ROOT/pieces/world_01/state.txt"
+            MAP=$(sed -n 's/^map_id=//p' "$W" | head -1)
+            DESK=$(sed -n 's/^desk_id=//p' "$W" | head -1)
+            PKG="$ROOT/pieces/system/maps/$MAP/$DESK/ev/$ID"
+            printf '    <item label="%s" action="sh %s/&.widgits/events-hq/button.sh %s %s"/>\n' \
+                "$(label_for "$v")" "$HOUSE" "$PKG" "$HOUSE"
+            continue
+        fi
         if [ "$v" = ACT ]; then
             ENT_DIR="$ROOT/pieces/${ID:-$KIND}"
             mkdir -p "$ENT_DIR"
