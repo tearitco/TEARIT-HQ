@@ -153,6 +153,7 @@ static void kh_text_areas_reload(Elem *root); /* fwd - reparse_chtpm_if_changed(
 static void kh_ensure_dock_peer_window(void); /* fwd - hq_idle_tick()'s own per-tick self-heal call; real def + header comment near main() */
 static void kh_cli_io_reload(Elem *root); /* fwd - reparse_chtpm_if_changed() re-hydrates <cli_io> buffers, defined near kh_text_areas_reload */
 static void kh_drop_zone_unregister(void);
+static void default_cli_io_save(Elem *e);   /* fwd - kh_dd_search_reset() (generic dropdown overlay) */
 static Elem *kh_find_input_by_key(Elem *root, const char *key); /* fwd - reparse_chtpm_if_changed() re-arms a cli_io/text_area across a live reparse without releasing the keyboard grab it already holds */
 static void kh_focus_debug_log(const char *fmt, ...); /* fwd - TEMPORARY diagnostic logging, see its own definition comment (network-browser recurring focus bug) */
 static Elem *elem_new(const char *tag); /* fwd - kh_pool_alloc() (CHTPM-INCREMENTAL-REPARSE-DESIGN.md) calls this before its real definition */
@@ -2388,6 +2389,15 @@ static int g_headless;  /* fwd (real def near g_dump_and_exit) - referenced by t
  * and so the call is a clean no-op before any display is open. */
 static int g_grab_pending = 0;   /* an armed field wanted the keyboard but another client held it: retried each idle tick */
 static void kh_ungrab_kbd(void) { if (dpy) XUngrabKeyboard(dpy, CurrentTime); g_grab_pending = 0; }
+/* A dropdown's search field (a cli_io inside a dropdown-child group) starts EMPTY and disarmed every time the dropdown opens or closes:
+ * leftover text would keep filtering the list (a no-match query leaves nothing to click), and an armed field would keep the keyboard grab.
+ * Always re-saves, so a stale cli_io_state.txt value from an earlier run is wiped too. */
+static void kh_dd_search_reset(Elem *e) {
+    if (!e) return;
+    if (g_default_input_elem == e) { kh_set_default_input_elem(NULL); kh_ungrab_kbd(); }
+    e->input_buffer[0] = '\0'; e->cursor = 0; e->sel_anchor = 0;
+    default_cli_io_save(e);
+}
 /* 2026-09-11, CHTPM-INCREMENTAL-REPARSE-DESIGN.md §1 - parses `path`
  * into the SCRATCH pool (g_pool_next) instead of the live g_pool,
  * leaving g_window/every existing live pointer completely untouched.
@@ -5635,6 +5645,7 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
         static char s_dd_open_target[64] = "";
         static int s_dd_jump = 0;     /* 1 = a dropdown just opened: land nav focus on its search field (cli_io), once */
         int grp_n = 0, dd_scrolling = 0, dd_vis = 0, dd_pin = 1;
+        Elem *dd_search_el = NULL;
         MwPlan dd_plan;
         memset(&dd_plan, 0, sizeof(dd_plan));
         for (int i = 0; i < container->n_children; i++) {
@@ -5646,15 +5657,15 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
                  strcmp(g_default_active_scope_id, trigger->id) == 0));
             if (strcmp(last_target, c->target_id) != 0) {
                 stack_n = 0; snprintf(last_target, sizeof(last_target), "%s", c->target_id);
-                grp_n = 0; dd_scrolling = 0; dd_vis = 0; dd_pin = 1;
+                grp_n = 0; dd_scrolling = 0; dd_vis = 0; dd_pin = 1; dd_search_el = NULL;
                 for (int j = i; j < container->n_children; j++) {
                     Elem *g = container->children[j];
                     if (!elem_has_class(g, "dropdown-child") || strcmp(g->target_id, c->target_id) != 0) break;
                     grp_n++;
-                    if (strcmp(g->tag, "cli_io") == 0 && grp_n >= 2) dd_pin = 2;   /* "- cancel -" then a search field: both stay pinned */
+                    if (strcmp(g->tag, "cli_io") == 0 && grp_n >= 2) { dd_pin = 2; dd_search_el = g; }   /* "- cancel -" then a search field: both stay pinned */
                 }
                 if (open) {
-                    if (strcmp(s_dd_open_target, c->target_id) != 0) { s_dd_scroll = 0; s_dd_jump = (dd_pin == 2); snprintf(s_dd_open_target, sizeof(s_dd_open_target), "%s", c->target_id); }
+                    if (strcmp(s_dd_open_target, c->target_id) != 0) { s_dd_scroll = 0; s_dd_jump = (dd_pin == 2); kh_dd_search_reset(dd_search_el); snprintf(s_dd_open_target, sizeof(s_dd_open_target), "%s", c->target_id); }
                     {
                         int cap_rows = (g_win_h - (trigger->y + trigger->h) - 10) / ROW_H;
                         if (g_dropdown_max_rows >= 3 && g_dropdown_max_rows < cap_rows) cap_rows = g_dropdown_max_rows;   /* hq_ui.pdl dropdown_max_rows */
@@ -5662,7 +5673,7 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
                     }
                     dd_scrolling = dd_plan.scrolling; dd_vis = dd_plan.vis;
                 } else if (strcmp(s_dd_open_target, c->target_id) == 0) {
-                    s_dd_open_target[0] = '\0'; s_dd_scroll = 0;   /* this list closed: next open starts at the top */
+                    s_dd_open_target[0] = '\0'; s_dd_scroll = 0; kh_dd_search_reset(dd_search_el);   /* this list closed: next open starts at the top, search empty */
                 }
             }
             css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
