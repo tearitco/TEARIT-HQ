@@ -907,7 +907,10 @@ static void draw_map_events(unsigned char *px, int W, int H,
         if (si < 0 && ns < 32) {
             char dirn[PATH_BUF], sheet[PATH_BUF];
             snprintf(dirn, sizeof(dirn), "%s", map_png);
-            for (int up = 0; up < 8 && si < 0; up++) {
+            /* Sheets live in the repo #.NNEST_ASSETS, eleven
+             * directories above a desk map.png. Eight stops inside
+             * 44.xyz.01.00, which has no assets dir. */
+            for (int up = 0; up < 16 && si < 0; up++) {
                 char *sl = strrchr(dirn, '/');
                 if (!sl) break;
                 *sl = 0;
