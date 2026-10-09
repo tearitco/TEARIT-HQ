@@ -798,6 +798,131 @@ static void kh_theme_classes(Elem *e) {
     e->style.has_border_color = 1;
 }
 
+/* INLINE SPANS step 4 (2026-10-09): one shared segment walker for the
+ * draw branch (draw_elem, below) AND click hit-testing
+ * (seg_hit_action, below; called from popup_handle_click() in
+ * khtpm_core_render.c - this file is text-included there, same TU).
+ *
+ * Encoding (see Elem.segments' own field comment): kind \x1F text \x1F
+ * url [\x1F action] per segment, segments joined by \x1E. The action
+ * field is optional: 3-field segments (old payloads, text-only rows)
+ * parse with act == "". A segment of any other shape makes the WHOLE
+ * payload unusable (return -1: caller falls back to the plain label
+ * path) - skipping one segment would shift every later span off its
+ * text, which is worse than no tint at all.
+ *
+ * Each text is measured with the SAME XftTextExtentsUtf8 xOff advance
+ * the draw loop always used, so runs[] screen ranges are exactly where
+ * the glyphs land. Zero-width (empty-text) segments produce no run.
+ * Pointers aim INTO e->segments: valid for synchronous use (draw now,
+ * copy-out for dispatch). Actions longer than 1023 bytes arrive as ""
+ * (tinted but unclickable) - the projector bakes ~150 bytes; anything
+ * longer is hostile, not real. */
+typedef struct {
+    int x0, x1;          /* screen pixels, x1 exclusive */
+    int is_link;
+    const char *text;    /* into e->segments, NOT NUL-terminated */
+    size_t tlen;         /* capped to 1023, matching the draw buffer */
+    const char *act;     /* into e->segments, "" when absent */
+    size_t actlen;
+} SegRun;
+static int seg_measure_runs(Elem *e, XftFont *font, int x0, SegRun *runs, int maxruns) {
+    const char *sp = e->segments;
+    int n = 0;
+    if (!sp || !*sp || !font || !runs || maxruns <= 0) return -1;
+    while (*sp) {
+        const char *seg_end = strchr(sp, '\x1e');
+        size_t seg_len = seg_end ? (size_t)(seg_end - sp) : strlen(sp);
+        const char *f1 = (const char *)memchr(sp, '\x1f', seg_len);
+        const char *f2 = f1 ? (const char *)memchr(f1 + 1, '\x1f',
+                              seg_len - (size_t)(f1 + 1 - sp)) : NULL;
+        const char *f3 = f2 ? (const char *)memchr(f2 + 1, '\x1f',
+                              seg_len - (size_t)(f2 + 1 - sp)) : NULL;
+        if (!f1 || !f2) return -1;
+        /* field order: kind is the FIRST field (sp..f1), visible text
+         * the second (f1+1..f2), url the third (f2+1..f3-or-end),
+         * action the optional fourth (f3+1..end). */
+        size_t klen = (size_t)(f1 - sp);
+        int is_link;
+        if (klen == 4 && strncmp(sp, "link", 4) == 0) is_link = 1;
+        else if (klen == 4 && strncmp(sp, "text", 4) == 0) is_link = 0;
+        else return -1;
+        size_t tlen = (size_t)(f2 - (f1 + 1));
+        const char *uend = f3 ? f3 : (seg_end ? seg_end : sp + seg_len);
+        const char *aend = seg_end ? seg_end : sp + seg_len;
+        const char *act = f3 ? f3 + 1 : "";
+        size_t actlen = f3 ? (size_t)(aend - (f3 + 1)) : 0;
+        (void)uend;
+        if (tlen > 1023) tlen = 1023;
+        if (actlen > 1023) { act = ""; actlen = 0; }
+        if (tlen > 0) {
+            XGlyphInfo sx_ext;
+            XftTextExtentsUtf8(dpy, font, (const FcChar8 *)(f1 + 1), (int)tlen, &sx_ext);
+            if (n >= maxruns) return -1;
+            runs[n].x0 = x0;
+            runs[n].x1 = x0 + sx_ext.xOff;
+            runs[n].is_link = is_link;
+            runs[n].text = f1 + 1;
+            runs[n].tlen = tlen;
+            runs[n].act = act;
+            runs[n].actlen = actlen;
+            n++;
+            x0 += sx_ext.xOff;
+        }
+        if (!seg_end) break;
+        sp = seg_end + 1;
+    }
+    return n;
+}
+
+/* INLINE SPANS step 4: click resolution for a segments row. Recomputes
+ * the draw branch's own fit gate (full-label extents vs avail_w) with
+ * the SAME inputs - when draw fell back to plain (overlong row), the
+ * on-screen text sits at the plain path's positions, so segment
+ * geometry MUST NOT apply. Start-x comes from kh_elem_badge_label_x(),
+ * the same helper the cli_io click-offset path already trusts, not a
+ * second copy of the badge math. Returns 1 with the link segment's
+ * action copied out when px lands inside one, else 0 (caller falls
+ * through to row-level behavior). */
+static int seg_hit_action(Elem *e, int px, char *actout, size_t actsz) {
+    XftFont *font;
+    int pad, x0, avail_w;
+    XGlyphInfo extents;
+    SegRun runs[64];
+    int nrun, ri;
+    /* draw's own gate measures shown_label (entity-decoded copy), not
+     * the raw label - mirror it exactly (same function, same buffer
+     * size) or a label carrying "&" disagrees about the fit. */
+    char shown[2048];
+    if (!e || !e->segments[0] || !actout || actsz == 0) return 0;
+    /* draw's own segments branch is gated on !drew_sprite (the start-x
+     * helper has no sprite branch) - a row carrying both falls back to
+     * the sprite path on screen, so clicks must not use span geometry. */
+    if (e->sprite[0]) return 0;
+    font = font_for(&e->style);
+    if (!font) return 0;
+    snprintf(shown, sizeof(shown), "%s", e->label);
+    khtpm_decode_label_entities(shown);
+    x0 = kh_elem_badge_label_x(e);
+    pad = e->style.has_padding ? e->style.padding : 4;
+    avail_w = e->w > 0 ? (e->x + e->w) - x0 - pad : -1;
+    XftTextExtentsUtf8(dpy, font, (const FcChar8 *)shown, (int)strlen(shown), &extents);
+    if (!(avail_w > 0 && extents.width <= avail_w)) return 0;
+    nrun = seg_measure_runs(e, font, x0, runs, 64);
+    if (nrun < 0) return 0;
+    for (ri = 0; ri < nrun; ri++) {
+        if (runs[ri].is_link && runs[ri].actlen > 0 &&
+            px >= runs[ri].x0 && px < runs[ri].x1) {
+            size_t n = runs[ri].actlen;
+            if (n >= actsz) n = actsz - 1;
+            memcpy(actout, runs[ri].act, n);
+            actout[n] = '\0';
+            return 1;
+        }
+    }
+    return 0;
+}
+
 static void draw_elem(Elem *e, int hover_id_hash) {
     (void)hover_id_hash;
     kh_theme_classes(e);
@@ -1602,46 +1727,46 @@ static void draw_elem(Elem *e, int hover_id_hash) {
          * overlong row, rather than drawing past the box (the 2026-09-23
          * avail_w overlap incident). Wrapping coloured spans is real
          * future work and needs scroll_row_span() taught about segments
-         * first. Underline and per-segment hit-testing are also not here
-         * yet (underline must use the GC + XFillRectangle convention, not
-         * XRenderFillRectangle). */
+         * first. Runs are measured once by seg_measure_runs() (above) so
+         * click hit-testing resolves the exact same x-ranges the glyphs
+         * landed on. Link runs also get a 1px GC underline under the
+         * baseline. Keyboard/relay nav per link segment is not here yet
+         * (mouse click first, deliberately). */
         int drew_segments = 0;
-        if (e->segments[0] && avail_w > 0 && extents.width <= avail_w) {
+        if (e->segments[0] && !drew_sprite && avail_w > 0 && extents.width <= avail_w) {
             XftColor link_col = xft_color("#8fb8ff");
-            int sx = badge_label_x;
             int sty = e->y + (e->h + font->ascent - font->descent) / 2;
+            SegRun runs[64];
+            int nrun;
             if (sty < e->y + font->ascent) sty = e->y + font->ascent + pad / 2;
-            const char *sp = e->segments;
-            while (*sp) {
-                const char *seg_end = strchr(sp, '\x1e');
-                size_t seg_len = seg_end ? (size_t)(seg_end - sp) : strlen(sp);
-                const char *f1 = (const char *)memchr(sp, '\x1f', seg_len);
-                const char *f2 = f1 ? (const char *)memchr(f1 + 1, '\x1f',
-                                      seg_len - (size_t)(f1 + 1 - sp)) : NULL;
-                if (f1 && f2) {
-                    /* field order: kind \x1F text \x1F url - the kind is the
-                     * FIRST field (sp..f1), the visible text the second
-                     * (f1+1..f2). */
-                    size_t klen = (size_t)(f1 - sp);
-                    int is_link = (klen == 4 && strncmp(sp, "link", 4) == 0);
-                    size_t tlen = (size_t)(f2 - (f1 + 1));
+            /* start-x here is badge_label_x; seg_hit_action() resolves
+             * clicks from kh_elem_badge_label_x() - the two agree because
+             * segments rows never carry sprites (the helper has no sprite
+             * branch, hence the !drew_sprite gate above). */
+            nrun = seg_measure_runs(e, font, badge_label_x, runs, 64);
+            if (nrun >= 0) {
+                int ri;
+                for (ri = 0; ri < nrun; ri++) {
                     char seg_text[1024];
-                    if (tlen >= sizeof(seg_text)) tlen = sizeof(seg_text) - 1;
-                    memcpy(seg_text, f1 + 1, tlen);
-                    seg_text[tlen] = '\0';
-                    if (tlen > 0) {
-                        XftColor sc = is_link ? link_col : col;
-                        draw_text_emoji(font, &sc, sx, sty, seg_text);
-                        XGlyphInfo sx_ext;
-                        XftTextExtentsUtf8(dpy, font, (const FcChar8 *)seg_text,
-                                           (int)tlen, &sx_ext);
-                        sx += sx_ext.xOff;
+                    size_t tl = runs[ri].tlen;
+                    XftColor sc;
+                    if (tl >= sizeof(seg_text)) tl = sizeof(seg_text) - 1;
+                    memcpy(seg_text, runs[ri].text, tl);
+                    seg_text[tl] = '\0';
+                    sc = runs[ri].is_link ? link_col : col;
+                    draw_text_emoji(font, &sc, runs[ri].x0, sty, seg_text);
+                    if (runs[ri].is_link && runs[ri].x1 > runs[ri].x0) {
+                        /* underline: 1px GC rect just under the baseline,
+                         * same GC+fill convention as every other rect in
+                         * this file (cursor bar, badges), never
+                         * XRenderFillRectangle. */
+                        XSetForeground(dpy, gc, link_col.pixel);
+                        XFillRectangle(dpy, buf, gc, runs[ri].x0, sty + 2,
+                                       (unsigned)(runs[ri].x1 - runs[ri].x0), 1);
                     }
                 }
-                if (!seg_end) break;
-                sp = seg_end + 1;
+                drew_segments = 1;
             }
-            drew_segments = 1;
         }
         if (!drew_segments && is_multiline_box) {
             /* Real, generic greedy word-wrap: pack words onto each line

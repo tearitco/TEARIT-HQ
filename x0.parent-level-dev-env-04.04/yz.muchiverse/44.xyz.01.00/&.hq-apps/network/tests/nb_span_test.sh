@@ -88,10 +88,13 @@ else
     echo "FAIL: no rich sentence row in the projection"; FAIL=1
 fi
 # ... carrying the exact wire payload: kind \x1F text \x1F url per
-# segment, segments joined by \x1E (the renderer decodes this).
+# segment (link segments append their click action as a fourth field -
+# the same go-command shape as the LINK item rows), segments joined
+# by \x1E (the renderer decodes this).
 if [ -n "$RICHN" ]; then
     FS="$(printf '\037')"; RS="$(printf '\036')"
-    EXPECTED="text${FS}See the ${FS}${RS}link${FS}docs${FS}https://example.com${RS}text${FS} for more.${FS}"
+    ACT="'$HR/&.hq-apps/network/ops/nb_write_go.sh' 'go' 'https://example.com'"
+    EXPECTED="text${FS}See the ${FS}${RS}link${FS}docs${FS}https://example.com${FS}${ACT}${RS}text${FS} for more.${FS}"
     SEGVAL="$(grep -E "^c_${RICHN}_segments=" "$UI" | head -1 | sed "s/^c_${RICHN}_segments=//")"
     if [ "$SEGVAL" = "$EXPECTED" ]; then
         echo "PASS: segments payload is byte-exact"
@@ -115,6 +118,87 @@ if [ -n "$LINKN" ] \
     echo "PASS: link row kept as a clickable item"
 else
     echo "FAIL: link item row missing or not clickable"; FAIL=1
+fi
+
+echo "== span click-through (relay MOUSE_EVENT, needs X)"
+# Two-step clicks are the house default: the first click focuses the
+# row, the second dispatches. A click on the LINK span must navigate
+# (same go-command as the item rows); a click on the TEXT span must
+# not. Coordinates come from a real captured frame: the underline band
+# (a single 1px-tall blue run under the link glyphs) identifies the
+# rich row without trusting any layout guess, and the click point sits
+# inside the sentence row's own bounds so the item row below cannot
+# receive it - geometry, not hope.
+if [ -z "${DISPLAY:-}" ] || ! command -v xwininfo >/dev/null 2>&1; then
+    echo "SKIP: no X display for the click-through"
+else
+    BPID="$(pgrep -f 'khtpm_core_render.+x .*network-browser-hq' | head -1)"
+    DUMPOP="$HR/&.widgits/_shared-lib/ops/+x/dump_frame_png_op.+x"
+    BANDPY="$HERE/bluebands.py"
+    CLICKDONE=0
+    if [ -n "$BPID" ] && [ -x "$DUMPOP" ] && [ -f "$BANDPY" ]; then
+        for W in $(xwininfo -root -tree 2>/dev/null | grep -E "^\s+0x[0-9a-f]+ " | awk '{print $1}' | sort -u); do
+            G="$(xwininfo -id "$W" 2>/dev/null | grep -E "Width|Height" | awk '{print $2}' | tr '\n' 'x')"
+            case "$G" in
+                724x304x|51x51x|1x1x|1520x29x|1205x29x) continue;;  # fixture/chrome/tiles, never the browser
+            esac
+            VW="$(xwininfo -id "$W" 2>/dev/null | grep "Map State" | grep -c IsViewable)"
+            [ "$VW" = "1" ] || continue
+            PNG="$(mktemp /tmp/nb_click_XXXXXX.png)"
+            if "$DUMPOP" "$W" "$PNG" >/dev/null 2>&1; then
+                # underline band: exactly 1px tall, >=15px wide
+                UL="$(python3 "$BANDPY" "$PNG" 2>/dev/null | awk '$2==$1 && ($4-$3)>=15 {print $1, $3, $4}' | head -1)"
+                if [ -n "$UL" ]; then
+                    UY="$(printf '%s' "$UL" | cut -d' ' -f1)"
+                    # glyph band directly above (within 5px), >=10px tall
+                    GLYPH="$(python3 "$BANDPY" "$PNG" 2>/dev/null | awk -v u="$UY" '$2<u && u-$2<=5 && ($2-$1)>=6 {print $1, $2, $3, $4}' | tail -1)"
+                    if [ -n "$GLYPH" ]; then
+                        GY0="$(printf '%s' "$GLYPH" | cut -d' ' -f1)"; GY1="$(printf '%s' "$GLYPH" | cut -d' ' -f2)"
+                        GX0="$(printf '%s' "$GLYPH" | cut -d' ' -f3)"; GX1="$(printf '%s' "$GLYPH" | cut -d' ' -f4)"
+                        CX=$(( (GX0 + GX1) / 2 )); CY=$(( (GY0 + GY1) / 2 ))
+                        TX=$(( GX0 - 30 ))
+                        if [ "$TX" -lt 0 ]; then
+                            echo "FAIL: span too close to the left edge for a text-span probe"; FAIL=1
+                            rm -f "$PNG"
+                            break
+                        fi
+                        HF="$HR/#.desktop/entity_menu_history/$BPID.txt"
+                        printf 'MOUSE_EVENT: 1 %d %d 1\n' "$CX" "$CY" >> "$HF"; sleep 3
+                        printf 'MOUSE_EVENT: 1 %d %d 1\n' "$CX" "$CY" >> "$HF"
+                        NAVED=0
+                        for _ in $(seq 1 60); do
+                            if grep -q "^URL|https://example.com" "$PF" 2>/dev/null; then NAVED=1; break; fi
+                            sleep 1
+                        done
+                        if [ "$NAVED" = "1" ]; then
+                            echo "PASS: link-span click navigated to example.com"
+                        else
+                            echo "FAIL: link-span click did not navigate"; FAIL=1
+                        fi
+                        # back to the fixture, then the TEXT span must NOT navigate
+                        printf 'go:file://%s\n' "$FX" > "$REQ"
+                        for _ in $(seq 1 40); do
+                            grep -q "^URL|file://$FX\$" "$PF" 2>/dev/null \
+                                && grep -q "status=Status: ready" "$UI" 2>/dev/null && break
+                            sleep 0.5
+                        done
+                        sleep 2
+                        printf 'MOUSE_EVENT: 1 %d %d 1\n' "$TX" "$CY" >> "$HF"; sleep 3
+                        printf 'MOUSE_EVENT: 1 %d %d 1\n' "$TX" "$CY" >> "$HF"; sleep 8
+                        if grep -q "^URL|file://$FX\$" "$PF" 2>/dev/null; then
+                            echo "PASS: text-span click did not navigate"
+                        else
+                            echo "FAIL: text-span click navigated (URL:$(grep '^URL|' "$PF" | tail -1))"; FAIL=1
+                        fi
+                        CLICKDONE=1
+                    fi
+                fi
+            fi
+            rm -f "$PNG"
+            [ "$CLICKDONE" = "1" ] && break
+        done
+    fi
+    [ "$CLICKDONE" = "1" ] || { echo "FAIL: browser window with span underline not found"; FAIL=1; }
 fi
 
 echo

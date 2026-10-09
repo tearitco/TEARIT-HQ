@@ -5348,7 +5348,11 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
             c->x = x; c->y = content_y + (row - *scroll) * ROW_H; c->w = inner_w; c->h = span * ROW_H;
             css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
             if (strcmp(c->tag, "item") == 0 || strcmp(c->tag, "cli_io") == 0 ||
-                strcmp(c->tag, "text_area") == 0 || strcmp(c->tag, "bar") == 0) {
+                strcmp(c->tag, "text_area") == 0 || strcmp(c->tag, "bar") == 0 ||
+                /* INLINE SPANS step 4: a <text> carrying link segments is
+                 * clickable (per-segment hit-testing in
+                 * popup_handle_click) - plain text rows keep nav 0. */
+                (strcmp(c->tag, "text") == 0 && c->segments[0])) {
                 c->nav_index = ++g_n_nav;
                 g_nav[g_n_nav - 1] = c;
                 if (*out_lo == 0) *out_lo = c->nav_index;
@@ -8423,7 +8427,9 @@ static void assign_nav_and_layout(void) {
             int is_multirow_field = (strcmp(item->tag, "cli_io") == 0 || strcmp(item->tag, "text_area") == 0);
             int item_h = is_multirow_field ? (item->rows > 0 ? item->rows : 1) * ROW_H : ROW_H;
             item->x = 0; item->y = y; item->w = g_win_w; item->h = item_h;
-            if (!is_text) { item->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = item; }
+            /* INLINE SPANS step 4: same rule as the scroll region's own
+             * layout - a <text> carrying link segments is clickable. */
+            if (!is_text || item->segments[0]) { item->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = item; }
             y += item_h;
         }
         if (row_x) y += row_h + 4;
@@ -13159,6 +13165,26 @@ static void popup_handle_click(int px, int py) {
     for (int i = i0; i < i1; i++) {
         Elem *it = g_nav[i];
         if (px >= it->x && px < it->x + it->w && py >= it->y && py < it->y + it->h) {
+            /* INLINE SPANS step 4: a click landing on a link segment runs
+             * THAT segment's action (baked by the projector - the same
+             * command shape as the LINK item rows, so a span click IS an
+             * item click). Two-step parity with every other row: under
+             * click_two_step an unfocused row only focuses (fall through
+             * to the normal path); the second click dispatches. Anything
+             * else - text span, actionless link, unusable payload - falls
+             * through to the normal row-level path below. */
+            if (it->segments[0] && it->nav_index > 0) {
+                char segact[1024];
+                if (seg_hit_action(it, px, segact, sizeof(segact)) &&
+                    (!g_click_two_step || (g_window && elem_has_class(g_window, "single-click")) ||
+                     g_focus_nav == it->nav_index)) {
+                    g_focus_nav = it->nav_index;
+                    dispatch(segact);
+                    if (!g_quit) assign_nav_and_layout();
+                    redraw();
+                    return;
+                }
+            }
             /* generic <bar>: remember the exact click X (relative-to-x
              * fraction is computed in activate_focused()'s bar branch =
              * the ONLY place a bar click can actually reach the onClick,

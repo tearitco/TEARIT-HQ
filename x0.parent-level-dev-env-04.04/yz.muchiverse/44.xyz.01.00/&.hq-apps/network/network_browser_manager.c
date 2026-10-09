@@ -4942,6 +4942,20 @@ static void uisan(const char *in, char *out, size_t outsz) {
     out[o] = '\0';
 }
 
+/* INLINE SPANS step 4: per-segment click action, baked here from a
+ * verified link URL - never stored in page.state, never compared in
+ * the pre-pass (it is DERIVED, by this one template, from data the
+ * pre-pass already verified). Identical command shape to the LINK item
+ * rows' own action below: a span click IS an item click, same script,
+ * same args, so the renderer stays generic (it dispatches a string)
+ * and all quoting lives here (shell_escape_squote, like the items).
+ * Returns snprintf's length so callers detect truncation. */
+static int nb_seg_link_action(const char *url, char *out, size_t outsz) {
+    char url_sq[PATH_BUF * 2];
+    shell_escape_squote(url ? url : "", url_sq, sizeof(url_sq));
+    return snprintf(out, outsz, "'%s/ops/nb_write_go.sh' 'go' '%s'", g_package_dir, url_sq);
+}
+
 /* devtools console: keep the NBW_CONSOLE capture file bounded. Trims to the
  * last <maxbytes> at a line boundary; called from write_ui_projection so the
  * projection loop itself enforces the cap without the worker knowing. */
@@ -5472,6 +5486,22 @@ static void write_ui_projection(void) {
                     /* A group arms at most one label/payload pair: two
                      * identical runs in one paragraph share it. */
                     if (!gm->label) {
+                        /* step 4: bake each link segment's click action
+                         * (see nb_seg_link_action) and charge it to the
+                         * payload budget - link-dense paragraphs fall
+                         * back to plain rows rather than truncate. */
+                        int actok = 1;
+                        for (k = 0; k < gm->nseg; k++) {
+                            size_t al;
+                            int nch;
+                            if (!gm->segs[k].is_link) continue;
+                            nch = nb_seg_link_action(gm->segs[k].url, nb_scratch, (size_t)(PATH_BUF + 512));
+                            if (nch < 0 || (size_t)nch >= (size_t)(PATH_BUF + 512)) { actok = 0; break; }
+                            al = strlen(nb_scratch);
+                            if (memchr(nb_scratch, 0x1e, al) || memchr(nb_scratch, 0x1f, al)) { actok = 0; break; }
+                            pay_len += 1 + al;
+                        }
+                        if (!actok) continue;
                         /* size caps: the frame round-trip line is 9000
                          * bytes and the var-loader line is 16384 - stay
                          * far under both, or the row truncates mid-payload
@@ -5483,6 +5513,7 @@ static void write_ui_projection(void) {
                         if (!label || !payload) { free(label); free(payload); continue; }
                         {
                             char *lw = label, *pw = payload;
+                            int emitok = 1;
                             for (k = 0; k < gm->nseg; k++) {
                                 size_t tl = strlen(gm->segs[k].text);
                                 size_t ul = strlen(gm->segs[k].url);
@@ -5493,7 +5524,23 @@ static void write_ui_projection(void) {
                                 memcpy(pw, gm->segs[k].text, tl); pw += tl;
                                 *pw++ = '\x1f';
                                 memcpy(pw, gm->segs[k].url, ul); pw += ul;
+                                /* step 4: link segments carry their click
+                                 * action as the optional fourth field;
+                                 * text segments omit the empty tail.
+                                 * Re-baked (deterministic, measured
+                                 * identical above) rather than retained. */
+                                if (gm->segs[k].is_link) {
+                                    int nch = nb_seg_link_action(gm->segs[k].url, nb_scratch,
+                                                                 (size_t)(PATH_BUF + 512));
+                                    if (nch < 0 || (size_t)nch >= (size_t)(PATH_BUF + 512)) {
+                                        emitok = 0; break;
+                                    }
+                                    *pw++ = '\x1f';
+                                    memcpy(pw, nb_scratch, strlen(nb_scratch));
+                                    pw += strlen(nb_scratch);
+                                }
                             }
+                            if (!emitok) { free(label); free(payload); continue; }
                             *lw = 0; *pw = 0;
                         }
                         /* whole-paragraph junk: today's TEXT rows would
