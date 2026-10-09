@@ -1,3 +1,2 @@
-x=0
-y=76
-note=no player-1 thing; south floor cell
+x=59
+y=120
