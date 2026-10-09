@@ -550,10 +550,19 @@ static void khtpm_decode_label_entities(char *s) {
  * ever runs, without duplicating the wrap logic or re-deriving it by
  * guesswork. Real, generic, not co-lab-hai-specific - any future
  * scrolllist consumer with long text gets this for free. */
-static int wrap_line_count(XftFont *font, const char *text, int avail_w) {
-    if (!font || !text || !text[0] || avail_w <= 0) return 1;
+static int wrap_line_bounds(XftFont *font, const char *text, int avail_w,
+                            int (*cuts)[2], int maxlines) {
+    /* INLINE SPANS step 6 (wrapping): the greedy wrap stepping, factored
+     * so the line COUNT (layout, via wrap_line_count below) and the line
+     * BOUNDS (wrapped span draw, below) cannot drift apart - one loop,
+     * two views. cuts[] gets [start,end) byte offsets per line (end
+     * exclusive; the consumed break space never starts the next line,
+     * exactly the plain convention). maxlines caps STORAGE; extra lines
+     * still COUNT, the caller clips to its own box. Stepping copied
+     * verbatim from the original wrap_line_count loop. */
     int n = 0;
     const char *p = text;
+    if (!font || !text || !text[0] || avail_w <= 0) return 1;
     while (*p) {
         int i = 0, last_good_space = -1;
         for (;;) {
@@ -569,11 +578,19 @@ static int wrap_line_count(XftFont *font, const char *text, int avail_w) {
         int has_more_after = (p[i] != '\0');
         if (has_more_after && last_good_space >= 0) cut = last_good_space;
         if (cut == 0 && p[i] != '\0') cut = 1;
+        if (cuts && n < maxlines) {
+            cuts[n][0] = (int)(p - text);
+            cuts[n][1] = (int)(p - text) + cut;
+        }
         n++;
         p += cut;
         while (*p == ' ') p++;
     }
     return n < 1 ? 1 : n;
+}
+
+static int wrap_line_count(XftFont *font, const char *text, int avail_w) {
+    return wrap_line_bounds(font, text, avail_w, NULL, 0);
 }
 
 /* <canvas sprite="<raw-RGBA-path>"/> - a live pixel framebuffer element.
@@ -884,31 +901,41 @@ static int seg_measure_runs(Elem *e, XftFont *font, int x0, SegRun *runs, int ma
  * second copy of the badge math. Returns 1 with the link segment's
  * action copied out when px lands inside one, else 0 (caller falls
  * through to row-level behavior). */
-static int seg_hit_action(Elem *e, int px, char *actout, size_t actsz) {
+static int seg_fitting_runs(Elem *e, XftFont **font_out, SegRun *runs, int maxruns) {
+    /* one gate implementation shared by click (below), keyboard cursor
+     * and Enter (step 5, further below): run count, or -1 when span
+     * geometry must not apply. */
     XftFont *font;
     int pad, x0, avail_w;
     XGlyphInfo extents;
-    SegRun runs[64];
-    int nrun, ri;
     /* draw's own gate measures shown_label (entity-decoded copy), not
      * the raw label - mirror it exactly (same function, same buffer
-     * size) or a label carrying "&" disagrees about the fit. */
+     * size) or a label carrying "&" disagrees about the fit. Click/keys
+     * only, never the per-frame draw path (which measures inline). */
     char shown[2048];
-    if (!e || !e->segments[0] || !actout || actsz == 0) return 0;
-    /* draw's own segments branch is gated on !drew_sprite (the start-x
-     * helper has no sprite branch) - a row carrying both falls back to
-     * the sprite path on screen, so clicks must not use span geometry. */
-    if (e->sprite[0]) return 0;
+    if (!e || !e->segments[0] || e->sprite[0]) return -1;
+    /* sprite gate: draw's own segments branch requires !drew_sprite
+     * (the start-x helper has no sprite branch) - a row carrying both
+     * falls back to the sprite path on screen, so span geometry must
+     * not apply to clicks or keys either. */
     font = font_for(&e->style);
-    if (!font) return 0;
+    if (!font) return -1;
     snprintf(shown, sizeof(shown), "%s", e->label);
     khtpm_decode_label_entities(shown);
     x0 = kh_elem_badge_label_x(e);
     pad = e->style.has_padding ? e->style.padding : 4;
     avail_w = e->w > 0 ? (e->x + e->w) - x0 - pad : -1;
     XftTextExtentsUtf8(dpy, font, (const FcChar8 *)shown, (int)strlen(shown), &extents);
-    if (!(avail_w > 0 && extents.width <= avail_w)) return 0;
-    nrun = seg_measure_runs(e, font, x0, runs, 64);
+    if (!(avail_w > 0 && extents.width <= avail_w)) return -1;
+    if (font_out) *font_out = font;
+    return seg_measure_runs(e, font, x0, runs, maxruns);
+}
+
+static int seg_hit_action(Elem *e, int px, char *actout, size_t actsz) {
+    SegRun runs[64];
+    int nrun, ri;
+    if (!actout || actsz == 0) return 0;
+    nrun = seg_fitting_runs(e, NULL, runs, 64);
     if (nrun < 0) return 0;
     for (ri = 0; ri < nrun; ri++) {
         if (runs[ri].is_link && runs[ri].actlen > 0 &&
@@ -921,6 +948,77 @@ static int seg_hit_action(Elem *e, int px, char *actout, size_t actsz) {
         }
     }
     return 0;
+}
+
+/* INLINE SPANS step 5 (keyboard nav): segment cursor state. One cursor
+ * per window (a window shows one focused row at a time, so one cursor
+ * is exact, not a shortcut): g_seg_idx indexes the focused row's
+ * ACTIONABLE link runs (link kind AND carrying an action - text spans
+ * are never stops). Lazy invalidation - valid only while nav, index
+ * AND element id all still match, so a row step, click elsewhere, or
+ * reorder clears it with zero hooks into kh_nav_step, the click path,
+ * or the layout passes (reparse_chtpm_if_changed() clears it outright
+ * on rebuild - the state lives in khtpm_render_core.c for exactly that
+ * reason, before draw_core's text-include). Up/Down leave the row
+ * (cursor dies by mismatch); Left/Right walk spans; Enter dispatches
+ * the cursor's span; Esc drops back to row-level. Relay
+ * arrows/digits/Enter reach all of it unmodified (codes 200-203/13). */
+static int seg_cursor_on(const Elem *e) {
+    return e && g_seg_idx >= 0 && g_seg_nav == e->nav_index &&
+           e->nav_index > 0 && e->id[0] && strcmp(g_seg_id, e->id) == 0;
+}
+/* actionable runs for an element: 0 when span geometry must not apply
+ * (same gates as draw/click - overlong rows keep row-level keys). */
+static int seg_actionable_count(Elem *e) {
+    SegRun runs[64];
+    int nrun, ri, n = 0;
+    nrun = seg_fitting_runs(e, NULL, runs, 64);
+    if (nrun < 0) return 0;
+    for (ri = 0; ri < nrun; ri++)
+        if (runs[ri].is_link && runs[ri].actlen > 0) n++;
+    return n;
+}
+/* copy the idx-th actionable run's action out (cursor order, not run
+ * order - text runs are skipped). */
+static int seg_action_at_idx(Elem *e, int idx, char *actout, size_t actsz) {
+    SegRun runs[64];
+    int nrun, ri, n = 0;
+    if (!actout || actsz == 0 || idx < 0) return 0;
+    nrun = seg_fitting_runs(e, NULL, runs, 64);
+    if (nrun < 0) return 0;
+    for (ri = 0; ri < nrun; ri++) {
+        size_t len;
+        if (!runs[ri].is_link || runs[ri].actlen == 0) continue;
+        if (n++ != idx) continue;
+        len = runs[ri].actlen;
+        if (len >= actsz) len = actsz - 1;
+        memcpy(actout, runs[ri].act, len);
+        actout[len] = '\0';
+        return 1;
+    }
+    return 0;
+}
+/* Left/Right on a focused segments row: enter the spans (Right: first
+ * link, Left: last), walk them, walk off either end back to row-level.
+ * Returns 1 when consumed (already redrawn), 0 for normal row stepping
+ * (plain rows, overlong rows, grids - anything without spans). */
+static int seg_cursor_step(Elem *focused, int dir) {
+    int nact, cur;
+    if (!focused || !focused->segments[0]) return 0;
+    nact = seg_actionable_count(focused);
+    if (nact <= 0) return 0;
+    cur = seg_cursor_on(focused) ? g_seg_idx : -1;
+    if (cur < 0) cur = (dir > 0) ? 0 : nact - 1;
+    else cur += dir;
+    if (cur < 0 || cur >= nact) {
+        g_seg_idx = -1;
+    } else {
+        g_seg_nav = focused->nav_index;
+        g_seg_idx = cur;
+        snprintf(g_seg_id, sizeof(g_seg_id), "%s", focused->id);
+    }
+    redraw();
+    return 1;
 }
 
 static void draw_elem(Elem *e, int hover_id_hash) {
@@ -1745,7 +1843,11 @@ static void draw_elem(Elem *e, int hover_id_hash) {
              * branch, hence the !drew_sprite gate above). */
             nrun = seg_measure_runs(e, font, badge_label_x, runs, 64);
             if (nrun >= 0) {
-                int ri;
+                int ri, link_no = -1;
+                /* cached white, one X round-trip ever: the focused span's
+                 * underline. Same convention as the badge font caches. */
+                static unsigned long seg_focus_px = 0;
+                if (!seg_focus_px) seg_focus_px = alloc_pixel("#ffffff");
                 for (ri = 0; ri < nrun; ri++) {
                     char seg_text[1024];
                     size_t tl = runs[ri].tlen;
@@ -1756,11 +1858,17 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                     sc = runs[ri].is_link ? link_col : col;
                     draw_text_emoji(font, &sc, runs[ri].x0, sty, seg_text);
                     if (runs[ri].is_link && runs[ri].x1 > runs[ri].x0) {
+                        int focused = 0;
                         /* underline: 1px GC rect just under the baseline,
                          * same GC+fill convention as every other rect in
                          * this file (cursor bar, badges), never
-                         * XRenderFillRectangle. */
-                        XSetForeground(dpy, gc, link_col.pixel);
+                         * XRenderFillRectangle. White when the keyboard
+                         * cursor sits on this span (step 5). */
+                        if (runs[ri].actlen > 0) {
+                            link_no++;
+                            focused = seg_cursor_on(e) && link_no == g_seg_idx;
+                        }
+                        XSetForeground(dpy, gc, focused ? seg_focus_px : link_col.pixel);
                         XFillRectangle(dpy, buf, gc, runs[ri].x0, sty + 2,
                                        (unsigned)(runs[ri].x1 - runs[ri].x0), 1);
                     }
@@ -1768,7 +1876,99 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                 drew_segments = 1;
             }
         }
-        if (!drew_segments && is_multiline_box) {
+        int drew_segwrap = 0;
+        if (!drew_segments && is_multiline_box && e->segments[0] && e->label[0] && !drew_sprite) {
+            /* INLINE SPANS step 6 (wrapping): overlong span rows wrap
+             * tinted instead of falling back to plain. Lines split with
+             * wrap_line_bounds() - the SAME greedy loop the layout counts
+             * with, so the box always fits (layout input is the raw label
+             * which entity-decoding only ever shrinks; the badge estimate
+             * keeps layout avail <= draw avail). Each line's [start,end)
+             * maps back onto segments by text offset (label == concat of
+             * segment texts by projector contract) and draws span by
+             * span. Start-x/ty/line_h mirror the plain multiline path
+             * exactly (badge_label_x, e->y+ascent+2, line_h) so wrapped
+             * rows sit on the same grid. No ellipsis and no per-line
+             * capacity math beyond max_lines: with the layout upper bound
+             * every line fits; the cap is dead insurance that clips
+             * instead of overlapping (the 2026-09-23 class). Payloads
+             * needing more than 64 stored lines fall back to the plain
+             * path (which ellipsizes honestly) - our projector caps
+             * labels at 1500 chars (~30 lines), so only hostile input
+             * takes that branch. Click/keys stay single-line-gated
+             * (seg_fitting_runs): wrapped rows click through their LINK
+             * items until wrapped hit-testing lands. */
+            SegRun sgruns[64];
+            int sgn = seg_measure_runs(e, font, 0, sgruns, 64);
+            if (sgn > 0) {
+                char wrapbuf[2048];
+                int cuts[64][2];
+                int nlines, max_ln, li;
+                XftColor link_col = xft_color("#8fb8ff");
+                snprintf(wrapbuf, sizeof(wrapbuf), "%s", shown_label);
+                if (wrapbuf[0]) {
+                    nlines = wrap_line_bounds(font, wrapbuf, avail_w, cuts, 64);
+                    max_ln = (e->h + line_h - 1) / line_h;
+                    if (max_ln < 1) max_ln = 1;
+                    if (nlines > max_ln) nlines = max_ln;
+                    if (nlines <= 64) {
+                        /* (ri, rstart): runs[ri] starts at label offset
+                         * rstart - persistent across lines. rstart is the
+                         * RUN's start, never the draw cursor: deriving run
+                         * ends from the cursor (roff + tlen) silently
+                         * stretched every run by its already-drawn prefix
+                         * and froze ri at 0 forever - live symptom: full
+                         * grey box, zero tint, reads past run ends. */
+                        int ri = 0;
+                        size_t rstart = 0;
+                        for (li = 0; li < nlines; li++) {
+                            int ty_line = e->y + font->ascent + 2 + li * line_h;
+                            int lx = badge_label_x;
+                            int ls = cuts[li][0], le = cuts[li][1];
+                            size_t pos;
+                            while (ri < sgn && rstart + sgruns[ri].tlen <= (size_t)ls) {
+                                rstart += sgruns[ri].tlen;
+                                ri++;
+                            }
+                            pos = rstart > (size_t)ls ? rstart : (size_t)ls;
+                            while (ri < sgn && pos < (size_t)le) {
+                                size_t rend = rstart + sgruns[ri].tlen;
+                                size_t se = rend < (size_t)le ? rend : (size_t)le;
+                                if (se > pos) {
+                                    size_t slen = se - pos;
+                                    char slice[2048];
+                                    XGlyphInfo sl_ext;
+                                    XftColor ssc;
+                                    if (slen >= sizeof(slice)) slen = sizeof(slice) - 1;
+                                    memcpy(slice, sgruns[ri].text + (pos - rstart), slen);
+                                    slice[slen] = '\0';
+                                    ssc = sgruns[ri].is_link ? link_col : col;
+                                    draw_text_emoji(font, &ssc, lx, ty_line, slice);
+                                    XftTextExtentsUtf8(dpy, font, (const FcChar8 *)slice,
+                                                       (int)slen, &sl_ext);
+                                    if (sgruns[ri].is_link) {
+                                        XSetForeground(dpy, gc, link_col.pixel);
+                                        XFillRectangle(dpy, buf, gc, lx, ty_line + 2,
+                                                       (unsigned)sl_ext.xOff, 1);
+                                    }
+                                    lx += sl_ext.xOff;
+                                    pos = se;
+                                }
+                                if (se >= rend) {
+                                    rstart = rend;
+                                    ri++;
+                                    pos = rstart;
+                                } else {
+                                    break;
+                                }
+                            }
+                        }
+                        drew_segwrap = 1;
+                    }
+                }
+            }
+        }
+        if (!drew_segments && !drew_segwrap && is_multiline_box) {
             /* Real, generic greedy word-wrap: pack words onto each line
              * (measuring real glyph width via Xft, not a char-count
              * guess - same discipline chai_measure_text_px() already
@@ -1902,7 +2102,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                 while (*p == ' ') p++; /* real, plain word-wrap convention - a consumed break space never starts the next line */
                 if (is_last_visible_line) break;
             }
-        } else if (!drew_segments) {
+        } else if (!drew_segments && !drew_segwrap) {
             /* REAL, NEW 2026-09-01 (found live testing open-hai's own
              * real sidebar - a real session snippet longer than the
              * sidebar's own real 220px width drew straight past its own

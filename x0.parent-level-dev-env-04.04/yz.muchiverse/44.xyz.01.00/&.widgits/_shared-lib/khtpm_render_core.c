@@ -303,6 +303,16 @@ typedef struct Elem {
     CssStyle style;
 } Elem;
 
+/* INLINE SPANS step 5 (keyboard nav): segment cursor state. One cursor
+ * per window (a window shows one focused row at a time). Lives HERE
+ * (not in khtpm_draw_core.c with its accessors) so the reparse path in
+ * khtpm_core_render.c - which runs BEFORE draw_core's text-include -
+ * can clear it when the tree it names is discarded. See seg_cursor_on's
+ * own comment in draw_core for the validity contract. */
+static int g_seg_nav = 0;
+static int g_seg_idx = -1;
+static char g_seg_id[64] = "";
+
 /* Pure Elem-tree geometry - topmost-child-first hit test (children drawn
  * later win the hit, matching draw order), no X11/global dependency.
  * Verified byte-identical across db-hq/events-hq/chat-hai before being

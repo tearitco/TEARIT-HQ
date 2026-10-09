@@ -1,0 +1,20 @@
+URL|FIXDIR/fixtures/longlinks.html
+TITLE|Long links
+PARA|1
+HEAD|1|Wrapping fixture
+PARA|2
+TEXT|This is a deliberately long paragraph whose sentence runs well past one visual line so the inline span wrap path has real work to do, and it carries its first link right here 
+LINK|https://example.com/first|first link
+TEXT| followed by considerably more prose that must continue on the next visual lines tinted as ordinary text until the second link 
+LINK|https://example.com/second|second link
+TEXT| arrives near the very end of the paragraph tail.
+PARA|3
+PARA|4
+TEXT|A short linkless paragraph stays plain.
+PARA|5
+RICH|5|2
+RICHSEG|text|This is a deliberately long paragraph whose sentence runs well past one visual line so the inline span wrap path has real work to do, and it carries its first link right here |
+RICHSEG|link|first link|https://example.com/first
+RICHSEG|text| followed by considerably more prose that must continue on the next visual lines tinted as ordinary text until the second link |
+RICHSEG|link|second link|https://example.com/second
+RICHSEG|text| arrives near the very end of the paragraph tail.|
