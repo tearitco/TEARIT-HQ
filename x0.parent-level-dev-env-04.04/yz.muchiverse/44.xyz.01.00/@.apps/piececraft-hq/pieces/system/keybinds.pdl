@@ -66,6 +66,18 @@ VERB         | 109                | CTX_MENU
 #   (mc-speed-algos.md §7, BV-GPU-RENDER-DESIGN.md).
 OPT          | multipress_compensator | 1
 
+# Dispatcher drop tuning (read every tick by bv_dispatch, only used while
+# multipress_compensator is 1). A queued key older than
+#   clamp(dispatch_stale_factor x last 3D render ms, floor, ceil)
+# is dropped as backlog. Lower floor/ceil = stops sooner on release but
+# under-moves when frames are slow; raise them if the xelector feels
+# "inaccurate". dispatch_arrow_run_cap = max moves of one arrow per tick.
+# Defaults below equal the old compiled-in values (2 x, 150, 900, 3).
+OPT          | dispatch_stale_factor  | 2
+OPT          | dispatch_stale_floor_ms | 150
+OPT          | dispatch_stale_ceil_ms  | 900
+OPT          | dispatch_arrow_run_cap  | 3
+
 # REAL, NEW 2026-09-29, direct instruction ("well its cause i minimized
 # the window... we will keep game logic alive, unless 'minimize set to
 # pause' on a .pdl file which we will let user toggle thru menu later"):

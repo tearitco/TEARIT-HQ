@@ -184,6 +184,11 @@ int main(void) {
      * Default on. Cheap to re-read every tick. */
     int compensator = 1;
     int pause_on_minimize = 0;
+    /* Drop tuning (keybinds.pdl OPT rows, defaults = the old #defines):
+     * stale = clamp(factor x last 3D render ms, floor, ceil); a same-arrow
+     * run is capped at arrow_cap moves per tick. */
+    int stale_factor = 2, stale_floor = RELAY_STALE_FLOOR_MS, stale_ceil = RELAY_STALE_CEIL_MS;
+    int arrow_cap = BVD_ARROW_RUN_CAP;
     {
         char froot[PATH_BUF] = "";
         read_state_str("focused_project_root", froot, sizeof(froot));
@@ -192,6 +197,14 @@ int main(void) {
             snprintf(kbp, sizeof(kbp), "%s/pieces/system/keybinds.pdl", froot);
             compensator = read_pdl_opt(kbp, "multipress_compensator", 1);
             pause_on_minimize = read_pdl_opt(kbp, "minimize_pauses_game", 0);
+            stale_factor = read_pdl_opt(kbp, "dispatch_stale_factor", stale_factor);
+            stale_floor  = read_pdl_opt(kbp, "dispatch_stale_floor_ms", stale_floor);
+            stale_ceil   = read_pdl_opt(kbp, "dispatch_stale_ceil_ms", stale_ceil);
+            arrow_cap    = read_pdl_opt(kbp, "dispatch_arrow_run_cap", arrow_cap);
+            if (stale_factor < 1) stale_factor = 1;
+            if (stale_floor < 0) stale_floor = 0;
+            if (stale_ceil < stale_floor) stale_ceil = stale_floor;
+            if (arrow_cap < 1) arrow_cap = 1;
         }
     }
 
@@ -222,9 +235,9 @@ int main(void) {
     pj(dur_path, sizeof(dur_path), "pieces/display/.bv_dispatch_3d_dur_ms");
     long long last_3d_dur = 0;
     { FILE *df = fopen(dur_path, "r"); if (df) { if (fscanf(df, "%lld", &last_3d_dur) != 1) last_3d_dur = 0; fclose(df); } }
-    long long stale_ms = 2 * last_3d_dur;
-    if (stale_ms < RELAY_STALE_FLOOR_MS) stale_ms = RELAY_STALE_FLOOR_MS;
-    if (stale_ms > RELAY_STALE_CEIL_MS)  stale_ms = RELAY_STALE_CEIL_MS;
+    long long stale_ms = stale_factor * last_3d_dur;
+    if (stale_ms < stale_floor) stale_ms = stale_floor;
+    if (stale_ms > stale_ceil)  stale_ms = stale_ceil;
 
     /* --- 1. drain interact_relay.txt (read all, then truncate) --- */
     char buf[RELAY_BUF];
@@ -306,7 +319,7 @@ int main(void) {
                 if (compensator && is_arrow) {
                     if (keycode == arrow_run_code) {
                         arrow_run_n++;
-                        if (arrow_run_n > BVD_ARROW_RUN_CAP) goto next_line; /* cap the run */
+                        if (arrow_run_n > arrow_cap) goto next_line; /* cap the run */
                     } else {
                         /* direction change inside one drained batch: the
                          * run so far is the key the user just moved OFF
@@ -315,7 +328,7 @@ int main(void) {
                          * coasting through the old key's backlog. */
                         if (arrow_run_code >= 1000 && arrow_run_n > 0) {
                             int pop = arrow_run_n;                 /* how many of the old run we EMITTED */
-                            if (pop > BVD_ARROW_RUN_CAP) pop = BVD_ARROW_RUN_CAP;  /* the rest were cap-dropped already */
+                            if (pop > arrow_cap) pop = arrow_cap;  /* the rest were cap-dropped already */
                             if (pop > nk) pop = nk;
                             nk -= pop;
                             dropped_stale += pop;  /* -> still renders once, shows in BVD_DEBUG */
