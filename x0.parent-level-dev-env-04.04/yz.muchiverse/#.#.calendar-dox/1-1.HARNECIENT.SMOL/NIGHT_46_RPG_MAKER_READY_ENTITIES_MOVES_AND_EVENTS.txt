@@ -1,0 +1,96 @@
+# 🗺️🎭 NIGHT 46 — RPG Maker Ready: Entities, Moves and Events 🎭🗺️
+# ====================================================================
+# Title: "🗺️🎭 NIGHT 46 — RPG Maker Ready: Entities, Moves and Events 🎭🗺️"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: What an entity really is in the house, how Move works through the placer, how events and their triggers work compared with RPG Maker MV, what is missing, and the small steps to become RPG Maker ready before Grok joins a co-lab session.
+# Long-form: a research night with an honesty checkpoint. Everything comes from documents and file headers read on October eighth. Nothing was built or run.
+# Companion documents: 08-roadmap/design-docs/RPGMAKER-MV-READINESS-ENTITIES-MOVEMENT-EVENTS-RESEARCH-2026-10-08.md, 18.pc-hq/MOVE-AND-TAKE.md, EVENT-TRIGGER-LAYER-PLAN.md, RMMV-EVENT-ARCHITECTURE-LEARNINGS.md, EVENT-COMMAND-REGISTRY-ARCHITECTURE.md.
+
+**THE NARRATOR:** Tonight starts with a correction. The owner said I was misunderstanding what they mean by entities and movement, and told me to look at the move placer and the events. They also said Grok is better at RPG Maker, and that our job is to get everything set up and documented better. So I stopped writing plans and read.
+
+**MAXINE:** What did I get wrong?
+
+---
+
+**THE NARRATOR:** Part one. What an entity is.
+
+**TOMO:** An entity is a folder. It has a meta file with method rows, a menu file, a position file, an inventory folder where items are themselves entities, a phone, and an event package. It is also a window, because in this house a window is an entity and an entity is a window. Its place on a map is one row in a page file: name, path, pixel position, cell, glyph.
+
+**RAHWEH:** And the page?
+
+**TOMO:** A page is a map. A book is a project. The desk and the piece craft board are meant to read and write the same page file, so a move in one shows in the other. Pieces of that are proved, but the board still keeps private copies of some positions.
+
+**MAXINE:** So the mapping to RPG Maker?
+
+**TOMO:** An entity is an event, or an actor. The page file is the map's event list. The book is the project. Once you see that, most of the old documents stop looking scattered.
+
+---
+
+**THE NARRATOR:** Part two. How Move really works.
+
+**TOMO:** Move is not a window drag, and it is not the entity walking on its own. It is a pipeline. You choose Act, then Move, from the entity's menu. A launcher arms a placer. A range matrix of hash and dot cells is drawn around the entity, the tactics game style. You click a cell. A shared library plans a stepped path and appends waypoints to an animation queue, a file that only grows, with a cursor beside it. A ticker applies one waypoint at a time. On the desk that moves the window. On the board it is one cell per engine step. The result goes back to the page row, and a ledger line is written.
+
+**RAHWEH:** Why a full screen invisible window for the click?
+
+**TOMO:** A finding in the placer's header. On this desktop, real clicks on bare background never reach the X11 side. So the placer covers the screen with an invisible input window, and then every click lands on something real.
+
+**MAXINE:** And there is a second kind of movement.
+
+**TOMO:** Yes. The chicken wanders by itself under a clock daemon. That is the autonomous kind. RPG Maker has both as well: moving the player by input, and a move route for an event. In the house the first is built, and the second is only a stored text row.
+
+---
+
+**THE NARRATOR:** Part three. Events.
+
+**TOMO:** An event package has pages. Each page has a condition file with a trigger, and a compiled command list. When a trigger fires, the runner picks the highest numbered page whose trigger matches. That is exactly RPG Maker's rule. The commands come from a registry file of eighty seven blocks, each one a template that runs one operation. The rule is to never hardcode a command in the renderer. You add a block.
+
+**RAHWEH:** Which RPG Maker commands exist?
+
+**TOMO:** Transfer player, scroll map, set move route, fades, tint, flash, shake, shop, battle, sound effects, self switches, timers, show text and choices, party and actor changes, and flow control. But most of the world ones only write state. A shake command records a shake. Nothing shakes. The move route command stores the route. Nothing walks it.
+
+**MAXINE:** And triggers?
+
+**TOMO:** RPG Maker has five: action button, player touch, event touch, autorun and parallel. In the house, click is the action button. Player touch is built end to end for the piece craft board: the move handler writes a touched line into the ledger, a watcher process tails the ledger and runs the event. It was proven on a sample map. Autorun and parallel exist for common events. Event touch does not exist, and the desk has no touch triggers at all.
+
+---
+
+**THE NARRATOR:** Part four. What we can copy from RPG Maker, and what we cannot.
+
+**TOMO:** The notes written from the real RPG Maker source say this clearly. RPG Maker is one process. Every frame it checks every event, in memory. The house has many processes, so it must use files: an append only ledger and a watcher. Do not copy the per frame poll. Copy the data model instead: switches and variables, and the self switch, keyed by map, event and letter. Pages chosen by conditions. And keep one ledger as the truth, replayed, the way the board game ledger already is.
+
+---
+
+**THE NARRATOR:** Part five. The gaps, in order.
+
+**TOMO:** One. After a move, nothing runs on the desk. The board has a hook for player touch. The desk does not. In RPG Maker this is the part that runs every frame while the player stands still. Two. No route executor. Three. No event touch. Four. Page conditions only use the trigger; switches, variables, self switches and items are not yet checked by the page picker. Five. State commands are not drawn. Six. The chicken tick is not started by the current board launcher, and Eden has no positions at all. Seven. There are two stores for book and page, and the owner has not chosen. Eight. Play modes, build, play and play test, are designed and not built.
+
+**RAHWEH:** And my earlier plan?
+
+**TOMO:** It assumed entities act on a clock tick and invented menu driven play without the placer or the pages. The real structure already has a placer for chosen moves, pages for consequences, and a ledger for audit. I also made two plain errors: I said Eden's game folder was missing, and I said the chicken ticks per player action. Both were wrong, and both are corrected in the document.
+
+---
+
+**THE NARRATOR:** Part six. The route to ready.
+
+**TOMO:** Small steps, each with a test and a mutant. Step zero is documentation: a mapping table so Grok can name the file for any RPG Maker idea. Step one, a post move hook on the desk: when a path finishes, write a move done line; a watcher finds a touch trigger on that cell and runs the event. The test: move onto the trigger and it runs once, move elsewhere and nothing runs, remove the hook and the test fails. Step two, a route executor that turns a route string into waypoints for the same ticker, with walls. Then event touch. Then page conditions. Then an autorun lock that blocks input. Then drawing the state commands. Then the single store decision. Then Eden as the worked map, with positions and moves you can see.
+
+**MAXINE:** Why that order?
+
+**TOMO:** The first two reuse things already proven: the ledger and watcher, and the ticker and queue. They unlock the rest. Do not start with presentation, and do not start a new engine.
+
+---
+
+**THE NARRATOR:** Part seven. For the co-lab with Grok.
+
+**TOMO:** The owner will open a co-lab session and bring Grok in. Questions to ask. Which features first? Is move a registry command or a built in verb? Can Grok list the real RPG Maker route commands and check our world verbs against the real code numbers? Is a map loop ever needed, or is a ledger line plus a watcher enough? Which store wins for book and page? And how should self switch keys be named across the board and the desk?
+
+---
+
+**THE NARRATOR:** Honesty checkpoint.
+
+**MAXINE:** What did you not do?
+
+**TOMO:** I read documents, the command registry's list and world block, and the headers of the placer, the range library and the move launcher. I did not read the bodies of the placer, the init and tick programs, the world operation, or the common events manager. I did not build or run anything. Some older documents are stale, and I followed the newer notes where they disagreed. The route to ready is a proposal.
+
+**THE NARRATOR:** The house already has the bones of an RPG Maker project. What it lacks is the loop that connects a move to what happens next.

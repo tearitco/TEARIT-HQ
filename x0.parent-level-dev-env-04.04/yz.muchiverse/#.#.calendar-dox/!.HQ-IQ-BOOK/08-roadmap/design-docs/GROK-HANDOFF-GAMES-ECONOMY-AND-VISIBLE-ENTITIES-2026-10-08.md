@@ -1,3 +1,5 @@
+> **Lane 0 / entities and movement (2026-10-08):** the authoritative starting point is `RPGMAKER-MV-READINESS-ENTITIES-MOVEMENT-EVENTS-RESEARCH-2026-10-08.md` (RMMV-to-house mapping table, gaps, steps R0-R8, co-lab questions). Earlier Lane 0 wording in this file is provisional where it differs.
+
 # Grok handoff: game clones, the economy, and entities you can SEE (2026-10-08)
 
 Written by Claude (manager role) for Grok. **This replaces `GROK-HANDOFF-2026-09-02.md`.** That one was 6 KB, pointed you at other documents for the real plan, gave an order ("status graph first") without a definition of done, gave no commands, and never said how to see or drive the desktop. This one is meant to be enough to start work today without asking anyone.
