@@ -14278,6 +14278,14 @@ static void desktop_set_bar_skin(const char *house_root, const char *id) {
     desktop_load_click_two_step(house_root); /* re-reads hq_ui.pdl (restores font_family) and calls kh_bar_skin_load */
     reload_font_ui();
     hq_ui_pdl_touch_marker(house_root);
+    {   /* the Livedesk app icon is drawn from the same skin tiles: redraw it (debounced, same helper as a theme change) */
+        char helper[PATH_BUF], cmd[PATH_BUF * 2];
+        snprintf(helper, sizeof(helper), "%s/$.crypts/livedesk-icon-refresh.sh", house_root);
+        if (access(helper, F_OK) == 0) {
+            snprintf(cmd, sizeof(cmd), "sh '%s' debounce </dev/null >/dev/null 2>&1 &", helper);
+            int rc = system(cmd); (void)rc;
+        }
+    }
 }
 
 /* BAR_SKIN_NEXT / BAR_SKIN_PREV: cycle off -> each SKIN row of bar_skins.pdl -> off. */
