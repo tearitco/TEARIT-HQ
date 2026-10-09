@@ -1,5 +1,13 @@
 # 08 — Roadmap
 
+- Chess, smaller event game, queued 2026-10-09. Not started. Doom
+  keeps going. Spec is outside the repo:
+  `/home/no/Desktop/github/work/XO/17.DOOM/DOOM-BOOK-BIBLE.md`
+  section "Smaller game first — chess". Pages are board
+  configurations. Each piece is an entity with a move range. A
+  game-manager event owns the turn. A player-manager event owns one
+  side, human or computer. Elo is a counter written by that manager.
+  All of it is events. Do not open the book until asked.
 - `design-docs/TODO-2026-09-15/MAJOR-PRIORITIES-2026-09-15.md` — **the
   current real major-priorities brainstorm**: 3 tracks settled via
   live Q&A - (1) mineclonia as a real, loadable, re-referenceable
