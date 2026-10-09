@@ -195,7 +195,42 @@ file above):
 `GameFont.ttf` (the RTP mplus face). **Unsure:** that css and the ttf
 were not opened in this pass. The numbers above were read from the JS.
 
-When `bar_skin` is set, labels inside those bars use that face at 28px,
+28px is the MV base, not a fixed house size. Owner, same day: the
+settings size control scales it up and down with the other windows.
+Drawn size is `28 * font_scale` (the `hq_ui.pdl` `font_scale` the
+size buttons already write). Line height scales the same way from 36.
+Off still restores the house family and the house scale.
+
+`gamefont.css` in the MV `www/fonts/` tree maps the family name
+`GameFont` to `mplus-1m-regular.ttf`. The file is about 1.5 MB. It
+was not copied into this repo.
+
+The draw path does not open a TTF by path. `khtpm_draw_core.c` and
+`khtpm_core_render.c` call `XftFontOpenName` with a fontconfig family
+string plus `pixelsize`. `UI_FONT_FAMILY_NEXT` only cycles the eight
+names in `g_font_family_choices` (DejaVu Sans through DSEG14 Classic).
+There is no `stbtt_` and no `FcConfigAppFontAddFile` in those files.
+
+Smallest change that can show this face: register the ttf with
+fontconfig for the process (`FcConfigAppFontAddFile` on the existing
+config, then `XftFontOpenName` of `GameFont`), and add that name to
+the cycle only while `bar_skin` is on. Copying the file into git is
+not part of that change.
+
+Licence: no license file sits next to this `gamefont.css`. Upstream
+M+ is distributed under the M+ FONT LICENSE, which allows
+redistribution if the license text stays with the font. **Unsure**
+until that license file is read from the M+ distribution itself. Do
+not commit the ttf before that.
+
+A 36px line fits a bar block drawn at the desk cell (80px, then UI
+scale). It does not fit a raw 48px cell once 18px of window padding
+is added on both sides. The bar uses the scaled desk cell, not the
+raw 48. A long label adds middle blocks. It does not shrink the font
+below the scaled 28.
+
+When `bar_skin` is set, labels inside those bars use that face at the
+scaled 28px,
 with 6px of text padding inside the 18px window padding, and a line
 height of 36. The block grid still decides the bar size. The font does
 not stretch the tiles. A label that does not fit grows the bar by whole
