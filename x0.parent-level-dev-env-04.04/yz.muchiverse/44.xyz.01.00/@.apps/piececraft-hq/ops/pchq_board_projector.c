@@ -202,8 +202,10 @@ static size_t emit_entities(char *ui, size_t off, const char *house, const char 
         while (n < 16 && fgets(line, sizeof(line), f)) {
             char id[64]; int x, y, z;
             if (sscanf(line, "%63[^,],%d,%d,%d", id, &x, &y, &z) != 4) continue;
-            const char *kind = strstr(id, "chicken") ? "chicken"
-                             : strstr(id, "tree")    ? "tree" : "entity";
+            /* The chicken and the trees are the piececraft test level.
+             * A painted desk's bar is its own events. */
+            if (strstr(id, "chicken") || strstr(id, "tree")) continue;
+            const char *kind = "entity";
             off += (size_t)snprintf(ui + off, UIBUF - off,
                 "ent_%d_label=%s\nent_%d_id=%s\nent_%d_kind=%s\n"
                 "ent_%d_x=%d\nent_%d_y=%d\nent_%d_z=%d\n",
