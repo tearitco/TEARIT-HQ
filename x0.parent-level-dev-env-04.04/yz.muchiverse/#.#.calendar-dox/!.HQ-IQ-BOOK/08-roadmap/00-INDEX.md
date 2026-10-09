@@ -1,5 +1,14 @@
 # 08 — Roadmap
 
+- Chess started 2026-10-09. Book `maps/chess` with pages title,
+  standard, king_pawn, and endgame. Events are the pieces.
+  `select` writes a move-range matrix. `land` moves onto a legal
+  cell. The computer plays black with that same list. Elo is
+  `elo.pdl` (1200, K=32). A peer line is
+  `maps/chess/net/outbox.txt` in palnet `DATA|local|...` shape.
+  No socket. Spec: `design-docs/CHESS-EVENTS-2026-10-09.md` and
+  `/home/no/Desktop/github/work/XO/18.CHESS/CHESS.md`. Doom
+  learnings: `/home/no/Desktop/github/work/XO/17.DOOM/DOOM-LEARNINGS.md`.
 - `design-docs/TODO-2026-09-15/MAJOR-PRIORITIES-2026-09-15.md` — **the
   current real major-priorities brainstorm**: 3 tracks settled via
   live Q&A - (1) mineclonia as a real, loadable, re-referenceable

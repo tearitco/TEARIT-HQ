@@ -72,9 +72,61 @@ if [ "$KIND" = mapev ] && [ -n "$ID" ]; then
     # still waits for play mode, same as the other entities.
     VERB=""
     [ -f "$PKG/verb.txt" ] && VERB=$(head -1 "$PKG/verb.txt")
-    if [ "$VERB" = start_game ] || [ "$VERB" = stop_game ]; then
+    if [ "$VERB" = start_game ] || [ "$VERB" = stop_game ] || [ "$VERB" = restart_game ] || [ "$VERB" = continue_game ]; then
         sh "$ROOT/ops/doom_event.sh" "$VERB" "$MAP" "$DESK"
         echo "$(date '+%H:%M:%S') $VERB mapev $ID" >> "$LOG"
+        exit 0
+    fi
+    # Desk events.pdl is the cell-32 list. The ev/ package was built on
+    # the old grid and its verb often disagrees. Play the pdl command.
+    EVF="$ROOT/pieces/system/maps/$MAP/$DESK/events.pdl"
+    CMD=""
+    if [ -f "$EVF" ]; then
+        CMD=$(awk -v id="$ID" '
+            BEGIN { n=0 }
+            $1=="EVENT" {
+                n++
+                if (n == id+0) {
+                    for (i = 1; i <= NF; i++) {
+                        if ($i ~ /^cmds=/) { split($i, a, "="); print a[2]; exit }
+                    }
+                }
+            }
+        ' "$EVF")
+    fi
+    case "$CMD" in
+        start_standard|start_computer|start_player|start_king_pawn|start_endgame|stop_game|show_elo)
+            sh "$ROOT/ops/chess_event.sh" "$CMD"
+            echo "$(date '+%H:%M:%S') chess $CMD mapev $ID" >> "$LOG"
+            exit 0
+            ;;
+    esac
+    if [ -n "$CMD" ] && grep -q '^mode=on' "$HOUSE/#.desktop/khtpm_play_mode.state.txt" 2>/dev/null; then
+        case "$CMD" in
+            select|land)
+                sh "$ROOT/ops/chess_event.sh" "$CMD" "$DESK" "$ID"
+                echo "$(date '+%H:%M:%S') chess $CMD mapev $ID" >> "$LOG"
+                exit 0
+                ;;
+            change_hp|change_armor|nukage|change_ammo|change_items|start_battle|next_level|player_start)
+                sh "$ROOT/ops/doom_event.sh" "$CMD"
+                case "$CMD" in
+                    player_start|next_level) ;;
+                    *) sh "$ROOT/ops/doom_event.sh" kill_event "$DESK" "$ID" ;;
+                esac
+                echo "$(date '+%H:%M:%S') pdl $CMD mapev $ID" >> "$LOG"
+                exit 0
+                ;;
+        esac
+    fi
+    DP="$ROOT/pieces/system/maps/$MAP/deadpool.pdl"
+    if [ -f "$DP" ] && awk -F'|' -v desk="$DESK" -v id="$ID" '
+        { gsub(/^[ \t]+|[ \t]+$/, "", $2); gsub(/^[ \t]+|[ \t]+$/, "", $3) }
+        $2=="desk" { d=$3 }
+        $2=="ev" && $3==id && d==desk { hit=1 }
+        END { exit hit ? 0 : 1 }
+    ' "$DP"; then
+        echo "$(date '+%H:%M:%S') dead mapev $ID" >> "$LOG"
         exit 0
     fi
     if grep -q '^mode=on' "$HOUSE/#.desktop/khtpm_play_mode.state.txt" 2>/dev/null; then

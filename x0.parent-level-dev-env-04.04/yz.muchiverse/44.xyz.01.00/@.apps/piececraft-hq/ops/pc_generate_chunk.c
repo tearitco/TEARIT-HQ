@@ -370,16 +370,13 @@ static int emit_full_board(const char *map_id, const char *desk_id) {
     if (!f) return 0;
     char ex_glyphs[MAX_EXTRUDE_GLYPHS]; int ex_deltas[MAX_EXTRUDE_GLYPHS], ex_n, ex_default;
     load_extrusion_table(map_id, desk_id, ex_glyphs, ex_deltas, &ex_n, &ex_default);
-    /* 128 x 128 (was 64 x 64 with an 80-byte row: E1M2 is 48 x 79, TSOTS
-     * desks reach 120 x 110). 128 is bv_render_3d.c's MAX_BOARD_DIM; a
-     * bigger map is clipped there anyway. static: 16 KB off the stack. */
-    static char lines[128][132];
+    static char lines[256][260];
     int nrows = 0, ncols = 0;
     char buf[1024];
-    while (nrows < 128 && fgets(buf, sizeof(buf), f)) {
+    while (nrows < 256 && fgets(buf, sizeof(buf), f)) {
         buf[strcspn(buf, "\r\n")] = '\0';
         int len = (int)strlen(buf);
-        if (len > 128) len = 128;
+        if (len > 256) len = 256;
         memcpy(lines[nrows], buf, (size_t)len);
         lines[nrows][len] = '\0';
         if (len > ncols) ncols = len;

@@ -1,7 +1,5 @@
 #!/bin/sh
-# change_ammo
-cd "$(dirname "$0")/../../.." || exit 1
-ENT="$PWD"
-D="$ENT"
+D="$(cd "$(dirname "$0")" && pwd)"
 while [ "$D" != / ] && [ ! -d "$D/xyzfs" ]; do D="$(dirname "$D")"; done
-exec "$D/@.apps/piececraft-hq/ops/doom_event.sh" change_ammo
+sh "$D/@.apps/piececraft-hq/ops/doom_event.sh" change_ammo
+sh "$D/@.apps/piececraft-hq/ops/doom_event.sh" kill_event e1m1_hangar 54

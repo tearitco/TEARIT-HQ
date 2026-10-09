@@ -6020,10 +6020,15 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
     for (int oi = 0; oi < g_n_ov_off; oi++)                  /* overlays dropped this pass (hidden): reset "shown" */
         if (g_ov_off[oi].seen_gen != g_ov_gen) g_ov_off[oi].shown = 0;
 
-    char vsz[PATH_BUF];
-    snprintf(vsz, sizeof(vsz), "%s/#.desktop/pchq_board_view.txt", g_house_root);
-    FILE *vf = fopen(vsz, "w");
-    if (vf) { fprintf(vf, "%d %d\n", cv->w, cv->h); fclose(vf); }
+    /* A resizable window writes the fill size later in this same
+     * layout. Writing the smaller region size here too makes
+     * pchq_board_view.txt flip every pass and the 3D view flicker. */
+    if (!g_user_resizable) {
+        char vsz[PATH_BUF];
+        snprintf(vsz, sizeof(vsz), "%s/#.desktop/pchq_board_view.txt", g_house_root);
+        FILE *vf = fopen(vsz, "w");
+        if (vf) { fprintf(vf, "%d %d\n", cv->w, cv->h); fclose(vf); }
+    }
     return 1;
 }
 
