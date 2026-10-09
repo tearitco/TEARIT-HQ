@@ -3418,9 +3418,11 @@ static int render_one_frame(void) {
             }
             sc.legend_n++;
         }
-        /* maker_view: replace the glyph world with RPG Maker tile terrain (floor level 0, walls = 2 more levels where the cell has a
-         * wall slot). GPU path only; the camera, entities and fog are untouched. bv_state.txt maker_view=1 is written by key 7. */
-        if (read_kv_int(state_path, "maker_view", 0) && maker_load(focused_project_root)) {
+        /* A TSOTS desk is the 3D map. POV 1-4 use it the same way mutaclysm
+         * uses its voxel world. No separate key. Desks with no cells.rgba
+         * fail maker_load and stay the old letter blocks. Camera locals
+         * above are not written here. */
+        if (maker_load(focused_project_root)) {
             int mw = g_mk.w > MAX_BOARD_DIM ? MAX_BOARD_DIM : g_mk.w;
             int mh = g_mk.h > MAX_BOARD_DIM ? MAX_BOARD_DIM : g_mk.h;
             memset(gpu_grid, 0, (size_t)mw * (size_t)mh * 3);
