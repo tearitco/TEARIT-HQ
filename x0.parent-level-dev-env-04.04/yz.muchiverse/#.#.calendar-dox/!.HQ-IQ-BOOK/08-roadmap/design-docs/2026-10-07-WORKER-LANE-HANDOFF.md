@@ -4,6 +4,21 @@ For the `opencode-fix` lane (owns `ops/`, `tests/worker_*`, FETCH protocol,
 `nb_js_worker` sides). All observed live against Blockly + fixtures; none
 of these were changed on the opencode side per the lane split.
 
+> **Update 2026-10-08 — do not re-take item 5.** The worker also emits raw
+> script payloads and unparsed `{{templates}}` as ordinary TEXT rows, which put
+> a `{"wt":...}` blob in the middle of Wikipedia article prose. That is
+> **fixed manager-side** in `junk_visible_line()` (`71afa85c1`), as a SHAPE
+> test rather than a site string — braces plus a quoted `key:value`, and
+> `{{` on its own (a template split across source lines leaks as fragments
+> with no closing `}}`, so a balanced test let them through). The worker-side
+> fix is still worth doing — do not emit markup as text — but the user-visible
+> symptom is already handled and is not blocked on this lane.
+>
+> Known false positive of the manager-side filter, so nobody re-reports it as
+> a new bug: prose that literally quotes a JSON fragment is dropped too. No
+> structural test separates that from a script payload. Pinned in
+> `tests/snapshots/machine-data.state.txt` so it cannot change unnoticed.
+
 ## 1. Worker RENDER LINK rows shaped `LINK|<url> <label>` (space, not pipe)
 
 Live click test proved the consequence: the projector read the whole

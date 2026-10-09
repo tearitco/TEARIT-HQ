@@ -119,15 +119,62 @@ committing. Manager-side work (extractor → rows → xhtpm → css) stays here.
 When a browser slice needs worker rows, it goes through the handoff doc rather
 than a direct edit.
 
-## Test-harness gotcha (cost me two false "PASS" rounds)
+## Done — Milestones 11–13: content structure (2026-10-08)
 
-`nb_layout_test.sh` drives the **already-running** manager through the request
-file — it does not launch one. After a rebuild, relaunch the browser before
-`NB_SNAPSHOT_UPDATE=1`, or the snapshot is re-cut from a stale binary and looks
-like a real regression.
+- [x] **11 — lists**: `<ul>`/`<ol>` keep marker + nesting depth
+      (`LIST|depth|marker|text`), ordinals restart per level, values written
+      QUOTED so the indent survives the var loader's trim
+- [x] **11 — `<pre>`** indentation + literal `\n` survive (shared renderer:
+      quoted-literal values, and `\n` no longer silently becomes a newline)
+- [x] **11 — `<dl>`**: `DROW|term|definition`, pairing preserved
+- [x] **11 — `<details>`**: collapsed body no longer rendered (it was showing
+      content the page does not show); `open` still walks the body
+- [x] **11 — alt text**: an image with no alt said `[image, no alt text]`
+      instead of rendering an empty strip
+- [x] **12 — machine data**: JSON payloads and `{{templates}}` filtered by
+      SHAPE, not by site string
+- [x] **13 — headings**: `HEAD|level|text` for `h1..h6` with real size steps.
+      Previously every heading was one identical `TITLE` row
+
+## Done — Milestone 12: the renderer reports its own truncation (2026-10-08)
+
+Three silent drops now count themselves and publish as bindable vars
+(`render_warn`, `show_render_warn`) which the browser shows in amber:
+
+- `kh_set_var()` past `KH_MAX_VARS` — **this was the real one**: a 1502-row
+  page needs ~4500 vars against a 4096 cap, and `content_count` is written
+  LAST, so the count itself was the thing being dropped
+- repeat clamp at `KH_REPEAT_MAX`; element pool at `MAX_ELEMS`
+
+- [ ] **counters only refresh on reparse** — the warning does not update on an
+      idle window
+- [ ] **1 element still drops**, fixed chrome cost, unaffected by any content
+      budget. Needs a bigger pool or fewer chrome elements — a renderer
+      change, not a manager constant
+
+## Test-harness gotchas (each cost me at least one wrong conclusion)
+
+`nb_layout_test.sh` drives the **already-running** manager — it does not launch
+one. Relaunch after a rebuild or the snapshot is re-cut from a stale binary.
 
 Run everything with **`sh tests/nb_all_tests.sh`** (projection → layout → form).
 The first two need the browser already running; the third is hermetic.
+
+**Never read a count from an artifact you have not confirmed exists.**
+`ascii_frames/<pid>.frame.txt` is written lazily; `grep -c` on a missing file
+prints nothing, which reads as "0 warnings". That cost me a whole invented
+theory. `dump_frame()` in `nb_projection_test.sh` now refuses to return a stale
+or missing frame, and is negative-tested.
+
+**Check whether a surprising constant is historical before building on it.**
+The truncation counters were cumulative for the process lifetime, so a page
+that never overflowed reported drops it inherited — and I built two wrong
+diagnoses on that number before catching it.
+
+## Test-harness gotcha (superseded — kept because the lesson repeated)
+
+Cost me two false "PASS" rounds: the running-manager note above is the same
+trap seen again later as the missing-frame note.
 
 ## Done — Milestone 10: projection windowing (2026-10-08)
 

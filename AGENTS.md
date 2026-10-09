@@ -99,6 +99,23 @@ Compiled programs are in no branch: after a wipe, clone or branch switch run
 - Data is committed by `sh '$.crypts/button.sh' save-data` (also runs automatically after `quit`/`reset`); plumbing only, it never touches your working tree.
 - Before any bulk operation that could touch `xyzfs/users`, take a tarball + `sha256sum` list outside the repo and verify the file count.
 
+## Never report a number you did not observe (REQUIRED)
+
+Three wrong conclusions in one session traced to this, all from my own
+instrumentation rather than the code under test:
+
+- **`grep -c` on a file that does not exist prints nothing**, and an empty
+  count reads as "0". A lazily-written artifact read as a clean result
+  produced an entire invented theory. **Confirm the artifact exists before
+  trusting its count.**
+- **A surprising constant may be historical.** Counters that were never reset
+  made a page that never overflowed report drops it inherited from an earlier
+  one. Check whether a number is per-frame or cumulative before building on it.
+- **Verify a passing assertion can actually fail.** Negative-test it once.
+
+Corollary: read artifacts by identity (our own pid), never "newest on disk" —
+with two clones running that is another window's file.
+
 ## Source of truth
 
 Full house conventions live in the HQ-IQ-BOOK:
