@@ -349,7 +349,7 @@ typedef struct {
     int para_w, para_h, para_lx, para_ly;
     /* Visible map events (events.txt). Capped: the GPU scene holds 128
      * boxes and the selector, hero and range wires share that list. */
-    struct { int x, y, r, g, b, index, dir, pat; char name[40]; } ev[64];
+    struct { int x, y, r, g, b, index, dir, pat; char name[40]; } ev[96];
     int ev_n;
 } MakerAtlas;
 static MakerAtlas g_mk;
@@ -453,7 +453,7 @@ static int maker_load(const char *root) {
     snprintf(path, sizeof(path), "%s/events.txt", dir);
     f = fopen(path, "r");
     if (f) {
-        while (g_mk.ev_n < 64 && fgets(line, sizeof(line), f)) {
+        while (g_mk.ev_n < 96 && fgets(line, sizeof(line), f)) {
             int x, y, r, g, b, index, dir, pat;
             char name[40];
             if (sscanf(line, "%d %d %d %d %d %39s %d %d %d",
@@ -3523,9 +3523,9 @@ static int render_one_frame(void) {
          * which is the same extrusion a phymoji model gets. No frame
          * file, or no free model slot: the old flat colour box. */
         if (sc.maker) {
-            int budget = 48;
-            int used_model[64];
-            char used_key[64][64];
+            int budget = 80;
+            int used_model[96];
+            char used_key[96][64];
             int used_n = 0;
             for (int i = 0; i < g_mk.ev_n && budget > 0; i++, budget--) {
                 int hm = -1;
@@ -3534,7 +3534,7 @@ static int render_one_frame(void) {
                          g_mk.ev[i].name, g_mk.ev[i].index, g_mk.ev[i].dir, g_mk.ev[i].pat);
                 for (int k = 0; k < used_n; k++)
                     if (strcmp(used_key[k], key) == 0) hm = used_model[k];
-                if (hm < 0 && used_n < 64 && sc.model_n < BV_GPU_MAX_MODEL - 4) {
+                if (hm < 0 && used_n < 96 && sc.model_n < BV_GPU_MAX_MODEL - 6) {
                     unsigned char frame[16 * 24 * 4];
                     char walk[4352], fp[4400];
                     int got = 0;
@@ -3552,20 +3552,25 @@ static int render_one_frame(void) {
                         fclose(ff);
                     }
                     if (got) {
-                        PhymojiVoxel vox[16 * 24];
+                        /* Same extrusion as chicken: each opaque pixel
+                         * is a column, z 0..7, every layer the front
+                         * colour. One slice was a flat card. */
+                        PhymojiVoxel vox[16 * 24 * 8];
                         int nv = 0;
                         for (int py = 0; py < 24; py++)
                             for (int px = 0; px < 16; px++) {
                                 const unsigned char *s = frame + ((py * 16 + px) * 4);
-                                if (s[3] < 16 || nv >= 16 * 24) continue;
-                                vox[nv].lx = (unsigned char)px;
-                                vox[nv].ly = (unsigned char)(23 - py);
-                                vox[nv].lz = 0;
-                                vox[nv].r = s[0]; vox[nv].g = s[1]; vox[nv].b = s[2];
-                                nv++;
+                                if (s[3] < 16) continue;
+                                for (int z = 0; z < 8 && nv < 16 * 24 * 8; z++) {
+                                    vox[nv].lx = (unsigned char)px;
+                                    vox[nv].ly = (unsigned char)(23 - py);
+                                    vox[nv].lz = (unsigned char)z;
+                                    vox[nv].r = s[0]; vox[nv].g = s[1]; vox[nv].b = s[2];
+                                    nv++;
+                                }
                             }
                         if (nv > 0) {
-                            hm = GPU_ADD_MODEL(vox, nv, 15, 23, 0);
+                            hm = GPU_ADD_MODEL(vox, nv, 15, 23, 7);
                             if (hm >= 0) {
                                 snprintf(used_key[used_n], sizeof(used_key[0]), "%s", key);
                                 used_model[used_n++] = hm;
