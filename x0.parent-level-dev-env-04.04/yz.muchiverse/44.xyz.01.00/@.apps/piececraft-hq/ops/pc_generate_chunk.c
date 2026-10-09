@@ -370,13 +370,16 @@ static int emit_full_board(const char *map_id, const char *desk_id) {
     if (!f) return 0;
     char ex_glyphs[MAX_EXTRUDE_GLYPHS]; int ex_deltas[MAX_EXTRUDE_GLYPHS], ex_n, ex_default;
     load_extrusion_table(map_id, desk_id, ex_glyphs, ex_deltas, &ex_n, &ex_default);
-    char lines[64][80];
+    /* 128 x 128 (was 64 x 64 with an 80-byte row: E1M2 is 48 x 79, TSOTS
+     * desks reach 120 x 110). 128 is bv_render_3d.c's MAX_BOARD_DIM; a
+     * bigger map is clipped there anyway. static: 16 KB off the stack. */
+    static char lines[128][132];
     int nrows = 0, ncols = 0;
-    char buf[128];
-    while (nrows < 64 && fgets(buf, sizeof(buf), f)) {
+    char buf[1024];
+    while (nrows < 128 && fgets(buf, sizeof(buf), f)) {
         buf[strcspn(buf, "\r\n")] = '\0';
         int len = (int)strlen(buf);
-        if (len > 64) len = 64;
+        if (len > 128) len = 128;
         memcpy(lines[nrows], buf, (size_t)len);
         lines[nrows][len] = '\0';
         if (len > ncols) ncols = len;
@@ -444,6 +447,30 @@ int main(int argc, char **argv) {
         map_id = map_id_buf;
     }
     const char *desk_id = desk_id_buf;
+    /* A book whose desks are not named desk1 (TSOTS: map001 ...): when no desk was given and desk1 has no map.txt, use the book's
+     * first desk - game.pdl desk_1_id. Without this the File-menu load of such a book fell back to flat. */
+    if (map_id) {
+        char probe[PATH_BUF];
+        snprintf(probe, sizeof(probe), "%s/pieces/system/maps/%s/%s/map.txt", real_root, map_id, desk_id_buf);
+        if (host_access(probe) != 0) {
+            char gp[PATH_BUF], gl[256];
+            snprintf(gp, sizeof(gp), "%s/pieces/system/maps/%s/game.pdl", real_root, map_id);
+            FILE *gf = host_fopen(gp, "r");
+            if (gf) {
+                while (fgets(gl, sizeof(gl), gf)) {
+                    char *k = strstr(gl, "desk_1_id");
+                    char *bar = k ? strchr(k, '|') : NULL;
+                    if (!bar) continue;
+                    bar++;
+                    while (*bar == ' ') bar++;
+                    bar[strcspn(bar, " \r\n")] = '\0';
+                    if (bar[0]) snprintf(desk_id_buf, sizeof(desk_id_buf), "%s", bar);
+                    break;
+                }
+                fclose(gf);
+            }
+        }
+    }
 
     char chunk_dir[PATH_BUF];
     char mkdir_cmd[PATH_BUF + 16];
@@ -659,6 +686,18 @@ int main(int argc, char **argv) {
             int chick_col = 8, chick_row = 5;
             fprintf(af, "chicken,%d,%d,%d\n", chick_col, chick_row, surface[chick_row][chick_col] + 1);
             fclose(af);
+        }
+    } else {
+        /* Book/map path: the test trees and chicken belong to the flat
+         * debug world only. bv_render_3d reads these two files for every
+         * book, so a stale copy from the last flat run drew a chicken and
+         * trees inside Doom. Write both empty (owner + grok 2026-10-09). */
+        const char *names[2] = { "phymoji_entities.txt", "animals.txt" };
+        for (int ni = 0; ni < 2; ni++) {
+            char ep[PATH_BUF];
+            snprintf(ep, sizeof(ep), "%s/%s", world_dir, names[ni]);
+            FILE *ef = host_fopen(ep, "w");
+            if (ef) fclose(ef);
         }
     }
 
