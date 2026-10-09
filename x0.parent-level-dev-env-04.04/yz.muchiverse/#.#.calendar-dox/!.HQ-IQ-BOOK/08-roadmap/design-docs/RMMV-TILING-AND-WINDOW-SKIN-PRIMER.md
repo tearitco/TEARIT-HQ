@@ -342,6 +342,60 @@ one row only, not all 48.
 - `autotile_pick_quadrant` is still not in this JS. The runtime reads
   `getAutotileShape(tileId)`. The neighbor-to-shape gap stands.
 
+## Skin catalog — what I would change
+
+The proposal is right: item 22 cycles more than one skin, the way the
+font row cycles families. `bar_skin=` stores an id. Empty is off and
+restores the house font. That part stays.
+
+What I would change in the row itself:
+
+- A row is `id`, `label`, `sheet`, `left`, `middle`, `right`. `right`
+  may be `MIRROR` only when no real right cell passes the seam test.
+  These passes all have a real right cell, so none of them use MIRROR.
+- Do not add top, bottom, and fill columns until a skin is actually a
+  tall window. None of the passes below are. An empty optional field
+  is fine. A required one would invent art.
+- A row is allowed into the catalog only after
+  `bar_skin_scan.py` (this folder) says the middle tiles to itself and
+  each cap joins that edge on opaque pixels. The script's mutant, a
+  middle whose right column was repainted, must fail. It does.
+- The first version of the seam test matched transparent columns and
+  paired a tree with a flower. The check now requires at least six
+  opaque pixels on the seam. That is the version to keep.
+
+Passing skins, column and row, left / middle / right. Contact sheet
+`/tmp/rmmv-rail-pass.png` (not in git):
+
+| id | sheet | cells | crops |
+| --- | --- | --- | --- |
+| dungeon-beam | Dungeon_B | 1,5 / 2,5 / 3,5 | `Dungeon_b` exists |
+| dungeon-wood | Dungeon_B | 0,14 / 1,14 / 2,14 | same |
+| dungeon-wood-lower | Dungeon_B | 0,15 / 1,15 / 2,15 | same |
+| outside-beam | Outside_B | 1,3 / 2,3 / 3,3 | `Outside_b` exists |
+| sf-inside-stone | SF_Inside_B | 1,5 / 2,5 / 3,5 | sheet not cropped yet |
+| sf-inside-truss | SF_Inside_B | 5,5 / 6,5 / 7,5 | not cropped yet |
+| sf-inside-ledge | SF_Inside_B | 0,12 / 1,12 / 2,12 | not cropped yet |
+| sf-outside-stone | SF_Outside_B | 1,3 / 2,3 / 3,3 | not cropped yet |
+| sf-outside-truss | SF_Outside_B | 5,3 / 6,3 / 7,3 | not cropped yet |
+
+There is a tenth hit, Dungeon_B 0,14 / 4,14 / 7,14. It reuses the wood
+post as the repeating middle. I would leave it out of the catalog
+until someone looks at the contact and asks for it. The plank middle
+`1,14` is the bar.
+
+Near misses, and why:
+
+- Neon `SF_Outside_B` 8,5 and 9,5 both self-tile, and their shared edge
+  does not match. Not a pair.
+- White panel `SF_Outside_B` 9,8 does not self-tile. The end cell 8,8
+  does join it, which is not enough.
+- Iron railing `Dungeon_B` 12,14 has gaps between the bars, so it never
+  forms one opaque band. No cap search was run on it.
+
+No `_D` or `_E` sheets are in that tileset folder. A4 and A5 produced
+no left-middle-right triple after the opaque-seam rule.
+
 ## Rail candidates — 2026-10-09
 
 Looked at the B and C sheets under
