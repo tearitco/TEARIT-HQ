@@ -632,6 +632,15 @@ static int handle_one_key(int key) {
             snprintf(xelector_state_path, sizeof(xelector_state_path), "%s/pieces/xelector_01/state.txt", focused_project_root);
             write_kv_int(xelector_state_path, "pos_x", selector_x);
             write_kv_int(xelector_state_path, "pos_y", selector_y);
+            /* Play mode steps onto a map event here. The script no-ops
+             * when play is off, so edit movement stays a cursor move. */
+            {
+                char touch[PATH_BUF * 2];
+                snprintf(touch, sizeof(touch),
+                    "sh '%s/ops/tsots_touch_event.sh' '%s' %d %d >/dev/null 2>&1 &",
+                    focused_project_root, focused_project_root, selector_x, selector_y);
+                system(touch);
+            }
 
             /* REAL FIX 2026-08-03, direct instruction ("the tick should
              * only happen when xelector moves 'hero-avatar'" - real
@@ -913,6 +922,13 @@ static int handle_one_key(int key) {
         write_kv_int(state_path, "selector_y", selector_y);
         write_kv_int(xelector_state_path, "pos_x", selector_x);
         write_kv_int(xelector_state_path, "pos_y", selector_y);
+        {
+            char touch[PATH_BUF * 2];
+            snprintf(touch, sizeof(touch),
+                "sh '%s/ops/tsots_touch_event.sh' '%s' %d %d >/dev/null 2>&1 &",
+                focused_project_root, focused_project_root, selector_x, selector_y);
+            system(touch);
+        }
         char possessed_id[64] = "";
         read_kv_str(xelector_state_path, "possessed_id", possessed_id, sizeof(possessed_id));
         if (strcmp(possessed_id, "hero_01") == 0) {
