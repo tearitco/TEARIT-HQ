@@ -12,8 +12,8 @@
 | 4 | Spawn-hook call (auto-seed on new entity creation) | DONE |
 | 5 | Hand-scoring screen (bounded rows) + to-score queue | DONE |
 | 6 | Use-scoring rows from the parser path | DONE |
-| 7 | Real-tree `--apply` after backup + sha256 + count | TODO |
-| 8 | Chain: SCORE record type, balance-ignores-SCORE case, `chain_bank_query`, advisory derive | TODO |
+| 7 | Real-tree `--apply` after backup + sha256 + count | DONE |
+| 8 | Chain: SCORE record type, balance-ignores-SCORE case, `chain_bank_query`, advisory derive | DONE |
 
 ## What shipped (commit `f2fd9a8e5`)
 
@@ -122,4 +122,32 @@ The muchi-pal-agent project doesn't have a `menu.chtpm`/`meta.pdl` (it's a dev p
 - `--lookup` against muchi-pal-agent's bank: "I want to read a file" → `CANON=action:read_file|ALIAS=read`; "show me the files" → `CANON=action:list_dir|ALIAS=show`; "hello" → no match (exit 1)
 - `--use`: appends `SCORE|action:read_file|read|valence=+1|source=use|...` to scores.txt
 - `gemma_strategy.c` compiles cleanly with `-Wall -Wextra` (only `-Wformat-truncation` on path buffers)
+
+## Real-tree apply + chain integration (commits `d8c82d077`, `40f860e05`)
+
+### Safety gate (commit `d8c82d077`)
+
+`wordbank_apply_safety.sh` — per AGENTS.md rules, takes a tarball + sha256sum + file-count of the pals tree to `/tmp` before any `--apply`:
+
+1. Count files in pals_root → NNNN files
+2. Tarball to /tmp (outside repo) → size
+3. sha256sum of tarball → hash
+4. Test extraction (verify count matches) → OK
+5. Print "SAFETY CHECK PASSED"
+
+### Real-tree apply
+
+Ran `wordbank_ensure_op --apply --pals-root` against the live `xyzfs/users/0a9558a7/home/livedesk/pals` tree:
+- 85 banks created (32 top-level + 53 inventory items), 394 seeds added, 0 errors
+- Data committed to `user/jb` branch via `button.sh save-data` (b9f35e863)
+
+### Chain SCORE integration (commit `40f860e05`)
+
+Per PAL-CHAIN-STANDARD.txt sec. 8: SCORE records (`SCORE|<block_index>|<canon>|<alias>|valence=±1|source=...`) interspersed with BLOCK lines in `data/blockchain.txt`.
+
+- `chain_balance.c` — explicitly skips SCORE records (balance-ignores-SCORE case), verified: SCORE lines produce no effect on balance output
+- `chain_bank_query.c` — new op that replays SCORE records from blockchain.txt, aggregates per (canon, alias) with Laplace weight `(reward+1)/(reward+punish+2)`, supports `--selftest` (passes), `--apply` (advisory derive), and default stdout output
+- `build.sh` — compiles `chain_bank_query.+x`
+
+Verified: `chain_bank_query --selftest` passes (parse + aggregate + Laplace weight); test query on 4 SCORE lines gives correct aggregate weights; `chain_balance` with a mined block + interleaved SCORE records returns correct balance=10500 for block-0 reward.
 
