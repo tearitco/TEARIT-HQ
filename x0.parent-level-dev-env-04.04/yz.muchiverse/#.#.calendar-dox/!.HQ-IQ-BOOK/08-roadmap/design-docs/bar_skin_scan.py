@@ -92,6 +92,10 @@ def scan(sheets):
 
 
 MIN_BAND = 0.25  # shared opaque rows / 48
+# Tier 2: posts on the caps are allowed. The middle's own band must
+# still be at least this fraction, and the label is drawn only on the
+# middle tiles so it never crosses a post.
+TIER2_MIDDLE = 0.30
 
 
 def row_span(px, c, r, y):
