@@ -996,8 +996,12 @@ static void draw_elem(Elem *e, int hover_id_hash) {
             XDrawRectangle(dpy, buf, gc, e->x + i, e->y + i, e->w - 1 - 2 * i, e->h - 1 - 2 * i);
     }
     /* livedesk top + bottom bars: every dock cell (an <item> in a dock window) wears the selected skin */
-    if (g_bar_skin_id[0] && window_is_dock() && strcmp(e->tag, "item") == 0)
+    if (g_bar_skin_id[0] && window_is_dock() && strcmp(e->tag, "item") == 0) {
+        /* readable on any tile: white label (the orange theme text vanished on wood and neon) */
+        snprintf(e->style.fg_color, sizeof(e->style.fg_color), "#ffffff");
+        e->style.has_fg_color = 1;
         kh_draw_selected_skin(e->x, e->y, e->w, e->h, alloc_pixel(e->style.has_bg_color ? e->style.bg_color : "#2c2c2c"));
+    }
     if (elem_has_class(e, "skin-bar"))
         kh_draw_bar_skin(e, alloc_pixel(e->style.has_bg_color ? e->style.bg_color : "#2c2c2c"));
     /* REAL, NEW 2026-09-14 (network-browser video V4 "Nav row with

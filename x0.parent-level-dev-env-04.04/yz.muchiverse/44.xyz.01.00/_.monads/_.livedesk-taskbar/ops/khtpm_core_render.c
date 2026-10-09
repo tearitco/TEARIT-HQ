@@ -6571,16 +6571,18 @@ static void load_dock_strip_offset(int *out_x, int *out_y) {
 static XftFont *dock_font(void) {
     if (!dpy) return NULL;
     if (g_dock_font_px <= 0) return font_ui;
-    static int cached_px = -1;
+    /* cache keyed by the whole spec (family + size): a family switch (GameFont while a bar skin is on)
+     * must re-measure, or cells get sized with the old font and the new one wraps inside them */
+    static char cached_spec[128] = "";
     static XftFont *cached = NULL;
-    if (cached && cached_px == g_dock_font_px) return cached;
-    if (cached) XftFontClose(dpy, cached);
     char spec[128];
     snprintf(spec, sizeof(spec), "%s:pixelsize=%d", g_ui_font_family, g_dock_font_px);
+    if (cached && strcmp(cached_spec, spec) == 0) return cached;
+    if (cached) XftFontClose(dpy, cached);
     XftFont *f = XftFontOpenName(dpy, screen, spec);
     if (!f) f = XftFontOpenName(dpy, screen, "DejaVu Sans:pixelsize=9");
     cached = f;
-    cached_px = g_dock_font_px;
+    snprintf(cached_spec, sizeof(cached_spec), "%s", spec);
     return f;
 }
 
@@ -6623,6 +6625,10 @@ static int dock_text_px(const char *s) {
 /* Compact left-packed cells (old strip), not equal-split across the screen. */
 static int dock_item_cw(Elem *t);
 
+/* GameFont (M+ 1m, wider than the house font) wraps inside cells sized for the old estimate: while a bar skin is on,
+ * every dock cell gets two characters of extra room. */
+static int dock_skin_slack(void) { return g_bar_skin_id[0] ? g_dock_font_px : 0; }
+
 static int layout_dock_toolbar_row(Elem *row, int x, int y, int max_w) {
     int j, col_x = x, used = 0;
     row->x = x; row->y = y; row->h = DOCK_BAR_H; row->nav_index = 0;
@@ -6638,7 +6644,7 @@ static int layout_dock_toolbar_row(Elem *row, int x, int y, int max_w) {
          * readout after the clock): laid out and drawn, but no nav
          * index, so it gets no "[ ]N." badge and arrows/digits skip it. */
         if (elem_has_class(t, "no-nav")) {
-            cw = g_dock_cell_pad_px + dock_text_px(t->label) + g_dock_text_pad_px;
+            cw = g_dock_cell_pad_px + dock_text_px(t->label) + g_dock_text_pad_px + dock_skin_slack();
             if (cw < g_dock_status_min_px) cw = g_dock_status_min_px;
             t->x = col_x; t->y = y; t->w = cw; t->h = DOCK_BAR_H; t->nav_index = 0;
             css_compute_style(&g_sheet, t->tag, t->id, t->classes, t->n_classes, 0, &t->style);
@@ -6667,7 +6673,7 @@ static int layout_dock_toolbar_row(Elem *row, int x, int y, int max_w) {
 static int dock_item_cw(Elem *t) {
     int cw = g_dock_cell_pad_px + DOCK_NAV_BADGE_PX;
     if (t->sprite[0]) cw += DOCK_SPRITE_PX + g_dock_sprite_gap_px;
-    cw += dock_text_px(t->label) + g_dock_text_pad_px;
+    cw += dock_text_px(t->label) + g_dock_text_pad_px + dock_skin_slack();
     if (cw < g_dock_cell_min_px) cw = g_dock_cell_min_px;
     if (elem_has_class(t, "hqwin")) {
         if (cw > g_dock_hq_max_px) cw = g_dock_hq_max_px;
