@@ -936,6 +936,19 @@ static void kh_launch_window_modules(Elem *window, const char *house_root, const
     }
 }
 
+/* REAL, NEW 2026-10-08 - element-pool overflow counter. elem_new() has
+ * always returned NULL at MAX_ELEMS; nothing counted it, so a window that
+ * projected more rows than the pool could hold just rendered fewer, with no
+ * trace. Set here, reported in kh_write_ascii_frame() (the surface we
+ * already read when debugging) and on stderr. Zero behavior change. */
+static int g_pool_overflow_count = 0;
+static int g_vars_dropped = 0;
+/* repeat-count clamps (2026-10-08): same visibility rule - a window that
+ * silently rendered fewer rows than it asked for looked identical to one
+ * that rendered all of them. */
+static int g_repeat_clamped = 0;
+static int g_repeat_clamp_last = 0;
+
 static Elem *elem_new(const char *tag) {
     /* 2026-09-11 - bumps whichever pool g_elem_pool_target/
      * g_elem_n_target currently point at. Both default to g_pool/
@@ -945,7 +958,22 @@ static Elem *elem_new(const char *tag) {
      * kh_parse_into_scratch() (the incremental path's own candidate
      * parse) retargets these, briefly, around its one parse_chtpm()
      * call - see that function's own comment. */
-    if (*g_elem_n_target >= MAX_ELEMS) return NULL;
+    if (*g_elem_n_target >= MAX_ELEMS) {
+        /* REAL FIX 2026-10-08 - the pool overflow was SILENT. Returning
+         * NULL with no record anywhere meant a window that projected more
+         * rows than the pool could hold simply rendered fewer of them with
+         * nothing to indicate why. That is how the network browser ended
+         * up showing a blank content pane while its ui.txt cheerfully
+         * reported content_count=1440 (see
+         * NETWORK-BROWSER-RENDER-ROADMAP milestone 10).
+         *
+         * Count it here and say so out loud in kh_write_ascii_frame() and
+         * on stderr. No behaviour change otherwise: the NULL return, and
+         * therefore every window's handling of it, is exactly as before -
+         * this only makes the drop observable instead of invisible. */
+        g_pool_overflow_count++;
+        return NULL;
+    }
     Elem *e = &g_elem_pool_target[(*g_elem_n_target)++];
     memset(e, 0, sizeof(*e));
     snprintf(e->tag, sizeof(e->tag), "%s", tag);
@@ -1584,7 +1612,16 @@ static void kh_set_var(const char *name, const char *value) {
             return;
         }
     }
-    if (g_kh_nvars >= KH_MAX_VARS) return;
+    if (g_kh_nvars >= KH_MAX_VARS) {
+        /* REAL FIX 2026-10-08 - THIS is the cap that actually bit us. A
+         * 1502-row page projects ~4500 c_* vars; KH_MAX_VARS is 4096, so
+         * kh_set_var() dropped the overflow - including content_count,
+         * which the manager writes LAST. The repeat then bound an empty
+         * count and the content pane went blank while ui.txt still said
+         * content_count=1502. Count it so the frame says so. */
+        g_vars_dropped++;
+        return;
+    }
     snprintf(g_kh_vars[g_kh_nvars].name, KH_VAR_NAME, "%s", name);
     snprintf(g_kh_vars[g_kh_nvars].value, KH_VAR_VALUE, "%s", value);
     g_kh_nvars++;
@@ -1913,7 +1950,18 @@ static void kh_expand_repeats(const char *src, char *dst, size_t cap) {
                     }
                 }
                 if (count < 0) count = 0;
-                if (count > KH_REPEAT_MAX) count = KH_REPEAT_MAX;
+                /* REAL FIX 2026-10-08 - report the clamp instead of
+                 * applying it silently. This, not the element pool, is what
+                 * actually truncated the network browser: a repeat asked for
+                 * 1502 iterations, got KH_REPEAT_MAX, and the window simply
+                 * rendered fewer rows with no indication anywhere. Same shape
+                 * as the elem_new() NULL below - the drop is the bug, not the
+                 * cap, and it must be visible. */
+                if (count > KH_REPEAT_MAX) {
+                    g_repeat_clamped++;
+                    g_repeat_clamp_last = count - KH_REPEAT_MAX;
+                    count = KH_REPEAT_MAX;
+                }
                 const char *body = gt + 1;
                 size_t blen = (size_t)(close - body);
                 for (int i = 0; i < count && o < oend; i++)
@@ -10484,6 +10532,20 @@ static void kh_write_ascii_frame(void) {
     FILE *ms = open_memstream(&fbuf, &flen);
     if (!ms) return;
     fprintf(ms, "--- %s  pid %d  %s ---\n", base, (int)getpid(), ts);
+    /* 2026-10-08: say so when the element pool overflowed. A truncated
+     * window used to look exactly like a correct one. */
+    if (g_pool_overflow_count > 0)
+        fprintf(ms, "[WARN] element pool overflow: %d element(s) DROPPED (MAX_ELEMS=%d)"
+                    " - this window is showing less than it was given\n",
+                g_pool_overflow_count, MAX_ELEMS);
+    if (g_vars_dropped > 0)
+        fprintf(ms, "[WARN] var table overflow: %d var(s) DROPPED (KH_MAX_VARS=%d)"
+                    " - values written past the cap are invisible to the layout\n",
+                g_vars_dropped, KH_MAX_VARS);
+    if (g_repeat_clamped > 0)
+        fprintf(ms, "[WARN] repeat truncated: %d repeat(s) clamped, %d row(s) DROPPED"
+                    " (KH_REPEAT_MAX=%d)\n",
+                g_repeat_clamped, g_repeat_clamp_last, KH_REPEAT_MAX);
     if (g_current_page[0]) fprintf(ms, "--- page: %s ---\n", g_current_page);
     dock_ascii_walk(ms, g_window, 0);
     if (g_confirm_action[0]) fprintf(ms, "[CONFIRM] %s  -- Enter/y = yes, any other key = no\n", g_confirm_text);

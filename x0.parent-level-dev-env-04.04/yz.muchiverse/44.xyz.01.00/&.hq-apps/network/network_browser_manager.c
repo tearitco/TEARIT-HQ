@@ -5162,7 +5162,7 @@ static void write_ui_projection(void) {
              * happens HERE: emit what fits and say plainly how much did
              * not. A visible partial page beats an invisible whole one -
              * the user can at least see the article exists. */
-            enum { NB_UI_ELEM_BUDGET = 900 };  /* pool headroom for chrome */
+                        enum { NB_UI_ELEM_BUDGET = 900 };  /* pool headroom for chrome */
             /* SEL rows are emitted by the worker immediately before the row they
              * belong to; the projector carries the selector forward so each
              * rendered row can offer a real DOM click. */
