@@ -100,7 +100,7 @@ static int read_click_two_step(const char *house) {
  * </> stepper buttons, never writes it (khtpm_core_render.c's own
  * desktop_set_font_family() owns writing). */
 static void read_font_family(const char *house, char *out, size_t out_sz) {
-    snprintf(out, out_sz, "DejaVu Sans"); /* same compile-time default the renderer itself uses */
+    snprintf(out, out_sz, "M+ 1m"); /* same compile-time default the renderer itself uses */
     char path[PATH_MAX];
     snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house);
     FILE *f = fopen(path, "r");
@@ -264,9 +264,9 @@ static void build_ui(char *ui, size_t cap, int phase, int bg, int fg, int click_
     off += (size_t)snprintf(ui + off, cap - off, "click_two_step_label=%s\n",
                             click_two_step ? "Click: 2-step" : "Click: 1-step");
     off += (size_t)snprintf(ui + off, cap - off, "font_family=%s\n", font_family);
-    /* while a skin is on the renderer switches text to GameFont (M+ 1m); say so instead of the house font */
-    if (g_cur_skin_id[0])
-        off += (size_t)snprintf(ui + off, cap - off, "font_label=Font: GameFont (RPG Maker) - skin on; house font %s\n", font_family);
+    /* "M+ 1m" is GameFont (RPG Maker's font) and the house default; name it so */
+    if (strcmp(font_family, "M+ 1m") == 0)
+        off += (size_t)snprintf(ui + off, cap - off, "font_label=Font: GameFont (RPG Maker, M+ 1m) - the default\n");
     else
         off += (size_t)snprintf(ui + off, cap - off, "font_label=Font: %s\n", font_family);
     off += (size_t)snprintf(ui + off, cap - off, "opacity_label=Opacity: %d%%\n", (int)(opacity * 100.0 + 0.5));

@@ -157,6 +157,7 @@ static HqSprite g_hq_sprite_cache[HQ_SPRITE_CACHE_N];
  * boot-timeline mark in khtpm_core_render.c; two clock_gettime calls per cell per paint - negligible. */
 static double g_hqs_blit_ms = 0, g_hqs_load_ms = 0;
 static int g_hqs_blits = 0, g_hqs_loads = 0;
+static double g_hqs_skin_ms = 0; static int g_hqs_skin_blocks = 0; /* tile-skin blocks painted (kh_draw_skin_rect) */
 static double hqs_now_ms(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return t.tv_sec * 1000.0 + t.tv_nsec / 1e6; }
 static long g_hq_sprite_tick = 0;
 
@@ -327,6 +328,15 @@ static int g_n_skin_cat = 0;
 static void kh_bar_skin_load(const char *house_root) {
     char want[48] = "";
     char path[1024], line[1200];
+    /* GameFont (M+ 1m, the TTF RPG Maker MV ships as fonts/mplus-1m-regular.ttf) is the house default font: register it
+     * with fontconfig from the settings folder, always (skin on or off). Missing file = fontconfig substitutes. */
+    {
+        static int font_registered = 0;
+        if (!font_registered && house_root && house_root[0]) {
+            snprintf(path, sizeof(path), "%s/&.widgits/taskbar-settings/fonts/mplus-1m-regular.ttf", house_root);
+            if (access(path, R_OK) == 0 && FcConfigAppFontAddFile(NULL, (const FcChar8 *)path)) font_registered = 1;
+        }
+    }
     g_bar_skin_id[0] = '\0';
     g_bar_skin_dir[0][0] = g_bar_skin_dir[1][0] = g_bar_skin_dir[2][0] = '\0';
     g_n_skin_cat = 0;
@@ -372,18 +382,6 @@ static void kh_bar_skin_load(const char *house_root) {
         g_n_skin_cat++;
     }
     fclose(f);
-    /* RPG Maker look includes its font: while a skin is on, text uses GameFont (M+ 1m, the same TTF MV ships as
-     * fonts/mplus-1m-regular.ttf), registered with fontconfig from the settings folder. If the file is missing the
-     * house font stays. The caller's next hq_ui.pdl read restores the user's own font_family when the skin is off. */
-    if (g_bar_skin_id[0]) {
-        static int font_registered = 0;
-        if (!font_registered) {
-            char fp[1100];
-            snprintf(fp, sizeof(fp), "%s/&.widgits/taskbar-settings/fonts/mplus-1m-regular.ttf", house_root);
-            if (access(fp, R_OK) == 0 && FcConfigAppFontAddFile(NULL, (const FcChar8 *)fp)) font_registered = 1;
-        }
-        if (font_registered) snprintf(g_ui_font_family, sizeof(g_ui_font_family), "%s", "M+ 1m");
-    }
 }
 
 /* Paint a run of whole blocks into any rectangle: block = height (square), n = width / block (>= 2), the run is
@@ -398,8 +396,10 @@ static int kh_draw_skin_rect(const char (*dirs)[400], int x, int y, int w, int h
     HqSprite *r = hq_sprite(dirs[2]);
     if (!l || !m || !r) return 0;
     int x0 = x + (w - n * b) / 2;
+    double _sk0 = hqs_now_ms();
     for (int i = 0; i < n; i++)   /* n == 1: a single middle block (a narrow dock cell) */
         hq_blit_sprite(n == 1 ? m : (i == 0 ? l : (i == n - 1 ? r : m)), x0 + i * b, y, b, bg_pixel, 0);
+    g_hqs_skin_ms += hqs_now_ms() - _sk0; g_hqs_skin_blocks += n;
     return 1;
 }
 

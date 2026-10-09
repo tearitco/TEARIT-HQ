@@ -3393,7 +3393,7 @@ static void kh_ui_apply_scale(void);
  * "DejaVu Sans" (see that function's own header comment for the exact
  * site). Loaded by desktop_load_click_two_step() below, same file/same
  * function font_scale already uses - one settings reload path, not two. */
-static char g_ui_font_family[64] = "DejaVu Sans";
+static char g_ui_font_family[64] = "M+ 1m"; /* GameFont: RPG Maker's own font is the house default (owner 2026-10-08), registered by kh_bar_skin_load() */
 /* Curated font-family picker list (Settings' own "Font -/+ " cycle) -
  * real fontconfig names, real TrueType fonts already covered by this
  * house's own font stack (fontconfig substitutes a close match for any
@@ -3411,7 +3411,7 @@ static char g_ui_font_family[64] = "DejaVu Sans";
  * same digital aesthetic, so it's the safer pick if DSEG7 turns out
  * hard to read in nav labels/buttons. Both in the cycle either way. */
 static const char *g_font_family_choices[] = {
-    "DejaVu Sans", "Times New Roman", "Comic Sans MS", "Helvetica",
+    "M+ 1m", "DejaVu Sans", "Times New Roman", "Comic Sans MS", "Helvetica",
     "Ubuntu", "Noto Sans", "DSEG7 Classic", "DSEG14 Classic",
 };
 #define N_FONT_FAMILY_CHOICES (int)(sizeof(g_font_family_choices) / sizeof(g_font_family_choices[0]))
@@ -7196,7 +7196,7 @@ static void dock_paint_peer(void) {
             {   /* where did this redraw's time go: sprite loads vs blits (cumulative), to boot_timeline.txt */
                 static int n_draw = 0; char m[160];
                 if (++n_draw <= 40) {
-                    snprintf(m, sizeof(m), "redraw#%d cum: sprite_loads=%d (%.1fms) blits=%d (%.1fms)", n_draw, g_hqs_loads, g_hqs_load_ms, g_hqs_blits, g_hqs_blit_ms);
+                    snprintf(m, sizeof(m), "redraw#%d cum: sprite_loads=%d (%.1fms) blits=%d (%.1fms) skin_blocks=%d (%.1fms)", n_draw, g_hqs_loads, g_hqs_load_ms, g_hqs_blits, g_hqs_blit_ms, g_hqs_skin_blocks, g_hqs_skin_ms);
                     kh_boot_mark(g_house_root, "dock", m);
                 }
             }
