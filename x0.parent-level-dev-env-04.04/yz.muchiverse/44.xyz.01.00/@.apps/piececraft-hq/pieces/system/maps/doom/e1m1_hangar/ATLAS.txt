@@ -1,0 +1,4 @@
+floor=AQF024
+wall=BASE2
+door=DOOR3
+slots=0 blank, 1 floor, 2 wall, 3 door
