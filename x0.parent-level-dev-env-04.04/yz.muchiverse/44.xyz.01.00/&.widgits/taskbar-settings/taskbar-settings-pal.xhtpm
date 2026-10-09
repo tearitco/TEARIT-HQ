@@ -87,6 +87,9 @@
     <item id="bar-skin-prev" action="BAR_SKIN_PREV" class="row-bars opacity-btn step-btn" label="&lt;"/>
     <item id="bar-skin-next" action="BAR_SKIN_NEXT" class="row-bars opacity-btn step-btn" label="&gt;"/>
     <item id="click-twostep-toggle" action="CLICK_TWOSTEP_TOGGLE" class="row-click opacity-btn" label="${click_two_step_label} (press to switch)"/>
+    <repeat count="${n_skins}" bind="sk">
+    <item id="skin${sk.#}" action="BAR_SKIN_SET:${sk.id}" class="row-skins skin-pick ${sk.bar} ${sk.ring}" label="${sk.label}"/>
+    </repeat>
     <item id="bar-preview" class="row-preview info-chip skin-bar bar-big" label="book:pre-design"/>
     <item id="close" action="CLOSE" class="close-btn" label="x"/>
   </page>

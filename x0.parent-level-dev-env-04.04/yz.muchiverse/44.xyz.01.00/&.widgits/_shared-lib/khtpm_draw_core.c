@@ -318,13 +318,18 @@ static void hq_blit_sprite(HqSprite *sp, int x0, int y0, int px, unsigned long b
  * the run is centred and the sub-block remainder keeps the element's own fill. No stretching, ever; fewer than
  * 2 blocks wide draws nothing special. Includers that never call kh_bar_skin_load() just see the skin off. */
 static char g_bar_skin_id[48];
-static char g_bar_skin_dir[3][400]; /* left, middle, right - house-absolute */
+static char g_bar_skin_dir[3][400]; /* the SELECTED skin: left, middle, right - house-absolute */
+/* the whole catalog, so a swatch can draw ITS OWN skin (class="skin-bar skin-for-<id>") */
+#define KH_SKIN_MAX 24
+static struct { char id[48]; char dir[3][400]; } g_skin_cat[KH_SKIN_MAX];
+static int g_n_skin_cat = 0;
 
 static void kh_bar_skin_load(const char *house_root) {
     char want[48] = "";
     char path[1024], line[1200];
     g_bar_skin_id[0] = '\0';
     g_bar_skin_dir[0][0] = g_bar_skin_dir[1][0] = g_bar_skin_dir[2][0] = '\0';
+    g_n_skin_cat = 0;
     if (!house_root || !house_root[0]) return;
     snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house_root);
     FILE *f = fopen(path, "r");
@@ -337,11 +342,10 @@ static void kh_bar_skin_load(const char *house_root) {
         }
     }
     fclose(f);
-    if (!want[0]) return;
     snprintf(path, sizeof(path), "%s/&.widgits/taskbar-settings/bar_skins.pdl", house_root);
     f = fopen(path, "r");
     if (!f) return;
-    while (fgets(line, sizeof(line), f)) {
+    while (g_n_skin_cat < KH_SKIN_MAX && fgets(line, sizeof(line), f)) {
         if (strncmp(line, "SKIN", 4) != 0) continue;
         char *fld[6]; int n = 0; char *p = line;
         while (n < 6) {
@@ -357,25 +361,37 @@ static void kh_bar_skin_load(const char *house_root) {
             while (l > 0 && fld[i][l - 1] == ' ') l--;
             fld[i][l] = '\0';
         }
-        if (strcmp(fld[1], want) != 0) continue;
-        snprintf(g_bar_skin_id, sizeof(g_bar_skin_id), "%s", want);
+        snprintf(g_skin_cat[g_n_skin_cat].id, sizeof(g_skin_cat[0].id), "%s", fld[1]);
         for (int k = 0; k < 3; k++)
-            snprintf(g_bar_skin_dir[k], sizeof(g_bar_skin_dir[k]), "%s/%s", house_root, fld[3 + k]);
-        break;
+            snprintf(g_skin_cat[g_n_skin_cat].dir[k], sizeof(g_skin_cat[0].dir[k]), "%s/%s", house_root, fld[3 + k]);
+        if (want[0] && strcmp(fld[1], want) == 0) {
+            snprintf(g_bar_skin_id, sizeof(g_bar_skin_id), "%s", want);
+            for (int k = 0; k < 3; k++)
+                snprintf(g_bar_skin_dir[k], sizeof(g_bar_skin_dir[k]), "%s", g_skin_cat[g_n_skin_cat].dir[k]);
+        }
+        g_n_skin_cat++;
     }
     fclose(f);
 }
 
-/* true when it painted the blocks (caller still draws border + label on top) */
+/* true when it painted the blocks (caller still draws border + label on top). An element with
+ * class="skin-for-<id>" draws that catalog skin even when the global skin is off (the picker's swatches). */
 static int kh_draw_bar_skin(Elem *e, unsigned long bg_pixel) {
-    if (!g_bar_skin_id[0] || !elem_has_class(e, "skin-bar")) return 0;
+    if (!elem_has_class(e, "skin-bar")) return 0;
+    const char (*dirs)[400] = g_bar_skin_dir;
+    int own = 0;
+    for (int c = 0; c < e->n_classes && !own; c++)
+        if (strncmp(e->classes[c], "skin-for-", 9) == 0)
+            for (int k = 0; k < g_n_skin_cat; k++)
+                if (strcmp(g_skin_cat[k].id, e->classes[c] + 9) == 0) { dirs = (const char (*)[400])g_skin_cat[k].dir; own = 1; break; }
+    if (!own && !g_bar_skin_id[0]) return 0;
     int b = e->h;
     if (b < 8) return 0;
     int n = e->w / b;
     if (n < 2) return 0;
-    HqSprite *l = hq_sprite(g_bar_skin_dir[0]);
-    HqSprite *m = hq_sprite(g_bar_skin_dir[1]);
-    HqSprite *r = hq_sprite(g_bar_skin_dir[2]);
+    HqSprite *l = hq_sprite(dirs[0]);
+    HqSprite *m = hq_sprite(dirs[1]);
+    HqSprite *r = hq_sprite(dirs[2]);
     if (!l || !m || !r) return 0;
     int x0 = e->x + (e->w - n * b) / 2;
     for (int i = 0; i < n; i++)
@@ -955,7 +971,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
         for (int i = 0; i < bw; i++)
             XDrawRectangle(dpy, buf, gc, e->x + i, e->y + i, e->w - 1 - 2 * i, e->h - 1 - 2 * i);
     }
-    if (g_bar_skin_id[0] && elem_has_class(e, "skin-bar"))
+    if (elem_has_class(e, "skin-bar"))
         kh_draw_bar_skin(e, alloc_pixel(e->style.has_bg_color ? e->style.bg_color : "#2c2c2c"));
     /* REAL, NEW 2026-09-14 (network-browser video V4 "Nav row with
      * play/pause + progress" request) - a real, generic `<bar>` element:

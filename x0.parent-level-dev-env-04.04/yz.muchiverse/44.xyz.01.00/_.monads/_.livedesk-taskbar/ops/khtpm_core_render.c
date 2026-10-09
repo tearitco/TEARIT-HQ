@@ -141,6 +141,7 @@ static pid_t g_khtpm_menu_pid; /* fwd - hq_idle_tick() reaps this; real definiti
 static int kh_key_history_code(KeySym ks, char ch); /* fwd - handle_key()'s interact-relay forward uses it before its real definition, near kh_capture_key */
 static void desktop_toggle_click_two_step(const char *house_root); /* fwd - dispatch()'s CLICK_TWOSTEP_TOGGLE handler uses it before its real definition, near desktop_load_click_two_step */
 static void desktop_set_font_scale(const char *house_root, int pct); /* fwd - dispatch()'s UI_SCALE_MINUS/PLUS handlers */
+static void desktop_set_bar_skin(const char *house_root, const char *id); /* fwd - BAR_SKIN_SET: */
 static void desktop_cycle_bar_skin(const char *house_root, int dir); /* fwd - dispatch()'s BAR_SKIN_NEXT/PREV */
 static void desktop_set_font_family(const char *house_root, const char *name); /* fwd - dispatch()'s UI_FONT_FAMILY_NEXT/PREV handlers */
 static void desktop_load_click_two_step(const char *house_root); /* fwd - hq_ui_pdl_reload_if_changed() (hq_idle_tick(), long-running dock strip) uses it before its real definition */
@@ -8889,6 +8890,12 @@ static void dispatch(const char *action) {
         if (idx >= N_FONT_FAMILY_CHOICES) idx = 0;
         desktop_set_font_family(g_house_root, g_font_family_choices[idx]);
         reload_font_ui();
+        if (!g_quit) { assign_nav_and_layout(); redraw(); }
+        return;
+    }
+    if (strncmp(action, "BAR_SKIN_SET:", 13) == 0) {
+        /* swatch-style picker: BAR_SKIN_SET:<id> (empty id = off) */
+        desktop_set_bar_skin(g_house_root, action + 13);
         if (!g_quit) { assign_nav_and_layout(); redraw(); }
         return;
     }
