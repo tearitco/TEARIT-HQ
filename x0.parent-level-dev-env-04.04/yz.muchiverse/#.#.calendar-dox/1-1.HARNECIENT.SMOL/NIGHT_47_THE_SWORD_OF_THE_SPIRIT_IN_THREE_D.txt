@@ -1,0 +1,128 @@
+# 🗡️🗺️ NIGHT 47 — The Sword of the Spirit in 3D: Long Lists, Fog, Tiles and a Search Box 🗺️🗡️
+# ====================================================================
+# Title: "🗡️🗺️ NIGHT 47 — The Sword of the Spirit in 3D: Long Lists, Fog, Tiles and a Search Box 🗺️🗡️"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: One long working session, October eighth into ninth. A ninety eight page book from an RPG Maker game becomes a scrolling menu, a fogged three dimensional world and then a world made of the game's own tiles. What worked, what was wrong twice, what was never proved.
+# Long-form: a build night with an honesty checkpoint. Everything below was run on the real window and looked at, except where a part says it was not.
+# Companion documents: 08-roadmap/design-docs/DROPDOWN-SCROLL-DEBUG-SHEET.md, 08-roadmap/design-docs/RMMV-MAPS-TO-HOUSE-2D-3D-HANDOFF-2026-10-08.md, and in the work folder XO/15.GROCT: the handoff, the questions file, and the Map 004 pictures.
+
+**THE NARRATOR:** Tonight starts with a list that was too long. The owner wanted every page of a game called The Sword of the Spirit to be a page in the piece craft board. That is ninety eight pages. A menu with ninety eight rows runs off the screen, and the cancel row at the bottom could never be reached.
+
+**MAXINE:** So you made it scroll.
+
+**TOMO:** Yes, but the lesson is how. There were three separate dropdown systems. The desktop strip's menus, the in window menus, and the entity context menus. We did not scroll each one in its own way. We wrote one small shared rule that says: show a window of rows, pin the last row, draw a thumb, and number only the up and down arrows. Both live systems call it.
+
+---
+
+**THE NARRATOR:** Part one. Four traps in the scrolling menu.
+
+**RAHWEH:** What went wrong first?
+
+**TOMO:** The paint list held thirty two rows, including hidden ones, so row thirty three and the pinned cancel were never drawn. The scrollbar was drawn under the open rows. The up and down arrows reset the focus to row one, because the strip's first click only focuses. And in the piece craft board, the canvas also took the press on the thumb and moved the selector before the drag started.
+
+**MAXINE:** And each was found by looking.
+
+**TOMO:** Each was found by dumping the real window and reading a picture. Then the owner said the thumb must have no number, only the arrows, and that swipe was not needed. We took both out.
+
+---
+
+**THE NARRATOR:** Part two. A setting, not a trick.
+
+**TOMO:** The cap on visible rows was an environment variable for testing. The owner wanted it in a settings file. Now a key in the shared interface settings sets how many rows a dropdown shows before it scrolls. Zero means only when the list would run off the screen. Change the number and nudge one marker file and open windows pick it up.
+
+**RAHWEH:** And the debug sheet?
+
+**TOMO:** A document that says what works, how to prove it, and the traps. It exists so the next agent does not rediscover the thirty two row limit.
+
+---
+
+**THE NARRATOR:** Part three. The book that would not load.
+
+**TOMO:** Picking the book from the file menu did nothing. The menu had no row for it, and a projector capped every book at eight pages. We added the row and raised the cap to one hundred twenty eight. Then it still did not load.
+
+**MAXINE:** Why?
+
+**TOMO:** The loader looks for a page named desk one. This book's first page is called map zero zero one. It silently fell back to a flat world. One small fix: when no page is named and desk one is missing, use the book's first page. We only found it by running the same command the menu runs and reading its one line of complaint.
+
+**RAHWEH:** Is that the whole story?
+
+**TOMO:** Not quite. A real mouse click on that row, driven by a script, still did not load it. We loaded it by the command. The click itself is not proved.
+
+---
+
+**THE NARRATOR:** Part four. Fog.
+
+**TOMO:** The owner asked how a game shows things far away, as in a city game. The answer was distance fog. Two numbers in the settings file say where fog starts and where it is complete. The pixel shader and the processor fallback both use the same smooth blend toward the sky colour. The owner looked at it and said it works.
+
+**MAXINE:** Was the first test good?
+
+**TOMO:** No. The first screenshots were identical, because the picture only redraws on a change. We were looking at an old frame. The lesson is to force a redraw before believing a before and after.
+
+---
+
+**THE NARRATOR:** Part five. Left and right, twice.
+
+**TOMO:** This is the part to be honest about. Camera left and right and the selector's left and right were backwards. In September two fixes were added to compensate for a mirrored renderer. On the thirtieth the renderer's mirror was removed, so both fixes became bugs. Grok had found this on the fourth of October and the owner told me to leave Grok's camera change out. Then the owner said both were mixed up, and asked for the fix in history.
+
+**RAHWEH:** So you put it back.
+
+**TOMO:** Yes. The same two edits. I reverted them once by mistake, then restored them. And I could not prove the result with a picture, because keys sent by script would not move the selector in that window. The owner tried it and told me to commit.
+
+**MAXINE:** So it is proved by the owner's hands, not by our evidence.
+
+**TOMO:** Exactly. Write it that way.
+
+---
+
+**THE NARRATOR:** Part six. Splitting the work.
+
+**TOMO:** The owner decided that the three dimensional renderer and the camera would be touched by one agent only, me, and that Grok would write only tile code. So the interface mattered. We agreed on a per desk atlas: one picture of every distinct tile look, and one text file with a floor index and a wall index for each cell.
+
+**RAHWEH:** Why not use the old texture table?
+
+**TOMO:** It holds sixty four materials of sixteen by sixteen pixels. The first map alone needs more than three hundred distinct looks. So the renderer got two new textures, an atlas and a cell map, uploaded only when they change. A transparent wall tile shows the floor under it, because black boxes looked wrong.
+
+---
+
+**THE NARRATOR:** Part seven. Does it match?
+
+**MAXINE:** How do you know the world is right?
+
+**TOMO:** We put the three dimensional picture beside the owner's exported picture of the same map. The stone rail on the west edge, the cobbled wall band, the gravel patches and the white tile block are all in the same places, with north at the top. Grok's painted pictures do not match the export pixel for pixel. Only thirty percent of pixels are exact, because the export looks smoothed. But only four percent of cells are truly wrong, and the three dimensional view does not need pixel perfection.
+
+**RAHWEH:** And indoors?
+
+**TOMO:** A bathroom map showed up with sinks, stalls and tiled floors. The owner said it looks great, and we pushed.
+
+---
+
+**THE NARRATOR:** Part eight. The search box, and the stuck state.
+
+**TOMO:** Last, the owner wanted a search field under cancel in the page menu. Typing narrows the list as you go, and Enter opens the first match. The menu grew a second pinned row, and opening it jumps focus to the field.
+
+**MAXINE:** Where did it go wrong?
+
+**TOMO:** The owner had typed a nonsense query, and the text was saved to a file. When the board started again, that old text filtered the list to nothing. No pages, no way out. The owner foresaw this and asked that the search always open empty. A test confirmed the stuck state: zero pages on start. After the fix, opening clears the field, drops any keyboard grab, and all ninety eight pages return.
+
+---
+
+**THE NARRATOR:** Traps worth keeping.
+
+**RAHWEH:** List them.
+
+**TOMO:** One. These windows have no name on the screen, so searching by name finds nothing; pick them by size. Two. Killing the three dimensional helper makes a keep alive start another, so kill both at once. Three. A rebuilt program is not what a running window uses until the window restarts, so check start times. Four. A shared file with two authors must not be committed by one of them. Five. Write file paths carefully; a dot instead of a dash wasted several minutes tonight.
+
+---
+
+**THE NARRATOR:** Honesty checkpoint.
+
+**MAXINE:** What was not proved?
+
+**TOMO:** Pressing seven to enter the tile view was never tested through the real key. I switched it on by writing the two settings the key writes, and the owner pressed it later. Left and right are proved only by the owner. A real click on the file menu row is not proved. The tile view works on the graphics card path only, not the processor fallback. The hero and the events are still boxes, not sprites. Twenty eight maps have no exported picture yet and wait for Grok's painter. Maps wider than sixty four cells are still clipped. And the search field was seen working in the owner's own window, but my script could not type into it.
+
+**RAHWEH:** And what is the good news?
+
+**TOMO:** A ninety eight page book you can search, scroll and fly over, in the game's own tiles, with fog on the far edge.
+
+**THE NARRATOR:** The house now draws a real game's map from its own files. Next comes the hero, the events, and the far edge of the big maps.
