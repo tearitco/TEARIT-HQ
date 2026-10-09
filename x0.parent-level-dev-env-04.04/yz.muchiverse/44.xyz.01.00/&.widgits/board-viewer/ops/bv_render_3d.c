@@ -347,6 +347,10 @@ typedef struct {
      * NULL when this desk has show=0. sx/sy are not applied. */
     unsigned char *para;
     int para_w, para_h, para_lx, para_ly;
+    /* Visible map events (events.txt). Capped: the GPU scene holds 128
+     * boxes and the selector, hero and range wires share that list. */
+    struct { int x, y, r, g, b; } ev[64];
+    int ev_n;
 } MakerAtlas;
 static MakerAtlas g_mk;
 
@@ -442,6 +446,24 @@ static int maker_load(const char *root) {
             }
             fclose(f);
         }
+    }
+    /* x y r g b charset index direction pattern. Colour is the frame
+     * center. The charset name is for the 2D blit; the box uses r g b.
+     * First 64 only. A later page that needs a switch is already absent. */
+    snprintf(path, sizeof(path), "%s/events.txt", dir);
+    f = fopen(path, "r");
+    if (f) {
+        while (g_mk.ev_n < 64 && fgets(line, sizeof(line), f)) {
+            int x, y, r, g, b;
+            if (sscanf(line, "%d %d %d %d %d", &x, &y, &r, &g, &b) != 5) continue;
+            g_mk.ev[g_mk.ev_n].x = x;
+            g_mk.ev[g_mk.ev_n].y = y;
+            g_mk.ev[g_mk.ev_n].r = r;
+            g_mk.ev[g_mk.ev_n].g = g;
+            g_mk.ev[g_mk.ev_n].b = b;
+            g_mk.ev_n++;
+        }
+        fclose(f);
     }
     g_mk.ok = 1;
     return 1;
@@ -3436,6 +3458,15 @@ static int render_one_frame(void) {
         #define ADDWIRE_THIN(x0,y0,z0,x1,y1,z1,cr,cg,cb) do { \
             ADDBOX(x0,y0,z0,x1,y1,z1,cr,cg,cb,1); \
             if (sc.box_n > 0) sc.box[sc.box_n-1].wire = 2; } while (0)
+        /* Map events stand on the floor (the floor voxel is y 0..1).
+         * Cap at 48 so the selector and hero still get a box. */
+        if (sc.maker) {
+            int budget = 48;
+            for (int i = 0; i < g_mk.ev_n && budget > 0; i++, budget--)
+                ADDBOX(g_mk.ev[i].x + 0.2, 1.0, g_mk.ev[i].y + 0.2,
+                       g_mk.ev[i].x + 0.8, 2.4, g_mk.ev[i].y + 0.8,
+                       g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b, 0);
+        }
         BvrStyle rstyle;
         bvr_style(focused_project_root, &rstyle);   /* external move_range_style.pdl */
         sc.wire_edge = rstyle.placer_edge; sc.wire_thin = rstyle.range_edge;
