@@ -3470,6 +3470,14 @@ static int render_one_frame(void) {
         if (ll < 0.15) ll = 0.15;
         sc.light_level = (float)ll;
         sc.fog_start = (float)fog_start; sc.fog_end = (float)fog_end;
+        /* pieces/system/view.pdl see_through=1: no sky, no parallax.
+         * Missed pixels are alpha 0. 0 brings the sky back. Read every
+         * frame so editing the file does not need a rebuild. */
+        {
+            char vp[PATH_BUF];
+            snprintf(vp, sizeof(vp), "%s/pieces/system/view.pdl", focused_project_root);
+            sc.see_through = read_kv_int(vp, "see_through", 0);
+        }
         { unsigned char *cp = FB(g_fw/2, g_fh/2);   /* clear_sky already ran */
           sc.sky[0]=cp[0]/255.0f; sc.sky[1]=cp[1]/255.0f; sc.sky[2]=cp[2]/255.0f; }
         /* boxes: xelector, sun, moon, entities, hero, world phymoji.

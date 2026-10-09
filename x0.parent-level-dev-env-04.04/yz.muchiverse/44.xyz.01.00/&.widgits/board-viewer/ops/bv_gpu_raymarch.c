@@ -54,6 +54,7 @@ static const char *FS_SRC =
 "uniform vec4  u_lbbox[64];\n"     /* per-layer opaque bbox (u0,v0,u1,v1) in 0..1 */
 "uniform float u_light;\n"
 "uniform vec3  u_sky;\n"
+"uniform int   u_clear;\n"      /* 1: no sky, no parallax, missed rays alpha 0 */
 "uniform float u_fog_start, u_fog_end;\n"
 "uniform int   u_maker;\n"
 "uniform ivec2 u_mk;\n"
@@ -206,7 +207,7 @@ static const char *FS_SRC =
 "   * fetch only ever showed two rows, which wrapped as stripes.\n"
 "   * u and v come from the ray that was already cast. This does not\n"
 "   * write the camera. */\n"
-"  if (!hit && u_para_on != 0) {\n"
+"  if (!hit && u_para_on != 0 && u_clear == 0) {\n"
 "    vec2 sz = max(u_para_size, vec2(1.0));\n"
 "    float u = atan(rd.x, rd.z) / 6.2831853 + 0.5;\n"
 "    float v = clamp(0.5 - rd.y * 0.5, 0.0, 0.999);\n"
@@ -219,8 +220,13 @@ static const char *FS_SRC =
 "    if (face != 3) col *= 0.75;\n"   /* top = face 3 (Y slab, swapped case) - matches bv_render_3d CPU */
 "    col *= u_light;\n"
 "  }\n"
-"  if (hit && u_fog_end > u_fog_start) col = mix(col, u_sky, smoothstep(u_fog_start, u_fog_end, bestT));\n"
-"  o_col = vec4(clamp(col, 0.0, 1.0), 1.0);\n"
+"  float a = (!hit && u_clear != 0) ? 0.0 : 1.0;\n"
+"  if (hit && u_fog_end > u_fog_start) {\n"
+"    float f = smoothstep(u_fog_start, u_fog_end, bestT);\n"
+"    if (u_clear != 0) a = 1.0 - f;\n"
+"    else col = mix(col, u_sky, f);\n"
+"  }\n"
+"  o_col = vec4(clamp(col, 0.0, 1.0), a);\n"
 "}\n";
 
 /* ---- resident state (persistent mode) ---- */
@@ -237,7 +243,7 @@ static int        s_terr_alloc = 0;           /* terrain-array storage created *
 static int        s_mdl_alloc = 0;
 /* cached uniform locations (glGetUniformLocation is a string lookup) */
 static struct {
-    GLint maker, mk, atlas, cells, para, para_on, para_size, para_loop, eye, fwd, right, up, focal, res, wext, grid, leg, terr, lbbox, light, sky, fog_start, fog_end, nbox, bmin, bmax, bcol, bmdl, mdl, mdim, wire_edge, wire_thin;
+    GLint maker, mk, atlas, cells, para, para_on, para_size, para_loop, eye, fwd, right, up, focal, res, wext, grid, leg, terr, lbbox, light, sky, clear, fog_start, fog_end, nbox, bmin, bmax, bcol, bmdl, mdl, mdim, wire_edge, wire_thin;
 } s_u;
 
 static GLuint compile(GLenum type, const char *src) {
@@ -373,7 +379,7 @@ static int gl_ensure_context(void) {
     s_u.eye=UL("u_eye"); s_u.fwd=UL("u_fwd"); s_u.right=UL("u_right"); s_u.up=UL("u_up");
     s_u.focal=UL("u_focal"); s_u.res=UL("u_res"); s_u.wext=UL("u_wext");
     s_u.grid=UL("u_grid"); s_u.leg=UL("u_leg"); s_u.terr=UL("u_terr"); s_u.lbbox=UL("u_lbbox");
-    s_u.light=UL("u_light"); s_u.sky=UL("u_sky"); s_u.fog_start=UL("u_fog_start"); s_u.fog_end=UL("u_fog_end");
+    s_u.light=UL("u_light"); s_u.sky=UL("u_sky"); s_u.clear=UL("u_clear"); s_u.fog_start=UL("u_fog_start"); s_u.fog_end=UL("u_fog_end");
     s_u.maker=UL("u_maker"); s_u.mk=UL("u_mk"); s_u.atlas=UL("u_atlas"); s_u.cells=UL("u_cells");
     s_u.para=UL("u_para"); s_u.para_on=UL("u_para_on"); s_u.para_size=UL("u_para_size"); s_u.para_loop=UL("u_para_loop");
     s_u.wire_edge=UL("u_wire_edge"); s_u.wire_thin=UL("u_wire_thin"); s_u.nbox=UL("u_nbox"); s_u.bmin=UL("u_bmin"); s_u.bmax=UL("u_bmax"); s_u.bcol=UL("u_bcol");
@@ -594,6 +600,7 @@ int bv_gpu_raymarch(const BvGpuScene *s, unsigned char *out) {
     glActiveTexture(GL_TEXTURE0);
     glUniform1f (s_u.light, s->light_level);
     glUniform3fv(s_u.sky,   1, s->sky);
+    glUniform1i(s_u.clear, s->see_through ? 1 : 0);
     glUniform1f(s_u.fog_start, s->fog_start);
     glUniform1f(s_u.fog_end,   s->fog_end);
     {
