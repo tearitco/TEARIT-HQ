@@ -850,6 +850,39 @@ static int load_rgba_png(const char *path, unsigned char **out, int *w, int *h) 
     return 1;
 }
 
+/* parallax.pdl sits beside map.png. show=0 means this desk has no sky.
+ * loop_x / loop_y tile with the map scroll. sx/sy are stored for a
+ * later scroll tick and are not applied here. */
+static int desk_parallax(const char *map_png, int *loop_x, int *loop_y) {
+    *loop_x = 0;
+    *loop_y = 0;
+    char pdl[PATH_BUF];
+    size_t n = strlen(map_png);
+    if (n < 8 || n >= sizeof(pdl)) return 0;
+    snprintf(pdl, sizeof(pdl), "%.*s/parallax.pdl", (int)(n - 8), map_png);
+    FILE *f = host_fopen(pdl, "r");
+    if (!f) return 0;
+    int show = 0;
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        char *p = strstr(line, "show");
+        if (p && strstr(line, "PARALLAX")) {
+            char *bar = strrchr(p, '|');
+            if (bar) show = atoi(bar + 1);
+        }
+        if ((p = strstr(line, "loop_x"))) {
+            char *bar = strrchr(p, '|');
+            if (bar) *loop_x = atoi(bar + 1);
+        }
+        if ((p = strstr(line, "loop_y"))) {
+            char *bar = strrchr(p, '|');
+            if (bar) *loop_y = atoi(bar + 1);
+        }
+    }
+    fclose(f);
+    return show == 1;
+}
+
 /* map.png sits beside map.txt. Tile step is png width / map.txt columns.
  * The 24 px exports and a future 48 px render both fit this. */
 static int desk_map_png(char *path, size_t psz, int *tile_px) {
@@ -1027,6 +1060,35 @@ int main(void) {
                     if (map_py0 < 0) map_py0 = 0;
                     if (map_py0 > map_h - view_h) map_py0 = map_h - view_h;
                 } else map_py0 = -(view_h - map_h) / 2;
+                /* Sky behind the tiles. A clear map pixel keeps the sky.
+                 * An opaque export covers it, which is the baked picture. */
+                unsigned char *para = NULL;
+                int para_w = 0, para_h = 0, loop_x = 0, loop_y = 0;
+                if (desk_parallax(mp, &loop_x, &loop_y)) {
+                    char pp[PATH_BUF];
+                    size_t n = strlen(mp);
+                    if (n > 8 && n < sizeof(pp)) {
+                        snprintf(pp, sizeof(pp), "%.*s/parallax.png", (int)(n - 8), mp);
+                        load_rgba_png(pp, &para, &para_w, &para_h);
+                    }
+                }
+                if (para && para_w > 0 && para_h > 0) {
+                    for (int y = 0; y < H; y++) {
+                        int my = y * map_tile / draw;
+                        for (int x = 0; x < W; x++) {
+                            int mx = x * map_tile / draw;
+                            int sx = loop_x ? (map_px0 + mx) : mx;
+                            int sy = loop_y ? (map_py0 + my) : my;
+                            if (loop_x) { sx %= para_w; if (sx < 0) sx += para_w; }
+                            if (loop_y) { sy %= para_h; if (sy < 0) sy += para_h; }
+                            if (sx < 0 || sy < 0 || sx >= para_w || sy >= para_h) continue;
+                            const unsigned char *s = para + ((size_t)sy * (size_t)para_w + (size_t)sx) * 4;
+                            if (s[3] == 0) continue;
+                            unsigned char *p = VP_PXR(x, y);
+                            p[0] = s[0]; p[1] = s[1]; p[2] = s[2]; p[3] = 255;
+                        }
+                    }
+                }
                 for (int y = 0; y < H; y++) {
                     int sy = map_py0 + y * map_tile / draw;
                     for (int x = 0; x < W; x++) {
@@ -1034,9 +1096,11 @@ int main(void) {
                         unsigned char *p = VP_PXR(x, y);
                         if (sx < 0 || sy < 0 || sx >= map_w || sy >= map_h) continue;
                         const unsigned char *s = map_px + ((size_t)sy * (size_t)map_w + (size_t)sx) * 4;
+                        if (s[3] == 0) continue;
                         p[0] = s[0]; p[1] = s[1]; p[2] = s[2]; p[3] = 255;
                     }
                 }
+                free(para);
                 map_ok = 1;
                 /* map_px0/map_py0 stay in source pixels. map_tile stays
                  * the PNG tile. The selector uses `cell` for the box. */

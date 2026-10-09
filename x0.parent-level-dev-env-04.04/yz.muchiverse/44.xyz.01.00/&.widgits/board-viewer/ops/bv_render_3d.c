@@ -41,14 +41,32 @@
 #include <dirent.h>
 #include <math.h>
 #include <omp.h>
+/* REAL FIX 2026-10-04 (Ubuntu -> Debian 12 port, live: board rendered BLACK,
+ * no_session=1, empty canvas_raw): <time.h> used to be included only inside
+ * the `#ifdef BV_HAVE_GPU` block below, but nothing in it is GPU-specific -
+ * bv_wallclock_ms()'s clock_gettime(CLOCK_MONOTONIC)/struct timespec and the
+ * HUD's localtime_r()/struct tm are all unconditional. So the CPU-only build
+ * (no EGL/GLES3 headers, which is exactly what scripts/build.sh's probe picks
+ * on a box without the GPU dev packages) compiled with no <time.h> at all and
+ * died on 'CLOCK_MONOTONIC undeclared'. That is not a self-contained failure:
+ * scripts/build.sh runs under `set -e`, so it aborted the WHOLE board-viewer
+ * build at this one file and ledger_peers.+x / ledger_append.+x /
+ * bv_render_2d.+x were never produced. find_board_session() then found no
+ * peer binary, returned 0, and the projector published no_session=1 with an
+ * empty canvas - a blank board that reads exactly like a broken 2D/3D view.
+ * Same class as the gitignored-ops gap already documented in
+ * pchq_board_projector.c: a real cause whose visible symptom points
+ * somewhere else entirely. Kept unconditional, above the GPU guard. */
+#include <time.h>
 
 #ifdef BV_HAVE_GPU
 #include "bv_gpu_raymarch.h"   /* Path A - GPU raymarch backend (BV-GPU-RENDER-DESIGN.md) */
+#include "bv_move_range.c"    /* shared Move range finder file helpers */
+#include "../../_shared-lib/khtpm_locations.c"   /* loc_resolve_saved(): saved paths resolved against the live house root */
 #include <signal.h>
 #include <unistd.h>
 #include "../../_shared-lib/house_wait.h"
 #include <sys/stat.h>
-#include <time.h>
 #endif
 
 #define MAX_LINE 512
@@ -135,18 +153,7 @@ static void resolve_root(void) {
 
 static void load_house_root(void) {
     house_root[0] = '\0';
-    char path[PATH_BUF];
-    snprintf(path, sizeof(path), "%s/pieces/system/house_root.txt", project_root);
-    FILE *f = host_fopen(path, "r");
-    if (!f) return;
-    if (fgets(house_root, sizeof(house_root), f)) {
-        if ((unsigned char)house_root[0] == 0xEF &&
-            (unsigned char)house_root[1] == 0xBB &&
-            (unsigned char)house_root[2] == 0xBF)
-            memmove(house_root, house_root + 3, strlen(house_root + 3) + 1);
-        house_root[strcspn(house_root, "\r\n")] = '\0';
-    }
-    fclose(f);
+    loc_house_root(project_root, house_root, sizeof(house_root));   /* shared resolver (_shared-lib/khtpm_locations.c): locations.pdl / house_root.txt / walk up */
 }
 
 /* Relative host paths (e.g. @.apps/aomorai-editor) resolve against house_root. */
@@ -221,10 +228,14 @@ static int page_bound_pdl(const char *house, char *out, int n) {
     }
     if (strcmp(source, "desk") != 0 && !stored[0]) return 0;
     if (!stored[0]) return 0;
-    FILE *t = host_fopen(stored, "r");
+    /* the saved pdl= may be house-relative or a stale absolute path (checkout moved): resolve against the LIVE house
+     * root - see _shared-lib/khtpm_locations.c */
+    char resolved[PATH_BUF];
+    loc_resolve_saved(house, stored, resolved, sizeof(resolved));
+    FILE *t = host_fopen(resolved, "r");
     if (!t) return 0;
     fclose(t);
-    snprintf(out, n, "%s", stored);
+    snprintf(out, n, "%s", resolved);
     return 1;
 }
 static void page_entity_cells(const char *house, int *xs, int *ys, int *n, int max) {
@@ -320,6 +331,120 @@ static double read_kv_double(const char *path, const char *key, double def) {
     char buf[64];
     read_kv_str(path, key, buf, sizeof(buf));
     return buf[0] ? atof(buf) : def;
+}
+
+/* ---- maker_view (RPG Maker tile terrain, owner key 7): per-desk cell atlas written by tsots-map-convert/tsots_paint.py ----
+ * <map>/<desk>/cells.txt : width= height= tile_px= atlas_cols= atlas_tiles= then 'cells' + H rows of W tokens "F,Wl"
+ *                          (F = floor atlas slot, Wl = wall atlas slot or 0; slot 0 = blank)
+ * <map>/<desk>/cells.rgba: the atlas as raw RGBA8, atlas_cols*tile_px wide (no PNG decoder in this binary on purpose).
+ * Cached by path: the daemon re-reads only when the focused desk changes. Returns 1 when g_mk is usable. */
+typedef struct {
+    char key[4352];
+    int  ok, id, w, h, tile_px, cols, tiles, aw, ah;
+    unsigned char  *atlas;
+    unsigned short *cells;      /* w*h*2 uint16: floor slot, wall slot */
+    /* Parallax sky. parallax.rgba is raw RGBA8, size in parallax.pdl.
+     * NULL when this desk has show=0. sx/sy are not applied. */
+    unsigned char *para;
+    int para_w, para_h, para_lx, para_ly;
+} MakerAtlas;
+static MakerAtlas g_mk;
+
+static int maker_load(const char *root) {
+    char wpath[4352], map_id[128] = "", desk_id[128] = "";
+    snprintf(wpath, sizeof(wpath), "%s/pieces/world_01/state.txt", root);
+    read_kv_str(wpath, "map_id", map_id, sizeof(map_id));
+    read_kv_str(wpath, "desk_id", desk_id, sizeof(desk_id));
+    if (!map_id[0] || !desk_id[0]) return 0;
+    char dir[4352];
+    snprintf(dir, sizeof(dir), "%s/pieces/system/maps/%s/%s", root, map_id, desk_id);
+    if (g_mk.key[0] && strcmp(g_mk.key, dir) == 0) return g_mk.ok;
+    free(g_mk.atlas); free(g_mk.cells); free(g_mk.para);
+    int prev_id = g_mk.id;
+    memset(&g_mk, 0, sizeof(g_mk));
+    g_mk.id = prev_id + 1;
+    snprintf(g_mk.key, sizeof(g_mk.key), "%s", dir);
+    char path[4400];
+    snprintf(path, sizeof(path), "%s/cells.txt", dir);
+    FILE *f = fopen(path, "r");
+    if (!f) return 0;
+    char line[16384];
+    int in_cells = 0, row = 0;
+    while (fgets(line, sizeof(line), f)) {
+        if (!in_cells) {
+            if (strncmp(line, "width=", 6) == 0) g_mk.w = atoi(line + 6);
+            else if (strncmp(line, "height=", 7) == 0) g_mk.h = atoi(line + 7);
+            else if (strncmp(line, "tile_px=", 8) == 0) g_mk.tile_px = atoi(line + 8);
+            else if (strncmp(line, "atlas_cols=", 11) == 0) g_mk.cols = atoi(line + 11);
+            else if (strncmp(line, "atlas_tiles=", 12) == 0) g_mk.tiles = atoi(line + 12);
+            else if (strncmp(line, "cells", 5) == 0) {
+                if (g_mk.w < 1 || g_mk.h < 1 || g_mk.w > 512 || g_mk.h > 512 || g_mk.cols < 1 || g_mk.tile_px < 1) { fclose(f); return 0; }
+                g_mk.cells = (unsigned short *)calloc((size_t)g_mk.w * (size_t)g_mk.h * 2, sizeof(unsigned short));
+                if (!g_mk.cells) { fclose(f); return 0; }
+                in_cells = 1;
+            }
+            continue;
+        }
+        if (row >= g_mk.h) break;
+        const char *q = line;
+        for (int x = 0; x < g_mk.w; x++) {
+            char *e;
+            long fl = strtol(q, &e, 10);
+            if (e == q || *e != ',') break;
+            q = e + 1;
+            long wl = strtol(q, &e, 10);
+            q = e;
+            g_mk.cells[((size_t)row * g_mk.w + x) * 2 + 0] = (unsigned short)fl;
+            g_mk.cells[((size_t)row * g_mk.w + x) * 2 + 1] = (unsigned short)wl;
+        }
+        row++;
+    }
+    fclose(f);
+    if (!in_cells || row < g_mk.h) return 0;
+    g_mk.aw = g_mk.cols * g_mk.tile_px;
+    g_mk.ah = ((g_mk.tiles + g_mk.cols - 1) / g_mk.cols) * g_mk.tile_px;
+    if (g_mk.ah < 1) return 0;
+    snprintf(path, sizeof(path), "%s/cells.rgba", dir);
+    f = fopen(path, "rb");
+    if (!f) return 0;
+    size_t need = (size_t)g_mk.aw * (size_t)g_mk.ah * 4;
+    g_mk.atlas = (unsigned char *)malloc(need);
+    if (!g_mk.atlas || fread(g_mk.atlas, 1, need, f) != need) { fclose(f); return 0; }
+    fclose(f);
+    /* Sky is optional. A missing file leaves the old flat sky colour. */
+    snprintf(path, sizeof(path), "%s/parallax.pdl", dir);
+    f = fopen(path, "r");
+    int pshow = 0, pw = 0, ph = 0;
+    if (f) {
+        while (fgets(line, sizeof(line), f)) {
+            char *bar = strrchr(line, '|');
+            if (!bar) continue;
+            if (strstr(line, "show")) pshow = atoi(bar + 1);
+            else if (strstr(line, "loop_x")) g_mk.para_lx = atoi(bar + 1);
+            else if (strstr(line, "loop_y")) g_mk.para_ly = atoi(bar + 1);
+            else if (strstr(line, "width")) pw = atoi(bar + 1);
+            else if (strstr(line, "height")) ph = atoi(bar + 1);
+        }
+        fclose(f);
+    }
+    if (pshow == 1 && pw > 0 && ph > 0 && pw <= 4096 && ph <= 4096) {
+        snprintf(path, sizeof(path), "%s/parallax.rgba", dir);
+        f = fopen(path, "rb");
+        size_t pn = (size_t)pw * (size_t)ph * 4;
+        if (f) {
+            g_mk.para = (unsigned char *)malloc(pn);
+            if (g_mk.para && fread(g_mk.para, 1, pn, f) == pn) {
+                g_mk.para_w = pw;
+                g_mk.para_h = ph;
+            } else {
+                free(g_mk.para);
+                g_mk.para = NULL;
+            }
+            fclose(f);
+        }
+    }
+    g_mk.ok = 1;
+    return 1;
 }
 
 static long long read_kv_ll(const char *path, const char *key, long long def) {
@@ -905,6 +1030,16 @@ static void load_hero(const char *root) {
         g_hero_x = xs[0];
         g_hero_y = ys[0];
         g_hero_z = read_kv_int(sp, "current_z", 0);
+        {   /* The hero keeps its own z like any desk entity (desktop_pos.txt z=);
+             * the page row has no z. Without one, the board's current level. */
+            char rp[PATH_BUF], hp[PATH_BUF];
+            int rx, ry;
+            if (pgr_get(house_root, "hero_01", &rx, &ry, rp, sizeof(rp))) {
+                snprintf(hp, sizeof(hp), "%s/%s/desktop_pos.txt", house_root, rp);
+                int hz = bvr_kv_int(hp, "z", -9999);
+                if (hz != -9999) g_hero_z = hz;
+            }
+        }
         g_hero_present = 1;
         return;
     }
@@ -1380,11 +1515,18 @@ static void place_desk_sprites(int z) {
  * shapes leave. The private txt files are only the piececraft map. */
 static void load_phymoji_world_entities(const char *root) {
     g_phymoji_world_entity_count = 0;
-    char sp[PATH_BUF], bound[PATH_BUF];
+    char bound[PATH_BUF];
     int xs[16], ys[16];
-    snprintf(sp, sizeof(sp), "%s/pieces/system/bv_state.txt", project_root);
-    int z = read_kv_int(sp, "current_z", 0);
+    /* Owner 2026-10-05: pressing z/x moved every entity on screen. This used the LIVE current_z (the level
+     * the xelector is viewing, which z/x change) as the entities' own level, so the whole set was re-placed on
+     * whatever level the cursor was on and rode along with it. Entities stay on the ground level instead:
+     * default_current_z() is the stable "where the world's ground is" (one below the hero's own z), not the
+     * viewed slice. (Still follows the hero if the hero itself changes level; a per-entity z belongs in the
+     * page row and is the real fix - see 18.pc-hq/IN-GAME-LAYOUTS-PLAN.md part 3 note.) */
     int desk_page = house_root[0] && page_bound_pdl(house_root, bound, sizeof(bound)) > 0;
+    /* A desk page is ONE floor layer (index 0), so its entities stand on top of it (z = 1). default_current_z() is the chunk
+     * world's ground (hero pos_z - 1 = 16): used for a desk page it left every entity 16 voxels above the floor. */
+    int z = desk_page ? 1 : default_current_z(root);
     if (!desk_page && page_named_cells(house_root, "tree_small", xs, ys, 16) > 0)
         place_page_phymoji(root, "tree_small", z);
     else if (!desk_page)
@@ -1966,10 +2108,23 @@ static void bv_draw_hud(const char *game_root, int current_z, int selx, int sely
             snprintf(lines[n++], sizeof(lines[0]), "time --:--");
         }
     }
+    /* Level numbering (owner 2026-10-05): when the world publishes floor_z (board_manifest.txt) the floor is
+     * level 0 and the xelector's own z is shown relative to it, so a board that loads at the spawn level
+     * reads "z=1". Without floor_z (older worlds) the absolute z is shown, unchanged. */
+    int hud_level = current_z;
+    {
+        char mp[PATH_BUF], xp[PATH_BUF];
+        snprintf(mp, sizeof(mp), "%s/pieces/system/board_manifest.txt", game_root);
+        int fz = read_kv_int(mp, "floor_z", -1);
+        if (fz >= 0) {
+            snprintf(xp, sizeof(xp), "%s/pieces/xelector_01/state.txt", game_root);
+            hud_level = read_kv_int(xp, "pos_z", current_z) - fz;
+        }
+    }
     if (hud_pdl_int(pdl, "hud_coords", 1) && n < 8)
-        snprintf(lines[n++], sizeof(lines[0]), "pos %d,%d,%d", selx, sely, current_z);
+        snprintf(lines[n++], sizeof(lines[0]), "pos %d,%d,%d", selx, sely, hud_level);
     if (hud_pdl_int(pdl, "hud_zlevel", 1) && n < 8)
-        snprintf(lines[n++], sizeof(lines[0]), "z=%d", current_z);
+        snprintf(lines[n++], sizeof(lines[0]), "z=%d", hud_level);
     if (hud_pdl_int(pdl, "hud_possess", 1) && n < 8)
         snprintf(lines[n++], sizeof(lines[0]), "poss %s", g_hero_present ? "hero_01" : "-");
     if (hud_pdl_int(pdl, "hud_pick", 1) && n < 8) {
@@ -2047,6 +2202,13 @@ static void bv_draw_hud(const char *game_root, int current_z, int selx, int sely
         if (!tm[0]) snprintf(tm, sizeof(tm), "-");
         snprintf(lines[n++], sizeof(lines[0]), "click %s %s", pos, tm);
         if (n < 12) snprintf(lines[n++], sizeof(lines[0]), "ray %s", ray);
+    }
+    {   /* Move range finder label (bv_move_range.c) - only while it is open */
+        BvRange rg;
+        if (bvr_load(game_root, &rg) && n < 11) {
+            bvr_label(game_root, project_root, lines[n], sizeof(lines[0]), lines[n + 1], sizeof(lines[0]));
+            n += 2;
+        }
     }
     if (n < 12) snprintf(lines[n++], sizeof(lines[0]), "pid %d", (int)getpid());
     double cscale = bv_hud_canvas_scale();
@@ -2145,6 +2307,8 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
      * still increases toward screen-right on the minimap, matching
      * what the default 3D view actually shows. Y is untouched - only
      * X was reported/observed flipped. */
+    /* Minimap x is NOT mirrored: desk +x is screen-right in every view (ff12bfea7), and the minimap kept the old mirror
+     * that matched the pre-flip follow camera, so desk-left items showed on its right (owner 2026-10-08). */
 
     /* dark backing + 1px light border, same legibility convention as
      * bv_blit_text's own box. */
@@ -2164,7 +2328,7 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
                 const TerrainLegendEntry *le = terrain_legend_lookup(glyph);
                 if (le) { r = le->r; g = le->g; b = le->b; } else { r = 110; g = 110; b = 110; }
             }
-            int cx = mm_x + (g_mm_board_w - 1 - col) * cellpx, cy = mm_y + row * cellpx;
+            int cx = mm_x + col * cellpx, cy = mm_y + row * cellpx;
             bv_fill_rect(cx, cy, cx + cellpx, cy + cellpx, r, g, b);
         }
     }
@@ -2188,7 +2352,7 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
         if (strstr(e->entity_id, "chicken"))     { r = 235; g = 205; b = 70; }  /* yellow */
         else if (strstr(e->entity_id, "tree"))   { r = 18;  g = 80;  b = 24; }  /* dark forest green - direct report: too close to grass at (90,170,60) */
         else                                      { r = 225; g = 225; b = 225; } /* generic - light grey */
-        int cx = mm_x + (g_mm_board_w - 1 - e->x) * cellpx + inset, cy = mm_y + e->y * cellpx + inset;
+        int cx = mm_x + e->x * cellpx + inset, cy = mm_y + e->y * cellpx + inset;
         bv_fill_rect(cx, cy, cx + dot, cy + dot, r, g, b);
     }
 
@@ -2197,7 +2361,7 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
      * full cell so it's easy to find even off the player. */
     if (g_xelector_present && g_xelector_x >= 0 && g_xelector_x < g_mm_board_w &&
         g_xelector_y >= 0 && g_xelector_y < g_mm_board_h) {
-        int cx = mm_x + (g_mm_board_w - 1 - g_xelector_x) * cellpx, cy = mm_y + g_xelector_y * cellpx;
+        int cx = mm_x + g_xelector_x * cellpx, cy = mm_y + g_xelector_y * cellpx;
         bv_fill_rect(cx, cy, cx + cellpx, cy + cellpx, 80, 220, 255);
     }
 
@@ -2208,7 +2372,7 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
     int mark_x = g_hero_present ? g_hero_x : g_mm_selx;
     int mark_y = g_hero_present ? g_hero_y : g_mm_sely;
     if (mark_x >= 0 && mark_x < g_mm_board_w && mark_y >= 0 && mark_y < g_mm_board_h) {
-        int cx = mm_x + (g_mm_board_w - 1 - mark_x) * cellpx, cy = mm_y + mark_y * cellpx;
+        int cx = mm_x + mark_x * cellpx, cy = mm_y + mark_y * cellpx;
         bv_fill_rect(cx, cy, cx + cellpx, cy + cellpx, 255, 70, 70);
     }
 }
@@ -2462,6 +2626,11 @@ static Camera build_camera(int camera_mode, double yaw_deg, double pitch_deg,
         Vec3 fallback_up = { 0, 0, 1 };
         right = v3_norm(v3_cross(fallback_up, cam.forward));
         up = v3_norm(v3_cross(right, cam.forward));
+        /* Every ray (CPU, GPU, click pick) mirrors screen x so desk +x lands on the right (ff12bfea7, written for the
+         * follow camera, whose cross product puts +x on the left). This branch already had +x on the right, so that
+         * mirror put the whole top-down picture backwards: desk-left items showed on the right of pc-hq (owner
+         * 2026-10-08). Negate right here so the mirror lands it correctly; up stays as computed. */
+        right = v3_scale(right, -1.0);
     } else {
         Vec3 world_up = { 0, 1, 0 };
         right = v3_norm(v3_cross(world_up, cam.forward));
@@ -2576,6 +2745,39 @@ static void bv_write_click_hud(const char *focus, int hit,
     fclose(pf);
 }
 
+/* Click / drag -> xelector (owner 2026-10-06: "the xelector is basically the mouse, and should follow mouse click / drags").
+ * The same two writes the arrow keys make in bv_menu_input.c: the board-viewer's selector_x/y (camera anchor + 2D highlight) and the xelector piece's own
+ * pos_x/pos_y, then the screen-changed marker so the next frame draws it. Only for a solid-voxel hit (a sky miss moves nothing), and not while possessing
+ * (then the xelector is tied to the hero and moving it would need a world tick: arrows own that). */
+static void write_file_atomic(const char *path, const void *data, size_t len);
+static void bv_set_kv_int(const char *path, const char *key, int val) {
+    char *buf = NULL; size_t n = 0; long sz = 0; FILE *f = host_fopen(path, "r");
+    if (f) { fseek(f, 0, SEEK_END); sz = ftell(f); fseek(f, 0, SEEK_SET); if (sz < 0) sz = 0;
+             buf = malloc((size_t)sz + 1); if (buf) { n = fread(buf, 1, (size_t)sz, f); buf[n] = 0; } fclose(f); }
+    size_t cap = n + 128, o = 0; char *out = malloc(cap); if (!out) { free(buf); return; }
+    int done = 0; size_t kl = strlen(key); const char *p = buf ? buf : "";
+    while (*p) {
+        const char *e = strchr(p, '\n'); size_t ll = e ? (size_t)(e - p) : strlen(p);
+        if (!done && ll > kl && !strncmp(p, key, kl) && p[kl] == '=') { o += (size_t)snprintf(out + o, cap - o, "%s=%d\n", key, val); done = 1; }
+        else { memcpy(out + o, p, ll); o += ll; out[o++] = '\n'; }
+        p += ll + (e ? 1 : 0);
+    }
+    if (!done) o += (size_t)snprintf(out + o, cap - o, "%s=%d\n", key, val);
+    write_file_atomic(path, out, o); free(out); free(buf);
+}
+static void bv_xelector_to(const char *project_root, const char *focus, int hx, int hy) {
+    char sp[PATH_BUF], xp[PATH_BUF], mk[PATH_BUF], poss[64] = "";
+    if (!project_root || !project_root[0] || !focus || !focus[0] || hx < 0 || hy < 0 || hx >= MAX_BOARD_DIM || hy >= MAX_BOARD_DIM) return;
+    snprintf(xp, sizeof(xp), "%s/pieces/xelector_01/state.txt", focus);
+    read_kv_str(xp, "possessed_id", poss, sizeof(poss));
+    if (poss[0] && strcmp(poss, "none") != 0) return;
+    snprintf(sp, sizeof(sp), "%s/pieces/system/bv_state.txt", project_root);
+    bv_set_kv_int(sp, "selector_x", hx); bv_set_kv_int(sp, "selector_y", hy);
+    bv_set_kv_int(xp, "pos_x", hx); bv_set_kv_int(xp, "pos_y", hy);
+    snprintf(mk, sizeof(mk), "%s/pieces/display/bv_screen_changed.txt", project_root);
+    { FILE *m = host_fopen(mk, "a"); if (m) { fputc('.', m); fclose(m); } }
+}
+
 static void write_file_atomic(const char *path, const void *data, size_t len) {
     char tmp_path[PATH_BUF];
     snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", path);
@@ -2683,9 +2885,18 @@ static int render_one_frame(void) {
         memset(board3d, '_', sizeof(board3d));
         board_w = 16;
         board_h = 16;
+        {   /* the floor covers the page: at least 16x16, wider/taller when a row sits further out (pgr_extent) */
+            int mx = 0, my = 0;
+            if (pgr_extent(house_root, &mx, &my)) {
+                if (mx + 1 > board_w) board_w = mx + 1;
+                if (my + 1 > board_h) board_h = my + 1;
+            }
+            if (board_w > MAX_BOARD_DIM) board_w = MAX_BOARD_DIM;
+            if (board_h > MAX_BOARD_DIM) board_h = MAX_BOARD_DIM;
+        }
         z_count = 1;
-        for (int row = 0; row < 16; row++)
-            for (int col = 0; col < 16; col++)
+        for (int row = 0; row < board_h; row++)
+            for (int col = 0; col < board_w; col++)
                 board3d[0][row][col] = '.';
     } else {
         z_count = load_voxel_chunk(focused_project_root, board3d, &board_w, &board_h);
@@ -2740,6 +2951,10 @@ static int render_one_frame(void) {
     load_entities(focused_project_root);
     load_xelector(focused_project_root);
     load_hero(focused_project_root);
+    if (desk_page) {   /* one floor layer: the cursor stands in the air tile just above it (z = 1) */
+        if (g_xelector_present) g_xelector_z = 1;
+        if (g_hero_present) g_hero_z = 1;
+    }
 
     /* Real hero phymoji model - "hero_humanoid" is today's real, fixed
      * placeholder source asset (direct instruction: "use the humanoid
@@ -2942,11 +3157,15 @@ static int render_one_frame(void) {
         bv_write_click_hud(focused_project_root, hit, hx, hy, hz, cx, cy);
         if (hit > 0) {
             g_ray_hit = 1; g_ray_x = hx; g_ray_y = hy; g_ray_z = hz;
+            bv_xelector_to(project_root, focused_project_root, hx, hy);
             write_pick_txt(focused_project_root, board3d, board_w, board_h, z_count, hx, hy, hz);
             char pp[PATH_BUF];
             snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
-            FILE *pf = host_fopen(pp, "w");
-            if (pf) { fprintf(pf, "armed=1\nx=%d\ny=%d\nz=%d\n", hx, hy, hz); fclose(pf); }
+            /* Move range finder open: the click selects / places (desk behaviour). */
+            if (!bvr_click(focused_project_root, project_root, hx, hy, board_w, board_h)) {
+                FILE *pf = host_fopen(pp, "w");
+                if (pf) { fprintf(pf, "armed=1\nx=%d\ny=%d\nz=%d\n", hx, hy, hz); fclose(pf); }
+            }
         }
     }
 
@@ -2970,6 +3189,20 @@ static int render_one_frame(void) {
     double game_light_level_sky = lighting_enabled ? compute_sun_light_level(game_epoch_sky) : 1.0;
     if (lighting_enabled) clear_sky(game_light_level_sky);
     else { for (int yy = 0; yy < g_fh; yy++) for (int xx = 0; xx < g_fw; xx++) { unsigned char *p = FB(xx, yy); p[0]=135; p[1]=180; p[2]=220; p[3]=255; } }
+
+    /* Distance fog (owner 2026-10-08, "show things in the distance like GTA"): #.desktop/hq_ui.pdl view_fog_start / view_fog_end in
+     * cells; hits between them fade to the sky colour, beyond fog_end they are all sky colour. 0 / absent = off. Same two numbers
+     * drive the GPU shader (u_fog_*) and this CPU loop. */
+    double fog_start = 0, fog_end = 0;
+    unsigned char fog_sky[3] = {135, 180, 220};
+    if (house_root[0]) {
+        char hqp[PATH_BUF];
+        snprintf(hqp, sizeof(hqp), "%s/#.desktop/hq_ui.pdl", house_root);
+        fog_start = (double)read_kv_int(hqp, "view_fog_start", 0);
+        fog_end   = (double)read_kv_int(hqp, "view_fog_end", 0);
+        if (fog_start < 0) fog_start = 0;
+    }
+    { unsigned char *fp = FB(g_fw / 2, g_fh / 2); fog_sky[0] = fp[0]; fog_sky[1] = fp[1]; fog_sky[2] = fp[2]; }   /* sky just filled, before any hit */
 
     CelestialBody sun_body = lighting_enabled ? load_celestial_body(focused_project_root, "sun_01") : (CelestialBody){0,0,0,0};
     CelestialBody moon_body = lighting_enabled ? load_celestial_body(focused_project_root, "moon_01") : (CelestialBody){0,0,0,0};
@@ -3157,9 +3390,35 @@ static int render_one_frame(void) {
             }
             sc.legend_n++;
         }
+        /* maker_view: replace the glyph world with RPG Maker tile terrain (floor level 0, walls = 2 more levels where the cell has a
+         * wall slot). GPU path only; the camera, entities and fog are untouched. bv_state.txt maker_view=1 is written by key 7. */
+        if (read_kv_int(state_path, "maker_view", 0) && maker_load(focused_project_root)) {
+            int mw = g_mk.w > MAX_BOARD_DIM ? MAX_BOARD_DIM : g_mk.w;
+            int mh = g_mk.h > MAX_BOARD_DIM ? MAX_BOARD_DIM : g_mk.h;
+            memset(gpu_grid, 0, (size_t)mw * (size_t)mh * 3);
+            for (int row = 0; row < mh; row++)
+                for (int col = 0; col < mw; col++) {
+                    gpu_grid[col + row * mw] = 1;                                   /* level 0: floor */
+                    if (g_mk.cells[((size_t)row * g_mk.w + col) * 2 + 1]) {
+                        gpu_grid[col + row * mw + mw * mh] = 1;                     /* levels 1-2: wall */
+                        gpu_grid[col + row * mw + 2 * mw * mh] = 1;
+                    }
+                }
+            sc.board_w = mw; sc.board_h = mh; sc.z_count = 3;
+            sc.grid = gpu_grid;
+            sc.legend_n = 1; sc.legend_glyph[0] = 1;
+            sc.legend_rgb[0][0] = sc.legend_rgb[0][1] = sc.legend_rgb[0][2] = 0.5f;
+            sc.legend_has_tex[0] = 0;
+            sc.maker = 1; sc.maker_id = g_mk.id;
+            sc.atlas = g_mk.atlas; sc.atlas_w = g_mk.aw; sc.atlas_h = g_mk.ah; sc.atlas_cols = g_mk.cols; sc.tile_px = g_mk.tile_px;
+            sc.cells = g_mk.cells; sc.cells_w = g_mk.w; sc.cells_h = g_mk.h;
+            sc.para = g_mk.para; sc.para_w = g_mk.para_w; sc.para_h = g_mk.para_h;
+            sc.para_loop_x = g_mk.para_lx; sc.para_loop_y = g_mk.para_ly;
+        }
         double ll = lighting_enabled ? game_light_level_sky : 1.0;
         if (ll < 0.15) ll = 0.15;
         sc.light_level = (float)ll;
+        sc.fog_start = (float)fog_start; sc.fog_end = (float)fog_end;
         { unsigned char *cp = FB(g_fw/2, g_fh/2);   /* clear_sky already ran */
           sc.sky[0]=cp[0]/255.0f; sc.sky[1]=cp[1]/255.0f; sc.sky[2]=cp[2]/255.0f; }
         /* boxes: xelector, sun, moon, entities, hero, world phymoji.
@@ -3174,6 +3433,12 @@ static int render_one_frame(void) {
         #define ADDWIRE(x0,y0,z0,x1,y1,z1,cr,cg,cb) do { \
             ADDBOX(x0,y0,z0,x1,y1,z1,cr,cg,cb,1); \
             if (sc.box_n > 0) sc.box[sc.box_n-1].wire = 1; } while (0)
+        #define ADDWIRE_THIN(x0,y0,z0,x1,y1,z1,cr,cg,cb) do { \
+            ADDBOX(x0,y0,z0,x1,y1,z1,cr,cg,cb,1); \
+            if (sc.box_n > 0) sc.box[sc.box_n-1].wire = 2; } while (0)
+        BvrStyle rstyle;
+        bvr_style(focused_project_root, &rstyle);   /* external move_range_style.pdl */
+        sc.wire_edge = rstyle.placer_edge; sc.wire_thin = rstyle.range_edge;
         if (sun_body.present)
             ADDBOX(sun_body.x-2.0, sun_body.y-2.0, sun_body.z-2.0,
                    sun_body.x+2.0, sun_body.y+2.0, sun_body.z+2.0, 255,220,120, 1);
@@ -3190,12 +3455,14 @@ static int render_one_frame(void) {
         {
             char pp[PATH_BUF];
             snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
+            { BvRange rg; if (bvr_load(focused_project_root, &rg)) bvr_arm_placer(pp, focused_project_root); }
             if (read_kv_int(pp, "armed", 0)) {
                 int sx = read_kv_int(pp, "x", 0);
                 int sy = read_kv_int(pp, "y", 0);
                 int sz = read_kv_int(pp, "z", 0);
-                ADDWIRE(sx + 0.12, sz + 0.12, sy + 0.12,
-                        sx + 0.88, sz + 0.88, sy + 0.88, 40, 255, 80);
+                ADDWIRE(sx + 0.06, sz + 0.06, sy + 0.06,
+                        sx + 0.94, sz + 0.94, sy + 0.94,
+                        rstyle.placer_rgb[0], rstyle.placer_rgb[1], rstyle.placer_rgb[2]);
             }
         }
         for (int i=0; i<g_entity_count; i++)
@@ -3252,26 +3519,35 @@ static int render_one_frame(void) {
                    we->x+0.5+wsx/2.0, we->z+wsy, we->y+0.5+wsz/2.0, cr,cg,cb, 0);
             if (wm >= 0) sc.box[sc.box_n-1].model = wm;
         }
-        /* 3D diamond, range 2, on the xelector's cell. That cell is
-         * the possessed entity when possessed_id names one. */
+        /* Move range finder (the REAL range; 2D only renders it - see
+         * @.apps/piececraft-hq/RENDER-STANDARD.md). Drawn only while
+         * move_range_matrix.txt exists, one wire cell per in-range (x,y,z) -
+         * a true 3D diamond, so the placer/entity can move up and down - centred on the entity being moved
+         * (xelector/hero only as a fallback). Esc/Enter delete the
+         * file (bv_menu_input.c), which closes it. */
         if (g_xelector_present || g_hero_present) {
-            int ox = g_xelector_present ? g_xelector_x : g_hero_x;
-            int oy = g_xelector_present ? g_xelector_y : g_hero_y;
-            int oz = g_xelector_present ? g_xelector_z : g_hero_z;
-            int rad = 2;
-            for (int dz = -rad; dz <= rad; dz++) {
-                for (int dy = -rad; dy <= rad; dy++) {
-                    for (int dx = -rad; dx <= rad; dx++) {
-                        int man = (dx < 0 ? -dx : dx) + (dy < 0 ? -dy : dy) + (dz < 0 ? -dz : dz);
-                        if (man == 0 || man > rad) continue;
-                        ADDWIRE(ox + dx + 0.08, oz + dz + 0.08, oy + dy + 0.08,
-                                ox + dx + 0.92, oz + dz + 0.92, oy + dy + 0.92,
-                                255, 220, 40);
-                    }
-                }
+            BvRange rng;
+            if (bvr_load(focused_project_root, &rng)) {
+                int ox = g_xelector_present ? g_xelector_x : g_hero_x;
+                int oy = g_xelector_present ? g_xelector_y : g_hero_y;
+                int oz = g_xelector_present ? g_xelector_z : g_hero_z;
+                bvr_origin(focused_project_root, &ox, &oy, &oz);   /* the moving entity */
+                int R = (rng.nr > rng.nc ? rng.nr : rng.nc) / 2;   /* deepest level the matrix reaches */
+                for (int dz = -R; dz <= R; dz++)
+                    for (int dy = -(rng.nr / 2); dy <= rng.nr / 2; dy++)
+                        for (int dx = -(rng.nc / 2); dx <= rng.nc / 2; dx++) {
+                            if (!dx && !dy && !dz) continue;         /* the entity's own cell */
+                            if (!bvr_has3(&rng, dx, dy, dz)) continue;
+                            ADDWIRE_THIN(ox + dx + 0.04, oz + dz + 0.04, oy + dy + 0.04,
+                                         ox + dx + 0.96, oz + dz + 0.96, oy + dy + 0.96,
+                                         rstyle.range_rgb[0] * rstyle.range_dim,
+                                         rstyle.range_rgb[1] * rstyle.range_dim,
+                                         rstyle.range_rgb[2] * rstyle.range_dim);
+                        }
             }
         }
         #undef GPU_ADD_MODEL
+        #undef ADDWIRE_THIN
         #undef ADDWIRE
         #undef ADDBOX
         if (bv_gpu_raymarch(&sc, g_fbuf) == 0) gpu_done = 1;
@@ -3838,6 +4114,15 @@ static int render_one_frame(void) {
             r = (unsigned char)(r * light_level);
             g = (unsigned char)(g * light_level);
             bl = (unsigned char)(bl * light_level);
+            if (fog_end > fog_start && best_t < 1e17) {   /* distance fog: same smoothstep as the GPU shader */
+                double ff = (best_t - fog_start) / (fog_end - fog_start);
+                if (ff < 0) ff = 0;
+                if (ff > 1) ff = 1;
+                ff = ff * ff * (3.0 - 2.0 * ff);
+                r  = (unsigned char)(r  + (fog_sky[0] - r)  * ff);
+                g  = (unsigned char)(g  + (fog_sky[1] - g)  * ff);
+                bl = (unsigned char)(bl + (fog_sky[2] - bl) * ff);
+            }
             /* block-fill the g_lod_step x g_lod_step cell this sample
              * covers (exactly one pixel when g_lod_step == 1). Sky
              * samples hit the `continue` above and keep the full-res
@@ -4023,6 +4308,7 @@ int main(int argc, char **argv) {
                 snprintf(last_click, sizeof(last_click), "%s", stamp);
                 if (hit != 0) {
                     bv_write_click_hud(g_click_focus, hit, hx, hy, hz, cx, cy);
+                    if (hit > 0) bv_xelector_to(project_root, g_click_focus, hx, hy);
                     bv_repaint_hud_only();
                     idle_ticks = 0;
                 }
