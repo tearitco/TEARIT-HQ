@@ -1,0 +1,8 @@
+WWWWWWWWWWWWWWWWWWWWWWWW
+W......................W
+W.lines.red=wall.......W
+W.yellow=door..........W
+W.green=player.........W
+W......................W
+W......................W
+WWWWWWWWWWWWWWWWWWWWWWWW

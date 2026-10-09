@@ -1,0 +1,12 @@
+WWWWWWWWWWWWWWWWWWWWWWWW
+W......................W
+W..DDDD..OOOO..OOOO.MM.W
+W..D..D..O..O..O..O.MM.W
+W..D..D..O..O..O..O.M.MW
+W..DDDD..OOOO..OOOO.M.MW
+W......................W
+W..N.New Game..........W
+W..L.Load Game.........W
+W..O.Options...........W
+W..Q.Quit..............W
+WWWWWWWWWWWWWWWWWWWWWWWW
