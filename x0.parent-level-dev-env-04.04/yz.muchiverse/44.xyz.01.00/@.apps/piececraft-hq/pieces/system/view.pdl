@@ -1,0 +1,4 @@
+# See-through. 1 drops the sky and the parallax. Missed pixels are
+# alpha 0 so the desktop (and later a USB camera) can show behind
+# the map. 0 brings the sky and the parallax back.
+see_through=0

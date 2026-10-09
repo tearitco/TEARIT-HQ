@@ -57,7 +57,7 @@
 #define MAX_LINE 512
 #define MAX_PATH 4096
 #define PATH_BUF (MAX_PATH + 256)
-#define MAX_BOARD_DIM 64
+#define MAX_BOARD_DIM 128   /* match bv_render_3d.c. The cursor has to be able to reach a 120-wide desk. */
 
 #define ARROW_LEFT  1000
 #define ARROW_RIGHT 1001
@@ -978,6 +978,37 @@ static int handle_one_key(int key) {
     }
 
     int render_mode = read_kv_int(state_path, "render_mode", default_render_mode(focused_project_root));
+    /* 2D has no camera. wasd used to die in the no-op below, so the
+     * picture never moved. Those keys step the xelector, and the 2D
+     * frame is centred on that cell. */
+    if (!render_mode && focused_project_root[0] &&
+        (key == key_pan_forward || key == key_pan_left || key == key_pan_back || key == key_pan_right)) {
+        int dx = 0, dy = 0;
+        if (key == key_pan_forward) dy = -1;
+        else if (key == key_pan_back) dy = 1;
+        else if (key == key_pan_left) dx = -1;
+        else dx = 1;
+        char xelector_state_path[PATH_BUF];
+        snprintf(xelector_state_path, sizeof(xelector_state_path), "%s/pieces/xelector_01/state.txt", focused_project_root);
+        int selector_x = read_kv_int(xelector_state_path, "pos_x", read_kv_int(state_path, "selector_x", 0));
+        int selector_y = read_kv_int(xelector_state_path, "pos_y", read_kv_int(state_path, "selector_y", 0));
+        selector_x = clamp_int(selector_x + dx, 0, MAX_BOARD_DIM - 1);
+        selector_y = clamp_int(selector_y + dy, 0, MAX_BOARD_DIM - 1);
+        write_kv_int(state_path, "selector_x", selector_x);
+        write_kv_int(state_path, "selector_y", selector_y);
+        write_kv_int(xelector_state_path, "pos_x", selector_x);
+        write_kv_int(xelector_state_path, "pos_y", selector_y);
+        char possessed_id[64] = "";
+        read_kv_str(xelector_state_path, "possessed_id", possessed_id, sizeof(possessed_id));
+        if (strcmp(possessed_id, "hero_01") == 0) {
+            char hero_state_path[PATH_BUF];
+            snprintf(hero_state_path, sizeof(hero_state_path), "%s/pieces/hero_01/state.txt", focused_project_root);
+            write_kv_int(hero_state_path, "pos_x", selector_x);
+            write_kv_int(hero_state_path, "pos_y", selector_y);
+        }
+        bump_screen_changed(project_root);
+        return 0;
+    }
     if (!render_mode &&
         key != key_pov_1 && key != key_pov_2 && key != key_pov_3 && key != key_pov_4 && key != key_pov_5 && key != key_pov_6) {
         /* Most camera controls are a no-op unless render_mode==1 -
@@ -1136,7 +1167,9 @@ static int handle_one_key(int key) {
     /* w/a/s/d pan - all modes. Modes 3/4 keep their distinct axis
      * mapping (free-roam z/x, bird's-eye y/x); modes 1/2 (first/third
      * person) pan cam_pan_x/z as an offset from the followed anchor -
-     * build_camera() adds those in modes 1/2 too now. */
+     * build_camera() adds those in modes 1/2 too now.
+     * 2D (render_mode 0) has no detached pan. The same keys step the
+     * xelector, and the 2D picture is centred on that cell. */
     if (key == key_pan_forward || key == key_pan_left || key == key_pan_back || key == key_pan_right) {
         if (camera_mode == 4) {
             int pan_y = read_kv_int(state_path, "cam_pan_y", 0);

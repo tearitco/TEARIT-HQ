@@ -74,6 +74,7 @@ typedef struct {
      * loop tiles across the frame. The camera vectors are not involved. */
     const unsigned char *para;
     int para_w, para_h, para_loop_x, para_loop_y;
+    int see_through;             /* view.pdl see_through=1: no sky, no parallax, miss alpha 0 */
     float fog_start, fog_end;    /* distance fog in cells: hits fade to the sky colour between start and end; fog_end <= fog_start = off */
     float wire_edge, wire_thin;  /* edge half-widths in cells for wire 1 / wire 2; 0 = defaults (0.10 / 0.03) */
     int   box_n;

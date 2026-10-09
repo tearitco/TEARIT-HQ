@@ -72,7 +72,7 @@
 #define MAX_LINE 512
 #define MAX_PATH 4096
 #define PATH_BUF (MAX_PATH + 256)
-#define MAX_BOARD_DIM 64
+#define MAX_BOARD_DIM 128   /* largest TSOTS desk is 120x110. 64 discarded the rest at load. Fog (18..48) still hides the distance. */
 
 /* Overlay dimensions - see bv_compose_frame.c's own matching marker-
  * skip line count (OVERLAY_H/GLYPH_H must divide evenly, kept in sync
@@ -2900,7 +2900,7 @@ static int render_one_frame(void) {
 
     /* Real unified voxel grid - see load_voxel_chunk()'s own header
      * comment for the full writeup. static: MAX_VOXEL_Z(64) *
-     * MAX_BOARD_DIM(64) * MAX_BOARD_DIM(64) = 256K chars, too big for
+     * MAX_BOARD_DIM(128) * MAX_BOARD_DIM(128) = 1M chars, too big for
      * the stack. */
     static char board3d[MAX_VOXEL_Z][MAX_BOARD_DIM][MAX_BOARD_DIM];
     int board_w = 0, board_h = 0;
@@ -3007,6 +3007,26 @@ static int render_one_frame(void) {
         }
     }
     load_phymoji_world_entities(focused_project_root);
+    /* Hero, chicken and trees belong to the one piececraft test level.
+     * A painted desk is its own map: those three stay off it. The
+     * xelector sits in the floor cell (z = 0). z = 1 is the air cell
+     * above that floor, which left it a tile too high. Saved pos_z
+     * and the camera keys are not written. */
+    int maker_ground = maker_load(focused_project_root);
+    if (maker_ground) {
+        g_hero_present = 0;
+        if (g_xelector_present) g_xelector_z = 0;
+        int kept = 0;
+        for (int i = 0; i < g_phymoji_world_entity_count; i++) {
+            const char *id = g_phymoji_world_entities[i].entity_id;
+            if (!strcmp(id, "chicken") || !strcmp(id, "tree_small") || !strcmp(id, "hero_01"))
+                continue;
+            if (kept != i) g_phymoji_world_entities[kept] = g_phymoji_world_entities[i];
+            g_phymoji_world_entities[kept].z = 1;
+            kept++;
+        }
+        g_phymoji_world_entity_count = kept;
+    }
     load_terrain_legend(focused_project_root);
     ensure_digit_glyphs_loaded(project_root);
 
@@ -3018,7 +3038,8 @@ static int render_one_frame(void) {
      * bv_state.txt copy of it is a mirror, read back here as the
      * selector's own real vertical position, clamped into the loaded
      * grid's own real z_count range. */
-    int current_z = read_kv_int(state_path, "current_z", default_current_z(focused_project_root));
+    int current_z = maker_ground ? 0
+        : read_kv_int(state_path, "current_z", default_current_z(focused_project_root));
     if (current_z >= z_count) current_z = z_count - 1;
     if (current_z < 0) current_z = 0;
 
@@ -3066,6 +3087,35 @@ static int render_one_frame(void) {
      * exactly; a tall one gets real overhead clearance. */
     int default_z_level = (current_z > 12) ? ((current_z - 12 + 6) / 2) : 0;
     int cam_z_level = read_kv_int(state_path, "cam_z_level", default_z_level);
+    /* Painted desk: the saved lift is the piececraft test stack
+     * (cam_z_level 14 makes mode 3/4 eye.y = 12+28 = 40; pan 11/13/20
+     * is that same stack). The desk itself is 3 cells tall. Remember
+     * the numbers from the frame this desk opened and subtract them,
+     * so the eye starts at the shallow-board height over the selector.
+     * Keys pressed after that still move it: c/v and wasd change the
+     * file, and only the change survives the subtract. Yaw and pitch
+     * are not touched. The file itself is not rewritten. */
+    {
+        static int floor_cam_desk = -1;
+        static int floor_cam_z = 0, floor_pan_x = 0, floor_pan_y = 0, floor_pan_z = 0;
+        if (maker_ground) {
+            if (floor_cam_desk != g_mk.id) {
+                floor_cam_desk = g_mk.id;
+                floor_cam_z = cam_z_level;
+                floor_pan_x = cam_pan_x;
+                floor_pan_y = cam_pan_y;
+                floor_pan_z = cam_pan_z;
+            }
+            cam_z_level -= floor_cam_z;
+            cam_pan_x -= floor_pan_x;
+            cam_pan_y -= floor_pan_y;
+            cam_pan_z -= floor_pan_z;
+            if (camera_mode == 4) {
+                cam_pan_x += selector_x;
+                cam_pan_y += selector_y;
+            }
+        }
+    }
 
     double anchor_x = selector_x + 0.5, anchor_z = selector_y + 0.5;
     /* Modes 1 and 2 follow the xelector. Possessing an entity already
@@ -3418,9 +3468,11 @@ static int render_one_frame(void) {
             }
             sc.legend_n++;
         }
-        /* maker_view: replace the glyph world with RPG Maker tile terrain (floor level 0, walls = 2 more levels where the cell has a
-         * wall slot). GPU path only; the camera, entities and fog are untouched. bv_state.txt maker_view=1 is written by key 7. */
-        if (read_kv_int(state_path, "maker_view", 0) && maker_load(focused_project_root)) {
+        /* A TSOTS desk is the 3D map. POV 1-4 use it the same way mutaclysm
+         * uses its voxel world. No separate key. Desks with no cells.rgba
+         * fail maker_load and stay the old letter blocks. Camera locals
+         * above are not written here. */
+        if (maker_load(focused_project_root)) {
             int mw = g_mk.w > MAX_BOARD_DIM ? MAX_BOARD_DIM : g_mk.w;
             int mh = g_mk.h > MAX_BOARD_DIM ? MAX_BOARD_DIM : g_mk.h;
             memset(gpu_grid, 0, (size_t)mw * (size_t)mh * 3);
@@ -3447,6 +3499,14 @@ static int render_one_frame(void) {
         if (ll < 0.15) ll = 0.15;
         sc.light_level = (float)ll;
         sc.fog_start = (float)fog_start; sc.fog_end = (float)fog_end;
+        /* pieces/system/view.pdl see_through=1: no sky, no parallax.
+         * Missed pixels are alpha 0. 0 brings the sky back. Read every
+         * frame so editing the file does not need a rebuild. */
+        {
+            char vp[PATH_BUF];
+            snprintf(vp, sizeof(vp), "%s/pieces/system/view.pdl", focused_project_root);
+            sc.see_through = read_kv_int(vp, "see_through", 0);
+        }
         { unsigned char *cp = FB(g_fw/2, g_fh/2);   /* clear_sky already ran */
           sc.sky[0]=cp[0]/255.0f; sc.sky[1]=cp[1]/255.0f; sc.sky[2]=cp[2]/255.0f; }
         /* boxes: xelector, sun, moon, entities, hero, world phymoji.
