@@ -44,3 +44,6 @@
 .row-click { width: 400px; }
 .tone-dark  { color: #ffffff; }
 .tone-light { color: #111111; }
+
+/* preview: 7 whole blocks (280px) at height 40 so every block is square */
+.bar-big { width: 280px; height: 40px; }

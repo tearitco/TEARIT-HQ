@@ -1,0 +1,6 @@
+# bar_skins.pdl - RPG Maker tile bar skins the taskbar-settings window can switch between.
+# SKIN | id | label | left folder | middle folder | right folder   (folders hold a sprite.csv; paths are house-relative)
+# A bar is whole 48px-style blocks: left cap, repeated middle, right cap. bar_skin= in #.desktop/hq_ui.pdl names an id; empty = off.
+# Cells come from bar_skin_scan.py's seam-tested list (design-docs RMMV-TILING-AND-WINDOW-SKIN-PRIMER.md); cut by make_bar_skin.py.
+SKIN | stone-ledge | Stone ledge | &.widgits/taskbar-settings/skins/stone-ledge/left | &.widgits/taskbar-settings/skins/stone-ledge/mid | &.widgits/taskbar-settings/skins/stone-ledge/right
+SKIN | wood-rail | Wood rail | &.widgits/taskbar-settings/skins/wood-rail/left | &.widgits/taskbar-settings/skins/wood-rail/mid | &.widgits/taskbar-settings/skins/wood-rail/right

@@ -157,6 +157,42 @@ static const char *tone_for_hex(const char *hex) {
     return (r * 299 + g * 587 + b * 114) / 1000 < 140 ? "tone-dark" : "tone-light";
 }
 
+/* current bar skin id (hq_ui.pdl bar_skin=) and its catalog label (bar_skins.pdl); read-only. */
+static void read_bar_skin_label(const char *house, char *out, size_t out_sz) {
+    char path[PATH_MAX], line[1200], id[48] = "";
+    snprintf(out, out_sz, "Bar skin: off");
+    snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house);
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    while (fgets(line, sizeof(line), f))
+        if (strncmp(line, "bar_skin=", 9) == 0) {
+            snprintf(id, sizeof(id), "%s", line + 9);
+            id[strcspn(id, "\r\n")] = '\0';
+            break;
+        }
+    fclose(f);
+    if (!id[0]) return;
+    snprintf(path, sizeof(path), "%s/&.widgits/taskbar-settings/bar_skins.pdl", house);
+    f = fopen(path, "r");
+    if (!f) return;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "SKIN", 4) != 0) continue;
+        char *a = strchr(line, '|'); if (!a) continue;
+        a++; while (*a == ' ') a++;
+        char *b = strchr(a, '|'); if (!b) continue;
+        *b = '\0';
+        size_t l = strlen(a); while (l > 0 && a[l - 1] == ' ') a[--l] = '\0';
+        if (strcmp(a, id) != 0) continue;
+        char *lab = b + 1; while (*lab == ' ') lab++;
+        char *c = strchr(lab, '|'); if (!c) continue;
+        *c = '\0';
+        l = strlen(lab); while (l > 0 && lab[l - 1] == ' ') lab[--l] = '\0';
+        snprintf(out, out_sz, "Bar skin: %s", lab);
+        break;
+    }
+    fclose(f);
+}
+
 static void read_state(const char *path, int *phase, int *bg, int *fg, int *apply) {
     *phase = 0; *bg = -1; *fg = -1; *apply = 0;
     FILE *f = fopen(path, "r");
@@ -172,7 +208,7 @@ static void read_state(const char *path, int *phase, int *bg, int *fg, int *appl
 }
 
 static void build_ui(char *ui, size_t cap, int phase, int bg, int fg, int click_two_step, const char *font_family,
-                     double opacity, double font_scale) {
+                     double opacity, double font_scale, const char *bar_label) {
     const char *prompt =
         phase <= 0 ? "pick a background swatch" :
         phase == 1 ? "pick a text swatch"       :
@@ -197,6 +233,7 @@ static void build_ui(char *ui, size_t cap, int phase, int bg, int fg, int click_
     off += (size_t)snprintf(ui + off, cap - off, "font_family=%s\n", font_family);
     off += (size_t)snprintf(ui + off, cap - off, "font_label=Font: %s\n", font_family);
     off += (size_t)snprintf(ui + off, cap - off, "opacity_label=Opacity: %d%%\n", (int)(opacity * 100.0 + 0.5));
+    off += (size_t)snprintf(ui + off, cap - off, "bar_skin_label=%s\n", bar_label);
     off += (size_t)snprintf(ui + off, cap - off, "size_label=Size: %d%%\n", (int)(font_scale * 100.0 + 0.5));
     off += (size_t)snprintf(ui + off, cap - off, "colors_label=Colors - background: %s, text: %s. Pick below (green ring = background, gold ring = text)\n",
                             (bg >= 0 && bg < g_n_swatches) ? g_name_buf[bg] : "-",
@@ -223,8 +260,10 @@ int main(int argc, char **argv) {
         char font_family[64];
         read_font_family(house, font_family, sizeof(font_family));
         ui[0] = '\0';
+        char bar_label[96];
+        read_bar_skin_label(house, bar_label, sizeof(bar_label));
         build_ui(ui, sizeof(ui), phase, bg, fg, click_two_step, font_family,
-                 read_opacity(house), read_font_scale(house));
+                 read_opacity(house), read_font_scale(house), bar_label);
 
         if (strcmp(ui, last) != 0) {              /* content-gated write */
             FILE *f = fopen(tmp_path, "w");

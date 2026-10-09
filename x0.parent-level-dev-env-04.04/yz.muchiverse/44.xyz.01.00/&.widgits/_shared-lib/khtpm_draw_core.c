@@ -310,6 +310,79 @@ static void hq_blit_sprite(HqSprite *sp, int x0, int y0, int px, unsigned long b
     if (back) XDestroyImage(back);
 }
 
+/* ---------- RPG Maker tile bar skin (2026-10-08, owner: "we need these tile renders") ----------
+ * bar_skin=<id> in #.desktop/hq_ui.pdl (empty = off = today's solid fills) names a SKIN row in
+ * &.widgits/taskbar-settings/bar_skins.pdl: three folders (left cap, repeated middle, right cap) that each hold
+ * a sprite.csv, drawn through the same hq_sprite()/hq_blit_sprite() the Palettes tiles use. An element opts in
+ * with class="skin-bar". The bar is WHOLE BLOCKS: block = the element's height (square), count = width / block,
+ * the run is centred and the sub-block remainder keeps the element's own fill. No stretching, ever; fewer than
+ * 2 blocks wide draws nothing special. Includers that never call kh_bar_skin_load() just see the skin off. */
+static char g_bar_skin_id[48];
+static char g_bar_skin_dir[3][400]; /* left, middle, right - house-absolute */
+
+static void kh_bar_skin_load(const char *house_root) {
+    char want[48] = "";
+    char path[1024], line[1200];
+    g_bar_skin_id[0] = '\0';
+    g_bar_skin_dir[0][0] = g_bar_skin_dir[1][0] = g_bar_skin_dir[2][0] = '\0';
+    if (!house_root || !house_root[0]) return;
+    snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house_root);
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "bar_skin=", 9) == 0) {
+            snprintf(want, sizeof(want), "%s", line + 9);
+            want[strcspn(want, "\r\n")] = '\0';
+            break;
+        }
+    }
+    fclose(f);
+    if (!want[0]) return;
+    snprintf(path, sizeof(path), "%s/&.widgits/taskbar-settings/bar_skins.pdl", house_root);
+    f = fopen(path, "r");
+    if (!f) return;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "SKIN", 4) != 0) continue;
+        char *fld[6]; int n = 0; char *p = line;
+        while (n < 6) {
+            fld[n++] = p;
+            char *bar = strchr(p, '|');
+            if (!bar) break;
+            *bar = '\0'; p = bar + 1;
+        }
+        if (n < 6) continue;
+        for (int i = 1; i < 6; i++) {
+            while (*fld[i] == ' ') fld[i]++;
+            size_t l = strcspn(fld[i], "\r\n");
+            while (l > 0 && fld[i][l - 1] == ' ') l--;
+            fld[i][l] = '\0';
+        }
+        if (strcmp(fld[1], want) != 0) continue;
+        snprintf(g_bar_skin_id, sizeof(g_bar_skin_id), "%s", want);
+        for (int k = 0; k < 3; k++)
+            snprintf(g_bar_skin_dir[k], sizeof(g_bar_skin_dir[k]), "%s/%s", house_root, fld[3 + k]);
+        break;
+    }
+    fclose(f);
+}
+
+/* true when it painted the blocks (caller still draws border + label on top) */
+static int kh_draw_bar_skin(Elem *e, unsigned long bg_pixel) {
+    if (!g_bar_skin_id[0] || !elem_has_class(e, "skin-bar")) return 0;
+    int b = e->h;
+    if (b < 8) return 0;
+    int n = e->w / b;
+    if (n < 2) return 0;
+    HqSprite *l = hq_sprite(g_bar_skin_dir[0]);
+    HqSprite *m = hq_sprite(g_bar_skin_dir[1]);
+    HqSprite *r = hq_sprite(g_bar_skin_dir[2]);
+    if (!l || !m || !r) return 0;
+    int x0 = e->x + (e->w - n * b) / 2;
+    for (int i = 0; i < n; i++)
+        hq_blit_sprite(i == 0 ? l : (i == n - 1 ? r : m), x0 + i * b, e->y, b, bg_pixel, 0);
+    return 1;
+}
+
 /* Real, generic, CSS-driven single-element draw: background fill,
  * border, wraith-alpha-standard focus ring, nav-index badge
  * ("[>]1." / "[ ]1.", bracket holds ONLY the state glyph, number is a
@@ -882,6 +955,8 @@ static void draw_elem(Elem *e, int hover_id_hash) {
         for (int i = 0; i < bw; i++)
             XDrawRectangle(dpy, buf, gc, e->x + i, e->y + i, e->w - 1 - 2 * i, e->h - 1 - 2 * i);
     }
+    if (g_bar_skin_id[0] && elem_has_class(e, "skin-bar"))
+        kh_draw_bar_skin(e, alloc_pixel(e->style.has_bg_color ? e->style.bg_color : "#2c2c2c"));
     /* REAL, NEW 2026-09-14 (network-browser video V4 "Nav row with
      * play/pause + progress" request) - a real, generic `<bar>` element:
      * progress/playhead strip (see Elem's own bar_value/bar_max comment

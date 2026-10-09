@@ -141,6 +141,7 @@ static pid_t g_khtpm_menu_pid; /* fwd - hq_idle_tick() reaps this; real definiti
 static int kh_key_history_code(KeySym ks, char ch); /* fwd - handle_key()'s interact-relay forward uses it before its real definition, near kh_capture_key */
 static void desktop_toggle_click_two_step(const char *house_root); /* fwd - dispatch()'s CLICK_TWOSTEP_TOGGLE handler uses it before its real definition, near desktop_load_click_two_step */
 static void desktop_set_font_scale(const char *house_root, int pct); /* fwd - dispatch()'s UI_SCALE_MINUS/PLUS handlers */
+static void desktop_cycle_bar_skin(const char *house_root, int dir); /* fwd - dispatch()'s BAR_SKIN_NEXT/PREV */
 static void desktop_set_font_family(const char *house_root, const char *name); /* fwd - dispatch()'s UI_FONT_FAMILY_NEXT/PREV handlers */
 static void desktop_load_click_two_step(const char *house_root); /* fwd - hq_ui_pdl_reload_if_changed() (hq_idle_tick(), long-running dock strip) uses it before its real definition */
 static void reload_font_ui(void); /* fwd - hq_ui_pdl_reload_if_changed() re-sizes the chrome font on a live font_scale change */
@@ -8891,6 +8892,12 @@ static void dispatch(const char *action) {
         if (!g_quit) { assign_nav_and_layout(); redraw(); }
         return;
     }
+    if (strcmp(action, "BAR_SKIN_NEXT") == 0 || strcmp(action, "BAR_SKIN_PREV") == 0) {
+        /* 2026-10-08 RPG Maker tile bars: cycle bar_skin= (settings window row). */
+        desktop_cycle_bar_skin(g_house_root, action[9] == 'N' ? 1 : -1);
+        if (!g_quit) { assign_nav_and_layout(); redraw(); }
+        return;
+    }
     if (strcmp(action, "CLICK_TWOSTEP_TOGGLE") == 0) {
         desktop_toggle_click_two_step(g_house_root);
         redraw();
@@ -14233,6 +14240,55 @@ static void desktop_set_font_family(const char *house_root, const char *name) {
     hq_ui_pdl_touch_marker(house_root);
 }
 
+/* bar_skin=<id> in hq_ui.pdl: same read-modify-write as desktop_set_font_family. Empty id = skins off. */
+static void desktop_set_bar_skin(const char *house_root, const char *id) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house_root);
+    char lines[128][256];
+    int n = 0;
+    FILE *f = fopen(path, "r");
+    if (f) { while (n < 128 && fgets(lines[n], sizeof(lines[n]), f)) n++; fclose(f); }
+    int replaced = 0;
+    for (int i = 0; i < n; i++) {
+        if (strncmp(lines[i], "bar_skin=", 9) == 0) {
+            snprintf(lines[i], sizeof(lines[i]), "bar_skin=%s\n", id);
+            replaced = 1;
+        }
+    }
+    FILE *wf = fopen(path, "w");
+    if (!wf) return;
+    for (int i = 0; i < n; i++) fputs(lines[i], wf);
+    if (!replaced) fprintf(wf, "bar_skin=%s\n", id);
+    fclose(wf);
+    kh_bar_skin_load(house_root);
+    hq_ui_pdl_touch_marker(house_root);
+}
+
+/* BAR_SKIN_NEXT / BAR_SKIN_PREV: cycle off -> each SKIN row of bar_skins.pdl -> off. */
+static void desktop_cycle_bar_skin(const char *house_root, int dir) {
+    char ids[24][48]; int n = 0;
+    snprintf(ids[n++], 48, "%s", "");
+    char path[PATH_BUF], line[1200];
+    snprintf(path, sizeof(path), "%s/&.widgits/taskbar-settings/bar_skins.pdl", house_root);
+    FILE *f = fopen(path, "r");
+    if (f) {
+        while (n < 24 && fgets(line, sizeof(line), f)) {
+            if (strncmp(line, "SKIN", 4) != 0) continue;
+            char *a = strchr(line, '|'); if (!a) continue;
+            a++; while (*a == ' ') a++;
+            char *b = strchr(a, '|'); if (!b) continue;
+            *b = '\0';
+            size_t l = strlen(a); while (l > 0 && a[l - 1] == ' ') a[--l] = '\0';
+            snprintf(ids[n++], 48, "%s", a);
+        }
+        fclose(f);
+    }
+    int cur = 0;
+    for (int i = 0; i < n; i++) if (strcmp(ids[i], g_bar_skin_id) == 0) { cur = i; break; }
+    cur = (cur + (dir > 0 ? 1 : n - 1)) % n;
+    desktop_set_bar_skin(house_root, ids[cur]);
+}
+
 static void desktop_load_click_two_step(const char *house_root) {
     char path[4352]; /* matches this file's own later TP_PATH_BUF (not yet declared at this point) */
     snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house_root);
@@ -14317,6 +14373,7 @@ static void desktop_load_click_two_step(const char *house_root) {
         }
     }
     fclose(f);
+    kh_bar_skin_load(house_root); /* bar_skin= (RPG Maker tile bars), see khtpm_draw_core.c */
 }
 
 /* Reopen font_ui at the current UI scale. font_ui is the shared chrome/

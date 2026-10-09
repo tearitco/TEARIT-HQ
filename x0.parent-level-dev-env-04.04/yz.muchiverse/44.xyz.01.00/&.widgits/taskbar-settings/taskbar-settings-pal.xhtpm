@@ -71,16 +71,23 @@
          readable tone per fill (sw.tone). Ids and actions are unchanged,
          so every relay/harness that drives them still works. -->
     <item id="colors-info" class="row-colors info-chip info-wide" label="${colors_label}"/>
-    <item id="opacity-value" class="row-opacity info-chip" label="${opacity_label}"/>
+    <item id="opacity-value" class="row-opacity info-chip skin-bar" label="${opacity_label}"/>
     <item id="opacity-minus" action="OPACITY_MINUS" class="row-opacity opacity-btn step-btn" label="-"/>
     <item id="opacity-plus"  action="OPACITY_PLUS"  class="row-opacity opacity-btn step-btn" label="+"/>
-    <item id="size-value" class="row-size info-chip" label="${size_label}"/>
+    <item id="size-value" class="row-size info-chip skin-bar" label="${size_label}"/>
     <item id="ui-scale-minus" action="UI_SCALE_MINUS" class="row-size opacity-btn step-btn" label="-"/>
     <item id="ui-scale-plus"  action="UI_SCALE_PLUS"  class="row-size opacity-btn step-btn" label="+"/>
-    <item id="font-family-name" class="row-font info-chip" label="${font_label}"/>
+    <item id="font-family-name" class="row-font info-chip skin-bar" label="${font_label}"/>
     <item id="font-family-prev" action="UI_FONT_FAMILY_PREV" class="row-font opacity-btn step-btn" label="&lt;"/>
     <item id="font-family-next" action="UI_FONT_FAMILY_NEXT" class="row-font opacity-btn step-btn" label="&gt;"/>
+    <!-- RPG Maker tile bars (2026-10-08): the row cycles bar_skin= off -> skins in bar_skins.pdl. Elements with
+         class="skin-bar" draw as whole tile blocks while a skin is on (khtpm_draw_core.c kh_draw_bar_skin); the
+         value chips above opt in too, and the preview below shows a 7-block bar with a sample label. -->
+    <item id="bar-skin-value" class="row-bars info-chip skin-bar" label="${bar_skin_label}"/>
+    <item id="bar-skin-prev" action="BAR_SKIN_PREV" class="row-bars opacity-btn step-btn" label="&lt;"/>
+    <item id="bar-skin-next" action="BAR_SKIN_NEXT" class="row-bars opacity-btn step-btn" label="&gt;"/>
     <item id="click-twostep-toggle" action="CLICK_TWOSTEP_TOGGLE" class="row-click opacity-btn" label="${click_two_step_label} (press to switch)"/>
+    <item id="bar-preview" class="row-preview info-chip skin-bar bar-big" label="book:pre-design"/>
     <item id="close" action="CLOSE" class="close-btn" label="x"/>
   </page>
 </window>
