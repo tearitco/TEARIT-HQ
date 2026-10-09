@@ -370,13 +370,13 @@ static int emit_full_board(const char *map_id, const char *desk_id) {
     if (!f) return 0;
     char ex_glyphs[MAX_EXTRUDE_GLYPHS]; int ex_deltas[MAX_EXTRUDE_GLYPHS], ex_n, ex_default;
     load_extrusion_table(map_id, desk_id, ex_glyphs, ex_deltas, &ex_n, &ex_default);
-    char lines[64][80];
+    static char lines[256][260];
     int nrows = 0, ncols = 0;
-    char buf[128];
-    while (nrows < 64 && fgets(buf, sizeof(buf), f)) {
+    char buf[1024];
+    while (nrows < 256 && fgets(buf, sizeof(buf), f)) {
         buf[strcspn(buf, "\r\n")] = '\0';
         int len = (int)strlen(buf);
-        if (len > 64) len = 64;
+        if (len > 256) len = 256;
         memcpy(lines[nrows], buf, (size_t)len);
         lines[nrows][len] = '\0';
         if (len > ncols) ncols = len;
