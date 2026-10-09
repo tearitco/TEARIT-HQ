@@ -22,9 +22,18 @@ BAR="$APP/pieces/system/maps/$MAP/$DESK/bar.txt"
 PLAY="$HOUSE/&.widgits/events-hq/ops/play_event.sh"
 [ -f "$PLAY" ] || exit 0
 # id name x y trigger
-awk -F '\t' -v x="$X" -v y="$Y" '$3==x && $4==y && ($5=="on-touch" || $5=="event-touch") { print $1, $5; exit }' "$BAR" |
+DP="$APP/pieces/system/maps/$MAP/deadpool.pdl"
+awk -F '\t' -v x="$X" -v y="$Y" '$3==x && $4==y && ($5=="on-touch" || $5=="event-touch" || $5=="player-touch") { print $1, $5; exit }' "$BAR" |
 while read -r ID TRIG; do
     [ -n "$ID" ] || exit 0
+    if [ -f "$DP" ] && awk -F'|' -v desk="$DESK" -v id="$ID" '
+        { gsub(/^[ \t]+|[ \t]+$/, "", $2); gsub(/^[ \t]+|[ \t]+$/, "", $3) }
+        $2=="desk" { d=$3 }
+        $2=="ev" && $3==id && d==desk { hit=1 }
+        END { exit hit ? 0 : 1 }
+    ' "$DP"; then
+        exit 0
+    fi
     PKG="$APP/pieces/system/maps/$MAP/$DESK/ev/$ID"
     sh "$PLAY" "$PKG" "$HOUSE" "$TRIG"
 done

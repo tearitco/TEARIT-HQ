@@ -1,1 +1,2 @@
-COND | trigger | on-spawn
+SECTION | KEY | VALUE
+COND | switches | none

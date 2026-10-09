@@ -1,1 +1,2 @@
-COND | trigger | on-touch
+SECTION | KEY | VALUE
+COND | switches | none

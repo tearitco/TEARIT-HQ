@@ -1,4 +1,4 @@
 SECTION      | KEY                | VALUE
 ----------------------------------------------------------------------
-EVENT        | x=3 y=7 glyph=N    | trigger=on-click cmds=start_game
-EVENT        | x=3 y=10 glyph=Q   | trigger=on-click cmds=stop_game
+EVENT        | x=3 y=7 glyph=N type=0 | trigger=on-click cmds=start_game
+EVENT        | x=3 y=10 glyph=Q type=0 | trigger=on-click cmds=stop_game

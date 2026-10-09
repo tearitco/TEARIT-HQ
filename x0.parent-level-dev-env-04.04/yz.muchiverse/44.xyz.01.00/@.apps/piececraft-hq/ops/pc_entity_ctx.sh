@@ -72,9 +72,19 @@ if [ "$KIND" = mapev ] && [ -n "$ID" ]; then
     # still waits for play mode, same as the other entities.
     VERB=""
     [ -f "$PKG/verb.txt" ] && VERB=$(head -1 "$PKG/verb.txt")
-    if [ "$VERB" = start_game ] || [ "$VERB" = stop_game ]; then
+    if [ "$VERB" = start_game ] || [ "$VERB" = stop_game ] || [ "$VERB" = restart_game ] || [ "$VERB" = continue_game ]; then
         sh "$ROOT/ops/doom_event.sh" "$VERB" "$MAP" "$DESK"
         echo "$(date '+%H:%M:%S') $VERB mapev $ID" >> "$LOG"
+        exit 0
+    fi
+    DP="$ROOT/pieces/system/maps/$MAP/deadpool.pdl"
+    if [ -f "$DP" ] && awk -F'|' -v desk="$DESK" -v id="$ID" '
+        { gsub(/^[ \t]+|[ \t]+$/, "", $2); gsub(/^[ \t]+|[ \t]+$/, "", $3) }
+        $2=="desk" { d=$3 }
+        $2=="ev" && $3==id && d==desk { hit=1 }
+        END { exit hit ? 0 : 1 }
+    ' "$DP"; then
+        echo "$(date '+%H:%M:%S') dead mapev $ID" >> "$LOG"
         exit 0
     fi
     if grep -q '^mode=on' "$HOUSE/#.desktop/khtpm_play_mode.state.txt" 2>/dev/null; then
