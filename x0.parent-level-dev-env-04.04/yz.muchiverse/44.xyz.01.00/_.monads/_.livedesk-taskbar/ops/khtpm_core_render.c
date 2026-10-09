@@ -353,6 +353,11 @@ static int g_footer_total_rows = 1;
 static int g_dock_in_peer_paint;
 static int g_dock_in_menu_paint;
 static Window g_dock_menu_win;
+/* Dock dropdown too long for the screen (the book/page menus: 98 map pages): a window of rows plus the LAST row (the
+ * "- cancel -" convention) pinned at the bottom, and a thumb. scroll = first visible content row. Wheel and Page_Up/Down
+ * move it while such a menu is open. 2026-10-08, owner: "thumb scroll to reach cancel". */
+static int g_dock_dd_scroll = 0, g_dock_dd_scrolling = 0, g_dock_dd_vis = 0, g_dock_dd_total = 0;
+static char g_dock_dd_target[64] = "";
 static Pixmap g_dock_menu_buf;
 static XftDraw *g_dock_menu_xft;
 static GC g_dock_menu_gc;
@@ -5579,6 +5584,13 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
     {
         char last_target[64] = "";
         int stack_n = 0;
+        /* A list too long for the window (e.g. 98 map pages) shows a window of rows with a scroll thumb, and the LAST row
+         * of the group (the "- cancel -" row by house convention) stays pinned at the bottom so it is always reachable.
+         * Hidden rows are parked off-screen with no nav number (clip, never translate); the cursor is the generic
+         * scrollbar's own (thumb, ^/v arrows, wheel, Page_Up/Down). One dropdown is open at a time. */
+        static int s_dd_scroll = 0;
+        static char s_dd_open_target[64] = "";
+        int grp_n = 0, dd_scrolling = 0, dd_vis = 0;
         for (int i = 0; i < container->n_children; i++) {
             Elem *c = container->children[i];
             if (!elem_has_class(c, "dropdown-child")) continue;
@@ -5586,16 +5598,51 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
             int open = trigger && (g_default_active_scope_root == trigger ||
                 (g_default_active_scope_id[0] && trigger->id[0] &&
                  strcmp(g_default_active_scope_id, trigger->id) == 0));
-            if (strcmp(last_target, c->target_id) != 0) { stack_n = 0; snprintf(last_target, sizeof(last_target), "%s", c->target_id); }
+            if (strcmp(last_target, c->target_id) != 0) {
+                stack_n = 0; snprintf(last_target, sizeof(last_target), "%s", c->target_id);
+                grp_n = 0; dd_scrolling = 0; dd_vis = 0;
+                for (int j = i; j < container->n_children; j++) {
+                    Elem *g = container->children[j];
+                    if (!elem_has_class(g, "dropdown-child") || strcmp(g->target_id, c->target_id) != 0) break;
+                    grp_n++;
+                }
+                if (open) {
+                    if (strcmp(s_dd_open_target, c->target_id) != 0) { s_dd_scroll = 0; snprintf(s_dd_open_target, sizeof(s_dd_open_target), "%s", c->target_id); }
+                    int avail = g_win_h - (trigger->y + trigger->h) - 10;
+                    int cap = avail / ROW_H;
+                    if (grp_n > cap && cap >= 3) {
+                        dd_scrolling = 1;
+                        dd_vis = cap - 1;                       /* content rows shown; one slot is the pinned last row */
+                        int max_sc = (grp_n - 1) - dd_vis;
+                        if (s_dd_scroll > max_sc) s_dd_scroll = max_sc;
+                        if (s_dd_scroll < 0) s_dd_scroll = 0;
+                    }
+                } else if (strcmp(s_dd_open_target, c->target_id) == 0) {
+                    s_dd_open_target[0] = '\0'; s_dd_scroll = 0;   /* this list closed: next open starts at the top */
+                }
+            }
             css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
-            if (open) {
+            int slot = stack_n;
+            int shown = 1;
+            if (open && dd_scrolling) {
+                if (stack_n == grp_n - 1) slot = dd_vis;
+                else if (stack_n >= s_dd_scroll && stack_n < s_dd_scroll + dd_vis) slot = stack_n - s_dd_scroll;
+                else shown = 0;
+            }
+            if (open && shown) {
                 int dw = trigger->w > 0 ? trigger->w : w;
-                c->x = trigger->x; c->y = trigger->y + trigger->h + stack_n * ROW_H; c->w = dw; c->h = ROW_H;
+                if (dd_scrolling) dw += 60;   /* room for the thumb and ^/v arrows to the right of the labels */
+                c->x = trigger->x; c->y = trigger->y + trigger->h + slot * ROW_H; c->w = dw; c->h = ROW_H;
                 c->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = c;
                 if (!g_dock_drop_lo) g_dock_drop_lo = c->nav_index;
                 g_dock_drop_hi = c->nav_index;
             } else {
                 c->x = x; c->y = -100000; c->w = 0; c->h = 0; c->nav_index = 0;
+            }
+            if (open && dd_scrolling && stack_n == grp_n - 1) {
+                int dw = (trigger->w > 0 ? trigger->w : w) + 60;
+                generic_sbar_register(trigger->x, trigger->y + trigger->h, dw, dd_vis * ROW_H, &s_dd_scroll,
+                                      grp_n - 1, dd_vis, (grp_n - 1) - dd_vis);
             }
             stack_n++;
         }
@@ -6978,7 +7025,7 @@ static int layout_dock_bar(Elem *page) {
         char stack_keys[16][64];
         int stack_counts[16];
         int n_stack_keys = 0;
-        int col_w = 0;
+        int col_w = 0, n_open = 0, open_idx = 0;
         Elem *trig0 = NULL;
         for (i = 0; i < page->n_children; i++) {
             Elem *c = page->children[i];
@@ -6995,7 +7042,27 @@ static int layout_dock_bar(Elem *page) {
             if (dw < trigger->w) dw = trigger->w;
             if (dw > col_w) col_w = dw;
             trig0 = trigger;
+            n_open++;
         }
+        if (!is_bottom) { g_dock_dd_scrolling = 0; g_dock_dd_vis = 0; g_dock_dd_total = n_open; }   /* the bottom pass must not clear the top menu's state */
+        if (trig0 && !is_bottom) {
+            int sh_dd = kh_screen_h();
+            int cap = (sh_dd - (trig0->y + trig0->h) - 8) / DOCK_BAR_H;
+            {   /* test hook: KHTPM_DD_TEST_ROWS=N caps visible dropdown rows (lets a short real list prove the scrolling) */
+                const char *tr = getenv("KHTPM_DD_TEST_ROWS");
+                if (tr && atoi(tr) >= 3 && atoi(tr) < cap) cap = atoi(tr);
+            }
+            if (strcmp(g_dock_dd_target, trig0->id) != 0) { g_dock_dd_scroll = 0; snprintf(g_dock_dd_target, sizeof(g_dock_dd_target), "%s", trig0->id); }
+            if (n_open > cap && cap >= 3) {
+                int max_sc;
+                g_dock_dd_scrolling = 1;
+                g_dock_dd_vis = cap - 1;               /* content rows shown; one slot is the pinned last row */
+                max_sc = (n_open - 1) - g_dock_dd_vis;
+                if (g_dock_dd_scroll > max_sc) g_dock_dd_scroll = max_sc;
+                if (g_dock_dd_scroll < 0) g_dock_dd_scroll = 0;
+                col_w += 16;                           /* room for the thumb at the right edge */
+            }
+        } else if (!trig0 && !is_bottom) { g_dock_dd_target[0] = '\0'; g_dock_dd_scroll = 0; }
         if (col_w < 48) col_w = 48;
         if (trig0 && trig0->x + col_w > sw - 8) {
             col_w = sw - 8 - trig0->x;
@@ -7019,6 +7086,14 @@ static int layout_dock_bar(Elem *page) {
             }
             stack_n = (ki < n_stack_keys) ? stack_counts[ki] : 0;
             css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
+            if (open && trigger && g_dock_dd_scrolling) {
+                int slot = -1;
+                if (open_idx == n_open - 1) slot = g_dock_dd_vis;
+                else if (open_idx >= g_dock_dd_scroll && open_idx < g_dock_dd_scroll + g_dock_dd_vis) slot = open_idx - g_dock_dd_scroll;
+                open_idx++;
+                if (slot < 0) { c->x = 0; c->y = -100000; c->w = 0; c->h = 0; c->nav_index = 0; if (ki < n_stack_keys) stack_counts[ki]++; continue; }
+                stack_n = slot;
+            } else if (open && trigger) open_idx++;
             if (open && trigger) {
                 c->x = 0;
                 c->y = stack_n * DOCK_BAR_H;
@@ -7371,6 +7446,18 @@ static void dock_paint_menu(void) {
                 }
                 fclose(rf);
             }
+        }
+        if (g_dock_dd_scrolling && g_dock_dd_vis > 0 && g_dock_dd_total > 1) {
+            int tx = g_win_w - 14, ty = 0, th_all = g_dock_dd_vis * DOCK_BAR_H;
+            int content = g_dock_dd_total - 1, max_sc = content - g_dock_dd_vis;
+            int thumb_h = (th_all * g_dock_dd_vis) / content, thumb_y;
+            if (thumb_h < 14) thumb_h = 14;
+            if (thumb_h > th_all) thumb_h = th_all;
+            thumb_y = (max_sc > 0) ? ty + ((th_all - thumb_h) * g_dock_dd_scroll) / max_sc : ty;
+            XSetForeground(dpy, gc, alloc_pixel("#2a2a2a"));
+            XFillRectangle(dpy, buf, gc, tx, ty, 10, (unsigned)th_all);
+            XSetForeground(dpy, gc, alloc_pixel("#aaaaaa"));
+            XFillRectangle(dpy, buf, gc, tx + 1, thumb_y, 8, (unsigned)thumb_h);
         }
         /* 2px theme-secondary window frame in a dedicated margin,
          * drawn LAST, right before the present. */
@@ -11575,6 +11662,7 @@ static void handle_key(KeySym ks, char ch) {
      * [0,0], never matching a real g_focus_nav >= 1). */
     if (ks == XK_Page_Up || ks == XK_Page_Down) {
         int dir = (ks == XK_Page_Down) ? 1 : -1;
+        if (window_is_dock() && g_dock_dd_scrolling) { g_dock_dd_scroll += dir * (g_dock_dd_vis > 2 ? g_dock_dd_vis - 1 : 1); return; }
         if (g_focus_nav >= g_default_sidebar_nav_lo && g_focus_nav <= g_default_sidebar_nav_hi)
             g_default_sidebar_scroll += dir;
         else if (g_focus_nav >= g_default_scrolllist_nav_lo && g_focus_nav <= g_default_scrolllist_nav_hi)
@@ -12253,7 +12341,10 @@ static int poll_agent_history(void) {
                 if (nf >= 3 && is_press && (button == 4 || button == 5)) {
                     if (generic_sbar_wheel(mx, my, (button == 5) ? 1 : -1))
                         n++;
-                    else {
+                    else if (window_is_dock() && g_dock_dd_scrolling) {
+                        g_dock_dd_scroll += (button == 5) ? 1 : -1;
+                        n++;
+                    } else {
                         g_default_scrolllist_scroll += (button == 5) ? 1 : -1;
                         n++;
                     }
