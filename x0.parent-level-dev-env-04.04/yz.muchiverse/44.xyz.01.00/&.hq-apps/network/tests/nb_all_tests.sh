@@ -28,6 +28,10 @@ echo "########## inline span grouping contract (needs the browser)"
 sh "$HERE/nb_span_test.sh" || RC=1
 
 echo
+echo "########## table columns (needs the browser)"
+sh "$HERE/nb_table_test.sh" || RC=1
+
+echo
 echo "########## form gate (hermetic)"
 sh "$HERE/nb_form_test.sh" || RC=1
 

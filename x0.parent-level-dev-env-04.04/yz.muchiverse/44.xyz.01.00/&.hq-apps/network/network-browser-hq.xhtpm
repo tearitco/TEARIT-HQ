@@ -108,7 +108,7 @@
                a cell still reads as belonging to its column. Header rows
                are their own kind so they can be tinted apart. A real grid
                needs renderer column layout - separate slice. -->
-          <text id="tr${c.#}" class="nb-trow thead" label="${c.text}" show="${c.is_thead}"/>
+          <text id="tr${c.#}" class="nb-trow thead" label="${c.text}" cells="${c.cells}" show="${c.is_thead}"/>
           <!-- 2026-10-08: <ul>/<ol> items keep their marker and nesting. -->
           <text id="li${c.#}" class="nb-list" label="${c.text}" show="${c.is_list}"/>
           <!-- 2026-10-08: <dl> term/definition pairs, and the always-visible
@@ -126,7 +126,7 @@
           <text id="h4${c.#}" class="nb-h4" label="${c.text}" show="${c.is_h4}"/>
           <text id="h5${c.#}" class="nb-h5" label="${c.text}" show="${c.is_h5}"/>
           <text id="h6${c.#}" class="nb-h6" label="${c.text}" show="${c.is_h6}"/>
-          <text id="tw${c.#}" class="nb-trow"         label="${c.text}" show="${c.is_trow}"/>
+          <text id="tw${c.#}" class="nb-trow"         label="${c.text}" cells="${c.cells}" show="${c.is_trow}"/>
           <!-- 2026-10-08: <input type=file>. Opens the house file-explorer
                and commits the chosen absolute path to the fields file;
                submit sends multipart when any committed value is a real
