@@ -31,8 +31,8 @@ Game folder (path contains an emoji and a newline, use `find -exec`):
   (Map001: 38*42*6 = 9576, checked). Events: `{id,name,x,y,pages[{conditions,image,list,moveType,trigger,...}]}`; index 0 is null.
 - MV tile id ranges (rpg_core `Tilemap`): B=0, C=256, D=512, E=768, A5=1536, A1=2048-2815 (animated), A2=2816-4351,
   A3=4352-5887, A4=5888-8191. Autotile kind = `(id-2048)/48`, shape = `(id-2048)%48`. Passability lives in
-  `Tilesets.json` `flags[tileId]` (bit 0x0F = blocked per direction, 0x10 = star/above-character, 0x20..0x80 ladder/bush/counter/damage).
-  Not re-verified in this session: confirm against `rpg_objects.js` before relying on exact flag bits.
+  `Tilesets.json` `flags[tileId]` (bits 0x0F = blocked per direction: down 1, left 2, right 4, up 8; 0x10 star/above-character, 0x20 ladder, 0x40 bush, 0x80 counter;
+  **0x100 damage floor**). Checked by Grok against isPassable on 2026-10-08 (first draft of this doc wrongly put damage in 0x20-0x80).
 - **Visual copy** (owner has made one): `#.NNEST_ASSETS/sp-rmmv.map.png]99=24x/Map001.png ...` (99 files, 24 px per tile).
   Checked: 70 of the PNGs I tested have size exactly `width*24 x height*24` of their JSON (0 mismatches among those present).
 
