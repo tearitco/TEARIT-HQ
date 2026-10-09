@@ -1014,6 +1014,38 @@ COMMAND grade_report
   TEMPLATE exec "$D/&.widgits/concept-bank/ops/+x/entity_grade.+x" check "$ENT" "$D/^.hai-horn/curriculum.pdl"
 END
 
+COMMAND start_game
+  LABEL Start Game
+  FIELD1 Book id:
+  FIELD2 First desk id:
+  PARAMS book,desk
+  TEMPLATE exec "$D/@.apps/piececraft-hq/ops/doom_event.sh" start_game '{book}' '{desk}'
+END
+
+COMMAND stop_game
+  LABEL Stop Game
+  FIELD1 -
+  FIELD2 -
+  PARAMS
+  TEMPLATE exec "$D/@.apps/piececraft-hq/ops/doom_event.sh" stop_game
+END
+
+COMMAND save_game
+  LABEL Save Game
+  FIELD1 Slot 1-16:
+  FIELD2 -
+  PARAMS slot
+  TEMPLATE exec "$D/@.apps/piececraft-hq/ops/doom_event.sh" save_slot '{slot}'
+END
+
+COMMAND load_game
+  LABEL Load Game
+  FIELD1 Slot 1-16:
+  FIELD2 -
+  PARAMS slot
+  TEMPLATE exec "$D/@.apps/piececraft-hq/ops/doom_event.sh" load_slot '{slot}'
+END
+
 COMMAND graduate
   LABEL Graduate (advance one grade)
   FIELD1 Signed by (auto, or a person's name for grades that need a person):

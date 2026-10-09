@@ -64,6 +64,19 @@ echo "$(date '+%H:%M:%S') open  kind=$KIND id=${ID:-.} cell=$SX,$SY,$SZ  $NOTE" 
 # button). Edit mode falls through to the context menu, whose Events
 # row opens the same package in events-hq.
 if [ "$KIND" = mapev ] && [ -n "$ID" ]; then
+    W="$ROOT/pieces/world_01/state.txt"
+    MAP=$(sed -n 's/^map_id=//p' "$W" | head -1)
+    DESK=$(sed -n 's/^desk_id=//p' "$W" | head -1)
+    PKG="$ROOT/pieces/system/maps/$MAP/$DESK/ev/$ID"
+    # Start and stop must run while play is off. Every other page
+    # still waits for play mode, same as the other entities.
+    VERB=""
+    [ -f "$PKG/verb.txt" ] && VERB=$(head -1 "$PKG/verb.txt")
+    if [ "$VERB" = start_game ] || [ "$VERB" = stop_game ]; then
+        sh "$ROOT/ops/doom_event.sh" "$VERB" "$MAP" "$DESK"
+        echo "$(date '+%H:%M:%S') $VERB mapev $ID" >> "$LOG"
+        exit 0
+    fi
     if grep -q '^mode=on' "$HOUSE/#.desktop/khtpm_play_mode.state.txt" 2>/dev/null; then
         W="$ROOT/pieces/world_01/state.txt"
         MAP=$(sed -n 's/^map_id=//p' "$W" | head -1)

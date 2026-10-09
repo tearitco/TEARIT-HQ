@@ -1,6 +1,5 @@
 SECTION      | KEY                | VALUE
-----------------------------------------------------------------------
 EXTRUDE      | W                  | 3
 EXTRUDE      | D                  | 2
+EXTRUDE      | f                  | 0
 EXTRUDE      | ~                  | 0
-META         | note               | doom-style walls: W=3 high, door D=2, nukage ~ flat
