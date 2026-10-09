@@ -11,6 +11,39 @@ Today a paragraph with links becomes TEXT + LINK + TEXT stacked rows
 old folding kept sentences whole but swallowed hrefs. Neither is what a
 browser does: blue underlined spans inside flowing text.
 
+## BLOCKING CONTRACT FLAW found 2026-10-08 — fix before phase 2
+
+`append_rich_rows()` groups a maximal run of consecutive `TEXT`/`LINK`
+rows. The extractor emits **one `TEXT` row per paragraph with no boundary
+marker**, so the grouping has no way to know where a paragraph ends.
+
+Live proof on `tests/fixtures/mini-article.html`, two separate `<p>`
+elements:
+
+```
+TEXT|First paragraph of body text. ...
+TEXT|Second paragraph with a link inline.
+TEXT|See the
+LINK|https://example.com|docs
+TEXT|for more.
+RICH|5                      <-- 5 segments: BOTH paragraphs welded in
+```
+
+One span group must be ONE paragraph. As written, the renderer would
+receive two unrelated sentences as a single inline run and draw them on
+one line — the fidelity bug this whole feature exists to remove, moved
+from "links on their own rows" to "sentences run together".
+
+Cheapest fix that costs nothing at render time: have `FLUSH_LINE()` also
+emit a `PARA|<n>` marker row. `append_rich_rows()` breaks the group there
+and everything else ignores it — the projector matches on row KIND, so an
+unknown kind becomes no element and **zero** extra pool elements, unlike
+every other addition this session. It does grow page.state, so all
+snapshots need re-cutting.
+
+Do phase 2 only after this lands, or the renderer gets built on a wrong
+grouping and the mistake surfaces as a layout bug.
+
 ## Row schema (manager side, our lane)
 
 New row kind alongside TEXT/LINK:
