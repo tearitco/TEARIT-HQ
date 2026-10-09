@@ -4158,12 +4158,24 @@ static void kh_serialize_frame_elem(FILE *f, Elem *e) {
     char grid_jump_esc[16 * 2], grid_cell_esc[256 * 2];
     frame_field_escape_pipe(e->grid_jump_buffer, grid_jump_esc, sizeof(grid_jump_esc));
     frame_field_escape_pipe(e->grid_cell_buffer, grid_cell_esc, sizeof(grid_cell_esc));
-    fprintf(f, "%s|%s|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d|%s|%s|%s|%s|%d|%s|%d|%d|%d|%s|%s|%d\n",
+    /* INLINE SPANS (phase 2 step 3, 2026-10-09) - e->segments is read by
+     * draw_elem() on the tmp Elem this round trip hands it, so it hits
+     * the EXACT same trap relay/bg/cursor/text_area each hit before it:
+     * a field not serialized here is a field kh_paint_frame_line() can
+     * never reconstruct, no matter how correct draw_elem()'s own segment
+     * branch is. Every default/popup-mode window draws ONLY through this
+     * path (render_tree() is db-hq/events-hq mode only) - which includes
+     * the network browser - so without this the whole feature is
+     * invisible there. Pipe-escaped like label/relay/bg: a shell-quoted
+     * URL inside a payload can legitimately contain a literal '|'. */
+    char segments_esc[8192];
+    frame_field_escape_pipe(e->segments, segments_esc, sizeof(segments_esc));
+    fprintf(f, "%s|%s|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d|%s|%s|%s|%s|%d|%s|%d|%d|%d|%s|%s|%d|%s\n",
             e->tag, e->id, classes_joined, label_esc, e->sprite, e->onclick,
             e->nav_index, e->active, e->x, e->y, e->w, e->h,
             target_id_esc, input_buffer_esc, relay_esc, bg_esc, e->cursor, text_area_esc,
             e->grid_cur_row, e->grid_cur_col, e->grid_edit_mode, grid_jump_esc, grid_cell_esc,
-            e->sel_anchor);
+            e->sel_anchor, segments_esc);
 }
 
 /* Real recursive serializer, same traversal order render_tree() itself
@@ -4286,11 +4298,14 @@ static void kh_paint_frame_line(const char *line) {
      * 2026-09-05, GRID-ELEMENT-DESIGN.md) [15]=grid_jump_buffer
      * [16]=grid_cell_buffer (pipe-escaped) [17]=sel_anchor (plain int,
      * REAL, NEW 2026-09-05, TEXT_AREA-SCROLL-GUTTER-SELECTION-DESIGN.md)
-     * - a frame file written by an older binary (before these fields
-     * existed) simply has fewer tail fields - the loop below returns
-     * (honest skip) rather than misparse it, matching this function's
-     * existing "malformed line" convention exactly. */
-    char *tail[18];
+     * [18]=segments (pipe-escaped, REAL, NEW 2026-10-09 - INLINE SPANS
+     * phase 2; see kh_serialize_frame_elem()'s matching comment for why
+     * draw_elem() can only ever see this on the tmp Elem) - a frame file
+     * written by an older binary (before these fields existed) simply has
+     * fewer tail fields - the loop below returns (honest skip) rather
+     * than misparse it, matching this function's existing "malformed
+     * line" convention exactly. */
+    char *tail[19];
     /* REAL FIX 2026-08-28, same-day self-correction (first attempt at
      * this fix broke EVERY entity menu, not just book-stack's - see
      * git blame if this comment ever needs re-deriving why): the front
@@ -4302,7 +4317,7 @@ static void kh_paint_frame_line(const char *line) {
      * onward), so `p + strlen(p)` is the real end - `buf2 +
      * strlen(buf2)` is not. */
     char *scan_end = p + strlen(p);
-    for (int i = 17; i >= 0; i--) {
+    for (int i = 18; i >= 0; i--) {
         char *bar = NULL;
         for (char *q = scan_end - 1; q >= p; q--) { if (*q == '|') { bar = q; break; } }
         if (!bar) return; /* malformed line - honest skip, not a crash */
@@ -4379,6 +4394,10 @@ static void kh_paint_frame_line(const char *line) {
     frame_field_unescape_pipe(tail[15], tmp.grid_jump_buffer, sizeof(tmp.grid_jump_buffer));
     frame_field_unescape_pipe(tail[16], tmp.grid_cell_buffer, sizeof(tmp.grid_cell_buffer));
     tmp.sel_anchor = atoi(tail[17]); /* plain int - see Elem.sel_anchor's own field comment */
+    /* INLINE SPANS (phase 2 step 3, 2026-10-09) - the writer's own new
+     * trailing field; see kh_serialize_frame_elem()'s matching comment
+     * for why it must exist (draw_elem() reads tmp.segments). */
+    frame_field_unescape_pipe(tail[18], tmp.segments, sizeof(tmp.segments));
 
     css_compute_style(&g_sheet, tmp.tag, tmp.id[0] ? tmp.id : NULL, tmp.classes, tmp.n_classes, tmp.active, &tmp.style);
     if (window_is_dock()) {

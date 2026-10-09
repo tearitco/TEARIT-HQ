@@ -1585,7 +1585,65 @@ static void draw_elem(Elem *e, int hover_id_hash) {
          * this only activates for a box some other real code path
          * already decided needs to be taller. */
         int is_multiline_box = (e->h > (line_h * 3) / 2) && avail_w > 0;
-        if (is_multiline_box) {
+        /* INLINE SPANS (phase 2, step 1b/step 3, 2026-10-09) - when the
+         * element carries a segments= payload (see khtpm_render_core.c's
+         * own Elem.segments field comment for the encoding) and the whole
+         * plain label fits this row, paint the label one segment at a
+         * time so a "link" segment is tinted. This is checked BEFORE the
+         * multiline/single-line split right below, deliberately: a real
+         * flat-list row is ROW_H tall, so it ALWAYS takes the multiline
+         * wrap path - a segment branch living in the single-line else
+         * would never run for the real rows the browser emits.
+         *
+         * Honest scope: a segments row is drawn single-line only while the
+         * whole label fits (extents.width <= avail_w). If it does not fit,
+         * this block is skipped entirely and the normal wrap/ellipsis path
+         * below draws the plain label - i.e. no coloured spans on an
+         * overlong row, rather than drawing past the box (the 2026-09-23
+         * avail_w overlap incident). Wrapping coloured spans is real
+         * future work and needs scroll_row_span() taught about segments
+         * first. Underline and per-segment hit-testing are also not here
+         * yet (underline must use the GC + XFillRectangle convention, not
+         * XRenderFillRectangle). */
+        int drew_segments = 0;
+        if (e->segments[0] && avail_w > 0 && extents.width <= avail_w) {
+            XftColor link_col = xft_color("#8fb8ff");
+            int sx = badge_label_x;
+            int sty = e->y + (e->h + font->ascent - font->descent) / 2;
+            if (sty < e->y + font->ascent) sty = e->y + font->ascent + pad / 2;
+            const char *sp = e->segments;
+            while (*sp) {
+                const char *seg_end = strchr(sp, '\x1e');
+                size_t seg_len = seg_end ? (size_t)(seg_end - sp) : strlen(sp);
+                const char *f1 = (const char *)memchr(sp, '\x1f', seg_len);
+                const char *f2 = f1 ? (const char *)memchr(f1 + 1, '\x1f',
+                                      seg_len - (size_t)(f1 + 1 - sp)) : NULL;
+                if (f1 && f2) {
+                    /* field order: kind \x1F text \x1F url - the kind is the
+                     * FIRST field (sp..f1), the visible text the second
+                     * (f1+1..f2). */
+                    size_t klen = (size_t)(f1 - sp);
+                    int is_link = (klen == 4 && strncmp(sp, "link", 4) == 0);
+                    size_t tlen = (size_t)(f2 - (f1 + 1));
+                    char seg_text[1024];
+                    if (tlen >= sizeof(seg_text)) tlen = sizeof(seg_text) - 1;
+                    memcpy(seg_text, f1 + 1, tlen);
+                    seg_text[tlen] = '\0';
+                    if (tlen > 0) {
+                        XftColor sc = is_link ? link_col : col;
+                        draw_text_emoji(font, &sc, sx, sty, seg_text);
+                        XGlyphInfo sx_ext;
+                        XftTextExtentsUtf8(dpy, font, (const FcChar8 *)seg_text,
+                                           (int)tlen, &sx_ext);
+                        sx += sx_ext.xOff;
+                    }
+                }
+                if (!seg_end) break;
+                sp = seg_end + 1;
+            }
+            drew_segments = 1;
+        }
+        if (!drew_segments && is_multiline_box) {
             /* Real, generic greedy word-wrap: pack words onto each line
              * (measuring real glyph width via Xft, not a char-count
              * guess - same discipline chai_measure_text_px() already
@@ -1719,7 +1777,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                 while (*p == ' ') p++; /* real, plain word-wrap convention - a consumed break space never starts the next line */
                 if (is_last_visible_line) break;
             }
-        } else {
+        } else if (!drew_segments) {
             /* REAL, NEW 2026-09-01 (found live testing open-hai's own
              * real sidebar - a real session snippet longer than the
              * sidebar's own real 220px width drew straight past its own
