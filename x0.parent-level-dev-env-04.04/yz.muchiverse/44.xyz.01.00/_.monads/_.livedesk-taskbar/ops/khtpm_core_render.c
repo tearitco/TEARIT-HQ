@@ -14269,7 +14269,8 @@ static void desktop_set_bar_skin(const char *house_root, const char *id) {
     for (int i = 0; i < n; i++) fputs(lines[i], wf);
     if (!replaced) fprintf(wf, "bar_skin=%s\n", id);
     fclose(wf);
-    kh_bar_skin_load(house_root);
+    desktop_load_click_two_step(house_root); /* re-reads hq_ui.pdl (restores font_family) and calls kh_bar_skin_load */
+    reload_font_ui();
     hq_ui_pdl_touch_marker(house_root);
 }
 

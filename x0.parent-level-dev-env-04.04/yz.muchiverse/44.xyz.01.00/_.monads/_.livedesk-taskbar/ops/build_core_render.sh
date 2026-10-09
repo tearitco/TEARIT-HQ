@@ -19,7 +19,7 @@ CFLAGS="-std=c11 -Wall -O2 $(pkg-config --cflags xft)"
 # REAL, NEW 2026-09-01 - -lXext added for the tile mode's own real
 # X11 Shape Extension use (XShapeCombineMask, folded in verbatim from
 # tp_desktop_window_rgb.c's build_shape_mask()/cursword_update_shape()).
-LIBS="-lX11 -lXext $(pkg-config --libs xft) -lm"
+LIBS="-lX11 -lXext $(pkg-config --libs xft) $(pkg-config --libs fontconfig) -lm"
 
 # SHARED-SOURCE-COMPILE-IN-PLACE.md (2026-09-09): the house-authored
 # shared .c/.h are NO LONGER copied into this dir. `-I "$SHARED"`

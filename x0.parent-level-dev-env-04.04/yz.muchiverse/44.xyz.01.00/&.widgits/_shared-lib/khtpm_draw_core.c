@@ -372,6 +372,18 @@ static void kh_bar_skin_load(const char *house_root) {
         g_n_skin_cat++;
     }
     fclose(f);
+    /* RPG Maker look includes its font: while a skin is on, text uses GameFont (M+ 1m, the same TTF MV ships as
+     * fonts/mplus-1m-regular.ttf), registered with fontconfig from the settings folder. If the file is missing the
+     * house font stays. The caller's next hq_ui.pdl read restores the user's own font_family when the skin is off. */
+    if (g_bar_skin_id[0]) {
+        static int font_registered = 0;
+        if (!font_registered) {
+            char fp[1100];
+            snprintf(fp, sizeof(fp), "%s/&.widgits/taskbar-settings/fonts/mplus-1m-regular.ttf", house_root);
+            if (access(fp, R_OK) == 0 && FcConfigAppFontAddFile(NULL, (const FcChar8 *)fp)) font_registered = 1;
+        }
+        if (font_registered) snprintf(g_ui_font_family, sizeof(g_ui_font_family), "%s", "M+ 1m");
+    }
 }
 
 /* Paint a run of whole blocks into any rectangle: block = height (square), n = width / block (>= 2), the run is
