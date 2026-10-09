@@ -49,5 +49,6 @@ gcc $CFLAGS -o "ops/+x/chain_miner.+x" "ops/chain_miner.c" -lcrypto
 gcc $CFLAGS -o "ops/+x/chain_inbox_watcher.+x" "ops/chain_inbox_watcher.c" -lcrypto
 gcc $CFLAGS -o "ops/+x/chain_menu_input.+x" "ops/chain_menu_input.c"
 gcc $CFLAGS -o "ops/+x/chain_compose_frame.+x" "ops/chain_compose_frame.c"
+gcc $CFLAGS -o "ops/+x/chain_bank_query.+x" "ops/chain_bank_query.c"
 
 echo "build ok"

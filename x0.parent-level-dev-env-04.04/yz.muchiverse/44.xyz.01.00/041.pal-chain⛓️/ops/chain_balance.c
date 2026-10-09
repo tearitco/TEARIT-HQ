@@ -12,6 +12,13 @@
  * chain_inbox_watcher.c rather than factored into a shared header, per
  * this family's own no-shared-headers convention.
  *
+ * SCORE records (PAL-CHAIN-STANDARD.txt sec. 8): data/blockchain.txt may
+ * contain SCORE|<block_index>|<canon>|<alias>|valence=±1|source=...
+ * lines interspersed with BLOCK lines. These represent advisory
+ * consensus scores for entity wordbank aliases and are consumed by
+ * chain_bank_query - they NEVER affect monetary balance. This op
+ * explicitly skips them (balance-ignores-SCORE case).
+ *
  * Usage: chain_balance.+x <wallet_id> */
 #define _GNU_SOURCE
 #include <stdio.h>
@@ -89,7 +96,15 @@ static void apply_chain(const char *wallet_id, long from_block, long *balance, l
     char line[MAX_LINE];
     while (fgets(line, sizeof(line), f)) {
         line[strcspn(line, "\n")] = '\0';
-        if (strncmp(line, "BLOCK|", 6) != 0) continue;
+        if (strncmp(line, "BLOCK|", 6) != 0) {
+            /* SCORE records and any other non-BLOCK lines are advisory -
+             * balance-ignores-SCORE case (sec. 8). Skip them entirely. */
+            if (strncmp(line, "SCORE|", 6) == 0) {
+                /* SCORE record: no effect on balance, consumed by
+                 * chain_bank_query. Skip. */
+            }
+            continue;
+        }
 
         char *fields[7];
         char *cursor = line + 6;
