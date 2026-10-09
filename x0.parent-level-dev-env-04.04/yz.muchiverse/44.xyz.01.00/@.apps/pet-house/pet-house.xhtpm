@@ -4,11 +4,27 @@
 <window label="Pet house - ${name}" class="pet-house database-window fixed-size" vars="state/ui.txt">
   <module src="@.apps/pet-house/ops/+x/pet_manager.+x" id="_"/>
   <page name="main">
+    <tabbar class="tab-bar">
+      <tab id="t_save" class="tab" label="Save" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' fire save_1"/>
+      <tab id="t_load" class="tab" label="Load" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' fire load_1"/>
+      <tab id="t_play" class="tab" label="Play" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' fire start"/>
+      <tab id="t_stop" class="tab" label="Stop" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' fire stop"/>
+      <tab id="t_player" class="tab" label="Player" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' menu_toggle"/>
+      <tab id="t_events" class="tab" label="Events" action="sh '${HOUSE}/&.widgits/events-hq/button.sh' '${HOUSE}/@.apps/pet-house/state' '${HOUSE}'"/>
+      <tab id="t_newev" class="tab" label="+Event" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' new_event"/>
+    </tabbar>
     <sidebar id="side" class="sidebar">
-      <item id="menu_btn" class="ph-row" label="Menu (${n_menu})" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' menu_toggle"/>
+      <text id="light" label="${run_label}" class="${run_cls}"/>
+      <item id="menu_btn" class="ph-row" label="Player menu (${n_menu})" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' menu_toggle"/>
       <scrolllist>
         <repeat count="${n_menu_shown}" bind="menu">
           <item id="mn${menu.#}" class="ph-row" label="${menu.label}" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' ${menu.verb} ${menu.arg}"/>
+        </repeat>
+      </scrolllist>
+      <item id="inv_btn" class="ph-row" label="Inventory (${inv_n})" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' inv_toggle"/>
+      <scrolllist>
+        <repeat count="${inv_shown}" bind="inv">
+          <item id="iv${inv.#}" class="ph-row" label="${inv.text}" action="sh '${HOUSE}/@.apps/pet-house/ops/pet_event.sh' inv_use ${inv.#}"/>
         </repeat>
       </scrolllist>
       <text label="Chat" class="ph-title"/>

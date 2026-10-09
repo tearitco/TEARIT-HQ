@@ -68,6 +68,8 @@ int main(int argc, char **argv) {
             snprintf(cmd, sizeof cmd, "PET_DIR='%s' sh '%s/ops/pet_event.sh' status", pet, app); sh(cmd, buf, sizeof buf);
             kvs(buf, "anim", anim_ui, sizeof anim_ui); t_status = t;
         }
+        char runp[PATH_MAX]; snprintf(runp, sizeof runp, "%s/running.txt", pet); int running = 0; { FILE *rr = fopen(runp, "r"); if (rr) { running = fgetc(rr) == '1'; fclose(rr); } }
+        if (!running) t_tick = t;                                                       /* stopped: no day tick, no self care */
         if (t - t_tick > (long long)tick_s * 1000) {
             snprintf(cmd, sizeof cmd, "PET_DIR='%s' sh '%s/ops/pet_event.sh' tick", pet, app); sh(cmd, NULL, 0); t_tick = t;
         }

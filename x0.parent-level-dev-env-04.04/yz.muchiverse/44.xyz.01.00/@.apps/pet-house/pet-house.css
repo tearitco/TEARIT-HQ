@@ -9,3 +9,9 @@ window { width: 640px; height: 820px; }
 
 #room { width: 360px; height: 280px; }
 .ph-room { width: 360px; height: 280px; }
+
+.ph-green { color: #33dd55; font-weight: bold; }
+.ph-red { color: #ff4444; font-weight: bold; }
+.tab-bar { background-color: #1a1a1a; border-color: #444444; border: 1px solid #444444; }
+.tab { background-color: #1a1a1a; color: #aaaaaa; border: 1px solid #444444; padding: 4px 8px; }
+.tab.active { background-color: #2a2a2a; color: #ffffff; font-weight: bold; }

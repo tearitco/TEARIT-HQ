@@ -1046,10 +1046,106 @@ COMMAND load_game
   TEMPLATE exec "$D/@.apps/piececraft-hq/ops/doom_event.sh" load_slot '{slot}'
 END
 
+COMMAND restart_game
+  LABEL Restart Game
+  FIELD1 -
+  FIELD2 -
+  PARAMS
+  TEMPLATE exec "$D/@.apps/piececraft-hq/ops/doom_event.sh" restart_game
+END
+
+COMMAND continue_game
+  LABEL Continue
+  FIELD1 -
+  FIELD2 -
+  PARAMS
+  TEMPLATE exec "$D/@.apps/piececraft-hq/ops/doom_event.sh" continue_game
+END
+
+COMMAND kill_event
+  LABEL Send To Deadpool
+  FIELD1 Desk id:
+  FIELD2 Event id:
+  PARAMS desk,ev
+  TEMPLATE exec "$D/@.apps/piececraft-hq/ops/doom_event.sh" kill_event '{desk}' '{ev}'
+END
+
+COMMAND revive_all
+  LABEL Revive All
+  FIELD1 -
+  FIELD2 -
+  PARAMS
+  TEMPLATE exec "$D/@.apps/piececraft-hq/ops/doom_event.sh" revive_all
+END
+
+COMMAND autosave
+  LABEL Autosave
+  FIELD1 -
+  FIELD2 -
+  PARAMS
+  TEMPLATE exec "$D/@.apps/piececraft-hq/ops/doom_event.sh" autosave
+END
+
+COMMAND change_armor
+  LABEL Change Armor
+  FIELD1 -
+  FIELD2 -
+  PARAMS
+  TEMPLATE exec "$D/@.apps/piececraft-hq/ops/doom_event.sh" change_armor
+END
+
+COMMAND nukage
+  LABEL Nukage
+  FIELD1 -
+  FIELD2 -
+  PARAMS
+  TEMPLATE exec "$D/@.apps/piececraft-hq/ops/doom_event.sh" nukage
+END
+
 COMMAND graduate
   LABEL Graduate (advance one grade)
   FIELD1 Signed by (auto, or a person's name for grades that need a person):
   FIELD2 -
   PARAMS by
   TEMPLATE exec "$D/&.widgits/concept-bank/ops/+x/entity_grade.+x" advance "$ENT" "$D/^.hai-horn/curriculum.pdl" '{by}'
+END
+
+COMMAND pet_verb
+  LABEL Pet: do verb
+  FIELD1 Verb (give feed sleep wash play touch chat teach praise scold self_care grant):
+  FIELD2 Argument (item, part, text):
+  PARAMS verb,arg
+  TEMPLATE exec "$D/@.apps/pet-house/ops/pet_event.sh" '{verb}' '{arg}'
+END
+
+COMMAND pet_start
+  LABEL Pet: start (Play)
+  FIELD1 -
+  FIELD2 -
+  PARAMS
+  TEMPLATE exec "$D/@.apps/pet-house/ops/pet_event.sh" start
+END
+
+COMMAND pet_stop
+  LABEL Pet: stop
+  FIELD1 -
+  FIELD2 -
+  PARAMS
+  TEMPLATE exec "$D/@.apps/pet-house/ops/pet_event.sh" stop
+END
+
+COMMAND pet_save
+  LABEL Pet: save slot
+  FIELD1 Slot:
+  FIELD2 -
+  PARAMS slot
+  TEMPLATE exec "$D/@.apps/pet-house/ops/pet_event.sh" save_slot '{slot}'
+END
+
+COMMAND pet_load
+  LABEL Pet: load slot
+  FIELD1 Slot:
+  FIELD2 -
+  PARAMS slot
+  TEMPLATE exec "$D/@.apps/pet-house/ops/pet_event.sh" load_slot '{slot}'
 END

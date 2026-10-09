@@ -1,15 +1,23 @@
-# menu.pdl - the pet window's menu, as DATA. MENU | id | group | label | verb | arg | needs_level. pet_event.sh status publishes the rows the pet's level allows into ui.txt
-# (n_menu, menu_<i>_label, menu_<i>_verb, menu_<i>_arg); the layout repeats them. The menu stays hidden until the Menu row (or its hotbar key) toggles it.
-# Add an option = add a row (a verb pet_event.sh knows). A row with a higher needs_level appears when the pet levels up: abilities unlock menu entries.
-MENU | feed_apple | care  | Fridge: apple | give    | apple | 1
-MENU | feed_fish  | care  | Fridge: fish  | give    | fish  | 1
-MENU | feed_cake  | care  | Fridge: cake  | give    | cake  | 1
-MENU | sleep      | care  | Bed: sleep    | sleep   | -     | 1
-MENU | wash       | care  | Bath: wash    | give    | soap  | 1
-MENU | ball       | care  | Give ball     | give    | ball  | 1
-MENU | play       | care  | Play          | play    | -     | 1
+# menu.pdl - the pet window's menu, as DATA. MENU | id | group | label | verb | arg | needs_level. pet_event.sh status publishes it into ui.txt as a two-level menu:
+# first the GROUPS (n_menu rows, verb menu_group), then, after a group is picked, that group's rows plus Back. Keeping every list short (<= 6 rows) keeps every nav number a
+# single digit, which is what a keyboard player (or the meta harness) needs. Add an option = add a row (a verb pet_event.sh knows). A higher needs_level appears when the pet levels up.
+MENU | feed_apple | eat   | Fridge: apple | give    | apple | 1
+MENU | feed_fish  | eat   | Fridge: fish  | give    | fish  | 1
+MENU | feed_cake  | eat   | Fridge: cake  | give    | cake  | 1
+MENU | sleep      | body  | Bed: sleep    | sleep   | -     | 1
+MENU | wash       | body  | Bath: wash    | give    | soap  | 1
+MENU | play       | body  | Play          | play    | -     | 1
+MENU | ball       | body  | Give ball     | give    | ball  | 1
 MENU | pat        | touch | Pat head      | touch   | head  | 1
 MENU | tickle     | touch | Tickle belly  | touch   | belly | 1
-MENU | praise     | judge | Praise        | praise  | -     | 1
-MENU | scold      | judge | Scold         | scold   | -     | 1
+MENU | praise     | touch | Praise        | praise  | -     | 1
+MENU | scold      | touch | Scold         | scold   | -     | 1
+MENU | gift_apple | gift  | Gift: apple   | grant   | apple | 1
+MENU | gift_fish  | gift  | Gift: fish    | grant   | fish  | 1
+MENU | gift_cake  | gift  | Gift: cake    | grant   | cake  | 1
+MENU | gift_soap  | gift  | Gift: soap    | grant   | soap  | 1
 MENU | self_care  | skill | Self care now | self_care | -   | 4
+MENU | save_1     | player | Save slot 1  | save_slot | 1   | 1
+MENU | save_2     | player | Save slot 2  | save_slot | 2   | 1
+MENU | load_1     | player | Load slot 1  | load_slot | 1   | 1
+MENU | load_2     | player | Load slot 2  | load_slot | 2   | 1
