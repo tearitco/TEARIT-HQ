@@ -9,6 +9,85 @@ same move, played for black when mode=computer.
 """
 import os, random, sys
 
+def paint_desk(desk, rows):
+    """map.png is what 2D blits. cells.rgba is what the 3D floor samples."""
+    try:
+        from PIL import Image, ImageDraw
+    except ImportError:
+        return
+    if not rows or not rows[0]:
+        return
+    h, w = len(rows), len(rows[0])
+    tile = 64
+    light = (240, 217, 181, 255)
+    dark = (181, 136, 99, 255)
+    order = ".PNBRQKpnbrqk"
+    # 2 empties + 12 pieces, each on light and on dark.
+    names = []
+    for color_i in (0, 1):
+        for g in order:
+            names.append((g, color_i))
+    cols = 8
+    atlas_rows = (len(names) + cols - 1) // cols
+    atlas = Image.new("RGBA", (cols * tile, atlas_rows * tile), (0, 0, 0, 0))
+    ad = ImageDraw.Draw(atlas)
+    def tile_box(i):
+        return ((i % cols) * tile, (i // cols) * tile)
+    def draw_piece(dr, box, g, ink, edge):
+        x0, y0 = box
+        cx, cy = x0 + tile // 2, y0 + tile // 2 + 4
+        if g in ". ":
+            return
+        if g in "Pp":
+            dr.ellipse((cx - 10, cy - 18, cx + 10, cy + 2), fill=ink, outline=edge)
+            dr.polygon([(cx - 12, cy + 16), (cx + 12, cy + 16), (cx + 8, cy + 4), (cx - 8, cy + 4)], fill=ink, outline=edge)
+        elif g in "Rr":
+            dr.rectangle((cx - 12, cy - 16, cx + 12, cy + 16), fill=ink, outline=edge)
+            dr.rectangle((cx - 14, cy - 22, cx - 6, cy - 12), fill=ink)
+            dr.rectangle((cx - 4, cy - 22, cx + 4, cy - 12), fill=ink)
+            dr.rectangle((cx + 6, cy - 22, cx + 14, cy - 12), fill=ink)
+        elif g in "Nn":
+            dr.polygon([(cx - 8, cy + 16), (cx + 10, cy + 16), (cx + 6, cy), (cx + 16, cy - 8), (cx + 4, cy - 16), (cx - 8, cy - 6)], fill=ink, outline=edge)
+            dr.ellipse((cx + 2, cy - 10, cx + 6, cy - 6), fill=edge)
+        elif g in "Bb":
+            dr.polygon([(cx, cy - 22), (cx + 12, cy + 14), (cx - 12, cy + 14)], fill=ink, outline=edge)
+            dr.ellipse((cx - 4, cy - 26, cx + 4, cy - 18), fill=ink, outline=edge)
+        elif g in "Qq":
+            dr.polygon([(cx - 14, cy + 16), (cx + 14, cy + 16), (cx + 10, cy - 2), (cx - 10, cy - 2)], fill=ink, outline=edge)
+            for dx in (-12, 0, 12):
+                dr.ellipse((cx + dx - 5, cy - 20, cx + dx + 5, cy - 8), fill=ink, outline=edge)
+        elif g in "Kk":
+            dr.polygon([(cx - 14, cy + 16), (cx + 14, cy + 16), (cx + 10, cy), (cx - 10, cy)], fill=ink, outline=edge)
+            dr.rectangle((cx - 2, cy - 22, cx + 2, cy - 4), fill=ink)
+            dr.rectangle((cx - 8, cy - 16, cx + 8, cy - 12), fill=ink)
+    for i, (g, color_i) in enumerate(names):
+        box = tile_box(i)
+        ad.rectangle((box[0], box[1], box[0] + tile - 1, box[1] + tile - 1), fill=light if color_i == 0 else dark)
+        ink = (250, 250, 245, 255) if g in "PNBRQK" else (28, 28, 32, 255)
+        edge = (40, 40, 40, 255) if g in "PNBRQK" else (230, 230, 220, 255)
+        draw_piece(ad, box, g, ink, edge)
+    board = Image.new("RGBA", (w * tile, h * tile), light)
+    index = {pair: i for i, pair in enumerate(names)}
+    cells = []
+    for y, row in enumerate(rows):
+        line = []
+        for x, g in enumerate(row):
+            color_i = (x + y) & 1
+            key = (g if g in order else ".", color_i)
+            i = index[key]
+            src = tile_box(i)
+            board.paste(atlas.crop((src[0], src[1], src[0] + tile, src[1] + tile)), (x * tile, y * tile))
+            line.append("%d,0" % i)
+        cells.append(" ".join(line))
+    ddir = desk_dir(desk)
+    board.save(os.path.join(ddir, "map.png"))
+    with open(os.path.join(ddir, "cells.txt"), "w") as f:
+        f.write("width=%d\nheight=%d\ntile_px=%d\natlas_cols=%d\natlas_tiles=%d\ncells\n" % (w, h, tile, cols, len(names)))
+        f.write("\n".join(cells) + "\n")
+    raw = atlas.tobytes()
+    with open(os.path.join(ddir, "cells.rgba"), "wb") as f:
+        f.write(raw)
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 PCHQ = os.path.dirname(HERE)
 BOOK = os.path.join(PCHQ, "pieces", "system", "maps", "chess")
@@ -29,6 +108,7 @@ def write_map(desk, rows):
     with open(os.path.join(desk_dir(desk), "map.txt"), "w") as f:
         for row in rows:
             f.write("".join(row) + "\n")
+    paint_desk(desk, rows)
 
 def read_events(desk):
     rows = []
