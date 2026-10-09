@@ -220,13 +220,13 @@ static const char *FS_SRC =
 "    if (face != 3) col *= 0.75;\n"   /* top = face 3 (Y slab, swapped case) - matches bv_render_3d CPU */
 "    col *= u_light;\n"
 "  }\n"
-"  float a = (!hit && u_clear != 0) ? 0.0 : 1.0;\n"
+"  float fa = (!hit && u_clear != 0) ? 0.0 : 1.0;\n"
 "  if (hit && u_fog_end > u_fog_start) {\n"
 "    float f = smoothstep(u_fog_start, u_fog_end, bestT);\n"
-"    if (u_clear != 0) a = 1.0 - f;\n"
+"    if (u_clear != 0) fa = 1.0 - f;\n"
 "    else col = mix(col, u_sky, f);\n"
 "  }\n"
-"  o_col = vec4(clamp(col, 0.0, 1.0), a);\n"
+"  o_col = vec4(clamp(col, 0.0, 1.0), fa);\n"
 "}\n";
 
 /* ---- resident state (persistent mode) ---- */
