@@ -57,36 +57,30 @@
          this grid (plus swatch_picker_manager.c's own PICK:<n> -> hex
          mapping) picks it up on next launch, no template/CSS edit. -->
     <repeat count="${n_swatches}" bind="sw">
-    <item id="sw${sw.#}" action="PICK:${sw.#}" class="swatch ${sw.ring}" bg="${sw.hex}" label="${sw.name}"/>
+    <item id="sw${sw.#}" action="PICK:${sw.#}" class="swatch ${sw.ring} ${sw.tone}" bg="${sw.hex}" label="${sw.name}"/>
     </repeat>
-    <item id="opacity-minus" action="OPACITY_MINUS" class="opacity-btn" label="Opacity -"/>
-    <item id="opacity-plus"  action="OPACITY_PLUS"  class="opacity-btn" label="Opacity +"/>
-    <!-- 2026-09-09, direct request ("settings should have size + & -
-         button that will increase font size and button/bar sizes").
-         Steps hq_ui.pdl's font_scale by 0.25 (0.75..2.0). dispatch()'s
-         UI_SCALE_MINUS/PLUS re-sizes the chrome font, relayouts and
-         repaints; every other open window follows via
-         hq_ui_pdl_reload_if_changed(). See LIVEDESK-UI-SCALE.md. -->
-    <item id="ui-scale-minus" action="UI_SCALE_MINUS" class="opacity-btn" label="Size -"/>
-    <item id="ui-scale-plus"  action="UI_SCALE_PLUS"  class="opacity-btn" label="Size +"/>
-    <!-- 2026-09-10, direct request ("when should we add font picker to
-         settings... lets do the build") - same step-button UX as Size
-         -/+ above, cycling hq_ui.pdl's font_family through a curated
-         list (dispatch()'s UI_FONT_FAMILY_NEXT/PREV). The label shows
-         the CURRENT family so the picker is legible without a real
-         dropdown widget. -->
-    <item id="font-family-prev" action="UI_FONT_FAMILY_PREV" class="opacity-btn" label="Font ◀"/>
-    <item id="font-family-name" class="opacity-btn no-nav" label="${font_family}"/>
-    <item id="font-family-next" action="UI_FONT_FAMILY_NEXT" class="opacity-btn" label="Font ▶"/>
-    <!-- 2026-09-04, direct live request ("single click vs double
-         click. it was added to settings yet?") - toggles the same
-         house-wide click_two_step key every window's own click
-         handling reads (khtpm_core_render.c's desktop_load_click_
-         two_step()/click_focus_then_activate()). Only takes effect
-         for THIS window immediately + any future launch - does not
-         live-propagate to other already-open windows (see
-         CLICK_TWOSTEP_TOGGLE's own dispatch()-side comment). -->
-    <item id="click-twostep-toggle" action="CLICK_TWOSTEP_TOGGLE" class="opacity-btn" label="${click_two_step_label}"/>
+    <!-- 2026-10-08 RELAYOUT (owner: "id like some kind of change on the
+         settings window... i need evidence on my io this is moving
+         forward usably"). The generic swatch-grid layout puts every
+         non-swatch <item> in chip rows ABOVE the grid and starts a new
+         row whenever an item's FIRST class changes, so each setting is
+         its own row: first class = the row name, second = the look.
+         Each row leads with a value chip (current opacity/size/font/
+         click mode, published by taskbar_settings_projector.+x) so a
+         button sits next to the value it changes. Swatch labels pick a
+         readable tone per fill (sw.tone). Ids and actions are unchanged,
+         so every relay/harness that drives them still works. -->
+    <item id="colors-info" class="row-colors info-chip info-wide" label="${colors_label}"/>
+    <item id="opacity-value" class="row-opacity info-chip" label="${opacity_label}"/>
+    <item id="opacity-minus" action="OPACITY_MINUS" class="row-opacity opacity-btn step-btn" label="-"/>
+    <item id="opacity-plus"  action="OPACITY_PLUS"  class="row-opacity opacity-btn step-btn" label="+"/>
+    <item id="size-value" class="row-size info-chip" label="${size_label}"/>
+    <item id="ui-scale-minus" action="UI_SCALE_MINUS" class="row-size opacity-btn step-btn" label="-"/>
+    <item id="ui-scale-plus"  action="UI_SCALE_PLUS"  class="row-size opacity-btn step-btn" label="+"/>
+    <item id="font-family-name" class="row-font info-chip" label="${font_label}"/>
+    <item id="font-family-prev" action="UI_FONT_FAMILY_PREV" class="row-font opacity-btn step-btn" label="&lt;"/>
+    <item id="font-family-next" action="UI_FONT_FAMILY_NEXT" class="row-font opacity-btn step-btn" label="&gt;"/>
+    <item id="click-twostep-toggle" action="CLICK_TWOSTEP_TOGGLE" class="row-click opacity-btn" label="${click_two_step_label} (press to switch)"/>
     <item id="close" action="CLOSE" class="close-btn" label="x"/>
   </page>
 </window>

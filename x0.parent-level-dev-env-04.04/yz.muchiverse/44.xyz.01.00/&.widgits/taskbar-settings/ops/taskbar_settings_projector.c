@@ -117,6 +117,46 @@ static void read_font_family(const char *house, char *out, size_t out_sz) {
     fclose(f);
 }
 
+/* 2026-10-08 (owner: settings window needs a visible, usable change):
+ * publish the CURRENT opacity and UI size as text so the buttons can sit
+ * next to the value they change. Read-only, same as the readers above. */
+static double read_opacity(const char *house) {
+    char path[PATH_MAX];
+    snprintf(path, sizeof(path), "%s/#.desktop/livedesk_theme.pdl", house);
+    FILE *f = fopen(path, "r");
+    if (!f) return 1.0;
+    char line[160];
+    double v = 1.0;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "COLOR", 5) != 0 || !strstr(line, "opacity")) continue;
+        char *bar = strrchr(line, '|');
+        if (bar) v = atof(bar + 1);
+        break;
+    }
+    fclose(f);
+    return v;
+}
+
+static double read_font_scale(const char *house) {
+    char path[PATH_MAX];
+    snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house);
+    FILE *f = fopen(path, "r");
+    if (!f) return 1.0;
+    char line[128];
+    double v = 1.0;
+    while (fgets(line, sizeof(line), f))
+        if (strncmp(line, "font_scale=", 11) == 0) { v = atof(line + 11); break; }
+    fclose(f);
+    return v;
+}
+
+/* readable label on any swatch: light text on dark fills, dark on light. */
+static const char *tone_for_hex(const char *hex) {
+    unsigned r = 0, g = 0, b = 0;
+    if (sscanf(hex, "#%2x%2x%2x", &r, &g, &b) != 3) return "tone-light";
+    return (r * 299 + g * 587 + b * 114) / 1000 < 140 ? "tone-dark" : "tone-light";
+}
+
 static void read_state(const char *path, int *phase, int *bg, int *fg, int *apply) {
     *phase = 0; *bg = -1; *fg = -1; *apply = 0;
     FILE *f = fopen(path, "r");
@@ -131,7 +171,8 @@ static void read_state(const char *path, int *phase, int *bg, int *fg, int *appl
     fclose(f);
 }
 
-static void build_ui(char *ui, size_t cap, int phase, int bg, int fg, int click_two_step, const char *font_family) {
+static void build_ui(char *ui, size_t cap, int phase, int bg, int fg, int click_two_step, const char *font_family,
+                     double opacity, double font_scale) {
     const char *prompt =
         phase <= 0 ? "pick a background swatch" :
         phase == 1 ? "pick a text swatch"       :
@@ -149,10 +190,17 @@ static void build_ui(char *ui, size_t cap, int phase, int bg, int fg, int click_
         off += (size_t)snprintf(ui + off, cap - off, "sw_%d_ring=%s\n", i, ring);
         off += (size_t)snprintf(ui + off, cap - off, "sw_%d_name=%s\n", i, g_name_buf[i]);
         off += (size_t)snprintf(ui + off, cap - off, "sw_%d_hex=%s\n", i, g_hex_buf[i]);
+        off += (size_t)snprintf(ui + off, cap - off, "sw_%d_tone=%s\n", i, tone_for_hex(g_hex_buf[i]));
     }
     off += (size_t)snprintf(ui + off, cap - off, "click_two_step_label=%s\n",
                             click_two_step ? "Click: 2-step" : "Click: 1-step");
     off += (size_t)snprintf(ui + off, cap - off, "font_family=%s\n", font_family);
+    off += (size_t)snprintf(ui + off, cap - off, "font_label=Font: %s\n", font_family);
+    off += (size_t)snprintf(ui + off, cap - off, "opacity_label=Opacity: %d%%\n", (int)(opacity * 100.0 + 0.5));
+    off += (size_t)snprintf(ui + off, cap - off, "size_label=Size: %d%%\n", (int)(font_scale * 100.0 + 0.5));
+    off += (size_t)snprintf(ui + off, cap - off, "colors_label=Colors - background: %s, text: %s. Pick below (green ring = background, gold ring = text)\n",
+                            (bg >= 0 && bg < g_n_swatches) ? g_name_buf[bg] : "-",
+                            (fg >= 0 && fg < g_n_swatches) ? g_name_buf[fg] : "-");
 }
 
 int main(int argc, char **argv) {
@@ -175,7 +223,8 @@ int main(int argc, char **argv) {
         char font_family[64];
         read_font_family(house, font_family, sizeof(font_family));
         ui[0] = '\0';
-        build_ui(ui, sizeof(ui), phase, bg, fg, click_two_step, font_family);
+        build_ui(ui, sizeof(ui), phase, bg, fg, click_two_step, font_family,
+                 read_opacity(house), read_font_scale(house));
 
         if (strcmp(ui, last) != 0) {              /* content-gated write */
             FILE *f = fopen(tmp_path, "w");

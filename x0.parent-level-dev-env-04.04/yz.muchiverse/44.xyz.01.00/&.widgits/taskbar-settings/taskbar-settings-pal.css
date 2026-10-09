@@ -29,3 +29,18 @@
  * taskbar-settings-pal.xhtpm's <repeat>), sourced from
  * &.widgits/taskbar-settings/swatches.pdl. Adding/removing a color
  * needs no CSS edit anymore. */
+
+/* 2026-10-08 relayout: value chips are plain text (no button fill), step
+ * buttons are small, swatch labels are readable on every fill. */
+.info-chip {
+    background-color: #2c2c2c;
+    color: #ffffff;
+    padding: 4px 8px;
+    border: 1px solid #3a3a3a;
+}
+.info-chip { width: 260px; }
+.info-wide { width: 820px; }
+.step-btn { background-color: #555555; width: 84px; }
+.row-click { width: 400px; }
+.tone-dark  { color: #ffffff; }
+.tone-light { color: #111111; }
