@@ -358,6 +358,7 @@ static Window g_dock_menu_win;
  * move it while such a menu is open. 2026-10-08, owner: "thumb scroll to reach cancel". */
 static int g_dock_dd_scroll = 0, g_dock_dd_scrolling = 0, g_dock_dd_vis = 0, g_dock_dd_total = 0;
 static char g_dock_dd_target[64] = "";
+static int g_dock_dd_drag = 0;   /* 1 while button 1 drags the thumb / track of the long dropdown */
 static Pixmap g_dock_menu_buf;
 static XftDraw *g_dock_menu_xft;
 static GC g_dock_menu_gc;
@@ -7336,6 +7337,23 @@ static int g_dock_menu_msx = 0, g_dock_menu_msy = 0;
 static int g_dock_menu_mw = 0, g_dock_menu_mh = 0;
 #endif
 
+/* Thumb / track drag of the long dock dropdown: pointer y inside the menu window -> first visible content row. Same thumb
+ * geometry as the painter in dock_paint_menu (track = the visible rows, thumb = visible/total of it, min 14 px). */
+static void dock_dd_scroll_from_y(int y) {
+    int content = g_dock_dd_total - 1, max_sc = content - g_dock_dd_vis;
+    int th_all = g_dock_dd_vis * DOCK_BAR_H, thumb_h, span, sc;
+    if (!g_dock_dd_scrolling || max_sc < 1 || th_all < 1) return;
+    thumb_h = (th_all * g_dock_dd_vis) / content;
+    if (thumb_h < 14) thumb_h = 14;
+    if (thumb_h > th_all) thumb_h = th_all;
+    span = th_all - thumb_h;
+    if (span < 1) return;
+    sc = ((y - thumb_h / 2) * max_sc + span / 2) / span;
+    if (sc < 0) sc = 0;
+    if (sc > max_sc) sc = max_sc;
+    g_dock_dd_scroll = sc;
+}
+
 static void dock_paint_menu(void) {
     int i;
     if (g_dock_menu_w <= 0 || g_dock_menu_h <= 0 || g_dock_drop_lo < 1) {
@@ -7349,7 +7367,7 @@ static void dock_paint_menu(void) {
         XSetWindowAttributes swa;
         swa.background_pixel = alloc_pixel(g_theme_bg);
         swa.override_redirect = True;
-        swa.event_mask = ExposureMask | ButtonPressMask | ButtonReleaseMask | KeyPressMask | FocusChangeMask;
+        swa.event_mask = ExposureMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | KeyPressMask | FocusChangeMask;
         g_dock_menu_win = XCreateWindow(dpy, RootWindow(dpy, screen),
             g_dock_menu_sx, g_dock_menu_sy, (unsigned)g_dock_menu_w, (unsigned)g_dock_menu_h,
             0, CopyFromParent, InputOutput, CopyFromParent,
@@ -13470,6 +13488,13 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
                     g_canvas_drag_px = ev->xbutton.x; g_canvas_drag_py = ev->xbutton.y;
                 }
             }
+            if (window_is_dock() && g_dock_menu_win && cw == g_dock_menu_win && ev->xbutton.button == 1 &&
+                g_dock_dd_scrolling && ev->xbutton.x >= g_dock_menu_w - 16 && ev->xbutton.y < g_dock_dd_vis * DOCK_BAR_H) {
+                g_dock_dd_drag = 1;                       /* press on the thumb / track: drag it (no row activation) */
+                dock_dd_scroll_from_y(ev->xbutton.y);
+                if (!g_quit) { assign_nav_and_layout(); redraw(); }
+                return;
+            }
             if (window_is_dock() && g_dock_menu_win && cw == g_dock_menu_win &&
                 ev->xbutton.button == 1 && g_dock_drop_lo >= 1) {
                 /* Hit-test laid-out row boxes. y/DOCK_BAR_H was off-by-one
@@ -13655,6 +13680,7 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
     }
     if (ev->type == ButtonRelease && ev->xbutton.button == 1) {
         g_canvas_drag = 0;
+        g_dock_dd_drag = 0;
         g_popup_dragging = 0;  /* REAL, NEW 2026-08-29 (TASK 1) */
         g_text_drag_elem = NULL; /* REAL, NEW 2026-09-14 - end any real text drag-select */
         g_ov_drag = NULL;
@@ -13668,6 +13694,13 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
             kh_save_win_size();
             if (!g_quit) { assign_nav_and_layout(); redraw(); }
         }
+        return;
+    }
+    if (ev->type == MotionNotify && g_dock_dd_drag && (ev->xmotion.state & Button1Mask)) {
+        XEvent mdd;
+        while (XCheckTypedWindowEvent(dpy, ev->xmotion.window, MotionNotify, &mdd)) *ev = mdd;
+        dock_dd_scroll_from_y(ev->xmotion.y);
+        if (!g_quit) { assign_nav_and_layout(); redraw(); }
         return;
     }
     if (ev->type == MotionNotify && g_canvas_drag && (ev->xmotion.state & Button1Mask)) {
