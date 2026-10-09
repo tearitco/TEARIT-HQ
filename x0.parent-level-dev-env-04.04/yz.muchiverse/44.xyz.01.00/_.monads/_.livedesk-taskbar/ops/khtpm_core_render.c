@@ -1327,8 +1327,19 @@ static const char *parse_element(const char *p, Elem *parent) {
     if (*p != '<') return p;
     p++;
     if (*p == '!') {
-        const char *end = strstr(p, "-->");
-        return end ? end + 3 : p + strlen(p);
+        /* REAL FIX 2026-10-09 (root-caused live on a static span fixture
+         * that refused to open): only <!-- is a comment. Any other <!...
+         * declaration (DOCTYPE first among them) ends at its own '>' -
+         * scanning a doctype for --> eats the whole file whenever no
+         * HTML comment follows it, so nothing parses and the window
+         * fails to open. Zero real .xhtpm files use a doctype (verified
+         * by grep at fix time), so no existing window can change shape. */
+        if (strncmp(p, "!--", 3) == 0) {
+            const char *end = strstr(p, "-->");
+            return end ? end + 3 : p + strlen(p);
+        }
+        const char *gt = strchr(p, '>');
+        return gt ? gt + 1 : p + strlen(p);
     }
     char tag[32]; size_t tn = 0;
     while (*p && !isspace((unsigned char)*p) && *p != '>' && *p != '/') {
@@ -2839,11 +2850,21 @@ static int reparse_chtpm_if_changed(void) {
         saved_sel_anchor = g_default_input_elem->sel_anchor;
     }
     kh_set_default_input_elem(NULL);
-    /* Same real dangling-pointer reasoning as g_default_input_elem just
+    /* Same real dangling-state reasoning as g_default_input_elem just
      * above - a stale dropdown-open pointer into a freed/reused pool
      * slot is a real, live crash risk, not a cosmetic one. */
     g_default_active_scope_root = NULL;
     g_default_scope_confine = 0;
+    /* INLINE SPANS step 5: the segment cursor names a (nav, run-index,
+     * element-id) triple in the tree being discarded - after this
+     * rebuild those numbers may address a different row, or nothing.
+     * The lazy (nav,id) check cannot catch a same-id row on a new page
+     * (repeat indices like cr4 are stable across pages), which live-
+     * locked a suite white-underline + inverted the next Right key.
+     * Content changed: cursor dies, honestly, here - not lazily. */
+    g_seg_nav = 0;
+    g_seg_idx = -1;
+    g_seg_id[0] = '\0';
     g_n_elems = 0;
     /* REAL FIX 2026-10-08 (self-correction) - the truncation counters were
      * cumulative for the whole process lifetime, never reset. So a warning
@@ -5194,7 +5215,14 @@ static int scroll_row_span(const Elem *c, int w) {
         XftFont *font = font_for(&tmp_style);
         int pad = tmp_style.has_padding ? tmp_style.padding : 4;
         int avail_w = w - pad * 2;
-        if (strcmp(c->tag, "item") == 0) {
+        /* INLINE SPANS step 6 (wrapping): a segments-carrying <text>
+         * takes a nav slot (badge eats width), exactly like an <item> -
+         * the same generous "[ ]99. " estimate, so this stays an honest
+         * UPPER bound on the line count: a smaller avail never yields
+         * fewer lines, so the box is never shorter than the wrapped
+         * span draw needs (gaps, never the 2026-09-23 overlap). */
+        if (strcmp(c->tag, "item") == 0 ||
+            (strcmp(c->tag, "text") == 0 && c->segments[0])) {
             XGlyphInfo ext;
             XftTextExtentsUtf8(dpy, font, (const FcChar8 *)"[ ]99. ", 7, &ext);
             avail_w -= ext.xOff;
@@ -11573,11 +11601,35 @@ static void handle_key(KeySym ks, char ch) {
      * non-digit keys"). */
     if (!(ch >= '0' && ch <= '9')) g_nav_digit_accum = 0;
     if (ks == XK_Return || ks == XK_KP_Enter) {
+        /* INLINE SPANS step 5: Enter on a segment cursor dispatches that
+         * span's own action instead of the row's. A stale cursor (reparse
+         * shrank the runs) resolves nothing and falls through to the
+         * row, never nowhere. */
+        if (g_focus_nav >= 1 && g_focus_nav <= g_n_nav) {
+            Elem *focused = g_nav[g_focus_nav - 1];
+            if (seg_cursor_on(focused)) {
+                char sact[1024];
+                if (seg_action_at_idx(focused, g_seg_idx, sact, sizeof(sact))) {
+                    dispatch(sact);
+                    g_seg_idx = -1;
+                    if (!g_quit) { assign_nav_and_layout(); redraw(); }
+                    return;
+                }
+            }
+        }
         activate_focused();
         /* activate_focused() may have just entered/left a scope (<tab>,
          * ACTIVATE) - relayout+repaint NOW so [^] and the confined nav
          * show immediately, instead of only on the next projector tick. */
         if (!g_quit) { assign_nav_and_layout(); redraw(); }
+        return;
+    }
+    /* INLINE SPANS step 5: an active segment cursor is the innermost
+     * thing Escape closes (same "closes THAT first" order as the armed
+     * field and the dropdown below) - back to row-level, focus stays. */
+    if (ks == XK_Escape && g_seg_idx >= 0 && g_seg_nav == g_focus_nav) {
+        g_seg_idx = -1;
+        redraw();
         return;
     }
     /* REAL, NEW 2026-09-03 (direct instruction: "esc closes drop down
@@ -11663,10 +11715,18 @@ static void handle_key(KeySym ks, char ch) {
         if (focused->backspace_action[0]) { dispatch_no_quit(focused->backspace_action); return; }
     }
     if (ks == XK_Up || ks == XK_Left) {
+        /* INLINE SPANS step 5: Left on a focused spans row walks the
+         * link spans (entering at the last); rows without spans, and
+         * Up anywhere, step rows exactly as before. */
+        if (ks == XK_Left && g_focus_nav >= 1 && g_focus_nav <= g_n_nav &&
+            seg_cursor_step(g_nav[g_focus_nav - 1], -1)) return;
         dock_nav_step(-1);
         return;
     }
     if (ks == XK_Down || ks == XK_Right) {
+        /* mirror: Right enters at the first link span. */
+        if (ks == XK_Right && g_focus_nav >= 1 && g_focus_nav <= g_n_nav &&
+            seg_cursor_step(g_nav[g_focus_nav - 1], 1)) return;
         dock_nav_step(1);
         return;
         return;
@@ -13180,6 +13240,10 @@ static void popup_handle_click(int px, int py) {
                      g_focus_nav == it->nav_index)) {
                     g_focus_nav = it->nav_index;
                     dispatch(segact);
+                    /* navigating away: the cursor names a span of the
+                     * page being left - drop it now, not at the reparse
+                     * (same honesty as the reparse clear). */
+                    g_seg_idx = -1;
                     if (!g_quit) assign_nav_and_layout();
                     redraw();
                     return;
