@@ -105,6 +105,22 @@ else
     else
         echo "FAIL: small page content_count=$N notice=$(note)"; FAIL=1
     fi
+    # 2026-10-08: the renderer counts its own truncation and prints [WARN]
+    # lines into the ascii frame dump. Those counters were cumulative for the
+    # process lifetime, so a small page reported drops it never had - which
+    # made me mis-diagnose the cause twice. A page that fits MUST be silent.
+    MYF="$HR/#.desktop/ascii_frames/$PID.frame.txt"
+    if [ -f "$MYF" ]; then
+        W="$(grep -c WARN "$MYF" 2>/dev/null)"
+        [ -n "$W" ] || W=0
+        if [ "$W" -eq 0 ]; then
+            echo "PASS: renderer reports no truncation on a page that fits"
+        else
+            echo "FAIL: small page drew $W renderer WARN line(s) - stale/cumulative counter?"; FAIL=1
+        fi
+    else
+        echo "FAIL: no ascii frame for pid $PID"; FAIL=1
+    fi
 fi
 
 [ "$FAIL" -eq 0 ] && echo "PROJECTION PASS" || echo "PROJECTION FAIL"
