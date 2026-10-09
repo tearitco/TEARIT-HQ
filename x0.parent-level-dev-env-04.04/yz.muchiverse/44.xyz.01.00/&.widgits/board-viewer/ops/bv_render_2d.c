@@ -1025,6 +1025,15 @@ int main(void) {
     resolve_focused(fpr);
     int sel_x    = read_kv_int(st, "selector_x", -1);
     int sel_y    = read_kv_int(st, "selector_y", -1);
+    /* The 2D picture follows the xelector. selector_x/y is only the
+     * fallback when that piece has no position yet. */
+    {
+        char xp[PATH_BUF];
+        snprintf(xp, sizeof(xp), "%s/pieces/xelector_01/state.txt", focused_root[0] ? focused_root : fpr);
+        int xx = read_kv_int(xp, "pos_x", -1);
+        int xy = read_kv_int(xp, "pos_y", -1);
+        if (xx >= 0 && xy >= 0) { sel_x = xx; sel_y = xy; }
+    }
     int cur_z    = read_kv_int(st, "current_z", 0);
     /* render_mode==2: real side-scroll/Mario slice (see load_side_
      * board()'s own header comment) - same flat-render philosophy as
@@ -1330,7 +1339,8 @@ int main(void) {
         int y0 = (sel_y * map_tile - map_py0) * box / map_tile;
         if (x0 < W && y0 < H && x0 + box > 0 && y0 + box > 0) {
             unsigned char xr = 255, xg = 204, xb = 0;
-            for (int t = 0; t < 2; t++) {
+            /* 6px, not 2. A 2px line disappeared into the painted tiles. */
+            for (int t = 0; t < 6; t++) {
                 for (int x = x0; x < x0 + box; x++) {
                     if (x < 0 || x >= W) continue;
                     int yA = y0 + t, yB = y0 + box - 1 - t;
