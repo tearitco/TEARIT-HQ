@@ -126,6 +126,25 @@ file — it does not launch one. After a rebuild, relaunch the browser before
 `NB_SNAPSHOT_UPDATE=1`, or the snapshot is re-cut from a stale binary and looks
 like a real regression.
 
+Run everything with **`sh tests/nb_all_tests.sh`** (projection → layout → form).
+The first two need the browser already running; the third is hermetic.
+
+## Done — Milestone 10: projection windowing (2026-10-08)
+
+The blank-pane-on-Wikipedia bug. Each content row is one layout element and the
+renderer's pool is `MAX_ELEMS 1024` for the whole window; a 1440-row page
+overflowed it and the renderer dropped the overflow **silently**.
+
+- [x] manager projects at most 900 content rows (pool headroom for chrome)
+- [x] dropped rows produce a visible notice: `[showing N of M rows …]`
+- [x] the count is the page's real size, not the read buffer's
+- [x] `tests/nb_projection_test.sh` asserts all of it, including **frame is not
+      blank** — a snapshot cannot, because page.state still holds every row
+
+Constants NOT raised: `MAX_ELEMS`/`KH_MAX_VARS` stay put per the no-treadmill
+rule. The renderer still fails silently on overflow — making *it* report is the
+remaining half.
+
 ## Done — Milestone 8: file uploads (2026-10-08, verified against httpbin)
 
 - [x] `<input type=file>` extracted as `FILE|name|accept|multiple`
