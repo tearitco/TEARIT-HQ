@@ -24,6 +24,10 @@ echo "########## layout snapshots (needs the same running browser)"
 bash "$HERE/nb_layout_test.sh" || RC=1
 
 echo
+echo "########## inline span grouping contract (needs the browser)"
+sh "$HERE/nb_span_test.sh" || RC=1
+
+echo
 echo "########## form gate (hermetic)"
 sh "$HERE/nb_form_test.sh" || RC=1
 

@@ -1,9 +1,18 @@
 URL|FIXDIR/fixtures/form-get.html
 TITLE|Search form
+PARA|1
 HEAD|1|Search form fixture
+PARA|2
 TEXT|Find:
 INPUT|search|search||Search Wikipedia|0
+PARA|3
+PARA|4
 BUTTON|https://en.wikipedia.org/w/index.php|get|Go
+PARA|5
+PARA|6
 TEXT|Post box:
 INPUT|q|text|||0
+PARA|7
+PARA|8
 BUTTON|https://example.com/post|post|Send it
+PARA|9

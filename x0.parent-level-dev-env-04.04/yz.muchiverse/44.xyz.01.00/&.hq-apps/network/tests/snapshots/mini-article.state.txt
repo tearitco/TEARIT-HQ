@@ -1,16 +1,21 @@
 URL|FIXDIR/fixtures/mini-article.html
 TITLE|Mini article
+PARA|1
 HEAD|1|Block-flow fixture
+PARA|2
 TEXT|First paragraph of body text. Enough to force two lines of wrapping when the column is ~400px wide so the layout proof sees a real wrap decision.
+PARA|3
+PARA|4
 TEXT|Second paragraph with a link inline.
+PARA|5
+PARA|6
 TEXT|See the
 LINK|https://example.com|docs
 TEXT|for more.
+PARA|7
 LIST|1|-|Item one
 LIST|1|-|Item two
-RICH|5
-RICHSEG|text|First paragraph of body text. Enough to force two lines of wrapping when the column is ~400px wide so the layout proof sees a real wrap decision.|
-RICHSEG|text|Second paragraph with a link inline.|
+RICH|3
 RICHSEG|text|See the|
 RICHSEG|link|docs|https://example.com
 RICHSEG|text|for more.|

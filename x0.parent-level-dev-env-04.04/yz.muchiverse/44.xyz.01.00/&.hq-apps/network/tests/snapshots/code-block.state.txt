@@ -1,7 +1,10 @@
 URL|FIXDIR/fixtures/code-block.html
 TITLE|Pre Block
+PARA|1
 HEAD|1|Code sample
+PARA|2
 TEXT|Before the block.
+PARA|3
 CODE|int main(void) {
 CODE|    int x = 1  2;
 CODE|    if (x == 3) {
@@ -10,4 +13,6 @@ CODE|    }
 CODE|    return 0;
 CODE|}
 TEXT|>
+PARA|4
 TEXT|After the block.
+PARA|5

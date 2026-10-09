@@ -629,6 +629,7 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
      * whether the innermost list numbers its items, and `g_li_marker` the
      * ordinal text for that item. Ordinals restart per list, so the stack
      * keeps a counter per level. */
+    int g_para_no = 0;   /* paragraph counter, emits PARA| markers */
     int g_li_depth = 0;
     int g_li_ordered = 0;
     char g_li_marker[16] = "-";
@@ -1384,7 +1385,24 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                 p = gt ? gt + 1 : p + 1;
                 continue;
             }
-            if (tagname[0] && is_block_tag(tagname)) FLUSH_LINE();
+            if (tagname[0] && is_block_tag(tagname)) {
+                FLUSH_LINE();
+                /* 2026-10-08: PARAGRAPH boundary, for inline rich spans.
+                 * append_rich_rows() groups a maximal TEXT/LINK run and had
+                 * no way to know where one paragraph ended, so consecutive
+                 * paragraphs welded into a single span group - the very bug
+                 * inline spans exist to remove, just relocated.
+                 *
+                 * It must fire on a BLOCK boundary only. Emitting it from
+                 * FLUSH_LINE itself was worse than nothing: the extractor
+                 * also flushes at INLINE boundaries (an <a> mid-sentence), so
+                 * a paragraph containing a link was split into three groups
+                 * and the text before the link was lost.
+                 *
+                 * Nothing matches this row kind, so it renders as no element
+                 * and costs ZERO pool elements - it only grows page.state. */
+                fprintf(out, "PARA|%d\n", ++g_para_no);
+            }
             const char *gt = strchr(p, '>');
             p = gt ? gt + 1 : p + 1;
             continue;

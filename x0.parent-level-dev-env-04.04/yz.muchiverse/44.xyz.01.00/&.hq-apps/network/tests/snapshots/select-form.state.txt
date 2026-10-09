@@ -1,13 +1,20 @@
 URL|FIXDIR/fixtures/select-form.html
 TITLE|Select
+PARA|1
 HEAD|1|Pick one
+PARA|2
 TEXT|Colour:
 SELECT|col|red|Red|0
 SELECT|col|grn|Green|1
 SELECT|col|NoValueText|NoValueText|0
 SELECTEND|col
+PARA|3
+PARA|4
 TEXT|Size:
 SELECT|sz|s|Small|0
 SELECT|sz|l|Large|0
 SELECTEND|sz
+PARA|5
+PARA|6
 BUTTON|https://httpbin.org/get|get|Go
+PARA|7
