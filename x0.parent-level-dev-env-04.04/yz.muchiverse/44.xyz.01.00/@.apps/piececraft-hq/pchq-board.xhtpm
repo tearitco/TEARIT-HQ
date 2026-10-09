@@ -128,6 +128,13 @@
               action="setsid sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_entity_ctx.sh' '${HOUSE}/@.apps/piececraft-hq' '${ent.x}' '${ent.y}' '${ent.z}' '${ent.kind}' '${ent.id}'"/>
       </repeat>
     </footer>
+    <footer id="subbar" class="pchq-footer" show="${n_sub}">
+      <text label="more" class="quiet"/>
+      <repeat count="${n_sub}" bind="sub">
+        <item id="s${sub.#}" class="pchq-ft" label="${sub.label}"
+              action="setsid sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_entity_ctx.sh' '${HOUSE}/@.apps/piececraft-hq' '${sub.x}' '${sub.y}' '${sub.z}' '${sub.kind}' '${sub.id}'"/>
+      </repeat>
+    </footer>
 
     <text label="No live board-viewer session - open 'View Board' from the game first." class="quiet" show="${no_session}"/>
   </page>
