@@ -99,6 +99,14 @@ for i in $(seq 1 "${ITERATIONS}"); do
 
     # Step 2: FSM Controller executes the decision
     echo "  [FSM] Executing ${action}..."
+
+    # Clear history.txt before FSM injects keys — main_loop.pal starts
+    # read_history at position 0 each fresh process invocation, so stale
+    # keys from previous cycles would replay if not cleared
+    if [ "${LIVE_MODE}" -eq 1 ]; then
+        > "${SESSION_DIR}/pieces/apps/player_app/history.txt" 2>/dev/null || true
+    fi
+
     PRISC_PROJECT_ROOT="${SESSION_DIR}" "${XOD_DIR}/ops/+x/fsm_controller.+x" 2>/dev/null || true
 
     # In live mode, process injected keys: run main_loop.pal to drain history.txt
