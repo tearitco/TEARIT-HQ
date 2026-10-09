@@ -1002,8 +1002,11 @@ static void draw_elem(Elem *e, int hover_id_hash) {
         e->style.has_fg_color = 1;
         kh_draw_selected_skin(e->x, e->y, e->w, e->h, alloc_pixel(e->style.has_bg_color ? e->style.bg_color : "#2c2c2c"));
     }
-    if (elem_has_class(e, "skin-bar"))
-        kh_draw_bar_skin(e, alloc_pixel(e->style.has_bg_color ? e->style.bg_color : "#2c2c2c"));
+    if (elem_has_class(e, "skin-bar") &&
+        kh_draw_bar_skin(e, alloc_pixel(e->style.has_bg_color ? e->style.bg_color : "#2c2c2c"))) {
+        snprintf(e->style.fg_color, sizeof(e->style.fg_color), "#ffffff");   /* readable on tiles (theme text vanished on wood/neon) */
+        e->style.has_fg_color = 1;
+    }
     /* REAL, NEW 2026-09-14 (network-browser video V4 "Nav row with
      * play/pause + progress" request) - a real, generic `<bar>` element:
      * progress/playhead strip (see Elem's own bar_value/bar_max comment

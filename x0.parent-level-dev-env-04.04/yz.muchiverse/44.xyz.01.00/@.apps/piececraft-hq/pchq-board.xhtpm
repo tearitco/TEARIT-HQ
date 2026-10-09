@@ -25,7 +25,7 @@
   <module src="@.apps/hotbar-hq/ops/+x/hotbar_manager.+x pchq"/>
   <page name="main">
     <tabbar id="toolbar" class="pchq-toolbar">
-      <tab id="tb-in" class="pchq-tb ${interact_class}" label="In: ${interact_label}"
+      <tab id="tb-in" class="pchq-tb skin-bar ${interact_class}" label="In: ${interact_label}"
            relay="${bv_h1},${bv_h2}"
            onclick="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'interact'"/>
       <!-- REAL FIX 2026-09-15 (5), direct live report ("none:none...
@@ -50,9 +50,9 @@
            inside it) already map naturally onto BOOK (a session/
            container) and PAGE (a view inside it) - this isn't a forced
            relabel, the concepts genuinely correspond. -->
-      <tab id="tb-file" class="pchq-tb" label="${book_label} ▾" onclick="ACTIVATE" target_id="tb-file"/>
-      <tab id="tb-desk" class="pchq-tb" label="${page_label} ▾" onclick="ACTIVATE" target_id="tb-desk"/>
-      <tab id="tb-menu" class="pchq-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
+      <tab id="tb-file" class="pchq-tb skin-bar" label="${book_label} ▾" onclick="ACTIVATE" target_id="tb-file"/>
+      <tab id="tb-desk" class="pchq-tb skin-bar" label="${page_label} ▾" onclick="ACTIVATE" target_id="tb-desk"/>
+      <tab id="tb-menu" class="pchq-tb skin-bar" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
       <!-- REAL FIX 2026-09-15, direct live correction ("player should
            have dropdown that says play, reset, stop, notes-db, cancel
            ... like tb hq dropdown []9.player") - same real dropdown
@@ -60,8 +60,8 @@
            in the rail below), matching the desktop taskbar's own
            player menu (khtpm_taskbar_manager.c's livedesk_build_
            player_menu()) instead of a flat single-click toggle. -->
-      <tab id="tb-player" class="pchq-tb" label="${player_label} ▾" onclick="ACTIVATE" target_id="tb-player"/>
-      <tab id="tb-clock" class="pchq-tb" label="${clock}" onclick="void"/>
+      <tab id="tb-player" class="pchq-tb skin-bar" label="${player_label} ▾" onclick="ACTIVATE" target_id="tb-player"/>
+      <tab id="tb-clock" class="pchq-tb skin-bar" label="${clock}" onclick="void"/>
     </tabbar>
 
     <!-- zero-width rail: satisfies layout_sidebar_panel's sidebar+panel
@@ -131,10 +131,10 @@
         <text label="${hb_holder} - slot: ${hb_sel_name}" class="hb-quiet ov-title theme-3"/>
         <!-- the holder's own picture (the xelector = the coloured cube, the mouse) at the left of the title line: display only (no nav number, slot digits unchanged). Gated: absent = hidden. class ov-badge: renderer overlay layout -->
         <item id="hb-badge" class="ov-badge sprite-inline theme-3" label=" " sprite="${hb_holder_sprite}" action="void" show="${hb_holder_sprite}"/>
-        <item id="hb-min" class="ov-min hb-slot theme-3" label="_"
+        <item id="hb-min" class="ov-min hb-slot skin-bar theme-3" label="_"
               action="sh '${HOUSE}/@.apps/hotbar-hq/ops/hotbar_toggle.sh' pchq '${HOUSE}/@.apps/piececraft-hq' hide"/>   <!-- HIDE, not toggle: two quick clicks must not cancel (owner, 2026-10-06); the bottom bar's "hotbar" cell shows it again -->
         <repeat count="${hb_n_slots}" bind="hb_s">
-          <item id="hbs${hb_s.#}" class="hb-slot sprite-inline sprite-big ${hb_s.cls}" label="${hb_s.text}" sprite="${hb_s.sprite}"
+          <item id="hbs${hb_s.#}" class="hb-slot skin-bar sprite-inline sprite-big ${hb_s.cls}" label="${hb_s.text}" sprite="${hb_s.sprite}"
                 action="'${HOUSE}/@.apps/hotbar-hq/ops/hotbar_action.sh' '${hb_s.#}' '${HOUSE}/@.apps/piececraft-hq/state/pchq'"/>
         </repeat>
         <!-- terminal readout line between the slots and the command field (the desk's blank band); v1 = the last command typed. class ov-readout: renderer overlay layout. Gated on hb_readout_on, published only by the NEW manager, so a board still running the old renderer never sees an extra title line. -->
@@ -158,10 +158,10 @@
     <footer id="statusbar" class="pchq-footer" show="${entities_bar_on}">
       <text label="ents" class="quiet"/>
       <!-- show/hide the hotbar overlay ("minimize" it into this bar) -->
-      <item id="hb-toggle" class="pchq-ft" label="hotbar"
+      <item id="hb-toggle" class="pchq-ft skin-bar" label="hotbar"
             action="sh '${HOUSE}/@.apps/hotbar-hq/ops/hotbar_toggle.sh' pchq '${HOUSE}/@.apps/piececraft-hq'"/>
       <repeat count="${n_ent}" bind="ent">
-        <item id="e${ent.#}" class="pchq-ft sprite-inline sprite-big" label="${ent.label}" sprite="${ent.sprite}"
+        <item id="e${ent.#}" class="pchq-ft skin-bar sprite-inline sprite-big" label="${ent.label}" sprite="${ent.sprite}"
               action="setsid sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_entity_ctx.sh' '${HOUSE}/@.apps/piececraft-hq' '${ent.x}' '${ent.y}' '${ent.z}' '${ent.kind}' '${ent.id}'"/>
       </repeat>
     </footer>
