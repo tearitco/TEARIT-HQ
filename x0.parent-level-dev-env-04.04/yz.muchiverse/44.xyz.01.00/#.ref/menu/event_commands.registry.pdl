@@ -1030,6 +1030,22 @@ COMMAND stop_game
   TEMPLATE exec "$D/@.apps/piececraft-hq/ops/doom_event.sh" stop_game
 END
 
+COMMAND save_game
+  LABEL Save Game
+  FIELD1 Slot 1-16:
+  FIELD2 -
+  PARAMS slot
+  TEMPLATE exec "$D/@.apps/piececraft-hq/ops/doom_event.sh" save_slot '{slot}'
+END
+
+COMMAND load_game
+  LABEL Load Game
+  FIELD1 Slot 1-16:
+  FIELD2 -
+  PARAMS slot
+  TEMPLATE exec "$D/@.apps/piececraft-hq/ops/doom_event.sh" load_slot '{slot}'
+END
+
 COMMAND graduate
   LABEL Graduate (advance one grade)
   FIELD1 Signed by (auto, or a person's name for grades that need a person):

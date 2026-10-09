@@ -98,7 +98,7 @@
            livedesk_build_player_menu() for the sibling fix. -->
       <item id="pm-play" class="pchq-menu-row dropdown-child" target_id="tb-player"
             label="${player_label}"
-            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'toggle'"/>
+            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'start'"/>
       <item id="pm-stop" class="pchq-menu-row dropdown-child" target_id="tb-player"
             label="Stop"
             action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'stop'"/>
@@ -111,6 +111,54 @@
       <item id="pm-synch" class="pchq-menu-row dropdown-child" target_id="tb-player"
             label="Synch"
             action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'synch'"/>
+      <item id="pm-save-1" class="pchq-menu-row dropdown-child" target_id="tb-player"
+            label="Save 1"
+            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'save:1'"/>
+      <item id="pm-load-1" class="pchq-menu-row dropdown-child" target_id="tb-player"
+            label="Load 1"
+            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'load:1'"/>
+      <item id="pm-save-2" class="pchq-menu-row dropdown-child" target_id="tb-player"
+            label="Save 2"
+            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'save:2'"/>
+      <item id="pm-load-2" class="pchq-menu-row dropdown-child" target_id="tb-player"
+            label="Load 2"
+            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'load:2'"/>
+      <item id="pm-save-3" class="pchq-menu-row dropdown-child" target_id="tb-player"
+            label="Save 3"
+            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'save:3'"/>
+      <item id="pm-load-3" class="pchq-menu-row dropdown-child" target_id="tb-player"
+            label="Load 3"
+            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'load:3'"/>
+      <item id="pm-save-4" class="pchq-menu-row dropdown-child" target_id="tb-player"
+            label="Save 4"
+            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'save:4'"/>
+      <item id="pm-load-4" class="pchq-menu-row dropdown-child" target_id="tb-player"
+            label="Load 4"
+            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'load:4'"/>
+      <item id="pm-save-5" class="pchq-menu-row dropdown-child" target_id="tb-player"
+            label="Save 5"
+            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'save:5'"/>
+      <item id="pm-load-5" class="pchq-menu-row dropdown-child" target_id="tb-player"
+            label="Load 5"
+            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'load:5'"/>
+      <item id="pm-save-6" class="pchq-menu-row dropdown-child" target_id="tb-player"
+            label="Save 6"
+            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'save:6'"/>
+      <item id="pm-load-6" class="pchq-menu-row dropdown-child" target_id="tb-player"
+            label="Load 6"
+            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'load:6'"/>
+      <item id="pm-save-7" class="pchq-menu-row dropdown-child" target_id="tb-player"
+            label="Save 7"
+            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'save:7'"/>
+      <item id="pm-load-7" class="pchq-menu-row dropdown-child" target_id="tb-player"
+            label="Load 7"
+            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'load:7'"/>
+      <item id="pm-save-8" class="pchq-menu-row dropdown-child" target_id="tb-player"
+            label="Save 8"
+            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'save:8'"/>
+      <item id="pm-load-8" class="pchq-menu-row dropdown-child" target_id="tb-player"
+            label="Load 8"
+            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'load:8'"/>
       <item id="pm-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-player"
             label="- cancel -" action="void"/>
     </sidebar>
