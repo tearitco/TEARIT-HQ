@@ -72,7 +72,7 @@
 #define MAX_LINE 512
 #define MAX_PATH 4096
 #define PATH_BUF (MAX_PATH + 256)
-#define MAX_BOARD_DIM 128   /* largest TSOTS desk is 120x110. 64 discarded the rest at load. Fog (18..48) still hides the distance. */
+#define MAX_BOARD_DIM 256   /* Doom at 32 map-units per cell is up to ~216 on a side. 128 cut E1M4 and the rest off the board. */
 
 /* Overlay dimensions - see bv_compose_frame.c's own matching marker-
  * skip line count (OVERLAY_H/GLYPH_H must divide evenly, kept in sync
@@ -2900,7 +2900,7 @@ static int render_one_frame(void) {
 
     /* Real unified voxel grid - see load_voxel_chunk()'s own header
      * comment for the full writeup. static: MAX_VOXEL_Z(64) *
-     * MAX_BOARD_DIM(128) * MAX_BOARD_DIM(128) = 1M chars, too big for
+     * MAX_BOARD_DIM(256) * MAX_BOARD_DIM(256) is too big for
      * the stack. */
     static char board3d[MAX_VOXEL_Z][MAX_BOARD_DIM][MAX_BOARD_DIM];
     int board_w = 0, board_h = 0;

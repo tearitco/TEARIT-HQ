@@ -55,7 +55,7 @@
 #define MAX_LINE 512
 #define MAX_PATH 4096
 #define PATH_BUF (MAX_PATH + 256)
-#define MAX_BOARD_DIM 128   /* match bv_render_3d.c. The cursor has to be able to reach a 120-wide desk. */
+#define MAX_BOARD_DIM 256   /* match bv_render_3d.c. The cursor has to reach a Doom page up to ~216 cells. */
 
 #define ARROW_LEFT  1000
 #define ARROW_RIGHT 1001
