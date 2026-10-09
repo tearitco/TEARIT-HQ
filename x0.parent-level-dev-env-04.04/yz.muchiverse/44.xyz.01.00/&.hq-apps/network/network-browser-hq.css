@@ -62,6 +62,9 @@ sidebar { width: 200px; background-color: #1a1a1a; color: #cccccc; }
 /* 2026-10-08: <dl> pairs and collapsed-<details> labels. */
 .nb-drow { color: #c8d0b8; }
 .nb-summary { color: #9ab8d8; }
+/* 2026-10-08: renderer truncation warning (render_warn var). Amber so it
+   reads as a caveat about the page, not as page content. */
+.nb-warn { color: #d8a83a; }
 .nb-console-text { color: #8fbf8f; }
 .page-title { color: #eeeeee; }
 

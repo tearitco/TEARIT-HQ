@@ -2152,6 +2152,38 @@ static Elem *parse_chtpm(const char *path) {
         if (g_vars_path[0]) g_vars_hash = kh_watch_hash();
         kh_load_vars_multi(g_vars_path);
 
+        /* REAL, NEW 2026-10-08 - publish truncation as a VARIABLE, after
+         * the load so the table's own reset cannot wipe it. The counters go
+         * to the ascii frame dump, which is a debugging surface: only I read
+         * it. This makes the same fact bindable by any window that wants to
+         * tell the USER, e.g.
+         *     <text label="${render_warn}" show="${show_render_warn}"/>
+         *
+         * A window that never binds it is completely unaffected - an
+         * unread var costs one slot and changes nothing. */
+        {
+            char warn[512];
+            warn[0] = 0;
+            if (g_vars_dropped > 0)
+                snprintf(warn, sizeof(warn),
+                         "content truncated: %d value(s) did not fit the window's limit",
+                         g_vars_dropped);
+            else if (g_repeat_clamped > 0)
+                snprintf(warn, sizeof(warn),
+                         "content truncated: a list of %d rows did not fit the window's limit",
+                         g_repeat_clamp_last);
+            else if (g_pool_overflow_count > 0)
+                snprintf(warn, sizeof(warn),
+                         "content truncated: %d element(s) did not fit the window's limit",
+                         g_pool_overflow_count);
+            kh_set_var("render_warn", warn);
+            kh_set_var("show_render_warn", warn[0] ? "1" : "0");
+            /* per-frame counts: the WARN text is sticky until the cause
+             * clears, these always describe the current frame */
+            snprintf(warn, sizeof(warn), "%d", g_vars_dropped);
+            kh_set_var("render_vars_dropped", warn);
+        }
+
         if (strstr(buf, "<repeat")) {
             /* Big enough for a full 256-row tile grid whose <repeat> body
              * carries long ${…} paths (rmmv/emoji): each expanded row is

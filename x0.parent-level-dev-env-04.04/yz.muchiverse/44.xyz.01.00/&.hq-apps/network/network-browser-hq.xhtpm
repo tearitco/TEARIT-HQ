@@ -69,6 +69,11 @@
       <cli_io id="address" class="top nb-address" target_id="address"
               content="${addr_label}" action="${act_go}"/>
       <text id="status" class="nb-status" label="${status}"/>
+      <!-- 2026-10-08: the renderer's own truncation counters, published by
+           khtpm_core_render as render_warn/show_render_warn. Without this the
+           user saw a short page with no explanation; the warning existed
+           only in a debug dump nobody but me reads. -->
+      <text id="nbwarn" class="nb-warn" label="${render_warn}" show="${show_render_warn}"/>
       <scrolllist class="from-top nb-content">
         <repeat count="${content_count}" bind="c">
 <text id="ct${c.#}" class="page-title" label="${c.text}" action="${c.click_action}"        show="${c.is_title}"/>
