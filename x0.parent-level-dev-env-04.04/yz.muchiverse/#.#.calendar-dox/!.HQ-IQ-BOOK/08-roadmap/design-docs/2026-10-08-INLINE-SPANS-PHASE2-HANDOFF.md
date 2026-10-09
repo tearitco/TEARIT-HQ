@@ -101,7 +101,7 @@ Two things deliberately left out:
 
 ---
 
-## 3. The one remaining blocker: getting a screenshot
+## 3. The one remaining blocker - SCREENSHOTTING (now VERIFIED WORKING)
 
 **This is the whole thing standing between you and a committed feature.**
 
@@ -112,28 +112,44 @@ usage: dump_frame_png_op <window_id_hex> <out_png_path>
 ```
 
 It takes an **explicit window id**. A `112` relay dump does NOT reliably
-capture the window you are testing — that is what made four attempts fail.
-The squashed ~370x740 screenshots were **other windows entirely**, not a
-geometry bug.
+capture the window you are testing - that is what made four attempts fail.
+The squashed screenshots were **other windows entirely**, not a geometry bug.
 
-Steps:
+### VERIFIED 2026-10-08 - this exact sequence works
 
-1. Launch the fixture:
-   ```
-   R=<house>/44.xyz.01.00
-   setsid $R/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x \
-       "$R" "$R/&.widgits/span-fixture/span-fixture.xhtpm" \
-       "$R/&.widgits/span-fixture" &
-   ```
-2. Find its window id — `xwininfo -root -tree | grep -i spans`, or
-   `xprop -root _NET_CLIENT_LIST` and check each with `WM_NAME`.
-3. Capture it directly:
-   ```
-   $R/&.widgits/_shared-lib/ops/+x/dump_frame_png_op.+x 0x… /tmp/span.png
-   ```
+```bash
+R=<house>/44.xyz.01.00
+# 1. launch
+setsid $R/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x \
+    "$R" "$R/&.widgits/span-fixture/span-fixture.xhtpm" \
+    "$R/&.widgits/span-fixture" &
+sleep 8
 
-Do **not** trust `/tmp/entity-menu-frame.png` for the fixture. Confirm the
-image is the fixture (5 rows, 720x300) before believing anything about it.
+# 2. find the window BY GEOMETRY, not by name.
+#    The fixture window has NO WM_NAME ("has no name" in xwininfo), so
+#    grepping for "spans" finds nothing. Its unique 720px width does.
+xwininfo -root -tree | grep -E "^\s+0x[0-9a-f]+" | grep -vE "51x51|1x1"
+
+# 3. capture it directly (verified: wrote a 720x38 png showing the title)
+$R/&.widgits/_shared-lib/ops/+x/dump_frame_png_op.+x 0x1a00001 /tmp/span.png
+```
+
+Step 2 matters: the window is **unnamed**, so any name-based lookup fails.
+Geometry is the only reliable handle.
+
+### Known fixture defect, still open
+
+The fixture window came up **720x38** - CSS width applied, height collapsed,
+background stayed light. So the fixture's `.css` is at best partially
+applied. Unresolved. Possible causes to check in order:
+
+1. the same-stem merge not firing for a non-`.chtpm` file (the code comment
+   says "same stem as network-browser-hq.**chtpm**" - this fixture is `.xhtpm`)
+2. `height:` needing a different unit or a class-qualified selector
+3. the merge loading but a later default overriding height/background
+
+Verify by capturing and checking whether `window { width: 720px }` is what
+produced the 720 - that at least proves the file IS being read.
 
 ---
 
