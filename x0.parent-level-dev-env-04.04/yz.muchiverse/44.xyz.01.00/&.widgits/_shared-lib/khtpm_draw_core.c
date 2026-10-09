@@ -392,14 +392,14 @@ static int kh_draw_skin_rect(const char (*dirs)[400], int x, int y, int w, int h
     int b = h;
     if (b < 8) return 0;
     int n = w / b;
-    if (n < 2) return 0;
+    if (n < 1) return 0;
     HqSprite *l = hq_sprite(dirs[0]);
     HqSprite *m = hq_sprite(dirs[1]);
     HqSprite *r = hq_sprite(dirs[2]);
     if (!l || !m || !r) return 0;
     int x0 = x + (w - n * b) / 2;
-    for (int i = 0; i < n; i++)
-        hq_blit_sprite(i == 0 ? l : (i == n - 1 ? r : m), x0 + i * b, y, b, bg_pixel, 0);
+    for (int i = 0; i < n; i++)   /* n == 1: a single middle block (a narrow dock cell) */
+        hq_blit_sprite(n == 1 ? m : (i == 0 ? l : (i == n - 1 ? r : m)), x0 + i * b, y, b, bg_pixel, 0);
     return 1;
 }
 
@@ -995,6 +995,9 @@ static void draw_elem(Elem *e, int hover_id_hash) {
         for (int i = 0; i < bw; i++)
             XDrawRectangle(dpy, buf, gc, e->x + i, e->y + i, e->w - 1 - 2 * i, e->h - 1 - 2 * i);
     }
+    /* livedesk top + bottom bars: every dock cell (an <item> in a dock window) wears the selected skin */
+    if (g_bar_skin_id[0] && window_is_dock() && strcmp(e->tag, "item") == 0)
+        kh_draw_selected_skin(e->x, e->y, e->w, e->h, alloc_pixel(e->style.has_bg_color ? e->style.bg_color : "#2c2c2c"));
     if (elem_has_class(e, "skin-bar"))
         kh_draw_bar_skin(e, alloc_pixel(e->style.has_bg_color ? e->style.bg_color : "#2c2c2c"));
     /* REAL, NEW 2026-09-14 (network-browser video V4 "Nav row with
