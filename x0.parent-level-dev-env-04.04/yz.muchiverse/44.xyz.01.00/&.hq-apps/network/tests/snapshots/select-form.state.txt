@@ -1,6 +1,6 @@
 URL|FIXDIR/fixtures/select-form.html
 TITLE|Select
-TITLE|Pick one
+HEAD|1|Pick one
 TEXT|Colour:
 SELECT|col|red|Red|0
 SELECT|col|grn|Green|1

@@ -1,6 +1,6 @@
 URL|FIXDIR/fixtures/table.html
 TITLE|Table
-TITLE|Price list
+HEAD|1|Price list
 TEXT|Intro paragraph.
 TROW|1|Plan|Price
 TROW|0|Free|0

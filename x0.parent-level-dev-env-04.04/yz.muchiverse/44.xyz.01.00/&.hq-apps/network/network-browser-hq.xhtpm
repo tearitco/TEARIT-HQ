@@ -108,6 +108,16 @@
                emitted at all - it is not visible on the page either. -->
           <text id="dl${c.#}" class="nb-drow"     label="${c.text}" show="${c.is_drow}"/>
           <text id="ds${c.#}" class="nb-summary" label="${c.text}" show="${c.is_summary}"/>
+          <!-- 2026-10-08: <h1>..<h6> keep their level. Previously every
+               heading was one identical TITLE row, so an article arrived
+               with no outline at all. One element per level, each shown only
+               for its own level, so a heading still costs a single element. -->
+          <text id="h1${c.#}" class="nb-h1" label="${c.text}" show="${c.is_h1}"/>
+          <text id="h2${c.#}" class="nb-h2" label="${c.text}" show="${c.is_h2}"/>
+          <text id="h3${c.#}" class="nb-h3" label="${c.text}" show="${c.is_h3}"/>
+          <text id="h4${c.#}" class="nb-h4" label="${c.text}" show="${c.is_h4}"/>
+          <text id="h5${c.#}" class="nb-h5" label="${c.text}" show="${c.is_h5}"/>
+          <text id="h6${c.#}" class="nb-h6" label="${c.text}" show="${c.is_h6}"/>
           <text id="tw${c.#}" class="nb-trow"         label="${c.text}" show="${c.is_trow}"/>
           <!-- 2026-10-08: <input type=file>. Opens the house file-explorer
                and commits the chosen absolute path to the fields file;

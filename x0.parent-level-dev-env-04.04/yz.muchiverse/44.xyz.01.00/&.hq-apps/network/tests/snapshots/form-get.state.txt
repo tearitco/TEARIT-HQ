@@ -1,6 +1,6 @@
 URL|FIXDIR/fixtures/form-get.html
 TITLE|Search form
-TITLE|Search form fixture
+HEAD|1|Search form fixture
 TEXT|Find:
 INPUT|search|search||Search Wikipedia|0
 BUTTON|https://en.wikipedia.org/w/index.php|get|Go

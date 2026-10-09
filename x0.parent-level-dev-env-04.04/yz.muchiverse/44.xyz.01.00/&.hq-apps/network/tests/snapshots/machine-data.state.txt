@@ -1,5 +1,5 @@
 URL|FIXDIR/fixtures/machine-data.html
 TITLE|Noise
-TITLE|Noise
+HEAD|1|Noise
 TEXT|Real prose that must survive the filter.
 TEXT|Another real sentence, with punctuation: "Guitar" and "Gatar" redirect.

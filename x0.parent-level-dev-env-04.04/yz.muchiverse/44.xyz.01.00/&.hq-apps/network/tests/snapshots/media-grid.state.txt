@@ -1,6 +1,6 @@
 URL|FIXDIR/fixtures/media-grid.html
 TITLE|Media grid
-TITLE|Media grid fixture
+HEAD|1|Media grid fixture
 TEXT|Six consecutive images below should tile as a grid, not a list.
 IMG|HOUSE/#.desktop/nb_sprites/mN|one
 IMG|HOUSE/#.desktop/nb_sprites/mN|two

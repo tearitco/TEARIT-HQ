@@ -1,6 +1,6 @@
 URL|FIXDIR/fixtures/lists.html
 TITLE|Lists
-TITLE|Shopping
+HEAD|1|Shopping
 TEXT|Before.
 LIST|1|-|Apples
 LIST|1|-|Pears

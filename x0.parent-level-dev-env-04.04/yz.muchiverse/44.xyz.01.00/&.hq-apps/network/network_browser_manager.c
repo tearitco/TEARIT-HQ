@@ -1371,7 +1371,13 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                     line[linelen] = '\0';
                     html_decode_entities(line);
                     collapse_ws(line);
-                    if (line[0] && !junk_visible_line(line)) { fprintf(out, "TITLE|%s\n", line); line_count++; }
+                    /* 2026-10-08: HEAD|<level>|<text>, not TITLE|<text>.
+                     * Every heading used to arrive as the same TITLE row, so
+                     * h1 and h4 were indistinguishable and an article lost
+                     * its outline entirely. TITLE| is kept for the document
+                     * title alone (the one at the top of this file). */
+                    if (line[0] && !junk_visible_line(line))
+                        fprintf(out, "HEAD|%c|%s\n", tagname[1], line);
                     linelen = 0;
                 }
                 const char *gt = strchr(p, '>');
@@ -5198,6 +5204,21 @@ static void write_ui_projection(void) {
                     uisan(rest, t, sizeof(t));
                     UI_PUT("c_%d_kind=title\nc_%d_is_title=1\nc_%d_text=%s\n", rc, rc, rc, t);
                     if (click_action[0]) UI_PUT("c_%d_sel=%s\nc_%d_click_action=%s", rc, pending_sel, rc, click_action);
+                } else if (strcmp(kind, "HEAD") == 0) {
+                    /* HEAD|<level>|<text> - one row per h1..h6, level kept
+                     * so the outline survives. The template carries one
+                     * element per level (nb-h1..nb-h6) and each shows only
+                     * for its own level: still one element per content row,
+                     * which is what the element pool is sized against. */
+                    char *hb = strchr(rest, '|');
+                    if (!hb) continue;
+                    *hb = 0;
+                    int lvl = rest[0] - '0';
+                    if (lvl < 1 || lvl > 6) lvl = 2;
+                    uisan(hb + 1, t, sizeof(t));
+                    if (!t[0] || junk_visible_line(t)) continue;
+                    UI_PUT("c_%d_kind=head\nc_%d_text=%s\n", rc, rc, t);
+                    UI_PUT("c_%d_is_h%d=1\n", rc, lvl);
                 } else if (strcmp(kind, "SUMMARY") == 0) {
                     /* The always-visible label of a collapsed <details>.
                      * Drawn with a marker so it reads as "there is more

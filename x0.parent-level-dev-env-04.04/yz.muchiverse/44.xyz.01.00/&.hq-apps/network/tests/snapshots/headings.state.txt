@@ -1,0 +1,14 @@
+URL|FIXDIR/fixtures/headings.html
+TITLE|Headings
+HEAD|1|Top level
+TEXT|Body one.
+HEAD|2|Section
+TEXT|Body two.
+HEAD|3|Subsection
+TEXT|Body three.
+HEAD|4|Minor heading
+TEXT|Body four.
+HEAD|5|Deeper still
+TEXT|Body five.
+HEAD|6|Deepest
+TEXT|Body six.

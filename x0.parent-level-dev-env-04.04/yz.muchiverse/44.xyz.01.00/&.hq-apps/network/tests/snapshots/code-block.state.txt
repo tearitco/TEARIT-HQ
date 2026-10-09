@@ -1,6 +1,6 @@
 URL|FIXDIR/fixtures/code-block.html
 TITLE|Pre Block
-TITLE|Code sample
+HEAD|1|Code sample
 TEXT|Before the block.
 CODE|int main(void) {
 CODE|    int x = 1  2;

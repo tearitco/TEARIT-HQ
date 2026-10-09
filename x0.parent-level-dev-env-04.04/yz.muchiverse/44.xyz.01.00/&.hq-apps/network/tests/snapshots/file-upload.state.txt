@@ -1,6 +1,6 @@
 URL|FIXDIR/fixtures/file-upload.html
 TITLE|Upload
-TITLE|Upload
+HEAD|1|Upload
 TEXT|Caption:
 INPUT|cap|text|my caption||0
 TEXT|Doc:
