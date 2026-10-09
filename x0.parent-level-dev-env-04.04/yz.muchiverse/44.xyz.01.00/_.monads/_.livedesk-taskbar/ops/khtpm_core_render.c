@@ -4671,7 +4671,8 @@ static int g_n_generic_sbars;
  * "SCROLLDOWN:<i>"), so an AI/keyboard-only session (this house's own
  * digit-jump nav convention) can actually reach and use them - the
  * existing thumb/track was mouse-only. */
-static Elem g_sbar_up_elem[8], g_sbar_down_elem[8];
+static Elem g_sbar_up_elem[8], g_sbar_down_elem[8], g_sbar_thumb_elem[8];
+static int g_sbar_drag = -1;   /* index into g_generic_sbars[] while button 1 drags its thumb / track */
 
 static void generic_sbar_reset(void) { g_n_generic_sbars = 0; }
 
@@ -4731,7 +4732,7 @@ static void generic_sbar_register(int x, int y, int w, int h, int *scroll,
     b->thumb_h = th;
     b->thumb_y = b->track_y + ((max_scroll > 0 && usable > 0) ? (sc * usable) / max_scroll : 0);
 
-    if (!have_arrows) { g_sbar_up_elem[slot].w = 0; g_sbar_down_elem[slot].w = 0; return; }
+    if (!have_arrows) { g_sbar_up_elem[slot].w = 0; g_sbar_down_elem[slot].w = 0; g_sbar_thumb_elem[slot].w = 0; return; }
     Elem *up = &g_sbar_up_elem[slot], *dn = &g_sbar_down_elem[slot];
     memset(up, 0, sizeof(*up)); memset(dn, 0, sizeof(*dn));
     snprintf(up->tag, sizeof(up->tag), "item"); snprintf(dn->tag, sizeof(dn->tag), "item");
@@ -4759,6 +4760,35 @@ static void generic_sbar_register(int x, int y, int w, int h, int *scroll,
     css_compute_style(&g_sheet, dn->tag, dn->id, dn->classes, dn->n_classes, 0, &dn->style);
     up->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = up;
     dn->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = dn;
+    {   /* the draggable thumb is a numbered nav item too (owner 2026-10-08: "drag also should have a nav index number") -
+         * Enter/click only focuses it (SCROLLTHUMB is a no-op action); mouse drag and Up/Down scroll. */
+        Elem *th = &g_sbar_thumb_elem[slot];
+        memset(th, 0, sizeof(*th));
+        snprintf(th->tag, sizeof(th->tag), "item");
+        snprintf(th->id, sizeof(th->id), "sbar-thumb-%d", slot);
+        snprintf(th->classes[0], sizeof(th->classes[0]), "sbar-arrow"); th->n_classes = 1;
+        snprintf(th->label, sizeof(th->label), "=");
+        snprintf(th->onclick, sizeof(th->onclick), "SCROLLTHUMB:%d", slot);
+        th->w = aw; th->h = ah;
+        th->x = b->track_x + b->track_w - aw;
+        th->y = b->thumb_y + (b->thumb_h - ah) / 2;
+        if (th->y < b->track_y) th->y = b->track_y;
+        if (th->y > b->track_y + b->track_h - ah) th->y = b->track_y + b->track_h - ah;
+        kh_clamp_elem_onscreen(th);
+        css_compute_style(&g_sheet, th->tag, th->id, th->classes, th->n_classes, 0, &th->style);
+        th->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = th;
+    }
+}
+
+/* Pointer y -> scroll value for generic scrollbar i (thumb centred on the pointer). */
+static void generic_sbar_scroll_from_y(int i, int y) {
+    GenericScrollBar *b = &g_generic_sbars[i];
+    int span = b->track_h - b->thumb_h, sc;
+    if (!b->scroll || b->max_scroll < 1 || span < 1) return;
+    sc = ((y - b->track_y - b->thumb_h / 2) * b->max_scroll + span / 2) / span;
+    if (sc < 0) sc = 0;
+    if (sc > b->max_scroll) sc = b->max_scroll;
+    *b->scroll = sc;
 }
 
 static void draw_generic_scrollbars(void) {
@@ -7061,7 +7091,7 @@ static int layout_dock_bar(Elem *page) {
                 max_sc = (n_open - 1) - g_dock_dd_vis;
                 if (g_dock_dd_scroll > max_sc) g_dock_dd_scroll = max_sc;
                 if (g_dock_dd_scroll < 0) g_dock_dd_scroll = 0;
-                col_w += 16;                           /* room for the thumb at the right edge */
+                col_w += 24;                           /* room for the thumb at the right edge */
             }
         } else if (!trig0 && !is_bottom) { g_dock_dd_target[0] = '\0'; g_dock_dd_scroll = 0; }
         if (col_w < 48) col_w = 48;
@@ -7466,16 +7496,16 @@ static void dock_paint_menu(void) {
             }
         }
         if (g_dock_dd_scrolling && g_dock_dd_vis > 0 && g_dock_dd_total > 1) {
-            int tx = g_win_w - 14, ty = 0, th_all = g_dock_dd_vis * DOCK_BAR_H;
+            int tx = g_win_w - 22, ty = 0, th_all = g_dock_dd_vis * DOCK_BAR_H;
             int content = g_dock_dd_total - 1, max_sc = content - g_dock_dd_vis;
             int thumb_h = (th_all * g_dock_dd_vis) / content, thumb_y;
             if (thumb_h < 14) thumb_h = 14;
             if (thumb_h > th_all) thumb_h = th_all;
             thumb_y = (max_sc > 0) ? ty + ((th_all - thumb_h) * g_dock_dd_scroll) / max_sc : ty;
             XSetForeground(dpy, gc, alloc_pixel("#2a2a2a"));
-            XFillRectangle(dpy, buf, gc, tx, ty, 10, (unsigned)th_all);
+            XFillRectangle(dpy, buf, gc, tx, ty, 18, (unsigned)th_all);
             XSetForeground(dpy, gc, alloc_pixel("#aaaaaa"));
-            XFillRectangle(dpy, buf, gc, tx + 1, thumb_y, 8, (unsigned)thumb_h);
+            XFillRectangle(dpy, buf, gc, tx + 2, thumb_y, 14, (unsigned)thumb_h);
         }
         /* 2px theme-secondary window frame in a dedicated margin,
          * drawn LAST, right before the present. */
@@ -8478,6 +8508,7 @@ static void assign_nav_and_layout(void) {
             g_generic_sbars[i].thumb_y += fb;
             if (g_sbar_up_elem[i].w > 0)   { g_sbar_up_elem[i].x += fb;   g_sbar_up_elem[i].y += fb; }
             if (g_sbar_down_elem[i].w > 0) { g_sbar_down_elem[i].x += fb; g_sbar_down_elem[i].y += fb; }
+            if (g_sbar_thumb_elem[i].w > 0) { g_sbar_thumb_elem[i].x += fb; g_sbar_thumb_elem[i].y += fb; }
         }
         g_win_w += 2 * fb; g_win_h += 2 * fb;
         g_window->w = g_win_w; g_window->h = g_win_h;
@@ -10152,6 +10183,7 @@ static void activate_focused(void) {
      * never see them. Index-matched into g_generic_sbars[], the SAME
      * array this frame's own layout pass just populated - clamped
      * against its own real max_scroll, not a guessed bound. */
+    if (strncmp(item->onclick, "SCROLLTHUMB:", 12) == 0) return;   /* focus only: drag / Up / Down move it */
     if (strncmp(item->onclick, "SCROLLUP:", 9) == 0 || strncmp(item->onclick, "SCROLLDOWN:", 11) == 0) {
         int up = item->onclick[6] == 'U';
         int i = atoi(item->onclick + (up ? 9 : 11));
@@ -10998,10 +11030,6 @@ static void redraw(void) {
              * outside the parsed tree too, same real reason/pattern as
              * the close/fullscreen pair right above - serialized
              * explicitly here, once per registered scrollbar slot. */
-            for (int sbi = 0; sbi < g_n_generic_sbars; sbi++) {
-                if (g_sbar_up_elem[sbi].w > 0) kh_serialize_frame_elem(ff, &g_sbar_up_elem[sbi]);
-                if (g_sbar_down_elem[sbi].w > 0) kh_serialize_frame_elem(ff, &g_sbar_down_elem[sbi]);
-            }
             /* MILESTONE B/C - the synthesized footer row pager, same
              * "lives outside the parsed tree" pattern as the chrome
              * trio above. */
@@ -11010,6 +11038,13 @@ static void redraw(void) {
             /* MILESTONE A polish - open dropdown-child last so it paints
              * OVER the <canvas> / <footer> (direct report). */
             kh_serialize_frame_deferred(ff);
+            /* scrollbar ^/thumb/v elements LAST: a windowed (long) open dropdown paints its rows in the deferred pass above,
+             * and the bar must sit on top of them, not under */
+            for (int sbi = 0; sbi < g_n_generic_sbars; sbi++) {
+                if (g_sbar_up_elem[sbi].w > 0) kh_serialize_frame_elem(ff, &g_sbar_up_elem[sbi]);
+                if (g_sbar_down_elem[sbi].w > 0) kh_serialize_frame_elem(ff, &g_sbar_down_elem[sbi]);
+                if (g_sbar_thumb_elem[sbi].w > 0) kh_serialize_frame_elem(ff, &g_sbar_thumb_elem[sbi]);
+            }
             fclose(ff); rename(tmpp, fpath);
         }
         {
@@ -13488,8 +13523,21 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
                     g_canvas_drag_px = ev->xbutton.x; g_canvas_drag_py = ev->xbutton.y;
                 }
             }
+            if (ev->xbutton.button == 1 && cw == win && !g_dock_click_menu) {
+                for (int si = 0; si < g_n_generic_sbars; si++) {
+                    GenericScrollBar *sb = &g_generic_sbars[si];
+                    if (!sb->scroll || sb->max_scroll < 1) continue;
+                    if (ev->xbutton.x >= sb->track_x - 6 && ev->xbutton.x <= sb->track_x + sb->track_w + 6 &&
+                        ev->xbutton.y >= sb->track_y && ev->xbutton.y < sb->track_y + sb->track_h) {
+                        g_sbar_drag = si;                 /* press on a scrollbar track / thumb: drag it */
+                        generic_sbar_scroll_from_y(si, ev->xbutton.y);
+                        if (!g_quit) { assign_nav_and_layout(); redraw(); }
+                        return;
+                    }
+                }
+            }
             if (window_is_dock() && g_dock_menu_win && cw == g_dock_menu_win && ev->xbutton.button == 1 &&
-                g_dock_dd_scrolling && ev->xbutton.x >= g_dock_menu_w - 16 && ev->xbutton.y < g_dock_dd_vis * DOCK_BAR_H) {
+                g_dock_dd_scrolling && ev->xbutton.x >= g_dock_menu_w - 26 && ev->xbutton.y < g_dock_dd_vis * DOCK_BAR_H) {
                 g_dock_dd_drag = 1;                       /* press on the thumb / track: drag it (no row activation) */
                 dock_dd_scroll_from_y(ev->xbutton.y);
                 if (!g_quit) { assign_nav_and_layout(); redraw(); }
@@ -13680,6 +13728,7 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
     }
     if (ev->type == ButtonRelease && ev->xbutton.button == 1) {
         g_canvas_drag = 0;
+        g_sbar_drag = -1;
         g_dock_dd_drag = 0;
         g_popup_dragging = 0;  /* REAL, NEW 2026-08-29 (TASK 1) */
         g_text_drag_elem = NULL; /* REAL, NEW 2026-09-14 - end any real text drag-select */
@@ -13694,6 +13743,13 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
             kh_save_win_size();
             if (!g_quit) { assign_nav_and_layout(); redraw(); }
         }
+        return;
+    }
+    if (ev->type == MotionNotify && g_sbar_drag >= 0 && g_sbar_drag < g_n_generic_sbars && (ev->xmotion.state & Button1Mask)) {
+        XEvent msb;
+        while (XCheckTypedWindowEvent(dpy, ev->xmotion.window, MotionNotify, &msb)) *ev = msb;
+        generic_sbar_scroll_from_y(g_sbar_drag, ev->xmotion.y);
+        if (!g_quit) { assign_nav_and_layout(); redraw(); }
         return;
     }
     if (ev->type == MotionNotify && g_dock_dd_drag && (ev->xmotion.state & Button1Mask)) {
