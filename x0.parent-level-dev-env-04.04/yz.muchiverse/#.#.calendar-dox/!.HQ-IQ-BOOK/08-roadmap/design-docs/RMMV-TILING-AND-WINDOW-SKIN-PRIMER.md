@@ -342,6 +342,57 @@ one row only, not all 48.
 - `autotile_pick_quadrant` is still not in this JS. The runtime reads
   `getAutotileShape(tileId)`. The neighbor-to-shape gap stands.
 
+## Flat bars for text — 2026-10-09
+
+`bar_skin_scan.py` now also requires a shared text band. The band is
+the longest run of rows that are opaque across the left cap, the
+middle, and the right cap. It must be at least a quarter of the 48px
+block, and the same run on all three. A cap with a post or brace in
+its center below that run fails. The mutant covers both a lip that is
+too short and a post hanging under a good band. Both fail.
+
+Of the nine seam passes, two survive:
+
+| id | cells | band | look |
+| --- | --- | --- | --- |
+| dungeon-wood-lower | Dungeon_B 0,15 / 1,15 / 2,15 | 0.31, at the bottom of the block | Same wood family as dungeon-wood. The posts are above the beam, so the test allows them. The label has to sit in that bottom band, not in the vertical center of the cell. |
+| sf-inside-ledge | SF_Inside_B 0,12 / 1,12 / 2,12 | 0.48, from the top | A different look. A flat stone ledge, no posts. |
+
+The beams, the upper wood rail, both arches, and both trusses fail
+because a brace or a leg continues below the bar. Contact at desk-cell
+size (80px) with `book:pre-design` in M+ 1m, drawn inside the band:
+`/tmp/rmmv-flat-bars.png`. Not in git.
+
+Crop ids for B sheets are 1-based row-major, `row * 16 + col + 1`.
+Checked against `Dungeon_b/225/sprite.csv`: its first pixel is the
+first pixel of Dungeon_B cell 0,14. The earlier note that said 224 was
+off by one.
+
+## How a crop is made
+
+`palettes_manager.c` `publish_rmmv()` loads
+`<rmmv img root>/tilesets/<Prefix>_<SUFFIX>.png` and
+`write_rmmv_sprite_csv()` writes
+
+```
+# resolution=48
+# scale=1.0
+# transform=0,0,0
+r,g,b,a
+```
+
+then 48×48 lines of `r,g,b,a`. For a B or C sheet each cell is its own
+tile. The folder is `sprites/rmmv/<prefix>_<letter>/<nnn>/sprite.csv`,
+`nnn` from 001. Autotile sheets (A1–A4) are grouped into blocks instead
+of one folder per 48px cell. B is not.
+
+Adding `SF_Inside_B` and `SF_Outside_B` means those two PNGs have to be
+visible to `rmmv_img_root()` (the palettes tilesets dir, not the
+Downloads copy), and then a publish that misses the cache writes the
+csvs. Nothing was written into the repo. Two sample files, one cell
+each, are in `/tmp/rmmv-crop-dryrun/SF_Inside_b/194` (ledge middle) and
+`/tmp/rmmv-crop-dryrun/SF_Outside_b/051` (stone middle).
+
 ## Skin catalog — what I would change
 
 The proposal is right: item 22 cycles more than one skin, the way the

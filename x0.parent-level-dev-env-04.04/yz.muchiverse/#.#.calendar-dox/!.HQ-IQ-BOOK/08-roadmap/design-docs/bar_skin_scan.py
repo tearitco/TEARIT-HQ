@@ -91,6 +91,89 @@ def scan(sheets):
     return middles
 
 
+MIN_BAND = 0.25  # shared opaque rows / 48
+
+
+def row_span(px, c, r, y):
+    n = 0
+    for x in range(48):
+        p = px[c * 48 + x, r * 48 + y]
+        if p[3] >= 40 and not (p[0] > 200 and p[2] > 200 and p[1] < 80):
+            n += 1
+    return n >= 36
+
+
+def center_opaque_below(px, c, r, y0):
+    """A post or brace hanging under the shared band, in the middle of the cap."""
+    for y in range(y0, 48):
+        hit = 0
+        for x in range(16, 32):
+            p = px[c * 48 + x, r * 48 + y]
+            if p[3] >= 40:
+                hit += 1
+        if hit >= 8:
+            return True
+    return False
+
+
+def text_band(px, cells):
+    """cells are (col, row). Returns (y0, height, fraction) or None.
+
+    The band is the longest run of rows that are opaque across every
+    cell. Caps and the middle must share that same run: a cap whose
+    spanning rows differ is rejected by the caller comparing heights.
+    A post under the band fails even when the spanning rows match.
+    """
+    rows = []
+    for y in range(48):
+        if all(row_span(px, c, r, y) for c, r in cells):
+            rows.append(y)
+    if not rows:
+        return None
+    best = (rows[0], 1)
+    start = rows[0]
+    prev = rows[0]
+    for y in rows[1:]:
+        if y == prev + 1:
+            if y - start + 1 > best[1]:
+                best = (start, y - start + 1)
+        else:
+            start = y
+        prev = y
+    y0, h = best
+    if h / 48 < MIN_BAND:
+        return None
+    for c, r in cells:
+        # each cell's own spanning run over the shared rows must cover them
+        if not all(row_span(px, c, r, y) for y in range(y0, y0 + h)):
+            return None
+    (lc, lr), (_mc, _mr), (rc, rr) = cells
+    if center_opaque_below(px, lc, lr, y0 + h) or center_opaque_below(px, rc, rr, y0 + h):
+        return None
+    return y0, h, round(h / 48, 3)
+
+
+def mutant_text_band_must_fail():
+    im = Image.new("RGBA", (48, 48), (0, 0, 0, 0))
+    px = im.load()
+    for y in range(10, 30):
+        for x in range(48):
+            px[x, y] = (180, 140, 90, 255)
+    assert text_band(px, [(0, 0), (0, 0), (0, 0)])
+    # Cap is only a 4px lip. Shared run is too short.
+    cap = Image.new("RGBA", (48, 48), (0, 0, 0, 0))
+    cpx = cap.load()
+    for y in range(10, 14):
+        for x in range(48):
+            cpx[x, y] = (180, 140, 90, 255)
+    assert text_band(cpx, [(0, 0), (0, 0), (0, 0)]) is None
+    # Post hanging below an otherwise good band.
+    for y in range(30, 47):
+        for x in range(18, 30):
+            px[x, y] = (90, 60, 30, 255)
+    assert text_band(px, [(0, 0), (0, 0), (0, 0)]) is None
+
+
 def mutant_must_fail():
     """A middle that tiled, with its right column painted a different color."""
     im = Image.new("RGBA", (48, 48), (0, 0, 0, 0))
@@ -108,6 +191,7 @@ def mutant_must_fail():
 
 if __name__ == "__main__":
     mutant_must_fail()
+    mutant_text_band_must_fail()
     names = sorted(
         n for n in os.listdir(BASE)
         if n.endswith(".png") and (
