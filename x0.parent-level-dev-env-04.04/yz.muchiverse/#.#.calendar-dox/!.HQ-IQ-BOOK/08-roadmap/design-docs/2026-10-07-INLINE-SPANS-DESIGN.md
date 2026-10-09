@@ -74,8 +74,67 @@ The xhtpm repeat body gains one rich candidate. Problem: segment count
 varies per row and the template engine has no nested repeat — so the
 candidate must be a SINGLE element type the renderer lays inline
 (e.g. `<richtext id=... segments="${...}">` with an encoded payload),
-not N child elements. Encoding: unit-separator-joined segments
-(`kind\x1Ftext\x1Furl`), since labels never contain \x1F after uisan.
+not N child elements. Encoding is MANDATORY and was wrong here — see the
+encoding fix below. Segments are joined with **\x1E**; the three fields
+inside a segment are separated with **\x1F**:
+
+```
+segments="text\x1FSee the \x1F\x1Elink\x1Fdocs\x1F'https:\/\/x'\x1F..."
+           ^kind  ^text      ^url          ^next segment
+```
+
+`\x1E` (record separator) never appears in a label after `uisan()`, so
+both bytes are safe as delimiters.
+
+## ENCODING FIX (2026-10-08) — the original spec was ambiguous and cost a day
+
+The doc previously said only *"unit-separator-joined segments
+(`kind\x1Ftext\x1Furl`)"*, never naming the joiner. Implementing that
+literally uses `\x1F` for BOTH the field separator and the segment join,
+so a 3-segment group emits 8 separators with no way to tell where a
+segment ends. The reader walks it field-by-field, produces nothing, and
+the encoder silently emits no row at all — which looked exactly like the
+branch never running, and cost two wrong diagnoses.
+
+**Encoder and decoder must agree on two distinct bytes.** If you are
+changing either, change this paragraph too.
+
+## Two bugs found in the manager-side encoder (2026-10-08)
+
+Both in code with no consumer yet, both reverted rather than shipped:
+
+1. **Ambiguous separators** (above) — fixed by the `\x1E`/`\x1F` split.
+2. **Probable stack pressure.** The branch added `char payload[8192]` and
+   `char flat[4096]` as locals inside the projector's row loop, which
+   already carries per-iteration buffers. Output showed
+   `c_-1305130384_text=(null)` — a garbage `%d` and a null `%s`, the
+   signature of stack corruption. Unverified: the code was reverted before
+   it could be confirmed. Heap-allocate or shrink both. Precedent in the
+   same function: an out-of-bounds read once produced
+   `free(): invalid size`.
+
+The pairing pre-pass itself was proven correct by probe:
+`ngrp=1 first_nseg=3`, branch reached — so neither bug was the grouping
+or the row walk.
+
+## REORDERED PHASE 2 (2026-10-08) — build the renderer half FIRST
+
+The original order put the manager encoder before the renderer. Both bugs
+above live in an encoder with nothing consuming it, which is the worst
+order: a bug there blocks the feature while contributing nothing.
+
+New order:
+
+1. **Renderer primitive, driven by a static `.xhtpm` fixture** with a
+   literal `segments="..."` attribute. No manager involved.
+2. Regression-check other panes in isolation — the shared renderer is the
+   risky part and should be verified without the browser in the loop.
+3. **Then** the manager encoder, now written to satisfy a decoder that
+   already exists and is tested.
+
+This also stops bug 1 being inherited: the decoder is written first, so
+the encoder must match a real, exercised spec instead of a paragraph of
+prose.
 
 ## Renderer (shared core, coordination required)
 
@@ -92,13 +151,18 @@ not N child elements. Encoding: unit-separator-joined segments
 - Clip, never translate; idempotent per-frame; generic scrollbar owns
   scroll. (Per khtpm-house-standards layout rules.)
 
-## Phases
+## Phases — SUPERSEDED 2026-10-08, see REORDERED PHASE 2 above
 
-1. Manager: RICH/RICHSEG emission + merge passthrough + projector vars
-   (our lane, safe alone — renders as nothing until xhtpm/renderer land,
-   so gate behind a `rich=1` marker the template ignores meanwhile).
-2. Renderer inline layout/draw/hit-test (shared — needs review).
-3. xhtpm candidate + end-to-end proof on Blockly paragraphs.
+Original order, kept so the change is visible. It front-loaded the
+manager encoder ahead of the renderer, which is how two bugs landed in
+code with no consumer.
+
+1. ~~Manager: RICH/RICHSEG emission + merge passthrough + projector vars~~
+   — emission and merge ARE done; the projector encoder is **not**, and is
+   now step 3.
+2. ~~Renderer inline layout/draw/hit-test~~ — now **step 1**, first, against
+   a static fixture.
+3. xhtpm candidate + end-to-end proof on a real article paragraph.
 
 ## Explicitly not in scope
 
