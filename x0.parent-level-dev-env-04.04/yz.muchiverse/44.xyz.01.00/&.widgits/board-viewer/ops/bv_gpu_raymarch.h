@@ -23,7 +23,7 @@
 
 #define BV_GPU_MAX_LEGEND 64
 #define BV_GPU_MAX_BOX    128
-#define BV_GPU_MAX_MODEL  24     /* one model per desk pal; the old 8 left the rest a flat green box */
+#define BV_GPU_MAX_MODEL  80     /* charset extrusions share this list with hero/trees; 24 left classic-board people as flat boxes */
 #define BV_GPU_MDL_DIM    32     /* max local grid side */
 #define BV_GPU_MDL_DEPTH  8      /* phymoji lz is always 0..7 */
 
@@ -70,6 +70,10 @@ typedef struct {
     int   maker, maker_id, atlas_w, atlas_h, atlas_cols, tile_px, cells_w, cells_h;
     const unsigned char  *atlas;
     const unsigned short *cells;
+    /* Far-plane sky. Sampled only when a ray misses. para == NULL keeps u_sky.
+     * loop tiles across the frame. The camera vectors are not involved. */
+    const unsigned char *para;
+    int para_w, para_h, para_loop_x, para_loop_y;
     float fog_start, fog_end;    /* distance fog in cells: hits fade to the sky colour between start and end; fog_end <= fog_start = off */
     float wire_edge, wire_thin;  /* edge half-widths in cells for wire 1 / wire 2; 0 = defaults (0.10 / 0.03) */
     int   box_n;

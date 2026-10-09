@@ -846,6 +846,141 @@ static int load_rgba_png(const char *path, unsigned char **out, int *w, int *h) 
     return 1;
 }
 
+/* One charset frame, nearest-neighbour, skipping clear pixels. */
+static void blit_frame(unsigned char *dst, int W, int H,
+                       int dx, int dy, int dw, int dh,
+                       const unsigned char *src, int sw, int sh,
+                       int sx, int sy, int fw, int fh) {
+    if (fw < 1 || fh < 1 || dw < 1 || dh < 1) return;
+    for (int y = 0; y < dh; y++) {
+        int yy = dy + y;
+        if (yy < 0 || yy >= H) continue;
+        int syy = sy + (y * fh) / dh;
+        if (syy < 0 || syy >= sh) continue;
+        for (int x = 0; x < dw; x++) {
+            int xx = dx + x;
+            if (xx < 0 || xx >= W) continue;
+            int sxx = sx + (x * fw) / dw;
+            if (sxx < 0 || sxx >= sw) continue;
+            const unsigned char *s = src + ((size_t)syy * (size_t)sw + (size_t)sxx) * 4;
+            if (s[3] < 16) continue;
+            unsigned char *p = dst + ((size_t)yy * (size_t)W + (size_t)xx) * 4;
+            p[0] = s[0]; p[1] = s[1]; p[2] = s[2]; p[3] = 255;
+        }
+    }
+}
+
+/* events.txt beside map.png. A line is one visible map event:
+ *   x y r g b charset index direction pattern
+ * Feet sit on the bottom of the cell. A '!' sheet is one cell tall.
+ * Any other sheet is two cells tall. This binary is a new process
+ * each frame, so the sheet cache lives only for this call. */
+static void draw_map_events(unsigned char *px, int W, int H,
+                            const char *map_png, int map_tile,
+                            int map_px0, int map_py0, int draw) {
+    if (!map_png || map_tile < 1 || draw < 1) return;
+    char path[PATH_BUF];
+    size_t n = strlen(map_png);
+    if (n < 8 || n >= sizeof(path)) return;
+    snprintf(path, sizeof(path), "%.*s/events.txt", (int)(n - 8), map_png);
+    FILE *f = host_fopen(path, "r");
+    if (!f) return;
+    typedef struct { char name[64]; unsigned char *px; int w, h; } Sheet;
+    Sheet sheets[32];
+    int ns = 0;
+    memset(sheets, 0, sizeof(sheets));
+    char line[256];
+    int drawn = 0;
+    while (drawn < 256 && fgets(line, sizeof(line), f)) {
+        int ex, ey, r, g, b, index, dir, pat;
+        char name[64];
+        if (sscanf(line, "%d %d %d %d %d %63s %d %d %d",
+                   &ex, &ey, &r, &g, &b, name, &index, &dir, &pat) != 9)
+            continue;
+        (void)r; (void)g; (void)b;
+        int si = -1;
+        for (int i = 0; i < ns; i++) if (strcmp(sheets[i].name, name) == 0) si = i;
+        if (si < 0 && ns < 32) {
+            char dirn[PATH_BUF], sheet[PATH_BUF];
+            snprintf(dirn, sizeof(dirn), "%s", map_png);
+            /* Sheets live in the repo #.NNEST_ASSETS, eleven
+             * directories above a desk map.png. Eight stops inside
+             * 44.xyz.01.00, which has no assets dir. */
+            for (int up = 0; up < 16 && si < 0; up++) {
+                char *sl = strrchr(dirn, '/');
+                if (!sl) break;
+                *sl = 0;
+                snprintf(sheet, sizeof(sheet),
+                         "%s/#.NNEST_ASSETS/tsots-characters/%s.png", dirn, name);
+                if (load_rgba_png(sheet, &sheets[ns].px, &sheets[ns].w, &sheets[ns].h)) {
+                    snprintf(sheets[ns].name, sizeof(sheets[ns].name), "%s", name);
+                    si = ns++;
+                }
+            }
+        }
+        if (si < 0) continue;
+        int sw = sheets[si].w, sh = sheets[si].h;
+        int row = dir == 4 ? 1 : dir == 6 ? 2 : dir == 8 ? 3 : 0;
+        if (pat < 0) pat = 0;
+        if (pat > 2) pat = 2;
+        int pw, ph, sx, sy;
+        if (name[0] == '$') {
+            pw = sw / 3; ph = sh / 4;
+            sx = pat * pw; sy = row * ph;
+        } else {
+            pw = sw / 12; ph = sh / 8;
+            if (index < 0) index = 0;
+            if (index > 7) index = 7;
+            sx = ((index % 4) * 3 + pat) * pw;
+            sy = ((index / 4) * 4 + row) * ph;
+        }
+        if (pw < 1 || ph < 1) continue;
+        int dh = (name[0] == '!') ? draw : draw * 2;
+        int dw = dh * pw / ph;
+        if (dw < 1) dw = 1;
+        int left = (ex * map_tile - map_px0) * draw / map_tile;
+        int bottom = ((ey + 1) * map_tile - map_py0) * draw / map_tile;
+        blit_frame(px, W, H, left + (draw - dw) / 2, bottom - dh, dw, dh,
+                   sheets[si].px, sw, sh, sx, sy, pw, ph);
+        drawn++;
+    }
+    fclose(f);
+    for (int i = 0; i < ns; i++) free(sheets[i].px);
+}
+
+/* parallax.pdl sits beside map.png. show=0 means this desk has no sky.
+ * loop_x / loop_y tile with the map scroll. sx/sy are stored for a
+ * later scroll tick and are not applied here. */
+static int desk_parallax(const char *map_png, int *loop_x, int *loop_y) {
+    *loop_x = 0;
+    *loop_y = 0;
+    char pdl[PATH_BUF];
+    size_t n = strlen(map_png);
+    if (n < 8 || n >= sizeof(pdl)) return 0;
+    snprintf(pdl, sizeof(pdl), "%.*s/parallax.pdl", (int)(n - 8), map_png);
+    FILE *f = host_fopen(pdl, "r");
+    if (!f) return 0;
+    int show = 0;
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        char *p = strstr(line, "show");
+        if (p && strstr(line, "PARALLAX")) {
+            char *bar = strrchr(p, '|');
+            if (bar) show = atoi(bar + 1);
+        }
+        if ((p = strstr(line, "loop_x"))) {
+            char *bar = strrchr(p, '|');
+            if (bar) *loop_x = atoi(bar + 1);
+        }
+        if ((p = strstr(line, "loop_y"))) {
+            char *bar = strrchr(p, '|');
+            if (bar) *loop_y = atoi(bar + 1);
+        }
+    }
+    fclose(f);
+    return show == 1;
+}
+
 /* map.png sits beside map.txt. Tile step is png width / map.txt columns.
  * The 24 px exports and a future 48 px render both fit this. */
 static int desk_map_png(char *path, size_t psz, int *tile_px) {
@@ -1032,6 +1167,38 @@ int main(void) {
                     if (map_py0 < 0) map_py0 = 0;
                     if (map_py0 > map_h - view_h) map_py0 = map_h - view_h;
                 } else map_py0 = -(view_h - map_h) / 2;
+                /* Sky behind the tiles. A clear map pixel keeps the sky.
+                 * An opaque export covers it, which is the baked picture. */
+                unsigned char *para = NULL;
+                int para_w = 0, para_h = 0, loop_x = 0, loop_y = 0;
+                if (desk_parallax(mp, &loop_x, &loop_y)) {
+                    char pp[PATH_BUF];
+                    size_t n = strlen(mp);
+                    if (n > 8 && n < sizeof(pp)) {
+                        snprintf(pp, sizeof(pp), "%.*s/parallax.png", (int)(n - 8), mp);
+                        load_rgba_png(pp, &para, &para_w, &para_h);
+                    }
+                }
+                /* One image pixel tracks one map pixel, so the picture
+                 * zooms with cell_px. Loop scrolls with the map. No loop
+                 * stays pinned to the window, which is what MV does. */
+                if (para && para_w > 0 && para_h > 0) {
+                    for (int y = 0; y < H; y++) {
+                        int my = y * map_tile / draw;
+                        for (int x = 0; x < W; x++) {
+                            int mx = x * map_tile / draw;
+                            int sx = loop_x ? (map_px0 + mx) : mx;
+                            int sy = loop_y ? (map_py0 + my) : my;
+                            if (loop_x) { sx %= para_w; if (sx < 0) sx += para_w; }
+                            if (loop_y) { sy %= para_h; if (sy < 0) sy += para_h; }
+                            if (sx < 0 || sy < 0 || sx >= para_w || sy >= para_h) continue;
+                            const unsigned char *s = para + ((size_t)sy * (size_t)para_w + (size_t)sx) * 4;
+                            if (s[3] == 0) continue;
+                            unsigned char *p = VP_PXR(x, y);
+                            p[0] = s[0]; p[1] = s[1]; p[2] = s[2]; p[3] = 255;
+                        }
+                    }
+                }
                 for (int y = 0; y < H; y++) {
                     int sy = map_py0 + y * map_tile / draw;
                     for (int x = 0; x < W; x++) {
@@ -1039,10 +1206,13 @@ int main(void) {
                         unsigned char *p = VP_PXR(x, y);
                         if (sx < 0 || sy < 0 || sx >= map_w || sy >= map_h) continue;
                         const unsigned char *s = map_px + ((size_t)sy * (size_t)map_w + (size_t)sx) * 4;
+                        if (s[3] == 0) continue;
                         p[0] = s[0]; p[1] = s[1]; p[2] = s[2]; p[3] = 255;
                     }
                 }
+                free(para);
                 map_ok = 1;
+                draw_map_events(px, W, H, mp, map_tile, map_px0, map_py0, draw);
                 /* map_px0/map_py0 stay in source pixels. map_tile stays
                  * the PNG tile. The selector uses `cell` for the box. */
             }

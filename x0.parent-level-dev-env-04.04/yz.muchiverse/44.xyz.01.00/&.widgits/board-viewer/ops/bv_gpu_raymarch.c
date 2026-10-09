@@ -59,6 +59,10 @@ static const char *FS_SRC =
 "uniform ivec2 u_mk;\n"
 "uniform sampler2D u_atlas;\n"
 "uniform highp usampler2D u_cells;\n"
+"uniform sampler2D u_para;\n"
+"uniform int   u_para_on;\n"
+"uniform vec2  u_para_size;\n"
+"uniform vec2  u_para_loop;\n"
 "uniform int   u_nbox;\n"
 "uniform float u_wire_edge;\n"
 "uniform float u_wire_thin;\n"
@@ -67,7 +71,7 @@ static const char *FS_SRC =
 "uniform vec4  u_bcol[128];\n"     /* .rgb colour, .a: 1 = apply light, 0 = self-lit */
 "uniform int   u_bmdl[128];\n"     /* >=0 -> raymarch phymoji model u_bmdl[i] inside the box */
 "uniform highp sampler3D u_mdl;\n" /* 32x32x(8*24): model m at z [m*8, m*8+8) */
-"uniform ivec3 u_mdim[24];\n"      /* per-model (lx,ly,lz) counts */
+"uniform ivec3 u_mdim[80];\n"      /* per-model (lx,ly,lz) counts; keep equal to BV_GPU_MAX_MODEL */
 "\n"
 "bool slab(vec3 ro, vec3 rd, vec3 bn, vec3 bx, out float t, out int face) {\n"
 "  float tmin = -1e30, tmax = 1e30; face = -1;\n"
@@ -198,6 +202,19 @@ static const char *FS_SRC =
 "    }\n"
 "  }\n"
 "\n"
+"  /* Missed rays show the whole parallax picture. A screen-pixel\n"
+"   * fetch only ever showed two rows, which wrapped as stripes.\n"
+"   * u and v come from the ray that was already cast. This does not\n"
+"   * write the camera. */\n"
+"  if (!hit && u_para_on != 0) {\n"
+"    vec2 sz = max(u_para_size, vec2(1.0));\n"
+"    float u = atan(rd.x, rd.z) / 6.2831853 + 0.5;\n"
+"    float v = clamp(0.5 - rd.y * 0.5, 0.0, 0.999);\n"
+"    if (u_para_loop.x < 0.5) u = clamp(u, 0.0, 0.999);\n"
+"    else u = fract(u);\n"
+"    ivec2 p = ivec2(clamp(vec2(u, v) * sz, vec2(0.0), sz - 1.0));\n"
+"    col = texelFetch(u_para, p, 0).rgb;\n"
+"  }\n"
 "  if (hit && !self_lit) {\n"
 "    if (face != 3) col *= 0.75;\n"   /* top = face 3 (Y slab, swapped case) - matches bv_render_3d CPU */
 "    col *= u_light;\n"
@@ -210,8 +227,9 @@ static const char *FS_SRC =
 static int        s_persist = 0;
 static EGLDisplay s_dpy = EGL_NO_DISPLAY;
 static EGLContext s_ctx = EGL_NO_CONTEXT;
-static GLuint     s_prog = 0, s_vao = 0, s_fbo = 0, s_rbo = 0, s_tex_grid = 0, s_tex_leg = 0, s_tex_terr = 0, s_tex_mdl = 0, s_tex_atlas = 0, s_tex_cells = 0;
+static GLuint     s_prog = 0, s_vao = 0, s_fbo = 0, s_rbo = 0, s_tex_grid = 0, s_tex_leg = 0, s_tex_terr = 0, s_tex_mdl = 0, s_tex_atlas = 0, s_tex_cells = 0, s_tex_para = 0;
 static int        s_maker_id = -1;            /* maker_id currently uploaded to s_tex_atlas / s_tex_cells */
+static int        s_para_id = -1;
 static int        s_fw = 0, s_fh = 0;          /* current FBO size */
 static int        s_gw = 0, s_gh = 0, s_gd = 0; /* current grid-tex dims */
 static int        s_leg_alloc = 0;            /* legend tex storage created */
@@ -219,7 +237,7 @@ static int        s_terr_alloc = 0;           /* terrain-array storage created *
 static int        s_mdl_alloc = 0;
 /* cached uniform locations (glGetUniformLocation is a string lookup) */
 static struct {
-    GLint maker, mk, atlas, cells, eye, fwd, right, up, focal, res, wext, grid, leg, terr, lbbox, light, sky, fog_start, fog_end, nbox, bmin, bmax, bcol, bmdl, mdl, mdim, wire_edge, wire_thin;
+    GLint maker, mk, atlas, cells, para, para_on, para_size, para_loop, eye, fwd, right, up, focal, res, wext, grid, leg, terr, lbbox, light, sky, fog_start, fog_end, nbox, bmin, bmax, bcol, bmdl, mdl, mdim, wire_edge, wire_thin;
 } s_u;
 
 static GLuint compile(GLenum type, const char *src) {
@@ -339,8 +357,16 @@ static int gl_ensure_context(void) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     s_maker_id = -1;
+    GLuint para = 0;
+    glGenTextures(1, &para);
+    glActiveTexture(GL_TEXTURE6);
+    glBindTexture(GL_TEXTURE_2D, para);
+    { unsigned char px[4] = {0,0,0,0}; glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, px); }
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    s_para_id = -1;
 
-    s_dpy = dpy; s_ctx = ctx; s_prog = prog; s_vao = vao; s_tex_leg = leg; s_tex_terr = terr; s_tex_mdl = mdl; s_tex_atlas = atl; s_tex_cells = cel;
+    s_dpy = dpy; s_ctx = ctx; s_prog = prog; s_vao = vao; s_tex_leg = leg; s_tex_terr = terr; s_tex_mdl = mdl; s_tex_atlas = atl; s_tex_cells = cel; s_tex_para = para;
     s_leg_alloc = 0; s_terr_alloc = 0; s_mdl_alloc = 0;
 
     #define UL(n) glGetUniformLocation(prog, n)
@@ -349,6 +375,7 @@ static int gl_ensure_context(void) {
     s_u.grid=UL("u_grid"); s_u.leg=UL("u_leg"); s_u.terr=UL("u_terr"); s_u.lbbox=UL("u_lbbox");
     s_u.light=UL("u_light"); s_u.sky=UL("u_sky"); s_u.fog_start=UL("u_fog_start"); s_u.fog_end=UL("u_fog_end");
     s_u.maker=UL("u_maker"); s_u.mk=UL("u_mk"); s_u.atlas=UL("u_atlas"); s_u.cells=UL("u_cells");
+    s_u.para=UL("u_para"); s_u.para_on=UL("u_para_on"); s_u.para_size=UL("u_para_size"); s_u.para_loop=UL("u_para_loop");
     s_u.wire_edge=UL("u_wire_edge"); s_u.wire_thin=UL("u_wire_thin"); s_u.nbox=UL("u_nbox"); s_u.bmin=UL("u_bmin"); s_u.bmax=UL("u_bmax"); s_u.bcol=UL("u_bcol");
     s_u.bmdl=UL("u_bmdl"); s_u.mdl=UL("u_mdl"); s_u.mdim=UL("u_mdim");
     #undef UL
@@ -404,6 +431,7 @@ void bv_gpu_shutdown(void) {
     if (s_tex_leg) glDeleteTextures(1, &s_tex_leg);
     if (s_tex_terr) glDeleteTextures(1, &s_tex_terr);
     if (s_tex_atlas) glDeleteTextures(1, &s_tex_atlas);
+    if (s_tex_para) glDeleteTextures(1, &s_tex_para);
     if (s_tex_cells) glDeleteTextures(1, &s_tex_cells);
     if (s_tex_mdl) glDeleteTextures(1, &s_tex_mdl);
     if (s_rbo) glDeleteRenderbuffers(1, &s_rbo);
@@ -412,7 +440,7 @@ void bv_gpu_shutdown(void) {
     if (s_ctx != EGL_NO_CONTEXT) eglDestroyContext(s_dpy, s_ctx);
     eglTerminate(s_dpy);
     s_dpy = EGL_NO_DISPLAY; s_ctx = EGL_NO_CONTEXT;
-    s_prog = s_vao = s_fbo = s_rbo = s_tex_grid = s_tex_leg = s_tex_terr = s_tex_mdl = s_tex_atlas = s_tex_cells = 0;
+    s_prog = s_vao = s_fbo = s_rbo = s_tex_grid = s_tex_leg = s_tex_terr = s_tex_mdl = s_tex_atlas = s_tex_cells = s_tex_para = 0;
     s_fw = s_fh = s_gw = s_gh = s_gd = 0;
     s_leg_alloc = 0;
     s_terr_alloc = 0;
@@ -551,6 +579,17 @@ int bv_gpu_raymarch(const BvGpuScene *s, unsigned char *out) {
     glUniform1i (s_u.atlas, 4);
     glUniform1i (s_u.cells, 5);
     glUniform1i (s_u.maker, (s->maker && s->atlas && s->cells) ? 1 : 0);
+    if (s->para && s->para_w > 0 && s->para_h > 0 && s->maker_id != s_para_id) {
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        glActiveTexture(GL_TEXTURE6);
+        glBindTexture(GL_TEXTURE_2D, s_tex_para);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, s->para_w, s->para_h, 0, GL_RGBA, GL_UNSIGNED_BYTE, s->para);
+        s_para_id = s->maker_id;
+    }
+    glUniform1i(s_u.para, 6);
+    glUniform1i(s_u.para_on, (s->para && s->para_w > 0) ? 1 : 0);
+    glUniform2f(s_u.para_size, (float)(s->para_w > 0 ? s->para_w : 1), (float)(s->para_h > 0 ? s->para_h : 1));
+    glUniform2f(s_u.para_loop, s->para_loop_x ? 1.0f : 0.0f, s->para_loop_y ? 1.0f : 0.0f);
     glUniform2i (s_u.mk, s->atlas_cols > 0 ? s->atlas_cols : 1, s->tile_px > 0 ? s->tile_px : 24);
     glActiveTexture(GL_TEXTURE0);
     glUniform1f (s_u.light, s->light_level);

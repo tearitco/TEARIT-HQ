@@ -343,6 +343,14 @@ typedef struct {
     int  ok, id, w, h, tile_px, cols, tiles, aw, ah;
     unsigned char  *atlas;
     unsigned short *cells;      /* w*h*2 uint16: floor slot, wall slot */
+    /* Parallax sky. parallax.rgba is raw RGBA8, size in parallax.pdl.
+     * NULL when this desk has show=0. sx/sy are not applied. */
+    unsigned char *para;
+    int para_w, para_h, para_lx, para_ly;
+    /* Visible map events (events.txt). Capped: the GPU scene holds 128
+     * boxes and the selector, hero and range wires share that list. */
+    struct { int x, y, r, g, b, index, dir, pat; char name[40]; } ev[96];
+    int ev_n;
 } MakerAtlas;
 static MakerAtlas g_mk;
 
@@ -355,7 +363,7 @@ static int maker_load(const char *root) {
     char dir[4352];
     snprintf(dir, sizeof(dir), "%s/pieces/system/maps/%s/%s", root, map_id, desk_id);
     if (g_mk.key[0] && strcmp(g_mk.key, dir) == 0) return g_mk.ok;
-    free(g_mk.atlas); free(g_mk.cells);
+    free(g_mk.atlas); free(g_mk.cells); free(g_mk.para);
     int prev_id = g_mk.id;
     memset(&g_mk, 0, sizeof(g_mk));
     g_mk.id = prev_id + 1;
@@ -407,6 +415,62 @@ static int maker_load(const char *root) {
     g_mk.atlas = (unsigned char *)malloc(need);
     if (!g_mk.atlas || fread(g_mk.atlas, 1, need, f) != need) { fclose(f); return 0; }
     fclose(f);
+    /* Sky is optional. A missing file leaves the old flat sky colour. */
+    snprintf(path, sizeof(path), "%s/parallax.pdl", dir);
+    f = fopen(path, "r");
+    int pshow = 0, pw = 0, ph = 0;
+    if (f) {
+        while (fgets(line, sizeof(line), f)) {
+            char *bar = strrchr(line, '|');
+            if (!bar) continue;
+            if (strstr(line, "show")) pshow = atoi(bar + 1);
+            else if (strstr(line, "loop_x")) g_mk.para_lx = atoi(bar + 1);
+            else if (strstr(line, "loop_y")) g_mk.para_ly = atoi(bar + 1);
+            else if (strstr(line, "width")) pw = atoi(bar + 1);
+            else if (strstr(line, "height")) ph = atoi(bar + 1);
+        }
+        fclose(f);
+    }
+    if (pshow == 1 && pw > 0 && ph > 0 && pw <= 4096 && ph <= 4096) {
+        snprintf(path, sizeof(path), "%s/parallax.rgba", dir);
+        f = fopen(path, "rb");
+        size_t pn = (size_t)pw * (size_t)ph * 4;
+        if (f) {
+            g_mk.para = (unsigned char *)malloc(pn);
+            if (g_mk.para && fread(g_mk.para, 1, pn, f) == pn) {
+                g_mk.para_w = pw;
+                g_mk.para_h = ph;
+            } else {
+                free(g_mk.para);
+                g_mk.para = NULL;
+            }
+            fclose(f);
+        }
+    }
+    /* x y r g b charset index direction pattern. Colour is the frame
+     * center. The charset name is for the 2D blit; the box uses r g b.
+     * First 64 only. A later page that needs a switch is already absent. */
+    snprintf(path, sizeof(path), "%s/events.txt", dir);
+    f = fopen(path, "r");
+    if (f) {
+        while (g_mk.ev_n < 96 && fgets(line, sizeof(line), f)) {
+            int x, y, r, g, b, index, dir, pat;
+            char name[40];
+            if (sscanf(line, "%d %d %d %d %d %39s %d %d %d",
+                       &x, &y, &r, &g, &b, name, &index, &dir, &pat) != 9) continue;
+            g_mk.ev[g_mk.ev_n].x = x;
+            g_mk.ev[g_mk.ev_n].y = y;
+            g_mk.ev[g_mk.ev_n].r = r;
+            g_mk.ev[g_mk.ev_n].g = g;
+            g_mk.ev[g_mk.ev_n].b = b;
+            g_mk.ev[g_mk.ev_n].index = index;
+            g_mk.ev[g_mk.ev_n].dir = dir;
+            g_mk.ev[g_mk.ev_n].pat = pat;
+            snprintf(g_mk.ev[g_mk.ev_n].name, sizeof(g_mk.ev[0].name), "%s", name);
+            g_mk.ev_n++;
+        }
+        fclose(f);
+    }
     g_mk.ok = 1;
     return 1;
 }
@@ -3376,6 +3440,8 @@ static int render_one_frame(void) {
             sc.maker = 1; sc.maker_id = g_mk.id;
             sc.atlas = g_mk.atlas; sc.atlas_w = g_mk.aw; sc.atlas_h = g_mk.ah; sc.atlas_cols = g_mk.cols; sc.tile_px = g_mk.tile_px;
             sc.cells = g_mk.cells; sc.cells_w = g_mk.w; sc.cells_h = g_mk.h;
+            sc.para = g_mk.para; sc.para_w = g_mk.para_w; sc.para_h = g_mk.para_h;
+            sc.para_loop_x = g_mk.para_lx; sc.para_loop_y = g_mk.para_ly;
         }
         double ll = lighting_enabled ? game_light_level_sky : 1.0;
         if (ll < 0.15) ll = 0.15;
@@ -3451,6 +3517,74 @@ static int render_one_frame(void) {
                     sc.model_vox[_m][_o+0]=(VOX)[_i].r; sc.model_vox[_m][_o+1]=(VOX)[_i].g; \
                     sc.model_vox[_m][_o+2]=(VOX)[_i].b; sc.model_vox[_m][_o+3]=255; } \
             } _m; })
+
+        /* Map events. A 16x24 frame (written by tsots_events.py) is one
+         * voxel slice. The shader stretches that slice through the box,
+         * which is the same extrusion a phymoji model gets. No frame
+         * file, or no free model slot: the old flat colour box. */
+        if (sc.maker) {
+            int budget = 80;
+            int used_model[96];
+            char used_key[96][64];
+            int used_n = 0;
+            for (int i = 0; i < g_mk.ev_n && budget > 0; i++, budget--) {
+                int hm = -1;
+                char key[64];
+                snprintf(key, sizeof(key), "%s_%d_%d_%d",
+                         g_mk.ev[i].name, g_mk.ev[i].index, g_mk.ev[i].dir, g_mk.ev[i].pat);
+                for (int k = 0; k < used_n; k++)
+                    if (strcmp(used_key[k], key) == 0) hm = used_model[k];
+                if (hm < 0 && used_n < 96 && sc.model_n < BV_GPU_MAX_MODEL - 6) {
+                    unsigned char frame[16 * 24 * 4];
+                    char walk[4352], fp[4400];
+                    int got = 0;
+                    snprintf(walk, sizeof(walk), "%s", g_mk.key);
+                    for (int up = 0; up < 16 && !got; up++) {
+                        char *sl = strrchr(walk, '/');
+                        if (!sl) break;
+                        *sl = 0;
+                        snprintf(fp, sizeof(fp),
+                                 "%s/#.NNEST_ASSETS/tsots-characters/frames/%s.rgba",
+                                 walk, key);
+                        FILE *ff = fopen(fp, "rb");
+                        if (!ff) continue;
+                        got = fread(frame, 1, sizeof(frame), ff) == sizeof(frame);
+                        fclose(ff);
+                    }
+                    if (got) {
+                        /* Same extrusion as chicken: each opaque pixel
+                         * is a column, z 0..7, every layer the front
+                         * colour. One slice was a flat card. */
+                        PhymojiVoxel vox[16 * 24 * 8];
+                        int nv = 0;
+                        for (int py = 0; py < 24; py++)
+                            for (int px = 0; px < 16; px++) {
+                                const unsigned char *s = frame + ((py * 16 + px) * 4);
+                                if (s[3] < 16) continue;
+                                for (int z = 0; z < 8 && nv < 16 * 24 * 8; z++) {
+                                    vox[nv].lx = (unsigned char)px;
+                                    vox[nv].ly = (unsigned char)(23 - py);
+                                    vox[nv].lz = (unsigned char)z;
+                                    vox[nv].r = s[0]; vox[nv].g = s[1]; vox[nv].b = s[2];
+                                    nv++;
+                                }
+                            }
+                        if (nv > 0) {
+                            hm = GPU_ADD_MODEL(vox, nv, 15, 23, 7);
+                            if (hm >= 0) {
+                                snprintf(used_key[used_n], sizeof(used_key[0]), "%s", key);
+                                used_model[used_n++] = hm;
+                            }
+                        }
+                    }
+                }
+                float top = (g_mk.ev[i].name[0] == '!') ? 1.9f : 2.6f;
+                ADDBOX(g_mk.ev[i].x + 0.15, 1.0, g_mk.ev[i].y + 0.15,
+                       g_mk.ev[i].x + 0.85, top, g_mk.ev[i].y + 0.85,
+                       g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b, 0);
+                if (hm >= 0 && sc.box_n > 0) sc.box[sc.box_n - 1].model = hm;
+            }
+        }
 
         if (g_hero_present && camera_mode != 1) {
             int hm = -1;
