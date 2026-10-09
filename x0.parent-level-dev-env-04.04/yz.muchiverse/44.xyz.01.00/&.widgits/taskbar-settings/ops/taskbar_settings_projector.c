@@ -266,7 +266,7 @@ static void build_ui(char *ui, size_t cap, int phase, int bg, int fg, int click_
     off += (size_t)snprintf(ui + off, cap - off, "font_family=%s\n", font_family);
     /* while a skin is on the renderer switches text to GameFont (M+ 1m); say so instead of the house font */
     if (g_cur_skin_id[0])
-        off += (size_t)snprintf(ui + off, cap - off, "font_label=Font: GameFont (skin on)\n");
+        off += (size_t)snprintf(ui + off, cap - off, "font_label=Font: GameFont (RPG Maker) - skin on; house font %s\n", font_family);
     else
         off += (size_t)snprintf(ui + off, cap - off, "font_label=Font: %s\n", font_family);
     off += (size_t)snprintf(ui + off, cap - off, "opacity_label=Opacity: %d%%\n", (int)(opacity * 100.0 + 0.5));

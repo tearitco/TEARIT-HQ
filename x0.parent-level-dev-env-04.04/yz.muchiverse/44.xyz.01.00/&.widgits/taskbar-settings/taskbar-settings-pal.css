@@ -51,3 +51,4 @@
 /* one chip per catalog skin: the chip IS the skin (class skin-for-<id>), ring = selected */
 .skin-pick { width: 176px; height: 40px; background-color: #2c2c2c; color: #ffffff; padding: 4px 8px; border: 1px solid #3a3a3a; }
 .ring-bg { border: 3px solid #22c55e; }   /* after .skin-pick so the selected skin keeps its ring */
+.info-long { width: 640px; }
