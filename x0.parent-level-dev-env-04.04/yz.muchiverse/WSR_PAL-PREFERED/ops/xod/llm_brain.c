@@ -225,6 +225,7 @@ int main(int argc, char **argv) {
             strcmp(action, "end_turn") == 0) {
             override = 1;
         }
+    }
 
     /* If the model is stuck in a loop, diversify */
     if (last_goal && strcmp(last_goal, goal) == 0 &&
@@ -237,6 +238,10 @@ int main(int argc, char **argv) {
             snprintf(override_action, sizeof(override_action), "end_turn");
             snprintf(override_reason, sizeof(override_reason),
                 "survive: preserving cash for market timing");
+        } else if (strcmp(goal, "accumulate") == 0) {
+            snprintf(override_action, sizeof(override_action), "buy_stock");
+            snprintf(override_reason, sizeof(override_reason),
+                "accumulate: buying at current opportunity");
         } else if (strcmp(goal, "grow") == 0) {
             snprintf(override_action, sizeof(override_action), "cycle_corp");
             snprintf(override_reason, sizeof(override_reason),
