@@ -20,7 +20,7 @@ window { width: 916px; height: 560px; background-color: #14161c; font-family: De
 .ov-title { background-color: #666666; color: #ffffff; }
 .ov-min { width: 40px; height: 20px; font-size: 14px; background-color: #444444; border: 1px solid #666666; color: #ffffff; }
 .pchq-footer { height: 40px; background-color: #181818; border: 1px solid #2a2a2a; }
-.pchq-ft { background-color: #232323; color: #cfe8ff; font-weight: bold; width: 80px; height: 24px; font-size: 10px; padding: 2px; border: 1px solid #3a3a3a; }
+.pchq-ft { background-color: #232323; color: #cfe8ff; font-weight: bold; width: 92px; height: 24px; font-size: 10px; padding: 2px; border: 1px solid #3a3a3a; }
 .quiet { color: #888888; font-size: 9px; }
 .rp-chat-ov { width: 190px; }
 .tab.rp-tb.interact-active { background-color: #2a5a2a; color: #ffffff; font-weight: bold; }
