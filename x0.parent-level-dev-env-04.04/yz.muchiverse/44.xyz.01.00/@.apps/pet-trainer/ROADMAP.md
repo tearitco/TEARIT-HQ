@@ -11,6 +11,21 @@ Status: DONE = built and shown working (evidence in the commit message) / PARTIA
 - Key 5 = debug house mini map (home.pdl). Chat = cli_io rows=3; window is class=managed so Mutter/XWayland gives it focus (owner confirmed working 2026-10-09).
 - Mic talk-back path (record -> offline vosk STT -> chat) + pal harness `pet_stt_tts` 34/34. HELD: owner asked to wait until proven with a real voice.
 
+## Done since the first roadmap (2026-10-09 evening)
+- Platforms (jump on bed/desk/sofa/tv stand/chimney), taught verbs `climb` and `go`; rooftop reached by two stairs-up doors, overlooking the village with a flag on each pet's house.
+- Room creation backend: `build_room` event (built_*.pdl overlay, door teleport events, refusals), nav buttons, pal harness `pet_build` 15/15.
+- Phones: every pet has a house phone on its own phone server (state/server); `exchange`/`call`; talking to a village pet swaps numbers; phone chats show in chat as `ph <number> Name: text`; harness `pet_phones` 11/11.
+- Chat is its own right-hand pane (canvas-overlay-right) that minimises to the bottom bar and pops back; left sidebar is free for game menus.
+- Training: harness `pet_train` (48/48) teaches all six pets each new verb through the real concept-bank feedback; run it after every feature.
+- CPU: window animation on an 800 ms beat, idle at half rate, clock label on a 3 s beat (renderer ~11-16%).
+
+## Added by the owner, not built yet
+- **Out into the town**: pets leave the house into the village/city, **build buildings in the city**, explore, and **broaden their maps** on the map screen (fog of war; the map grows as they explore). Town map becomes per-world state (overlay on world_map.txt), the mini map gets a town level.
+- **Contacts**: pets make contacts in their phones while out (talking to someone swaps numbers: DONE for the village pets); later: phones ring for jobs, borough invitations, likes.
+- Only six pets exist for now; more come from reproduction (capped, owner-approved).
+- **Fullscreen**: the pet screen should behave like pc-hq's so it can go fullscreen (class user-resizable + canvas fills; scene zoom and the renderer's canvas_view.txt are in, the in-panel canvas fill for resizable windows is still to wire).
+- Pet needs pacing: at 1 game minute per second the pets get hungry/dirty within ~15 real minutes; tune tick weights / self-care.
+
 ## Next (in this order)
 1. **Platforms**: the pet jumps ON the bed and the computer desk (rooms.pdl PLATFORM rows) and walks along them; never breaks anything. TODO.
 2. **build_room + map buttons**: Build verb adds a cell next to an existing one (home.pdl), door rows, room kind; menu buttons for the map; mini map as a real page, not only key 5. TODO.

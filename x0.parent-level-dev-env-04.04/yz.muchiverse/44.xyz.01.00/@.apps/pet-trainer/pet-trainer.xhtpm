@@ -1,7 +1,7 @@
 <!-- pet-trainer.xhtpm - the trainer window: the pet house, the Manage party strip (six pets from the RPG Maker DB) and the World village; sidebar buttons come from nav.pdl (nav_N rows). Static layout: pet_manager (the module) owns the state and publishes
      state/ui.txt; the canvas shows the room + pet drawn by pet_scene (gravity when this window is moved). RULES: one sidebar plus one panel; no angle
      brackets inside comments. Everything the player can do is a pet_event.sh verb; the field at the bottom takes chat, "teach words = verb item", good, bad. -->
-<window label="Pet trainer - ${name}" class="pet-trainer database-window fixed-size managed" vars="state/ui.txt state/clock_ui.txt">
+<window label="Pet trainer - ${name}" class="pet-trainer database-window fixed-size managed user-resizable" vars="state/ui.txt state/clock_ui.txt">
   <module src="@.apps/pet-trainer/ops/+x/pet_manager.+x" id="_"/>
   <page name="main">
     <tabbar id="toolbar" class="tab-bar">
@@ -53,9 +53,9 @@
     </sidebar>
     <panel id="room_p" class="ph-panel">
       <canvas id="room" class="ph-room" sprite="${scene_raw}"/>
-      <row id="chat-ov" class="canvas-overlay-right ov-chrome ov-slide-x ph-chat-ov theme">
+      <row id="chat-ov" class="canvas-overlay-right ov-chrome ov-slide-x ph-chat-ov theme" show="${chat_visible}">
         <text label="chat - ${name}" class="hb-quiet ov-title theme-3"/>
-        <item id="chat-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="void"/>
+        <item id="chat-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' chat_toggle"/>
         <text label="${chat_0}" class="ph-chat"/>
         <text label="${chat_1}" class="ph-chat"/>
         <text label="${chat_2}" class="ph-chat"/>
@@ -73,6 +73,7 @@
     </panel>
     <footer id="statusbar" class="pchq-footer">
       <text label="tii" class="quiet"/>
+      <item id="chat-toggle" class="pchq-ft skin-bar" label="chat" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' chat_toggle"/>
       <item id="hb-toggle" class="pchq-ft skin-bar" label="hb" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' hotbar_toggle"/>
       <repeat count="${n_book}" bind="bk">
         <item id="e${bk.#}" class="pchq-ft skin-bar ${bk.active}" label="${bk.label}" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' select ${bk.arg}"/>

@@ -8410,6 +8410,10 @@ static void assign_nav_and_layout(void) {
                     snprintf(vsz, sizeof(vsz), "%s/#.desktop/pchq_board_view.txt", g_house_root);
                     FILE *vf = fopen(vsz, "w");
                     if (vf) { fprintf(vf, "%d %d\n", item->w, item->h); fclose(vf); }
+                    if (g_package_dir[0]) {   /* the same size for THIS app, next to its package (the global file above belongs to the pc-hq board): canvas_view.txt */
+                        char vp2[PATH_BUF], vtmp[PATH_BUF + 8]; static int last_w = -1, last_h = -1;
+                        if (item->w != last_w || item->h != last_h) { last_w = item->w; last_h = item->h; snprintf(vp2, sizeof(vp2), "%s/canvas_view.txt", g_package_dir); snprintf(vtmp, sizeof(vtmp), "%s.tmp", vp2); FILE *v2 = fopen(vtmp, "w"); if (v2) { fprintf(v2, "%d %d\n", item->w, item->h); fclose(v2); rename(vtmp, vp2); } }
+                    }
                 } else {
                     /* not user-owned: grow the window to the framebuffer */
                     if (cw + 12 > g_win_w) { g_win_w = cw + 12; g_window->w = g_win_w; }

@@ -263,6 +263,8 @@ int main(int argc, char **argv) {
     else if (!strcmp(mode, "map") && argc >= 7) house_map(argv[6]);
     else if (!strcmp(mode, "world")) world(dir, app, argv[6], atoi(argv[7]));
     else return 2;
+    { const char *zs = getenv("PET_SCENE_ZOOM"); int k = zs ? atoi(zs) : 1;        /* fullscreen: the picture is drawn at its small size and enlarged by a whole number (crisp pixels) */
+      if (k > 1 && k <= 8) { unsigned char *big = malloc((size_t)W * k * H * k * 4); if (big) { for (int y = 0; y < H * k; y++) for (int x = 0; x < W * k; x++) memcpy(big + ((size_t)y * W * k + x) * 4, fb + ((size_t)(y / k) * W + x / k) * 4, 4); free(fb); fb = big; W *= k; H *= k; } } }
     { FILE *old = fopen(out, "rb"); if (old) { unsigned char *ob = malloc((size_t)W * H * 4 + 1); size_t got = ob ? fread(ob, 1, (size_t)W * H * 4 + 1, old) : 0; fclose(old);
         if (ob && got == (size_t)W * H * 4 && !memcmp(ob, fb, got)) { free(ob); free(fb); return 0; } free(ob); } }       /* identical frame: touch nothing, the renderer stays idle */
     FILE *o = fopen(out, "wb"); if (!o) return 1; fwrite(fb, 1, (size_t)W * H * 4, o); fclose(o);
