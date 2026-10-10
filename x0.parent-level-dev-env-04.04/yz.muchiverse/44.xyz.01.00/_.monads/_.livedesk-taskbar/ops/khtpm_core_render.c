@@ -5983,6 +5983,7 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
                 x0 = vx && vx[0] ? cv->x + atoi(vx) : cv->x + (cv->w - colw) / 2;
                 y0 = vy && vy[0] ? cv->y + atoi(vy) : cv->y + (cv->h - hh) / 2;
             }
+            if (!at_pt && elem_has_class(ov, "ov-top")) y0 = cv->y;   /* class ov-top: locked to the top of the canvas (under the top bar) instead of vertically centred, like the bottom strip is locked to the bottom */
             if (x0 < cv->x) x0 = cv->x;
             if (y0 < cv->y) y0 = cv->y;
             if (y0 + hh > cv->y + cv->h) hh = cv->y + cv->h - y0;   /* never past the canvas bottom */

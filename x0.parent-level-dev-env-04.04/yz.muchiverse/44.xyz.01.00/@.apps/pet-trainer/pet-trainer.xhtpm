@@ -53,7 +53,7 @@
     </sidebar>
     <panel id="room_p" class="ph-panel">
       <canvas id="room" class="ph-room" sprite="${scene_raw}"/>
-      <row id="chat-ov" class="canvas-overlay-right ov-chrome ov-slide-x ph-chat-ov theme" show="${chat_visible}">
+      <row id="chat-ov" class="canvas-overlay-right ov-top ov-chrome ov-slide-x ph-chat-ov theme" show="${chat_visible}">
         <text label="chat - ${name}" class="hb-quiet ov-title theme-3"/>
         <item id="chat-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' chat_toggle"/>
         <text label="${chat_0}" class="ph-chat"/>
