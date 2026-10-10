@@ -110,7 +110,7 @@ static int load_behaviors(Behavior *bank, int max, const char *bank_path) {
     struct dirent *ent;
     while ((ent = readdir(d)) != NULL && n < max) {
         size_t len = strlen(ent->d_name);
-        if (len < 10 || strcmp(ent->d_name + len - 9, ".behavior") != 0)
+        if (len < 12 || strcmp(ent->d_name + len - 11, ".behaviors") != 0)
             continue;
         char path[PATH_BUF];
         snprintf(path, sizeof(path), "%s/%s", bank_path, ent->d_name);
