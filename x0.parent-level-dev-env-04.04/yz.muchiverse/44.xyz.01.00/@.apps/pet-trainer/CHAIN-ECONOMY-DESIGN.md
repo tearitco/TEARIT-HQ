@@ -69,7 +69,8 @@ Pets can run storage nodes for the chain and earn a stake reward. Needs: `STAKE`
 | 4 | Rebuild chain ops (stale binaries), re-check the `chain_miner` missing-wallet spin on the new source, balance-check every TX at inclusion | chain harness |
 | 5 | NFT tx types (owner OK) + ownership query; pets and grown food minted | `pet_nft` |
 | 6 | Role file for the 35 premined wallets (bank/government/corporation/treasury); lease + sweep ops on a scratch chain copy; tearit-co joins the WSR market; loans/prizes | `chain_lease` pal (lease, trade, sweep, all back to zero) |
-| 7 | Exchange HQ, then Auction HQ | per AUCTION-SCREEN-DESIGN |
+| 7 | Exchange HQ (rates table, fee settings, trade feed; section 11), then Auction HQ | per AUCTION-SCREEN-DESIGN |
+| 7b | Pets drive the relay in the exchange/auction windows, learn by RL with the house harnesses, propose harness edits, watch human input (section 12): first as paper trading (`play` unit) | `pet_trade_rl` (pal, deterministic fake market) |
 | 8 | Staking/storage nodes, businesses, stocks, dividends | later |
 
 ## 9. Open decisions for the owner (defaults are in data, change any)
@@ -79,7 +80,8 @@ Pets can run storage nodes for the chain and earn a stake reward. Needs: `STAKE`
 3. 1 coin = 1,000 millicones? (a block pays 10.5 coins at the first reward).
 4. Which old-chain wallets are banks and which are governments (list in the next step, balances only).
 5. OK to change the three chain ops for NFTs (item 5), to balance-check every TX (item 4), and to add LEASE/SWEEP and managed-account rules (section 10)?
-6. The treasury wallet for tearit-co (name/which existing wallet), the wallet-to-WSR-role mapping, and the end-of-game trigger that fires the sweep.
+6. Exchange defaults (section 11): fee %, averaging window and weighting, floor/ceiling, seed value of the mined unit.
+7. The treasury wallet for tearit-co (name/which existing wallet), the wallet-to-WSR-role mapping, and the end-of-game trigger that fires the sweep.
 
 ## 10. Hybrid managed chains: the premined accounts, WSR and "give it all back"
 
@@ -94,3 +96,20 @@ Owner (2026-10-10): the old chain's premined accounts are **owned by tearit-co**
 - **Join the WSR market:** register tearit-co as a participant entity in WSR (the entity registry and the ledger/auction marketplace of `SOCIETY-ECONOMY-ARCHITECTURE.txt` section 6) so it can post/bid from the leased accounts. Marked as a TODO: how tearit-co "joins" (a company entity, or a seat in the market) is an open design point.
 - **Which premined account is which:** the 35 wallets (`walletA_*`, `jb`, ...) get a role file mapping them to WSR roles (government, bank, corporation, treasury). Listing balances only; nothing is moved until the owner approves the mapping.
 - **Prizes:** the game/company pays prizes in preferred (old-chain) cones from the same managed accounts, as leases that are not swept (a prize is a gift) or as ordinary transfers, to be decided per prize type.
+
+## 11. Exchange valuation into preferred value
+
+- **Preferred** = the old chain's cones (final, 100% confirmed). Every other chain's unit (the pets' mined cones, test and user chains) has a **preferred value**: the running average of its real trades against preferred cones at our exchange (volume-weighted over a window set in `exchange.pdl`, with a floor and ceiling so one trade cannot move it; a configured seed value until trades exist).
+- Using a non-preferred chain through our exchange costs a **fee**, "like a transaction fee": it is paid in preferred cones, or the amount is **auto-exchanged into preferred** at the averaged rate. So all chain activity resolves into preferred value and nothing floats free of it. Fee %, averaging window, floor/ceiling and which chains are accepted are settings in `exchange.pdl`, **editable in the Exchange x11-hq window** once it exists.
+- Deterministic code computes and applies the rates (models never decide numbers). The rate history is an append-only ledger (`RATE | unit | preferred_per_unit | window | trades | ts`); every conversion and fee is a ledger row and a chain TX.
+- **The Exchange window must show it** (owner: "we wanna see the window for those exchanges"): a per-unit table (last trade, averaged preferred value, change, volume), the fee/rate settings editor, a live trade and order feed saying who traded (pet, WSR entity, human), the fee income account, and the rate history.
+
+## 12. The soul of the ecosystem
+
+The pets are not scripted traders. They are **learners that operate the house the way a human does**:
+- They **drive the relay**: they use the exchange, auction, chain and other windows through the same input path a human's keys take (`#.desktop/entity_menu_history/<pid>.txt` KEY_PRESSED / MOUSE_EVENT lines and the windows' state files), with no private API. Every action is a relay line plus the ledger rows it causes.
+- They **learn by reinforcement (RL)** with the **in-house models and harnesses**: outcomes become reward/punish (`entity_grade`, the feedback ledger `obs_feedback_log.txt`, the concept bank and skillbook, Laplace score `(reward+1)/(reward+punish+2)`), weights move only through bounded, ledgered edits (`joint_tune`), the models are the house's own (Gemma on the Mac via `ai_backend.pdl`, the HORN provider ladder), and the **harness verdict is the referee**.
+- They **use and modify their own harnesses while learning**: a pet may propose new cases, weights and bank rows for the harnesses it is judged by, as candidate edits that must pass `concept_edit_validate` and the locked-harness rules; it never edits the grader that scores it (hash-lock, `DELEGATION-FLYWHEEL-HORN-GHOSTS-DESIGN.md` section 2); promotion tiers and human review apply (preschool/elementary never auto-promote).
+- They **watch real human input**: `#.desktop/human_input/<pid>.txt` (real X events only) is demonstration data for trading and every other house task (`IRL-BOOTSTRAP-RECURSION-SPEC.md`). Humans are optional; when they are there, the pets learn from them.
+- Why it is the soul: the pets trade for real needs (food, parts, miners, rent), so the exchange has steady, honest, need-driven traffic and the chain stays live **with no human users**; every window is also a training environment; the harnesses grow from use.
+**Rails (not optional):** DESCRIBE never CLASSIFY; models never decide numbers or promotion; every change is a diff plus a verdict; paper trading (`play` unit) before real cones; per-pet trading limits, daily loss caps and a kill switch (a flag file the runner polls); managed accounts are only ever reached through capped leases; no keys or wallets in any prompt or log.

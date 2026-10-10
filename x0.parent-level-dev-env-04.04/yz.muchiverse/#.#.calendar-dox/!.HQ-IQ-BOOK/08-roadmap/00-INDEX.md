@@ -1,5 +1,7 @@
 # 08 — Roadmap
 
+- `44.xyz.01.00/@.apps/pet-trainer/CHAIN-ECONOMY-DESIGN.md` — **pets on the chain** (2026-10-10): wallets, mining, NFTs, banks/governments from the premined chain with leases swept back at game end, exchange valuation into preferred value, Exchange/Auction HQ, and the soul of the ecosystem (pets drive the relay, learn by RL, modify their own harnesses, watch human input).
+
 - Chess started 2026-10-09. Book `maps/chess` with pages title,
   standard, king_pawn, and endgame. Events are the pieces.
   `select` writes a move-range matrix. `land` moves onto a legal

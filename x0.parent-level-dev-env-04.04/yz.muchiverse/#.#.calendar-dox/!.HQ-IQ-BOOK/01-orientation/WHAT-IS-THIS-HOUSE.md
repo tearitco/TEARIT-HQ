@@ -19,6 +19,10 @@ instead of computed on demand, PDL (`SECTION | KEY | VALUE`) is
 everywhere, and "just keep it in a global for now" is the wrong
 instinct even when it would technically work.
 
+## The soul of the ecosystem
+
+The house is meant to run itself with or without human users. AI entities (the pets, the WSR governments and companies) live in it as real actors: they hold chain wallets, mine, grow food that is an NFT, and trade on the exchange and auction **by driving the same input relay a human uses**. They learn by reinforcement with the house's own models and harnesses, may modify their own harnesses (never the grader that scores them, always through the validator), and watch real human input as demonstrations. Their trading is for real needs, which keeps the chain live and honest. Plan: `44.xyz.01.00/@.apps/pet-trainer/CHAIN-ECONOMY-DESIGN.md`.
+
 ## The basic project shape (PIECE/MODULE/OS)
 
 Most projects in this style share:

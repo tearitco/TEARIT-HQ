@@ -49,3 +49,5 @@ Status: DONE = built and shown working (evidence in the commit message) / PARTIA
 - Verify live: pet speaking into chat and humming, react-to-shake, TTS of clock lines.
 - Grok: regenerate E1M1 cells.txt / E1M2 map.txt (lost in the 2026-10-09 sync).
 - Window width is renderer-limited (5 tabs set it).
+
+- **Chain economy** (`CHAIN-ECONOMY-DESIGN.md`): pet wallets on a new high-difficulty chain, miners/rooms/maintenance, purse = chain balance, NFTs (pets and grown food), banks/governments from the old chain with leases swept back at game end, Exchange HQ (rates averaged into preferred value, fee settings editable in the window) and Auction HQ, storage nodes/staking, businesses/stocks/dividends. The soul: pets drive the relay, learn by RL with the house harnesses, modify their own harnesses, watch human input.

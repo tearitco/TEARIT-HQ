@@ -100,3 +100,16 @@ Goal: a pet that finishes a lesson can **ask to learn more** and its curriculum 
 6. Skills Power/Magic/Defense/Intellect + chat-training (`pet_skills`).
 7. Lesson formula + provider ladder + lesson cards + phone study hobby (`pet_lessonformula`, `pet_teachme`).
 8. Exploration fog + map growth (`pet_explore`), pacing.
+
+## Chain economy and the soul (2026-10-10)
+
+Money in this economy becomes real chain cones: pets have wallets, mine with ASIC miners kept in rooms they build and maintain, and every trade is a chain TX. The full plan, the exchange valuation and the soul of the ecosystem (pets drive the relay, learn by RL, modify their own harnesses, watch human input) are in `CHAIN-ECONOMY-DESIGN.md`.
+
+### The soul of the ecosystem (owner, 2026-10-10: "that's the point ... it's the soul of the ecosystem")
+The pets are not scripted traders. They are **learners that operate the house the way a human does**:
+- They **drive the relay**: they use the exchange, auction, chain and other windows through the same input path a human's keys take (`#.desktop/entity_menu_history/<pid>.txt` KEY_PRESSED / MOUSE_EVENT lines and the windows' state files), with no private API. Every action is a relay line plus the ledger rows it causes.
+- They **learn by reinforcement (RL)** with the **in-house models and harnesses**: outcomes become reward/punish (`entity_grade`, the feedback ledger `obs_feedback_log.txt`, the concept bank and skillbook, Laplace score `(reward+1)/(reward+punish+2)`), weights move only through bounded, ledgered edits (`joint_tune`), the models are the house's own (Gemma on the Mac via `ai_backend.pdl`, the HORN provider ladder), and the **harness verdict is the referee**.
+- They **use and modify their own harnesses while learning**: a pet may propose new cases, weights and bank rows for the harnesses it is judged by, as candidate edits that must pass `concept_edit_validate` and the locked-harness rules; it never edits the grader that scores it (hash-lock, `DELEGATION-FLYWHEEL-HORN-GHOSTS-DESIGN.md` section 2); promotion tiers and human review apply (preschool/elementary never auto-promote).
+- They **watch real human input**: `#.desktop/human_input/<pid>.txt` (real X events only) is demonstration data for trading and every other house task (`IRL-BOOTSTRAP-RECURSION-SPEC.md`). Humans are optional; when they are there, the pets learn from them.
+- Why it is the soul: the pets trade for real needs (food, parts, miners, rent), so the exchange has steady, honest, need-driven traffic and the chain stays live **with no human users**; every window is also a training environment; the harnesses grow from use.
+**Rails (not optional):** DESCRIBE never CLASSIFY; models never decide numbers or promotion; every change is a diff plus a verdict; paper trading (`play` unit) before real cones; per-pet trading limits, daily loss caps and a kill switch (a flag file the runner polls); managed accounts are only ever reached through capped leases; no keys or wallets in any prompt or log.
