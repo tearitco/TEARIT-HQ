@@ -2,6 +2,21 @@
 
 ---
 
+## OPEN 2026-10-10: pet window CPU up and occasional flicker (three causes found, none live-confirmed fixed)
+
+**Reported by the owner:** "cpu is up and sometimes pet screen flickers." Flicker cannot be seen in a screenshot, so this stays OPEN until the owner says it is gone.
+
+**Causes found (measured):**
+1. **A runaway `chain_miner`** (my own scratch test, `chain_miner <wallet> --blocks 2` after `chain_create_wallet` printed "Could not create wallet directory") sat at ~98% CPU for ~3 minutes until killed. **Separate bug in the chain op, root cause not investigated:** a miner for a wallet that does not exist (and a project root that does not exist) should exit, not spin. Repro: `PRISC_PROJECT_ROOT=<nonexistent> chain_miner.+x nosuchwallet --blocks 2`.
+2. **Process storm in the pet scripts.** One `pet_event.sh status` launched 139 processes (`sed`/`head` per variable read); the manager ran it every second plus an `ai_step` every 3 s. On a box at load average 10 a status took 2.5 s, so the manager fell behind its own loop (stutter, CPU). Fix: `getv`/`getw`/`inv_count`/`pinv_count` use shell built-ins (139 -> 86 launches, 0.16 s), status poll 1 s -> 2.5 s.
+3. **Non-atomic frame write (likely the flicker).** `pet_scene` wrote `scene.raw` with a truncating `fopen("wb")`; the renderer could read the file empty or half-written. The frame is now 660x430 (1.1 MB), which widened the window. Fix: write `scene.raw.tmp<pid>` then `rename()`.
+
+**Still true:** each pet harness re-run passes (skills 10, ai 9, econ 19, town 16, teachme 30, explore 15, phones 11, build 15). Measured CPU of the renderer on a quiet box stays ~15% running, ~16% stopped; the 60-90% readings coincided with a browser at 160%.
+
+**To close:** owner runs the pet window for a while (started, with chat open) and reports no flicker; `top` shows the pet renderer under ~20%.
+
+---
+
 ## ✅ CLOSED 2026-09-30 (grok handoff, HANDOFF STEP 1 ONLY, real regression caught and fixed same session): taskbar's HQ-window discovery opendir/readdir'd 2616 entries every reload
 
 **Reported (as data, not live user report):** `/home/no/Desktop/github/xer/cpu_loop_analysis.txt`, a CPU-throttling investigation shared across agents this session. Live measurement: `ktb_merge_hq_windows()` (khtpm_taskbar_manager.c) scanned all of `#.desktop` (2616 entries live) every reload just to find the one `livedesk_hq_windows_<pid>.txt` line that actually changed - a real, confirmed ~18-19% CPU contributor on the board window's renderer PID, on top of a taskbar manager already correctly gated to a 250ms-1s reload cadence.
