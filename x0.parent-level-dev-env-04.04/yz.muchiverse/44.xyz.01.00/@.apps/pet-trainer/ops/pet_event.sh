@@ -201,6 +201,63 @@ stat_train() { # stat_train <text>: every trigger word in the text trains its st
     cfg=$(sed -n 's/^CONFIG *| *//p' "$HERE/skills.pdl" | head -1); ep=$(printf '%s' "$cfg" | sed -n 's/.*exp_per=\([0-9]*\).*/\1/p'); mx=$(printf '%s' "$cfg" | sed -n 's/.*max_per_message=\([0-9]*\).*/\1/p')
     words=$(printf '%s' "$1" | tr 'A-Z' 'a-z' | tr -c 'a-z' ' ')
     awk -F'|' -v w="$words" -v mx="${mx:-3}" 'BEGIN{n=split(w, ws, " "); for(i=1;i<=n;i++) have[ws[i]]=1} /^STAT/{a=$2; gsub(/ /,"",a); c=0; m=split($4, tw, " "); for(j=1;j<=m;j++) if (tw[j] in have) c++; if (c>mx) c=mx; if (c>0) print a, c}' "$HERE/skills.pdl" | while read -r st c; do stat_add "$st" $(( c * ${ep:-2} )); done; }
+# ---- economy: trades between pets (economy.pdl prices), stores, rent. Everything moves real item folders between bags; every trade is a ledger row (state/world/ledger.txt).
+pinv_count() { ls -d "$1/inventory/$2"_* 2>/dev/null | wc -l; }
+pinv_move() { # pinv_move <from_dir> <to_dir> <item> <n>: move up to n item folders from one bag to another; prints how many moved
+    mv_n=0; mkdir -p "$2/inventory"; while [ "$mv_n" -lt "$4" ]; do f=$(ls -d "$1/inventory/$3"_* 2>/dev/null | head -1); [ -n "$f" ] || break; mv "$f" "$2/inventory/$3_m$$_${mv_n}_$(date +%N)"; mv_n=$((mv_n + 1)); done; echo "$mv_n"; }
+pricev() { sed -n "s/^PRICE *| *$1 *| *//p" "$HERE/economy.pdl" | head -1 | tr -d ' '; }
+econv() { sed -n "s/^ECON *| *$1 *| *//p" "$HERE/economy.pdl" | head -1 | tr -d ' '; }
+deal() { # deal <buyer_dir> <seller_dir> <item> <n>: coins go one way, the items the other; prints ok or why not (no-price, seller-short, buyer-poor)
+    dpr=$(pricev "$3"); [ -n "$dpr" ] || { echo no-price; return 1; }; dtot=$(( dpr * $4 ))
+    [ "$(pinv_count "$2" "$3")" -ge "$4" ] || { echo seller-short; return 1; }
+    [ "$(pinv_count "$1" coin)" -ge "$dtot" ] || { echo buyer-poor; return 1; }
+    pinv_move "$1" "$2" coin "$dtot" >/dev/null; pinv_move "$2" "$1" "$3" "$4" >/dev/null; mkdir -p "$TOWN"
+    printf 'TRADE|%s|%s|%s|%s|%s|%s\n' "${PET_AI_NOW:-$(date +%s)}" "$(basename "$1")" "$(basename "$2")" "$3" "$4" "$dtot" >> "$TOWN/ledger.txt"; echo ok; }
+town_list() { # town_list <kind>: "bid owner door_x door_y cost" per building of that kind (the door is the tile a visitor walks to)
+    awk -F'|' -v k="$1" '/^BUILDING/{b=$2; kd=$3; o=$8; gsub(/ /,"",b); gsub(/ /,"",kd); gsub(/ /,"",o); if (kd==k) printf "%s %s %d %d %d\n", b, o, $4+1, $5+2, $9+0}' "$TOWN/town_built.pdl" 2>/dev/null; }
+ai_goto() { # ai_goto <x> <y>: one step toward a tile; returns 0 when beside it, 1 while moving, 2 when stuck
+    r=$("$HERE/ops/+x/pet_world.+x" npcgo "$SHARED" "$ACTIVE" "$1" "$2"); case "$r" in arrived) return 0;; moved*) echo "shop $1 $2" > "$PET/ai_goal.txt"; return 1;; *) rm -f "$PET/ai_goal.txt"; return 2;; esac; }
+ai_shop() { # ai_shop <item>: walk to a store whose owner (not me) has the item, and buy one; returns 0 when it bought
+    pr=$(pricev "$1"); [ "$(inv_count coin)" -ge "${pr:-999}" ] || return 1
+    sl=$(town_list store | while read -r sb so sx sy sc; do [ "$so" != "$ACTIVE" ] && [ "$(pinv_count "$SHARED/pets/$so" "$1")" -gt 0 ] && echo "$sb $so $sx $sy" && break; done); [ -n "$sl" ] || return 1
+    read -r sb so sx sy <<EOF
+$sl
+EOF
+    ai_goto "$sx" "$sy"; g=$?; [ "$g" = 0 ] || return 1
+    d=$(deal "$PET" "$SHARED/pets/$so" "$1" 1); if [ "$d" = ok ]; then rm -f "$PET/ai_goal.txt"; ai_log "$ACTIVE" "bought 1 $1 from $so at $sb"; return 0; fi; ai_log "$ACTIVE" "shop refused $d"; return 1; }
+ai_sell_wood() { # sell the wood above what the pet keeps to a store owner that has the coins
+    ww=$(aiv want_wood); hw=$(inv_count wood); ex=$(( hw - ${ww:-8} )); [ "$ex" -gt 0 ] || return 1; pr=$(pricev wood)
+    sl=$(town_list store | while read -r sb so sx sy sc; do [ "$so" != "$ACTIVE" ] && [ "$(pinv_count "$SHARED/pets/$so" coin)" -ge $(( ${pr:-2} * ex )) ] && echo "$sb $so $sx $sy" && break; done); [ -n "$sl" ] || return 1
+    read -r sb so sx sy <<EOF
+$sl
+EOF
+    ai_goto "$sx" "$sy"; g=$?; [ "$g" = 0 ] || return 1
+    d=$(deal "$SHARED/pets/$so" "$PET" wood "$ex"); if [ "$d" = ok ]; then rm -f "$PET/ai_goal.txt"; ai_log "$ACTIVE" "sold $ex wood to $so"; return 0; fi; ai_log "$ACTIVE" "sale refused $d"; return 1; }
+ai_rent() { # a pet with no house of its own pays rent to the owner of the house it rents (or finds one); no coins = evicted
+    rf="$TOWN/rent.pdl"; touch "$rf"; now="${PET_AI_NOW:-$(date +%s)}"
+    mine=$(town_list house | awk -v o="$ACTIVE" '$2==o{c++} END{print c+0}'); [ "$mine" -gt 0 ] && { grep -v "^RENT | [^|]*| $ACTIVE |" "$rf" > "$rf.tmp"; mv -f "$rf.tmp" "$rf"; return 0; }
+    pct=$(sed -n 's/^RENT *| *pct=\([0-9]*\).*/\1/p' "$HERE/economy.pdl" | head -1); ev=$(sed -n 's/^RENT .*every=\([0-9]*\).*/\1/p' "$HERE/economy.pdl" | head -1); pct=${pct:-5}; ev=${ev:-1440}
+    row=$(grep "^RENT | [^|]* | $ACTIVE |" "$rf" | head -1)
+    if [ -n "$row" ]; then rb=$(printf '%s' "$row" | awk -F'|' '{gsub(/ /,"",$2); print $2}'); due=$(printf '%s' "$row" | awk -F'|' '{gsub(/ /,"",$4); print $4+0}')
+        [ "$now" -ge "$due" ] || return 0
+        hl=$(town_list house | awk -v b="$rb" '$1==b'); read -r hb ho hx hy hc <<EOF
+$hl
+EOF
+        amt=$(( (hc * pct + 99) / 100 )); if [ -n "$ho" ] && [ "$(inv_count coin)" -ge "$amt" ]; then pinv_move "$PET" "$SHARED/pets/$ho" coin "$amt" >/dev/null; grep -v "^RENT | $rb | $ACTIVE |" "$rf" > "$rf.tmp"; printf 'RENT | %s | %s | %s\n' "$rb" "$ACTIVE" "$((due + ev))" >> "$rf.tmp"; mv -f "$rf.tmp" "$rf"; printf 'RENTPAY|%s|%s|%s|%s|%s\n' "$now" "$ACTIVE" "$ho" "$rb" "$amt" >> "$TOWN/ledger.txt"; ai_log "$ACTIVE" "paid rent $amt to $ho"
+        else grep -v "^RENT | $rb | $ACTIVE |" "$rf" > "$rf.tmp"; mv -f "$rf.tmp" "$rf"; ai_log "$ACTIVE" "evicted from $rb (no coins)"; fi
+        return 0; fi
+    hl=$(town_list house | while read -r hb ho hx hy hc; do [ "$ho" != "$ACTIVE" ] && ! grep -q "^RENT | $hb |" "$rf" && echo "$hb $ho $hc" && break; done); [ -n "$hl" ] || return 0; read -r hb ho hc <<EOF
+$hl
+EOF
+    amt=$(( (hc * pct + 99) / 100 )); [ "$(inv_count coin)" -ge $(( amt * 2 )) ] || return 0
+    pinv_move "$PET" "$SHARED/pets/$ho" coin "$amt" >/dev/null; printf 'RENT | %s | %s | %s\n' "$hb" "$ACTIVE" "$((now + ev))" >> "$rf"; printf 'RENTPAY|%s|%s|%s|%s|%s\n' "$now" "$ACTIVE" "$ho" "$hb" "$amt" >> "$TOWN/ledger.txt"; ai_log "$ACTIVE" "rented $hb from $ho for $amt"; }
+ai_build() { # the pet builds when it can pay: a house first, then a farm, then a store (a store needs a house first)
+    for kd in house farm store; do
+        have=$(town_list "$kd" | awk -v o="$ACTIVE" '$2==o{c++} END{print c+0}'); [ "$have" -gt 0 ] && continue
+        [ "$kd" = store ] && [ "$(town_list house | awk -v o="$ACTIVE" '$2==o{c++} END{print c+0}')" -eq 0 ] && continue
+        row=$(grep "^KIND *| *$kd " "$HERE/buildings.pdl" | head -1); wd=$(echo "$row" | awk -F'|' '{gsub(/ /,"",$5); print $5}'); cn=$(echo "$row" | awk -F'|' '{gsub(/ /,"",$6); print $6}'); w=$(echo "$row" | awk -F'|' '{gsub(/ /,"",$3); print $3}'); h=$(echo "$row" | awk -F'|' '{gsub(/ /,"",$4); print $4}')
+        need=$(( cn + $(land_fee "$w" "$h") )); if [ "$(inv_count wood)" -ge "$wd" ] && [ "$(inv_count coin)" -ge "$need" ]; then sh "$0" build_building "$kd" >/dev/null 2>&1; ai_log "$ACTIVE" "built a $kd"; return 0; fi
+    done; return 1; }
 gen_events() { # build <pet dir>/event_pkg/pages/page_N for every pet event: system events, then one per menu row. The pages are what events-hq opens (event.ir.pdl, event.pal, condition.pdl, cmd_1.sh).
     GENV=$(cat "$(rooms_file)" "$HERE/menu.pdl" "$HERE/ops/pet_event.sh" 2>/dev/null | cksum | cut -d' ' -f1)
     P="$PET/event_pkg/pages"; [ -f "$PET/event_pkg/events_index.txt" ] && [ "$(cat "$PET/event_pkg/.generated" 2>/dev/null)" = "$GENV" ] && return 0
@@ -375,7 +432,7 @@ status() {
 # (and logged), exactly like Doom's play flag. The window shows it as a traffic light (green = started, red = stopped).
 running() { [ "$(cat "$PET/running.txt" 2>/dev/null)" = 1 ]; }
 case "$VERB" in
-    start|stop|ai_step|help|tip|land_price|build_building|chat_toggle|phones|exchange|call|build_room|map|listen|chat_send|clock_event|time_rate|time_advance|time_reinstall|status|stats|new_pet|save_slot|load_slot|fire|gen_events|new_event|menu_group|menu_toggle|inv_toggle|open_events|teleport|hotbar_toggle|interact|player|party_toggle|view|select|world_move|world_talk|"") ;;
+    start|stop|ai_step|buy|sell|help|tip|land_price|build_building|chat_toggle|phones|exchange|call|build_room|map|listen|chat_send|clock_event|time_rate|time_advance|time_reinstall|status|stats|new_pet|save_slot|load_slot|fire|gen_events|new_event|menu_group|menu_toggle|inv_toggle|open_events|teleport|hotbar_toggle|interact|player|party_toggle|view|select|world_move|world_talk|"") ;;
     *) if ! running && [ "${PET_TRAIN:-0}" != 1 ]; then mkdir -p "$PET"; printf '%s | stopped | ignored %s\n' "$(date '+%H:%M:%S')" "$VERB" >> "$PET/log.txt"
            case "$VERB" in chat_input|chat|chat_send) printf '(the pet is stopped - press Play first)\n' >> "$PET/chat.txt"; status >/dev/null 2>&1;; esac; exit 0; fi ;;
 esac
@@ -511,13 +568,23 @@ case "$VERB" in
         ne=$(aiv needs_every); ne=${ne:-60}; nt=$(( (now - last) / ne )); [ "$nt" -gt 5 ] && nt=5
         if [ "$nt" -gt 0 ]; then echo $((last + nt * ne)) > "$PET/ai_last"; k=0; while [ "$k" -lt "$nt" ]; do addv hunger "$(getw tick_hunger)"; addv energy -"$(getw tick_energy)"; addv clean -"$(getw tick_clean)"; k=$((k + 1)); done; ai_clamp; fi
         hu=$(getv hunger); en=$(getv energy); hthr=$(aiv hunger_thr); ethr=$(aiv energy_thr); ww=$(aiv want_wood)
+        ai_rent
         if [ "${hu:-0}" -ge "${hthr:-60}" ]; then
             for f in apple fish cake; do if [ "$(inv_count $f)" -gt 0 ]; then sh "$0" give "$f" >/dev/null; ai_log "$ACTIVE" "ate $f from the bag"; rm -f "$PET/ai_goal.txt"; exit 0; fi; done
+            if ai_shop apple; then sh "$0" give apple >/dev/null; ai_log "$ACTIVE" "ate the apple it bought"; exit 0; fi
+            [ -f "$PET/ai_goal.txt" ] && grep -q "^shop " "$PET/ai_goal.txt" && [ "$(inv_count coin)" -ge "$(pricev apple)" ] && exit 0      # on its way to a store
             if ai_gather apple; then sh "$0" give apple >/dev/null; ai_log "$ACTIVE" "ate the apple it picked"; fi; exit 0
         fi
         if [ "${en:-100}" -le "${ethr:-25}" ]; then addv energy "$(aiv rest_gain)"; ai_clamp; ai_log "$ACTIVE" "rested"; rm -f "$PET/ai_goal.txt"; exit 0; fi
-        if [ "$(inv_count wood)" -lt "${ww:-8}" ]; then ai_gather wood; exit 0; fi
+        if ai_build; then exit 0; fi
+        wc=$(econv want_coins); wx=$(econv work_extra); want=${ww:-8}; [ "$(inv_count coin)" -lt "${wc:-30}" ] && want=$(( want + ${wx:-4} ))
+        if [ "$(inv_count wood)" -lt "$want" ]; then ai_gather wood; exit 0; fi
+        if ai_sell_wood; then exit 0; fi
         rm -f "$PET/ai_goal.txt"; exit 0 ;;
+    buy) need_pet; sid="$ARG"; it="${3:-apple}"; n="${4:-1}"; nm=$(getv name_id); [ -d "$SHARED/pets/$sid" ] || { printf '%s: buy from whom?\n' "$nm" >> "$CHAT"; exit 0; }
+        d=$(deal "$PET" "$SHARED/pets/$sid" "$it" "$n"); case "$d" in ok) printf '%s: bought %s %s\n' "$nm" "$n" "$it" >> "$CHAT";; buyer-poor) printf '%s: not enough coins\n' "$nm" >> "$CHAT";; seller-short) printf '%s: they do not have enough %s\n' "$nm" "$it" >> "$CHAT";; *) printf '%s: no price for %s\n' "$nm" "$it" >> "$CHAT";; esac; status >/dev/null ;;
+    sell) need_pet; bid="$ARG"; it="${3:-wood}"; n="${4:-1}"; nm=$(getv name_id); [ -d "$SHARED/pets/$bid" ] || { printf '%s: sell to whom?\n' "$nm" >> "$CHAT"; exit 0; }
+        d=$(deal "$SHARED/pets/$bid" "$PET" "$it" "$n"); case "$d" in ok) printf '%s: sold %s %s\n' "$nm" "$n" "$it" >> "$CHAT";; buyer-poor) printf '%s: they cannot pay\n' "$nm" >> "$CHAT";; seller-short) printf '%s: I do not have enough %s\n' "$nm" "$it" >> "$CHAT";; *) printf '%s: no price for %s\n' "$nm" "$it" >> "$CHAT";; esac; status >/dev/null ;;
     build_room) need_pet; side="${ARG:-right}"; kind="${3:-room}"; RF=$(rooms_file); HF="$HERE/home.pdl"; [ -f "$SHARED/home_all.pdl" ] && HF="$SHARED/home_all.pdl"
         cur=$(cat "$PET/loc.txt" 2>/dev/null || echo bedroom); line=$(grep "^CELL *| *$cur " "$HF" | head -1); cx=$(echo "$line" | awk -F'|' '{gsub(/ /,"",$3); print $3}'); cy=$(echo "$line" | awk -F'|' '{gsub(/ /,"",$4); print $4}')
         [ -n "$cx" ] || { printf '%s: I cannot build here\n' "$(getv name_id)" >> "$CHAT"; exit 0; }

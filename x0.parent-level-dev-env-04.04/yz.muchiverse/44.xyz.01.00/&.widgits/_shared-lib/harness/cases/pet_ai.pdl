@@ -8,7 +8,7 @@ ENV     | PET_TRAIN | 1
 ENV     | LC_CLOCK_BIN | /nonexistent
 RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | status
 RUN     | $HOUSE/@.apps/pet-trainer/ops/+x/pet_world.+x | init | $T/state | $T/state/party.txt
-RUN     | /usr/bin/find | $T/state/pets/a15/inventory | -name | apple_* | -prune | -exec | /usr/bin/rm | -rf | {} +
+RUN     | /bin/sh | -c | rm -rf $T/state/pets/a15/inventory/apple_* $T/state/pets/a15/inventory/fish_* $T/state/pets/a15/inventory/cake_*
 RUN     | /usr/bin/sed | -i | s/^hunger=.*/hunger=90/ | $T/state/pets/a15/variables.txt
 
 # the pet on screen (a13) is left alone
