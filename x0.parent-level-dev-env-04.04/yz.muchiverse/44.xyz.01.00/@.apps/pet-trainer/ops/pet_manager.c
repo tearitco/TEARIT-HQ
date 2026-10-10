@@ -53,15 +53,17 @@ static void camera_apply(const char *app, const char *dir, int code) {
     else if (code == kb(app, "reset_view", 102)) { yaw = 0; pitch = 0; h = 0; } else chg = 0;
     if (!chg) return; f = fopen(p, "w"); if (f) { fprintf(f, "mode=%s\npov=%d\nyaw=%d\npitch=%d\nheight=%d\n", mode3d ? "3d" : "2d", pov, yaw, pitch, h); fclose(f); }
 }
+static const char *g_sh = ".";                                  /* the shared state dir (built rooms overlay: rooms_all.pdl) */
+static FILE *rooms_open(const char *app) { char p[PATH_MAX]; snprintf(p, sizeof p, "%s/rooms_all.pdl", g_sh); FILE *f = fopen(p, "r"); if (f) return f; snprintf(p, sizeof p, "%s/rooms.pdl", app); return fopen(p, "r"); }
 typedef struct { int x0, x1, top; char name[24]; } Plat;
 /* rooms.pdl: PLATFORM | room | x0 | x1 | top y | name  (furniture the pet may jump on) */
 static int load_plats(const char *app, const char *loc, Plat *p, int max) {
-    char rp[PATH_MAX], l[200]; snprintf(rp, sizeof rp, "%s/rooms.pdl", app); FILE *f = fopen(rp, "r"); int n = 0; if (!f) return 0;
+    char l[200]; FILE *f = rooms_open(app); int n = 0; if (!f) return 0;
     while (n < max && fgets(l, sizeof l, f)) { char rm[32], nm[40]; int a, b, c; if (sscanf(l, "PLATFORM | %31s | %d | %d | %d | %39[^\n]", rm, &a, &b, &c, nm) == 5 && !strcmp(rm, loc)) { p[n].x0 = a; p[n].x1 = b; p[n].top = c; snprintf(p[n].name, sizeof p[n].name, "%s", nm); size_t k = strlen(p[n].name); while (k && p[n].name[k - 1] == ' ') p[n].name[--k] = 0; n++; } }
     fclose(f); return n;
 }
 static int room_scene(const char *app, const char *loc) {   /* rooms.pdl ROOM | id | scene id | name */
-    char rp[PATH_MAX], l[200]; snprintf(rp, sizeof rp, "%s/rooms.pdl", app); FILE *f = fopen(rp, "r"); int sc = 0; if (!f) return 0;
+    char l[200]; FILE *f = rooms_open(app); int sc = 0; if (!f) return 0;
     while (fgets(l, sizeof l, f)) { char id[32]; int s; if (sscanf(l, "ROOM | %31s | %d", id, &s) == 2 && !strcmp(id, loc)) { sc = s; break; } }
     fclose(f); return sc;
 }
@@ -140,6 +142,14 @@ int main(int argc, char **argv) {
             snprintf(cmd, sizeof cmd, "PET_DIR= PET_SHARED='%s' sh '%s/ops/pet_event.sh' status", pet, app); sh(cmd, buf, sizeof buf);
             kvs(buf, "anim", anim_ui, sizeof anim_ui); t_status = t;
         }
+        g_sh = pet;
+        { /* the clock label comes straight from the clock file every loop (its own tiny vars file), not from the slower status refresh: even pacing */
+          static char last_lab[32] = ""; static long long last_bucket = -1; char cp[PATH_MAX], l[96]; long long ms = -1; if (t / 3000 == last_bucket) goto clock_done; last_bucket = t / 3000;      /* a fixed 3 s beat: even steps, and each label change repaints the whole window (CPU) */ snprintf(cp, sizeof cp, "%s/clock_root/#.desktop/clocks/pet.pdl", pet); FILE *cf = fopen(cp, "r");
+          if (cf) { while (fgets(l, sizeof l, cf)) if (!strncmp(l, "game_time_epoch_ms=", 19)) ms = atoll(l + 19); fclose(cf); }
+          if (ms >= 0) { long long d0 = 0; snprintf(cp, sizeof cp, "%s/clock_day0.txt", pet); if ((cf = fopen(cp, "r"))) { if (fgets(l, sizeof l, cf)) d0 = atoll(l); fclose(cf); }
+              long long day = ms / 86400000LL, sec = (ms % 86400000LL) / 1000; char lab[32]; snprintf(lab, sizeof lab, "D%lld %02d:%02d", day - d0 + 1, (int)(sec / 3600), (int)((sec % 3600) / 60));
+              if (strcmp(lab, last_lab)) { snprintf(last_lab, sizeof last_lab, "%s", lab); snprintf(cp, sizeof cp, "%s/clock_ui.txt", pet); char tp[PATH_MAX + 8]; snprintf(tp, sizeof tp, "%s.tmp", cp); cf = fopen(tp, "w"); if (cf) { fprintf(cf, "time_label=%s\n", lab); fclose(cf); rename(tp, cp); } } }
+          clock_done:; }
         char act[64] = "p1", view[16] = "room"; { char ap[PATH_MAX]; FILE *af; snprintf(ap, sizeof ap, "%s/active.txt", pet); if ((af = fopen(ap, "r"))) { if (fgets(act, sizeof act, af)) act[strcspn(act, "\r\n")] = 0; fclose(af); } snprintf(ap, sizeof ap, "%s/view.txt", pet); if ((af = fopen(ap, "r"))) { if (fgets(view, sizeof view, af)) view[strcspn(view, "\r\n")] = 0; fclose(af); } }
         { char ap[PATH_MAX]; snprintf(ap, sizeof ap, "%s/interact_armed.txt", pet); FILE *af = fopen(ap, "r"); int armed = af && fgetc(af) == '1'; if (af) fclose(af); if (armed) { relay_poll(app, pet, view, t); esc_poll(pet); } else { relay_off = -1; hist_off = -1; } }
         char runp[PATH_MAX]; snprintf(runp, sizeof runp, "%s/pets/%s/running.txt", pet, act); int running = 0; { FILE *rr = fopen(runp, "r"); if (rr) { running = fgetc(rr) == '1'; fclose(rr); } }
@@ -169,7 +179,7 @@ int main(int argc, char **argv) {
                   else for (int i = 0; i < npl; i++) if (strstr(pl[i].name, nm)) { plat_goal = i; break; } } }
             if (!hopping && plat_on < 0 && plat_goal < 0 && t > nxt_move) { door_ev[0] = 0; tgt = 90 + rand() % (W - 90 - 110); nxt_move = t + 3500 + rand() % 7000;
                 if (npl > 0 && rand() % 100 < 22) plat_goal = rand() % npl;                                                                     /* now and then it wants to be up on the furniture */
-                else if (rand() % 100 < 14) { char rp2[PATH_MAX]; snprintf(rp2, sizeof rp2, "%s/rooms.pdl", app); FILE *rf2 = fopen(rp2, "r"); if (rf2) { char l2[200]; while (fgets(l2, sizeof l2, rf2)) { char rm[32], ds[32], au[16]; int dx = 0, ar = 0; if (sscanf(l2, "DOOR | %31s | %d | %31s | %d | %15s", rm, &dx, ds, &ar, au) == 5 && !strcmp(rm, loc) && !strcmp(au, "auto=1")) { tgt = dx; snprintf(door_ev, sizeof door_ev, "door_%s_%s", rm, ds); nxt_move = t + 9000; break; } } fclose(rf2); } } }
+                else if (rand() % 100 < 14) { char rp2[PATH_MAX]; FILE *rf2 = rooms_open(app); if (rf2) { char l2[200]; while (fgets(l2, sizeof l2, rf2)) { char rm[32], ds[32], au[16]; int dx = 0, ar = 0; if (sscanf(l2, "DOOR | %31s | %d | %31s | %d | %15s", rm, &dx, ds, &ar, au) == 5 && !strcmp(rm, loc) && !strcmp(au, "auto=1")) { tgt = dx; snprintf(door_ev, sizeof door_ev, "door_%s_%s", rm, ds); nxt_move = t + 9000; break; } } fclose(rf2); } } }
             if (plat_goal >= 0 && plat_goal < npl) { tgt = (pl[plat_goal].x0 + pl[plat_goal].x1) / 2; if (!hopping && ax >= tgt - 6 && ax <= tgt + 6) {      /* under it: jump up */
                 lift_from = lift_goal; lift_goal = (H - 30) - pl[plat_goal].top; hop_amp = 18; hop0 = t; plat_on = plat_goal; plat_goal = -1; down_at = t + 9000 + rand() % 8000; nxt_move = t + 3000; } }
             if (plat_on >= 0 && !hopping) {                                                                                                       /* up there: stroll along the top, then hop down */
@@ -195,8 +205,8 @@ int main(int argc, char **argv) {
             static long long t_npc = 0; if (t - t_npc > 700) { snprintf(cmd, sizeof cmd, "'%s/ops/+x/pet_world.+x' npcstep '%s' %s", app, pet, act); sh(cmd, NULL, 0); t_npc = t; }
             snprintf(cmd, sizeof cmd, "'%s/ops/+x/pet_scene.+x' world '%s' '%s/scene.raw' %d %d %s %lld", app, pet, pet, W, H, act, (t / 400) % 8);
         } else if (!strcmp(view, "manage")) snprintf(cmd, sizeof cmd, "'%s/ops/+x/pet_scene.+x' manage '%s' '%s/scene.raw' %d %d %s %lld", app, pet, pet, W, H, act, (t / 500) % 8);
-        else if (cam_pov(pet) == 5) snprintf(cmd, sizeof cmd, "'%s/ops/+x/pet_scene.+x' map '%s' '%s/scene.raw' %d %d %d", app, pet, pet, W, H, rid);
-        else snprintf(cmd, sizeof cmd, "'%s/ops/+x/pet_scene.+x' room '%s/pets/%s' '%s/scene.raw' %d %d %s %s %s %lld %d", app, pet, act, pet, W, H, sxo, syo, an, (t / 400) % 8, rid);
+        else if (cam_pov(pet) == 5) snprintf(cmd, sizeof cmd, "'%s/ops/+x/pet_scene.+x' map '%s' '%s/scene.raw' %d %d '%s'", app, pet, pet, W, H, loc);
+        else snprintf(cmd, sizeof cmd, "'%s/ops/+x/pet_scene.+x' room '%s/pets/%s' '%s/scene.raw' %d %d %s %s %s %lld %d '%s'", app, pet, act, pet, W, H, sxo, syo, an, (t / ((!strcmp(an, "walk") || !strcmp(an, "happy")) ? 400 : 800)) % 8, rid, loc);      /* idle animates at half speed: fewer repaints (CPU) */
         sh(cmd, NULL, 0);
         usleep(200000);
     }

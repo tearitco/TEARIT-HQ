@@ -5,6 +5,10 @@ SECTION | KEY | VALUE
 NAV | room   | Go outside (World)   | view       | world
 NAV | room   | Pet: living room     | teleport   | living 50
 NAV | room   | Pet: bedroom         | teleport   | bedroom 320
+NAV | room   | Build room (right)   | build_room | right room
+NAV | room   | Build room (left)    | build_room | left room
+NAV | room   | Build garden (right) | build_room | right garden
+NAV | room   | Map (toggle)         | map        | -
 NAV | manage | {party}              | select     | {id}
 NAV | manage | < Back to the house  | view       | room
 NAV | world  | Up                   | world_move | up

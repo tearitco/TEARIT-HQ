@@ -126,8 +126,12 @@ do_touch() { # touched: head = pleased, belly = giggle; many touches in a row an
     setv touch_t "$now"; setv touch_n "$n"
     if [ "$n" -gt 5 ]; then addv happy -3; feedback -1 touch; expr sad 5; say "stop it!"; else addv happy 3; [ "$part" = belly ] && addv happy 1; feedback +1 touch; expr happy 5; reply touch; fi
 }
+rooms_file() { if [ -f "$SHARED/rooms_all.pdl" ]; then echo "$SHARED/rooms_all.pdl"; else echo "$HERE/rooms.pdl"; fi; }
+merge_rooms() { # shipped rooms/home + what the pet built (state/built_*.pdl) -> state/*_all.pdl (readers prefer the merged files)
+    cat "$HERE/rooms.pdl" "$SHARED/built_rooms.pdl" > "$SHARED/rooms_all.pdl" 2>/dev/null; cat "$HERE/home.pdl" "$SHARED/built_home.pdl" > "$SHARED/home_all.pdl" 2>/dev/null
+}
 gen_events() { # build <pet dir>/event_pkg/pages/page_N for every pet event: system events, then one per menu row. The pages are what events-hq opens (event.ir.pdl, event.pal, condition.pdl, cmd_1.sh).
-    GENV=$(cat "$HERE/rooms.pdl" "$HERE/menu.pdl" "$HERE/ops/pet_event.sh" 2>/dev/null | cksum | cut -d' ' -f1)
+    GENV=$(cat "$(rooms_file)" "$HERE/menu.pdl" "$HERE/ops/pet_event.sh" 2>/dev/null | cksum | cut -d' ' -f1)
     P="$PET/event_pkg/pages"; [ -f "$PET/event_pkg/events_index.txt" ] && [ "$(cat "$PET/event_pkg/.generated" 2>/dev/null)" = "$GENV" ] && return 0
     rm -rf "$PET/event_pkg"; mkdir -p "$P"; : > "$PET/event_pkg/events_index.txt"; k=0
     mkpage() { # mkpage <id> <trigger> <verb> <arg> <note>
@@ -149,7 +153,7 @@ gen_events() { # build <pet dir>/event_pkg/pages/page_N for every pet event: sys
     mkpage world_left on-click world_move left "Trainer walks left"; mkpage world_right on-click world_move right "Trainer walks right"
     mkpage world_door on-touch view room "Door: stepping into the player's door teleports into the house (view room)"
     while IFS='|' read -r tag room x dest arr auto; do case "$tag" in DOOR*) ;; *) continue;; esac; room=$(echo $room); dest=$(echo $dest); arr=$(echo $arr)
-        mkpage "door_${room}_${dest}" on-touch teleport "$dest $arr" "Door: walking into it teleports to $dest (rooms.pdl row)"; done < "$HERE/rooms.pdl"
+        mkpage "door_${room}_${dest}" on-touch teleport "$dest $arr" "Door: walking into it teleports to $dest (rooms.pdl row)"; done < "$(rooms_file)"
     for pid in $(awk '{print $1}' "$SHARED/party.txt" 2>/dev/null); do mkpage "select_$pid" on-click select "$pid" "Choose pet $pid as the active pet"; done
     while IFS='|' read -r tag id g label verb arg need; do
         case "$tag" in MENU*) ;; *) continue;; esac
@@ -269,7 +273,7 @@ status() {
         [ -f "$SHARED/camera.st" ] && sed 's/^/cam_/' "$SHARED/camera.st"
         { nb=0; while read -r bid bname _; do printf 'bk_%s_label=%s\nbk_%s_arg=%s\nbk_%s_active=%s\n' "$nb" "$bname" "$nb" "$bid" "$nb" "$([ "$bid" = "$ACTIVE" ] && echo active)"; nb=$((nb+1)); done < "$SHARED/party.txt"
           printf 'n_book=%s\nbook_label=book:%s\npage_label=page:%s\n' "$nb" "$(getv name_id)" "$(cat "$SHARED/view.txt" 2>/dev/null || echo room)"; }
-        sh "$HERE/ops/pet_clock.sh" status 2>/dev/null
+        sh "$HERE/ops/pet_clock.sh" status 2>/dev/null | grep -v "^time_label="
         printf 'rec_label=%s\n' "$([ "$(cat "$SHARED/recording.txt" 2>/dev/null)" = 1 ] && echo 'RECORDING... (press to cancel)' || echo 'Talk (mic)')"
         printf 'loc=%s\n' "$(cat "$PET/loc.txt" 2>/dev/null || echo bedroom)"
         nav_rows
@@ -295,7 +299,7 @@ status() {
 # (and logged), exactly like Doom's play flag. The window shows it as a traffic light (green = started, red = stopped).
 running() { [ "$(cat "$PET/running.txt" 2>/dev/null)" = 1 ]; }
 case "$VERB" in
-    start|stop|listen|chat_send|clock_event|time_rate|time_advance|time_reinstall|status|stats|new_pet|save_slot|load_slot|fire|gen_events|new_event|menu_group|menu_toggle|inv_toggle|open_events|teleport|hotbar_toggle|interact|player|party_toggle|view|select|world_move|world_talk|"") ;;
+    start|stop|build_room|map|listen|chat_send|clock_event|time_rate|time_advance|time_reinstall|status|stats|new_pet|save_slot|load_slot|fire|gen_events|new_event|menu_group|menu_toggle|inv_toggle|open_events|teleport|hotbar_toggle|interact|player|party_toggle|view|select|world_move|world_talk|"") ;;
     *) if ! running && [ "${PET_TRAIN:-0}" != 1 ]; then mkdir -p "$PET"; printf '%s | stopped | ignored %s\n' "$(date '+%H:%M:%S')" "$VERB" >> "$PET/log.txt"
            case "$VERB" in chat_input|chat|chat_send) printf '(the pet is stopped - press Play first)\n' >> "$PET/chat.txt"; status >/dev/null 2>&1;; esac; exit 0; fi ;;
 esac
@@ -352,8 +356,8 @@ case "$VERB" in
         printf 'SECTION      | KEY                | VALUE\n----------------------------------------\nMETA         | piece_id           | pet_page_%s\nSTATE        | source             | blocks\nNODE         | id=1 type=show_text    | text=(new pet event)\nNODE         | id=2 type=ret          | \n' "$n" > "$p/event.ir.pdl"
         printf 'COND | trigger | on-click\n' > "$p/condition.pdl"; printf '# new pet event\nexec cmd_1.sh\n' > "$p/event.pal"; printf '#!/bin/sh\nexit 0\n' > "$p/cmd_1.sh"; chmod +x "$p/cmd_1.sh"
         printf '%s | new_%s | (empty page, edit it in events-hq)\n' "$n" "$n" >> "$PET/event_pkg/events_index.txt" ;;
-    fire) need_pet; id="$ARG"; n=$(awk -F'|' -v i="$id" '{a=$2; gsub(/ /,"",a); if (a==i) {gsub(/ /,"",$1); print $1; exit}}' "$PET/event_pkg/events_index.txt" 2>/dev/null)
-        [ -z "$n" ] && { gen_events; n=$(awk -F'|' -v i="$id" '{a=$2; gsub(/ /,"",a); if (a==i) {gsub(/ /,"",$1); print $1; exit}}' "$PET/event_pkg/events_index.txt"); }
+    fire) need_pet; evn="$ARG"; n=$(awk -F'|' -v i="$evn" '{a=$2; gsub(/ /,"",a); if (a==i) {gsub(/ /,"",$1); print $1; exit}}' "$PET/event_pkg/events_index.txt" 2>/dev/null)
+        [ -z "$n" ] && { gen_events; n=$(awk -F'|' -v i="$evn" '{a=$2; gsub(/ /,"",a); if (a==i) {gsub(/ /,"",$1); print $1; exit}}' "$PET/event_pkg/events_index.txt"); }
         [ -n "$n" ] && [ -x "$PET/event_pkg/pages/page_$n/cmd_1.sh" ] && PET_DIR="$PET" sh "$PET/event_pkg/pages/page_$n/cmd_1.sh" >/dev/null 2>&1; status >/dev/null ;;
     interact) need_pet; mkdir -p "$SHARED/keyboard"; : >> "$SHARED/interact_relay.txt"; : >> "$SHARED/keyboard/history.txt"
         if [ "$(cat "$SHARED/interact_armed.txt" 2>/dev/null)" = 1 ]; then echo 0 > "$SHARED/interact_armed.txt"; else echo 1 > "$SHARED/interact_armed.txt"; fi; status >/dev/null ;;
@@ -381,7 +385,7 @@ case "$VERB" in
     teleport) need_pet; dest="$ARG"; ax="${3:-0}"      # the door event: move the pet to another room (or the village = the world page)
         case "$dest" in
             village) echo world > "$SHARED/view.txt"; echo 1 > "$SHARED/interact_armed.txt"; mkdir -p "$SHARED/keyboard"; : >> "$SHARED/interact_relay.txt"; : >> "$SHARED/keyboard/history.txt";;
-            *) grep -q "^ROOM *| *$dest " "$HERE/rooms.pdl" || exit 0; printf '%s\n' "$dest" > "$PET/loc.txt"; printf '%s\n' "$ax" > "$PET/arrive_x.txt"; printf '%s\n' "$(date +%s%N)" > "$PET/arrive_seq.txt";;
+            *) grep -q "^ROOM *| *$dest " "$(rooms_file)" || exit 0; printf '%s\n' "$dest" > "$PET/loc.txt"; printf '%s\n' "$ax" > "$PET/arrive_x.txt"; printf '%s\n' "$(date +%s%N)" > "$PET/arrive_seq.txt";;
         esac
         printf '%s | teleport | %s\n' "$(date '+%H:%M:%S')" "$dest" >> "$PET/log.txt"; status >/dev/null ;;
     speak) need_pet   # the pet talks on its own: a word it has learned (picked by weight, so praise makes a word more likely) or a line about its needs; the master answers good / bad and that moves the word's weight
@@ -399,6 +403,18 @@ case "$VERB" in
         nm=$(getv name_id); sp=$(getv species); case "$ARG" in fall) line="whoa!!"; expr surprised 4;; land) line="oof!"; expr sad 3;; *) exit 0;; esac
         printf '%s: %s\n' "$nm" "$line" >> "$CHAT"; ( setsid sh "$HERE/ops/pet_voice.sh" "${sp:-0}" "$line" >/dev/null 2>&1 & ); status >/dev/null ;;
     chat) do_chat "$ARG"; status >/dev/null ;;
+    build_room) need_pet; side="${ARG:-right}"; kind="${3:-room}"; RF=$(rooms_file); HF="$HERE/home.pdl"; [ -f "$SHARED/home_all.pdl" ] && HF="$SHARED/home_all.pdl"
+        cur=$(cat "$PET/loc.txt" 2>/dev/null || echo bedroom); line=$(grep "^CELL *| *$cur " "$HF" | head -1); cx=$(echo "$line" | awk -F'|' '{gsub(/ /,"",$3); print $3}'); cy=$(echo "$line" | awk -F'|' '{gsub(/ /,"",$4); print $4}')
+        [ -n "$cx" ] || { printf '%s: I cannot build here\n' "$(getv name_id)" >> "$CHAT"; exit 0; }
+        if [ "$side" = left ]; then nx=$((cx - 1)); slot=30; arr_new=320; slot_new=334; else nx=$((cx + 1)); slot=334; arr_new=50; slot_new=30; fi
+        if grep -q "^CELL *| *[a-z0-9_]* *| *$nx *| *$cy " "$HF"; then printf '%s: there is a room there already\n' "$(getv name_id)" >> "$CHAT"; exit 0; fi
+        if awk -F'|' -v r="$cur" -v s="$slot" '/^DOOR/{a=$2; x=$3; gsub(/ /,"",a); gsub(/ /,"",x); if (a==r && x+0>s-45 && x+0<s+45) f=1} END{exit !f}' "$RF"; then printf '%s: no free door spot on that side\n' "$(getv name_id)" >> "$CHAT"; exit 0; fi
+        n=$(grep -c "^CELL" "$HF"); [ "$n" -ge 12 ] && { printf '%s: the house is full\n' "$(getv name_id)" >> "$CHAT"; exit 0; }
+        id="r$((n + 1))"; case "$kind" in garden) sc=2;; *) sc=3;; esac; k=$((n + 1))
+        { printf 'ROOM | %s | %s | %s %s\n' "$id" "$sc" "$kind" "$k"; printf 'DOOR | %s | %s | %s | %s | auto=1\n' "$cur" "$slot" "$id" "$arr_new"; printf 'DOOR | %s | %s | %s | %s | auto=1\n' "$id" "$slot_new" "$cur" "$((slot > 100 ? 300 : 60))"; } >> "$SHARED/built_rooms.pdl"
+        printf 'CELL | %s | %s | %s | %s\n' "$id" "$nx" "$cy" "$kind" >> "$SHARED/built_home.pdl"; merge_rooms
+        printf '%s | build_room | %s %s %s\n' "$(date '+%H:%M:%S')" "$id" "$side" "$kind" >> "$PET/log.txt"; printf '%s: I built a %s to the %s!\n' "$(getv name_id)" "$kind" "$side" >> "$CHAT"; status >/dev/null ;;
+    map) cf="$SHARED/camera.st"; if grep -q '^pov=5' "$cf" 2>/dev/null; then sed -i 's/^pov=5/pov=1/' "$cf"; else if [ -f "$cf" ]; then sed -i 's/^pov=.*/pov=5/' "$cf"; else printf 'mode=2d\npov=5\nyaw=0\npitch=0\nheight=0\n' > "$cf"; fi; fi ;;
     climb) need_pet; printf '%s\n' "${ARG:-bed}" > "$PET/want_platform.txt"; printf '%s | climb | %s\n' "$(date '+%H:%M:%S')" "${ARG:-bed}" >> "$PET/log.txt"; status >/dev/null ;;      # the manager reads want_platform.txt (rooms.pdl PLATFORM names)
     go) sh "$0" teleport "${ARG:-living}" 150 ;;
     listen) ( setsid sh "$HERE/ops/pet_listen.sh" >/dev/null 2>&1 & ); sleep 0.3; status >/dev/null ;;      # the ♨ mic: record, offline STT, chat

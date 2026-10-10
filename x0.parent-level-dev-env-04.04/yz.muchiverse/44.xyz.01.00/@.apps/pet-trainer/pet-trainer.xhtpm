@@ -1,7 +1,7 @@
 <!-- pet-trainer.xhtpm - the trainer window: the pet house, the Manage party strip (six pets from the RPG Maker DB) and the World village; sidebar buttons come from nav.pdl (nav_N rows). Static layout: pet_manager (the module) owns the state and publishes
      state/ui.txt; the canvas shows the room + pet drawn by pet_scene (gravity when this window is moved). RULES: one sidebar plus one panel; no angle
      brackets inside comments. Everything the player can do is a pet_event.sh verb; the field at the bottom takes chat, "teach words = verb item", good, bad. -->
-<window label="Pet trainer - ${name}" class="pet-trainer database-window fixed-size managed" vars="state/ui.txt">
+<window label="Pet trainer - ${name}" class="pet-trainer database-window fixed-size managed" vars="state/ui.txt state/clock_ui.txt">
   <module src="@.apps/pet-trainer/ops/+x/pet_manager.+x" id="_"/>
   <page name="main">
     <tabbar id="toolbar" class="tab-bar">

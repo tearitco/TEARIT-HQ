@@ -13,7 +13,8 @@
 #include <math.h>
 #include <time.h>
 
-static unsigned char *fb; static int W, H; static char g_app[1024] = ".";
+static unsigned char *fb; static int W, H; static char g_app[1024] = ".", g_shared[1024] = ".";
+static FILE *pdl_open(const char *stem) { char p[PATH_MAX]; snprintf(p, sizeof p, "%s/%s_all.pdl", g_shared, stem); FILE *f = fopen(p, "r"); if (f) return f; snprintf(p, sizeof p, "%s/%s.pdl", g_app, stem); return fopen(p, "r"); }      /* built rooms overlay (state) else the shipped file */
 static void px(int x, int y, int r, int g, int b) { if (x < 0 || y < 0 || x >= W || y >= H) return; unsigned char *p = fb + ((size_t)y * W + x) * 4; p[0] = (unsigned char)r; p[1] = (unsigned char)g; p[2] = (unsigned char)b; p[3] = 255; }
 static void rect(int x0, int y0, int x1, int y1, int r, int g, int b) { for (int y = y0; y < y1; y++) for (int x = x0; x < x1; x++) px(x, y, r, g, b); }
 static void frame(int x0, int y0, int x1, int y1, int r, int g, int b) { rect(x0, y0, x1, y0 + 2, r, g, b); rect(x0, y1 - 2, x1, y1, r, g, b); rect(x0, y0, x0 + 2, y1, r, g, b); rect(x1 - 2, y0, x1, y1, r, g, b); }
@@ -35,7 +36,7 @@ static int kvnum(const char *file, const char *key, int def) { FILE *f = fopen(f
 
 
 /* the big window on the back wall: what the pet sees outside (sky, sun, drifting clouds, hills, moving water, flying birds). Time is quantized to 250 ms so an unchanged frame is byte-identical (no repaint). */
-static long long qtime_ms(void) { struct timespec ts; clock_gettime(CLOCK_REALTIME, &ts); long long ms = (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000; return ms / 250 * 250; }
+static long long qtime_ms(void) { struct timespec ts; clock_gettime(CLOCK_REALTIME, &ts); long long ms = (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000; return ms / 800 * 800; }
 
 /* day and night is EVENT driven: the pet clock fires dawn/day/dusk/night (time.pdl) and each writes state/daylight.txt (phase=...); the scene only reads that phase. g_f = how bright (0 night .. 1 day), g_t = where the sun/moon is on its arc (0 left .. 1 right). PET_SCENE_PHASE overrides for tests. */
 static double g_f = 1, g_t = 0.5; static int g_sun = 1;
@@ -82,11 +83,9 @@ static void door_at(int x0, int floor_y, int lit) {                             
     if (lit) rect(x0 + 14, floor_y - 80, x0 + 26, floor_y - 77, 255, 240, 160);
 }
 /* one door per DOOR row of this room (rooms.pdl, next to the app): x is the door centre; a lit door leads outside (village) */
-static void doors_for(int rid, int floor_y) {
-    char rp[PATH_MAX]; snprintf(rp, sizeof rp, "%s/rooms.pdl", g_app); FILE *f = fopen(rp, "r"); if (!f) return; char l[240], names[8][32]; int ids[8], nr = 0;
-    while (fgets(l, sizeof l, f)) { char a[16], id[32]; int sc = 0; if (sscanf(l, "ROOM | %31s | %d", id, &sc) == 2 && nr < 8) { snprintf(names[nr], 32, "%s", id); ids[nr++] = sc; } (void)a; }
-    rewind(f); const char *me = NULL; for (int i = 0; i < nr; i++) if (ids[i] == rid) me = names[i];
-    while (me && fgets(l, sizeof l, f)) { char rm[32], ds[32]; int dx = 0, ar = 0; if (sscanf(l, "DOOR | %31s | %d | %31s | %d", rm, &dx, ds, &ar) == 4 && !strcmp(rm, me)) door_at(dx - 20, floor_y, !strcmp(ds, "village")); }
+static void doors_for(const char *me, int floor_y) {
+    FILE *f = pdl_open("rooms"); if (!f) return; char l[240];
+    while (fgets(l, sizeof l, f)) { char rm[32], ds[32]; int dx = 0, ar = 0; if (sscanf(l, "DOOR | %31s | %d | %31s | %d", rm, &dx, ds, &ar) == 4 && !strcmp(rm, me)) door_at(dx - 20, floor_y, !strcmp(ds, "village")); }
     fclose(f);
 }
 static void computer_desk(int tx, int floor_y) {                                                                                           /* monitor, keyboard, tower on a desk */
@@ -104,7 +103,7 @@ static void fridge_at(int fx0, int floor_y) {
 }
 /* rid 0 = the bedroom (door to the village at the left, bed, big window, computer, door to the living room at the right); rid 1 = the living room (door back to the bedroom, fridge, sofa, TV).
  * The doors are TELEPORT events (rooms.pdl lists them: x, destination, arrival x); the pet walks to one on its own and the event moves it. */
-static void room(const char *pd, int pxx, int pyy, const char *anim, int fi, int rid) {
+static void room(const char *pd, int pxx, int pyy, const char *anim, int fi, int rid, const char *loc) {
     int floor_y = H - 30;
     if (rid == 2) {                                                                                                                         /* the garden: sky, hills, a house wall with the door, crop rows */
         for (int y = 0; y < floor_y - 40; y++) { int k = y * 255 / (floor_y - 40), sr, sg, sb; skycol(k, &sr, &sg, &sb); rect(0, y, W, y + 1, sr, sg, sb); }
@@ -115,8 +114,14 @@ static void room(const char *pd, int pxx, int pyy, const char *anim, int fi, int
         for (int r = 0; r < 3; r++) { int ry = floor_y - 34 + r * 9; rect(110, ry, W - 20, ry + 5, 110, 78, 52);
             for (int c = 0; c < 9; c++) { int cx = 118 + c * 24, gr = (int)((qtime_ms() / 4000 + c + r * 3) % 4); rect(cx, ry - 2 - gr * 2, cx + 3, ry, 60, 150 + gr * 20, 70); if (gr == 3) rect(cx - 2, ry - 9, cx + 5, ry - 6, 230, 90, 60); } }   /* soil rows with growing crops */
         for (int x = 96; x < W; x += 14) { rect(x, floor_y - 52, x + 3, floor_y - 40, 180, 140, 90); } rect(96, floor_y - 48, W, floor_y - 45, 180, 140, 90);   /* fence */
-        doors_for(2, floor_y);
+        doors_for(loc, floor_y);
         char p2[1536]; snprintf(p2, sizeof p2, "%s/art/sprites_hi/%s_%02d/sprite.csv", pd, anim, fi); sprite(p2, pxx, pyy, 2, 1); return;
+    }
+    if (rid == 3) {                                                                                                                         /* a room the pet built: plain walls, a rug and a lamp (furniture comes with items later) */
+        rect(0, 0, W, floor_y, 168, 190, 176); for (int y = 0; y < floor_y; y += 24) rect(0, y, W, y + 1, 156, 178, 164);
+        rect(0, floor_y, W, H, 150, 110, 70); for (int x = 0; x < W; x += 40) rect(x, floor_y, x + 1, H, 130, 95, 60);
+        doors_for(loc, floor_y); rect(110, floor_y - 6, 250, floor_y, 120, 150, 190); rect(300, floor_y - 70, 304, floor_y, 90, 90, 100); rect(290, floor_y - 84, 314, floor_y - 66, 250, 230, 140);
+        char p3[1536]; snprintf(p3, sizeof p3, "%s/art/sprites_hi/%s_%02d/sprite.csv", pd, anim, fi); sprite(p3, pxx, pyy, 2, 1); return;
     }
     if (rid == 1) { rect(0, 0, W, floor_y, 205, 182, 146); rect(0, floor_y - 52, W, floor_y - 48, 160, 128, 96); for (int y = 0; y < floor_y - 52; y += 24) rect(0, y, W, y + 1, 195, 172, 136); }
     else { rect(0, 0, W, floor_y, 120, 150, 190); for (int y = 0; y < floor_y; y += 24) rect(0, y, W, y + 1, 110, 140, 180); }
@@ -127,9 +132,9 @@ static void room(const char *pd, int pxx, int pyy, const char *anim, int fi, int
         int bx = 62; rect(bx, floor_y - 34, bx + 96, floor_y - 10, 70, 90, 170); rect(bx, floor_y - 10, bx + 96, floor_y, 110, 80, 50);
         rect(bx, floor_y - 52, bx + 10, floor_y, 110, 80, 50); rect(bx + 6, floor_y - 44, bx + 34, floor_y - 34, 240, 240, 240);        /* bed */
         computer_desk(206, floor_y);
-        doors_for(0, floor_y);                                                                                                             /* every door in rooms.pdl for the bedroom */
+        doors_for(loc, floor_y);                                                                                                             /* every door in rooms.pdl for the bedroom */
     } else {
-        doors_for(1, floor_y);
+        doors_for(loc, floor_y);
         fridge_at(66, floor_y);                                                                                                            /* the kitchen corner */
         rect(130, floor_y - 6, 262, floor_y, 150, 70, 70);                                                                                 /* rug */
         rect(140, floor_y - 40, 240, floor_y - 12, 150, 50, 60); rect(134, floor_y - 52, 246, floor_y - 40, 120, 38, 48); rect(134, floor_y - 40, 146, floor_y - 12, 120, 38, 48); rect(234, floor_y - 40, 246, floor_y - 12, 120, 38, 48);   /* sofa */
@@ -142,16 +147,16 @@ static void room(const char *pd, int pxx, int pyy, const char *anim, int fi, int
 }
 
 /* debug mini map (key 5): the doll house grid from home.pdl, doors from rooms.pdl as links, the pet's room lit. */
-static void house_map(int rid) {
+static void house_map(const char *loc) {
     rect(0, 0, W, H, 18, 24, 40); rect(0, 0, W, 22, 20, 30, 60); rect(0, 22, W, 24, 250, 210, 80);
-    char p[PATH_MAX]; snprintf(p, sizeof p, "%s/home.pdl", g_app); FILE *f = fopen(p, "r"); if (!f) return;
+    FILE *f = pdl_open("home"); if (!f) return;
     char ids[24][32]; int cx[24], cy[24], n = 0, maxx = 0, maxy = 0, sc[24]; char l[200];
-    char rp[PATH_MAX]; snprintf(rp, sizeof rp, "%s/rooms.pdl", g_app); FILE *rf = fopen(rp, "r");
+    FILE *rf = pdl_open("rooms");
     while (fgets(l, sizeof l, f)) { char id[32], k[32]; int x, y; if (n < 24 && sscanf(l, "CELL | %31s | %d | %d | %31s", id, &x, &y, k) == 4) { snprintf(ids[n], 32, "%s", id); cx[n] = x; cy[n] = y; sc[n] = -1; if (x > maxx) maxx = x; if (y > maxy) maxy = y; n++; } }
     fclose(f);
     if (rf) { while (fgets(l, sizeof l, rf)) { char id[32]; int s; if (sscanf(l, "ROOM | %31s | %d", id, &s) == 2) for (int i = 0; i < n; i++) if (!strcmp(ids[i], id)) sc[i] = s; } }
     int cw = (W - 40) / (maxx + 1), ch = 90; if (cw > 100) cw = 100; int ox = (W - cw * (maxx + 1)) / 2, oy = 70;
-    for (int i = 0; i < n; i++) { int x0 = ox + cx[i] * cw + 4, y0 = oy + cy[i] * (ch + 10), x1 = x0 + cw - 8, y1 = y0 + ch, lit = (sc[i] == rid);
+    for (int i = 0; i < n; i++) { int x0 = ox + cx[i] * cw + 4, y0 = oy + cy[i] * (ch + 10), x1 = x0 + cw - 8, y1 = y0 + ch, lit = !strcmp(ids[i], loc);
         rect(x0, y0, x1, y1, lit ? 90 : 40, lit ? 120 : 56, lit ? 190 : 100); frame(x0, y0, x1, y1, lit ? 255 : 120, lit ? 225 : 130, lit ? 90 : 160);
         if (lit) rect(x0 + cw / 2 - 10, y1 - 22, x0 + cw / 2 - 2, y1 - 6, 255, 200, 90); }                                                       /* the pet marker */
     if (rf) { rewind(rf); while (fgets(l, sizeof l, rf)) { char rm[32], ds[32]; int dx, ar; if (sscanf(l, "DOOR | %31s | %d | %31s | %d", rm, &dx, ds, &ar) == 4) { int a = -1, b = -1; for (int i = 0; i < n; i++) { if (!strcmp(ids[i], rm)) a = i; if (!strcmp(ids[i], ds)) b = i; }
@@ -233,10 +238,11 @@ int main(int argc, char **argv) {
     if (W < 64 || H < 64 || W > 1200 || H > 900) return 2;
     fb = calloc((size_t)W * H, 4); if (!fb) return 1; { char self[PATH_MAX]; if (realpath(argv[0], self)) { snprintf(g_app, sizeof g_app, "%s", self); for (int i = 0; i < 3; i++) { char *s = strrchr(g_app, '/'); if (s) *s = 0; } } }
     char self[PATH_MAX]; char app[PATH_MAX] = "."; if (realpath(argv[0], self)) { snprintf(app, sizeof app, "%s", self); for (int i = 0; i < 3; i++) { char *s = strrchr(app, '/'); if (s) *s = 0; } }
+    { const char *sh0 = getenv("PET_SHARED"); if (sh0 && sh0[0]) snprintf(g_shared, sizeof g_shared, "%s", sh0); else snprintf(g_shared, sizeof g_shared, "%s/state", g_app); }
     load_phase();
-    if (!strcmp(mode, "room") && argc >= 10) room(dir, atoi(argv[6]), atoi(argv[7]), argv[8], atoi(argv[9]) & 7, argc >= 11 ? atoi(argv[10]) : 0);
+    if (!strcmp(mode, "room") && argc >= 10) room(dir, atoi(argv[6]), atoi(argv[7]), argv[8], atoi(argv[9]) & 7, argc >= 11 ? atoi(argv[10]) : 0, argc >= 12 ? argv[11] : "bedroom");
     else if (!strcmp(mode, "manage")) manage(dir, argv[6], atoi(argv[7]));
-    else if (!strcmp(mode, "map") && argc >= 7) house_map(atoi(argv[6]));
+    else if (!strcmp(mode, "map") && argc >= 7) house_map(argv[6]);
     else if (!strcmp(mode, "world")) world(dir, app, argv[6], atoi(argv[7]));
     else return 2;
     { FILE *old = fopen(out, "rb"); if (old) { unsigned char *ob = malloc((size_t)W * H * 4 + 1); size_t got = ob ? fread(ob, 1, (size_t)W * H * 4 + 1, old) : 0; fclose(old);
