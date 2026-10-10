@@ -97,6 +97,20 @@ for i in $(seq 1 "${ITERATIONS}"); do
     conf=$(echo "${decision}" | grep -o '"confidence":[0-9.]*' | cut -d: -f2)
     echo "  [LLM] Decision: ${action} (conf=${conf}) ${reason}"
 
+    # Step 1b: GOAP Planner — decompose goal into action steps
+    echo "  [GOAP] Planning ahead..."
+    PRISC_PROJECT_ROOT="${SESSION_DIR}" "${XOD_DIR}/ops/+x/wsr_goap_planner.+x" \
+        "${GOAL}" "${SESSION_DIR}/pieces/display/current_frame.txt" \
+        "${XOD_DIR}/behaviors/" 2>/dev/null || true
+    if [ -f "${SESSION_DIR}/pieces/apps/player_app/plan.txt" ]; then
+        plan_steps=$(grep "^plan_len=" "${SESSION_DIR}/pieces/apps/player_app/plan.txt" | cut -d= -f2)
+        plan_cost=$(grep "^total_cost=" "${SESSION_DIR}/pieces/apps/player_app/plan.txt" | cut -d= -f2)
+        echo "  [GOAP] Plan: ${plan_steps} steps (cost=${plan_cost})"
+        # Show first step as reference
+        first_step=$(grep "^step_0=" "${SESSION_DIR}/pieces/apps/player_app/plan.txt" | cut -d= -f2)
+        echo "  [GOAP] Next step: ${first_step}"
+    fi
+
     # Step 2: FSM Controller executes the decision
     echo "  [FSM] Executing ${action}..."
 
