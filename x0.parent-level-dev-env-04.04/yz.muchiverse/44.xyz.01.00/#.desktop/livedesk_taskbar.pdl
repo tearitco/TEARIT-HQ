@@ -150,9 +150,13 @@ SECTION      | network_menu_3_label  | Chain
 SECTION      | network_menu_3_cmd    | livedesk:open-network:chain
 SECTION      | network_menu_4_label  | Browser
 SECTION      | network_menu_4_cmd    | livedesk:open-network:browser
-SECTION      | network_menu_5_label  | hq-ftp (LAN drop, not built)
-SECTION      | network_menu_5_cmd    | livedesk:open-network:hqftp
-SECTION      | network_menu_6_label  | cancel
+SECTION      | network_menu_5_label  | Exchange
+SECTION      | network_menu_5_cmd    | livedesk:open-network:exchange
+SECTION      | network_menu_6_label  | Auction
+SECTION      | network_menu_6_cmd    | livedesk:open-network:auction
+SECTION      | network_menu_7_label  | hq-ftp (LAN drop, not built)
+SECTION      | network_menu_7_cmd    | livedesk:open-network:hqftp
+SECTION      | network_menu_8_label  | cancel
 
 # top-left command strip (2do task #4). Defaults match what's written
 # below, so editing here is the only thing needed to change labels or

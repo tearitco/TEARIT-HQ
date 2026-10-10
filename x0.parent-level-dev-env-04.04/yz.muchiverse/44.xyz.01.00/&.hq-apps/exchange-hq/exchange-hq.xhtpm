@@ -1,0 +1,51 @@
+<!-- exchange-hq.xhtpm - Exchange HQ (X11-HQ window, network cell). Static layout, shared khtpm_core_render.+x, class="exchange-window database-window",
+     zero renderer C. One <module>: ops/+x/exchange_manager.+x publishes exchange_ui.txt and polls exchange_action.txt. Tabs are show=-gated by ${tab_*}.
+     Plan and rules: @.apps/pet-trainer/CHAIN-ECONOMY-DESIGN.md sections 11-12. Rates, fee and band are SETTINGS you can edit on the Settings tab. -->
+<window label="${title}" class="exchange-window database-window" vars="exchange_ui.txt">
+  <module src="&.hq-apps/exchange-hq/ops/+x/exchange_manager.+x"/>
+  <page name="main">
+
+    <sidebar id="sidebar" class="exchange-sidebar">
+      <text id="who" label="preferred = old-chain cones" class="exchange-who"/>
+      <item id="tr" class="exchange-tab ${cls_rates}"    label="Rates"    action="'${PKG}/ops/exchange_item.sh' 'TAB rates'"/>
+      <item id="tt" class="exchange-tab ${cls_trade}"    label="Trade"    action="'${PKG}/ops/exchange_item.sh' 'TAB trade'"/>
+      <item id="tf" class="exchange-tab ${cls_feed}"     label="Feed"     action="'${PKG}/ops/exchange_item.sh' 'TAB feed'"/>
+      <item id="ts" class="exchange-tab ${cls_settings}" label="Settings" action="'${PKG}/ops/exchange_item.sh' 'TAB settings'"/>
+      <item id="rf" class="exchange-tab" label="refresh" action="'${PKG}/ops/exchange_item.sh' 'REFRESH'"/>
+    </sidebar>
+
+    <panel id="content" class="exchange-panel">
+      <text id="status" class="exchange-status" label="${status}"/>
+
+      <!-- Rates -->
+      <text id="r-hdr" class="exchange-hdr" label="${rates_hdr}" show="${tab_rates}"/>
+      <repeat count="${n_r}" bind="r">
+        <text id="r${r.#}" class="exchange-row" label="${r.text}" show="${tab_rates}"/>
+      </repeat>
+      <text id="r-note" class="exchange-quiet" label="${rates_note}" show="${tab_rates}"/>
+      <text id="r-fee" class="exchange-quiet" label="Every non-preferred chain unit is averaged into preferred value here. Using it costs a fee, paid in preferred cones." show="${tab_rates}"/>
+
+      <!-- Trade -->
+      <text id="t-hint" class="exchange-quiet" label="Type:  buy|sell  unit  amount_mc  [price_bp]   e.g.  sell mined 2000   (10000 bp = 1:1 with preferred)" show="${tab_trade}"/>
+      <cli_io id="tradeline" target_id="tradeline" rows="1" class="exchange-send top"
+              label="side unit amount" action="'${PKG}/ops/exchange_trade.sh'" show="${tab_trade}"/>
+      <text id="t-note" class="exchange-quiet" label="A trade priced far from the current average is refused, so one trade cannot move the rate." show="${tab_trade}"/>
+
+      <!-- Feed -->
+      <scrolllist class="from-top" show="${tab_feed}">
+        <repeat count="${n_f}" bind="f">
+          <text id="f${f.#}" class="exchange-hrow" label="${f.text}"/>
+        </repeat>
+        <text id="f-empty" class="exchange-quiet" label="${feed_empty}" show="${feed_empty}"/>
+      </scrolllist>
+
+      <!-- Settings -->
+      <repeat count="${n_set}" bind="s">
+        <item id="sd${s.#}" class="exchange-btn" label="-  ${s.label}" action="'${PKG}/ops/exchange_item.sh' 'SET ${s.key} -'" show="${tab_settings}"/>
+        <item id="si${s.#}" class="exchange-btn" label="+  ${s.label}" action="'${PKG}/ops/exchange_item.sh' 'SET ${s.key} +'" show="${tab_settings}"/>
+      </repeat>
+      <text id="set-note" class="exchange-quiet" label="Settings are saved to exchange.pdl. Trades are a paper ledger until the chain settlement layer exists." show="${tab_settings}"/>
+
+    </panel>
+  </page>
+</window>

@@ -1,0 +1,102 @@
+/* exchange-hq.css - merged on the renderer default. khtpm_css_parser.c:
+   bare tag / single compound class chain / #id only, no descendant
+   combinators. Only background/border/color/font/padding apply. */
+
+window {
+    width: 780px;
+    height: 560px;
+    background-color: #14161c;
+    font-family: DejaVu Sans;
+    font-size: 11px;
+}
+
+.exchange-sidebar {
+    background-color: #0d0f14;
+    border: 1px solid #262a33;
+    border-color: #262a33;
+}
+
+.exchange-panel {
+    background-color: #1b1e26;
+    border: 1px solid #333846;
+    border-color: #333846;
+}
+
+.exchange-who {
+    color: #7c8399;
+    font-size: 10px;
+    padding: 6px 8px 4px 8px;
+}
+
+.exchange-tab {
+    color: #cfd3de;
+    font-size: 11px;
+    padding: 6px 10px;
+}
+
+.exchange-tab.tab-active {
+    background-color: #2d4059;
+    color: #ffffff;
+}
+
+.exchange-status {
+    color: #8a93a8;
+    font-size: 10px;
+    padding: 4px 8px;
+}
+
+.exchange-big {
+    color: #7ee0a0;
+    font-size: 16px;
+    padding: 12px 10px 4px 10px;
+}
+
+.exchange-kv {
+    color: #d6d9e3;
+    font-size: 11px;
+    padding: 2px 10px;
+}
+
+.exchange-quiet {
+    color: #5a6072;
+    font-size: 10px;
+    padding: 6px 10px;
+}
+
+.exchange-send {
+    color: #ffffff;
+    background-color: #11141b;
+    border: 1px solid #333846;
+    border-color: #333846;
+    padding: 4px 6px;
+}
+
+.exchange-btn {
+    color: #ffffff;
+    background-color: #3a5f8a;
+    border: 1px solid #4a7fbf;
+    border-color: #4a7fbf;
+    padding: 6px 12px;
+}
+
+.exchange-hrow {
+    font-family: DejaVu Sans Mono;
+    font-size: 10px;
+    color: #9aa3b8;
+    font-size: 9px;
+    padding: 1px 8px;
+}
+
+.exchange-hdr {
+    font-family: DejaVu Sans Mono;
+    color: #7c8399;
+    font-size: 10px;
+    padding: 8px 10px 2px 10px;
+}
+
+.exchange-row {
+    font-family: DejaVu Sans Mono;
+    color: #d6d9e3;
+    font-size: 11px;
+    padding: 3px 10px;
+}
