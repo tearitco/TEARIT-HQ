@@ -64,3 +64,39 @@ Goal: a pet that finishes a lesson can **ask to learn more** and its curriculum 
 - Which free providers may be used besides the Mac Gemma (Groq needs you to create a free key)?
 - Should a pet be allowed to build in the town without you (cost-limited), or do you approve each building at first?
 - Daily "teach me" limit per pet (suggested 1) and the per-provider daily budgets.
+
+---
+
+# Owner decisions (2026-10-09, answers to the four questions) - these override the defaults above
+
+## D1. Lessons come from a FORMULA that evolves with testing
+- A **lesson formula** (`lessonformula.pdl`) is data, not a fixed script: slots (topic node, fact style, how many examples, hint style, CHECK question style, difficulty step, length) and **tunable weights** for each choice. The "teach me" call fills the formula to build the prompt, and the formula builds the lesson card from the answer.
+- **It evolves by testing.** Every card produces evidence: did the pet pass the CHECK, how many tries, did two providers agree, did later exams on that topic improve. Those outcomes score the formula choices (Laplace score `(reward+1)/(reward+punish+2)` as everywhere in the bank). The existing bounded tuner (`joint_tune`) nudges the weights with a ledger row per change and a rollback; the six pets act as **a small A/B population** (different pets can run different formula variants; the better variant spreads).
+- Approval therefore moves from "a human reads every card" to "**tests decide**" for cards; the safety rails stay: weights only move through bounded, ledgered edits (candidate EDIT -> `concept_edit_validate`), a card is `unverified` until it passes its CHECK + provider agreement, the owner can read the ledger and roll the formula back, and a new formula **shape** (a new slot type) still queues for a human. The house rule "preschool/elementary never auto-promote" is kept for the **concept bank nodes**; the formula (how lessons are made) is allowed to evolve on its own because it is measured by exams.
+- Harness `pet_lessonformula` (pal): fake provider, deterministic exam results; assert the weights of the formula choices that led to passes rise (bounded), failures lower them, every change has a ledger row, a rollback restores the previous values.
+
+## D2. Providers and money
+- **Keys exist** for Groq and Poolside (and the OpenRouter free key). Use the house's existing provider ladder pattern from `^.hai-horn/ops/horn_chat_backend.c` (OpenAI-compatible `/chat/completions`; key from the env var `GROQ_API_KEY` / `HORN_POOLSIDE_KEY` / `HORN_API_KEY` or the key file next to it). Never print or log a key; if a call needs a key that is not found, say so and ask the owner. Order: Mac Gemma, then Groq, Poolside, OpenRouter `:free`, each with a per-day budget and 429 handling. Free only.
+- **Pets build on their own when they have the money and the materials.** Materials are bought at stores or **gathered**: cut trees (wood), farm crops, mine ore; gathering is a job/skill with a cooldown, the tree regrows on the clock. A `build_building` needs `cost = materials + a land fee` and refuses with a reason otherwise.
+
+## D3. Land on the voxel planet: scarcity, price, renting
+- Land is **parcels** on the voxel planet grid: `PARCEL | id | x | y | z | owner | price | rent`. A building must stand on a parcel the pet owns or rents.
+- **Price rises as free space runs out**: `price = base * (1 + k * used_fraction^2)` (k and base are tunables in `land.pdl`; the used fraction is parcels owned / parcels in the explored area). New land appears only as the map is explored/generated (design section 1), so exploring is how land is found.
+- **Renting**: an owner can list a parcel `for rent` (a `RENT` event); another pet pays rent per day (a clock event moves coins, ledger rows both sides). Non-payment -> a warning text on the phone, then the lease ends. Rent and price are also weighted choices the pets learn (what rent does a pet accept, what does it ask).
+- Harness `pet_land`: price curve rises with usage; buy refused without coins; rent paid on the day tick; coins conserved.
+
+## D4. The phone is the hobby of the mind; other RPG Maker skills train too
+- **Study by phone, all day**: on the pet clock a pet regularly picks a hobby action: text a contact about a topic it is studying, or ask the model through "teach me" (budgeted). Chats are real texts through the phone server (already built); the pet's replies come from its taught words and, when it has an unlocked topic, from the lesson cards it holds. Time spent chatting gives **Intellect** EXP (an RPG Maker style stat).
+- **Skills**: Power, Magic, Defense (and Intellect) are skills in `skillbook.pdl` like care actions: cost MP, give EXP, level up (`entity_grade use`). Each can be trained several ways, **including chatting**: a message tagged with a topic (training talk, spell talk, defense talk) can award that skill's EXP, graded through the same feedback ledger (`concept=power|magic|defense|intellect`).
+- The pet schedules these by its **tendencies** (weights), not a script, so a pet that likes talking becomes a scholar and one that likes working becomes a builder.
+- Training harness lesson sets get a row per skill (talk about power/magic/defense with a friend, ask a question).
+
+## Updated build order
+1. Town overlay + parcels/land price + `build_building` with materials and coins (`pet_town`, `pet_land`).
+2. Gathering (trees, farm) + materials in the inventory.
+3. Place memory + proximity eating (`pet_feed_proximity`).
+4. Stores, jobs, buying; rent (`pet_jobs`, rent in `pet_land`).
+5. Pet-to-pet trade + texts (`pet_trade`).
+6. Skills Power/Magic/Defense/Intellect + chat-training (`pet_skills`).
+7. Lesson formula + provider ladder + lesson cards + phone study hobby (`pet_lessonformula`, `pet_teachme`).
+8. Exploration fog + map growth (`pet_explore`), pacing.
