@@ -103,7 +103,9 @@ int main(int argc, char **argv) {
     snprintf(app, sizeof app, "%s", self); for (int i = 0; i < 3; i++) { char *s = strrchr(app, '/'); if (s) *s = 0; }      /* .../pet-trainer */
     snprintf(house, sizeof house, "%s", app); for (int i = 0; i < 2; i++) { char *s = strrchr(house, '/'); if (s) *s = 0; }
     const char *pd = getenv("PET_DIR"); char pet[PATH_MAX]; if (pd && pd[0]) snprintf(pet, sizeof pet, "%s", pd); else snprintf(pet, sizeof pet, "%s/state", app);
-    char zoomenv[40] = ""; int W = getenv("PET_SCENE_W") ? atoi(getenv("PET_SCENE_W")) : 540, H = getenv("PET_SCENE_H") ? atoi(getenv("PET_SCENE_H")) : 280;
+    char zoomenv[40] = ""; int W = getenv("PET_SCENE_W") ? atoi(getenv("PET_SCENE_W")) : 360, H = getenv("PET_SCENE_H") ? atoi(getenv("PET_SCENE_H")) : 236;      /* the ROOM is drawn at this logical size (the doors in rooms.pdl sit inside 360) ... */
+    int W2 = 540, H2 = 280, OW = getenv("PET_OUT_W") ? atoi(getenv("PET_OUT_W")) : 660, OH = getenv("PET_OUT_H") ? atoi(getenv("PET_OUT_H")) : 430;      /* ... the village / party / map views at this one; both are scaled up to fill the OW x OH canvas (pet-trainer.css .ph-room) */
+    char outenv[64]; snprintf(outenv, sizeof outenv, "PET_OUT_W=%d PET_OUT_H=%d ", OW, OH);
     int tick_s = getenv("PET_TICK_S") ? atoi(getenv("PET_TICK_S")) : 30; if (tick_s < 1) tick_s = 30;
     pid_t parent = getppid();
     mkdir(pet, 0755);
@@ -146,7 +148,7 @@ int main(int argc, char **argv) {
         { /* a resizable/fullscreen window: the renderer publishes the canvas size (canvas_view.txt next to the app); draw small, enlarge by a whole number */
           char vp[PATH_MAX]; snprintf(vp, sizeof vp, "%s/canvas_view.txt", app); FILE *vf = fopen(vp, "r"); int cw = 0, ch = 0; if (vf) { if (fscanf(vf, "%d %d", &cw, &ch) != 2) cw = ch = 0; fclose(vf); }
           int k = (cw >= 540 && ch >= 280) ? ((cw / 540 < ch / 280) ? cw / 540 : ch / 280) : 1; if (k < 1) k = 1; if (k > 8) k = 8;
-          if (cw >= 540 && ch >= 280) { W = cw / k; H = ch / k; } else { W = 540; H = 280; }
+          if (cw >= 540 && ch >= 280) { W = cw / k; H = ch / k; W2 = W; H2 = H; outenv[0] = 0; } else { W = 360; H = 236; }
           snprintf(zoomenv, sizeof zoomenv, "PET_SCENE_ZOOM=%d ", k); }
         { /* the clock label comes straight from the clock file every loop (its own tiny vars file), not from the slower status refresh: even pacing */
           static char last_lab[32] = ""; static long long last_bucket = -1; char cp[PATH_MAX], l[96]; long long ms = -1; if (t / 3000 == last_bucket) goto clock_done; last_bucket = t / 3000;      /* a fixed 3 s beat: even steps, and each label change repaints the whole window (CPU) */ snprintf(cp, sizeof cp, "%s/clock_root/#.desktop/clocks/pet.pdl", pet); FILE *cf = fopen(cp, "r");
@@ -215,10 +217,10 @@ int main(int argc, char **argv) {
         }
         if (!strcmp(view, "world")) {
             static long long t_npc = 0; if (t - t_npc > 700) { snprintf(cmd, sizeof cmd, "'%s/ops/+x/pet_world.+x' npcstep '%s' %s", app, pet, act); sh(cmd, NULL, 0); t_npc = t; }
-            snprintf(cmd, sizeof cmd, "%s'%s/ops/+x/pet_scene.+x' world '%s' '%s/scene.raw' %d %d %s %lld", zoomenv, app, pet, pet, W, H, act, (t / 400) % 8);
-        } else if (!strcmp(view, "manage")) snprintf(cmd, sizeof cmd, "%s'%s/ops/+x/pet_scene.+x' manage '%s' '%s/scene.raw' %d %d %s %lld", zoomenv, app, pet, pet, W, H, act, (t / 500) % 8);
-        else if (cam_pov(pet) == 5) snprintf(cmd, sizeof cmd, "%s'%s/ops/+x/pet_scene.+x' map '%s' '%s/scene.raw' %d %d '%s'", zoomenv, app, pet, pet, W, H, loc);
-        else snprintf(cmd, sizeof cmd, "%s'%s/ops/+x/pet_scene.+x' room '%s/pets/%s' '%s/scene.raw' %d %d %s %s %s %lld %d '%s'", zoomenv, app, pet, act, pet, W, H, sxo, syo, an, (t / ((!strcmp(an, "walk") || !strcmp(an, "happy")) ? 400 : 800)) % 8, rid, loc);      /* idle animates at half speed: fewer repaints (CPU) */
+            snprintf(cmd, sizeof cmd, "%s%s'%s/ops/+x/pet_scene.+x' world '%s' '%s/scene.raw' %d %d %s %lld", outenv, zoomenv, app, pet, pet, W2, H2, act, (t / 400) % 8);
+        } else if (!strcmp(view, "manage")) snprintf(cmd, sizeof cmd, "%s%s'%s/ops/+x/pet_scene.+x' manage '%s' '%s/scene.raw' %d %d %s %lld", outenv, zoomenv, app, pet, pet, W2, H2, act, (t / 500) % 8);
+        else if (cam_pov(pet) == 5) snprintf(cmd, sizeof cmd, "%s%s'%s/ops/+x/pet_scene.+x' map '%s' '%s/scene.raw' %d %d '%s'", outenv, zoomenv, app, pet, pet, W2, H2, loc);
+        else snprintf(cmd, sizeof cmd, "%s%s'%s/ops/+x/pet_scene.+x' room '%s/pets/%s' '%s/scene.raw' %d %d %s %s %s %lld %d '%s'", outenv, zoomenv, app, pet, act, pet, W, H, sxo, syo, an, (t / ((!strcmp(an, "walk") || !strcmp(an, "happy")) ? 400 : 800)) % 8, rid, loc);      /* idle animates at half speed: fewer repaints (CPU) */
         sh(cmd, NULL, 0);
         { static int fms = 0; if (!fms) { const char *e = getenv("PET_FRAME_MS"); fms = e && atoi(e) >= 100 ? atoi(e) : 300; } usleep((useconds_t)fms * 1000); }      /* the scene is redrawn (and the renderer repaints) at most ~3x a second: the renderer's repaint is the CPU cost, so this is the CPU knob (PET_FRAME_MS, default 300) */
     }

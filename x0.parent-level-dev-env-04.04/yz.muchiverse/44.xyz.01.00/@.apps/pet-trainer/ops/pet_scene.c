@@ -266,6 +266,13 @@ int main(int argc, char **argv) {
     else if (!strcmp(mode, "map") && argc >= 7) house_map(argv[6]);
     else if (!strcmp(mode, "world")) world(dir, app, argv[6], atoi(argv[7]));
     else return 2;
+    { const char *ow = getenv("PET_OUT_W"), *oh = getenv("PET_OUT_H"); int OW = ow ? atoi(ow) : 0, OH = oh ? atoi(oh) : 0;      /* fill the canvas: the picture was drawn at its logical size, now scaled by one uniform factor (nearest pixel) and centred on a dark background */
+      if (OW >= 64 && OH >= 64 && OW <= 1600 && OH <= 1200 && (OW != W || OH != H)) {
+        unsigned char *big = malloc((size_t)OW * OH * 4); if (big) {
+          for (size_t i = 0; i < (size_t)OW * OH; i++) { big[i * 4] = 18; big[i * 4 + 1] = 22; big[i * 4 + 2] = 30; big[i * 4 + 3] = 255; }
+          double s = (double)OW / W < (double)OH / H ? (double)OW / W : (double)OH / H; int dw = (int)(W * s), dh = (int)(H * s), ox = (OW - dw) / 2, oy = (OH - dh) / 2;
+          for (int y = 0; y < dh; y++) { int sy = (int)(y / s); if (sy >= H) sy = H - 1; for (int x = 0; x < dw; x++) { int sx = (int)(x / s); if (sx >= W) sx = W - 1; memcpy(big + ((size_t)(oy + y) * OW + ox + x) * 4, fb + ((size_t)sy * W + sx) * 4, 4); } }
+          free(fb); fb = big; W = OW; H = OH; } } }
     { const char *zs = getenv("PET_SCENE_ZOOM"); int k = zs ? atoi(zs) : 1;        /* fullscreen: the picture is drawn at its small size and enlarged by a whole number (crisp pixels) */
       if (k > 1 && k <= 8) { unsigned char *big = malloc((size_t)W * k * H * k * 4); if (big) { for (int y = 0; y < H * k; y++) for (int x = 0; x < W * k; x++) memcpy(big + ((size_t)y * W * k + x) * 4, fb + ((size_t)(y / k) * W + x / k) * 4, 4); free(fb); fb = big; W *= k; H *= k; } } }
     { FILE *old = fopen(out, "rb"); if (old) { unsigned char *ob = malloc((size_t)W * H * 4 + 1); size_t got = ob ? fread(ob, 1, (size_t)W * H * 4 + 1, old) : 0; fclose(old);
