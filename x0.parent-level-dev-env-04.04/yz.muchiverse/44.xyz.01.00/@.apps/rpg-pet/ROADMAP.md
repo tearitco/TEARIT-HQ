@@ -11,6 +11,8 @@ Status words: DONE = built and seen working / PARTIAL / TODO / PLAN = documented
 - pet-trainer GUI: INT | book | page | Shop | Menu, stats sidebar, six pet buttons in the footer. CPU: renderer ~6%, daemon 0.2% (class `fixed-size managed user-resizable` was the fix; 40-47% without).
 - One C op (`ops/rpg_pet.c`, stb_image), no Python.
 
+- (later 2026-10-10) All six pets walk and meet by themselves; INT controls the selected pet or the player (Tab); roguelike turns (clock moves only when you act, every other pet steps); the old game's clock mechanism (lc_clock, own root) shown in the top bar with a Time dropdown; day/night tint.
+
 ## Next (in order, each ends with a before/after PNG)
 1. Shop pictures: RMMV `IconSet.png` for DB items, the furniture's own Inside_B tile for furniture (find the renderer's item `sprite=` format first). DB items as shop stock.
 2. Chat + bag hotbar overlays actually drawn (compare pet-trainer; footer buttons already work).

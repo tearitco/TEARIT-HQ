@@ -3,13 +3,14 @@
      (&.widgits/db-hq/data PetParty + ACTOR rows); every picture is an RPG Maker MV tile or character frame. Static layout, shared khtpm_core_render.+x, zero renderer C.
      state/ui.txt is written by ops/+x/rpg_pet.+x (C): on every verb, and by its resident mode (the module below) that polls INT keys and walks the pet. Guide: HOW-TO-RPG-PET.md.
      RULES: no angle brackets inside comments. -->
-<window label="${title}" class="rpg-pet database-window fixed-size managed user-resizable" vars="state/ui.txt">
+<window label="${title}" class="rpg-pet database-window fixed-size managed user-resizable" vars="state/ui.txt state/clock_ui.txt">
   <module src="@.apps/rpg-pet/ops/+x/rpg_pet.+x"/>
   <page name="main">
     <tabbar id="toolbar" class="tab-bar">
       <tab id="tb-int" class="tab rp-tb ${interact_class}" label="INT ${interact_label}" relay="${rp_h1},${rp_h2}" onclick="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' int"/>
       <tab id="tb-book" class="tab rp-tb" label="${book_label} ▾" onclick="ACTIVATE" target_id="tb-book"/>
       <tab id="tb-page" class="tab rp-tb" label="${page_label} ▾" onclick="ACTIVATE" target_id="tb-page"/>
+      <tab id="tb-time" class="tab rp-tb" label="${time_label} ▾" onclick="ACTIVATE" target_id="tb-time"/>
       <tab id="tb-shop" class="tab rp-tb" label="Shop ▾" onclick="ACTIVATE" target_id="tb-shop"/>
       <tab id="tb-menu" class="tab rp-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
     </tabbar>
@@ -22,18 +23,28 @@
         <item id="rm${room.#}" class="rp-menu-row dropdown-child" target_id="tb-page" label="${room.label}" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' goto ${room.id}"/>
       </repeat>
       <item id="rm-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-page" label="- cancel -" action="void"/>
+      <item id="tm-cent" class="rp-menu-row dropdown-child" target_id="tb-time" label="speed: turbo (testing)" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' clock rate cent"/>
+      <item id="tm-sec" class="rp-menu-row dropdown-child" target_id="tb-time" label="speed: fast (1 hour/sec)" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' clock rate sec"/>
+      <item id="tm-min" class="rp-menu-row dropdown-child" target_id="tb-time" label="speed: normal (1 min/sec)" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' clock rate min"/>
+      <item id="tm-hour" class="rp-menu-row dropdown-child" target_id="tb-time" label="speed: real time" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' clock rate hour"/>
+      <item id="tm-adv1h" class="rp-menu-row dropdown-child" target_id="tb-time" label="skip +1 hour" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' clock advance 1h"/>
+      <item id="tm-adv1d" class="rp-menu-row dropdown-child" target_id="tb-time" label="skip +1 day" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' clock advance 1d"/>
+      <item id="tm-reinst" class="rp-menu-row dropdown-child" target_id="tb-time" label="reinstall schedule" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' clock reinstall"/>
+      <item id="tm-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-time" label="- cancel -" action="void"/>
       <repeat count="${n_shop}" bind="shop">
         <item id="sh${shop.#}" class="rp-menu-row dropdown-child" target_id="tb-shop" label="${shop.label}" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' buy ${shop.key}"/>
       </repeat>
       <item id="sh-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-shop" label="- cancel -" action="void"/>
       <item id="mn-chat" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Chat show / hide" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' toggle chat"/>
       <item id="mn-hotbar" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Hotbar show / hide" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' toggle hb"/>
+      <item id="mn-control" class="rp-menu-row dropdown-child" target_id="tb-menu" label="${control_label} (switch: Tab)" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' control"/>
       <item id="mn-view" class="rp-menu-row dropdown-child" target_id="tb-menu" label="View: 2D / 3D / glyph" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' view"/>
       <item id="mn-reset" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Reset house (keeps a backup)" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' reset"/>
       <item id="mn-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-menu" label="- cancel -" action="void"/>
       <text label="coins ${coins}" class="rp-big"/>
       <text label="${nick_line}" class="ph-quiet"/>
       <text label="${profile_line}" class="ph-quiet"/>
+      <text label="${friend_line}" class="ph-quiet"/>
       <text label="${stat_line}" class="ph-quiet"/>
       <text label="${stat_line2}" class="ph-quiet"/>
       <text label="in this room (click to pick up)" class="rp-quiet"/>

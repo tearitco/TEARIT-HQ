@@ -1,0 +1,19 @@
+SECTION | KEY | VALUE
+----------------------------------------
+# time.pdl - rpg-pet's TIME: what its own clock fires and when. The clock is the house livedesk clock (&.widgits/livedesk-clock/ops/+x/lc_clock.+x) with its OWN mini root
+# (state/clock_root, clock id "rpg") - the same mechanism as @.apps/pet-trainer/ops/pet_clock.sh, but it never touches pet-trainer's clock. The clock runs while the window is open.
+# Each AT row becomes a reminder; when it fires the clock daemon runs ops/+x/rpg_pet.+x <pkg> <root> (event runner mode) with the event name.
+# AT | event | when | repeat | what it does          when = HH:MM of the game day (or +N<m|h|d>);  repeat = every:<n><min|hour|day|week>
+# Edit here, then Menu > Time > Reinstall schedule (or delete state/clock_root).
+AT | phase_dawn  | 06:00 | every:1day | sunrise: the room turns warm (writes state/daylight.txt phase=dawn)
+AT | phase_day   | 08:00 | every:1day | full day
+AT | phase_dusk  | 17:00 | every:1day | sunset: orange
+AT | phase_night | 19:00 | every:1day | night: the room goes dark blue
+AT | day_tick    | 00:00 | every:1day | a new day (a DAY row in state/events.txt)
+# TURN | advance | <amount>   how much game time ONE roguelike turn costs (INT on: each move or act of the pet/player you control = one turn: the clock advances this much and every other pet steps once)
+TURN | advance | 5m
+# speeds the Time menu offers (lc_clock rates: cent = 100 game hours per real second, testing only; sec = 1 hour; min = 1 minute (default); hour = real time)
+SPEED | cent
+SPEED | sec
+SPEED | min
+SPEED | hour
