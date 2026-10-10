@@ -30,7 +30,7 @@ Control mapping follows the player's perspective (left key = left on screen), pe
 5. The village becomes a real pc-hq board (book `pet_village`), which also delivers the RPG Maker tiles + sprite animation item.
 
 ## Open questions for the owner
-- Rooms in 3D: a box with walls (like a doll house, free-roam camera) or a side-on diorama?
+- Rooms in 3D: ANSWERED by owner 2026-10-09: "side ways view is fine". Rooms stay a side-on view (the current look). 3D/POV/free camera is for the property, village and voxel planet, not inside rooms. The mini map shows the whole doll house.
 - Should the 3D pass be on by default or only after pressing 0 (recommended: 2D default, 0 to switch)?
 - CPU: the 3D daemon is heavy on this machine (see board-viewer perf notes); run it only while mode=3d and INT is on, and `nice`d.
 
