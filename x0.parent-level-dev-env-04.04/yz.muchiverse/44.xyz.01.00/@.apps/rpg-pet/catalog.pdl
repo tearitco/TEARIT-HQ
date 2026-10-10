@@ -1,0 +1,18 @@
+# rpg-pet shop catalog. Every picture is a tile of an RPG Maker MV sheet in #.NNEST_ASSETS/rmmv-www-img/tilesets (48 px tiles). Nothing else is drawn.
+# ITEM | key | label | price | sheet | col | row | w_tiles | h_tiles | kind | effect
+# kind: floor (stands on the floor, blocks its cells) | wall (hangs on the wall row)
+# effect: what the item DOES for the pet once the events layer reads it (v0: stored, shown, not acted on yet): sleep, eat, read, play, decor
+ITEM | bed_blue     | Blue bed      | 120 | Inside_B | 0  | 10 | 1 | 2 | floor | sleep
+ITEM | bed_orange   | Orange bed    | 120 | Inside_B | 1  | 10 | 1 | 2 | floor | sleep
+ITEM | table_round  | Round table   |  60 | Inside_B | 0  | 12 | 1 | 1 | floor | eat
+ITEM | table_white  | White table   |  70 | Inside_B | 1  | 12 | 1 | 1 | floor | eat
+ITEM | stool_red    | Red stool     |  25 | Inside_B | 1  | 13 | 1 | 1 | floor | decor
+ITEM | bookshelf    | Bookshelf     | 150 | Inside_B | 6  | 8  | 1 | 2 | floor | read
+ITEM | cupboard     | Cupboard      | 130 | Inside_B | 2  | 6  | 1 | 2 | floor | eat
+ITEM | piano        | Piano         | 400 | Inside_B | 5  | 12 | 2 | 2 | floor | play
+ITEM | throne_red   | Red armchair  | 220 | Inside_B | 10 | 6  | 2 | 2 | floor | decor
+ITEM | flowers      | Flower vase   |  35 | Inside_B | 4  | 13 | 1 | 1 | floor | decor
+ITEM | barrel       | Barrel        |  30 | Inside_B | 9  | 10 | 1 | 1 | floor | decor
+ITEM | clock        | Wall clock    |  80 | Inside_B | 8  | 4  | 1 | 2 | wall  | decor
+ITEM | mirror       | Wall mirror   |  90 | Inside_B | 9  | 4  | 1 | 2 | wall  | decor
+ITEM | window       | Window        |  50 | Inside_B | 0  | 4  | 1 | 2 | wall  | decor

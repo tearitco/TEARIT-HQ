@@ -1,0 +1,58 @@
+<!-- rpg-pet.xhtpm - the RPG Maker pet house (toys menu). Everything drawn is an RPG Maker MV tile or character frame. Static layout, shared khtpm_core_render.+x, zero renderer C;
+     state/ui.txt is written by ops/+x/rpg_pet.+x (C): on every verb, and by its resident mode (the module below) that polls INT keys and walks the pet. Sidebar = shop + placed items, panel = the room canvas + typed line, footer = hints.
+     Guide for future agents: HOW-TO-RPG-PET.md. RULES: no angle brackets inside comments. -->
+<window label="${title}" class="rpg-pet database-window fixed-size managed user-resizable" vars="state/ui.txt">
+  <module src="@.apps/rpg-pet/ops/+x/rpg_pet.+x"/>
+  <page name="main">
+    <tabbar id="toolbar" class="tab-bar">
+      <tab id="tb-int" class="tab rp-tb ${interact_class}" label="INT ${interact_label}" relay="${rp_h1},${rp_h2}" onclick="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' int"/>
+      <tab id="tb-shop" class="tab rp-tb" label="Shop ▾" onclick="ACTIVATE" target_id="tb-shop"/>
+      <tab id="tb-rooms" class="tab rp-tb" label="Rooms ▾" onclick="ACTIVATE" target_id="tb-rooms"/>
+      <tab id="tb-reset" class="tab rp-tb" label="Reset house" onclick="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' reset"/>
+    </tabbar>
+    <sidebar id="side" class="sidebar">
+      <text label="coins ${coins}" class="rp-big"/>
+      <repeat count="${n_shop}" bind="shop">
+        <item id="sh${shop.#}" class="rp-menu-row dropdown-child" target_id="tb-shop" label="${shop.label}" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' buy ${shop.key}"/>
+      </repeat>
+      <item id="sh-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-shop" label="- cancel -" action="void"/>
+      <repeat count="${n_room}" bind="room">
+        <item id="rm${room.#}" class="rp-menu-row dropdown-child" target_id="tb-rooms" label="${room.label}" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' goto ${room.id}"/>
+      </repeat>
+      <item id="rm-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-rooms" label="- cancel -" action="void"/>
+      <text label="in this room (click to pick up)" class="rp-quiet"/>
+      <scrolllist>
+        <repeat count="${n_placed}" bind="placed">
+          <item id="pl${placed.#}" class="rp-row" label="${placed.label}" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' remove ${placed.id}"/>
+        </repeat>
+      </scrolllist>
+    </sidebar>
+    <panel id="room_p" class="rp-panel">
+      <canvas id="room" class="rp-room" sprite="${canvas_raw}"/>
+      <row id="chat-ov" class="canvas-overlay-right ov-top ov-chrome ov-slide-x rp-chat-ov theme" show="${chat_visible}">
+        <text label="chat" class="hb-quiet ov-title theme-3"/>
+        <item id="chat-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' toggle chat"/>
+        <text label="${chat_0}" class="rp-chat"/>
+        <text label="${chat_1}" class="rp-chat"/>
+        <text label="${chat_2}" class="rp-chat"/>
+        <text label="${chat_3}" class="rp-chat"/>
+        <text label="${chat_4}" class="rp-chat"/>
+        <text label="${chat_5}" class="rp-chat"/>
+        <cli_io id="say" target_id="rp-say" rows="3" class="rp-say" label="&gt; " action="'${PKG}/ops/+x/rpg_pet.+x'"/>
+      </row>
+      <row id="hotbar-ov" class="canvas-overlay-bottom ov-chrome ov-slide-x rp-hotbar theme" show="${hb_visible}">
+        <text label="${hb_title}" class="hb-quiet ov-title theme-3"/>
+        <item id="hb-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' toggle hb"/>
+        <repeat count="${hb_n_slots}" bind="hb">
+          <item id="hbs${hb.#}" class="hb-slot skin-bar" label="${hb.text}" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' use ${hb.key}"/>
+        </repeat>
+      </row>
+    </panel>
+    <footer id="statusbar" class="pchq-footer">
+      <text label="${msg}" class="quiet"/>
+      <item id="ft-view" class="pchq-ft skin-bar" label="${view_label}" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' view"/>
+      <item id="ft-chat" class="pchq-ft skin-bar" label="${chat_toggle_label}" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' toggle chat"/>
+      <item id="ft-hb" class="pchq-ft skin-bar" label="hb" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' toggle hb"/>
+    </footer>
+  </page>
+</window>

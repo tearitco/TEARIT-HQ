@@ -1,0 +1,10 @@
+SECTION | KEY | VALUE
+------------------------------
+# rooms.pdl - rpg-pet rooms and doors. Same row shapes as @.apps/pet-trainer/rooms.pdl (ROOM / DOOR), in TILE units instead of pixels. Every DOOR is a teleport: the door picture sits on the wall row at tx,
+# the trigger cell is the floor cell right below it (tx,2); touching it (INT arrow step, or an auto=1 autonomous walk) teleports to dest at arrive_x,arrive_y.
+# ROOM | id | name | floor_col | floor_row        floor tile = Inside_A5 col,row (48 px tiles)
+# DOOR | room | tx | dest | arrive_x | arrive_y | auto      auto=1: the pet may walk to this door by itself; auto=0: only you send it (INT)
+ROOM | bedroom | Bedroom      | 1 | 2
+ROOM | living  | Living room  | 2 | 2
+DOOR | bedroom | 11 | living  | 2 | 3 | 1
+DOOR | living  | 1  | bedroom | 10 | 3 | 1
