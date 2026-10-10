@@ -60,7 +60,8 @@ static void esc_poll(const char *dir) {        /* Esc (27) is forwarded to keybo
     fseek(f, 0, SEEK_END); long sz = ftell(f); if (hist_off < 0 || hist_off > sz) hist_off = sz; fseek(f, hist_off, SEEK_SET); char l[64]; int esc = 0;
     while (fgets(l, sizeof l, f)) if (strstr(l, "KEY_PRESSED: 27")) esc = 1;
     hist_off = ftell(f); fclose(f);
-    if (esc) { snprintf(p, sizeof p, "%s/interact_armed.txt", dir); FILE *a = fopen(p, "w"); if (a) { fputs("0\n", a); fclose(a); } }
+    if (esc) { { char cp[PATH_MAX], cl[256] = ""; snprintf(cp, sizeof cp, "%s/camera.st", dir); FILE *cf = fopen(cp, "r"); if (cf) { size_t n = fread(cl, 1, sizeof cl - 1, cf); cl[n] = 0; fclose(cf); char *q = strstr(cl, "pov=5"); if (q) { q[4] = '1'; cf = fopen(cp, "w"); if (cf) { fputs(cl, cf); fclose(cf); } } } }      /* leaving Interact also leaves the debug map (pov 5) */
+      snprintf(p, sizeof p, "%s/interact_armed.txt", dir); FILE *a = fopen(p, "w"); if (a) { fputs("0\n", a); fclose(a); } }
 }
 static void relay_poll(const char *app, const char *dir, const char *view, long long t) {
     char p[PATH_MAX]; snprintf(p, sizeof p, "%s/interact_relay.txt", dir); FILE *f = fopen(p, "r"); if (!f) return;
