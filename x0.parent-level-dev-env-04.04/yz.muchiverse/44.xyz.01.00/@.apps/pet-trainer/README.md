@@ -18,3 +18,5 @@ First consumer of the layout studio. Everything is data plus one verb script; no
 - **Not built**: the house screen (fridge/bed/bath desk + control window), registry rows so events-hq can pick these verbs, a DB-backed memory, and an internal chat model (see roadmap docs below).
 
 Roadmap docs: `08-roadmap/design-docs/ENTITY-NEEDS-AND-CARE-DESIGN.md` (needs, GOAP, weighted choice), `LEARNING-LOOP-BANKS-WEIGHTS-NO-REPROMPT-DESIGN.md` (weights, banks; says no model weights are trained today), `ENTITY-SCHOOL-YEARS-DESIGN.md`, `RPGMAKER-PRIMITIVES-FOR-EVERYTHING-DESIGN.md`, digipet (`&.widgits/digipet/`, the needs loop this builds on).
+
+Roadmap and designs: ROADMAP.md, CAMERA-DESIGN.md, WORLD-DESIGN.md.
