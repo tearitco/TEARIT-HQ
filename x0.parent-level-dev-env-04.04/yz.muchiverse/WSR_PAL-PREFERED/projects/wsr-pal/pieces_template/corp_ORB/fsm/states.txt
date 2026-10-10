@@ -1,0 +1,35 @@
+# Human-readable key for state.txt's numeric fields. current_state is
+# read by prisc+x's real read_state builtin (exact-int beq dispatch,
+# see muchi-evo-pal's own EVO-DESIGN.txt for the same convention and
+# the path-resolution gotcha this project's ops already account for -
+# pieces live under projects/wsr-pal/pieces/<id>/, not pieces/world_.../).
+
+current_state:
+  0 = idle       (waiting for the tick loop to act on this corporation)
+  1 = deciding   (corp_decide.+x picks buy/sell/hold, per decision_mode)
+  2 = trading     (corp_trade.+x executes the decision, updates cash/shares_held)
+
+decision_mode - same chassis as muchi-evo-pal, applied to trading
+instead of eat/evolve. Ported from REAL wsr-pal logic where it exists,
+not invented fresh - see each op's own header comment for citations:
+  0 = preset     (hardcoded: buy if affordable and holding fewer than
+                  5 shares, else hold - simplest possible rule, matches
+                  muchi-evo-pal's own preset-tier simplicity)
+  1 = weighted   (REAL, ported directly from wsr-pal's own
+                  analysis_loop.c compute_new_stock_price() - NOT a
+                  stub, unlike muchi-evo-pal's weighted tier. Computes
+                  a fundamental-value estimate from book value, market
+                  cap, debt/equity leverage, and this corp's own
+                  risk_bias weight [same weights.txt convention wsr-pal
+                  already uses for 50 real corporations], then buys if
+                  fundamental value > current price [undervalued],
+                  sells if meaningfully below [overvalued], else holds.)
+  2 = rl         (STUB - no learned policy wired yet, same honesty
+                  standard as muchi-evo-pal's own rl stub)
+  3 = llm        (REAL - asks the LAN gemma3:270m model, same as
+                  muchi-evo-pal, given cash/price/shares_held/the
+                  weighted tier's own fundamental-value estimate as
+                  context, to pick buy/sell/hold.)
+  4 = human      (REAL - `button.sh choose buy|sell|hold` + `button.sh
+                  step`, same non-auto-resolving park-and-wait design as
+                  muchi-evo-pal's human tier.)

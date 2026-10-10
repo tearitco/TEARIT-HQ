@@ -1,0 +1,6 @@
+current_state=0
+decision_mode=0
+temperature=15.0
+precipitation=0.30
+season_tick=0
+last_action=

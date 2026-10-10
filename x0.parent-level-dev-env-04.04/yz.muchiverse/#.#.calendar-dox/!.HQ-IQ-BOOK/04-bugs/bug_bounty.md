@@ -2,7 +2,9 @@
 
 ---
 
-## OPEN 2026-10-10: WSR `market_settle` cannot rebuild the shareholder registry (wrong relative op path)
+## FIXED 2026-10-10 (verified in scratch): WSR `market_settle` cannot rebuild the shareholder registry (wrong relative op path)
+
+**Fix:** `ops/market_settle.c` now runs `./ops/+x/shareholder_registry.+x` from the project root. Verified: rebuild registry, quote (58 participants, 30 orders), settle (16 fills) and the registry was rebuilt after settle (18 holder rows), no warning. Also done: the 62 entity pieces are bundled in `WSR_PAL-PREFERED/projects/wsr-pal/pieces_template` and `ensure_entities.sh` seeds from them (idempotent). Note: the day order must run `shareholder_registry rebuild` BEFORE `market_quote` (quote reads shareholders.txt).
 
 **Found by running it** in a scratch copy of `WSR_PAL-PREFERED` (`PRISC_PROJECT_ROOT=<scratch>`, `market_quote` then `market_settle`): `sh: 1: ./+x/shareholder_registry.+x: not found` then "WARNING - could not rebuild the shareholder registry; dividends will use a stale index". The settle itself worked (17 fills). **Cause (read, not fixed):** the op shells out to `./+x/...` relative to the current directory instead of `<root>/ops/+x/`. **Related, same pass:** `player_trade` is hard-wired to `pieces/player_you/`; the preferred tree has no entity data (`ensure_entities.sh` makes 0 pieces); `bond` issuance has no holder. Details: `44.xyz.01.00/@.apps/pet-trainer/WSR-ECONOMY-AND-PETS-EXPLORATION.md` section 5.
 

@@ -21,6 +21,17 @@ CORP_SRC="$SCRIPT_DIR/Mar\$.\$treetRace.wsr]Q]k32/corporations/generated"
 GOV_SRC="$SCRIPT_DIR/Mar\$.\$treetRace.wsr]Q]k32/governments/generated"
 DEST="$SCRIPT_DIR/projects/wsr-pal/pieces"
 
+# 2026-10-10: the source-data folder above (the original game's generated profiles) is not in this tree, so seed from the bundled
+# projects/wsr-pal/pieces_template instead (50 corporations, 7 governments, the player, pop, weather, 2 realestate). Idempotent: only pieces
+# that do not exist yet are copied, so accumulated trading state is never overwritten.
+TPL="$SCRIPT_DIR/projects/wsr-pal/pieces_template"
+if [ ! -d "$CORP_SRC" ] && [ -d "$TPL" ]; then
+    mkdir -p "$DEST"; n=0
+    for d in "$TPL"/*/; do b="$(basename "$d")"; [ -e "$DEST/$b" ] && continue; cp -a "$d" "$DEST/$b"; n=$((n + 1)); done
+    echo "seeded $n piece(s) from pieces_template"
+    exit 0
+fi
+
 corp_created=0
 corp_skipped=0
 for dir in "$CORP_SRC"/*/; do
