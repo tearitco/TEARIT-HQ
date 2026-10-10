@@ -66,6 +66,41 @@
 >   ROWS; per-segment digit slots still need the slot model (future).
 >   Selection across segments stays out of scope per the design.
 
+> **ADDENDUM 2026-10-10 — step 8 (hover) landed, commit `34d08b0b2`.**
+> - *Hover highlight*: a link span under the pointer draws its TEXT white
+>   (the keyboard cursor keeps the underline, so the marks compose).
+>   Same lazy (nav,index,id) contract as the cursor; cleared at reparse;
+>   redraw ONLY on target change (PITFALL #52 holds - a motion storm
+>   repaints nothing). The resolvers are the click path's own
+>   `seg_hit_action`/`seg_hit_wrapped` with the actionable-run index
+>   threaded out, so hover owns no input state: a click after a hover
+>   still dispatches.
+> - *Two mask/relay gaps this uncovered* (same class as the ones already
+>   called out in `hq_dispatch_xevent` - a handler wired, the delivery
+>   missing): the generic top-level window selected `ButtonMotionMask`
+>   but never `PointerMotionMask`, so a plain pointer glide was never
+>   delivered by X11 at all; and relayed pointer moves (`MOUSE_EVENT`
+>   with `is_press` 0) were dropped. Both fixed. The relay move
+>   deliberately does NOT count as consumed input.
+> - *Three wire-format traps*, each of which produced a confident wrong
+>   theory this session - they are documented in the committed fixture:
+>   a `text` span needs its TRAILING empty url field (`text\x1Fwords\x1F`);
+>   a `link` span is only actionable when the optional 4th action field
+>   is present (without it the payload parses, round-trips and TINTS, but
+>   has no actionable run - indistinguishable from "hover does not
+>   work"); and an action is a BARE command, because `dispatch()` wraps
+>   it in `sh '...'` itself - an action that already starts with `sh '...'`
+>   double-wraps into broken shell quoting and dies with no visible
+>   failure anywhere.
+> - *Test*: `nb_hover_test.sh`, hermetic (launches its own fixture
+>   window, never touches the running browser) and pixel-counted, since
+>   a passing assertion nobody can fail is decoration. It is
+>   negative-tested: suppressing the hover move, suppressing the
+>   move-off, and mis-clicking each turn it red.
+> - *Known suite red, NOT this commit*: `nb_layout_test.sh` fails on a
+>   missing `wb_viewer` snapshot; the fixture landed in `70280f557` with
+>   no snapshot beside it.
+
 Where the inline-clickable-spans feature stands after a long session, and
 exactly what the next person has to do. Read
 `2026-10-07-INLINE-SPANS-DESIGN.md` first for the original design; this
