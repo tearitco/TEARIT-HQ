@@ -16,6 +16,8 @@
 
 **To close:** owner runs the pet window for a while (started, with chat open) and reports no flicker; `top` shows the pet renderer under ~20%.
 
+**Update 2026-10-10 (flicker root cause found by measurement):** the atomic scene write was NOT the visible flicker. Capturing the live window (`xwd`, 300 frames, then 2 minutes watched) showed idle frames are stable (only pet animation, an NPC and star twinkle), but the **X window width swung 892/904/908/916 px every few seconds**. `khtpm_core_render.c` (tab row, `s_tabbar_hw`) sized the window from the tab label widths and the game-clock tab (`D19 05:19`) changes width as it ticks, so the window resized and repainted constantly. Fix: latch the widest width the row has needed (grow only). After relaunch: 2 size changes in 100 s, then stable. Owner confirms much less screen movement, "maybe a very vague flicker" left, and said move on. **Status: mostly fixed, residual vague flicker not chased.** Candidate for a residual: the same shared layout computes other widths from live text, and each redraw does an `XGetImage`+`XPutImage` round trip of the whole 2 MB window.
+
 ---
 
 ## ✅ CLOSED 2026-09-30 (grok handoff, HANDOFF STEP 1 ONLY, real regression caught and fixed same session): taskbar's HQ-window discovery opendir/readdir'd 2616 entries every reload
