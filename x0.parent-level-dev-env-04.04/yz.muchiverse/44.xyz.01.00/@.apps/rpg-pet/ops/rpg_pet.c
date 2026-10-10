@@ -473,6 +473,15 @@ static int slot_of(const unsigned char *px) {
     for (int i = 1; i < nslot; i++) if (!memcmp(slotpx[i], px, XT * XT * 4)) return i;
     if (nslot >= MAXSLOT) return 0; memcpy(slotpx[nslot], px, XT * XT * 4); return nslot++;
 }
+/* 3D sprite frames: the board-viewer 3D raymarcher extrudes a 16x24 RGBA frame per map event (8 voxels deep), looked up as <ASSETS>/../tsots-characters/frames/<charset>_<index>_<dir 2|4|6|8>_<pattern>.rgba
+ * (found by walking up from the map folder; same files the 98 TSOTS desks use, tsots_events.py write_frame). No frame file = the flat colour box. A 3x4-frame cell of the 12x8 sheet, nearest-resized to 16x24. */
+static void write_frame(const char *sh, int idx, int dir4, int pat) {
+    Sheet *s = sheet("characters", sh); if (!s) return; char d[PATH_MAX], p[PATH_MAX]; snprintf(d, sizeof d, "%s/../tsots-characters", ASSETS); mkdir(d, 0755); snprintf(d, sizeof d, "%s/../tsots-characters/frames", ASSETS); mkdir(d, 0755);
+    static const int dc[4] = {2, 4, 6, 8}; snprintf(p, sizeof p, "%s/%s_%d_%d_%d.rgba", d, sh, idx, dc[dir4 & 3], pat); if (fexists(p)) return;
+    int pw = s->w / 12, ph = s->h / 8; if (pw < 1 || ph < 1) return; int sx = ((idx % 4) * 3 + pat) * pw, sy = ((idx / 4) * 4 + dir4) * ph; unsigned char out[16 * 24 * 4];
+    for (int y = 0; y < 24; y++) for (int x = 0; x < 16; x++) { int px = sx + x * pw / 16, py = sy + y * ph / 24; memcpy(out + (y * 16 + x) * 4, s->px + ((size_t)py * s->w + px) * 4, 4); }
+    FILE *f = fopen(p, "wb"); if (f) { fwrite(out, 1, sizeof out, f); fclose(f); }
+}
 static void export3d(char *msg, size_t cap) {
     char root[PATH_MAX], d[PATH_MAX], p[PATH_MAX]; snprintf(root, sizeof root, "%s/@.apps/piececraft-hq/pieces/system/maps/rpg-pet", HOUSE);
     { char a[PATH_MAX]; snprintf(a, sizeof a, "%s/@.apps/piececraft-hq/pieces/system/maps", HOUSE); mkdir(a, 0755); } mkdir(root, 0755);
@@ -505,8 +514,8 @@ static void export3d(char *msg, size_t cap) {
         snprintf(p, sizeof p, "%s/cells.rgba", d); { FILE *f = fopen(p, "wb"); if (f) { fwrite(atlas, 1, (size_t)aw * ah * 4, f); fclose(f); } } snprintf(p, sizeof p, "%s/cells.png", d); stbi_write_png(p, aw, ah, 4, atlas, aw * 4); free(atlas);
         snprintf(p, sizeof p, "%s/cells.txt", d); { FILE *f = fopen(p, "w"); if (f) { fprintf(f, "width=%d\nheight=%d\ntile_px=%d\natlas_cols=16\natlas_tiles=%d\ncells\n", COLS, ROWS, XT, nslot); for (int y = 0; y < ROWS; y++) { for (int x = 0; x < COLS; x++) fprintf(f, "%s%d,%d", x ? " " : "", fs[y][x], ws[y][x]); fputc('\n', f); } fclose(f); } }
         snprintf(p, sizeof p, "%s/events.txt", d); { FILE *f = fopen(p, "w"); if (f) { int dc[4] = {2, 4, 6, 8};
-            for (int i = 0; i < nparty; i++) if (others[i].room == r) { Sheet *s = sheet("characters", party[i].sheet); int ci = party[i].idx; unsigned char px[4] = {128, 128, 128, 255}; if (s) { int fx = (ci % 4) * 3 * T + T + T / 2, fy = (ci / 4) * 4 * T + others[i].dir * T + T / 2; if (fx < s->w && fy < s->h) memcpy(px, s->px + ((size_t)fy * s->w + fx) * 4, 4); } fprintf(f, "%d %d %d %d %d %s %d %d 1\n", others[i].x, others[i].y, px[0], px[1], px[2], party[i].sheet, ci, dc[others[i].dir & 3]); }
-            if (tr.room == r) { Sheet *s = sheet("characters", hero.sheet); unsigned char px[4] = {200, 60, 60, 255}; if (s) { int fx = T + T / 2, fy = tr.dir * T + T / 2; memcpy(px, s->px + ((size_t)fy * s->w + fx) * 4, 4); } fprintf(f, "%d %d %d %d %d %s 0 %d 1\n", tr.x, tr.y, px[0], px[1], px[2], hero.sheet, dc[tr.dir & 3]); }
+            for (int i = 0; i < nparty; i++) if (others[i].room == r) { write_frame(party[i].sheet, party[i].idx, others[i].dir, 1); Sheet *s = sheet("characters", party[i].sheet); int ci = party[i].idx; unsigned char px[4] = {128, 128, 128, 255}; if (s) { int fx = (ci % 4) * 3 * T + T + T / 2, fy = (ci / 4) * 4 * T + others[i].dir * T + T / 2; if (fx < s->w && fy < s->h) memcpy(px, s->px + ((size_t)fy * s->w + fx) * 4, 4); } fprintf(f, "%d %d %d %d %d %s %d %d 1\n", others[i].x, others[i].y, px[0], px[1], px[2], party[i].sheet, ci, dc[others[i].dir & 3]); }
+            if (tr.room == r) { write_frame(hero.sheet, 0, tr.dir, 1); Sheet *s = sheet("characters", hero.sheet); unsigned char px[4] = {200, 60, 60, 255}; if (s) { int fx = T + T / 2, fy = tr.dir * T + T / 2; memcpy(px, s->px + ((size_t)fy * s->w + fx) * 4, 4); } fprintf(f, "%d %d %d %d %d %s 0 %d 1\n", tr.x, tr.y, px[0], px[1], px[2], hero.sheet, dc[tr.dir & 3]); }
             fclose(f); } }
     }
     snprintf(p, sizeof p, "%s/game.pdl", root); { FILE *f = fopen(p, "w"); if (f) { fputs(gl, f); fclose(f); } }
