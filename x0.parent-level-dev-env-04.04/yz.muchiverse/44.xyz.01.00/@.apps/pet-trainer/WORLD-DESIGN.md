@@ -10,6 +10,15 @@ Owner vision (verbatim intent): a mini map shows where the pet is in the house. 
 5. **Neighbours**: each of the six pets owns a plot on the shared grid; the village page becomes the property map. "Borough" = visiting or moving into another pet's house through a door event; a `LIKE` ledger per pair (appended by conversations and gifts) decides the welcome.
 6. **Voxel planet**: the property grid becomes a chunk of a voxel world (x, y, z blocks); the planet is many chunks. Rendering goes through the board-viewer 3D path (see CAMERA-DESIGN.md), so the pc-hq camera/POV keys explore it. Storage follows the house plan: files now, wraith-alpha in-memory DB later.
 
+## Society layer (owner direction 2026-10-09, same session)
+"They will build high towers, do jobs for each other, trade money etc, reproduce, build more tunnels, talk to each other etc."
+- **Vertical + underground building:** cells get a `z` (home.pdl `CELL | room | x | y | z | kind`); towers go up, tunnels are corridor cells (kind `tunnel`) joined by door rows. The voxel planet makes this natural; until then z is a map layer.
+- **Jobs:** a JOB ledger (`state/world/jobs.txt`, append-only): `JOB | id | poster | task | pay | taker | status`. Any pet (or you, or an agent) posts a job (build a room, harvest, carry an item); another pet takes it by its own weighted choice (like self_care) and an event pays on completion.
+- **Money and trade:** coins already live in the pet's inventory/RPG Maker data (party gold); a TRADE event moves items/coins between two pets, both sides logged. LIKE (borough) scores weight who trades with whom.
+- **Reproduction:** an event between two pets that like each other and own enough room creates a new actor row in the RPG Maker DB (class Pet, seed mixed from both parents) plus its folder and art; the party/world grows by data, not code. Needs a cap and your approval policy before it is switched on.
+- **Talk:** pet-to-pet chat uses the same chat/SAY/LEX machinery as pet-to-master (and TTS voices per species), written to a shared world chat ledger.
+- All of it is event + ledger driven on the pet clock (`time.pdl`), so it runs only while the world is Started and costs nothing when stopped. Order: map + build_room first, then jobs, then trade, then talk between pets, reproduction last.
+
 ## Rules
 - Everything is data rows + events (RPG Maker style), no per-feature C.
 - The mini map is read-only; changes come from events, so agents, users and the pet all use one path.
