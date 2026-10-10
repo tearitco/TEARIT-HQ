@@ -220,7 +220,7 @@ int main(int argc, char **argv) {
         else if (cam_pov(pet) == 5) snprintf(cmd, sizeof cmd, "%s'%s/ops/+x/pet_scene.+x' map '%s' '%s/scene.raw' %d %d '%s'", zoomenv, app, pet, pet, W, H, loc);
         else snprintf(cmd, sizeof cmd, "%s'%s/ops/+x/pet_scene.+x' room '%s/pets/%s' '%s/scene.raw' %d %d %s %s %s %lld %d '%s'", zoomenv, app, pet, act, pet, W, H, sxo, syo, an, (t / ((!strcmp(an, "walk") || !strcmp(an, "happy")) ? 400 : 800)) % 8, rid, loc);      /* idle animates at half speed: fewer repaints (CPU) */
         sh(cmd, NULL, 0);
-        usleep(200000);
+        { static int fms = 0; if (!fms) { const char *e = getenv("PET_FRAME_MS"); fms = e && atoi(e) >= 100 ? atoi(e) : 300; } usleep((useconds_t)fms * 1000); }      /* the scene is redrawn (and the renderer repaints) at most ~3x a second: the renderer's repaint is the CPU cost, so this is the CPU knob (PET_FRAME_MS, default 300) */
     }
     { char c2[2048]; snprintf(c2, sizeof c2, "PET_SHARED='%s' sh '%s/ops/pet_clock.sh' stop >/dev/null 2>&1", pet, app); sh(c2, NULL, 0); }      /* the window closed: stop the pet clock daemon (no orphan, zero CPU) */
     return 0;
