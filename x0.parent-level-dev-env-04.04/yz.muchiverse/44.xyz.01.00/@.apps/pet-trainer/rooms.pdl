@@ -6,13 +6,20 @@ SECTION | KEY | VALUE
 ROOM | bedroom | 0 | Bedroom
 ROOM | living  | 1 | Living room
 ROOM | garden  | 2 | Garden (crops)
+ROOM | roof    | 4 | Rooftop (looks over the village and the other pets houses)
 DOOR | bedroom | 30  | village | 0   | auto=0
 DOOR | bedroom | 334 | living  | 50  | auto=1
 DOOR | living  | 30  | bedroom | 320 | auto=1
 DOOR | living  | 338 | garden  | 50  | auto=1
 DOOR | garden  | 30  | living  | 320 | auto=1
+# two stairs-up doors lead to the rooftop (one in the bedroom, one in the living room); the roof has a stairs-down door on each side
+DOOR | bedroom | 182 | roof    | 60  | auto=1
+DOOR | living  | 196 | roof    | 300 | auto=1
+DOOR | roof    | 30  | bedroom | 182 | auto=1
+DOOR | roof    | 334 | living  | 196 | auto=1
 # PLATFORM | room | x0 | x1 | top y | name : furniture the pet may jump on and walk along (it never breaks anything); a started pet picks one now and then
 PLATFORM | bedroom | 62  | 158 | 216 | bed
 PLATFORM | bedroom | 206 | 302 | 216 | desk
 PLATFORM | living  | 134 | 246 | 210 | sofa
 PLATFORM | living  | 252 | 312 | 220 | tv stand
+PLATFORM | roof | 168 | 214 | 214 | chimney
