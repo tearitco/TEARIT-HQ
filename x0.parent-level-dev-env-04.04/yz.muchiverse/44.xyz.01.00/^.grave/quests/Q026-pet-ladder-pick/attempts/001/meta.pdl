@@ -1,0 +1,8 @@
+ATTEMPT | 1 | sonnet-gate | 2026-10-10T02:13:23Z
+BACKEND | 0
+PROVIDER | horn_chat_backend: answered by groq (openai/gpt-oss-120b)
+WALL | 27.7
+RESULT | PASS
+REASON | 
+BRANCH | ghost/sonnet-gate/Q026-pet-ladder-pick-a001
+WORKTREE | /home/no/staging/ghosts/sonnet-gate/Q026-pet-ladder-pick-a001
