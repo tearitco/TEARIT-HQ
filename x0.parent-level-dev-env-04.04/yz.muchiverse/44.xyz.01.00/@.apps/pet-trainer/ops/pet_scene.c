@@ -129,6 +129,8 @@ int main(int argc, char **argv) {
     else if (!strcmp(mode, "manage")) manage(dir, argv[6], atoi(argv[7]));
     else if (!strcmp(mode, "world")) world(dir, app, argv[6], atoi(argv[7]));
     else return 2;
+    { FILE *old = fopen(out, "rb"); if (old) { unsigned char *ob = malloc((size_t)W * H * 4 + 1); size_t got = ob ? fread(ob, 1, (size_t)W * H * 4 + 1, old) : 0; fclose(old);
+        if (ob && got == (size_t)W * H * 4 && !memcmp(ob, fb, got)) { free(ob); free(fb); return 0; } free(ob); } }       /* identical frame: touch nothing, the renderer stays idle */
     FILE *o = fopen(out, "wb"); if (!o) return 1; fwrite(fb, 1, (size_t)W * H * 4, o); fclose(o);
     char rp[1536]; snprintf(rp, sizeof rp, "%s", out); char *dot = strrchr(rp, '.'); if (dot) *dot = 0; strcat(rp, ".receipt.txt");
     FILE *r = fopen(rp, "w"); if (r) { fprintf(r, "frame_w=%d\nframe_h=%d\n", W, H); fclose(r); }

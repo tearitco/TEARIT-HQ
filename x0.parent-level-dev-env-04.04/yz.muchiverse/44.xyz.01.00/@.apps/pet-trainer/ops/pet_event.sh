@@ -239,7 +239,6 @@ status() {
         [ -z "$(getv name_id)" ] && setv name_id "$(awk -v i="$ACTIVE" '$1==i{print $2}' "$SHARED/party.txt" 2>/dev/null | head -1)"; [ -z "$(getv name_id)" ] && setv name_id Pochi
         printf 'title=Pet house\nname=%s\nstage=%s\nlevel=%s\nexp=%s\nmp=%s\nhunger=%s\nenergy=%s\nclean=%s\nhappy=%s\nstate=%s\n' \
             "$(getv name_id)" "$(cat "$PET/stage.txt" 2>/dev/null)" "$(getv rpg_level)" "$(getv rpg_exp)" "$(getv rpg_mp)" "${h:-0}" "${e:-100}" "${c:-100}" "${p:-50}" "$state"
-        printf 'pet_sprite=%s/art/sprites_csv/%s_%02d\n' "$PET" "$anim" "$frame"
         printf 'grade=%s\n' "$(sed -n 's/.*max_tier: *//p' "$PET/learning_limits.pdl" 2>/dev/null | head -1)"
         printf 'likes=%s\n' "$(sed -n 's/^pref_\([a-z]*\)=\(.*\)/\1:\2/p' "$W" | tr '\n' ' ')"
         { lv=$(getv rpg_level); i=0; : > "$PET/menu.tmp"; grp=$(cat "$PET/menu_group.txt" 2>/dev/null)
@@ -258,7 +257,7 @@ status() {
           printf 'n_menu=%s\nn_menu_shown=%s\nmenu_visible=%s\nmenu_group=%s\n' "$i" "$shown" "$mo" "$grp"; cat "$PET/menu.tmp"; }
         if running; then printf 'run_cls=ph-green\nrun_label=GO started\nrun_on=1\n'; else printf 'run_cls=ph-red\nrun_label=STOP stopped\nrun_on=0\n'; fi
         printf 'event_n=%s\n' "$(grep -c . "$PET/event_pkg/events_index.txt" 2>/dev/null)"
-        printf 'anim=%s\nscene_raw=%s/scene.raw\nview=%s\nactive_id=%s\nactive_dir=%s\n' "$anim" "$SHARED" "$(cat "$SHARED/view.txt" 2>/dev/null || echo room)" "$ACTIVE" "$PET"
+        printf 'anim=%s\nscene_raw=%s/scene.raw\ncanvas_raw=%s/scene.raw\nview=%s\nactive_id=%s\nactive_dir=%s\n' "$anim" "$SHARED" "$SHARED" "$(cat "$SHARED/view.txt" 2>/dev/null || echo room)" "$ACTIVE" "$PET"
         ia=$(cat "$SHARED/interact_armed.txt" 2>/dev/null); if [ "$ia" = 1 ]; then printf 'interact_armed=1\ninteract_class=interact-active\ninteract_label=on\n'; else printf 'interact_armed=0\ninteract_class=\ninteract_label=off\n'; fi
         printf 'bv_h1=%s/interact_relay.txt\nbv_h2=%s/keyboard/history.txt\n' "$SHARED" "$SHARED"
         [ -f "$SHARED/camera.st" ] && sed 's/^/cam_/' "$SHARED/camera.st"
@@ -271,7 +270,7 @@ status() {
           io=$(cat "$PET/inv_open.txt" 2>/dev/null || echo 0); [ "$(cat "$SHARED/view.txt" 2>/dev/null)" = room ] || [ ! -f "$SHARED/view.txt" ] || io=0; ishown=0; [ "$io" = 1 ] && ishown=${n:-0}
           printf 'inv_n=%s\ninv_sel=%s\ninv_shown=%s\ninv_visible=%s\n' "${n:-0}" "${sel:-0}" "$ishown" "$io"
           [ -f "$PET/inv_proj.txt" ] && sed -n 's/^slot_\([0-9]*\)=\(.*\)|\(.*\)$/inv_\1_text=\2 \3/p' "$PET/inv_proj.txt"; }
-    } > "$SHARED/ui.tmp"; mv -f "$SHARED/ui.tmp" "$SHARED/ui.txt"; printf '%s\n' "$PET" > "$SHARED/active_dir.txt"
+    } > "$SHARED/ui.tmp"; if cmp -s "$SHARED/ui.tmp" "$SHARED/ui.txt"; then rm -f "$SHARED/ui.tmp"; else mv -f "$SHARED/ui.tmp" "$SHARED/ui.txt"; fi; printf '%s\n' "$PET" > "$SHARED/active_dir.txt"
     cat "$SHARED/ui.txt"
 }
 

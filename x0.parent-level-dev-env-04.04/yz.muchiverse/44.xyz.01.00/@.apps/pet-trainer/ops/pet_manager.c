@@ -51,7 +51,14 @@ static void camera_apply(const char *app, const char *dir, int code) {
     else if (code == kb(app, "reset_view", 102)) { yaw = 0; pitch = 0; h = 0; } else chg = 0;
     if (!chg) return; f = fopen(p, "w"); if (f) { fprintf(f, "mode=%s\npov=%d\nyaw=%d\npitch=%d\nheight=%d\n", mode3d ? "3d" : "2d", pov, yaw, pitch, h); fclose(f); }
 }
-static long relay_off = -1;
+static long relay_off = -1, hist_off = -1;
+static void esc_poll(const char *dir) {        /* Esc (27) is forwarded to keyboard/history.txt only: that is the way out of Interact mode (arrows and camera keys stop, nav numbers work again) */
+    char p[PATH_MAX]; snprintf(p, sizeof p, "%s/keyboard/history.txt", dir); FILE *f = fopen(p, "r"); if (!f) return;
+    fseek(f, 0, SEEK_END); long sz = ftell(f); if (hist_off < 0 || hist_off > sz) hist_off = sz; fseek(f, hist_off, SEEK_SET); char l[64]; int esc = 0;
+    while (fgets(l, sizeof l, f)) if (strstr(l, "KEY_PRESSED: 27")) esc = 1;
+    hist_off = ftell(f); fclose(f);
+    if (esc) { snprintf(p, sizeof p, "%s/interact_armed.txt", dir); FILE *a = fopen(p, "w"); if (a) { fputs("0\n", a); fclose(a); } }
+}
 static void relay_poll(const char *app, const char *dir, const char *view, long long t) {
     char p[PATH_MAX]; snprintf(p, sizeof p, "%s/interact_relay.txt", dir); FILE *f = fopen(p, "r"); if (!f) return;
     fseek(f, 0, SEEK_END); long sz = ftell(f); if (relay_off < 0 || relay_off > sz) relay_off = sz;      /* first look after arming: ignore what was there */
@@ -100,15 +107,21 @@ int main(int argc, char **argv) {
         if (got) { have_pos = 1; last_wx = wx; last_wy = wy; }
         if (!have_pos) { usleep(100000); continue; }              /* no window position yet: do not let 0,0 -> real position look like a shove */
         wx = last_wx; wy = last_wy;
-        snprintf(cmd, sizeof cmd, "'%s/ops/+x/pet_physics.+x' step '%s/physics.st' %d %d %d %d %lld '%s/physics.pdl'", app, pet, wx, wy, W, floor_h, dt, app);
-        sh(cmd, buf, sizeof buf);
-        char sx[16] = "180", sy[16] = "250", pa[16] = "rest"; kvs(buf, "pet_x", sx, sizeof sx); kvs(buf, "pet_y", sy, sizeof sy); kvs(buf, "pet_anim", pa, sizeof pa);
+        static int pwx = -99999, pwy = -99999; static char psx[16] = "180", psy[16] = "250", ppa[16] = "rest";
+        char sx[16], sy[16], pa[16];
+        if (wx == pwx && wy == pwy && !strcmp(ppa, "rest")) { strcpy(sx, psx); strcpy(sy, psy); strcpy(pa, ppa); }          /* window still, pet at rest: no physics process this tick */
+        else {
+            snprintf(cmd, sizeof cmd, "'%s/ops/+x/pet_physics.+x' step '%s/physics.st' %d %d %d %d %lld '%s/physics.pdl'", app, pet, wx, wy, W, floor_h, dt, app);
+            sh(cmd, buf, sizeof buf);
+            strcpy(sx, "180"); strcpy(sy, "250"); strcpy(pa, "rest"); kvs(buf, "pet_x", sx, sizeof sx); kvs(buf, "pet_y", sy, sizeof sy); kvs(buf, "pet_anim", pa, sizeof pa);
+            pwx = wx; pwy = wy; strcpy(psx, sx); strcpy(psy, sy); strcpy(ppa, pa);
+        }
         if (t - t_status > 1000) {
             snprintf(cmd, sizeof cmd, "PET_DIR= PET_SHARED='%s' sh '%s/ops/pet_event.sh' status", pet, app); sh(cmd, buf, sizeof buf);
             kvs(buf, "anim", anim_ui, sizeof anim_ui); t_status = t;
         }
         char act[64] = "p1", view[16] = "room"; { char ap[PATH_MAX]; FILE *af; snprintf(ap, sizeof ap, "%s/active.txt", pet); if ((af = fopen(ap, "r"))) { if (fgets(act, sizeof act, af)) act[strcspn(act, "\r\n")] = 0; fclose(af); } snprintf(ap, sizeof ap, "%s/view.txt", pet); if ((af = fopen(ap, "r"))) { if (fgets(view, sizeof view, af)) view[strcspn(view, "\r\n")] = 0; fclose(af); } }
-        { char ap[PATH_MAX]; snprintf(ap, sizeof ap, "%s/interact_armed.txt", pet); FILE *af = fopen(ap, "r"); int armed = af && fgetc(af) == '1'; if (af) fclose(af); if (armed) relay_poll(app, pet, view, t); else relay_off = -1; }
+        { char ap[PATH_MAX]; snprintf(ap, sizeof ap, "%s/interact_armed.txt", pet); FILE *af = fopen(ap, "r"); int armed = af && fgetc(af) == '1'; if (af) fclose(af); if (armed) { relay_poll(app, pet, view, t); esc_poll(pet); } else { relay_off = -1; hist_off = -1; } }
         char runp[PATH_MAX]; snprintf(runp, sizeof runp, "%s/pets/%s/running.txt", pet, act); int running = 0; { FILE *rr = fopen(runp, "r"); if (rr) { running = fgetc(rr) == '1'; fclose(rr); } }
         if (!running) t_tick = t;                                                       /* stopped: no day tick, no self care */
         if (t - t_tick > (long long)tick_s * 1000) {
@@ -118,11 +131,11 @@ int main(int argc, char **argv) {
         if (!strcmp(pa, "fall") || !strcmp(pa, "thud")) an = "surprised"; else if (!strcmp(pa, "walk")) an = "walk";
         if (!strcmp(view, "world")) {
             static long long t_npc = 0; if (t - t_npc > 700) { snprintf(cmd, sizeof cmd, "'%s/ops/+x/pet_world.+x' npcstep '%s' %s", app, pet, act); sh(cmd, NULL, 0); t_npc = t; }
-            snprintf(cmd, sizeof cmd, "'%s/ops/+x/pet_scene.+x' world '%s' '%s/scene.raw' %d %d %s %lld", app, pet, pet, W, H, act, (t / 125) % 8);
-        } else if (!strcmp(view, "manage")) snprintf(cmd, sizeof cmd, "'%s/ops/+x/pet_scene.+x' manage '%s' '%s/scene.raw' %d %d %s %lld", app, pet, pet, W, H, act, (t / 250) % 8);
-        else snprintf(cmd, sizeof cmd, "'%s/ops/+x/pet_scene.+x' room '%s/pets/%s' '%s/scene.raw' %d %d %s %s %s %lld", app, pet, act, pet, W, H, sx, sy, an, (t / 125) % 8);
+            snprintf(cmd, sizeof cmd, "'%s/ops/+x/pet_scene.+x' world '%s' '%s/scene.raw' %d %d %s %lld", app, pet, pet, W, H, act, (t / 400) % 8);
+        } else if (!strcmp(view, "manage")) snprintf(cmd, sizeof cmd, "'%s/ops/+x/pet_scene.+x' manage '%s' '%s/scene.raw' %d %d %s %lld", app, pet, pet, W, H, act, (t / 500) % 8);
+        else snprintf(cmd, sizeof cmd, "'%s/ops/+x/pet_scene.+x' room '%s/pets/%s' '%s/scene.raw' %d %d %s %s %s %lld", app, pet, act, pet, W, H, sx, sy, an, (t / 400) % 8);
         sh(cmd, NULL, 0);
-        usleep(100000);
+        usleep(200000);
     }
     return 0;
 }
