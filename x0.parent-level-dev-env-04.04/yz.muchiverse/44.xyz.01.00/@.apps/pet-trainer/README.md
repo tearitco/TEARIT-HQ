@@ -19,4 +19,4 @@ First consumer of the layout studio. Everything is data plus one verb script; no
 
 Roadmap docs: `08-roadmap/design-docs/ENTITY-NEEDS-AND-CARE-DESIGN.md` (needs, GOAP, weighted choice), `LEARNING-LOOP-BANKS-WEIGHTS-NO-REPROMPT-DESIGN.md` (weights, banks; says no model weights are trained today), `ENTITY-SCHOOL-YEARS-DESIGN.md`, `RPGMAKER-PRIMITIVES-FOR-EVERYTHING-DESIGN.md`, digipet (`&.widgits/digipet/`, the needs loop this builds on).
 
-Roadmap and designs: ROADMAP.md, CAMERA-DESIGN.md, WORLD-DESIGN.md.
+Roadmap and designs: ROADMAP.md, CAMERA-DESIGN.md, WORLD-DESIGN.md, TOWN-ECONOMY-AND-LEARNING-DESIGN.md.

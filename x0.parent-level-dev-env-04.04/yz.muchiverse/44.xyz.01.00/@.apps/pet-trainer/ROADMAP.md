@@ -26,6 +26,9 @@ Status: DONE = built and shown working (evidence in the commit message) / PARTIA
 - **Fullscreen**: the pet screen should behave like pc-hq's so it can go fullscreen (class user-resizable + canvas fills; scene zoom and the renderer's canvas_view.txt are in, the in-panel canvas fill for resizable windows is still to wire).
 - Pet needs pacing: at 1 game minute per second the pets get hungry/dirty within ~15 real minutes; tune tick weights / self-care.
 
+## Now (owner 2026-10-09): town + learning - see TOWN-ECONOMY-AND-LEARNING-DESIGN.md
+1. Town overlay + build_building + doors as teleports; 2. place memory + proximity eating; 3. stores, jobs, buying; 4. pet-to-pet trade; 5. exploration fog + map growth; 6. tech tree + "teach me" provider ladder + lesson cards (human review, never auto-promote); 7. pacing. Train the pets (pet_train) after every step.
+
 ## Next (in this order)
 1. **Platforms**: the pet jumps ON the bed and the computer desk (rooms.pdl PLATFORM rows) and walks along them; never breaks anything. TODO.
 2. **build_room + map buttons**: Build verb adds a cell next to an existing one (home.pdl), door rows, room kind; menu buttons for the map; mini map as a real page, not only key 5. TODO.
