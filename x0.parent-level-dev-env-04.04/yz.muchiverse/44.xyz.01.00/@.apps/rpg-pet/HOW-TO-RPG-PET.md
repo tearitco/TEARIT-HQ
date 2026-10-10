@@ -100,3 +100,10 @@ The pet-trainer decision stands: **rooms stay side-on 2D by default**; 3D/POV is
 2. Same wallet/purse as the old pet game, or a fresh 500-coin purse (v0 is a fresh paper purse)?
 3. Door contract: share `rooms.pdl` with pet-trainer, or copy it? (Recommend share, one file.)
 4. First 3D target: the room in 3D, or the house + garden from above?
+
+## Update (same session): monsters, DB party, pet-trainer GUI
+- **The six pets are monsters** (RPG Maker `characters/Monster.png`, 8 monsters, 3 walk frames x 4 directions, index = col + 4*row); **the person (Actor1) is the trainer and lives in the village** - same setup as pet-trainer; the village is NOT built in rpg-pet yet.
+- **Pets are RPG Maker DB entries**: `&.widgits/db-hq/data/system.pdl` (SYSTEM PetParty member1..6) and `actors.pdl` (ACTOR rows: nickname, profile, mhp, mmp, atk, def, mat, mdf, agi, luk), read by `load_party()` in `ops/rpg_pet.c` (env `PET_DB` overrides the folder). `party.pdl` only chooses the picture per pet name; a DB ACTOR `character` value `Sheet:index` would win over it (the field is empty today - the owner's data, not touched). NOTE: the DB profiles still describe animals ("an orange cat", "a small grey bunny"); the sprites are monsters - the owner may want the profiles reworded.
+- **GUI = pet-trainer's**: top bar INT | book:<pet> | page:<room> | Shop | Menu; sidebar = dropdown rows, coins, pet stats, items in this room; canvas with chat/hotbar overlays; footer = chat, hb and the six pet buttons (80 px each, narrower wraps the label). Repeat rows bind by the ui var prefix: `bind="party"` reads `party_N_label`.
+- Pets block each other's cells; verbs: `select <id>`, `goto <room>`; one `pet_<id>.txt` per pet; the daemon walks only the active pet (the others stand).
+- Still open (owner asks): shop item PICTURES (RMMV `img/system/IconSet.png` icons are the natural picture for DB items; furniture can show its own Inside_B tile), RPG Maker DB items as shop stock, chat/hotbar overlays not drawn, smooth walking, 3D/xlector/POV, village.

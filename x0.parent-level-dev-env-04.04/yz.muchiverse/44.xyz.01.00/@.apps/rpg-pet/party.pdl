@@ -1,0 +1,13 @@
+SECTION | KEY | VALUE
+------------------------------
+# party.pdl - which RPG Maker MV monster picture (character sheet Monster.png: 8 monsters, 3 walk frames x 4 directions each; index = col + 4*row) each DB pet wears.
+# The pets themselves are RPG Maker DB entries: &.widgits/db-hq/data/system.pdl (SYSTEM PetParty member1..6) and actors.pdl (ACTOR rows: name, nickname, profile, mhp, mmp, atk, def, mat, mdf, agi, luk).
+# The DB actor field "character" is empty today; when it is filled (sheet + index) it wins over this file. This file is only the picture choice, never the data.
+# The PERSON (Actor1 sheet) is the trainer and lives in the village, same setup as @.apps/pet-trainer (village not built in rpg-pet yet).
+# PET | actor name | sheet | index
+PET | Pochi | Monster | 1
+PET | Momo  | Monster | 0
+PET | Kuro  | Monster | 4
+PET | Gumi  | Monster | 2
+PET | Rin   | Monster | 3
+PET | Dai   | Monster | 5

@@ -53,7 +53,9 @@ static Door doors[24]; static int ndoor;
 static Placed pl[MAXP]; static int npl, nid = 1, owned[MAXI], coins;
 static Sheet sheets[8]; static int nsheet;
 static unsigned char fr[FW * FH * 4];
-static struct { int room, x, y, dir, steps; } pet;
+static struct { int room, x, y, dir, steps; } pet;                 /* the ACTIVE pet (the one INT moves and the daemon walks) */
+static struct { char id[16], name[24], sheet[24], nick[24], profile[96]; int idx, mhp, mmp, atk, def, mat, mdf, agi, luk; } party[6]; static int nparty, active;
+static struct { int room, x, y, dir, steps; } others[6];            /* every pet's saved state (rendered and collided with) */
 static volatile sig_atomic_t quit_flag;
 
 static void spath(char *o, const char *n) { snprintf(o, PATH_MAX, "%s/%s", ST, n); }
@@ -79,10 +81,29 @@ static int split_bar(char *line, char **f, int max) { int n = 0; char *p = line;
 static int room_idx(const char *id) { for (int i = 0; i < nroom; i++) if (!strcmp(rooms[i].id, id)) return i; return -1; }
 static int item_idx(const char *k) { for (int i = 0; i < ncat; i++) if (!strcmp(cat[i].key, k)) return i; return -1; }
 
+/* the pets are RPG Maker DB entries: SYSTEM PetParty member1..6 names, then each ACTOR block by name (db-hq data). party.pdl only picks the picture. */
+static void load_party(void) {
+    char db[PATH_MAX], p[PATH_MAX], line[400]; char *f[6]; FILE *fp; const char *env = getenv("PET_DB");
+    if (env && env[0]) snprintf(db, sizeof db, "%s", env); else { char d[PATH_MAX]; snprintf(d, sizeof d, "%s", APP); db[0] = 0; for (int up = 0; up < 8 && !db[0]; up++) { char *s = strrchr(d, '/'); if (!s) break; *s = 0; snprintf(p, sizeof p, "%s/&.widgits/db-hq/data/system.pdl", d); if (fexists(p)) snprintf(db, sizeof db, "%s/&.widgits/db-hq/data", d); } }
+    nparty = 0; char names[6][24]; int nn = 0, inparty = 0;
+    snprintf(p, sizeof p, "%s/system.pdl", db);
+    if ((fp = fopen(p, "r"))) { while (fgets(line, sizeof line, fp)) { if (split_bar(line, f, 3) < 3 || strcmp(f[0], "SYSTEM")) continue; if (!strcmp(f[1], "name")) inparty = !strcmp(f[2], "PetParty"); else if (inparty && !strncmp(f[1], "member", 6) && nn < 6) snprintf(names[nn++], 24, "%s", f[2]); } fclose(fp); }
+    for (int i = 0; i < nn; i++) { snprintf(party[nparty].name, 24, "%s", names[i]); snprintf(party[nparty].id, 16, "%s", names[i]); for (char *c = party[nparty].id; *c; c++) if (*c >= 'A' && *c <= 'Z') *c += 32; party[nparty].idx = i; snprintf(party[nparty].sheet, 24, "Monster"); party[nparty].mhp = party[nparty].mmp = party[nparty].atk = party[nparty].def = party[nparty].mat = party[nparty].mdf = party[nparty].agi = party[nparty].luk = 0; party[nparty].nick[0] = party[nparty].profile[0] = 0; nparty++; }
+    snprintf(p, sizeof p, "%s/actors.pdl", db); int cur = -1;
+    if ((fp = fopen(p, "r"))) { while (fgets(line, sizeof line, fp)) { if (split_bar(line, f, 3) < 3 || strcmp(f[0], "ACTOR")) continue;
+        if (!strcmp(f[1], "name")) { cur = -1; for (int i = 0; i < nparty; i++) if (!strcmp(party[i].name, f[2])) cur = i; continue; } if (cur < 0) continue;
+        if (!strcmp(f[1], "nickname")) snprintf(party[cur].nick, 24, "%s", f[2]); else if (!strcmp(f[1], "profile")) snprintf(party[cur].profile, 96, "%s", f[2]);
+        else if (!strcmp(f[1], "mhp")) party[cur].mhp = atoi(f[2]); else if (!strcmp(f[1], "mmp")) party[cur].mmp = atoi(f[2]); else if (!strcmp(f[1], "atk")) party[cur].atk = atoi(f[2]); else if (!strcmp(f[1], "def")) party[cur].def = atoi(f[2]);
+        else if (!strcmp(f[1], "mat")) party[cur].mat = atoi(f[2]); else if (!strcmp(f[1], "mdf")) party[cur].mdf = atoi(f[2]); else if (!strcmp(f[1], "agi")) party[cur].agi = atoi(f[2]); else if (!strcmp(f[1], "luk")) party[cur].luk = atoi(f[2]);
+        else if (!strcmp(f[1], "character") && f[2][0]) { char *c = strchr(f[2], ':'); if (c) { *c = 0; snprintf(party[cur].sheet, 24, "%s", f[2]); party[cur].idx = atoi(c + 1); } } } fclose(fp); }
+    snprintf(p, sizeof p, "%s/party.pdl", APP);       /* the picture choice, unless the DB character field already named one (a "Sheet:index" value) */
+    if ((fp = fopen(p, "r"))) { while (fgets(line, sizeof line, fp)) { char *g[6]; if (split_bar(line, g, 6) >= 4 && !strcmp(g[0], "PET")) for (int i = 0; i < nparty; i++) if (!strcmp(party[i].name, g[1])) { snprintf(party[i].sheet, 24, "%s", g[2]); party[i].idx = atoi(g[3]); } } fclose(fp); }
+}
 static void load_data(void) {
     char p[PATH_MAX], line[400]; char *f[12]; FILE *fp;
     snprintf(p, sizeof p, "%s/catalog.pdl", APP); ncat = 0;
     if ((fp = fopen(p, "r"))) { while (fgets(line, sizeof line, fp) && ncat < MAXI) { if (split_bar(line, f, 12) == 11 && !strcmp(f[0], "ITEM")) { Item *it = &cat[ncat++]; snprintf(it->key, 32, "%s", f[1]); snprintf(it->label, 40, "%s", f[2]); it->price = atoi(f[3]); snprintf(it->sheet, 24, "%s", f[4]); it->c = atoi(f[5]); it->r = atoi(f[6]); it->w = atoi(f[7]); it->h = atoi(f[8]); it->wall = !strcmp(f[9], "wall"); snprintf(it->effect, 12, "%s", f[10]); } } fclose(fp); }
+    load_party();
     snprintf(p, sizeof p, "%s/rooms.pdl", APP); nroom = ndoor = 0;
     if ((fp = fopen(p, "r"))) {
         while (fgets(line, sizeof line, fp)) { int n = split_bar(line, f, 12); if (n >= 5 && !strcmp(f[0], "ROOM") && nroom < 8) { Room *r = &rooms[nroom++]; snprintf(r->id, 16, "%s", f[1]); snprintf(r->name, 32, "%s", f[2]); r->fc = atoi(f[3]); r->fr = atoi(f[4]); } }
@@ -107,11 +128,18 @@ static void replay(void) {
 }
 
 /* ---------- pet state ---------- */
-static void pet_load(void) {
-    char p[PATH_MAX], b[300]; spath(p, "pet.txt"); read_file(p, b, sizeof b); pet.room = 0; pet.x = 6; pet.y = 5; pet.dir = 0; pet.steps = 0;
-    for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "room=", 5)) { int r = room_idx(l + 5); if (r >= 0) pet.room = r; } else if (!strncmp(l, "x=", 2)) pet.x = atoi(l + 2); else if (!strncmp(l, "y=", 2)) pet.y = atoi(l + 2); else if (!strncmp(l, "dir=", 4)) pet.dir = atoi(l + 4); else if (!strncmp(l, "steps=", 6)) pet.steps = atoi(l + 6); }
+static void pet_file(int i, char *p) { char n[64]; snprintf(n, sizeof n, "pet_%s.txt", party[i].id); spath(p, n); }
+static void load_one(int i) {
+    char p[PATH_MAX], b[300]; pet_file(i, p); read_file(p, b, sizeof b); others[i].room = 0; others[i].x = 4 + i; others[i].y = 5; others[i].dir = 0; others[i].steps = 0;
+    for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "room=", 5)) { int r = room_idx(l + 5); if (r >= 0) others[i].room = r; } else if (!strncmp(l, "x=", 2)) others[i].x = atoi(l + 2); else if (!strncmp(l, "y=", 2)) others[i].y = atoi(l + 2); else if (!strncmp(l, "dir=", 4)) others[i].dir = atoi(l + 4); else if (!strncmp(l, "steps=", 6)) others[i].steps = atoi(l + 6); }
 }
-static void pet_save(void) { char p[PATH_MAX], b[200]; spath(p, "pet.txt"); snprintf(b, sizeof b, "room=%s\nx=%d\ny=%d\ndir=%d\nsteps=%d\n", rooms[pet.room].id, pet.x, pet.y, pet.dir, pet.steps); write_if_changed(p, b, strlen(b)); }
+static void pet_load(void) {
+    char p[PATH_MAX], b[40]; spath(p, "active.txt"); read_file(p, b, sizeof b); char *e = strchr(b, '\n'); if (e) *e = 0; active = 0; for (int i = 0; i < nparty; i++) if (!strcmp(party[i].id, b)) active = i;
+    for (int i = 0; i < nparty; i++) load_one(i);
+    pet.room = others[active].room; pet.x = others[active].x; pet.y = others[active].y; pet.dir = others[active].dir; pet.steps = others[active].steps;
+}
+static void pet_save(void) { char p[PATH_MAX], b[200]; pet_file(active, p); snprintf(b, sizeof b, "room=%s\nx=%d\ny=%d\ndir=%d\nsteps=%d\n", rooms[pet.room].id, pet.x, pet.y, pet.dir, pet.steps); write_if_changed(p, b, strlen(b)); others[active].room = pet.room; others[active].x = pet.x; others[active].y = pet.y; others[active].dir = pet.dir; others[active].steps = pet.steps; }
+static int other_pet_at(int room, int x, int y) { for (int i = 0; i < nparty; i++) if (i != active && others[i].room == room && others[i].x == x && others[i].y == y) return i + 1; return 0; }
 
 /* ---------- placement rules ---------- */
 static int floor_blocked(int room, int x, int y, int skip_id) { for (int i = 0; i < npl; i++) { Placed *q = &pl[i]; if (q->room != room || q->id == skip_id || cat[q->item].wall) continue; if (x >= q->x && x < q->x + cat[q->item].w && y >= q->y && y < q->y + cat[q->item].h) return q->id; } return 0; }
@@ -128,7 +156,7 @@ static const char *check_place(int room, int item, int x, int y, int skip_id) {
     if (x < 0 || y < TRIG_ROW || x + d->w > COLS || y + d->h > ROWS) { snprintf(m, sizeof m, "floor items go on the floor: x 0-%d, y %d-%d", COLS - d->w, TRIG_ROW, ROWS - d->h); return m; }
     for (int i = 0; i < d->w; i++) for (int j = 0; j < d->h; j++) {
         int cx = x + i, cy = y + j; int o;
-        if (room == pet.room && cx == pet.x && cy == pet.y) return "the pet is standing there";
+        if ((room == pet.room && cx == pet.x && cy == pet.y) || other_pet_at(room, cx, cy)) return "a pet is standing there";
         if (door_here(room, cx, cy) >= 0) return "that cell is in front of a door";
         if ((o = floor_blocked(room, cx, cy, skip_id))) { snprintf(m, sizeof m, "spot taken by #%d", o); return m; }
     }
@@ -161,8 +189,11 @@ static void render(void) {
     int idx[MAXP], n = 0; for (int i = 0; i < npl; i++) if (pl[i].room == pet.room) idx[n++] = i;
     for (int a = 0; a < n; a++) for (int b = a + 1; b < n; b++) { Placed *p = &pl[idx[a]], *q = &pl[idx[b]]; int ka = (!cat[p->item].wall) * 1000 + p->y + cat[p->item].h, kb = (!cat[q->item].wall) * 1000 + q->y + cat[q->item].h; if (kb < ka || (kb == ka && q->x < p->x)) { int t = idx[a]; idx[a] = idx[b]; idx[b] = t; } }
     for (int a = 0; a < n; a++) { Placed *p = &pl[idx[a]]; Item *d = &cat[p->item]; tile(d->sheet, d->c, d->r, d->w, d->h, p->x, p->y); }
-    static const int cyc[4] = {1, 0, 1, 2}; int col = pet.steps ? cyc[pet.steps % 4] : 1; /* walking frames 1,0,1,2; standing = middle frame */
-    blit(sheet("characters", "Actor1"), col * T, pet.dir * T, T, T, OX + pet.x * T, OY + pet.y * T - 8);
+    static const int cyc[4] = {1, 0, 1, 2}; int order[6], no = 0;               /* walking frames 1,0,1,2; standing = middle frame */
+    for (int i = 0; i < nparty; i++) if (others[i].room == pet.room) order[no++] = i;
+    for (int a2 = 0; a2 < no; a2++) for (int b2 = a2 + 1; b2 < no; b2++) if (others[order[b2]].y < others[order[a2]].y) { int tmp = order[a2]; order[a2] = order[b2]; order[b2] = tmp; }
+    for (int k = 0; k < no; k++) { int i = order[k]; int col = others[i].steps ? cyc[others[i].steps % 4] : 1, ci = party[i].idx;
+        blit(sheet("characters", party[i].sheet), (ci % 4) * 3 * T + col * T, (ci / 4) * 4 * T + others[i].dir * T, T, T, OX + others[i].x * T, OY + others[i].y * T - 8); }
 }
 
 /* ---------- chat ---------- */
@@ -188,11 +219,14 @@ static void out_all(const char *msg) {
 #define W(...) o += snprintf(u + o, sizeof u - o, __VA_ARGS__)
     char raw[PATH_MAX]; spath(raw, "scene.raw"); char h1[PATH_MAX], h2[PATH_MAX]; spath(h1, "interact_relay.txt"); snprintf(h2, sizeof h2, "%s/keyboard/history.txt", ST);
     int chat = flag_on("chat", 1), hb = flag_on("hb", 1), in = flag_on("int", 0); char view[16]; flag_str("view", "2d", view, sizeof view); for (char *c = view; *c; c++) if (*c >= 'a' && *c <= 'z') *c -= 32;
-    W("title=rpg-pet  -  %s  -  coins %d\nscene_raw=%s\ncanvas_raw=%s\ncoins=%d\nmsg=%s\nroom_label=%s\n", rooms[pet.room].name, coins, raw, raw, coins, msg && msg[0] ? msg : "click an item to buy it", rooms[pet.room].name);
+    W("title=rpg-pet  -  %s  -  %s  -  coins %d\nscene_raw=%s\ncanvas_raw=%s\ncoins=%d\nmsg=%s\nroom_label=%s\n", party[active].name, rooms[pet.room].name, coins, raw, raw, coins, msg && msg[0] ? msg : "click an item to buy it", rooms[pet.room].name);
     W("interact_class=%s\ninteract_label=%s\nrp_h1=%s\nrp_h2=%s\n", in ? "interact-active" : "", in ? "on" : "off", h1, h2);
     W("chat_visible=%s\nhb_visible=%s\nview_label=view %s\nchat_toggle_label=window %s\n", chat ? "1" : "", hb ? "1" : "", view, chat ? "on" : "off");
     { char cp[PATH_MAX], cb[4000]; spath(cp, "chat.txt"); read_file(cp, cb, sizeof cb); char *ln[6] = {0}; int k = 0; for (char *l = strtok(cb, "\n"); l; l = strtok(NULL, "\n")) { ln[k % 6] = l; k++; } for (int i = 0; i < 6; i++) { int j = k - 6 + i; W("chat_%d=%s\n", i, j >= 0 ? ln[j % 6] : ""); } }
     W("n_shop=%d\n", ncat); for (int i = 0; i < ncat; i++) { char own[16] = ""; if (owned[i] > 0) snprintf(own, sizeof own, " x%d", owned[i]); W("shop_%d_label=%s %dc%s\nshop_%d_key=%s\n", i, cat[i].label, cat[i].price, own, i, cat[i].key); }
+    W("n_party=%d\nactive_name=%s\nbook_label=book:%s\npage_label=page:%s\n", nparty, party[active].name, party[active].name, rooms[pet.room].name);
+    W("stat_line=HP %d  MP %d  atk %d  def %d\nstat_line2=mat %d  mdf %d  agi %d  luk %d\nprofile_line=%s\n", party[active].mhp, party[active].mmp, party[active].atk, party[active].def, party[active].mat, party[active].mdf, party[active].agi, party[active].luk, party[active].profile);
+    W("nick_line=%s (the %s)\n", party[active].name, party[active].nick); for (int i = 0; i < nparty; i++) W("party_%d_label=%s\nparty_%d_id=%s\nparty_%d_cls=%s\n", i, party[i].name, i, party[i].id, i, i == active ? "active" : "");
     W("n_room=%d\n", nroom); for (int i = 0; i < nroom; i++) { int c = 0; for (int j = 0; j < npl; j++) if (pl[j].room == i) c++; W("room_%d_label=%s%s (%d things)\nroom_%d_id=%s\n", i, rooms[i].name, i == pet.room ? "  <- here" : "", c, i, rooms[i].id); }
     int nb = 0; for (int i = 0; i < ncat && nb < 5; i++) if (owned[i] > 0) nb++; W("hb_n_slots=%d\nhb_title=bag: click a slot to place it\n", nb); nb = 0; for (int i = 0; i < ncat && nb < 5; i++) if (owned[i] > 0) { W("hb_%d_text=%s x%d\nhb_%d_key=%s\n", nb, cat[i].label, owned[i], nb, cat[i].key); nb++; }
     int np = 0; for (int i = 0; i < npl; i++) if (pl[i].room == pet.room) np++; W("n_placed=%d\n", np); np = 0; for (int i = 0; i < npl; i++) if (pl[i].room == pet.room) { W("placed_%d_label=#%d %s (%d,%d) %s\nplaced_%d_id=%d\n", np, pl[i].id, cat[pl[i].item].label, pl[i].x, pl[i].y, cat[pl[i].item].effect, np, pl[i].id); np++; }
@@ -200,10 +234,10 @@ static void out_all(const char *msg) {
 }
 
 /* ---------- walking: event steps ---------- */
-static int passable(int x, int y) { return x >= 0 && x < COLS && y >= TRIG_ROW && y < ROWS && !floor_blocked(pet.room, x, y, 0); }
+static int passable(int x, int y) { return x >= 0 && x < COLS && y >= TRIG_ROW && y < ROWS && !floor_blocked(pet.room, x, y, 0) && !other_pet_at(pet.room, x, y); }
 static void teleport(int di) {
     Door *d = &doors[di]; char b[160]; snprintf(b, sizeof b, "DOOR|%ld|%s|%s", (long)time(NULL), rooms[d->room].id, rooms[d->dest].id); append_line("events.txt", b);
-    pet.room = d->dest; pet.x = d->ax; pet.y = d->ay; pet.dir = 0; snprintf(b, sizeof b, "went through the door to the %s", rooms[pet.room].name); say("pet", b);
+    pet.room = d->dest; pet.x = d->ax; pet.y = d->ay; pet.dir = 0; snprintf(b, sizeof b, "went through the door to the %s", rooms[pet.room].name); say(party[active].name, b);
 }
 /* one tile step; returns 1 if the pet moved. A step onto a door's trigger cell teleports (the door contract). */
 static int do_step(int dx, int dy, char *msg, size_t cap) {
@@ -217,7 +251,7 @@ static int do_step(int dx, int dy, char *msg, size_t cap) {
 static int bfs_first(int tx, int ty, int *dx, int *dy) {
     int dist[ROWS][COLS], qx[ROWS * COLS], qy[ROWS * COLS], h = 0, t = 0; for (int y = 0; y < ROWS; y++) for (int x = 0; x < COLS; x++) dist[y][x] = -1;
     int fx[ROWS][COLS], fy[ROWS][COLS]; dist[ty][tx] = 0; qx[t] = tx; qy[t++] = ty; static const int mx[4] = {0, -1, 1, 0}, my[4] = {1, 0, 0, -1};
-    while (h < t) { int x = qx[h], y = qy[h++]; for (int k = 0; k < 4; k++) { int nx = x + mx[k], ny = y + my[k]; if (nx < 0 || nx >= COLS || ny < TRIG_ROW || ny >= ROWS || dist[ny][nx] >= 0) continue; if (floor_blocked(pet.room, nx, ny, 0)) continue; dist[ny][nx] = dist[y][x] + 1; fx[ny][nx] = x; fy[ny][nx] = y; qx[t] = nx; qy[t++] = ny; } }
+    while (h < t) { int x = qx[h], y = qy[h++]; for (int k = 0; k < 4; k++) { int nx = x + mx[k], ny = y + my[k]; if (nx < 0 || nx >= COLS || ny < TRIG_ROW || ny >= ROWS || dist[ny][nx] >= 0) continue; if (floor_blocked(pet.room, nx, ny, 0) || other_pet_at(pet.room, nx, ny)) continue; dist[ny][nx] = dist[y][x] + 1; fx[ny][nx] = x; fy[ny][nx] = y; qx[t] = nx; qy[t++] = ny; } }
     if (dist[pet.y][pet.x] <= 0) return 0;      /* already there or unreachable */
     int nx = fx[pet.y][pet.x], ny = fy[pet.y][pet.x]; *dx = nx - pet.x; *dy = ny - pet.y; return 1;
 }
@@ -249,6 +283,8 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
         const char *bad = check_place(pl[k].room, pl[k].item, x, y, id); if (bad[0]) { snprintf(msg, cap, "not moved: %s", bad); return; } snprintf(b, sizeof b, "MOVE|%d|%ld|%d|%d", id, now, x, y); append_line("house.txt", b); snprintf(msg, cap, "moved #%d to %d,%d", id, x, y); return; }
     if (!strcmp(v, "remove") && argc >= 2) { int id = atoi(argv[1]), k = -1; for (int i = 0; i < npl; i++) if (pl[i].id == id) k = i; if (k < 0) { snprintf(msg, cap, "no placed item #%d", id); return; }
         snprintf(b, sizeof b, "REMOVE|%d|%ld", id, now); append_line("house.txt", b); snprintf(msg, cap, "put #%d (%s) back in the bag", id, cat[pl[k].item].label); return; }
+    if (!strcmp(v, "select") && argc >= 2) { int k = -1; for (int i = 0; i < nparty; i++) if (!strcmp(party[i].id, argv[1])) k = i; if (k < 0) { snprintf(msg, cap, "no pet %s", argv[1]); return; }
+        char p[PATH_MAX], bb[40]; spath(p, "active.txt"); snprintf(bb, sizeof bb, "%s\n", party[k].id); write_if_changed(p, bb, strlen(bb)); pet_load(); snprintf(msg, cap, "now playing %s (in the %s)", party[k].name, rooms[pet.room].name); return; }
     if (!strcmp(v, "goto") && argc >= 2) {        /* the Rooms dropdown: put the pet in that room, on the first free cell near the middle */
         int r = room_idx(argv[1]); if (r < 0) { snprintf(msg, cap, "no room %s", argv[1]); return; } pet.room = r; pet.dir = 0;
         for (int k = 0; k < COLS * ROWS; k++) { int x = (6 + k) % COLS, y = TRIG_ROW + 3 + ((6 + k) / COLS) % (ROWS - TRIG_ROW - 3 > 0 ? ROWS - TRIG_ROW - 3 : 1); if (passable(x, y) && door_here(r, x, y) < 0) { pet.x = x; pet.y = y; break; } }
@@ -260,7 +296,7 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
     if (!strcmp(v, "int")) { int on = !flag_on("int", 0); set_flag("int", on ? "1" : "0"); char d[PATH_MAX]; snprintf(d, sizeof d, "%s/keyboard", ST); mkdir(d, 0755); char p[PATH_MAX]; spath(p, "interact_relay.txt"); FILE *f = fopen(p, "a"); if (f) fclose(f); snprintf(p, sizeof p, "%s/keyboard/history.txt", ST); f = fopen(p, "a"); if (f) fclose(f);
         snprintf(msg, cap, on ? "INT on: arrow keys walk the pet, Esc leaves" : "INT off: the pet walks by itself"); return; }
     char text[300] = ""; for (int i = 0; i < argc; i++) { if (i) strncat(text, " ", sizeof text - strlen(text) - 1); strncat(text, argv[i], sizeof text - strlen(text) - 1); }
-    if (text[0]) { say("you", text); say("pet", pet_reply(text)); }
+    if (text[0]) { say("you", text); say(party[active].name, pet_reply(text)); }
 }
 
 /* ---------- resident mode ---------- */
