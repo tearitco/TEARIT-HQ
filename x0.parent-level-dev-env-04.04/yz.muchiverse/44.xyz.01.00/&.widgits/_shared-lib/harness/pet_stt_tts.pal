@@ -1,0 +1,4 @@
+# pet_stt_tts.pal - pal harness: the pet's TTS voices through its offline STT, then the mic path with a fake `rec`. Verdict: results/pet_stt_tts.txt.verdict.txt. Run:  prisc+x pet_stt_tts.pal   (from this folder; needs network for edge-tts)
+exec ./ops/+x/harness_case_op.+x cases/pet_stt_tts.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/pet_stt_tts.pdl
+halt
