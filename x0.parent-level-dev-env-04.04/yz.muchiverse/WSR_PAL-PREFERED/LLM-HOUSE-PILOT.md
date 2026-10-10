@@ -204,17 +204,36 @@ tournament_xod.sh:
 
 - `llm_brain.c` — goal-conditioned decisions with fallback policy ✓
 - `fsm_controller.c` — single-shot state machine, row emission ✓
+- `wsr_goap_planner.c` — multi-step planning from behavior bank ✓
 - `tom_layer.c` — multi-agent belief tracking ✓
 - `wsr_fitness.c` — portfolio-based fitness scoring ✓
+- `wsr_evolve.c` — evolution driver (population, selection, mutation) ✓
 - `wsr_chart.c` — HTML chart from event log ✓
-- `run_xod_agent.sh` — full pipeline with layout bridge ✓
+- `run_xod_agent.sh` — full pipeline with GOAP planning step ✓
+
+### Key Learnings
+
+1. **gemma3:1b bias**: Small models default to `buy_stock` regardless of goal.
+   Fixed with a C-level fallback policy in `llm_brain.c` that overrides
+   goal-inappropriate actions.
+
+2. **Behavior file extension**: GOAP planner looked for `.behavior` (9 chars)
+   but files use `.behaviors` (10 chars). Fixed at `wsr_goap_planner.c:113`.
+
+3. **Bank path**: Passing `behaviors/real.behaviors` (a file) instead of
+   `behaviors/` (directory) caused `opendir()` to fail. Use the directory.
+
+4. **Static state**: Anti-loop detection uses static variables that don't persist
+   across separate `llm_brain.+x` process invocations. Each invocation is fresh.
+
+5. **Relay is the universal coordination channel**: All ops append to
+   `interact_relay.txt`, creating an observable audit trail of every decision.
 
 ### On the Roadmap
 
-- `wsr_goap_planner` — wire into pipeline for plan-based execution
-- `wsr_evolve` — connect fitness scoring to evolution driver
-- `wsr_fsm_driver` — deprecated (replaced by fsm_controller)
+- `wsr_fsm_driver` — deprecated (replaced by fsm_controller, same bug)
 - `tournament_xod.sh` — multi-agent tournament harness
+- `live_tournament_xod.sh` — tournament against live WSR instances
 
 ---
 
