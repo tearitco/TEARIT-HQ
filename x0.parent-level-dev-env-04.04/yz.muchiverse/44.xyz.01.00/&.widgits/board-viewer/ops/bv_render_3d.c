@@ -3587,8 +3587,11 @@ static int render_one_frame(void) {
         if (moon_body.present)
             ADDBOX(moon_body.x-1.2, moon_body.y-1.2, moon_body.z-1.2,
                    moon_body.x+1.2, moon_body.y+1.2, moon_body.z+1.2, 210,210,225, 1);
-        if (g_xelector_present && camera_mode != 1)
-            ADDBOX(g_xelector_x+0.15, g_xelector_z+0.15, g_xelector_y+0.15,
+        /* Maker (TSOTS-style painted) maps: the selector, the hero and the map events must be the SAME box - same 0.7 footprint, standing on the floor top (1.0) up to the sprite's 2.6 -
+         * not a 0.7 cube floating at the pc-hq z level (owner 2026-10-10: "xelector and other cube should be same size and on same level as sprite"). */
+        if (g_xelector_present && camera_mode != 1) {
+            if (sc.maker) ADDBOX(g_xelector_x+0.15, 1.0, g_xelector_y+0.15, g_xelector_x+0.85, 2.6, g_xelector_y+0.85, 60,220,220, 0);
+            else ADDBOX(g_xelector_x+0.15, g_xelector_z+0.15, g_xelector_y+0.15,
                    g_xelector_x+0.85, g_xelector_z+0.85, g_xelector_y+0.85, 60,220,220, 0);
         if (g_ray_hit)
             ADDWIRE(g_ray_x + 0.04, g_ray_z + 0.04, g_ray_y + 0.04,
@@ -3598,6 +3601,7 @@ static int render_one_frame(void) {
             char pp[PATH_BUF];
             snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
             { BvRange rg; if (bvr_load(focused_project_root, &rg)) bvr_arm_placer(pp, focused_project_root); }
+        }
             if (read_kv_int(pp, "armed", 0)) {
                 int sx = read_kv_int(pp, "x", 0);
                 int sy = read_kv_int(pp, "y", 0);
@@ -3714,6 +3718,8 @@ static int render_one_frame(void) {
         for (int t=0; t<MAX_PHYMOJI_TEMPLATES; t++) tmpl_model[t] = -1;
         for (int wi=0; wi<g_phymoji_world_entity_count; wi++) {
             PhymojiWorldEntity *we = &g_phymoji_world_entities[wi];
+            if (sc.maker) ADDBOX(g_hero_x+0.15, 1.0, g_hero_y+0.15, g_hero_x+0.85, 2.6, g_hero_y+0.85, 200,90,60, 0);      /* same box as a map event sprite */
+            else
             double wsx=1.0, wsy=1.0, wsz=1.0; int cr=60,cg=140,cb=50;
             if (strcmp(we->entity_id, "tree_small")==0) wsy = 3.0;
             if (strcmp(we->entity_id, "chicken")==0) { wsx=wsy=wsz=0.6; cr=cg=cb=210; }

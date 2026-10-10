@@ -4495,6 +4495,8 @@ static Elem *g_text_drag_elem = NULL;
  * corner resizes the window (XResizeWindow + relayout). Zero effect on
  * every other window. */
 static int g_user_resizable = 0;
+/* only the pc-hq board window may write the global #.desktop/pchq_board_view.txt (producer-size handoff to bv_render_3d) */
+static int kh_is_pchq_board(void) { return strstr(g_chtpm_path, "pchq-board.xhtpm") != NULL; }
 static int g_win_resizing = 0;
 /* Overlay chrome (IN-GAME-LAYOUTS-PLAN.md 4c): an overlay row with class ov-chrome whose FIRST child is a
  * <text class="ov-title"> can be dragged by that title with the mouse (class ov-slide-x: sideways only,
@@ -6024,7 +6026,7 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
     /* A resizable window writes the fill size later in this same
      * layout. Writing the smaller region size here too makes
      * pchq_board_view.txt flip every pass and the 3D view flicker. */
-    if (!g_user_resizable) {
+    if (kh_is_pchq_board()) {      /* resizable or not: only the board window writes it, and it must (the resizable fill write below belongs to the generic panel path pc-hq does not take) */
         char vsz[PATH_BUF];
         snprintf(vsz, sizeof(vsz), "%s/#.desktop/pchq_board_view.txt", g_house_root);
         FILE *vf = fopen(vsz, "w");
@@ -8414,10 +8416,12 @@ static void assign_nav_and_layout(void) {
                     item->h = g_win_h - item->y - 8;
                     if (item->w < 64) item->w = 64;
                     if (item->h < 64) item->h = 64;
+                    if (kh_is_pchq_board()) {      /* the GLOBAL file belongs to the pc-hq board only: any other canvas window (rpg-pet, pet-trainer) writing it made the board's 3D frame flip size every pass and letterbox (2026-10-10) */
                     char vsz[PATH_BUF];
                     snprintf(vsz, sizeof(vsz), "%s/#.desktop/pchq_board_view.txt", g_house_root);
                     FILE *vf = fopen(vsz, "w");
                     if (vf) { fprintf(vf, "%d %d\n", item->w, item->h); fclose(vf); }
+                    }
                     if (g_package_dir[0]) {   /* the same size for THIS app, next to its package (the global file above belongs to the pc-hq board): canvas_view.txt */
                         char vp2[PATH_BUF], vtmp[PATH_BUF + 8]; static int last_w = -1, last_h = -1;
                         if (item->w != last_w || item->h != last_h) { last_w = item->w; last_h = item->h; snprintf(vp2, sizeof(vp2), "%s/canvas_view.txt", g_package_dir); snprintf(vtmp, sizeof(vtmp), "%s.tmp", vp2); FILE *v2 = fopen(vtmp, "w"); if (v2) { fprintf(v2, "%d %d\n", item->w, item->h); fclose(v2); rename(vtmp, vp2); } }
