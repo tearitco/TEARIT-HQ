@@ -24,14 +24,17 @@ static char map[MH][MW + 2]; static int mw, mh;
 static int tx, ty, fx, fy, n; static char dir[8] = "down";
 static char nid[MAXN][32]; static int nx_[MAXN], ny_[MAXN];
 
-static int load_map(const char *app) {
-    char p[PATH_MAX]; snprintf(p, sizeof p, "%s/world_map.txt", app); FILE *f = fopen(p, "r"); if (!f) return -1;
+static int load_map(const char *app) {      /* the town as built so far (state/town_all.txt: world_map.txt + the buildings the pets built) if it exists, else the shipped map */
+    char p[PATH_MAX]; const char *sh = getenv("PET_SHARED"); FILE *f = NULL;
+    if (sh && sh[0]) { snprintf(p, sizeof p, "%s/town_all.txt", sh); f = fopen(p, "r"); }
+    if (!f) { snprintf(p, sizeof p, "%s/state/town_all.txt", app); f = fopen(p, "r"); }
+    if (!f) { snprintf(p, sizeof p, "%s/world_map.txt", app); f = fopen(p, "r"); } if (!f) return -1;
     char l[256]; mh = 0; mw = 0;
     while (fgets(l, sizeof l, f) && mh < MH) { l[strcspn(l, "\r\n")] = 0; int k = (int)strlen(l); if (k > MW) k = MW; memcpy(map[mh], l, (size_t)k); map[mh][k] = 0; if (k > mw) mw = k; mh++; }
     fclose(f); return mh ? 0 : -1;
 }
 static char at(int x, int y) { return (x < 0 || y < 0 || y >= mh || x >= (int)strlen(map[y])) ? 'T' : map[y][x]; }
-static int walkable(char c) { return c == '.' || c == ',' || c == '=' || c == 'P' || c == 'N'; }
+static int walkable(char c) { return c == '.' || c == ',' || c == '=' || c == 'P' || c == 'N' || c == 'f'; }
 static int npc_at(int x, int y, const char *active) { for (int i = 0; i < n; i++) if (nx_[i] == x && ny_[i] == y && strcmp(nid[i], active)) return i; return -1; }
 static void load_state(const char *sd) {
     char p[PATH_MAX]; snprintf(p, sizeof p, "%s/world.st", sd); FILE *f = fopen(p, "r"); n = 0; if (!f) return; char l[128];

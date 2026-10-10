@@ -28,3 +28,5 @@ REPLY | go     | happy | okay, going!
 REPLY | go     | sad   | ...ok
 REPLY | climb  | happy | up we go!
 REPLY | climb  | sad   | ...ok
+REPLY | build  | happy | let me build!
+REPLY | build  | sad   | ...ok

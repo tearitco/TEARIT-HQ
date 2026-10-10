@@ -200,6 +200,7 @@ int main(int argc, char **argv) {
         snprintf(sxo, sizeof sxo, "%d", (int)ax); snprintf(syo, sizeof syo, "%d", atoi(sy) - (int)hopy);
         { int visible = 0; if (xd && g_wid) { XWindowAttributes wa; if (XGetWindowAttributes(xd, (Window)g_wid, &wa)) visible = wa.map_state == IsViewable; }
           if (running) {
+              { static long long nxt_tip = 0; if (!nxt_tip) nxt_tip = t + 90000; if (t > nxt_tip) { snprintf(cmd, sizeof cmd, "PET_DIR= PET_SHARED='%s' sh '%s/ops/pet_event.sh' tip >/dev/null 2>&1", pet, app); sh(cmd, NULL, 0); nxt_tip = t + 240000; } }      /* a tip in the chat every 4 minutes */
               if (t > nxt_say) { snprintf(cmd, sizeof cmd, "PET_DIR= PET_SHARED='%s' sh '%s/ops/pet_event.sh' speak >/dev/null 2>&1", pet, app); sh(cmd, NULL, 0); nxt_say = t + 25000 + rand() % 35000; }
               if (visible && !strcmp(view, "room") && t > nxt_hum) { snprintf(cmd, sizeof cmd, "PET_DIR= PET_SHARED='%s' sh '%s/ops/pet_event.sh' hum >/dev/null 2>&1", pet, app); sh(cmd, NULL, 0); nxt_hum = t + 15000 + rand() % 15000; }
               if (!strcmp(pa, "fall") && strcmp(ppa2, "fall")) { snprintf(cmd, sizeof cmd, "PET_DIR= PET_SHARED='%s' sh '%s/ops/pet_event.sh' react fall >/dev/null 2>&1", pet, app); sh(cmd, NULL, 0); }

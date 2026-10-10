@@ -1,0 +1,53 @@
+SECTION | KEY | VALUE
+----------------------------------------
+# help.pdl - the pet's built-in help. HELP | topic | line (one chat line each, keep them short) and TIP | text (pops up now and then, and when the pet does not understand). Type "help" or "help <topic>" in the chat box.
+HELP | start | Hi! Type in the box + Enter.
+HELP | start | Try: hi   food   good   bad
+HELP | start | I only know words you teach:
+HELP | start | teach sit = play
+HELP | start | teach <words> = <verb> [item]
+HELP | start | verbs: hello feed sleep wash
+HELP | start | play touch go climb build
+HELP | start | After I act say good or bad.
+HELP | start | More: help talk / teach / care
+HELP | start | rooms / build / phone / time
+HELP | talk | I understand exact words I know.
+HELP | talk | Unknown words I remember;
+HELP | talk | say teach <words> = <verb>.
+HELP | talk | give 5 apple = a gift
+HELP | talk | Say help for the list.
+HELP | teach | teach go to bed = go bedroom
+HELP | teach | teach get on the bed = climb bed
+HELP | teach | teach build a house = build house
+HELP | teach | teach yum = feed apple
+HELP | teach | Say it again to strengthen it.
+HELP | teach | good = stronger, bad = weaker.
+HELP | care | Hunger, energy, clean, happy.
+HELP | care | feed / play / wash / sleep
+HELP | care | or teach me to do it myself.
+HELP | care | Time passes while I am Played.
+HELP | rooms | Doors move me between rooms.
+HELP | rooms | Two stairs lead to the roof.
+HELP | rooms | Menu: Build room left/right.
+HELP | rooms | Key 5 shows the house map.
+HELP | build | I need coins + wood + land.
+HELP | build | World page: Build house/store/farm.
+HELP | build | Land costs more as it fills.
+HELP | build | give 20 coin  /  give 4 wood
+HELP | phone | Every pet has a phone number.
+HELP | phone | Talk to a pet in the village
+HELP | phone | and we swap numbers.
+HELP | phone | ph lines in chat are texts.
+HELP | time | Top tab: game clock. Play starts it.
+HELP | time | Speed: pick it in that tab.
+HELP | time | Stop pauses everything.
+HELP | keys | INT on: arrows walk, 0-5 view.
+HELP | keys | Esc leaves INT mode.
+HELP | keys | Click the chat box, type, Enter.
+TIP | Tip: type help for what I can do.
+TIP | Tip: teach me words: teach sit = play
+TIP | Tip: say good after I do something nice.
+TIP | Tip: give 5 apple to feed me later.
+TIP | Tip: the page tab shows the whole chat.
+TIP | Tip: try go up to the roof (teach it first).
+TIP | Tip: world page: build a house.

@@ -1,0 +1,7 @@
+SECTION | KEY | VALUE
+----------------------------------------
+# buildings.pdl - what a pet can build in the town. KIND | name | w | h | wood | coins | rows (footprint, rows joined by /). Map chars: ^ roof, # wall, d door, S store sign, f farm plot (walkable); the footprint must stand on free grass.
+# The land fee is extra: land.pdl (price per tile rises as the explored land fills up). ALL NUMBERS ARE FIRST GUESSES: tune here, no code holds a constant.
+KIND | house | 3 | 3 | 4 | 10 | ^^^/###/#d#
+KIND | store | 3 | 3 | 6 | 30 | ^^^/#S#/#d#
+KIND | farm  | 3 | 2 | 1 | 5  | fff/fff

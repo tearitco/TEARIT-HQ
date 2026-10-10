@@ -14,6 +14,7 @@
 #include <time.h>
 
 static unsigned char *fb; static int W, H; static char g_app[1024] = ".", g_shared[1024] = ".";
+static FILE *town_open(const char *app) { char p[PATH_MAX]; snprintf(p, sizeof p, "%s/town_all.txt", g_shared); FILE *f = fopen(p, "r"); if (f) return f; snprintf(p, sizeof p, "%s/world_map.txt", app); return fopen(p, "r"); }
 static FILE *pdl_open(const char *stem) { char p[PATH_MAX]; snprintf(p, sizeof p, "%s/%s_all.pdl", g_shared, stem); FILE *f = fopen(p, "r"); if (f) return f; snprintf(p, sizeof p, "%s/%s.pdl", g_app, stem); return fopen(p, "r"); }      /* built rooms overlay (state) else the shipped file */
 static void px(int x, int y, int r, int g, int b) { if (x < 0 || y < 0 || x >= W || y >= H) return; unsigned char *p = fb + ((size_t)y * W + x) * 4; p[0] = (unsigned char)r; p[1] = (unsigned char)g; p[2] = (unsigned char)b; p[3] = 255; }
 static void rect(int x0, int y0, int x1, int y1, int r, int g, int b) { for (int y = y0; y < y1; y++) for (int x = x0; x < x1; x++) px(x, y, r, g, b); }
@@ -120,7 +121,7 @@ static void room(const char *pd, int pxx, int pyy, const char *anim, int fi, int
     if (rid == 4) {                                                                                                                         /* the rooftop: the village (world_map.txt) seen from above, a house flag per pet, the roof ledge in front */
         for (int y = 0; y < floor_y; y++) { int k = y * 255 / floor_y, sr, sg, sb; skycol(k, &sr, &sg, &sb); rect(0, y, W, y + 1, sr, sg, sb); }
         stars(0, 0, W, 60); body(0, 0, W, 90);
-        char mp[PATH_MAX]; snprintf(mp, sizeof mp, "%s/world_map.txt", g_app); FILE *mf = fopen(mp, "r"); int T = 9, ox = 36, oy = 26, ry = 0, flag = 0; const int pc[6][3] = {{240,120,150},{230,200,90},{110,170,240},{150,220,120},{200,140,230},{240,160,90}};
+        FILE *mf = town_open(g_app); int T = 9, ox = 36, oy = 26, ry = 0, flag = 0; const int pc[6][3] = {{240,120,150},{230,200,90},{110,170,240},{150,220,120},{200,140,230},{240,160,90}};
         if (mf) { char l[128]; while (fgets(l, sizeof l, mf) && ry < 24) { l[strcspn(l, "\r\n")] = 0;
             for (int x = 0; l[x] && x < 40; x++) { int X = ox + x * T, Y = oy + ry * T; char c = l[x]; int r = 120, g = 190, b = 100;
                 if (c == 'T') { r = 70; g = 140; b = 70; } else if (c == 'W') { r = 70; g = 130; b = 210; if (((x + ry + (int)(qtime_ms() / 800)) & 1) == 0) { r = 110; g = 170; b = 235; } }
@@ -209,6 +210,8 @@ static void tile(int x, int y, char c, int px0, int py0, int T) {
         case '=': rect(px0, py0, px0 + T, py0 + T, 205, 180, 130); rect(px0 + 5, py0 + 6, px0 + 7, py0 + 8, 180, 155, 105); rect(px0 + 15, py0 + 14, px0 + 17, py0 + 16, 180, 155, 105); break;
         case '^': rect(px0, py0, px0 + T, py0 + T, 190, 80, 70); for (int i = 0; i < T; i += 6) rect(px0, py0 + i, px0 + T, py0 + i + 1, 150, 55, 50); break;
         case '#': rect(px0, py0, px0 + T, py0 + T, 235, 225, 195); rect(px0 + 3, py0 + 4, px0 + 8, py0 + 9, 120, 170, 210); break;
+        case 'f': rect(px0, py0, px0 + T, py0 + T, 120, 84, 52); for (int i = 0; i < 3; i++) { rect(px0 + 3 + i * 7, py0 + 4, px0 + 5 + i * 7, py0 + T - 4, 80, 60, 38); rect(px0 + 3 + i * 7, py0 + 6, px0 + 6 + i * 7, py0 + 10, 90, 190, 80); } break;
+        case 'S': rect(px0, py0, px0 + T, py0 + T, 235, 225, 195); rect(px0 + 3, py0 + 5, px0 + T - 3, py0 + 13, 230, 190, 60); rect(px0 + 5, py0 + 7, px0 + T - 5, py0 + 11, 120, 70, 30); break;
         case 'D': case 'd': rect(px0, py0, px0 + T, py0 + T, 235, 225, 195); rect(px0 + 4, py0 + 3, px0 + T - 4, py0 + T, c == 'D' ? 150 : 110, c == 'D' ? 95 : 100, c == 'D' ? 55 : 100);
                   rect(px0 + T - 9, py0 + 12, px0 + T - 6, py0 + 15, 250, 220, 80); break;
         default: rect(px0, py0, px0 + T, py0 + T, 120, 190, 100); if (((x * 7 + y * 13) % 5) == 0) rect(px0 + 6, py0 + 7, px0 + 8, py0 + 11, 90, 160, 80);
@@ -227,7 +230,7 @@ static void trainer(int cx, int by, const char *dir) {
     else rect(cx - 5, by - 24, cx + 5, by - 18, 215, 60, 60);
 }
 static void world(const char *sd, const char *app, const char *active, int fi) {
-    char p[PATH_MAX]; snprintf(p, sizeof p, "%s/world_map.txt", app); FILE *f = fopen(p, "r"); mh_ = 0; mw_ = 0;
+    char p[PATH_MAX]; FILE *f = town_open(app); mh_ = 0; mw_ = 0;
     if (f) { char l[128]; while (fgets(l, sizeof l, f) && mh_ < 64) { l[strcspn(l, "\r\n")] = 0; snprintf(mapr[mh_], sizeof mapr[0], "%s", l); if ((int)strlen(l) > mw_) mw_ = (int)strlen(l); mh_++; } fclose(f); }
     snprintf(p, sizeof p, "%s/world.st", sd); int tx = kvnum(p, "tx", 1), ty = kvnum(p, "ty", 1), fx = kvnum(p, "fx", 1), fy = kvnum(p, "fy", 1), nn = kvnum(p, "n_npc", 0);
     char dir[8] = "down"; { FILE *w = fopen(p, "r"); if (w) { char l[64]; while (fgets(l, sizeof l, w)) if (!strncmp(l, "dir=", 4)) { l[strcspn(l, "\r\n")] = 0; snprintf(dir, sizeof dir, "%s", l + 4); } fclose(w); } }
