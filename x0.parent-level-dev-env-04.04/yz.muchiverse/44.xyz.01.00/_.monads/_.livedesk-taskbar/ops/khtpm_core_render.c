@@ -2883,6 +2883,11 @@ static int reparse_chtpm_if_changed(void) {
     g_seg_nav = 0;
     g_seg_idx = -1;
     g_seg_id[0] = '\0';
+    /* INLINE SPANS step 8: hover names the same per-window triple - a
+     * rebuild invalidates it identically. */
+    g_hover_nav = 0;
+    g_hover_idx = -1;
+    g_hover_id[0] = '\0';
     g_n_elems = 0;
     /* REAL FIX 2026-10-08 (self-correction) - the truncation counters were
      * cumulative for the whole process lifetime, never reset. So a warning
@@ -12470,6 +12475,18 @@ static int poll_agent_history(void) {
 #endif
                     popup_handle_click(mx, my);
                     n++;
+                } else if (nf >= 3 && !is_press) {
+                    /* INLINE SPANS step 8: a relayed pointer MOVE
+                     * (is_press 0) feeds the span hover resolver - the
+                     * same real pointer position a human's MotionNotify
+                     * carries, so agent-driven replay gets the highlight
+                     * a live mouse gets. Deliberately does NOT n++:
+                     * PITFALL #52 (moves must not dirty the frame);
+                     * seg_hover_move redraws only when the target
+                     * actually changes. khtpm_strip_parser.c never
+                     * emits these today (it writes is_press 1 only), so
+                     * this is a pure test/agent affordance. */
+                    seg_hover_move(mx, my);
                 }
                 /* PITFALL #52 (tpmos: MOUSE MOVE REDRAW SPAM) - do NOT count
                  * a bare relayed pointer-move (button 0 / not a press / a
@@ -13899,6 +13916,18 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
             XMoveWindow(dpy, win, g_win_x, g_win_y);
             g_popup_drag_last_x = ev->xmotion.x_root;
             g_popup_drag_last_y = ev->xmotion.y_root;
+        }
+        /* INLINE SPANS step 8: plain pointer motion (no buttons held -
+         * drags/resizes above already returned) updates the span hover
+         * highlight. Coalesced like the drags (only the last position
+         * matters); seg_hover_move redraws only on target change, so a
+         * motion storm costs one hit-test per event and zero repaints
+         * while hovering one span. Buttons-held motion skips hover (a
+         * drag-select owns the pointer then). */
+        if (!(ev->xmotion.state & (Button1Mask | Button2Mask | Button3Mask))) {
+            XEvent mdr;
+            while (XCheckTypedWindowEvent(dpy, win, MotionNotify, &mdr)) *ev = mdr;
+            seg_hover_move(ev->xmotion.x, ev->xmotion.y);
         }
         return;
     }
@@ -21630,7 +21659,16 @@ int main(int argc, char **argv) {
      * cleared it - same class of bug as the missing CWOverrideRedirect
      * mask entry found earlier this session (a struct field set but the
      * corresponding mask bit missing, so X11 silently ignores it). */
-    swa.event_mask = ExposureMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | KeyPressMask | StructureNotifyMask | FocusChangeMask;
+    /* INLINE SPANS step 8 (hover, 2026-10-10): PointerMotionMask added
+     * below - ButtonMotionMask alone only reports motion WHILE A BUTTON
+     * IS HELD, so a plain pointer glide (the actual hover case) was never
+     * delivered to this window at all: same class of bug as the two mask
+     * gaps called out immediately above (handler wired, mask bit
+     * missing, X11 silently drops the event). Cost is bounded -
+     * seg_hover_move() hit-tests g_nav[] once per motion event and
+     * redraws ONLY when the hovered span changes, so sweeping the mouse
+     * across a window with no span rows repaints nothing. */
+    swa.event_mask = ExposureMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | PointerMotionMask | KeyPressMask | StructureNotifyMask | FocusChangeMask;
     win = XCreateWindow(dpy, RootWindow(dpy, screen), g_win_x, g_win_y, (unsigned)g_win_w, (unsigned)g_win_h, 0,
                          CopyFromParent, InputOutput, CopyFromParent, CWBackPixel | CWOverrideRedirect | CWEventMask, &swa);
     if (window_is_dock()) apply_dock_window_hints(dpy, win, g_win_x, g_win_y);

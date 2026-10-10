@@ -1,0 +1,7 @@
+/* hover fixture theme - the dark background is deliberate: the link
+ * tint (#8fb8ff) and the hover tint (#ffffff) are both measured as
+ * exact pixel colours, so a light background would put white text at
+ * zero measurable contrast. */
+window { width: 760px; height: 260px; }
+window.hover-fixture { width: 760px; height: 260px; background-color: #141414; color: #dddddd; }
+.plain, .seg { color: #cccccc; }

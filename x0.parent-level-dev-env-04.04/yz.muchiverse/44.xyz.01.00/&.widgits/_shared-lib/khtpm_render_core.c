@@ -321,6 +321,19 @@ static int g_seg_nav = 0;
 static int g_seg_idx = -1;
 static char g_seg_id[64] = "";
 
+/* INLINE SPANS step 8 (hover highlight, 2026-10-09): pointer hover
+ * target. Same (nav, index, id) shape and lazy contract as the
+ * keyboard cursor, but set by pointer motion instead of keys and
+ * cleared the same places (reparse rebuild, plus any motion landing
+ * outside a link span). Hover only ever TINTS (link text goes white);
+ * clicks/keys/dispatch never consult it, so a stale hover is cosmetic
+ * for at most one frame. No LeaveNotify handling: leaving the window
+ * freezes the last highlight until the next motion lands - harmless,
+ * documented. */
+static int g_hover_nav = 0;
+static int g_hover_idx = -1;
+static char g_hover_id[64] = "";
+
 /* Pure Elem-tree geometry - topmost-child-first hit test (children drawn
  * later win the hit, matching draw order), no X11/global dependency.
  * Verified byte-identical across db-hq/events-hq/chat-hai before being

@@ -935,21 +935,36 @@ static int seg_fitting_runs(Elem *e, XftFont **font_out, SegRun *runs, int maxru
     return seg_measure_runs(e, font, x0, runs, maxruns);
 }
 
+/* step 8: index-carrying twin is defined right below - declared here so
+ * the thin wrapper below it can stay a one-liner. */
+static int seg_hit_action_idx(Elem *e, int px, int *seg_idx_out,
+                              char *actout, size_t actsz);
+
 static int seg_hit_action(Elem *e, int px, char *actout, size_t actsz) {
+    return seg_hit_action_idx(e, px, NULL, actout, actsz);
+}
+
+/* step 8: same with the actionable-run index out (NULL-tolerant, so
+ * the click path is untouched). */
+static int seg_hit_action_idx(Elem *e, int px, int *seg_idx_out,
+                              char *actout, size_t actsz) {
     SegRun runs[64];
-    int nrun, ri;
+    int nrun, ri, nact = 0;
     if (!actout || actsz == 0) return 0;
     nrun = seg_fitting_runs(e, NULL, runs, 64);
     if (nrun < 0) return 0;
     for (ri = 0; ri < nrun; ri++) {
-        if (runs[ri].is_link && runs[ri].actlen > 0 &&
-            px >= runs[ri].x0 && px < runs[ri].x1) {
-            size_t n = runs[ri].actlen;
+        size_t n;
+        if (!runs[ri].is_link || runs[ri].actlen == 0) continue;
+        if (px >= runs[ri].x0 && px < runs[ri].x1) {
+            if (seg_idx_out) *seg_idx_out = nact;
+            n = runs[ri].actlen;
             if (n >= actsz) n = actsz - 1;
             memcpy(actout, runs[ri].act, n);
             actout[n] = '\0';
             return 1;
         }
+        nact++;
     }
     return 0;
 }
@@ -1027,7 +1042,16 @@ static int seg_wrapped_geom(Elem *e, SegRun *runs, int maxruns,
  * edge lines, the same whole-row mapping single-line uses for x),
  * then x walks that line's slices with the draw loop's own
  * (ri,rstart)/pos discipline, measuring each slice identically. */
+static int seg_hit_wrapped_idx(Elem *e, int px, int py, int *seg_idx_out,
+                               char *actout, size_t actsz);
+
 static int seg_hit_wrapped(Elem *e, int px, int py, char *actout, size_t actsz) {
+    return seg_hit_wrapped_idx(e, px, py, NULL, actout, actsz);
+}
+
+/* step 8: same with the actionable-run index out (NULL-tolerant). */
+static int seg_hit_wrapped_idx(Elem *e, int px, int py, int *seg_idx_out,
+                               char *actout, size_t actsz) {
     SegRun runs[64];
     int cuts[64][2];
     int nlines = 0, ty0 = 0, line_h = 0;
@@ -1074,6 +1098,13 @@ static int seg_hit_wrapped(Elem *e, int px, int py, char *actout, size_t actsz) 
             if (runs[ri].is_link && runs[ri].actlen > 0 &&
                 px >= lx && px < lx + sl_ext.xOff) {
                 size_t n = runs[ri].actlen;
+                if (seg_idx_out) {
+                    /* payload-order index: actionable runs before ri. */
+                    int kk, kkact = 0;
+                    for (kk = 0; kk < ri; kk++)
+                        if (runs[kk].is_link && runs[kk].actlen > 0) kkact++;
+                    *seg_idx_out = kkact;
+                }
                 if (n >= actsz) n = actsz - 1;
                 memcpy(actout, runs[ri].act, n);
                 actout[n] = '\0';
@@ -1138,6 +1169,48 @@ static int seg_action_at_idx(Elem *e, int idx, char *actout, size_t actsz) {
         return 1;
     }
     return 0;
+}
+/* step 8: hover validity. Same id rule intent as seg_cursor_on above,
+ * but the id check is OPTIONAL rather than required. A row whose markup
+ * carries no id= attribute (every hand-written fixture, and any generic
+ * window not built by the browser template) must still be able to
+ * highlight: nav_index is already unique per row per reparse, and
+ * reparse clears the whole triple outright, so an id-less row keyed on
+ * (nav,idx) alone can never go stale across a rebuild. */
+static int seg_hover_on(const Elem *e) {
+    return e && g_hover_idx >= 0 && g_hover_nav == e->nav_index &&
+           e->nav_index > 0 && (!e->id[0] || strcmp(g_hover_id, e->id) == 0);
+}
+/* step 8: pointer tracking. Tries single-line geometry first, then
+ * wrapped - the click path's own order. Sets (nav,idx,id) on a link
+ * span, clears otherwise. Redraws ONLY on change: a motion storm must
+ * not repaint (PITFALL #52), so callers never redraw around this. The
+ * dummy action buffer is never dispatched - hover only ever tints. */
+static int seg_hover_move(int px, int py) {
+    int i, nh_nav = 0, nh_idx = -1;
+    char nh_id[64] = "";
+    char dummy[1024];
+    for (i = 0; i < g_n_nav; i++) {
+        Elem *it = g_nav[i];
+        int idx = -1;
+        if (px < it->x || px >= it->x + it->w || py < it->y || py >= it->y + it->h) continue;
+        if (!it->segments[0] || it->nav_index <= 0) continue;
+        if (!kh_elem_in_scope(it)) continue;
+        if (seg_hit_action_idx(it, px, &idx, dummy, sizeof(dummy))) {
+            /* single-line span */
+        } else if (!seg_hit_wrapped_idx(it, px, py, &idx, dummy, sizeof(dummy))) {
+            continue;
+        }
+        nh_nav = it->nav_index; nh_idx = idx;
+        snprintf(nh_id, sizeof(nh_id), "%s", it->id);
+        break;
+    }
+    if (nh_nav == g_hover_nav && nh_idx == g_hover_idx &&
+        (nh_nav == 0 || strcmp(nh_id, g_hover_id) == 0)) return 0;
+    g_hover_nav = nh_nav; g_hover_idx = nh_idx;
+    snprintf(g_hover_id, sizeof(g_hover_id), "%s", nh_id);
+    redraw();
+    return 1;
 }
 /* Left/Right on a focused segments row: enter the spans (Right: first
  * link, Left: last), walk them, walk off either end back to row-level.
@@ -1985,7 +2058,9 @@ static void draw_elem(Elem *e, int hover_id_hash) {
             nrun = seg_measure_runs(e, font, badge_label_x, runs, 64);
             if (nrun >= 0) {
                 int ri, link_no = -1;
+                XftColor hov_col;
                 if (!seg_focus_px) seg_focus_px = alloc_pixel("#ffffff");
+                hov_col = xft_color("#ffffff");
                 for (ri = 0; ri < nrun; ri++) {
                     char seg_text[1024];
                     size_t tl = runs[ri].tlen;
@@ -1993,7 +2068,19 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                     if (tl >= sizeof(seg_text)) tl = sizeof(seg_text) - 1;
                     memcpy(seg_text, runs[ri].text, tl);
                     seg_text[tl] = '\0';
+                    /* link_no counts actionable runs in payload order
+                     * (same domain as cursor/hover indices and
+                     * seg_action_at_idx); incremented here so both the
+                     * text tint below and the underline focus check see
+                     * this run's own index. */
+                    if (runs[ri].is_link && runs[ri].actlen > 0) link_no++;
                     sc = runs[ri].is_link ? link_col : col;
+                    /* step 8: hovered link span draws white TEXT (the
+                     * keyboard cursor instead whitens the underline) -
+                     * the two marks compose, never collide. */
+                    if (runs[ri].is_link && runs[ri].actlen > 0 &&
+                        seg_hover_on(e) && link_no == g_hover_idx)
+                        sc = hov_col;
                     draw_text_emoji(font, &sc, runs[ri].x0, sty, seg_text);
                     if (runs[ri].is_link && runs[ri].x1 > runs[ri].x0) {
                         int focused = 0;
@@ -2003,7 +2090,6 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                          * XRenderFillRectangle. White when the keyboard
                          * cursor sits on this span (step 5). */
                         if (runs[ri].actlen > 0) {
-                            link_no++;
                             focused = seg_cursor_on(e) && link_no == g_seg_idx;
                         }
                         XSetForeground(dpy, gc, focused ? seg_focus_px : link_col.pixel);
@@ -2044,6 +2130,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                 int cuts[64][2];
                 int nlines, max_ln, li;
                 XftColor link_col = xft_color("#8fb8ff");
+                XftColor hov_col = xft_color("#ffffff");
                 snprintf(wrapbuf, sizeof(wrapbuf), "%s", shown_label);
                 if (wrapbuf[0]) {
                     nlines = wrap_line_bounds(font, wrapbuf, avail_w, cuts, 64);
@@ -2088,6 +2175,14 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                                     memcpy(slice, sgruns[ri].text + (pos - rstart), slen);
                                     slice[slen] = '\0';
                                     ssc = sgruns[ri].is_link ? link_col : col;
+                                    /* step 8: hovered link slice draws
+                                     * white text (cursor whitens the
+                                     * underline instead). act_seen is
+                                     * this slice's payload-order index,
+                                     * same domain as g_hover_idx. */
+                                    if (sgruns[ri].is_link && sgruns[ri].actlen > 0 &&
+                                        seg_hover_on(e) && act_seen == g_hover_idx)
+                                        ssc = hov_col;
                                     draw_text_emoji(font, &ssc, lx, ty_line, slice);
                                     XftTextExtentsUtf8(dpy, font, (const FcChar8 *)slice,
                                                        (int)slen, &sl_ext);
