@@ -334,7 +334,9 @@ status() {
         [ -f "$SHARED/camera.st" ] && sed 's/^/cam_/' "$SHARED/camera.st"
         { nb=0; while read -r bid bname _; do printf 'bk_%s_label=%s\nbk_%s_arg=%s\nbk_%s_active=%s\n' "$nb" "$bname" "$nb" "$bid" "$nb" "$([ "$bid" = "$ACTIVE" ] && echo active)"; nb=$((nb+1)); done < "$SHARED/party.txt"
           printf 'n_book=%s\nbook_label=book:%s\npage_label=page:%s\n' "$nb" "$(getv name_id)" "$(cat "$SHARED/view.txt" 2>/dev/null || echo room)"; }
-        sh "$HERE/ops/pet_clock.sh" status 2>/dev/null | grep -v "^time_label="
+        cs=$(sh "$HERE/ops/pet_clock.sh" status 2>/dev/null); printf '%s\n' "$cs" | grep -v "^time_label=\|^game_ms="
+        gms=$(printf '%s\n' "$cs" | sed -n 's/^game_ms=//p'); if [ -n "$gms" ]; then bm=$(getv born_ms); if [ -z "$bm" ]; then bm=$(( $(cat "$SHARED/clock_day0.txt" 2>/dev/null || echo 0) * 86400000 )); setv born_ms "$bm"; fi      # age in GAME time: the pet clock's game ms now minus the game ms it was born (pets that predate this were born when the clock started)
+            awk -v g="$gms" -v b="$bm" 'BEGIN { s = int((g - b) / 1000); if (s < 0) s = 0; printf "age_label=age %dd %02dh\n", int(s / 86400), int((s % 86400) / 3600) }'; else printf 'age_label=age --\n'; fi
         printf 'rec_label=%s\n' "$([ "$(cat "$SHARED/recording.txt" 2>/dev/null)" = 1 ] && echo 'RECORDING... (press to cancel)' || echo 'Talk (mic)')"
         printf 'phone_number=%s\nn_contacts=%s\n' "$(ph_number "$ACTIVE")" "$(grep -c '^CONTACT' "$PET/contacts.pdl" 2>/dev/null || echo 0)"
         printf 'loc=%s\n' "$(cat "$PET/loc.txt" 2>/dev/null || echo bedroom)"
@@ -374,6 +376,7 @@ case "$VERB" in
         cp "$HERE/weights.default.pdl" "$PET/weights.pdl"; cp "$HERE/lexicon.default.pdl" "$PET/lexicon.pdl"; : > "$PET/chat.txt"; : > "$PET/chat_ledger.txt"; : > "$PET/obs_feedback_log.txt"; : > "$PET/tuning_ledger.txt"
         rm -rf "$PET/inventory" "$PET/used"; mkdir -p "$PET/inventory"; : > "$PET/log.txt"; rm -f "$PET/evolve_sig.txt"
         for it in $(awk -F'|' '/^ITEM/{n=$2;gsub(/^ +| +$/,"",n);print n}' "$HERE/items.pdl"); do st=$(pdlval "$HERE/items.pdl" "$it" start); [ -n "$st" ] && [ "$st" -gt 0 ] && inv_add "$it" "$st"; done
+        { gms=$(sh "$HERE/ops/pet_clock.sh" status 2>/dev/null | sed -n 's/^game_ms=//p'); [ -n "$gms" ] && setv born_ms "$gms"; }      # born now, in game time (age_label counts from here)
         echo 0 > "$PET/running.txt"; rm -rf "$PET/event_pkg"; gen_events
         # meta.pdl: the same METHOD rows an entity like asa has, so the pet is a normal house entity (context menu: Events opens events-hq on its event_pkg, exactly asa's row)
         { printf 'SECTION      | KEY                  | VALUE\n----------------------------------------\nMETA         | piece_id           | pet\nSTATE        | kind                 | deskpal\nSTATE        | glyph                | 🐾\n'

@@ -34,6 +34,6 @@ case "$V" in
     rate) case "$ARG" in cent|sec|min|hour|day) install; "$LC" "$ROOT" cmd pet rate "$ARG" --source pet-menu >/dev/null 2>&1;; esac ;;
     advance) case "$ARG" in [0-9]*[smhd]) install; "$LC" "$ROOT" cmd pet advance "$ARG" --source pet-menu >/dev/null 2>&1; sleep 2; phase_now;; esac ;;
     status) ms=$(kv game_time_epoch_ms); if [ -z "$ms" ]; then printf 'time_label=--:--\ntime_rate=-\ntime_running=0\n'; else d0=$(cat "$SHARED/clock_day0.txt" 2>/dev/null || echo 0)
-        printf 'time_label=%s\ntime_rate=%s\ntime_running=%s\n' "$(awk -v ms="$ms" -v d0="$d0" 'BEGIN{d=int(ms/86400000); s=int((ms-d*86400000)/1000); printf "D%d %02d:%02d", d-d0+1, int(s/3600), int((s%3600)/60)}')" "$(kv rate)" "$(kv running)"; fi ;;
+        printf 'game_ms=%s\n' "$ms"; printf 'time_label=%s\ntime_rate=%s\ntime_running=%s\n' "$(awk -v ms="$ms" -v d0="$d0" 'BEGIN{d=int(ms/86400000); s=int((ms-d*86400000)/1000); printf "D%d %02d:%02d", d-d0+1, int(s/3600), int((s%3600)/60)}')" "$(kv rate)" "$(kv running)"; fi ;;
 esac
 exit 0
