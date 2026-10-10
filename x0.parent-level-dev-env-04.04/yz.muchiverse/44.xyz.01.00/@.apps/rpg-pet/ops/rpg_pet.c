@@ -21,7 +21,7 @@
  *   relations.txt (append-only MEET rows: who met whom; the data a later "share a room" rule reads), daylight.txt, clock_ui.txt, clock_root/.
  * Outputs: state/scene.raw (RGBA 660x430) + scene.receipt.txt, state/ui.txt + state/clock_ui.txt. Written only when their content changed (the renderer repaints a canvas
  * when its file changes - an unconditional rewrite costs CPU).
- * Keys in INT (state/interact_relay.txt, "<decimal code> <ms>"): arrows 200 up / 201 down / 202 left / 203 right, 27 Esc = INT off, 0 view, 1-4 pov (stored only: 3D is sprint item 7).
+ * Keys in INT (state/interact_relay.txt, "<decimal code> <ms>", same codes as pet-trainer keybinds.pdl): arrows 1000 left / 1001 right / 1002 up / 1003 down (the agent relay band 200-203 is also accepted), 9 Tab, 27 Esc = INT off, 0 view, 1-4 pov (stored only: 3D is sprint item 7).
  */
 #define _GNU_SOURCE
 #include <stdio.h>
@@ -55,7 +55,8 @@
 #define NP 6
 
 typedef struct { char key[32], label[40], sheet[24], effect[12]; int price, c, r, w, h, wall; } Item;
-typedef struct { char id[16], name[32]; int fc, fr; } Room;
+typedef struct { char id[16], name[32]; int fc, fr, outdoor; } Room;
+typedef struct { int room, c, r, w, h, x, y; char sheet[24]; } Scen;
 typedef struct { int room, tx, dest, ax, ay, autow; } Door;
 typedef struct { int id, item, x, y, room; } Placed;
 typedef struct { char name[40]; unsigned char *px; int w, h; } Sheet;
@@ -65,8 +66,9 @@ static char APP[PATH_MAX], ST[PATH_MAX], ASSETS[PATH_MAX], HOUSE[PATH_MAX], SELF
 static Item cat[MAXI]; static int ncat;
 static Room rooms[8]; static int nroom;
 static Door doors[24]; static int ndoor;
+static Scen scen[24]; static int nscen;
 static Placed pl[MAXP]; static int npl, nid = 1, owned[MAXI], coins;
-static Sheet sheets[8]; static int nsheet;
+static Sheet sheets[12]; static int nsheet;
 static unsigned char fr[FW * FH * 4];
 static struct { char id[16], name[24], sheet[24], nick[24], profile[96]; int idx, mhp, mmp, atk, def, mat, mdf, agi, luk; } party[NP]; static int nparty, active;
 static Ent others[NP], tr;      /* every pet's state, and the trainer's */
@@ -126,9 +128,11 @@ static void load_data(void) {
     load_party();
     snprintf(p, sizeof p, "%s/rooms.pdl", APP); nroom = ndoor = 0;
     if ((fp = fopen(p, "r"))) {
-        while (fgets(line, sizeof line, fp)) { int n = split_bar(line, f, 12); if (n >= 5 && !strcmp(f[0], "ROOM") && nroom < 8) { Room *r = &rooms[nroom++]; snprintf(r->id, 16, "%s", f[1]); snprintf(r->name, 32, "%s", f[2]); r->fc = atoi(f[3]); r->fr = atoi(f[4]); } }
+        while (fgets(line, sizeof line, fp)) { int n = split_bar(line, f, 12); if (n >= 5 && !strcmp(f[0], "ROOM") && nroom < 8) { Room *r = &rooms[nroom++]; snprintf(r->id, 16, "%s", f[1]); snprintf(r->name, 32, "%s", f[2]); r->fc = atoi(f[3]); r->fr = atoi(f[4]); r->outdoor = n >= 6 && !strcmp(f[5], "outdoor"); } }
         rewind(fp);
         while (fgets(line, sizeof line, fp)) { int n = split_bar(line, f, 12); if (n >= 7 && !strcmp(f[0], "DOOR") && ndoor < 24) { int a = room_idx(f[1]), b = room_idx(f[3]); if (a < 0 || b < 0) continue; Door *d = &doors[ndoor++]; d->room = a; d->tx = atoi(f[2]); d->dest = b; d->ax = atoi(f[4]); d->ay = atoi(f[5]); d->autow = atoi(f[6]); } }
+        rewind(fp); nscen = 0;
+        while (fgets(line, sizeof line, fp)) { int n = split_bar(line, f, 12); if (n >= 9 && !strcmp(f[0], "SCENERY") && nscen < 24) { int a = room_idx(f[1]); if (a < 0) continue; Scen *s = &scen[nscen++]; s->room = a; snprintf(s->sheet, 24, "%s", f[2]); s->c = atoi(f[3]); s->r = atoi(f[4]); s->w = atoi(f[5]); s->h = atoi(f[6]); s->x = atoi(f[7]); s->y = atoi(f[8]); } }
         fclose(fp);
     }
 }
@@ -175,12 +179,12 @@ static int other_at(int room, int x, int y) {
 }
 
 /* ---------- placement rules ---------- */
-static int floor_blocked(int room, int x, int y, int skip_id) { for (int i = 0; i < npl; i++) { Placed *q = &pl[i]; if (q->room != room || q->id == skip_id || cat[q->item].wall) continue; if (x >= q->x && x < q->x + cat[q->item].w && y >= q->y && y < q->y + cat[q->item].h) return q->id; } return 0; }
+static int floor_blocked(int room, int x, int y, int skip_id) { for (int i = 0; i < nscen; i++) if (scen[i].room == room && x >= scen[i].x && x < scen[i].x + scen[i].w && y >= scen[i].y && y < scen[i].y + scen[i].h) return 9999; for (int i = 0; i < npl; i++) { Placed *q = &pl[i]; if (q->room != room || q->id == skip_id || cat[q->item].wall) continue; if (x >= q->x && x < q->x + cat[q->item].w && y >= q->y && y < q->y + cat[q->item].h) return q->id; } return 0; }
 static int door_here(int room, int x, int y) { for (int i = 0; i < ndoor; i++) if (doors[i].room == room && doors[i].tx == x && y == TRIG_ROW) return i; return -1; }
 static const char *check_place(int room, int item, int x, int y, int skip_id) {
     static char m[120]; Item *d = &cat[item];
     if (d->wall) {
-        int wy = WALL_ROW + 1 - d->h;
+        int wy = WALL_ROW + 1 - d->h; if (rooms[room].outdoor) return "wall items only go inside";
         if (y != wy || x < 0 || x + d->w > COLS) { snprintf(m, sizeof m, "wall items go on the wall: x 0-%d, y %d", COLS - d->w, wy); return m; }
         for (int i = 0; i < ndoor; i++) if (doors[i].room == room && doors[i].tx >= x && doors[i].tx < x + d->w) return "that wall spot is a door";
         for (int i = 0; i < npl; i++) { Placed *q = &pl[i]; if (q->room != room || q->id == skip_id || !cat[q->item].wall) continue; if (x < q->x + cat[q->item].w && q->x < x + d->w) return "wall spot taken"; }
@@ -192,7 +196,7 @@ static const char *check_place(int room, int item, int x, int y, int skip_id) {
         int cx = x + i, cy = y + j, o;
         if (other_at(room, cx, cy) || (tr.room == room && tr.x == cx && tr.y == cy)) { me = sv; return "someone is standing there"; }
         if (door_here(room, cx, cy) >= 0) { me = sv; return "that cell is in front of a door"; }
-        if ((o = floor_blocked(room, cx, cy, skip_id))) { me = sv; snprintf(m, sizeof m, "spot taken by #%d", o); return m; }
+        if ((o = floor_blocked(room, cx, cy, skip_id))) { me = sv; if (o == 9999) return "there is scenery there"; snprintf(m, sizeof m, "spot taken by #%d", o); return m; }
     }
     me = sv; return "";
 }
@@ -201,7 +205,7 @@ static int first_free(int room, int item, int *ox, int *oy) { Item *d = &cat[ite
 /* ---------- drawing ---------- */
 static Sheet *sheet(const char *dir, const char *name) {
     for (int i = 0; i < nsheet; i++) if (!strcmp(sheets[i].name, name)) return &sheets[i];
-    if (nsheet >= 8) return NULL;
+    if (nsheet >= 12) return NULL;
     char p[PATH_MAX]; snprintf(p, sizeof p, "%s/%s/%s.png", ASSETS, dir, name); int n; Sheet *s = &sheets[nsheet];
     s->px = stbi_load(p, &s->w, &s->h, &n, 4); if (!s->px) return NULL; snprintf(s->name, 40, "%s", name); nsheet++; return s;
 }
@@ -216,10 +220,16 @@ static void tile(const char *sh, int c, int r, int w, int h, int tx, int ty) { b
 
 static void render(void) {
     for (int i = 0; i < FW * FH; i++) { fr[i * 4] = 14; fr[i * 4 + 1] = 14; fr[i * 4 + 2] = 18; fr[i * 4 + 3] = 255; }
-    Room *rm = &rooms[vroom];
+    Room *rm = &rooms[vroom]; char phase[40] = "day"; { char dp[PATH_MAX], db[64]; spath(dp, "daylight.txt"); read_file(dp, db, sizeof db); if (strstr(db, "night")) snprintf(phase, sizeof phase, "night"); else if (strstr(db, "dusk")) snprintf(phase, sizeof phase, "dusk"); else if (strstr(db, "dawn")) snprintf(phase, sizeof phase, "dawn"); }
+    if (rm->outdoor) {      /* sky = an RPG Maker parallax picked by the game clock; ground, path and trees are Outside tiles */
+        Sheet *sk = sheet("parallaxes", !strcmp(phase, "night") ? "StarlitSky" : (!strcmp(phase, "dusk") || !strcmp(phase, "dawn")) ? "Sunset" : "CloudySky1"); if (sk) blit(sk, 0, !strcmp(phase, "day") ? 330 : 120, COLS * T, 2 * T, OX, OY);
+        for (int x = 0; x < COLS; x++) { tile("Outside_A5", 2, 0, 1, 1, x, WALL_ROW); for (int y = TRIG_ROW; y < ROWS; y++) tile("Outside_A5", 0, 2, 1, 1, x, y); }
+        for (int i = 0; i < ndoor; i++) if (doors[i].room == vroom) for (int y = TRIG_ROW; y < ROWS - 1; y++) tile("Outside_A5", 1, 2, 1, 1, doors[i].tx, y);
+    } else
     for (int y = 0; y < ROWS; y++) for (int x = 0; x < COLS; x++) { if (y == 0) tile("Inside_A5", 0, 0, 1, 1, x, y); else if (y == WALL_ROW) tile("Inside_A5", 1, 3, 1, 1, x, y); else tile("Inside_A5", rm->fc, rm->fr, 1, 1, x, y); }
     Sheet *dr = sheet("characters", "!Door1");                                  /* the wood panel door: closed frame of the 4th door object */
-    for (int i = 0; i < ndoor; i++) if (doors[i].room == vroom) { blit(dr, 0, 192, T, T, OX + doors[i].tx * T, OY + WALL_ROW * T); tile("Inside_A5", 0, 6, 1, 1, doors[i].tx, TRIG_ROW); }
+    for (int i = 0; i < ndoor; i++) if (doors[i].room == vroom) { blit(dr, 0, 192, T, T, OX + doors[i].tx * T, OY + WALL_ROW * T); if (!rm->outdoor) tile("Inside_A5", 0, 6, 1, 1, doors[i].tx, TRIG_ROW); }
+    for (int i = 0; i < nscen; i++) if (scen[i].room == vroom) tile(scen[i].sheet, scen[i].c, scen[i].r, scen[i].w, scen[i].h, scen[i].x, scen[i].y);
     int idx[MAXP], n = 0; for (int i = 0; i < npl; i++) if (pl[i].room == vroom) idx[n++] = i;
     for (int a = 0; a < n; a++) for (int b = a + 1; b < n; b++) { Placed *p = &pl[idx[a]], *q = &pl[idx[b]]; int ka = (!cat[p->item].wall) * 1000 + p->y + cat[p->item].h, kb = (!cat[q->item].wall) * 1000 + q->y + cat[q->item].h; if (kb < ka || (kb == ka && q->x < p->x)) { int t = idx[a]; idx[a] = idx[b]; idx[b] = t; } }
     for (int a = 0; a < n; a++) { Placed *p = &pl[idx[a]]; Item *d = &cat[p->item]; tile(d->sheet, d->c, d->r, d->w, d->h, p->x, p->y); }
@@ -231,9 +241,9 @@ static void render(void) {
     for (int a2 = 0; a2 < no; a2++) for (int b2 = a2 + 1; b2 < no; b2++) if (EY(order[b2]) < EY(order[a2])) { int tmp = order[a2]; order[a2] = order[b2]; order[b2] = tmp; }
     for (int k = 0; k < no; k++) { int i = order[k]; Ent *e = i < 0 ? &tr : &others[i]; int col = e->steps ? cyc[e->steps % 4] : 1, ci = i < 0 ? 0 : party[i].idx;
         blit(sheet("characters", i < 0 ? "Actor1" : party[i].sheet), (ci % 4) * 3 * T + col * T, (ci / 4) * 4 * T + e->dir * T, T, T, OX + e->x * T, OY + e->y * T - 8); }
-    { char dp[PATH_MAX], db[64]; spath(dp, "daylight.txt"); read_file(dp, db, sizeof db); int mr = 256, mg = 256, mb = 256;      /* phase tint over the room (clock events write daylight.txt) */
-      if (strstr(db, "night")) { mr = 120; mg = 130; mb = 200; } else if (strstr(db, "dusk")) { mr = 256; mg = 190; mb = 150; } else if (strstr(db, "dawn")) { mr = 256; mg = 215; mb = 190; }
-      if (mr != 256 || mg != 256 || mb != 256) for (int y = OY; y < OY + ROWS * T; y++) for (int x = OX; x < OX + COLS * T; x++) { unsigned char *q = fr + ((size_t)y * FW + x) * 4; q[0] = (unsigned char)(q[0] * mr / 256); q[1] = (unsigned char)(q[1] * mg / 256); q[2] = (unsigned char)(q[2] * mb / 256); } }
+    { int mr = 256, mg = 256, mb = 256, od = rm->outdoor;      /* phase tint (clock events write daylight.txt): strong outside, only a mild dimming indoors */
+      if (!strcmp(phase, "night")) { if (od) { mr = 110; mg = 120; mb = 190; } else { mr = 200; mg = 205; mb = 235; } } else if (!strcmp(phase, "dusk")) { if (od) { mr = 256; mg = 200; mb = 160; } else { mr = 256; mg = 235; mb = 215; } } else if (!strcmp(phase, "dawn")) { if (od) { mr = 256; mg = 215; mb = 185; } else { mr = 256; mg = 240; mb = 225; } }
+      if (mr != 256 || mg != 256 || mb != 256) for (int y = OY + (od ? 2 * T : 0); y < OY + ROWS * T; y++) for (int x = OX; x < OX + COLS * T; x++) { unsigned char *q = fr + ((size_t)y * FW + x) * 4; q[0] = (unsigned char)(q[0] * mr / 256); q[1] = (unsigned char)(q[1] * mg / 256); q[2] = (unsigned char)(q[2] * mb / 256); } }
 }
 
 /* ---------- chat, relations ---------- */
@@ -450,8 +460,9 @@ static int daemon_main(void) {
         usleep(100000); int dirty = 0, codes[64], n; msg[0] = 0; load_data(); pet_load(); int in = flag_on("int", 0);
         n = poll_keys(h1, &o1, codes, 32); n += poll_keys(h2, &o2, codes + n, 32);     /* the offsets always advance; keys only act while INT is on */
         if (in && n) replay();
+        if (in && n) { char kl[300], one[16]; kl[0] = 0; for (int i = 0; i < n && i < 20; i++) { snprintf(one, sizeof one, "%d ", codes[i]); strncat(kl, one, sizeof kl - strlen(kl) - 1); } char kp[PATH_MAX]; spath(kp, "keys_seen.txt"); write_if_changed(kp, kl, strlen(kl)); }      /* last batch of codes, for debugging */
         if (in) for (int i = 0; i < n; i++) { int c = codes[i], dx = 0, dy = 0;
-            if (c == 200) dy = -1; else if (c == 201) dy = 1; else if (c == 202) dx = -1; else if (c == 203) dx = 1;
+            if (c == 1002 || c == 200) dy = -1; else if (c == 1003 || c == 201) dy = 1; else if (c == 1000 || c == 202) dx = -1; else if (c == 1001 || c == 203) dx = 1;
             else if (c == 27) { set_flag("int", "0"); clock_pause(0); snprintf(msg, sizeof msg, "INT off: real time"); dirty = 1; break; }
             else if (c == 9) { char cc[16]; flag_str("ctl", "pet", cc, sizeof cc); int toplayer = !strcmp(cc, "pet"); set_flag("ctl", toplayer ? "player" : "pet"); set_flag("follow", toplayer ? "player" : "pet"); snprintf(msg, sizeof msg, toplayer ? "INT now controls you (the player)" : "INT now controls %s", party[active].name); dirty = 1; continue; }
             else if (c == '0') { char cv[16]; flag_str("view", "2d", cv, sizeof cv); set_flag("view", !strcmp(cv, "2d") ? "3d" : "2d"); snprintf(msg, sizeof msg, "view toggled (3D draws with sprint item 7)"); dirty = 1; continue; }

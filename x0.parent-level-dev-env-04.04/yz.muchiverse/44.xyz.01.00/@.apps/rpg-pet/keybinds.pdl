@@ -1,0 +1,13 @@
+SECTION | KEY | VALUE
+----------------------------------------
+# keybinds.pdl - rpg-pet INT keys. SAME codes as @.apps/pet-trainer/keybinds.pdl (and piececraft-hq): in interact mode the khtpm window appends "<code> <ms>" lines to state/interact_relay.txt;
+# arrows arrive as 1000 left, 1001 right, 1002 up, 1003 down (NOT the 200-203 band of the agent relay file), Esc and Enter go to state/keyboard/history.txt.
+KEY | arrow_left  | 1000
+KEY | arrow_right | 1001
+KEY | arrow_up    | 1002
+KEY | arrow_down  | 1003
+KEY | control_switch | 9      # Tab: INT drives the selected pet <-> the player
+KEY | render_mode_toggle | 48 # 0
+KEY | pov_mode_1 | 49
+KEY | pov_mode_4 | 52
+KEY | escape | 27
