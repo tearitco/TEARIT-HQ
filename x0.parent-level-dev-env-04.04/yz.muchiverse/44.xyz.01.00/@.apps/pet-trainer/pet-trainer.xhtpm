@@ -60,6 +60,8 @@
         <text label="${chat_1}" class="ph-chat"/>
         <text label="${chat_2}" class="ph-chat"/>
         <text label="${chat_3}" class="ph-chat"/>
+        <text label="${chat_4}" class="ph-chat"/>
+        <text label="${chat_5}" class="ph-chat"/>
         <item id="say_mic" class="ph-row" label="${rec_label}" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' listen"/>
         <cli_io id="say" target_id="pet-say" rows="3" class="ph-say" label="&gt; " action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' chat_input"/>
       </row>

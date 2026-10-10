@@ -339,7 +339,7 @@ status() {
         printf 'phone_number=%s\nn_contacts=%s\n' "$(ph_number "$ACTIVE")" "$(grep -c '^CONTACT' "$PET/contacts.pdl" 2>/dev/null || echo 0)"
         printf 'loc=%s\n' "$(cat "$PET/loc.txt" 2>/dev/null || echo bedroom)"
         nav_rows
-        n=0; tail -4 "$CHAT" 2>/dev/null | while IFS= read -r line; do printf 'chat_%s=%s\n' "$n" "$(printf '%s' "$line" | cut -c1-26)"; n=$((n+1)); done
+        tail -8 "$CHAT" 2>/dev/null | fold -s -w 26 | sed 's/ *$//' | tail -6 | awk '{ printf "chat_%d=%s\n", NR - 1, $0 } END { for (i = NR; i < 6; i++) printf "chat_%d=\n", i }'      # long lines WRAP onto new lines at word boundaries (26 chars fit the chat column); the last 6 wrapped lines show
         printf 'known_words=%s\n' "$(awk -F'|' '/^LEX/{p=$2; gsub(/^ +| +$/,"",p); printf "%s ", p}' "$LEXF" 2>/dev/null)"
         printf 'pantry=%s\n' "$(for it in $(awk -F'|' '/^ITEM/{n=$2;gsub(/^ +| +$/,"",n);print n}' "$HERE/items.pdl"); do printf '%s %s ' "$it" "$(inv_count "$it")"; done)"
         { n=0; sel=0; [ -x "$IOP" ] && "$IOP" project "$PET" "$PET/inv_proj.txt" >/dev/null 2>&1
