@@ -17,6 +17,7 @@ KEY          | pitch_down         | 114       # 'r'
 KEY          | pitch_up           | 116       # 't'
 KEY          | cam_height_down    | 99        # 'c'
 KEY          | cam_height_up      | 118       # 'v'
+KEY          | map_mode           | 53        # '5'  debug mini map of the house (toggles; pov=5 in camera.st)
 KEY          | reset_view         | 102       # 'f'
 OPT          | stale_ms           | 800       # a queued key older than this is dropped (held key piled up behind a slow frame)
 OPT          | arrow_run_cap      | 3         # max moves per tick

@@ -43,7 +43,8 @@ static void camera_apply(const char *app, const char *dir, int code) {
     char p[PATH_MAX]; snprintf(p, sizeof p, "%s/camera.st", dir); int mode3d = 0, pov = 1, yaw = 0, pitch = 0, h = 0; FILE *f = fopen(p, "r");
     if (f) { char l[64]; while (fgets(l, sizeof l, f)) { if (!strncmp(l, "mode=3d", 7)) mode3d = 1; else if (!strncmp(l, "pov=", 4)) pov = atoi(l + 4); else if (!strncmp(l, "yaw=", 4)) yaw = atoi(l + 4); else if (!strncmp(l, "pitch=", 6)) pitch = atoi(l + 6); else if (!strncmp(l, "height=", 7)) h = atoi(l + 7); } fclose(f); }
     int chg = 1;
-    if (code == kb(app, "render_mode_toggle", 48)) mode3d = !mode3d;
+    if (code == kb(app, "map_mode", 53)) pov = (pov == 5) ? 1 : 5;
+    else if (code == kb(app, "render_mode_toggle", 48)) mode3d = !mode3d;
     else if (code == kb(app, "pov_mode_1", 49)) { pov = 1; mode3d = 1; } else if (code == kb(app, "pov_mode_2", 50)) { pov = 2; mode3d = 1; }
     else if (code == kb(app, "pov_mode_3", 51)) { pov = 3; mode3d = 1; } else if (code == kb(app, "pov_mode_4", 52)) { pov = 4; mode3d = 1; }
     else if (code == kb(app, "yaw_left", 113)) yaw = (yaw + 345) % 360; else if (code == kb(app, "yaw_right", 101)) yaw = (yaw + 15) % 360;
@@ -52,6 +53,7 @@ static void camera_apply(const char *app, const char *dir, int code) {
     else if (code == kb(app, "reset_view", 102)) { yaw = 0; pitch = 0; h = 0; } else chg = 0;
     if (!chg) return; f = fopen(p, "w"); if (f) { fprintf(f, "mode=%s\npov=%d\nyaw=%d\npitch=%d\nheight=%d\n", mode3d ? "3d" : "2d", pov, yaw, pitch, h); fclose(f); }
 }
+static int cam_pov(const char *dir) { char p[PATH_MAX], l[64]; int pv = 1; snprintf(p, sizeof p, "%s/camera.st", dir); FILE *f = fopen(p, "r"); if (!f) return 1; while (fgets(l, sizeof l, f)) if (!strncmp(l, "pov=", 4)) pv = atoi(l + 4); fclose(f); return pv; }
 static long relay_off = -1, hist_off = -1;
 static void esc_poll(const char *dir) {        /* Esc (27) is forwarded to keyboard/history.txt only: that is the way out of Interact mode (arrows and camera keys stop, nav numbers work again) */
     char p[PATH_MAX]; snprintf(p, sizeof p, "%s/keyboard/history.txt", dir); FILE *f = fopen(p, "r"); if (!f) return;
@@ -166,6 +168,7 @@ int main(int argc, char **argv) {
             static long long t_npc = 0; if (t - t_npc > 700) { snprintf(cmd, sizeof cmd, "'%s/ops/+x/pet_world.+x' npcstep '%s' %s", app, pet, act); sh(cmd, NULL, 0); t_npc = t; }
             snprintf(cmd, sizeof cmd, "'%s/ops/+x/pet_scene.+x' world '%s' '%s/scene.raw' %d %d %s %lld", app, pet, pet, W, H, act, (t / 400) % 8);
         } else if (!strcmp(view, "manage")) snprintf(cmd, sizeof cmd, "'%s/ops/+x/pet_scene.+x' manage '%s' '%s/scene.raw' %d %d %s %lld", app, pet, pet, W, H, act, (t / 500) % 8);
+        else if (cam_pov(pet) == 5) snprintf(cmd, sizeof cmd, "'%s/ops/+x/pet_scene.+x' map '%s' '%s/scene.raw' %d %d %d", app, pet, pet, W, H, rid);
         else snprintf(cmd, sizeof cmd, "'%s/ops/+x/pet_scene.+x' room '%s/pets/%s' '%s/scene.raw' %d %d %s %s %s %lld %d", app, pet, act, pet, W, H, sxo, syo, an, (t / 400) % 8, rid);
         sh(cmd, NULL, 0);
         usleep(200000);

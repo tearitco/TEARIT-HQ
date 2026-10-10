@@ -1,0 +1,6 @@
+SECTION | KEY | VALUE
+----------------------------------------
+# home.pdl - the doll house grid (mini map, key 5). CELL | room id (rooms.pdl) | x | y | kind.  x grows right, y grows down; a door in rooms.pdl links two cells. Build mode will append rows here.
+CELL | bedroom | 0 | 0 | bedroom
+CELL | living  | 1 | 0 | living
+CELL | garden  | 2 | 0 | garden

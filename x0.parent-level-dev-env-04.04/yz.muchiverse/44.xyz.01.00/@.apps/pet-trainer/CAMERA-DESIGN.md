@@ -19,6 +19,9 @@ In INT mode on any page (room, world, later the home map) the pc-hq camera keys 
 | r / t | pitch down / up | pitch_* |
 | c / v | camera height down / up | cam_height_* |
 | f | reset view | reset_view |
+| 5 | debug mini map of the house (toggle; `pov=5`, grid from `home.pdl`) | map_mode |
+
+3D stays a goal alongside the side-on view (owner 2026-10-09 "but we do want 3d also"): `0` toggles it, rooms keep the side view as default.
 
 Control mapping follows the player's perspective (left key = left on screen), per the camera-control-intuition lesson. Esc leaves INT mode.
 

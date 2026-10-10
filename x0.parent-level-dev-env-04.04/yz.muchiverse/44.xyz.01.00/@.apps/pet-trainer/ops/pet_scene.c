@@ -116,6 +116,23 @@ static void room(const char *pd, int pxx, int pyy, const char *anim, int fi, int
     char p[1536]; snprintf(p, sizeof p, "%s/art/sprites_hi/%s_%02d/sprite.csv", pd, anim, fi); sprite(p, pxx, pyy, 2, 1);
 }
 
+/* debug mini map (key 5): the doll house grid from home.pdl, doors from rooms.pdl as links, the pet's room lit. */
+static void house_map(int rid) {
+    rect(0, 0, W, H, 18, 24, 40); rect(0, 0, W, 22, 20, 30, 60); rect(0, 22, W, 24, 250, 210, 80);
+    char p[PATH_MAX]; snprintf(p, sizeof p, "%s/home.pdl", g_app); FILE *f = fopen(p, "r"); if (!f) return;
+    char ids[24][32]; int cx[24], cy[24], n = 0, maxx = 0, maxy = 0, sc[24]; char l[200];
+    char rp[PATH_MAX]; snprintf(rp, sizeof rp, "%s/rooms.pdl", g_app); FILE *rf = fopen(rp, "r");
+    while (fgets(l, sizeof l, f)) { char id[32], k[32]; int x, y; if (n < 24 && sscanf(l, "CELL | %31s | %d | %d | %31s", id, &x, &y, k) == 4) { snprintf(ids[n], 32, "%s", id); cx[n] = x; cy[n] = y; sc[n] = -1; if (x > maxx) maxx = x; if (y > maxy) maxy = y; n++; } }
+    fclose(f);
+    if (rf) { while (fgets(l, sizeof l, rf)) { char id[32]; int s; if (sscanf(l, "ROOM | %31s | %d", id, &s) == 2) for (int i = 0; i < n; i++) if (!strcmp(ids[i], id)) sc[i] = s; } }
+    int cw = (W - 40) / (maxx + 1), ch = 90; if (cw > 100) cw = 100; int ox = (W - cw * (maxx + 1)) / 2, oy = 70;
+    for (int i = 0; i < n; i++) { int x0 = ox + cx[i] * cw + 4, y0 = oy + cy[i] * (ch + 10), x1 = x0 + cw - 8, y1 = y0 + ch, lit = (sc[i] == rid);
+        rect(x0, y0, x1, y1, lit ? 90 : 40, lit ? 120 : 56, lit ? 190 : 100); frame(x0, y0, x1, y1, lit ? 255 : 120, lit ? 225 : 130, lit ? 90 : 160);
+        if (lit) rect(x0 + cw / 2 - 10, y1 - 22, x0 + cw / 2 - 2, y1 - 6, 255, 200, 90); }                                                       /* the pet marker */
+    if (rf) { rewind(rf); while (fgets(l, sizeof l, rf)) { char rm[32], ds[32]; int dx, ar; if (sscanf(l, "DOOR | %31s | %d | %31s | %d", rm, &dx, ds, &ar) == 4) { int a = -1, b = -1; for (int i = 0; i < n; i++) { if (!strcmp(ids[i], rm)) a = i; if (!strcmp(ids[i], ds)) b = i; }
+        if (a >= 0 && b >= 0 && cy[a] == cy[b] && a < b) { int xa = ox + cx[a] * cw + cw - 6, xb = ox + cx[b] * cw + 6, y = oy + cy[a] * (ch + 10) + ch - 14; rect(xa, y - 2, xb, y + 2, 250, 210, 80); } } } fclose(rf); }   /* door links between side-by-side rooms */
+}
+
 static void manage(const char *sd, const char *active, int fi) {
     for (int y = 0; y < H; y++) { int s = 40 + y * 60 / H; rect(0, y, W, y + 1, s / 2, s * 2 / 3, s + 40); }
     rect(0, 0, W, 22, 20, 30, 60); rect(0, 22, W, 24, 250, 210, 80);
@@ -186,13 +203,14 @@ static void world(const char *sd, const char *app, const char *active, int fi) {
 }
 
 int main(int argc, char **argv) {
-    if (argc < 8) { fprintf(stderr, "usage: pet_scene room|manage|world ...\n"); return 2; }
+    if (argc < 7) { fprintf(stderr, "usage: pet_scene room|manage|world ...\n"); return 2; }
     const char *mode = argv[1], *dir = argv[2], *out = argv[3]; W = atoi(argv[4]); H = atoi(argv[5]);
     if (W < 64 || H < 64 || W > 1200 || H > 900) return 2;
     fb = calloc((size_t)W * H, 4); if (!fb) return 1; { char self[PATH_MAX]; if (realpath(argv[0], self)) { snprintf(g_app, sizeof g_app, "%s", self); for (int i = 0; i < 3; i++) { char *s = strrchr(g_app, '/'); if (s) *s = 0; } } }
     char self[PATH_MAX]; char app[PATH_MAX] = "."; if (realpath(argv[0], self)) { snprintf(app, sizeof app, "%s", self); for (int i = 0; i < 3; i++) { char *s = strrchr(app, '/'); if (s) *s = 0; } }
     if (!strcmp(mode, "room") && argc >= 10) room(dir, atoi(argv[6]), atoi(argv[7]), argv[8], atoi(argv[9]) & 7, argc >= 11 ? atoi(argv[10]) : 0);
     else if (!strcmp(mode, "manage")) manage(dir, argv[6], atoi(argv[7]));
+    else if (!strcmp(mode, "map") && argc >= 7) house_map(atoi(argv[6]));
     else if (!strcmp(mode, "world")) world(dir, app, argv[6], atoi(argv[7]));
     else return 2;
     { FILE *old = fopen(out, "rb"); if (old) { unsigned char *ob = malloc((size_t)W * H * 4 + 1); size_t got = ob ? fread(ob, 1, (size_t)W * H * 4 + 1, old) : 0; fclose(old);
