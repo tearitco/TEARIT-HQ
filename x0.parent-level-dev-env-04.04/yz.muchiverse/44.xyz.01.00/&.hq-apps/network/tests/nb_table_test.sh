@@ -66,6 +66,45 @@ else
     echo "FAIL: a cells payload does not have 2 columns"; FAIL=1
 fi
 
+echo "== word bank viewer table payloads"
+# Generate HTML via wordbank_view_op from the wb_entity fixture,
+# then reload: proves the pipeline (view op -> browser table columns).
+WBOP="$HR/&.widgits/_shared-lib/ops/+x/wordbank_view_op.+x"
+WBFX="$HERE/fixtures/wb_entity"
+if [ -x "$WBOP" ] && [ -d "$WBFX" ]; then
+    "$WBOP" --render "$WBFX" > "$HERE/fixtures/wb_viewer.html" 2>/dev/null || true
+    WBFX2="$HERE/fixtures/wb_viewer.html"
+    printf 'go:file://%s\n' "$WBFX2" > "$REQ"
+    for _ in $(seq 1 40); do
+        grep -q "^URL|file://$WBFX2\$" "$PF" 2>/dev/null \
+            && grep -q "status=Status: ready" "$UI" 2>/dev/null && break
+        sleep 0.5
+    done
+    sleep 2
+    # the word bank table has 3 data rows + 1 header = 4 cells payloads
+    # columns: Canon|Alias|WEIGHT|SOURCE -> 4 columns (\x1F x 3)
+    WB_FS="$(printf '\037')"
+    for WANT in "name:demo${WB_FS}demo${WB_FS}0.50${WB_FS}seed" \
+                "action:follow${WB_FS}follow${WB_FS}1.00${WB_FS}user" \
+                "action:stay${WB_FS}wait${WB_FS}0.00${WB_FS}user"; do
+        if grep -Fq "_cells=${WANT}" "$UI" 2>/dev/null; then
+            echo "PASS: wordbank cells [$(printf '%s' "$WANT" | tr '\037' '|')]"
+        else
+            echo "FAIL: wordbank cells missing [$(printf '%s' "$WANT" | tr '\037' '|')"; FAIL=1
+        fi
+    done
+    # arity: wordbank rows have 4 columns (Canon|Alias|Weight|Source)
+    # filter to wordbank payloads (Canon/weight rows) - table.html ones
+    # still lurk in $UI with 2 columns, so scope the check.
+    if grep -E '^c_[0-9]+_cells=' "$UI" 2>/dev/null | grep -E '(name:|action:)' | awk -F'\037' 'NF!=4{bad=1} END{exit bad+0}' 2>/dev/null; then
+        echo "PASS: wordbank payloads have 4 columns"
+    else
+        echo "FAIL: a wordbank cells payload does not have 4 columns"; FAIL=1
+    fi
+else
+    echo "SKIP: wordbank_view_op not compiled or fixture missing"
+fi
+
 echo "== column alignment in a captured frame (needs X)"
 if [ -z "${DISPLAY:-}" ] || ! command -v xwininfo >/dev/null 2>&1; then
     echo "SKIP: no X display for the alignment proof"
