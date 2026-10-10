@@ -103,7 +103,7 @@ int main(int argc, char **argv) {
     snprintf(app, sizeof app, "%s", self); for (int i = 0; i < 3; i++) { char *s = strrchr(app, '/'); if (s) *s = 0; }      /* .../pet-trainer */
     snprintf(house, sizeof house, "%s", app); for (int i = 0; i < 2; i++) { char *s = strrchr(house, '/'); if (s) *s = 0; }
     const char *pd = getenv("PET_DIR"); char pet[PATH_MAX]; if (pd && pd[0]) snprintf(pet, sizeof pet, "%s", pd); else snprintf(pet, sizeof pet, "%s/state", app);
-    int W = getenv("PET_SCENE_W") ? atoi(getenv("PET_SCENE_W")) : 360, H = getenv("PET_SCENE_H") ? atoi(getenv("PET_SCENE_H")) : 280;
+    int W = getenv("PET_SCENE_W") ? atoi(getenv("PET_SCENE_W")) : 540, H = getenv("PET_SCENE_H") ? atoi(getenv("PET_SCENE_H")) : 280;
     int tick_s = getenv("PET_TICK_S") ? atoi(getenv("PET_TICK_S")) : 30; if (tick_s < 1) tick_s = 30;
     pid_t parent = getppid();
     mkdir(pet, 0755);

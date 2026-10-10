@@ -8,6 +8,7 @@ trap 'rm -f "$SHARED"/*.tmp.$$ "$PET"/*.tmp.$$ 2>/dev/null' EXIT   # per-run tem
 SHARED="${PET_SHARED:-$HERE/state}"      # window-facing files (ui.txt, scene.raw, view.txt, party.txt, active.txt, world.st); each pet lives in $SHARED/pets/<id>/
 DB="${PET_DB:-$HOUSE/&.widgits/db-hq/data}"     # the RPG Maker database (db-hq): the party is SYSTEM PetParty, every pet is an ACTOR row (class Pet, note: pet species N seed S)
 ACTIVE="$(cat "$SHARED/active.txt" 2>/dev/null)"; [ -z "$ACTIVE" ] && ACTIVE="$(awk 'NR==1{print $1}' "$SHARED/party.txt" 2>/dev/null)"; ACTIVE="${ACTIVE:-a13}"
+[ -n "${PET_DIR:-}" ] && ACTIVE="$(basename "$PET_DIR")"      # a run for one named pet (training, clock events) acts AS that pet
 PET="${PET_DIR:-$SHARED/pets/$ACTIVE}"
 GRADE="${ENTITY_GRADE:-$HOUSE/&.widgits/concept-bank/ops/+x/entity_grade.+x}"
 GEN="${PET_GEN:-$HOUSE/@.apps/layout-studio/ops/+x/pet_gen.+x}"
@@ -130,6 +131,19 @@ rooms_file() { if [ -f "$SHARED/rooms_all.pdl" ]; then echo "$SHARED/rooms_all.p
 merge_rooms() { # shipped rooms/home + what the pet built (state/built_*.pdl) -> state/*_all.pdl (readers prefer the merged files)
     cat "$HERE/rooms.pdl" "$SHARED/built_rooms.pdl" > "$SHARED/rooms_all.pdl" 2>/dev/null; cat "$HERE/home.pdl" "$SHARED/built_home.pdl" > "$SHARED/home_all.pdl" 2>/dev/null
 }
+# ---- phones: every pet is an entity with a house phone (own number, inbox, outbox) and its own tiny phone server (state/server) - the SAME ops the rest of the house uses
+SRV="$SHARED/server"; PHE="${PHONE_ENSURE:-$HOUSE/&.widgits/_shared-lib/ops/+x/phone_ensure_op.+x}"; PHS="${PHONE_SEND:-$HOUSE/&.widgits/_shared-lib/ops/+x/phone_send_op.+x}"; PHR="${SERVER_ROUTE:-$HOUSE/&.widgits/_shared-lib/ops/+x/server_route_op.+x}"
+ph_ensure() { # idempotent: a phone for every pet folder under state/pets; the index lives in state/server, not in the house server
+    mkdir -p "$SRV"; [ -f "$SRV/tunables.conf" ] || printf 'route_max_msgs_per_min=60\nroute_batch_max=100\n' > "$SRV/tunables.conf"
+    [ -x "$PHE" ] && "$PHE" "$HOUSE" --apply --pals-root "$SHARED/pets" --index "$SRV/phones.index" >/dev/null 2>&1; }
+ph_number() { grep "^PHONE *| *number" "$SHARED/pets/$1/inventory/zz.phone/phone.pdl" 2>/dev/null | awk -F'|' '{gsub(/ /,"",$3); print $3}'; }
+ph_name() { sed -n 's/^name_id=//p' "$SHARED/pets/$1/variables.txt" 2>/dev/null | head -1; }
+contact_add() { # contact_add <owner id> <other id>: one CONTACT row (name, number, id, how much they like each other, when met); never twice
+    f="$SHARED/pets/$1/contacts.pdl"; num=$(ph_number "$2"); [ -n "$num" ] || return 0; grep -q "| $num |" "$f" 2>/dev/null && return 0
+    printf 'CONTACT | %s | %s | %s | like=5 | met=%s\n' "$(ph_name "$2")" "$num" "$2" "$(date +%F)" >> "$f"; }
+ph_say() { # ph_say <from id> <to id> <text>: a phone.send "say" from the sender's own phone, then one router pass (delivery into the other pet's inbox)
+    tn=$(ph_number "$2"); [ -n "$tn" ] && "$PHS" "$SHARED/pets/$1/inventory/zz.phone" "$tn" say "" "$3" 2>/dev/null || return 0; "$PHR" "$SRV" >/dev/null 2>&1
+    printf 'ph >%s: %s\n' "$(ph_name "$2")" "$3" >> "$SHARED/pets/$1/chat.txt"; printf 'ph %s %s: %s\n' "$(ph_number "$1" | cut -c1-8)" "$(ph_name "$1")" "$3" >> "$SHARED/pets/$2/chat.txt"; }      # phone chats show in the chat window: "ph >Name: text" sent, "ph <number> Name: text" received
 gen_events() { # build <pet dir>/event_pkg/pages/page_N for every pet event: system events, then one per menu row. The pages are what events-hq opens (event.ir.pdl, event.pal, condition.pdl, cmd_1.sh).
     GENV=$(cat "$(rooms_file)" "$HERE/menu.pdl" "$HERE/ops/pet_event.sh" 2>/dev/null | cksum | cut -d' ' -f1)
     P="$PET/event_pkg/pages"; [ -f "$PET/event_pkg/events_index.txt" ] && [ "$(cat "$PET/event_pkg/.generated" 2>/dev/null)" = "$GENV" ] && return 0
@@ -233,8 +247,8 @@ sync_party() { # party.txt = cache of the DB: one line per PetParty member in or
     [ -s "$SHARED/active.txt" ] || awk 'NR==1{print $1}' "$SHARED/party.txt" > "$SHARED/active.txt"; [ -s "$SHARED/view.txt" ] || echo room > "$SHARED/view.txt"
 }
 ensure_party() { # first run: seed the DB and build every pet, then the village
-    [ -f "$SHARED/world.st" ] && { sync_party; return 0; }
-    sync_party; [ -x "$WORLD" ] && "$WORLD" init "$SHARED" "$SHARED/party.txt" >/dev/null 2>&1
+    [ -f "$SHARED/world.st" ] && { sync_party; [ -s "$SRV/phones.index" ] || ph_ensure; return 0; }
+    sync_party; [ -x "$WORLD" ] && "$WORLD" init "$SHARED" "$SHARED/party.txt" >/dev/null 2>&1; ph_ensure
 }
 WORLD="${PET_WORLD:-$HERE/ops/+x/pet_world.+x}"
 status() {
@@ -275,9 +289,10 @@ status() {
           printf 'n_book=%s\nbook_label=book:%s\npage_label=page:%s\n' "$nb" "$(getv name_id)" "$(cat "$SHARED/view.txt" 2>/dev/null || echo room)"; }
         sh "$HERE/ops/pet_clock.sh" status 2>/dev/null | grep -v "^time_label="
         printf 'rec_label=%s\n' "$([ "$(cat "$SHARED/recording.txt" 2>/dev/null)" = 1 ] && echo 'RECORDING... (press to cancel)' || echo 'Talk (mic)')"
+        printf 'phone_number=%s\nn_contacts=%s\n' "$(ph_number "$ACTIVE")" "$(grep -c '^CONTACT' "$PET/contacts.pdl" 2>/dev/null || echo 0)"
         printf 'loc=%s\n' "$(cat "$PET/loc.txt" 2>/dev/null || echo bedroom)"
         nav_rows
-        n=0; tail -4 "$CHAT" 2>/dev/null | while IFS= read -r line; do printf 'chat_%s=%s\n' "$n" "$(printf '%s' "$line" | cut -c1-32)"; n=$((n+1)); done
+        n=0; tail -4 "$CHAT" 2>/dev/null | while IFS= read -r line; do printf 'chat_%s=%s\n' "$n" "$(printf '%s' "$line" | cut -c1-26)"; n=$((n+1)); done
         printf 'known_words=%s\n' "$(awk -F'|' '/^LEX/{p=$2; gsub(/^ +| +$/,"",p); printf "%s ", p}' "$LEXF" 2>/dev/null)"
         printf 'pantry=%s\n' "$(for it in $(awk -F'|' '/^ITEM/{n=$2;gsub(/^ +| +$/,"",n);print n}' "$HERE/items.pdl"); do printf '%s %s ' "$it" "$(inv_count "$it")"; done)"
         { n=0; sel=0; [ -x "$IOP" ] && "$IOP" project "$PET" "$PET/inv_proj.txt" >/dev/null 2>&1
@@ -299,7 +314,7 @@ status() {
 # (and logged), exactly like Doom's play flag. The window shows it as a traffic light (green = started, red = stopped).
 running() { [ "$(cat "$PET/running.txt" 2>/dev/null)" = 1 ]; }
 case "$VERB" in
-    start|stop|build_room|map|listen|chat_send|clock_event|time_rate|time_advance|time_reinstall|status|stats|new_pet|save_slot|load_slot|fire|gen_events|new_event|menu_group|menu_toggle|inv_toggle|open_events|teleport|hotbar_toggle|interact|player|party_toggle|view|select|world_move|world_talk|"") ;;
+    start|stop|phones|exchange|call|build_room|map|listen|chat_send|clock_event|time_rate|time_advance|time_reinstall|status|stats|new_pet|save_slot|load_slot|fire|gen_events|new_event|menu_group|menu_toggle|inv_toggle|open_events|teleport|hotbar_toggle|interact|player|party_toggle|view|select|world_move|world_talk|"") ;;
     *) if ! running && [ "${PET_TRAIN:-0}" != 1 ]; then mkdir -p "$PET"; printf '%s | stopped | ignored %s\n' "$(date '+%H:%M:%S')" "$VERB" >> "$PET/log.txt"
            case "$VERB" in chat_input|chat|chat_send) printf '(the pet is stopped - press Play first)\n' >> "$PET/chat.txt"; status >/dev/null 2>&1;; esac; exit 0; fi ;;
 esac
@@ -381,7 +396,7 @@ case "$VERB" in
         [ -z "$who" ] && { echo "world: nobody is near" >> "$PET/chat.txt"; status >/dev/null; exit 0; }
         nm=$(awk -v i="$who" '$1==i{print $2}' "$SHARED/party.txt"); sp=$(sed -n 's/^species=//p' "$SHARED/pets/$who/variables.txt" 2>/dev/null | head -1)
         case "${sp:-0}" in 0) sn=bunny;; 1) sn=bear;; 2) sn=cat;; 3) sn=frog;; 4) sn=mouse;; *) sn=dragon;; esac
-        echo "world: $nm the $sn says hi to ${nm:+your pet}" >> "$PET/chat.txt"; addv talk_total 1; addv happy 3; status >/dev/null ;;
+        echo "world: $nm the $sn says hi to ${nm:+your pet}" >> "$PET/chat.txt"; addv talk_total 1; addv happy 3; sh "$0" exchange "$who" >/dev/null 2>&1; status >/dev/null ;;
     teleport) need_pet; dest="$ARG"; ax="${3:-0}"      # the door event: move the pet to another room (or the village = the world page)
         case "$dest" in
             village) echo world > "$SHARED/view.txt"; echo 1 > "$SHARED/interact_armed.txt"; mkdir -p "$SHARED/keyboard"; : >> "$SHARED/interact_relay.txt"; : >> "$SHARED/keyboard/history.txt";;
@@ -403,6 +418,12 @@ case "$VERB" in
         nm=$(getv name_id); sp=$(getv species); case "$ARG" in fall) line="whoa!!"; expr surprised 4;; land) line="oof!"; expr sad 3;; *) exit 0;; esac
         printf '%s: %s\n' "$nm" "$line" >> "$CHAT"; ( setsid sh "$HERE/ops/pet_voice.sh" "${sp:-0}" "$line" >/dev/null 2>&1 & ); status >/dev/null ;;
     chat) do_chat "$ARG"; status >/dev/null ;;
+    phones) ph_ensure; status >/dev/null ;;
+    exchange) need_pet; other="$ARG"; { [ -n "$other" ] && [ -d "$SHARED/pets/$other" ] && [ "$other" != "$ACTIVE" ]; } || exit 0      # two pets swap numbers: contacts on both sides, a hello text, a graded extracurricular
+        ph_ensure; contact_add "$ACTIVE" "$other"; contact_add "$other" "$ACTIVE"; ph_say "$ACTIVE" "$other" "hi! i am $(getv name_id) - this is my number"
+        printf '%s: saved %s number!\n' "$(getv name_id)" "$(ph_name "$other")" >> "$CHAT"; feedback +1 contacts; addv happy 3; status >/dev/null ;;
+    call) need_pet; other="$ARG"; msg="${3:-hello}"; msg=$(printf '%s' "$msg" | tr -d '|'); ph_ensure; num=$(ph_number "$other")      # a call = a text to a saved contact
+        if [ -n "$num" ] && grep -q "| $num |" "$PET/contacts.pdl" 2>/dev/null; then ph_say "$ACTIVE" "$other" "$msg"; printf '%s: texted %s\n' "$(getv name_id)" "$(ph_name "$other")" >> "$CHAT"; else printf '%s: I do not have that number\n' "$(getv name_id)" >> "$CHAT"; fi; status >/dev/null ;;
     build_room) need_pet; side="${ARG:-right}"; kind="${3:-room}"; RF=$(rooms_file); HF="$HERE/home.pdl"; [ -f "$SHARED/home_all.pdl" ] && HF="$SHARED/home_all.pdl"
         cur=$(cat "$PET/loc.txt" 2>/dev/null || echo bedroom); line=$(grep "^CELL *| *$cur " "$HF" | head -1); cx=$(echo "$line" | awk -F'|' '{gsub(/ /,"",$3); print $3}'); cy=$(echo "$line" | awk -F'|' '{gsub(/ /,"",$4); print $4}')
         [ -n "$cx" ] || { printf '%s: I cannot build here\n' "$(getv name_id)" >> "$CHAT"; exit 0; }

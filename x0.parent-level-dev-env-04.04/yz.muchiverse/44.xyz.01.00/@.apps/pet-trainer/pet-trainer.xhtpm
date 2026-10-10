@@ -48,17 +48,21 @@
           <item id="mn${menu.#}" class="ph-row" label="${menu.label}" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' ${menu.verb} ${menu.arg}"/>
         </repeat>
       </scrolllist>
-      <text label="${chat_0}" class="ph-chat"/>
-      <text label="${chat_1}" class="ph-chat"/>
-      <text label="${chat_2}" class="ph-chat"/>
-      <text label="${chat_3}" class="ph-chat"/>
       <text label="${stage} lv ${level} ${state}" class="ph-quiet"/>
       <text label="hg ${hunger} en ${energy} cl ${clean} hp ${happy}" class="ph-quiet"/>
-      <cli_io id="say" target_id="pet-say" rows="3" class="ph-say" label="&gt; " action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' chat_input"/>
-      <item id="say_mic" class="ph-row" label="${rec_label}" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' listen"/>
     </sidebar>
     <panel id="room_p" class="ph-panel">
       <canvas id="room" class="ph-room" sprite="${scene_raw}"/>
+      <row id="chat-ov" class="canvas-overlay-right ov-chrome ov-slide-x ph-chat-ov theme">
+        <text label="chat - ${name}" class="hb-quiet ov-title theme-3"/>
+        <item id="chat-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="void"/>
+        <text label="${chat_0}" class="ph-chat"/>
+        <text label="${chat_1}" class="ph-chat"/>
+        <text label="${chat_2}" class="ph-chat"/>
+        <text label="${chat_3}" class="ph-chat"/>
+        <item id="say_mic" class="ph-row" label="${rec_label}" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' listen"/>
+        <cli_io id="say" target_id="pet-say" rows="3" class="ph-say" label="&gt; " action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' chat_input"/>
+      </row>
       <row id="hotbar-ov" class="canvas-overlay-bottom ov-chrome ov-slide-x ph-hotbar theme" show="${hb_visible}">
         <text label="${hb_title}" class="hb-quiet ov-title theme-3"/>
         <item id="hb-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' hotbar_toggle"/>
