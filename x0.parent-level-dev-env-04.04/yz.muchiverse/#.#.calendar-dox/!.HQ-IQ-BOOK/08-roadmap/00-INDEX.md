@@ -2,6 +2,7 @@
 
 - `design-docs/DSR-WSR-PETS-BRIDGE-DESIGN.md` — **DSR city where companies, population and pets coexist** (2026-10-10): the `dsr` book (2D/3D), WSR HQ window from the DSR toy, and how pet / DSR entity / WSR piece / chain data bridge (entity_uid key, one authority per fact, projections, links registry, money conservation).
 
+- `44.xyz.01.00/@.apps/rpg-pet/` — **rpg-pet** (2026-10-10): the NEW RPG Maker pet game (toys menu, pet-trainer untouched): tile-only house, six monster pets read from the RPG Maker DB, shop, teleport doors, pets walk by themselves (event steps), INT mode; one C op. Design `08-roadmap/design-docs/RPG-PET-DESIGN.md`, roadmap `@.apps/rpg-pet/ROADMAP.md`, plan: a room per pet, shared through relationships. Copies + Night 50 in XO `22.rpg-pet/`.
 - `44.xyz.01.00/@.apps/pet-trainer/CHAIN-ECONOMY-DESIGN.md` — **pets on the chain** (2026-10-10): wallets, mining, NFTs, banks/governments from the premined chain with leases swept back at game end, exchange valuation into preferred value, Exchange/Auction HQ, and the soul of the ecosystem (pets drive the relay, learn by RL, modify their own harnesses, watch human input).
 
 - Chess started 2026-10-09. Book `maps/chess` with pages title,

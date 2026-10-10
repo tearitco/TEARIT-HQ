@@ -57,3 +57,6 @@ Status: DONE = built and shown working (evidence in the commit message) / PARTIA
 - **WSR economy + pets** (`WSR-ECONOMY-AND-PETS-EXPLORATION.md`, 2026-10-10): ran the WSR engine in scratch (ticks, order book, 59 quoting participants, 17 fills, registry, ledger); AI tiers (weighted real, rl stub, llm, human); no bondholders exist; plan: pets as holder pieces, money bridge via the exchange, bond ledger, RL on paper money, XOD tournaments.
 
 - **DSR city + bridge** (`08-roadmap/design-docs/DSR-WSR-PETS-BRIDGE-DESIGN.md`, 2026-10-10): WSR in an x11-hq window on the DSR infrastructure (toy menu + a `dsr` pc-hq book with castles/stores/banks/hotels/pop on a 2D/3D map) where companies and pets coexist; data bridged by one identity key (entity_uid = wallet = link), one authority per fact, read-only projections into entity variables, a links registry, money bridge with a conservation check. Exchange HQ and Auction HQ are built (network cell).
+
+## See also: rpg-pet (2026-10-10)
+The owner started a SECOND pet game, `@.apps/rpg-pet` (toys menu), built only from RPG Maker tiles with the six DB pets as monsters; this game is untouched. Its roadmap: `@.apps/rpg-pet/ROADMAP.md`. Shared contracts: the db-hq PetParty/ACTOR rows and the ROOM/DOOR row shape of `rooms.pdl`.
