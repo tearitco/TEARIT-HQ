@@ -22,3 +22,11 @@ Next (strategy table): templates + `layout_op preview`, then `layout_op` CLI, ma
   writes `obj/<anim>_<NN>.obj` + `pet.mtl` (idle, eat, hungry: 8 poses each, OBJ has no animation so play the numbered poses in order), 16x24 `sprites/*.rgba`,
   `sprites_csv/<anim>_<NN>/sprite.csv` (what `<item sprite="DIR">` loads, verified in a window) and `sheet.png`. Pin colour/ears/size with `KEY | body_r | 230` rows.
   No FBX yet (binary container); an ASCII-FBX exporter can reuse the same mesh list.
+
+## layout_flow: a game's flow as data (2026-10-09)
+
+`ops/layout_flow.c` (`sh ops/build_layout_flow.sh`). A `flow.pdl` (first user: `@.apps/pet-trainer/flow.pdl`) names the layout, the nav table, the verb script, the keybinds and the views. Then:
+- `layout_flow check flow.pdl` - `layout_check` + every button verb has a case in the verb script + verbs dropped by the stopped-gate (WARN) + duplicate key codes.
+- `layout_flow navmap flow.pdl <view>` - the buttons with their real numbers: tabs, bottom footer, sidebar rows (nav.pdl rows expanded, `{party}` = one per pet), chat field. Dropdown rows are listed with `0` and their tab.
+- `layout_flow press flow.pdl <view> "<label>" --pid <window pid> [--esc]` - sends the relay keys. A dropdown row = tab digit, then Down x (row-1), then Enter (digits do not jump inside an open dropdown). `--esc` first leaves Interact mode.
+Not an editor: there is still no palette, drag and drop or play preview (phases 5-6 of `IN-GAME-LAYOUTS-PLAN.md`); this is the data + audit + drive layer they will sit on. The meta quest: agents and users craft layouts and game scenes with events through the studio.
