@@ -1,0 +1,13 @@
+SECTION | KEY | VALUE
+----------------------------------------
+# ai.pdl - the headless life of the pets that are not on screen (pet_event.sh ai_step, run by pet_manager for each of them in turn while the clock runs). ALL NUMBERS ARE FIRST GUESSES: tune here, no code holds a constant.
+# SOURCE | map char | item | amount | regrow seconds   - standing next to such a tile gives the item; the same tile gives it again only after the regrow time. Trees give apples and wood, farms give apples.
+SOURCE | f | apple | 2 | 120
+SOURCE | T | apple | 1 | 240
+SOURCE | T | wood  | 1 | 240
+AI | hunger_thr | 60
+AI | energy_thr | 25
+AI | want_wood | 8
+AI | eat_radius | 1
+AI | needs_every | 60
+AI | rest_gain | 15

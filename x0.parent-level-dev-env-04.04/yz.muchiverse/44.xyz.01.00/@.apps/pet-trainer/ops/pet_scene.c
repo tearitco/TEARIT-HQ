@@ -159,7 +159,7 @@ static void room(const char *pd, int pxx, int pyy, const char *anim, int fi, int
         rect(140, floor_y - 40, 240, floor_y - 12, 150, 50, 60); rect(134, floor_y - 52, 246, floor_y - 40, 120, 38, 48); rect(134, floor_y - 40, 146, floor_y - 12, 120, 38, 48); rect(234, floor_y - 40, 246, floor_y - 12, 120, 38, 48);   /* sofa */
         rect(252, floor_y - 30, 312, floor_y, 100, 72, 44);                                                                                /* TV stand */
         rect(256, floor_y - 74, 308, floor_y - 30, 30, 30, 34); { long long cq = qtime_ms() / 500; for (int k = 0; k < 5; k++) rect(260 + k * 10, floor_y - 70, 270 + k * 10, floor_y - 34, 60 + ((k + (int)cq) % 6) * 30, 90 + ((k * 2 + (int)cq) % 5) * 28, 160 + ((k + 2 * (int)cq) % 4) * 20); }   /* TV: moving colour bars */
-        rect(112, 40, 150, 76, 90, 60, 40); rect(116, 44, 146, 72, 150, 200, 230); rect(118, 58, 144, 72, 90, 150, 100);                 /* a picture on the wall */
+        big_window(132, 26, 104, 70, floor_y);                                                                                           /* a real window: same sky, sun/moon, stars and hills as the bedroom's, so it is night when it is night */
         rect(104, floor_y - 40, 112, floor_y, 90, 150, 80); rect(98, floor_y - 70, 118, floor_y - 40, 70, 160, 80);                      /* plant */
     }
     char p[1536]; snprintf(p, sizeof p, "%s/art/sprites_hi/%s_%02d/sprite.csv", pd, anim, fi); sprite(p, pxx, pyy, 2, 1);

@@ -184,7 +184,7 @@ int main(int argc, char **argv) {
                   else for (int i = 0; i < npl; i++) if (strstr(pl[i].name, nm)) { plat_goal = i; break; } } }
             if (!hopping && plat_on < 0 && plat_goal < 0 && t > nxt_move) { door_ev[0] = 0; tgt = 90 + rand() % (W - 90 - 110); nxt_move = t + 3500 + rand() % 7000;
                 if (npl > 0 && rand() % 100 < 22) plat_goal = rand() % npl;                                                                     /* now and then it wants to be up on the furniture */
-                else if (rand() % 100 < 14) { char rp2[PATH_MAX]; FILE *rf2 = rooms_open(app); if (rf2) { char l2[200]; while (fgets(l2, sizeof l2, rf2)) { char rm[32], ds[32], au[16]; int dx = 0, ar = 0; if (sscanf(l2, "DOOR | %31s | %d | %31s | %d | %15s", rm, &dx, ds, &ar, au) == 5 && !strcmp(rm, loc) && !strcmp(au, "auto=1")) { tgt = dx; snprintf(door_ev, sizeof door_ev, "door_%s_%s", rm, ds); nxt_move = t + 9000; break; } } fclose(rf2); } } }
+                else if (rand() % 100 < 14) { char rp2[PATH_MAX]; int nd = 0; FILE *rf2 = rooms_open(app); if (rf2) { char l2[200]; while (fgets(l2, sizeof l2, rf2)) { char rm[32], ds[32], au[16]; int dx = 0, ar = 0; if (sscanf(l2, "DOOR | %31s | %d | %31s | %d | %15s", rm, &dx, ds, &ar, au) == 5 && !strcmp(rm, loc) && !strcmp(au, "auto=1")) { if (rand() % ++nd == 0) { tgt = dx; snprintf(door_ev, sizeof door_ev, "door_%s_%s", rm, ds); nxt_move = t + 9000; } } } fclose(rf2); } } }      /* any of the room's auto doors, chosen at random (reservoir pick: it used to take the first, so the roof and garden doors were never used) */
             if (plat_goal >= 0 && plat_goal < npl) { tgt = (pl[plat_goal].x0 + pl[plat_goal].x1) / 2; if (!hopping && ax >= tgt - 6 && ax <= tgt + 6) {      /* under it: jump up */
                 lift_from = lift_goal; lift_goal = (H - 30) - pl[plat_goal].top; hop_amp = 18; hop0 = t; plat_on = plat_goal; plat_goal = -1; down_at = t + 9000 + rand() % 8000; nxt_move = t + 3000; } }
             if (plat_on >= 0 && !hopping) {                                                                                                       /* up there: stroll along the top, then hop down */
@@ -207,6 +207,12 @@ int main(int argc, char **argv) {
               if (!strcmp(pa, "thud") && strcmp(ppa2, "thud")) { snprintf(cmd, sizeof cmd, "PET_DIR= PET_SHARED='%s' sh '%s/ops/pet_event.sh' react land >/dev/null 2>&1", pet, app); sh(cmd, NULL, 0); }
           }
           snprintf(ppa2, sizeof ppa2, "%s", pa); }
+        if (running) {      /* the other pets live headless while the clock runs: one of them takes an ai_step (needs drift, eat, gather, remember places) every 3 s, in turn */
+            static long long t_ai = 0; static int ai_i = 0;
+            if (t - t_ai > 3000) { t_ai = t; char pp[PATH_MAX]; snprintf(pp, sizeof pp, "%s/party.txt", pet); FILE *pf = fopen(pp, "r"); char ids[16][32]; int ni = 0, lk[160];
+                (void)lk; if (pf) { char l3[160]; while (ni < 16 && fgets(l3, sizeof l3, pf)) { char id3[32]; if (sscanf(l3, "%31s", id3) == 1 && strcmp(id3, act)) snprintf(ids[ni++], 32, "%s", id3); } fclose(pf); }
+                if (ni > 0) { ai_i = (ai_i + 1) % ni; snprintf(cmd, sizeof cmd, "PET_DIR='%s/pets/%s' PET_SHARED='%s' sh '%s/ops/pet_event.sh' ai_step >/dev/null 2>&1", pet, ids[ai_i], pet, app); sh(cmd, NULL, 0); } }
+        }
         if (!strcmp(view, "world")) {
             static long long t_npc = 0; if (t - t_npc > 700) { snprintf(cmd, sizeof cmd, "'%s/ops/+x/pet_world.+x' npcstep '%s' %s", app, pet, act); sh(cmd, NULL, 0); t_npc = t; }
             snprintf(cmd, sizeof cmd, "%s'%s/ops/+x/pet_scene.+x' world '%s' '%s/scene.raw' %d %d %s %lld", zoomenv, app, pet, pet, W, H, act, (t / 400) % 8);

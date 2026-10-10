@@ -80,10 +80,35 @@ int main(int argc, char **argv) {
         if (!walkable(c) || (x == fx && y == fy && 0)) { puts("blocked"); save_state(sd); return 0; }
         fx = tx; fy = ty; tx = x; ty = y; save_state(sd); printf("moved %d %d\n", tx, ty); return 0;
     }
+    if (!strcmp(cmd, "npcpos")) { for (int i = 0; i < n; i++) if (argc > 3 && !strcmp(nid[i], argv[3])) { printf("%d %d\n", nx_[i], ny_[i]); return 0; } puts("none"); return 1; }
+    if (!strcmp(cmd, "nearest")) {      /* nearest <sd> <id> <chars> [exclude_file]: nearest INTERIOR tile (not the map edge) of one of the chars, by walking distance to a tile beside it; prints "x y dist" or "none". exclude_file rows "x y" are skipped. */
+        int me = -1; for (int i = 0; i < n; i++) if (argc > 3 && !strcmp(nid[i], argv[3])) me = i; if (me < 0 || argc < 5) { puts("none"); return 1; }
+        static int ex[256], ey[256]; int nex = 0; if (argc > 5) { FILE *ef = fopen(argv[5], "r"); int a, b; while (ef && nex < 256 && fscanf(ef, "%d %d", &a, &b) == 2) { ex[nex] = a; ey[nex] = b; nex++; } if (ef) fclose(ef); }
+        static int dist[MH][MW]; for (int y = 0; y < mh; y++) for (int x = 0; x < MW; x++) dist[y][x] = -1;
+        static int qx[MH * MW], qy[MH * MW]; int h = 0, tl = 0; qx[tl] = nx_[me]; qy[tl] = ny_[me]; tl++; dist[ny_[me]][nx_[me]] = 0;
+        int bx = -1, by = -1, bd = 1 << 30; char bc = 0;
+        while (h < tl) { int x = qx[h], y = qy[h]; h++; static const int ox[4] = { 0, 0, -1, 1 }, oy[4] = { -1, 1, 0, 0 };
+            for (int k = 0; k < 4; k++) { int a = x + ox[k], b = y + oy[k]; if (a < 0 || b < 0 || b >= mh || a >= (int)strlen(map[b])) continue;
+                if (a > 0 && b > 0 && b < mh - 1 && a < (int)strlen(map[b]) - 1 && strchr(argv[4], map[b][a])) { int skip = 0; for (int e = 0; e < nex; e++) if (ex[e] == a && ey[e] == b) skip = 1; if (!skip && dist[y][x] < bd) { bd = dist[y][x]; bx = a; by = b; bc = map[b][a]; } }
+                if (dist[b][a] >= 0 || !walkable(map[b][a])) continue; dist[b][a] = dist[y][x] + 1; qx[tl] = a; qy[tl] = b; tl++; } }
+        if (bx < 0) { puts("none"); return 1; } printf("%d %d %d %c\n", bx, by, bd, bc); return 0;
+    }
+    if (!strcmp(cmd, "npcgo")) {      /* npcgo <sd> <id> <x> <y>: one step along the shortest walk to a tile beside (x,y); prints arrived / moved X Y / stuck */
+        int me = -1; for (int i = 0; i < n; i++) if (argc > 3 && !strcmp(nid[i], argv[3])) me = i; if (me < 0 || argc < 6) { puts("stuck"); return 1; }
+        int gx = atoi(argv[4]), gy = atoi(argv[5]); static int pv[MH][MW][2]; static char seen[MH][MW]; memset(seen, 0, sizeof seen);
+        static int qx[MH * MW], qy[MH * MW]; int h = 0, tl = 0; qx[tl] = nx_[me]; qy[tl] = ny_[me]; tl++; seen[ny_[me]][nx_[me]] = 1; int fx2 = -1, fy2 = -1;
+        while (h < tl) { int x = qx[h], y = qy[h]; h++; if (abs(x - gx) + abs(y - gy) <= 1) { fx2 = x; fy2 = y; break; } static const int ox[4] = { 0, 0, -1, 1 }, oy[4] = { -1, 1, 0, 0 };
+            for (int k = 0; k < 4; k++) { int a = x + ox[k], b = y + oy[k]; if (a < 0 || b < 0 || b >= mh || a >= (int)strlen(map[b]) || seen[b][a] || !walkable(map[b][a])) continue;
+                if ((a == tx && b == ty) || npc_at(a, b, "") >= 0) continue; seen[b][a] = 1; pv[b][a][0] = x; pv[b][a][1] = y; qx[tl] = a; qy[tl] = b; tl++; } }
+        if (fx2 < 0) { puts("stuck"); return 1; } if (fx2 == nx_[me] && fy2 == ny_[me]) { puts("arrived"); return 0; }
+        while (!(pv[fy2][fx2][0] == nx_[me] && pv[fy2][fx2][1] == ny_[me])) { int px = pv[fy2][fx2][0], py = pv[fy2][fx2][1]; fx2 = px; fy2 = py; }
+        nx_[me] = fx2; ny_[me] = fy2; save_state(sd); printf("moved %d %d\n", fx2, fy2); return 0;
+    }
     if (!strcmp(cmd, "npcstep")) {
         active = argc > 3 ? argv[3] : "";
         for (int i = 0; i < n; i++) {
             if (!strcmp(nid[i], active) || rand() % 100 >= 35) continue;
+            { char gp[PATH_MAX]; snprintf(gp, sizeof gp, "%s/pets/%s/ai_goal.txt", sd, nid[i]); if (access(gp, F_OK) == 0) continue; }      /* a pet with a goal walks to it (ai_step), not at random */
             int r = rand() % 4, dx = r == 0 ? 1 : r == 1 ? -1 : 0, dy = r == 2 ? 1 : r == 3 ? -1 : 0, x = nx_[i] + dx, y = ny_[i] + dy;
             if (!walkable(at(x, y)) || (x == tx && y == ty) || npc_at(x, y, active) >= 0) continue; nx_[i] = x; ny_[i] = y;
         }

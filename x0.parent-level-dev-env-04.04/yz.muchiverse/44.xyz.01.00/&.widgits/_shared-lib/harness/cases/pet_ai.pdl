@@ -1,0 +1,36 @@
+# pet_ai - the headless life of a pet that is not on screen (ai_step): a hungry pet with an empty bag walks to a tree/farm tile, picks an apple, eats it, REMEMBERS the place (places.txt), and the tile rests (cool.txt); a fed pet gathers wood; a tired pet rests; the pet on screen is never touched. Scratch world, own clock (PET_AI_NOW), no network.
+RESULTS | ../results/pet_ai.txt
+CASE    | pet-ai
+SCRATCH |
+MKDIR   | state
+ENV     | PET_SHARED | $T/state
+ENV     | PET_TRAIN | 1
+ENV     | LC_CLOCK_BIN | /nonexistent
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | status
+RUN     | $HOUSE/@.apps/pet-trainer/ops/+x/pet_world.+x | init | $T/state | $T/state/party.txt
+RUN     | /usr/bin/find | $T/state/pets/a15/inventory | -name | apple_* | -prune | -exec | /usr/bin/rm | -rf | {} +
+RUN     | /usr/bin/sed | -i | s/^hunger=.*/hunger=90/ | $T/state/pets/a15/variables.txt
+
+# the pet on screen (a13) is left alone
+RUN     | /usr/bin/env | PET_DIR=$T/state/pets/a13 | PET_AI_NOW=3000000 | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | ai_step
+EXPECT_NOFILE | state/pets/a13/ai_log.txt | on-screen-pet-untouched
+
+# a hungry pet with an empty bag: walks, picks, eats, remembers
+RUN     | /bin/sh | -c | n=0; while [ $n -lt 80 ]; do PET_AI_NOW=$((3000000+n*5)) PET_DIR=$T/state/pets/a15 /bin/sh $HOUSE/@.apps/pet-trainer/ops/pet_event.sh ai_step >/dev/null 2>&1; n=$((n+1)); done
+EXPECT_HAS | state/pets/a15/ai_log.txt | gathered 1 apple | gathered-an-apple
+EXPECT_HAS | state/pets/a15/ai_log.txt | ate the apple it picked | ate-it
+EXPECT_HAS | state/pets/a15/places.txt | PLACE \p apple \p | remembers-the-place
+EXPECT_HAS | state/world/cool.txt | apple | tile-is-resting
+EXPECT_NOFILE | state/pets/a13/ai_log.txt | still-untouched
+
+# fed: gathers wood
+RUN     | /usr/bin/sed | -i | s/^hunger=.*/hunger=0/ | $T/state/pets/a15/variables.txt
+RUN     | /bin/sh | -c | n=0; while [ $n -lt 80 ]; do PET_AI_NOW=$((3001000+n*5)) PET_DIR=$T/state/pets/a15 /bin/sh $HOUSE/@.apps/pet-trainer/ops/pet_event.sh ai_step >/dev/null 2>&1; sed -i s/^hunger=.*/hunger=0/ $T/state/pets/a15/variables.txt; n=$((n+1)); done
+EXPECT_HAS | state/pets/a15/ai_log.txt | gathered 1 wood | gathered-wood
+RUN     | /usr/bin/find | $T/state/pets/a15/inventory | -name | wood_* 
+EXPECT_OUT | wood_ | wood-in-the-bag
+
+# tired: rests
+RUN     | /usr/bin/sed | -i | s/^energy=.*/energy=5/ | $T/state/pets/a15/variables.txt
+RUN     | /usr/bin/env | PET_DIR=$T/state/pets/a15 | PET_AI_NOW=3002000 | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | ai_step
+EXPECT_HAS | state/pets/a15/ai_log.txt | rested | rests-when-tired

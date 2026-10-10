@@ -162,6 +162,35 @@ town_site() { # town_site <w> <h>: first free grass footprint (x y) in the curre
     [ -f "$SHARED/town_all.txt" ] || town_merge; awk -v w="$1" -v h="$2" '{ line[NR]=$0 } END { for (y=2;y<=NR-h;y++) for (x=2;x<=length(line[y])-w;x++) { ok=1; for (r=0;r<h && ok;r++) for (c=0;c<w;c++) { ch=substr(line[y+r],x+c,1); if (ch!="." && ch!=",") { ok=0; break } } if (ok) { print x-1, y-1; exit } } }' "$SHARED/town_all.txt"; }
 spend() { # spend <item> <n>: take n of an item from the pet's inventory (caller checked the count)
     s=0; while [ "$s" -lt "$2" ]; do inv_take_one "$1" || break; s=$((s + 1)); done; }
+# ---- ai_step helpers (the pets that are not on screen live headless; ai.pdl holds every number)
+aiv() { sed -n "s/^AI *| *$1 *| *//p" "$HERE/ai.pdl" | head -1; }
+ai_log() { printf '%s|%s|%s\n' "${PET_AI_NOW:-$(date +%s)}" "$1" "$2" >> "$PET/ai_log.txt"; }
+ai_clamp() { for k in hunger energy clean; do c=$(getv $k); [ "${c:-0}" -gt 100 ] && setv $k 100; [ "${c:-0}" -lt 0 ] && setv $k 0; done; }
+ai_gather() { # ai_gather <item>: walk to the remembered (else nearest) source of an item, take from it when beside it. Returns 0 when it got something, 1 otherwise (moving, none left, stuck).
+    it="$1"; WO="$HERE/ops/+x/pet_world.+x"; now="${PET_AI_NOW:-$(date +%s)}"; mkdir -p "$TOWN"; cool="$TOWN/cool.txt"; touch "$cool"
+    chars=$(awk -F'|' -v i="$it" '/^SOURCE/{a=$3; gsub(/ /,"",a); c=$2; gsub(/ /,"",c); if (a==i) s=s c} END{print s}' "$HERE/ai.pdl"); [ -n "$chars" ] || return 1
+    awk -v n="$now" -v i="$it" '$3==i && $4>n {print $1, $2}' "$cool" > "$PET/ai_excl.txt"
+    tx=""; mem=$(awk -F'|' -v i="$it" '/^PLACE/{a=$2; gsub(/ /,"",a); if (a==i) {x=$3+0; y=$4+0; c=$5; gsub(/ /,"",c); n=$6+0; if (n>=b) {b=n; bx=x; by=y; bc=c}}} END{if (b>0) print bx, by, bc}' "$PET/places.txt" 2>/dev/null)
+    if [ -n "$mem" ]; then read -r mx my mc <<EOF
+$mem
+EOF
+        if grep -q "^$mx $my\$" "$PET/ai_excl.txt" 2>/dev/null; then mem=""; else tx=$mx; ty=$my; tc=$mc; fi; fi
+    if [ -z "$tx" ]; then nr=$("$WO" nearest "$SHARED" "$ACTIVE" "$chars" "$PET/ai_excl.txt") || { ai_log "$ACTIVE" "none-found $it"; return 1; }; read -r tx ty _ tc <<EOF
+$nr
+EOF
+    fi
+    r=$("$WO" npcgo "$SHARED" "$ACTIVE" "$tx" "$ty")
+    case "$r" in
+        moved*) echo "go $it $tx $ty" > "$PET/ai_goal.txt"; return 1 ;;
+        arrived) ;;
+        *) rm -f "$PET/ai_goal.txt"; grep -v "^PLACE *| *$it *| *$tx *| *$ty " "$PET/places.txt" > "$PET/places.tmp" 2>/dev/null; mv -f "$PET/places.tmp" "$PET/places.txt" 2>/dev/null; ai_log "$ACTIVE" "stuck $it $tx,$ty"; return 1 ;;
+    esac
+    row=$(awk -F'|' -v c="$tc" -v i="$it" '/^SOURCE/{a=$3; gsub(/ /,"",a); k=$2; gsub(/ /,"",k); if (a==i && k==c) {n=$4+0; g=$5+0; print n, g; exit}}' "$HERE/ai.pdl"); read -r amt regrow <<EOF
+$row
+EOF
+    inv_add "$it" "${amt:-1}" >/dev/null; grep -v "^$tx $ty $it " "$cool" > "$cool.tmp"; mv -f "$cool.tmp" "$cool"; echo "$tx $ty $it $((now + ${regrow:-120}))" >> "$cool"
+    old=$(awk -F'|' -v i="$it" -v x="$tx" -v y="$ty" '/^PLACE/{a=$2; gsub(/ /,"",a); if (a==i && $3+0==x && $4+0==y) print $6+0}' "$PET/places.txt" 2>/dev/null | head -1); grep -v "^PLACE *| *$it *| *$tx *| *$ty " "$PET/places.txt" > "$PET/places.tmp" 2>/dev/null
+    printf 'PLACE | %s | %s | %s | %s | %s\n' "$it" "$tx" "$ty" "$tc" "$(( ${old:-0} + 1 ))" >> "$PET/places.tmp"; mv -f "$PET/places.tmp" "$PET/places.txt"; ai_log "$ACTIVE" "gathered ${amt:-1} $it at $tx,$ty"; rm -f "$PET/ai_goal.txt"; return 0; }
 gen_events() { # build <pet dir>/event_pkg/pages/page_N for every pet event: system events, then one per menu row. The pages are what events-hq opens (event.ir.pdl, event.pal, condition.pdl, cmd_1.sh).
     GENV=$(cat "$(rooms_file)" "$HERE/menu.pdl" "$HERE/ops/pet_event.sh" 2>/dev/null | cksum | cut -d' ' -f1)
     P="$PET/event_pkg/pages"; [ -f "$PET/event_pkg/events_index.txt" ] && [ "$(cat "$PET/event_pkg/.generated" 2>/dev/null)" = "$GENV" ] && return 0
@@ -333,7 +362,7 @@ status() {
 # (and logged), exactly like Doom's play flag. The window shows it as a traffic light (green = started, red = stopped).
 running() { [ "$(cat "$PET/running.txt" 2>/dev/null)" = 1 ]; }
 case "$VERB" in
-    start|stop|help|tip|land_price|build_building|chat_toggle|phones|exchange|call|build_room|map|listen|chat_send|clock_event|time_rate|time_advance|time_reinstall|status|stats|new_pet|save_slot|load_slot|fire|gen_events|new_event|menu_group|menu_toggle|inv_toggle|open_events|teleport|hotbar_toggle|interact|player|party_toggle|view|select|world_move|world_talk|"") ;;
+    start|stop|ai_step|help|tip|land_price|build_building|chat_toggle|phones|exchange|call|build_room|map|listen|chat_send|clock_event|time_rate|time_advance|time_reinstall|status|stats|new_pet|save_slot|load_slot|fire|gen_events|new_event|menu_group|menu_toggle|inv_toggle|open_events|teleport|hotbar_toggle|interact|player|party_toggle|view|select|world_move|world_talk|"") ;;
     *) if ! running && [ "${PET_TRAIN:-0}" != 1 ]; then mkdir -p "$PET"; printf '%s | stopped | ignored %s\n' "$(date '+%H:%M:%S')" "$VERB" >> "$PET/log.txt"
            case "$VERB" in chat_input|chat|chat_send) printf '(the pet is stopped - press Play first)\n' >> "$PET/chat.txt"; status >/dev/null 2>&1;; esac; exit 0; fi ;;
 esac
@@ -463,6 +492,18 @@ case "$VERB" in
         n=$(grep -c "^HELP *| *$tp " "$HERE/help.pdl"); [ "$n" -gt 0 ] || { tp=start; }
         printf 'YOU: help %s\n' "$tp" >> "$CHAT"; awk -F'|' -v t="$tp" '/^HELP/{a=$2; gsub(/ /,"",a); if (a==t) { l=$3; sub(/^ /,"",l); print "? " l }}' "$HERE/help.pdl" >> "$CHAT"; status >/dev/null ;;
     tip) need_pet; n=$(grep -c '^TIP' "$HERE/help.pdl"); [ "$n" -gt 0 ] || exit 0; k=$(( $(date +%s) / 60 % n + 1 )); awk -F'|' -v k="$k" '/^TIP/{i++; if (i==k) { l=$2; sub(/^ /,"",l); print "? " l }}' "$HERE/help.pdl" >> "$CHAT"; status >/dev/null ;;
+    ai_step) need_pet; [ "$ACTIVE" != "$(cat "$SHARED/active.txt" 2>/dev/null)" ] || [ "${PET_AI_ANY:-0}" = 1 ] || exit 0      # the pet on screen has its own autonomy
+        mkdir -p "$TOWN"; now="${PET_AI_NOW:-$(date +%s)}"; last=$(cat "$PET/ai_last" 2>/dev/null); [ -n "$last" ] || { last=$now; echo "$now" > "$PET/ai_last"; }
+        ne=$(aiv needs_every); ne=${ne:-60}; nt=$(( (now - last) / ne )); [ "$nt" -gt 5 ] && nt=5
+        if [ "$nt" -gt 0 ]; then echo $((last + nt * ne)) > "$PET/ai_last"; k=0; while [ "$k" -lt "$nt" ]; do addv hunger "$(getw tick_hunger)"; addv energy -"$(getw tick_energy)"; addv clean -"$(getw tick_clean)"; k=$((k + 1)); done; ai_clamp; fi
+        hu=$(getv hunger); en=$(getv energy); hthr=$(aiv hunger_thr); ethr=$(aiv energy_thr); ww=$(aiv want_wood)
+        if [ "${hu:-0}" -ge "${hthr:-60}" ]; then
+            for f in apple fish cake; do if [ "$(inv_count $f)" -gt 0 ]; then sh "$0" give "$f" >/dev/null; ai_log "$ACTIVE" "ate $f from the bag"; rm -f "$PET/ai_goal.txt"; exit 0; fi; done
+            if ai_gather apple; then sh "$0" give apple >/dev/null; ai_log "$ACTIVE" "ate the apple it picked"; fi; exit 0
+        fi
+        if [ "${en:-100}" -le "${ethr:-25}" ]; then addv energy "$(aiv rest_gain)"; ai_clamp; ai_log "$ACTIVE" "rested"; rm -f "$PET/ai_goal.txt"; exit 0; fi
+        if [ "$(inv_count wood)" -lt "${ww:-8}" ]; then ai_gather wood; exit 0; fi
+        rm -f "$PET/ai_goal.txt"; exit 0 ;;
     build_room) need_pet; side="${ARG:-right}"; kind="${3:-room}"; RF=$(rooms_file); HF="$HERE/home.pdl"; [ -f "$SHARED/home_all.pdl" ] && HF="$SHARED/home_all.pdl"
         cur=$(cat "$PET/loc.txt" 2>/dev/null || echo bedroom); line=$(grep "^CELL *| *$cur " "$HF" | head -1); cx=$(echo "$line" | awk -F'|' '{gsub(/ /,"",$3); print $3}'); cy=$(echo "$line" | awk -F'|' '{gsub(/ /,"",$4); print $4}')
         [ -n "$cx" ] || { printf '%s: I cannot build here\n' "$(getv name_id)" >> "$CHAT"; exit 0; }
