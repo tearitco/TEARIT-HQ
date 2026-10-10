@@ -13922,6 +13922,9 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
         }
         return;
     }
+    if ((ev->type == FocusIn || ev->type == FocusOut) && g_default_input_elem)
+        kh_focus_debug_log("FOCUS %s mode=%d detail=%d armed=%s", ev->type == FocusIn ? "in" : "out", ev->xfocus.mode, ev->xfocus.detail,
+                           g_default_input_elem->target_id[0] ? g_default_input_elem->target_id : g_default_input_elem->id);      /* evidence for "armed field loses the keyboard" reports */
     if (ev->type == FocusIn || ev->type == FocusOut) {
         /* FLICKER FIX 2026-09-03 - the new "^"/"." title indicator wired an
          * unconditional redraw() onto every FocusIn/FocusOut. But a focused
@@ -13964,6 +13967,9 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
         }
         g_x11_window_focused = 1;
         g_interact_disengage_sent = 0;
+        /* an armed typing field must get the keyboard back when its window regains focus (owner 2026-10-09: "not getting focus back if i click another
+         * window"): the field stays armed across a focus loss but the grab does not always survive it. Same retry arming does; cheap if already held. */
+        if (g_default_input_elem) { Window fw0 = None; int rv0 = 0; XGetInputFocus(dpy, &fw0, &rv0); if (fw0 == win || g_grab_pending) kh_grab_keyboard_retry(); }
         return;
     }
     if (ev->type == FocusOut) {
