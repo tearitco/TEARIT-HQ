@@ -91,7 +91,7 @@ lex_set() { # lex_set <phrase> <verb> <item> <delta> <initial>: add the word (in
 }
 do_chat() { # the master talks: the pet matches known words, does the thing, answers; unknown words are remembered so the master can teach them
     need_pet; text="$1"; [ -z "$text" ] && return 0
-    printf 'YOU: %s\n' "$text" >> "$CHAT"
+    printf 'YOU: %s\n' "$text" >> "$CHAT"; stat_train "$text"
     case "$text" in    # typed shortcuts: "teach <words> = <verb> [item]", "good", "bad"
         teach\ *=*) body=${text#teach }; ph=${body%%=*}; rest=${body#*=}; set -- $rest; do_teach "$ph" "$1" "$2"; return 0 ;;
         help|"help "*|"?"|"? "*) sh "$0" help "${text#* }" >/dev/null; return 0 ;;
@@ -191,6 +191,16 @@ EOF
     inv_add "$it" "${amt:-1}" >/dev/null; grep -v "^$tx $ty $it " "$cool" > "$cool.tmp"; mv -f "$cool.tmp" "$cool"; echo "$tx $ty $it $((now + ${regrow:-120}))" >> "$cool"
     old=$(awk -F'|' -v i="$it" -v x="$tx" -v y="$ty" '/^PLACE/{a=$2; gsub(/ /,"",a); if (a==i && $3+0==x && $4+0==y) print $6+0}' "$PET/places.txt" 2>/dev/null | head -1); grep -v "^PLACE *| *$it *| *$tx *| *$ty " "$PET/places.txt" > "$PET/places.tmp" 2>/dev/null
     printf 'PLACE | %s | %s | %s | %s | %s\n' "$it" "$tx" "$ty" "$tc" "$(( ${old:-0} + 1 ))" >> "$PET/places.tmp"; mv -f "$PET/places.tmp" "$PET/places.txt"; ai_log "$ACTIVE" "gathered ${amt:-1} $it at $tx,$ty"; rm -f "$PET/ai_goal.txt"; return 0; }
+# ---- stats (skills.pdl): Power / Magic / Defense / Intellect, trained by chatting
+stat_exp() { getv "stat_$1_exp"; }
+stat_level() { sl_per=$(awk -F'|' -v n="$1" '/^STAT/{a=$2; gsub(/ /,"",a); if (a==n) {print $3+0; exit}}' "$HERE/skills.pdl"); sl_exp=$(stat_exp "$1"); echo $(( 1 + ${sl_exp:-0} / ${sl_per:-10} )); }
+stat_add() { # stat_add <stat> <exp>: give EXP; announces a level up in the chat
+    [ "${2:-0}" -gt 0 ] 2>/dev/null || return 0; old=$(stat_level "$1"); addv "stat_$1_exp" "$2"; new=$(stat_level "$1")
+    if [ "$new" -gt "$old" ]; then printf '%s: my %s is level %s!\n' "$(getv name_id)" "$1" "$new" >> "$CHAT"; printf '%s | stat | %s level %s\n' "$(date '+%H:%M:%S')" "$1" "$new" >> "$PET/log.txt"; fi; }
+stat_train() { # stat_train <text>: every trigger word in the text trains its stat (a few words per message at most)
+    cfg=$(sed -n 's/^CONFIG *| *//p' "$HERE/skills.pdl" | head -1); ep=$(printf '%s' "$cfg" | sed -n 's/.*exp_per=\([0-9]*\).*/\1/p'); mx=$(printf '%s' "$cfg" | sed -n 's/.*max_per_message=\([0-9]*\).*/\1/p')
+    words=$(printf '%s' "$1" | tr 'A-Z' 'a-z' | tr -c 'a-z' ' ')
+    awk -F'|' -v w="$words" -v mx="${mx:-3}" 'BEGIN{n=split(w, ws, " "); for(i=1;i<=n;i++) have[ws[i]]=1} /^STAT/{a=$2; gsub(/ /,"",a); c=0; m=split($4, tw, " "); for(j=1;j<=m;j++) if (tw[j] in have) c++; if (c>mx) c=mx; if (c>0) print a, c}' "$HERE/skills.pdl" | while read -r st c; do stat_add "$st" $(( c * ${ep:-2} )); done; }
 gen_events() { # build <pet dir>/event_pkg/pages/page_N for every pet event: system events, then one per menu row. The pages are what events-hq opens (event.ir.pdl, event.pal, condition.pdl, cmd_1.sh).
     GENV=$(cat "$(rooms_file)" "$HERE/menu.pdl" "$HERE/ops/pet_event.sh" 2>/dev/null | cksum | cut -d' ' -f1)
     P="$PET/event_pkg/pages"; [ -f "$PET/event_pkg/events_index.txt" ] && [ "$(cat "$PET/event_pkg/.generated" 2>/dev/null)" = "$GENV" ] && return 0
@@ -337,6 +347,7 @@ status() {
         cs=$(sh "$HERE/ops/pet_clock.sh" status 2>/dev/null); printf '%s\n' "$cs" | grep -v "^time_label=\|^game_ms="
         gms=$(printf '%s\n' "$cs" | sed -n 's/^game_ms=//p'); if [ -n "$gms" ]; then bm=$(getv born_ms); if [ -z "$bm" ]; then bm=$(( $(cat "$SHARED/clock_day0.txt" 2>/dev/null || echo 0) * 86400000 )); setv born_ms "$bm"; fi      # age in GAME time: the pet clock's game ms now minus the game ms it was born (pets that predate this were born when the clock started)
             awk -v g="$gms" -v b="$bm" 'BEGIN { s = int((g - b) / 1000); if (s < 0) s = 0; printf "age_label=age %dd %02dh\n", int(s / 86400), int((s % 86400) / 3600) }'; else printf 'age_label=age --\n'; fi
+        printf 'stat_line=pow %s mag %s def %s int %s\n' "$(stat_level power)" "$(stat_level magic)" "$(stat_level defense)" "$(stat_level intellect)"
         printf 'rec_label=%s\n' "$([ "$(cat "$SHARED/recording.txt" 2>/dev/null)" = 1 ] && echo 'RECORDING... (press to cancel)' || echo 'Talk (mic)')"
         printf 'phone_number=%s\nn_contacts=%s\n' "$(ph_number "$ACTIVE")" "$(grep -c '^CONTACT' "$PET/contacts.pdl" 2>/dev/null || echo 0)"
         printf 'loc=%s\n' "$(cat "$PET/loc.txt" 2>/dev/null || echo bedroom)"

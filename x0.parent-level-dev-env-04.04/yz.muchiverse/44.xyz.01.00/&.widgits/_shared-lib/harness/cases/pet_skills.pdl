@@ -1,0 +1,30 @@
+# pet_skills - Power/Magic/Defense/Intellect trained by chatting (skills.pdl): trigger words give EXP, at most 3 words per message count, unrelated chat gives none, levels announce in the chat; plus the pacing defaults (the need drift is slow).
+RESULTS | ../results/pet_skills.txt
+CASE    | pet-skills
+SCRATCH |
+MKDIR   | state
+ENV     | PET_SHARED | $T/state
+ENV     | PET_TRAIN | 1
+ENV     | LC_CLOCK_BIN | /nonexistent
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | status
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | hello there my friend
+EXPECT_NOFILE | state/pets/a13/stat_probe.txt | scratch-ok
+RUN     | /bin/sh | -c | grep -c ^stat_ $T/state/pets/a13/variables.txt; true
+EXPECT_OUT_IS | 0 | unrelated-chat-gives-no-exp
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | lets train and fight and lift
+EXPECT_HAS | state/pets/a13/variables.txt | stat_power_exp=6 | three-words-six-exp
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | train fight lift push pull run jump
+EXPECT_HAS | state/pets/a13/variables.txt | stat_power_exp=12 | capped-at-three-words
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | train fight lift
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | train fight lift
+EXPECT_HAS | state/pets/a13/chat.txt | my power is level 2 | level-up-announced
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | cast a spell with my wand
+EXPECT_HAS | state/pets/a13/variables.txt | stat_magic_exp=6 | magic-trained
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | lets read a book and study math
+EXPECT_HAS | state/pets/a13/variables.txt | stat_intellect_exp=6 | intellect-trained
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | status
+EXPECT_OUT | stat_line=pow 3 mag 1 def 1 int 1 | status-shows-levels
+RUN     | /usr/bin/grep | -c | ^tick_hunger=3 | $HOUSE/@.apps/pet-trainer/weights.default.pdl
+EXPECT_OUT_IS | 1 | slow-hunger-drift
+RUN     | /usr/bin/grep | -c | ^tick_energy=2 | $HOUSE/@.apps/pet-trainer/weights.default.pdl
+EXPECT_OUT_IS | 1 | slow-energy-drift

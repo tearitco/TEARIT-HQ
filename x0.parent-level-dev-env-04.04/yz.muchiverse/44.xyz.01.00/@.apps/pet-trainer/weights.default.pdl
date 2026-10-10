@@ -3,9 +3,9 @@
 sleep_energy=40
 wash_clean=40
 play_happy=8
-tick_hunger=6
-tick_energy=4
-tick_clean=3
+tick_hunger=3
+tick_energy=2
+tick_clean=2
 pref_apple=5
 pref_fish=5
 pref_cake=5
