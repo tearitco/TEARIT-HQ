@@ -274,10 +274,10 @@ status() {
           printf 'inv_n=%s\ninv_sel=%s\ninv_shown=%s\ninv_visible=%s\n' "${n:-0}" "${sel:-0}" "$ishown" "$io"
           [ -f "$PET/inv_proj.txt" ] && sed -n 's/^slot_\([0-9]*\)=\(.*\)|\(.*\)$/inv_\1_text=\2 \3/p' "$PET/inv_proj.txt"
           hv=1; [ "$(cat "$SHARED/hotbar_hidden.txt" 2>/dev/null)" = 1 ] && hv=""
-          hn=${n:-0}; [ "$hn" -gt 6 ] && hn=6      # the bar shows the first six items (it must fit over the 360 px picture)
+          hn=${n:-0}; [ "$hn" -gt 5 ] && hn=5      # the bar shows the first five items (it must fit over the 360 px picture)
           printf 'hb_visible=%s\nhb_n_slots=%s\n' "$hv" "$hn"
           selname=$(sed -n "s/^slot_${sel:-0}=.*|//p" "$PET/inv_proj.txt" 2>/dev/null | head -1); printf 'hb_title=%s - slot: %s\n' "$(getv name_id)" "${selname:-empty}"
-          [ -f "$PET/inv_proj.txt" ] && awk -F'[=|]' -v s="${sel:-0}" '/^slot_/{i=substr($1,6)+0; if (i>5) next; printf "hbs_%d_text=%s\nhbs_%d_cls=%s\n", i, $2, i, (i==s ? "hb-sel" : "")}' "$PET/inv_proj.txt"; }
+          [ -f "$PET/inv_proj.txt" ] && awk -F'[=|]' -v s="${sel:-0}" '/^slot_/{i=substr($1,6)+0; if (i>4) next; printf "hbs_%d_text=%s\nhbs_%d_cls=%s\n", i, $2, i, (i==s ? "hb-sel" : "")}' "$PET/inv_proj.txt"; }
     } > "$SHARED/ui.tmp.$$"; if cmp -s "$SHARED/ui.tmp.$$" "$SHARED/ui.txt"; then rm -f "$SHARED/ui.tmp.$$"; else mv -f "$SHARED/ui.tmp.$$" "$SHARED/ui.txt"; fi; printf '%s\n' "$PET" > "$SHARED/active_dir.txt"
     cat "$SHARED/ui.txt"
 }

@@ -18,12 +18,12 @@ window { width: 600px; height: 560px; }
 
 .dropdown-child { width: 210px; }
 .ph-menu-row { background-color: #1c1c1c; color: #cccccc; font-weight: bold; width: 200px; height: 20px; font-size: 10px; padding: 2px; border: 1px solid #333333; }
-.ph-tb { width: 112px; }
+.ph-tb { width: 96px; }
 .tab.ph-tb.interact-active { background-color: #2a5a2a; color: #ffffff; font-weight: bold; }
 
 /* hotbar over the canvas + bottom bar (same look as pc-hq: pchq-board.css) */
 .ph-hotbar { background-color: #444444; border: 1px solid #666666; }
-.hb-slot { width: 64px; height: 40px; font-size: 20px; background-color: #444444; border: 1px solid #666666; color: #ffffff; }
+.hb-slot { width: 78px; height: 40px; font-size: 20px; background-color: #444444; border: 1px solid #666666; color: #ffffff; }
 .hb-sel { background-color: #2f5f8f; color: #ffffff; border-color: #8fb4e0; }
 .hb-quiet { color: #ffffff; }
 .ov-title { background-color: #666666; color: #ffffff; }

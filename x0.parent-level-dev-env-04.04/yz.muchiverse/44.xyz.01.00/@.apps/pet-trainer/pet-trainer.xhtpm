@@ -5,7 +5,7 @@
   <module src="@.apps/pet-trainer/ops/+x/pet_manager.+x" id="_"/>
   <page name="main">
     <tabbar id="toolbar" class="tab-bar">
-      <tab id="tb-in" class="tab ph-tb ${interact_class}" label="INT: ${interact_label}" relay="${bv_h1},${bv_h2}" onclick="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' interact"/>
+      <tab id="tb-in" class="tab ph-tb ${interact_class}" label="INT ${interact_label}" relay="${bv_h1},${bv_h2}" onclick="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' interact"/>
       <tab id="tb-book" class="tab ph-tb" label="${book_label} ▾" onclick="ACTIVATE" target_id="tb-book"/>
       <tab id="tb-page" class="tab ph-tb" label="${page_label} ▾" onclick="ACTIVATE" target_id="tb-page"/>
       <tab id="tb-menu" class="tab ph-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
