@@ -24,7 +24,7 @@ if [ "${COLAB_GATE_AUTO:-0}" != 1 ]; then
         sleep 2
     done
 fi
-REPLY="$("$BACK" "$PROMPT")"; rc=$?
+REPLY="$(cd "$HOUSE" && HORN_TOOLS=off PRISC_PROJECT_ROOT="$HOUSE" HORN_CURL_TIMEOUT="${HORN_CURL_TIMEOUT:-120}" "$BACK" "$PROMPT")"; rc=$?      # same call shape as ghost_run: cwd + PRISC_PROJECT_ROOT = house, tools off
 printf '%s\n' "$REPLY" > "$GD/$ID.reply.txt"
 if [ "$rc" = 0 ]; then bash "$POST" "$HOUSE" "$AGENT" "@claude [gate-$ID reply] $(short "$REPLY") (full: #.desktop/colab_hai/gate/$ID.reply.txt)" >/dev/null 2>&1
 else bash "$POST" "$HOUSE" "$AGENT" "@claude [gate-$ID reply] the API call failed (exit $rc); see the quest attempt log" >/dev/null 2>&1; fi
