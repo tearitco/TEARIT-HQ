@@ -1,0 +1,26 @@
+# pet_phones - every pet is an entity with a house phone (same ops as the rest of the house: phone_ensure_op, phone_send_op, server_route_op) on its own small phone server (state/server of a SCRATCH pet world):
+# phones exist for all six, two pets exchange numbers (contacts on both sides, a hello text routed into the other inbox), a saved contact can be texted, an unknown number is refused.
+RESULTS | ../results/pet_phones.txt
+CASE    | pet-phones
+SCRATCH |
+MKDIR   | state
+ENV     | PET_SHARED | $T/state
+ENV     | PET_TRAIN | 1
+ENV     | LC_CLOCK_BIN | /nonexistent
+RUN     | /usr/bin/nice | -n | 15 | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | status
+EXPECT_EXISTS | state/server/phones.index | phone-index-exists
+EXPECT_EXISTS | state/pets/a13/inventory/zz.phone/phone.pdl | a13-has-phone
+EXPECT_EXISTS | state/pets/a18/inventory/zz.phone/phone.pdl | a18-has-phone
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | exchange | a14
+EXPECT_HAS | state/pets/a13/contacts.pdl | CONTACT \p | a13-has-contact-a14
+EXPECT_HAS | state/pets/a14/contacts.pdl | CONTACT \p | a14-has-contact-a13
+EXPECT_HAS | state/pets/a14/inventory/zz.phone/inbox.txt | this is my number | hello-text-delivered
+EXPECT_HAS | state/server/ledger.txt | say | router-ledger-row
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | exchange | a14
+RUN     | /usr/bin/grep | -c | ^CONTACT | $T/state/pets/a13/contacts.pdl
+EXPECT_OUT_IS | 1 | no-duplicate-contact
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | call | a14 | are you coming over
+EXPECT_HAS | state/pets/a14/inventory/zz.phone/inbox.txt | are you coming over | call-text-delivered
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | call | a16 | hello stranger
+EXPECT_HAS | state/pets/a13/chat.txt | I do not have that number | refuse-unknown-contact
+EXPECT_LACKS | state/pets/a16/inventory/zz.phone/inbox.txt | hello stranger | stranger-got-nothing

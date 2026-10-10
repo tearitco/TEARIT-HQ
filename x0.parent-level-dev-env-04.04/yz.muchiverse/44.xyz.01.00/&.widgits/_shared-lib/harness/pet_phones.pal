@@ -1,0 +1,4 @@
+# pet_phones.pal - pal harness: pet phones, contacts and texts on a scratch pet world. Verdict: results/pet_phones.txt.verdict.txt. Run: prisc+x pet_phones.pal (from this folder)
+exec ./ops/+x/harness_case_op.+x cases/pet_phones.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/pet_phones.pdl
+halt
