@@ -52,9 +52,10 @@
       <text label="${chat_1}" class="ph-chat"/>
       <text label="${chat_2}" class="ph-chat"/>
       <text label="${chat_3}" class="ph-chat"/>
-      <cli_io id="say" target_id="pet-say" label="say: " action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' chat_input"/>
       <text label="${stage} lv ${level} ${state}" class="ph-quiet"/>
       <text label="hg ${hunger} en ${energy} cl ${clean} hp ${happy}" class="ph-quiet"/>
+      <text_area id="say" target_id="pet-say" content="" rows="2" class="ph-say"/>
+      <item id="say_send" class="ph-row" label="Send" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' chat_send"/>
     </sidebar>
     <panel id="room_p" class="ph-panel">
       <canvas id="room" class="ph-room" sprite="${scene_raw}"/>

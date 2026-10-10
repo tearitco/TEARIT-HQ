@@ -292,9 +292,9 @@ status() {
 # (and logged), exactly like Doom's play flag. The window shows it as a traffic light (green = started, red = stopped).
 running() { [ "$(cat "$PET/running.txt" 2>/dev/null)" = 1 ]; }
 case "$VERB" in
-    start|stop|clock_event|time_rate|time_advance|time_reinstall|status|stats|new_pet|save_slot|load_slot|fire|gen_events|new_event|menu_group|menu_toggle|inv_toggle|open_events|teleport|hotbar_toggle|interact|player|party_toggle|view|select|world_move|world_talk|"") ;;
+    start|stop|chat_send|clock_event|time_rate|time_advance|time_reinstall|status|stats|new_pet|save_slot|load_slot|fire|gen_events|new_event|menu_group|menu_toggle|inv_toggle|open_events|teleport|hotbar_toggle|interact|player|party_toggle|view|select|world_move|world_talk|"") ;;
     *) if ! running; then mkdir -p "$PET"; printf '%s | stopped | ignored %s\n' "$(date '+%H:%M:%S')" "$VERB" >> "$PET/log.txt"
-           case "$VERB" in chat_input|chat) printf '(the pet is stopped - press Play first)\n' >> "$PET/chat.txt"; status >/dev/null 2>&1;; esac; exit 0; fi ;;
+           case "$VERB" in chat_input|chat|chat_send) printf '(the pet is stopped - press Play first)\n' >> "$PET/chat.txt"; status >/dev/null 2>&1;; esac; exit 0; fi ;;
 esac
 case "$VERB" in
     new_pet)
@@ -396,6 +396,7 @@ case "$VERB" in
         nm=$(getv name_id); sp=$(getv species); case "$ARG" in fall) line="whoa!!"; expr surprised 4;; land) line="oof!"; expr sad 3;; *) exit 0;; esac
         printf '%s: %s\n' "$nm" "$line" >> "$CHAT"; ( setsid sh "$HERE/ops/pet_voice.sh" "${sp:-0}" "$line" >/dev/null 2>&1 & ); status >/dev/null ;;
     chat) do_chat "$ARG"; status >/dev/null ;;
+    chat_send) TA="$HERE/text_area_pet-say.txt"; [ -f "$TA" ] || TA="$HERE/text_area_say.txt"; msg=$(tr '\n' ' ' < "$TA" 2>/dev/null | sed 's/  */ /g;s/^ //;s/ $//'); : > "$HERE/text_area_pet-say.txt"; : > "$HERE/text_area_say.txt"; [ -n "$msg" ] && do_chat "$msg"; status >/dev/null ;;      # the multi-line text_area is saved by the renderer to text_area_<id>.txt in the package dir; Send reads it, clears it (the renderer reloads the empty file) and chats
     chat_input) do_chat "$4"; status >/dev/null ;;      # a layout cli_io appends: <package_dir> <house_root> <typed text>
     teach) do_teach "$ARG" "$3" "$4"; status >/dev/null ;;
     praise) do_judge 2; status >/dev/null ;;
