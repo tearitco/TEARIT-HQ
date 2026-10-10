@@ -1,0 +1,16 @@
+# miners.pdl - the pet's mining rigs. `SECTION | key | ...`. Money here is millicones (1000 mc = 1 coin) on the pet-cones chain. Plan: CHAIN-ECONOMY-DESIGN.md section 3.
+# RIG   | base computer every pet has (free, no wear, no slot): `power` work per mining tick
+# KIND  | id | name | cost_mc | power | wear_per_tick | max_wear | maint_mc   a rig bought and kept in a room (needs a free slot there)
+# SLOT  | room | n    rigs a room can hold (rooms not listed hold none)
+# METER | per_block | tick_s | max_load    work needed for one real block attempt, seconds between ticks, skip while load average is above this
+RIG   | base_power | 1
+KIND  | asic1 | Small ASIC | 5000  | 4  | 1 | 400 | 500
+KIND  | asic2 | Big ASIC   | 20000 | 15 | 2 | 500 | 2000
+SLOT  | bedroom | 1
+SLOT  | living  | 2
+METER | per_block | 100
+METER | tick_s    | 30
+METER | max_load  | 6
+AI    | check_every_s | 120
+AI    | reserve_mc    | 2000
+AI    | worn_pct      | 80

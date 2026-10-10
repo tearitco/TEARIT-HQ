@@ -51,6 +51,7 @@
       <text label="${stage} lv ${level} ${state}" class="ph-quiet"/>
       <text label="${age_label}" class="ph-quiet"/>
       <text label="${stat_line}" class="ph-quiet"/>
+      <text label="${mining_line}" class="ph-quiet"/>
       <text label="${explore_label}" class="ph-quiet"/>
       <text label="hg ${hunger} en ${energy} cl ${clean} hp ${happy}" class="ph-quiet"/>
     </sidebar>

@@ -168,10 +168,29 @@ town_site() { # town_site <w> <h>: first free grass footprint (x y) in the curre
     [ -f "$SHARED/town_all.txt" ] || town_merge; awk -v w="$1" -v h="$2" '{ line[NR]=$0 } END { for (y=2;y<=NR-h;y++) for (x=2;x<=length(line[y])-w;x++) { ok=1; for (r=0;r<h && ok;r++) for (c=0;c<w;c++) { ch=substr(line[y+r],x+c,1); if (ch!="." && ch!=",") { ok=0; break } } if (ok) { print x-1, y-1; exit } } }' "$SHARED/town_all.txt"; }
 spend() { # spend <item> <n>: take n of an item from the pet's inventory (caller checked the count)
     s=0; while [ "$s" -lt "$2" ]; do inv_take_one "$1" || break; s=$((s + 1)); done; }
+# ---- mining (the pet's computer and rigs earn cones on the pet-cones chain; ops/pet_chain.sh is the chain adapter, miners.pdl all numbers; off until state/chain_on.txt or PET_CHAIN=1)
+chain_on() { [ "${PET_CHAIN:-0}" = 1 ] || [ -f "$SHARED/chain_on.txt" ]; }
+minv() { sed -n "s/^$1 *| *$2 *| *//p" "$HERE/miners.pdl" | head -1; }
+pchain() { PET_CHAIN_ROOT="${PET_CHAIN_ROOT:-$SHARED/chain}" sh "$HERE/ops/pet_chain.sh" "$@"; }
+rig_count() { grep -c '^RIGROW' "$PET/miners.txt" 2>/dev/null || echo 0; }
+rig_room_free() { # first room with a free slot: prints its id
+    awk -F'|' -v mf="$PET/miners.txt" 'BEGIN{while ((getline l < mf) > 0) { split(l, p, "|"); r=p[4]; gsub(/ /,"",r); if (p[1] ~ /RIGROW/) used[r]++ } } /^SLOT/{r=$2; gsub(/ /,"",r); if (used[r]+0 < $3+0) {print r; exit}}' "$HERE/miners.pdl"; }
+cones_now() { # the pet's confirmed millicones, cached 60 s so status never replays the chain on every refresh (chain_balance walks the whole ledger)
+    n="${PET_AI_NOW:-$(date +%s)}"; c=$(cat "$PET/cones_cache" 2>/dev/null); ct=${c%% *}; if [ -n "$ct" ] && [ $(( n - ct )) -lt 60 ]; then echo "${c#* }"; return; fi
+    b=$(pchain balance "$PET" 2>/dev/null); b=${b:-0}; echo "$n $b" > "$PET/cones_cache"; echo "$b"; }
+mining_line() { chain_on || return 0; nr=$(rig_count); wm=$(cat "$PET/work_meter" 2>/dev/null || echo 0); pb=$(minv METER per_block); mw=$(awk -F'|' '/^RIGROW/{w=$5+0; if (w>m) m=w} END{print m+0}' "$PET/miners.txt" 2>/dev/null)
+    printf 'mining_line=rigs %s  work %s%%  worst wear %s  cones %s\n' "$((nr + 1))" "$(( wm * 100 / ${pb:-100} ))" "${mw:-0}" "$(cones_now)"; }
 # ---- ai_step helpers (the pets that are not on screen live headless; ai.pdl holds every number)
 aiv() { sed -n "s/^AI *| *$1 *| *//p" "$HERE/ai.pdl" | head -1; }
 ai_log() { printf '%s|%s|%s\n' "${PET_AI_NOW:-$(date +%s)}" "$1" "$2" >> "$PET/ai_log.txt"; }
 ai_clamp() { for k in hunger energy clean; do c=$(getv $k); [ "${c:-0}" -gt 100 ] && setv $k 100; [ "${c:-0}" -lt 0 ] && setv $k 0; done; }
+ai_miner() { # a headless pet with spare cones keeps its rigs: service a worn one, else buy the best rig it can afford into a free slot (checked every ai check_every_s; mining must be on)
+    chain_on || return 0; mkdir -p "$TOWN"; now="${PET_AI_NOW:-$(date +%s)}"; ce=$(minv AI check_every_s); lc=$(cat "$PET/miner_check" 2>/dev/null || echo 0); [ $(( now - lc )) -ge "${ce:-120}" ] || return 0; echo "$now" > "$PET/miner_check"
+    sp=$(pchain spendable "$PET" 2>/dev/null); sp=${sp:-0}; rs=$(minv AI reserve_mc); rs=${rs:-2000}; wp=$(minv AI worn_pct); wp=${wp:-80}
+    worn=$(awk -F'|' -v pdl="$HERE/miners.pdl" -v wp="$wp" 'BEGIN{while ((getline l < pdl) > 0) { split(l, a, "|"); if (a[1] ~ /^KIND/) { k=a[2]; gsub(/ /,"",k); mx[k]=a[7]+0; mc[k]=a[8]+0 } } } /^RIGROW/{k=$3; gsub(/ /,"",k); if (mx[k] > 0 && $5*100/mx[k] >= wp) {print mc[k]; exit}}' "$PET/miners.txt" 2>/dev/null)
+    if [ -n "$worn" ] && [ "$sp" -ge $(( worn + rs )) ]; then sh "$0" maintain >/dev/null 2>&1; ai_log "$ACTIVE" "serviced a rig"; return 0; fi
+    [ -n "$(rig_room_free)" ] || return 0
+    for kd in asic2 asic1; do c=$(sed -n "s/^KIND *| *$kd *| *//p" "$HERE/miners.pdl" | head -1 | awk -F'|' '{gsub(/ /,"",$2); print $2+0}'); if [ -n "$c" ] && [ "$sp" -ge $(( c + rs )) ]; then sh "$0" buy_miner "$kd" >/dev/null 2>&1; ai_log "$ACTIVE" "bought a $kd rig"; return 0; fi; done; return 0; }
 ai_gather() { # ai_gather <item>: walk to the remembered (else nearest) source of an item, take from it when beside it. Returns 0 when it got something, 1 otherwise (moving, none left, stuck).
     it="$1"; WO="$HERE/ops/+x/pet_world.+x"; now="${PET_AI_NOW:-$(date +%s)}"; mkdir -p "$TOWN"; cool="$TOWN/cool.txt"; touch "$cool"
     chars=$(awk -F'|' -v i="$it" '/^SOURCE/{a=$3; gsub(/ /,"",a); c=$2; gsub(/ /,"",c); if (a==i) s=s c} END{print s}' "$HERE/ai.pdl"); [ -n "$chars" ] || return 1
@@ -428,6 +447,7 @@ status() {
         gms=$(printf '%s\n' "$cs" | sed -n 's/^game_ms=//p'); if [ -n "$gms" ]; then bm=$(getv born_ms); if [ -z "$bm" ]; then bm=$(( $(cat "$SHARED/clock_day0.txt" 2>/dev/null || echo 0) * 86400000 )); setv born_ms "$bm"; fi      # age in GAME time: the pet clock's game ms now minus the game ms it was born (pets that predate this were born when the clock started)
             awk -v g="$gms" -v b="$bm" 'BEGIN { s = int((g - b) / 1000); if (s < 0) s = 0; printf "age_label=age %dd %02dh\n", int(s / 86400), int((s % 86400) / 3600) }'; else printf 'age_label=age --\n'; fi
         printf 'explore_label=%s\n' "$([ -x "$WORLD" ] && "$WORLD" explored "$SHARED" 2>/dev/null | sed -n 's/.*pct=\([0-9]*\) w=\([0-9]*\) h=\([0-9]*\).*/map \2x\3 seen \1%/p')"
+        mining_line
         printf 'stat_line=pow %s mag %s def %s int %s\n' "$(stat_level power)" "$(stat_level magic)" "$(stat_level defense)" "$(stat_level intellect)"
         printf 'rec_label=%s\n' "$([ "$(cat "$SHARED/recording.txt" 2>/dev/null)" = 1 ] && echo 'RECORDING... (press to cancel)' || echo 'Talk (mic)')"
         printf 'phone_number=%s\nn_contacts=%s\n' "$(ph_number "$ACTIVE")" "$(grep -c '^CONTACT' "$PET/contacts.pdl" 2>/dev/null || echo 0)"
@@ -592,7 +612,7 @@ case "$VERB" in
         ne=$(aiv needs_every); ne=${ne:-60}; nt=$(( (now - last) / ne )); [ "$nt" -gt 5 ] && nt=5
         if [ "$nt" -gt 0 ]; then echo $((last + nt * ne)) > "$PET/ai_last"; k=0; while [ "$k" -lt "$nt" ]; do addv hunger "$(getw tick_hunger)"; addv energy -"$(getw tick_energy)"; addv clean -"$(getw tick_clean)"; k=$((k + 1)); done; ai_clamp; fi
         hu=$(getv hunger); en=$(getv energy); hthr=$(aiv hunger_thr); ethr=$(aiv energy_thr); ww=$(aiv want_wood)
-        AI_MOVED=0; ai_rent
+        AI_MOVED=0; ai_rent; ai_miner
         sl=$(cat "$PET/study_last" 2>/dev/null || echo 0); se=$(aiv study_every); [ $(( now - sl )) -ge "${se:-1440}" ] && sh "$0" study >/dev/null 2>&1      # the phone study hobby: now and then the pet reads up on a topic and asks its teacher for a card
         if [ "${hu:-0}" -ge "${hthr:-60}" ]; then
             for f in apple fish cake; do if [ "$(inv_count $f)" -gt 0 ]; then sh "$0" give "$f" >/dev/null; ai_log "$ACTIVE" "ate $f from the bag"; rm -f "$PET/ai_goal.txt"; exit 0; fi; done
@@ -609,6 +629,22 @@ case "$VERB" in
         [ "$AI_MOVED" = 1 ] && exit 0
         if ai_explore; then exit 0; fi
         rm -f "$PET/ai_goal.txt"; exit 0 ;;
+    mine_tick) need_pet; chain_on || exit 0; mkdir -p "$TOWN"; now="${PET_AI_NOW:-$(date +%s)}"; nm=$(getv name_id); ts=$(minv METER tick_s); last=$(cat "$PET/mine_last" 2>/dev/null || echo 0); [ $(( now - last )) -ge "${ts:-30}" ] || exit 0; echo "$now" > "$PET/mine_last"
+        pw=$(minv RIG base_power); pw=${pw:-1}; [ -f "$PET/miners.txt" ] && { pw=$(awk -F'|' -v base="$pw" -v pdl="$HERE/miners.pdl" 'BEGIN{p=base; while ((getline l < pdl) > 0) { split(l, a, "|"); if (a[1] ~ /^KIND/) { k=a[2]; gsub(/ /,"",k); pw_[k]=a[5]+0; wp[k]=a[6]+0; mx[k]=a[7]+0 } } } /^RIGROW/{k=$3; gsub(/ /,"",k); if ($5+0 < mx[k]) p += pw_[k]} END{print p}' "$PET/miners.txt"); awk -F'|' -v pdl="$HERE/miners.pdl" 'BEGIN{OFS="|"; while ((getline l < pdl) > 0) { split(l, a, "|"); if (a[1] ~ /^KIND/) { k=a[2]; gsub(/ /,"",k); wp[k]=a[6]+0; mx[k]=a[7]+0 } } } /^RIGROW/{k=$3; gsub(/ /,"",k); if ($5+0 < mx[k]) $5=" " ($5+wp[k]) " "} {print}' "$PET/miners.txt" > "$PET/miners.tmp.$$" && mv -f "$PET/miners.tmp.$$" "$PET/miners.txt"; }
+        pb=$(minv METER per_block); pb=${pb:-100}; wm=$(( $(cat "$PET/work_meter" 2>/dev/null || echo 0) + pw )); [ "$wm" -gt $((pb * 2)) ] && wm=$((pb * 2))
+        if [ "$wm" -ge "$pb" ]; then ml=$(minv METER max_load); ld=$(awk '{printf "%d", $1}' /proc/loadavg 2>/dev/null || echo 0)
+            if [ "${ld:-0}" -le "${ml:-6}" ]; then res=$(pchain mine "$PET" 2>/dev/null); case "$res" in mined) rm -f "$PET/cones_cache"; wm=$((wm - pb)); printf 'MINE|%s|%s|mined\n' "$now" "$nm" >> "$TOWN/ledger.txt"; printf 'ph mined %s: my computer found a block\n' "$nm" >> "$CHAT";; capped) wm=$pb;; esac; fi
+        fi
+        echo "$wm" > "$PET/work_meter"; status >/dev/null ;;
+    buy_miner) need_pet; chain_on || { printf 'mining is off\n' >> "$CHAT"; exit 0; }; mkdir -p "$TOWN"; rm -f "$PET/cones_cache"; nm=$(getv name_id); kd="${ARG:-asic1}"; row=$(sed -n "s/^KIND *| *$kd *| *//p" "$HERE/miners.pdl" | head -1)
+        [ -n "$row" ] || { printf '%s: no such rig (%s)\n' "$nm" "$kd" >> "$CHAT"; exit 0; }; cost=$(printf '%s' "$row" | awk -F'|' '{gsub(/ /,"",$2); print $2+0}'); rm=$(rig_room_free)
+        [ -n "$rm" ] || { printf '%s: no free slot for a rig\n' "$nm" >> "$CHAT"; exit 0; }; tw=$(pchain town 2>/dev/null); r=$(pchain pay "$PET" "$tw" "$cost" 2>&1)
+        case "$r" in paid*) printf 'RIGROW | r%s | %s | %s | 0 | %s\n' "$(date +%s%N | tail -c 7)" "$kd" "$rm" "${PET_AI_NOW:-$(date +%s)}" >> "$PET/miners.txt"; printf 'ph bought %s: a %s rig for the %s\n' "$nm" "$kd" "$rm" >> "$CHAT"; printf 'RIG|%s|%s|%s|%s\n' "${PET_AI_NOW:-$(date +%s)}" "$nm" "$kd" "$cost" >> "$TOWN/ledger.txt";; *) printf '%s: cannot pay for the rig (%s)\n' "$nm" "$r" >> "$CHAT";; esac; status >/dev/null ;;
+    maintain) need_pet; chain_on || exit 0; mkdir -p "$TOWN"; rm -f "$PET/cones_cache"; nm=$(getv name_id); [ -s "$PET/miners.txt" ] || { printf '%s: no rigs to maintain\n' "$nm" >> "$CHAT"; exit 0; }
+        wk=$(awk -F'|' '/^RIGROW/{w=$5+0; if (w>=b) {b=w; id=$2; gsub(/ /,"",id); kd=$3; gsub(/ /,"",kd)}} END{print id, kd}' "$PET/miners.txt"); rid=${wk% *}; kd=${wk#* }; mc=$(sed -n "s/^KIND *| *$kd *| *//p" "$HERE/miners.pdl" | head -1 | awk -F'|' '{gsub(/ /,"",$6); print $6+0}')
+        tw=$(pchain town 2>/dev/null); r=$(pchain pay "$PET" "$tw" "$mc" 2>&1); case "$r" in paid*) awk -F'|' -v id="$rid" 'BEGIN{OFS="|"} /^RIGROW/{x=$2; gsub(/ /,"",x); if (x==id) $5=" 0 "} {print}' "$PET/miners.txt" > "$PET/miners.tmp.$$" && mv -f "$PET/miners.tmp.$$" "$PET/miners.txt"; printf 'ph maintained %s: serviced a rig\n' "$nm" >> "$CHAT";; *) printf '%s: cannot pay for upkeep (%s)\n' "$nm" "$r" >> "$CHAT";; esac; status >/dev/null ;;
+    chain_on) mkdir -p "$SHARED"; : > "$SHARED/chain_on.txt"; printf 'chain mining on\n' ;;
+    chain_off) rm -f "$SHARED/chain_on.txt"; printf 'chain mining off\n' ;;
     buy) need_pet; sid="$ARG"; it="${3:-apple}"; n="${4:-1}"; nm=$(getv name_id); [ -d "$SHARED/pets/$sid" ] || { printf '%s: buy from whom?\n' "$nm" >> "$CHAT"; exit 0; }
         d=$(deal "$PET" "$SHARED/pets/$sid" "$it" "$n"); case "$d" in ok) printf '%s: bought %s %s\n' "$nm" "$n" "$it" >> "$CHAT";; buyer-poor) printf '%s: not enough coins\n' "$nm" >> "$CHAT";; seller-short) printf '%s: they do not have enough %s\n' "$nm" "$it" >> "$CHAT";; *) printf '%s: no price for %s\n' "$nm" "$it" >> "$CHAT";; esac; status >/dev/null ;;
     sell) need_pet; bid="$ARG"; it="${3:-wood}"; n="${4:-1}"; nm=$(getv name_id); [ -d "$SHARED/pets/$bid" ] || { printf '%s: sell to whom?\n' "$nm" >> "$CHAT"; exit 0; }

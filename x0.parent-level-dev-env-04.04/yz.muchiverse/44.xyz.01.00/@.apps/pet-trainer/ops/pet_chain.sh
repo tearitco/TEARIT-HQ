@@ -6,6 +6,7 @@
 #   balance <pet_dir>     confirmed millicones
 #   spendable <pet_dir>   confirmed - this wallet's pending outgoing
 #   pay <pet_dir> <to_wallet_id> <mc>   refuses above spendable; else chain_send (pending until a block includes it)
+#   town                  make the town shop wallet (rigs/upkeep are paid to it); prints its id
 #   mine <pet_dir>        ONE real block, niced, one miner at a time (flock), the chain enforces the daily cap; prints mined|capped|busy|failed
 # Env: PET_CHAIN_ROOT (default <app>/state/chain), PET_CHAIN_DIFF / PET_CHAIN_CAP override mining.pdl (harness uses a tiny difficulty).
 # The wallet secret lives in <pet_dir>/wallet_secret.txt (mode 600) and is NEVER printed or logged.
@@ -34,5 +35,6 @@ case "$V" in
  mine) w=$(wid "$PD") || exit 1; mkdir -p "$ROOT"
        out=$(flock -n "$ROOT/mine.lock" nice -n "${NC:-15}" timeout "${TMO:-180}" env PRISC_PROJECT_ROOT="$CH" "$BINDIR/ops/+x/chain_miner.+x" "$w" --blocks 1 2>&1); rc=$?
        case $rc in 0) echo mined;; 3) echo capped;; 1) [ -z "$out" ] && echo busy || echo failed;; 124) echo failed;; *) echo failed;; esac ;;
- *) echo "verbs: init wallet balance spendable pay mine" >&2; exit 1 ;;
+ town) sh "$0" init >/dev/null || exit 1; if [ ! -d "$CH/wallets/town" ]; then pw=$(head -c 18 /dev/urandom | od -An -tx1 | tr -d ' \n'); ( umask 077; printf '%s\n' "$pw" > "$ROOT/town_secret.txt" ); op chain_create_wallet town "$pw" >/dev/null 2>&1 || exit 1; fi; echo town ;;   # the town's shop wallet: rigs and upkeep are paid to it
+ *) echo "verbs: init wallet balance spendable pay mine town" >&2; exit 1 ;;
 esac
