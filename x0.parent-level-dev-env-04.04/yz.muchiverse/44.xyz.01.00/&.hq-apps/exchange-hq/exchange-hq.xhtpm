@@ -1,35 +1,79 @@
-<!-- exchange-hq.xhtpm - Exchange HQ (X11-HQ window, network cell). Static layout, shared khtpm_core_render.+x, class="exchange-window database-window",
-     zero renderer C. One <module>: ops/+x/exchange_manager.+x publishes exchange_ui.txt and polls exchange_action.txt. Tabs are show=-gated by ${tab_*}.
-     Plan and rules: @.apps/pet-trainer/CHAIN-ECONOMY-DESIGN.md sections 11-12. Rates, fee and band are SETTINGS you can edit on the Settings tab. -->
+<!-- exchange-hq.xhtpm - Exchange HQ v2 (X11-HQ window, network cell): an order book with bid/ask spread, charts, loans, fills and settings.
+     Static layout, shared khtpm_core_render.+x, class="exchange-window database-window", zero renderer C. One <module>: ops/+x/exchange_manager.+x publishes
+     exchange_ui.txt (+ the chart canvas file chart.raw via ops/+x/exchange_chart.+x) and polls exchange_action.txt.
+     Shape, like pc-hq: TOP tab bar (pages), LEFT sidebar (market summary + the order-book ladder), a canvas with a bottom HOTBAR over it (canvas-overlay-bottom),
+     and a BOTTOM footer bar (unit / chart / refresh). Plan: @.apps/pet-trainer/CHAIN-ECONOMY-DESIGN.md sections 11-12. RULES: no angle brackets inside comments. -->
 <window label="${title}" class="exchange-window database-window" vars="exchange_ui.txt">
   <module src="&.hq-apps/exchange-hq/ops/+x/exchange_manager.+x"/>
   <page name="main">
 
+    <tabbar id="toolbar" class="tab-bar">
+      <tab id="tb-m" class="tab ex-tb ${cls_market}"   label="Market"   onclick="sh '${HOUSE}/&.hq-apps/exchange-hq/ops/exchange_item.sh' 'TAB market'"/>
+      <tab id="tb-l" class="tab ex-tb ${cls_loans}"    label="Loans"    onclick="sh '${HOUSE}/&.hq-apps/exchange-hq/ops/exchange_item.sh' 'TAB loans'"/>
+      <tab id="tb-o" class="tab ex-tb ${cls_orders}"   label="Orders"   onclick="sh '${HOUSE}/&.hq-apps/exchange-hq/ops/exchange_item.sh' 'TAB orders'"/>
+      <tab id="tb-f" class="tab ex-tb ${cls_feed}"     label="Feed"     onclick="sh '${HOUSE}/&.hq-apps/exchange-hq/ops/exchange_item.sh' 'TAB feed'"/>
+      <tab id="tb-s" class="tab ex-tb ${cls_settings}" label="Settings" onclick="sh '${HOUSE}/&.hq-apps/exchange-hq/ops/exchange_item.sh' 'TAB settings'"/>
+    </tabbar>
+
     <sidebar id="sidebar" class="exchange-sidebar">
-      <text id="who" label="preferred = old-chain cones" class="exchange-who"/>
-      <item id="tr" class="exchange-tab ${cls_rates}"    label="Rates"    action="'${PKG}/ops/exchange_item.sh' 'TAB rates'"/>
-      <item id="tt" class="exchange-tab ${cls_trade}"    label="Trade"    action="'${PKG}/ops/exchange_item.sh' 'TAB trade'"/>
-      <item id="tf" class="exchange-tab ${cls_feed}"     label="Feed"     action="'${PKG}/ops/exchange_item.sh' 'TAB feed'"/>
-      <item id="ts" class="exchange-tab ${cls_settings}" label="Settings" action="'${PKG}/ops/exchange_item.sh' 'TAB settings'"/>
-      <item id="rf" class="exchange-tab" label="refresh" action="'${PKG}/ops/exchange_item.sh' 'REFRESH'"/>
+      <text label="${sb_unit}"   class="exchange-who"/>
+      <text label="${sb_last}"   class="exchange-big"/>
+      <text label="${sb_avg}"    class="exchange-kv"/>
+      <text label="${sb_bid}"    class="exchange-bid"/>
+      <text label="${sb_ask}"    class="exchange-ask"/>
+      <text label="${sb_spread}" class="exchange-kv"/>
+      <text label="${sb_mid}"    class="exchange-kv"/>
+      <text label="${sb_hilo}"   class="exchange-quiet"/>
+      <text label="${sb_vol}"    class="exchange-quiet"/>
+      <text label="${ob_0}"  class="exchange-ask"/>
+      <text label="${ob_1}"  class="exchange-ask"/>
+      <text label="${ob_2}"  class="exchange-ask"/>
+      <text label="${ob_3}"  class="exchange-ask"/>
+      <text label="${ob_4}"  class="exchange-spread"/>
+      <text label="${ob_5}"  class="exchange-bid"/>
+      <text label="${ob_6}"  class="exchange-bid"/>
+      <text label="${ob_7}"  class="exchange-bid"/>
+      <text label="${ob_8}"  class="exchange-bid"/>
+      <text label="${sb_fee}" class="exchange-quiet"/>
     </sidebar>
 
     <panel id="content" class="exchange-panel">
       <text id="status" class="exchange-status" label="${status}"/>
 
-      <!-- Rates -->
-      <text id="r-hdr" class="exchange-hdr" label="${rates_hdr}" show="${tab_rates}"/>
-      <repeat count="${n_r}" bind="r">
-        <text id="r${r.#}" class="exchange-row" label="${r.text}" show="${tab_rates}"/>
-      </repeat>
-      <text id="r-note" class="exchange-quiet" label="${rates_note}" show="${tab_rates}"/>
-      <text id="r-fee" class="exchange-quiet" label="Every non-preferred chain unit is averaged into preferred value here. Using it costs a fee, paid in preferred cones." show="${tab_rates}"/>
+      <!-- Market: chart canvas with the hotbar over its bottom edge -->
+      <canvas id="chart" class="ex-chart" sprite="${chart_raw}" show="${tab_market}"/>
+      <row id="hotbar-ov" class="canvas-overlay-bottom ov-chrome ov-slide-x ex-hotbar theme" show="${tab_market}">
+        <text label="${hb_title}" class="hb-quiet ov-title theme-3"/>
+        <item id="hb-buy"    class="hb-slot skin-bar" label="Buy"    action="'${PKG}/ops/exchange_item.sh' 'QUICK buy_mkt'"/>
+        <item id="hb-sell"   class="hb-slot skin-bar" label="Sell"   action="'${PKG}/ops/exchange_item.sh' 'QUICK sell_mkt'"/>
+        <item id="hb-bid"    class="hb-slot skin-bar" label="Bid"    action="'${PKG}/ops/exchange_item.sh' 'QUICK bid'"/>
+        <item id="hb-ask"    class="hb-slot skin-bar" label="Ask"    action="'${PKG}/ops/exchange_item.sh' 'QUICK ask'"/>
+        <item id="hb-cancel" class="hb-slot skin-bar" label="Del" action="'${PKG}/ops/exchange_item.sh' 'QUICK cancel'"/>
+        <item id="hb-lend"   class="hb-slot skin-bar" label="Lend"   action="'${PKG}/ops/exchange_item.sh' 'QUICK lend'"/>
+        <item id="hb-borrow" class="hb-slot skin-bar" label="Take" action="'${PKG}/ops/exchange_item.sh' 'QUICK borrow'"/>
+        <item id="hb-chart"  class="hb-slot skin-bar" label="View"  action="'${PKG}/ops/exchange_item.sh' 'CHART'"/>
+        <cli_io id="mline" target_id="mline" rows="1" class="exchange-send" label="&gt; " action="'${PKG}/ops/exchange_trade.sh'"/>
+      </row>
 
-      <!-- Trade -->
-      <text id="t-hint" class="exchange-quiet" label="Type:  buy|sell  unit  amount_mc  [price_bp]   e.g.  sell mined 2000   (10000 bp = 1:1 with preferred)" show="${tab_trade}"/>
-      <cli_io id="tradeline" target_id="tradeline" rows="1" class="exchange-send top"
-              label="side unit amount" action="'${PKG}/ops/exchange_trade.sh'" show="${tab_trade}"/>
-      <text id="t-note" class="exchange-quiet" label="A trade priced far from the current average is refused, so one trade cannot move the rate." show="${tab_trade}"/>
+      <!-- Loans -->
+      <text id="l-hint" class="exchange-quiet" label="lend unit amount rate_bp_per_day days   |   borrow offer_id   |   repay loan_id amount   |   withdraw offer_id" show="${tab_loans}"/>
+      <cli_io id="lline" target_id="lline" rows="1" class="exchange-send top" label="&gt; " action="'${PKG}/ops/exchange_trade.sh'" show="${tab_loans}"/>
+      <repeat count="${n_l}" bind="l">
+        <text id="l${l.#}" class="exchange-row" label="${l.text}" show="${tab_loans}"/>
+      </repeat>
+      <repeat count="${n_ln}" bind="ln">
+        <text id="ln${ln.#}" class="exchange-row" label="${ln.text}" show="${tab_loans}"/>
+      </repeat>
+      <text id="l-empty" class="exchange-quiet" label="${loans_empty}" show="${loans_empty}"/>
+
+      <!-- Orders -->
+      <text id="o-hint" class="exchange-quiet" label="buy|sell unit amount [price_bp]  (no price = market order)   |   cancel order_id" show="${tab_orders}"/>
+      <cli_io id="oline" target_id="oline" rows="1" class="exchange-send top" label="&gt; " action="'${PKG}/ops/exchange_trade.sh'" show="${tab_orders}"/>
+      <text id="o-hdr" class="exchange-hdr" label="${orders_hdr}" show="${tab_orders}"/>
+      <repeat count="${n_o}" bind="o">
+        <text id="o${o.#}" class="exchange-row" label="${o.text}" show="${tab_orders}"/>
+      </repeat>
+      <text id="o-empty" class="exchange-quiet" label="${orders_empty}" show="${orders_empty}"/>
 
       <!-- Feed -->
       <scrolllist class="from-top" show="${tab_feed}">
@@ -44,8 +88,15 @@
         <item id="sd${s.#}" class="exchange-btn" label="-  ${s.label}" action="'${PKG}/ops/exchange_item.sh' 'SET ${s.key} -'" show="${tab_settings}"/>
         <item id="si${s.#}" class="exchange-btn" label="+  ${s.label}" action="'${PKG}/ops/exchange_item.sh' 'SET ${s.key} +'" show="${tab_settings}"/>
       </repeat>
-      <text id="set-note" class="exchange-quiet" label="Settings are saved to exchange.pdl. Trades are a paper ledger until the chain settlement layer exists." show="${tab_settings}"/>
-
+      <text id="set-note" class="exchange-quiet" label="Settings are saved to exchange.pdl. Fills are a paper ledger until the chain settlement layer exists." show="${tab_settings}"/>
     </panel>
+
+    <footer id="statusbar" class="pchq-footer">
+      <text label="unit" class="quiet"/>
+      <item id="u-mined" class="pchq-ft skin-bar ${cls_u_mined}" label="mined" action="'${PKG}/ops/exchange_item.sh' 'UNIT mined'"/>
+      <item id="u-play"  class="pchq-ft skin-bar ${cls_u_play}"  label="play"  action="'${PKG}/ops/exchange_item.sh' 'UNIT play'"/>
+      <item id="f-chart" class="pchq-ft skin-bar" label="chart" action="'${PKG}/ops/exchange_item.sh' 'CHART'"/>
+      <item id="f-ref"   class="pchq-ft skin-bar" label="refresh" action="'${PKG}/ops/exchange_item.sh' 'REFRESH'"/>
+    </footer>
   </page>
 </window>

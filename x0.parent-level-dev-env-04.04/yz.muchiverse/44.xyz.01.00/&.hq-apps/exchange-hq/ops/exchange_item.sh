@@ -1,10 +1,14 @@
 #!/bin/sh
-# <item action="'exchange_item.sh' 'VERB ARG'"> : $1="VERB ARG" $2=pkg $3=house
-LINE="$1"; PKG="$2"
+# Hotbar / tab / footer actions. Two call shapes: <item action="'exchange_item.sh' 'VERB ARG'"> gives $1="VERB ARG" $2=pkg $3=house;
+# a <tab onclick="sh exchange_item.sh 'VERB ARG'"> gives only $1, so the package dir is derived from this script's own location.
+LINE="$1"; PKG="${2:-$(cd "$(dirname "$0")/.." && pwd)}"
 case "$LINE" in
-  "TAB "*) CMD="TAB:${LINE#TAB }" ;;
-  "SET "*) CMD="SET:${LINE#SET }" ;;
-  REFRESH) CMD="REFRESH" ;;
+  "TAB "*)   CMD="TAB:${LINE#TAB }" ;;
+  "UNIT "*)  CMD="UNIT:${LINE#UNIT }" ;;
+  "SET "*)   CMD="SET:${LINE#SET }" ;;
+  "QUICK "*) CMD="QUICK:${LINE#QUICK }" ;;
+  CHART)     CMD="CHART" ;;
+  REFRESH)   CMD="REFRESH" ;;
   *) exit 0 ;;
 esac
 SEQF="$PKG/exchange.seq"

@@ -69,6 +69,9 @@ static void poll(int *last) { char p[PL], buf[1500]; path_of(p, "auction_action.
     for (char *ls = buf; *ls;) { char *le = strchr(ls, '\n'); size_t ll = le ? (size_t)(le - ls) : strlen(ls); if (!strncmp(ls, "seq=", 4)) seq = atoi(ls + 4); else if (!strncmp(ls, "cmd=", 4)) { size_t cl = ll - 4; if (cl >= sizeof cmd) cl = sizeof cmd - 1; memcpy(cmd, ls + 4, cl); cmd[cl] = 0; } if (!le) break; ls = le + 1; }
     if (seq > *last && cmd[0]) { *last = seq; do_cmd(cmd); } }
 static void bye(int s) { (void)s; _exit(0); }
-int main(int argc, char **argv) { if (argc < 3) { fprintf(stderr, "Usage: %s <house_root> <package_dir>\n", argv[0]); return 1; } snprintf(house, PL, "%s", argv[1]); snprintf(pkg, PL, "%s", argv[2]); signal(SIGTERM, bye); signal(SIGINT, bye); signal(SIGHUP, bye);
+int main(int argc, char **argv) {
+    if (argc >= 5 && !strcmp(argv[1], "--once")) { /* harness/script mode: apply ONE command (house, package, cmd), write the ui, print the status line, exit */
+        snprintf(house, PL, "%s", argv[2]); snprintf(pkg, PL, "%s", argv[3]); { char p[PL]; path_of(p, "auction"); mkdir(p, 0755); } refresh(); do_cmd(argv[4]); printf("%s\n", msg); return 0; }
+    if (argc < 3) { fprintf(stderr, "Usage: %s <house_root> <package_dir>\n", argv[0]); return 1; } snprintf(house, PL, "%s", argv[1]); snprintf(pkg, PL, "%s", argv[2]); signal(SIGTERM, bye); signal(SIGINT, bye); signal(SIGHUP, bye);
     { char p[PL]; path_of(p, "auction"); mkdir(p, 0755); path_of(p, "auction_action.txt"); FILE *f = fopen(p, "w"); if (f) { fprintf(f, "seq=0\ncmd=\n"); fclose(f); } }
     refresh(); int last = 0, slow = 0; for (;;) { usleep(50000); poll(&last); if (++slow >= 40) { slow = 0; refresh(); } } }

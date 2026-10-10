@@ -32,8 +32,10 @@ done
 LOG_DIR="$HERE/audit"
 mkdir -p "$LOG_DIR"
 
-mine() { ps -eo pid,args 2>/dev/null | awk -v me="$$" '$1!=me && /khtpm_core_render[.]\+x.*exchange-hq[.]xhtpm/ {print $1}'; }
-strays() { ps -eo pid,args 2>/dev/null | awk -v me="$$" '$1!=me && /exchange-hq\/ops\/[+]x\/exchange_manager[.][+]x/ {print $1}'; }
+# match on the process NAME (comm) plus the window file in its args, never on a full-command-line grep: a caller whose own command line
+# mentions these words (a tool shell, a heredoc) would otherwise be killed by its own launcher (the pkill -f self-match footgun)
+mine() { ps -eo pid,comm,args 2>/dev/null | awk -v me="$$" '$1!=me && $2=="khtpm_core_rend" && index($0, "exchange-hq.xhtpm") {print $1}'; }
+strays() { ps -eo pid,comm 2>/dev/null | awk -v me="$$" '$1!=me && $2=="exchange_manage" {print $1}'; }
 
 pids="$(mine; strays)"
 pids="$(echo "$pids" | grep -v '^$' || true)"

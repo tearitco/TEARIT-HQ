@@ -1,6 +1,7 @@
 # exchange.pdl - Exchange HQ settings (edit them in the Settings tab of the window; plan: @.apps/pet-trainer/CHAIN-ECONOMY-DESIGN.md section 11). `SECTION | key | value   # comment`
 # Preferred value = the old chain's cones (final, 100% confirmed). Every other unit is averaged into preferred value by its real trades here.
-FEE   | percent        | 2        # fee on every trade, paid in preferred cones (or auto-exchanged into preferred at the averaged rate)
+FEE   | percent        | 2        # taker fee on every fill, paid in preferred cones (or auto-exchanged into preferred at the averaged rate)
+FEE   | maker_percent  | 0        # fee on the resting (maker) side of a fill; 0 = makers trade free so they keep the book deep
 RATE  | window_trades  | 20       # the averaged rate = volume-weighted price of the last N trades of that unit
 RATE  | band_pct       | 50       # a trade priced more than this % away from the current average is refused (one trade cannot move the rate far)
 RATE  | floor_bp       | 10       # lowest allowed average, in basis points of preferred per unit (10000 = 1:1)
@@ -8,3 +9,9 @@ RATE  | ceiling_bp     | 1000000  # highest allowed average
 UNIT  | cones | Preferred cones (old chain) | 10000
 UNIT  | mined | Mined cones (pet-cones)     | 500
 UNIT  | play  | Play money (paper)          | 100
+LOAN  | day_seconds     | 600      # one loan "day" in seconds (interest accrues per day; 600 = a 10 minute day so a demo plays quickly)
+LOAN  | max_rate_bp     | 500      # highest interest a lender may ask, basis points of principal per day (100 bp = 1 percent per day)
+LOAN  | max_days        | 30       # longest loan
+LOAN  | default_rate_bp | 100      # the hotbar Lend button offers this
+LOAN  | default_days    | 2
+QUICK | lot_mc          | 1000     # size of the hotbar buy / sell / lend buttons, in millicones

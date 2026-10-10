@@ -1,0 +1,58 @@
+# auction_hq - Auction HQ (&.hq-apps/auction-hq) on a SCRATCH package via the manager's --once mode: LIST/BID/BUY/CANCEL rules, every refusal logged to rejects.txt, the state replayed from the append-only ledger. Humans and AI actors use the same command. Paper ledger: no wallet or NFT settlement yet.
+RESULTS | ../results/auction_hq.txt
+CASE    | auction-hq
+SCRATCH |
+MKDIR   | pkg
+RUN | /bin/sh | -c | mkdir -p $T/pkg/auction; cp "$HOUSE/&.hq-apps/auction-hq/auction.pdl" $T/pkg/
+RUN | $HOUSE/&.hq-apps/auction-hq/ops/+x/auction_manager.+x | --once | /tmp | $T/pkg | AUC:Pochi\pLIST food apple cones 5 20 60
+EXPECT_OUT | #1 listed by Pochi | list
+RUN | $HOUSE/&.hq-apps/auction-hq/ops/+x/auction_manager.+x | --once | /tmp | $T/pkg | AUC:Pochi\pLIST car x cones 1 0 5
+EXPECT_OUT | unknown kind | unknown-kind
+RUN | $HOUSE/&.hq-apps/auction-hq/ops/+x/auction_manager.+x | --once | /tmp | $T/pkg | AUC:Pochi\pLIST food apple gold 1 0 5
+EXPECT_OUT | unknown unit | unknown-unit
+RUN | $HOUSE/&.hq-apps/auction-hq/ops/+x/auction_manager.+x | --once | /tmp | $T/pkg | AUC:Pochi\pLIST food apple cones 0 0 5
+EXPECT_OUT | min must be above 0 | min-positive
+RUN | $HOUSE/&.hq-apps/auction-hq/ops/+x/auction_manager.+x | --once | /tmp | $T/pkg | AUC:Pochi\pLIST food apple cones 10 5 5
+EXPECT_OUT | buyout must be 0 or at least min | buyout-not-below-min
+RUN | $HOUSE/&.hq-apps/auction-hq/ops/+x/auction_manager.+x | --once | /tmp | $T/pkg | AUC:Pochi\pLIST food apple cones 5 20 99999
+EXPECT_OUT | minutes outside | duration-range
+RUN | $HOUSE/&.hq-apps/auction-hq/ops/+x/auction_manager.+x | --once | /tmp | $T/pkg | AUC:Kuro\pBID 1 3
+EXPECT_OUT | below the minimum | bid-below-min
+RUN | $HOUSE/&.hq-apps/auction-hq/ops/+x/auction_manager.+x | --once | /tmp | $T/pkg | AUC:Kuro\pBID 1 6
+EXPECT_OUT | Kuro bid 6 cones on #1 | bid
+RUN | $HOUSE/&.hq-apps/auction-hq/ops/+x/auction_manager.+x | --once | /tmp | $T/pkg | AUC:Pochi\pBID 1 9
+EXPECT_OUT | seller cannot bid | seller-cannot-bid
+RUN | $HOUSE/&.hq-apps/auction-hq/ops/+x/auction_manager.+x | --once | /tmp | $T/pkg | AUC:Rin\pBID 1 6
+EXPECT_OUT | minimum increment | must-beat-the-high-bid
+RUN | $HOUSE/&.hq-apps/auction-hq/ops/+x/auction_manager.+x | --once | /tmp | $T/pkg | AUC:Rin\pBID 1 8
+EXPECT_OUT | Rin bid 8 | outbid
+RUN | $HOUSE/&.hq-apps/auction-hq/ops/+x/auction_manager.+x | --once | /tmp | $T/pkg | AUC:Rin\pBID 99 8
+EXPECT_OUT | no such auction | unknown-auction
+RUN | $HOUSE/&.hq-apps/auction-hq/ops/+x/auction_manager.+x | --once | /tmp | $T/pkg | AUC:Pochi\pCANCEL 1
+EXPECT_OUT | cannot cancel once bidding | no-cancel-after-a-bid
+RUN | $HOUSE/&.hq-apps/auction-hq/ops/+x/auction_manager.+x | --once | /tmp | $T/pkg | AUC:Mom\pLIST rig asic1 mined 50 0 30
+EXPECT_OUT | #2 listed by Mom | second-listing
+RUN | $HOUSE/&.hq-apps/auction-hq/ops/+x/auction_manager.+x | --once | /tmp | $T/pkg | AUC:Pochi\pBUY 1
+EXPECT_OUT | seller cannot buy | seller-cannot-buy
+RUN | $HOUSE/&.hq-apps/auction-hq/ops/+x/auction_manager.+x | --once | /tmp | $T/pkg | AUC:Rin\pBUY 2
+EXPECT_OUT | no buyout | no-buyout-price
+RUN | $HOUSE/&.hq-apps/auction-hq/ops/+x/auction_manager.+x | --once | /tmp | $T/pkg | AUC:Rin\pCANCEL 2
+EXPECT_OUT | only the seller | only-the-seller-cancels
+RUN | $HOUSE/&.hq-apps/auction-hq/ops/+x/auction_manager.+x | --once | /tmp | $T/pkg | AUC:Mom\pCANCEL 2
+EXPECT_OUT | cancelled | seller-cancels-an-unbid-auction
+RUN | $HOUSE/&.hq-apps/auction-hq/ops/+x/auction_manager.+x | --once | /tmp | $T/pkg | AUC:Rin\pBID 2 60
+EXPECT_OUT | not open | no-bid-on-a-cancelled-auction
+RUN | $HOUSE/&.hq-apps/auction-hq/ops/+x/auction_manager.+x | --once | /tmp | $T/pkg | AUC:Dai\pBUY 1
+EXPECT_OUT | Dai bought #1 at the buyout price 20 | buyout
+RUN | $HOUSE/&.hq-apps/auction-hq/ops/+x/auction_manager.+x | --once | /tmp | $T/pkg | AUC:Kuro\pBID 1 30
+EXPECT_OUT | not open | sold-auction-is-closed
+RUN | $HOUSE/&.hq-apps/auction-hq/ops/+x/auction_manager.+x | --once | /tmp | $T/pkg | AUC:Mom\pFOO bar
+EXPECT_OUT | verbs | unknown-verb
+RUN | /bin/sh | -c | grep -c "^LIST" $T/pkg/auction/ledger.txt
+EXPECT_OUT_IS | 2 | ledger-has-the-two-listings
+RUN | /bin/sh | -c | grep -c "" $T/pkg/auction/rejects.txt
+EXPECT_OUT_IS | 16 | every-refusal-logged
+RUN | /bin/sh | -c | grep -c "^h_.*sold (buyout)" $T/pkg/auction_ui.txt
+EXPECT_OUT_IS | 1 | history-shows-the-sale
+RUN | /bin/sh | -c | grep -c "^title=Auction  .  0 open  .  2 done" $T/pkg/auction_ui.txt
+EXPECT_OUT_IS | 1 | state-replayed-from-the-ledger
