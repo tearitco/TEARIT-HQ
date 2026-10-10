@@ -13,7 +13,10 @@
  * player normally lives and is not built yet, so for now the player may walk the house too.
  * The clock is the house livedesk clock (&.widgits/livedesk-clock lc_clock.+x), own mini root state/clock_root, clock id "rpg" - same mechanism as pet-trainer's pet_clock.sh.
  *
- * Verbs: status | buy KEY [X Y] | use KEY | place ID X Y | remove ID | step DX DY (trainer) | walk (one pet step, test) | select ID | goto ROOM (moves the trainer + the view)
+ * PLAY MODE (same mechanics as pet-trainer's Player tab): the house is STARTED (flag running = 1, green "GO started") or STOPPED (red "STOP stopped"). Stopped freezes the
+ * SIMULATION: no pet steps, the clock is paused, INT cannot move anyone. Building (shop, place, remove) and chat still work while stopped, like a maker editor.
+ * Player tab: Play, Stop, Save (slot 1), Load (slot 1) = copies of the state files under state/slots/<n>/.
+ * Verbs: play | stop | save [n] | load [n] | status | buy KEY [X Y] | use KEY | place ID X Y | remove ID | step DX DY (trainer) | walk (one pet step, test) | select ID | goto ROOM (moves the trainer + the view)
  *        toggle chat|hb | view | int | clock rate|advance|start|stop|reinstall [arg] | reset
  * Every picture is an RPG Maker MV tile or character frame (sheets under #.NNEST_ASSETS/rmmv-www-img), nothing else is drawn.
  * State (state/, gitignored): house.txt = append-only ledger replayed on every call  BUY|ts|item|price  PLACE|id|ts|item|x|y|room  MOVE|id|ts|x|y  REMOVE|id|ts
@@ -40,6 +43,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ONLY_PNG
 #include "../../../&.widgits/_shared-lib/stb_image.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "../../../&.widgits/_shared-lib/stb_image_write.h"
 
 #define T 48
 #define FW 660
@@ -366,7 +371,10 @@ static void clock_install(void) {
         write_if_changed(sp, want, strlen(want)); }
 }
 static void clock_pause(int pause) { if (!clock_ok() || !fexists(CFILE)) return; lc_run(0, "cmd", "rpg", pause ? "pause" : "resume", "--source", "rpg-int", NULL); }
-static void clock_start(void) { clock_paths(); if (!clock_ok()) return; clock_install(); long long ms = clock_kv_ll("game_time_epoch_ms"); if (ms >= 0) write_phase(ms); if (!flag_on("int", 0)) clock_pause(0); lc_run(1, "daemon-start", NULL); clock_ui(); }
+static int run_on(void) { return flag_on("running", 1); }
+/* the clock runs only when the house is started AND INT is off (INT on = turn based: only your acts advance time) */
+static void clock_sync(void) { clock_paths(); clock_pause(!run_on() || flag_on("int", 0)); }
+static void clock_start(void) { clock_paths(); if (!clock_ok()) return; clock_install(); long long ms = clock_kv_ll("game_time_epoch_ms"); if (ms >= 0) write_phase(ms); clock_sync(); lc_run(1, "daemon-start", NULL); clock_ui(); }
 static void clock_stop(void) { clock_paths(); if (!clock_ok() || !fexists(CFILE)) return; lc_run(0, "cmd", "rpg", "pause", "--source", "rpg-stop", NULL); usleep(1000000); lc_run(0, "daemon-stop", NULL); }
 /* a roguelike turn's worth of game time: advance, then one deterministic pass so reminders fire now (no daemon wait) */
 static void clock_turn(void) { clock_paths(); if (!clock_ok() || !fexists(CFILE)) return; char t[32]; turn_str(t, sizeof t); lc_run(0, "cmd", "rpg", "advance", t, "--source", "rpg-turn", NULL); lc_run(0, "step", "5", NULL); long long ms = clock_kv_ll("game_time_epoch_ms"); if (ms >= 0) write_phase(ms); clock_ui(); }
@@ -382,6 +390,7 @@ static void out_all(const char *msg) {
     int chat = flag_on("chat", 0), hb = flag_on("hb", 0), in = flag_on("int", 0); char view[16]; flag_str("view", "2d", view, sizeof view); for (char *c = view; *c; c++) if (*c >= 'a' && *c <= 'z') *c -= 32;
     W("title=rpg-pet  -  %s  -  coins %d\nscene_raw=%s\ncanvas_raw=%s\ncoins=%d\nmsg=%s\nroom_label=%s\n", rooms[vroom].name, coins, raw, raw, coins, msg && msg[0] ? msg : (in ? "INT on: turn based like a roguelike. Time moves when you act. Tab switches pet/player." : "real time: the pets live on their own. INT lets you control a pet or the player."), rooms[vroom].name);
     { char cc[16]; flag_str("ctl", "pet", cc, sizeof cc); char who[40]; snprintf(who, sizeof who, "on: %s", !strcmp(cc, "player") ? "you" : party[active].name); W("interact_class=%s\ninteract_label=%s\nrp_h1=%s\nrp_h2=%s\ncontrol_label=control: %s\n", in ? "interact-active" : "", in ? who : "off", h1, h2, !strcmp(cc, "player") ? "player" : party[active].name); }
+    W("run_on=%d\nrun_label=%s\nrun_cls=%s\n", run_on(), run_on() ? "GO started" : "STOP stopped", run_on() ? "ph-green" : "ph-red");
     W("chat_visible=%s\nhb_visible=%s\nview_label=view %s\nchat_toggle_label=window %s\n", chat ? "1" : "", hb ? "1" : "", view, chat ? "on" : "off");
     { char cp[PATH_MAX], cb[4000]; spath(cp, "chat.txt"); read_file(cp, cb, sizeof cb); char *ln[6] = {0}; int k = 0; for (char *l = strtok(cb, "\n"); l; l = strtok(NULL, "\n")) { ln[k % 6] = l; k++; } for (int i = 0; i < 6; i++) { int j = k - 6 + i; W("chat_%d=%s\n", i, j >= 0 ? ln[j % 6] : ""); } }
     W("n_shop=%d\n", ncat); for (int i = 0; i < ncat; i++) { char own[16] = ""; if (owned[i] > 0) snprintf(own, sizeof own, " x%d", owned[i]); W("shop_%d_label=%s %dc%s\nshop_%d_key=%s\n", i, cat[i].label, cat[i].price, own, i, cat[i].key); }
@@ -443,7 +452,66 @@ static int ai_step(int i) {
     return moved;
 }
 /* a roguelike turn: the clock moves on, and every pet takes its step */
-static void end_turn(void) { clock_turn(); int in = flag_on("int", 0), c = ctl_idx(); for (int i = 0; i < nparty; i++) if (!(in && i == c)) ai_step(i); use_ent(active); }      /* the pet you control does not act on its own */
+static void end_turn(void) { if (!run_on()) return; clock_turn(); int in = flag_on("int", 0), c = ctl_idx(); for (int i = 0; i < nparty; i++) if (!(in && i == c)) ai_step(i); use_ent(active); }      /* the pet you control does not act on its own */
+
+
+/* ---------- 3D export: every room as a pc-hq map desk (same files as the TSOTS levels) ----------
+ * @.apps/piececraft-hq/pieces/system/maps/rpg-pet/{game.pdl, <room>/{map.txt, extrusion.pdl, cells.txt, cells.rgba, cells.png, events.txt}}.  The board-viewer 3D renderer
+ * (bv_render_3d) reads exactly these: map.txt = one glyph per cell (W wall 3 high, D door 3, T tree 2, f furniture 1, . floor), cells.txt = "floor_slot,wall_slot" per cell into an
+ * atlas of 24 px tiles (slot 0 blank), events.txt = "x y r g b charset index dir pattern" (a coloured box per pet / Harold). All pictures are RPG Maker tiles downscaled 48 -> 24. */
+#define XT 24
+#define MAXSLOT 400
+static unsigned char slotpx[MAXSLOT][XT * XT * 4]; static int nslot;
+static void tile24(Sheet *s, int sx, int sy, unsigned char *out) {          /* 48x48 region -> 24x24 by 2x2 averaging; out is RGBA */
+    for (int y = 0; y < XT; y++) for (int x = 0; x < XT; x++) { int acc[4] = {0, 0, 0, 0}, wsum = 0;
+        for (int dy = 0; dy < 2; dy++) for (int dx = 0; dx < 2; dx++) { int px = sx + x * 2 + dx, py = sy + y * 2 + dy; if (!s || px >= s->w || py >= s->h) continue; unsigned char *a = s->px + ((size_t)py * s->w + px) * 4; acc[0] += a[0] * a[3]; acc[1] += a[1] * a[3]; acc[2] += a[2] * a[3]; acc[3] += a[3]; wsum += a[3]; }
+        unsigned char *o = out + (y * XT + x) * 4; if (wsum) { o[0] = acc[0] / wsum; o[1] = acc[1] / wsum; o[2] = acc[2] / wsum; o[3] = acc[3] / 4; } else o[0] = o[1] = o[2] = o[3] = 0; }
+}
+static void over24(unsigned char *dst, const unsigned char *src) { for (int i = 0; i < XT * XT; i++) { int al = src[i * 4 + 3]; if (!al) continue; for (int c = 0; c < 3; c++) dst[i * 4 + c] = (unsigned char)((src[i * 4 + c] * al + dst[i * 4 + c] * (255 - al)) / 255); dst[i * 4 + 3] = 255; } }
+static int slot_of(const unsigned char *px) {
+    int any = 0; for (int i = 0; i < XT * XT; i++) if (px[i * 4 + 3]) { any = 1; break; } if (!any) return 0;
+    for (int i = 1; i < nslot; i++) if (!memcmp(slotpx[i], px, XT * XT * 4)) return i;
+    if (nslot >= MAXSLOT) return 0; memcpy(slotpx[nslot], px, XT * XT * 4); return nslot++;
+}
+static void export3d(char *msg, size_t cap) {
+    char root[PATH_MAX], d[PATH_MAX], p[PATH_MAX]; snprintf(root, sizeof root, "%s/@.apps/piececraft-hq/pieces/system/maps/rpg-pet", HOUSE);
+    { char a[PATH_MAX]; snprintf(a, sizeof a, "%s/@.apps/piececraft-hq/pieces/system/maps", HOUSE); mkdir(a, 0755); } mkdir(root, 0755);
+    char gl[8192]; int go = 0; go += snprintf(gl + go, sizeof gl - go, "SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\nGAME         | type               | board-game\nGAME         | icon               | \xF0\x9F\x8F\xA0\nGAME         | label              | RPG-Pet\nGAME         | n_chunks           | 1\nGAME         | chunk_0_x          | 0\nGAME         | chunk_0_y          | 0\nGAME         | n_desks            | %d\n", nroom);
+    for (int r = 0; r < nroom; r++) {
+        go += snprintf(gl + go, sizeof gl - go, "GAME         | desk_%d_id          | %s\nGAME         | desk_%d_label       | %s\n", r + 1, rooms[r].id, r + 1, rooms[r].name);
+        snprintf(d, sizeof d, "%s/%s", root, rooms[r].id); mkdir(d, 0755);
+        char glyph[ROWS][COLS + 1]; int fs[ROWS][COLS], ws[ROWS][COLS]; unsigned char a[XT * XT * 4], b[XT * XT * 4], fl[XT * XT * 4]; nslot = 1; memset(slotpx[0], 0, XT * XT * 4);
+        Room *rm = &rooms[r]; Sheet *a5i = sheet("tilesets", "Inside_A5"), *a5o = sheet("tilesets", "Outside_A5"), *dr = sheet("characters", "!Door1");
+        unsigned char floorpx[XT * XT * 4], wallpx[XT * XT * 4], ceilpx[XT * XT * 4], doorpx[XT * XT * 4], pathpx[XT * XT * 4], matpx[XT * XT * 4];
+        if (rm->outdoor) { tile24(a5o, rm->fc * T, rm->fr * T, floorpx); tile24(a5o, 2 * T, 0, wallpx); memcpy(ceilpx, wallpx, sizeof ceilpx); tile24(a5o, 1 * T, 2 * T, pathpx); }
+        else { tile24(a5i, rm->fc * T, rm->fr * T, floorpx); tile24(a5i, 1 * T, 3 * T, wallpx); tile24(a5i, 0, 0, ceilpx); memcpy(pathpx, floorpx, sizeof pathpx); }
+        tile24(dr, 0, 192, doorpx); tile24(a5i, 0, 6 * T, matpx);
+        for (int y = 0; y < ROWS; y++) for (int x = 0; x < COLS; x++) { glyph[y][x] = '.'; fs[y][x] = ws[y][x] = 0; }
+        for (int x = 0; x < COLS; x++) { glyph[0][x] = glyph[1][x] = 'W'; ws[0][x] = slot_of(ceilpx); ws[1][x] = slot_of(wallpx); }
+        for (int y = TRIG_ROW; y < ROWS; y++) for (int x = 0; x < COLS; x++) fs[y][x] = slot_of(floorpx);
+        for (int i = 0; i < ndoor; i++) if (doors[i].room == r) { int tx = doors[i].tx; memcpy(a, wallpx, sizeof a); over24(a, doorpx); glyph[1][tx] = 'D'; ws[1][tx] = slot_of(a);
+            if (rm->outdoor) { for (int y = TRIG_ROW; y < ROWS - 1; y++) fs[y][tx] = slot_of(pathpx); } else fs[TRIG_ROW][tx] = slot_of(matpx); }
+        for (int i = 0; i < nscen; i++) if (scen[i].room == r) for (int ci = 0; ci < scen[i].w; ci++) for (int cj = 0; cj < scen[i].h; cj++) { int x = scen[i].x + ci, y = scen[i].y + cj; if (x < 0 || x >= COLS || y < 0 || y >= ROWS) continue;
+            Sheet *s = sheet("tilesets", scen[i].sheet); memcpy(b, floorpx, sizeof b); tile24(s, (scen[i].c + ci) * T, (scen[i].r + cj) * T, a); over24(b, a); glyph[y][x] = scen[i].h >= 2 ? 'T' : 'f'; ws[y][x] = slot_of(b); }
+        for (int i = 0; i < npl; i++) if (pl[i].room == r) { Item *it = &cat[pl[i].item]; Sheet *s = sheet("tilesets", it->sheet);
+            for (int ci = 0; ci < it->w; ci++) for (int cj = 0; cj < it->h; cj++) { int x = pl[i].x + ci, y = pl[i].y + cj; if (x < 0 || x >= COLS || y < 0 || y >= ROWS) continue;
+                tile24(s, (it->c + ci) * T, (it->r + cj) * T, a);
+                if (it->wall) { memcpy(b, wallpx, sizeof b); over24(b, a); ws[y][x] = slot_of(b); } else { memcpy(b, floorpx, sizeof b); over24(b, a); glyph[y][x] = 'f'; ws[y][x] = slot_of(b); } } }
+        (void)fl;
+        snprintf(p, sizeof p, "%s/map.txt", d); { FILE *f = fopen(p, "w"); if (f) { for (int y = 0; y < ROWS; y++) { glyph[y][COLS] = 0; fprintf(f, "%s\n", glyph[y]); } fclose(f); } }
+        snprintf(p, sizeof p, "%s/extrusion.pdl", d); { FILE *f = fopen(p, "w"); if (f) { fprintf(f, "SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\nMETA         | map_id             | rpg-pet\nMETA         | desk_id            | %s\nMETA         | note               | %s (rpg-pet house, exported from the live house)\nEXTRUDE      | W                  | 3\nEXTRUDE      | D                  | 3\nEXTRUDE      | T                  | 2\nEXTRUDE      | f                  | 1\nEXTRUDE      | default            | 0\n", rooms[r].id, rooms[r].name); fclose(f); } }
+        int cols = 16, nrows = (nslot + cols - 1) / cols; int aw = cols * XT, ah = nrows * XT; unsigned char *atlas = calloc((size_t)aw * ah * 4, 1);
+        for (int i = 0; i < nslot; i++) for (int y = 0; y < XT; y++) memcpy(atlas + ((size_t)((i / cols) * XT + y) * aw + (i % cols) * XT) * 4, slotpx[i] + y * XT * 4, XT * 4);
+        snprintf(p, sizeof p, "%s/cells.rgba", d); { FILE *f = fopen(p, "wb"); if (f) { fwrite(atlas, 1, (size_t)aw * ah * 4, f); fclose(f); } } snprintf(p, sizeof p, "%s/cells.png", d); stbi_write_png(p, aw, ah, 4, atlas, aw * 4); free(atlas);
+        snprintf(p, sizeof p, "%s/cells.txt", d); { FILE *f = fopen(p, "w"); if (f) { fprintf(f, "width=%d\nheight=%d\ntile_px=%d\natlas_cols=16\natlas_tiles=%d\ncells\n", COLS, ROWS, XT, nslot); for (int y = 0; y < ROWS; y++) { for (int x = 0; x < COLS; x++) fprintf(f, "%s%d,%d", x ? " " : "", fs[y][x], ws[y][x]); fputc('\n', f); } fclose(f); } }
+        snprintf(p, sizeof p, "%s/events.txt", d); { FILE *f = fopen(p, "w"); if (f) { int dc[4] = {2, 4, 6, 8};
+            for (int i = 0; i < nparty; i++) if (others[i].room == r) { Sheet *s = sheet("characters", party[i].sheet); int ci = party[i].idx; unsigned char px[4] = {128, 128, 128, 255}; if (s) { int fx = (ci % 4) * 3 * T + T + T / 2, fy = (ci / 4) * 4 * T + others[i].dir * T + T / 2; if (fx < s->w && fy < s->h) memcpy(px, s->px + ((size_t)fy * s->w + fx) * 4, 4); } fprintf(f, "%d %d %d %d %d %s %d %d 1\n", others[i].x, others[i].y, px[0], px[1], px[2], party[i].sheet, ci, dc[others[i].dir & 3]); }
+            if (tr.room == r) { Sheet *s = sheet("characters", hero.sheet); unsigned char px[4] = {200, 60, 60, 255}; if (s) { int fx = T + T / 2, fy = tr.dir * T + T / 2; memcpy(px, s->px + ((size_t)fy * s->w + fx) * 4, 4); } fprintf(f, "%d %d %d %d %d %s 0 %d 1\n", tr.x, tr.y, px[0], px[1], px[2], hero.sheet, dc[tr.dir & 3]); }
+            fclose(f); } }
+    }
+    snprintf(p, sizeof p, "%s/game.pdl", root); { FILE *f = fopen(p, "w"); if (f) { fputs(gl, f); fclose(f); } }
+    snprintf(msg, cap, "exported %d rooms as a pc-hq book: maps/rpg-pet (open it in pc-hq: Desk > rpg-pet, then 1-4 / 0 for 3D)", nroom);
+}
 
 /* ---------- verbs ---------- */
 static void verb(int argc, char **argv, char *msg, size_t cap) {
@@ -474,14 +542,27 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
             for (int k = 0; k < COLS * ROWS && !placed; k++) { int x = (6 + k) % COLS, y = TRIG_ROW + 3 + ((6 + k) / COLS) % (ROWS - TRIG_ROW - 3 > 0 ? ROWS - TRIG_ROW - 3 : 1); if (passable(x, y) && door_here(r, x, y) < 0) { pet.x = x; pet.y = y; placed = 1; } }
             snprintf(b, sizeof b, "DOOR|%ld|%s|menu|%s", now, ci < 0 ? "player" : party[ci].id, rooms[r].id); append_line("events.txt", b); pet_save(); set_flag("follow", ci < 0 ? "player" : "pet"); turn_taken = 1; snprintf(msg, cap, "%s is now in the %s", ci < 0 ? "you" : party[ci].name, rooms[r].name); return; }
         snprintf(b, sizeof b, "room:%s", rooms[r].id); set_flag("follow", b); calc_view(); snprintf(msg, cap, "watching the %s", rooms[r].name); return; }
-    if (!strcmp(v, "step") && argc >= 3) { if (!flag_on("int", 0)) { snprintf(msg, cap, "turn INT on first: INT lets you control %s or the player", party[active].name); return; } int ci = ctl_idx(); use_ent(ci); int moved = do_step(atoi(argv[1]), atoi(argv[2]), msg, cap); pet_save(); set_flag("follow", ci < 0 ? "player" : "pet"); if (moved) turn_taken = 1; return; }
+    if (!strcmp(v, "step") && argc >= 3) { if (!run_on()) { snprintf(msg, cap, "stopped: press Play (Player tab) first"); return; } if (!flag_on("int", 0)) { snprintf(msg, cap, "turn INT on first: INT lets you control %s or the player", party[active].name); return; } int ci = ctl_idx(); use_ent(ci); int moved = do_step(atoi(argv[1]), atoi(argv[2]), msg, cap); pet_save(); set_flag("follow", ci < 0 ? "player" : "pet"); if (moved) turn_taken = 1; return; }
     if (!strcmp(v, "control")) { char cur[16]; flag_str("ctl", "pet", cur, sizeof cur); const char *n = argc >= 2 ? argv[1] : (!strcmp(cur, "pet") ? "player" : "pet"); if (strcmp(n, "pet") && strcmp(n, "player")) { snprintf(msg, cap, "control pet or player"); return; } set_flag("ctl", n); set_flag("follow", !strcmp(n, "player") ? "player" : "pet"); calc_view(); snprintf(msg, cap, !strcmp(n, "player") ? "INT now controls you (the player)" : "INT now controls %s", party[active].name); return; }
     if (!strcmp(v, "walk")) { int moved = ai_step(active); use_ent(active); if (moved) snprintf(msg, cap, "%s took a step", party[active].name); else snprintf(msg, cap, "%s stays put", party[active].name); return; }
+    if (!strcmp(v, "export3d")) { export3d(msg, cap); return; }
+    if (!strcmp(v, "play")) { set_flag("running", "1"); clock_paths(); clock_install(); clock_sync(); lc_run(1, "daemon-start", NULL); snprintf(msg, cap, "STARTED: the pets live, the clock runs"); return; }
+    if (!strcmp(v, "stop")) { set_flag("running", "0"); clock_sync(); snprintf(msg, cap, "STOPPED: everything is frozen (building and chat still work). Play resumes"); return; }
+    if (!strcmp(v, "save") || !strcmp(v, "load")) {      /* slot copies of the state files (pets, trainer, ledger, relations, chat, flags, clock time) */
+        int slot = argc >= 2 ? atoi(argv[1]) : 1; if (slot < 1 || slot > 9) slot = 1; int saving = !strcmp(v, "save"); char sd[PATH_MAX]; snprintf(sd, sizeof sd, "%s/slots", ST); mkdir(sd, 0755); snprintf(sd, sizeof sd, "%s/slots/%d", ST, slot); mkdir(sd, 0755);
+        char names[40][48]; int nn = 0; snprintf(names[nn++], 48, "house.txt"); snprintf(names[nn++], 48, "trainer.txt"); snprintf(names[nn++], 48, "relations.txt"); snprintf(names[nn++], 48, "chat.txt"); snprintf(names[nn++], 48, "active.txt"); snprintf(names[nn++], 48, "daylight.txt"); snprintf(names[nn++], 48, "flag_ctl.txt"); snprintf(names[nn++], 48, "flag_follow.txt");
+        for (int i = 0; i < nparty && nn < 38; i++) snprintf(names[nn++], 48, "pet_%s.txt", party[i].id);
+        if (!saving && !fexists(sd)) { snprintf(msg, cap, "slot %d is empty", slot); return; } char mp[PATH_MAX]; snprintf(mp, sizeof mp, "%s/clock_ms.txt", sd);
+        if (saving) { clock_paths(); long long ms = clock_kv_ll("game_time_epoch_ms"); char b[40]; snprintf(b, sizeof b, "%lld\n", ms); write_if_changed(mp, b, strlen(b)); }
+        int ok = 0; for (int i = 0; i < nn; i++) { char a[PATH_MAX], bpath[PATH_MAX], buf[65536]; if (saving) { spath(a, names[i]); snprintf(bpath, sizeof bpath, "%s/%s", sd, names[i]); } else { snprintf(a, sizeof a, "%s/%s", sd, names[i]); spath(bpath, names[i]); }
+            if (!fexists(a)) { if (!saving) remove(bpath); continue; } int n = read_file(a, buf, sizeof buf); write_if_changed(bpath, buf, n); ok++; }
+        if (!saving) { char b[40]; read_file(mp, b, sizeof b); long long ms = atoll(b); if (ms > 0) { clock_paths(); clock_install(); char ma[32]; snprintf(ma, sizeof ma, "%lld", ms); lc_run(0, "cmd", "rpg", "settime", ma, "--source", "rpg-load", NULL); lc_run(0, "step", "5", NULL); } pet_load(); }
+        snprintf(msg, cap, "%s slot %d (%d files)", saving ? "saved to" : "loaded from", slot, ok); return; }
     if (!strcmp(v, "clearchat")) { char p[PATH_MAX], q[PATH_MAX]; spath(p, "chat.txt"); snprintf(q, sizeof q, "%s/chat.txt.%ld.bak", ST, now); if (fexists(p)) rename(p, q); snprintf(msg, cap, "chat cleared (kept as chat.txt.%ld.bak)", now); return; }
     if (!strcmp(v, "toggle") && argc >= 2 && (!strcmp(argv[1], "chat") || !strcmp(argv[1], "hb") || !strcmp(argv[1], "voice"))) { set_flag(argv[1], flag_on(argv[1], !strcmp(argv[1], "voice")) ? "0" : "1"); snprintf(msg, cap, "%s toggled", argv[1]); return; }
     if (!strcmp(v, "view")) { char c[16]; flag_str("view", "2d", c, sizeof c); const char *n = !strcmp(c, "2d") ? "3d" : !strcmp(c, "3d") ? "glyph" : "2d"; set_flag("view", n); snprintf(msg, cap, "view %s (the picture is still 2D: 3D and the Chinese-glyph view are sprint items 7-8)", n); return; }
     if (!strcmp(v, "int")) { int on = !flag_on("int", 0); set_flag("int", on ? "1" : "0"); char d[PATH_MAX]; snprintf(d, sizeof d, "%s/keyboard", ST); mkdir(d, 0755); char p[PATH_MAX]; spath(p, "interact_relay.txt"); FILE *f = fopen(p, "a"); if (f) fclose(f); snprintf(p, sizeof p, "%s/keyboard/history.txt", ST); f = fopen(p, "a"); if (f) fclose(f);
-        clock_paths(); clock_pause(on); if (on) { set_flag("follow", "pet"); calc_view(); }
+        clock_sync(); if (on) { set_flag("follow", "pet"); calc_view(); }
         { char cc[16]; flag_str("ctl", "pet", cc, sizeof cc); snprintf(msg, cap, on ? "INT on: you control %s - turn based like a roguelike, time moves when you act, the other pets act on their own, Tab switches pet/player, Esc leaves" : "INT off: real time, every pet lives on its own", !strcmp(cc, "player") ? "the player" : party[active].name); } return; }
     if (!strcmp(v, "clock") && argc >= 2) { clock_paths(); if (!clock_ok()) { snprintf(msg, cap, "no livedesk clock binary"); return; } clock_install();
         if (!strcmp(argv[1], "rate") && argc >= 3) { lc_run(0, "cmd", "rpg", "rate", argv[2], "--source", "rpg-menu", NULL); snprintf(msg, cap, "clock speed %s (real time mode)", argv[2]); }
@@ -506,22 +587,25 @@ static void bye(int s) { (void)s; quit_flag = 1; }
 /* new "<code> <ms>" lines since the stored offset; returns the codes */
 static int poll_keys(const char *p, long *off, int *codes, int max) {
     long sz = fsize(p); if (sz < *off) *off = 0; if (sz == *off) return 0; FILE *f = fopen(p, "r"); if (!f) return 0; fseek(f, *off, SEEK_SET); char l[80]; int n = 0;
-    while (n < max && fgets(l, sizeof l, f)) { if (l[0] == '#' || l[0] < '0' || l[0] > '9') continue; codes[n++] = atoi(l); }       /* "<decimal code> <ms>" */
+    while (n < max && fgets(l, sizeof l, f)) { if (!strncmp(l, "KEY_PRESSED:", 12)) { codes[n++] = atoi(l + 12); continue; }       /* keyboard/history.txt: Esc arrives as "KEY_PRESSED: 27" */
+        if (l[0] == '#' || l[0] < '0' || l[0] > '9') continue; codes[n++] = atoi(l); }       /* interact_relay.txt: "<decimal code> <ms>" */
     *off = ftell(f); fclose(f); return n;
 }
 static int daemon_main(void) {
     signal(SIGTERM, bye); signal(SIGINT, bye); signal(SIGHUP, bye); srand((unsigned)(time(NULL) ^ getpid()));
     char h1[PATH_MAX], h2[PATH_MAX], d[PATH_MAX]; snprintf(d, sizeof d, "%s/keyboard", ST); mkdir(d, 0755); spath(h1, "interact_relay.txt"); snprintf(h2, sizeof h2, "%s/keyboard/history.txt", ST);
-    long o1 = fsize(h1), o2 = fsize(h2), next_ms[NP], last_ui = 0; for (int i = 0; i < NP; i++) next_ms[i] = now_ms() + 600 + 450L * i; char msg[200], lastday[40] = "";
+    long o1 = fsize(h1), o2 = fsize(h2), next_ms[NP], last_ui = 0; int was_run = run_on(); for (int i = 0; i < NP; i++) next_ms[i] = now_ms() + 600 + 450L * i; char msg[200], lastday[40] = "";
     load_data(); replay(); pet_load(); clock_start(); out_all("");
     while (!quit_flag) {
         usleep(100000); int dirty = 0, codes[64], n; msg[0] = 0; load_data(); pet_load(); int in = flag_on("int", 0);
         n = poll_keys(h1, &o1, codes, 32); n += poll_keys(h2, &o2, codes + n, 32);     /* the offsets always advance; keys only act while INT is on */
         if (in && n) replay();
         if (in && n) { char kl[300], one[16]; kl[0] = 0; for (int i = 0; i < n && i < 20; i++) { snprintf(one, sizeof one, "%d ", codes[i]); strncat(kl, one, sizeof kl - strlen(kl) - 1); } char kp[PATH_MAX]; spath(kp, "keys_seen.txt"); write_if_changed(kp, kl, strlen(kl)); }      /* last batch of codes, for debugging */
+        { int r = run_on(); if (r != was_run) { was_run = r; clock_sync(); dirty = 1; } }
         if (in) for (int i = 0; i < n; i++) { int c = codes[i], dx = 0, dy = 0;
             if (c == 1002 || c == 200) dy = -1; else if (c == 1003 || c == 201) dy = 1; else if (c == 1000 || c == 202) dx = -1; else if (c == 1001 || c == 203) dx = 1;
-            else if (c == 27) { set_flag("int", "0"); clock_pause(0); snprintf(msg, sizeof msg, "INT off: real time"); dirty = 1; break; }
+            else if (c == 27) { set_flag("int", "0"); clock_sync(); snprintf(msg, sizeof msg, "INT off: real time"); dirty = 1; break; }      /* Esc leaves INT (keyboard/history.txt: KEY_PRESSED: 27) */
+            else if (!run_on()) continue;
             else if (c == 9) { char cc[16]; flag_str("ctl", "pet", cc, sizeof cc); int toplayer = !strcmp(cc, "pet"); set_flag("ctl", toplayer ? "player" : "pet"); set_flag("follow", toplayer ? "player" : "pet"); snprintf(msg, sizeof msg, toplayer ? "INT now controls you (the player)" : "INT now controls %s", party[active].name); dirty = 1; continue; }
             else if (c == '0') { char cv[16]; flag_str("view", "2d", cv, sizeof cv); set_flag("view", !strcmp(cv, "2d") ? "3d" : "2d"); snprintf(msg, sizeof msg, "view toggled (3D draws with sprint item 7)"); dirty = 1; continue; }
             else if (c >= '1' && c <= '4') { char pv[8]; snprintf(pv, sizeof pv, "%c", c); set_flag("pov", pv); snprintf(msg, sizeof msg, "pov %c stored (3D draws with sprint item 7)", c); dirty = 1; continue; }
@@ -529,7 +613,7 @@ static int daemon_main(void) {
             { int ci = ctl_idx(); use_ent(ci); if (do_step(dx, dy, msg, sizeof msg)) { pet_save(); set_flag("follow", ci < 0 ? "player" : "pet"); end_turn(); } else pet_save(); }      /* a bump costs no turn */
             dirty = 1; }
         long ms = now_ms();
-        for (int i = 0; i < nparty; i++) if (ms >= next_ms[i]) { next_ms[i] = ms + 900 + rand() % 700; if (in) continue; replay(); if (ai_step(i)) dirty = 1; use_ent(active); }     /* real time (INT off): every pet walks on its own. INT on is turn based: no timers, only your acts advance time */
+        for (int i = 0; i < nparty; i++) if (ms >= next_ms[i]) { next_ms[i] = ms + 900 + rand() % 700; if (in || !run_on()) continue; replay(); if (ai_step(i)) dirty = 1; use_ent(active); }     /* real time (INT off): every pet walks on its own. INT on is turn based: no timers, only your acts advance time */
         if (ms - last_ui > 3000) { last_ui = ms; clock_paths(); clock_ui(); }
         { char dp[PATH_MAX], db[40]; spath(dp, "daylight.txt"); read_file(dp, db, sizeof db); if (strcmp(db, lastday)) { snprintf(lastday, sizeof lastday, "%s", db); dirty = 1; } }
         if (dirty) { replay(); out_all(msg); }    /* nothing changed -> nothing rendered, nothing written, nothing repainted */

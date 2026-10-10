@@ -28,3 +28,5 @@ window { width: 916px; height: 560px; background-color: #14161c; font-family: De
 .rp-menu-row { background-color: #1c1c1c; color: #cccccc; font-weight: bold; width: 200px; height: 20px; font-size: 10px; padding: 2px; border: 1px solid #333333; }
 .pchq-ft.active { background-color: #2f5f8f; color: #ffffff; }
 .ph-quiet { color: #aaaaaa; }
+.ph-green { color: #33dd55; font-weight: bold; padding: 4px 8px; }
+.ph-red { color: #ff4444; font-weight: bold; padding: 4px 8px; }

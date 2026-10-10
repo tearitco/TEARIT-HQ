@@ -13,6 +13,7 @@
       <tab id="tb-time" class="tab rp-tb" label="${time_label} ▾" onclick="ACTIVATE" target_id="tb-time"/>
       <tab id="tb-shop" class="tab rp-tb" label="Shop ▾" onclick="ACTIVATE" target_id="tb-shop"/>
       <tab id="tb-menu" class="tab rp-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
+      <tab id="tb-player" class="tab rp-tb" label="Player ▾" onclick="ACTIVATE" target_id="tb-player"/>
     </tabbar>
     <sidebar id="side" class="sidebar">
       <repeat count="${n_party}" bind="party">
@@ -42,6 +43,12 @@
       <item id="mn-view" class="rp-menu-row dropdown-child" target_id="tb-menu" label="View: 2D / 3D / glyph" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' view"/>
       <item id="mn-reset" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Reset house (keeps a backup)" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' reset"/>
       <item id="mn-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-menu" label="- cancel -" action="void"/>
+      <item id="pm-play" class="rp-menu-row dropdown-child" target_id="tb-player" label="Play" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' play"/>
+      <item id="pm-stop" class="rp-menu-row dropdown-child" target_id="tb-player" label="Stop" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' stop"/>
+      <item id="pm-save" class="rp-menu-row dropdown-child" target_id="tb-player" label="Save (slot 1)" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' save 1"/>
+      <item id="pm-load" class="rp-menu-row dropdown-child" target_id="tb-player" label="Load (slot 1)" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' load 1"/>
+      <item id="pm-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-player" label="- cancel -" action="void"/>
+      <text id="light" label="${run_label}" class="${run_cls}"/>
       <text label="coins ${coins}" class="rp-big"/>
       <text label="${nick_line}" class="ph-quiet"/>
       <text label="${wallet_line}" class="ph-quiet"/>
