@@ -2,12 +2,7 @@ SECTION | KEY | VALUE
 ----------------------------------------
 # nav.pdl - the sidebar buttons of the pet trainer window, per view. Edit here (or in the layout studio); pet_event.sh status turns every row into nav_<i>_label/verb/arg.
 # NAV | view | label | verb | arg      view = room | manage | world. Special label {party} = one row per pet (label "<n> <name>", arg = pet id). A verb runs: pet_event.sh <verb> <arg>.
-NAV | room   | Manage pets          | view       | manage
 NAV | room   | Go outside (World)   | view       | world
-NAV | room   | Player menu          | menu_toggle | -
-NAV | room   | Inventory            | inv_toggle | -
-NAV | room   | Events (show all)    | open_events | -
-NAV | room   | + New event         | new_event  | -
 NAV | manage | {party}              | select     | {id}
 NAV | manage | < Back to the house  | view       | room
 NAV | world  | Up                   | world_move | up

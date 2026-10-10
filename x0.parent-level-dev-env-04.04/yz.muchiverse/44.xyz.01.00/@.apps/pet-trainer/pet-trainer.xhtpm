@@ -4,29 +4,39 @@
 <window label="Pet trainer - ${name}" class="pet-trainer database-window fixed-size" vars="state/ui.txt">
   <module src="@.apps/pet-trainer/ops/+x/pet_manager.+x" id="_"/>
   <page name="main">
-    <tabbar class="tab-bar">
-      <tab id="t_save" class="tab" label="Save" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' fire save_1"/>
-      <tab id="t_load" class="tab" label="Load" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' fire load_1"/>
-      <tab id="t_play" class="tab" label="Play" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' fire start"/>
-      <tab id="t_stop" class="tab" label="Stop" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' fire stop"/>
-      <tab id="t_manage" class="tab" label="Manage" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' fire view_manage"/>
-      <tab id="t_world" class="tab" label="World" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' fire view_world"/>
-      <tab id="t_player" class="tab" label="Player" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' player"/>
+    <tabbar id="toolbar" class="tab-bar">
+      <tab id="tb-in" class="tab ph-tb ${interact_class}" label="INT: ${interact_label}" relay="${bv_h1},${bv_h2}" onclick="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' interact"/>
+      <tab id="tb-book" class="tab ph-tb" label="${book_label} ▾" onclick="ACTIVATE" target_id="tb-book"/>
+      <tab id="tb-page" class="tab ph-tb" label="${page_label} ▾" onclick="ACTIVATE" target_id="tb-page"/>
+      <tab id="tb-menu" class="tab ph-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
+      <tab id="tb-player" class="tab ph-tb" label="Player ▾" onclick="ACTIVATE" target_id="tb-player"/>
     </tabbar>
     <sidebar id="side" class="sidebar">
+      <repeat count="${n_book}" bind="bk">
+        <item id="bk-${bk.#}" class="ph-menu-row dropdown-child ${bk.active}" target_id="tb-book" label="${bk.label}" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' select ${bk.arg}"/>
+      </repeat>
+      <item id="bk-cancel" class="ph-menu-row dropdown-child quiet" target_id="tb-book" label="- cancel -" action="void"/>
+      <item id="pg-room" class="ph-menu-row dropdown-child" target_id="tb-page" label="room (the house)" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' fire view_room"/>
+      <item id="pg-manage" class="ph-menu-row dropdown-child" target_id="tb-page" label="manage (all six)" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' fire view_manage"/>
+      <item id="pg-world" class="ph-menu-row dropdown-child" target_id="tb-page" label="world (village)" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' fire view_world"/>
+      <item id="pg-cancel" class="ph-menu-row dropdown-child quiet" target_id="tb-page" label="- cancel -" action="void"/>
+      <item id="mn-pet" class="ph-menu-row dropdown-child" target_id="tb-menu" label="Pet menu (feed, care)" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' menu_toggle"/>
+      <item id="mn-hotbar" class="ph-menu-row dropdown-child" target_id="tb-menu" label="Hotbar show / hide" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' hotbar_toggle"/>
+      <item id="mn-events" class="ph-menu-row dropdown-child" target_id="tb-menu" label="Events (show all)" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' open_events"/>
+      <item id="mn-newev" class="ph-menu-row dropdown-child" target_id="tb-menu" label="+ New event" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' new_event"/>
+      <item id="mn-cancel" class="ph-menu-row dropdown-child quiet" target_id="tb-menu" label="- cancel -" action="void"/>
+      <item id="pm-play" class="ph-menu-row dropdown-child" target_id="tb-player" label="Play" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' fire start"/>
+      <item id="pm-stop" class="ph-menu-row dropdown-child" target_id="tb-player" label="Stop" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' fire stop"/>
+      <item id="pm-save" class="ph-menu-row dropdown-child" target_id="tb-player" label="Save (slot 1)" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' fire save_1"/>
+      <item id="pm-load" class="ph-menu-row dropdown-child" target_id="tb-player" label="Load (slot 1)" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' fire load_1"/>
+      <item id="pm-cancel" class="ph-menu-row dropdown-child quiet" target_id="tb-player" label="- cancel -" action="void"/>
       <text id="light" label="${run_label}" class="${run_cls}"/>
-      <item id="tb-in" class="ph-row ${interact_class}" label="INT: ${interact_label}" relay="${bv_h1},${bv_h2}" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' interact"/>
       <repeat count="${n_nav}" bind="nav">
         <item id="nv${nav.#}" class="ph-row" label="${nav.label}" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' ${nav.verb} ${nav.arg}"/>
       </repeat>
       <scrolllist>
         <repeat count="${n_menu_shown}" bind="menu">
           <item id="mn${menu.#}" class="ph-row" label="${menu.label}" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' ${menu.verb} ${menu.arg}"/>
-        </repeat>
-      </scrolllist>
-      <scrolllist>
-        <repeat count="${inv_shown}" bind="inv">
-          <item id="iv${inv.#}" class="ph-row" label="${inv.text}" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' inv_use ${inv.#}"/>
         </repeat>
       </scrolllist>
       <text label="${chat_2}" class="ph-chat"/>
@@ -37,6 +47,20 @@
     </sidebar>
     <panel id="room_p" class="ph-panel">
       <canvas id="room" class="ph-room" sprite="${scene_raw}"/>
+      <row id="hotbar-ov" class="canvas-overlay-bottom ov-chrome ov-slide-x ph-hotbar theme" show="${hb_visible}">
+        <text label="${hb_title}" class="hb-quiet ov-title theme-3"/>
+        <item id="hb-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' hotbar_toggle"/>
+        <repeat count="${hb_n_slots}" bind="hbs">
+          <item id="hbs${hbs.#}" class="hb-slot skin-bar ${hbs.cls}" label="${hbs.text}" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' inv_use ${hbs.#}"/>
+        </repeat>
+      </row>
     </panel>
+    <footer id="statusbar" class="pchq-footer">
+      <text label="tii" class="quiet"/>
+      <item id="hb-toggle" class="pchq-ft skin-bar" label="hb" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' hotbar_toggle"/>
+      <repeat count="${n_book}" bind="bk">
+        <item id="e${bk.#}" class="pchq-ft skin-bar ${bk.active}" label="${bk.label}" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' select ${bk.arg}"/>
+      </repeat>
+    </footer>
   </page>
 </window>

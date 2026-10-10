@@ -75,7 +75,11 @@ static int navmap(const char *view, Btn *out, int max) {
             int is_tab = !strncmp(tag, "<tab ", 5), is_item = !strncmp(tag, "<item ", 6), is_cli = !strncmp(tag, "<cli_io ", 8);
             if ((pass == 0 && !is_tab) || (pass == 1 && !(is_item || is_cli))) continue;
             Btn *b = &out[cnt]; memset(b, 0, sizeof *b); char act[512]; attr(tag, "label", b->label, sizeof b->label); attr(tag, "action", act, sizeof act); if (!act[0]) attr(tag, "onclick", act, sizeof act);
-            split_action(act, b->verb, b->arg); snprintf(b->where, 8, is_tab ? "tab" : is_cli ? "field" : "side"); b->n = ++num; cnt++; if (cnt >= max) break;
+            split_action(act, b->verb, b->arg); snprintf(b->where, 8, is_tab ? "tab" : is_cli ? "field" : "side");
+            { char cls[256]; attr(tag, "class", cls, sizeof cls); char tgt[48]; attr(tag, "target_id", tgt, sizeof tgt);
+              if (strstr(cls, "dropdown-child")) { snprintf(b->where, 8, "drop"); b->n = 0; if (tgt[0]) { char l2[96]; snprintf(l2, sizeof l2, "[%s] %s", tgt, b->label); snprintf(b->label, sizeof b->label, "%s", l2); } }   /* dropdown rows: reached through their tab, no nav number of their own */
+              else b->n = ++num; }
+            cnt++; if (cnt >= max) break;
         }
         if (pass == 0) { /* party rows need the actual names: published by the manager in state/ui.txt; here we expand {party} to six generic rows if the flow has a party file */ }
     }
@@ -85,7 +89,7 @@ static int navmap(const char *view, Btn *out, int max) {
     if (pt) { Btn tmp[MAXB]; int tn = 0, shift = 0; for (int i = 0; i < cnt; i++) {
             if (!strcmp(out[i].label, "{party row}")) { char *copy = strdup(pt); char *l = strtok(copy, "\n"); int k = 0; while (l && tn < MAXB - 1) { char id[32], nm[32]; if (sscanf(l, "%31s %31s", id, nm) == 2) { Btn *t = &tmp[tn++]; *t = out[i]; snprintf(t->label, 96, "%d %s", ++k, nm); snprintf(t->arg, 96, "%s", id); } l = strtok(NULL, "\n"); } free(copy); shift += k - 1; }
             else if (tn < MAXB) tmp[tn++] = out[i]; }
-        int nn2 = 0; for (int i = 0; i < tn && i < max; i++) { out[i] = tmp[i]; out[i].n = ++nn2; } cnt = tn < max ? tn : max; free(pt); (void)shift; }
+        int nn2 = 0; for (int i = 0; i < tn && i < max; i++) { out[i] = tmp[i]; out[i].n = strcmp(out[i].where, "drop") ? ++nn2 : 0; } cnt = tn < max ? tn : max; free(pt); (void)shift; }
     return cnt;
 }
 static int has_word(const char *list, const char *w) { /* list tokens separated by | or space or ) */ size_t n = strlen(w); const char *p = list; while ((p = strstr(p, w))) { char a = p == list ? '|' : p[-1], b = p[n]; if ((a == '|' || a == ' ' || a == '"' || a == '(') && (b == '|' || b == ')' || b == ' ' || b == 0)) return 1; p += n; } return 0; }

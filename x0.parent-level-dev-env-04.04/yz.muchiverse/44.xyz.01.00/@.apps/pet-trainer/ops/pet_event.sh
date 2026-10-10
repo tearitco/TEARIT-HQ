@@ -4,6 +4,7 @@
 # &.widgits/concept-bank/ops/entity_grade, an evolve check, and a refresh of ui.txt for the layout window. Exit 0 on bad input (an empty verb never harms).
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 HOUSE="$(cd "$HERE/../.." && pwd)"
+trap 'rm -f "$SHARED"/*.tmp.$$ "$PET"/*.tmp.$$ 2>/dev/null' EXIT   # per-run temp files (concurrent runs - the manager tick and a key press - must never share one)
 SHARED="${PET_SHARED:-$HERE/state}"      # window-facing files (ui.txt, scene.raw, view.txt, party.txt, active.txt, world.st); each pet lives in $SHARED/pets/<id>/
 DB="${PET_DB:-$HOUSE/&.widgits/db-hq/data}"     # the RPG Maker database (db-hq): the party is SYSTEM PetParty, every pet is an ACTOR row (class Pet, note: pet species N seed S)
 ACTIVE="$(cat "$SHARED/active.txt" 2>/dev/null)"; [ -z "$ACTIVE" ] && ACTIVE="$(awk 'NR==1{print $1}' "$SHARED/party.txt" 2>/dev/null)"; ACTIVE="${ACTIVE:-a13}"
@@ -185,15 +186,15 @@ evolve() {
 }
 
 nav_rows() { # nav_<i>_label/verb/arg from nav.pdl for the current view ({party} expands to one row per pet)
-    vw=$(cat "$SHARED/view.txt" 2>/dev/null); vw=${vw:-room}; [ "$vw" = world ] && [ "$(cat "$SHARED/party_open.txt" 2>/dev/null)" = 1 ] && vw=worldparty; i=0; : > "$SHARED/nav.tmp"
+    vw=$(cat "$SHARED/view.txt" 2>/dev/null); vw=${vw:-room}; [ "$vw" = world ] && [ "$(cat "$SHARED/party_open.txt" 2>/dev/null)" = 1 ] && vw=worldparty; i=0; : > "$SHARED/nav.tmp.$$"
     while IFS='|' read -r tag v label verb arg; do
         case "$tag" in NAV*) ;; *) continue;; esac; v=$(echo $v); [ "$v" = "$vw" ] || continue; label=$(echo $label); verb=$(echo $verb); arg=$(echo $arg)
         if [ "$label" = "{party}" ]; then n=0
             while read -r pid pname _; do n=$((n+1)); mark=""; [ "$pid" = "$ACTIVE" ] && mark="*"; sp=$(sed -n 's/^species=//p' "$SHARED/pets/$pid/variables.txt" 2>/dev/null | head -1)
-                printf 'nav_%s_label=%s %s%s\nnav_%s_verb=%s\nnav_%s_arg=%s\n' "$i" "$n" "$pname" "$mark" "$i" "$verb" "$i" "$pid" >> "$SHARED/nav.tmp"; i=$((i+1)); done < "$SHARED/party.txt"
-        else printf 'nav_%s_label=%s\nnav_%s_verb=%s\nnav_%s_arg=%s\n' "$i" "$label" "$i" "$verb" "$i" "$arg" >> "$SHARED/nav.tmp"; i=$((i+1)); fi
+                printf 'nav_%s_label=%s %s%s\nnav_%s_verb=%s\nnav_%s_arg=%s\n' "$i" "$n" "$pname" "$mark" "$i" "$verb" "$i" "$pid" >> "$SHARED/nav.tmp.$$"; i=$((i+1)); done < "$SHARED/party.txt"
+        else printf 'nav_%s_label=%s\nnav_%s_verb=%s\nnav_%s_arg=%s\n' "$i" "$label" "$i" "$verb" "$i" "$arg" >> "$SHARED/nav.tmp.$$"; i=$((i+1)); fi
     done < "$HERE/nav.pdl"
-    printf 'n_nav=%s\n' "$i"; cat "$SHARED/nav.tmp"
+    printf 'n_nav=%s\n' "$i"; cat "$SHARED/nav.tmp.$$"; rm -f "$SHARED/nav.tmp.$$"
 }
 db_seed() { # add the six starter pets to the RPG Maker DB once: CLASS Pet, ACTOR 13..18, SYSTEM PetParty (member1..6). Additive only; the hero party (SYSTEM Party) is never touched.
     [ -f "$DB/actors.pdl" ] || return 0
@@ -216,9 +217,9 @@ sync_party() { # party.txt = cache of the DB: one line per PetParty member in or
     awk -F'|' 'function tr(s){gsub(/^ +| +$/,"",s); return s}
         FNR==NR { k=tr($2); v=tr($3); if ($1 ~ /^SYSTEM/) { if (k=="name") inpp=(v=="PetParty"); else if (inpp && k ~ /^member[0-9]+$/) { m[++n]=v } } next }
         $1 ~ /^ACTOR/ { k=tr($2); v=tr($3); if (k=="id") cur=v; else if (k=="name") nm[cur]=v; else if (k=="note" && v ~ /^pet /) { split(v,a," "); sp[cur]=a[3]; sd[cur]=a[5] } }
-        END { for (i=1;i<=n;i++) for (c in nm) if (nm[c]==m[i] && (c in sp)) { printf "a%s %s %s %s\n", c, m[i], sp[c], sd[c]; break } }' "$DB/system.pdl" "$DB/actors.pdl" > "$SHARED/party.tmp"
-    [ -s "$SHARED/party.tmp" ] || { rm -f "$SHARED/party.tmp"; return 0; }
-    cmp -s "$SHARED/party.tmp" "$SHARED/party.txt" 2>/dev/null && { rm -f "$SHARED/party.tmp"; } || mv -f "$SHARED/party.tmp" "$SHARED/party.txt"
+        END { for (i=1;i<=n;i++) for (c in nm) if (nm[c]==m[i] && (c in sp)) { printf "a%s %s %s %s\n", c, m[i], sp[c], sd[c]; break } }' "$DB/system.pdl" "$DB/actors.pdl" > "$SHARED/party.tmp.$$"
+    [ -s "$SHARED/party.tmp.$$" ] || { rm -f "$SHARED/party.tmp.$$"; return 0; }
+    cmp -s "$SHARED/party.tmp.$$" "$SHARED/party.txt" 2>/dev/null && { rm -f "$SHARED/party.tmp.$$"; } || mv -f "$SHARED/party.tmp.$$" "$SHARED/party.txt"
     while read -r pid pname psp psd; do [ -f "$SHARED/pets/$pid/variables.txt" ] || PET_DIR="$SHARED/pets/$pid" PET_SPECIES="$psp" PET_NAME="$pname" sh "$0" new_pet "${psd:-1}" >/dev/null 2>&1; done < "$SHARED/party.txt"
     [ -s "$SHARED/active.txt" ] || awk 'NR==1{print $1}' "$SHARED/party.txt" > "$SHARED/active.txt"; [ -s "$SHARED/view.txt" ] || echo room > "$SHARED/view.txt"
 }
@@ -241,26 +242,28 @@ status() {
             "$(getv name_id)" "$(cat "$PET/stage.txt" 2>/dev/null)" "$(getv rpg_level)" "$(getv rpg_exp)" "$(getv rpg_mp)" "${h:-0}" "${e:-100}" "${c:-100}" "${p:-50}" "$state"
         printf 'grade=%s\n' "$(sed -n 's/.*max_tier: *//p' "$PET/learning_limits.pdl" 2>/dev/null | head -1)"
         printf 'likes=%s\n' "$(sed -n 's/^pref_\([a-z]*\)=\(.*\)/\1:\2/p' "$W" | tr '\n' ' ')"
-        { lv=$(getv rpg_level); i=0; : > "$PET/menu.tmp"; grp=$(cat "$PET/menu_group.txt" 2>/dev/null)
+        { lv=$(getv rpg_level); i=0; : > "$PET/menu.tmp.$$"; grp=$(cat "$PET/menu_group.txt" 2>/dev/null)
           if [ -z "$grp" ]; then   # level 1: the groups the pet's level allows (in menu.pdl order, once each)
               for g in $(awk -F'|' -v lv="${lv:-1}" '/^MENU/{g=$3; n=$7; gsub(/ /,"",g); gsub(/ /,"",n); if (n+0<=lv+0 && !(g in seen)) {seen[g]=1; print g}}' "$HERE/menu.pdl"); do
-                  printf 'menu_%s_label=%s\nmenu_%s_verb=menu_group\nmenu_%s_arg=%s\n' "$i" "$g >" "$i" "$i" "$g" >> "$PET/menu.tmp"; i=$((i+1)); done
+                  printf 'menu_%s_label=%s\nmenu_%s_verb=menu_group\nmenu_%s_arg=%s\n' "$i" "$g >" "$i" "$i" "$g" >> "$PET/menu.tmp.$$"; i=$((i+1)); done
           else
               while IFS='|' read -r tag id g label verb arg need; do
                   case "$tag" in MENU*) ;; *) continue;; esac
                   g=$(echo $g); need=$(echo "$need" | tr -d ' '); [ "$g" = "$grp" ] || continue; [ "${need:-1}" -le "${lv:-1}" ] || continue
-                  printf 'menu_%s_label=%s\nmenu_%s_verb=fire\nmenu_%s_arg=%s\n' "$i" "$(echo $label)" "$i" "$i" "$(echo $id)" >> "$PET/menu.tmp"; i=$((i+1))
+                  printf 'menu_%s_label=%s\nmenu_%s_verb=fire\nmenu_%s_arg=%s\n' "$i" "$(echo $label)" "$i" "$i" "$(echo $id)" >> "$PET/menu.tmp.$$"; i=$((i+1))
               done < "$HERE/menu.pdl"
-              printf 'menu_%s_label=< Back\nmenu_%s_verb=menu_group\nmenu_%s_arg=\n' "$i" "$i" "$i" >> "$PET/menu.tmp"; i=$((i+1))
+              printf 'menu_%s_label=< Back\nmenu_%s_verb=menu_group\nmenu_%s_arg=\n' "$i" "$i" "$i" >> "$PET/menu.tmp.$$"; i=$((i+1))
           fi
           mo=$(cat "$PET/menu_open.txt" 2>/dev/null || echo 0); [ "$(cat "$SHARED/view.txt" 2>/dev/null)" = room ] || [ ! -f "$SHARED/view.txt" ] || mo=0; shown=0; [ "$mo" = 1 ] && shown=$i
-          printf 'n_menu=%s\nn_menu_shown=%s\nmenu_visible=%s\nmenu_group=%s\n' "$i" "$shown" "$mo" "$grp"; cat "$PET/menu.tmp"; }
+          printf 'n_menu=%s\nn_menu_shown=%s\nmenu_visible=%s\nmenu_group=%s\n' "$i" "$shown" "$mo" "$grp"; cat "$PET/menu.tmp.$$"; }
         if running; then printf 'run_cls=ph-green\nrun_label=GO started\nrun_on=1\n'; else printf 'run_cls=ph-red\nrun_label=STOP stopped\nrun_on=0\n'; fi
         printf 'event_n=%s\n' "$(grep -c . "$PET/event_pkg/events_index.txt" 2>/dev/null)"
         printf 'anim=%s\nscene_raw=%s/scene.raw\ncanvas_raw=%s/scene.raw\nview=%s\nactive_id=%s\nactive_dir=%s\n' "$anim" "$SHARED" "$SHARED" "$(cat "$SHARED/view.txt" 2>/dev/null || echo room)" "$ACTIVE" "$PET"
-        ia=$(cat "$SHARED/interact_armed.txt" 2>/dev/null); if [ "$ia" = 1 ]; then printf 'interact_armed=1\ninteract_class=interact-active\ninteract_label=on (Esc: off)\n'; else printf 'interact_armed=0\ninteract_class=\ninteract_label=off\n'; fi
+        ia=$(cat "$SHARED/interact_armed.txt" 2>/dev/null); if [ "$ia" = 1 ]; then printf 'interact_armed=1\ninteract_class=interact-active\ninteract_label=on\n'; else printf 'interact_armed=0\ninteract_class=\ninteract_label=off\n'; fi
         printf 'bv_h1=%s/interact_relay.txt\nbv_h2=%s/keyboard/history.txt\n' "$SHARED" "$SHARED"
         [ -f "$SHARED/camera.st" ] && sed 's/^/cam_/' "$SHARED/camera.st"
+        { nb=0; while read -r bid bname _; do printf 'bk_%s_label=%s\nbk_%s_arg=%s\nbk_%s_active=%s\n' "$nb" "$bname" "$nb" "$bid" "$nb" "$([ "$bid" = "$ACTIVE" ] && echo active)"; nb=$((nb+1)); done < "$SHARED/party.txt"
+          printf 'n_book=%s\nbook_label=book:%s\npage_label=page:%s\n' "$nb" "$(getv name_id)" "$(cat "$SHARED/view.txt" 2>/dev/null || echo room)"; }
         nav_rows
         n=0; tail -4 "$CHAT" 2>/dev/null | while IFS= read -r line; do printf 'chat_%s=%s\n' "$n" "$line"; n=$((n+1)); done
         printf 'known_words=%s\n' "$(awk -F'|' '/^LEX/{p=$2; gsub(/^ +| +$/,"",p); printf "%s ", p}' "$LEXF" 2>/dev/null)"
@@ -269,8 +272,13 @@ status() {
           [ -f "$PET/inv_proj.txt" ] && { n=$(sed -n 's/^count=//p' "$PET/inv_proj.txt"); sel=$(sed -n 's/^selected=//p' "$PET/inv_proj.txt"); }
           io=$(cat "$PET/inv_open.txt" 2>/dev/null || echo 0); [ "$(cat "$SHARED/view.txt" 2>/dev/null)" = room ] || [ ! -f "$SHARED/view.txt" ] || io=0; ishown=0; [ "$io" = 1 ] && ishown=${n:-0}
           printf 'inv_n=%s\ninv_sel=%s\ninv_shown=%s\ninv_visible=%s\n' "${n:-0}" "${sel:-0}" "$ishown" "$io"
-          [ -f "$PET/inv_proj.txt" ] && sed -n 's/^slot_\([0-9]*\)=\(.*\)|\(.*\)$/inv_\1_text=\2 \3/p' "$PET/inv_proj.txt"; }
-    } > "$SHARED/ui.tmp"; if cmp -s "$SHARED/ui.tmp" "$SHARED/ui.txt"; then rm -f "$SHARED/ui.tmp"; else mv -f "$SHARED/ui.tmp" "$SHARED/ui.txt"; fi; printf '%s\n' "$PET" > "$SHARED/active_dir.txt"
+          [ -f "$PET/inv_proj.txt" ] && sed -n 's/^slot_\([0-9]*\)=\(.*\)|\(.*\)$/inv_\1_text=\2 \3/p' "$PET/inv_proj.txt"
+          hv=1; [ "$(cat "$SHARED/hotbar_hidden.txt" 2>/dev/null)" = 1 ] && hv=""
+          hn=${n:-0}; [ "$hn" -gt 6 ] && hn=6      # the bar shows the first six items (it must fit over the 360 px picture)
+          printf 'hb_visible=%s\nhb_n_slots=%s\n' "$hv" "$hn"
+          selname=$(sed -n "s/^slot_${sel:-0}=.*|//p" "$PET/inv_proj.txt" 2>/dev/null | head -1); printf 'hb_title=%s - slot: %s\n' "$(getv name_id)" "${selname:-empty}"
+          [ -f "$PET/inv_proj.txt" ] && awk -F'[=|]' -v s="${sel:-0}" '/^slot_/{i=substr($1,6)+0; if (i>5) next; printf "hbs_%d_text=%s\nhbs_%d_cls=%s\n", i, $2, i, (i==s ? "hb-sel" : "")}' "$PET/inv_proj.txt"; }
+    } > "$SHARED/ui.tmp.$$"; if cmp -s "$SHARED/ui.tmp.$$" "$SHARED/ui.txt"; then rm -f "$SHARED/ui.tmp.$$"; else mv -f "$SHARED/ui.tmp.$$" "$SHARED/ui.txt"; fi; printf '%s\n' "$PET" > "$SHARED/active_dir.txt"
     cat "$SHARED/ui.txt"
 }
 
@@ -279,7 +287,7 @@ status() {
 # (and logged), exactly like Doom's play flag. The window shows it as a traffic light (green = started, red = stopped).
 running() { [ "$(cat "$PET/running.txt" 2>/dev/null)" = 1 ]; }
 case "$VERB" in
-    start|stop|status|stats|new_pet|save_slot|load_slot|fire|gen_events|new_event|menu_group|menu_toggle|inv_toggle|open_events|interact|player|party_toggle|view|select|world_move|world_talk|"") ;;
+    start|stop|status|stats|new_pet|save_slot|load_slot|fire|gen_events|new_event|menu_group|menu_toggle|inv_toggle|open_events|hotbar_toggle|interact|player|party_toggle|view|select|world_move|world_talk|"") ;;
     *) if ! running; then mkdir -p "$PET"; printf '%s | stopped | ignored %s\n' "$(date '+%H:%M:%S')" "$VERB" >> "$PET/log.txt"
            case "$VERB" in chat_input|chat) printf '(the pet is stopped - press Play first)\n' >> "$PET/chat.txt"; status >/dev/null 2>&1;; esac; exit 0; fi ;;
 esac
@@ -371,6 +379,7 @@ case "$VERB" in
     menu_toggle) need_pet; if [ "$(cat "$PET/menu_open.txt" 2>/dev/null)" = 1 ]; then echo 0 > "$PET/menu_open.txt"; else echo 1 > "$PET/menu_open.txt"; fi; status >/dev/null ;;
     grant) need_pet; inv_add "$ARG" "${3:-1}"; printf '%s | gift | %s x%s\n' "$(date '+%H:%M:%S')" "$ARG" "${3:-1}" >> "$PET/log.txt"; status >/dev/null ;;     # the master gives the pet an item
     menu_group) need_pet; printf '%s\n' "$ARG" > "$PET/menu_group.txt"; status >/dev/null ;;
+    hotbar_toggle) need_pet; if [ "$(cat "$SHARED/hotbar_hidden.txt" 2>/dev/null)" = 1 ]; then echo 0 > "$SHARED/hotbar_hidden.txt"; else echo 1 > "$SHARED/hotbar_hidden.txt"; fi; status >/dev/null ;;
     inv_toggle) need_pet; if [ "$(cat "$PET/inv_open.txt" 2>/dev/null)" = 1 ]; then echo 0 > "$PET/inv_open.txt"; else echo 1 > "$PET/inv_open.txt"; fi; status >/dev/null ;;
     inv_use) need_pet; [ -x "$IOP" ] && "$IOP" slot "$PET" "${ARG:-0}" >/dev/null 2>&1; "$IOP" project "$PET" "$PET/inv_proj.txt" >/dev/null 2>&1; sh "$0" use_slot >/dev/null; status >/dev/null ;;
     inv_next) need_pet; [ -x "$IOP" ] && "$IOP" slot "$PET" next >/dev/null 2>&1; status >/dev/null ;;
