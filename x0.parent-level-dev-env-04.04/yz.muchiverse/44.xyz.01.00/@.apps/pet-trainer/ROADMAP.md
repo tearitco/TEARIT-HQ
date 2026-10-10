@@ -51,3 +51,5 @@ Status: DONE = built and shown working (evidence in the commit message) / PARTIA
 - Window width is renderer-limited (5 tabs set it).
 
 - **Chain economy** (`CHAIN-ECONOMY-DESIGN.md`): pet wallets on a new high-difficulty chain, miners/rooms/maintenance, purse = chain balance, NFTs (pets and grown food), banks/governments from the old chain with leases swept back at game end, Exchange HQ (rates averaged into preferred value, fee settings editable in the window) and Auction HQ, storage nodes/staking, businesses/stocks/dividends. The soul: pets drive the relay, learn by RL with the house harnesses, modify their own harnesses, watch human input.
+
+- **Level builder + INT camera** (`LEVEL-BUILDER-AND-INT-CAMERA-DESIGN.md`, 2026-10-10): rooms become desks in a pc-hq book `pet_home` (Doom/TSOTS style: glyph grid, atlas, extrusion, events), a toggleable Build bar to place furniture/items in empty rooms (ASIC miners included), and INT on finally driving the 2D/3D camera (POV 1-4) through the board renderer. Design only; 6 questions for the owner at the end.
