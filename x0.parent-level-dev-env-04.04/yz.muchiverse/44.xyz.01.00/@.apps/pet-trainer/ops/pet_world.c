@@ -54,18 +54,37 @@ static void save_state(const char *sd) {
     fclose(f); rename(t, p);
 }
 
+
+/* ---- exploration: state/explored.txt is a grid of 0/1 the size of the map; walking reveals the tiles around you, the village view draws the rest as fog, and a well explored map GROWS (expand) */
+static char fog[MH][MW + 2]; static int fog_dirty, reveal_r = 3, reveal_npc = 2;
+static void cfg_ai(const char *app) {      /* AI | reveal_r | n  (ai.pdl) */
+    char p[PATH_MAX], l[160]; snprintf(p, sizeof p, "%s/ai.pdl", app); FILE *f = fopen(p, "r"); if (!f) return;
+    while (fgets(l, sizeof l, f)) { int v; if (sscanf(l, "AI | reveal_r | %d", &v) == 1 && v >= 0 && v < 20) reveal_r = v; else if (sscanf(l, "AI | reveal_npc | %d", &v) == 1 && v >= 0 && v < 20) reveal_npc = v; }
+    fclose(f);
+}
+static void load_fog(const char *sd) {
+    for (int y = 0; y < MH; y++) { memset(fog[y], '0', MW); fog[y][MW] = 0; }
+    char p[PATH_MAX], l[256]; snprintf(p, sizeof p, "%s/explored.txt", sd); FILE *f = fopen(p, "r"); int y = 0;
+    if (f) { while (y < mh && fgets(l, sizeof l, f)) { l[strcspn(l, "\r\n")] = 0; for (int x = 0; x < MW && l[x]; x++) fog[y][x] = l[x] == '1' ? '1' : '0'; y++; } fclose(f); }
+}
+static void reveal(int cx, int cy, int r) { for (int y = cy - r; y <= cy + r; y++) for (int x = cx - r; x <= cx + r; x++) if (y >= 0 && y < mh && x >= 0 && x < (int)strlen(map[y]) && x < MW && fog[y][x] != '1') { fog[y][x] = '1'; fog_dirty = 1; } }
+static void save_fog(const char *sd) {
+    if (!fog_dirty) return; char p[PATH_MAX], t[PATH_MAX]; snprintf(p, sizeof p, "%s/explored.txt", sd); snprintf(t, sizeof t, "%s.tmp", p); FILE *f = fopen(t, "w"); if (!f) return;
+    for (int y = 0; y < mh; y++) { fwrite(fog[y], 1, strlen(map[y]) < MW ? strlen(map[y]) : MW, f); fputc('\n', f); } fclose(f); rename(t, p); fog_dirty = 0;
+}
+
 int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: pet_world init|walk|npcstep|adjacent|exit|show <state_dir> ...\n"); return 2; }
     char self[PATH_MAX]; if (!realpath(argv[0], self)) return 1; char app[PATH_MAX]; snprintf(app, sizeof app, "%s", self); for (int i = 0; i < 3; i++) { char *s = strrchr(app, '/'); if (s) *s = 0; }
     const char *cmd = argv[1], *sd = argv[2];
     if (load_map(app)) { fprintf(stderr, "pet_world: no world_map.txt in %s\n", app); return 1; }
-    srand((unsigned)time(NULL) ^ (unsigned)getpid());
+    srand((unsigned)time(NULL) ^ (unsigned)getpid()); cfg_ai(app); load_fog(sd);
     if (!strcmp(cmd, "init")) {
         const char *pf = argc > 3 ? argv[3] : ""; char ids[MAXN][32]; int ni = 0; FILE *f = fopen(pf, "r");
         if (f) { char l[128]; while (fgets(l, sizeof l, f) && ni < MAXN) { char id[32]; if (sscanf(l, "%31s", id) == 1) snprintf(ids[ni++], 32, "%s", id); } fclose(f); }
         tx = ty = 1; n = 0; int k = 0;
         for (int y = 0; y < mh; y++) for (int x = 0; x < (int)strlen(map[y]); x++) { if (map[y][x] == 'P') { tx = x; ty = y; } else if (map[y][x] == 'N' && k < ni) { snprintf(nid[k], 32, "%s", ids[k]); nx_[k] = x; ny_[k] = y; k++; } }
-        n = k; fx = tx; fy = ty + 1; snprintf(dir, sizeof dir, "down"); save_state(sd); printf("init %d creatures\n", n); return 0;
+        n = k; fx = tx; fy = ty + 1; snprintf(dir, sizeof dir, "down"); for (int y = 0; y < MH; y++) memset(fog[y], '0', MW); fog_dirty = 1; reveal(tx, ty, reveal_r + 1); for (int i = 0; i < n; i++) reveal(nx_[i], ny_[i], reveal_npc); save_state(sd); save_fog(sd); printf("init %d creatures\n", n); return 0;
     }
     load_state(sd);
     if (!strcmp(cmd, "show")) { printf("tx=%d ty=%d dir=%s n=%d\n", tx, ty, dir, n); return 0; }
@@ -78,7 +97,38 @@ int main(int argc, char **argv) {
         if (c == 'd') { puts("door locked"); save_state(sd); return 0; }
         int i = npc_at(x, y, active); if (i >= 0) { printf("talk %s\n", nid[i]); save_state(sd); return 0; }
         if (!walkable(c) || (x == fx && y == fy && 0)) { puts("blocked"); save_state(sd); return 0; }
-        fx = tx; fy = ty; tx = x; ty = y; save_state(sd); printf("moved %d %d\n", tx, ty); return 0;
+        fx = tx; fy = ty; tx = x; ty = y; reveal(tx, ty, reveal_r); save_state(sd); save_fog(sd); printf("moved %d %d\n", tx, ty); return 0;
+    }
+    if (!strcmp(cmd, "explored")) {      /* explored <sd>: how much of the interior is revealed */
+        int tot = 0, got = 0; for (int y = 1; y < mh - 1; y++) for (int x = 1; x < (int)strlen(map[y]) - 1 && x < MW; x++) { tot++; if (fog[y][x] == '1') got++; }
+        printf("explored=%d total=%d pct=%d w=%d h=%d\n", got, tot, tot ? got * 100 / tot : 0, mw, mh); return 0;
+    }
+    if (!strcmp(cmd, "nearest_fog")) {      /* nearest_fog <sd> <id>: the nearest walkable tile from which stepping reveals something new; prints "x y dist" or none */
+        int me = -1; for (int i = 0; i < n; i++) if (argc > 3 && !strcmp(nid[i], argv[3])) me = i; if (me < 0) { puts("none"); return 1; }
+        static int dist[MH][MW]; for (int y = 0; y < mh; y++) for (int x = 0; x < MW; x++) dist[y][x] = -1;
+        static int qx[MH * MW], qy[MH * MW]; int h = 0, tl = 0; qx[tl] = nx_[me]; qy[tl] = ny_[me]; tl++; dist[ny_[me]][nx_[me]] = 0;
+        while (h < tl) { int x = qx[h], y = qy[h]; h++; int new_ = 0;
+            for (int yy = y - reveal_npc; yy <= y + reveal_npc && !new_; yy++) for (int xx = x - reveal_npc; xx <= x + reveal_npc; xx++) if (yy > 0 && yy < mh - 1 && xx > 0 && xx < (int)strlen(map[yy]) - 1 && xx < MW && fog[yy][xx] != '1') { new_ = 1; break; }
+            if (new_) { printf("%d %d %d\n", x, y, dist[y][x]); return 0; }
+            static const int ox[4] = { 0, 0, -1, 1 }, oy[4] = { -1, 1, 0, 0 };
+            for (int k = 0; k < 4; k++) { int a = x + ox[k], b = y + oy[k]; if (a < 0 || b < 0 || b >= mh || a >= (int)strlen(map[b]) || a >= MW || dist[b][a] >= 0 || !walkable(map[b][a])) continue; if ((a == tx && b == ty) || npc_at(a, b, "") >= 0) continue; dist[b][a] = dist[y][x] + 1; qx[tl] = a; qy[tl] = b; tl++; } }
+        puts("none"); return 1;
+    }
+    if (!strcmp(cmd, "expand")) {      /* expand <sd> [cols]: the map grows eastward: the border column becomes land and <cols> new columns (grass, trees, flowers, a closing tree wall) are added; the BASE map is written to <sd>/world_base.txt (shipped world_map.txt stays untouched) and the new tiles start as fog */
+        int add = argc > 3 ? atoi(argv[3]) : 8; if (add < 1) add = 8; int w0 = 0; for (int y = 0; y < mh; y++) if ((int)strlen(map[y]) > w0) w0 = (int)strlen(map[y]);
+        if (w0 + add > MW - 1) { puts("full"); return 1; }
+        char bp[PATH_MAX]; snprintf(bp, sizeof bp, "%s/world_base.txt", sd); char sp[PATH_MAX]; snprintf(sp, sizeof sp, "%s/world_map.txt", app);
+        FILE *bf = fopen(bp, "r"); if (!bf) bf = fopen(sp, "r"); if (!bf) { puts("nobase"); return 2; }
+        static char base[MH][MW + 2]; int bh = 0; char l[256]; while (bh < MH && fgets(l, sizeof l, bf)) { l[strcspn(l, "\r\n")] = 0; snprintf(base[bh], MW + 1, "%s", l); bh++; } fclose(bf);
+        int bw = 0; for (int y = 0; y < bh; y++) if ((int)strlen(base[y]) > bw) bw = (int)strlen(base[y]);
+        for (int y = 0; y < bh; y++) { int len = (int)strlen(base[y]); while (len < bw) base[y][len++] = 'T'; base[y][len] = 0;
+            for (int x = bw; x < bw + add; x++) { char c; if (y == 0 || y == bh - 1 || x == bw + add - 1) c = 'T'; else { unsigned r = (unsigned)(x * 7919 + y * 104729 + bw * 31); r = (r ^ (r >> 7)) % 100; c = r < 10 ? 'T' : r < 17 ? ',' : '.'; } base[y][x] = c; }
+            if (y > 0 && y < bh - 1) base[y][bw - 1] = '.'; base[y][bw + add] = 0; }
+        FILE *o = fopen(bp, "w"); if (!o) return 1; for (int y = 0; y < bh; y++) fprintf(o, "%s\n", base[y]); fclose(o);
+        for (int y = 0; y < mh; y++) for (int x = bw; x < bw + add && x < MW; x++) fog[y][x] = '0';
+        mw = bw + add; fog_dirty = 1;
+        { char p[PATH_MAX], t2[PATH_MAX]; snprintf(p, sizeof p, "%s/explored.txt", sd); snprintf(t2, sizeof t2, "%s.tmp", p); FILE *ff = fopen(t2, "w"); if (ff) { for (int y = 0; y < bh; y++) { fwrite(fog[y], 1, (size_t)(bw + add), ff); fputc('\n', ff); } fclose(ff); rename(t2, p); fog_dirty = 0; } }
+        printf("expanded %d %d\n", bw + add, bh); return 0;
     }
     if (!strcmp(cmd, "npcpos")) { for (int i = 0; i < n; i++) if (argc > 3 && !strcmp(nid[i], argv[3])) { printf("%d %d\n", nx_[i], ny_[i]); return 0; } puts("none"); return 1; }
     if (!strcmp(cmd, "nearest")) {      /* nearest <sd> <id> <chars> [exclude_file]: nearest INTERIOR tile (not the map edge) of one of the chars, by walking distance to a tile beside it; prints "x y dist" or "none". exclude_file rows "x y" are skipped. */
@@ -97,12 +147,12 @@ int main(int argc, char **argv) {
         int me = -1; for (int i = 0; i < n; i++) if (argc > 3 && !strcmp(nid[i], argv[3])) me = i; if (me < 0 || argc < 6) { puts("stuck"); return 1; }
         int gx = atoi(argv[4]), gy = atoi(argv[5]); static int pv[MH][MW][2]; static char seen[MH][MW]; memset(seen, 0, sizeof seen);
         static int qx[MH * MW], qy[MH * MW]; int h = 0, tl = 0; qx[tl] = nx_[me]; qy[tl] = ny_[me]; tl++; seen[ny_[me]][nx_[me]] = 1; int fx2 = -1, fy2 = -1;
-        while (h < tl) { int x = qx[h], y = qy[h]; h++; if (abs(x - gx) + abs(y - gy) <= 1) { fx2 = x; fy2 = y; break; } static const int ox[4] = { 0, 0, -1, 1 }, oy[4] = { -1, 1, 0, 0 };
+        while (h < tl) { int x = qx[h], y = qy[h]; h++; if (abs(x - gx) + abs(y - gy) <= (argc > 6 && !strcmp(argv[6], "exact") ? 0 : 1)) { fx2 = x; fy2 = y; break; } static const int ox[4] = { 0, 0, -1, 1 }, oy[4] = { -1, 1, 0, 0 };
             for (int k = 0; k < 4; k++) { int a = x + ox[k], b = y + oy[k]; if (a < 0 || b < 0 || b >= mh || a >= (int)strlen(map[b]) || seen[b][a] || !walkable(map[b][a])) continue;
                 if ((a == tx && b == ty) || npc_at(a, b, "") >= 0) continue; seen[b][a] = 1; pv[b][a][0] = x; pv[b][a][1] = y; qx[tl] = a; qy[tl] = b; tl++; } }
         if (fx2 < 0) { puts("stuck"); return 1; } if (fx2 == nx_[me] && fy2 == ny_[me]) { puts("arrived"); return 0; }
         while (!(pv[fy2][fx2][0] == nx_[me] && pv[fy2][fx2][1] == ny_[me])) { int px = pv[fy2][fx2][0], py = pv[fy2][fx2][1]; fx2 = px; fy2 = py; }
-        nx_[me] = fx2; ny_[me] = fy2; save_state(sd); printf("moved %d %d\n", fx2, fy2); return 0;
+        nx_[me] = fx2; ny_[me] = fy2; reveal(fx2, fy2, reveal_npc); save_state(sd); save_fog(sd); printf("moved %d %d\n", fx2, fy2); return 0;
     }
     if (!strcmp(cmd, "npcstep")) {
         active = argc > 3 ? argv[3] : "";
@@ -110,9 +160,9 @@ int main(int argc, char **argv) {
             if (!strcmp(nid[i], active) || rand() % 100 >= 35) continue;
             { char gp[PATH_MAX]; snprintf(gp, sizeof gp, "%s/pets/%s/ai_goal.txt", sd, nid[i]); if (access(gp, F_OK) == 0) continue; }      /* a pet with a goal walks to it (ai_step), not at random */
             int r = rand() % 4, dx = r == 0 ? 1 : r == 1 ? -1 : 0, dy = r == 2 ? 1 : r == 3 ? -1 : 0, x = nx_[i] + dx, y = ny_[i] + dy;
-            if (!walkable(at(x, y)) || (x == tx && y == ty) || npc_at(x, y, active) >= 0) continue; nx_[i] = x; ny_[i] = y;
+            if (!walkable(at(x, y)) || (x == tx && y == ty) || npc_at(x, y, active) >= 0) continue; nx_[i] = x; ny_[i] = y; reveal(x, y, reveal_npc);
         }
-        save_state(sd); return 0;
+        save_state(sd); save_fog(sd); return 0;
     }
     if (!strcmp(cmd, "adjacent")) {
         active = argc > 3 ? argv[3] : ""; static const int ox[4] = { 0, 0, -1, 1 }, oy[4] = { -1, 1, 0, 0 };

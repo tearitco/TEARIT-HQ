@@ -1,0 +1,65 @@
+# pet_explore - the village map has fog: walking reveals tiles (trainer and pets), pets with nothing else to do walk to unexplored places, a well explored map GROWS (new columns, fog on them, base map in state, shipped map untouched, buildings still stamp), growth stops at the size limit.
+RESULTS | ../results/pet_explore.txt
+CASE    | pet-explore
+SCRATCH |
+MKDIR   | state
+ENV     | PET_SHARED | $T/state
+ENV     | PET_TRAIN | 1
+ENV     | LC_CLOCK_BIN | /nonexistent
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | status
+RUN     | $HOUSE/@.apps/pet-trainer/ops/+x/pet_world.+x | init | $T/state | $T/state/party.txt
+RUN     | $HOUSE/@.apps/pet-trainer/ops/+x/pet_world.+x | explored | $T/state
+EXPECT_OUT | explored=204 total=600 pct=34 w=32 h=22 | start-34-percent
+# the trainer walks: reveals more
+RUN     | /usr/bin/env | PET_DIR=$T/state/pets/a13 | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | world_move | right
+RUN     | /usr/bin/env | PET_DIR=$T/state/pets/a13 | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | world_move | right
+RUN     | /usr/bin/env | PET_DIR=$T/state/pets/a13 | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | world_move | right
+RUN     | /usr/bin/env | PET_DIR=$T/state/pets/a13 | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | world_move | down
+RUN     | /usr/bin/env | PET_DIR=$T/state/pets/a13 | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | world_move | down
+RUN     | $HOUSE/@.apps/pet-trainer/ops/+x/pet_world.+x | explored | $T/state
+EXPECT_OUT_LACKS | explored=204 | walking-reveals
+# a pet with nothing to do explores (8 wood, no coins: no gathering, no building, nothing to sell)
+RUN     | /usr/bin/env | PET_DIR=$T/state/pets/a15 | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | grant | wood | 12
+RUN     | /bin/sh | -c | rm -rf $T/state/pets/a15/inventory/coin_*
+RUN     | /usr/bin/sed | -i | s/^hunger=.*/hunger=0/ | $T/state/pets/a15/variables.txt
+RUN     | $HOUSE/@.apps/pet-trainer/ops/+x/pet_world.+x | explored | $T/state
+RUN     | /bin/sh | -c | tr -cd 1 < $T/state/explored.txt \p wc -c > $T/before.txt
+RUN     | /bin/sh | -c | n=0; while [ $n -lt 50 ]; do PET_AI_NOW=$((8000000+n*5)) PET_DIR=$T/state/pets/a15 /bin/sh $HOUSE/@.apps/pet-trainer/ops/pet_event.sh ai_step >/dev/null 2>&1; n=$((n+1)); done
+EXPECT_EXISTS | state/explored.txt | fog-file-exists
+RUN     | $HOUSE/@.apps/pet-trainer/ops/+x/pet_world.+x | explored | $T/state
+EXPECT_OUT | w=40 h=22 | map-grew-by-itself-while-exploring
+EXPECT_HAS | state/pets/a15/ai_log.txt | the map grew | explorer-grew-the-map
+RUN     | /bin/sh | -c | [ $(tr -cd 1 < $T/state/explored.txt \p wc -c) -gt $(cat $T/before.txt) ] && echo more
+EXPECT_OUT_IS | more | the-pet-revealed-more-map
+# expansion
+RUN     | /usr/bin/env | PET_DIR=$T/state/pets/a13 | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | world_expand
+EXPECT_HAS | state/pets/a13/chat.txt | the village map grew | grew-announced
+RUN     | $HOUSE/@.apps/pet-trainer/ops/+x/pet_world.+x | explored | $T/state
+EXPECT_OUT | total=920 | total-grew
+EXPECT_OUT | w=48 h=22 | width-48
+RUN     | /usr/bin/awk | NR==1{print length} | $T/state/town_all.txt
+EXPECT_OUT_IS | 48 | merged-map-48-wide
+RUN     | /usr/bin/awk | NR==1{print length} | $HOUSE/@.apps/pet-trainer/world_map.txt
+EXPECT_OUT_IS | 32 | shipped-map-untouched
+# buildings still stamp on the grown map
+RUN     | /usr/bin/env | PET_DIR=$T/state/pets/a13 | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | grant | wood | 20
+RUN     | /usr/bin/env | PET_DIR=$T/state/pets/a13 | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | grant | coin | 200
+RUN     | /usr/bin/env | PET_DIR=$T/state/pets/a13 | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | build_building | house
+EXPECT_HAS | state/town_all.txt | ^^^ | building-on-grown-map
+# size limit
+RUN     | /usr/bin/env | PET_DIR=$T/state/pets/a13 | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | world_expand
+RUN     | /usr/bin/env | PET_DIR=$T/state/pets/a13 | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | world_expand
+RUN     | /usr/bin/env | PET_DIR=$T/state/pets/a13 | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | world_expand
+EXPECT_HAS | state/pets/a13/chat.txt | cannot grow any more | stops-at-the-limit
+RUN     | $HOUSE/@.apps/pet-trainer/ops/+x/pet_world.+x | explored | $T/state
+EXPECT_OUT | w=56 h=22 | stopped-at-56
+# a pet that has explored enough makes the map grow by itself: reveal everything, then step
+RUN     | /bin/sh | -c | awk 'BEGIN{for(i=0;i<22;i++){s=""; for(j=0;j<56;j++) s=s "1"; print s}}' > $T/state/explored.txt
+RUN     | /bin/sh | -c | rm -f $T/state/world_base.txt $T/state/town_all.txt; true
+RUN     | $HOUSE/@.apps/pet-trainer/ops/+x/pet_world.+x | init | $T/state | $T/state/party.txt
+RUN     | /bin/sh | -c | awk 'BEGIN{for(i=0;i<22;i++){s=""; for(j=0;j<32;j++) s=s "1"; print s}}' > $T/state/explored.txt
+RUN     | /usr/bin/env | PET_DIR=$T/state/pets/a14 | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | grant | wood | 12
+RUN     | /bin/sh | -c | rm -rf $T/state/pets/a14/inventory/coin_*
+RUN     | /usr/bin/sed | -i | s/^hunger=.*/hunger=0/ | $T/state/pets/a14/variables.txt
+RUN     | /bin/sh | -c | PET_AI_NOW=8100000 PET_DIR=$T/state/pets/a14 /bin/sh $HOUSE/@.apps/pet-trainer/ops/pet_event.sh ai_step >/dev/null 2>&1; true
+EXPECT_HAS | state/pets/a14/ai_log.txt | the map grew | auto-growth-when-explored

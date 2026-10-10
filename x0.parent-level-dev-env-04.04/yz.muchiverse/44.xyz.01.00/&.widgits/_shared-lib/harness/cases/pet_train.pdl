@@ -1,7 +1,7 @@
 # pet_train - a TRAINING SESSION for all six pets, run through the real verbs on the LIVE pet state (the pets are the learners; their reward ledger obs_feedback_log.txt feeds the concept bank's entity_grade report card).
 # Each pet is taught phrases for the furniture/room verbs, asked to do them, and rewarded ('good'); then one day_tick grades them. PET_TRAIN=1 lets a stopped pet learn. Run it after every pet feature lands: prisc+x pet_train.pal
 # Lessons: add a row to the LESSONS list in this header's generator (phrase, verb, item) or copy a block below. Results: results/pet_train.txt (+ .verdict.txt). It touches the pet-trainer app's state/ only (never committed).
-# Lesson sets: 2 (rooms and furniture: bed, sofa, chimney, living room, bedroom, roof) and 3 (town: build a house, a store, a farm - refused without wood/coins, which is part of what they learn).
+# Lesson sets: 2 (rooms and furniture: bed, sofa, chimney, living room, bedroom, roof) and 3 (town: build a house, a store, a farm; set 4: study - read a book, learn something - refused without wood/coins, which is part of what they learn).
 RESULTS | ../results/pet_train.txt
 CASE    | pet-train
 SCRATCH |
@@ -37,6 +37,12 @@ RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y 
 RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach plant a farm = build farm
 RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | plant a farm
 RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach read a book = study
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | read a book
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach learn something = study
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | learn something
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
 RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | day_tick
 EXPECT_HAS | live/pets/a13/lexicon.pdl | get on the bed | a13-learned-bed
 EXPECT_HAS | live/pets/a13/lexicon.pdl | climb the sofa | a13-learned-sofa
@@ -46,6 +52,9 @@ EXPECT_HAS | live/pets/a13/lexicon.pdl | go to the bedroom | a13-learned-bedroom
 EXPECT_HAS | live/pets/a13/lexicon.pdl | go up to the roof | a13-learned-roof
 EXPECT_HAS | live/pets/a13/obs_feedback_log.txt | concept=climb | a13-rewarded-climb
 EXPECT_HAS | live/pets/a13/obs_feedback_log.txt | concept=go | a13-rewarded-go
+EXPECT_HAS | live/pets/a13/lexicon.pdl | read a book | a13-learned-read
+RUN | /bin/sh | -c | grep -q concept=study $HOUSE/@.apps/pet-trainer/state/pets/a13/obs_feedback_log.txt && echo yes
+EXPECT_OUT_IS | yes | a13-rewarded-study
 EXPECT_HAS | live/pets/a13/lexicon.pdl | build a house | a13-learned-house
 EXPECT_HAS | live/pets/a13/lexicon.pdl | build a store | a13-learned-store
 EXPECT_HAS | live/pets/a13/lexicon.pdl | plant a farm | a13-learned-farm
@@ -79,6 +88,12 @@ RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y 
 RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach plant a farm = build farm
 RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | plant a farm
 RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach read a book = study
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | read a book
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach learn something = study
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | learn something
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
 RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | day_tick
 EXPECT_HAS | live/pets/a14/lexicon.pdl | get on the bed | a14-learned-bed
 EXPECT_HAS | live/pets/a14/lexicon.pdl | climb the sofa | a14-learned-sofa
@@ -88,6 +103,9 @@ EXPECT_HAS | live/pets/a14/lexicon.pdl | go to the bedroom | a14-learned-bedroom
 EXPECT_HAS | live/pets/a14/lexicon.pdl | go up to the roof | a14-learned-roof
 EXPECT_HAS | live/pets/a14/obs_feedback_log.txt | concept=climb | a14-rewarded-climb
 EXPECT_HAS | live/pets/a14/obs_feedback_log.txt | concept=go | a14-rewarded-go
+EXPECT_HAS | live/pets/a14/lexicon.pdl | read a book | a14-learned-read
+RUN | /bin/sh | -c | grep -q concept=study $HOUSE/@.apps/pet-trainer/state/pets/a14/obs_feedback_log.txt && echo yes
+EXPECT_OUT_IS | yes | a14-rewarded-study
 EXPECT_HAS | live/pets/a14/lexicon.pdl | build a house | a14-learned-house
 EXPECT_HAS | live/pets/a14/lexicon.pdl | build a store | a14-learned-store
 EXPECT_HAS | live/pets/a14/lexicon.pdl | plant a farm | a14-learned-farm
@@ -121,6 +139,12 @@ RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y 
 RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach plant a farm = build farm
 RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | plant a farm
 RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach read a book = study
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | read a book
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach learn something = study
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | learn something
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
 RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | day_tick
 EXPECT_HAS | live/pets/a15/lexicon.pdl | get on the bed | a15-learned-bed
 EXPECT_HAS | live/pets/a15/lexicon.pdl | climb the sofa | a15-learned-sofa
@@ -130,6 +154,9 @@ EXPECT_HAS | live/pets/a15/lexicon.pdl | go to the bedroom | a15-learned-bedroom
 EXPECT_HAS | live/pets/a15/lexicon.pdl | go up to the roof | a15-learned-roof
 EXPECT_HAS | live/pets/a15/obs_feedback_log.txt | concept=climb | a15-rewarded-climb
 EXPECT_HAS | live/pets/a15/obs_feedback_log.txt | concept=go | a15-rewarded-go
+EXPECT_HAS | live/pets/a15/lexicon.pdl | read a book | a15-learned-read
+RUN | /bin/sh | -c | grep -q concept=study $HOUSE/@.apps/pet-trainer/state/pets/a15/obs_feedback_log.txt && echo yes
+EXPECT_OUT_IS | yes | a15-rewarded-study
 EXPECT_HAS | live/pets/a15/lexicon.pdl | build a house | a15-learned-house
 EXPECT_HAS | live/pets/a15/lexicon.pdl | build a store | a15-learned-store
 EXPECT_HAS | live/pets/a15/lexicon.pdl | plant a farm | a15-learned-farm
@@ -163,6 +190,12 @@ RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y 
 RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach plant a farm = build farm
 RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | plant a farm
 RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach read a book = study
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | read a book
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach learn something = study
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | learn something
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
 RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | day_tick
 EXPECT_HAS | live/pets/a16/lexicon.pdl | get on the bed | a16-learned-bed
 EXPECT_HAS | live/pets/a16/lexicon.pdl | climb the sofa | a16-learned-sofa
@@ -172,6 +205,9 @@ EXPECT_HAS | live/pets/a16/lexicon.pdl | go to the bedroom | a16-learned-bedroom
 EXPECT_HAS | live/pets/a16/lexicon.pdl | go up to the roof | a16-learned-roof
 EXPECT_HAS | live/pets/a16/obs_feedback_log.txt | concept=climb | a16-rewarded-climb
 EXPECT_HAS | live/pets/a16/obs_feedback_log.txt | concept=go | a16-rewarded-go
+EXPECT_HAS | live/pets/a16/lexicon.pdl | read a book | a16-learned-read
+RUN | /bin/sh | -c | grep -q concept=study $HOUSE/@.apps/pet-trainer/state/pets/a16/obs_feedback_log.txt && echo yes
+EXPECT_OUT_IS | yes | a16-rewarded-study
 EXPECT_HAS | live/pets/a16/lexicon.pdl | build a house | a16-learned-house
 EXPECT_HAS | live/pets/a16/lexicon.pdl | build a store | a16-learned-store
 EXPECT_HAS | live/pets/a16/lexicon.pdl | plant a farm | a16-learned-farm
@@ -205,6 +241,12 @@ RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y 
 RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach plant a farm = build farm
 RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | plant a farm
 RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach read a book = study
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | read a book
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach learn something = study
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | learn something
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
 RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | day_tick
 EXPECT_HAS | live/pets/a17/lexicon.pdl | get on the bed | a17-learned-bed
 EXPECT_HAS | live/pets/a17/lexicon.pdl | climb the sofa | a17-learned-sofa
@@ -214,6 +256,9 @@ EXPECT_HAS | live/pets/a17/lexicon.pdl | go to the bedroom | a17-learned-bedroom
 EXPECT_HAS | live/pets/a17/lexicon.pdl | go up to the roof | a17-learned-roof
 EXPECT_HAS | live/pets/a17/obs_feedback_log.txt | concept=climb | a17-rewarded-climb
 EXPECT_HAS | live/pets/a17/obs_feedback_log.txt | concept=go | a17-rewarded-go
+EXPECT_HAS | live/pets/a17/lexicon.pdl | read a book | a17-learned-read
+RUN | /bin/sh | -c | grep -q concept=study $HOUSE/@.apps/pet-trainer/state/pets/a17/obs_feedback_log.txt && echo yes
+EXPECT_OUT_IS | yes | a17-rewarded-study
 EXPECT_HAS | live/pets/a17/lexicon.pdl | build a house | a17-learned-house
 EXPECT_HAS | live/pets/a17/lexicon.pdl | build a store | a17-learned-store
 EXPECT_HAS | live/pets/a17/lexicon.pdl | plant a farm | a17-learned-farm
@@ -247,6 +292,12 @@ RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y 
 RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach plant a farm = build farm
 RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | plant a farm
 RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach read a book = study
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | read a book
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach learn something = study
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | learn something
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
 RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | day_tick
 EXPECT_HAS | live/pets/a18/lexicon.pdl | get on the bed | a18-learned-bed
 EXPECT_HAS | live/pets/a18/lexicon.pdl | climb the sofa | a18-learned-sofa
@@ -256,6 +307,9 @@ EXPECT_HAS | live/pets/a18/lexicon.pdl | go to the bedroom | a18-learned-bedroom
 EXPECT_HAS | live/pets/a18/lexicon.pdl | go up to the roof | a18-learned-roof
 EXPECT_HAS | live/pets/a18/obs_feedback_log.txt | concept=climb | a18-rewarded-climb
 EXPECT_HAS | live/pets/a18/obs_feedback_log.txt | concept=go | a18-rewarded-go
+EXPECT_HAS | live/pets/a18/lexicon.pdl | read a book | a18-learned-read
+RUN | /bin/sh | -c | grep -q concept=study $HOUSE/@.apps/pet-trainer/state/pets/a18/obs_feedback_log.txt && echo yes
+EXPECT_OUT_IS | yes | a18-rewarded-study
 EXPECT_HAS | live/pets/a18/lexicon.pdl | build a house | a18-learned-house
 EXPECT_HAS | live/pets/a18/lexicon.pdl | build a store | a18-learned-store
 EXPECT_HAS | live/pets/a18/lexicon.pdl | plant a farm | a18-learned-farm

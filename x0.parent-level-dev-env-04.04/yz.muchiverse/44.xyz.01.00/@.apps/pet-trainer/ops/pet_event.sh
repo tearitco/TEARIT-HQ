@@ -114,13 +114,14 @@ do_chat() { # the master talks: the pet matches known words, does the thing, ans
         sleep|wash|play) sh "$0" "$vb" >/dev/null; reply "$vb" ;;
         touch) sh "$0" touch >/dev/null ;;
         go) reply go; sh "$0" teleport "${it:-living}" 150 >/dev/null ;;      # taught: "go to the kitchen" = go living
+        study) reply study; PET_TEACH_SYNC=${PET_TEACH_SYNC:-0} sh "$0" study >/dev/null ;;
         build) reply build; sh "$0" build_building "${it:-house}" >/dev/null ;;      # taught: "build a house" = build house
         climb) reply climb; sh "$0" climb "${it:-bed}" >/dev/null ;;       # taught: "get on the bed" = climb bed ("climb down" = get off)
     esac
 }
 do_teach() { # teach "<phrase>" <verb> [item]: the master teaches a word (starts weak, weight 3); teaching it again strengthens it
     need_pet; ph=$(printf '%s' "$1" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9 \n' ' ' | tr -s ' ' | sed 's/^ //;s/ $//'); vb="$2"; it="${3:-}"
-    case "$vb" in hello|feed|sleep|wash|play|touch|go|climb|build) ;; *) return 0;; esac
+    case "$vb" in hello|feed|sleep|wash|play|touch|go|climb|build|study) ;; *) return 0;; esac
     [ -z "$ph" ] && return 0
     lex_set "$ph" "$vb" "$it" 1 3; printf 'YOU: (teaches "%s" = %s)\n' "$ph" "$vb" >> "$CHAT"; say "oh! $ph"; expr happy 5
 }
@@ -158,10 +159,10 @@ ph_say() { # ph_say <from id> <to id> <text>: a phone.send "say" from the sender
 TOWN="$SHARED/world"
 town_merge() { # rebuild town_all.txt from the shipped map + the built buildings
     awk -v bf="$TOWN/town_built.pdl" 'BEGIN{ while ((getline l < bf) > 0) { if (l ~ /^BUILDING/) { split(l, a, "|"); nb++; bx[nb]=a[4]+0; by[nb]=a[5]+0; r=a[10]; gsub(/^ +| +$/, "", r); br[nb]=r } } }
-        { line[NR]=$0 } END { for (i=1;i<=nb;i++) { n=split(br[i], rr, "/"); for (r=1;r<=n;r++) { row=by[i]+r; s=line[row]; for (c=1;c<=length(rr[r]);c++) s=substr(s,1,bx[i]+c-1) substr(rr[r],c,1) substr(s,bx[i]+c+1); line[row]=s } } for (i=1;i<=NR;i++) print line[i] }' "$HERE/world_map.txt" > "$SHARED/town_all.txt.tmp.$$" && mv "$SHARED/town_all.txt.tmp.$$" "$SHARED/town_all.txt"; }
+        { line[NR]=$0 } END { for (i=1;i<=nb;i++) { n=split(br[i], rr, "/"); for (r=1;r<=n;r++) { row=by[i]+r; s=line[row]; for (c=1;c<=length(rr[r]);c++) s=substr(s,1,bx[i]+c-1) substr(rr[r],c,1) substr(s,bx[i]+c+1); line[row]=s } } for (i=1;i<=NR;i++) print line[i] }' "$([ -f "$SHARED/world_base.txt" ] && echo "$SHARED/world_base.txt" || echo "$HERE/world_map.txt")" > "$SHARED/town_all.txt.tmp.$$" && mv "$SHARED/town_all.txt.tmp.$$" "$SHARED/town_all.txt"; }
 land_fee() { # land_fee <w> <h>: coins for the land under a w x h footprint; rises as the explored land fills up (land.pdl)
     base=$(sed -n 's/^LAND.*base=\([0-9.]*\).*/\1/p' "$HERE/land.pdl" | head -1); k=$(sed -n 's/^LAND.*k=\([0-9.]*\).*/\1/p' "$HERE/land.pdl" | head -1)
-    used=$(awk -F'|' '/^BUILDING/{u+=$6*$7} END{print u+0}' "$TOWN/town_built.pdl" 2>/dev/null); total=$(cat "$HERE/world_map.txt" | tr -cd '.,' | wc -c); total=$((total > 0 ? total : 1))
+    used=$(awk -F'|' '/^BUILDING/{u+=$6*$7} END{print u+0}' "$TOWN/town_built.pdl" 2>/dev/null); total=$(cat "$([ -f "$SHARED/world_base.txt" ] && echo "$SHARED/world_base.txt" || echo "$HERE/world_map.txt")" | tr -cd '.,' | wc -c); total=$((total > 0 ? total : 1))
     awk -v b="${base:-2}" -v k="${k:-10}" -v u="$used" -v t="$total" -v w="$1" -v h="$2" 'BEGIN{ uf=u/t; p=b*(1+k*uf*uf)*w*h; f=int(p); if (f<p) f++; print f }'; }
 town_site() { # town_site <w> <h>: first free grass footprint (x y) in the current town, scanning rows from the top; empty if none
     [ -f "$SHARED/town_all.txt" ] || town_merge; awk -v w="$1" -v h="$2" '{ line[NR]=$0 } END { for (y=2;y<=NR-h;y++) for (x=2;x<=length(line[y])-w;x++) { ok=1; for (r=0;r<h && ok;r++) for (c=0;c<w;c++) { ch=substr(line[y+r],x+c,1); if (ch!="." && ch!=",") { ok=0; break } } if (ok) { print x-1, y-1; exit } } }' "$SHARED/town_all.txt"; }
@@ -221,7 +222,7 @@ deal() { # deal <buyer_dir> <seller_dir> <item> <n>: coins go one way, the items
 town_list() { # town_list <kind>: "bid owner door_x door_y cost" per building of that kind (the door is the tile a visitor walks to)
     awk -F'|' -v k="$1" '/^BUILDING/{b=$2; kd=$3; o=$8; gsub(/ /,"",b); gsub(/ /,"",kd); gsub(/ /,"",o); if (kd==k) printf "%s %s %d %d %d\n", b, o, $4+1, $5+2, $9+0}' "$TOWN/town_built.pdl" 2>/dev/null; }
 ai_goto() { # ai_goto <x> <y>: one step toward a tile; returns 0 when beside it, 1 while moving, 2 when stuck
-    r=$("$HERE/ops/+x/pet_world.+x" npcgo "$SHARED" "$ACTIVE" "$1" "$2"); case "$r" in arrived) return 0;; moved*) echo "shop $1 $2" > "$PET/ai_goal.txt"; return 1;; *) rm -f "$PET/ai_goal.txt"; return 2;; esac; }
+    r=$("$HERE/ops/+x/pet_world.+x" npcgo "$SHARED" "$ACTIVE" "$1" "$2"); case "$r" in arrived) return 0;; moved*) echo "shop $1 $2" > "$PET/ai_goal.txt"; AI_MOVED=1; return 1;; *) rm -f "$PET/ai_goal.txt"; return 2;; esac; }
 ai_shop() { # ai_shop <item>: walk to a store whose owner (not me) has the item, and buy one; returns 0 when it bought
     pr=$(pricev "$1"); [ "$(inv_count coin)" -ge "${pr:-999}" ] || return 1
     sl=$(town_list store | while read -r sb so sx sy sc; do [ "$so" != "$ACTIVE" ] && [ "$(pinv_count "$SHARED/pets/$so" "$1")" -gt 0 ] && echo "$sb $so $sx $sy" && break; done); [ -n "$sl" ] || return 1
@@ -273,6 +274,13 @@ formula_bump() { # formula_bump <kind> <delta> <why>: the lesson formula learns 
     sed -i "s/^FORM *| *$1 *| *[0-9]*/FORM | $1 | $fn/" "$ff"; mkdir -p "$TOWN"; printf 'FORMULA|%s|%s|%s|%s|%s\n' "${PET_AI_NOW:-$(date +%s)}" "$1" "$fo" "$fn" "$3" >> "$TOWN/ledger.txt"; }
 card_answer() { # card_answer <chat text>: the answer of an ACCEPTED card whose question equals the text (case and punctuation ignored)
     awk -F'|' -v q="$(printf '%s' "$1" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9' ' ' | tr -s ' ' | sed 's/^ //; s/ $//')" '/^CARD/{p=tolower($4); gsub(/[^a-z0-9]+/, " ", p); gsub(/^ | $/, "", p); if (p == q && q != "") {a=$5; sub(/^ +/,"",a); sub(/ +$/,"",a); print a; exit}}' "$PET/lessons/accepted.pdl" 2>/dev/null; }
+ai_explore() { # nothing else to do: walk to the nearest place where stepping reveals new map; a well explored map grows (world_expand)
+    WO="$HERE/ops/+x/pet_world.+x"; ex=$("$WO" explored "$SHARED" 2>/dev/null); pct=$(printf '%s' "$ex" | sed -n 's/.*pct=\([0-9]*\).*/\1/p'); xp=$(aiv expand_pct)
+    if [ -n "$pct" ] && [ "$pct" -ge "${xp:-60}" ]; then sh "$0" world_expand >/dev/null 2>&1; ai_log "$ACTIVE" "the map grew (explored $pct%)"; return 0; fi
+    nf=$("$WO" nearest_fog "$SHARED" "$ACTIVE" 2>/dev/null) || { rm -f "$PET/ai_goal.txt"; return 1; }; read -r fx fy fd <<EOF
+$nf
+EOF
+    r=$("$WO" npcgo "$SHARED" "$ACTIVE" "$fx" "$fy" exact); case "$r" in moved*) echo "explore $fx $fy" > "$PET/ai_goal.txt" ;; *) rm -f "$PET/ai_goal.txt" ;; esac; return 0; }
 gen_events() { # build <pet dir>/event_pkg/pages/page_N for every pet event: system events, then one per menu row. The pages are what events-hq opens (event.ir.pdl, event.pal, condition.pdl, cmd_1.sh).
     GENV=$(cat "$(rooms_file)" "$HERE/menu.pdl" "$HERE/ops/pet_event.sh" 2>/dev/null | cksum | cut -d' ' -f1)
     P="$PET/event_pkg/pages"; [ -f "$PET/event_pkg/events_index.txt" ] && [ "$(cat "$PET/event_pkg/.generated" 2>/dev/null)" = "$GENV" ] && return 0
@@ -419,6 +427,7 @@ status() {
         cs=$(sh "$HERE/ops/pet_clock.sh" status 2>/dev/null); printf '%s\n' "$cs" | grep -v "^time_label=\|^game_ms="
         gms=$(printf '%s\n' "$cs" | sed -n 's/^game_ms=//p'); if [ -n "$gms" ]; then bm=$(getv born_ms); if [ -z "$bm" ]; then bm=$(( $(cat "$SHARED/clock_day0.txt" 2>/dev/null || echo 0) * 86400000 )); setv born_ms "$bm"; fi      # age in GAME time: the pet clock's game ms now minus the game ms it was born (pets that predate this were born when the clock started)
             awk -v g="$gms" -v b="$bm" 'BEGIN { s = int((g - b) / 1000); if (s < 0) s = 0; printf "age_label=age %dd %02dh\n", int(s / 86400), int((s % 86400) / 3600) }'; else printf 'age_label=age --\n'; fi
+        printf 'explore_label=%s\n' "$([ -x "$WORLD" ] && "$WORLD" explored "$SHARED" 2>/dev/null | sed -n 's/.*pct=\([0-9]*\) w=\([0-9]*\) h=\([0-9]*\).*/map \2x\3 seen \1%/p')"
         printf 'stat_line=pow %s mag %s def %s int %s\n' "$(stat_level power)" "$(stat_level magic)" "$(stat_level defense)" "$(stat_level intellect)"
         printf 'rec_label=%s\n' "$([ "$(cat "$SHARED/recording.txt" 2>/dev/null)" = 1 ] && echo 'RECORDING... (press to cancel)' || echo 'Talk (mic)')"
         printf 'phone_number=%s\nn_contacts=%s\n' "$(ph_number "$ACTIVE")" "$(grep -c '^CONTACT' "$PET/contacts.pdl" 2>/dev/null || echo 0)"
@@ -447,7 +456,7 @@ status() {
 # (and logged), exactly like Doom's play flag. The window shows it as a traffic light (green = started, red = stopped).
 running() { [ "$(cat "$PET/running.txt" 2>/dev/null)" = 1 ]; }
 case "$VERB" in
-    start|stop|ai_step|buy|sell|teach_me|study|lessons|lesson_accept|lesson_reject|help|tip|land_price|build_building|chat_toggle|phones|exchange|call|build_room|map|listen|chat_send|clock_event|time_rate|time_advance|time_reinstall|status|stats|new_pet|save_slot|load_slot|fire|gen_events|new_event|menu_group|menu_toggle|inv_toggle|open_events|teleport|hotbar_toggle|interact|player|party_toggle|view|select|world_move|world_talk|"") ;;
+    start|stop|ai_step|world_expand|explored|buy|sell|teach_me|study|lessons|lesson_accept|lesson_reject|help|tip|land_price|build_building|chat_toggle|phones|exchange|call|build_room|map|listen|chat_send|clock_event|time_rate|time_advance|time_reinstall|status|stats|new_pet|save_slot|load_slot|fire|gen_events|new_event|menu_group|menu_toggle|inv_toggle|open_events|teleport|hotbar_toggle|interact|player|party_toggle|view|select|world_move|world_talk|"") ;;
     *) if ! running && [ "${PET_TRAIN:-0}" != 1 ]; then mkdir -p "$PET"; printf '%s | stopped | ignored %s\n' "$(date '+%H:%M:%S')" "$VERB" >> "$PET/log.txt"
            case "$VERB" in chat_input|chat|chat_send) printf '(the pet is stopped - press Play first)\n' >> "$PET/chat.txt"; status >/dev/null 2>&1;; esac; exit 0; fi ;;
 esac
@@ -583,11 +592,12 @@ case "$VERB" in
         ne=$(aiv needs_every); ne=${ne:-60}; nt=$(( (now - last) / ne )); [ "$nt" -gt 5 ] && nt=5
         if [ "$nt" -gt 0 ]; then echo $((last + nt * ne)) > "$PET/ai_last"; k=0; while [ "$k" -lt "$nt" ]; do addv hunger "$(getw tick_hunger)"; addv energy -"$(getw tick_energy)"; addv clean -"$(getw tick_clean)"; k=$((k + 1)); done; ai_clamp; fi
         hu=$(getv hunger); en=$(getv energy); hthr=$(aiv hunger_thr); ethr=$(aiv energy_thr); ww=$(aiv want_wood)
-        ai_rent
+        AI_MOVED=0; ai_rent
         sl=$(cat "$PET/study_last" 2>/dev/null || echo 0); se=$(aiv study_every); [ $(( now - sl )) -ge "${se:-1440}" ] && sh "$0" study >/dev/null 2>&1      # the phone study hobby: now and then the pet reads up on a topic and asks its teacher for a card
         if [ "${hu:-0}" -ge "${hthr:-60}" ]; then
             for f in apple fish cake; do if [ "$(inv_count $f)" -gt 0 ]; then sh "$0" give "$f" >/dev/null; ai_log "$ACTIVE" "ate $f from the bag"; rm -f "$PET/ai_goal.txt"; exit 0; fi; done
             if ai_shop apple; then sh "$0" give apple >/dev/null; ai_log "$ACTIVE" "ate the apple it bought"; exit 0; fi
+            [ "$AI_MOVED" = 1 ] && exit 0      # walking to the store is this step's action
             [ -f "$PET/ai_goal.txt" ] && grep -q "^shop " "$PET/ai_goal.txt" && [ "$(inv_count coin)" -ge "$(pricev apple)" ] && exit 0      # on its way to a store
             if ai_gather apple; then sh "$0" give apple >/dev/null; ai_log "$ACTIVE" "ate the apple it picked"; fi; exit 0
         fi
@@ -596,6 +606,8 @@ case "$VERB" in
         wc=$(econv want_coins); wx=$(econv work_extra); want=${ww:-8}; [ "$(inv_count coin)" -lt "${wc:-30}" ] && want=$(( want + ${wx:-4} ))
         if [ "$(inv_count wood)" -lt "$want" ]; then ai_gather wood; exit 0; fi
         if ai_sell_wood; then exit 0; fi
+        [ "$AI_MOVED" = 1 ] && exit 0
+        if ai_explore; then exit 0; fi
         rm -f "$PET/ai_goal.txt"; exit 0 ;;
     buy) need_pet; sid="$ARG"; it="${3:-apple}"; n="${4:-1}"; nm=$(getv name_id); [ -d "$SHARED/pets/$sid" ] || { printf '%s: buy from whom?\n' "$nm" >> "$CHAT"; exit 0; }
         d=$(deal "$PET" "$SHARED/pets/$sid" "$it" "$n"); case "$d" in ok) printf '%s: bought %s %s\n' "$nm" "$n" "$it" >> "$CHAT";; buyer-poor) printf '%s: not enough coins\n' "$nm" >> "$CHAT";; seller-short) printf '%s: they do not have enough %s\n' "$nm" "$it" >> "$CHAT";; *) printf '%s: no price for %s\n' "$nm" "$it" >> "$CHAT";; esac; status >/dev/null ;;
@@ -625,6 +637,7 @@ A: <the answer>"
         rm -f "$LES/cand.txt"; rmdir "$SHARED/teach.lock"; status >/dev/null ;;
     study) need_pet; now="${PET_AI_NOW:-$(date +%s)}"; nm=$(getv name_id); ev=$(aiv study_every); last=$(cat "$PET/study_last" 2>/dev/null || echo 0); [ $(( now - last )) -ge "${ev:-1440}" ] || exit 0
         mkdir -p "$PET/lessons"; node=$(next_node); [ -n "$node" ] || exit 0; echo "$now" > "$PET/study_last"; printf 'ph study %s: reading about %s\n' "$nm" "$(node_title "$node")" >> "$CHAT"; stat_add intellect 1
+        [ "${PET_TRAIN:-0}" = 1 ] && [ -z "${PET_TEACH_BACKEND:-}" ] && exit 0      # training/test runs never call a real teacher (only a fake one)
         if [ "${PET_TEACH_SYNC:-0}" = 1 ]; then sh "$0" teach_me "$node" >/dev/null 2>&1; else ( setsid sh "$0" teach_me "$node" >/dev/null 2>&1 & ); fi ;;
     lessons) need_pet; nm=$(getv name_id); n=$(grep -c '^CARD' "$PET/lessons/pending.txt" 2>/dev/null); if [ "${n:-0}" -eq 0 ]; then printf '%s: no lessons waiting\n' "$nm" >> "$CHAT"; else printf '%s: %s lesson(s) waiting; say accept <id> or reject <id>\n' "$nm" "$n" >> "$CHAT"; grep '^CARD' "$PET/lessons/pending.txt" | head -3 | awk -F'|' '{id=$2; q=$4; gsub(/^ +| +$/,"",id); gsub(/^ +| +$/,"",q); print "? " id ": " q}' >> "$CHAT"; fi; status >/dev/null ;;
     lesson_accept|lesson_reject) need_pet; nm=$(getv name_id); LES="$PET/lessons"; id=$(printf '%s' "$ARG" | tr -d ' '); row=$(grep "^CARD *| *$id *|" "$LES/pending.txt" 2>/dev/null | head -1)
@@ -634,6 +647,8 @@ A: <the answer>"
         if [ "$VERB" = lesson_accept ]; then printf '%s\n' "$row" >> "$LES/accepted.pdl"; echo "$node accepted" >> "$LES/nodes.tmp"; formula_bump "$kd" 1 accepted; stat_add intellect 5; printf 'LESSON|%s|%s|%s|-|ACCEPTED-%s\n' "$now" "$nm" "$node" "$id" >> "$TOWN/ledger.txt"; printf '%s: I learned something new!\n' "$nm" >> "$CHAT"
         else echo "$node rejected" >> "$LES/nodes.tmp"; formula_bump "$kd" -1 rejected; printf 'LESSON|%s|%s|%s|-|REJECTED-by-owner-%s\n' "$now" "$nm" "$node" "$id" >> "$TOWN/ledger.txt"; printf '%s: ok, I will forget that one\n' "$nm" >> "$CHAT"; fi
         mv -f "$LES/nodes.tmp" "$LES/nodes.txt"; status >/dev/null ;;
+    world_expand) need_pet; [ -x "$WORLD" ] || exit 0; cols=$(aiv expand_cols); r=$("$WORLD" expand "$SHARED" "${cols:-8}"); case "$r" in expanded*) town_merge; printf '%s: the village map grew!\n' "$(getv name_id)" >> "$CHAT"; printf '%s | world | %s\n' "$(date '+%H:%M:%S')" "$r" >> "$PET/log.txt" ;; *) printf '%s: the map cannot grow any more (%s)\n' "$(getv name_id)" "$r" >> "$CHAT" ;; esac; status >/dev/null ;;
+    explored) need_pet; "$WORLD" explored "$SHARED" ;;
     build_room) need_pet; side="${ARG:-right}"; kind="${3:-room}"; RF=$(rooms_file); HF="$HERE/home.pdl"; [ -f "$SHARED/home_all.pdl" ] && HF="$SHARED/home_all.pdl"
         cur=$(cat "$PET/loc.txt" 2>/dev/null || echo bedroom); line=$(grep "^CELL *| *$cur " "$HF" | head -1); cx=$(echo "$line" | awk -F'|' '{gsub(/ /,"",$3); print $3}'); cy=$(echo "$line" | awk -F'|' '{gsub(/ /,"",$4); print $4}')
         [ -n "$cx" ] || { printf '%s: I cannot build here\n' "$(getv name_id)" >> "$CHAT"; exit 0; }

@@ -30,3 +30,5 @@ REPLY | climb  | happy | up we go!
 REPLY | climb  | sad   | ...ok
 REPLY | build  | happy | let me build!
 REPLY | build  | sad   | ...ok
+REPLY | study  | happy | let me read!
+REPLY | study  | sad   | ...later

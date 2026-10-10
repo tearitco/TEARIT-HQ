@@ -13,10 +13,10 @@ MKDIR   | state/pets/a13
 WRITE   | state/pets/a13/loc.txt | garden\n
 
 RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | build_room | right | room
-EXPECT_HAS | state/built_rooms.pdl | DOOR \p garden \p 334 \p r4 | door-out-row
-EXPECT_HAS | state/built_rooms.pdl | DOOR \p r4 \p 30 \p garden \p 300 | door-back-row
-EXPECT_HAS | state/built_home.pdl | CELL \p r4 \p 3 \p 0 \p room | cell-row
-EXPECT_HAS | state/rooms_all.pdl | ROOM \p r4 \p 3 | merged-rooms
+EXPECT_HAS | state/built_rooms.pdl | DOOR \p garden \p 334 \p r5 | door-out-row
+EXPECT_HAS | state/built_rooms.pdl | DOOR \p r5 \p 30 \p garden \p 300 | door-back-row
+EXPECT_HAS | state/built_home.pdl | CELL \p r5 \p 3 \p 0 \p room | cell-row
+EXPECT_HAS | state/rooms_all.pdl | ROOM \p r5 \p 3 | merged-rooms
 EXPECT_HAS | state/pets/a13/chat.txt | I built a room to the right | chat-line
 
 RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | build_room | right | room
@@ -29,16 +29,16 @@ EXPECT_HAS | state/pets/a13/chat.txt | no free door spot | refuse-door-slot-take
 WRITE   | state/pets/a13/loc.txt | garden\n
 
 # the door is a teleport event: fire it, the pet changes room and arrives at the right x
-RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | fire | door_garden_r4
-EXPECT_FILE | state/pets/a13/loc.txt | r4\n | teleport-into-new-room
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | fire | door_garden_r5
+EXPECT_FILE | state/pets/a13/loc.txt | r5\n | teleport-into-new-room
 EXPECT_FILE | state/pets/a13/arrive_x.txt | 50\n | arrives-at-left-door
-RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | fire | door_r4_garden
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | fire | door_r5_garden
 EXPECT_FILE | state/pets/a13/loc.txt | garden\n | teleport-back
 EXPECT_FILE | state/pets/a13/arrive_x.txt | 300\n | arrives-at-right-door
 
 # shipped rooms are untouched, and a built room can itself grow
-RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | teleport | r4 | 50
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | teleport | r5 | 50
 RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | build_room | right | garden
-EXPECT_HAS | state/built_rooms.pdl | DOOR \p r4 \p 334 \p r5 | chain-room
-RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | fire | door_r4_r5
-EXPECT_FILE | state/pets/a13/loc.txt | r5\n | teleport-chain
+EXPECT_HAS | state/built_rooms.pdl | DOOR \p r5 \p 334 \p r6 | chain-room
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | fire | door_r5_r6
+EXPECT_FILE | state/pets/a13/loc.txt | r6\n | teleport-chain

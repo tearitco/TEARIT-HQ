@@ -12,3 +12,7 @@ AI | eat_radius | 1
 AI | needs_every | 60
 AI | rest_gain | 15
 AI | study_every | 1440
+AI | reveal_r | 3
+AI | reveal_npc | 2
+AI | expand_pct | 60
+AI | expand_cols | 8

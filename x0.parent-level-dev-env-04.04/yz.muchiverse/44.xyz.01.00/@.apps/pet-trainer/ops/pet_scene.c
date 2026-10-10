@@ -202,7 +202,7 @@ static void manage(const char *sd, const char *active, int fi) {
     }
 }
 
-static char mapr[64][66]; static int mh_, mw_;
+static char mapr[64][66]; static int mh_, mw_; static char fogr[64][66]; static int have_fog;      /* explored.txt: 1 = seen, 0 = fog */
 static void tile(int x, int y, char c, int px0, int py0, int T) {
     switch (c) {
         case 'T': rect(px0, py0, px0 + T, py0 + T, 86, 160, 70); rect(px0 + T / 2 - 2, py0 + T - 8, px0 + T / 2 + 2, py0 + T, 100, 70, 40); for (int i = 0; i < 4; i++) rect(px0 + 3 + i, py0 + 2 + i * 2, px0 + T - 3 - i, py0 + 4 + i * 2, 30, 110 + i * 15, 50); break;
@@ -232,17 +232,18 @@ static void trainer(int cx, int by, const char *dir) {
 static void world(const char *sd, const char *app, const char *active, int fi) {
     char p[PATH_MAX]; FILE *f = town_open(app); mh_ = 0; mw_ = 0;
     if (f) { char l[128]; while (fgets(l, sizeof l, f) && mh_ < 64) { l[strcspn(l, "\r\n")] = 0; snprintf(mapr[mh_], sizeof mapr[0], "%s", l); if ((int)strlen(l) > mw_) mw_ = (int)strlen(l); mh_++; } fclose(f); }
+    { snprintf(p, sizeof p, "%s/explored.txt", sd); FILE *ef = fopen(p, "r"); have_fog = 0; memset(fogr, '0', sizeof fogr); if (ef) { char l[128]; int y = 0; while (y < 64 && fgets(l, sizeof l, ef)) { for (int x = 0; x < 64 && l[x] && l[x] != '\n'; x++) fogr[y][x] = l[x]; y++; } fclose(ef); have_fog = 1; } }
     snprintf(p, sizeof p, "%s/world.st", sd); int tx = kvnum(p, "tx", 1), ty = kvnum(p, "ty", 1), fx = kvnum(p, "fx", 1), fy = kvnum(p, "fy", 1), nn = kvnum(p, "n_npc", 0);
     char dir[8] = "down"; { FILE *w = fopen(p, "r"); if (w) { char l[64]; while (fgets(l, sizeof l, w)) if (!strncmp(l, "dir=", 4)) { l[strcspn(l, "\r\n")] = 0; snprintf(dir, sizeof dir, "%s", l + 4); } fclose(w); } }
     int T = 24, cols = W / T, rows = (H - 16) / T, cx0 = tx - cols / 2, cy0 = ty - rows / 2;
     if (cx0 < 0) cx0 = 0; if (cy0 < 0) cy0 = 0; if (cx0 > mw_ - cols) cx0 = mw_ - cols; if (cy0 > mh_ - rows) cy0 = mh_ - rows; if (cx0 < 0) cx0 = 0; if (cy0 < 0) cy0 = 0;
     rect(0, 0, W, H, 20, 24, 30);
-    for (int y = 0; y < rows; y++) for (int x = 0; x < cols; x++) { int mx = cx0 + x, my = cy0 + y; char c = (my < mh_ && mx < (int)strlen(mapr[my])) ? mapr[my][mx] : 'T'; if (c == 'P' || c == 'N') c = '.'; tile(mx, my, c, x * T, y * T, T); }
+    for (int y = 0; y < rows; y++) for (int x = 0; x < cols; x++) { int mx = cx0 + x, my = cy0 + y; char c = (my < mh_ && mx < (int)strlen(mapr[my])) ? mapr[my][mx] : 'T'; if (c == 'P' || c == 'N') c = '.'; if (have_fog && (my >= 64 || mx >= 64 || fogr[my][mx] != '1')) rect(x * T, y * T, x * T + T, y * T + T, 12, 16, 26); else tile(mx, my, c, x * T, y * T, T); }
     for (int i = 0; i < nn; i++) {                                                                                         /* the other pets, small, on their tiles */
         char key[48], id[32] = ""; snprintf(key, sizeof key, "npc_%d_id", i);
         { FILE *w = fopen(p, "r"); if (w) { char l[96]; size_t kl = strlen(key); while (fgets(l, sizeof l, w)) if (!strncmp(l, key, kl) && l[kl] == '=') { l[strcspn(l, "\r\n")] = 0; snprintf(id, sizeof id, "%s", l + kl + 1); } fclose(w); } }
         snprintf(key, sizeof key, "npc_%d_x", i); int nx = kvnum(p, key, -9); snprintf(key, sizeof key, "npc_%d_y", i); int ny = kvnum(p, key, -9);
-        if (!strcmp(id, active) || nx < cx0 || ny < cy0 || nx >= cx0 + cols || ny >= cy0 + rows) continue;
+        if (!strcmp(id, active) || nx < cx0 || ny < cy0 || nx >= cx0 + cols || ny >= cy0 + rows || (have_fog && fogr[ny][nx] != '1')) continue;
         char sp[PATH_MAX]; snprintf(sp, sizeof sp, "%s/pets/%s/art/sprites_hi/idle_%02d/sprite.csv", sd, id, (fi + i * 3) % 8); sprite(sp, (nx - cx0) * T + T / 2, (ny - cy0) * T + T - 1, 1, 2);
     }
     if (fx >= cx0 && fy >= cy0 && fx < cx0 + cols && fy < cy0 + rows) {                                                    /* your pet follows one tile behind */

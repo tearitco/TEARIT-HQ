@@ -1,0 +1,4 @@
+# pet_explore.pal - pal harness: fog, exploring pets, map growth. Verdict: results/pet_explore.txt.verdict.txt. Run: prisc+x pet_explore.pal (from this folder)
+exec ./ops/+x/harness_case_op.+x cases/pet_explore.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/pet_explore.pdl
+halt
