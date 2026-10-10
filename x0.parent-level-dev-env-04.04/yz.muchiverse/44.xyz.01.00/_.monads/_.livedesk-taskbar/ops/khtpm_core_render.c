@@ -6181,7 +6181,14 @@ static int layout_sidebar_panel(Elem *page) {
                 tab->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = tab;
                 tx += tw + scaled(3);
             }
-            if (tx + scaled(6) > g_win_w) { g_win_w = tx + scaled(6); g_window->w = g_win_w; }
+            /* REAL FIX 2026-10-10 (owner: "pet screen flickers"; found by capturing the live window 2 min:
+             * its width swung 892/904/908/916 px every few seconds). The tab row sizes the window from its
+             * label widths, and a live label (the game-clock tab "D19 05:19") changes width as it ticks, so
+             * the X window was resized, and the whole thing repainted, many times a minute. Latch the widest
+             * the row has needed in this process: the window can still grow for a genuinely wider row, it
+             * never shrinks and re-grows with a ticking label. */
+            { static int s_tabbar_hw = 0; int need = tx + scaled(6); if (need > s_tabbar_hw) s_tabbar_hw = need;
+              if (s_tabbar_hw > g_win_w) { g_win_w = s_tabbar_hw; g_window->w = g_win_w; } }
             tabbar->x = 0; tabbar->y = CHROME_H + tabbar_h; tabbar->w = g_win_w; tabbar->h = row_h;
             css_compute_style(&g_sheet, tabbar->tag, tabbar->id, tabbar->classes, tabbar->n_classes, 0, &tabbar->style);
             tabbar_h += row_h;
