@@ -146,7 +146,9 @@ contact_add() { # contact_add <owner id> <other id>: one CONTACT row (name, numb
     printf 'CONTACT | %s | %s | %s | like=5 | met=%s\n' "$(ph_name "$2")" "$num" "$2" "$(date +%F)" >> "$f"; }
 ph_say() { # ph_say <from id> <to id> <text>: a phone.send "say" from the sender's own phone, then one router pass (delivery into the other pet's inbox)
     tn=$(ph_number "$2"); [ -n "$tn" ] && "$PHS" "$SHARED/pets/$1/inventory/zz.phone" "$tn" say "" "$3" 2>/dev/null || return 0; "$PHR" "$SRV" >/dev/null 2>&1
-    printf 'ph >%s: %s\n' "$(ph_name "$2")" "$3" >> "$SHARED/pets/$1/chat.txt"; printf 'ph %s %s: %s\n' "$(ph_number "$1" | cut -c1-8)" "$(ph_name "$1")" "$3" >> "$SHARED/pets/$2/chat.txt"; }      # phone chats show in the chat window: "ph >Name: text" sent, "ph <number> Name: text" received
+    printf 'ph >%s: %s\n' "$(ph_name "$2")" "$3" >> "$SHARED/pets/$1/chat.txt"; printf 'ph %s %s: %s\n' "$(ph_number "$1" | cut -c1-8)" "$(ph_name "$1")" "$3" >> "$SHARED/pets/$2/chat.txt"
+    if [ "${PET_TRAIN:-0}" != 1 ] && [ "${PET_NO_VOICE:-0}" != 1 ] && [ "$2" = "$(cat "$SHARED/active.txt" 2>/dev/null)" ]; then      # the pet on screen reads a text it receives aloud, in the SENDER's voice (voices.pdl species voice)
+        sv=$(sed -n 's/^species=//p' "$SHARED/pets/$1/variables.txt" 2>/dev/null | head -1); ( setsid sh "$HERE/ops/pet_voice.sh" "${sv:-0}" "$3" >/dev/null 2>&1 & ); fi; }      # phone chats show in the chat window: "ph >Name: text" sent, "ph <number> Name: text" received
 # ---- town: buildings are rows (state/world/town_built.pdl); state/town_all.txt = world_map.txt with every building's footprint stamped on (pet_world and pet_scene read it)
 TOWN="$SHARED/world"
 town_merge() { # rebuild town_all.txt from the shipped map + the built buildings
