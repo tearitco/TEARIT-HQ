@@ -268,6 +268,7 @@ status() {
         { nb=0; while read -r bid bname _; do printf 'bk_%s_label=%s\nbk_%s_arg=%s\nbk_%s_active=%s\n' "$nb" "$bname" "$nb" "$bid" "$nb" "$([ "$bid" = "$ACTIVE" ] && echo active)"; nb=$((nb+1)); done < "$SHARED/party.txt"
           printf 'n_book=%s\nbook_label=book:%s\npage_label=page:%s\n' "$nb" "$(getv name_id)" "$(cat "$SHARED/view.txt" 2>/dev/null || echo room)"; }
         sh "$HERE/ops/pet_clock.sh" status 2>/dev/null
+        printf 'rec_label=%s\n' "$([ "$(cat "$SHARED/recording.txt" 2>/dev/null)" = 1 ] && echo '♨ recording... (press to cancel)' || echo '♨ Talk (mic)')"
         printf 'loc=%s\n' "$(cat "$PET/loc.txt" 2>/dev/null || echo bedroom)"
         nav_rows
         n=0; tail -4 "$CHAT" 2>/dev/null | while IFS= read -r line; do printf 'chat_%s=%s\n' "$n" "$(printf '%s' "$line" | cut -c1-32)"; n=$((n+1)); done
@@ -292,7 +293,7 @@ status() {
 # (and logged), exactly like Doom's play flag. The window shows it as a traffic light (green = started, red = stopped).
 running() { [ "$(cat "$PET/running.txt" 2>/dev/null)" = 1 ]; }
 case "$VERB" in
-    start|stop|chat_send|clock_event|time_rate|time_advance|time_reinstall|status|stats|new_pet|save_slot|load_slot|fire|gen_events|new_event|menu_group|menu_toggle|inv_toggle|open_events|teleport|hotbar_toggle|interact|player|party_toggle|view|select|world_move|world_talk|"") ;;
+    start|stop|listen|chat_send|clock_event|time_rate|time_advance|time_reinstall|status|stats|new_pet|save_slot|load_slot|fire|gen_events|new_event|menu_group|menu_toggle|inv_toggle|open_events|teleport|hotbar_toggle|interact|player|party_toggle|view|select|world_move|world_talk|"") ;;
     *) if ! running; then mkdir -p "$PET"; printf '%s | stopped | ignored %s\n' "$(date '+%H:%M:%S')" "$VERB" >> "$PET/log.txt"
            case "$VERB" in chat_input|chat|chat_send) printf '(the pet is stopped - press Play first)\n' >> "$PET/chat.txt"; status >/dev/null 2>&1;; esac; exit 0; fi ;;
 esac
@@ -396,6 +397,7 @@ case "$VERB" in
         nm=$(getv name_id); sp=$(getv species); case "$ARG" in fall) line="whoa!!"; expr surprised 4;; land) line="oof!"; expr sad 3;; *) exit 0;; esac
         printf '%s: %s\n' "$nm" "$line" >> "$CHAT"; ( setsid sh "$HERE/ops/pet_voice.sh" "${sp:-0}" "$line" >/dev/null 2>&1 & ); status >/dev/null ;;
     chat) do_chat "$ARG"; status >/dev/null ;;
+    listen) ( setsid sh "$HERE/ops/pet_listen.sh" >/dev/null 2>&1 & ); sleep 0.3; status >/dev/null ;;      # the ♨ mic: record, offline STT, chat
     chat_send) TA="$HERE/text_area_pet-say.txt"; [ -f "$TA" ] || TA="$HERE/text_area_say.txt"; msg=$(tr '\n' ' ' < "$TA" 2>/dev/null | sed 's/  */ /g;s/^ //;s/ $//'); : > "$HERE/text_area_pet-say.txt"; : > "$HERE/text_area_say.txt"; [ -n "$msg" ] && do_chat "$msg"; status >/dev/null ;;      # the multi-line text_area is saved by the renderer to text_area_<id>.txt in the package dir; Send reads it, clears it (the renderer reloads the empty file) and chats
     chat_input) do_chat "$4"; status >/dev/null ;;      # a layout cli_io appends: <package_dir> <house_root> <typed text>
     teach) do_teach "$ARG" "$3" "$4"; status >/dev/null ;;
