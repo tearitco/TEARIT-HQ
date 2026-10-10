@@ -107,3 +107,16 @@ The pet-trainer decision stands: **rooms stay side-on 2D by default**; 3D/POV is
 - **GUI = pet-trainer's**: top bar INT | book:<pet> | page:<room> | Shop | Menu; sidebar = dropdown rows, coins, pet stats, items in this room; canvas with chat/hotbar overlays; footer = chat, hb and the six pet buttons (80 px each, narrower wraps the label). Repeat rows bind by the ui var prefix: `bind="party"` reads `party_N_label`.
 - Pets block each other's cells; verbs: `select <id>`, `goto <room>`; one `pet_<id>.txt` per pet; the daemon walks only the active pet (the others stand).
 - Still open (owner asks): shop item PICTURES (RMMV `img/system/IconSet.png` icons are the natural picture for DB items; furniture can show its own Inside_B tile), RPG Maker DB items as shop stock, chat/hotbar overlays not drawn, smooth walking, 3D/xlector/POV, village.
+
+## Plan (owner, 2026-10-10): every pet gets its own room, shared rooms come later from relationships - DOCUMENTED ONLY, NOT BUILT
+Owner direction: "each pet have their own room later, some will share because of relationships. but let's keep it simple and document it for now."
+
+**Today (v0, deliberately simple):** two shared rooms (Bedroom, Living room) in `rooms.pdl`; all six pets start in the Bedroom; furniture belongs to a room (`PLACE` rows carry the room id), not to a pet; each pet only has a position file `state/pet_<id>.txt`.
+
+**Target model (design, for the next agent):**
+1. **A room has an owner list.** Extend `rooms.pdl` ROOM rows with an `owners` column (pet ids, comma separated), e.g. `ROOM | room_pochi | Pochi's room | 1 | 2 | pochi`. A pet's "home" = the first room that lists it. Rooms with two or more owners are the shared rooms.
+2. **Sharing comes from relationships, not from a setting.** The relationship data is the owner's call (friendship/partner/family levels between pets; the pet world already has neighbours and a chat/relationship layer in pet-trainer - read `TOWN-ECONOMY-AND-LEARNING-DESIGN.md` and `WORLD-DESIGN.md` before inventing a mechanism). Rule of thumb to start: when a relationship passes a threshold, an event appends a `SHARE|ts|room|pet` row to a small append-only `state/rooms_ledger.txt`; the room's owner list is the replay of the file, so it is auditable and undoable. Nothing edits `rooms.pdl` at runtime.
+3. **Furniture and money.** A bought item is placed in a room (already true). Whose purse pays is a separate decision: a per-pet purse (RPG Maker DB actor gold) is the natural fit once pets earn (mining, see `CHAIN-ECONOMY-DESIGN.md`); until then one shared 500-coin purse.
+4. **Doors.** Every home room gets a door to a hallway/living room (same `DOOR` rows, tile units) so pets can visit each other; autonomous walking already uses `auto=1` doors, so visiting is just a door whose destination is another pet's room. Visiting a room you do not own must not move its furniture (only owners may `place`/`remove` there) - a rule in `check_place`.
+5. **Rooms dropdown** lists every room with its owners and how many pets are inside; selecting a pet already moves the view to that pet's room.
+6. **Open questions:** how many room templates (size/floor) per pet; whether a pet's room is generated from the TSOTS interior statistics (sprint item 5-6) or picked from a small set; what relationship values exist today and where they are stored.
