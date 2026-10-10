@@ -41,7 +41,7 @@
       <text id="status" class="exchange-status" label="${status}"/>
 
       <!-- Market: chart canvas with the hotbar over its bottom edge -->
-      <canvas id="chart" class="ex-chart" sprite="${chart_raw}" show="${tab_market}"/>
+      <canvas id="chart" class="ex-chart" sprite="${canvas_raw}" show="${tab_market}"/>
       <row id="hotbar-ov" class="canvas-overlay-bottom ov-chrome ov-slide-x ex-hotbar theme" show="${tab_market}">
         <text label="${hb_title}" class="hb-quiet ov-title theme-3"/>
         <item id="hb-buy"    class="hb-slot skin-bar" label="Buy"    action="'${PKG}/ops/exchange_item.sh' 'QUICK buy_mkt'"/>

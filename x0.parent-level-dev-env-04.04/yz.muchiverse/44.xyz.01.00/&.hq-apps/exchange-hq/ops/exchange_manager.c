@@ -182,6 +182,7 @@ static void run_chart(void) { char in[PL], base[PL]; path_of(in, "chart_in.txt")
     fprintf(f, "MODE %s\nUNIT %s\nSIZE %d %d\nPADB 100\nBID %ld\nASK %ld\nAVG %ld\n", chart_mode, sel_unit, CW, CH, best_bid, best_ask, ui >= 0 ? U[ui].avg : 0L);
     int start = 0, cnt = 0; for (int i = nT - 1; i >= 0 && cnt < 300; i--) if (!strcmp(T[i].unit, sel_unit)) { start = i; cnt++; } for (int i = start; i < nT; i++) if (!strcmp(T[i].unit, sel_unit)) fprintf(f, "T %ld %ld\n", T[i].price, T[i].amount);
     for (int i = 0; i < nBID && i < 40; i++) fprintf(f, "B %ld %ld\n", BIDS[i].price, BIDS[i].cum); for (int i = 0; i < nASK && i < 40; i++) fprintf(f, "A %ld %ld\n", ASKS[i].price, ASKS[i].cum); fclose(f);
+    { static char last_in[60000]; char cur[60000]; size_t cn = 0; FILE *rf = fopen(in, "r"); if (rf) { cn = fread(cur, 1, sizeof cur - 1, rf); fclose(rf); } cur[cn] = 0; char rp[PL]; path_of(rp, "chart.raw"); struct stat sb; if (!strcmp(cur, last_in) && stat(rp, &sb) == 0) return; snprintf(last_in, sizeof last_in, "%s", cur); }   /* same input and the file exists: leave chart.raw alone (a rewrite makes the renderer repaint) */
     char bin[PL]; path_of(bin, "ops/+x/exchange_chart.+x"); pid_t pid = fork(); if (pid == 0) { setsid(); int dn = open("/dev/null", 0); (void)dn; execl(bin, bin, in, base, (char *)NULL); _exit(127); }
     if (pid > 0) { for (int i = 0; i < 100; i++) { int st; if (waitpid(pid, &st, WNOHANG) == pid) return; usleep(20000); } kill(pid, SIGKILL); waitpid(pid, NULL, 0); } }
 
@@ -194,7 +195,7 @@ static void write_ui(void) {
     const char *tabs[] = { "market", "loans", "orders", "feed", "settings" }; for (int i = 0; i < 5; i++) { int a = !strcmp(cur_tab, tabs[i]); fprintf(f, "tab_%s=%s\ncls_%s=%s\n", tabs[i], a ? "1" : "", tabs[i], a ? "active" : ""); }
     int ui = unit_index(sel_unit); const char *ul = ui >= 0 ? U[ui].label : sel_unit; char a[24], b[24], c[24];
     fprintf(f, "status=%s\n", msg[0] ? msg : "paper ledger: no chain coins move yet (settlement comes with the lease layer)");
-    fprintf(f, "title=Exchange  ·  %s  ·  %d fills\n", sel_unit, nT); fprintf(f, "chart_raw=%s/chart.raw\nchart_mode=%s\nsel_unit=%s\nunit_label=%s\nhb_title=%s chart  ·  %s  ·  lot %ld mc\n", pkg, chart_mode, sel_unit, ul, chart_mode, sel_unit, lot);
+    fprintf(f, "title=Exchange  ·  %s  ·  %d fills\n", sel_unit, nT); fprintf(f, "canvas_raw=%s/chart.raw\nchart_raw=%s/chart.raw\nchart_mode=%s\nsel_unit=%s\nunit_label=%s\nhb_title=%s chart  ·  %s  ·  lot %ld mc\n", pkg, pkg, chart_mode, sel_unit, ul, chart_mode, sel_unit, lot);
     fprintf(f, "cls_u_mined=%s\ncls_u_play=%s\n", !strcmp(sel_unit, "mined") ? "sel" : "", !strcmp(sel_unit, "play") ? "sel" : "");
     long avg = ui >= 0 ? U[ui].avg : 0, last = ui >= 0 ? U[ui].last : 0; long spread = (best_bid && best_ask) ? best_ask - best_bid : 0; fmt_bp(a, 24, last); fmt_bp(b, 24, avg);
     fprintf(f, "sb_unit=%s\nsb_last=last %s\nsb_avg=avg %s (pref)\n", ul, a, b);
@@ -222,7 +223,8 @@ static void write_ui(void) {
     struct { const char *key, *label; double v; } S[] = { {"fee_percent","Taker fee percent (preferred)",fee_pct}, {"maker_percent","Maker fee percent",maker_pct}, {"window_trades","Averaging window (fills)",win_n}, {"band_pct","Price band (percent from average)",band},
         {"day_seconds","Loan day length (seconds)",(double)day_s}, {"lot_mc","Hotbar lot size (mc)",(double)lot}, {"default_rate","Hotbar lend rate (bp per day)",(double)def_rate}, {"seed_mined","Seed value of mined cones (bp)",0} };
     for (int u = 0; u < nU; u++) if (!strcmp(U[u].id, "mined")) S[7].v = (double)U[u].seed; int ns = (int)(sizeof S / sizeof S[0]); fprintf(f, "n_set=%d\n", ns); for (int i = 0; i < ns; i++) fprintf(f, "s_%d_label=%s   %.0f\ns_%d_key=%s\n", i, S[i].label, S[i].v, i, S[i].key);
-    fclose(f); rename(tmp, dst); }
+    fclose(f); { char *a1 = NULL, *b1 = NULL; long n1 = 0, n2 = 0; FILE *x = fopen(tmp, "r"), *y = fopen(dst, "r"); if (x) { fseek(x, 0, SEEK_END); n1 = ftell(x); rewind(x); a1 = malloc(n1 + 1); if (a1) { fread(a1, 1, n1, x); } fclose(x); } if (y) { fseek(y, 0, SEEK_END); n2 = ftell(y); rewind(y); b1 = malloc(n2 + 1); if (b1) { fread(b1, 1, n2, y); } fclose(y); }
+      int same = a1 && b1 && n1 == n2 && !memcmp(a1, b1, n1); free(a1); free(b1); if (same) { remove(tmp); return; } } rename(tmp, dst); }
 static void refresh(void) { load_settings(); load_all(); load_loans(); if (!strcmp(cur_tab, "market")) run_chart(); write_ui(); }
 static void do_cmd(const char *cmd) {
     if (!strncmp(cmd, "TAB:", 4)) { snprintf(cur_tab, sizeof cur_tab, "%s", cmd + 4); msg[0] = 0; }
