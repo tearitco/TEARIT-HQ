@@ -117,7 +117,7 @@ do_teach() { # teach "<phrase>" <verb> [item]: the master teaches a word (starts
 }
 do_judge() { # praise / scold: moves the weight of the last word the pet acted on, +-2, and its mood
     need_pet; [ -f "$PET/last_word.txt" ] || return 0; d="$1"; ph=$(cut -d'|' -f1 "$PET/last_word.txt"); vb=$(cut -d'|' -f2 "$PET/last_word.txt")
-    lex_set "$ph" "$vb" "" "$d" 3; feedback "$( [ "$d" -gt 0 ] && echo +1 || echo -1 )" "chat"
+    lex_set "$ph" "$vb" "" "$d" 3; feedback "$( [ "$d" -gt 0 ] && echo +1 || echo -1 )" "${vb:-chat}"
     if [ "$d" -gt 0 ]; then addv happy 5; expr happy 6; say "^_^"; else addv happy -4; expr sad 6; say "T_T"; fi
 }
 do_touch() { # touched: head = pleased, belly = giggle; many touches in a row annoy it (valence -1)
@@ -296,7 +296,7 @@ status() {
 running() { [ "$(cat "$PET/running.txt" 2>/dev/null)" = 1 ]; }
 case "$VERB" in
     start|stop|listen|chat_send|clock_event|time_rate|time_advance|time_reinstall|status|stats|new_pet|save_slot|load_slot|fire|gen_events|new_event|menu_group|menu_toggle|inv_toggle|open_events|teleport|hotbar_toggle|interact|player|party_toggle|view|select|world_move|world_talk|"") ;;
-    *) if ! running; then mkdir -p "$PET"; printf '%s | stopped | ignored %s\n' "$(date '+%H:%M:%S')" "$VERB" >> "$PET/log.txt"
+    *) if ! running && [ "${PET_TRAIN:-0}" != 1 ]; then mkdir -p "$PET"; printf '%s | stopped | ignored %s\n' "$(date '+%H:%M:%S')" "$VERB" >> "$PET/log.txt"
            case "$VERB" in chat_input|chat|chat_send) printf '(the pet is stopped - press Play first)\n' >> "$PET/chat.txt"; status >/dev/null 2>&1;; esac; exit 0; fi ;;
 esac
 case "$VERB" in

@@ -1,0 +1,123 @@
+# pet_train - a TRAINING SESSION for all six pets, run through the real verbs on the LIVE pet state (the pets are the learners; their reward ledger obs_feedback_log.txt feeds the concept bank's entity_grade report card).
+# Each pet is taught phrases for the furniture/room verbs, asked to do them, and rewarded ('good'); then one day_tick grades them. PET_TRAIN=1 lets a stopped pet learn. Run any time after a pet feature lands: prisc+x pet_train.pal
+# Lessons: edit the LESSON blocks below (phrase = verb item). Results: results/pet_train.txt (+ .verdict.txt). It touches state/ of the pet-trainer app only (never committed).
+RESULTS | ../results/pet_train.txt
+CASE    | pet-train
+SCRATCH |
+RUN | /bin/ln | -s | $HOUSE/@.apps/pet-trainer/state | $T/live
+ENV | PET_TRAIN | 1
+ENV | PET_SHARED | $HOUSE/@.apps/pet-trainer/state
+
+ENV | PET_DIR | $HOUSE/@.apps/pet-trainer/state/pets/a13
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach get on the bed = climb bed
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | get on the bed
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach climb the sofa = climb sofa
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | climb the sofa
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach go to the living room = go living
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | go to the living room
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach go to the bedroom = go bedroom
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | go to the bedroom
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | day_tick
+EXPECT_HAS | live/pets/a13/lexicon.pdl | get on the bed | a13-learned-bed
+EXPECT_HAS | live/pets/a13/lexicon.pdl | go to the living room | a13-learned-go
+EXPECT_HAS | live/pets/a13/obs_feedback_log.txt | concept=climb | a13-rewarded-climb
+EXPECT_HAS | live/pets/a13/obs_feedback_log.txt | concept=go | a13-rewarded-go
+
+ENV | PET_DIR | $HOUSE/@.apps/pet-trainer/state/pets/a14
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach get on the bed = climb bed
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | get on the bed
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach climb the sofa = climb sofa
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | climb the sofa
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach go to the living room = go living
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | go to the living room
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach go to the bedroom = go bedroom
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | go to the bedroom
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | day_tick
+EXPECT_HAS | live/pets/a14/lexicon.pdl | get on the bed | a14-learned-bed
+EXPECT_HAS | live/pets/a14/lexicon.pdl | go to the living room | a14-learned-go
+EXPECT_HAS | live/pets/a14/obs_feedback_log.txt | concept=climb | a14-rewarded-climb
+EXPECT_HAS | live/pets/a14/obs_feedback_log.txt | concept=go | a14-rewarded-go
+
+ENV | PET_DIR | $HOUSE/@.apps/pet-trainer/state/pets/a15
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach get on the bed = climb bed
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | get on the bed
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach climb the sofa = climb sofa
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | climb the sofa
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach go to the living room = go living
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | go to the living room
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach go to the bedroom = go bedroom
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | go to the bedroom
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | day_tick
+EXPECT_HAS | live/pets/a15/lexicon.pdl | get on the bed | a15-learned-bed
+EXPECT_HAS | live/pets/a15/lexicon.pdl | go to the living room | a15-learned-go
+EXPECT_HAS | live/pets/a15/obs_feedback_log.txt | concept=climb | a15-rewarded-climb
+EXPECT_HAS | live/pets/a15/obs_feedback_log.txt | concept=go | a15-rewarded-go
+
+ENV | PET_DIR | $HOUSE/@.apps/pet-trainer/state/pets/a16
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach get on the bed = climb bed
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | get on the bed
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach climb the sofa = climb sofa
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | climb the sofa
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach go to the living room = go living
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | go to the living room
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach go to the bedroom = go bedroom
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | go to the bedroom
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | day_tick
+EXPECT_HAS | live/pets/a16/lexicon.pdl | get on the bed | a16-learned-bed
+EXPECT_HAS | live/pets/a16/lexicon.pdl | go to the living room | a16-learned-go
+EXPECT_HAS | live/pets/a16/obs_feedback_log.txt | concept=climb | a16-rewarded-climb
+EXPECT_HAS | live/pets/a16/obs_feedback_log.txt | concept=go | a16-rewarded-go
+
+ENV | PET_DIR | $HOUSE/@.apps/pet-trainer/state/pets/a17
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach get on the bed = climb bed
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | get on the bed
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach climb the sofa = climb sofa
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | climb the sofa
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach go to the living room = go living
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | go to the living room
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach go to the bedroom = go bedroom
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | go to the bedroom
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | day_tick
+EXPECT_HAS | live/pets/a17/lexicon.pdl | get on the bed | a17-learned-bed
+EXPECT_HAS | live/pets/a17/lexicon.pdl | go to the living room | a17-learned-go
+EXPECT_HAS | live/pets/a17/obs_feedback_log.txt | concept=climb | a17-rewarded-climb
+EXPECT_HAS | live/pets/a17/obs_feedback_log.txt | concept=go | a17-rewarded-go
+
+ENV | PET_DIR | $HOUSE/@.apps/pet-trainer/state/pets/a18
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach get on the bed = climb bed
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | get on the bed
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach climb the sofa = climb sofa
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | climb the sofa
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach go to the living room = go living
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | go to the living room
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach go to the bedroom = go bedroom
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | go to the bedroom
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | good
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | day_tick
+EXPECT_HAS | live/pets/a18/lexicon.pdl | get on the bed | a18-learned-bed
+EXPECT_HAS | live/pets/a18/lexicon.pdl | go to the living room | a18-learned-go
+EXPECT_HAS | live/pets/a18/obs_feedback_log.txt | concept=climb | a18-rewarded-climb
+EXPECT_HAS | live/pets/a18/obs_feedback_log.txt | concept=go | a18-rewarded-go
