@@ -32,3 +32,6 @@ window { width: 600px; height: 560px; }
 .pchq-ft { background-color: #232323; color: #cfe8ff; font-weight: bold; width: 80px; height: 24px; font-size: 10px; padding: 2px; border: 1px solid #3a3a3a; }
 .pchq-ft.active { background-color: #2f5f8f; color: #ffffff; }
 .quiet { color: #888888; font-size: 9px; }
+
+/* the chat text field must be visible when not armed: a lighter box with a border */
+.ph-say { background-color: #23262e; border: 1px solid #5a6a8a; color: #ffffff; }
