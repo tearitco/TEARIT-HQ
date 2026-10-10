@@ -105,11 +105,13 @@ do_chat() { # the master talks: the pet matches known words, does the thing, ans
         feed) sh "$0" give "${it:-apple}" >/dev/null; reply feed ;;
         sleep|wash|play) sh "$0" "$vb" >/dev/null; reply "$vb" ;;
         touch) sh "$0" touch >/dev/null ;;
+        go) reply go; sh "$0" teleport "${it:-living}" 150 >/dev/null ;;      # taught: "go to the kitchen" = go living
+        climb) reply climb; sh "$0" climb "${it:-bed}" >/dev/null ;;       # taught: "get on the bed" = climb bed ("climb down" = get off)
     esac
 }
 do_teach() { # teach "<phrase>" <verb> [item]: the master teaches a word (starts weak, weight 3); teaching it again strengthens it
     need_pet; ph=$(printf '%s' "$1" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9 \n' ' ' | tr -s ' ' | sed 's/^ //;s/ $//'); vb="$2"; it="${3:-}"
-    case "$vb" in hello|feed|sleep|wash|play|touch) ;; *) return 0;; esac
+    case "$vb" in hello|feed|sleep|wash|play|touch|go|climb) ;; *) return 0;; esac
     [ -z "$ph" ] && return 0
     lex_set "$ph" "$vb" "$it" 1 3; printf 'YOU: (teaches "%s" = %s)\n' "$ph" "$vb" >> "$CHAT"; say "oh! $ph"; expr happy 5
 }
@@ -397,6 +399,8 @@ case "$VERB" in
         nm=$(getv name_id); sp=$(getv species); case "$ARG" in fall) line="whoa!!"; expr surprised 4;; land) line="oof!"; expr sad 3;; *) exit 0;; esac
         printf '%s: %s\n' "$nm" "$line" >> "$CHAT"; ( setsid sh "$HERE/ops/pet_voice.sh" "${sp:-0}" "$line" >/dev/null 2>&1 & ); status >/dev/null ;;
     chat) do_chat "$ARG"; status >/dev/null ;;
+    climb) need_pet; printf '%s\n' "${ARG:-bed}" > "$PET/want_platform.txt"; printf '%s | climb | %s\n' "$(date '+%H:%M:%S')" "${ARG:-bed}" >> "$PET/log.txt"; status >/dev/null ;;      # the manager reads want_platform.txt (rooms.pdl PLATFORM names)
+    go) sh "$0" teleport "${ARG:-living}" 150 ;;
     listen) ( setsid sh "$HERE/ops/pet_listen.sh" >/dev/null 2>&1 & ); sleep 0.3; status >/dev/null ;;      # the ♨ mic: record, offline STT, chat
     chat_send) TA="$HERE/text_area_pet-say.txt"; [ -f "$TA" ] || TA="$HERE/text_area_say.txt"; msg=$(tr '\n' ' ' < "$TA" 2>/dev/null | sed 's/  */ /g;s/^ //;s/ $//'); : > "$HERE/text_area_pet-say.txt"; : > "$HERE/text_area_say.txt"; [ -n "$msg" ] && do_chat "$msg"; status >/dev/null ;;      # the multi-line text_area is saved by the renderer to text_area_<id>.txt in the package dir; Send reads it, clears it (the renderer reloads the empty file) and chats
     chat_input) do_chat "$4"; status >/dev/null ;;      # a layout cli_io appends: <package_dir> <house_root> <typed text>

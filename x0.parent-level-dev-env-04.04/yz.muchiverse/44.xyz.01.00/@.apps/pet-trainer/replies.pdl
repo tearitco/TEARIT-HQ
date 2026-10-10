@@ -24,3 +24,7 @@ SAY | happy  | la la la
 SAY | happy  | i like it here
 SAY | chatter | hmm hmm
 SAY | chatter | what is that?
+REPLY | go     | happy | okay, going!
+REPLY | go     | sad   | ...ok
+REPLY | climb  | happy | up we go!
+REPLY | climb  | sad   | ...ok

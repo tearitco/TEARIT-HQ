@@ -53,6 +53,18 @@ static void camera_apply(const char *app, const char *dir, int code) {
     else if (code == kb(app, "reset_view", 102)) { yaw = 0; pitch = 0; h = 0; } else chg = 0;
     if (!chg) return; f = fopen(p, "w"); if (f) { fprintf(f, "mode=%s\npov=%d\nyaw=%d\npitch=%d\nheight=%d\n", mode3d ? "3d" : "2d", pov, yaw, pitch, h); fclose(f); }
 }
+typedef struct { int x0, x1, top; char name[24]; } Plat;
+/* rooms.pdl: PLATFORM | room | x0 | x1 | top y | name  (furniture the pet may jump on) */
+static int load_plats(const char *app, const char *loc, Plat *p, int max) {
+    char rp[PATH_MAX], l[200]; snprintf(rp, sizeof rp, "%s/rooms.pdl", app); FILE *f = fopen(rp, "r"); int n = 0; if (!f) return 0;
+    while (n < max && fgets(l, sizeof l, f)) { char rm[32], nm[40]; int a, b, c; if (sscanf(l, "PLATFORM | %31s | %d | %d | %d | %39[^\n]", rm, &a, &b, &c, nm) == 5 && !strcmp(rm, loc)) { p[n].x0 = a; p[n].x1 = b; p[n].top = c; snprintf(p[n].name, sizeof p[n].name, "%s", nm); size_t k = strlen(p[n].name); while (k && p[n].name[k - 1] == ' ') p[n].name[--k] = 0; n++; } }
+    fclose(f); return n;
+}
+static int room_scene(const char *app, const char *loc) {   /* rooms.pdl ROOM | id | scene id | name */
+    char rp[PATH_MAX], l[200]; snprintf(rp, sizeof rp, "%s/rooms.pdl", app); FILE *f = fopen(rp, "r"); int sc = 0; if (!f) return 0;
+    while (fgets(l, sizeof l, f)) { char id[32]; int s; if (sscanf(l, "ROOM | %31s | %d", id, &s) == 2 && !strcmp(id, loc)) { sc = s; break; } }
+    fclose(f); return sc;
+}
 static int cam_pov(const char *dir) { char p[PATH_MAX], l[64]; int pv = 1; snprintf(p, sizeof p, "%s/camera.st", dir); FILE *f = fopen(p, "r"); if (!f) return 1; while (fgets(l, sizeof l, f)) if (!strncmp(l, "pov=", 4)) pv = atoi(l + 4); fclose(f); return pv; }
 static long relay_off = -1, hist_off = -1;
 static void esc_poll(const char *dir) {        /* Esc (27) is forwarded to keyboard/history.txt only: that is the way out of Interact mode (arrows and camera keys stop, nav numbers work again) */
@@ -141,21 +153,35 @@ int main(int argc, char **argv) {
         { char lp[PATH_MAX]; FILE *lf; snprintf(lp, sizeof lp, "%s/pets/%s/loc.txt", pet, act); if ((lf = fopen(lp, "r"))) { if (fgets(loc, sizeof loc, lf)) loc[strcspn(loc, "\r\n")] = 0; fclose(lf); }
           snprintf(lp, sizeof lp, "%s/pets/%s/arrive_seq.txt", pet, act); if ((lf = fopen(lp, "r"))) { char q[40]; if (fgets(q, sizeof q, lf)) arrive_seq = atoll(q); fclose(lf); }
           snprintf(lp, sizeof lp, "%s/pets/%s/arrive_x.txt", pet, act); if ((lf = fopen(lp, "r"))) { char q[16]; if (fgets(q, sizeof q, lf)) arrive_x = atoi(q); fclose(lf); } }
-        rid = !strcmp(loc, "living") ? 1 : 0;
+        rid = room_scene(app, loc);
         static long long seen_seq = 0; static char seen_act[64] = "";
         if (strcmp(seen_act, act)) { snprintf(seen_act, sizeof seen_act, "%s", act); seen_seq = arrive_seq; ax = -1; }      /* another pet became the active one: start from its resting x */
-        if (arrive_seq != seen_seq) { seen_seq = arrive_seq; ax = arrive_x; tgt = arrive_x; nxt_move = t + 2500; }            /* a teleport event moved it: appear at the arrival door */
+        static Plat pl[8]; static int npl = 0, plat_on = -1, plat_goal = -1, lift_goal = 0; static double lift_from = 0, hop_amp = 36; static char pl_loc[32] = ""; static long long down_at = 0;
+        if (strcmp(pl_loc, loc)) { snprintf(pl_loc, sizeof pl_loc, "%s", loc); npl = load_plats(app, loc, pl, 8); plat_on = plat_goal = -1; lift_goal = 0; lift_from = 0; hop0 = -1; }
+        if (arrive_seq != seen_seq) { seen_seq = arrive_seq; ax = arrive_x; tgt = arrive_x; nxt_move = t + 2500; plat_on = plat_goal = -1; lift_goal = 0; lift_from = 0; hop0 = -1; }            /* a teleport event moved it: appear at the arrival door */
         if (!nxt_say) { nxt_say = t + 8000; nxt_hum = t + 12000; nxt_hop = t + 5000; }
         if (ax < 0 || (!at_rest && ax < 0)) ax = atof(sx); else if (!at_rest) ax = atof(sx);
         if (running && !strcmp(view, "room") && at_rest) {
-            if (t > nxt_move) { door_ev[0] = 0; tgt = 90 + rand() % (W - 90 - 110); nxt_move = t + 3500 + rand() % 7000;
-                if (rand() % 100 < 14) { char rp2[PATH_MAX]; snprintf(rp2, sizeof rp2, "%s/rooms.pdl", app); FILE *rf2 = fopen(rp2, "r"); if (rf2) { char l2[200]; while (fgets(l2, sizeof l2, rf2)) { char tg[16], rm[32], ds[32], au[16]; int dx = 0, ar = 0; if (sscanf(l2, "DOOR | %31s | %d | %31s | %d | %15s", rm, &dx, ds, &ar, au) == 5 && !strcmp(rm, loc) && !strcmp(au, "auto=1")) { tgt = dx; snprintf(door_ev, sizeof door_ev, "door_%s_%s", rm, ds); nxt_move = t + 9000; (void)tg; break; } } fclose(rf2); } } }
-            if (door_ev[0] && ax >= tgt - 6 && ax <= tgt + 6) { snprintf(cmd, sizeof cmd, "PET_DIR= PET_SHARED='%s' sh '%s/ops/pet_event.sh' fire %s >/dev/null 2>&1", pet, app, door_ev); sh(cmd, NULL, 0); door_ev[0] = 0; nxt_move = t + 3000; }
+            int hopping = (hop0 >= 0 && t - hop0 < 700);
+            { char wp[PATH_MAX]; snprintf(wp, sizeof wp, "%s/pets/%s/want_platform.txt", pet, act); FILE *wf = fopen(wp, "r");      /* the taught verb: climb <name> / climb down */
+              if (wf) { char nm[40] = ""; if (fgets(nm, sizeof nm, wf)) nm[strcspn(nm, "\r\n")] = 0; fclose(wf); remove(wp);
+                  if (!strncmp(nm, "down", 4) || !strncmp(nm, "floor", 5)) { if (plat_on >= 0) down_at = t; plat_goal = -1; }
+                  else for (int i = 0; i < npl; i++) if (strstr(pl[i].name, nm)) { plat_goal = i; break; } } }
+            if (!hopping && plat_on < 0 && plat_goal < 0 && t > nxt_move) { door_ev[0] = 0; tgt = 90 + rand() % (W - 90 - 110); nxt_move = t + 3500 + rand() % 7000;
+                if (npl > 0 && rand() % 100 < 22) plat_goal = rand() % npl;                                                                     /* now and then it wants to be up on the furniture */
+                else if (rand() % 100 < 14) { char rp2[PATH_MAX]; snprintf(rp2, sizeof rp2, "%s/rooms.pdl", app); FILE *rf2 = fopen(rp2, "r"); if (rf2) { char l2[200]; while (fgets(l2, sizeof l2, rf2)) { char rm[32], ds[32], au[16]; int dx = 0, ar = 0; if (sscanf(l2, "DOOR | %31s | %d | %31s | %d | %15s", rm, &dx, ds, &ar, au) == 5 && !strcmp(rm, loc) && !strcmp(au, "auto=1")) { tgt = dx; snprintf(door_ev, sizeof door_ev, "door_%s_%s", rm, ds); nxt_move = t + 9000; break; } } fclose(rf2); } } }
+            if (plat_goal >= 0 && plat_goal < npl) { tgt = (pl[plat_goal].x0 + pl[plat_goal].x1) / 2; if (!hopping && ax >= tgt - 6 && ax <= tgt + 6) {      /* under it: jump up */
+                lift_from = lift_goal; lift_goal = (H - 30) - pl[plat_goal].top; hop_amp = 18; hop0 = t; plat_on = plat_goal; plat_goal = -1; down_at = t + 9000 + rand() % 8000; nxt_move = t + 3000; } }
+            if (plat_on >= 0 && !hopping) {                                                                                                       /* up there: stroll along the top, then hop down */
+                if (t > nxt_move) { tgt = pl[plat_on].x0 + 14 + rand() % (pl[plat_on].x1 - pl[plat_on].x0 - 28 > 1 ? pl[plat_on].x1 - pl[plat_on].x0 - 28 : 1); nxt_move = t + 2500 + rand() % 3000; }
+                if (t > down_at) { lift_from = lift_goal; lift_goal = 0; hop_amp = 18; hop0 = t; plat_on = -1; nxt_move = t + 2000; } }
+            if (door_ev[0] && plat_on < 0 && ax >= tgt - 6 && ax <= tgt + 6) { snprintf(cmd, sizeof cmd, "PET_DIR= PET_SHARED='%s' sh '%s/ops/pet_event.sh' fire %s >/dev/null 2>&1", pet, app, door_ev); sh(cmd, NULL, 0); door_ev[0] = 0; nxt_move = t + 3000; }
             double step = 45.0 * (double)dt / 1000.0;
             if (ax < tgt - 2) { ax += step; an = "walk"; } else if (ax > tgt + 2) { ax -= step; an = "walk"; }
-            if (t > nxt_hop) { hop0 = t; nxt_hop = t + 9000 + rand() % 16000; }
-            if (hop0 >= 0 && t - hop0 < 600) { double u = (double)(t - hop0) / 600.0; hopy = 36.0 * 4.0 * u * (1.0 - u); an = "happy"; }
-        }
+            if (!hopping && t > nxt_hop) { lift_from = lift_goal; hop_amp = 36; hop0 = t; nxt_hop = t + 9000 + rand() % 16000; }
+            if (hop0 >= 0 && t - hop0 < 700) { double u = (double)(t - hop0) / (hop_amp > 20 ? 600.0 : 700.0); if (u > 1) u = 1; hopy = lift_from + (lift_goal - lift_from) * u + hop_amp * 4.0 * u * (1.0 - u); an = "happy"; }
+            else hopy = lift_goal;
+        } else if (!strcmp(view, "room")) hopy = lift_goal;
         snprintf(sxo, sizeof sxo, "%d", (int)ax); snprintf(syo, sizeof syo, "%d", atoi(sy) - (int)hopy);
         { int visible = 0; if (xd && g_wid) { XWindowAttributes wa; if (XGetWindowAttributes(xd, (Window)g_wid, &wa)) visible = wa.map_state == IsViewable; }
           if (running) {
