@@ -451,3 +451,165 @@ ACTOR        | mdf                | 4
 ACTOR        | agi                | 6
 ACTOR        | luk                | 5
 ACTOR        | note               | pet species 5 seed 16
+ACTOR        | id                 | 19
+ACTOR        | name               | Blip
+ACTOR        | nickname           | Slime
+ACTOR        | class              | Pet
+ACTOR        | init_lv            | 1
+ACTOR        | max_lv             | 99
+ACTOR        | exp                | 0
+ACTOR        | exp_to_next        | 0
+ACTOR        | skills             | eat sleep wash play trick
+ACTOR        | profile            | a blue one-eyed slime that bounces when it is happy
+ACTOR        | face               | 
+ACTOR        | character          | Monster
+ACTOR        | battler            | 
+ACTOR        | weapon             | 
+ACTOR        | shield             | 
+ACTOR        | head               | 
+ACTOR        | body               | 
+ACTOR        | accessory          | 
+ACTOR        | mhp                | 28
+ACTOR        | mmp                | 8
+ACTOR        | atk                | 3
+ACTOR        | def                | 3
+ACTOR        | mat                | 6
+ACTOR        | mdf                | 5
+ACTOR        | agi                | 8
+ACTOR        | luk                | 7
+ACTOR        | note               | rpg-pet monster: own entity, own wallet identity (not one of the old pet-trainer pets); sprite = RPG Maker Monster.png index 1 (@.apps/rpg-pet/party.pdl)
+ACTOR        | id                 | 20
+ACTOR        | name               | Fang
+ACTOR        | nickname           | Bat
+ACTOR        | class              | Pet
+ACTOR        | init_lv            | 1
+ACTOR        | max_lv             | 99
+ACTOR        | exp                | 0
+ACTOR        | exp_to_next        | 0
+ACTOR        | skills             | eat sleep wash play trick
+ACTOR        | profile            | a purple bat with teal wings that hangs upside down to nap
+ACTOR        | face               | 
+ACTOR        | character          | Monster
+ACTOR        | battler            | 
+ACTOR        | weapon             | 
+ACTOR        | shield             | 
+ACTOR        | head               | 
+ACTOR        | body               | 
+ACTOR        | accessory          | 
+ACTOR        | mhp                | 24
+ACTOR        | mmp                | 6
+ACTOR        | atk                | 6
+ACTOR        | def                | 3
+ACTOR        | mat                | 3
+ACTOR        | mdf                | 3
+ACTOR        | agi                | 10
+ACTOR        | luk                | 5
+ACTOR        | note               | rpg-pet monster: own entity, own wallet identity (not one of the old pet-trainer pets); sprite = RPG Maker Monster.png index 0 (@.apps/rpg-pet/party.pdl)
+ACTOR        | id                 | 21
+ACTOR        | name               | Gruk
+ACTOR        | nickname           | Goblin
+ACTOR        | class              | Pet
+ACTOR        | init_lv            | 1
+ACTOR        | max_lv             | 99
+ACTOR        | exp                | 0
+ACTOR        | exp_to_next        | 0
+ACTOR        | skills             | eat sleep wash play trick
+ACTOR        | profile            | a green goblin who collects shiny things
+ACTOR        | face               | 
+ACTOR        | character          | Monster
+ACTOR        | battler            | 
+ACTOR        | weapon             | 
+ACTOR        | shield             | 
+ACTOR        | head               | 
+ACTOR        | body               | 
+ACTOR        | accessory          | 
+ACTOR        | mhp                | 34
+ACTOR        | mmp                | 4
+ACTOR        | atk                | 6
+ACTOR        | def                | 5
+ACTOR        | mat                | 2
+ACTOR        | mdf                | 3
+ACTOR        | agi                | 5
+ACTOR        | luk                | 4
+ACTOR        | note               | rpg-pet monster: own entity, own wallet identity (not one of the old pet-trainer pets); sprite = RPG Maker Monster.png index 2 (@.apps/rpg-pet/party.pdl)
+ACTOR        | id                 | 22
+ACTOR        | name               | Draxa
+ACTOR        | nickname           | Dragon
+ACTOR        | class              | Pet
+ACTOR        | init_lv            | 1
+ACTOR        | max_lv             | 99
+ACTOR        | exp                | 0
+ACTOR        | exp_to_next        | 0
+ACTOR        | skills             | eat sleep wash play trick
+ACTOR        | profile            | a small purple dragon with golden horns
+ACTOR        | face               | 
+ACTOR        | character          | Monster
+ACTOR        | battler            | 
+ACTOR        | weapon             | 
+ACTOR        | shield             | 
+ACTOR        | head               | 
+ACTOR        | body               | 
+ACTOR        | accessory          | 
+ACTOR        | mhp                | 38
+ACTOR        | mmp                | 10
+ACTOR        | atk                | 6
+ACTOR        | def                | 6
+ACTOR        | mat                | 8
+ACTOR        | mdf                | 6
+ACTOR        | agi                | 6
+ACTOR        | luk                | 5
+ACTOR        | note               | rpg-pet monster: own entity, own wallet identity (not one of the old pet-trainer pets); sprite = RPG Maker Monster.png index 3 (@.apps/rpg-pet/party.pdl)
+ACTOR        | id                 | 23
+ACTOR        | name               | Gargo
+ACTOR        | nickname           | Gargoyle
+ACTOR        | class              | Pet
+ACTOR        | init_lv            | 1
+ACTOR        | max_lv             | 99
+ACTOR        | exp                | 0
+ACTOR        | exp_to_next        | 0
+ACTOR        | skills             | eat sleep wash play trick
+ACTOR        | profile            | a grey gargoyle with blue wings and red eyes
+ACTOR        | face               | 
+ACTOR        | character          | Monster
+ACTOR        | battler            | 
+ACTOR        | weapon             | 
+ACTOR        | shield             | 
+ACTOR        | head               | 
+ACTOR        | body               | 
+ACTOR        | accessory          | 
+ACTOR        | mhp                | 36
+ACTOR        | mmp                | 6
+ACTOR        | atk                | 7
+ACTOR        | def                | 8
+ACTOR        | mat                | 3
+ACTOR        | mdf                | 5
+ACTOR        | agi                | 4
+ACTOR        | luk                | 4
+ACTOR        | note               | rpg-pet monster: own entity, own wallet identity (not one of the old pet-trainer pets); sprite = RPG Maker Monster.png index 4 (@.apps/rpg-pet/party.pdl)
+ACTOR        | id                 | 24
+ACTOR        | name               | Bonz
+ACTOR        | nickname           | Skeleton
+ACTOR        | class              | Pet
+ACTOR        | init_lv            | 1
+ACTOR        | max_lv             | 99
+ACTOR        | exp                | 0
+ACTOR        | exp_to_next        | 0
+ACTOR        | skills             | eat sleep wash play trick
+ACTOR        | profile            | a cheerful skeleton in a pink scarf
+ACTOR        | face               | 
+ACTOR        | character          | Monster
+ACTOR        | battler            | 
+ACTOR        | weapon             | 
+ACTOR        | shield             | 
+ACTOR        | head               | 
+ACTOR        | body               | 
+ACTOR        | accessory          | 
+ACTOR        | mhp                | 30
+ACTOR        | mmp                | 8
+ACTOR        | atk                | 5
+ACTOR        | def                | 4
+ACTOR        | mat                | 6
+ACTOR        | mdf                | 6
+ACTOR        | agi                | 7
+ACTOR        | luk                | 6
+ACTOR        | note               | rpg-pet monster: own entity, own wallet identity (not one of the old pet-trainer pets); sprite = RPG Maker Monster.png index 5 (@.apps/rpg-pet/party.pdl)

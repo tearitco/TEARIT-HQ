@@ -38,11 +38,13 @@
       <item id="mn-chat" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Chat show / hide" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' toggle chat"/>
       <item id="mn-hotbar" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Hotbar show / hide" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' toggle hb"/>
       <item id="mn-control" class="rp-menu-row dropdown-child" target_id="tb-menu" label="${control_label} (switch: Tab)" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' control"/>
+      <item id="mn-voice" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Voice on / off" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' toggle voice"/>
       <item id="mn-view" class="rp-menu-row dropdown-child" target_id="tb-menu" label="View: 2D / 3D / glyph" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' view"/>
       <item id="mn-reset" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Reset house (keeps a backup)" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' reset"/>
       <item id="mn-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-menu" label="- cancel -" action="void"/>
       <text label="coins ${coins}" class="rp-big"/>
       <text label="${nick_line}" class="ph-quiet"/>
+      <text label="${wallet_line}" class="ph-quiet"/>
       <text label="${profile_line}" class="ph-quiet"/>
       <text label="${friend_line}" class="ph-quiet"/>
       <text label="${stat_line}" class="ph-quiet"/>
@@ -59,6 +61,7 @@
       <row id="chat-ov" class="canvas-overlay-right ov-top ov-chrome ov-slide-x rp-chat-ov theme" show="${chat_visible}">
         <text label="chat - ${active_name}" class="hb-quiet ov-title theme-3"/>
         <item id="chat-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' toggle chat"/>
+        <item id="chat-clear" class="rp-menu-row" label="clear chat" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' clearchat"/>
         <text label="${chat_0}" class="rp-chat"/>
         <text label="${chat_1}" class="rp-chat"/>
         <text label="${chat_2}" class="rp-chat"/>

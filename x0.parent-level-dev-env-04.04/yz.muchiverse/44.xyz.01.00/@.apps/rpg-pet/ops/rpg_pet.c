@@ -36,6 +36,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <sys/file.h>
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ONLY_PNG
 #include "../../../&.widgits/_shared-lib/stb_image.h"
@@ -109,7 +110,7 @@ static void load_party(void) {
     if (env && env[0]) snprintf(db, sizeof db, "%s", env); else snprintf(db, sizeof db, "%s/&.widgits/db-hq/data", HOUSE);
     nparty = 0; char names[NP][24]; int nn = 0, inparty = 0;
     snprintf(p, sizeof p, "%s/system.pdl", db);
-    if ((fp = fopen(p, "r"))) { while (fgets(line, sizeof line, fp)) { if (split_bar(line, f, 3) < 3 || strcmp(f[0], "SYSTEM")) continue; if (!strcmp(f[1], "name")) inparty = !strcmp(f[2], "PetParty"); else if (inparty && !strncmp(f[1], "member", 6) && nn < NP) snprintf(names[nn++], 24, "%s", f[2]); } fclose(fp); }
+    if ((fp = fopen(p, "r"))) { while (fgets(line, sizeof line, fp)) { if (split_bar(line, f, 3) < 3 || strcmp(f[0], "SYSTEM")) continue; if (!strcmp(f[1], "name")) inparty = !strcmp(f[2], getenv("PET_PARTY") && getenv("PET_PARTY")[0] ? getenv("PET_PARTY") : "RpgPetParty"); else if (inparty && !strncmp(f[1], "member", 6) && nn < NP) snprintf(names[nn++], 24, "%s", f[2]); } fclose(fp); }
     for (int i = 0; i < nn; i++) { memset(&party[nparty], 0, sizeof party[nparty]); snprintf(party[nparty].name, 24, "%s", names[i]); snprintf(party[nparty].id, 16, "%s", names[i]); for (char *c = party[nparty].id; *c; c++) if (*c >= 'A' && *c <= 'Z') *c += 32; party[nparty].idx = i; snprintf(party[nparty].sheet, 24, "Monster"); nparty++; }
     snprintf(p, sizeof p, "%s/actors.pdl", db); int cur = -1;
     if ((fp = fopen(p, "r"))) { while (fgets(line, sizeof line, fp)) { if (split_bar(line, f, 3) < 3 || strcmp(f[0], "ACTOR")) continue;
@@ -117,7 +118,7 @@ static void load_party(void) {
         if (!strcmp(f[1], "nickname")) snprintf(party[cur].nick, 24, "%s", f[2]); else if (!strcmp(f[1], "profile")) snprintf(party[cur].profile, 96, "%s", f[2]);
         else if (!strcmp(f[1], "mhp")) party[cur].mhp = atoi(f[2]); else if (!strcmp(f[1], "mmp")) party[cur].mmp = atoi(f[2]); else if (!strcmp(f[1], "atk")) party[cur].atk = atoi(f[2]); else if (!strcmp(f[1], "def")) party[cur].def = atoi(f[2]);
         else if (!strcmp(f[1], "mat")) party[cur].mat = atoi(f[2]); else if (!strcmp(f[1], "mdf")) party[cur].mdf = atoi(f[2]); else if (!strcmp(f[1], "agi")) party[cur].agi = atoi(f[2]); else if (!strcmp(f[1], "luk")) party[cur].luk = atoi(f[2]);
-        else if (!strcmp(f[1], "character") && f[2][0]) { char *c = strchr(f[2], ':'); if (c) { *c = 0; snprintf(party[cur].sheet, 24, "%s", f[2]); party[cur].idx = atoi(c + 1); } } } fclose(fp); }
+        else if (!strcmp(f[1], "character") && f[2][0]) { char *c = strchr(f[2], ':'); if (c) { *c = 0; snprintf(party[cur].sheet, 24, "%s", f[2]); party[cur].idx = atoi(c + 1); } else snprintf(party[cur].sheet, 24, "%s", f[2]); } } fclose(fp); }
     snprintf(p, sizeof p, "%s/party.pdl", APP);       /* the picture choice, unless the DB character field already named one (a "Sheet:index" value) */
     if ((fp = fopen(p, "r"))) { while (fgets(line, sizeof line, fp)) { char *g[6]; if (split_bar(line, g, 6) >= 4 && !strcmp(g[0], "PET")) for (int i = 0; i < nparty; i++) if (!strcmp(party[i].name, g[1])) { snprintf(party[i].sheet, 24, "%s", g[2]); party[i].idx = atoi(g[3]); } } fclose(fp); }
 }
@@ -135,6 +136,13 @@ static void load_data(void) {
         while (fgets(line, sizeof line, fp)) { int n = split_bar(line, f, 12); if (n >= 9 && !strcmp(f[0], "SCENERY") && nscen < 24) { int a = room_idx(f[1]); if (a < 0) continue; Scen *s = &scen[nscen++]; s->room = a; snprintf(s->sheet, 24, "%s", f[2]); s->c = atoi(f[3]); s->r = atoi(f[4]); s->w = atoi(f[5]); s->h = atoi(f[6]); s->x = atoi(f[7]); s->y = atoi(f[8]); } }
         fclose(fp);
     }
+}
+
+/* each pet is its OWN entity: a stable entity_uid (32 hex, made once, state/uid_<id>.txt) -> wallet id "e" + the first 24 hex (the house rule, see CHAIN-ECONOMY-DESIGN.md). No chain wallet is created yet. */
+static void pet_wallet(int i, char *out, size_t cap) {
+    char p[PATH_MAX], n[64], b[64]; snprintf(n, sizeof n, "uid_%s.txt", party[i].id); spath(p, n); read_file(p, b, sizeof b);
+    if (strlen(b) < 32) { unsigned char r[16]; FILE *u = fopen("/dev/urandom", "rb"); if (u) { if (fread(r, 1, 16, u) != 16) memset(r, 7, 16); fclose(u); } else memset(r, 7, 16); for (int k = 0; k < 16; k++) snprintf(b + k * 2, 3, "%02x", r[k]); strncat(b, "\n", 2); write_if_changed(p, b, strlen(b)); }
+    snprintf(out, cap, "e%.24s", b);
 }
 
 /* ---------- ledger replay ---------- */
@@ -248,15 +256,52 @@ static void render(void) {
 
 /* ---------- chat, relations ---------- */
 static void say(const char *who, const char *text) { char b[300]; snprintf(b, sizeof b, "%s: %s", who, text); append_line("chat.txt", b); }
+static int g_rk = -1, g_ry;      /* what the last reply was about (0 sleep 1 eat 2 read 3 play, -1 default) and whether the house has such an item: the native-language reply is picked from these */
 static const char *pet_reply(const char *text) {
-    static char b[80]; char s[200]; snprintf(s, sizeof s, "%s", text); for (char *c = s; *c; c++) if (*c >= 'A' && *c <= 'Z') *c += 32;
+    static char b[80]; g_rk = -1; g_ry = 0; char s[200]; snprintf(s, sizeof s, "%s", text); for (char *c = s; *c; c++) if (*c >= 'A' && *c <= 'Z') *c += 32;
     #define HAS(e) ({ int h = 0; for (int i = 0; i < npl; i++) if (!strcmp(cat[pl[i].item].effect, e)) h = 1; h; })
-    if (strstr(s, "bed") || strstr(s, "sleep")) return HAS("sleep") ? "zzz... a bed!" : "I have no bed yet.";
-    if (strstr(s, "eat") || strstr(s, "food") || strstr(s, "table")) return HAS("eat") ? "yum, a table to eat at" : "I have nowhere to eat.";
-    if (strstr(s, "book") || strstr(s, "read")) return HAS("read") ? "I like reading." : "no books here.";
-    if (strstr(s, "piano") || strstr(s, "play")) return HAS("play") ? "la la la" : "no piano...";
+    if (strstr(s, "bed") || strstr(s, "sleep")) { g_rk = 0; g_ry = HAS("sleep"); return g_ry ? "zzz... a bed!" : "I have no bed yet."; }
+    if (strstr(s, "eat") || strstr(s, "food") || strstr(s, "table")) { g_rk = 1; g_ry = HAS("eat"); return g_ry ? "yum, a table to eat at" : "I have nowhere to eat."; }
+    if (strstr(s, "book") || strstr(s, "read")) { g_rk = 2; g_ry = HAS("read"); return g_ry ? "I like reading." : "no books here."; }
+    if (strstr(s, "piano") || strstr(s, "play")) { g_rk = 3; g_ry = HAS("play"); return g_ry ? "la la la" : "no piano..."; }
     snprintf(b, sizeof b, "(%d things in the house)", npl); return b;
 }
+/* ---------- voices: edge-tts per pet (voices.pdl), cached wav, one sound at a time, never blocks ---------- */
+static int run_quiet(char *const av[], int wait) {
+    pid_t pid = fork(); if (pid < 0) return -1;
+    if (pid == 0) { int fd = open("/dev/null", O_RDWR); if (fd >= 0) { dup2(fd, 0); dup2(fd, 1); dup2(fd, 2); } execvp(av[0], av[0] ? av : av); _exit(127); }
+    if (!wait) return 0; int st = 0; waitpid(pid, &st, 0); return WIFEXITED(st) ? WEXITSTATUS(st) : -1;
+}
+/* each pet speaks its own language (voices.pdl 6th column: en | zh | ja | ko); the chat window keeps showing English for the owner to read */
+static int pet_lang(int i) {
+    char p[PATH_MAX], line[300], *f[7]; int l = 0; snprintf(p, sizeof p, "%s/voices.pdl", APP); FILE *fp = fopen(p, "r"); if (!fp) return 0;
+    while (fgets(line, sizeof line, fp)) if (split_bar(line, f, 7) >= 6 && !strcmp(f[0], "VOICE") && !strcmp(f[1], party[i].id)) l = !strcmp(f[5], "zh") ? 1 : !strcmp(f[5], "ja") ? 2 : !strcmp(f[5], "ko") ? 3 : 0; fclose(fp); return l;
+}
+static const char *HI[4][4] = {{"hi %s!", "%s! over here", "oh, %s", "hello %s, nice day"}, {"你好，%s！", "%s，来这边", "哦，是%s", "你好%s，今天天气真好"}, {"こんにちは、%sさん", "%s、こっちだよ", "あ、%sだ", "やあ、%s、いい天気だね"}, {"안녕, %s!", "%s, 이쪽이야", "아, %s", "안녕 %s, 날씨 좋다"}};
+static const char *RE[4][4] = {{"hi %s", "hey %s!", "hello", "%s, you too"}, {"你好，%s", "嘿，%s！", "你好", "%s，你也是"}, {"やあ、%s", "%sさん、こんにちは", "こんにちは", "%s、君もね"}, {"안녕 %s", "어, %s!", "안녕", "%s, 너도"}};
+static const char *RP[4][5][2] = {{{"I have no bed yet.", "zzz... a bed!"}, {"I have nowhere to eat.", "yum, a table to eat at"}, {"no books here.", "I like reading."}, {"no piano...", "la la la"}, {"(%d things in the house)", "(%d things in the house)"}},
+    {{"我还没有床。", "呼呼……有床了！"}, {"我没地方吃饭。", "好吃，有桌子可以吃饭"}, {"这里没有书。", "我喜欢看书。"}, {"没有钢琴……", "啦啦啦"}, {"家里有%d件东西", "家里有%d件东西"}},
+    {{"まだベッドがないよ。", "ぐーぐー…ベッドだ！"}, {"ご飯を食べる場所がないよ。", "おいしい！テーブルがある"}, {"ここには本がないよ。", "本を読むのが好き。"}, {"ピアノがないなあ…", "らんらんらん"}, {"家に%d個の物があるよ", "家に%d個の物があるよ"}},
+    {{"아직 침대가 없어.", "쿨쿨… 침대다!"}, {"밥 먹을 곳이 없어.", "맛있다, 식탁이 있네"}, {"여기엔 책이 없어.", "나는 책 읽는 게 좋아."}, {"피아노가 없네…", "랄랄라"}, {"집에 물건이 %d개 있어", "집에 물건이 %d개 있어"}}};
+static void speak(int i, const char *text);
+static void speak_greet(int i, int variant, const char *other, int reply) { char t[160]; const char *fmt = (reply ? RE : HI)[pet_lang(i)][variant & 3]; snprintf(t, sizeof t, fmt, other); speak(i, t); }
+static void speak_reply(int i) { char t[160]; int k = g_rk < 0 ? 4 : g_rk; snprintf(t, sizeof t, RP[pet_lang(i)][k][g_rk < 0 ? 0 : g_ry ? 1 : 0], npl); speak(i, t); }
+static void speak(int i, const char *text) {
+    if (!flag_on("voice", 1) || i < 0 || !text || !text[0]) return; static long last = 0; long now = now_ms(); if (now - last < 2500) return; last = now;     /* a pet speaks aloud only while on screen */
+    char p[PATH_MAX], line[300], *f[6], voice[48] = "en-US-AnaNeural", rate[16] = "+0%", pitch[16] = "+0Hz"; snprintf(p, sizeof p, "%s/voices.pdl", APP); FILE *fp = fopen(p, "r");
+    if (fp) { while (fgets(line, sizeof line, fp)) if (split_bar(line, f, 6) >= 5 && !strcmp(f[0], "VOICE") && !strcmp(f[1], party[i].id)) { snprintf(voice, sizeof voice, "%s", f[2]); snprintf(rate, sizeof rate, "%s", f[3]); snprintf(pitch, sizeof pitch, "%s", f[4]); } fclose(fp); }
+    unsigned long h = 5381; for (const char *c = text; *c; c++) h = h * 33 + (unsigned char)*c; char dir[PATH_MAX], wav[PATH_MAX], mp3[PATH_MAX]; snprintf(dir, sizeof dir, "%s/audio", ST); mkdir(dir, 0755);
+    snprintf(wav, sizeof wav, "%s/say_%s_%08lx.wav", dir, party[i].id, h & 0xffffffffUL); snprintf(mp3, sizeof mp3, "%s/say_%s_%08lx.mp3", dir, party[i].id, h & 0xffffffffUL);
+    pid_t pid = fork(); if (pid < 0) return; if (pid > 0) { waitpid(pid, NULL, 0); return; }          /* double fork: the grandchild does the slow work and is reparented */
+    if (fork() != 0) _exit(0); setsid();
+    if (!fexists(wav)) { char rateA[40], pitchA[40], home[PATH_MAX], edge[PATH_MAX]; snprintf(rateA, sizeof rateA, "--rate=%s", rate); snprintf(pitchA, sizeof pitchA, "--pitch=%s", pitch); const char *hm = getenv("HOME"); snprintf(home, sizeof home, "%s", hm ? hm : ""); snprintf(edge, sizeof edge, "%s/.local/bin/edge-tts", home);
+        char *av[] = {"nice", "-n", "15", edge, "--voice", voice, rateA, pitchA, "--text", (char *)text, "--write-media", mp3, NULL}; if (run_quiet(av, 1) != 0 || !fexists(mp3)) _exit(0);
+        char *cv[] = {"nice", "-n", "15", "ffmpeg", "-loglevel", "quiet", "-y", "-i", mp3, "-ar", "22050", "-ac", "1", wav, NULL}; run_quiet(cv, 1); remove(mp3); }
+    if (!fexists(wav)) _exit(0);
+    { char lp[PATH_MAX]; snprintf(lp, sizeof lp, "%s/play.lock", dir); int fd = open(lp, O_CREAT | O_RDWR, 0644); if (fd < 0 || flock(fd, LOCK_EX | LOCK_NB) != 0) _exit(0); char *pv[] = {"nice", "-n", "10", "paplay", "--volume=32000", wav, NULL}; run_quiet(pv, 1); }
+    _exit(0);
+}
+
 /* association: two pets side by side greet each other (at most once per 25 real seconds per pair). Every meeting is an append-only MEET row: the data a later
  * "share a room because of a relationship" rule will read (see HOW-TO-RPG-PET.md, plan: a room per pet). */
 static long last_meet(int a, int b) {
@@ -266,8 +311,9 @@ static long last_meet(int a, int b) {
 static void meet(int a, int b) {
     long now = (long)time(NULL); if (now - last_meet(a, b) < 25) return;
     char l[200]; snprintf(l, sizeof l, "MEET|%ld|%d|%d|%s", now, a, b, rooms[others[a].room].id); append_line("relations.txt", l);
-    static const char *hi[4] = {"hi %s!", "%s! over here", "oh, %s", "hello %s, nice day"}, *re[4] = {"hi %s", "hey %s!", "hello", "%s, you too"};
-    char t[120]; snprintf(t, sizeof t, hi[rand() % 4], party[b].name); say(party[a].name, t); snprintf(t, sizeof t, re[rand() % 4], party[a].name); say(party[b].name, t);
+    int v1 = rand() % 4, v2 = rand() % 4; char t[120];       /* English in the chat, the pet's own language aloud */
+    snprintf(t, sizeof t, HI[0][v1], party[b].name); say(party[a].name, t); if (others[a].room == vroom) speak_greet(a, v1, party[b].name, 0);
+    snprintf(t, sizeof t, RE[0][v2], party[a].name); say(party[b].name, t); if (others[b].room == vroom) speak_greet(b, v2, party[a].name, 1);
 }
 static void friend_line(int i, char *out, size_t cap) {
     char p[PATH_MAX], line[200]; int cnt[NP] = {0}; spath(p, "relations.txt"); FILE *f = fopen(p, "r"); char *g[6];
@@ -328,7 +374,7 @@ static void out_all(const char *msg) {
     static char u[16384]; int o = 0;
 #define W(...) o += snprintf(u + o, sizeof u - o, __VA_ARGS__)
     char raw[PATH_MAX]; spath(raw, "scene.raw"); char h1[PATH_MAX], h2[PATH_MAX]; spath(h1, "interact_relay.txt"); snprintf(h2, sizeof h2, "%s/keyboard/history.txt", ST);
-    int chat = flag_on("chat", 1), hb = flag_on("hb", 1), in = flag_on("int", 0); char view[16]; flag_str("view", "2d", view, sizeof view); for (char *c = view; *c; c++) if (*c >= 'a' && *c <= 'z') *c -= 32;
+    int chat = flag_on("chat", 0), hb = flag_on("hb", 0), in = flag_on("int", 0); char view[16]; flag_str("view", "2d", view, sizeof view); for (char *c = view; *c; c++) if (*c >= 'a' && *c <= 'z') *c -= 32;
     W("title=rpg-pet  -  %s  -  coins %d\nscene_raw=%s\ncanvas_raw=%s\ncoins=%d\nmsg=%s\nroom_label=%s\n", rooms[vroom].name, coins, raw, raw, coins, msg && msg[0] ? msg : (in ? "INT on: turn based like a roguelike. Time moves when you act. Tab switches pet/player." : "real time: the pets live on their own. INT lets you control a pet or the player."), rooms[vroom].name);
     { char cc[16]; flag_str("ctl", "pet", cc, sizeof cc); char who[40]; snprintf(who, sizeof who, "on: %s", !strcmp(cc, "player") ? "you" : party[active].name); W("interact_class=%s\ninteract_label=%s\nrp_h1=%s\nrp_h2=%s\ncontrol_label=control: %s\n", in ? "interact-active" : "", in ? who : "off", h1, h2, !strcmp(cc, "player") ? "player" : party[active].name); }
     W("chat_visible=%s\nhb_visible=%s\nview_label=view %s\nchat_toggle_label=window %s\n", chat ? "1" : "", hb ? "1" : "", view, chat ? "on" : "off");
@@ -337,9 +383,9 @@ static void out_all(const char *msg) {
     char fl[160]; friend_line(active, fl, sizeof fl);
     W("n_party=%d\nactive_name=%s\nbook_label=book:%s\npage_label=page:%s\n", nparty, party[active].name, party[active].name, rooms[vroom].name);
     W("stat_line=HP %d  MP %d  atk %d  def %d\nstat_line2=mat %d  mdf %d  agi %d  luk %d\nprofile_line=%s\nfriend_line=%s\n", party[active].mhp, party[active].mmp, party[active].atk, party[active].def, party[active].mat, party[active].mdf, party[active].agi, party[active].luk, party[active].profile, fl);
-    W("nick_line=%s (the %s) in the %s\n", party[active].name, party[active].nick, rooms[others[active].room].name); for (int i = 0; i < nparty; i++) W("party_%d_label=%s\nparty_%d_id=%s\nparty_%d_cls=%s\n", i, party[i].name, i, party[i].id, i, i == active ? "active" : "");
+    W("nick_line=%s (the %s) in the %s\n", party[active].name, party[active].nick, rooms[others[active].room].name); { char wl[40]; pet_wallet(active, wl, sizeof wl); W("wallet_line=wallet %.14s...\n", wl); } for (int i = 0; i < nparty; i++) W("party_%d_label=%s\nparty_%d_id=%s\nparty_%d_cls=%s\n", i, party[i].name, i, party[i].id, i, i == active ? "active" : "");
     W("n_room=%d\n", nroom); for (int i = 0; i < nroom; i++) { int c = 0, pc = 0; for (int j = 0; j < npl; j++) if (pl[j].room == i) c++; for (int j = 0; j < nparty; j++) if (others[j].room == i) pc++; W("room_%d_label=%s%s (%d things, %d pets)\nroom_%d_id=%s\n", i, rooms[i].name, i == vroom ? "  <- here" : "", c, pc, i, rooms[i].id); }
-    int nb = 0; for (int i = 0; i < ncat && nb < 5; i++) if (owned[i] > 0) nb++; W("hb_n_slots=%d\nhb_title=bag: click a slot to place it\n", nb); nb = 0; for (int i = 0; i < ncat && nb < 5; i++) if (owned[i] > 0) { W("hb_%d_text=%s x%d\nhb_%d_key=%s\n", nb, cat[i].label, owned[i], nb, cat[i].key); nb++; }
+    int nb = 0; for (int i = 0; i < ncat && nb < 5; i++) if (owned[i] > 0) nb++; W("hb_n_slots=%d\nhb_title=bag: click a slot to place it\n", nb ? nb : 1); if (!nb) W("hb_0_text=(bag empty - Shop)\nhb_0_key=none\n"); nb = 0; for (int i = 0; i < ncat && nb < 5; i++) if (owned[i] > 0) { W("hb_%d_text=%s x%d\nhb_%d_key=%s\n", nb, cat[i].label, owned[i], nb, cat[i].key); nb++; }
     int np = 0; for (int i = 0; i < npl; i++) if (pl[i].room == vroom) np++; W("n_placed=%d\n", np); np = 0; for (int i = 0; i < npl; i++) if (pl[i].room == vroom) { W("placed_%d_label=#%d %s (%d,%d) %s\nplaced_%d_id=%d\n", np, pl[i].id, cat[pl[i].item].label, pl[i].x, pl[i].y, cat[pl[i].item].effect, np, pl[i].id); np++; }
     spath(p, "ui.txt"); write_if_changed(p, u, o);
 }
@@ -420,7 +466,8 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
     if (!strcmp(v, "step") && argc >= 3) { if (!flag_on("int", 0)) { snprintf(msg, cap, "turn INT on first: INT lets you control %s or the player", party[active].name); return; } int ci = ctl_idx(); use_ent(ci); int moved = do_step(atoi(argv[1]), atoi(argv[2]), msg, cap); pet_save(); set_flag("follow", ci < 0 ? "player" : "pet"); if (moved) turn_taken = 1; return; }
     if (!strcmp(v, "control")) { char cur[16]; flag_str("ctl", "pet", cur, sizeof cur); const char *n = argc >= 2 ? argv[1] : (!strcmp(cur, "pet") ? "player" : "pet"); if (strcmp(n, "pet") && strcmp(n, "player")) { snprintf(msg, cap, "control pet or player"); return; } set_flag("ctl", n); set_flag("follow", !strcmp(n, "player") ? "player" : "pet"); calc_view(); snprintf(msg, cap, !strcmp(n, "player") ? "INT now controls you (the player)" : "INT now controls %s", party[active].name); return; }
     if (!strcmp(v, "walk")) { int moved = ai_step(active); use_ent(active); if (moved) snprintf(msg, cap, "%s took a step", party[active].name); else snprintf(msg, cap, "%s stays put", party[active].name); return; }
-    if (!strcmp(v, "toggle") && argc >= 2 && (!strcmp(argv[1], "chat") || !strcmp(argv[1], "hb"))) { set_flag(argv[1], flag_on(argv[1], 1) ? "0" : "1"); snprintf(msg, cap, "%s toggled", argv[1]); return; }
+    if (!strcmp(v, "clearchat")) { char p[PATH_MAX], q[PATH_MAX]; spath(p, "chat.txt"); snprintf(q, sizeof q, "%s/chat.txt.%ld.bak", ST, now); if (fexists(p)) rename(p, q); snprintf(msg, cap, "chat cleared (kept as chat.txt.%ld.bak)", now); return; }
+    if (!strcmp(v, "toggle") && argc >= 2 && (!strcmp(argv[1], "chat") || !strcmp(argv[1], "hb") || !strcmp(argv[1], "voice"))) { set_flag(argv[1], flag_on(argv[1], !strcmp(argv[1], "voice")) ? "0" : "1"); snprintf(msg, cap, "%s toggled", argv[1]); return; }
     if (!strcmp(v, "view")) { char c[16]; flag_str("view", "2d", c, sizeof c); const char *n = !strcmp(c, "2d") ? "3d" : !strcmp(c, "3d") ? "glyph" : "2d"; set_flag("view", n); snprintf(msg, cap, "view %s (the picture is still 2D: 3D and the Chinese-glyph view are sprint items 7-8)", n); return; }
     if (!strcmp(v, "int")) { int on = !flag_on("int", 0); set_flag("int", on ? "1" : "0"); char d[PATH_MAX]; snprintf(d, sizeof d, "%s/keyboard", ST); mkdir(d, 0755); char p[PATH_MAX]; spath(p, "interact_relay.txt"); FILE *f = fopen(p, "a"); if (f) fclose(f); snprintf(p, sizeof p, "%s/keyboard/history.txt", ST); f = fopen(p, "a"); if (f) fclose(f);
         clock_paths(); clock_pause(on); if (on) { set_flag("follow", "pet"); calc_view(); }
@@ -432,7 +479,7 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
         else if (!strcmp(argv[1], "reinstall")) { lc_run(0, "daemon-stop", NULL); char q[PATH_MAX]; snprintf(q, sizeof q, "%s/.schedule_installed", CROOT); remove(q); clock_install(); lc_run(1, "daemon-start", NULL); snprintf(msg, cap, "schedule reinstalled"); }
         clock_ui(); return; }
     char text[300] = ""; for (int i = 0; i < argc; i++) { if (i) strncat(text, " ", sizeof text - strlen(text) - 1); strncat(text, argv[i], sizeof text - strlen(text) - 1); }
-    if (text[0]) { say("you", text); say(party[active].name, pet_reply(text)); turn_taken = 1; }
+    if (text[0]) { say("you", text); const char *rp = pet_reply(text); say(party[active].name, rp); if (others[active].room == vroom) speak_reply(active); turn_taken = 1; }
 }
 
 /* ---------- event runner: the clock daemon calls  rpg_pet.+x <pkg> <root>  when a time.pdl event fires ---------- */

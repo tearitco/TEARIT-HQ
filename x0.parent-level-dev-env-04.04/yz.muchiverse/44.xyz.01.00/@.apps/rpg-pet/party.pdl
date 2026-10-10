@@ -1,13 +1,14 @@
 SECTION | KEY | VALUE
 ------------------------------
-# party.pdl - which RPG Maker MV monster picture (character sheet Monster.png: 8 monsters, 3 walk frames x 4 directions each; index = col + 4*row) each DB pet wears.
-# The pets themselves are RPG Maker DB entries: &.widgits/db-hq/data/system.pdl (SYSTEM PetParty member1..6) and actors.pdl (ACTOR rows: name, nickname, profile, mhp, mmp, atk, def, mat, mdf, agi, luk).
-# The DB actor field "character" is empty today; when it is filled (sheet + index) it wins over this file. This file is only the picture choice, never the data.
-# The PERSON (Actor1 sheet) is the trainer and lives in the village, same setup as @.apps/pet-trainer (village not built in rpg-pet yet).
+# party.pdl - which RPG Maker MV monster picture (character sheet Monster.png: 8 monsters, 3 walk frames x 4 directions each; index = col + 4*row) each rpg-pet pet wears.
+# The pets are their OWN RPG Maker DB entries, NOT the old pet-trainer pets: &.widgits/db-hq/data/system.pdl (SYSTEM RpgPetParty member1..6) and actors.pdl (ACTOR ids 19-24: name,
+# nickname, profile, mhp, mmp, atk, def, mat, mdf, agi, luk). Each has its own entity_uid (state/uid_<id>.txt) and therefore its own wallet identity (e + first 24 hex), see CHAIN-ECONOMY-DESIGN.md.
+# A DB ACTOR "character" value of Sheet:index would win over this file (the DB field holds just the sheet name today). This file is only the picture choice, never the data.
+# The PERSON (Actor1 sheet) is the trainer / player and lives in the village (not built in rpg-pet yet).
 # PET | actor name | sheet | index
-PET | Pochi | Monster | 1
-PET | Momo  | Monster | 0
-PET | Kuro  | Monster | 4
-PET | Gumi  | Monster | 2
-PET | Rin   | Monster | 3
-PET | Dai   | Monster | 5
+PET | Blip  | Monster | 1
+PET | Fang  | Monster | 0
+PET | Gruk  | Monster | 2
+PET | Draxa | Monster | 3
+PET | Gargo | Monster | 4
+PET | Bonz  | Monster | 5
