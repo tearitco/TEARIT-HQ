@@ -15,7 +15,7 @@ GEN="${PET_GEN:-$HOUSE/@.apps/layout-studio/ops/+x/pet_gen.+x}"
 VERB="${1:-}"; ARG="${2:-}"
 V="$PET/variables.txt"
 
-getv() { sed -n "s/^$1=//p" "$V" 2>/dev/null | head -1; }
+getv() { _gk="$1"; while IFS='=' read -r _k _v; do if [ "$_k" = "$_gk" ]; then printf '%s\n' "$_v"; return 0; fi; done < "$V" 2>/dev/null; return 0; }      # first match of key=value, no sed/head forks (the pet scripts run hundreds of these a minute)
 setv() { # setv key value (clamped 0..100 for the care meters). Uses _sv so it never clobbers a caller's variable.
     _sv="$2"; case "$1" in hunger|energy|clean|happy) [ "$_sv" -lt 0 ] && _sv=0; [ "$_sv" -gt 100 ] && _sv=100;; esac
     if grep -q "^$1=" "$V" 2>/dev/null; then sed -i "s/^$1=.*/$1=$_sv/" "$V"; else printf '%s=%s\n' "$1" "$_sv" >> "$V"; fi
@@ -27,7 +27,7 @@ pdlval() { # pdlval file rowkey name field -> value of field=N on the row "<kind
 need_pet() { [ -f "$V" ] && return 0; if [ -z "${PET_DIR:-}" ]; then ensure_party; else sh "$0" new_pet 1 >/dev/null; fi; }
 
 W="$PET/weights.pdl"
-getw() { sed -n "s/^$1=//p" "$W" 2>/dev/null | head -1; }
+getw() { _gk="$1"; while IFS='=' read -r _k _v; do if [ "$_k" = "$_gk" ]; then printf '%s\n' "$_v"; return 0; fi; done < "$W" 2>/dev/null; return 0; }
 JT="${JOINT_TUNE:-$HOUSE/&.widgits/concept-bank/ops/+x/joint_tune.+x}"
 feedback() { # feedback <valence +1|-1> <concept>: one graded row for the report card (entity_grade check reads it)
     printf 'FEEDBACK | valence=%s | concept=%s | layer=extracurricular | intensity=1\n' "$1" "$2" >> "$PET/obs_feedback_log.txt"
@@ -63,7 +63,7 @@ self_care() { # the pet chooses its own care: a WEIGHTED choice among valid acti
 IOP="${INVENTORY_OP:-$HOUSE/&.widgits/entity-cli/ops/+x/inventory_op.+x}"
 # The pet's inventory is the HOUSE inventory: <pet dir>/inventory/<item>/ (an item is a directory, slots are alphabetical, glyph.txt = its picture, inventory_slot.txt =
 # selected slot; &.widgits/entity-cli/ops/inventory_op, khtpm_inventory.c). A stack is several directories (apple_1 apple_2 ...). Nothing is deleted: a used item is moved to used/.
-inv_count() { ls -d "$PET/inventory/$1"_* 2>/dev/null | wc -l; }
+inv_count() { set -- "$PET/inventory/$1"_*; if [ -e "$1" ]; then echo $#; else echo 0; fi; }      # a glob, no ls/wc forks
 inv_take_one() { f=$(ls -d "$PET/inventory/$1"_* 2>/dev/null | head -1); [ -n "$f" ] || return 1; mkdir -p "$PET/used"; mv "$f" "$PET/used/$(basename "$f")_$(date +%s)_$$"; }
 inv_add() { # inv_add <item> [n]: the master (or the world) gives the pet n of an item
     it="$1"; n="${2:-1}"; kind=$(awk -F'|' -v n="$it" '/^ITEM/{g=$2; gsub(/^ +| +$/,"",g); if(g==n){k=$3; gsub(/^ +| +$/,"",k); print k}}' "$HERE/items.pdl"); [ -n "$kind" ] || return 1
@@ -208,7 +208,7 @@ stat_train() { # stat_train <text>: every trigger word in the text trains its st
     words=$(printf '%s' "$1" | tr 'A-Z' 'a-z' | tr -c 'a-z' ' ')
     awk -F'|' -v w="$words" -v mx="${mx:-3}" 'BEGIN{n=split(w, ws, " "); for(i=1;i<=n;i++) have[ws[i]]=1} /^STAT/{a=$2; gsub(/ /,"",a); c=0; m=split($4, tw, " "); for(j=1;j<=m;j++) if (tw[j] in have) c++; if (c>mx) c=mx; if (c>0) print a, c}' "$HERE/skills.pdl" | while read -r st c; do stat_add "$st" $(( c * ${ep:-2} )); done; }
 # ---- economy: trades between pets (economy.pdl prices), stores, rent. Everything moves real item folders between bags; every trade is a ledger row (state/world/ledger.txt).
-pinv_count() { ls -d "$1/inventory/$2"_* 2>/dev/null | wc -l; }
+pinv_count() { set -- "$1/inventory/$2"_*; if [ -e "$1" ]; then echo $#; else echo 0; fi; }
 pinv_move() { # pinv_move <from_dir> <to_dir> <item> <n>: move up to n item folders from one bag to another; prints how many moved
     mv_n=0; mkdir -p "$2/inventory"; while [ "$mv_n" -lt "$4" ]; do f=$(ls -d "$1/inventory/$3"_* 2>/dev/null | head -1); [ -n "$f" ] || break; mv "$f" "$2/inventory/$3_m$$_${mv_n}_$(date +%N)"; mv_n=$((mv_n + 1)); done; echo "$mv_n"; }
 pricev() { sed -n "s/^PRICE *| *$1 *| *//p" "$HERE/economy.pdl" | head -1 | tr -d ' '; }

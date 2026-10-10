@@ -140,7 +140,7 @@ int main(int argc, char **argv) {
             strcpy(sx, "180"); strcpy(sy, "250"); strcpy(pa, "rest"); kvs(buf, "pet_x", sx, sizeof sx); kvs(buf, "pet_y", sy, sizeof sy); kvs(buf, "pet_anim", pa, sizeof pa);
             pwx = wx; pwy = wy; strcpy(psx, sx); strcpy(psy, sy); strcpy(ppa, pa);
         }
-        if (t - t_status > 1000) {
+        if (t - t_status > 2500) {
             snprintf(cmd, sizeof cmd, "PET_DIR= PET_SHARED='%s' sh '%s/ops/pet_event.sh' status", pet, app); sh(cmd, buf, sizeof buf);
             kvs(buf, "anim", anim_ui, sizeof anim_ui); t_status = t;
         }

@@ -27,7 +27,7 @@ static char nid[MAXN][32]; static int nx_[MAXN], ny_[MAXN];
 static int load_map(const char *app) {      /* the town as built so far (state/town_all.txt: world_map.txt + the buildings the pets built) if it exists, else the shipped map */
     char p[PATH_MAX]; const char *sh = getenv("PET_SHARED"); FILE *f = NULL;
     if (sh && sh[0]) { snprintf(p, sizeof p, "%s/town_all.txt", sh); f = fopen(p, "r"); }
-    if (!f) { snprintf(p, sizeof p, "%s/state/town_all.txt", app); f = fopen(p, "r"); }
+    if (!f && !(sh && sh[0])) { snprintf(p, sizeof p, "%s/state/town_all.txt", app); f = fopen(p, "r"); }      /* a run pointed at its own PET_SHARED never falls back to the LIVE village (test isolation) */
     if (!f) { snprintf(p, sizeof p, "%s/world_map.txt", app); f = fopen(p, "r"); } if (!f) return -1;
     char l[256]; mh = 0; mw = 0;
     while (fgets(l, sizeof l, f) && mh < MH) { l[strcspn(l, "\r\n")] = 0; int k = (int)strlen(l); if (k > MW) k = MW; memcpy(map[mh], l, (size_t)k); map[mh][k] = 0; if (k > mw) mw = k; mh++; }
