@@ -183,7 +183,56 @@ static int wb_render_html(char *out, size_t n, const char *entity_dir) {
         }
         fclose(f);
     }
-    fputs("</tbody></table>\n</body></html>\n", mem);
+    fputs("</tbody></table>\n", mem);
+
+    /* ---- score history table (if scores.txt has rows) ---- */
+    char scores[WB_BUF];
+    wb_join(scores, sizeof(scores), wbdir, "scores.txt");
+    if (wb_exists(scores)) {
+        int nscores = wb_count_rows(scores);
+        if (nscores > 0) {
+            fprintf(mem, "<h2>Score History (%d rows)</h2>\n", nscores);
+            fprintf(mem, "<table>\n<thead><tr>\n"
+                         "<th>Canon</th><th>Alias</th><th>Valence</th><th>Source</th><th>Time</th>\n"
+                         "</tr></thead>\n<tbody>\n");
+            FILE *sf = fopen(scores, "r");
+            if (sf) {
+                char line[WB_LINE];
+                while (fgets(line, sizeof(line), sf)) {
+                    wb_strip_trailing_crnl(line);
+                    if (!line[0] || line[0] == '#') continue;
+                    if (strncmp(line, "SCORE|", 6) != 0) continue;
+                    /* SCORE|canon|alias|valence=+1|source=use|...|ts=123|id=alias */
+                    char canon[256] = "", alias[256] = "", *p = line + 6;
+                    char *bar1 = strchr(p, '|'); if (bar1) { *bar1 = '\0'; snprintf(canon, sizeof(canon), "%s", p); p = bar1 + 1; }
+                    char *bar2 = strchr(p, '|'); if (bar2) { *bar2 = '\0'; snprintf(alias, sizeof(alias), "%s", p); p = bar2 + 1; }
+                    char *vas = strstr(p, "valence="); int valence = 0;
+                    if (vas) { vas += 8; if (*vas == '+') vas++; valence = atoi(vas); }
+                    char *src = strstr(p, "source="); const char *sval = "";
+                    if (src) { src += 7; char *end = strchr(src, '|'); sval = src; if (end) { *end = '\0'; } }
+                    char *tms = strstr(p, "ts="); long ts = 0;
+                    if (tms) { tms += 3; ts = atol(tms); }
+                    char canon_esc[512], alias_esc[512], src_esc[64], tbuf[32];
+                    wb_html_escape(canon, canon_esc, sizeof(canon_esc));
+                    wb_html_escape(alias, alias_esc, sizeof(alias_esc));
+                    wb_html_escape(sval, src_esc, sizeof(src_esc));
+                    struct tm *tm = localtime(&ts); strftime(tbuf, sizeof(tbuf), "%m-%d %H:%M", tm);
+                    const char *vc = valence > 0 ? "wb-weight-high" : (valence < 0 ? "wb-weight-low" : "wb-weight-mid");
+                    fprintf(mem, "<tr class=\"%s wb-source-%s\">\n"
+                             "<td>%s</td><td>%s</td>"
+                             "<td class=\"%s\">%+d</td><td>%s</td><td>%s</td>\n"
+                             "</tr>\n",
+                             vc, src_esc,
+                             canon_esc, alias_esc,
+                             vc, valence, src_esc, tbuf);
+                }
+                fclose(sf);
+            }
+            fputs("</tbody></table>\n", mem);
+        }
+    }
+
+    fputs("</body></html>\n", mem);
     fclose(mem);
     return strlen(out);
 }
@@ -201,6 +250,13 @@ static int selftest(void) {
     fprintf(f, "CANON=action:Chat|ALIAS=Chat|WEIGHT=1.0|SOURCE=user\n");
     fprintf(f, "CANON=action:Cancel|ALIAS=Cancel|WEIGHT=0.0|SOURCE=user\n");
     fclose(f);
+    /* add scores.txt to test score history section */
+    char scores[512];
+    wb_join(scores, sizeof(scores), wbdir, "scores.txt");
+    f = fopen(scores, "w");
+    fprintf(f, "SCORE|action:Chat|Chat|valence=+1|source=use|ts=1728000000|id=Chat\n");
+    fprintf(f, "SCORE|action:Cancel|Cancel|valence=-1|source=use|ts=1728001000|id=Cancel\n");
+    fclose(f);
     char out[65536];
     int olen = wb_render_html(out, sizeof(out), tmpdir);
     if (olen <= 0) { fprintf(stderr, "FAIL render returned %d\n", olen); bad++; }
@@ -213,13 +269,18 @@ static int selftest(void) {
     if (!p) { fprintf(stderr, "FAIL: no wb-weight-low (Cancel 0.0)\n"); bad++; }
     p = strstr(out, "asa");
     if (!p) { fprintf(stderr, "FAIL: 'asa' not in output\n"); bad++; }
-    /* count rows: header + 3 data = 4 TR */
+    /* count rows: header + 3 data = 4 TR in words table, +1 header + 2 data = 6 */
     int trs = 0; const char *c = out;
-    while ((c = strstr(c, "<tr"))) if (c[3] == ' ' || c[3] == '>') { trs++; c += 4; }
-    if (trs != 4) { fprintf(stderr, "FAIL: %d <tr> (want 4)\n", trs); bad++; }
+    while ((c = strstr(c, "<tr"))) {
+        if (c > out && c[-1] == '/') { c += 4; continue; }  /* skip </tr> */
+        if (c[3] == ' ' || c[3] == '>') { trs++; c += 4; } else c += 3;
+    }
+    if (trs != 7) { fprintf(stderr, "FAIL: %d <tr> (want 7: 1+3 words header+data, 1+2 scores)\n", trs); bad++; }
+    /* score history section present */
+    if (!strstr(out, "Score History")) { fprintf(stderr, "FAIL: no Score History section\n"); bad++; }
     snprintf(out, sizeof(out), "rm -rf '%s'", tmpdir);
     system(out);
-    printf(bad ? "selftest FAILED (%d)\n" : "selftest ok (render table, classify 3 weights, 4 rows)\n", bad);
+    printf(bad ? "selftest FAILED (%d)\n" : "selftest ok (words + score history, 3 weights, 7 rows)\n", bad);
     return bad ? 1 : 0;
 }
 
