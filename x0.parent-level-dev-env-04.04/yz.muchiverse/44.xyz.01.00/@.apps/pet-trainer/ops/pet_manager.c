@@ -209,6 +209,7 @@ int main(int argc, char **argv) {
               if (!strcmp(pa, "thud") && strcmp(ppa2, "thud")) { snprintf(cmd, sizeof cmd, "PET_DIR= PET_SHARED='%s' sh '%s/ops/pet_event.sh' react land >/dev/null 2>&1", pet, app); sh(cmd, NULL, 0); }
           }
           snprintf(ppa2, sizeof ppa2, "%s", pa); }
+        if (running) { static long long t_study = 0; if (t - t_study > 60000) { t_study = t; snprintf(cmd, sizeof cmd, "PET_DIR= PET_SHARED='%s' sh '%s/ops/pet_event.sh' study >/dev/null 2>&1", pet, app); sh(cmd, NULL, 0); } }      /* the pet on screen studies by phone too (the verb keeps its own cadence; the teacher call runs detached) */
         if (running) {      /* the other pets live headless while the clock runs: one of them takes an ai_step (needs drift, eat, gather, remember places) every 3 s, in turn */
             static long long t_ai = 0; static int ai_i = 0;
             if (t - t_ai > 3000) { t_ai = t; char pp[PATH_MAX]; snprintf(pp, sizeof pp, "%s/party.txt", pet); FILE *pf = fopen(pp, "r"); char ids[16][32]; int ni = 0, lk[160];

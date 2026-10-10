@@ -1,0 +1,8 @@
+SECTION | KEY | VALUE
+----------------------------------------
+# ladder.pdl - who a pet may ask to learn something ("teach me"), cheapest first. PROVIDER | name | order | daily_budget (requests per day, all pets together). Free providers only, nothing on localhost.
+# mac_gemma = Gemma on the Mac (gemma_lan_url in #.desktop/ai_backend.pdl); groq / poolside / openrouter go through ^.hai-horn's horn_chat_backend (keys: env or &.widgits/open-hai/state), and through the co-lab approval gate unless PET_TEACH_GATE=0.
+PROVIDER | mac_gemma  | 1 | 40
+PROVIDER | groq       | 2 | 20
+PROVIDER | poolside   | 3 | 10
+PROVIDER | openrouter | 4 | 10

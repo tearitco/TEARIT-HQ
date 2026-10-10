@@ -1,0 +1,76 @@
+# pet_teachme - the "teach me" pipeline on a SCRATCH world with a FAKE teacher (no network): a good card lands as PENDING only (never accepted by itself) with the source field set by us; a malformed card and a non-card reply are rejected and logged; a failed provider gets a cooldown and the next one on the ladder is asked; all providers used up = nobody free; accept/reject by the owner moves the card, answers the question in chat, opens tech-tree nodes and moves the lesson formula (bounded, ledgered); a busy lock refuses.
+RESULTS | ../results/pet_teachme.txt
+CASE    | pet-teachme
+SCRATCH |
+MKDIR   | state
+MKDIR   | fake
+ENV     | PET_SHARED | $T/state
+ENV     | PET_TRAIN | 1
+ENV     | LC_CLOCK_BIN | /nonexistent
+ENV     | PET_TEACH_SYNC | 1
+ENV     | PET_AI_NOW | 1000000
+ENV     | FAKE_DIR | $T/fake
+ENV     | PET_TEACH_BACKEND | $HOUSE/&.widgits/_shared-lib/harness/fixtures/pet_teach/fake_teacher
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | status
+# good card
+WRITE   | fake/mode | good
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | teach_me
+EXPECT_HAS | state/pets/a13/lessons/pending.txt | CARD \p counting_1 \p | card-pending
+EXPECT_HAS | state/pets/a13/lessons/pending.txt | \p gemma | source-set-by-us-not-the-model
+EXPECT_NOFILE | state/pets/a13/lessons/accepted.pdl | never-auto-accepted
+EXPECT_HAS | state/pets/a13/lessons/nodes.txt | counting pending | node-pending
+EXPECT_HAS | state/pets/a13/chat.txt | waiting for review | owner-told
+EXPECT_HAS | state/ladder_state.pdl | USED \p mac_gemma \p 11 \p 1 | ladder-use-counted
+EXPECT_HAS | state/world/ledger.txt | PENDING-counting_1 | ledger-row
+EXPECT_HAS | state/pets/a13/variables.txt | stat_intellect_exp=3 | intellect-exp
+EXPECT_HAS | fake/last_provider | mac_gemma | first-teacher-is-mac-gemma
+# malformed card and a non-card reply are rejected, nothing is appended
+WRITE   | fake/mode | bad
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | teach_me | colors
+EXPECT_HAS | state/world/ledger.txt | REJECTED-prompt | bad-question-rejected-and-logged
+EXPECT_HAS | state/pets/a13/chat.txt | no good | owner-told-about-reject
+WRITE   | fake/mode | text
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | teach_me | colors
+EXPECT_HAS | state/world/ledger.txt | REJECTED-no-card-line | non-card-rejected
+RUN     | /usr/bin/grep | -c | ^CARD | $T/state/pets/a13/lessons/pending.txt
+EXPECT_OUT_IS | 1 | still-only-one-pending-card
+# a teacher that sends a whole CARD line: accepted too, the source is still ours
+WRITE   | fake/mode | cardline
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | teach_me | weather
+EXPECT_HAS | state/pets/a13/lessons/pending.txt | weather_2 \p word \p how many legs has a cat \p four legs \p gemma | card-line-accepted-source-ours
+# a failing provider gets a cooldown, the next one on the ladder answers
+WRITE   | fake/mode | fail
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | teach_me | colors
+EXPECT_HAS | state/ladder_state.pdl | COOLDOWN \p mac_gemma | cooldown-after-failure
+EXPECT_HAS | state/pets/a13/chat.txt | mac_gemma did not answer | owner-told-about-failure
+WRITE   | fake/mode | good
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | teach_me | colors
+EXPECT_HAS | fake/last_provider | groq | next-teacher-on-the-ladder
+EXPECT_HAS | state/pets/a13/lessons/pending.txt | colors_3 \p word \p how many legs has a cat \p four legs \p groq | second-card-from-groq
+# everybody used up: no teacher
+WRITE   | state/ladder_state.pdl | USED \p mac_gemma \p 11 \p 99\nUSED \p groq \p 11 \p 99\nUSED \p poolside \p 11 \p 99\nUSED \p openrouter \p 11 \p 99\n
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | teach_me | animals
+EXPECT_HAS | state/pets/a13/chat.txt | no teacher is free today | nobody-free
+# busy lock
+MKDIR   | state/teach.lock
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | teach_me | animals
+EXPECT_HAS | state/pets/a13/chat.txt | my teacher is busy | busy-refused
+RUN     | /bin/rmdir | $T/state/teach.lock
+# review: accept moves the card, answers the question, opens nodes, moves the formula
+WRITE   | state/ladder_state.pdl | # reset\n
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | lesson_accept | counting_1
+EXPECT_HAS | state/pets/a13/lessons/accepted.pdl | CARD \p counting_1 | accepted-card-stored
+EXPECT_HAS | state/pets/a13/lessons/nodes.txt | counting accepted | node-accepted
+EXPECT_HAS | state/lessonformula.pdl | FORM \p word \p 5 | formula-word-up
+EXPECT_HAS | state/world/ledger.txt | FORMULA\p | formula-ledgered
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | How many legs has a cat?
+EXPECT_HAS | state/pets/a13/chat.txt | PET: four legs | answers-from-the-accepted-card
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | lesson_reject | colors_3
+EXPECT_HAS | state/pets/a13/lessons/nodes.txt | colors rejected | node-rejected
+EXPECT_HAS | state/lessonformula.pdl | FORM \p word \p 4 | formula-word-down-again
+RUN     | /usr/bin/grep | -c | colors_3 | $T/state/pets/a13/lessons/accepted.pdl
+EXPECT_OUT_IS | 0 | rejected-card-not-accepted
+# typed: teach me
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chat_input | x | y | teach me animals
+EXPECT_HAS | state/pets/a13/chat.txt | asking my teacher | typed-teach-me
+EXPECT_HAS | state/pets/a13/lessons/pending.txt | animals_ | typed-card-arrived

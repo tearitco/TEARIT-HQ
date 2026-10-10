@@ -11,3 +11,4 @@ AI | want_wood | 8
 AI | eat_radius | 1
 AI | needs_every | 60
 AI | rest_gain | 15
+AI | study_every | 1440

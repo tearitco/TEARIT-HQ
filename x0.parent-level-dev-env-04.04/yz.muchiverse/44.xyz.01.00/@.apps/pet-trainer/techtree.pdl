@@ -1,0 +1,15 @@
+SECTION | KEY | VALUE
+----------------------------------------
+# techtree.pdl - what a pet can ask to learn. NODE | id | title | needs (comma separated node ids, - for none). A node is open when every need has an ACCEPTED lesson card for this pet.
+NODE | counting | counting small numbers | -
+NODE | colors | colors of things | -
+NODE | animals | farm animals | -
+NODE | weather | weather and the sky | -
+NODE | coins | coins and prices | counting
+NODE | shapes | simple shapes | colors
+NODE | plants | how plants grow | animals
+NODE | farming | farming crops | plants
+NODE | trading | trading fairly | coins
+NODE | cooking | cooking food | farming
+NODE | building | building a house | trading
+NODE | maps | reading maps | shapes

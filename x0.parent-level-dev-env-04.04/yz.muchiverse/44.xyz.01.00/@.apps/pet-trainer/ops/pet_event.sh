@@ -92,7 +92,12 @@ lex_set() { # lex_set <phrase> <verb> <item> <delta> <initial>: add the word (in
 do_chat() { # the master talks: the pet matches known words, does the thing, answers; unknown words are remembered so the master can teach them
     need_pet; text="$1"; [ -z "$text" ] && return 0
     printf 'YOU: %s\n' "$text" >> "$CHAT"; stat_train "$text"
+    ans=$(card_answer "$text"); if [ -n "$ans" ]; then say "$ans"; stat_add intellect 1; return 0; fi      # a question from an accepted lesson card: answer it
     case "$text" in    # typed shortcuts: "teach <words> = <verb> [item]", "good", "bad"
+        teach\ me|teach\ me\ *) tp="${text#teach me}"; tp=$(printf '%s' "$tp" | tr -d ' '); say "asking my teacher..."; if [ "${PET_TEACH_SYNC:-0}" = 1 ]; then sh "$0" teach_me "$tp" >/dev/null 2>&1; else ( setsid sh "$0" teach_me "$tp" >/dev/null 2>&1 & ); fi; return 0 ;;
+        lessons) sh "$0" lessons >/dev/null; return 0 ;;
+        accept\ *) sh "$0" lesson_accept "${text#accept }" >/dev/null; return 0 ;;
+        reject\ *) sh "$0" lesson_reject "${text#reject }" >/dev/null; return 0 ;;
         teach\ *=*) body=${text#teach }; ph=${body%%=*}; rest=${body#*=}; set -- $rest; do_teach "$ph" "$1" "$2"; return 0 ;;
         help|"help "*|"?"|"? "*) sh "$0" help "${text#* }" >/dev/null; return 0 ;;
         give\ *) set -- ${text#give }; gn=1; case "$1" in [0-9]*) gn="$1"; shift;; esac; gi="${1:-}"; gi="${gi%s}"; [ "$gn" -gt 100 ] 2>/dev/null && gn=100; if [ -n "$gi" ] && awk -F'|' -v n="$gi" '/^ITEM/{g=$2; gsub(/^ +| +$/,"",g); if(g==n) f=1} END{exit !f}' "$HERE/items.pdl"; then inv_add "$gi" "$gn" >/dev/null; say "thanks! $gn $gi"; else say "give what? (apple fish cake ball soap coin wood)"; fi; return 0 ;;
@@ -258,6 +263,16 @@ ai_build() { # the pet builds when it can pay: a house first, then a farm, then 
         row=$(grep "^KIND *| *$kd " "$HERE/buildings.pdl" | head -1); wd=$(echo "$row" | awk -F'|' '{gsub(/ /,"",$5); print $5}'); cn=$(echo "$row" | awk -F'|' '{gsub(/ /,"",$6); print $6}'); w=$(echo "$row" | awk -F'|' '{gsub(/ /,"",$3); print $3}'); h=$(echo "$row" | awk -F'|' '{gsub(/ /,"",$4); print $4}')
         need=$(( cn + $(land_fee "$w" "$h") )); if [ "$(inv_count wood)" -ge "$wd" ] && [ "$(inv_count coin)" -ge "$need" ]; then sh "$0" build_building "$kd" >/dev/null 2>&1; ai_log "$ACTIVE" "built a $kd"; return 0; fi
     done; return 1; }
+# ---- "teach me": the pet asks a teacher on the provider ladder for ONE lesson card (a Q&A line), checked by card_check, kept as PENDING until the owner accepts it; accepted cards answer questions in chat and open the next tech-tree nodes
+node_title() { awk -F'|' -v n="$1" '/^NODE/{a=$2; gsub(/ /,"",a); if (a==n) {t=$3; sub(/^ +/,"",t); sub(/ +$/,"",t); print t; exit}}' "$HERE/techtree.pdl"; }
+next_node() { awk -F'|' -v nf="$PET/lessons/nodes.txt" 'BEGIN{ while ((getline l < nf) > 0) { split(l, p, " "); st[p[1]] = p[2] } } /^NODE/{ id=$2; gsub(/ /,"",id); nd=$4; gsub(/ /,"",nd); if (id in st) next; ok=1; if (nd != "-") { m=split(nd, ns, ","); for (i=1;i<=m;i++) if (st[ns[i]] != "accepted") ok=0 } if (ok) { print id; exit } }' "$HERE/techtree.pdl"; }
+formula_file() { [ -f "$SHARED/lessonformula.pdl" ] || cp "$HERE/lessonformula.pdl" "$SHARED/lessonformula.pdl"; echo "$SHARED/lessonformula.pdl"; }
+formula_pick() { awk -F'|' -v s="${PET_AI_NOW:-$(date +%s)}" '/^FORM/{k=$2; gsub(/ /,"",k); w=$3+0; n++; ks[n]=k; ws[n]=w; tot+=w} END{ if (tot<1) {print "fact"; exit} r=s%tot; for (i=1;i<=n;i++) { if (r<ws[i]) {print ks[i]; exit} r-=ws[i] } }' "$(formula_file)"; }
+formula_bump() { # formula_bump <kind> <delta> <why>: the lesson formula learns from review (bounded 1..15, every change a ledger row)
+    ff=$(formula_file); fo=$(awk -F'|' -v k="$1" '/^FORM/{a=$2; gsub(/ /,"",a); if (a==k) print $3+0}' "$ff"); [ -n "$fo" ] || return 0; fn=$(( fo + $2 )); [ "$fn" -gt 15 ] && fn=15; [ "$fn" -lt 1 ] && fn=1
+    sed -i "s/^FORM *| *$1 *| *[0-9]*/FORM | $1 | $fn/" "$ff"; mkdir -p "$TOWN"; printf 'FORMULA|%s|%s|%s|%s|%s\n' "${PET_AI_NOW:-$(date +%s)}" "$1" "$fo" "$fn" "$3" >> "$TOWN/ledger.txt"; }
+card_answer() { # card_answer <chat text>: the answer of an ACCEPTED card whose question equals the text (case and punctuation ignored)
+    awk -F'|' -v q="$(printf '%s' "$1" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9' ' ' | tr -s ' ' | sed 's/^ //; s/ $//')" '/^CARD/{p=tolower($4); gsub(/[^a-z0-9]+/, " ", p); gsub(/^ | $/, "", p); if (p == q && q != "") {a=$5; sub(/^ +/,"",a); sub(/ +$/,"",a); print a; exit}}' "$PET/lessons/accepted.pdl" 2>/dev/null; }
 gen_events() { # build <pet dir>/event_pkg/pages/page_N for every pet event: system events, then one per menu row. The pages are what events-hq opens (event.ir.pdl, event.pal, condition.pdl, cmd_1.sh).
     GENV=$(cat "$(rooms_file)" "$HERE/menu.pdl" "$HERE/ops/pet_event.sh" 2>/dev/null | cksum | cut -d' ' -f1)
     P="$PET/event_pkg/pages"; [ -f "$PET/event_pkg/events_index.txt" ] && [ "$(cat "$PET/event_pkg/.generated" 2>/dev/null)" = "$GENV" ] && return 0
@@ -432,7 +447,7 @@ status() {
 # (and logged), exactly like Doom's play flag. The window shows it as a traffic light (green = started, red = stopped).
 running() { [ "$(cat "$PET/running.txt" 2>/dev/null)" = 1 ]; }
 case "$VERB" in
-    start|stop|ai_step|buy|sell|help|tip|land_price|build_building|chat_toggle|phones|exchange|call|build_room|map|listen|chat_send|clock_event|time_rate|time_advance|time_reinstall|status|stats|new_pet|save_slot|load_slot|fire|gen_events|new_event|menu_group|menu_toggle|inv_toggle|open_events|teleport|hotbar_toggle|interact|player|party_toggle|view|select|world_move|world_talk|"") ;;
+    start|stop|ai_step|buy|sell|teach_me|study|lessons|lesson_accept|lesson_reject|help|tip|land_price|build_building|chat_toggle|phones|exchange|call|build_room|map|listen|chat_send|clock_event|time_rate|time_advance|time_reinstall|status|stats|new_pet|save_slot|load_slot|fire|gen_events|new_event|menu_group|menu_toggle|inv_toggle|open_events|teleport|hotbar_toggle|interact|player|party_toggle|view|select|world_move|world_talk|"") ;;
     *) if ! running && [ "${PET_TRAIN:-0}" != 1 ]; then mkdir -p "$PET"; printf '%s | stopped | ignored %s\n' "$(date '+%H:%M:%S')" "$VERB" >> "$PET/log.txt"
            case "$VERB" in chat_input|chat|chat_send) printf '(the pet is stopped - press Play first)\n' >> "$PET/chat.txt"; status >/dev/null 2>&1;; esac; exit 0; fi ;;
 esac
@@ -569,6 +584,7 @@ case "$VERB" in
         if [ "$nt" -gt 0 ]; then echo $((last + nt * ne)) > "$PET/ai_last"; k=0; while [ "$k" -lt "$nt" ]; do addv hunger "$(getw tick_hunger)"; addv energy -"$(getw tick_energy)"; addv clean -"$(getw tick_clean)"; k=$((k + 1)); done; ai_clamp; fi
         hu=$(getv hunger); en=$(getv energy); hthr=$(aiv hunger_thr); ethr=$(aiv energy_thr); ww=$(aiv want_wood)
         ai_rent
+        sl=$(cat "$PET/study_last" 2>/dev/null || echo 0); se=$(aiv study_every); [ $(( now - sl )) -ge "${se:-1440}" ] && sh "$0" study >/dev/null 2>&1      # the phone study hobby: now and then the pet reads up on a topic and asks its teacher for a card
         if [ "${hu:-0}" -ge "${hthr:-60}" ]; then
             for f in apple fish cake; do if [ "$(inv_count $f)" -gt 0 ]; then sh "$0" give "$f" >/dev/null; ai_log "$ACTIVE" "ate $f from the bag"; rm -f "$PET/ai_goal.txt"; exit 0; fi; done
             if ai_shop apple; then sh "$0" give apple >/dev/null; ai_log "$ACTIVE" "ate the apple it bought"; exit 0; fi
@@ -585,6 +601,39 @@ case "$VERB" in
         d=$(deal "$PET" "$SHARED/pets/$sid" "$it" "$n"); case "$d" in ok) printf '%s: bought %s %s\n' "$nm" "$n" "$it" >> "$CHAT";; buyer-poor) printf '%s: not enough coins\n' "$nm" >> "$CHAT";; seller-short) printf '%s: they do not have enough %s\n' "$nm" "$it" >> "$CHAT";; *) printf '%s: no price for %s\n' "$nm" "$it" >> "$CHAT";; esac; status >/dev/null ;;
     sell) need_pet; bid="$ARG"; it="${3:-wood}"; n="${4:-1}"; nm=$(getv name_id); [ -d "$SHARED/pets/$bid" ] || { printf '%s: sell to whom?\n' "$nm" >> "$CHAT"; exit 0; }
         d=$(deal "$SHARED/pets/$bid" "$PET" "$it" "$n"); case "$d" in ok) printf '%s: sold %s %s\n' "$nm" "$n" "$it" >> "$CHAT";; buyer-poor) printf '%s: they cannot pay\n' "$nm" >> "$CHAT";; seller-short) printf '%s: I do not have enough %s\n' "$nm" "$it" >> "$CHAT";; *) printf '%s: no price for %s\n' "$nm" "$it" >> "$CHAT";; esac; status >/dev/null ;;
+    teach_me) need_pet; now="${PET_AI_NOW:-$(date +%s)}"; nm=$(getv name_id); LES="$PET/lessons"; mkdir -p "$LES" "$TOWN"
+        [ -z "$(find "$SHARED/teach.lock" -maxdepth 0 -mmin +20 2>/dev/null)" ] || rmdir "$SHARED/teach.lock" 2>/dev/null
+        mkdir "$SHARED/teach.lock" 2>/dev/null || { printf '%s: my teacher is busy, later\n' "$nm" >> "$CHAT"; exit 0; }
+        node="$ARG"; [ -n "$node" ] || node=$(next_node); title=$(node_title "$node")
+        if [ -z "$node" ] || [ -z "$title" ]; then printf '%s: I have learned all I can for now\n' "$nm" >> "$CHAT"; rmdir "$SHARED/teach.lock"; exit 0; fi
+        pk=$("$HERE/ops/+x/ladder_pick.+x" "$HERE/ladder.pdl" "$SHARED/ladder_state.pdl" "$now") || { printf '%s: no teacher is free today\n' "$nm" >> "$CHAT"; rmdir "$SHARED/teach.lock"; exit 0; }; prov=${pk#PICK|}
+        src=$prov; [ "$prov" = mac_gemma ] && src=gemma; kind=$(formula_pick); cid="${node}_$(( $(grep -c '^CARD' "$LES/pending.txt" "$LES/accepted.pdl" 2>/dev/null | awk -F: '{s+=$2} END{print s+0}') + 1 ))"
+        prompt="Topic: $title. Write one short quiz question about this topic for a small child, and its short answer. Reply with exactly two lines and nothing else:
+Q: <the question>
+A: <the answer>"
+        printf 'USED | %s | %s | 1\n' "$prov" "$((now / 86400))" >> "$SHARED/ladder_state.pdl"
+        reply=$("${PET_TEACH_BACKEND:-$HERE/ops/pet_teach_backend.sh}" "$prov" "$prompt" 2>"$LES/last_err.txt"); rc=$?
+        if [ "$rc" -ne 0 ]; then cd_s=3600; [ "$rc" = 3 ] && cd_s=600; printf 'COOLDOWN | %s | %s\n' "$prov" "$((now + cd_s))" >> "$SHARED/ladder_state.pdl"; printf 'LESSON|%s|%s|%s|%s|FAILED-%s\n' "$now" "$nm" "$node" "$prov" "$rc" >> "$TOWN/ledger.txt"; printf '%s: %s did not answer\n' "$nm" "$prov" >> "$CHAT"; rmdir "$SHARED/teach.lock"; exit 0; fi
+        line=$(printf '%s\n' "$reply" | grep -m1 '^[ ]*CARD[ ]*|')
+        if [ -z "$line" ]; then qq=$(printf '%s\n' "$reply" | sed -n 's/^[ ]*[Qq][A-Za-z]*[ ]*:[ ]*//p' | head -1 | tr -d '\r|' | sed 's/ *$//'); aa=$(printf '%s\n' "$reply" | sed -n 's/^[ ]*[Aa][A-Za-z]*[ ]*:[ ]*//p' | head -1 | tr -d '\r|' | sed 's/ *$//'); [ -n "$qq" ] && [ -n "$aa" ] && line="CARD | $cid | $kind | $qq | $aa | $src"; fi      # the card line is OURS (id, kind, source): the teacher only writes the question and the answer; a CARD line from a stronger teacher is accepted too
+        if [ -z "$line" ]; then printf 'LESSON|%s|%s|%s|%s|REJECTED-no-card-line\n' "$now" "$nm" "$node" "$prov" >> "$TOWN/ledger.txt"; printf '%s: that answer was not a question and answer\n' "$nm" >> "$CHAT"; rmdir "$SHARED/teach.lock"; exit 0; fi
+        line=$(printf '%s' "$line" | sed 's/^ *//; s/ *$//' | awk -F'|' -v c="$cid" -v k="$kind" -v s="$src" 'NF==6 { gsub(/^ +| +$/, "", $4); gsub(/^ +| +$/, "", $5); print "CARD | " c " | " k " | " $4 " | " $5 " | " s; next } { print }')      # id, kind and source are OURS; only the question and the answer come from the teacher
+        cat "$LES/accepted.pdl" "$LES/pending.txt" 2>/dev/null | grep '^CARD' > "$LES/cand.txt"; printf '%s\n' "$line" >> "$LES/cand.txt"; res=$("$HERE/ops/+x/card_check.+x" "$LES/cand.txt" | grep -v '^SUMMARY' | tail -1)
+        case "$res" in OK*) printf '%s\n' "$line" >> "$LES/pending.txt"; grep -v "^$node " "$LES/nodes.txt" > "$LES/nodes.tmp" 2>/dev/null; echo "$node pending" >> "$LES/nodes.tmp"; mv -f "$LES/nodes.tmp" "$LES/nodes.txt"
+            printf 'LESSON|%s|%s|%s|%s|PENDING-%s\n' "$now" "$nm" "$node" "$prov" "$cid" >> "$TOWN/ledger.txt"; printf '%s: I wrote a lesson card about %s (waiting for review)\n' "$nm" "$title" >> "$CHAT"; stat_add intellect 3 ;;
+            *) why=${res##*|}; printf 'LESSON|%s|%s|%s|%s|REJECTED-%s\n' "$now" "$nm" "$node" "$prov" "$why" >> "$TOWN/ledger.txt"; printf '%s: that lesson card was no good (%s)\n' "$nm" "$why" >> "$CHAT" ;; esac
+        rm -f "$LES/cand.txt"; rmdir "$SHARED/teach.lock"; status >/dev/null ;;
+    study) need_pet; now="${PET_AI_NOW:-$(date +%s)}"; nm=$(getv name_id); ev=$(aiv study_every); last=$(cat "$PET/study_last" 2>/dev/null || echo 0); [ $(( now - last )) -ge "${ev:-1440}" ] || exit 0
+        mkdir -p "$PET/lessons"; node=$(next_node); [ -n "$node" ] || exit 0; echo "$now" > "$PET/study_last"; printf 'ph study %s: reading about %s\n' "$nm" "$(node_title "$node")" >> "$CHAT"; stat_add intellect 1
+        if [ "${PET_TEACH_SYNC:-0}" = 1 ]; then sh "$0" teach_me "$node" >/dev/null 2>&1; else ( setsid sh "$0" teach_me "$node" >/dev/null 2>&1 & ); fi ;;
+    lessons) need_pet; nm=$(getv name_id); n=$(grep -c '^CARD' "$PET/lessons/pending.txt" 2>/dev/null); if [ "${n:-0}" -eq 0 ]; then printf '%s: no lessons waiting\n' "$nm" >> "$CHAT"; else printf '%s: %s lesson(s) waiting; say accept <id> or reject <id>\n' "$nm" "$n" >> "$CHAT"; grep '^CARD' "$PET/lessons/pending.txt" | head -3 | awk -F'|' '{id=$2; q=$4; gsub(/^ +| +$/,"",id); gsub(/^ +| +$/,"",q); print "? " id ": " q}' >> "$CHAT"; fi; status >/dev/null ;;
+    lesson_accept|lesson_reject) need_pet; nm=$(getv name_id); LES="$PET/lessons"; id=$(printf '%s' "$ARG" | tr -d ' '); row=$(grep "^CARD *| *$id *|" "$LES/pending.txt" 2>/dev/null | head -1)
+        [ -n "$row" ] || { printf '%s: I have no lesson called %s\n' "$nm" "$id" >> "$CHAT"; exit 0; }
+        grep -v "^CARD *| *$id *|" "$LES/pending.txt" > "$LES/pending.tmp"; mv -f "$LES/pending.tmp" "$LES/pending.txt"; node=${id%_*}; kd=$(printf '%s' "$row" | awk -F'|' '{k=$3; gsub(/ /,"",k); print k}'); now="${PET_AI_NOW:-$(date +%s)}"
+        grep -v "^$node " "$LES/nodes.txt" > "$LES/nodes.tmp" 2>/dev/null
+        if [ "$VERB" = lesson_accept ]; then printf '%s\n' "$row" >> "$LES/accepted.pdl"; echo "$node accepted" >> "$LES/nodes.tmp"; formula_bump "$kd" 1 accepted; stat_add intellect 5; printf 'LESSON|%s|%s|%s|-|ACCEPTED-%s\n' "$now" "$nm" "$node" "$id" >> "$TOWN/ledger.txt"; printf '%s: I learned something new!\n' "$nm" >> "$CHAT"
+        else echo "$node rejected" >> "$LES/nodes.tmp"; formula_bump "$kd" -1 rejected; printf 'LESSON|%s|%s|%s|-|REJECTED-by-owner-%s\n' "$now" "$nm" "$node" "$id" >> "$TOWN/ledger.txt"; printf '%s: ok, I will forget that one\n' "$nm" >> "$CHAT"; fi
+        mv -f "$LES/nodes.tmp" "$LES/nodes.txt"; status >/dev/null ;;
     build_room) need_pet; side="${ARG:-right}"; kind="${3:-room}"; RF=$(rooms_file); HF="$HERE/home.pdl"; [ -f "$SHARED/home_all.pdl" ] && HF="$SHARED/home_all.pdl"
         cur=$(cat "$PET/loc.txt" 2>/dev/null || echo bedroom); line=$(grep "^CELL *| *$cur " "$HF" | head -1); cx=$(echo "$line" | awk -F'|' '{gsub(/ /,"",$3); print $3}'); cy=$(echo "$line" | awk -F'|' '{gsub(/ /,"",$4); print $4}')
         [ -n "$cx" ] || { printf '%s: I cannot build here\n' "$(getv name_id)" >> "$CHAT"; exit 0; }
