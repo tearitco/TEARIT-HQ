@@ -13,7 +13,10 @@ Status words: DONE = built and seen working / PARTIAL / TODO / PLAN = documented
 
 - (later 2026-10-10) All six pets walk and meet by themselves; INT controls the selected pet or the player (Tab); roguelike turns (clock moves only when you act, every other pet steps); the old game's clock mechanism (lc_clock, own root) shown in the top bar with a Time dropdown; day/night tint.
 
+- (2026-10-10, latest) **Own cast**: six NEW DB monsters Blip, Fang, Gruk, Draxa, Gargo, Bonz (db-hq ACTOR 19-24 + SYSTEM RpgPetParty, additive) with their own entity_uid / wallet ids and own voices that SPEAK Chinese, Japanese and Korean (and English); **Harold** (DB actor 1) is the hero/player, first in the bottom bar, owner of the six; chat and bag overlays open (the renderer drops an overlay row with no item child); an outside room with day/night sky; INT arrows (codes 1000-1003, window must be focused); roguelike turns + the lc_clock top-bar clock.
+
 ## Next (in order, each ends with a before/after PNG)
+0. **Language support (owner: serve Chinese, Japanese, Korean audiences)**: `lang/<code>.pdl` label tables so the whole window (menus, labels, chat) can switch to zh / ja / ko; check the renderer's font path for CJK window text (board-viewer already draws CJK with `bv_cjk_glyph.c`); then pet chat in the pet's own language with the English shown on request.
 1. Shop pictures: RMMV `IconSet.png` for DB items, the furniture's own Inside_B tile for furniture (find the renderer's item `sprite=` format first). DB items as shop stock.
 2. Chat + bag hotbar overlays actually drawn (compare pet-trainer; footer buttons already work).
 3. The xlector (placement cursor): arrows move it, Enter places/picks up, z/x levels.
@@ -28,6 +31,8 @@ Status words: DONE = built and seen working / PARTIAL / TODO / PLAN = documented
 - Item functions as events (sleep, eat, read, play); purse <-> chain bridge (coins are paper today, see CHAIN-ECONOMY-DESIGN); pets driving the relay (the ecosystem soul); doors shared with pet-trainer's `rooms.pdl`.
 
 ## Known bugs / honesty
+- Voices are generated with edge-tts (online); the agent could not listen - the owner confirms by ear. Only Japanese and Chinese samples were synthesized in testing; Korean phrases exist but no Korean sample was checked.
+- INT arrows only reach the game while the window has focus (click it first); real-hardware check still wanted.
 - Chat and hotbar overlays do not draw over the canvas (cause not found).
 - The DB pet profiles still describe animals; the sprites are monsters (owner's data, untouched).
 - Only the active pet walks by itself; the other five stand.
