@@ -10,6 +10,8 @@ Status: DESIGN + owner decisions. Phase 1 is being built next; everything after 
 - "those cones should be 'preferred' from the old chain because they are 100% confirmed. the company / game will give those out as prizes and stuff along with the mine chain, which should have much more difficulty so pets don't consume it so fast"
 - "we can start building the separate x11-hq auction and crypto exchange apps where users can sell their NFTs (food grown in game, on chain), trade things and send blockchain coins to others. the pets can also trade on the auction and blockchain. that's who is supposed to use it (AI entities on the blockchain, always trading for real needs)... this keeps the blockchain live and honest even though there are no human users"
 
+- "yes, let those WSR governments and companies use the premined chain and accounts and coins to trade in that WSR market. mark that we want to join them somehow to trade from those accounts at start and give all coins back at end of game. (we, tearit-co, owned those premined accounts so we can do what we want, and the keys can't be stolen from us because they are public but the coins are still always owned and managed by our account and can do anything we want. get it? hybrid managed chains"
+
 ## 2. What exists today (read, not assumed)
 
 - **The old chain** `041.pal-chain/` (the "cones" chain): 14,000 blocks, 35 wallets (`walletA_*`, `jb`, ...). Reward 10,500 millicones, halving every 1,000 blocks, cap 21,000,000. **20,996,000 millicones (99.98%) are already mined** (by the test harnesses); the reward at block 14,000 is 0. So the old chain **cannot pay mining income any more**, but its balances are real, confirmed and final: exactly what "preferred" means. It stays untouched.
@@ -17,7 +19,8 @@ Status: DESIGN + owner decisions. Phase 1 is being built next; everything after 
 - **Entity wallets**: Q005 derives `wallet_id = "e" + first 24 hex of entity_uid` for every entity (pets included) but creates no chain wallet.
 - **WSR** (`WSR_PAL-PREFERED/SOCIETY-ECONOMY-ARCHITECTURE.txt`): 50 corporations and 7 governments exist as entities; banks are an entity type that answers `loan_request` posts on a ledger/auction marketplace; companies, stocks, dividends, payroll are designed there. Reuse it; do not invent a second banking model.
 - **Auction screen design** `08-roadmap/design-docs/AUCTION-SCREEN-DESIGN.md`: append-only auction ledger (LIST/BID/...), units `cones` and `play`, a settlement layer that is the only thing touching wallets, humans and AI are the same kind of actor. Not built.
-- **Bug found while researching** (logged in bug_bounty): `chain_miner` spins at ~98% CPU when its wallet/root does not exist.
+- **Stale chain binaries (found 2026-10-10):** the compiled ops in `041.pal-chain/ops/+x/` date from 2026-10-05, the sources from 2026-10-07 (multichain, faucet, escrow, daily cap, `--blocks`). The old `chain_miner.+x` ignored `--blocks N` (it mined until killed) and ignored `chain.pdl` (difficulty 5 instead of the chain's 2). `chain_new` was never built. The Q003 build gate does not cover the chain folder. Rebuild with `scripts/build.sh` (or `gcc ... -lcrypto` per op) before any use; `chain_new` is built now.
+- **Open bug** (bug_bounty): `chain_miner` spins at ~98% CPU when its wallet does not exist. Whether the 2026-10-07 source still does this is checked after the rebuild (see build order item 4).
 
 ## 3. Decisions (owner direction turned into rules)
 
@@ -63,9 +66,9 @@ Pets can run storage nodes for the chain and earn a stake reward. Needs: `STAKE`
 | 1 | `pet-cones` chain (high difficulty, daily cap), pet wallets, chain adapter (balance, pay, mine with lock) | `pet_chain` pal on a scratch chain |
 | 2 | Miners: kinds, rooms with slots, wear, maintenance, work meter, real block per full meter, income on chain, sidebar + scene | `pet_mining` |
 | 3 | Purse = chain balance; trades/rent/fees as TXs with pending accounting; old `coin` items retired | rerun `pet_town`, `pet_econ`, `pet_ai` on a funded scratch chain |
-| 4 | Fix `chain_miner` spin bug; balance-check every TX at inclusion | chain harness |
+| 4 | Rebuild chain ops (stale binaries), re-check the `chain_miner` missing-wallet spin on the new source, balance-check every TX at inclusion | chain harness |
 | 5 | NFT tx types (owner OK) + ownership query; pets and grown food minted | `pet_nft` |
-| 6 | Bank/government wallets from the old chain, role files, loans/prizes | WSR-style |
+| 6 | Role file for the 35 premined wallets (bank/government/corporation/treasury); lease + sweep ops on a scratch chain copy; tearit-co joins the WSR market; loans/prizes | `chain_lease` pal (lease, trade, sweep, all back to zero) |
 | 7 | Exchange HQ, then Auction HQ | per AUCTION-SCREEN-DESIGN |
 | 8 | Staking/storage nodes, businesses, stocks, dividends | later |
 
@@ -75,4 +78,19 @@ Pets can run storage nodes for the chain and earn a stake reward. Needs: `STAKE`
 2. Name of the mined unit (chain id `pet-cones` for now).
 3. 1 coin = 1,000 millicones? (a block pays 10.5 coins at the first reward).
 4. Which old-chain wallets are banks and which are governments (list in the next step, balances only).
-5. OK to change the three chain ops for NFTs (item 5) and to balance-check every TX (item 4)?
+5. OK to change the three chain ops for NFTs (item 5), to balance-check every TX (item 4), and to add LEASE/SWEEP and managed-account rules (section 10)?
+6. The treasury wallet for tearit-co (name/which existing wallet), the wallet-to-WSR-role mapping, and the end-of-game trigger that fires the sweep.
+
+## 10. Hybrid managed chains: the premined accounts, WSR and "give it all back"
+
+Owner (2026-10-10): the old chain's premined accounts are **owned by tearit-co**. Their keys are public, so game entities can use the accounts freely, but the coins stay owned and managed by the tearit-co account, which can do anything with them. The WSR governments and companies use those accounts and coins to trade in the WSR market; tearit-co joins them to trade from those accounts at the start, and **all coins are given back at the end of the game**.
+
+**Rule (what "hybrid managed" means here):** the chain is public and the keys are not secret, so safety does NOT come from key secrecy. It comes from the chain's own inclusion rules plus a **custody layer** that tearit-co controls.
+- **Custody root:** one tearit-co treasury wallet (to be named) is the owner of record. It may recall (sweep) any managed account at any time.
+- **Lease at game start:** for each WSR entity (government, bank, corporation) a **game account** is funded from the premined accounts by a recorded lease: `LEASE | lease_id | from_treasury | game_account | amount_mc | ts`. The entity trades with those coins in the WSR ledger/auction marketplace.
+- **Sweep at game end:** every outstanding lease is returned to the treasury: `SWEEP | lease_id | game_account | treasury | amount_mc | ts`, and the lease table must be empty and the game accounts at zero. "Give all coins back" is a checked end-of-game condition, not a hope.
+- **Managed policy (target, chain-level):** `chain.pdl` rows mark managed accounts and their allowed counterparties (the WSR market accounts, the other game accounts, the treasury). A managed account's outflow to anyone else is refused at inclusion; a sweep by the custodian is always allowed. Unmanaged accounts (the pets' mined wallets) are ordinary wallets with no such rule.
+- **Interim, before any chain change:** the settlement layer does it with ordinary `chain_send`: a lease ledger file (`LEASE` rows), a lease op (treasury -> game account) and a sweep op (game account -> treasury, for all outstanding leases), both append-only and harness-tested on a scratch copy of the chain. Because the keys are public and tearit-co controls the treasury, this is honest for now; the consensus-level rule comes with chain hardening (balance-check every TX, section 5).
+- **Join the WSR market:** register tearit-co as a participant entity in WSR (the entity registry and the ledger/auction marketplace of `SOCIETY-ECONOMY-ARCHITECTURE.txt` section 6) so it can post/bid from the leased accounts. Marked as a TODO: how tearit-co "joins" (a company entity, or a seat in the market) is an open design point.
+- **Which premined account is which:** the 35 wallets (`walletA_*`, `jb`, ...) get a role file mapping them to WSR roles (government, bank, corporation, treasury). Listing balances only; nothing is moved until the owner approves the mapping.
+- **Prizes:** the game/company pays prizes in preferred (old-chain) cones from the same managed accounts, as leases that are not swept (a prize is a gift) or as ordinary transfers, to be decided per prize type.
