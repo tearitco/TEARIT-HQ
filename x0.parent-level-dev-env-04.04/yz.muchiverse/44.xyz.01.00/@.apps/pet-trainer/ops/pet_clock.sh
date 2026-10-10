@@ -20,14 +20,19 @@ install() {
             "$LC" "$ROOT" reminder-add pet "$w" "common:$e" "$n" "$r" >/dev/null 2>&1; done
         echo "$ver" > "$ROOT/.schedule_installed"; fi
 }
+phase_now() {      # the right daylight phase for the clock's current hour (used after start / skips; the clock events keep it right afterwards)
+    ms=$(kv game_time_epoch_ms); [ -n "$ms" ] || return 0; h=$(( ms / 3600000 % 24 ))
+    if [ "$h" -ge 19 ] || [ "$h" -lt 6 ]; then p=night; elif [ "$h" -lt 8 ]; then p=dawn; elif [ "$h" -ge 17 ]; then p=dusk; else p=day; fi
+    printf 'phase=%s\n' "$p" > "$SHARED/daylight.txt"
+}
 case "$V" in
     install) install ;;
     reinstall) "$LC" "$ROOT" daemon-stop >/dev/null 2>&1; rm -f "$ROOT/.schedule_installed"; install ;;
-    start) install || exit 0; "$LC" "$ROOT" cmd pet resume --source pet-start >/dev/null 2>&1
+    start) install || exit 0; phase_now; "$LC" "$ROOT" cmd pet resume --source pet-start >/dev/null 2>&1
         LC_CLOCK_EVENT_RUNNER="$HERE/ops/pet_clock_runner.sh" LC_CLOCK_NO_POPUP=1 PET_SHARED="$SHARED" "$LC" "$ROOT" daemon-start >/dev/null 2>&1 ;;
     stop) [ -f "$CF" ] || exit 0; "$LC" "$ROOT" cmd pet pause --source pet-stop >/dev/null 2>&1; sleep 1; "$LC" "$ROOT" daemon-stop >/dev/null 2>&1 ;;
     rate) case "$ARG" in cent|sec|min|hour|day) install; "$LC" "$ROOT" cmd pet rate "$ARG" --source pet-menu >/dev/null 2>&1;; esac ;;
-    advance) case "$ARG" in [0-9]*[smhd]) install; "$LC" "$ROOT" cmd pet advance "$ARG" --source pet-menu >/dev/null 2>&1;; esac ;;
+    advance) case "$ARG" in [0-9]*[smhd]) install; "$LC" "$ROOT" cmd pet advance "$ARG" --source pet-menu >/dev/null 2>&1; sleep 2; phase_now;; esac ;;
     status) ms=$(kv game_time_epoch_ms); if [ -z "$ms" ]; then printf 'time_label=--:--\ntime_rate=-\ntime_running=0\n'; else d0=$(cat "$SHARED/clock_day0.txt" 2>/dev/null || echo 0)
         printf 'time_label=%s\ntime_rate=%s\ntime_running=%s\n' "$(awk -v ms="$ms" -v d0="$d0" 'BEGIN{d=int(ms/86400000); s=int((ms-d*86400000)/1000); printf "D%d %02d:%02d", d-d0+1, int(s/3600), int((s%3600)/60)}')" "$(kv rate)" "$(kv running)"; fi ;;
 esac

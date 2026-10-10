@@ -9,6 +9,10 @@ AT | meal_call | 12:00  | every:1day  | lunch
 AT | meal_call | 18:00  | every:1day  | dinner
 AT | bedtime   | 22:00  | every:1day  | sleepy: it may put itself to bed (self_care)
 AT | wake      | 06:00  | every:1day  | morning: some energy back, a greeting
+AT | phase_dawn  | 06:00  | every:1day  | sunrise: outdoor views turn orange (writes state/daylight.txt phase=dawn)
+AT | phase_day   | 08:00  | every:1day  | full day
+AT | phase_dusk  | 17:00  | every:1day  | sunset
+AT | phase_night | 19:00  | every:1day  | night: moon, stars, dark water, no birds
 AT | day_tick  | 00:00  | every:1day  | the day ends: skill MP refills, grade check, evolution
 # speeds the Time menu offers (lc_clock rates, MEASURED 2026-10-09 per real second): cent = 100 game hours (testing only), sec = 1 game hour (a day in 24 s), min = 1 game minute (a day in 24 min, the default), hour = real time, day = nearly frozen
 SPEED | cent

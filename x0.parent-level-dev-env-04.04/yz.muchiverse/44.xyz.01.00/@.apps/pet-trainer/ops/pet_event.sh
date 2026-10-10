@@ -421,6 +421,7 @@ case "$VERB" in
     bedtime) need_pet; printf '%s: so sleepy...\n' "$(getv name_id)" >> "$CHAT"; self_care; printf '%s | clock | bedtime\n' "$(date '+%H:%M:%S')" >> "$PET/log.txt" ;;
     wake) need_pet; addv energy 15; printf '%s: good morning!\n' "$(getv name_id)" >> "$CHAT"; printf '%s | clock | wake\n' "$(date '+%H:%M:%S')" >> "$PET/log.txt" ;;
     day_tick) need_pet; if [ -x "$GRADE" ]; then "$GRADE" rest "$PET" "$HERE/skillbook.pdl" >/dev/null 2>&1; "$GRADE" check "$PET" "$HERE/curriculum.pdl" >/dev/null 2>&1; "$GRADE" advance "$PET" "$HERE/curriculum.pdl" auto >/dev/null 2>&1; fi; evolve; printf '%s | clock | day_tick\n' "$(date '+%H:%M:%S')" >> "$PET/log.txt" ;;
+    phase_dawn|phase_day|phase_dusk|phase_night) printf 'phase=%s\n' "${VERB#phase_}" > "$SHARED/daylight.txt" ;;      # clock events: the outdoor scenes read this file (ops/pet_scene.c load_phase)
     time_rate) sh "$HERE/ops/pet_clock.sh" rate "$ARG"; status >/dev/null ;;
     time_advance) sh "$HERE/ops/pet_clock.sh" advance "$ARG"; status >/dev/null ;;
     time_reinstall) sh "$HERE/ops/pet_clock.sh" reinstall; status >/dev/null ;;

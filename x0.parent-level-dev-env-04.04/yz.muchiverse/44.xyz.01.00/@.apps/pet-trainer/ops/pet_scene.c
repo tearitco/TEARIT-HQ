@@ -36,17 +36,41 @@ static int kvnum(const char *file, const char *key, int def) { FILE *f = fopen(f
 
 /* the big window on the back wall: what the pet sees outside (sky, sun, drifting clouds, hills, moving water, flying birds). Time is quantized to 250 ms so an unchanged frame is byte-identical (no repaint). */
 static long long qtime_ms(void) { struct timespec ts; clock_gettime(CLOCK_REALTIME, &ts); long long ms = (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000; return ms / 250 * 250; }
+
+/* day and night is EVENT driven: the pet clock fires dawn/day/dusk/night (time.pdl) and each writes state/daylight.txt (phase=...); the scene only reads that phase. g_f = how bright (0 night .. 1 day), g_t = where the sun/moon is on its arc (0 left .. 1 right). PET_SCENE_PHASE overrides for tests. */
+static double g_f = 1, g_t = 0.5; static int g_sun = 1;
+static void load_phase(void) {
+    char p[PATH_MAX], l[64], ph[16] = "day"; const char *e = getenv("PET_SCENE_PHASE"), *sh = getenv("PET_SHARED");
+    if (e && e[0]) snprintf(ph, sizeof ph, "%s", e); else { snprintf(p, sizeof p, "%s/daylight.txt", sh && sh[0] ? sh : "state"); if (!sh || !sh[0]) snprintf(p, sizeof p, "%s/state/daylight.txt", g_app);
+        FILE *f = fopen(p, "r"); if (f) { if (fgets(l, sizeof l, f)) sscanf(l, "phase=%15s", ph); fclose(f); } }
+    if (!strcmp(ph, "dawn")) { g_f = 0.45; g_t = 0.06; g_sun = 1; } else if (!strcmp(ph, "dusk")) { g_f = 0.45; g_t = 0.94; g_sun = 1; }
+    else if (!strcmp(ph, "night")) { g_f = 0; g_t = 0.55; g_sun = 0; } else { g_f = 1; g_t = 0.5; g_sun = 1; }
+}
+static void skycol(int k, int *r, int *g, int *b) {                                                                                       /* k 0..255 = top to horizon */
+    double f = g_f, w = (f > 0 && f < 1) ? (1 - f) * f * 4 : 0;                                                                           /* dawn/dusk warmth */
+    *r = (int)((10 + k / 8) * (1 - f) + (110 + k / 4) * f + w * 90); *g = (int)((14 + k / 8) * (1 - f) + (175 + k / 5) * f + w * 25); *b = (int)((40 + k / 4) * (1 - f) + (235 - k / 8) * f - w * 40);
+    if (*r > 255) *r = 255; if (*g > 255) *g = 255; if (*b < 0) *b = 0;
+}
+static int dim(int v) { return (int)(v * (0.28 + 0.72 * g_f)); }
+static void body(int x0, int y0, int w, int hgt) {                                                                                         /* the sun or the moon on its arc */
+    int cx = x0 + 12 + (int)((w - 24) * g_t), cy = y0 + hgt - 14 - (int)(sin(3.14159265 * g_t) * (hgt - 28)), R = 9;
+    for (int dy = -R; dy <= R; dy++) for (int dx = -R; dx <= R; dx++) if (dx * dx + dy * dy <= R * R) { if (g_sun) px(cx + dx, cy + dy, 255, g_f < 1 ? 190 : 232, g_f < 1 ? 90 : 120); else if ((dx + 4) * (dx + 4) + dy * dy > 49) px(cx + dx, cy + dy, 232, 232, 212); }
+}
+static void stars(int x0, int y0, int w, int hgt) {
+    if (g_f > 0.6) return; for (int i = 0; i < 40; i++) { unsigned s = (unsigned)(i * 2654435761u); int x = x0 + (int)(s % (unsigned)w), y = y0 + (int)((s >> 11) % (unsigned)(hgt > 1 ? hgt : 1)); if ((i + (int)(qtime_ms() / 1000)) % 7) px(x, y, 235, 235, 255); }
+}
 static void big_window(int x0, int y0, int w, int h, int floor_y) {
     long long T = qtime_ms(); int fr = 5, ix0 = x0 + fr, iy0 = y0 + fr, iw = w - 2 * fr, ih = h - 2 * fr, hz = iy0 + ih * 55 / 100;     /* hz = horizon (water starts here) */
     rect(x0 - 2, y0 - 2, x0 + w + 2, y0 + h + 2, 150, 105, 60);                                                                         /* wooden frame */
-    for (int y = iy0; y < hz; y++) { int k = (y - iy0) * 255 / (hz - iy0 + 1); rect(ix0, y, ix0 + iw, y + 1, 110 + k / 4, 175 + k / 5, 235 - k / 8); }   /* sky gradient */
-    int sx = ix0 + iw - 34, sy = iy0 + 20; for (int dy = -9; dy <= 9; dy++) for (int dx = -9; dx <= 9; dx++) if (dx * dx + dy * dy <= 81) px(sx + dx, sy + dy, 255, 232, 120);   /* sun */
-    for (int c = 0; c < 3; c++) { int cx = ix0 + (int)((T / 160 * (c + 1) + c * 97) % (iw + 60)) - 30, cy = iy0 + 14 + c * 14;                       /* clouds drift left to right, wrapping */
+    for (int y = iy0; y < hz; y++) { int k = (y - iy0) * 255 / (hz - iy0 + 1); int sr, sg, sb; skycol(k, &sr, &sg, &sb); rect(ix0, y, ix0 + iw, y + 1, sr, sg, sb); }
+    stars(ix0, iy0, iw, hz - iy0);   /* sky gradient */
+    body(ix0, iy0, iw, hz - iy0);                                                                                                        /* sun or moon */
+    for (int c = 0; c < (g_f > 0.2 ? 3 : 0); c++) { int cx = ix0 + (int)((T / 160 * (c + 1) + c * 97) % (iw + 60)) - 30, cy = iy0 + 14 + c * 14;                       /* clouds drift left to right, wrapping */
         for (int dy = -4; dy <= 4; dy++) for (int dx = -14; dx <= 14; dx++) if ((dx * dx) / 3 + dy * dy * 3 <= 40) { int X = cx + dx, Y = cy + dy; if (X >= ix0 && X < ix0 + iw && Y >= iy0 && Y < hz) px(X, Y, 250, 252, 255); } }
-    for (int x = 0; x < iw; x++) { int hh = 7 + (int)(6 * sin(x * 0.045) + 4 * sin(x * 0.11 + 1.3)); rect(ix0 + x, hz - hh, ix0 + x + 1, hz, 88, 150 + (x % 7), 96); }   /* far hills */
-    for (int y = hz; y < iy0 + ih; y++) { int d = y - hz, base = 60 - d / 2; rect(ix0, y, ix0 + iw, y + 1, 50, 120 + base / 2, 200 - d / 2);                                  /* water, darker toward us */
-        for (int x = 0; x < iw; x++) if (((x * 3 + d * 7 + (int)(T / 200)) % 23) < 2 + d / 8) px(ix0 + x, y, 190, 225, 250); }                                             /* moving wave glints */
-    for (int b = 0; b < 3; b++) { int bx = ix0 + (int)((T / 55 * (b + 2) / 2 + b * 70) % (iw + 40)) - 20, by = iy0 + 10 + b * 11 + (int)(4 * sin(T * 0.004 + b)); int up = (T / 250 + b) % 2;   /* birds */
+    for (int x = 0; x < iw; x++) { int hh = 7 + (int)(6 * sin(x * 0.045) + 4 * sin(x * 0.11 + 1.3)); rect(ix0 + x, hz - hh, ix0 + x + 1, hz, dim(88), dim(150 + (x % 7)), dim(96)); }   /* far hills */
+    for (int y = hz; y < iy0 + ih; y++) { int d = y - hz, base = 60 - d / 2; rect(ix0, y, ix0 + iw, y + 1, dim(50), dim(120 + base / 2), dim(200 - d / 2) + (g_f < 0.2 ? 18 : 0));                                  /* water, darker toward us */
+        for (int x = 0; x < iw; x++) if (((x * 3 + d * 7 + (int)(T / 200)) % 23) < 2 + d / 8) px(ix0 + x, y, dim(190), dim(225), dim(250) + (g_f < 0.2 ? 10 : 0)); }                                             /* moving wave glints */
+    for (int b = 0; b < (g_f > 0.3 ? 3 : 0); b++) { int bx = ix0 + (int)((T / 55 * (b + 2) / 2 + b * 70) % (iw + 40)) - 20, by = iy0 + 10 + b * 11 + (int)(4 * sin(T * 0.004 + b)); int up = (T / 250 + b) % 2;   /* birds */
         for (int k = 0; k <= 4; k++) { int dy = up ? -(4 - k) / 2 : (4 - k) / 2; px(bx - k, by + dy, 40, 40, 50); px(bx + k, by + dy, 40, 40, 50); } px(bx, by + 1, 40, 40, 50);
         if (bx < ix0 + 6 || bx > ix0 + iw - 6) { rect(ix0, by - 6, ix0 + 1, by + 6, 0, 0, 0); } }
     rect(ix0 + iw / 2 - 2, iy0, ix0 + iw / 2 + 2, iy0 + ih, 150, 105, 60); rect(ix0, iy0 + ih / 2 - 2, ix0 + iw, iy0 + ih / 2 + 2, 150, 105, 60);                              /* cross bars */
@@ -83,9 +107,10 @@ static void fridge_at(int fx0, int floor_y) {
 static void room(const char *pd, int pxx, int pyy, const char *anim, int fi, int rid) {
     int floor_y = H - 30;
     if (rid == 2) {                                                                                                                         /* the garden: sky, hills, a house wall with the door, crop rows */
-        for (int y = 0; y < floor_y - 40; y++) { int k = y * 255 / (floor_y - 40); rect(0, y, W, y + 1, 110 + k / 4, 175 + k / 5, 235 - k / 8); }
-        for (int x = 0; x < W; x++) { int hh = 24 + (int)(10 * sin(x * 0.03) + 6 * sin(x * 0.09 + 1)); rect(x, floor_y - 40 - hh, x + 1, floor_y - 40, 90, 150 + (x % 9), 100); }
-        rect(0, floor_y - 40, W, floor_y, 96, 160, 84);
+        for (int y = 0; y < floor_y - 40; y++) { int k = y * 255 / (floor_y - 40), sr, sg, sb; skycol(k, &sr, &sg, &sb); rect(0, y, W, y + 1, sr, sg, sb); }
+        stars(0, 0, W, floor_y - 40); body(0, 0, W, floor_y - 40);
+        for (int x = 0; x < W; x++) { int hh = 24 + (int)(10 * sin(x * 0.03) + 6 * sin(x * 0.09 + 1)); rect(x, floor_y - 40 - hh, x + 1, floor_y - 40, dim(90), dim(150 + (x % 9)), dim(100)); }
+        rect(0, floor_y - 40, W, floor_y, dim(96), dim(160), dim(84));
         rect(0, 0, 76, floor_y, 205, 182, 146); rect(0, floor_y - 52, 76, floor_y - 48, 160, 128, 96);                                       /* the house wall the door is in */
         for (int r = 0; r < 3; r++) { int ry = floor_y - 34 + r * 9; rect(110, ry, W - 20, ry + 5, 110, 78, 52);
             for (int c = 0; c < 9; c++) { int cx = 118 + c * 24, gr = (int)((qtime_ms() / 4000 + c + r * 3) % 4); rect(cx, ry - 2 - gr * 2, cx + 3, ry, 60, 150 + gr * 20, 70); if (gr == 3) rect(cx - 2, ry - 9, cx + 5, ry - 6, 230, 90, 60); } }   /* soil rows with growing crops */
@@ -208,6 +233,7 @@ int main(int argc, char **argv) {
     if (W < 64 || H < 64 || W > 1200 || H > 900) return 2;
     fb = calloc((size_t)W * H, 4); if (!fb) return 1; { char self[PATH_MAX]; if (realpath(argv[0], self)) { snprintf(g_app, sizeof g_app, "%s", self); for (int i = 0; i < 3; i++) { char *s = strrchr(g_app, '/'); if (s) *s = 0; } } }
     char self[PATH_MAX]; char app[PATH_MAX] = "."; if (realpath(argv[0], self)) { snprintf(app, sizeof app, "%s", self); for (int i = 0; i < 3; i++) { char *s = strrchr(app, '/'); if (s) *s = 0; } }
+    load_phase();
     if (!strcmp(mode, "room") && argc >= 10) room(dir, atoi(argv[6]), atoi(argv[7]), argv[8], atoi(argv[9]) & 7, argc >= 11 ? atoi(argv[10]) : 0);
     else if (!strcmp(mode, "manage")) manage(dir, argv[6], atoi(argv[7]));
     else if (!strcmp(mode, "map") && argc >= 7) house_map(atoi(argv[6]));
