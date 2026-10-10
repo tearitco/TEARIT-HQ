@@ -1,0 +1,18 @@
+SECTION | KEY | VALUE
+----------------------------------------
+# rooms.pdl - the home's rooms and their doors. Every DOOR is a TELEPORT event (an on-touch page per door in each pet's event_pkg, `fire door_<room>_<dest>` -> pet_event.sh teleport <dest> <arrive_x>).
+# ROOM | id | scene id | name            scene id = what ops/pet_scene.c draws (0 bedroom, 1 living room, 2 garden); new rooms need a drawing there, doors need only a DOOR row (the scene draws one door per row)
+# DOOR | room | x (centre, px) | dest | arrive_x | auto     auto=1: a started pet may walk to this door on its own and teleport; auto=0: only you send it (the village needs the trainer)
+ROOM | bedroom | 0 | Bedroom
+ROOM | living  | 1 | Living room
+ROOM | garden  | 2 | Garden (crops)
+DOOR | bedroom | 30  | village | 0   | auto=0
+DOOR | bedroom | 334 | living  | 50  | auto=1
+DOOR | living  | 30  | bedroom | 320 | auto=1
+DOOR | living  | 338 | garden  | 50  | auto=1
+DOOR | garden  | 30  | living  | 320 | auto=1
+# PLATFORM | room | x0 | x1 | top y | name : furniture the pet may jump on and walk along (it never breaks anything); a started pet picks one now and then
+PLATFORM | bedroom | 62  | 158 | 216 | bed
+PLATFORM | bedroom | 206 | 302 | 216 | desk
+PLATFORM | living  | 134 | 246 | 210 | sofa
+PLATFORM | living  | 252 | 312 | 220 | tv stand

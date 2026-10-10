@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include <X11/Xlib.h>
 
+static volatile int g_term = 0; static void on_term(int s) { (void)s; g_term = 1; }
 static long long now_ms(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return (long long)t.tv_sec * 1000 + t.tv_nsec / 1000000; }
 static int sh(const char *cmd, char *out, size_t n) {
     FILE *p = popen(cmd, "r"); if (!p) return -1;
@@ -91,10 +92,11 @@ int main(int argc, char **argv) {
     mkdir(pet, 0755);
     char cmd[4096], buf[4096];
     snprintf(cmd, sizeof cmd, "PET_DIR= PET_SHARED='%s' sh '%s/ops/pet_event.sh' status", pet, app); sh(cmd, buf, sizeof buf);       /* creates the pet if needed */
-    Display *xd = XOpenDisplay(NULL);
+    Display *xd = XOpenDisplay(NULL); srand((unsigned)time(NULL) ^ (unsigned)getpid()); unsigned long g_wid = 0;
     long long t_last = now_ms(), t_status = 0, t_tick = now_ms();
     char anim_ui[32] = "idle";
-    while (getppid() == parent) {
+    signal(SIGTERM, on_term); signal(SIGINT, on_term);
+    while (getppid() == parent && !g_term) {
         long long t = now_ms(), dt = t - t_last; t_last = t;
         int wx = 0, wy = 0;
         char rp[PATH_MAX]; snprintf(rp, sizeof rp, "%s/#.desktop/livedesk_hq_windows_%d.txt", house, (int)parent);
@@ -103,7 +105,7 @@ int main(int argc, char **argv) {
             char l[512]; unsigned long wid = 0;
             if (fgets(l, sizeof l, rf)) { char t2[600]; snprintf(t2, sizeof t2, "|%s", l); wx = field(t2, "x"); wy = field(t2, "y"); const char *w = strstr(l, "win=0x"); if (w) wid = strtoul(w + 4, NULL, 16); }
             fclose(rf);
-            if (xd && wid) { Window ch; int rx = 0, ry = 0; if (XTranslateCoordinates(xd, (Window)wid, DefaultRootWindow(xd), 0, 0, &rx, &ry, &ch)) { wx = rx; wy = ry; } }
+            if (wid) g_wid = wid; if (xd && wid) { Window ch; int rx = 0, ry = 0; if (XTranslateCoordinates(xd, (Window)wid, DefaultRootWindow(xd), 0, 0, &rx, &ry, &ch)) { wx = rx; wy = ry; } }
         }
         int floor_h = H - 30;
         static int have_pos = 0, last_wx = 0, last_wy = 0;
@@ -127,18 +129,47 @@ int main(int argc, char **argv) {
         { char ap[PATH_MAX]; snprintf(ap, sizeof ap, "%s/interact_armed.txt", pet); FILE *af = fopen(ap, "r"); int armed = af && fgetc(af) == '1'; if (af) fclose(af); if (armed) { relay_poll(app, pet, view, t); esc_poll(pet); } else { relay_off = -1; hist_off = -1; } }
         char runp[PATH_MAX]; snprintf(runp, sizeof runp, "%s/pets/%s/running.txt", pet, act); int running = 0; { FILE *rr = fopen(runp, "r"); if (rr) { running = fgetc(rr) == '1'; fclose(rr); } }
         if (!running) t_tick = t;                                                       /* stopped: no day tick, no self care */
-        if (t - t_tick > (long long)tick_s * 1000) {
-            snprintf(cmd, sizeof cmd, "PET_DIR= PET_SHARED='%s' sh '%s/ops/pet_event.sh' tick", pet, app); sh(cmd, NULL, 0); t_tick = t;
-        }
         const char *an = anim_ui;
         if (!strcmp(pa, "fall") || !strcmp(pa, "thud")) an = "surprised"; else if (!strcmp(pa, "walk")) an = "walk";
+        /* autonomy, only while the pet is started: wander, hop, talk, hum; a shaken window makes it react. Physics (a shove, a fall) owns the position; autonomy only moves a resting pet. */
+        static double ax = -1; static int tgt = 180; static char door_ev[64] = ""; static long long nxt_move = 0, nxt_hop = 0, hop0 = -1, nxt_say = 0, nxt_hum = 0; static char ppa2[16] = "rest";
+        int at_rest = !strcmp(pa, "rest"); double hopy = 0; char sxo[16], syo[16];
+        char loc[32] = "bedroom"; long long arrive_seq = 0; int arrive_x = 150, rid = 0;
+        { char lp[PATH_MAX]; FILE *lf; snprintf(lp, sizeof lp, "%s/pets/%s/loc.txt", pet, act); if ((lf = fopen(lp, "r"))) { if (fgets(loc, sizeof loc, lf)) loc[strcspn(loc, "\r\n")] = 0; fclose(lf); }
+          snprintf(lp, sizeof lp, "%s/pets/%s/arrive_seq.txt", pet, act); if ((lf = fopen(lp, "r"))) { char q[40]; if (fgets(q, sizeof q, lf)) arrive_seq = atoll(q); fclose(lf); }
+          snprintf(lp, sizeof lp, "%s/pets/%s/arrive_x.txt", pet, act); if ((lf = fopen(lp, "r"))) { char q[16]; if (fgets(q, sizeof q, lf)) arrive_x = atoi(q); fclose(lf); } }
+        rid = !strcmp(loc, "living") ? 1 : 0;
+        static long long seen_seq = 0; static char seen_act[64] = "";
+        if (strcmp(seen_act, act)) { snprintf(seen_act, sizeof seen_act, "%s", act); seen_seq = arrive_seq; ax = -1; }      /* another pet became the active one: start from its resting x */
+        if (arrive_seq != seen_seq) { seen_seq = arrive_seq; ax = arrive_x; tgt = arrive_x; nxt_move = t + 2500; }            /* a teleport event moved it: appear at the arrival door */
+        if (!nxt_say) { nxt_say = t + 8000; nxt_hum = t + 12000; nxt_hop = t + 5000; }
+        if (ax < 0 || (!at_rest && ax < 0)) ax = atof(sx); else if (!at_rest) ax = atof(sx);
+        if (running && !strcmp(view, "room") && at_rest) {
+            if (t > nxt_move) { door_ev[0] = 0; tgt = 90 + rand() % (W - 90 - 110); nxt_move = t + 3500 + rand() % 7000;
+                if (rand() % 100 < 14) { char rp2[PATH_MAX]; snprintf(rp2, sizeof rp2, "%s/rooms.pdl", app); FILE *rf2 = fopen(rp2, "r"); if (rf2) { char l2[200]; while (fgets(l2, sizeof l2, rf2)) { char tg[16], rm[32], ds[32], au[16]; int dx = 0, ar = 0; if (sscanf(l2, "DOOR | %31s | %d | %31s | %d | %15s", rm, &dx, ds, &ar, au) == 5 && !strcmp(rm, loc) && !strcmp(au, "auto=1")) { tgt = dx; snprintf(door_ev, sizeof door_ev, "door_%s_%s", rm, ds); nxt_move = t + 9000; (void)tg; break; } } fclose(rf2); } } }
+            if (door_ev[0] && ax >= tgt - 6 && ax <= tgt + 6) { snprintf(cmd, sizeof cmd, "PET_DIR= PET_SHARED='%s' sh '%s/ops/pet_event.sh' fire %s >/dev/null 2>&1", pet, app, door_ev); sh(cmd, NULL, 0); door_ev[0] = 0; nxt_move = t + 3000; }
+            double step = 45.0 * (double)dt / 1000.0;
+            if (ax < tgt - 2) { ax += step; an = "walk"; } else if (ax > tgt + 2) { ax -= step; an = "walk"; }
+            if (t > nxt_hop) { hop0 = t; nxt_hop = t + 9000 + rand() % 16000; }
+            if (hop0 >= 0 && t - hop0 < 600) { double u = (double)(t - hop0) / 600.0; hopy = 36.0 * 4.0 * u * (1.0 - u); an = "happy"; }
+        }
+        snprintf(sxo, sizeof sxo, "%d", (int)ax); snprintf(syo, sizeof syo, "%d", atoi(sy) - (int)hopy);
+        { int visible = 0; if (xd && g_wid) { XWindowAttributes wa; if (XGetWindowAttributes(xd, (Window)g_wid, &wa)) visible = wa.map_state == IsViewable; }
+          if (running) {
+              if (t > nxt_say) { snprintf(cmd, sizeof cmd, "PET_DIR= PET_SHARED='%s' sh '%s/ops/pet_event.sh' speak >/dev/null 2>&1", pet, app); sh(cmd, NULL, 0); nxt_say = t + 25000 + rand() % 35000; }
+              if (visible && !strcmp(view, "room") && t > nxt_hum) { snprintf(cmd, sizeof cmd, "PET_DIR= PET_SHARED='%s' sh '%s/ops/pet_event.sh' hum >/dev/null 2>&1", pet, app); sh(cmd, NULL, 0); nxt_hum = t + 15000 + rand() % 15000; }
+              if (!strcmp(pa, "fall") && strcmp(ppa2, "fall")) { snprintf(cmd, sizeof cmd, "PET_DIR= PET_SHARED='%s' sh '%s/ops/pet_event.sh' react fall >/dev/null 2>&1", pet, app); sh(cmd, NULL, 0); }
+              if (!strcmp(pa, "thud") && strcmp(ppa2, "thud")) { snprintf(cmd, sizeof cmd, "PET_DIR= PET_SHARED='%s' sh '%s/ops/pet_event.sh' react land >/dev/null 2>&1", pet, app); sh(cmd, NULL, 0); }
+          }
+          snprintf(ppa2, sizeof ppa2, "%s", pa); }
         if (!strcmp(view, "world")) {
             static long long t_npc = 0; if (t - t_npc > 700) { snprintf(cmd, sizeof cmd, "'%s/ops/+x/pet_world.+x' npcstep '%s' %s", app, pet, act); sh(cmd, NULL, 0); t_npc = t; }
             snprintf(cmd, sizeof cmd, "'%s/ops/+x/pet_scene.+x' world '%s' '%s/scene.raw' %d %d %s %lld", app, pet, pet, W, H, act, (t / 400) % 8);
         } else if (!strcmp(view, "manage")) snprintf(cmd, sizeof cmd, "'%s/ops/+x/pet_scene.+x' manage '%s' '%s/scene.raw' %d %d %s %lld", app, pet, pet, W, H, act, (t / 500) % 8);
-        else snprintf(cmd, sizeof cmd, "'%s/ops/+x/pet_scene.+x' room '%s/pets/%s' '%s/scene.raw' %d %d %s %s %s %lld", app, pet, act, pet, W, H, sx, sy, an, (t / 400) % 8);
+        else snprintf(cmd, sizeof cmd, "'%s/ops/+x/pet_scene.+x' room '%s/pets/%s' '%s/scene.raw' %d %d %s %s %s %lld %d", app, pet, act, pet, W, H, sxo, syo, an, (t / 400) % 8, rid);
         sh(cmd, NULL, 0);
         usleep(200000);
     }
+    { char c2[2048]; snprintf(c2, sizeof c2, "PET_SHARED='%s' sh '%s/ops/pet_clock.sh' stop >/dev/null 2>&1", pet, app); sh(c2, NULL, 0); }      /* the window closed: stop the pet clock daemon (no orphan, zero CPU) */
     return 0;
 }

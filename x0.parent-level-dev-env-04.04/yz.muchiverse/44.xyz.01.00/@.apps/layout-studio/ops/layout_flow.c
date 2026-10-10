@@ -130,7 +130,8 @@ int main(int argc, char **argv) {
     if (!strcmp(argv[1], "navmap")) { for (int i = 0; i < n; i++) printf("%d %s %s%s%s%s -> %s %s\n", b[i].n, b[i].where, b[i].tgt[0] && !strcmp(b[i].where, "drop") ? "[" : "", b[i].tgt[0] && !strcmp(b[i].where, "drop") ? b[i].tgt : "", b[i].tgt[0] && !strcmp(b[i].where, "drop") ? "] " : "", b[i].label, b[i].verb, b[i].arg); return 0; }
     if (!strcmp(argv[1], "press") && argc >= 5) {
         char want[200] = ""; int pid = 0, esc = 0; for (int i = 4; i < argc; i++) { if (!strcmp(argv[i], "--pid") && i + 1 < argc) { pid = atoi(argv[++i]); continue; } if (!strcmp(argv[i], "--esc")) { esc = 1; continue; } if (want[0]) strcat(want, " "); strncat(want, argv[i], sizeof want - strlen(want) - 1); }
-        int hit = -1; for (int i = 0; i < n; i++) if (strcasestr(b[i].label, want)) { hit = i; break; }
+        int hit = -1; for (int i = 0; i < n && hit < 0; i++) if (!strcasecmp(b[i].label, want)) hit = i;                 /* an exact label wins ("Play" is the dropdown row, not the Player tab) */
+        for (int i = 0; i < n && hit < 0; i++) if (strcasestr(b[i].label, want)) hit = i;
         if (hit < 0) { fprintf(stderr, "layout_flow: no button \"%s\" in view %s (try navmap)\n", want, argv[3]); return 1; }
         int steps[2], ns = 0;                                   /* the numbers to press, in order */
         if (!strcmp(b[hit].where, "drop")) {

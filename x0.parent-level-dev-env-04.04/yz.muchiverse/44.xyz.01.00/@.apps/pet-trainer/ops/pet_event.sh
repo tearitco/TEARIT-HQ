@@ -125,7 +125,8 @@ do_touch() { # touched: head = pleased, belly = giggle; many touches in a row an
     if [ "$n" -gt 5 ]; then addv happy -3; feedback -1 touch; expr sad 5; say "stop it!"; else addv happy 3; [ "$part" = belly ] && addv happy 1; feedback +1 touch; expr happy 5; reply touch; fi
 }
 gen_events() { # build <pet dir>/event_pkg/pages/page_N for every pet event: system events, then one per menu row. The pages are what events-hq opens (event.ir.pdl, event.pal, condition.pdl, cmd_1.sh).
-    P="$PET/event_pkg/pages"; [ -f "$PET/event_pkg/events_index.txt" ] && [ -f "$PET/event_pkg/.generated" ] && return 0
+    GENV=$(cat "$HERE/rooms.pdl" "$HERE/menu.pdl" "$HERE/ops/pet_event.sh" 2>/dev/null | cksum | cut -d' ' -f1)
+    P="$PET/event_pkg/pages"; [ -f "$PET/event_pkg/events_index.txt" ] && [ "$(cat "$PET/event_pkg/.generated" 2>/dev/null)" = "$GENV" ] && return 0
     rm -rf "$PET/event_pkg"; mkdir -p "$P"; : > "$PET/event_pkg/events_index.txt"; k=0
     mkpage() { # mkpage <id> <trigger> <verb> <arg> <note>
         k=$((k + 1)); p="$P/page_$k"; mkdir -p "$p"
@@ -145,12 +146,14 @@ gen_events() { # build <pet dir>/event_pkg/pages/page_N for every pet event: sys
     mkpage world_up on-click world_move up "Trainer walks up"; mkpage world_down on-click world_move down "Trainer walks down"
     mkpage world_left on-click world_move left "Trainer walks left"; mkpage world_right on-click world_move right "Trainer walks right"
     mkpage world_door on-touch view room "Door: stepping into the player's door teleports into the house (view room)"
+    while IFS='|' read -r tag room x dest arr auto; do case "$tag" in DOOR*) ;; *) continue;; esac; room=$(echo $room); dest=$(echo $dest); arr=$(echo $arr)
+        mkpage "door_${room}_${dest}" on-touch teleport "$dest $arr" "Door: walking into it teleports to $dest (rooms.pdl row)"; done < "$HERE/rooms.pdl"
     for pid in $(awk '{print $1}' "$SHARED/party.txt" 2>/dev/null); do mkpage "select_$pid" on-click select "$pid" "Choose pet $pid as the active pet"; done
     while IFS='|' read -r tag id g label verb arg need; do
         case "$tag" in MENU*) ;; *) continue;; esac
         id=$(echo $id); verb=$(echo $verb); arg=$(echo $arg | sed 's/^-$//'); mkpage "$id" on-click "$verb" "$arg" "$(echo $label)"
     done < "$HERE/menu.pdl"
-    touch "$PET/event_pkg/.generated"
+    printf '%s\n' "$GENV" > "$PET/event_pkg/.generated"
 }
 stage_pins() { # prints "pin=value" lines for the current level + habit traits
     lvl=$(getv rpg_level); lvl=${lvl:-1}
@@ -264,8 +267,10 @@ status() {
         [ -f "$SHARED/camera.st" ] && sed 's/^/cam_/' "$SHARED/camera.st"
         { nb=0; while read -r bid bname _; do printf 'bk_%s_label=%s\nbk_%s_arg=%s\nbk_%s_active=%s\n' "$nb" "$bname" "$nb" "$bid" "$nb" "$([ "$bid" = "$ACTIVE" ] && echo active)"; nb=$((nb+1)); done < "$SHARED/party.txt"
           printf 'n_book=%s\nbook_label=book:%s\npage_label=page:%s\n' "$nb" "$(getv name_id)" "$(cat "$SHARED/view.txt" 2>/dev/null || echo room)"; }
+        sh "$HERE/ops/pet_clock.sh" status 2>/dev/null
+        printf 'loc=%s\n' "$(cat "$PET/loc.txt" 2>/dev/null || echo bedroom)"
         nav_rows
-        n=0; tail -4 "$CHAT" 2>/dev/null | while IFS= read -r line; do printf 'chat_%s=%s\n' "$n" "$line"; n=$((n+1)); done
+        n=0; tail -4 "$CHAT" 2>/dev/null | while IFS= read -r line; do printf 'chat_%s=%s\n' "$n" "$(printf '%s' "$line" | cut -c1-32)"; n=$((n+1)); done
         printf 'known_words=%s\n' "$(awk -F'|' '/^LEX/{p=$2; gsub(/^ +| +$/,"",p); printf "%s ", p}' "$LEXF" 2>/dev/null)"
         printf 'pantry=%s\n' "$(for it in $(awk -F'|' '/^ITEM/{n=$2;gsub(/^ +| +$/,"",n);print n}' "$HERE/items.pdl"); do printf '%s %s ' "$it" "$(inv_count "$it")"; done)"
         { n=0; sel=0; [ -x "$IOP" ] && "$IOP" project "$PET" "$PET/inv_proj.txt" >/dev/null 2>&1
@@ -287,7 +292,7 @@ status() {
 # (and logged), exactly like Doom's play flag. The window shows it as a traffic light (green = started, red = stopped).
 running() { [ "$(cat "$PET/running.txt" 2>/dev/null)" = 1 ]; }
 case "$VERB" in
-    start|stop|status|stats|new_pet|save_slot|load_slot|fire|gen_events|new_event|menu_group|menu_toggle|inv_toggle|open_events|hotbar_toggle|interact|player|party_toggle|view|select|world_move|world_talk|"") ;;
+    start|stop|clock_event|time_rate|time_advance|time_reinstall|status|stats|new_pet|save_slot|load_slot|fire|gen_events|new_event|menu_group|menu_toggle|inv_toggle|open_events|teleport|hotbar_toggle|interact|player|party_toggle|view|select|world_move|world_talk|"") ;;
     *) if ! running; then mkdir -p "$PET"; printf '%s | stopped | ignored %s\n' "$(date '+%H:%M:%S')" "$VERB" >> "$PET/log.txt"
            case "$VERB" in chat_input|chat) printf '(the pet is stopped - press Play first)\n' >> "$PET/chat.txt"; status >/dev/null 2>&1;; esac; exit 0; fi ;;
 esac
@@ -328,8 +333,8 @@ case "$VERB" in
     sleep) need_pet; e0=$(getv energy); addv energy "$(getw sleep_energy)"; addv hunger 5; skill sleep; v=-1; [ "$e0" -lt 50 ] && v=1; feedback "$v" sleep; evolve; status >/dev/null ;;
     wash)  need_pet; c0=$(getv clean); addv clean "$(getw wash_clean)"; addv happy -2; skill wash; v=-1; [ "$c0" -lt 50 ] && v=1; feedback "$v" wash; evolve; status >/dev/null ;;
     play)  need_pet; e0=$(getv energy); addv happy "$(getw play_happy)"; addv energy -12; addv play_total 1; skill play; v=-1; [ "$e0" -gt 20 ] && v=1; feedback "$v" play; evolve; status >/dev/null ;;
-    start) need_pet; echo 1 > "$PET/running.txt"; printf '%s | event | start\n' "$(date '+%H:%M:%S')" >> "$PET/log.txt"; status >/dev/null ;;
-    stop)  need_pet; echo 0 > "$PET/running.txt"; printf '%s | event | stop\n' "$(date '+%H:%M:%S')" >> "$PET/log.txt"; status >/dev/null ;;
+    start) need_pet; ( setsid sh "$HERE/ops/pet_clock.sh" start >/dev/null 2>&1 & ); echo 1 > "$PET/running.txt"; printf '%s | event | start\n' "$(date '+%H:%M:%S')" >> "$PET/log.txt"; status >/dev/null ;;
+    stop)  need_pet; echo 0 > "$PET/running.txt"; anyrun=0; for d in "$SHARED"/pets/*/; do [ "$(cat "${d}running.txt" 2>/dev/null)" = 1 ] && anyrun=1; done; [ "$anyrun" = 0 ] && ( setsid sh "$HERE/ops/pet_clock.sh" stop >/dev/null 2>&1 & ); printf '%s | event | stop\n' "$(date '+%H:%M:%S')" >> "$PET/log.txt"; status >/dev/null ;;
     save_slot) need_pet; n="${ARG:-1}"; case "$n" in ''|*[!0-9]*) exit 0;; esac; d="$PET/saves/slot_$n"; rm -rf "$d"; mkdir -p "$d"
         for x in variables.txt weights.pdl lexicon.pdl chat.txt obs_feedback_log.txt tuning_ledger.txt chat_ledger.txt stage.txt running.txt; do [ -f "$PET/$x" ] && cp "$PET/$x" "$d/"; done
         [ -d "$PET/inventory" ] && cp -r "$PET/inventory" "$d/"; [ -d "$PET/used" ] && cp -r "$PET/used" "$d/"
@@ -370,6 +375,26 @@ case "$VERB" in
         nm=$(awk -v i="$who" '$1==i{print $2}' "$SHARED/party.txt"); sp=$(sed -n 's/^species=//p' "$SHARED/pets/$who/variables.txt" 2>/dev/null | head -1)
         case "${sp:-0}" in 0) sn=bunny;; 1) sn=bear;; 2) sn=cat;; 3) sn=frog;; 4) sn=mouse;; *) sn=dragon;; esac
         echo "world: $nm the $sn says hi to ${nm:+your pet}" >> "$PET/chat.txt"; addv talk_total 1; addv happy 3; status >/dev/null ;;
+    teleport) need_pet; dest="$ARG"; ax="${3:-0}"      # the door event: move the pet to another room (or the village = the world page)
+        case "$dest" in
+            village) echo world > "$SHARED/view.txt"; echo 1 > "$SHARED/interact_armed.txt"; mkdir -p "$SHARED/keyboard"; : >> "$SHARED/interact_relay.txt"; : >> "$SHARED/keyboard/history.txt";;
+            *) grep -q "^ROOM *| *$dest " "$HERE/rooms.pdl" || exit 0; printf '%s\n' "$dest" > "$PET/loc.txt"; printf '%s\n' "$ax" > "$PET/arrive_x.txt"; printf '%s\n' "$(date +%s%N)" > "$PET/arrive_seq.txt";;
+        esac
+        printf '%s | teleport | %s\n' "$(date '+%H:%M:%S')" "$dest" >> "$PET/log.txt"; status >/dev/null ;;
+    speak) need_pet   # the pet talks on its own: a word it has learned (picked by weight, so praise makes a word more likely) or a line about its needs; the master answers good / bad and that moves the word's weight
+        nm=$(getv name_id); sp=$(getv species); sp=${sp:-0}; h=$(getv hunger); e=$(getv energy); c=$(getv clean); p=$(getv happy)
+        need=chatter; [ "${p:-50}" -ge 80 ] && need=happy; [ "${c:-100}" -le 25 ] && need=dirty; [ "${e:-100}" -le 25 ] && need=sleepy; [ "${h:-0}" -ge 60 ] && need=hungry
+        seed=$(date +%s%N | cut -c8-18); line=""
+        if [ $((seed % 100)) -lt 55 ]; then pick=$(awk -F'|' -v sd="$seed" 'BEGIN{srand(sd)} /^LEX/{ph=$2; vb=$3; w=$5; gsub(/^ +| +$/,"",ph); gsub(/^ +| +$/,"",vb); gsub(/ /,"",w); if (w+0>0) {tot+=w; n++; P[n]=ph; V[n]=vb; W[n]=w}} END{if (!n) exit; r=rand()*tot; for(i=1;i<=n;i++){r-=W[i]; if (r<=0) {print P[i] "|" V[i]; exit}} print P[n] "|" V[n]}' "$LEXF")
+            if [ -n "$pick" ]; then line=${pick%%|*}; printf '%s\n' "$pick" > "$PET/last_word.txt"; fi; fi
+        if [ -z "$line" ]; then line=$(awk -F'|' -v nd="$need" -v sd="$seed" 'BEGIN{srand(sd)} /^SAY/{a=$2; gsub(/ /,"",a); if (a==nd) {t=$3; gsub(/^ +| +$/,"",t); L[++n]=t}} END{if (n) print L[int(rand()*n)+1]}' "$HERE/replies.pdl"); rm -f "$PET/last_word.txt"; fi
+        [ -z "$line" ] && exit 0
+        printf '%s: %s\n' "$nm" "$line" >> "$CHAT"; addv say_total 1; expr happy 3
+        ( setsid sh "$HERE/ops/pet_voice.sh" "$sp" "$line" >/dev/null 2>&1 & ); status >/dev/null ;;
+    hum) need_pet; sp=$(getv species); ( setsid sh "$HERE/ops/pet_hum.sh" "${sp:-0}" >/dev/null 2>&1 & ) ;;
+    react) need_pet; now=$(date +%s); last=$(getv react_t); [ -n "$last" ] && [ $((now - last)) -lt 5 ] && exit 0; setv react_t "$now"   # shaken / dropped: fall = scared, land = ouch (the window was moved)
+        nm=$(getv name_id); sp=$(getv species); case "$ARG" in fall) line="whoa!!"; expr surprised 4;; land) line="oof!"; expr sad 3;; *) exit 0;; esac
+        printf '%s: %s\n' "$nm" "$line" >> "$CHAT"; ( setsid sh "$HERE/ops/pet_voice.sh" "${sp:-0}" "$line" >/dev/null 2>&1 & ); status >/dev/null ;;
     chat) do_chat "$ARG"; status >/dev/null ;;
     chat_input) do_chat "$4"; status >/dev/null ;;      # a layout cli_io appends: <package_dir> <house_root> <typed text>
     teach) do_teach "$ARG" "$3" "$4"; status >/dev/null ;;
@@ -386,10 +411,16 @@ case "$VERB" in
     inv_prev) need_pet; [ -x "$IOP" ] && "$IOP" slot "$PET" prev >/dev/null 2>&1; status >/dev/null ;;
     use_slot) need_pet; sl=$(sed -n 's/^selected=//p' "$PET/inv_proj.txt" 2>/dev/null); it=$(sed -n "s/^slot_${sl:-0}=.*|\\(.*\\)_[0-9]*$/\\1/p" "$PET/inv_proj.txt" 2>/dev/null); [ -n "$it" ] && sh "$0" give "$it" >/dev/null; status >/dev/null ;;
     self_care) need_pet; self_care; status >/dev/null ;;
-    tick)  need_pet; addv hunger "$(getw tick_hunger)"; addv energy -"$(getw tick_energy)"; addv clean -"$(getw tick_clean)"
-           if [ -x "$GRADE" ]; then "$GRADE" rest "$PET" "$HERE/skillbook.pdl" >/dev/null 2>&1; "$GRADE" check "$PET" "$HERE/curriculum.pdl" >/dev/null 2>&1; "$GRADE" advance "$PET" "$HERE/curriculum.pdl" auto >/dev/null 2>&1; fi
-           self_care
-           evolve; status >/dev/null ;;
+    tick)  need_pet; sh "$0" need_tick; sh "$0" day_tick; self_care; status >/dev/null ;;      # manual all-in-one (old behaviour); the clock fires the parts below on its schedule (time.pdl)
+    clock_event) for d in "$SHARED"/pets/*/; do [ "$(cat "${d}running.txt" 2>/dev/null)" = 1 ] || continue; PET_DIR="${d%/}" sh "$0" "$ARG" >/dev/null 2>&1; done ;;      # the clock daemon (pet_clock_runner.sh) runs an event for every STARTED pet
+    need_tick) need_pet; addv hunger "$(getw tick_hunger)"; addv energy -"$(getw tick_energy)"; addv clean -"$(getw tick_clean)"; printf '%s | clock | need_tick\n' "$(date '+%H:%M:%S')" >> "$PET/log.txt" ;;
+    meal_call) need_pet; if [ "$(getv hunger)" -ge 40 ]; then printf '%s: it is time to eat!\n' "$(getv name_id)" >> "$CHAT"; ( setsid sh "$HERE/ops/pet_voice.sh" "$(getv species)" "it is time to eat" >/dev/null 2>&1 & ); self_care; fi; printf '%s | clock | meal_call\n' "$(date '+%H:%M:%S')" >> "$PET/log.txt" ;;
+    bedtime) need_pet; printf '%s: so sleepy...\n' "$(getv name_id)" >> "$CHAT"; self_care; printf '%s | clock | bedtime\n' "$(date '+%H:%M:%S')" >> "$PET/log.txt" ;;
+    wake) need_pet; addv energy 15; printf '%s: good morning!\n' "$(getv name_id)" >> "$CHAT"; printf '%s | clock | wake\n' "$(date '+%H:%M:%S')" >> "$PET/log.txt" ;;
+    day_tick) need_pet; if [ -x "$GRADE" ]; then "$GRADE" rest "$PET" "$HERE/skillbook.pdl" >/dev/null 2>&1; "$GRADE" check "$PET" "$HERE/curriculum.pdl" >/dev/null 2>&1; "$GRADE" advance "$PET" "$HERE/curriculum.pdl" auto >/dev/null 2>&1; fi; evolve; printf '%s | clock | day_tick\n' "$(date '+%H:%M:%S')" >> "$PET/log.txt" ;;
+    time_rate) sh "$HERE/ops/pet_clock.sh" rate "$ARG"; status >/dev/null ;;
+    time_advance) sh "$HERE/ops/pet_clock.sh" advance "$ARG"; status >/dev/null ;;
+    time_reinstall) sh "$HERE/ops/pet_clock.sh" reinstall; status >/dev/null ;;
     evolve) evolve ;;
     status|stats) status ;;
     *) exit 0 ;;

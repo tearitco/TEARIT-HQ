@@ -14,3 +14,13 @@ REPLY | unknown| happy | ? (teach me: say what it means)
 REPLY | unknown| sad   | ?
 REPLY | hello  | happy | hi master!
 REPLY | hello  | sad   | hi...
+# SAY | need | text : what it says on its own when a need is high (pet_event.sh speak); the master rewards or scolds with good / bad right after
+SAY | hungry | tummy empty...
+SAY | hungry | food? food?
+SAY | sleepy | so sleepy
+SAY | sleepy | zzz...
+SAY | dirty  | i feel yucky
+SAY | happy  | la la la
+SAY | happy  | i like it here
+SAY | chatter | hmm hmm
+SAY | chatter | what is that?

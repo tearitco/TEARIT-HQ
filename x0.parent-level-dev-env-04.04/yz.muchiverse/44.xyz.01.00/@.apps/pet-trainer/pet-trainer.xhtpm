@@ -8,6 +8,7 @@
       <tab id="tb-in" class="tab ph-tb ${interact_class}" label="INT ${interact_label}" relay="${bv_h1},${bv_h2}" onclick="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' interact"/>
       <tab id="tb-book" class="tab ph-tb" label="${book_label} ▾" onclick="ACTIVATE" target_id="tb-book"/>
       <tab id="tb-page" class="tab ph-tb" label="${page_label} ▾" onclick="ACTIVATE" target_id="tb-page"/>
+      <tab id="tb-time" class="tab ph-tb" label="${time_label} ▾" onclick="ACTIVATE" target_id="tb-time"/>
       <tab id="tb-menu" class="tab ph-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
       <tab id="tb-player" class="tab ph-tb" label="Player ▾" onclick="ACTIVATE" target_id="tb-player"/>
     </tabbar>
@@ -20,6 +21,14 @@
       <item id="pg-manage" class="ph-menu-row dropdown-child" target_id="tb-page" label="manage (all six)" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' fire view_manage"/>
       <item id="pg-world" class="ph-menu-row dropdown-child" target_id="tb-page" label="world (village)" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' fire view_world"/>
       <item id="pg-cancel" class="ph-menu-row dropdown-child quiet" target_id="tb-page" label="- cancel -" action="void"/>
+      <item id="tm-cent" class="ph-menu-row dropdown-child" target_id="tb-time" label="speed: turbo (testing)" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' time_rate cent"/>
+      <item id="tm-sec" class="ph-menu-row dropdown-child" target_id="tb-time" label="speed: fast (1 hour/sec)" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' time_rate sec"/>
+      <item id="tm-min" class="ph-menu-row dropdown-child" target_id="tb-time" label="speed: normal (1 min/sec)" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' time_rate min"/>
+      <item id="tm-hour" class="ph-menu-row dropdown-child" target_id="tb-time" label="speed: real time" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' time_rate hour"/>
+      <item id="tm-adv1h" class="ph-menu-row dropdown-child" target_id="tb-time" label="skip +1 hour" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' time_advance 1h"/>
+      <item id="tm-adv1d" class="ph-menu-row dropdown-child" target_id="tb-time" label="skip +1 day" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' time_advance 1d"/>
+      <item id="tm-reinst" class="ph-menu-row dropdown-child" target_id="tb-time" label="reinstall schedule" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' time_reinstall"/>
+      <item id="tm-cancel" class="ph-menu-row dropdown-child quiet" target_id="tb-time" label="- cancel -" action="void"/>
       <item id="mn-pet" class="ph-menu-row dropdown-child" target_id="tb-menu" label="Pet menu (feed, care)" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' menu_toggle"/>
       <item id="mn-hotbar" class="ph-menu-row dropdown-child" target_id="tb-menu" label="Hotbar show / hide" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' hotbar_toggle"/>
       <item id="mn-events" class="ph-menu-row dropdown-child" target_id="tb-menu" label="Events (show all)" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' open_events"/>
@@ -39,6 +48,8 @@
           <item id="mn${menu.#}" class="ph-row" label="${menu.label}" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' ${menu.verb} ${menu.arg}"/>
         </repeat>
       </scrolllist>
+      <text label="${chat_0}" class="ph-chat"/>
+      <text label="${chat_1}" class="ph-chat"/>
       <text label="${chat_2}" class="ph-chat"/>
       <text label="${chat_3}" class="ph-chat"/>
       <cli_io id="say" target_id="pet-say" label="say: " action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' chat_input"/>
