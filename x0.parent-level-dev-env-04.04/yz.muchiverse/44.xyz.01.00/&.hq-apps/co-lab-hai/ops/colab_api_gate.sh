@@ -6,6 +6,7 @@
 #   3. the API's reply is posted back into the room as  groq-worker -> @claude  "[gate-<id> reply] ..." (also pending, so the owner can read it) and printed on stdout for ghost_run.
 # The full prompt and reply are kept in #.desktop/colab_hai/gate/<id>.{prompt,reply}.txt (the room line is cut to ~1800 chars). Never prints or logs a key.
 # Env: COLAB_HOUSE (default: the house this script lives in), COLAB_GATE_BACKEND (default ^.hai-horn/ops/+x/horn_chat_backend.+x), COLAB_GATE_TIMEOUT s (default 900),
+#      COLAB_GATE_TEST=1 (test pings only: the gate approves its own prompt; the owner allowed this for pings, NOT for real quest prompts),
 #      COLAB_GATE_AUTO=1 (post but do not wait for approval: for runs while the owner is away; the room still shows everything), COLAB_GATE_AGENT (default groq-worker).
 HERE="$(cd "$(dirname "$0")/.." && pwd)"; HOUSE="${COLAB_HOUSE:-$(cd "$HERE/../.." && pwd)}"; PROMPT="${1:-}"; [ -n "$PROMPT" ] || { echo "colab_api_gate: no prompt" >&2; exit 2; }
 BACK="${COLAB_GATE_BACKEND:-$HOUSE/^.hai-horn/ops/+x/horn_chat_backend.+x}"; AGENT="${COLAB_GATE_AGENT:-groq-worker}"; TMO="${COLAB_GATE_TIMEOUT:-900}"
@@ -15,15 +16,18 @@ n=$(printf '%s' "$PROMPT" | wc -c)
 bash "$POST" "$HOUSE" claude "@$AGENT [gate-$ID] API call for review ($n chars; full text: #.desktop/colab_hai/gate/$ID.prompt.txt): $(short "$PROMPT")" >/dev/null 2>&1
 if [ "${COLAB_GATE_AUTO:-0}" != 1 ]; then
     echo "colab_api_gate: waiting for the owner to approve [gate-$ID] in co-lab-hai (open it: bash $HERE/button.sh $HOUSE)" >&2
-    t0=$(date +%s); ok=0
+    t0=$(date +%s); ok=0; sa=0
     while :; do
         S=$(cat "$CH/current_session.txt" 2>/dev/null)
         if [ -n "$S" ] && grep -qF "[gate-$ID]" "$CH/sessions/$S/conversation.txt" 2>/dev/null; then ok=1; break; fi
         if [ -n "$S" ] && grep -qF "[gate-$ID]" "$CH/sessions/$S/rejected.txt" 2>/dev/null; then echo "colab_api_gate: the owner rejected [gate-$ID]; no API call made" >&2; exit 3; fi
+        # COLAB_GATE_TEST=1 (owner-allowed 2026-10-09, TEST PINGS ONLY): approve our own message once it is the OLDEST pending line, so a ping does not wait on the owner
+        if [ "${COLAB_GATE_TEST:-0}" = 1 ] && [ "$sa" = 0 ] && [ -n "$S" ] && [ "$(head -1 "$CH/sessions/$S/pending.txt" 2>/dev/null | grep -cF "[gate-$ID]")" = 1 ]; then bash "$HERE/ops/colab_hai_action.sh" approve "$HERE" "$HOUSE" >/dev/null 2>&1; sa=1; fi
         [ $(( $(date +%s) - t0 )) -ge "$TMO" ] && { echo "colab_api_gate: no approval within ${TMO}s; no API call made" >&2; exit 3; }
         sleep 2
     done
 fi
+mkdir -p "$HOUSE/pieces/horn"      # the backend writes its request payload/raw reply under <root>/pieces/horn
 REPLY="$(cd "$HOUSE" && HORN_TOOLS=off PRISC_PROJECT_ROOT="$HOUSE" HORN_CURL_TIMEOUT="${HORN_CURL_TIMEOUT:-120}" "$BACK" "$PROMPT")"; rc=$?      # same call shape as ghost_run: cwd + PRISC_PROJECT_ROOT = house, tools off
 printf '%s\n' "$REPLY" > "$GD/$ID.reply.txt"
 if [ "$rc" = 0 ]; then bash "$POST" "$HOUSE" "$AGENT" "@claude [gate-$ID reply] $(short "$REPLY") (full: #.desktop/colab_hai/gate/$ID.reply.txt)" >/dev/null 2>&1
