@@ -1,0 +1,3 @@
+OUTPUT | @.apps/pet-trainer/ops/card_check.c
+HARNESS | /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/quest-pilot/ops/+x/c_op_judge.+x @.apps/pet-trainer/ops/card_check.c /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/^.grave/quests/Q025-pet-card-check/harness/cases.pdl verdict.txt
+VERDICT_FILE | verdict.txt

@@ -3,7 +3,7 @@
  * 1. compiles <worker.c> with gcc -std=gnu11 -O2 -Wall -Wextra into a private temp dir (compile failure = FAIL, the compiler text goes in the verdict file);
  * 2. runs every CASE of <cases.pdl> against the binary (fork+exec, no shell, 5 s watchdog, its own temp dir as cwd) and compares exit code and stdout;
  * 3. writes the verdict file: one line per case (PASS|label or FAIL|label|why) and as the LAST line "PASS passed=N" or "FAIL failed=K of N" (ghost_run wants PASS and no FAIL there).
- * cases.pdl rows ('#' comments; strings use \n \t \p (a literal '|') and $T = the temp dir; fields are trimmed):
+ * cases.pdl rows ('#' comments; strings use \n \t \p (a literal '|') and $T = the temp dir; fields are trimmed; \xHH = a raw byte):
  *   FILE | <name> | <text>                          write <T>/<name>
  *   CASE | <label> | <exit> | <out> | <arg1> | <arg2> ...    out: "=text" exact stdout (trailing newlines trimmed), "~text" stdout contains, "*" anything
  * Exit 0 always when it wrote a verdict (the verdict decides); 2 usage. Cases never touch anything outside the temp dir. */
@@ -23,7 +23,8 @@ static void trim(char *s) { char *p = s; while (*p == ' ' || *p == '\t') p++; me
 static void expand(const char *in, char *out, size_t cap) {
     size_t o = 0;
     for (const char *p = in; *p && o + 2 < cap; p++) {
-        if (*p == '\\' && p[1]) { p++; out[o++] = (*p == 'n') ? '\n' : (*p == 't') ? '\t' : (*p == 'p') ? '|' : *p; }
+        if (*p == '\\' && p[1] == 'x' && p[2] && p[3]) { char h[3] = { p[2], p[3], 0 }; out[o++] = (char)strtol(h, NULL, 16); p += 3; }
+        else if (*p == '\\' && p[1]) { p++; out[o++] = (*p == 'n') ? '\n' : (*p == 't') ? '\t' : (*p == 'p') ? '|' : *p; }
         else if (*p == '$' && p[1] == 'T') { size_t k = strlen(T); if (o + k + 1 < cap) { memcpy(out + o, T, k); o += k; } p++; }
         else out[o++] = *p;
     }

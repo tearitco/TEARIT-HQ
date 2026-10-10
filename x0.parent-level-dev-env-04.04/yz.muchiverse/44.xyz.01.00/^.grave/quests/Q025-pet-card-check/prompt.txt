@@ -1,0 +1,38 @@
+Write ONE small C program, card_check.c, for a tiny pet-training game. Reply with the COMPLETE file inside ONE fenced code block and nothing else (no explanation). Plain C11, only the standard library, no other files.
+
+PURPOSE: it validates "lesson cards" that an AI helper proposes before a human reviews them.
+
+USAGE: card_check <file>
+The file is text, one record per line. Skip blank lines and lines whose first non-space character is '#'. Every other line must be a card of exactly six fields separated by the bar character '|':
+  CARD | id | kind | prompt | answer | source
+Trim spaces and tabs (and a trailing CR) around every field and around the whole line. Line numbers are the 1-based physical line numbers of the file (blank and comment lines count).
+
+For each non-skipped line, check IN THIS ORDER and report the FIRST failing check as the reason:
+  notcard  the trimmed line does not start with the text CARD
+  fields   it does not split into exactly 6 fields, or field 1 is not exactly CARD
+  id       id is not 3 to 24 characters of [a-z0-9_]
+  kind     kind is not one of: word fact howto
+  prompt   prompt is shorter than 3 or longer than 60 characters
+  answer   answer is shorter than 1 or longer than 80 characters
+  source   source is not one of: gemma groq poolside openrouter human
+  charset  prompt or answer has a byte below 32 or above 126
+  url      prompt or answer contains the text http in any letter case
+  dup      the id equals the id of an EARLIER line that was accepted (printed OK)
+
+OUTPUT (stdout), one line per non-skipped file line, in file order:
+  OK|<line>                 for a valid card
+  BAD|<line>|<reason>       reason is one of the words above
+then one final line:  SUMMARY|ok=<N>|bad=<M>
+EXIT CODE: 0 when bad is 0; 1 when bad is more than 0; 2 on wrong arguments (not exactly one) or when the file cannot be opened (print nothing to stdout in that case).
+
+EXAMPLE input (line numbers shown after a colon, not part of the file):
+  1: # cards
+  2: CARD | apple_1 | word | what is an apple | a red fruit | gemma
+  3: CARD | Apple | word | what is an apple | a red fruit | gemma
+  4: CARD | apple_1 | word | what is a pear | a green fruit | gemma
+output:
+  OK|2
+  BAD|3|id
+  BAD|4|dup
+  SUMMARY|ok=1|bad=2
+exit code 1.

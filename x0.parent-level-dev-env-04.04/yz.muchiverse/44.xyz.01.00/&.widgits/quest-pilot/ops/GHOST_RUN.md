@@ -37,3 +37,6 @@ Never merges, pushes or touches the target branch; the worktree stays for the ma
 ## Verify
 `_shared-lib/harness/ghost_run.pal` + `cases/ghost_run.pdl` (fake backend + fake judge, no network, 197 checks, 19 scenarios).
 From `_shared-lib/harness`: `/tmp/prisc_x ghost_run.pal`, read `results/ghost_run.txt.verdict.txt`.
+
+## Approval gate
+To have the owner see and approve every API call a worker makes, pass `--backend <house>/&.hq-apps/co-lab-hai/ops/colab_api_gate.sh`; see `&.hq-apps/co-lab-hai/COLAB-API-GATE.md` (give the quest max_seconds 1800+: approval waiting counts).
