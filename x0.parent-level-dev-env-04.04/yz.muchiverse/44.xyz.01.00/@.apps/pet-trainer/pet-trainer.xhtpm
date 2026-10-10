@@ -15,7 +15,7 @@
     </tabbar>
     <sidebar id="side" class="sidebar">
       <text id="light" label="${run_label}" class="${run_cls}"/>
-      <item id="tb-in" class="ph-row ${interact_class}" label="Keys: ${interact_label}" relay="${bv_h1},${bv_h2}" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' interact"/>
+      <item id="tb-in" class="ph-row ${interact_class}" label="INT: ${interact_label}" relay="${bv_h1},${bv_h2}" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' interact"/>
       <repeat count="${n_nav}" bind="nav">
         <item id="nv${nav.#}" class="ph-row" label="${nav.label}" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' ${nav.verb} ${nav.arg}"/>
       </repeat>

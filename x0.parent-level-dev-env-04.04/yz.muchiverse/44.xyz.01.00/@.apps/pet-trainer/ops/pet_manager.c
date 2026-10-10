@@ -63,14 +63,17 @@ static void relay_poll(const char *app, const char *dir, const char *view, long 
     char p[PATH_MAX]; snprintf(p, sizeof p, "%s/interact_relay.txt", dir); FILE *f = fopen(p, "r"); if (!f) return;
     fseek(f, 0, SEEK_END); long sz = ftell(f); if (relay_off < 0 || relay_off > sz) relay_off = sz;      /* first look after arming: ignore what was there */
     fseek(f, relay_off, SEEK_SET); char l[128]; int moves = 0, cap = kb(app, "arrow_run_cap", 3); long long stale = kb(app, "stale_ms", 800);
+    long line_start = ftell(f);
     while (fgets(l, sizeof l, f)) {
-        int code = 0; long long ms = 0; if (sscanf(l, "%d %lld", &code, &ms) < 1) continue;
-        if (ms > 0 && t - ms > stale) continue;                                                              /* backlog from a slow frame: drop it */
+        int code = 0; long long ms = 0; if (sscanf(l, "%d %lld", &code, &ms) < 1) { line_start = ftell(f); continue; }
+        if (ms > 0 && t - ms > stale) { line_start = ftell(f); continue; }                                                              /* backlog from a slow frame: drop it */
         const char *dirn = code == kb(app, "arrow_up", 1002) ? "up" : code == kb(app, "arrow_down", 1003) ? "down" : code == kb(app, "arrow_left", 1000) ? "left" : code == kb(app, "arrow_right", 1001) ? "right" : NULL;
         if (dirn) {
-            if (strcmp(view, "world") || moves >= cap) continue;
+            if (strcmp(view, "world")) { line_start = ftell(f); continue; }
+            if (moves >= cap) { relay_off = line_start; fclose(f); return; }                     /* run cap reached: keep the rest for the next tick, never drop it */
             char cmd[2048]; snprintf(cmd, sizeof cmd, "PET_DIR= PET_SHARED='%s' sh '%s/ops/pet_event.sh' world_move %s >/dev/null 2>&1", dir, app, dirn); sh(cmd, NULL, 0); moves++;
         } else camera_apply(app, dir, code);
+        line_start = ftell(f);
     }
     relay_off = ftell(f); fclose(f);
 }

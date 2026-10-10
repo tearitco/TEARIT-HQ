@@ -4,7 +4,7 @@
  *   layout_flow check  <flow.pdl>                       layout_check on the layout + every button verb exists in the verb script + verbs the stopped-gate would drop (WARN)
  *                                                       + duplicate / missing keybind codes. Exit 1 on any ERROR.
  *   layout_flow navmap <flow.pdl> <view>                the numbered buttons the window shows in that view: `<n> <where> <label> -> <verb> <arg>`
- *   layout_flow press  <flow.pdl> <view> <label words> [--pid N]   prints the digits to press; with --pid appends them (+ Enter) to #.desktop/entity_menu_history/<pid>.txt
+ *   layout_flow press  <flow.pdl> <view> <label words> [--pid N] [--esc]   (--esc first leaves Interact mode: while it is on, digits go to the game, not to the nav)   prints the digits to press; with --pid appends them (+ Enter) to #.desktop/entity_menu_history/<pid>.txt
  *
  * flow.pdl rows (`KIND | key | value`, # comments):  FLOW|id|..  FLOW|layout|<xhtpm>  FLOW|nav|<nav.pdl>  FLOW|verbs|<script with a case per verb>  FLOW|keys|<keybinds.pdl>
  *   FLOW|house|<house root relative to the flow file dir>   VIEW|<id>|<description>
@@ -118,9 +118,9 @@ int main(int argc, char **argv) {
     if (argc < 4) return 2; Btn b[MAXB]; int n = navmap(argv[3], b, MAXB); if (n < 0) return 2;
     if (!strcmp(argv[1], "navmap")) { for (int i = 0; i < n; i++) printf("%d %s %s -> %s %s\n", b[i].n, b[i].where, b[i].label, b[i].verb, b[i].arg); return 0; }
     if (!strcmp(argv[1], "press") && argc >= 5) {
-        char want[200] = ""; int pid = 0; for (int i = 4; i < argc; i++) { if (!strcmp(argv[i], "--pid") && i + 1 < argc) { pid = atoi(argv[++i]); continue; } if (want[0]) strcat(want, " "); strncat(want, argv[i], sizeof want - strlen(want) - 1); }
+        char want[200] = ""; int pid = 0, esc = 0; for (int i = 4; i < argc; i++) { if (!strcmp(argv[i], "--pid") && i + 1 < argc) { pid = atoi(argv[++i]); continue; } if (!strcmp(argv[i], "--esc")) { esc = 1; continue; } if (want[0]) strcat(want, " "); strncat(want, argv[i], sizeof want - strlen(want) - 1); }
         for (int i = 0; i < n; i++) { if (strcasestr(b[i].label, want)) { char d[16]; digits_out(b[i].n, d); printf("%s\n", d);
-                if (pid) { char rp[PATH_MAX]; snprintf(rp, sizeof rp, "%s/#.desktop/entity_menu_history/%d.txt", house, pid); FILE *f = fopen(rp, "a"); if (!f) { perror(rp); return 3; } fprintf(f, "# layout_flow press %s: %s (%s)\n", argv[3], b[i].label, d); for (char *c = d; *c; c++) { fprintf(f, "KEY_PRESSED: %d\n", *c); fflush(f); usleep(300000); } fprintf(f, "KEY_PRESSED: 13\n"); fclose(f); }
+                if (pid) { char rp[PATH_MAX]; snprintf(rp, sizeof rp, "%s/#.desktop/entity_menu_history/%d.txt", house, pid); FILE *f = fopen(rp, "a"); if (!f) { perror(rp); return 3; } if (esc) { fprintf(f, "# layout_flow press: Esc first (leave Interact mode)\nKEY_PRESSED: 27\n"); fflush(f); usleep(3000000); } fprintf(f, "# layout_flow press %s: %s (%s)\n", argv[3], b[i].label, d); for (char *c = d; *c; c++) { fprintf(f, "KEY_PRESSED: %d\n", *c); fflush(f); usleep(300000); } fprintf(f, "KEY_PRESSED: 13\n"); fclose(f); }
                 return 0; } }
         fprintf(stderr, "layout_flow: no button \"%s\" in view %s (try navmap)\n", want, argv[3]); return 1; }
     return 2;

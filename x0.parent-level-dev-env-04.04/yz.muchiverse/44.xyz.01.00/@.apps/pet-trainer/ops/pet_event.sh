@@ -258,7 +258,7 @@ status() {
         if running; then printf 'run_cls=ph-green\nrun_label=GO started\nrun_on=1\n'; else printf 'run_cls=ph-red\nrun_label=STOP stopped\nrun_on=0\n'; fi
         printf 'event_n=%s\n' "$(grep -c . "$PET/event_pkg/events_index.txt" 2>/dev/null)"
         printf 'anim=%s\nscene_raw=%s/scene.raw\ncanvas_raw=%s/scene.raw\nview=%s\nactive_id=%s\nactive_dir=%s\n' "$anim" "$SHARED" "$SHARED" "$(cat "$SHARED/view.txt" 2>/dev/null || echo room)" "$ACTIVE" "$PET"
-        ia=$(cat "$SHARED/interact_armed.txt" 2>/dev/null); if [ "$ia" = 1 ]; then printf 'interact_armed=1\ninteract_class=interact-active\ninteract_label=on\n'; else printf 'interact_armed=0\ninteract_class=\ninteract_label=off\n'; fi
+        ia=$(cat "$SHARED/interact_armed.txt" 2>/dev/null); if [ "$ia" = 1 ]; then printf 'interact_armed=1\ninteract_class=interact-active\ninteract_label=on (Esc: off)\n'; else printf 'interact_armed=0\ninteract_class=\ninteract_label=off\n'; fi
         printf 'bv_h1=%s/interact_relay.txt\nbv_h2=%s/keyboard/history.txt\n' "$SHARED" "$SHARED"
         [ -f "$SHARED/camera.st" ] && sed 's/^/cam_/' "$SHARED/camera.st"
         nav_rows
@@ -345,13 +345,15 @@ case "$VERB" in
     player) need_pet; case "$(cat "$SHARED/view.txt" 2>/dev/null)" in world) sh "$0" party_toggle;; manage) ;; *) sh "$0" menu_toggle;; esac ;;   # the Player tab: the pet's menu in the house, the tii-monster list in the village
     view) need_pet; echo 0 > "$SHARED/party_open.txt"; case "$ARG" in room|manage|world) ;; *) exit 0;; esac
         if [ "$ARG" = world ] && [ "$(cat "$SHARED/view.txt" 2>/dev/null)" != world ]; then [ -x "$WORLD" ] && { [ -f "$SHARED/world.st" ] || "$WORLD" init "$SHARED" "$SHARED/party.txt" >/dev/null 2>&1; "$WORLD" exit "$SHARED" >/dev/null 2>&1; }; fi
-        echo "$ARG" > "$SHARED/view.txt"; printf '%s | view | %s\n' "$(date '+%H:%M:%S')" "$ARG" >> "$PET/log.txt"; status >/dev/null ;;
-    select) need_pet; grep -q "^$ARG " "$SHARED/party.txt" 2>/dev/null || exit 0; echo "$ARG" > "$SHARED/active.txt"; echo room > "$SHARED/view.txt"; echo 0 > "$SHARED/party_open.txt"
+        echo "$ARG" > "$SHARED/view.txt"; printf '%s | view | %s\n' "$(date '+%H:%M:%S')" "$ARG" >> "$PET/log.txt"
+        mkdir -p "$SHARED/keyboard"; : >> "$SHARED/interact_relay.txt"; : >> "$SHARED/keyboard/history.txt"      # the village is played with the keys: Interact mode on there, off everywhere else
+        if [ "$ARG" = world ]; then echo 1 > "$SHARED/interact_armed.txt"; else echo 0 > "$SHARED/interact_armed.txt"; fi; status >/dev/null ;;
+    select) need_pet; grep -q "^$ARG " "$SHARED/party.txt" 2>/dev/null || exit 0; echo "$ARG" > "$SHARED/active.txt"; echo room > "$SHARED/view.txt"; echo 0 > "$SHARED/party_open.txt"; echo 0 > "$SHARED/interact_armed.txt"
         PET_DIR="" PET_SHARED="$SHARED" sh "$0" status >/dev/null ;;
     world_move) need_pet; [ -x "$WORLD" ] || exit 0; [ -f "$SHARED/world.st" ] || "$WORLD" init "$SHARED" "$SHARED/party.txt" >/dev/null 2>&1
         out=$("$WORLD" walk "$SHARED" "$ARG" "$ACTIVE"); printf '%s | world | %s %s\n' "$(date '+%H:%M:%S')" "$ARG" "$out" >> "$PET/log.txt"
         case "$out" in
-            "door home") echo room > "$SHARED/view.txt"; echo "world: the door - back in the house" >> "$PET/chat.txt";;
+            "door home") echo room > "$SHARED/view.txt"; echo 0 > "$SHARED/interact_armed.txt"; echo "world: the door - back in the house" >> "$PET/chat.txt";;
             "door locked") echo "world: that house is locked" >> "$PET/chat.txt";;
             talk*) sh "$0" world_talk "${out#talk }";;
         esac; status >/dev/null ;;
