@@ -1,5 +1,20 @@
 # INLINE SPANS — PHASE 2 HANDOFF (written 2026-10-08)
 
+> **ADDENDUM 2026-10-11 — step 9 (digit slots) landed.**
+> Digits address ROWS, always, unless the segment cursor is already
+> active on the focused row (entered with Right): then digits address
+> that row's LINKS (1-based), 0 drops back to row-level like Escape,
+> and out-of-range digits hold the cursor (an overshoot must not yank
+> focus elsewhere). Consumed digits reset the row accumulator. No
+> badge, scope, click, or two-step changes; physical and relay keys
+> share the path; wrapped rows work (same actionable-run domain as
+> walk/Enter). The full per-segment nav-number slot model stays future
+> (it renumbers the house); this composes with it whenever it lands.
+> Test: `nb_span_digit_test.sh`, hermetic (own fixture, actions to
+> click.log, nav numbers read from the frame, never hardcoded).
+> Trap it hit: text rows carry an empty action slot in the ascii frame,
+> so nav is field 6 for both tags, not 5 for text.
+
 > **ADDENDUM 2026-10-09 — read this first, it corrects §2 below.**
 > The draw snippet reproduced in §2 has two real bugs; trust the committed
 > tree, not the snippet:

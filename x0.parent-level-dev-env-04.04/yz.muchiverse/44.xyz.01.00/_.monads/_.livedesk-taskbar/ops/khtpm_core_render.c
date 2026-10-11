@@ -11818,6 +11818,33 @@ static void handle_key(KeySym ks, char ch) {
             if (idx >= g_dock_drop_lo && idx <= g_dock_drop_hi) g_focus_nav = idx;
             return;
         }
+        /* INLINE SPANS step 9 (digit slots, 2026-10-11): while the
+         * segment cursor is active, digits address the focused row's
+         * LINKS, not rows (1-based: digit 1 is the first link). 0 drops
+         * back to row-level like Escape (0 is never a valid row);
+         * out-of-range digits hold the cursor (an overshoot must not
+         * yank focus to another row - agents discover link counts from
+         * ui.txt, but a probe must still be safe). Either way the digit
+         * is consumed by span mode and the row accumulator resets so it
+         * cannot leak into a later row number. Digits with no active
+         * cursor jump rows exactly as before - the primary contract is
+         * untouched, and every window without segments never reaches
+         * here (seg_cursor_on is false), so all other windows are
+         * byte-identical. Same actionable-run domain as walk (step 5)
+         * and Enter dispatch, single-line and wrapped alike. */
+        if (g_focus_nav >= 1 && g_focus_nav <= g_n_nav) {
+            Elem *focused = g_nav[g_focus_nav - 1];
+            if (seg_cursor_on(focused)) {
+                int nact = seg_actionable_count(focused);
+                if (nact > 0) {
+                    if (d == 0) g_seg_idx = -1;
+                    else if (d <= nact) g_seg_idx = d - 1;
+                    g_nav_digit_accum = 0;
+                    redraw();
+                    return;
+                }
+            }
+        }
         /* multi-digit accumulate: "15" jumps to 15, not 5 (tpmos
          * chtpm_parser.c.bak digit_accum). Take accum*10+d when it's a
          * real nav index; else restart the accumulator with just d. */
