@@ -1,0 +1,4 @@
+x=18
+y=8
+z=0
+facing=west

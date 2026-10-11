@@ -1,0 +1,15 @@
+SECTION      | KEY            | VALUE
+-------------+---------------+------------------
+NODE         | combat         |
+KIND         | master         |
+N_SLOTS      | 8              |
+
+# Combat concept — how the player engages enemies
+SLOT         | 0              | POINTS_TO=weapon | WEIGHT=0.85
+SLOT         | 1              | POINTS_TO=stealth | WEIGHT=0.30
+SLOT         | 2              | POINTS_TO=magic | WEIGHT=0.20
+SLOT         | 3              | POINTS_TO=survival | WEIGHT=0.60
+
+MIRROR_FROM  | sword_combat   | WEIGHT=0.80
+MIRROR_FROM  | stealth_attack | WEIGHT=0.40
+MIRROR_FROM  | fire_magic     | WEIGHT=0.25

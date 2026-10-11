@@ -1,0 +1,11 @@
+SECTION      | KEY            | VALUE
+-------------+---------------+------------------
+NODE         | fire_magic     |
+KIND         | spoke          |
+N_SLOTS      | 4              |
+
+SLOT         | 0              | POINTS_TO=combat | WEIGHT=0.25
+SLOT         | 1              | POINTS_TO=magic | WEIGHT=0.90
+
+MIRROR_FROM  | combat         | WEIGHT=0.25
+MIRROR_FROM  | magic          | WEIGHT=0.70

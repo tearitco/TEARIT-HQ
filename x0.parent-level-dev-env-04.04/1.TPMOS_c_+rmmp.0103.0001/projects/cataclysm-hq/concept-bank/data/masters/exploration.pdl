@@ -1,0 +1,13 @@
+SECTION      | KEY            | VALUE
+-------------+---------------+------------------
+NODE         | exploration    |
+KIND         | master         |
+N_SLOTS      | 8              |
+
+SLOT         | 0              | POINTS_TO=survival | WEIGHT=0.70
+SLOT         | 1              | POINTS_TO=magic | WEIGHT=0.15
+SLOT         | 2              | POINTS_TO=crafting | WEIGHT=0.40
+
+MIRROR_FROM  | dungeon_dive   | WEIGHT=0.85
+MIRROR_FROM  | trap_avoidance | WEIGHT=0.65
+MIRROR_FROM  | map_reading    | WEIGHT=0.50
