@@ -98,3 +98,11 @@ printf 'CONFIRM_SET_DESK:bedroom\n'   >> $HOUSE/@.apps/piececraft-hq/pieces/syst
 echo 102 >> "<board-viewer session>/pieces/apps/player_app/interact_relay.txt"   # f; forces a re-render
 ```
 Copies of this handoff: XO `22.rpg-pet/`, HQ-IQ-BOOK `08-roadmap/design-docs/RPG-PET-HANDOFF-2026-10-10.md`.
+
+## REQUESTED (not built): minimap of the current room + thumbnails of the other rooms (owner, 2026-10-10)
+Owner: "on the top right we want to show a minimap of current map, but also other maps of other rooms (in the space to right where nothing is currently being rendered). The way pc-hq has hud, we can do the same."
+- **Where:** the dark area to the right of the 624 px room inside the canvas (top-right corner first). Current room as the main minimap, the other rooms as smaller thumbnails below/beside it, the room the view follows highlighted, pets as coloured dots, Harold as a distinct dot, doors marked.
+- **How pc-hq does it (reuse the idea, not the code):** `BV-HUD-TEXT-OVERLAY-AND-MINIMAP.md` (HQ-IQ-BOOK 08-roadmap/design-docs) + `bv_render_3d.c` `bv_draw_hud()` / `bv_draw_minimap()` (~lines 2076-2360): small coloured blocks, about 8 px per cell, top-right by default, corner and size configurable in a `.pdl`, one on/off toggle per HUD element in the menu toolbar, defaults in the `.pdl`.
+- **Plan for rpg-pet:** the op already paints the room itself into `state/scene.raw` (the canvas). Add a `hud.pdl` (`HUD | minimap | corner=top-right | cell_px=8 | on`, `HUD | thumbs | ...`), draw the minimaps in the same scene buffer after the room (floor/wall/furniture as flat colours from the same map data `export3d` already walks: glyph per cell W/D/T/f/.), and add Menu toggles (`toggle minimap`, `toggle thumbs`) with flags like `flag_chat`. Clicking a thumbnail = the existing `goto ROOM` verb (the rooms dropdown already does this). Only rewrite when the picture changes (the canvas repaints on file change).
+- **Fit check:** the canvas is 916 wide with the room at 624, so about 290 px are free on the right; at 8 px per cell a 13x8 room is 104x64, so the current room plus two thumbnails at 4 px fit. If rooms are added, wrap thumbnails in a grid.
+- **Also useful later:** show the same minimap in the 3D view inside the rpg-pet window (pc-hq already draws one in 3D; the existing minimap follows the xelector).
