@@ -1666,7 +1666,68 @@ static void draw_elem(Elem *e, int hover_id_hash) {
             int lx = e->x + (e->w - ext.width) / 2;
             if (lx < e->x) lx = e->x;
             int ly = e->y + (e->h + (font->ascent - font->descent)) / 2;
-            draw_text_emoji(font, &col, lx, ly, e->label);
+            /* VIDEO PLAYHEAD readability (2026-10-11): the centered
+             * label used to draw in one color, so wherever it crossed
+             * the green fill it read ~2.4:1. Split it at the fill edge
+             * instead: the part over the fill draws in a fill-luma-
+             * picked dark-or-light both chosen against the fill's own
+             * color (custom fills included, not just the default
+             * green), the rest exactly as before. Split point walks
+             * character starts only, so no multibyte glyph is ever cut.
+             * (The track side keeps today's color unconditionally - a
+             * custom light track with default text is still on the
+             * app to fix, same as any other element's own bg.) */
+            {
+                int fpx = 0;
+                if (e->bar_max > 0) {
+                    int fr = e->bar_value;
+                    if (fr < 0) fr = 0;
+                    if (fr > e->bar_max) fr = e->bar_max;
+                    fpx = (int)((long long)e->w * fr / e->bar_max);
+                }
+                int edge = e->x + fpx;
+                if (fpx > 0 && edge > lx && edge < lx + (int)ext.width) {
+                    const char *fill_hex = e->style.has_fg_color ? e->style.fg_color : "#2f8f5f";
+                    XftColor fcol = xft_color(kh_hex_luma(fill_hex) > 140 ? "#1c1c1c" : "#0e0e0e");
+                    size_t llen = strlen(e->label);
+                    size_t cut = 0;
+                    int cw = 0;
+                    char p1[2048], p2[2048];
+                    size_t i = 0;
+                    XGlyphInfo cur;
+                    if (llen >= sizeof(p1)) llen = sizeof(p1) - 1;
+                    /* measure prefixes at character ends only - never
+                     * mid-glyph (continuation bytes advance the end,
+                     * never start a measurement). */
+                    while (i < llen) {
+                        size_t en = i + 1;
+                        while (en < llen && ((unsigned char)e->label[en] & 0xC0) == 0x80) en++;
+                        XftTextExtentsUtf8(dpy, font, (const FcChar8 *)e->label, (int)en, &cur);
+                        if (lx + (int)cur.width > edge) break;
+                        cw = cur.width;
+                        i = en;
+                    }
+                    cut = i;
+                    memcpy(p1, e->label, cut);
+                    p1[cut] = '\0';
+                    snprintf(p2, sizeof(p2), "%s", e->label + cut);
+                    /* left part sits on the fill (dark-or-light above),
+                     * right part on the track (today's color). Which
+                     * side is which never depends on direction: edge is
+                     * always right of lx here. */
+                    draw_text_emoji(font, &fcol, lx, ly, p1);
+                    draw_text_emoji(font, &col, lx + cw, ly, p2);
+                    XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &fcol);
+                } else if (fpx > 0 && edge >= lx + (int)ext.width) {
+                    /* label fully over the fill: one dark-on-fill draw. */
+                    const char *fill_hex = e->style.has_fg_color ? e->style.fg_color : "#2f8f5f";
+                    XftColor fcol = xft_color(kh_hex_luma(fill_hex) > 140 ? "#1c1c1c" : "#0e0e0e");
+                    draw_text_emoji(font, &fcol, lx, ly, e->label);
+                    XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &fcol);
+                } else {
+                    draw_text_emoji(font, &col, lx, ly, e->label);
+                }
+            }
             XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &col);
         }
         return;

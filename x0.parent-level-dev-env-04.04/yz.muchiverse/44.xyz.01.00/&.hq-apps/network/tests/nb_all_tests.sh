@@ -68,5 +68,9 @@ echo "########## form gate (hermetic)"
 sh "$HERE/nb_form_test.sh" || RC=1
 
 echo
+echo "########## video playhead bar (hermetic: own fixture window)"
+sh "$HERE/nb_bar_test.sh" || RC=1
+
+echo
 [ "$RC" -eq 0 ] && echo "ALL TESTS PASS" || echo "SOME TESTS FAILED"
 exit $RC

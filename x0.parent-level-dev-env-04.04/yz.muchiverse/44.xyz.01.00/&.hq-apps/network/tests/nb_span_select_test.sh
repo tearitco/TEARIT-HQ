@@ -119,10 +119,12 @@ for line in open(sys.argv[1], encoding='utf-8', errors='replace'):
     f = line.rstrip('\n').split('|')
     if len(f) > 1 and f[1] == sys.argv[2]:
         try:
-            nav, active, x, y, ww, hh = [int(v) for v in f[-21:-15]]
+            # front fields (see themescan.py: end-peel breaks on every
+            # frame-tail extension).
+            nav, active, x, y, ww, hh = (int(f[i]) for i in (6, 7, 8, 9, 10, 11))
             print('%d %d %d %d' % (x, y, ww, hh))
             break
-        except ValueError:
+        except (ValueError, IndexError):
             pass
 PY
 }

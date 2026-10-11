@@ -88,9 +88,13 @@ def main():
         rid = f[1] if len(f) > 1 else ''
         if not rid.startswith('th-'):
             continue
+        # geometry from the FRONT (tag..h are always fields 0..11):
+        # end-peel breaks on every frame-tail extension (bar_value/max
+        # just moved lines 27 -> 29 fields), front never does for
+        # pipe-free labels (uisan rewrites | to /, fixture labels obey).
         try:
-            nav, active, x, y, ww, hh = [int(v) for v in f[-21:-15]]
-        except ValueError:
+            nav, active, x, y, ww, hh = (int(f[i]) for i in (6, 7, 8, 9, 10, 11))
+        except (ValueError, IndexError):
             print('GEOMFAIL ' + rid)
             continue
         if ww <= 0 or hh <= 0 or y < 0 or x < 0:

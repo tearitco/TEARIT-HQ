@@ -4325,12 +4325,13 @@ static void kh_serialize_frame_elem(FILE *f, Elem *e) {
      * cannot move the 9000-byte line budget on its own. */
     char ccounts_esc[512 * 2];
     frame_field_escape_pipe(e->ccounts, ccounts_esc, sizeof(ccounts_esc));
-    fprintf(f, "%s|%s|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d|%s|%s|%s|%s|%d|%s|%d|%d|%d|%s|%s|%d|%s|%s|%s\n",
+    fprintf(f, "%s|%s|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d|%s|%s|%s|%s|%d|%s|%d|%d|%d|%s|%s|%d|%s|%s|%s|%d|%d\n",
             e->tag, e->id, classes_joined, label_esc, e->sprite, e->onclick,
             e->nav_index, e->active, e->x, e->y, e->w, e->h,
             target_id_esc, input_buffer_esc, relay_esc, bg_esc, e->cursor, text_area_esc,
             e->grid_cur_row, e->grid_cur_col, e->grid_edit_mode, grid_jump_esc, grid_cell_esc,
-            e->sel_anchor, segments_esc, cells_esc, ccounts_esc);
+            e->sel_anchor, segments_esc, cells_esc, ccounts_esc,
+            e->bar_value, e->bar_max);
 }
 
 /* Real recursive serializer, same traversal order render_tree() itself
@@ -4462,7 +4463,7 @@ static void kh_paint_frame_line(const char *line) {
      * fields - the loop below returns (honest skip) rather than misparse
      * it, matching this function's existing "malformed line" convention
      * exactly. */
-    char *tail[21];
+    char *tail[23];
     /* REAL FIX 2026-08-28, same-day self-correction (first attempt at
      * this fix broke EVERY entity menu, not just book-stack's - see
      * git blame if this comment ever needs re-deriving why): the front
@@ -4474,7 +4475,7 @@ static void kh_paint_frame_line(const char *line) {
      * onward), so `p + strlen(p)` is the real end - `buf2 +
      * strlen(buf2)` is not. */
     char *scan_end = p + strlen(p);
-    for (int i = 20; i >= 0; i--) {
+    for (int i = 22; i >= 0; i--) {
         char *bar = NULL;
         for (char *q = scan_end - 1; q >= p; q--) { if (*q == '|') { bar = q; break; } }
         if (!bar) return; /* malformed line - honest skip, not a crash */
@@ -4564,6 +4565,12 @@ static void kh_paint_frame_line(const char *line) {
      * those (honest skip, the established convention), so old frames
      * never misparse - they just never carry widths. */
     frame_field_unescape_pipe(tail[20], tmp.ccounts, sizeof(tmp.ccounts));
+    /* VIDEO PLAYHEAD (2026-10-11) - plain ints, same trap as every
+     * field above: without these halves the fill fraction never
+     * reaches draw_elem() on the tmp Elem, so every default-mode
+     * <bar> drew track-only while clicks (live tree) worked fine. */
+    tmp.bar_value = atoi(tail[21]);
+    tmp.bar_max = atoi(tail[22]);
 
     css_compute_style(&g_sheet, tmp.tag, tmp.id[0] ? tmp.id : NULL, tmp.classes, tmp.n_classes, tmp.active, &tmp.style);
     if (window_is_dock()) {
