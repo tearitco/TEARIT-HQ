@@ -808,13 +808,21 @@ static int poll_keys(const char *p, long *off, int *codes, int max) {
         if (l[0] == '#' || l[0] < '0' || l[0] > '9') continue; codes[n++] = atoi(l); }       /* interact_relay.txt: "<decimal code> <ms>" */
     *off = ftell(f); fclose(f); return n;
 }
+/* the rpg-pet board window's published Interact state: 1 engaged, 0 not, -1 no board window / no session */
+static int board_armed(void) {
+    char up[PATH_MAX], ub[1024], sess[PATH_MAX] = ""; int armed = -1; snprintf(up, sizeof up, "%s/@.apps/rpg-pet/board/state/ui.txt", HOUSE); if (!fexists(up)) return -1; read_file(up, ub, sizeof ub);
+    for (char *l = strtok(ub, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "bv_session=", 11)) snprintf(sess, sizeof sess, "%s", l + 11); else if (!strncmp(l, "interact_armed=", 15)) armed = atoi(l + 15); }
+    if (!sess[0] || !fexists(sess)) return -1;
+    { char tp[PATH_MAX], tb[16]; snprintf(tp, sizeof tp, "%s/pieces/display/active_gui_is_typing.txt", sess); if (fexists(tp) && read_file(tp, tb, sizeof tb) > 0) { int v = atoi(tb); return v != 0; } }      /* the engine's own flag (what pchq_board_action.sh trusts); ui.txt's interact_armed lags behind it */
+    return armed;
+}
 /* The board window's own Interact mode (its In: tab) is what makes the engine take the arrow keys and move the xelector. rpg-pet's INT drives it: engaged while INT is on, released when INT goes
  * off (pchq_board_action.sh <session> interact = the engage / disengage key, a toggle, so it is only sent when the board's published state differs from what INT wants). */
 static void board_interact(int want, int force) {
     const char *cand[3] = {"@.apps/rpg-pet/board/state/ui.txt", "@.apps/piececraft-hq/state/ui.txt", "@.apps/layout-studio/sandbox/state/ui.txt"}; static long last = 0; long now = now_ms(); if (!force && now - last < 4000) return;
     for (int k = 0; k < 3; k++) { char up[PATH_MAX], ub[1024], sess[PATH_MAX] = ""; snprintf(up, sizeof up, "%s/%s", HOUSE, cand[k]); if (!fexists(up)) continue; read_file(up, ub, sizeof ub); int armed = 0;
         for (char *l = strtok(ub, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "bv_session=", 11)) snprintf(sess, sizeof sess, "%s", l + 11); else if (!strncmp(l, "interact_armed=", 15)) armed = atoi(l + 15); }
-        if (!sess[0] || !fexists(sess) || armed == want) continue; if (k != 0) continue;      /* only the rpg-pet board's own window */
+        if (!sess[0] || !fexists(sess) || board_armed() == want) continue; if (k != 0) continue;      /* only the rpg-pet board's own window */
         last = now; char cmd[PATH_MAX * 2 + 64]; snprintf(cmd, sizeof cmd, "sh '%s/@.apps/piececraft-hq/ops/pchq_board_action.sh' '%s' interact >/dev/null 2>&1", HOUSE, sess); if (system(cmd)) {} return; }
 }
 /* INT in the board window: the ENGINE moves the xelector on the arrow keys (pc-hq's own Interact mode: camera aware, left is left on screen, 2D and 3D alike); the chosen monster follows it one cell per
@@ -853,7 +861,13 @@ static int daemon_main(void) {
             else continue;
             { int ci = ctl_idx(); use_ent(ci); if (do_step(dx, dy, msg, sizeof msg)) { pet_save(); set_flag("follow", ci < 0 ? "player" : "pet"); end_turn(); } else pet_save(); }      /* a bump costs no turn */
             dirty = 1; }
-        if (in && run_on()) board_interact(1, 0);
+        {   /* Esc in the board window makes the ENGINE leave its Interact mode; rpg-pet's INT has to follow, or the game stays turn based and the real time ticker never restarts. A board whose In: was seen on and is now off = Esc. */
+            static int was_armed = 0; int ar = board_armed();
+            if (!in) was_armed = 0;
+            else if (ar == 1) was_armed = 1;
+            else if (ar == 0 && was_armed) { was_armed = 0; if (!(run_event("int_off", "ui") && !flag_on("int", 0))) set_flag("int", "0"); clock_sync(); snprintf(msg, sizeof msg, "INT off: real time"); dirty = 1; in = 0; }
+            else if (ar == 0 && in && run_on()) board_interact(1, 0);
+        }
         if (in && run_on() && follow_xelector(msg, sizeof msg)) dirty = 1;
         long ms = now_ms();
         for (int i = 0; i < nparty; i++) if (ms >= next_ms[i]) { next_ms[i] = ms + 900 + rand() % 700; if (tm || !run_on()) continue; replay(); if (ai_step(i)) dirty = 1; use_ent(active); }     /* real time (INT off): every pet walks on its own. INT on is turn based: no timers, only your acts advance time */
