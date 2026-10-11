@@ -1,6 +1,6 @@
 # FuzzPet LLM Pilot Report
-**Date:** 2026-10-10
-**Author:** opencode agent
+**Date:** 2026-10-10  
+**Author:** opencode agent  
 
 ---
 
@@ -8,115 +8,154 @@
 
 The FuzzPet digital pet (Fuzzball) lives in the **1.TPMOS_c_+rmmp.0103.0001** framework.
 We applied the **relay-driven LLM pilot pattern** (proven on WSR) to make Fuzzball a
-self-directed agent. Created `fuzzpet_brain.c` — a solo-shippable C op that reads pet
-state, calls Ollama, and writes PET_ACTION to the house relay event bus.
+self-directed agent, using a **hybrid relay + book:page events architecture**.
 
 ---
 
-## 2. Framework: Does FuzzPet use 1.TPMOS?
+## 2. Framework: Yes, 1.TPMOS + book:page
 
-**Yes.** FuzzPet is a project within the 1.TPMOS framework.
+FuzzPet uses the full TPM/OS stack PLUS the `.pdl` page-file events architecture:
 
-### Project Structure
 ```
 1.TPMOS_c_+rmmp.0103.0001/
-+-- pieces/chtpm/           # Core TPM engine (parser, renderer, keyboard)
-+-- pieces/keyboard/       # Input muscle
-+-- pieces/display/        # Render muscle
-+-- pieces/apps/
-|   +-- player_app/        # Unified input buffer
-|   +-- playrm/            # Project loader
-|   +-- fuzzpet_app/       # The pet app
-+-- projects/
-|   +-- fuzz-op/           # Pet simulation
-|   +-- fuzz-op-gl/        # OpenGL renderer
-+-- xo/                    # Dev notes
++-- pieces/chtpm/            # TPM engine (parser, renderer, keyboard)
++-- pieces/apps/fuzzpet_app/ # The pet application
+|   +-- fuzzpet/
+|   |   +-- state.txt        # Flat key=value state (relay pattern input)
+|   |   +-- behavior.pdl      # Declarative behavior model (.pdl METHOD table)
+|   |   +-- scripts/          # .asm event scripts (book:page events layer)
+|   |   +-- history.txt       # Decision history
+|   |   +-- last_response.txt # LLM raw output
+|   +-- traits/
+|   |   +-- fuzzpet_brain.c  # LLM brain (reads state, calls Ollama, writes relay)
+|   |   +-- fuzzpet_fsm.c    # FSM (reads PET_ACTION from relay, calls ops)
+|   +-- manager/state.txt    # Active target, last_key
++-- projects/op-ed/          # Editor project (uses same book:page .pdl pattern)
++-- projects/slop-ed-dev/    # Editor dev project (games + .asm scripts)
 ```
 
-### Key Files
-- State: pieces/apps/fuzzpet_app/fuzzpet/state.txt - hunger, happiness, energy, position
-- Actions: playrm/ops/src/fuzzpet_action.c - feed/play/sleep/toggle_emoji
-- AI Trait: traits/zombie_ai.c - pathfinding toward targets
-- Layout: pieces/chtpm/layouts/fuzzpet_v2.chtpm - UI with pet_state vars
-- Relay: pieces/apps/player_app/interact_relay.txt - event bus
+### Book:Page pattern in this house
 
-### Launch Flow
-1. button.sh r -> orchestrator.+x -> chtpm_parser.+x
-2. Parser renders menu -> user selects fuzzpet
-3. fuzz-op_manager.c takes over -> reads history.txt, calls ops
-4. Manager updates state.txt -> writes frame_changed.txt pulse
-5. Renderer reads state -> writes current_frame.txt
+- `.pdl` files define state declaratively (`SECTION | KEY | VALUE`)
+- `project.pdl` declares the project entry layout and state
+- `piece.pdl` declares entity methods → `.asm` script mappings
+- `.asm` scripts use PAL-style instructions: `exec`, `call_method`, `read_history`,
+  `read_relay_row`, `relay_write`, `hit_frame`, `console_print`, `halt`
 
 ---
 
 ## 3. Is It Learning?
 
-### Before: No Learning
-- zombie_ai.c: Hardcoded A->B pathfinding, no adaptation
-- fuzzpet_action.c: Fixed effect values (feed = hunger-20)
-- No memory analysis of pet behavior patterns
-- No evolution of trait thresholds
+### Before: No
+- `zombie_ai.c`: Hardcoded pathfinding, no learning
+- `fuzzpet_action.c`: Fixed effect values
+- No pattern analysis or evolution
 
-### After: Limited Learning
-fuzzpet_brain.c adds:
-- LLM observation: Reads full state + history + relay events
-- Context-aware decisions: Goal-conditioned (survive/explore/evolve)
-- Need-based guardrails: Hunger>60 must feed, happiness<20 must play
-- Relay feedback: All actions recorded to interact_relay.txt
+### Now: Hybrid Learning
+The pipeline creates multiple learning surfaces:
 
-### Missing for True Learning
-1. wsr_evolve.c integration to mutate trait thresholds
-2. tom_layer.+x to track pet's beliefs about the player
-3. A fitness function scoring pet wellness over time
+```
+state.txt ──┐                      ┌──→ behavior.pdl (synced RUNSTATE)
+history.txt ├──→ fuzzpet_brain.c   │
+LLM API     └─→ PET_ACTION relay ──┼──→ fuzzpet_fsm.c ──→ fuzzpet_action.+x
+                │                   │
+                └──→ brain_dispatch.asm ──→ calls .asm scripts
+                                          └──→ exec fuzzpet_action.+x
+                │
+                └──→ wsr_evolve (future) ──→ mutates behavior.pdl thresholds
+                │
+                └──→ wsr_fitness (future) ──→ scores pet wellness
+                │
+                └──→ tom_layer (future) ──→ tracks pet-player beliefs
+```
 
----
+**Current learning surface:**
+1. History analysis — `history.txt` logs every decision with state context
+2. Behavior sync — `behavior.pdl` RUNTIME section mirrors state values
+3. Relay trace — `interact_relay.txt` captures all actions + guardrail overrides
 
-## 4. What Was Built
-
-### fuzzpet_brain.c
-
-**Location:** pieces/apps/fuzzpet_app/traits/fuzzpet_brain.c
-
-Flow:
-  state.txt + history.txt + last_response
-    -> Build system + user prompts
-    -> curl to Ollama (gemma3:1b)
-    -> Parse JSON -> action / reason / confidence
-    -> Need-based override (hunger>60 -> feed)
-    -> PET_ACTION|action|conf|reason -> relay
-    -> Update last_response.txt + history.txt
-
-**Key design:**
-- Standalone (no model_api dependency -- solo-shippable)
-- Need-based guardrails for small model reliability
-- Same relay event bus pattern as WSR
-- Writes PET_ACTION|action|conf|reason|pet=name|hunger=N|happiness=N|energy=N
-
-**Compile:**
-    CFLAGS="-Wall -Wextra -O2 -w"
-    gcc $CFLAGS traits/fuzzpet_brain.c -o traits/+x/fuzzpet_brain.+x -lm
-
-**Run:**
-    export PRISC_PROJECT_ROOT="$PWD"
-    ops/+x/fuzzpet_brain.+x . survive gemma3:1b
-    # Output: {"action":"feed","reason":"Hunger critical (70/100)","confidence":0.90}
+**Missing for full evolution:**
+- `wsr_evolve.c` integration to mutate `.pdl` GUARDRAIL thresholds
+- `tom_layer.+x` for belief tracking
+- `wsr_fitness.c` for wellness scoring
 
 ---
 
-## 5. Push vs Pull Claude
+## 4. What Was Built (Hybrid)
 
-The house has two LLM bridges:
-- projects/groq-ollama/ops/src/groq-ollama_bridge.c
-- #.Z.HUMAN_LLM/3.stage.llm.tomom (Claude Sonnet system)
+### fuzzpet_brain.c — Relay Brain + PDL Sync
 
-**Push** (Claude generates pet actions):
-    claude -p "You are Fuzzball. hunger=70, happiness=55, energy=80. What do you do?"
-      | jq '.action' -> PET_ACTION to relay
+Standalone C op that:
+1. Reads `state.txt`, `history.txt`, `last_response.txt`
+2. Builds context prompt (goal + state + history)
+3. Calls Ollama API via curl
+4. Parses JSON response (action/reason/confidence)
+5. Applies need-based guardrails (hunger>60 → feed, happiness<20 → play, energy<20 → sleep)
+6. Writes `PET_ACTION` to relay event bus
+7. Syncs state values to `behavior.pdl` RUNTIME section
+8. Falls back to need-based policy if Ollama is down
 
-**Pull** (Claude analyzes pet state):
-    claude -p "Analyze Fuzzball's state. Urgent need?"
-      < pieces/apps/fuzzpet_app/fuzzpet/state.txt
-      < pieces/apps/player_app/interact_relay.txt
+Compile + run:
+```bash
+export PRISC_PROJECT_ROOT="$PWD"
+gcc -O2 traits/fuzzpet_brain.c -o traits/+x/fuzzpet_brain.+x -lm
+traits/+x/fuzzpet_brain.+x . survive gemma3:1b
+# {"action":"feed","reason":"hunger critical","confidence":0.90,"guardrail":true}
+```
+
+### fuzzpet_fsm.c — Relay-to-FSM Controller
+
+Reads `PET_ACTION` from relay, maps action names to `fuzzpet_action.+x` calls,
+handles composite actions (heal = sleep+play, evolve = wsr_evolve).
+
+### behavior.pdl — Declarative Behavior Model
+
+```
+METHOD | feed           | scripts/pet_feed.asm
+METHOD | play           | scripts/pet_play.asm
+METHOD | sleep          | scripts/pet_sleep.asm
+METHOD | explore        | scripts/pet_explore.asm
+METHOD | heal           | scripts/pet_heal.asm
+METHOD | evolve         | scripts/pet_evolve.asm
+METHOD | toggle_emoji   | scripts/pet_toggle_emoji.asm
+METHOD | dispatch       | scripts/brain_dispatch.asm
+GUARDRAIL | hunger_critical | 60
+GUARDRAIL | happiness_low   | 20
+GUARDRAIL | energy_low      | 20
+```
+
+### .asm Event Scripts (book:page events layer)
+
+Each script uses house PAL instructions (`console_print`, `exec`, `hit_frame`, `halt`):
+
+```
+pet_feed.asm:
+    console_print "Fuzzball: *nom nom*"
+    exec ./pieces/apps/playrm/ops/+x/fuzzpet_action.+x fuzzball feed
+    hit_frame
+    halt
+```
+
+`brain_dispatch.asm` is the bridge — reads `PET_ACTION` rows from relay via
+`read_relay_row`, then `call_method` dispatches to the appropriate handler script.
+
+---
+
+## 5. Push vs Pull Claude (Hybrid)
+
+**Push:** `fuzzpet_brain.c` writes to relay → `brain_dispatch.asm` reads → `.asm` scripts execute  
+**Pull:** `brain_dispatch.asm` reads `state.txt` history → calls relay → `fuzzpet_fsm.c` polls → actions execute  
+
+```
+# Claude generates pet action (push)
+claude -p "Fuzzball: hunger=70, happiness=55. What do you do?" \
+  | jq '.action' > pieces/apps/player_app/interact_relay.txt
+
+# Claude analyzes pet state (pull)
+claude -p "Analyze Fuzzball history and relay. Next trait to evolve?" \
+  < pieces/apps/fuzzpet_app/fuzzpet/history.txt \
+  < pieces/apps/player_app/interact_relay.txt
+```
 
 ---
 
@@ -124,25 +163,8 @@ The house has two LLM bridges:
 
 | Task | Priority | Description |
 |------|----------|-------------|
-| fuzzpet_fsm.c | HIGH | Map PET_ACTION to action handler calls |
-| run_fuzzpet_agent.sh | HIGH | Automation loop for self-directed pet |
-| fuzzpet_evolve.sh | MED | Integrate wsr_evolve for trait mutation |
-| fuzzpet_fitness.c | MED | Score pet wellness over time |
-| pet_tom_layer.c | LOW | Track pet-player relationship beliefs |
-
-### Pipeline Vision
-    fuzzpet_brain.+x -> PET_ACTION to relay
-    fuzzpet_fsm.+x -> Maps action -> fuzzpet_action.+x
-    zombie_ai.+x -> Pathfinding (reads relay)
-    wsr_evolve.+x -> Evolve trait thresholds
-    tom_layer.+x -> Track pet-player beliefs
-    wsr_fitness.+x -> Score wellness
-
----
-
-## 7. References
-
-- Codebase map: xo/!.gem-xo=00.03/!.CODEBASE_MAP.txt
-- TPMOS onboarding: #.docs/01-ONBOARDING/AGENT_ONBOARDING.txt
-- Relay pattern (WSR): WSR_PAL-PREFERRED/LLM-HOUSE-PILOT.md
-- Pitfalls: #.docs/05-PITFALLS/ directory
+| `run_fuzzpet_agent.sh` | HIGH | Loop: brain → dispatch → state update |
+| Integrate wsr_evolve → behavior.pdl | HIGH | Mutate guardrail thresholds based on fitness |
+| `fuzzpet_fitness.c` | MED | Score: avg_happiness * survival_time * levels |
+| `pet_tom_layer.c` | MED | Track pet's beliefs about player |
+| op-ed integration | LOW | Bridge editor `.pdl` game scripts to fuzzpet traits |
