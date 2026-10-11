@@ -192,3 +192,11 @@ Root cause: `out_all` read the FIRST 4000 bytes of `state/chat.txt` for the six 
 
 ## Update: chat speaker (2026-10-10)
 You now speak AS the selected entity (Harold or the selected monster, flag ctl/active). A monster is answered by the nearest OTHER pet in its room (nobody answers if it is alone); Harold is answered by the selected pet as before; a greeting reply addresses the speaker.
+
+## Update: time mode toggle - rogue | live (2026-10-10)
+INT (who the arrows drive) and TIME (how time moves) are now separate. One item at the top of the **Player** dropdown flips on touch and shows the current mode: `[rogue] live` or `rogue [live]` (flag `state/flag_timemode.txt`, default rogue; verb `rpg_pet.+x mode [rogue|live]`; label var `mode_label` in `state/ui.txt`).
+- **rogue** (turn time): with INT ON the clock is paused and moves only when you act (each successful step advances `TURN advance` and every other pet takes a step); with INT off pets walk live as before.
+- **live**: the clock runs and the pets walk on their timers even with INT on; an arrow key moves your entity one cell at once and does not advance the clock or step the others.
+- Stop (Player > Stop) freezes everything in either mode. Code: `rogue_mode()`, `turn_mode()` = INT on AND rogue, used by `clock_sync()`, `end_turn()`, the daemon's pet timers and the step turn call.
+- Verified: rogue + INT on: pets and clock frozen over 10 s; live + INT on: pets walk and the clock ran 18:21 -> 18:33 in 12 s; the Player dropdown item toggled through the real window (relay Enter on the item: flag rogue -> live, label updated).
+- Open: Turn time with INT off is still live (pets walk); say if INT off + rogue should freeze pets instead.
