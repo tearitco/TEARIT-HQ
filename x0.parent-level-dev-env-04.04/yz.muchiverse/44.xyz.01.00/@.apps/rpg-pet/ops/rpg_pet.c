@@ -585,6 +585,7 @@ static void write_room_events(int r) {
     /* ascii_legend.txt: the ` (backtick) glyph view of this book. Rows are glyph|height|r|g|b|asset|name|char like terrain_legend.txt; events.txt carries a 10th column with each sprite's letter (@ = the trainer, the pet's lowercase initial) */
     static const char leg[] = "W|3|150|150|160|-|wall|#\nD|3|170|110|50|-|door|+\nT|2|50|150|60|-|tree|T\nf|1|190|150|90|-|furniture|&\n.|0|90|80|60|-|floor|.\n";
     snprintf(p, sizeof p, "%s/ascii_legend.txt", d); write_if_changed(p, leg, sizeof leg - 1);
+    { char bp[PATH_MAX]; snprintf(bp, sizeof bp, "%s/@.apps/piececraft-hq/pieces/system/maps/rpg-pet/view.pdl", HOUSE); static const char vw[] = "VIEW | cell_px | 48\n"; write_if_changed(bp, vw, sizeof vw - 1); }      /* the engine draws this book's 2D at rpg-pet's own 48 px tile (house desk_grid.pdl says 80) */
     /* bar.txt: the bottom entities bar of the pc-hq board lists these (id<TAB>name<TAB>x<TAB>y<TAB>trigger), Harold first */
     char bb[2048]; int bo = 0, id = 1; if (tr.room == r) bo += snprintf(bb + bo, sizeof bb - bo, "%d\t%s\t%d\t%d\ton-click\n", id++, hero.name, tr.x, tr.y);
     for (int i = 0; i < nparty; i++) if (others[i].room == r) bo += snprintf(bb + bo, sizeof bb - bo, "%d\t%s\t%d\t%d\ton-click\n", id++, party[i].name, others[i].x, others[i].y);

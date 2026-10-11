@@ -1174,6 +1174,12 @@ int main(void) {
         }
         fclose(gf);
       } }
+    {   /* a book may set its own tile size: maps/<book>/view.pdl "VIEW | cell_px | N" (rpg-pet: 48, its room is drawn 1:1 like its standalone window); the house value above stays for every other book */
+        char dd[PATH_BUF], vp[PATH_BUF];
+        if (desk_dir(dd, sizeof(dd))) { char *sl = strrchr(dd, '/'); if (sl) { *sl = 0; snprintf(vp, sizeof(vp), "%s/view.pdl", dd);
+            FILE *vf = host_fopen(vp, "r");
+            if (vf) { char l[MAX_LINE]; while (fgets(l, sizeof(l), vf)) { char *p = strstr(l, "cell_px"); if (!p) continue; p = strchr(p, '|'); if (!p) continue; int v = atoi(p + 1); if (v >= 8 && v <= 256) cell = v; break; } fclose(vf); } } }
+    }
 
     /* Viewport size = the board window's live canvas pixel size, which
      * the khtpm renderer writes to #.desktop/pchq_board_view.txt every
