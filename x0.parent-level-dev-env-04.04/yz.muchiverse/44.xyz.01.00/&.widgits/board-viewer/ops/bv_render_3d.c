@@ -72,7 +72,7 @@
 #define MAX_LINE 512
 #define MAX_PATH 4096
 #define PATH_BUF (MAX_PATH + 256)
-#define MAX_BOARD_DIM 256   /* Doom at 32 map-units per cell is up to ~216 on a side. 128 cut E1M4 and the rest off the board. */
+#define MAX_BOARD_DIM 256   /* Doom at 32 map-units per cell is up to ~216 on a side. 128 cut E1M4 and the rest off the board. Fog (18..48) still hides the distance. */
 
 /* Overlay dimensions - see bv_compose_frame.c's own matching marker-
  * skip line count (OVERLAY_H/GLYPH_H must divide evenly, kept in sync
@@ -2939,7 +2939,7 @@ static int render_one_frame(void) {
 
     /* Real unified voxel grid - see load_voxel_chunk()'s own header
      * comment for the full writeup. static: MAX_VOXEL_Z(64) *
-     * MAX_BOARD_DIM(256) * MAX_BOARD_DIM(256) is too big for
+     * MAX_BOARD_DIM(128) * MAX_BOARD_DIM(128) = 1M chars, too big for
      * the stack. */
     static char board3d[MAX_VOXEL_Z][MAX_BOARD_DIM][MAX_BOARD_DIM];
     int board_w = 0, board_h = 0;
@@ -3279,7 +3279,9 @@ static int render_one_frame(void) {
             char pp[PATH_BUF];
             snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
             /* Move range finder open: the click selects / places (desk behaviour). */
-            if (!bvr_click(focused_project_root, project_root, hx, hy, board_w, board_h)) {
+            /* Painted (maker) maps have no placer: the arrows must drive the xelector (rpg-pet INT moves its monster from it), and a stored canvas click re-arming the placer on every frame turned them into a giant
+             * green selector in the sky. */
+            if (!bvr_click(focused_project_root, project_root, hx, hy, board_w, board_h) && !maker_ground) {
                 FILE *pf = host_fopen(pp, "w");
                 if (pf) { fprintf(pf, "armed=1\nx=%d\ny=%d\nz=%d\n", hx, hy, hz); fclose(pf); }
             }
@@ -3385,6 +3387,14 @@ static int render_one_frame(void) {
      * before the real per-cell DDA ever ran. */
     const double board_bbox_y0 = -0.4, board_bbox_y1 = (double)z_count + 0.5;
     int frame_max_steps = board_w + board_h + z_count + 32;
+    /* A 256-wide page made this board_w+board_h, so every pixel walked
+     * hundreds of cells on the CPU. Fog already hides past fog_end.
+     * Cap the walk there. 96 is the hard ceiling either way. */
+    if (fog_end > fog_start) {
+        int fog_steps = (int)fog_end + 8;
+        if (fog_steps < frame_max_steps) frame_max_steps = fog_steps;
+    }
+    if (frame_max_steps > 96) frame_max_steps = 96;
 
     /* Real texture-cache warm-up, added 2026-08-03 for the OpenMP
      * parallel per-pixel loop just below (real perf fix - see
@@ -3591,6 +3601,7 @@ static int render_one_frame(void) {
             if (sc.maker) ADDWIRE(g_xelector_x+0.15, 1.0, g_xelector_y+0.15, g_xelector_x+0.85, 2.6, g_xelector_y+0.85, 40,255,80);      /* the same box as a sprite, as an outline so the selected sprite inside it stays visible */
             else ADDBOX(g_xelector_x+0.15, g_xelector_z+0.15, g_xelector_y+0.15,
                    g_xelector_x+0.85, g_xelector_z+0.85, g_xelector_y+0.85, 60,220,220, 0);
+        }
         if (g_ray_hit)
             ADDWIRE(g_ray_x + 0.04, g_ray_z + 0.04, g_ray_y + 0.04,
                     g_ray_x + 0.96, g_ray_z + 0.96, g_ray_y + 0.96, 40, 220, 255);
@@ -3599,7 +3610,6 @@ static int render_one_frame(void) {
             char pp[PATH_BUF];
             snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
             { BvRange rg; if (bvr_load(focused_project_root, &rg)) bvr_arm_placer(pp, focused_project_root); }
-        }
             if (read_kv_int(pp, "armed", 0)) {
                 int sx = read_kv_int(pp, "x", 0);
                 int sy = read_kv_int(pp, "y", 0);
@@ -3639,6 +3649,7 @@ static int render_one_frame(void) {
          * which is the same extrusion a phymoji model gets. No frame
          * file, or no free model slot: the old flat colour box. */
         if (sc.maker) {
+            maker_read_events(g_mk.key); maker_read_parallax(g_mk.key);
             int budget = 80;
             int used_model[96];
             char used_key[96][64];
@@ -3647,8 +3658,6 @@ static int render_one_frame(void) {
                 int hm = -1;
                 char key[64];
                 snprintf(key, sizeof(key), "%s_%d_%d_%d",
-            maker_read_events(g_mk.key); maker_read_parallax(g_mk.key);
-            maker_read_events(g_mk.key);
                          g_mk.ev[i].name, g_mk.ev[i].index, g_mk.ev[i].dir, g_mk.ev[i].pat);
                 for (int k = 0; k < used_n; k++)
                     if (strcmp(used_key[k], key) == 0) hm = used_model[k];
@@ -3710,6 +3719,8 @@ static int render_one_frame(void) {
                 hm = GPU_ADD_MODEL(g_hero_phymoji, hero_phymoji_count,
                                    hero_phymoji_max_lx, hero_phymoji_max_ly, hero_phymoji_max_lz);
             double hs = 0.9;
+            if (sc.maker) ADDBOX(g_hero_x+0.15, 1.0, g_hero_y+0.15, g_hero_x+0.85, 2.6, g_hero_y+0.85, 200,90,60, 0);      /* same box as a map event sprite */
+            else
             ADDBOX(g_hero_x+0.5-hs/2.0, g_hero_z+0.0, g_hero_y+0.5-hs/2.0,
                    g_hero_x+0.5+hs/2.0, g_hero_z+hs,  g_hero_y+0.5+hs/2.0, 200,90,60, 0);
             if (hm >= 0) sc.box[sc.box_n-1].model = hm;
@@ -3718,8 +3729,6 @@ static int render_one_frame(void) {
         for (int t=0; t<MAX_PHYMOJI_TEMPLATES; t++) tmpl_model[t] = -1;
         for (int wi=0; wi<g_phymoji_world_entity_count; wi++) {
             PhymojiWorldEntity *we = &g_phymoji_world_entities[wi];
-            if (sc.maker) ADDBOX(g_hero_x+0.15, 1.0, g_hero_y+0.15, g_hero_x+0.85, 2.6, g_hero_y+0.85, 200,90,60, 0);      /* same box as a map event sprite */
-            else
             double wsx=1.0, wsy=1.0, wsz=1.0; int cr=60,cg=140,cb=50;
             if (strcmp(we->entity_id, "tree_small")==0) wsy = 3.0;
             if (strcmp(we->entity_id, "chicken")==0) { wsx=wsy=wsz=0.6; cr=cg=cb=210; }
@@ -4365,7 +4374,14 @@ static int render_one_frame(void) {
      * g_fbuf, on top of the raymarch, before the atomic write. */
     g_mm_board3d = board3d; g_mm_col_top = col_top;
     g_mm_board_w = board_w; g_mm_board_h = board_h;
-    g_mm_selx = selector_x; g_mm_sely = selector_y;
+    /* The selector defaults to the middle of the glyph board. On a
+     * painted page the camera follows the xelector, so the minimap
+     * marker follows it too. */
+    if (maker_ground && g_xelector_present) {
+        g_mm_selx = g_xelector_x; g_mm_sely = g_xelector_y;
+    } else {
+        g_mm_selx = selector_x; g_mm_sely = selector_y;
+    }
     bv_draw_hud(focused_project_root, current_z, selector_x, selector_y);
 
     size_t byte_count = (size_t)g_fw * (size_t)g_fh * 4;
@@ -4376,7 +4392,12 @@ static int render_one_frame(void) {
      * are, since those never describe the <canvas> content. Digest is
      * over the FINAL g_fbuf (HUD included) so it matches exactly what
      * rgb_frame_3d_overlay.raw is about to hold. */
-    bv_write_scene_receipt(focused_project_root, board_w, board_h, z_count,
+    /* board_w here is the glyph board. A painted page replaces that
+     * grid, so the receipt names the page that was drawn. */
+    bv_write_scene_receipt(focused_project_root,
+                           (maker_ground && g_mk.w > 0) ? g_mk.w : board_w,
+                           (maker_ground && g_mk.h > 0) ? g_mk.h : board_h,
+                           z_count,
                            current_z, selector_x, selector_y,
                            camera_mode, cam_yaw, cam_pitch,
                            cam.eye.x, cam.eye.y, cam.eye.z,
@@ -4545,6 +4566,15 @@ int main(int argc, char **argv) {
             clock_gettime(CLOCK_MONOTONIC, &ta);
             int rc = render_one_frame();
             clock_gettime(CLOCK_MONOTONIC, &tb);
+            /* A slow frame must not be followed at the 30ms floor.
+             * house_wait_us is the house wait; back off by the frame
+             * itself so a pegged raymarch cannot queue the next one. */
+            {
+                long frame_us = (tb.tv_sec - ta.tv_sec) * 1000000L
+                              + (tb.tv_nsec - ta.tv_nsec) / 1000L;
+                if (frame_us > BV_IDLE_POLL_USEC)
+                    house_wait_us((int)frame_us);
+            }
             if (getenv("BV_GPU_DEBUG"))
                 fprintf(stderr, "bv_gpu daemon frame %lld: %.1f ms  [load %.1f | gpu %.1f | write %.1f] (rc=%d)\n",
                         served + 1, (tb.tv_sec - ta.tv_sec) * 1e3 + (tb.tv_nsec - ta.tv_nsec) / 1e6,

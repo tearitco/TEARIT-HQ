@@ -457,8 +457,8 @@ static void clock_pause(int pause) { if (!clock_ok() || !fexists(CFILE)) return;
 static int run_on(void) { return flag_on("running", 1); }
 /* the clock runs only when the house is started AND INT is off (INT on = turn based: only your acts advance time) */
 /* TIME MODE (one top-bar tab "[rogue] live"): rogue = turn time, while INT is on the clock moves only when you act and every other pet steps; live = the clock runs and pets walk on their timers even with INT on.
- * INT only decides who the arrow keys drive; this flag (state/flag_timemode.txt rogue|live, default rogue) decides how time moves. */
-static int rogue_mode(void) { char b[16]; flag_str("timemode", "rogue", b, sizeof b); return strcmp(b, "live") != 0; }
+ * 2026-10-11: INT is the one switch: on = rogue (time moves only when you act, the other pets step with you), off = live (the clock runs, pets walk on their timers). The "mode" verb / tab now just toggles INT. */
+static int rogue_mode(void) { return flag_on("int", 0); }      /* owner 2026-10-11: INT on = roguelike (turn based), INT off = auto / live; the old separate timemode flag is gone (with it set to live, INT on let every pet roam free) */
 static int turn_mode(void) { return flag_on("int", 0) && rogue_mode(); }
 static void clock_sync(void) { clock_paths(); clock_pause(!run_on() || turn_mode()); }
 static void clock_start(void) { clock_paths(); if (!clock_ok()) return; clock_install(); long long ms = clock_kv_ll("game_time_epoch_ms"); if (ms >= 0) write_phase(ms); clock_sync(); lc_run(1, "daemon-start", NULL); clock_ui(); }
@@ -643,6 +643,13 @@ static int kv_set_int(const char *path, const char *key, int val) {
     for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, key, kl) && l[kl] == '=') { o += snprintf(out + o, sizeof out - o, "%s=%d\n", key, val); found = 1; } else o += snprintf(out + o, sizeof out - o, "%s\n", l); }
     if (!found) o += snprintf(out + o, sizeof out - o, "%s=%d\n", key, val); return write_if_changed(path, out, o);
 }
+/* the engine keeps its own cursor (selector_x / selector_y in the session's bv_state.txt) and an arrow key moves THAT by one and then rewrites the xelector from it: if it is not on the monster the first
+ * arrow jumps the xelector somewhere stale. Put it on the monster whenever the xelector is put there. */
+static void sync_selector(int x, int y) {
+    char up[PATH_MAX], ub[1024], sess[PATH_MAX] = "", bp[PATH_MAX]; snprintf(up, sizeof up, "%s/@.apps/rpg-pet/board/state/ui.txt", HOUSE); if (!fexists(up)) return; read_file(up, ub, sizeof ub);
+    for (char *l = strtok(ub, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "bv_session=", 11)) snprintf(sess, sizeof sess, "%s", l + 11);
+    if (!sess[0]) return; snprintf(bp, sizeof bp, "%s/pieces/system/bv_state.txt", sess); if (!fexists(bp)) return; kv_set_int(bp, "selector_x", x); kv_set_int(bp, "selector_y", y);
+}
 static int g_pin_now = 0;      /* set when a followed step bumped: follow_pchq puts the xelector back on the monster at once */
 static void board_interact(int want, int force);
 /* The sun and moon of the 3D view (pieces/sun_01, moon_01) are a pure function of the pc-hq world clock: world_01/state.txt game_time_epoch_sec, turned into positions (and the sky light level) by the
@@ -666,7 +673,7 @@ static void follow_pchq(void) {
     int ci = ctl_idx(); Ent *e = ci < 0 ? &tr : &others[ci]; static int lr = -1, lx = -1, ly = -1, ld = -1, lw = -1; int changed = 0;
     int pin = g_pin_now; g_pin_now = 0;
     if (pin || e->room != lr || e->x != lx || e->y != ly) { lr = e->room; lx = e->x; ly = e->y; changed = 1;
-        kv_set_int(xp, "pos_x", e->x); kv_set_int(xp, "pos_y", e->y); kv_set_int(hp, "pos_x", e->x); kv_set_int(hp, "pos_y", e->y); }
+        kv_set_int(xp, "pos_x", e->x); kv_set_int(xp, "pos_y", e->y); kv_set_int(hp, "pos_x", e->x); kv_set_int(hp, "pos_y", e->y); sync_selector(e->x, e->y); }
     if (strcmp(dk, rooms[e->room].id) && lw != e->room) { lw = e->room; char ib[PATH_MAX], c[96]; snprintf(ib, sizeof ib, "%s/@.apps/piececraft-hq/pieces/system/widget_cmds/inbox.txt", HOUSE); snprintf(c, sizeof c, "CONFIRM_SET_DESK:%s", rooms[e->room].id); FILE *f = fopen(ib, "a"); if (f) { fprintf(f, "%s\n", c); fclose(f); } changed = 1; }
     if (!strcmp(dk, rooms[e->room].id)) lw = e->room;
     /* any pet/Harold stepping changes the sprites too: redraw when the events text changed (write_room_events reports via the checksum below) */
@@ -757,6 +764,7 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
     if (!strcmp(v, "control")) { char cur[16]; flag_str("ctl", "pet", cur, sizeof cur); const char *n = argc >= 2 ? argv[1] : (!strcmp(cur, "pet") ? "player" : "pet"); if (strcmp(n, "pet") && strcmp(n, "player")) { snprintf(msg, cap, "control pet or player"); return; } set_flag("ctl", n); set_flag("follow", !strcmp(n, "player") ? "player" : "pet"); calc_view(); snprintf(msg, cap, !strcmp(n, "player") ? "INT now controls you (the player)" : "INT now controls %s", party[active].name); return; }
     if (!strcmp(v, "walk")) { int moved = ai_step(active); use_ent(active); if (moved) snprintf(msg, cap, "%s took a step", party[active].name); else snprintf(msg, cap, "%s stays put", party[active].name); return; }
     if (!strcmp(v, "export3d")) { export3d(msg, cap); return; }
+    if (!strcmp(v, "mode")) v = "int";      /* the mode tab is the INT switch now */
     if (!strcmp(v, "mode")) { int to_rogue = argc >= 2 ? !strcmp(argv[1], "rogue") : !rogue_mode(); set_flag("timemode", to_rogue ? "rogue" : "live"); clock_sync();
         snprintf(msg, cap, to_rogue ? "rogue: with INT on, time moves only when you act" : "live: time keeps running, even with INT on"); return; }
     if (!strcmp(v, "play")) { if (!(run_event("play", "ui") && run_on())) { set_flag("running", "1"); clock_paths(); clock_install(); clock_sync(); lc_run(1, "daemon-start", NULL); } snprintf(msg, cap, "STARTED: the pets live, the clock runs"); return; }
@@ -774,7 +782,7 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
     if (!strcmp(v, "clearchat")) { char p[PATH_MAX], q[PATH_MAX]; spath(p, "chat.txt"); snprintf(q, sizeof q, "%s/chat.txt.%ld.bak", ST, now); if (fexists(p)) rename(p, q); snprintf(msg, cap, "chat cleared (kept as chat.txt.%ld.bak)", now); return; }
     if (!strcmp(v, "toggle") && argc >= 2 && (!strcmp(argv[1], "chat") || !strcmp(argv[1], "hb") || !strcmp(argv[1], "voice"))) { set_flag(argv[1], flag_on(argv[1], !strcmp(argv[1], "voice")) ? "0" : "1"); snprintf(msg, cap, "%s toggled", argv[1]); return; }
     if (!strcmp(v, "view")) { char c[16]; flag_str("view", "2d", c, sizeof c); const char *n = !strcmp(c, "2d") ? "3d" : !strcmp(c, "3d") ? "glyph" : "2d"; set_flag("view", n); snprintf(msg, cap, "view %s (the picture is still 2D: 3D and the Chinese-glyph view are sprint items 7-8)", n); return; }
-    if (!strcmp(v, "int")) { int on = !flag_on("int", 0); if (!(run_event(on ? "int_on" : "int_off", "ui") && flag_on("int", 0) == on)) set_flag("int", on ? "1" : "0"); board_interact(on, 1); char d[PATH_MAX]; snprintf(d, sizeof d, "%s/keyboard", ST); mkdir(d, 0755); char p[PATH_MAX]; spath(p, "interact_relay.txt"); FILE *f = fopen(p, "a"); if (f) fclose(f); snprintf(p, sizeof p, "%s/keyboard/history.txt", ST); f = fopen(p, "a"); if (f) fclose(f);
+    if (!strcmp(v, "int")) { int on = !flag_on("int", 0); if (!(run_event(on ? "int_on" : "int_off", "ui") && flag_on("int", 0) == on)) set_flag("int", on ? "1" : "0"); if (!on) board_interact(0, 1); char d[PATH_MAX]; snprintf(d, sizeof d, "%s/keyboard", ST); mkdir(d, 0755); char p[PATH_MAX]; spath(p, "interact_relay.txt"); FILE *f = fopen(p, "a"); if (f) fclose(f); snprintf(p, sizeof p, "%s/keyboard/history.txt", ST); f = fopen(p, "a"); if (f) fclose(f);
         clock_sync(); if (on) { set_flag("follow", "pet"); calc_view(); }
         { char cc[16]; flag_str("ctl", "pet", cc, sizeof cc); snprintf(msg, cap, on ? "INT on: you control %s - turn based like a roguelike, time moves when you act, the other pets act on their own, Tab switches pet/player, Esc leaves" : "INT off: real time, every pet lives on its own", !strcmp(cc, "player") ? "the player" : party[active].name); } return; }
     if (!strcmp(v, "clock") && argc >= 2) { clock_paths(); if (!clock_ok()) { snprintf(msg, cap, "no livedesk clock binary"); return; } clock_install();
@@ -834,7 +842,9 @@ static void board_interact(int want, int force) {
     for (int k = 0; k < 3; k++) { char up[PATH_MAX], ub[1024], sess[PATH_MAX] = ""; snprintf(up, sizeof up, "%s/%s", HOUSE, cand[k]); if (!fexists(up)) continue; read_file(up, ub, sizeof ub); int armed = 0;
         for (char *l = strtok(ub, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "bv_session=", 11)) snprintf(sess, sizeof sess, "%s", l + 11); else if (!strncmp(l, "interact_armed=", 15)) armed = atoi(l + 15); }
         if (!sess[0] || !fexists(sess) || board_armed() == want) continue; if (k != 0) continue;      /* only the rpg-pet board's own window */
-        last = now; char cmd[PATH_MAX * 2 + 64]; snprintf(cmd, sizeof cmd, "sh '%s/@.apps/piececraft-hq/ops/pchq_board_action.sh' '%s' interact >/dev/null 2>&1", HOUSE, sess); if (system(cmd)) {} return; }
+        last = now; char cmd[PATH_MAX * 2 + 64]; snprintf(cmd, sizeof cmd, "sh '%s/@.apps/piececraft-hq/ops/pchq_board_action.sh' '%s' interact >/dev/null 2>&1", HOUSE, sess); if (system(cmd)) {}
+        { char rp[PATH_MAX]; snprintf(rp, sizeof rp, "%s/pieces/apps/player_app/interact_relay.txt", sess); FILE *nf = fopen(rp, "a"); if (nf) { fputs("126\n", nf); fclose(nf); } }      /* an idle engine only reads its relay when woken: 126 is the unbound "render now" key */
+        return; }
 }
 /* INT in the board window: the ENGINE moves the xelector on the arrow keys (pc-hq's own Interact mode: camera aware, left is left on screen, 2D and 3D alike); the chosen monster follows it one cell per
  * tick, and a bump (wall, furniture, another pet) snaps the xelector back onto the monster. Reads the xelector the engine writes (pieces/xelector_01/state.txt) and does nothing unless the pc-hq book
@@ -873,11 +883,12 @@ static int daemon_main(void) {
             { int ci = ctl_idx(); use_ent(ci); if (do_step(dx, dy, msg, sizeof msg)) { pet_save(); set_flag("follow", ci < 0 ? "player" : "pet"); end_turn(); } else pet_save(); }      /* a bump costs no turn */
             dirty = 1; }
         {   /* Esc in the board window makes the ENGINE leave its Interact mode; rpg-pet's INT has to follow, or the game stays turn based and the real time ticker never restarts. A board whose In: was seen on and is now off = Esc. */
-            static int was_armed = 0; int ar = board_armed();
-            if (!in) was_armed = 0;
-            else if (ar == 1) was_armed = 1;
+            static int was_armed = 0, tried = 0; static long sent_at = 0; int ar = board_armed();
+            static int was_in = 0; if (in && !was_in) g_pin_now = 1; was_in = in;
+            if (!in) { was_armed = 0; tried = 0; }
+            else if (ar == 1) { was_armed = 1; tried = 1; }
             else if (ar == 0 && was_armed) { was_armed = 0; if (!(run_event("int_off", "ui") && !flag_on("int", 0))) set_flag("int", "0"); clock_sync(); snprintf(msg, sizeof msg, "INT off: real time"); dirty = 1; in = 0; }
-            else if (ar == 0 && in && run_on()) board_interact(1, 0);
+            else if (ar == 0 && run_on() && (!tried || now_ms() - sent_at > 20000)) { board_interact(1, 1); tried = 1; sent_at = now_ms(); }      /* ONE engage per INT on (the key is a toggle and the engine answers seconds late: a second one switches it back off, which looked like Esc and turned INT off by itself) */
         }
         if (in && run_on() && follow_xelector(msg, sizeof msg)) dirty = 1;
         long ms = now_ms();
