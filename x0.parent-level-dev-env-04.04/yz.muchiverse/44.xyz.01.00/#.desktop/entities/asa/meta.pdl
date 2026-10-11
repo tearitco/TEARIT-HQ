@@ -13,5 +13,6 @@ METHOD       | Stop                 | void
 METHOD       | Ledger               | sh -c 'cd "$0" && H="$(cd ../../.. && pwd)" && exec gedit "$H/@.apps/asa-&-ava/pieces/asa/master_ledger.txt"'
 METHOD       | Dir                  | xdg-open
 METHOD       | Inventory          | sh -c 'H="$1"; I="$H/&.widgits/file-explorer/instances/inv-$(basename "$(dirname "$0")")-$(basename "$0")"; mkdir -p "$0/inventory" "$I"; printf "mode=LOAD\nstart_dir=%s/inventory\n" "$0" > "$I/fe_request.txt"; exec sh "$H/&.widgits/file-explorer/button.sh" run-instance "$I"'
+METHOD       | Word Bank          | sh -c 'H="$1"; WB="$H/&.widgits/_shared-lib/ops/+x/wordbank_view_op.+x"; HTML="/tmp/wb_$(basename "$0").html"; "$WB" --render "$0" > "$HTML" 2>/dev/null && printf "go:file://%s\n" "$HTML" > "$H/#.desktop/network_browser_request.txt"'
 METHOD       | Close                | CLOSE
 METHOD       | Cancel               | void

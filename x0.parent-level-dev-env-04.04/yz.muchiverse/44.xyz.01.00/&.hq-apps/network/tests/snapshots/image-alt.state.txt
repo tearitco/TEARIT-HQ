@@ -1,0 +1,16 @@
+URL|FIXDIR/fixtures/image-alt.html
+TITLE|Alt
+PARA|1
+HEAD|1|Alt text
+PARA|2
+TEXT|Descriptive:
+IMG|HOUSE/#.desktop/nb_sprites/mN|A red bicycle leaning on a wall
+PARA|3
+PARA|4
+TEXT|Decorative:
+IMG|HOUSE/#.desktop/nb_sprites/mN|
+PARA|5
+PARA|6
+TEXT|Missing:
+IMG|HOUSE/#.desktop/nb_sprites/mN|
+PARA|7

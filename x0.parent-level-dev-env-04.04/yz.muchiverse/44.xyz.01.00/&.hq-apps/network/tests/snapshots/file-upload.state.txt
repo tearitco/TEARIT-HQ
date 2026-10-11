@@ -1,10 +1,19 @@
 URL|FIXDIR/fixtures/file-upload.html
 TITLE|Upload
-TITLE|Upload
+PARA|1
+HEAD|1|Upload
+PARA|2
 TEXT|Caption:
 INPUT|cap|text|my caption||0
+PARA|3
+PARA|4
 TEXT|Doc:
 FILE|doc|.txt|0
+PARA|5
+PARA|6
 TEXT|Multi:
 FILE|many||1
+PARA|7
+PARA|8
 BUTTON|https://httpbin.org/post|post|Send
+PARA|9

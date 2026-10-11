@@ -1,0 +1,22 @@
+URL|FIXDIR/fixtures/struct-blocks.html
+TITLE|Struct
+PARA|1
+HEAD|2|Section A
+PARA|2
+PARA|3
+TEXT|Quoted wisdom here.
+PARA|4
+PARA|5
+DROW|Term|Definition text
+DROW|Loose term|
+DROW||Orphan definition
+SUMMARY|Collapsed section
+TEXT|Open section
+PARA|6
+TEXT|Visible detail
+PARA|7
+PARA|8
+HEAD|3|Sub A1
+PARA|9
+TEXT|Ends.
+PARA|10

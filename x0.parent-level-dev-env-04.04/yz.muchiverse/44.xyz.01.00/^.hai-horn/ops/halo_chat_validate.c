@@ -310,7 +310,7 @@ int main(int argc, char **argv) {
         else if (nobs < pol.min_n) snprintf(why, sizeof(why), "n-%d<%d", nobs, pol.min_n);
         else { auto_promote = 1; snprintf(why, sizeof(why), "score-%.3f-n-%d", score, nobs); }
     }
-
+    
     if (auto_promote) {
         double wb = 0, wa = 0;
         if (promote_to_bank(bank_dir, target, slot, delta, reason, &wb, &wa)) {

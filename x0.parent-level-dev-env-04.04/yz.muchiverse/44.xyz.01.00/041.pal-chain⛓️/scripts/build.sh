@@ -52,5 +52,6 @@ gcc $CFLAGS -o "ops/+x/chain_faucet.+x" "ops/chain_faucet.c"
 gcc $CFLAGS -o "ops/+x/chain_escrow.+x" "ops/chain_escrow.c"
 gcc $CFLAGS -o "ops/+x/chain_menu_input.+x" "ops/chain_menu_input.c"
 gcc $CFLAGS -o "ops/+x/chain_compose_frame.+x" "ops/chain_compose_frame.c"
+gcc $CFLAGS -o "ops/+x/chain_bank_query.+x" "ops/chain_bank_query.c"
 
 echo "build ok"

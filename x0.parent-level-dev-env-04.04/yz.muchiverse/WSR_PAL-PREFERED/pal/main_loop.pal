@@ -8,24 +8,32 @@
 # free-text entry here, only numbered-menu digits), then recomposes and
 # hits the frame every tick, matching this whole family's proven
 # 3-process (keyboard_input/prisc+x/renderer) shape.
-# History cursor is persisted to player_app/state.txt to avoid replaying
-# the entire history.txt on process restart (e.g. after a crash).
+#
+# Note: read_history uses an INTERNAL file position that advances
+# automatically on each call - the x1 register is a 0-based line
+# offset we maintain in-register for crash-resume support via
+# state.txt. update_history_cursor was formerly a separate opcode
+# but is NOT recognized by prisc+x - instead we increment x1 in-
+# register and persist it manually via write_state for resume support.
+# When read_history returns 0 (no more pending keys), we halt - the
+# persistent loop is handled by the caller (run_xod_agent.sh /
+# button.sh sim-key background-and-kill pattern).
 read_state x1, player_app history_cursor
 li x3, 3
-li x10, 10
-li x13, 13
+li x4, 1
 compose_frame
 hit_frame
 loop:
 read_history x2, x1
-beq x2, x0, tick
+beq x2, x0, done
 beq x2, x3, quit
 wsr_menu_input x2
-update_history_cursor
-tick:
+add x1, x1, x4
 compose_frame
 hit_frame
-sleep 30000
+sleep 1000
 j loop
+done:
+halt
 quit:
 halt

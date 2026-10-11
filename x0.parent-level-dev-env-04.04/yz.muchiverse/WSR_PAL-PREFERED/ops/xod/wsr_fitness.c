@@ -110,8 +110,27 @@ int main(int argc, char **argv) {
         }
     }
 
-    /* Fitness components */
-    double portfolio_value = cash + (shares_held * stock_price);
+/* Read player's total holdings from holdings.txt for portfolio value */
+    char holdings_path[PATH_BUF];
+    snprintf(holdings_path, sizeof(holdings_path), "%s/projects/wsr-pal/pieces/player_you/holdings.txt", project_root);
+    int player_shares_held = 0;
+    {
+        FILE *hf = fopen(holdings_path, "r");
+        if (hf) {
+            char line[MAX_LINE];
+            while (fgets(line, sizeof(line), hf)) {
+                char *pipe = strchr(line, '|');
+                if (pipe) player_shares_held += atoi(pipe + 1);
+            }
+            fclose(hf);
+        }
+    }
+    char player_state_path[PATH_BUF];
+    snprintf(player_state_path, sizeof(player_state_path), "%s/projects/wsr-pal/pieces/player_you/state.txt", project_root);
+    double player_cash = read_kv_double(player_state_path, "cash", 0.0);
+
+    /* Fitness components — now based on PLAYER portfolio, not corp state */
+    double portfolio_value = player_cash + (player_shares_held * stock_price);
     double corp_health = book_value > 0 ? market_cap / book_value : 0.0;
     double risk_penalty = debt_to_equity > 0.5 ? debt_to_equity * 10.0 : 0.0;
     double trend_bonus = price_change_pct > 0 ? price_change_pct * 2.0 : 0.0;
@@ -132,9 +151,9 @@ int main(int argc, char **argv) {
     if (ff) {
         fprintf(ff, "fitness=%.2f\n", normalized);
         fprintf(ff, "portfolio_value=%.2f\n", portfolio_value);
-        fprintf(ff, "cash=%.2f\n", cash);
-        fprintf(ff, "stock_price=%.2f\n", stock_price);
-        fprintf(ff, "shares_held=%d\n", shares_held);
+         fprintf(ff, "cash=%.2f\n", player_cash);
+         fprintf(ff, "stock_price=%.2f\n", stock_price);
+         fprintf(ff, "shares_held=%d\n", player_shares_held);
         fprintf(ff, "market_cap=%.2f\n", market_cap);
         fprintf(ff, "book_value=%.2f\n", book_value);
         fprintf(ff, "corp_health=%.2f\n", corp_health);

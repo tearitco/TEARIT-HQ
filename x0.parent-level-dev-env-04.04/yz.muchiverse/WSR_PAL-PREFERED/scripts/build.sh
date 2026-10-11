@@ -75,7 +75,7 @@ for src in ops/xod/*.c; do
     echo "  Compiling $name..."
     case "$name" in
         llm_brain)
-            gcc $CFLAGS "$src" ops/xod/model_api.c -o "ops/+x/$name.+x" -lm
+            gcc $CFLAGS -Wno-format-truncation "$src" ops/xod/model_api.c -o "ops/+x/$name.+x" -lm
             ;;
         *)
             gcc $CFLAGS "$src" -o "ops/+x/$name.+x" -lm

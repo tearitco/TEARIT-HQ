@@ -45,6 +45,11 @@ sidebar { width: 200px; background-color: #1a1a1a; color: #cccccc; }
 .block-title { color: #9a9a9a; }
 .nb-link { color: #8fb8ff; }
 .nb-text { color: #cccccc; }
+/* 2026-10-09: inline-span sentence rows. Same body color as nb-text -
+ * without its own rule the row falls through to g_theme_fg (#000000)
+ * and its non-link spans draw black-on-black (the 2026-10-04 trap
+ * above); the link spans carry their own tint from segments=. */
+.nb-rich { color: #cccccc; }
 /* 2026-10-07: <pre> rows. Monospace family + a dimmer tint than body
    text so a code block reads as a different kind of content; the row
    itself already carries one source line and its indentation. */
@@ -53,10 +58,33 @@ sidebar { width: 200px; background-color: #1a1a1a; color: #cccccc; }
 .nb-selopt { color: #d8c8a8; }
 /* 2026-10-08: <input type=file> picker rows. */
 .nb-file { color: #c8a8d8; }
-/* 2026-10-08: <table> rows. Header tinted apart so the eye can find the
+/* 2026-10-09: <table> rows. Header tinted apart so the eye can find the
    column names without a real grid. */
 .nb-trow { color: #b8c8d8; }
 .nb-trow.thead { color: #8fb8ff; }
+/* 2026-10-09: Word bank viewer weight/source tints (classes emitted by
+   wordbank_view_op): high (user-confirmed) green, low (rejected) red,
+   seed rows on neutral yellow. User-scored canon rows bold. */
+.wb-weight-high { background-color: #1a2e1a; color: #b8e8b8; }
+.wb-weight-low { background-color: #2e1a1a; color: #e8b8b8; }
+.wb-weight-mid { background-color: #1e1e12; color: #d8d8a8; }
+.wb-source-user { font-weight: 700; }
+/* 2026-10-08: <ul>/<ol> items, marker + indent carried from the extractor. */
+.nb-list { color: #c8c8c8; }
+/* 2026-10-08: <dl> pairs and collapsed-<details> labels. */
+.nb-drow { color: #c8d0b8; }
+.nb-summary { color: #9ab8d8; }
+/* 2026-10-08: renderer truncation warning (render_warn var). Amber so it
+   reads as a caveat about the page, not as page content. */
+.nb-warn { color: #d8a83a; }
+/* 2026-10-08: <h1>..<h6>. Real size steps so an article's outline reads as
+   an outline; body text is 12px, so these climb from just above it. */
+.nb-h1 { color: #ffffff; font-size: 19px; }
+.nb-h2 { color: #f0f0f0; font-size: 17px; }
+.nb-h3 { color: #e4e4e4; font-size: 15px; }
+.nb-h4 { color: #d8d8d8; font-size: 14px; }
+.nb-h5 { color: #d0d0d0; font-size: 13px; }
+.nb-h6 { color: #c8c8c8; font-size: 12px; }
 .nb-console-text { color: #8fbf8f; }
 .page-title { color: #eeeeee; }
 

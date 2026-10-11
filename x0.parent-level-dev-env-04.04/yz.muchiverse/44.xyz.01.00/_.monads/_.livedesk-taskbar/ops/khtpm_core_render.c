@@ -967,6 +967,19 @@ static void kh_launch_window_modules(Elem *window, const char *house_root, const
     }
 }
 
+/* REAL, NEW 2026-10-08 - element-pool overflow counter. elem_new() has
+ * always returned NULL at MAX_ELEMS; nothing counted it, so a window that
+ * projected more rows than the pool could hold just rendered fewer, with no
+ * trace. Set here, reported in kh_write_ascii_frame() (the surface we
+ * already read when debugging) and on stderr. Zero behavior change. */
+static int g_pool_overflow_count = 0;
+static int g_vars_dropped = 0;
+/* repeat-count clamps (2026-10-08): same visibility rule - a window that
+ * silently rendered fewer rows than it asked for looked identical to one
+ * that rendered all of them. */
+static int g_repeat_clamped = 0;
+static int g_repeat_clamp_last = 0;
+
 static Elem *elem_new(const char *tag) {
     /* 2026-09-11 - bumps whichever pool g_elem_pool_target/
      * g_elem_n_target currently point at. Both default to g_pool/
@@ -976,7 +989,22 @@ static Elem *elem_new(const char *tag) {
      * kh_parse_into_scratch() (the incremental path's own candidate
      * parse) retargets these, briefly, around its one parse_chtpm()
      * call - see that function's own comment. */
-    if (*g_elem_n_target >= MAX_ELEMS) return NULL;
+    if (*g_elem_n_target >= MAX_ELEMS) {
+        /* REAL FIX 2026-10-08 - the pool overflow was SILENT. Returning
+         * NULL with no record anywhere meant a window that projected more
+         * rows than the pool could hold simply rendered fewer of them with
+         * nothing to indicate why. That is how the network browser ended
+         * up showing a blank content pane while its ui.txt cheerfully
+         * reported content_count=1440 (see
+         * NETWORK-BROWSER-RENDER-ROADMAP milestone 10).
+         *
+         * Count it here and say so out loud in kh_write_ascii_frame() and
+         * on stderr. No behaviour change otherwise: the NULL return, and
+         * therefore every window's handling of it, is exactly as before -
+         * this only makes the drop observable instead of invisible. */
+        g_pool_overflow_count++;
+        return NULL;
+    }
     Elem *e = &g_elem_pool_target[(*g_elem_n_target)++];
     memset(e, 0, sizeof(*e));
     snprintf(e->tag, sizeof(e->tag), "%s", tag);
@@ -1131,6 +1159,27 @@ static void apply_attr(Elem *e, const char *name, const char *val) {
         snprintf(decoded, sizeof(decoded), "%s", val);
         decode_entities(decoded);
         snprintf(e->label, sizeof(e->label), "%s", decoded);
+    } else if (strcmp(name, "segments") == 0) {
+        /* REAL, NEW 2026-10-08 (inline clickable spans, phase 2 step 1) -
+         * optional inline segment payload. Additive: an element without
+         * this attribute keeps segments="" and draws from `label` exactly
+         * as before, so every existing window is byte-identical.
+         *
+         * Entities are decoded like label= above, but the \x1E/\x1F
+         * delimiters are NOT - they are structural, not text, and no
+         * label can contain either after uisan(). */
+        char decoded[sizeof(e->segments)];
+        snprintf(decoded, sizeof(decoded), "%s", val);
+        decode_entities(decoded);
+        snprintf(e->segments, sizeof(e->segments), "%s", decoded);
+    } else if (strcmp(name, "cells") == 0) {
+        /* INLINE TABLE COLUMNS (2026-10-09): positional cell payload,
+         * same additive contract as segments= above (empty by default,
+         * entities decoded, delimiters structural). */
+        char decoded[sizeof(e->cells)];
+        snprintf(decoded, sizeof(decoded), "%s", val);
+        decode_entities(decoded);
+        snprintf(e->cells, sizeof(e->cells), "%s", decoded);
     } else if (strcmp(name, "action") == 0 || strcmp(name, "onClick") == 0 || strcmp(name, "onclick") == 0) {
         /* REAL FIX 2026-08-25 (Stage 2 palettes migration, direct live
          * report: "no emojis just blank glyph... no navs"). This parser
@@ -1317,8 +1366,19 @@ static const char *parse_element(const char *p, Elem *parent) {
     if (*p != '<') return p;
     p++;
     if (*p == '!') {
-        const char *end = strstr(p, "-->");
-        return end ? end + 3 : p + strlen(p);
+        /* REAL FIX 2026-10-09 (root-caused live on a static span fixture
+         * that refused to open): only <!-- is a comment. Any other <!...
+         * declaration (DOCTYPE first among them) ends at its own '>' -
+         * scanning a doctype for --> eats the whole file whenever no
+         * HTML comment follows it, so nothing parses and the window
+         * fails to open. Zero real .xhtpm files use a doctype (verified
+         * by grep at fix time), so no existing window can change shape. */
+        if (strncmp(p, "!--", 3) == 0) {
+            const char *end = strstr(p, "-->");
+            return end ? end + 3 : p + strlen(p);
+        }
+        const char *gt = strchr(p, '>');
+        return gt ? gt + 1 : p + strlen(p);
     }
     char tag[32]; size_t tn = 0;
     while (*p && !isspace((unsigned char)*p) && *p != '>' && *p != '/') {
@@ -1615,7 +1675,16 @@ static void kh_set_var(const char *name, const char *value) {
             return;
         }
     }
-    if (g_kh_nvars >= KH_MAX_VARS) return;
+    if (g_kh_nvars >= KH_MAX_VARS) {
+        /* REAL FIX 2026-10-08 - THIS is the cap that actually bit us. A
+         * 1502-row page projects ~4500 c_* vars; KH_MAX_VARS is 4096, so
+         * kh_set_var() dropped the overflow - including content_count,
+         * which the manager writes LAST. The repeat then bound an empty
+         * count and the content pane went blank while ui.txt still said
+         * content_count=1502. Count it so the frame says so. */
+        g_vars_dropped++;
+        return;
+    }
     snprintf(g_kh_vars[g_kh_nvars].name, KH_VAR_NAME, "%s", name);
     snprintf(g_kh_vars[g_kh_nvars].value, KH_VAR_VALUE, "%s", value);
     g_kh_nvars++;
@@ -1689,6 +1758,16 @@ static void kh_load_vars(const char *path) {
  * once, then appends each. */
 static void kh_load_vars_multi(const char *paths) {
     g_kh_nvars = 0;
+    /* REAL FIX 2026-10-09 (same cumulative-counter class as the 2026-10-08
+     * truncation fix, one layer up): this runs on EVERY idle tick as well
+     * as at reparse, so a vars_dropped counter reset only at reparse
+     * accumulated one bulk load's drops per tick for any window over the
+     * table cap - the count grew forever while the content never changed.
+     * Reset per LOAD, next to the table clear: the count describes this
+     * load (stable across identical ticks), and the reparse-site publish
+     * of render_warn reads a truthful number. Ad-hoc kh_set_var() calls
+     * outside loads can still only bump it upward (conservative). */
+    g_vars_dropped = 0;
     if (!paths || !paths[0]) return;
     char work[PATH_BUF * 4];
     snprintf(work, sizeof(work), "%s", paths);
@@ -1944,7 +2023,18 @@ static void kh_expand_repeats(const char *src, char *dst, size_t cap) {
                     }
                 }
                 if (count < 0) count = 0;
-                if (count > KH_REPEAT_MAX) count = KH_REPEAT_MAX;
+                /* REAL FIX 2026-10-08 - report the clamp instead of
+                 * applying it silently. This, not the element pool, is what
+                 * actually truncated the network browser: a repeat asked for
+                 * 1502 iterations, got KH_REPEAT_MAX, and the window simply
+                 * rendered fewer rows with no indication anywhere. Same shape
+                 * as the elem_new() NULL below - the drop is the bug, not the
+                 * cap, and it must be visible. */
+                if (count > KH_REPEAT_MAX) {
+                    g_repeat_clamped++;
+                    g_repeat_clamp_last = count - KH_REPEAT_MAX;
+                    count = KH_REPEAT_MAX;
+                }
                 const char *body = gt + 1;
                 size_t blen = (size_t)(close - body);
                 for (int i = 0; i < count && o < oend; i++)
@@ -2134,6 +2224,38 @@ static Elem *parse_chtpm(const char *path) {
         }
         if (g_vars_path[0]) g_vars_hash = kh_watch_hash();
         kh_load_vars_multi(g_vars_path);
+
+        /* REAL, NEW 2026-10-08 - publish truncation as a VARIABLE, after
+         * the load so the table's own reset cannot wipe it. The counters go
+         * to the ascii frame dump, which is a debugging surface: only I read
+         * it. This makes the same fact bindable by any window that wants to
+         * tell the USER, e.g.
+         *     <text label="${render_warn}" show="${show_render_warn}"/>
+         *
+         * A window that never binds it is completely unaffected - an
+         * unread var costs one slot and changes nothing. */
+        {
+            char warn[512];
+            warn[0] = 0;
+            if (g_vars_dropped > 0)
+                snprintf(warn, sizeof(warn),
+                         "content truncated: %d value(s) did not fit the window's limit",
+                         g_vars_dropped);
+            else if (g_repeat_clamped > 0)
+                snprintf(warn, sizeof(warn),
+                         "content truncated: a list of %d rows did not fit the window's limit",
+                         g_repeat_clamp_last);
+            else if (g_pool_overflow_count > 0)
+                snprintf(warn, sizeof(warn),
+                         "content truncated: %d element(s) did not fit the window's limit",
+                         g_pool_overflow_count);
+            kh_set_var("render_warn", warn);
+            kh_set_var("show_render_warn", warn[0] ? "1" : "0");
+            /* per-frame counts: the WARN text is sticky until the cause
+             * clears, these always describe the current frame */
+            snprintf(warn, sizeof(warn), "%d", g_vars_dropped);
+            kh_set_var("render_vars_dropped", warn);
+        }
 
         if (strstr(buf, "<repeat")) {
             /* Big enough for a full 256-row tile grid whose <repeat> body
@@ -2786,12 +2908,33 @@ static int reparse_chtpm_if_changed(void) {
         saved_sel_anchor = g_default_input_elem->sel_anchor;
     }
     kh_set_default_input_elem(NULL);
-    /* Same real dangling-pointer reasoning as g_default_input_elem just
+    /* Same real dangling-state reasoning as g_default_input_elem just
      * above - a stale dropdown-open pointer into a freed/reused pool
      * slot is a real, live crash risk, not a cosmetic one. */
     g_default_active_scope_root = NULL;
     g_default_scope_confine = 0;
+    /* INLINE SPANS step 5: the segment cursor names a (nav, run-index,
+     * element-id) triple in the tree being discarded - after this
+     * rebuild those numbers may address a different row, or nothing.
+     * The lazy (nav,id) check cannot catch a same-id row on a new page
+     * (repeat indices like cr4 are stable across pages), which live-
+     * locked a suite white-underline + inverted the next Right key.
+     * Content changed: cursor dies, honestly, here - not lazily. */
+    g_seg_nav = 0;
+    g_seg_idx = -1;
+    g_seg_id[0] = '\0';
     g_n_elems = 0;
+    /* REAL FIX 2026-10-08 (self-correction) - the truncation counters were
+     * cumulative for the whole process lifetime, never reset. So a warning
+     * read "1 element(s) did not fit" forever after the cause was gone, and
+     * a stale count masqueraded as a current one. I spent a turn reading
+     * "exactly 3 dropped, at every budget" as a fixed cost when it was
+     * simply a historical total that nothing new had added to.
+     * Counters now describe the layout currently being BUILT. */
+    g_pool_overflow_count = 0;
+    g_repeat_clamped = 0;
+    g_repeat_clamp_last = 0;
+    g_vars_dropped = 0;
     Elem *new_window = parse_chtpm(g_chtpm_path);
     if (!new_window) return 0;
     g_window = new_window;
@@ -4102,12 +4245,40 @@ static void kh_serialize_frame_elem(FILE *f, Elem *e) {
     char grid_jump_esc[16 * 2], grid_cell_esc[256 * 2];
     frame_field_escape_pipe(e->grid_jump_buffer, grid_jump_esc, sizeof(grid_jump_esc));
     frame_field_escape_pipe(e->grid_cell_buffer, grid_cell_esc, sizeof(grid_cell_esc));
-    fprintf(f, "%s|%s|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d|%s|%s|%s|%s|%d|%s|%d|%d|%d|%s|%s|%d\n",
+    /* INLINE SPANS (phase 2 step 3, 2026-10-09) - e->segments is read by
+     * draw_elem() on the tmp Elem this round trip hands it, so it hits
+     * the EXACT same trap relay/bg/cursor/text_area each hit before it:
+     * a field not serialized here is a field kh_paint_frame_line() can
+     * never reconstruct, no matter how correct draw_elem()'s own segment
+     * branch is. Every default/popup-mode window draws ONLY through this
+     * path (render_tree() is db-hq/events-hq mode only) - which includes
+     * the network browser - so without this the whole feature is
+     * invisible there. Pipe-escaped like label/relay/bg: a shell-quoted
+     * URL inside a payload can legitimately contain a literal '|'. */
+    char segments_esc[8192];
+    /* INLINE TABLE COLUMNS hardening (2026-10-09): the frame line is
+     * read back with fgets into 9000 bytes - a payload past ~4KB pushes
+     * the line over and the reader honestly skips the whole row (it
+     * vanishes, siblings unharmed). Our projector caps payloads at 3000
+     * so this only ever bites hostile/generic input; serialize those
+     * empty so the row draws its plain label instead of vanishing.
+     * (text_area_esc above has the same theoretical shape at 8KB, but
+     * text_area rows never carry spans/cells - out of scope.) */
+    if (strlen(e->segments) > 4096) segments_esc[0] = '\0';
+    else frame_field_escape_pipe(e->segments, segments_esc, sizeof(segments_esc));
+    /* INLINE TABLE COLUMNS: cells= rides the same trailing-field pattern
+     * (pipe-escaped; a cell could hold a literal '|' only if a future
+     * producer forgets to strip it - belt and braces). */
+    char cells_esc[8192];
+    /* same 4KB honest-fallback cap as segments_esc just above. */
+    if (strlen(e->cells) > 4096) cells_esc[0] = '\0';
+    else frame_field_escape_pipe(e->cells, cells_esc, sizeof(cells_esc));
+    fprintf(f, "%s|%s|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d|%s|%s|%s|%s|%d|%s|%d|%d|%d|%s|%s|%d|%s|%s\n",
             e->tag, e->id, classes_joined, label_esc, e->sprite, e->onclick,
             e->nav_index, e->active, e->x, e->y, e->w, e->h,
             target_id_esc, input_buffer_esc, relay_esc, bg_esc, e->cursor, text_area_esc,
             e->grid_cur_row, e->grid_cur_col, e->grid_edit_mode, grid_jump_esc, grid_cell_esc,
-            e->sel_anchor);
+            e->sel_anchor, segments_esc, cells_esc);
 }
 
 /* Real recursive serializer, same traversal order render_tree() itself
@@ -4230,11 +4401,16 @@ static void kh_paint_frame_line(const char *line) {
      * 2026-09-05, GRID-ELEMENT-DESIGN.md) [15]=grid_jump_buffer
      * [16]=grid_cell_buffer (pipe-escaped) [17]=sel_anchor (plain int,
      * REAL, NEW 2026-09-05, TEXT_AREA-SCROLL-GUTTER-SELECTION-DESIGN.md)
-     * - a frame file written by an older binary (before these fields
-     * existed) simply has fewer tail fields - the loop below returns
-     * (honest skip) rather than misparse it, matching this function's
-     * existing "malformed line" convention exactly. */
-    char *tail[18];
+     * [18]=segments (pipe-escaped, REAL, NEW 2026-10-09 - INLINE SPANS
+     * phase 2; see kh_serialize_frame_elem()'s matching comment for why
+     * draw_elem() can only ever see this on the tmp Elem)
+     * [19]=cells (pipe-escaped, REAL, NEW 2026-10-09 - INLINE TABLE
+     * COLUMNS, same trap, same pattern) - a frame file written by an
+     * older binary (before these fields existed) simply has fewer tail
+     * fields - the loop below returns (honest skip) rather than misparse
+     * it, matching this function's existing "malformed line" convention
+     * exactly. */
+    char *tail[20];
     /* REAL FIX 2026-08-28, same-day self-correction (first attempt at
      * this fix broke EVERY entity menu, not just book-stack's - see
      * git blame if this comment ever needs re-deriving why): the front
@@ -4246,7 +4422,7 @@ static void kh_paint_frame_line(const char *line) {
      * onward), so `p + strlen(p)` is the real end - `buf2 +
      * strlen(buf2)` is not. */
     char *scan_end = p + strlen(p);
-    for (int i = 17; i >= 0; i--) {
+    for (int i = 19; i >= 0; i--) {
         char *bar = NULL;
         for (char *q = scan_end - 1; q >= p; q--) { if (*q == '|') { bar = q; break; } }
         if (!bar) return; /* malformed line - honest skip, not a crash */
@@ -4323,6 +4499,13 @@ static void kh_paint_frame_line(const char *line) {
     frame_field_unescape_pipe(tail[15], tmp.grid_jump_buffer, sizeof(tmp.grid_jump_buffer));
     frame_field_unescape_pipe(tail[16], tmp.grid_cell_buffer, sizeof(tmp.grid_cell_buffer));
     tmp.sel_anchor = atoi(tail[17]); /* plain int - see Elem.sel_anchor's own field comment */
+    /* INLINE SPANS (phase 2 step 3, 2026-10-09) - the writer's own new
+     * trailing field; see kh_serialize_frame_elem()'s matching comment
+     * for why it must exist (draw_elem() reads tmp.segments). */
+    frame_field_unescape_pipe(tail[18], tmp.segments, sizeof(tmp.segments));
+    /* INLINE TABLE COLUMNS (2026-10-09) - the writer's own new trailing
+     * field, same pattern as segments= just above. */
+    frame_field_unescape_pipe(tail[19], tmp.cells, sizeof(tmp.cells));
 
     css_compute_style(&g_sheet, tmp.tag, tmp.id[0] ? tmp.id : NULL, tmp.classes, tmp.n_classes, tmp.active, &tmp.style);
     if (window_is_dock()) {
@@ -5143,7 +5326,14 @@ static int scroll_row_span(const Elem *c, int w) {
         XftFont *font = font_for(&tmp_style);
         int pad = tmp_style.has_padding ? tmp_style.padding : 4;
         int avail_w = w - pad * 2;
-        if (strcmp(c->tag, "item") == 0) {
+        /* INLINE SPANS step 6 (wrapping): a segments-carrying <text>
+         * takes a nav slot (badge eats width), exactly like an <item> -
+         * the same generous "[ ]99. " estimate, so this stays an honest
+         * UPPER bound on the line count: a smaller avail never yields
+         * fewer lines, so the box is never shorter than the wrapped
+         * span draw needs (gaps, never the 2026-09-23 overlap). */
+        if (strcmp(c->tag, "item") == 0 ||
+            (strcmp(c->tag, "text") == 0 && c->segments[0])) {
             XGlyphInfo ext;
             XftTextExtentsUtf8(dpy, font, (const FcChar8 *)"[ ]99. ", 7, &ext);
             avail_w -= ext.xOff;
@@ -5297,7 +5487,11 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
             c->x = x; c->y = content_y + (row - *scroll) * ROW_H; c->w = inner_w; c->h = span * ROW_H;
             css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
             if (strcmp(c->tag, "item") == 0 || strcmp(c->tag, "cli_io") == 0 ||
-                strcmp(c->tag, "text_area") == 0 || strcmp(c->tag, "bar") == 0) {
+                strcmp(c->tag, "text_area") == 0 || strcmp(c->tag, "bar") == 0 ||
+                /* INLINE SPANS step 4: a <text> carrying link segments is
+                 * clickable (per-segment hit-testing in
+                 * popup_handle_click) - plain text rows keep nav 0. */
+                (strcmp(c->tag, "text") == 0 && c->segments[0])) {
                 c->nav_index = ++g_n_nav;
                 g_nav[g_n_nav - 1] = c;
                 if (*out_lo == 0) *out_lo = c->nav_index;
@@ -8507,7 +8701,9 @@ static void assign_nav_and_layout(void) {
             int is_multirow_field = (strcmp(item->tag, "cli_io") == 0 || strcmp(item->tag, "text_area") == 0);
             int item_h = is_multirow_field ? (item->rows > 0 ? item->rows : 1) * ROW_H : ROW_H;
             item->x = 0; item->y = y; item->w = g_win_w; item->h = item_h;
-            if (!is_text) { item->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = item; }
+            /* INLINE SPANS step 4: same rule as the scroll region's own
+             * layout - a <text> carrying link segments is clickable. */
+            if (!is_text || item->segments[0]) { item->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = item; }
             y += item_h;
         }
         if (row_x) y += row_h + 4;
@@ -10717,6 +10913,20 @@ static void kh_write_ascii_frame(void) {
     FILE *ms = open_memstream(&fbuf, &flen);
     if (!ms) return;
     fprintf(ms, "--- %s  pid %d  %s ---\n", base, (int)getpid(), ts);
+    /* 2026-10-08: say so when the element pool overflowed. A truncated
+     * window used to look exactly like a correct one. */
+    if (g_pool_overflow_count > 0)
+        fprintf(ms, "[WARN] element pool overflow: %d element(s) DROPPED (MAX_ELEMS=%d)"
+                    " - this window is showing less than it was given\n",
+                g_pool_overflow_count, MAX_ELEMS);
+    if (g_vars_dropped > 0)
+        fprintf(ms, "[WARN] var table overflow: %d var(s) DROPPED (KH_MAX_VARS=%d)"
+                    " - values written past the cap are invisible to the layout\n",
+                g_vars_dropped, KH_MAX_VARS);
+    if (g_repeat_clamped > 0)
+        fprintf(ms, "[WARN] repeat truncated: %d repeat(s) clamped, %d row(s) DROPPED"
+                    " (KH_REPEAT_MAX=%d)\n",
+                g_repeat_clamped, g_repeat_clamp_last, KH_REPEAT_MAX);
     if (g_current_page[0]) fprintf(ms, "--- page: %s ---\n", g_current_page);
     dock_ascii_walk(ms, g_window, 0);
     if (g_confirm_action[0]) fprintf(ms, "[CONFIRM] %s  -- Enter/y = yes, any other key = no\n", g_confirm_text);
@@ -11667,11 +11877,35 @@ static void handle_key(KeySym ks, char ch) {
      * non-digit keys"). */
     if (!(ch >= '0' && ch <= '9')) g_nav_digit_accum = 0;
     if (ks == XK_Return || ks == XK_KP_Enter) {
+        /* INLINE SPANS step 5: Enter on a segment cursor dispatches that
+         * span's own action instead of the row's. A stale cursor (reparse
+         * shrank the runs) resolves nothing and falls through to the
+         * row, never nowhere. */
+        if (g_focus_nav >= 1 && g_focus_nav <= g_n_nav) {
+            Elem *focused = g_nav[g_focus_nav - 1];
+            if (seg_cursor_on(focused)) {
+                char sact[1024];
+                if (seg_action_at_idx(focused, g_seg_idx, sact, sizeof(sact))) {
+                    dispatch(sact);
+                    g_seg_idx = -1;
+                    if (!g_quit) { assign_nav_and_layout(); redraw(); }
+                    return;
+                }
+            }
+        }
         activate_focused();
         /* activate_focused() may have just entered/left a scope (<tab>,
          * ACTIVATE) - relayout+repaint NOW so [^] and the confined nav
          * show immediately, instead of only on the next projector tick. */
         if (!g_quit) { assign_nav_and_layout(); redraw(); }
+        return;
+    }
+    /* INLINE SPANS step 5: an active segment cursor is the innermost
+     * thing Escape closes (same "closes THAT first" order as the armed
+     * field and the dropdown below) - back to row-level, focus stays. */
+    if (ks == XK_Escape && g_seg_idx >= 0 && g_seg_nav == g_focus_nav) {
+        g_seg_idx = -1;
+        redraw();
         return;
     }
     /* REAL, NEW 2026-09-03 (direct instruction: "esc closes drop down
@@ -11757,10 +11991,18 @@ static void handle_key(KeySym ks, char ch) {
         if (focused->backspace_action[0]) { dispatch_no_quit(focused->backspace_action); return; }
     }
     if (ks == XK_Up || ks == XK_Left) {
+        /* INLINE SPANS step 5: Left on a focused spans row walks the
+         * link spans (entering at the last); rows without spans, and
+         * Up anywhere, step rows exactly as before. */
+        if (ks == XK_Left && g_focus_nav >= 1 && g_focus_nav <= g_n_nav &&
+            seg_cursor_step(g_nav[g_focus_nav - 1], -1)) return;
         dock_nav_step(-1);
         return;
     }
     if (ks == XK_Down || ks == XK_Right) {
+        /* mirror: Right enters at the first link span. */
+        if (ks == XK_Right && g_focus_nav >= 1 && g_focus_nav <= g_n_nav &&
+            seg_cursor_step(g_nav[g_focus_nav - 1], 1)) return;
         dock_nav_step(1);
         return;
         return;
@@ -13263,6 +13505,34 @@ static void popup_handle_click(int px, int py) {
     for (int i = i0; i < i1; i++) {
         Elem *it = g_nav[i];
         if (px >= it->x && px < it->x + it->w && py >= it->y && py < it->y + it->h) {
+            /* INLINE SPANS step 4: a click landing on a link segment runs
+             * THAT segment's action (baked by the projector - the same
+             * command shape as the LINK item rows, so a span click IS an
+             * item click). Two-step parity with every other row: under
+             * click_two_step an unfocused row only focuses (fall through
+             * to the normal path); the second click dispatches. Anything
+             * else - text span, actionless link, unusable payload - falls
+             * through to the normal row-level path below. */
+            if (it->segments[0] && it->nav_index > 0) {
+                char segact[1024];
+                int seghit = seg_hit_action(it, px, segact, sizeof(segact));
+                /* step 7: single-line miss can still be a wrapped span -
+                 * same two-step/focus discipline, same dispatch. */
+                if (!seghit) seghit = seg_hit_wrapped(it, px, py, segact, sizeof(segact));
+                if (seghit &&
+                    (!g_click_two_step || (g_window && elem_has_class(g_window, "single-click")) ||
+                     g_focus_nav == it->nav_index)) {
+                    g_focus_nav = it->nav_index;
+                    dispatch(segact);
+                    /* navigating away: the cursor names a span of the
+                     * page being left - drop it now, not at the reparse
+                     * (same honesty as the reparse clear). */
+                    g_seg_idx = -1;
+                    if (!g_quit) assign_nav_and_layout();
+                    redraw();
+                    return;
+                }
+            }
             /* generic <bar>: remember the exact click X (relative-to-x
              * fraction is computed in activate_focused()'s bar branch =
              * the ONLY place a bar click can actually reach the onClick,

@@ -90,6 +90,30 @@ typedef struct Elem {
      * assumption reads this field elsewhere; every real site already
      * uses sizeof(e->label)). */
     char label[2048];
+    /* REAL, NEW 2026-10-08 (inline clickable spans, phase 2 step 1) -
+     * OPTIONAL inline segment payload on a <text> element. Additive by
+     * construction: empty (the default, and the case for every existing
+     * element in the house) means the element draws exactly as it always
+     * has, from `label`. Nothing switches on a new tag, so the ~137
+     * tag-dispatch sites are untouched.
+     *
+     * Encoding is mandatory and was ambiguous in the first draft:
+     *   segments joined by \x1E (record separator)
+     *   the three fields inside a segment by \x1F
+     * Using one byte for both makes the stream unparseable - a 3-segment
+     * group then emits 8 separators with no way to find a segment
+     * boundary. See 2026-10-07-INLINE-SPANS-DESIGN.md.
+     * Sizes are deliberately generous: a paragraph with two links runs to
+     * a few hundred bytes once URLs are shell-quoted into the payload. */
+    char segments[8192];
+    /* INLINE TABLE COLUMNS (2026-10-09): positional cell payload for
+     * equal-column table rows. Cells joined by \x1F (no kinds/urls -
+     * plain text per cell, same escaping contract as segments: the
+     * template splice escapes, apply_attr decodes). Empty cells are
+     * significant (column i must mean the same column in every row),
+     * so a trailing delimiter still opens a column. Rows without this
+     * attribute draw from `label` exactly as before. */
+    char cells[8192];
     /* REAL FIX 2026-08-16 (found live building khtpm_core_render.c,
      * Stage 2c proof): 64 was too small for a real objects.pdl-style
      * action= shell command (e.g. ava's real "Play" action is 200+
@@ -286,6 +310,16 @@ typedef struct Elem {
     int x, y, w, h;
     CssStyle style;
 } Elem;
+
+/* INLINE SPANS step 5 (keyboard nav): segment cursor state. One cursor
+ * per window (a window shows one focused row at a time). Lives HERE
+ * (not in khtpm_draw_core.c with its accessors) so the reparse path in
+ * khtpm_core_render.c - which runs BEFORE draw_core's text-include -
+ * can clear it when the tree it names is discarded. See seg_cursor_on's
+ * own comment in draw_core for the validity contract. */
+static int g_seg_nav = 0;
+static int g_seg_idx = -1;
+static char g_seg_id[64] = "";
 
 /* Pure Elem-tree geometry - topmost-child-first hit test (children drawn
  * later win the hit, matching draw order), no X11/global dependency.

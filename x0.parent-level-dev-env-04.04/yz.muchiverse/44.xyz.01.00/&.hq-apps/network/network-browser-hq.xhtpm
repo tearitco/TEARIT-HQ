@@ -69,10 +69,23 @@
       <cli_io id="address" class="top nb-address" target_id="address"
               content="${addr_label}" action="${act_go}"/>
       <text id="status" class="nb-status" label="${status}"/>
+      <!-- 2026-10-08: the renderer's own truncation counters, published by
+           khtpm_core_render as render_warn/show_render_warn. Without this the
+           user saw a short page with no explanation; the warning existed
+           only in a debug dump nobody but me reads. -->
+      <text id="nbwarn" class="nb-warn" label="${render_warn}" show="${show_render_warn}"/>
       <scrolllist class="from-top nb-content">
         <repeat count="${content_count}" bind="c">
 <text id="ct${c.#}" class="page-title" label="${c.text}" action="${c.click_action}"        show="${c.is_title}"/>
           <text id="cx${c.#}" class="nb-text"                   label="${c.text}" action="${c.click_action}"        show="${c.is_text}"/>
+          <!-- 2026-10-09: inline clickable spans, phase 2 step 3. One
+               verified RICH paragraph renders as a single sentence row;
+               link segments draw tinted via segments= (see
+               khtpm_render_core.c's Elem.segments). LINK item rows for the
+               same run still emit, so clicks stay live until per-segment
+               hit-testing lands. Rows without segments= take the
+               proven-inert path - every other row is byte-identical. -->
+          <text id="cr${c.#}" class="nb-rich" label="${c.text}" segments="${c.segments}" action="${c.click_action}" show="${c.is_rich}"/>
           <!-- 2026-10-07: <pre> blocks keep their line structure and
                indentation (CODE rows, one per source line) instead of
                being collapsed into one run-on line. -->
@@ -95,8 +108,25 @@
                a cell still reads as belonging to its column. Header rows
                are their own kind so they can be tinted apart. A real grid
                needs renderer column layout - separate slice. -->
-          <text id="tr${c.#}" class="nb-trow thead" label="${c.text}" show="${c.is_thead}"/>
-          <text id="tw${c.#}" class="nb-trow"         label="${c.text}" show="${c.is_trow}"/>
+          <text id="tr${c.#}" class="nb-trow thead" label="${c.text}" cells="${c.cells}" show="${c.is_thead}"/>
+          <!-- 2026-10-08: <ul>/<ol> items keep their marker and nesting. -->
+          <text id="li${c.#}" class="nb-list" label="${c.text}" show="${c.is_list}"/>
+          <!-- 2026-10-08: <dl> term/definition pairs, and the always-visible
+               label of a collapsed <details>. The collapsed BODY is not
+               emitted at all - it is not visible on the page either. -->
+          <text id="dl${c.#}" class="nb-drow"     label="${c.text}" show="${c.is_drow}"/>
+          <text id="ds${c.#}" class="nb-summary" label="${c.text}" show="${c.is_summary}"/>
+          <!-- 2026-10-08: <h1>..<h6> keep their level. Previously every
+               heading was one identical TITLE row, so an article arrived
+               with no outline at all. One element per level, each shown only
+               for its own level, so a heading still costs a single element. -->
+          <text id="h1${c.#}" class="nb-h1" label="${c.text}" show="${c.is_h1}"/>
+          <text id="h2${c.#}" class="nb-h2" label="${c.text}" show="${c.is_h2}"/>
+          <text id="h3${c.#}" class="nb-h3" label="${c.text}" show="${c.is_h3}"/>
+          <text id="h4${c.#}" class="nb-h4" label="${c.text}" show="${c.is_h4}"/>
+          <text id="h5${c.#}" class="nb-h5" label="${c.text}" show="${c.is_h5}"/>
+          <text id="h6${c.#}" class="nb-h6" label="${c.text}" show="${c.is_h6}"/>
+          <text id="tw${c.#}" class="nb-trow"         label="${c.text}" cells="${c.cells}" show="${c.is_trow}"/>
           <!-- 2026-10-08: <input type=file>. Opens the house file-explorer
                and commits the chosen absolute path to the fields file;
                submit sends multipart when any committed value is a real

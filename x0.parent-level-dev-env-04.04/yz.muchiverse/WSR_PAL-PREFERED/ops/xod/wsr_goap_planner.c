@@ -110,7 +110,7 @@ static int load_behaviors(Behavior *bank, int max, const char *bank_path) {
     struct dirent *ent;
     while ((ent = readdir(d)) != NULL && n < max) {
         size_t len = strlen(ent->d_name);
-        if (len < 10 || strcmp(ent->d_name + len - 9, ".behavior") != 0)
+        if (len < 12 || strcmp(ent->d_name + len - 11, ".behaviors") != 0)
             continue;
         char path[PATH_BUF];
         snprintf(path, sizeof(path), "%s/%s", bank_path, ent->d_name);
@@ -198,12 +198,14 @@ int main(int argc, char **argv) {
     int plan_len = 0;
     int total_cost = 0;
 
-    if (strcmp(goal_id, "end_turn_safe") == 0) {
+    if (strcmp(goal_id, "end_turn_safe") == 0 ||
+        strcmp(goal_id, "survive") == 0) {
         /* End turn first, then check market. */
         strcpy(plan[plan_len++], "end_turn");
         strcpy(plan[plan_len++], "check_market");
         total_cost = 2 + 2;
-    } else if (strcmp(goal_id, "make_money") == 0) {
+    } else if (strcmp(goal_id, "make_money") == 0 ||
+               strcmp(goal_id, "accumulate") == 0) {
         /* Buy stock (if at trade menu) or navigate to trade, buy, sell. */
         strcpy(plan[plan_len++], "navigate_to");
         strcpy(plan[plan_len++], "buy_stock");

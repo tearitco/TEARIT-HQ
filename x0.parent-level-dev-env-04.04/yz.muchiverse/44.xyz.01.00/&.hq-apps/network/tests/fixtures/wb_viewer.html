@@ -1,0 +1,31 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<title>Word Bank</title>
+<style>
+body{font:400 11px/1.4 -apple-system,monospace;margin:8px}
+table{border-collapse:collapse}
+th,td{border:1px solid #aaa;padding:2px 6px;text-align:left;font-size:11px}
+th{background:#eee;font-weight:700}
+.wb-weight-high{background:#e6ffe6}
+.wb-weight-low{background:#ffe6e6}
+.wb-weight-mid{background:#fffff0}
+.wb-source-user{font-weight:700}
+</style>
+</head><body>
+<h1>wb_entity - Word Bank</h1>
+<table>
+<thead><tr>
+<th>Canon</th><th>Alias</th><th>Weight</th><th>Source</th>
+</tr></thead>
+<tbody>
+<tr class="wb-weight-mid wb-source-seed">
+<td>name:demo</td><td>demo</td><td class="wb-weight-mid">0.50</td><td>seed</td>
+</tr>
+<tr class="wb-weight-high wb-source-user">
+<td>action:follow</td><td>follow</td><td class="wb-weight-high">1.00</td><td>user</td>
+</tr>
+<tr class="wb-weight-low wb-source-user">
+<td>action:stay</td><td>wait</td><td class="wb-weight-low">0.00</td><td>user</td>
+</tr>
+</tbody></table>
+</body></html>

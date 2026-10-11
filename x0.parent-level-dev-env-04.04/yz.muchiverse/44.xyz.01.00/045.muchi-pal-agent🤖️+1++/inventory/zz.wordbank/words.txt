@@ -1,0 +1,39 @@
+CANON=name:muchi-pal-agent|ALIAS=muchi|WEIGHT=0.5000|SOURCE=seed
+CANON=action:plan_cells|ALIAS=plan cells|WEIGHT=0.5000|SOURCE=seed
+CANON=action:plan_cells|ALIAS=plan cell|WEIGHT=0.5000|SOURCE=seed
+CANON=action:fill_cell|ALIAS=fill cells|WEIGHT=0.5000|SOURCE=seed
+CANON=action:fill_cell|ALIAS=fill cell|WEIGHT=0.5000|SOURCE=seed
+CANON=action:verify_cell|ALIAS=verify cells|WEIGHT=0.5000|SOURCE=seed
+CANON=action:verify_cell|ALIAS=verify cell|WEIGHT=0.5000|SOURCE=seed
+CANON=action:apply_cell|ALIAS=apply cells|WEIGHT=0.5000|SOURCE=seed
+CANON=action:apply_cell|ALIAS=apply cell|WEIGHT=0.5000|SOURCE=seed
+CANON=action:grade_chapter|ALIAS=grade chapter|WEIGHT=0.5000|SOURCE=seed
+CANON=action:exec_cmd|ALIAS=run|WEIGHT=0.5000|SOURCE=seed
+CANON=action:exec_cmd|ALIAS=exec|WEIGHT=0.5000|SOURCE=seed
+CANON=action:exec_cmd|ALIAS=execute|WEIGHT=0.5000|SOURCE=seed
+CANON=action:exec_cmd|ALIAS=command|WEIGHT=0.5000|SOURCE=seed
+CANON=action:exec_cmd|ALIAS=cmd|WEIGHT=0.5000|SOURCE=seed
+CANON=action:read_file|ALIAS=read|WEIGHT=0.5000|SOURCE=seed
+CANON=action:read_file|ALIAS=view|WEIGHT=0.5000|SOURCE=seed
+CANON=action:read_file|ALIAS=cat|WEIGHT=0.5000|SOURCE=seed
+CANON=action:read_file|ALIAS=open|WEIGHT=0.5000|SOURCE=seed
+CANON=action:read_file|ALIAS=display|WEIGHT=0.5000|SOURCE=seed
+CANON=action:write_file|ALIAS=write|WEIGHT=0.5000|SOURCE=seed
+CANON=action:write_file|ALIAS=create|WEIGHT=0.5000|SOURCE=seed
+CANON=action:write_file|ALIAS=save|WEIGHT=0.5000|SOURCE=seed
+CANON=action:edit_file|ALIAS=edit|WEIGHT=0.5000|SOURCE=seed
+CANON=action:edit_file|ALIAS=replace|WEIGHT=0.5000|SOURCE=seed
+CANON=action:edit_file|ALIAS=modify|WEIGHT=0.5000|SOURCE=seed
+CANON=action:edit_file|ALIAS=append|WEIGHT=0.5000|SOURCE=seed
+CANON=action:search_in_files|ALIAS=search|WEIGHT=0.5000|SOURCE=seed
+CANON=action:search_in_files|ALIAS=find|WEIGHT=0.5000|SOURCE=seed
+CANON=action:search_in_files|ALIAS=grep|WEIGHT=0.5000|SOURCE=seed
+CANON=action:list_dir|ALIAS=list|WEIGHT=0.5000|SOURCE=seed
+CANON=action:list_dir|ALIAS=dir|WEIGHT=0.5000|SOURCE=seed
+CANON=action:list_dir|ALIAS=files|WEIGHT=0.5000|SOURCE=seed
+CANON=action:list_dir|ALIAS=show|WEIGHT=0.5000|SOURCE=seed
+CANON=action:speak|ALIAS=speak|WEIGHT=0.5000|SOURCE=seed
+CANON=action:speak|ALIAS=say|WEIGHT=0.5000|SOURCE=seed
+CANON=action:speak|ALIAS=voice|WEIGHT=0.5000|SOURCE=seed
+CANON=action:web_search|ALIAS=web|WEIGHT=0.5000|SOURCE=seed
+CANON=action:web_search|ALIAS=google|WEIGHT=0.5000|SOURCE=seed

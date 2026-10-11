@@ -1,0 +1,5 @@
+active_corp_index=0
+turn_number=4
+ticker_on=0
+active_menu_piece=wsr_main_menu
+last_message=Bought 10 shares of ORB at $150.00 (cost $1500.00). You now hold 40.
