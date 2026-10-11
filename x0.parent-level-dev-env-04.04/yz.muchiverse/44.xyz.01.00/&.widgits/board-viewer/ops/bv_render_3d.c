@@ -354,6 +354,22 @@ typedef struct {
 } MakerAtlas;
 static MakerAtlas g_mk;
 
+/* Map events (events.txt): x y r g b charset index direction pattern. Colour is the frame center; the charset name is for the 2D blit and the frame file lookup; the box uses r g b.
+ * First 96 only. Re-read EVERY frame (the file is tiny): rpg-pet rewrites it as its monsters walk, and the old read-once-per-desk cache froze the sprites while the selector kept moving
+ * (owner 2026-10-11: "the sprite stayed still but a blue block moved"). */
+static void maker_read_events(const char *dir) {
+    char path[4400], line[256]; snprintf(path, sizeof(path), "%s/events.txt", dir); g_mk.ev_n = 0;
+    FILE *f = fopen(path, "r"); if (!f) return;
+    while (g_mk.ev_n < 96 && fgets(line, sizeof(line), f)) {
+        int x, y, r, g, b, index, dir_, pat; char name[40];
+        if (sscanf(line, "%d %d %d %d %d %39s %d %d %d", &x, &y, &r, &g, &b, name, &index, &dir_, &pat) != 9) continue;
+        g_mk.ev[g_mk.ev_n].x = x; g_mk.ev[g_mk.ev_n].y = y; g_mk.ev[g_mk.ev_n].r = r; g_mk.ev[g_mk.ev_n].g = g; g_mk.ev[g_mk.ev_n].b = b;
+        g_mk.ev[g_mk.ev_n].index = index; g_mk.ev[g_mk.ev_n].dir = dir_; g_mk.ev[g_mk.ev_n].pat = pat;
+        snprintf(g_mk.ev[g_mk.ev_n].name, sizeof(g_mk.ev[0].name), "%s", name); g_mk.ev_n++;
+    }
+    fclose(f);
+}
+
 static int maker_load(const char *root) {
     char wpath[4352], map_id[128] = "", desk_id[128] = "";
     snprintf(wpath, sizeof(wpath), "%s/pieces/world_01/state.txt", root);
@@ -447,30 +463,7 @@ static int maker_load(const char *root) {
             fclose(f);
         }
     }
-    /* x y r g b charset index direction pattern. Colour is the frame
-     * center. The charset name is for the 2D blit; the box uses r g b.
-     * First 64 only. A later page that needs a switch is already absent. */
-    snprintf(path, sizeof(path), "%s/events.txt", dir);
-    f = fopen(path, "r");
-    if (f) {
-        while (g_mk.ev_n < 96 && fgets(line, sizeof(line), f)) {
-            int x, y, r, g, b, index, dir, pat;
-            char name[40];
-            if (sscanf(line, "%d %d %d %d %d %39s %d %d %d",
-                       &x, &y, &r, &g, &b, name, &index, &dir, &pat) != 9) continue;
-            g_mk.ev[g_mk.ev_n].x = x;
-            g_mk.ev[g_mk.ev_n].y = y;
-            g_mk.ev[g_mk.ev_n].r = r;
-            g_mk.ev[g_mk.ev_n].g = g;
-            g_mk.ev[g_mk.ev_n].b = b;
-            g_mk.ev[g_mk.ev_n].index = index;
-            g_mk.ev[g_mk.ev_n].dir = dir;
-            g_mk.ev[g_mk.ev_n].pat = pat;
-            snprintf(g_mk.ev[g_mk.ev_n].name, sizeof(g_mk.ev[0].name), "%s", name);
-            g_mk.ev_n++;
-        }
-        fclose(f);
-    }
+    maker_read_events(dir);
     g_mk.ok = 1;
     return 1;
 }
@@ -3590,7 +3583,7 @@ static int render_one_frame(void) {
         /* Maker (TSOTS-style painted) maps: the selector, the hero and the map events must be the SAME box - same 0.7 footprint, standing on the floor top (1.0) up to the sprite's 2.6 -
          * not a 0.7 cube floating at the pc-hq z level (owner 2026-10-10: "xelector and other cube should be same size and on same level as sprite"). */
         if (g_xelector_present && camera_mode != 1) {
-            if (sc.maker) ADDBOX(g_xelector_x+0.15, 1.0, g_xelector_y+0.15, g_xelector_x+0.85, 2.6, g_xelector_y+0.85, 60,220,220, 0);
+            if (sc.maker) ADDWIRE(g_xelector_x+0.15, 1.0, g_xelector_y+0.15, g_xelector_x+0.85, 2.6, g_xelector_y+0.85, 40,255,80);      /* the same box as a sprite, as an outline so the selected sprite inside it stays visible */
             else ADDBOX(g_xelector_x+0.15, g_xelector_z+0.15, g_xelector_y+0.15,
                    g_xelector_x+0.85, g_xelector_z+0.85, g_xelector_y+0.85, 60,220,220, 0);
         if (g_ray_hit)
@@ -3649,6 +3642,7 @@ static int render_one_frame(void) {
                 int hm = -1;
                 char key[64];
                 snprintf(key, sizeof(key), "%s_%d_%d_%d",
+            maker_read_events(g_mk.key);
                          g_mk.ev[i].name, g_mk.ev[i].index, g_mk.ev[i].dir, g_mk.ev[i].pat);
                 for (int k = 0; k < used_n; k++)
                     if (strcmp(used_key[k], key) == 0) hm = used_model[k];
