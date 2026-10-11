@@ -5265,6 +5265,14 @@ static void write_ui_projection(void) {
         int *nb_row_para = NULL, *nb_row_rich = NULL;
         char *nb_row_tl = NULL;
         char *nb_scratch = NULL, *nb_scratch2 = NULL;
+        /* TABLE COMPUTED WIDTHS (2026-10-11): per input row, the
+         * "n0,n1,..." code-point width maxima of its table's run, or
+         * NULL (uneven run, all-empty run, or not a TROW row - the
+         * renderer keeps its equal split for those, pixel-identical).
+         * Heap strings freed next to free(rows), same as the rich
+         * groups above. */
+        char **nb_trow_counts = NULL;
+        int nb_trow_n = 0;
         if (pf) {
             /* in-memory rows so an IMG depleted by an adjacent LINK (the
              * watch-page related-tile pattern) reads far enough ahead. */
@@ -5315,6 +5323,7 @@ static void write_ui_projection(void) {
                 nb_row_tl = malloc((size_t)nrow);
                 nb_scratch = malloc(PATH_BUF + 512);
                 nb_scratch2 = malloc(PATH_BUF + 512);
+                nb_trow_counts = calloc((size_t)nrow, sizeof(char *));
             }
             if (nb_row_para && nb_row_rich && nb_row_tl && nb_scratch && nb_scratch2) {
                 int i, k;
@@ -5603,6 +5612,144 @@ static void write_ui_projection(void) {
                     nb_row_rich[i] = (int)(gm - nb_rg);
                 }
             }
+            /* TABLE COMPUTED WIDTHS pre-pass (2026-10-11): per TROW
+             * run, the code-point width maxima of its columns, stored as
+             * one "n0,n1,..." string per member row (nb_trow_counts).
+             * Read-only over rows[] like the rich sweeps above (the emit
+             * walk zeroes bars as it goes).
+             *
+             * Why here and not in the renderer: the real draw path paints
+             * deserialized tmp Elems with parent == NULL
+             * (kh_paint_frame_line), so no sibling scan can ever work at
+             * draw time - the group maxima have to ride the row, exactly
+             * like segments=/cells= already do. A run is consecutive
+             * TROW rows in page.state; SEL rows are transparent (they
+             * emit no element); anything else breaks the run, so a
+             * caption TEXT row between two tables keeps them separate.
+             *
+             * Deliberately NOT mirroring the emit walk's drop rules
+             * (all-empty rows, junk lines): a dropped row's counts are
+             * simply never emitted - the lookup happens past the
+             * branch's own `continue`s - and its content still counts
+             * toward the maxima, which only ever overstates slightly and
+             * stays deterministic. Ragged runs (mixed arity) get NULL:
+             * every row keeps the equal split, pixel-identical to today.
+             *
+             * Metric is code points, not glyph pixels: the manager has
+             * no font metrics, and proportions are what the layout
+             * needs. Capped per cell so one huge cell cannot starve its
+             * siblings out of the grid. */
+            if (nb_trow_counts) {
+                int ti = 0;
+                nb_trow_n = nrow;
+                /* run-member indices, heap like everything else here. */
+                int *trow_members = malloc(sizeof(int) * (size_t)nrow);
+                if (trow_members) {
+                while (ti < nrow) {
+                    char *ln = rows[ti];
+                    size_t ll = strcspn(ln, "\r\n");
+                    if (ll < 5 || (strncmp(ln, "TROW|", 5) != 0 && strncmp(ln, "SEL|", 4) != 0)) { ti++; continue; }
+                    /* run start (SELs lead transparently): collect member
+                     * row indices, skipping SEL. */
+                    int nmem = 0, tj;
+                    for (tj = ti; tj < nrow && nmem < nrow; tj++) {
+                        char *l2 = rows[tj];
+                        size_t l2l = strcspn(l2, "\r\n");
+                        if (l2l >= 4 && strncmp(l2, "SEL|", 4) == 0) continue;
+                        if (l2l < 5 || strncmp(l2, "TROW|", 5) != 0) break;
+                        trow_members[nmem++] = tj;
+                    }
+                    ti = tj;
+                    if (nmem < 1) continue;
+                    /* uniformity first (arity re-parsed, nothing
+                     * stored - no big stack locals, the 2026-10-08
+                     * stack-pressure lesson the rich groups above
+                     * follow): a mixed run is ragged and every
+                     * member keeps the equal split. */
+                    {
+                        int acells = 0, uniform = 1, m;
+                        for (m = 0; m < nmem && uniform; m++) {
+                            char *l3 = rows[trow_members[m]];
+                            char *p = strchr(l3, '|');
+                            int na;
+                            char *q;
+                            if (!p) { uniform = 0; break; }
+                            na = 1;
+                            for (q = p + 1; *q && *q != '\r' && *q != '\n'; q++)
+                                if (*q == '|') na++;
+                            /* na counts the header flag + cells;
+                             * cells = na - 1, same as the emit walk's
+                             * nparts - 1 below. */
+                            if (na - 1 < 1 || na - 1 > 64) { uniform = 0; break; }
+                            if (m == 0) acells = na - 1;
+                            else if (na - 1 != acells) uniform = 0;
+                        }
+                        if (!uniform) continue;
+                        /* second scan: column maxima in code points
+                         * (uisan'd, \x1E/\x1F blanked - the emit
+                         * walk's own cell pipeline, mirrored). */
+                        {
+                            int maxima[64] = {0};
+                            int total = 0, c;
+                            char counts[512];
+                            size_t co = 0;
+                            for (m = 0; m < nmem; m++) {
+                                char *l3 = rows[trow_members[m]];
+                                char *cp = strchr(l3, '|') + 1;
+                                char *bar = strchr(cp, '|');
+                                int c2;
+                                cp = bar + 1; /* skip header flag */
+                                for (c2 = 0; c2 < acells; c2++) {
+                                    char *ce = strchr(cp, '|');
+                                    char *le = cp + strcspn(cp, "\r\n");
+                                    char *end = (ce && ce < le) ? ce : le;
+                                    char cell[512], cellu[520];
+                                    size_t cl = (size_t)(end - cp);
+                                    int npt = 0;
+                                    char *u;
+                                    if (cl >= sizeof(cell)) cl = sizeof(cell) - 1;
+                                    memcpy(cell, cp, cl);
+                                    cell[cl] = '\0';
+                                    uisan(cell, cellu, sizeof(cellu));
+                                    for (u = cellu; *u; u++) {
+                                        if (*u == '\x1e' || *u == '\x1f') *u = ' ';
+                                        if (((unsigned char)*u & 0xC0) != 0x80) npt++;
+                                    }
+                                    if (npt > 256) npt = 256;
+                                    if (npt > maxima[c2]) maxima[c2] = npt;
+                                    if (!ce || ce >= le) break;
+                                    cp = ce + 1;
+                                }
+                            }
+                            for (c = 0; c < acells; c++) total += maxima[c];
+                            if (total <= 0) continue;
+                            for (c = 0; c < acells; c++) {
+                                int nw = snprintf(counts + co, sizeof(counts) - co,
+                                                  "%s%d", c ? "," : "", maxima[c]);
+                                if (nw < 0 || co + (size_t)nw >= sizeof(counts)) break;
+                                co += (size_t)nw;
+                            }
+                            if (c < acells) continue;
+                            for (m = 0; m < nmem; m++) {
+                                nb_trow_counts[trow_members[m]] = strdup(counts);
+                                if (!nb_trow_counts[trow_members[m]]) break;
+                            }
+                            if (m < nmem) {
+                                /* OOM mid-run: unwind to all-NULL so
+                                 * the run falls back uniformly
+                                 * instead of gridding half-computed. */
+                                int k;
+                                for (k = 0; k < m; k++) {
+                                    free(nb_trow_counts[trow_members[k]]);
+                                    nb_trow_counts[trow_members[k]] = NULL;
+                                }
+                            }
+                        }
+                    }
+                } /* while (ti < nrow) */
+                free(trow_members);
+                } /* if (trow_members) - NULL skips counts, projection continues */
+            }
             /* PROJECTION WINDOW (2026-10-08). The renderer turns each
              * content row into one layout element, and its pool is
              * MAX_ELEMS (1024) for the WHOLE window - chrome included.
@@ -5817,8 +5964,18 @@ static void write_ui_projection(void) {
                         for (char *c = cell; *c; c++)
                             if (*c == '\x1e' || *c == '\x1f') *c = ' ';
                         size_t cl = strlen(cell);
-                        if (po + (po ? 1 : 0) + cl + 1 >= sizeof(cellpay)) { pok = 0; break; }
-                        if (po) cellpay[po++] = '\x1f';
+                        /* REAL FIX 2026-10-11 (found proving computed
+                         * widths): the delimiter gate was `if (po)` -
+                         * position-based, so a LEADING empty cell wrote
+                         * no delimiter (po is still 0) and ['','B']
+                         * serialized as "B": one column, not two. The
+                         * renderer's own contract is "column i of every
+                         * row must mean the same column", which that
+                         * silently broke for exactly the rows the
+                         * computed grid needs it for. Delimit between
+                         * cells (ci > 1), not when output exists. */
+                        if (po + (ci > 1 ? 1 : 0) + cl + 1 >= sizeof(cellpay)) { pok = 0; break; }
+                        if (ci > 1) cellpay[po++] = '\x1f';
                         memcpy(cellpay + po, cell, cl);
                         po += cl;
                     }
@@ -5832,6 +5989,13 @@ static void write_ui_projection(void) {
                     else
                         UI_PUT("c_%d_kind=trow\nc_%d_is_trow=1\nc_%d_text=%s\n", rc, rc, rc, t);
                     if (cellpay[0]) UI_PUT("c_%d_cells=%s\n", rc, cellpay);
+                    /* TABLE COMPUTED WIDTHS (2026-10-11): the run's
+                     * column maxima ride the row (same pattern as
+                     * cells= just above). Looked up past this
+                     * branch's own drops, so a dropped row's counts
+                     * are simply never emitted. */
+                    if (nb_trow_counts && nb_trow_counts[ri])
+                        UI_PUT("c_%d_ccounts=%s\n", rc, nb_trow_counts[ri]);
                 } else if (strcmp(kind, "FILE") == 0) {
                     /* FILE|<name>|<accept>|<multiple>
                      * Not an editable field - there is no text to type. The
@@ -6266,6 +6430,12 @@ static void write_ui_projection(void) {
             free(nb_row_tl);
             free(nb_scratch);
             free(nb_scratch2);
+            if (nb_trow_counts) {
+                int fi;
+                for (fi = 0; fi < nb_trow_n; fi++)
+                    free(nb_trow_counts[fi]);
+                free(nb_trow_counts);
+            }
             }
         }
         if (total_rows > processed) dropped_rows = total_rows - processed;

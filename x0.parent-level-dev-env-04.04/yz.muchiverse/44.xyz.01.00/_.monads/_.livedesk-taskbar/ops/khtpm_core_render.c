@@ -1149,6 +1149,15 @@ static void apply_attr(Elem *e, const char *name, const char *val) {
         snprintf(decoded, sizeof(decoded), "%s", val);
         decode_entities(decoded);
         snprintf(e->cells, sizeof(e->cells), "%s", decoded);
+    } else if (strcmp(name, "ccounts") == 0) {
+        /* TABLE COMPUTED WIDTHS (2026-10-11): "n0,n1,..." column
+         * maxima. Digits and commas need no entity games, but run the
+         * same decode for uniformity; anything unparseable falls back
+         * at draw time, never here. */
+        char decoded[sizeof(e->ccounts)];
+        snprintf(decoded, sizeof(decoded), "%s", val);
+        decode_entities(decoded);
+        snprintf(e->ccounts, sizeof(e->ccounts), "%s", decoded);
     } else if (strcmp(name, "action") == 0 || strcmp(name, "onClick") == 0 || strcmp(name, "onclick") == 0) {
         /* REAL FIX 2026-08-25 (Stage 2 palettes migration, direct live
          * report: "no emojis just blank glyph... no navs"). This parser
@@ -4230,12 +4239,18 @@ static void kh_serialize_frame_elem(FILE *f, Elem *e) {
     /* same 4KB honest-fallback cap as segments_esc just above. */
     if (strlen(e->cells) > 4096) cells_esc[0] = '\0';
     else frame_field_escape_pipe(e->cells, cells_esc, sizeof(cells_esc));
-    fprintf(f, "%s|%s|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d|%s|%s|%s|%s|%d|%s|%d|%d|%d|%s|%s|%d|%s|%s\n",
+    /* TABLE COMPUTED WIDTHS (2026-10-11): the maxima ride the same
+     * round trip or default-mode windows (the only cells= consumer)
+     * can never see them. 512 bytes worst case, no cap needed - it
+     * cannot move the 9000-byte line budget on its own. */
+    char ccounts_esc[512 * 2];
+    frame_field_escape_pipe(e->ccounts, ccounts_esc, sizeof(ccounts_esc));
+    fprintf(f, "%s|%s|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d|%s|%s|%s|%s|%d|%s|%d|%d|%d|%s|%s|%d|%s|%s|%s\n",
             e->tag, e->id, classes_joined, label_esc, e->sprite, e->onclick,
             e->nav_index, e->active, e->x, e->y, e->w, e->h,
             target_id_esc, input_buffer_esc, relay_esc, bg_esc, e->cursor, text_area_esc,
             e->grid_cur_row, e->grid_cur_col, e->grid_edit_mode, grid_jump_esc, grid_cell_esc,
-            e->sel_anchor, segments_esc, cells_esc);
+            e->sel_anchor, segments_esc, cells_esc, ccounts_esc);
 }
 
 /* Real recursive serializer, same traversal order render_tree() itself
@@ -4367,7 +4382,7 @@ static void kh_paint_frame_line(const char *line) {
      * fields - the loop below returns (honest skip) rather than misparse
      * it, matching this function's existing "malformed line" convention
      * exactly. */
-    char *tail[20];
+    char *tail[21];
     /* REAL FIX 2026-08-28, same-day self-correction (first attempt at
      * this fix broke EVERY entity menu, not just book-stack's - see
      * git blame if this comment ever needs re-deriving why): the front
@@ -4379,7 +4394,7 @@ static void kh_paint_frame_line(const char *line) {
      * onward), so `p + strlen(p)` is the real end - `buf2 +
      * strlen(buf2)` is not. */
     char *scan_end = p + strlen(p);
-    for (int i = 19; i >= 0; i--) {
+    for (int i = 20; i >= 0; i--) {
         char *bar = NULL;
         for (char *q = scan_end - 1; q >= p; q--) { if (*q == '|') { bar = q; break; } }
         if (!bar) return; /* malformed line - honest skip, not a crash */
@@ -4463,6 +4478,12 @@ static void kh_paint_frame_line(const char *line) {
     /* INLINE TABLE COLUMNS (2026-10-09) - the writer's own new trailing
      * field, same pattern as segments= just above. */
     frame_field_unescape_pipe(tail[19], tmp.cells, sizeof(tmp.cells));
+    /* TABLE COMPUTED WIDTHS (2026-10-11) - the writer's own new
+     * trailing field, same pattern. A frame line from an older binary
+     * has 20 tail fields, not 21: the peel loop above returns early on
+     * those (honest skip, the established convention), so old frames
+     * never misparse - they just never carry widths. */
+    frame_field_unescape_pipe(tail[20], tmp.ccounts, sizeof(tmp.ccounts));
 
     css_compute_style(&g_sheet, tmp.tag, tmp.id[0] ? tmp.id : NULL, tmp.classes, tmp.n_classes, tmp.active, &tmp.style);
     if (window_is_dock()) {

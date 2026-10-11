@@ -114,6 +114,15 @@ typedef struct Elem {
      * so a trailing delimiter still opens a column. Rows without this
      * attribute draw from `label` exactly as before. */
     char cells[8192];
+    /* TABLE COMPUTED WIDTHS (2026-10-11): per-column code-point width
+     * maxima of this row's table run ("n0,n1,...", one number per
+     * column), computed by the projector where the whole table is in
+     * memory. The draw path paints deserialized tmp Elems (parent ==
+     * NULL), so no sibling scan can ever work there - the maxima ride
+     * the row like cells= itself. Empty (default) means the equal
+     * split; arity or total mismatch also falls back, so stale or
+     * hostile values degrade to the old grid, never to garbage. */
+    char ccounts[512];
     /* REAL FIX 2026-08-16 (found live building khtpm_core_render.c,
      * Stage 2c proof): 64 was too small for a real objects.pdl-style
      * action= shell command (e.g. ava's real "Play" action is 200+

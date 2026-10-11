@@ -1235,6 +1235,82 @@ static int seg_cursor_step(Elem *focused, int dir) {
     return 1;
 }
 
+/* INLINE TABLE COLUMNS step 2 (computed widths, 2026-10-11): the
+ * equal split (avail_w / ncols, toolbar-row precedent, no cross-row
+ * state) is the honest fallback, but a [Team|<empty>] row should not
+ * spend half the pane on an empty column while [a & b|1] squeezes.
+ * Column widths come from content: the projector measures each table
+ * run's per-column code-point maxima (it holds the whole table; the
+ * draw path paints deserialized tmp Elems with parent == NULL, so no
+ * sibling scan can ever work there) and they ride the row as ccounts=
+ * ("n0,n1,..."), exactly like cells= itself. Leftover space goes back
+ * PROPORTIONALLY to content, not equally: on a wide pane equal shares
+ * wash short/long columns back toward equal, which is the thing being
+ * replaced. Both directions are deterministic functions of (counts,
+ * avail_w), so every row of the run computes identical widths and
+ * column starts stay aligned across rows - the table-test contract. */
+#define TABLE_COL_GAP 16
+#define TABLE_MAX_COLS 64
+
+/* "12,4,37" -> nat[], exactly ncols numbers in [0,1000000] with a
+ * nonzero total. Anything else (stale arity, hostile text, all-empty)
+ * returns 0 and the caller keeps the equal split. */
+static int table_parse_counts(const char *s, int ncols, int nat[64]) {
+    int i, total = 0;
+    const char *p;
+    if (!s || !s[0] || ncols < 1 || ncols > TABLE_MAX_COLS) return 0;
+    p = s;
+    for (i = 0; i < ncols; i++) {
+        long v = 0;
+        int ndig = 0;
+        while (*p >= '0' && *p <= '9') {
+            v = v * 10 + (*p - '0');
+            if (v > 1000000) return 0;
+            p++; ndig++;
+        }
+        if (ndig == 0) return 0;
+        nat[i] = (int)v;
+        total += nat[i];
+        if (i + 1 < ncols) {
+            if (*p != ',') return 0;
+            p++;
+        }
+    }
+    if (*p != '\0') return 0;
+    return total > 0;
+}
+
+/* Pure width math: nat[] maxima + avail_w -> col_w[]. Returns 0 when
+ * the grid cannot honor content (a non-empty column would starve below
+ * one "..." ellipsis) - the caller draws the joined label instead of
+ * "..." past its budget. */
+static int table_widths_from_nat(const int *nat, int ncols, int avail_w,
+                                 int ellw, int col_w[64]) {
+    int ci, total = 0, gaps, slack, budget, sum = 0, last_full = 0;
+    for (ci = 0; ci < ncols; ci++) total += nat[ci];
+    if (total <= 0) return 0;
+    gaps = TABLE_COL_GAP * (ncols - 1);
+    if (total + gaps <= avail_w) {
+        slack = avail_w - total - gaps;
+        for (ci = 0; ci < ncols; ci++) {
+            col_w[ci] = nat[ci] + (int)((long)slack * nat[ci] / total);
+            if (nat[ci] > 0) last_full = ci;
+        }
+        /* integer-division remainder lands on the last non-empty
+         * column so the grid still ends exactly at avail_w. */
+        for (ci = 0; ci < ncols; ci++) sum += col_w[ci];
+        col_w[last_full] += avail_w - gaps - sum;
+    } else {
+        budget = avail_w - gaps;
+        if (budget <= 0) return 0;
+        for (ci = 0; ci < ncols; ci++) {
+            col_w[ci] = (int)((long)nat[ci] * budget / total);
+            if (nat[ci] > 0 && col_w[ci] < ellw) return 0;
+        }
+    }
+    return 1;
+}
+
 static void draw_elem(Elem *e, int hover_id_hash) {
     (void)hover_id_hash;
     kh_theme_classes(e);
@@ -2213,35 +2289,64 @@ static void draw_elem(Elem *e, int hover_id_hash) {
         }
         int drew_cells = 0;
         if (!drew_segments && !drew_segwrap && e->cells[0] && !drew_sprite && avail_w > 0) {
-            /* INLINE TABLE COLUMNS (2026-10-09): equal-column table
-             * rows. cells= carries \x1F-joined cell texts (positional -
-             * empty cells significant, ragged rows grid differently per
-             * row, honestly). N columns share avail_w equally
-             * (toolbar-row precedent: w / n_items, no cross-row state,
-             * no measurement feedback loop); cells draw left-aligned on
-             * the row's first line, ellipsis-clipped to their column.
-             * The clip mirrors the single-line path's own
-             * measure/back-off/UTF-8-safe logic - duplicated, not
-             * refactored, so the proven hot path stays byte-identical.
-             * No wrapping, no per-cell clicks (cell links are already
-             * folded at extract), no nav change. Overlong payloads
-             * (>64 cells) or hairline columns fall back to the joined
-             * label exactly as today. */
+            /* INLINE TABLE COLUMNS (2026-10-09, widths computed
+             * 2026-10-11): cells= carries \x1F-joined cell texts
+             * (positional - empty cells significant, ragged rows grid
+             * differently per row, honestly). ccounts= carries the
+             * run's per-column code-point maxima ("n0,n1,..."); the
+             * widths below are a deterministic function of (counts,
+             * avail_w), so every row of the run computes identical
+             * widths and column starts stay aligned. No counts, stale
+             * arity, or a starved pane falls back to the plain equal
+             * split (avail_w / ncols, the 2026-10-09 behavior,
+             * pixel-identical: gap 0 and x == badge_label_x + ci * cw
+             * exactly). Cells draw left-aligned on the row's first
+             * line, ellipsis-clipped to their column. The clip mirrors
+             * the single-line path's own measure/back-off/UTF-8-safe
+             * logic - duplicated, not refactored, so the proven hot
+             * path stays byte-identical. No wrapping, no per-cell
+             * clicks (cell links are already folded at extract), no nav
+             * change. Overlong payloads (>64 cells) or hairline columns
+             * fall back to the joined label exactly as today. */
             int ncols = 1;
             const char *cc;
             for (cc = e->cells; *cc; cc++) if (*cc == '\x1f') ncols++;
             if (ncols >= 1 && ncols <= 64) {
-                int cw = avail_w / ncols;
-                if (cw > 0) {
-                    int cty = is_multiline_box ? e->y + font->ascent + 2
-                              : e->y + (e->h + font->ascent - font->descent) / 2;
+                int col_w[64], col_x[64], ci, cgap = 0;
+                int nat[64];
+                XGlyphInfo cw_ell;
+                int cw_ellw = 0;
+                /* the '...' floor for the starvation check below. */
+                XftTextExtentsUtf8(dpy, font, (const FcChar8 *)"...", 3, &cw_ell);
+                cw_ellw = cw_ell.width;
+                if (e->ccounts[0] && table_parse_counts(e->ccounts, ncols, nat) &&
+                    table_widths_from_nat(nat, ncols, avail_w, cw_ellw, col_w)) {
+                    cgap = TABLE_COL_GAP;
+                } else {
+                    int cw = avail_w / ncols;
+                    if (cw <= 0) cw = 0;
+                    for (ci = 0; ci < ncols; ci++) col_w[ci] = cw;
+                }
+                /* Gate matches the old `cw > 0` exactly on the fallback
+                 * path (all col_w equal cw there); on the computed path
+                 * at least one non-empty column always carries width
+                 * (the starvation check above guarantees it), while an
+                 * all-empty LEADING column legitimately holds 0 - so
+                 * the gate is "any width", never "first width". */
+                { int ci_any, any_w = 0;
+                  for (ci_any = 0; ci_any < ncols; ci_any++)
+                      if (col_w[ci_any] > 0) { any_w = 1; break; }
+                  if (any_w) {
+                    int cty = is_multiline_box ? e->y + font->ascent + 2                              : e->y + (e->h + font->ascent - font->descent) / 2;
                     const char *cp = e->cells;
-                    int ci;
                     if (cty < e->y + font->ascent) cty = e->y + font->ascent + pad / 2;
+                    col_x[0] = badge_label_x;
+                    for (ci = 1; ci < ncols; ci++)
+                        col_x[ci] = col_x[ci-1] + col_w[ci-1] + cgap;
                     for (ci = 0; ci < ncols; ci++) {
                         const char *ce = strchr(cp, '\x1f');
                         size_t clen = ce ? (size_t)(ce - cp) : strlen(cp);
-                        if (clen > 0) {
+                        if (clen > 0 && col_w[ci] > 0) {
                             char cellbuf[1024];
                             XGlyphInfo cw_ext;
                             static const char *CELL_ELLIPSIS = "...";
@@ -2249,12 +2354,12 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                             memcpy(cellbuf, cp, clen);
                             cellbuf[clen] = '\0';
                             XftTextExtentsUtf8(dpy, font, (const FcChar8 *)cellbuf, (int)clen, &cw_ext);
-                            if (cw_ext.width > cw) {
+                            if (cw_ext.width > col_w[ci]) {
                                 XGlyphInfo ell_ext;
                                 size_t len = clen;
                                 XftTextExtentsUtf8(dpy, font, (const FcChar8 *)CELL_ELLIPSIS, 3, &ell_ext);
                                 {
-                                    int target_w = cw - ell_ext.width;
+                                    int target_w = col_w[ci] - ell_ext.width;
                                     if (target_w < 0) target_w = 0;
                                     while (len > 0) {
                                         XGlyphInfo cur_ext;
@@ -2267,13 +2372,14 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                                 cellbuf[len] = '\0';
                                 snprintf(cellbuf + len, sizeof(cellbuf) - len, "%s", CELL_ELLIPSIS);
                             }
-                            draw_text_emoji(font, &col, badge_label_x + ci * cw, cty, cellbuf);
+                            draw_text_emoji(font, &col, col_x[ci], cty, cellbuf);
                         }
                         if (!ce) break;
                         cp = ce + 1;
                     }
                     drew_cells = 1;
-                }
+                    } /* if (any_w) */
+                } /* widths scope */
             }
         }
         if (!drew_segments && !drew_segwrap && !drew_cells && is_multiline_box) {

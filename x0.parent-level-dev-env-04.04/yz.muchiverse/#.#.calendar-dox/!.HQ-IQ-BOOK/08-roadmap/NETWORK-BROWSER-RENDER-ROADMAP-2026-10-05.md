@@ -45,7 +45,7 @@ the bar.
 - [x] ~~sprite-flow grid inside the panel path~~ — proven working (delegates to layout_scroll_region); narrow-pane stacking is 1-col degradation by design
 - [ ] True inline-clickable spans (segment row kind + renderer inline flow; needs xhtpm contract change)
 - [ ] `file://` worker image resolution (worker emits zero IMG rows on file pages; static fallback covers it, but JS-driven pages depend on the worker path)
-- [ ] Column width as computed layout state (CSS cap is a stand-in)
+- [x] ~~Column width as computed layout state~~ — projector measures each TROW run's per-column code-point maxima (`c_*_ccounts`), rows share one content-proportional grid; ragged/starved rows keep the equal split (2026-10-11, `nb_table_width_test.sh`)
 
 ## Todo — Milestone 1: block flow (readable article) — SUPERSEDED by Done above
 

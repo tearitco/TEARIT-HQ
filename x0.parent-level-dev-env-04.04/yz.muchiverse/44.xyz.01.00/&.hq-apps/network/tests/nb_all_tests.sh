@@ -32,6 +32,10 @@ echo "########## table columns (needs the browser)"
 sh "$HERE/nb_table_test.sh" || RC=1
 
 echo
+echo "########## table computed widths (hermetic: scratch manager + own fixture window)"
+sh "$HERE/nb_table_width_test.sh" || RC=1
+
+echo
 echo "########## history bound (needs the browser)"
 sh "$HERE/nb_history_test.sh" || RC=1
 
