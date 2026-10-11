@@ -4139,7 +4139,6 @@ static void append_rich_rows(void) {
     if (!pf) return;
     typedef struct { int is_link; char text[1024]; char url[PATH_BUF]; } Seg;
     static Seg segs[RICH_MAX_SEG + 1];
-    int nseg = 0, has_link = 0;
     char (*pending)[PATH_BUF + 512] = malloc(sizeof(*pending) * RICH_RUN_MAX);
     if (!pending) { fclose(pf); return; }
     int npend = 0;
