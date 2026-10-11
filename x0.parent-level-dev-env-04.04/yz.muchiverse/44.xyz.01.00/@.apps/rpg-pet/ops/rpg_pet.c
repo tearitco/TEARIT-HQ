@@ -117,6 +117,7 @@ static long now_ms(void) { struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &t
 /* ---------- small file helpers ---------- */
 static int read_file(const char *p, char *buf, size_t cap) { FILE *f = fopen(p, "r"); if (!f) { buf[0] = 0; return 0; } size_t n = fread(buf, 1, cap - 1, f); buf[n] = 0; fclose(f); return (int)n; }
 /* replace a file atomically, only when the bytes differ; returns 1 when written */
+static int g_scene_ver = 0;      /* bumped whenever the painted scene frame (state/scene.raw) changed: the board engine only redraws when woken, follow_pchq nudges it */
 static int write_if_changed(const char *p, const void *data, size_t n) {
     FILE *f = fopen(p, "rb");
     if (f) { fseek(f, 0, SEEK_END); long sz = ftell(f); if (sz == (long)n) { rewind(f); unsigned char *old = malloc(n ? n : 1); if (old && fread(old, 1, n, f) == n && !memcmp(old, data, n)) { free(old); fclose(f); return 0; } free(old); } fclose(f); }
@@ -469,7 +470,7 @@ static void clock_turn(void) { clock_paths(); if (!clock_ok() || !fexists(CFILE)
 /* ---------- outputs ---------- */
 static void out_all(const char *msg) {
     calc_view(); render();
-    char p[PATH_MAX]; spath(p, "scene.raw"); write_if_changed(p, fr, sizeof fr);
+    char p[PATH_MAX]; spath(p, "scene.raw"); if (write_if_changed(p, fr, sizeof fr)) g_scene_ver++;
     spath(p, "scene.receipt.txt"); { char b[64]; snprintf(b, sizeof b, "frame_w=%d\nframe_h=%d\n", FW, FH); write_if_changed(p, b, strlen(b)); }
     static char u[16384]; int o = 0;
 #define W(...) o += snprintf(u + o, sizeof u - o, __VA_ARGS__)
@@ -627,7 +628,7 @@ static void write_room_events(int r) {
     /* ascii_legend.txt: the ` (backtick) glyph view of this book. Rows are glyph|height|r|g|b|asset|name|char like terrain_legend.txt; events.txt carries a 10th column with each sprite's letter (@ = the trainer, the pet's lowercase initial) */
     static const char leg[] = "W|3|150|150|160|-|wall|#\nD|3|170|110|50|-|door|+\nT|2|50|150|60|-|tree|T\nf|1|190|150|90|-|furniture|&\n.|0|90|80|60|-|floor|.\n";
     snprintf(p, sizeof p, "%s/ascii_legend.txt", d); write_if_changed(p, leg, sizeof leg - 1);
-    { char bp[PATH_MAX]; snprintf(bp, sizeof bp, "%s/@.apps/piececraft-hq/pieces/system/maps/rpg-pet/view.pdl", HOUSE); static const char vw[] = "VIEW | cell_px | 48\n"; write_if_changed(bp, vw, sizeof vw - 1); }      /* the engine draws this book's 2D at rpg-pet's own 48 px tile (house desk_grid.pdl says 80) */
+    { char bp[PATH_MAX]; snprintf(bp, sizeof bp, "%s/@.apps/piececraft-hq/pieces/system/maps/rpg-pet/view.pdl", HOUSE); char vw[PATH_MAX + 160]; char sc[PATH_MAX]; spath(sc, "scene.raw"); int vn = snprintf(vw, sizeof vw, "VIEW | cell_px | 48\nVIEW | default_style | scene\nVIEW | scene_raw | %s\nVIEW | scene_w | %d\nVIEW | scene_h | %d\n", sc, FW, FH); write_if_changed(bp, vw, (size_t)vn); }      /* the engine draws this book's 2D at rpg-pet's own 48 px tile (house desk_grid.pdl says 80) */
     /* bar.txt: the bottom entities bar of the pc-hq board lists these (id<TAB>name<TAB>x<TAB>y<TAB>trigger), Harold first */
     char bb[2048]; int bo = 0, id = 1; if (tr.room == r) bo += snprintf(bb + bo, sizeof bb - bo, "%d\t%s\t%d\t%d\ton-click\n", id++, hero.name, tr.x, tr.y);
     for (int i = 0; i < nparty; i++) if (others[i].room == r) bo += snprintf(bb + bo, sizeof bb - bo, "%d\t%s\t%d\t%d\ton-click\n", id++, party[i].name, others[i].x, others[i].y);
@@ -678,6 +679,7 @@ static void follow_pchq(void) {
     if (!strcmp(dk, rooms[e->room].id)) lw = e->room;
     /* any pet/Harold stepping changes the sprites too: redraw when the events text changed (write_room_events reports via the checksum below) */
     static unsigned long ev_sum = 0; unsigned long s = 0; for (int i = 0; i < nparty; i++) s = s * 131 + (others[i].room * 97 + others[i].x * 31 + others[i].y * 7 + others[i].dir + others[i].steps % 3); s = s * 131 + tr.x * 31 + tr.y + tr.room; if (s != ev_sum) { ev_sum = s; changed = 1; } (void)ld;
+    { static int last_scene = -1; if (last_scene != g_scene_ver) { last_scene = g_scene_ver; changed = 1; } }      /* the painted scene changed (a sprite stepped, the tone changed): the engine shows it in its "scene" 2D style, so wake it */
     if (changed) {      /* nudge the LIVE engine session so it redraws (an idle engine only renders on input): every board window has its own ui.txt with bv_session=; the one whose session dir exists and whose ui.txt is the newest wins (a stale file points at a dead session). The nudge key is 126 (tilde), bound to nothing, so the view and camera are never touched (the old "1" is the POV key). */
         const char *cand[3] = {"@.apps/rpg-pet/board/state/ui.txt", "@.apps/piececraft-hq/state/ui.txt", "@.apps/layout-studio/sandbox/state/ui.txt"}; char best[PATH_MAX] = ""; time_t bt = 0;
         for (int k = 0; k < 3; k++) { char up[PATH_MAX], ub[1024], sess[PATH_MAX] = "", rp[PATH_MAX]; struct stat us; snprintf(up, sizeof up, "%s/%s", HOUSE, cand[k]); if (stat(up, &us)) continue; read_file(up, ub, sizeof ub);

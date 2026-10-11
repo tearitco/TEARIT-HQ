@@ -1089,6 +1089,31 @@ static int desk_map_png(char *path, size_t psz, int *tile_px) {
     return 1;
 }
 
+/* view_2d_style=scene: show a picture a GAME paints itself instead of drawing the book's tiles (rpg-pet: its own 660x430 frame with its sprite scaling and look, the one its standalone window shows).
+ * Everything comes from the book's view.pdl: "VIEW | scene_raw | <path to a raw RGBA file>", "VIEW | scene_w | N", "VIEW | scene_h | N", and "VIEW | default_style | scene" (the style used while bv_state.txt
+ * view_2d_style is empty, so a book can choose its own default 2D look; '\\' toggles scene <-> tiles, '0' back to 2D lands on the default). */
+static int view_pdl_get(const char *key, char *out, size_t osz) {
+    char dd[PATH_BUF], vp[PATH_BUF]; out[0] = 0; if (!desk_dir(dd, sizeof(dd))) return 0; char *sl = strrchr(dd, '/'); if (!sl) return 0; *sl = 0; snprintf(vp, sizeof(vp), "%s/view.pdl", dd);
+    FILE *vf = host_fopen(vp, "r"); if (!vf) return 0; char l[MAX_LINE]; size_t kl = strlen(key); int got = 0;
+    while (!got && fgets(l, sizeof(l), vf)) { char *p = strchr(l, '|'); if (!p) continue; p++; while (*p == ' ') p++; if (strncmp(p, key, kl) != 0) continue; p += kl; while (*p == ' ') p++; if (*p != '|') continue; p++; while (*p == ' ') p++;
+        size_t n = strcspn(p, "\r\n"); while (n && p[n - 1] == ' ') n--; if (n >= osz) n = osz - 1; memcpy(out, p, n); out[n] = 0; got = 1; }
+    fclose(vf); return got;
+}
+static int blit_scene(unsigned char *px, int W, int H) {
+    char path[PATH_BUF], b[32]; int sw = 0, sh = 0;
+    if (!view_pdl_get("scene_raw", path, sizeof(path)) || !path[0]) return 0;
+    if (view_pdl_get("scene_w", b, sizeof(b))) sw = atoi(b);
+    if (view_pdl_get("scene_h", b, sizeof(b))) sh = atoi(b);
+    if (sw < 16 || sh < 16 || sw > 4096 || sh > 4096) return 0;
+    size_t n = (size_t)sw * sh * 4; unsigned char *src = (unsigned char *)malloc(n); if (!src) return 0;
+    FILE *f = host_fopen(path, "rb"); if (!f) { free(src); return 0; }
+    size_t got = fread(src, 1, n, f); fclose(f); if (got != n) { free(src); return 0; }
+    int x0 = (W - sw) / 2, y0 = (H - sh) / 2;                  /* centred; a smaller window crops */
+    for (int y = 0; y < sh; y++) { int dy = y0 + y; if (dy < 0 || dy >= H) continue;
+        for (int x = 0; x < sw; x++) { int dx = x0 + x; if (dx < 0 || dx >= W) continue; const unsigned char *s = src + ((size_t)y * sw + x) * 4; unsigned char *d = px + ((size_t)dy * W + dx) * 4; d[0] = s[0]; d[1] = s[1]; d[2] = s[2]; d[3] = 255; } }
+    free(src); return 1;
+}
+
 int main(void) {
     resolve_root();
     load_house_root();
@@ -1223,6 +1248,20 @@ int main(void) {
      * the right/bottom edges too) */
     for (size_t i = 0; i < (size_t)W * H; i++) {
         px[i*4+0] = air_r; px[i*4+1] = air_g; px[i*4+2] = air_b; px[i*4+3] = 255;
+    }
+
+    {   /* view_2d_style=scene (the book's default while the style is unset, see view_pdl_get): a game-painted frame instead of the engine's tiles */
+        char sty[16] = ""; read_kv_str(st, "view_2d_style", sty, sizeof(sty));
+        if (!sty[0]) { char dsty[16]; if (view_pdl_get("default_style", dsty, sizeof(dsty))) snprintf(sty, sizeof(sty), "%s", dsty); }
+        if (!side_mode && strcmp(sty, "scene") == 0 && blit_scene(px, W, H)) {
+            char out[PATH_BUF], rec[PATH_BUF];
+            snprintf(out, sizeof(out), "%s/pieces/display/rgb_frame_2d.raw", project_root);
+            snprintf(rec, sizeof(rec), "%s/pieces/display/rgb_frame_2d.receipt.txt", project_root);
+            write_atomic(out, px, (size_t)W * H * 4);
+            { char rb[128]; int rn = snprintf(rb, sizeof(rb), "frame_w=%d\nframe_h=%d\n", W, H); if (rn > 0) write_atomic(rec, rb, (size_t)rn); }
+            free(px);
+            return 0;
+        }
     }
 
     #define VP_PXR(SX,SY) (px + ((size_t)(SY) * W + (SX)) * 4)

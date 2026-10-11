@@ -781,7 +781,19 @@ static int handle_one_key(int key) {
          * lands on tiles, never the Chinese/ascii view (that's '`').
          * Without this, once '`' has set view_2d_style=ascii it stays
          * ascii on every later '0' -> 2D. */
-        if (render_mode) write_kv(state_path, "view_2d_style", "tiles");
+        if (render_mode) write_kv(state_path, "view_2d_style", "");      /* empty = the book default 2D style (view.pdl VIEW | default_style), tiles for a book without one */
+        bump_screen_changed(project_root);
+        return 0;
+    }
+
+    /* backslash (92) - 2D style toggle between the book's own painted frame ("scene": view.pdl scene_raw, rpg-pet draws its own picture) and the engine's tiles. Always lands in 2D. A book with no
+     * scene file shows tiles either way. */
+    if (key == 92) {
+        char cur[16] = "";
+        read_kv_str(state_path, "view_2d_style", cur, sizeof(cur));
+        if (!cur[0]) snprintf(cur, sizeof(cur), "scene");          /* unset = the book default (scene for a book that ships one), so a first press goes to tiles */
+        write_kv_int(state_path, "render_mode", 0);
+        write_kv(state_path, "view_2d_style", strcmp(cur, "scene") == 0 ? "tiles" : "scene");
         bump_screen_changed(project_root);
         return 0;
     }
