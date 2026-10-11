@@ -200,3 +200,6 @@ INT (who the arrows drive) and TIME (how time moves) are now separate. One item 
 - Stop (Player > Stop) freezes everything in either mode. Code: `rogue_mode()`, `turn_mode()` = INT on AND rogue, used by `clock_sync()`, `end_turn()`, the daemon's pet timers and the step turn call.
 - Verified: rogue + INT on: pets and clock frozen over 10 s; live + INT on: pets walk and the clock ran 18:21 -> 18:33 in 12 s; the Player dropdown item toggled through the real window (relay Enter on the item: flag rogue -> live, label updated).
 - Open: Turn time with INT off is still live (pets walk); say if INT off + rogue should freeze pets instead.
+
+## Update: time tab last (2026-10-10)
+The game-clock tab (`${time_label}`) is the LAST tab of the top bar, after Player, like the pc-hq board toolbar (rpg-pet.xhtpm and, same change, pet-trainer.xhtpm). The Time dropdown items are unchanged; nav numbers shift by one (Shop 4, Menu 5, Player 6, time 7).

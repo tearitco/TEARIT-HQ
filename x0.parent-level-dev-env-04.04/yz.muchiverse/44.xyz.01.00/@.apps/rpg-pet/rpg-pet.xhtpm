@@ -10,10 +10,10 @@
       <tab id="tb-int" class="tab rp-tb ${interact_class}" label="INT ${interact_label}" relay="${rp_h1},${rp_h2}" onclick="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' int"/>
       <tab id="tb-book" class="tab rp-tb" label="${book_label} ▾" onclick="ACTIVATE" target_id="tb-book"/>
       <tab id="tb-page" class="tab rp-tb" label="${page_label} ▾" onclick="ACTIVATE" target_id="tb-page"/>
-      <tab id="tb-time" class="tab rp-tb" label="${time_label} ▾" onclick="ACTIVATE" target_id="tb-time"/>
       <tab id="tb-shop" class="tab rp-tb" label="Shop ▾" onclick="ACTIVATE" target_id="tb-shop"/>
       <tab id="tb-menu" class="tab rp-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
       <tab id="tb-player" class="tab rp-tb" label="Player ▾" onclick="ACTIVATE" target_id="tb-player"/>
+      <tab id="tb-time" class="tab rp-tb" label="${time_label} ▾" onclick="ACTIVATE" target_id="tb-time"/>
     </tabbar>
     <sidebar id="side" class="sidebar">
       <repeat count="${n_party}" bind="party">
