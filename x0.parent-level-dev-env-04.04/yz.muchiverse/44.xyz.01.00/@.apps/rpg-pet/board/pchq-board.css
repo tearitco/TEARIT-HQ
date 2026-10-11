@@ -2,7 +2,7 @@
  * MILESTONE A: sidebar+panel window (was flat has_canvas). The
  * X/!/_ chrome, taskbar entry and dropdowns now come from the generic
  * layout_sidebar_panel() path - no board-specific chrome CSS needed. */
-window { width: 1180px; height: 640px; background-color: #14161c; font-family: DejaVu Sans; font-size: 11px; }
+window { width: 1074px; height: 556px; background-color: #14161c; font-family: DejaVu Sans; font-size: 11px; }
 
 /* horizontal toolbar (tabbar) + its tab buttons */
 .pchq-toolbar { background-color: #181818; }
