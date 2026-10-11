@@ -120,9 +120,21 @@ static int write_if_changed(const char *p, const void *data, size_t n) {
     f = fopen(tmp, "wb"); if (!f) return 0; fwrite(data, 1, n, f); fclose(f); rename(tmp, p); return 1;
 }
 static void append_line(const char *name, const char *line) { char p[PATH_MAX]; spath(p, name); FILE *f = fopen(p, "a"); if (f) { fprintf(f, "%s\n", line); fclose(f); } }
-static void flag_str(const char *name, const char *def, char *out, size_t cap) { char p[PATH_MAX], n[64]; snprintf(n, sizeof n, "flag_%s.txt", name); spath(p, n); char b[64]; read_file(p, b, sizeof b); char *e = strchr(b, '\n'); if (e) *e = 0; snprintf(out, cap, "%s", b[0] ? b : def); }
+/* SWITCHES: "running" (Play / Stop) and "int" (INT on / off) live as switches in <app>/state/world/switches.txt ("name=1"), the file events-hq's control_switch command writes (the events/play,
+ * stop, int_on, int_off pages). flag_str() reads the switch first; set_flag() mirrors into it, so code that still sets the flag directly (Esc leaves INT) and the event pages stay one state. */
+static int sw_get(const char *name, char *out, size_t cap) {
+    char p[PATH_MAX], b[1024]; snprintf(p, sizeof p, "%s/world/switches.txt", ST); if (read_file(p, b, sizeof b) <= 0) return 0; size_t nl = strlen(name);
+    for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, name, nl) && l[nl] == '=') { snprintf(out, cap, "%s", l + nl + 1); return 1; } return 0;
+}
+static void sw_set(const char *name, const char *v) {
+    char p[PATH_MAX], d[PATH_MAX], b[1024], o[1100]; snprintf(d, sizeof d, "%s/world", ST); mkdir(d, 0755); snprintf(p, sizeof p, "%s/switches.txt", d); read_file(p, b, sizeof b); size_t nl = strlen(name); int n = 0, hit = 0;
+    for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, name, nl) && l[nl] == '=') { n += snprintf(o + n, sizeof o - n, "%s=%s\n", name, v); hit = 1; } else if (l[0]) n += snprintf(o + n, sizeof o - n, "%s\n", l); }
+    if (!hit) n += snprintf(o + n, sizeof o - n, "%s=%s\n", name, v); write_if_changed(p, o, (size_t)n);
+}
+static int is_switch_flag(const char *n) { return !strcmp(n, "running") || !strcmp(n, "int"); }
+static void flag_str(const char *name, const char *def, char *out, size_t cap) { if (is_switch_flag(name) && sw_get(name, out, cap) && out[0]) return; char p[PATH_MAX], n[64]; snprintf(n, sizeof n, "flag_%s.txt", name); spath(p, n); char b[64]; read_file(p, b, sizeof b); char *e = strchr(b, '\n'); if (e) *e = 0; snprintf(out, cap, "%s", b[0] ? b : def); }
 static int flag_on(const char *name, int def) { char b[16]; flag_str(name, def ? "1" : "0", b, sizeof b); return b[0] == '1'; }
-static void set_flag(const char *name, const char *v) { char p[PATH_MAX], n[64], b[80]; snprintf(n, sizeof n, "flag_%s.txt", name); spath(p, n); snprintf(b, sizeof b, "%s\n", v); write_if_changed(p, b, strlen(b)); }
+static void set_flag(const char *name, const char *v) { if (is_switch_flag(name)) sw_set(name, v); char p[PATH_MAX], n[64], b[80]; snprintf(n, sizeof n, "flag_%s.txt", name); spath(p, n); snprintf(b, sizeof b, "%s\n", v); write_if_changed(p, b, strlen(b)); }
 
 /* ---------- data: catalog.pdl, rooms.pdl, the RPG Maker DB party ---------- */
 static char *trim(char *s) { while (*s == ' ' || *s == '\t') s++; char *e = s + strlen(s); while (e > s && (e[-1] == ' ' || e[-1] == '\t' || e[-1] == '\n' || e[-1] == '\r')) *--e = 0; return s; }
@@ -684,6 +696,8 @@ static void clock_event(const char *ev);
 static void verb(int argc, char **argv, char *msg, size_t cap) {
     const char *v = argc ? argv[0] : "status"; long now = (long)time(NULL); char b[200]; msg[0] = 0; use_ent(active);
     if (!strcmp(v, "status")) return;
+    if (!strcmp(v, "sync")) { { char sb[8]; const char *nm[2] = {"running", "int"}; for (int k = 0; k < 2; k++) if (sw_get(nm[k], sb, sizeof sb) && sb[0]) { char fp[PATH_MAX], fn[64], fv[16]; snprintf(fn, sizeof fn, "flag_%s.txt", nm[k]); spath(fp, fn); snprintf(fv, sizeof fv, "%c\n", sb[0]); write_if_changed(fp, fv, strlen(fv)); } }      /* keep the old flag files in step with the switches */
+        clock_paths(); if (run_on()) clock_install(); clock_sync(); if (run_on()) lc_run(1, "daemon-start", NULL); snprintf(msg, cap, "synced"); return; }      /* the clock follows the running / int switches (the last node of the play and stop event pages) */
     if (!strcmp(v, "phase") && argc >= 2) { clock_event(argv[1]); snprintf(msg, cap, "phase %s", argv[1]); return; }
     if (!strcmp(v, "day_tick")) { clock_event("day_tick"); snprintf(msg, cap, "new day"); return; }
     if (!strcmp(v, "reset")) { char p[PATH_MAX], q[PATH_MAX]; spath(p, "house.txt"); snprintf(q, sizeof q, "%s/house.txt.%ld.bak", ST, now); if (fexists(p)) rename(p, q); snprintf(msg, cap, "house reset (the old ledger is kept as house.txt.%ld.bak)", now); return; }
@@ -717,8 +731,8 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
     if (!strcmp(v, "export3d")) { export3d(msg, cap); return; }
     if (!strcmp(v, "mode")) { int to_rogue = argc >= 2 ? !strcmp(argv[1], "rogue") : !rogue_mode(); set_flag("timemode", to_rogue ? "rogue" : "live"); clock_sync();
         snprintf(msg, cap, to_rogue ? "rogue: with INT on, time moves only when you act" : "live: time keeps running, even with INT on"); return; }
-    if (!strcmp(v, "play")) { set_flag("running", "1"); clock_paths(); clock_install(); clock_sync(); lc_run(1, "daemon-start", NULL); snprintf(msg, cap, "STARTED: the pets live, the clock runs"); return; }
-    if (!strcmp(v, "stop")) { set_flag("running", "0"); clock_sync(); snprintf(msg, cap, "STOPPED: everything is frozen (building and chat still work). Play resumes"); return; }
+    if (!strcmp(v, "play")) { if (!(run_event("play", "ui") && run_on())) { set_flag("running", "1"); clock_paths(); clock_install(); clock_sync(); lc_run(1, "daemon-start", NULL); } snprintf(msg, cap, "STARTED: the pets live, the clock runs"); return; }
+    if (!strcmp(v, "stop")) { if (!(run_event("stop", "ui") && !run_on())) { set_flag("running", "0"); clock_sync(); } snprintf(msg, cap, "STOPPED: everything is frozen (building and chat still work). Play resumes"); return; }
     if (!strcmp(v, "save") || !strcmp(v, "load")) {      /* slot copies of the state files (pets, trainer, ledger, relations, chat, flags, clock time) */
         int slot = argc >= 2 ? atoi(argv[1]) : 1; if (slot < 1 || slot > 9) slot = 1; int saving = !strcmp(v, "save"); char sd[PATH_MAX]; snprintf(sd, sizeof sd, "%s/slots", ST); mkdir(sd, 0755); snprintf(sd, sizeof sd, "%s/slots/%d", ST, slot); mkdir(sd, 0755);
         char names[40][48]; int nn = 0; snprintf(names[nn++], 48, "house.txt"); snprintf(names[nn++], 48, "trainer.txt"); snprintf(names[nn++], 48, "relations.txt"); snprintf(names[nn++], 48, "chat.txt"); snprintf(names[nn++], 48, "active.txt"); snprintf(names[nn++], 48, "daylight.txt"); snprintf(names[nn++], 48, "flag_ctl.txt"); snprintf(names[nn++], 48, "flag_follow.txt");
@@ -732,7 +746,7 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
     if (!strcmp(v, "clearchat")) { char p[PATH_MAX], q[PATH_MAX]; spath(p, "chat.txt"); snprintf(q, sizeof q, "%s/chat.txt.%ld.bak", ST, now); if (fexists(p)) rename(p, q); snprintf(msg, cap, "chat cleared (kept as chat.txt.%ld.bak)", now); return; }
     if (!strcmp(v, "toggle") && argc >= 2 && (!strcmp(argv[1], "chat") || !strcmp(argv[1], "hb") || !strcmp(argv[1], "voice"))) { set_flag(argv[1], flag_on(argv[1], !strcmp(argv[1], "voice")) ? "0" : "1"); snprintf(msg, cap, "%s toggled", argv[1]); return; }
     if (!strcmp(v, "view")) { char c[16]; flag_str("view", "2d", c, sizeof c); const char *n = !strcmp(c, "2d") ? "3d" : !strcmp(c, "3d") ? "glyph" : "2d"; set_flag("view", n); snprintf(msg, cap, "view %s (the picture is still 2D: 3D and the Chinese-glyph view are sprint items 7-8)", n); return; }
-    if (!strcmp(v, "int")) { int on = !flag_on("int", 0); set_flag("int", on ? "1" : "0"); char d[PATH_MAX]; snprintf(d, sizeof d, "%s/keyboard", ST); mkdir(d, 0755); char p[PATH_MAX]; spath(p, "interact_relay.txt"); FILE *f = fopen(p, "a"); if (f) fclose(f); snprintf(p, sizeof p, "%s/keyboard/history.txt", ST); f = fopen(p, "a"); if (f) fclose(f);
+    if (!strcmp(v, "int")) { int on = !flag_on("int", 0); if (!(run_event(on ? "int_on" : "int_off", "ui") && flag_on("int", 0) == on)) set_flag("int", on ? "1" : "0"); char d[PATH_MAX]; snprintf(d, sizeof d, "%s/keyboard", ST); mkdir(d, 0755); char p[PATH_MAX]; spath(p, "interact_relay.txt"); FILE *f = fopen(p, "a"); if (f) fclose(f); snprintf(p, sizeof p, "%s/keyboard/history.txt", ST); f = fopen(p, "a"); if (f) fclose(f);
         clock_sync(); if (on) { set_flag("follow", "pet"); calc_view(); }
         { char cc[16]; flag_str("ctl", "pet", cc, sizeof cc); snprintf(msg, cap, on ? "INT on: you control %s - turn based like a roguelike, time moves when you act, the other pets act on their own, Tab switches pet/player, Esc leaves" : "INT off: real time, every pet lives on its own", !strcmp(cc, "player") ? "the player" : party[active].name); } return; }
     if (!strcmp(v, "clock") && argc >= 2) { clock_paths(); if (!clock_ok()) { snprintf(msg, cap, "no livedesk clock binary"); return; } clock_install();
