@@ -645,10 +645,21 @@ static int kv_set_int(const char *path, const char *key, int val) {
 }
 static int g_pin_now = 0;      /* set when a followed step bumped: follow_pchq puts the xelector back on the monster at once */
 static void board_interact(int want, int force);
+/* The sun and moon of the 3D view (pieces/sun_01, moon_01) are a pure function of the pc-hq world clock: world_01/state.txt game_time_epoch_sec, turned into positions (and the sky light level) by the
+ * already running pc_clock_daemon. That clock is parked at noon (autotick_enabled=0), so they never moved. While the rpg-pet book is open rpg-pet publishes ITS game time there ("D55 15:41" in
+ * clock_ui.txt -> epoch = a midnight base + day * 86400 + h * 3600 + m * 60), so the sun and moon follow the same clock the phase events and the tint follow: sunrise at dawn, noon at 12:00, the moon
+ * opposite. Written only when the minute changes. */
+static void publish_sky(const char *wp) {
+    char p[PATH_MAX], b[1024]; spath(p, "clock_ui.txt"); if (read_file(p, b, sizeof b) <= 0) return; char *t = strstr(b, "time_label=D"); if (!t) return; int d = 0, h = 0, m = 0; if (sscanf(t + 12, "%d %d:%d", &d, &h, &m) != 3) return;
+    long long sec = 1767225600LL + (long long)d * 86400 + h * 3600 + m * 60; char v[40], v2[40]; snprintf(v, sizeof v, "%lld", sec); snprintf(v2, sizeof v2, "%lld", sec * 1000);
+    { char o[4096], x[4096]; read_file(wp, x, sizeof x); int n = 0, f1 = 0, f2 = 0; for (char *l = strtok(x, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "game_time_epoch_sec=", 20)) { n += snprintf(o + n, sizeof o - n, "game_time_epoch_sec=%s\n", v); f1 = 1; } else if (!strncmp(l, "game_time_epoch_ms=", 19)) { n += snprintf(o + n, sizeof o - n, "game_time_epoch_ms=%s\n", v2); f2 = 1; } else n += snprintf(o + n, sizeof o - n, "%s\n", l); }
+      if (!f1) n += snprintf(o + n, sizeof o - n, "game_time_epoch_sec=%s\n", v); if (!f2) n += snprintf(o + n, sizeof o - n, "game_time_epoch_ms=%s\n", v2); write_if_changed(wp, o, (size_t)n); }
+}
 static void follow_pchq(void) {
     char wp[PATH_MAX], xp[PATH_MAX], hp[PATH_MAX], m[64] = "", dk[64] = ""; snprintf(wp, sizeof wp, "%s/@.apps/piececraft-hq/pieces/world_01/state.txt", HOUSE);
     char wb[2048]; read_file(wp, wb, sizeof wb); for (char *l = strtok(wb, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "map_id=", 7)) snprintf(m, sizeof m, "%s", l + 7); else if (!strncmp(l, "desk_id=", 8)) snprintf(dk, sizeof dk, "%s", l + 8); }
     if (strcmp(m, "rpg-pet")) return;
+    publish_sky(wp);
     for (int r = 0; r < nroom; r++) write_room_events(r);
     { static unsigned long hs = 0; unsigned long s2 = 5381 + npl; for (int i = 0; i < npl; i++) s2 = s2 * 33 + pl[i].item * 131 + pl[i].x * 17 + pl[i].y * 7 + pl[i].room; if (s2 != hs) { hs = s2; for (int r = 0; r < nroom; r++) write_room_png(r); } }
     snprintf(xp, sizeof xp, "%s/@.apps/piececraft-hq/pieces/xelector_01/state.txt", HOUSE); snprintf(hp, sizeof hp, "%s/@.apps/piececraft-hq/pieces/hero_01/state.txt", HOUSE);
