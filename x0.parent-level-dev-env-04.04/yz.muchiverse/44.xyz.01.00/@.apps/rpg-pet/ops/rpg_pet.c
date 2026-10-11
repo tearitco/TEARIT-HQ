@@ -773,7 +773,9 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
         int sp = ctl_idx(), rep = active;      /* you speak AS the selected entity: Harold (sp<0) or the selected monster; a monster is answered by the nearest OTHER pet in its room */
         if (sp >= 0) { int best = -1, bd = 1 << 30; for (int j = 0; j < nparty; j++) if (j != sp && others[j].room == others[sp].room) { int d = abs(others[j].x - others[sp].x) + abs(others[j].y - others[sp].y); if (d < bd) { bd = d; best = j; } } rep = best; }
         g_speaker = sp < 0 ? hero.name : party[sp].name; say(g_speaker, text);
-        if (rep >= 0) { const char *rp = pet_reply(text); say(party[rep].name, rp); if (others[rep].room == vroom) speak_reply(rep); }
+        if (rep >= 0) { const char *rp = pet_reply(text); int on_screen = others[rep].room == vroom, done = 0;
+            if (g_rk >= 0 && g_rk < 4) { char ev[64], tg[16], en[200]; snprintf(ev, sizeof ev, "reply_%s", party[rep].id); snprintf(tg, sizeof tg, "t%d%d", g_rk, g_ry ? 1 : 0); snprintf(en, sizeof en, "RPG_OTHER='%s' RPG_SAY=1 RPG_SPEAK=%d", g_speaker, on_screen); done = run_event_x(ev, tg, en); }      /* topic answers are event pages (events/reply_<pet>); free text and the house count stay C */
+            if (!done) { say(party[rep].name, rp); if (on_screen) speak_reply(rep); } }
         turn_taken = 1; }
 }
 
