@@ -75,22 +75,15 @@ void load_output_text(const char *fn, OutputLayer *l, int vs) {
 }
 
 // Derive the trained-model directory from a curriculum file path:
-// curriculum/<Subject>/<Subject>.txt -> curriculum/<Subject>_train
+// curriculum/<Subject>/<Subject>.txt -> curriculum/<Subject>/
+// (trainer.c writes matrix files to the same directory as the vocab
+// file, not to a _train subdirectory — see trainer.c:173 output_dir =
+// dirname(vocab_filename). The old _train convention is obsolete.)
 void derive_train_dir(const char *curriculum_path, char *train_dir, int train_dir_size) {
-    char path_copy[MAX_LINE_LENGTH];
-    snprintf(path_copy, sizeof(path_copy), "%s", curriculum_path);
-    char *base = basename(path_copy);
-    char subject[MAX_LINE_LENGTH];
-    snprintf(subject, sizeof(subject), "%s", base);
-    char *dot = strrchr(subject, '.');
-    if (dot) *dot = '\0';
     char dir_copy[MAX_LINE_LENGTH];
     snprintf(dir_copy, sizeof(dir_copy), "%s", curriculum_path);
     char *dir = dirname(dir_copy);
-    char parent_copy[MAX_LINE_LENGTH];
-    snprintf(parent_copy, sizeof(parent_copy), "%s", dir);
-    char *parent = dirname(parent_copy);
-    snprintf(train_dir, train_dir_size, "%s/%s_train", parent, subject);
+    snprintf(train_dir, train_dir_size, "%s", dir);
 }
 
 // Load all trained model files for one curriculum
