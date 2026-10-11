@@ -1,5 +1,6 @@
 #!/bin/bash
-# nb_span_digit_test.sh - pins INLINE SPAN step-9 digit slots.
+# nb_span_digit_test.sh - pins INLINE SPAN step-9 digit slots and step-12
+# dot-addressing.
 #
 # Digits address ROWS - always - unless the segment cursor is already
 # active on the focused row (entered with Right), in which case digits
@@ -7,6 +8,10 @@
 # row-level like Escape, out-of-range digits hold the cursor (an
 # overshoot must not yank focus to another row). Consumed digits reset
 # the row accumulator so they cannot leak into a later row number.
+#
+# A '.' arms link entry for the very next digit ("5.2" addresses row
+# 5's link 2 with no Right entry): one-shot, voided by any other key,
+# miss-safe (ignored, never a row jump), single digits only.
 #
 # Hermetic: own fixture window (an item row with an action, a 3-link
 # segments row, a plain row), actions append to click.log - arrival of
@@ -19,6 +24,10 @@
 #   B. <nav-r2> Right 3 Enter    -> LINK3  (direct select, no walking)
 #   C. <nav-r2> Right 1 9 Enter  -> LINK1  (overshoot holds)
 #   D. <nav-r2> Right 2 0 Enter  -> nothing (0 drops; text-row Enter is a no-op)
+#   E. <nav-r2> . 2 Enter        -> LINK2  (dot-addressing, no entry)
+#   F. <nav-r2> . 9 Enter        -> nothing (miss safe); <nav-r1> Enter
+#      -> ROW1 (disarmed, accumulator fresh)
+#   G. <nav-r1> . 2 Enter        -> ROW1 (dot on a plain row harmless)
 #
 # Usage: sh nb_span_digit_test.sh
 set -u
@@ -146,6 +155,36 @@ AFTER_D="$(wc -l < "$WORK/click.log")"
 [ "$AFTER_D" = "$BEFORE_D" ] \
     && note "D: Right+2+0+Enter dispatched nothing (cursor dropped)" \
     || fail "D: expected silence (log: $(cat "$WORK/click.log" 2>/dev/null))"
+
+# E. dot-addressing: focus, dot, digit jumps straight to the link.
+send 27; digits "$R2N"; send 46 50 13
+grep -q 'CLICKED LINK2' "$WORK/click.log" 2>/dev/null \
+    && note "E: dot+2+Enter dispatched LINK2 (no Right entry)" \
+    || fail "E: expected LINK2 (log: $(cat "$WORK/click.log" 2>/dev/null))"
+
+# F. miss-safe: dot+9 on a 3-link row dispatches nothing, disarms, and
+# leaves the accumulator fresh (next digit row-jumps normally).
+BEFORE_F="$(wc -l < "$WORK/click.log")"
+send 27; digits "$R2N"; send 46 57 13
+sleep 1
+[ "$(wc -l < "$WORK/click.log")" = "$BEFORE_F" ] \
+    && note "F: dot+9+Enter dispatched nothing (miss safe)" \
+    || fail "F: miss dispatched (log: $(cat "$WORK/click.log" 2>/dev/null))"
+digits "$R1N"; send 13
+grep -q 'CLICKED ROW1' "$WORK/click.log" 2>/dev/null \
+    && note "F: digit after a miss row-jumps (disarmed, fresh accum)" \
+    || fail "F: expected ROW1 (log: $(cat "$WORK/click.log" 2>/dev/null))"
+
+# G. dot on a plain row: miss, Enter activates the row itself.
+send 27; digits "$R1N"; send 46 50 13
+NROW1="$(grep -c 'CLICKED ROW1' "$WORK/click.log" 2>/dev/null || echo 0)"
+[ "$NROW1" -ge 2 ] \
+    && note "G: dot+2 on a plain row fell through to ROW1" \
+    || fail "G: expected ROW1 (log: $(cat "$WORK/click.log" 2>/dev/null))"
+if grep -q 'CLICKED LINK2' "$WORK/click.log" 2>/dev/null; then
+    NL2="$(grep -c 'CLICKED LINK2' "$WORK/click.log")"
+    [ "$NL2" = 1 ] || fail "G: dot on plain row dispatched a link"
+fi
 
 kill $RPID 2>/dev/null
 sleep 1

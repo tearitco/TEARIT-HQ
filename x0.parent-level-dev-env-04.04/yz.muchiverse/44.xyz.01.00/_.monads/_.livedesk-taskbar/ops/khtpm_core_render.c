@@ -2438,6 +2438,13 @@ static int g_win_top_y = 90;   /* == WM_MANAGED_DRAG_MIN_Y (defined below) */
  * digit-jump is in khtpm_strip_parser.c / khtpm_taskbar_manager.c -
  * a separate fix if it regressed there too. */
 static int g_nav_digit_accum = 0;
+/* INLINE SPANS step 12 (dot-addressing, 2026-10-11): '.' arms link
+ * entry for the very next digit ("5.2" addresses row 5's link 2
+ * without entering the cursor first). One-shot and invisible: any
+ * non-digit key voids it (see handle_key's entry), a digit consumes
+ * it hit or miss, and clicks/reparse clear it with the anchor. Single
+ * digits only (1-9; walk covers longer rows). */
+static int g_seg_dot_armed = 0;
 /* Digits to echo next to the focus mark (nve_text, khtpm_nav_echo.c). Two
  * sources feed the same box: a REAL key typed into this window lands in
  * g_nav_digit_accum (found 2026-10-05 from the owner's report "not seeing the
@@ -2910,6 +2917,9 @@ static int reparse_chtpm_if_changed(void) {
     /* INLINE SPANS step 10: the anchor borrows the cursor's identity -
      * a rebuild invalidates it identically. */
     g_seg_anchor = -1;
+    /* INLINE SPANS step 12: dot-armed entry is one-shot intent, not
+     * state that survives a rebuild. */
+    g_seg_dot_armed = 0;
     /* INLINE SPANS step 8: hover names the same per-window triple - a
      * rebuild invalidates it identically. */
     g_hover_nav = 0;
@@ -11495,6 +11505,12 @@ static void dock_nav_step(int dir) {
 }
 
 static void handle_key(KeySym ks, char ch) {
+    /* INLINE SPANS step 12: dot-armed link entry voids on any key but
+     * the addressing digit itself or a re-arming dot. First statement,
+     * so modal early-returns (confirm, close-combo, armed fields,
+     * grids, arrows, Enter, Esc) all void uniformly - an armed dot
+     * never survives past the key that follows it. */
+    if (!(ch >= '0' && ch <= '9') && ch != '.') g_seg_dot_armed = 0;
     if (g_confirm_action[0]) {   /* a confirm popup is up: it eats the next key. Enter / y = yes, anything else = no. */
         char act[sizeof(g_confirm_action)];
         int yes = (ks == XK_Return || ks == XK_KP_Enter || ch == 13 || ch == 'y' || ch == 'Y');
@@ -11854,13 +11870,47 @@ static void handle_key(KeySym ks, char ch) {
             g_default_scrolllist_scroll += dir;
         return;
     }
+    /* INLINE SPANS step 12: '.' arms link entry for the next digit
+     * ("5.2"). Consumed here (a no-op like any unhandled key today);
+     * armed fields and grids return before this point, so typed dots
+     * still reach them as text. */
+    if (ch == '.') {
+        g_seg_dot_armed = 1;
+        return;
+    }
     if (ch >= '0' && ch <= '9') {
         int d = ch - '0';
         if (g_dock_drop_lo && g_default_active_scope_id[0]) {
             /* dock drop-zone: single-digit only, unchanged */
             g_nav_digit_accum = 0;
+            g_seg_dot_armed = 0; /* step 12: modal digits void a stale arm */
             int idx = g_dock_drop_lo + d - 1;
             if (idx >= g_dock_drop_lo && idx <= g_dock_drop_hi) g_focus_nav = idx;
+            return;
+        }
+        /* INLINE SPANS step 12: a dot-armed digit addresses the focused
+         * row's link directly (no Right-entry needed). One-shot either
+         * way: a miss is ignored with the accumulator reset (never a
+         * row jump - the digit was meant as a link), so recovery is
+         * just re-dotting. Same actionable domain as walk/digits. */
+        if (g_seg_dot_armed) {
+            g_seg_dot_armed = 0;
+            if (g_focus_nav >= 1 && g_focus_nav <= g_n_nav) {
+                Elem *df = g_nav[g_focus_nav - 1];
+                if (df && df->segments[0]) {
+                    int dn = seg_actionable_count(df);
+                    if (d >= 1 && d <= dn) {
+                        g_seg_nav = df->nav_index;
+                        g_seg_idx = d - 1;
+                        snprintf(g_seg_id, sizeof(g_seg_id), "%s", df->id);
+                        g_seg_anchor = -1;
+                        g_nav_digit_accum = 0;
+                        redraw();
+                        return;
+                    }
+                }
+            }
+            g_nav_digit_accum = 0;
             return;
         }
         /* INLINE SPANS step 9 (digit slots, 2026-10-11): while the
@@ -13486,6 +13536,9 @@ static void popup_handle_click(int px, int py) {
      * focused row (where the cursor, and hence a stale range, would
      * otherwise survive). */
     g_seg_anchor = -1;
+    /* INLINE SPANS step 12: a click voids a dot-armed entry too (the
+     * user clicked instead of addressing). */
+    g_seg_dot_armed = 0;
     /* REAL, NEW 2026-08-29 (direct instruction: "i think whole house
      * should have the same single|doubleclick rule or it could be
      * confusing... it should be house wide if possible/ez") - same

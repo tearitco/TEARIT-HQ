@@ -1,5 +1,17 @@
 # INLINE SPANS — PHASE 2 HANDOFF (written 2026-10-08)
 
+> **ADDENDUM 2026-10-11 — step 12 (dot-addressing) landed.**
+> `5.2` addresses row 5's link 2 with no Right entry: `.` (no hotkey
+> today, pure no-op unarmed) arms link entry for the very next digit.
+> One-shot and invisible: any non-digit voids it (first statement of
+> handle_key, so modal early-returns all void uniformly), a digit
+> consumes it hit or miss (misses are ignored, never row jumps -
+> recovery is re-dotting), clicks and reparse clear it. Single digits
+> only (walk covers longer rows); physical and relay identical (code
+> 46). The full per-segment nav renumbering stays future (it renumbers
+> the house). Test: E/F/G steps in `nb_span_digit_test.sh` (same
+> fixture, nav from the frame).
+
 > **ADDENDUM 2026-10-11 — step 11 (mouse drag-select) landed.**
 > A real button-1 press on a link span ARMS a deferred click instead of
 > dispatching: release on the same link completes it, motion past 6px
