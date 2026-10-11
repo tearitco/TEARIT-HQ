@@ -54,6 +54,7 @@
       <row id="side-l" class="canvas-overlay-left ov-pin ov-chrome pchq-hotbar theme" show="${side_left}">
         <text label="pets - coins ${coins}" class="hb-quiet ov-title theme-3"/>
         <item id="sl-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/rpg-pet/board/state/sides.txt' side_left hide"/>
+        <text id="light" label="${run_label}" class="${run_cls}"/>
         <text label="${nick_line}" class="ph-quiet"/>
         <text label="${stat_line}" class="ph-quiet"/>
         <text label="${stat_line2}" class="ph-quiet"/>

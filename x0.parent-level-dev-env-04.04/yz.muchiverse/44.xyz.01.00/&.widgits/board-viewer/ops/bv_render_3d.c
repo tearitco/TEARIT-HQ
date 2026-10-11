@@ -346,13 +346,49 @@ typedef struct {
     /* Parallax sky. parallax.rgba is raw RGBA8, size in parallax.pdl.
      * NULL when this desk has show=0. sx/sy are not applied. */
     unsigned char *para;
-    int para_w, para_h, para_lx, para_ly;
+    int para_w, para_h, para_lx, para_ly, para_ver;
+    long para_stamp;
     /* Visible map events (events.txt). Capped: the GPU scene holds 128
      * boxes and the selector, hero and range wires share that list. */
     struct { int x, y, r, g, b, index, dir, pat; char name[40]; } ev[96];
     int ev_n;
 } MakerAtlas;
 static MakerAtlas g_mk;
+
+/* The parallax sky of a painted desk: parallax.pdl (show, width, height, loop_x, loop_y, stamp) + parallax.rgba (raw RGBA8). A missing file leaves the old flat sky colour.
+ * Called at load and again every frame: a changed `stamp` row (rpg-pet bumps it when its day / night phase changes the sky picture) reloads the pixels and bumps para_ver so the
+ * GPU path re-uploads the texture; with no stamp (TSOTS) nothing is re-read after the load. */
+static void maker_read_parallax(const char *dir) {
+    char path[4400], line[256]; int pshow = 0, pw = 0, ph = 0, lx = 0, ly = 0; long stamp = 0;
+    snprintf(path, sizeof(path), "%s/parallax.pdl", dir);
+    FILE *f = fopen(path, "r");
+    if (f) {
+        while (fgets(line, sizeof(line), f)) {
+            char *bar = strrchr(line, '|');
+            if (!bar) continue;
+            if (strstr(line, "show")) pshow = atoi(bar + 1);
+            else if (strstr(line, "loop_x")) lx = atoi(bar + 1);
+            else if (strstr(line, "loop_y")) ly = atoi(bar + 1);
+            else if (strstr(line, "width")) pw = atoi(bar + 1);
+            else if (strstr(line, "height")) ph = atoi(bar + 1);
+            else if (strstr(line, "stamp")) stamp = atol(bar + 1);
+        }
+        fclose(f);
+    }
+    if (g_mk.para_stamp != -1 && stamp == g_mk.para_stamp) return;      /* unchanged since the last read (-1 = the first read of this desk) */
+    g_mk.para_stamp = stamp; free(g_mk.para); g_mk.para = NULL; g_mk.para_w = g_mk.para_h = 0; g_mk.para_lx = lx; g_mk.para_ly = ly; g_mk.para_ver++;
+    if (pshow == 1 && pw > 0 && ph > 0 && pw <= 4096 && ph <= 4096) {
+        snprintf(path, sizeof(path), "%s/parallax.rgba", dir);
+        f = fopen(path, "rb");
+        size_t pn = (size_t)pw * (size_t)ph * 4;
+        if (f) {
+            g_mk.para = (unsigned char *)malloc(pn);
+            if (g_mk.para && fread(g_mk.para, 1, pn, f) == pn) { g_mk.para_w = pw; g_mk.para_h = ph; }
+            else { free(g_mk.para); g_mk.para = NULL; }
+            fclose(f);
+        }
+    }
+}
 
 /* Map events (events.txt): x y r g b charset index direction pattern. Colour is the frame center; the charset name is for the 2D blit and the frame file lookup; the box uses r g b.
  * First 96 only. Re-read EVERY frame (the file is tiny): rpg-pet rewrites it as its monsters walk, and the old read-once-per-desk cache froze the sprites while the selector kept moving
@@ -431,38 +467,7 @@ static int maker_load(const char *root) {
     g_mk.atlas = (unsigned char *)malloc(need);
     if (!g_mk.atlas || fread(g_mk.atlas, 1, need, f) != need) { fclose(f); return 0; }
     fclose(f);
-    /* Sky is optional. A missing file leaves the old flat sky colour. */
-    snprintf(path, sizeof(path), "%s/parallax.pdl", dir);
-    f = fopen(path, "r");
-    int pshow = 0, pw = 0, ph = 0;
-    if (f) {
-        while (fgets(line, sizeof(line), f)) {
-            char *bar = strrchr(line, '|');
-            if (!bar) continue;
-            if (strstr(line, "show")) pshow = atoi(bar + 1);
-            else if (strstr(line, "loop_x")) g_mk.para_lx = atoi(bar + 1);
-            else if (strstr(line, "loop_y")) g_mk.para_ly = atoi(bar + 1);
-            else if (strstr(line, "width")) pw = atoi(bar + 1);
-            else if (strstr(line, "height")) ph = atoi(bar + 1);
-        }
-        fclose(f);
-    }
-    if (pshow == 1 && pw > 0 && ph > 0 && pw <= 4096 && ph <= 4096) {
-        snprintf(path, sizeof(path), "%s/parallax.rgba", dir);
-        f = fopen(path, "rb");
-        size_t pn = (size_t)pw * (size_t)ph * 4;
-        if (f) {
-            g_mk.para = (unsigned char *)malloc(pn);
-            if (g_mk.para && fread(g_mk.para, 1, pn, f) == pn) {
-                g_mk.para_w = pw;
-                g_mk.para_h = ph;
-            } else {
-                free(g_mk.para);
-                g_mk.para = NULL;
-            }
-            fclose(f);
-        }
-    }
+    g_mk.para_stamp = -1; maker_read_parallax(dir);
     maker_read_events(dir);
     g_mk.ok = 1;
     return 1;
@@ -3540,7 +3545,7 @@ static int render_one_frame(void) {
             sc.cells = cropped ? view_cells : g_mk.cells;
             sc.cells_w = vww; sc.cells_h = vwh;
             sc.para = g_mk.para; sc.para_w = g_mk.para_w; sc.para_h = g_mk.para_h;
-            sc.para_loop_x = g_mk.para_lx; sc.para_loop_y = g_mk.para_ly;
+            sc.para_loop_x = g_mk.para_lx; sc.para_loop_y = g_mk.para_ly; sc.para_ver = g_mk.para_ver;
         }
         double ll = lighting_enabled ? game_light_level_sky : 1.0;
         if (ll < 0.15) ll = 0.15;
@@ -3642,6 +3647,7 @@ static int render_one_frame(void) {
                 int hm = -1;
                 char key[64];
                 snprintf(key, sizeof(key), "%s_%d_%d_%d",
+            maker_read_events(g_mk.key); maker_read_parallax(g_mk.key);
             maker_read_events(g_mk.key);
                          g_mk.ev[i].name, g_mk.ev[i].index, g_mk.ev[i].dir, g_mk.ev[i].pat);
                 for (int k = 0; k < used_n; k++)
