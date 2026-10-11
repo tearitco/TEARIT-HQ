@@ -513,6 +513,48 @@ static void write_frame(const char *sh, int idx, int dir4, int pat) {
     for (int y = 0; y < 24; y++) for (int x = 0; x < 16; x++) { int px = sx + x * pw / 16, py = sy + y * ph / 24; memcpy(out + (y * 16 + x) * 4, s->px + ((size_t)py * s->w + px) * 4, 4); }
     FILE *f = fopen(p, "wb"); if (f) { fwrite(out, 1, sizeof out, f); fclose(f); }
 }
+/* the average-ish colour of a sprite frame (the 3D box fallback colour in events.txt): the centre pixel of the frame */
+static void frame_rgb(Sheet *s, int idx, int dir4, unsigned char *px) {
+    if (!s) return; int fx = (idx % 4) * 3 * T + T + T / 2, fy = (idx / 4) * 4 * T + dir4 * T + T / 2; if (fx < s->w && fy < s->h) memcpy(px, s->px + ((size_t)fy * s->w + fx) * 4, 4);
+}
+/* events.txt of one room for the 3D book: one row per monster / Harold in it, "x y r g b charset index dir pattern" (dir 2/4/6/8, pattern 0-2 = the walk frame, from the step count),
+ * plus the 16x24 frame file for that exact facing and pattern. Rewritten only when the text changes (atomic tmp+rename in write_if_changed). */
+static void write_room_events(int r) {
+    char d[PATH_MAX], p[PATH_MAX], buf[4096]; int o = 0; static const int dc[4] = {2, 4, 6, 8};
+    snprintf(d, sizeof d, "%s/@.apps/piececraft-hq/pieces/system/maps/rpg-pet/%s", HOUSE, rooms[r].id); mkdir(d, 0755);
+    for (int i = 0; i < nparty; i++) if (others[i].room == r) { int pat = others[i].steps % 3; write_frame(party[i].sheet, party[i].idx, others[i].dir, pat); unsigned char px[4] = {128, 128, 128, 255}; frame_rgb(sheet("characters", party[i].sheet), party[i].idx, others[i].dir & 3, px);
+        o += snprintf(buf + o, sizeof buf - o, "%d %d %d %d %d %s %d %d %d\n", others[i].x, others[i].y, px[0], px[1], px[2], party[i].sheet, party[i].idx, dc[others[i].dir & 3], pat); }
+    if (tr.room == r) { int pat = tr.steps % 3; write_frame(hero.sheet, 0, tr.dir, pat); unsigned char px[4] = {200, 60, 60, 255}; frame_rgb(sheet("characters", hero.sheet), 0, tr.dir & 3, px);
+        o += snprintf(buf + o, sizeof buf - o, "%d %d %d %d %d %s 0 %d %d\n", tr.x, tr.y, px[0], px[1], px[2], hero.sheet, dc[tr.dir & 3], pat); }
+    snprintf(p, sizeof p, "%s/events.txt", d); write_if_changed(p, buf, o);
+}
+/* ---------- the pc-hq 3D view follows the SELECTED entity ----------
+ * pc-hq's camera (modes 1 and 2) anchors on the xelector's pos_x/pos_y, and for a painted map the renderer stands the xelector on the floor as the same box as a sprite. So following is state files:
+ * @.apps/piececraft-hq/pieces/xelector_01/state.txt and hero_01/state.txt get the selected entity's cell, the pc-hq desk is switched (inbox CONFIRM_SET_DESK) when it changes room, and the
+ * board-viewer session is nudged to redraw (append to its interact_relay.txt: code 1 is unbound, a pure "render now"). Only when the selected entity's room/cell/facing changed, so a
+ * human driving the pc-hq xelector by hand between steps is not fought. Does nothing unless pc-hq has the rpg-pet book open. */
+static int kv_set_int(const char *path, const char *key, int val) {
+    char b[8192]; int n = read_file(path, b, sizeof b); if (n <= 0) return 0; char out[8300]; int o = 0, found = 0; size_t kl = strlen(key);
+    for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, key, kl) && l[kl] == '=') { o += snprintf(out + o, sizeof out - o, "%s=%d\n", key, val); found = 1; } else o += snprintf(out + o, sizeof out - o, "%s\n", l); }
+    if (!found) o += snprintf(out + o, sizeof out - o, "%s=%d\n", key, val); return write_if_changed(path, out, o);
+}
+static void follow_pchq(void) {
+    char wp[PATH_MAX], xp[PATH_MAX], hp[PATH_MAX], m[64] = "", dk[64] = ""; snprintf(wp, sizeof wp, "%s/@.apps/piececraft-hq/pieces/world_01/state.txt", HOUSE);
+    char wb[2048]; read_file(wp, wb, sizeof wb); for (char *l = strtok(wb, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "map_id=", 7)) snprintf(m, sizeof m, "%s", l + 7); else if (!strncmp(l, "desk_id=", 8)) snprintf(dk, sizeof dk, "%s", l + 8); }
+    if (strcmp(m, "rpg-pet")) return;
+    for (int r = 0; r < nroom; r++) write_room_events(r);
+    snprintf(xp, sizeof xp, "%s/@.apps/piececraft-hq/pieces/xelector_01/state.txt", HOUSE); snprintf(hp, sizeof hp, "%s/@.apps/piececraft-hq/pieces/hero_01/state.txt", HOUSE);
+    int ci = ctl_idx(); Ent *e = ci < 0 ? &tr : &others[ci]; static int lr = -1, lx = -1, ly = -1, ld = -1, lw = -1; int changed = 0;
+    if (e->room != lr || e->x != lx || e->y != ly) { lr = e->room; lx = e->x; ly = e->y; changed = 1;
+        kv_set_int(xp, "pos_x", e->x); kv_set_int(xp, "pos_y", e->y); kv_set_int(hp, "pos_x", e->x); kv_set_int(hp, "pos_y", e->y); }
+    if (strcmp(dk, rooms[e->room].id) && lw != e->room) { lw = e->room; char ib[PATH_MAX], c[96]; snprintf(ib, sizeof ib, "%s/@.apps/piececraft-hq/pieces/system/widget_cmds/inbox.txt", HOUSE); snprintf(c, sizeof c, "CONFIRM_SET_DESK:%s", rooms[e->room].id); FILE *f = fopen(ib, "a"); if (f) { fprintf(f, "%s\n", c); fclose(f); } changed = 1; }
+    if (!strcmp(dk, rooms[e->room].id)) lw = e->room;
+    /* any pet/Harold stepping changes the sprites too: redraw when the events text changed (write_room_events reports via the checksum below) */
+    static unsigned long ev_sum = 0; unsigned long s = 0; for (int i = 0; i < nparty; i++) s = s * 131 + (others[i].room * 97 + others[i].x * 31 + others[i].y * 7 + others[i].dir + others[i].steps % 3); s = s * 131 + tr.x * 31 + tr.y + tr.room; if (s != ev_sum) { ev_sum = s; changed = 1; } (void)ld;
+    if (changed) { char up[PATH_MAX], ub[1024], sess[PATH_MAX] = ""; snprintf(up, sizeof up, "%s/@.apps/piececraft-hq/state/ui.txt", HOUSE); read_file(up, ub, sizeof ub);
+        for (char *l = strtok(ub, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "bv_session=", 11)) snprintf(sess, sizeof sess, "%s", l + 11);
+        if (sess[0]) { char rp[PATH_MAX]; snprintf(rp, sizeof rp, "%s/pieces/apps/player_app/interact_relay.txt", sess); if (fexists(rp)) { FILE *f = fopen(rp, "a"); if (f) { fputs("1\n", f); fclose(f); } } } }
+}
 static void export3d(char *msg, size_t cap) {
     char root[PATH_MAX], d[PATH_MAX], p[PATH_MAX]; snprintf(root, sizeof root, "%s/@.apps/piececraft-hq/pieces/system/maps/rpg-pet", HOUSE);
     { char a[PATH_MAX]; snprintf(a, sizeof a, "%s/@.apps/piececraft-hq/pieces/system/maps", HOUSE); mkdir(a, 0755); } mkdir(root, 0755);
@@ -544,10 +586,7 @@ static void export3d(char *msg, size_t cap) {
         for (int i = 0; i < nslot; i++) for (int y = 0; y < XT; y++) memcpy(atlas + ((size_t)((i / cols) * XT + y) * aw + (i % cols) * XT) * 4, slotpx[i] + y * XT * 4, XT * 4);
         snprintf(p, sizeof p, "%s/cells.rgba", d); { FILE *f = fopen(p, "wb"); if (f) { fwrite(atlas, 1, (size_t)aw * ah * 4, f); fclose(f); } } snprintf(p, sizeof p, "%s/cells.png", d); stbi_write_png(p, aw, ah, 4, atlas, aw * 4); free(atlas);
         snprintf(p, sizeof p, "%s/cells.txt", d); { FILE *f = fopen(p, "w"); if (f) { fprintf(f, "width=%d\nheight=%d\ntile_px=%d\natlas_cols=16\natlas_tiles=%d\ncells\n", COLS, ROWS, XT, nslot); for (int y = 0; y < ROWS; y++) { for (int x = 0; x < COLS; x++) fprintf(f, "%s%d,%d", x ? " " : "", fs[y][x], ws[y][x]); fputc('\n', f); } fclose(f); } }
-        snprintf(p, sizeof p, "%s/events.txt", d); { FILE *f = fopen(p, "w"); if (f) { int dc[4] = {2, 4, 6, 8};
-            for (int i = 0; i < nparty; i++) if (others[i].room == r) { write_frame(party[i].sheet, party[i].idx, others[i].dir, 1); Sheet *s = sheet("characters", party[i].sheet); int ci = party[i].idx; unsigned char px[4] = {128, 128, 128, 255}; if (s) { int fx = (ci % 4) * 3 * T + T + T / 2, fy = (ci / 4) * 4 * T + others[i].dir * T + T / 2; if (fx < s->w && fy < s->h) memcpy(px, s->px + ((size_t)fy * s->w + fx) * 4, 4); } fprintf(f, "%d %d %d %d %d %s %d %d 1\n", others[i].x, others[i].y, px[0], px[1], px[2], party[i].sheet, ci, dc[others[i].dir & 3]); }
-            if (tr.room == r) { write_frame(hero.sheet, 0, tr.dir, 1); Sheet *s = sheet("characters", hero.sheet); unsigned char px[4] = {200, 60, 60, 255}; if (s) { int fx = T + T / 2, fy = tr.dir * T + T / 2; memcpy(px, s->px + ((size_t)fy * s->w + fx) * 4, 4); } fprintf(f, "%d %d %d %d %d %s 0 %d 1\n", tr.x, tr.y, px[0], px[1], px[2], hero.sheet, dc[tr.dir & 3]); }
-            fclose(f); } }
+        write_room_events(r);
     }
     snprintf(p, sizeof p, "%s/game.pdl", root); { FILE *f = fopen(p, "w"); if (f) { fputs(gl, f); fclose(f); } }
     snprintf(msg, cap, "exported %d rooms as a pc-hq book: maps/rpg-pet (open it in pc-hq: Desk > rpg-pet, then 1-4 / 0 for 3D)", nroom);
@@ -664,6 +703,7 @@ static int daemon_main(void) {
         if (ms - last_ui > 3000) { last_ui = ms; clock_paths(); clock_ui(); }
         { char dp[PATH_MAX], db[40]; spath(dp, "daylight.txt"); read_file(dp, db, sizeof db); if (strcmp(db, lastday)) { snprintf(lastday, sizeof lastday, "%s", db); dirty = 1; } }
         if (dirty) { replay(); out_all(msg); }    /* nothing changed -> nothing rendered, nothing written, nothing repainted */
+        follow_pchq();                            /* the pc-hq 3D view (if open on the rpg-pet book) follows the selected entity; writes only on change */
     }
     clock_stop();
     return 0;
