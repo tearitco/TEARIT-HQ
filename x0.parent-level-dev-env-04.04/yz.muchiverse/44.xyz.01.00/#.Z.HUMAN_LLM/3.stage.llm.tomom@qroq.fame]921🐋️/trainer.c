@@ -11,8 +11,8 @@
 
 #define MAX_LINE_LENGTH 1024
 #define MAX_VOCAB_SIZE 100000
-#define EMBEDDING_DIM 7
-#define HIDDEN_DIM 16
+#define EMBEDDING_DIM 16
+#define HIDDEN_DIM 32
 
 // --- Configuration Structure ---
 typedef struct {

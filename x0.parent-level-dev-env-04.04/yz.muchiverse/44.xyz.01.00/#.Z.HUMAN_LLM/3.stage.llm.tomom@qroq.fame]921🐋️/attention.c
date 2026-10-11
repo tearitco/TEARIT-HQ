@@ -6,7 +6,7 @@
 #include <libgen.h>
 
 #define MAX_VOCAB_SIZE 100000
-#define EMBEDDING_DIM 7
+#define EMBEDDING_DIM 16
 
 // Structure to hold a vocabulary entry
 struct VocabEntry {

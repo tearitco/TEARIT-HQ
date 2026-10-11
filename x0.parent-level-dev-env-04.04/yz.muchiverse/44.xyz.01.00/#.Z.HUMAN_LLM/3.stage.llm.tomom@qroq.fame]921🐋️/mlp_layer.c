@@ -5,8 +5,8 @@
 #include <time.h>
 #include <libgen.h>
 
-#define EMBEDDING_DIM 7
-#define HIDDEN_DIM 16
+#define EMBEDDING_DIM 16
+#define HIDDEN_DIM 32
 
 // MLP Layer
 typedef struct {

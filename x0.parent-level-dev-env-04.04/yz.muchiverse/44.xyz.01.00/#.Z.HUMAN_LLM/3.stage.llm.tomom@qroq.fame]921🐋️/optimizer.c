@@ -4,8 +4,8 @@
 #include <math.h>
 #include <libgen.h>
 
-#define EMBEDDING_DIM 7
-#define HIDDEN_DIM 16
+#define EMBEDDING_DIM 16
+#define HIDDEN_DIM 32
 #define EPSILON 1e-8
 #define MAX_GRAD_NORM 0.5f
 
