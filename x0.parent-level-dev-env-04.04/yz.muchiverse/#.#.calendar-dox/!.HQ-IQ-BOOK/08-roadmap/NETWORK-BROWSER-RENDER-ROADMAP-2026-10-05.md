@@ -43,7 +43,11 @@ the bar.
 ## Todo — Milestone 2 remaining
 
 - [x] ~~sprite-flow grid inside the panel path~~ — proven working (delegates to layout_scroll_region); narrow-pane stacking is 1-col degradation by design
-- [ ] True inline-clickable spans (segment row kind + renderer inline flow; needs xhtpm contract change)
+- [x] ~~True inline-clickable spans~~ — shipped additively as `segments=`
+  on `<text>` (no new tag, no contract break): tinted/underline draw,
+  wrapping, frame round-trip, click, keyboard cursor, hover, digit
+  slots, keyboard selection, mouse drag-select (2026-10-09..11, steps
+  1–11, all suite-pinned). Per-segment nav numbers stay future.
 - [ ] `file://` worker image resolution (worker emits zero IMG rows on file pages; static fallback covers it, but JS-driven pages depend on the worker path)
 - [x] ~~Column width as computed layout state~~ — projector measures each TROW run's per-column code-point maxima (`c_*_ccounts`), rows share one content-proportional grid; ragged/starved rows keep the equal split (2026-10-11, `nb_table_width_test.sh`)
 
@@ -219,6 +223,12 @@ both `form` and `form-file` for one name let the PATH win.
 
 - [ ] `@media` evaluation, cascade layers, media-query-driven layouts
 - [ ] Flex row for toolbars; grid only after flex
+  - Scoped 2026-10-11, no slice: the engine is real (`css_layout_pass`
+    - row/wrap/grow/gap) and chrome toolbars are healthy (equal split,
+    tabs capped at 8). Page-side flex has no box tree to operate on
+    (content flattens to row kinds) - blocked on Milestone 3, not on
+    layout code. When the box tree lands, wiring content flex
+    containers to the existing engine is the first step.
 - [ ] Wikipedia homepage → usable
 - [ ] YouTube page → playable via V4 extraction only (already the special case); no plans to reverse-engineer Polymer UI
 
