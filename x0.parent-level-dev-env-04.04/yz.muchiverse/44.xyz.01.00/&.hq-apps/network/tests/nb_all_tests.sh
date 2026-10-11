@@ -52,6 +52,10 @@ echo "########## span range selection (hermetic: own fixture window)"
 sh "$HERE/nb_span_select_test.sh" || RC=1
 
 echo
+echo "########## span mouse drag-select (hermetic: own fixture window)"
+sh "$HERE/nb_span_drag_test.sh" || RC=1
+
+echo
 echo "########## theme readability (static + hermetic fixture window)"
 sh "$HERE/nb_theme_test.sh" || RC=1
 

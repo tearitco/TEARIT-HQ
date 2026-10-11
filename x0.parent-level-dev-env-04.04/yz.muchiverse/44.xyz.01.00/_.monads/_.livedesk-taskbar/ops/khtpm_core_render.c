@@ -2520,6 +2520,21 @@ static Elem *kh_parse_into_scratch(const char *path) {
  * below for where it's used. */
 static int g_default_scrolllist_scroll;
 static int window_is_dock(void); /* real def + header comment further down; forward-declared for the dock heartbeat below */
+/* INLINE SPANS step 11 (mouse drag-select, 2026-10-11): a button-1
+ * press on a link span no longer dispatches at press time - it ARMS
+ * this pending click. Release on the same link completes the click;
+ * motion past slop first turns it into a span selection (anchor stays
+ * the press link, the cursor follows the pointer through the step-10
+ * machinery). Relay clicks carry no release, so they keep instant
+ * dispatch (see the poll branch); only real (source-tagged) presses
+ * arm. Cleared on release-resolve, reparse, and any dispatch. Lives
+ * here (not with the drag state below) so the reparse path above the
+ * text-include can clear it. */
+static struct {
+    int active, button, px, py, nav, idx, two_step_ok, dragged;
+    char id[64];
+} g_span_pend;
+#define SPAN_DRAG_SLOP 6
 static int reparse_chtpm_if_changed(void) {
     if (!g_chtpm_path[0]) return 0;
     struct stat st;
@@ -2900,6 +2915,10 @@ static int reparse_chtpm_if_changed(void) {
     g_hover_nav = 0;
     g_hover_idx = -1;
     g_hover_id[0] = '\0';
+    /* INLINE SPANS step 11: a rebuild also orphans any armed span
+     * press (its row may be gone) - the paired release must find
+     * nothing to resolve. */
+    g_span_pend.active = 0;
     g_n_elems = 0;
     /* REAL FIX 2026-10-08 (self-correction) - the truncation counters were
      * cumulative for the whole process lifetime, never reset. So a warning
@@ -4650,6 +4669,8 @@ static int g_popup_drag_last_x = 0, g_popup_drag_last_y = 0;
  * out from under a drag (a reparse mid-drag, a real edge case) can't
  * write into a dangling pointer. */
 static Elem *g_text_drag_elem = NULL;
+/* INLINE SPANS step 11's pending-press state (g_span_pend) is declared
+ * up by the reparse path, which runs before this point in the file. */
 
 /* User drag-resize (2026-09-09, direct request: "we used to have window
  * grab stretch resize - definitely want that for this window, but
@@ -11691,6 +11712,7 @@ static void handle_key(KeySym ks, char ch) {
                 if (seg_action_at_idx(focused, g_seg_idx, sact, sizeof(sact))) {
                     dispatch(sact);
                     g_seg_idx = -1;
+                    g_span_pend.active = 0; /* step 11: dispatch retires any armed press */
                     if (!g_quit) { assign_nav_and_layout(); redraw(); }
                     return;
                 }
@@ -12452,7 +12474,14 @@ static void kh_capture_click(int x, int y, int button) {
     char path[PATH_BUF]; history_path(path, sizeof(path));
     if (g_history_cursor < 0) { struct stat st; g_history_cursor = (stat(path,&st)==0)?st.st_size:0; }
     FILE *f = fopen(path, "a"); if (!f) return;
-    fprintf(f, "MOUSE_EVENT: %d %d %d 1\n", button, x, y); fclose(f);
+    /* INLINE SPANS step 11: real presses carry a `real` source token.
+     * Relay-written lines have none, and sscanf ignores trailing text -
+     * so old binaries read new lines (and vice versa) with today's
+     * instant-dispatch meaning. Only a tagged press may arm the
+     * deferred click (release pairs it); untagged lines keep instant
+     * dispatch exactly as before, which is what every relay test and
+     * agent depends on. */
+    fprintf(f, "MOUSE_EVENT: %d %d %d 1 real\n", button, x, y); fclose(f);
     {   /* context: the element under the pointer (same first-match hit-test as the right-click path) */
         Elem *hit = NULL; int nav = 0; char a[640], idc[80], act[160], lab[100];
         for (int i = 0; i < g_n_nav; i++) {
@@ -12482,6 +12511,35 @@ static void kh_capture_key(KeySym ks, char ch) {
     }
 }
 
+/* INLINE SPANS step 11: link-span hit shared by the press-arm, drag
+ * and release paths. Walks g_nav rows by whole-row boxes, single-line
+ * geometry first then wrapped - the click path's own order and
+ * resolvers (seg_hit_action_idx/seg_hit_wrapped_idx), so press, drag,
+ * release and click all agree on what a link is. Returns 1 with
+ * (nav,idx,id); the id rides along so release can lazy-validate the
+ * row like the keyboard cursor does. */
+static int span_press_hit(int px, int py, int *nav_out, int *idx_out,
+                          char *id_out, size_t idsz) {
+    int i;
+    char dummy[1024];
+    for (i = 0; i < g_n_nav; i++) {
+        Elem *it = g_nav[i];
+        int idx = -1;
+        if (!it) continue;
+        if (px < it->x || px >= it->x + it->w || py < it->y || py >= it->y + it->h) continue;
+        if (!it->segments[0] || it->nav_index <= 0) continue;
+        if (seg_hit_action_idx(it, px, &idx, dummy, sizeof(dummy))) {
+            /* single-line span */
+        } else if (!seg_hit_wrapped_idx(it, px, py, &idx, dummy, sizeof(dummy))) {
+            continue;
+        }
+        if (nav_out) *nav_out = it->nav_index;
+        if (idx_out) *idx_out = idx;
+        if (id_out && idsz > 0) snprintf(id_out, idsz, "%s", it->id);
+        return 1;
+    }
+    return 0;
+}
 static int poll_agent_history(void) {
     char path[PATH_BUF];
     history_path(path, sizeof(path));
@@ -12529,14 +12587,60 @@ static int poll_agent_history(void) {
                  * works) and set the same window context the real ButtonPress
                  * handler sets from cw before dispatching. */
                 int nf = sscanf(line + 13, "%d %d %d %d %63s", &button, &mx, &my, &is_press, wname);
+                /* INLINE SPANS step 11: the deferred click is Linux-only
+                 * (untestable here, and this port's relay format owns
+                 * the 5th field already) - real presses keep instant
+                 * dispatch on Windows, exactly as before. */
+                int is_real = 0;
 #else
-                int nf = sscanf(line + 13, "%d %d %d %d", &button, &mx, &my, &is_press);
+                /* INLINE SPANS step 11: optional 5th token tags real
+                 * (press,release) pairs written by kh_capture_click and
+                 * the ButtonRelease branch; relay-written lines carry
+                 * none. sscanf ignores the tail either way, so the
+                 * format stays compatible in both directions. */
+                char msrc[16] = "";
+                int nf = sscanf(line + 13, "%d %d %d %d %15s", &button, &mx, &my, &is_press, msrc);
+                int is_real = (strcmp(msrc, "real") == 0);
 #endif
                 if (nf >= 3 && is_press && (button == 4 || button == 5)) {
                     if (generic_sbar_wheel(mx, my, (button == 5) ? 1 : -1))
                         n++;
                     else {
                         g_default_scrolllist_scroll += (button == 5) ? 1 : -1;
+                        n++;
+                    }
+                } else if (nf >= 3 && is_press && button == 1 && is_real) {
+                    /* INLINE SPANS step 11: a REAL button-1 press on a
+                     * link span arms the deferred click instead of
+                     * dispatching - the paired release (written by the
+                     * ButtonRelease branch) completes or drag-selects
+                     * it. Anything else falls through to the instant
+                     * path below, byte-identical to before. Untagged
+                     * (relay) presses always take the instant path, so
+                     * every relay test and agent keeps working. */
+                    int pnav = 0, pidx = -1;
+                    char pid[64] = "";
+                    if (span_press_hit(mx, my, &pnav, &pidx, pid, sizeof(pid))) {
+                        Elem *row = (pnav >= 1 && pnav <= g_n_nav) ? g_nav[pnav - 1] : NULL;
+                        g_span_pend.active = 1;
+                        g_span_pend.button = 1;
+                        g_span_pend.px = mx; g_span_pend.py = my;
+                        g_span_pend.nav = pnav; g_span_pend.idx = pidx;
+                        /* two-step reads pre-press focus - the same
+                         * condition the instant path evaluates before
+                         * it focuses. */
+                        g_span_pend.two_step_ok = (!g_click_two_step ||
+                            (g_window && elem_has_class(g_window, "single-click")) ||
+                            (row && g_focus_nav == row->nav_index)) ? 1 : 0;
+                        g_span_pend.dragged = 0;
+                        snprintf(g_span_pend.id, sizeof(g_span_pend.id), "%s", pid);
+                        if (row) g_focus_nav = row->nav_index;
+                        g_seg_nav = pnav; g_seg_idx = pidx; g_seg_anchor = pidx;
+                        snprintf(g_seg_id, sizeof(g_seg_id), "%s", pid);
+                        redraw();
+                        n++;
+                    } else {
+                        popup_handle_click(mx, my);
                         n++;
                     }
                 } else if (nf >= 3 && is_press && button != 3 && button != 4 && button != 5) {
@@ -12550,6 +12654,48 @@ static int poll_agent_history(void) {
 #endif
                     popup_handle_click(mx, my);
                     n++;
+                } else if (nf >= 3 && !is_press && button == 1) {
+                    /* INLINE SPANS step 11: a button-1 release resolves
+                     * a pending real press. Same link, no drag, and the
+                     * press-time two-step gate: the deferred click
+                     * (same resolvers as the instant path, so relay and
+                     * real clicks agree on every link). Dragged: the
+                     * step-10 selection stands as drawn. Anything else:
+                     * plain row focus at the release point, no dispatch
+                     * (a click that changed its mind). Focus must still
+                     * name the pending row, or an interim keypress gets
+                     * a stale dispatch. A release with no armed press
+                     * is a no-op (hover owns moves, not releases). */
+                    if (g_span_pend.active && g_span_pend.button == 1) {
+                        int rnav = 0, ridx = -1, was_drag, was_ok;
+                        char rid[64] = "";
+                        int same = span_press_hit(mx, my, &rnav, &ridx, rid, sizeof(rid)) &&
+                                   rnav == g_span_pend.nav && ridx == g_span_pend.idx &&
+                                   strcmp(rid, g_span_pend.id) == 0 &&
+                                   g_focus_nav == g_span_pend.nav;
+                        was_drag = g_span_pend.dragged;
+                        was_ok = g_span_pend.two_step_ok;
+                        g_span_pend.active = 0;
+                        if (same && !was_drag && was_ok) {
+                            char sact[1024];
+                            Elem *row = (rnav >= 1 && rnav <= g_n_nav) ? g_nav[rnav - 1] : NULL;
+                            if (row && seg_action_at_idx(row, ridx, sact, sizeof(sact))) {
+                                g_focus_nav = row->nav_index;
+                                dispatch(sact);
+                                g_seg_idx = -1;
+                                if (!g_quit) assign_nav_and_layout();
+                                redraw();
+                            }
+                        } else if (!was_drag) {
+                            g_seg_idx = -1;
+                            g_seg_anchor = -1;
+                            if (rnav >= 1 && rnav <= g_n_nav) {
+                                g_focus_nav = rnav;
+                                redraw();
+                            }
+                        }
+                        n++;
+                    }
                 } else if (nf >= 3 && !is_press) {
                     /* INLINE SPANS step 8: a relayed pointer MOVE
                      * (is_press 0) feeds the span hover resolver - the
@@ -13384,6 +13530,7 @@ static void popup_handle_click(int px, int py) {
                      * page being left - drop it now, not at the reparse
                      * (same honesty as the reparse clear). */
                     g_seg_idx = -1;
+                    g_span_pend.active = 0; /* step 11: dispatch retires any armed press */
                     if (!g_quit) assign_nav_and_layout();
                     redraw();
                     return;
@@ -13894,6 +14041,15 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
         g_popup_dragging = 0;  /* REAL, NEW 2026-08-29 (TASK 1) */
         g_text_drag_elem = NULL; /* REAL, NEW 2026-09-14 - end any real text drag-select */
         g_ov_drag = NULL;
+        /* INLINE SPANS step 11: pair every button-1 press with a tagged
+         * release line in the same mailbox (uniform protocol - the poll
+         * pairs them into clicks or drags; a release with no armed press
+         * is ignored). kh_capture_click owns the press half. */
+        {
+            char path[PATH_BUF]; history_path(path, sizeof(path));
+            FILE *rf = fopen(path, "a");
+            if (rf) { fprintf(rf, "MOUSE_EVENT: 1 %d %d 0 real\n", ev->xbutton.x, ev->xbutton.y); fclose(rf); }
+        }
         if (g_win_resizing) {
             /* commit: ONE relayout + redraw now that the drag is done.
              * Doing it per-MotionNotify feeds back through the
@@ -13943,6 +14099,31 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
             return;
         }
         if (g_text_drag_elem && !(ev->xmotion.state & Button1Mask)) g_text_drag_elem = NULL; /* missed the real ButtonRelease - stop here instead */
+        /* INLINE SPANS step 11: buttons-held motion over an armed span
+         * press drags the step-10 selection (anchor holds the press
+         * link, the cursor follows the pointer while it stays on the
+         * same row's links). Past-slop motion flips the press into a
+         * drag, so its release selects instead of clicking - the slop
+         * matches the canvas-drag precedent. Redraws only when the
+         * cursor actually moves (PITFALL #52). Falls through to the
+         * buttons-held hover skip below, never into hover itself. */
+        if (g_span_pend.active && g_span_pend.button == 1 && (ev->xmotion.state & Button1Mask)) {
+            XEvent mdr;
+            while (XCheckTypedWindowEvent(dpy, win, MotionNotify, &mdr)) *ev = mdr;
+            if (abs(ev->xmotion.x - g_span_pend.px) >= SPAN_DRAG_SLOP ||
+                abs(ev->xmotion.y - g_span_pend.py) >= SPAN_DRAG_SLOP) {
+                int dnav = 0, didx = -1;
+                char did[64] = "";
+                g_span_pend.dragged = 1;
+                if (span_press_hit(ev->xmotion.x, ev->xmotion.y, &dnav, &didx, did, sizeof(did)) &&
+                    dnav == g_span_pend.nav && strcmp(did, g_span_pend.id) == 0 &&
+                    didx != g_seg_idx) {
+                    g_seg_idx = didx;
+                    redraw();
+                }
+            }
+            return;
+        }
         if (g_ov_drag && (ev->xmotion.state & Button1Mask)) {
             XEvent mdrain;
             while (XCheckTypedWindowEvent(dpy, win, MotionNotify, &mdrain)) *ev = mdrain;

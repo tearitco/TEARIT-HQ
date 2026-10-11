@@ -1,5 +1,22 @@
 # INLINE SPANS — PHASE 2 HANDOFF (written 2026-10-08)
 
+> **ADDENDUM 2026-10-11 — step 11 (mouse drag-select) landed.**
+> A real button-1 press on a link span ARMS a deferred click instead of
+> dispatching: release on the same link completes it, motion past 6px
+> slop first turns it into a step-10 selection (anchor holds the press
+> link). Press/release pair through the history mailbox (real lines
+> carry a `real` 5th token; relay lines carry none and keep instant
+> dispatch - sscanf ignores the tail both ways, so the format is
+> compatible). Two-step reads pre-press focus, so click pairs behave
+> across the split. Cleared on resolve, reparse, and any dispatch.
+> Test: `nb_span_drag_test.sh`, hermetic (synthetic XSendEvent
+> press/motion/release via `xsendevent.py` - our dispatcher never
+> checks send_event; link geometry from parked underlines; copied bytes
+> via `xclipget.py`). Traps it hit: the /tmp fixture carried a literal
+> `$D` (quoted heredoc) so every dispatch died silently and the code
+> looked broken (the committed test passes paths via argv); a 760px
+> fixture row never wrapped (same lesson as step 10).
+
 > **ADDENDUM 2026-10-11 — step 10 (keyboard range selection) landed.**
 > Shift+Left/Right extends an anchor across the focused row's links;
 > the range highlights with the fields' own #2f5f8f band and unarmed
