@@ -5996,7 +5996,8 @@ static void kh_ov_min_place(Elem *ov, int x0, int y0, int w, int rowh, int pad4)
         Elem *m = btn[b];
         if (!m) continue;
         css_compute_style(&g_sheet, m->tag, m->id, m->classes, m->n_classes, 0, &m->style);
-        m->w = scaled(66); m->h = rowh;
+        m->w = scaled(66); if (m->w > w / 3) m->w = w / 3;   /* a narrow pinned bar: the button is at most a third of it */
+        m->h = rowh;
         m->x = right - m->w; m->y = y0 + pad4;
         right = m->x - scaled(2);
     }
@@ -6010,7 +6011,7 @@ static void kh_ov_min_place(Elem *ov, int x0, int y0, int w, int rowh, int pad4)
     if ((mn || cl) && ov->n_children > 0 && elem_has_class(ov->children[0], "ov-title")) {
         Elem *t = ov->children[0];
         int tw = left - pad4 - t->x;
-        if (tw > 40) t->w = tw;
+        t->w = tw > scaled(8) ? tw : scaled(8);   /* ALWAYS cut the drag zone short of the buttons (a narrow bar left it over the "_" and the click started a drag) */
     }
 }
 
@@ -6045,6 +6046,37 @@ static void kh_ov_finish(Elem *ov) {
     }
 }
 
+/* Pinned side bars (class "ov-pin" on a canvas-overlay-left / canvas-overlay-right row): width from DATA. Precedence: css width on the row >
+ * <pkg>/side_style.pdl "STYLE | pin_width_<id> | N" > "STYLE | pin_width | N" > 180. The pdl is re-read at most every 400 ms, so editing it
+ * (or the css) re-lays the bar on the next redraw, no rebuild. */
+static int kh_pin_pdl_w(const char *id) {
+    static int dflt = 0, n = 0; static struct { char id[64]; int w; } ids[16]; static long lastms = 0;
+    struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts); long ms = ts.tv_sec * 1000L + ts.tv_nsec / 1000000L;
+    if (!lastms || ms - lastms >= 400) {
+        lastms = ms; dflt = 0; n = 0;
+        char path[PATH_BUF]; snprintf(path, sizeof(path), "%s/side_style.pdl", g_package_dir);
+        FILE *f = g_package_dir[0] ? fopen(path, "r") : NULL;
+        if (f) {
+            char ln[256];
+            while (fgets(ln, sizeof(ln), f)) {
+                char *k1 = strchr(ln, '|'); if (!k1) continue;
+                char *k2 = strchr(k1 + 1, '|'); if (!k2) continue;
+                *k1 = 0; *k2 = 0;
+                char *a = ln; while (*a == ' ') a++;
+                if (strncmp(a, "STYLE", 5) != 0) continue;
+                char *key = k1 + 1; while (*key == ' ') key++;
+                char *ke = key + strlen(key); while (ke > key && ke[-1] == ' ') *--ke = 0;
+                int v = atoi(k2 + 1); if (v <= 0) continue;
+                if (!strcmp(key, "pin_width")) dflt = v;
+                else if (!strncmp(key, "pin_width_", 10) && n < 16) { snprintf(ids[n].id, 64, "%s", key + 10); ids[n++].w = v; }
+            }
+            fclose(f);
+        }
+    }
+    for (int i = 0; i < n; i++) if (!strcmp(ids[i].id, id)) return ids[i].w;
+    return dflt;
+}
+
 static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int rh) {
     Elem *cv = NULL;
     for (int i = 0; i < region->n_children; i++)
@@ -6063,6 +6095,23 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
     if (cv->h < 64) cv->h = 64;
     cv->nav_index = 0;
     g_has_canvas = 1;
+
+    /* Pinned side bars (owner 2026-10-11, the hotbar's pin feature as a vertical bar): a canvas-overlay-left / -right row with class
+     * ov-pin TAKES its width out of the canvas, so the game view shrinks (the engine frame is resized from cv->w/cv->h) instead of
+     * being overlapped; the bar is full height. A hidden bar (show="${var}" false) was dropped at parse, so the canvas grows back; the
+     * bottom bar's cell flips that var. Recomputed from the template every pass (idempotent). */
+    Elem *pin_ov[8]; int pin_x[8], pin_w[8], npin = 0, pin_y0 = cv->y, pin_h = cv->h;
+    for (int oi = 0; oi < region->n_children && npin < 8; oi++) {
+        Elem *ov = region->children[oi]; int pl = elem_has_class(ov, "canvas-overlay-left"), pr = elem_has_class(ov, "canvas-overlay-right");
+        if (!elem_has_class(ov, "ov-pin") || (!pl && !pr)) continue;
+        css_compute_style(&g_sheet, ov->tag, ov->id, ov->classes, ov->n_classes, 0, &ov->style);
+        int w = ov->style.has_width ? ov->style.width : kh_pin_pdl_w(ov->id);
+        w = w > 0 ? scaled(w) : scaled(180);
+        if (w > cv->w - 64) w = cv->w - 64;   /* the view never shrinks below 64 px */
+        if (w < scaled(24)) continue;
+        if (pl) { pin_x[npin] = cv->x; cv->x += w; cv->w -= w; } else { cv->w -= w; pin_x[npin] = cv->x + cv->w; }
+        pin_w[npin] = w; pin_ov[npin++] = ov;
+    }
 
     /* class="canvas-overlay-bottom" (generic, owner 2026-10-05 - the pc-hq hotbar): a <row> of <item>s that
      * is a LATER sibling of the canvas is laid out as a strip centred at the bottom of the canvas region.
@@ -6155,8 +6204,9 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
     for (int oi = 0; oi < region->n_children; oi++) {
         Elem *ov = region->children[oi];
         int n_it = 0, n_tx = 0, n_cl = 0, colw = scaled(180), rowh = ROW_H, itemh = ROW_H + scaled(8), k;
-        int at_pt = elem_has_class(ov, "canvas-overlay-at");
-        if (!at_pt && !elem_has_class(ov, "canvas-overlay-right")) continue;
+        int at_pt = elem_has_class(ov, "canvas-overlay-at"), is_left = elem_has_class(ov, "canvas-overlay-left"), pin_i = -1;
+        if (!at_pt && !is_left && !elem_has_class(ov, "canvas-overlay-right")) continue;
+        for (int pk = 0; pk < npin; pk++) if (pin_ov[pk] == ov) pin_i = pk;
         css_compute_style(&g_sheet, ov->tag, ov->id, ov->classes, ov->n_classes, 0, &ov->style);
         for (k = 0; k < ov->n_children; k++) {
             Elem *it = ov->children[k];
@@ -6168,10 +6218,11 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
             if (it->style.has_width && it->style.width > colw) colw = it->style.width;
             n_it++;
         }
+        if (pin_i >= 0) colw = pin_w[pin_i];
         if (n_it == 0) continue;
         {
             int pad4 = scaled(4), hh = (n_tx + n_cl) * rowh + n_it * itemh + 2 * pad4 + (n_it ? (n_it - 1) * scaled(2) : 0);
-            int x0 = cv->x + cv->w - colw - scaled(10), y0 = cv->y + (cv->h - hh) / 2, yy;
+            int x0 = is_left ? cv->x + scaled(10) : cv->x + cv->w - colw - scaled(10), y0 = cv->y + (cv->h - hh) / 2, yy;
             if (at_pt) {   /* class canvas-overlay-at: the point comes from the vars <id>_x / <id>_y (canvas pixels); absent = centred */
                 char kx[80], ky[80];
                 snprintf(kx, sizeof(kx), "%s_x", ov->id); snprintf(ky, sizeof(ky), "%s_y", ov->id);
@@ -6180,10 +6231,13 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
                 y0 = vy && vy[0] ? cv->y + atoi(vy) : cv->y + (cv->h - hh) / 2;
             }
             if (!at_pt && elem_has_class(ov, "ov-top")) y0 = cv->y;   /* class ov-top: locked to the top of the canvas (under the top bar) instead of vertically centred, like the bottom strip is locked to the bottom */
-            if (x0 < cv->x) x0 = cv->x;
-            if (y0 < cv->y) y0 = cv->y;
-            if (y0 + hh > cv->y + cv->h) hh = cv->y + cv->h - y0;   /* never past the canvas bottom */
-            kh_ov_place(ov, cv, colw, hh, &x0, &y0);
+            if (pin_i >= 0) { x0 = pin_x[pin_i]; y0 = pin_y0; hh = pin_h; }   /* pinned: fixed, full height, no drag */
+            else {
+                if (x0 < cv->x) x0 = cv->x;
+                if (y0 < cv->y) y0 = cv->y;
+                if (y0 + hh > cv->y + cv->h) hh = cv->y + cv->h - y0;   /* never past the canvas bottom */
+                kh_ov_place(ov, cv, colw, hh, &x0, &y0);
+            }
             ov->x = x0; ov->y = y0; ov->w = colw; ov->h = hh; ov->nav_index = 0;
             yy = y0 + pad4;
             for (k = 0; k < ov->n_children; k++) {

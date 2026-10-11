@@ -1,0 +1,17 @@
+# Pinned side bars (left / right) that collapse into the bottom bar (2026-10-11, claude)
+
+REVISED same day: not a new `<dock>` element. The house already has the tech (the hotbar: an overlay row hidden by `show="${var}"`, a `_` that hides it, a cell in the bottom bar that toggles it). A first plan for a new `<dock>` tag was dropped (and its partial renderer code reverted) because it reinvented that. Note `dock` already means the taskbar dock (`window_is_dock()`, `#.desktop/dock_stack/`), so do not reuse the word.
+
+## What was built (board views, verified in the pc-hq sandbox board)
+- Renderer: `kh_layout_canvas_in_region()` in `_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c`. A row of class `canvas-overlay-left` or `canvas-overlay-right` (the right one existed; left is new) with the extra class **`ov-pin`** is a PINNED bar: it takes its width out of the canvas (the game view shrinks, it is never overlapped; the engine frame follows through the existing `pchq_board_view.txt` size handoff), is full height, and cannot be dragged. Without `ov-pin` they stay floating overlays as before. Recomputed from the template every pass (idempotent).
+- Width is DATA, never C: css `width:` on the row > `<package dir>/side_style.pdl` rows `STYLE | pin_width_<id> | N` > `STYLE | pin_width | N` > 180. The pdl is re-read every 400 ms (edit, no rebuild). The view never shrinks below 64 px.
+- Visibility: `show="${side_left}"` where the var comes from a kv file listed in the window's `vars=` (sandbox: `state/sides.txt`); `1` = shown, EMPTY = hidden (a `0` string would count as shown). The bar's `_` (`ov-min`, one click) runs `side_toggle <file> <key> hide` (idempotent); a cell in the bottom bar runs `side_toggle <file> <key> toggle` (two-step click: first click focuses the cell, second activates, the house click_two_step rule). `@.apps/layout-studio/ops/side_toggle.c` (C, `build_side_toggle.sh`).
+- Fix found while testing: a narrow bar left the title's drag zone over the `_` (shortened only if more than 40 px remained), so clicking `_` could start a drag; the zone is now always cut short of the buttons and `_` is at most a third of the bar.
+- Markup example: `@.apps/layout-studio/sandbox/pchq-board.xhtpm` (rows `side-l`, `side-r`, footer cells `left` / `right`), widths in `sandbox/side_style.pdl`.
+- Evidence (observed): canvas 818x806 with both bars; 1006 wide with the left hidden; 1144 with both hidden; real clicks on both `_` hide them (owner confirmed both work).
+
+## Not done yet
+- **livedesk**: the same idea as `vars-positioned` windows pinned to the screen edge (hotbar-desk is a separate window anchored by the manager's `anchor_cx` / `anchor_bottom`; it would need an `anchor_side`, a full-height layout and a work-area reservation so other windows avoid it). Not started.
+- **pc-hq board / rpg-pet adoption**: add the two rows + footer cells to `piececraft-hq/pchq-board.xhtpm`, then to the rpg-pet board window (its current sidebar becomes the left bar).
+- `layout_check.c` tables / CATALOG do not list `ov-pin`, `canvas-overlay-left` yet (run `layout_check --drift` after adding).
+- Persistence across relaunch (the kv file persists; the sandbox resets it by hand).
