@@ -695,7 +695,20 @@ static void load_actors(int cur_z) {
 /* ---- board glyphs (one z-slice) ---- */
 static char g_board[MAX_DIM][MAX_DIM];
 static int  g_bw = 0, g_bh = 0;
+static int desk_dir(char *out, size_t osz);
 static void load_board(int current_z) {
+    {   /* a book with its own ASCII legend (maps/<book>/<desk>/ascii_legend.txt) draws its own map.txt in the ` view */
+        char dd[PATH_BUF], lg[PATH_BUF], mt[PATH_BUF];
+        if (desk_dir(dd, sizeof(dd))) {
+            snprintf(lg, sizeof(lg), "%s/ascii_legend.txt", dd); snprintf(mt, sizeof(mt), "%s/map.txt", dd);
+            FILE *lf = host_fopen(lg, "r");
+            if (lf) { fclose(lf);
+                FILE *mf = host_fopen(mt, "r");
+                if (mf) { char line[MAX_LINE]; int row = 0;
+                    while (row < MAX_DIM && fgets(line, sizeof(line), mf)) { line[strcspn(line, "\r\n")] = 0; int len = (int)strlen(line); if (!len) continue; if (len > MAX_DIM) len = MAX_DIM; memcpy(g_board[row], line, len); if (len > g_bw) g_bw = len; row++; }
+                    if (row > g_bh) g_bh = row; fclose(mf); return; } }
+        }
+    }
     /* z-manifest? board_manifest.txt: "z_base=<prefix>" + "z_count=N" */
     char man[PATH_BUF], zbase[256] = "";
     int zcount = 0;
@@ -981,6 +994,72 @@ static int desk_parallax(const char *map_png, int *loop_x, int *loop_y) {
     return show == 1;
 }
 
+/* The current desk folder (maps/<book>/<desk>), or "" when the world names none. */
+static int desk_dir(char *out, size_t osz) {
+    out[0] = '\0';
+    const char *root = focused_root[0] ? focused_root : project_root;
+    char wst[PATH_BUF], desk[64] = "", map_id[64] = "";
+    snprintf(wst, sizeof(wst), "%s/pieces/world_01/state.txt", root);
+    read_kv_str(wst, "desk_id", desk, sizeof(desk));
+    read_kv_str(wst, "map_id", map_id, sizeof(map_id));
+    if (!desk[0] || !map_id[0] || strchr(desk, '/') || strchr(map_id, '/')) return 0;
+    snprintf(out, osz, "%s/pieces/system/maps/%s/%s", root, map_id, desk);
+    return 1;
+}
+/* ASCII view (` key) of a book that has its own glyphs: <desk>/ascii_legend.txt, same rows as terrain_legend.txt
+ * (glyph|height|r|g|b|asset|name|char). Its rows come first so they win over the host legend. The char column may be
+ * any single character (an ASCII letter or a CJK one). */
+static int g_own_ascii = 0;   /* this desk has its own ASCII legend: its events are the entities, the host pieces (hero, trees) are not drawn */
+static void load_desk_ascii_legend(void) {
+    char dd[PATH_BUF], path[PATH_BUF];
+    if (!desk_dir(dd, sizeof(dd))) return;
+    snprintf(path, sizeof(path), "%s/ascii_legend.txt", dd);
+    FILE *f = host_fopen(path, "r");
+    if (!f) return;
+    g_own_ascii = 1;
+    char line[MAX_LINE];
+    while (g_nleg < MAX_LEGEND && fgets(line, sizeof(line), f)) {
+        line[strcspn(line, "\r\n")] = '\0';
+        if (!line[0] || (line[0] == '#' && line[1] != '|')) continue;
+        char *sv = NULL, *g = strtok_r(line, "|", &sv);
+        strtok_r(NULL, "|", &sv);
+        char *rt = strtok_r(NULL, "|", &sv), *gt = strtok_r(NULL, "|", &sv), *bt = strtok_r(NULL, "|", &sv);
+        strtok_r(NULL, "|", &sv); strtok_r(NULL, "|", &sv);
+        char *ct = strtok_r(NULL, "|", &sv);
+        if (!g || !g[0] || !rt || !gt || !bt) continue;
+        int i = g_nleg;
+        for (int k = 0; k < g_nleg; k++) if (g_leg[k].glyph == g[0]) { i = k; break; }   /* replace a host row of the same glyph */
+        g_leg[i].glyph = g[0]; g_leg[i].r = (unsigned char)atoi(rt); g_leg[i].g = (unsigned char)atoi(gt); g_leg[i].b = (unsigned char)atoi(bt);
+        g_leg_hex[i][0] = '\0'; g_leg_cjk[i][0] = '\0';
+        if (ct && ct[0] && strcmp(ct, "-") != 0) snprintf(g_leg_cjk[i], sizeof(g_leg_cjk[0]), "%s", ct);
+        if (i == g_nleg) g_nleg++;
+    }
+    fclose(f);
+}
+/* ASCII view of events.txt (x y r g b charset index dir pattern [glyph]): one glyph per event in the event's own colour,
+ * brightened; no glyph column = the first letter of the sheet name. Replaces the sprites while view_2d_style=ascii. */
+static void draw_map_event_glyphs(unsigned char *px, int W, int ox, int oy, int cols, int rows, int cell) {
+    char dd[PATH_BUF], path[PATH_BUF];
+    if (!desk_dir(dd, sizeof(dd))) return;
+    snprintf(path, sizeof(path), "%s/events.txt", dd);
+    FILE *f = host_fopen(path, "r");
+    if (!f) return;
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        int ex, ey, r, g, b, index, dir, pat, n = 0;
+        char name[64], gl[8] = "";
+        if (sscanf(line, "%d %d %d %d %d %63s %d %d %d %7s%n", &ex, &ey, &r, &g, &b, name, &index, &dir, &pat, gl, &n) < 9) continue;
+        int scx = ex - ox, scy = ey - oy;
+        if (scx < 0 || scy < 0 || scx >= cols || scy >= rows) continue;
+        if (!gl[0]) { gl[0] = name[0] == '!' || name[0] == '$' ? name[1] : name[0]; gl[1] = '\0'; }
+        unsigned int cp = bv_cjk_utf8_first(gl);
+        if (!cp) continue;
+        unsigned char gr = (unsigned char)(r + (255 - r) * 3 / 5), gg = (unsigned char)(g + (255 - g) * 3 / 5), gb = (unsigned char)(b + (255 - b) * 3 / 5);
+        blit_cjk(px, W, scx * cell, scy * cell, cell, cp, gr, gg, gb);
+    }
+    fclose(f);
+}
+
 /* map.png sits beside map.txt. Tile step is png width / map.txt columns.
  * The 24 px exports and a future 48 px render both fit this. */
 static int desk_map_png(char *path, size_t psz, int *tile_px) {
@@ -1041,6 +1120,7 @@ int main(void) {
     int fixed_row = (sel_y >= 0) ? sel_y : 0;   /* the "depth" this slice is through */
 
     load_legend();
+    load_desk_ascii_legend();
     load_entities();
     g_any_z = side_mode;
     load_actors(cur_z);          /* hero_01 + world_01 animals - all heights in side_mode, this z-slice otherwise */
@@ -1147,7 +1227,8 @@ int main(void) {
     unsigned char *map_px = NULL;
     int map_w = 0, map_h = 0, map_tile = 0, map_ok = 0;
     int map_px0 = 0, map_py0 = 0;
-    if (!side_mode) {
+    char style0[16] = ""; read_kv_str(st, "view_2d_style", style0, sizeof(style0));
+    if (!side_mode && strcmp(style0, "ascii") != 0) {   /* ` = the glyph view: a desk picture is not blitted */
         char mp[PATH_BUF];
         int map_cols = 0;
         if (desk_map_png(mp, sizeof(mp), &map_cols) &&
@@ -1283,7 +1364,7 @@ int main(void) {
 
     /* --- entities / hero / animals: emoji sprite if we have one, else
      * a solid colour square (inner 60%) --- */
-    for (int i = 0; !map_ok && i < g_nent; i++) {
+    for (int i = 0; !map_ok && !(g_own_ascii && want_ascii) && i < g_nent; i++) {
         /* side_mode: only entities standing in THIS depth slice (same
          * row the terrain slice is through) are visible at all - real
          * depth culling, not a simplification, matches what a real
@@ -1318,6 +1399,8 @@ int main(void) {
                 }
         }
     }
+
+    if (want_ascii && !side_mode) draw_map_event_glyphs(px, W, ox, oy, cols, rows, cell);
 
     /* --- the manual matrix grid (viewport-relative cell boundaries).
      * A grid is not part of the Maker picture, so it stays off when
