@@ -330,6 +330,18 @@ static int g_seg_nav = 0;
 static int g_seg_idx = -1;
 static char g_seg_id[64] = "";
 
+/* INLINE SPANS step 10 (keyboard range selection, 2026-10-11):
+ * selection anchor as an actionable-run index on the cursor's own row.
+ * Valid if and only if seg_cursor_on() holds for the same element -
+ * the anchor borrows the cursor's (nav,index,id) identity instead of
+ * carrying its own, so every place that kills the cursor (reparse,
+ * dispatch, Esc, walk-off, clicks) kills the anchor with zero extra
+ * hooks. -1 means none (including collapsed: anchor == cursor draws
+ * no highlight and copies the whole label, exactly like no anchor).
+ * Plain cursor moves and digit selects reset it explicitly - otherwise
+ * a stale range would survive on the same row. */
+static int g_seg_anchor = -1;
+
 /* INLINE SPANS step 8 (hover highlight, 2026-10-09): pointer hover
  * target. Same (nav, index, id) shape and lazy contract as the
  * keyboard cursor, but set by pointer motion instead of keys and

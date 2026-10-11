@@ -1,5 +1,22 @@
 # INLINE SPANS — PHASE 2 HANDOFF (written 2026-10-08)
 
+> **ADDENDUM 2026-10-11 — step 10 (keyboard range selection) landed.**
+> Shift+Left/Right extends an anchor across the focused row's links;
+> the range highlights with the fields' own #2f5f8f band and unarmed
+> Ctrl+C copies its plain text (links as text, never URLs). The anchor
+> is one int borrowing the cursor's identity (valid iff the cursor is),
+> so reparse/dispatch/Esc/row-changes clear it free; plain walks,
+> digit selects, and any click clear it explicitly. Wrapped rows band
+> per overlapped slice (partial edges measured, not whole slices).
+> Mouse drag-select stays future (needs dispatch moved press->release).
+> Test: `nb_span_select_test.sh`, hermetic (own fixture, copied bytes
+> read back through the live X clipboard via `xclipget.py`). Traps it
+> hit: a stale ops-local `khtpm_render_core.c` shadowed the shared file
+> (git-ignored, refreshed by build_db_hq.sh) and broke the build with
+> undeclared-identifier errors - deleted; and a 760px fixture never
+> wrapped its selection, silently untesting the wrap bands (narrowed
+> to 560px so it genuinely wraps).
+
 > **ADDENDUM 2026-10-11 — step 9 (digit slots) landed.**
 > Digits address ROWS, always, unless the segment cursor is already
 > active on the focused row (entered with Right): then digits address

@@ -986,6 +986,77 @@ static int seg_cursor_on(const Elem *e) {
     return e && g_seg_idx >= 0 && g_seg_nav == e->nav_index &&
            e->nav_index > 0 && e->id[0] && strcmp(g_seg_id, e->id) == 0;
 }
+/* INLINE SPANS step 10: an active SELECTION is a non-collapsed anchor
+ * on the cursor's own row (anchor == cursor draws nothing and copies
+ * the whole label, exactly like no anchor). Validity rides the cursor
+ * triple, so no second identity to invalidate anywhere. */
+static int seg_anchor_on(const Elem *e) {
+    return seg_cursor_on(e) && g_seg_anchor >= 0 && g_seg_anchor != g_seg_idx;
+}
+/* seg_any_runs is defined further below (single-fit first, else
+ * wrapped); the range helpers need it here. */
+static int seg_any_runs(Elem *e, SegRun *runs, int maxruns);
+/* Label-offset span of the selected range, inclusive of everything
+ * between the anchor and cursor links (intermediate text spans ride
+ * along, so the copy is contiguous visible text). Same seg_any_runs
+ * domain as walk/digits/dispatch - single-line first, else wrapped -
+ * so the offsets agree with what those paths address. Returns 1 with
+ * [lo,hi) character offsets, else 0 (no selection). */
+static int seg_range_offsets(Elem *e, int *lo_out, int *hi_out) {
+    SegRun runs[64];
+    int nrun, ri, nact = 0, lo, hi, off = 0;
+    int slo = -1, shi = -1;
+    if (!e || !seg_anchor_on(e)) return 0;
+    lo = g_seg_anchor < g_seg_idx ? g_seg_anchor : g_seg_idx;
+    hi = g_seg_anchor < g_seg_idx ? g_seg_idx : g_seg_anchor;
+    nrun = seg_any_runs(e, runs, 64);
+    if (nrun < 0) return 0;
+    /* boundary links contribute their full text; text runs strictly
+     * between them ride by position (off-range overlap); trailing
+     * text past the hi-boundary link is NOT included. */
+    for (ri = 0; ri < nrun; ri++) {
+        int ai = -1;
+        if (runs[ri].is_link && runs[ri].actlen > 0) ai = nact++;
+        if (ai == lo && slo < 0) slo = off;
+        if (ai == hi) shi = off + (int)runs[ri].tlen;
+        off += (int)runs[ri].tlen;
+    }
+    if (slo < 0 || shi <= slo) return 0;
+    if (lo_out) *lo_out = slo;
+    if (hi_out) *hi_out = shi;
+    return 1;
+}
+/* Plain visible text of the selected range into buf (link text as
+ * text, never URLs - same contract as row-label copy). Returns 1 on
+ * success, else 0. */
+static int seg_range_text(Elem *e, char *buf, size_t bufsz) {
+    SegRun runs[64];
+    int nrun, ri, nact = 0, lo, hi;
+    size_t pos = 0;
+    int started = 0, done = 0;
+    if (!buf || bufsz == 0 || !e || !seg_anchor_on(e)) return 0;
+    lo = g_seg_anchor < g_seg_idx ? g_seg_anchor : g_seg_idx;
+    hi = g_seg_anchor < g_seg_idx ? g_seg_idx : g_seg_anchor;
+    nrun = seg_any_runs(e, runs, 64);
+    if (nrun < 0) return 0;
+    for (ri = 0; ri < nrun && !done; ri++) {
+        int ai = -1;
+        if (runs[ri].is_link && runs[ri].actlen > 0) {
+            ai = nact++;
+            if (ai == lo) started = 1;
+        }
+        if (started && !done) {
+            size_t tl = runs[ri].tlen;
+            if (pos + tl + 1 >= bufsz) return 0;
+            memcpy(buf + pos, runs[ri].text, tl);
+            pos += tl;
+        }
+        if (ai == hi) done = 1;
+    }
+    if (!started || !done) return 0;
+    buf[pos] = '\0';
+    return pos > 0;
+}
 /* INLINE SPANS step 7 (wrapped hit-testing): wrapped geometry for
  * click/keys, mirroring the segwrap draw block's own entry conditions
  * exactly (segments, label, sprite, font, decoded fit-miss, multiline
@@ -1224,12 +1295,48 @@ static int seg_cursor_step(Elem *focused, int dir) {
     cur = seg_cursor_on(focused) ? g_seg_idx : -1;
     if (cur < 0) cur = (dir > 0) ? 0 : nact - 1;
     else cur += dir;
+    /* a plain (unshifted) walk collapses any selection: the range
+     * cannot survive its endpoint moving without Shift. */
+    g_seg_anchor = -1;
     if (cur < 0 || cur >= nact) {
         g_seg_idx = -1;
     } else {
         g_seg_nav = focused->nav_index;
         g_seg_idx = cur;
         snprintf(g_seg_id, sizeof(g_seg_id), "%s", focused->id);
+    }
+    redraw();
+    return 1;
+}
+/* INLINE SPANS step 10: Shift+Left/Right extends a selection anchor
+ * across the focused row's links. Entry mirrors seg_cursor_step
+ * (dir>0 at the first link, dir<0 at the last) with the anchor
+ * collapsed onto the cursor; further shifted steps move the cursor
+ * while the anchor holds, so the range grows and shrinks like any
+ * text selection. Walking off either end drops both (same honesty as
+ * the plain walk-off). Returns 1 when consumed, else 0 for normal row
+ * stepping (plain rows, overlong rows, grids). */
+static int seg_anchor_extend(Elem *focused, int dir) {
+    int nact, cur, fresh;
+    if (!focused || !focused->segments[0]) return 0;
+    nact = seg_actionable_count(focused);
+    if (nact <= 0) return 0;
+    /* read freshness BEFORE touching state: setting nav/id first and
+     * asking after would resurrect a stale idx from another row. */
+    fresh = !seg_cursor_on(focused);
+    if (fresh) {
+        cur = (dir > 0) ? 0 : nact - 1;
+    } else {
+        cur = g_seg_idx + dir;
+    }
+    if (cur < 0 || cur >= nact) {
+        g_seg_idx = -1;
+        g_seg_anchor = -1;
+    } else {
+        g_seg_nav = focused->nav_index;
+        g_seg_idx = cur;
+        snprintf(g_seg_id, sizeof(g_seg_id), "%s", focused->id);
+        if (fresh) g_seg_anchor = cur;
     }
     redraw();
     return 1;
@@ -2133,6 +2240,29 @@ static void draw_elem(Elem *e, int hover_id_hash) {
              * branch, hence the !drew_sprite gate above). */
             nrun = seg_measure_runs(e, font, badge_label_x, runs, 64);
             if (nrun >= 0) {
+                /* step 10: selection band behind the anchor..cursor
+                 * span - the fields' own convention (solid #2f5f8f
+                 * under the glyphs, same alloc_pixel+fill as every
+                 * other rect here). Edges come from the boundary
+                 * links' own measured x-ranges, so the band agrees
+                 * with the glyphs by construction. */
+                if (seg_anchor_on(e)) {
+                    int loA = g_seg_anchor < g_seg_idx ? g_seg_anchor : g_seg_idx;
+                    int hiA = g_seg_anchor < g_seg_idx ? g_seg_idx : g_seg_anchor;
+                    int ai, ai_n = 0, xs = -1, xe = -1, q;
+                    for (q = 0; q < nrun; q++) {
+                        if (runs[q].is_link && runs[q].actlen > 0) {
+                            ai = ai_n++;
+                            if (ai == loA) xs = runs[q].x0;
+                            if (ai == hiA) xe = runs[q].x1;
+                        }
+                    }
+                    if (xs >= 0 && xe > xs) {
+                        XSetForeground(dpy, gc, alloc_pixel("#2f5f8f"));
+                        XFillRectangle(dpy, buf, gc, xs, sty - font->ascent,
+                                       (unsigned)(xe - xs), (unsigned)line_h);
+                    }
+                }
                 int ri, link_no = -1;
                 XftColor hov_col;
                 if (!seg_focus_px) seg_focus_px = alloc_pixel("#ffffff");
@@ -2227,6 +2357,11 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                         int ri = 0;
                         size_t rstart = 0;
                         int act_seen = 0;
+                        /* step 10: selection offsets once per frame (not
+                         * per slice) - seg_range_offsets rewalks the
+                         * same runs, but only while a range is active. */
+                        int sel_loO = 0, sel_hiO = 0;
+                        int have_sel = seg_range_offsets(e, &sel_loO, &sel_hiO);
                         for (li = 0; li < nlines; li++) {
                             int ty_line = e->y + font->ascent + 2 + li * line_h;
                             int lx = badge_label_x;
@@ -2259,6 +2394,34 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                                     if (sgruns[ri].is_link && sgruns[ri].actlen > 0 &&
                                         seg_hover_on(e) && act_seen == g_hover_idx)
                                         ssc = hov_col;
+                                    /* step 10: selection band for the
+                                     * overlapped part of this slice -
+                                     * same #2f5f8f-under-glyphs as the
+                                     * fields. All four candidate edges
+                                     * (slice ends, link boundaries) are
+                                     * character-safe, so the sub-ranges
+                                     * measure exactly. */
+                                    if (have_sel) {
+                                        size_t olo = pos > (size_t)sel_loO ? pos : (size_t)sel_loO;
+                                        size_t ohi = se < (size_t)sel_hiO ? se : (size_t)sel_hiO;
+                                        if (ohi > olo) {
+                                            XGlyphInfo pre_ext, sub_ext;
+                                            int dx = 0;
+                                            if (olo > pos) {
+                                                XftTextExtentsUtf8(dpy, font, (const FcChar8 *)slice,
+                                                                   (int)(olo - pos), &pre_ext);
+                                                dx = pre_ext.xOff;
+                                            }
+                                            XftTextExtentsUtf8(dpy, font,
+                                                               (const FcChar8 *)(slice + (olo - pos)),
+                                                               (int)(ohi - olo), &sub_ext);
+                                            if (sub_ext.xOff > 0) {
+                                                XSetForeground(dpy, gc, alloc_pixel("#2f5f8f"));
+                                                XFillRectangle(dpy, buf, gc, lx + dx, ty_line - font->ascent,
+                                                               (unsigned)sub_ext.xOff, (unsigned)line_h);
+                                            }
+                                        }
+                                    }
                                     draw_text_emoji(font, &ssc, lx, ty_line, slice);
                                     XftTextExtentsUtf8(dpy, font, (const FcChar8 *)slice,
                                                        (int)slen, &sl_ext);

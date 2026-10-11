@@ -2892,6 +2892,9 @@ static int reparse_chtpm_if_changed(void) {
     g_seg_nav = 0;
     g_seg_idx = -1;
     g_seg_id[0] = '\0';
+    /* INLINE SPANS step 10: the anchor borrows the cursor's identity -
+     * a rebuild invalidates it identically. */
+    g_seg_anchor = -1;
     /* INLINE SPANS step 8: hover names the same per-window triple - a
      * rebuild invalidates it identically. */
     g_hover_nav = 0;
@@ -11658,6 +11661,17 @@ static void handle_key(KeySym ks, char ch) {
      * down here before. Generic: every window's rows, not per-app. */
     if (ch == 3 && g_focus_nav >= 1 && g_focus_nav <= g_n_nav) {
         Elem *f = g_nav[g_focus_nav - 1];
+        /* INLINE SPANS step 10: an active span selection copies the
+         * range's plain text (link text as text, never URLs - same
+         * contract as row-label copy); a collapsed or absent anchor
+         * copies the whole label exactly as before. */
+        if (f && seg_anchor_on(f)) {
+            char range[8192];
+            if (seg_range_text(f, range, sizeof(range))) {
+                kh_clipboard_copy(range);
+                return;
+            }
+        }
         if (f && f->label[0]) { kh_clipboard_copy(f->label); return; }
     }
     if (ch == 'p') { dump_frame_png(); return; }
@@ -11780,6 +11794,12 @@ static void handle_key(KeySym ks, char ch) {
         if (focused->backspace_action[0]) { dispatch_no_quit(focused->backspace_action); return; }
     }
     if (ks == XK_Up || ks == XK_Left) {
+        /* INLINE SPANS step 10: Shift+Left extends a selection anchor
+         * across the focused row's links (seg_anchor_extend); an
+         * unshifted Left walks the cursor exactly as before (step 5).
+         * g_key_shift covers physical Shift and relay 220/221 alike. */
+        if (ks == XK_Left && g_key_shift && g_focus_nav >= 1 && g_focus_nav <= g_n_nav &&
+            seg_anchor_extend(g_nav[g_focus_nav - 1], -1)) return;
         /* INLINE SPANS step 5: Left on a focused spans row walks the
          * link spans (entering at the last); rows without spans, and
          * Up anywhere, step rows exactly as before. */
@@ -11789,6 +11809,9 @@ static void handle_key(KeySym ks, char ch) {
         return;
     }
     if (ks == XK_Down || ks == XK_Right) {
+        /* step 10 mirror: Shift+Right extends at the first link span. */
+        if (ks == XK_Right && g_key_shift && g_focus_nav >= 1 && g_focus_nav <= g_n_nav &&
+            seg_anchor_extend(g_nav[g_focus_nav - 1], 1)) return;
         /* mirror: Right enters at the first link span. */
         if (ks == XK_Right && g_focus_nav >= 1 && g_focus_nav <= g_n_nav &&
             seg_cursor_step(g_nav[g_focus_nav - 1], 1)) return;
@@ -11839,6 +11862,10 @@ static void handle_key(KeySym ks, char ch) {
                 if (nact > 0) {
                     if (d == 0) g_seg_idx = -1;
                     else if (d <= nact) g_seg_idx = d - 1;
+                    /* a digit is a plain (collapsed) move, never an
+                     * extension: clear any range from before (step 10)
+                     * on both the select and the 0-drop paths. */
+                    g_seg_anchor = -1;
                     g_nav_digit_accum = 0;
                     redraw();
                     return;
@@ -13308,6 +13335,11 @@ static int kh_input_offset_at_click(Elem *e, int px, int py) {
 static void popup_handle_click(int px, int py) {
     g_bar_click_x = -1; /* fresh frame: no pending bar click until the
                          * bar-specific hit-test below arms one */
+    /* INLINE SPANS step 10: a click is a plain (collapsed) move - it
+     * clears any keyboard range, even when it lands on the already-
+     * focused row (where the cursor, and hence a stale range, would
+     * otherwise survive). */
+    g_seg_anchor = -1;
     /* REAL, NEW 2026-08-29 (direct instruction: "i think whole house
      * should have the same single|doubleclick rule or it could be
      * confusing... it should be house wide if possible/ez") - same
