@@ -215,12 +215,13 @@ both `form` and `form-file` for one name let the PATH win.
 - [ ] `getBoundingClientRect` returns real numbers, `el.style` writes reflow
 - Scoped 2026-10-11, no slice yet: the worker APIs exist (`textContent`
   get/set, `el.style`, gBCR simple block layout) but the worker runs
-  scripts + drains ≤800ms of timers into ONE RENDER snapshot (a 1s
-  `setInterval` clock verified frozen at tick 0 live) - there are no
-  live update pushes at all, so nothing flaps yet either. Needs worker-
-  lane timer/event pumping + push protocol first, then manager-side
-  identity/tree; the manager's `nb_dom` tree is currently
-  serialize-only (projection flattens it away).
+  scripts + drains ≤800ms of timers into ONE RENDER snapshot (a live 1s
+  `setInterval` clock verified frozen at tick 0; a 100ms one renders
+  `tick 7` once and stops) - there are no live pushes at all, so
+  nothing flaps yet either. Needs worker-lane timer/event pumping +
+  push protocol first, then manager-side identity/tree; the manager's
+  `nb_dom` tree is currently serialize-only (projection flattens it
+  away).
 
 ## Todo — Milestone 4: nav behaviors
 
