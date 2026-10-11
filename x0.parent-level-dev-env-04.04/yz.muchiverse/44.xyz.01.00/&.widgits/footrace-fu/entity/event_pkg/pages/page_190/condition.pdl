@@ -1,0 +1,3 @@
+# FinRule 1: does the target pass Finish
+COND | trigger | finrule
+COND | kv | variables.txt | ph_fin | eq | 0

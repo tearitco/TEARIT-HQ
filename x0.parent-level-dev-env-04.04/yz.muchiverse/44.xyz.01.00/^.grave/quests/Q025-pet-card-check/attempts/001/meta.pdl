@@ -1,0 +1,8 @@
+ATTEMPT | 1 | sonnet-gate | 2026-10-10T02:12:50Z
+BACKEND | 0
+PROVIDER | horn_chat_backend: answered by groq (openai/gpt-oss-120b)
+WALL | 20.0
+RESULT | PASS
+REASON | 
+BRANCH | ghost/sonnet-gate/Q025-pet-card-check-a001
+WORKTREE | /home/no/staging/ghosts/sonnet-gate/Q025-pet-card-check-a001

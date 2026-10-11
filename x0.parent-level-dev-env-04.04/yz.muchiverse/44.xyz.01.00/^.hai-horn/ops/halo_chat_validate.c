@@ -12,6 +12,7 @@
  */
 #define _GNU_SOURCE
 #include <stdio.h>
+#include <sys/stat.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -79,6 +80,44 @@ static int spoke_has_slot_to(const char *spoke_path, const char *master_name) {
     return found;
 }
 
+/* AUTO-PROMOTION POLICY (house level, never an entity's own file). Auto-promotion needs ALL of: the house line `AUTO_PROMOTE | enabled=true`, tier >= associate_bachelor,
+ * and LEDGER EVIDENCE for this very candidate: Laplace score (reward+1)/(reward+punish+2) >= min_score AND reward+punish >= min_n (AUTO-PROMOTION-RULE.md: 0.90 and 20;
+ * both may be tuned on the AUTO_PROMOTE line as `min_score=` / `min_n=`). Promotion is a person's act: missing file / line / ledger entry = queue for review. */
+typedef struct { int enabled; double min_score; int min_n; } Policy;
+static Policy read_policy(const char *house_root) {
+    Policy p = { 0, 0.90, 20 }; char path[4096], line[512];
+    snprintf(path, sizeof(path), "%s/^.hai-horn/learning_limits.pdl", house_root);
+    FILE *f = fopen(path, "r"); if (!f) return p;
+    while (fgets(line, sizeof(line), f)) if (!strncmp(line, "AUTO_PROMOTE", 12)) {
+        char *x;
+        p.enabled = strstr(line, "enabled=true") != NULL;
+        if ((x = strstr(line, "min_score="))) p.min_score = strtod(x + 10, NULL);
+        if ((x = strstr(line, "min_n="))) p.min_n = atoi(x + 6);
+    }
+    fclose(f); return p;
+}
+/* the candidate's row in <bank>/promotion_ledger/ledger.txt (same format promotion_ledger.+x writes): 1 = found */
+static int ledger_lookup(const char *bank_dir, const char *id, int *reward, int *punish) {
+    char path[4096], line[MAXLINE], key[160]; int found = 0;
+    snprintf(path, sizeof(path), "%s/promotion_ledger/ledger.txt", bank_dir);
+    FILE *f = fopen(path, "r"); if (!f) return 0;
+    snprintf(key, sizeof(key), "id=%s ", id);
+    while (fgets(line, sizeof(line), f)) if (strstr(line, key)) {
+        char v[32]; *reward = get_field(line, "reward", v, sizeof(v)) ? atoi(v) : 0; *punish = get_field(line, "punish", v, sizeof(v)) ? atoi(v) : 0; found = 1; break;
+    }
+    fclose(f); return found;
+}
+/* a validated candidate must be KNOWN to the ledger so evidence (promotion_ledger replay) can attach to it; append-only, idempotent, same row format as promotion_ledger */
+static void ledger_register(const char *bank_dir, const char *id, const char *type, const char *target, const char *slot, double delta, const char *reason, const char *proposer) {
+    char dir[4096], path[4096]; int r, p;
+    if (ledger_lookup(bank_dir, id, &r, &p)) return;
+    snprintf(dir, sizeof(dir), "%s/promotion_ledger", bank_dir); mkdir(dir, 0755);
+    snprintf(path, sizeof(path), "%s/ledger.txt", dir);
+    FILE *f = fopen(path, "a"); if (!f) return;
+    fprintf(f, "EDIT | id=%s | type=%s | target=%s | slot=%s | delta=%.4f | reason=\"%s\" | proposer=%s | reward=0 | punish=0 | replayed=0\n", id, type, target, slot, delta, reason, proposer);
+    fclose(f);
+}
+
 static int read_tier(const char *entity_dir) {
     char path[4096];
     snprintf(path, sizeof(path), "%s/learning_limits.pdl", entity_dir);
@@ -103,7 +142,7 @@ static int read_tier(const char *entity_dir) {
     return 0;
 }
 
-static int promote_to_bank(const char *bank_dir, const char *target, const char *slot, double delta, const char *reason) {
+static int promote_to_bank(const char *bank_dir, const char *target, const char *slot, double delta, const char *reason, double *before, double *after) {
     char spoke_path[4096];
     snprintf(spoke_path, sizeof(spoke_path), "%s/data/spokes/%s.pdl", bank_dir, target);
     FILE *f = fopen(spoke_path, "r");
@@ -158,6 +197,7 @@ static int promote_to_bank(const char *bank_dir, const char *target, const char 
         fputs(lines[i], f);
     }
     fclose(f);
+    *before = current; *after = new_weight;
     return 1;
 }
 
@@ -258,45 +298,24 @@ int main(int argc, char **argv) {
     }
 
     int tier = read_tier(entity_dir);
-
-    // Add candidate to promotion ledger and replay
-    char ledger_bin[4096];
-    snprintf(ledger_bin, sizeof(ledger_bin), "%s/ops/promotion_ledger.+x", entity_dir);
-    
-    // Add candidate to ledger
-    char add_cmd[8192];
-    snprintf(add_cmd, sizeof(add_cmd), "%s \"%s\" add_candidate \"%s\" 2>&1", ledger_bin, bank_dir, pending_path);
-    system(add_cmd);
-    
-    // Replay against obs feedback log
-    char obs_path[4096];
-    snprintf(obs_path, sizeof(obs_path), "%s/obs_feedback_log.txt", entity_dir);
-    char replay_cmd[8192];
-    snprintf(replay_cmd, sizeof(replay_cmd), "%s \"%s\" replay \"%s\" \"%s\" 2>&1", ledger_bin, bank_dir, id, obs_path);
-    system(replay_cmd);
-    
-    // Get score
-    char score_cmd[8192];
-    snprintf(score_cmd, sizeof(score_cmd), "%s \"%s\" score \"%s\" 2>&1", ledger_bin, bank_dir, id);
-    FILE *sf = popen(score_cmd, "r");
-    double score = 0.0;
-    int reward = 0, punish = 0;
-    if (sf) {
-        char sbuf[256];
-        if (fgets(sbuf, sizeof(sbuf), sf)) {
-            sscanf(sbuf, "%lf (reward=%d, punish=%d)", &score, &reward, &punish);
-        }
-        pclose(sf);
-    }
-    
-    // Auto-promote if score >= 0.9 and tier >= associate_bachelor (2)
-    int auto_promote = 0;
-    if (tier >= 2 && score >= 0.90) {
-        auto_promote = 1;
+    Policy pol = read_policy(house_root);
+    int auto_promote = 0, led_r = 0, led_p = 0; char why[96] = "off";
+    ledger_register(bank_dir, id, type, target, slot, delta, reason, proposer);
+    if (!pol.enabled) snprintf(why, sizeof(why), "off");
+    else if (tier < 2) snprintf(why, sizeof(why), "tier-too-low");
+    else if (!ledger_lookup(bank_dir, id, &led_r, &led_p)) snprintf(why, sizeof(why), "no-ledger-entry");
+    else {
+        double score = (double)(led_r + 1) / (double)(led_r + led_p + 2); int nobs = led_r + led_p;
+        if (score < pol.min_score) snprintf(why, sizeof(why), "score-%.2f<%.2f", score, pol.min_score);
+        else if (nobs < pol.min_n) snprintf(why, sizeof(why), "n-%d<%d", nobs, pol.min_n);
+        else { auto_promote = 1; snprintf(why, sizeof(why), "score-%.3f-n-%d", score, nobs); }
     }
     
     if (auto_promote) {
-        if (promote_to_bank(bank_dir, target, slot, delta, reason)) {
+        double wb = 0, wa = 0;
+        if (promote_to_bank(bank_dir, target, slot, delta, reason, &wb, &wa)) {
+            { char ap[4096]; snprintf(ap, sizeof(ap), "%s/promotion_ledger/promoted.txt", bank_dir); FILE *af = fopen(ap, "a");
+              if (af) { fprintf(af, "PROMOTED | id=%s | target=%s | slot=%s | before=%.4f | after=%.4f | delta=%.4f | tier=%d | evidence=%s | by=auto\n", id, target, slot, wb, wa, delta, tier, why); fclose(af); } }
             lines[candidate_idx][0] = '\0';
             char *bracket = strchr(lines[candidate_idx], '[');
             if (bracket) {
@@ -313,11 +332,11 @@ int main(int argc, char **argv) {
                 }
                 fclose(pf);
             }
-            printf("PROMOTED target=%s slot=%s delta=%.4f\n", target, slot, delta);
+            printf("PROMOTED target=%s slot=%s delta=%.4f (%s)\n", target, slot, delta, why);
             return 0;
         }
     }
 
-    printf("QUEUED_FOR_REVIEW target=%s slot=%s delta=%.4f (tier=%d)\n", target, slot, delta, tier);
+    printf("QUEUED_FOR_REVIEW target=%s slot=%s delta=%.4f (tier=%d; auto: %s)\n", target, slot, delta, tier, why);
     return 0;
 }

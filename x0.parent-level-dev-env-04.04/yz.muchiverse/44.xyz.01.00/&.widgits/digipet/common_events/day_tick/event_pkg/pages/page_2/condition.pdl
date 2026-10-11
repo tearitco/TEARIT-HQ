@@ -1,0 +1,2 @@
+COND | trigger | parallel
+COND | kv | variables.txt | hunger | ge | @needs_tunables.pdl:hungry_at

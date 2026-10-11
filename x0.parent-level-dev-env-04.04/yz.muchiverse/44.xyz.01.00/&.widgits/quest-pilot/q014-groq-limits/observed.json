@@ -1,0 +1,41 @@
+[
+ {
+  "model": "openai/gpt-oss-120b",
+  "http": 200,
+  "wall_s": 0.59,
+  "headers": {
+   "x-ratelimit-limit-requests": "1000",
+   "x-ratelimit-limit-tokens": "8000",
+   "x-ratelimit-remaining-requests": "999",
+   "x-ratelimit-remaining-tokens": "7915",
+   "x-ratelimit-reset-requests": "1m26.4s",
+   "x-ratelimit-reset-tokens": "637ms"
+  }
+ },
+ {
+  "model": "openai/gpt-oss-20b",
+  "http": 200,
+  "wall_s": 0.19,
+  "headers": {
+   "x-ratelimit-limit-requests": "1000",
+   "x-ratelimit-limit-tokens": "8000",
+   "x-ratelimit-remaining-requests": "999",
+   "x-ratelimit-remaining-tokens": "7915",
+   "x-ratelimit-reset-requests": "1m26.4s",
+   "x-ratelimit-reset-tokens": "637ms"
+  }
+ },
+ {
+  "model": "qwen/qwen3.8-27b",
+  "http": 200,
+  "wall_s": 0.15,
+  "headers": {
+   "x-ratelimit-limit-requests": "1000",
+   "x-ratelimit-limit-tokens": "8000",
+   "x-ratelimit-remaining-requests": "999",
+   "x-ratelimit-remaining-tokens": "7974",
+   "x-ratelimit-reset-requests": "1m26.4s",
+   "x-ratelimit-reset-tokens": "194ms"
+  }
+ }
+]

@@ -1,0 +1,4 @@
+players=2
+dice_seed=1
+rand_counter=0
+bot_counter=0

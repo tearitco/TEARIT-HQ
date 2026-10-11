@@ -60,6 +60,88 @@ fi
 
 echo "$(date '+%H:%M:%S') open  kind=$KIND id=${ID:-.} cell=$SX,$SY,$SZ  $NOTE" >> "$LOG"
 
+# A numbered map event. Play mode fires its on-click page (action
+# button). Edit mode falls through to the context menu, whose Events
+# row opens the same package in events-hq.
+if [ "$KIND" = mapev ] && [ -n "$ID" ]; then
+    W="$ROOT/pieces/world_01/state.txt"
+    MAP=$(sed -n 's/^map_id=//p' "$W" | head -1)
+    DESK=$(sed -n 's/^desk_id=//p' "$W" | head -1)
+    PKG="$ROOT/pieces/system/maps/$MAP/$DESK/ev/$ID"
+    # Start and stop must run while play is off. Every other page
+    # still waits for play mode, same as the other entities.
+    VERB=""
+    [ -f "$PKG/verb.txt" ] && VERB=$(head -1 "$PKG/verb.txt")
+    if [ "$VERB" = start_game ] || [ "$VERB" = stop_game ] || [ "$VERB" = restart_game ] || [ "$VERB" = continue_game ]; then
+        sh "$ROOT/ops/doom_event.sh" "$VERB" "$MAP" "$DESK"
+        echo "$(date '+%H:%M:%S') $VERB mapev $ID" >> "$LOG"
+        exit 0
+    fi
+    # Desk events.pdl is the cell-32 list. The ev/ package was built on
+    # the old grid and its verb often disagrees. Play the pdl command.
+    EVF="$ROOT/pieces/system/maps/$MAP/$DESK/events.pdl"
+    CMD=""
+    if [ -f "$EVF" ]; then
+        CMD=$(awk -v id="$ID" '
+            BEGIN { n=0 }
+            $1=="EVENT" {
+                n++
+                if (n == id+0) {
+                    for (i = 1; i <= NF; i++) {
+                        if ($i ~ /^cmds=/) { split($i, a, "="); print a[2]; exit }
+                    }
+                }
+            }
+        ' "$EVF")
+    fi
+    case "$CMD" in
+        start_standard|start_computer|start_player|start_king_pawn|start_endgame|stop_game|show_elo)
+            sh "$ROOT/ops/chess_event.sh" "$CMD"
+            echo "$(date '+%H:%M:%S') chess $CMD mapev $ID" >> "$LOG"
+            exit 0
+            ;;
+    esac
+    if [ -n "$CMD" ] && grep -q '^mode=on' "$HOUSE/#.desktop/khtpm_play_mode.state.txt" 2>/dev/null; then
+        case "$CMD" in
+            select|land)
+                sh "$ROOT/ops/chess_event.sh" "$CMD" "$DESK" "$ID"
+                echo "$(date '+%H:%M:%S') chess $CMD mapev $ID" >> "$LOG"
+                exit 0
+                ;;
+            change_hp|change_armor|nukage|change_ammo|change_items|start_battle|next_level|player_start)
+                sh "$ROOT/ops/doom_event.sh" "$CMD"
+                case "$CMD" in
+                    player_start|next_level) ;;
+                    *) sh "$ROOT/ops/doom_event.sh" kill_event "$DESK" "$ID" ;;
+                esac
+                echo "$(date '+%H:%M:%S') pdl $CMD mapev $ID" >> "$LOG"
+                exit 0
+                ;;
+        esac
+    fi
+    DP="$ROOT/pieces/system/maps/$MAP/deadpool.pdl"
+    if [ -f "$DP" ] && awk -F'|' -v desk="$DESK" -v id="$ID" '
+        { gsub(/^[ \t]+|[ \t]+$/, "", $2); gsub(/^[ \t]+|[ \t]+$/, "", $3) }
+        $2=="desk" { d=$3 }
+        $2=="ev" && $3==id && d==desk { hit=1 }
+        END { exit hit ? 0 : 1 }
+    ' "$DP"; then
+        echo "$(date '+%H:%M:%S') dead mapev $ID" >> "$LOG"
+        exit 0
+    fi
+    if grep -q '^mode=on' "$HOUSE/#.desktop/khtpm_play_mode.state.txt" 2>/dev/null; then
+        W="$ROOT/pieces/world_01/state.txt"
+        MAP=$(sed -n 's/^map_id=//p' "$W" | head -1)
+        DESK=$(sed -n 's/^desk_id=//p' "$W" | head -1)
+        PKG="$ROOT/pieces/system/maps/$MAP/$DESK/ev/$ID"
+        if [ -d "$PKG/event_pkg" ]; then
+            sh "$HOUSE/&.widgits/events-hq/ops/play_event.sh" "$PKG" "$HOUSE" on-click
+            echo "$(date '+%H:%M:%S') play mapev $ID" >> "$LOG"
+            exit 0
+        fi
+    fi
+fi
+
 # DESK ENTITIES GET THEIR OWN MENU, AUTOMATICALLY (2026-10-05, direct
 # instruction: cursword / the terumons / any page entity must have "the exact
 # same" context menu in pc-hq as on the desktop). The desk's rule
@@ -103,6 +185,7 @@ case "$KIND" in
     tree)          HEADER="tree: ${ID:-?}";           VERBS="INSPECT COPY PASTE DELETE TOENTITY ACT STOP EVENTS INVENTORY DIR EXIT" ;;
     chicken|entity) HEADER="${KIND}: ${ID:-?}";       VERBS="INSPECT COPY PASTE DELETE ACT STOP EVENTS INVENTORY DIR EXIT" ;;
     xelector)      HEADER="xelector: ${ID:-xelector_01}"; VERBS="INSPECT DIR EXIT" ;;
+    mapev)         HEADER="event ${ID}"; VERBS="INSPECT COPY PASTE DELETE ACT STOP EVENTS INVENTORY DIR EXIT" ;;
     voxel)         HEADER="voxel '$GLYPH' @ $SX,$SY,$SZ"; VERBS="INSPECT COPY PASTE DELETE PLACE EXIT" ;;
     *)             HEADER="$KIND: ${ID:-?}";          VERBS="INSPECT EXIT" ;;
 esac
@@ -125,6 +208,8 @@ label_for() {
         # added to entity-like kinds above (hero/tree/chicken/entity),
         # never voxel/air which have no real pieces/<id> dir.
         EVENTS) echo "Events (hq)" ;; INVENTORY) echo "Inventory" ;;
+        # Map events have no pieces/<id>. Events (hq) opens the package
+        # the converter wrote under the desk. Play mode never gets here.
         DIR) echo "Dir" ;;
         # REAL, NEW 2026-09-29, direct instruction ("give it all the
         # context options asa has... act and its sub options") - same
@@ -166,6 +251,15 @@ label_for() {
         # not an inconsistency: STOP still routes through the inbox
         # (kept a real, dispatchable game verb, matching asa/ava's own
         # meta.pdl shape) even though it's a stub today.
+        if [ "$v" = EVENTS ] && [ "$KIND" = mapev ] && [ -n "$ID" ]; then
+            W="$ROOT/pieces/world_01/state.txt"
+            MAP=$(sed -n 's/^map_id=//p' "$W" | head -1)
+            DESK=$(sed -n 's/^desk_id=//p' "$W" | head -1)
+            PKG="$ROOT/pieces/system/maps/$MAP/$DESK/ev/$ID"
+            printf '    <item label="%s" action="sh %s/&.widgits/events-hq/button.sh %s %s"/>\n' \
+                "$(label_for "$v")" "$HOUSE" "$PKG" "$HOUSE"
+            continue
+        fi
         if [ "$v" = ACT ]; then
             ENT_DIR="$ROOT/pieces/${ID:-$KIND}"
             mkdir -p "$ENT_DIR"

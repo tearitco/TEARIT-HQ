@@ -1,0 +1,9 @@
+# event.pal - Block 1: load; a Ward Sentinel's first Block each turn is free (trigger block). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set act_alive alive_{current}_{sel}
+exec ops/+x/var_math.+x . set act_cls cls_{current}_{sel}
+exec ops/+x/var_math.+x . set bl_cost rules.pdl:block_cost
+exec ops/+x/var_math.+x . set fb_ok ninjas.pdl:class_{act_cls}_free_block
+exec ops/+x/var_math.+x . set fb_used fb_{current}_{sel}
+exec ops/+x/var_math.+x . set bl_free 0
+exec ops/+x/var_math.+x . set ph_blk 1
+halt

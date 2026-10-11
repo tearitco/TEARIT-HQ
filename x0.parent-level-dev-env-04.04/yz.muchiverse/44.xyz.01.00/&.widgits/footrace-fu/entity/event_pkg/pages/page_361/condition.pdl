@@ -1,0 +1,6 @@
+# Block 2: free Block
+COND | trigger | block
+COND | kv | variables.txt | ph_blk | eq | 1
+COND | kv | variables.txt | fb_ok | eq | 1
+COND | kv | variables.txt | fb_used | eq | 0
+COND | kv | switches.txt | game_over | eq | 0

@@ -1,0 +1,8 @@
+# event.pal - Combat 8: higher total wins, equal is a tie (trigger combat). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . gt a_win a_roll d_roll
+exec ops/+x/var_math.+x . lt d_win a_roll d_roll
+exec ops/+x/var_math.+x . eq tie a_roll d_roll
+exec ops/+x/var_math.+x . set a_hit 0
+exec ops/+x/var_math.+x . set d_hit 0
+exec ops/+x/var_math.+x . set ph_cmb 6
+halt

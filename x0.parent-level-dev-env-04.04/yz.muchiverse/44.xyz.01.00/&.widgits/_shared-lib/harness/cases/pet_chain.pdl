@@ -1,0 +1,47 @@
+# pet_chain - the pets' blockchain adapter (ops/pet_chain.sh) on a SCRATCH chain (difficulty 2, daily cap 3, never the live chain): init, wallet per pet (id = e + first 24 hex of entity_uid, secret mode 600 and never printed), real niced block per mine, the chain's own daily cap, balance, spendable = confirmed minus own pending, pay refuses above spendable, a payment is pending until the next block confirms it.
+RESULTS | ../results/pet_chain.txt
+CASE    | pet-chain
+SCRATCH |
+MKDIR   | a
+MKDIR   | b
+ENV     | PET_CHAIN_ROOT | $T/chain
+ENV     | PET_CHAIN_DIFF | 2
+ENV     | PET_CHAIN_CAP  | 3
+RUN | /bin/sh | -c | printf aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa > $T/a/entity_uid.txt; printf bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb > $T/b/entity_uid.txt
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_chain.sh | init
+EXPECT_OUT | chain pet-cones created | chain-created
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_chain.sh | init
+EXPECT_OUT | ready | init-idempotent
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_chain.sh | wallet | $T/a
+EXPECT_OUT_IS | eaaaaaaaaaaaaaaaaaaaaaaaa | wallet-id-from-uid
+RUN | /bin/sh | -c | stat -c %a $T/a/wallet_secret.txt
+EXPECT_OUT_IS | 600 | secret-mode-600
+RUN | /bin/sh | -c | s=$(cat $T/a/wallet_secret.txt); sh $HOUSE/@.apps/pet-trainer/ops/pet_chain.sh wallet $T/a \p grep -c "$s"; true
+EXPECT_OUT_IS | 0 | secret-never-printed
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_chain.sh | wallet | $T/b
+EXPECT_OUT_IS | ebbbbbbbbbbbbbbbbbbbbbbbb | second-wallet
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_chain.sh | balance | $T/a
+EXPECT_OUT_IS | 0 | new-wallet-empty
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_chain.sh | mine | $T/a
+EXPECT_OUT_IS | mined | mine-1
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_chain.sh | mine | $T/a
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_chain.sh | mine | $T/a
+EXPECT_OUT_IS | mined | mine-3
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_chain.sh | mine | $T/a
+EXPECT_OUT_IS | capped | daily-cap-stops-the-fourth
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_chain.sh | balance | $T/a
+EXPECT_OUT_IS | 31500 | three-blocks-paid
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_chain.sh | pay | $T/a | eazbadbadbadbadbadbadbadb | 999999999
+EXPECT_OUT | insufficient | pay-refused-above-spendable
+RUN | /bin/sh | -c | sh $HOUSE/@.apps/pet-trainer/ops/pet_chain.sh pay $T/a $(sh $HOUSE/@.apps/pet-trainer/ops/pet_chain.sh wallet $T/b) 5000
+EXPECT_OUT | paid 5000 | pay-pending
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_chain.sh | spendable | $T/a
+EXPECT_OUT_IS | 26500 | spendable-drops-at-once
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_chain.sh | balance | $T/a
+EXPECT_OUT_IS | 31500 | confirmed-unchanged-until-block
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_chain.sh | mine | $T/b
+EXPECT_OUT_IS | mined | other-pet-mines
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_chain.sh | balance | $T/a
+EXPECT_OUT_IS | 26500 | payment-confirmed-sender
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_chain.sh | balance | $T/b
+EXPECT_OUT_IS | 15500 | payment-confirmed-receiver

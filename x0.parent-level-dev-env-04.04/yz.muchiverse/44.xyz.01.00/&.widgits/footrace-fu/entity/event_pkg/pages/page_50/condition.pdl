@@ -1,0 +1,5 @@
+# Setup 4: refused -> the game never starts (game_over, reason 9)
+COND | trigger | setup
+COND | kv | variables.txt | setup_error | eq | 1
+COND | kv | variables.txt | players | ge | @rules.pdl:players_min
+COND | kv | variables.txt | players | le | @rules.pdl:players_max

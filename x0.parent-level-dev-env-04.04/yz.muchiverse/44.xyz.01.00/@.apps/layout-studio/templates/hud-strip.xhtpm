@@ -1,0 +1,15 @@
+<!-- TEMPLATE hud-strip: the live numbers. Values come from ui.txt keys the manager rewrites; the layout never computes.
+     Needs a sidebar and a panel like every window body (see menu.xhtpm). -->
+<window label="${title}" class="ls-window database-window" vars="ui.txt">
+  <page name="main">
+    <sidebar id="side" class="sidebar">
+      <text label="${title}" class="ls-title"/>
+      <text label="Hunger ${hunger}" class="ls-row"/>
+      <text label="Coins ${coins}" class="ls-row"/>
+      <text label="Day ${days}" class="ls-row"/>
+    </sidebar>
+    <panel id="info" class="ls-panel">
+      <text label="${hint}" class="ls-quiet"/>
+    </panel>
+  </page>
+</window>

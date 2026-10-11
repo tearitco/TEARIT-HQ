@@ -1,0 +1,14 @@
+# instruments.pdl - INST | name | role | wave | attack_s | decay_s | sustain(0-1) | release_s | lowpass_hz (0=off) | gain
+# role (used by music_seq): pad bass lead arp bells drums bed.  wave (used by music_synth): sine square saw triangle noise drum.
+# role drums + wave drum: note pitch picks the voice (36 kick, 38 snare, 42 hat). role bed + wave noise: a filtered noise wash (rain).
+# 'sine' is the plain test tone the harness uses for the zero-crossing pitch check: keep it a pure sine with no lowpass.
+INST | sine   | lead  | sine     | 0.005 | 0.05 | 1.0  | 0.02 | 0    | 0.8
+INST | pad    | pad   | triangle | 0.35  | 0.30 | 0.7  | 0.60 | 1800 | 0.50
+INST | warm   | pad   | saw      | 0.50  | 0.40 | 0.6  | 0.80 | 900  | 0.35
+INST | bass   | bass  | triangle | 0.01  | 0.15 | 0.7  | 0.12 | 700  | 0.80
+INST | lead   | lead  | square   | 0.02  | 0.12 | 0.5  | 0.20 | 2400 | 0.30
+INST | flute  | lead  | sine     | 0.06  | 0.10 | 0.8  | 0.25 | 0    | 0.60
+INST | pluck  | arp   | saw      | 0.003 | 0.18 | 0.0  | 0.10 | 2800 | 0.30
+INST | bells  | bells | sine     | 0.002 | 0.90 | 0.0  | 0.40 | 0    | 0.40
+INST | drums  | drums | drum     | 0.001 | 0.10 | 0.0  | 0.02 | 0    | 0.70
+INST | rain   | bed   | noise    | 0.80  | 0.50 | 0.8  | 0.50 | 1500 | 0.12

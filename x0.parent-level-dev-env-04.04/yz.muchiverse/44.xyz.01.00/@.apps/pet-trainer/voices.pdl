@@ -1,0 +1,18 @@
+SECTION | KEY | VALUE
+----------------------------------------
+# voices.pdl - how each species sounds. Edit, no rebuild.
+# VOICE | species | edge-tts voice | rate | pitch      (speech: pet_voice.sh; online edge-tts, cached per pet and phrase; no sound if offline)
+# HUM   | species | wave | base_hz | steps (semitones) | note_ms      (a short melody made with sox, cached: pet_hum.sh; played only while the pet is on screen)
+# species: 0 bunny, 1 bear, 2 cat, 3 frog, 4 mouse, 5 dragon
+VOICE | 0 | en-US-AnaNeural     | +0%  | +30Hz
+VOICE | 1 | en-US-GuyNeural     | -10% | -25Hz
+VOICE | 2 | en-GB-MaisieNeural  | +5%  | +15Hz
+VOICE | 3 | en-US-EricNeural    | +10% | -10Hz
+VOICE | 4 | en-US-AnaNeural     | +25% | +90Hz
+VOICE | 5 | en-GB-RyanNeural    | -8%  | -35Hz
+HUM | 0 | sine     | 523 | 0 2 4 7 4 2 0        | 260
+HUM | 1 | triangle | 196 | 0 0 3 5 3 0          | 420
+HUM | 2 | sine     | 392 | 0 4 7 12 7 4         | 200
+HUM | 3 | square   | 147 | 0 0 5 0 7 0          | 180
+HUM | 4 | sine     | 784 | 0 7 4 9 7 12 9 4     | 140
+HUM | 5 | sawtooth | 110 | 0 3 7 3 10 7         | 520

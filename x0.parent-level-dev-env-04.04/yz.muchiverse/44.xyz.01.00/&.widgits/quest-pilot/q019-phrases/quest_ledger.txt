@@ -1,0 +1,9 @@
+QUEST|q019-phrases|2026-10-07|worker=openai/gpt-oss-120b via Groq chat/completions (direct, free tier, max_tokens 4000)|runner=claude by hand (quest_runner not built)|judge=ops/phrase_lint.c (deterministic)
+LOCK|_shared-lib/harness/cases/quest_q019_phrases.pdl|sha256=bfd12a1da30b3404d7d9a07361e7db5b2fee59ecee39387d189ed99c72ce5406
+LOCK|_shared-lib/harness/quest_q019_phrases.pal|sha256=9c68f60f1c6c6be3574b013af32b697f9f08dc566ae276f722440c4b96b5b136
+LOCK|quest-pilot/q019-phrases/ops/phrase_lint.c|sha256=a2fce196d3ace6242dbecd46806a91460237d871028ac255b271900152fb3424
+HARNESS_CHECK|sealed reference (claude, 34 rows) PASS 35/0; unchanged original (6 rows) FAIL; each of the 10 judge rules shown failing on its own fixture (16 fixture cases)
+ITER|1|prompt 446 tokens|completion 3998 (hit the 4000 cap but the file was complete)|total=4444 cost=0|wall_s=8.7|verdict=PASS passed=35 failed=0
+REVIEW|claude read all 40 new rows: plain friendly farm talk; a few mention things the game lacks (wheat, a silver coin, oats, carrots) - flavor only
+REGRESSION|worker file installed into eden/conductor/phrases.pdl: eden_loop 305/0, eden_conductor 231/0, eden_install 114/0
+RESULT|ACCEPTED|iterations=1|claude_tokens=spec+judge+harness+review (judge+harness were the bulk: about the cost of writing the phrases myself - the saving here is nil; reuse of the judge pattern is the gain)|merge=live claude

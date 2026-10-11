@@ -48,6 +48,8 @@ loop:
 **Key points:**
 - `.pal` IS assembly code, not a scripting language
 - `exec ./ops/<name>` calls an executable (shell script or compiled binary)
+- **Arguments (changed 2026-10-07, owner: "should be able to accept many args")**: `exec <path> <a1> <a2> <a3> ...`. `a1` is a literal or a register (its value is passed), `a2` a register (as before), and **every further token is a literal passed as an extra argument, in order** (whitespace-split, so a token cannot contain a space). Before this, a third token that was not a register was silently dropped (the VM's own comment said "we don't have literal_arg3 yet"), so an op could receive at most one literal. Backward compatible: no existing `.pal` (183 scanned) has a fourth token. Source: `&.widgits/_shared-lib/system/prisc+x.c`; **per-project copies of the VM are separate files and are unchanged**, and a binary built before this change still drops the extras. Proof: `&.widgits/_shared-lib/harness/prisc_exec_args.pal` (3 checks; the old VM fails all 3).
+- **Output and exit status are discarded** by `exec` (stdout/stderr go to `/dev/null`, the status is not consulted), so a pal cannot branch on whether an op succeeded: ops report through files/ledgers (this is why the harness ops write PASS/FAIL rows).
 - Paths are **relative to the .pal file's directory** (CWD when prisc runs)
 - `sleep` is in milliseconds (16 = ~60fps)
 

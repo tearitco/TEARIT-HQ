@@ -1,0 +1,112 @@
+# 🪧📜 NIGHT 42 — Headstones, Contracts, and Chat Conveniences 📜🪧
+# ====================================================================
+# Title: "🪧📜 NIGHT 42 — Headstones, Contracts, and Chat Conveniences 📜🪧"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: Headstones as the way a player progresses through games. A stone holds many quests and can be a comment board; many people can take a quest; the quest script decides whether the stone lives or dies; quests are contracts with rewards and escrow; the symbols for boards and stones in emoji, ASCII and Chinese; the calendar tie; and the chat window conveniences, starting with fork chats and the friends pane.
+# Long-form: a design night. Nothing here is built. The owner's words are marked as the owner's; the rest are proposals.
+# Companion documents: 08-roadmap/design-docs/HEADSTONES-AS-GAME-PROGRESSION-AND-CHAT-CONVENIENCES-2026-10-08.md, MULTI-AGENT-NETWORK-USER-STORY-HARNESS-PLAN-2026-10-08.md section fourteen, PAL-CHAIN-MULTICHAIN-ESCROW-FAUCET-DESIGN.md, GRAVEYARD-GHOSTS-DESIGN.md.
+
+**THE NARRATOR:** Tonight the owner said something that connects a lot of the house. In future games, headstones will be how the user progresses. And the house already has them, as the quest board in the chat menu.
+
+**MAXINE:** So we start with what exists.
+
+---
+
+**THE NARRATOR:** Part one. What a headstone is today.
+
+**TOMO:** The gravestone folder is the quest board. Every task for an AI worker is a quest folder with a spec, a log, and a result. A table lists them all. Failed and abandoned quests are never deleted. Quests have a deterministic check, an owner, a status and a history that only grows.
+
+**RAHWEH:** Why does that fit a game?
+
+**TOMO:** Because that is exactly what a progression system needs. A game quest, like harvest ten grain, and a robot quest, like write this program, differ only in who owns them and what the check reads. The goals board I proposed for entities has the same row shape. So one format can serve robots, entities and players.
+
+---
+
+**THE NARRATOR:** Part two. The owner's answers.
+
+**TOMO:** A stone can hold many quests. It is a container, not a single task. A stone can become a communication board: a comments section between the quest creator and the quest takers, stored with the quest. Many people can take the same quest. And the quest's own script, a pal program, decides whether the stone lives or dies when the quest is done. It is code the quest brings, not a global rule.
+
+**MAXINE:** And where do they live?
+
+**TOMO:** It depends where they apply. Quests on the taskbar quest board are in user data, in the user's desk folder, never in git. Quests on levels and desks inside a game are in the book and pages, so they travel with the level.
+
+**RAHWEH:** And your proposal for the data?
+
+**TOMO:** A stone is a folder. A small file names the stone and its script. A file of quest rows. An append only claims file, where taking a quest adds a row and many rows per quest are allowed. An append only comments file. A results file. And a log. Nothing is edited in place, so many takers cannot conflict. When a result passes its check, the script returns one verdict line: live, archive, or consume. Archive and consume never delete files. They write a closed row and hide the stone. The script runs under a watchdog, so a hung script cannot freeze the virtual machine.
+
+**MAXINE:** And the old quests?
+
+**TOMO:** Each existing quest folder is simply a stone with one quest. A converter can wrap them with no loss, and the index table becomes a view.
+
+---
+
+**THE NARRATOR:** Part three. Quests as contracts.
+
+**TOMO:** The owner said quests are like Ethereum contracts. Rewards can be coins on the chain, items, goods, any agreement, even task for task, with escrow. Here is what exists. The chain has an escrow program. It locks coins, pays them out, or refunds them. Payout and refund are only valid if made by the agent named in the lock, and never above what remains. Locked coins are excluded from the spendable balance. An audit command replays the chain and reports whether coins are conserved. The hard limit, written in its own header: without signing, the agent field is an honor field. So it is trustworthy on local and test chains only.
+
+**RAHWEH:** And items?
+
+**TOMO:** The Eden conductor has item grants and write offs so its ledger balances. But there is no escrow for items, and nothing yet connects a quest to either.
+
+**MAXINE:** So the proposal?
+
+**TOMO:** A quest is a contract with five clauses. The parties: the creator, the takers, and the script as arbiter. The obligation: the task and its check. The consideration: any mix of coin, item, good, another quest, or grade points. The escrow: at posting, the creator's consideration is locked, coins by the escrow program, items by moving them into the stone's own held inventory, never copying. And settlement: when a result passes, the script says who gets what share, the operations pay out, and a settled row is written. If the quest dies or its due date passes, everything refunds to the creator.
+
+**RAHWEH:** What must always be true?
+
+**TOMO:** Conservation, for every asset. No double settlement. Dry run first, like the other operations. The arbiter cannot mint: it may only direct amounts that were locked. And everything is kept: settled, refunded and failed contracts stay on the stone. For play money and test chains, honor based escrow is acceptable. For real value, it is blocked until signing exists.
+
+---
+
+**THE NARRATOR:** Part four. Symbols, ASCII games, and what was recorded.
+
+**TOMO:** The owner said the placard emoji can mark quest boards, with its Chinese symbol in games that are ASCII only. I checked. That placard emoji appears nowhere in the tracked code. Today's board uses the tombstone. The piece craft board has an ASCII and Chinese view, switched with the back tick key, and its glyph registry has ninety five printable ASCII bitmap glyphs, eight by sixteen. There is no Chinese font set. Entities carry one emoji each.
+
+**MAXINE:** The owner asked if these still get recorded the way they did in the old fuzz programs.
+
+**TOMO:** In the old fuzzpet system every action was a method call row in a master ledger. That ledger still exists in the house, but it has twenty seven rows, the newest from September, so it is barely used. The old blueprint had an asset legend, mapping ASCII characters to colors and shapes. Legends now exist only as per game documents. There is no single registry that records a symbol, its ASCII form and its Chinese form together.
+
+**RAHWEH:** So?
+
+**TOMO:** A symbol registry. One row per concept: the emoji, the ASCII form, the Chinese character and its pinyin. A window asks for the form that fits its view. The Chinese forms I suggested are only suggestions: bang for a notice board, bei for a stele or headstone, mu bei for a gravestone, pai for a sign. The owner or a native reader should choose. The pinyin check from the Chinese pipeline can validate the reading. And each use of a board or stone can append one row to the ledger, so the recording the owner remembers continues.
+
+---
+
+**THE NARRATOR:** Part five. The calendar.
+
+**TOMO:** The owner said quests tie closely with the calendar if desired. The clock already has reminders and scheduled occurrences, with fired and result rows. A quest or stone can carry an optional due row that points at a reminder. The reminder fires the popup or an event. A recurring chore is a stone whose script answers live and re posts. There are two calendars: the real one in the calendar book, and the game clock. The same due row can point at either.
+
+---
+
+**THE NARRATOR:** Part six. Chat window conveniences.
+
+**TOMO:** The owner wants nuances in the chat windows, like fork chats. First, what exists. The h ai chat has personas, memory, an audit trail and sessions. The co lab room has an approve gate, addressing with real per agent visibility, and a new session button that keeps every old session. The robot chat keeps a chat history per entity. The IRC window has rooms and a user field.
+
+**RAHWEH:** And the fork?
+
+**TOMO:** A fork starts a new conversation from any message, sharing everything before it. The original is untouched. Chats here are append only files and sessions are never deleted, so a fork is a new session folder with a pointer file: the parent session, and the message index. The reader shows the parent's lines up to the fork, then the fork's own. Nothing is copied, nothing is rewritten, so there is nothing to merge or lock. Rules to decide: the fork point, memory as of the fork point, a lineage view, archive instead of delete, a token estimate before sending, and no merge back in the first version.
+
+**MAXINE:** Other conveniences?
+
+**TOMO:** Common ones: edit and resend, which is a fork from the line before; regenerate, as a sibling fork; copy; pin; search; rename and tag; drafts that survive a restart; a readout of which model answered and the token estimate; and keyboard first control, which is also what lets a relay test it. Advanced ones: compare two forks side by side with a score feeding the delegation bank; attach a chat to a headstone; slash commands; summarize and continue; per session tool permissions; and shared rooms with addressing.
+
+---
+
+**THE NARRATOR:** Part seven. The friends pane.
+
+**TOMO:** The owner asked for a list of users and friends, with addresses and profiles, in a pane on the right. I checked. The IRC window has no member list. The forum has the social half: follows per user, a feed from those you follow, and direct messages. Entities have phones, a contact model. And the peers now save every address they meet, in a known peers file. What is missing is a profile and a notion of friends separate from peers you merely met.
+
+**RAHWEH:** The design?
+
+**TOMO:** A right hand pane with three tabs. Online: who is on the network now, with name, address, kind and last seen. Friends: people you chose to keep, in a friends file in the user's data, never in git; a friend stays listed offline and their address is remembered. And Me: your own profile, sent to a peer right after the hello, and cached by the receiver. Actions: add and remove friend, direct message, follow, copy address, and connect by typing an address, which is how you hook up with a friend. Privacy: a profile holds only what the user put in it, never wallets, histories or keys.
+
+---
+
+**THE NARRATOR:** Honesty checkpoint.
+
+**MAXINE:** What is built?
+
+**TOMO:** None of this. It is notes and proposals, with the owner's answers recorded as the owner's. What I read and did not run: the escrow program, the clock's reminder format, the book and page paths, and the layout of the IRC window. The harness cases for each proposal are written in the document, with a mutant for each, so a worker can build them.
+
+**THE NARRATOR:** The headstone is the spine. Quests, contracts, calendars and conversations all hang from it.

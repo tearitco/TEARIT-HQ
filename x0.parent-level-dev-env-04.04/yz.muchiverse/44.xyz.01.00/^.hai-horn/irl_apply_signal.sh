@@ -5,7 +5,9 @@ set -euo pipefail
 
 HAI_HORN_DIR="$(cd "$(dirname "$0")" && pwd)"
 SIGNAL_FILE="${1:-$HAI_HORN_DIR/irl_signal.json}"
-BANK_DIR="/home/debil/Desktop/github/TEARIT-HQ/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/concept-bank"
+# no absolute path: the house root is two levels above this folder (^.hai-horn sits directly under it); BANK_DIR / HOUSE_ROOT may be set in the environment to override
+HOUSE_ROOT="${HOUSE_ROOT:-$(cd "$HAI_HORN_DIR/.." && pwd)}"
+BANK_DIR="${BANK_DIR:-$HOUSE_ROOT/&.widgits/concept-bank}"
 
 if [ ! -f "$SIGNAL_FILE" ]; then
     echo "Error: Signal file not found: $SIGNAL_FILE" >&2

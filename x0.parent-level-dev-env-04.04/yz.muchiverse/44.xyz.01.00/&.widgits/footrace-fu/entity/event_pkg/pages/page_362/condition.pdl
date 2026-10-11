@@ -1,0 +1,4 @@
+# Block 3: can it act
+COND | trigger | block
+COND | kv | variables.txt | ph_blk | eq | 1
+COND | kv | switches.txt | game_over | eq | 0

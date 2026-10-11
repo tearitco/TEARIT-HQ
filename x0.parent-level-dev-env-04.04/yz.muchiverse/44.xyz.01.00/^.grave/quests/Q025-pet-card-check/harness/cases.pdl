@@ -1,0 +1,35 @@
+# Q025 cases for card_check (locked). CASE | label | exit | out | args...   ('=' exact stdout, '~' contains; \p = a literal bar)
+FILE | ok1.txt | # a comment\n\nCARD \p apple_1 \p word \p what is an apple \p a red fruit \p gemma\n
+FILE | ok2.txt | CARD \p fire_2 \p fact \p what does fire need \p air fuel and heat \p groq\nCARD \p wash_it \p howto \p how do I wash \p say wash and press good \p human\n
+FILE | badfields.txt | CARD \p apple_1 \p word \p what is an apple \p a red fruit\n
+FILE | badid.txt | CARD \p Apple \p word \p what is an apple \p a red fruit \p gemma\n
+FILE | shortid.txt | CARD \p ab \p word \p what is an apple \p a red fruit \p gemma\n
+FILE | badkind.txt | CARD \p apple_1 \p joke \p what is an apple \p a red fruit \p gemma\n
+FILE | badprompt.txt | CARD \p apple_1 \p word \p hi \p a red fruit \p gemma\n
+FILE | badanswer.txt | CARD \p apple_1 \p word \p what is an apple \p \p gemma\n
+FILE | badsource.txt | CARD \p apple_1 \p word \p what is an apple \p a red fruit \p chatgpt\n
+FILE | badchar.txt | CARD \p apple_1 \p word \p what is an apple \p a r\xc3\xa9d fruit \p gemma\n
+FILE | badurl.txt | CARD \p apple_1 \p fact \p where to read more \p see HTTP://x.example \p gemma\n
+FILE | dup.txt | CARD \p apple_1 \p word \p what is an apple \p a red fruit \p gemma\nCARD \p apple_1 \p word \p what is a pear \p a green fruit \p gemma\n
+FILE | notcard.txt | hello there\n
+FILE | spaces.txt | CARD   \p   apple_1  \p  word \p  what is an apple  \p  a red fruit  \p  human  \n
+FILE | long.txt | CARD \p apple_1 \p word \p what is an apple and why do people like it so much when it is ripe in autumn \p a red fruit \p gemma\n
+FILE | mixed.txt | CARD \p apple_1 \p word \p what is an apple \p a red fruit \p gemma\nCARD \p bad id \p word \p what is a pear \p a green fruit \p gemma\nCARD \p pear_3 \p word \p what is a pear \p a green fruit \p groq\n
+CASE | one-ok-with-comment-and-blank | 0 | =OK\p3\nSUMMARY\pok=1\pbad=0 | ok1.txt
+CASE | two-ok | 0 | =OK\p1\nOK\p2\nSUMMARY\pok=2\pbad=0 | ok2.txt
+CASE | five-fields-is-fields | 1 | =BAD\p1\pfields\nSUMMARY\pok=0\pbad=1 | badfields.txt
+CASE | uppercase-id | 1 | ~BAD\p1\pid | badid.txt
+CASE | id-too-short | 1 | ~BAD\p1\pid | shortid.txt
+CASE | unknown-kind | 1 | ~BAD\p1\pkind | badkind.txt
+CASE | prompt-too-short | 1 | ~BAD\p1\pprompt | badprompt.txt
+CASE | prompt-too-long | 1 | ~BAD\p1\pprompt | long.txt
+CASE | empty-answer | 1 | ~BAD\p1\panswer | badanswer.txt
+CASE | unknown-source | 1 | ~BAD\p1\psource | badsource.txt
+CASE | non-ascii | 1 | ~BAD\p1\pcharset | badchar.txt
+CASE | url-any-case | 1 | ~BAD\p1\purl | badurl.txt
+CASE | duplicate-id | 1 | =OK\p1\nBAD\p2\pdup\nSUMMARY\pok=1\pbad=1 | dup.txt
+CASE | line-not-a-card | 1 | ~BAD\p1\pnotcard | notcard.txt
+CASE | fields-are-trimmed | 0 | =OK\p1\nSUMMARY\pok=1\pbad=0 | spaces.txt
+CASE | mixed-file-counts | 1 | =OK\p1\nBAD\p2\pid\nOK\p3\nSUMMARY\pok=2\pbad=1 | mixed.txt
+CASE | missing-file | 2 | * | nope.txt
+CASE | no-args | 2 | * |

@@ -1,0 +1,4 @@
+# Chrono Shield 1: load, gate
+COND | trigger | cast_shield
+COND | kv | variables.txt | ph_cast | eq | 0
+COND | kv | switches.txt | game_over | eq | 0

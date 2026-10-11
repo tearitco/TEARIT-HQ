@@ -1,0 +1,59 @@
+# 🏫 NIGHT 35 — The School Is a Place 🏫
+# ====================================================================
+# Title: "🏫 NIGHT 35 — The School Is a Place 🏫"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: Design night, a correction to NIGHT 34. The owner answered the school's open questions: lessons are plays of pages, or solo, or delivered by phone from the server; age is years of training passed, stored in the entity; and a school is an inventory entities are placed in, where time runs fast.
+# Long-form: architecture only. Nothing in this night is built. Where this night disagrees with NIGHT 34, this night wins.
+
+**THE NARRATOR:** NIGHT 34 ended with the year's length undecided and with the question of who attends. The owner answered both in a few sentences. Say what changed.
+
+**MAXINE:** Three things. How a lesson reaches an entity. What a year is. And where a school lives.
+
+**TOMO:** Start with the lesson. Learning is done as a play of a particular page. A page is the house's own unit, an event page on a map. The entity plays it, and the exam checks what the play produced. Or learning happens alone, one entity, no page, when that is all there is or for some other reason.
+
+**RAHWEH:** And the third way is the one the owner called handwaving on purpose. An entity can learn from its phone. The lesson is placed on the server computer, delivered as a task message to the entity's phone, and graded by the computer. For entities with no body, robots, assistants, tomom, training that is not a game at all.
+
+**MAXINE:** The owner said there is no big difference, and the design agrees. The ledger has one row shape for a lesson and one for an exam, with a mode field, page, solo or phone. How the lesson arrived is recorded. What it taught and whether it passed are recorded the same way in all three.
+
+---
+
+**THE NARRATOR:** The grader for the phone path. Is that new?
+
+**TOMO:** No. The phone design already has a server that routes messages and a score step that runs a quest's own deterministic check and records the verdict. A lesson on the phone is a quest by another name. Reuse that check, which is the same kind of file as a harness exam, and do not invent a second grader.
+
+**RAHWEH:** Which is the whole point of NIGHT 31 landing in the right place. An exam is a harness. A quest check is a harness. A report card is built from the rows either one leaves.
+
+---
+
+**THE NARRATOR:** Age. Say it carefully, because it is not what NIGHT 34 assumed.
+
+**MAXINE:** Years are stored in the entity, and an entity's age is the number of training years it has passed. Pass two years of training and it is two. Not elapsed time, not wall clock, not a game calendar. Age is the count of passed years.
+
+**TOMO:** That closes the year-length question, and it removes a dependency NIGHT 34 worried about. NIGHT 30 said no clock exists for one character. Age does not need one. It is counted from rows the entity already carries, a year-end row with a pass, and mirrored as a line in its own school record that can be rebuilt from the ledger.
+
+**RAHWEH:** One reading to confirm: each passed training year adds one to the age. The owner's sentence says two years makes age two, which is what this assumes.
+
+---
+
+**THE NARRATOR:** And the school itself.
+
+**MAXINE:** A school is a place, and the place is an inventory. Entities are placed in the school's inventory, and placing them enrolls them. Taking them out ends it. The school holds the shared catalog, the classes and the calendar. The entity keeps its own private record and a pointer to the school it is in, the same hidden layer and private numbers split as the word bank and the phone.
+
+**TOMO:** Inside, time can run fast. A school applies a scale so a training year passes quickly, accelerated ageing in the owner's words. The age gained is still counted from passed years. The scale only changes how fast the lessons run, and it is one clock owned by the school, not one clock per student.
+
+**RAHWEH:** Two warnings from what the house already does. A drop is a move, not a copy, so putting an entity in a school moves its folder into the school's inventory. And an enrolled entity is no longer a window on the desk. Before anyone builds this, decide how an enrolled entity is shown and what happens to its desk position and any process it has running.
+
+**MAXINE:** That also changes the retroactive pass. The script that gives existing entities their school record must not move anyone. It creates each record at age zero and reports. Placing an entity in a school is the owner's own act, so no live folder is relocated by a script.
+
+---
+
+**THE NARRATOR:** Honesty checkpoint.
+
+**MAXINE:** What is real: pages and event pages, the phone and server design with task and result messages, a quest check that grades by script, the harness framework that can serve as exams, inventories, the word bank and phone patterns for a per-entity record, and two design files.
+
+**TOMO:** What is not: no school folder, no school inventory convention, no class file, no ledger, no report card, no mode field, no enrolled entity. Nothing was built. And four questions remain: whether one passed year adds exactly one to age, whether a school year is all its classes passed or a pass mark across them, what an entity does while it sits in a school inventory, and whether age unlocks anything or is only a label for now.
+
+**RAHWEH:** Say the line to carry on.
+
+**TOMO:** A school is a place you put an entity, a lesson is a page or a message, and age is just the years you passed. 🏫

@@ -1,0 +1,119 @@
+# chem_elements.zh sidecar of &.widgits/concept-bank/data/chem/elements.pdl - machine translation. status: ok/accepted are promotable; low_score, translated (unscored) and lint_fail wait for a person (review.tsv); rejected stays out. Scores are advisory. columns: id, source, zh, pinyin, score, status, translator, judge
+1	Hydrogen	氢	qīng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+2	Helium	氦	hài	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+3	Lithium	锂	lǐ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+4	Beryllium	铍	pí	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+5	Boron	硼	péng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+6	Carbon	碳	tàn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+7	Nitrogen	氮	dàn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+8	Oxygen	氧	yǎng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+9	Fluorine	氟	fú	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+10	Neon	氖	nǎi	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+11	Sodium	钠	nà	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+12	Magnesium	镁	měi	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+13	Aluminum	铝	lǚ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+14	Silicon	硅	guī	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+15	Phosphorus	磷	lín	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+16	Sulfur	硫	liú	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+17	Chlorine	氯	lǜ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+18	Argon	氩	yà	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+19	Potassium	钾	jiǎ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+20	Calcium	钙	gài	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+21	Scandium	钪	kàng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+22	Titanium	钛	tài	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+23	Vanadium	钒	fán	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+24	Chromium	铬	gè	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+25	Manganese	锰	měng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+26	Iron	铁	tiě	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+27	Cobalt	钴	gǔ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+28	Nickel	镍	niè	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+29	Copper	铜	tóng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+30	Zinc	锌	xīn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+31	Gallium	镓	jiā	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+32	Germanium	锗	zhě	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+33	Arsenic	砷	shēn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+34	Selenium	硒	xī	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+35	Bromine	溴	xiù	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+36	Krypton	氪	kè	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+37	Rubidium	铷	rú	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+38	Strontium	锶	sī	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+39	Yttrium	钇	yǐ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+40	Zirconium	锆	gào	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+41	Niobium	铌	ní	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+42	Molybdenum	锰	měng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+43	Technetium	锝	dé	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+44	Ruthenium	钌	liǎo	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+45	Rhodium	钌	liǎo	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+46	Palladium	钯	bǎ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+47	Silver	银	yín	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+48	Cadmium	镉	gé	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+49	Indium	铟	yīn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+50	Tin	锡	xī	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+51	Antimony	锑	tī	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+52	Tellurium	碲	dì	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+53	Iodine	碘	diǎn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+54	Xenon	氙	xiān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+55	Cesium	铯	sè	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+56	Barium	钡	bèi	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+57	Lanthanum	镧	lán	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+58	Cerium	铈	shì	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+59	Praseodymium	镨	pǔ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+60	Neodymium	钕	nǚ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+61	Promethium	镨	pǔ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+62	Samarium	钐	shàn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+63	Europium	铕	yǒu	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+64	Gadolinium	钆	gá	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+65	Terbium	铽	tè	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+66	Dysprosium	镝	dí	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+67	Holmium	钬	huǒ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+68	Erbium	铒	ěr	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+69	Thulium	铥	diū	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+70	Ytterbium	镱	yì	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+71	Lutetium	镥	lǔ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+72	Hafnium	铪	hā	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+73	Tantalum	钽	tǎn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+74	Tungsten	钨	wū	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+75	Rhenium	铼	lái	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+76	Osmium	锇	é	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+77	Iridium	铱	yī	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+78	Platinum	铂	bó	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+79	Gold	金	jīn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+80	Mercury	汞	gǒng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+81	Thallium	铊	tā	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+82	Lead	铅	qiān	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+83	Bismuth	铋	bì	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+84	Polonium	钋	pō	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+85	Astatine	砹	ài	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+86	Radon	氡	dōng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+87	Francium	钫	fāng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+88	Radium	镭	léi	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+89	Actinium	锕	ā	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+90	Thorium	钍	tǔ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+91	Protactinium	镤	pú	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+92	Uranium	铀	yóu	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+93	Neptunium	镎	ná	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+94	Plutonium	钚	bù	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+95	Americium	锕	ā	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+96	Curium	锔	jū	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+97	Berkelium	锫	péi	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+98	Californium	锎	kāi	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+99	Einsteinium	锿	āi	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+100	Fermium	镄	fèi	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+101	Mendelevium	镆	mò	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+102	Nobelium	诺贝尔	nuò bèi ěr	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+103	Lawrencium	拉尔恩	lā ěr ēn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+104	Rutherfordium	鲁弗	lǔ fú	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+105	Dubnium	杜比	dù bǐ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+106	Seaborgium	塞伯	sè bó	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+107	Bohrium	波里	bō lǐ	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+108	Hassium	哈西	hā xī	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+109	Meitnerium	美特纳	měi tè nà	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+110	Darmstadtium	达姆斯塔特	dá mǔ sī tǎ tè	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+111	Roentgenium	伦琴	lún qín	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+112	Copernicium	哥白尼	gē bái ní	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+113	Nihonium	日本	rì běn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+114	Flerovium	弗勒罗	fú lè luó	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+115	Moscovium	莫斯科	mò sī kē	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+116	Livermorium	里弗莫	lǐ fú mò	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+117	Tennessine	泰恩	tài ēn	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+118	Oganesson	奥加尼松	ào jiā ní sōng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b

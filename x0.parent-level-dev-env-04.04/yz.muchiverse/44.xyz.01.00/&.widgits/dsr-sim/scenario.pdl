@@ -1,0 +1,44 @@
+# scenario.pdl - DSR New Game setup (DSR-SIMULATION-DESIGN.md sections 8 and 8b), step 1 of the build order. Pipe rows, '#' comments, ints only.
+# SETUP rows = the player-facing choices (they become the first rows of the game's world ledger). TUNE rows = economy numbers (copied to the game's
+# dsr_world/tunables.pdl; money is whole CENTS). The defaults reproduce the dsr-test set: per civ 1 castle, 2 banks, 4 stores, 1 population (16 entities).
+# Free-building kinds built in step 1: castle, bank, store (hotel/school are later steps and are refused by the generator).
+SETUP | civs       | 2
+SETUP | seed       | 1789
+SETUP | civ.a.seat | human
+SETUP | civ.a.pop  | 1000
+SETUP | civ.a.free | castle=1,bank=2,store=4
+SETUP | civ.b.seat | ai
+SETUP | civ.b.pop  | 1000
+SETUP | civ.b.free | castle=1,bank=2,store=4
+# (optional per-civ seed: SETUP | civ.a.seed | 7  -- mixed into that civ's market views; absent = 0)
+#
+# --- WSR constants, copied from WSR_PAL-PREFERED/ops (a note names the source; percent values are ints) ---
+TUNE | produce_cost_c          | 100    # goods_quote.c WSR_PRODUCE_COST 1.0
+TUNE | base_margin_pct         | 25     # goods_quote.c WSR_BASE_MARGIN 0.25
+TUNE | sellthrough_base_pct    | 50     # goods_quote.c WSR_SELLTHROUGH_BASE 0.50
+TUNE | max_produce             | 500    # goods_quote.c WSR_MAX_PRODUCE
+TUNE | max_produce_frac_pct    | 25     # goods_quote.c WSR_MAX_PRODUCE_FRACTION 0.25
+TUNE | max_buy_frac_pct        | 5      # goods_quote.c WSR_MAX_BUY_FRACTION 0.05
+TUNE | dispersion_pct          | 40     # goods_quote.c WSR_GOODS_DISPERSION 0.40
+TUNE | deadband_pct            | 2      # goods_quote.c WSR_GOODS_DEADBAND 0.02
+TUNE | skill_corp_pct          | 60     # goods_quote.c skill_for(corp) 0.60
+TUNE | skill_pop_pct           | 160    # goods_quote.c skill_for(pop) 1.60
+TUNE | payroll_rate_pct        | 60     # corp_payroll.c WSR_PAYROLL_RATE 0.60 (share of gross margin)
+TUNE | payroll_floor_c         | 100    # corp_payroll.c WSR_PAYROLL_FLOOR 1.00
+TUNE | pop_birth_milli_pct     | 1000   # pop_update.c birth_rate (percent x1000) -- value is DSR's
+TUNE | pop_death_milli_pct     | 500    # pop_update.c death_rate (percent x1000) -- value is DSR's
+TUNE | pop_food_need_ppm       | 1000   # pop_update.c FOOD_NEED_PER_CAPITA 0.001 (per million)
+# --- DSR starting numbers (not from WSR) ---
+TUNE | production_wage_pct    | 100    # DSR addition: share of a store's production cost paid to its civ population as wages (WSR: 0, the cost just vanishes -> households drain); rest goes to the world sink
+TUNE | store_cash_c            | 500000
+TUNE | store_shares            | 1000
+TUNE | store_stock             | 50
+TUNE | store_share_price_c     | 500
+TUNE | store_risk_bias         | 50     # corp_update_price.c risk_bias 0..100
+TUNE | bank_reserves_c         | 2000000
+TUNE | bank_rate_ppm          | 2000   # per DAY (WSR bank_loan_op loan_rate 0.08 is per turn)
+TUNE | loan_principal_c       | 100000
+TUNE | castle_treasury_c      | 100000
+TUNE | tax_rate_bp            | 10     # basis points of store cash per day (tax_loop.c uses percent points per year)
+TUNE | pop_cash_per_capita_c  | 1000
+TUNE | target_wage_c          | 30     # cents per head per day that counts as full employment (unemployment bookkeeping, DSR's)

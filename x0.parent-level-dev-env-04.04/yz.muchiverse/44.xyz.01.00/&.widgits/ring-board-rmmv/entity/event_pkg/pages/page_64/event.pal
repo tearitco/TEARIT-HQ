@@ -1,0 +1,6 @@
+# event.pal - EndTurn 9/9: hand the turn to that seat (trigger endturn). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set current cand
+exec ops/+x/var_math.+x . set phase 0
+exec ops/+x/var_math.+x . set cur_jail 0
+exec ops/+x/var_math.+x . set switches.txt:awaiting_buy 0
+halt

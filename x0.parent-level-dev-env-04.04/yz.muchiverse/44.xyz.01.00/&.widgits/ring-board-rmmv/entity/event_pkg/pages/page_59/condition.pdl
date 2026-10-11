@@ -1,0 +1,4 @@
+# EndTurn 7/9: next seat (current mod players + 1)
+COND | trigger | endturn
+COND | kv | switches.txt | game_over | eq | 0
+COND | kv | variables.txt | phase | eq | 2

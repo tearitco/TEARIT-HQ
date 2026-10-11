@@ -1,0 +1,55 @@
+<!-- knowledge-hq.xhtpm - X11-HQ browser for the LABELED chemistry knowledge in
+     &.widgits/concept-bank (data/chem, data/hidden, proposals/chem_assoc) with
+     owner review actions.  Static layout; shared khtpm_core_render.+x;
+     class="k-window database-window" hits no g_is_* trigger - ZERO renderer C.
+     Shape = concept-bank-hq.xhtpm (sidebar tabs + panel + ONE scrolllist) plus the
+     palettes-elements flex-wrap <sidebar> tile grid (collapsed via class "off" in
+     the compounds view).  One <module>: ops/+x/knowledge_manager.+x publishes
+     knowledge_ui.txt and polls knowledge_action.txt (written by ops/knowledge_item.sh).
+     Level 0 of the list = the 86 compounds (filtered) ; level 1 = the selected
+     compound's card ; in the elements view the list holds the element card. -->
+<window label="${head}" class="k-window database-window" vars="knowledge_ui.txt">
+  <module src="&.hq-apps/knowledge-hq/ops/+x/knowledge_manager.+x"/>
+  <page name="main">
+
+    <sidebar id="sidebar" class="k-sidebar">
+      <text id="who" label="knowledge hq" class="k-who"/>
+      <item id="tc" class="k-tab ${cls_comp}" label="Compounds" action="'${PKG}/ops/knowledge_item.sh' 'SHOW compounds'"/>
+      <item id="te" class="k-tab ${cls_elem}" label="Elements"  action="'${PKG}/ops/knowledge_item.sh' 'SHOW elements'"/>
+      <text id="fl" label="filter" class="k-who"/>
+      <item id="f0" class="k-tab ${cls_f0}" label="ALL"        action="'${PKG}/ops/knowledge_item.sh' 'FILTER ALL'"/>
+      <item id="f1" class="k-tab ${cls_f1}" label="OK"         action="'${PKG}/ops/knowledge_item.sh' 'FILTER OK'"/>
+      <item id="f2" class="k-tab ${cls_f2}" label="BAD"        action="'${PKG}/ops/knowledge_item.sh' 'FILTER BAD'"/>
+      <item id="f3" class="k-tab ${cls_f3}" label="APPROVED"   action="'${PKG}/ops/knowledge_item.sh' 'FILTER APPROVED'"/>
+      <item id="f4" class="k-tab ${cls_f4}" label="REJECTED"   action="'${PKG}/ops/knowledge_item.sh' 'FILTER REJECTED'"/>
+      <item id="f5" class="k-tab ${cls_f5}" label="UNREVIEWED" action="'${PKG}/ops/knowledge_item.sh' 'FILTER UNREVIEWED'"/>
+      <item id="tr" class="k-tab" label="reload" action="'${PKG}/ops/knowledge_item.sh' 'RELOAD'"/>
+    </sidebar>
+
+    <sidebar id="grid" class="k-grid ${cls_grid}">
+      <repeat count="${n_tiles}" bind="t">
+        <item id="et${t.#}" class="k-tile ${t.cls}" bg="${t.color}" label="${t.sym}"
+              action="'${PKG}/ops/knowledge_item.sh' 'SELEL ${t.z}'"/>
+      </repeat>
+    </sidebar>
+
+    <panel id="content" class="k-panel">
+      <text id="status" class="k-status" label="${status}"/>
+      <text id="n1" class="k-quiet" label="${note1}" show="${note1}"/>
+      <text id="n2" class="k-quiet" label="${note2}" show="${note2}"/>
+      <text id="n3" class="k-quiet" label="${note3}" show="${note3}"/>
+      <text id="msg" class="k-msg" label="${msg}" show="${msg}"/>
+      <text id="crumb" class="k-sel" label="${crumb}" show="${crumb}"/>
+      <item id="bk" class="k-btn" label="&lt; back" action="'${PKG}/ops/knowledge_item.sh' 'BACK'" show="${show_back}"/>
+      <item id="ac" class="k-btn" label="owner: ACCEPT (appends one REVIEW row)" action="'${PKG}/ops/knowledge_item.sh' 'ACCEPT'" show="${show_review}"/>
+      <item id="rj" class="k-btn" label="owner: REJECT (appends one REVIEW row)" action="'${PKG}/ops/knowledge_item.sh' 'REJECT'" show="${show_review}"/>
+
+      <scrolllist class="from-top">
+        <repeat count="${n_list}" bind="l">
+          <item id="l${l.#}" class="k-row ${l.cls}" label="${l.text}"
+                action="'${PKG}/ops/knowledge_item.sh' 'SEL ${l.idx}'"/>
+        </repeat>
+      </scrolllist>
+    </panel>
+  </page>
+</window>

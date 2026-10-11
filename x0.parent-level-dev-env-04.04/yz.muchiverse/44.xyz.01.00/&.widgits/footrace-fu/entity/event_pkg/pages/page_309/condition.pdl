@@ -1,0 +1,4 @@
+# Move 10: target space and the finish rule (exact / bounce / overshoot wins)
+COND | trigger | move
+COND | kv | variables.txt | ph_move | eq | 4
+COND | kv | switches.txt | game_over | eq | 0

@@ -1,0 +1,10 @@
+QUEST|q002-weighted-pick|2026-10-07|worker=groq openai/gpt-oss-120b via horn_chat_backend (scratch project root /tmp/horn_proj, key file symlinked)|runner=claude by hand, up to 4 iterations, failing labels fed back
+LOCK|cases/quest_q002_weighted_pick.pdl|sha256=89582725898ff8e4e639ff8a41f70a11dde97d8c719ce264fe8252f6733c0a60
+LOCK|quest_q002_weighted_pick.pal|sha256=64a24e35e6d201570d6e14c65b830aaffc4415e3ea70353ef5a8c880526f253a
+HARNESS_CHECK|claude C reference PASS 125/0; stub FAIL 68 failed; two harness mistakes of mine found and fixed BEFORE dispatch (WRITE path is relative to scratch; an empty-expectation row is unsupported)
+ITER|1|['groq (openai/gpt-oss-120b)']|reply_chars=3271|wall_s=3.9|VERDICT|FAIL|passed=122|failed=3|cases=/home/no/|first_fails=quest-q002-wp/neg-seed-rc2|exit=0
+;quest-q002-wp/neg-counter-rc2|exit=0
+;quest-q002-wp/empty-seed-rc2|exit=0
+
+ITER|2|['groq (openai/gpt-oss-120b)']|reply_chars=3468|wall_s=5.2|VERDICT|PASS|passed=125|failed=0|cases=/home/no/|first_fails=
+RESULT|ACCEPTED_BY_HARNESS|iterations=2|first attempt 122/125 (accepted negative and empty seeds), fixed after feedback of 3 failing labels|merge=none

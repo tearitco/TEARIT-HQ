@@ -157,6 +157,7 @@ static HqSprite g_hq_sprite_cache[HQ_SPRITE_CACHE_N];
  * boot-timeline mark in khtpm_core_render.c; two clock_gettime calls per cell per paint - negligible. */
 static double g_hqs_blit_ms = 0, g_hqs_load_ms = 0;
 static int g_hqs_blits = 0, g_hqs_loads = 0;
+static double g_hqs_skin_ms = 0; static int g_hqs_skin_blocks = 0; /* tile-skin blocks painted (kh_draw_skin_rect) */
 static double hqs_now_ms(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return t.tv_sec * 1000.0 + t.tv_nsec / 1e6; }
 static long g_hq_sprite_tick = 0;
 
@@ -308,6 +309,118 @@ static void hq_blit_sprite(HqSprite *sp, int x0, int y0, int px, unsigned long b
         free(bufpx);
     }
     if (back) XDestroyImage(back);
+}
+
+/* ---------- RPG Maker tile bar skin (2026-10-08, owner: "we need these tile renders") ----------
+ * bar_skin=<id> in #.desktop/hq_ui.pdl (empty = off = today's solid fills) names a SKIN row in
+ * &.widgits/taskbar-settings/bar_skins.pdl: three folders (left cap, repeated middle, right cap) that each hold
+ * a sprite.csv, drawn through the same hq_sprite()/hq_blit_sprite() the Palettes tiles use. An element opts in
+ * with class="skin-bar". The bar is WHOLE BLOCKS: block = the element's height (square), count = width / block,
+ * the run is centred and the sub-block remainder keeps the element's own fill. No stretching, ever; fewer than
+ * 2 blocks wide draws nothing special. Includers that never call kh_bar_skin_load() just see the skin off. */
+static char g_bar_skin_id[48];
+static char g_bar_skin_dir[3][400]; /* the SELECTED skin: left, middle, right - house-absolute */
+/* the whole catalog, so a swatch can draw ITS OWN skin (class="skin-bar skin-for-<id>") */
+#define KH_SKIN_MAX 24
+static struct { char id[48]; char dir[3][400]; } g_skin_cat[KH_SKIN_MAX];
+static int g_n_skin_cat = 0;
+
+static void kh_bar_skin_load(const char *house_root) {
+    char want[48] = "";
+    char path[1024], line[1200];
+    /* GameFont (M+ 1m, the TTF RPG Maker MV ships as fonts/mplus-1m-regular.ttf) is the house default font: register it
+     * with fontconfig from the settings folder, always (skin on or off). Missing file = fontconfig substitutes. */
+    {
+        static int font_registered = 0;
+        if (!font_registered && house_root && house_root[0]) {
+            snprintf(path, sizeof(path), "%s/&.widgits/taskbar-settings/fonts/mplus-1m-regular.ttf", house_root);
+            if (access(path, R_OK) == 0 && FcConfigAppFontAddFile(NULL, (const FcChar8 *)path)) font_registered = 1;
+        }
+    }
+    g_bar_skin_id[0] = '\0';
+    g_bar_skin_dir[0][0] = g_bar_skin_dir[1][0] = g_bar_skin_dir[2][0] = '\0';
+    g_n_skin_cat = 0;
+    if (!house_root || !house_root[0]) return;
+    snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house_root);
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "bar_skin=", 9) == 0) {
+            snprintf(want, sizeof(want), "%s", line + 9);
+            want[strcspn(want, "\r\n")] = '\0';
+            break;
+        }
+    }
+    fclose(f);
+    snprintf(path, sizeof(path), "%s/&.widgits/taskbar-settings/bar_skins.pdl", house_root);
+    f = fopen(path, "r");
+    if (!f) return;
+    while (g_n_skin_cat < KH_SKIN_MAX && fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "SKIN", 4) != 0) continue;
+        char *fld[6]; int n = 0; char *p = line;
+        while (n < 6) {
+            fld[n++] = p;
+            char *bar = strchr(p, '|');
+            if (!bar) break;
+            *bar = '\0'; p = bar + 1;
+        }
+        if (n < 6) continue;
+        for (int i = 1; i < 6; i++) {
+            while (*fld[i] == ' ') fld[i]++;
+            size_t l = strcspn(fld[i], "\r\n");
+            while (l > 0 && fld[i][l - 1] == ' ') l--;
+            fld[i][l] = '\0';
+        }
+        snprintf(g_skin_cat[g_n_skin_cat].id, sizeof(g_skin_cat[0].id), "%s", fld[1]);
+        for (int k = 0; k < 3; k++)
+            snprintf(g_skin_cat[g_n_skin_cat].dir[k], sizeof(g_skin_cat[0].dir[k]), "%s/%s", house_root, fld[3 + k]);
+        if (want[0] && strcmp(fld[1], want) == 0) {
+            snprintf(g_bar_skin_id, sizeof(g_bar_skin_id), "%s", want);
+            for (int k = 0; k < 3; k++)
+                snprintf(g_bar_skin_dir[k], sizeof(g_bar_skin_dir[k]), "%s", g_skin_cat[g_n_skin_cat].dir[k]);
+        }
+        g_n_skin_cat++;
+    }
+    fclose(f);
+}
+
+/* Paint a run of whole blocks into any rectangle: block = height (square), n = width / block (>= 2), the run is
+ * centred, the sub-block remainder keeps whatever is already painted there. Returns 1 when it painted. */
+static int kh_draw_skin_rect(const char (*dirs)[400], int x, int y, int w, int h, unsigned long bg_pixel) {
+    int b = h;
+    if (b < 8) return 0;
+    int n = w / b;
+    if (n < 1) return 0;
+    HqSprite *l = hq_sprite(dirs[0]);
+    HqSprite *m = hq_sprite(dirs[1]);
+    HqSprite *r = hq_sprite(dirs[2]);
+    if (!l || !m || !r) return 0;
+    int x0 = x + (w - n * b) / 2;
+    double _sk0 = hqs_now_ms();
+    for (int i = 0; i < n; i++)   /* n == 1: a single middle block (a narrow dock cell) */
+        hq_blit_sprite(n == 1 ? m : (i == 0 ? l : (i == n - 1 ? r : m)), x0 + i * b, y, b, bg_pixel, 0);
+    g_hqs_skin_ms += hqs_now_ms() - _sk0; g_hqs_skin_blocks += n;
+    return 1;
+}
+
+/* the selected skin over a rectangle (window header strips, bars); no-op while the skin is off */
+static int kh_draw_selected_skin(int x, int y, int w, int h, unsigned long bg_pixel) {
+    if (!g_bar_skin_id[0]) return 0;
+    return kh_draw_skin_rect((const char (*)[400])g_bar_skin_dir, x, y, w, h, bg_pixel);
+}
+
+/* true when it painted the blocks (caller still draws border + label on top). An element with
+ * class="skin-for-<id>" draws that catalog skin even when the global skin is off (the picker's swatches). */
+static int kh_draw_bar_skin(Elem *e, unsigned long bg_pixel) {
+    if (!elem_has_class(e, "skin-bar")) return 0;
+    const char (*dirs)[400] = g_bar_skin_dir;
+    int own = 0;
+    for (int c = 0; c < e->n_classes && !own; c++)
+        if (strncmp(e->classes[c], "skin-for-", 9) == 0)
+            for (int k = 0; k < g_n_skin_cat; k++)
+                if (strcmp(g_skin_cat[k].id, e->classes[c] + 9) == 0) { dirs = (const char (*)[400])g_skin_cat[k].dir; own = 1; break; }
+    if (!own && !g_bar_skin_id[0]) return 0;
+    return kh_draw_skin_rect(dirs, e->x, e->y, e->w, e->h, bg_pixel);
 }
 
 /* Real, generic, CSS-driven single-element draw: background fill,
@@ -1501,6 +1614,18 @@ static void draw_elem(Elem *e, int hover_id_hash) {
         int bw = e->style.has_border_width ? e->style.border_width : 1;
         for (int i = 0; i < bw; i++)
             XDrawRectangle(dpy, buf, gc, e->x + i, e->y + i, e->w - 1 - 2 * i, e->h - 1 - 2 * i);
+    }
+    /* livedesk top + bottom bars: every dock cell (an <item> in a dock window) wears the selected skin */
+    if (g_bar_skin_id[0] && window_is_dock() && strcmp(e->tag, "item") == 0) {
+        /* readable on any tile: white label (the orange theme text vanished on wood and neon) */
+        snprintf(e->style.fg_color, sizeof(e->style.fg_color), "#ffffff");
+        e->style.has_fg_color = 1;
+        kh_draw_selected_skin(e->x, e->y, e->w, e->h, alloc_pixel(e->style.has_bg_color ? e->style.bg_color : "#2c2c2c"));
+    }
+    if (elem_has_class(e, "skin-bar") &&
+        kh_draw_bar_skin(e, alloc_pixel(e->style.has_bg_color ? e->style.bg_color : "#2c2c2c"))) {
+        snprintf(e->style.fg_color, sizeof(e->style.fg_color), "#ffffff");   /* readable on tiles (theme text vanished on wood/neon) */
+        e->style.has_fg_color = 1;
     }
     /* REAL, NEW 2026-09-14 (network-browser video V4 "Nav row with
      * play/pause + progress" request) - a real, generic `<bar>` element:

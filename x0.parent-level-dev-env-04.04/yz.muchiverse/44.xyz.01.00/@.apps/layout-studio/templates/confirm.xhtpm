@@ -1,0 +1,13 @@
+<!-- TEMPLATE confirm: a question and two buttons. Yes and No are separate verbs; both must be safe to run twice. -->
+<window label="${title}" class="ls-window database-window" vars="ui.txt">
+  <page name="main">
+    <sidebar id="side" class="sidebar">
+      <text label="${title}" class="ls-title"/>
+      <item id="yes" class="ls-row" label="Yes" action="sh '${HOUSE}/TODO.sh' yes"/>
+      <item id="no" class="ls-row" label="No" action="sh '${HOUSE}/TODO.sh' no"/>
+    </sidebar>
+    <panel id="info" class="ls-panel">
+      <text label="${question}" class="ls-title"/>
+    </panel>
+  </page>
+</window>

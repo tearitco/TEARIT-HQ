@@ -1,0 +1,8 @@
+# event.pal - Blink 5: place, land, log (trigger cast_blink). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set pos_{current}_{sel} ftgt
+exec ops/+x/var_math.+x . set lp current
+exec ops/+x/var_math.+x . set ln sel
+exec ops/+x/event_page_op.+x . . --trigger land --state .
+exec ops/+x/row_append.+x . ledger.txt CAST {turn} {current} {sel} blink ok {act_pos} {ftgt}
+exec ops/+x/var_math.+x . set ph_cast 0
+halt

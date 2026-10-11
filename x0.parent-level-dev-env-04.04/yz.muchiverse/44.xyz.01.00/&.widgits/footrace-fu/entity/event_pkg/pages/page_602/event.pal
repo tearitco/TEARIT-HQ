@@ -1,0 +1,6 @@
+# event.pal - Bot 3: select the leading ninja (trigger autoturn). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/event_page_op.+x . . --trigger selectlead --state .
+exec ops/+x/var_math.+x . add bot_acts bot_acts 1
+exec ops/+x/var_math.+x . set tok_before tokens
+exec ops/+x/var_math.+x . set ph_bot 2
+halt

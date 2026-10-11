@@ -1,0 +1,5 @@
+# Time Skip 5: forward 1d4 (finish rule applies)
+COND | trigger | cast_timeskip
+COND | kv | variables.txt | ph_cast | eq | 2
+COND | kv | variables.txt | cc_ok | eq | 1
+COND | kv | switches.txt | game_over | eq | 0

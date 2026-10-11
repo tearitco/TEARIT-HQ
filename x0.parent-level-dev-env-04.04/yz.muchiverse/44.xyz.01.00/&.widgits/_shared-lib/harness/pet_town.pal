@@ -1,0 +1,4 @@
+# pet_town.pal - pal harness: town building (coins + wood + land fee, footprint on the map, refusals, rising land price). Verdict: results/pet_town.txt.verdict.txt. Run: prisc+x pet_town.pal (from this folder)
+exec ./ops/+x/harness_case_op.+x cases/pet_town.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/pet_town.pdl
+halt

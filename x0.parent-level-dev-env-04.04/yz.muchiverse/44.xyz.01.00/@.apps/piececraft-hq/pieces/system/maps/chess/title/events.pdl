@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+MAP          | id                 | title
+NOTE         | elo                | Both sides start at 1200. A win moves you by K=32 toward the result.
+NOTE         | p2p                | Vs Player appends DATA|local|offer game=chess to maps/chess/net/outbox.txt. palnet_peer carries that line. This book opens no socket.
+EVENT        | x=3 y=1 glyph=N type=menu | trigger=on-click cmds=start_standard
+EVENT        | x=3 y=2 glyph=C type=menu | trigger=on-click cmds=start_computer
+EVENT        | x=3 y=3 glyph=P type=menu | trigger=on-click cmds=start_player
+EVENT        | x=3 y=4 glyph=G type=menu | trigger=on-click cmds=start_king_pawn
+EVENT        | x=3 y=5 glyph=E type=menu | trigger=on-click cmds=show_elo
+EVENT        | x=3 y=6 glyph=Q type=menu | trigger=on-click cmds=stop_game
+EVENT        | x=4 y=4 glyph=F type=menu | trigger=on-click cmds=start_endgame

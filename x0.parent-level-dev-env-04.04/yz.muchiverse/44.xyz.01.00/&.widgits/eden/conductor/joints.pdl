@@ -1,0 +1,17 @@
+# joints.pdl - the TUNABLE joints of the Eden agent seat (spec section 0 JOINT rows). Bounds, step and autonomy only: the LIVE value of each lives in
+# weights.pdl (one home per fact). Tune with  &.widgits/concept-bank/ops/+x/joint_tune.+x  so every move is bounded and leaves a TUNE row in tuning_ledger.txt.
+# autonomy=0: only a person (proposer=human) moves it. A model may PROPOSE (a CAND row in a review file); it never applies. Raise autonomy only after a joint has
+# a track record (grade = (reward+1)/(reward+punish+2) over its Watch/FEEDBACK rows).
+# JOINT | id | area | key | value | step | min | max | autonomy | owner_seat | note
+JOINT | j_plant | eden | w_plant | @weights.pdl | step=1 | min=0 | max=20 | autonomy=0 | owner_seat=1 | note="weight of the plant act"
+JOINT | j_water | eden | w_water | @weights.pdl | step=1 | min=0 | max=20 | autonomy=0 | owner_seat=1 | note="weight of the water act"
+JOINT | j_collect | eden | w_collect | @weights.pdl | step=1 | min=0 | max=20 | autonomy=0 | owner_seat=1 | note="weight of the collect act"
+JOINT | j_eat | eden | w_eat | @weights.pdl | step=1 | min=0 | max=20 | autonomy=0 | owner_seat=1 | note="weight of the eat act"
+JOINT | j_trade | eden | w_trade | @weights.pdl | step=1 | min=0 | max=20 | autonomy=0 | owner_seat=1 | note="weight of the trade act"
+JOINT | j_talk | eden | w_talk | @weights.pdl | step=1 | min=0 | max=20 | autonomy=0 | owner_seat=1 | note="weight of the talk act"
+JOINT | j_build | eden | w_build | @weights.pdl | step=1 | min=0 | max=20 | autonomy=0 | owner_seat=1 | note="weight of the build act"
+JOINT | j_study | eden | w_study | @weights.pdl | step=1 | min=0 | max=20 | autonomy=0 | owner_seat=1 | note="weight of the study act"
+JOINT | j_rest | eden | w_rest | @weights.pdl | step=1 | min=0 | max=20 | autonomy=0 | owner_seat=1 | note="weight of the rest act"
+JOINT | j_feed | eden | w_feed | @weights.pdl | step=1 | min=0 | max=20 | autonomy=0 | owner_seat=1 | note="weight of the feed act"
+JOINT | j_dig | eden | w_dig | @weights.pdl | step=1 | min=0 | max=20 | autonomy=0 | owner_seat=1 | note="weight of the dig act"
+JOINT | j_repair | eden | w_repair | @weights.pdl | step=1 | min=0 | max=20 | autonomy=0 | owner_seat=1 | note="weight of the repair act"

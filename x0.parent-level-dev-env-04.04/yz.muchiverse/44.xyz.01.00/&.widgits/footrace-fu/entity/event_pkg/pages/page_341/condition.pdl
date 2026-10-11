@@ -1,0 +1,5 @@
+# Attack 2: the nearest enemy within reach (both directions)
+COND | trigger | attack
+COND | kv | variables.txt | ph_att | eq | 1
+COND | kv | variables.txt | act_ok | eq | 1
+COND | kv | switches.txt | game_over | eq | 0

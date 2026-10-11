@@ -1,0 +1,5 @@
+title=Pet HUD
+hint=Numbers update when the manager rewrites ui.txt.
+hunger=3
+coins=40
+days=7

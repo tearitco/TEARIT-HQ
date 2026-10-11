@@ -2,6 +2,47 @@
 
 ---
 
+## FIXED 2026-10-10 (verified in scratch): WSR `market_settle` cannot rebuild the shareholder registry (wrong relative op path)
+
+**Fix:** `ops/market_settle.c` now runs `./ops/+x/shareholder_registry.+x` from the project root. Verified: rebuild registry, quote (58 participants, 30 orders), settle (16 fills) and the registry was rebuilt after settle (18 holder rows), no warning. Also done: the 62 entity pieces are bundled in `WSR_PAL-PREFERED/projects/wsr-pal/pieces_template` and `ensure_entities.sh` seeds from them (idempotent). Note: the day order must run `shareholder_registry rebuild` BEFORE `market_quote` (quote reads shareholders.txt).
+
+**Found by running it** in a scratch copy of `WSR_PAL-PREFERED` (`PRISC_PROJECT_ROOT=<scratch>`, `market_quote` then `market_settle`): `sh: 1: ./+x/shareholder_registry.+x: not found` then "WARNING - could not rebuild the shareholder registry; dividends will use a stale index". The settle itself worked (17 fills). **Cause (read, not fixed):** the op shells out to `./+x/...` relative to the current directory instead of `<root>/ops/+x/`. **Related, same pass:** `player_trade` is hard-wired to `pieces/player_you/`; the preferred tree has no entity data (`ensure_entities.sh` makes 0 pieces); `bond` issuance has no holder. Details: `44.xyz.01.00/@.apps/pet-trainer/WSR-ECONOMY-AND-PETS-EXPLORATION.md` section 5.
+
+---
+
+## OPEN 2026-10-10: pet window CPU up and occasional flicker (three causes found, none live-confirmed fixed)
+
+**Reported by the owner:** "cpu is up and sometimes pet screen flickers." Flicker cannot be seen in a screenshot, so this stays OPEN until the owner says it is gone.
+
+**Causes found (measured):**
+1. **A runaway `chain_miner`** (my own scratch test, `chain_miner <wallet> --blocks 2` after `chain_create_wallet` printed "Could not create wallet directory") sat at ~98% CPU for ~3 minutes until killed. **Separate bug in the chain op, root cause not investigated:** a miner for a wallet that does not exist (and a project root that does not exist) should exit, not spin. Repro: `PRISC_PROJECT_ROOT=<nonexistent> chain_miner.+x nosuchwallet --blocks 2`.
+   **Update 2026-10-10:** the compiled `041.pal-chain/ops/+x/*.+x` are from 2026-10-05, the sources from 2026-10-07. The stale `chain_miner.+x` ignores `--blocks N` (mines until killed) and ignores `chain.pdl` (difficulty 5 instead of the chain's setting). So the spin above was seen on a STALE binary; re-check on a rebuilt one before filing it as a source bug. The Q003 build gate does not cover the chain folder, which is why nothing noticed.
+2. **Process storm in the pet scripts.** One `pet_event.sh status` launched 139 processes (`sed`/`head` per variable read); the manager ran it every second plus an `ai_step` every 3 s. On a box at load average 10 a status took 2.5 s, so the manager fell behind its own loop (stutter, CPU). Fix: `getv`/`getw`/`inv_count`/`pinv_count` use shell built-ins (139 -> 86 launches, 0.16 s), status poll 1 s -> 2.5 s.
+3. **Non-atomic frame write (likely the flicker).** `pet_scene` wrote `scene.raw` with a truncating `fopen("wb")`; the renderer could read the file empty or half-written. The frame is now 660x430 (1.1 MB), which widened the window. Fix: write `scene.raw.tmp<pid>` then `rename()`.
+
+**Still true:** each pet harness re-run passes (skills 10, ai 9, econ 19, town 16, teachme 30, explore 15, phones 11, build 15). Measured CPU of the renderer on a quiet box stays ~15% running, ~16% stopped; the 60-90% readings coincided with a browser at 160%.
+
+**To close:** owner runs the pet window for a while (started, with chat open) and reports no flicker; `top` shows the pet renderer under ~20%.
+
+**Update 2026-10-10 (flicker root cause found by measurement):** the atomic scene write was NOT the visible flicker. Capturing the live window (`xwd`, 300 frames, then 2 minutes watched) showed idle frames are stable (only pet animation, an NPC and star twinkle), but the **X window width swung 892/904/908/916 px every few seconds**. `khtpm_core_render.c` (tab row, `s_tabbar_hw`) sized the window from the tab label widths and the game-clock tab (`D19 05:19`) changes width as it ticks, so the window resized and repainted constantly. Fix: latch the widest width the row has needed (grow only). After relaunch: 2 size changes in 100 s, then stable. Owner confirms much less screen movement, "maybe a very vague flicker" left, and said move on. **Status: mostly fixed, residual vague flicker not chased.** Candidate for a residual: the same shared layout computes other widths from live text, and each redraw does an `XGetImage`+`XPutImage` round trip of the whole 2 MB window.
+
+---
+
+## OPEN 2026-10-09: 3D board ray walk scaled with the whole page and pegged the CPU
+
+**Not live-verified.** The guard is compiled into `bv_render_3d.+x` and installed. Nobody has launched it since. Do not close this by running the daemon.
+
+**What happened:** a Doom page at 256 cells, canvas 2101×948. `frame_max_steps` was `board_w + board_h + z_count + 32`, so every pixel walked the map. Fog ends at 48, so the far steps were invisible. The daemon's only wait was the 30ms `house_wait_us` floor, so a slow frame was followed at once. The machine rebooted. Afterward the renderer was gone. Pitfall 26.
+
+**Guard in the source, not yet proven on the box:**
+- CPU walk: `min(fog_end + 8, 96)` in `bv_render_3d.c`.
+- GPU walk: stop once `tcur` passes `u_fog_end`, hard cap 96 (was 320) in `bv_gpu_raymarch.c`.
+- After a frame slower than 30ms, `house_wait_us` for that frame's own duration, then the floor.
+
+**Profile before the next launch:** `sh &.widgits/board-viewer/ops/bv_cost_before_run.sh`. It only reads source and the last receipt. A safe report is fog steps ≤ 96 and the printed ray-steps well under the old `board_w + board_h` product. `proc-mon` is the check after a process exists, not before.
+
+---
+
 ## ✅ CLOSED 2026-09-30 (grok handoff, HANDOFF STEP 1 ONLY, real regression caught and fixed same session): taskbar's HQ-window discovery opendir/readdir'd 2616 entries every reload
 
 **Reported (as data, not live user report):** `/home/no/Desktop/github/xer/cpu_loop_analysis.txt`, a CPU-throttling investigation shared across agents this session. Live measurement: `ktb_merge_hq_windows()` (khtpm_taskbar_manager.c) scanned all of `#.desktop` (2616 entries live) every reload just to find the one `livedesk_hq_windows_<pid>.txt` line that actually changed - a real, confirmed ~18-19% CPU contributor on the board window's renderer PID, on top of a taskbar manager already correctly gated to a 250ms-1s reload cadence.

@@ -1,0 +1,6 @@
+# Setup 2: seat 4 slot 3 - class from roster.pdl, HP from ninjas.pdl, on Start
+COND | trigger | setup
+COND | kv | variables.txt | players | ge | 4
+COND | kv | variables.txt | players | ge | @rules.pdl:players_min
+COND | kv | variables.txt | players | le | @rules.pdl:players_max
+COND | kv | rules.pdl | ninjas_per_player | ge | 3

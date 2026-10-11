@@ -567,7 +567,7 @@ int main(void) {
 #ifdef _WIN32
         int rc = system("\"ops\\+x\\shareholder_registry.+x\" rebuild");
 #else
-        int rc = system("'./+x/shareholder_registry.+x' rebuild");
+        int rc = system("'./ops/+x/shareholder_registry.+x' rebuild");   /* run from the project root, like every other op call (was './+x/...', which only exists inside ops/) */
 #endif
         if (rc != 0)
             fprintf(stderr, "market_settle: WARNING - could not rebuild the "

@@ -1,0 +1,5 @@
+# Block 4: refused
+COND | trigger | block
+COND | kv | variables.txt | ph_blk | eq | 2
+COND | kv | variables.txt | act_ok | eq | 0
+COND | kv | switches.txt | game_over | eq | 0

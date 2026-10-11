@@ -1,0 +1,4 @@
+# ghost_run.pal - LOCKED acceptance harness for quest q012 (ghost_run). Read results/ghost_run.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/ghost_run.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/ghost_run.pdl
+halt

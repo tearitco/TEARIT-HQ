@@ -1,0 +1,93 @@
+# 🔨 NIGHT 33 — The Auction Screen 🔨
+# ====================================================================
+# Title: "🔨 NIGHT 33 — The Auction Screen 🔨"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: Design night. The auction as a screen in the network cell: what is owned and priced, what already exists (an old auction line, a real chain with no signing, a designed ledger marketplace), what the screen does for players, AIs and phones, and the gate that has to open before real coins move.
+# Long-form: stays on the architecture. Nothing in this night is built.
+
+**THE NARRATOR:** NIGHT 31 asked how a test becomes something the attrition-model can learn from. NIGHT 32 put a hand on tomom's dials. Tonight asks a different question: once the house makes things that are scarce, who owns them, and how do they change hands. Say where the question came from.
+
+**MAXINE:** From a concept document outside the repo, a marketplace sketch dated the sixth of October. It names three scarce, ownable things the house's own mechanics keep producing. Pages, which used to be called maps: a plot of land and whatever is built on it. Curricula: a slice of the Concept Bank packaged as ordered lessons, franchisable, with tuition coming back to the owner. And tech trees: one civilization's own path through the Concept Bank, portable, droppable like an inventory item.
+
+**TOMO:** And the owner's brief for the screen itself was short and concrete. Auction is a screen. You can put things up for auction or buy things. You pay in blockchain cones or in play money for testing. It can work as a coin exchange. It shows who is buying, players and AIs both. It has a search. And it is based on the old peer-to-peer platform and on the chain the house already has.
+
+---
+
+**THE NARRATOR:** Start with what actually exists, because this track has been burned by designing past it. The old platform first.
+
+**RAHWEH:** An auction there is one small program that appends one line to a local ledger: an item's hash, a name, who listed it, a minimum bid. It refuses to list the same hash twice. The big peer program reads those lines into a table of at most ten and prints them. That is the whole feature. No bid. No close. No winner. No payment. The owner's own notes from the time say the coin send stopped working and the auctions do not update.
+
+**MAXINE:** So it is a good idea with one line of implementation. An auction is a line on a chain. Keep the idea, not the code.
+
+**TOMO:** The chain the house has now is further along, and honest about its limits. Real wallets with hashed passwords. A global ledger of blocks. A send that checks the sender's derived balance and appends one transfer line. A miner. A single balance derivation that everything shells out to instead of copying. And three things it does not have: one transaction type only, no signing, and peers on the same machine only.
+
+**RAHWEH:** Say the signing gap in its own words, because it is the heart of tonight. The send program's header says the transaction id is a dedup key and not a signature, and that a local process could forge a transfer claiming to be from any wallet.
+
+**MAXINE:** A marketplace that moves real value on top of that would let anyone spend anyone's coins. So the gate is not a detail. It is the first design decision.
+
+**TOMO:** And one more thing already exists that the concept document does not cite. The economy architecture written for the wsr project has a whole section on a ledger and auction marketplace: one file per posted offer or ask, broadcast to anyone qualified or targeted at one counterparty, discovered by scanning a directory, fulfilled by whichever actor's own logic decides to. Tonight's screen should extend that, not restart it.
+
+---
+
+**THE NARRATOR:** What is the screen, then. Say it as a person would use it.
+
+**MAXINE:** A window in the network cell. A search bar. A list of open auctions, each with the item, the current price, when it ends, and who holds the high bid. A tab for my bids and my listings. A panel to list something or place a bid. And a board of who is buying and who is selling, newest first.
+
+**TOMO:** Underneath, it is an append-only ledger and nothing else. A listing is a row. A bid is a row. A cancel is a row. When the end time passes, the manager writes a close row from what the ledger already says. After settlement, one more row. Nobody edits a row. The state of any auction, open, closed, who is winning, is derived by replaying the file, the same rule the chain follows for balances: one authoritative derivation, never a second stored copy.
+
+**RAHWEH:** Prices carry a unit. Cones, which are real chain coins, or play money, a separate ledger for testing. The auction code never touches a wallet itself. It calls a settlement adapter that has two implementations. Play money writes a row to its own ledger. Cones call the chain's send. And until the gate is open, the cones adapter stays switched off and the screen says play money only.
+
+**MAXINE:** The coin exchange is just a listing where the item is an amount of one unit and the price is another. No new mechanism.
+
+---
+
+**THE NARRATOR:** Who can act on the screen? The owner said players and AIs and phones.
+
+**TOMO:** All three are actors, and an actor is anything that can write a row through a registered event command. A player clicks. An AI entity calls the same command. A phone sends a short message that an inbox watcher turns into the same row. The registry already has a phone send command. The commands the screen needs, list, bid, cancel, close, do not exist yet.
+
+**RAHWEH:** And the law from NIGHT 26 applies in full. A model never decides what happens next. An AI actor bids by naming a command inside a fixed shape, and deterministic code validates it exactly as it validates a human's bid. An AI that wants to buy something has the same minimum, the same balance check, the same row.
+
+**MAXINE:** Which brings in the entity banks from two nights ago. Search on this screen can use the same word lookup that entities have. Type "robot" and the lookup resolves it to the kind, and the listings tagged with that kind come back. The words an entity answers to are the words a buyer searches with.
+
+---
+
+**THE NARRATOR:** Items. The owner said two to start.
+
+**TOMO:** Two kinds first is the right size. The owner's words were "items 2", and the two recommended here are entities and coins; the owner has not yet confirmed which two. An entity already has a folder, an identity from its hash, and a phone. Ownership and transfer have somewhere real to live. Coins are the exchange case and need nothing new. Pages, curricula and tech trees come later, because the formats to package them do not exist: no page documentation format, no curriculum bundle format, no portable tech tree item.
+
+**RAHWEH:** Say why that order is honest and not just cautious.
+
+**MAXINE:** Because an auction that sells a thing the house cannot yet hand over is a promise, the same word NIGHT 6 used for a wager without a proper stake lock. Sell what can really change hands first.
+
+---
+
+**THE NARRATOR:** The concept document makes a claim tonight has to check. Say it.
+
+**RAHWEH:** It describes a curriculum as a confirmed, promoted subtree of the Concept Bank, with a pass rate across students that works as the price signal. Two checks. The pass rate is the same kind of number as NIGHT 31's reliability: counted from real rows, never edited. That part fits, and it is exactly the right kind of thing to price on. The other part, promoted, does not fit what the code does today. NIGHT 30 says nothing promotes, validated edits wait for a human. And the halo validator promotes straight into the bank for high-tier entities without consulting the ledger. So a curriculum cannot honestly be called confirmed yet.
+
+**TOMO:** The concept document is right to say valuation can be computed and shown but not settled. The same sentence has to be said twice. Valuation of a curriculum can be computed from its counted pass rate. Selling a curriculum has to wait until promotion means something and signing exists.
+
+---
+
+**THE NARRATOR:** The gate. Say it as a list, because that is what it is.
+
+**MAXINE:** Four things, none of which exist. Signed transactions, so a transfer proves who sent it. An escrow transaction type, so the winning bid is locked at close, released when the item is handed over, refunded if it is not. Peers across machines, since today they share one. And an identity an actor can prove, for phones and AIs, so a bid is known to come from whoever it says.
+
+**TOMO:** Until they exist, play money only, and cones appear on the screen as valuations that cannot settle. The settlement adapter is the one place that flips, so opening the gate later is one switch, not a rewrite.
+
+**RAHWEH:** And the build order follows the house habit. The ledger and its derivation first, with a harness for list, bid, low bid, cancel, close, double-listing and replay giving the same state every time. Then play money. Then the registered commands. Then the screen, read-only first. Then entity transfer. Then the AI and phone doors. The cones adapter last, behind the gate.
+
+---
+
+**THE NARRATOR:** Honesty checkpoint, the way this track ends.
+
+**MAXINE:** What is real. An old one-line auction idea. A chain with wallets, a miner, one transfer type and one derivation. A designed ledger marketplace in the wsr economy document. A registered phone send command. A concept document naming three asset types. A design file for the screen, written from all of those, with a ledger, an adapter, a gate and a build order.
+
+**TOMO:** What is not. No auction ledger. No bid, close or settle logic anywhere. No play money ledger. No auction event commands. No screen. No transaction signing, no escrow, no cross-machine peers, no provable identity. No format to package a page, a curriculum or a tech tree. And one claim in the concept document, that a curriculum is promoted and confirmed, does not match the code.
+
+**RAHWEH:** Open questions the owner still holds: whether bids are per desk or world-wide, whether the auction is its own window or a tab in the chain window, whether there are fixed-price listings next to auctions, how a late bid affects the end time, who mints play money, and whether the curriculum store is this screen or its own.
+
+**MAXINE:** Say the line to carry into the next one.
+
+**TOMO:** An auction is a row on a ledger and a derivation that replays it. Everything hard is the gate in front of the coins, and the honest first version trades play money for things that can really change hands. 🔨

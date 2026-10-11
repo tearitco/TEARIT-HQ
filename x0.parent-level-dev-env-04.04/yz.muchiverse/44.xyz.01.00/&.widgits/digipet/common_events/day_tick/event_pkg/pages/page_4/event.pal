@@ -1,0 +1,9 @@
+# event.pal - Day Tick page 4 (starving, death ON, the loss would take HP to 0): HP 0 and switch dead = ON
+# hand-written in the registry PAL shape (relative paths; event_page_op runs it with cwd = the entity state dir)
+li x15, 7
+li x12, 0
+ecall "actor_1_stats.txt" "hp"
+li x15, 7
+li x12, 1
+ecall "switches.txt" "dead"
+halt

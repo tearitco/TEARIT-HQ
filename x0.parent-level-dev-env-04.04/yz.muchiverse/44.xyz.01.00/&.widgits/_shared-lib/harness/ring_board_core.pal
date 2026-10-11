@@ -1,0 +1,4 @@
+# ring_board_core.pal - the ring board game core: tiny ops, event pages, full seeded games to game over, save/restore, player path, clock End Turn. See cases/ring_board_core.pdl.
+exec ./ops/+x/harness_case_op.+x cases/ring_board_core.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/ring_board_core.pdl
+halt

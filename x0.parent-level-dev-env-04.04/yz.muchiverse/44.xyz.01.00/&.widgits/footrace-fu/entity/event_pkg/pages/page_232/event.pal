@@ -1,0 +1,7 @@
+# event.pal - Combat 3: attacker re-roll (trigger combat). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/dice_roll.+x . dice_seed dice_counter
+exec ops/+x/var_math.+x . set a_die dice1
+exec ops/+x/var_math.+x . add a_roll a_die a_atk
+exec ops/+x/var_math.+x . set rr_{cmb_ap}_{cmb_an} 1
+exec ops/+x/row_append.+x . ledger.txt REROLL {turn} {cmb_ap} {cmb_an} attacker {a_die}
+halt

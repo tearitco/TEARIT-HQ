@@ -1,0 +1,724 @@
+# quest q012 ghost_run: LOCKED cases. Binary under test: &.widgits/quest-pilot/ops/+x/ghost_run.+x (build: ops/build_ghost_run.sh); it finds quest_check.+x next to itself.
+# NO network: the backend is the compiled fixture fixtures/ghost_fake_backend.c (reply/stderr/exit/hang chosen by files next to it); the judge is fixtures/ghost_chk.c.
+# Each scenario builds a scratch repo $T/r (branch main) that holds the quest packet r/qst/ and src/; ghost worktrees go to $T/wts.
+RESULTS | ../results/ghost_run.txt
+# ---- scenario: good-reply-passes
+CASE | good-reply-passes
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/ghost_run.+x | gr.+x
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | quest_check.+x
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_fake_backend.c | fb.c
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_chk.c | chk.c
+RUN | cc | -O0 | -w | -o | $T/fb.+x | $T/fb.c
+EXPECT_EXIT | 0 | cc-fb
+RUN | cc | -O0 | -w | -o | $T/chk.+x | $T/chk.c
+EXPECT_EXIT | 0 | cc-chk
+WRITE | fb.+x.reply | Here is the file:\n```text\nGOODWORD line one\n```\nand a second block that must be ignored\n```\nBADWORD\n```\n
+WRITE | fb.+x.err | answered by fake (model-x)\n
+WRITE | r/qst/harness/h1.txt | H1\n
+WRITE | r/qst/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n
+WRITE | r/qst/scope.txt | # allowed\nout/\n
+WRITE | r/qst/budget.pdl | BUDGET | max_attempts | 2\nBUDGET | max_seconds | 5\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/qst/RUN.pdl | OUTPUT | out/result.txt\nHARNESS | $T/chk.+x out/result.txt GOODWORD verdict.txt\nVERDICT_FILE | verdict.txt\n
+WRITE | r/qst/prompt.txt | Write the file please.\n
+WRITE | r/src/seed.txt | seed\n
+WRITE | r/other/o.txt | other\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | rev-parse | main
+CAPTURE | tip0
+RUN | git | -C | $T/r | branch | --list | main
+CAPTURE | m
+RUN | $T/gr.+x | $T/r/qst | main | $T/r | --ghost | g1 | --worktrees | $T/wts | --backend | $T/fb.+x
+EXPECT_EXIT | 0 | good-exit
+EXPECT_OUT | GHOST\pqst\pattempt=1\pRESULT\pPASS\pworktree=$T/wts/g1/qst-a001 | good-final-line
+EXPECT_EXISTS | r/qst/attempts/001/reply.txt | good-reply
+EXPECT_EXISTS | r/qst/attempts/001/output.diff | good-diff
+EXPECT_EXISTS | r/qst/attempts/001/harness.log | good-hlog
+EXPECT_EXISTS | r/qst/attempts/001/verdict.txt | good-verdict
+EXPECT_EXISTS | r/qst/attempts/001/meta.pdl | good-meta
+EXPECT_FILE | r/qst/attempts/001/verdict.txt | PASS ok\n | good-verdict-last-line
+EXPECT_HAS | r/qst/attempts/001/meta.pdl | RESULT \p PASS | good-meta-result
+EXPECT_HAS | r/qst/attempts/001/meta.pdl | BACKEND \p 0 | good-meta-backend
+EXPECT_HAS | r/qst/attempts/001/meta.pdl | PROVIDER \p answered by fake (model-x) | good-meta-provider
+EXPECT_HAS | r/qst/attempts/001/meta.pdl | ATTEMPT \p 1 \p g1 | good-meta-attempt
+EXPECT_HAS | r/qst/attempts/001/meta.pdl | WALL | good-meta-wall
+EXPECT_HAS | r/qst/attempts/001/output.diff | +GOODWORD line one | good-diff-content
+EXPECT_HAS | r/qst/attempts/001/reply.txt | BADWORD | good-reply-raw-kept
+EXPECT_FILE | wts/g1/qst-a001/out/result.txt | GOODWORD line one\n | good-first-block-only
+EXPECT_NOFILE | wts/g1/qst-a001/BADWORD | good-no-extra-file
+EXPECT_HAS | fb.+x.env | HORN_TOOLS=off | good-env-tools-off
+EXPECT_HAS | fb.+x.env | HORN_CURL_TIMEOUT=5 | good-env-curl-timeout
+EXPECT_FILE | fb.+x.prompt | Write the file please.\n | good-prompt-verbatim
+RUN | git | -C | $T/wts/g1/qst-a001 | rev-parse | --abbrev-ref | HEAD
+EXPECT_OUT_IS | ghost/g1/qst-a001 | good-worktree-branch
+RUN | git | -C | $T/r | rev-parse | main
+CAPTURE | tip1
+EXPECT_EQ | $tip0 | $tip1 | target-branch-untouched
+CLEAN |
+# ---- scenario: wrong-content-fails
+CASE | wrong-content-fails
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/ghost_run.+x | gr.+x
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | quest_check.+x
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_fake_backend.c | fb.c
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_chk.c | chk.c
+RUN | cc | -O0 | -w | -o | $T/fb.+x | $T/fb.c
+EXPECT_EXIT | 0 | cc-fb
+RUN | cc | -O0 | -w | -o | $T/chk.+x | $T/chk.c
+EXPECT_EXIT | 0 | cc-chk
+WRITE | fb.+x.reply | ```\nnothing useful\n```\n
+WRITE | fb.+x.err | answered by fake (model-x)\n
+WRITE | r/qst/harness/h1.txt | H1\n
+WRITE | r/qst/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n
+WRITE | r/qst/scope.txt | # allowed\nout/\n
+WRITE | r/qst/budget.pdl | BUDGET | max_attempts | 2\nBUDGET | max_seconds | 5\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/qst/RUN.pdl | OUTPUT | out/result.txt\nHARNESS | $T/chk.+x out/result.txt GOODWORD verdict.txt\nVERDICT_FILE | verdict.txt\n
+WRITE | r/qst/prompt.txt | Write the file please.\n
+WRITE | r/src/seed.txt | seed\n
+WRITE | r/other/o.txt | other\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | rev-parse | main
+CAPTURE | tip0
+RUN | $T/gr.+x | $T/r/qst | main | $T/r | --ghost | g1 | --worktrees | $T/wts | --backend | $T/fb.+x
+EXPECT_EXIT | 10 | wrong-exit
+EXPECT_OUT | RESULT\pFAIL\pworktree= | wrong-final-line
+EXPECT_HAS | r/qst/attempts/001/meta.pdl | RESULT \p FAIL | wrong-meta-result
+EXPECT_FILE | r/qst/attempts/001/verdict.txt | FAIL missing\n | wrong-verdict
+EXPECT_EXISTS | wts/g1/qst-a001/out/result.txt | wrong-worktree-kept
+RUN | git | -C | $T/r | rev-parse | main
+CAPTURE | tip1
+EXPECT_EQ | $tip0 | $tip1 | target-branch-untouched
+CLEAN |
+# ---- scenario: no-verdict-file-fails
+CASE | no-verdict-file-fails
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/ghost_run.+x | gr.+x
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | quest_check.+x
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_fake_backend.c | fb.c
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_chk.c | chk.c
+RUN | cc | -O0 | -w | -o | $T/fb.+x | $T/fb.c
+EXPECT_EXIT | 0 | cc-fb
+RUN | cc | -O0 | -w | -o | $T/chk.+x | $T/chk.c
+EXPECT_EXIT | 0 | cc-chk
+WRITE | fb.+x.reply | Here is the file:\n```text\nGOODWORD line one\n```\nand a second block that must be ignored\n```\nBADWORD\n```\n
+WRITE | fb.+x.err | answered by fake (model-x)\n
+WRITE | r/qst/harness/h1.txt | H1\n
+WRITE | r/qst/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n
+WRITE | r/qst/scope.txt | # allowed\nout/\n
+WRITE | r/qst/budget.pdl | BUDGET | max_attempts | 2\nBUDGET | max_seconds | 5\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/qst/RUN.pdl | OUTPUT | out/result.txt\nHARNESS | /usr/bin/true\nVERDICT_FILE | verdict.txt\n
+WRITE | r/qst/prompt.txt | Write the file please.\n
+WRITE | r/src/seed.txt | seed\n
+WRITE | r/other/o.txt | other\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | rev-parse | main
+CAPTURE | tip0
+RUN | $T/gr.+x | $T/r/qst | main | $T/r | --ghost | g1 | --worktrees | $T/wts | --backend | $T/fb.+x
+EXPECT_EXIT | 10 | noverdict-exit
+EXPECT_HAS | r/qst/attempts/001/meta.pdl | RESULT \p FAIL | noverdict-meta
+CLEAN |
+# ---- scenario: backend-exit-4
+CASE | backend-exit-4
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/ghost_run.+x | gr.+x
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | quest_check.+x
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_fake_backend.c | fb.c
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_chk.c | chk.c
+RUN | cc | -O0 | -w | -o | $T/fb.+x | $T/fb.c
+EXPECT_EXIT | 0 | cc-fb
+RUN | cc | -O0 | -w | -o | $T/chk.+x | $T/chk.c
+EXPECT_EXIT | 0 | cc-chk
+WRITE | fb.+x.reply | ```\nGOODWORD\n```\n
+WRITE | fb.+x.err | answered by none\nhorn_error provider=x http=401\n
+WRITE | fb.+x.rc | 4
+WRITE | r/qst/harness/h1.txt | H1\n
+WRITE | r/qst/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n
+WRITE | r/qst/scope.txt | # allowed\nout/\n
+WRITE | r/qst/budget.pdl | BUDGET | max_attempts | 2\nBUDGET | max_seconds | 5\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/qst/RUN.pdl | OUTPUT | out/result.txt\nHARNESS | $T/chk.+x out/result.txt GOODWORD verdict.txt\nVERDICT_FILE | verdict.txt\n
+WRITE | r/qst/prompt.txt | Write the file please.\n
+WRITE | r/src/seed.txt | seed\n
+WRITE | r/other/o.txt | other\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | rev-parse | main
+CAPTURE | tip0
+RUN | $T/gr.+x | $T/r/qst | main | $T/r | --ghost | g1 | --worktrees | $T/wts | --backend | $T/fb.+x
+EXPECT_EXIT | 11 | b4-exit
+EXPECT_OUT | RESULT\pbackend-failed | b4-final-line
+EXPECT_HAS | r/qst/attempts/001/meta.pdl | BACKEND \p 4 | b4-meta-class
+EXPECT_HAS | r/qst/attempts/001/meta.pdl | RESULT \p backend-failed | b4-meta-result
+EXPECT_HAS | r/qst/attempts/001/meta.pdl | REASON \p backend exit 4 | b4-meta-reason
+EXPECT_HAS | r/qst/attempts/001/backend_stderr.txt | http=401 | b4-stderr-kept
+EXPECT_NOFILE | wts/g1/qst-a001/out/result.txt | b4-no-code-written
+RUN | git | -C | $T/r | rev-parse | main
+CAPTURE | tip1
+EXPECT_EQ | $tip0 | $tip1 | target-branch-untouched
+CLEAN |
+# ---- scenario: backend-hangs-killed
+CASE | backend-hangs-killed
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/ghost_run.+x | gr.+x
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | quest_check.+x
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_fake_backend.c | fb.c
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_chk.c | chk.c
+RUN | cc | -O0 | -w | -o | $T/fb.+x | $T/fb.c
+EXPECT_EXIT | 0 | cc-fb
+RUN | cc | -O0 | -w | -o | $T/chk.+x | $T/chk.c
+EXPECT_EXIT | 0 | cc-chk
+WRITE | fb.+x.reply | Here is the file:\n```text\nGOODWORD line one\n```\nand a second block that must be ignored\n```\nBADWORD\n```\n
+WRITE | fb.+x.err | answered by fake (model-x)\n
+WRITE | r/qst/harness/h1.txt | H1\n
+WRITE | r/qst/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n
+WRITE | r/qst/scope.txt | # allowed\nout/\n
+WRITE | r/qst/budget.pdl | BUDGET | max_attempts | 2\nBUDGET | max_seconds | 1\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/qst/RUN.pdl | OUTPUT | out/result.txt\nHARNESS | $T/chk.+x out/result.txt GOODWORD verdict.txt\nVERDICT_FILE | verdict.txt\n
+WRITE | r/qst/prompt.txt | Write the file please.\n
+WRITE | r/src/seed.txt | seed\n
+WRITE | r/other/o.txt | other\n
+WRITE | fb.+x.hang | 1\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | rev-parse | main
+CAPTURE | tip0
+RUN | $T/gr.+x | $T/r/qst | main | $T/r | --ghost | g1 | --worktrees | $T/wts | --backend | $T/fb.+x
+EXPECT_EXIT | 11 | hang-exit
+EXPECT_HAS | r/qst/attempts/001/meta.pdl | BACKEND \p timeout | hang-meta-class
+EXPECT_HAS | r/qst/attempts/001/meta.pdl | RESULT \p backend-failed | hang-meta-result
+EXPECT_NOFILE | wts/g1/qst-a001/out/result.txt | hang-no-code-written
+RUN | cat | $T/fb.+x.pid
+CAPTURE | hp
+EXPECT_DEAD | $hp | hang-child-dead-and-reaped
+CLEAN |
+# ---- scenario: no-fence
+CASE | no-fence
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/ghost_run.+x | gr.+x
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | quest_check.+x
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_fake_backend.c | fb.c
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_chk.c | chk.c
+RUN | cc | -O0 | -w | -o | $T/fb.+x | $T/fb.c
+EXPECT_EXIT | 0 | cc-fb
+RUN | cc | -O0 | -w | -o | $T/chk.+x | $T/chk.c
+EXPECT_EXIT | 0 | cc-chk
+WRITE | fb.+x.reply | Sure, the answer is GOODWORD but I will not fence it.\n
+WRITE | fb.+x.err | answered by fake (model-x)\n
+WRITE | r/qst/harness/h1.txt | H1\n
+WRITE | r/qst/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n
+WRITE | r/qst/scope.txt | # allowed\nout/\n
+WRITE | r/qst/budget.pdl | BUDGET | max_attempts | 2\nBUDGET | max_seconds | 5\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/qst/RUN.pdl | OUTPUT | out/result.txt\nHARNESS | $T/chk.+x out/result.txt GOODWORD verdict.txt\nVERDICT_FILE | verdict.txt\n
+WRITE | r/qst/prompt.txt | Write the file please.\n
+WRITE | r/src/seed.txt | seed\n
+WRITE | r/other/o.txt | other\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | rev-parse | main
+CAPTURE | tip0
+RUN | $T/gr.+x | $T/r/qst | main | $T/r | --ghost | g1 | --worktrees | $T/wts | --backend | $T/fb.+x
+EXPECT_EXIT | 12 | nofence-exit
+EXPECT_OUT | RESULT\pno-code-block | nofence-final
+EXPECT_HAS | r/qst/attempts/001/meta.pdl | RESULT \p no-code-block | nofence-meta
+EXPECT_NOFILE | wts/g1/qst-a001/out/result.txt | nofence-nothing-written
+CLEAN |
+# ---- scenario: unterminated-fence-taken
+CASE | unterminated-fence-taken
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/ghost_run.+x | gr.+x
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | quest_check.+x
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_fake_backend.c | fb.c
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_chk.c | chk.c
+RUN | cc | -O0 | -w | -o | $T/fb.+x | $T/fb.c
+EXPECT_EXIT | 0 | cc-fb
+RUN | cc | -O0 | -w | -o | $T/chk.+x | $T/chk.c
+EXPECT_EXIT | 0 | cc-chk
+WRITE | fb.+x.reply | Here:\n```\nGOODWORD tail\nmore\n
+WRITE | fb.+x.err | answered by fake (model-x)\n
+WRITE | r/qst/harness/h1.txt | H1\n
+WRITE | r/qst/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n
+WRITE | r/qst/scope.txt | # allowed\nout/\n
+WRITE | r/qst/budget.pdl | BUDGET | max_attempts | 2\nBUDGET | max_seconds | 5\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/qst/RUN.pdl | OUTPUT | out/result.txt\nHARNESS | $T/chk.+x out/result.txt GOODWORD verdict.txt\nVERDICT_FILE | verdict.txt\n
+WRITE | r/qst/prompt.txt | Write the file please.\n
+WRITE | r/src/seed.txt | seed\n
+WRITE | r/other/o.txt | other\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | rev-parse | main
+CAPTURE | tip0
+RUN | $T/gr.+x | $T/r/qst | main | $T/r | --ghost | g1 | --worktrees | $T/wts | --backend | $T/fb.+x
+EXPECT_EXIT | 0 | unterm-exit
+EXPECT_FILE | wts/g1/qst-a001/out/result.txt | GOODWORD tail\nmore\n | unterm-content
+CLEAN |
+# ---- scenario: output-through-symlink-refused
+CASE | output-through-symlink-refused
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/ghost_run.+x | gr.+x
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | quest_check.+x
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_fake_backend.c | fb.c
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_chk.c | chk.c
+RUN | cc | -O0 | -w | -o | $T/fb.+x | $T/fb.c
+EXPECT_EXIT | 0 | cc-fb
+RUN | cc | -O0 | -w | -o | $T/chk.+x | $T/chk.c
+EXPECT_EXIT | 0 | cc-chk
+WRITE | fb.+x.reply | Here is the file:\n```text\nGOODWORD line one\n```\nand a second block that must be ignored\n```\nBADWORD\n```\n
+WRITE | fb.+x.err | answered by fake (model-x)\n
+WRITE | r/qst/harness/h1.txt | H1\n
+WRITE | r/qst/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n
+WRITE | r/qst/scope.txt | # allowed\nout/\n
+WRITE | r/qst/budget.pdl | BUDGET | max_attempts | 2\nBUDGET | max_seconds | 5\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/qst/RUN.pdl | OUTPUT | out/result.txt\nHARNESS | $T/chk.+x out/result.txt GOODWORD verdict.txt\nVERDICT_FILE | verdict.txt\n
+WRITE | r/qst/prompt.txt | Write the file please.\n
+WRITE | r/src/seed.txt | seed\n
+WRITE | r/other/o.txt | other\n
+RUN | ln | -s | $T/r/other | $T/r/out
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | rev-parse | main
+CAPTURE | tip0
+RUN | $T/gr.+x | $T/r/qst | main | $T/r | --ghost | g1 | --worktrees | $T/wts | --backend | $T/fb.+x
+EXPECT_EXIT | 12 | sym-exit
+EXPECT_HAS | r/qst/attempts/001/meta.pdl | RESULT \p output-unwritable | sym-meta
+EXPECT_NOFILE | r/other/result.txt | sym-nothing-outside
+CLEAN |
+# ---- scenario: forged-harness-byte-precheck
+CASE | forged-harness-byte-precheck
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/ghost_run.+x | gr.+x
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | quest_check.+x
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_fake_backend.c | fb.c
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_chk.c | chk.c
+RUN | cc | -O0 | -w | -o | $T/fb.+x | $T/fb.c
+EXPECT_EXIT | 0 | cc-fb
+RUN | cc | -O0 | -w | -o | $T/chk.+x | $T/chk.c
+EXPECT_EXIT | 0 | cc-chk
+WRITE | fb.+x.reply | Here is the file:\n```text\nGOODWORD line one\n```\nand a second block that must be ignored\n```\nBADWORD\n```\n
+WRITE | fb.+x.err | answered by fake (model-x)\n
+WRITE | r/qst/harness/h1.txt | H1\n
+WRITE | r/qst/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n
+WRITE | r/qst/scope.txt | # allowed\nout/\n
+WRITE | r/qst/budget.pdl | BUDGET | max_attempts | 2\nBUDGET | max_seconds | 5\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/qst/RUN.pdl | OUTPUT | out/result.txt\nHARNESS | $T/chk.+x out/result.txt GOODWORD verdict.txt\nVERDICT_FILE | verdict.txt\n
+WRITE | r/qst/prompt.txt | Write the file please.\n
+WRITE | r/src/seed.txt | seed\n
+WRITE | r/other/o.txt | other\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | rev-parse | main
+CAPTURE | tip0
+WRITE | r/qst/harness/h1.txt | H1x\n
+RUN | $T/gr.+x | $T/r/qst | main | $T/r | --ghost | g1 | --worktrees | $T/wts | --backend | $T/fb.+x
+EXPECT_EXIT | 13 | forged-exit
+EXPECT_OUT | RESULT\pREFUSED-precheck | forged-final
+EXPECT_NOFILE | wts | forged-no-worktree-root
+EXPECT_NOFILE | r/qst/attempts | forged-no-attempts
+RUN | git | -C | $T/r | show-ref | --verify | --quiet | refs/heads/ghost/g1/qst-a001
+EXPECT_EXIT | 1 | forged-no-branch
+CLEAN |
+# ---- scenario: forged-harness-byte-during-run
+CASE | forged-harness-byte-during-run
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/ghost_run.+x | gr.+x
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | quest_check.+x
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_fake_backend.c | fb.c
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_chk.c | chk.c
+RUN | cc | -O0 | -w | -o | $T/fb.+x | $T/fb.c
+EXPECT_EXIT | 0 | cc-fb
+RUN | cc | -O0 | -w | -o | $T/chk.+x | $T/chk.c
+EXPECT_EXIT | 0 | cc-chk
+WRITE | fb.+x.reply | Here is the file:\n```text\nGOODWORD line one\n```\nand a second block that must be ignored\n```\nBADWORD\n```\n
+WRITE | fb.+x.err | answered by fake (model-x)\n
+WRITE | r/qst/harness/h1.txt | H1\n
+WRITE | r/qst/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n
+WRITE | r/qst/scope.txt | # allowed\nout/\n
+WRITE | r/qst/budget.pdl | BUDGET | max_attempts | 2\nBUDGET | max_seconds | 5\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/qst/RUN.pdl | OUTPUT | out/result.txt\nHARNESS | $T/chk.+x out/result.txt GOODWORD verdict.txt\nVERDICT_FILE | verdict.txt\n
+WRITE | r/qst/prompt.txt | Write the file please.\n
+WRITE | r/src/seed.txt | seed\n
+WRITE | r/other/o.txt | other\n
+WRITE | forged.txt | H1x\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | rev-parse | main
+CAPTURE | tip0
+WRITE | fb.+x.hook | cp\n$T/forged.txt\n$T/r/qst/harness/h1.txt\n
+RUN | $T/gr.+x | $T/r/qst | main | $T/r | --ghost | g1 | --worktrees | $T/wts | --backend | $T/fb.+x
+EXPECT_EXIT | 14 | forgedlate-exit
+EXPECT_HAS | r/qst/attempts/001/meta.pdl | RESULT \p VIOLATION-check | forgedlate-meta
+EXPECT_HAS | r/qst/attempts/001/meta.pdl | hash mismatch | forgedlate-reason
+EXPECT_NOFILE | wts/g1/qst-a001/verdict.txt | forgedlate-harness-not-run
+CLEAN |
+# ---- scenario: target-advanced-stale-base
+CASE | target-advanced-stale-base
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/ghost_run.+x | gr.+x
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | quest_check.+x
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_fake_backend.c | fb.c
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_chk.c | chk.c
+RUN | cc | -O0 | -w | -o | $T/fb.+x | $T/fb.c
+EXPECT_EXIT | 0 | cc-fb
+RUN | cc | -O0 | -w | -o | $T/chk.+x | $T/chk.c
+EXPECT_EXIT | 0 | cc-chk
+WRITE | fb.+x.reply | Here is the file:\n```text\nGOODWORD line one\n```\nand a second block that must be ignored\n```\nBADWORD\n```\n
+WRITE | fb.+x.err | answered by fake (model-x)\n
+WRITE | r/qst/harness/h1.txt | H1\n
+WRITE | r/qst/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n
+WRITE | r/qst/scope.txt | # allowed\nout/\n
+WRITE | r/qst/budget.pdl | BUDGET | max_attempts | 2\nBUDGET | max_seconds | 5\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/qst/RUN.pdl | OUTPUT | out/result.txt\nHARNESS | $T/chk.+x out/result.txt GOODWORD verdict.txt\nVERDICT_FILE | verdict.txt\n
+WRITE | r/qst/prompt.txt | Write the file please.\n
+WRITE | r/src/seed.txt | seed\n
+WRITE | r/other/o.txt | other\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | rev-parse | main
+CAPTURE | tip0
+WRITE | fb.+x.hook | git\n-C\n$T/r\n-c\nuser.name=t\n-c\nuser.email=t@t\ncommit\n--allow-empty\n-q\n-m\nadvance\n
+RUN | $T/gr.+x | $T/r/qst | main | $T/r | --ghost | g1 | --worktrees | $T/wts | --backend | $T/fb.+x
+EXPECT_EXIT | 14 | stale-exit
+EXPECT_HAS | r/qst/attempts/001/meta.pdl | RESULT \p VIOLATION-check | stale-meta
+EXPECT_HAS | r/qst/attempts/001/meta.pdl | stale base | stale-reason
+EXPECT_NOFILE | wts/g1/qst-a001/verdict.txt | stale-harness-not-run
+CLEAN |
+# ---- scenario: max-attempts-exceeded
+CASE | max-attempts-exceeded
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/ghost_run.+x | gr.+x
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | quest_check.+x
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_fake_backend.c | fb.c
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_chk.c | chk.c
+RUN | cc | -O0 | -w | -o | $T/fb.+x | $T/fb.c
+EXPECT_EXIT | 0 | cc-fb
+RUN | cc | -O0 | -w | -o | $T/chk.+x | $T/chk.c
+EXPECT_EXIT | 0 | cc-chk
+WRITE | fb.+x.reply | Here is the file:\n```text\nGOODWORD line one\n```\nand a second block that must be ignored\n```\nBADWORD\n```\n
+WRITE | fb.+x.err | answered by fake (model-x)\n
+WRITE | r/qst/harness/h1.txt | H1\n
+WRITE | r/qst/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n
+WRITE | r/qst/scope.txt | # allowed\nout/\n
+WRITE | r/qst/budget.pdl | BUDGET | max_attempts | 1\nBUDGET | max_seconds | 5\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/qst/RUN.pdl | OUTPUT | out/result.txt\nHARNESS | $T/chk.+x out/result.txt GOODWORD verdict.txt\nVERDICT_FILE | verdict.txt\n
+WRITE | r/qst/prompt.txt | Write the file please.\n
+WRITE | r/src/seed.txt | seed\n
+WRITE | r/other/o.txt | other\n
+MKDIR | r/qst/attempts/001
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | rev-parse | main
+CAPTURE | tip0
+RUN | $T/gr.+x | $T/r/qst | main | $T/r | --ghost | g1 | --worktrees | $T/wts | --backend | $T/fb.+x
+EXPECT_EXIT | 13 | maxatt-exit
+EXPECT_OUT | RESULT\pREFUSED-attempts | maxatt-final
+EXPECT_NOFILE | wts | maxatt-no-worktree
+EXPECT_NOFILE | r/qst/attempts/002 | maxatt-no-002
+CLEAN |
+# ---- scenario: second-run-new-attempt
+CASE | second-run-new-attempt
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/ghost_run.+x | gr.+x
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | quest_check.+x
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_fake_backend.c | fb.c
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_chk.c | chk.c
+RUN | cc | -O0 | -w | -o | $T/fb.+x | $T/fb.c
+EXPECT_EXIT | 0 | cc-fb
+RUN | cc | -O0 | -w | -o | $T/chk.+x | $T/chk.c
+EXPECT_EXIT | 0 | cc-chk
+WRITE | fb.+x.reply | ```\nnothing\n```\n
+WRITE | fb.+x.err | answered by fake (model-x)\n
+WRITE | r/qst/harness/h1.txt | H1\n
+WRITE | r/qst/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n
+WRITE | r/qst/scope.txt | # allowed\nout/\n
+WRITE | r/qst/budget.pdl | BUDGET | max_attempts | 2\nBUDGET | max_seconds | 5\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/qst/RUN.pdl | OUTPUT | out/result.txt\nHARNESS | $T/chk.+x out/result.txt GOODWORD verdict.txt\nVERDICT_FILE | verdict.txt\n
+WRITE | r/qst/prompt.txt | Write the file please.\n
+WRITE | r/src/seed.txt | seed\n
+WRITE | r/other/o.txt | other\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | rev-parse | main
+CAPTURE | tip0
+RUN | $T/gr.+x | $T/r/qst | main | $T/r | --ghost | g1 | --worktrees | $T/wts | --backend | $T/fb.+x
+EXPECT_EXIT | 10 | two-first-exit
+SUMTREE | s1 | r/qst/attempts/001
+WRITE | fb.+x.reply | ```\nGOODWORD again\n```\n
+RUN | $T/gr.+x | $T/r/qst | main | $T/r | --ghost | g1 | --worktrees | $T/wts | --backend | $T/fb.+x
+EXPECT_EXIT | 0 | two-second-exit
+EXPECT_OUT | attempt=2\pRESULT\pPASS\pworktree=$T/wts/g1/qst-a002 | two-second-line
+EXPECT_EXISTS | r/qst/attempts/002/meta.pdl | two-002-exists
+EXPECT_EXISTS | wts/g1/qst-a001/out/result.txt | two-wt1-kept
+EXPECT_EXISTS | wts/g1/qst-a002/out/result.txt | two-wt2
+SUMTREE | s2 | r/qst/attempts/001
+EXPECT_EQ | $s1 | $s2 | two-001-unchanged-byte-for-byte
+EXPECT_HAS | r/qst/attempts/001/meta.pdl | RESULT \p FAIL | two-001-still-FAIL
+CLEAN |
+# ---- scenario: dry-run-creates-nothing
+CASE | dry-run-creates-nothing
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/ghost_run.+x | gr.+x
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | quest_check.+x
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_fake_backend.c | fb.c
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_chk.c | chk.c
+RUN | cc | -O0 | -w | -o | $T/fb.+x | $T/fb.c
+EXPECT_EXIT | 0 | cc-fb
+RUN | cc | -O0 | -w | -o | $T/chk.+x | $T/chk.c
+EXPECT_EXIT | 0 | cc-chk
+WRITE | fb.+x.reply | Here is the file:\n```text\nGOODWORD line one\n```\nand a second block that must be ignored\n```\nBADWORD\n```\n
+WRITE | fb.+x.err | answered by fake (model-x)\n
+WRITE | r/qst/harness/h1.txt | H1\n
+WRITE | r/qst/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n
+WRITE | r/qst/scope.txt | # allowed\nout/\n
+WRITE | r/qst/budget.pdl | BUDGET | max_attempts | 2\nBUDGET | max_seconds | 5\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/qst/RUN.pdl | OUTPUT | out/result.txt\nHARNESS | $T/chk.+x out/result.txt GOODWORD verdict.txt\nVERDICT_FILE | verdict.txt\n
+WRITE | r/qst/prompt.txt | Write the file please.\n
+WRITE | r/src/seed.txt | seed\n
+WRITE | r/other/o.txt | other\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | rev-parse | main
+CAPTURE | tip0
+RUN | $T/gr.+x | $T/r/qst | main | $T/r | --ghost | g1 | --worktrees | $T/wts | --backend | $T/fb.+x | --dry-run
+EXPECT_EXIT | 0 | dry-exit
+EXPECT_OUT | RESULT\pDRYRUN | dry-final
+EXPECT_OUT | would create branch ghost/g1/qst-a001 | dry-says-branch
+EXPECT_NOFILE | wts | dry-no-worktree
+EXPECT_NOFILE | r/qst/attempts | dry-no-attempts
+EXPECT_NOFILE | fb.+x.pid | dry-backend-not-called
+RUN | git | -C | $T/r | show-ref | --verify | --quiet | refs/heads/ghost/g1/qst-a001
+EXPECT_EXIT | 1 | dry-no-branch
+CLEAN |
+# ---- scenario: output-dotdot-refused
+CASE | output-dotdot-refused
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/ghost_run.+x | gr.+x
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | quest_check.+x
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_fake_backend.c | fb.c
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_chk.c | chk.c
+RUN | cc | -O0 | -w | -o | $T/fb.+x | $T/fb.c
+EXPECT_EXIT | 0 | cc-fb
+RUN | cc | -O0 | -w | -o | $T/chk.+x | $T/chk.c
+EXPECT_EXIT | 0 | cc-chk
+WRITE | fb.+x.reply | Here is the file:\n```text\nGOODWORD line one\n```\nand a second block that must be ignored\n```\nBADWORD\n```\n
+WRITE | fb.+x.err | answered by fake (model-x)\n
+WRITE | r/qst/harness/h1.txt | H1\n
+WRITE | r/qst/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n
+WRITE | r/qst/scope.txt | # allowed\nout/\n
+WRITE | r/qst/budget.pdl | BUDGET | max_attempts | 2\nBUDGET | max_seconds | 5\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/qst/RUN.pdl | OUTPUT | ../evil.txt\nHARNESS | $T/chk.+x out/result.txt GOODWORD verdict.txt\nVERDICT_FILE | verdict.txt\n
+WRITE | r/qst/prompt.txt | Write the file please.\n
+WRITE | r/src/seed.txt | seed\n
+WRITE | r/other/o.txt | other\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | rev-parse | main
+CAPTURE | tip0
+RUN | $T/gr.+x | $T/r/qst | main | $T/r | --ghost | g1 | --worktrees | $T/wts | --backend | $T/fb.+x
+EXPECT_EXIT | 13 | dotdot-exit
+EXPECT_OUT | RESULT\pREFUSED-output | dotdot-final
+EXPECT_NOFILE | wts | dotdot-nothing-created
+EXPECT_NOFILE | evil.txt | dotdot-no-evil
+EXPECT_NOFILE | fb.+x.pid | dotdot-backend-not-called
+CLEAN |
+# ---- scenario: output-absolute-refused
+CASE | output-absolute-refused
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/ghost_run.+x | gr.+x
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | quest_check.+x
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_fake_backend.c | fb.c
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_chk.c | chk.c
+RUN | cc | -O0 | -w | -o | $T/fb.+x | $T/fb.c
+EXPECT_EXIT | 0 | cc-fb
+RUN | cc | -O0 | -w | -o | $T/chk.+x | $T/chk.c
+EXPECT_EXIT | 0 | cc-chk
+WRITE | fb.+x.reply | Here is the file:\n```text\nGOODWORD line one\n```\nand a second block that must be ignored\n```\nBADWORD\n```\n
+WRITE | fb.+x.err | answered by fake (model-x)\n
+WRITE | r/qst/harness/h1.txt | H1\n
+WRITE | r/qst/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n
+WRITE | r/qst/scope.txt | # allowed\nout/\n
+WRITE | r/qst/budget.pdl | BUDGET | max_attempts | 2\nBUDGET | max_seconds | 5\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/qst/RUN.pdl | OUTPUT | /tmp/ghost_run_abs_evil.txt\nHARNESS | $T/chk.+x out/result.txt GOODWORD verdict.txt\nVERDICT_FILE | verdict.txt\n
+WRITE | r/qst/prompt.txt | Write the file please.\n
+WRITE | r/src/seed.txt | seed\n
+WRITE | r/other/o.txt | other\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | rev-parse | main
+CAPTURE | tip0
+RUN | $T/gr.+x | $T/r/qst | main | $T/r | --ghost | g1 | --worktrees | $T/wts | --backend | $T/fb.+x
+EXPECT_EXIT | 13 | abs-exit
+EXPECT_OUT | RESULT\pREFUSED-output | abs-final
+EXPECT_NOFILE | wts | abs-nothing-created
+CLEAN |
+# ---- scenario: branch-exists-refused
+CASE | branch-exists-refused
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/ghost_run.+x | gr.+x
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | quest_check.+x
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_fake_backend.c | fb.c
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_chk.c | chk.c
+RUN | cc | -O0 | -w | -o | $T/fb.+x | $T/fb.c
+EXPECT_EXIT | 0 | cc-fb
+RUN | cc | -O0 | -w | -o | $T/chk.+x | $T/chk.c
+EXPECT_EXIT | 0 | cc-chk
+WRITE | fb.+x.reply | Here is the file:\n```text\nGOODWORD line one\n```\nand a second block that must be ignored\n```\nBADWORD\n```\n
+WRITE | fb.+x.err | answered by fake (model-x)\n
+WRITE | r/qst/harness/h1.txt | H1\n
+WRITE | r/qst/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n
+WRITE | r/qst/scope.txt | # allowed\nout/\n
+WRITE | r/qst/budget.pdl | BUDGET | max_attempts | 2\nBUDGET | max_seconds | 5\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/qst/RUN.pdl | OUTPUT | out/result.txt\nHARNESS | $T/chk.+x out/result.txt GOODWORD verdict.txt\nVERDICT_FILE | verdict.txt\n
+WRITE | r/qst/prompt.txt | Write the file please.\n
+WRITE | r/src/seed.txt | seed\n
+WRITE | r/other/o.txt | other\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | rev-parse | main
+CAPTURE | tip0
+RUN | git | -C | $T/r | branch | ghost/g1/qst-a001 | main
+RUN | $T/gr.+x | $T/r/qst | main | $T/r | --ghost | g1 | --worktrees | $T/wts | --backend | $T/fb.+x
+EXPECT_EXIT | 13 | brexists-exit
+EXPECT_OUT | RESULT\pREFUSED-branch-exists | brexists-final
+EXPECT_NOFILE | wts | brexists-nothing-created
+CLEAN |
+# ---- scenario: path-exists-refused
+CASE | path-exists-refused
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/ghost_run.+x | gr.+x
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | quest_check.+x
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_fake_backend.c | fb.c
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_chk.c | chk.c
+RUN | cc | -O0 | -w | -o | $T/fb.+x | $T/fb.c
+EXPECT_EXIT | 0 | cc-fb
+RUN | cc | -O0 | -w | -o | $T/chk.+x | $T/chk.c
+EXPECT_EXIT | 0 | cc-chk
+WRITE | fb.+x.reply | Here is the file:\n```text\nGOODWORD line one\n```\nand a second block that must be ignored\n```\nBADWORD\n```\n
+WRITE | fb.+x.err | answered by fake (model-x)\n
+WRITE | r/qst/harness/h1.txt | H1\n
+WRITE | r/qst/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n
+WRITE | r/qst/scope.txt | # allowed\nout/\n
+WRITE | r/qst/budget.pdl | BUDGET | max_attempts | 2\nBUDGET | max_seconds | 5\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/qst/RUN.pdl | OUTPUT | out/result.txt\nHARNESS | $T/chk.+x out/result.txt GOODWORD verdict.txt\nVERDICT_FILE | verdict.txt\n
+WRITE | r/qst/prompt.txt | Write the file please.\n
+WRITE | r/src/seed.txt | seed\n
+WRITE | r/other/o.txt | other\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | rev-parse | main
+CAPTURE | tip0
+MKDIR | wts/g1/qst-a001
+RUN | $T/gr.+x | $T/r/qst | main | $T/r | --ghost | g1 | --worktrees | $T/wts | --backend | $T/fb.+x
+EXPECT_EXIT | 13 | pexists-exit
+EXPECT_OUT | RESULT\pREFUSED-path-exists | pexists-final
+EXPECT_NOFILE | r/qst/attempts | pexists-no-attempt
+CLEAN |
+# ---- scenario: usage-errors
+CASE | usage-errors
+SCRATCH |
+COPY | &.widgits/quest-pilot/ops/+x/ghost_run.+x | gr.+x
+COPY | &.widgits/quest-pilot/ops/+x/quest_check.+x | quest_check.+x
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_fake_backend.c | fb.c
+COPY | &.widgits/_shared-lib/harness/fixtures/ghost_chk.c | chk.c
+RUN | cc | -O0 | -w | -o | $T/fb.+x | $T/fb.c
+EXPECT_EXIT | 0 | cc-fb
+RUN | cc | -O0 | -w | -o | $T/chk.+x | $T/chk.c
+EXPECT_EXIT | 0 | cc-chk
+WRITE | fb.+x.reply | Here is the file:\n```text\nGOODWORD line one\n```\nand a second block that must be ignored\n```\nBADWORD\n```\n
+WRITE | fb.+x.err | answered by fake (model-x)\n
+WRITE | r/qst/harness/h1.txt | H1\n
+WRITE | r/qst/LOCK.sha256 | 63f9e4fbad57e95a92472f992662742e21b25e91a648d7353117427babab2c0d  h1.txt\n
+WRITE | r/qst/scope.txt | # allowed\nout/\n
+WRITE | r/qst/budget.pdl | BUDGET | max_attempts | 2\nBUDGET | max_seconds | 5\nBUDGET | max_quota_units | 50\nBUDGET | escalate_to | manager\n
+WRITE | r/qst/RUN.pdl | OUTPUT | out/result.txt\nHARNESS | $T/chk.+x out/result.txt GOODWORD verdict.txt\nVERDICT_FILE | verdict.txt\n
+WRITE | r/qst/prompt.txt | Write the file please.\n
+WRITE | r/src/seed.txt | seed\n
+WRITE | r/other/o.txt | other\n
+RUN | git | init | -q | -b | main | $T/r
+EXPECT_EXIT | 0 | init
+RUN | git | -C | $T/r | add | -A
+EXPECT_EXIT | 0 | add
+RUN | git | -C | $T/r | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | base
+EXPECT_EXIT | 0 | commit
+RUN | git | -C | $T/r | rev-parse | main
+CAPTURE | tip0
+RUN | $T/gr.+x | $T/r/qst | main | $T/r | --bogus
+EXPECT_EXIT | 2 | usage-unknown-flag
+RUN | $T/gr.+x | $T/r/qst | main
+EXPECT_EXIT | 2 | usage-missing-arg
+RUN | $T/gr.+x | $T/r/qst | main | $T/r | --ghost
+EXPECT_EXIT | 2 | usage-flag-without-value
+EXPECT_NOFILE | wts | usage-nothing-created
+CLEAN |

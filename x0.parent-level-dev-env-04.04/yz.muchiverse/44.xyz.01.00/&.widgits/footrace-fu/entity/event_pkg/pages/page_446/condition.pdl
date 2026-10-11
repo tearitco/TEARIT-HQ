@@ -1,0 +1,6 @@
+# Warp Ally 7: warp_ally_may_finish = 0: stop one space short
+COND | trigger | cast_warp
+COND | kv | variables.txt | ph_cast | eq | 3
+COND | kv | variables.txt | ftgt | ge | @rules.pdl:track_len
+COND | kv | rules.pdl | warp_ally_may_finish | eq | 0
+COND | kv | switches.txt | game_over | eq | 0

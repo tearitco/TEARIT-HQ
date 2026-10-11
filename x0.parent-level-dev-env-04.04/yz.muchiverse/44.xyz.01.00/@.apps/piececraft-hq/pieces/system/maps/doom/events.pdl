@@ -1,0 +1,20 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+MAP          | id                 | doom
+MAP          | tileset            | doom / freedoom (not loaded yet - glyph colours)
+EVENT        | x=10 y=3 glyph=D   | trigger=on-click cmds=open_door
+EVENT        | x=14 y=3 glyph=H   | trigger=player-touch cmds=change_hp
+EVENT        | x=3 y=7 glyph=A    | trigger=player-touch cmds=change_ammo
+EVENT        | x=21 y=3 glyph=E   | trigger=player-touch cmds=start_battle
+EVENT        | x=18 y=13 glyph=X  | trigger=player-touch cmds=next_level
+NOTE         | W                  | wall
+NOTE         | f                  | floor
+NOTE         | D                  | door (opens on click)
+NOTE         | S                  | player start
+NOTE         | E                  | zombieman
+NOTE         | I                  | imp
+NOTE         | K                  | keycard
+NOTE         | H                  | health pack
+NOTE         | A                  | ammo
+NOTE         | X                  | level exit
+NOTE         | ~                  | nukage (damage floor)

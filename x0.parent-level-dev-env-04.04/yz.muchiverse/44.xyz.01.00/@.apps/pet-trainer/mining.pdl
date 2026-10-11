@@ -1,0 +1,8 @@
+# mining.pdl - the pets' chain and its brakes. `SECTION | key | value`. Plan: CHAIN-ECONOMY-DESIGN.md. Owner defaults, change any.
+CHAIN | id                    | pet-cones     # the MINED chain; the old cones chain (preferred, final) is never touched from here
+CHAIN | chain_bin             | 041.pal-chain⛓️  # house folder whose ops/+x/chain_* programs are used (build with its scripts/build.sh)
+MINING | difficulty_hex_zeros | 6             # leading hex zeros of a block hash; much harder than the old chain so pets cannot drain it
+MINING | daily_cap_blocks     | 6             # blocks one wallet may mine per UTC day (the chain itself enforces it)
+MINING | block_timeout_s      | 180           # a single niced block attempt is killed after this
+MINING | nice                 | 15
+COIN   | millicones_per_coin  | 1000          # 1 pet coin = 1000 millicones (a first block pays 10.5 coins)

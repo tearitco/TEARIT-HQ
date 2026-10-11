@@ -1,0 +1,18 @@
+# bar_skins.pdl - RPG Maker tile bar skins the taskbar-settings window can switch between.
+# SKIN | id | label | left folder | middle folder | right folder
+# bar_skin= in #.desktop/hq_ui.pdl names an id; empty = off.
+# stone-ledge and wood-rail are the two already on branch claude.
+# The eight below are new looks. Text-band is where the opaque bar sits in the 48px cell.
+# upper: timber-brace, stone-arch, metal-truss
+# center: wood-posts, neon-tube, iron-gate, red-curtain
+# lower: white-panel, and the existing wood-rail (bottom plank)
+SKIN | stone-ledge | Stone ledge | &.widgits/taskbar-settings/skins/stone-ledge/left | &.widgits/taskbar-settings/skins/stone-ledge/mid | &.widgits/taskbar-settings/skins/stone-ledge/right
+SKIN | wood-rail | Wood rail | &.widgits/taskbar-settings/skins/wood-rail/left | &.widgits/taskbar-settings/skins/wood-rail/mid | &.widgits/taskbar-settings/skins/wood-rail/right
+SKIN | timber-brace | Timber brace | &.widgits/taskbar-settings/skins/timber-brace/left | &.widgits/taskbar-settings/skins/timber-brace/mid | &.widgits/taskbar-settings/skins/timber-brace/right
+SKIN | wood-posts | Wood posts | &.widgits/taskbar-settings/skins/wood-posts/left | &.widgits/taskbar-settings/skins/wood-posts/mid | &.widgits/taskbar-settings/skins/wood-posts/right
+SKIN | stone-arch | Stone arch | &.widgits/taskbar-settings/skins/stone-arch/left | &.widgits/taskbar-settings/skins/stone-arch/mid | &.widgits/taskbar-settings/skins/stone-arch/right
+SKIN | metal-truss | Metal truss | &.widgits/taskbar-settings/skins/metal-truss/left | &.widgits/taskbar-settings/skins/metal-truss/mid | &.widgits/taskbar-settings/skins/metal-truss/right
+SKIN | neon-tube | Neon tube | &.widgits/taskbar-settings/skins/neon-tube/left | &.widgits/taskbar-settings/skins/neon-tube/mid | &.widgits/taskbar-settings/skins/neon-tube/right
+SKIN | iron-gate | Iron gate | &.widgits/taskbar-settings/skins/iron-gate/left | &.widgits/taskbar-settings/skins/iron-gate/mid | &.widgits/taskbar-settings/skins/iron-gate/right
+SKIN | red-curtain | Red curtain | &.widgits/taskbar-settings/skins/red-curtain/left | &.widgits/taskbar-settings/skins/red-curtain/mid | &.widgits/taskbar-settings/skins/red-curtain/right
+SKIN | white-panel | White panel | &.widgits/taskbar-settings/skins/white-panel/left | &.widgits/taskbar-settings/skins/white-panel/mid | &.widgits/taskbar-settings/skins/white-panel/right

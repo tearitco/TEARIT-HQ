@@ -1,0 +1,5 @@
+# Move 14: melee combat (the mover attacks, distance 0)
+COND | trigger | move
+COND | kv | variables.txt | ph_move | eq | 7
+COND | kv | variables.txt | foe | gt | 0
+COND | kv | switches.txt | game_over | eq | 0

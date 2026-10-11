@@ -1,0 +1,5 @@
+# event.pal - Land: Go To Jail -> token to the jail tile, jail_turns to skip (trigger roll). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set pos_{current} rules.pdl:jail_pos
+exec ops/+x/var_math.+x . set jail_{current} rules.pdl:jail_turns
+exec ops/+x/var_math.+x . set phase 2
+halt

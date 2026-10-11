@@ -1,0 +1,3 @@
+# Time Skip 6: place, land, log
+COND | trigger | cast_timeskip
+COND | kv | variables.txt | ph_cast | eq | 3

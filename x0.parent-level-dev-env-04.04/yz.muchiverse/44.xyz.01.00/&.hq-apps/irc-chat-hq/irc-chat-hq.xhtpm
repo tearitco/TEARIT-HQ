@@ -19,7 +19,7 @@
      for real P2P (a manager change, not a template change). -->
 <window label="IRC  ·  ${cur_user}  :${port}  ·  #${cur_room}" class="irc-chat-window database-window" vars="irc_chat_ui.txt">
   <module src="&.hq-apps/irc-chat-hq/ops/+x/irc_chat_manager.+x"/>
-  <page name="main">
+  <page name="main" class="irc-cols">
 
     <sidebar id="sidebar" class="irc-sidebar">
       <text id="side-hdr" label="Rooms" class="irc-side-hdr"/>
@@ -45,6 +45,17 @@
       </scrolllist>
       <cli_io id="composer" target_id="composer" rows="3" class="irc-composer"
               label="&gt; " action="'${PKG}/ops/irc_send.sh'"/>
+    </panel>
+
+    <!-- Friends pane (right): who is on the network. Step 1 is read-only (live peers first, then remembered ones). Later: Friends and Me tabs. -->
+    <panel id="friends" class="irc-friends">
+      <text id="peers-hdr" class="irc-side-hdr" label="${peers_hdr}"/>
+      <scrolllist class="from-top">
+        <repeat count="${n_peers}" bind="p">
+          <text id="pr${p.#}" class="${p.cls}" label="${p.text}"/>
+        </repeat>
+        <text id="peers-empty" class="irc-quiet" label="${peers_empty}" show="${peers_empty}"/>
+      </scrolllist>
     </panel>
 
   </page>

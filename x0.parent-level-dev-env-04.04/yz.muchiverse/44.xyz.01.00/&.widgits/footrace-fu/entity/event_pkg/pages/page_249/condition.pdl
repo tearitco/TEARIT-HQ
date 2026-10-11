@@ -1,0 +1,4 @@
+# Combat 20: the defender died
+COND | trigger | combat
+COND | kv | variables.txt | ph_cmb | eq | 9
+COND | kv | variables.txt | cmb_def_dead | eq | 1

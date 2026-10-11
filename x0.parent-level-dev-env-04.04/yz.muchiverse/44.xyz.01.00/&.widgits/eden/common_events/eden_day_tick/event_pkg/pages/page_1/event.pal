@@ -1,0 +1,3 @@
+# event.pal - Eden Day Tick (common event, trigger parallel): one game day for the conductor named in target.pdl
+exec ops/+x/eden_op.+x . daytick
+halt

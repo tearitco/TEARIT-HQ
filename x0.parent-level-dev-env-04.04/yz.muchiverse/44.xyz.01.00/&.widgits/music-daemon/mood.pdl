@@ -1,0 +1,16 @@
+# mood.pdl - the data that drives music_seq. All numbers are data; nothing is hard-coded except the built-in safe fallback.
+# MOOD    | name | scale | root_midi | tempo_bpm | bars | density(0-100) | progression (scale degrees, comma) | instruments (comma)
+# TOD     | name | tempo_pct | density_pct | semitone_shift | add_instruments | drop_instruments      (time_of_day variant, game clock)
+# WEATHER | name | tempo_pct | density_pct | semitone_shift | add_instruments | drop_instruments      (weather variant)
+# '-' = none. Unknown mood/tod/weather names fall back (mood -> safe default, tod/weather -> neutral).
+MOOD | calm      | major      | 57 | 84  | 4 | 45 | 0,4,5,3 | pad,bass,flute,bells
+MOOD | bright    | lydian     | 60 | 108 | 4 | 65 | 0,3,4,0 | pad,bass,lead,pluck,drums
+MOOD | tense     | phrygian   | 52 | 100 | 4 | 55 | 0,1,0,6 | warm,bass,pluck,drums
+MOOD | eden      | pentatonic | 57 | 92  | 4 | 50 | 0,2,3,1 | pad,bass,flute,pluck,bells
+MOOD | sad       | minor      | 55 | 70  | 4 | 35 | 0,5,3,4 | warm,bass,flute,bells
+TOD | dawn  | 85  | 70  | 0   | bells | drums
+TOD | day   | 100 | 100 | 0   | -     | -
+TOD | dusk  | 90  | 80  | -2  | -     | drums
+TOD | night | 75  | 55  | -5  | bells | drums,lead
+WEATHER | clear | 100 | 100 | 0 | -    | -
+WEATHER | rain  | 90  | 85  | 0 | rain | bells

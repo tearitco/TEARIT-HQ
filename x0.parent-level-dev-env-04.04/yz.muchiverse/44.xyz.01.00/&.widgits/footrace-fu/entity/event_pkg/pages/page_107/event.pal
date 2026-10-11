@@ -1,0 +1,5 @@
+# event.pal - EndTurn 6: hand the turn to that seat: tokens reset, stances end, leader selected (trigger endturn). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set current cand
+exec ops/+x/event_page_op.+x . . --trigger turnstart --state .
+exec ops/+x/row_append.+x . ledger.txt TURN {turn} {current} {round}
+halt

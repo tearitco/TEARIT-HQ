@@ -1,0 +1,3 @@
+# event.pal - ArmyCheck 1: one army left -> find its seat (trigger armycheck). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_find.+x . seat_up_ - 1 0 0 sole
+halt

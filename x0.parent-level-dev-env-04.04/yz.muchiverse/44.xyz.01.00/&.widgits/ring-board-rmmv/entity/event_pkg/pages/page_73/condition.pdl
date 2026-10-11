@@ -1,0 +1,4 @@
+# Bot: decide whether to buy (cash >= price + policy_reserve)
+COND | trigger | autoturn
+COND | kv | switches.txt | game_over | eq | 0
+COND | kv | variables.txt | phase | eq | 1

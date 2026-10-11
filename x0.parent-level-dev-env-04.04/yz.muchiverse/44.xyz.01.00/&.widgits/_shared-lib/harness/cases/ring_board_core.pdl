@@ -1,0 +1,787 @@
+# ring_board_core (RING-BOARD-AS-RMMV-EVENTS-DESIGN.md section 3-5; the neutral ring-board engine): a 40-tile ring board game made only of RPG Maker-style event pages + five tiny compiled ops.
+# Scratch roots only: the entity is copied to $T/game, the ops (and the digipet event_page_op) beside it, prisc is compiled into $T. Real event.pal pages, real ops, real lc_clock, real game_snapshot_op.
+# The independent referee is ring_audit_op (re-derives money, positions, owners and every turn step from the ledgers). Games are driven by a pal loop (prisc `exec` of the Bot pages + the referee), no shell loop.
+# Tunable overrides for the full games (data only, rules.pdl): small cash and GO so a seeded game reaches a bankruptcy within tens of turns instead of hundreds (each turn costs ~0.3 s of prisc start-ups).
+RESULTS | ../results/ring_board_core.txt
+CASE | ops
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/ring-board-rmmv/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_sweep.+x | game/ops/+x/var_sweep.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/tile_lookup.+x | game/ops/+x/tile_lookup.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/cash_transfer.+x | game/ops/+x/cash_transfer.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/ring_audit_op.+x | game/ops/+x/ring_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | turn=3\ncurrent=2\ncash_2=100\n
+RUN | $T/game/ops/+x/dice_roll.+x | $T/game | 42 | 0
+EXPECT_OUT_IS | 4 3 | dice-seed42-counter0-is-4-3
+RUN | $T/game/ops/+x/dice_roll.+x | $T/game | 42 | 1
+EXPECT_OUT_IS | 4 4 | dice-seed42-counter1-is-4-4
+RUN | $T/game/ops/+x/dice_roll.+x | $T/game | 42 | 2
+EXPECT_OUT_IS | 1 3 | dice-seed42-counter2-is-1-3
+RUN | $T/game/ops/+x/dice_roll.+x | $T/game | 42 | 3
+EXPECT_OUT_IS | 6 6 | dice-seed42-counter3-is-6-6
+EXPECT_HAS | game/variables.txt | \ndice_counter=4\n | dice-counter-advances-to-counter-plus-1
+EXPECT_HAS | game/variables.txt | \nroll=12\n | roll-is-dice1-plus-dice2
+RUN | $T/game/ops/+x/dice_roll.+x | $T/game | 42 | 0
+CAPTURE | again
+EXPECT_EQ | $again | 4 3 | same-seed-same-counter-same-dice-again
+RUN | $T/game/ops/+x/dice_roll.+x | $T/game | 43 | 0
+CAPTURE | other
+EXPECT_NE | $other | 4 3 | different-seed-different-dice
+EXPECT_HAS | game/dice_ledger.txt | DICE\p42\p0\p4\p3\n | dice-ledger-row-appended
+EXPECT_HAS | game/dice_ledger.txt | DICE\p43\p0\p | dice-ledger-keeps-every-roll-append-only
+RUN | $T/game/ops/+x/dice_roll.+x | $T/game | @dice_seed | @dice_counter
+EXPECT_EXIT | 0 | dice-seed-and-counter-read-from-variables
+RUN | $T/game/ops/+x/dice_roll.+x | $T/game | 42
+EXPECT_EXIT | 2 | dice-usage-error-exit-2
+RUN | $T/game/ops/+x/var_math.+x | $T/game | add | cash_2 | cash_2 | 50
+EXPECT_OUT_IS | 150 | var_math-add-prints-the-value
+EXPECT_HAS | game/variables.txt | \ncash_2=150\n | cash_2=150
+RUN | $T/game/ops/+x/var_math.+x | $T/game | sub | cash_2 | cash_2 | 200
+EXPECT_HAS | game/variables.txt | \ncash_2=-50\n | var_math-sub-goes-negative-without-clamping
+RUN | $T/game/ops/+x/var_math.+x | $T/game | mul | m | 6 | 7
+EXPECT_HAS | game/variables.txt | \nm=42\n | m=42
+RUN | $T/game/ops/+x/var_math.+x | $T/game | mod | m1 | -3 | 40
+EXPECT_HAS | game/variables.txt | \nm1=37\n | var_math-mod-is-never-negative
+RUN | $T/game/ops/+x/var_math.+x | $T/game | mod | m2 | 47 | 40
+EXPECT_HAS | game/variables.txt | \nm2=7\n | m2=7
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_{current} | 7
+EXPECT_HAS | game/variables.txt | \npos_2=7\n | var_math-name-template-{current}-resolves-to-the-current-player
+RUN | $T/game/ops/+x/var_math.+x | $T/game | ge | c1 | turn | 3
+EXPECT_HAS | game/variables.txt | \nc1=1\n | var_math-ge-true
+RUN | $T/game/ops/+x/var_math.+x | $T/game | gt | c2 | turn | 3
+EXPECT_HAS | game/variables.txt | \nc2=0\n | var_math-gt-false
+RUN | $T/game/ops/+x/var_math.+x | $T/game | lt | c3 | 2 | turn
+EXPECT_HAS | game/variables.txt | \nc3=1\n | c3=1
+RUN | $T/game/ops/+x/var_math.+x | $T/game | le | c4 | 3 | turn
+EXPECT_HAS | game/variables.txt | \nc4=1\n | c4=1
+RUN | $T/game/ops/+x/var_math.+x | $T/game | eq | c5 | turn | 3
+EXPECT_HAS | game/variables.txt | \nc5=1\n | c5=1
+RUN | $T/game/ops/+x/var_math.+x | $T/game | ne | c6 | turn | 3
+EXPECT_HAS | game/variables.txt | \nc6=0\n | c6=0
+RUN | $T/game/ops/+x/var_math.+x | $T/game | add | t | rules.pdl:go_pay | rules.pdl:jail_fee
+EXPECT_HAS | game/variables.txt | \nt=250\n | var_math-reads-another-file-file:key
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | switches.txt:game_over | 1
+EXPECT_HAS | game/switches.txt | game_over=1\n | var_math-writes-a-switch-file-target
+RUN | $T/game/ops/+x/var_math.+x | $T/game | mod | z | 5 | 0
+EXPECT_EXIT | 1 | var_math-mod-by-zero-refused-exit-1
+EXPECT_LACKS | game/variables.txt | \nz= | mod-by-zero-writes-nothing
+RUN | $T/game/ops/+x/var_math.+x | $T/game | pow | z | 5 | 2
+EXPECT_EXIT | 1 | var_math-unknown-op-refused
+EXPECT_HAS | game/op_errors.txt | ERR\pvar_math\pbad op\p | errors-leave-an-ERR-row-because-a-pal-exec-hides-exit-codes
+RUN | $T/game/ops/+x/var_math.+x | $T/game | add | z | 5
+EXPECT_EXIT | 1 | var_math-missing-second-operand-refused
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set
+EXPECT_EXIT | 2 | var_math-usage-exit-2
+CLEAN | 
+CASE | cash_transfer
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/ring-board-rmmv/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_sweep.+x | game/ops/+x/var_sweep.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/tile_lookup.+x | game/ops/+x/tile_lookup.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/cash_transfer.+x | game/ops/+x/cash_transfer.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/ring_audit_op.+x | game/ops/+x/ring_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | turn=3\ncash_1=100\ncash_2=50\ncash_bank=1000\n
+RUN | $T/game/ops/+x/cash_transfer.+x | $T/game | 1 | 2 | 30 | pay
+EXPECT_OUT_IS | ok | transfer-ok
+EXPECT_EXIT | 0 | ok-exit-0
+EXPECT_HAS | game/variables.txt | \ncash_1=70\n | cash_1=70
+EXPECT_HAS | game/variables.txt | \ncash_2=80\n | cash_2=80
+EXPECT_HAS | game/variables.txt | \nxfer_result=1\n | xfer_result=1
+EXPECT_HAS | game/variables.txt | \nxfer_moved=30\n | xfer_moved=30
+EXPECT_HAS | game/cash_ledger.txt | XFER\p3\p1\p2\p30\p30\pok\ppay\n | ledger-row-ok
+RUN | $T/game/ops/+x/cash_transfer.+x | $T/game | 1 | 2 | 500 | rent
+EXPECT_OUT_IS | bankrupt | overdraft-is-bankrupt
+EXPECT_EXIT | 1 | bankrupt-exit-1
+EXPECT_HAS | game/variables.txt | \ncash_1=0\n | bankrupt-payer-pays-all-it-has-balance-0
+EXPECT_HAS | game/variables.txt | \ncash_2=150\n | creditor-gets-exactly-what-existed
+EXPECT_HAS | game/variables.txt | \nxfer_result=2\n | xfer_result=2
+EXPECT_HAS | game/variables.txt | \nxfer_moved=70\n | xfer_moved=70
+EXPECT_HAS | game/cash_ledger.txt | XFER\p3\p1\p2\p500\p70\pbankrupt\prent\n | ledger-row-bankrupt
+RUN | $T/game/ops/+x/cash_transfer.+x | $T/game | 2 | bank | 500 | buy | strict
+EXPECT_OUT_IS | refused | strict-overdraft-is-refused-not-bankrupt
+EXPECT_EXIT | 3 | refused-exit-3
+EXPECT_HAS | game/variables.txt | \ncash_2=150\n | refused-moves-nothing
+EXPECT_HAS | game/variables.txt | \nxfer_result=3\n | xfer_result=3
+RUN | $T/game/ops/+x/cash_transfer.+x | $T/game | 2 | 2 | 5 | x
+EXPECT_OUT_IS | refused | same-account-refused
+RUN | $T/game/ops/+x/cash_transfer.+x | $T/game | 2 | bank | -5 | x
+EXPECT_OUT_IS | refused | negative-amount-refused
+RUN | $T/game/ops/+x/cash_transfer.+x | $T/game | bank | 2 | 5000 | x
+EXPECT_OUT_IS | refused | bank-short-of-cash-refused-the-bank-cannot-go-bankrupt
+EXPECT_HAS | game/variables.txt | \ncash_bank=1000\n | cash_bank=1000
+RUN | $T/game/ops/+x/cash_transfer.+x | $T/game | mint | 2 | 5 | x
+EXPECT_OUT_IS | refused | mint-without-reason-setup-refused
+EXPECT_HAS | game/variables.txt | \ncash_2=150\n | no-money-created
+RUN | $T/game/ops/+x/cash_transfer.+x | $T/game | 2 | mint | 5 | setup
+EXPECT_OUT_IS | refused | nothing-pays-into-mint
+RUN | $T/game/ops/+x/cash_transfer.+x | $T/game | mint | bank | 100 | setup
+EXPECT_OUT_IS | ok | mint-with-reason-setup-is-the-only-way-to-create-money
+EXPECT_HAS | game/variables.txt | \ncash_bank=1100\n | cash_bank=1100
+RUN | $T/game/ops/+x/cash_transfer.+x | $T/game | bank | {current} | 10 | go
+EXPECT_EXIT | 3 | template-account-resolving-to-0-is-the-bank-so-bank-to-bank-is-refused
+RUN | $T/game/ops/+x/cash_transfer.+x | $T/game | 2 | bank | rules.pdl:jail_fee | jail
+EXPECT_OUT_IS | ok | amount-read-from-rules.pdl
+EXPECT_HAS | game/variables.txt | \ncash_2=100\n | cash_2=100
+RUN | $T/game/ops/+x/cash_transfer.+x | $T/game | 1
+EXPECT_EXIT | 2 | cash_transfer-usage-exit-2
+CLEAN | 
+CASE | tile_lookup
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/ring-board-rmmv/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_sweep.+x | game/ops/+x/var_sweep.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/tile_lookup.+x | game/ops/+x/tile_lookup.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/cash_transfer.+x | game/ops/+x/cash_transfer.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/ring_audit_op.+x | game/ops/+x/ring_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | turn=3\n
+RUN | $T/game/ops/+x/tile_lookup.+x | $T/game | 0 | kindname
+EXPECT_OUT_IS | go | tile0-is-GO
+RUN | $T/game/ops/+x/tile_lookup.+x | $T/game | 7 | price
+EXPECT_OUT_IS | 110 | tile7-price
+RUN | $T/game/ops/+x/tile_lookup.+x | $T/game | 7 | rent
+EXPECT_OUT_IS | 14 | tile7-fixed-rent
+RUN | $T/game/ops/+x/tile_lookup.+x | $T/game | 7 | name
+EXPECT_OUT_IS | Cottage | tile7-name
+RUN | $T/game/ops/+x/tile_lookup.+x | $T/game | 7 | group
+EXPECT_OUT_IS | sky | tile7-group
+RUN | $T/game/ops/+x/tile_lookup.+x | $T/game | 39 | kind | k
+EXPECT_OUT_IS | 2 | tile39-kind-code-prop
+EXPECT_HAS | game/variables.txt | \nk=2\n | kind-code-written-to-the-target-variable
+RUN | $T/game/ops/+x/tile_lookup.+x | $T/game | 4 | tax
+EXPECT_OUT_IS | 200 | income-tax-amount-from-rules
+RUN | $T/game/ops/+x/tile_lookup.+x | $T/game | 38 | tax
+EXPECT_OUT_IS | 100 | luxury-tax-amount-from-rules
+RUN | $T/game/ops/+x/tile_lookup.+x | $T/game | 10 | kind
+EXPECT_OUT_IS | 4 | jail-code
+RUN | $T/game/ops/+x/tile_lookup.+x | $T/game | 30 | kind
+EXPECT_OUT_IS | 5 | gotojail-code
+RUN | $T/game/ops/+x/tile_lookup.+x | $T/game | 20 | kind
+EXPECT_OUT_IS | 6 | parking-code
+RUN | $T/game/ops/+x/tile_lookup.+x | $T/game | 4 | kind
+EXPECT_OUT_IS | 3 | tax-code
+RUN | $T/game/ops/+x/tile_lookup.+x | $T/game | 40 | price
+EXPECT_EXIT | 1 | no-such-tile-exit-1
+RUN | $T/game/ops/+x/tile_lookup.+x | $T/game | 7 | colour
+EXPECT_EXIT | 1 | unknown-field-exit-1
+EXPECT_HAS | game/op_errors.txt | ERR\ptile_lookup\pno such tile\p40 | missing-tile-leaves-an-ERR-row
+RUN | $T/game/ops/+x/tile_lookup.+x | $T/game | 0 | tax
+EXPECT_EXIT | 1 | tax-field-on-a-non-tax-tile-refused-no-rule
+WRITE | game/variables.txt | turn=1\nowner_1=2\nowner_3=2\nowner_5=3\nowner_6=2\ncash_2=2\n
+RUN | $T/game/ops/+x/var_sweep.+x | $T/game | owner_ | 2 | 0
+EXPECT_OUT_IS | 3 | sweep-reports-3-changed
+EXPECT_HAS | game/variables.txt | \nowner_1=0\n | owner_1=0
+EXPECT_HAS | game/variables.txt | \nowner_3=0\n | owner_3=0
+EXPECT_HAS | game/variables.txt | \nowner_5=3\n | other-owner-untouched
+EXPECT_HAS | game/variables.txt | \nowner_6=0\n | owner_6=0
+EXPECT_HAS | game/variables.txt | \ncash_2=2\n | prefix-only-cash_2-untouched-though-its-value-is-2
+CLEAN | 
+CASE | pages
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/ring-board-rmmv/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_sweep.+x | game/ops/+x/var_sweep.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/tile_lookup.+x | game/ops/+x/tile_lookup.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/cash_transfer.+x | game/ops/+x/cash_transfer.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/ring_audit_op.+x | game/ops/+x/ring_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=3\n
+WRITE | game/variables.txt | players=3\ndice_seed=42\ndice_counter=0\nturn=5\ncurrent=1\nphase=0\nalive_1=1\nalive_2=1\nalive_3=1\nalive_4=0\npos_1=0\npos_2=0\npos_3=0\npos_4=0\njail_1=0\njail_2=0\njail_3=0\njail_4=0\ncash_1=1000\ncash_2=1000\ncash_3=1000\ncash_bank=97000\nwinner=0\ngame_over_reason=0\n
+WRITE | game/switches.txt | game_over=0\nawaiting_buy=0\n
+WRITE | game/cash_ledger.txt | # reset
+WRITE | game/dice_ledger.txt | # reset
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | roll | --state | $T/game
+EXPECT_EXIT | 0 | roll-ran
+EXPECT_HAS | game/variables.txt | \npos_1=7\n | roll-moves-pos-by-the-seeded-roll-7
+EXPECT_HAS | game/variables.txt | \ndice1=4\n | dice1=4
+EXPECT_HAS | game/variables.txt | \ndice2=3\n | dice2=3
+EXPECT_HAS | game/variables.txt | \nroll=7\n | roll=7
+EXPECT_HAS | game/variables.txt | \ndice_counter=1\n | dice-counter-advanced-once
+EXPECT_HAS | game/variables.txt | \nphase=1\n | unowned-property-waits-for-Buy-or-Pass
+EXPECT_HAS | game/switches.txt | awaiting_buy=1\n | switch-awaiting_buy=1
+EXPECT_HAS | game/dice_ledger.txt | DICE\p42\p0\p4\p3\n | the-roll-is-in-the-dice-ledger
+EXPECT_LACKS | game/cash_ledger.txt | \pgo\n | no-GO-payout-without-passing-GO
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | roll | --state | $T/game
+EXPECT_EXIT | 1 | second-Roll-in-the-same-turn-refused
+EXPECT_HAS | game/variables.txt | \npos_1=7\n | second-Roll-did-not-move
+EXPECT_HAS | game/variables.txt | \ndice_counter=1\n | second-Roll-did-not-consume-a-roll
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | endturn | --state | $T/game
+EXPECT_HAS | game/variables.txt | \ncurrent=1\n | End-Turn-while-the-Buy-choice-is-open-does-nothing
+EXPECT_HAS | game/variables.txt | \nturn=5\n | turn=5
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | pass | --state | $T/game
+EXPECT_HAS | game/variables.txt | \nphase=2\n | Pass-ends-the-offer
+EXPECT_HAS | game/switches.txt | awaiting_buy=0\n | awaiting-buy-cleared
+EXPECT_LACKS | game/variables.txt | owner_7= | Pass-leaves-the-tile-with-the-bank
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | pass | --state | $T/game
+EXPECT_EXIT | 1 | Pass-twice-refused
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | endturn | --state | $T/game
+EXPECT_HAS | game/variables.txt | \ncurrent=2\n | End-Turn-passes-to-the-next-player
+EXPECT_HAS | game/variables.txt | \nphase=0\n | phase=0
+EXPECT_HAS | game/variables.txt | \nturn=6\n | turn-counter-+1
+WRITE | game/variables.txt | players=3\ndice_seed=42\ndice_counter=0\nturn=5\ncurrent=1\nphase=0\nalive_1=1\nalive_2=1\nalive_3=1\nalive_4=0\npos_1=0\npos_2=0\npos_3=0\npos_4=0\njail_1=0\njail_2=0\njail_3=0\njail_4=0\ncash_1=1000\ncash_2=1000\ncash_3=1000\ncash_bank=97000\nwinner=0\ngame_over_reason=0\n
+WRITE | game/switches.txt | game_over=0\nawaiting_buy=0\n
+WRITE | game/cash_ledger.txt | # reset
+WRITE | game/dice_ledger.txt | # reset
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | roll | --state | $T/game
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | buy | --state | $T/game
+EXPECT_EXIT | 0 | buy-ran
+EXPECT_HAS | game/variables.txt | \ncash_1=890\n | Buy-pays-the-price-110-to-the-bank
+EXPECT_HAS | game/variables.txt | \ncash_bank=97110\n | cash_bank=97110
+EXPECT_HAS | game/variables.txt | \nowner_7=1\n | buyer-owns-the-tile
+EXPECT_HAS | game/variables.txt | \nphase=2\n | phase=2
+EXPECT_HAS | game/switches.txt | awaiting_buy=0\n | switch-awaiting_buy=0
+EXPECT_HAS | game/cash_ledger.txt | XFER\p5\p1\pbank\p110\p110\pok\pbuy\n | buy-is-in-the-cash-ledger
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | buy | --state | $T/game
+EXPECT_EXIT | 1 | Buy-twice-refused
+EXPECT_HAS | game/variables.txt | \ncash_1=890\n | second-Buy-charged-nothing
+WRITE | game/variables.txt | players=3\ndice_seed=42\ndice_counter=0\nturn=5\ncurrent=1\nphase=0\nalive_1=1\nalive_2=1\nalive_3=1\nalive_4=0\npos_1=0\npos_2=0\npos_3=0\npos_4=0\njail_1=0\njail_2=0\njail_3=0\njail_4=0\ncash_1=100\ncash_2=1000\ncash_3=1000\ncash_bank=97000\nwinner=0\ngame_over_reason=0\n
+WRITE | game/switches.txt | game_over=0\nawaiting_buy=0\n
+WRITE | game/cash_ledger.txt | # reset
+WRITE | game/dice_ledger.txt | # reset
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | roll | --state | $T/game
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | buy | --state | $T/game
+EXPECT_HAS | game/variables.txt | \ncash_1=100\n | Buy-with-too-little-cash-moves-nothing
+EXPECT_LACKS | game/variables.txt | owner_7= | no-ownership-without-payment
+EXPECT_HAS | game/variables.txt | \nphase=1\n | the-choice-stays-open-so-the-player-can-Pass
+EXPECT_LACKS | game/cash_ledger.txt | \pbuy\n | no-buy-row-when-it-cannot-be-afforded
+WRITE | game/variables.txt | players=3\ndice_seed=42\ndice_counter=0\nturn=5\ncurrent=1\nphase=0\nalive_1=1\nalive_2=1\nalive_3=1\nalive_4=0\npos_1=35\npos_2=0\npos_3=0\npos_4=0\njail_1=0\njail_2=0\njail_3=0\njail_4=0\ncash_1=1000\ncash_2=1000\ncash_3=1000\ncash_bank=97000\nwinner=0\ngame_over_reason=0\n
+WRITE | game/switches.txt | game_over=0\nawaiting_buy=0\n
+WRITE | game/cash_ledger.txt | # reset
+WRITE | game/dice_ledger.txt | # reset
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | roll | --state | $T/game
+EXPECT_HAS | game/variables.txt | \npos_1=2\n | pos-wraps-mod-40
+EXPECT_HAS | game/variables.txt | \ncash_1=1200\n | passing-GO-pays-200
+EXPECT_HAS | game/cash_ledger.txt | XFER\p5\pbank\p1\p200\p200\pok\pgo\n | GO-payout-row
+WRITE | game/variables.txt | players=3\ndice_seed=42\ndice_counter=0\nturn=5\ncurrent=1\nphase=0\nalive_1=1\nalive_2=1\nalive_3=1\nalive_4=0\npos_1=33\npos_2=0\npos_3=0\npos_4=0\njail_1=0\njail_2=0\njail_3=0\njail_4=0\ncash_1=1000\ncash_2=1000\ncash_3=1000\ncash_bank=97000\nwinner=0\ngame_over_reason=0\n
+WRITE | game/switches.txt | game_over=0\nawaiting_buy=0\n
+WRITE | game/cash_ledger.txt | # reset
+WRITE | game/dice_ledger.txt | # reset
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | roll | --state | $T/game
+EXPECT_HAS | game/variables.txt | \npos_1=0\n | landing-exactly-on-GO
+EXPECT_HAS | game/variables.txt | \ncash_1=1200\n | landing-on-GO-pays-200
+EXPECT_HAS | game/variables.txt | \nphase=2\n | phase=2
+WRITE | game/variables.txt | players=3\ndice_seed=42\ndice_counter=0\nturn=5\ncurrent=1\nphase=0\nalive_1=1\nalive_2=1\nalive_3=1\nalive_4=0\npos_1=0\npos_2=0\npos_3=0\npos_4=0\njail_1=0\njail_2=0\njail_3=0\njail_4=0\ncash_1=1000\ncash_2=1000\ncash_3=1000\ncash_bank=97000\nwinner=0\ngame_over_reason=0\nowner_7=2\n
+WRITE | game/switches.txt | game_over=0\nawaiting_buy=0\n
+WRITE | game/cash_ledger.txt | # reset
+WRITE | game/dice_ledger.txt | # reset
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | roll | --state | $T/game
+EXPECT_HAS | game/variables.txt | \ncash_1=986\n | rent-14-leaves-the-payer
+EXPECT_HAS | game/variables.txt | \ncash_2=1014\n | rent-goes-to-the-OWNER-not-the-bank
+EXPECT_HAS | game/variables.txt | \ncash_bank=97000\n | the-bank-got-nothing
+EXPECT_HAS | game/variables.txt | \nphase=2\n | phase=2
+EXPECT_HAS | game/cash_ledger.txt | XFER\p5\p1\p2\p14\p14\pok\prent\n | rent-row
+WRITE | game/variables.txt | players=3\ndice_seed=42\ndice_counter=0\nturn=5\ncurrent=1\nphase=0\nalive_1=1\nalive_2=1\nalive_3=1\nalive_4=0\npos_1=0\npos_2=0\npos_3=0\npos_4=0\njail_1=0\njail_2=0\njail_3=0\njail_4=0\ncash_1=1000\ncash_2=1000\ncash_3=1000\ncash_bank=97000\nwinner=0\ngame_over_reason=0\nowner_7=1\n
+WRITE | game/switches.txt | game_over=0\nawaiting_buy=0\n
+WRITE | game/cash_ledger.txt | # reset
+WRITE | game/dice_ledger.txt | # reset
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | roll | --state | $T/game
+EXPECT_HAS | game/variables.txt | \ncash_1=1000\n | own-property-costs-nothing
+EXPECT_HAS | game/variables.txt | \nphase=2\n | phase=2
+EXPECT_LACKS | game/cash_ledger.txt | \prent\n | no-rent-row-on-own-property
+WRITE | game/variables.txt | players=3\ndice_seed=42\ndice_counter=2\nturn=5\ncurrent=1\nphase=0\nalive_1=1\nalive_2=1\nalive_3=1\nalive_4=0\npos_1=0\npos_2=0\npos_3=0\npos_4=0\njail_1=0\njail_2=0\njail_3=0\njail_4=0\ncash_1=1000\ncash_2=1000\ncash_3=1000\ncash_bank=97000\nwinner=0\ngame_over_reason=0\n
+WRITE | game/switches.txt | game_over=0\nawaiting_buy=0\n
+WRITE | game/cash_ledger.txt | # reset
+WRITE | game/dice_ledger.txt | # reset
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | roll | --state | $T/game
+EXPECT_HAS | game/variables.txt | \npos_1=4\n | pos_1=4
+EXPECT_HAS | game/variables.txt | \ncash_1=800\n | income-tax-200
+EXPECT_HAS | game/variables.txt | \ncash_bank=97200\n | tax-goes-to-the-bank
+EXPECT_HAS | game/variables.txt | \nphase=2\n | phase=2
+EXPECT_HAS | game/cash_ledger.txt | XFER\p5\p1\pbank\p200\p200\pok\ptax\n | tax-row
+WRITE | game/variables.txt | players=3\ndice_seed=42\ndice_counter=2\nturn=5\ncurrent=1\nphase=0\nalive_1=1\nalive_2=1\nalive_3=1\nalive_4=0\npos_1=34\npos_2=0\npos_3=0\npos_4=0\njail_1=0\njail_2=0\njail_3=0\njail_4=0\ncash_1=1000\ncash_2=1000\ncash_3=1000\ncash_bank=97000\nwinner=0\ngame_over_reason=0\n
+WRITE | game/switches.txt | game_over=0\nawaiting_buy=0\n
+WRITE | game/cash_ledger.txt | # reset
+WRITE | game/dice_ledger.txt | # reset
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | roll | --state | $T/game
+EXPECT_HAS | game/variables.txt | \npos_1=38\n | pos_1=38
+EXPECT_HAS | game/variables.txt | \ncash_1=900\n | luxury-tax-100
+WRITE | game/variables.txt | players=3\ndice_seed=42\ndice_counter=0\nturn=5\ncurrent=1\nphase=0\nalive_1=1\nalive_2=1\nalive_3=1\nalive_4=0\npos_1=13\npos_2=0\npos_3=0\npos_4=0\njail_1=0\njail_2=0\njail_3=0\njail_4=0\ncash_1=1000\ncash_2=1000\ncash_3=1000\ncash_bank=97000\nwinner=0\ngame_over_reason=0\n
+WRITE | game/switches.txt | game_over=0\nawaiting_buy=0\n
+WRITE | game/cash_ledger.txt | # reset
+WRITE | game/dice_ledger.txt | # reset
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | roll | --state | $T/game
+EXPECT_HAS | game/variables.txt | \npos_1=20\n | pos_1=20
+EXPECT_HAS | game/variables.txt | \nphase=2\n | phase=2
+EXPECT_HAS | game/variables.txt | \ncash_1=1000\n | free-parking-costs-nothing
+EXPECT_LACKS | game/cash_ledger.txt | XFER | free-parking-moves-no-money
+WRITE | game/variables.txt | players=3\ndice_seed=42\ndice_counter=0\nturn=5\ncurrent=1\nphase=0\nalive_1=1\nalive_2=1\nalive_3=1\nalive_4=0\npos_1=23\npos_2=0\npos_3=0\npos_4=0\njail_1=0\njail_2=0\njail_3=0\njail_4=0\ncash_1=1000\ncash_2=1000\ncash_3=1000\ncash_bank=97000\nwinner=0\ngame_over_reason=0\n
+WRITE | game/switches.txt | game_over=0\nawaiting_buy=0\n
+WRITE | game/cash_ledger.txt | # reset
+WRITE | game/dice_ledger.txt | # reset
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | roll | --state | $T/game
+EXPECT_HAS | game/variables.txt | \npos_1=10\n | Go-To-Jail-sends-the-token-to-the-jail-tile
+EXPECT_HAS | game/variables.txt | \njail_1=1\n | jail-turns-set-from-rules
+EXPECT_HAS | game/variables.txt | \nphase=2\n | phase=2
+EXPECT_HAS | game/variables.txt | \ncash_1=1000\n | cash_1=1000
+WRITE | game/variables.txt | players=3\ndice_seed=42\ndice_counter=0\nturn=5\ncurrent=1\nphase=0\nalive_1=1\nalive_2=1\nalive_3=1\nalive_4=0\npos_1=10\npos_2=0\npos_3=0\npos_4=0\njail_1=1\njail_2=0\njail_3=0\njail_4=0\ncash_1=1000\ncash_2=1000\ncash_3=1000\ncash_bank=97000\nwinner=0\ngame_over_reason=0\n
+WRITE | game/switches.txt | game_over=0\nawaiting_buy=0\n
+WRITE | game/cash_ledger.txt | # reset
+WRITE | game/dice_ledger.txt | # reset
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | roll | --state | $T/game
+EXPECT_EXIT | 0 | jailed-Roll-ran-the-load-page-only
+EXPECT_HAS | game/variables.txt | \npos_1=10\n | a-jailed-player-cannot-roll
+EXPECT_HAS | game/variables.txt | \ndice_counter=0\n | dice_counter=0
+EXPECT_HAS | game/variables.txt | \nphase=0\n | phase=0
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | endturn | --state | $T/game
+EXPECT_HAS | game/variables.txt | \njail_1=0\n | End-Turn-while-jailed-skips-the-turn-jail-minus-1
+EXPECT_HAS | game/variables.txt | \ncurrent=2\n | current=2
+EXPECT_HAS | game/variables.txt | \nturn=6\n | turn=6
+WRITE | game/variables.txt | players=3\ndice_seed=42\ndice_counter=0\nturn=5\ncurrent=1\nphase=0\nalive_1=1\nalive_2=1\nalive_3=1\nalive_4=0\npos_1=10\npos_2=0\npos_3=0\npos_4=0\njail_1=1\njail_2=0\njail_3=0\njail_4=0\ncash_1=1000\ncash_2=1000\ncash_3=1000\ncash_bank=97000\nwinner=0\ngame_over_reason=0\n
+WRITE | game/switches.txt | game_over=0\nawaiting_buy=0\n
+WRITE | game/cash_ledger.txt | # reset
+WRITE | game/dice_ledger.txt | # reset
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | payjail | --state | $T/game
+EXPECT_HAS | game/variables.txt | \ncash_1=950\n | Pay-Jail-Fee-costs-50
+EXPECT_HAS | game/variables.txt | \njail_1=0\n | paid-out-of-jail
+EXPECT_HAS | game/cash_ledger.txt | XFER\p5\p1\pbank\p50\p50\pok\pjail\n | jail-fee-row
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | roll | --state | $T/game
+EXPECT_HAS | game/variables.txt | \npos_1=17\n | after-paying-the-player-rolls-normally
+WRITE | game/variables.txt | players=3\ndice_seed=42\ndice_counter=0\nturn=5\ncurrent=1\nphase=0\nalive_1=1\nalive_2=1\nalive_3=1\nalive_4=0\npos_1=10\npos_2=0\npos_3=0\npos_4=0\njail_1=1\njail_2=0\njail_3=0\njail_4=0\ncash_1=30\ncash_2=1000\ncash_3=1000\ncash_bank=97000\nwinner=0\ngame_over_reason=0\n
+WRITE | game/switches.txt | game_over=0\nawaiting_buy=0\n
+WRITE | game/cash_ledger.txt | # reset
+WRITE | game/dice_ledger.txt | # reset
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | payjail | --state | $T/game
+EXPECT_HAS | game/variables.txt | \ncash_1=30\n | cannot-pay-the-fee-with-30-cash
+EXPECT_HAS | game/variables.txt | \njail_1=1\n | still-jailed
+EXPECT_LACKS | game/cash_ledger.txt | \pjail\n | no-jail-row-when-it-cannot-be-paid
+WRITE | game/variables.txt | players=3\ndice_seed=42\ndice_counter=0\nturn=5\ncurrent=1\nphase=0\nalive_1=1\nalive_2=1\nalive_3=1\nalive_4=0\npos_1=0\npos_2=0\npos_3=0\npos_4=0\njail_1=0\njail_2=0\njail_3=0\njail_4=0\ncash_1=1000\ncash_2=1000\ncash_3=1000\ncash_bank=97000\nwinner=0\ngame_over_reason=0\n
+WRITE | game/switches.txt | game_over=0\nawaiting_buy=0\n
+WRITE | game/cash_ledger.txt | # reset
+WRITE | game/dice_ledger.txt | # reset
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | payjail | --state | $T/game
+EXPECT_HAS | game/variables.txt | \ncash_1=1000\n | Pay-Jail-Fee-when-not-jailed-costs-nothing
+WRITE | game/variables.txt | players=3\ndice_seed=42\ndice_counter=0\nturn=5\ncurrent=1\nphase=0\nalive_1=1\nalive_2=1\nalive_3=1\nalive_4=0\npos_1=0\npos_2=0\npos_3=0\npos_4=0\njail_1=0\njail_2=0\njail_3=0\njail_4=0\ncash_1=5\ncash_2=1000\ncash_3=1000\ncash_bank=97000\nwinner=0\ngame_over_reason=0\nowner_7=2\nowner_1=1\nowner_3=1\n
+WRITE | game/switches.txt | game_over=0\nawaiting_buy=0\n
+WRITE | game/cash_ledger.txt | # reset
+WRITE | game/dice_ledger.txt | # reset
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | roll | --state | $T/game
+EXPECT_HAS | game/variables.txt | \ncash_1=0\n | bankrupt-payer-holds-0
+EXPECT_HAS | game/variables.txt | \ncash_2=1005\n | creditor-got-everything-the-payer-had
+EXPECT_HAS | game/variables.txt | \nalive_1=0\n | bankrupt-player-is-out
+EXPECT_HAS | game/variables.txt | \nowner_1=0\n | owned-tile-1-returned-to-the-bank
+EXPECT_HAS | game/variables.txt | \nowner_3=0\n | owned-tile-3-returned-to-the-bank
+EXPECT_HAS | game/variables.txt | \nowner_7=2\n | other-players-tiles-untouched
+EXPECT_HAS | game/variables.txt | \nphase=2\n | phase=2
+EXPECT_HAS | game/cash_ledger.txt | XFER\p5\p1\p2\p14\p5\pbankrupt\prent\n | bankrupt-rent-row
+EXPECT_HAS | game/variables.txt | \nbankruptcies=1\n | bankruptcies=1
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | endturn | --state | $T/game
+EXPECT_HAS | game/variables.txt | \ncurrent=2\n | End-Turn-skips-the-bankrupt-seat
+EXPECT_HAS | game/switches.txt | game_over=0\n | two-players-left-the-game-goes-on
+WRITE | game/variables.txt | players=2\ndice_seed=42\ndice_counter=0\nturn=5\ncurrent=1\nphase=0\nalive_1=1\nalive_2=1\nalive_3=0\nalive_4=0\npos_1=0\npos_2=0\npos_3=0\npos_4=0\njail_1=0\njail_2=0\njail_3=0\njail_4=0\ncash_1=5\ncash_2=1000\ncash_3=0\ncash_bank=97000\nwinner=0\ngame_over_reason=0\nowner_7=2\n
+WRITE | game/switches.txt | game_over=0\nawaiting_buy=0\n
+WRITE | game/cash_ledger.txt | # reset
+WRITE | game/dice_ledger.txt | # reset
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | roll | --state | $T/game
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | endturn | --state | $T/game
+EXPECT_HAS | game/switches.txt | game_over=1\n | last-player-standing-ends-the-game
+EXPECT_HAS | game/variables.txt | \ngame_over_reason=1\n | game_over_reason=1
+EXPECT_HAS | game/variables.txt | \nwinner=2\n | the-survivor-wins
+EXPECT_HAS | game/variables.txt | \ncurrent=1\n | turn-not-handed-on-after-game-over
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | roll | --state | $T/game
+EXPECT_EXIT | 1 | no-page-runs-after-game-over
+EXPECT_HAS | game/variables.txt | \nalive_1=0\n | alive_1=0
+WRITE | game/variables.txt | players=3\ndice_seed=42\ndice_counter=2\nturn=5\ncurrent=1\nphase=0\nalive_1=1\nalive_2=1\nalive_3=1\nalive_4=0\npos_1=0\npos_2=0\npos_3=0\npos_4=0\njail_1=0\njail_2=0\njail_3=0\njail_4=0\ncash_1=5\ncash_2=1000\ncash_3=1000\ncash_bank=97000\nwinner=0\ngame_over_reason=0\n
+WRITE | game/switches.txt | game_over=0\nawaiting_buy=0\n
+WRITE | game/cash_ledger.txt | # reset
+WRITE | game/dice_ledger.txt | # reset
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | roll | --state | $T/game
+EXPECT_HAS | game/variables.txt | \nalive_1=0\n | tax-bankruptcy-too
+EXPECT_HAS | game/variables.txt | \ncash_bank=97005\n | the-bank-got-what-the-payer-had
+WRITE | game/variables.txt | players=3\ndice_seed=42\ndice_counter=0\nturn=599\ncurrent=1\nphase=2\nalive_1=1\nalive_2=1\nalive_3=1\nalive_4=0\npos_1=7\npos_2=0\npos_3=0\npos_4=0\njail_1=0\njail_2=0\njail_3=0\njail_4=0\ncash_1=1000\ncash_2=1000\ncash_3=1000\ncash_bank=97000\nwinner=0\ngame_over_reason=0\n
+WRITE | game/switches.txt | game_over=0\nawaiting_buy=0\n
+WRITE | game/cash_ledger.txt | # reset
+WRITE | game/dice_ledger.txt | # reset
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | endturn | --state | $T/game
+EXPECT_HAS | game/variables.txt | \nturn=600\n | turn=600
+EXPECT_HAS | game/switches.txt | game_over=1\n | turn-cap-ends-the-game
+EXPECT_HAS | game/variables.txt | \ngame_over_reason=2\n | game_over_reason=2
+EXPECT_HAS | game/variables.txt | \nwinner=0\n | no-winner-at-the-cap
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | roll | --state | $T/game
+EXPECT_EXIT | 1 | no-page-runs-after-the-cap
+WRITE | game/variables.txt | players=3\ndice_seed=42\ndice_counter=0\nturn=5\ncurrent=1\nphase=2\nalive_1=1\nalive_2=0\nalive_3=1\nalive_4=0\npos_1=0\npos_2=0\npos_3=0\npos_4=0\njail_1=0\njail_2=0\njail_3=0\njail_4=0\ncash_1=1000\ncash_2=1000\ncash_3=1000\ncash_bank=97000\nwinner=0\ngame_over_reason=0\n
+WRITE | game/switches.txt | game_over=0\nawaiting_buy=0\n
+WRITE | game/cash_ledger.txt | # reset
+WRITE | game/dice_ledger.txt | # reset
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | endturn | --state | $T/game
+EXPECT_HAS | game/variables.txt | \ncurrent=3\n | dead-seat-skipped
+WRITE | game/variables.txt | players=3\ndice_seed=42\ndice_counter=0\nturn=5\ncurrent=3\nphase=2\nalive_1=1\nalive_2=0\nalive_3=1\nalive_4=0\npos_1=0\npos_2=0\npos_3=0\npos_4=0\njail_1=0\njail_2=0\njail_3=0\njail_4=0\ncash_1=1000\ncash_2=1000\ncash_3=1000\ncash_bank=97000\nwinner=0\ngame_over_reason=0\n
+WRITE | game/switches.txt | game_over=0\nawaiting_buy=0\n
+WRITE | game/cash_ledger.txt | # reset
+WRITE | game/dice_ledger.txt | # reset
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | endturn | --state | $T/game
+EXPECT_HAS | game/variables.txt | \ncurrent=1\n | wraps-past-the-last-seat
+WRITE | game/variables.txt | players=2\ndice_seed=42\ndice_counter=0\nturn=5\ncurrent=2\nphase=2\nalive_1=1\nalive_2=1\nalive_3=0\nalive_4=0\npos_1=0\npos_2=0\npos_3=0\npos_4=0\njail_1=0\njail_2=0\njail_3=0\njail_4=0\ncash_1=1000\ncash_2=1000\ncash_3=1000\ncash_bank=97000\nwinner=0\ngame_over_reason=0\n
+WRITE | game/switches.txt | game_over=0\nawaiting_buy=0\n
+WRITE | game/cash_ledger.txt | # reset
+WRITE | game/dice_ledger.txt | # reset
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | endturn | --state | $T/game
+EXPECT_HAS | game/variables.txt | \ncurrent=1\n | dormant-seat-3-never-gets-a-turn-2-players
+WRITE | game/variables.txt | players=4\ndice_seed=42\ndice_counter=0\nturn=5\ncurrent=1\nphase=2\nalive_1=1\nalive_2=0\nalive_3=0\nalive_4=1\npos_1=0\npos_2=0\npos_3=0\npos_4=0\njail_1=0\njail_2=0\njail_3=0\njail_4=0\ncash_1=1000\ncash_2=1000\ncash_3=1000\ncash_bank=97000\nwinner=0\ngame_over_reason=0\n
+WRITE | game/switches.txt | game_over=0\nawaiting_buy=0\n
+WRITE | game/cash_ledger.txt | # reset
+WRITE | game/dice_ledger.txt | # reset
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | endturn | --state | $T/game
+EXPECT_HAS | game/variables.txt | \ncurrent=4\n | two-dead-seats-skipped-4-players
+WRITE | game/variables.txt | players=4\ndice_seed=42\ndice_counter=0\nturn=5\ncurrent=4\nphase=2\nalive_1=1\nalive_2=0\nalive_3=0\nalive_4=1\npos_1=0\npos_2=0\npos_3=0\npos_4=0\njail_1=0\njail_2=0\njail_3=0\njail_4=0\ncash_1=1000\ncash_2=1000\ncash_3=1000\ncash_bank=97000\nwinner=0\ngame_over_reason=0\n
+WRITE | game/switches.txt | game_over=0\nawaiting_buy=0\n
+WRITE | game/cash_ledger.txt | # reset
+WRITE | game/dice_ledger.txt | # reset
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | endturn | --state | $T/game
+EXPECT_HAS | game/variables.txt | \ncurrent=1\n | current=1
+WRITE | game/variables.txt | players=3\ndice_seed=42\ndice_counter=0\nturn=5\ncurrent=1\nphase=0\nalive_1=1\nalive_2=1\nalive_3=1\nalive_4=0\npos_1=0\npos_2=0\npos_3=0\npos_4=0\njail_1=0\njail_2=0\njail_3=0\njail_4=0\ncash_1=1000\ncash_2=1000\ncash_3=1000\ncash_bank=97000\nwinner=0\ngame_over_reason=0\n
+WRITE | game/switches.txt | game_over=0\nawaiting_buy=0\n
+WRITE | game/cash_ledger.txt | # reset
+WRITE | game/dice_ledger.txt | # reset
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | endturn | --state | $T/game
+EXPECT_HAS | game/variables.txt | \ncurrent=1\n | End-Turn-before-Roll-refused
+EXPECT_HAS | game/variables.txt | \nturn=5\n | turn=5
+WRITE | game/variables.txt | players=4\ndice_seed=1\n
+WRITE | game/switches.txt | game_over=1\nawaiting_buy=1\n
+WRITE | game/cash_ledger.txt | # reset
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-4-players-ran
+EXPECT_HAS | game/variables.txt | \nalive_4=1\n | 4-seats-alive
+EXPECT_HAS | game/variables.txt | \ncash_4=1500\n | start-cash-from-rules
+EXPECT_HAS | game/variables.txt | \ncash_bank=94000\n | bank-minted-100000-minus-4-times-1500
+EXPECT_HAS | game/variables.txt | \ncurrent=1\n | current=1
+EXPECT_HAS | game/variables.txt | \nturn=0\n | turn=0
+EXPECT_HAS | game/switches.txt | game_over=0\n | setup-clears-game-over
+EXPECT_HAS | game/cash_ledger.txt | XFER\p0\pmint\pbank\p100000\p100000\pok\psetup\n | the-only-mint-is-a-setup-row
+WRITE | game/variables.txt | players=2\ndice_seed=1\n
+WRITE | game/cash_ledger.txt | # reset
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_HAS | game/variables.txt | \nalive_2=1\n | alive_2=1
+EXPECT_HAS | game/variables.txt | \nalive_3=0\n | dormant-seat-not-alive
+EXPECT_LACKS | game/variables.txt | cash_3= | dormant-seat-gets-no-cash
+EXPECT_HAS | game/variables.txt | \ncash_bank=97000\n | cash_bank=97000
+WRITE | game/variables.txt | players=5\ndice_seed=1\n
+WRITE | game/cash_ledger.txt | # reset
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 1 | 5-players-refused
+EXPECT_LACKS | game/cash_ledger.txt | XFER | 5-players-minted-nothing
+EXPECT_NOFILE | game/op_errors.txt | no-page-made-an-op-fail
+CLEAN | 
+CASE | game-2p-seed8
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/ring-board-rmmv/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_sweep.+x | game/ops/+x/var_sweep.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/tile_lookup.+x | game/ops/+x/tile_lookup.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/cash_transfer.+x | game/ops/+x/cash_transfer.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/ring_audit_op.+x | game/ops/+x/ring_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/rules.pdl | start_cash=300\nbank_start=100000\ngo_pay=40\njail_fee=50\njail_turns=1\njail_pos=10\nboard_size=40\ntax_income=150\ntax_luxury=100\nturn_cap=300\npolicy_reserve=0\npolicy_jail_reserve=300\n
+WRITE | game/variables.txt | players=2\ndice_seed=8\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+WRITE | loop.pal | li x2, 60\n_l1:\nbeq x2, x0, _d1\nexec game/ops/+x/event_page_op.+x game game --trigger autoturn --state game\nexec game/ops/+x/ring_audit_op.+x game\naddi x2, x2, -1\nj _l1\n_d1:\nhalt\n
+RUN | $T/prisc | loop.pal
+EXPECT_EXIT | 0 | game-loop-60-turns-ran
+RUN | /usr/bin/sha256sum | game/variables.txt | game/switches.txt | game/cash_ledger.txt | game/dice_ledger.txt | game/audit_ledger.txt
+CAPTURE | sig_a
+EXPECT_LACKS | game/audit_ledger.txt | FAIL | referee-never-failed-a-turn
+EXPECT_HAS | game/audit_ledger.txt | \pok\p | referee-passed-turns
+EXPECT_NOFILE | game/op_errors.txt | no-op-reported-an-error
+EXPECT_HAS | game/switches.txt | game_over=1\n | game-reached-game-over
+EXPECT_HAS | game/variables.txt | \ngame_over_reason=1\n | game-over-by-last-player-standing
+EXPECT_HAS | game/cash_ledger.txt | \pbankrupt\p | a-bankruptcy-happened
+EXPECT_HAS | game/cash_ledger.txt | \pok\pgo\n | GO-was-paid
+EXPECT_HAS | game/cash_ledger.txt | \pok\pbuy\n | properties-were-bought
+EXPECT_HAS | game/variables.txt | \nwinner=1\n | seed-8-winner-is-player-1
+EXPECT_HAS | game/variables.txt | \nturn=26\n | seed-8-ends-on-turn-26
+CLEAN | 
+CASE | game-2p-seed8-again
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/ring-board-rmmv/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_sweep.+x | game/ops/+x/var_sweep.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/tile_lookup.+x | game/ops/+x/tile_lookup.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/cash_transfer.+x | game/ops/+x/cash_transfer.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/ring_audit_op.+x | game/ops/+x/ring_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/rules.pdl | start_cash=300\nbank_start=100000\ngo_pay=40\njail_fee=50\njail_turns=1\njail_pos=10\nboard_size=40\ntax_income=150\ntax_luxury=100\nturn_cap=300\npolicy_reserve=0\npolicy_jail_reserve=300\n
+WRITE | game/variables.txt | players=2\ndice_seed=8\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+WRITE | loop.pal | li x2, 60\n_l1:\nbeq x2, x0, _d1\nexec game/ops/+x/event_page_op.+x game game --trigger autoturn --state game\nexec game/ops/+x/ring_audit_op.+x game\naddi x2, x2, -1\nj _l1\n_d1:\nhalt\n
+RUN | $T/prisc | loop.pal
+EXPECT_EXIT | 0 | game-loop-60-turns-ran
+RUN | /usr/bin/sha256sum | game/variables.txt | game/switches.txt | game/cash_ledger.txt | game/dice_ledger.txt | game/audit_ledger.txt
+CAPTURE | sig_a2
+EXPECT_EQ | $sig_a | $sig_a2 | DETERMINISM-same-seed-identical-variables-ledgers-dice-and-audit-log
+CLEAN | 
+CASE | game-2p-seed11
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/ring-board-rmmv/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_sweep.+x | game/ops/+x/var_sweep.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/tile_lookup.+x | game/ops/+x/tile_lookup.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/cash_transfer.+x | game/ops/+x/cash_transfer.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/ring_audit_op.+x | game/ops/+x/ring_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/rules.pdl | start_cash=300\nbank_start=100000\ngo_pay=40\njail_fee=50\njail_turns=1\njail_pos=10\nboard_size=40\ntax_income=150\ntax_luxury=100\nturn_cap=300\npolicy_reserve=0\npolicy_jail_reserve=300\n
+WRITE | game/variables.txt | players=2\ndice_seed=11\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+WRITE | loop.pal | li x2, 60\n_l1:\nbeq x2, x0, _d1\nexec game/ops/+x/event_page_op.+x game game --trigger autoturn --state game\nexec game/ops/+x/ring_audit_op.+x game\naddi x2, x2, -1\nj _l1\n_d1:\nhalt\n
+RUN | $T/prisc | loop.pal
+EXPECT_EXIT | 0 | game-loop-60-turns-ran
+RUN | /usr/bin/sha256sum | game/variables.txt | game/switches.txt | game/cash_ledger.txt | game/dice_ledger.txt | game/audit_ledger.txt
+CAPTURE | sig_b
+EXPECT_LACKS | game/audit_ledger.txt | FAIL | referee-never-failed-a-turn
+EXPECT_HAS | game/audit_ledger.txt | \pok\p | referee-passed-turns
+EXPECT_NOFILE | game/op_errors.txt | no-op-reported-an-error
+EXPECT_HAS | game/switches.txt | game_over=1\n | game-reached-game-over
+EXPECT_HAS | game/variables.txt | \ngame_over_reason=1\n | game-over-by-last-player-standing
+EXPECT_HAS | game/cash_ledger.txt | \pbankrupt\p | a-bankruptcy-happened
+EXPECT_HAS | game/cash_ledger.txt | \pok\pgo\n | GO-was-paid
+EXPECT_HAS | game/cash_ledger.txt | \pok\pbuy\n | properties-were-bought
+EXPECT_HAS | game/variables.txt | \nwinner=2\n | seed-11-winner-is-player-2
+EXPECT_NE | $sig_a | $sig_b | a-different-seed-gives-a-different-game-and-winner
+CLEAN | 
+CASE | game-4p-seed1
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/ring-board-rmmv/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_sweep.+x | game/ops/+x/var_sweep.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/tile_lookup.+x | game/ops/+x/tile_lookup.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/cash_transfer.+x | game/ops/+x/cash_transfer.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/ring_audit_op.+x | game/ops/+x/ring_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/rules.pdl | start_cash=300\nbank_start=100000\ngo_pay=40\njail_fee=50\njail_turns=1\njail_pos=10\nboard_size=40\ntax_income=150\ntax_luxury=100\nturn_cap=300\npolicy_reserve=0\npolicy_jail_reserve=300\n
+WRITE | game/variables.txt | players=4\ndice_seed=1\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+WRITE | loop.pal | li x2, 200\n_l1:\nbeq x2, x0, _d1\nexec game/ops/+x/event_page_op.+x game game --trigger autoturn --state game\nexec game/ops/+x/ring_audit_op.+x game\naddi x2, x2, -1\nj _l1\n_d1:\nhalt\n
+RUN | $T/prisc | loop.pal
+EXPECT_EXIT | 0 | game-loop-200-turns-ran
+EXPECT_LACKS | game/audit_ledger.txt | FAIL | referee-never-failed-a-turn
+EXPECT_HAS | game/audit_ledger.txt | \pok\p | referee-passed-turns
+EXPECT_NOFILE | game/op_errors.txt | no-op-reported-an-error
+EXPECT_HAS | game/switches.txt | game_over=1\n | game-reached-game-over
+EXPECT_HAS | game/variables.txt | \ngame_over_reason=1\n | game-over-by-last-player-standing
+EXPECT_HAS | game/cash_ledger.txt | \pbankrupt\p | a-bankruptcy-happened
+EXPECT_HAS | game/cash_ledger.txt | \pok\pgo\n | GO-was-paid
+EXPECT_HAS | game/cash_ledger.txt | \pok\pbuy\n | properties-were-bought
+EXPECT_HAS | game/variables.txt | \nbankruptcies=3\n | three-of-four-players-went-bankrupt
+EXPECT_HAS | game/variables.txt | \nwinner=1\n | seed-1-4-player-winner
+EXPECT_HAS | game/cash_ledger.txt | \pok\prent\n | rent-was-paid-to-owners
+EXPECT_HAS | game/variables.txt | \nalive_count=1\n | one-player-left
+EXPECT_HAS | game/cash_ledger.txt | \pok\ptax\n | tax-was-paid
+CLEAN | 
+CASE | game-2p-turn-cap
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/ring-board-rmmv/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_sweep.+x | game/ops/+x/var_sweep.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/tile_lookup.+x | game/ops/+x/tile_lookup.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/cash_transfer.+x | game/ops/+x/cash_transfer.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/ring_audit_op.+x | game/ops/+x/ring_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/rules.pdl | start_cash=1500\nbank_start=100000\ngo_pay=200\njail_fee=50\njail_turns=1\njail_pos=10\nboard_size=40\ntax_income=200\ntax_luxury=100\nturn_cap=12\npolicy_reserve=200\npolicy_jail_reserve=300\n
+WRITE | game/variables.txt | players=2\ndice_seed=8\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+WRITE | loop.pal | li x2, 40\n_l1:\nbeq x2, x0, _d1\nexec game/ops/+x/event_page_op.+x game game --trigger autoturn --state game\nexec game/ops/+x/ring_audit_op.+x game\naddi x2, x2, -1\nj _l1\n_d1:\nhalt\n
+RUN | $T/prisc | loop.pal
+EXPECT_EXIT | 0 | game-loop-40-turns-ran
+EXPECT_LACKS | game/audit_ledger.txt | FAIL | referee-never-failed-a-turn
+EXPECT_NOFILE | game/op_errors.txt | no-op-error
+EXPECT_HAS | game/switches.txt | game_over=1\n | turn-cap-reached
+EXPECT_HAS | game/variables.txt | \ngame_over_reason=2\n | ended-by-the-cap-not-bankruptcy
+EXPECT_HAS | game/variables.txt | \nwinner=0\n | winner=0
+EXPECT_HAS | game/variables.txt | \nturn=12\n | stopped-exactly-at-the-cap
+EXPECT_HAS | game/variables.txt | \nalive_count=2\n | alive_count=2
+EXPECT_HAS | game/audit_ledger.txt | AUDIT\p12\p | all-12-turns-audited
+EXPECT_LACKS | game/audit_ledger.txt | AUDIT\p13\p | nothing-audited-or-played-after-the-cap
+CLEAN | 
+CASE | save-restore
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/ring-board-rmmv/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_sweep.+x | game/ops/+x/var_sweep.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/tile_lookup.+x | game/ops/+x/tile_lookup.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/cash_transfer.+x | game/ops/+x/cash_transfer.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/ring_audit_op.+x | game/ops/+x/ring_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/rules.pdl | start_cash=300\nbank_start=100000\ngo_pay=40\njail_fee=50\njail_turns=1\njail_pos=10\nboard_size=40\ntax_income=150\ntax_luxury=100\nturn_cap=300\npolicy_reserve=0\npolicy_jail_reserve=300\n
+WRITE | game/variables.txt | players=2\ndice_seed=8\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+WRITE | loop.pal | li x2, 12\n_l1:\nbeq x2, x0, _d1\nexec game/ops/+x/event_page_op.+x game game --trigger autoturn --state game\nexec game/ops/+x/ring_audit_op.+x game\naddi x2, x2, -1\nj _l1\n_d1:\nhalt\n
+RUN | $T/prisc | loop.pal
+EXPECT_EXIT | 0 | game-loop-12-turns-ran
+EXPECT_HAS | game/variables.txt | \nturn=12\n | at-turn-12
+RUN | /usr/bin/sha256sum | game/variables.txt | game/switches.txt | game/cash_ledger.txt | game/dice_ledger.txt | game/audit_ledger.txt
+CAPTURE | sig_at12
+COPY | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | gso
+RUN | /usr/bin/grep | -h | ^dice_counter= | $T/game/variables.txt
+CAPTURE | ctr_saved
+RUN | $T/gso | $T/store | $T/game | save | CP12 | --now-ms | 1000
+EXPECT_EXIT | 0 | save-at-turn-12
+WRITE | loop.pal | li x2, 6\n_l1:\nbeq x2, x0, _d1\nexec game/ops/+x/event_page_op.+x game game --trigger autoturn --state game\nexec game/ops/+x/ring_audit_op.+x game\naddi x2, x2, -1\nj _l1\n_d1:\nhalt\n
+RUN | $T/prisc | loop.pal
+EXPECT_EXIT | 0 | game-loop-6-turns-ran
+EXPECT_HAS | game/variables.txt | \nturn=18\n | played-on-to-turn-18
+WRITE | game/variables.txt | players=2\ncash_1=999999\n
+RUN | /usr/bin/sha256sum | game/variables.txt | game/switches.txt | game/cash_ledger.txt | game/dice_ledger.txt | game/audit_ledger.txt
+CAPTURE | sig_mutated
+EXPECT_NE | $sig_at12 | $sig_mutated | the-mutation-really-changed-the-game
+RUN | $T/gso | $T/store | $T/game | restore | CP12 | $T/game | --apply | --prune | --now-ms | 2000
+EXPECT_EXIT | 0 | restore-applied
+RUN | /usr/bin/sha256sum | game/variables.txt | game/switches.txt | game/cash_ledger.txt | game/dice_ledger.txt | game/audit_ledger.txt
+CAPTURE | sig_restored
+EXPECT_EQ | $sig_at12 | $sig_restored | restore-brings-back-variables-owners-switches-dice-counter-and-all-ledgers-exactly
+RUN | /usr/bin/grep | -h | ^dice_counter= | $T/game/variables.txt
+CAPTURE | ctr_restored
+EXPECT_EQ | $ctr_saved | $ctr_restored | dice-counter-restored-to-the-saved-position
+WRITE | loop.pal | li x2, 48\n_l1:\nbeq x2, x0, _d1\nexec game/ops/+x/event_page_op.+x game game --trigger autoturn --state game\nexec game/ops/+x/ring_audit_op.+x game\naddi x2, x2, -1\nj _l1\n_d1:\nhalt\n
+RUN | $T/prisc | loop.pal
+EXPECT_EXIT | 0 | game-loop-48-turns-ran
+RUN | /usr/bin/sha256sum | game/variables.txt | game/switches.txt | game/cash_ledger.txt | game/dice_ledger.txt | game/audit_ledger.txt
+CAPTURE | sig_cont
+EXPECT_EQ | $sig_cont | $sig_a | SAVE-RESTORE-CONTINUE-EQUALS-THE-UNINTERRUPTED-GAME-same-next-rolls-same-winner-same-ledgers
+EXPECT_LACKS | game/audit_ledger.txt | FAIL | referee-clean-across-the-restore
+EXPECT_HAS | game/switches.txt | game_over=1\n | switch-game_over=1
+EXPECT_HAS | game/variables.txt | \nwinner=1\n | winner=1
+CLEAN | 
+CASE | player-path
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/ring-board-rmmv/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_sweep.+x | game/ops/+x/var_sweep.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/tile_lookup.+x | game/ops/+x/tile_lookup.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/cash_transfer.+x | game/ops/+x/cash_transfer.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/ring_audit_op.+x | game/ops/+x/ring_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\n
+MKDIR | &.widgits/digipet/ops/+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | &.widgits/digipet/ops/+x/event_page_op.+x
+RUN | /usr/bin/grep | -F | -c | -e | METHOD       \p New Game             \p sh -c | $HOUSE/&.widgits/ring-board-rmmv/entity/meta.pdl
+EXPECT_OUT_IS | 1 | menu-row-setup-exists-in-meta.pdl
+RUN | /usr/bin/grep | -F | -c | -e | --trigger setup' | $HOUSE/&.widgits/ring-board-rmmv/entity/meta.pdl
+EXPECT_OUT_IS | 1 | menu-row-setup-fires-trigger-setup
+RUN | /usr/bin/grep | -F | -c | -e | METHOD       \p Roll                 \p sh -c | $HOUSE/&.widgits/ring-board-rmmv/entity/meta.pdl
+EXPECT_OUT_IS | 1 | menu-row-roll-exists-in-meta.pdl
+RUN | /usr/bin/grep | -F | -c | -e | --trigger roll' | $HOUSE/&.widgits/ring-board-rmmv/entity/meta.pdl
+EXPECT_OUT_IS | 1 | menu-row-roll-fires-trigger-roll
+RUN | /usr/bin/grep | -F | -c | -e | METHOD       \p Buy                  \p sh -c | $HOUSE/&.widgits/ring-board-rmmv/entity/meta.pdl
+EXPECT_OUT_IS | 1 | menu-row-buy-exists-in-meta.pdl
+RUN | /usr/bin/grep | -F | -c | -e | --trigger buy' | $HOUSE/&.widgits/ring-board-rmmv/entity/meta.pdl
+EXPECT_OUT_IS | 1 | menu-row-buy-fires-trigger-buy
+RUN | /usr/bin/grep | -F | -c | -e | METHOD       \p Pass                 \p sh -c | $HOUSE/&.widgits/ring-board-rmmv/entity/meta.pdl
+EXPECT_OUT_IS | 1 | menu-row-pass-exists-in-meta.pdl
+RUN | /usr/bin/grep | -F | -c | -e | --trigger pass' | $HOUSE/&.widgits/ring-board-rmmv/entity/meta.pdl
+EXPECT_OUT_IS | 1 | menu-row-pass-fires-trigger-pass
+RUN | /usr/bin/grep | -F | -c | -e | METHOD       \p End Turn             \p sh -c | $HOUSE/&.widgits/ring-board-rmmv/entity/meta.pdl
+EXPECT_OUT_IS | 1 | menu-row-endturn-exists-in-meta.pdl
+RUN | /usr/bin/grep | -F | -c | -e | --trigger endturn' | $HOUSE/&.widgits/ring-board-rmmv/entity/meta.pdl
+EXPECT_OUT_IS | 1 | menu-row-endturn-fires-trigger-endturn
+RUN | /usr/bin/grep | -F | -c | -e | METHOD       \p Pay Jail Fee         \p sh -c | $HOUSE/&.widgits/ring-board-rmmv/entity/meta.pdl
+EXPECT_OUT_IS | 1 | menu-row-payjail-exists-in-meta.pdl
+RUN | /usr/bin/grep | -F | -c | -e | --trigger payjail' | $HOUSE/&.widgits/ring-board-rmmv/entity/meta.pdl
+EXPECT_OUT_IS | 1 | menu-row-payjail-fires-trigger-payjail
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger setup | $T/game | $T
+EXPECT_EXIT | 0 | click-New-Game
+EXPECT_HAS | game/variables.txt | \nalive_2=1\n | alive_2=1
+EXPECT_HAS | game/variables.txt | \ncash_1=1500\n | cash_1=1500
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger roll | $T/game | $T
+EXPECT_EXIT | 0 | click-Roll
+EXPECT_HAS | game/variables.txt | \npos_1=7\n | click-Roll-moves-the-token-by-the-seeded-roll
+EXPECT_HAS | game/variables.txt | \nphase=1\n | phase=1
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger buy | $T/game | $T
+EXPECT_EXIT | 0 | click-Buy
+EXPECT_HAS | game/variables.txt | \ncash_1=1390\n | cash_1=1390
+EXPECT_HAS | game/variables.txt | \nowner_7=1\n | owner_7=1
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger endturn | $T/game | $T
+EXPECT_EXIT | 0 | click-End-Turn
+EXPECT_HAS | game/variables.txt | \ncurrent=2\n | click-End-Turn-hands-over
+EXPECT_HAS | game/variables.txt | \nturn=1\n | turn=1
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger roll | $T/game | $T
+EXPECT_HAS | game/variables.txt | \npos_2=8\n | second-player-rolls-the-next-seeded-roll-8
+EXPECT_HAS | game/variables.txt | \nphase=1\n | phase=1
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger pass | $T/game | $T
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger endturn | $T/game | $T
+EXPECT_HAS | game/variables.txt | \ncurrent=1\n | current=1
+EXPECT_HAS | game/variables.txt | \nturn=2\n | turn=2
+WRITE | game/variables.txt | players=2\ndice_seed=42\ndice_counter=0\nturn=2\ncurrent=1\nphase=0\nalive_1=1\nalive_2=1\npos_1=23\ncash_1=1000\ncash_bank=97000\n
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger roll | $T/game | $T
+EXPECT_HAS | game/variables.txt | \njail_1=1\n | rolled-onto-Go-To-Jail
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger endturn | $T/game | $T
+EXPECT_HAS | game/variables.txt | \ncurrent=2\n | current=2
+WRITE | game/variables.txt | players=2\ndice_seed=42\ndice_counter=0\nturn=3\ncurrent=1\nphase=0\njail_1=1\nalive_1=1\nalive_2=1\npos_1=10\ncash_1=1000\ncash_bank=97000\n
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger payjail | $T/game | $T
+EXPECT_EXIT | 0 | click-Pay-Jail-Fee
+EXPECT_HAS | game/variables.txt | \ncash_1=950\n | cash_1=950
+EXPECT_HAS | game/variables.txt | \njail_1=0\n | jail_1=0
+EXPECT_NOFILE | game/op_errors.txt | no-op-error-on-the-player-path
+COPY | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+MKDIR | common_events
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/ring-board-rmmv/common_events/end_turn | $T/common_events/end_turn
+WRITE | common_events/end_turn/event_pkg/target.pdl | TARGET | state | game
+WRITE | game/variables.txt | players=2\ndice_seed=42\nturn=5\ncurrent=1\nphase=2\nalive_1=1\nalive_2=1\n
+ENV | LC_CLOCK_NO_POPUP | 1
+ENV | LC_CLOCK_EVENT_RUNNER | $T/&.widgits/digipet/ops/+x/event_page_op.+x
+ENV | EVENT_PAGE_TRIGGER | endturn
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 | common:end_turn |  | every:1day
+EXPECT_EXIT | 0 | end-turn-schedule-row-installed
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+EXPECT_HAS | game/variables.txt | \ncurrent=2\n | clock-End-Turn-after-the-player-finished-hands-the-turn-over
+EXPECT_HAS | game/variables.txt | \nturn=6\n | turn=6
+EXPECT_HAS | game/variables.txt | \nphase=0\n | phase=0
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+EXPECT_HAS | game/variables.txt | \ncurrent=2\n | clock-End-Turn-before-the-player-acted-is-refused-by-the-pages
+EXPECT_HAS | game/variables.txt | \nturn=6\n | turn=6
+EXPECT_HAS | #.desktop/clocks/schedule_ledger.txt | ok | both-clock-firings-are-in-the-schedule-ledger
+CLEAN | 

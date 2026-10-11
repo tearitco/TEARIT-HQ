@@ -29,6 +29,10 @@
 #define MAX_LINE 8192
 #define PATH_BUF (4096 + 512)
 
+/* read_file is defined further down but used earlier; without this prototype the
+ * implicit declaration makes the later `static` definition a compile error. */
+static int read_file(const char *path, char *buf, size_t sz);
+
 struct model_api {
     model_api_type_t type;
     char *base_url;

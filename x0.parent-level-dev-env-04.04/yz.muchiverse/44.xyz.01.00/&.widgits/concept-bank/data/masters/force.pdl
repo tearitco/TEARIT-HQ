@@ -30,5 +30,6 @@ SLOT | 1 | POINTS_TO=energy | WEIGHT=0.50
 # discipline as the phymoji sprite-cache bug Q9 9b cites as the
 # failure mode this avoids (two independently-editable copies of the
 # same fact). Running concept_mirror_rebuild.sh overwrites everything
-MIRROR_GENERATED_AT | 2026-09-22 16:16:19
+MIRROR_GENERATED_AT | 2026-10-07 20:33:02
 MIRROR_FROM | gravity_constant | WEIGHT=0.60
+MIRROR_FROM | mass | WEIGHT=0.75

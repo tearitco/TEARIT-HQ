@@ -1,0 +1,121 @@
+# csv_pipeline: LOCKED cases (harness_case_op passes at most 15 arguments to a RUN: house root and key dir therefore come from the environment). Source under test: &.widgits/concept-bank/ops/csv_lab.c (verb pipeline). Doubles: fixtures/csv_lab/stub_groq.c, stub_mac.c.
+RESULTS | ../results/csv_pipeline.txt
+CASE | csv-pipeline
+SCRATCH |
+COPY | &.widgits/concept-bank/ops/csv_lab.c | csv_lab.c
+COPY | &.widgits/_shared-lib/harness/fixtures/csv_lab/stub_groq.c | stub_groq.c
+COPY | &.widgits/_shared-lib/harness/fixtures/csv_lab/stub_mac.c | stub_mac.c
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -Wno-format-truncation | -O2 | -o | $T/cl.+x | $T/csv_lab.c
+EXPECT_EXIT | 0 | compiles-clean
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/stub_groq | $T/stub_groq.c
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/stub_mac | $T/stub_mac.c
+MKDIR | data
+MKDIR | keys
+MKDIR | fb
+MKDIR | fb/worker1
+WRITE | data/words.csv | id,english,note,symbol\n1,Water,liquid,H2O\n2,Fire,hot,\n3,Tonefail,x,\n4,Nevergood,y,\n5,Missingrow,z,\n6,BAD word,w,\n7,"Sodium Chloride",salt,NaCl\n8,42,num,\n
+WRITE | banks.pdl | BANK \p ex \p file=data/words.csv \p format=csv \p key=id \p text=english \p context=note \p never=id,symbol \p add=zh,pinyin\n
+WRITE | keys/raw_groq.txt | SECRETKEYVALUE\n
+WRITE | vocab.txt | 水   shuǐ   water\n火   huǒ   fire\n
+WRITE | ptr.pdl | SOURCE \p vocab_file \p $T/vocab.txt\n
+ENV | CSV_LAB_REF | $T/ptr.pdl
+SUMTREE | src_before | data
+ENV | CSV_LAB_GROQ_BACKEND | $T/stub_groq
+ENV | CSV_LAB_MAC_URL | http://127.0.0.1:18451
+ENV | CSV_LAB_NO_SLEEP | 1
+ENV | CSV_LAB_HOUSE | $T
+ENV | CSV_LAB_KEY_DIR | $T/keys
+ENV | CSV_LAB_UI | $T/ui/csv_lab_ui.txt
+SPAWN | mac | $T/stub_mac | 18451 | ok
+SLEEP | 400
+ENV | CSV_STUB_COUNT | $T/groq_count.txt
+RUN | $T/cl.+x | pipeline | $T/banks.pdl | ex | --work | $T/work | --answers | $T/answers.tsv | --quota-ledger | $T/quota.txt | --feedback-dir | $T/fb/worker1 | --out | $T/side.tsv
+EXPECT_EXIT | 0 | pipeline-runs
+EXPECT_OUT | jobs=7 untranslated=7 answer_hits=0 bank=ex lang=zh | extract-skips-the-number-only-cell
+EXPECT_OUT | translated=7 answer_hits=0 ok=4 review=1 lintfail=2 | merge-counts
+EXPECT_OUT_LACKS | SECRETKEYVALUE | key-never-printed
+EXPECT_OUT | ref=loaded 2 entries | reference-vocabulary-loaded-in-every-repair-round
+EXPECT_OUT_LACKS | loaded 4 entries | reference-table-reset-each-lint-run
+SUMTREE | src_after | data
+EXPECT_EQ | $src_before | $src_after | source-csv-never-written
+EXPECT_FILE | groq_count.txt | xxx | exactly-three-groq-requests-first-pass-plus-two-repair-rounds
+EXPECT_HAS | side.tsv | 1\tWater\t水\tshuǐ\t5\tok\t | ok-row-in-sidecar
+EXPECT_HAS | side.tsv | 3\tTonefail\t水\tshuǐ\t5\tok\t | repair-fixed-the-tone-failure
+EXPECT_HAS | side.tsv | 4\tNevergood\t水\tshui3\t-\tlint_fail\t | unrepairable-row-ends-lintfail-not-scored
+EXPECT_HAS | side.tsv | 5\tMissingrow\t\t\t-\tlint_fail\t | never-answered-row-ends-lintfail
+EXPECT_HAS | side.tsv | 6\tBAD word\t坏BAD词\thuài cí\t2\tlow_score\t | low-judge-score-goes-to-review
+EXPECT_HAS | side.tsv | 7\tSodium Chloride\t氯化钠\tlǜ huà nà\t5\tok\t | multiword-ok
+EXPECT_LACKS | side.tsv | H2O | never-translate-column-not-in-sidecar
+EXPECT_HAS | work/review.tsv | 6\tBAD word\t | review-queue-has-the-low-score
+EXPECT_HAS | work/review.tsv | 4\tNevergood\t | review-queue-has-the-lint-failure
+EXPECT_LACKS | work/review.tsv | 1\tWater | review-queue-lacks-ok-rows
+EXPECT_HAS | work/batches/r0/b001.tsv | 1\t1\tWater\tnote=liquid | round0-sends-everything
+EXPECT_HAS | work/batches/r1/b001.tsv | Tonefail | round1-resends-the-lint-failure
+EXPECT_HAS | work/batches/r1/b001.tsv | Missingrow | round1-resends-the-missing-row
+EXPECT_LACKS | work/batches/r1/b001.tsv | Water | round1-does-not-resend-good-rows
+EXPECT_LACKS | work/batches/r2/b001.tsv | Tonefail | round2-does-not-resend-the-repaired-row
+EXPECT_HAS | work/batches/r2/b001.tsv | Nevergood | round2-still-resends-the-unrepaired-row
+EXPECT_HAS | work/batches/r1/b001.prompt.txt | FIX: no-tone-marks | repair-prompt-names-the-problem
+EXPECT_LACKS | work/score/s001.tsv | Nevergood | judge-never-sees-lint-failures
+EXPECT_HAS | work/score/s001.prompt.txt | 3\tBAD word\t坏BAD词\thuài cí | judge-prompt-carries-source-zh-pinyin
+EXPECT_HAS | work/usage.txt | stage=score \p provider=mac \p model=qwen2.5-coder:7b \p req=1 \p tokens_in=111 \p tokens_out=22 \p tokens=133 | judge-is-a-different-provider-and-model
+EXPECT_HAS | work/usage.txt | stage=translate \p provider=groq \p model=openai/gpt-oss-120b \p req=1 \p tokens_in=100 \p tokens_out=50 \p tokens=150 | translator-usage-ledgered
+EXPECT_HAS | ui/csv_lab_ui.txt | \pex\pdone\p7\p7\n | ui-feed-head-ends-at-done
+EXPECT_HAS | ui/csv_lab_ui.txt | JOB\pex\p6\pBAD word\p坏BAD词\phuài cí\p2\plow_score\n | ui-feed-low-score-job
+EXPECT_HAS | ui/csv_lab_ui.txt | JOB\pex\p1\pWater\p水\pshuǐ\p5\pok\n | ui-feed-ok-job
+EXPECT_HAS | ui/csv_lab_ui.txt | JOB\pex\p4\pNevergood\p水\pshui3\p-\plint_fail\n | ui-feed-lint-fail-job
+EXPECT_HAS | ui/csv_lab_ui.txt | QUOTA\pgroq_req\p3\p1000\n | ui-feed-quota-three-requests
+EXPECT_HAS | ui/csv_lab_ui.txt | QUOTA\pmac_calls\p1\p0\n | ui-feed-quota-one-mac-call
+EXPECT_HAS | ui/csv_lab_ui.txt | \ptranslate batch 1/1 groq openai/gpt-oss-120b | ui-feed-log-translate-batch
+EXPECT_HAS | ui/csv_lab_ui.txt | \ptranslate batch 1/1 groq openai/gpt-oss-120b | ui-feed-log-repair-round
+EXPECT_HAS | ui/csv_lab_ui.txt | \pscore batch 1/1 mac qwen2.5-coder:7b | ui-feed-log-score-batch
+EXPECT_NOFILE | ui/csv_lab_ui.txt.tmp | ui-feed-no-temp-file-left
+EXPECT_HAS | fb/worker1/obs_feedback_log.txt | id=csv-zh-ex#1 \p target=worker1 \p valence=+1 \p concept=zh_translation | feedback-written
+EXPECT_HAS | answers.tsv | zh\tWater\t水\tshuǐ\t5\tok | answer-bank-filled
+EXPECT_LACKS | answers.tsv | Nevergood | answer-bank-skips-lint-failures
+# second run: the answer bank answers everything it can; only the two failures go back to the model
+WRITE | groq_count.txt |
+RUN | $T/cl.+x | pipeline | $T/banks.pdl | ex | --work | $T/work | --answers | $T/answers.tsv | --quota-ledger | $T/quota.txt
+EXPECT_OUT | jobs=7 untranslated=2 answer_hits=5 bank=ex lang=zh | second-run-skips-answer-bank-hits
+EXPECT_OUT | translated=2 answer_hits=5 ok=4 review=1 lintfail=2 | second-run-only-the-failures-return
+EXPECT_LACKS | work/batches/r0/b001.tsv | Water | second-run-does-not-resend-water
+# the judge must be a different model than the translator
+RUN | $T/cl.+x | pipeline | $T/banks.pdl | ex | --work | $T/work2 | --answers | $T/answers2.tsv | --judge | groq
+EXPECT_EXIT | 2 | judge-same-as-translator-refused
+# --no-judge: nothing is scored, lint-clean rows wait in review as unscored
+RUN | $T/cl.+x | pipeline | $T/banks.pdl | ex | --work | $T/work3 | --answers | $T/answers3.tsv | --no-judge | --out | $T/side3.tsv
+EXPECT_OUT | ok=0 review=5 lintfail=2 | no-judge-leaves-lint-clean-rows-unscored
+EXPECT_HAS | work3/review.tsv | 1\tWater\t水\tshuǐ\t-\tunscored | unscored-in-review-queue
+# translator quota exhausted: stop early, resume later, nothing invented
+ENV | CSV_STUB_MODE | quota
+RUN | $T/cl.+x | pipeline | $T/banks.pdl | ex | --work | $T/work4 | --answers | $T/answers4.tsv | --out | $T/side4.tsv
+EXPECT_OUT | translator quota exhausted | quota-stop-announced
+EXPECT_OUT | translated=7 answer_hits=0 ok=0 review=0 lintfail=7 | quota-stop-leaves-everything-for-the-next-run
+EXPECT_LACKS | answers4.tsv | zh\t | quota-stop-writes-no-answers
+ENV | CSV_STUB_MODE |
+# ---- the feed is LIVE: while a slow translator call is still running, the feed already shows stage translate and the jobs as new
+ENV | CSV_STUB_MODE | sleep
+ENV | CSV_LAB_UI | $T/uilive/csv_lab_ui.txt
+SPAWN | slowrun | $T/cl.+x | pipeline | $T/banks.pdl | ex | --work | $T/work5 | --answers | $T/answers5.tsv | --out | $T/side5.tsv
+WAIT_HAS | uilive/csv_lab_ui.txt | \pex\ptranslate\p0\p1\n | 6000 | live-feed-shows-translate-stage-while-the-call-runs
+EXPECT_HAS | uilive/csv_lab_ui.txt | JOB\pex\p1\pWater\p\p\p-\pnew\n | live-feed-jobs-are-new-before-translation
+EXPECT_HAS | uilive/csv_lab_ui.txt | \pbatch round 0: 7 rows in 1 batches | live-feed-log-has-the-batch-line
+ENV | CSV_STUB_MODE |
+ENV | CSV_LAB_UI | $T/ui/csv_lab_ui.txt
+# MUTANTS
+RUN | cp | $T/csv_lab.c | $T/m1.c
+RUN | sed | -i | s@if (!strcmp(fld(.lt.r.i., 1), "FAIL")) {@if (1) {@ | $T/m1.c
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m1.+x | $T/m1.c
+RUN | $T/m1.+x | pipeline | $T/banks.pdl | ex | --work | $T/wm1 | --answers | $T/am1.tsv | --out | $T/sm1.tsv
+EXPECT_HAS | wm1/batches/r1/b001.tsv | Water | mutant1-resending-everything-is-detected
+RUN | cp | $T/csv_lab.c | $T/m2.c
+RUN | sed | -i | s@if (!strcmp(fld(.lt.r.i., 1), "OK")) { const Rec@if (1) { const Rec@ | $T/m2.c
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m2.+x | $T/m2.c
+RUN | $T/m2.+x | pipeline | $T/banks.pdl | ex | --work | $T/wm2 | --answers | $T/am2.tsv | --out | $T/sm2.tsv
+EXPECT_HAS | wm2/toscore.tsv | Nevergood | mutant2-judge-seeing-lint-failures-is-detected
+RUN | cp | $T/csv_lab.c | $T/m3.c
+RUN | sed | -i | s@free(g_ref); g_nref = 0;@;@ | $T/m3.c
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m3.+x | $T/m3.c
+RUN | $T/m3.+x | pipeline | $T/banks.pdl | ex | --work | $T/wm3 | --answers | $T/am3.tsv | --out | $T/sm3.tsv
+EXPECT_OUT | loaded 4 entries | mutant3-reference-table-growing-across-rounds-is-detected
+CLEAN |

@@ -1,0 +1,87 @@
+# lc_clock_restore (CLOCK-AS-THE-PLAY-SPINE-DESIGN.md 7.5 "no double firing after restore"): a game_snapshot_op checkpoint carries the clock state file, reminders.pdl and
+# schedule_ledger.txt as --extra files; after more days fire, restore --apply --extra-dir puts them back and the clock must resume from the restored cursor.
+# Scratch roots only. The checkpoint's entity tree (ent/) is a stand-in; the clock files are the subject.
+RESULTS | ../results/lc_clock_restore.txt
+ENV     | LC_CLOCK_NO_POPUP | 1
+ENV     | LC_CLOCK_EVENT_RUNNER | /usr/bin/true
+CASE    | restore-stepped
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+COPY    | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | gso
+WRITE   | ent/save.txt | player data
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 |  | daily | every:1day
+RUN | $T/lc.+x | $T | cmd | g1 | advance | 3d
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 3 | before-save-3-days-fired
+RUN | $T/gso | $T/store | $T/ent | save | CP1 | --extra | $T/#.desktop/clocks/g1.pdl | --extra | $T/#.desktop/clocks/reminders.pdl | --extra | $T/#.desktop/clocks/schedule_ledger.txt | --now-ms | 1000
+EXPECT_EXIT | 0 | checkpoint-saved-with-clock-extras
+RUN | $T/lc.+x | $T | cmd | g1 | advance | 4d
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 7 | after-more-days-7-fired
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | g1\puser\poff\p1\p604800000\p | clock-at-day-7
+RUN | $T/gso | $T/store | $T/ent | restore | CP1 | $T/dest | --extra-dir | $T/#.desktop/clocks | --now-ms | 2000
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | g1\puser\poff\p1\p604800000\p | dry-run-restore-changes-no-clock-file
+RUN | $T/gso | $T/store | $T/ent | restore | CP1 | $T/dest | --apply | --extra-dir | $T/#.desktop/clocks | --now-ms | 3000
+EXPECT_EXIT | 0 | restore-applied
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT | g1\puser\poff\p1\p259200000\p | restored-epoch-equals-the-saved-epoch
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 3 | restored-ledger-has-only-the-3-saved-rows
+EXPECT_LACKS | #.desktop/clocks/schedule_ledger.txt | SCHED\pr1\p345600000\p | restored-ledger-lacks-day-4
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | step | 3600000
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 3 | stepping-after-restore-refires-nothing-already-ledgered
+RUN | $T/lc.+x | $T | cmd | g1 | advance | 1d
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 4 | firing-resumes-from-the-restored-cursor-day-4-fires
+RUN | /usr/bin/grep | -c | SCHED\pr1\p345600000\p | $T/#.desktop/clocks/schedule_ledger.txt
+EXPECT_OUT_IS | 1 | day-4-fired-exactly-once-after-the-restore
+RUN | /usr/bin/grep | -c | SCHED\pr1\p86400000\p | $T/#.desktop/clocks/schedule_ledger.txt
+EXPECT_OUT_IS | 1 | day-1-still-exactly-once
+RUN | /usr/bin/grep | -c | SCHED\pr1\p259200000\p | $T/#.desktop/clocks/schedule_ledger.txt
+EXPECT_OUT_IS | 1 | day-3-the-last-saved-row-still-exactly-once
+RUN | $T/lc.+x | $T | cmd | g1 | advance | 2d
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 6 | days-5-and-6-fire-then-no-more
+RUN | $T/gso | $T/store | $T/ent | list
+EXPECT_OUT | CP1 | checkpoint-still-listed
+EXPECT_HAS | store/ledger.txt | \prewind\p | snapshot-ledger-has-the-rewind-row
+CLEAN |
+CASE    | restore-live-daemon
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+COPY    | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | gso
+WRITE   | ent/save.txt | player data
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 |  | daily | every:1day
+SPAWN | D | $T/lc.+x | $T | daemon
+RUN | $T/lc.+x | $T | cmd | g1 | advance | 3d
+WAIT_HAS | #.desktop/clocks/schedule_ledger.txt | SCHED\pr1\p259200000\p | 5000 | live-daemon-fires-3-days
+RUN | $T/gso | $T/store | $T/ent | save | CP1 | --extra | $T/#.desktop/clocks/g1.pdl | --extra | $T/#.desktop/clocks/reminders.pdl | --extra | $T/#.desktop/clocks/schedule_ledger.txt | --now-ms | 1000
+EXPECT_EXIT | 0 | checkpoint-saved-while-the-daemon-runs
+RUN | $T/lc.+x | $T | cmd | g1 | advance | 2d
+WAIT_HAS | #.desktop/clocks/schedule_ledger.txt | SCHED\pr1\p432000000\p | 5000 | live-daemon-fires-day-5
+RUN | $T/gso | $T/store | $T/ent | restore | CP1 | $T/dest | --apply | --extra-dir | $T/#.desktop/clocks | --now-ms | 3000
+EXPECT_EXIT | 0 | restore-applied-under-the-running-daemon
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 3 | ledger-back-to-3-rows
+SLEEP | 1500
+EXPECT_ALIVE | $D | daemon-survived-the-restore
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 3 | running-daemon-refires-nothing-after-restore
+RUN | $T/lc.+x | $T | cmd | g1 | advance | 1d
+WAIT_HAS | #.desktop/clocks/schedule_ledger.txt | SCHED\pr1\p345600000\p | 5000 | running-daemon-resumes-from-the-restored-cursor-day-4
+SLEEP | 1000
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 4 | exactly-one-new-row
+RUN | /usr/bin/grep | -c | SCHED\pr1\p345600000\p | $T/#.desktop/clocks/schedule_ledger.txt
+EXPECT_OUT_IS | 1 | day-4-once
+CLEAN |

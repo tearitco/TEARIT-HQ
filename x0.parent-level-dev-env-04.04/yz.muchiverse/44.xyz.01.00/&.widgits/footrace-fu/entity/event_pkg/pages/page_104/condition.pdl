@@ -1,0 +1,5 @@
+# EndTurn 3: that army is out -> the seat after it
+COND | trigger | endturn
+COND | kv | variables.txt | ph_end | eq | 2
+COND | kv | variables.txt | cand_up | eq | 0
+COND | kv | switches.txt | game_over | eq | 0

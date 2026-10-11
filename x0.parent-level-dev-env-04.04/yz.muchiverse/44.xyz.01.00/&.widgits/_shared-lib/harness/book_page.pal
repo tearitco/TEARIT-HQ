@@ -1,0 +1,4 @@
+# book_page.pal - pal harness for book_page_op (see cases/book_page.pdl). Read results/book_page.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/book_page.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/book_page.pdl
+halt

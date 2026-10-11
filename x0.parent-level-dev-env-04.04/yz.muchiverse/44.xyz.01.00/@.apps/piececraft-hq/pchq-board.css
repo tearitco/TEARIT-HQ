@@ -15,9 +15,9 @@ window { background-color: #141414; font-family: Ubuntu; font-size: 10px; }
 .pchq-rail { width: 2px; }
 
 /* bottom status/footer strip */
-.pchq-footer { height: 44px; background-color: #181818; border: 1px solid #2a2a2a; border-width: 1; }
+.pchq-footer { height: 44ui; background-color: #181818; border: 1px solid #2a2a2a; border-width: 1; }
 .pchq-ft { background-color: #232323; color: #cccccc; font-size: 10px;
-  width: 160px; height: 40px; border: 1px solid #3a3a3a; border-width: 1; }
+  width: 160ui; height: 40ui; border: 1px solid #3a3a3a; border-width: 1; }
 /* the synthesized footer row pager (+ / -) - appears bottom-right when
  * entity cells wrap past one row */
 #footer-rows-more, #footer-rows-less {
@@ -52,7 +52,7 @@ window { background-color: #141414; font-family: Ubuntu; font-size: 10px; }
 /* hotbar overlay strip over the bottom-centre of the game view (same look as @.apps/hotbar-hq/hotbar-desk.css) */
 /* overlay palette = the settings window's (taskbar-settings-pal.css .opacity-btn), owner 2026-10-06 */
 .pchq-hotbar { background-color: #444444; border: 1px solid #666666; border-width: 1; }
-.hb-slot { width: 84px; height: 56px; font-size: 12px; background-color: #444444; border: 1px solid #666666; border-width: 1; color: #ffffff; }
+.hb-slot { width: 84ui; height: 56ui; font-size: 12px; background-color: #444444; border: 1px solid #666666; border-width: 1; color: #ffffff; }
 .hb-sel  { background-color: #2f5f8f; color: #ffffff; border-color: #8fb4e0; }
 .hb-empty { color: #5d6478; }
 .hb-quiet { color: #ffffff; }
@@ -61,9 +61,9 @@ window { background-color: #141414; font-family: Ubuntu; font-size: 10px; }
 /* overlay chrome: the drag handle */
 .ov-title { background-color: #666666; color: #ffffff; }
 
-.ov-min { width: 66px; height: 20px; font-size: 14px; background-color: #444444; border: 1px solid #666666; border-width: 1; color: #ffffff; }
+.ov-min { width: 66ui; height: 20ui; font-size: 14px; background-color: #444444; border: 1px solid #666666; border-width: 1; color: #ffffff; }
 
 /* in-board context menu rows (pc_entity_ctx.sh menu markup spliced with inner="page") */
 .ctx-menu { background-color: #444444; border: 1px solid #666666; border-width: 1; }
 .ov-row { width: 400px; font-size: 13px; background-color: #444444; border: 1px solid #666666; border-width: 1; color: #ffffff; }
-.ov-close { width: 66px; height: 20px; font-size: 14px; background-color: #444444; border: 1px solid #666666; border-width: 1; color: #ffffff; }
+.ov-close { width: 66ui; height: 20ui; font-size: 14px; background-color: #444444; border: 1px solid #666666; border-width: 1; color: #ffffff; }

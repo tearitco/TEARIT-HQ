@@ -1,0 +1,2 @@
+# state ids for actor 1 (change_state key is state_<actor>:<state>; 1 = on, 0 = off)
+STATE | 1:1 | Hungry

@@ -1,0 +1,21 @@
+# Behavior Bank entry for the harness `player_menu_playtest` (see HARNESS-BEHAVIOR-BANK-DESIGN.md). Weights on SYNONYM / SLOT / CORPUS rows are hand-seeded; only WEIGHT (from COUNTS) is measured.
+BEHAVIOR | harness.player_menu_playtest
+KIND | spoke
+KEYWORDS | player menu, play-test, taskbar, menu row, play toggle, mode file, older reader
+SYNONYM | tb player | 0.80
+SYNONYM | player dropdown | 0.80
+SYNONYM | play button | 0.60
+SYNONYM | playtest row | 0.90
+SENTENCE | Builds the taskbar Player menu on a scratch house and checks the play-test row sits right after the play row with the right label.
+SENTENCE | Checks the file transitions: play-test writes mode=on plus playtest=1, an older reader still sees ON, stop and play toggle clear play-test.
+SLOT | 0 | POINTS_TO=menu | WEIGHT=0.90
+SLOT | 1 | POINTS_TO=play-mode | WEIGHT=0.80
+SLOT | 2 | POINTS_TO=state-file | WEIGHT=0.60
+CORPUS | game-engine | WEIGHT=0.60
+CORPUS | debug-build | WEIGHT=0.60
+SEQUENCE | 1 | exec ./ops/+x/harness_case_op.+x cases/player_menu_playtest.pdl
+SEQUENCE | 2 | exec ./ops/+x/harness_verdict_op.+x cases/player_menu_playtest.pdl
+SEQUENCE | 3 | exec ./ops/+x/harness_bank_op.+x cases/player_menu_playtest.pdl
+SOURCE | hand-authored 2026-10-07 (claude); masters/synonyms/weights are seeds awaiting owner validation
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

@@ -1,0 +1,5 @@
+# event.pal - Buy 3/3: payment ok -> the player owns the tile (trigger buy). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set owner_{cur_pos} current
+exec ops/+x/var_math.+x . set switches.txt:awaiting_buy 0
+exec ops/+x/var_math.+x . set phase 2
+halt

@@ -1,0 +1,4 @@
+# Buy 1/3: load cash and the tile price, can the player afford it
+COND | trigger | buy
+COND | kv | switches.txt | game_over | eq | 0
+COND | kv | variables.txt | phase | eq | 1

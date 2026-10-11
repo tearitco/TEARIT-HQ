@@ -1,0 +1,8 @@
+# event.pal - EndTurn 3: that army is out -> the seat after it (trigger endturn). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set prevc cand
+exec ops/+x/var_math.+x . mod cand cand players
+exec ops/+x/var_math.+x . add cand cand 1
+exec ops/+x/var_math.+x . le w2 cand prevc
+exec ops/+x/var_math.+x . add wr1 wr1 w2
+exec ops/+x/var_math.+x . set cand_up seat_up_{cand}
+halt

@@ -1,0 +1,4 @@
+# event.pal - FinRule 3: bounce - back by the overshoot (trigger finrule). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . mul f2 rules.pdl:track_len 2
+exec ops/+x/var_math.+x . sub ftgt f2 ftgt
+halt

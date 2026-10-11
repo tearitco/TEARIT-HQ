@@ -1,0 +1,7 @@
+# event.pal - Combat 2: attacker may re-roll its own die once per game if it is losing (Chrono-Weaver) (trigger combat). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . lt a_lose a_roll d_roll
+exec ops/+x/var_math.+x . mul a_rr a_can a_lose
+exec ops/+x/var_math.+x . eq a_rrd0 a_rrd 0
+exec ops/+x/var_math.+x . mul a_rr a_rr a_rrd0
+exec ops/+x/var_math.+x . set ph_cmb 2
+halt

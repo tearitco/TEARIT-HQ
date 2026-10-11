@@ -1,0 +1,3 @@
+# event.pal - Move 5: pay with a free step (trigger move). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . sub free_left free_left 1
+halt

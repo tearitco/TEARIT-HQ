@@ -1,0 +1,309 @@
+# pal-chain multichain + faucet + escrow + daily mining cap (PAL-CHAIN-MULTICHAIN-ESCROW-FAUCET-DESIGN.md sec. 8). SCRATCH roots only under $T; never the real chain.
+# Chains are roots: $T/chains/<id>; ENV PRISC_PROJECT_ROOT selects one. Difficulty 1 (one hex zero) so mining is instant.
+RESULTS | ../results/chain_escrow_faucet.txt
+SCRATCH |
+COPY | 041.pal-chain⛓️/ops/+x/chain_new.+x | ops/+x/chain_new.+x
+COPY | 041.pal-chain⛓️/ops/+x/chain_faucet.+x | ops/+x/chain_faucet.+x
+COPY | 041.pal-chain⛓️/ops/+x/chain_escrow.+x | ops/+x/chain_escrow.+x
+COPY | 041.pal-chain⛓️/ops/+x/chain_balance.+x | ops/+x/chain_balance.+x
+COPY | 041.pal-chain⛓️/ops/+x/chain_send.+x | ops/+x/chain_send.+x
+COPY | 041.pal-chain⛓️/ops/+x/chain_miner.+x | ops/+x/chain_miner.+x
+COPY | 041.pal-chain⛓️/ops/+x/chain_create_wallet.+x | ops/+x/chain_create_wallet.+x
+
+CASE | chain-new
+ENV | PRISC_PROJECT_ROOT | $T
+ENV | CHAIN_DIFFICULTY_HEX_ZEROS | 1
+RUN | $T/ops/+x/chain_new.+x | lab | --difficulty | 1 | --cap | 3 | --faucet-amount | 1000 | --cooldown | 0 | --faucet-daily-cap | 2000
+EXPECT_EXIT | 0 | creates-rc-0
+EXPECT_OUT | created | create-says-created
+EXPECT_EXISTS | chains/lab/data/blockchain.txt | has-data-blockchain.txt
+EXPECT_EXISTS | chains/lab/data/pending_tx.txt | has-data-pending_tx.txt
+EXPECT_EXISTS | chains/lab/data/faucet_ledger.txt | has-data-faucet_ledger.txt
+EXPECT_EXISTS | chains/lab/wallets | has-wallets
+EXPECT_EXISTS | chains/lab/net | has-net
+EXPECT_EXISTS | chains/lab/chain.pdl | has-chain.pdl
+EXPECT_HAS | chains/lab/chain.pdl | difficulty_hex_zeros       \p 1 | pdl-difficulty-1
+EXPECT_HAS | chains/lab/chain.pdl | daily_cap_blocks_per_wallet\p 3 | pdl-mining-cap-3
+EXPECT_HAS | chains/lab/chain.pdl | amount_millicones          \p 1000 | pdl-faucet-amount
+EXPECT_HAS | chains/lab/chain.pdl | kind                       \p test | pdl-kind-test-default
+SUMTREE | labBefore | chains/lab
+RUN | $T/ops/+x/chain_new.+x | lab | --difficulty | 9
+EXPECT_EXIT | 2 | duplicate-refused-rc-2
+SUMTREE | labAfter | chains/lab
+EXPECT_EQ | $labBefore | $labAfter | duplicate-never-overwrites
+RUN | $T/ops/+x/chain_new.+x | cones
+EXPECT_EXIT | 2 | reserved-cones-refused
+EXPECT_NOFILE | chains/cones | cones-not-created
+RUN | $T/ops/+x/chain_new.+x | Bad_ID
+EXPECT_EXIT | 2 | uppercase-id-refused
+RUN | $T/ops/+x/chain_new.+x | ../escape
+EXPECT_EXIT | 2 | path-traversal-id-refused
+RUN | $T/ops/+x/chain_new.+x | a b
+EXPECT_EXIT | 2 | space-id-refused
+EXPECT_NOFILE | chains/Bad_ID | bad-id-not-created
+EXPECT_NOFILE | escape | traversal-not-created
+RUN | $T/ops/+x/chain_new.+x | usr1 | --kind | user
+EXPECT_EXIT | 0 | user-kind-ok
+EXPECT_HAS | chains/usr1/chain.pdl | kind                       \p user | pdl-kind-user
+RUN | $T/ops/+x/chain_new.+x | bad1 | --kind | cones
+EXPECT_EXIT | 1 | kind-cones-refused
+RUN | $T/ops/+x/chain_new.+x | bad2 | --difficulty | 0
+EXPECT_EXIT | 1 | difficulty-0-refused
+EXPECT_NOFILE | chains/bad2 | bad-option-creates-nothing
+EXPECT_NOFILE | chain.pdl | parent-root-gets-no-chain-pdl
+
+CASE | faucet
+ENV | PRISC_PROJECT_ROOT | $T/chains/lab
+RUN | $T/ops/+x/chain_create_wallet.+x | alice | pw
+RUN | $T/ops/+x/chain_create_wallet.+x | house | pw
+RUN | $T/ops/+x/chain_faucet.+x | alice
+EXPECT_EXIT | 0 | claim-1-ok
+EXPECT_OUT | 1000 | claim-reports-amount
+EXPECT_HAS | chains/lab/data/pending_tx.txt | FAUCET\palice\p1000\p | claim-queues-faucet-tx
+EXPECT_HAS | chains/lab/data/faucet_ledger.txt | CLAIM\palice\p1000\p | claim-in-ledger
+RUN | $T/ops/+x/chain_balance.+x | alice
+EXPECT_OUT_IS | 0 | queued-faucet-not-yet-spendable
+RUN | $T/ops/+x/chain_miner.+x | house | --blocks | 1
+EXPECT_EXIT | 0 | mine-1-rc-0
+EXPECT_HAS | chains/lab/data/blockchain.txt | FAUCET\palice\p1000 | block-includes-faucet-tx
+RUN | $T/ops/+x/chain_balance.+x | alice
+EXPECT_OUT_IS | 1000 | faucet-mint-counts-for-alice
+RUN | $T/ops/+x/chain_balance.+x | house
+EXPECT_OUT_IS | 10500 | block-0-reward-counted-on-pdl-chain
+SUMTREE | ledA | chains/lab/data
+RUN | $T/ops/+x/chain_faucet.+x | alice
+EXPECT_EXIT | 0 | claim-2-ok-cooldown-0
+RUN | $T/ops/+x/chain_faucet.+x | alice
+EXPECT_EXIT | 3 | claim-3-refused-daily-cap
+EXPECT_OUT | daily cap | refusal-says-daily-cap
+RUN | awk | END{print NR} | $T/chains/lab/data/faucet_ledger.txt
+EXPECT_OUT_IS | 2 | ledger-2-claims-refusal-appended-nothing
+EXPECT_HAS | chains/lab/data/faucet_ledger.txt | CLAIM\palice\p1000\p | ledger-first-claim-kept
+RUN | $T/ops/+x/chain_faucet.+x | nobody
+EXPECT_EXIT | 2 | unknown-wallet-refused
+RUN | $T/ops/+x/chain_faucet.+x | _burn
+EXPECT_EXIT | 2 | burn-wallet-refused
+ENV | PRISC_PROJECT_ROOT | $T
+RUN | $T/ops/+x/chain_new.+x | cool | --difficulty | 1
+EXPECT_EXIT | 0 | cool-chain-created
+ENV | PRISC_PROJECT_ROOT | $T/chains/cool
+RUN | $T/ops/+x/chain_create_wallet.+x | bob | pw
+RUN | $T/ops/+x/chain_faucet.+x | bob
+EXPECT_EXIT | 0 | cool-claim-1-ok
+RUN | $T/ops/+x/chain_faucet.+x | bob
+EXPECT_EXIT | 3 | cool-claim-2-refused-cooldown
+EXPECT_OUT | cooldown | refusal-says-cooldown
+WRITE | chains/cool/data/faucet_ledger.txt | CLAIM\pbob\p1000\p1000\n
+RUN | $T/ops/+x/chain_faucet.+x | bob
+EXPECT_EXIT | 0 | cool-claim-ok-after-old-claim-expired
+ENV | PRISC_PROJECT_ROOT | $T
+RUN | $T/ops/+x/chain_faucet.+x | alice
+EXPECT_EXIT | 2 | no-chain-pdl-root-never-has-faucet
+ENV | PRISC_PROJECT_ROOT | $T
+RUN | $T/ops/+x/chain_new.+x | kc
+ENV | PRISC_PROJECT_ROOT | $T/chains/kc
+RUN | $T/ops/+x/chain_create_wallet.+x | alice | pw
+WRITE | chains/kc/chain.pdl | CHAIN \p kind \p cones\nFAUCET \p enabled \p 1\nFAUCET \p amount_millicones \p 1000\n
+RUN | $T/ops/+x/chain_faucet.+x | alice
+EXPECT_EXIT | 2 | cones-kind-refuses-even-if-enabled
+WRITE | chains/kc/chain.pdl | CHAIN \p kind \p test\nFAUCET \p enabled \p 0\nFAUCET \p amount_millicones \p 1000\nMINING \p difficulty_hex_zeros \p 1\n
+RUN | $T/ops/+x/chain_faucet.+x | alice
+EXPECT_EXIT | 2 | enabled-0-refuses
+APPEND | chains/kc/data/pending_tx.txt | FAUCET\palice\p1000\p1\pforgedfaucet\n
+RUN | $T/ops/+x/chain_miner.+x | alice | --blocks | 1
+EXPECT_EXIT | 0 | disabled-chain-mines
+EXPECT_LACKS | chains/kc/data/blockchain.txt | forgedfaucet | forged-faucet-tx-not-included-when-disabled
+EXPECT_HAS | chains/kc/data/rejected_tx.txt | faucet disabled | forged-faucet-recorded-in-rejected
+
+CASE | escrow
+ENV | PRISC_PROJECT_ROOT | $T
+RUN | $T/ops/+x/chain_new.+x | econ | --difficulty | 1 | --cap | 0 | --cooldown | 0 | --faucet-daily-cap | 0
+EXPECT_EXIT | 0 | econ-created
+ENV | PRISC_PROJECT_ROOT | $T/chains/econ
+RUN | $T/ops/+x/chain_create_wallet.+x | alice | pw
+RUN | $T/ops/+x/chain_create_wallet.+x | bob | pw
+RUN | $T/ops/+x/chain_create_wallet.+x | house | pw
+RUN | $T/ops/+x/chain_create_wallet.+x | carol | pw
+RUN | $T/ops/+x/chain_faucet.+x | alice
+RUN | $T/ops/+x/chain_faucet.+x | alice
+RUN | $T/ops/+x/chain_faucet.+x | alice
+RUN | $T/ops/+x/chain_faucet.+x | bob
+RUN | $T/ops/+x/chain_miner.+x | house | --blocks | 1
+RUN | $T/ops/+x/chain_balance.+x | alice
+EXPECT_OUT_IS | 3000 | alice-funded-3000
+RUN | $T/ops/+x/chain_balance.+x | bob
+EXPECT_OUT_IS | 1000 | bob-funded-1000
+RUN | $T/ops/+x/chain_escrow.+x | lock | e1 | alice | 2000 | house
+EXPECT_EXIT | 0 | lock-e1-ok
+EXPECT_HAS | chains/econ/data/pending_tx.txt | LOCK\pe1\palice\p2000\phouse\p | lock-queued
+RUN | $T/ops/+x/chain_miner.+x | house | --blocks | 1
+RUN | $T/ops/+x/chain_balance.+x | alice
+EXPECT_OUT_IS | 1000 | lock-reduces-spendable-balance
+RUN | $T/ops/+x/chain_escrow.+x | status | e1
+EXPECT_OUT | locked=2000 paid_out=0 refunded=0 remaining=2000 | status-after-lock
+EXPECT_OUT | agent=house | status-shows-agent
+RUN | $T/ops/+x/chain_send.+x | alice | bob | 1500
+EXPECT_EXIT | 1 | locked-funds-cannot-be-sent
+EXPECT_OUT | Insufficient | send-refusal-says-insufficient
+RUN | $T/ops/+x/chain_send.+x | alice | bob | 500
+EXPECT_EXIT | 0 | unlocked-funds-can-be-sent
+RUN | $T/ops/+x/chain_escrow.+x | lock | e2 | bob | 1000 | house
+EXPECT_EXIT | 0 | lock-e2-ok
+RUN | $T/ops/+x/chain_escrow.+x | lock | e3 | alice | 5000 | house
+EXPECT_EXIT | 3 | lock-over-spendable-refused
+EXPECT_OUT | insufficient | lock-refusal-says-insufficient
+RUN | $T/ops/+x/chain_escrow.+x | lock | e1 | carol | 1 | house
+EXPECT_EXIT | 3 | lock-duplicate-id-refused
+RUN | $T/ops/+x/chain_escrow.+x | lock | e4 | alice | 0 | house
+EXPECT_EXIT | 3 | lock-zero-refused
+RUN | $T/ops/+x/chain_escrow.+x | payout | e1 | mallory | bob | 100
+EXPECT_EXIT | 3 | payout-wrong-by-refused
+EXPECT_OUT | not the escrow agent | wrong-by-reason
+RUN | $T/ops/+x/chain_escrow.+x | payout | e1 | house | bob | 2500
+EXPECT_EXIT | 3 | payout-over-remaining-refused
+EXPECT_OUT | exceeds remaining | over-payout-reason
+RUN | $T/ops/+x/chain_escrow.+x | payout | nosuch | house | bob | 1
+EXPECT_EXIT | 3 | payout-unknown-escrow-refused
+RUN | $T/ops/+x/chain_escrow.+x | payout | e1 | house | bob | 1800
+EXPECT_EXIT | 0 | payout-winner-ok
+RUN | $T/ops/+x/chain_escrow.+x | payout | e1 | house | _burn | 200
+EXPECT_EXIT | 0 | rake-payout-to-burn-ok
+RUN | $T/ops/+x/chain_escrow.+x | payout | e1 | house | bob | 1
+EXPECT_EXIT | 3 | payout-after-fully-paid-refused
+RUN | $T/ops/+x/chain_escrow.+x | refund | e2 | house | bob | 400
+EXPECT_EXIT | 0 | refund-ok
+RUN | $T/ops/+x/chain_miner.+x | house | --blocks | 1
+RUN | $T/ops/+x/chain_escrow.+x | status | e1
+EXPECT_OUT | locked=2000 paid_out=2000 refunded=0 remaining=0 | status-e1-after-payout-and-rake
+RUN | $T/ops/+x/chain_escrow.+x | status | e2
+EXPECT_OUT | locked=1000 paid_out=0 refunded=400 remaining=600 | status-e2-after-refund
+RUN | $T/ops/+x/chain_escrow.+x | status | zzz
+EXPECT_EXIT | 2 | status-unknown-escrow-rc-2
+RUN | $T/ops/+x/chain_balance.+x | alice
+EXPECT_OUT_IS | 500 | alice-3000-minus-lock-minus-send
+CAPTURE | balAlice
+RUN | $T/ops/+x/chain_balance.+x | bob
+EXPECT_OUT_IS | 2700 | bob-funds-plus-payout-minus-lock-plus-refund
+CAPTURE | balBob
+RUN | $T/ops/+x/chain_balance.+x | _burn
+EXPECT_OUT_IS | 200 | burn-holds-the-rake
+CAPTURE | balBurn
+RUN | $T/ops/+x/chain_send.+x | _burn | carol | 1
+EXPECT_EXIT | 1 | burn-is-never-spendable
+RUN | $T/ops/+x/chain_balance.+x | house
+CAPTURE | balHouse
+RUN | $T/ops/+x/chain_escrow.+x | audit
+EXPECT_OUT | bal\palice\p$balAlice | audit-agrees-with-chain_balance-alice
+EXPECT_OUT | bal\pbob\p$balBob | audit-agrees-with-chain_balance-bob
+EXPECT_OUT | bal\phouse\p$balHouse | audit-agrees-with-chain_balance-house
+EXPECT_OUT | bal\p_burn\p$balBurn | audit-agrees-with-chain_balance-burn
+EXPECT_OUT | locked=600 burn=200 conserved=1 | conservation-minted-equals-balances-plus-locked-plus-burn
+APPEND | chains/econ/data/pending_tx.txt | LOCK\pe9\palice\p99999\phouse\p1\pforgedA\n
+APPEND | chains/econ/data/pending_tx.txt | PAYOUT\pe2\pmallory\pmallory\p10\p1\pforgedB\n
+APPEND | chains/econ/data/pending_tx.txt | PAYOUT\pe2\phouse\pmallory\p700\p1\pforgedC\n
+APPEND | chains/econ/data/pending_tx.txt | PAYOUT\pe2\phouse\pcarol\p100\p1\pgoodD\n
+RUN | $T/ops/+x/chain_miner.+x | house | --blocks | 1
+EXPECT_EXIT | 0 | mine-with-forged-lines-rc-0
+EXPECT_LACKS | chains/econ/data/blockchain.txt | forgedA | inclusion-overdraft-lock-not-included
+EXPECT_LACKS | chains/econ/data/blockchain.txt | forgedB | inclusion-wrong-by-not-included
+EXPECT_LACKS | chains/econ/data/blockchain.txt | forgedC | inclusion-over-remaining-not-included
+EXPECT_HAS | chains/econ/data/blockchain.txt | goodD | inclusion-valid-line-still-included
+EXPECT_HAS | chains/econ/data/rejected_tx.txt | insufficient spendable balance | rejected-ledger-has-overdraft-reason
+EXPECT_HAS | chains/econ/data/rejected_tx.txt | by is not the escrow agent | rejected-ledger-has-wrong-by-reason
+EXPECT_HAS | chains/econ/data/rejected_tx.txt | exceeds remaining locked | rejected-ledger-has-over-remaining-reason
+RUN | awk | END{print NR} | $T/chains/econ/data/pending_tx.txt
+EXPECT_OUT_IS | 0 | pending-emptied-included-and-rejected-removed
+RUN | $T/ops/+x/chain_balance.+x | carol
+EXPECT_OUT_IS | 100 | carol-got-the-valid-payout-only
+RUN | $T/ops/+x/chain_escrow.+x | status | e2
+EXPECT_OUT | locked=1000 paid_out=100 refunded=400 remaining=500 | status-e2-after-second-payout
+RUN | $T/ops/+x/chain_escrow.+x | audit
+EXPECT_OUT | conserved=1 | conservation-still-holds-after-forged-lines
+RUN | $T/ops/+x/chain_balance.+x | alice
+CAPTURE | a1
+EXPECT_HAS | chains/econ/wallets/alice/wallet.txt | cached_balance=$a1 | cache-holds-the-printed-balance
+RUN | $T/ops/+x/chain_send.+x | alice | bob | 100
+EXPECT_EXIT | 0 | send-100
+RUN | $T/ops/+x/chain_miner.+x | house | --blocks | 1
+RUN | $T/ops/+x/chain_balance.+x | alice
+CAPTURE | aInc
+EXPECT_OUT_IS | 400 | incremental-balance-after-send
+WRITE | chains/econ/wallets/alice/wallet.txt | wallet_id=alice\npassword_hash=x\ncreated_at=1\ncached_balance=0\nlast_processed_block=0\n
+RUN | $T/ops/+x/chain_balance.+x | alice
+CAPTURE | aFull
+EXPECT_EQ | $aInc | $aFull | incremental-cache-equals-full-replay-with-escrow
+WRITE | chains/econ/chain.pdl | CHAIN \p kind \p test\nMINING \p difficulty_hex_zeros \p 1\nESCROW \p enabled \p 0\n
+RUN | $T/ops/+x/chain_escrow.+x | lock | e7 | bob | 10 | house
+EXPECT_EXIT | 2 | escrow-disabled-refuses-issue
+APPEND | chains/econ/data/pending_tx.txt | LOCK\pe8\pbob\p10\phouse\p1\pforgedE\n
+RUN | $T/ops/+x/chain_miner.+x | house | --blocks | 1
+EXPECT_LACKS | chains/econ/data/blockchain.txt | forgedE | escrow-disabled-lock-not-included
+EXPECT_HAS | chains/econ/data/rejected_tx.txt | escrow disabled | escrow-disabled-recorded
+ENV | PRISC_PROJECT_ROOT | $T
+RUN | $T/ops/+x/chain_escrow.+x | lock | e1 | alice | 1 | house
+EXPECT_EXIT | 2 | no-chain-pdl-root-has-no-escrow
+
+CASE | mining-cap
+ENV | PRISC_PROJECT_ROOT | $T
+RUN | $T/ops/+x/chain_new.+x | capc | --difficulty | 1 | --cap | 2
+EXPECT_EXIT | 0 | capc-created
+ENV | PRISC_PROJECT_ROOT | $T/chains/capc
+RUN | $T/ops/+x/chain_miner.+x | m1 | --blocks | 5
+EXPECT_EXIT | 3 | stops-at-cap-rc-3
+EXPECT_OUT | daily cap reached | cap-message
+RUN | awk | END{print NR} | $T/chains/capc/data/blockchain.txt
+EXPECT_OUT_IS | 2 | exactly-cap-blocks-mined
+RUN | $T/ops/+x/chain_miner.+x | m1 | --blocks | 1
+EXPECT_EXIT | 3 | second-run-still-capped
+RUN | awk | END{print NR} | $T/chains/capc/data/blockchain.txt
+EXPECT_OUT_IS | 2 | capped-wallet-adds-no-block
+RUN | $T/ops/+x/chain_miner.+x | m2 | --blocks | 1
+EXPECT_EXIT | 0 | other-wallet-not-capped
+RUN | awk | END{print NR} | $T/chains/capc/data/blockchain.txt
+EXPECT_OUT_IS | 3 | cap-is-per-wallet
+ENV | PRISC_PROJECT_ROOT | $T
+RUN | $T/ops/+x/chain_new.+x | capd | --difficulty | 1 | --cap | 1
+ENV | PRISC_PROJECT_ROOT | $T/chains/capd
+WRITE | chains/capd/data/blockchain.txt | BLOCK\p0\p0000000000000000000000000000000000000000000000000000000000000000\p1\paaaa\p1000\pm1\p\n
+RUN | $T/ops/+x/chain_miner.+x | m1 | --blocks | 1
+EXPECT_EXIT | 0 | yesterdays-block-not-counted-toward-cap
+RUN | $T/ops/+x/chain_miner.+x | m1 | --blocks | 1
+EXPECT_EXIT | 3 | then-capped-for-today
+ENV | PRISC_PROJECT_ROOT | $T
+RUN | $T/ops/+x/chain_new.+x | nocap | --difficulty | 1 | --cap | 0
+ENV | PRISC_PROJECT_ROOT | $T/chains/nocap
+RUN | $T/ops/+x/chain_miner.+x | m1 | --blocks | 4
+EXPECT_EXIT | 0 | cap-0-is-unlimited
+RUN | awk | END{print NR} | $T/chains/nocap/data/blockchain.txt
+EXPECT_OUT_IS | 4 | unlimited-mined-all-4
+
+CASE | legacy
+MKDIR | legacy/data
+MKDIR | legacy/wallets
+MKDIR | legacy/net
+COPY | 041.pal-chain⛓️/ops/+x/chain_balance.+x | legacy/ops/+x/chain_balance.+x
+COPY | 041.pal-chain⛓️/ops/+x/chain_send.+x | legacy/ops/+x/chain_send.+x
+ENV | PRISC_PROJECT_ROOT | $T/legacy
+ENV | CHAIN_DIFFICULTY_HEX_ZEROS | 1
+RUN | $T/ops/+x/chain_create_wallet.+x | w1 | pw
+RUN | $T/ops/+x/chain_create_wallet.+x | w2 | pw
+RUN | $T/ops/+x/chain_miner.+x | w1 | --blocks | 2
+EXPECT_EXIT | 0 | legacy-mine-2-rc-0
+EXPECT_NOFILE | legacy/chain.pdl | legacy-root-gets-no-chain-pdl
+RUN | $T/ops/+x/chain_balance.+x | w1
+EXPECT_OUT_IS | 10500 | legacy-constants-and-block-0-quirk-unchanged
+RUN | $T/legacy/ops/+x/chain_send.+x | w1 | w2 | 500
+EXPECT_EXIT | 0 | legacy-send-ok
+RUN | $T/ops/+x/chain_miner.+x | w1 | --blocks | 1
+RUN | $T/ops/+x/chain_balance.+x | w2
+EXPECT_OUT_IS | 500 | legacy-tx-credits-recipient
+RUN | $T/ops/+x/chain_balance.+x | w1
+EXPECT_OUT_IS | 20500 | legacy-tx-debits-sender
+RUN | $T/ops/+x/chain_miner.+x | w1 | --blocks | 5
+EXPECT_EXIT | 0 | legacy-no-daily-cap
+APPEND | legacy/data/pending_tx.txt | FAUCET\pw2\p1000\p1\plegacyforged\n
+RUN | $T/ops/+x/chain_miner.+x | w1 | --blocks | 1
+EXPECT_LACKS | legacy/data/blockchain.txt | legacyforged | legacy-root-never-includes-faucet-mint
+RUN | $T/ops/+x/chain_faucet.+x | w1
+EXPECT_EXIT | 2 | legacy-root-no-faucet
+CLEAN |

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Tiled bars demo — settings item 22</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; background: #111; color: #eee;
+    font: 15px/1.35 "DejaVu Sans", sans-serif;
+  }
+  header { padding: 16px 20px 8px; }
+  header h1 { font-size: 18px; margin: 0 0 6px; font-weight: 600; }
+  header p { margin: 0; color: #aaa; max-width: 62em; }
+  .stage { display: flex; gap: 20px; padding: 16px 20px 28px; align-items: flex-start; flex-wrap: wrap; }
+  .desk { width: 520px; background: #1a1a1a; border: 1px solid #333; }
+  .caption { font-size: 12px; color: #9a9; padding: 8px 10px; }
+  .strip { display: flex; gap: 4px; padding: 6px; background: #141414; }
+  .cell, .row, .title {
+    position: relative; color: #f4f4f4;
+    display: flex; align-items: center; justify-content: center;
+    background: #2a2a2a;
+  }
+  .cell { height: 36px; flex: 1; font-size: 13px; }
+  .win { margin: 14px; border: 1px solid #444; background: #161616; }
+  .title { height: 32px; justify-content: flex-start; padding: 0 12px; font-weight: 600; }
+  .row { height: 34px; margin: 6px 8px; justify-content: flex-start; padding: 0 12px; }
+  .settings {
+    width: 280px; background: #1c1c1c; border: 1px solid #3a3a3a; padding: 12px;
+  }
+  .settings h2 { font-size: 14px; margin: 0 0 4px; }
+  .settings .where { color: #888; font-size: 12px; margin-bottom: 12px; }
+  button.opt {
+    display: block; width: 100%; text-align: left; margin: 6px 0;
+    background: #2a2a2a; color: #eee; border: 1px solid #555;
+    padding: 8px 10px; font: inherit; cursor: pointer;
+  }
+  button.opt.on { border-color: #22c55e; }
+  .swatches { display: flex; gap: 8px; margin: 8px 0 12px; }
+  button.tilepick {
+    width: 72px; height: 28px; border: 2px solid #444; cursor: pointer; padding: 0;
+  }
+  button.tilepick.sel { border-color: #22c55e; }
+  .note { color: #888; font-size: 12px; }
+  /* original bar art, not an RTP sheet: caps + repeating middle */
+  .tiled .cell, .tiled .row, .tiled .title { background: transparent; }
+  .tiled .cell span, .tiled .row span, .tiled .title span {
+    position: relative; z-index: 1; text-shadow: 0 1px 0 #000;
+  }
+  .skin {
+    position: absolute; inset: 0; display: flex; pointer-events: none;
+  }
+  .skin i { display: block; height: 100%; }
+  .skin .l, .skin .r { width: 10px; flex: none; }
+  .skin .m { flex: 1; }
+  .stone .l { background: linear-gradient(#6a6258, #3a342e); border-right: 1px solid #c8b89a; }
+  .stone .r { background: linear-gradient(#6a6258, #3a342e); border-left: 1px solid #1a1612; }
+  .stone .m { background: repeating-linear-gradient(90deg, #5c534a 0 8px, #4a433c 8px 10px); box-shadow: inset 0 2px 0 #8a7d6c, inset 0 -3px 0 #2a241e; }
+  .wood .l { background: linear-gradient(#8a5a32, #4a2c16); }
+  .wood .r { background: linear-gradient(#8a5a32, #4a2c16); }
+  .wood .m { background: repeating-linear-gradient(90deg, #6b4224 0 6px, #7a4e2c 6px 12px); box-shadow: inset 0 2px 0 #c48a58, inset 0 -3px 0 #3a2010; }
+  .blue .l, .blue .r { background: linear-gradient(#2a3c68, #121828); }
+  .blue .m { background: linear-gradient(#24345c, #1a2748); box-shadow: inset 0 0 0 2px #7eb0e0, inset 0 0 0 4px #142038; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Tiled bars demo</h1>
+  <p>This page is the look only. The live taskbar is unchanged. Turn tiled bars off here the same way item 22 will: the switch writes the choice back to empty, and the bars return to a flat fill.</p>
+</header>
+<div class="stage">
+  <div>
+    <div class="caption" id="cap">Flat fill — bar_tile empty</div>
+    <div class="desk" id="desk">
+      <div class="strip" id="strip"></div>
+      <div class="win" id="win"></div>
+    </div>
+  </div>
+  <div class="settings">
+    <h2>taskbar settings</h2>
+    <div class="where">1.hq → 22 settings</div>
+    <button class="opt" id="toggle" type="button">Tiled bars: off</button>
+    <div class="note">Bar tile — pick one. Only used while tiled bars are on.</div>
+    <div class="swatches">
+      <button class="tilepick stone" data-skin="stone" type="button" title="stone"></button>
+      <button class="tilepick wood" data-skin="wood" type="button" title="wood"></button>
+      <button class="tilepick blue" data-skin="blue" type="button" title="blue window"></button>
+    </div>
+    <p class="note" id="key">bar_tile=</p>
+    <p class="note">Off is the rollback. Nothing in this file is read by the desk.</p>
+  </div>
+</div>
+<script>
+const cells = ["hq", "book", "page", "menu", "player"];
+const rows = ["Actors", "Classes", "Skills", "Items", "Weapons"];
+const strip = document.getElementById("strip");
+const win = document.getElementById("win");
+const desk = document.getElementById("desk");
+const toggle = document.getElementById("toggle");
+const keyEl = document.getElementById("key");
+const cap = document.getElementById("cap");
+let on = false;
+let skin = "stone";
+
+function bar(tag, text) {
+  const el = document.createElement(tag);
+  const face = document.createElement("div");
+  face.className = "skin " + skin;
+  face.innerHTML = "<i class='l'></i><i class='m'></i><i class='r'></i>";
+  face.hidden = !on;
+  const label = document.createElement("span");
+  label.textContent = text;
+  el.appendChild(face);
+  el.appendChild(label);
+  return el;
+}
+
+function paint() {
+  strip.replaceChildren();
+  win.replaceChildren();
+  desk.classList.toggle("tiled", on);
+  cells.forEach(name => strip.appendChild(bar("div", name)).classList.add("cell"));
+  const title = bar("div", "database");
+  title.classList.add("title");
+  win.appendChild(title);
+  rows.forEach(name => win.appendChild(bar("div", name)).classList.add("row"));
+  toggle.textContent = "Tiled bars: " + (on ? "on" : "off");
+  toggle.classList.toggle("on", on);
+  keyEl.textContent = on ? ("bar_tile=demo/" + skin + ".csv") : "bar_tile=";
+  cap.textContent = on
+    ? ("Tiled — " + skin + " bar, label inside")
+    : "Flat fill — bar_tile empty";
+  document.querySelectorAll(".tilepick").forEach(b => {
+    b.classList.toggle("sel", b.dataset.skin === skin);
+  });
+}
+
+toggle.addEventListener("click", () => { on = !on; paint(); });
+document.querySelectorAll(".tilepick").forEach(b => {
+  b.addEventListener("click", () => { skin = b.dataset.skin; if (!on) on = true; paint(); });
+});
+paint();
+</script>
+</body>
+</html>

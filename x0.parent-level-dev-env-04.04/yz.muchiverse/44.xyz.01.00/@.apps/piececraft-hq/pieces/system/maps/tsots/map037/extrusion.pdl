@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+META         | map_id             | tsots
+META         | desk_id            | map037
+META         | note               | home in castle
+EXTRUDE      | W                  | 3
+EXTRUDE      | default             | 0

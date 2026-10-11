@@ -1,0 +1,8 @@
+# finds.pdl - what the dig act can turn up (v1). FIND | name | depth=<digs deep needed> | weight=<rarity: chance is weight / sum of the reachable weights> | item=<item id or ->
+# Each dig goes one deeper at the same hole (dig_depth in the digger's variables.txt, back to 0 after tunables max_dig_depth); the seeded roll picks among the rows whose depth is reached.
+# The tool requirement is skills.pdl: dig needs_item=spade.
+FIND | nothing | depth=1 | weight=20 | item=-
+FIND | stone   | depth=1 | weight=40 | item=stone
+FIND | clay    | depth=1 | weight=30 | item=clay
+FIND | silver  | depth=3 | weight=12 | item=silver
+FIND | gold    | depth=5 | weight=6  | item=gold

@@ -1,0 +1,3 @@
+# TurnStart 1: tokens reset, free steps reset
+COND | trigger | turnstart
+COND | kv | switches.txt | game_over | eq | 0

@@ -1,0 +1,1 @@
+EDIT | id=g-groq-gpt-oss-120b-c_op | type=worker_family_grade | target=groq-gpt-oss-120b | slot=c_op | delta=0.0 | reason="grade of this worker on this task family, counted from harness verdicts" | proposer=ledger | status=candidate

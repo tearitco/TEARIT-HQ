@@ -1,0 +1,4 @@
+# event.pal - Setup 3: guardrail - army HP of seat 3 above rules.pdl max_army_hp -> refused (trigger setup). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set setup_error 1
+exec ops/+x/row_append.+x . ledger.txt SETUP refused army_hp seat 3 {army_hp_3}
+halt

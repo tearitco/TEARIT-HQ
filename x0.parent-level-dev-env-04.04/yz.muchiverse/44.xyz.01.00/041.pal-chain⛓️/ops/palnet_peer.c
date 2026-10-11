@@ -49,6 +49,9 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 
+#ifndef MSG_NOSIGNAL        /* macOS has no MSG_NOSIGNAL; SIGPIPE is ignored in main() instead */
+#define MSG_NOSIGNAL 0
+#endif
 #define MAX_PATH 4096
 #define PATH_BUF (MAX_PATH + 256)
 #define MAX_LINE 4096
@@ -65,6 +68,10 @@ typedef struct {
     char node_id[128];
     int hello_sent;
     int hello_received;
+    char host[64]; int port; char kind[64]; long since;   /* from HELLO; shown by peers_now.txt */
+    int outbound;        /* 1 = we dialed this connection, 0 = we accepted it */
+    int dup;             /* set when HELLO shows this node is already connected on another socket; the main loop closes it */
+    char seed_key[96];   /* "host:port" of the PALNET_SEEDS entry this connection came from; HELLO never overwrites it */
 } PeerConn;
 
 static PeerConn g_peers[MAX_PEERS];
@@ -125,6 +132,19 @@ static void set_nonblocking(int fd) {
  * fixed, human-pre-configured port and just fails otherwise - checked
  * directly, see PAL-NET-STANDARD.txt sec. 3 for why that doesn't fit
  * this task's own unpredictable process lifecycle). */
+/* Addresses come from the environment, never from this file (owner rule: no hardcoded addresses, so the same binary runs on this
+ * machine, debil and the Mac with each one's own address):
+ *   PALNET_BIND       address to listen on (default 127.0.0.1 = this machine only; a LAN address or 0.0.0.0 to accept other machines).
+ *   PALNET_ADVERTISE  host written to the presence file for peers to dial (default: PALNET_BIND; required when binding 0.0.0.0).
+ *   PALNET_SEEDS      comma list of host:port to dial when the presence directory has nobody (cross-machine discovery:
+ *                     the presence directory is a local folder, so a remote peer is only reachable by a seed). Used with seek_kind.
+ * NOTE: a non-loopback bind accepts any connection; there is no authentication yet (PAL-NET-STANDARD sec. 7). LAN test use only. */
+static const char *bind_host(void) { const char *e = getenv("PALNET_BIND"); return (e && e[0]) ? e : "127.0.0.1"; }
+static const char *advertise_host(void) {
+    const char *e = getenv("PALNET_ADVERTISE"); if (e && e[0]) return e;
+    const char *b = bind_host(); return strcmp(b, "0.0.0.0") == 0 ? "127.0.0.1" : b;
+}
+
 static int bind_with_retry(int base_port, int *out_port) {
     for (int attempt = 0; attempt < 200; attempt++) {
         int fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -135,7 +155,8 @@ static int bind_with_retry(int base_port, int *out_port) {
         struct sockaddr_in addr;
         memset(&addr, 0, sizeof(addr));
         addr.sin_family = AF_INET;
-        addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+        addr.sin_addr.s_addr = strcmp(bind_host(), "0.0.0.0") == 0 ? htonl(INADDR_ANY) : inet_addr(bind_host());
+        if (addr.sin_addr.s_addr == INADDR_NONE && strcmp(bind_host(), "255.255.255.255") != 0) { close(fd); fprintf(stderr, "palnet_peer: bad PALNET_BIND '%s'\n", bind_host()); return -1; }
         addr.sin_port = htons((uint16_t)(base_port + attempt));
 
         if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) == 0 && listen(fd, 8) == 0) {
@@ -163,7 +184,7 @@ static void write_presence_file(void) {
     fprintf(f, "kind=%s\n", g_own_kind);
     fprintf(f, "project_id=%s\n", g_project_id);
     fprintf(f, "piece_id=%s\n", g_piece_id);
-    fprintf(f, "host=127.0.0.1\n");
+    fprintf(f, "host=%s\n", advertise_host());
     fprintf(f, "port=%d\n", g_bound_port);
     fprintf(f, "pid=%d\n", (int)getpid());
     fprintf(f, "last_seen=%ld\n", (long)time(NULL));
@@ -251,6 +272,44 @@ static int find_seek_candidate(char *out_host, size_t host_sz, int *out_port, ch
     return found;
 }
 
+/* Address book: every peer that told us its listening address in HELLO is remembered in <project root>/known_peers.txt
+ * (`host|port|node_id|kind|last_seen`, one row per host:port, rewritten small), so after a restart peers find each other again
+ * without PALNET_SEEDS. Dialed in the seek step below after the presence directory and the seeds. */
+static char g_known_path[PATH_BUF];
+static time_t g_known_tried[64];
+static void known_path(void) { if (!g_known_path[0]) snprintf(g_known_path, sizeof g_known_path, "%s/known_peers.txt", project_root); }
+static void remember_peer(const char *host, int port, const char *node_id, const char *kind) {
+    if (!host[0] || port <= 0 || !strcmp(node_id, g_node_id)) return;
+    known_path();
+    char rows[64][384]; int n = 0, found = 0; char key[96]; snprintf(key, sizeof key, "%s|%d|", host, port);
+    FILE *f = fopen(g_known_path, "r");
+    if (f) { char ln[384]; while (n < 64 && fgets(ln, sizeof ln, f)) { ln[strcspn(ln, "\r\n")] = 0; if (!ln[0]) continue;
+        if (!strncmp(ln, key, strlen(key))) { snprintf(rows[n++], 384, "%s|%d|%s|%s|%ld", host, port, node_id, kind, (long)time(NULL)); found = 1; } else snprintf(rows[n++], 384, "%s", ln); } fclose(f); }
+    if (!found && n < 64) snprintf(rows[n++], 384, "%s|%d|%s|%s|%ld", host, port, node_id, kind, (long)time(NULL));
+    f = fopen(g_known_path, "w"); if (!f) return;
+    for (int i = 0; i < n; i++) fprintf(f, "%s\n", rows[i]);
+    fclose(f);
+}
+static int next_known(char *out_host, size_t host_sz, int *out_port, char *out_key, size_t key_sz) {
+    known_path(); FILE *f = fopen(g_known_path, "r"); if (!f) return 0;
+    char ln[384]; int idx = 0, got = 0; time_t now = time(NULL);
+    while (!got && idx < 64 && fgets(ln, sizeof ln, f)) {
+        ln[strcspn(ln, "\r\n")] = 0; char *host = strtok(ln, "|"), *ps = strtok(NULL, "|"); int my = idx++;
+        if (!host || !ps) continue;
+        int port = atoi(ps);
+        if (port <= 0) continue;
+        char key[96]; snprintf(key, sizeof key, "%s:%d", host, port);
+        if (!strcmp(host, advertise_host()) && port == g_bound_port) continue;   /* never dial self */
+        int connected = 0; for (int i = 0; i < g_peer_count; i++) if (!strcmp(g_peers[i].seed_key, key)) { connected = 1; break; }
+        if (connected || now - g_known_tried[my] < STALE_SEC) continue;
+        g_known_tried[my] = now; snprintf(out_host, host_sz, "%s", host); *out_port = port; snprintf(out_key, key_sz, "%s", key); got = 1;
+    }
+    fclose(f); return got;
+}
+
+/* Next PALNET_SEEDS entry that is not currently connected and has not been tried in the last STALE_SEC seconds. */
+static time_t g_seed_tried[16];
+static int next_seed(char *out_host, size_t host_sz, int *out_port, char *out_key, size_t key_sz);
 static void add_peer(int fd) {
     if (g_peer_count >= MAX_PEERS) { close(fd); return; }
     set_nonblocking(fd);
@@ -258,13 +317,48 @@ static void add_peer(int fd) {
     g_peers[g_peer_count].node_id[0] = '\0';
     g_peers[g_peer_count].hello_sent = 0;
     g_peers[g_peer_count].hello_received = 0;
+    g_peers[g_peer_count].seed_key[0] = '\0';
+    g_peers[g_peer_count].dup = 0;
+    g_peers[g_peer_count].outbound = 0;
+    g_peers[g_peer_count].host[0] = '\0'; g_peers[g_peer_count].port = 0; g_peers[g_peer_count].kind[0] = '\0'; g_peers[g_peer_count].since = 0;
     g_peer_count++;
 }
 
+/* peers_now.txt: who is connected RIGHT NOW (peers that said HELLO), `host|port|node_id|kind|since`, rewritten whenever the set changes and on every
+ * heartbeat. Windows read it for an "Online" list; known_peers.txt (remembered) minus this file = offline friends. */
+static void write_peers_now(void) {
+    char path[PATH_BUF], tmp[PATH_BUF];
+    snprintf(path, sizeof path, "%s/peers_now.txt", project_root); snprintf(tmp, sizeof tmp, "%s/peers_now.txt.tmp", project_root);
+    FILE *f = fopen(tmp, "w"); if (!f) return;
+    for (int i = 0; i < g_peer_count; i++)
+        if (g_peers[i].hello_received && g_peers[i].host[0] && g_peers[i].port > 0 && !g_peers[i].dup)
+            fprintf(f, "%s|%d|%s|%s|%ld\n", g_peers[i].host, g_peers[i].port, g_peers[i].node_id, g_peers[i].kind, g_peers[i].since);
+    fclose(f); rename(tmp, path);
+}
+
+static int next_seed(char *out_host, size_t host_sz, int *out_port, char *out_key, size_t key_sz) {
+    const char *e = getenv("PALNET_SEEDS"); if (!e || !e[0]) return 0;
+    char copy[512]; snprintf(copy, sizeof copy, "%s", e);
+    time_t now = time(NULL); int idx = 0; char *save = NULL;
+    for (char *tok = strtok_r(copy, ",", &save); tok && idx < 16; tok = strtok_r(NULL, ",", &save), idx++) {
+        char *colon = strrchr(tok, ':'); if (!colon) continue;
+        *colon = '\0'; int port = atoi(colon + 1); if (port <= 0 || !tok[0]) continue;
+        char key[96]; snprintf(key, sizeof key, "%s:%d", tok, port);
+        int connected = 0;
+        for (int i = 0; i < g_peer_count; i++) if (strcmp(g_peers[i].seed_key, key) == 0) { connected = 1; break; }
+        if (connected || now - g_seed_tried[idx] < STALE_SEC) continue;
+        g_seed_tried[idx] = now;
+        snprintf(out_host, host_sz, "%s", tok); *out_port = port; snprintf(out_key, key_sz, "%s", key); return 1;
+    }
+    return 0;
+}
+
+static void write_peers_now(void);
 static void remove_peer(int idx) {
     close(g_peers[idx].fd);
     for (int i = idx; i < g_peer_count - 1; i++) g_peers[i] = g_peers[i + 1];
     g_peer_count--;
+    write_peers_now();
 }
 
 static void send_line(int fd, const char *line) {
@@ -276,7 +370,7 @@ static void send_line(int fd, const char *line) {
 static void send_hello_if_needed(int idx) {
     if (g_peers[idx].hello_sent) return;
     char line[256];
-    snprintf(line, sizeof(line), "HELLO|%s|%s\n", g_node_id, g_own_kind);
+    snprintf(line, sizeof(line), "HELLO|%s|%s|%s|%d\n", g_node_id, g_own_kind, advertise_host(), g_bound_port);
     send_line(g_peers[idx].fd, line);
     g_peers[idx].hello_sent = 1;
 }
@@ -361,6 +455,18 @@ static void replay_backlog_to_peer(int fd) {
  * distinct event (a TX, a BLOCK, a post, a like...), not a value to be
  * mirrored - see read_outbox_new_lines()'s own header comment for the
  * live-caught bug this fixes at the same time. */
+/* Receiver-side dedup: a DATA line already delivered (same sender and content) is not written to the inbox again, so a backlog replayed
+ * on a reconnect cannot duplicate it. In-memory ring of 64-bit hashes, per process (consumers still dedup by their own ids across restarts). */
+static unsigned long long g_seen[8192]; static unsigned g_seen_n;
+static int seen_before(const char *sender, const char *content) {
+    unsigned long long h = 1469598103934665603ULL;
+    for (const char *p = sender; *p; p++) { h ^= (unsigned char)*p; h *= 1099511628211ULL; }
+    h ^= '|'; h *= 1099511628211ULL;
+    for (const char *p = content; *p; p++) { h ^= (unsigned char)*p; h *= 1099511628211ULL; }
+    unsigned n = g_seen_n < 8192 ? g_seen_n : 8192;
+    for (unsigned i = 0; i < n; i++) if (g_seen[i] == h) return 1;
+    g_seen[g_seen_n++ % 8192] = h; return 0;
+}
 static void write_inbox(const char *sender_node_id, const char *content) {
     FILE *f = fopen(g_inbox_path, "a");
     if (!f) return;
@@ -390,13 +496,29 @@ static void handle_peer_data(int idx, const char *buf, ssize_t n) {
                 *bar = '\0';
                 snprintf(g_peers[idx].node_id, sizeof(g_peers[idx].node_id), "%s", rest);
                 g_peers[idx].hello_received = 1;
+                char *kind = bar + 1, *host = NULL; int port = 0;
+                char *b2 = strchr(kind, '|'); if (b2) { *b2 = '\0'; host = b2 + 1; char *b3 = strchr(host, '|'); if (b3) { *b3 = '\0'; port = atoi(b3 + 1); } }
+                if (host && port > 0) {
+                    snprintf(g_peers[idx].host, sizeof g_peers[idx].host, "%s", host); g_peers[idx].port = port;
+                    snprintf(g_peers[idx].kind, sizeof g_peers[idx].kind, "%s", kind); if (!g_peers[idx].since) g_peers[idx].since = (long)time(NULL);
+                    remember_peer(host, port, g_peers[idx].node_id, kind);
+                    if (!g_peers[idx].seed_key[0]) snprintf(g_peers[idx].seed_key, sizeof g_peers[idx].seed_key, "%s:%d", host, port);   /* inbound: now known by its listening address */
+                }
+                /* Two sockets to the same node (both sides dialed): both ends keep the SAME one, the connection dialed by the node with the smaller
+                 * node_id, so they cannot close different ones and leave no link. */
+                for (int j = 0; j < g_peer_count; j++) {
+                    if (j == idx || !g_peers[j].hello_received || strcmp(g_peers[j].node_id, g_peers[idx].node_id)) continue;
+                    const char *init_idx = g_peers[idx].outbound ? g_node_id : g_peers[idx].node_id;
+                    const char *init_j   = g_peers[j].outbound   ? g_node_id : g_peers[j].node_id;
+                    if (strcmp(init_idx, init_j) <= 0) g_peers[j].dup = 1; else g_peers[idx].dup = 1;
+                }
             }
         } else if (strncmp(line, "DATA|", 5) == 0) {
             char *rest = line + 5;
             char *bar = strchr(rest, '|');
             if (bar) {
                 *bar = '\0';
-                write_inbox(rest, bar + 1);
+                if (!seen_before(rest, bar + 1)) write_inbox(rest, bar + 1);
             }
         }
         line = strtok(NULL, "\n");
@@ -429,6 +551,7 @@ int main(int argc, char **argv) {
     if (argc >= 7) snprintf(g_seek_kind, sizeof(g_seek_kind), "%s", argv[6]);
 
     resolve_root();
+    signal(SIGPIPE, SIG_IGN);
     signal(SIGINT, handle_signal);
     signal(SIGTERM, handle_signal);
 
@@ -447,6 +570,7 @@ int main(int argc, char **argv) {
     snprintf(g_presence_path, sizeof(g_presence_path), "%s/%s.txt", g_presence_dir, g_node_id);
 #pragma GCC diagnostic pop
     write_presence_file();
+    write_peers_now();
 
     time_t last_heartbeat = time(NULL);
 
@@ -492,6 +616,10 @@ int main(int argc, char **argv) {
                 }
                 buf[n] = '\0';
                 handle_peer_data(i, buf, n);
+                write_peers_now();
+                { int removed = 0;
+                  for (int j = g_peer_count - 1; j >= 0; j--) if (g_peers[j].dup) { remove_peer(j); removed = 1; if (j <= i) i--; }
+                  if (removed) continue; }
             }
         }
 
@@ -511,7 +639,11 @@ int main(int argc, char **argv) {
         if (g_seek_kind[0] && g_peer_count < MAX_PEERS) {
             char host[64], node_id[128];
             int port;
-            if (find_seek_candidate(host, sizeof(host), &port, node_id, sizeof(node_id))) {
+            char seed_key[96]; seed_key[0] = '\0';
+            int have = find_seek_candidate(host, sizeof(host), &port, node_id, sizeof(node_id));
+            if (!have && next_seed(host, sizeof(host), &port, seed_key, sizeof(seed_key))) { have = 1; snprintf(node_id, sizeof node_id, "seed-%s", seed_key); }
+            if (!have && next_known(host, sizeof(host), &port, seed_key, sizeof(seed_key))) { have = 1; snprintf(node_id, sizeof node_id, "known-%s", seed_key); }
+            if (have) {
                 int fd = socket(AF_INET, SOCK_STREAM, 0);
                 if (fd >= 0) {
                     struct sockaddr_in addr;
@@ -521,7 +653,9 @@ int main(int argc, char **argv) {
                     addr.sin_port = htons((uint16_t)port);
                     if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) == 0) {
                         add_peer(fd);
+                        g_peers[g_peer_count - 1].outbound = 1;
                         snprintf(g_peers[g_peer_count - 1].node_id, sizeof(g_peers[0].node_id), "%s", node_id);
+                        snprintf(g_peers[g_peer_count - 1].seed_key, sizeof(g_peers[0].seed_key), "%s", seed_key);
                         send_hello_if_needed(g_peer_count - 1);
                         replay_backlog_to_peer(fd);
                     } else {
@@ -535,6 +669,7 @@ int main(int argc, char **argv) {
         if (now - last_heartbeat >= HEARTBEAT_SEC) {
             last_heartbeat = now;
             write_presence_file();
+            write_peers_now();
         }
     }
 

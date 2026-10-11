@@ -1,0 +1,6 @@
+QCHECK|PASS|LOCK|1 harness file(s) match LOCK.sha256
+QCHECK|PASS|BASE|merge-base == tip of claude (2b184a667ef6)
+QCHECK|PASS|SCOPE|1 changed/new path(s), all inside 2 scope row(s)
+QCHECK|PASS|BUDGET|all 4 keys present and valid (max_attempts=3)
+QCHECK|PASS|ATTEMPTS|no attempts/ directory (0 attempts)
+QCHECK|VERDICT|PASS|checks=5|failed=0

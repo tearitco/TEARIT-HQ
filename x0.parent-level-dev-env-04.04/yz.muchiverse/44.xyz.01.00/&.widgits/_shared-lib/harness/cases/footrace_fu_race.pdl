@@ -1,0 +1,2080 @@
+# footrace_fu_race (OWN-GAMES-REFERENCE-SUITE-DESIGN.md step 3): Footrace Fu RACE MODE v0 on the neutral engine: ninjas, action tokens, combat roll-off, abilities, finish rule, last army.
+# Scratch roots only: the entity is copied to $T/game, the ring-board ops (dice_roll, var_math) and the three Footrace ops beside it, event_page_op, prisc compiled into $T. Real event.pal pages, real ops.
+# The independent referee is race_audit_op (state, ledger, previous snapshot). Every number here comes from rules.pdl / ninjas.pdl / abilities.pdl / track.pdl; overrides write those files.
+# Pinned dice (seed 42, dice_roll d1 d2 by counter): 0:4,3 1:4,4 2:1,3 3:6,6 4:4,2 5:4,4 6:2,6 7:3,6 8:2,6 9:4,4 10:4,1. Pinned coin (rand_roll sides 2, seed 42, counter 0..): 1 2 2 1 2 1 1 1 2 2. d4 (sides 4): 3 4 4 3 2 1.
+RESULTS | ../results/footrace_fu_race.txt
+CASE | ops
+# the three new tiny ops (and dice_roll reused as is)
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+WRITE | game/variables.txt | dice_seed=42\nrand_counter=0\ncur=2\npos_1_1=3\npos_1_2=7\npos_2_1=7\npos_2_3=9\npos_3_1=-1000\n
+RUN | $T/game/ops/+x/rand_roll.+x | $T/game | 42 | 0 | 2 | coin
+EXPECT_OUT_IS | 1 | rand_roll-seed42-counter0-coin-is-1
+EXPECT_HAS | game/variables.txt | \ncoin=1\n | coin=1
+EXPECT_HAS | game/variables.txt | \nrand_counter=1\n | rand_counter-advances-to-counter-plus-1
+RUN | $T/game/ops/+x/rand_roll.+x | $T/game | dice_seed | rand_counter | 2 | coin
+EXPECT_OUT_IS | 2 | rand_roll-reads-seed-and-counter-from-variables-coin-2
+EXPECT_HAS | game/variables.txt | \nrand_counter=2\n | rand_counter=2
+RUN | $T/game/ops/+x/rand_roll.+x | $T/game | 42 | 0 | 4 | d4
+EXPECT_OUT_IS | 3 | rand_roll-d4-seed42-counter0-is-3
+RUN | $T/game/ops/+x/rand_roll.+x | $T/game | 42 | 1 | 4 | d4
+EXPECT_OUT_IS | 4 | rand_roll-d4-seed42-counter1-is-4
+RUN | $T/game/ops/+x/rand_roll.+x | $T/game | 42 | 2 | 4 | d4
+EXPECT_OUT_IS | 4 | rand_roll-d4-seed42-counter2-is-4
+RUN | $T/game/ops/+x/rand_roll.+x | $T/game | 42 | 3 | 4 | d4
+EXPECT_OUT_IS | 3 | rand_roll-d4-seed42-counter3-is-3
+RUN | $T/game/ops/+x/rand_roll.+x | $T/game | 42 | 4 | 4 | d4
+EXPECT_OUT_IS | 2 | rand_roll-d4-seed42-counter4-is-2
+RUN | $T/game/ops/+x/rand_roll.+x | $T/game | 42 | 5 | 4 | d4
+EXPECT_OUT_IS | 1 | rand_roll-d4-seed42-counter5-is-1
+RUN | $T/game/ops/+x/rand_roll.+x | $T/game | 42 | 3 | 4 | d4
+CAPTURE | d4_again
+EXPECT_EQ | $d4_again | 3 | rand_roll-same-seed-same-counter-same-value-again
+RUN | $T/game/ops/+x/rand_roll.+x | $T/game | 43 | 0 | 4 | d4
+CAPTURE | d4_other
+EXPECT_EQ | $d4_other | 1 | rand_roll-other-seed-other-value-1
+RUN | $T/game/ops/+x/rand_roll.+x | $T/game | 42 | 1 | 100 | pct
+EXPECT_OUT_IS | 80 | rand_roll-d100-seed42-counter1-is-80
+EXPECT_HAS | game/variables.txt | \npct=80\n | pct=80-any-sides-work
+RUN | $T/game/ops/+x/rand_roll.+x | $T/game | 42 | 0 | 2 | switches.txt:flip
+EXPECT_HAS | game/switches.txt | flip=1\n | rand_roll-out-var-may-name-another-file
+EXPECT_HAS | game/rand_ledger.txt | RAND\p42\p0\p2\p1\n | rand-ledger-row-appended-no-timestamp
+RUN | $T/game/ops/+x/rand_roll.+x | $T/game | 42 | 0 | 1 | z
+EXPECT_EXIT | 1 | rand_roll-one-sided-die-refused-exit-1
+EXPECT_HAS | game/op_errors.txt | ERR\prand_roll\psides out of range | rand_roll-error-leaves-an-ERR-row
+RUN | $T/game/ops/+x/rand_roll.+x | $T/game | 42 | 0 | 2
+EXPECT_EXIT | 2 | rand_roll-usage-exit-2
+RUN | $T/game/ops/+x/dice_roll.+x | $T/game | 42 | 1
+EXPECT_OUT_IS | 4 4 | dice_roll-reused-unchanged-seed42-counter1
+RUN | $T/game/ops/+x/var_find.+x | $T/game | pos_ | pos_{cur}_ | 7 | 0 | 0 | f
+EXPECT_OUT_IS | 1 | var_find-enemy-on-space-7-skipping-my-own-seat-finds-1
+EXPECT_HAS | game/variables.txt | \nf_1=1\n | var_find-first-number-of-the-name-is-the-seat
+EXPECT_HAS | game/variables.txt | \nf_2=2\n | var_find-second-number-is-the-ninja
+EXPECT_HAS | game/variables.txt | \nf_d=0\n | var_find-distance-0
+RUN | $T/game/ops/+x/var_find.+x | $T/game | pos_ | - | 8 | 0 | 3 | g
+EXPECT_OUT_IS | 3 | var_find-window-0-to-3-around-8-matches-three
+EXPECT_HAS | game/variables.txt | \ng_1=1\n | var_find-nearest-tie-goes-to-the-smallest-seat
+EXPECT_HAS | game/variables.txt | \ng_2=2\n | var_find-then-the-smallest-ninja
+EXPECT_HAS | game/variables.txt | \ng_d=1\n | var_find-distance-1
+RUN | $T/game/ops/+x/var_find.+x | $T/game | pos_ | - | 8 | 2 | 5 | h
+EXPECT_OUT_IS | 1 | var_find-dmin-2-excludes-the-near-ones-leaving-only-pos_1_1-5-away
+EXPECT_HAS | game/variables.txt | \nh_1=1\n | h_1=1
+EXPECT_HAS | game/variables.txt | \nh_2=1\n | h_2=1
+EXPECT_HAS | game/variables.txt | \nh_d=5\n | var_find-distance-5
+RUN | $T/game/ops/+x/var_find.+x | $T/game | pos_ | - | 50 | 0 | 3 | none
+EXPECT_OUT_IS | 0 | var_find-nothing-in-reach-is-count-0
+EXPECT_EXIT | 0 | var_find-no-match-is-still-exit-0
+EXPECT_HAS | game/variables.txt | \nnone_1=0\n | none_1=0
+EXPECT_HAS | game/variables.txt | \nnone_d=0\n | none_d=0
+RUN | $T/game/ops/+x/var_find.+x | $T/game | pos_ | - | 0 | 0 | 99 | all
+EXPECT_OUT_IS | 4 | var_find-dead-ninjas-at-minus-1000-never-match-a-window
+RUN | $T/game/ops/+x/var_find.+x | $T/game | pos_ | - | 0 | 0
+EXPECT_EXIT | 2 | var_find-usage-exit-2
+WRITE | game/variables.txt | turn=4\ncurrent=2\n
+RUN | $T/game/ops/+x/row_append.+x | $T/game | l.txt | ACT | {turn} | {current} | x
+EXPECT_EXIT | 0 | row_append-ok
+EXPECT_FILE | game/l.txt | ACT\p4\p2\px\n | row_append-expands-vars-and-joins-with-bars
+RUN | $T/game/ops/+x/row_append.+x | $T/game | l.txt | AGAIN
+EXPECT_EXIT | 0 | row_append-second-row
+EXPECT_FILE | game/l.txt | ACT\p4\p2\px\nAGAIN\n | row_append-only-appends
+RUN | $T/game/ops/+x/row_append.+x | $T/game | ../l.txt | X
+EXPECT_EXIT | 2 | row_append-path-escape-refused-exit-2
+RUN | $T/game/ops/+x/row_append.+x | $T/game | l.txt
+EXPECT_EXIT | 2 | row_append-usage-exit-2
+RUN | $T/game/ops/+x/race_audit_op.+x | exact
+EXPECT_OUT_IS | tie=6 attacker=15 defender=15 of=36 | roll-off-exact-enumeration-tie-6-of-36-wins-15-and-15
+RUN | $T/game/ops/+x/race_audit_op.+x | audit
+EXPECT_EXIT | 2 | race_audit_op-usage-exit-2
+CLEAN | 
+CASE | data
+# the data files themselves: owner-pending questions are tunables with a comment, placeholders are marked, no variant is hardcoded
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu | $T/ff
+RUN | /usr/bin/grep | -B1 | ^finish_rule= | $T/ff/entity/rules.pdl
+EXPECT_OUT | owner decision pending | rules.pdl-finish_rule-carries-owner-decision-pending
+RUN | /usr/bin/grep | -B1 | ^move_costs_action= | $T/ff/entity/rules.pdl
+EXPECT_OUT | owner decision pending | rules.pdl-move_costs_action-carries-owner-decision-pending
+RUN | /usr/bin/grep | -B1 | ^free_moves_per_turn= | $T/ff/entity/rules.pdl
+EXPECT_OUT | owner decision pending | rules.pdl-free_moves_per_turn-carries-owner-decision-pending
+RUN | /usr/bin/grep | -B1 | ^tie_rule= | $T/ff/entity/rules.pdl
+EXPECT_OUT | owner decision pending | rules.pdl-tie_rule-carries-owner-decision-pending
+RUN | /usr/bin/grep | -B1 | ^teleport_foe_to_finish= | $T/ff/entity/rules.pdl
+EXPECT_OUT | owner decision pending | rules.pdl-teleport_foe_to_finish-carries-owner-decision-pending
+RUN | /usr/bin/grep | -B1 | ^collide_share= | $T/ff/entity/rules.pdl
+EXPECT_OUT | owner decision pending | rules.pdl-collide_share-carries-owner-decision-pending
+RUN | /usr/bin/grep | -B1 | ^warp_ally_may_finish= | $T/ff/entity/rules.pdl
+EXPECT_OUT | owner decision pending | rules.pdl-warp_ally_may_finish-carries-owner-decision-pending
+RUN | /usr/bin/grep | -B1 | ^move_baseline= | $T/ff/entity/rules.pdl
+EXPECT_OUT | owner decision pending | rules.pdl-move_baseline-carries-owner-decision-pending
+RUN | /usr/bin/grep | -B1 | ^max_army_hp= | $T/ff/entity/rules.pdl
+EXPECT_OUT | owner decision pending | rules.pdl-max_army_hp-carries-owner-decision-pending
+EXPECT_HAS | ff/entity/rules.pdl | \ntrack_len=24\n | rules.pdl-default-track_len=24
+EXPECT_HAS | ff/entity/rules.pdl | \naction_tokens=2\n | rules.pdl-default-action_tokens=2
+EXPECT_HAS | ff/entity/rules.pdl | \nninjas_per_player=3\n | rules.pdl-default-ninjas_per_player=3
+EXPECT_HAS | ff/entity/rules.pdl | \nmax_army_hp=20\n | rules.pdl-default-max_army_hp=20
+EXPECT_HAS | ff/entity/rules.pdl | \nmax_action_tokens=2\n | rules.pdl-default-max_action_tokens=2
+EXPECT_HAS | ff/entity/rules.pdl | \nfinish_rule=2\n | rules.pdl-default-finish_rule=2
+EXPECT_HAS | ff/entity/rules.pdl | \ntie_rule=1\n | rules.pdl-default-tie_rule=1
+EXPECT_HAS | ff/entity/rules.pdl | \nteleport_foe_to_finish=0\n | rules.pdl-default-teleport_foe_to_finish=0
+EXPECT_HAS | ff/entity/rules.pdl | \ncombat_loss=1\n | rules.pdl-default-combat_loss=1
+EXPECT_HAS | ff/entity/track.pdl | \nPLACEHOLDER=1\n | track.pdl-slides-and-climbs-are-marked-PLACEHOLDER=1
+EXPECT_HAS | ff/entity/track.pdl | \nslide_9=4\n | track.pdl-slide_9=4
+EXPECT_HAS | ff/entity/track.pdl | \nslide_14=7\n | track.pdl-slide_14=7
+EXPECT_HAS | ff/entity/track.pdl | \nslide_21=13\n | track.pdl-slide_21=13
+EXPECT_HAS | ff/entity/track.pdl | \nclimb_3=11\n | track.pdl-climb_3=11
+EXPECT_HAS | ff/entity/track.pdl | \nclimb_16=20\n | track.pdl-climb_16=20
+EXPECT_HAS | ff/entity/ninjas.pdl | \nclass_1_hp=3\n | ninjas.pdl-class-1-HP-3-from-the-draft
+EXPECT_HAS | ff/entity/ninjas.pdl | \nclass_1_move=4\n | ninjas.pdl-class-1-Move-4-from-the-draft
+EXPECT_HAS | ff/entity/ninjas.pdl | \nclass_2_hp=5\n | ninjas.pdl-class-2-HP-5-from-the-draft
+EXPECT_HAS | ff/entity/ninjas.pdl | \nclass_2_move=5\n | ninjas.pdl-class-2-Move-5-from-the-draft
+EXPECT_HAS | ff/entity/ninjas.pdl | \nclass_3_hp=6\n | ninjas.pdl-class-3-HP-6-from-the-draft
+EXPECT_HAS | ff/entity/ninjas.pdl | \nclass_3_move=3\n | ninjas.pdl-class-3-Move-3-from-the-draft
+EXPECT_HAS | ff/entity/ninjas.pdl | \nclass_4_hp=4\n | ninjas.pdl-class-4-HP-4-from-the-draft
+EXPECT_HAS | ff/entity/ninjas.pdl | \nclass_4_move=4\n | ninjas.pdl-class-4-Move-4-from-the-draft
+EXPECT_HAS | ff/entity/ninjas.pdl | \nclass_5_hp=3\n | ninjas.pdl-class-5-HP-3-from-the-draft
+EXPECT_HAS | ff/entity/ninjas.pdl | \nclass_5_move=6\n | ninjas.pdl-class-5-Move-6-from-the-draft
+EXPECT_HAS | ff/entity/ninjas.pdl | \p Chrono-Weaver \p | ninjas.pdl-names-Chrono-Weaver
+EXPECT_HAS | ff/entity/ninjas.pdl | \p Blade Dancer \p | ninjas.pdl-names-Blade-Dancer
+EXPECT_HAS | ff/entity/ninjas.pdl | \p Ward Sentinel \p | ninjas.pdl-names-Ward-Sentinel
+EXPECT_HAS | ff/entity/ninjas.pdl | \p Ranged Mystic \p | ninjas.pdl-names-Ranged-Mystic
+EXPECT_HAS | ff/entity/ninjas.pdl | \p Shadow Step \p | ninjas.pdl-names-Shadow-Step
+EXPECT_HAS | ff/entity/abilities.pdl | \nab_1_cost=1\n | abilities.pdl-ab_1_cost=1-draft-condition-as-data
+EXPECT_HAS | ff/entity/abilities.pdl | \nab_1_cond=1\n | abilities.pdl-ab_1_cond=1-draft-condition-as-data
+EXPECT_HAS | ff/entity/abilities.pdl | \nab_1_limit=2\n | abilities.pdl-ab_1_limit=2-draft-condition-as-data
+EXPECT_HAS | ff/entity/abilities.pdl | \nab_2_cond=2\n | abilities.pdl-ab_2_cond=2-draft-condition-as-data
+EXPECT_HAS | ff/entity/abilities.pdl | \nab_3_cost=2\n | abilities.pdl-ab_3_cost=2-draft-condition-as-data
+EXPECT_HAS | ff/entity/abilities.pdl | \nab_3_cond=3\n | abilities.pdl-ab_3_cond=3-draft-condition-as-data
+EXPECT_HAS | ff/entity/abilities.pdl | \nab_4_cd=2\n | abilities.pdl-ab_4_cd=2-draft-condition-as-data
+EXPECT_HAS | ff/entity/abilities.pdl | \nab_4_bonus=2\n | abilities.pdl-ab_4_bonus=2-draft-condition-as-data
+EXPECT_HAS | ff/entity/abilities.pdl | \nteleport_limit_per_ninja=2\n | abilities.pdl-teleport_limit_per_ninja=2-draft-condition-as-data
+RUN | /usr/bin/grep | -r | -l | -i | -E | monopoly\pchutes\pladders | $T/ff/entity | $T/ff/README.md
+EXPECT_EXIT | 1 | no-forbidden-words-in-the-footrace-entity-or-readme
+CLEAN | 
+CASE | setup
+# 2 players: armies, selection, tokens
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+EXPECT_HAS | game/variables.txt | \narmy_hp_1=14\n | army-HP-14-is-3+5+6
+EXPECT_HAS | game/variables.txt | \narmy_hp_2=14\n | seat-2-army-HP-14
+EXPECT_HAS | game/variables.txt | \nalive_cnt_1=3\n | three-ninjas-per-army
+EXPECT_HAS | game/variables.txt | \nseat_up_1=1\n | seat-1-up
+EXPECT_HAS | game/variables.txt | \nseat_up_2=1\n | seat-2-up
+EXPECT_HAS | game/variables.txt | \nseat_up_3=0\n | seat-3-dormant
+EXPECT_HAS | game/variables.txt | \nseats_up=2\n | two-armies-up
+EXPECT_HAS | game/variables.txt | \ntokens=2\n | two-action-tokens
+EXPECT_HAS | game/variables.txt | \nsel=1\n | ninja-1-selected-leader-of-a-fresh-army
+EXPECT_HAS | game/variables.txt | \ncurrent=1\n | seat-1-starts
+EXPECT_HAS | game/variables.txt | \nturn=0\n | turn-0
+EXPECT_HAS | game/variables.txt | \ncls_1_2=2\n | slot-2-is-class-2-from-roster.pdl
+EXPECT_HAS | game/variables.txt | \nhp_1_1=3\n | Chrono-Weaver-HP-3
+EXPECT_HAS | game/variables.txt | \nhp_1_2=5\n | Blade-Dancer-HP-5
+EXPECT_HAS | game/variables.txt | \nhp_1_3=6\n | Ward-Sentinel-HP-6
+EXPECT_HAS | game/variables.txt | \npos_1_1=0\n | ninjas-start-on-Start
+EXPECT_HAS | game/variables.txt | \npos_2_3=0\n | seat-2-on-Start
+EXPECT_HAS | game/variables.txt | \npos_1_4=-1000\n | unused-slot-4-is-off-track
+EXPECT_HAS | game/variables.txt | \nalive_1_4=0\n | unused-slot-4-not-alive
+EXPECT_HAS | game/variables.txt | \nhp_2_5=0\n | unused-slot-5-has-no-HP
+EXPECT_HAS | game/variables.txt | \npos_3_1=-1000\n | dormant-seat-3-off-track
+EXPECT_HAS | game/variables.txt | \nwinner=0\n | no-winner-yet
+EXPECT_HAS | game/switches.txt | game_over=0\n | game_over-switch-off
+EXPECT_HAS | game/ledger.txt | SETUP\pok\pplayers\p2\pseed\p42\n | ledger-SETUP-ok-row
+EXPECT_NOFILE | game/op_errors.txt | no-op-error-in-setup
+CLEAN | 
+CASE | setup-4p
+# 4 players
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=4\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+EXPECT_HAS | game/variables.txt | \nseats_up=4\n | four-armies-up
+EXPECT_HAS | game/variables.txt | \nseat_up_4=1\n | seat-4-up
+EXPECT_HAS | game/variables.txt | \nalive_cnt_4=3\n | seat-4-has-3-ninjas
+EXPECT_HAS | game/variables.txt | \nhp_4_3=6\n | seat-4-Ward-HP-6
+EXPECT_HAS | game/variables.txt | \narmy_hp_4=14\n | seat-4-army-HP-14
+CLEAN | 
+CASE | guardrails
+# fairness guardrails refuse setup; the guardrail numbers are tunables
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rules.pdl:ninjas_per_player | 5
+WRITE | game/variables.txt | players=2\ndice_seed=42\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran-and-refused
+EXPECT_HAS | game/variables.txt | \narmy_hp_1=21\n | five-class-army-is-3+5+6+4+3=21
+EXPECT_HAS | game/variables.txt | \nsetup_error=1\n | setup_error=1
+EXPECT_HAS | game/variables.txt | \ngame_over_reason=9\n | reason-9-setup-refused
+EXPECT_HAS | game/switches.txt | game_over=1\n | refused-setup-ends-the-game-before-it-starts
+EXPECT_HAS | game/ledger.txt | SETUP\prefused\parmy_hp\pseat\p1\p21\n | ledger-says-army-HP-21
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 1 | no-page-matches-after-a-refused-setup
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rules.pdl:max_army_hp | 21
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran-with-max-army-hp-21
+EXPECT_HAS | game/variables.txt | \nsetup_error=0\n | accepted-when-max_army_hp-is-raised-in-the-PDL
+EXPECT_HAS | game/variables.txt | \nalive_cnt_1=5\n | five-ninjas-each
+EXPECT_HAS | game/switches.txt | game_over=0\n | game-running
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rules.pdl:max_army_hp | 20
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rules.pdl:ninjas_per_player | 3
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rules.pdl:action_tokens | 3
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_HAS | game/variables.txt | \ngame_over_reason=9\n | three-tokens-above-the-standard-2-refused
+EXPECT_HAS | game/ledger.txt | SETUP\prefused\paction_tokens\n | ledger-says-action_tokens
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rules.pdl:max_action_tokens | 3
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_HAS | game/variables.txt | \ntokens=3\n | epic-3-tokens-accepted-once-max_action_tokens-is-3
+EXPECT_HAS | game/variables.txt | \ngame_over_reason=0\n | reason-reset-by-setup
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rules.pdl:action_tokens | 2
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rules.pdl:max_action_tokens | 2
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rules.pdl:ninjas_per_player | 2
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_HAS | game/variables.txt | \ngame_over_reason=9\n | two-ninjas-below-ninjas_min-refused
+EXPECT_HAS | game/ledger.txt | SETUP\prefused\pninjas_min\n | ledger-says-ninjas_min
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rules.pdl:ninjas_per_player | 6
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_HAS | game/variables.txt | \ngame_over_reason=9\n | six-ninjas-above-ninjas_max-refused
+EXPECT_HAS | game/ledger.txt | SETUP\prefused\pninjas_max\n | ledger-says-ninjas_max
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rules.pdl:ninjas_per_player | 3
+WRITE | game/roster.pdl | r_1_1=3\nr_1_2=3\nr_1_3=3\nr_1_4=3\nr_1_5=3\nr_2_1=3\nr_2_2=3\nr_2_3=3\nr_2_4=3\nr_2_5=3\nr_3_1=3\nr_3_2=3\nr_3_3=3\nr_3_4=3\nr_3_5=3\nr_4_1=3\nr_4_2=3\nr_4_3=3\nr_4_4=3\nr_4_5=3\n
+WRITE | game/variables.txt | players=2\ndice_seed=42\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_HAS | game/variables.txt | \narmy_hp_1=18\n | three-Ward-Sentinels-3x6=18-is-under-20
+EXPECT_HAS | game/variables.txt | \ngame_over_reason=0\n | accepted
+WRITE | game/variables.txt | players=1\ndice_seed=42\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 1 | one-player-no-setup-page-matches
+WRITE | game/variables.txt | players=5\ndice_seed=42\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 1 | five-players-no-setup-page-matches
+CLEAN | 
+CASE | select
+# Select Ninja n
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | select3 | --state | $T/game
+EXPECT_EXIT | 0 | select3-exit-0
+EXPECT_HAS | game/variables.txt | \nsel=3\n | select3-selects-ninja-3
+EXPECT_HAS | game/ledger.txt | SELECT\p0\p1\p3\n | ledger-SELECT-row
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | select5 | --state | $T/game
+EXPECT_EXIT | 0 | select5-exit-0
+EXPECT_HAS | game/variables.txt | \nsel=3\n | ninja-5-is-not-in-a-3-ninja-army-so-selection-stays-3
+EXPECT_HAS | game/ledger.txt | REFUSE\p0\p1\p5\pselect\p0\n | ledger-REFUSE-select-5
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | alive_1_2 | 0
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | select2 | --state | $T/game
+EXPECT_EXIT | 0 | select2-exit-0
+EXPECT_HAS | game/variables.txt | \nsel=3\n | a-dead-ninja-cannot-be-selected
+EXPECT_HAS | game/ledger.txt | REFUSE\p0\p1\p2\pselect\p0\n | ledger-REFUSE-select-2
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | select1 | --state | $T/game
+EXPECT_EXIT | 0 | select1-exit-0
+EXPECT_HAS | game/variables.txt | \nsel=1\n | select1-back-to-ninja-1
+CLEAN | 
+CASE | move
+# Move: 1d6 + class Move bonus, tokens, ledger
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 0
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+EXPECT_HAS | game/variables.txt | \npos_1_1=4\n | Chrono-Weaver-moves-the-die-4-from-counter-0
+EXPECT_HAS | game/variables.txt | \ntokens=1\n | a-Move-costs-one-token
+EXPECT_HAS | game/variables.txt | \ndice_counter=1\n | dice-counter-advanced
+EXPECT_HAS | game/ledger.txt | ACT\p0\p1\p1\pmove\p4\p4\p0\p4\p0\p1\n | ledger-ACT-move-row
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+EXPECT_HAS | game/variables.txt | \npos_1_1=8\n | second-Move-die-4-again
+EXPECT_HAS | game/variables.txt | \ntokens=0\n | tokens-spent
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+EXPECT_HAS | game/variables.txt | \npos_1_1=8\n | no-tokens-no-move
+EXPECT_HAS | game/variables.txt | \ndice_counter=2\n | a-refused-Move-rolls-nothing
+EXPECT_HAS | game/ledger.txt | REFUSE\p0\p1\p1\pmove\p1\p0\n | ledger-REFUSE-move-row
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-again
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | select2 | --state | $T/game
+EXPECT_EXIT | 0 | select2-exit-0
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 0
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+EXPECT_HAS | game/variables.txt | \npos_1_2=5\n | Blade-Dancer-Move-5-bonus-+1-so-die-4-gives-5
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-again
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | select3 | --state | $T/game
+EXPECT_EXIT | 0 | select3-exit-0
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 2
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+EXPECT_HAS | game/variables.txt | \npos_1_3=1\n | Ward-Sentinel-Move-3-bonus--1-and-the-die-1-gives-0-floored-to-move_min-1
+EXPECT_HAS | game/ledger.txt | ACT\p0\p1\p3\pmove\p1\p1\p0\p1\p0\p1\n | ledger-floored-distance-1
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-again
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 0
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | alive_1_1 | 0
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+EXPECT_HAS | game/variables.txt | \npos_1_1=0\n | a-dead-ninja-cannot-move
+EXPECT_HAS | game/variables.txt | \ndice_counter=0\n | no-roll-for-a-dead-ninja
+EXPECT_HAS | game/ledger.txt | REFUSE\p0\p1\p1\pmove\p0\p2\n | ledger-REFUSE-dead-actor
+CLEAN | 
+CASE | move-variants
+# free step per turn and move_costs_action are tunables
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rules.pdl:free_moves_per_turn | 1
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 0
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+EXPECT_HAS | game/variables.txt | \ntokens=2\n | first-Move-is-a-free-step
+EXPECT_HAS | game/variables.txt | \nfree_left=0\n | free-step-used
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+EXPECT_HAS | game/variables.txt | \ntokens=1\n | second-Move-costs-a-token
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | endturn | --state | $T/game
+EXPECT_EXIT | 0 | endturn-exit-0
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | endturn | --state | $T/game
+EXPECT_EXIT | 0 | endturn-exit-0
+EXPECT_HAS | game/variables.txt | \nfree_left=1\n | free-step-comes-back-with-the-new-turn
+CLEAN | 
+CASE | move-free
+# move_costs_action=0
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rules.pdl:move_costs_action | 0
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 0
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+EXPECT_HAS | game/variables.txt | \ntokens=2\n | Moves-cost-nothing-when-move_costs_action-is-0
+EXPECT_HAS | game/variables.txt | \npos_1_1=8\n | two-Moves-of-4
+CLEAN | 
+CASE | finish-exact-landing
+# target 20 + die > 24
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 20
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 0
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+EXPECT_HAS | game/variables.txt | \npos_1_1=24\n | 20+4-lands-exactly-on-Finish
+EXPECT_HAS | game/variables.txt | \nwinner=1\n | winner=seat-1
+EXPECT_HAS | game/variables.txt | \nwinner_n=1\n | winner-ninja-1
+EXPECT_HAS | game/variables.txt | \ngame_over_reason=1\n | reason-1-Finish
+EXPECT_HAS | game/switches.txt | game_over=1\n | game_over-switch-on
+EXPECT_HAS | game/ledger.txt | WIN\p0\p1\p1\n | ledger-WIN-row
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 1 | after-the-win-no-page-matches
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | endturn | --state | $T/game
+EXPECT_EXIT | 1 | after-the-win-End-Turn-matches-nothing
+CLEAN | 
+CASE | finish-bounce
+# target 20 + die > 24
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 20
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 3
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+EXPECT_HAS | game/variables.txt | \npos_1_1=22\n | bounce-20+6=26-comes-back-to-48-26=22
+EXPECT_HAS | game/variables.txt | \ntokens=1\n | token-spent
+EXPECT_HAS | game/variables.txt | \nwinner=0\n | no-winner
+EXPECT_HAS | game/ledger.txt | ACT\p0\p1\p1\pmove\p6\p6\p20\p22\p0\p1\n | ledger-bounce-target-22
+CLEAN | 
+CASE | finish-exact-rule
+# target 20 + die > 24
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rules.pdl:finish_rule | 1
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 20
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 3
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+EXPECT_HAS | game/variables.txt | \npos_1_1=20\n | exact-rule-the-overshooting-Move-is-wasted
+EXPECT_HAS | game/variables.txt | \ntokens=1\n | token-still-spent
+EXPECT_HAS | game/variables.txt | \nwinner=0\n | no-winner
+EXPECT_HAS | game/ledger.txt | ACT\p0\p1\p1\pmove\p6\p6\p20\p20\p1\p1\n | ledger-cancel-flag-1
+CLEAN | 
+CASE | finish-overshoot-wins
+# target 20 + die > 24
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rules.pdl:finish_rule | 3
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 20
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 3
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+EXPECT_HAS | game/variables.txt | \npos_1_1=24\n | overshoot-wins-lands-on-Finish
+EXPECT_HAS | game/variables.txt | \nwinner=1\n | winner-1
+CLEAN | 
+CASE | slide-climb
+# slides and climbs from track.pdl
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 5
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 0
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+EXPECT_HAS | game/variables.txt | \npos_1_1=4\n | landing-on-9-slides-to-4
+EXPECT_HAS | game/ledger.txt | SLIDE\p0\p1\p1\p9\p4\n | ledger-SLIDE
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-again
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 7
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+EXPECT_HAS | game/variables.txt | \npos_1_1=11\n | landing-on-3-climbs-to-11
+EXPECT_HAS | game/ledger.txt | CLIMB\p0\p1\p1\p3\p11\n | ledger-CLIMB
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 15
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 9
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+EXPECT_HAS | game/variables.txt | \npos_1_1=19\n | 15+4=19-no-link
+EXPECT_HAS | game/ledger.txt | ACT\p0\p1\p1\pmove\p4\p4\p15\p19\p0\p1\n | ledger-plain-move
+CLEAN | 
+CASE | track-variant
+# a different track is only a data change: track_len=10 and a new slide
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rules.pdl:track_len | 10
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | track.pdl:slide_7 | 2
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 3
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 0
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+EXPECT_HAS | game/variables.txt | \npos_1_1=2\n | 3+4=7-slides-to-2-on-the-edited-track
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 6
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 0
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | tokens | 2
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+EXPECT_HAS | game/variables.txt | \nwinner=1\n | 6+4=10-is-the-Finish-of-a-10-space-track
+CLEAN | 
+CASE | collision-tie-both-lose
+# collision, tie rule both_lose, mover bounces back
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 6
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_2_1 | 10
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 4
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+EXPECT_HAS | game/variables.txt | \nhp_1_1=2\n | tie-both-lose-attacker-HP-3-to-2
+EXPECT_HAS | game/variables.txt | \nhp_2_1=2\n | tie-both-lose-defender-HP-3-to-2
+EXPECT_HAS | game/variables.txt | \npos_1_1=6\n | both-survive-the-mover-bounces-back-to-6
+EXPECT_HAS | game/variables.txt | \npos_2_1=10\n | defender-stays
+EXPECT_HAS | game/ledger.txt | COMBAT\p0\p1\p1\p2\p1\p0\p4\p4\p1\p1\n | ledger-COMBAT-tie-4-4
+EXPECT_HAS | game/variables.txt | \ndice_counter=6\n | move-die-plus-combat-pair
+EXPECT_HAS | game/variables.txt | \ntokens=1\n | token-spent-on-the-collision-Move
+CLEAN | 
+CASE | collision-tie-coin
+# tie rule coin: heads (1) the defender loses, tails the attacker
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rules.pdl:tie_rule | 2
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 6
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_2_1 | 10
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 4
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+EXPECT_HAS | game/variables.txt | \nhp_2_1=2\n | coin-heads-the-defender-loses
+EXPECT_HAS | game/variables.txt | \nhp_1_1=3\n | attacker-unhurt
+EXPECT_HAS | game/variables.txt | \nrand_counter=1\n | one-coin-flip
+EXPECT_HAS | game/ledger.txt | COMBAT\p0\p1\p1\p2\p1\p0\p4\p4\p0\p1\n | ledger-coin-heads
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-again
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 6
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_2_1 | 10
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 4
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rand_counter | 1
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+EXPECT_HAS | game/variables.txt | \nhp_1_1=2\n | coin-tails-the-attacker-loses
+EXPECT_HAS | game/variables.txt | \nhp_2_1=3\n | defender-unhurt
+EXPECT_HAS | game/ledger.txt | COMBAT\p0\p1\p1\p2\p1\p0\p4\p4\p1\p0\n | ledger-coin-tails
+CLEAN | 
+CASE | collision-share
+# collide_share=1: both survive and share the space
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rules.pdl:collide_share | 1
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 6
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_2_1 | 10
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 4
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+EXPECT_HAS | game/variables.txt | \npos_1_1=10\n | both-stay-on-the-space
+EXPECT_HAS | game/variables.txt | \npos_2_1=10\n | defender-still-there
+CLEAN | 
+CASE | collision-kill
+# the mover wins the roll-off, the defender dies, the mover takes the space
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 6
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_2_3 | 10
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | hp_2_3 | 1
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 9
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+EXPECT_HAS | game/variables.txt | \nhp_2_3=0\n | defender-dead
+EXPECT_HAS | game/variables.txt | \nalive_2_3=0\n | alive-0
+EXPECT_HAS | game/variables.txt | \npos_2_3=-1000\n | dead-ninja-off-the-track
+EXPECT_HAS | game/variables.txt | \npos_1_1=10\n | the-mover-takes-the-space
+EXPECT_HAS | game/variables.txt | \nalive_cnt_2=2\n | army-shrinks
+EXPECT_HAS | game/variables.txt | \nseat_up_2=1\n | seat-2-still-up
+EXPECT_HAS | game/ledger.txt | COMBAT\p0\p1\p1\p2\p3\p0\p4\p1\p0\p1\n | ledger-COMBAT-4-vs-1-the-defender-lost-its-last-HP
+EXPECT_HAS | game/ledger.txt | DEATH\p0\p2\p3\n | ledger-DEATH-row
+CLEAN | 
+CASE | collision-attacker-dies
+# a Blade Dancer loses the roll-off at HP 1 and dies; Chrono-Weaver re-roll not involved
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | select2 | --state | $T/game
+EXPECT_EXIT | 0 | select2-exit-0
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_2 | 5
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_2_3 | 10
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | hp_1_2 | 1
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 1
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+EXPECT_HAS | game/variables.txt | \nalive_1_2=0\n | attacker-died
+EXPECT_HAS | game/variables.txt | \npos_1_2=-1000\n | attacker-off-the-track
+EXPECT_HAS | game/variables.txt | \nhp_2_3=6\n | defender-unhurt
+EXPECT_HAS | game/variables.txt | \nalive_cnt_1=2\n | attacker-army-shrinks
+EXPECT_HAS | game/ledger.txt | DEATH\p0\p1\p2\n | ledger-DEATH-attacker
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+EXPECT_HAS | game/variables.txt | \ndice_counter=3\n | a-dead-selection-cannot-act-so-no-second-roll
+CLEAN | 
+CASE | reroll
+# Chrono-Weaver re-rolls once per game when losing (attacker and defender)
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 10
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_2_3 | 11
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 2
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | attack | --state | $T/game
+EXPECT_EXIT | 0 | attack-exit-0
+EXPECT_HAS | game/variables.txt | \nhp_2_3=5\n | attacker-1+0-vs-3-lost-but-the-re-roll-6-wins
+EXPECT_HAS | game/variables.txt | \nrr_1_1=1\n | re-roll-flag-set
+EXPECT_HAS | game/ledger.txt | REROLL\p0\p1\p1\pattacker\p6\n | ledger-REROLL-attacker
+EXPECT_HAS | game/ledger.txt | COMBAT\p0\p1\p1\p2\p3\p1\p6\p3\p0\p1\n | ledger-COMBAT-6-vs-3
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 2
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | tokens | 2
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | attack | --state | $T/game
+EXPECT_EXIT | 0 | attack-exit-0
+EXPECT_HAS | game/variables.txt | \nhp_1_1=2\n | no-second-re-roll-the-1-vs-3-stands-and-the-attacker-loses
+EXPECT_HAS | game/variables.txt | \nhp_2_3=5\n | defender-unhurt-this-time
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-again
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_3 | 10
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_2_1 | 10
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | sel | 3
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 0
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | attack | --state | $T/game
+EXPECT_EXIT | 0 | attack-exit-0
+EXPECT_HAS | game/variables.txt | \nrr_2_1=1\n | defender-Chrono-Weaver-re-rolled-its-3-vs-4
+EXPECT_HAS | game/ledger.txt | REROLL\p0\p2\p1\pdefender\p4\n | ledger-REROLL-defender
+EXPECT_HAS | game/variables.txt | \nhp_2_1=2\n | re-rolled-4-vs-4-tie-both-lose
+EXPECT_HAS | game/variables.txt | \nhp_1_3=5\n | attacker-HP-6-to-5
+CLEAN | 
+CASE | attack-range
+# Attack action: reach per class in both directions; a Ranged Mystic hits 2-3 away
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/roster.pdl | r_1_1=4\nr_1_2=2\nr_1_3=3\nr_1_4=4\nr_1_5=5\nr_2_1=3\nr_2_2=2\nr_2_3=1\nr_2_4=4\nr_2_5=5\nr_3_1=1\nr_3_2=2\nr_3_3=3\nr_3_4=4\nr_3_5=5\nr_4_1=1\nr_4_2=2\nr_4_3=3\nr_4_4=4\nr_4_5=5\n
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 10
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_2_1 | 12
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 0
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | attack | --state | $T/game
+EXPECT_EXIT | 0 | attack-exit-0
+EXPECT_HAS | game/variables.txt | \nhp_2_1=5\n | Mystic-hits-an-enemy-2-spaces-ahead-4-vs-3
+EXPECT_HAS | game/ledger.txt | ACT\p0\p1\p1\pattack\p2\p1\p2\n | ledger-attack-distance-2
+EXPECT_HAS | game/variables.txt | \ntokens=1\n | Attack-costs-a-token
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_2_1 | 11
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | tokens | 2
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 0
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | attack | --state | $T/game
+EXPECT_EXIT | 0 | attack-exit-0
+EXPECT_HAS | game/variables.txt | \nhp_2_1=5\n | Mystic-cannot-hit-at-distance-1
+EXPECT_HAS | game/ledger.txt | REFUSE\p0\p1\p1\pattack\p1\p0\n | ledger-REFUSE-attack-too-near
+EXPECT_HAS | game/variables.txt | \ntokens=2\n | refused-Attack-spends-nothing
+EXPECT_HAS | game/variables.txt | \ndice_counter=0\n | refused-Attack-rolls-nothing
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_2_1 | 14
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | attack | --state | $T/game
+EXPECT_EXIT | 0 | attack-exit-0
+EXPECT_HAS | game/variables.txt | \nhp_2_1=5\n | Mystic-cannot-hit-at-distance-4
+EXPECT_HAS | game/variables.txt | \ndice_counter=0\n | no-roll
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_2_1 | 8
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | attack | --state | $T/game
+EXPECT_EXIT | 0 | attack-exit-0
+EXPECT_HAS | game/variables.txt | \nhp_2_1=4\n | Mystic-hits-an-enemy-2-spaces-behind-too
+EXPECT_HAS | game/ledger.txt | ACT\p0\p1\p1\pattack\p2\p1\p2\n | ledger-attack-behind
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | sel | 3
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_3 | 10
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_2_1 | 12
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | tokens | 2
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | attack | --state | $T/game
+EXPECT_EXIT | 0 | attack-exit-0
+EXPECT_HAS | game/variables.txt | \ntokens=2\n | Ward-Sentinel-melee-cannot-hit-at-distance-2
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_2_1 | 11
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 0
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | attack | --state | $T/game
+EXPECT_EXIT | 0 | attack-exit-0
+EXPECT_HAS | game/variables.txt | \ntokens=1\n | Ward-Sentinel-melee-hits-an-adjacent-enemy
+CLEAN | 
+CASE | adjacent-bonus
+# Blade Dancer +1 Attack when the enemy is adjacent
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | select2 | --state | $T/game
+EXPECT_EXIT | 0 | select2-exit-0
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_2 | 10
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_2_3 | 11
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 1
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | attack | --state | $T/game
+EXPECT_EXIT | 0 | attack-exit-0
+EXPECT_HAS | game/ledger.txt | COMBAT\p0\p1\p2\p2\p3\p1\p5\p4\p0\p1\n | ledger-Blade-Dancer-4+1=5-beats-Ward-4
+EXPECT_HAS | game/variables.txt | \nhp_2_3=5\n | defender-loses-1
+CLEAN | 
+CASE | block
+# Block: guard bonus on the next defence; the Ward Sentinel's first Block each turn is free
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 10
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_2_1 | 10
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | block | --state | $T/game
+EXPECT_EXIT | 0 | block-exit-0
+EXPECT_HAS | game/variables.txt | \ntokens=1\n | Block-costs-a-token
+EXPECT_HAS | game/variables.txt | \nguard_1_1=1\n | guard-bonus-1-from-rules.pdl-block_bonus
+EXPECT_HAS | game/ledger.txt | ACT\p0\p1\p1\pblock\p0\p1\n | ledger-ACT-block
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | current | 2
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | sel | 1
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | tokens | 2
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 1
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | attack | --state | $T/game
+EXPECT_EXIT | 0 | attack-exit-0
+EXPECT_HAS | game/variables.txt | \nhp_2_1=2\n | the-guarded-defender-4+1-beats-4-so-the-attacker-loses
+EXPECT_HAS | game/variables.txt | \nhp_1_1=3\n | defender-unhurt
+EXPECT_HAS | game/variables.txt | \nguard_1_1=0\n | guard-spent-by-the-defence
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-again
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | select3 | --state | $T/game
+EXPECT_EXIT | 0 | select3-exit-0
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | block | --state | $T/game
+EXPECT_EXIT | 0 | block-exit-0
+EXPECT_HAS | game/variables.txt | \ntokens=2\n | Ward-Sentinel-first-Block-is-free
+EXPECT_HAS | game/variables.txt | \nfb_1_3=1\n | free-Block-used-this-turn
+EXPECT_HAS | game/ledger.txt | ACT\p0\p1\p3\pblock\p1\p0\n | ledger-free-Block
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | block | --state | $T/game
+EXPECT_EXIT | 0 | block-exit-0
+EXPECT_HAS | game/variables.txt | \ntokens=1\n | second-Block-costs-a-token
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-again
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | block | --state | $T/game
+EXPECT_EXIT | 0 | block-exit-0
+EXPECT_HAS | game/variables.txt | \nguard_1_1=1\n | guard-set
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | fb_1_3 | 1
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | endturn | --state | $T/game
+EXPECT_EXIT | 0 | endturn-exit-0
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | endturn | --state | $T/game
+EXPECT_EXIT | 0 | endturn-exit-0
+EXPECT_HAS | game/variables.txt | \nguard_1_1=0\n | stance-ends-at-the-start-of-the-owners-next-turn
+EXPECT_HAS | game/variables.txt | \nfb_1_3=0\n | free-Block-flag-reset
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-again
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | alive_1_1 | 0
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | block | --state | $T/game
+EXPECT_EXIT | 0 | block-exit-0
+EXPECT_HAS | game/ledger.txt | REFUSE\p0\p1\p1\pblock\p0\p2\n | ledger-REFUSE-dead-Block
+EXPECT_HAS | game/variables.txt | \nguard_1_1=0\n | no-guard-for-a-dead-ninja
+CLEAN | 
+CASE | shield
+# Chrono Shield: +2 Block for one combat, 1 token, cooldown 2 turns
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | cast_shield | --state | $T/game
+EXPECT_EXIT | 0 | cast_shield-exit-0
+EXPECT_HAS | game/variables.txt | \nshield_1_1=2\n | shield-bonus-2-from-abilities.pdl
+EXPECT_HAS | game/variables.txt | \ntokens=1\n | 1-token
+EXPECT_HAS | game/variables.txt | \nrdy_4_1_1=2\n | ready-again-at-round-2
+EXPECT_HAS | game/ledger.txt | CAST\p0\p1\p1\pshield\pok\n | ledger-CAST-shield
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | cast_shield | --state | $T/game
+EXPECT_EXIT | 0 | cast_shield-exit-0
+EXPECT_HAS | game/variables.txt | \ntokens=1\n | second-cast-refused-on-cooldown
+EXPECT_HAS | game/ledger.txt | REFUSE\p0\p1\p1\pshield\p0\n | ledger-REFUSE-shield-cooldown
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | round | 2
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | cast_shield | --state | $T/game
+EXPECT_EXIT | 0 | cast_shield-exit-0
+EXPECT_HAS | game/variables.txt | \ntokens=0\n | cooldown-over-at-round-2
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-again
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | cast_shield | --state | $T/game
+EXPECT_EXIT | 0 | cast_shield-exit-0
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 10
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_2_3 | 10
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | current | 2
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | sel | 3
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | tokens | 2
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 0
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | attack | --state | $T/game
+EXPECT_EXIT | 0 | attack-exit-0
+EXPECT_HAS | game/variables.txt | \nhp_1_1=3\n | shielded-defender-3+2=5-beats-4-and-is-unhurt
+EXPECT_HAS | game/variables.txt | \nhp_2_3=5\n | the-attacker-loses-1
+EXPECT_HAS | game/variables.txt | \nshield_1_1=0\n | shield-spent
+CLEAN | 
+CASE | timeskip
+# Time Skip: 1 token + roll doubles, forward 1d4, max 2 uses per ninja
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 5
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 1
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | cast_timeskip | --state | $T/game
+EXPECT_EXIT | 0 | cast_timeskip-exit-0
+EXPECT_HAS | game/variables.txt | \npos_1_1=8\n | doubles-4-4-then-d4=3-forward
+EXPECT_HAS | game/variables.txt | \ntokens=1\n | 1-token
+EXPECT_HAS | game/variables.txt | \nuse_1_1_1=1\n | use-counted
+EXPECT_HAS | game/ledger.txt | CAST\p0\p1\p1\ptimeskip\pok\p5\p8\n | ledger-CAST-timeskip-ok
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 0
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | tokens | 2
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | cast_timeskip | --state | $T/game
+EXPECT_EXIT | 0 | cast_timeskip-exit-0
+EXPECT_HAS | game/variables.txt | \npos_1_1=8\n | no-doubles-4-3-fizzle
+EXPECT_HAS | game/variables.txt | \ntokens=1\n | a-fizzle-still-spends-the-token
+EXPECT_HAS | game/variables.txt | \nuse_1_1_1=2\n | and-the-use
+EXPECT_HAS | game/ledger.txt | CAST\p0\p1\p1\ptimeskip\pfizzle\p8\p8\n | ledger-fizzle
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | tokens | 2
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 1
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | cast_timeskip | --state | $T/game
+EXPECT_EXIT | 0 | cast_timeskip-exit-0
+EXPECT_HAS | game/variables.txt | \ntokens=2\n | third-use-refused-max-2-per-race
+EXPECT_HAS | game/ledger.txt | REFUSE\p0\p1\p1\ptimeskip\p0\n | ledger-REFUSE-limit
+EXPECT_HAS | game/variables.txt | \npos_1_1=8\n | no-move
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-again
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 6
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 1
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rand_counter | 0
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | cast_timeskip | --state | $T/game
+EXPECT_EXIT | 0 | cast_timeskip-exit-0
+EXPECT_HAS | game/variables.txt | \npos_1_1=4\n | 6+3=9-is-a-slide-to-4
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-again
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 22
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 1
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rand_counter | 3
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | cast_timeskip | --state | $T/game
+EXPECT_EXIT | 0 | cast_timeskip-exit-0
+EXPECT_HAS | game/variables.txt | \npos_1_1=23\n | 22+3=25-bounces-to-23
+CLEAN | 
+CASE | warp
+# Warp Ally: 1 token + coin flip, the nearest friendly ninja 3 spaces forward, cannot teleport past Finish
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 5
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_2 | 3
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | cast_warp | --state | $T/game
+EXPECT_EXIT | 0 | cast_warp-exit-0
+EXPECT_HAS | game/variables.txt | \npos_1_2=6\n | heads-the-nearest-ally-3-to-6
+EXPECT_HAS | game/variables.txt | \ntp_1_1=1\n | teleport-use-counted-against-the-caster
+EXPECT_HAS | game/variables.txt | \ntokens=1\n | 1-token
+EXPECT_HAS | game/ledger.txt | CAST\p0\p1\p1\pwarp\pok\p1\p2\p3\p6\n | ledger-warp-ok
+EXPECT_HAS | game/variables.txt | \nrand_counter=1\n | one-coin
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | tokens | 2
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_2 | 6
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | cast_warp | --state | $T/game
+EXPECT_EXIT | 0 | cast_warp-exit-0
+EXPECT_HAS | game/variables.txt | \npos_1_2=6\n | tails-fizzle
+EXPECT_HAS | game/variables.txt | \ntp_1_1=2\n | fizzle-still-counts-as-a-teleport-use
+EXPECT_HAS | game/ledger.txt | CAST\p0\p1\p1\pwarp\pfizzle\p1\p2\n | ledger-warp-fizzle
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | tokens | 2
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rand_counter | 0
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | cast_warp | --state | $T/game
+EXPECT_EXIT | 0 | cast_warp-exit-0
+EXPECT_HAS | game/variables.txt | \npos_1_2=6\n | third-teleport-refused-max-2-per-ninja
+EXPECT_HAS | game/ledger.txt | REFUSE\p0\p1\p1\pwarp\p0\n | ledger-REFUSE-teleport-limit
+EXPECT_HAS | game/variables.txt | \ntokens=2\n | nothing-spent
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-again
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 20
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_2 | 22
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | cast_warp | --state | $T/game
+EXPECT_EXIT | 0 | cast_warp-exit-0
+EXPECT_HAS | game/variables.txt | \npos_1_2=24\n | 22+3-clamped-to-Finish
+EXPECT_HAS | game/variables.txt | \nwinner=1\n | the-ally-reaching-Finish-wins
+EXPECT_HAS | game/variables.txt | \nwinner_n=2\n | ninja-2
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-again
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rules.pdl:warp_ally_may_finish | 0
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 20
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_2 | 22
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | cast_warp | --state | $T/game
+EXPECT_EXIT | 0 | cast_warp-exit-0
+EXPECT_HAS | game/variables.txt | \npos_1_2=23\n | may_finish=0-stops-one-short
+EXPECT_HAS | game/variables.txt | \nwinner=0\n | no-winner
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-again
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | alive_1_2 | 0
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | alive_1_3 | 0
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_2 | -1000
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_3 | -1000
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | cast_warp | --state | $T/game
+EXPECT_EXIT | 0 | cast_warp-exit-0
+EXPECT_HAS | game/ledger.txt | REFUSE\p0\p1\p1\pwarp\p0\n | no-living-ally-refused
+EXPECT_HAS | game/variables.txt | \ntokens=2\n | nothing-spent
+CLEAN | 
+CASE | banish
+# Banish Foe: 2 tokens + double sixes; the nearest enemy goes to Start
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 10
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_2_2 | 13
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_2_1 | 20
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 3
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | cast_banish | --state | $T/game
+EXPECT_EXIT | 0 | cast_banish-exit-0
+EXPECT_HAS | game/variables.txt | \npos_2_2=0\n | double-6s-the-nearest-enemy-goes-to-Start
+EXPECT_HAS | game/variables.txt | \npos_2_1=20\n | the-other-enemy-stays
+EXPECT_HAS | game/variables.txt | \ntokens=0\n | cost-2-tokens
+EXPECT_HAS | game/ledger.txt | CAST\p0\p1\p1\pbanish\pok\p2\p2\p13\p0\n | ledger-banish-ok
+EXPECT_HAS | game/variables.txt | \ntp_1_1=1\n | teleport-use-counted
+EXPECT_HAS | game/variables.txt | \nrand_counter=0\n | no-coin-flip-while-teleport_foe_to_finish-is-0
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-again
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 10
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_2_2 | 13
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 0
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | cast_banish | --state | $T/game
+EXPECT_EXIT | 0 | cast_banish-exit-0
+EXPECT_HAS | game/variables.txt | \npos_2_2=13\n | no-double-6s-fizzle
+EXPECT_HAS | game/variables.txt | \ntokens=0\n | tokens-spent-anyway
+EXPECT_HAS | game/ledger.txt | CAST\p0\p1\p1\pbanish\pfizzle\p2\p2\n | ledger-banish-fizzle
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-again
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 10
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_2_2 | 13
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | tokens | 1
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 3
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | cast_banish | --state | $T/game
+EXPECT_EXIT | 0 | cast_banish-exit-0
+EXPECT_HAS | game/variables.txt | \npos_2_2=13\n | one-token-is-not-enough-for-a-2-token-ability
+EXPECT_HAS | game/ledger.txt | REFUSE\p0\p1\p1\pbanish\p0\n | ledger-REFUSE-banish
+EXPECT_HAS | game/variables.txt | \ndice_counter=3\n | no-roll
+CLEAN | 
+CASE | banish-finish
+# teleport_foe_to_finish=1: a coin flip may send the enemy to Finish, where it wins
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rules.pdl:teleport_foe_to_finish | 1
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 10
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_2_2 | 13
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 3
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rand_counter | 1
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | cast_banish | --state | $T/game
+EXPECT_EXIT | 0 | cast_banish-exit-0
+EXPECT_HAS | game/variables.txt | \npos_2_2=24\n | coin-2-sends-the-enemy-to-Finish
+EXPECT_HAS | game/variables.txt | \nwinner=2\n | the-enemy-seat-wins
+EXPECT_HAS | game/variables.txt | \nwinner_n=2\n | its-ninja
+EXPECT_HAS | game/variables.txt | \ngame_over_reason=1\n | Finish
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-again
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 10
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_2_2 | 13
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 3
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rand_counter | 0
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | cast_banish | --state | $T/game
+EXPECT_EXIT | 0 | cast_banish-exit-0
+EXPECT_HAS | game/variables.txt | \npos_2_2=0\n | coin-1-sends-it-to-Start
+EXPECT_HAS | game/variables.txt | \nwinner=0\n | no-winner
+EXPECT_HAS | game/variables.txt | \nrand_counter=1\n | one-coin
+CLEAN | 
+CASE | blink
+# Shadow Step blink: class 5 only, 1-2 spaces forward by coin
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/roster.pdl | r_1_1=5\nr_1_2=2\nr_1_3=3\nr_1_4=4\nr_1_5=5\nr_2_1=1\nr_2_2=2\nr_2_3=3\nr_2_4=4\nr_2_5=5\nr_3_1=1\nr_3_2=2\nr_3_3=3\nr_3_4=4\nr_3_5=5\nr_4_1=1\nr_4_2=2\nr_4_3=3\nr_4_4=4\nr_4_5=5\n
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 5
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | cast_blink | --state | $T/game
+EXPECT_EXIT | 0 | cast_blink-exit-0
+EXPECT_HAS | game/variables.txt | \npos_1_1=6\n | blink-coin-1-gives-1-space
+EXPECT_HAS | game/variables.txt | \ntp_1_1=1\n | teleport-use
+EXPECT_HAS | game/variables.txt | \ntokens=1\n | 1-token
+EXPECT_HAS | game/ledger.txt | CAST\p0\p1\p1\pblink\pok\p5\p6\n | ledger-blink
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | tokens | 2
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | cast_blink | --state | $T/game
+EXPECT_EXIT | 0 | cast_blink-exit-0
+EXPECT_HAS | game/variables.txt | \npos_1_1=8\n | blink-coin-2-gives-2-spaces
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | tokens | 2
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | cast_blink | --state | $T/game
+EXPECT_EXIT | 0 | cast_blink-exit-0
+EXPECT_HAS | game/variables.txt | \npos_1_1=8\n | third-blink-refused-teleport-limit-2
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-again
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | select2 | --state | $T/game
+EXPECT_EXIT | 0 | select2-exit-0
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | cast_blink | --state | $T/game
+EXPECT_EXIT | 0 | cast_blink-exit-0
+EXPECT_HAS | game/ledger.txt | REFUSE\p0\p1\p2\pblink\p0\n | only-Shadow-Step-may-blink
+EXPECT_HAS | game/variables.txt | \ntokens=2\n | nothing-spent
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-again
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 5
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 0
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rand_counter | 0
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | cast_shield | --state | $T/game
+EXPECT_EXIT | 0 | cast_shield-exit-0
+EXPECT_HAS | game/variables.txt | \ntokens=1\n | any-class-may-cast-shield-class-0-placeholder
+CLEAN | 
+CASE | endturn
+# End Turn: next army, tokens reset, rounds, a defeated army is skipped, turn cap
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=3\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | tokens | 0
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | endturn | --state | $T/game
+EXPECT_EXIT | 0 | endturn-exit-0
+EXPECT_HAS | game/variables.txt | \ncurrent=2\n | seat-2-next
+EXPECT_HAS | game/variables.txt | \nturn=1\n | turn-1
+EXPECT_HAS | game/variables.txt | \ntokens=2\n | tokens-reset-for-the-new-turn
+EXPECT_HAS | game/variables.txt | \nround=0\n | still-round-0
+EXPECT_HAS | game/ledger.txt | TURN\p1\p2\p0\n | ledger-TURN-row
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | endturn | --state | $T/game
+EXPECT_EXIT | 0 | endturn-exit-0
+EXPECT_HAS | game/variables.txt | \ncurrent=3\n | seat-3
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | endturn | --state | $T/game
+EXPECT_EXIT | 0 | endturn-exit-0
+EXPECT_HAS | game/variables.txt | \ncurrent=1\n | wraps-to-seat-1
+EXPECT_HAS | game/variables.txt | \nround=1\n | a-lap-is-a-round
+EXPECT_HAS | game/variables.txt | \nturn=3\n | turn-3
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | seat_up_2 | 0
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | seats_up | 2
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | endturn | --state | $T/game
+EXPECT_EXIT | 0 | endturn-exit-0
+EXPECT_HAS | game/variables.txt | \ncurrent=3\n | seat-2-is-out-so-seat-1-ends-into-seat-3
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | endturn | --state | $T/game
+EXPECT_EXIT | 0 | endturn-exit-0
+EXPECT_HAS | game/variables.txt | \ncurrent=1\n | wraps-past-the-dead-army
+EXPECT_HAS | game/variables.txt | \nround=2\n | round-2
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rules.pdl:turn_cap | 5
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | endturn | --state | $T/game
+EXPECT_EXIT | 0 | endturn-exit-0
+EXPECT_HAS | game/variables.txt | \ngame_over_reason=4\n | turn-cap-reached-draw
+EXPECT_HAS | game/variables.txt | \nwinner=0\n | no-winner-in-a-draw
+EXPECT_HAS | game/switches.txt | game_over=1\n | game-over-by-the-cap
+CLEAN | 
+CASE | last-army
+# last army standing wins; both last ninjas falling together is a draw
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 10
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_2_3 | 11
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | alive_2_1 | 0
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | alive_2_2 | 0
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_2_1 | -1000
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_2_2 | -1000
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | hp_2_3 | 1
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | alive_cnt_2 | 1
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 0
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | attack | --state | $T/game
+EXPECT_EXIT | 0 | attack-exit-0
+EXPECT_HAS | game/variables.txt | \nseat_up_2=0\n | seat-2-out
+EXPECT_HAS | game/variables.txt | \nseats_up=1\n | one-army-left
+EXPECT_HAS | game/variables.txt | \nwinner=1\n | seat-1-wins
+EXPECT_HAS | game/variables.txt | \ngame_over_reason=2\n | reason-2-last-army
+EXPECT_HAS | game/ledger.txt | SEATOUT\p0\p2\n | ledger-SEATOUT
+EXPECT_HAS | game/ledger.txt | WIN\p0\p1\p0\n | ledger-WIN-army
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | attack | --state | $T/game
+EXPECT_EXIT | 1 | no-page-after-the-win
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-again
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 10
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_2_1 | 10
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | hp_1_1 | 1
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | hp_2_1 | 1
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | alive_cnt_1 | 1
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | alive_cnt_2 | 1
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 1
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | attack | --state | $T/game
+EXPECT_EXIT | 0 | attack-exit-0
+EXPECT_HAS | game/variables.txt | \nseats_up=0\n | both-armies-gone
+EXPECT_HAS | game/variables.txt | \ngame_over_reason=3\n | reason-3-mutual-elimination
+EXPECT_HAS | game/variables.txt | \nwinner=0\n | draw
+EXPECT_HAS | game/ledger.txt | DRAW\p0\n | ledger-DRAW
+CLEAN | 
+CASE | referee-hp-above-class-max
+# negative: the referee must fail this corrupted state
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/race_audit_op.+x | audit | $T/game
+EXPECT_EXIT | 0 | audit-passes-on-a-fresh-game
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+RUN | $T/game/ops/+x/race_audit_op.+x | audit | $T/game
+EXPECT_EXIT | 0 | audit-passes-after-a-Move
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | hp_1_1 | 9
+RUN | $T/game/ops/+x/race_audit_op.+x | audit | $T/game
+EXPECT_EXIT | 1 | audit-catches-hp-above-class-max
+EXPECT_HAS | game/audit_ledger.txt | FAIL\pseat 1 ninja 1 HP 9 outside 1..class HP | audit-catches-hp-above-class-max-says-why
+CLEAN | 
+CASE | referee-tokens-above-max
+# negative: the referee must fail this corrupted state
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/race_audit_op.+x | audit | $T/game
+EXPECT_EXIT | 0 | audit-passes-on-a-fresh-game
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+RUN | $T/game/ops/+x/race_audit_op.+x | audit | $T/game
+EXPECT_EXIT | 0 | audit-passes-after-a-Move
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | tokens | 5
+RUN | $T/game/ops/+x/race_audit_op.+x | audit | $T/game
+EXPECT_EXIT | 1 | audit-catches-tokens-above-max
+EXPECT_HAS | game/audit_ledger.txt | FAIL\ptokens 5 outside 0..max_action_tokens | audit-catches-tokens-above-max-says-why
+CLEAN | 
+CASE | referee-dead-keeps-hp
+# negative: the referee must fail this corrupted state
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/race_audit_op.+x | audit | $T/game
+EXPECT_EXIT | 0 | audit-passes-on-a-fresh-game
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+RUN | $T/game/ops/+x/race_audit_op.+x | audit | $T/game
+EXPECT_EXIT | 0 | audit-passes-after-a-Move
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | alive_1_2 | 0
+RUN | $T/game/ops/+x/race_audit_op.+x | audit | $T/game
+EXPECT_EXIT | 1 | audit-catches-dead-keeps-hp
+EXPECT_HAS | game/audit_ledger.txt | FAIL\pdead seat 1 ninja 2 keeps HP 5 or a position | audit-catches-dead-keeps-hp-says-why
+CLEAN | 
+CASE | referee-dead-ninja-acts
+# negative: a real death is accounted for, then a forged row makes the dead ninja act
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | hp_2_3 | 1
+RUN | $T/game/ops/+x/race_audit_op.+x | audit | $T/game
+EXPECT_EXIT | 0 | audit-passes-with-a-wounded-ninja
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 10
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_2_3 | 10
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 0
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | attack | --state | $T/game
+EXPECT_EXIT | 0 | attack-exit-0
+RUN | $T/game/ops/+x/race_audit_op.+x | audit | $T/game
+EXPECT_EXIT | 0 | audit-passes-after-a-real-kill-the-death-is-accounted-by-a-COMBAT-row
+EXPECT_HAS | game/variables.txt | \nalive_2_3=0\n | the-ninja-is-dead
+APPEND | game/ledger.txt | ACT\p0\p2\p3\pmove\p4\p4\p0\p4\p0\p1\n
+RUN | $T/game/ops/+x/race_audit_op.+x | audit | $T/game
+EXPECT_EXIT | 1 | audit-catches-a-dead-ninja-acting
+EXPECT_HAS | game/audit_ledger.txt | FAIL\prow 4: seat 2 ninja 3 acted but was dead at the previous call | audit-catches-a-dead-ninja-acting-says-why
+CLEAN | 
+CASE | referee-hp-loss-without-combat
+# negative: the referee must fail this corrupted state
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/race_audit_op.+x | audit | $T/game
+EXPECT_EXIT | 0 | audit-passes-on-a-fresh-game
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+RUN | $T/game/ops/+x/race_audit_op.+x | audit | $T/game
+EXPECT_EXIT | 0 | audit-passes-after-a-Move
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | hp_2_2 | 4
+RUN | $T/game/ops/+x/race_audit_op.+x | audit | $T/game
+EXPECT_EXIT | 1 | audit-catches-hp-loss-without-combat
+EXPECT_HAS | game/audit_ledger.txt | FAIL\pHP lost 1 but COMBAT rows account for 0 | audit-catches-hp-loss-without-combat-says-why
+CLEAN | 
+CASE | referee-two-on-finish
+# negative: the referee must fail this corrupted state
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/race_audit_op.+x | audit | $T/game
+EXPECT_EXIT | 0 | audit-passes-on-a-fresh-game
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+RUN | $T/game/ops/+x/race_audit_op.+x | audit | $T/game
+EXPECT_EXIT | 0 | audit-passes-after-a-Move
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_1_1 | 24
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | pos_2_1 | 24
+RUN | $T/game/ops/+x/race_audit_op.+x | audit | $T/game
+EXPECT_EXIT | 1 | audit-catches-two-on-finish
+EXPECT_HAS | game/audit_ledger.txt | FAIL\p2 ninjas on Finish | audit-catches-two-on-finish-says-why
+CLEAN | 
+CASE | referee-dice-counter-tampered
+# negative: the referee must fail this corrupted state
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/race_audit_op.+x | audit | $T/game
+EXPECT_EXIT | 0 | audit-passes-on-a-fresh-game
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+RUN | $T/game/ops/+x/race_audit_op.+x | audit | $T/game
+EXPECT_EXIT | 0 | audit-passes-after-a-Move
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | dice_counter | 5
+RUN | $T/game/ops/+x/race_audit_op.+x | audit | $T/game
+EXPECT_EXIT | 1 | audit-catches-dice-counter-tampered
+EXPECT_HAS | game/audit_ledger.txt | FAIL\pdice_counter 5 != DICE rows 1 | audit-catches-dice-counter-tampered-says-why
+CLEAN | 
+CASE | referee-ability-over-limit
+# negative: the referee must fail this corrupted state
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/race_audit_op.+x | audit | $T/game
+EXPECT_EXIT | 0 | audit-passes-on-a-fresh-game
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+RUN | $T/game/ops/+x/race_audit_op.+x | audit | $T/game
+EXPECT_EXIT | 0 | audit-passes-after-a-Move
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | use_1_1_1 | 3
+RUN | $T/game/ops/+x/race_audit_op.+x | audit | $T/game
+EXPECT_EXIT | 1 | audit-catches-ability-over-limit
+EXPECT_HAS | game/audit_ledger.txt | FAIL\pability 1 of seat 1 ninja 1 used above its limit | audit-catches-ability-over-limit-says-why
+CLEAN | 
+CASE | referee-forged-bounce
+# negative: the referee must fail this corrupted state
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/race_audit_op.+x | audit | $T/game
+EXPECT_EXIT | 0 | audit-passes-on-a-fresh-game
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+RUN | $T/game/ops/+x/race_audit_op.+x | audit | $T/game
+EXPECT_EXIT | 0 | audit-passes-after-a-Move
+APPEND | game/ledger.txt | ACT\p0\p1\p1\pmove\p6\p6\p20\p26\p0\p1\n
+RUN | $T/game/ops/+x/race_audit_op.+x | audit | $T/game
+EXPECT_EXIT | 1 | audit-catches-forged-bounce
+EXPECT_HAS | game/audit_ledger.txt | FAIL\prow 2: finish rule gives target 22 not 26 | audit-catches-forged-bounce-says-why
+CLEAN | 
+CASE | referee-forged-combat
+# negative: the referee must fail this corrupted state
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+RUN | $T/game/ops/+x/race_audit_op.+x | audit | $T/game
+EXPECT_EXIT | 0 | audit-passes-on-a-fresh-game
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | move | --state | $T/game
+EXPECT_EXIT | 0 | move-exit-0
+RUN | $T/game/ops/+x/race_audit_op.+x | audit | $T/game
+EXPECT_EXIT | 0 | audit-passes-after-a-Move
+APPEND | game/ledger.txt | COMBAT\p0\p1\p1\p2\p1\p0\p5\p4\p1\p0\n
+RUN | $T/game/ops/+x/race_audit_op.+x | audit | $T/game
+EXPECT_EXIT | 1 | audit-catches-forged-combat
+EXPECT_HAS | game/audit_ledger.txt | FAIL\prow 2: attacker won but losses are 1/0 | audit-catches-forged-combat-says-why
+CLEAN | 
+CASE | fairness
+# ROLL-OFF FAIRNESS: 2000 seeded 1d6 vs 1d6 combats and 2000 coin flips from the real ops; tie ~16.7%, wins symmetric
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+WRITE | game/variables.txt | dice_seed=42\ndice_counter=0\nrand_counter=0\n
+WRITE | loop.pal | li x2, 2000\n_l1:\nbeq x2, x0, _d1\nexec game/ops/+x/dice_roll.+x game dice_seed dice_counter\nexec game/ops/+x/rand_roll.+x game dice_seed rand_counter 2 coin\naddi x2, x2, -1\nj _l1\n_d1:\nhalt\n
+RUN | $T/prisc | loop.pal
+EXPECT_EXIT | 0 | 2000-roll-offs-and-2000-flips-ran
+EXPECT_HAS | game/variables.txt | \ndice_counter=2000\n | 2000-dice-rolls-on-the-books
+EXPECT_HAS | game/variables.txt | \nrand_counter=2000\n | 2000-coin-flips-on-the-books
+RUN | $T/game/ops/+x/race_audit_op.+x | fairness | $T/game | 25 | 40
+EXPECT_EXIT | 0 | FAIRNESS-tie-rate-within-2.5-points-of-16.7%-wins-symmetric-within-4-points-coin-and-die-faces-within-4-points
+EXPECT_OUT | n=2000 tie= | fairness-report-counts-2000-roll-offs
+RUN | $T/game/ops/+x/race_audit_op.+x | fairness | $T/game | 1 | 1
+EXPECT_EXIT | 1 | an-absurdly-tight-tolerance-of-0.1-points-fails-so-the-check-can-fail
+RUN | $T/game/ops/+x/race_audit_op.+x | exact
+EXPECT_OUT_IS | tie=6 attacker=15 defender=15 of=36 | exact-enumeration-tie-1/6-wins-equal
+CLEAN | 
+CASE | race-2p-seed3
+# a seeded full race, 2 players, rules as shipped (bounce, both_lose)
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=3\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+WRITE | loop.pal | li x2, 260\n_l1:\nbeq x2, x0, _d1\nexec game/ops/+x/event_page_op.+x game game --trigger autoturn --state game\nexec game/ops/+x/race_audit_op.+x audit game\naddi x2, x2, -1\nj _l1\n_d1:\nhalt\n
+RUN | $T/prisc | loop.pal
+EXPECT_EXIT | 0 | pal-loop-of-260-bot-actions-ran
+EXPECT_LACKS | game/audit_ledger.txt | FAIL | referee-never-failed-an-action
+EXPECT_HAS | game/audit_ledger.txt | \pok\p | referee-passed-actions
+EXPECT_NOFILE | game/op_errors.txt | no-op-reported-an-error
+EXPECT_HAS | game/switches.txt | game_over=1\n | race-reached-game-over
+EXPECT_HAS | game/variables.txt | \ngame_over_reason=1\n | won-by-reaching-Finish
+EXPECT_HAS | game/variables.txt | \nwinner=2\n | seed-3-winner-is-seat-2
+EXPECT_HAS | game/ledger.txt | WIN\p | WIN-row-in-the-ledger
+EXPECT_HAS | game/ledger.txt | COMBAT\p | a-fight-happened
+EXPECT_HAS | game/ledger.txt | CAST\p | abilities-were-cast
+RUN | /usr/bin/sha256sum | game/variables.txt | game/switches.txt | game/ledger.txt | game/dice_ledger.txt | game/rand_ledger.txt | game/audit_ledger.txt
+CAPTURE | sig_a
+CLEAN | 
+CASE | race-2p-seed3-again
+# determinism: the same seed gives byte-identical variables, ledgers, dice, coin and referee log
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=3\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+WRITE | loop.pal | li x2, 260\n_l1:\nbeq x2, x0, _d1\nexec game/ops/+x/event_page_op.+x game game --trigger autoturn --state game\nexec game/ops/+x/race_audit_op.+x audit game\naddi x2, x2, -1\nj _l1\n_d1:\nhalt\n
+RUN | $T/prisc | loop.pal
+EXPECT_EXIT | 0 | pal-loop-of-260-bot-actions-ran
+EXPECT_LACKS | game/audit_ledger.txt | FAIL | referee-never-failed-an-action
+EXPECT_HAS | game/audit_ledger.txt | \pok\p | referee-passed-actions
+EXPECT_NOFILE | game/op_errors.txt | no-op-reported-an-error
+EXPECT_HAS | game/switches.txt | game_over=1\n | race-reached-game-over
+EXPECT_HAS | game/variables.txt | \nwinner=2\n | same-winner
+RUN | /usr/bin/sha256sum | game/variables.txt | game/switches.txt | game/ledger.txt | game/dice_ledger.txt | game/rand_ledger.txt | game/audit_ledger.txt
+CAPTURE | sig_a2
+EXPECT_EQ | $sig_a | $sig_a2 | DETERMINISM-same-seed-identical-variables-ledgers-dice-and-audit-log
+CLEAN | 
+CASE | race-2p-seed4
+# another seed gives another race
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=4\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+WRITE | loop.pal | li x2, 260\n_l1:\nbeq x2, x0, _d1\nexec game/ops/+x/event_page_op.+x game game --trigger autoturn --state game\nexec game/ops/+x/race_audit_op.+x audit game\naddi x2, x2, -1\nj _l1\n_d1:\nhalt\n
+RUN | $T/prisc | loop.pal
+EXPECT_EXIT | 0 | pal-loop-of-260-bot-actions-ran
+EXPECT_LACKS | game/audit_ledger.txt | FAIL | referee-never-failed-an-action
+EXPECT_HAS | game/audit_ledger.txt | \pok\p | referee-passed-actions
+EXPECT_NOFILE | game/op_errors.txt | no-op-reported-an-error
+EXPECT_HAS | game/switches.txt | game_over=1\n | race-reached-game-over
+EXPECT_HAS | game/variables.txt | \ngame_over_reason=1\n | Finish
+EXPECT_HAS | game/variables.txt | \nwinner=1\n | seed-4-winner-is-seat-1
+RUN | /usr/bin/sha256sum | game/variables.txt | game/switches.txt | game/ledger.txt | game/dice_ledger.txt | game/rand_ledger.txt | game/audit_ledger.txt
+CAPTURE | sig_b
+EXPECT_NE | $sig_a | $sig_b | different-seed-different-race
+CLEAN | 
+CASE | race-4p-seed5
+# 4 players
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=4\ndice_seed=5\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+WRITE | loop.pal | li x2, 260\n_l1:\nbeq x2, x0, _d1\nexec game/ops/+x/event_page_op.+x game game --trigger autoturn --state game\nexec game/ops/+x/race_audit_op.+x audit game\naddi x2, x2, -1\nj _l1\n_d1:\nhalt\n
+RUN | $T/prisc | loop.pal
+EXPECT_EXIT | 0 | pal-loop-of-260-bot-actions-ran
+EXPECT_LACKS | game/audit_ledger.txt | FAIL | referee-never-failed-an-action
+EXPECT_HAS | game/audit_ledger.txt | \pok\p | referee-passed-actions
+EXPECT_NOFILE | game/op_errors.txt | no-op-reported-an-error
+EXPECT_HAS | game/switches.txt | game_over=1\n | race-reached-game-over
+EXPECT_HAS | game/variables.txt | \ngame_over_reason=1\n | Finish
+EXPECT_HAS | game/variables.txt | \nwinner=1\n | seed-5-winner
+EXPECT_HAS | game/variables.txt | \nseats_up=4\n | four-armies-were-up-at-the-end-or-the-winner-won-by-Finish
+CLEAN | 
+CASE | race-3p-variant
+# 3 players, rule variant: exact landing + coin tie-break, mixed rosters (Mystic, Shadow Step, Blade Dancer...)
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rules.pdl:finish_rule | 1
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rules.pdl:tie_rule | 2
+WRITE | game/roster.pdl | r_1_1=4\nr_1_2=5\nr_1_3=2\nr_1_4=4\nr_1_5=5\nr_2_1=1\nr_2_2=2\nr_2_3=3\nr_2_4=4\nr_2_5=5\nr_3_1=5\nr_3_2=4\nr_3_3=3\nr_3_4=4\nr_3_5=5\nr_4_1=1\nr_4_2=2\nr_4_3=3\nr_4_4=4\nr_4_5=5\n
+WRITE | game/variables.txt | players=3\ndice_seed=6\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+WRITE | loop.pal | li x2, 260\n_l1:\nbeq x2, x0, _d1\nexec game/ops/+x/event_page_op.+x game game --trigger autoturn --state game\nexec game/ops/+x/race_audit_op.+x audit game\naddi x2, x2, -1\nj _l1\n_d1:\nhalt\n
+RUN | $T/prisc | loop.pal
+EXPECT_EXIT | 0 | pal-loop-of-260-bot-actions-ran
+EXPECT_LACKS | game/audit_ledger.txt | FAIL | referee-never-failed-an-action
+EXPECT_HAS | game/audit_ledger.txt | \pok\p | referee-passed-actions
+EXPECT_NOFILE | game/op_errors.txt | no-op-reported-an-error
+EXPECT_HAS | game/switches.txt | game_over=1\n | race-reached-game-over
+EXPECT_HAS | game/variables.txt | \ngame_over_reason=1\n | Finish
+EXPECT_HAS | game/rand_ledger.txt | RAND\p | coin-flips-happened-ties-and-casts
+CLEAN | 
+CASE | race-2p-overshoot
+# rule variant: overshoot wins, 12-space track, 5 tokens epic
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rules.pdl:finish_rule | 3
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rules.pdl:track_len | 12
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rules.pdl:action_tokens | 3
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | rules.pdl:max_action_tokens | 3
+WRITE | game/variables.txt | players=2\ndice_seed=7\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+WRITE | loop.pal | li x2, 260\n_l1:\nbeq x2, x0, _d1\nexec game/ops/+x/event_page_op.+x game game --trigger autoturn --state game\nexec game/ops/+x/race_audit_op.+x audit game\naddi x2, x2, -1\nj _l1\n_d1:\nhalt\n
+RUN | $T/prisc | loop.pal
+EXPECT_EXIT | 0 | pal-loop-of-260-bot-actions-ran
+EXPECT_LACKS | game/audit_ledger.txt | FAIL | referee-never-failed-an-action
+EXPECT_HAS | game/audit_ledger.txt | \pok\p | referee-passed-actions
+EXPECT_NOFILE | game/op_errors.txt | no-op-reported-an-error
+EXPECT_HAS | game/switches.txt | game_over=1\n | race-reached-game-over
+EXPECT_HAS | game/variables.txt | \ngame_over_reason=1\n | Finish
+CLEAN | 
+CASE | save-restore
+# game_snapshot_op save after 20 bot actions, mutate, restore, continue = the uninterrupted race (same dice and coin positions, same winner)
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=3\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+WRITE | loop.pal | li x2, 20\n_l1:\nbeq x2, x0, _d1\nexec game/ops/+x/event_page_op.+x game game --trigger autoturn --state game\nexec game/ops/+x/race_audit_op.+x audit game\naddi x2, x2, -1\nj _l1\n_d1:\nhalt\n
+RUN | $T/prisc | loop.pal
+EXPECT_EXIT | 0 | pal-loop-of-20-bot-actions-ran
+EXPECT_LACKS | game/audit_ledger.txt | FAIL | referee-clean-before-the-save
+RUN | /usr/bin/sha256sum | game/variables.txt | game/switches.txt | game/ledger.txt | game/dice_ledger.txt | game/rand_ledger.txt | game/audit_ledger.txt
+CAPTURE | sig_at20
+COPY | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | gso
+RUN | /usr/bin/grep | -h | ^dice_counter= | $T/game/variables.txt
+CAPTURE | dc_saved
+RUN | /usr/bin/grep | -h | ^rand_counter= | $T/game/variables.txt
+CAPTURE | rc_saved
+RUN | $T/gso | $T/store | $T/game | save | CP20 | --now-ms | 1000
+EXPECT_EXIT | 0 | save-after-20-actions
+WRITE | loop.pal | li x2, 15\n_l1:\nbeq x2, x0, _d1\nexec game/ops/+x/event_page_op.+x game game --trigger autoturn --state game\nexec game/ops/+x/race_audit_op.+x audit game\naddi x2, x2, -1\nj _l1\n_d1:\nhalt\n
+RUN | $T/prisc | loop.pal
+EXPECT_EXIT | 0 | pal-loop-of-15-bot-actions-ran
+RUN | $T/game/ops/+x/var_math.+x | $T/game | set | hp_1_1 | 1
+WRITE | game/variables.txt | players=2\ncash=999999\n
+RUN | /usr/bin/sha256sum | game/variables.txt | game/switches.txt | game/ledger.txt | game/dice_ledger.txt | game/rand_ledger.txt | game/audit_ledger.txt
+CAPTURE | sig_mut
+EXPECT_NE | $sig_at20 | $sig_mut | the-mutation-really-changed-the-game
+RUN | $T/gso | $T/store | $T/game | restore | CP20 | $T/game | --apply | --prune | --now-ms | 2000
+EXPECT_EXIT | 0 | restore-applied
+RUN | /usr/bin/sha256sum | game/variables.txt | game/switches.txt | game/ledger.txt | game/dice_ledger.txt | game/rand_ledger.txt | game/audit_ledger.txt
+CAPTURE | sig_rest
+EXPECT_EQ | $sig_at20 | $sig_rest | restore-brings-back-variables-switches-all-ledgers-dice-and-coin-exactly
+RUN | /usr/bin/grep | -h | ^dice_counter= | $T/game/variables.txt
+CAPTURE | dc_rest
+EXPECT_EQ | $dc_saved | $dc_rest | dice-counter-restored
+RUN | /usr/bin/grep | -h | ^rand_counter= | $T/game/variables.txt
+CAPTURE | rc_rest
+EXPECT_EQ | $rc_saved | $rc_rest | coin-counter-restored
+WRITE | loop.pal | li x2, 260\n_l1:\nbeq x2, x0, _d1\nexec game/ops/+x/event_page_op.+x game game --trigger autoturn --state game\nexec game/ops/+x/race_audit_op.+x audit game\naddi x2, x2, -1\nj _l1\n_d1:\nhalt\n
+RUN | $T/prisc | loop.pal
+EXPECT_EXIT | 0 | pal-loop-of-260-bot-actions-ran
+RUN | /usr/bin/sha256sum | game/variables.txt | game/switches.txt | game/ledger.txt | game/dice_ledger.txt | game/rand_ledger.txt | game/audit_ledger.txt
+CAPTURE | sig_cont
+EXPECT_EQ | $sig_cont | $sig_a | SAVE-RESTORE-CONTINUE-EQUALS-THE-UNINTERRUPTED-RACE-same-rolls-same-coins-same-winner-same-ledgers
+EXPECT_LACKS | game/audit_ledger.txt | FAIL | referee-clean-across-the-restore
+EXPECT_HAS | game/variables.txt | \nwinner=2\n | winner-seat-2-as-in-the-uninterrupted-race
+CLEAN | 
+CASE | player-path
+# the entity menu rows (the real METHOD strings) fire the same pages
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+MKDIR | &.widgits/digipet/ops/+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | &.widgits/digipet/ops/+x/event_page_op.+x
+EXPECT_HAS | game/meta.pdl | METHOD       \p New Game                 \p sh -c | menu-row-setup-exists
+EXPECT_HAS | game/meta.pdl | --trigger setup'\n | menu-row-setup-fires-trigger-setup
+EXPECT_HAS | game/meta.pdl | METHOD       \p Select Ninja 1           \p sh -c | menu-row-select1-exists
+EXPECT_HAS | game/meta.pdl | --trigger select1'\n | menu-row-select1-fires-trigger-select1
+EXPECT_HAS | game/meta.pdl | METHOD       \p Select Ninja 2           \p sh -c | menu-row-select2-exists
+EXPECT_HAS | game/meta.pdl | --trigger select2'\n | menu-row-select2-fires-trigger-select2
+EXPECT_HAS | game/meta.pdl | METHOD       \p Select Ninja 3           \p sh -c | menu-row-select3-exists
+EXPECT_HAS | game/meta.pdl | --trigger select3'\n | menu-row-select3-fires-trigger-select3
+EXPECT_HAS | game/meta.pdl | METHOD       \p Select Ninja 4           \p sh -c | menu-row-select4-exists
+EXPECT_HAS | game/meta.pdl | --trigger select4'\n | menu-row-select4-fires-trigger-select4
+EXPECT_HAS | game/meta.pdl | METHOD       \p Select Ninja 5           \p sh -c | menu-row-select5-exists
+EXPECT_HAS | game/meta.pdl | --trigger select5'\n | menu-row-select5-fires-trigger-select5
+EXPECT_HAS | game/meta.pdl | METHOD       \p Move (1d6)               \p sh -c | menu-row-move-exists
+EXPECT_HAS | game/meta.pdl | --trigger move'\n | menu-row-move-fires-trigger-move
+EXPECT_HAS | game/meta.pdl | METHOD       \p Attack                   \p sh -c | menu-row-attack-exists
+EXPECT_HAS | game/meta.pdl | --trigger attack'\n | menu-row-attack-fires-trigger-attack
+EXPECT_HAS | game/meta.pdl | METHOD       \p Block                    \p sh -c | menu-row-block-exists
+EXPECT_HAS | game/meta.pdl | --trigger block'\n | menu-row-block-fires-trigger-block
+EXPECT_HAS | game/meta.pdl | METHOD       \p Cast Time Skip           \p sh -c | menu-row-cast_timeskip-exists
+EXPECT_HAS | game/meta.pdl | --trigger cast_timeskip'\n | menu-row-cast_timeskip-fires-trigger-cast_timeskip
+EXPECT_HAS | game/meta.pdl | METHOD       \p Cast Warp Ally           \p sh -c | menu-row-cast_warp-exists
+EXPECT_HAS | game/meta.pdl | --trigger cast_warp'\n | menu-row-cast_warp-fires-trigger-cast_warp
+EXPECT_HAS | game/meta.pdl | METHOD       \p Cast Banish Foe          \p sh -c | menu-row-cast_banish-exists
+EXPECT_HAS | game/meta.pdl | --trigger cast_banish'\n | menu-row-cast_banish-fires-trigger-cast_banish
+EXPECT_HAS | game/meta.pdl | METHOD       \p Cast Chrono Shield       \p sh -c | menu-row-cast_shield-exists
+EXPECT_HAS | game/meta.pdl | --trigger cast_shield'\n | menu-row-cast_shield-fires-trigger-cast_shield
+EXPECT_HAS | game/meta.pdl | METHOD       \p Cast Shadow Blink        \p sh -c | menu-row-cast_blink-exists
+EXPECT_HAS | game/meta.pdl | --trigger cast_blink'\n | menu-row-cast_blink-fires-trigger-cast_blink
+EXPECT_HAS | game/meta.pdl | METHOD       \p End Turn                 \p sh -c | menu-row-endturn-exists
+EXPECT_HAS | game/meta.pdl | --trigger endturn'\n | menu-row-endturn-fires-trigger-endturn
+WRITE | game/variables.txt | players=2\ndice_seed=42\n
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger setup | $T/game | $T
+EXPECT_EXIT | 0 | click-New-Game
+EXPECT_HAS | game/variables.txt | \nalive_2_3=1\n | ninjas-in-play
+EXPECT_HAS | game/variables.txt | \ntokens=2\n | tokens-2
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger select2 | $T/game | $T
+EXPECT_EXIT | 0 | click-Select-Ninja-2
+EXPECT_HAS | game/variables.txt | \nsel=2\n | ninja-2-selected
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger move | $T/game | $T
+EXPECT_EXIT | 0 | click-Move
+EXPECT_HAS | game/variables.txt | \npos_1_2=5\n | click-Move-moves-the-Blade-Dancer-4+1
+EXPECT_HAS | game/variables.txt | \ntokens=1\n | token-spent
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger block | $T/game | $T
+EXPECT_EXIT | 0 | click-Block
+EXPECT_HAS | game/variables.txt | \nguard_1_2=1\n | click-Block-sets-the-guard
+EXPECT_HAS | game/variables.txt | \ntokens=0\n | tokens-spent
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger endturn | $T/game | $T
+EXPECT_EXIT | 0 | click-End-Turn
+EXPECT_HAS | game/variables.txt | \ncurrent=2\n | click-End-Turn-hands-over
+EXPECT_HAS | game/variables.txt | \nturn=1\n | turn-1
+EXPECT_HAS | game/variables.txt | \ntokens=2\n | tokens-reset
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger select1 | $T/game | $T
+EXPECT_EXIT | 0 | click-select1-runs-a-page
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger select3 | $T/game | $T
+EXPECT_EXIT | 0 | click-select3-runs-a-page
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger select4 | $T/game | $T
+EXPECT_EXIT | 0 | click-select4-runs-a-page
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger select5 | $T/game | $T
+EXPECT_EXIT | 0 | click-select5-runs-a-page
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger attack | $T/game | $T
+EXPECT_EXIT | 0 | click-attack-runs-a-page
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger cast_timeskip | $T/game | $T
+EXPECT_EXIT | 0 | click-cast_timeskip-runs-a-page
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger cast_warp | $T/game | $T
+EXPECT_EXIT | 0 | click-cast_warp-runs-a-page
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger cast_banish | $T/game | $T
+EXPECT_EXIT | 0 | click-cast_banish-runs-a-page
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger cast_shield | $T/game | $T
+EXPECT_EXIT | 0 | click-cast_shield-runs-a-page
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger cast_blink | $T/game | $T
+EXPECT_EXIT | 0 | click-cast_blink-runs-a-page
+EXPECT_NOFILE | game/op_errors.txt | no-op-error-on-the-player-path
+CLEAN | 
+CASE | clock-endturn
+# manual End Turn through the clock mailbox
+SCRATCH | 
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/entity | $T/game
+MKDIR | game/ops/+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/var_math.+x | game/ops/+x/var_math.+x
+COPY | &.widgits/ring-board-rmmv/ops/+x/dice_roll.+x | game/ops/+x/dice_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/rand_roll.+x | game/ops/+x/rand_roll.+x
+COPY | &.widgits/footrace-fu/ops/+x/var_find.+x | game/ops/+x/var_find.+x
+COPY | &.widgits/footrace-fu/ops/+x/row_append.+x | game/ops/+x/row_append.+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | game/ops/+x/event_page_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/race_audit_op.+x | game/ops/+x/race_audit_op.+x
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+WRITE | game/variables.txt | players=2\ndice_seed=42\nrand_counter=0\nbot_counter=0\n
+RUN | $T/game/ops/+x/event_page_op.+x | $T/game | $T | --trigger | setup | --state | $T/game
+EXPECT_EXIT | 0 | setup-ran
+COPY | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+MKDIR | common_events
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/footrace-fu/common_events/end_turn | $T/common_events/end_turn
+WRITE | common_events/end_turn/event_pkg/target.pdl | TARGET | state | game
+MKDIR | &.widgits/digipet/ops/+x
+COPY | &.widgits/digipet/ops/+x/event_page_op.+x | &.widgits/digipet/ops/+x/event_page_op.+x
+ENV | LC_CLOCK_NO_POPUP | 1
+ENV | LC_CLOCK_EVENT_RUNNER | $T/&.widgits/digipet/ops/+x/event_page_op.+x
+ENV | EVENT_PAGE_TRIGGER | endturn
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 | common:end_turn |  | every:1day
+EXPECT_EXIT | 0 | end-turn-schedule-row-installed
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+EXPECT_HAS | game/variables.txt | \ncurrent=2\n | clock-End-Turn-hands-the-turn-to-seat-2
+EXPECT_HAS | game/variables.txt | \nturn=1\n | turn-1
+EXPECT_HAS | game/variables.txt | \ntokens=2\n | tokens-reset-by-the-clock-End-Turn
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+EXPECT_HAS | game/variables.txt | \ncurrent=1\n | second-clock-End-Turn-back-to-seat-1
+EXPECT_HAS | game/variables.txt | \nround=1\n | a-lap-is-a-round
+EXPECT_HAS | game/variables.txt | \nturn=2\n | turn-2
+EXPECT_HAS | #.desktop/clocks/schedule_ledger.txt | ok | both-clock-firings-are-in-the-schedule-ledger
+ENV | LC_CLOCK_EVENT_RUNNER | 
+ENV | EVENT_PAGE_TRIGGER | 
+CLEAN | 

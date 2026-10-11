@@ -1,0 +1,121 @@
+# harness_behavior.zh sidecar of &.widgits/_shared-lib/harness/bank/*.behavior.pdl - machine translation. status: ok/accepted are promotable; low_score, translated (unscored) and lint_fail wait for a person (review.tsv); rejected stays out. Scores are advisory. columns: id, source, zh, pinyin, score, status, translator, judge
+close_listed.behavior.pdl:L3	restart, close, quit, windows, hotbar, relaunch, reaper, close_on_restart, processes	t重启,	关闭, 退出, 窗口, 快捷栏, 重新启动, 回收器, close_on_restart, 进程\tzhòng qǐ, guān bì, tuì chū, chuāng kǒu, kuài jié lán, chóng xīn qǐ, huí shōu qì, close_on_restart, jìn chéng	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+close_listed.behavior.pdl:L4	shutdown	t关机\tguān	jī	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+close_listed.behavior.pdl:L5	close all	t关闭全部\tguān	bì quán bù	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+close_listed.behavior.pdl:L6	kill windows	t终止窗口\tzhōng	zhǐ chuāng kǒu	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+close_listed.behavior.pdl:L7	reload	t重新加载\tchóng	xīn jiā zài	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+close_listed.behavior.pdl:L8	reboot	t重启\tzhòng	qǐ	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+close_listed.behavior.pdl:L9	relaunch	t重新启动\tchóng	xīn qǐ	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+close_listed.behavior.pdl:L10	Starts real throwaway processes whose command lines look like the hotbar and board windows and runs the close-on-restart rule against a scratch house.	t启动真实的临时进程，其命令行看起来像快捷栏和板窗口，并对临时工作室执行	close_on_restart 规则。\tqǐ dòng zhēn shí de lín shí jìn chéng qí mìng lìng háng kàn qǐ lái xiàng kuài jié lán hé bǎn chuāng kǒu bìng duì lín shí gōng zuò shì zhí xíng close_on_restart guī zé	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+close_listed.behavior.pdl:L11	Checks that listed windows inside the house close, another house and unlisted processes survive, the caller survives its own match, and relaunch only brings back rows that were running.	检查房屋内列出的窗口是否已关闭，另一处房屋和未列出的进程是否存活，调用者自身的匹配是否存活，并且重新启动仅恢复之前正在运行的行。	jiǎn chá fáng wū nèi liè chū de chuāng kǒu shì fǒu yǐ guān bì lìng yī chù fáng wū hé wèi liè chū de jìn chéng shì fǒu cún huó diào yòng zhě zì shēn de pǐ pèi shì fǒu cún huó bìng qiě chóng xīn qǐ dòng jǐn huī fù zhī qián zhèng zài yùn xíng de háng	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_batch.behavior.pdl:L3	batch, prompt, parse, token budget, reply parsing, rows	批次，提示，解析，令牌预算，回复解析，行	pī cì tí shì jiě xī lìng pái yù suàn huí fù jiě xī xíng	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_batch.behavior.pdl:L4	split into batches	分成批次	fēn chéng pī cì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_batch.behavior.pdl:L5	parse model reply	解析模型回复	jiě xī mó xíng huí fù	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_batch.behavior.pdl:L6	build prompt	构建提示	gòu jiàn tí shì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_batch.behavior.pdl:L7	Splits a job table into token-budgeted batches, builds the translate and score prompts and parses a model reply tolerantly back to job ids.	将工作表分割为令牌预算批次，构建翻译和评分提示，并将模型回复容忍性解析回工作ID。	jiāng gōng zuò biǎo fēn gē wéi lìng pái yù suàn pī cì gòu jiàn fān yì hé píng fēn tí shì bìng jiāng mó xíng huí fù róng rěn xìng jiě xī huí gōng zuò ID	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_batch.behavior.pdl:L8	Checks row and token caps, numbering, code fences, bar and tab forms, duplicates, unknown numbers and missing rows.	检查行和令牌上限、编号、代码块、条形与制表符格式、重复项、未知编号以及缺失行。	jiǎn chá xíng hé lìng pái shàng xiàn biān hào dào jiè kuài tiáo xíng yǔ zhì biǎo fú gé shì chóng fù xiàng wèi zhī biān hào yǐ jí quē shī xíng	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_call.behavior.pdl:L3	call, groq, ollama, mac, quota, timeout, ledger, rate limit	调用，groq，ollama，mac，配额，超时，分类账，速率限制	diào yòng groq ollama mac pèi é chāo shí fēn lèi zhàng sù lǜ xiàn zhì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_call.behavior.pdl:L4	call a model	调用模型	diào yòng mó xíng	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_call.behavior.pdl:L5	rate limit	速率限制	sù lǜ xiàn zhì	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_call.behavior.pdl:L6	token budget	令牌预算	lìng pái yù suàn	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_call.behavior.pdl:L7	Calls the translator through the Groq backend transport or the judge through the Mac Ollama over HTTP, with a watchdog, a request ledger and a day and per-minute quota.	通过 Groq 后端传输调用翻译器，或通过 Mac Ollama 通过 HTTP 调用判断器，并配备看门狗、请求账本，以及每日和每分钟配额。	tōng guò hòu duān chuán shū diào yòng fān yì qì huò tōng guò diào yòng pàn duàn qì bìng pèi bèi kàn mén gǒu qǐng qiú zhàng běn yǐ jí měi rì hé měi fēn zhōng pèi é	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_call.behavior.pdl:L8	Uses local test doubles only: checks exit codes for rate limit, failure, hang, empty reply, the refusal of local port 11434 and any other host, and that the key never reaches output.	仅使用本地测试替身：检查速率限制、失败、挂起、空回复、拒绝本地端口 11434 和其他主机，以及密钥永不输出。	jǐn shǐ yòng běn dì cè shì tì shēn chá jiǎn sù lǜ xi	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_jobs.behavior.pdl:L3	jobs, extract, untranslated, answer bank, sha256, csv, pdl rows, glob, bank manifest			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_jobs.behavior.pdl:L4	extract rows			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_jobs.behavior.pdl:L5	find untranslated text			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_jobs.behavior.pdl:L6	skip translated rows	t跳过已翻译的行\ttiào	guò yǐ fān yì de háng	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_jobs.behavior.pdl:L7	Extracts the translatable cells of a bank (pdl rows or CSV) into a job table and skips rows the answer bank already holds, keyed by sha256 of the source text and the target language.	t将银行（pdl	行或 CSV）中可翻译单元提取到作业表中，并跳过答案库已持有的行，以源文本和目标语言的 sha256 作为键。\tjiāng yín háng (pdl háng huò CSV) zhōng kě fān yì dān yuán tí qǔ dào zuò yè biǎo zhōng bìng tiào guò dá àn kù yǐ chí yǒu de háng yǐ yuán wén běn hé mù biāo yǔ yán de sha256 zuò wéi jiàn	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_jobs.behavior.pdl:L8	Checks tag filtering, named and numbered columns, quoted CSV cells, glob banks, the never-translate rule, rejected answers being retried and the source file never being written.	t检查标签过滤、命名与编号列、引用的	CSV 单元、全局银行、永不翻译规则、被拒绝答案的重试以及源文件未被写入。\tjiǎn chá biāo qiān guò lǜ mìng míng yǔ biāo hài liè yǐn yòng de CSV dān yuán quán jú yín háng yǒng bù fān yì guī zé bèi jù jué dá àn de chóng shì yǔ yuán wén jiàn wèi bèi xiě rù	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_lint.behavior.pdl:L3	lint, pinyin, tone marks, syllables, cjk, length, reference vocabulary, row numbering	t检查、拼音、声调标记、音节、CJK、长度、参考词汇、行编号\tjiǎn	chá pīn yīn shēng diào biāo jì yīn jié CJK cháng dù cān kǎo cí huì háng biān hào	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_lint.behavior.pdl:L4	validate pinyin	t校验拼音\tjiào	yàn pīn yīn	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_lint.behavior.pdl:L5	check translation	t检查翻译\tjiǎn	chá fān yì	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_lint.behavior.pdl:L6	quality gate	t质量门\tzhì	liàng mén	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_lint.behavior.pdl:L7	Deterministic checks on a Chinese translation and its pinyin: CJK present, tone marks, syllable shape and count, tone placement, length, complete row numbering and an optional advisory cross-check against a reference vocabulary.	t对中文翻译及其拼音进行确定性检查：存在	CJK、声调标记、音节形状与数量、声调位置、长度、完整行编号以及可选的对照参考词汇交叉检查。\tduì zhōng wén fān yì jí qí pīn yīn jìn xíng què dìng xìng jiǎn chá cún zài CJK shēng diào biāo jì yīn jié xíng zhuàng yǔ shù liàng shēng diào wèi zhì cháng dù wán zhěng háng biān hào yǔ kě xuǎn de duì zhào cān kǎo cí huì jiāo chā jiǎn chá	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_lint.behavior.pdl:L8	Checks passing and failing pinyin forms row by row, numbering gaps, graceful skipping of a missing reference file and that disabling any check is noticed.	逐行检查拼音形式的通过与失败情况，编号缺口，优雅地跳过缺失的参考文件，并且禁用任何检查都会被注意到。	zhú háng jiǎn chá pīn yīn xíng shì de tōng guò yǔ shī bài qíng kuàng， biān hào quē kǒu， yōu yǎ de tiào guò quē shī de cān kǎn wén jiàn， bìng qiě jìn yòng rèn hé jiǎn chá dōu huì bèi zhù yì dào 。	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_merge.behavior.pdl:L3	merge, sidecar, review queue, feedback, answer bank, ui feed, advisory score	合并, 侧车, 审核队列, 反馈, 答案库, UI 流, 建议分数	hé bìng, cè chē, shěn hé duì liè, fǎn kuì, dá àn kù, UI liú, jiàn yì fēn shù	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_merge.behavior.pdl:L4	write results	写结果	xiě jié guǒ	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_merge.behavior.pdl:L5	review queue	审核队列	shěn hé duì liè	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_merge.behavior.pdl:L6	scoring feed	评分流	píng fēn liú	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_merge.behavior.pdl:L7	Merges translations, lint results and judge scores into a sidecar file, a review queue, the answer bank, FEEDBACK rows and the csv_lab_ui.txt feed without touching the source bank.	将翻译、代码检查结果和评测分数合并到侧车文件、审核队列、答案库、反馈行和csv_lab_ui.txt数据流中，而不触碰源库。	jiāng fān yì, dài mǎ jiǎn chá jié guǒ hé píng cè fēn shù hé bìng dào cè chē wén jiàn, shěn hé duì liè, dá àn kù, fǎn kuì háng hé csv_lab_ui.txt shù jù liú zhōng, ér bù chù pèng yuán kù	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_merge.behavior.pdl:L8	Checks status per row (ok, review, lintfail), the threshold, re-run idempotence, the feedback row shape and the feed format.	逐行检查状态（通过、审核、代码检查失败），阈值，重新运行的幂等性，反馈行形状和数据流格式。	zhú háng jiǎn chá zhuàng tài (tōng guò, shěn hé, dài mǎ jiǎn chá shī bài), yù zhí, chóng xīn yùn dòng de mǐ děng xìng, fǎn kuì háng xíng zhuàng hé shù jù liú gé shì	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_pipeline.behavior.pdl:L3	pipeline, translate, repair, score, driver, end to end, quota	流程, 翻译, 修复, 评分, 驱动, 端到端, 配额	liú chéng, fān yì, xiū fù, píng fēn, qū dòng, duān dào duān, pèi é	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_pipeline.behavior.pdl:L4	run the pipeline			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_pipeline.behavior.pdl:L5	repair failed rows			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_pipeline.behavior.pdl:L6	translate a bank			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_pipeline.behavior.pdl:L7	Runs extract, batch, translate, lint, repair of failed rows only, a second-model score and merge end to end, with token and request ledgers.			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+csv_pipeline.behavior.pdl:L8	Uses test doubles for both models: checks repair resends only failures, the judge never sees lint failures or equals the translator, quota stop, a second run reusing the answer bank.			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+game_setup_parser.behavior.pdl:L3	game.pdl, parser, game setup, cells, maps, edit marks, play mode, hide, visible			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+game_setup_parser.behavior.pdl:L4	game file			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+game_setup_parser.behavior.pdl:L5	setup file			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+game_setup_parser.behavior.pdl:L6	menu cells			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+game_setup_parser.behavior.pdl:L7	header cells			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+game_setup_parser.behavior.pdl:L8	editable marks			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+game_setup_parser.behavior.pdl:L9	config			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+game_setup_parser.behavior.pdl:L10	Calls the game.pdl parser through a query op and checks every row type: GAME, MAP, CELL, ROW and EDIT, with comments and unknown rows ignored.			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+game_setup_parser.behavior.pdl:L11	Checks the access rules: build mode unrestricted, play only lists the available maps, a cell hides by modes and where, edit marks only count in play-test.			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+game_setup_parser.behavior.pdl:L12	Also checks the play-mode file reader and the map switch check with its append-only ledger.			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+game_slots.behavior.pdl:L3	save game, load game, slots, savegames, manifest, progress, snapshot, audit			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+game_slots.behavior.pdl:L4	save slot	存档槽	cún dǎng cáo	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+game_slots.behavior.pdl:L5	load slot	载入槽	zài rù cáo	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+game_slots.behavior.pdl:L6	checkpoint	检查点	jiǎn chá diǎn	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+game_slots.behavior.pdl:L7	quick save	快速保存	kuài sù cún bǎo	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+game_slots.behavior.pdl:L8	progress file	进度文件	jìn dù wén jiàn	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+game_slots.behavior.pdl:L9	game state	游戏状态	yóu xì zhuàng tài	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+game_slots.behavior.pdl:L10	Saves and loads slots on a scratch entity tree with the real game_slot_op and hashes the tree before and after to prove neither changes any entity data.	在一个草稿实体树上，使用真实的 game_slot_op 保存和读取槽，并在前后对树进行哈希，以证明它们都没有改变任何实体数据。	zài yī gè cǎo gǎo shí tǐ shù shàng shǐ yòng zhēn shí de game_slot_op bǎo cún hé dú qǔ cáo bìng zài qián hòu duì shù jìn xíng hā xī yǐ zhèng míng tā men dōu méi yǒu gǎi biàn rèn hé shí tǐ shù jù	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+game_slots.behavior.pdl:L11	Checks the manifest and meta files, the append-only ledger, the changed missing and new counts on load, the empty-slot error and the bad slot and verb rejections.	检查清单和元数据文件、仅追加账本、加载时更改缺失和新增计数、空槽错误以及坏槽和动词拒绝。	jiǎn chá qīng dān hé yuán shù jù wén jiàn jǐn zǒu jiā zhàng běn jiā zài shí gèng gǎi quē shī hé xīn zēng jì shù kōng cáo cuò wù yǐ jí huài cáo hé dòng cí jù jué	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+harness_bank.behavior.pdl:L3	behavior bank, weights, laplace, synonyms, ranking, find, search, harness bank	行为库，权重，拉普拉斯，同义词，排名，查找，搜索，束缚库	xíng wéI kù quán zhòng lā pǔ lǎ sī tóng yì cí pái míng chá zhǎo sōu suǒ shù fù kù	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+harness_bank.behavior.pdl:L4	seo	搜索引擎优化	sōu suǒ yǐn qíng yōu huà	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+harness_bank.behavior.pdl:L5	lookup	查询	chá xún	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+harness_bank.behavior.pdl:L6	reward punish	奖励惩罚	jiǎng lì chéng fá	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+harness_bank.behavior.pdl:L7	confidence	置信度	zhì xìn dù	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+harness_bank.behavior.pdl:L8	Checks that a harness entry's weight is a live Laplace estimate from its own PASS and FAIL ledger rows, counted once through an append-only cursor.	检查束缚条目的权重是否为其自身PASS和FAIL账簿行的实时拉普拉斯估计，通过仅追加的游标计数一次。	jiǎn chá shù fù tiáo mù de quán zhòng shì fǒu wèi qí zì shēn PASS hé FAIL zhàng bù háng de shí shí lā pǔ lǎ sī gū jì, tōng guò jǐn jiā zǐ de yóu biāo jì shù yí cì	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+harness_bank.behavior.pdl:L9	Checks that find ranks entries by keyword, weighted synonym, concept name and sentence words, multiplied by the entry weight.	检查 find 的排名依据关键词、加权同义词、概念名称和句子词语，乘以条目权重。	jiǎn chá find de páimíng yīyóu guān yào cí, jiā quán tóng yì cí, gài nǐng míng chēng hé jù zǐ cí yǔ, chéng yǐ tiáo mù quán zhòng	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+hotbar_minimize.behavior.pdl:L3	hotbar, minimize, hide, show, toggle, pc-hq, manager, latency, double click	热栏，最小化，隐藏，显示，切换，pc-hq，管理器，延迟，双击	rè lán, zuì xiǎo huà, yǐn cáng, xiǎn shì, qiē huàn, pc-hq, guǎn lǐ qì, yán chí, shuāng jī	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+hotbar_minimize.behavior.pdl:L4	minimise	最小化	zuì xiǎo huà	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+hotbar_minimize.behavior.pdl:L5	collapse	折叠	zhé dié	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+hotbar_minimize.behavior.pdl:L6	dock	停靠	tíng kào	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+hotbar_minimize.behavior.pdl:L7	slide away	滑走	huá zǒu	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+hotbar_minimize.behavior.pdl:L8	inventory bar	库存栏	kù cún lán	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+hotbar_minimize.behavior.pdl:L9	Starts a real hotbar_manager process on a scratch tree and flips visible.txt with the toggle script.	在scratch树上启动真实的 hotbar_manager 进程，并用切换脚本翻转 visible.txt。	zài shù shàng qǐdòng zhēnshí de jìnxíng bìng yòng qiēhuàn jiǎoběn fānzhuǎn	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+hotbar_minimize.behavior.pdl:L10	Checks that hide and show are published within 300 ms, that repeated hide stays hidden, and that two clicks 280 ms apart do not undo each other.	检查隐藏与显示在300毫秒内发布，重复隐藏保持隐藏，并且两次点击相距280毫秒不相互抵消。	jiǎnchá yǐnɡmɪng yǔ shǎnɡxiàn zài 300 háomǐnɡ nèi fābù chóngfù yǐnɡmɪng bǎochí yǐnɡmɪng bìngqiě liǎnɡcì diǎnjī xiāngjù 280 háomǐnɡ bù xiānghù dǐxiāo	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+hotbar_minimize.behavior.pdl:L11	Regression test for the report that the pc-hq minimize button did nothing because a toggle cancelled itself.	回归测试：报告 pc-hq 最小化按钮因切换自身被取消而无效。	huíguī cèshì bàogào pc-hq zuìxiǎohuà ànniǔ yīn qiēhuàn zìshēn bèi qǔxiāo ér wúxiào	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+pchq_playtest_action.behavior.pdl:L3	play-test, playtest, player menu, pc-hq, toggle, stop, play mode, mode file	播放测试、播放测试、玩家菜单、pc-hq、切换、停止、播放模式、模式文件	bōfàng cèshì bōfàng cèshì wánjiā càidān pc-hq qiēhuàn tíngzhǐ bōfàng móshì móshì wénjiàn	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+pchq_playtest_action.behavior.pdl:L4	playtest	播放测试	bōfàng cèshì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+pchq_playtest_action.behavior.pdl:L5	play-test	播放测试	bōfàng cèshì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+pchq_playtest_action.behavior.pdl:L6	test mode	测试模式	cèshì móshì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+pchq_playtest_action.behavior.pdl:L7	edit while playing	编辑时播放	biānjí shí bōfàng	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+pchq_playtest_action.behavior.pdl:L8	debug play			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+pchq_playtest_action.behavior.pdl:L9	Runs the real pchq_board_action.sh from a scratch copy of the tree and reads back the play-mode file after each player verb.			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+pchq_playtest_action.behavior.pdl:L10	Checks that playtest adds a second line playtest=1 to mode=on, that playtest again returns to plain play, and that stop and toggle clear it.			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+pchq_playtest_action.behavior.pdl:L11	Looks for a regression where a new mode value would be read as OFF by older readers.			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+player_menu_playtest.behavior.pdl:L3	player menu, play-test, taskbar, menu row, play toggle, mode file, older reader			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+player_menu_playtest.behavior.pdl:L4	tb player			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+player_menu_playtest.behavior.pdl:L5	player dropdown			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+player_menu_playtest.behavior.pdl:L6	play button			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+player_menu_playtest.behavior.pdl:L7	playtest row	tplaytest	行\tplaytest xíng	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+player_menu_playtest.behavior.pdl:L8	Builds the taskbar Player menu on a scratch house and checks the play-test row sits right after the play row with the right label.	t在一个scratch	house上构建taskbar Player菜单，并检查play-test行是否正好紧随play行，且带有right label。\tzài yī gè shàng gòu jiàn cài dān bìng jiǎn chá xíng shì fǒu zhèng hǎo jǐn suí xíng qiě dài yǒu	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+player_menu_playtest.behavior.pdl:L9	Checks the file transitions: play-test writes mode=on plus playtest=1, an older reader still sees ON, stop and play toggle clear play-test.	t检查文件转换：play-test	写入 mode=on 加 playtest=1，旧版读取器仍然看到 ON，stop 与 play 切换清除 play-test。\tjiǎn chá wén jiàn zhuǎn huàn xiě rù jiù bǎn dú qǔ qì réng rán kàn dào qiē huàn qīng chú	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+prisc_exec_args.behavior.pdl:L3	prisc, exec, arguments, args, pal, argv, many arguments	tprisc,	exec, arguments, args, pal, argv, 许多参数\txǔ duō cān shì	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+prisc_exec_args.behavior.pdl:L4	parameters	参数	cān shù	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+prisc_exec_args.behavior.pdl:L5	argument list	参数列表	cān shù liè biǎo	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+prisc_exec_args.behavior.pdl:L6	command line	命令行	mìng lìng háng	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+prisc_exec_args.behavior.pdl:L7	A pal runs a small echo op three times with one, five and a register plus literal arguments, then a case reads back exactly what each run received.			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+prisc_exec_args.behavior.pdl:L8	Proves the prisc exec instruction passes many literal arguments in order and that the older one-literal and register forms still behave the same.			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+proc_ledger_add.behavior.pdl:L3	process ledger, register, reaper, pid, starttime, restart, orphan, process list			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+proc_ledger_add.behavior.pdl:L4	proc list			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+proc_ledger_add.behavior.pdl:L5	pid registry	pid 注册表	pid zhù cè biǎo	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+proc_ledger_add.behavior.pdl:L6	process registry	进程注册表	jìn chéng zhù cè biǎo	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+proc_ledger_add.behavior.pdl:L7	stray process	漂移进程	piāo yí jìn chéng	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+proc_ledger_add.behavior.pdl:L8	leak	泄漏	xiè lòu	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+proc_ledger_add.behavior.pdl:L9	Registers a real sleep process through proc_ledger_add and runs the real reaper from kh_proc_registry.h on a scratch house.	通过 proc_ledger_add 注册一个真实的睡眠进程，并在一个临时房屋上运行来自 kh_proc_registry.h 的真实回收器。	tōng guò zhù cè yī gè zhēn shí de shuì mián jìn chéng ， bìng zài yī gè lín shí fáng wū shàng yùn xíng zì lái kh_proc_registry.h de zhēn shí huí shōu qì 。	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+proc_ledger_add.behavior.pdl:L10	Checks the ledger line has five real fields with the true process start time, that a registered process is reaped, and that a wrong non-zero start time is skipped (the pid reuse guard).	检查账本行包含五个真实字段，具有真实进程开始时间，已回收已注册进程，并且跳过错误的非零开始时间（pid 重用保护）。	jiǎn chá zhàng běn háng bāo hán wǔ gè zhēn shí zì duàn ， jù yǒu zhēn shí jìn chéng kāi shǐ shí jiān ， yǐ huí shōu yǐ zhù cè jìn chéng ， bìng qiě tiào guò cuò wù de fēi líng kāi shǐ shí jiān （pid zhòng yòng bǎo zhì） 。	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+transfer_map_access.behavior.pdl:L3	teleport, transfer, map access, available maps, refused, game.pdl, play mode, ledger	传送，转移，地图访问，可用地图，拒绝，game.pdl，游戏模式，账本	chuán sòng ， zhuǎn yí ， dì tú fǎng wèn ， kě yòng dì tú ， jù jué ， game.pdl ， yóu xì mó shì ， zhàng běn	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+transfer_map_access.behavior.pdl:L4	teleport	传送	chuán sòng	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+transfer_map_access.behavior.pdl:L5	door	门	mén	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+transfer_map_access.behavior.pdl:L6	warp	扭曲	niǔ qū	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+transfer_map_access.behavior.pdl:L7	map lock	地图锁	dì tǔ suǒ	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+transfer_map_access.behavior.pdl:L8	level gate	关卡门	guān kǎ mén	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+transfer_map_access.behavior.pdl:L9	transfer player	转移玩家	zhuǎn yí wán jiā	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+transfer_map_access.behavior.pdl:L10	Runs the real mr_transfer_desk op against a scratch house with a session, desks and a game.pdl that lists the available maps.	在带有 session、desks 和列出可用地图的 game.pdl 的 scratch house 中运行真实的 mr_transfer_desk 操作	zài dài yǒu hé liè chū kě yòng dì tú de de zhōng yùn xíng zhēn shí de cāo zuò	-	translated	openai/gpt-oss-20b	qwen2.5-coder:7b
+transfer_map_access.behavior.pdl:L11	In play or play-test a map that is not listed is refused before anything closes: exit code 3, a reason line, the player stays and the refusal is ledgered.			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+transfer_map_access.behavior.pdl:L12	In build mode, with no mode file or with no MAP rows every map stays reachable, so existing houses behave as before.			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b

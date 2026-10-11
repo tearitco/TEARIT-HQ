@@ -1205,3 +1205,7 @@ after a frame. A shared `house_wait_us` so the next loop cannot hide its
 sleep in an else is an open bounty, not a header yet
 (`04-bugs/bug_bounty.md`, "one house wait").
 
+
+## Manager waits for a child that writes to the manager's own pipe (found 2026-10-08, video-player-hq)
+
+A manager that spawns a decoder (`ffmpeg ... pipe:1`) and reads its output from a pipe froze for good the first time it had to switch videos: it sent SIGTERM and called `waitpid` while still holding the pipe's read end, the decoder was blocked in `write()` into that full pipe, so it could not exit, so the manager never returned (wait channel `do_wait`; the audio child stayed a zombie). **Rules:** close your read end of the pipe *before* waiting for the child; never call `waitpid` on a child without a timeout (SIGTERM, poll `WNOHANG` ~300 ms, then SIGKILL); reap every child you spawn. Diagnose with `ps -o stat,wchan:20` and `ls -l /proc/<pid>/fd`. Fix and context: `&.hq-apps/video-player-hq/README.md`.

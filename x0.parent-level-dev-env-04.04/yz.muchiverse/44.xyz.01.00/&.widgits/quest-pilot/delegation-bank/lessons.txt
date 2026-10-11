@@ -1,0 +1,9 @@
+# lessons.txt - the LESSONS BANK, hand-recorded (first version of design item Q022; see LEARNING-LOOP-BANKS-WEIGHTS-NO-REPROMPT-DESIGN.md).
+# One line per lesson:  LESSON | family | trigger | text | src=<quest>#<iter> | hits=<n times composed into a prompt> | helped=<n times the next attempt then passed first try>
+# hits/helped start at 0 and are only counted, never edited by a model. A lesson is added by a person (or a model proposal a person accepted).
+# A prompt composer (Q022, not built yet) may prepend lessons of the task's family within a token budget; until then a person pastes them.
+LESSON | c_op | compile | Include <limits.h> before using PATH_MAX. | src=q020-var-cmp#1 | hits=0 | helped=0
+LESSON | c_op | compile | Under -Wall -Wextra -Werror every unused variable is a build failure: delete leftovers when you rewrite a block. | src=q020-var-cmp#3 | hits=0 | helped=0
+LESSON | c_op | logic | When copying a file line by line, a last line without a trailing newline must get one before anything is appended after it. | src=q020-var-cmp#2 | hits=0 | helped=0
+LESSON | c_op | spec | Every input class the spec says to reject (negative, empty, malformed) must exit with the stated error code and leave the files untouched; check each one explicitly. | src=q002-weighted-pick#1 | hits=0 | helped=0
+LESSON | any | repair | A repair prompt needs only the failing file and the exact error line, not the task text and not the old reply (q020 iteration 4 passed with 2222 prompt tokens after 3107 and 2762 failed). | src=q020-var-cmp#4 | hits=0 | helped=0

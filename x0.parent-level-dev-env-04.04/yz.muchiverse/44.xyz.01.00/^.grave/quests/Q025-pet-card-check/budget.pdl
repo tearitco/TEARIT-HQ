@@ -1,0 +1,4 @@
+BUDGET | max_attempts | 3
+BUDGET | max_seconds | 1800
+BUDGET | max_quota_units | 6
+BUDGET | escalate_to | claude

@@ -1,0 +1,11 @@
+# event.pal - Banish Foe 1: load, nearest enemy, gate (needs an enemy) (trigger cast_banish). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set g_ab 3
+exec ops/+x/var_math.+x . set act_alive alive_{current}_{sel}
+exec ops/+x/var_math.+x . set act_cls cls_{current}_{sel}
+exec ops/+x/var_math.+x . set act_pos pos_{current}_{sel}
+exec ops/+x/var_find.+x . pos_ pos_{current}_ act_pos 0 rules.pdl:track_len foe
+exec ops/+x/event_page_op.+x . . --trigger castgate --state .
+exec ops/+x/var_math.+x . gt fo foe 0
+exec ops/+x/var_math.+x . mul gate_ok gate_ok fo
+exec ops/+x/var_math.+x . set ph_cast 1
+halt

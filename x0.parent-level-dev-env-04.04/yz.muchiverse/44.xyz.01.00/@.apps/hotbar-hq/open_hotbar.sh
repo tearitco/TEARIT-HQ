@@ -1,4 +1,7 @@
 #!/bin/sh
+# macOS has no setsid binary (same convention as run_khtpm_strip.sh): expand to nothing there, keep real setsid on Linux.
+SETSID="setsid"
+[ "$(uname)" = "Darwin" ] && SETSID=""
 # open_hotbar.sh <house_root> desk|pchq - open the hotbar window (single instance per mode).
 # The window is a normal khtpm_core_render HQ window on hotbar-<mode>.xhtpm; its
 # <module> starts ops/+x/hotbar_manager.+x, which publishes state/<mode>/ui.txt.
@@ -22,7 +25,7 @@ mkdir -p "$HERE/state/$MODE"
 for p in $(pgrep -f "khtpm_core_render\.\+x .*hotbar-$MODE\.xhtpm" 2>/dev/null || true) \
          $(pgrep -f "hotbar_manager\.\+x .*$MODE" 2>/dev/null || true); do kill "$p" 2>/dev/null || true; done
 sleep 0.3
-setsid nohup "$BIN" "$HOUSE_ROOT" "$XHTPM" >"/tmp/hotbar-$MODE.log" 2>&1 < /dev/null &
+$SETSID nohup "$BIN" "$HOUSE_ROOT" "$XHTPM" >"/tmp/hotbar-$MODE.log" 2>&1 < /dev/null &
 # real starttime/pgid so the C reaper does not skip it on quit/restart (a "0 0" line is ignored by its PID-reuse guard; the hotbar survived restarts because of that)
 sh "$HOUSE_ROOT/&.widgits/_shared-lib/ops/proc_ledger_add.sh" "$HOUSE_ROOT" "$!" "hotbar-$MODE"
 echo "open_hotbar: $MODE hotbar launched"

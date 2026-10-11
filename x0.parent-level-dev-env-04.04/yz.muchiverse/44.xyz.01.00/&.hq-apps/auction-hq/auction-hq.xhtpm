@@ -1,0 +1,50 @@
+<!-- auction-hq.xhtpm - Auction HQ (X11-HQ window, network cell). Static layout, shared khtpm_core_render.+x, class="auction-window database-window", zero renderer C.
+     One <module>: ops/+x/auction_manager.+x publishes auction_ui.txt and polls auction_action.txt. State is replayed from the append-only auction/ledger.txt.
+     Humans and AI entities (pets, WSR entities) use the same commands. Design: 08-roadmap/design-docs/AUCTION-SCREEN-DESIGN.md. -->
+<window label="${title}" class="auction-window database-window" vars="auction_ui.txt">
+  <module src="&.hq-apps/auction-hq/ops/+x/auction_manager.+x"/>
+  <page name="main">
+
+    <sidebar id="sidebar" class="auction-sidebar">
+      <text id="who" label="NFTs, goods, rigs, food" class="auction-who"/>
+      <item id="to" class="auction-tab ${cls_open}"    label="Open"    action="'${PKG}/ops/auction_item.sh' 'TAB open'"/>
+      <item id="ts" class="auction-tab ${cls_sell}"    label="Sell"    action="'${PKG}/ops/auction_item.sh' 'TAB sell'"/>
+      <item id="tb" class="auction-tab ${cls_bid}"     label="Bid"     action="'${PKG}/ops/auction_item.sh' 'TAB bid'"/>
+      <item id="th" class="auction-tab ${cls_history}" label="History" action="'${PKG}/ops/auction_item.sh' 'TAB history'"/>
+      <item id="rf" class="auction-tab" label="refresh" action="'${PKG}/ops/auction_item.sh' 'REFRESH'"/>
+    </sidebar>
+
+    <panel id="content" class="auction-panel">
+      <text id="status" class="auction-status" label="${status}"/>
+
+      <!-- Open -->
+      <text id="o-hdr" class="auction-hdr" label="${open_hdr}" show="${tab_open}"/>
+      <repeat count="${n_o}" bind="o">
+        <text id="o${o.#}" class="auction-row" label="${o.text}" show="${tab_open}"/>
+      </repeat>
+      <text id="o-empty" class="auction-quiet" label="${open_empty}" show="${open_empty}"/>
+      <text id="o-note" class="auction-quiet" label="* = current high bid. Ends are fixed times; state is replayed from the ledger." show="${tab_open}"/>
+
+      <!-- Sell -->
+      <text id="s-hint" class="auction-quiet" label="LIST  kind  item  unit  min  buyout(0=none)  minutes     kinds: food pet rig goods     units: cones mined play" show="${tab_sell}"/>
+      <cli_io id="sellline" target_id="sellline" rows="1" class="auction-send top"
+              label="LIST ..." action="'${PKG}/ops/auction_cmd.sh'" show="${tab_sell}"/>
+      <text id="s-ex" class="auction-quiet" label="example:  LIST food apple cones 5 20 60" show="${tab_sell}"/>
+
+      <!-- Bid -->
+      <text id="b-hint" class="auction-quiet" label="BID id amount    BUY id (buyout price)    CANCEL id (seller, before any bid)" show="${tab_bid}"/>
+      <cli_io id="bidline" target_id="bidline" rows="1" class="auction-send top"
+              label="BID ..." action="'${PKG}/ops/auction_cmd.sh'" show="${tab_bid}"/>
+      <text id="b-ex" class="auction-quiet" label="example:  BID 1 8     (a bid must beat the high bid; the seller cannot bid)" show="${tab_bid}"/>
+
+      <!-- History -->
+      <scrolllist class="from-top" show="${tab_history}">
+        <repeat count="${n_h}" bind="h">
+          <text id="h${h.#}" class="auction-hrow" label="${h.text}"/>
+        </repeat>
+        <text id="h-empty" class="auction-quiet" label="${hist_empty}" show="${hist_empty}"/>
+      </scrolllist>
+
+    </panel>
+  </page>
+</window>

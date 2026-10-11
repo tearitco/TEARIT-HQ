@@ -1,0 +1,4 @@
+# pchq_levels.pal - pal harness for the pc-hq (piececraft-hq) levels: registry drift, active-map source, default-world pieces, deterministic generation, map-load argv (see cases/pchq_levels.pdl). Read results/pchq_levels.txt.verdict.txt. Expected VERDICT|FAIL today: the strict registry_* cases report real drift (maps.pdl).
+exec ./ops/+x/harness_case_op.+x cases/pchq_levels.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/pchq_levels.pdl
+halt

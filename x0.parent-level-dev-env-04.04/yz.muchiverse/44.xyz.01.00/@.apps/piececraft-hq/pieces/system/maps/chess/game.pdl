@@ -1,0 +1,17 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+GAME         | type               | board-game
+GAME         | icon               | ♟
+GAME         | label              | Chess
+GAME         | n_chunks           | 1
+GAME         | chunk_0_x          | 0
+GAME         | chunk_0_y          | 0
+GAME         | n_desks            | 4
+GAME         | desk_1_id          | title
+GAME         | desk_1_label       | Title
+GAME         | desk_2_id          | standard
+GAME         | desk_2_label       | Standard
+GAME         | desk_3_id          | king_pawn
+GAME         | desk_3_label       | King and pawn
+GAME         | desk_4_id          | endgame
+GAME         | desk_4_label       | Queen endgame

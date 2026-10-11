@@ -1,0 +1,9 @@
+SECTION | KEY | VALUE
+----------------------------------------
+# skills.pdl - the four stats the pets train by chatting (and by what they do). STAT | name | exp needed per level | trigger words (lower case, space separated)
+# Every trigger word in a chat message gives `exp_per` EXP (at most `max_per_message` words count per message); level = 1 + exp / exp-per-level. ALL NUMBERS ARE FIRST GUESSES.
+CONFIG | exp_per=2 | max_per_message=3
+STAT | power     | 10 | fight punch lift train exercise strong muscle push pull run jump sprint kick
+STAT | magic     | 10 | spell magic wand potion wizard sparkle glow charm cast moon star enchant
+STAT | defense   | 10 | guard block shield defend protect armor dodge safe shelter wall brave
+STAT | intellect | 10 | learn read study think book math count teach why how idea riddle puzzle quiz

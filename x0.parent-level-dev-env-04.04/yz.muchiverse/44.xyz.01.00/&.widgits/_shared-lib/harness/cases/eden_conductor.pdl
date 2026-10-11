@@ -1,0 +1,827 @@
+# eden_conductor (GAME-CONDUCTOR-ENTITY-AND-EDEN-DESIGN.md section 7): the Eden conductor v0 on scratch roots only. Real eden_op, real lc_clock (schedule row
+# common:eden_day_tick, repeat=every:1day), real event pages through event_page_op with a prisc compiled into scratch, real game_snapshot_op, real METHOD strings from meta.pdl.
+# Participants asa and ava are SCRATCH entities spawned from the template: nothing here names a live desk or xyzfs/users.
+RESULTS | ../results/eden_conductor.txt
+
+CASE    | toy-format
+SCRATCH |
+COPY    | &.widgits/eden/ops/+x/eden_op.+x | eden_op.+x
+COPY    | &.widgits/eden/toy.pdl | toy.pdl
+COPY    | &.widgits/eden/conductor/button.sh | button.sh
+COPY    | @.apps/csv-hq/toy.pdl | csvtoy.pdl
+RUN | $T/eden_op.+x | $T | toyread | $T/toy.pdl | title
+EXPECT_OUT_IS | Eden | taskbar-reads-title-Eden
+RUN | $T/eden_op.+x | $T | toyread | $T/toy.pdl | launch
+EXPECT_OUT_IS | conductor/button.sh | taskbar-reads-launch-conductor-button-sh
+EXPECT_EXISTS | button.sh | launch-target-exists-under-the-toy-dir
+RUN | $T/eden_op.+x | $T | toyread | $T/csvtoy.pdl | title
+EXPECT_OUT_IS | csv-hq | reader-agrees-on-an-existing-real-toy
+RUN | $T/eden_op.+x | $T | toyread | $T/csvtoy.pdl | launch
+EXPECT_OUT_IS | button.sh | reader-agrees-on-an-existing-real-toy-launch
+EXPECT_HAS | toy.pdl | SECTION | rows-use-the-SECTION-tag-like-every-real-toy
+WRITE   | meta_form.pdl | META | title | Eden\nMETA | launch | conductor/button.sh
+RUN | $T/eden_op.+x | $T | toyread | $T/meta_form.pdl | title
+EXPECT_EXIT | 1 | GAP-META-tagged-rows-are-skipped-by-the-taskbar-so-toy-pdl-must-use-SECTION
+CLEAN   |
+
+CASE    | meta-rows
+SCRATCH |
+COPY    | &.widgits/eden/conductor/meta.pdl | meta.pdl
+COPY    | &.widgits/eden/conductor/glyph.txt | glyph.txt
+EXPECT_HAS | meta.pdl | \p Setup | meta-row-setup
+EXPECT_HAS | meta.pdl | --trigger setup'| meta-row-fires-trigger-setup
+EXPECT_HAS | meta.pdl | \p Start | meta-row-start
+EXPECT_HAS | meta.pdl | --trigger start'| meta-row-fires-trigger-start
+EXPECT_HAS | meta.pdl | \p Pause | meta-row-pause
+EXPECT_HAS | meta.pdl | --trigger pause'| meta-row-fires-trigger-pause
+EXPECT_HAS | meta.pdl | \p Resume | meta-row-resume
+EXPECT_HAS | meta.pdl | --trigger resume'| meta-row-fires-trigger-resume
+EXPECT_HAS | meta.pdl | \p Save 1 | meta-row-save1
+EXPECT_HAS | meta.pdl | --trigger save1'| meta-row-fires-trigger-save1
+EXPECT_HAS | meta.pdl | \p Load 1 | meta-row-load1
+EXPECT_HAS | meta.pdl | --trigger load1'| meta-row-fires-trigger-load1
+EXPECT_HAS | meta.pdl | \p Status | meta-row-status
+EXPECT_HAS | meta.pdl | --trigger status'| meta-row-fires-trigger-status
+EXPECT_HAS | meta.pdl | \p Add participant | meta-row-add
+EXPECT_HAS | meta.pdl | --trigger add'| meta-row-fires-trigger-add
+EXPECT_HAS | meta.pdl | \p Remove participant | meta-row-remove
+EXPECT_HAS | meta.pdl | --trigger remove'| meta-row-fires-trigger-remove
+EXPECT_HAS | meta.pdl | \p Reset | meta-row-reset
+EXPECT_HAS | meta.pdl | --trigger reset'| meta-row-fires-trigger-reset
+EXPECT_HAS | glyph.txt | 🔘 | conductor-glyph
+CLEAN   |
+
+CASE    | setup-idempotent-reset
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+COPY    | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | gso
+MKDIR   | &.widgits/digipet/ops/+x
+COPY    | &.widgits/digipet/ops/+x/event_page_op.+x | &.widgits/digipet/ops/+x/event_page_op.+x
+MKDIR   | game
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/eden/conductor | $T/game/conductor
+MKDIR   | game/conductor/ops/+x
+COPY    | &.widgits/eden/ops/+x/eden_op.+x | game/conductor/ops/+x/eden_op.+x
+MKDIR   | common_events
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/eden/common_events/eden_day_tick | $T/common_events/eden_day_tick
+WRITE   | game/conductor/wiring.pdl | WIRING | participants | ../participants\nWIRING | template | participant_template\nWIRING | tree | ..\nWIRING | control_ledger | ../../eden_control.txt
+EXPECT_NOFILE | game/participants/asa/pal.pdl | no-entities-before-setup
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | setup
+EXPECT_EXIT | 0 | setup-ok
+EXPECT_HAS | game/participants/asa/pal.pdl | PAL \p name \p asa | asa-spawned-from-the-template
+EXPECT_HAS | game/participants/ava/pal.pdl | PAL \p name \p ava | ava-spawned-from-the-template
+EXPECT_HAS | game/participants/asa/instance_id.txt | ED1 | asa-fresh-identity-ED1
+EXPECT_HAS | game/participants/ava/instance_id.txt | ED2 | ava-fresh-identity-ED2
+EXPECT_LACKS | game/participants/asa/pal.pdl | hash | no-copied-PAL-hash
+EXPECT_NOFILE | game/participants/asa/entity_uid.txt | no-copied-entity-uid
+EXPECT_HAS | game/participants/asa/items.txt | item_seed=5\n | asa-seed-x5
+EXPECT_HAS | game/participants/asa/items.txt | item_jug=1\n | asa-jug
+EXPECT_HAS | game/participants/asa/items.txt | item_hoe=1\n | asa-hoe
+EXPECT_HAS | game/participants/asa/items.txt | item_apple=2\n | asa-own-apples-untouched-by-grants
+EXPECT_HAS | game/participants/ava/items.txt | item_seed=5\n | ava-seed-x5
+EXPECT_HAS | game/participants/asa/actor_skills.txt | skill_1:plant=1\n | asa-skill-plant
+EXPECT_HAS | game/participants/asa/actor_skills.txt | skill_1:trade=1\n | asa-skill-trade
+EXPECT_HAS | game/participants/asa/actor_1_stats.txt | hp=20\n | asa-hp-20
+EXPECT_HAS | game/participants/asa/actor_1_stats.txt | mhp=20\n | asa-mhp-20
+RUN | /usr/bin/grep | -c | ^GRANT | $T/game/conductor/grants.txt
+EXPECT_OUT_IS | 28 | 28-GRANT-rows-2-entities-x-14-kit-entries
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | digest
+CAPTURE | d1
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | setup
+EXPECT_EXIT | 0 | second-setup-ok
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | digest
+CAPTURE | d2
+EXPECT_EQ | $d1 | $d2 | second-setup-changes-nothing-grants-once
+RUN | /usr/bin/grep | -c | ^GRANT | $T/game/conductor/grants.txt
+EXPECT_OUT_IS | 28 | still-28-GRANT-rows
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | reset
+EXPECT_EXIT | 0 | reset-ok
+EXPECT_HAS | game/participants/asa/items.txt | item_seed=0\n | reset-takes-back-the-seeds
+EXPECT_HAS | game/participants/asa/items.txt | item_jug=0\n | reset-takes-back-the-jug
+EXPECT_HAS | game/participants/asa/items.txt | item_apple=2\n | reset-leaves-the-own-apples
+EXPECT_HAS | game/participants/asa/actor_skills.txt | skill_1:plant=0\n | reset-takes-back-the-skill
+EXPECT_HAS | game/participants/asa/actor_1_stats.txt | hp=10\n | reset-restores-hp-10
+EXPECT_HAS | game/participants/asa/actor_1_stats.txt | mhp=10\n | reset-restores-mhp-10
+EXPECT_FILE | game/participants/asa/own/notes.txt | asa keeps this note. The game never writes here.\n | own-data-file-untouched
+RUN | /usr/bin/grep | -c | ^REVOKE | $T/game/conductor/grants.txt
+EXPECT_OUT_IS | 28 | 28-REVOKE-rows-exactly-the-grants
+EXPECT_HAS | game/conductor/variables.txt | setup_done=0\n | reset-clears-setup-done
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | setup
+EXPECT_HAS | game/participants/asa/items.txt | item_seed=5\n | setup-after-reset-grants-again
+RUN | /usr/bin/grep | -c | ^GRANT | $T/game/conductor/grants.txt
+EXPECT_OUT_IS | 56 | 56-GRANT-rows-after-the-second-setup
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | reset
+EXPECT_HAS | game/participants/asa/items.txt | item_seed=0\n | reset-after-play-seeds-0
+EXPECT_LACKS | game/participants/asa/items.txt | =-1 | reset-after-play-no-negative-items
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | audit
+EXPECT_OUT | AUDIT\pok=1 | audit-ok-after-reset-after-play
+EXPECT_FILE | game/participants/ava/own/notes.txt | ava keeps this note. The game never writes here.\n | ava-own-data-untouched
+CLEAN   |
+
+CASE    | acts-derived-from-items
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+COPY    | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | gso
+MKDIR   | &.widgits/digipet/ops/+x
+COPY    | &.widgits/digipet/ops/+x/event_page_op.+x | &.widgits/digipet/ops/+x/event_page_op.+x
+MKDIR   | game
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/eden/conductor | $T/game/conductor
+MKDIR   | game/conductor/ops/+x
+COPY    | &.widgits/eden/ops/+x/eden_op.+x | game/conductor/ops/+x/eden_op.+x
+MKDIR   | common_events
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/eden/common_events/eden_day_tick | $T/common_events/eden_day_tick
+WRITE   | game/conductor/wiring.pdl | WIRING | participants | ../participants\nWIRING | template | participant_template\nWIRING | tree | ..\nWIRING | control_ledger | ../../eden_control.txt
+APPEND  | game/conductor/game.pdl | SPARE | bare | kit=none\n
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | setup
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | add | bare
+EXPECT_EXIT | 0 | add-bare-entity-no-kit
+WRITE   | game/participants/bare/items.txt | item_seed=2\n
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | acts | bare
+EXPECT_OUT_IS | plant | only-a-seed-implies-plant-and-nothing-else
+WRITE   | game/participants/bare/items.txt | item_seed=2\nitem_jug=1\nitem_hoe=1\n
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | acts | bare
+EXPECT_OUT_IS | plant | jug-and-hoe-imply-water-and-collect-but-no-plot-yet-so-only-plant
+WRITE   | game/participants/bare/items.txt | item_jug=1\n
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | acts | bare
+EXPECT_OUT_LACKS | plant | no-seed-no-plant
+WRITE   | game/participants/bare/actor_skills.txt | skill_1:rest=1\nskill_1:talk=1\n
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | acts | bare
+EXPECT_OUT_IS | talk\nrest | stored-skills-rest-and-talk-offer-talk-and-rest
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | acts | asa
+EXPECT_OUT_IS | plant\ntalk\nstudy\nrest | farmer-start-acts-plant-talk-study-rest
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | menu | asa
+EXPECT_EXIT | 0 | menu-written
+EXPECT_HAS | game/participants/asa/acts_menu.pdl | Act: plant | generated-menu-has-an-Act-plant-row
+EXPECT_HAS | game/participants/asa/acts_menu.pdl | Act: rest | generated-menu-has-an-Act-rest-row
+EXPECT_LACKS | game/participants/asa/acts_menu.pdl | Act: eat | generated-menu-has-no-eat-row-while-not-hungry
+RUN | /bin/sh | -c | exec "$0/../../conductor/ops/+x/eden_op.+x" "$0/../../conductor" act asa plant | $T/game/participants/asa
+EXPECT_EXIT | 0 | menu-row-command-runs-by-sh-c
+EXPECT_HAS | game/participants/asa/variables.txt | plot_1_state=1\n | menu-row-planted-plot-1
+EXPECT_HAS | game/participants/asa/items.txt | item_seed=4\n | menu-row-spent-a-seed
+CLEAN   |
+
+CASE    | acts-by-hand
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+COPY    | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | gso
+MKDIR   | &.widgits/digipet/ops/+x
+COPY    | &.widgits/digipet/ops/+x/event_page_op.+x | &.widgits/digipet/ops/+x/event_page_op.+x
+MKDIR   | game
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/eden/conductor | $T/game/conductor
+MKDIR   | game/conductor/ops/+x
+COPY    | &.widgits/eden/ops/+x/eden_op.+x | game/conductor/ops/+x/eden_op.+x
+MKDIR   | common_events
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/eden/common_events/eden_day_tick | $T/common_events/eden_day_tick
+WRITE   | game/conductor/wiring.pdl | WIRING | participants | ../participants\nWIRING | template | participant_template\nWIRING | tree | ..\nWIRING | control_ledger | ../../eden_control.txt
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | setup
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | act | asa | collect
+EXPECT_EXIT | 1 | collect-refused-nothing-ripe
+EXPECT_HAS | game/conductor/op_errors.txt | not available | refusal-logged-in-op_errors
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | act | asa | plant
+EXPECT_EXIT | 0 | plant
+EXPECT_HAS | game/participants/asa/variables.txt | plot_1_state=1\n | plot-growing
+EXPECT_HAS | game/participants/asa/items.txt | item_seed=4\n | seed-spent
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | act | asa | water
+EXPECT_EXIT | 0 | water
+EXPECT_HAS | game/participants/asa/variables.txt | plot_1_wet=1\n | plot-wet
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | act | asa | water
+EXPECT_EXIT | 1 | water-refused-nothing-dry
+WRITE   | game/participants/asa/variables.txt | hunger=0\nshelter=0\nplot_1_state=2\nplot_1_grown=4\n
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | act | asa | collect
+EXPECT_EXIT | 0 | collect
+EXPECT_HAS | game/participants/asa/items.txt | item_grain=3\n | yield-3-grain
+EXPECT_HAS | game/participants/asa/items.txt | item_seed=5\n | seed-returned
+EXPECT_HAS | game/participants/asa/variables.txt | plot_1_state=0\n | plot-free-again
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | act | asa | eat
+EXPECT_EXIT | 1 | eat-refused-not-hungry
+WRITE   | game/participants/asa/variables.txt | hunger=6\nshelter=0\n
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | act | asa | eat
+EXPECT_EXIT | 0 | eat
+EXPECT_HAS | game/participants/asa/variables.txt | hunger=3\n | hunger-6-minus-apple-nutrition-3
+EXPECT_HAS | game/participants/asa/items.txt | item_apple=1\n | apple-eaten
+WRITE   | game/participants/ava/items.txt | item_apple=2\nitem_seed=7\nitem_jug=1\nitem_hoe=1\n
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | act | asa | trade
+EXPECT_EXIT | 0 | trade-surplus-grain-for-seed
+EXPECT_HAS | game/participants/asa/items.txt | item_grain=2\n | asa-gave-grain
+EXPECT_HAS | game/participants/asa/items.txt | item_seed=6\n | asa-got-seed
+EXPECT_HAS | game/participants/ava/items.txt | item_grain=1\n | ava-got-grain
+EXPECT_HAS | game/participants/ava/items.txt | item_seed=6\n | ava-gave-seed
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | act | asa | talk
+EXPECT_EXIT | 0 | talk
+EXPECT_HAS | game/participants/asa/phone.txt | \pOUT\pava\p | asa-phone-has-the-outgoing-message
+EXPECT_HAS | game/participants/ava/phone.txt | \pIN\pasa\p | ava-phone-has-the-incoming-message
+WRITE   | game/participants/asa/items.txt | item_apple=1\nitem_seed=5\nitem_jug=1\nitem_hoe=1\nitem_grain=3\n
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | act | asa | build
+EXPECT_EXIT | 0 | build-hut
+EXPECT_HAS | game/participants/asa/variables.txt | shelter=1\n | shelter-raised
+EXPECT_HAS | game/participants/asa/items.txt | item_grain=0\n | hut-spent-3-grain
+EXPECT_HAS | game/participants/asa/items.txt | item_seed=4\n | hut-spent-1-seed
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | act | asa | build
+EXPECT_EXIT | 1 | second-hut-refused-max-shelter-1
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | act | asa | study
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | act | asa | study
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | act | asa | study
+EXPECT_HAS | game/participants/asa/variables.txt | exp_graft=6\n | three-studies-6-exp
+EXPECT_HAS | game/participants/asa/actor_skills.txt | skill_1:graft=1\n | training-node-unlocked-graft
+EXPECT_HAS | game/conductor/eden_history.txt | UNLOCK\p | unlock-row
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | act | asa | rest
+EXPECT_EXIT | 0 | rest
+EXPECT_HAS | game/conductor/eden_history.txt | \pasa\prest\p | rest-row
+CLEAN   |
+
+CASE    | twenty-days-direct-seed7
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+COPY    | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | gso
+MKDIR   | &.widgits/digipet/ops/+x
+COPY    | &.widgits/digipet/ops/+x/event_page_op.+x | &.widgits/digipet/ops/+x/event_page_op.+x
+MKDIR   | game
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/eden/conductor | $T/game/conductor
+MKDIR   | game/conductor/ops/+x
+COPY    | &.widgits/eden/ops/+x/eden_op.+x | game/conductor/ops/+x/eden_op.+x
+MKDIR   | common_events
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/eden/common_events/eden_day_tick | $T/common_events/eden_day_tick
+WRITE   | game/conductor/wiring.pdl | WIRING | participants | ../participants\nWIRING | template | participant_template\nWIRING | tree | ..\nWIRING | control_ledger | ../../eden_control.txt
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | setup
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | audit
+EXPECT_OUT | AUDIT\pok=1 | invariants-hold-no-negative-items-hunger-and-hp-in-bounds-food-conserved
+EXPECT_OUT | bad=0 | audit-found-no-problem
+RUN | /usr/bin/grep | -c | ^DAY | $T/game/conductor/eden_history.txt
+EXPECT_OUT_IS | 20 | 20-DAY-rows
+EXPECT_HAS | game/conductor/variables.txt | day=20\n | day-20
+EXPECT_HAS | game/conductor/eden_history.txt | \prain\n | weather-days-contain-rain-seed-7
+EXPECT_HAS | game/conductor/eden_history.txt | \pclear\n | weather-days-contain-clear-seed-7
+EXPECT_HAS | game/conductor/eden_history.txt | by=rain | rain-watered-a-field
+EXPECT_HAS | game/conductor/eden_history.txt | \pasa\pplant\p | asa-planted
+EXPECT_HAS | game/conductor/eden_history.txt | \pava\pplant\p | ava-planted
+EXPECT_HAS | game/conductor/eden_history.txt | \pava\pwater\p | ava-watered-by-hand
+EXPECT_HAS | game/conductor/eden_history.txt | \pasa\pwater\p | asa-watered-by-hand
+EXPECT_HAS | game/conductor/eden_history.txt | RIPE\p | crops-ripened
+RUN | /usr/bin/grep | -c | ^RIPE| | $T/game/conductor/eden_history.txt
+EXPECT_HAS | game/conductor/eden_history.txt | \pasa\pcollect\p | asa-collected
+EXPECT_HAS | game/conductor/eden_history.txt | \pava\pcollect\p | ava-collected
+EXPECT_HAS | game/conductor/eden_history.txt | \pasa\peat\p | asa-ate
+EXPECT_HAS | game/conductor/eden_history.txt | \pava\peat\p | ava-ate
+EXPECT_HAS | game/conductor/eden_history.txt | \ptrade\pgive= | a-trade-happened
+EXPECT_HAS | game/conductor/eden_history.txt | \ptalk\pwith= | a-talk-happened
+EXPECT_HAS | game/conductor/eden_history.txt | \pstudy\pnode= | a-study-happened
+EXPECT_HAS | game/conductor/eden_history.txt | UNLOCK\p | a-training-node-unlocked
+EXPECT_HAS | game/participants/asa/phone.txt | MSG | talk-wrote-asa-phone-rows
+EXPECT_HAS | game/participants/ava/phone.txt | MSG | talk-wrote-ava-phone-rows
+EXPECT_LACKS | game/conductor/eden_history.txt | \pnegative | no-negative-marker
+EXPECT_LACKS | game/participants/asa/items.txt | =-1 | no-negative-items-asa
+EXPECT_LACKS | game/participants/ava/items.txt | =-1 | no-negative-items-ava
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | status
+EXPECT_OUT | over=1 | status-says-the-20-day-game-is-over
+EXPECT_OUT | PART\pasa\pfarmer\pid=ED1 | status-lists-asa
+CLEAN   |
+
+CASE    | determinism
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+COPY    | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | gso
+MKDIR   | &.widgits/digipet/ops/+x
+COPY    | &.widgits/digipet/ops/+x/event_page_op.+x | &.widgits/digipet/ops/+x/event_page_op.+x
+MKDIR   | game
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/eden/conductor | $T/game/conductor
+MKDIR   | game/conductor/ops/+x
+COPY    | &.widgits/eden/ops/+x/eden_op.+x | game/conductor/ops/+x/eden_op.+x
+MKDIR   | common_events
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/eden/common_events/eden_day_tick | $T/common_events/eden_day_tick
+WRITE   | game/conductor/wiring.pdl | WIRING | participants | ../participants\nWIRING | template | participant_template\nWIRING | tree | ..\nWIRING | control_ledger | ../../eden_control.txt
+WRITE   | game/conductor/game.pdl | SETUP | seed | 7\nSETUP | length | 20\nPARTICIPANT | asa | kit=farmer\nPARTICIPANT | ava | kit=farmer\nSPARE | eli | kit=farmer\nSPARE | noa | kit=farmer
+MKDIR   | game2
+RUN | /usr/bin/cp | -r | $T/game/conductor | $T/game2/conductor
+WRITE   | game2/conductor/wiring.pdl | WIRING | participants | ../participants\nWIRING | template | participant_template\nWIRING | tree | ..\nWIRING | control_ledger | ../../eden_control_game2.txt
+WRITE   | game2/conductor/game.pdl | SETUP | seed | 7\nSETUP | length | 20\nPARTICIPANT | asa | kit=farmer\nPARTICIPANT | ava | kit=farmer\nSPARE | eli | kit=farmer\nSPARE | noa | kit=farmer
+MKDIR   | game3
+RUN | /usr/bin/cp | -r | $T/game/conductor | $T/game3/conductor
+WRITE   | game3/conductor/wiring.pdl | WIRING | participants | ../participants\nWIRING | template | participant_template\nWIRING | tree | ..\nWIRING | control_ledger | ../../eden_control_game3.txt
+WRITE   | game3/conductor/game.pdl | SETUP | seed | 11\nSETUP | length | 20\nPARTICIPANT | asa | kit=farmer\nPARTICIPANT | ava | kit=farmer\nSPARE | eli | kit=farmer\nSPARE | noa | kit=farmer
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | setup
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | setup
+RUN | $T/game3/conductor/ops/+x/eden_op.+x | $T/game3/conductor | setup
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game3/conductor/ops/+x/eden_op.+x | $T/game3/conductor | daytick
+RUN | $T/game3/conductor/ops/+x/eden_op.+x | $T/game3/conductor | daytick
+RUN | $T/game3/conductor/ops/+x/eden_op.+x | $T/game3/conductor | daytick
+RUN | $T/game3/conductor/ops/+x/eden_op.+x | $T/game3/conductor | daytick
+RUN | $T/game3/conductor/ops/+x/eden_op.+x | $T/game3/conductor | daytick
+RUN | $T/game3/conductor/ops/+x/eden_op.+x | $T/game3/conductor | daytick
+RUN | $T/game3/conductor/ops/+x/eden_op.+x | $T/game3/conductor | daytick
+RUN | $T/game3/conductor/ops/+x/eden_op.+x | $T/game3/conductor | daytick
+RUN | $T/game3/conductor/ops/+x/eden_op.+x | $T/game3/conductor | daytick
+RUN | $T/game3/conductor/ops/+x/eden_op.+x | $T/game3/conductor | daytick
+RUN | $T/game3/conductor/ops/+x/eden_op.+x | $T/game3/conductor | daytick
+RUN | $T/game3/conductor/ops/+x/eden_op.+x | $T/game3/conductor | daytick
+RUN | $T/game3/conductor/ops/+x/eden_op.+x | $T/game3/conductor | daytick
+RUN | $T/game3/conductor/ops/+x/eden_op.+x | $T/game3/conductor | daytick
+RUN | $T/game3/conductor/ops/+x/eden_op.+x | $T/game3/conductor | daytick
+RUN | $T/game3/conductor/ops/+x/eden_op.+x | $T/game3/conductor | daytick
+RUN | $T/game3/conductor/ops/+x/eden_op.+x | $T/game3/conductor | daytick
+RUN | $T/game3/conductor/ops/+x/eden_op.+x | $T/game3/conductor | daytick
+RUN | $T/game3/conductor/ops/+x/eden_op.+x | $T/game3/conductor | daytick
+RUN | $T/game3/conductor/ops/+x/eden_op.+x | $T/game3/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | digest
+CAPTURE | da
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | digest
+CAPTURE | db
+RUN | $T/game3/conductor/ops/+x/eden_op.+x | $T/game3/conductor | digest
+CAPTURE | dc
+EXPECT_EQ | $da | $db | same-seed-two-scratch-runs-identical-tree
+EXPECT_NE | $da | $dc | different-seed-different-tree
+RUN | $T/game3/conductor/ops/+x/eden_op.+x | $T/game3/conductor | audit
+EXPECT_OUT | AUDIT\pok=1 | invariants-hold-for-seed-11
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | audit
+EXPECT_OUT | AUDIT\pok=1 | invariants-hold-for-the-second-seed-7-run
+RUN | /usr/bin/grep | -c | ^WEATHER | $T/game3/conductor/eden_history.txt
+EXPECT_OUT_IS | 20 | seed-11-20-weather-rows
+RUN | /usr/bin/cmp | $T/game/conductor/eden_history.txt | $T/game2/conductor/eden_history.txt
+EXPECT_EXIT | 0 | same-seed-history-byte-identical
+RUN | /usr/bin/cmp | $T/game/conductor/eden_history.txt | $T/game3/conductor/eden_history.txt
+EXPECT_EXIT | 1 | different-seed-history-differs
+CLEAN   |
+
+CASE    | third-participant-and-removal
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+COPY    | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | gso
+MKDIR   | &.widgits/digipet/ops/+x
+COPY    | &.widgits/digipet/ops/+x/event_page_op.+x | &.widgits/digipet/ops/+x/event_page_op.+x
+MKDIR   | game
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/eden/conductor | $T/game/conductor
+MKDIR   | game/conductor/ops/+x
+COPY    | &.widgits/eden/ops/+x/eden_op.+x | game/conductor/ops/+x/eden_op.+x
+MKDIR   | common_events
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/eden/common_events/eden_day_tick | $T/common_events/eden_day_tick
+WRITE   | game/conductor/wiring.pdl | WIRING | participants | ../participants\nWIRING | template | participant_template\nWIRING | tree | ..\nWIRING | control_ledger | ../../eden_control.txt
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | setup
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | add
+EXPECT_EXIT | 0 | add-participant-spawns-eli
+EXPECT_HAS | game/participants/eli/instance_id.txt | ED3 | eli-fresh-identity-ED3
+EXPECT_HAS | game/participants/eli/items.txt | item_seed=5\n | eli-got-the-kit
+EXPECT_HAS | game/participants/eli/actor_skills.txt | skill_1:plant=1\n | eli-has-the-skills
+EXPECT_HAS | game/conductor/participants.txt | JOIN\peli\pfarmer\pED3 | manifest-registers-eli
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | /usr/bin/grep | -q | ^ACT\p[0-9]*\peli\p | $T/game/conductor/eden_history.txt
+EXPECT_EXIT | 0 | the-dynamically-added-third-participant-acts
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | audit
+EXPECT_OUT | AUDIT\pok=1 | invariants-hold-with-three
+SUMTREE | eli_before | game/participants/eli/own
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | remove | eli
+EXPECT_EXIT | 0 | remove-eli
+SUMTREE | eli_after | game/participants/eli/own
+EXPECT_EQ | $eli_before | $eli_after | removal-leaves-the-entitys-own-folder-byte-identical
+EXPECT_HAS | game/conductor/participants.txt | RETIRE\peli | tombstone-row
+EXPECT_EXISTS | game/participants/eli/pal.pdl | entity-folder-still-there
+EXPECT_HAS | game/participants/eli/items.txt | item_seed=0\n | removal-took-back-the-granted-seeds
+EXPECT_LACKS | game/conductor/grants.txt | apple | the-grant-ledger-never-touched-the-own-apples
+EXPECT_FILE | game/participants/eli/own/notes.txt | eli keeps this note. The game never writes here.\n | removed-participants-own-data-intact
+RUN | /usr/bin/grep | -c | ^REVOKE\peden\peli | $T/game/conductor/grants.txt
+EXPECT_OUT_IS | 14 | removal-revoked-eli-s-14-grants
+RUN | /usr/bin/grep | -c | ^ACT\p[0-9]*\peli\p | $T/game/conductor/eden_history.txt
+CAPTURE | eli_acts1
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | daytick
+RUN | /usr/bin/grep | -c | ^ACT\p[0-9]*\peli\p | $T/game/conductor/eden_history.txt
+CAPTURE | eli_acts2
+EXPECT_EQ | $eli_acts1 | $eli_acts2 | a-removed-participant-no-longer-acts
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | add | eli
+EXPECT_EXIT | 1 | a-tombstoned-name-is-not-reused
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | add
+EXPECT_EXIT | 0 | add-the-next-spare-noa
+EXPECT_HAS | game/participants/noa/instance_id.txt | ED4 | identities-never-reused
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | audit
+EXPECT_OUT | AUDIT\pok=1 | invariants-hold-after-removal-and-another-add
+CLEAN   |
+
+CASE    | clock-twenty-days-and-fast-forward
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+COPY    | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | gso
+MKDIR   | &.widgits/digipet/ops/+x
+COPY    | &.widgits/digipet/ops/+x/event_page_op.+x | &.widgits/digipet/ops/+x/event_page_op.+x
+MKDIR   | game
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/eden/conductor | $T/game/conductor
+MKDIR   | game/conductor/ops/+x
+COPY    | &.widgits/eden/ops/+x/eden_op.+x | game/conductor/ops/+x/eden_op.+x
+MKDIR   | common_events
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/eden/common_events/eden_day_tick | $T/common_events/eden_day_tick
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+ENV | EVENT_PAGE_TRIGGER | parallel
+ENV | LC_CLOCK_NO_POPUP | 1
+ENV | LC_CLOCK_EVENT_RUNNER | $T/&.widgits/digipet/ops/+x/event_page_op.+x
+MKDIR   | h2
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | h2/lc.+x
+MKDIR   | h2/common_events
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/eden/common_events/eden_day_tick | $T/h2/common_events/eden_day_tick
+WRITE   | h2/common_events/eden_day_tick/event_pkg/target.pdl | TARGET | state | ../game2/conductor
+MKDIR   | game2
+RUN | /usr/bin/cp | -r | $T/game/conductor | $T/game2/conductor
+WRITE   | game2/conductor/wiring.pdl | WIRING | lc_clock | ../../h2/lc.+x\nWIRING | house | ../../h2\nWIRING | clock | g1\nWIRING | first_ms | 86400000\nWIRING | repeat | every:1day\nWIRING | start_rate | x86400\nWIRING | participants | ../participants\nWIRING | template | participant_template\nWIRING | tree | ..\nWIRING | control_ledger | ../../eden_control_game2.txt
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger setup | $T/game/conductor | $T
+EXPECT_EXIT | 0 | Setup-row-fires-the-setup-page
+RUN | $T/lc.+x | $T | reminders
+EXPECT_OUT | common:eden_day_tick | the-schedule-row-is-installed-on-the-conductor-clock
+EXPECT_OUT | every:1day | and-repeats-every-1day
+EXPECT_HAS | game/participants/asa/items.txt | item_seed=5\n | page-setup-granted-asa
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | setup
+EXPECT_EXIT | 0 | game2-setup-in-its-own-house
+RUN | $T/lc.+x | $T | cmd | g1 | advance | 20d
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 20 | the-clock-fired-20-ticks
+EXPECT_HAS | game/conductor/variables.txt | day=20\n | the-game-is-on-day-20
+RUN | /usr/bin/grep | -c | ^DAY | $T/game/conductor/eden_history.txt
+EXPECT_OUT_IS | 20 | exactly-20-DAY-rows
+RUN | /usr/bin/grep | -c | ok | $T/#.desktop/clocks/schedule_ledger.txt
+EXPECT_OUT_IS | 20 | every-ledger-row-says-ok
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | audit
+EXPECT_OUT | AUDIT\pok=1 | invariants-hold-after-the-clock-run
+EXPECT_HAS | game/conductor/eden_history.txt | \pasa\pplant\p | clock-run-asa-planted
+EXPECT_HAS | game/conductor/eden_history.txt | \pava\pcollect\p | clock-run-ava-collected
+EXPECT_HAS | game/conductor/eden_history.txt | \prain\n | clock-run-has-rain
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+EXPECT_HAS | game2/conductor/variables.txt | day=2\n | game2-single-steps-day-2
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+EXPECT_HAS | game2/conductor/variables.txt | day=20\n | game2-single-steps-day-20
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | digest
+CAPTURE | dclock
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | digest
+CAPTURE | dsteps
+EXPECT_EQ | $dclock | $dsteps | one-20-day-jump-equals-20-single-day-steps
+CLEAN   |
+
+CASE    | thirty-day-jump-vs-steps
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+COPY    | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | gso
+MKDIR   | &.widgits/digipet/ops/+x
+COPY    | &.widgits/digipet/ops/+x/event_page_op.+x | &.widgits/digipet/ops/+x/event_page_op.+x
+MKDIR   | game
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/eden/conductor | $T/game/conductor
+MKDIR   | game/conductor/ops/+x
+COPY    | &.widgits/eden/ops/+x/eden_op.+x | game/conductor/ops/+x/eden_op.+x
+MKDIR   | common_events
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/eden/common_events/eden_day_tick | $T/common_events/eden_day_tick
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+ENV | EVENT_PAGE_TRIGGER | parallel
+ENV | LC_CLOCK_NO_POPUP | 1
+ENV | LC_CLOCK_EVENT_RUNNER | $T/&.widgits/digipet/ops/+x/event_page_op.+x
+MKDIR   | h2
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | h2/lc.+x
+MKDIR   | h2/common_events
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/eden/common_events/eden_day_tick | $T/h2/common_events/eden_day_tick
+WRITE   | h2/common_events/eden_day_tick/event_pkg/target.pdl | TARGET | state | ../game2/conductor
+MKDIR   | game2
+RUN | /usr/bin/cp | -r | $T/game/conductor | $T/game2/conductor
+WRITE   | game2/conductor/wiring.pdl | WIRING | lc_clock | ../../h2/lc.+x\nWIRING | house | ../../h2\nWIRING | clock | g1\nWIRING | first_ms | 86400000\nWIRING | repeat | every:1day\nWIRING | start_rate | x86400\nWIRING | participants | ../participants\nWIRING | template | participant_template\nWIRING | tree | ..\nWIRING | control_ledger | ../../eden_control_game2.txt
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | setup
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | setup
+RUN | $T/lc.+x | $T | cmd | g1 | advance | 30d
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 30 | 30-day-fast-forward-fires-exactly-30-ticks
+RUN | /usr/bin/grep | -c | ^DAY | $T/game/conductor/eden_history.txt
+EXPECT_OUT_IS | 30 | 30-DAY-rows
+EXPECT_HAS | game/conductor/variables.txt | day=30\n | day-30
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | cmd | g1 | advance | 1d
+RUN | $T/h2/lc.+x | $T/h2 | step | 0
+RUN | $T/h2/lc.+x | $T/h2 | sched-count | r1
+EXPECT_OUT_IS | 30 | 30-single-steps-fire-30-ticks
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | digest
+CAPTURE | djump
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | digest
+CAPTURE | dstep
+EXPECT_EQ | $djump | $dstep | 30-day-jump-equals-30-single-steps
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | audit
+EXPECT_OUT | AUDIT\pok=1 | invariants-hold-after-30-days
+CLEAN   |
+
+CASE    | save-load-continue
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+COPY    | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | gso
+MKDIR   | &.widgits/digipet/ops/+x
+COPY    | &.widgits/digipet/ops/+x/event_page_op.+x | &.widgits/digipet/ops/+x/event_page_op.+x
+MKDIR   | game
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/eden/conductor | $T/game/conductor
+MKDIR   | game/conductor/ops/+x
+COPY    | &.widgits/eden/ops/+x/eden_op.+x | game/conductor/ops/+x/eden_op.+x
+MKDIR   | common_events
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/eden/common_events/eden_day_tick | $T/common_events/eden_day_tick
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+ENV | EVENT_PAGE_TRIGGER | parallel
+ENV | LC_CLOCK_NO_POPUP | 1
+ENV | LC_CLOCK_EVENT_RUNNER | $T/&.widgits/digipet/ops/+x/event_page_op.+x
+MKDIR   | h2
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | h2/lc.+x
+MKDIR   | h2/common_events
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/eden/common_events/eden_day_tick | $T/h2/common_events/eden_day_tick
+WRITE   | h2/common_events/eden_day_tick/event_pkg/target.pdl | TARGET | state | ../game2/conductor
+MKDIR   | game2
+RUN | /usr/bin/cp | -r | $T/game/conductor | $T/game2/conductor
+WRITE   | game2/conductor/wiring.pdl | WIRING | lc_clock | ../../h2/lc.+x\nWIRING | house | ../../h2\nWIRING | clock | g1\nWIRING | first_ms | 86400000\nWIRING | repeat | every:1day\nWIRING | start_rate | x86400\nWIRING | participants | ../participants\nWIRING | template | participant_template\nWIRING | tree | ..\nWIRING | control_ledger | ../../eden_control_game2.txt
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger setup | $T/game/conductor | $T
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | setup
+RUN | $T/lc.+x | $T | cmd | g1 | advance | 8d
+RUN | $T/lc.+x | $T | step | 0
+EXPECT_HAS | game/conductor/variables.txt | day=8\n | clock-run-to-day-8
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | digest
+CAPTURE | d_save
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger save1 | $T/game/conductor | $T
+EXPECT_EXIT | 0 | Save-1-row-fires-the-save-page
+EXPECT_EXISTS | store/checkpoints/slot1/manifest.txt | the-checkpoint-slot1-exists
+EXPECT_HAS | eden_control.txt | SAVE\pslot1 | control-ledger-has-a-SAVE-row
+RUN | $T/gso | $T/store | $T/game | list
+EXPECT_OUT | slot1 | game_snapshot_op-lists-slot1
+RUN | $T/lc.+x | $T | cmd | g1 | advance | 4d
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | add
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | act | asa | rest
+EXPECT_HAS | game/conductor/variables.txt | day=12\n | mutated-to-day-12
+EXPECT_HAS | game/participants/eli/pal.pdl | eli | a-third-participant-exists-before-the-load
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | digest
+CAPTURE | d_mut
+EXPECT_NE | $d_save | $d_mut | the-state-really-changed
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger load1 | $T/game/conductor | $T
+EXPECT_EXIT | 0 | Load-1-row-fires-the-load-page
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | digest
+CAPTURE | d_load
+EXPECT_EQ | $d_save | $d_load | load-restores-the-exact-saved-state-trees-equal
+EXPECT_NOFILE | game/participants/eli/pal.pdl | participants-added-after-the-save-are-pruned
+EXPECT_HAS | game/conductor/variables.txt | day=8\n | day-8-again
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 8 | clock-ledger-restored-8-rows
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | step | 3600000
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 8 | stepping-after-load-refires-nothing
+EXPECT_HAS | game/conductor/variables.txt | day=8\n | no-tick-double-applied
+RUN | /usr/bin/grep | -c | ^DAY | $T/game/conductor/eden_history.txt
+EXPECT_OUT_IS | 8 | 8-DAY-rows-after-load
+RUN | $T/lc.+x | $T | cmd | g1 | advance | 12d
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 20 | continued-to-20-ticks
+RUN | /usr/bin/grep | -c | ^DAY | $T/game/conductor/eden_history.txt
+EXPECT_OUT_IS | 20 | exactly-20-DAY-rows-no-duplicates
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | daytick
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | digest
+CAPTURE | d_cont
+RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | digest
+CAPTURE | d_ref
+EXPECT_EQ | $d_cont | $d_ref | save-at-8-mutate-load-continue-equals-the-uninterrupted-run
+RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | audit
+EXPECT_OUT | AUDIT\pok=1 | invariants-hold-after-load-and-continue
+CLEAN   |
+
+CASE    | player-path-rows
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+COPY    | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | gso
+MKDIR   | &.widgits/digipet/ops/+x
+COPY    | &.widgits/digipet/ops/+x/event_page_op.+x | &.widgits/digipet/ops/+x/event_page_op.+x
+MKDIR   | game
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/eden/conductor | $T/game/conductor
+MKDIR   | game/conductor/ops/+x
+COPY    | &.widgits/eden/ops/+x/eden_op.+x | game/conductor/ops/+x/eden_op.+x
+MKDIR   | common_events
+RUN | /usr/bin/cp | -r | $HOUSE/&.widgits/eden/common_events/eden_day_tick | $T/common_events/eden_day_tick
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+ENV | EVENT_PAGE_PRISC | $T/prisc
+ENV | EVENT_PAGE_TRIGGER | parallel
+ENV | LC_CLOCK_NO_POPUP | 1
+ENV | LC_CLOCK_EVENT_RUNNER | $T/&.widgits/digipet/ops/+x/event_page_op.+x
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger status | $T/game/conductor | $T
+EXPECT_HAS | game/conductor/status.txt | setup_done=0 | Status-before-Setup-says-not-set-up
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger start | $T/game/conductor | $T
+EXPECT_HAS | game/conductor/op_errors.txt | run Setup first | Start-refused-before-Setup
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger setup | $T/game/conductor | $T
+EXPECT_EXIT | 0 | Setup
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger start | $T/game/conductor | $T
+EXPECT_EXIT | 0 | Start
+EXPECT_HAS | game/conductor/variables.txt | running=1\n | Start-sets-running
+RUN | $T/lc.+x | $T | step | 0
+EXPECT_HAS | #.desktop/clocks/clock_audit.txt | rate | clock-audit-has-the-Start-rate-command
+EXPECT_HAS | #.desktop/clocks/clock_audit.txt | resume | clock-audit-has-the-Start-resume-command
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger pause | $T/game/conductor | $T
+EXPECT_EXIT | 0 | Pause
+EXPECT_HAS | game/conductor/variables.txt | running=0\n | Pause-clears-running
+RUN | $T/lc.+x | $T | step | 0
+EXPECT_HAS | #.desktop/clocks/clock_audit.txt | pause | clock-audit-has-the-pause-command
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger resume | $T/game/conductor | $T
+EXPECT_EXIT | 0 | Resume
+EXPECT_HAS | game/conductor/variables.txt | running=1\n | Resume-sets-running
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger status | $T/game/conductor | $T
+EXPECT_EXIT | 0 | Status
+EXPECT_HAS | game/conductor/status.txt | STATUS\pday=0 | Status-writes-status-txt
+EXPECT_HAS | game/conductor/status.txt | PART\pava\pfarmer | Status-lists-ava
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger add | $T/game/conductor | $T
+EXPECT_EXIT | 0 | Add-participant
+EXPECT_HAS | game/participants/eli/items.txt | item_seed=5\n | Add-participant-gave-eli-the-kit
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger remove | $T/game/conductor | $T
+EXPECT_EXIT | 0 | Remove-participant
+EXPECT_HAS | game/conductor/participants.txt | RETIRE\peli | Remove-participant-wrote-the-tombstone
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger reset | $T/game/conductor | $T
+EXPECT_EXIT | 0 | Reset
+EXPECT_HAS | game/participants/asa/items.txt | item_seed=0\n | Reset-took-the-seeds-back
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger save2 | $T/game/conductor | $T
+EXPECT_EXIT | 0 | Save-2
+RUN | /bin/sh | -c | exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger save2 | $T/game/conductor | $T
+EXPECT_HAS | game/conductor/op_errors.txt | save slot2 failed | saving-onto-an-existing-slot-is-refused-by-game_snapshot_op
+CLEAN   |

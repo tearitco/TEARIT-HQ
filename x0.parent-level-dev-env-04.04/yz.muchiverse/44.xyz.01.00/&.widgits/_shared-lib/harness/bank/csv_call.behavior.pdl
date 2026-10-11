@@ -1,0 +1,20 @@
+# Behavior Bank entry for the harness `csv_call` (see HARNESS-BEHAVIOR-BANK-DESIGN.md). Weights on SYNONYM / SLOT / CORPUS rows are hand-seeded; only WEIGHT (from COUNTS) is measured.
+BEHAVIOR | harness.csv_call
+KIND | spoke
+KEYWORDS | call, groq, ollama, mac, quota, timeout, ledger, rate limit
+SYNONYM | call a model | 0.80
+SYNONYM | rate limit | 0.60
+SYNONYM | token budget | 0.60
+SENTENCE | Calls the translator through the Groq backend transport or the judge through the Mac Ollama over HTTP, with a watchdog, a request ledger and a day and per-minute quota.
+SENTENCE | Uses local test doubles only: checks exit codes for rate limit, failure, hang, empty reply, the refusal of local port 11434 and any other host, and that the key never reaches output.
+SLOT | 0 | POINTS_TO=model-io | WEIGHT=0.90
+SLOT | 1 | POINTS_TO=quota | WEIGHT=0.80
+SLOT | 2 | POINTS_TO=translation-pipeline | WEIGHT=0.70
+CORPUS | translation | WEIGHT=0.80
+CORPUS | debug-build | WEIGHT=0.50
+SEQUENCE | 1 | exec ./ops/+x/harness_case_op.+x cases/csv_call.pdl
+SEQUENCE | 2 | exec ./ops/+x/harness_verdict_op.+x cases/csv_call.pdl
+SEQUENCE | 3 | exec ./ops/+x/harness_bank_op.+x cases/csv_call.pdl
+SOURCE | hand-authored 2026-10-07 (claude); masters/synonyms/weights are seeds awaiting owner validation
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

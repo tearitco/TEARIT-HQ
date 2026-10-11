@@ -1,0 +1,8 @@
+# event.pal - EndTurn 3/9: turn += 1 and count the players still alive (trigger endturn). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . add turn turn 1
+exec ops/+x/var_math.+x . set alive_count 0
+exec ops/+x/var_math.+x . add alive_count alive_count alive_1
+exec ops/+x/var_math.+x . add alive_count alive_count alive_2
+exec ops/+x/var_math.+x . add alive_count alive_count alive_3
+exec ops/+x/var_math.+x . add alive_count alive_count alive_4
+halt

@@ -1,0 +1,4 @@
+# eden_install.pal - the Eden desk-button installer (eden/install_eden.c) + the daemon/Next day verbs of eden_op, on a SCRATCH livedesk under /tmp only, see cases/eden_install.pdl.
+exec ./ops/+x/harness_case_op.+x cases/eden_install.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/eden_install.pdl
+halt

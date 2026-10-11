@@ -1,0 +1,5 @@
+# event.pal - Land: tax tile -> pay the tax to the bank (trigger roll). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/tile_lookup.+x . cur_pos tax tax_amt
+exec ops/+x/cash_transfer.+x . {current} bank tax_amt tax
+exec ops/+x/var_math.+x . set phase 5
+halt

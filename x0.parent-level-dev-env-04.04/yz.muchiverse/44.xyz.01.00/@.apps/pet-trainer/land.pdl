@@ -1,0 +1,4 @@
+SECTION | KEY | VALUE
+----------------------------------------
+# land.pdl - land is scarce: the fee per tile = base * (1 + k * used_fraction^2), where used_fraction = built tiles / buildable (grass) tiles of the map. Renting (later): rent_pct of the price per game day.
+LAND | base=2 | k=10 | rent_pct=5

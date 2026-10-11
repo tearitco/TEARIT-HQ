@@ -1,0 +1,221 @@
+# game_snapshot_op (content-addressed snapshot store + real restore) on SCRATCH roots only; never touches real user data, live trees or game_slot_op.
+RESULTS | ../results/game_snapshot.txt
+CASE    | game-snapshot
+SCRATCH |
+COPY    | &.widgits/_shared-lib/ops/+x/game_snapshot_op.+x | bin/gso
+COPY    | &.widgits/_shared-lib/ops/+x/game_slot_op.+x | ent/bin/tool
+MKDIR   | outside
+RUN     | chmod | 750 | $T/ent/bin/tool
+WRITE   | ent/readme.txt | hello world\n
+WRITE   | ent/notes/dup1.txt | same body\n
+WRITE   | ent/notes/deep/dup2.txt | same body\n
+WRITE   | ent/notes/deep/er/leaf.txt | leaf one\n
+WRITE   | ent/secret.txt | s3cret\n
+WRITE   | ent/edit_me.txt | v1\n
+WRITE   | ent/delete_me.txt | gone soon\n
+RUN     | touch | $T/ent/empty.dat
+RUN     | chmod | 600 | $T/ent/secret.txt
+RUN     | chmod | 644 | $T/ent/notes/dup1.txt | $T/ent/notes/deep/dup2.txt | $T/ent/empty.dat
+WRITE   | clock/clock.pdl | CLOCK \p epoch \p 2\nCLOCK \p tick \p 5\n
+WRITE   | clock/schedule_ledger.txt | 1000\pfired\pe1\n
+SUMTREE | treeA | ent
+
+# ---- save A: 9 tree files + 2 extras; dup1 and dup2 are the same content = ONE object (10 new objects, 1 reused)
+RUN | $T/bin/gso | $T/store | $T/ent | save | A | --extra | $T/clock/clock.pdl | --extra | $T/clock/schedule_ledger.txt | --now-ms | 1000
+EXPECT_EXIT | 0 | saveA-rc-0
+EXPECT_OUT  | saved A: files=11 | saveA-files-9-tree-plus-2-extra
+EXPECT_OUT  | new_objects=10 reused=1 | saveA-identical-files-dedup-to-one-object
+EXPECT_EXISTS | store/objects/1e/1e2134d49dc0a023ecddadb2fe5c4ae24144d5ba59e399531c7f25ff6df7a3c5 | saveA-object-path-is-sha-sharded
+EXPECT_HAS  | store/checkpoints/A/manifest.txt | 1e2134d49dc0a023ecddadb2fe5c4ae24144d5ba59e399531c7f25ff6df7a3c5\p10\p0644\pnotes/dup1.txt | manifest-dup1-row
+EXPECT_HAS  | store/checkpoints/A/manifest.txt | 1e2134d49dc0a023ecddadb2fe5c4ae24144d5ba59e399531c7f25ff6df7a3c5\p10\p0644\pnotes/deep/dup2.txt | manifest-dup2-same-sha
+EXPECT_HAS  | store/checkpoints/A/manifest.txt | e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\p0\p0644\pempty.dat | manifest-zero-byte-file
+EXPECT_HAS  | store/checkpoints/A/manifest.txt | \p0600\psecret.txt | manifest-records-mode-600
+EXPECT_HAS  | store/checkpoints/A/manifest.txt | \p0750\pbin/tool | manifest-records-mode-750
+EXPECT_HAS  | store/checkpoints/A/manifest.txt | \p__extra__/clock.pdl | manifest-has-clock-extra
+EXPECT_HAS  | store/checkpoints/A/meta.pdl | SLOT \p parent \p - | meta-first-checkpoint-no-parent
+EXPECT_HAS  | store/checkpoints/A/meta.pdl | SLOT \p saved_ms \p 1000 | meta-saved-ms
+SUMTREE | afterSaveA | ent
+EXPECT_EQ | $treeA | $afterSaveA | save-reads-only-tree-unchanged
+RUN | $T/bin/gso | $T/store | $T/ent | verify | A
+EXPECT_EXIT | 0 | verifyA-ok-rc-0
+EXPECT_OUT  | verify A: OK objects=11 | verifyA-reports-ok
+RUN | $T/bin/gso | $T/store | $T/ent | diff | A
+EXPECT_EXIT | 0 | diff-identical-rc-0
+EXPECT_OUT  | same=9 changed=0 missing=0 new=0 | diff-identical-tree-all-same
+RUN | $T/bin/gso | $T/store | $T/ent | save | A
+EXPECT_EXIT | 2 | resave-same-id-refused-rc-2
+EXPECT_OUT  | REFUSED: checkpoint already exists | resave-same-id-says-why
+RUN | $T/bin/gso | $T/ent/inside_store | $T/ent | save | Z
+EXPECT_EXIT | 2 | store-inside-tree-refused-rc-2
+EXPECT_NOFILE | ent/inside_store | store-inside-tree-writes-nothing
+RUN | $T/bin/gso | $T/store | $T/ent | save | ../bad
+EXPECT_EXIT | 2 | bad-id-refused-rc-2
+
+# ---- mutate: edit, delete, add, runtime files, a symlink (never followed), clock advances; save B
+WRITE  | ent/edit_me.txt | v2\n
+RUN    | rm | -f | $T/ent/delete_me.txt
+WRITE  | ent/added.txt | brand new\n
+WRITE  | ent/module_parent.pid | 99\n
+WRITE  | ent/notes/x.lock | locked\n
+RUN    | ln | -s | $T/outside | $T/ent/linkdir
+RUN    | ln | -s | $T/ent/readme.txt | $T/ent/link.txt
+APPEND | clock/clock.pdl | CLOCK \p tick \p 9\n
+APPEND | clock/schedule_ledger.txt | 2000\pfired\pe2\n
+WRITE  | outside/secret_elsewhere.txt | not part of the tree\n
+RUN | $T/bin/gso | $T/store | $T/ent | save | B | --extra | $T/clock/clock.pdl | --extra | $T/clock/schedule_ledger.txt | --now-ms | 2000
+EXPECT_EXIT | 0 | saveB-rc-0
+EXPECT_OUT  | saved B: files=11 | saveB-files
+EXPECT_OUT  | new_objects=4 reused=7 | saveB-stores-only-changed-objects
+EXPECT_OUT  | parent=A | saveB-parent-is-A
+EXPECT_LACKS | store/checkpoints/B/manifest.txt | module_parent.pid | runtime-pid-skipped
+EXPECT_LACKS | store/checkpoints/B/manifest.txt | x.lock | runtime-lock-skipped
+EXPECT_LACKS | store/checkpoints/B/manifest.txt | link.txt | symlink-to-file-not-followed
+EXPECT_LACKS | store/checkpoints/B/manifest.txt | secret_elsewhere | symlink-to-dir-not-followed
+EXPECT_LACKS | store/checkpoints/B/manifest.txt | delete_me.txt | deleted-file-not-in-B
+EXPECT_HAS  | store/checkpoints/B/manifest.txt | \padded.txt | added-file-in-B
+RUN | $T/bin/gso | $T/store | $T/ent | diff | A
+EXPECT_EXIT | 4 | diff-vs-A-differs-rc-4
+EXPECT_OUT  | changed\pedit_me.txt | diff-lists-changed
+EXPECT_OUT  | missing\pdelete_me.txt | diff-lists-missing
+EXPECT_OUT  | new\padded.txt | diff-lists-new
+EXPECT_OUT  | same=7 changed=1 missing=1 new=1 | diff-counts
+RUN | $T/bin/gso | $T/store | - | list
+EXPECT_OUT  | A\p1000\pfiles=11 | list-shows-A
+EXPECT_OUT  | B\p2000\pfiles=11 | list-shows-B
+EXPECT_OUT  | 2 checkpoints | list-count
+RUN | head | -n | 2 | $T/store/ledger.txt
+CAPTURE | ledger2
+EXPECT_HAS  | store/ledger.txt | 1000\psave\pA\pfiles=11 | ledger-A-row
+EXPECT_HAS  | store/ledger.txt | 2000\psave\pB\pfiles=11 | ledger-B-row
+
+# ---- restore: DRY RUN by default writes nothing (fresh dest and the live mutated tree)
+RUN | $T/bin/gso | $T/store | $T/ent | restore | A | $T/out_dry
+EXPECT_EXIT | 0 | dry-run-rc-0
+EXPECT_OUT  | DRY RUN restore A | dry-run-labelled
+EXPECT_OUT  | would-create\preadme.txt | dry-run-lists-creates
+EXPECT_OUT  | extra-file\p__extra__/clock.pdl | dry-run-reports-extras
+EXPECT_NOFILE | out_dry | dry-run-creates-no-dest-dir
+SUMTREE | beforeDry | ent
+RUN | $T/bin/gso | $T/store | $T/ent | restore | A | $T/ent
+EXPECT_OUT  | would-overwrite\pedit_me.txt | dry-run-in-place-lists-overwrite
+EXPECT_OUT  | would-create\pdelete_me.txt | dry-run-in-place-lists-recreate
+EXPECT_OUT  | extra\padded.txt | dry-run-in-place-reports-extra-not-removal
+SUMTREE | afterDry | ent
+EXPECT_EQ | $beforeDry | $afterDry | dry-run-changes-nothing-in-live-tree
+EXPECT_HAS  | store/ledger.txt | 2000\psave\pB | dry-run-no-rewind-row
+EXPECT_LACKS | store/ledger.txt | rewind | dry-run-writes-no-rewind-row
+
+# ---- restore A into a FRESH dir with --apply: byte for byte, modes, extras
+RUN | $T/bin/gso | $T/store | $T/ent | restore | A | $T/out2 | --apply | --extra-dir | $T/xo | --now-ms | 3000
+EXPECT_EXIT | 0 | restore-apply-rc-0
+EXPECT_OUT  | RESTORED A | restore-labelled
+EXPECT_OUT  | created=9 overwritten=0 same=0 | restore-counts
+SUMTREE | restoredA | out2
+EXPECT_EQ | $treeA | $restoredA | restored-tree-hash-equals-original-A
+RUN | $T/bin/gso | $T/store | $T/out2 | diff | A
+EXPECT_EXIT | 0 | restored-diff-rc-0
+EXPECT_OUT  | same=9 changed=0 missing=0 new=0 | restored-diff-all-same
+RUN | cmp | $T/ent/bin/tool | $T/out2/bin/tool
+EXPECT_EXIT | 0 | binary-file-byte-identical
+RUN | stat | -c | %a | $T/out2/bin/tool
+EXPECT_OUT_IS | 750 | executable-mode-preserved
+RUN | stat | -c | %a | $T/out2/secret.txt
+EXPECT_OUT_IS | 600 | mode-600-preserved
+RUN | stat | -c | %s | $T/out2/empty.dat
+EXPECT_OUT_IS | 0 | zero-byte-file-restored
+EXPECT_FILE | out2/edit_me.txt | v1\n | edited-file-back-to-v1
+EXPECT_FILE | out2/delete_me.txt | gone soon\n | deleted-file-back
+EXPECT_NOFILE | out2/added.txt | file-added-after-A-absent
+EXPECT_NOFILE | out2/__extra__ | extras-not-placed-in-dest-tree
+EXPECT_FILE | xo/clock.pdl | CLOCK \p epoch \p 2\nCLOCK \p tick \p 5\n | clock-state-round-trips-as-of-A
+EXPECT_FILE | xo/schedule_ledger.txt | 1000\pfired\pe1\n | schedule-ledger-round-trips-as-of-A
+EXPECT_FILE | clock/clock.pdl | CLOCK \p epoch \p 2\nCLOCK \p tick \p 5\nCLOCK \p tick \p 9\n | live-clock-file-not-touched-by-restore
+RUN | $T/bin/gso | $T/store | $T/out2 | verify | B
+EXPECT_EXIT | 0 | verifyB-ok
+
+# ---- ledger: append-only, REWIND row, timeline fork
+EXPECT_HAS  | store/ledger.txt | 3000\prewind\pfrom= | rewind-row-written-with-ms
+RUN | head | -n | 2 | $T/store/ledger.txt
+CAPTURE | ledger2after
+EXPECT_EQ | $ledger2 | $ledger2after | ledger-earlier-rows-unchanged-append-only
+RUN | awk | END{print NR} | $T/store/ledger.txt
+EXPECT_OUT_IS | 3 | ledger-has-save-save-rewind
+RUN | $T/bin/gso | $T/store | $T/out2 | save | C | --now-ms | 4000
+EXPECT_OUT  | parent=A | save-after-rewind-forks-from-restored-A
+EXPECT_HAS  | store/checkpoints/C/meta.pdl | SLOT \p parent \p A | meta-C-parent-A
+EXPECT_EXISTS | store/checkpoints/B/manifest.txt | old-branch-B-still-readable
+RUN | $T/bin/gso | $T/store | $T/out2 | verify | B
+EXPECT_EXIT | 0 | old-branch-B-still-verifies
+
+# ---- restore never deletes by default; --prune does; runtime-skip files exempt; idempotent
+WRITE | out2/stray.txt | not in the manifest\n
+WRITE | out2/keep.pid | runtime\n
+WRITE | out2/edit_me.txt | locally changed\n
+RUN | $T/bin/gso | $T/store | $T/ent | restore | A | $T/out2 | --apply | --now-ms | 5000
+EXPECT_EXIT | 0 | rerestore-rc-0
+EXPECT_OUT  | extra\pstray.txt | rerestore-reports-extra
+EXPECT_OUT  | created=0 overwritten=1 same=8 | rerestore-fixes-only-the-changed-file
+EXPECT_OUT_LACKS | keep.pid | runtime-skip-file-not-reported
+EXPECT_EXISTS | out2/stray.txt | stray-left-without-prune
+EXPECT_FILE | out2/edit_me.txt | v1\n | local-edit-overwritten-by-restore
+RUN | $T/bin/gso | $T/store | $T/ent | restore | A | $T/out2 | --apply | --prune | --now-ms | 6000
+EXPECT_OUT  | remove\pstray.txt | prune-removes-stray
+EXPECT_NOFILE | out2/stray.txt | stray-gone-after-prune
+EXPECT_EXISTS | out2/keep.pid | prune-spares-runtime-skip-file
+RUN | $T/bin/gso | $T/store | $T/ent | restore | A | $T/ent | --apply | --now-ms | 7000
+EXPECT_EXIT | 0 | in-place-explicit-apply-rc-0
+EXPECT_FILE | ent/edit_me.txt | v1\n | in-place-restored-edit
+EXPECT_FILE | ent/delete_me.txt | gone soon\n | in-place-restored-delete
+EXPECT_FILE | ent/added.txt | brand new\n | in-place-keeps-added-file-no-prune
+RUN | $T/bin/gso | $T/store | $T/ent | diff | A
+EXPECT_OUT  | same=9 changed=0 missing=0 new=1 | in-place-only-added-file-differs
+
+# ---- restore never writes outside dest: crafted checkpoints (path escape, tampered manifest) and a symlinked dest path
+WRITE | store/checkpoints/evil1/manifest.txt | a948904f2f0f479b8f8197694b30184b0d2ed1c1cd2a1ec0fb85d299a192a447\p12\p0644\p../escape.txt\n
+WRITE | store/checkpoints/evil1/meta.pdl | SLOT \p manifest_sha \p 15aa0ae72e175cdd44eb1fcb3a7e79af0e04f94f12a1e73796ba028bec9ee1d1\n
+RUN | $T/bin/gso | $T/store | $T/ent | restore | evil1 | $T/out_evil | --apply
+EXPECT_EXIT | 2 | dotdot-path-refused-rc-2
+EXPECT_OUT  | REFUSED: unsafe path | dotdot-path-says-why
+EXPECT_NOFILE | escape.txt | dotdot-nothing-written-outside-dest
+EXPECT_NOFILE | out_evil | dotdot-no-dest-dir-created
+WRITE | store/checkpoints/evil2/manifest.txt | a948904f2f0f479b8f8197694b30184b0d2ed1c1cd2a1ec0fb85d299a192a447\p12\p0644\pfine.txt\n
+WRITE | store/checkpoints/evil2/meta.pdl | SLOT \p manifest_sha \p 15aa0ae72e175cdd44eb1fcb3a7e79af0e04f94f12a1e73796ba028bec9ee1d1\n
+RUN | $T/bin/gso | $T/store | $T/ent | restore | evil2 | $T/out_evil | --apply
+EXPECT_EXIT | 3 | manifest-not-matching-meta-refused-rc-3
+EXPECT_NOFILE | out_evil | manifest-mismatch-writes-nothing
+RUN | $T/bin/gso | $T/store | $T/ent | verify | evil2
+EXPECT_EXIT | 3 | verify-manifest-mismatch-rc-3
+MKDIR | out_link
+RUN | ln | -s | $T/outside | $T/out_link/notes
+RUN | $T/bin/gso | $T/store | $T/ent | restore | A | $T/out_link | --apply
+EXPECT_EXIT | 2 | symlinked-dest-dir-refused-rc-2
+EXPECT_OUT  | REFUSED: symlink | symlinked-dest-says-why
+EXPECT_NOFILE | outside/dup1.txt | symlink-target-outside-untouched
+EXPECT_NOFILE | out_link/readme.txt | symlink-refusal-writes-nothing-at-all
+EXPECT_FILE | outside/secret_elsewhere.txt | not part of the tree\n | outside-file-intact
+
+# ---- corruption: a tampered object is detected by verify and makes restore refuse (nothing written); a missing object likewise
+RUN | chmod | 644 | $T/store/objects/2d/2d27fbdf4e8ca207afbfa388ca9172fbcc6c70e534af2476b3b704f87debadcf
+WRITE | store/objects/2d/2d27fbdf4e8ca207afbfa388ca9172fbcc6c70e534af2476b3b704f87debadcf | v1 tampered\n
+RUN | $T/bin/gso | $T/store | $T/ent | verify | A
+EXPECT_EXIT | 3 | verify-detects-tampered-object-rc-3
+EXPECT_OUT  | BAD\p2d27fbdf4e8ca207afbfa388ca9172fbcc6c70e534af2476b3b704f87debadcf\pedit_me.txt | verify-names-the-bad-object
+EXPECT_OUT  | verify A: FAILED | verify-says-failed
+RUN | $T/bin/gso | $T/store | $T/ent | restore | A | $T/out_bad | --apply
+EXPECT_EXIT | 3 | restore-corrupt-object-refused-rc-3
+EXPECT_OUT  | REFUSED: object missing or corrupt | restore-corrupt-says-why
+EXPECT_NOFILE | out_bad | restore-corrupt-writes-nothing
+RUN | $T/bin/gso | $T/store | $T/ent | restore | A | $T/out_bad
+EXPECT_EXIT | 3 | dry-run-also-refuses-corrupt
+RUN | $T/bin/gso | $T/store | $T/ent | verify | B
+EXPECT_EXIT | 0 | untouched-checkpoint-B-still-verifies
+RUN | rm | -f | $T/store/objects/80/80889c580a9a5e8f7b502fed555eea4df77ee2c4ba23c3cf6fce1698e6e4ef0f
+RUN | $T/bin/gso | $T/store | $T/ent | restore | A | $T/out_bad | --apply
+EXPECT_EXIT | 3 | restore-missing-object-refused-rc-3
+EXPECT_NOFILE | out_bad | restore-missing-writes-nothing
+RUN | $T/bin/gso | $T/store | $T/ent | restore | B | $T/out_b | --apply
+EXPECT_EXIT | 0 | restore-B-unaffected-by-A-corruption
+EXPECT_FILE | out_b/edit_me.txt | v2\n | restore-B-has-v2
+EXPECT_FILE | out_b/added.txt | brand new\n | restore-B-has-added
+EXPECT_NOFILE | out_b/delete_me.txt | restore-B-lacks-deleted
+CLEAN |

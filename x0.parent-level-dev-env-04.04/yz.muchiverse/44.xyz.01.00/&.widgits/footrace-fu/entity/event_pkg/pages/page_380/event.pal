@@ -1,0 +1,29 @@
+# event.pal - CastGate: alive, enough tokens, class allowed, per-ninja limit, teleport limit, cooldown (trigger castgate). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set g_cost abilities.pdl:ab_{g_ab}_cost
+exec ops/+x/var_math.+x . set g_class abilities.pdl:ab_{g_ab}_class
+exec ops/+x/var_math.+x . set g_limit abilities.pdl:ab_{g_ab}_limit
+exec ops/+x/var_math.+x . set g_tele abilities.pdl:ab_{g_ab}_teleport
+exec ops/+x/var_math.+x . set g_use use_{g_ab}_{current}_{sel}
+exec ops/+x/var_math.+x . set g_tp tp_{current}_{sel}
+exec ops/+x/var_math.+x . set g_rdy rdy_{g_ab}_{current}_{sel}
+exec ops/+x/var_math.+x . set g_tpcap abilities.pdl:teleport_limit_per_ninja
+exec ops/+x/var_math.+x . ge g_tok tokens g_cost
+exec ops/+x/var_math.+x . eq g_cz g_class 0
+exec ops/+x/var_math.+x . eq g_ce g_class act_cls
+exec ops/+x/var_math.+x . add g_cls g_cz g_ce
+exec ops/+x/var_math.+x . ge g_cls g_cls 1
+exec ops/+x/var_math.+x . eq g_nol g_limit 0
+exec ops/+x/var_math.+x . lt g_lt g_use g_limit
+exec ops/+x/var_math.+x . add g_lim g_nol g_lt
+exec ops/+x/var_math.+x . ge g_lim g_lim 1
+exec ops/+x/var_math.+x . eq g_nt g_tele 0
+exec ops/+x/var_math.+x . lt g_tl g_tp g_tpcap
+exec ops/+x/var_math.+x . add g_tpok g_nt g_tl
+exec ops/+x/var_math.+x . ge g_tpok g_tpok 1
+exec ops/+x/var_math.+x . le g_cd g_rdy round
+exec ops/+x/var_math.+x . mul gate_ok act_alive g_tok
+exec ops/+x/var_math.+x . mul gate_ok gate_ok g_cls
+exec ops/+x/var_math.+x . mul gate_ok gate_ok g_lim
+exec ops/+x/var_math.+x . mul gate_ok gate_ok g_tpok
+exec ops/+x/var_math.+x . mul gate_ok gate_ok g_cd
+halt

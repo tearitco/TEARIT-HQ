@@ -1,0 +1,13 @@
+SECTION | KEY | VALUE
+----------------------------------------
+# flow.pdl - the pet trainer as a layout-studio FLOW (ids: pet-trainer/<view>). Audit: layout_flow check. Drive by label: layout_flow press <view> "<label>" --pid <window pid>.
+FLOW | id     | pet-trainer
+FLOW | layout | pet-trainer.xhtpm
+FLOW | nav    | nav.pdl
+FLOW | verbs  | ops/pet_event.sh
+FLOW | keys   | keybinds.pdl
+FLOW | house  | ../..
+VIEW | room       | the pet's house (fridge, bed, bath, door to the village)
+VIEW | manage     | the party strip: six tii-monsters from the RPG Maker DB, pick one
+VIEW | world      | the village, top down: the trainer walks (arrows via Interact), doors, NPC creatures
+VIEW | worldparty | the village with the Player menu open: the trainer's inventory is the six tii-monsters

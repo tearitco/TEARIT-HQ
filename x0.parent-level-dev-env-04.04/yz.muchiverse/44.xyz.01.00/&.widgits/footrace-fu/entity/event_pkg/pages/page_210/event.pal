@@ -1,0 +1,10 @@
+# event.pal - Kill 1: the ninja is out (off the track, HP 0), its army shrinks (trigger kill). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set alive_{kp}_{kn} 0
+exec ops/+x/var_math.+x . set pos_{kp}_{kn} rules.pdl:off_track_pos
+exec ops/+x/var_math.+x . set hp_{kp}_{kn} 0
+exec ops/+x/var_math.+x . set guard_{kp}_{kn} 0
+exec ops/+x/var_math.+x . set shield_{kp}_{kn} 0
+exec ops/+x/var_math.+x . sub alive_cnt_{kp} alive_cnt_{kp} 1
+exec ops/+x/var_math.+x . set k_cnt alive_cnt_{kp}
+exec ops/+x/row_append.+x . ledger.txt DEATH {turn} {kp} {kn}
+halt

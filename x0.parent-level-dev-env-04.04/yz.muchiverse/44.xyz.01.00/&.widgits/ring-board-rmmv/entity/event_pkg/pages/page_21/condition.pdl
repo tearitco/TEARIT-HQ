@@ -1,0 +1,4 @@
+# Land: payment settled without bankruptcy -> turn actions done
+COND | trigger | roll
+COND | kv | switches.txt | game_over | eq | 0
+COND | kv | variables.txt | phase | eq | 5

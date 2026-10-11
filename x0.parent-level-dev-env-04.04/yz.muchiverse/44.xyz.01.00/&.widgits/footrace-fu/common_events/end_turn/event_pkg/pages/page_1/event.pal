@@ -1,0 +1,3 @@
+# event.pal - clock End Turn -> the same End Turn pages the menu row runs (cwd = the game entity dir, from target.pdl; its ops/+x copy is used)
+exec ops/+x/event_page_op.+x . . --trigger endturn --state .
+halt

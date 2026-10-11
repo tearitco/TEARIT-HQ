@@ -1,0 +1,5 @@
+# csv_jobs.pal - LOCKED acceptance harness for the csv_lab `jobs` verb (extract untranslated rows, skip answer-bank hits). Read results/csv_jobs.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/csv_jobs.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/csv_jobs.pdl
+exec ./ops/+x/harness_bank_op.+x cases/csv_jobs.pdl
+halt

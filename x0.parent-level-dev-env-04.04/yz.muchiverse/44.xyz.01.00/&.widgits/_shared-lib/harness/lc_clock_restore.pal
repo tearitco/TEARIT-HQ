@@ -1,0 +1,4 @@
+# lc_clock_restore.pal - clock restore check: game_snapshot_op checkpoint (+ clock state + schedule ledger as extras) then restore, with the real lc_clock (see cases/lc_clock_restore.pdl).
+exec ./ops/+x/harness_case_op.+x cases/lc_clock_restore.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/lc_clock_restore.pdl
+halt

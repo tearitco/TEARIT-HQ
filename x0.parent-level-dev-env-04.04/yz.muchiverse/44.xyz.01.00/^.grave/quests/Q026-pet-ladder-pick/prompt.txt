@@ -1,0 +1,26 @@
+Write ONE small C program, ladder_pick.c, for a tiny pet-training game. Reply with the COMPLETE file inside ONE fenced code block and nothing else (no explanation). Plain C11, only the standard library, no other files.
+
+PURPOSE: the pets ask free AI providers to write lessons. The providers form a LADDER (cheapest first). This program picks which provider to ask next, respecting a daily budget per provider and a cooldown after a provider said "too many requests".
+
+USAGE: ladder_pick <ladder_file> <state_file> <now>
+<now> is a whole number of seconds since 1970 (the whole argument must be digits, optionally with a leading minus; anything else is a usage error). The current day number is now divided by 86400 using integer division.
+
+LADDER FILE (must open, else exit 2): text lines; skip blank lines and lines whose first non-space character is '#'. Rows:
+  PROVIDER | name | order | daily_budget
+Fields separated by '|', spaces and tabs around fields trimmed. order and daily_budget are whole numbers. Ignore any other row kind, and ignore PROVIDER rows with fewer than 4 fields. Keep at most 64 providers.
+
+STATE FILE (may be missing: then treat it as empty, not an error). Same line rules. Rows:
+  USED | name | day | count        count requests made by provider name on day number <day>
+  COOLDOWN | name | until          provider name is unavailable while now < until
+Several USED rows for the same name and day ADD UP. Only USED rows whose day equals the current day number count; rows for other days are ignored. If a provider has several COOLDOWN rows use the largest until. Rows naming a provider that is not in the ladder are ignored.
+
+RULE: a provider is available when its daily_budget is greater than 0, its used count today is LESS than its daily_budget, and now is not less than its cooldown until (so now equal to until is available). Among available providers pick the one with the lowest order; if several have the same lowest order pick the one that appears first in the ladder file.
+
+OUTPUT (stdout), exactly one line:
+  PICK|<name>            exit code 0
+  NONE|exhausted         exit code 1   (no provider is available, including an empty ladder)
+Exit code 2 (print nothing to stdout) when the argument count is not exactly 3, now is not a number, or the ladder file cannot be opened.
+
+EXAMPLE ladder:  PROVIDER | mac_gemma | 1 | 3   and   PROVIDER | groq | 2 | 5
+state:  USED | mac_gemma | 11 | 3
+now = 1000000 (day 11): mac_gemma has used 3 of 3 so the answer is PICK|groq.

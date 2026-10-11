@@ -1,0 +1,8 @@
+/* template.css - the one stylesheet every layout-studio template uses. The preview copies it next to the layout as STEM.css
+   (the renderer merges the .css with the same stem on top of the default). Edit sizes here, not per layout. */
+window { width: 420px; height: 320px; }
+.sidebar { background-color: #161616; border-color: #333333; }
+.ls-panel { background-color: #181818; border: 1px solid #2a2a2a; }
+.ls-title { color: #ffffff; font-weight: bold; }
+.ls-quiet { color: #aaaaaa; }
+.ls-row { color: #cccccc; }

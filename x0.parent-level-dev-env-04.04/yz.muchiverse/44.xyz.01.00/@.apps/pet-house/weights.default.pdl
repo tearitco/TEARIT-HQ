@@ -1,0 +1,18 @@
+# weights.default.pdl - the pet's live tunable numbers (key=int, copied into the pet's state as weights.pdl by new_pet). Nothing in pet_event.sh holds these.
+# Only joint_tune moves them (bounded, with a ledger row), see joints.pdl. pref_<item> = how much the pet LIKES an item (0..10, 5 = neutral); it is learned.
+sleep_energy=40
+wash_clean=40
+play_happy=8
+tick_hunger=6
+tick_energy=4
+tick_clean=3
+pref_apple=5
+pref_fish=5
+pref_cake=5
+pref_ball=5
+pref_soap=5
+w_feed=10
+w_sleep=10
+w_wash=10
+w_play=10
+self_care_min=500

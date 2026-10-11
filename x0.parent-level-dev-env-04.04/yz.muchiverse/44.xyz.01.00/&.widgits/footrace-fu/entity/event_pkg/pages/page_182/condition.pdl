@@ -1,0 +1,4 @@
+# Select 3 2/3: select it
+COND | trigger | select3
+COND | kv | variables.txt | sel_alive | eq | 1
+COND | kv | switches.txt | game_over | eq | 0

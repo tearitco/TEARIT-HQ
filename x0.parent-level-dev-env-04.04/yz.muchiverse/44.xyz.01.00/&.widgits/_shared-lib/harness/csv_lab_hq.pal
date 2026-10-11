@@ -1,0 +1,4 @@
+# csv_lab_hq.pal - LOCKED acceptance harness for the csv-lab-hq manager. Read results/csv_lab_hq.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/csv_lab_hq.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/csv_lab_hq.pdl
+halt

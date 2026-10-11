@@ -1,0 +1,2 @@
+game_over=0
+awaiting_buy=0

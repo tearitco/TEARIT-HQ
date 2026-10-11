@@ -1,0 +1,4 @@
+# event.pal - Land 3: a climb moves the ninja forward (trigger land). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set pos_{lp}_{ln} c_to
+exec ops/+x/row_append.+x . ledger.txt CLIMB {turn} {lp} {ln} {lpos} {c_to}
+halt

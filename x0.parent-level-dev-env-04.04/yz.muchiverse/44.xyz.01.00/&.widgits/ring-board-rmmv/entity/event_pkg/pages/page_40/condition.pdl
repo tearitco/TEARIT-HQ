@@ -1,0 +1,4 @@
+# Pay jail fee 1/3: load jail state and cash
+COND | trigger | payjail
+COND | kv | switches.txt | game_over | eq | 0
+COND | kv | variables.txt | phase | eq | 0

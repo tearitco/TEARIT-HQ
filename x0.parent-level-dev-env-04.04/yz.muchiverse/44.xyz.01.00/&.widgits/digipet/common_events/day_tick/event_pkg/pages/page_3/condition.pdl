@@ -1,0 +1,4 @@
+COND | trigger | parallel
+COND | kv | variables.txt | hunger | ge | @needs_tunables.pdl:starving_at
+COND | kv | switches.txt | death_enabled | eq | 0
+COND | kv | actor_1_stats.txt | hp | lt | @needs_tunables.pdl:hp_loss+1

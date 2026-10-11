@@ -1,0 +1,9 @@
+# event.pal - Combat 16: apply the HP loss (trigger combat). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . sub hp_{cmb_dp}_{cmb_dn} hp_{cmb_dp}_{cmb_dn} d_hit
+exec ops/+x/var_math.+x . sub hp_{cmb_ap}_{cmb_an} hp_{cmb_ap}_{cmb_an} a_hit
+exec ops/+x/var_math.+x . set d_now hp_{cmb_dp}_{cmb_dn}
+exec ops/+x/var_math.+x . set a_now hp_{cmb_ap}_{cmb_an}
+exec ops/+x/var_math.+x . lt d_neg d_now 0
+exec ops/+x/var_math.+x . lt a_neg a_now 0
+exec ops/+x/var_math.+x . set ph_cmb 8
+halt

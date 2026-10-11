@@ -1,0 +1,5 @@
+# Roll 2/2: seeded 2d6 (jailed players cannot roll; they pay or skip)
+COND | trigger | roll
+COND | kv | switches.txt | game_over | eq | 0
+COND | kv | variables.txt | phase | eq | 0
+COND | kv | variables.txt | cur_jail | eq | 0

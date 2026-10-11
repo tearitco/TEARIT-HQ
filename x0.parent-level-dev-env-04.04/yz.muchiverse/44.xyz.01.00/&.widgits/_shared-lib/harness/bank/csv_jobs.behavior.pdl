@@ -1,0 +1,20 @@
+# Behavior Bank entry for the harness `csv_jobs` (see HARNESS-BEHAVIOR-BANK-DESIGN.md). Weights on SYNONYM / SLOT / CORPUS rows are hand-seeded; only WEIGHT (from COUNTS) is measured.
+BEHAVIOR | harness.csv_jobs
+KIND | spoke
+KEYWORDS | jobs, extract, untranslated, answer bank, sha256, csv, pdl rows, glob, bank manifest
+SYNONYM | extract rows | 0.80
+SYNONYM | find untranslated text | 0.70
+SYNONYM | skip translated rows | 0.70
+SENTENCE | Extracts the translatable cells of a bank (pdl rows or CSV) into a job table and skips rows the answer bank already holds, keyed by sha256 of the source text and the target language.
+SENTENCE | Checks tag filtering, named and numbered columns, quoted CSV cells, glob banks, the never-translate rule, rejected answers being retried and the source file never being written.
+SLOT | 0 | POINTS_TO=text-processing | WEIGHT=0.90
+SLOT | 1 | POINTS_TO=translation-pipeline | WEIGHT=0.85
+SLOT | 2 | POINTS_TO=answer-bank | WEIGHT=0.70
+CORPUS | translation | WEIGHT=0.80
+CORPUS | debug-build | WEIGHT=0.50
+SEQUENCE | 1 | exec ./ops/+x/harness_case_op.+x cases/csv_jobs.pdl
+SEQUENCE | 2 | exec ./ops/+x/harness_verdict_op.+x cases/csv_jobs.pdl
+SEQUENCE | 3 | exec ./ops/+x/harness_bank_op.+x cases/csv_jobs.pdl
+SOURCE | hand-authored 2026-10-07 (claude); masters/synonyms/weights are seeds awaiting owner validation
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

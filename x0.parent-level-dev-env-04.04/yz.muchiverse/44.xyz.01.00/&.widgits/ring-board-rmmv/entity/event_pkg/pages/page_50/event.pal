@@ -1,0 +1,3 @@
+# event.pal - EndTurn 1/9: load jail state (trigger endturn). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set cur_jail jail_{current}
+halt

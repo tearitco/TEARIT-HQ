@@ -1,0 +1,4 @@
+# Combat 21: the attacker died
+COND | trigger | combat
+COND | kv | variables.txt | ph_cmb | eq | 9
+COND | kv | variables.txt | cmb_att_dead | eq | 1

@@ -1,0 +1,67 @@
+# pet_econ - the pets' economy on a SCRATCH world: buy/sell move real coins and items (conserved, ledgered), refusals, a hungry pet with coins shops at another pet's store, a homeless pet rents and pays rent (and is evicted when broke), a pet with wood and coins builds, a pet with spare wood sells it to a store owner. Own clock (PET_AI_NOW), no network.
+RESULTS | ../results/pet_econ.txt
+CASE    | pet-econ
+SCRATCH |
+MKDIR   | state
+ENV     | PET_SHARED | $T/state
+ENV     | PET_TRAIN | 1
+ENV     | LC_CLOCK_BIN | /nonexistent
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | status
+RUN     | $HOUSE/@.apps/pet-trainer/ops/+x/pet_world.+x | init | $T/state | $T/state/party.txt
+# --- buy / sell: conservation and refusals (a13 sells apples to a15)
+RUN     | /usr/bin/env | PET_DIR=$T/state/pets/a13 | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | grant | apple | 5
+RUN     | /bin/sh | -c | ls -d $T/state/pets/a13/inventory/coin_* 2>/dev/null \p wc -l
+EXPECT_OUT_IS | 20 | seller-starts-with-20-coins
+RUN     | /bin/sh | -c | ls -d $T/state/pets/a15/inventory/coin_* 2>/dev/null \p wc -l
+EXPECT_OUT_IS | 20 | buyer-starts-with-20-coins
+RUN     | /usr/bin/env | PET_DIR=$T/state/pets/a15 | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | buy | a13 | apple | 2
+EXPECT_HAS | state/pets/a15/chat.txt | bought 2 apple | bought
+RUN     | /bin/sh | -c | ls -d $T/state/pets/a15/inventory/coin_* 2>/dev/null \p wc -l
+EXPECT_OUT_IS | 14 | buyer-paid-6
+RUN     | /bin/sh | -c | ls -d $T/state/pets/a13/inventory/coin_* 2>/dev/null \p wc -l
+EXPECT_OUT_IS | 26 | seller-got-6
+EXPECT_HAS | state/world/ledger.txt | TRADE\p | ledger-row
+RUN     | /usr/bin/env | PET_DIR=$T/state/pets/a15 | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | buy | a13 | apple | 50
+EXPECT_HAS | state/pets/a15/chat.txt | do not have enough apple | refuse-seller-short
+RUN     | /usr/bin/env | PET_DIR=$T/state/pets/a15 | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | buy | a13 | cake | 1
+EXPECT_HAS | state/pets/a15/chat.txt | do not have enough cake | refuse-no-cake
+RUN     | /usr/bin/env | PET_DIR=$T/state/pets/a13 | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | sell | a15 | apple | 1
+EXPECT_HAS | state/pets/a13/chat.txt | sold 1 apple | sell-works
+# --- a store owned by a13 (built through the real verb), a15 hungry with an empty bag and coins: shops
+RUN     | /usr/bin/env | PET_DIR=$T/state/pets/a13 | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | grant | wood | 20
+RUN     | /usr/bin/env | PET_DIR=$T/state/pets/a13 | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | grant | coin | 200
+RUN     | /usr/bin/env | PET_DIR=$T/state/pets/a13 | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | build_building | store
+EXPECT_HAS | state/world/town_built.pdl | BUILDING \p b1 \p store | store-built
+RUN     | /bin/sh | -c | rm -rf $T/state/pets/a15/inventory/apple_*
+RUN     | /usr/bin/sed | -i | s/^hunger=.*/hunger=95/ | $T/state/pets/a15/variables.txt
+RUN     | /bin/sh | -c | n=0; while [ $n -lt 160 ]; do PET_AI_NOW=$((4000000+n*5)) PET_DIR=$T/state/pets/a15 /bin/sh $HOUSE/@.apps/pet-trainer/ops/pet_event.sh ai_step >/dev/null 2>&1;  n=$((n+1)); done
+EXPECT_HAS | state/pets/a15/ai_log.txt | bought 1 apple from a13 | shopped-at-the-store
+# --- rent: a15 has no house, a13 owns one
+RUN     | /usr/bin/env | PET_DIR=$T/state/pets/a13 | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | build_building | house
+RUN     | /usr/bin/sed | -i | s/^hunger=.*/hunger=0/ | $T/state/pets/a15/variables.txt
+RUN     | /bin/sh | -c | rm -rf $T/state/pets/a15/inventory/wood_*
+RUN     | /usr/bin/env | PET_DIR=$T/state/pets/a15 | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | grant | coin | 100
+RUN     | /bin/sh | -c | n=0; while [ $n -lt 8 ]; do PET_AI_NOW=$((5000000+n*5)) PET_DIR=$T/state/pets/a15 /bin/sh $HOUSE/@.apps/pet-trainer/ops/pet_event.sh ai_step >/dev/null 2>&1; sed -i s/^hunger=.*/hunger=0/ $T/state/pets/a15/variables.txt; n=$((n+1)); done
+EXPECT_HAS | state/pets/a15/ai_log.txt | rented b2 from a13 | rented-a-house
+EXPECT_HAS | state/world/rent.pdl | RENT \p b2 \p a15 | rent-row
+RUN     | /bin/sh | -c | PET_AI_NOW=5100000 PET_DIR=$T/state/pets/a15 /bin/sh $HOUSE/@.apps/pet-trainer/ops/pet_event.sh ai_step >/dev/null 2>&1; true
+EXPECT_HAS | state/pets/a15/ai_log.txt | paid rent | paid-rent-when-due
+EXPECT_HAS | state/world/ledger.txt | RENTPAY\p | rent-ledger-row
+# broke: evicted
+RUN     | /bin/sh | -c | rm -rf $T/state/pets/a15/inventory/coin_*
+RUN     | /bin/sh | -c | PET_AI_NOW=5200000 PET_DIR=$T/state/pets/a15 /bin/sh $HOUSE/@.apps/pet-trainer/ops/pet_event.sh ai_step >/dev/null 2>&1; true
+EXPECT_HAS | state/pets/a15/ai_log.txt | evicted from b2 | evicted-when-broke
+# --- a pet with wood and coins builds (a14 is a fresh pet)
+RUN     | /usr/bin/env | PET_DIR=$T/state/pets/a14 | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | grant | wood | 10
+RUN     | /usr/bin/env | PET_DIR=$T/state/pets/a14 | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | grant | coin | 100
+RUN     | /usr/bin/sed | -i | s/^hunger=.*/hunger=0/ | $T/state/pets/a14/variables.txt
+RUN     | /bin/sh | -c | PET_AI_NOW=6000000 PET_DIR=$T/state/pets/a14 /bin/sh $HOUSE/@.apps/pet-trainer/ops/pet_event.sh ai_step >/dev/null 2>&1; true
+EXPECT_HAS | state/pets/a14/ai_log.txt | built a house | builds-a-house
+EXPECT_HAS | state/world/town_built.pdl | \p a14 \p | owner-recorded
+# --- spare wood is sold to a store owner who can pay (a16 has 14 wood, keeps 8, sells 6 to a13)
+RUN     | /usr/bin/env | PET_DIR=$T/state/pets/a16 | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | grant | wood | 14
+RUN     | /usr/bin/sed | -i | s/^hunger=.*/hunger=0/ | $T/state/pets/a16/variables.txt
+RUN     | /bin/sh | -c | rm -rf $T/state/pets/a16/inventory/coin_*
+RUN     | /usr/bin/env | PET_DIR=$T/state/pets/a16 | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | grant | coin | 10
+RUN     | /bin/sh | -c | n=0; while [ $n -lt 160 ]; do PET_AI_NOW=$((7000000+n*5)) PET_DIR=$T/state/pets/a16 /bin/sh $HOUSE/@.apps/pet-trainer/ops/pet_event.sh ai_step >/dev/null 2>&1; sed -i s/^hunger=.*/hunger=0/ $T/state/pets/a16/variables.txt; n=$((n+1)); done
+EXPECT_HAS | state/pets/a16/ai_log.txt | sold 6 wood to a13 | sold-spare-wood

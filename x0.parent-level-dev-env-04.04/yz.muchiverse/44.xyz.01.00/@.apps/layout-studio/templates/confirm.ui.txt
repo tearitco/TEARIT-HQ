@@ -1,0 +1,2 @@
+title=Confirm
+question=Start a new pet?

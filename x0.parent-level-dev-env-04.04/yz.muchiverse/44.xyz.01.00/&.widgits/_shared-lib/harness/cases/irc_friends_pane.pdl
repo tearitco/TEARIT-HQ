@@ -1,0 +1,37 @@
+# irc_friends_pane: the irc-chat-hq manager's peer list (the Friends pane, right region). No window, no network: fixture files in a scratch session folder under $T.
+# peers_now.txt = connected now (live rows first); known_peers.txt = every address ever met (not live => offline row). Also checks the template is a flex row with a right "friends" panel.
+RESULTS | ../results/irc_friends_pane.txt
+ENV | LC_ALL | C
+
+CASE    | peer-rows
+SCRATCH |
+RUN | /usr/bin/gcc | -std=c11 | -w | -O2 | -o | $T/mgr | $HOUSE/&.hq-apps/irc-chat-hq/ops/irc_chat_manager.c
+EXPECT_EXIT | 0 | manager-compiles
+MKDIR | s
+RUN | $T/mgr | --peers-dump | $T/s
+EXPECT_OUT_IS | live=0 total=0 | no-files-means-an-empty-list
+WRITE | s/peers_now.txt | 10.0.0.16\p9950\pn1\pirc_node\p1791500000\n10.0.0.144\p9950\pn2\pirc_node\p1791500100\n
+WRITE | s/known_peers.txt | 10.0.0.16\p9950\pn1\pirc_node\p1791500000\n10.0.0.144\p9950\pn2\pirc_node\p1791500100\n10.0.0.99\p9950\pn3\pirc_node\p1791400000\n
+RUN | $T/mgr | --peers-dump | $T/s
+EXPECT_OUT | live=2 total=3 | two-live-one-remembered
+EXPECT_OUT | LIVE\p* 10.0.0.16:9950 | first-live-peer-with-its-address
+EXPECT_OUT | LIVE\p* 10.0.0.144:9950 | second-live-peer-with-its-address
+EXPECT_OUT | OFF\po 10.0.0.99:9950 | remembered-peer-not-connected-shows-offline
+EXPECT_OUT_LACKS | OFF\po 10.0.0.16 | a-live-peer-is-not-listed-twice
+
+CASE    | template-and-style
+COPY | &.hq-apps/irc-chat-hq/irc-chat-hq.xhtpm | t.xhtpm
+COPY | &.hq-apps/irc-chat-hq/irc-chat-hq.css | t.css
+EXPECT_HAS | t.xhtpm | id="friends" | right-friends-panel-exists
+EXPECT_HAS | t.xhtpm | class="irc-cols" | page-is-a-flex-row
+EXPECT_HAS | t.css | flex-direction: row | css-makes-it-a-row
+EXPECT_HAS | t.css | .irc-friends | css-styles-the-friends-panel
+
+CASE    | mutant-self-check
+COPY | &.hq-apps/irc-chat-hq/ops/irc_chat_manager.c | m.c
+RUN | /usr/bin/sed | -i | s/int is_live = 0;/int is_live = 1;/ | $T/m.c
+RUN | /usr/bin/gcc | -std=c11 | -w | -O2 | -o | $T/mm | $T/m.c
+EXPECT_EXIT | 0 | mutant-compiles
+RUN | $T/mm | --peers-dump | $T/s
+EXPECT_OUT | live=2 total=2 | MUTANT-drops-remembered-peers-so-the-total=3-check-above-catches-it
+CLEAN |

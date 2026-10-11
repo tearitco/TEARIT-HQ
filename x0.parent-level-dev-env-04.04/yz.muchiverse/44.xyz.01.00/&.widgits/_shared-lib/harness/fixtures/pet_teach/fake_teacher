@@ -1,0 +1,13 @@
+#!/bin/sh
+# fake_teacher <provider> <prompt> - a test double for the pet "teach me" provider call (harness pet_teachme). NO network.
+# Behaviour comes from the file $FAKE_DIR/mode: good (Q:/A: lines) | cardline (a whole CARD line) | bad (question too short) | text | fail. It also records the provider it was asked in $FAKE_DIR/last_provider and the prompt in $FAKE_DIR/last_prompt.
+D="${FAKE_DIR:-/tmp}"; mode=$(cat "$D/mode" 2>/dev/null || echo good); printf '%s\n' "$1" > "$D/last_provider"; printf '%s\n' "$2" > "$D/last_prompt"
+cid=$(printf '%s' "$2" | sed -n 's/.*CARD | \([a-z0-9_]*\) |.*/\1/p'); kind=$(printf '%s' "$2" | sed -n 's/.*CARD | [a-z0-9_]* | \([a-z]*\) |.*/\1/p')
+case "$mode" in
+  good) printf 'Sure!\nQ: how many legs has a cat\nA: four legs\n' ;;
+  cardline) printf 'Sure, here you go:\nCARD | %s | %s | how many legs has a cat | four legs | whatever\n' "$cid" "$kind" ;;
+  bad)  printf 'Q: hi\nA: four legs\n' ;;
+  text) echo "I am sorry, I cannot help with that." ;;
+  fail) echo "provider down" >&2; exit 4 ;;
+  *) exit 5 ;;
+esac

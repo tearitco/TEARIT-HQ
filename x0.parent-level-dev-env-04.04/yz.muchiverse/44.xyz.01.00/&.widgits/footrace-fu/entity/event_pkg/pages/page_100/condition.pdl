@@ -1,0 +1,4 @@
+# EndTurn 1: turn += 1
+COND | trigger | endturn
+COND | kv | variables.txt | ph_end | eq | 0
+COND | kv | switches.txt | game_over | eq | 0

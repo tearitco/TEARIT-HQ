@@ -1,0 +1,4 @@
+# curriculum.pdl - the pet's school, read by entity_grade (check / advance). Subjects come from obs_feedback_log.txt rows written by the care verbs
+# (concept=feed|sleep|wash|play, layer=extracurricular). A subject passes with n >= min_n and score (reward+1)/(reward+punish+2) >= min_score.
+GRADE | from=preschool | to=elementary_hs | min_subjects=0 | min_score=0.60 | min_n=4 | min_extra=2 | approval=auto
+GRADE | from=elementary_hs | to=associate_bachelor | min_subjects=0 | min_score=0.70 | min_n=8 | min_extra=3 | approval=auto

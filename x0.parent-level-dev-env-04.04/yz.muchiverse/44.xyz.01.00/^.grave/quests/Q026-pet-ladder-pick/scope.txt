@@ -1,0 +1,3 @@
+# only the file the worker may write (and the judge verdict file)
+@.apps/pet-trainer/ops/ladder_pick.c
+verdict.txt

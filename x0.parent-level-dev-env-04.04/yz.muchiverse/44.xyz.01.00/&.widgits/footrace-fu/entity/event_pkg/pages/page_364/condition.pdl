@@ -1,0 +1,5 @@
+# Block 5: pay, take the stance (+block_bonus on its next defence)
+COND | trigger | block
+COND | kv | variables.txt | ph_blk | eq | 2
+COND | kv | variables.txt | act_ok | eq | 1
+COND | kv | switches.txt | game_over | eq | 0

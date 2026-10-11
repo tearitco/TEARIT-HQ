@@ -1,0 +1,4 @@
+# footrace_fu_race.pal - Footrace Fu race mode (ninjas, tokens, combat roll-off, abilities, finish rule, last army): tiny ops, event pages, full seeded races, fairness, save/restore, player path. See cases/footrace_fu_race.pdl.
+exec ./ops/+x/harness_case_op.+x cases/footrace_fu_race.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/footrace_fu_race.pdl
+halt

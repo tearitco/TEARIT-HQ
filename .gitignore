@@ -218,3 +218,8 @@ x0.parent-level-dev-env-04.04_*.7z
 **/@.apps/board-hq/state/*/window.pid
 **/@.apps/board-hq/module_parent.pid
 **/@.apps/board-hq/.hq_manager/
+
+# from claude-kilo merge (union)
+# python bytecode from the night class audio converter
+__pycache__/
+*.pyc

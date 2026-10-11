@@ -1,0 +1,4 @@
+# solar_sandbox.pal - pal harness for the solar-sandbox menu rows through the real mr_transfer_desk (see cases/solar_sandbox.pdl). Read results/solar_sandbox.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/solar_sandbox.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/solar_sandbox.pdl
+halt

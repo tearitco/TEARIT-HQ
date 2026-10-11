@@ -1,0 +1,4 @@
+# animals.pdl - ANIMAL | kind | feed_item | feed_amount (taken from the feeder) | lay_every (fed days per product; 0 = none) | product (item id or -) | rideable (DATA ONLY in v1: riding is not implemented)
+ANIMAL | chicken | feed_item=grain | feed_amount=1 | lay_every=2 | product=egg  | rideable=0
+ANIMAL | cow     | feed_item=grain | feed_amount=2 | lay_every=3 | product=milk | rideable=0
+ANIMAL | horse   | feed_item=grain | feed_amount=2 | lay_every=0 | product=-    | rideable=1

@@ -1,0 +1,6 @@
+# event.pal - Feed page 3 (pantry empty, coins < price): refuse, last_feed 0
+# hand-written in the registry PAL shape (relative paths; event_page_op runs it with cwd = the entity state dir)
+li x15, 7
+li x12, 0
+ecall "variables.txt" "last_feed"
+halt

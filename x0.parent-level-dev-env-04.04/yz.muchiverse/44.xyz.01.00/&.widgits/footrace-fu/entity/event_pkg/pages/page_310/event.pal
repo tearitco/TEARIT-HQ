@@ -1,0 +1,9 @@
+# event.pal - Move 11: an enemy ninja on the target space (not Start, not Finish, not where it already is)? -> collision (trigger move). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . gt i1 ftgt 0
+exec ops/+x/var_math.+x . lt i2 ftgt rules.pdl:track_len
+exec ops/+x/var_math.+x . ne i3 ftgt act_pos
+exec ops/+x/var_math.+x . mul inner i1 i2
+exec ops/+x/var_math.+x . mul inner inner i3
+exec ops/+x/var_math.+x . set foe 0
+exec ops/+x/var_math.+x . set ph_move 6
+halt

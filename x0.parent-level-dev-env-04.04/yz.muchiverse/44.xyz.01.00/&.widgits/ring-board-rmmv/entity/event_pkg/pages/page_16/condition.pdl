@@ -1,0 +1,7 @@
+# Land: property owned by another player -> pay the fixed rent to the owner
+COND | trigger | roll
+COND | kv | switches.txt | game_over | eq | 0
+COND | kv | variables.txt | phase | eq | 4
+COND | kv | variables.txt | tile_kind | eq | 2
+COND | kv | variables.txt | owned | eq | 1
+COND | kv | variables.txt | foreign | eq | 1

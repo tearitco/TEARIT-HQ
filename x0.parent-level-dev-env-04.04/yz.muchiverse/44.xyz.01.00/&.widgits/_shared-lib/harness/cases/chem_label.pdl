@@ -1,0 +1,34 @@
+# chem_label: LOCKED cases. Source under test: &.widgits/concept-bank/ops/chem_label.c; ground truth: the real locked elements.pdl
+RESULTS | ../results/chem_label.txt
+CASE | chem-label
+SCRATCH |
+COPY | &.widgits/concept-bank/ops/chem_label.c | chem_label.c
+COPY | &.widgits/concept-bank/data/chem/elements.pdl | elements.pdl
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/cl.+x | $T/chem_label.c
+EXPECT_EXIT | 0 | compiles-clean
+WRITE | c.csv | emoji,compound_name,formula,category,hint,state,melting_point,boiling_point,density\n💧,Water,H₂O,6,The universal solvent,liquid,0,100,1.0\n🧪,Slaked Lime,Ca(OH)₂,1,"Strong base, ""quoted"", with comma",solid,,,\n⚡,Sulfuric Acid,H₂SO₄,0,Strong diprotic acid,liquid,10,337,1.83\n❓,Nonsense,Xx2O,0,bad symbol,,,,\n❓,Unbalanced,(OH,0,open paren,,,,\n❓,Empty,,0,no formula,,,,\n☕,Caffeine,C8H10N4O2,4,sublimes,solid,235,178,1.23\n🧂,Salt,NaCl,6,ionic,solid,801,1465,2.16\n🔬,Zero,H0,0,zero count,,,,\n
+RUN | $T/cl.+x | $T/elements.pdl | $T/c.csv | t | $T/out.pdl | $T/fb.txt
+EXPECT_EXIT | 0 | label-run
+RUN | $T/cl.+x | $T/elements.pdl | $T/c.csv | t | $T/out2.pdl | $T/fb.txt
+EXPECT_OUT_IS | rows=9 formula_ok=5 formula_bad=4 props_checked=4 props_bad=1 | counts
+EXPECT_HAS | out.pdl | COMPOUND \p t1 \p emoji=💧 \p name=Water \p formula=H2O \p formula_ok=1 \p atoms=3 \p mass_number=18 \p elements=H,O | water-labels
+EXPECT_HAS | out.pdl | name=Slaked Lime \p formula=Ca(OH)2 \p formula_ok=1 \p atoms=5 \p mass_number=74 \p elements=Ca,O,H | nested-parens
+EXPECT_HAS | out.pdl | name=Sulfuric Acid \p formula=H2SO4 \p formula_ok=1 \p atoms=7 \p mass_number=98 | unicode-subscripts-converted
+EXPECT_HAS | out.pdl | name=Nonsense \p formula=Xx2O \p formula_ok=0 \p atoms=0 \p mass_number=0 | unknown-symbol-rejected
+EXPECT_HAS | out.pdl | name=Unbalanced \p formula=(OH \p formula_ok=0 | unbalanced-paren-rejected
+EXPECT_HAS | out.pdl | name=Empty \p formula= \p formula_ok=0 | empty-formula-rejected
+EXPECT_HAS | out.pdl | name=Zero \p formula=H0 \p formula_ok=0 | zero-count-rejected
+EXPECT_HAS | out.pdl | hint=Strong base, "quoted", with comma | quoted-comma-field-kept
+EXPECT_HAS | out.pdl | name=Salt \p formula=NaCl \p formula_ok=1 \p atoms=2 \p mass_number=58 | nacl-58
+EXPECT_HAS | fb.txt | valence=+1 \p concept=chem_formula \p intensity=1 \p layer=curriculum \p row=t1\n | formula-pass-row
+EXPECT_HAS | fb.txt | valence=-1 \p concept=chem_formula \p intensity=1 \p layer=curriculum \p row=t4\n | formula-fail-row
+EXPECT_HAS | fb.txt | valence=+1 \p concept=chem_props \p intensity=1 \p layer=curriculum \p row=t3\n | props-consistent
+EXPECT_HAS | fb.txt | valence=-1 \p concept=chem_props \p intensity=1 \p layer=curriculum \p row=t7\n | props-caffeine-flagged
+EXPECT_LACKS | fb.txt | concept=chem_props \p intensity=1 \p layer=curriculum \p row=t2\n | no-props-row-without-numbers
+EXPECT_HAS | fb.txt | concept=chem_formula \p intensity=1 \p layer=curriculum \p row=t9\n | last-row-present
+RUN | $T/cl.+x | $T/nosuch.pdl | $T/c.csv | t | $T/o3.pdl | $T/fb2.txt
+EXPECT_EXIT | 2 | missing-elements
+RUN | $T/cl.+x | $T/elements.pdl | $T/nosuch.csv | t | $T/o4.pdl | $T/fb2.txt
+EXPECT_EXIT | 2 | missing-csv
+RUN | $T/cl.+x | x
+EXPECT_EXIT | 2 | usage

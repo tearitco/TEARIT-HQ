@@ -1,0 +1,6 @@
+# concept_spokes.zh sidecar of &.widgits/concept-bank/data/spokes/*.pdl - machine translation. status: ok/accepted are promotable; low_score, translated (unscored) and lint_fail wait for a person (review.tsv); rejected stays out. Scores are advisory. columns: id, source, zh, pinyin, score, status, translator, judge
+acceleration.pdl:L1	acceleration	加速度	jiā sù dù	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+gravity_constant.pdl:L1	gravity_constant	重力常数	zhòng lì cháng shù	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+kinetic_energy.pdl:L1	kinetic_energy	动能	dòng néng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+mass.pdl:L1	mass	质量	zhì liàng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+velocity.pdl:L1	velocity	速度	sù dù	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b

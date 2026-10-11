@@ -1,0 +1,23 @@
+# Behavior Bank entry for the harness `close_listed` (see HARNESS-BEHAVIOR-BANK-DESIGN.md). Weights on SYNONYM / SLOT / CORPUS rows are hand-seeded; only WEIGHT (from COUNTS) is measured.
+BEHAVIOR | harness.close_listed
+KIND | spoke
+KEYWORDS | restart, close, quit, windows, hotbar, relaunch, reaper, close_on_restart, processes
+SYNONYM | shutdown | 0.70
+SYNONYM | close all | 0.80
+SYNONYM | kill windows | 0.60
+SYNONYM | reload | 0.50
+SYNONYM | reboot | 0.50
+SYNONYM | relaunch | 0.90
+SENTENCE | Starts real throwaway processes whose command lines look like the hotbar and board windows and runs the close-on-restart rule against a scratch house.
+SENTENCE | Checks that listed windows inside the house close, another house and unlisted processes survive, the caller survives its own match, and relaunch only brings back rows that were running.
+SLOT | 0 | POINTS_TO=process-lifecycle | WEIGHT=0.95
+SLOT | 1 | POINTS_TO=restart | WEIGHT=0.90
+SLOT | 2 | POINTS_TO=hotbar | WEIGHT=0.40
+CORPUS | game-engine | WEIGHT=0.40
+CORPUS | debug-build | WEIGHT=0.70
+SEQUENCE | 1 | exec ./ops/+x/harness_case_op.+x cases/close_listed.pdl
+SEQUENCE | 2 | exec ./ops/+x/harness_verdict_op.+x cases/close_listed.pdl
+SEQUENCE | 3 | exec ./ops/+x/harness_bank_op.+x cases/close_listed.pdl
+SOURCE | hand-authored 2026-10-07 (claude); masters/synonyms/weights are seeds awaiting owner validation
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+META         | map_id             | tsots
+META         | desk_id            | map077
+META         | note               | unlucky vision 2
+EXTRUDE      | W                  | 3
+EXTRUDE      | default             | 0

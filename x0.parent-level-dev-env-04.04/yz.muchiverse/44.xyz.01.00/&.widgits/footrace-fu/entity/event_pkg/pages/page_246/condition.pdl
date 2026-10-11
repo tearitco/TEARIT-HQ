@@ -1,0 +1,4 @@
+# Combat 17: HP never below 0 (defender)
+COND | trigger | combat
+COND | kv | variables.txt | ph_cmb | eq | 8
+COND | kv | variables.txt | d_neg | eq | 1

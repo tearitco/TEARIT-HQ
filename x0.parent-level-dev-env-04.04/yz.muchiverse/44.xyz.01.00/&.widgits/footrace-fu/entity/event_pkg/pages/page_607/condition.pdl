@@ -1,0 +1,5 @@
+# Bot 4: pick 4 -> cast_blink
+COND | trigger | autoturn
+COND | kv | variables.txt | ph_bot | eq | 2
+COND | kv | variables.txt | bot_pick | eq | 4
+COND | kv | switches.txt | game_over | eq | 0

@@ -1,0 +1,4 @@
+# Combat 10: defender wins -> the attacker loses combat_loss HP
+COND | trigger | combat
+COND | kv | variables.txt | ph_cmb | eq | 6
+COND | kv | variables.txt | d_win | eq | 1

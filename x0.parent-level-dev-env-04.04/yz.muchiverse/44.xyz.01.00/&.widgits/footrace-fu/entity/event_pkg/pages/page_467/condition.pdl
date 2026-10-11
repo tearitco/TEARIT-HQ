@@ -1,0 +1,3 @@
+# Banish Foe 8: place, land (an enemy on Finish wins), log
+COND | trigger | cast_banish
+COND | kv | variables.txt | ph_cast | eq | 3

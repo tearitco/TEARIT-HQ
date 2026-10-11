@@ -111,8 +111,11 @@
 #include <time.h>
 #include <signal.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <limits.h>
 #include <dirent.h>
 #include <strings.h>
+#include <sys/wait.h>
 
 #define PATH_BUF 4352
 #define MAX_LINES 4096
@@ -218,6 +221,21 @@ static int split3(char *line, char **a, char **b, char **c) {
 static void chomp(char *s) {
     size_t l = strlen(s);
     while (l > 0 && (s[l - 1] == '\n' || s[l - 1] == '\r')) s[--l] = '\0';
+}
+
+/* Audible nudge while anything waits for the owner's approval (owner request 2026-10-09: "a dinging/ringing while approval is waiting").
+ * A bell every COLAB_DING_SECS (default 20) seconds while pending.txt is non-empty; silent when the queue is empty, and off if
+ * COLAB_NO_DING is set or <state>/no_ding exists. fork+exec of paplay only (no shell), reaped on the next call so no zombie stays. */
+static void ding_if_pending(int n_pending) {
+    static time_t last = 0; static pid_t kid = 0;
+    if (kid > 0 && waitpid(kid, NULL, WNOHANG) == kid) kid = 0;
+    if (n_pending <= 0 || kid > 0 || getenv("COLAB_NO_DING")) return;
+    char off[PATH_MAX]; snprintf(off, sizeof off, "%s/no_ding", g_state_dir); if (access(off, F_OK) == 0) return;
+    const char *e = getenv("COLAB_DING_SECS"); int every = e && atoi(e) > 0 ? atoi(e) : 20; time_t now = time(NULL);
+    if (last && now - last < every) return;
+    last = now; kid = fork();
+    if (kid == 0) { int dn = open("/dev/null", O_RDWR); if (dn >= 0) { dup2(dn, 0); dup2(dn, 1); dup2(dn, 2); }
+        execlp("paplay", "paplay", "--volume=40000", "/usr/share/sounds/freedesktop/stereo/bell.oga", (char *)NULL); _exit(127); }
 }
 
 /* Move every new line in incoming.txt into pending.txt, timestamped,
@@ -560,6 +578,8 @@ static void write_chtpm_projection(void) {
             fclose(pf);
         }
     }
+
+    ding_if_pending(n_pending);
 
     /* participant roster (scan conversation + pending, same as before) */
     g_n_participants = 0;

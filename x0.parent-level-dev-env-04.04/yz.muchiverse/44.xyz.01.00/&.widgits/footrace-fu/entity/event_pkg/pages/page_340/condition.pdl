@@ -1,0 +1,4 @@
+# Attack 1: load the acting ninja, its reach, its cost
+COND | trigger | attack
+COND | kv | variables.txt | ph_att | eq | 0
+COND | kv | switches.txt | game_over | eq | 0

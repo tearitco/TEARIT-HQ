@@ -1,0 +1,4 @@
+# event.pal - Move 15: no enemy there: the move goes through (trigger move). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set mv_go 1
+exec ops/+x/var_math.+x . set ph_move 8
+halt

@@ -1,0 +1,11 @@
+# event.pal - Warp Ally 1: load, nearest ally, gate (needs an ally) (trigger cast_warp). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set g_ab 2
+exec ops/+x/var_math.+x . set act_alive alive_{current}_{sel}
+exec ops/+x/var_math.+x . set act_cls cls_{current}_{sel}
+exec ops/+x/var_math.+x . set act_pos pos_{current}_{sel}
+exec ops/+x/var_find.+x . pos_{current}_ pos_{current}_{sel} act_pos 0 rules.pdl:track_len ally
+exec ops/+x/event_page_op.+x . . --trigger castgate --state .
+exec ops/+x/var_math.+x . gt al ally 0
+exec ops/+x/var_math.+x . mul gate_ok gate_ok al
+exec ops/+x/var_math.+x . set ph_cast 1
+halt

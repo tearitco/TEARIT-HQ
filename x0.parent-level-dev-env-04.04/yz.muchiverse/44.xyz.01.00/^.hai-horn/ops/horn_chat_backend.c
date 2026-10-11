@@ -54,6 +54,20 @@
  *   3  every failure was a quota/rate limit (an account state, not a code
  *      fault - retrying cannot fix it until the window resets)
  *  10  the assistant wants to call tools (tool_calls.json); NOT an error
+ * Per-failure classes (Q010). When no provider answers, the exit code is 3 if
+ * any provider was exhausted, else the class of the LAST failure seen:
+ *   3  exhausted: HTTP 429 or a quota/daily-limit body; that provider is
+ *      skipped for the rest of the run ("EXHAUSTED <provider>" on stderr)
+ *   4  HTTP status >= 400 (401 bad key, 404 retired slug, 5xx ...)
+ *   5  an error object (or nothing usable) in the body of an HTTP 200
+ *   6  curl itself failed: timeout (curl 28), DNS, refused, not installed
+ * Every failure is ALSO one line on stderr and appended to
+ * pieces/horn/last_error.txt (append-only):
+ *   horn_error ts=<epoch> provider=<p> model=<m> http=<status> curl_rc=<n>
+ *   class=<exhausted|http|body|curl> reason="<=300 chars from the body">
+ * The key and the Authorization header never appear there.
+ * Env: HORN_CURL_TIMEOUT=<s> (default 60), HORN_MAX_TOKENS=<n> (default:
+ *      field omitted from the payload, provider default applies).
  *
  * Usage: horn_chat_backend.+x "<prompt>"
  * Env:  HORN_TOOLS=off          disable tool definitions entirely
@@ -67,6 +81,9 @@
 #include <string.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <time.h>
+#include <sys/wait.h>
 
 #ifndef MAX_PATH
 #define MAX_PATH 4096
@@ -135,6 +152,7 @@ static const char *SYS_PROMPT =
     "assumption.";
 
 static char project_root[MAX_PATH] = ".";
+static int g_fail_class = 0;   /* exit code of the last failure: 3,4,5,6 */
 
 static void resolve_root(void) {
     const char *env = getenv("PRISC_PROJECT_ROOT");
@@ -383,6 +401,82 @@ static char *load_key(const Provider *p) {
     return NULL;
 }
 
+/* Q010: short human reason out of an error body: error.message if there is
+ * one, else the body itself. One line, <=300 chars, control chars -> space. */
+static void reason_from_body(const char *raw, char *out, size_t n) {
+    const char *src = raw ? raw : "";
+    const char *e = strstr(src, "\"error\"");
+    const char *m = e ? strstr(e, "\"message\"") : NULL;
+    if (m) {
+        const char *q = strchr(m + 9, ':');
+        if (q) { q = skip_ws(q + 1); if (*q == '"') src = q + 1; }
+    }
+    size_t o = 0;
+    for (; *src && o < 300 && o + 1 < n; src++) {
+        if (*src == '"' && src[-1] != '\\' && m) break;
+        out[o++] = ((unsigned char)*src < 32) ? ' ' : *src;
+    }
+    out[o] = '\0';
+}
+
+/* Q010: one machine-readable line to stderr and to pieces/horn/last_error.txt
+ * (append-only). The key is redacted defensively in case a provider echoes it. */
+static void log_fail(const Provider *p, const char *model, int http, int curl_rc,
+                     const char *cls, const char *text, const char *key) {
+    char reason[400];
+    snprintf(reason, sizeof reason, "%.300s", text ? text : "");
+    if (key && key[0]) {
+        size_t kl = strlen(key);
+        char *h;
+        while ((h = strstr(reason, key)) != NULL) {
+            memset(h, '*', kl < 8 ? kl : 8);
+            memmove(h + (kl < 8 ? kl : 8), h + kl, strlen(h + kl) + 1);
+        }
+    }
+    for (char *c = reason; *c; c++) if (*c == '"') *c = '\'';
+    char line[700];
+    snprintf(line, sizeof line,
+        "horn_error ts=%ld provider=%s model=%s http=%d curl_rc=%d class=%s reason=\"%s\"",
+        (long)time(NULL), p->name, model, http, curl_rc, cls, reason);
+    fprintf(stderr, "%s\n", line);
+    char *lp = path_in("pieces/horn/last_error.txt");
+    if (lp) {
+        FILE *lf = fopen(lp, "ab");
+        if (lf) { fprintf(lf, "%s\n", line); fclose(lf); }
+        free(lp);
+    }
+}
+
+/* Q010: run curl via fork+exec (no shell). Returns curl's exit code
+ * (128+sig if killed, 127 if it could not exec). Body -> raw_path, the
+ * HTTP status (-w) -> status_path, curl's stderr -> err_path. */
+static int run_curl(const Provider *p, const char *api_key, const char *payload_path,
+                    const char *raw_path, const char *status_path, const char *err_path,
+                    int timeout_s) {
+    char tbuf[16], auth[PATH_BUF], data[PATH_BUF];
+    snprintf(tbuf, sizeof tbuf, "%d", timeout_s);
+    snprintf(auth, sizeof auth, "Authorization: Bearer %s", api_key);
+    snprintf(data, sizeof data, "@%s", payload_path);
+    char *argv[] = { "curl", "-sS", "-m", tbuf, "-X", "POST", (char *)p->endpoint,
+                     "-H", "Content-Type: application/json", "-H", auth,
+                     "--data-binary", data, "-o", (char *)raw_path,
+                     "-w", "%{http_code}", NULL };
+    fflush(NULL);
+    pid_t pid = fork();
+    if (pid < 0) return 127;
+    if (pid == 0) {
+        int so = open(status_path, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+        int se = open(err_path, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+        if (so >= 0) dup2(so, 1);
+        if (se >= 0) dup2(se, 2);
+        execvp("curl", argv);
+        _exit(127);
+    }
+    int st = 0;
+    waitpid(pid, &st, 0);
+    return WIFEXITED(st) ? WEXITSTATUS(st) : 128 + WTERMSIG(st);
+}
+
 /* Classify a raw response body that carried no content.
  *
  * Quota exhaustion is per-ACCOUNT, not per-model, so it must not walk the
@@ -567,43 +661,71 @@ static int post_chat(const Provider *p, const char *model, const char *api_key,
     fprintf(pf, "{\"model\":\"%s\",\"messages\":%s", model, msgs);
     if (tools_json) fprintf(pf, ",\"tools\":%s", tools_json);
     fputs(tc, pf);
+    { const char *mt = getenv("HORN_MAX_TOKENS");
+      if (mt && atoi(mt) > 0) fprintf(pf, ",\"max_tokens\":%d", atoi(mt)); }
     if (p->no_thinking) fputs(",\"chat_template_kwargs\":{\"enable_thinking\":false}", pf);
     fputs("}", pf);
     fclose(pf);
     free(msgs);
 
-    /* Paths are single-quoted: this house's tree contains literal
-     * '&.widgits' and '^.hai-horn' segments, and an unescaped '&' inside a
-     * /bin/sh word backgrounds and truncates the command. Same trap
-     * prisc+x's OP_EXEC and exec_custom_op() carry a comment about.
-     *
-     * asprintf, not char[N]: api_key is heap-allocated with a length gcc
-     * cannot bound, so a fixed buffer is either a real truncation risk
-     * (silently sending a mangled bearer token) or a format-truncation
-     * warning. */
-    char *cmd = NULL;
-    if (asprintf(&cmd,
-        "curl -s -m 60 -X POST '%s'"
-        " -H 'Content-Type: application/json'"
-        " -H 'Authorization: Bearer %s'"
-        " --data-binary @'%s' > '%s' 2>&1",
-        p->endpoint, api_key, payload_path, raw_path) < 0 || !cmd) {
-        snprintf(err, err_sz, "cmd-alloc-failed");
+    /* curl runs via fork+exec (run_curl): the HTTP status comes back through
+     * -w, curl's own complaint (timeout, DNS) through its stderr file, and
+     * every failure class is logged by log_fail instead of vanishing into a
+     * generic "no content". */
+    char *status_path = path_in("pieces/horn/.req_status.txt");
+    char *cerr_path = path_in("pieces/horn/.req_curlerr.txt");
+    if (!status_path || !cerr_path) {
+        free(status_path); free(cerr_path);
+        snprintf(err, err_sz, "path-alloc-failed");
         goto fail;
     }
-    snprintf(err, err_sz, "curl-failed");
-    int rc = system(cmd);
-    free(cmd);
-    (void)rc;
+    const char *tos = getenv("HORN_CURL_TIMEOUT");
+    int timeout_s = (tos && atoi(tos) > 0) ? atoi(tos) : 60;
+    int crc = run_curl(p, api_key, payload_path, raw_path, status_path, cerr_path, timeout_s);
+    char sbuf[32] = "";
+    { char *sf = read_file(status_path); if (sf) { snprintf(sbuf, sizeof sbuf, "%s", sf); free(sf); } }
+    int http = atoi(sbuf);
+    char reason[400];
+    if (crc != 0) {
+        char *ce = read_file(cerr_path);
+        if (ce) { reason_from_body(ce, reason, sizeof reason); free(ce); }
+        else snprintf(reason, sizeof reason, "curl exit %d", crc);
+        if (!reason[0]) snprintf(reason, sizeof reason, "curl exit %d", crc);
+        log_fail(p, model, http, crc, "curl", reason, api_key);
+        g_fail_class = 6;
+        snprintf(err, err_sz, "curl-failed-rc%d", crc);
+        free(status_path); free(cerr_path);
+        goto fail;
+    }
+    free(status_path); free(cerr_path);
 
     char *raw = read_file(raw_path);
-    if (!raw) { snprintf(err, err_sz, "no-response-file"); goto fail; }
+    if (!raw) { snprintf(err, err_sz, "no-response-file"); log_fail(p, model, http, 0, "curl", "no-response-file", api_key); g_fail_class = 6; goto fail; }
     if (strlen(raw) > RAW_CAP) { free(raw); snprintf(err, err_sz, "response-too-large"); goto fail; }
 
-    if (is_quota_exhausted(raw)) {
+    int has_choices = strstr(raw, "\"choices\"") != NULL;
+    reason_from_body(raw, reason, sizeof reason);
+    if (http == 429 || (!has_choices && is_quota_exhausted(raw))) {
+        log_fail(p, model, http, 0, "exhausted", reason, api_key);
+        fprintf(stderr, "EXHAUSTED %s\n", p->name);
+        g_fail_class = 3;
         free(raw);
         snprintf(err, err_sz, "rate-or-quota-limited");
         *quota = 1;
+        goto fail;
+    }
+    if (http >= 400) {
+        log_fail(p, model, http, 0, "http", reason, api_key);
+        g_fail_class = 4;
+        free(raw);
+        snprintf(err, err_sz, "http-%d", http);
+        goto fail;
+    }
+    if (!has_choices && strstr(raw, "\"error\"")) {
+        log_fail(p, model, http, 0, "body", reason, api_key);
+        g_fail_class = 5;
+        free(raw);
+        snprintf(err, err_sz, "error-in-200-body");
         goto fail;
     }
 
@@ -667,7 +789,11 @@ static int post_chat(const Provider *p, const char *model, const char *api_key,
         return 10;
     }
 
-    if (!reply) snprintf(err, err_sz, "no-content-in-response");
+    if (!reply) {
+        snprintf(err, err_sz, "no-content-in-response");
+        log_fail(p, model, http, 0, "body", "no-content-in-response", api_key);
+        g_fail_class = 5;
+    }
     *reply_out = reply;
     free(msg);
     free(raw);
@@ -816,7 +942,7 @@ seeded:;
             return 3;
         }
         fprintf(stderr, "horn_chat_backend: all providers failed (%s)\n", err);
-        return 2;
+        return g_fail_class ? g_fail_class : 2;
     }
 
     /* Record WHICH rung actually answered, not just the provider.

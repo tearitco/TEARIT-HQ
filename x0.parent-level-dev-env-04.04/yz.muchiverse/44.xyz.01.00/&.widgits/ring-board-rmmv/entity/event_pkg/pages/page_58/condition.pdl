@@ -1,0 +1,5 @@
+# EndTurn 6/9: turn cap reached -> GameOver (reason 2, winner 0 = none)
+COND | trigger | endturn
+COND | kv | switches.txt | game_over | eq | 0
+COND | kv | variables.txt | phase | eq | 2
+COND | kv | variables.txt | turn | ge | @rules.pdl:turn_cap

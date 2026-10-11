@@ -1,0 +1,3 @@
+# CastCheck 4: coin flip (heads)
+COND | trigger | castcheck
+COND | kv | variables.txt | cc_cond | eq | 2

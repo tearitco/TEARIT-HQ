@@ -1,0 +1,4 @@
+# Combat 6: defender re-roll
+COND | trigger | combat
+COND | kv | variables.txt | ph_cmb | eq | 4
+COND | kv | variables.txt | d_rr | eq | 1

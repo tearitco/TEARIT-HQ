@@ -38,7 +38,9 @@ SECTION      | hq_menu_11_cmd      | livedesk:open-palette:debug
 # string), just never updated for consistency until now.
 SECTION      | hq_menu_13_label    | proc-mon
 SECTION      | hq_menu_13_cmd      | sh _.monads/_.livedesk-taskbar/ops/open_mon.sh
-SECTION      | hq_menu_14_label    | cancel
+SECTION      | hq_menu_14_label    | tomom
+SECTION      | hq_menu_14_cmd      | sh _.monads/_.livedesk-taskbar/ops/open_tomom.sh
+SECTION      | hq_menu_15_label    | cancel
 
 SECTION      | file_menu_1_label   | new-desk
 SECTION      | file_menu_1_cmd     | livedesk:new-desk
@@ -88,7 +90,14 @@ SECTION      | ai_menu_6_label       | Ghost roster
 SECTION      | ai_menu_6_cmd         | sh @.apps/board-hq/ops/open_board_menu.sh ghosts
 SECTION      | ai_menu_7_label       | Phones
 SECTION      | ai_menu_7_cmd         | sh @.apps/board-hq/ops/open_board_menu.sh phones
-SECTION      | ai_menu_8_label       | Cancel
+SECTION      | ai_menu_8_label       | tomom
+SECTION      | ai_menu_8_cmd         | sh _.monads/_.livedesk-taskbar/ops/open_tomom.sh
+SECTION      | ai_menu_9_label       | Concept Bank
+SECTION      | ai_menu_9_cmd         | sh _.monads/_.livedesk-taskbar/ops/open_concept_bank.sh
+# Knowledge HQ (2026-10-07): browse/label/score the chemistry data and accept or reject proposed rows (review_owner.txt). Data-driven row, no C change.
+SECTION      | ai_menu_10_label      | Knowledge
+SECTION      | ai_menu_10_cmd        | sh _.monads/_.livedesk-taskbar/ops/open_knowledge.sh
+SECTION      | ai_menu_11_label      | Cancel
 
 # db cell (9.db) - converted from C-hardcoded 2026-09-08. The builder
 # still gates on an active livedesk session (no session -> no menu).
@@ -141,9 +150,13 @@ SECTION      | network_menu_3_label  | Chain
 SECTION      | network_menu_3_cmd    | livedesk:open-network:chain
 SECTION      | network_menu_4_label  | Browser
 SECTION      | network_menu_4_cmd    | livedesk:open-network:browser
-SECTION      | network_menu_5_label  | hq-ftp (LAN drop, not built)
-SECTION      | network_menu_5_cmd    | livedesk:open-network:hqftp
-SECTION      | network_menu_6_label  | cancel
+SECTION      | network_menu_5_label  | Exchange
+SECTION      | network_menu_5_cmd    | livedesk:open-network:exchange
+SECTION      | network_menu_6_label  | Auction
+SECTION      | network_menu_6_cmd    | livedesk:open-network:auction
+SECTION      | network_menu_7_label  | hq-ftp (LAN drop, not built)
+SECTION      | network_menu_7_cmd    | livedesk:open-network:hqftp
+SECTION      | network_menu_8_label  | cancel
 
 # top-left command strip (2do task #4). Defaults match what's written
 # below, so editing here is the only thing needed to change labels or

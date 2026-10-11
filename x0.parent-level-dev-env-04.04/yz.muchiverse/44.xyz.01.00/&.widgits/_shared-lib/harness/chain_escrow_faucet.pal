@@ -1,0 +1,4 @@
+# chain_escrow_faucet.pal - pal harness (cases/chain_escrow_faucet.pdl). Read results/chain_escrow_faucet.txt.verdict.txt
+exec ./ops/+x/harness_case_op.+x cases/chain_escrow_faucet.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/chain_escrow_faucet.pdl
+halt

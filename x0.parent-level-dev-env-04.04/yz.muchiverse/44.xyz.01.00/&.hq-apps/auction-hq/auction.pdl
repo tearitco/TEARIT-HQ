@@ -1,0 +1,12 @@
+# auction.pdl - Auction HQ settings. `SECTION | key | value   # comment`. Design: 08-roadmap/design-docs/AUCTION-SCREEN-DESIGN.md. Plan for who uses it: @.apps/pet-trainer/CHAIN-ECONOMY-DESIGN.md.
+RULE  | min_minutes     | 1      # shortest auction
+RULE  | max_minutes     | 1440   # longest auction
+RULE  | min_increment   | 1      # a bid must beat the high bid by at least this many units of amount
+RULE  | snipe_minutes   | 0      # a bid in the last N minutes extends the end by N (0 = off, fixed ends_at only)
+UNIT  | cones | Preferred cones
+UNIT  | mined | Mined cones
+UNIT  | play  | Play money (paper)
+KIND  | food  | grown food (NFT later)
+KIND  | pet   | pet (NFT later)
+KIND  | rig   | mining rig
+KIND  | goods | goods

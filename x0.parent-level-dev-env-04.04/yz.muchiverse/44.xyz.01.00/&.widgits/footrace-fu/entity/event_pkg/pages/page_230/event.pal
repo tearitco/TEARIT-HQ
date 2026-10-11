@@ -1,0 +1,26 @@
+# event.pal - Combat 1: gather Attack/Block, guard, shield, Blade Dancer adjacency, roll 1d6 vs 1d6 (trigger combat). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set a_cls cls_{cmb_ap}_{cmb_an}
+exec ops/+x/var_math.+x . set d_cls cls_{cmb_dp}_{cmb_dn}
+exec ops/+x/var_math.+x . set a_hp0 hp_{cmb_ap}_{cmb_an}
+exec ops/+x/var_math.+x . set d_hp0 hp_{cmb_dp}_{cmb_dn}
+exec ops/+x/var_math.+x . set a_atk ninjas.pdl:class_{a_cls}_attack
+exec ops/+x/var_math.+x . set d_blk ninjas.pdl:class_{d_cls}_block
+exec ops/+x/var_math.+x . set g1 guard_{cmb_dp}_{cmb_dn}
+exec ops/+x/var_math.+x . add d_blk d_blk g1
+exec ops/+x/var_math.+x . set g2 shield_{cmb_dp}_{cmb_dn}
+exec ops/+x/var_math.+x . add d_blk d_blk g2
+exec ops/+x/var_math.+x . le adj cmb_dist rules.pdl:adjacent_dist
+exec ops/+x/var_math.+x . set adjb ninjas.pdl:class_{a_cls}_adj_attack
+exec ops/+x/var_math.+x . mul adjb adjb adj
+exec ops/+x/var_math.+x . add a_atk a_atk adjb
+exec ops/+x/dice_roll.+x . dice_seed dice_counter
+exec ops/+x/var_math.+x . set a_die dice1
+exec ops/+x/var_math.+x . set d_die dice2
+exec ops/+x/var_math.+x . add a_roll a_die a_atk
+exec ops/+x/var_math.+x . add d_roll d_die d_blk
+exec ops/+x/var_math.+x . set a_rrd rr_{cmb_ap}_{cmb_an}
+exec ops/+x/var_math.+x . set d_rrd rr_{cmb_dp}_{cmb_dn}
+exec ops/+x/var_math.+x . set a_can ninjas.pdl:class_{a_cls}_reroll
+exec ops/+x/var_math.+x . set d_can ninjas.pdl:class_{d_cls}_reroll
+exec ops/+x/var_math.+x . set ph_cmb 1
+halt

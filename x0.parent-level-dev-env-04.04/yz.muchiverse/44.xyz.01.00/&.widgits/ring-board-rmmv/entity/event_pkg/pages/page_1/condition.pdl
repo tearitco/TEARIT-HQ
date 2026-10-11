@@ -1,0 +1,4 @@
+# Setup: mint the bank, clear the table, dormant seats off (2 to 4 players: variable `players`)
+COND | trigger | setup
+COND | kv | variables.txt | players | ge | 2
+COND | kv | variables.txt | players | le | 4

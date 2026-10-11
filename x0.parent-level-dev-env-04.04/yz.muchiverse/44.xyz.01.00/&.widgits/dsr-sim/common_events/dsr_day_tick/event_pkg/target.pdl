@@ -1,0 +1,2 @@
+# the game state this common event acts on (path relative to the house root, or absolute); same TARGET row the digipet day_tick uses
+TARGET | state | dsr_game

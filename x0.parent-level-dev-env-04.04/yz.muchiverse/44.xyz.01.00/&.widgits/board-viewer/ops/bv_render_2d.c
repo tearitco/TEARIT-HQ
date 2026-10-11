@@ -33,6 +33,8 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <dirent.h>
+#include <setjmp.h>
+#include <png.h>
 
 #include "bv_cjk_glyph.h"   /* view_2d_style=ascii: coloured CJK glyph per cell */
 #include "bv_move_range.c"   /* shared Move range finder file helpers */
@@ -786,6 +788,228 @@ static void write_atomic(const char *path, const void *data, size_t len) {
     }
 }
 
+/* Decode one RGBA PNG. Returns 0 on any failure and leaves *out NULL.
+ * Used only for a desk map.png. Desks with no file stay on the glyph
+ * colour path. */
+static int load_rgba_png(const char *path, unsigned char **out, int *w, int *h) {
+    *out = NULL; *w = 0; *h = 0;
+    FILE *fp = host_fopen(path, "rb");
+    if (!fp) return 0;
+    png_structp png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    if (!png) { fclose(fp); return 0; }
+    png_infop info = png_create_info_struct(png);
+    if (!info) { png_destroy_read_struct(&png, NULL, NULL); fclose(fp); return 0; }
+    if (setjmp(png_jmpbuf(png))) {
+        png_destroy_read_struct(&png, &info, NULL);
+        fclose(fp);
+        return 0;
+    }
+    png_init_io(png, fp);
+    png_read_info(png, info);
+    int width = (int)png_get_image_width(png, info);
+    int height = (int)png_get_image_height(png, info);
+    if (width < 1 || height < 1 || width > 8192 || height > 8192) {
+        png_destroy_read_struct(&png, &info, NULL);
+        fclose(fp);
+        return 0;
+    }
+    png_byte color = png_get_color_type(png, info);
+    png_byte depth = png_get_bit_depth(png, info);
+    if (depth == 16) png_set_strip_16(png);
+    if (color == PNG_COLOR_TYPE_PALETTE) png_set_palette_to_rgb(png);
+    if (color == PNG_COLOR_TYPE_GRAY && depth < 8) png_set_expand_gray_1_2_4_to_8(png);
+    if (png_get_valid(png, info, PNG_INFO_tRNS)) png_set_tRNS_to_alpha(png);
+    if (color == PNG_COLOR_TYPE_RGB || color == PNG_COLOR_TYPE_GRAY || color == PNG_COLOR_TYPE_PALETTE)
+        png_set_filler(png, 0xFF, PNG_FILLER_AFTER);
+    if (color == PNG_COLOR_TYPE_GRAY || color == PNG_COLOR_TYPE_GRAY_ALPHA)
+        png_set_gray_to_rgb(png);
+    png_read_update_info(png, info);
+    if (png_get_rowbytes(png, info) != (size_t)width * 4) {
+        png_destroy_read_struct(&png, &info, NULL);
+        fclose(fp);
+        return 0;
+    }
+    unsigned char *buf = malloc((size_t)width * (size_t)height * 4);
+    png_bytep *rows = buf ? malloc(sizeof(png_bytep) * (size_t)height) : NULL;
+    if (!buf || !rows) {
+        free(buf); free(rows);
+        png_destroy_read_struct(&png, &info, NULL);
+        fclose(fp);
+        return 0;
+    }
+    for (int y = 0; y < height; y++) rows[y] = buf + (size_t)y * (size_t)width * 4;
+    png_read_image(png, rows);
+    free(rows);
+    png_destroy_read_struct(&png, &info, NULL);
+    fclose(fp);
+    *out = buf; *w = width; *h = height;
+    return 1;
+}
+
+/* One charset frame, nearest-neighbour, skipping clear pixels. */
+static void blit_frame(unsigned char *dst, int W, int H,
+                       int dx, int dy, int dw, int dh,
+                       const unsigned char *src, int sw, int sh,
+                       int sx, int sy, int fw, int fh) {
+    if (fw < 1 || fh < 1 || dw < 1 || dh < 1) return;
+    for (int y = 0; y < dh; y++) {
+        int yy = dy + y;
+        if (yy < 0 || yy >= H) continue;
+        int syy = sy + (y * fh) / dh;
+        if (syy < 0 || syy >= sh) continue;
+        for (int x = 0; x < dw; x++) {
+            int xx = dx + x;
+            if (xx < 0 || xx >= W) continue;
+            int sxx = sx + (x * fw) / dw;
+            if (sxx < 0 || sxx >= sw) continue;
+            const unsigned char *s = src + ((size_t)syy * (size_t)sw + (size_t)sxx) * 4;
+            if (s[3] < 16) continue;
+            unsigned char *p = dst + ((size_t)yy * (size_t)W + (size_t)xx) * 4;
+            p[0] = s[0]; p[1] = s[1]; p[2] = s[2]; p[3] = 255;
+        }
+    }
+}
+
+/* events.txt beside map.png. A line is one visible map event:
+ *   x y r g b charset index direction pattern
+ * Feet sit on the bottom of the cell. A '!' sheet is one cell tall.
+ * Any other sheet is two cells tall. This binary is a new process
+ * each frame, so the sheet cache lives only for this call. */
+static void draw_map_events(unsigned char *px, int W, int H,
+                            const char *map_png, int map_tile,
+                            int map_px0, int map_py0, int draw) {
+    if (!map_png || map_tile < 1 || draw < 1) return;
+    char path[PATH_BUF];
+    size_t n = strlen(map_png);
+    if (n < 8 || n >= sizeof(path)) return;
+    snprintf(path, sizeof(path), "%.*s/events.txt", (int)(n - 8), map_png);
+    FILE *f = host_fopen(path, "r");
+    if (!f) return;
+    typedef struct { char name[64]; unsigned char *px; int w, h; } Sheet;
+    Sheet sheets[32];
+    int ns = 0;
+    memset(sheets, 0, sizeof(sheets));
+    char line[256];
+    int drawn = 0;
+    while (drawn < 256 && fgets(line, sizeof(line), f)) {
+        int ex, ey, r, g, b, index, dir, pat;
+        char name[64];
+        if (sscanf(line, "%d %d %d %d %d %63s %d %d %d",
+                   &ex, &ey, &r, &g, &b, name, &index, &dir, &pat) != 9)
+            continue;
+        (void)r; (void)g; (void)b;
+        int si = -1;
+        for (int i = 0; i < ns; i++) if (strcmp(sheets[i].name, name) == 0) si = i;
+        if (si < 0 && ns < 32) {
+            char dirn[PATH_BUF], sheet[PATH_BUF];
+            snprintf(dirn, sizeof(dirn), "%s", map_png);
+            /* Sheets live in the repo #.NNEST_ASSETS, eleven
+             * directories above a desk map.png. Eight stops inside
+             * 44.xyz.01.00, which has no assets dir. */
+            for (int up = 0; up < 16 && si < 0; up++) {
+                char *sl = strrchr(dirn, '/');
+                if (!sl) break;
+                *sl = 0;
+                snprintf(sheet, sizeof(sheet),
+                         "%s/#.NNEST_ASSETS/tsots-characters/%s.png", dirn, name);
+                if (load_rgba_png(sheet, &sheets[ns].px, &sheets[ns].w, &sheets[ns].h)) {
+                    snprintf(sheets[ns].name, sizeof(sheets[ns].name), "%s", name);
+                    si = ns++;
+                }
+            }
+        }
+        if (si < 0) continue;
+        int sw = sheets[si].w, sh = sheets[si].h;
+        int row = dir == 4 ? 1 : dir == 6 ? 2 : dir == 8 ? 3 : 0;
+        if (pat < 0) pat = 0;
+        if (pat > 2) pat = 2;
+        int pw, ph, sx, sy;
+        if (name[0] == '$') {
+            pw = sw / 3; ph = sh / 4;
+            sx = pat * pw; sy = row * ph;
+        } else {
+            pw = sw / 12; ph = sh / 8;
+            if (index < 0) index = 0;
+            if (index > 7) index = 7;
+            sx = ((index % 4) * 3 + pat) * pw;
+            sy = ((index / 4) * 4 + row) * ph;
+        }
+        if (pw < 1 || ph < 1) continue;
+        int dh = (name[0] == '!') ? draw : draw * 2;
+        int dw = dh * pw / ph;
+        if (dw < 1) dw = 1;
+        int left = (ex * map_tile - map_px0) * draw / map_tile;
+        int bottom = ((ey + 1) * map_tile - map_py0) * draw / map_tile;
+        blit_frame(px, W, H, left + (draw - dw) / 2, bottom - dh, dw, dh,
+                   sheets[si].px, sw, sh, sx, sy, pw, ph);
+        drawn++;
+    }
+    fclose(f);
+    for (int i = 0; i < ns; i++) free(sheets[i].px);
+}
+
+/* parallax.pdl sits beside map.png. show=0 means this desk has no sky.
+ * loop_x / loop_y tile with the map scroll. sx/sy are stored for a
+ * later scroll tick and are not applied here. */
+static int desk_parallax(const char *map_png, int *loop_x, int *loop_y) {
+    *loop_x = 0;
+    *loop_y = 0;
+    char pdl[PATH_BUF];
+    size_t n = strlen(map_png);
+    if (n < 8 || n >= sizeof(pdl)) return 0;
+    snprintf(pdl, sizeof(pdl), "%.*s/parallax.pdl", (int)(n - 8), map_png);
+    FILE *f = host_fopen(pdl, "r");
+    if (!f) return 0;
+    int show = 0;
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        char *p = strstr(line, "show");
+        if (p && strstr(line, "PARALLAX")) {
+            char *bar = strrchr(p, '|');
+            if (bar) show = atoi(bar + 1);
+        }
+        if ((p = strstr(line, "loop_x"))) {
+            char *bar = strrchr(p, '|');
+            if (bar) *loop_x = atoi(bar + 1);
+        }
+        if ((p = strstr(line, "loop_y"))) {
+            char *bar = strrchr(p, '|');
+            if (bar) *loop_y = atoi(bar + 1);
+        }
+    }
+    fclose(f);
+    return show == 1;
+}
+
+/* map.png sits beside map.txt. Tile step is png width / map.txt columns.
+ * The 24 px exports and a future 48 px render both fit this. */
+static int desk_map_png(char *path, size_t psz, int *tile_px) {
+    path[0] = '\0';
+    *tile_px = 0;
+    const char *root = focused_root[0] ? focused_root : project_root;
+    char wst[PATH_BUF], desk[64] = "", map_id[64] = "";
+    snprintf(wst, sizeof(wst), "%s/pieces/world_01/state.txt", root);
+    read_kv_str(wst, "desk_id", desk, sizeof(desk));
+    read_kv_str(wst, "map_id", map_id, sizeof(map_id));
+    if (!desk[0] || !map_id[0]) return 0;
+    if (strchr(desk, '/') || strchr(map_id, '/')) return 0;
+    snprintf(path, psz, "%s/pieces/system/maps/%s/%s/map.png", root, map_id, desk);
+    char mt[PATH_BUF];
+    snprintf(mt, sizeof(mt), "%s/pieces/system/maps/%s/%s/map.txt", root, map_id, desk);
+    FILE *f = host_fopen(mt, "r");
+    if (!f) return 0;
+    char line[MAX_DIM + 8];
+    if (!fgets(line, sizeof(line), f)) { fclose(f); return 0; }
+    fclose(f);
+    line[strcspn(line, "\r\n")] = '\0';
+    int cols = (int)strlen(line);
+    if (cols < 1) return 0;
+    /* tile size filled after the PNG width is known; stash cols in *tile_px
+     * as a negative sentinel and let the caller divide. */
+    *tile_px = cols;
+    return 1;
+}
+
 int main(void) {
     resolve_root();
     load_house_root();
@@ -797,6 +1021,15 @@ int main(void) {
     resolve_focused(fpr);
     int sel_x    = read_kv_int(st, "selector_x", -1);
     int sel_y    = read_kv_int(st, "selector_y", -1);
+    /* The 2D picture follows the xelector. selector_x/y is only the
+     * fallback when that piece has no position yet. */
+    {
+        char xp[PATH_BUF];
+        snprintf(xp, sizeof(xp), "%s/pieces/xelector_01/state.txt", focused_root[0] ? focused_root : fpr);
+        int xx = read_kv_int(xp, "pos_x", -1);
+        int xy = read_kv_int(xp, "pos_y", -1);
+        if (xx >= 0 && xy >= 0) { sel_x = xx; sel_y = xy; }
+    }
     int cur_z    = read_kv_int(st, "current_z", 0);
     /* render_mode==2: real side-scroll/Mario slice (see load_side_
      * board()'s own header comment) - same flat-render philosophy as
@@ -821,8 +1054,17 @@ int main(void) {
         memset(g_board, 0, sizeof(g_board));
         g_bw = 16;
         g_bh = 16;
-        for (int y = 0; y < 16; y++)
-            for (int x = 0; x < 16; x++)
+        {   /* the floor covers the page (pgr_extent), not a fixed 16x16 */
+            int mx = 0, my = 0;
+            if (pgr_extent(house_root, &mx, &my)) {
+                if (mx + 1 > g_bw) g_bw = mx + 1;
+                if (my + 1 > g_bh) g_bh = my + 1;
+            }
+            if (g_bw > MAX_DIM) g_bw = MAX_DIM;
+            if (g_bh > MAX_DIM) g_bh = MAX_DIM;
+        }
+        for (int y = 0; y < g_bh; y++)
+            for (int x = 0; x < g_bw; x++)
                 g_board[y][x] = '.';
         side_zcount = 1;
     } else if (side_mode) {
@@ -898,6 +1140,94 @@ int main(void) {
     }
 
     #define VP_PXR(SX,SY) (px + ((size_t)(SY) * W + (SX)) * 4)
+
+    /* Phase 2: a desk with map.png is blitted 1:1. Scroll is the selector
+     * in tile pixels, not the 80 px house cell. Side view (render_mode 2)
+     * and every desk with no file keep the glyph path below. */
+    unsigned char *map_px = NULL;
+    int map_w = 0, map_h = 0, map_tile = 0, map_ok = 0;
+    int map_px0 = 0, map_py0 = 0;
+    if (!side_mode) {
+        char mp[PATH_BUF];
+        int map_cols = 0;
+        if (desk_map_png(mp, sizeof(mp), &map_cols) &&
+            load_rgba_png(mp, &map_px, &map_w, &map_h) &&
+            map_cols > 0 && map_w % map_cols == 0) {
+            map_tile = map_w / map_cols;
+            /* On-screen tile is desk_grid.pdl cell_px (the settings
+             * grid step). 24 draws the export 1:1. 80 draws the same
+             * pixels larger. Source art stays the PNG's own tile. */
+            int draw = cell;
+            if (draw < 8) draw = 8;
+            if (map_tile >= 8 && map_tile <= 96 && (map_h % map_tile) == 0) {
+                int cx = sel_x >= 0 ? sel_x : (map_cols / 2);
+                int cy = sel_y >= 0 ? sel_y : ((map_h / map_tile) / 2);
+                int view_w = W * map_tile / draw;
+                int view_h = H * map_tile / draw;
+                if (view_w < 1) view_w = 1;
+                if (view_h < 1) view_h = 1;
+                map_px0 = cx * map_tile - view_w / 2;
+                map_py0 = cy * map_tile - view_h / 2;
+                if (map_w > view_w) {
+                    if (map_px0 < 0) map_px0 = 0;
+                    if (map_px0 > map_w - view_w) map_px0 = map_w - view_w;
+                } else map_px0 = -(view_w - map_w) / 2;
+                if (map_h > view_h) {
+                    if (map_py0 < 0) map_py0 = 0;
+                    if (map_py0 > map_h - view_h) map_py0 = map_h - view_h;
+                } else map_py0 = -(view_h - map_h) / 2;
+                /* Sky behind the tiles. A clear map pixel keeps the sky.
+                 * An opaque export covers it, which is the baked picture. */
+                unsigned char *para = NULL;
+                int para_w = 0, para_h = 0, loop_x = 0, loop_y = 0;
+                if (desk_parallax(mp, &loop_x, &loop_y)) {
+                    char pp[PATH_BUF];
+                    size_t n = strlen(mp);
+                    if (n > 8 && n < sizeof(pp)) {
+                        snprintf(pp, sizeof(pp), "%.*s/parallax.png", (int)(n - 8), mp);
+                        load_rgba_png(pp, &para, &para_w, &para_h);
+                    }
+                }
+                /* One image pixel tracks one map pixel, so the picture
+                 * zooms with cell_px. Loop scrolls with the map. No loop
+                 * stays pinned to the window, which is what MV does. */
+                if (para && para_w > 0 && para_h > 0) {
+                    for (int y = 0; y < H; y++) {
+                        int my = y * map_tile / draw;
+                        for (int x = 0; x < W; x++) {
+                            int mx = x * map_tile / draw;
+                            int sx = loop_x ? (map_px0 + mx) : mx;
+                            int sy = loop_y ? (map_py0 + my) : my;
+                            if (loop_x) { sx %= para_w; if (sx < 0) sx += para_w; }
+                            if (loop_y) { sy %= para_h; if (sy < 0) sy += para_h; }
+                            if (sx < 0 || sy < 0 || sx >= para_w || sy >= para_h) continue;
+                            const unsigned char *s = para + ((size_t)sy * (size_t)para_w + (size_t)sx) * 4;
+                            if (s[3] == 0) continue;
+                            unsigned char *p = VP_PXR(x, y);
+                            p[0] = s[0]; p[1] = s[1]; p[2] = s[2]; p[3] = 255;
+                        }
+                    }
+                }
+                for (int y = 0; y < H; y++) {
+                    int sy = map_py0 + y * map_tile / draw;
+                    for (int x = 0; x < W; x++) {
+                        int sx = map_px0 + x * map_tile / draw;
+                        unsigned char *p = VP_PXR(x, y);
+                        if (sx < 0 || sy < 0 || sx >= map_w || sy >= map_h) continue;
+                        const unsigned char *s = map_px + ((size_t)sy * (size_t)map_w + (size_t)sx) * 4;
+                        if (s[3] == 0) continue;
+                        p[0] = s[0]; p[1] = s[1]; p[2] = s[2]; p[3] = 255;
+                    }
+                }
+                free(para);
+                map_ok = 1;
+                draw_map_events(px, W, H, mp, map_tile, map_px0, map_py0, draw);
+                /* map_px0/map_py0 stay in source pixels. map_tile stays
+                 * the PNG tile. The selector uses `cell` for the box. */
+            }
+        }
+        if (!map_ok) { free(map_px); map_px = NULL; }
+    }
     /* view_2d_style (` toggle): "ascii" -> DF/CDDA-style: one coloured
      * CJK glyph per cell (bg dimmed to a terrain hint); "emoji" -> the
      * emoji sprite over the terrain colour; "tiles" (default) -> the
@@ -906,7 +1236,8 @@ int main(void) {
     int want_emoji = (strcmp(style, "emoji") == 0);
     int want_ascii = (strcmp(style, "ascii") == 0);
 
-    /* --- ground tiles --- */
+    /* --- ground tiles (skipped when the desk picture was blitted) --- */
+    if (!map_ok)
     for (int scy = 0; scy < rows; scy++) {
         for (int scx = 0; scx < cols; scx++) {
             int bx = ox + scx;
@@ -952,7 +1283,7 @@ int main(void) {
 
     /* --- entities / hero / animals: emoji sprite if we have one, else
      * a solid colour square (inner 60%) --- */
-    for (int i = 0; i < g_nent; i++) {
+    for (int i = 0; !map_ok && i < g_nent; i++) {
         /* side_mode: only entities standing in THIS depth slice (same
          * row the terrain slice is through) are visible at all - real
          * depth culling, not a simplification, matches what a real
@@ -988,7 +1319,10 @@ int main(void) {
         }
     }
 
-    /* --- the manual matrix grid (viewport-relative cell boundaries) --- */
+    /* --- the manual matrix grid (viewport-relative cell boundaries).
+     * A grid is not part of the Maker picture, so it stays off when
+     * map.png was blitted. --- */
+    if (!map_ok) {
     for (int c = 0; c <= cols; c++) {
         int x = c * cell; if (x >= W) x = W - 1;
         for (int y = 0; y < H; y++) { unsigned char *p = VP_PXR(x, y); p[0]=gl_r; p[1]=gl_g; p[2]=gl_b; p[3]=255; }
@@ -997,13 +1331,36 @@ int main(void) {
         int y = c * cell; if (y >= H) y = H - 1;
         for (int x = 0; x < W; x++) { unsigned char *p = VP_PXR(x, y); p[0]=gl_r; p[1]=gl_g; p[2]=gl_b; p[3]=255; }
     }
+    }
 
     /* --- xelector: 2px inset border, bright accent ---
      * side_mode: honestly skipped for v1 - the xelector has no real
      * height of its own (only x/row), so there's no correct screen
      * position to draw its highlight at on this view's vertical
      * (height) axis. Ground/entities above already draw fully. */
-    if (!side_mode) {
+    if (!side_mode && map_ok && sel_x >= 0 && sel_y >= 0 && map_tile > 0) {
+        int box = cell > 0 ? cell : map_tile;
+        int x0 = (sel_x * map_tile - map_px0) * box / map_tile;
+        int y0 = (sel_y * map_tile - map_py0) * box / map_tile;
+        if (x0 < W && y0 < H && x0 + box > 0 && y0 + box > 0) {
+            unsigned char xr = 255, xg = 204, xb = 0;
+            /* 6px, not 2. A 2px line disappeared into the painted tiles. */
+            for (int t = 0; t < 6; t++) {
+                for (int x = x0; x < x0 + box; x++) {
+                    if (x < 0 || x >= W) continue;
+                    int yA = y0 + t, yB = y0 + box - 1 - t;
+                    if (yA >= 0 && yA < H) { unsigned char *a = VP_PXR(x, yA); a[0]=xr; a[1]=xg; a[2]=xb; a[3]=255; }
+                    if (yB >= 0 && yB < H) { unsigned char *a = VP_PXR(x, yB); a[0]=xr; a[1]=xg; a[2]=xb; a[3]=255; }
+                }
+                for (int y = y0; y < y0 + box; y++) {
+                    if (y < 0 || y >= H) continue;
+                    int xA = x0 + t, xB = x0 + box - 1 - t;
+                    if (xA >= 0 && xA < W) { unsigned char *a = VP_PXR(xA, y); a[0]=xr; a[1]=xg; a[2]=xb; a[3]=255; }
+                    if (xB >= 0 && xB < W) { unsigned char *a = VP_PXR(xB, y); a[0]=xr; a[1]=xg; a[2]=xb; a[3]=255; }
+                }
+            }
+        }
+    } else if (!side_mode) {
         int scx = sel_x - ox, scy = sel_y - oy;
         if (sel_x >= 0 && sel_y >= 0 && scx >= 0 && scy >= 0 && scx < cols && scy < rows) {
             unsigned char xr = 255, xg = 204, xb = 0;
@@ -1044,7 +1401,7 @@ int main(void) {
                 hx = pxs[0]; hy = pys[0];
             }
         }
-        if (hx >= 0 && hy >= 0) {
+        if (!map_ok && hx >= 0 && hy >= 0) {
             int scx, scy;
             if (side_mode) {
                 scx = hx - ox;
@@ -1072,7 +1429,7 @@ int main(void) {
             }
         }
         /* Desk diamond: the same '#' file, one tile per '#', on the hero. */
-        if (hx >= 0 && hy >= 0) {
+        if (!map_ok && hx >= 0 && hy >= 0) {   /* grok: not over a drawn map page */
             /* Range finder: open only while move_range_matrix.txt exists
              * (see bv_move_range.c). Same origin + same test the 3D
              * render and the Enter-confirm use. */
@@ -1160,7 +1517,7 @@ int main(void) {
                 }
                 fclose(pf);
             }
-            if (armed) {
+            if (armed && !map_ok) {
                 int scx = sx - ox;
                 int scy = side_mode ? ((side_zcount - 1 - sz) - oy) : (sy - oy);
                 if (scx >= 0 && scy >= 0 && scx < cols && scy < rows) {
@@ -1192,5 +1549,6 @@ int main(void) {
     { char rb[128]; int n = snprintf(rb, sizeof(rb), "frame_w=%d\nframe_h=%d\n", W, H);
       if (n > 0) write_atomic(rec, rb, (size_t)n); }
     free(px);
+    free(map_px);
     return 0;
 }

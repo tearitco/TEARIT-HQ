@@ -1,0 +1,9 @@
+# music_state.txt - written by game events (conductor Start/Stop, weather, day), read by music_daemon.
+# key=value, one per line; unknown/garbage lines are ignored and bad values fall back to safe defaults (Heal).
+# The daemon notices a change by file SIZE or CONTENT, never mtime.
+on=1
+mood=calm
+volume=0.6
+seed=42
+time_of_day=day
+weather=clear

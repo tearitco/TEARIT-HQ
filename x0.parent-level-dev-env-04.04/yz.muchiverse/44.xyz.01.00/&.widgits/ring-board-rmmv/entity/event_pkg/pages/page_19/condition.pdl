@@ -1,0 +1,5 @@
+# Bankruptcy: the payer could not cover it (cash_transfer said bankrupt, all its cash went to the creditor) -> player out, owned tiles return to the bank
+COND | trigger | roll
+COND | kv | switches.txt | game_over | eq | 0
+COND | kv | variables.txt | phase | eq | 5
+COND | kv | variables.txt | xfer_result | eq | 2

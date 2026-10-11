@@ -1,0 +1,4 @@
+# Roll 1/2: load whether the current player is jailed
+COND | trigger | roll
+COND | kv | switches.txt | game_over | eq | 0
+COND | kv | variables.txt | phase | eq | 0

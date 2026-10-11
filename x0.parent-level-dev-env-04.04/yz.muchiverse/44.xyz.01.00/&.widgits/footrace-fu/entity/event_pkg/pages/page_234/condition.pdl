@@ -1,0 +1,3 @@
+# Combat 5: defender may re-roll if it is still losing
+COND | trigger | combat
+COND | kv | variables.txt | ph_cmb | eq | 3

@@ -1,0 +1,6 @@
+day=0
+setup_done=0
+running=0
+next_id=1
+rain_today=0
+rain_days=0

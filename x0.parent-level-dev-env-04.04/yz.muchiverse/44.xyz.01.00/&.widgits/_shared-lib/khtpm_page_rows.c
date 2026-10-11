@@ -114,6 +114,30 @@ PGR_UNUSED static int pgr_split(char *line, char **fld, int max) {
     return nf;
 }
 
+/* Extent of the page: the largest cell_x / cell_y over every DESK row. Returns 1 and fills *max_cx / *max_cy when the page
+ * has at least one row with a cell, else 0. A desk page used to be drawn as a hard-coded 16x16 floor, so entities at cell
+ * x >= 16 (dsr: x up to 23, office: 29x19) fell off the board; the renderers now size the floor from this (owner 2026-10-08). */
+PGR_UNUSED static int pgr_extent(const char *house, int *max_cx, int *max_cy) {
+    char pdl[PGR_PATH], line[2048], *fld[10];
+    FILE *f;
+    int any = 0;
+    *max_cx = 0; *max_cy = 0;
+    if (!pgr_page_path(house, pdl, sizeof(pdl)) || !(f = fopen(pdl, "r"))) return 0;
+    while (fgets(line, sizeof(line), f)) {
+        int nf, cx, cy;
+        if (strncmp(line, "DESK", 4) != 0) continue;
+        nf = pgr_split(line, fld, 10);
+        if (nf < 7) continue;
+        cx = atoi(fld[5]); cy = atoi(fld[6]);
+        if (cx < 0 || cy < 0) continue;
+        if (cx > *max_cx) *max_cx = cx;
+        if (cy > *max_cy) *max_cy = cy;
+        any = 1;
+    }
+    fclose(f);
+    return any;
+}
+
 /* Cell of the named row. Returns 1 if found. path_out (optional) gets the row's
  * path field (the entity's directory, relative to the house). */
 PGR_UNUSED static int pgr_get(const char *house, const char *name, int *cx, int *cy,

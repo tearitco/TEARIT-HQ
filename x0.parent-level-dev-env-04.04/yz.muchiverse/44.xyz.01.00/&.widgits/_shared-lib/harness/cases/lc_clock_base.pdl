@@ -1,0 +1,100 @@
+# lc_clock_base (CLOCK-AS-THE-PLAY-SPINE-DESIGN.md build step 1): the REAL lc_clock binary on a scratch house root ($T), no daemon, no wall-clock sleeping.
+# `lc_clock <root> step <real_ms>` = one deterministic pass of exactly what the daemon loop does (ticker for real_ms, endturn mailbox, reminder poll).
+# Popups are off (LC_CLOCK_NO_POPUP=1) and events go through LC_CLOCK_EVENT_RUNNER (touch / true / false / yes), so nothing real is launched. Nothing live is touched.
+RESULTS | ../results/lc_clock_base.txt
+ENV     | LC_CLOCK_NO_POPUP | 1
+ENV     | LC_CLOCK_EVENT_RUNNER | /usr/bin/touch
+CASE    | create
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+RUN | $T/lc.+x | $T | new | g1
+EXPECT_EXIT | 0 | new-rc0
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT_IS | g1\puser\poff\p1\p0\p0 | fresh-clock-off-running-epoch0-tick0
+EXPECT_EXISTS | #.desktop/clocks/g1.pdl | state-file-created
+EXPECT_HAS | #.desktop/clocks/clocks.pdl | CLOCK\pg1\pscope=user | registry-row
+RUN | $T/lc.+x | $T | new | g1
+EXPECT_EXIT | 1 | duplicate-id-refused
+RUN | $T/lc.+x | $T | gamedate | g1 | en
+EXPECT_OUT_IS | 0000-01-01 00:00:00 | epoch0-is-year0-jan1
+CLEAN |
+CASE    | rates
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | step | 5000
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT_IS | g1\puser\poff\p1\p0\p0 | rate-off-does-not-advance
+RUN | $T/lc.+x | $T | rate | g1 | min
+RUN | $T/lc.+x | $T | step | 1000
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT_IS | g1\puser\pmin\p1\p60000\p1 | rate-min-1s-real-is-1min-game-tick1
+RUN | $T/lc.+x | $T | rate | g1 | sec
+RUN | $T/lc.+x | $T | step | 1000
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT_IS | g1\puser\psec\p1\p3660000\p2 | rate-sec-1s-real-is-1h-game-tick-per-changed-minute
+RUN | $T/lc.+x | $T | rate | g1 | cent
+RUN | $T/lc.+x | $T | step | 1000
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT_IS | g1\puser\pcent\p1\p363660000\p3 | rate-cent-1s-real-is-100h-game
+RUN | $T/lc.+x | $T | ticker | g1 | off
+RUN | $T/lc.+x | $T | step | 60000
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT_IS | g1\puser\pcent\p0\p363660000\p3 | paused-clock-does-not-advance
+RUN | $T/lc.+x | $T | rate | g1 | bogus
+EXPECT_EXIT | 1 | unknown-rate-refused
+CLEAN |
+CASE    | endturn
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | endturn | g1 | 7200000
+EXPECT_HAS | #.desktop/clocks/endturn.txt | endturn g1 7200000 | mailbox-row-queued
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT_IS | g1\puser\poff\p1\p0\p0 | daemon-is-sole-writer-queued-turn-not-applied-yet
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT_IS | g1\puser\poff\p1\p7200000\p1 | endturn-applied-by-the-pass
+EXPECT_LACKS | #.desktop/clocks/endturn.txt | endturn | mailbox-consumed
+RUN | $T/lc.+x | $T | endturn | g1
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | list
+EXPECT_OUT_IS | g1\puser\poff\p1\p10800000\p2 | default-endturn-is-one-game-hour
+CLEAN |
+CASE    | oneshot
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | reminder-add | g1 | 3600000 | $T/ran1.flag | note1
+EXPECT_EXIT | 0 | add-rc0
+RUN | $T/lc.+x | $T | step | 0
+EXPECT_NOFILE | ran1.flag | not-due-yet-event-not-run
+RUN | $T/lc.+x | $T | endturn | g1 | 3600000
+RUN | $T/lc.+x | $T | step | 0
+EXPECT_EXISTS | ran1.flag | due-event-ran-via-fork-exec
+EXPECT_LACKS | #.desktop/clocks/reminders.pdl | fired=0\p | one-shot-fired-field-set
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 1 | one-shot-fired-once
+RUN | $T/lc.+x | $T | endturn | g1 | 3600000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 1 | one-shot-not-fired-twice-after-more-time
+RUN | $T/lc.+x | $T | reminders
+EXPECT_OUT_LACKS | every | no-repeat-on-plain-one-shot
+EXPECT_HAS | #.desktop/clocks/schedule_ledger.txt | SCHED\pr1\p3600000\p | one-shot-ledger-row-has-its-occurrence
+CLEAN |
+CASE    | daemon-smoke
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+RUN | $T/lc.+x | $T | new | g1
+# the real daemon loop (300 ms) still ticks and fires: a reminder at 'now' on a 'cent' clock, SPAWNed and polled
+RUN | $T/lc.+x | $T | rate | g1 | cent
+RUN | $T/lc.+x | $T | reminder-add | g1 | now |  | smoke
+SPAWN | d | $T/lc.+x | $T | daemon
+WAIT_HAS | #.desktop/clocks/schedule_ledger.txt | SCHED\pr1\p0\p | 4000 | daemon-fires-due-reminder
+WAIT_HAS | #.desktop/clocks/daemon.pid | 
+ | 2000 | daemon-pid-file
+EXPECT_ALIVE | $d | daemon-alive
+CLEAN |

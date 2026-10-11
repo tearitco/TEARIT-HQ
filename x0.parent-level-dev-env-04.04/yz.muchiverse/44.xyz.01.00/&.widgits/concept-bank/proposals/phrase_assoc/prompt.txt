@@ -1,0 +1,51 @@
+Below are 46 short lines an Eden farm-village character can say. For EACH line give how strongly it relates to each of three concepts:
+energy = food, hunger, rest, growth, effort, resources;  force = building, digging, pushing, repairing, trading pressure, strength;  motion = moving, going, walking, travel, change of place.
+Weights are decimals from -1.00 to 1.00 with at most 2 decimals (0 = unrelated, negative = the line opposes the concept).
+Reply with EXACTLY 46 lines and nothing else, each in the form  <number>|<energy>|<force>|<motion>  (example: 7|0.40|0.00|-0.10). No text, no code fence.
+
+1. The field looks green today
+2. Did the rain reach your plot
+3. I have grain to spare
+4. Come and see the hut
+5. Save a seed for me
+6. The jug is nearly dry
+7. Morning chores are waiting at the barn
+8. Will the chicken lay eggs before sunset?
+9. Gather the water from the well for the garden
+10. Can you help me dig the new plot near the oak?
+11. The silver spoon glints near the old stone wall
+12. Please bring the milk from the cow before noon
+13. Did you hear the horse neigh by the fence?
+14. Harvest the golden wheat when the sun is high
+15. Check the spade for rust before you start digging
+16. Our garden needs more seed for the upcoming spring
+17. Could the rain bring fresh mud to the field?
+18. The barn doors creak as the wind blows gently
+19. I found a clay pot near the old well yesterday
+20. Do you think the jug will hold enough water today?
+21. Remember to water each plant after sunrise
+22. The hen clucked loudly near the fence this morning
+23. Will the harvest be ready by the full moon?
+24. Set the hoe aside after you finish the row
+25. Your new barn looks sturdy and bright in the dusk
+26. Can the seed survive the cold night without cover?
+27. I saw a silver coin glimmer in the dirt beside the plot
+28. The field smells of fresh rain and earth today
+29. Do you need a spade or a hoe for the next task?
+30. Please plant the seedlings near the water source soon
+31. Did the cow wander into the garden this afternoon?
+32. Our chicken coop needs extra straw for the chicks
+33. Will the egg basket be full by dinner time?
+34. Check the gold nuggets you buried near the stone wall
+35. The rain has softened the soil for easy digging
+36. Can you fetch a jug of fresh water from the well?
+37. I love the scent of fresh hay in the barn loft
+38. Do you think the horse will like the new oats?
+39. Remember to lock the hut before nightfall
+40. The garden plot yields bright carrots this season
+41. Will the silver rain bring luck to our harvest?
+42. Gather the eggs gently before they hatch
+43. Could the spade break if we hit a stone?
+44. Please feed the cow and check her milk output
+45. Do you see the new barn roof shining in the sun?
+46. Set the jug on the table after you fill it

@@ -43,7 +43,7 @@
 #ifndef PATH_MAX
 #define PATH_MAX 4096
 #endif
-#define UIBUF 16384
+#define UIBUF 65536   /* a 98-desk book (TSOTS) publishes ~7 KB of desk rows alone */
 /* Windows-only throttle (a no-session probe popen()s a shell, and cmd.exe
  * spawns made that a storm). Linux deliberately keeps rescanning every
  * pass - a 30s blind window there would leave a relaunched board blank
@@ -198,14 +198,64 @@ static int emit_page_entities(char *ui, size_t *off, const char *house, const ch
     return n;
 }
 
+/* Open desk bar.txt. Numbers start at 1. First rows share the main
+ * bar. The rest are the subbar. */
+static int emit_map_events(char *ui, size_t *off, int n, const char *host, int *n_sub) {
+    *n_sub = 0;
+    char w[PATH_MAX], map[64] = "", desk[64] = "";
+    snprintf(w, sizeof(w), "%s/pieces/world_01/state.txt", host);
+    FILE *sf = fopen(w, "r");
+    if (sf) {
+        char l[256];
+        while (fgets(l, sizeof(l), sf)) {
+            if (!strncmp(l, "map_id=", 7)) sscanf(l + 7, "%63s", map);
+            else if (!strncmp(l, "desk_id=", 8)) sscanf(l + 8, "%63s", desk);
+        }
+        fclose(sf);
+    }
+    if (!map[0] || !desk[0] || strchr(map, '/') || strchr(desk, '/')) return n;
+    char bar[PATH_MAX];
+    snprintf(bar, sizeof(bar), "%s/pieces/system/maps/%s/%s/bar.txt", host, map, desk);
+    FILE *f = fopen(bar, "r");
+    if (!f) return n;
+    char line[256];
+    int num = 1;
+    while (fgets(line, sizeof(line), f)) {
+        int id = 0, x = 0, y = 0;
+        char name[48] = "", trig[32] = "";
+        if (sscanf(line, "%d\t%47[^\t]\t%d\t%d\t%31s", &id, name, &x, &y, trig) < 5) continue;
+        char label[64];
+        snprintf(label, sizeof(label), "%d %s", num, name);
+        if (n < 16) {
+            *off += (size_t)snprintf(ui + *off, UIBUF - *off,
+                "ent_%d_label=%s\nent_%d_id=%d\nent_%d_kind=mapev\n"
+                "ent_%d_x=%d\nent_%d_y=%d\nent_%d_z=0\n",
+                n, label, n, id, n, n, x, n, y, n);
+            n++;
+        } else if (*n_sub < 80) {
+            int s = *n_sub;
+            *off += (size_t)snprintf(ui + *off, UIBUF - *off,
+                "sub_%d_label=%s\nsub_%d_id=%d\nsub_%d_kind=mapev\n"
+                "sub_%d_x=%d\nsub_%d_y=%d\nsub_%d_z=0\n",
+                s, label, s, id, s, s, x, s, y, s);
+            (*n_sub)++;
+        }
+        num++;
+    }
+    fclose(f);
+    return n;
+}
+
 /* MILESTONE C - append entities-bar rows for the <footer>.
  * The open desk page wins. The private hero/animal lists are only
  * the fallback when no page file is bound. Capped at 16. */
 static size_t emit_entities(char *ui, size_t off, const char *house, const char *host_app_root, int on) {
     int n = emit_page_entities(ui, &off, house, host_app_root);
     if (n >= 0) {
+        int n_sub = 0;
+        n = emit_map_events(ui, &off, n, host_app_root, &n_sub);
         off += (size_t)snprintf(ui + off, UIBUF - off,
-            "n_ent=%d\nentities_bar_on=%s\n", n, on ? "1" : "");
+            "n_ent=%d\nn_sub=%d\nentities_bar_on=%s\n", n, n_sub, on ? "1" : "");
         return off;
     }
     n = 0;
@@ -240,8 +290,10 @@ static size_t emit_entities(char *ui, size_t off, const char *house, const char 
         while (n < 16 && fgets(line, sizeof(line), f)) {
             char id[64]; int x, y, z;
             if (sscanf(line, "%63[^,],%d,%d,%d", id, &x, &y, &z) != 4) continue;
-            const char *kind = strstr(id, "chicken") ? "chicken"
-                             : strstr(id, "tree")    ? "tree" : "entity";
+            /* The chicken and the trees are the piececraft test level.
+             * A painted desk's bar is its own events. */
+            if (strstr(id, "chicken") || strstr(id, "tree")) continue;
+            const char *kind = "entity";
             off += (size_t)snprintf(ui + off, UIBUF - off,
                 "ent_%d_label=%s\nent_%d_id=%s\nent_%d_kind=%s\n"
                 "ent_%d_x=%d\nent_%d_y=%d\nent_%d_z=%d\n",
@@ -250,8 +302,10 @@ static size_t emit_entities(char *ui, size_t off, const char *house, const char 
         }
         fclose(f);
     }
+    int n_sub = 0;
+    n = emit_map_events(ui, &off, n, host_app_root, &n_sub);
     off += (size_t)snprintf(ui + off, UIBUF - off,
-        "n_ent=%d\nentities_bar_on=%s\n", n, on ? "1" : "");
+        "n_ent=%d\nn_sub=%d\nentities_bar_on=%s\n", n, n_sub, on ? "1" : "");
     return off;
 }
 
@@ -640,7 +694,7 @@ int main(int argc, char **argv) {
         read_pdl_kv(game_pdl, "n_desks", n_desks_s, sizeof(n_desks_s));
         int n_desks = n_desks_s[0] ? atoi(n_desks_s) : 1;
         if (n_desks < 1) n_desks = 1;
-        if (n_desks > 8) n_desks = 8;   /* real, generous v1 cap */
+        if (n_desks > 128) n_desks = 128;   /* was 8 ("v1 cap"): a book such as TSOTS has 98 pages; the Desk dropdown scrolls when long */
         char cur_desk_label[64] = "";
         for (int di = 1; di <= n_desks; di++) {
             char k_id[32], k_lbl[32];
@@ -707,8 +761,14 @@ int main(int argc, char **argv) {
         char pm_mode[16] = "";
         read_kv(pm_path, "mode", pm_mode, sizeof(pm_mode));
         char player_label[32];
+        char playtest_label[24];
+        /* play-test = `mode=on` plus a second line `playtest=1` in the same file (PLAY-MODES-AND-MAP-ACCESS-DESIGN.md); label TEST, and the dropdown row's own label */
+        char pm_pt[16] = "";
+        read_kv(pm_path, "playtest", pm_pt, sizeof(pm_pt));
+        int is_playtest = strcmp(pm_mode, "on") == 0 && strcmp(pm_pt, "1") == 0;
         snprintf(player_label, sizeof(player_label), "Player: %s",
-                 strcmp(pm_mode, "on") == 0 ? "ON" : "OFF");
+                 is_playtest ? "TEST" : (strcmp(pm_mode, "on") == 0 ? "ON" : "OFF"));
+        snprintf(playtest_label, sizeof(playtest_label), "play-test: %s", is_playtest ? "ON" : "OFF");
         char book_label[80], page_label[80];
         char own_page[64];
         snprintf(own_page, sizeof(own_page), "%s",
@@ -752,50 +812,91 @@ int main(int argc, char **argv) {
         off += (size_t)snprintf(ui + off, UIBUF - off,
             "bv_session=%s\ncanvas_raw=%s\nno_session=%s\n"
             "bv_h1=%s\nbv_h2=%s\ninteract_class=%s\ninteract_armed=%d\n"
-            "interact_label=%s\nclock=%s\nplayer_label=%s\n"
+            "interact_label=%s\nclock=%s\nplayer_label=%s\nplaytest_label=%s\n"
             "book_label=%s\npage_label=%s\n"
             "menu_open=%s\nfile_menu_open=%s\ndesk_menu_open=%s\n",
             bv, raw, have ? "" : "1",
             h1, h2, interact ? "interact-active" : "", interact ? 1 : 0,
-            interact ? "ON" : "off", clock_s, player_label,
+            interact ? "ON" : "off", clock_s, player_label, playtest_label,
             book_label, page_label,
             menu_open,
             strcmp(menu_open, "file") == 0 ? "1" : "",
             strcmp(menu_open, "desk") == 0 ? "1" : "");
 
-        off += (size_t)snprintf(ui + off, UIBUF - off,
-            "n_file_opts=7\n"
-            /* REAL, NEW 2026-09-15, direct live report ("it should be a
-             * 'default' folder availiable in File menu till user makes
-             * new(palcraft) then can load palcraft from file menu") -
-             * a real, always-available way back to the flat/procedural
-             * starting world - now a real desk-backed project dir
-             * (pieces/system/maps/default/desk1/), same load-map path
-             * every other real project uses (see PALCRAFT-DESIGN.md's
-             * own "file = dir, desk = map" convention, same date). */
-            "f_0_label=\xF0\x9F\x95\xB9\xEF\xB8\x8F default\nf_0_verb=load-map\nf_0_arg=default\nf_0_active=%s\n"
-            "f_1_label=Open File Explorer\nf_1_verb=file-hq\nf_1_arg=\nf_1_active=\n"
-            "f_2_label=mineclonia_sample\nf_2_verb=load-map\nf_2_arg=mineclonia_sample\nf_2_active=%s\n"
-            "f_3_label=cdda_sample\nf_3_verb=load-map\nf_3_arg=cdda_sample\nf_3_active=%s\n"
-            /* REAL, NEW 2026-09-15 - two real test projects, same date,
-             * proving the desk-backed load path + the generalized
-             * multi-glyph extrusion table both work for genuinely new
-             * projects, not just the pre-existing three. */
-            "f_4_label=\xF0\x9F\x95\xB9\xEF\xB8\x8F test_walls\nf_4_verb=load-map\nf_4_arg=test_walls\nf_4_active=%s\n"
-            "f_5_label=\xF0\x9F\x95\xB9\xEF\xB8\x8F test_terraces\nf_5_verb=load-map\nf_5_arg=test_terraces\nf_5_active=%s\n"
-            "f_6_label=default-legacy\nf_6_verb=file\nf_6_arg=1\nf_6_active=%s\n",
-            active_level[0] ? "" : "pchq-menu-active",
-            strcmp(active_level, "mineclonia_sample") == 0 ? "pchq-menu-active" : "",
-            strcmp(active_level, "cdda_sample") == 0 ? "pchq-menu-active" : "",
-            strcmp(active_level, "test_walls") == 0 ? "pchq-menu-active" : "",
-            strcmp(active_level, "test_terraces") == 0 ? "pchq-menu-active" : "",
-            is_legacy ? "pchq-menu-active" : "");
+        /* File menu = the books on disk (owner 2026-10-09: a new book must appear without a code change). Fixed head: "default" (the
+         * always-available way back to the flat starting world, 2026-09-15) and Open File Explorer; then EVERY folder under
+         * pieces/system/maps/ that has a game.pdl (except "default"), sorted by folder name, labelled "<icon> <label>" from its own
+         * game.pdl GAME rows (folder name when there is no label); fixed tail: default-legacy. Verb load-map, arg = the folder name. */
+        {
+            char maps_dir[PATH_MAX];
+            snprintf(maps_dir, sizeof(maps_dir), "%s/pieces/system/maps", pkg);
+            static char book_ids[64][64];
+            int n_books = 0;
+            DIR *md = opendir(maps_dir);
+            if (md) {
+                struct dirent *de;
+                while ((de = readdir(md)) != NULL && n_books < 64) {
+                    if (de->d_name[0] == '.' || strcmp(de->d_name, "default") == 0 || strlen(de->d_name) >= sizeof(book_ids[0])) continue;
+                    char gp[PATH_MAX];
+                    snprintf(gp, sizeof(gp), "%s/%s/game.pdl", maps_dir, de->d_name);
+                    if (access(gp, R_OK) != 0) continue;
+                    snprintf(book_ids[n_books++], sizeof(book_ids[0]), "%s", de->d_name);
+                }
+                closedir(md);
+            }
+            for (int bi = 1; bi < n_books; bi++) {          /* insertion sort: stable menu order, no qsort needed */
+                char tmp[64]; snprintf(tmp, sizeof(tmp), "%s", book_ids[bi]);
+                int bj = bi - 1;
+                while (bj >= 0 && strcmp(book_ids[bj], tmp) > 0) { snprintf(book_ids[bj + 1], sizeof(book_ids[0]), "%s", book_ids[bj]); bj--; }
+                snprintf(book_ids[bj + 1], sizeof(book_ids[0]), "%s", tmp);
+            }
+            size_t off_fn = off;                            /* n_file_opts is patched in once the books are counted */
+            off += (size_t)snprintf(ui + off, UIBUF - off, "n_file_opts=000\n");
+            off += (size_t)snprintf(ui + off, UIBUF - off,
+                "f_0_label=\xF0\x9F\x95\xB9\xEF\xB8\x8F default\nf_0_verb=load-map\nf_0_arg=default\nf_0_active=%s\n"
+                "f_1_label=Open File Explorer\nf_1_verb=file-hq\nf_1_arg=\nf_1_active=\n",
+                active_level[0] ? "" : "pchq-menu-active");
+            int nf = 2;
+            for (int bi = 0; bi < n_books; bi++) {
+                char gp[PATH_MAX], icon[32] = "", lbl[64] = "", full[112];
+                snprintf(gp, sizeof(gp), "%s/%s/game.pdl", maps_dir, book_ids[bi]);
+                read_pdl_kv(gp, "icon", icon, sizeof(icon));
+                read_pdl_kv(gp, "label", lbl, sizeof(lbl));
+                if (!lbl[0]) snprintf(lbl, sizeof(lbl), "%s", book_ids[bi]);
+                if (icon[0]) snprintf(full, sizeof(full), "%s %s", icon, lbl); else snprintf(full, sizeof(full), "%s", lbl);
+                sanitize(full);
+                off += (size_t)snprintf(ui + off, UIBUF - off,
+                    "f_%d_label=%s\nf_%d_verb=load-map\nf_%d_arg=%s\nf_%d_active=%s\n",
+                    nf, full, nf, nf, book_ids[bi], nf,
+                    strcmp(active_level, book_ids[bi]) == 0 ? "pchq-menu-active" : "");
+                nf++;
+            }
+            off += (size_t)snprintf(ui + off, UIBUF - off,
+                "f_%d_label=default-legacy\nf_%d_verb=file\nf_%d_arg=1\nf_%d_active=%s\n",
+                nf, nf, nf, nf, is_legacy ? "pchq-menu-active" : "");
+            nf++;
+            { char cnt[16]; snprintf(cnt, sizeof(cnt), "%03d", nf > 999 ? 999 : nf); memcpy(ui + off_fn + strlen("n_file_opts="), cnt, 3); }
+        }
 
         /* REAL, NEW 2026-09-15 (2) - real, per-desk rows (was always
          * exactly one fake row). Re-reads game.pdl's desk_N_id/
          * desk_N_label rows (same n_desks computed above) so every
          * declared desk shows up as its own clickable row. */
-        off += (size_t)snprintf(ui + off, UIBUF - off, "n_desk_opts=%d\n", n_desks);
+        /* Desk search: the Desk dropdown's search field (cli_io dm-search, target_id tb-desk) is live-synced by the renderer to
+         * <pkg>/cli_io_state.txt as `tb-desk=<typed text>` on every keystroke. Only desks whose label contains that text
+         * (case-insensitive) are published, so the dropdown narrows as the owner types; empty = the full list. desk_first_id
+         * (the first match) is what the field's Enter action opens. */
+        char desk_q[64] = "", desk_q_lc[64] = "", desk_first_id[64] = "";
+        {
+            char qpath[PATH_MAX];
+            snprintf(qpath, sizeof(qpath), "%s/cli_io_state.txt", pkg);
+            read_kv(qpath, "tb-desk", desk_q, sizeof(desk_q));
+            for (size_t qi = 0; desk_q[qi] && qi < sizeof(desk_q_lc) - 1; qi++)
+                desk_q_lc[qi] = (desk_q[qi] >= 'A' && desk_q[qi] <= 'Z') ? (char)(desk_q[qi] + 32) : desk_q[qi];
+        }
+        size_t off_n = off;                              /* n_desk_opts is written after the matches are counted */
+        off += (size_t)snprintf(ui + off, UIBUF - off, "n_desk_opts=000\n");
+        int n_shown = 0;
         for (int di = 1; di <= n_desks; di++) {
             char k_id[32], k_lbl[32];
             snprintf(k_id, sizeof(k_id), "desk_%d_id", di);
@@ -805,11 +906,23 @@ int main(int argc, char **argv) {
             read_pdl_kv(game_pdl, k_lbl, d_lbl, sizeof(d_lbl));
             if (!d_id[0]) snprintf(d_id, sizeof(d_id), "desk%d", di);
             if (!d_lbl[0]) snprintf(d_lbl, sizeof(d_lbl), "Page %d", di);
+            if (desk_q_lc[0]) {
+                char lbl_lc[64];
+                size_t li = 0;
+                for (; d_lbl[li] && li < sizeof(lbl_lc) - 1; li++)
+                    lbl_lc[li] = (d_lbl[li] >= 'A' && d_lbl[li] <= 'Z') ? (char)(d_lbl[li] + 32) : d_lbl[li];
+                lbl_lc[li] = '\0';
+                if (!strstr(lbl_lc, desk_q_lc)) continue;
+            }
+            if (!n_shown) snprintf(desk_first_id, sizeof(desk_first_id), "%s", d_id);
             off += (size_t)snprintf(ui + off, UIBUF - off,
                 "d_%d_id=%s\nd_%d_label=%s\nd_%d_active=%s\n",
-                di - 1, d_id, di - 1, d_lbl, di - 1,
+                n_shown, d_id, n_shown, d_lbl, n_shown,
                 strcmp(d_id, active_desk_id) == 0 ? "pchq-menu-active" : "");
+            n_shown++;
         }
+        { char cnt[16]; snprintf(cnt, sizeof(cnt), "%03d", n_shown > 999 ? 999 : n_shown); memcpy(ui + off_n + strlen("n_desk_opts="), cnt, 3); }
+        off += (size_t)snprintf(ui + off, UIBUF - off, "desk_first_id=%s\n", desk_first_id);
 
         /* MILESTONE C - the <footer> entities bar */
         {

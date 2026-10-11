@@ -1,0 +1,69 @@
+# csv_jobs: LOCKED cases. Source under test: &.widgits/concept-bank/ops/csv_lab.c, verb `jobs`. Everything runs on a scratch tree.
+RESULTS | ../results/csv_jobs.txt
+CASE | csv-jobs
+SCRATCH |
+COPY | &.widgits/concept-bank/ops/csv_lab.c | csv_lab.c
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -Wno-format-truncation | -O2 | -o | $T/cl.+x | $T/csv_lab.c
+EXPECT_EXIT | 0 | compiles-clean
+MKDIR | d
+MKDIR | w
+WRITE | d/a.pdl | # comment line\nPHRASE \p Water \p 0.5\nOTHER \p Skipme \p 1\nPHRASE \p 12345 \p 2\nPHRASE \p Fire \p 3\n
+WRITE | d/w.csv | id,english,note,sym\n1,Water,"liquid, clear",H2O\n2,"say ""hi""",x,\n3,7,y,\n
+WRITE | d/g1.pdl | PHRASE \p One\n
+WRITE | d/g2.pdl | PHRASE \p Two\n
+WRITE | d/c.pdl | COMPOUND \p chem1 \p emoji=x \p name=Acetic Acid \p formula=CH3COOH \p hint=Carboxylic acid\nCOMPOUND \p chem2 \p emoji=y \p name=Ethanol \p formula=CH3CH2OH \p hint=Alcohol\n
+WRITE | banks.pdl | # manifest\nBANK \p pd \p file=d/a.pdl \p format=pdl \p rowtag=PHRASE \p key=line \p text=1 \p never=2\nBANK \p cs \p file=d/w.csv \p format=csv \p key=id \p text=english,note \p context=sym \p never=id,sym\nBANK \p gl \p file=d/g*.pdl \p format=pdl \p rowtag=PHRASE \p key=line \p text=1\nBANK \p bad \p file=d/a.pdl \p format=pdl \p rowtag=PHRASE \p key=line \p text=1 \p never=1\nBANK \p col \p file=d/c.pdl \p format=pdl \p rowtag=COMPOUND \p key=1 \p text=name \p context=formula \p never=formula\n
+SUMTREE | before | d
+WRITE | none.tsv |
+RUN | $T/cl.+x | jobs | $T/banks.pdl | pd | $T/w/pd | $T/none.tsv | --root | $T
+EXPECT_EXIT | 0 | pdl-ok
+EXPECT_OUT_IS | jobs=2 untranslated=2 answer_hits=0 bank=pd lang=zh | pdl-counts-tag-filter-and-nonword-skip
+EXPECT_FILE | w/pd/jobs.tsv | L1\tWater\t\nL4\tFire\t\n | pdl-jobs-ids-are-source-row-ordinals
+RUN | $T/cl.+x | jobs | $T/banks.pdl | cs | $T/w/cs | $T/none.tsv | --root | $T
+EXPECT_OUT_IS | jobs=5 untranslated=5 answer_hits=0 bank=cs lang=zh | csv-counts
+EXPECT_HAS | w/cs/jobs.tsv | 1/english\tWater\tsym=H2O | csv-multi-column-ids-and-context
+EXPECT_HAS | w/cs/jobs.tsv | 1/note\tliquid, clear\tsym=H2O | csv-quoted-comma-kept
+EXPECT_HAS | w/cs/jobs.tsv | 2/english\tsay "hi"\t | csv-doubled-quote-unescaped
+EXPECT_LACKS | w/cs/jobs.tsv | 3/english | csv-number-only-cell-skipped
+EXPECT_HAS | w/cs/jobs.tsv | 3/note\ty | csv-other-cell-of-same-row-kept
+EXPECT_LACKS | w/cs/jobs.tsv | H2O\t | csv-never-column-not-a-job
+RUN | $T/cl.+x | jobs | $T/banks.pdl | gl | $T/w/gl | $T/none.tsv | --root | $T
+EXPECT_FILE | w/gl/jobs.tsv | g1.pdl:L1\tOne\t\ng2.pdl:L1\tTwo\t\n | glob-ids-carry-the-file-name
+RUN | $T/cl.+x | jobs | $T/banks.pdl | col | $T/w/col | $T/none.tsv | --root | $T
+EXPECT_FILE | w/col/jobs.tsv | chem1\tAcetic Acid\tformula=CH3COOH\nchem2\tEthanol\tformula=CH3CH2OH\n | named-pdl-column-text-and-context-formula-never-sent-as-text
+EXPECT_LACKS | w/col/jobs.tsv | Carboxylic | hint-column-not-extracted
+RUN | $T/cl.+x | jobs | $T/banks.pdl | bad | $T/w/bad | $T/none.tsv | --root | $T
+EXPECT_EXIT | 7 | text-column-also-never-refused
+RUN | $T/cl.+x | jobs | $T/banks.pdl | nosuch | $T/w/nosuch | $T/none.tsv | --root | $T
+EXPECT_EXIT | 7 | unknown-bank
+RUN | $T/cl.+x | jobs | $T/nomanifest.pdl | pd | $T/w/x | $T/none.tsv | --root | $T
+EXPECT_EXIT | 7 | missing-manifest
+RUN | $T/cl.+x | jobs | $T/banks.pdl
+EXPECT_EXIT | 2 | usage
+RUN | $T/cl.+x | jobs | $T/banks.pdl | pd | $T/w/lim | $T/none.tsv | --root | $T | --limit | 1
+EXPECT_OUT_IS | jobs=2 untranslated=1 answer_hits=0 bank=pd lang=zh | limit-caps-untranslated
+EXPECT_FILE | w/lim/all.tsv | L1\tWater\t\nL4\tFire\t\n | limit-keeps-all-in-all-tsv
+WRITE | ans.tsv | 7994a60e4b6b9d8d198f482003b32e0bb071dfcdcc46863ebed3e1ec2d705bea\tzh\tWater\t水\tshuǐ\t5\tok\tt\tj\n72dcb2adf44a76299565534d7d82c3d0ccc44dcdea5c55c4ec3827c5bb69ab4d\tzh\tFire\t火\thuǒ\t5\trejected\tt\tj\n
+RUN | $T/cl.+x | jobs | $T/banks.pdl | pd | $T/w/ans | $T/ans.tsv | --root | $T
+EXPECT_OUT_IS | jobs=2 untranslated=1 answer_hits=1 bank=pd lang=zh | answer-bank-hit-skips-water-rejected-fire-retried
+EXPECT_FILE | w/ans/jobs.tsv | L4\tFire\t\n | only-fire-left
+EXPECT_FILE | w/ans/hits.tsv | L1\tWater\t水\tshuǐ\t5\tok\n | hit-carries-the-stored-translation
+RUN | $T/cl.+x | jobs | $T/banks.pdl | pd | $T/w/ans2 | $T/ans.tsv | --root | $T | --lang | ja
+EXPECT_OUT_IS | jobs=2 untranslated=2 answer_hits=0 bank=pd lang=ja | key-includes-the-target-language
+SUMTREE | after | d
+EXPECT_EQ | $before | $after | source-banks-never-written
+CAPTURE | good
+# MUTANT: an answer-bank lookup that no longer ignores status=rejected must be caught by the rejected-fire check above
+RUN | cp | $T/csv_lab.c | $T/m1.c
+RUN | sed | -i | s@"rejected"@"zzz"@ | $T/m1.c
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m1.+x | $T/m1.c
+EXPECT_EXIT | 0 | mutant1-compiles
+RUN | $T/m1.+x | jobs | $T/banks.pdl | pd | $T/w/m1 | $T/ans.tsv | --root | $T
+EXPECT_OUT_IS | jobs=2 untranslated=0 answer_hits=2 bank=pd lang=zh | mutant1-behaves-differently-so-the-real-check-can-fail
+# MUTANT: key without the language would make --lang ja hit the zh answer
+RUN | cp | $T/csv_lab.c | $T/m2.c
+RUN | sed | -i | s@sha_add(&s, lang, strlen(lang));@sha_add(&s, "zh", 2);@ | $T/m2.c
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m2.+x | $T/m2.c
+RUN | $T/m2.+x | jobs | $T/banks.pdl | pd | $T/w/m2 | $T/ans.tsv | --root | $T | --lang | ja
+EXPECT_OUT_LACKS | untranslated=2 | mutant2-language-not-in-key-is-detected
+CLEAN |

@@ -1,0 +1,68 @@
+# 🧑‍🌾🎮 NIGHT 45 — Play Through the Entities 🎮🧑‍🌾
+# ====================================================================
+# Title: "🧑‍🌾🎮 NIGHT 45 — Play Through the Entities 🎮🧑‍🌾"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: The real push for the handoff. All gameplay goes through entities: their context menus carry the action rows, a state machine and an agent press the same rows through the taskbar relay, and the same entity lives on the desk and in pc-hq. What exists today, what was proven live, what was found wrong, and the build order.
+# Long-form: a work log with an honesty checkpoint. Checked on October eighth on the owner's machine.
+# Companion documents: 08-roadmap/design-docs/ENTITY-DRIVEN-GAMEPLAY-VIA-CONTEXT-MENUS-PLAN-2026-10-08.md, the Grok handoff addendum, MACHINE-USERS-SCHOOLS-AND-FARM-ANIMATION-PLAN-2026-10-08.md section five.
+
+**THE NARRATOR:** Tonight the owner said what the real work is. Drive all gameplay through entities, and through the taskbar relay.
+
+**MAXINE:** Say it the way the owner meant it.
+
+---
+
+**THE NARRATOR:** Part one. The idea.
+
+**TOMO:** An entity is the character. Everything it does in a game is a row in its own context menu. A person presses the row. The entity's own state machine presses the same row. An agent driving the relay presses it too. So a played game can be replayed and watched, and an agent never just knows the state: it opens its menu, reads its inventory, presses a row. The same entity lives on the desk and in pc-hq. Scores are the grades and levels that already exist. Farming animations and chat bubbles are views of the rows that were pressed.
+
+**RAHWEH:** Why through the menus?
+
+**TOMO:** Because that is what makes it real. If the game logic runs somewhere else and the entities are only pictures, nothing can be proven by watching. If the entities do the things, then the picture is the evidence.
+
+---
+
+**THE NARRATOR:** Part two. What exists.
+
+**TOMO:** On the desk, Asa and Ava are folders with a menu. Chat, Events, Play, Stop, Ledger, Directory, Inventory. None of those rows is a game action. They have a position file, x five sixty and y fifteen twenty, and nothing ever changes it. In Eden, the farming runs from the conductor's day tick, from outside the entities. Over the last stretch of the live history they eat, dig, plant, collect, water, talk, trade and repair. Talk rows carry real sentences. But there are no positions and no move rows.
+
+**MAXINE:** And in pc-hq?
+
+**TOMO:** There is a hero, with hit points and a position, owned by the player. Its context menu has Move, with a range diamond. And there is a chicken, a voxel object, with a position line in an animals file. Its brain is tiny: each tick it takes a random step of minus one, zero or one on each axis, stays inside the map, rewrites the file, and logs the move with its own entity name. That is the template for a non player character.
+
+---
+
+**THE NARRATOR:** Part three. What we proved, and what we found wrong.
+
+**TOMO:** I opened the pc-hq board on the owner's screen with its own launcher, and drove its book dropdown through the relay. The books are default, file explorer, two samples, test walls, test terraces, and a legacy one. There is no Eden test book yet. Then the chicken. The guide says it moves once per player action. That is out of date. The tick now lives in a clock daemon, once per game minute. And the current board does not start that daemon. No daemon was running, and the chicken file had not been written since October fifth.
+
+**RAHWEH:** So did it move?
+
+**TOMO:** Only after I started the daemon by hand and switched on autotick. Then the world tick climbed about one a second, and the chicken wandered: fourteen twelve, fourteen thirteen, thirteen thirteen, fourteen fourteen, fifteen thirteen, with a ledger row for every step. I backed up the three files first and restored them byte for byte afterwards, and stopped the daemon. So the loop works, in data. Not yet shown: the chicken moving on screen, and the hero's move through the relay.
+
+---
+
+**THE NARRATOR:** Part four. The Eden viewer, and the first video.
+
+**TOMO:** I built a first window that shows the owner's real Eden game, read only: the day, the farm as tiles, the people with their needs and coin, and the last ten history rows. It is running on the main screen. The game itself is finished: it ran past its twenty day length, at day sixty two thousand four hundred and ninety eight. That is why the status looked stale. It was never broken. I also found the old handoff was wrong about this and corrected it. Then I built a presentation script on top of the house's presentation harness, and a first video of twenty four seconds: the viewer, and the pc-hq board.
+
+---
+
+**THE NARRATOR:** Part five. The design and the order.
+
+**TOMO:** Action rows for Asa and Ava: walk, plant, water, dig, collect, eat, talk, trade, repair. Each row calls the existing event page with the entity as the actor, so the effects and history rows are unchanged; what changes is who presses it. Positions for everything. A walk row writes a move marker and updates the position the way the chicken does. A small state machine per entity chooses the next row by need and goal, and presses it through the relay path, never by writing state. Scores move only through deterministic checks.
+
+**RAHWEH:** The order?
+
+**TOMO:** One, read the five design documents and the sync path, and reconcile. Two, wire the clock tick into the current board and show the chicken on screen and the hero's move through the relay. Three, positions and the walk row. Four, the action rows. Five, the state machine. Six, chat bubbles, then farming animations. Seven, the pc-hq mirror, where the desk wins on conflict. Eight, the Eden test book, which is what we present. Each step has a proof someone can look at.
+
+---
+
+**THE NARRATOR:** Honesty checkpoint.
+
+**MAXINE:** What is verified?
+
+**TOMO:** Seen and measured: the viewer on the owner's screen with real data; the chicken's tick and ledger rows from the daemon; the book list. Read only, not run: the hero's move code. Not read yet: the needs design, the play mode harness, the conductor design, the robot chat blueprint, the pc-hq menu design, and how the desk and pc-hq sync. The plan is a proposal, and it asks the owner three questions: which book holds the Eden page, whether ticks are turn based or real time, and what the position unit is.
+
+**THE NARRATOR:** Play through the entities. If the picture is the evidence, the picture cannot lie.

@@ -1,0 +1,23 @@
+# Behavior Bank entry for the harness `pchq_playtest_action` (see HARNESS-BEHAVIOR-BANK-DESIGN.md). Weights on SYNONYM / SLOT / CORPUS rows are hand-seeded; only WEIGHT (from COUNTS) is measured.
+BEHAVIOR | harness.pchq_playtest_action
+KIND | spoke
+KEYWORDS | play-test, playtest, player menu, pc-hq, toggle, stop, play mode, mode file
+SYNONYM | playtest | 0.95
+SYNONYM | play-test | 1.00
+SYNONYM | test mode | 0.70
+SYNONYM | edit while playing | 0.60
+SYNONYM | debug play | 0.50
+SENTENCE | Runs the real pchq_board_action.sh from a scratch copy of the tree and reads back the play-mode file after each player verb.
+SENTENCE | Checks that playtest adds a second line playtest=1 to mode=on, that playtest again returns to plain play, and that stop and toggle clear it.
+SENTENCE | Looks for a regression where a new mode value would be read as OFF by older readers.
+SLOT | 0 | POINTS_TO=play-mode | WEIGHT=0.95
+SLOT | 1 | POINTS_TO=state-file | WEIGHT=0.60
+SLOT | 2 | POINTS_TO=pc-hq | WEIGHT=0.70
+CORPUS | game-engine | WEIGHT=0.80
+CORPUS | debug-build | WEIGHT=0.70
+SEQUENCE | 1 | exec ./ops/+x/harness_case_op.+x cases/pchq_playtest_action.pdl
+SEQUENCE | 2 | exec ./ops/+x/harness_verdict_op.+x cases/pchq_playtest_action.pdl
+SEQUENCE | 3 | exec ./ops/+x/harness_bank_op.+x cases/pchq_playtest_action.pdl
+SOURCE | hand-authored 2026-10-07 (claude); masters/synonyms/weights are seeds awaiting owner validation
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

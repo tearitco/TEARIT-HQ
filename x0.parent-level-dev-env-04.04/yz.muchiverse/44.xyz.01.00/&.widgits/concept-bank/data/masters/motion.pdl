@@ -4,5 +4,6 @@
 NODE | motion
 KIND | master
 N_SLOTS | 8
-MIRROR_GENERATED_AT | 2026-09-22 16:16:19
-# (no spoke currently points at this master)
+MIRROR_GENERATED_AT | 2026-10-07 20:33:02
+MIRROR_FROM | acceleration | WEIGHT=0.70
+MIRROR_FROM | velocity | WEIGHT=0.65

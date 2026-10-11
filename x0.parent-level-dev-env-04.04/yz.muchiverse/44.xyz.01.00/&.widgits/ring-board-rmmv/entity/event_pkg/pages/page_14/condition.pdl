@@ -1,0 +1,4 @@
+# Land: read the tile (kind code, price, rent) and who owns it
+COND | trigger | roll
+COND | kv | switches.txt | game_over | eq | 0
+COND | kv | variables.txt | phase | eq | 4

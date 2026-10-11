@@ -1,0 +1,6 @@
+SECTION | KEY | VALUE
+----------------------------------------
+# lessonformula.pdl - the SEED of the lesson formula. FORM | kind | weight: which kind of card to ask for (word, fact, howto). The live copy is state/lessonformula.pdl; accepted cards raise their kind's weight (+1, max 15), rejected ones lower it (-1, min 1), every change is a FORMULA row in the ledger. So the formula evolves with what testing/review keeps.
+FORM | word  | 4
+FORM | fact  | 8
+FORM | howto | 4

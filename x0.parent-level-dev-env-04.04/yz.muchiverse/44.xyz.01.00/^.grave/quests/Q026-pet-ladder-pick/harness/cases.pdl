@@ -1,0 +1,33 @@
+# Q026 cases for ladder_pick (locked). args: <ladder.pdl> <state.pdl> <now_epoch>. now 1000000 -> day 11 (1000000/86400 = 11).
+FILE | ladder.pdl | # providers, lowest order first\nPROVIDER \p mac_gemma \p 1 \p 3\nPROVIDER \p groq \p 2 \p 5\nPROVIDER \p poolside \p 3 \p 2\nPROVIDER \p off_one \p 4 \p 0\n
+FILE | empty_state.pdl | # nothing used yet\n
+FILE | s_first_used_up.pdl | USED \p mac_gemma \p 11 \p 3\n
+FILE | s_two_rows_sum.pdl | USED \p mac_gemma \p 11 \p 1\nUSED \p mac_gemma \p 11 \p 2\n
+FILE | s_old_day.pdl | USED \p mac_gemma \p 10 \p 99\n
+FILE | s_cool.pdl | COOLDOWN \p mac_gemma \p 1000500\n
+FILE | s_cool_over.pdl | COOLDOWN \p mac_gemma \p 999999\n
+FILE | s_cool_edge.pdl | COOLDOWN \p mac_gemma \p 1000000\n
+FILE | s_two_down.pdl | USED \p mac_gemma \p 11 \p 3\nCOOLDOWN \p groq \p 1000100\n
+FILE | s_all_down.pdl | USED \p mac_gemma \p 11 \p 3\nUSED \p groq \p 11 \p 5\nUSED \p poolside \p 11 \p 2\n
+FILE | s_almost.pdl | USED \p mac_gemma \p 11 \p 2\n
+FILE | tie_ladder.pdl | PROVIDER \p b_second \p 1 \p 5\nPROVIDER \p a_first \p 1 \p 5\n
+FILE | only_off.pdl | PROVIDER \p off_one \p 1 \p 0\n
+FILE | empty_ladder.pdl | # none\n
+CASE | fresh-picks-lowest-order | 0 | =PICK\pmac_gemma | ladder.pdl | empty_state.pdl | 1000000
+CASE | missing-state-is-empty | 0 | =PICK\pmac_gemma | ladder.pdl | no_such_state.pdl | 1000000
+CASE | budget-used-up-falls-to-next | 0 | =PICK\pgroq | ladder.pdl | s_first_used_up.pdl | 1000000
+CASE | one-short-of-budget-still-picks | 0 | =PICK\pmac_gemma | ladder.pdl | s_almost.pdl | 1000000
+CASE | used-rows-are-summed | 0 | =PICK\pgroq | ladder.pdl | s_two_rows_sum.pdl | 1000000
+CASE | yesterdays-use-does-not-count | 0 | =PICK\pmac_gemma | ladder.pdl | s_old_day.pdl | 1000000
+CASE | cooldown-skips-provider | 0 | =PICK\pgroq | ladder.pdl | s_cool.pdl | 1000000
+CASE | cooldown-over-picks-again | 0 | =PICK\pmac_gemma | ladder.pdl | s_cool_over.pdl | 1000000
+CASE | cooldown-ends-exactly-now | 0 | =PICK\pmac_gemma | ladder.pdl | s_cool_edge.pdl | 1000000
+CASE | two-down-falls-to-third | 0 | =PICK\ppoolside | ladder.pdl | s_two_down.pdl | 1000000
+CASE | all-exhausted | 1 | =NONE\pexhausted | ladder.pdl | s_all_down.pdl | 1000000
+CASE | budget-zero-is-disabled | 1 | =NONE\pexhausted | only_off.pdl | empty_state.pdl | 1000000
+CASE | tie-order-uses-file-order | 0 | =PICK\pb_second | tie_ladder.pdl | empty_state.pdl | 1000000
+CASE | empty-ladder | 1 | =NONE\pexhausted | empty_ladder.pdl | empty_state.pdl | 1000000
+CASE | next-day-resets-budget | 0 | =PICK\pmac_gemma | ladder.pdl | s_first_used_up.pdl | 1086400
+CASE | missing-ladder | 2 | * | nope.pdl | empty_state.pdl | 1000000
+CASE | bad-now | 2 | * | ladder.pdl | empty_state.pdl | soon
+CASE | too-few-args | 2 | * | ladder.pdl

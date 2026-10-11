@@ -1,0 +1,2 @@
+# concept-bank-hq config. bank_dir = the concept-bank dir (has data/ and ops/). Relative = against house root.
+SECTION      | bank_dir            | &.widgits/concept-bank

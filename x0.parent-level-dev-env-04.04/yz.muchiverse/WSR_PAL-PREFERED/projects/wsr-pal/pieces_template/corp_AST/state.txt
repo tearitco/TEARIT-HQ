@@ -1,0 +1,15 @@
+current_state=0
+decision_mode=1
+cash=425.49
+stock_price=205.42
+book_value=2736.54
+shares_outstanding=18.14
+market_cap=3727.06
+debt_to_equity=0.00
+risk_bias=68
+shares_held=0
+pending_action=
+last_action=hold
+human_decision=
+owned_by=
+industry=real_estate

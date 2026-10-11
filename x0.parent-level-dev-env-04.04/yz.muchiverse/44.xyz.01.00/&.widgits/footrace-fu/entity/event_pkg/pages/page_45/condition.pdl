@@ -1,0 +1,3 @@
+# Setup 3: guardrail - ninjas_per_player above ninjas_max -> refused
+COND | trigger | setup
+COND | kv | rules.pdl | ninjas_per_player | gt | @rules.pdl:ninjas_max

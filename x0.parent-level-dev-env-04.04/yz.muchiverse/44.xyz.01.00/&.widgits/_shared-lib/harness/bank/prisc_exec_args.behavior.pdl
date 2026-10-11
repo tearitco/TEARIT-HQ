@@ -1,0 +1,16 @@
+# Behavior Bank entry for the harness `prisc_exec_args` (see HARNESS-BEHAVIOR-BANK-DESIGN.md). Weights on SYNONYM / SLOT / CORPUS rows are hand-seeded; only WEIGHT (from COUNTS) is measured.
+BEHAVIOR | harness.prisc_exec_args
+KIND | spoke
+KEYWORDS | prisc, exec, arguments, args, pal, argv, many arguments
+SYNONYM | parameters | 0.8
+SYNONYM | argument list | 0.9
+SYNONYM | command line | 0.6
+SENTENCE | A pal runs a small echo op three times with one, five and a register plus literal arguments, then a case reads back exactly what each run received.
+SENTENCE | Proves the prisc exec instruction passes many literal arguments in order and that the older one-literal and register forms still behave the same.
+SLOT | 0 | POINTS_TO=pal-harness | WEIGHT=0.80
+SLOT | 1 | POINTS_TO=process-lifecycle | WEIGHT=0.30
+CORPUS | game-engine | WEIGHT=0.50
+SEQUENCE | 1 | exec ./ops/+x/args_echo_op.+x results/args_echo_many.out one two three four five
+SOURCE | hand-authored 2026-10-07 (claude); masters/synonyms/weights are seeds awaiting owner validation
+COUNTS | reward=3 | punish=0 | cursor=587
+WEIGHT | 0.8000

@@ -1,0 +1,189 @@
+/* card_check.c - tiny pet‑training card validator */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
+#define MAX_LINE 4096
+#define MAX_IDS 1024
+
+static char *trim(char *s) {
+    char *start = s;
+    while (*start == ' ' || *start == '\t')
+        start++;
+    char *end = start + strlen(start);
+    while (end > start && (end[-1] == ' ' || end[-1] == '\t' || end[-1] == '\r' || end[-1] == '\n'))
+        *--end = '\0';
+    if (start != s)
+        memmove(s, start, end - start + 1);
+    return s;
+}
+
+/* case‑insensitive search for "http" */
+static int contains_http(const char *s) {
+    for (; *s; ++s) {
+        if (tolower((unsigned char)s[0]) == 'h' &&
+            tolower((unsigned char)s[1]) == 't' &&
+            tolower((unsigned char)s[2]) == 't' &&
+            tolower((unsigned char)s[3]) == 'p')
+            return 1;
+    }
+    return 0;
+}
+
+/* check if all bytes are printable ASCII (32‑126) */
+static int printable_ascii(const char *s) {
+    for (; *s; ++s) {
+        unsigned char c = (unsigned char)*s;
+        if (c < 32 || c > 126)
+            return 0;
+    }
+    return 1;
+}
+
+int main(int argc, char *argv[]) {
+    if (argc != 2) return 2;
+    FILE *fp = fopen(argv[1], "r");
+    if (!fp) return 2;
+
+    char linebuf[MAX_LINE];
+    int line_no = 0;
+    int ok_cnt = 0, bad_cnt = 0;
+    char *accepted_ids[MAX_IDS];
+    int accepted_n = 0;
+
+    while (fgets(linebuf, sizeof(linebuf), fp)) {
+        ++line_no;
+        /* remove trailing newline for processing */
+        trim(linebuf);
+        if (linebuf[0] == '\0')
+            continue; /* blank line */
+        char *p = linebuf;
+        while (*p == ' ' || *p == '\t')
+            ++p;
+        if (*p == '#')
+            continue; /* comment */
+
+        char *trimmed = linebuf;
+        /* notcard check */
+        if (strncmp(trimmed, "CARD", 4) != 0) {
+            printf("BAD|%d|notcard\n", line_no);
+            ++bad_cnt;
+            continue;
+        }
+
+        /* split into fields */
+        char *fields[6];
+        int fcnt = 0;
+        char *token = strtok(trimmed, "|");
+        while (token && fcnt < 6) {
+            fields[fcnt++] = trim(token);
+            token = strtok(NULL, "|");
+        }
+        if (fcnt != 6 || strcmp(fields[0], "CARD") != 0) {
+            printf("BAD|%d|fields\n", line_no);
+            ++bad_cnt;
+            continue;
+        }
+
+        const char *id = fields[1];
+        const char *kind = fields[2];
+        const char *prompt = fields[3];
+        const char *answer = fields[4];
+        const char *source = fields[5];
+
+        /* id check */
+        size_t idlen = strlen(id);
+        int id_ok = (idlen >= 3 && idlen <= 24);
+        if (id_ok) {
+            for (size_t i = 0; i < idlen; ++i) {
+                char c = id[i];
+                if (!(c >= 'a' && c <= 'z') && !(c >= '0' && c <= '9') && c != '_') {
+                    id_ok = 0;
+                    break;
+                }
+            }
+        }
+        if (!id_ok) {
+            printf("BAD|%d|id\n", line_no);
+            ++bad_cnt;
+            continue;
+        }
+
+        /* kind check */
+        if (!(strcmp(kind, "word") == 0 ||
+              strcmp(kind, "fact") == 0 ||
+              strcmp(kind, "howto") == 0)) {
+            printf("BAD|%d|kind\n", line_no);
+            ++bad_cnt;
+            continue;
+        }
+
+        /* prompt length */
+        size_t plen = strlen(prompt);
+        if (plen < 3 || plen > 60) {
+            printf("BAD|%d|prompt\n", line_no);
+            ++bad_cnt;
+            continue;
+        }
+
+        /* answer length */
+        size_t alen = strlen(answer);
+        if (alen < 1 || alen > 80) {
+            printf("BAD|%d|answer\n", line_no);
+            ++bad_cnt;
+            continue;
+        }
+
+        /* source check */
+        if (!(strcmp(source, "gemma") == 0 ||
+              strcmp(source, "groq") == 0 ||
+              strcmp(source, "poolside") == 0 ||
+              strcmp(source, "openrouter") == 0 ||
+              strcmp(source, "human") == 0)) {
+            printf("BAD|%d|source\n", line_no);
+            ++bad_cnt;
+            continue;
+        }
+
+        /* charset check */
+        if (!printable_ascii(prompt) || !printable_ascii(answer)) {
+            printf("BAD|%d|charset\n", line_no);
+            ++bad_cnt;
+            continue;
+        }
+
+        /* url check */
+        if (contains_http(prompt) || contains_http(answer)) {
+            printf("BAD|%d|url\n", line_no);
+            ++bad_cnt;
+            continue;
+        }
+
+        /* duplicate id check */
+        int duplicate = 0;
+        for (int i = 0; i < accepted_n; ++i) {
+            if (strcmp(accepted_ids[i], id) == 0) {
+                duplicate = 1;
+                break;
+            }
+        }
+        if (duplicate) {
+            printf("BAD|%d|dup\n", line_no);
+            ++bad_cnt;
+            continue;
+        }
+
+        /* Passed all checks */
+        printf("OK|%d\n", line_no);
+        ++ok_cnt;
+        /* store accepted id */
+        if (accepted_n < MAX_IDS) {
+            accepted_ids[accepted_n++] = strdup(id);
+        }
+    }
+
+    printf("SUMMARY|ok=%d|bad=%d\n", ok_cnt, bad_cnt);
+    fclose(fp);
+    return (bad_cnt == 0) ? 0 : 1;
+}

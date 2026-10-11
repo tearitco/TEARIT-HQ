@@ -1,0 +1,6 @@
+# Setup 3: guardrail - army HP of seat 2 above rules.pdl max_army_hp -> refused
+COND | trigger | setup
+COND | kv | variables.txt | players | ge | 2
+COND | kv | variables.txt | players | ge | @rules.pdl:players_min
+COND | kv | variables.txt | players | le | @rules.pdl:players_max
+COND | kv | variables.txt | army_hp_2 | gt | @rules.pdl:max_army_hp

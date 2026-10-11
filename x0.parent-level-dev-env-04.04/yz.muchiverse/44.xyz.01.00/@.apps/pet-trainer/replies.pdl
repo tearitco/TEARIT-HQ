@@ -1,0 +1,34 @@
+# replies.pdl - what the pet says after it does something. REPLY | verb | mood | text. mood is happy or sad (from the happy meter). The pet only SPEAKS words the master taught it
+# (lexicon); these are its fixed reactions. Add rows to give it more to say. The master teaches words with: pet_event.sh teach "<phrase>" <verb> [item]
+REPLY | feed   | happy | yum yum!
+REPLY | feed   | sad   | ...thanks
+REPLY | sleep  | happy | zzz... nice
+REPLY | sleep  | sad   | zzz
+REPLY | wash   | happy | splash! so clean
+REPLY | wash   | sad   | brr
+REPLY | play   | happy | wheee!
+REPLY | play   | sad   | ok...
+REPLY | touch  | happy | hehe!
+REPLY | touch  | sad   | hm?
+REPLY | unknown| happy | ? (teach me: say what it means)
+REPLY | unknown| sad   | ?
+REPLY | hello  | happy | hi master!
+REPLY | hello  | sad   | hi...
+# SAY | need | text : what it says on its own when a need is high (pet_event.sh speak); the master rewards or scolds with good / bad right after
+SAY | hungry | tummy empty...
+SAY | hungry | food? food?
+SAY | sleepy | so sleepy
+SAY | sleepy | zzz...
+SAY | dirty  | i feel yucky
+SAY | happy  | la la la
+SAY | happy  | i like it here
+SAY | chatter | hmm hmm
+SAY | chatter | what is that?
+REPLY | go     | happy | okay, going!
+REPLY | go     | sad   | ...ok
+REPLY | climb  | happy | up we go!
+REPLY | climb  | sad   | ...ok
+REPLY | build  | happy | let me build!
+REPLY | build  | sad   | ...ok
+REPLY | study  | happy | let me read!
+REPLY | study  | sad   | ...later

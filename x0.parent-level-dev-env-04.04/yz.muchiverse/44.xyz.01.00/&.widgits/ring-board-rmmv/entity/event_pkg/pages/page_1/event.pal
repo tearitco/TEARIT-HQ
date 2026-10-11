@@ -1,0 +1,23 @@
+# event.pal - Setup: mint the bank, clear the table, dormant seats off (2 to 4 players: variable `players`) (trigger setup). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set turn 0
+exec ops/+x/var_math.+x . set current 1
+exec ops/+x/var_math.+x . set phase 0
+exec ops/+x/var_math.+x . set winner 0
+exec ops/+x/var_math.+x . set game_over_reason 0
+exec ops/+x/var_math.+x . set dice_counter 0
+exec ops/+x/var_math.+x . set switches.txt:game_over 0
+exec ops/+x/var_math.+x . set switches.txt:awaiting_buy 0
+exec ops/+x/var_math.+x . set alive_1 0
+exec ops/+x/var_math.+x . set alive_2 0
+exec ops/+x/var_math.+x . set alive_3 0
+exec ops/+x/var_math.+x . set alive_4 0
+exec ops/+x/var_math.+x . set pos_1 0
+exec ops/+x/var_math.+x . set pos_2 0
+exec ops/+x/var_math.+x . set pos_3 0
+exec ops/+x/var_math.+x . set pos_4 0
+exec ops/+x/var_math.+x . set jail_1 0
+exec ops/+x/var_math.+x . set jail_2 0
+exec ops/+x/var_math.+x . set jail_3 0
+exec ops/+x/var_math.+x . set jail_4 0
+exec ops/+x/cash_transfer.+x . mint bank rules.pdl:bank_start setup
+halt

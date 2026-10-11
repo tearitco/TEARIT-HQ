@@ -1,0 +1,3 @@
+COND | trigger | feed
+COND | kv | items.txt | item_apple | lt | 1
+COND | kv | variables.txt | coins | ge | @food_prices.pdl:apple

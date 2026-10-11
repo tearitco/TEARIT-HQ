@@ -5,6 +5,27 @@
 #include <string.h>
 #include <ctype.h>
 
+
+/* UI-scale-aware length (2026-10-07, TASKBAR-LOOK-UNIFICATION doc sec 7).
+ * "36ui" = 36 base px multiplied by g_css_ui_pct/100 - the SAME factor the
+ * taskbar strip's C scaled() uses, so a CSS window can size itself like the
+ * strip on every monitor. Plain "36"/"36px" stay raw px (unchanged, so every
+ * existing stylesheet parses exactly as before). g_css_ui_pct is set by the
+ * renderer (kh_ui_apply_scale); it is read at PARSE time, so a live scale
+ * change takes effect on the next reparse. */
+int g_css_ui_pct = 100;
+int css_len(const char *v) {
+    int n = atoi(v);
+    const char *q = v;
+    while (*q == '-' || *q == '+' || isdigit((unsigned char)*q)) q++;
+    if (q[0] == 'u' && q[1] == 'i' && g_css_ui_pct != 100 && n != 0) {
+        int r = (n * g_css_ui_pct + (n > 0 ? 50 : -50)) / 100;
+        if (r == 0) r = n > 0 ? 1 : -1;
+        return r;
+    }
+    return n;
+}
+
 void css_style_init(CssStyle *s) {
     memset(s, 0, sizeof(*s));
 }
@@ -63,7 +84,7 @@ static void parse_declaration(const char *prop, const char *val, CssStyle *out) 
         char *tok = strtok(tmp, " ");
         int i = 0;
         while (tok) {
-            if (i == 0) w = atoi(tok);
+            if (i == 0) w = css_len(tok);
             if (tok[0] == '#') snprintf(color, sizeof(color), "%s", tok);
             tok = strtok(NULL, " ");
             i++;
@@ -73,23 +94,23 @@ static void parse_declaration(const char *prop, const char *val, CssStyle *out) 
     } else if (strcmp(prop, "position") == 0) {
         out->has_position = 1; out->position_absolute = (strcmp(v, "absolute") == 0);
     } else if (strcmp(prop, "top") == 0) {
-        out->has_top = 1; out->top = atoi(v);
+        out->has_top = 1; out->top = css_len(v);
     } else if (strcmp(prop, "left") == 0) {
-        out->has_left = 1; out->left = atoi(v);
+        out->has_left = 1; out->left = css_len(v);
     } else if (strcmp(prop, "width") == 0) {
         out->has_width = 1;
         out->width_is_pct = (strchr(v, '%') != NULL);
-        out->width = atoi(v);
+        out->width = css_len(v);
     } else if (strcmp(prop, "height") == 0) {
         out->has_height = 1;
         out->height_is_pct = (strchr(v, '%') != NULL);
-        out->height = atoi(v);
+        out->height = css_len(v);
     } else if (strcmp(prop, "padding") == 0) {
-        out->has_padding = 1; out->padding = atoi(v);
+        out->has_padding = 1; out->padding = css_len(v);
     } else if (strcmp(prop, "font-family") == 0) {
         out->has_font_family = 1; snprintf(out->font_family, sizeof(out->font_family), "%s", v);
     } else if (strcmp(prop, "font-size") == 0) {
-        out->has_font_size = 1; out->font_size = atoi(v);
+        out->has_font_size = 1; out->font_size = css_len(v);
     } else if (strcmp(prop, "font-weight") == 0) {
         out->has_font_weight = 1; out->font_weight_bold = (strcmp(v, "bold") == 0 || atoi(v) >= 600);
     } else if (strcmp(prop, "z-index") == 0) {
@@ -109,7 +130,7 @@ static void parse_declaration(const char *prop, const char *val, CssStyle *out) 
     } else if (strcmp(prop, "flex-wrap") == 0) {
         out->has_flex_wrap = 1; out->flex_wrap = (strcmp(v, "wrap") == 0);
     } else if (strcmp(prop, "gap") == 0) {
-        out->has_gap = 1; out->gap = atoi(v);
+        out->has_gap = 1; out->gap = css_len(v);
     }
     /* unrecognized properties (box-shadow, border-radius, grid, etc.) are
      * silently ignored - out of scope for this minimal subset. */

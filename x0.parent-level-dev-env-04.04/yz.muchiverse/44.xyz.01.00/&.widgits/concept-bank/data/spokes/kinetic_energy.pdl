@@ -1,0 +1,9 @@
+# CONCEPT_SPOKE - kinetic_energy.pdl
+# Hand-recorded 2026-10-07 (proposer=human/claude, owner to review). Provenance: the house already named this pair in ^.hai-horn/irl_apply_signal.sh;
+# the WEIGHT is a hand-set STARTING value, not measured. It moves only through a validated, human-promoted EDIT (see AUTO-PROMOTION-RULE.md).
+
+NODE | kinetic_energy
+KIND | spoke
+N_SLOTS | 8
+
+SLOT | 0 | POINTS_TO=energy | WEIGHT=0.60

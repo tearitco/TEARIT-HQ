@@ -100,7 +100,7 @@ static int read_click_two_step(const char *house) {
  * </> stepper buttons, never writes it (khtpm_core_render.c's own
  * desktop_set_font_family() owns writing). */
 static void read_font_family(const char *house, char *out, size_t out_sz) {
-    snprintf(out, out_sz, "DejaVu Sans"); /* same compile-time default the renderer itself uses */
+    snprintf(out, out_sz, "M+ 1m"); /* same compile-time default the renderer itself uses */
     char path[PATH_MAX];
     snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house);
     FILE *f = fopen(path, "r");
@@ -117,6 +117,115 @@ static void read_font_family(const char *house, char *out, size_t out_sz) {
     fclose(f);
 }
 
+/* 2026-10-08 (owner: settings window needs a visible, usable change):
+ * publish the CURRENT opacity and UI size as text so the buttons can sit
+ * next to the value they change. Read-only, same as the readers above. */
+static double read_opacity(const char *house) {
+    char path[PATH_MAX];
+    snprintf(path, sizeof(path), "%s/#.desktop/livedesk_theme.pdl", house);
+    FILE *f = fopen(path, "r");
+    if (!f) return 1.0;
+    char line[160];
+    double v = 1.0;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "COLOR", 5) != 0 || !strstr(line, "opacity")) continue;
+        char *bar = strrchr(line, '|');
+        if (bar) v = atof(bar + 1);
+        break;
+    }
+    fclose(f);
+    return v;
+}
+
+static double read_font_scale(const char *house) {
+    char path[PATH_MAX];
+    snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house);
+    FILE *f = fopen(path, "r");
+    if (!f) return 1.0;
+    char line[128];
+    double v = 1.0;
+    while (fgets(line, sizeof(line), f))
+        if (strncmp(line, "font_scale=", 11) == 0) { v = atof(line + 11); break; }
+    fclose(f);
+    return v;
+}
+
+/* readable label on any swatch: light text on dark fills, dark on light. */
+static const char *tone_for_hex(const char *hex) {
+    unsigned r = 0, g = 0, b = 0;
+    if (sscanf(hex, "#%2x%2x%2x", &r, &g, &b) != 3) return "tone-light";
+    return (r * 299 + g * 587 + b * 114) / 1000 < 140 ? "tone-dark" : "tone-light";
+}
+
+/* current bar skin id (hq_ui.pdl bar_skin=) and its catalog label (bar_skins.pdl); read-only. */
+static void read_bar_skin_label(const char *house, char *out, size_t out_sz) {
+    char path[PATH_MAX], line[1200], id[48] = "";
+    snprintf(out, out_sz, "Bar skin: off");
+    snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house);
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    while (fgets(line, sizeof(line), f))
+        if (strncmp(line, "bar_skin=", 9) == 0) {
+            snprintf(id, sizeof(id), "%s", line + 9);
+            id[strcspn(id, "\r\n")] = '\0';
+            break;
+        }
+    fclose(f);
+    if (!id[0]) return;
+    snprintf(path, sizeof(path), "%s/&.widgits/taskbar-settings/bar_skins.pdl", house);
+    f = fopen(path, "r");
+    if (!f) return;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "SKIN", 4) != 0) continue;
+        char *a = strchr(line, '|'); if (!a) continue;
+        a++; while (*a == ' ') a++;
+        char *b = strchr(a, '|'); if (!b) continue;
+        *b = '\0';
+        size_t l = strlen(a); while (l > 0 && a[l - 1] == ' ') a[--l] = '\0';
+        if (strcmp(a, id) != 0) continue;
+        char *lab = b + 1; while (*lab == ' ') lab++;
+        char *c = strchr(lab, '|'); if (!c) continue;
+        *c = '\0';
+        l = strlen(lab); while (l > 0 && lab[l - 1] == ' ') lab[--l] = '\0';
+        snprintf(out, out_sz, "Bar skin: %s", lab);
+        break;
+    }
+    fclose(f);
+}
+
+/* skin catalog for the swatch-style picker: sk_<i>_id / _label / _ring (+ an Off entry first). */
+static int append_skin_rows(const char *house, char *ui, size_t cap, size_t off, const char *cur) {
+    char path[PATH_MAX], line[1200];
+    int n = 0;
+    off += (size_t)snprintf(ui + off, cap - off, "sk_0_id=\nsk_0_label=Off (solid)\nsk_0_bar=no-skin\nsk_0_ring=%s\n", cur[0] ? "" : "ring-bg");
+    n = 1;
+    snprintf(path, sizeof(path), "%s/&.widgits/taskbar-settings/bar_skins.pdl", house);
+    FILE *f = fopen(path, "r");
+    if (f) {
+        while (n < 24 && fgets(line, sizeof(line), f)) {
+            if (strncmp(line, "SKIN", 4) != 0) continue;
+            char *a = strchr(line, '|'); if (!a) continue;
+            a++; while (*a == ' ') a++;
+            char *b = strchr(a, '|'); if (!b) continue;
+            *b = '\0';
+            size_t l = strlen(a); while (l > 0 && a[l - 1] == ' ') a[--l] = '\0';
+            char *lab = b + 1; while (*lab == ' ') lab++;
+            char *c = strchr(lab, '|'); if (!c) continue;
+            *c = '\0';
+            l = strlen(lab); while (l > 0 && lab[l - 1] == ' ') lab[--l] = '\0';
+            off += (size_t)snprintf(ui + off, cap - off, "sk_%d_id=%s\nsk_%d_label=%s\nsk_%d_bar=skin-bar skin-for-%s\nsk_%d_ring=%s\n",
+                                    n, a, n, lab, n, a, n, strcmp(a, cur) == 0 ? "ring-bg" : "");
+            n++;
+        }
+        fclose(f);
+    }
+    off += (size_t)snprintf(ui + off, cap - off, "n_skins=%d\n", n);
+    return (int)off;
+}
+
+static const char *g_house_for_skins = ".";
+static char g_cur_skin_id[48];
+
 static void read_state(const char *path, int *phase, int *bg, int *fg, int *apply) {
     *phase = 0; *bg = -1; *fg = -1; *apply = 0;
     FILE *f = fopen(path, "r");
@@ -131,7 +240,8 @@ static void read_state(const char *path, int *phase, int *bg, int *fg, int *appl
     fclose(f);
 }
 
-static void build_ui(char *ui, size_t cap, int phase, int bg, int fg, int click_two_step, const char *font_family) {
+static void build_ui(char *ui, size_t cap, int phase, int bg, int fg, int click_two_step, const char *font_family,
+                     double opacity, double font_scale, const char *bar_label) {
     const char *prompt =
         phase <= 0 ? "pick a background swatch" :
         phase == 1 ? "pick a text swatch"       :
@@ -149,10 +259,23 @@ static void build_ui(char *ui, size_t cap, int phase, int bg, int fg, int click_
         off += (size_t)snprintf(ui + off, cap - off, "sw_%d_ring=%s\n", i, ring);
         off += (size_t)snprintf(ui + off, cap - off, "sw_%d_name=%s\n", i, g_name_buf[i]);
         off += (size_t)snprintf(ui + off, cap - off, "sw_%d_hex=%s\n", i, g_hex_buf[i]);
+        off += (size_t)snprintf(ui + off, cap - off, "sw_%d_tone=%s\n", i, tone_for_hex(g_hex_buf[i]));
     }
     off += (size_t)snprintf(ui + off, cap - off, "click_two_step_label=%s\n",
                             click_two_step ? "Click: 2-step" : "Click: 1-step");
     off += (size_t)snprintf(ui + off, cap - off, "font_family=%s\n", font_family);
+    /* "M+ 1m" is GameFont (RPG Maker's font) and the house default; name it so */
+    if (strcmp(font_family, "M+ 1m") == 0)
+        off += (size_t)snprintf(ui + off, cap - off, "font_label=Font: GameFont (RPG Maker, M+ 1m) - the default\n");
+    else
+        off += (size_t)snprintf(ui + off, cap - off, "font_label=Font: %s\n", font_family);
+    off += (size_t)snprintf(ui + off, cap - off, "opacity_label=Opacity: %d%%\n", (int)(opacity * 100.0 + 0.5));
+    off += (size_t)snprintf(ui + off, cap - off, "bar_skin_label=%s\n", bar_label);
+    off = (size_t)append_skin_rows(g_house_for_skins, ui, cap, off, g_cur_skin_id);
+    off += (size_t)snprintf(ui + off, cap - off, "size_label=Size: %d%%\n", (int)(font_scale * 100.0 + 0.5));
+    off += (size_t)snprintf(ui + off, cap - off, "colors_label=Colors - background: %s, text: %s. Pick below (green ring = background, gold ring = text)\n",
+                            (bg >= 0 && bg < g_n_swatches) ? g_name_buf[bg] : "-",
+                            (fg >= 0 && fg < g_n_swatches) ? g_name_buf[fg] : "-");
 }
 
 int main(int argc, char **argv) {
@@ -175,7 +298,27 @@ int main(int argc, char **argv) {
         char font_family[64];
         read_font_family(house, font_family, sizeof(font_family));
         ui[0] = '\0';
-        build_ui(ui, sizeof(ui), phase, bg, fg, click_two_step, font_family);
+        char bar_label[96];
+        read_bar_skin_label(house, bar_label, sizeof(bar_label));
+        g_house_for_skins = house;
+        g_cur_skin_id[0] = '\0';
+        if (strncmp(bar_label, "Bar skin: off", 13) != 0) {
+            /* id again, straight from hq_ui.pdl (label may differ from id) */
+            char pth[PATH_MAX], ln[200];
+            snprintf(pth, sizeof(pth), "%s/#.desktop/hq_ui.pdl", house);
+            FILE *hf = fopen(pth, "r");
+            if (hf) {
+                while (fgets(ln, sizeof(ln), hf))
+                    if (strncmp(ln, "bar_skin=", 9) == 0) {
+                        snprintf(g_cur_skin_id, sizeof(g_cur_skin_id), "%s", ln + 9);
+                        g_cur_skin_id[strcspn(g_cur_skin_id, "\r\n")] = '\0';
+                        break;
+                    }
+                fclose(hf);
+            }
+        }
+        build_ui(ui, sizeof(ui), phase, bg, fg, click_two_step, font_family,
+                 read_opacity(house), read_font_scale(house), bar_label);
 
         if (strcmp(ui, last) != 0) {              /* content-gated write */
             FILE *f = fopen(tmp_path, "w");

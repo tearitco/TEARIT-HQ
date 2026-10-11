@@ -1,0 +1,20 @@
+# Behavior Bank entry for the harness `csv_batch` (see HARNESS-BEHAVIOR-BANK-DESIGN.md). Weights on SYNONYM / SLOT / CORPUS rows are hand-seeded; only WEIGHT (from COUNTS) is measured.
+BEHAVIOR | harness.csv_batch
+KIND | spoke
+KEYWORDS | batch, prompt, parse, token budget, reply parsing, rows
+SYNONYM | split into batches | 0.80
+SYNONYM | parse model reply | 0.70
+SYNONYM | build prompt | 0.60
+SENTENCE | Splits a job table into token-budgeted batches, builds the translate and score prompts and parses a model reply tolerantly back to job ids.
+SENTENCE | Checks row and token caps, numbering, code fences, bar and tab forms, duplicates, unknown numbers and missing rows.
+SLOT | 0 | POINTS_TO=text-processing | WEIGHT=0.85
+SLOT | 1 | POINTS_TO=translation-pipeline | WEIGHT=0.85
+SLOT | 2 | POINTS_TO=llm-io | WEIGHT=0.60
+CORPUS | translation | WEIGHT=0.80
+CORPUS | debug-build | WEIGHT=0.50
+SEQUENCE | 1 | exec ./ops/+x/harness_case_op.+x cases/csv_batch.pdl
+SEQUENCE | 2 | exec ./ops/+x/harness_verdict_op.+x cases/csv_batch.pdl
+SEQUENCE | 3 | exec ./ops/+x/harness_bank_op.+x cases/csv_batch.pdl
+SOURCE | hand-authored 2026-10-07 (claude); masters/synonyms/weights are seeds awaiting owner validation
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

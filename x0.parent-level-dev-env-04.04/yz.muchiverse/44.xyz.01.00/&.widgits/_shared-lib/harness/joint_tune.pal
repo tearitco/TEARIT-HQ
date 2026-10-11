@@ -1,0 +1,4 @@
+# joint_tune.pal - LOCKED acceptance harness for the weights-manager op joint_tune. Read results/joint_tune.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/joint_tune.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/joint_tune.pdl
+halt

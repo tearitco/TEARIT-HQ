@@ -1,0 +1,7 @@
+# event.pal - Bankruptcy: the payer could not cover it (cash_transfer said bankrupt, all its cash went to the creditor) -> player out, owned tiles return to the bank (trigger roll). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set alive_{current} 0
+exec ops/+x/var_sweep.+x . owner_ {current} 0
+exec ops/+x/var_math.+x . set jail_{current} 0
+exec ops/+x/var_math.+x . add bankruptcies bankruptcies 1
+exec ops/+x/var_math.+x . set phase 2
+halt

@@ -1,0 +1,24 @@
+/* tomom-hq.css - merged on the renderer default (khtpm_css_parser.c: bare
+   tag / single compound class chain / #id only).  Mirrors chain-hq.css. */
+
+window {
+    width: 820px;
+    height: 640px;
+    background-color: #14161c;
+    font-family: DejaVu Sans;
+    font-size: 11px;
+}
+.tomom-sidebar { background-color: #0d0f14; border: 1px solid #262a33; border-color: #262a33; }
+.tomom-panel   { background-color: #1b1e26; border: 1px solid #333846; border-color: #333846; }
+.tomom-who     { color: #7c8399; font-size: 10px; padding: 6px 8px 4px 8px; }
+.tomom-tab     { color: #cfd3de; font-size: 11px; padding: 6px 10px; }
+.tomom-tab.tab-active { background-color: #2d4059; color: #ffffff; }
+.tomom-status  { color: #8a93a8; font-size: 10px; padding: 4px 8px; }
+.tomom-sel     { color: #7ee0a0; font-size: 13px; padding: 4px 10px 2px 10px; }
+.tomom-kv      { color: #d6d9e3; font-size: 11px; padding: 1px 10px; }
+.tomom-quiet   { color: #5a6072; font-size: 10px; padding: 3px 10px; }
+.tomom-flt     { color: #ffffff; background-color: #11141b; border: 1px solid #333846; border-color: #333846; padding: 4px 6px; }
+.tomom-btn     { color: #ffffff; background-color: #3a5f8a; border: 1px solid #4a7fbf; border-color: #4a7fbf; padding: 3px 10px; }
+.tomom-row     { color: #b9c0d4; font-size: 11px; font-family: DejaVu Sans Mono; padding: 1px 8px; }
+.tomom-row.row-sel { background-color: #2d4059; color: #ffffff; }
+.tomom-row.ask-row { color: #d6d9e3; }

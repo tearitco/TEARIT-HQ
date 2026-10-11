@@ -1,0 +1,11 @@
+# needs_tunables.pdl - every number the digipet rules use, as `key=int` rows (read by prisc SYS_GET_KV_INT and by event_page_op conditions).
+# Direction (differs from ENTITY-NEEDS-AND-CARE-DESIGN's recommended 100 = full): hunger 0 = full, it RISES one step per day tick.
+hunger_step=1
+# T1: hunger >= hungry_at sets the Hungry state (the critical-need gate, digipet M1)
+hungry_at=5
+# T2: hunger >= starving_at starts HP loss (the critical threshold: starving overrides everything)
+starving_at=10
+# HP lost per day tick while starving
+hp_loss=2
+# hunger removed by one apple
+nutrition_apple=3

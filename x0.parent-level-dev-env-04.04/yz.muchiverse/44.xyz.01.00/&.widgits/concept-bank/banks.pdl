@@ -1,0 +1,28 @@
+# banks.pdl - MANIFEST of every text bank csv_lab can add a Simplified Chinese (+pinyin) sidecar to. One row per bank:
+#   BANK | <name> | file=<path under the house root, may hold * for several files> | format=pdl|csv | rowtag=<TAG,TAG> | key=<column|line> | text=<columns to translate> | context=<columns sent as a sense hint only> | never=<columns that are NEVER translated or sent> | add=zh,pinyin | sidecar=<optional sidecar path>
+# Columns: pdl rows are split on '|', field 0 is the row tag, fields 1.. are numbered; a field written name=value can be named. csv uses header names (or 0-based numbers).
+# key=line means the ordinal of the data row in its file. Several files in one bank prefix the job id with the file name. The source file is NEVER written: results go to <stem>.zh.tsv (or sidecar=).
+# Design and rules: #.#.calendar-dox/!.HQ-IQ-BOOK/08-roadmap/design-docs/CSV-MODEL-SCORING-AND-CHINESE-PIPELINE-DESIGN.md
+# A bank not listed here is not touched. To add a CSV: add one BANK row with format=csv (see the design doc, "running it on a new CSV").
+
+# --- concept bank (masters and spokes: the concept NODE name is the display text; ids and weights stay as they are)
+BANK | concept_masters   | file=&.widgits/concept-bank/data/masters/*.pdl | format=pdl | rowtag=NODE | key=line | text=1 | never= | add=zh,pinyin | sidecar=&.widgits/concept-bank/data/masters/masters.zh.tsv
+BANK | concept_spokes    | file=&.widgits/concept-bank/data/spokes/*.pdl  | format=pdl | rowtag=NODE | key=line | text=1 | never= | add=zh,pinyin | sidecar=&.widgits/concept-bank/data/spokes/spokes.zh.tsv
+
+# --- harness behavior bank (SYNONYM word / SENTENCE prose / KEYWORDS list; weights in column 2 and every other row type stay untouched)
+BANK | harness_behavior  | file=&.widgits/_shared-lib/harness/bank/*.behavior.pdl | format=pdl | rowtag=SYNONYM,SENTENCE,KEYWORDS | key=line | text=1 | never=2 | add=zh,pinyin | sidecar=&.widgits/_shared-lib/harness/bank/behavior.zh.tsv
+
+# --- chemistry (data/chem): formulas, symbols, numbers, emoji and ids are never translated
+BANK | chem_elements     | file=&.widgits/concept-bank/data/chem/elements.pdl | format=pdl | rowtag=ELEMENT | key=1 | text=3 | context=2 | never=1,2,4,5,6 | add=zh,pinyin
+BANK | chem_compound_names | file=&.widgits/concept-bank/data/chem/compounds_*.pdl | format=pdl | rowtag=COMPOUND | key=1 | text=name | context=formula | never=emoji,formula,formula_ok,atoms,mass_number,elements,kind,state,mp,bp,density,hint | add=zh,pinyin | sidecar=&.widgits/concept-bank/data/chem/compound_names.zh.tsv
+BANK | chem_compound_hints | file=&.widgits/concept-bank/data/chem/compounds_*.pdl | format=pdl | rowtag=COMPOUND | key=1 | text=hint | context=name,formula | never=emoji,name,formula,formula_ok,atoms,mass_number,elements,kind,state,mp,bp,density | add=zh,pinyin | sidecar=&.widgits/concept-bank/data/chem/compound_hints.zh.tsv
+BANK | chem_phrases      | file=&.widgits/concept-bank/data/chem/chem_phrases.pdl | format=pdl | rowtag=PHRASE | key=line | text=1 | never= | add=zh,pinyin
+
+# --- Eden
+BANK | eden_phrases      | file=&.widgits/eden/conductor/phrases.pdl | format=pdl | rowtag=PHRASE | key=line | text=1 | never= | add=zh,pinyin
+
+# --- skillbook (skill names; tier, level, mp and exp stay)
+BANK | skillbook_skills  | file=^.hai-horn/skillbook.pdl | format=pdl | rowtag=SKILL | key=1 | text=1 | never=2,3,4,5 | add=zh,pinyin
+
+# --- example of a plain CSV (used by the harness; not a house bank)
+# BANK | example_csv | file=path/to/words.csv | format=csv | key=id | text=english | context=note | never=id,symbol | add=zh,pinyin

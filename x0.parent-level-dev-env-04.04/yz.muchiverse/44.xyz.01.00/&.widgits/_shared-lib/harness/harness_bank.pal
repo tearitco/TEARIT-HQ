@@ -1,0 +1,5 @@
+# harness_bank.pal - pal harness for harness_bank_op (cases/harness_bank.pdl). Read results/harness_bank.txt.verdict.txt
+exec ./ops/+x/harness_case_op.+x cases/harness_bank.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/harness_bank.pdl
+exec ./ops/+x/harness_bank_op.+x cases/harness_bank.pdl
+halt

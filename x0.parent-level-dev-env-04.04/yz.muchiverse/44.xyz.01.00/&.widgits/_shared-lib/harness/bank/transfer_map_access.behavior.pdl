@@ -1,0 +1,25 @@
+# Behavior Bank entry for the harness `transfer_map_access` (see HARNESS-BEHAVIOR-BANK-DESIGN.md). Weights on SYNONYM / SLOT / CORPUS rows are hand-seeded; only WEIGHT (from COUNTS) is measured.
+BEHAVIOR | harness.transfer_map_access
+KIND | spoke
+KEYWORDS | teleport, transfer, map access, available maps, refused, game.pdl, play mode, ledger
+SYNONYM | teleport | 1.00
+SYNONYM | door | 0.60
+SYNONYM | warp | 0.70
+SYNONYM | map lock | 0.60
+SYNONYM | level gate | 0.50
+SYNONYM | transfer player | 0.90
+SENTENCE | Runs the real mr_transfer_desk op against a scratch house with a session, desks and a game.pdl that lists the available maps.
+SENTENCE | In play or play-test a map that is not listed is refused before anything closes: exit code 3, a reason line, the player stays and the refusal is ledgered.
+SENTENCE | In build mode, with no mode file or with no MAP rows every map stays reachable, so existing houses behave as before.
+SLOT | 0 | POINTS_TO=map-access | WEIGHT=0.95
+SLOT | 1 | POINTS_TO=teleport | WEIGHT=0.90
+SLOT | 2 | POINTS_TO=play-mode | WEIGHT=0.60
+SLOT | 3 | POINTS_TO=ledger | WEIGHT=0.50
+CORPUS | game-engine | WEIGHT=0.90
+CORPUS | debug-build | WEIGHT=0.40
+SEQUENCE | 1 | exec ./ops/+x/harness_case_op.+x cases/transfer_map_access.pdl
+SEQUENCE | 2 | exec ./ops/+x/harness_verdict_op.+x cases/transfer_map_access.pdl
+SEQUENCE | 3 | exec ./ops/+x/harness_bank_op.+x cases/transfer_map_access.pdl
+SOURCE | hand-authored 2026-10-07 (claude); masters/synonyms/weights are seeds awaiting owner validation
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

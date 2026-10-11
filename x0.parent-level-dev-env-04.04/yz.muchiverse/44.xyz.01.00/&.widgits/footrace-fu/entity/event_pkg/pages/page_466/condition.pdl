@@ -1,0 +1,5 @@
+# Banish Foe 7: the coin says Finish
+COND | trigger | cast_banish
+COND | kv | variables.txt | ph_cast | eq | 3
+COND | kv | variables.txt | bx_coin | eq | 2
+COND | kv | switches.txt | game_over | eq | 0

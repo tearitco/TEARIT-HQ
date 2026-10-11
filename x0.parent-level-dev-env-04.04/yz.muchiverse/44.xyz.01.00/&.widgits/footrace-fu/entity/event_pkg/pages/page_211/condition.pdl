@@ -1,0 +1,3 @@
+# Kill 2: an army with no ninja left is out of the race
+COND | trigger | kill
+COND | kv | variables.txt | k_cnt | le | 0

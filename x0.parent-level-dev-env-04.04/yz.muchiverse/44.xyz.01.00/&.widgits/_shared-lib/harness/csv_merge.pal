@@ -1,0 +1,5 @@
+# csv_merge.pal - LOCKED acceptance harness for the csv_lab `merge` and `ui` verbs (sidecar, advisory score status, review queue, answer bank, FEEDBACK rows, csv_lab_ui.txt feed). Read results/csv_merge.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/csv_merge.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/csv_merge.pdl
+exec ./ops/+x/harness_bank_op.+x cases/csv_merge.pdl
+halt

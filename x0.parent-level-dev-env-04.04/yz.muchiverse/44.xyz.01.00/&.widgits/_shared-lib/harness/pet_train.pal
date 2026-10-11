@@ -1,0 +1,4 @@
+# pet_train.pal - pal harness: a training session for the six pets (see cases/pet_train.pdl). Verdict: results/pet_train.txt.verdict.txt. Run: prisc+x pet_train.pal (from this folder)
+exec ./ops/+x/harness_case_op.+x cases/pet_train.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/pet_train.pdl
+halt

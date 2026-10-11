@@ -1,0 +1,26 @@
+quest-pilot/q020-var-cmp/worker/var_cmp.c: In function ‘log_error’:
+quest-pilot/q020-var-cmp/worker/var_cmp.c:17:15: error: ‘PATH_MAX’ undeclared (first use in this function)
+   17 |     char path[PATH_MAX];
+      |               ^~~~~~~~
+quest-pilot/q020-var-cmp/worker/var_cmp.c:17:15: note: each undeclared identifier is reported only once for each function it appears in
+quest-pilot/q020-var-cmp/worker/var_cmp.c:17:10: error: unused variable ‘path’ [-Werror=unused-variable]
+   17 |     char path[PATH_MAX];
+      |          ^~~~
+quest-pilot/q020-var-cmp/worker/var_cmp.c: In function ‘resolve_operand’:
+quest-pilot/q020-var-cmp/worker/var_cmp.c:90:19: error: ‘PATH_MAX’ undeclared (first use in this function)
+   90 |         char path[PATH_MAX];
+      |                   ^~~~~~~~
+quest-pilot/q020-var-cmp/worker/var_cmp.c:90:14: error: unused variable ‘path’ [-Werror=unused-variable]
+   90 |         char path[PATH_MAX];
+      |              ^~~~
+quest-pilot/q020-var-cmp/worker/var_cmp.c: In function ‘write_result’:
+quest-pilot/q020-var-cmp/worker/var_cmp.c:132:19: error: ‘PATH_MAX’ undeclared (first use in this function)
+  132 |     char src_path[PATH_MAX], tmp_path[PATH_MAX];
+      |                   ^~~~~~~~
+quest-pilot/q020-var-cmp/worker/var_cmp.c:132:30: error: unused variable ‘tmp_path’ [-Werror=unused-variable]
+  132 |     char src_path[PATH_MAX], tmp_path[PATH_MAX];
+      |                              ^~~~~~~~
+quest-pilot/q020-var-cmp/worker/var_cmp.c:132:10: error: unused variable ‘src_path’ [-Werror=unused-variable]
+  132 |     char src_path[PATH_MAX], tmp_path[PATH_MAX];
+      |          ^~~~~~~~
+cc1: all warnings being treated as errors

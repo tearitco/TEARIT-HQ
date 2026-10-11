@@ -1,0 +1,4 @@
+# event.pal - Select 4 2/3: select it (trigger select4). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set sel sel_try
+exec ops/+x/row_append.+x . ledger.txt SELECT {turn} {current} {sel}
+halt

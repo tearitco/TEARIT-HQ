@@ -1,0 +1,2 @@
+death_enabled=0
+dead=0

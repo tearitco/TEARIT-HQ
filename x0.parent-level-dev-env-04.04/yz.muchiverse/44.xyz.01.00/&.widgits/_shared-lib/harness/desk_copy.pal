@@ -1,0 +1,4 @@
+# desk_copy.pal - pal harness (cases/desk_copy.pdl). Read results/desk_copy.txt.verdict.txt
+exec ./ops/+x/harness_case_op.+x cases/desk_copy.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/desk_copy.pdl
+halt

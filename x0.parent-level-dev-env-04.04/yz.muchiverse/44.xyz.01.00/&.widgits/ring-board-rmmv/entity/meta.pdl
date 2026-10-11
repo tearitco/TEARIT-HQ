@@ -1,0 +1,14 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | ring-board-token
+STATE        | menu_stay_open     | 1
+STATE        | grab_pointer       | 1
+STATE        | grab_keyboard      | 1
+METHOD       | Roll                 | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger roll'
+METHOD       | Buy                  | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger buy'
+METHOD       | Pass                 | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger pass'
+METHOD       | End Turn             | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger endturn'
+METHOD       | Pay Jail Fee         | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger payjail'
+METHOD       | New Game             | sh -c 'exec "$1/&.widgits/digipet/ops/+x/event_page_op.+x" "$0" "$1" --trigger setup'
+METHOD       | Close                | CLOSE
+METHOD       | Cancel               | void

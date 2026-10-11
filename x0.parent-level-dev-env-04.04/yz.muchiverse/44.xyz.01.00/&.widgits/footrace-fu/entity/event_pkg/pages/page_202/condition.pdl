@@ -1,0 +1,4 @@
+# Land 3: a climb moves the ninja forward
+COND | trigger | land
+COND | kv | variables.txt | ph_land | eq | 1
+COND | kv | variables.txt | c_to | gt | 0

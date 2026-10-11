@@ -1,0 +1,246 @@
+This C file fails to compile with `gcc -std=gnu11 -Wall -Wextra -Werror -O2`. Compiler output:
+quest-pilot/q020-var-cmp/iter3_var_cmp.c: In function ‘write_result’:
+quest-pilot/q020-var-cmp/iter3_var_cmp.c:144:19: error: unused variable ‘orig’ [-Werror=unused-variable]
+  144 |             char *orig = line;
+      |                   ^~~~
+cc1: all warnings being treated as errors
+
+Change ONLY what is needed to fix that, keep the behavior identical. Reply with the COMPLETE file in ONE ```c fenced block, nothing else.
+
+```c
+#define _POSIX_C_SOURCE 200809L
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <limits.h>
+
+#define ERR_USAGE "usage"
+#define ERR_BAD_OP "bad-operator"
+#define ERR_BAD_OPERAND "bad-operand"
+#define ERR_BAD_OUT "bad-out-name"
+
+static void log_error(const char *state_dir, const char *reason,
+                      const char *offending) {
+    if (!state_dir) return;
+    char path[PATH_MAX];
+    snprintf(path, sizeof(path), "%s/op_errors.txt", state_dir);
+    FILE *f = fopen(path, "a");
+    if (f) {
+        fprintf(f, "ERR|var_cmp|%s|%s\n", reason, offending);
+        fclose(f);
+    }
+}
+
+static int is_dir(const char *path) {
+    struct stat st;
+    return stat(path, &st) == 0 && S_ISDIR(st.st_mode);
+}
+
+static int is_valid_name(const char *s) {
+    if (!s) return 0;
+    if (!((*s >= 'A' && *s <= 'Z') || (*s >= 'a' && *s <= 'z') || *s == '_'))
+        return 0;
+    ++s;
+    while (*s) {
+        if (!((*s >= 'A' && *s <= 'Z') || (*s >= 'a' && *s <= 'z') ||
+              (*s >= '0' && *s <= '9') || *s == '_'))
+            return 0;
+        ++s;
+    }
+    return 1;
+}
+
+static long long parse_int(const char *s, int *ok) {
+    char *end;
+    errno = 0;
+    long long v = strtoll(s, &end, 10);
+    if (errno || *end != '\0') {
+        *ok = 0;
+        return 0;
+    }
+    *ok = 1;
+    return v;
+}
+
+/* read variable value from file */
+static long long get_var(const char *name, const char *filepath) {
+    FILE *f = fopen(filepath, "r");
+    if (!f) return 0;
+    size_t len = 0;
+    char *line = NULL;
+    long long val = 0;
+    while (getline(&line, &len, f) != -1) {
+        char *eq = strchr(line, '=');
+        if (!eq) continue;
+        *eq = '\0';
+        char *cr = strchr(line, '\r');
+        if (cr) *cr = '\0';
+        if (strcmp(line, name) != 0) continue;
+        char *vstr = eq + 1;
+        char *p = vstr + strlen(vstr);
+        while (p > vstr && (p[-1] == '\n' || p[-1] == '\r')) --p;
+        *p = '\0';
+        int ok;
+        val = parse_int(vstr, &ok);
+        if (!ok) val = 0;
+        break;
+    }
+    free(line);
+    fclose(f);
+    return val;
+}
+
+/* resolve operand */
+static int resolve_operand(const char *op, const char *state_dir,
+                           long long *out, char *offending) {
+    if (is_valid_name(op)) {
+        char path[PATH_MAX];
+        snprintf(path, sizeof(path), "%s/variables.txt", state_dir);
+        *out = get_var(op, path);
+        return 1;
+    } else {
+        int ok;
+        long long v = parse_int(op, &ok);
+        if (!ok) {
+            strcpy(offending, op);
+            return 0;
+        }
+        *out = v;
+        return 1;
+    }
+}
+
+/* operator mapping */
+typedef enum {OP_EQ,OP_NE,OP_LT,OP_LE,OP_GT,OP_GE} OpCode;
+static int map_op(const char *op, OpCode *code) {
+    if (!strcmp(op, "==") || !strcmp(op, "eq")) { *code = OP_EQ; return 1; }
+    if (!strcmp(op, "!=") || !strcmp(op, "ne")) { *code = OP_NE; return 1; }
+    if (!strcmp(op, "<")  || !strcmp(op, "lt")) { *code = OP_LT; return 1; }
+    if (!strcmp(op, "<=") || !strcmp(op, "le")) { *code = OP_LE; return 1; }
+    if (!strcmp(op, ">")  || !strcmp(op, "gt")) { *code = OP_GT; return 1; }
+    if (!strcmp(op, ">=") || !strcmp(op, "ge")) { *code = OP_GE; return 1; }
+    return 0;
+}
+
+static int eval(OpCode op, long long a, long long b) {
+    switch (op) {
+        case OP_EQ: return a == b;
+        case OP_NE: return a != b;
+        case OP_LT: return a <  b;
+        case OP_LE: return a <= b;
+        case OP_GT: return a >  b;
+        case OP_GE: return a >= b;
+    }
+    return 0;
+}
+
+/* write result, ensuring newline after every line */
+static int write_result(const char *state_dir, const char *out_name, int result) {
+    char src_path[PATH_MAX], tmp_path[PATH_MAX];
+    snprintf(src_path, sizeof(src_path), "%s/variables.txt", state_dir);
+    snprintf(tmp_path, sizeof(tmp_path), "%s/variables.txt.tmp", state_dir);
+
+    FILE *src = fopen(src_path, "r");
+    FILE *tmp = fopen(tmp_path, "w");
+    if (!tmp) return 0;
+    int replaced = 0;
+    if (src) {
+        size_t len = 0;
+        char *line = NULL;
+        while (getline(&line, &len, src) != -1) {
+            char *orig = line;
+            size_t linelen = strlen(line);
+            int has_nl = (linelen && line[linelen-1] == '\n');
+            if (!has_nl) {
+                /* make a temporary copy with newline for processing */
+                char *buf = malloc(linelen + 2);
+                memcpy(buf, line, linelen);
+                buf[linelen] = '\n';
+                buf[linelen+1] = '\0';
+                free(line);
+                line = buf;
+                linelen++;
+            }
+            char *eq = strchr(line, '=');
+            if (!replaced && eq) {
+                *eq = '\0';
+                char *cr = strchr(line, '\r');
+                if (cr) *cr = '\0';
+                if (strcmp(line, out_name) == 0) {
+                    fprintf(tmp, "%s=%d\n", out_name, result);
+                    replaced = 1;
+                    free(line);
+                    line = NULL;
+                    len = 0;
+                    continue;
+                }
+                *eq = '=';
+            }
+            fputs(line, tmp);
+            free(line);
+            line = NULL;
+            len = 0;
+        }
+        free(line);
+        fclose(src);
+    }
+    if (!replaced) {
+        fprintf(tmp, "%s=%d\n", out_name, result);
+    }
+    fclose(tmp);
+    if (rename(tmp_path, src_path) != 0) return 0;
+    return 1;
+}
+
+int main(int argc, char *argv[]) {
+    if (argc != 6) {
+        fprintf(stderr, "Wrong number of arguments\n");
+        if (argc > 1 && is_dir(argv[1]))
+            log_error(argv[1], ERR_USAGE, "argument count");
+        return 2;
+    }
+    const char *state_dir = argv[1];
+    const char *a_str = argv[2];
+    const char *op_str = argv[3];
+    const char *b_str = argv[4];
+    const char *out_name = argv[5];
+
+    if (!is_dir(state_dir)) {
+        fprintf(stderr, "State directory does not exist\n");
+        return 2;
+    }
+    if (!is_valid_name(out_name)) {
+        fprintf(stderr, "Bad output variable name\n");
+        log_error(state_dir, ERR_BAD_OUT, out_name);
+        return 2;
+    }
+    OpCode op;
+    if (!map_op(op_str, &op)) {
+        fprintf(stderr, "Bad operator\n");
+        log_error(state_dir, ERR_BAD_OP, op_str);
+        return 2;
+    }
+    long long a_val, b_val;
+    char offending[256] = {0};
+    if (!resolve_operand(a_str, state_dir, &a_val, offending)) {
+        fprintf(stderr, "Bad operand a\n");
+        log_error(state_dir, ERR_BAD_OPERAND, offending);
+        return 2;
+    }
+    if (!resolve_operand(b_str, state_dir, &b_val, offending)) {
+        fprintf(stderr, "Bad operand b\n");
+        log_error(state_dir, ERR_BAD_OPERAND, offending);
+        return 2;
+    }
+    int res = eval(op, a_val, b_val);
+    if (!write_result(state_dir, out_name, res)) {
+        fprintf(stderr, "Failed to write result\n");
+        return 2;
+    }
+    printf("%d\n", res);
+    return 0;
+}
+```

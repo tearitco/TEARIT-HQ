@@ -1,0 +1,2 @@
+# food_prices.pdl - coins per unit, `food=int` (digipet M11). Feed buys one when the pantry is empty and the purse can pay.
+apple=10

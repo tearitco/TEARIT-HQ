@@ -1,0 +1,5 @@
+# dsr_sim_step1.pal - DSR step 1 (scenario generator + 30-day deterministic economy on the house clock), see cases/dsr_sim_step1.pdl. Read results/dsr_sim_step1.txt.verdict.txt
+# Needs: ops built by &.widgits/dsr-sim/build_dsr_sim.sh, lc_clock and game_snapshot_op built (see the lc_clock_* / game_snapshot rows).
+exec ./ops/+x/harness_case_op.+x cases/dsr_sim_step1.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/dsr_sim_step1.pdl
+halt

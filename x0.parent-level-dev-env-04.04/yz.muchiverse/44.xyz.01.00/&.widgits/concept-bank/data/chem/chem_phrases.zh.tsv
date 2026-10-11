@@ -1,0 +1,87 @@
+# chem_phrases.zh sidecar of &.widgits/concept-bank/data/chem/chem_phrases.pdl - machine translation. status: ok/accepted are promotable; low_score, translated (unscored) and lint_fail wait for a person (review.tsv); rejected stays out. Scores are advisory. columns: id, source, zh, pinyin, score, status, translator, judge
+L1	Acetic Acid (CH3COOH): Carboxylic acid, pKa=4.76			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+L2	Ethanol (CH3CH2OH): Primary alcohol	乙醇	yǐ chún	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L3	Acetone (CH3COCH3): Ketone, common solvent			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+L4	Methylamine (CH3NH2): Fishy odor, weak base			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+L5	Benzene (C6H6): Aromatic, resonance stabilized	苯 (C6H6)：芳香，受共振稳定	běn fāng xiāng shòu gòng zhèn wěn dìng	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L6	Citric Acid (C6H8O7): Triprotic acid in citrus	柠檬酸	níng méng suān	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L7	Sodium Chloride (NaCl): Ionic compound, electrolyte			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+L8	Sulfuric Acid (H2SO4): Strong diprotic acid			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+L9	Glucose (C6H12O6): Aldohexose, blood sugar	葡萄糖	pú táo táng	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L10	Dopamine (C8H11NO2): Catecholamine neurotransmitter			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+L11	Water (H2O): The universal solvent			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+L12	Ammonia (NH3): Pungent gas, weak base	氨 (NH3)：刺鼻气体，弱碱	ān cì bí qì tǐ ruò jiǎn	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L13	Methane (CH4): Primary component of natural gas			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+L14	Fructose (C6H12O6): Fruit sugar, a simple ketose			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+L15	Caffeine (C8H10N4O2): Stimulant found in coffee	咖啡因	kā fēi yīn	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L16	Hydrochloric Acid (HCl): Strong monoprotic acid in stomach	盐酸 (HCl)：胃内强单质酸	yán suān wèi nèi qiáng dān zhì suān	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L17	Sodium Hydroxide (NaOH): Strong base, also known as lye	氢氧化钠	qīng yǎng huà nà	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L18	Glycerol (C3H8O3): Polyol, component of lipids			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+L19	Aspirin (C9H8O4): Pain reliever, an ester of salicylic acid	阿司匹林 (C9H8O4)：止痛剂，水杨酸酯	ā sī pǐ lín zhǐ tòng jì shuǐ yáng suān zhǐ	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L20	Formaldehyde (CH2O): Simplest aldehyde			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+L21	Sucrose (C12H22O11): Table sugar, a disaccharide			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+L22	Lactic Acid (C3H6O3): Found in sour milk and muscles			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+L23	Urea (CH4N2O): Main nitrogenous compound in urine			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+L24	Toluene (C7H8): Aromatic solvent, similar to benzene	甲苯 (C7H8)：芳香溶剂，类似苯	jiǎ běn fāng xiāng róng jì lèi sì běn	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L25	Potassium Chloride (KCl): Salt substitute, electrolyte			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+L26	Nitric Acid (HNO3): Highly corrosive strong acid	硝酸 (HNO3)：强腐蚀性酸	xiāo suān qiáng fǔ shì xìng suān	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L27	Propane (C3H8): Alkane fuel used in grills	丙烷 (C3H8)：烤架使用的烃燃料	bǐng wán kǎo jià shǐ yòng de tīng rán liào	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L28	Methanol (CH3OH): Simplest alcohol, toxic	甲醇 (CH3OH)：最简单的酒精，毒性	jiǎ chún zuì jiǎn dān de jiǔ jīng dú xìng	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L29	Phenol (C6H5OH): Aromatic alcohol, used as a disinfectant	苯酚 (C6H5OH)：芳香族醇，用作消毒剂	bēn fēn (C6H5OH)：fāng xiāng zú chún yòng zuò xiāo dú jì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L30	ATP (C10H16N5O13P3): Energy currency of the cell	ATP (C10H16N5O13P3)：细胞的能量货币	xì bāo de néng liàng huò bì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L31	Formic Acid (HCOOH): Simplest carboxylic acid, in ant stings			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+L32	Butane (C4H10): Alkane fuel used in lighters	丁烷 (C4H10)：在打火机中用作燃料	dīng wán (C4H10)：zài dǎ huǒ jī zhōng yòng zuò rán liào	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L33	Serotonin (C10H12N2O): Neurotransmitter related to mood	血清素 (C10H12N2O)：与情绪相关的神经递质	xiě qīng sù (C10H12N2O)：yǔ qíng xù xiāng guān de shén jīng dì zhì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L34	Glycine (C2H5NO2): Simplest amino acid			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+L35	Ibuprofen (C13H18O2): NSAID pain reliever	布洛芬 (C13H18O2)：非甾体抗炎镇痛药	bù luò fēn (C13H18O2)：fēi zāi tǐ kàng yán zhèn tòng yào	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L36	Calcium Carbonate (CaCO3): Found in shells, limestone, and chalk	碳酸钙 (CaCO3)：存在于贝壳、石灰石和粉笔中	tàn suān gài (CaCO3)：cún zài yú bèi ké shí huī shí hé fěn bǐ zhōng	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L37	Perchloric Acid (HClO4): A powerful oxidizing strong acid			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+L38	Lactose (C12H22O11): Sugar found in milk			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+L39	TNT (C7H5N3O6): Well-known explosive compound			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+L40	Aniline (C6H5NH2): Precursor to many industrial chemicals			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+L41	Vitamin C (C6H8O6): An essential nutrient and antioxidant			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+L42	Isopropyl Alcohol (C3H8O): Rubbing alcohol, a disinfectant			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+L43	Vanillin (C8H8O3): Primary component of vanilla bean extract			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+L44	Histamine (C5H9N3): Involved in local immune responses			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+L45	Pyridine (C5H5N): Aromatic, used as a precursor and solvent	吡啶 (C5H5N): 芳香族，作为前体和溶剂	bǐ dǐng fāng xiāng zú zuò wèi qián tǐ hé róng jì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L46	Sodium Bicarbonate (NaHCO3): Baking soda, used in cooking and cleaning	碳酸氢盐 (NaHCO3): 小苏打，用于烹饪和清洁	tàn suān qīng yán xiǎo sū dǎ yòng yú pēng rèn hé qīng jié	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L47	Phosphoric Acid (H3PO4): Weak acid used in soft drinks	磷酸 (H3PO4): 弱酸，用于软饮料	lín suān ruò suān yòng yú ruǎn yǐn liào	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L48	Octane (C8H18): Component of gasoline	辛烷 (C8H18): 汽油成分	xīn wán qì yóu chéng fèn	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L49	Ribose (C5H10O5): A key component of RNA	核糖 (C5H10O5): RNA的关键组分	hé táng RNA de guān jiàn zǔ fèn	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L50	Paracetamol (C8H9NO2): Common analgesic and antipyretic	对乙酰氨基酚 (C8H9NO2): 常用镇痛剂和退烧药	duì yǐ xiān ān jī fēn cháng yòng zhèn tòng jì hé tuì shāo yào	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L51	Methane (CH4): Simplest hydrocarbon; base for organic nomenclature and combustion reactions.	甲烷 (CH4): 最简单的烃，作为有机命名和燃烧反应的基础	jiǎ wán zuì jiǎn dān de tīng zuò wèi yǒu jī mìng míng hé rán shāo fǎn yìng de jī chǔ	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L52	Ethane (C2H6): Two-carbon chain; example of alkane properties like low reactivity.	乙烷 (C2H6): 二碳链，低反应性的烃类示例	yǐ wán èr tàn liàn dī fǎn yìng xìng de tīng lèi shì lì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L53	Ethylene (C2H4): Key in addition reactions; industrial precursor to polymers.	乙烯 (C2H4)：在加成反应中关键；工业聚合物的前体。	yǐ xī (C2H4)：zài jiā chéng fǎn yìng zhōng guān jiàn；gōng yè jù hé wù de qián tǐ。	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L54	Propylene (C3H6): Common in polymerization; tests alkene naming and reactivity.	丙烯 (C3H6)：聚合反应中的常见物；用于测试烯烃命名与反应性。	bǐng xī (C3H6)：jù hé fǎn yìng zhōng de cháng jiàn wù；yòng yú cè shì xī chōng mìng míng yǔ fǎn yìng xìng。	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L55	Methanol (CH3OH): Solvent and fuel; compares to ethanol in metabolism and toxicity.	甲醇 (CH3OH)：溶剂和燃料；与乙醇在代谢与毒性上进行比较。	jiǎ chún (CH3OH)：róng jì hé rán liào；yǔ yǐ chún zài dài xiè yǔ dú xìng shàng jìn xíng bǐ jiào。	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L56	Ethanol (C2H5OH): Alcoholic beverage component; undergoes oxidation to acetaldehyde/acetic acid.			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+L57	Isopropanol ((CH3)2CHOH): Disinfectant; branched alcohol example for naming.	异丙醇 ((CH3)2CHOH)：消毒剂；分支醇的命名示例。	yì bǐng chún ((CH3)2CHOH)：xiāo dú jì；fēn zhī chún de mìng míng shì lì。	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L58	Formaldehyde (HCHO): Simplest aldehyde; used in disinfection	甲醛 (HCHO)：最简单的醛类；用于消毒。	jiǎ chán (HCHO)：zuì jiǎn dān de quán lèi；yòng yú xiāo dú。	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L59	Acetaldehyde (CH3CHO): Glycolysis/fermentation product; oxidizes to acetic acid.			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+L60	Benzaldehyde (C6H5CHO): Aromatic carbonyl; in flavors	苯甲醛 (C6H5CHO)：芳香族羰基化合物；用于香料。	běn jiǎ chán (C6H5CHO)：fāng xiāng zú táng jī huà hé wù；yòng yú xiāng liào。	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L61	Acetone ((CH3)2CO): Simplest ketone; solvent	乙酮 ((CH3)2CO)：最简单的酮；溶剂	yǐ tóng ((CH3)2CO)：zuì jiǎn dān de tóng；róng jì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L62	Formic Acid (HCOOH): Simplest acid; in ant venom	甲酸 (HCOOH)：最简单的酸；存在于蚂蚁毒液	jiǎ suān (HCOOH)：zuì jiǎn dān de suān；cún zài yú mǎ yǐ dú yè	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L63	Acetic Acid (CH3COOH): Vinegar component; buffers	乙酸 (CH3COOH)：醋的主要成分；缓冲剂	yǐ suān (CH3COOH)：cù de zhǔ yào chéng fèn；huǎn chōng jì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L64	Benzoic Acid (C6H5COOH): Preservative; tests aromatic acid properties and salts.	苯甲酸 (C6H5COOH)：防腐剂；用于检验芳香族酸的性质与盐	bēn jiǎ suān (C6H5COOH)：fáng fǔ jì；yòng yú jiǎn yàn fāng xiāng zú suān de xìng zhì yǔ yán	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L65	Glucose (C6H12O6): Aldehyde (open chain)	葡萄糖 (C6H12O6)：醛（开链）	pú táo táng (C6H12O6)：quán (kāi liàn)	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L66	Fructose-6-phosphate (C6H13O9P): Phosphate			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+L67	Fructose-1: -OH			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+L68	Dihydroxyacetone phosphate ((HOCH2)2C(O)OPO3H2): Phosphate	双羟基乙酮磷酸 ((HOCH2)2C(O)OPO3H2)：磷酸	shuāng qiǎng jī yǐ tóng lín suān ((HOCH2)2C(O)OPO3H2)：lín suān	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L69	Glyceraldehyde-3-phosphate: -OH			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+L70	Pyruvate (CH3C(O)COOH): -COOH			-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+L71	Glycine: -NH2	甘氨酸: -NH2	gān àn suān	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L72	Alanine: -NH2	丙氨酸: -NH2	bǐng àn suān	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L73	Serine: -NH2	丝氨酸: -NH2	sī àn suān	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L74	Cysteine: -NH2	半胱氨酸: -NH2	bàn guāng àn suān	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L75	Aspartic Acid: -NH2	天冬氨酸: -NH2	tiān dōng àn suān	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L76	Histidine: -NH2	组氨酸: -NH2	zǔ ān suān	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L77	Isoleucine: -NH2	异亮氨酸: -NH2	yì liàng ān suān	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L78	Leucine: -NH2	亮氨酸: -NH2	liàng ān suān	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L79	Lysine: -NH2	赖氨酸: -NH2	lài ān suān	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L80	Phenylalanine: -NH2	苯丙氨酸: -NH2	běn bǐng ān suān	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L81	Tryptophan: -NH2	色氨酸: -NH2	sè ān suān	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L82	Acetylcholine: Ester	乙酰胆碱: Ester	yǐ xiān dǎn jiǎn	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L83	Dopamine: -NH2	多巴胺: -NH2	duō bā àn	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L84	Serotonin: -NH2	血清素: -NH2	xuè qīng sù	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L85	GABA (H2NCH2CH2CH2COOH): -COOH	γ-氨基丁酸 (H2NCH2CH2CH2COOH): -COOH	ān jī dīng suān	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+L86	Glutamate: -NH2	谷氨酸: -NH2	gǔ ān suān	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b

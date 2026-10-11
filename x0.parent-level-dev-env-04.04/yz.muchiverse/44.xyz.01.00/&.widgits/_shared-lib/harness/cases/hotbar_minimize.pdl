@@ -1,0 +1,37 @@
+# pc-hq hotbar minimize on a SCRATCH tree: a real hotbar_manager process (mode pchq) publishes hb_visible; hotbar_toggle.sh flips visible.txt. Replaces hotbar-hq/ops/test_minimize.sh.
+# Owner report 2026-10-06: "_" did not minimize. The human-input log showed two presses ~280 ms apart: the old path (400 ms poll + reparse) showed nothing for ~1 s and the toggle undid itself.
+# Checks: hide is idempotent, show restores, toggle still flips, the manager republishes within 300 ms (the previous manager took 372-394 ms and fails these), two clicks 280 ms apart stay hidden.
+RESULTS | ../results/hotbar_minimize.txt
+CASE    | hotbar-minimize
+SCRATCH |
+COPY    | @.apps/hotbar-hq/ops/+x/hotbar_manager.+x | bin/hotbar_manager
+COPY    | @.apps/hotbar-hq/ops/hotbar_toggle.sh | bin/hotbar_toggle.sh
+WRITE   | @.apps/piececraft-hq/pieces/xelector_01/state.txt | entity_type=xelector\npossessed_id=none\n
+MKDIR   | pkg/state/pchq
+
+SPAWN     | mgr | $T/bin/hotbar_manager | $T/pchq | $T | $T/pkg
+WAIT_HAS  | pkg/state/pchq/ui.txt | hb_visible=1 | 4000 | manager-publishes-ui-starting-visible
+EXPECT_ALIVE | $mgr | manager-running
+
+RUN       | sh | $T/bin/hotbar_toggle.sh | pchq | $T/pkg | hide
+WAIT_HAS  | pkg/state/pchq/ui.txt | hb_visible=0 | 300 | hide-published-within-300ms
+RUN       | sh | $T/bin/hotbar_toggle.sh | pchq | $T/pkg | hide
+RUN       | sh | $T/bin/hotbar_toggle.sh | pchq | $T/pkg | hide
+SLEEP     | 800
+EXPECT_HAS | pkg/state/pchq/ui.txt | hb_visible=0 | repeated-hide-stays-hidden
+RUN       | sh | $T/bin/hotbar_toggle.sh | pchq | $T/pkg | show
+WAIT_HAS  | pkg/state/pchq/ui.txt | hb_visible=1 | 300 | show-published-within-300ms
+RUN       | sh | $T/bin/hotbar_toggle.sh | pchq | $T/pkg | toggle
+WAIT_HAS  | pkg/state/pchq/ui.txt | hb_visible=0 | 300 | toggle-still-flips-within-300ms
+
+# the owner's two clicks 280 ms apart
+RUN       | sh | $T/bin/hotbar_toggle.sh | pchq | $T/pkg | show
+SLEEP     | 800
+RUN       | sh | $T/bin/hotbar_toggle.sh | pchq | $T/pkg | hide
+SLEEP     | 280
+RUN       | sh | $T/bin/hotbar_toggle.sh | pchq | $T/pkg | hide
+SLEEP     | 800
+EXPECT_HAS | pkg/state/pchq/ui.txt | hb_visible=0 | two-clicks-280ms-apart-stay-hidden
+EXPECT_HAS | pkg/state/pchq/visible.txt | visible=0 | state-file-agrees
+CLEAN     |
+EXPECT_DEAD | $mgr | manager-killed-by-clean

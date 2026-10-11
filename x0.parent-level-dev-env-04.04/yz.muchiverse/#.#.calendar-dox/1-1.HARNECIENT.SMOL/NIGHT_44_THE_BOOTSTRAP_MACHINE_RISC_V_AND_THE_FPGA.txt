@@ -1,0 +1,92 @@
+# 🧱🔌 NIGHT 44 — The Bootstrap Machine: RISC-V and the FPGA 🔌🧱
+# ====================================================================
+# Title: "🧱🔌 NIGHT 44 — The Bootstrap Machine: RISC-V and the FPGA 🔌🧱"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: The RVLV_EMUL repository. A RISC-V emulator written in C that boots xv6 and Linux, an assembler and the first part of a C compiler written in the house's own pal language, and a separate discrete FPGA emulator. What the repository's own log says is done, what is only planned, how it relates to the house, and the plan for seeing it run: a register and console window first, then a framebuffer, and a separate viewer for the FPGA.
+# Long-form: a work log with an honesty checkpoint. Everything here comes from commit subjects and the project's own documents. Nothing in the repository was built or run.
+# Companion documents: XO/14.oct8/RVLV-EMUL-REPORT-2026-10-08.md and .html, and the repository itself at the tearitco account on GitHub, project RVLV_EMUL.
+
+**THE NARRATOR:** Tonight is about a project that sits beside the house and has not had its own lesson. It is called R V L V underscore E M U L. The owner described it as RISC-V and F P G A in pal. Its history is on GitHub, and the copy on this machine was old, so the first step was to fetch it.
+
+**MAXINE:** What did the fetch show?
+
+---
+
+**THE NARRATOR:** Part one. The shape of the history.
+
+**TOMO:** The local copy had three commits. GitHub has twenty four, from September nineteenth to October fourth. The first three are the owner's: a RISC-V emulator for the QEMU virt machine, with xv6 booting, plus a bootstrap roadmap and a handoff to the next agent. The other twenty one are by an agent the log calls RVEMUL Agent.
+
+**RAHWEH:** What did that agent do?
+
+**TOMO:** In order. First, a bare metal system call interface, and a bare metal version of the house's virtual machine, called prisc, that runs on the emulator. Then a backup script and two documents: a bootstrap first philosophy, and a strategy for an in house kernel. Then a minimal Linux kernel configuration. Then, between September twenty seventh and twenty ninth, Linux booting all the way to user space, and then Linux six point eighteen reaching a buildroot login prompt. That needed a fix for the kernel header magic number and for a power management call in the firmware interface.
+
+---
+
+**THE NARRATOR:** Part two. Bootstrap first.
+
+**TOMO:** This is the idea that runs through the whole project, and it is the house's idea too. Build your tools in your own language, rather than depend on someone else's. The emulator runs the standard software. Then the agent started growing the house's own toolchain on top of it.
+
+**MAXINE:** What does that mean concretely?
+
+**TOMO:** On September thirtieth the agent added a RISC-V assembler to prisc. The assembler is written in the pal language itself. The roadmap says the output of its test program is byte for byte identical to what the standard compiler produces. On October first and second it fixed variable parsing and added more register to register operations. An assembler output file that failed on the emulator now passes, by a change in the exit code convention: one means pass.
+
+**RAHWEH:** And the compiler?
+
+**TOMO:** On October third and fourth, the first phase of a C compiler, again in pal. It is a line by line pattern matcher. A test program that does variable arithmetic prints the right digits to the serial port. Programs with loops and conditionals are only partly working. The virtual machine is the limiting factor: it has no multiply, no call and return, a limit of one thousand and twenty four instructions, and sixteen registers. The project's own estimate for the real compiler is one to two weeks.
+
+---
+
+**THE NARRATOR:** Part three. The other half: a discrete FPGA.
+
+**TOMO:** Beside the emulator is a folder for a discrete seven thousand four hundred series F P G A. The idea is to emulate, in C, an F P G A built from ordinary logic chips: shift registers that hold the lookup tables, multiplexers that read them, buffers for routing, a register for the clocked part. The design is compatible with the open Lattice I C E forty family, and uses a plain text bitstream format. The hardware description language is the house's own, called H D L zero.
+
+**MAXINE:** How far along?
+
+**TOMO:** The architecture document and a prompt index for agents exist. There are a few source files and four small hardware description examples, including a four bit counter, an arithmetic unit, and a sixteen bit processor core. Every checkbox on its own roadmap is still open. So it is a design with a skeleton, not a working emulator.
+
+---
+
+**THE NARRATOR:** Part four. How it relates to the house.
+
+**TOMO:** The project modifies the house's virtual machine, prisc, in its own repository. New instructions, new system calls. Those changes were made there, not in the house copy. So the two copies have probably diverged. I have not compared them. Deciding which copy is the real one is the first job, and it is a read only job.
+
+**RAHWEH:** Anything else to know?
+
+**TOMO:** The repository is heavy: about six hundred and seventy megabytes of working tree with a disk image and build logs. Some documents are stale; the roadmap still says to create the roadmap. The progress report was written on another machine, with a different home path. And I only read the history and documents. I did not build or run anything.
+
+---
+
+**THE NARRATOR:** Part five. Seeing it run.
+
+**MAXINE:** The owner asked: is there a plan for visual feedback from the RISC-V virtual machine, and should the F P G A get its own?
+
+**TOMO:** Today there is none beyond text. The emulator's devices are the serial port, the interrupt controllers, and a virtual block disk. There is no graphics device. The compiler's output is read as serial digits. So watching the machine means reading text.
+
+**RAHWEH:** What is the cheapest step?
+
+**TOMO:** Text first, through the house. A small program that follows the serial output and writes the registers and the program counter to a state file, and a window in the house's own pattern, like the C S V Lab window, that shows the registers, the last instructions, and the console. That needs no change to the emulator, and a person can watch it, and a relay can drive and check it.
+
+**MAXINE:** And pictures?
+
+**TOMO:** A memory mapped framebuffer in the emulator: a region of memory the guest writes pixels into, dumped to an image or shown in the window a few times a second. That is what lets a program built by the pal compiler draw something. Keyboard input comes after that.
+
+**RAHWEH:** And the F P G A?
+
+**TOMO:** Yes, give it its own viewer. The two machines have different things to show. The RISC-V machine shows registers and memory. The F P G A shows lookup tables, wires, and signal values over time: a waveform trace and a grid of cells lighting up. Keep them as two small emulators with two viewers. Connect them later through the sixteen bit core that is already one of the examples, so a program assembled in pal could run on the emulated hardware. Start with the four bit counter plus a waveform viewer, because a counter you can watch is the quickest proof that the idea works.
+
+---
+
+**THE NARRATOR:** Part six. Next steps, cheapest first.
+
+**TOMO:** One, compare the project's prisc with the house's, read only. Two, write a house harness for the assembler check, the byte identical comparison, so it runs here. A free worker can do that. Three, the register and console window. Four, compiler phase two: expressions and control flow, the hard one, because of the virtual machine's limits. Five, the F P G A's first phase, the lookup table and switch box programs and a harness, as a delegated build. Six, decide whether the repository stays separate or becomes a widget of the house. Staying separate costs the divergence of the two prisc copies.
+
+---
+
+**THE NARRATOR:** Honesty checkpoint.
+
+**MAXINE:** What is verified?
+
+**TOMO:** What I fetched: twenty four commits and their messages. What I read: the progress report, the roadmaps, the F P G A architecture, and the file lists. What the project claims: Linux boots to a login prompt, the assembler output is identical to the standard compiler's, and the compiler prints digits. I did not build or run any of it, so those are claims from its own log. The plan for the viewers is a proposal.
+
+**THE NARRATOR:** Bootstrap first is the same idea as the house's. Build the tools from the bottom, and then you can see all the way down.

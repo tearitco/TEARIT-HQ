@@ -39,6 +39,57 @@ def read_theme(house):
     return bg, fg, max(0.25, min(1.0, op))   # floor 0.25: a fully transparent icon would vanish
 
 
+def read_skin(house):
+    """bar_skin=<id> from #.desktop/hq_ui.pdl + its SKIN row in &.widgits/taskbar-settings/bar_skins.pdl -> (left, mid, right) RGBA
+    images of the RPG Maker tiles (sprite.csv, 48px), or None while the skin is off / any file is missing."""
+    try:
+        want = os.environ.get("LIVEDESK_ICON_SKIN", "")   # test override (contact sheets); empty = read hq_ui.pdl
+        if not want:
+          with open(os.path.join(house, "#.desktop", "hq_ui.pdl"), encoding="utf-8") as f:
+            for line in f:
+                if line.startswith("bar_skin="):
+                    want = line[9:].strip()
+        if not want:
+            return None
+        with open(os.path.join(house, "&.widgits", "taskbar-settings", "bar_skins.pdl"), encoding="utf-8") as f:
+            for line in f:
+                p = [x.strip() for x in line.split("|")]
+                if len(p) >= 6 and p[0] == "SKIN" and p[1] == want:
+                    return tuple(load_tile(os.path.join(house, d)) for d in p[3:6])
+    except OSError:
+        return None
+    return None
+
+
+def load_tile(folder):
+    rows = []
+    with open(os.path.join(folder, "sprite.csv"), encoding="utf-8") as f:
+        res = 48
+        for line in f:
+            if line.startswith("# resolution="):
+                res = int(line.split("=")[1])
+            elif line[:1].isdigit():
+                rows.append(tuple(int(v) for v in line.split(",")))
+    im = Image.new("RGBA", (res, res))
+    im.putdata(rows[:res * res])
+    return im
+
+
+def skin_bar(im, tiles, x0, y0, x1, y1):
+    """whole square blocks (block = bar height): left cap, repeated middle, right cap, centred, nearest-neighbour so the
+    pixel art stays crisp. Returns False when the bar is narrower than one block."""
+    h = y1 - y0
+    n = (x1 - x0) // h
+    if n < 1:
+        return False
+    big = [t.resize((h, h), Image.NEAREST) for t in tiles]
+    ox = x0 + ((x1 - x0) - n * h) // 2
+    for i in range(n):
+        t = big[1] if n == 1 else (big[0] if i == 0 else (big[2] if i == n - 1 else big[1]))
+        im.alpha_composite(t, (ox + i * h, y0))
+    return True
+
+
 def rgb(h):
     return tuple(int(h[i:i + 2], 16) for i in (1, 3, 5))
 
@@ -64,12 +115,22 @@ def main():
     d = ImageDraw.Draw(im)
     base_a = int(round(255 * opacity))                  # the desk's transparency (theme COLOR | opacity) applies to the icon's base; glyph stays solid
     d.rounded_rectangle((16, 16, S - 16, S - 16), radius=96, fill=bg + (base_a,), outline=fg + (255,), width=10)
-    d.rounded_rectangle((60, 70, S - 60, 120), radius=14, fill=fg + (255,))                 # header strip
-    for i in range(5):
-        d.ellipse((80 + i * 40, 86, 100 + i * 40, 106), fill=bg + (255,))
+    skin = read_skin(house)                  # RPG Maker tile skin (bar_skin=): the strips below are drawn from its tiles
+    if skin and skin_bar(im, skin, 56, 64, S - 56, 64 + 96):                                # skin: 96px blocks, no flat strip/dots
+        d = ImageDraw.Draw(im)
+    else:
+        d.rounded_rectangle((60, 70, S - 60, 120), radius=14, fill=fg + (255,))             # header strip
+        for i in range(5):
+            d.ellipse((80 + i * 40, 86, 100 + i * 40, 106), fill=bg + (255,))
     d.rounded_rectangle((100, 230, S - 100, 262), radius=16, fill=trough + (255,), outline=edge + (255,), width=2)
-    d.rounded_rectangle((100, 230, 330, 262), radius=16, fill=fg + (255,))                  # loading bar
+    if skin and skin_bar(im, skin, 100, 214, 340, 214 + 64):
+        d = ImageDraw.Draw(im)
+    else:
+        d.rounded_rectangle((100, 230, 330, 262), radius=16, fill=fg + (255,))              # loading bar
     d.rounded_rectangle((60, S - 170, S - 60, S - 70), radius=18, fill=trough + (255,))     # bottom bar
+    if skin:
+        skin_bar(im, skin, 60, S - 170, S - 60, S - 70)                                     # tiles over the bottom bar (cells draw on top)
+    d = ImageDraw.Draw(im)
     for i in range(6):                                                                      # entity cells
         x = 84 + i * 62
         d.rounded_rectangle((x, S - 150, x + 44, S - 90), radius=10, fill=(fg if i % 2 == 0 else dim) + (255,))

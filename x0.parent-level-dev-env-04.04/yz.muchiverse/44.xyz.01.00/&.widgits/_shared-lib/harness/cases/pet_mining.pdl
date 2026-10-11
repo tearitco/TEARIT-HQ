@@ -1,0 +1,42 @@
+# pet_mining - the pet's computer and rigs earn cones on a SCRATCH pet-cones chain (difficulty 2): off until switched on, the base computer fills a work meter tick by tick and one full meter makes ONE real block, rigs cost cones paid to the town wallet (pending until a block confirms), need a free slot, wear out, can be serviced, and a worn rig stops adding work.
+RESULTS | ../results/pet_mining.txt
+CASE    | pet-mining
+SCRATCH |
+MKDIR   | state
+ENV     | PET_SHARED | $T/state
+ENV     | PET_TRAIN | 1
+ENV     | LC_CLOCK_BIN | /nonexistent
+ENV     | PET_CHAIN_ROOT | $T/chain
+ENV     | PET_CHAIN_DIFF | 2
+ENV     | PET_CHAIN_CAP | 50
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | status
+EXPECT_NOFILE | state/pets/a13/work_meter | mining-off-by-default
+RUN | /bin/sh | -c | PET_AI_NOW=1000 sh $HOUSE/@.apps/pet-trainer/ops/pet_event.sh mine_tick; ls $T/state/pets/a13/work_meter 2>&1 \p grep -c "No such"
+EXPECT_OUT_IS | 1 | mine-tick-does-nothing-while-off
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chain_on
+EXPECT_OUT | on | switched-on
+RUN | /bin/sh | -c | sh $HOUSE/@.apps/pet-trainer/ops/pet_chain.sh wallet $T/state/pets/a13
+RUN | /bin/sh | -c | PET_CHAIN=1 sh $HOUSE/@.apps/pet-trainer/ops/pet_event.sh status \p grep -c "^mining_line=rigs 1"
+EXPECT_OUT_IS | 1 | status-shows-mining
+RUN | /bin/sh | -c | i=0; while [ $i -lt 101 ]; do PET_AI_NOW=$((1000 + 31*i)) sh $HOUSE/@.apps/pet-trainer/ops/pet_event.sh mine_tick >/dev/null 2>&1; i=$((i+1)); done; sh $HOUSE/@.apps/pet-trainer/ops/pet_chain.sh balance $T/state/pets/a13
+EXPECT_OUT_IS | 10500 | 101-ticks-one-real-block
+RUN | /bin/sh | -c | cat $T/state/pets/a13/work_meter
+EXPECT_OUT_IS | 1 | meter-carries-over
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | buy_miner | asic2
+EXPECT_HAS | state/pets/a13/chat.txt | cannot pay for the rig | too-poor-for-the-big-rig
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | buy_miner | asic1
+EXPECT_HAS | state/pets/a13/miners.txt | asic1 | rig-bought
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_chain.sh | spendable | $T/state/pets/a13
+EXPECT_OUT_IS | 5500 | rig-paid-in-cones-pending
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | buy_miner | nosuchrig
+EXPECT_HAS | state/pets/a13/chat.txt | no such rig | unknown-rig-refused
+RUN | /bin/sh | -c | PET_AI_NOW=900000 sh $HOUSE/@.apps/pet-trainer/ops/pet_event.sh mine_tick; grep -c "\p 1 \p" $T/state/pets/a13/miners.txt
+EXPECT_OUT_IS | 1 | rig-wears
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | maintain
+EXPECT_HAS | state/pets/a13/chat.txt | serviced a rig | rig-serviced
+RUN | /bin/sh | -c | grep -c "\p 0 \p" $T/state/pets/a13/miners.txt
+EXPECT_OUT_IS | 1 | wear-reset
+RUN | /bin/sh | -c | sed -i 's/\p 0 \p/\p 999 \p/' $T/state/pets/a13/miners.txt; echo 0 > $T/state/pets/a13/work_meter; PET_AI_NOW=950000 sh $HOUSE/@.apps/pet-trainer/ops/pet_event.sh mine_tick; cat $T/state/pets/a13/work_meter
+EXPECT_OUT_IS | 1 | worn-rig-adds-no-work-only-the-base-computer
+RUN | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | chain_off
+EXPECT_OUT | off | switched-off

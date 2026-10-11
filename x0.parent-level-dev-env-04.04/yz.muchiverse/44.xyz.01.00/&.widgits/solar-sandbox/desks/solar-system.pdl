@@ -1,0 +1,6 @@
+# solar-sandbox desk 'solar-system' (template; install copies it to sessions/<id>/desks/solar-system.pdl)
+# DESK | name | path | x_px | y_px | cell_x | cell_y | glyph | n
+DESK | sol | &.widgits/solar-sandbox/pals/sol | 160 | 320 | 2 | 4 | 🌞 | 1
+DESK | earth | &.widgits/solar-sandbox/pals/earth | 480 | 320 | 6 | 4 | 🌍 | 2
+DESK | moon | &.widgits/solar-sandbox/pals/moon | 640 | 240 | 8 | 3 | 🌕 | 3
+DESK | mars | &.widgits/solar-sandbox/pals/mars | 880 | 320 | 11 | 4 | 🔴 | 4

@@ -1,0 +1,7 @@
+# event.pal - EndTurn 2: next seat (current mod players + 1) (trigger endturn). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . mod cand current players
+exec ops/+x/var_math.+x . add cand cand 1
+exec ops/+x/var_math.+x . le wr1 cand current
+exec ops/+x/var_math.+x . set cand_up seat_up_{cand}
+exec ops/+x/var_math.+x . set ph_end 2
+halt

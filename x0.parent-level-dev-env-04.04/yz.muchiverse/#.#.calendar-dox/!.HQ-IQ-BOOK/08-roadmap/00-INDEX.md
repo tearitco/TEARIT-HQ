@@ -1,5 +1,19 @@
 # 08 — Roadmap
 
+- `design-docs/DSR-WSR-PETS-BRIDGE-DESIGN.md` — **DSR city where companies, population and pets coexist** (2026-10-10): the `dsr` book (2D/3D), WSR HQ window from the DSR toy, and how pet / DSR entity / WSR piece / chain data bridge (entity_uid key, one authority per fact, projections, links registry, money conservation).
+
+- `44.xyz.01.00/@.apps/rpg-pet/` — **rpg-pet** (2026-10-10): the NEW RPG Maker pet game (toys menu, pet-trainer untouched): tile-only house, six monster pets read from the RPG Maker DB, shop, teleport doors, pets walk by themselves (event steps), INT mode; one C op. Design `08-roadmap/design-docs/RPG-PET-DESIGN.md`, roadmap `@.apps/rpg-pet/ROADMAP.md`, plan: a room per pet, shared through relationships. Copies + Night 50 in XO `22.rpg-pet/`.
+- `44.xyz.01.00/@.apps/pet-trainer/CHAIN-ECONOMY-DESIGN.md` — **pets on the chain** (2026-10-10): wallets, mining, NFTs, banks/governments from the premined chain with leases swept back at game end, exchange valuation into preferred value, Exchange/Auction HQ, and the soul of the ecosystem (pets drive the relay, learn by RL, modify their own harnesses, watch human input).
+
+- Chess started 2026-10-09. Book `maps/chess` with pages title,
+  standard, king_pawn, and endgame. Events are the pieces.
+  `select` writes a move-range matrix. `land` moves onto a legal
+  cell. The computer plays black with that same list. Elo is
+  `elo.pdl` (1200, K=32). A peer line is
+  `maps/chess/net/outbox.txt` in palnet `DATA|local|...` shape.
+  No socket. Spec: `design-docs/CHESS-EVENTS-2026-10-09.md` and
+  `/home/no/Desktop/github/work/XO/18.CHESS/CHESS.md`. Doom
+  learnings: `/home/no/Desktop/github/work/XO/17.DOOM/DOOM-LEARNINGS.md`.
 - `design-docs/TODO-2026-09-15/MAJOR-PRIORITIES-2026-09-15.md` — **the
   current real major-priorities brainstorm**: 3 tracks settled via
   live Q&A - (1) mineclonia as a real, loadable, re-referenceable
@@ -276,3 +290,7 @@ pointers were the only outright deletions.
   rtp-xyz) each carry their own `ARCHITECTURE.md`/`PROMPT.md`/
   `README.md` — left in place (per-app docs, out of this migration's
   scope), but worth a future roadmap pass to summarize status here.
+
+> **2026-10-08:** per-doc status, next steps and tiers for the Oct 7 to 8 design docs: `design-docs/DOC-STATUS-AND-PATHS-FORWARD-2026-10-08.md`.
+
+> **2026-10-08, Grok handoff:** `design-docs/GROK-HANDOFF-GAMES-ECONOMY-AND-VISIBLE-ENTITIES-2026-10-08.md` (supersedes the 2026-09-02 one) and `design-docs/INSTALL-STORE-ACCOUNTS-AND-USER-DATA-COMPLICATIONS-2026-10-08.md`; Eden retention: `design-docs/EDEN-STATE-RETENTION-DESIGN-2026-10-08.md`.

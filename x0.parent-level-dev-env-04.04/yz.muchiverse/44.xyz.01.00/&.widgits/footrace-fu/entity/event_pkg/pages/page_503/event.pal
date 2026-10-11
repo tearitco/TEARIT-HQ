@@ -1,0 +1,7 @@
+# event.pal - Blink 4: forward 1-2 spaces (coin), finish rule (trigger cast_blink). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/rand_roll.+x . dice_seed rand_counter abilities.pdl:ab_5_sides bl_roll
+exec ops/+x/var_math.+x . set fcur act_pos
+exec ops/+x/var_math.+x . add ftgt act_pos bl_roll
+exec ops/+x/event_page_op.+x . . --trigger finrule --state .
+exec ops/+x/var_math.+x . set ph_cast 3
+halt

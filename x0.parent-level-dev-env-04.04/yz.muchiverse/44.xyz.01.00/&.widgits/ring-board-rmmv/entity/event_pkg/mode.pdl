@@ -1,0 +1,2 @@
+# sequential: every page whose conditions hold AT THAT MOMENT runs in number order (a later page sees the earlier page's changes). Same mode as the digipet Day Tick.
+MODE | pages | sequential

@@ -1,0 +1,3 @@
+# event.pal - SelectLead 2: select it (trigger selectlead). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set sel lead_1
+halt

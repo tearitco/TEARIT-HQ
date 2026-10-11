@@ -1,0 +1,4 @@
+# knowledge_hq.pal - LOCKED acceptance harness for the knowledge-hq manager. Read results/knowledge_hq.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/knowledge_hq.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/knowledge_hq.pdl
+halt

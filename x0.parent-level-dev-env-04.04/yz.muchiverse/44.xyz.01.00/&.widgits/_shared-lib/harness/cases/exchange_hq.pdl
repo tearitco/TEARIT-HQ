@@ -1,0 +1,78 @@
+# exchange_hq - Exchange HQ (&.hq-apps/exchange-hq) on a SCRATCH package via the manager's --once mode: resting orders and the bid/ask spread, price-time matching at the resting price, taker fee with free makers, self-trade skip, market orders that drop an unfilled rest, the price band, cancel rules, rate ledger rows, loans (rate cap, no self-borrow, one taker, only the borrower repays, interest accrues, withdraw), the chart canvas file, settings editing and the chart toggle. Fills are a paper ledger.
+RESULTS | ../results/exchange_hq.txt
+CASE    | exchange-hq
+SCRATCH |
+MKDIR   | pkg
+RUN | /bin/sh | -c | mkdir -p $T/pkg/ledger; cp "$HOUSE/&.hq-apps/exchange-hq/exchange.pdl" $T/pkg/; ln -s "$HOUSE/&.hq-apps/exchange-hq/ops" $T/pkg/ops
+RUN | $HOUSE/&.hq-apps/exchange-hq/ops/+x/exchange_manager.+x | --once | /tmp | $T/pkg | CMD:sell mined 1000 540 actor=A
+EXPECT_OUT | resting in the book (#1) | ask-rests
+RUN | $HOUSE/&.hq-apps/exchange-hq/ops/+x/exchange_manager.+x | --once | /tmp | $T/pkg | CMD:buy mined 400 520 actor=B
+EXPECT_OUT | resting in the book (#2) | bid-rests
+RUN | /bin/sh | -c | grep -c "^sb_bid=bid  0.0520  x 400" $T/pkg/exchange_ui.txt
+EXPECT_OUT_IS | 1 | best-bid-shown
+RUN | /bin/sh | -c | grep -c "^sb_ask=ask  0.0540  x 1000" $T/pkg/exchange_ui.txt
+EXPECT_OUT_IS | 1 | best-ask-shown
+RUN | /bin/sh | -c | grep -c "^sb_spread=spread 0.0020" $T/pkg/exchange_ui.txt
+EXPECT_OUT_IS | 1 | spread-shown
+RUN | $HOUSE/&.hq-apps/exchange-hq/ops/+x/exchange_manager.+x | --once | /tmp | $T/pkg | CMD:buy mined 300 actor=C
+EXPECT_OUT | bought 300 of 300 mc mined, avg 0.0540 | market-buy-fills-at-the-resting-price
+RUN | /bin/sh | -c | grep -c "^TRADE.1.[0-9]*.C.buy.mined.300.540.16.1.A.3.1" $T/pkg/ledger/trades.txt
+EXPECT_OUT_IS | 1 | fill-row-with-taker-fee-and-maker
+RUN | $HOUSE/&.hq-apps/exchange-hq/ops/+x/exchange_manager.+x | --once | /tmp | $T/pkg | CMD:buy mined 100 actor=A
+EXPECT_OUT | no liquidity | self-trade-skipped
+RUN | $HOUSE/&.hq-apps/exchange-hq/ops/+x/exchange_manager.+x | --once | /tmp | $T/pkg | CMD:buy mined 100 9000 actor=Z
+EXPECT_OUT | refused | price-band
+RUN | $HOUSE/&.hq-apps/exchange-hq/ops/+x/exchange_manager.+x | --once | /tmp | $T/pkg | CMD:buy cones 100 actor=Z
+EXPECT_OUT | preferred unit | cones-are-the-preferred-unit
+RUN | $HOUSE/&.hq-apps/exchange-hq/ops/+x/exchange_manager.+x | --once | /tmp | $T/pkg | CMD:buy mined 0 actor=Z
+EXPECT_OUT | above 0 | amount-must-be-positive
+RUN | $HOUSE/&.hq-apps/exchange-hq/ops/+x/exchange_manager.+x | --once | /tmp | $T/pkg | CMD:buy nosuch 100 actor=Z
+EXPECT_OUT | unknown unit | unknown-unit
+RUN | $HOUSE/&.hq-apps/exchange-hq/ops/+x/exchange_manager.+x | --once | /tmp | $T/pkg | CMD:sell mined 5000 actor=D
+EXPECT_OUT | sold 400 of 5000 | market-sell-takes-the-bid
+EXPECT_OUT | rest dropped | market-sell-drops-the-rest
+RUN | $HOUSE/&.hq-apps/exchange-hq/ops/+x/exchange_manager.+x | --once | /tmp | $T/pkg | CMD:cancel 1 actor=Z
+EXPECT_OUT | only A can cancel | only-the-owner-cancels
+RUN | $HOUSE/&.hq-apps/exchange-hq/ops/+x/exchange_manager.+x | --once | /tmp | $T/pkg | CMD:cancel 1 actor=A
+EXPECT_OUT | cancelled | owner-cancels
+RUN | $HOUSE/&.hq-apps/exchange-hq/ops/+x/exchange_manager.+x | --once | /tmp | $T/pkg | CMD:cancel 1 actor=A
+EXPECT_OUT | not open | cancel-twice-refused
+RUN | /bin/sh | -c | grep -c "^RATE.mined." $T/pkg/ledger/rates.txt
+EXPECT_OUT_IS | 2 | rate-rows-appended-when-the-average-moves
+RUN | $HOUSE/&.hq-apps/exchange-hq/ops/+x/exchange_manager.+x | --once | /tmp | $T/pkg | CMD:lend mined 5000 900 2 actor=L
+EXPECT_OUT | rate must be | loan-rate-cap
+RUN | $HOUSE/&.hq-apps/exchange-hq/ops/+x/exchange_manager.+x | --once | /tmp | $T/pkg | CMD:lend mined 5000 100 99 actor=L
+EXPECT_OUT | days must be | loan-length-cap
+RUN | $HOUSE/&.hq-apps/exchange-hq/ops/+x/exchange_manager.+x | --once | /tmp | $T/pkg | CMD:lend mined 5000 100 2 actor=L
+EXPECT_OUT | #1: L offers 5000 mc mined at 1.00% per day | offer-posted
+RUN | $HOUSE/&.hq-apps/exchange-hq/ops/+x/exchange_manager.+x | --once | /tmp | $T/pkg | CMD:borrow 1 actor=L
+EXPECT_OUT | cannot borrow your own | no-self-borrow
+RUN | $HOUSE/&.hq-apps/exchange-hq/ops/+x/exchange_manager.+x | --once | /tmp | $T/pkg | CMD:borrow 1 actor=M
+EXPECT_OUT | loan #2: M borrowed 5000 | borrowed
+RUN | $HOUSE/&.hq-apps/exchange-hq/ops/+x/exchange_manager.+x | --once | /tmp | $T/pkg | CMD:borrow 1 actor=N
+EXPECT_OUT | not available | one-taker-per-offer
+RUN | $HOUSE/&.hq-apps/exchange-hq/ops/+x/exchange_manager.+x | --once | /tmp | $T/pkg | CMD:repay 2 1000 actor=N
+EXPECT_OUT | only M can repay | only-the-borrower-repays
+RUN | $HOUSE/&.hq-apps/exchange-hq/ops/+x/exchange_manager.+x | --once | /tmp | $T/pkg | CMD:repay 2 1000 actor=M
+EXPECT_OUT | still owes 4000 | partial-repay
+RUN | /bin/sh | -c | sed -i 's/day_seconds     \p 600/day_seconds     \p 1/' $T/pkg/exchange.pdl
+RUN | /bin/sh | -c | sleep 2; "$HOUSE/&.hq-apps/exchange-hq/ops/+x/exchange_manager.+x" --once /tmp $T/pkg REFRESH >/dev/null; grep -c 'owes L .* 41[0-9][0-9] mined' $T/pkg/exchange_ui.txt
+EXPECT_OUT_IS | 1 | interest-accrues-per-day
+RUN | $HOUSE/&.hq-apps/exchange-hq/ops/+x/exchange_manager.+x | --once | /tmp | $T/pkg | CMD:lend mined 2000 100 2 actor=L
+RUN | $HOUSE/&.hq-apps/exchange-hq/ops/+x/exchange_manager.+x | --once | /tmp | $T/pkg | CMD:withdraw 3 actor=X
+EXPECT_OUT | only L can withdraw | only-the-lender-withdraws
+RUN | $HOUSE/&.hq-apps/exchange-hq/ops/+x/exchange_manager.+x | --once | /tmp | $T/pkg | CMD:withdraw 3 actor=L
+EXPECT_OUT | withdrawn | withdraw
+RUN | /bin/sh | -c | stat -c %s $T/pkg/chart.raw
+EXPECT_OUT_IS | 1531712 | chart-canvas-is-728x526-rgba
+RUN | /bin/sh | -c | cat $T/pkg/chart.receipt.txt
+EXPECT_OUT | frame_w=728 | chart-receipt
+RUN | $HOUSE/&.hq-apps/exchange-hq/ops/+x/exchange_manager.+x | --once | /tmp | $T/pkg | CHART
+RUN | /bin/sh | -c | grep -c "^chart_mode=depth" $T/pkg/exchange_ui.txt
+EXPECT_OUT_IS | 1 | chart-toggles-to-depth
+RUN | $HOUSE/&.hq-apps/exchange-hq/ops/+x/exchange_manager.+x | --once | /tmp | $T/pkg | SET:fee_percent +
+RUN | /bin/sh | -c | grep -c "^FEE   . percent        . 3 " $T/pkg/exchange.pdl
+EXPECT_OUT_IS | 1 | setting-saved
+RUN | $HOUSE/&.hq-apps/exchange-hq/ops/+x/exchange_manager.+x | --once | /tmp | $T/pkg | TAB:loans
+RUN | /bin/sh | -c | grep -c "^tab_loans=1" $T/pkg/exchange_ui.txt
+EXPECT_OUT_IS | 1 | tab-switch

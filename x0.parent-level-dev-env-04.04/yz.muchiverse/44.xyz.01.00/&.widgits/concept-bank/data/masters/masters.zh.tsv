@@ -1,0 +1,4 @@
+# concept_masters.zh sidecar of &.widgits/concept-bank/data/masters/*.pdl - machine translation. status: ok/accepted are promotable; low_score, translated (unscored) and lint_fail wait for a person (review.tsv); rejected stays out. Scores are advisory. columns: id, source, zh, pinyin, score, status, translator, judge
+energy.pdl:L1	energy	能量	néng liàng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+force.pdl:L1	force	力	lì	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b
+motion.pdl:L1	motion	运动	yùn dòng	5	ok	openai/gpt-oss-120b	qwen2.5-coder:7b

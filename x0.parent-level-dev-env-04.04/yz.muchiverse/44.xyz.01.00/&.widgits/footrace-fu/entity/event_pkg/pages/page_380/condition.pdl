@@ -1,0 +1,2 @@
+# CastGate: alive, enough tokens, class allowed, per-ninja limit, teleport limit, cooldown
+COND | trigger | castgate

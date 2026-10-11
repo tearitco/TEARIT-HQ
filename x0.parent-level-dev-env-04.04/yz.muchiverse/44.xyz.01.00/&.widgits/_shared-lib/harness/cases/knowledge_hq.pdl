@@ -1,0 +1,340 @@
+# knowledge_hq: LOCKED cases. Source under test: &.hq-apps/knowledge-hq/ops/knowledge_manager.c (driven with --once on a scratch house).
+RESULTS | ../results/knowledge_hq.txt
+CASE | knowledge-hq
+SCRATCH |
+COPY | &.hq-apps/knowledge-hq/ops/knowledge_manager.c | knowledge_manager.c
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -Wno-unknown-warning-option | -Wno-format-truncation | -O2 | -o | $T/km.+x | $T/knowledge_manager.c | -lm
+EXPECT_EXIT | 0 | compiles-clean
+COPY | &.widgits/concept-bank/data/chem/compounds_chem.pdl | house/&.widgits/concept-bank/data/chem/compounds_chem.pdl
+COPY | &.widgits/concept-bank/data/chem/compounds_mcat.pdl | house/&.widgits/concept-bank/data/chem/compounds_mcat.pdl
+COPY | &.widgits/concept-bank/data/chem/elements.pdl | house/&.widgits/concept-bank/data/chem/elements.pdl
+COPY | &.widgits/concept-bank/data/chem/chem_feedback.txt | house/&.widgits/concept-bank/data/chem/chem_feedback.txt
+COPY | &.widgits/concept-bank/data/hidden/chem_assoc.approved.txt | house/&.widgits/concept-bank/data/hidden/chem_assoc.approved.txt
+COPY | &.widgits/concept-bank/proposals/chem_assoc/draft.txt | house/&.widgits/concept-bank/proposals/chem_assoc/draft.txt
+COPY | &.widgits/concept-bank/proposals/chem_assoc/review.txt | house/&.widgits/concept-bank/proposals/chem_assoc/review.txt
+COPY | &.widgits/concept-bank/proposals/chem_assoc/draft.txt | ref/draft.txt
+COPY | &.widgits/concept-bank/proposals/chem_assoc/review.txt | ref/review.txt
+COPY | &.hq-apps/knowledge-hq/knowledge_hq_config.pdl | pkg/knowledge_hq_config.pdl
+SUMTREE | data0 | house/&.widgits/concept-bank/data
+RUN | $T/km.+x
+EXPECT_EXIT | 1 | no-args-usage-exit-1
+RUN | $T/km.+x | --once | $T/house
+EXPECT_EXIT | 1 | once-missing-pkg-exit-1
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | once-initial-exit-0
+EXPECT_EXISTS | pkg/knowledge_ui.txt | ui-file-written
+EXPECT_HAS | pkg/knowledge_ui.txt | view=compounds | initial-view-compounds
+EXPECT_HAS | pkg/knowledge_ui.txt | n_total=86 | list-total-86
+EXPECT_HAS | pkg/knowledge_ui.txt | n_shown=86 | list-shown-86
+EXPECT_HAS | pkg/knowledge_ui.txt | n_list=86 | list-size-86
+EXPECT_HAS | pkg/knowledge_ui.txt | n_elements=118 | elements-loaded-118
+EXPECT_HAS | pkg/knowledge_ui.txt | l_0_text=01  | first-row-numbered
+EXPECT_HAS | pkg/knowledge_ui.txt | l_85_text=86  | last-row-86
+EXPECT_LACKS | pkg/knowledge_ui.txt | l_86_text | no-87th-row
+EXPECT_HAS | pkg/knowledge_ui.txt | Acetic Acid  CH3COOH  [OK]  manager: accept | row1-shows-name-formula-ok-status
+EXPECT_HAS | pkg/knowledge_ui.txt | Fructose-1  6-bisphosphate  [BAD]  manager: reject | row67-bad-and-rejected
+EXPECT_HAS | pkg/knowledge_ui.txt | l_0_cls=ok-row | ok-row-class
+EXPECT_HAS | pkg/knowledge_ui.txt | l_66_cls=bad-row | bad-row-class
+EXPECT_HAS | pkg/knowledge_ui.txt | exam chem_formula: 0.795  (reward 69, punish 17) | dataset-exam-laplace-formula
+EXPECT_HAS | pkg/knowledge_ui.txt | exam chem_props: 0.818  (reward 8, punish 1) | dataset-exam-laplace-props
+EXPECT_HAS | pkg/knowledge_ui.txt | cls_grid=off | grid-collapsed-in-compounds
+EXPECT_HAS | pkg/knowledge_ui.txt | n_tiles=0 | no-tiles-in-compounds
+WRITE | pkg/knowledge_action.txt | seq=1\ncmd=FILTER:OK\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | filter-ok-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | filter=OK | filter-ok-recorded
+EXPECT_HAS | pkg/knowledge_ui.txt | n_shown=69 | filter-ok-count-69
+EXPECT_HAS | pkg/knowledge_ui.txt | n_total=86 | filter-ok-total-unchanged
+WRITE | pkg/knowledge_action.txt | seq=2\ncmd=FILTER:BAD\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | filter-bad-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | filter=BAD | filter-bad-recorded
+EXPECT_HAS | pkg/knowledge_ui.txt | n_shown=17 | filter-bad-count-17
+EXPECT_HAS | pkg/knowledge_ui.txt | n_total=86 | filter-bad-total-unchanged
+WRITE | pkg/knowledge_action.txt | seq=3\ncmd=FILTER:APPROVED\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | filter-approved-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | filter=APPROVED | filter-approved-recorded
+EXPECT_HAS | pkg/knowledge_ui.txt | n_shown=73 | filter-approved-count-73
+EXPECT_HAS | pkg/knowledge_ui.txt | n_total=86 | filter-approved-total-unchanged
+WRITE | pkg/knowledge_action.txt | seq=4\ncmd=FILTER:REJECTED\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | filter-rejected-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | filter=REJECTED | filter-rejected-recorded
+EXPECT_HAS | pkg/knowledge_ui.txt | n_shown=13 | filter-rejected-count-13
+EXPECT_HAS | pkg/knowledge_ui.txt | n_total=86 | filter-rejected-total-unchanged
+WRITE | pkg/knowledge_action.txt | seq=5\ncmd=FILTER:UNREVIEWED\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | filter-unreviewed-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | filter=UNREVIEWED | filter-unreviewed-recorded
+EXPECT_HAS | pkg/knowledge_ui.txt | n_shown=0 | filter-unreviewed-count-0
+EXPECT_HAS | pkg/knowledge_ui.txt | n_total=86 | filter-unreviewed-total-unchanged
+WRITE | pkg/knowledge_action.txt | seq=6\ncmd=FILTER:BAD\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | filter-bad-again-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | l_0_text=67  | filter-bad-first-is-67
+EXPECT_LACKS | pkg/knowledge_ui.txt | [OK] | filter-bad-has-no-ok-rows
+WRITE | pkg/knowledge_action.txt | seq=7\ncmd=FILTER:REJECTED\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | filter-rejected-again-runs
+EXPECT_LACKS | pkg/knowledge_ui.txt | manager: accept | filter-rejected-has-no-accepts
+WRITE | pkg/knowledge_action.txt | seq=8\ncmd=FILTER:OK\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | filter-ok-again-runs
+EXPECT_LACKS | pkg/knowledge_ui.txt | [BAD] | filter-ok-has-no-bad-rows
+WRITE | pkg/knowledge_action.txt | seq=9\ncmd=FILTER:NOPE\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | filter-unknown-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | msg=ignored: unknown filter 'NOPE' | filter-unknown-ignored-with-message
+EXPECT_HAS | pkg/knowledge_ui.txt | filter=OK | filter-unknown-keeps-previous
+WRITE | pkg/knowledge_action.txt | seq=10\ncmd=FILTER:ALL\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | filter-all-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | n_shown=86 | filter-all-86
+WRITE | pkg/knowledge_action.txt | seq=11\ncmd=SEL:5\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | select-5-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | level=1 | card-level-1
+EXPECT_HAS | pkg/knowledge_ui.txt | crumb=compounds / #5 Benzene | card-crumb
+EXPECT_HAS | pkg/knowledge_ui.txt | formula    C6H6   [formula OK] | card-formula-ok-tag
+EXPECT_HAS | pkg/knowledge_ui.txt | proposed association (groq-gpt-oss-120b, status=candidate) | card-proposer-and-status
+EXPECT_HAS | pkg/knowledge_ui.txt | energy  [----------] +0.00 | card-bar-energy-proposed
+EXPECT_HAS | pkg/knowledge_ui.txt | force   [###-------] +0.30 | card-bar-force-proposed
+EXPECT_HAS | pkg/knowledge_ui.txt | motion  [#---------] +0.10 | card-bar-motion-proposed
+EXPECT_HAS | pkg/knowledge_ui.txt | manager review: adjust energy=0.40 force=0.20 motion=0.40 (by=claude-manager) | card-manager-review-row
+EXPECT_HAS | pkg/knowledge_ui.txt | owner review: none | card-no-owner-yet
+EXPECT_HAS | pkg/knowledge_ui.txt | status: manager: adjust | card-status-line
+EXPECT_HAS | pkg/knowledge_ui.txt | effective (adjusted by manager) | card-effective-adjusted
+EXPECT_HAS | pkg/knowledge_ui.txt | approved vector (data/hidden/chem_assoc.approved.txt) | card-approved-section
+EXPECT_HAS | pkg/knowledge_ui.txt | by=claude-manager basis=adjust | card-approved-basis
+EXPECT_HAS | pkg/knowledge_ui.txt | chem_formula this row 0.667 (+1/-0)   dataset 0.795 (+69/-17) | card-exam-scores-this-row-and-dataset
+EXPECT_HAS | pkg/knowledge_ui.txt | show_review=1 | review-buttons-shown
+WRITE | pkg/knowledge_action.txt | seq=12\ncmd=SEL:67\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | select-67-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | [formula BAD] | card-bad-formula-tag
+EXPECT_HAS | pkg/knowledge_ui.txt | status: manager: reject | card-rejected-status
+EXPECT_HAS | pkg/knowledge_ui.txt | chem_formula this row 0.333 (+0/-1) | card-bad-row-exam-punished
+EXPECT_LACKS | pkg/knowledge_ui.txt | effective (adjusted | card-reject-has-no-effective
+WRITE | pkg/knowledge_action.txt | seq=13\ncmd=SEL:15\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | select-15-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | chem_props   this row 0.333 (+0/-1) | card-chem15-props-punished
+WRITE | pkg/knowledge_action.txt | seq=14\ncmd=BACK\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | back-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | level=0 | back-to-list
+WRITE | pkg/knowledge_action.txt | seq=15\ncmd=SEL:999\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | select-out-of-range-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | msg=ignored: no compound 999 | select-out-of-range-ignored
+WRITE | pkg/knowledge_action.txt | seq=16\ncmd=SHOW:elements\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | show-elements-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | view=elements | view-elements
+EXPECT_HAS | pkg/knowledge_ui.txt | n_tiles=118 | elements-118-tiles
+EXPECT_HAS | pkg/knowledge_ui.txt | cls_grid=on | grid-shown-in-elements
+EXPECT_HAS | pkg/knowledge_ui.txt | t_0_sym=H | tile0-hydrogen
+EXPECT_HAS | pkg/knowledge_ui.txt | t_117_sym=Og | tile117-oganesson
+EXPECT_HAS | pkg/knowledge_ui.txt | t_7_z=8 | tile7-is-z8
+EXPECT_LACKS | pkg/knowledge_ui.txt | t_118_sym | no-119th-tile
+EXPECT_HAS | pkg/knowledge_ui.txt | Pick an element tile | elements-hint-no-selection
+WRITE | pkg/knowledge_action.txt | seq=17\ncmd=SELEL:8\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | select-oxygen-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | crumb=elements / Oxygen | oxygen-crumb
+EXPECT_HAS | pkg/knowledge_ui.txt | t_7_cls=sel | oxygen-tile-marked-sel
+EXPECT_HAS | pkg/knowledge_ui.txt |   protons    8 | oxygen-protons
+EXPECT_HAS | pkg/knowledge_ui.txt |   neutrons   8 | oxygen-neutrons
+EXPECT_HAS | pkg/knowledge_ui.txt |   mass no.   16 | oxygen-mass-number
+EXPECT_HAS | pkg/knowledge_ui.txt | compounds containing O: 51 | oxygen-compound-count
+WRITE | pkg/knowledge_action.txt | seq=18\ncmd=SELEL:200\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | select-element-out-of-range-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | msg=ignored: no element 200 | element-out-of-range-ignored
+WRITE | pkg/knowledge_action.txt | seq=19\ncmd=ACCEPT\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | accept-in-elements-view-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | msg=refused: select a compound first | review-refused-in-elements-view
+EXPECT_NOFILE | house/&.widgits/concept-bank/proposals/chem_assoc/review_owner.txt | no-owner-file-from-refused-review
+WRITE | pkg/knowledge_action.txt | seq=20\ncmd=SHOW:compounds\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | show-compounds-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | n_tiles=0 | tiles-gone-back-in-compounds
+WRITE | pkg/knowledge_action.txt | seq=21\ncmd=SHOW:bogus\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | show-bogus-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | msg=ignored: unknown view 'bogus' | unknown-view-ignored
+SUMTREE | bank0 | house/&.widgits/concept-bank
+WRITE | pkg/knowledge_action.txt | seq=22\ncmd=RELOAD\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | reload-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | msg=reloaded | reload-message
+WRITE | pkg/knowledge_action.txt | seq=23\ncmd=SEL:1\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | select-1-for-review-runs
+WRITE | pkg/knowledge_action.txt | seq=24\ncmd=ACCEPT\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | owner-accept-1-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | msg=owner: accept recorded for #1 Acetic Acid | accept-message
+EXPECT_HAS | pkg/knowledge_ui.txt | owner review: accept | accept-card-owner-line
+EXPECT_HAS | pkg/knowledge_ui.txt | status: owner: accept | accept-status-owner
+EXPECT_FILE | house/&.widgits/concept-bank/proposals/chem_assoc/review_owner.txt | REVIEW \p 1 \p accept \p by=owner \p via knowledge-hq\n | accept-appends-exactly-one-row
+SUMTREE | data1 | house/&.widgits/concept-bank/data
+EXPECT_EQ | $data0 | $data1 | data-dir-unchanged-after-accept
+RUN | cmp | $T/house/&.widgits/concept-bank/proposals/chem_assoc/review.txt | $T/ref/review.txt
+EXPECT_EXIT | 0 | manager-review-file-untouched
+RUN | cmp | $T/house/&.widgits/concept-bank/proposals/chem_assoc/draft.txt | $T/ref/draft.txt
+EXPECT_EXIT | 0 | draft-file-untouched
+WRITE | pkg/knowledge_action.txt | seq=25\ncmd=SEL:2\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | select-2-runs
+WRITE | pkg/knowledge_action.txt | seq=26\ncmd=REJECT\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | owner-reject-2-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | status: owner: reject | reject-status-owner
+EXPECT_FILE | house/&.widgits/concept-bank/proposals/chem_assoc/review_owner.txt | REVIEW \p 1 \p accept \p by=owner \p via knowledge-hq\nREVIEW \p 2 \p reject \p by=owner \p via knowledge-hq\n | reject-appends-second-row-only
+WRITE | pkg/knowledge_action.txt | seq=27\ncmd=SEL:3\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | select-3-runs
+WRITE | pkg/knowledge_action.txt | seq=28\ncmd=ADJUST:0.1:0.2:0.3\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | owner-adjust-3-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | msg=owner: adjust recorded for #3 Acetone | adjust-message
+EXPECT_HAS | pkg/knowledge_ui.txt | owner review: adjust energy=0.10 force=0.20 motion=0.30 | adjust-card-owner-line
+EXPECT_HAS | pkg/knowledge_ui.txt | effective (adjusted by owner) | adjust-effective-by-owner
+EXPECT_HAS | pkg/knowledge_ui.txt | energy  [#---------] +0.10 | adjust-effective-bar-energy
+EXPECT_FILE | house/&.widgits/concept-bank/proposals/chem_assoc/review_owner.txt | REVIEW \p 1 \p accept \p by=owner \p via knowledge-hq\nREVIEW \p 2 \p reject \p by=owner \p via knowledge-hq\nREVIEW \p 3 \p adjust \p energy=0.10 force=0.20 motion=0.30 \p by=owner \p via knowledge-hq\n | adjust-row-format
+WRITE | pkg/knowledge_action.txt | seq=29\ncmd=SEL:6\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | select-6-runs
+WRITE | pkg/knowledge_action.txt | seq=30\ncmd=ADJUST:-1:0.5:1.0\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | owner-adjust-edges-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | owner review: adjust energy=-1.00 force=0.50 motion=1.00 | adjust-edges-normalised-2-decimals
+SUMTREE | owntree | house/&.widgits/concept-bank/proposals/chem_assoc
+SUMTREE | bank1 | house/&.widgits/concept-bank/data
+WRITE | pkg/knowledge_action.txt | seq=31\ncmd=ADJUST:1.5:0:0\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | bad-adjust-energy-over-1-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | msg=refused: | bad-adjust-energy-over-1-refused-on-screen
+SUMTREE | ow_energy_over_1 | house/&.widgits/concept-bank/proposals/chem_assoc
+EXPECT_EQ | $owntree | $ow_energy_over_1 | bad-adjust-energy-over-1-no-write
+WRITE | pkg/knowledge_action.txt | seq=32\ncmd=ADJUST:0:-1.01:0\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | bad-adjust-force-under-minus-1-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | msg=refused: | bad-adjust-force-under-minus-1-refused-on-screen
+SUMTREE | ow_force_under_minus_1 | house/&.widgits/concept-bank/proposals/chem_assoc
+EXPECT_EQ | $owntree | $ow_force_under_minus_1 | bad-adjust-force-under-minus-1-no-write
+WRITE | pkg/knowledge_action.txt | seq=33\ncmd=ADJUST:0:0:0.123\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | bad-adjust-motion-three-decimals-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | msg=refused: | bad-adjust-motion-three-decimals-refused-on-screen
+SUMTREE | ow_motion_three_decimals | house/&.widgits/concept-bank/proposals/chem_assoc
+EXPECT_EQ | $owntree | $ow_motion_three_decimals | bad-adjust-motion-three-decimals-no-write
+WRITE | pkg/knowledge_action.txt | seq=34\ncmd=ADJUST:abc:0:0\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | bad-adjust-not-a-number-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | msg=refused: | bad-adjust-not-a-number-refused-on-screen
+SUMTREE | ow_not_a_number | house/&.widgits/concept-bank/proposals/chem_assoc
+EXPECT_EQ | $owntree | $ow_not_a_number | bad-adjust-not-a-number-no-write
+WRITE | pkg/knowledge_action.txt | seq=35\ncmd=ADJUST:0.5:0.5\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | bad-adjust-two-args-only-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | msg=refused: | bad-adjust-two-args-only-refused-on-screen
+SUMTREE | ow_two_args_only | house/&.widgits/concept-bank/proposals/chem_assoc
+EXPECT_EQ | $owntree | $ow_two_args_only | bad-adjust-two-args-only-no-write
+WRITE | pkg/knowledge_action.txt | seq=36\ncmd=ADJUST:+0.5:0:0\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | bad-adjust-plus-sign-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | msg=refused: | bad-adjust-plus-sign-refused-on-screen
+SUMTREE | ow_plus_sign | house/&.widgits/concept-bank/proposals/chem_assoc
+EXPECT_EQ | $owntree | $ow_plus_sign | bad-adjust-plus-sign-no-write
+WRITE | pkg/knowledge_action.txt | seq=37\ncmd=ADJUST:.5:0:0\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | bad-adjust-no-leading-digit-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | msg=refused: | bad-adjust-no-leading-digit-refused-on-screen
+SUMTREE | ow_no_leading_digit | house/&.widgits/concept-bank/proposals/chem_assoc
+EXPECT_EQ | $owntree | $ow_no_leading_digit | bad-adjust-no-leading-digit-no-write
+WRITE | pkg/knowledge_action.txt | seq=38\ncmd=ADJUST:0.5:0.5:0.5:0.5\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | bad-adjust-four-args-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | msg=refused: | bad-adjust-four-args-refused-on-screen
+SUMTREE | ow_four_args | house/&.widgits/concept-bank/proposals/chem_assoc
+EXPECT_EQ | $owntree | $ow_four_args | bad-adjust-four-args-no-write
+WRITE | pkg/knowledge_action.txt | seq=39\ncmd=ADJUST:0.5::0.5\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | bad-adjust-empty-weight-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | msg=refused: | bad-adjust-empty-weight-refused-on-screen
+SUMTREE | ow_empty_weight | house/&.widgits/concept-bank/proposals/chem_assoc
+EXPECT_EQ | $owntree | $ow_empty_weight | bad-adjust-empty-weight-no-write
+WRITE | pkg/knowledge_action.txt | seq=40\ncmd=ADJUST:1e0:0:0\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | bad-adjust-exponent-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | msg=refused: | bad-adjust-exponent-refused-on-screen
+SUMTREE | ow_exponent | house/&.widgits/concept-bank/proposals/chem_assoc
+EXPECT_EQ | $owntree | $ow_exponent | bad-adjust-exponent-no-write
+EXPECT_HAS | pkg/knowledge_ui.txt | must be a decimal in [-1,1] | refusal-reason-shown
+WRITE | pkg/knowledge_action.txt | seq=41\ncmd=ADJUST:0.5:0.5\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | bad-adjust-two-args-msg-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | msg=refused: ADJUST needs <energy>:<force>:<motion> | two-args-reason
+WRITE | pkg/knowledge_action.txt | seq=42\ncmd=SEL:4\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | select-4-manager-accepted-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | status: manager: accept | row4-manager-accept-before
+WRITE | pkg/knowledge_action.txt | seq=43\ncmd=REJECT\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | owner-reject-4-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | status: owner: reject | owner-outranks-manager
+EXPECT_HAS | pkg/knowledge_ui.txt | manager review: accept | manager-row-still-shown
+WRITE | pkg/knowledge_action.txt | seq=44\ncmd=FILTER:REJECTED\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | filter-rejected-sees-owner-row-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | n_shown=15 | owner-rejects-of-rows-2-and-4-join-the-13
+WRITE | pkg/knowledge_action.txt | seq=45\ncmd=SEL:4\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | reselect-4-runs
+WRITE | pkg/knowledge_action.txt | seq=46\ncmd=ACCEPT\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | owner-accept-4-later-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | status: owner: accept | later-owner-row-wins
+WRITE | pkg/knowledge_action.txt | seq=47\ncmd=FILTER:UNREVIEWED\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | unreviewed-after-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | n_shown=0 | still-no-unreviewed
+SUMTREE | owntree2 | house/&.widgits/concept-bank/proposals/chem_assoc
+WRITE | pkg/knowledge_action.txt | seq=48\ncmd=FROB:1\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+EXPECT_EXIT | 0 | unknown-verb-runs
+EXPECT_HAS | pkg/knowledge_ui.txt | msg=ignored: unknown verb 'FROB:1' | unknown-verb-message
+SUMTREE | owntree3 | house/&.widgits/concept-bank/proposals/chem_assoc
+EXPECT_EQ | $owntree2 | $owntree3 | unknown-verb-writes-nothing
+RUN | $T/km.+x | --once | $T/house | $T/pkg
+SUMTREE | owntree4 | house/&.widgits/concept-bank/proposals/chem_assoc
+EXPECT_EQ | $owntree3 | $owntree4 | old-seq-not-reapplied
+WRITE | house/&.widgits/concept-bank/proposals/chem_assoc/review.txt | REVIEW \p 1 \p accept \p by=claude-manager \p ok\nREVIEW \p 2 \p reject \p by=claude-manager \p no\nREVIEW \p 2 \p accept \p by=claude-manager \p later-wins\n
+WRITE | house/&.widgits/concept-bank/proposals/chem_assoc/review_owner.txt | REVIEW \p 1 \p reject \p by=owner \p via knowledge-hq\n
+WRITE | pkg2/knowledge_hq_config.pdl | SECTION \p bank_dir \p &.widgits/concept-bank\n
+WRITE | pkg2/knowledge_action.txt | seq=49\ncmd=FILTER:UNREVIEWED\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg2
+EXPECT_EXIT | 0 | p2-unreviewed-runs
+EXPECT_HAS | pkg2/knowledge_ui.txt | n_shown=84 | p2-84-unreviewed
+WRITE | pkg2/knowledge_action.txt | seq=50\ncmd=FILTER:APPROVED\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg2
+EXPECT_EXIT | 0 | p2-approved-runs
+EXPECT_HAS | pkg2/knowledge_ui.txt | n_shown=1 | p2-only-row2-approved-last-manager-row-wins
+EXPECT_HAS | pkg2/knowledge_ui.txt | manager: accept | p2-row2-manager-accept
+WRITE | pkg2/knowledge_action.txt | seq=51\ncmd=FILTER:REJECTED\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg2
+EXPECT_EXIT | 0 | p2-rejected-runs
+EXPECT_HAS | pkg2/knowledge_ui.txt | n_shown=1 | p2-owner-reject-outranks-manager-accept
+EXPECT_HAS | pkg2/knowledge_ui.txt | owner: reject | p2-owner-status-shown
+WRITE | pkg2/knowledge_action.txt | seq=52\ncmd=ACCEPT\n
+RUN | $T/km.+x | --once | $T/house | $T/pkg2
+EXPECT_EXIT | 0 | p2-accept-without-selection-runs
+EXPECT_HAS | pkg2/knowledge_ui.txt | msg=refused: select a compound first | p2-refused-without-selection
+RUN | grep | -c | REVIEW | $T/house/&.widgits/concept-bank/proposals/chem_assoc/review_owner.txt
+EXPECT_OUT_IS | 1 | p2-no-row-appended-without-selection
+RUN | grep | -rIlF | /home/ | --exclude-dir=+x | --exclude-dir=audit | $HOUSE/&.hq-apps/knowledge-hq
+EXPECT_EXIT | 1 | no-absolute-home-path-in-app-files

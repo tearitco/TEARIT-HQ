@@ -1,0 +1,17 @@
+# Sample system: Sun, Earth, Moon, Mars. SI units (kg, m, s). Rows are pipe-delimited, '#' = comment.
+# Sources: NASA Planetary Fact Sheets (nssdc.gsfc.nasa.gov/planetary/factsheet), IAU 2015 nominal values, CODATA 2018 for G.
+# Radii are volumetric MEAN radii, so Mars g is 3.73 here (the 3.71 often quoted uses the equatorial radius).
+CONST | G | 6.6743e-11
+# BODY | name | parent | mass_kg | radius_m | a_m (semi-major axis around parent) | rotation_period_s
+BODY | sun   | -     | 1.98841e30 | 6.957e8   | 0           | 2192832
+BODY | earth | sun   | 5.9722e24  | 6.371e6   | 1.495978707e11 | 86164.1
+BODY | moon  | earth | 7.342e22   | 1.7374e6  | 3.84399e8   | 2360592
+BODY | mars  | sun   | 6.4171e23  | 3.3895e6  | 2.27956e11  | 88642.7
+# NODE | id | kind | in= | out= | impl=   (house default wiring; every body is evaluated through these)
+NODE | gravity | gravity         | in=mass,radius | out=g              | impl=newton
+NODE | orbit   | orbit           | in=a,star_mass | out=period,period_days | impl=kepler
+NODE | escape  | escape_velocity | in=g,radius    | out=v,v_kms        | impl=standard
+# LINK | from_node.out -> to_node.in
+LINK | gravity.g -> escape.g
+# TUNABLE | node | key | value   (extra joints; defaults live in physics_tunables.pdl)
+# OVERRIDE | scope=page:<page>|planet:<body>|system | node | impl=... | key=value ...   (page > planet > system > house default)

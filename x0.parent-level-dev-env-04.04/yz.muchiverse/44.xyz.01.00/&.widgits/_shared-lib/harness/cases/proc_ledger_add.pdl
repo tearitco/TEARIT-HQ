@@ -1,0 +1,36 @@
+# proc_ledger_add.sh with the REAL reaper (kh_proc_reap_all) on a scratch house, with throwaway `sleep` processes. Replaces tests/test_proc_ledger_add.sh.
+# A process registered by the helper must be killed by the reaper. The PID-reuse GUARD is tested for real: a line with a WRONG non-zero starttime must be skipped.
+RESULTS | ../results/proc_ledger_add.txt
+CASE    | proc-ledger-add
+SCRATCH |
+COPY    | &.widgits/_shared-lib/ops/proc_ledger_add.sh | bin/proc_ledger_add.sh
+COPY    | &.widgits/_shared-lib/harness/ops/+x/proc_reap_op.+x | bin/proc_reap_op
+MKDIR   | house/#.desktop
+
+SPAWN | PA | sleep | 300
+SPAWN | PB | sleep | 300
+SLEEP | 300
+RUN | sh | $T/bin/proc_ledger_add.sh | $T/house | $PA | test-new
+APPEND | house/#.desktop/livedesk_proc_list.txt | $PB $PB 0 1 test-wrong-start\n
+RUN | awk | $1~/^[0-9]+$/ && $2~/^[0-9]+$/ && $3==0 && $4~/^[0-9]+$/ && $4>0 && NF==5 {print "ok"} | $T/house/#.desktop/livedesk_proc_list.txt
+EXPECT_OUT | ok | helper-writes-5-real-fields
+RUN | awk | {sub(/^.*\) /,""); print $20} | /proc/$PA/stat
+CAPTURE | S
+EXPECT_HAS | house/#.desktop/livedesk_proc_list.txt | 0 $S test-new | starttime-matches-proc
+EXPECT_ALIVE | $PA | A-alive-before-reap
+EXPECT_ALIVE | $PB | B-alive-before-reap
+
+RUN | $T/bin/proc_reap_op | $T/house
+SLEEP | 800
+EXPECT_DEAD  | $PA | helper-registered-process-is-reaped
+EXPECT_ALIVE | $PB | wrong-nonzero-starttime-is-skipped-pid-reuse-guard
+
+RUN | sh | $T/bin/proc_ledger_add.sh | $T/house | 999999 | ghost-pid
+EXPECT_EXIT | 0 | dead-pid-exit-0
+EXPECT_LACKS | house/#.desktop/livedesk_proc_list.txt | ghost-pid | dead-pid-writes-nothing
+RUN | sh | $T/bin/proc_ledger_add.sh | | $PB | x
+RUN | sh | $T/bin/proc_ledger_add.sh | $T/house | 12x | y
+# the reaper rewrites the ledger after reaping, so it can hold fewer than 2 lines; what matters is that bad arguments ADDED nothing
+RUN | awk | END{print (NR<=2) ? "ok" : "more"} | $T/house/#.desktop/livedesk_proc_list.txt
+EXPECT_OUT_IS | ok | bad-arguments-ignored
+CLEAN |

@@ -1,0 +1,50 @@
+# abilities.pdl - the draft's "Magic & Teleport Rules" table as `ab_<id>_<field>=int` rows (read by var_math `abilities.pdl:ab_{g_ab}_cost` ...). Ability ids: 1 Time Skip, 2 Warp Ally, 3 Banish Foe, 4 Chrono Shield, 5 Shadow blink (the class special of Shadow Step).
+#   cost      action tokens          cond   roll condition: 0 none, 1 roll doubles (2d6 equal), 2 coin flip (heads), 3 double sixes (2d6 = 6 and 6)
+#   limit     uses per ninja per race, 0 = unlimited       cd   cooldown in the owner's own turns (rounds): usable again when round >= cast round + cd
+#   teleport  1 = counts toward `teleport_limit_per_ninja`   class  0 = any ninja may cast it, else only that class id
+# A cast whose roll condition fails still spends the tokens, the use and the cooldown (a fizzle). Which classes may cast which ability is NOT in the draft: class 0 (anyone) is a PLACEHOLDER=1, owner decision pending.
+CAST | 1 | Time Skip | 1 token + roll doubles | move forward 1d4 | max 2 uses per race
+CAST | 2 | Warp Ally | 1 token + coin flip | teleport a friendly ninja 3 spaces forward | cannot teleport past Finish
+CAST | 3 | Banish Foe | 2 tokens + double 6s | send the nearest enemy to Start (coin flip: Finish, when rules.pdl allows) | enemy at Finish wins
+CAST | 4 | Chrono Shield | 1 token | +2 Block for one combat | cooldown 2 turns
+CAST | 5 | Shadow blink | 1 token | teleport self 1-2 spaces forward | class special of Shadow Step
+# draft fairness guardrail: teleport abilities (Warp Ally, Banish Foe, blink) max 2 uses per ninja per game
+teleport_limit_per_ninja=2
+ab_1_cost=1
+ab_1_cond=1
+ab_1_limit=2
+ab_1_cd=0
+ab_1_teleport=0
+ab_1_class=0
+# Time Skip distance: one die of this many sides (draft 1d4)
+ab_1_die=4
+ab_2_cost=1
+ab_2_cond=2
+ab_2_limit=0
+ab_2_cd=0
+ab_2_teleport=1
+ab_2_class=0
+# Warp Ally distance (draft "up to 3 spaces"; v0 always uses the maximum). PLACEHOLDER=1
+ab_2_spaces=3
+ab_3_cost=2
+ab_3_cond=3
+ab_3_limit=0
+ab_3_cd=0
+ab_3_teleport=1
+ab_3_class=0
+ab_4_cost=1
+ab_4_cond=0
+ab_4_limit=0
+ab_4_cd=2
+ab_4_teleport=0
+ab_4_class=0
+# Block bonus the shield gives for one combat (draft +2)
+ab_4_bonus=2
+# Shadow blink: cost is a PLACEHOLDER=1 (the draft says "as move"); distance = a die of ab_5_sides (draft 1-2 spaces)
+ab_5_cost=1
+ab_5_cond=0
+ab_5_limit=0
+ab_5_cd=0
+ab_5_teleport=1
+ab_5_class=5
+ab_5_sides=2

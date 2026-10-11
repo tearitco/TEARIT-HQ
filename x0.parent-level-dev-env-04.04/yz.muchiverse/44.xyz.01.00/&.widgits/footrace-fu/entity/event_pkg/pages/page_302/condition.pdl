@@ -1,0 +1,4 @@
+# Move 3: can it act (alive and enough tokens)
+COND | trigger | move
+COND | kv | variables.txt | ph_move | eq | 1
+COND | kv | switches.txt | game_over | eq | 0

@@ -1,0 +1,45 @@
+# board.pdl - the 40-tile ring (RING-BOARD-AS-RMMV-EVENTS-DESIGN.md section 3). House theme (stores, banks, castles); no cards in v0, so the six classic card tiles are plain properties.
+# TILE | n | kind | name | price | rent | group     kind = go | prop | tax | jail | gotojail | parking.  Rent is FIXED (price / 8, no houses, no color-set bonus in v0).
+# A tax tile's amount is rules.pdl `tax_<group>`; `group` is unused by the v0 rules (kept for the v1 color-set rule).
+# Read by ops/tile_lookup.c. Positions are 0..39; GO is 0, Jail is 10, Go To Jail is 30.
+SECTION | n | kind | name | price | rent | group
+TILE | 0 | go | GO | 0 | 0 | -
+TILE | 1 | prop | Old Shed | 60 | 8 | brown
+TILE | 2 | prop | Corner Store | 80 | 10 | brown
+TILE | 3 | prop | Market Stall | 60 | 8 | brown
+TILE | 4 | tax | Income Tax | 0 | 0 | income
+TILE | 5 | prop | First Bank | 200 | 25 | bank
+TILE | 6 | prop | Tin Hut | 100 | 12 | sky
+TILE | 7 | prop | Cottage | 110 | 14 | sky
+TILE | 8 | prop | Farm | 100 | 12 | sky
+TILE | 9 | prop | Mill | 120 | 15 | sky
+TILE | 10 | jail | Jail (just visiting) | 0 | 0 | -
+TILE | 11 | prop | Chapel | 140 | 18 | rose
+TILE | 12 | prop | Power Store | 150 | 19 | util
+TILE | 13 | prop | Manor | 140 | 18 | rose
+TILE | 14 | prop | Guildhall | 160 | 20 | rose
+TILE | 15 | prop | Second Bank | 200 | 25 | bank
+TILE | 16 | prop | Tavern | 180 | 22 | amber
+TILE | 17 | prop | Library | 170 | 21 | amber
+TILE | 18 | prop | Forge | 180 | 22 | amber
+TILE | 19 | prop | Smithy | 200 | 25 | amber
+TILE | 20 | parking | Free Parking | 0 | 0 | -
+TILE | 21 | prop | Watchtower | 220 | 28 | red
+TILE | 22 | prop | Barracks | 230 | 29 | red
+TILE | 23 | prop | Keep | 220 | 28 | red
+TILE | 24 | prop | Fort | 240 | 30 | red
+TILE | 25 | prop | Third Bank | 200 | 25 | bank
+TILE | 26 | prop | Harbor | 260 | 32 | gold
+TILE | 27 | prop | Lighthouse | 260 | 32 | gold
+TILE | 28 | prop | Water Store | 150 | 19 | util
+TILE | 29 | prop | Drydock | 280 | 35 | gold
+TILE | 30 | gotojail | Go To Jail | 0 | 0 | -
+TILE | 31 | prop | Tower | 300 | 38 | green
+TILE | 32 | prop | Palace Gate | 300 | 38 | green
+TILE | 33 | prop | Cathedral | 310 | 39 | green
+TILE | 34 | prop | Citadel | 320 | 40 | green
+TILE | 35 | prop | Fourth Bank | 200 | 25 | bank
+TILE | 36 | prop | Court | 340 | 42 | navy
+TILE | 37 | prop | Castle | 350 | 44 | navy
+TILE | 38 | tax | Luxury Tax | 0 | 0 | luxury
+TILE | 39 | prop | Grand Castle | 400 | 50 | navy

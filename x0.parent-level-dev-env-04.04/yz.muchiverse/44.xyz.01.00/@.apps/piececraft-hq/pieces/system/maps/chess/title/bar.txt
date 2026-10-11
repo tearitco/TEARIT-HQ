@@ -1,0 +1,7 @@
+1	Standard	3	1	on-click
+2	Computer	3	2	on-click
+3	Player	3	3	on-click
+4	King pawn	3	4	on-click
+5	Elo	3	5	on-click
+6	Quit	3	6	on-click
+7	Endgame	4	4	on-click

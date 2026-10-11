@@ -1,0 +1,48 @@
+# ASSOC drafts: how strongly each Eden phrase relates to the three masters. PROPOSED by groq-gpt-oss-120b, linted by assoc_lint; status=candidate until a person reviews every row.
+# ASSOC | n | phrase | energy | force | motion | proposer | status
+ASSOC | 1 | The field looks green today | energy=0.70 | force=0.00 | motion=0.10 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 2 | Did the rain reach your plot | energy=0.30 | force=0.00 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 3 | I have grain to spare | energy=0.80 | force=0.00 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 4 | Come and see the hut | energy=0.00 | force=0.10 | motion=0.20 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 5 | Save a seed for me | energy=0.60 | force=0.00 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 6 | The jug is nearly dry | energy=0.40 | force=0.00 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 7 | Morning chores are waiting at the barn | energy=0.50 | force=0.30 | motion=0.20 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 8 | Will the chicken lay eggs before sunset? | energy=0.60 | force=0.00 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 9 | Gather the water from the well for the garden | energy=0.70 | force=0.20 | motion=0.10 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 10 | Can you help me dig the new plot near the oak? | energy=0.20 | force=0.80 | motion=0.10 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 11 | The silver spoon glints near the old stone wall | energy=0.00 | force=0.10 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 12 | Please bring the milk from the cow before noon | energy=0.70 | force=0.00 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 13 | Did you hear the horse neigh by the fence? | energy=0.00 | force=0.00 | motion=0.10 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 14 | Harvest the golden wheat when the sun is high | energy=0.80 | force=0.10 | motion=0.10 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 15 | Check the spade for rust before you start digging | energy=0.00 | force=0.70 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 16 | Our garden needs more seed for the upcoming spring | energy=0.70 | force=0.00 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 17 | Could the rain bring fresh mud to the field? | energy=0.20 | force=0.20 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 18 | The barn doors creak as the wind blows gently | energy=0.00 | force=0.10 | motion=0.10 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 19 | I found a clay pot near the old well yesterday | energy=0.00 | force=0.10 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 20 | Do you think the jug will hold enough water today? | energy=0.40 | force=0.00 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 21 | Remember to water each plant after sunrise | energy=0.70 | force=0.00 | motion=0.10 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 22 | The hen clucked loudly near the fence this morning | energy=0.00 | force=0.00 | motion=0.10 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 23 | Will the harvest be ready by the full moon? | energy=0.60 | force=0.00 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 24 | Set the hoe aside after you finish the row | energy=0.00 | force=0.60 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 25 | Your new barn looks sturdy and bright in the dusk | energy=0.00 | force=0.70 | motion=0.10 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 26 | Can the seed survive the cold night without cover? | energy=0.30 | force=0.00 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 27 | I saw a silver coin glimmer in the dirt beside the plot | energy=0.00 | force=0.10 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 28 | The field smells of fresh rain and earth today | energy=0.20 | force=0.00 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 29 | Do you need a spade or a hoe for the next task? | energy=0.00 | force=0.50 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 30 | Please plant the seedlings near the water source soon | energy=0.70 | force=0.00 | motion=0.10 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 31 | Did the cow wander into the garden this afternoon? | energy=0.00 | force=0.00 | motion=0.10 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 32 | Our chicken coop needs extra straw for the chicks | energy=0.60 | force=0.00 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 33 | Will the egg basket be full by dinner time? | energy=0.70 | force=0.00 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 34 | Check the gold nuggets you buried near the stone wall | energy=0.00 | force=0.20 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 35 | The rain has softened the soil for easy digging | energy=0.20 | force=0.70 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 36 | Can you fetch a jug of fresh water from the well? | energy=0.70 | force=0.00 | motion=0.10 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 37 | I love the scent of fresh hay in the barn loft | energy=0.50 | force=0.00 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 38 | Do you think the horse will like the new oats? | energy=0.00 | force=0.00 | motion=0.10 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 39 | Remember to lock the hut before nightfall | energy=0.00 | force=0.10 | motion=0.20 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 40 | The garden plot yields bright carrots this season | energy=0.80 | force=0.00 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 41 | Will the silver rain bring luck to our harvest? | energy=0.30 | force=0.00 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 42 | Gather the eggs gently before they hatch | energy=0.60 | force=0.00 | motion=0.10 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 43 | Could the spade break if we hit a stone? | energy=0.00 | force=0.70 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 44 | Please feed the cow and check her milk output | energy=0.70 | force=0.00 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 45 | Do you see the new barn roof shining in the sun? | energy=0.00 | force=0.70 | motion=0.10 | proposer=groq-gpt-oss-120b | status=candidate
+ASSOC | 46 | Set the jug on the table after you fill it | energy=0.40 | force=0.00 | motion=0.00 | proposer=groq-gpt-oss-120b | status=candidate

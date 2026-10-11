@@ -1,0 +1,3 @@
+# EndTurn 7: done
+COND | trigger | endturn
+COND | kv | variables.txt | ph_end | eq | 3

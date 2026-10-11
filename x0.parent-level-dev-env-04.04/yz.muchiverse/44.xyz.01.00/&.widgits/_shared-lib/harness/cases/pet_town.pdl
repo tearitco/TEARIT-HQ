@@ -1,0 +1,48 @@
+# pet_town - town building on a SCRATCH pet world: build_building spends coins (kind cost + land fee) and wood, stamps the footprint on the town map (state/town_all.txt, the shipped map is untouched), writes BUILDING + ledger rows, refuses without wood or coins or on a taken spot, and the land fee RISES as the land fills up (land.pdl).
+RESULTS | ../results/pet_town.txt
+CASE    | pet-town
+SCRATCH |
+MKDIR   | state
+ENV     | PET_SHARED | $T/state
+ENV     | PET_TRAIN | 1
+ENV     | LC_CLOCK_BIN | /nonexistent
+RUN     | /usr/bin/nice | -n | 15 | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | status
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | land_price | house
+EXPECT_OUT | fee=18 | fee-before-any-building
+
+# no wood: refused, nothing spent
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | build_building | house
+EXPECT_HAS | state/pets/a13/chat.txt | I need 4 wood | refuse-no-wood
+EXPECT_NOFILE | state/world/town_built.pdl | nothing-built-yet
+
+# wood but not enough coins (a new pet owns 20 coins; a house is 10 + land 18 = 28)
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | grant | wood | 20
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | build_building | house
+EXPECT_HAS | state/pets/a13/chat.txt | costs 28 coins | refuse-no-coins
+EXPECT_NOFILE | state/world/town_built.pdl | still-nothing-built
+
+# enough coins: built
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | grant | coin | 60
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | build_building | house
+EXPECT_HAS | state/pets/a13/chat.txt | I built a house | built-house
+EXPECT_HAS | state/world/town_built.pdl | BUILDING \p b1 \p house \p 1 \p 1 \p 3 \p 3 \p a13 \p 28 | building-row
+EXPECT_HAS | state/town_all.txt | T^^^ | footprint-stamped-roof
+EXPECT_HAS | state/town_all.txt | T#d# | footprint-stamped-door
+EXPECT_HAS | state/world/ledger.txt | BUILD\p | ledger-row
+RUN     | /usr/bin/cmp | $HOUSE/@.apps/pet-trainer/world_map.txt | $HOUSE/@.apps/pet-trainer/world_map.txt
+EXPECT_EXIT | 0 | shipped-map-untouched
+
+# price rises with use
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | land_price | house
+EXPECT_OUT | fee=19 | fee-rises-after-one-house
+
+# a second building goes somewhere else (no overlap), and a taken spot is refused
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | grant | coin | 60
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | build_building | farm
+EXPECT_HAS | state/pets/a13/chat.txt | I built a farm | built-farm
+RUN     | /usr/bin/grep | -c | ^BUILDING | $T/state/world/town_built.pdl
+EXPECT_OUT_IS | 2 | two-buildings
+RUN     | /bin/sh | $HOUSE/@.apps/pet-trainer/ops/pet_event.sh | build_building | house | 1 | 1
+EXPECT_HAS | state/pets/a13/chat.txt | that spot is not free | refuse-taken-spot
+RUN     | /usr/bin/grep | -c | ^BUILDING | $T/state/world/town_built.pdl
+EXPECT_OUT_IS | 2 | still-two

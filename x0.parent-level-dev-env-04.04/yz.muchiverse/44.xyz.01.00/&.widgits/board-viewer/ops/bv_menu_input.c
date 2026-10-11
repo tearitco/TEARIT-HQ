@@ -57,7 +57,7 @@
 #define MAX_LINE 512
 #define MAX_PATH 4096
 #define PATH_BUF (MAX_PATH + 256)
-#define MAX_BOARD_DIM 64
+#define MAX_BOARD_DIM 256   /* match bv_render_3d.c. The cursor has to reach a Doom page up to ~216 cells. */
 
 #define ARROW_LEFT  1000
 #define ARROW_RIGHT 1001
@@ -487,6 +487,7 @@ static int handle_one_key(int key) {
      * dispatched in its own block below, not folded into the 1-4
      * ternary. */
     int key_pov_5 = 9;
+    int key_pov_6 = '7';   /* maker_view: RPG Maker tile terrain (writes bv_state.txt maker_view=1; POV 1-4 write 0) */
     int key_cjk_view = '`';   /* 96 - always -> 2D Chinese/ASCII view */
     int key_file_menu = '5', key_desk_menu = '6';
     if (focused_project_root[0]) {
@@ -543,6 +544,7 @@ static int handle_one_key(int key) {
         key_pov_3 = pdl_bind_int(kb_pdl_path, "KEY", "pov_mode_3", key_pov_3);
         key_pov_4 = pdl_bind_int(kb_pdl_path, "KEY", "pov_mode_4", key_pov_4);
         key_pov_5 = pdl_bind_int(kb_pdl_path, "KEY", "pov_mode_5", key_pov_5);
+        key_pov_6 = pdl_bind_int(kb_pdl_path, "KEY", "pov_mode_6", key_pov_6);
         key_cjk_view = pdl_bind_int(kb_pdl_path, "KEY", "cjk_view", key_cjk_view);
         key_file_menu = pdl_bind_int(kb_pdl_path, "KEY", "file_menu", key_file_menu);
         key_desk_menu = pdl_bind_int(kb_pdl_path, "KEY", "desk_menu", key_desk_menu);
@@ -715,6 +717,15 @@ static int handle_one_key(int key) {
             snprintf(xelector_state_path, sizeof(xelector_state_path), "%s/pieces/xelector_01/state.txt", focused_project_root);
             write_kv_int(xelector_state_path, "pos_x", selector_x);
             write_kv_int(xelector_state_path, "pos_y", selector_y);
+            /* Play mode steps onto a map event here. The script no-ops
+             * when play is off, so edit movement stays a cursor move. */
+            {
+                char touch[PATH_BUF * 2];
+                snprintf(touch, sizeof(touch),
+                    "sh '%s/ops/tsots_touch_event.sh' '%s' %d %d >/dev/null 2>&1 &",
+                    focused_project_root, focused_project_root, selector_x, selector_y);
+                system(touch);
+            }
 
             /* REAL FIX 2026-08-03, direct instruction ("the tick should
              * only happen when xelector moves 'hero-avatar'" - real
@@ -976,8 +987,46 @@ static int handle_one_key(int key) {
     }
 
     int render_mode = read_kv_int(state_path, "render_mode", default_render_mode(focused_project_root));
+    /* 2D has no camera. wasd used to die in the no-op below, so the
+     * picture never moved. Those keys step the xelector, and the 2D
+     * frame is centred on that cell. */
+    if (!render_mode && focused_project_root[0] &&
+        (key == key_pan_forward || key == key_pan_left || key == key_pan_back || key == key_pan_right)) {
+        int dx = 0, dy = 0;
+        if (key == key_pan_forward) dy = -1;
+        else if (key == key_pan_back) dy = 1;
+        else if (key == key_pan_left) dx = -1;
+        else dx = 1;
+        char xelector_state_path[PATH_BUF];
+        snprintf(xelector_state_path, sizeof(xelector_state_path), "%s/pieces/xelector_01/state.txt", focused_project_root);
+        int selector_x = read_kv_int(xelector_state_path, "pos_x", read_kv_int(state_path, "selector_x", 0));
+        int selector_y = read_kv_int(xelector_state_path, "pos_y", read_kv_int(state_path, "selector_y", 0));
+        selector_x = clamp_int(selector_x + dx, 0, MAX_BOARD_DIM - 1);
+        selector_y = clamp_int(selector_y + dy, 0, MAX_BOARD_DIM - 1);
+        write_kv_int(state_path, "selector_x", selector_x);
+        write_kv_int(state_path, "selector_y", selector_y);
+        write_kv_int(xelector_state_path, "pos_x", selector_x);
+        write_kv_int(xelector_state_path, "pos_y", selector_y);
+        {
+            char touch[PATH_BUF * 2];
+            snprintf(touch, sizeof(touch),
+                "sh '%s/ops/tsots_touch_event.sh' '%s' %d %d >/dev/null 2>&1 &",
+                focused_project_root, focused_project_root, selector_x, selector_y);
+            system(touch);
+        }
+        char possessed_id[64] = "";
+        read_kv_str(xelector_state_path, "possessed_id", possessed_id, sizeof(possessed_id));
+        if (strcmp(possessed_id, "hero_01") == 0) {
+            char hero_state_path[PATH_BUF];
+            snprintf(hero_state_path, sizeof(hero_state_path), "%s/pieces/hero_01/state.txt", focused_project_root);
+            write_kv_int(hero_state_path, "pos_x", selector_x);
+            write_kv_int(hero_state_path, "pos_y", selector_y);
+        }
+        bump_screen_changed(project_root);
+        return 0;
+    }
     if (!render_mode &&
-        key != key_pov_1 && key != key_pov_2 && key != key_pov_3 && key != key_pov_4 && key != key_pov_5) {
+        key != key_pov_1 && key != key_pov_2 && key != key_pov_3 && key != key_pov_4 && key != key_pov_5 && key != key_pov_6) {
         /* Most camera controls are a no-op unless render_mode==1 -
          * matches mutaclysm's own ops/camera_control.c. EXCEPTION
          * (direct instruction 2026-09-09, "1234 should always change
@@ -1005,6 +1054,7 @@ static int handle_one_key(int key) {
         int camera_mode = (key == key_pov_1) ? 1 : (key == key_pov_2) ? 2
                         : (key == key_pov_3) ? 3 : 4;
         write_kv_int(state_path, "render_mode", 1);   /* POV keys always land you in 3D */
+        write_kv_int(state_path, "maker_view", 0);    /* POV 1-4 are the glyph world (rollback from key 7) */
         write_kv_int(state_path, "camera_mode", camera_mode);
         if (camera_mode == 1 || camera_mode == 2) {
             write_kv_int(state_path, "cam_yaw", 180);
@@ -1065,6 +1115,12 @@ static int handle_one_key(int key) {
      * 0, sliced from the side instead of top-down). Toggling OUT of
      * mode 1 (3D) via Tab also lands on 2 (matches '0''s own "always
      * land somewhere sane" behavior), not a bare flip. */
+    if (key == key_pov_6) {   /* key 7: RPG Maker tile terrain in 3D; camera mode / yaw / pitch / pan are NOT touched */
+        write_kv_int(state_path, "render_mode", 1);
+        write_kv_int(state_path, "maker_view", 1);
+        bump_screen_changed(project_root);
+        return 0;
+    }
     if (key == key_pov_5) {
         write_kv_int(state_path, "render_mode", render_mode == 2 ? 0 : 2);
         bump_screen_changed(project_root);
@@ -1127,7 +1183,9 @@ static int handle_one_key(int key) {
     /* w/a/s/d pan - all modes. Modes 3/4 keep their distinct axis
      * mapping (free-roam z/x, bird's-eye y/x); modes 1/2 (first/third
      * person) pan cam_pan_x/z as an offset from the followed anchor -
-     * build_camera() adds those in modes 1/2 too now. */
+     * build_camera() adds those in modes 1/2 too now.
+     * 2D (render_mode 0) has no detached pan. The same keys step the
+     * xelector, and the 2D picture is centred on that cell. */
     if (key == key_pan_forward || key == key_pan_left || key == key_pan_back || key == key_pan_right) {
         if (camera_mode == 4) {
             int pan_y = read_kv_int(state_path, "cam_pan_y", 0);

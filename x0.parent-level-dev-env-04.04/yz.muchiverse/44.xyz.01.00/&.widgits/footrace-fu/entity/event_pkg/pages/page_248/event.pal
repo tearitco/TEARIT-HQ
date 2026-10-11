@@ -1,0 +1,10 @@
+# event.pal - Combat 19: death at 0 HP, log, the defender's stance is spent (trigger combat). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . le cmb_def_dead d_now 0
+exec ops/+x/var_math.+x . le cmb_att_dead a_now 0
+exec ops/+x/var_math.+x . sub a_lost a_hp0 a_now
+exec ops/+x/var_math.+x . sub d_lost d_hp0 d_now
+exec ops/+x/row_append.+x . ledger.txt COMBAT {turn} {cmb_ap} {cmb_an} {cmb_dp} {cmb_dn} {cmb_dist} {a_roll} {d_roll} {a_lost} {d_lost}
+exec ops/+x/var_math.+x . set guard_{cmb_dp}_{cmb_dn} 0
+exec ops/+x/var_math.+x . set shield_{cmb_dp}_{cmb_dn} 0
+exec ops/+x/var_math.+x . set ph_cmb 9
+halt

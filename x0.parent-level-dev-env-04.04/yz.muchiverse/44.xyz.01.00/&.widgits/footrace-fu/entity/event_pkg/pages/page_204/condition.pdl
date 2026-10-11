@@ -1,0 +1,5 @@
+# Land 5: first ninja to Finish wins (also an enemy sent there)
+COND | trigger | land
+COND | kv | variables.txt | ph_land | eq | 2
+COND | kv | variables.txt | lfin | eq | 1
+COND | kv | switches.txt | game_over | eq | 0

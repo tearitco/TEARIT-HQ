@@ -1,0 +1,4 @@
+# Combat 18: HP never below 0 (attacker)
+COND | trigger | combat
+COND | kv | variables.txt | ph_cmb | eq | 8
+COND | kv | variables.txt | a_neg | eq | 1

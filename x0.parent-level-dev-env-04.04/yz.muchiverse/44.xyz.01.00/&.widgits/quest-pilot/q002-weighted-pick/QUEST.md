@@ -1,0 +1,16 @@
+# Quest q002: weighted_pick (pilot 2, harder: exact spec adherence)
+Goal: compiled C op `weighted_pick <weights_file> <seed> <counter>` printing ONE chosen name and a newline, exit 0. Used by the Eden agent seat to pick an act from weights, repeatably.
+Weights file: lines `W | <name> | <weight>`; whitespace around fields (and around the bars) is trimmed; `#` comment lines and blank lines ignored. A row is VALID only if the first field is exactly `W`, the name is non-empty after trimming and contains no `|`, and the weight is a whole non-negative base-10 integer (digits only, fits unsigned 32-bit). Invalid rows are silently ignored. Duplicate names are allowed (each row counts separately). Weight 0 rows are valid but never chosen.
+seed and counter: unsigned decimal integers 0..18446744073709551615 (digits only; no sign, no spaces, no trailing text). 
+Algorithm (EXACT, all arithmetic modulo 2^64 on unsigned 64-bit):
+  x = seed + counter * 0x9E3779B97F4A7C15
+  z = x + 0x9E3779B97F4A7C15
+  z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9
+  z = (z ^ (z >> 27)) * 0x94D049BB133111EB
+  z = z ^ (z >> 31)
+  total = sum of valid weights (64-bit); r = z % total
+  walk valid rows in file order keeping a cumulative sum; choose the first row whose cumulative sum is GREATER than r.
+Exit codes: 0 ok; 2 usage (argument count != 3, bad seed/counter) or the file cannot be opened; 3 no valid row with weight > 0 (total == 0). On any non-zero exit print nothing on stdout (message on stderr).
+Allowed file: `worker/weighted_pick.c` only; self-contained C, compiles with `gcc -std=gnu11 -Wall -Wextra -Werror -O2`.
+LOCKED: `_shared-lib/harness/cases/quest_q002_weighted_pick.pdl`, `_shared-lib/harness/quest_q002_weighted_pick.pal`.
+Worker: Groq via HORN's horn_chat_backend (free). Runner: claude by hand; up to 4 iterations with failing check labels fed back.

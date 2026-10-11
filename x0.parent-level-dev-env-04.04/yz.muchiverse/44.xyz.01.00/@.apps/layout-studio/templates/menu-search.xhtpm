@@ -1,0 +1,20 @@
+<!-- TEMPLATE menu-search: a list that comes from the manager (n_items and one label key per row) plus a search field.
+     The field must open EMPTY (house rule): the manager publishes the search text as empty at start.
+     The rows repeat; bind="r" gives r.# (the index) and r.label. -->
+<window label="${title}" class="ls-window database-window" vars="ui.txt">
+  <page name="main">
+    <sidebar id="side" class="sidebar">
+      <text label="${title}" class="ls-title"/>
+      <cli_io id="search" target_id="menu-search" label="search: "/>
+      <scrolllist>
+        <repeat count="${n_items}" bind="r">
+          <item id="row${r.#}" class="ls-row" label="${r.label}" action="sh '${HOUSE}/TODO.sh' pick ${r.#}"/>
+        </repeat>
+      </scrolllist>
+      <item id="close" class="ls-row" label="Close" action="sh '${HOUSE}/TODO.sh' close"/>
+    </sidebar>
+    <panel id="info" class="ls-panel">
+      <text label="${hint}" class="ls-quiet"/>
+    </panel>
+  </page>
+</window>

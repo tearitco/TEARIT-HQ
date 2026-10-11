@@ -231,6 +231,7 @@ typedef struct {
     char custom_name[32];
     char literal_arg[1024];
     char literal_arg2[1024];
+    char exec_extra[1024];  /* exec: every literal token after the first two (space-separated, so no token may contain a space); see the exec parser */
     /* string-op operands (dest + up to 3 source string regs). Unused
      * by every non-s* opcode; memset to 0 with the rest of Inst. */
     int sd, ss1, ss2, ss3;
@@ -669,6 +670,24 @@ void parse_line(char *line, int pass) {
             int count = sscanf(args, "%255s %255s %255s", arg1, arg2, arg3);
             if (count >= 1) {
                 snprintf(i->literal_arg, sizeof(i->literal_arg), "%s", arg1);
+            }
+            /* MANY ARGUMENTS (owner 2026-10-07: "should be able to accept many args"; the old comment below said "we don't have literal_arg3 yet"):
+             * `exec <path> <a1> <a2> <a3> ...` - a1 stays the literal-or-register first argument and a2 the register-valued second one exactly as before; every
+             * remaining token (a3 when it is not a register, and every token after it) is a LITERAL passed through as an extra argument, in order. Additive: no
+             * existing .pal has a fourth exec token (183 scanned 2026-10-07) and a third token that is a register behaves as before. Tokens are whitespace-split. */
+            {
+                char *tp = args; int tn = 0; i->exec_extra[0] = '\0';
+                while (*tp) {
+                    char tok[256]; int tl = 0;
+                    while (*tp == ' ' || *tp == '\t') tp++;
+                    if (!*tp || *tp == '\n' || *tp == '\r' || *tp == '#') break;
+                    while (*tp && *tp != ' ' && *tp != '\t' && *tp != '\n' && *tp != '\r' && tl < 255) tok[tl++] = *tp++;
+                    tok[tl] = '\0'; tn++;
+                    if (tn >= 4 || (tn == 3 && sscanf(tok, "r%d", &(int){0}) != 1 && sscanf(tok, "x%d", &(int){0}) != 1)) {
+                        size_t el = strlen(i->exec_extra);
+                        if (el + tl + 2 < sizeof(i->exec_extra)) snprintf(i->exec_extra + el, sizeof(i->exec_extra) - el, "%s%s", el ? " " : "", tok);
+                    }
+                }
             }
             if (count >= 2) {
                 if (sscanf(arg2, "r%d", &i->rs1) != 1 && sscanf(arg2, "x%d", &i->rs1) != 1) {
@@ -1353,6 +1372,12 @@ int main(int argc, char **argv) {
                     n += snprintf(cmdline + n, sizeof(cmdline) - n, " \"%s\" \"%s\"", arg1, arg2);
                 else if (strlen(arg1) > 0)
                     n += snprintf(cmdline + n, sizeof(cmdline) - n, " \"%s\"", arg1);
+                {   /* extra literal arguments, same as the POSIX branch */
+                    char xb[1024]; char *xs;
+                    snprintf(xb, sizeof(xb), "%s", i.exec_extra);
+                    for (xs = strtok(xb, " "); xs; xs = strtok(NULL, " "))
+                        n += snprintf(cmdline + n, sizeof(cmdline) - n, " \"%s\"", xs);
+                }
 
                 STARTUPINFOA si;
                 PROCESS_INFORMATION pi;
@@ -1377,7 +1402,8 @@ int main(int argc, char **argv) {
             pid_t exec_pid = fork();
             if (exec_pid == 0) {
                 /* Child process: prepare args and exec */
-                char *argv_arr[4];
+                char *argv_arr[40];
+                char extra_buf[1024];
                 int argc = 1;
                 argv_arr[0] = exec_target;
                 
@@ -1389,6 +1415,9 @@ int main(int argc, char **argv) {
                     argv_arr[1] = arg1;
                     argc = 2;
                 }
+                /* extra literal arguments (see the exec parser): appended in order after the first two */
+                snprintf(extra_buf, sizeof(extra_buf), "%s", i.exec_extra);
+                for (char *xs = strtok(extra_buf, " "); xs && argc < 38; xs = strtok(NULL, " ")) argv_arr[argc++] = xs;
                 argv_arr[argc] = NULL;
                 
                 /* Redirect stdout/stderr to /dev/null */

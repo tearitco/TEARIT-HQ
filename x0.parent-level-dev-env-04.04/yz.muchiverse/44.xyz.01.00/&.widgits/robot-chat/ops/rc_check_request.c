@@ -100,7 +100,9 @@ int main(void) {
      * distinction is the ai_describe.+x follow-up below, not a
      * different chat model. */
     char bin[PATH_BUF];
-    if (strcmp(backend, "openrouter") == 0 || strcmp(backend, "bank") == 0)
+    if (strcmp(backend, "groq") == 0)   /* 2026-10-07: free Groq tier, same file contract as ai_chat_openrouter */
+        snprintf(bin, sizeof(bin), "%s/&.widgits/entity-cli/ops/+x/ai_chat_groq.+x", house_root);
+    else if (strcmp(backend, "openrouter") == 0 || strcmp(backend, "bank") == 0)
         snprintf(bin, sizeof(bin), "%s/&.widgits/entity-cli/ops/+x/ai_chat_openrouter.+x", house_root);
     else
         snprintf(bin, sizeof(bin), "%s/&.widgits/entity-cli/ops/+x/ai_chat.+x", house_root);

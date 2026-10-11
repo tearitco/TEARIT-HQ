@@ -1,0 +1,70 @@
+# physics-nodes (SOLAR-SANDBOX-AND-PLANET-PHYSICS-DESIGN.md step 2): the REAL phys_node_eval op on a scratch copy of the sample system.
+# Value checks are substring checks on the %.6g output (so "| g | 9.8" is a 9.80-9.89 tolerance); everything is scratch, nothing live is touched.
+RESULTS | ../results/phys_nodes.txt
+CASE    | phys-nodes
+SCRATCH |
+COPY    | &.widgits/physics-nodes/ops/+x/phys_node_eval.+x | phys_node_eval.+x
+COPY    | &.widgits/physics-nodes/system.pdl | system.pdl
+COPY    | &.widgits/physics-nodes/physics_tunables.pdl | physics_tunables.pdl
+# 1 vectors (default impls: newton gravity, kepler orbit, escape linked to gravity.g)
+RUN | $T/phys_node_eval.+x | $T | earth | escape
+EXPECT_EXIT | 0 | earth-escape-rc0
+EXPECT_OUT | earth.gravity \p g \p 9.8 | earth-g-about-9.81
+EXPECT_OUT | earth.escape \p v \p 1118 | earth-escape-about-11.19-kms
+EXPECT_OUT | earth.escape \p v_kms \p 11.18 | earth-escape-kms-row
+EXPECT_OUT | appended=3 cached=0 | first-run-appends-3-rows
+RUN | $T/phys_node_eval.+x | $T | moon | gravity
+EXPECT_OUT | moon.gravity \p g \p 1.62 | moon-g-1.62
+RUN | $T/phys_node_eval.+x | $T | mars | escape
+EXPECT_OUT | mars.gravity \p g \p 3.7 | mars-g-about-3.71
+EXPECT_OUT | mars.escape \p v \p 502 | mars-escape-about-5.03-kms
+RUN | $T/phys_node_eval.+x | $T | earth | orbit
+EXPECT_OUT | earth.orbit \p period_days \p 365.2 | earth-year-365.25-days
+# 2 unchanged inputs append nothing (cache by input hash)
+SUMTREE | before | data
+RUN | $T/phys_node_eval.+x | $T | earth | escape
+EXPECT_OUT | appended=0 cached=3 | unchanged-inputs-cached
+RUN | $T/phys_node_eval.+x | $T | earth | orbit
+EXPECT_OUT | appended=0 cached=2 | unchanged-orbit-cached
+SUMTREE | after | data
+EXPECT_EQ | $before | $after | unchanged-inputs-ledger-byte-identical
+# 3 swap Earth's gravity impl to constant (planet scope): downstream escape velocity follows; moon untouched
+APPEND | system.pdl | \nOVERRIDE | scope=planet:earth | gravity | impl=constant | value=5\n
+RUN | $T/phys_node_eval.+x | $T | earth | escape
+EXPECT_OUT | earth.gravity \p g \p 5 \p impl=constant | earth-g-now-constant-5
+EXPECT_OUT | earth.escape \p v \p 7981 | escape-downstream-recomputed-7.98-kms
+EXPECT_OUT | appended=3 cached=0 | swap-appends-new-rows
+EXPECT_HAS | data/phys_out.txt | earth.escape \p v \p 11186.2 | old-escape-row-kept-append-only
+RUN | $T/phys_node_eval.+x | $T | moon | escape
+EXPECT_OUT | moon.escape \p v \p 2375 | moon-escape-unaffected-by-earth-swap
+# 4 TUNABLE change recomputes downstream: system-wide scaled gravity, factor 0.5 then 0.25 (mars)
+APPEND | system.pdl | \nOVERRIDE | scope=system | gravity | impl=scaled\nTUNABLE | gravity | factor | 0.5\n
+RUN | $T/phys_node_eval.+x | $T | mars | escape
+EXPECT_OUT | mars.gravity \p g \p 1.86 | mars-g-halved
+EXPECT_OUT | mars.escape \p v \p 3554 | mars-escape-follows-halved-g
+APPEND | system.pdl | TUNABLE | gravity | factor | 0.25\n
+RUN | $T/phys_node_eval.+x | $T | mars | escape
+EXPECT_OUT | mars.gravity \p g \p 0.93 | mars-g-quartered
+EXPECT_OUT | mars.escape \p v \p 2513 | mars-escape-follows-tunable-change
+EXPECT_OUT | appended=3 cached=0 | tunable-change-appends-downstream
+# 5 page-scope override beats planet-scope (earth: planet constant 5, page earth_surface constant 2)
+APPEND | system.pdl | OVERRIDE | scope=page:earth_surface | gravity | impl=constant | value=2\n
+RUN | $T/phys_node_eval.+x | $T | earth | escape | earth_surface
+EXPECT_OUT | earth.gravity \p g \p 2 \p impl=constant | page-scope-g-2
+EXPECT_OUT | earth.escape \p v \p 5048 | page-scope-escape
+RUN | $T/phys_node_eval.+x | $T | earth | escape | some_other_page
+EXPECT_OUT | earth.gravity \p g \p 5 \p impl=constant | other-page-falls-back-to-planet-scope
+RUN | $T/phys_node_eval.+x | $T | earth | escape
+EXPECT_OUT | earth.escape \p v \p 7981 | no-page-arg-planet-scope
+# 6 unknown impl refused: nonzero exit, clear error, no output row, ledger untouched
+APPEND | system.pdl | OVERRIDE | scope=planet:moon | gravity | impl=bogus\n
+SUMTREE | pre | data
+RUN | $T/phys_node_eval.+x | $T | moon | escape
+EXPECT_EXIT | 2 | unknown-impl-rc2
+EXPECT_OUT | unknown impl 'bogus' for node kind 'gravity' | unknown-impl-clear-error
+EXPECT_OUT_LACKS | OUT \p moon | unknown-impl-prints-no-row
+SUMTREE | post | data
+EXPECT_EQ | $pre | $post | unknown-impl-appends-nothing
+RUN | $T/phys_node_eval.+x | $T | earth | zz_node
+EXPECT_EXIT | 2 | unknown-node-rc2
+CLEAN |

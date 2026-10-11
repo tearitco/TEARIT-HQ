@@ -1,0 +1,3 @@
+# event.pal - Entity Grade Tick (common event, trigger parallel, run once per game day like eden_day_tick): for every entity under ../participants refill MP, refresh the report card, and graduate automatically when the curriculum row says approval=auto. school state dir (target.pdl) holds curriculum.pdl + skillbook.pdl.
+exec ops/+x/entity_grade.+x tick . ../participants
+halt

@@ -1,0 +1,3 @@
+# Bot 7: done
+COND | trigger | autoturn
+COND | kv | variables.txt | ph_bot | gt | 0

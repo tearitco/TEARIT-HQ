@@ -1,0 +1,5 @@
+# event.pal - Move 3: can it act (alive and enough tokens) (trigger move). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . ge tok_ok tokens move_cost
+exec ops/+x/var_math.+x . mul act_ok act_alive tok_ok
+exec ops/+x/var_math.+x . set ph_move 2
+halt

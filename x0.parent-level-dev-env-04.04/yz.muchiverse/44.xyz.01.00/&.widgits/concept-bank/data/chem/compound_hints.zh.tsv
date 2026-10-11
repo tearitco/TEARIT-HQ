@@ -1,0 +1,87 @@
+# chem_compound_hints.zh sidecar of &.widgits/concept-bank/data/chem/compounds_*.pdl - machine translation. status: ok/accepted are promotable; low_score, translated (unscored) and lint_fail wait for a person (review.tsv); rejected stays out. Scores are advisory. columns: id, source, zh, pinyin, score, status, translator, judge
+compounds_chem.pdl:chem1	Carboxylic acid, pKa=4.76	羧酸	suō suān	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem2	Primary alcohol	伯醇	bó chún	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem3	Ketone, common solvent	酮	tóng	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem4	Fishy odor, weak base	甲胺	jiǎ àn	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem5	Aromatic, resonance stabilized	芳香且共振稳定	fāng xiāng qiě gòng zhèn wěn dìng	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem6	Triprotic acid in citrus	柠檬酸	níng méng suān	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem7	Ionic compound, electrolyte	氯化钠	lǜ huà nà	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem8	Strong diprotic acid	硫酸	liú suān	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem9	Aldohexose, blood sugar	葡萄糖	pú táo táng	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem10	Catecholamine neurotransmitter	多巴胺	duō bā àn	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem11	The universal solvent	水	shuǐ	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem12	Pungent gas, weak base	氨	ān	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem13	Primary component of natural gas	甲烷	jiǎ wán	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem14	Fruit sugar, a simple ketose	果糖	guǒ táng	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem15	Stimulant found in coffee	咖啡因	kā fēi yīn	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem16	Strong monoprotic acid in stomach	盐酸	yán suān	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem17	Strong base, also known as lye	氢氧化钠	qīng yǎng huà nà	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem18	Polyol, component of lipids	甘油	gān yóu	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem19	Pain reliever, an ester of salicylic acid	止痛药，水杨酸酯	zhǐ tòng yào shuǐ yáng suān zhǐ	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem20	Simplest aldehyde	甲醛	jiǎ quán	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem21	Table sugar, a disaccharide	蔗糖	zhè táng	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem22	Found in sour milk and muscles	乳酸	rǔ suān	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem23	Main nitrogenous compound in urine	尿中主要含氮化合物	niào zhōng zhǔ yào hán dàn huà hé wù	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem24	Aromatic solvent, similar to benzene	类似苯的芳香溶剂	lèi bǐ běn de fāng xiāng róng jì	-	lint_fail	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem25	Salt substitute, electrolyte	氯化钾	lǜ huà jiǎ	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem26	Highly corrosive strong acid	强腐蚀性强酸	qiáng fǔ shí xìng qiáng suān	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem27	Alkane fuel used in grills	烤架用烷烃燃料	kǎo jià yòng wán tīng rán liào	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem28	Simplest alcohol, toxic	最简醇，毒性	zuì jiǎn chún dú xìng	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem29	Aromatic alcohol, used as a disinfectant	芳香醇，用作消毒剂	fāng xiāng chún yòng zuò xiāo dú jì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem30	Energy currency of the cell	细胞的能量货币	xì bāo de néng liàng huò bì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem31	Simplest carboxylic acid, in ant stings	最简羧酸，蚂蚁叮咬中	zuì jiǎn suō suān mǎ yǐ dīng yǎo zhōng	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem32	Alkane fuel used in lighters	打火机用烷烃燃料	dǎ huǒ jī yòng wán tīng rán liào	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem33	Neurotransmitter related to mood	与情绪相关的神经递质	yǔ qíng xù xiāng guān de shén jīng dì zhì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem34	Simplest amino acid	最简氨基酸	zuì jiǎn ān jī suān	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem35	NSAID pain reliever	非甾体抗炎止痛药	fēi zāi tǐ kàng yán zhǐ tòng yào	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem36	Found in shells, limestone, and chalk	存在于贝壳、石灰石和粉笔中	cún zài yú bèi ké shí huī shí hé fěn bǐ zhōng	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem37	A powerful oxidizing strong acid	强氧化性强酸	qiáng yǎng huà xìng qiáng suān	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem38	Sugar found in milk	牛奶中发现的糖	niú nǎi zhōng fā xiàn de táng	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem39	Well-known explosive compound	著名的爆炸化合物	zhù míng de bào zhà huà hé wù	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem40	Precursor to many industrial chemicals	许多工业化学品的前体	xǔ duō gōng yè huà xué pǐn de qián tǐ	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem41	An essential nutrient and antioxidant	必需的营养素和抗氧化剂	bì xū de yíng yǎng sù hé kàng yǎng huà jì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem42	Rubbing alcohol, a disinfectant	擦拭酒精，消毒剂	cā shì jiǔ jīng xiāo dú jì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem43	Primary component of vanilla bean extract	香草豆提取物的主要成分	xiāng cǎo dòu tí qǔ wù de zhǔ yào chéng fèn	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem44	Involved in local immune responses	参与局部免疫反应	cān yǔ jú bù miǎn yì fǎn yìng	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem45	Aromatic, used as a precursor and solvent	芳香的，用作前体和溶剂	fāng xiāng de yòng zuò qián tǐ hé róng jì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem46	Baking soda, used in cooking and cleaning	烘焙苏打，用于烹饪和清洁	hōng bèi sū dǎ yòng yú pēng rèn hé qīng jié	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem47	Weak acid used in soft drinks	软饮料中使用的弱酸	ruǎn yǐn liào zhōng shǐ yòng de ruò suān	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem48	Component of gasoline	汽油的成分	qì yóu de chéng fèn	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem49	A key component of RNA	RNA的关键组成部分	de guān jiàn zǔ chéng bù fèn	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_chem.pdl:chem50	Common analgesic and antipyretic	常用止痛退烧药	cháng yòng zhǐ tòng tuì shāo yào	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat1	Simplest hydrocarbon; base for organic nomenclature and combustion reactions.	最简单的烃；有机命名和燃烧反应的基础。	zuì jiǎn dān de tīng yǒu jī mìng míng hé rán shāo fǎn yìng de jī chǔ	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat2	Two-carbon chain; example of alkane properties like low reactivity.	两碳链；展示烷烃性质，例如低反应性。	liǎng tàn liàn zhǎn shì wán tīng xìng zhì ， lì rú dī fǎn yìng xìng	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat3	Key in addition reactions; industrial precursor to polymers.	加成反应的关键；工业上聚合物的前体	jiā chéng fǎn yìng de guān jiàn ; gōng yè shàng jù hé wù de qián tǐ	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat4	Common in polymerization; tests alkene naming and reactivity.	在聚合中常见；用于检验烯烃的命名和反应性。	zài jù hé zhōng cháng jiàn yòng yú jiǎn yàn xī tīng de mìng míng hé fǎn yìng xìng	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat5	Solvent and fuel; compares to ethanol in metabolism and toxicity.	溶剂与燃料；在代谢和毒性上与乙醇比较	róng jì yǔ rán liào ; zài dài xiè hé dú xìng shàng yǔ yǐ chún bǐ jiào	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat6	Alcoholic beverage component; undergoes oxidation to acetaldehyde/acetic acid.	酒精饮料成分；氧化生成乙醛/醋酸。	jiǔ jīng yǐn liào chéng fèn yǎng huà shēng chéng yǐ quán cù suān	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat7	Disinfectant; branched alcohol example for naming.	消毒剂；用于命名的支链醇示例	xiāo dú jì ; yòng yú mìng míng de zhī liàn chún shì lì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat8	Simplest aldehyde; used in disinfection	最简醛；用于消毒	zuì jiǎn quán ; yòng yú xiāo dú	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat9	Glycolysis/fermentation product; oxidizes to acetic acid.	糖解/发酵产物；氧化生成醋酸。	táng jiě fā jiào chǎn wù yǎng huà shēng chéng cù suān	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat10	Aromatic carbonyl; in flavors	芳香醛常用于香料	fāng xiāng quán cháng yòng yú xiāng liào	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat11	Simplest ketone; solvent	最简酮；溶剂	zuì jiǎn tóng ; róng jì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat12	Simplest acid; in ant venom	最简酸；存在于蚂蚁毒液	zuì jiǎn suān ; cún zài yú mā yǐ dú yè	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat13	Vinegar component; buffers	醋的成分；用作缓冲剂	cù de chéng fèn ; yòng zuò huǎn chòng jì	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat14	Preservative; tests aromatic acid properties and salts.	防腐剂；用于测试芳香酸及其盐的特性	fáng fǔ jì ; yòng yú cè shì fāng xiāng suān jí qí yán de tè xìng	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat15	 Aldehyde (open chain)	醛（链状）	quán ( liàn zhuàng )	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat16	 Phosphate	磷酸盐	lín suān yán	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat17	-OH	羟基	qiǎng jī	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat18	 Phosphate	磷酸盐	lín suān yán	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat19	 -OH	羟基	qiǎng jī	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat20	 -COOH	羧基	suō jī	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat21	-NH2	氨基	ān jī	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat22	-NH2	氨基	ān jī	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat23	-NH2	氨基	ān jī	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat24	-NH2	氨基	ān jī	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat25	-NH2	氨基	ān jī	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat26	-NH2	氨基	ān jī	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat27	-NH2	氨基	ān jī	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat28	-NH2	氨基	ān jī	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat29	-NH2	氨基	ān jī	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat30	-NH2	氨基	ān jī	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat31	-NH2	氨基	ān jī	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat32	 Ester	酯	zhǐ	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat33	 -NH2	氨基	ān jī	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat34	 -NH2	氨基	ān jī	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat35	 -COOH	羧基	suō jī	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b
+compounds_mcat.pdl:mcat36	-NH2	氨基	ān jī	5	ok	openai/gpt-oss-20b	qwen2.5-coder:7b

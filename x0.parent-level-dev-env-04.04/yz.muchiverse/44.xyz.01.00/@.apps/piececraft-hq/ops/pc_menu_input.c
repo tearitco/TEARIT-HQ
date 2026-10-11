@@ -341,19 +341,33 @@ static void check_player_touch_trigger(const char *proj_root, int turn, int px, 
     char world_state_path[PATH_BUF];
     snprintf(world_state_path, sizeof(world_state_path), "%s/pieces/world_01/state.txt", real_root_local);
     char map_id[128];
+    char desk_id[128];
     read_kv_str_local(world_state_path, "map_id", map_id, sizeof(map_id));
-    if (!map_id[0]) return;
+    read_kv_str_local(world_state_path, "desk_id", desk_id, sizeof(desk_id));
+    if (!map_id[0] || strchr(map_id, '/') || strchr(map_id, '\'')) return;
 
     char events_path[PATH_BUF];
-    snprintf(events_path, sizeof(events_path), "%s/pieces/system/maps/%s/events.pdl", real_root_local, map_id);
-    FILE *f = fopen(events_path, "r");
+    FILE *f = NULL;
+    if (desk_id[0] && !strchr(desk_id, '/') && !strchr(desk_id, '\'')) {
+        snprintf(events_path, sizeof(events_path),
+                 "%s/pieces/system/maps/%s/%s/events.pdl",
+                 real_root_local, map_id, desk_id);
+        f = fopen(events_path, "r");
+    }
+    if (!f) {
+        snprintf(events_path, sizeof(events_path),
+                 "%s/pieces/system/maps/%s/events.pdl", real_root_local, map_id);
+        f = fopen(events_path, "r");
+    }
     if (!f) return;
 
     char line[MAX_LINE];
+    int ev_n = 0;
     while (fgets(line, sizeof(line), f)) {
         char *p = line;
         while (*p == ' ' || *p == '\t') p++;
         if (strncmp(p, "EVENT", 5) != 0) continue;
+        ev_n++;
 
         char *bar1 = strchr(p, '|');
         if (!bar1) continue;
@@ -384,7 +398,43 @@ static void check_player_touch_trigger(const char *proj_root, int turn, int px, 
         char details[128];
         snprintf(details, sizeof(details), "x:%d,y:%d", px, py);
         ledger_append(proj_root, turn, "player", "touched_npc", details);
-        break; /* one trigger per move - the real, smallest provable slice (plan §3 Step 3) */
+
+        /* Doom pages: same verb the hotbar runs from this events.pdl row.
+         * Play has to be on. Start and stop stay on the bar. */
+        if (strcmp(map_id, "doom") == 0 && desk_id[0]) {
+            char cmd_name[64] = "";
+            for (char *t = strtok(NULL, " \t"); t; t = strtok(NULL, " \t")) {
+                if (strncmp(t, "cmds=", 5) == 0) {
+                    snprintf(cmd_name, sizeof(cmd_name), "%s", t + 5);
+                    break;
+                }
+            }
+            int known = !strcmp(cmd_name, "change_hp") || !strcmp(cmd_name, "change_armor")
+                || !strcmp(cmd_name, "nukage") || !strcmp(cmd_name, "change_ammo")
+                || !strcmp(cmd_name, "change_items") || !strcmp(cmd_name, "start_battle")
+                || !strcmp(cmd_name, "next_level") || !strcmp(cmd_name, "player_start");
+            char pm[PATH_BUF];
+            snprintf(pm, sizeof(pm), "%s/../../#.desktop/khtpm_play_mode.state.txt", real_root_local);
+            FILE *pf = fopen(pm, "r");
+            int play_on = 0;
+            if (pf) {
+                char mb[32];
+                if (fgets(mb, sizeof(mb), pf) && strncmp(mb, "mode=on", 7) == 0) play_on = 1;
+                fclose(pf);
+            }
+            if (known && play_on) {
+                char shcmd[PATH_BUF * 2];
+                if (!strcmp(cmd_name, "player_start") || !strcmp(cmd_name, "next_level"))
+                    snprintf(shcmd, sizeof(shcmd), "sh '%s/ops/doom_event.sh' '%s'", real_root_local, cmd_name);
+                else
+                    snprintf(shcmd, sizeof(shcmd),
+                        "sh '%s/ops/doom_event.sh' '%s'; sh '%s/ops/doom_event.sh' kill_event '%s' '%d'",
+                        real_root_local, cmd_name, real_root_local, desk_id, ev_n);
+                int rc = system(shcmd);
+                (void)rc;
+            }
+        }
+        break; /* one trigger per move */
     }
     fclose(f);
 }

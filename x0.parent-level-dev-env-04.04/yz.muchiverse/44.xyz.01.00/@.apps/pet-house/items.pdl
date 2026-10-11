@@ -1,0 +1,7 @@
+# items.pdl - what the player can give the pet. Columns: ITEM | name | kind | effect numbers. kind=food lowers hunger; toy raises happy and counts as play;
+# soap raises clean. glyph= is the item's picture (glyph.txt in the house inventory), start= how many a new pet owns. A given item is spent from items.txt (the pantry). Add a row to add an item; no code change.
+ITEM | apple | food | glyph=🍎 | start=3 | hunger=-3 | happy=+1
+ITEM | fish  | food | glyph=🐟 | start=1 | hunger=-5 | happy=+2
+ITEM | cake  | food | glyph=🍰 | start=0 | hunger=-4 | happy=+5
+ITEM | ball  | toy  | glyph=⚽ | start=1 | happy=+6  | energy=-10
+ITEM | soap  | soap | glyph=🧼 | start=2 | clean=+40

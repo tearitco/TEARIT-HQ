@@ -1,0 +1,18 @@
+# event.pal - Feed page 4 (has food, hunger < nutrition): eat, hunger floors at 0, change_items -1
+# hand-written in the registry PAL shape (relative paths; event_page_op runs it with cwd = the entity state dir)
+li x15, 7
+li x12, 0
+ecall "variables.txt" "hunger"
+li x15, 6
+li x13, 0
+ecall "items.txt" "item_apple"
+addi x12, x12, -1
+li x15, 7
+ecall "items.txt" "item_apple"
+li x15, 6
+li x13, 0
+ecall "variables.txt" "fed_total"
+addi x12, x12, 1
+li x15, 7
+ecall "variables.txt" "fed_total"
+halt

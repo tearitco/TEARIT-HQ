@@ -1,4 +1,7 @@
 #!/bin/sh
+# macOS has no setsid binary (same convention as run_khtpm_strip.sh): expand to nothing there, keep real setsid on Linux.
+SETSID="setsid"
+[ "$(uname)" = "Darwin" ] && SETSID=""
 # close_listed.sh <house_root> [--dry-run] [--relaunch] - close every process listed in close_on_restart.pdl (see that file for why). Called by button.sh on restart/run/reset/quit.
 # --dry-run prints what WOULD be closed and kills nothing. --relaunch: after closing, run the row's optional 4th-field command (from the house root, detached) for every row that had a running process. A process matches only if its command line holds the row's substring AND <house_root>.
 # Safe against self-match: the process table is snapshotted to a file BEFORE the matcher runs, and this script's own pid and its parents are never signalled.
@@ -39,7 +42,7 @@ if [ "$DRY" = 0 ] && [ "$RELAUNCH" = 1 ] && [ -s "$HITS" ]; then
         [ -n "$CMD" ] || continue
         awk -F'\t' -v n="$NAME" '$2 == n {f = 1} END {exit !f}' "$HITS" || continue
         echo "close_listed: RELAUNCH ($NAME): $CMD"
-        (cd "$HOUSE" && setsid sh -c "$CMD" </dev/null >/dev/null 2>&1 &)
+        (cd "$HOUSE" && $SETSID sh -c "$CMD" </dev/null >/dev/null 2>&1 &)
     done < "$LIST"
 fi
 exit 0

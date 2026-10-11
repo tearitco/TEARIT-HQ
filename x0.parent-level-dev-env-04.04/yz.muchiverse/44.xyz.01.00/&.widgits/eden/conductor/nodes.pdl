@@ -1,0 +1,3 @@
+# nodes.pdl - training nodes (design section 4): NODE | skill unlocked | requires=<skill held> | exp_to_unlock=<exp>. Practising the required skill (plant, collect) and the study act add exp.
+NODE | graft   | requires=plant   | exp_to_unlock=6
+NODE | harvest2 | requires=collect | exp_to_unlock=8

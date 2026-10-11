@@ -1,0 +1,5 @@
+# event.pal - Warp Ally 5: the ally jumps ab_2_spaces forward (trigger cast_warp). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set w_from pos_{wp}_{wn}
+exec ops/+x/var_math.+x . add ftgt w_from abilities.pdl:ab_2_spaces
+exec ops/+x/var_math.+x . set ph_cast 3
+halt

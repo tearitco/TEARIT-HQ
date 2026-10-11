@@ -1,0 +1,11 @@
+# event.pal - Attack 5: pay, fight (the roll-off), log (trigger attack). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . sub tokens tokens at_cost
+exec ops/+x/var_math.+x . set cmb_ap current
+exec ops/+x/var_math.+x . set cmb_an sel
+exec ops/+x/var_math.+x . set cmb_dp tgt_1
+exec ops/+x/var_math.+x . set cmb_dn tgt_2
+exec ops/+x/var_math.+x . set cmb_dist tgt_d
+exec ops/+x/event_page_op.+x . . --trigger combat --state .
+exec ops/+x/row_append.+x . ledger.txt ACT {turn} {current} {sel} attack {tgt_1} {tgt_2} {tgt_d}
+exec ops/+x/var_math.+x . set ph_att 0
+halt

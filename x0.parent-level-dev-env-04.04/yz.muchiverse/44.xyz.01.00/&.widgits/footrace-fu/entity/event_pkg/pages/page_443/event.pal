@@ -1,0 +1,4 @@
+# event.pal - Warp Ally 4: tails - fizzle (trigger cast_warp). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/row_append.+x . ledger.txt CAST {turn} {current} {sel} warp fizzle {wp} {wn}
+exec ops/+x/var_math.+x . set ph_cast 0
+halt

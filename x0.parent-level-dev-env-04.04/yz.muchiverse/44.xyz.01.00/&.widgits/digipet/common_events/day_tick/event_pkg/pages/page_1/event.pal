@@ -1,0 +1,24 @@
+# event.pal - Day Tick page 1: days += 1 (change_variable), hunger += hunger_step
+# hand-written in the registry PAL shape (relative paths; event_page_op runs it with cwd = the entity state dir)
+li x15, 6
+li x13, 0
+ecall "variables.txt" "days"
+addi x12, x12, 1
+li x15, 7
+ecall "variables.txt" "days"
+li x15, 6
+li x13, 0
+ecall "needs_tunables.pdl" "hunger_step"
+addi x2, x12, 0
+li x15, 6
+li x13, 0
+ecall "variables.txt" "hunger"
+_l1:
+beq x2, x0, _d1
+addi x12, x12, 1
+addi x2, x2, -1
+j _l1
+_d1:
+li x15, 7
+ecall "variables.txt" "hunger"
+halt

@@ -1,0 +1,15 @@
+43 11 80 63 56 Monster 7 4 1
+43 12 213 221 221 Monster 5 2 1
+44 12 80 63 56 Monster 7 4 1
+42 12 80 63 56 Monster 7 4 1
+43 13 80 63 56 Monster 7 4 1
+7 6 80 63 56 Monster 7 4 1
+24 12 80 63 56 Monster 7 4 1
+4 2 80 63 56 Monster 7 4 1
+4 1 80 63 56 Monster 7 4 1
+5 1 80 63 56 Monster 7 4 1
+14 4 80 63 56 Monster 7 4 1
+13 10 80 63 56 Monster 7 4 1
+6 16 80 63 56 Monster 7 4 1
+8 16 80 63 56 Monster 7 4 1
+33 25 0 0 0 Actor2 3 4 2

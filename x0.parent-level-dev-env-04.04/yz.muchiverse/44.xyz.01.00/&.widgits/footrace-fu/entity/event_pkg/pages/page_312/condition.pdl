@@ -1,0 +1,4 @@
+# Move 13: next
+COND | trigger | move
+COND | kv | variables.txt | ph_move | eq | 6
+COND | kv | switches.txt | game_over | eq | 0

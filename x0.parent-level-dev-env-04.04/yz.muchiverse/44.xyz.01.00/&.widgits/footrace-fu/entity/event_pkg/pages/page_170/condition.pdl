@@ -1,0 +1,3 @@
+# SelectLead 1: the live ninja of this seat nearest to Finish
+COND | trigger | selectlead
+COND | kv | switches.txt | game_over | eq | 0

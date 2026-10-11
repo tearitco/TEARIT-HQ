@@ -1,0 +1,206 @@
+# quest q002 weighted_pick: LOCKED cases (worker may not edit). Expected values come from an independent Python reference of the spec.
+RESULTS | ../results/quest_q002_weighted_pick.txt
+CASE | quest-q002-wp
+SCRATCH |
+COPY | &.widgits/quest-pilot/q002-weighted-pick/worker/weighted_pick.c | wp.c
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/wp.+x | $T/wp.c
+EXPECT_EXIT | 0 | compiles-clean
+WRITE | a.pdl | # actions\nW | eat | 5\nW | plant | 3\nW | rest | 0\nW | trade | 2\n\n  W|talk|  1 \n
+WRITE | b.pdl | W | only | 7\n
+WRITE | c.pdl | W | a | 0\nW | b | 0\n
+WRITE | d.pdl | W | good | 4\nW | neg | -3\nW | word | abc\nW | frac | 2.5\nX | other | 9\nW |  | 5\nW | big | 4\n
+WRITE | e.pdl | 
+WRITE | f.pdl | W | x | 4294967295\nW | y | 1\n
+WRITE | g.pdl | W | dup | 1\nW | dup | 1\nW | z | 2\n
+RUN | $T/wp.+x | $T/a.pdl | 0 | 0
+EXPECT_EXIT | 0 | a-0-0-rc0
+EXPECT_OUT_IS | eat | a-0-0-out
+RUN | $T/wp.+x | $T/a.pdl | 0 | 1
+EXPECT_EXIT | 0 | a-0-1-rc0
+EXPECT_OUT_IS | talk | a-0-1-out
+RUN | $T/wp.+x | $T/a.pdl | 0 | 2
+EXPECT_EXIT | 0 | a-0-2-rc0
+EXPECT_OUT_IS | eat | a-0-2-out
+RUN | $T/wp.+x | $T/a.pdl | 0 | 3
+EXPECT_EXIT | 0 | a-0-3-rc0
+EXPECT_OUT_IS | eat | a-0-3-out
+RUN | $T/wp.+x | $T/a.pdl | 0 | 100
+EXPECT_EXIT | 0 | a-0-100-rc0
+EXPECT_OUT_IS | trade | a-0-100-out
+RUN | $T/wp.+x | $T/a.pdl | 0 | 18446744073709551615
+EXPECT_EXIT | 0 | a-0-18446744073709551615-rc0
+EXPECT_OUT_IS | eat | a-0-18446744073709551615-out
+RUN | $T/wp.+x | $T/a.pdl | 1 | 0
+EXPECT_EXIT | 0 | a-1-0-rc0
+EXPECT_OUT_IS | trade | a-1-0-out
+RUN | $T/wp.+x | $T/a.pdl | 1 | 1
+EXPECT_EXIT | 0 | a-1-1-rc0
+EXPECT_OUT_IS | trade | a-1-1-out
+RUN | $T/wp.+x | $T/a.pdl | 1 | 2
+EXPECT_EXIT | 0 | a-1-2-rc0
+EXPECT_OUT_IS | eat | a-1-2-out
+RUN | $T/wp.+x | $T/a.pdl | 1 | 3
+EXPECT_EXIT | 0 | a-1-3-rc0
+EXPECT_OUT_IS | plant | a-1-3-out
+RUN | $T/wp.+x | $T/a.pdl | 1 | 100
+EXPECT_EXIT | 0 | a-1-100-rc0
+EXPECT_OUT_IS | eat | a-1-100-out
+RUN | $T/wp.+x | $T/a.pdl | 1 | 18446744073709551615
+EXPECT_EXIT | 0 | a-1-18446744073709551615-rc0
+EXPECT_OUT_IS | eat | a-1-18446744073709551615-out
+RUN | $T/wp.+x | $T/a.pdl | 42 | 0
+EXPECT_EXIT | 0 | a-42-0-rc0
+EXPECT_OUT_IS | trade | a-42-0-out
+RUN | $T/wp.+x | $T/a.pdl | 42 | 1
+EXPECT_EXIT | 0 | a-42-1-rc0
+EXPECT_OUT_IS | plant | a-42-1-out
+RUN | $T/wp.+x | $T/a.pdl | 42 | 2
+EXPECT_EXIT | 0 | a-42-2-rc0
+EXPECT_OUT_IS | eat | a-42-2-out
+RUN | $T/wp.+x | $T/a.pdl | 42 | 3
+EXPECT_EXIT | 0 | a-42-3-rc0
+EXPECT_OUT_IS | eat | a-42-3-out
+RUN | $T/wp.+x | $T/a.pdl | 42 | 100
+EXPECT_EXIT | 0 | a-42-100-rc0
+EXPECT_OUT_IS | eat | a-42-100-out
+RUN | $T/wp.+x | $T/a.pdl | 42 | 18446744073709551615
+EXPECT_EXIT | 0 | a-42-18446744073709551615-rc0
+EXPECT_OUT_IS | eat | a-42-18446744073709551615-out
+RUN | $T/wp.+x | $T/a.pdl | 18446744073709551615 | 0
+EXPECT_EXIT | 0 | a-18446744073709551615-0-rc0
+EXPECT_OUT_IS | eat | a-18446744073709551615-0-out
+RUN | $T/wp.+x | $T/a.pdl | 18446744073709551615 | 1
+EXPECT_EXIT | 0 | a-18446744073709551615-1-rc0
+EXPECT_OUT_IS | plant | a-18446744073709551615-1-out
+RUN | $T/wp.+x | $T/a.pdl | 18446744073709551615 | 2
+EXPECT_EXIT | 0 | a-18446744073709551615-2-rc0
+EXPECT_OUT_IS | eat | a-18446744073709551615-2-out
+RUN | $T/wp.+x | $T/a.pdl | 18446744073709551615 | 3
+EXPECT_EXIT | 0 | a-18446744073709551615-3-rc0
+EXPECT_OUT_IS | trade | a-18446744073709551615-3-out
+RUN | $T/wp.+x | $T/a.pdl | 18446744073709551615 | 100
+EXPECT_EXIT | 0 | a-18446744073709551615-100-rc0
+EXPECT_OUT_IS | trade | a-18446744073709551615-100-out
+RUN | $T/wp.+x | $T/a.pdl | 18446744073709551615 | 18446744073709551615
+EXPECT_EXIT | 0 | a-18446744073709551615-18446744073709551615-rc0
+EXPECT_OUT_IS | eat | a-18446744073709551615-18446744073709551615-out
+RUN | $T/wp.+x | $T/a.pdl | 12345678901234567890 | 0
+EXPECT_EXIT | 0 | a-12345678901234567890-0-rc0
+EXPECT_OUT_IS | eat | a-12345678901234567890-0-out
+RUN | $T/wp.+x | $T/a.pdl | 12345678901234567890 | 1
+EXPECT_EXIT | 0 | a-12345678901234567890-1-rc0
+EXPECT_OUT_IS | trade | a-12345678901234567890-1-out
+RUN | $T/wp.+x | $T/a.pdl | 12345678901234567890 | 2
+EXPECT_EXIT | 0 | a-12345678901234567890-2-rc0
+EXPECT_OUT_IS | talk | a-12345678901234567890-2-out
+RUN | $T/wp.+x | $T/a.pdl | 12345678901234567890 | 3
+EXPECT_EXIT | 0 | a-12345678901234567890-3-rc0
+EXPECT_OUT_IS | eat | a-12345678901234567890-3-out
+RUN | $T/wp.+x | $T/a.pdl | 12345678901234567890 | 100
+EXPECT_EXIT | 0 | a-12345678901234567890-100-rc0
+EXPECT_OUT_IS | eat | a-12345678901234567890-100-out
+RUN | $T/wp.+x | $T/a.pdl | 12345678901234567890 | 18446744073709551615
+EXPECT_EXIT | 0 | a-12345678901234567890-18446744073709551615-rc0
+EXPECT_OUT_IS | eat | a-12345678901234567890-18446744073709551615-out
+RUN | $T/wp.+x | $T/b.pdl | 9 | 0
+EXPECT_EXIT | 0 | b-0-rc0
+EXPECT_OUT_IS | only | b-0-out
+RUN | $T/wp.+x | $T/b.pdl | 9 | 1
+EXPECT_EXIT | 0 | b-1-rc0
+EXPECT_OUT_IS | only | b-1-out
+RUN | $T/wp.+x | $T/b.pdl | 9 | 2
+EXPECT_EXIT | 0 | b-2-rc0
+EXPECT_OUT_IS | only | b-2-out
+RUN | $T/wp.+x | $T/b.pdl | 9 | 3
+EXPECT_EXIT | 0 | b-3-rc0
+EXPECT_OUT_IS | only | b-3-out
+RUN | $T/wp.+x | $T/b.pdl | 9 | 4
+EXPECT_EXIT | 0 | b-4-rc0
+EXPECT_OUT_IS | only | b-4-out
+RUN | $T/wp.+x | $T/b.pdl | 9 | 5
+EXPECT_EXIT | 0 | b-5-rc0
+EXPECT_OUT_IS | only | b-5-out
+RUN | $T/wp.+x | $T/d.pdl | 5 | 0
+EXPECT_EXIT | 0 | d-0-rc0
+EXPECT_OUT_IS | good | d-0-out
+RUN | $T/wp.+x | $T/d.pdl | 5 | 1
+EXPECT_EXIT | 0 | d-1-rc0
+EXPECT_OUT_IS | good | d-1-out
+RUN | $T/wp.+x | $T/d.pdl | 5 | 2
+EXPECT_EXIT | 0 | d-2-rc0
+EXPECT_OUT_IS | big | d-2-out
+RUN | $T/wp.+x | $T/d.pdl | 5 | 3
+EXPECT_EXIT | 0 | d-3-rc0
+EXPECT_OUT_IS | big | d-3-out
+RUN | $T/wp.+x | $T/d.pdl | 5 | 4
+EXPECT_EXIT | 0 | d-4-rc0
+EXPECT_OUT_IS | big | d-4-out
+RUN | $T/wp.+x | $T/d.pdl | 5 | 5
+EXPECT_EXIT | 0 | d-5-rc0
+EXPECT_OUT_IS | big | d-5-out
+RUN | $T/wp.+x | $T/d.pdl | 5 | 6
+EXPECT_EXIT | 0 | d-6-rc0
+EXPECT_OUT_IS | good | d-6-out
+RUN | $T/wp.+x | $T/d.pdl | 5 | 7
+EXPECT_EXIT | 0 | d-7-rc0
+EXPECT_OUT_IS | good | d-7-out
+RUN | $T/wp.+x | $T/f.pdl | 3 | 0
+EXPECT_EXIT | 0 | f-0-rc0
+EXPECT_OUT_IS | x | f-0-out
+RUN | $T/wp.+x | $T/f.pdl | 3 | 1
+EXPECT_EXIT | 0 | f-1-rc0
+EXPECT_OUT_IS | x | f-1-out
+RUN | $T/wp.+x | $T/f.pdl | 3 | 2
+EXPECT_EXIT | 0 | f-2-rc0
+EXPECT_OUT_IS | x | f-2-out
+RUN | $T/wp.+x | $T/f.pdl | 3 | 3
+EXPECT_EXIT | 0 | f-3-rc0
+EXPECT_OUT_IS | x | f-3-out
+RUN | $T/wp.+x | $T/f.pdl | 3 | 4
+EXPECT_EXIT | 0 | f-4-rc0
+EXPECT_OUT_IS | x | f-4-out
+RUN | $T/wp.+x | $T/f.pdl | 3 | 5
+EXPECT_EXIT | 0 | f-5-rc0
+EXPECT_OUT_IS | x | f-5-out
+RUN | $T/wp.+x | $T/g.pdl | 11 | 0
+EXPECT_EXIT | 0 | g-0-rc0
+EXPECT_OUT_IS | dup | g-0-out
+RUN | $T/wp.+x | $T/g.pdl | 11 | 1
+EXPECT_EXIT | 0 | g-1-rc0
+EXPECT_OUT_IS | dup | g-1-out
+RUN | $T/wp.+x | $T/g.pdl | 11 | 2
+EXPECT_EXIT | 0 | g-2-rc0
+EXPECT_OUT_IS | dup | g-2-out
+RUN | $T/wp.+x | $T/g.pdl | 11 | 3
+EXPECT_EXIT | 0 | g-3-rc0
+EXPECT_OUT_IS | dup | g-3-out
+RUN | $T/wp.+x | $T/g.pdl | 11 | 4
+EXPECT_EXIT | 0 | g-4-rc0
+EXPECT_OUT_IS | dup | g-4-out
+RUN | $T/wp.+x | $T/g.pdl | 11 | 5
+EXPECT_EXIT | 0 | g-5-rc0
+EXPECT_OUT_IS | z | g-5-out
+RUN | $T/wp.+x | $T/c.pdl | 1 | 1
+EXPECT_EXIT | 3 | all-zero-rc3
+RUN | $T/wp.+x | $T/e.pdl | 1 | 1
+EXPECT_EXIT | 3 | empty-file-rc3
+RUN | $T/wp.+x | $T/nope.pdl | 1 | 1
+EXPECT_EXIT | 2 | missing-file-rc2
+RUN | $T/wp.+x
+EXPECT_EXIT | 2 | no-args-rc2
+RUN | $T/wp.+x | $T/a.pdl | 1
+EXPECT_EXIT | 2 | two-args-rc2
+RUN | $T/wp.+x | $T/a.pdl | 1 | 2 | 3
+EXPECT_EXIT | 2 | four-args-rc2
+RUN | $T/wp.+x | $T/a.pdl | -1 | 1
+EXPECT_EXIT | 2 | neg-seed-rc2
+RUN | $T/wp.+x | $T/a.pdl | 1 | -1
+EXPECT_EXIT | 2 | neg-counter-rc2
+RUN | $T/wp.+x | $T/a.pdl | 12x | 1
+EXPECT_EXIT | 2 | seed-junk-rc2
+RUN | $T/wp.+x | $T/a.pdl | 1 | 1.5
+EXPECT_EXIT | 2 | counter-junk-rc2
+RUN | $T/wp.+x | $T/a.pdl | 18446744073709551616 | 1
+EXPECT_EXIT | 2 | seed-overflow-rc2
+RUN | $T/wp.+x | $T/a.pdl |  | 1
+EXPECT_EXIT | 2 | empty-seed-rc2

@@ -1,0 +1,6 @@
+# event.pal - Move 19: place the ninja and land (slide, climb, Finish) (trigger move). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set pos_{current}_{sel} ftgt
+exec ops/+x/var_math.+x . set lp current
+exec ops/+x/var_math.+x . set ln sel
+exec ops/+x/event_page_op.+x . . --trigger land --state .
+halt

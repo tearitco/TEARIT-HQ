@@ -1,0 +1,14 @@
+current_state=0
+decision_mode=1
+cash=417.36
+stock_price=14.81
+book_value=898.68
+shares_outstanding=66.19
+market_cap=980.38
+debt_to_equity=0.49
+risk_bias=41
+shares_held=0
+pending_action=
+last_action=hold
+human_decision=
+owned_by=

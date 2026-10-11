@@ -1,0 +1,6 @@
+# Pay jail fee 2/3: pay the bank (strict)
+COND | trigger | payjail
+COND | kv | switches.txt | game_over | eq | 0
+COND | kv | variables.txt | phase | eq | 0
+COND | kv | variables.txt | cur_jail | gt | 0
+COND | kv | variables.txt | can_pay | eq | 1

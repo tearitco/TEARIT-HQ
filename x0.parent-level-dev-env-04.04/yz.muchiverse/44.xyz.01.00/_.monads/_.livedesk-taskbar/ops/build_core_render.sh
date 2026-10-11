@@ -19,7 +19,7 @@ CFLAGS="-std=c11 -Wall -O2 $(pkg-config --cflags xft)"
 # REAL, NEW 2026-09-01 - -lXext added for the tile mode's own real
 # X11 Shape Extension use (XShapeCombineMask, folded in verbatim from
 # tp_desktop_window_rgb.c's build_shape_mask()/cursword_update_shape()).
-LIBS="-lX11 -lXext $(pkg-config --libs xft) -lm"
+LIBS="-lX11 -lXext $(pkg-config --libs xft) $(pkg-config --libs fontconfig) -lm"
 
 # SHARED-SOURCE-COMPILE-IN-PLACE.md (2026-09-09): the house-authored
 # shared .c/.h are NO LONGER copied into this dir. `-I "$SHARED"`
@@ -31,6 +31,16 @@ LIBS="-lX11 -lXext $(pkg-config --libs xft) -lm"
 # vendored third-party header (not house code, ~zero drift risk) and is
 # still copied for now — out of scope for this pass.
 SHARED="$(cd "$(dirname "$0")/../../../&.widgits/_shared-lib" && pwd)"
+
+# 2026-10-08: a stale same-named copy in THIS dir shadows $SHARED, because
+# `#include "x.h"` looks beside the including file before -I. It broke the
+# build once (ops/khtpm_css_parser.h lacked the new css_len/g_css_ui_pct).
+# The shared files are compiled in place, so any local copy of one is
+# vestigial: delete it instead of letting it win.
+for _f in "$SHARED"/khtpm_*.[ch] "$SHARED"/kh_*.[ch]; do
+    _b="$(basename "$_f")"
+    [ -f "./$_b" ] && ! [ "./$_b" -ef "$_f" ] && { echo "build: removing stale shadow copy ./$_b (compiled from $SHARED)"; rm -f "./$_b"; }
+done
 mkdir -p lib
 cp "$SHARED/stb_image_write.h" lib/stb_image_write.h
 
@@ -97,7 +107,7 @@ fi
 # of khtpm_taskbar_manager.c is that legitimate case, untouched).
 # Q003 (2026-10-06): every file khtpm_core_render.c text-includes must be listed, or editing it silently leaves a STALE binary running (hash_gate.sh: "pass every real input
 # file explicitly"). Added: khtpm_css_parser.h, khtpm_nav_echo.c, house_wait.h, kh_boot_mark.h, kh_proc_registry.h, stb_image.h, stb_image_write.h. Scorer: ^.grave/quests/Q003-build-gate-include-list/verify.sh
-CR_SRCS="khtpm_core_render.c $SHARED/khtpm_css_parser.c $SHARED/khtpm_css_parser.h $SHARED/khtpm_ui_scale.c $SHARED/khtpm_render_core.c $SHARED/khtpm_draw_core.c $SHARED/khtpm_reparse_diff.c $SHARED/khtpm_nav_echo.c $SHARED/house_wait.h $SHARED/kh_boot_mark.h $SHARED/kh_proc_registry.h $SHARED/stb_image.h $SHARED/stb_image_write.h"
+CR_SRCS="khtpm_core_render.c $SHARED/khtpm_css_parser.c $SHARED/khtpm_css_parser.h $SHARED/khtpm_ui_scale.c $SHARED/khtpm_render_core.c $SHARED/khtpm_draw_core.c $SHARED/khtpm_reparse_diff.c $SHARED/khtpm_nav_echo.c $SHARED/khtpm_menu_window.c $SHARED/house_wait.h $SHARED/kh_boot_mark.h $SHARED/kh_proc_registry.h $SHARED/stb_image.h $SHARED/stb_image_write.h"
 if hash_gate_stale "$MANIFEST" +x/khtpm_core_render.+x $CR_SRCS; then
     echo "-- entity-menu renderer -> +x/khtpm_core_render.+x"
     $CC $CFLAGS $X11_FLAGS -I "$SHARED" -o +x/khtpm_core_render.+x \

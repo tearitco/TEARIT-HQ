@@ -1,4 +1,7 @@
 #!/bin/sh
+# macOS has no setsid binary (same convention as run_khtpm_strip.sh): expand to nothing there, keep real setsid on Linux.
+SETSID="setsid"
+[ "$(uname)" = "Darwin" ] && SETSID=""
 # livedesk-launch.sh - the app launcher behind the "Livedesk" desktop/Linux-apps entry (made by `sh button.sh install-app`).
 #
 # Owner 2026-10-06: the old start-temp button is a bare ELF (no icon, no app entry). This is the same start - build step, then
@@ -27,7 +30,7 @@ if [ ! -x "$OPS/+x/livedesk_splash.+x" ] || [ "$OPS/livedesk_splash.c" -nt "$OPS
     mkdir -p "$OPS/+x"; ${CC:-gcc} -std=c11 -O2 -o "$OPS/+x/livedesk_splash.+x" "$OPS/livedesk_splash.c" $_sx >/dev/null 2>&1 || true
 fi
 rm -f "$HOUSE/#.desktop/boot_build_failed.txt" "$HOUSE/#.desktop/dock_stack/draw_stamp.txt"
-[ -x "$OPS/+x/livedesk_splash.+x" ] && setsid nohup "$OPS/+x/livedesk_splash.+x" "$HOUSE" "$OPS/+x" --boot >/dev/null 2>&1 < /dev/null &
+[ -x "$OPS/+x/livedesk_splash.+x" ] && $SETSID nohup "$OPS/+x/livedesk_splash.+x" "$HOUSE" "$OPS/+x" --boot >/dev/null 2>&1 < /dev/null &
 {
     echo "== $(date '+%F %T') livedesk-launch (pid $$) DISPLAY=$DISPLAY"
     # the same hash-gated build the old button ran (no-op < 1 s; a stale gate compiles the core renderer ~20 s). No centered
@@ -40,5 +43,5 @@ if [ -f "$OPS/+x/.build_failed.txt" ]; then
     : > "$HOUSE/#.desktop/boot_build_failed.txt"
     exit 1
 fi
-setsid nohup sh "$CRYPTS/button.sh" run >> "$LOG" 2>&1 < /dev/null &
+$SETSID nohup sh "$CRYPTS/button.sh" run >> "$LOG" 2>&1 < /dev/null &
 exit 0

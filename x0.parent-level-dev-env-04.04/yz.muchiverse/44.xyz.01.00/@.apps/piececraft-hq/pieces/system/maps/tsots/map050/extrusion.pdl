@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+META         | map_id             | tsots
+META         | desk_id            | map050
+META         | note               | Book of life(and death)
+EXTRUDE      | W                  | 3
+EXTRUDE      | default             | 0

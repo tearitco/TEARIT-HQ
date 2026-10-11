@@ -1,0 +1,22 @@
+# Behavior Bank entry for the harness `proc_ledger_add` (see HARNESS-BEHAVIOR-BANK-DESIGN.md). Weights on SYNONYM / SLOT / CORPUS rows are hand-seeded; only WEIGHT (from COUNTS) is measured.
+BEHAVIOR | harness.proc_ledger_add
+KIND | spoke
+KEYWORDS | process ledger, register, reaper, pid, starttime, restart, orphan, process list
+SYNONYM | proc list | 0.90
+SYNONYM | pid registry | 0.80
+SYNONYM | process registry | 0.80
+SYNONYM | stray process | 0.50
+SYNONYM | leak | 0.40
+SENTENCE | Registers a real sleep process through proc_ledger_add and runs the real reaper from kh_proc_registry.h on a scratch house.
+SENTENCE | Checks the ledger line has five real fields with the true process start time, that a registered process is reaped, and that a wrong non-zero start time is skipped (the pid reuse guard).
+SLOT | 0 | POINTS_TO=process-lifecycle | WEIGHT=0.95
+SLOT | 1 | POINTS_TO=ledger | WEIGHT=0.80
+SLOT | 2 | POINTS_TO=restart | WEIGHT=0.50
+CORPUS | game-engine | WEIGHT=0.30
+CORPUS | debug-build | WEIGHT=0.70
+SEQUENCE | 1 | exec ./ops/+x/harness_case_op.+x cases/proc_ledger_add.pdl
+SEQUENCE | 2 | exec ./ops/+x/harness_verdict_op.+x cases/proc_ledger_add.pdl
+SEQUENCE | 3 | exec ./ops/+x/harness_bank_op.+x cases/proc_ledger_add.pdl
+SOURCE | hand-authored 2026-10-07 (claude); masters/synonyms/weights are seeds awaiting owner validation
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

@@ -1,0 +1,5 @@
+# Banish Foe 5: to Start (default)
+COND | trigger | cast_banish
+COND | kv | variables.txt | ph_cast | eq | 2
+COND | kv | variables.txt | cc_ok | eq | 1
+COND | kv | switches.txt | game_over | eq | 0

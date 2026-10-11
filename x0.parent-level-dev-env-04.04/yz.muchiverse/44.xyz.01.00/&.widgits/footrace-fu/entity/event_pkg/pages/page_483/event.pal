@@ -1,0 +1,5 @@
+# event.pal - Chrono Shield 4: +ab_4_bonus Block for one combat, log (trigger cast_shield). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set shield_{current}_{sel} abilities.pdl:ab_4_bonus
+exec ops/+x/row_append.+x . ledger.txt CAST {turn} {current} {sel} shield ok
+exec ops/+x/var_math.+x . set ph_cast 0
+halt

@@ -1,0 +1,2 @@
+players=2
+dice_seed=1

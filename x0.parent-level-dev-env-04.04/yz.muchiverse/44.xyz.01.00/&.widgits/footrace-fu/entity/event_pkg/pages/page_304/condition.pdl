@@ -1,0 +1,6 @@
+# Move 5: pay with a free step
+COND | trigger | move
+COND | kv | variables.txt | ph_move | eq | 2
+COND | kv | variables.txt | act_ok | eq | 1
+COND | kv | variables.txt | has_free | eq | 1
+COND | kv | switches.txt | game_over | eq | 0

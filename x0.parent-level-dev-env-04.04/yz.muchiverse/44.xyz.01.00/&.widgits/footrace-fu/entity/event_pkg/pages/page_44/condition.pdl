@@ -1,0 +1,3 @@
+# Setup 3: guardrail - action_tokens above max_action_tokens -> refused
+COND | trigger | setup
+COND | kv | rules.pdl | action_tokens | gt | @rules.pdl:max_action_tokens

@@ -1,0 +1,118 @@
+# khtpm_game_setup.c (the game.pdl parser + map/cell/edit/mode checks) through game_setup_query_op, on SCRATCH files. Replaces tests/test_game_setup.c.
+RESULTS | ../results/game_setup_parser.txt
+CASE    | game-setup
+SCRATCH |
+COPY    | &.widgits/_shared-lib/harness/ops/+x/game_setup_query_op.+x | bin/gsq
+MKDIR   | #.desktop
+WRITE   | game.pdl | # a game\nGAME | title | My Game\nGAME | start | start_01\nGAME | body | hero_01\nMAP | town | available | 1\nMAP | cave | available | 1\nMAP | secret | available | 0\nCELL | db | db | modes=build | where=livedesk,pchq | order=3 | cmd=livedesk:open-db\nCELL | plugins | plugins | modes=build,playtest | cmd=sh a/b.sh\nCELL | gametitle | My Game | modes=play,playtest | where=pchq | order=1 | cmd=event:title_screen\nROW | gametitle | 1 | Continue | cmd=event:continue\nROW | gametitle | 2 | Quit | cmd=quit\nEDIT | door_civ | playtest | 1\nEDIT | locked | playtest | 0\nWHATEVER | unknown | row ignored\n\n   # indented comment\n
+
+# missing file = build defaults everywhere
+RUN | $T/bin/gsq | $T/nope.pdl | info
+EXPECT_OUT | loaded=0 | missing-file-not-loaded
+RUN | $T/bin/gsq | $T/nope.pdl | map | play | x
+EXPECT_OUT_IS | 1 | missing-file-map-allowed
+RUN | $T/bin/gsq | $T/nope.pdl | cell | play | pchq | db
+EXPECT_OUT_IS | 1 | missing-file-cell-visible
+RUN | $T/bin/gsq | $T/nope.pdl | edit | build | x
+EXPECT_OUT_IS | 1 | missing-file-build-edit-allowed
+
+# rows
+RUN | $T/bin/gsq | $T/game.pdl | info
+EXPECT_OUT_IS | loaded=1 title=My Game start=start_01 body=hero_01 maps=2 cells=3 rows=2 edits=1 | rows-parsed-counts-and-game-fields
+RUN | $T/bin/gsq | $T/game.pdl | cellget | db | cmd
+EXPECT_OUT_IS | livedesk:open-db | cell-cmd
+RUN | $T/bin/gsq | $T/game.pdl | cellget | db | order
+EXPECT_OUT_IS | 3 | cell-order
+RUN | $T/bin/gsq | $T/game.pdl | cellget | gametitle | cmd
+EXPECT_OUT_IS | event:title_screen | cell-event-action-form
+RUN | $T/bin/gsq | $T/game.pdl | cellget | plugins | where
+EXPECT_OUT_IS | livedesk,pchq | cell-where-default-both-places
+RUN | $T/bin/gsq | $T/game.pdl | rowget | gametitle | 1 | label
+EXPECT_OUT_IS | Continue | row-label
+RUN | $T/bin/gsq | $T/game.pdl | rowget | gametitle | 2 | cmd
+EXPECT_OUT_IS | quit | row-cmd
+
+# maps
+RUN | $T/bin/gsq | $T/game.pdl | map | build | secret
+EXPECT_OUT_IS | 1 | build-every-map-allowed
+RUN | $T/bin/gsq | $T/game.pdl | map | play | town
+EXPECT_OUT_IS | 1 | play-listed-allowed
+RUN | $T/bin/gsq | $T/game.pdl | map | play | secret
+EXPECT_OUT_IS | 0 | play-unlisted-refused-and-available-0-row-ignored
+RUN | $T/bin/gsq | $T/game.pdl | map | playtest | hall
+EXPECT_OUT_IS | 0 | playtest-unlisted-refused
+
+# cells
+RUN | $T/bin/gsq | $T/game.pdl | cell | build | pchq | gametitle
+EXPECT_OUT_IS | 1 | build-every-cell-visible
+RUN | $T/bin/gsq | $T/game.pdl | cell | play | livedesk | db
+EXPECT_OUT_IS | 0 | play-db-hidden
+RUN | $T/bin/gsq | $T/game.pdl | cell | playtest | pchq | plugins
+EXPECT_OUT_IS | 1 | playtest-plugins-visible
+RUN | $T/bin/gsq | $T/game.pdl | cell | play | pchq | plugins
+EXPECT_OUT_IS | 0 | play-plugins-hidden
+RUN | $T/bin/gsq | $T/game.pdl | cell | play | pchq | gametitle
+EXPECT_OUT_IS | 1 | gametitle-visible-in-pchq-play
+RUN | $T/bin/gsq | $T/game.pdl | cell | play | livedesk | gametitle
+EXPECT_OUT_IS | 0 | where-combines-with-modes-hidden-in-livedesk
+RUN | $T/bin/gsq | $T/game.pdl | cell | play | pchq | book
+EXPECT_OUT_IS | 1 | unlisted-builtin-cell-stays-visible
+
+# edit rules
+RUN | $T/bin/gsq | $T/game.pdl | edit | build | zzz
+EXPECT_OUT_IS | 1 | edit-build-anything
+RUN | $T/bin/gsq | $T/game.pdl | edit | play | door_civ
+EXPECT_OUT_IS | 0 | edit-play-nothing
+RUN | $T/bin/gsq | $T/game.pdl | edit | playtest | door_civ
+EXPECT_OUT_IS | 1 | edit-playtest-marked
+RUN | $T/bin/gsq | $T/game.pdl | edit | playtest | locked
+EXPECT_OUT_IS | 0 | edit-playtest-unmarked-playtest-0-row-ignored
+
+# a file with no MAP rows leaves maps unrestricted
+WRITE | nomap.pdl | GAME | title | t\n
+RUN | $T/bin/gsq | $T/nomap.pdl | map | play | anything
+EXPECT_OUT_IS | 1 | no-map-rows-unrestricted
+
+# capacity clamp: 100 MAP and 100 CELL rows into 64 slots, no crash (awk writes the file; \174 is the bar and \012 the newline, because a field is expanded first and \n would become a real newline)
+RUN | awk | BEGIN{for(i=0;i<100;i++)printf "MAP \174 m%d \174 available \174 1\012",i > "$T/big.pdl"; for(i=0;i<100;i++)printf "CELL \174 c%d \174 c \174 modes=play\012",i > "$T/big.pdl"}
+RUN | $T/bin/gsq | $T/big.pdl | info
+EXPECT_OUT | maps=64 cells=64 | capacity-clamp-64-and-64
+
+# play mode file (mode= first line, optional playtest=1 second line)
+RUN | $T/bin/gsq | - | mode | $T
+EXPECT_OUT_IS | build | no-mode-file-is-build
+WRITE | #.desktop/khtpm_play_mode.state.txt | mode=off\n
+RUN | $T/bin/gsq | - | mode | $T
+EXPECT_OUT_IS | build | mode-off-is-build
+WRITE | #.desktop/khtpm_play_mode.state.txt | mode=on\n
+RUN | $T/bin/gsq | - | mode | $T
+EXPECT_OUT_IS | play | mode-on-is-play
+WRITE | #.desktop/khtpm_play_mode.state.txt | mode=on\nplaytest=1\n
+RUN | $T/bin/gsq | - | mode | $T
+EXPECT_OUT_IS | playtest | mode-on-plus-playtest-line-is-playtest
+WRITE | #.desktop/khtpm_play_mode.state.txt | mode=off\nplaytest=1\n
+RUN | $T/bin/gsq | - | mode | $T
+EXPECT_OUT_IS | build | stale-playtest-under-mode-off-is-build
+WRITE | #.desktop/khtpm_play_mode.state.txt | mode=on\n
+RUN | $T/bin/gsq | - | mode | $T
+EXPECT_OUT_IS | play | plain-rewrite-clears-playtest
+
+# gs_check_map_switch (the real teleport check) with its ledger
+MKDIR | sess
+WRITE | sess/game.pdl | MAP | town | available | 1\n
+RUN | $T/bin/gsq | - | switch | $T | $T/sess | town
+EXPECT_OUT_IS | 1 | switch-play-listed-allowed
+EXPECT_NOFILE | #.desktop/game_access_ledger.txt | no-ledger-line-for-an-allowed-switch
+RUN | $T/bin/gsq | - | switch | $T | $T/sess | cave
+EXPECT_OUT_IS | 0:map 'cave' is not available in play | switch-play-unlisted-refused-with-reason
+EXPECT_HAS | #.desktop/game_access_ledger.txt | \prefused-map\pplay\pcave\p | refusal-ledgered
+RUN | $T/bin/gsq | - | switch | $T | $T/sess | hall
+EXPECT_HAS | #.desktop/game_access_ledger.txt | \prefused-map\pplay\phall\p | ledger-appends-second-line
+EXPECT_HAS | #.desktop/game_access_ledger.txt | \prefused-map\pplay\pcave\p | ledger-keeps-first-line
+WRITE | #.desktop/khtpm_play_mode.state.txt | mode=on\nplaytest=1\n
+RUN | $T/bin/gsq | - | switch | $T | $T/sess | cave
+EXPECT_OUT | not available in playtest | switch-playtest-reason-names-the-mode
+MKDIR | nogame
+RUN | $T/bin/gsq | - | switch | $T | $T/nogame | cave
+EXPECT_OUT_IS | 1 | play-without-game-pdl-allowed-existing-houses-unchanged
+CLEAN |

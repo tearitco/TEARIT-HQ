@@ -1,0 +1,12 @@
+# event.pal - Attack 1: load the acting ninja, its reach, its cost (trigger attack). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set act_alive alive_{current}_{sel}
+exec ops/+x/var_math.+x . set act_cls cls_{current}_{sel}
+exec ops/+x/var_math.+x . set act_pos pos_{current}_{sel}
+exec ops/+x/var_math.+x . set at_cost rules.pdl:attack_cost
+exec ops/+x/var_math.+x . set at_rmin ninjas.pdl:class_{act_cls}_rmin
+exec ops/+x/var_math.+x . set at_rmax ninjas.pdl:class_{act_cls}_rmax
+exec ops/+x/var_math.+x . ge tok_ok tokens at_cost
+exec ops/+x/var_math.+x . mul act_ok act_alive tok_ok
+exec ops/+x/var_math.+x . set tgt 0
+exec ops/+x/var_math.+x . set ph_att 1
+halt

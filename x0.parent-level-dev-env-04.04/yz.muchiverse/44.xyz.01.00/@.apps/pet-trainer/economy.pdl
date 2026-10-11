@@ -1,0 +1,12 @@
+SECTION | KEY | VALUE
+----------------------------------------
+# economy.pdl - what things cost between pets (coins). A store is a building whose OWNER sells out of their own bag; a shopper stands at its door. ALL NUMBERS ARE FIRST GUESSES.
+PRICE | apple | 3
+PRICE | fish  | 5
+PRICE | cake  | 6
+PRICE | wood  | 2
+# rent: a pet without a house of its own may rent someone else's: every <every> seconds of pet time it pays pct percent of the building's cost to the owner; if it cannot pay it is evicted
+RENT | pct=5 | every=1440
+# a pet that has fewer coins than want_coins works: it gathers 4 wood more than it needs and sells the extra to a store owner
+ECON | want_coins | 30
+ECON | work_extra | 4

@@ -1,0 +1,122 @@
+# book_page_op (EDEN-PLAYABLE-LOOP-AND-BOOK-PAGE-HARNESS-PLAN.md section 1): create/list/exists/rename book:pages on a SCRATCH sessions root, shaped like the taskbar's
+# livedesk_ensure_session / livedesk_new_desk / livedesk_write_active_desk / livedesk_next_id. Nothing live is touched; a sibling dir proves no write outside the root.
+RESULTS | ../results/book_page.txt
+CASE    | book-page
+SCRATCH |
+COPY    | &.widgits/book-page/ops/+x/book_page_op.+x | bp.+x
+# fixture hand-built in the taskbar's shape: s1 = pre-design (active office), s2 = other, s5 = other2 (gap in ids)
+WRITE | r/s1/session.pdl | STATE \p name \p pre-design\nSTATE \p active_desk \p office\n
+WRITE | r/s1/desks/office.pdl | DESK \p keep\n
+WRITE | r/s1/desks/desk_01.pdl |
+WRITE | r/s2/session.pdl | STATE \p name \p other\n
+WRITE | r/s2/desks/desk_01.pdl |
+WRITE | r/s5/session.pdl | STATE \p name \p other2\n
+WRITE | r/s5/desks/desk_01.pdl |
+WRITE | r/session.pdl | STATE \p active_session \p s1\n
+WRITE | sib/keep.txt | untouched\n
+SUMTREE | sib0 | sib
+# 1 --root is required
+RUN | $T/bp.+x | new-page | pre-design | x1
+EXPECT_EXIT | 2 | missing-root-refused
+RUN | $T/bp.+x | --root | $T/nope | new-page | pre-design | x1
+EXPECT_EXIT | 2 | nonexistent-root-refused
+EXPECT_NOFILE | $T/r/s1/desks/x1.pdl | refused-created-nothing
+# 2 new page in an existing book: empty file, active_desk NOT changed, other files untouched
+RUN | $T/bp.+x | --root | $T/r | new-page | pre-design | eden-test
+EXPECT_EXIT | 0 | new-page-existing-book-rc0
+EXPECT_EXISTS | r/s1/desks/eden-test.pdl | page-file-created
+EXPECT_FILE | r/s1/session.pdl | STATE \p name \p pre-design\nSTATE \p active_desk \p office\n | session-pdl-unchanged-without-activate
+EXPECT_FILE | r/session.pdl | STATE \p active_session \p s1\n | root-session-pdl-unchanged
+RUN | $T/bp.+x | --root | $T/r | list | pre-design
+EXPECT_OUT_IS | desk_01\neden-test\noffice | list-pages-sorted
+# 3 duplicate refused, content kept
+RUN | $T/bp.+x | --root | $T/r | new-page | pre-design | office
+EXPECT_EXIT | 3 | duplicate-refused-rc3
+EXPECT_FILE | r/s1/desks/office.pdl | DESK \p keep\n | duplicate-did-not-overwrite
+RUN | $T/bp.+x | --root | $T/r | new-page | pre-design:eden-test
+EXPECT_EXIT | 3 | duplicate-colon-form-refused
+# 4 colon form in ONE argument
+RUN | $T/bp.+x | --root | $T/r | new-page | pre-design:dsr-test
+EXPECT_EXIT | 0 | colon-form-rc0
+EXPECT_EXISTS | r/s1/desks/dsr-test.pdl | colon-form-page-created
+RUN | $T/bp.+x | --root | $T/r | exists | pre-design:dsr-test
+EXPECT_EXIT | 0 | exists-page-rc0
+EXPECT_OUT_IS | yes | exists-page-yes
+RUN | $T/bp.+x | --root | $T/r | exists | pre-design:nope
+EXPECT_EXIT | 1 | exists-missing-page-rc1
+EXPECT_OUT_IS | no | exists-missing-page-no
+RUN | $T/bp.+x | --root | $T/r | exists | pre-design
+EXPECT_OUT_IS | yes | exists-book-yes
+RUN | $T/bp.+x | --root | $T/r | exists | nobook
+EXPECT_EXIT | 1 | exists-missing-book-rc1
+# 5 page in a MISSING book: next free id after max (s5 -> s6), taskbar shape byte-for-byte
+RUN | $T/bp.+x | --root | $T/r | new-page | newbook:p1
+EXPECT_EXIT | 0 | missing-book-created-rc0
+EXPECT_OUT | (s6) | missing-book-got-id-s6
+WRITE | exp/session.pdl | STATE \p name \p newbook\n
+WRITE | exp/desks/desk_01.pdl |
+WRITE | exp/desks/p1.pdl |
+SUMTREE | got | r/s6
+SUMTREE | want | exp
+EXPECT_EQ | $got | $want | new-book-tree-byte-equal-to-taskbar-shape
+RUN | $T/bp.+x | --root | $T/r | list
+EXPECT_OUT_IS | pre-design\nother\nother2\nnewbook | list-books-by-id
+# 6 new-book: creates, duplicate refused, no page beyond desk_01
+RUN | $T/bp.+x | --root | $T/r | new-book | fresh
+EXPECT_EXIT | 0 | new-book-rc0
+EXPECT_FILE | r/s7/session.pdl | STATE \p name \p fresh\n | new-book-session-pdl
+RUN | $T/bp.+x | --root | $T/r | list | fresh
+EXPECT_OUT_IS | desk_01 | new-book-only-desk_01
+RUN | $T/bp.+x | --root | $T/r | new-book | fresh
+EXPECT_EXIT | 3 | new-book-duplicate-refused
+# 7 bad names refused (rc2), nothing created
+RUN | $T/bp.+x | --root | $T/r | new-page | pre-design | a/b
+EXPECT_EXIT | 2 | slash-refused
+RUN | $T/bp.+x | --root | $T/r | new-page | pre-design | ..
+EXPECT_EXIT | 2 | dotdot-refused
+RUN | $T/bp.+x | --root | $T/r | new-page | pre-design | .hid
+EXPECT_EXIT | 2 | leading-dot-refused
+RUN | $T/bp.+x | --root | $T/r | new-page | pre-design | has space
+EXPECT_EXIT | 2 | space-refused
+RUN | $T/bp.+x | --root | $T/r | new-page | pre-design:
+EXPECT_EXIT | 2 | empty-page-refused
+RUN | $T/bp.+x | --root | $T/r | new-page | ../evil:p
+EXPECT_EXIT | 2 | traversal-book-refused
+RUN | $T/bp.+x | --root | $T/r | new-page | pre-design | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+EXPECT_EXIT | 2 | 49-chars-refused
+RUN | $T/bp.+x | --root | $T/r | new-page | pre-design | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+EXPECT_EXIT | 0 | 48-chars-accepted
+RUN | $T/bp.+x | --root | $T/r | list
+EXPECT_OUT_LACKS | evil | bad-names-created-no-book
+# 8 --activate
+RUN | $T/bp.+x | --root | $T/r | new-page | pre-design:act-me | --activate
+EXPECT_EXIT | 0 | activate-rc0
+EXPECT_FILE | r/s1/session.pdl | STATE \p name \p pre-design\nSTATE \p active_desk \p act-me\n | activate-writes-taskbar-shape
+# 9 rename: active page follows, non-active leaves active alone, clobber/missing refused
+RUN | $T/bp.+x | --root | $T/r | rename-page | pre-design | dsr-test | dsr-old
+EXPECT_EXIT | 0 | rename-nonactive-rc0
+EXPECT_EXISTS | r/s1/desks/dsr-old.pdl | rename-new-exists
+EXPECT_NOFILE | r/s1/desks/dsr-test.pdl | rename-old-gone
+EXPECT_FILE | r/s1/session.pdl | STATE \p name \p pre-design\nSTATE \p active_desk \p act-me\n | rename-nonactive-keeps-active
+RUN | $T/bp.+x | --root | $T/r | rename-page | pre-design:act-me | act-new
+EXPECT_EXIT | 0 | rename-colon-form-rc0
+EXPECT_FILE | r/s1/session.pdl | STATE \p name \p pre-design\nSTATE \p active_desk \p act-new\n | rename-active-follows
+RUN | $T/bp.+x | --root | $T/r | rename-page | pre-design | office | eden-test
+EXPECT_EXIT | 3 | rename-onto-existing-refused
+EXPECT_FILE | r/s1/desks/office.pdl | DESK \p keep\n | rename-refusal-kept-content
+RUN | $T/bp.+x | --root | $T/r | rename-page | pre-design | ghost | x
+EXPECT_EXIT | 1 | rename-missing-rc1
+RUN | $T/bp.+x | --root | $T/r | rename-page | pre-design | office | b/d
+EXPECT_EXIT | 2 | rename-bad-name-refused
+# 10 ledger: one row per mutating action (ok and refusals)
+EXPECT_HAS | r/book_page_ledger.txt | \p new-page \p pre-design \p eden-test \p ok | ledger-new-page-ok
+EXPECT_HAS | r/book_page_ledger.txt | \p new-page \p pre-design \p office \p exit=3 | ledger-duplicate-row
+EXPECT_HAS | r/book_page_ledger.txt | \p new-book \p fresh \p - \p ok | ledger-new-book-row
+EXPECT_HAS | r/book_page_ledger.txt | \p rename-page \p pre-design \p dsr-test \p ok | ledger-rename-row
+EXPECT_HAS | r/book_page_ledger.txt | \p new-page \p newbook \p p1 \p ok | ledger-new-book-page-row
+# 11 no stray temp files, nothing written outside the root
+RUN | $T/bp.+x | --root | $T/r | list | pre-design
+EXPECT_OUT_LACKS | tmp | no-tmp-leftovers-in-pages
+SUMTREE | sib1 | sib
+EXPECT_EQ | $sib0 | $sib1 | sibling-dir-unchanged
+CLEAN |

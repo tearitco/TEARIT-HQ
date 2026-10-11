@@ -1,0 +1,4 @@
+# Warp Ally 1: load, nearest ally, gate (needs an ally)
+COND | trigger | cast_warp
+COND | kv | variables.txt | ph_cast | eq | 0
+COND | kv | switches.txt | game_over | eq | 0

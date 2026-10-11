@@ -1,0 +1,9 @@
+# event.pal - Setup 4: accepted -> seats count, seat 1 starts (tokens, selection) (trigger setup). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . add seats_up seats_up seat_up_1
+exec ops/+x/var_math.+x . add seats_up seats_up seat_up_2
+exec ops/+x/var_math.+x . add seats_up seats_up seat_up_3
+exec ops/+x/var_math.+x . add seats_up seats_up seat_up_4
+exec ops/+x/var_math.+x . set current 1
+exec ops/+x/event_page_op.+x . . --trigger turnstart --state .
+exec ops/+x/row_append.+x . ledger.txt SETUP ok players {players} seed {dice_seed}
+halt

@@ -1,0 +1,9 @@
+# event.pal - Bot 1: pick by bot_counter mod policy_period; no tokens (or the action cap) -> end the turn (trigger autoturn). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . mod bot_pick bot_counter rules.pdl:policy_period
+exec ops/+x/var_math.+x . add bot_counter bot_counter 1
+exec ops/+x/var_math.+x . le bot_e tokens 0
+exec ops/+x/var_math.+x . ge bot_cap bot_acts rules.pdl:policy_max_acts
+exec ops/+x/var_math.+x . add bot_e bot_e bot_cap
+exec ops/+x/var_math.+x . gt bot_e bot_e 0
+exec ops/+x/var_math.+x . set ph_bot 1
+halt

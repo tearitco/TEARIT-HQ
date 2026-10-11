@@ -1,0 +1,4 @@
+# event.pal - Block 2: free Block (trigger block). Every line is one tiny op run with cwd = the game state dir; see README for the ops.
+exec ops/+x/var_math.+x . set bl_cost 0
+exec ops/+x/var_math.+x . set bl_free 1
+halt

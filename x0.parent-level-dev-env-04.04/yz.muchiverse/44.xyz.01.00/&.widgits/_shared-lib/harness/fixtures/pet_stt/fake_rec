@@ -1,0 +1,4 @@
+#!/bin/sh
+# fake_rec - stands in for sox `rec` in the pet_listen harness: copies $FAKE_REC_WAV to the first *.wav argument (the output file).
+for a in "$@"; do case "$a" in *.wav) cp "$FAKE_REC_WAV" "$a"; exit 0;; esac; done
+exit 1

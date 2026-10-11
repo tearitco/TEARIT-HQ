@@ -28,6 +28,10 @@
 #endif
 #include <ctype.h>
 #include <errno.h>
+#ifdef __APPLE__
+#include <sys/types.h>
+#include <sys/sysctl.h>   /* KERN_PROCARGS2 - pal argv identity on macOS (no /proc) */
+#endif
 #include <time.h> /* clock_gettime/CLOCK_MONOTONIC - ktb_self_heal_active_desk_registry()'s own ~10s gate */
 
 /* Orchestrator-owned PID-tracked teardown (TPMOS parity) —
@@ -46,6 +50,7 @@
 /* Q005 (HAI-ROBOTS-PHONES-SERVER-DESIGN.md 3b): every entity gets a phone item at <entity>/inventory/zz.phone and an immutable entity_uid.txt.
  * Text-included canonical helper, same pattern as the other _shared-lib .c files; listed in MGR_SRCS so editing it rebuilds this binary. */
 #include "khtpm_phone.c"
+#include "khtpm_game_setup.c"   /* gs_check_map_switch: play-mode map access (GAME-SETUP-PDL-DESIGN.md) */
 #include "khtpm_wordbank.c"
 static PhCtx s_phone_ctx;
 static WbCtx s_wordbank_ctx;
@@ -522,7 +527,39 @@ static int ktb_pid_is_this_pal(int pid, const char *pal_path) {
     cmdbuf[nb] = '\0';
     for (size_t i = 0; i < nb; i++) if (cmdbuf[i] == '\0') cmdbuf[i] = ' ';
     return strstr(cmdbuf, pal_path) != NULL;
-#else
+#elif defined(__APPLE__)
+    /* macOS identity check (2026-10-07): same contract as the Linux branch
+     * above - the pal's own package_dir must appear in the process's argv.
+     * macOS has no /proc, so argv comes from sysctl(KERN_PROCARGS2), the
+     * same data `ps -o args` reads. Buffer layout: int argc, exec path
+     * NUL-terminated, NUL padding, then argc NUL-terminated argv strings
+     * (then env, which is ignored). Fail closed on any read error. */
+    int mib[3] = { CTL_KERN, KERN_PROCARGS2, pid };
+    size_t len = 0;
+    if (sysctl(mib, 3, NULL, &len, NULL, 0) != 0 || len <= sizeof(int)) return 0;
+    char *pbuf = malloc(len);
+    if (!pbuf) return 1; /* out of memory - fail open, same as the unreadable-/proc case */
+    if (sysctl(mib, 3, pbuf, &len, NULL, 0) != 0) { free(pbuf); return 0; }
+    int argc = 0;
+    memcpy(&argc, pbuf, sizeof(argc));
+    char *ap = pbuf + sizeof(argc);
+    char *aend = pbuf + len;
+    while (ap < aend && *ap) ap++;   /* skip exec path */
+    while (ap < aend && !*ap) ap++;  /* skip NUL padding */
+    char argvbuf[KTB_PATH_BUF * 2];
+    size_t an = 0;
+    for (int i = 0; i < argc && ap < aend; i++) {
+        size_t al = strlen(ap);
+        if (an + al + 1 >= sizeof(argvbuf)) break;
+        memcpy(argvbuf + an, ap, al);
+        an += al;
+        argvbuf[an++] = ' ';
+        ap += al + 1;
+    }
+    argvbuf[an] = '\0';
+    free(pbuf);
+    return strstr(argvbuf, pal_path) != NULL;
+#elif defined(_WIN32)
     /* Windows identity check - REAL FIX 2026-09-28 (the flicker). The
      * Linux branch above reads /proc/<pid>/cmdline and requires the pal's
      * own package_dir to be in it. The old Windows branch returned 1 for
@@ -4316,7 +4353,28 @@ static void khtpm_save_play_mode(const char *house_root, int on) {
     char path[KTB_PATH_BUF];
     path_join(path, sizeof(path), house_root, "#.desktop/khtpm_play_mode.state.txt");
     FILE *f = ktb_fopen(path, "w");
-    if (f) { fprintf(f, "mode=%s\n", on ? "on" : "off"); fclose(f); }
+    if (f) { fprintf(f, "mode=%s\n", on ? "on" : "off"); fclose(f); }   /* rewrites the whole file, so it also clears a play-test line */
+}
+/* Play-test (GAME-SETUP-PDL-DESIGN.md, PLAY-MODES-AND-MAP-ACCESS-DESIGN.md): the same file gains an optional SECOND line `playtest=1` next to `mode=on`.
+ * Every older reader tests only the first line for "mode=on", so play-test counts as "on" for them (events fire) and nothing else changes. */
+static int khtpm_load_playtest(const char *house_root) {
+    char path[KTB_PATH_BUF], line[64];
+    int on = 0, pt = 0;
+    path_join(path, sizeof(path), house_root, "#.desktop/khtpm_play_mode.state.txt");
+    FILE *f = ktb_fopen(path, "r");
+    if (!f) return 0;
+    while (fgets(line, sizeof(line), f)) {
+        if (strstr(line, "mode=on")) on = 1;
+        if (strstr(line, "playtest=1")) pt = 1;
+    }
+    fclose(f);
+    return on && pt;
+}
+static void khtpm_save_playtest(const char *house_root, int playtest) {
+    char path[KTB_PATH_BUF];
+    path_join(path, sizeof(path), house_root, "#.desktop/khtpm_play_mode.state.txt");
+    FILE *f = ktb_fopen(path, "w");
+    if (f) { fprintf(f, "mode=on\n%s", playtest ? "playtest=1\n" : ""); fclose(f); }
 }
 
 /* Static player-cell submenu (play/pause/reset). play/pause were ported
@@ -4439,6 +4497,12 @@ static int livedesk_build_player_menu(const char *house_root, HQMenuItem *menu, 
         int on = khtpm_load_play_mode(house_root);
         snprintf(menu[n].label, sizeof(menu[n].label), "1.play: %s", on ? "ON" : "OFF");
         snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:play-toggle");
+        n++;
+    }
+    /* play-test (owner 2026-10-06): the game runs AND editing is allowed. ON from off or plain play = play-test; OFF returns to plain play (use stop/play to leave). */
+    if (n < max) {
+        snprintf(menu[n].label, sizeof(menu[n].label), "play-test: %s", khtpm_load_playtest(house_root) ? "ON" : "OFF");
+        snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:playtest-toggle");
         n++;
     }
     /* REAL, NEW 2026-09-15, direct live report ("our tb hq dropdown
@@ -5324,6 +5388,11 @@ void ktb_hq_activate(KtbState *s, int row) {
         ktb_hq_open(s, ktb_cell_pos_by_id(s, "player", 9));
         return;
     }
+    if (strcmp(m->command, "livedesk:playtest-toggle") == 0) {
+        khtpm_save_playtest(s->house_root, !khtpm_load_playtest(s->house_root));
+        ktb_hq_open(s, ktb_cell_pos_by_id(s, "player", 9));
+        return;
+    }
     if (strcmp(m->command, "livedesk:play-stop") == 0) {
         /* REAL, NEW 2026-09-15, direct live report ("our tb hq dropdown
          * player is missing 'stop'") - explicit force-off, distinct
@@ -5482,7 +5551,12 @@ void ktb_hq_activate(KtbState *s, int row) {
             char *slash = strchr(rest, '/');
             if (slash) {
                 *slash = '\0';
-                livedesk_switch_desk(s->house_root, sroot, rest, slash + 1);
+                {   /* play-mode map access: refused target = no switch (the menu closes as usual); build mode / no game.pdl / no MAP rows always allow */
+                    char gdir[KTB_PATH_BUF], why[200];
+                    livedesk_session_dir(sroot, rest, gdir, sizeof(gdir));
+                    if (gs_check_map_switch(s->house_root, gdir, slash + 1, why, sizeof why))
+                        livedesk_switch_desk(s->house_root, sroot, rest, slash + 1);
+                }
             }
         }
         ktb_hq_close(s);

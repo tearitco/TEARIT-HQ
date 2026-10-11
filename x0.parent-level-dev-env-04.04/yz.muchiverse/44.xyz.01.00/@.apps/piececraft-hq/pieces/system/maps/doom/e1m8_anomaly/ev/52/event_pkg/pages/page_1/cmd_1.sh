@@ -1,0 +1,5 @@
+#!/bin/sh
+D="$(cd "$(dirname "$0")" && pwd)"
+while [ "$D" != / ] && [ ! -d "$D/xyzfs" ]; do D="$(dirname "$D")"; done
+sh "$D/@.apps/piececraft-hq/ops/doom_event.sh" change_hp
+sh "$D/@.apps/piececraft-hq/ops/doom_event.sh" kill_event e1m8_anomaly 52

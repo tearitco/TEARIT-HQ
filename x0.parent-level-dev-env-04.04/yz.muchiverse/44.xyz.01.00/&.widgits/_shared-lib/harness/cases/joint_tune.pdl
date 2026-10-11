@@ -1,0 +1,56 @@
+# joint_tune: LOCKED cases. Source under test: &.widgits/concept-bank/ops/joint_tune.c
+RESULTS | ../results/joint_tune.txt
+CASE | joint-tune
+SCRATCH |
+COPY | &.widgits/concept-bank/ops/joint_tune.c | joint_tune.c
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/jt.+x | $T/joint_tune.c
+EXPECT_EXIT | 0 | compiles-clean
+WRITE | j.pdl | # comment\nJOINT \p a \p eden \p w_a \p @v \p step=1 \p min=0 \p max=10 \p autonomy=0 \p owner_seat=1 \p note=\"x\"\nJOINT \p b \p eden \p w_b \p @v \p step=2 \p min=0 \p max=10 \p autonomy=1 \p owner_seat=1 \p note=\"y\"\nJOINT \p c \p eden \p w_ab \p @v \p step=1 \p min=0 \p max=10 \p autonomy=0 \p owner_seat=1 \p note=\"z\"\nJOINT \p d \p eden \p w_gone \p @v \p step=1 \p min=0 \p max=10 \p autonomy=0 \p owner_seat=1 \p note=\"q\"\n
+WRITE | v.pdl | # values\nw_ab=2\nw_a=5\nw_b=4\nother=7\n
+RUN | $T/jt.+x | dry | $T/j.pdl | $T/v.pdl | $T/led.txt | w_a | +3 | human | try
+EXPECT_EXIT | 0 | dry-ok
+EXPECT_FILE | v.pdl | # values\nw_ab=2\nw_a=5\nw_b=4\nother=7\n | dry-writes-nothing
+EXPECT_NOFILE | led.txt | dry-no-ledger
+RUN | $T/jt.+x | apply | $T/j.pdl | $T/v.pdl | $T/led.txt | w_a | +3 | human | first move
+EXPECT_EXIT | 0 | human-moves-autonomy0
+EXPECT_FILE | v.pdl | # values\nw_ab=2\nw_a=8\nw_b=4\nother=7\n | only-w_a-changed-prefix-trap-safe
+EXPECT_HAS | led.txt | TUNE \p t1 \p layer=weights-manager \p joint=a \p key=w_a \p before=5 \p after=8 \p delta=+3 \p proposer=human \p reason="first move" \p outcome=pending | ledger-row-labeled
+RUN | $T/jt.+x | apply | $T/j.pdl | $T/v.pdl | $T/led.txt | w_a | +1 | gemma | model tries
+EXPECT_EXIT | 4 | model-refused-on-autonomy0
+EXPECT_FILE | v.pdl | # values\nw_ab=2\nw_a=8\nw_b=4\nother=7\n | refused-leaves-file
+RUN | $T/jt.+x | apply | $T/j.pdl | $T/v.pdl | $T/led.txt | w_b | +2 | gemma | small
+EXPECT_EXIT | 0 | model-ok-within-step
+EXPECT_HAS | v.pdl | w_b=6\n | w_b-now-6
+RUN | $T/jt.+x | apply | $T/j.pdl | $T/v.pdl | $T/led.txt | w_b | +3 | gemma | too big
+EXPECT_EXIT | 4 | model-refused-over-step
+RUN | $T/jt.+x | apply | $T/j.pdl | $T/v.pdl | $T/led.txt | w_b | +9 | human | too far
+EXPECT_EXIT | 3 | human-refused-above-max
+RUN | $T/jt.+x | apply | $T/j.pdl | $T/v.pdl | $T/led.txt | w_b | -9 | human | too low
+EXPECT_EXIT | 3 | human-refused-below-min
+RUN | $T/jt.+x | apply | $T/j.pdl | $T/v.pdl | $T/led.txt | w_nojoint | +1 | human | x
+EXPECT_EXIT | 5 | no-joint-no-move
+RUN | $T/jt.+x | apply | $T/j.pdl | $T/v.pdl | $T/led.txt | w_gone | +1 | human | x
+EXPECT_EXIT | 5 | joint-but-key-missing-from-values
+RUN | $T/jt.+x | apply | $T/j.pdl | $T/v.pdl | $T/led.txt | w_a | 0 | human | x
+EXPECT_EXIT | 2 | zero-delta
+RUN | $T/jt.+x | apply | $T/j.pdl | $T/v.pdl | $T/led.txt | w_a | 1.5 | human | x
+EXPECT_EXIT | 2 | float-delta
+RUN | $T/jt.+x | apply | $T/j.pdl | $T/v.pdl | $T/led.txt | w_a | abc | human | x
+EXPECT_EXIT | 2 | text-delta
+RUN | $T/jt.+x | apply | $T/j.pdl | $T/v.pdl | $T/led.txt | w_a | +1
+EXPECT_EXIT | 2 | too-few-args
+RUN | $T/jt.+x | apply | $T/nosuch.pdl | $T/v.pdl | $T/led.txt | w_a | +1 | human | x
+EXPECT_EXIT | 2 | missing-joints-file
+RUN | $T/jt.+x | apply | $T/j.pdl | $T/nosuch.pdl | $T/led.txt | w_a | +1 | human | x
+EXPECT_EXIT | 2 | missing-values-file
+RUN | $T/jt.+x | apply | $T/j.pdl | $T/v.pdl | $T/led.txt | w_ab | -1 | human | has "quote" and | bar
+EXPECT_EXIT | 0 | human-w_ab
+EXPECT_HAS | led.txt | key=w_ab \p before=2 \p after=1 | ledger-w_ab
+EXPECT_HAS | led.txt | reason="has 'quote' and bar" | reason-sanitized
+EXPECT_HAS | led.txt | TUNE \p t3 \p | ledger-numbering-t3
+EXPECT_HAS | v.pdl | other=7\n | unknown-line-kept
+EXPECT_HAS | v.pdl | # values\n | comment-kept
+WRITE | v2.pdl | w_a=1
+RUN | $T/jt.+x | apply | $T/j.pdl | $T/v2.pdl | $T/led.txt | w_a | +1 | human | no trailing newline
+EXPECT_EXIT | 0 | file-without-final-newline
+EXPECT_FILE | v2.pdl | w_a=2\n | v2-newline-added

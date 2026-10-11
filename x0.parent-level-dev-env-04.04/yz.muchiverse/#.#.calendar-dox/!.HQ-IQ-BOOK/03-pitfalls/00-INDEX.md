@@ -59,3 +59,4 @@ forever — ~10 % of a core, per stack, indefinitely. Two of them survived
   the ledger-pgid emergency reaper behind the `!kill hq` row; blind
   (kills by registry, shows nothing). `proc-mon` is the observable,
   engine-aware companion.
+- `REMOTE-HOUSE-RESTART-AND-DELEGATION-EXPERIENCE-2026-10-07.md` — how the Mac and debil desktops went "down" (non-login ssh PATH, macOS has no `setsid`, strip renderer dead while the manager lived), the exact commands that fixed them, the `desk_restart` tool + harness, and the delegation workflow (worktree from tip, tight prompt, independent re-verification, harness locations table). Read before any remote restart or any delegation.

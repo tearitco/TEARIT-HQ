@@ -1,0 +1,132 @@
+# csv_merge: LOCKED cases. Source under test: &.widgits/concept-bank/ops/csv_lab.c (verbs merge, ui).
+RESULTS | ../results/csv_merge.txt
+CASE | csv-merge
+SCRATCH |
+COPY | &.widgits/concept-bank/ops/csv_lab.c | csv_lab.c
+COPY | &.widgits/_shared-lib/harness/fixtures/csv_lab/stub_groq.c | stub_groq.c
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -Wno-format-truncation | -O2 | -o | $T/cl.+x | $T/csv_lab.c
+EXPECT_EXIT | 0 | compiles-clean
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/stub_groq | $T/stub_groq.c
+EXPECT_EXIT | 0 | stub-builds
+MKDIR | d
+MKDIR | w
+MKDIR | ans
+MKDIR | fb
+MKDIR | fb/worker1
+MKDIR | work
+MKDIR | keys
+WRITE | d/a.pdl | PHRASE \p Fire\nPHRASE \p Salt\n
+WRITE | banks.pdl | BANK \p pd \p file=d/a.pdl \p format=pdl \p rowtag=PHRASE \p key=line \p text=1\nBANK \p pd2 \p file=d/a.pdl \p format=pdl \p rowtag=PHRASE \p key=line \p text=1 \p sidecar=out/side.zh.tsv\n
+WRITE | w/all.tsv | a1\tWater\t\na2\tFire\t\na3\tSalt\t\na4\tGold\t\na5\tEarth\t\na6\tAir | x\t\na7\tMud\t\n
+WRITE | w/hits.tsv | a1\tWater\t水\tshuǐ\t5\tok\n
+WRITE | w/trans.tsv | a2\t火\thuǒ\tFire\na3\t盐\tyán\tSalt\na4\t金\tjīn\tGold\na5\t土\ttu3\tEarth\na7\t泥\tní\tMud\n
+WRITE | w/lint.tsv | a2\tOK\t\t\na3\tOK\t\t\na4\tOK\t\t\na5\tFAIL\ttone-number:tu3\t\na6\tFAIL\tmissing-row\t\na7\tOK\t\t\n
+WRITE | w/score.tsv | a2\t5\tfine\na3\t2\twrong sense\na7\t4\tacceptable\n
+WRITE | w/usage.txt | CALL \p stage=translate \p tokens=150\nCALL \p stage=score \p tokens=150\n
+WRITE | p.txt | Translate.\n\nINPUT (N\tEnglish\tcontext):\n1\tWater\t\n
+ENV | CSV_LAB_GROQ_BACKEND | $T/stub_groq
+ENV | CSV_LAB_WORK | $T/work
+ENV | CSV_LAB_NO_SLEEP | 1
+ENV | CSV_LAB_UI | $T/ui/csv_lab_ui.txt
+ENV | CSV_LAB_REVIEW | $T/no_such_review.txt
+RUN | $T/cl.+x | call | groq | $T/p.txt | $T/r.txt | --key-dir | $T/keys | --ledger | $T/quota.txt
+EXPECT_EXIT | 0 | one-real-ledger-row-for-the-quota-feed
+SUMTREE | src_before | d
+RUN | $T/cl.+x | merge | $T/banks.pdl | pd | $T/w | $T/ans/answers.tsv | --root | $T | --feedback-dir | $T/fb/worker1 | --quota-ledger | $T/quota.txt
+EXPECT_EXIT | 0 | merge-runs
+EXPECT_OUT | translated=6 answer_hits=1 ok=3 review=2 lintfail=2 tokens=300 accepted=0 rejected=0 | merge-counts
+EXPECT_OUT | sidecar=$T/d/a.zh.tsv | sidecar-defaults-to-stem-dot-zh-tsv-next-to-the-source
+SUMTREE | src_after | d
+EXPECT_NE | $src_before | $src_after | sidecar-appeared-in-the-source-folder
+EXPECT_FILE | d/a.pdl | PHRASE \p Fire\nPHRASE \p Salt\n | source-bank-file-itself-untouched
+EXPECT_HAS | d/a.zh.tsv | a1\tWater\t水\tshuǐ\t5\tok\tgroq\tmac | hit-passed-through-as-ok
+EXPECT_HAS | d/a.zh.tsv | a2\tFire\t火\thuǒ\t5\tok\tgroq\tmac | score-5-is-ok
+EXPECT_HAS | d/a.zh.tsv | a3\tSalt\t盐\tyán\t2\tlow_score\t | score-2-is-low-score-not-rejected
+EXPECT_HAS | d/a.zh.tsv | a4\tGold\t金\tjīn\t-\ttranslated\t | unscored-is-translated
+EXPECT_HAS | d/a.zh.tsv | a5\tEarth\t土\ttu3\t-\tlint_fail\t | lint-failure-recorded-with-its-zh-kept
+EXPECT_HAS | d/a.zh.tsv | a6\tAir \p x\t\t\t-\tlint_fail\t | missing-row-is-lintfail-with-empty-zh
+EXPECT_HAS | d/a.zh.tsv | a7\tMud\t泥\tní\t4\tok\t | score-exactly-at-threshold-is-ok
+EXPECT_HAS | w/review.tsv | a3\tSalt\t盐\tyán\t2\tjudge: low score | review-queue-has-low-score
+EXPECT_HAS | w/review.tsv | a4\tGold\t金\tjīn\t-\tunscored | review-queue-has-unscored
+EXPECT_HAS | w/review.tsv | a5\tEarth\t土\ttu3\t-\tlint: tone-number:tu3 | review-queue-has-lint-failure-with-reason
+EXPECT_HAS | w/review.tsv | a6\t | review-queue-has-missing-row
+EXPECT_LACKS | w/review.tsv | a2\t | review-queue-lacks-ok-rows
+EXPECT_LACKS | w/review.tsv | a7\t | review-queue-lacks-threshold-row
+EXPECT_HAS | ans/answers.tsv | 72dcb2adf44a76299565534d7d82c3d0ccc44dcdea5c55c4ec3827c5bb69ab4d\tzh\tFire\t火\thuǒ\t5\tok | answer-bank-gets-ok-row-keyed-by-sha256
+EXPECT_HAS | ans/answers.tsv | c3c6e1d294372b2eca1e01c4aebfb4722d76fcb64b551e24159f99e620ed73c5\tzh\tSalt\t盐\tyán\t2\tlow_score | answer-bank-gets-low-score-row
+EXPECT_HAS | ans/answers.tsv | ea7bfe570c9a6cc62549c6c47c5e632e63e3d870401bd5096ad95a047b6fbf5d\tzh\tGold | answer-bank-gets-unscored-row
+EXPECT_LACKS | ans/answers.tsv | cac5d05fd2a266ec68e7b5b633f4fdb7a58d14c7846ad749e21a9fa4d4d1849a | answer-bank-never-gets-lint-failures
+EXPECT_HAS | fb/worker1/obs_feedback_log.txt | FEEDBACK \p id=csv-zh-pd#a2 \p target=worker1 \p valence=+1 \p concept=zh_translation \p intensity=1 \p layer=curriculum \p quest=csv-zh-pd \p iter=2 \p tokens= | feedback-ok-row-positive-in-ledger_to_feedback-shape
+EXPECT_HAS | fb/worker1/obs_feedback_log.txt | id=csv-zh-pd#a3 \p target=worker1 \p valence=-1 | feedback-review-row-negative
+EXPECT_HAS | fb/worker1/obs_feedback_log.txt | id=csv-zh-pd#a5 \p target=worker1 \p valence=-1 | feedback-lintfail-row-negative
+EXPECT_LACKS | fb/worker1/obs_feedback_log.txt | id=csv-zh-pd#a1 | feedback-not-written-for-answer-bank-hits
+EXPECT_HAS | ui/csv_lab_ui.txt | HEAD\pmanual\ppd\pdone\p7\p7\n | ui-head-row
+EXPECT_NOFILE | ui/csv_lab_ui.txt.tmp | ui-written-by-rename-no-temp-left
+EXPECT_HAS | ui/csv_lab_ui.txt | JOB\ppd\pa2\pFire\p火\phuǒ\p5\pok\n | ui-job-row-format
+EXPECT_HAS | ui/csv_lab_ui.txt | JOB\ppd\pa6\pAir / x\p\p\p-\plint_fail\n | ui-bar-in-text-is-replaced-so-columns-stay-aligned
+EXPECT_HAS | ui/csv_lab_ui.txt | JOB\ppd\pa3\pSalt\p盐\pyán\p2\plow_score\n | ui-low-score-row
+EXPECT_HAS | ui/csv_lab_ui.txt | JOB\ppd\pa4\pGold\p金\pjīn\p-\ptranslated\n | ui-translated-row
+EXPECT_HAS | ui/csv_lab_ui.txt | JOB\ppd\pa1\pWater\p水\pshuǐ\p5\pok\n | ui-answer-bank-hit-row
+EXPECT_HAS | ui/csv_lab_ui.txt | QUOTA\pgroq_tok_min\p150\p7000\n | ui-quota-tokens-last-minute
+EXPECT_HAS | ui/csv_lab_ui.txt | QUOTA\pmac_calls\p0\p0\n | ui-quota-mac-calls
+EXPECT_HAS | ui/csv_lab_ui.txt | \pmerge pd: 6 new, 1 from answer bank | ui-log-row
+EXPECT_HAS | ui/csv_lab_ui.txt | QUOTA\pgroq_req\p1\p1000\n | ui-quota-row-counts-todays-groq-requests
+SUMTREE | s1 | ans
+SUMTREE | f1 | fb
+RUN | $T/cl.+x | merge | $T/banks.pdl | pd | $T/w | $T/ans/answers.tsv | --root | $T | --feedback-dir | $T/fb/worker1 | --quota-ledger | $T/quota.txt
+SUMTREE | s2 | ans
+SUMTREE | f2 | fb
+EXPECT_EQ | $s1 | $s2 | rerun-never-duplicates-answer-bank-rows
+EXPECT_EQ | $f1 | $f2 | rerun-never-duplicates-feedback-rows
+RUN | $T/cl.+x | merge | $T/banks.pdl | pd2 | $T/w | $T/ans/a2.tsv | --root | $T | --threshold | 6
+EXPECT_OUT | ok=1 review=4 lintfail=2 | threshold-flag-moves-the-line
+EXPECT_OUT | sidecar=$T/out/side.zh.tsv | manifest-sidecar-path-honoured-and-created
+EXPECT_HAS | out/side.zh.tsv | a7\tMud\t泥\tní\t4\tlow_score | threshold-6-makes-a-4-low-score
+RUN | $T/cl.+x | ui | $T/w | --bank | pd
+EXPECT_EXIT | 0 | ui-verb
+RUN | $T/cl.+x | merge | $T/banks.pdl | nosuch | $T/w | $T/ans/answers.tsv | --root | $T
+EXPECT_EXIT | 7 | unknown-bank
+RUN | $T/cl.+x | merge | $T/banks.pdl | pd | $T/nowork | $T/ans/answers.tsv | --root | $T
+EXPECT_EXIT | 2 | missing-workdir
+RUN | $T/cl.+x | merge | $T/banks.pdl
+EXPECT_EXIT | 2 | usage
+# ---- owner review decisions (append-only REVIEW rows, last row for a job wins)
+WRITE | rev.txt | REVIEW\ppd2\pa3\paccept\nREVIEW\ppd2\pa4\preject\nREVIEW\ppd2\pa4\paccept\nREVIEW\ppd2\pa7\preject\nREVIEW\ppd2\pa5\preject\nREVIEW\pother\pa2\preject\n
+ENV | CSV_LAB_REVIEW | $T/rev.txt
+MKDIR | dec
+RUN | $T/cl.+x | merge | $T/banks.pdl | pd2 | $T/w | $T/dec/ans.tsv | --root | $T | --out | $T/dec/side.tsv
+EXPECT_OUT | ok=2 review=0 lintfail=1 tokens=300 accepted=2 rejected=2 | decisions-counted
+EXPECT_HAS | dec/side.tsv | a3\tSalt\t盐\tyán\t2\taccepted\t | accept-makes-accepted
+EXPECT_HAS | dec/side.tsv | a4\tGold\t金\tjīn\t-\taccepted\t | last-decision-wins
+EXPECT_HAS | dec/side.tsv | a7\tMud\t泥\tní\t4\trejected\t | reject-overrides-an-ok-row
+EXPECT_HAS | dec/side.tsv | a5\tEarth\t土\ttu3\t-\trejected\t | reject-on-a-lint-failure
+EXPECT_HAS | dec/side.tsv | a2\tFire\t火\thuǒ\t5\tok\t | decision-for-another-bank-ignored
+EXPECT_LACKS | w/review.tsv | a3\t | decided-rows-leave-the-review-queue
+EXPECT_LACKS | w/review.tsv | a4\t | accepted-row-leaves-the-queue
+EXPECT_HAS | w/review.tsv | a6\t | undecided-lint-failure-stays-in-the-queue
+EXPECT_HAS | dec/ans.tsv | c3c6e1d294372b2eca1e01c4aebfb4722d76fcb64b551e24159f99e620ed73c5\tzh\tSalt\t盐\tyán\t2\taccepted | answer-bank-row-becomes-accepted
+EXPECT_HAS | dec/ans.tsv | 1b7dbb8e525b978ad817d90e3f16d553c59ae173a2ab1ad5c62ec2b8e2e8d9c8\tzh\tMud\t泥\tní\t4\trejected | answer-bank-row-becomes-rejected-so-the-next-run-retries-it
+EXPECT_HAS | ui/csv_lab_ui.txt | JOB\ppd2\pa3\pSalt\p盐\pyán\p2\paccepted\n | ui-reflects-accept
+EXPECT_HAS | ui/csv_lab_ui.txt | JOB\ppd2\pa7\pMud\p泥\pní\p4\prejected\n | ui-reflects-reject
+RUN | $T/cl.+x | jobs | $T/banks.pdl | pd | $T/w/again | $T/dec/ans.tsv | --root | $T
+EXPECT_OUT | answer_hits=2 | accepted-is-a-hit-rejected-is-retried
+ENV | CSV_LAB_REVIEW | $T/no_such_review.txt
+# MUTANTS
+RUN | cp | $T/csv_lab.c | $T/m1.c
+RUN | sed | -i | s@atol(sc) >= thr@atol(sc) > thr@ | $T/m1.c
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m1.+x | $T/m1.c
+MKDIR | mm
+RUN | $T/m1.+x | merge | $T/banks.pdl | pd2 | $T/w | $T/mm/ans.tsv | --root | $T | --out | $T/mm/side1.tsv
+EXPECT_HAS | mm/side1.tsv | a7\tMud\t泥\tní\t4\tlow_score | mutant1-threshold-off-by-one-is-detected
+RUN | cp | $T/csv_lab.c | $T/m2.c
+RUN | sed | -i | s@if (l && strcmp(fld(l, 1), "OK")) return@if (0) return@ | $T/m2.c
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m2.+x | $T/m2.c
+RUN | $T/m2.+x | merge | $T/banks.pdl | pd2 | $T/w | $T/mm/ans2.tsv | --root | $T | --out | $T/mm/side2.tsv
+EXPECT_LACKS | mm/side2.tsv | a5\tEarth\t土\ttu3\t-\tlint_fail | mutant2-lint-fail-ignored-is-detected
+RUN | cp | $T/csv_lab.c | $T/m3.c
+RUN | sed | -i | s@!strcmp(st, "ok") ? 1 : -1@!strcmp(st, "ok") ? -1 : 1@ | $T/m3.c
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m3.+x | $T/m3.c
+MKDIR | fbm
+RUN | $T/m3.+x | merge | $T/banks.pdl | pd2 | $T/w | $T/mm/ans3.tsv | --root | $T | --out | $T/mm/side3.tsv | --feedback-dir | $T/fbm
+EXPECT_LACKS | fbm/obs_feedback_log.txt | id=csv-zh-pd2#a2 \p target=fbm \p valence=+1 | mutant3-valence-flipped-is-detected
+CLEAN |

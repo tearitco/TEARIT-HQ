@@ -1,0 +1,35 @@
+# pc-hq `player` verbs (toggle / playtest / stop) on a SCRATCH tree: the real pchq_board_action.sh is copied under $T (it derives HOUSE from its own location),
+# run with a scratch session dir, and the play-mode file is read back. Replaces ops/test_playtest_action.c (a C harness) - this one is data + pal.
+RESULTS | ../results/pchq_playtest_action.txt
+CASE    | pchq-playtest
+SCRATCH |
+MKDIR   | #.desktop
+MKDIR   | bv
+COPY    | @.apps/piececraft-hq/ops/pchq_board_action.sh | @.apps/piececraft-hq/ops/pchq_board_action.sh
+
+RUN         | sh | $T/@.apps/piececraft-hq/ops/pchq_board_action.sh | $T/bv | player | playtest
+EXPECT_EXIT | 0 | playtest-exit-0
+EXPECT_FILE | #.desktop/khtpm_play_mode.state.txt | mode=on\nplaytest=1\n | off-to-playtest
+
+RUN         | sh | $T/@.apps/piececraft-hq/ops/pchq_board_action.sh | $T/bv | player | playtest
+EXPECT_FILE | #.desktop/khtpm_play_mode.state.txt | mode=on\n | playtest-again-is-plain-play
+
+RUN         | sh | $T/@.apps/piececraft-hq/ops/pchq_board_action.sh | $T/bv | player | playtest
+RUN         | sh | $T/@.apps/piececraft-hq/ops/pchq_board_action.sh | $T/bv | player | stop
+EXPECT_FILE | #.desktop/khtpm_play_mode.state.txt | mode=off\n | stop-clears-playtest
+
+RUN         | sh | $T/@.apps/piececraft-hq/ops/pchq_board_action.sh | $T/bv | player | playtest
+RUN         | sh | $T/@.apps/piececraft-hq/ops/pchq_board_action.sh | $T/bv | player | toggle
+EXPECT_FILE | #.desktop/khtpm_play_mode.state.txt | mode=off\n | toggle-from-playtest-is-off
+
+RUN         | sh | $T/@.apps/piececraft-hq/ops/pchq_board_action.sh | $T/bv | player | toggle
+EXPECT_FILE | #.desktop/khtpm_play_mode.state.txt | mode=on\n | toggle-from-off-is-plain-play
+
+WRITE       | #.desktop/khtpm_play_mode.state.txt | mode=off\nplaytest=1\n
+RUN         | sh | $T/@.apps/piececraft-hq/ops/pchq_board_action.sh | $T/bv | player | playtest
+EXPECT_FILE | #.desktop/khtpm_play_mode.state.txt | mode=on\nplaytest=1\n | stale-playtest-under-off-is-not-on
+
+# a verb the script does not know changes nothing
+RUN         | sh | $T/@.apps/piececraft-hq/ops/pchq_board_action.sh | $T/bv | player | nosuchverb
+EXPECT_FILE | #.desktop/khtpm_play_mode.state.txt | mode=on\nplaytest=1\n | unknown-verb-changes-nothing
+CLEAN       |

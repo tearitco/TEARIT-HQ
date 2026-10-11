@@ -1,0 +1,11 @@
+<!-- menu.chtpm - real, generated entity context menu (meta_to_menu_chtpm.py, 2026-08-28 permanent converter). Converted 1:1 from /home/no/staging/alpha/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/solar-sandbox/pals/earth/meta.pdl's own real METHOD rows - same real mechanical rule proven on ava/asa/book-stack's own hand conversions. Regenerate by deleting this file and re-running the converter; a real hand-edit here will be lost on the next regenerate, same tradeoff every generated file in this house already has (an existing real <cli_io> element is the one exception - see extract_real_cli_io_lines()'s own header - it is carried forward automatically, not lost). -->
+<window class="entity-menu">
+  <page name="main">
+    <item label="Enter Earth" action="sh -c 'H=&quot;$1&quot;; U=$(sed -n &quot;s/^current_user_uuid[^A-Za-z0-9]*//p&quot; &quot;$H&quot;/0.user-pal*/00.login-signup/current_login.txt); S=$(sed -n &quot;/active_session/{s/.*active_session[^A-Za-z0-9]*//;s/ *$//;p;q}&quot; &quot;$H/xyzfs/users/$U/home/livedesk/sessions/session.pdl&quot;); exec &quot;$H/&amp;.widgits/events-hq/ops/+x/mr_transfer_desk.+x&quot; &quot;$H&quot; &quot;${S:-s1}&quot; solar-earth'"/>
+    <item label="Teleport to Moon" action="sh -c 'H=&quot;$1&quot;; U=$(sed -n &quot;s/^current_user_uuid[^A-Za-z0-9]*//p&quot; &quot;$H&quot;/0.user-pal*/00.login-signup/current_login.txt); S=$(sed -n &quot;/active_session/{s/.*active_session[^A-Za-z0-9]*//;s/ *$//;p;q}&quot; &quot;$H/xyzfs/users/$U/home/livedesk/sessions/session.pdl&quot;); exec &quot;$H/&amp;.widgits/events-hq/ops/+x/mr_transfer_desk.+x&quot; &quot;$H&quot; &quot;${S:-s1}&quot; solar-moon'"/>
+    <item label="Teleport to Mars" action="sh -c 'H=&quot;$1&quot;; U=$(sed -n &quot;s/^current_user_uuid[^A-Za-z0-9]*//p&quot; &quot;$H&quot;/0.user-pal*/00.login-signup/current_login.txt); S=$(sed -n &quot;/active_session/{s/.*active_session[^A-Za-z0-9]*//;s/ *$//;p;q}&quot; &quot;$H/xyzfs/users/$U/home/livedesk/sessions/session.pdl&quot;); exec &quot;$H/&amp;.widgits/events-hq/ops/+x/mr_transfer_desk.+x&quot; &quot;$H&quot; &quot;${S:-s1}&quot; solar-mars'"/>
+    <item label="Close" action="CLOSE"/>
+    <item label="Cancel" action="void"/>
+    <item label="Cli-io" action="CLI_IO"/>
+  </page>
+</window>

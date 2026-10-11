@@ -1,0 +1,49 @@
+```
+# phrases.pdl - what the talk act says (one seeded pick); plain text rows, no bars in the text
+PHRASE | The field looks green today
+PHRASE | Did the rain reach your plot
+PHRASE | I have grain to spare
+PHRASE | Come and see the hut
+PHRASE | Save a seed for me
+PHRASE | The jug is nearly dry
+PHRASE | Morning chores are waiting at the barn
+PHRASE | Will the chicken lay eggs before sunset?
+PHRASE | Gather the water from the well for the garden
+PHRASE | Can you help me dig the new plot near the oak?
+PHRASE | The silver spoon glints near the old stone wall
+PHRASE | Please bring the milk from the cow before noon
+PHRASE | Did you hear the horse neigh by the fence?
+PHRASE | Harvest the golden wheat when the sun is high
+PHRASE | Check the spade for rust before you start digging
+PHRASE | Our garden needs more seed for the upcoming spring
+PHRASE | Could the rain bring fresh mud to the field?
+PHRASE | The barn doors creak as the wind blows gently
+PHRASE | I found a clay pot near the old well yesterday
+PHRASE | Do you think the jug will hold enough water today?
+PHRASE | Remember to water each plant after sunrise
+PHRASE | The hen clucked loudly near the fence this morning
+PHRASE | Will the harvest be ready by the full moon?
+PHRASE | Set the hoe aside after you finish the row
+PHRASE | Your new barn looks sturdy and bright in the dusk
+PHRASE | Can the seed survive the cold night without cover?
+PHRASE | I saw a silver coin glimmer in the dirt beside the plot
+PHRASE | The field smells of fresh rain and earth today
+PHRASE | Do you need a spade or a hoe for the next task?
+PHRASE | Please plant the seedlings near the water source soon
+PHRASE | Did the cow wander into the garden this afternoon?
+PHRASE | Our chicken coop needs extra straw for the chicks
+PHRASE | Will the egg basket be full by dinner time?
+PHRASE | Check the gold nuggets you buried near the stone wall
+PHRASE | The rain has softened the soil for easy digging
+PHRASE | Can you fetch a jug of fresh water from the well?
+PHRASE | I love the scent of fresh hay in the barn loft
+PHRASE | Do you think the horse will like the new oats?
+PHRASE | Remember to lock the hut before nightfall
+PHRASE | The garden plot yields bright carrots this season
+PHRASE | Will the silver rain bring luck to our harvest?
+PHRASE | Gather the eggs gently before they hatch
+PHRASE | Could the spade break if we hit a stone?
+PHRASE | Please feed the cow and check her milk output
+PHRASE | Do you see the new barn roof shining in the sun?
+PHRASE | Set the jug on the table after you fill it
+```

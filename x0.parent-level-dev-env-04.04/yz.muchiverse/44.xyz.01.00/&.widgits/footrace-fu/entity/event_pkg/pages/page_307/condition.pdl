@@ -1,0 +1,4 @@
+# Move 8: roll 1d6, add the class Move bonus (class Move - move_baseline), at least move_min
+COND | trigger | move
+COND | kv | variables.txt | ph_move | eq | 3
+COND | kv | switches.txt | game_over | eq | 0

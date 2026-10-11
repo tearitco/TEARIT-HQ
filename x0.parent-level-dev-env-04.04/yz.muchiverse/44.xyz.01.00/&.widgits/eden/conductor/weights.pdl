@@ -1,0 +1,15 @@
+# weights.pdl - the agent seat's weights (design section 4): one seeded weighted pick among the acts that are available. The critical-need gate (hunger >= hungry_at and food -> eat)
+# is checked first and is not a weight. w_<act>=0 turns an act off. Later: tomom / TEARIT may tune these; models never decide.
+w_plant=8
+w_water=5
+w_collect=10
+w_eat=3
+w_trade=4
+w_talk=3
+w_build=2
+w_study=2
+w_rest=1
+# --- v1 acts (0 when the act is not available, so they change nothing without a world)
+w_feed=6
+w_dig=4
+w_repair=3

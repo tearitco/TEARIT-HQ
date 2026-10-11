@@ -1,0 +1,4 @@
+# quest_q011_quest_check.pal - LOCKED acceptance harness for quest q011 (quest_check). Read results/quest_q011_quest_check.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/quest_q011_quest_check.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/quest_q011_quest_check.pdl
+halt

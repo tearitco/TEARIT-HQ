@@ -72,7 +72,7 @@
 #define MAX_LINE 512
 #define MAX_PATH 4096
 #define PATH_BUF (MAX_PATH + 256)
-#define MAX_BOARD_DIM 64
+#define MAX_BOARD_DIM 256   /* Doom at 32 map-units per cell is up to ~216 on a side. 128 cut E1M4 and the rest off the board. */
 
 /* Overlay dimensions - see bv_compose_frame.c's own matching marker-
  * skip line count (OVERLAY_H/GLYPH_H must divide evenly, kept in sync
@@ -331,6 +331,148 @@ static double read_kv_double(const char *path, const char *key, double def) {
     char buf[64];
     read_kv_str(path, key, buf, sizeof(buf));
     return buf[0] ? atof(buf) : def;
+}
+
+/* ---- maker_view (RPG Maker tile terrain, owner key 7): per-desk cell atlas written by tsots-map-convert/tsots_paint.py ----
+ * <map>/<desk>/cells.txt : width= height= tile_px= atlas_cols= atlas_tiles= then 'cells' + H rows of W tokens "F,Wl"
+ *                          (F = floor atlas slot, Wl = wall atlas slot or 0; slot 0 = blank)
+ * <map>/<desk>/cells.rgba: the atlas as raw RGBA8, atlas_cols*tile_px wide (no PNG decoder in this binary on purpose).
+ * Cached by path: the daemon re-reads only when the focused desk changes. Returns 1 when g_mk is usable. */
+typedef struct {
+    char key[4352];
+    int  ok, id, w, h, tile_px, cols, tiles, aw, ah;
+    unsigned char  *atlas;
+    unsigned short *cells;      /* w*h*2 uint16: floor slot, wall slot */
+    /* Parallax sky. parallax.rgba is raw RGBA8, size in parallax.pdl.
+     * NULL when this desk has show=0. sx/sy are not applied. */
+    unsigned char *para;
+    int para_w, para_h, para_lx, para_ly;
+    /* Visible map events (events.txt). Capped: the GPU scene holds 128
+     * boxes and the selector, hero and range wires share that list. */
+    struct { int x, y, r, g, b, index, dir, pat; char name[40]; } ev[96];
+    int ev_n;
+} MakerAtlas;
+static MakerAtlas g_mk;
+
+static int maker_load(const char *root) {
+    char wpath[4352], map_id[128] = "", desk_id[128] = "";
+    snprintf(wpath, sizeof(wpath), "%s/pieces/world_01/state.txt", root);
+    read_kv_str(wpath, "map_id", map_id, sizeof(map_id));
+    read_kv_str(wpath, "desk_id", desk_id, sizeof(desk_id));
+    if (!map_id[0] || !desk_id[0]) return 0;
+    char dir[4352];
+    snprintf(dir, sizeof(dir), "%s/pieces/system/maps/%s/%s", root, map_id, desk_id);
+    if (g_mk.key[0] && strcmp(g_mk.key, dir) == 0) return g_mk.ok;
+    free(g_mk.atlas); free(g_mk.cells); free(g_mk.para);
+    int prev_id = g_mk.id;
+    memset(&g_mk, 0, sizeof(g_mk));
+    g_mk.id = prev_id + 1;
+    snprintf(g_mk.key, sizeof(g_mk.key), "%s", dir);
+    char path[4400];
+    snprintf(path, sizeof(path), "%s/cells.txt", dir);
+    FILE *f = fopen(path, "r");
+    if (!f) return 0;
+    char line[16384];
+    int in_cells = 0, row = 0;
+    while (fgets(line, sizeof(line), f)) {
+        if (!in_cells) {
+            if (strncmp(line, "width=", 6) == 0) g_mk.w = atoi(line + 6);
+            else if (strncmp(line, "height=", 7) == 0) g_mk.h = atoi(line + 7);
+            else if (strncmp(line, "tile_px=", 8) == 0) g_mk.tile_px = atoi(line + 8);
+            else if (strncmp(line, "atlas_cols=", 11) == 0) g_mk.cols = atoi(line + 11);
+            else if (strncmp(line, "atlas_tiles=", 12) == 0) g_mk.tiles = atoi(line + 12);
+            else if (strncmp(line, "cells", 5) == 0) {
+                if (g_mk.w < 1 || g_mk.h < 1 || g_mk.w > 512 || g_mk.h > 512 || g_mk.cols < 1 || g_mk.tile_px < 1) { fclose(f); return 0; }
+                g_mk.cells = (unsigned short *)calloc((size_t)g_mk.w * (size_t)g_mk.h * 2, sizeof(unsigned short));
+                if (!g_mk.cells) { fclose(f); return 0; }
+                in_cells = 1;
+            }
+            continue;
+        }
+        if (row >= g_mk.h) break;
+        const char *q = line;
+        for (int x = 0; x < g_mk.w; x++) {
+            char *e;
+            long fl = strtol(q, &e, 10);
+            if (e == q || *e != ',') break;
+            q = e + 1;
+            long wl = strtol(q, &e, 10);
+            q = e;
+            g_mk.cells[((size_t)row * g_mk.w + x) * 2 + 0] = (unsigned short)fl;
+            g_mk.cells[((size_t)row * g_mk.w + x) * 2 + 1] = (unsigned short)wl;
+        }
+        row++;
+    }
+    fclose(f);
+    if (!in_cells || row < g_mk.h) return 0;
+    g_mk.aw = g_mk.cols * g_mk.tile_px;
+    g_mk.ah = ((g_mk.tiles + g_mk.cols - 1) / g_mk.cols) * g_mk.tile_px;
+    if (g_mk.ah < 1) return 0;
+    snprintf(path, sizeof(path), "%s/cells.rgba", dir);
+    f = fopen(path, "rb");
+    if (!f) return 0;
+    size_t need = (size_t)g_mk.aw * (size_t)g_mk.ah * 4;
+    g_mk.atlas = (unsigned char *)malloc(need);
+    if (!g_mk.atlas || fread(g_mk.atlas, 1, need, f) != need) { fclose(f); return 0; }
+    fclose(f);
+    /* Sky is optional. A missing file leaves the old flat sky colour. */
+    snprintf(path, sizeof(path), "%s/parallax.pdl", dir);
+    f = fopen(path, "r");
+    int pshow = 0, pw = 0, ph = 0;
+    if (f) {
+        while (fgets(line, sizeof(line), f)) {
+            char *bar = strrchr(line, '|');
+            if (!bar) continue;
+            if (strstr(line, "show")) pshow = atoi(bar + 1);
+            else if (strstr(line, "loop_x")) g_mk.para_lx = atoi(bar + 1);
+            else if (strstr(line, "loop_y")) g_mk.para_ly = atoi(bar + 1);
+            else if (strstr(line, "width")) pw = atoi(bar + 1);
+            else if (strstr(line, "height")) ph = atoi(bar + 1);
+        }
+        fclose(f);
+    }
+    if (pshow == 1 && pw > 0 && ph > 0 && pw <= 4096 && ph <= 4096) {
+        snprintf(path, sizeof(path), "%s/parallax.rgba", dir);
+        f = fopen(path, "rb");
+        size_t pn = (size_t)pw * (size_t)ph * 4;
+        if (f) {
+            g_mk.para = (unsigned char *)malloc(pn);
+            if (g_mk.para && fread(g_mk.para, 1, pn, f) == pn) {
+                g_mk.para_w = pw;
+                g_mk.para_h = ph;
+            } else {
+                free(g_mk.para);
+                g_mk.para = NULL;
+            }
+            fclose(f);
+        }
+    }
+    /* x y r g b charset index direction pattern. Colour is the frame
+     * center. The charset name is for the 2D blit; the box uses r g b.
+     * First 64 only. A later page that needs a switch is already absent. */
+    snprintf(path, sizeof(path), "%s/events.txt", dir);
+    f = fopen(path, "r");
+    if (f) {
+        while (g_mk.ev_n < 96 && fgets(line, sizeof(line), f)) {
+            int x, y, r, g, b, index, dir, pat;
+            char name[40];
+            if (sscanf(line, "%d %d %d %d %d %39s %d %d %d",
+                       &x, &y, &r, &g, &b, name, &index, &dir, &pat) != 9) continue;
+            g_mk.ev[g_mk.ev_n].x = x;
+            g_mk.ev[g_mk.ev_n].y = y;
+            g_mk.ev[g_mk.ev_n].r = r;
+            g_mk.ev[g_mk.ev_n].g = g;
+            g_mk.ev[g_mk.ev_n].b = b;
+            g_mk.ev[g_mk.ev_n].index = index;
+            g_mk.ev[g_mk.ev_n].dir = dir;
+            g_mk.ev[g_mk.ev_n].pat = pat;
+            snprintf(g_mk.ev[g_mk.ev_n].name, sizeof(g_mk.ev[0].name), "%s", name);
+            g_mk.ev_n++;
+        }
+        fclose(f);
+    }
+    g_mk.ok = 1;
+    return 1;
 }
 
 static long long read_kv_ll(const char *path, const char *key, long long def) {
@@ -1409,8 +1551,10 @@ static void load_phymoji_world_entities(const char *root) {
      * default_current_z() is the stable "where the world's ground is" (one below the hero's own z), not the
      * viewed slice. (Still follows the hero if the hero itself changes level; a per-entity z belongs in the
      * page row and is the real fix - see 18.pc-hq/IN-GAME-LAYOUTS-PLAN.md part 3 note.) */
-    int z = default_current_z(root);
     int desk_page = house_root[0] && page_bound_pdl(house_root, bound, sizeof(bound)) > 0;
+    /* A desk page is ONE floor layer (index 0), so its entities stand on top of it (z = 1). default_current_z() is the chunk
+     * world's ground (hero pos_z - 1 = 16): used for a desk page it left every entity 16 voxels above the floor. */
+    int z = desk_page ? 1 : default_current_z(root);
     if (!desk_page && page_named_cells(house_root, "tree_small", xs, ys, 16) > 0)
         place_page_phymoji(root, "tree_small", z);
     else if (!desk_page)
@@ -2191,6 +2335,8 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
      * still increases toward screen-right on the minimap, matching
      * what the default 3D view actually shows. Y is untouched - only
      * X was reported/observed flipped. */
+    /* Minimap x is NOT mirrored: desk +x is screen-right in every view (ff12bfea7), and the minimap kept the old mirror
+     * that matched the pre-flip follow camera, so desk-left items showed on its right (owner 2026-10-08). */
 
     /* dark backing + 1px light border, same legibility convention as
      * bv_blit_text's own box. */
@@ -2210,7 +2356,7 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
                 const TerrainLegendEntry *le = terrain_legend_lookup(glyph);
                 if (le) { r = le->r; g = le->g; b = le->b; } else { r = 110; g = 110; b = 110; }
             }
-            int cx = mm_x + (g_mm_board_w - 1 - col) * cellpx, cy = mm_y + row * cellpx;
+            int cx = mm_x + col * cellpx, cy = mm_y + row * cellpx;
             bv_fill_rect(cx, cy, cx + cellpx, cy + cellpx, r, g, b);
         }
     }
@@ -2234,7 +2380,7 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
         if (strstr(e->entity_id, "chicken"))     { r = 235; g = 205; b = 70; }  /* yellow */
         else if (strstr(e->entity_id, "tree"))   { r = 18;  g = 80;  b = 24; }  /* dark forest green - direct report: too close to grass at (90,170,60) */
         else                                      { r = 225; g = 225; b = 225; } /* generic - light grey */
-        int cx = mm_x + (g_mm_board_w - 1 - e->x) * cellpx + inset, cy = mm_y + e->y * cellpx + inset;
+        int cx = mm_x + e->x * cellpx + inset, cy = mm_y + e->y * cellpx + inset;
         bv_fill_rect(cx, cy, cx + dot, cy + dot, r, g, b);
     }
 
@@ -2243,7 +2389,7 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
      * full cell so it's easy to find even off the player. */
     if (g_xelector_present && g_xelector_x >= 0 && g_xelector_x < g_mm_board_w &&
         g_xelector_y >= 0 && g_xelector_y < g_mm_board_h) {
-        int cx = mm_x + (g_mm_board_w - 1 - g_xelector_x) * cellpx, cy = mm_y + g_xelector_y * cellpx;
+        int cx = mm_x + g_xelector_x * cellpx, cy = mm_y + g_xelector_y * cellpx;
         bv_fill_rect(cx, cy, cx + cellpx, cy + cellpx, 80, 220, 255);
     }
 
@@ -2254,7 +2400,7 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
     int mark_x = g_hero_present ? g_hero_x : g_mm_selx;
     int mark_y = g_hero_present ? g_hero_y : g_mm_sely;
     if (mark_x >= 0 && mark_x < g_mm_board_w && mark_y >= 0 && mark_y < g_mm_board_h) {
-        int cx = mm_x + (g_mm_board_w - 1 - mark_x) * cellpx, cy = mm_y + mark_y * cellpx;
+        int cx = mm_x + mark_x * cellpx, cy = mm_y + mark_y * cellpx;
         bv_fill_rect(cx, cy, cx + cellpx, cy + cellpx, 255, 70, 70);
     }
 }
@@ -2279,6 +2425,45 @@ static unsigned long long bv_fnv1a64(const unsigned char *p, size_t n) {
  * every frame right alongside the RGBA overlay, same file, same root -
  * a text-only agent can read this instead of decoding rgb_frame_3d_
  * overlay.raw. Cheap: one snprintf'd buffer, one atomic write. */
+/* A page stays one map in memory (Doom). The GPU rasterizes an
+ * 8-chunk window around the eye (Minecraft render distance). Fog
+ * ends at 48, and 8*16 is 128, so the eye stays inside the fog ball
+ * until the window steps a chunk. A map that already fits is drawn
+ * whole, origin 0. Camera yaw, pitch, and the stored eye are not
+ * written. The GPU copy of the eye moves with the window. */
+#define BV_VIEW_CHUNK 16
+#define BV_VIEW_DIM   (BV_VIEW_CHUNK * 8)
+static int g_view_ox, g_view_oy, g_view_w, g_view_h;
+
+static int bv_snap_chunk(int v) {
+    if (v >= 0) return (v / BV_VIEW_CHUNK) * BV_VIEW_CHUNK;
+    return -(((-v + BV_VIEW_CHUNK - 1) / BV_VIEW_CHUNK) * BV_VIEW_CHUNK);
+}
+
+static void bv_view_window(int map_w, int map_h, double eye_x, double eye_z,
+                           int *ox, int *oy, int *vw, int *vh) {
+    if (map_w < 1) map_w = 1;
+    if (map_h < 1) map_h = 1;
+    if (map_w <= BV_VIEW_DIM && map_h <= BV_VIEW_DIM) {
+        *ox = 0; *oy = 0; *vw = map_w; *vh = map_h;
+        return;
+    }
+    int oc = 0, orow = 0;
+    if (map_w > BV_VIEW_DIM) {
+        oc = bv_snap_chunk((int)eye_x - BV_VIEW_DIM / 2);
+        if (oc < 0) oc = 0;
+        if (oc > map_w - BV_VIEW_DIM) oc = map_w - BV_VIEW_DIM;
+    }
+    if (map_h > BV_VIEW_DIM) {
+        orow = bv_snap_chunk((int)eye_z - BV_VIEW_DIM / 2);
+        if (orow < 0) orow = 0;
+        if (orow > map_h - BV_VIEW_DIM) orow = map_h - BV_VIEW_DIM;
+    }
+    *ox = oc; *oy = orow;
+    *vw = map_w - oc; if (*vw > BV_VIEW_DIM) *vw = BV_VIEW_DIM;
+    *vh = map_h - orow; if (*vh > BV_VIEW_DIM) *vh = BV_VIEW_DIM;
+}
+
 static void bv_write_scene_receipt(const char *game_root, int board_w, int board_h, int z_count,
                                    int current_z, int selx, int sely,
                                    int camera_mode, int cam_yaw, int cam_pitch,
@@ -2298,6 +2483,8 @@ static void bv_write_scene_receipt(const char *game_root, int board_w, int board
     fprintf(r, "generated_at_epoch=%ld\n", (long)now);
     fprintf(r, "viewport_w=%d\nviewport_h=%d\n", g_fw, g_fh);
     fprintf(r, "board_w=%d\nboard_h=%d\nz_count=%d\n", board_w, board_h, z_count);
+    fprintf(r, "view_ox=%d\nview_oy=%d\nview_w=%d\nview_h=%d\n",
+            g_view_ox, g_view_oy, g_view_w, g_view_h);
     fprintf(r, "current_z=%d\n", current_z);
     fprintf(r, "selector_x=%d\nselector_y=%d\n", selx, sely);
     fprintf(r, "camera_mode=%d\ncam_yaw=%d\ncam_pitch=%d\n", camera_mode, cam_yaw, cam_pitch);
@@ -2508,6 +2695,11 @@ static Camera build_camera(int camera_mode, double yaw_deg, double pitch_deg,
         Vec3 fallback_up = { 0, 0, 1 };
         right = v3_norm(v3_cross(fallback_up, cam.forward));
         up = v3_norm(v3_cross(right, cam.forward));
+        /* Every ray (CPU, GPU, click pick) mirrors screen x so desk +x lands on the right (ff12bfea7, written for the
+         * follow camera, whose cross product puts +x on the left). This branch already had +x on the right, so that
+         * mirror put the whole top-down picture backwards: desk-left items showed on the right of pc-hq (owner
+         * 2026-10-08). Negate right here so the mirror lands it correctly; up stays as computed. */
+        right = v3_scale(right, -1.0);
     } else {
         Vec3 world_up = { 0, 1, 0 };
         right = v3_norm(v3_cross(world_up, cam.forward));
@@ -2749,7 +2941,7 @@ static int render_one_frame(void) {
 
     /* Real unified voxel grid - see load_voxel_chunk()'s own header
      * comment for the full writeup. static: MAX_VOXEL_Z(64) *
-     * MAX_BOARD_DIM(64) * MAX_BOARD_DIM(64) = 256K chars, too big for
+     * MAX_BOARD_DIM(256) * MAX_BOARD_DIM(256) is too big for
      * the stack. */
     static char board3d[MAX_VOXEL_Z][MAX_BOARD_DIM][MAX_BOARD_DIM];
     int board_w = 0, board_h = 0;
@@ -2762,9 +2954,18 @@ static int render_one_frame(void) {
         memset(board3d, '_', sizeof(board3d));
         board_w = 16;
         board_h = 16;
+        {   /* the floor covers the page: at least 16x16, wider/taller when a row sits further out (pgr_extent) */
+            int mx = 0, my = 0;
+            if (pgr_extent(house_root, &mx, &my)) {
+                if (mx + 1 > board_w) board_w = mx + 1;
+                if (my + 1 > board_h) board_h = my + 1;
+            }
+            if (board_w > MAX_BOARD_DIM) board_w = MAX_BOARD_DIM;
+            if (board_h > MAX_BOARD_DIM) board_h = MAX_BOARD_DIM;
+        }
         z_count = 1;
-        for (int row = 0; row < 16; row++)
-            for (int col = 0; col < 16; col++)
+        for (int row = 0; row < board_h; row++)
+            for (int col = 0; col < board_w; col++)
                 board3d[0][row][col] = '.';
     } else {
         z_count = load_voxel_chunk(focused_project_root, board3d, &board_w, &board_h);
@@ -2819,6 +3020,10 @@ static int render_one_frame(void) {
     load_entities(focused_project_root);
     load_xelector(focused_project_root);
     load_hero(focused_project_root);
+    if (desk_page) {   /* one floor layer: the cursor stands in the air tile just above it (z = 1) */
+        if (g_xelector_present) g_xelector_z = 1;
+        if (g_hero_present) g_hero_z = 1;
+    }
 
     /* Real hero phymoji model - "hero_humanoid" is today's real, fixed
      * placeholder source asset (direct instruction: "use the humanoid
@@ -2843,6 +3048,26 @@ static int render_one_frame(void) {
         }
     }
     load_phymoji_world_entities(focused_project_root);
+    /* Hero, chicken and trees belong to the one piececraft test level.
+     * A painted desk is its own map: those three stay off it. The
+     * xelector sits in the floor cell (z = 0). z = 1 is the air cell
+     * above that floor, which left it a tile too high. Saved pos_z
+     * and the camera keys are not written. */
+    int maker_ground = maker_load(focused_project_root);
+    if (maker_ground) {
+        g_hero_present = 0;
+        if (g_xelector_present) g_xelector_z = 0;
+        int kept = 0;
+        for (int i = 0; i < g_phymoji_world_entity_count; i++) {
+            const char *id = g_phymoji_world_entities[i].entity_id;
+            if (!strcmp(id, "chicken") || !strcmp(id, "tree_small") || !strcmp(id, "hero_01"))
+                continue;
+            if (kept != i) g_phymoji_world_entities[kept] = g_phymoji_world_entities[i];
+            g_phymoji_world_entities[kept].z = 1;
+            kept++;
+        }
+        g_phymoji_world_entity_count = kept;
+    }
     load_terrain_legend(focused_project_root);
     ensure_digit_glyphs_loaded(project_root);
 
@@ -2854,7 +3079,8 @@ static int render_one_frame(void) {
      * bv_state.txt copy of it is a mirror, read back here as the
      * selector's own real vertical position, clamped into the loaded
      * grid's own real z_count range. */
-    int current_z = read_kv_int(state_path, "current_z", default_current_z(focused_project_root));
+    int current_z = maker_ground ? 0
+        : read_kv_int(state_path, "current_z", default_current_z(focused_project_root));
     if (current_z >= z_count) current_z = z_count - 1;
     if (current_z < 0) current_z = 0;
 
@@ -2902,6 +3128,35 @@ static int render_one_frame(void) {
      * exactly; a tall one gets real overhead clearance. */
     int default_z_level = (current_z > 12) ? ((current_z - 12 + 6) / 2) : 0;
     int cam_z_level = read_kv_int(state_path, "cam_z_level", default_z_level);
+    /* Painted desk: the saved lift is the piececraft test stack
+     * (cam_z_level 14 makes mode 3/4 eye.y = 12+28 = 40; pan 11/13/20
+     * is that same stack). The desk itself is 3 cells tall. Remember
+     * the numbers from the frame this desk opened and subtract them,
+     * so the eye starts at the shallow-board height over the selector.
+     * Keys pressed after that still move it: c/v and wasd change the
+     * file, and only the change survives the subtract. Yaw and pitch
+     * are not touched. The file itself is not rewritten. */
+    {
+        static int floor_cam_desk = -1;
+        static int floor_cam_z = 0, floor_pan_x = 0, floor_pan_y = 0, floor_pan_z = 0;
+        if (maker_ground) {
+            if (floor_cam_desk != g_mk.id) {
+                floor_cam_desk = g_mk.id;
+                floor_cam_z = cam_z_level;
+                floor_pan_x = cam_pan_x;
+                floor_pan_y = cam_pan_y;
+                floor_pan_z = cam_pan_z;
+            }
+            cam_z_level -= floor_cam_z;
+            cam_pan_x -= floor_pan_x;
+            cam_pan_y -= floor_pan_y;
+            cam_pan_z -= floor_pan_z;
+            if (camera_mode == 4) {
+                cam_pan_x += selector_x;
+                cam_pan_y += selector_y;
+            }
+        }
+    }
 
     double anchor_x = selector_x + 0.5, anchor_z = selector_y + 0.5;
     /* Modes 1 and 2 follow the xelector. Possessing an entity already
@@ -3054,6 +3309,20 @@ static int render_one_frame(void) {
     if (lighting_enabled) clear_sky(game_light_level_sky);
     else { for (int yy = 0; yy < g_fh; yy++) for (int xx = 0; xx < g_fw; xx++) { unsigned char *p = FB(xx, yy); p[0]=135; p[1]=180; p[2]=220; p[3]=255; } }
 
+    /* Distance fog (owner 2026-10-08, "show things in the distance like GTA"): #.desktop/hq_ui.pdl view_fog_start / view_fog_end in
+     * cells; hits between them fade to the sky colour, beyond fog_end they are all sky colour. 0 / absent = off. Same two numbers
+     * drive the GPU shader (u_fog_*) and this CPU loop. */
+    double fog_start = 0, fog_end = 0;
+    unsigned char fog_sky[3] = {135, 180, 220};
+    if (house_root[0]) {
+        char hqp[PATH_BUF];
+        snprintf(hqp, sizeof(hqp), "%s/#.desktop/hq_ui.pdl", house_root);
+        fog_start = (double)read_kv_int(hqp, "view_fog_start", 0);
+        fog_end   = (double)read_kv_int(hqp, "view_fog_end", 0);
+        if (fog_start < 0) fog_start = 0;
+    }
+    { unsigned char *fp = FB(g_fw / 2, g_fh / 2); fog_sky[0] = fp[0]; fog_sky[1] = fp[1]; fog_sky[2] = fp[2]; }   /* sky just filled, before any hit */
+
     CelestialBody sun_body = lighting_enabled ? load_celestial_body(focused_project_root, "sun_01") : (CelestialBody){0,0,0,0};
     CelestialBody moon_body = lighting_enabled ? load_celestial_body(focused_project_root, "moon_01") : (CelestialBody){0,0,0,0};
 
@@ -3197,12 +3466,16 @@ static int render_one_frame(void) {
         sc.fwd[0]=(float)cam.forward.x; sc.fwd[1]=(float)cam.forward.y; sc.fwd[2]=(float)cam.forward.z;
         sc.right[0]=(float)cam.right.x; sc.right[1]=(float)cam.right.y; sc.right[2]=(float)cam.right.z;
         sc.up[0]=(float)cam.up.x;     sc.up[1]=(float)cam.up.y;     sc.up[2]=(float)cam.up.z;
-        sc.board_w=board_w; sc.board_h=board_h; sc.z_count=z_count;
+        int vox = 0, voy = 0, vww = board_w, vwh = board_h;
+        bv_view_window(board_w, board_h, cam.eye.x, cam.eye.z, &vox, &voy, &vww, &vwh);
+        sc.board_w = vww; sc.board_h = vwh; sc.z_count = z_count;
+        sc.eye[0] = (float)(cam.eye.x - vox);
+        sc.eye[2] = (float)(cam.eye.z - voy);
         for (int lvl=0; lvl<z_count; lvl++)
-          for (int row=0; row<board_h; row++)
-            for (int col=0; col<board_w; col++)
-              gpu_grid[col + row*board_w + lvl*board_w*board_h] =
-                  (unsigned char)board3d[lvl][row][col];
+          for (int row=0; row<vwh; row++)
+            for (int col=0; col<vww; col++)
+              gpu_grid[col + row*vww + lvl*vww*vwh] =
+                  (unsigned char)board3d[lvl][row + voy][col + vox];
         sc.grid = gpu_grid;
         /* legend: SOLID glyphs only (air -> not in the LUT -> no hit).
          * Each gets a 16x16 emoji-texture slice from its asset_hex so
@@ -3240,9 +3513,54 @@ static int render_one_frame(void) {
             }
             sc.legend_n++;
         }
+        /* A TSOTS desk is the 3D map. POV 1-4 use it the same way mutaclysm
+         * uses its voxel world. No separate key. Desks with no cells.rgba
+         * fail maker_load and stay the old letter blocks. Camera locals
+         * above are not written here. */
+        if (maker_load(focused_project_root)) {
+            bv_view_window(g_mk.w, g_mk.h, cam.eye.x, cam.eye.z, &vox, &voy, &vww, &vwh);
+            sc.eye[0] = (float)(cam.eye.x - vox);
+            sc.eye[2] = (float)(cam.eye.z - voy);
+            static unsigned short view_cells[BV_VIEW_DIM * BV_VIEW_DIM * 2];
+            int cropped = (vox || voy || vww != g_mk.w || vwh != g_mk.h);
+            memset(gpu_grid, 0, (size_t)vww * (size_t)vwh * 3);
+            for (int row = 0; row < vwh; row++)
+                for (int col = 0; col < vww; col++) {
+                    size_t src = ((size_t)(row + voy) * g_mk.w + (size_t)(col + vox)) * 2;
+                    gpu_grid[col + row * vww] = 1;                                   /* level 0: floor */
+                    if (g_mk.cells[src + 1]) {
+                        gpu_grid[col + row * vww + vww * vwh] = 1;                 /* levels 1-2: wall */
+                        gpu_grid[col + row * vww + 2 * vww * vwh] = 1;
+                    }
+                    if (cropped) {
+                        view_cells[((size_t)row * vww + col) * 2] = g_mk.cells[src];
+                        view_cells[((size_t)row * vww + col) * 2 + 1] = g_mk.cells[src + 1];
+                    }
+                }
+            sc.board_w = vww; sc.board_h = vwh; sc.z_count = 3;
+            sc.grid = gpu_grid;
+            sc.legend_n = 1; sc.legend_glyph[0] = 1;
+            sc.legend_rgb[0][0] = sc.legend_rgb[0][1] = sc.legend_rgb[0][2] = 0.5f;
+            sc.legend_has_tex[0] = 0;
+            sc.maker = 1; sc.maker_id = g_mk.id;
+            sc.atlas = g_mk.atlas; sc.atlas_w = g_mk.aw; sc.atlas_h = g_mk.ah; sc.atlas_cols = g_mk.cols; sc.tile_px = g_mk.tile_px;
+            sc.cells = cropped ? view_cells : g_mk.cells;
+            sc.cells_w = vww; sc.cells_h = vwh;
+            sc.para = g_mk.para; sc.para_w = g_mk.para_w; sc.para_h = g_mk.para_h;
+            sc.para_loop_x = g_mk.para_lx; sc.para_loop_y = g_mk.para_ly;
+        }
         double ll = lighting_enabled ? game_light_level_sky : 1.0;
         if (ll < 0.15) ll = 0.15;
         sc.light_level = (float)ll;
+        sc.fog_start = (float)fog_start; sc.fog_end = (float)fog_end;
+        /* pieces/system/view.pdl see_through=1: no sky, no parallax.
+         * Missed pixels are alpha 0. 0 brings the sky back. Read every
+         * frame so editing the file does not need a rebuild. */
+        {
+            char vp[PATH_BUF];
+            snprintf(vp, sizeof(vp), "%s/pieces/system/view.pdl", focused_project_root);
+            sc.see_through = read_kv_int(vp, "see_through", 0);
+        }
         { unsigned char *cp = FB(g_fw/2, g_fh/2);   /* clear_sky already ran */
           sc.sky[0]=cp[0]/255.0f; sc.sky[1]=cp[1]/255.0f; sc.sky[2]=cp[2]/255.0f; }
         /* boxes: xelector, sun, moon, entities, hero, world phymoji.
@@ -3269,8 +3587,11 @@ static int render_one_frame(void) {
         if (moon_body.present)
             ADDBOX(moon_body.x-1.2, moon_body.y-1.2, moon_body.z-1.2,
                    moon_body.x+1.2, moon_body.y+1.2, moon_body.z+1.2, 210,210,225, 1);
-        if (g_xelector_present && camera_mode != 1)
-            ADDBOX(g_xelector_x+0.15, g_xelector_z+0.15, g_xelector_y+0.15,
+        /* Maker (TSOTS-style painted) maps: the selector, the hero and the map events must be the SAME box - same 0.7 footprint, standing on the floor top (1.0) up to the sprite's 2.6 -
+         * not a 0.7 cube floating at the pc-hq z level (owner 2026-10-10: "xelector and other cube should be same size and on same level as sprite"). */
+        if (g_xelector_present && camera_mode != 1) {
+            if (sc.maker) ADDBOX(g_xelector_x+0.15, 1.0, g_xelector_y+0.15, g_xelector_x+0.85, 2.6, g_xelector_y+0.85, 60,220,220, 0);
+            else ADDBOX(g_xelector_x+0.15, g_xelector_z+0.15, g_xelector_y+0.15,
                    g_xelector_x+0.85, g_xelector_z+0.85, g_xelector_y+0.85, 60,220,220, 0);
         if (g_ray_hit)
             ADDWIRE(g_ray_x + 0.04, g_ray_z + 0.04, g_ray_y + 0.04,
@@ -3280,6 +3601,7 @@ static int render_one_frame(void) {
             char pp[PATH_BUF];
             snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
             { BvRange rg; if (bvr_load(focused_project_root, &rg)) bvr_arm_placer(pp, focused_project_root); }
+        }
             if (read_kv_int(pp, "armed", 0)) {
                 int sx = read_kv_int(pp, "x", 0);
                 int sy = read_kv_int(pp, "y", 0);
@@ -3314,6 +3636,74 @@ static int render_one_frame(void) {
                     sc.model_vox[_m][_o+2]=(VOX)[_i].b; sc.model_vox[_m][_o+3]=255; } \
             } _m; })
 
+        /* Map events. A 16x24 frame (written by tsots_events.py) is one
+         * voxel slice. The shader stretches that slice through the box,
+         * which is the same extrusion a phymoji model gets. No frame
+         * file, or no free model slot: the old flat colour box. */
+        if (sc.maker) {
+            int budget = 80;
+            int used_model[96];
+            char used_key[96][64];
+            int used_n = 0;
+            for (int i = 0; i < g_mk.ev_n && budget > 0; i++, budget--) {
+                int hm = -1;
+                char key[64];
+                snprintf(key, sizeof(key), "%s_%d_%d_%d",
+                         g_mk.ev[i].name, g_mk.ev[i].index, g_mk.ev[i].dir, g_mk.ev[i].pat);
+                for (int k = 0; k < used_n; k++)
+                    if (strcmp(used_key[k], key) == 0) hm = used_model[k];
+                if (hm < 0 && used_n < 96 && sc.model_n < BV_GPU_MAX_MODEL - 6) {
+                    unsigned char frame[16 * 24 * 4];
+                    char walk[4352], fp[4400];
+                    int got = 0;
+                    snprintf(walk, sizeof(walk), "%s", g_mk.key);
+                    for (int up = 0; up < 16 && !got; up++) {
+                        char *sl = strrchr(walk, '/');
+                        if (!sl) break;
+                        *sl = 0;
+                        snprintf(fp, sizeof(fp),
+                                 "%s/#.NNEST_ASSETS/tsots-characters/frames/%s.rgba",
+                                 walk, key);
+                        FILE *ff = fopen(fp, "rb");
+                        if (!ff) continue;
+                        got = fread(frame, 1, sizeof(frame), ff) == sizeof(frame);
+                        fclose(ff);
+                    }
+                    if (got) {
+                        /* Same extrusion as chicken: each opaque pixel
+                         * is a column, z 0..7, every layer the front
+                         * colour. One slice was a flat card. */
+                        PhymojiVoxel vox[16 * 24 * 8];
+                        int nv = 0;
+                        for (int py = 0; py < 24; py++)
+                            for (int px = 0; px < 16; px++) {
+                                const unsigned char *s = frame + ((py * 16 + px) * 4);
+                                if (s[3] < 16) continue;
+                                for (int z = 0; z < 8 && nv < 16 * 24 * 8; z++) {
+                                    vox[nv].lx = (unsigned char)px;
+                                    vox[nv].ly = (unsigned char)(23 - py);
+                                    vox[nv].lz = (unsigned char)z;
+                                    vox[nv].r = s[0]; vox[nv].g = s[1]; vox[nv].b = s[2];
+                                    nv++;
+                                }
+                            }
+                        if (nv > 0) {
+                            hm = GPU_ADD_MODEL(vox, nv, 15, 23, 7);
+                            if (hm >= 0) {
+                                snprintf(used_key[used_n], sizeof(used_key[0]), "%s", key);
+                                used_model[used_n++] = hm;
+                            }
+                        }
+                    }
+                }
+                float top = (g_mk.ev[i].name[0] == '!') ? 1.9f : 2.6f;
+                ADDBOX(g_mk.ev[i].x + 0.15, 1.0, g_mk.ev[i].y + 0.15,
+                       g_mk.ev[i].x + 0.85, top, g_mk.ev[i].y + 0.85,
+                       g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b, 0);
+                if (hm >= 0 && sc.box_n > 0) sc.box[sc.box_n - 1].model = hm;
+            }
+        }
+
         if (g_hero_present && camera_mode != 1) {
             int hm = -1;
             if (hero_phymoji_count > 0)
@@ -3328,6 +3718,8 @@ static int render_one_frame(void) {
         for (int t=0; t<MAX_PHYMOJI_TEMPLATES; t++) tmpl_model[t] = -1;
         for (int wi=0; wi<g_phymoji_world_entity_count; wi++) {
             PhymojiWorldEntity *we = &g_phymoji_world_entities[wi];
+            if (sc.maker) ADDBOX(g_hero_x+0.15, 1.0, g_hero_y+0.15, g_hero_x+0.85, 2.6, g_hero_y+0.85, 200,90,60, 0);      /* same box as a map event sprite */
+            else
             double wsx=1.0, wsy=1.0, wsz=1.0; int cr=60,cg=140,cb=50;
             if (strcmp(we->entity_id, "tree_small")==0) wsy = 3.0;
             if (strcmp(we->entity_id, "chicken")==0) { wsx=wsy=wsz=0.6; cr=cg=cb=210; }
@@ -3374,6 +3766,13 @@ static int render_one_frame(void) {
         #undef ADDWIRE_THIN
         #undef ADDWIRE
         #undef ADDBOX
+        if (vox || voy) {
+            for (int bi = 0; bi < sc.box_n; bi++) {
+                sc.box[bi].min_x -= (float)vox; sc.box[bi].max_x -= (float)vox;
+                sc.box[bi].min_z -= (float)voy; sc.box[bi].max_z -= (float)voy;
+            }
+        }
+        g_view_ox = vox; g_view_oy = voy; g_view_w = vww; g_view_h = vwh;
         if (bv_gpu_raymarch(&sc, g_fbuf) == 0) gpu_done = 1;
         else fprintf(stderr, "bv_render_3d: GPU backend failed, using CPU\n");
         g_prof_gpu_ms = bv_now_ms_() - gpu_t0;
@@ -3938,6 +4337,15 @@ static int render_one_frame(void) {
             r = (unsigned char)(r * light_level);
             g = (unsigned char)(g * light_level);
             bl = (unsigned char)(bl * light_level);
+            if (fog_end > fog_start && best_t < 1e17) {   /* distance fog: same smoothstep as the GPU shader */
+                double ff = (best_t - fog_start) / (fog_end - fog_start);
+                if (ff < 0) ff = 0;
+                if (ff > 1) ff = 1;
+                ff = ff * ff * (3.0 - 2.0 * ff);
+                r  = (unsigned char)(r  + (fog_sky[0] - r)  * ff);
+                g  = (unsigned char)(g  + (fog_sky[1] - g)  * ff);
+                bl = (unsigned char)(bl + (fog_sky[2] - bl) * ff);
+            }
             /* block-fill the g_lod_step x g_lod_step cell this sample
              * covers (exactly one pixel when g_lod_step == 1). Sky
              * samples hit the `continue` above and keep the full-res
