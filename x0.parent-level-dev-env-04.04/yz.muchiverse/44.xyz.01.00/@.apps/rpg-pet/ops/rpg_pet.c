@@ -100,11 +100,14 @@ static int is_dir(const char *p) { struct stat s; return stat(p, &s) == 0 && S_I
 /* Play one of this app's events-hq pages (<app>/events/<name>/, trigger <trig>) through events-hq's play_event.sh. MUCHI_TARGET_ENT points every
  * event at ONE shared world dir (<app>/state/world) so state commands land in one place: map_state.pdl (transfer_player) and screen_state.pdl (tint_screen).
  * Returns 1 when the page ran. */
-static int run_event(const char *name, const char *trig) {
+static int run_event_x(const char *name, const char *trig, const char *envs);
+static int run_event(const char *name, const char *trig) { return run_event_x(name, trig, ""); }
+/* same, with extra environment words for the event's commands (e.g. "RPG_OTHER='Blip'", read by the registered pet_says command) */
+static int run_event_x(const char *name, const char *trig, const char *envs) {
     char pd[PATH_MAX], pl[PATH_MAX], wd[PATH_MAX], cmd[4 * PATH_MAX];
     snprintf(pd, sizeof pd, "%s/events/%s", APP, name); snprintf(pl, sizeof pl, "%s/&.widgits/events-hq/ops/play_event.sh", HOUSE); snprintf(wd, sizeof wd, "%s/world", ST);
     if (!fexists(pl) || !is_dir(pd)) return 0; mkdir(wd, 0755);
-    snprintf(cmd, sizeof cmd, "MUCHI_TARGET_ENT='%s' bash '%s' '%s' '%s' '%s' >/dev/null 2>&1", wd, pl, pd, HOUSE, trig);
+    snprintf(cmd, sizeof cmd, "%s MUCHI_TARGET_ENT='%s' bash '%s' '%s' '%s' '%s' >/dev/null 2>&1", envs, wd, pl, pd, HOUSE, trig);
     return system(cmd) == 0;
 }
 static long fsize(const char *p) { struct stat s; return stat(p, &s) == 0 ? (long)s.st_size : 0; }
@@ -395,8 +398,14 @@ static void meet(int a, int b) {
     long now = (long)time(NULL); if (now - last_meet(a, b) < 25) return;
     char l[200]; snprintf(l, sizeof l, "MEET|%ld|%d|%d|%s", now, a, b, rooms[others[a].room].id); append_line("relations.txt", l);
     int v1 = rand() % 4, v2 = rand() % 4; char t[120];       /* English in the chat, the pet's own language aloud */
-    snprintf(t, sizeof t, HI[0][v1], party[b].name); if (others[a].room == vroom && (a == active || b == active)) say(party[a].name, t);      /* chat only carries what happens in the room you are watching, or six pets drown your own line */ if (others[a].room == vroom) speak_greet(a, v1, party[b].name, 0);
-    snprintf(t, sizeof t, RE[0][v2], party[a].name); if (others[b].room == vroom && (a == active || b == active)) say(party[b].name, t); if (others[b].room == vroom) speak_greet(b, v2, party[a].name, 1);
+    /* The greeting lines are DATA in event pages: events/greet_<pet>/ has a page per line (trigger hi0..hi3 = greets, re0..re3 = answers) whose pet_says command carries the chat line and the spoken line
+     * ({other} = the other pet's name, passed as RPG_OTHER). The C keeps what must not move into a page: who may be heard (RPG_SAY / RPG_SPEAK), the 2.5 s voice throttle, and the old tables below as the fallback. */
+    static long last_sp = 0; long nm = now_ms(); int sp_a = others[a].room == vroom, sp_b = others[b].room == vroom, sy_a = sp_a && (a == active || b == active), sy_b = sp_b && (a == active || b == active);
+    if ((sp_a || sp_b) && nm - last_sp >= 2500) last_sp = nm; else sp_a = sp_b = 0;
+    { char ev[64], tg[16], en[200]; snprintf(ev, sizeof ev, "greet_%s", party[a].id); snprintf(tg, sizeof tg, "hi%d", v1); snprintf(en, sizeof en, "RPG_OTHER='%s' RPG_SAY=%d RPG_SPEAK=%d", party[b].name, sy_a, sp_a);
+      if (!run_event_x(ev, tg, en)) { snprintf(t, sizeof t, HI[0][v1], party[b].name); if (sy_a) say(party[a].name, t); if (sp_a) speak_greet(a, v1, party[b].name, 0); } }
+    { char ev[64], tg[16], en[200]; snprintf(ev, sizeof ev, "greet_%s", party[b].id); snprintf(tg, sizeof tg, "re%d", v2); snprintf(en, sizeof en, "RPG_OTHER='%s' RPG_SAY=%d RPG_SPEAK=%d", party[a].name, sy_b, sp_b);
+      if (!run_event_x(ev, tg, en)) { snprintf(t, sizeof t, RE[0][v2], party[a].name); if (sy_b) say(party[b].name, t); if (sp_b) speak_greet(b, v2, party[a].name, 1); } }
 }
 static void friend_line(int i, char *out, size_t cap) {
     char p[PATH_MAX], line[200]; int cnt[NP] = {0}; spath(p, "relations.txt"); FILE *f = fopen(p, "r"); char *g[6];
@@ -696,6 +705,10 @@ static void clock_event(const char *ev);
 static void verb(int argc, char **argv, char *msg, size_t cap) {
     const char *v = argc ? argv[0] : "status"; long now = (long)time(NULL); char b[200]; msg[0] = 0; use_ent(active);
     if (!strcmp(v, "status")) return;
+    if (!strcmp(v, "pet_says") && argc >= 4) {      /* the registered pet_says command of the greet pages: pet_says <pet id> <chat line> <spoken line> [other]; {other} is replaced; RPG_SAY / RPG_SPEAK say whether it is heard (chat / voice) */
+        int pi = -1; for (int i = 0; i < nparty; i++) if (!strcmp(party[i].id, argv[1])) pi = i; if (pi < 0) { snprintf(msg, cap, "no such pet"); return; }
+        const char *oth = argc >= 5 ? argv[4] : ""; char ch[200], vo[200]; for (int k = 0; k < 2; k++) { const char *s = argv[2 + k]; char *o = k ? vo : ch; size_t n = 0; while (*s && n < 190) { if (!strncmp(s, "{other}", 7)) { n += (size_t)snprintf(o + n, 200 - n, "%s", oth); s += 7; } else o[n++] = *s++; } o[n < 199 ? n : 199] = 0; }
+        const char *es = getenv("RPG_SAY"), *ek = getenv("RPG_SPEAK"); if (!es || es[0] == '1') say(party[pi].name, ch); if (!ek || ek[0] == '1') speak(pi, vo); snprintf(msg, cap, "%s said it", party[pi].name); return; }
     if (!strcmp(v, "sync")) { { char sb[8]; const char *nm[2] = {"running", "int"}; for (int k = 0; k < 2; k++) if (sw_get(nm[k], sb, sizeof sb) && sb[0]) { char fp[PATH_MAX], fn[64], fv[16]; snprintf(fn, sizeof fn, "flag_%s.txt", nm[k]); spath(fp, fn); snprintf(fv, sizeof fv, "%c\n", sb[0]); write_if_changed(fp, fv, strlen(fv)); } }      /* keep the old flag files in step with the switches */
         clock_paths(); if (run_on()) clock_install(); clock_sync(); if (run_on()) lc_run(1, "daemon-start", NULL); snprintf(msg, cap, "synced"); return; }      /* the clock follows the running / int switches (the last node of the play and stop event pages) */
     if (!strcmp(v, "phase") && argc >= 2) { clock_event(argv[1]); snprintf(msg, cap, "phase %s", argv[1]); return; }
