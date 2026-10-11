@@ -37,3 +37,5 @@ Status words: DONE = built and seen working / PARTIAL / TODO / PLAN = documented
 - The DB pet profiles still describe animals; the sprites are monsters (owner's data, untouched).
 - Only the active pet walks by itself; the other five stand.
 - Screenshots on this Wayland session: `ffmpeg x11grab` is black; use `&.widgits/_shared-lib/ops/+x/dump_frame_png_op.+x 0x<hexid> out.png`.
+
+- 2026-10-10 handoff for the next agent: see HANDOFF-NEXT-AGENT-2026-10-10.md (pets stacked/not moving, camera follows pc-hq xelector not Harold, POV not in the pet window, CPU).
