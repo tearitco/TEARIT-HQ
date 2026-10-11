@@ -277,6 +277,7 @@ static void chat_trim(void) {
 }
 static void say(const char *who, const char *text) { char b[300]; snprintf(b, sizeof b, "%s: %s", who, text); append_line("chat.txt", b); chat_trim(); }
 static int g_rk = -1, g_ry;      /* what the last reply was about (0 sleep 1 eat 2 read 3 play, -1 default) and whether the house has such an item: the native-language reply is picked from these */
+static const char *g_speaker = NULL;      /* who typed the line (the reply addresses them) */
 static const char *pet_reply(const char *text) {
     static char b[80]; g_rk = -1; g_ry = 0; char s[200]; snprintf(s, sizeof s, "%s", text); for (char *c = s; *c; c++) if (*c >= 'A' && *c <= 'Z') *c += 32;
     #define HAS(e) ({ int h = 0; for (int i = 0; i < npl; i++) if (!strcmp(cat[pl[i].item].effect, e)) h = 1; h; })
@@ -285,7 +286,7 @@ static const char *pet_reply(const char *text) {
     if (strstr(s, "book") || strstr(s, "read")) { g_rk = 2; g_ry = HAS("read"); return g_ry ? "I like reading." : "no books here."; }
     if (strstr(s, "piano") || strstr(s, "play")) { g_rk = 3; g_ry = HAS("play"); return g_ry ? "la la la" : "no piano..."; }
     { static const char *dflt[4] = {"hmm, tell me more.", "I'm listening.", "interesting!", "okay, Harold."}; unsigned h = 0; for (const char *c = s; *c; c++) h = h * 31 + (unsigned char)*c;
-        const char *w[] = {"hi", "hey", "hello", "yo", "hiya", "howdy", "sup", NULL}; for (int k = 0; w[k]; k++) { size_t n = strlen(w[k]); if (!strncmp(s, w[k], n) && (s[n] == 0 || s[n] == ' ' || s[n] == '!' || s[n] == ',')) { snprintf(b, sizeof b, "hello %s!", hero.name); return b; } }
+        const char *w[] = {"hi", "hey", "hello", "yo", "hiya", "howdy", "sup", NULL}; for (int k = 0; w[k]; k++) { size_t n = strlen(w[k]); if (!strncmp(s, w[k], n) && (s[n] == 0 || s[n] == ' ' || s[n] == '!' || s[n] == ',')) { snprintf(b, sizeof b, "hello %s!", g_speaker ? g_speaker : hero.name); return b; } }
         if (strchr(s, '?')) return "good question... let me think.";
         return dflt[h % 4]; }
 }
@@ -605,7 +606,12 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
         else if (!strcmp(argv[1], "reinstall")) { lc_run(0, "daemon-stop", NULL); char q[PATH_MAX]; snprintf(q, sizeof q, "%s/.schedule_installed", CROOT); remove(q); clock_install(); lc_run(1, "daemon-start", NULL); snprintf(msg, cap, "schedule reinstalled"); }
         clock_ui(); return; }
     char text[300] = ""; for (int i = 0; i < argc; i++) { if (i) strncat(text, " ", sizeof text - strlen(text) - 1); strncat(text, argv[i], sizeof text - strlen(text) - 1); }
-    if (text[0]) { say(hero.name, text); const char *rp = pet_reply(text); say(party[active].name, rp); if (others[active].room == vroom) speak_reply(active); turn_taken = 1; }
+    if (text[0]) {
+        int sp = ctl_idx(), rep = active;      /* you speak AS the selected entity: Harold (sp<0) or the selected monster; a monster is answered by the nearest OTHER pet in its room */
+        if (sp >= 0) { int best = -1, bd = 1 << 30; for (int j = 0; j < nparty; j++) if (j != sp && others[j].room == others[sp].room) { int d = abs(others[j].x - others[sp].x) + abs(others[j].y - others[sp].y); if (d < bd) { bd = d; best = j; } } rep = best; }
+        g_speaker = sp < 0 ? hero.name : party[sp].name; say(g_speaker, text);
+        if (rep >= 0) { const char *rp = pet_reply(text); say(party[rep].name, rp); if (others[rep].room == vroom) speak_reply(rep); }
+        turn_taken = 1; }
 }
 
 /* ---------- event runner: the clock daemon calls  rpg_pet.+x <pkg> <root>  when a time.pdl event fires ---------- */
