@@ -7,8 +7,8 @@ commands that have a registry entry, so the page opens in Events (hq) and plays 
     about what an op looks like; a TEMPLATE command becomes a cmd_N.sh wrapper, a PAL command becomes its pal lines.
   * if / else / end are compiled like khtpm_events_hq_manager.c does (switch read, bne to the else label).
   * MV codes with no registry command are NOT dropped: they become a `comment` node "mv <code> <params>" (visible in Events (hq)).
-  * Show Choices branches (402/403/404) are kept as guarded blocks on a switch `choice_<n>` that nothing sets yet (mr_show_choices
-    writes choice_result.txt, the registry `if` only reads switches). Counted as `guarded` in the stats.
+  * Show Choices branches (402/403/404) are If blocks on a switch `choice_<n>`; a `choice_to_switch` node (mr_choice_switch.c) right after the Show Choices
+    turns the answer (choice_result.txt) into those switches. Choice 403 (cancel) keys on choice_9, which nothing sets (mr_show_choices has no cancel).
 
 Mapped codes: 101/401 Show Text, 102 Show Choices, 108/408 Comment, 111/411/412 If/Else/End (switch conditions; other condition
 kinds become an `if` on a switch that is never set, so their body is skipped, not run wrongly), 115 Exit Event, 117 Call Common Event,
@@ -97,6 +97,7 @@ def convert(cmds):
         elif code == 102:
             ch = p[0] if p and isinstance(p[0], list) else []
             out.append(node("show_choices", choices="|".join(str(x).replace("|", "/") for x in ch), default="0"))
+            out.append(node("choice_to_switch", switches_file="@STATE@/switches.txt", n=str(len(ch))))      # choice_result -> switches choice_<i>, so the branch If blocks can run
             choice_stack.append(0)
             bump("show_choices")
         elif code in (402, 403):
@@ -224,6 +225,7 @@ def write_page(page_dir, ev_name, nodes, state_dir):
     pal = ["# event.pal - COMPILED from event.ir.pdl (tsots_event_ir.py, shape of khtpm_events_hq_manager.c output)\n"]
     stack, lc = [], 0
     for nid, (t, f) in enumerate(nodes, start=1):
+        f = {k: v.replace("@STATE@", state_dir) for k, v in f.items()}
         spec = REGISTRY.get(t)
         params = "|".join("%s=%s" % (k, f.get(k, "")) for k in (spec["params"] if spec else f.keys()))
         ir.append("NODE         | id=%d type=%s | %s\n" % (nid, t, params))

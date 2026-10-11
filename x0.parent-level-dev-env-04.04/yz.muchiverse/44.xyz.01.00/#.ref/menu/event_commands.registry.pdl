@@ -1159,3 +1159,13 @@ COMMAND rpg_pet_verb
   PARAMS verb,arg
   TEMPLATE exec "$D/@.apps/rpg-pet/ops/+x/rpg_pet.+x" '{verb}'[ '{arg}']
 END
+
+# ---- choices to switches (2026-10-11): after a Show Choices, set choice_<i> = 1 for the chosen index and 0 for the others in the given switches file, so the If blocks of the
+# branches (imported from RPG Maker 402 / 403) can run. mr_show_choices writes choice_result.txt; the If command only reads switches. See &.widgits/events-hq/ops/mr_choice_switch.c.
+COMMAND choice_to_switch
+  LABEL Choices -> Switches
+  FIELD1 Switches file:
+  FIELD2 Choices:
+  PARAMS switches_file,n
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_choice_switch.+x" "$ENT" '{switches_file}' '{n}'
+END
