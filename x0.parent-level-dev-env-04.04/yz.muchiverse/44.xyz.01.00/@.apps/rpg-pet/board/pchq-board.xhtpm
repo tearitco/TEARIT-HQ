@@ -6,7 +6,7 @@
   <module src="@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x" args="piececraft-hq"/>
   <page name="main">
     <tabbar id="toolbar" class="pchq-toolbar">
-      <tab id="tb-in" class="pchq-tb ${interact_class}" label="In: ${interact_label}" relay="${bv_h1},${bv_h2}" onclick="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'interact'"/>
+      <tab id="tb-in" class="pchq-tb ${interact_class}" label="In: ${interact_label}" relay="${bv_h1},${bv_h2},${rp_relay}" onclick="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'interact'"/>
       <tab id="tb-book" class="pchq-tb" label="Pets ▾" onclick="ACTIVATE" target_id="tb-book"/>
       <tab id="tb-page" class="pchq-tb" label="${room_label} ▾" onclick="ACTIVATE" target_id="tb-page"/>
       <tab id="tb-shop" class="pchq-tb" label="Shop ▾" onclick="ACTIVATE" target_id="tb-shop"/>

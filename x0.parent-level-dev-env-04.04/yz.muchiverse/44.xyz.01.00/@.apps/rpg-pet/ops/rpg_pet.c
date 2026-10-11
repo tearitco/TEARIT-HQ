@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <math.h>
 #include <unistd.h>
 #include <limits.h>
 #include <time.h>
@@ -476,6 +477,7 @@ static void out_all(const char *msg) {
     int chat = flag_on("chat", 0), hb = flag_on("hb", 0), in = flag_on("int", 0); char view[16]; flag_str("view", "2d", view, sizeof view); for (char *c = view; *c; c++) if (*c >= 'a' && *c <= 'z') *c -= 32;
     W("title=rpg-pet  -  %s  -  coins %d\nscene_raw=%s\ncanvas_raw=%s\ncoins=%d\nmsg=%s\nroom_label=%s\n", rooms[vroom].name, coins, raw, raw, coins, msg && msg[0] ? msg : (in ? "INT on: turn based like a roguelike. Time moves when you act. Tab switches pet/player." : "real time: the pets live on their own. INT lets you control a pet or the player."), rooms[vroom].name);
     { char cc[16]; flag_str("ctl", "pet", cc, sizeof cc); char who[40]; snprintf(who, sizeof who, "on: %s", !strcmp(cc, "player") ? "you" : party[active].name); W("interact_class=%s\ninteract_label=%s\nrp_h1=%s\nrp_h2=%s\ncontrol_label=control: %s\n", in ? "interact-active" : "", in ? who : "off", h1, h2, !strcmp(cc, "player") ? "player" : party[active].name); }
+    W("rp_relay=%s\n", h1);      /* the board window also appends every key it forwards to the engine to this file (relay= in the template), so INT arrows reach the daemon even though the engine consumes its own relay */
     W("run_on=%d\nrun_label=%s\nrun_cls=%s\n", run_on(), run_on() ? "GO started" : "STOP stopped", run_on() ? "ph-green" : "ph-red");
     W("mode_label=%s\nmode_cls=%s\n", rogue_mode() ? "[rogue] live" : "rogue [live]", rogue_mode() ? "ph-green" : "ph-red");
     W("chat_visible=%s\nhb_visible=%s\nview_label=view %s\nchat_toggle_label=window %s\n", chat ? "1" : "", hb ? "1" : "", view, chat ? "on" : "off");
@@ -642,6 +644,20 @@ static int kv_set_int(const char *path, const char *key, int val) {
     for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, key, kl) && l[kl] == '=') { o += snprintf(out + o, sizeof out - o, "%s=%d\n", key, val); found = 1; } else o += snprintf(out + o, sizeof out - o, "%s\n", l); }
     if (!found) o += snprintf(out + o, sizeof out - o, "%s=%d\n", key, val); return write_if_changed(path, out, o);
 }
+/* The live board session's camera: the engine turns an arrow by (yaw - 180) in the 3D first / third person views (render_mode 1, camera_mode 1 or 2) and not at all in 2D or the fixed views
+ * (bv_menu_input.c); the monster has to be turned the same way, or "left" would not be left on screen. */
+static void board_session(char *sess, size_t cap) {
+    const char *cand[3] = {"@.apps/rpg-pet/board/state/ui.txt", "@.apps/piececraft-hq/state/ui.txt", "@.apps/layout-studio/sandbox/state/ui.txt"}; time_t bt = 0; sess[0] = 0;
+    for (int k = 0; k < 3; k++) { char up[PATH_MAX], ub[1024], s[PATH_MAX] = "", rp[PATH_MAX]; struct stat us; snprintf(up, sizeof up, "%s/%s", HOUSE, cand[k]); if (stat(up, &us)) continue; read_file(up, ub, sizeof ub);
+        for (char *l = strtok(ub, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "bv_session=", 11)) snprintf(s, sizeof s, "%s", l + 11);
+        snprintf(rp, sizeof rp, "%s/pieces/apps/player_app/interact_relay.txt", s); if (s[0] && fexists(rp) && (!sess[0] || us.st_mtime > bt)) { snprintf(sess, cap, "%s", s); bt = us.st_mtime; } }
+}
+static void turn_by_camera(int *dx, int *dy) {
+    char s[PATH_MAX], p[PATH_MAX], b[2048]; board_session(s, sizeof s); if (!s[0]) return; snprintf(p, sizeof p, "%s/pieces/system/bv_state.txt", s); read_file(p, b, sizeof b); int rm = 0, cm = 0, yaw = 180;
+    for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "render_mode=", 12)) rm = atoi(l + 12); else if (!strncmp(l, "camera_mode=", 12)) cm = atoi(l + 12); else if (!strncmp(l, "cam_yaw=", 8)) yaw = atoi(l + 8); }
+    if (rm != 1 || (cm != 1 && cm != 2)) return; double th = -(double)(yaw - 180) * M_PI / 180.0, rx = *dx * cos(th) - *dy * sin(th), ry = *dx * sin(th) + *dy * cos(th);
+    if (fabs(rx) >= fabs(ry)) { *dx = rx > 0 ? 1 : rx < 0 ? -1 : 0; *dy = 0; } else { *dy = ry > 0 ? 1 : ry < 0 ? -1 : 0; *dx = 0; }
+}
 static void follow_pchq(void) {
     char wp[PATH_MAX], xp[PATH_MAX], hp[PATH_MAX], m[64] = "", dk[64] = ""; snprintf(wp, sizeof wp, "%s/@.apps/piececraft-hq/pieces/world_01/state.txt", HOUSE);
     char wb[2048]; read_file(wp, wb, sizeof wb); for (char *l = strtok(wb, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "map_id=", 7)) snprintf(m, sizeof m, "%s", l + 7); else if (!strncmp(l, "desk_id=", 8)) snprintf(dk, sizeof dk, "%s", l + 8); }
@@ -650,7 +666,8 @@ static void follow_pchq(void) {
     { static unsigned long hs = 0; unsigned long s2 = 5381 + npl; for (int i = 0; i < npl; i++) s2 = s2 * 33 + pl[i].item * 131 + pl[i].x * 17 + pl[i].y * 7 + pl[i].room; if (s2 != hs) { hs = s2; for (int r = 0; r < nroom; r++) write_room_png(r); } }
     snprintf(xp, sizeof xp, "%s/@.apps/piececraft-hq/pieces/xelector_01/state.txt", HOUSE); snprintf(hp, sizeof hp, "%s/@.apps/piececraft-hq/pieces/hero_01/state.txt", HOUSE);
     int ci = ctl_idx(); Ent *e = ci < 0 ? &tr : &others[ci]; static int lr = -1, lx = -1, ly = -1, ld = -1, lw = -1; int changed = 0;
-    if (e->room != lr || e->x != lx || e->y != ly) { lr = e->room; lx = e->x; ly = e->y; changed = 1;
+    int pin = 0; if (flag_on("int", 0)) { char kb[512]; read_file(xp, kb, sizeof kb); int xx = -1, xy = -1; for (char *l = strtok(kb, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "pos_x=", 6)) xx = atoi(l + 6); else if (!strncmp(l, "pos_y=", 6)) xy = atoi(l + 6); } pin = xx != e->x || xy != e->y; }      /* INT: the xelector stays on the chosen monster, whatever the engine did with the same arrow */
+    if (pin || e->room != lr || e->x != lx || e->y != ly) { lr = e->room; lx = e->x; ly = e->y; changed = 1;
         kv_set_int(xp, "pos_x", e->x); kv_set_int(xp, "pos_y", e->y); kv_set_int(hp, "pos_x", e->x); kv_set_int(hp, "pos_y", e->y); }
     if (strcmp(dk, rooms[e->room].id) && lw != e->room) { lw = e->room; char ib[PATH_MAX], c[96]; snprintf(ib, sizeof ib, "%s/@.apps/piececraft-hq/pieces/system/widget_cmds/inbox.txt", HOUSE); snprintf(c, sizeof c, "CONFIRM_SET_DESK:%s", rooms[e->room].id); FILE *f = fopen(ib, "a"); if (f) { fprintf(f, "%s\n", c); fclose(f); } changed = 1; }
     if (!strcmp(dk, rooms[e->room].id)) lw = e->room;
@@ -823,6 +840,7 @@ static int daemon_main(void) {
             else if (c == '0') { char cv[16]; flag_str("view", "2d", cv, sizeof cv); set_flag("view", !strcmp(cv, "2d") ? "3d" : "2d"); snprintf(msg, sizeof msg, "view toggled (3D draws with sprint item 7)"); dirty = 1; continue; }
             else if (c >= '1' && c <= '4') { char pv[8]; snprintf(pv, sizeof pv, "%c", c); set_flag("pov", pv); snprintf(msg, sizeof msg, "pov %c stored (3D draws with sprint item 7)", c); dirty = 1; continue; }
             else continue;
+            turn_by_camera(&dx, &dy);
             { int ci = ctl_idx(); use_ent(ci); if (do_step(dx, dy, msg, sizeof msg)) { pet_save(); set_flag("follow", ci < 0 ? "player" : "pet"); end_turn(); } else pet_save(); }      /* a bump costs no turn */
             dirty = 1; }
         long ms = now_ms();

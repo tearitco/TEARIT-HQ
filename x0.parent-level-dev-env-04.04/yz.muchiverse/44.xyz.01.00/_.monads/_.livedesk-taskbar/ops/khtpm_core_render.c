@@ -3432,7 +3432,7 @@ static int g_has_canvas = 0;  /* set by assign_nav_and_layout when a <canvas> is
  * PRESSED: N" (pieces/keyboard/history.txt) - the SAME two-file dual
  * write pchq_append_key() always did, just no longer app-specific C. */
 static int g_interact_relay_on = 0;
-static char g_interact_relay_paths[2][PATH_BUF];
+static char g_interact_relay_paths[4][PATH_BUF];
 static int g_interact_relay_n = 0;
 static char g_interact_relay_raw[300] = "";  /* last-armed relay= string, for the re-arm check only */
 /* PC-HQ-FOCUS-AND-INTERACT-ACTIVATE.md: X11 focus vs Interact arm.
@@ -8014,7 +8014,7 @@ static void kh_scan_interact_relay(void) {
             char work[PATH_BUF * 2];
             snprintf(work, sizeof(work), "%s", paths);
             char *save = NULL, *tok = strtok_r(work, ",", &save);
-            while (tok && g_interact_relay_n < 2) {
+            while (tok && g_interact_relay_n < 4) {
                 snprintf(g_interact_relay_paths[g_interact_relay_n], sizeof(g_interact_relay_paths[0]), "%s", tok);
                 g_interact_relay_n++;
                 tok = strtok_r(NULL, ",", &save);
@@ -8053,7 +8053,7 @@ static int kh_interact_vars_on(void) {
 
 static void kh_interact_append_13(void) {
     int n = g_interact_relay_n;
-    const char *paths[2];
+    const char *paths[4];
     char h1buf[PATH_BUF], h2buf[PATH_BUF];
     if (n > 0) {
         for (int i = 0; i < n; i++) paths[i] = g_interact_relay_paths[i];
