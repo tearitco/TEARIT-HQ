@@ -40,3 +40,6 @@ Game = book + layout + events + `time.pdl` (clock events) + a rules op where nee
 2. "Script" command: a raw pal snippet, or only the fixed `mr_*` ops?
 3. Should side bars be listed as entities in the book view (so a game can ship its default bars), or stay layout-only?
 4. Import scope for TSOTS: all 94 maps' events, or only the maps rpg-pet uses?
+
+## Requirement added 2026-10-11 (owner): stackable side panels (documented only, not built)
+Side panels are entities that can be open together: different ones on the left and on the right, several on one side, each collapsing into its own bottom-bar cell. The studio opens them from a list (like opening an app), a layout lists the panels it ships with (id, side, order, width, default open), and the bottom bar is generated from that list (one cell per panel, pressed = open). See `KHTPM-DOCK-ELEMENT-SPEC-2026-10-11.md`, section "Requirement added 2026-10-11". Open question 3 above (side bars as entities in the book view) is answered: yes, they are entities.
