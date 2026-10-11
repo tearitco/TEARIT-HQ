@@ -108,8 +108,9 @@ must be restored after it, never before.
 - [x] `TROW|<header>|<cell>…` per `<tr>`; header rows flagged and tinted
 - [x] `<caption>` emitted as TEXT (was silently dropped with the subtree)
 - [x] cells joined with U+00B7 — **not** `|`, which `uisan()` rewrites to `/`
-- [ ] rowspan/colspan not honoured (cells in document order) — real column
-  layout is a renderer slice, deliberately not faked
+- [x] colspan/rowspan honoured at extract (pads/repeats into aligned
+  rows; 2026-10-11, `nb_table_span_test.sh`) — genuinely ragged rows
+  still grid per-row downstream, honestly
 
 ## Lane note (2026-10-08)
 

@@ -36,6 +36,10 @@ echo "########## table computed widths (hermetic: scratch manager + own fixture 
 sh "$HERE/nb_table_width_test.sh" || RC=1
 
 echo
+echo "########## table spans (hermetic: scratch fetch of span fixture)"
+sh "$HERE/nb_table_span_test.sh" || RC=1
+
+echo
 echo "########## history bound (needs the browser)"
 sh "$HERE/nb_history_test.sh" || RC=1
 

@@ -590,6 +590,45 @@ static int tag_attrval(const char *p, const char *tag_end, const char *key, char
     }
     return 0;
 }
+/* colspan/rowspan integer from a <td>/<th> open tag (2026-10-11,
+ * table spans). tag_attrval() above matches substrings, so an
+ * attribute VALUE containing the word ("title='a colspan b'") would
+ * false-match; this scans quote-aware instead and only accepts a real
+ * key (whitespace before, '=' after). Returns the leading integer or
+ * 1 when absent/junk - callers clamp to the grid, so junk degrades to
+ * a plain cell, never to a wild span. */
+static int tag_span_attr(const char *cp, const char *tag_end, const char *key) {
+    size_t klen = strlen(key);
+    const char *p = cp + 3; /* skip the <td/<th itself */
+    int in_q = 0;
+    char qc = 0;
+    while (p < tag_end) {
+        if (in_q) {
+            if (*p == qc) in_q = 0;
+            p++;
+            continue;
+        }
+        if (*p == '"' || *p == '\'') { in_q = 1; qc = *p; p++; continue; }
+        if (isspace((unsigned char)*p) && strncasecmp(p + 1, key, klen) == 0) {
+            const char *after = p + 1 + klen;
+            while (after < tag_end && isspace((unsigned char)*after)) after++;
+            if (after >= tag_end || *after != '=') { p++; continue; }
+            const char *v = after + 1;
+            int n = 0, nd = 0;
+            while (v < tag_end && isspace((unsigned char)*v)) v++;
+            if (v < tag_end && (*v == '"' || *v == '\'')) v++;
+            while (v < tag_end && *v >= '0' && *v <= '9') {
+                n = n * 10 + (*v - '0');
+                if (n > 1000000) break;
+                v++; nd++;
+            }
+            if (nd == 0) { p++; continue; }
+            return n;
+        }
+        p++;
+    }
+    return 1;
+}
 static void extract_and_publish(const char *html, const char *url, FILE *out) {
     fprintf(out, "URL|%s\n", url);
 
@@ -1043,14 +1082,22 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
              * it). The projector draws a row at a time; a real grid needs
              * renderer column layout, which is a separate slice.
              *
-             * Rowspan/colspan are NOT honoured - cells are emitted in
-             * document order. Inventing phantom cells to fill a grid we
-             * cannot draw would be worse than a flat row. */
+             * TABLE SPANS (2026-10-11): colspan expands in place (text in
+             * the first slot, empties after); rowspan repeats its text
+             * into the rows below, so every emitted row is already grid-
+             * aligned and the projector/renderer need no cross-row state.
+             * Genuinely ragged rows (missing cells, no spans) still emit
+             * short and grid per-row downstream - honest, not faked. */
             if (strncasecmp(p, "<table", 6) == 0 && !isalnum((unsigned char)p[6])) {
                 FLUSH_LINE();
                 const char *tbody_end = skip_named_element(p, "table");
                 if (line_count < MAX_LINES) {
                     const char *rp = p;
+                    /* rowspan state, reset per table: rows remaining
+                     * (excluding the current row) and fill text per
+                     * column. Same 64-column sizing as the row cells. */
+                    int rspan_left[64] = {0};
+                    char rspan_text[64][256];
                     /* <caption> is real content and used to vanish with the
                      * rest of the table region - emit it as a TEXT row so
                      * the table keeps its title. */
@@ -1094,12 +1141,29 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                               tr_end = c ? c + 5 : tbody_end; }
                             int header = 0;
                             char cells[64][256];
-                            int ncells = 0;
+                            int col = 0;
                             const char *cp = rp;
-                            while (cp < tr_end && ncells < 64) {
+                            /* pending rowspan fills first, in column
+                             * order (a rowspan owns its column in every
+                             * row it spans, including otherwise-empty
+                             * <tr></tr> rows). */
+                            while (col < 64 && rspan_left[col] > 0) {
+                                snprintf(cells[col], sizeof(cells[0]), "%s", rspan_text[col]);
+                                rspan_left[col]--;
+                                col++;
+                            }
+                            while (cp < tr_end && col < 64) {
                                 int is_th = (strncasecmp(cp, "<th", 3) == 0 && !isalnum((unsigned char)cp[3]));
                                 int is_td = (strncasecmp(cp, "<td", 3) == 0 && !isalnum((unsigned char)cp[3]));
                                 if (!is_th && !is_td) { cp++; continue; }
+                                /* filled columns belong to an earlier
+                                 * rowspan - consume, never overwrite. */
+                                while (col < 64 && rspan_left[col] > 0) {
+                                    snprintf(cells[col], sizeof(cells[0]), "%s", rspan_text[col]);
+                                    rspan_left[col]--;
+                                    col++;
+                                }
+                                if (col >= 64) break;
                                 const char *cell_end = cp;
                                 { const char *closer = is_th ? "</th" : "</td";
                                   const char *c = strcasestr_local(cp, closer);
@@ -1115,11 +1179,47 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                                 collapse_ws(txt);
                                 strip_pipes(txt);
                                 if (is_th) header = 1;
-                                snprintf(cells[ncells], sizeof(cells[0]), "%s", txt);
-                                ncells++;
+                                /* TABLE SPANS (2026-10-11): colspan pads
+                                 * with empties (text stays in the first
+                                 * slot - repeating it would read twice
+                                 * in the label and in copies); rowspan
+                                 * registers its text for the rows below
+                                 * (each row keeps its context, like the
+                                 * merged cell reads). Expansion stops
+                                 * before pending columns and at 64. */
+                                {
+                                    const char *te = cp;
+                                    int cs, rs, k, w;
+                                    while (te < tr_end && *te != '>') te++;
+                                    cs = tag_span_attr(cp, te, "colspan");
+                                    rs = tag_span_attr(cp, te, "rowspan");
+                                    if (cs < 1) cs = 1;
+                                    if (rs < 1) rs = 1;
+                                    if (rs > 64) rs = 64;
+                                    w = 1;
+                                    while (w < cs && col + w < 64 && rspan_left[col + w] == 0) w++;
+                                    snprintf(cells[col], sizeof(cells[0]), "%s", txt);
+                                    for (k = 1; k < w; k++) cells[col + k][0] = '\0';
+                                    if (rs > 1) {
+                                        for (k = 0; k < w; k++) {
+                                            snprintf(rspan_text[col + k], sizeof(rspan_text[0]),
+                                                     "%s", k == 0 ? txt : "");
+                                            rspan_left[col + k] = rs - 1;
+                                        }
+                                    }
+                                    col += w;
+                                }
                                 cp = cell_end;
                             }
-                            if (ncells > 0) {
+                            /* trailing rowspan fills: a row shorter than
+                             * the pending width still carries them. */
+                            while (col < 64 && rspan_left[col] > 0) {
+                                snprintf(cells[col], sizeof(cells[0]), "%s", rspan_text[col]);
+                                rspan_left[col]--;
+                                col++;
+                            }
+                            if (col > 0) {
+                                int ncells = col;
                                 fprintf(out, "TROW|%d", header);
                                 for (int ci = 0; ci < ncells; ci++) fprintf(out, "|%s", cells[ci]);
                                 fprintf(out, "\n");
