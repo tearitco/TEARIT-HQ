@@ -3,3 +3,4 @@ SECTION      | KEY                | VALUE
 META         | piece_id           | phase_day
 STATE        | source               | events-hq
 NODE         | id=1 type=rpg_pet_verb | verb=phase|arg=day
+NODE         | id=2 type=tint_screen | tint=0,0,0,0|frames=60

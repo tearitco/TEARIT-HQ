@@ -38,6 +38,7 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <dirent.h>
 #include <sys/wait.h>
 #include <sys/file.h>
 #define STB_IMAGE_IMPLEMENTATION
@@ -77,6 +78,14 @@ static Placed pl[MAXP]; static int npl, nid = 1, owned[MAXI], coins;
 static Sheet sheets[12]; static int nsheet;
 static unsigned char fr[FW * FH * 4];
 static int g_bg_only = 0;      /* render() without pets, Harold and the day/night tint: the static background the pc-hq 2D view blits as map.png (its sprites come from events.txt) */
+/* the standard RPG Maker screen tone written by events-hq's tint_screen command: state/world/screen_state.pdl has "mode=tint" and "value=r,g,b,gray" (1 = a tone is set). Read at most every 400 ms. */
+static int read_file(const char *p, char *buf, size_t cap);
+static int g_tone_stale = 0;      /* set by the daemon when screen_state.pdl changed: the next read_tone() re-reads at once */
+static int read_tone(int *t) {
+    static long last_ms = 0; static int have = 0, tv[4]; struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts); long ms = ts.tv_sec * 1000L + ts.tv_nsec / 1000000L;
+    if (!last_ms || g_tone_stale || ms - last_ms > 400) { last_ms = ms; g_tone_stale = 0; have = 0; char p[PATH_MAX], b[300]; snprintf(p, sizeof p, "%s/world/screen_state.pdl", ST); if (read_file(p, b, sizeof b) > 0 && strstr(b, "mode=tint")) { char *v = strstr(b, "value="); if (v && sscanf(v + 6, "%d,%d,%d,%d", &tv[0], &tv[1], &tv[2], &tv[3]) == 4) have = 1; } }
+    if (have) memcpy(t, tv, sizeof tv); return have;
+}
 static struct { char id[16], name[24], sheet[24], nick[24], profile[96]; int idx, mhp, mmp, atk, def, mat, mdf, agi, luk; } party[NP]; static int nparty, active;
 static struct { char name[24], nick[24], profile[96], sheet[24]; int idx, mhp, mmp, atk, def, mat, mdf, agi, luk; } hero;      /* the main hero: DB SYSTEM Party member1 (Harold), the player; he owns the monsters */
 static Ent others[NP], tr;      /* every pet's state, and the trainer's */
@@ -88,6 +97,16 @@ static int turn_taken;          /* a verb that counts as a roguelike turn sets t
 static void spath(char *o, const char *n) { snprintf(o, PATH_MAX, "%s/%s", ST, n); }
 static int fexists(const char *p) { struct stat s; return stat(p, &s) == 0; }
 static int is_dir(const char *p) { struct stat s; return stat(p, &s) == 0 && S_ISDIR(s.st_mode); }
+/* Play one of this app's events-hq pages (<app>/events/<name>/, trigger <trig>) through events-hq's play_event.sh. MUCHI_TARGET_ENT points every
+ * event at ONE shared world dir (<app>/state/world) so state commands land in one place: map_state.pdl (transfer_player) and screen_state.pdl (tint_screen).
+ * Returns 1 when the page ran. */
+static int run_event(const char *name, const char *trig) {
+    char pd[PATH_MAX], pl[PATH_MAX], wd[PATH_MAX], cmd[4 * PATH_MAX];
+    snprintf(pd, sizeof pd, "%s/events/%s", APP, name); snprintf(pl, sizeof pl, "%s/&.widgits/events-hq/ops/play_event.sh", HOUSE); snprintf(wd, sizeof wd, "%s/world", ST);
+    if (!fexists(pl) || !is_dir(pd)) return 0; mkdir(wd, 0755);
+    snprintf(cmd, sizeof cmd, "MUCHI_TARGET_ENT='%s' bash '%s' '%s' '%s' '%s' >/dev/null 2>&1", wd, pl, pd, HOUSE, trig);
+    return system(cmd) == 0;
+}
 static long fsize(const char *p) { struct stat s; return stat(p, &s) == 0 ? (long)s.st_size : 0; }
 static long now_ms(void) { struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts); return ts.tv_sec * 1000L + ts.tv_nsec / 1000000L; }
 
@@ -132,6 +151,27 @@ static void load_party(void) {
     snprintf(p, sizeof p, "%s/party.pdl", APP);       /* the picture choice, unless the DB character field already named one (a "Sheet:index" value) */
     if ((fp = fopen(p, "r"))) { while (fgets(line, sizeof line, fp)) { char *g[6]; if (split_bar(line, g, 6) >= 4 && !strcmp(g[0], "PET")) for (int i = 0; i < nparty; i++) if (!strcmp(party[i].name, g[1])) { snprintf(party[i].sheet, 24, "%s", g[2]); party[i].idx = atoi(g[3]); } } fclose(fp); }
 }
+/* DOORS ARE EVENTS: <app>/events/door_<room>_<tx>/event_pkg/pages/page_1/event.ir.pdl holds "META | door | <room> <tx> <auto>" and a real "transfer_player"
+ * node (map=<dest room>|xy=<arrive x>,<arrive y>), the same page Events (hq) lists and play_event.sh can play (mr_world transfer). Stepping on a door is a
+ * hot path (every pet, every step), so this reads the pages and runs the one command in-process instead of starting bash + prisc per step. If any door
+ * page exists they REPLACE the DOOR rows of rooms.pdl (kept as the fallback). A cheap signature (dir count + sizes) skips the re-parse while nothing changed. */
+static void load_door_events(void) {
+    static Door cache[24]; static int ncache = 0; static long sig = -1; char dir[PATH_MAX]; snprintf(dir, sizeof dir, "%s/events", APP);
+    DIR *dp = opendir(dir); if (!dp) return; struct dirent *de; long s = 0; int names = 0; char ir[PATH_MAX]; struct stat st;
+    while ((de = readdir(dp))) { if (strncmp(de->d_name, "door_", 5)) continue; snprintf(ir, sizeof ir, "%s/%s/event_pkg/pages/page_1/event.ir.pdl", dir, de->d_name); if (!stat(ir, &st)) { s = s * 31 + (long)st.st_size + de->d_name[strlen(de->d_name) - 1]; names++; } }
+    closedir(dp); if (!names) return;
+    if (s != sig) { sig = s; ncache = 0; dp = opendir(dir); if (!dp) return;
+        while ((de = readdir(dp)) && ncache < 24) { if (strncmp(de->d_name, "door_", 5)) continue; snprintf(ir, sizeof ir, "%s/%s/event_pkg/pages/page_1/event.ir.pdl", dir, de->d_name); FILE *fp = fopen(ir, "r"); if (!fp) continue;
+            char line[400], room[16] = "", dest[16] = ""; int tx = -1, ax = 0, ay = 0, au = 1, got = 0;
+            while (fgets(line, sizeof line, fp)) { char *f[6]; char cp[400]; snprintf(cp, sizeof cp, "%s", line);
+                if (!strncmp(line, "META", 4) && strstr(line, "| door ")) { char *q = strstr(line, "| door"); q = strchr(q + 6, '|'); if (q) sscanf(q + 1, " %15s %d %d", room, &tx, &au); }
+                else if (strstr(line, "type=transfer_player")) { char *m = strstr(line, "map="), *x = strstr(line, "xy="); if (m && x) { sscanf(m + 4, "%15[^|]", dest); sscanf(x + 3, "%d,%d", &ax, &ay); got = 1; } }
+                (void)f; }
+            fclose(fp); int a = room_idx(room), b = room_idx(dest); if (!got || tx < 0 || a < 0 || b < 0) continue;
+            Door *d = &cache[ncache++]; d->room = a; d->tx = tx; d->dest = b; d->ax = ax; d->ay = ay; d->autow = au; }
+        closedir(dp); }
+    if (ncache > 0) { ndoor = 0; for (int i = 0; i < ncache; i++) doors[ndoor++] = cache[i]; }
+}
 static void load_data(void) {
     char p[PATH_MAX], line[400]; char *f[12]; FILE *fp;
     snprintf(p, sizeof p, "%s/catalog.pdl", APP); ncat = 0;
@@ -146,6 +186,7 @@ static void load_data(void) {
         while (fgets(line, sizeof line, fp)) { int n = split_bar(line, f, 12); if (n >= 9 && !strcmp(f[0], "SCENERY") && nscen < 24) { int a = room_idx(f[1]); if (a < 0) continue; Scen *s = &scen[nscen++]; s->room = a; snprintf(s->sheet, 24, "%s", f[2]); s->c = atoi(f[3]); s->r = atoi(f[4]); s->w = atoi(f[5]); s->h = atoi(f[6]); s->x = atoi(f[7]); s->y = atoi(f[8]); } }
         fclose(fp);
     }
+    load_door_events();
 }
 
 /* each pet is its OWN entity: a stable entity_uid (32 hex, made once, state/uid_<id>.txt) -> wallet id "e" + the first 24 hex (the house rule, see CHAIN-ECONOMY-DESIGN.md). No chain wallet is created yet. */
@@ -260,9 +301,14 @@ static void render(void) {
     for (int a2 = 0; a2 < no; a2++) for (int b2 = a2 + 1; b2 < no; b2++) if (EY(order[b2]) < EY(order[a2])) { int tmp = order[a2]; order[a2] = order[b2]; order[b2] = tmp; }
     for (int k = 0; k < (g_bg_only ? 0 : no); k++) { int i = order[k]; Ent *e = i < 0 ? &tr : &others[i]; int col = e->steps ? cyc[e->steps % 4] : 1, ci = i < 0 ? 0 : party[i].idx;
         blit(sheet("characters", i < 0 ? hero.sheet : party[i].sheet), (ci % 4) * 3 * T + col * T, (ci / 4) * 4 * T + e->dir * T, T, T, OX + e->x * T, OY + e->y * T - 8); }
-    if (!g_bg_only) { int mr = 256, mg = 256, mb = 256, od = rm->outdoor;      /* phase tint (clock events write daylight.txt): strong outside, only a mild dimming indoors */
+    if (!g_bg_only) { int tone[4]; if (read_tone(tone)) {      /* RPG Maker Tint Screen (events-hq tint_screen -> state/world/screen_state.pdl "value=r,g,b,gray"): add per channel, gray = pull toward the luminance; indoors it is only 40% */
+        int od = rm->outdoor, pc = od ? 100 : 40, tr_ = tone[0] * pc / 100, tg_ = tone[1] * pc / 100, tb_ = tone[2] * pc / 100, gy = tone[3] * pc / 100;
+        if (tr_ || tg_ || tb_ || gy) for (int y = OY + (od ? 2 * T : 0); y < OY + ROWS * T; y++) for (int x = OX; x < OX + COLS * T; x++) { unsigned char *q = fr + ((size_t)y * FW + x) * 4; int r = q[0], g = q[1], b = q[2], l = (r * 30 + g * 59 + b * 11) / 100;
+            if (gy) { r += (l - r) * gy / 255; g += (l - g) * gy / 255; b += (l - b) * gy / 255; } r += tr_; g += tg_; b += tb_;
+            q[0] = (unsigned char)(r < 0 ? 0 : r > 255 ? 255 : r); q[1] = (unsigned char)(g < 0 ? 0 : g > 255 ? 255 : g); q[2] = (unsigned char)(b < 0 ? 0 : b > 255 ? 255 : b); } }
+      else { int mr = 256, mg = 256, mb = 256, od = rm->outdoor;      /* phase tint (clock events write daylight.txt): strong outside, only a mild dimming indoors */
       if (!strcmp(phase, "night")) { if (od) { mr = 110; mg = 120; mb = 190; } else { mr = 200; mg = 205; mb = 235; } } else if (!strcmp(phase, "dusk")) { if (od) { mr = 256; mg = 200; mb = 160; } else { mr = 256; mg = 235; mb = 215; } } else if (!strcmp(phase, "dawn")) { if (od) { mr = 256; mg = 215; mb = 185; } else { mr = 256; mg = 240; mb = 225; } }
-      if (mr != 256 || mg != 256 || mb != 256) for (int y = OY + (od ? 2 * T : 0); y < OY + ROWS * T; y++) for (int x = OX; x < OX + COLS * T; x++) { unsigned char *q = fr + ((size_t)y * FW + x) * 4; q[0] = (unsigned char)(q[0] * mr / 256); q[1] = (unsigned char)(q[1] * mg / 256); q[2] = (unsigned char)(q[2] * mb / 256); } }
+      if (mr != 256 || mg != 256 || mb != 256) for (int y = OY + (od ? 2 * T : 0); y < OY + ROWS * T; y++) for (int x = OX; x < OX + COLS * T; x++) { unsigned char *q = fr + ((size_t)y * FW + x) * 4; q[0] = (unsigned char)(q[0] * mr / 256); q[1] = (unsigned char)(q[1] * mg / 256); q[2] = (unsigned char)(q[2] * mb / 256); } } }
 }
 
 /* ---------- chat, relations ---------- */
@@ -692,8 +738,7 @@ static void clock_event(const char *ev) {
  * (event.pal -> cmd_1.sh -> the registered rpg_pet_verb command -> this binary's verb). No page = the built-in behaviour above, so a missing events-hq never stops the clock. */
 static int event_main(const char *pkg) {
     const char *ev = strrchr(pkg, '/'); ev = ev ? ev + 1 : pkg; if (!strncmp(ev, "common:", 7)) ev += 7;
-    char pd[PATH_MAX], pl[PATH_MAX]; snprintf(pd, sizeof pd, "%s/events/%s", APP, ev); snprintf(pl, sizeof pl, "%s/&.widgits/events-hq/ops/play_event.sh", HOUSE);
-    if (fexists(pl) && is_dir(pd)) { char cmd[3 * PATH_MAX]; snprintf(cmd, sizeof cmd, "bash '%s' '%s' '%s' clock >/dev/null 2>&1", pl, pd, HOUSE); if (system(cmd) == 0) return 0; }
+    if (run_event(ev, "clock")) return 0;
     clock_event(ev); return 0;
 }
 
@@ -709,7 +754,7 @@ static int poll_keys(const char *p, long *off, int *codes, int max) {
 static int daemon_main(void) {
     signal(SIGTERM, bye); signal(SIGINT, bye); signal(SIGHUP, bye); srand((unsigned)(time(NULL) ^ getpid()));
     char h1[PATH_MAX], h2[PATH_MAX], d[PATH_MAX]; snprintf(d, sizeof d, "%s/keyboard", ST); mkdir(d, 0755); spath(h1, "interact_relay.txt"); snprintf(h2, sizeof h2, "%s/keyboard/history.txt", ST);
-    long o1 = fsize(h1), o2 = fsize(h2), next_ms[NP], last_ui = 0; int was_run = run_on() + 2 * rogue_mode(); for (int i = 0; i < NP; i++) next_ms[i] = now_ms() + 600 + 450L * i; char msg[200], lastday[40] = "";
+    long o1 = fsize(h1), o2 = fsize(h2), next_ms[NP], last_ui = 0; int was_run = run_on() + 2 * rogue_mode(); for (int i = 0; i < NP; i++) next_ms[i] = now_ms() + 600 + 450L * i; char msg[200], lastday[40] = "", lasttone[300] = "";
     load_data(); replay(); pet_load(); unstack(); clock_start(); out_all("");
     while (!quit_flag) {
         usleep(100000); int dirty = 0, codes[64], n; msg[0] = 0; load_data(); pet_load(); int in = flag_on("int", 0), tm = turn_mode();
@@ -731,6 +776,7 @@ static int daemon_main(void) {
         for (int i = 0; i < nparty; i++) if (ms >= next_ms[i]) { next_ms[i] = ms + 900 + rand() % 700; if (tm || !run_on()) continue; replay(); if (ai_step(i)) dirty = 1; use_ent(active); }     /* real time (INT off): every pet walks on its own. INT on is turn based: no timers, only your acts advance time */
         if (ms - last_ui > 3000) { last_ui = ms; clock_paths(); clock_ui(); }
         { char dp[PATH_MAX], db[40]; spath(dp, "daylight.txt"); read_file(dp, db, sizeof db); if (strcmp(db, lastday)) { snprintf(lastday, sizeof lastday, "%s", db); dirty = 1; } }
+        { char tp[PATH_MAX], tb[300]; snprintf(tp, sizeof tp, "%s/world/screen_state.pdl", ST); read_file(tp, tb, sizeof tb); if (strcmp(tb, lasttone)) { snprintf(lasttone, sizeof lasttone, "%s", tb); g_tone_stale = 1; dirty = 1; } }      /* an events-hq tint_screen wrote a new tone */
         if (dirty) { replay(); out_all(msg); }    /* nothing changed -> nothing rendered, nothing written, nothing repainted */
         follow_pchq();                            /* the pc-hq 3D view (if open on the rpg-pet book) follows the selected entity; writes only on change */
     }
