@@ -610,9 +610,12 @@ static void export3d(char *msg, size_t cap) {
 }
 
 /* ---------- verbs ---------- */
+static void clock_event(const char *ev);
 static void verb(int argc, char **argv, char *msg, size_t cap) {
     const char *v = argc ? argv[0] : "status"; long now = (long)time(NULL); char b[200]; msg[0] = 0; use_ent(active);
     if (!strcmp(v, "status")) return;
+    if (!strcmp(v, "phase") && argc >= 2) { clock_event(argv[1]); snprintf(msg, cap, "phase %s", argv[1]); return; }
+    if (!strcmp(v, "day_tick")) { clock_event("day_tick"); snprintf(msg, cap, "new day"); return; }
     if (!strcmp(v, "reset")) { char p[PATH_MAX], q[PATH_MAX]; spath(p, "house.txt"); snprintf(q, sizeof q, "%s/house.txt.%ld.bak", ST, now); if (fexists(p)) rename(p, q); snprintf(msg, cap, "house reset (the old ledger is kept as house.txt.%ld.bak)", now); return; }
     if (!strcmp(v, "buy") && argc >= 2) {
         int i = item_idx(argv[1]); int x, y; if (i < 0) { snprintf(msg, cap, "unknown item %s", argv[1]); return; }
@@ -678,11 +681,20 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
 }
 
 /* ---------- event runner: the clock daemon calls  rpg_pet.+x <pkg> <root>  when a time.pdl event fires ---------- */
-static int event_main(const char *pkg) {
-    const char *ev = strrchr(pkg, '/'); ev = ev ? ev + 1 : pkg; if (!strncmp(ev, "common:", 7)) ev += 7; char b[80];
-    if (!strncmp(ev, "phase_", 6)) { snprintf(b, sizeof b, "phase=%s\n", ev + 6); char p[PATH_MAX]; spath(p, "daylight.txt"); write_if_changed(p, b, strlen(b)); }
+/* what a clock event does (the verbs "phase <name>" and "day_tick" call it too: the event pages' rpg_pet_verb command runs them) */
+static void clock_event(const char *ev) {
+    char b[80];
+    if (!strncmp(ev, "phase_", 6)) ev += 6;      /* "phase_night" or "night" */
+    if (!strcmp(ev, "dawn") || !strcmp(ev, "day") || !strcmp(ev, "dusk") || !strcmp(ev, "night")) { snprintf(b, sizeof b, "phase=%s\n", ev); char p[PATH_MAX]; spath(p, "daylight.txt"); write_if_changed(p, b, strlen(b)); }
     else if (!strcmp(ev, "day_tick")) { snprintf(b, sizeof b, "DAY|%ld", (long)time(NULL)); append_line("events.txt", b); }
-    return 0;
+}
+/* The clock fires "common:<event>". The event is a real events-hq page in <app>/events/<event>/ (trigger "clock"), played by events-hq's play_event.sh
+ * (event.pal -> cmd_1.sh -> the registered rpg_pet_verb command -> this binary's verb). No page = the built-in behaviour above, so a missing events-hq never stops the clock. */
+static int event_main(const char *pkg) {
+    const char *ev = strrchr(pkg, '/'); ev = ev ? ev + 1 : pkg; if (!strncmp(ev, "common:", 7)) ev += 7;
+    char pd[PATH_MAX], pl[PATH_MAX]; snprintf(pd, sizeof pd, "%s/events/%s", APP, ev); snprintf(pl, sizeof pl, "%s/&.widgits/events-hq/ops/play_event.sh", HOUSE);
+    if (fexists(pl) && is_dir(pd)) { char cmd[3 * PATH_MAX]; snprintf(cmd, sizeof cmd, "bash '%s' '%s' '%s' clock >/dev/null 2>&1", pl, pd, HOUSE); if (system(cmd) == 0) return 0; }
+    clock_event(ev); return 0;
 }
 
 /* ---------- resident mode ---------- */

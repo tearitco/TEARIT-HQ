@@ -1149,3 +1149,13 @@ COMMAND pet_load
   PARAMS slot
   TEMPLATE exec "$D/@.apps/pet-house/ops/pet_event.sh" load_slot '{slot}'
 END
+
+# ---- rpg-pet (2026-10-11): one generic command that runs an rpg-pet verb ("rpg_pet.+x <verb> [arg]"). rpg-pet's clock events (time.pdl AT rows)
+# are event pages in @.apps/rpg-pet/events/<name>/ that use it: phase <dawn|day|dusk|night> writes state/daylight.txt, day_tick appends a DAY row.
+COMMAND rpg_pet_verb
+  LABEL rpg-pet: Run Verb
+  FIELD1 Verb:
+  FIELD2 Arg:
+  PARAMS verb,arg
+  TEMPLATE exec "$D/@.apps/rpg-pet/ops/+x/rpg_pet.+x" '{verb}'[ '{arg}']
+END
