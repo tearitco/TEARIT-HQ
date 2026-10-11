@@ -265,7 +265,17 @@ static void render(void) {
 }
 
 /* ---------- chat, relations ---------- */
-static void say(const char *who, const char *text) { char b[300]; snprintf(b, sizeof b, "%s: %s", who, text); append_line("chat.txt", b); }
+/* the LAST `cap-1` bytes of a file, cut to start at a line boundary (the chat overlay shows the newest lines; reading the head froze it on the first 4000 bytes of a 66 KB log) */
+static int read_tail(const char *p, char *buf, size_t cap) {
+    FILE *f = fopen(p, "r"); if (!f) { buf[0] = 0; return 0; } fseek(f, 0, SEEK_END); long sz = ftell(f); long off = sz > (long)cap - 1 ? sz - ((long)cap - 1) : 0; fseek(f, off, SEEK_SET);
+    size_t n = fread(buf, 1, cap - 1, f); fclose(f); buf[n] = 0; if (off > 0) { char *nl = strchr(buf, '\n'); if (nl) memmove(buf, nl + 1, strlen(nl + 1) + 1); } return (int)strlen(buf);
+}
+/* chat.txt is a rolling log: past ~24 KB keep only the newest ~8 KB */
+static void chat_trim(void) {
+    char p[PATH_MAX]; spath(p, "chat.txt"); struct stat st; if (stat(p, &st) || st.st_size < 24000) return;
+    static char keep[9000]; read_tail(p, keep, sizeof keep); char tmp[PATH_MAX + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", p); FILE *f = fopen(tmp, "w"); if (!f) return; fputs(keep, f); fclose(f); rename(tmp, p);
+}
+static void say(const char *who, const char *text) { char b[300]; snprintf(b, sizeof b, "%s: %s", who, text); append_line("chat.txt", b); chat_trim(); }
 static int g_rk = -1, g_ry;      /* what the last reply was about (0 sleep 1 eat 2 read 3 play, -1 default) and whether the house has such an item: the native-language reply is picked from these */
 static const char *pet_reply(const char *text) {
     static char b[80]; g_rk = -1; g_ry = 0; char s[200]; snprintf(s, sizeof s, "%s", text); for (char *c = s; *c; c++) if (*c >= 'A' && *c <= 'Z') *c += 32;
@@ -325,8 +335,8 @@ static void meet(int a, int b) {
     long now = (long)time(NULL); if (now - last_meet(a, b) < 25) return;
     char l[200]; snprintf(l, sizeof l, "MEET|%ld|%d|%d|%s", now, a, b, rooms[others[a].room].id); append_line("relations.txt", l);
     int v1 = rand() % 4, v2 = rand() % 4; char t[120];       /* English in the chat, the pet's own language aloud */
-    snprintf(t, sizeof t, HI[0][v1], party[b].name); if (others[a].room == vroom) say(party[a].name, t);      /* chat only carries what happens in the room you are watching, or six pets drown your own line */ if (others[a].room == vroom) speak_greet(a, v1, party[b].name, 0);
-    snprintf(t, sizeof t, RE[0][v2], party[a].name); if (others[b].room == vroom) say(party[b].name, t); if (others[b].room == vroom) speak_greet(b, v2, party[a].name, 1);
+    snprintf(t, sizeof t, HI[0][v1], party[b].name); if (others[a].room == vroom && (a == active || b == active)) say(party[a].name, t);      /* chat only carries what happens in the room you are watching, or six pets drown your own line */ if (others[a].room == vroom) speak_greet(a, v1, party[b].name, 0);
+    snprintf(t, sizeof t, RE[0][v2], party[a].name); if (others[b].room == vroom && (a == active || b == active)) say(party[b].name, t); if (others[b].room == vroom) speak_greet(b, v2, party[a].name, 1);
 }
 static void friend_line(int i, char *out, size_t cap) {
     char p[PATH_MAX], line[200]; int cnt[NP] = {0}; spath(p, "relations.txt"); FILE *f = fopen(p, "r"); char *g[6];
@@ -395,7 +405,7 @@ static void out_all(const char *msg) {
     { char cc[16]; flag_str("ctl", "pet", cc, sizeof cc); char who[40]; snprintf(who, sizeof who, "on: %s", !strcmp(cc, "player") ? "you" : party[active].name); W("interact_class=%s\ninteract_label=%s\nrp_h1=%s\nrp_h2=%s\ncontrol_label=control: %s\n", in ? "interact-active" : "", in ? who : "off", h1, h2, !strcmp(cc, "player") ? "player" : party[active].name); }
     W("run_on=%d\nrun_label=%s\nrun_cls=%s\n", run_on(), run_on() ? "GO started" : "STOP stopped", run_on() ? "ph-green" : "ph-red");
     W("chat_visible=%s\nhb_visible=%s\nview_label=view %s\nchat_toggle_label=window %s\n", chat ? "1" : "", hb ? "1" : "", view, chat ? "on" : "off");
-    { char cp[PATH_MAX], cb[4000]; spath(cp, "chat.txt"); read_file(cp, cb, sizeof cb); char *ln[6] = {0}; int k = 0; for (char *l = strtok(cb, "\n"); l; l = strtok(NULL, "\n")) { ln[k % 6] = l; k++; } for (int i = 0; i < 6; i++) { int j = k - 6 + i; W("chat_%d=%s\n", i, j >= 0 ? ln[j % 6] : ""); } }
+    { char cp[PATH_MAX], cb[4000]; spath(cp, "chat.txt"); read_tail(cp, cb, sizeof cb); char *ln[6] = {0}; int k = 0; for (char *l = strtok(cb, "\n"); l; l = strtok(NULL, "\n")) { ln[k % 6] = l; k++; } for (int i = 0; i < 6; i++) { int j = k - 6 + i; W("chat_%d=%s\n", i, j >= 0 ? ln[j % 6] : ""); } }
     W("n_shop=%d\n", ncat); for (int i = 0; i < ncat; i++) { char own[16] = ""; if (owned[i] > 0) snprintf(own, sizeof own, " x%d", owned[i]); W("shop_%d_label=%s %dc%s\nshop_%d_key=%s\n", i, cat[i].label, cat[i].price, own, i, cat[i].key); }
     char fl[160], cc[16], hid[24]; flag_str("ctl", "pet", cc, sizeof cc); int hs = !strcmp(cc, "player"); snprintf(hid, sizeof hid, "%s", hero.name); for (char *c = hid; *c; c++) if (*c >= 'A' && *c <= 'Z') *c += 32;
     if (hs) { int o = snprintf(fl, sizeof fl, "owns:"); for (int k = 0; k < nparty && o < (int)sizeof fl - 12; k++) o += snprintf(fl + o, sizeof fl - o, "%s %s", k ? "," : "", party[k].name); } else friend_line(active, fl, sizeof fl);
@@ -417,7 +427,7 @@ static int free_near(int x, int y, int *ox, int *oy);
 static void teleport(int di) {
     Door *d = &doors[di]; int di_from_room = d->room; char b[160]; snprintf(b, sizeof b, "DOOR|%ld|%s|%s|%s", (long)time(NULL), me < 0 ? "trainer" : party[me].id, rooms[d->room].id, rooms[d->dest].id); append_line("events.txt", b);
     pet.room = d->dest; pet.x = d->ax; pet.y = d->ay; pet.dir = 0; pet.tx = pet.ty = -1; { int fx, fy; if (free_near(pet.x, pet.y, &fx, &fy)) { pet.x = fx; pet.y = fy; } }      /* land on the nearest FREE cell, not on whoever is already there */
-    if (me >= 0 && (pet.room == vroom || di_from_room == vroom)) { snprintf(b, sizeof b, "went through the door to the %s", rooms[pet.room].name); say(party[me].name, b); }
+    if (me >= 0 && me == active && (pet.room == vroom || di_from_room == vroom)) { snprintf(b, sizeof b, "went through the door to the %s", rooms[pet.room].name); say(party[me].name, b); }
 }
 /* one tile step of the mover; returns 1 if it moved. A step onto a door's trigger cell teleports (the door contract). The caller commits with pet_save(). */
 /* the free cell nearest (x,y) in the mover's room (ring search): arrivals and unstacking use it so two pets never share a cell */
