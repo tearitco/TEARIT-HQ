@@ -274,7 +274,10 @@ static const char *pet_reply(const char *text) {
     if (strstr(s, "eat") || strstr(s, "food") || strstr(s, "table")) { g_rk = 1; g_ry = HAS("eat"); return g_ry ? "yum, a table to eat at" : "I have nowhere to eat."; }
     if (strstr(s, "book") || strstr(s, "read")) { g_rk = 2; g_ry = HAS("read"); return g_ry ? "I like reading." : "no books here."; }
     if (strstr(s, "piano") || strstr(s, "play")) { g_rk = 3; g_ry = HAS("play"); return g_ry ? "la la la" : "no piano..."; }
-    snprintf(b, sizeof b, "(%d things in the house)", npl); return b;
+    { static const char *dflt[4] = {"hmm, tell me more.", "I'm listening.", "interesting!", "okay, Harold."}; unsigned h = 0; for (const char *c = s; *c; c++) h = h * 31 + (unsigned char)*c;
+        const char *w[] = {"hi", "hey", "hello", "yo", "hiya", "howdy", "sup", NULL}; for (int k = 0; w[k]; k++) { size_t n = strlen(w[k]); if (!strncmp(s, w[k], n) && (s[n] == 0 || s[n] == ' ' || s[n] == '!' || s[n] == ',')) { snprintf(b, sizeof b, "hello %s!", hero.name); return b; } }
+        if (strchr(s, '?')) return "good question... let me think.";
+        return dflt[h % 4]; }
 }
 /* ---------- voices: edge-tts per pet (voices.pdl), cached wav, one sound at a time, never blocks ---------- */
 static int run_quiet(char *const av[], int wait) {
@@ -322,8 +325,8 @@ static void meet(int a, int b) {
     long now = (long)time(NULL); if (now - last_meet(a, b) < 25) return;
     char l[200]; snprintf(l, sizeof l, "MEET|%ld|%d|%d|%s", now, a, b, rooms[others[a].room].id); append_line("relations.txt", l);
     int v1 = rand() % 4, v2 = rand() % 4; char t[120];       /* English in the chat, the pet's own language aloud */
-    snprintf(t, sizeof t, HI[0][v1], party[b].name); say(party[a].name, t); if (others[a].room == vroom) speak_greet(a, v1, party[b].name, 0);
-    snprintf(t, sizeof t, RE[0][v2], party[a].name); say(party[b].name, t); if (others[b].room == vroom) speak_greet(b, v2, party[a].name, 1);
+    snprintf(t, sizeof t, HI[0][v1], party[b].name); if (others[a].room == vroom) say(party[a].name, t);      /* chat only carries what happens in the room you are watching, or six pets drown your own line */ if (others[a].room == vroom) speak_greet(a, v1, party[b].name, 0);
+    snprintf(t, sizeof t, RE[0][v2], party[a].name); if (others[b].room == vroom) say(party[b].name, t); if (others[b].room == vroom) speak_greet(b, v2, party[a].name, 1);
 }
 static void friend_line(int i, char *out, size_t cap) {
     char p[PATH_MAX], line[200]; int cnt[NP] = {0}; spath(p, "relations.txt"); FILE *f = fopen(p, "r"); char *g[6];
@@ -412,9 +415,9 @@ static void out_all(const char *msg) {
 static int passable(int x, int y) { return x >= 0 && x < COLS && y >= TRIG_ROW && y < ROWS && !floor_blocked(pet.room, x, y, 0) && !other_at(pet.room, x, y); }
 static int free_near(int x, int y, int *ox, int *oy);
 static void teleport(int di) {
-    Door *d = &doors[di]; char b[160]; snprintf(b, sizeof b, "DOOR|%ld|%s|%s|%s", (long)time(NULL), me < 0 ? "trainer" : party[me].id, rooms[d->room].id, rooms[d->dest].id); append_line("events.txt", b);
+    Door *d = &doors[di]; int di_from_room = d->room; char b[160]; snprintf(b, sizeof b, "DOOR|%ld|%s|%s|%s", (long)time(NULL), me < 0 ? "trainer" : party[me].id, rooms[d->room].id, rooms[d->dest].id); append_line("events.txt", b);
     pet.room = d->dest; pet.x = d->ax; pet.y = d->ay; pet.dir = 0; pet.tx = pet.ty = -1; { int fx, fy; if (free_near(pet.x, pet.y, &fx, &fy)) { pet.x = fx; pet.y = fy; } }      /* land on the nearest FREE cell, not on whoever is already there */
-    if (me >= 0) { snprintf(b, sizeof b, "went through the door to the %s", rooms[pet.room].name); say(party[me].name, b); }
+    if (me >= 0 && (pet.room == vroom || di_from_room == vroom)) { snprintf(b, sizeof b, "went through the door to the %s", rooms[pet.room].name); say(party[me].name, b); }
 }
 /* one tile step of the mover; returns 1 if it moved. A step onto a door's trigger cell teleports (the door contract). The caller commits with pet_save(). */
 /* the free cell nearest (x,y) in the mover's room (ring search): arrivals and unstacking use it so two pets never share a cell */
@@ -650,7 +653,7 @@ int main(int argc, char **argv) {
     if (argc == 3 && is_dir(argv[1]) && is_dir(argv[2])) { mode = 1; snprintf(APP, sizeof APP, "%s", argv[2]); }     /* module form: house, pkg */
     else {
         for (int up = 0; up < 3; up++) { char *s = strrchr(exe, '/'); if (s) *s = 0; } snprintf(APP, sizeof APP, "%s", exe);          /* .../rpg-pet/ops/+x/rpg_pet.+x -> .../rpg-pet */
-        if (argc == 3 && strstr(argv[1], "common:") && argv[2][0] == '/') mode = 2;
+        if (argc == 3 && (strstr(argv[1], "common:") || strstr(argv[1], "common_events/")) && argv[2][0] == '/') mode = 2;      /* the clock daemon passes <root>/common_events/<event> (or a common:<event> pkg) - anything else is chat text */
         else if (argc >= 4 && is_dir(argv[1])) { snprintf(textbuf, sizeof textbuf, "%s", argv[3]); for (char *t = strtok(textbuf, " "); t && vargc < 31; t = strtok(NULL, " ")) vargv[vargc++] = t; }
         else for (int i = 1; i < argc && vargc < 31; i++) vargv[vargc++] = argv[i];
     }
