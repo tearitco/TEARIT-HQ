@@ -614,9 +614,12 @@ static void follow_pchq(void) {
     if (!strcmp(dk, rooms[e->room].id)) lw = e->room;
     /* any pet/Harold stepping changes the sprites too: redraw when the events text changed (write_room_events reports via the checksum below) */
     static unsigned long ev_sum = 0; unsigned long s = 0; for (int i = 0; i < nparty; i++) s = s * 131 + (others[i].room * 97 + others[i].x * 31 + others[i].y * 7 + others[i].dir + others[i].steps % 3); s = s * 131 + tr.x * 31 + tr.y + tr.room; if (s != ev_sum) { ev_sum = s; changed = 1; } (void)ld;
-    if (changed) { char up[PATH_MAX], ub[1024], sess[PATH_MAX] = ""; snprintf(up, sizeof up, "%s/@.apps/piececraft-hq/state/ui.txt", HOUSE); read_file(up, ub, sizeof ub);
-        for (char *l = strtok(ub, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "bv_session=", 11)) snprintf(sess, sizeof sess, "%s", l + 11);
-        if (sess[0]) { char rp[PATH_MAX]; snprintf(rp, sizeof rp, "%s/pieces/apps/player_app/interact_relay.txt", sess); if (fexists(rp)) { FILE *f = fopen(rp, "a"); if (f) { fputs("1\n", f); fclose(f); } } } }
+    if (changed) {      /* nudge the LIVE engine session so it redraws (an idle engine only renders on input): every board window has its own ui.txt with bv_session=; the one whose session dir exists and whose ui.txt is the newest wins (a stale file points at a dead session). The nudge key is 126 (tilde), bound to nothing, so the view and camera are never touched (the old "1" is the POV key). */
+        const char *cand[3] = {"@.apps/rpg-pet/board/state/ui.txt", "@.apps/piececraft-hq/state/ui.txt", "@.apps/layout-studio/sandbox/state/ui.txt"}; char best[PATH_MAX] = ""; time_t bt = 0;
+        for (int k = 0; k < 3; k++) { char up[PATH_MAX], ub[1024], sess[PATH_MAX] = "", rp[PATH_MAX]; struct stat us; snprintf(up, sizeof up, "%s/%s", HOUSE, cand[k]); if (stat(up, &us)) continue; read_file(up, ub, sizeof ub);
+            for (char *l = strtok(ub, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "bv_session=", 11)) snprintf(sess, sizeof sess, "%s", l + 11);
+            snprintf(rp, sizeof rp, "%s/pieces/apps/player_app/interact_relay.txt", sess); if (sess[0] && fexists(rp) && (!best[0] || us.st_mtime > bt)) { snprintf(best, sizeof best, "%s", rp); bt = us.st_mtime; } }
+        if (best[0]) { FILE *f = fopen(best, "a"); if (f) { fputs("126\n", f); fclose(f); } } }
 }
 static void export3d(char *msg, size_t cap) {
     char root[PATH_MAX], d[PATH_MAX], p[PATH_MAX]; snprintf(root, sizeof root, "%s/@.apps/piececraft-hq/pieces/system/maps/rpg-pet", HOUSE);
