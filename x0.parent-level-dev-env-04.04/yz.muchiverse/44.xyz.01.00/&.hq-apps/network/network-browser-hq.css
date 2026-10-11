@@ -29,8 +29,6 @@ window.network-browser { width: 784px; height: 504px; background-color: #141414;
 /* Milestone 1 (2026-10-05): keep a readable measure like a real page column. \
    The FLEX children grow, so cap the body's own max-width instead. */
 .nb-body { max-width: 720px; }
-.bar { background-color: #222222; color: #2f8f5f; }
-.bar.play-bar { background-color: #222222; color: #2f8f5f; }
 sidebar { width: 200px; background-color: #1a1a1a; color: #cccccc; }
 
 /* REAL FIX 2026-10-04, live report ("black text on black background

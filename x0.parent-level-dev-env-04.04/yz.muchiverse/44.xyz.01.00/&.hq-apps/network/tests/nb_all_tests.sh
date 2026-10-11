@@ -44,6 +44,10 @@ echo "########## span hover highlight (hermetic: own fixture window)"
 sh "$HERE/nb_hover_test.sh" || RC=1
 
 echo
+echo "########## theme readability (static + hermetic fixture window)"
+sh "$HERE/nb_theme_test.sh" || RC=1
+
+echo
 echo "########## form gate (hermetic)"
 sh "$HERE/nb_form_test.sh" || RC=1
 
