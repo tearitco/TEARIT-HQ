@@ -11,14 +11,11 @@
  *   that call this FSM directly
  *
  * This FSM reads/writes state at the fuzzpet_app path:
- *   pieces/apps/fuzzpet_app/fuzzpet/state.txt
+ *   pieces/apps/fuzzpet_app/fuzzpet/fuzzpet.pdl   (book:page SECTION/KEY/VALUE)
+ *   pieces/apps/fuzzpet_app/fuzzpet/state.txt       (key=value, backward compat)
  *
- * Usage: fuzzpet_fsm.+x <project_root>
+ * Usage: fuzzpet_fsm.+x <project_root> <pet_id>
  *   project_root defaults to $PRISC_PROJECT_ROOT or "."
- *
- *   Reads last PET_ACTION from interact_relay.txt,
- *   updates fuzzpet state.txt directly,
- *   writes ACTION_EXECUTED to relay.
  *
  * Actions: feed, play, sleep, explore, heal, evolve, toggle_emoji, wait
  */
@@ -30,6 +27,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <ctype.h>
 
 #define MAX_LINE    1024
 #define PATH_BUF    4096
@@ -105,7 +103,7 @@ static int read_kv(const char *path, const char *key, char *val, size_t sz) {
     return found;
 }
 
-/* Write/update a key=value pair in state.txt */
+/* Write/update a key=value pair in state.txt (backward compat) */
 static void set_state_kv(const char *path, const char *key, int val) {
     char lines[100][MAX_LINE];
     int line_count = 0;
@@ -143,6 +141,62 @@ static void set_state_kv(const char *path, const char *key, int val) {
     }
 }
 
+/* Read a STATE value from a book:page .pdl file (SECTION | KEY | VALUE format).
+ * Returns 1 if found, 0 otherwise. */
+static int read_pdl_state(const char *path, const char *key, char *val, size_t sz) {
+    FILE *f = fopen(path, "r");
+    if (!f) return 0;
+    char line[MAX_LINE];
+    int found = 0;
+    while (fgets(line, sizeof(line), f)) {
+        line[strcspn(line, "\r\n")] = '\0';
+        if (strncmp(line, "STATE", 5) != 0) continue;
+        char *bar1 = strchr(line, '|');
+        if (!bar1) continue;
+        char *bar2 = strchr(bar1 + 1, '|');
+        if (!bar2) continue;
+        char keybuf[128] = "";
+        snprintf(keybuf, sizeof(keybuf), "%s", bar1 + 1);
+        char *p = keybuf;
+        while (*p && *p == ' ') p++;
+        size_t klen = strlen(p);
+        while (klen > 0 && (p[klen-1] == ' ' || p[klen-1] == '\t')) p[--klen] = '\0';
+        if (strcmp(p, key) == 0) {
+            p = bar2 + 1;
+            while (*p && *p == ' ') p++;
+            size_t vlen = strlen(p);
+            while (vlen > 0 && (p[vlen-1] == ' ' || p[vlen-1] == '\t')) p[--vlen] = '\0';
+            strncpy(val, p, sz - 1);
+            val[sz - 1] = '\0';
+            found = 1;
+            break;
+        }
+    }
+    fclose(f);
+    return found;
+}
+
+/* Write full state as a book:page .pdl file (SECTION/KEY/VALUE format).
+ * Called after every state mutation to persist in the .pdl pattern. */
+static void write_pdl_state(const char *path, const char *piece_id,
+                            int hunger, int happiness, int energy, int level,
+                            int emoji_mode) {
+    FILE *f = fopen(path, "w");
+    if (!f) return;
+    fprintf(f, "SECTION      | KEY                | VALUE\n");
+    fprintf(f, "----------------------------------------\n");
+    fprintf(f, "META         | piece_id           | %s\n", piece_id);
+    fprintf(f, "META         | version            | 1.0\n");
+    fprintf(f, "META         | determinism        | strict\n\n");
+    fprintf(f, "STATE        | hunger             | %d\n", hunger);
+    fprintf(f, "STATE        | happiness          | %d\n", happiness);
+    fprintf(f, "STATE        | energy             | %d\n", energy);
+    fprintf(f, "STATE        | level              | %d\n", level);
+    fprintf(f, "STATE        | emoji_mode         | %d\n", emoji_mode);
+    fprintf(f, "STATE        | name               | Fuzzball\n");
+    fclose(f);
+}
+
 static void hit_frame(const char *root) {
     char path[PATH_BUF];
     path_join(path, sizeof(path), root, "pieces/display/frame_changed.txt");
@@ -166,19 +220,47 @@ static void log_master_ledger(const char *root, const char *piece_id,
 static int execute_action(const char *root, const char *relay_path,
                           const char *action, const char *pet_id) {
     char state_path[PATH_BUF];
+    char pdl_path[PATH_BUF];
     path_join(state_path, sizeof(state_path), root,
               "pieces/apps/fuzzpet_app/fuzzpet/state.txt");
+    path_join(pdl_path, sizeof(pdl_path), root,
+              "pieces/apps/fuzzpet_app/fuzzpet/fuzzpet.pdl");
 
-    int hunger = 0, happiness = 0, energy = 0, level = 0;
+    int hunger = 0, happiness = 0, energy = 0, level = 0, emoji_mode = 0;
     char name[64] = "Fuzzball";
 
     char val[256];
-    if (read_kv(state_path, "name", val, sizeof(val)))
+
+    /* Read from .pdl first (book:page format), fall back to state.txt */
+    if (read_pdl_state(pdl_path, "hunger", val, sizeof(val)))
+        hunger = atoi(val);
+    else if (read_kv(state_path, "hunger", val, sizeof(val)))
+        hunger = atoi(val);
+
+    if (read_pdl_state(pdl_path, "happiness", val, sizeof(val)))
+        happiness = atoi(val);
+    else if (read_kv(state_path, "happiness", val, sizeof(val)))
+        happiness = atoi(val);
+
+    if (read_pdl_state(pdl_path, "energy", val, sizeof(val)))
+        energy = atoi(val);
+    else if (read_kv(state_path, "energy", val, sizeof(val)))
+        energy = atoi(val);
+
+    if (read_pdl_state(pdl_path, "level", val, sizeof(val)))
+        level = atoi(val);
+    else if (read_kv(state_path, "level", val, sizeof(val)))
+        level = atoi(val);
+
+    if (read_pdl_state(pdl_path, "emoji_mode", val, sizeof(val)))
+        emoji_mode = atoi(val);
+    else if (read_kv(state_path, "emoji_mode", val, sizeof(val)))
+        emoji_mode = atoi(val);
+
+    if (read_pdl_state(pdl_path, "name", val, sizeof(val)))
         strncpy(name, val, sizeof(name) - 1);
-    if (read_kv(state_path, "hunger", val, sizeof(val)))   hunger = atoi(val);
-    if (read_kv(state_path, "happiness", val, sizeof(val))) happiness = atoi(val);
-    if (read_kv(state_path, "energy", val, sizeof(val)))   energy = atoi(val);
-    if (read_kv(state_path, "level", val, sizeof(val)))    level = atoi(val);
+    else if (read_kv(state_path, "name", val, sizeof(val)))
+        strncpy(name, val, sizeof(name) - 1);
 
     /* Apply action effects */
     int guardrail = 0;
@@ -200,19 +282,13 @@ static int execute_action(const char *root, const char *relay_path,
         log_master_ledger(root, pet_id, action, msg);
     }
     else if (strcmp(action, "toggle_emoji") == 0) {
-        int emoji = 0;
-        if (read_kv(state_path, "emoji_mode", val, sizeof(val)))
-            emoji = atoi(val);
-        emoji = emoji ? 0 : 1;
-        set_state_kv(state_path, "emoji_mode", emoji);
-        snprintf(msg, sizeof(msg), emoji ? "ASCII Mode" : "Emoji Mode");
+        emoji_mode = emoji_mode ? 0 : 1;
+        snprintf(msg, sizeof(msg), emoji_mode ? "ASCII Mode" : "Emoji Mode");
         log_master_ledger(root, pet_id, "emoji", msg);
     }
     else if (strcmp(action, "heal") == 0) {
         energy = (energy < 70) ? energy + 30 : 100;
-        set_state_kv(state_path, "energy", energy);
         happiness = (happiness < 90) ? happiness + 10 : 100;
-        set_state_kv(state_path, "happiness", happiness);
         snprintf(msg, sizeof(msg), "Purrr... restored!");
         log_master_ledger(root, pet_id, "heal", msg);
     }
@@ -247,17 +323,13 @@ static int execute_action(const char *root, const char *relay_path,
         return 1;
     }
 
-    /* Update state file for actions that change stats */
-    if (strcmp(action, "feed") == 0)
-        set_state_kv(state_path, "hunger", hunger);
-    else if (strcmp(action, "play") == 0)
-        set_state_kv(state_path, "happiness", happiness);
-    else if (strcmp(action, "sleep") == 0)
-        set_state_kv(state_path, "energy", energy);
-    else if (strcmp(action, "heal") == 0)
-        set_state_kv(state_path, "level", level);
-    else if (strcmp(action, "evolve") == 0)
-        set_state_kv(state_path, "level", level);
+    /* Persist state — write both .pdl (book:page) and state.txt (compat) */
+    write_pdl_state(pdl_path, pet_id, hunger, happiness, energy, level, emoji_mode);
+    set_state_kv(state_path, "hunger", hunger);
+    set_state_kv(state_path, "happiness", happiness);
+    set_state_kv(state_path, "energy", energy);
+    set_state_kv(state_path, "level", level);
+    set_state_kv(state_path, "emoji_mode", emoji_mode);
 
     /* Trigger frame update */
     hit_frame(root);
@@ -282,6 +354,10 @@ int main(int argc, char **argv) {
 
     if (argc >= 2) {
         strncpy(pet_id, argv[1], sizeof(pet_id) - 1);
+        pet_id[sizeof(pet_id) - 1] = '\0';
+    } else if (getenv("FUZZPET_PET_ID")) {
+        strncpy(pet_id, getenv("FUZZPET_PET_ID"), sizeof(pet_id) - 1);
+        pet_id[sizeof(pet_id) - 1] = '\0';
     }
 
     path_join(relay_path, sizeof(relay_path), project_root,
