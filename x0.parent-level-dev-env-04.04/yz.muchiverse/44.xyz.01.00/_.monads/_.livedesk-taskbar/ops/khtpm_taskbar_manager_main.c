@@ -342,7 +342,9 @@ static int ktb_load_sample(const char *house_root) {
     int wl = 6, cl = 85, tl = 80; { char pdl[KTB_PATH_BUF], v[16]; snprintf(pdl, sizeof(pdl), "%s/#.desktop/livedesk_taskbar.pdl", house_root);
         v[0] = 0; read_key_value(pdl, "warn_windows", v, sizeof(v)); if (v[0]) wl = atoi(v); v[0] = 0; read_key_value(pdl, "warn_cpu", v, sizeof(v)); if (v[0]) cl = atoi(v); v[0] = 0; read_key_value(pdl, "warn_temp", v, sizeof(v)); if (v[0]) tl = atoi(v); }
     int cp5 = (cpu + 2) / 5 * 5; if (cp5 > 100) cp5 = 100;
+    /* hysteresis (owner: the top bar flickered when the CPU hovered at the limit): once warning, stay warning until every figure is clearly below its limit (10 points / 2 windows / 5 degrees lower) */
     int warn = (wl > 0 && wins >= wl) || (cl > 0 && cpu >= cl) || (tl > 0 && temp >= tl);
+    if (!warn && g_load_warn) warn = (wl > 0 && wins >= wl - 1) || (cl > 0 && cpu >= cl - 10) || (tl > 0 && temp >= tl - 5);
     char lab[96]; snprintf(lab, sizeof(lab), warn ? "!%%%d" : "%%%d", cp5);      /* just the number (owner: "%<#>" next to the pid); the warning reasons (windows, temperature) only turn it red */
     /* Return bits: 1 = the label changed (reported at most every 10 s: the windows follow it through the load marker), 2 = the warning flipped (reported at once). The dock header is republished ONLY on bit 2: a
      * republish of the whole strip every 2 s made the top bar flicker (2026-10-12 owner bug), so its % follows the existing once-a-minute datetime publish. */

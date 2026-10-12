@@ -132,6 +132,9 @@ static void zero_nav_subtree(Elem *e); /* generic: recursively zero nav_index (s
 static void kh_grab_keyboard_retry(void);
 static void kh_capture_click(int x, int y, int button);
 static void kh_capture_key(KeySym ks, char ch);
+/* LAYOUT REUSE (2026-10-12, measured on the dsr-rpg board window: redraw() ran assign_nav_and_layout() ~1.7 times per redraw and layout + CSS style was ~58% of repaint time). g_layout_fresh = 1 tells the NEXT
+ * redraw() that the layout it would compute is already current (the caller just ran it, or nothing that changes layout happened since the last redraw: a canvas-only repaint). redraw() consumes it. */
+static int g_layout_fresh = 0;
 static void redraw(void); /* REAL, forward declaration needed for dispatch()'s OPACITY_MINUS/OPACITY_PLUS handlers (NEW 2026-08-29 TASK 2) */
 static void kh_hq_reg_bump_marker(const char *new_line); /* fwd - MINIMIZE handler uses it, defined near redraw() (hq-windows change marker, grok handoff 2026-09-30) */
 static void kh_hq_reg_mark_removed(void); /* fwd - cleanup_hq_window_registry() uses it, same marker mechanism */
@@ -11118,7 +11121,7 @@ static void redraw(void) {
     /* REAL Stage 5 §5d.10 (2026-08-16) - db-hq mode: own real content
      * draw (chrome/tabbar/sidebar/panel), same shared present
      * (XGetImage->XPutImage) below every mode already uses. */
-    assign_nav_and_layout();
+    if (g_layout_fresh) g_layout_fresh = 0; else assign_nav_and_layout();
     /* REAL FIX 2026-09-05, direct live report ("fullscreen breaks
      * pdl-read layout - content stays squished bottom-left, most of
      * the window black"). Root cause (found by a parallel
@@ -13407,7 +13410,7 @@ static void hq_idle_tick(void) {
         if (_rp_changed) {
             if (_rp_dock) clock_gettime(CLOCK_MONOTONIC, &_rp_t0);
             int _rp_w0 = g_win_w, _rp_h0 = g_win_h;
-            assign_nav_and_layout(); redraw();
+            assign_nav_and_layout(); g_layout_fresh = 1; redraw();      /* redraw() used to lay out a second time right after this one */
             if (_rp_dock) {
                 clock_gettime(CLOCK_MONOTONIC, &_rp_t1);
                 double _rp_ms = (_rp_t1.tv_sec - _rp_t0.tv_sec) * 1000.0 + (_rp_t1.tv_nsec - _rp_t0.tv_nsec) / 1e6;
@@ -14578,7 +14581,9 @@ static void hq_run_event_loop(Atom wm_delete, int is_popup) {
          * Marker-drive it: stat the live canvas_raw file and only repaint
          * when its size/mtime moved, plus a slow ~2Hz safety repaint
          * (late-appearing var, window resize, receipt swap). */
+        int canvas_only_now = 0;      /* this pass's ONLY reason to repaint is a changed canvas frame: the layout from the last redraw is still exact, redraw() can skip it */
         if (g_has_canvas && !g_quit && !g_hq_minimized) {
+            int was_dirty = g_frame_dirty;
             static off_t  s_last_sz = -1;
             static time_t s_last_mt = 0;
             static time_t s_last_force = 0;
@@ -14589,6 +14594,7 @@ static void hq_run_event_loop(Atom wm_delete, int is_popup) {
                     s_last_sz = cst.st_size;
                     s_last_mt = cst.st_mtime;
                     g_frame_dirty = 1;
+                    canvas_only_now = !was_dirty;
                 }
             } else {
                 g_frame_dirty = 1;  /* no file/var yet: keep painting the dark bootstrap */
@@ -14597,9 +14603,10 @@ static void hq_run_event_loop(Atom wm_delete, int is_popup) {
             /* CPU safety (hq-cpu-safety.md): this safety repaint was every second, i.e. a full layout + draw + readback (about 67 ms measured for the rpg-pet board) once a second per canvas window
              * even when nothing changed: ~7% of a core, the idle floor of every board window. A changed canvas file, a resize, an Expose and a var reload all redraw on their own; this is only the
              * net for a late-appearing var, so every 5 s is enough. */
-            if (nowt - s_last_force >= 5) { s_last_force = nowt; g_frame_dirty = 1; }
+            if (nowt - s_last_force >= 5) { s_last_force = nowt; g_frame_dirty = 1; canvas_only_now = 0; }      /* the 5 s safety repaint does the full layout */
         }
-        if (g_frame_dirty && !g_quit) { g_frame_dirty = 0; redraw(); }
+        { static int s_redrawn_once = 0;
+          if (g_frame_dirty && !g_quit) { g_frame_dirty = 0; if (canvas_only_now && s_redrawn_once) g_layout_fresh = 1; redraw(); s_redrawn_once = 1; } }
         /* Bottom of every pass. select() above returns at once when a
          * canvas redraw queues another Expose, so its 16ms timeout
          * never elapses and this window pegs a core. house_wait_us

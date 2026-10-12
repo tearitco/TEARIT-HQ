@@ -1,6 +1,6 @@
 # pc-hq sessions: several pc-hq boards at once, one binary set, one instance directory each (design, 2026-10-12)
 
-Status: DESIGN. Nothing here is built. Written by claude from the owner's words and from reading the real files (launcher, board-viewer launcher, projector sources, rpg-pet daemon, the IRC app).
+Status: BUILT 2026-10-12 for the dsr-rpg instance (decisions: env var PCHQ_PKG, instance under the game, no symlinks, no map sharing, dsr-rpg first). What exists: button.sh CODE_DIR/data split, scoped launcher, pchq_instance_init.sh, session-local board_view/canvas_click, host id for the engine session, right-click scripts. Still house-wide: pc_synch_request.txt; instance chunks/maps. (Original design text below.) Written by claude from the owner's words and from reading the real files (launcher, board-viewer launcher, projector sources, rpg-pet daemon, the IRC app).
 
 ## 1. The owner's ask (2026-10-12)
 > "we need to make it so pc-hq can run separate sessions ... sessions like in the p2p apps, so that multiple controls could run different ports on the same binary ... see irc `044.pal-chat-irc...`"
