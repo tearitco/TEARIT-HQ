@@ -969,6 +969,27 @@ static int follow_xelector(char *msg, size_t cap) {
     use_ent(ci); if (do_step(dx, dy, msg, cap)) { pet_save(); set_flag("follow", ci < 0 ? "player" : "pet"); end_turn(); } else { pet_save(); g_pin_now = 1; }      /* a bump costs no turn */
     return 1;
 }
+/* ENTER = possess (owner 2026-10-12): while INT is on and the xelector stands on a character, Enter chooses that character (same as clicking it in the toolbar): it becomes the one INT controls. Enter reaches the
+ * engine, not this daemon, so the daemon reads the engine session's keyboard history for new "KEY_PRESSED: 13" lines (its own engage key, g_own13, is ignored). */
+static int possess_at_xelector(char *msg, size_t cap) {
+    char wp[PATH_MAX], wb[2048], m[64] = "", dk[64] = "", xp[PATH_MAX], kb[512]; snprintf(wp, sizeof wp, "%s/pieces/world_01/state.txt", PCHQ); read_file(wp, wb, sizeof wb);
+    for (char *l = strtok(wb, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "map_id=", 7)) snprintf(m, sizeof m, "%s", l + 7); else if (!strncmp(l, "desk_id=", 8)) snprintf(dk, sizeof dk, "%s", l + 8); }
+    if (strcmp(m, "dsr-rpg")) return 0; snprintf(xp, sizeof xp, "%s/pieces/xelector_01/state.txt", PCHQ); read_file(xp, kb, sizeof kb); int xx = -1, xy = -1;
+    for (char *l = strtok(kb, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "pos_x=", 6)) xx = atoi(l + 6); else if (!strncmp(l, "pos_y=", 6)) xy = atoi(l + 6); }
+    int pick = -2; for (int i = 0; i < nparty; i++) if (!strcmp(rooms[others[i].room].id, dk) && others[i].x == xx && others[i].y == xy) pick = i;
+    if (pick == -2 && !strcmp(rooms[tr.room].id, dk) && tr.x == xx && tr.y == xy) pick = -1;
+    if (pick == -2) return 0;
+    if (pick == -1) { g_ctl_why = "enter-possess"; set_flag("ctl", "player"); set_flag("follow", "player"); snprintf(msg, cap, "%s chosen (Enter)", hero.name); }
+    else { char p[PATH_MAX], bb[40]; spath(p, "active.txt"); snprintf(bb, sizeof bb, "%s\n", party[pick].id); write_if_changed(p, bb, strlen(bb)); g_ctl_why = "enter-possess"; set_flag("ctl", "pet"); set_flag("follow", "pet"); active = pick; snprintf(msg, cap, "%s chosen (Enter)", party[pick].name); }
+    calc_view(); return 1;
+}
+static int enter_pressed_in_engine(void) {
+    static long off = -1; static char last_sess[PATH_MAX] = ""; char up[PATH_MAX], ub[1024], sess[PATH_MAX] = ""; snprintf(up, sizeof up, "%s/@.apps/dsr-rpg/board/state/ui.txt", HOUSE); if (!fexists(up)) return 0; read_file(up, ub, sizeof ub);
+    for (char *l = strtok(ub, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "bv_session=", 11)) snprintf(sess, sizeof sess, "%s", l + 11);
+    if (!sess[0]) return 0; char hp[PATH_MAX]; snprintf(hp, sizeof hp, "%s/pieces/keyboard/history.txt", sess); long sz = fsize(hp); if (strcmp(sess, last_sess) || off < 0 || sz < off) { snprintf(last_sess, sizeof last_sess, "%s", sess); off = sz; return 0; }
+    if (sz == off) return 0; int codes[32]; int n = poll_keys(hp, &off, codes, 32); int hit = 0; for (int i = 0; i < n; i++) if (codes[i] == 13) hit = 1;
+    if (hit && now_ms() - g_own13 < 2500) hit = 0; return hit;
+}
 static int daemon_main(void) {
     signal(SIGTERM, bye); signal(SIGINT, bye); signal(SIGHUP, bye); srand((unsigned)(time(NULL) ^ getpid()));
     char h1[PATH_MAX], h2[PATH_MAX], d[PATH_MAX]; snprintf(d, sizeof d, "%s/keyboard", ST); mkdir(d, 0755); spath(h1, "interact_relay.txt"); snprintf(h2, sizeof h2, "%s/keyboard/history.txt", ST);
@@ -978,6 +999,7 @@ static int daemon_main(void) {
     while (!quit_flag) {
         usleep(100000); int dirty = 0, codes[64], n; msg[0] = 0; { long lt = now_ms(); if (lt - last_load >= tune("reload_ms", 2000)) { last_load = lt; load_tune(); load_data(); } }      /* catalog / party / rooms / door pages are static: re-parsing them every 100 ms was most of the daemon's own CPU */
         pet_load(); int in = flag_on("int", 0), tm = turn_mode(); static int prev_in = 0; static long int_on_at = 0; if (in && !prev_in) int_on_at = now_ms(); prev_in = in;
+        if (in && enter_pressed_in_engine() && possess_at_xelector(msg, sizeof msg)) { dirty = 1; follow_pchq(); }
         n = poll_keys(h1, &o1, codes, 32); n += poll_keys(h2, &o2, codes + n, 32);     /* the offsets always advance; keys only act while INT is on */
         if (in && n) replay();
         if (in && n) { char kl[300], one[16]; kl[0] = 0; for (int i = 0; i < n && i < 20; i++) { snprintf(one, sizeof one, "%d ", codes[i]); strncat(kl, one, sizeof kl - strlen(kl) - 1); } char kp[PATH_MAX]; spath(kp, "keys_seen.txt"); write_if_changed(kp, kl, strlen(kl)); }      /* last batch of codes, for debugging */
@@ -986,7 +1008,7 @@ static int daemon_main(void) {
             if (c == 1002 || c == 200) dy = -1; else if (c == 1003 || c == 201) dy = 1; else if (c == 1000 || c == 202) dx = -1; else if (c == 1001 || c == 203) dx = 1;
             else if (c == 27) { set_flag("int", "0"); clock_sync(); snprintf(msg, sizeof msg, "INT off: real time"); dirty = 1; break; }      /* Esc leaves INT (keyboard/history.txt: KEY_PRESSED: 27) */
             else if (!run_on()) continue;
-            else if (c == 9) { g_ctl_why = "tab-key-in-INT"; char cc[16]; flag_str("ctl", "pet", cc, sizeof cc); int toplayer = !strcmp(cc, "pet"); set_flag("ctl", toplayer ? "player" : "pet"); set_flag("follow", toplayer ? "player" : "pet"); snprintf(msg, sizeof msg, toplayer ? "INT now controls you (the player)" : "INT now controls %s", party[active].name); dirty = 1; continue; }
+            else if (c == 9) continue;      /* owner 2026-10-12: no Tab pet/player toggle - INT controls whoever is chosen from the toolbar (every cast member is playable, Harold is just the default selection) */
             else if (c == '0') { char cv[16]; flag_str("view", "2d", cv, sizeof cv); set_flag("view", !strcmp(cv, "2d") ? "3d" : "2d"); snprintf(msg, sizeof msg, "view toggled (3D draws with sprint item 7)"); dirty = 1; continue; }
             else if (c >= '1' && c <= '4') { char pv[8]; snprintf(pv, sizeof pv, "%c", c); set_flag("pov", pv); snprintf(msg, sizeof msg, "pov %c stored (3D draws with sprint item 7)", c); dirty = 1; continue; }
             else continue;
