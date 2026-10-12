@@ -1768,6 +1768,14 @@ static void kh_load_vars_multi(const char *paths) {
      * of render_warn reads a truthful number. Ad-hoc kh_set_var() calls
      * outside loads can still only bump it upward (conservative). */
     g_vars_dropped = 0;
+    if (g_house_root[0]) {      /* the load guard vars (load_label / load_ok / load_warn) for every window; this runs every idle tick, so the file is re-read only when its marker (load_changed.txt) grew; the window's own files below override */
+        static long s_ld_marker = -2; static char s_ld_label[96], s_ld_ok[4], s_ld_warn[4]; char lm[PATH_BUF]; struct stat lst;
+        snprintf(lm, sizeof(lm), "%s/#.desktop/load_changed.txt", g_house_root);
+        long msz = stat(lm, &lst) == 0 ? (long)lst.st_size : -1;
+        if (msz != s_ld_marker) { s_ld_marker = msz; int nb = g_kh_nvars; char lp[PATH_BUF]; snprintf(lp, sizeof(lp), "%s/#.desktop/load_state.txt", g_house_root); kh_load_vars(lp);
+            snprintf(s_ld_label, sizeof(s_ld_label), "%s", kh_get_var("load_label")); snprintf(s_ld_ok, sizeof(s_ld_ok), "%s", kh_get_var("load_ok")); snprintf(s_ld_warn, sizeof(s_ld_warn), "%s", kh_get_var("load_warn")); g_kh_nvars = nb; }
+        if (s_ld_label[0]) { kh_set_var("load_label", s_ld_label); kh_set_var("load_ok", s_ld_ok); kh_set_var("load_warn", s_ld_warn); }
+    }
     if (!paths || !paths[0]) return;
     char work[PATH_BUF * 4];
     snprintf(work, sizeof(work), "%s", paths);
@@ -2753,6 +2761,17 @@ static int reparse_chtpm_if_changed(void) {
          * vars change is exactly as real a reason to refresh the peer as
          * a template edit - fold it in here rather than re-deriving a
          * second, parallel "did the tab list change" signal. */
+        /* LOAD GUARD (2026-10-12, owner: the CPU / temperature / window-count label belongs on the game windows with canvases too, "those are the troublemakers"): the taskbar manager writes
+         * #.desktop/load_state.txt (load_label, load_ok, load_warn) and APPENDS one byte to #.desktop/load_changed.txt when the label changes. Every window watches that marker's SIZE growth (rule 8: no
+         * mtime, no hash; one stat per poll) and reparses on growth, so the template's ${load_label} updates without any per-window sampling. The dock gets the same vars through strip_ui.txt. */
+        {
+            static long s_load_marker = -1; char lm[PATH_BUF]; struct stat lst;
+            snprintf(lm, sizeof(lm), "%s/#.desktop/load_changed.txt", g_house_root);
+            if (g_house_root[0] && stat(lm, &lst) == 0) {
+                if (s_load_marker < 0 || lst.st_size < s_load_marker) s_load_marker = lst.st_size;      /* first sight / rotated: resync, no reparse */
+                else if (lst.st_size > s_load_marker) { s_load_marker = lst.st_size; vars_changed = 1; }
+            }
+        }
         if (vars_changed) peer_changed = 1;
         if (st.st_mtim.tv_sec == g_chtpm_mtime.tv_sec && st.st_mtim.tv_nsec == g_chtpm_mtime.tv_nsec && !peer_changed && !vars_changed)
             return 0;

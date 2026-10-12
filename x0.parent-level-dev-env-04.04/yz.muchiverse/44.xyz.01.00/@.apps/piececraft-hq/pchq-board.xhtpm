@@ -62,6 +62,8 @@
            player_menu()) instead of a flat single-click toggle. -->
       <tab id="tb-player" class="pchq-tb skin-bar" label="${player_label} ▾" onclick="ACTIVATE" target_id="tb-player"/>
       <tab id="tb-db" class="pchq-tb skin-bar" label="db ▾" onclick="ACTIVATE" target_id="tb-db"/>
+      <tab id="tb-load" class="pchq-tb" label="${PID} ${load_label}" onclick="void" show="${load_ok}"/>
+      <tab id="tb-loadw" class="pchq-tb pchq-tb-warn" label="${PID} ${load_label}" onclick="void" show="${load_warn}"/>
       <tab id="tb-clock" class="pchq-tb skin-bar" label="${clock}" onclick="void"/>
     </tabbar>
 

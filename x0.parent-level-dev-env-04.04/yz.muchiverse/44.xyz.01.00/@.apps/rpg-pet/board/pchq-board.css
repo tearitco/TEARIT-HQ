@@ -92,3 +92,7 @@ window { width: 1074px; height: 556px; background-color: #14161c; font-family: D
 .ph-quiet { color: #aaaaaa; }
 .ph-green { color: #33dd55; font-weight: bold; padding: 4px 8px; }
 .ph-red { color: #ff4444; font-weight: bold; padding: 4px 8px; }
+
+/* load guard tab (pid and cpu %, taskbar manager ktb_load_sample): red when a limit is passed */
+.tab.pchq-tb-warn { color: #ff5555; font-weight: bold; }
+.pchq-tb-warn { color: #ff5555; font-weight: bold; }

@@ -316,8 +316,7 @@ static void write_small_file(const char *house_root, const char *rel_path, const
     ktb_atomic_rename(tmp, path);
 }
 
-/* LOAD GUARD (2026-10-12, owner: "show cpu % on the top bar, and a warning if too many windows are open" after an overheat crash): the label that the header's CPU cell shows,
- * "cpu 35% 49C 3w", and a warning form "! 9w cpu 92% 81C" when any limit is passed. Limits are keys of #.desktop/livedesk_taskbar.pdl (warn_windows 6, warn_cpu 85, warn_temp 80;
+/* LOAD GUARD (2026-10-12, owner: "show cpu % on the top bar, and a warning if too many windows are open" after an overheat crash): the label that the CPU cell shows ("%35", "!%92" when a limit is passed). Limits are keys of #.desktop/livedesk_taskbar.pdl (warn_windows 6, warn_cpu 85, warn_temp 80;
  * 0 turns one off). House CPU standard: a long-lived process gates its expensive work with an in-memory CLOCK_MONOTONIC gate: sampled at most every 2 s (the /proc window scan every 4 s),
  * the CPU figure rounded to 5% steps so the dock republishes only when the label really changes. System-wide CPU = delta of /proc/stat; temperature = the hottest thermal zone; windows = processes
  * named khtpm_core_render (every khtpm window). Linux only: elsewhere the label stays empty and the cell is hidden. */
@@ -344,8 +343,7 @@ static int ktb_load_sample(const char *house_root) {
         v[0] = 0; read_key_value(pdl, "warn_windows", v, sizeof(v)); if (v[0]) wl = atoi(v); v[0] = 0; read_key_value(pdl, "warn_cpu", v, sizeof(v)); if (v[0]) cl = atoi(v); v[0] = 0; read_key_value(pdl, "warn_temp", v, sizeof(v)); if (v[0]) tl = atoi(v); }
     int cp5 = (cpu + 2) / 5 * 5; if (cp5 > 100) cp5 = 100;
     int warn = (wl > 0 && wins >= wl) || (cl > 0 && cpu >= cl) || (tl > 0 && temp >= tl);
-    char lab[96]; if (temp > 0) snprintf(lab, sizeof(lab), warn ? "! %dw cpu %d%% %dC" : "cpu %d%% %dC %dw", warn ? wins : cp5, warn ? cp5 : temp, warn ? temp : wins);
-    else snprintf(lab, sizeof(lab), warn ? "! %dw cpu %d%%" : "cpu %d%% %dw", warn ? wins : cp5, warn ? cp5 : wins);
+    char lab[96]; snprintf(lab, sizeof(lab), warn ? "!%%%d" : "%%%d", cp5);      /* just the number (owner: "%<#>" next to the pid); the warning reasons (windows, temperature) only turn it red */
     int changed = strcmp(lab, g_load_label) != 0 || warn != g_load_warn;
     snprintf(g_load_label, sizeof(g_load_label), "%s", lab); g_load_warn = warn;
     return changed;
@@ -1204,7 +1202,12 @@ int main(int argc, char **argv) {
                 snprintf(last_dt, sizeof(last_dt), "%s", dt);
                 reload_changed = 1;
             }
-            if (ktb_load_sample(house_root)) reload_changed = 1;      /* the load label changed (gated to one sample per 2 s inside) */
+            if (ktb_load_sample(house_root)) {      /* the load label changed (gated to one sample per 2 s inside) */
+                reload_changed = 1;
+                { char ls[160]; snprintf(ls, sizeof(ls), "load_label=%s\nload_ok=%s\nload_warn=%s\n", g_load_label, g_load_label[0] && !g_load_warn ? "1" : "", g_load_warn ? "1" : "");
+                  write_small_file(house_root, "#.desktop/load_state.txt", ls);      /* the game windows read this; then the marker grows (append-only: its SIZE is the signal) */
+                  char mp[KTB_PATH_BUF]; path_join2(mp, sizeof(mp), house_root, "#.desktop/load_changed.txt"); FILE *mf = fopen(mp, "a"); if (mf) { fputc('x', mf); fclose(mf); } }
+            }
         }
         if (mutated || reload_changed) {
             static int n_pub = 0;
