@@ -2,6 +2,23 @@
 
 ---
 
+## OPEN 2026-10-11: rpg-pet board flashes to 3D (and a day sky at night) for about a second, at random
+
+**Reported by the owner, more than once:** "even in 2D it will flash to 3D every once and a while for a second", "during a room change even at night it will flash day (in 3D mode?)", and again while piloting Fang through a door ("randomly saw the random 3D flash"). Owner's call: mark it as a bug bounty, "it's more of a nuance". Flicker cannot be seen in a screenshot or a poll of `bv_state.txt` once it has passed, so it stays OPEN until the mechanism is confirmed.
+
+**Seen once by measurement (not explained):** during testing the board came up with `render_mode=1` (3D) in `pieces/system/bv_state.txt` after a sequence of INT on/off toggles, one arrow in the engine relay and a `126` wake; key `0` (via the relay) put it back to 2D. Nothing in `rpg_pet.c` writes `render_mode`.
+
+**Ruled out / checked:** the world-clock epoch is not the cause of the day flash on a room change; the daemon's own state writes are atomic (temp file + rename).
+
+**Leads, none confirmed:**
+1. The engine's `write_kv` (`&.widgits/board-viewer/ops/bv_menu_input.c`) truncates `bv_state.txt` in place, no lock. A reader that catches it empty gets defaults, and `default_render_mode()` is 3D. `bv_dispatch.c` and `bv_render_3d.c` read `render_mode` per frame, so one empty read = one 3D frame. (`pc_clock_daemon.c` already fixed the same pattern with `flock`.)
+2. Keys that write `render_mode=1`: POV keys (`1`-`4` remap), key `7`, Tab -> 2. A forwarded digit while the window is in Interact mode would flip it and stay until `0`.
+3. A room change rewrites the exported maker map (`follow_pchq`), and the 3D loader re-reads it (`maker_load`, `para_ver` parallax re-upload): a frame drawn before the new sky/map is loaded.
+
+**To close:** capture the frame sequence at a door crossing (`dump_frame_png_op` in a loop, or log `render_mode` reads in `bv_dispatch.c` with a timestamp) and show which read produced the 3D frame; then fix and have the owner confirm it is gone.
+
+---
+
 ## FIXED 2026-10-10 (verified in scratch): WSR `market_settle` cannot rebuild the shareholder registry (wrong relative op path)
 
 **Fix:** `ops/market_settle.c` now runs `./ops/+x/shareholder_registry.+x` from the project root. Verified: rebuild registry, quote (58 participants, 30 orders), settle (16 fills) and the registry was rebuilt after settle (18 holder rows), no warning. Also done: the 62 entity pieces are bundled in `WSR_PAL-PREFERED/projects/wsr-pal/pieces_template` and `ensure_entities.sh` seeds from them (idempotent). Note: the day order must run `shareholder_registry rebuild` BEFORE `market_quote` (quote reads shareholders.txt).
