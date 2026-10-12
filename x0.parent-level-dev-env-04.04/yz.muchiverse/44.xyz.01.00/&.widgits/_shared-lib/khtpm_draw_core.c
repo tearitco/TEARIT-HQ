@@ -875,7 +875,8 @@ static int kh_elem_badge_label_x(Elem *e) {
                         strcmp(e->id, g_default_active_scope_id) == 0) ||
                        (g_default_scope_confine && g_default_active_tab_id[0] && e->id[0] &&
                         strcmp(e->id, g_default_active_tab_id) == 0) ||
-                       (g_interact_relay_on && e->relay[0]);
+                       (g_interact_relay_on && e->relay[0]) ||
+                       elem_has_class(e, "nav-selected");      /* a row the app marks as the selected one (the cast bar's selected character): "^" like the armed In: tab */
         elem_cursor_prefix(e, g_focus_nav, is_scope, prefix, sizeof(prefix));
         char nav_badge[16];
         snprintf(nav_badge, sizeof(nav_badge), "%s%d.", prefix, e->nav_index + g_nav_display_base);
@@ -1688,7 +1689,8 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                         * the keyboard (matches run_pchq_board_mode's own
                         * is_engaged badge, see g_interact_relay_on's own
                         * declaration comment in khtpm_core_render.c). */
-                       (g_interact_relay_on && e->relay[0]);
+                       (g_interact_relay_on && e->relay[0]) ||
+                       elem_has_class(e, "nav-selected");
         elem_cursor_prefix(e, g_focus_nav, is_scope, prefix, sizeof(prefix));
         snprintf(nav_badge, sizeof(nav_badge), "%s%d.", prefix, e->nav_index + g_nav_display_base);
         (void)focused;

@@ -15,6 +15,8 @@ for d in pieces/system/maps pieces/system/chunks pieces/system/widget_cmds piece
 for p in hero_01 xelector_01 sun_01 moon_01 world_01; do
     [ -d "$DATA/pieces/$p" ] || { [ -d "$PKG/pieces/$p" ] && cp -R "$PKG/pieces/$p" "$DATA/pieces/$p"; } || mkdir -p "$DATA/pieces/$p"
 done
+# pieces/registry = the assets the engine looks up UNDER the game root: the HUD font (fonts/ascii/<code>/glyph.txt: without it the 3D HUD is black on black), emoji and phymoji assets (1.3 MB, plain copies)
+[ -d "$DATA/pieces/registry" ] || { [ -d "$PKG/pieces/registry" ] && cp -R "$PKG/pieces/registry" "$DATA/pieces/registry"; } || mkdir -p "$DATA/pieces/registry"
 # the small configuration files of pieces/system (keys, hud, legend, view, manifest ...); not the maps, the generated chunks, pids or session pointers
 for f in "$PKG"/pieces/system/*; do
     [ -f "$f" ] || continue
