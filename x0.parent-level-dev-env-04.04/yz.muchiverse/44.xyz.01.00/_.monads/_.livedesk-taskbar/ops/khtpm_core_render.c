@@ -14557,7 +14557,10 @@ static void hq_run_event_loop(Atom wm_delete, int is_popup) {
                 g_frame_dirty = 1;  /* no file/var yet: keep painting the dark bootstrap */
             }
             time_t nowt = time(NULL);
-            if (nowt - s_last_force >= 1) { s_last_force = nowt; g_frame_dirty = 1; }
+            /* CPU safety (hq-cpu-safety.md): this safety repaint was every second, i.e. a full layout + draw + readback (about 67 ms measured for the rpg-pet board) once a second per canvas window
+             * even when nothing changed: ~7% of a core, the idle floor of every board window. A changed canvas file, a resize, an Expose and a var reload all redraw on their own; this is only the
+             * net for a late-appearing var, so every 5 s is enough. */
+            if (nowt - s_last_force >= 5) { s_last_force = nowt; g_frame_dirty = 1; }
         }
         if (g_frame_dirty && !g_quit) { g_frame_dirty = 0; redraw(); }
         /* Bottom of every pass. select() above returns at once when a

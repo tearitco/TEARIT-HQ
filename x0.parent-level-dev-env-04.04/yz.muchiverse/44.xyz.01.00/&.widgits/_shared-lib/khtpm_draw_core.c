@@ -717,6 +717,9 @@ static void kh_draw_canvas(Elem *e) {
     static int   c_w, c_h;
     static XImage *c_img;
     static unsigned char *c_buf;
+    /* CPU safety (hq-cpu-safety.md): the decoded frame is reused while the file is unchanged. A repaint caused by anything else (a label, a bar) used to re-read the whole raw file and convert
+     * every pixel through XPutPixel (about 25 ms for 660x430) before blitting the same picture. Identity = inode + size + mtime (the producers replace the file by rename). */
+    static int c_valid = 0; static unsigned long c_ino = 0; static long c_size = -1, c_mt_s = 0, c_mt_ns = 0;
     const char *spr = e->sprite;
     {
         const char *cr = kh_get_var("canvas_raw");
@@ -787,7 +790,7 @@ static void kh_draw_canvas(Elem *e) {
     if (strcmp(c_path, spr) != 0 || c_w != w || c_h != h || !c_img) {
         snprintf(c_path, sizeof(c_path), "%s", spr);
         c_w = w; c_h = h;
-        free(c_buf); c_buf = (unsigned char *)malloc((size_t)w * h * 4);
+        free(c_buf); c_buf = (unsigned char *)malloc((size_t)w * h * 4); c_valid = 0;
         if (c_img) { XDestroyImage(c_img); c_img = NULL; }
         char *data = (char *)malloc((size_t)w * h * 4);
         c_img = data ? XCreateImage(dpy, DefaultVisual(dpy, screen),
@@ -796,20 +799,34 @@ static void kh_draw_canvas(Elem *e) {
                      : NULL;
     }
     if (!c_img || !c_buf) return;
+    struct stat c_st; int c_same = (c_valid && stat(spr, &c_st) == 0 && (unsigned long)c_st.st_ino == c_ino && (long)c_st.st_size == c_size &&
+                                    (long)c_st.st_mtim.tv_sec == c_mt_s && (long)c_st.st_mtim.tv_nsec == c_mt_ns);
+    if (!c_same) {
     FILE *of = fopen(spr, "rb");
     if (of) {
         size_t need = (size_t)w * h * 4, got = fread(c_buf, 1, need, of);
         fclose(of);
         if (got == need) {
-            for (int y = 0; y < h; y++)
-                for (int x = 0; x < w; x++) {
-                    size_t o = ((size_t)y * w + x) * 4;
-                    unsigned long px = ((unsigned long)c_buf[o]   << 16) |
-                                       ((unsigned long)c_buf[o+1] <<  8) |
-                                        (unsigned long)c_buf[o+2];
-                    XPutPixel(c_img, x, y, px);
+            const unsigned int one = 1; int little = *(const unsigned char *)&one == 1;
+            if (little && c_img->bits_per_pixel == 32 && c_img->byte_order == LSBFirst && c_img->red_mask == 0xff0000UL && c_img->green_mask == 0xff00UL && c_img->blue_mask == 0xffUL) {
+                for (int y = 0; y < h; y++) {          /* direct 32-bit stores: the same 0xRRGGBB value XPutPixel would store, without a call per pixel */
+                    unsigned int *dst = (unsigned int *)(c_img->data + (size_t)y * (size_t)c_img->bytes_per_line);
+                    const unsigned char *s = c_buf + (size_t)y * w * 4;
+                    for (int x = 0; x < w; x++, s += 4) dst[x] = ((unsigned int)s[0] << 16) | ((unsigned int)s[1] << 8) | (unsigned int)s[2];
                 }
+            } else {
+                for (int y = 0; y < h; y++)
+                    for (int x = 0; x < w; x++) {
+                        size_t o = ((size_t)y * w + x) * 4;
+                        unsigned long px = ((unsigned long)c_buf[o]   << 16) |
+                                           ((unsigned long)c_buf[o+1] <<  8) |
+                                            (unsigned long)c_buf[o+2];
+                        XPutPixel(c_img, x, y, px);
+                    }
+            }
+            if (stat(spr, &c_st) == 0) { c_valid = 1; c_ino = (unsigned long)c_st.st_ino; c_size = (long)c_st.st_size; c_mt_s = (long)c_st.st_mtim.tv_sec; c_mt_ns = (long)c_st.st_mtim.tv_nsec; } else c_valid = 0;
         }
+    }
     }
     /* A frame the exact size of its canvas box blits 1:1 (bv_render_2d).
      * A smaller frame (bv_render_3d's fixed 640x480) is CENTRED, never
