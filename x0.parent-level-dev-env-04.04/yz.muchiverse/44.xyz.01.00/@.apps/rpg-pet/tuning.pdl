@@ -11,8 +11,8 @@ TUNE | viewer_scan_ms  | 2000  | how often /proc is scanned for an open rpg-pet 
 TUNE | far_repaint_ms  | 1500  | a pet stepping in a room nobody watches repaints the scene at most this often                                   | 1500
 TUNE | greet_page_ms   | 6000  | at most one events-hq greeting page per this long (each costs ~150 ms of CPU); the built-in text covers the rest | 6000
 # --- game feel ---
-TUNE | step_min_ms     | 150   | a pet walks on its own (INT off) every step_min_ms + a random 0..step_jitter_ms                                 | 900
-TUNE | step_jitter_ms  | 50   | the random part of that                                                                                         | 700
+TUNE | step_min_ms     | 1500  | a pet walks on its own (INT off) every step_min_ms + a random 0..step_jitter_ms                                 | 900
+TUNE | step_jitter_ms  | 900   | the random part of that                                                                                         | 700
 # --- board window input ---
 TUNE | edge_poll_ms    | 400   | how often the daemon looks at the board's Interact state (an In: click from the pc-hq key turns INT on)         | 400
 TUNE | engage_retry_ms | 20000 | INT on: how long to wait before sending the engine's Interact key a second time (it is a toggle: keep this long) | 20000
