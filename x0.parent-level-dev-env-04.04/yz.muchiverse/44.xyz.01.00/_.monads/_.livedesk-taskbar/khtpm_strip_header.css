@@ -28,3 +28,6 @@
   flex-direction: row;
   flex-wrap: wrap;
 }
+
+/* the load-guard cell (khtpm_taskbar_manager_main.c ktb_load_sample): red when a limit is passed (too many windows, cpu or temperature) */
+.dock-warn { color: #ff5555; font-weight: bold; }

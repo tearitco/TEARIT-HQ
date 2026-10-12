@@ -195,6 +195,9 @@ SECTION      | dock_focus_box_px      | 64
 SECTION      | dock_pager_px          | 110
 SECTION      | strip_user_cmd         |
 SECTION      | datetime_lang          | zh
+SECTION      | warn_windows           | 5
+SECTION      | warn_cpu               | 85
+SECTION      | warn_temp              | 80
 SECTION      | strip_btn_0_label       | file
 SECTION      | strip_btn_0_menu_0_label | new
 SECTION      | strip_btn_0_menu_0_cmd   | livedesk:new
