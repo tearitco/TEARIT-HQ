@@ -137,13 +137,23 @@ static void sw_set(const char *name, const char *v) {
     if (!hit) n += snprintf(o + n, sizeof o - n, "%s=%s\n", name, v); write_if_changed(p, o, (size_t)n);
 }
 static int is_switch_flag(const char *n) { return !strcmp(n, "running") || !strcmp(n, "int"); }
+/* tuning.pdl: "TUNE | name | value | text | default" rows. tune(name, default) is one small table lookup; the file is re-read when its size or mtime moves (load_tune is called by load_data). */
+static struct { char k[32]; int v; } g_tn[24]; static int g_tnn = 0; static long g_tn_sig = -1;
+static void load_tune(void) {
+    char p[PATH_MAX]; snprintf(p, sizeof p, "%s/tuning.pdl", APP); struct stat st; long sig = stat(p, &st) == 0 ? (long)st.st_size * 1000003L + (long)st.st_mtime : -2; if (sig == g_tn_sig) return; g_tn_sig = sig; g_tnn = 0;
+    FILE *f = fopen(p, "r"); if (!f) return; char l[300];
+    while (fgets(l, sizeof l, f)) { if (strncmp(l, "TUNE", 4)) continue; char *fl[5]; int n = 0; for (char *t = strtok(l, "|"); t && n < 5; t = strtok(NULL, "|")) fl[n++] = t; if (n < 3 || g_tnn >= 24) continue;
+        char *k = fl[1]; while (*k == ' ') k++; char *e = k + strlen(k); while (e > k && (e[-1] == ' ' || e[-1] == '\t')) *--e = 0; snprintf(g_tn[g_tnn].k, sizeof g_tn[g_tnn].k, "%s", k); g_tn[g_tnn].v = atoi(fl[2]); g_tnn++; }
+    fclose(f);
+}
+static int tune(const char *name, int def) { for (int i = 0; i < g_tnn; i++) if (!strcmp(g_tn[i].k, name) && g_tn[i].v > 0) return g_tn[i].v; return def; }
 /* CPU safety (house hq-cpu-safety.md 3b, in-memory CLOCK_MONOTONIC gate for a long-lived process): the daemon asks for the same few flags a dozen times per 100 ms tick and every ask re-read the
  * switches file and the flag file. Inside the daemon a value is reused for 150 ms; set_flag() drops the cache so the daemon sees its own writes at once, and the one-shot verb processes never cache. */
 static void flag_str_raw(const char *name, const char *def, char *out, size_t cap);
 static int g_fcache_on = 0, g_fcn = 0;
 static struct { char k[48]; char v[64]; long t; } g_fc[32];
 static void flag_str(const char *name, const char *def, char *out, size_t cap) {
-    char ck[48]; long cnow = 0; if (g_fcache_on) { snprintf(ck, sizeof ck, "%s|%s", name, def); cnow = now_ms(); for (int i = 0; i < g_fcn; i++) if (cnow - g_fc[i].t < 150 && !strcmp(g_fc[i].k, ck)) { snprintf(out, cap, "%s", g_fc[i].v); return; } }
+    char ck[48]; long cnow = 0; if (g_fcache_on) { snprintf(ck, sizeof ck, "%s|%s", name, def); cnow = now_ms(); for (int i = 0; i < g_fcn; i++) if (cnow - g_fc[i].t < tune("flag_cache_ms", 150) && !strcmp(g_fc[i].k, ck)) { snprintf(out, cap, "%s", g_fc[i].v); return; } }
     flag_str_raw(name, def, out, cap);
     if (g_fcache_on) { int s = -1; for (int i = 0; i < g_fcn; i++) if (!strcmp(g_fc[i].k, ck)) s = i; if (s < 0 && g_fcn < 32) s = g_fcn++; if (s >= 0) { snprintf(g_fc[s].k, sizeof g_fc[s].k, "%s", ck); snprintf(g_fc[s].v, sizeof g_fc[s].v, "%s", out); g_fc[s].t = cnow; } }
 }
@@ -416,7 +426,7 @@ static void meet(int a, int b) {
      * ({other} = the other pet's name, passed as RPG_OTHER). The C keeps what must not move into a page: who may be heard (RPG_SAY / RPG_SPEAK), the 2.5 s voice throttle, and the old tables below as the fallback. */
     static long last_sp = 0; long nm = now_ms(); int sp_a = others[a].room == vroom, sp_b = others[b].room == vroom, sy_a = sp_a && (a == active || b == active), sy_b = sp_b && (a == active || b == active);
     if ((sp_a || sp_b) && nm - last_sp >= 2500) last_sp = nm; else sp_a = sp_b = 0;
-    static long last_page = 0; int page_ok = now_ms() - last_page >= 6000; if ((sy_a || sp_a || sy_b || sp_b) && page_ok) last_page = now_ms();      /* CPU safety: a page run is a sh + bash + prisc launch; at most one greeting page per 6 s (measured ~0.15 s of CPU each: play_event.sh fans out), the answer and every other greeting use the C text, which is identical */
+    static long last_page = 0; int page_ok = now_ms() - last_page >= tune("greet_page_ms", 6000); if ((sy_a || sp_a || sy_b || sp_b) && page_ok) last_page = now_ms();      /* CPU safety: a page run is a sh + bash + prisc launch; at most one greeting page per 6 s (measured ~0.15 s of CPU each: play_event.sh fans out), the answer and every other greeting use the C text, which is identical */
     { char ev[64], tg[16], en[200]; snprintf(ev, sizeof ev, "greet_%s", party[a].id); snprintf(tg, sizeof tg, "hi%d", v1); snprintf(en, sizeof en, "RPG_OTHER='%s' RPG_SAY=%d RPG_SPEAK=%d", party[b].name, sy_a, sp_a);
       if ((sy_a || sp_a) && !(page_ok && run_event_x(ev, tg, en))) { snprintf(t, sizeof t, HI[0][v1], party[b].name); if (sy_a) say(party[a].name, t); if (sp_a) speak_greet(a, v1, party[b].name, 0); } }      /* a page run is a bash + prisc launch (~0.1 s): nothing is said when nobody is watching that room, so none is run */
     { char ev[64], tg[16], en[200]; snprintf(ev, sizeof ev, "greet_%s", party[b].id); snprintf(tg, sizeof tg, "re%d", v2); snprintf(en, sizeof en, "RPG_OTHER='%s' RPG_SAY=%d RPG_SPEAK=%d", party[a].name, sy_b, sp_b);
@@ -668,7 +678,7 @@ static void sync_selector(int x, int y) {
  * redraws a second (chtpm_rgb_render 7% + prisc 3-4% of a core, measured, for hours after the window was closed). Only follow when a window of a board layout (pchq-board.xhtpm: the rpg-pet board, pc-hq
  * or the layout-studio sandbox) is really running; the answer is cached for 2 s (one /proc scan). */
 static int viewer_kinds(void) {
-    static long last = 0; static int v = 3; long t = now_ms(); if (last && t - last < 2000) return v; last = t; v = 0;
+    static long last = 0; static int v = 3; long t = now_ms(); if (last && t - last < tune("viewer_scan_ms", 2000)) return v; last = t; v = 0;
     DIR *d = opendir("/proc"); if (!d) return 3; struct dirent *e;
     while ((e = readdir(d))) { if (e->d_name[0] < '1' || e->d_name[0] > '9') continue; char p[64], b[2048]; snprintf(p, sizeof p, "/proc/%s/cmdline", e->d_name); FILE *f = fopen(p, "r"); if (!f) continue; size_t n = fread(b, 1, sizeof b - 1, f); fclose(f); b[n] = 0;
         if (!strstr(b, "khtpm_core_render")) continue; for (size_t i = 0; i < n; i++) if (!b[i]) b[i] = ' '; if (strstr(b, "pchq-board.xhtpm")) v |= 1; if (strstr(b, "rpg-pet.xhtpm")) v |= 2; }
@@ -901,10 +911,10 @@ static int daemon_main(void) {
     signal(SIGTERM, bye); signal(SIGINT, bye); signal(SIGHUP, bye); srand((unsigned)(time(NULL) ^ getpid()));
     char h1[PATH_MAX], h2[PATH_MAX], d[PATH_MAX]; snprintf(d, sizeof d, "%s/keyboard", ST); mkdir(d, 0755); spath(h1, "interact_relay.txt"); snprintf(h2, sizeof h2, "%s/keyboard/history.txt", ST);
     long o1 = fsize(h1), o2 = fsize(h2), next_ms[NP], last_ui = 0; int was_run = run_on() + 2 * rogue_mode(); for (int i = 0; i < NP; i++) next_ms[i] = now_ms() + 600 + 450L * i; char msg[200], lastday[40] = "", lasttone[300] = "";
-    g_fcache_on = 1; load_data(); replay(); pet_load(); unstack(); clock_start(); out_all("");
+    g_fcache_on = 1; load_tune(); load_data(); replay(); pet_load(); unstack(); clock_start(); out_all("");
     long last_load = now_ms(), last_follow = 0;
     while (!quit_flag) {
-        usleep(100000); int dirty = 0, codes[64], n; msg[0] = 0; { long lt = now_ms(); if (lt - last_load >= 2000) { last_load = lt; load_data(); } }      /* catalog / party / rooms / door pages are static: re-parsing them every 100 ms was most of the daemon's own CPU */
+        usleep(100000); int dirty = 0, codes[64], n; msg[0] = 0; { long lt = now_ms(); if (lt - last_load >= tune("reload_ms", 2000)) { last_load = lt; load_tune(); load_data(); } }      /* catalog / party / rooms / door pages are static: re-parsing them every 100 ms was most of the daemon's own CPU */
         pet_load(); int in = flag_on("int", 0), tm = turn_mode(); static int prev_in = 0; static long int_on_at = 0; if (in && !prev_in) int_on_at = now_ms(); prev_in = in;
         n = poll_keys(h1, &o1, codes, 32); n += poll_keys(h2, &o2, codes + n, 32);     /* the offsets always advance; keys only act while INT is on */
         if (in && n) replay();
@@ -925,7 +935,7 @@ static int daemon_main(void) {
              * was still engaged does not switch itself back on; checked at most every 400 ms and only while a board window exists. */
             static int prev_ar = -1; static long chk = 0; long t = now_ms();
             if (in || !board_window_open()) prev_ar = -1;
-            else if (t - chk >= 400) { chk = t; int ar2 = board_armed(); if (prev_ar == 0 && ar2 == 1) {
+            else if (t - chk >= tune("edge_poll_ms", 400)) { chk = t; int ar2 = board_armed(); if (prev_ar == 0 && ar2 == 1) {
                     if (!(run_event("int_on", "ui") && flag_on("int", 0))) set_flag("int", "1");
                     clock_sync(); snprintf(msg, sizeof msg, "INT on: you control %s - turn based", party[active].name); dirty = 1; in = 1; prev_in = 1; int_on_at = now_ms(); }
                 prev_ar = ar2; }
@@ -936,17 +946,30 @@ static int daemon_main(void) {
             if (!in) { was_armed = 0; tried = 0; }
             else if (ar == 1) { was_armed = 1; tried = 1; }
             else if (ar == 0 && was_armed) { was_armed = 0; if (!(run_event("int_off", "ui") && !flag_on("int", 0))) set_flag("int", "0"); clock_sync(); snprintf(msg, sizeof msg, "INT off: real time"); dirty = 1; in = 0; }
-            else if (ar == 0 && run_on() && (!tried || now_ms() - sent_at > 20000)) { board_interact(1, 1); tried = 1; sent_at = now_ms(); }      /* ONE engage per INT on (the key is a toggle and the engine answers seconds late: a second one switches it back off, which looked like Esc and turned INT off by itself) */
+            else if (ar == 0 && run_on() && (!tried || now_ms() - sent_at > tune("engage_retry_ms", 20000))) { board_interact(1, 1); tried = 1; sent_at = now_ms(); }      /* ONE engage per INT on (the key is a toggle and the engine answers seconds late: a second one switches it back off, which looked like Esc and turned INT off by itself) */
+        }
+        {   /* a click on a pet or the trainer in the board's 2D scene selects them (the old window did the same on its painted scene). The canvas click is the house file #.desktop/pchq_canvas_click.txt "cx cy cw ch" (the
+             * click and the canvas size); the scene frame is FW x FH with the room grid at OX,OY, T px per cell, so the cell is ((px-OX)/T, (py-OY)/T). Looked at only while a board window exists; the first
+             * look just records the current click so an old one never selects anything. */
+            static long csig = -1, cchk = 0; long t = now_ms();
+            if (board_window_open() && t - cchk >= tune("click_poll_ms", 150)) { cchk = t; char cp[PATH_MAX]; snprintf(cp, sizeof cp, "%s/#.desktop/pchq_canvas_click.txt", HOUSE); struct stat cs;
+                long sg = stat(cp, &cs) == 0 ? (long)cs.st_size * 1000003L + (long)cs.st_mtim.tv_sec * 1000L + cs.st_mtim.tv_nsec / 1000000L : -2;
+                if (csig == -1) csig = sg;
+                else if (sg != csig) { csig = sg; int cx = 0, cy = 0, cw = 0, ch = 0; FILE *cf = fopen(cp, "r"); if (cf) { if (fscanf(cf, "%d %d %d %d", &cx, &cy, &cw, &ch) != 4) cw = 0; fclose(cf); }
+                    if (cw > 0 && ch > 0) { int col = (cx * FW / cw - OX) / T, row = (cy * FH / ch - OY) / T; char *sa[2]; char sid[24]; sa[0] = "select"; sa[1] = sid; int hit = 0;
+                        for (int i = 0; i < nparty && !hit; i++) if (others[i].room == vroom && others[i].x == col && others[i].y == row) { snprintf(sid, sizeof sid, "%s", party[i].id); hit = 1; }
+                        if (!hit && tr.room == vroom && tr.x == col && tr.y == row) { snprintf(sid, sizeof sid, "%s", hero.name); for (char *q = sid; *q; q++) if (*q >= 'A' && *q <= 'Z') *q += 32; hit = 1; }
+                        if (hit) { verb(2, sa, msg, sizeof msg); dirty = 1; } } } }
         }
         if (in && run_on() && follow_xelector(msg, sizeof msg)) dirty = 1;
         long ms = now_ms();
-        for (int i = 0; i < nparty; i++) if (ms >= next_ms[i]) { next_ms[i] = ms + 900 + rand() % 700; if (tm || !run_on()) continue; replay(); if (ai_step(i)) { static long last_far = 0; if (others[i].room == vroom || ms - last_far > 1500) { dirty = 1; if (others[i].room != vroom) last_far = ms; } } use_ent(active); }     /* real time (INT off): every pet walks on its own. INT on is turn based: no timers, only your acts advance time */
+        for (int i = 0; i < nparty; i++) if (ms >= next_ms[i]) { next_ms[i] = ms + tune("step_min_ms", 900) + rand() % tune("step_jitter_ms", 700); if (tm || !run_on()) continue; replay(); if (ai_step(i)) { static long last_far = 0; if (others[i].room == vroom || ms - last_far > tune("far_repaint_ms", 1500)) { dirty = 1; if (others[i].room != vroom) last_far = ms; } } use_ent(active); }     /* real time (INT off): every pet walks on its own. INT on is turn based: no timers, only your acts advance time */
         if (ms - last_ui > 3000) { last_ui = ms; clock_paths(); clock_ui(); }
         { char dp[PATH_MAX], db[40]; spath(dp, "daylight.txt"); read_file(dp, db, sizeof db); if (strcmp(db, lastday)) { snprintf(lastday, sizeof lastday, "%s", db); dirty = 1; } }
         { char tp[PATH_MAX], tb[300]; snprintf(tp, sizeof tp, "%s/world/screen_state.pdl", ST); read_file(tp, tb, sizeof tb); if (strcmp(tb, lasttone)) { snprintf(lasttone, sizeof lasttone, "%s", tb); g_tone_stale = 1; dirty = 1; } }      /* an events-hq tint_screen wrote a new tone */
         { static int was_vo = 1; int vo = viewer_kinds() != 0; if (vo && !was_vo) dirty = 1; was_vo = vo; if (!vo) dirty = 0; }      /* nobody is looking (no rpg-pet / board window): the scene frame and the ui files have no reader, so they are not rendered; a window opening renders at once */
         if (dirty) { replay(); out_all(msg); }    /* nothing changed -> nothing rendered, nothing written, nothing repainted */
-        if ((dirty || now_ms() - last_follow >= 400) && board_window_open()) { last_follow = now_ms(); follow_pchq(); }      /* the pc-hq 3D view (if open on the rpg-pet book) follows the selected entity; it re-compares the exported files of every room, so at most every 400 ms unless something changed */
+        if ((dirty || now_ms() - last_follow >= tune("follow_ms", 400)) && board_window_open()) { last_follow = now_ms(); follow_pchq(); }      /* the pc-hq 3D view (if open on the rpg-pet book) follows the selected entity; it re-compares the exported files of every room, so at most every 400 ms unless something changed */
     }
     clock_stop();
     return 0;
