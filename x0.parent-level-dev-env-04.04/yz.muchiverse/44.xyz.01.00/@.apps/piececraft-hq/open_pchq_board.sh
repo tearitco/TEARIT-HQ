@@ -35,6 +35,17 @@ if [ ! -d "$HOUSE_ROOT/#.desktop" ]; then
 fi
 HOUSE_ROOT="$(cd "$HOUSE_ROOT" && pwd)"
 
+# pc-hq sessions (PCHQ-SESSIONS-DESIGN.md): PCHQ_PKG = the DATA root of one pc-hq instance (a game's own world / hero / xelector / maps / engine sessions); the PROGRAMS stay in $PKG (shared, no symlinks).
+# Unset = the default instance (this folder), exactly as before. Everything that used to be "the" board is now scoped to the instance: the single-instance guard, the stale-session reaping, the engine check.
+DATA="$PKG"
+if [ -n "${PCHQ_PKG:-}" ]; then
+    mkdir -p "$PCHQ_PKG" && DATA="$(cd "$PCHQ_PKG" && pwd)"
+    [ "$DATA" = "$PKG" ] || [ -f "$DATA/pieces/system/.instance-ready" ] || sh "$PKG/ops/pchq_instance_init.sh" "$DATA" || { echo "open_pchq_board: could not initialise instance $DATA" >&2; exit 1; }
+fi
+INST="$(basename "$DATA")"
+# which instance does a running pc-hq process belong to? Its environment carries PCHQ_PKG (empty = the default instance).
+same_instance() { _v="$(tr '\0' '\n' < "/proc/$1/environ" 2>/dev/null | sed -n 's/^PCHQ_PKG=//p' | head -1)"; [ -n "$_v" ] && _v="$(cd "$_v" 2>/dev/null && pwd)"; [ "${_v:-$PKG}" = "$DATA" ]; }
+
 OPS_DIR="$HOUSE_ROOT/_.monads/_.livedesk-taskbar/ops"
 BIN="$OPS_DIR/+x/khtpm_core_render.+x"
 PROJECTOR="$PKG/ops/+x/pchq_board_projector.+x"
@@ -51,22 +62,26 @@ fi
 if [ -n "${PCHQ_BOARD_TPL:-}" ] && [ -f "$PCHQ_BOARD_TPL" ]; then BOARD_TPL="$PCHQ_BOARD_TPL"; fi
 # which folder the running board treats as its package dir (state/ lives there): pc_entity_ctx.sh publishes an
 # in-board context menu there when <dir>/state/ctx_overlay.on exists (IN-GAME-LAYOUTS-PLAN.md, context menus)
-dirname "$BOARD_TPL" > "$HOUSE_ROOT/#.desktop/pchq_ctx_dir.txt" 2>/dev/null || true
+if [ "$DATA" = "$PKG" ]; then
+    dirname "$BOARD_TPL" > "$HOUSE_ROOT/#.desktop/pchq_ctx_dir.txt" 2>/dev/null || true
+else
+    mkdir -p "$DATA/pieces/system"; dirname "$BOARD_TPL" > "$DATA/pieces/system/ctx_dir.txt" 2>/dev/null || true   # a second instance must not repoint the default board's context menus (known limit: its own right-click menu still reads the house-wide file)
+fi
 
 # ── locations: generated at EVERY launch from this script's own folder (TPMOS pattern: its location_kvp is generated,
 # never checked in; here pieces/system/locations.pdl). Nothing below depends on where the checkout lives: a saved pointer
 # is house-relative and resolved against house_root (_shared-lib/khtpm_locations.c). house_root.txt, which many ops read,
 # is refreshed here too (it used to be a tracked file with one machine's absolute path in it).
-mkdir -p "$PKG/pieces/system"
+mkdir -p "$DATA/pieces/system"
 _UH="$(ls -d "$HOUSE_ROOT"/xyzfs/users/*/home/livedesk 2>/dev/null | head -1)"
 {
     printf 'SECTION      | KEY                | VALUE\n----------------------------------------\n'
     printf 'LOCATION     | house_root         | %s\n' "$HOUSE_ROOT"
-    printf 'LOCATION     | pchq_root          | %s\n' "$PKG"
+    printf 'LOCATION     | pchq_root          | %s\n' "$DATA"
     printf 'LOCATION     | board_dir          | %s\n' "$(dirname "$BOARD_TPL")"
     printf 'LOCATION     | desk_user_home     | %s\n' "$_UH"
-} > "$PKG/pieces/system/locations.pdl" 2>/dev/null || true
-printf '%s\n' "$HOUSE_ROOT" > "$PKG/pieces/system/house_root.txt" 2>/dev/null || true
+} > "$DATA/pieces/system/locations.pdl" 2>/dev/null || true
+printf '%s\n' "$HOUSE_ROOT" > "$DATA/pieces/system/house_root.txt" 2>/dev/null || true
 # a template that carries the in-board menu row (id="ctx") needs its state files; <dir>/state/ is gitignored for the
 # live board, so create them when missing (the menu stays hidden until pc_entity_ctx.sh writes ctx_visible=1)
 if grep -q 'id="ctx"' "$BOARD_TPL" 2>/dev/null; then
@@ -138,12 +153,12 @@ fi
 # entities live on), never up in the sky where the last session left the xelector. The world publishes
 # floor_z in board_manifest.txt (pc_generate_chunk.c); reset the hero and xelector to floor_z + 1 before
 # the engine starts. A world without floor_z is left exactly as it was.
-_FZ="$(sed -n 's/^floor_z=//p' "$PKG/pieces/system/board_manifest.txt" 2>/dev/null | head -1)"
+_FZ="$(sed -n 's/^floor_z=//p' "$DATA/pieces/system/board_manifest.txt" 2>/dev/null | head -1)"
 case "$_FZ" in
     ""|*[!0-9]*) ;;
     *) _LV=$((_FZ + 1))
        for _p in xelector_01 hero_01; do
-           _f="$PKG/pieces/$_p/state.txt"
+           _f="$DATA/pieces/$_p/state.txt"
            [ -f "$_f" ] && sed -i "s/^pos_z=.*/pos_z=$_LV/" "$_f"
        done ;;
 esac
@@ -158,7 +173,7 @@ esac
 # the live engine). Reap any engine proc whose cwd is under one of
 # this project's session dirs and whose parent is gone (ppid 1), then
 # drop the dead session dir.
-SESS_BASES="$PKG/pieces/sessions
+SESS_BASES="$DATA/pieces/sessions
 $HOUSE_ROOT/&.widgits/board-viewer/pieces/sessions"
 _live_sessions=""
 for _p in $(pgrep -f "keyboard_input|system/orchestrator|board-viewer/button.sh run-widget" 2>/dev/null); do
@@ -168,7 +183,7 @@ done
 for _p in $(pgrep -f "chtpm_parser_pal|system/renderer|prisc\+x|system/orchestrator" 2>/dev/null); do
     _c="$(readlink "/proc/$_p/cwd" 2>/dev/null)" || continue
     case "$_c" in
-        "$PKG/pieces/sessions/"*|"$HOUSE_ROOT/&.widgits/board-viewer/pieces/sessions/"*) : ;;
+        "$DATA/pieces/sessions/"*|"$HOUSE_ROOT/&.widgits/board-viewer/pieces/sessions/"*) : ;;
         *) continue ;;
     esac
     _b="$(basename "$_c")"
@@ -205,7 +220,7 @@ done
 # its PID lives, so the projector latches a deleted bv_session -> blank
 # canvas). If no live prisc VM has a cwd under an existing board-viewer
 # session dir, the widget is dead weight - kill it.
-for _w in $(pgrep -f "board-viewer/button.sh run-widget .*/piececraft-hq" 2>/dev/null); do
+for _w in $(pgrep -f "board-viewer/button.sh run-widget [^ ]*/$INST( |\$)" 2>/dev/null); do
     _ok=0
     for _p in $(pgrep -f "prisc\+x pal/main_module" 2>/dev/null); do
         _c="$(readlink "/proc/$_p/cwd" 2>/dev/null)"
@@ -219,8 +234,8 @@ done
 # ── single-instance guard: clean-restart the board window ────────────
 # Match the shared binary by its OWN chtpm path (bare-name match would
 # hit every other khtpm_core_render window) + the projector.
-board_pids() { pgrep -f "khtpm_core_render\.\+x .*pchq-board\.xhtpm" 2>/dev/null || true; }
-proj_pids()  { pgrep -f "pchq_board_projector\.\+x" 2>/dev/null || true; }
+board_pids() { for _bp in $(pgrep -f "khtpm_core_render\.\+x .*pchq-board\.xhtpm" 2>/dev/null); do same_instance "$_bp" && echo "$_bp"; done; true; }
+proj_pids()  { for _bp in $(pgrep -f "pchq_board_projector\.\+x" 2>/dev/null); do same_instance "$_bp" && echo "$_bp"; done; true; }
 
 existing="$(board_pids) $(proj_pids)"
 existing="$(echo "$existing" | tr ' ' '\n' | grep -v '^$' | sort -u || true)"
@@ -242,7 +257,7 @@ fi
 # an ON-DISK board-viewer session (a bash wrapper alone is not enough -
 # see the orphan-reap above).
 engine_up() {
-    pgrep -f "board-viewer/button.sh run-widget .*/piececraft-hq" >/dev/null 2>&1 || return 1
+    pgrep -f "board-viewer/button.sh run-widget [^ ]*/$INST( |\$)" >/dev/null 2>&1 || return 1
     for _p in $(pgrep -f "prisc\+x pal/main_module" 2>/dev/null); do
         _c="$(readlink "/proc/$_p/cwd" 2>/dev/null)"
         case "$_c" in
@@ -254,8 +269,8 @@ engine_up() {
 if ! engine_up; then
     # serialize concurrent launches (rapid double-click) through a
     # short-lived mkdir lock so we start exactly one engine.
-    LOCK="$PKG/pieces/system/.engine-start.lock"
-    mkdir -p "$PKG/pieces/system" 2>/dev/null || true
+    LOCK="$DATA/pieces/system/.engine-start.lock"
+    mkdir -p "$DATA/pieces/system" 2>/dev/null || true
     if mkdir "$LOCK" 2>/dev/null; then
         trap 'rmdir "$LOCK" 2>/dev/null || true' EXIT INT TERM
         if ! engine_up; then
@@ -265,14 +280,16 @@ if ! engine_up; then
             # keyboard_input reader - that early exit is what fired the
             # rm -rf trap and left the board window blank. Its teardown
             # trap still runs on a real SIGTERM (taskbar reap) / Ctrl-C.
-            setsid nohup env PCHQ_ENGINE_MODE=1 sh -c 'sh "$0" run' "$PKG/button.sh" >/dev/null 2>&1 &
+            if [ "$DATA" = "$PKG" ]; then setsid nohup env PCHQ_ENGINE_MODE=1 sh -c 'sh "$0" run' "$PKG/button.sh" >/dev/null 2>&1 &
+            else setsid nohup env PCHQ_ENGINE_MODE=1 PCHQ_PKG="$DATA" sh -c 'sh "$0" run' "$PKG/button.sh" >/dev/null 2>&1 &
+            fi
             _eng=$!
             # button.sh's own EXIT/INT/TERM trap does a clean rm -rf +
             # kill_own_* - nothing ever SIGTERM'd it under the old
             # taskbar launch, so it orphaned. Register its group in the
             # proc-ledger: a taskbar quit (ktb_reap_launched) now
             # kill(-pgid, SIGTERM)s it -> its trap fires -> clean.
-            printf '%s\n' "$_eng" > "$PKG/pieces/system/engine.pid" 2>/dev/null || true
+            printf '%s\n' "$_eng" > "$DATA/pieces/system/engine.pid" 2>/dev/null || true
             printf '%s %s 0 0 pchq-engine\n' "$_eng" "$_eng" \
                 >> "$HOUSE_ROOT/#.desktop/livedesk_proc_list.txt" 2>/dev/null || true
         fi
@@ -289,10 +306,13 @@ if ! engine_up; then
 fi
 
 # ── launch the board window — standard x11-hq shape ─────────────────
-setsid nohup "$BIN" "$HOUSE_ROOT" "$BOARD_TPL" piececraft-hq \
-    >/tmp/pchq-board.log 2>&1 < /dev/null &
-printf '%s %s 0 0 pchq-board\n' "$!" "$!" \
-    >> "$HOUSE_ROOT/#.desktop/livedesk_proc_list.txt" 2>/dev/null || true
+if [ "$DATA" = "$PKG" ]; then
+    setsid nohup "$BIN" "$HOUSE_ROOT" "$BOARD_TPL" piececraft-hq >/tmp/pchq-board.log 2>&1 < /dev/null &
+    printf '%s %s 0 0 pchq-board\n' "$!" "$!" >> "$HOUSE_ROOT/#.desktop/livedesk_proc_list.txt" 2>/dev/null || true
+else   # another instance: its window carries PCHQ_PKG in its environment (that is how same_instance() tells the windows apart)
+    setsid nohup env PCHQ_PKG="$DATA" "$BIN" "$HOUSE_ROOT" "$BOARD_TPL" piececraft-hq >"/tmp/pchq-board-$INST.log" 2>&1 < /dev/null &
+    printf '%s %s 0 0 pchq-board-%s\n' "$!" "$!" "$INST" >> "$HOUSE_ROOT/#.desktop/livedesk_proc_list.txt" 2>/dev/null || true
+fi
 disown 2>/dev/null || true
 
 echo "open_pchq_board: board window launched"

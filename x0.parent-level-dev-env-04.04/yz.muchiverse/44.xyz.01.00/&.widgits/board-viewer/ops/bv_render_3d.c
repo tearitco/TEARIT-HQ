@@ -107,6 +107,13 @@
 typedef struct { double x, y, z; } Vec3;
 
 static char project_root[MAX_PATH] = ".";
+
+/* pc-hq sessions (PCHQ-SESSIONS-DESIGN.md): prefer the file the board window wrote INSIDE this engine session (pieces/display/<name>) over the house-wide #.desktop one, so two boards do not read
+ * each other's canvas size or click. A window launched before this change only writes the house-wide file: the path is then left alone (fallback). */
+static void bv_prefer_session_file(char *path, size_t cap, const char *name) {
+    char sp[4400]; snprintf(sp, sizeof(sp), "%s/pieces/display/%s", project_root, name);
+    struct stat sst; if (stat(sp, &sst) == 0) snprintf(path, cap, "%s", sp);
+}
 static char house_root[MAX_PATH] = "";
 /* vertical FOV, degrees. Wider default (was 60) so the sky / sun /
  * horizon are in frame, not tunnel-visioned onto the board - direct
@@ -2730,6 +2737,8 @@ static int bv_ray_click(const char *house, const Camera *cam,
     char path[PATH_BUF], seen_path[PATH_BUF];
     snprintf(path, sizeof(path), "%s/#.desktop/pchq_canvas_click.txt", house);
     snprintf(seen_path, sizeof(seen_path), "%s/#.desktop/pchq_canvas_click.seen", house);
+    bv_prefer_session_file(path, sizeof(path), "canvas_click.txt");
+    if (strstr(path, "/pieces/display/canvas_click.txt")) snprintf(seen_path, sizeof(seen_path), "%s/pieces/display/click_3d.seen", project_root);      /* a session click is tracked by a session stamp too */
     FILE *f = host_fopen(path, "r");
     if (!f) return 0;
     int cx = 0, cy = 0, cw = 0, ch = 0;
@@ -2899,7 +2908,7 @@ static int render_one_frame(void) {
      * (a bigger canvas letterboxes the rest - kh_draw_canvas centres). */
     {
         char vsz[PATH_BUF];
-        snprintf(vsz, sizeof(vsz), "%s/#.desktop/pchq_board_view.txt", house_root);
+        snprintf(vsz, sizeof(vsz), "%s/#.desktop/pchq_board_view.txt", house_root); bv_prefer_session_file(vsz, sizeof(vsz), "board_view.txt");
         FILE *vf = host_fopen(vsz, "r");
         if (vf) {
             int a = 0, b = 0;
@@ -4440,7 +4449,7 @@ static long long bv_file_size(const char *p) {
 static void bv_repaint_hud_only(void) {
     if (!g_click_ready || !g_click_focus[0] || !project_root[0] || !house_root[0]) return;
     char vsz[PATH_BUF];
-    snprintf(vsz, sizeof(vsz), "%s/#.desktop/pchq_board_view.txt", house_root);
+    snprintf(vsz, sizeof(vsz), "%s/#.desktop/pchq_board_view.txt", house_root); bv_prefer_session_file(vsz, sizeof(vsz), "board_view.txt");
     int a = g_fw, b = g_fh;
     FILE *vf = fopen(vsz, "r");
     if (vf) { if (fscanf(vf, "%d %d", &a, &b) != 2) { a = g_fw; b = g_fh; } fclose(vf); }
@@ -4509,7 +4518,7 @@ int main(int argc, char **argv) {
     char vszp[PATH_BUF]; vszp[0] = '\0';
     int last_vw = 0, last_vh = 0;
     if (house_root[0]) {
-        snprintf(vszp, sizeof(vszp), "%s/#.desktop/pchq_board_view.txt", house_root);
+        snprintf(vszp, sizeof(vszp), "%s/#.desktop/pchq_board_view.txt", house_root); bv_prefer_session_file(vszp, sizeof(vszp), "board_view.txt");
         FILE *vf0 = fopen(vszp, "r");
         if (vf0) { if (fscanf(vf0, "%d %d", &last_vw, &last_vh) != 2) { last_vw = last_vh = 0; } fclose(vf0); }
     }
@@ -4541,7 +4550,7 @@ int main(int argc, char **argv) {
         }
         if (g_click_ready && house_root[0]) {
             char cp[PATH_BUF], stamp[64] = "";
-            snprintf(cp, sizeof(cp), "%s/#.desktop/pchq_canvas_click.txt", house_root);
+            snprintf(cp, sizeof(cp), "%s/#.desktop/pchq_canvas_click.txt", house_root); bv_prefer_session_file(cp, sizeof(cp), "canvas_click.txt");
             FILE *cf = fopen(cp, "r");
             if (cf) { if (!fgets(stamp, sizeof(stamp), cf)) stamp[0] = '\0'; fclose(cf); }
             static char last_click[64];

@@ -48,6 +48,13 @@
 #define MAX_ENT      256
 
 static char project_root[PATH_BUF] = ".";
+
+/* pc-hq sessions (PCHQ-SESSIONS-DESIGN.md): prefer the file the board window wrote INSIDE this engine session (pieces/display/<name>) over the house-wide #.desktop one, so two boards do not read
+ * each other's canvas size or click. A window launched before this change only writes the house-wide file: the path is then left alone (fallback). */
+static void bv_prefer_session_file(char *path, size_t cap, const char *name) {
+    char sp[4400]; snprintf(sp, sizeof(sp), "%s/pieces/display/%s", project_root, name);
+    struct stat sst; if (stat(sp, &sst) == 0) snprintf(path, cap, "%s", sp);
+}
 static char house_root[PATH_BUF]   = "";
 static char focused_root[PATH_BUF] = "";
 
@@ -1212,7 +1219,7 @@ int main(void) {
      * resizes with it. Falls back to 640x480 (== the 3D overlay) if the
      * file isn't there yet. */
     int W = 640, H = 480;
-    { char vsz[PATH_BUF]; snprintf(vsz, sizeof(vsz), "%s/#.desktop/pchq_board_view.txt", house_root);
+    { char vsz[PATH_BUF]; snprintf(vsz, sizeof(vsz), "%s/#.desktop/pchq_board_view.txt", house_root); bv_prefer_session_file(vsz, sizeof(vsz), "board_view.txt");
       FILE *vf = host_fopen(vsz, "r");
       if (vf) { int a = 0, b = 0; if (fscanf(vf, "%d %d", &a, &b) == 2) {
                     if (a >= 160 && a <= 3840) W = a;
@@ -1592,7 +1599,7 @@ int main(void) {
             }
         }
         char cpath[PATH_BUF], seenp[PATH_BUF];
-        snprintf(cpath, sizeof(cpath), "%s/#.desktop/pchq_canvas_click.txt", house_root);
+        snprintf(cpath, sizeof(cpath), "%s/#.desktop/pchq_canvas_click.txt", house_root); bv_prefer_session_file(cpath, sizeof(cpath), "canvas_click.txt");
         snprintf(seenp, sizeof(seenp), "%s/pieces/display/click_2d.seen", project_root);
         FILE *cf = host_fopen(cpath, "r");
         int cx = 0, cy = 0, cw = 0, ch = 0;

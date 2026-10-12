@@ -71,6 +71,7 @@ typedef struct { char name[40]; unsigned char *px; int w, h; } Sheet;
 typedef struct { int room, x, y, dir, steps, tx, ty; } Ent;          /* a walking thing: a pet, or the trainer. tx,ty = the walk target (-1 none) */
 
 static char APP[PATH_MAX], ST[PATH_MAX], ASSETS[PATH_MAX], HOUSE[PATH_MAX], SELF[PATH_MAX];
+static char PCHQ[PATH_MAX];      /* this game's OWN pc-hq instance (data only: world, hero, xelector, maps, engine sessions): <app>/dsr-rpg-pchq, see PCHQ-SESSIONS-DESIGN.md. Programs stay in @.apps/piececraft-hq. */
 #define SIBLING_APP "/@.apps/" "rpg-pet" "/"      /* the carbon-copy game that shares the one pc-hq engine + world: its board window is NOT a viewer of this game (see viewer_kinds); the copy sets this to the other game */
 static Item cat[MAXI]; static int ncat;
 static Room rooms[8]; static int nroom;
@@ -618,7 +619,7 @@ static void write_room_png(int r) {
     static unsigned long last[16]; int saved = vroom; vroom = r; g_bg_only = 1; render(); g_bg_only = 0;
     static unsigned char crop[COLS * T * ROWS * T * 4]; unsigned long sum = 5381; for (int y = 0; y < ROWS * T; y++) memcpy(crop + (size_t)y * COLS * T * 4, fr + ((size_t)(OY + y) * FW + OX) * 4, COLS * T * 4);
     for (size_t i = 0; i < sizeof crop; i += 7) sum = sum * 33 + crop[i];
-    if (r >= 0 && r < 16 && sum != last[r]) { last[r] = sum; char d[PATH_MAX], p[PATH_MAX]; snprintf(d, sizeof d, "%s/@.apps/piececraft-hq/pieces/system/maps/dsr-rpg/%s", HOUSE, rooms[r].id); mkdir(d, 0755); snprintf(p, sizeof p, "%s/map.png", d); stbi_write_png(p, COLS * T, ROWS * T, 4, crop, COLS * T * 4); }
+    if (r >= 0 && r < 16 && sum != last[r]) { last[r] = sum; char d[PATH_MAX], p[PATH_MAX]; snprintf(d, sizeof d, "%s/pieces/system/maps/dsr-rpg/%s", PCHQ, rooms[r].id); mkdir(d, 0755); snprintf(p, sizeof p, "%s/map.png", d); stbi_write_png(p, COLS * T, ROWS * T, 4, crop, COLS * T * 4); }
     vroom = saved; calc_view();
 }
 /* The 3D sky of an OUTDOOR room (the same picture the 2D painter uses, so 2D and 3D share one day / night cycle): maps/dsr-rpg/<room>/parallax.rgba (raw RGBA8, the RPG Maker parallax image for the phase:
@@ -642,7 +643,7 @@ static void write_room_sky(int r, const char *d) {
 }
 static void write_room_events(int r) {
     char d[PATH_MAX], p[PATH_MAX], buf[4096]; int o = 0; static const int dc[4] = {2, 4, 6, 8};
-    snprintf(d, sizeof d, "%s/@.apps/piececraft-hq/pieces/system/maps/dsr-rpg/%s", HOUSE, rooms[r].id); mkdir(d, 0755);
+    snprintf(d, sizeof d, "%s/pieces/system/maps/dsr-rpg/%s", PCHQ, rooms[r].id); mkdir(d, 0755);
     for (int i = 0; i < nparty; i++) if (others[i].room == r) { int pat = others[i].steps % 3; write_frame(party[i].sheet, party[i].idx, others[i].dir, pat); unsigned char px[4] = {128, 128, 128, 255}; frame_rgb(sheet("characters", party[i].sheet), party[i].idx, others[i].dir & 3, px);
         o += snprintf(buf + o, sizeof buf - o, "%d %d %d %d %d %s %d %d %d %c\n", others[i].x, others[i].y, px[0], px[1], px[2], party[i].sheet, party[i].idx, dc[others[i].dir & 3], pat, party[i].name[0] >= 'A' && party[i].name[0] <= 'Z' ? party[i].name[0] + 32 : (party[i].name[0] ? party[i].name[0] : 'm')); }
     if (tr.room == r) { int pat = tr.steps % 3; write_frame(hero.sheet, 0, tr.dir, pat); unsigned char px[4] = {200, 60, 60, 255}; frame_rgb(sheet("characters", hero.sheet), 0, tr.dir & 3, px);
@@ -652,7 +653,7 @@ static void write_room_events(int r) {
     /* ascii_legend.txt: the ` (backtick) glyph view of this book. Rows are glyph|height|r|g|b|asset|name|char like terrain_legend.txt; events.txt carries a 10th column with each sprite's letter (@ = the trainer, the pet's lowercase initial) */
     static const char leg[] = "W|3|150|150|160|-|wall|#\nD|3|170|110|50|-|door|+\nT|2|50|150|60|-|tree|T\nf|1|190|150|90|-|furniture|&\n.|0|90|80|60|-|floor|.\n";
     snprintf(p, sizeof p, "%s/ascii_legend.txt", d); write_if_changed(p, leg, sizeof leg - 1);
-    { char bp[PATH_MAX]; snprintf(bp, sizeof bp, "%s/@.apps/piececraft-hq/pieces/system/maps/dsr-rpg/view.pdl", HOUSE); char vw[PATH_MAX + 160]; char sc[PATH_MAX]; spath(sc, "scene.raw"); int vn = snprintf(vw, sizeof vw, "VIEW | cell_px | 48\nVIEW | default_style | scene\nVIEW | scene_raw | %s\nVIEW | scene_w | %d\nVIEW | scene_h | %d\n", sc, FW, FH); write_if_changed(bp, vw, (size_t)vn); }      /* the engine draws this book's 2D at dsr-rpg's own 48 px tile (house desk_grid.pdl says 80) */
+    { char bp[PATH_MAX]; snprintf(bp, sizeof bp, "%s/pieces/system/maps/dsr-rpg/view.pdl", PCHQ); char vw[PATH_MAX + 160]; char sc[PATH_MAX]; spath(sc, "scene.raw"); int vn = snprintf(vw, sizeof vw, "VIEW | cell_px | 48\nVIEW | default_style | scene\nVIEW | scene_raw | %s\nVIEW | scene_w | %d\nVIEW | scene_h | %d\n", sc, FW, FH); write_if_changed(bp, vw, (size_t)vn); }      /* the engine draws this book's 2D at dsr-rpg's own 48 px tile (house desk_grid.pdl says 80) */
     /* bar.txt: the bottom entities bar of the pc-hq board lists these (id<TAB>name<TAB>x<TAB>y<TAB>trigger), Harold first */
     char bb[2048]; int bo = 0, id = 1; if (tr.room == r) bo += snprintf(bb + bo, sizeof bb - bo, "%d\t%s\t%d\t%d\ton-click\n", id++, hero.name, tr.x, tr.y);
     for (int i = 0; i < nparty; i++) if (others[i].room == r) bo += snprintf(bb + bo, sizeof bb - bo, "%d\t%s\t%d\t%d\ton-click\n", id++, party[i].name, others[i].x, others[i].y);
@@ -699,18 +700,18 @@ static void publish_sky(const char *wp) {
       if (!f1) n += snprintf(o + n, sizeof o - n, "game_time_epoch_sec=%s\n", v); if (!f2) n += snprintf(o + n, sizeof o - n, "game_time_epoch_ms=%s\n", v2); write_if_changed(wp, o, (size_t)n); }
 }
 static void follow_pchq(void) {
-    char wp[PATH_MAX], xp[PATH_MAX], hp[PATH_MAX], m[64] = "", dk[64] = ""; snprintf(wp, sizeof wp, "%s/@.apps/piececraft-hq/pieces/world_01/state.txt", HOUSE);
+    char wp[PATH_MAX], xp[PATH_MAX], hp[PATH_MAX], m[64] = "", dk[64] = ""; snprintf(wp, sizeof wp, "%s/pieces/world_01/state.txt", PCHQ);
     char wb[2048]; read_file(wp, wb, sizeof wb); for (char *l = strtok(wb, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "map_id=", 7)) snprintf(m, sizeof m, "%s", l + 7); else if (!strncmp(l, "desk_id=", 8)) snprintf(dk, sizeof dk, "%s", l + 8); }
     if (strcmp(m, "dsr-rpg")) return;
     publish_sky(wp);
     for (int r = 0; r < nroom; r++) write_room_events(r);
     { static unsigned long hs = 0; unsigned long s2 = 5381 + npl; for (int i = 0; i < npl; i++) s2 = s2 * 33 + pl[i].item * 131 + pl[i].x * 17 + pl[i].y * 7 + pl[i].room; if (s2 != hs) { hs = s2; for (int r = 0; r < nroom; r++) write_room_png(r); } }
-    snprintf(xp, sizeof xp, "%s/@.apps/piececraft-hq/pieces/xelector_01/state.txt", HOUSE); snprintf(hp, sizeof hp, "%s/@.apps/piececraft-hq/pieces/hero_01/state.txt", HOUSE);
+    snprintf(xp, sizeof xp, "%s/pieces/xelector_01/state.txt", PCHQ); snprintf(hp, sizeof hp, "%s/pieces/hero_01/state.txt", PCHQ);
     int ci = ctl_idx(); Ent *e = ci < 0 ? &tr : &others[ci]; static int lr = -1, lx = -1, ly = -1, ld = -1, lw = -1; int changed = 0;
     int pin = g_pin_now; g_pin_now = 0;
     if (pin || e->room != lr || e->x != lx || e->y != ly) { lr = e->room; lx = e->x; ly = e->y; changed = 1;
         kv_set_int(xp, "pos_x", e->x); kv_set_int(xp, "pos_y", e->y); kv_set_int(hp, "pos_x", e->x); kv_set_int(hp, "pos_y", e->y); sync_selector(e->x, e->y); }
-    if (strcmp(dk, rooms[e->room].id) && lw != e->room) { lw = e->room; char ib[PATH_MAX], c[96]; snprintf(ib, sizeof ib, "%s/@.apps/piececraft-hq/pieces/system/widget_cmds/inbox.txt", HOUSE); snprintf(c, sizeof c, "CONFIRM_SET_DESK:%s", rooms[e->room].id); FILE *f = fopen(ib, "a"); if (f) { fprintf(f, "%s\n", c); fclose(f); } changed = 1; }
+    if (strcmp(dk, rooms[e->room].id) && lw != e->room) { lw = e->room; char ib[PATH_MAX], c[96]; snprintf(ib, sizeof ib, "%s/pieces/system/widget_cmds/inbox.txt", PCHQ); snprintf(c, sizeof c, "CONFIRM_SET_DESK:%s", rooms[e->room].id); FILE *f = fopen(ib, "a"); if (f) { fprintf(f, "%s\n", c); fclose(f); } changed = 1; }
     if (!strcmp(dk, rooms[e->room].id)) lw = e->room;
     /* any pet/Harold stepping changes the sprites too: redraw when the events text changed (write_room_events reports via the checksum below) */
     static unsigned long ev_sum = 0; unsigned long s = 0; for (int i = 0; i < nparty; i++) s = s * 131 + (others[i].room * 97 + others[i].x * 31 + others[i].y * 7 + others[i].dir + others[i].steps % 3); s = s * 131 + tr.x * 31 + tr.y + tr.room; if (s != ev_sum) { ev_sum = s; changed = 1; } (void)ld;
@@ -723,8 +724,8 @@ static void follow_pchq(void) {
         if (best[0]) { FILE *f = fopen(best, "a"); if (f) { fputs("126\n", f); fclose(f); } } }
 }
 static void export3d(char *msg, size_t cap) {
-    char root[PATH_MAX], d[PATH_MAX], p[PATH_MAX]; snprintf(root, sizeof root, "%s/@.apps/piececraft-hq/pieces/system/maps/dsr-rpg", HOUSE);
-    { char a[PATH_MAX]; snprintf(a, sizeof a, "%s/@.apps/piececraft-hq/pieces/system/maps", HOUSE); mkdir(a, 0755); } mkdir(root, 0755);
+    char root[PATH_MAX], d[PATH_MAX], p[PATH_MAX]; snprintf(root, sizeof root, "%s/pieces/system/maps/dsr-rpg", PCHQ);
+    { char a[PATH_MAX]; snprintf(a, sizeof a, "%s/pieces/system/maps", PCHQ); mkdir(a, 0755); } mkdir(root, 0755);
     char gl[8192]; int go = 0; go += snprintf(gl + go, sizeof gl - go, "SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\nGAME         | type               | board-game\nGAME         | icon               | \xF0\x9F\x8F\xA0\nGAME         | label              | RPG-Pet\nGAME         | n_chunks           | 1\nGAME         | chunk_0_x          | 0\nGAME         | chunk_0_y          | 0\nGAME         | n_desks            | %d\n", nroom);
     for (int r = 0; r < nroom; r++) {
         go += snprintf(gl + go, sizeof gl - go, "GAME         | desk_%d_id          | %s\nGAME         | desk_%d_label       | %s\n", r + 1, rooms[r].id, r + 1, rooms[r].name);
@@ -898,10 +899,10 @@ static void board_interact(int want, int force) {
  * open is dsr-rpg on the monster's own room, or when the selection just changed (follow_pchq puts the xelector on the new monster first). */
 static int follow_xelector(char *msg, size_t cap) {
     static int lci = -2; int ci = ctl_idx(); if (ci != lci) { lci = ci; return 0; }
-    char wp[PATH_MAX], wb[2048], m[64] = "", dk[64] = "", xp[PATH_MAX], kb[512]; snprintf(wp, sizeof wp, "%s/@.apps/piececraft-hq/pieces/world_01/state.txt", HOUSE); read_file(wp, wb, sizeof wb);
+    char wp[PATH_MAX], wb[2048], m[64] = "", dk[64] = "", xp[PATH_MAX], kb[512]; snprintf(wp, sizeof wp, "%s/pieces/world_01/state.txt", PCHQ); read_file(wp, wb, sizeof wb);
     for (char *l = strtok(wb, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "map_id=", 7)) snprintf(m, sizeof m, "%s", l + 7); else if (!strncmp(l, "desk_id=", 8)) snprintf(dk, sizeof dk, "%s", l + 8); }
     Ent *e = ci < 0 ? &tr : &others[ci]; if (strcmp(m, "dsr-rpg") || strcmp(dk, rooms[e->room].id)) return 0;
-    snprintf(xp, sizeof xp, "%s/@.apps/piececraft-hq/pieces/xelector_01/state.txt", HOUSE); read_file(xp, kb, sizeof kb); int xx = -1, xy = -1;
+    snprintf(xp, sizeof xp, "%s/pieces/xelector_01/state.txt", PCHQ); read_file(xp, kb, sizeof kb); int xx = -1, xy = -1;
     for (char *l = strtok(kb, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "pos_x=", 6)) xx = atoi(l + 6); else if (!strncmp(l, "pos_y=", 6)) xy = atoi(l + 6); }
     if (xx < 0 || xy < 0 || (xx == e->x && xy == e->y)) return 0;
     int ddx = xx - e->x, ddy = xy - e->y, dx = 0, dy = 0; if (abs(ddx) >= abs(ddy)) dx = ddx > 0 ? 1 : -1; else dy = ddy > 0 ? 1 : -1;
@@ -988,6 +989,7 @@ int main(int argc, char **argv) {
         else for (int i = 1; i < argc && vargc < 31; i++) vargv[vargc++] = argv[i];
     }
     snprintf(ST, sizeof ST, "%s/state", APP); mkdir(ST, 0755);
+    snprintf(PCHQ, sizeof PCHQ, "%s/dsr-rpg-pchq", APP);
     { char d[PATH_MAX]; snprintf(d, sizeof d, "%s", APP); ASSETS[0] = HOUSE[0] = 0;
       for (int up = 0; up < 8; up++) { char *s = strrchr(d, '/'); if (!s) break; *s = 0; char p[PATH_MAX]; snprintf(p, sizeof p, "%s/&.widgits", d); if (!HOUSE[0] && is_dir(p)) snprintf(HOUSE, sizeof HOUSE, "%s", d); snprintf(ASSETS, sizeof ASSETS, "%s/#.NNEST_ASSETS/rmmv-www-img", d); if (is_dir(ASSETS)) break; ASSETS[0] = 0; }
       if (!ASSETS[0] || !HOUSE[0]) { fprintf(stderr, "dsr_rpg: no #.NNEST_ASSETS / &.widgits above %s\n", APP); return 1; } }

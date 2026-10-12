@@ -530,6 +530,8 @@ static void launch_trigger_watcher_if_needed(const char *proj_root) {
 
 /* Host project id for board-viewer ledger scoping (board-viewer:<host>). */
 static const char *host_project_id(void) {
+    const char *hid = getenv("PCHQ_HOST_ID");      /* pc-hq sessions: the instance folder name (set by button.sh); unset = the default instance */
+    if (hid && hid[0]) return hid;
     const char *pid = getenv("PRISC_PROJECT_ID");
     if (pid && pid[0]) return pid;
     return "piececraft-hq";

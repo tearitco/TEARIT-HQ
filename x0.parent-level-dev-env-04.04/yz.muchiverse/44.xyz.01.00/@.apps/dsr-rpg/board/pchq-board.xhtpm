@@ -3,7 +3,7 @@
      the dropdowns are dsr-rpg's. The canvas is the board engine frame (2D default, 0 = 3D, 1-4 POV, camera keys, backtick = glyph view) of the book maps/dsr-rpg that dsr_rpg.+x exports.
      Launch: sh @.apps/dsr-rpg/board/open_board.sh. vars: dsr-rpg's state files FIRST, the board's after, so canvas_raw / interact_* are the board's. RULES: no angle brackets inside comments. -->
 <window label="dsr-rpg board" class="pchq-board-pal database-window managed user-resizable" vars="../state/ui.txt ../state/clock_ui.txt state/ui.txt state/pchq/ui.txt state/sides.txt state/ctx.txt">
-  <module src="@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x" args="piececraft-hq"/>
+  <module src="@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x" args="dsr-rpg-pchq"/>
   <page name="main">
     <tabbar id="toolbar" class="pchq-toolbar">
       <tab id="tb-in" class="pchq-tb ${interact_class}" label="In: ${interact_label}" relay="${bv_h1},${bv_h2}" onclick="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' int"/>
@@ -31,7 +31,7 @@
       <item id="mn-control" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="${control_label} (switch: Tab)" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' control"/>
       <item id="mn-voice" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="Voice on / off" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' toggle voice"/>
       <item id="mn-reset" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="Reset house (keeps a backup)" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' reset"/>
-      <item id="mn-entbar" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="Entities bar on/off" action="sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_toggle_pdl_opt.sh' '${HOUSE}/@.apps/piececraft-hq/pieces/system/pchq.pdl' 'entities_bar'"/>
+      <item id="mn-entbar" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="Entities bar on/off" action="sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_toggle_pdl_opt.sh' '${HOUSE}/@.apps/dsr-rpg/dsr-rpg-pchq/pieces/system/pchq.pdl' 'entities_bar'"/>
       <item id="mn-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-menu" label="- cancel -" action="void"/>
       <item id="db-hq" class="pchq-menu-row dropdown-child " target_id="tb-db" label="db-hq" action="sh '${HOUSE}/&.hq-apps/db-hq-pal/button.sh' '${HOUSE}'"/>
       <item id="db-bp" class="pchq-menu-row dropdown-child " target_id="tb-db" label="blueprintz (events of the whole book)" action="sh '${HOUSE}/_.monads/_.livedesk-taskbar/ops/open_blueprintz.sh'"/>

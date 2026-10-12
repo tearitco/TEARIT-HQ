@@ -403,6 +403,14 @@ static void read_pdl_kv(const char *path, const char *key, char *out, size_t out
     fclose(f);
 }
 
+/* pc-hq sessions (PCHQ-SESSIONS-DESIGN.md): the DATA folder of the instance this board belongs to. A second instance lives under its game (PCHQ_PKG, set by open_pchq_board.sh in the window's environment),
+ * not at @.apps/<host id>; unset = the default @.apps/<host id> exactly as before. Returns a static buffer. */
+static const char *host_root(const char *house, const char *host_id) {
+    static char buf[PATH_MAX]; const char *ip = getenv("PCHQ_PKG");
+    if (ip && ip[0]) snprintf(buf, sizeof(buf), "%s", ip); else snprintf(buf, sizeof(buf), "%s/@.apps/%s", house, host_id);
+    return buf;
+}
+
 static int file_has_nonzero(const char *path) {
     FILE *f = fopen(path, "r");
     if (!f) return 0;
@@ -418,7 +426,7 @@ static int file_has_nonzero(const char *path) {
 static int find_board_session(const char *house, const char *host_id, char *out, size_t outsz) {
     out[0] = '\0';
     char static_root[PATH_MAX], hr_path[PATH_MAX];
-    snprintf(static_root, sizeof(static_root), "%s/@.apps/%s", house, host_id);
+    snprintf(static_root, sizeof(static_root), "%s", host_root(house, host_id));
     snprintf(hr_path, sizeof(hr_path), "%s/pieces/system/house_root.txt", static_root);
     FILE *hrf = fopen(hr_path, "w");
     if (hrf) { fprintf(hrf, "%s\n", house); fclose(hrf); }
@@ -646,7 +654,7 @@ int main(int argc, char **argv) {
         /* board-viewer's own config (same keys run_pchq_board_mode read
          * via pchq_read_config_kv) - live under @.apps/<host>/ */
         char cfg[PATH_MAX], active_level[64] = "", active_board[64] = "";
-        snprintf(cfg, sizeof(cfg), "%s/@.apps/%s/pieces/system/board_config.txt", house, host_id);
+        snprintf(cfg, sizeof(cfg), "%s/pieces/system/board_config.txt", host_root(house, host_id));
         read_kv(cfg, "active_board", active_board, sizeof(active_board));
         /* REAL FIX 2026-09-15, direct live report ("where did the
          * default game map go... it should be a 'default' folder
@@ -660,7 +668,7 @@ int main(int argc, char **argv) {
          * chunk.c actually write/read) - empty map_id means the flat/
          * procedural "default" world, not a named map. */
         char world_state_al[PATH_MAX];
-        snprintf(world_state_al, sizeof(world_state_al), "%s/@.apps/%s/pieces/world_01/state.txt", house, host_id);
+        snprintf(world_state_al, sizeof(world_state_al), "%s/pieces/world_01/state.txt", host_root(house, host_id));
         read_kv(world_state_al, "map_id", active_level, sizeof(active_level));
         /* REAL FIX 2026-09-15, direct live report ("Desk dropdown shows
          * 'mineclonia sample' regardless of what's actually loaded") -
@@ -734,7 +742,7 @@ int main(int argc, char **argv) {
          * Falls back to "--:--" if the world file has no epoch yet. */
         char world_state[PATH_MAX], epoch_s[32] = "";
         snprintf(world_state, sizeof(world_state),
-                 "%s/@.apps/%s/pieces/world_01/state.txt", house, host_id);
+                 "%s/pieces/world_01/state.txt", host_root(house, host_id));
         read_kv(world_state, "game_time_epoch_sec", epoch_s, sizeof(epoch_s));
         char clock_s[8] = "--:--";
         if (epoch_s[0]) {
@@ -791,7 +799,7 @@ int main(int argc, char **argv) {
         {
             char ob[PATH_MAX], ob_book[80] = "", ob_page[80] = "";
             snprintf(ob, sizeof(ob),
-                     "%s/@.apps/%s/pieces/display/open_book_page.txt", house, host_id);
+                     "%s/pieces/display/open_book_page.txt", host_root(house, host_id));
             read_kv(ob, "book", ob_book, sizeof(ob_book));
             read_kv(ob, "page", ob_page, sizeof(ob_page));
             char ob_src[32] = "";
@@ -927,7 +935,7 @@ int main(int argc, char **argv) {
         /* MILESTONE C - the <footer> entities bar */
         {
             char host_app[PATH_MAX], pdl[PATH_MAX];
-            snprintf(host_app, sizeof(host_app), "%s/@.apps/%s", house, host_id);
+            snprintf(host_app, sizeof(host_app), "%s", host_root(house, host_id));
             snprintf(pdl, sizeof(pdl), "%s/pieces/system/pchq.pdl", host_app);
             int ebar = read_pdl_opt(pdl, "entities_bar", 0);
             off = emit_entities(ui, off, house, host_app, ebar);
