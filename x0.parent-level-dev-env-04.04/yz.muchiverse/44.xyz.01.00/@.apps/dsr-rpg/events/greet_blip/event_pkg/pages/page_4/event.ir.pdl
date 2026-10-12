@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | greet_blip
+STATE        | source               | events-hq
+NODE         | id=1 type=dsr_pet_says | pet=blip|chat=hello {other}, nice day|voice=やあ、{other}、いい天気だね

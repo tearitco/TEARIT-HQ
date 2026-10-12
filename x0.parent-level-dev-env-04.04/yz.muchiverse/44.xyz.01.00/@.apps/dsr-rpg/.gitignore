@@ -1,0 +1,4 @@
+state/
+audit/
+ops/+x/
+events/*/master_ledger.txt

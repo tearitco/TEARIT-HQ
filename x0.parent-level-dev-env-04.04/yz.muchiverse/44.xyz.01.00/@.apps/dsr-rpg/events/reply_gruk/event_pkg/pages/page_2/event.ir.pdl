@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | reply_gruk
+STATE        | source               | events-hq
+NODE         | id=1 type=dsr_pet_says | pet=gruk|chat=zzz... a bed!|voice=쿨쿨… 침대다!

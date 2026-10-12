@@ -1179,3 +1179,21 @@ COMMAND pet_says
   PARAMS pet,chat,voice
   TEMPLATE exec "$D/@.apps/rpg-pet/ops/+x/rpg_pet.+x" pet_says '{pet}' '{chat}' '{voice}' "$RPG_OTHER"
 END
+
+# ---- dsr-rpg (2026-10-12): the carbon copy of rpg-pet has its OWN two commands, bound to its own binary (dsr_rpg.+x), so its event pages never run rpg-pet's program.
+# dsr_rpg_verb = one generic command that runs a dsr-rpg verb ("dsr_rpg.+x <verb> [arg]"); dsr_pet_says = a character says a line in the chat and aloud (same fields as pet_says).
+COMMAND dsr_rpg_verb
+  LABEL dsr-rpg: Run Verb
+  FIELD1 Verb:
+  FIELD2 Arg:
+  PARAMS verb,arg
+  TEMPLATE exec "$D/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x" '{verb}'[ '{arg}']
+END
+
+COMMAND dsr_pet_says
+  LABEL dsr-rpg: Character Says
+  FIELD1 Chat line:
+  FIELD2 Spoken line:
+  PARAMS pet,chat,voice
+  TEMPLATE exec "$D/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x" pet_says '{pet}' '{chat}' '{voice}' "$RPG_OTHER"
+END

@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | reply_gruk
+STATE        | source               | events-hq
+NODE         | id=1 type=dsr_pet_says | pet=gruk|chat=no books here.|voice=여기엔 책이 없어.

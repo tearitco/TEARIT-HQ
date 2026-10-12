@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | greet_gruk
+STATE        | source               | events-hq
+NODE         | id=1 type=dsr_pet_says | pet=gruk|chat=hello {other}, nice day|voice=안녕 {other}, 날씨 좋다
