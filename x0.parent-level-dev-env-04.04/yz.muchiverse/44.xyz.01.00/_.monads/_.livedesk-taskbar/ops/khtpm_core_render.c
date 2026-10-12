@@ -2767,7 +2767,7 @@ static int reparse_chtpm_if_changed(void) {
         {
             static long s_load_marker = -1; char lm[PATH_BUF]; struct stat lst;
             snprintf(lm, sizeof(lm), "%s/#.desktop/load_changed.txt", g_house_root);
-            if (g_house_root[0] && stat(lm, &lst) == 0) {
+            if (g_house_root[0] && !window_is_dock() && stat(lm, &lst) == 0) {      /* not the dock (header/bottom): it already follows the strip's own marker; a reparse per load change made the top bar flicker */
                 if (s_load_marker < 0 || lst.st_size < s_load_marker) s_load_marker = lst.st_size;      /* first sight / rotated: resync, no reparse */
                 else if (lst.st_size > s_load_marker) { s_load_marker = lst.st_size; vars_changed = 1; }
             }

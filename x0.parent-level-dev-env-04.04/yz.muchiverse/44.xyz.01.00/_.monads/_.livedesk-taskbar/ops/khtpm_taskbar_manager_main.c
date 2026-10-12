@@ -344,9 +344,14 @@ static int ktb_load_sample(const char *house_root) {
     int cp5 = (cpu + 2) / 5 * 5; if (cp5 > 100) cp5 = 100;
     int warn = (wl > 0 && wins >= wl) || (cl > 0 && cpu >= cl) || (tl > 0 && temp >= tl);
     char lab[96]; snprintf(lab, sizeof(lab), warn ? "!%%%d" : "%%%d", cp5);      /* just the number (owner: "%<#>" next to the pid); the warning reasons (windows, temperature) only turn it red */
-    int changed = strcmp(lab, g_load_label) != 0 || warn != g_load_warn;
-    snprintf(g_load_label, sizeof(g_load_label), "%s", lab); g_load_warn = warn;
-    return changed;
+    /* Return bits: 1 = the label changed (reported at most every 10 s: the windows follow it through the load marker), 2 = the warning flipped (reported at once). The dock header is republished ONLY on bit 2: a
+     * republish of the whole strip every 2 s made the top bar flicker (2026-10-12 owner bug), so its % follows the existing once-a-minute datetime publish. */
+    static struct timespec last_rep; int r = 0;
+    int lab_changed = strcmp(lab, g_load_label) != 0, warn_flip = warn != g_load_warn;
+    double since = (double)(now.tv_sec - last_rep.tv_sec) * 1000.0 + (double)(now.tv_nsec - last_rep.tv_nsec) / 1e6;
+    if (warn_flip) r |= 2;
+    if (warn_flip || (lab_changed && (last_rep.tv_sec == 0 || since >= 10000.0))) { r |= 1; last_rep = now; snprintf(g_load_label, sizeof(g_load_label), "%s", lab); g_load_warn = warn; }
+    return r;
 #else
     (void)house_root; return 0;
 #endif
@@ -1202,8 +1207,9 @@ int main(int argc, char **argv) {
                 snprintf(last_dt, sizeof(last_dt), "%s", dt);
                 reload_changed = 1;
             }
-            if (ktb_load_sample(house_root)) {      /* the load label changed (gated to one sample per 2 s inside) */
-                reload_changed = 1;
+            int lr = ktb_load_sample(house_root);      /* gated to one sample per 2 s inside; bit 1 = write the windows' state + marker, bit 2 = the warning flipped */
+            if (lr & 2) reload_changed = 1;      /* only a warning flip republishes the dock; the % in the header rides the minute datetime publish */
+            if (lr) {
                 { char ls[160]; snprintf(ls, sizeof(ls), "load_label=%s\nload_ok=%s\nload_warn=%s\n", g_load_label, g_load_label[0] && !g_load_warn ? "1" : "", g_load_warn ? "1" : "");
                   write_small_file(house_root, "#.desktop/load_state.txt", ls);      /* the game windows read this; then the marker grows (append-only: its SIZE is the signal) */
                   char mp[KTB_PATH_BUF]; path_join2(mp, sizeof(mp), house_root, "#.desktop/load_changed.txt"); FILE *mf = fopen(mp, "a"); if (mf) { fputc('x', mf); fclose(mf); } }
