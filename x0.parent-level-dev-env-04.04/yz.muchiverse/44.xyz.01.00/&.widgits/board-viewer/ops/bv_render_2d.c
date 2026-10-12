@@ -1611,7 +1611,14 @@ int main(void) {
                     char pp[PATH_BUF];
                     snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
                     FILE *pf = NULL;
-                    if (!bvr_click(focused_root, project_root, bx, by, 0, 0))   /* Move range open: select/place */
+                    /* Painted (maker) maps have no placer: an armed placer takes the arrow keys, so rpg-pet's INT / the xelector would stop answering the arrows after any canvas click (same rule as the 3D click path). */
+                    char mk_dir[PATH_BUF + 160], mk_map[128] = "", mk_desk[128] = "";
+                    { char wp[PATH_BUF + 64]; snprintf(wp, sizeof(wp), "%s/pieces/world_01/state.txt", focused_root);
+                      FILE *wf = host_fopen(wp, "r");
+                      if (wf) { char ln[256]; while (fgets(ln, sizeof ln, wf)) { ln[strcspn(ln, "\r\n")] = 0; if (!strncmp(ln, "map_id=", 7)) snprintf(mk_map, sizeof mk_map, "%s", ln + 7); else if (!strncmp(ln, "desk_id=", 8)) snprintf(mk_desk, sizeof mk_desk, "%s", ln + 8); } fclose(wf); } }
+                    snprintf(mk_dir, sizeof(mk_dir), "%s/pieces/system/maps/%s/%s", focused_root, mk_map, mk_desk);
+                    int mk_painted = mk_map[0] && mk_desk[0] && access(mk_dir, F_OK) == 0;
+                    if (!bvr_click(focused_root, project_root, bx, by, 0, 0) && !mk_painted)   /* Move range open: select/place */
                         pf = host_fopen(pp, "w");
                     if (pf) { fprintf(pf, "armed=1\nx=%d\ny=%d\nz=%d\n", bx, by, bz); fclose(pf); }
                     time_t now = time(NULL);
