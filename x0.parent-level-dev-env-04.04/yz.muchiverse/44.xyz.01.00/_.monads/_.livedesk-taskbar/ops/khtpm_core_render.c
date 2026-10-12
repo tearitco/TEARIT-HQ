@@ -5557,8 +5557,25 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
                 strcmp(c->tag, "text_area") == 0 || strcmp(c->tag, "bar") == 0 ||
                 /* INLINE SPANS step 4: a <text> carrying link segments is
                  * clickable (per-segment hit-testing in
-                 * popup_handle_click) - plain text rows keep nav 0. */
-                (strcmp(c->tag, "text") == 0 && c->segments[0])) {
+                 * popup_handle_click). */
+                (strcmp(c->tag, "text") == 0 &&
+                 (c->segments[0] ||
+                  /* CONTENT-ROW REACHABILITY (2026-10-12): a plain text
+                   * row is OPT-IN via class="nav-text", the inverse of the
+                   * long-standing class="no-nav". Without it a paragraph
+                   * is unreachable by the keyboard: arrows step g_nav[],
+                   * Ctrl+C copies g_nav[focus], the digit slots index
+                   * g_nav[] - so "copy this article" could never copy a
+                   * paragraph. Measured on the browser's own fixture: 9 of
+                   * 10 content rows were nav 0.
+                   *
+                   * Opt-IN, not a blanket change: a nav slot also draws a
+                   * badge (kh_elem_badge_label_x), and 44 house files use
+                   * <scrolllist> with plain <text> rows - numbering them all
+                   * would badge every paragraph in every window. A window
+                   * asks for this per row, exactly as it already asks per
+                   * row with no-nav. */
+                  elem_has_class(c, "nav-text")))) {
                 c->nav_index = ++g_n_nav;
                 g_nav[g_n_nav - 1] = c;
                 if (*out_lo == 0) *out_lo = c->nav_index;

@@ -80,8 +80,8 @@
       <text id="nbwarn" class="nb-warn" label="${render_warn}" show="${show_render_warn}"/>
       <scrolllist class="from-top nb-content">
         <repeat count="${content_count}" bind="c">
-<text id="ct${c.#}" class="page-title" label="${c.text}" action="${c.click_action}"        show="${c.is_title}"/>
-          <text id="cx${c.#}" class="nb-text"                   label="${c.text}" action="${c.click_action}"        show="${c.is_text}"/>
+<text id="ct${c.#}" class="page-title nav-text" label="${c.text}" action="${c.click_action}"        show="${c.is_title}"/>
+          <text id="cx${c.#}" class="nb-text nav-text"                   label="${c.text}" action="${c.click_action}"        show="${c.is_text}"/>
           <!-- 2026-10-09: inline clickable spans, phase 2 step 3. One
                verified RICH paragraph renders as a single sentence row;
                link segments draw tinted via segments= (see
@@ -89,11 +89,11 @@
                same run still emit, so clicks stay live until per-segment
                hit-testing lands. Rows without segments= take the
                proven-inert path - every other row is byte-identical. -->
-          <text id="cr${c.#}" class="nb-rich" label="${c.text}" segments="${c.segments}" action="${c.click_action}" show="${c.is_rich}"/>
+          <text id="cr${c.#}" class="nb-rich nav-text" label="${c.text}" segments="${c.segments}" action="${c.click_action}" show="${c.is_rich}"/>
           <!-- 2026-10-07: <pre> blocks keep their line structure and
                indentation (CODE rows, one per source line) instead of
                being collapsed into one run-on line. -->
-          <text id="cd${c.#}" class="nb-code"                   label="${c.text}" show="${c.is_code}"/>
+          <text id="cd${c.#}" class="nb-code nav-text"                   label="${c.text}" show="${c.is_code}"/>
           <item id="cl${c.#}" class="nb-link" label="${c.text}"  action="${c.action}"                       show="${c.is_link}"/>
           <!-- Milestone 4 slice 1 (2026-10-07): form controls. INPUT rows
                are editable cli_io (commit appends name=value via the
@@ -112,14 +112,14 @@
                a cell still reads as belonging to its column. Header rows
                are their own kind so they can be tinted apart. A real grid
                needs renderer column layout - separate slice. -->
-          <text id="tr${c.#}" class="nb-trow thead" label="${c.text}" cells="${c.cells}" ccounts="${c.ccounts}" show="${c.is_thead}"/>
+          <text id="tr${c.#}" class="nb-trow thead nav-text" label="${c.text}" cells="${c.cells}" ccounts="${c.ccounts}" show="${c.is_thead}"/>
           <!-- 2026-10-08: <ul>/<ol> items keep their marker and nesting. -->
-          <text id="li${c.#}" class="nb-list" label="${c.text}" show="${c.is_list}"/>
+          <text id="li${c.#}" class="nb-list nav-text" label="${c.text}" show="${c.is_list}"/>
           <!-- 2026-10-08: <dl> term/definition pairs, and the always-visible
                label of a collapsed <details>. The collapsed BODY is not
                emitted at all - it is not visible on the page either. -->
-          <text id="dl${c.#}" class="nb-drow"     label="${c.text}" show="${c.is_drow}"/>
-          <text id="ds${c.#}" class="nb-summary" label="${c.text}" show="${c.is_summary}"/>
+          <text id="dl${c.#}" class="nb-drow nav-text"     label="${c.text}" show="${c.is_drow}"/>
+          <text id="ds${c.#}" class="nb-summary nav-text" label="${c.text}" show="${c.is_summary}"/>
           <!-- 2026-10-08: <h1>..<h6> keep their level. Previously every
                heading was one identical TITLE row, so an article arrived
                with no outline at all. One element per level, each shown only
