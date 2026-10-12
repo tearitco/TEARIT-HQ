@@ -330,6 +330,27 @@ static void slide_dx_put(const char *label, int dx) {
     fclose(f);
     rename(tmp, p);
 }
+/* Minimized state of a "vars-positioned" window (the hotbar), remembered across restarts (owner 2026-10-12: a hotbar minimized with "_" came back open after a desktop restart). Stored per window label in
+ *     #.desktop/hq_minimized.pdl      MIN | <label> | 1
+ * A row exists only while the window is minimized. Written when the window is minimized / restored, read once at startup: a minimized window is created unmapped, registered minimized=1 (so the bottom bar
+ * still offers it) and stays hidden until the taskbar restores it. */
+static int hq_min_get(const char *label) {
+    char p[PATH_BUF + 40], line[512], want[300]; FILE *f; int on = 0;
+    snprintf(p, sizeof(p), "%s/#.desktop/hq_minimized.pdl", g_house_root); snprintf(want, sizeof(want), "MIN | %s | 1", label);
+    if (!(f = fopen(p, "r"))) return 0;
+    while (fgets(line, sizeof(line), f)) if (!strncmp(line, want, strlen(want))) on = 1;
+    fclose(f); return on;
+}
+static void hq_min_put(const char *label, int on) {
+    char p[PATH_BUF + 40], tmp[PATH_BUF + 50], line[512], want[300], keep[16][512]; int n = 0, i; FILE *f;
+    snprintf(p, sizeof(p), "%s/#.desktop/hq_minimized.pdl", g_house_root); snprintf(tmp, sizeof(tmp), "%s.tmp", p); snprintf(want, sizeof(want), "MIN | %s | 1", label);
+    if ((f = fopen(p, "r"))) { while (n < 16 && fgets(line, sizeof(line), f)) if (strncmp(line, want, strlen(want)) && !strncmp(line, "MIN | ", 6)) snprintf(keep[n++], 512, "%s", line); fclose(f); }
+    if (!(f = fopen(tmp, "w"))) return;
+    fprintf(f, "# minimized vars-positioned windows (written by the renderer on minimize / restore)\n");
+    for (i = 0; i < n; i++) fputs(keep[i], f);
+    if (on) fprintf(f, "%s\n", want);
+    fclose(f); rename(tmp, p);
+}
 static int g_dock_want_rows = 0, g_dock_rows_loaded = 0;
 static void dock_state_path(char *out, size_t n) { snprintf(out, n, "%s/#.desktop/dock_state.pdl", g_house_root); }
 static void dock_rows_load(void) {
@@ -9392,6 +9413,7 @@ static void dispatch(const char *action) {
     if (strcmp(action, "MINIMIZE") == 0) {
         if (!window_is_dock() && g_default_has_sidebar_panel) {
             g_hq_minimized = 1;
+            if (g_window && elem_has_class(g_window, "vars-positioned")) hq_min_put(g_window->label, 1);
             {
                 char reg_path[PATH_BUF], reg_tmp[PATH_BUF];
                 const char *title_raw = (g_window && g_window->label[0] ? g_window->label : g_current_page);
@@ -13487,6 +13509,7 @@ static void hq_idle_tick(void) {
         if (access(restore_path, F_OK) == 0) {
             unlink(restore_path);
             g_hq_minimized = 0;
+            if (g_window && elem_has_class(g_window, "vars-positioned")) hq_min_put(g_window->label, 0);
             XMapWindow(dpy, win);
             XRaiseWindow(dpy, win);
             XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
@@ -22158,7 +22181,10 @@ int main(int argc, char **argv) {
     XSizeHints *shints = XAllocSizeHints();
     if (shints) { shints->flags = PPosition; shints->x = g_win_x; shints->y = g_win_y; XSetWMNormalHints(dpy, win, shints); XFree(shints); }
 
-    if (g_window && elem_has_class(g_window, "vars-positioned") && !window_is_dock() && !g_default_is_fullscreen) { g_defer_map = 1; g_defer_t0 = time(NULL); }
+    if (g_window && elem_has_class(g_window, "vars-positioned") && !window_is_dock() && !g_default_is_fullscreen) {
+        if (hq_min_get(g_window->label)) { g_hq_minimized = 1; g_defer_map = 0; kh_defer_map_done(); }      /* it was minimized when the desktop went down: come back minimized (registered minimized=1 by redraw) */
+        else { g_defer_map = 1; g_defer_t0 = time(NULL); }
+    }
     else XMapRaised(dpy, win);
     set_window_opacity(dpy, win, load_theme_opacity());
     XSync(dpy, False);
