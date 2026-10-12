@@ -317,7 +317,7 @@ static void write_small_file(const char *house_root, const char *rel_path, const
 }
 
 /* LOAD GUARD (2026-10-12, owner: "show cpu % on the top bar, and a warning if too many windows are open" after an overheat crash): the label that the header's CPU cell shows,
- * "cpu 35%  49C  3 win", and a warning form "! 9 win  cpu 92%  81C" when any limit is passed. Limits are keys of #.desktop/livedesk_taskbar.pdl (warn_windows 6, warn_cpu 85, warn_temp 80;
+ * "cpu 35% 49C 3w", and a warning form "! 9w cpu 92% 81C" when any limit is passed. Limits are keys of #.desktop/livedesk_taskbar.pdl (warn_windows 6, warn_cpu 85, warn_temp 80;
  * 0 turns one off). House CPU standard: a long-lived process gates its expensive work with an in-memory CLOCK_MONOTONIC gate: sampled at most every 2 s (the /proc window scan every 4 s),
  * the CPU figure rounded to 5% steps so the dock republishes only when the label really changes. System-wide CPU = delta of /proc/stat; temperature = the hottest thermal zone; windows = processes
  * named khtpm_core_render (every khtpm window). Linux only: elsewhere the label stays empty and the cell is hidden. */
@@ -344,8 +344,8 @@ static int ktb_load_sample(const char *house_root) {
         v[0] = 0; read_key_value(pdl, "warn_windows", v, sizeof(v)); if (v[0]) wl = atoi(v); v[0] = 0; read_key_value(pdl, "warn_cpu", v, sizeof(v)); if (v[0]) cl = atoi(v); v[0] = 0; read_key_value(pdl, "warn_temp", v, sizeof(v)); if (v[0]) tl = atoi(v); }
     int cp5 = (cpu + 2) / 5 * 5; if (cp5 > 100) cp5 = 100;
     int warn = (wl > 0 && wins >= wl) || (cl > 0 && cpu >= cl) || (tl > 0 && temp >= tl);
-    char lab[96]; if (temp > 0) snprintf(lab, sizeof(lab), warn ? "! %d win  cpu %d%%  %dC" : "cpu %d%%  %dC  %d win", warn ? wins : cp5, warn ? cp5 : temp, warn ? temp : wins);
-    else snprintf(lab, sizeof(lab), warn ? "! %d win  cpu %d%%" : "cpu %d%%  %d win", warn ? wins : cp5, warn ? cp5 : wins);
+    char lab[96]; if (temp > 0) snprintf(lab, sizeof(lab), warn ? "! %dw cpu %d%% %dC" : "cpu %d%% %dC %dw", warn ? wins : cp5, warn ? cp5 : temp, warn ? temp : wins);
+    else snprintf(lab, sizeof(lab), warn ? "! %dw cpu %d%%" : "cpu %d%% %dw", warn ? wins : cp5, warn ? cp5 : wins);
     int changed = strcmp(lab, g_load_label) != 0 || warn != g_load_warn;
     snprintf(g_load_label, sizeof(g_load_label), "%s", lab); g_load_warn = warn;
     return changed;
