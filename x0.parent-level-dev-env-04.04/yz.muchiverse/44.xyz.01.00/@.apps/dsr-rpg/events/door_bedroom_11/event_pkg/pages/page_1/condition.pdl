@@ -1,4 +1,0 @@
-SECTION      | KEY                | VALUE
-----------------------------------------
-META         | piece_id           | door_bedroom_11
-COND | trigger | on-touch

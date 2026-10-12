@@ -1,4 +1,0 @@
-# event.pal - compiled shape (event.ir.pdl -> event.pal -> cmd_N.sh); door rows of rooms.pdl converted 2026-10-11
-# pkg=door_living_1 page=page_1
-exec cmd_1.sh
-halt
