@@ -613,3 +613,165 @@ ACTOR        | mdf                | 6
 ACTOR        | agi                | 7
 ACTOR        | luk                | 6
 ACTOR        | note               | rpg-pet monster: own entity, own wallet identity (not one of the old pet-trainer pets); sprite = RPG Maker Monster.png index 5 (@.apps/rpg-pet/party.pdl)
+ACTOR        | id                 | 25
+ACTOR        | name               | Rex
+ACTOR        | nickname           | Soldier
+ACTOR        | class              | Person
+ACTOR        | init_lv            | 1
+ACTOR        | max_lv             | 99
+ACTOR        | exp                | 0
+ACTOR        | exp_to_next        | 0
+ACTOR        | skills             | talk work shop
+ACTOR        | profile            | a loyal castle soldier who guards the gate
+ACTOR        | face               | 
+ACTOR        | character          | People3:6
+ACTOR        | battler            | 
+ACTOR        | weapon             | 
+ACTOR        | shield             | 
+ACTOR        | head               | 
+ACTOR        | body               | 
+ACTOR        | accessory          | 
+ACTOR        | mhp                | 34
+ACTOR        | mmp                | 6
+ACTOR        | atk                | 6
+ACTOR        | def                | 5
+ACTOR        | mat                | 3
+ACTOR        | mdf                | 4
+ACTOR        | agi                | 5
+ACTOR        | luk                | 5
+ACTOR        | note               | dsr-rpg main character: own entity, own wallet identity; sprite sheet:index in the character field
+ACTOR        | id                 | 26
+ACTOR        | name               | Gus
+ACTOR        | nickname           | Chef
+ACTOR        | class              | Person
+ACTOR        | init_lv            | 1
+ACTOR        | max_lv             | 99
+ACTOR        | exp                | 0
+ACTOR        | exp_to_next        | 0
+ACTOR        | skills             | talk work shop
+ACTOR        | profile            | a round cheerful chef who cooks for the whole city
+ACTOR        | face               | 
+ACTOR        | character          | People1:6
+ACTOR        | battler            | 
+ACTOR        | weapon             | 
+ACTOR        | shield             | 
+ACTOR        | head               | 
+ACTOR        | body               | 
+ACTOR        | accessory          | 
+ACTOR        | mhp                | 28
+ACTOR        | mmp                | 8
+ACTOR        | atk                | 3
+ACTOR        | def                | 3
+ACTOR        | mat                | 4
+ACTOR        | mdf                | 3
+ACTOR        | agi                | 6
+ACTOR        | luk                | 5
+ACTOR        | note               | dsr-rpg main character: own entity, own wallet identity; sprite sheet:index in the character field
+ACTOR        | id                 | 27
+ACTOR        | name               | Pip
+ACTOR        | nickname           | Clown
+ACTOR        | class              | Person
+ACTOR        | init_lv            | 1
+ACTOR        | max_lv             | 99
+ACTOR        | exp                | 0
+ACTOR        | exp_to_next        | 0
+ACTOR        | skills             | talk work shop
+ACTOR        | profile            | a clown who juggles for coins and never stops grinning
+ACTOR        | face               | 
+ACTOR        | character          | People2:6
+ACTOR        | battler            | 
+ACTOR        | weapon             | 
+ACTOR        | shield             | 
+ACTOR        | head               | 
+ACTOR        | body               | 
+ACTOR        | accessory          | 
+ACTOR        | mhp                | 26
+ACTOR        | mmp                | 10
+ACTOR        | atk                | 3
+ACTOR        | def                | 3
+ACTOR        | mat                | 5
+ACTOR        | mdf                | 5
+ACTOR        | agi                | 9
+ACTOR        | luk                | 5
+ACTOR        | note               | dsr-rpg main character: own entity, own wallet identity; sprite sheet:index in the character field
+ACTOR        | id                 | 28
+ACTOR        | name               | Orin
+ACTOR        | nickname           | King
+ACTOR        | class              | Person
+ACTOR        | init_lv            | 1
+ACTOR        | max_lv             | 99
+ACTOR        | exp                | 0
+ACTOR        | exp_to_next        | 0
+ACTOR        | skills             | talk work shop
+ACTOR        | profile            | the king of the castle, fair but easily bored
+ACTOR        | face               | 
+ACTOR        | character          | People3:0
+ACTOR        | battler            | 
+ACTOR        | weapon             | 
+ACTOR        | shield             | 
+ACTOR        | head               | 
+ACTOR        | body               | 
+ACTOR        | accessory          | 
+ACTOR        | mhp                | 40
+ACTOR        | mmp                | 12
+ACTOR        | atk                | 4
+ACTOR        | def                | 6
+ACTOR        | mat                | 6
+ACTOR        | mdf                | 7
+ACTOR        | agi                | 5
+ACTOR        | luk                | 5
+ACTOR        | note               | dsr-rpg main character: own entity, own wallet identity; sprite sheet:index in the character field
+ACTOR        | id                 | 29
+ACTOR        | name               | Maren
+ACTOR        | nickname           | Queen
+ACTOR        | class              | Person
+ACTOR        | init_lv            | 1
+ACTOR        | max_lv             | 99
+ACTOR        | exp                | 0
+ACTOR        | exp_to_next        | 0
+ACTOR        | skills             | talk work shop
+ACTOR        | profile            | the queen, who keeps the castle books and the peace
+ACTOR        | face               | 
+ACTOR        | character          | People3:1
+ACTOR        | battler            | 
+ACTOR        | weapon             | 
+ACTOR        | shield             | 
+ACTOR        | head               | 
+ACTOR        | body               | 
+ACTOR        | accessory          | 
+ACTOR        | mhp                | 36
+ACTOR        | mmp                | 16
+ACTOR        | atk                | 3
+ACTOR        | def                | 5
+ACTOR        | mat                | 8
+ACTOR        | mdf                | 8
+ACTOR        | agi                | 6
+ACTOR        | luk                | 5
+ACTOR        | note               | dsr-rpg main character: own entity, own wallet identity; sprite sheet:index in the character field
+ACTOR        | id                 | 30
+ACTOR        | name               | Fenn
+ACTOR        | nickname           | Fairy
+ACTOR        | class              | Fairy
+ACTOR        | init_lv            | 1
+ACTOR        | max_lv             | 99
+ACTOR        | exp                | 0
+ACTOR        | exp_to_next        | 0
+ACTOR        | skills             | talk work shop
+ACTOR        | profile            | a pink fairy who sprinkles luck on whoever she visits
+ACTOR        | face               | 
+ACTOR        | character          | Nature:5
+ACTOR        | battler            | 
+ACTOR        | weapon             | 
+ACTOR        | shield             | 
+ACTOR        | head               | 
+ACTOR        | body               | 
+ACTOR        | accessory          | 
+ACTOR        | mhp                | 20
+ACTOR        | mmp                | 20
+ACTOR        | atk                | 2
+ACTOR        | def                | 2
+ACTOR        | mat                | 9
+ACTOR        | mdf                | 9
+ACTOR        | agi                | 10
+ACTOR        | luk                | 5
+ACTOR        | note               | dsr-rpg main character: own entity, own wallet identity; sprite sheet:index in the character field
