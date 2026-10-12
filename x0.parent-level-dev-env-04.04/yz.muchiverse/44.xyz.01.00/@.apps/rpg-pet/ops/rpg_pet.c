@@ -454,12 +454,19 @@ static int lc_run(int daemon, ...) {
 static long long clock_kv_ll(const char *key) { char b[2048]; read_file(CFILE, b, sizeof b); size_t kl = strlen(key); for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, key, kl) && l[kl] == '=') return atoll(l + kl + 1); return -1; }
 static void clock_kv_s(const char *key, char *out, size_t cap) { char b[2048]; out[0] = 0; read_file(CFILE, b, sizeof b); size_t kl = strlen(key); for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, key, kl) && l[kl] == '=') { snprintf(out, cap, "%s", l + kl + 1); return; } }
 static void write_phase(long long ms) { int h = (int)(ms / 3600000 % 24); const char *p = (h >= 19 || h < 6) ? "night" : h < 8 ? "dawn" : h >= 17 ? "dusk" : "day"; char b[40]; snprintf(b, sizeof b, "phase=%s\n", p); char f[PATH_MAX]; spath(f, "daylight.txt"); write_if_changed(f, b, strlen(b)); }
+/* The game clock runs fast (a game day in seconds), so time_label changed ~0.6 times a second and EVERY change made the board window reparse + re-lay-out + redraw (about 67 ms each, measured with a redraw trace: it was
+ * the biggest single source of the window's ~25% CPU). The label is written at most once per 5 s: a write that differs from the file ONLY in the time_label line (the first line) is skipped while the file is younger than 5 s. */
+static void clock_ui_write(const char *p, const char *b) {
+    char old[200]; int n = read_file(p, old, sizeof old);
+    if (n > 0) { const char *o1 = strchr(old, '\n'), *b1 = strchr(b, '\n'); if (o1 && b1 && !strcmp(o1, b1)) { struct stat st; if (stat(p, &st) == 0 && time(NULL) - st.st_mtime < 5) return; } }
+    write_if_changed(p, b, strlen(b));
+}
 static void clock_ui(void) {          /* state/clock_ui.txt: its own tiny vars file, so a ticking label never re-renders the scene */
     char p[PATH_MAX], b[160], rate[16], run[8]; long long ms = clock_kv_ll("game_time_epoch_ms"); spath(p, "clock_ui.txt");
     if (ms < 0) { snprintf(b, sizeof b, "time_label=--:--\ntime_rate=-\ntime_running=0\n"); write_if_changed(p, b, strlen(b)); return; }
     char d0b[32]; char dp[PATH_MAX]; spath(dp, "clock_day0.txt"); read_file(dp, d0b, sizeof d0b); long long d0 = atoll(d0b), d = ms / 86400000, s = (ms - d * 86400000) / 1000;
     clock_kv_s("rate", rate, sizeof rate); clock_kv_s("running", run, sizeof run);
-    snprintf(b, sizeof b, "time_label=D%lld %02d:%02d\ntime_rate=%s\ntime_running=%s\n", d - d0 + 1, (int)(s / 3600), (int)(s % 3600 / 60), rate, run[0] ? run : "0"); write_if_changed(p, b, strlen(b));
+    snprintf(b, sizeof b, "time_label=D%lld %02d:%02d\ntime_rate=%s\ntime_running=%s\n", d - d0 + 1, (int)(s / 3600), (int)(s % 3600 / 60), rate, run[0] ? run : "0"); clock_ui_write(p, b);
 }
 static void turn_str(char *out, size_t cap) { char p[PATH_MAX], line[300]; char *f[6]; snprintf(p, sizeof p, "%s/time.pdl", APP); snprintf(out, cap, "5m"); FILE *fp = fopen(p, "r"); if (!fp) return; while (fgets(line, sizeof line, fp)) if (split_bar(line, f, 6) >= 3 && !strcmp(f[0], "TURN")) snprintf(out, cap, "%s", f[2]); fclose(fp); }
 static void clock_install(void) {
