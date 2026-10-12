@@ -13218,6 +13218,10 @@ static void hq_ui_pdl_reload_if_changed(const char *house_root) {
     }
 }
 
+/* DEFERRED MAP for class="vars-positioned" windows (the desk hotbar; owner 2026-10-12: it appeared clipped to the top and bottom of the screen and then slid/resized into place). The window used to be
+ * mapped at its creation size and spot and only moved to its docked spot once the manager's anchor vars loaded. Now it is created unmapped and mapped by the placement block in hq_idle_tick once the anchor
+ * vars exist and its size has stopped changing (or after 2 s, so a manager that never publishes cannot leave it invisible): it first appears at its final position. */
+static int g_defer_map = 0; static time_t g_defer_t0 = 0;
 static void hq_idle_tick(void) {
     if (kh_is_drop_target_window()) {
         int hp = kh_read_drag_hover();
@@ -13285,7 +13289,9 @@ static void hq_idle_tick(void) {
                 XMoveWindow(dpy, win, g_win_x, g_win_y);
             }
             s_last_x = nx;
+            if (g_defer_map) { static int s_w0 = -1, s_h0 = -1; if (g_win_w == s_w0 && g_win_h == s_h0) { XMapRaised(dpy, win); XSync(dpy, False); g_defer_map = 0; } s_w0 = g_win_w; s_h0 = g_win_h; }      /* placed twice at the same size: show it, already docked */
         }
+        if (g_defer_map && time(NULL) - g_defer_t0 >= 2) { XMapRaised(dpy, win); XSync(dpy, False); g_defer_map = 0; }
     }
     /* class="nav-after-top": number this window's cells after the top bar's (display only). */
     if (g_window && elem_has_class(g_window, "nav-after-top")) {
@@ -22147,7 +22153,8 @@ int main(int argc, char **argv) {
     XSizeHints *shints = XAllocSizeHints();
     if (shints) { shints->flags = PPosition; shints->x = g_win_x; shints->y = g_win_y; XSetWMNormalHints(dpy, win, shints); XFree(shints); }
 
-    XMapRaised(dpy, win);
+    if (g_window && elem_has_class(g_window, "vars-positioned") && !window_is_dock() && !g_default_is_fullscreen) { g_defer_map = 1; g_defer_t0 = time(NULL); }
+    else XMapRaised(dpy, win);
     set_window_opacity(dpy, win, load_theme_opacity());
     XSync(dpy, False);
     if (window_is_dock()) XMoveWindow(dpy, win, g_win_x, g_win_y);
