@@ -1,5 +1,7 @@
 # 08 — Roadmap
 
+- `design-docs/2026-10-11-BROWSER-GAP-ASSESSMENT-AND-KPI-PLAN.md` — **network browser: honest gap analysis + KPI layer** (2026-10-11): three bars of "done" kept distinct (roadmap DoD met; expanded Google-class scope NOT met; chrome-parity a non-goal), each open gap backed by a file+line observation (worker is request/response with an 800 ms drain and no live pushes; no box tree so flex/grid/`@media` cannot apply; zoom/autofill/print absent; selection is per-row), measurable KPIs per gap, and a dependency-ordered sprint ladder (S1 push protocol is cross-lane and gates everything JS-shaped; S7 find-in-page is lane-local and independent). XO copy in `xo/23.network-browser/`.
+
 - `design-docs/DSR-WSR-PETS-BRIDGE-DESIGN.md` — **DSR city where companies, population and pets coexist** (2026-10-10): the `dsr` book (2D/3D), WSR HQ window from the DSR toy, and how pet / DSR entity / WSR piece / chain data bridge (entity_uid key, one authority per fact, projections, links registry, money conservation).
 
 - `44.xyz.01.00/@.apps/rpg-pet/` — **rpg-pet** (2026-10-10): the NEW RPG Maker pet game (toys menu, pet-trainer untouched): tile-only house, six monster pets read from the RPG Maker DB, shop, teleport doors, pets walk by themselves (event steps), INT mode; one C op. Design `08-roadmap/design-docs/RPG-PET-DESIGN.md`, roadmap `@.apps/rpg-pet/ROADMAP.md`, plan: a room per pet, shared through relationships. Copies + Night 50 in XO `22.rpg-pet/`.

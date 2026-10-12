@@ -3,6 +3,12 @@
 Goal: render real web pages in the same khtpm window, with house nav
 inputs, **no new deps**, and honestly — not via a browser-engine
 embed. Reference: `2026-10-05-HANDROLLED-BROWSER-INVENTORY.md`.
+
+> **Gap analysis + KPIs (2026-10-11):** see
+> `design-docs/2026-10-11-BROWSER-GAP-ASSESSMENT-AND-KPI-PLAN.md` —
+> the code-level root cause, measurable KPIs and dependency-ordered
+> sprint ladder for everything still open below (Milestone 3 live pushes,
+> the box tree, and the chrome gaps).
 Definition of done (from FRONTEND-PLAN §2): a human can read a real
 content site without leaving the window; Chrome-pixel parity is not
 the bar.
