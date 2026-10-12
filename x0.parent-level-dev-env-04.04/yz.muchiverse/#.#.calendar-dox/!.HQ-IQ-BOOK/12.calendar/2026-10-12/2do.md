@@ -20,3 +20,6 @@ Written at the end of a long session that ended after an overheat crash. Facts b
 4. Marker conversion on the `marker` branch (above); layout reuse CPU gain unmeasured on a quiet machine.
 5. Bug bounty still open: the random 3D flash while piloting through a door (rpg-pet board).
 6. `pc_synch_request.txt` is still house-wide; instance chunks/maps are not game-specific.
+
+## Standing fact (owner, 2026-10-12, "always true")
+**Every cast member is playable, Harold included; none is special.** In INT (roguelike, turn based) the arrow keys move whichever character is selected; INT off = live, characters act on their own. Open bug (arrows worked in earlier versions): `state/flag_ctl` and `flag_follow` flip from `pet` to `player` by themselves; with control on a character that has no placed position (Harold has no trainer.txt) `follow_xelector()` returns without moving anyone and the arrows only move the xelector. Do NOT reset it to pet as a fix: make every selectable character placeable. Cause trace added (`state/ctl_trace.txt`: time, value, why = tab-key-in-INT | select-hero-row | control-menu-verb); daemons need a restart to start logging.
