@@ -15,6 +15,7 @@ set -u
 ROOT="${1:-}"
 [ -n "$ROOT" ] && [ -d "$ROOT" ] || { echo "pc_entity_ctx: need project_root as argv[1]" >&2; exit 1; }
 ROOT="$(cd "$ROOT" && pwd)"
+CODE="$(cd "$(dirname "$0")/.." && pwd)"      # the programs (@.apps/piececraft-hq); ROOT is the DATA root of the board (the default instance, or another pc-hq instance: PCHQ-SESSIONS-DESIGN.md)
 
 LOG="$ROOT/pieces/display/ctx_menu.log"
 mkdir -p "$ROOT/pieces/display"
@@ -38,7 +39,8 @@ fi
 # board whose <dir>/state/ctx_overlay.on exists draws the generated menu itself (overlay id "ctx", spliced from
 # <dir>/state/ctx_menu.chtpm) instead of this script opening a floating window. CTX_AT_X/Y = click point in canvas
 # pixels (absent: the overlay centres itself). Desk entities' own menu.chtpm still opens as a window (below).
-CTXDIR="$(cat "$HOUSE/#.desktop/pchq_ctx_dir.txt" 2>/dev/null)"
+CTXDIR="$(cat "$ROOT/pieces/system/ctx_dir.txt" 2>/dev/null)"      # an instance board records its own template dir here (open_pchq_board.sh); the default board keeps the house-wide file
+[ -n "$CTXDIR" ] || CTXDIR="$(cat "$HOUSE/#.desktop/pchq_ctx_dir.txt" 2>/dev/null)"
 [ -n "$CTXDIR" ] && [ -f "$CTXDIR/state/ctx_overlay.on" ] || CTXDIR=""
 
 PICK="$ROOT/pieces/display/pick.txt"
@@ -73,7 +75,7 @@ if [ "$KIND" = mapev ] && [ -n "$ID" ]; then
     VERB=""
     [ -f "$PKG/verb.txt" ] && VERB=$(head -1 "$PKG/verb.txt")
     if [ "$VERB" = start_game ] || [ "$VERB" = stop_game ] || [ "$VERB" = restart_game ] || [ "$VERB" = continue_game ]; then
-        sh "$ROOT/ops/doom_event.sh" "$VERB" "$MAP" "$DESK"
+        sh "$CODE/ops/doom_event.sh" "$VERB" "$MAP" "$DESK"
         echo "$(date '+%H:%M:%S') $VERB mapev $ID" >> "$LOG"
         exit 0
     fi
@@ -96,7 +98,7 @@ if [ "$KIND" = mapev ] && [ -n "$ID" ]; then
     fi
     case "$CMD" in
         start_standard|start_computer|start_player|start_king_pawn|start_endgame|stop_game|show_elo)
-            sh "$ROOT/ops/chess_event.sh" "$CMD"
+            sh "$CODE/ops/chess_event.sh" "$CMD"
             echo "$(date '+%H:%M:%S') chess $CMD mapev $ID" >> "$LOG"
             exit 0
             ;;
@@ -104,15 +106,15 @@ if [ "$KIND" = mapev ] && [ -n "$ID" ]; then
     if [ -n "$CMD" ] && grep -q '^mode=on' "$HOUSE/#.desktop/khtpm_play_mode.state.txt" 2>/dev/null; then
         case "$CMD" in
             select|land)
-                sh "$ROOT/ops/chess_event.sh" "$CMD" "$DESK" "$ID"
+                sh "$CODE/ops/chess_event.sh" "$CMD" "$DESK" "$ID"
                 echo "$(date '+%H:%M:%S') chess $CMD mapev $ID" >> "$LOG"
                 exit 0
                 ;;
             change_hp|change_armor|nukage|change_ammo|change_items|start_battle|next_level|player_start)
-                sh "$ROOT/ops/doom_event.sh" "$CMD"
+                sh "$CODE/ops/doom_event.sh" "$CMD"
                 case "$CMD" in
                     player_start|next_level) ;;
-                    *) sh "$ROOT/ops/doom_event.sh" kill_event "$DESK" "$ID" ;;
+                    *) sh "$CODE/ops/doom_event.sh" kill_event "$DESK" "$ID" ;;
                 esac
                 echo "$(date '+%H:%M:%S') pdl $CMD mapev $ID" >> "$LOG"
                 exit 0

@@ -65,7 +65,7 @@ if [ -n "${PCHQ_BOARD_TPL:-}" ] && [ -f "$PCHQ_BOARD_TPL" ]; then BOARD_TPL="$PC
 if [ "$DATA" = "$PKG" ]; then
     dirname "$BOARD_TPL" > "$HOUSE_ROOT/#.desktop/pchq_ctx_dir.txt" 2>/dev/null || true
 else
-    mkdir -p "$DATA/pieces/system"; dirname "$BOARD_TPL" > "$DATA/pieces/system/ctx_dir.txt" 2>/dev/null || true   # a second instance must not repoint the default board's context menus (known limit: its own right-click menu still reads the house-wide file)
+    mkdir -p "$DATA/pieces/system"; dirname "$BOARD_TPL" > "$DATA/pieces/system/ctx_dir.txt" 2>/dev/null || true   # a second instance must not repoint the default board's context menus
 fi
 
 # ── locations: generated at EVERY launch from this script's own folder (TPMOS pattern: its location_kvp is generated,
