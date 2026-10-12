@@ -121,7 +121,7 @@ static int g_scene_ver = 0;      /* bumped whenever the painted scene frame (sta
 static int write_if_changed(const char *p, const void *data, size_t n) {
     FILE *f = fopen(p, "rb");
     if (f) { fseek(f, 0, SEEK_END); long sz = ftell(f); if (sz == (long)n) { rewind(f); unsigned char *old = malloc(n ? n : 1); if (old && fread(old, 1, n, f) == n && !memcmp(old, data, n)) { free(old); fclose(f); return 0; } free(old); } fclose(f); }
-    char tmp[PATH_MAX + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", p);
+    char tmp[PATH_MAX + 24]; snprintf(tmp, sizeof tmp, "%s.tmp.%d", p, (int)getpid());      /* per process: the daemon and a one-shot verb can write the same file at the same moment */
     f = fopen(tmp, "wb"); if (!f) return 0; fwrite(data, 1, n, f); fclose(f); rename(tmp, p); return 1;
 }
 static void append_line(const char *name, const char *line) { char p[PATH_MAX]; spath(p, name); FILE *f = fopen(p, "a"); if (f) { fprintf(f, "%s\n", line); fclose(f); } }
@@ -137,9 +137,19 @@ static void sw_set(const char *name, const char *v) {
     if (!hit) n += snprintf(o + n, sizeof o - n, "%s=%s\n", name, v); write_if_changed(p, o, (size_t)n);
 }
 static int is_switch_flag(const char *n) { return !strcmp(n, "running") || !strcmp(n, "int"); }
-static void flag_str(const char *name, const char *def, char *out, size_t cap) { if (is_switch_flag(name) && sw_get(name, out, cap) && out[0]) return; char p[PATH_MAX], n[64]; snprintf(n, sizeof n, "flag_%s.txt", name); spath(p, n); char b[64]; read_file(p, b, sizeof b); char *e = strchr(b, '\n'); if (e) *e = 0; snprintf(out, cap, "%s", b[0] ? b : def); }
+/* CPU safety (house hq-cpu-safety.md 3b, in-memory CLOCK_MONOTONIC gate for a long-lived process): the daemon asks for the same few flags a dozen times per 100 ms tick and every ask re-read the
+ * switches file and the flag file. Inside the daemon a value is reused for 150 ms; set_flag() drops the cache so the daemon sees its own writes at once, and the one-shot verb processes never cache. */
+static void flag_str_raw(const char *name, const char *def, char *out, size_t cap);
+static int g_fcache_on = 0, g_fcn = 0;
+static struct { char k[48]; char v[64]; long t; } g_fc[32];
+static void flag_str(const char *name, const char *def, char *out, size_t cap) {
+    char ck[48]; long cnow = 0; if (g_fcache_on) { snprintf(ck, sizeof ck, "%s|%s", name, def); cnow = now_ms(); for (int i = 0; i < g_fcn; i++) if (cnow - g_fc[i].t < 150 && !strcmp(g_fc[i].k, ck)) { snprintf(out, cap, "%s", g_fc[i].v); return; } }
+    flag_str_raw(name, def, out, cap);
+    if (g_fcache_on) { int s = -1; for (int i = 0; i < g_fcn; i++) if (!strcmp(g_fc[i].k, ck)) s = i; if (s < 0 && g_fcn < 32) s = g_fcn++; if (s >= 0) { snprintf(g_fc[s].k, sizeof g_fc[s].k, "%s", ck); snprintf(g_fc[s].v, sizeof g_fc[s].v, "%s", out); g_fc[s].t = cnow; } }
+}
+static void flag_str_raw(const char *name, const char *def, char *out, size_t cap) { if (is_switch_flag(name) && sw_get(name, out, cap) && out[0]) return; char p[PATH_MAX], n[64]; snprintf(n, sizeof n, "flag_%s.txt", name); spath(p, n); char b[64]; read_file(p, b, sizeof b); char *e = strchr(b, '\n'); if (e) *e = 0; snprintf(out, cap, "%s", b[0] ? b : def); }
 static int flag_on(const char *name, int def) { char b[16]; flag_str(name, def ? "1" : "0", b, sizeof b); return b[0] == '1'; }
-static void set_flag(const char *name, const char *v) { if (is_switch_flag(name)) sw_set(name, v); char p[PATH_MAX], n[64], b[80]; snprintf(n, sizeof n, "flag_%s.txt", name); spath(p, n); snprintf(b, sizeof b, "%s\n", v); write_if_changed(p, b, strlen(b)); }
+static void set_flag(const char *name, const char *v) { g_fcn = 0; if (is_switch_flag(name)) sw_set(name, v); char p[PATH_MAX], n[64], b[80]; snprintf(n, sizeof n, "flag_%s.txt", name); spath(p, n); snprintf(b, sizeof b, "%s\n", v); write_if_changed(p, b, strlen(b)); }
 
 /* ---------- data: catalog.pdl, rooms.pdl, the RPG Maker DB party ---------- */
 static char *trim(char *s) { while (*s == ' ' || *s == '\t') s++; char *e = s + strlen(s); while (e > s && (e[-1] == ' ' || e[-1] == '\t' || e[-1] == '\n' || e[-1] == '\r')) *--e = 0; return s; }
@@ -216,7 +226,9 @@ static void pet_wallet(int i, char *out, size_t cap) { ent_wallet(party[i].id, o
 
 /* ---------- ledger replay ---------- */
 static void replay(void) {
-    char p[PATH_MAX], line[300]; spath(p, "house.txt"); coins = START_COINS; npl = 0; nid = 1; memset(owned, 0, sizeof owned);
+    char p[PATH_MAX], line[300]; spath(p, "house.txt");
+    { static long last_sz = -2; long sz = fsize(p); if (sz == last_sz) return; last_sz = sz; }      /* the ledger is append-only and only buy / use / build verbs write it: re-parsing it for every pet step was ~3% of a core */
+    coins = START_COINS; npl = 0; nid = 1; memset(owned, 0, sizeof owned);
     FILE *fp = fopen(p, "r"); if (!fp) return;
     while (fgets(line, sizeof line, fp)) {
         char *f[8]; int n = split_bar(line, f, 8);
@@ -404,10 +416,11 @@ static void meet(int a, int b) {
      * ({other} = the other pet's name, passed as RPG_OTHER). The C keeps what must not move into a page: who may be heard (RPG_SAY / RPG_SPEAK), the 2.5 s voice throttle, and the old tables below as the fallback. */
     static long last_sp = 0; long nm = now_ms(); int sp_a = others[a].room == vroom, sp_b = others[b].room == vroom, sy_a = sp_a && (a == active || b == active), sy_b = sp_b && (a == active || b == active);
     if ((sp_a || sp_b) && nm - last_sp >= 2500) last_sp = nm; else sp_a = sp_b = 0;
+    static long last_page = 0; int page_ok = now_ms() - last_page >= 6000; if ((sy_a || sp_a || sy_b || sp_b) && page_ok) last_page = now_ms();      /* CPU safety: a page run is a sh + bash + prisc launch; at most one greeting page per 6 s (measured ~0.15 s of CPU each: play_event.sh fans out), the answer and every other greeting use the C text, which is identical */
     { char ev[64], tg[16], en[200]; snprintf(ev, sizeof ev, "greet_%s", party[a].id); snprintf(tg, sizeof tg, "hi%d", v1); snprintf(en, sizeof en, "RPG_OTHER='%s' RPG_SAY=%d RPG_SPEAK=%d", party[b].name, sy_a, sp_a);
-      if (!run_event_x(ev, tg, en)) { snprintf(t, sizeof t, HI[0][v1], party[b].name); if (sy_a) say(party[a].name, t); if (sp_a) speak_greet(a, v1, party[b].name, 0); } }
+      if ((sy_a || sp_a) && !(page_ok && run_event_x(ev, tg, en))) { snprintf(t, sizeof t, HI[0][v1], party[b].name); if (sy_a) say(party[a].name, t); if (sp_a) speak_greet(a, v1, party[b].name, 0); } }      /* a page run is a bash + prisc launch (~0.1 s): nothing is said when nobody is watching that room, so none is run */
     { char ev[64], tg[16], en[200]; snprintf(ev, sizeof ev, "greet_%s", party[b].id); snprintf(tg, sizeof tg, "re%d", v2); snprintf(en, sizeof en, "RPG_OTHER='%s' RPG_SAY=%d RPG_SPEAK=%d", party[a].name, sy_b, sp_b);
-      if (!run_event_x(ev, tg, en)) { snprintf(t, sizeof t, RE[0][v2], party[a].name); if (sy_b) say(party[b].name, t); if (sp_b) speak_greet(b, v2, party[a].name, 1); } }
+      if (sy_b || sp_b) { snprintf(t, sizeof t, RE[0][v2], party[a].name); if (sy_b) say(party[b].name, t); if (sp_b) speak_greet(b, v2, party[a].name, 1); } }
 }
 static void friend_line(int i, char *out, size_t cap) {
     char p[PATH_MAX], line[200]; int cnt[NP] = {0}; spath(p, "relations.txt"); FILE *f = fopen(p, "r"); char *g[6];
@@ -651,6 +664,17 @@ static void sync_selector(int x, int y) {
     for (char *l = strtok(ub, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "bv_session=", 11)) snprintf(sess, sizeof sess, "%s", l + 11);
     if (!sess[0]) return; snprintf(bp, sizeof bp, "%s/pieces/system/bv_state.txt", sess); if (!fexists(bp)) return; kv_set_int(bp, "selector_x", x); kv_set_int(bp, "selector_y", y);
 }
+/* CPU safety: follow_pchq() exports the rooms and wakes the board engine (a redraw key into its relay) every time the scene changes. With NO board window open that drove a headless engine at several
+ * redraws a second (chtpm_rgb_render 7% + prisc 3-4% of a core, measured, for hours after the window was closed). Only follow when a window of a board layout (pchq-board.xhtpm: the rpg-pet board, pc-hq
+ * or the layout-studio sandbox) is really running; the answer is cached for 2 s (one /proc scan). */
+static int viewer_kinds(void) {
+    static long last = 0; static int v = 3; long t = now_ms(); if (last && t - last < 2000) return v; last = t; v = 0;
+    DIR *d = opendir("/proc"); if (!d) return 3; struct dirent *e;
+    while ((e = readdir(d))) { if (e->d_name[0] < '1' || e->d_name[0] > '9') continue; char p[64], b[2048]; snprintf(p, sizeof p, "/proc/%s/cmdline", e->d_name); FILE *f = fopen(p, "r"); if (!f) continue; size_t n = fread(b, 1, sizeof b - 1, f); fclose(f); b[n] = 0;
+        if (!strstr(b, "khtpm_core_render")) continue; for (size_t i = 0; i < n; i++) if (!b[i]) b[i] = ' '; if (strstr(b, "pchq-board.xhtpm")) v |= 1; if (strstr(b, "rpg-pet.xhtpm")) v |= 2; }
+    closedir(d); return v;
+}
+static int board_window_open(void) { return viewer_kinds() & 1; }
 static int g_pin_now = 0;      /* set when a followed step bumped: follow_pchq puts the xelector back on the monster at once */
 static void board_interact(int want, int force);
 /* The sun and moon of the 3D view (pieces/sun_01, moon_01) are a pure function of the pc-hq world clock: world_01/state.txt game_time_epoch_sec, turned into positions (and the sky light level) by the
@@ -867,9 +891,11 @@ static int daemon_main(void) {
     signal(SIGTERM, bye); signal(SIGINT, bye); signal(SIGHUP, bye); srand((unsigned)(time(NULL) ^ getpid()));
     char h1[PATH_MAX], h2[PATH_MAX], d[PATH_MAX]; snprintf(d, sizeof d, "%s/keyboard", ST); mkdir(d, 0755); spath(h1, "interact_relay.txt"); snprintf(h2, sizeof h2, "%s/keyboard/history.txt", ST);
     long o1 = fsize(h1), o2 = fsize(h2), next_ms[NP], last_ui = 0; int was_run = run_on() + 2 * rogue_mode(); for (int i = 0; i < NP; i++) next_ms[i] = now_ms() + 600 + 450L * i; char msg[200], lastday[40] = "", lasttone[300] = "";
-    load_data(); replay(); pet_load(); unstack(); clock_start(); out_all("");
+    g_fcache_on = 1; load_data(); replay(); pet_load(); unstack(); clock_start(); out_all("");
+    long last_load = now_ms(), last_follow = 0;
     while (!quit_flag) {
-        usleep(100000); int dirty = 0, codes[64], n; msg[0] = 0; load_data(); pet_load(); int in = flag_on("int", 0), tm = turn_mode();
+        usleep(100000); int dirty = 0, codes[64], n; msg[0] = 0; { long lt = now_ms(); if (lt - last_load >= 2000) { last_load = lt; load_data(); } }      /* catalog / party / rooms / door pages are static: re-parsing them every 100 ms was most of the daemon's own CPU */
+        pet_load(); int in = flag_on("int", 0), tm = turn_mode();
         n = poll_keys(h1, &o1, codes, 32); n += poll_keys(h2, &o2, codes + n, 32);     /* the offsets always advance; keys only act while INT is on */
         if (in && n) replay();
         if (in && n) { char kl[300], one[16]; kl[0] = 0; for (int i = 0; i < n && i < 20; i++) { snprintf(one, sizeof one, "%d ", codes[i]); strncat(kl, one, sizeof kl - strlen(kl) - 1); } char kp[PATH_MAX]; spath(kp, "keys_seen.txt"); write_if_changed(kp, kl, strlen(kl)); }      /* last batch of codes, for debugging */
@@ -885,7 +911,7 @@ static int daemon_main(void) {
             { int ci = ctl_idx(); use_ent(ci); if (do_step(dx, dy, msg, sizeof msg)) { pet_save(); set_flag("follow", ci < 0 ? "player" : "pet"); end_turn(); } else pet_save(); }      /* a bump costs no turn */
             dirty = 1; }
         {   /* Esc in the board window makes the ENGINE leave its Interact mode; rpg-pet's INT has to follow, or the game stays turn based and the real time ticker never restarts. A board whose In: was seen on and is now off = Esc. */
-            static int was_armed = 0, tried = 0; static long sent_at = 0; int ar = board_armed();
+            static int was_armed = 0, tried = 0; static long sent_at = 0; int ar = in ? board_armed() : -1;      /* only while INT is on: it needs two file reads */
             static int was_in = 0; if (in && !was_in) g_pin_now = 1; was_in = in;
             if (!in) { was_armed = 0; tried = 0; }
             else if (ar == 1) { was_armed = 1; tried = 1; }
@@ -894,12 +920,13 @@ static int daemon_main(void) {
         }
         if (in && run_on() && follow_xelector(msg, sizeof msg)) dirty = 1;
         long ms = now_ms();
-        for (int i = 0; i < nparty; i++) if (ms >= next_ms[i]) { next_ms[i] = ms + 900 + rand() % 700; if (tm || !run_on()) continue; replay(); if (ai_step(i)) dirty = 1; use_ent(active); }     /* real time (INT off): every pet walks on its own. INT on is turn based: no timers, only your acts advance time */
+        for (int i = 0; i < nparty; i++) if (ms >= next_ms[i]) { next_ms[i] = ms + 900 + rand() % 700; if (tm || !run_on()) continue; replay(); if (ai_step(i)) { static long last_far = 0; if (others[i].room == vroom || ms - last_far > 1500) { dirty = 1; if (others[i].room != vroom) last_far = ms; } } use_ent(active); }     /* real time (INT off): every pet walks on its own. INT on is turn based: no timers, only your acts advance time */
         if (ms - last_ui > 3000) { last_ui = ms; clock_paths(); clock_ui(); }
         { char dp[PATH_MAX], db[40]; spath(dp, "daylight.txt"); read_file(dp, db, sizeof db); if (strcmp(db, lastday)) { snprintf(lastday, sizeof lastday, "%s", db); dirty = 1; } }
         { char tp[PATH_MAX], tb[300]; snprintf(tp, sizeof tp, "%s/world/screen_state.pdl", ST); read_file(tp, tb, sizeof tb); if (strcmp(tb, lasttone)) { snprintf(lasttone, sizeof lasttone, "%s", tb); g_tone_stale = 1; dirty = 1; } }      /* an events-hq tint_screen wrote a new tone */
+        { static int was_vo = 1; int vo = viewer_kinds() != 0; if (vo && !was_vo) dirty = 1; was_vo = vo; if (!vo) dirty = 0; }      /* nobody is looking (no rpg-pet / board window): the scene frame and the ui files have no reader, so they are not rendered; a window opening renders at once */
         if (dirty) { replay(); out_all(msg); }    /* nothing changed -> nothing rendered, nothing written, nothing repainted */
-        follow_pchq();                            /* the pc-hq 3D view (if open on the rpg-pet book) follows the selected entity; writes only on change */
+        if ((dirty || now_ms() - last_follow >= 400) && board_window_open()) { last_follow = now_ms(); follow_pchq(); }      /* the pc-hq 3D view (if open on the rpg-pet book) follows the selected entity; it re-compares the exported files of every room, so at most every 400 ms unless something changed */
     }
     clock_stop();
     return 0;
@@ -925,5 +952,5 @@ int main(int argc, char **argv) {
     load_data(); replay(); pet_load(); clock_paths();
     char msg[240]; verb(vargc, vargv, msg, sizeof msg);
     if (turn_taken && turn_mode()) end_turn();       /* INT on: the owner acted, so it is a turn: the clock advances and every pet steps */
-    replay(); out_all(msg); clock_ui(); printf("%s\n", msg[0] ? msg : "ok"); return 0;
+    replay(); if (viewer_kinds()) out_all(msg); clock_ui(); printf("%s\n", msg[0] ? msg : "ok"); return 0;      /* a verb (and every event page that calls one: pet_says, sync, the clock events) used to render the whole scene and ui files even with no window open; with no viewer there is no reader */
 }

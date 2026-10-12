@@ -173,3 +173,16 @@ holding future work to:
   were verified with the same real technique — `/proc/<pid>/stat`'s
   four CPU-time fields, delta over a real wall-clock window, before
   and after — not "it compiles" or "the number sounds better now."
+
+---
+
+## 4. A game daemon must not drive a viewer that is not there (rpg-pet, 2026-10-11)
+
+Found by the owner stopping work for "high CPU, maybe an orphan". Measured with all four `/proc/<pid>/stat` fields (children included), 30 s windows:
+
+- The rpg-pet daemon nudged the pc-hq board engine (a redraw key into its relay) every time its scene changed, and re-rendered its own scene / ui files at every pet step, with **no window open**. The leaked engine stack (`chtpm_rgb_render` 7% + `prisc+x` 3-4%) kept re-rendering for hours; the daemon itself was 12% (7% own, 5% in reaped children). With no viewer the whole stack is now daemon 3% + lc_clock 3%.
+- Per-100 ms-tick costs that never needed to run that often (profile by a timed copy of the daemon, because `perf` is blocked here at paranoid level 4): `load_data()` re-parsed static catalog / party / rooms / door pages every tick (now every 2 s); every `flag_on()` re-read two files (now a 150 ms in-daemon cache, dropped by `set_flag`); `replay()` re-parsed the append-only house ledger per pet step (now only when its size changes); `follow_pchq()` re-compared three exported rooms per tick (now at most every 400 ms and only while a board window exists); a pet stepping in a room nobody watches repainted the scene (now at most every 1.5 s).
+- **Child launches are the hidden cost**: an events-hq page run (`sh` + `bash play_event.sh` + `prisc`) costs about 150 ms of CPU. A greeting page per meeting was ~1 launch a second; now at most one per 6 s and the C text (identical) is used in between. Plain `top` shows none of it; `cutime`/`cstime` do.
+- **Rule that fixed the class**: before rendering or exporting for a viewer, ask whether one exists. `viewer_kinds()` in `rpg_pet.c` scans `/proc` every 2 s for a `khtpm_core_render` window of `pchq-board.xhtpm` / `rpg-pet.xhtpm`; a window opening forces one immediate render. The same applies to verbs: every event page that calls a verb used to render a whole 660x430 scene.
+- Testing traps hit while measuring: `pgrep -f` / `pkill -f` match the tool shell itself (killed it once, leaving instrumented copies running: use `pgrep -x`, or verify with the count); a test that greps for a process name must not put the name in its own command line (build it at runtime).
+- Not an rpg-pet bug but worth knowing: at the fast clock (`sec`, a 24 s game day) the five `time.pdl` rows cost `lc_clock` about 3-5% of a core through the event processes it launches; at `min` it is negligible.
