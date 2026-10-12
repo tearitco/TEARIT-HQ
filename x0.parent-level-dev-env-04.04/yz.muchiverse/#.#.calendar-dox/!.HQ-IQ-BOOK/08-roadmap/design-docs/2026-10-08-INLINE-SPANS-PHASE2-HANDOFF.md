@@ -1,5 +1,17 @@
 # INLINE SPANS — PHASE 2 HANDOFF (written 2026-10-08)
 
+> **ADDENDUM 2026-10-11 — full slot renumbering: scoped, declined.**
+> Giving every link its own nav slot would touch ~40 assignment sites
+> and ~80 `g_nav[]` consumers (stepping, scopes, dropdown/sidebar
+> ranges, copy, tabs, badges, frame protocol, every relay-digit test)
+> - and buy nothing that works today: addressability is solved (digits
+> in cursor via step 9, dot-direct via step 12), and arrows stopping at
+> every link would SLOW the primary row nav on link-dense pages. No
+> recorded pain needs it (agents count links from ui.txt; humans point
+> or arrow-then-Right). Verdict: superseded, not deferred. If Tab-
+> cycling through links or `5.2`-style badge precision gets asked for,
+> those are independent smalls on the cursor machinery, not renumbering.
+
 > **ADDENDUM 2026-10-11 — step 12 (dot-addressing) landed.**
 > `5.2` addresses row 5's link 2 with no Right entry: `.` (no hotkey
 > today, pure no-op unarmed) arms link entry for the very next digit.
