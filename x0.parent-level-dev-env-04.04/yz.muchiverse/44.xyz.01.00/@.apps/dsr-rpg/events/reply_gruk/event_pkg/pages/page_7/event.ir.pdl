@@ -1,5 +1,0 @@
-SECTION      | KEY                | VALUE
-----------------------------------------
-META         | piece_id           | reply_gruk
-STATE        | source               | events-hq
-NODE         | id=1 type=dsr_pet_says | pet=gruk|chat=no piano...|voice=피아노가 없네…

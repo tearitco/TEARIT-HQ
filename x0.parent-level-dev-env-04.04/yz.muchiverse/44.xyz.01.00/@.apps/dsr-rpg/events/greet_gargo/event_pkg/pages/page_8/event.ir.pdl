@@ -1,5 +1,0 @@
-SECTION      | KEY                | VALUE
-----------------------------------------
-META         | piece_id           | greet_gargo
-STATE        | source               | events-hq
-NODE         | id=1 type=dsr_pet_says | pet=gargo|chat={other}, you too|voice={other}、君もね

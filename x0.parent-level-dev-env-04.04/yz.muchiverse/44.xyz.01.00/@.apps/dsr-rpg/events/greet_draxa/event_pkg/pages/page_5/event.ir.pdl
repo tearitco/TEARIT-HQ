@@ -1,5 +1,0 @@
-SECTION      | KEY                | VALUE
-----------------------------------------
-META         | piece_id           | greet_draxa
-STATE        | source               | events-hq
-NODE         | id=1 type=dsr_pet_says | pet=draxa|chat=hi {other}|voice=hi {other}
