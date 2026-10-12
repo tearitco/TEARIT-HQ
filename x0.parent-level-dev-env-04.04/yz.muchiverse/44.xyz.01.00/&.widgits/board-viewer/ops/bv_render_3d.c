@@ -3602,7 +3602,8 @@ static int render_one_frame(void) {
             else ADDBOX(g_xelector_x+0.15, g_xelector_z+0.15, g_xelector_y+0.15,
                    g_xelector_x+0.85, g_xelector_z+0.85, g_xelector_y+0.85, 60,220,220, 0);
         }
-        if (g_ray_hit)
+        /* The cyan click marker is not drawn on painted (maker) maps: it did not follow the click there (owner 2026-10-11: "it doesn't work, prove it works or get rid of it") and the green xelector box is the one cursor. Other boards keep it. */
+        if (g_ray_hit && !sc.maker)
             ADDWIRE(g_ray_x + 0.04, g_ray_z + 0.04, g_ray_y + 0.04,
                     g_ray_x + 0.96, g_ray_z + 0.96, g_ray_y + 0.96, 40, 220, 255);
         /* Green selector. Arrows move it while armed. Escape clears it. */
