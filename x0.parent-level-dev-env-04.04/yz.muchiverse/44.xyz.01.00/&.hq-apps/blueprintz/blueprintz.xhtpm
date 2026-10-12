@@ -1,0 +1,19 @@
+<!-- blueprintz.xhtpm - x11-hq window, EMPTY SHELL (2026-10-11). The future visual editor for ALL the events of the loaded book and its pages ("pages of pages"),
+     the way db-hq edits the database. Design + roadmap: #.#.calendar-dox/!.HQ-IQ-BOOK/08-roadmap/design-docs/BLUEPRINTZ-DESIGN.md. Nothing here is wired yet: no module, no state. -->
+<window label="BLUEPRINTZ" class="blueprintz database-window">
+  <page name="main">
+    <sidebar>
+      <scrolllist class="from-top">
+        <text label="BOOK" class="quiet"/>
+        <text label="(no book loaded)" class="quiet"/>
+        <text label="PAGES" class="quiet"/>
+        <text label="(none)" class="quiet"/>
+      </scrolllist>
+    </sidebar>
+    <panel>
+      <text label="BLUEPRINTZ" class="bp-title"/>
+      <text label="Visual events of the whole loaded book - empty for now." class="quiet"/>
+      <text label="Design: 08-roadmap/design-docs/BLUEPRINTZ-DESIGN.md" class="quiet"/>
+    </panel>
+  </page>
+</window>

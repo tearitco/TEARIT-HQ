@@ -13,6 +13,7 @@
       <tab id="tb-menu" class="pchq-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
       <tab id="tb-player" class="pchq-tb" label="${run_label} ▾" onclick="ACTIVATE" target_id="tb-player"/>
       <tab id="tb-time" class="pchq-tb" label="${time_label} ▾" onclick="ACTIVATE" target_id="tb-time"/>
+      <tab id="tb-db" class="pchq-tb" label="db ▾" onclick="ACTIVATE" target_id="tb-db"/>
     </tabbar>
     <sidebar id="rail" class="pchq-rail sidebar">
       <repeat count="${n_party}" bind="party">
@@ -32,6 +33,10 @@
       <item id="mn-reset" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="Reset house (keeps a backup)" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' reset"/>
       <item id="mn-entbar" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="Entities bar on/off" action="sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_toggle_pdl_opt.sh' '${HOUSE}/@.apps/piececraft-hq/pieces/system/pchq.pdl' 'entities_bar'"/>
       <item id="mn-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-menu" label="- cancel -" action="void"/>
+      <item id="db-hq" class="pchq-menu-row dropdown-child " target_id="tb-db" label="db-hq" action="sh '${HOUSE}/&.hq-apps/db-hq-pal/button.sh' '${HOUSE}'"/>
+      <item id="db-bp" class="pchq-menu-row dropdown-child " target_id="tb-db" label="blueprintz (events of the whole book)" action="sh '${HOUSE}/_.monads/_.livedesk-taskbar/ops/open_blueprintz.sh'"/>
+      <item id="db-sql" class="pchq-menu-row dropdown-child " target_id="tb-db" label="sql-hq" action="sh '${HOUSE}/&.hq-apps/sql-hq/button.sh' '${HOUSE}'"/>
+      <item id="db-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-db" label="- cancel -" action="void"/>
       <item id="pm-int" class="pchq-menu-row dropdown-child " target_id="tb-player" label="INT on/off (arrow keys drive a pet)" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' int"/>
       <item id="pm-mode" class="pchq-menu-row dropdown-child " target_id="tb-player" label="${mode_label}" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' mode"/>
       <item id="pm-play" class="pchq-menu-row dropdown-child " target_id="tb-player" label="Play" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' play"/>

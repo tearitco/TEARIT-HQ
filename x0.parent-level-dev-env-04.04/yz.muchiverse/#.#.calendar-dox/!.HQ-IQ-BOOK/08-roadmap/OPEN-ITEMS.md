@@ -205,3 +205,10 @@ short version.*
     Explicitly gated on Part 5's own `ai_fsm_transition` smallest-
     first-step landing first. Not started.
     `design-docs/AI-FUNCTION-CRAFTING-DB-HQ-DESIGN.md`.
+24. **blueprintz** (direct owner ask, 2026-10-11): the visual editor for ALL events of the loaded book and its pages ("pages of pages"; db-hq edits the
+    database, events-hq edits one event, blueprintz is the book-level view and editor). Empty shell + entry points DONE (taskbar db dropdown row; **db ▾**
+    tab on every pc-hq game window and on the rpg-pet board). Next: B1 read-only book > pages > events tree, then detail, cross-references, editing through
+    the events-hq ops, node graph. `design-docs/BLUEPRINTZ-DESIGN.md`.
+25. **dsr-rpg** (direct owner ask, 2026-10-11): a carbon copy of rpg-pet turned into a two-city world (six main characters soldier/chef/clown/king/queen/fairy,
+    chickens/horses/pigs, 17 maps: a 26x16 city + 16 interiors). Design written, owner's "go" on its 7 open questions pending; it gets the db tab (db-hq,
+    blueprintz, sql-hq) from the copy. `design-docs/DSR-RPG-DESIGN.md`.

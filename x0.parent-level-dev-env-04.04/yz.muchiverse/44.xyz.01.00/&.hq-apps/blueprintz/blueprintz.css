@@ -1,0 +1,4 @@
+/* blueprintz.css - colours only (khtpm CSS has no real box model). Same palette as sql-hq. */
+window    { background-color: #14161b; }
+.quiet    { color: #8b93a7; }
+.bp-title { color: #f5b642; font-weight: bold; }

@@ -55,7 +55,7 @@ A new entity class **critter**: not selectable, no chat, no INT control, wanders
 INT (the In: tab runs the `int` verb, roguelike on / auto off, arrows move the chosen character through the xelector, a click on a character selects it), the clock and sky (`lc_clock`, day phases), the board window and its 2D styles, events-hq pages, the viewer gate and `tuning.pdl`, `hq-cpu-safety.md` rules, the harness approach (pal + cases, never new `.sh`).
 
 ## 9. Phases, each ends with visible evidence (house rule: PNG + click path)
-0. **Carbon copy renamed.** `dsr-rpg` runs and looks identical to rpg-pet; both open side by side; no shared state file. Evidence: two screenshots + the file-write diff.
+0. **Carbon copy renamed.** `dsr-rpg` runs and looks identical to rpg-pet (including the **db ▾** tab: db-hq, blueprintz, sql-hq, added to the rpg-pet board 2026-10-11, see `BLUEPRINTZ-DESIGN.md`); both open side by side; no shared state file. Evidence: two screenshots + the file-write diff.
 1. **Cast swap.** Six characters with DB rows, voices, greet/reply pages, sprites (or a named gap). Evidence: the pets list shows the six; INT moves each; a greeting is heard.
 2. **Interiors.** 16 rooms as data in the existing 13 x 8 model, reachable through a temporary hub. Evidence: a screenshot of each.
 3. **The city.** Per-room grid size + free-placed doors, the 26 x 16 city, 16 doors, walk in and out of every building. Evidence: a walk through all 16 doors, with the arrival tile checked.

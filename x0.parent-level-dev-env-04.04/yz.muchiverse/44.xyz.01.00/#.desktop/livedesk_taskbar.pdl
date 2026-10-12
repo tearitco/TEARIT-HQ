@@ -110,7 +110,10 @@ SECTION      | db_menu_2_cmd         | livedesk:open-db-hq-pal
 # sql-hq: SQL over .csv / .pdl (wired 2026-09-08). SQL-HQ-DESIGN.md.
 SECTION      | db_menu_3_label       | sql-hq
 SECTION      | db_menu_3_cmd         | livedesk:open-sql-hq
-SECTION      | db_menu_4_label       | Cancel
+# blueprintz: the visual events editor of the whole loaded book (empty shell for now). BLUEPRINTZ-DESIGN.md.
+SECTION      | db_menu_4_label       | blueprintz
+SECTION      | db_menu_4_cmd         | sh _.monads/_.livedesk-taskbar/ops/open_blueprintz.sh
+SECTION      | db_menu_5_label       | Cancel
 
 SECTION      | palettes_menu_1_label  | canvas-craft
 SECTION      | palettes_menu_1_cmd    | livedesk:open-palette:user-pallet
