@@ -69,3 +69,9 @@ Do the cheap experiment first and the DB second, with the same harness:
 2. Take the same polling saving first with **markers** (no new infrastructure, house rule), behind the `STATE_BACKEND` switch, on the `marker` branch (OPEN-ITEMS 28). That also produces the baseline to judge the DB against.
 3. Spend the larger CPU effort where the measurements point: MIT-SHM in the renderer (X traffic), fewer/cheaper redraws (canvas-only layout reuse already landed; per-element style cache), in-process event execution, and keeping a browser out of the measurements.
 4. At the end of the sprint run section 6 for `file`, `marker`, `shmem` and put the three medians in this file.
+
+## 9. DECISION (owner, 2026-10-12): marker is the lane at scale
+After the first conversion on branch `marker` (dsr-rpg daemon, commit c6bbdb6c5; idle 20 s: file 403 file ops/s, marker 111, shmem 84; daemon CPU 2.2 / 1.6 / 1.5 %), the owner ruled: **marker is the better lane; use it at scale.** Consequences:
+- All conversions across the house target `STATE_BACKEND=marker` semantics (append-only marker size growth, `kh_state_notify.h`). Marker is what ships and what new code is written for.
+- `shmem` stays in place as the in-memory DB **enterprise demo / A-B switch** only (version board in POSIX shm, values still in files); it is not the scale path and gets no new conversions beyond keeping the switch working.
+- The full wraith-alpha key-value port stays a later, optional step (INMEM-DB-STATE-LAYER-PLAN.md). Default remains `file` until the marker branch proves out on live boards, then marker becomes default and the branch merges.
