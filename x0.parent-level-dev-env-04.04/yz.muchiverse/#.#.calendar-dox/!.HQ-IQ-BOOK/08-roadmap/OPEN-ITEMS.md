@@ -212,3 +212,6 @@ short version.*
 25. **dsr-rpg** (direct owner ask, 2026-10-11): a carbon copy of rpg-pet turned into a two-city world (six main characters soldier/chef/clown/king/queen/fairy,
     chickens/horses/pigs, 17 maps: a 26x16 city + 16 interiors). Design written, owner's "go" on its 7 open questions pending; it gets the db tab (db-hq,
     blueprintz, sql-hq) from the copy. `design-docs/DSR-RPG-DESIGN.md`.
+26. **pc-hq sessions** (direct owner ask, 2026-10-12): several pc-hq boards at once (rpg-pet, dsr-rpg, chess, ...): one instance directory per game selected by `PCHQ_PKG`,
+    same binaries, like the p2p apps' sessions on the IRC app; the launcher's kill-everything guard becomes per instance. Prerequisite of dsr-rpg's board. Design written,
+    S1 (instance skeleton on a scratch instance) next. `design-docs/PCHQ-SESSIONS-DESIGN.md`.
