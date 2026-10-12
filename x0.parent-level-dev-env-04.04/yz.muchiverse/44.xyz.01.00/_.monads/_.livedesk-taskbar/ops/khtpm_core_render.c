@@ -13222,6 +13222,7 @@ static void hq_ui_pdl_reload_if_changed(const char *house_root) {
  * mapped at its creation size and spot and only moved to its docked spot once the manager's anchor vars loaded. Now it is created unmapped and mapped by the placement block in hq_idle_tick once the anchor
  * vars exist and its size has stopped changing (or after 2 s, so a manager that never publishes cannot leave it invisible): it first appears at its final position. */
 static int g_defer_map = 0; static time_t g_defer_t0 = 0;
+static void kh_defer_map_done(void) { char mp[PATH_BUF]; snprintf(mp, sizeof(mp), "%s/#.desktop/hq_mapped_%d.txt", g_house_root, (int)getpid()); FILE *mf = fopen(mp, "w"); if (mf) { fputs("1\n", mf); fclose(mf); } }      /* open_hotbar.sh --swap waits for this before it removes the old window */
 static void hq_idle_tick(void) {
     if (kh_is_drop_target_window()) {
         int hp = kh_read_drag_hover();
@@ -13289,9 +13290,13 @@ static void hq_idle_tick(void) {
                 XMoveWindow(dpy, win, g_win_x, g_win_y);
             }
             s_last_x = nx;
-            if (g_defer_map) { static int s_w0 = -1, s_h0 = -1; if (g_win_w == s_w0 && g_win_h == s_h0) { XMapRaised(dpy, win); XSync(dpy, False); g_defer_map = 0; } s_w0 = g_win_w; s_h0 = g_win_h; }      /* placed twice at the same size: show it, already docked */
+            if (g_defer_map) {      /* placed, and the size has not changed for 600 ms (the manager's rows arrive after the first layout; mapping earlier showed the window, then resized it: a flicker) */
+                static int s_w0 = -1, s_h0 = -1; static struct timespec s_chg; struct timespec nw; clock_gettime(CLOCK_MONOTONIC, &nw);
+                if (g_win_w != s_w0 || g_win_h != s_h0) { s_w0 = g_win_w; s_h0 = g_win_h; s_chg = nw; }
+                else if ((nw.tv_sec - s_chg.tv_sec) * 1000L + (nw.tv_nsec - s_chg.tv_nsec) / 1000000L >= 600) { XMapRaised(dpy, win); XSync(dpy, False); g_defer_map = 0; kh_defer_map_done(); }
+            }
         }
-        if (g_defer_map && time(NULL) - g_defer_t0 >= 2) { XMapRaised(dpy, win); XSync(dpy, False); g_defer_map = 0; }
+        if (g_defer_map && time(NULL) - g_defer_t0 >= 3) { XMapRaised(dpy, win); XSync(dpy, False); g_defer_map = 0; kh_defer_map_done(); }
     }
     /* class="nav-after-top": number this window's cells after the top bar's (display only). */
     if (g_window && elem_has_class(g_window, "nav-after-top")) {

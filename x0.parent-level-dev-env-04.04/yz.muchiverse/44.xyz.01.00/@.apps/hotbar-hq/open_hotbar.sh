@@ -40,10 +40,26 @@ if [ "${3:-}" = "--if-not-running" ]; then
     echo $$ > "$LOCK/pid"; trap 'rm -rf "$LOCK"' EXIT INT TERM
     if [ -n "$(hb_pids | head -1)" ]; then echo "open_hotbar: $MODE hotbar already running, leaving it"; exit 0; fi
 fi
+# --swap (the desktop restart, close_on_restart.pdl "swap:" row; owner 2026-10-12: the old hotbar vanished at restart and the new one only appeared seconds later, when the dock was ready): make before break.
+# Wait for the dock like boot.sh, start the NEW window while the OLD one is still on screen, and only when the new window has drawn (its registry row exists) and had a moment to map at its docked spot,
+# stop the old window + manager. A cold start with no old hotbar behaves like boot.sh.
+SWAP_OLD=""
+if [ "${3:-}" = "--swap" ]; then
+    SWAP_OLD="$(hb_pids)"
+    i=0; while [ ! -s "$HOUSE_ROOT/#.desktop/dock_stack/base.txt" ] && [ "$i" -lt 30 ]; do sleep 1; i=$((i+1)); done
+else
 # single instance: stop an older window + its manager for THIS mode (an explicit open, no flag, still restarts it)
 for p in $(hb_pids); do kill "$p" 2>/dev/null || true; done
 sleep 0.3
+fi
+rm -f "$HOUSE_ROOT"/#.desktop/hq_mapped_*.txt 2>/dev/null
 $SETSID nohup "$BIN" "$HOUSE_ROOT" "$XHTPM" >"/tmp/hotbar-$MODE.log" 2>&1 < /dev/null &
 # real starttime/pgid so the C reaper does not skip it on quit/restart (a "0 0" line is ignored by its PID-reuse guard; the hotbar survived restarts because of that)
+NEWPID="$!"
 sh "$HOUSE_ROOT/&.widgits/_shared-lib/ops/proc_ledger_add.sh" "$HOUSE_ROOT" "$!" "hotbar-$MODE"
+if [ -n "$SWAP_OLD" ]; then
+    i=0; while [ ! -e "$HOUSE_ROOT/#.desktop/hq_mapped_$NEWPID.txt" ] && kill -0 "$NEWPID" 2>/dev/null && [ "$i" -lt 100 ]; do sleep 0.1; i=$((i+1)); done      # the renderer writes it right after XMapRaised
+    sleep 0.3
+    for p in $SWAP_OLD; do kill "$p" 2>/dev/null || true; done
+fi
 echo "open_hotbar: $MODE hotbar launched"
