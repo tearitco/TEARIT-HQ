@@ -46,6 +46,15 @@ fi
 SWAP_OLD=""
 if [ "${3:-}" = "--swap" ]; then
     SWAP_OLD="$(hb_pids)"
+    # (owner 2026-10-12: a second hotbar tab and window showed for a moment at every desktop start) a running hotbar that is already CURRENT is left alone: the window re-docks itself from the
+    # manager's anchor vars, so a restart needs a second window only when the renderer, the manager or the template changed after that window started (/proc/<pid> is stamped at process start).
+    if [ -n "$SWAP_OLD" ]; then
+        STALE=0
+        for p in $SWAP_OLD; do
+            for f in "$BIN" "$MGR" "$XHTPM" "$HERE"/*.css "$HERE"/hotbar-*.xhtpm; do [ -e "$f" ] && [ "$f" -nt "/proc/$p" ] && STALE=1; done
+        done
+        if [ "$STALE" = 0 ]; then echo "open_hotbar: $MODE hotbar already running and current, leaving it"; exit 0; fi
+    fi
     i=0; while [ ! -s "$HOUSE_ROOT/#.desktop/dock_stack/base.txt" ] && [ "$i" -lt 30 ]; do sleep 1; i=$((i+1)); done
 else
 # single instance: stop an older window + its manager for THIS mode (an explicit open, no flag, still restarts it)
@@ -58,8 +67,11 @@ $SETSID nohup "$BIN" "$HOUSE_ROOT" "$XHTPM" >"/tmp/hotbar-$MODE.log" 2>&1 < /dev
 NEWPID="$!"
 sh "$HOUSE_ROOT/&.widgits/_shared-lib/ops/proc_ledger_add.sh" "$HOUSE_ROOT" "$!" "hotbar-$MODE"
 if [ -n "$SWAP_OLD" ]; then
+    # one tab in the bottom bar at all times: as soon as the new window has registered its row, the old window is frozen (it stays on screen as it is), its row removed and the taskbar told
+    i=0; while [ ! -e "$HOUSE_ROOT/#.desktop/livedesk_hq_windows_$NEWPID.txt" ] && kill -0 "$NEWPID" 2>/dev/null && [ "$i" -lt 50 ]; do sleep 0.1; i=$((i+1)); done
+    for p in $SWAP_OLD; do kill -STOP "$p" 2>/dev/null; rm -f "$HOUSE_ROOT/#.desktop/livedesk_hq_windows_$p.txt"; echo "$p remove" >> "$HOUSE_ROOT/#.desktop/hq_windows_changed.txt"; done
     i=0; while [ ! -e "$HOUSE_ROOT/#.desktop/hq_mapped_$NEWPID.txt" ] && kill -0 "$NEWPID" 2>/dev/null && [ "$i" -lt 100 ]; do sleep 0.1; i=$((i+1)); done      # the renderer writes it right after XMapRaised
     sleep 0.3
-    for p in $SWAP_OLD; do kill "$p" 2>/dev/null || true; done
+    for p in $SWAP_OLD; do kill -CONT "$p" 2>/dev/null; kill "$p" 2>/dev/null || true; done      # a stopped process ignores TERM until it is resumed
 fi
 echo "open_hotbar: $MODE hotbar launched"
