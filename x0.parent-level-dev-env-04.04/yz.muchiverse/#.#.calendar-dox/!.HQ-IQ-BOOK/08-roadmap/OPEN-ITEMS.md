@@ -215,3 +215,4 @@ short version.*
 26. **pc-hq sessions** (direct owner ask, 2026-10-12): several pc-hq boards at once (rpg-pet, dsr-rpg, chess, ...): one instance directory per game selected by `PCHQ_PKG`,
     same binaries, like the p2p apps' sessions on the IRC app; the launcher's kill-everything guard becomes per instance. Prerequisite of dsr-rpg's board. Design written,
     S1 (instance skeleton on a scratch instance) next. `design-docs/PCHQ-SESSIONS-DESIGN.md`.
+27. **sandbox toys and boards** (owner question 2026-10-12): why a game has two toys entries (small window + pc-hq board over one data set), the board's own book/instance, the rule for the next sandboxes (GTA / Dwarf Fortress / CDDA-like). Explained in `design-docs/SANDBOX-TOYS-AND-BOARDS.md`; dsr-rpg status: island city (overmap + autotiles), six interiors, cast and chat done; jobs, shops, dungeon, critters next.

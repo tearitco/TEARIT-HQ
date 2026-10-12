@@ -7,7 +7,7 @@
   <page name="main">
     <tabbar id="toolbar" class="pchq-toolbar">
       <tab id="tb-in" class="pchq-tb ${interact_class}" label="In: ${interact_label}" relay="${bv_h1},${bv_h2}" onclick="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' int"/>
-      <tab id="tb-book" class="pchq-tb" label="Pets ▾" onclick="ACTIVATE" target_id="tb-book"/>
+      <tab id="tb-book" class="pchq-tb" label="Cast ▾" onclick="ACTIVATE" target_id="tb-book"/>
       <tab id="tb-page" class="pchq-tb" label="${room_label} ▾" onclick="ACTIVATE" target_id="tb-page"/>
       <tab id="tb-shop" class="pchq-tb" label="Shop ▾" onclick="ACTIVATE" target_id="tb-shop"/>
       <tab id="tb-menu" class="pchq-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
@@ -57,7 +57,7 @@
       <canvas id="view" sprite="${canvas_raw}"/>
       <!-- LEFT pinned bar: the pets and their stats. Pinned = takes its width out of the canvas (class ov-pin, width from side_style.pdl), the _ hides it, the footer cell left toggles it. -->
       <row id="side-l" class="canvas-overlay-left ov-pin ov-chrome pchq-hotbar theme" show="${side_left}">
-        <text label="pets - coins ${coins}" class="hb-quiet ov-title theme-3"/>
+        <text label="cast - coins ${coins}" class="hb-quiet ov-title theme-3"/>
         <item id="sl-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/dsr-rpg/board/state/sides.txt' side_left hide"/>
         <text id="light" label="${run_label}" class="${run_cls}"/>
         <text label="${nick_line}" class="ph-quiet"/>
@@ -90,7 +90,7 @@
     </panel>
     <footer id="statusbar" class="pchq-footer" show="${entities_bar_on}">
       <text label="ents" class="quiet"/>
-      <item id="sl-toggle" class="pchq-ft" label="pets" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/dsr-rpg/board/state/sides.txt' side_left toggle"/>
+      <item id="sl-toggle" class="pchq-ft" label="cast" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/dsr-rpg/board/state/sides.txt' side_left toggle"/>
       <item id="sr-toggle" class="pchq-ft" label="chat" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/dsr-rpg/board/state/sides.txt' side_right toggle"/>
       <item id="hb-toggle" class="pchq-ft" label="hb" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' toggle hb"/>
       <repeat count="${n_ent}" bind="ent">

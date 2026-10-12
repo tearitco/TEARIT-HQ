@@ -1,5 +1,6 @@
 # 08 — Roadmap
 
+- `design-docs/SANDBOX-TOYS-AND-BOARDS.md` — **sandbox toys and boards** (2026-10-12): why a game has two toys entries (small window + pc-hq board over one data set), the board's own book and pc-hq instance, and the rule for the next sandboxes (GTA / Dwarf Fortress / CDDA-like).
 - `design-docs/BLUEPRINTZ-DESIGN.md` — **blueprintz** (2026-10-11): the visual editor for all events of a whole book and its pages; empty shell + db-dropdown row + db tab on the game windows done, phases B1-B5 planned. `design-docs/DSR-RPG-DESIGN.md` — **dsr-rpg** (2026-10-11): carbon copy of rpg-pet as a two-city world, design only.
 - `design-docs/DSR-WSR-PETS-BRIDGE-DESIGN.md` — **DSR city where companies, population and pets coexist** (2026-10-10): the `dsr` book (2D/3D), WSR HQ window from the DSR toy, and how pet / DSR entity / WSR piece / chain data bridge (entity_uid key, one authority per fact, projections, links registry, money conservation).
 
