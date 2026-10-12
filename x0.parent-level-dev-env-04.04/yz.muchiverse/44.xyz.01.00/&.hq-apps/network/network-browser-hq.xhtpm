@@ -35,6 +35,10 @@
            that only shows once there's real history to clear
            (show="${n_hist}" - falsy/"0" when the list is empty). -->
       <item id="nb-clearhist" class="nb-side" label="Clear All History" action="${clear_hist_action}" show="${n_hist}"/>
+      <!-- 2026-10-12 (autofill): same shape as Clear All History - the
+           row only exists when the jar holds something, so there is no
+           dead control on a browser that has never filled a form. -->
+      <item id="nb-clearautofill" class="nb-side" label="Clear Saved Form Values" action="${clear_autofill_action}" show="${n_autofill}"/>
       <scrolllist>
         <repeat count="${n_hist}" bind="h">
           <item id="hist${h.#}" class="nb-side" label="${h.label}" action="${h.action}" backspace_action="${h.del_action}"/>

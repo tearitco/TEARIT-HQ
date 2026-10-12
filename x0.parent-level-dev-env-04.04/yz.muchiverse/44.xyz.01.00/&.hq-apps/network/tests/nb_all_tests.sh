@@ -68,6 +68,10 @@ echo "########## form gate (hermetic)"
 sh "$HERE/nb_form_test.sh" || RC=1
 
 echo
+echo "########## autofill (hermetic: sandbox house root + the real origin C)"
+sh "$HERE/nb_autofill_test.sh" || RC=1
+
+echo
 echo "########## video playhead bar (hermetic: own fixture window)"
 sh "$HERE/nb_bar_test.sh" || RC=1
 

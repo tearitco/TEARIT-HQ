@@ -58,6 +58,12 @@ wcs: tests/worker_css_test.c nb_dom.c
 wcl: tests/cli_test.c
 	$(CC) $(CFLAGS) -o $@ tests/cli_test.c
 
+# 2026-10-12 (autofill): pins autofill_origin() by compiling the REAL
+# manager source (the test #includes it) - a copy of the rule in the test
+# would prove nothing about the rule that actually ships.
+afot: tests/autofill_origin_test.c network_browser_manager.c nb_dom.c
+	$(CC) $(CFLAGS) -o $@ tests/autofill_origin_test.c nb_dom.c
+
 wpt: tests/worker_page_test.c nb_dom.c
 	$(CC) $(CFLAGS) -o $@ tests/worker_page_test.c nb_dom.c
 

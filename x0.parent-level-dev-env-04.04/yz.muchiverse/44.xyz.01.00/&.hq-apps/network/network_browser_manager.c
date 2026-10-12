@@ -3338,6 +3338,116 @@ static void history_clear_all(void) {
     if (w) fclose(w);
 }
 
+/* ---- AUTOFILL (2026-10-12) - remember form values per ORIGIN ----
+ *
+ * The jar's own format and its two verbs live in ops/nb_write_autofill.sh
+ * (one owner per on-disk format, same rule as nb_write_field.sh owning
+ * network_browser_fields.txt). This side only derives the origin key and
+ * calls that script; it never parses the jar itself.
+ *
+ * Origin is scheme://host[:port] - deliberately NOT the bare hostname:
+ * http://example.com and https://example.com are different jars, and
+ * a non-default port is a different site. Everything that is not
+ * http/https (file:// pages, bare paths) has no meaningful origin, so
+ * autofill simply stays off for it - a local test page must never
+ * inherit a value typed on a real site. */
+static void autofill_origin(const char *url, char *out, size_t outsz) {
+    out[0] = 0;
+    if (!url) return;
+    const char *se = strstr(url, "://");
+    if (!se) return;
+    size_t slen = (size_t)(se - url);
+    int is_http = (slen == 4 && strncasecmp(url, "http", 4) == 0) ||
+                  (slen == 5 && strncasecmp(url, "https", 5) == 0);
+    if (!is_http) return;
+    const char *host = se + 3;
+    /* userinfo is not part of the origin - strip it so
+     * http://a@host/ and http://host/ share one jar (RFC 6454). */
+    const char *at = memchr(host, '@', strcspn(host, "/?#"));
+    if (at) host = at + 1;
+    const char *hend = host + strcspn(host, "/?#");
+    if (hend <= host) return;
+    char hb[512];
+    size_t hl = (size_t)(hend - host);
+    if (hl >= sizeof(hb)) hl = sizeof(hb) - 1;
+    memcpy(hb, host, hl);
+    hb[hl] = 0;
+    /* A default port is not part of the origin either; a non-default one is. */
+    char *colon = strrchr(hb, ':');
+    if (colon && strchr(colon, ']') == NULL) {
+        int def = (slen == 5) ? 443 : 80;
+        if (atoi(colon + 1) == def) *colon = 0;
+    }
+    /* Lowercase the host: DNS names are case-insensitive, so
+     * https://Example.COM and https://example.com are ONE site and must
+     * not get two jars - the user would silently lose their saved value
+     * by following a link that capitalises the host differently. */
+    for (char *p = hb; *p; p++) *p = (char)tolower((unsigned char)*p);
+    /* Same for the scheme, so HTTP:// and http:// agree. */
+    for (size_t i = 0; i < slen && i < outsz; i++)
+        out[i] = (char)tolower((unsigned char)url[i]);
+    snprintf(out + slen, outsz - slen, "://%s", hb);
+}
+
+/* The jar path, kept beside the fields/checks files it lives with. */
+static void autofill_jar_path(char *out, size_t outsz) {
+    snprintf(out, outsz, "%s/#.desktop/network_browser_autofill.txt", g_house);
+}
+
+/* Look up one remembered value for (origin, name). Returns 1 and fills
+ * `out` on a hit, 0 on a miss. Runs the op script rather than reading
+ * the file, so the format has exactly one parser. */
+static int autofill_lookup(const char *origin, const char *name,
+                           char *out, size_t outsz) {
+    out[0] = 0;
+    if (!origin || !origin[0] || !name || !name[0]) return 0;
+    char cmd[PATH_BUF * 2];
+    char o_sq[1024], n_sq[1024];
+    shell_escape_squote(origin, o_sq, sizeof(o_sq));
+    shell_escape_squote(name, n_sq, sizeof(n_sq));
+    /* Same argv shape the renderer's own dispatch produces for a cli_io
+     * action (verb name origin dir house [typed]) - see the script's own
+     * header. This read-back passes no typed value, hence no 6th arg. */
+    snprintf(cmd, sizeof(cmd),
+             "'%s/ops/nb_write_autofill.sh' autofill '%s' '%s' '%s' '%s' 2>/dev/null",
+             g_package_dir, n_sq, o_sq, g_package_dir, g_house);
+    FILE *p = popen(cmd, "r");
+    if (!p) return 0;
+    if (fgets(out, (int)outsz, p)) {
+        size_t L = strlen(out);
+        while (L > 0 && (out[L-1] == '\n' || out[L-1] == '\r')) out[--L] = 0;
+    } else {
+        out[0] = 0;
+    }
+    pclose(p);
+    return out[0] ? 1 : 0;
+}
+
+/* "delete all" for the autofill jar - same turn and shape as
+ * history_clear_all() above. */
+static void autofill_clear_all(void) {
+    char jar[PATH_BUF];
+    autofill_jar_path(jar, sizeof(jar));
+    unlink(jar);
+}
+
+/* Does the jar hold anything at all? Drives the sidebar row's show=,
+ * so the delete affordance only appears when there is something to
+ * delete (same convention as n_hist / Clear All History). */
+static int autofill_has_entries(void) {
+    char jar[PATH_BUF];
+    autofill_jar_path(jar, sizeof(jar));
+    FILE *f = fopen(jar, "r");
+    if (!f) return 0;
+    char ln[1024];
+    int any = 0;
+    while (fgets(ln, sizeof(ln), f)) {
+        if (ln[0] && ln[0] != '\n') { any = 1; break; }
+    }
+    fclose(f);
+    return any;
+}
+
 static void load_page_title(char *out, size_t outsz) {
     out[0] = 0;
     FILE *pf = fopen(g_page_state_path, "r");
@@ -4646,6 +4756,8 @@ static void handle_request(void) {
         history_delete_at(atoi(line + 8));
     } else if (strcmp(line, "clearhist:") == 0 || strcmp(line, "clearhist") == 0) {
         history_clear_all();
+    } else if (strcmp(line, "clearautofill:") == 0 || strcmp(line, "clearautofill") == 0) {
+        autofill_clear_all();
     } else if (strncmp(line, "tab:", 4) == 0) {
         tab_switch(atoi(line + 4));
     } else if (strcmp(line, "newtab:") == 0 || strcmp(line, "newtab") == 0) {
@@ -5315,6 +5427,16 @@ static void write_ui_projection(void) {
         /* "delete all" - direct request, same turn as backspace-to-
          * delete above. */
         UI_PUT("clear_hist_action='%s/ops/nb_write_clearhist.sh' 'clearhist'\n", g_package_dir);
+    }
+
+    /* AUTOFILL (2026-10-12): the jar's delete affordance, same shape as
+     * Clear All History above - a row that only exists when there is
+     * something to delete, so an empty browser shows no dead control. */
+    {
+        int af_any = autofill_has_entries();
+        UI_PUT("n_autofill=%d\n", af_any);
+        if (af_any)
+            UI_PUT("clear_autofill_action='%s/ops/nb_write_clearautofill.sh' 'clearautofill'\n", g_package_dir);
     }
 
     /* tab strip */
@@ -6365,9 +6487,41 @@ static void write_ui_projection(void) {
                     }
                     char nm_sq[PATH_BUF];
                     shell_escape_squote(f[0], nm_sq, sizeof(nm_sq));
+                    /* AUTOFILL (2026-10-12): a value remembered for this
+                     * exact (origin, name) fills the field, so returning
+                     * to a form shows what you last typed. Deliberately
+                     * does NOT override a value the PAGE itself shipped:
+                     * a server-rendered default is the site's own answer
+                     * (a CSRF token, a chosen currency), and silently
+                     * replacing it would be worse than not filling at
+                     * all. type=password is never filled and never
+                     * remembered. */
+                    char af_origin[512];
+                    autofill_origin(g_current_url, af_origin, sizeof(af_origin));
+                    char af_val[1024];
+                    int is_password = !strcmp(f[1], "password");
+                    if (af_origin[0] && vv[0] == '\0' && !is_password &&
+                        autofill_lookup(af_origin, f[0], af_val, sizeof(af_val)))
+                        snprintf(vv, sizeof(vv), "%s", af_val);
                     UI_PUT("c_%d_kind=input\nc_%d_is_input=1\nc_%d_text=%s\n", rc, rc, rc, lab_s);
                     UI_PUT("c_%d_content=%s\n", rc, vv);
-                    UI_PUT("c_%d_action='%s/ops/nb_write_field.sh' 'field' '%s'\n", rc, g_package_dir, nm_sq);
+                    /* Two scripts on one Enter, in order: the live field
+                     * commit first (submit must see this session's value
+                     * even if the jar write is refused), then the remember.
+                     * A ';' not '&&' - a jar write that fails must not
+                     * swallow the commit that already happened. */
+                    if (af_origin[0] && !is_password) {
+                        char o_sq[1024];
+                        shell_escape_squote(af_origin, o_sq, sizeof(o_sq));
+                        /* The remember half carries only name+origin as its
+                         * own words; the renderer appends dir, house_root
+                         * and the typed value, which is exactly the 6-arg
+                         * shape the script documents. */
+                        UI_PUT("c_%d_action='%s/ops/nb_write_field.sh' 'field' '%s'; '%s/ops/nb_write_autofill.sh' remember '%s' '%s'\n",
+                               rc, g_package_dir, nm_sq, g_package_dir, nm_sq, o_sq);
+                    } else {
+                        UI_PUT("c_%d_action='%s/ops/nb_write_field.sh' 'field' '%s'\n", rc, g_package_dir, nm_sq);
+                    }
                 } else if (strcmp(kind, "BUTTON") == 0) {
                     /* BUTTON|action|method|label -> submit item. */
                     char *b2 = strchr(rest, '|');
