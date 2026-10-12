@@ -861,14 +861,23 @@ static int board_armed(void) {
     { char tp[PATH_MAX], tb[16]; snprintf(tp, sizeof tp, "%s/pieces/display/active_gui_is_typing.txt", sess); if (fexists(tp) && read_file(tp, tb, sizeof tb) > 0) { int v = atoi(tb); return v != 0; } }      /* the engine's own flag (what pchq_board_action.sh trusts); ui.txt's interact_armed lags behind it */
     return armed;
 }
+/* Esc to the board engine: the only key that leaves its Interact mode (Enter / 13, what a second click on the In: tab sends, is an ordinary key inside it). */
+static void board_esc(void) {
+    char up[PATH_MAX], ub[1024], sess[PATH_MAX] = ""; snprintf(up, sizeof up, "%s/@.apps/rpg-pet/board/state/ui.txt", HOUSE); if (!fexists(up)) return; read_file(up, ub, sizeof ub);
+    for (char *l = strtok(ub, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "bv_session=", 11)) snprintf(sess, sizeof sess, "%s", l + 11);
+    if (!sess[0] || !fexists(sess)) return; char p[PATH_MAX]; FILE *f;
+    snprintf(p, sizeof p, "%s/pieces/keyboard/history.txt", sess); if ((f = fopen(p, "a"))) { fputs("KEY_PRESSED: 27\n", f); fclose(f); }
+    snprintf(p, sizeof p, "%s/pieces/apps/player_app/interact_relay.txt", sess); if ((f = fopen(p, "a"))) { fputs("126\n", f); fclose(f); }
+}
 /* The board window's own Interact mode (its In: tab) is what makes the engine take the arrow keys and move the xelector. rpg-pet's INT drives it: engaged while INT is on, released when INT goes
  * off (pchq_board_action.sh <session> interact = the engage / disengage key, a toggle, so it is only sent when the board's published state differs from what INT wants). */
+static long g_own13 = 0;      /* when this daemon last sent the engage key (its own 13 in the keyboard history is not a click on the In: tab) */
 static void board_interact(int want, int force) {
     const char *cand[3] = {"@.apps/rpg-pet/board/state/ui.txt", "@.apps/piececraft-hq/state/ui.txt", "@.apps/layout-studio/sandbox/state/ui.txt"}; static long last = 0; long now = now_ms(); if (!force && now - last < 4000) return;
     for (int k = 0; k < 3; k++) { char up[PATH_MAX], ub[1024], sess[PATH_MAX] = ""; snprintf(up, sizeof up, "%s/%s", HOUSE, cand[k]); if (!fexists(up)) continue; read_file(up, ub, sizeof ub); int armed = 0;
         for (char *l = strtok(ub, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "bv_session=", 11)) snprintf(sess, sizeof sess, "%s", l + 11); else if (!strncmp(l, "interact_armed=", 15)) armed = atoi(l + 15); }
         if (!sess[0] || !fexists(sess) || board_armed() == want) continue; if (k != 0) continue;      /* only the rpg-pet board's own window */
-        last = now; char cmd[PATH_MAX * 2 + 64]; snprintf(cmd, sizeof cmd, "sh '%s/@.apps/piececraft-hq/ops/pchq_board_action.sh' '%s' interact >/dev/null 2>&1", HOUSE, sess); if (system(cmd)) {}
+        last = now; g_own13 = now; char cmd[PATH_MAX * 2 + 64]; snprintf(cmd, sizeof cmd, "sh '%s/@.apps/piececraft-hq/ops/pchq_board_action.sh' '%s' interact >/dev/null 2>&1", HOUSE, sess); if (system(cmd)) {}
         { char rp[PATH_MAX]; snprintf(rp, sizeof rp, "%s/pieces/apps/player_app/interact_relay.txt", sess); FILE *nf = fopen(rp, "a"); if (nf) { fputs("126\n", nf); fclose(nf); } }      /* an idle engine only reads its relay when woken: 126 is the unbound "render now" key */
         return; }
 }
@@ -895,7 +904,7 @@ static int daemon_main(void) {
     long last_load = now_ms(), last_follow = 0;
     while (!quit_flag) {
         usleep(100000); int dirty = 0, codes[64], n; msg[0] = 0; { long lt = now_ms(); if (lt - last_load >= 2000) { last_load = lt; load_data(); } }      /* catalog / party / rooms / door pages are static: re-parsing them every 100 ms was most of the daemon's own CPU */
-        pet_load(); int in = flag_on("int", 0), tm = turn_mode();
+        pet_load(); int in = flag_on("int", 0), tm = turn_mode(); static int prev_in = 0; static long int_on_at = 0; if (in && !prev_in) int_on_at = now_ms(); prev_in = in;
         n = poll_keys(h1, &o1, codes, 32); n += poll_keys(h2, &o2, codes + n, 32);     /* the offsets always advance; keys only act while INT is on */
         if (in && n) replay();
         if (in && n) { char kl[300], one[16]; kl[0] = 0; for (int i = 0; i < n && i < 20; i++) { snprintf(one, sizeof one, "%d ", codes[i]); strncat(kl, one, sizeof kl - strlen(kl) - 1); } char kp[PATH_MAX]; spath(kp, "keys_seen.txt"); write_if_changed(kp, kl, strlen(kl)); }      /* last batch of codes, for debugging */
@@ -910,6 +919,24 @@ static int daemon_main(void) {
             else continue;
             { int ci = ctl_idx(); use_ent(ci); if (do_step(dx, dy, msg, sizeof msg)) { pet_save(); set_flag("follow", ci < 0 ? "player" : "pet"); end_turn(); } else pet_save(); }      /* a bump costs no turn */
             dirty = 1; }
+        {   /* the board's In: tab is rpg-pet's INT. Clicking it engages the ENGINE'S Interact mode (pchq_board_action.sh interact); a rising edge of that while INT is off turns INT on: auto stops (the
+             * clock and the pet timers wait for you), the arrows move the chosen monster through the xelector (follow_xelector below). Rising edge only, so an INT that something else turned off while the engine
+             * was still engaged does not switch itself back on; checked at most every 400 ms and only while a board window exists. */
+            static int prev_ar = -1; static long chk = 0; long t = now_ms();
+            static long soff = -1;
+            if (in && board_window_open()) {      /* a second click on the In: tab = INT off. The tab script appends Enter (13) to the ENGINE SESSION's keyboard history (rpg-pet's own copies only get keys pressed in the window), and the engine never leaves Interact on Enter (only Esc does), so the daemon watches that file: a new 13 more than 6 s after INT came on (and not our own engage key) = INT off + Esc to the engine. */
+                static long hchk = 0; if (t - hchk >= 400) { hchk = t; char up[PATH_MAX], ub[1024], sess[PATH_MAX] = "", hp[PATH_MAX]; snprintf(up, sizeof up, "%s/@.apps/rpg-pet/board/state/ui.txt", HOUSE); read_file(up, ub, sizeof ub);
+                    for (char *l = strtok(ub, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "bv_session=", 11)) snprintf(sess, sizeof sess, "%s", l + 11);
+                    snprintf(hp, sizeof hp, "%s/pieces/keyboard/history.txt", sess); long hs = sess[0] ? fsize(hp) : -1; if (soff < 0 || hs < soff) soff = hs;
+                    if (hs > soff) { FILE *hf = fopen(hp, "r"); int click = 0; if (hf) { fseek(hf, soff, SEEK_SET); char hl[80]; while (fgets(hl, sizeof hl, hf)) if (!strncmp(hl, "KEY_PRESSED: 13", 15)) click = 1; fclose(hf); } soff = hs;
+                        if (click && t - int_on_at > 6000 && t - g_own13 > 6000) { if (!(run_event("int_off", "ui") && !flag_on("int", 0))) set_flag("int", "0"); board_esc(); clock_sync(); snprintf(msg, sizeof msg, "INT off: real time"); dirty = 1; in = 0; prev_in = 0; } } } }
+            if (!in) soff = -1;      /* re-seeded at the current end of the file the next time INT is on, so old Enter presses never count */
+            if (in || !board_window_open()) prev_ar = -1;
+            else if (t - chk >= 400) { chk = t; int ar2 = board_armed(); if (prev_ar == 0 && ar2 == 1) {
+                    if (!(run_event("int_on", "ui") && flag_on("int", 0))) set_flag("int", "1");
+                    clock_sync(); snprintf(msg, sizeof msg, "INT on: you control %s - turn based", party[active].name); dirty = 1; in = 1; prev_in = 1; int_on_at = now_ms(); }
+                prev_ar = ar2; }
+        }
         {   /* Esc in the board window makes the ENGINE leave its Interact mode; rpg-pet's INT has to follow, or the game stays turn based and the real time ticker never restarts. A board whose In: was seen on and is now off = Esc. */
             static int was_armed = 0, tried = 0; static long sent_at = 0; int ar = in ? board_armed() : -1;      /* only while INT is on: it needs two file reads */
             static int was_in = 0; if (in && !was_in) g_pin_now = 1; was_in = in;
