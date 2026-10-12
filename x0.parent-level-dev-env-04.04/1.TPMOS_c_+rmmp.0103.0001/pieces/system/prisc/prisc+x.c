@@ -21,7 +21,7 @@
 #define SETENV(name, value, overwrite) setenv(name, value, overwrite)
 #endif
 #include <sys/stat.h>
-
+#include <time.h>
 void handle_sigint(int sig) {
     _exit(130);  /* Immediate exit, no cleanup */
 }
@@ -37,7 +37,7 @@ void handle_sigint(int sig) {
 #define MEM_SIZE 4096
 #define STRING_POOL_START 0xF00
 
-typedef enum { OP_ADDI, OP_BEQ, OP_LW, OP_SW, OP_JALR, OP_J, OP_HALT, OP_CUSTOM, OP_READ_HISTORY, OP_EXEC, OP_HIT_FRAME, OP_READ_STATE, OP_READ_ACTIVE_TARGET, OP_READ_ENV_KEY, OP_SLEEP, OP_READ_LAYOUT, OP_READ_POS } OpBase;
+typedef enum { OP_ADDI, OP_BEQ, OP_BNE, OP_LW, OP_SW, OP_JALR, OP_J, OP_HALT, OP_CUSTOM, OP_READ_HISTORY, OP_EXEC, OP_HIT_FRAME, OP_READ_STATE, OP_READ_ACTIVE_TARGET, OP_READ_ENV_KEY, OP_SLEEP, OP_READ_LAYOUT, OP_READ_POS, OP_READ_PDL, OP_WRITE_PDL, OP_CALL_METHOD, OP_CONSOLE_PRINT, OP_READ_RELAY_ROW, OP_RELAY_WRITE, OP_STRCMP, OP_SUB, OP_MOV, OP_BLE, OP_BGE } OpBase;
 
 typedef struct {
     OpBase op;
@@ -78,6 +78,8 @@ int label_count = 0, inst_count = 0, var_count = 0, op_count = 0;
 int next_var_addr = 0;
 char included_files[MAX_INCLUDES][64];
 int include_count = 0;
+char string_pool[256][256];
+int string_pool_count = 0;
 
 int find_custom_op(const char *name);
 
@@ -431,6 +433,133 @@ void parse_line(char *line, int pass) {
             else if (sscanf(line, "%*s x%d, %d", &i->rd, &i->imm) == 2) {}
             i->rs1 = 0;
             i->op = OP_ADDI;
+        } else if (strcmp(part, "read_pdl") == 0) {
+            /* read_pdl "pdl_path" "section" "key" <rd> */
+            i->op = OP_READ_PDL;
+            char *args = strstr(original, part) + strlen(part);
+            while (*args == ' ' || *args == '\t') args++;
+            char path[256] = "", section[32] = "", key[64] = "", reg[16] = "";
+            if (sscanf(args, "\"%255[^\"]\" \"%31[^\"]\" \"%63[^\"]\" %15s", path, section, key, reg) == 4) {
+                strncpy(i->literal_arg, path, 255);
+                i->literal_arg[255] = '\0';
+                strncpy(i->literal_arg2, key, 255);
+                i->literal_arg2[255] = '\0';
+                if (sscanf(reg, "r%d", &i->rd) != 1) sscanf(reg, "x%d", &i->rd);
+            }
+        } else if (strcmp(part, "write_pdl") == 0) {
+            /* write_pdl "pdl_path" "section" "key" <rs1> */
+            i->op = OP_WRITE_PDL;
+            char *args = strstr(original, part) + strlen(part);
+            while (*args == ' ' || *args == '\t') args++;
+            char path[256] = "", section[32] = "", key[64] = "", reg[16] = "";
+            if (sscanf(args, "\"%255[^\"]\" \"%31[^\"]\" \"%63[^\"]\" %15s", path, section, key, reg) == 4) {
+                strncpy(i->literal_arg, path, 255);
+                i->literal_arg[255] = '\0';
+                strncpy(i->literal_arg2, key, 255);
+                i->literal_arg2[255] = '\0';
+                if (sscanf(reg, "r%d", &i->rs1) != 1) sscanf(reg, "x%d", &i->rs1);
+            }
+        } else if (strcmp(part, "call_method") == 0) {
+            /* call_method <method_name> */
+            i->op = OP_CALL_METHOD;
+            char *args = strstr(original, part) + strlen(part);
+            while (*args == ' ' || *args == '\t') args++;
+            sscanf(args, "%31s", i->custom_name);
+        } else if (strcmp(part, "console_print") == 0) {
+            /* console_print "..." */
+            i->op = OP_CONSOLE_PRINT;
+            char *args = strstr(original, part) + strlen(part);
+            while (*args == ' ' || *args == '\t') args++;
+            char *q = strchr(args, '"');
+            if (q) {
+                q++;
+                char *end_q = strchr(q, '"');
+                if (end_q) {
+                    int len = end_q - q;
+                    if (len > 255) len = 255;
+                    strncpy(i->literal_arg, q, len);
+                    i->literal_arg[len] = '\0';
+                }
+            }
+        } else if (strcmp(part, "read_relay_row") == 0) {
+            /* read_relay_row <key_name> <rd> <rs1> */
+            i->op = OP_READ_RELAY_ROW;
+            char *args = strstr(original, part) + strlen(part);
+            while (*args == ' ' || *args == '\t') args++;
+            char key[64] = "", rd[16] = "", rs1[16] = "";
+            if (sscanf(args, "%63s %15s %15s", key, rd, rs1) == 3) {
+                strncpy(i->literal_arg, key, 255);
+                if (sscanf(rd, "r%d", &i->rd) != 1) sscanf(rd, "x%d", &i->rd);
+                if (sscanf(rs1, "r%d", &i->rs1) != 1) sscanf(rs1, "x%d", &i->rs1);
+            }
+        } else if (strcmp(part, "relay_write") == 0) {
+            /* relay_write "..." */
+            i->op = OP_RELAY_WRITE;
+            char *args = strstr(original, part) + strlen(part);
+            while (*args == ' ' || *args == '\t') args++;
+            char *q = strchr(args, '"');
+            if (q) {
+                q++;
+                char *end_q = strchr(q, '"');
+                if (end_q) {
+                    int len = end_q - q;
+                    if (len > 255) len = 255;
+                    strncpy(i->literal_arg, q, len);
+                    i->literal_arg[len] = '\0';
+                }
+            }
+        } else if (strcmp(part, "strcmp") == 0) {
+            /* strcmp rd, "literal", rs1 */
+            i->op = OP_STRCMP;
+            char *args = strstr(original, part) + strlen(part);
+            while (*args == ' ' || *args == '\t') args++;
+            char rd[16] = "", rs1[16] = "";
+            char *q = strchr(args, '"');
+            if (q) {
+                q++;
+                char *end_q = strchr(q, '"');
+                if (end_q) {
+                    char litbuf[256];
+                    int len = end_q - q;
+                    if (len > 255) len = 255;
+                    strncpy(litbuf, q, len);
+                    litbuf[len] = '\0';
+                    strncpy(i->literal_arg, litbuf, 255);
+                    sscanf(end_q + 1, "%15s %15s", rd, rs1);
+                    if (sscanf(rd, "r%d", &i->rd) != 1) sscanf(rd, "x%d", &i->rd);
+                    if (sscanf(rs1, "r%d", &i->rs1) != 1) sscanf(rs1, "x%d", &i->rs1);
+                }
+            }
+        } else if (strcmp(part, "sub") == 0) {
+            /* sub rd, rs1, rs2 */
+            int r_rd, r_rs1, r_rs2;
+            if (sscanf(line, "%*s r%d, r%d, r%d", &r_rd, &r_rs1, &r_rs2) == 3) { i->rd = r_rd; i->rs1 = r_rs1; i->rs2 = r_rs2; }
+            else sscanf(line, "%*s x%d, x%d, x%d", &i->rd, &i->rs1, &i->rs2);
+            i->op = OP_SUB;
+        } else if (strcmp(part, "mov") == 0) {
+            /* mov rd, rs1 */
+            int r_rd, r_rs1;
+            if (sscanf(line, "%*s r%d, r%d", &r_rd, &r_rs1) == 2) { i->rd = r_rd; i->rs1 = r_rs1; }
+            else sscanf(line, "%*s x%d, x%d", &i->rd, &i->rs1);
+            i->op = OP_MOV;
+        } else if (strcmp(part, "ble") == 0) {
+            /* ble rs1, rs2, label */
+            int r_rs1, r_rs2;
+            if (sscanf(line, "%*s r%d, r%d, %31s", &r_rs1, &r_rs2, i->label_ref) == 3) { i->rs1 = r_rs1; i->rs2 = r_rs2; }
+            else sscanf(line, "%*s x%d, x%d, %31s", &i->rs1, &i->rs2, i->label_ref);
+            i->op = OP_BLE;
+        } else if (strcmp(part, "bge") == 0) {
+            /* bge rs1, rs2, label */
+            int r_rs1, r_rs2;
+            if (sscanf(line, "%*s r%d, r%d, %31s", &r_rs1, &r_rs2, i->label_ref) == 3) { i->rs1 = r_rs1; i->rs2 = r_rs2; }
+            else sscanf(line, "%*s x%d, x%d, %31s", &i->rs1, &i->rs2, i->label_ref);
+            i->op = OP_BGE;
+        } else if (strcmp(part, "bne") == 0) {
+            /* bne rs1, rs2, label */
+            int r_rs1, r_rs2;
+            if (sscanf(line, "%*s r%d, r%d, %31s", &r_rs1, &r_rs2, i->label_ref) == 3) { i->rs1 = r_rs1; i->rs2 = r_rs2; }
+            else sscanf(line, "%*s x%d, x%d, %31s", &i->rs1, &i->rs2, i->label_ref);
+            i->op = OP_BNE;
         } else if (strcmp(part, "lw") == 0) {
             sscanf(line, "%*s x%d, %d(x%d)", &i->rd, &i->imm, &i->rs1);
             i->op = OP_LW;
@@ -738,6 +867,198 @@ int main(int argc, char **argv) {
             char *key_env = getenv("PRISC_KEY");
             if (key_env) regs[i.rd] = atoi(key_env);
             else regs[i.rd] = 0;
+        } else if (i.op == OP_READ_PDL) {
+            FILE *f = fopen(i.literal_arg, "r");
+            if (f) {
+                char line[512];
+                int found = 0;
+                while (fgets(line, sizeof(line), f)) {
+                    line[strcspn(line, "\r\n")] = '\0';
+                    if (strncmp(line, "STATE", 5) != 0) continue;
+                    char *p = line + 5;
+                    while (*p == ' ' || *p == '|') p++;
+                    char keybuf[128] = "";
+                    char *bar1 = strchr(p, '|');
+                    if (!bar1) continue;
+                    size_t klen = bar1 - p;
+                    if (klen > 0 && klen < sizeof(keybuf)) {
+                        memcpy(keybuf, p, klen);
+                        keybuf[klen] = '\0';
+                    }
+                    char *kb = keybuf;
+                    while (*kb && (*kb == ' ' || *kb == '\t')) kb++;
+                    size_t kblen = strlen(kb);
+                    while (kblen > 0 && (kb[kblen-1] == ' ' || kb[kblen-1] == '\t')) kb[--kblen] = '\0';
+                    if (strcmp(kb, i.literal_arg2) == 0) {
+                        char *val = bar1 + 1;
+                        while (*val == ' ' || *val == '\t') val++;
+                        char *bar2 = strchr(val, '|');
+                        char vbuf[256] = "";
+                        if (bar2) {
+                            size_t vlen = bar2 - val;
+                            if (vlen > 255) vlen = 255;
+                            memcpy(vbuf, val, vlen);
+                            vbuf[vlen] = '\0';
+                        } else {
+                            strncpy(vbuf, val, 255);
+                        }
+                        char *vnl = strpbrk(vbuf, "\r\n");
+                        if (vnl) *vnl = '\0';
+                        char *vs = vbuf;
+                        while (*vs == ' ' || *vs == '\t') vs++;
+                        size_t vslen = strlen(vs);
+                        while (vslen > 0 && (vs[vslen-1] == ' ' || vs[vslen-1] == '\t')) vs[--vslen] = '\0';
+                        if (string_pool_count < 256) {
+                            strncpy(string_pool[string_pool_count], vs, 255);
+                            regs[i.rd] = string_pool_count;
+                            string_pool_count++;
+                        } else {
+                            regs[i.rd] = 0;
+                        }
+                        found = 1;
+                        break;
+                    }
+                }
+                if (!found) regs[i.rd] = 0;
+                fclose(f);
+            } else regs[i.rd] = 0;
+        } else if (i.op == OP_WRITE_PDL) {
+            char tmpname[64];
+            snprintf(tmpname, sizeof(tmpname), "pdl_tmp_%ld", (long)getpid());
+            FILE *tf = fopen(tmpname, "w");
+            FILE *sf = fopen(i.literal_arg, "r");
+            if (tf) {
+                if (sf) {
+                    char line[512];
+                    while (fgets(line, sizeof(line), sf)) {
+                        line[strcspn(line, "\r\n")] = '\0';
+                        if (strncmp(line, "STATE", 5) != 0 || strncmp(line + 5, i.literal_arg2, strlen(i.literal_arg2)) != 0) {
+                            fprintf(tf, "%s\n", line);
+                        }
+                    }
+                    fclose(sf);
+                } else {
+                    fprintf(tf, "SECTION      | KEY                | VALUE\n");
+                    fprintf(tf, "----------------------------------------\n");
+                }
+                fprintf(tf, "STATE        | %-16s | %d\n", i.literal_arg2, regs[i.rs1]);
+                fclose(tf);
+                rename(tmpname, i.literal_arg);
+            }
+        } else if (i.op == OP_CALL_METHOD) {
+            char *proj_root = getenv("PRISC_PROJECT_ROOT");
+            char *proj_id = getenv("PRISC_PROJECT_ID");
+            char *piece_id = getenv("PRISC_PIECE_ID");
+            if (!piece_id) piece_id = "hero";
+            char pdl_path[4096];
+            if (proj_root && proj_id) {
+                snprintf(pdl_path, sizeof(pdl_path), "%s/projects/%s/pieces/%s/piece.pdl", proj_root, proj_id, piece_id);
+            } else {
+                snprintf(pdl_path, sizeof(pdl_path), "projects/template/pieces/%s/piece.pdl", piece_id);
+            }
+            FILE *pf = fopen(pdl_path, "r");
+            if (pf) {
+                char line[512];
+                char method_path[256] = "";
+                int found = 0;
+                while (fgets(line, sizeof(line), pf) && !found) {
+                    line[strcspn(line, "\r\n")] = '\0';
+                    if (strncmp(line, "METHOD", 6) != 0) continue;
+                    char *p = line + 6;
+                    while (*p == ' ' || *p == '|') p++;
+                    char *bar1 = strchr(p, '|');
+                    if (!bar1) continue;
+                    char mname[64] = "";
+                    size_t klen = bar1 - p;
+                    if (klen > 0 && klen < sizeof(mname)) {
+                        memcpy(mname, p, klen);
+                        mname[klen] = '\0';
+                    }
+                    char *mk = mname;
+                    while (*mk && (*mk == ' ' || *mk == '\t')) mk++;
+                    size_t mkl = strlen(mk);
+                    while (mkl > 0 && (mk[mkl-1] == ' ' || mk[mkl-1] == '\t')) mk[--mkl] = '\0';
+                    if (strcmp(mk, i.custom_name) == 0) {
+                        char *val = bar1 + 1;
+                        while (*val == ' ' || *val == '\t') val++;
+                        char *bar2 = strchr(val, '|');
+                        if (bar2) {
+                            size_t vlen = bar2 - val;
+                            if (vlen > 255) vlen = 255;
+                            memcpy(method_path, val, vlen);
+                            method_path[vlen] = '\0';
+                        } else {
+                            strncpy(method_path, val, 255);
+                        }
+                        found = 1;
+                    }
+                }
+                fclose(pf);
+                if (found && strlen(method_path) > 0 && strcmp(method_path, "void") != 0) {
+                    char cmd[2048];
+                    char *script_path = method_path;
+                    if (strncmp(method_path, "./", 2) == 0) script_path += 2;
+                    if (strncmp(script_path, "/", 1) != 0 && proj_root) {
+                        snprintf(cmd, sizeof(cmd), "%s/%s", proj_root, script_path);
+                    } else {
+                        snprintf(cmd, sizeof(cmd), "%s", script_path);
+                    }
+                    if (proj_root) {
+                        char env_cmd[4096];
+                        snprintf(env_cmd, sizeof(env_cmd), "PRISC_PROJECT_ROOT=%s %s", proj_root, cmd);
+                        system(env_cmd);
+                    } else system(cmd);
+                }
+            }
+        } else if (i.op == OP_CONSOLE_PRINT) {
+            printf("CONSOLE: %s\n", i.literal_arg);
+            fflush(stdout);
+        } else if (i.op == OP_READ_RELAY_ROW) {
+            char *proj_root = getenv("PRISC_PROJECT_ROOT");
+            char relay_path[4096];
+            if (proj_root) snprintf(relay_path, sizeof(relay_path), "%s/pieces/apps/player_app/interact_relay.txt", proj_root);
+            else strcpy(relay_path, "pieces/apps/player_app/interact_relay.txt");
+            FILE *rf = fopen(relay_path, "r");
+            if (rf) {
+                char line[1024];
+                char last_match[1024] = "";
+                int found = 0;
+                while (fgets(line, sizeof(line), rf)) {
+                    if (strstr(line, i.literal_arg)) {
+                        strncpy(last_match, line, 1023);
+                        found = 1;
+                    }
+                }
+                fclose(rf);
+                if (found) {
+                    char *p = strstr(last_match, i.literal_arg);
+                    if (p) {
+                        p += strlen(i.literal_arg);
+                        if (*p == '|' || *p == '=') p++;
+                        char *end = p;
+                        while (*end && *end != '\n' && *end != '\r') end++;
+                        *end = '\0';
+                        if (atoi(p) != 0 || isdigit(p[0])) regs[i.rd] = atoi(p);
+                        else {
+                            if (string_pool_count < 256) {
+                                strncpy(string_pool[string_pool_count], p, 255);
+                                regs[i.rd] = string_pool_count;
+                                string_pool_count++;
+                            }
+                        }
+                    }
+                } else regs[i.rd] = 0;
+            } else regs[i.rd] = 0;
+        } else if (i.op == OP_RELAY_WRITE) {
+            char *proj_root = getenv("PRISC_PROJECT_ROOT");
+            char relay_path[4096];
+            if (proj_root) snprintf(relay_path, sizeof(relay_path), "%s/pieces/apps/player_app/interact_relay.txt", proj_root);
+            else strcpy(relay_path, "pieces/apps/player_app/interact_relay.txt");
+            FILE *rf = fopen(relay_path, "a");
+            if (rf) {
+                fprintf(rf, "%s\n", i.literal_arg);
+                fclose(rf);
+            }
         } else {
             switch (i.op) {
                 case OP_ADDI: regs[i.rd] = regs[i.rs1] + i.imm; break;
@@ -759,6 +1080,29 @@ int main(int argc, char **argv) {
                 case OP_SW:  mem[(regs[i.rs1] + i.imm) % MEM_SIZE] = regs[i.rs2]; break;
                 case OP_JALR: { int tmp = pc + 1; next_pc = regs[i.rs1] + i.imm; regs[i.rd] = tmp; break; }
                 case OP_HALT: pc = inst_count; continue;
+                case OP_BNE: {
+                    int target = -1;
+                    for (int l = 0; l < label_count; l++)
+                        if (strcmp(labels[l].name, i.label_ref) == 0) target = labels[l].addr;
+                    if (regs[i.rs1] != regs[i.rs2]) next_pc = target;
+                    break;
+                }
+                case OP_SUB: regs[i.rd] = regs[i.rs1] - regs[i.rs2]; break;
+                case OP_MOV: regs[i.rd] = regs[i.rs1]; break;
+                case OP_BLE: {
+                    int target = -1;
+                    for (int l = 0; l < label_count; l++)
+                        if (strcmp(labels[l].name, i.label_ref) == 0) target = labels[l].addr;
+                    if (regs[i.rs1] <= regs[i.rs2]) next_pc = target;
+                    break;
+                }
+                case OP_BGE: {
+                    int target = -1;
+                    for (int l = 0; l < label_count; l++)
+                        if (strcmp(labels[l].name, i.label_ref) == 0) target = labels[l].addr;
+                    if (regs[i.rs1] >= regs[i.rs2]) next_pc = target;
+                    break;
+                }
                 default: break;
             }
         }
