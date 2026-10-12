@@ -13215,7 +13215,16 @@ static void hq_idle_tick(void) {
             kh_focus_debug_log("GRAB-RETRY key=%s acquired", g_default_input_elem->target_id);
         }
     } else if (g_grab_pending) g_grab_pending = 0;
-    if (g_vars_path[0]) kh_load_vars_multi(g_vars_path);
+    /* CPU safety (hq-cpu-safety.md): every idle tick (~18/s) re-opened and re-parsed every vars file. Only when one of them changed (inode+size+mtime ns signature, one stat each) or the list changed. */
+    if (g_vars_path[0]) {
+        static char s_paths[PATH_BUF * 4]; static unsigned long s_sig = 0; unsigned long sig = 1469598103934665603UL; char work[PATH_BUF * 4]; char *sv = NULL; struct stat vst;
+        snprintf(work, sizeof(work), "%s", g_vars_path);
+        for (char *tok = strtok_r(work, " \t", &sv); tok; tok = strtok_r(NULL, " \t", &sv)) {
+            unsigned long v = 7; if (stat(tok, &vst) == 0) v = (unsigned long)vst.st_ino * 31UL + (unsigned long)vst.st_size * 1000003UL + (unsigned long)vst.st_mtim.tv_nsec * 17UL + (unsigned long)vst.st_mtim.tv_sec;
+            sig ^= v; sig *= 1099511628211UL;
+        }
+        if (sig != s_sig || strcmp(s_paths, g_vars_path) != 0) { s_sig = sig; snprintf(s_paths, sizeof(s_paths), "%s", g_vars_path); kh_load_vars_multi(g_vars_path); }
+    }
     /* class="vars-positioned": the window's manager publishes anchor_cx (centre x) and
      * anchor_bottom (bottom edge y); the window centres on / sits on them using its OWN
      * size. Generic: no knowledge of which app. Used by the hotbar (docked above the
@@ -13371,6 +13380,7 @@ static void hq_idle_tick(void) {
         }
         if (_rp_changed) {
             if (_rp_dock) clock_gettime(CLOCK_MONOTONIC, &_rp_t0);
+            int _rp_w0 = g_win_w, _rp_h0 = g_win_h;
             assign_nav_and_layout(); redraw();
             if (_rp_dock) {
                 clock_gettime(CLOCK_MONOTONIC, &_rp_t1);
@@ -13394,8 +13404,9 @@ static void hq_idle_tick(void) {
              * a second real redraw() repaints it for real THIS tick,
              * instead of leaving a blank window until the next
              * unrelated event. Cheap - a no-op second call whenever no
-             * resize was needed. */
-            redraw();
+             * resize was needed. CPU safety (hq-cpu-safety.md): it is only a no-op in cost terms when skipped - a second full layout+draw (about 67 ms for the rpg-pet board) ran on EVERY ui-file
+             * change; now only when the window size moved or for the dock. */
+            if (_rp_dock || g_win_w != _rp_w0 || g_win_h != _rp_h0) redraw();
         }
     }
     /* REAL FIX 2026-09-01 (live report: "entities changes opacity
