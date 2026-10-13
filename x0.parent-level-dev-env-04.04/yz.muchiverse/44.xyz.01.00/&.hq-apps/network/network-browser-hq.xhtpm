@@ -82,6 +82,11 @@
         <repeat count="${content_count}" bind="c">
 <text id="ct${c.#}" class="page-title nav-text" label="${c.text}" action="${c.click_action}"        show="${c.is_title}"/>
           <text id="cx${c.#}" class="nb-text nav-text"                   label="${c.text}" action="${c.click_action}"        show="${c.is_text}"/>
+          <!-- DOWNLOADS (2026-10-13): one row saying what was saved,
+               where, and how big. Carries c_name/c_size/c_path so an
+               agent (and the suite) can assert on the numbers instead of
+               parsing them back out of the visible text. -->
+          <text id="cdl${c.#}" class="nb-download nav-text"                label="${c.text}" show="${c.is_download}"/>
           <!-- 2026-10-09: inline clickable spans, phase 2 step 3. One
                verified RICH paragraph renders as a single sentence row;
                link segments draw tinted via segments= (see

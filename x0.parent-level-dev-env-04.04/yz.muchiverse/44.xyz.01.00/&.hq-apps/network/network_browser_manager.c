@@ -3234,13 +3234,351 @@ static void reap_or_kill(pid_t pid) {
 }
 
 /* 0 = curl ok, 1 = curl failed, 2 = Stop killed the child */
+/* DOWNLOADS (2026-10-13): where the response headers land. -D writes one
+ * block PER HOP, so with -L the LAST block is the response that actually
+ * mattered - the one whose Content-Disposition a browser is meant to
+ * honour. Read it through downloads_last_header() below, never the first
+ * block: a redirect chain's first hop routinely carries the disposition
+ * of a page the user never saw. */
+static char g_curl_hdr_path[PATH_BUF];
+
+/* ================= DOWNLOADS (2026-10-13, G3.3) =================
+ *
+ * What a browser does, and this is the whole contract:
+ *   1. A response that says `Content-Disposition: attachment` is a
+ *      DOWNLOAD, not a page. So is one whose media type this window
+ *      cannot render. Either way the bytes are saved and the pane
+ *      reports what was saved - it never tries to parse a ZIP as HTML.
+ *   2. The filename comes from the header first (RFC 5987 filename*=,
+ *      then the plain filename=), then from the URL's last path segment,
+ *      then "download". Never invented from the page's <title>.
+ *   3. A name already on disk becomes "name (1).ext", "name (2).ext" -
+ *      never an overwrite, never a silent uniquified suffix the user
+ *      cannot predict.
+ *   4. The pane shows filename, SIZE and PATH. A save that failed says so
+ *      instead of pretending.
+ *
+ * Where the files go: this app's own downloads/ directory, not a user's
+ * home. The house keeps user data under xyzfs/users/ on local data
+ * branches that must never be git-added, and a browser writing files
+ * there from a test run is exactly the kind of thing that ends up in a
+ * commit. App-owned is also where the pane can point at it.
+ */
+
+/* Case-insensitive lookup in the LAST response header block.
+ *
+ * curl -D writes one block PER HOP, blocks separated by a blank line, and
+ * a trailing blank line after the final one. With -L, the FIRST block is
+ * the redirect the user never saw - honouring its Content-Disposition is
+ * the classic download bug.
+ *
+ * The first version walked the file with ftell() and moved the block
+ * start forward on every blank line, which lands PAST the last block on
+ * that trailing blank: every lookup returned 0, so every download
+ * silently became a page - the fetch worked, the headers were on disk,
+ * and the feature did nothing. Caught by the suite's ATTACH case, which
+ * is the only one that can tell "saved a file" from "parsed it as text".
+ *
+ * So: accumulate blocks, keep the last one that had content, and search
+ * that. Lines are CRLF from curl, so \r is trimmed with \n. */
+static int downloads_last_header(const char *name, char *out, size_t outsz) {
+    if (out && outsz) out[0] = '\0';
+    if (!g_curl_hdr_path[0]) return 0;
+    FILE *f = fopen(g_curl_hdr_path, "r");
+    if (!f) return 0;
+    char line[4096];
+    char keep[8192], cur[8192];
+    size_t keeplen = 0, curlen = 0;
+    while (fgets(line, sizeof(line), f)) {
+        size_t l = strlen(line);
+        while (l > 0 && (line[l-1] == '\n' || line[l-1] == '\r')) line[--l] = '\0';
+        if (l == 0) {
+            if (curlen > 0) { memcpy(keep, cur, curlen); keeplen = curlen; }
+            curlen = 0;
+            continue;
+        }
+        if (curlen + l + 2 < sizeof(cur)) {
+            memcpy(cur + curlen, line, l);
+            curlen += l;
+            cur[curlen++] = '\n';
+        }
+    }
+    if (curlen > 0) { memcpy(keep, cur, curlen); keeplen = curlen; }
+    fclose(f);
+    if (keeplen == 0) return 0;
+
+    size_t nl = strlen(name);
+    const char *p = keep;
+    const char *endp = keep + keeplen;
+    while (p < endp) {
+        const char *eol = strchr(p, '\n');
+        size_t len = eol ? (size_t)(eol - p) : (size_t)(endp - p);
+        if (len > nl && strncasecmp(p, name, nl) == 0) {
+            const char *v = p + nl;
+            while (v < p + len && (*v == ' ' || *v == '\t')) v++;
+            size_t vlen = (size_t)((p + len) - v);
+            if (out && outsz) {
+                if (vlen >= outsz) vlen = outsz - 1;
+                memcpy(out, v, vlen);
+                out[vlen] = '\0';
+            }
+            return 1;
+        }
+        if (!eol) break;
+        p = eol + 1;
+    }
+    return 0;
+}
+
+/* Is this a media type the window renders? Deliberately a short, explicit
+ * allowlist rather than a blocklist: a browser that renders "anything not
+ * known to be binary" shows users a screenful of base64 as a page, which
+ * is the failure mode this is here to prevent. PDF is deliberately NOT in
+ * the list - this window has no PDF viewer, so a PDF is a download, which
+ * is what Chrome does with a type it cannot display inline too. */
+static int downloads_is_renderable_type(const char *ctype) {
+    if (!ctype || !ctype[0]) return 1;            /* nothing said: assume page */
+    char t[128];
+    snprintf(t, sizeof(t), "%s", ctype);
+    char *semi = strchr(t, ';');
+    if (semi) *semi = '\0';
+    /* t is an ARRAY: `while (*t == ' ') t++` does not compile (t++ is not
+     * an lvalue). Caught by -fsyntax-only before the first build. */
+    size_t lead = 0;
+    while (t[lead] == ' ') lead++;
+    for (size_t i = 0; t[lead + i]; i++)
+        t[lead + i] = (char)tolower((unsigned char)t[lead + i]);
+    memmove(t, t + lead, strlen(t + lead) + 1);
+    if (!strncmp(t, "text/", 5)) {
+        /* text/html and friends render; everything else text/* (css, csv,
+         * plain source) is something the user wanted as a file. */
+        if (!strcmp(t, "text/html") || !strcmp(t, "text/htm") ||
+            !strcmp(t, "text/plain") || !strcmp(t, "text/xml") ||
+            !strcmp(t, "text/xml-external-parsed-entity")) return 1;
+        return 0;
+    }
+    if (!strcmp(t, "application/xhtml+xml")) return 1;
+    if (!strcmp(t, "application/json")) return 1;
+    if (!strcmp(t, "application/xml")) return 1;
+    if (!strcmp(t, "application/x-javascript") || !strcmp(t, "application/javascript")) return 1;
+    if (!strncmp(t, "image/", 6)) return 1;
+    return 0;
+}
+
+/* Sanitise a filename the server suggested: no directory part, no control
+ * characters, nothing that could escape the downloads dir. A server is
+ * not trusted with paths - "../../.bashrc" is a real thing servers send. */
+static void downloads_safe_name(const char *in, char *out, size_t outsz) {
+    size_t o = 0;
+    for (const char *p = in; *p && o + 1 < outsz; p++) {
+        unsigned char c = (unsigned char)*p;
+        if (c < 0x20 || c == 0x7f) continue;
+        if (c == '/' || c == '\\') continue;
+        if (c == '.' && o == 0) continue;          /* no leading dot: no hidden files, no "." */
+        out[o++] = (char)c;
+    }
+    out[o] = '\0';
+    if (!out[0]) snprintf(out, outsz, "download");
+}
+
+/* Pull the filename out of Content-Disposition, RFC 5987 first. Chrome's
+ * order exactly: filename*=UTF-8''<pct-encoded> wins over filename=. */
+static void downloads_name_from_disposition(const char *cd, char *out, size_t outsz) {
+    if (out && outsz) out[0] = '\0';
+    if (!cd) return;
+    const char *star = strstr(cd, "filename*=");
+    if (star) {
+        const char *v = star + 10;
+        while (*v == ' ' || *v == '\t') v++;
+        /* skip charset'language' if present */
+        const char *q1 = strchr(v, '\'');
+        if (q1 && q1[1] == '\'') { v = strchr(q1 + 2, '\''); if (v) v++; }
+        char raw[512]; size_t o = 0;
+        while (*v && *v != ';' && *v != '\r' && *v != '\n' && o + 1 < sizeof(raw)) {
+            if (*v == '%' && v[1] && v[2]) {
+                char hex[3] = { v[1], v[2], 0 };
+                char *endp = NULL;
+                long d = strtol(hex, &endp, 16);
+                if (endp && *endp == '\0') { raw[o++] = (char)d; v += 3; continue; }
+            }
+            raw[o++] = *v++;
+        }
+        raw[o] = '\0';
+        if (o) { downloads_safe_name(raw, out, outsz); return; }
+    }
+    const char *plain = strstr(cd, "filename=");
+    if (plain) {
+        const char *v = plain + 9;
+        while (*v == ' ' || *v == '\t') v++;
+        char q = (*v == '"' || *v == '\'') ? *v : 0;
+        if (q) v++;
+        char raw[512]; size_t o = 0;
+        while (*v && o + 1 < sizeof(raw)) {
+            if (q && *v == q) break;
+            if (!q && (*v == ';' || *v == '\r' || *v == '\n')) break;
+            raw[o++] = *v++;
+        }
+        raw[o] = '\0';
+        if (o) { downloads_safe_name(raw, out, outsz); return; }
+    }
+}
+
+/* Last path segment of the URL, minus any query/fragment. */
+static void downloads_name_from_url(const char *url, char *out, size_t outsz) {
+    if (out && outsz) out[0] = '\0';
+    if (!url) return;
+    const char *start = strstr(url, "://");
+    start = start ? strchr(start + 3, '/') : strchr(url, '/');
+    if (!start) return;
+    const char *end = start + strlen(start);
+    for (const char *p = start; *p; p++) {
+        if (*p == '?' || *p == '#') { end = p; break; }
+    }
+    while (end > start && end[-1] == '/') end--;
+    if (end <= start) return;
+    char raw[512];
+    size_t n = (size_t)(end - start);
+    if (n >= sizeof(raw)) n = sizeof(raw) - 1;
+    memcpy(raw, start, n);
+    raw[n] = '\0';
+    downloads_safe_name(raw, out, outsz);
+}
+
+/* "name (1).ext" - Chrome's shape, so the user can predict the next one.
+ * Splits on the LAST dot so "archive.tar.gz" becomes "archive.tar (1).gz". */
+static void downloads_unique_path(const char *dir, const char *name, char *out, size_t outsz) {
+    char stem[512], ext[64];
+    snprintf(stem, sizeof(stem), "%s", name);
+    const char *dot = strrchr(stem, '.');
+    if (dot && dot != stem) {
+        snprintf(ext, sizeof(ext), "%s", dot);
+        stem[dot - stem] = '\0';
+    } else {
+        ext[0] = '\0';
+    }
+    char cand[PATH_BUF];
+    /* "%s/%s%s" with only two arguments: the third conversion read a
+     * garbage vararg and strlen() segfaulted inside snprintf. Found by an
+     * -fsanitize=address build after the release build "succeeded" - a
+     * missing argument is not a compile error unless -Wformat catches
+     * it, and this one walked straight past. */
+    snprintf(cand, sizeof(cand), "%s/%s", dir, name);
+    struct stat st;
+    if (stat(cand, &st) != 0) { snprintf(out, outsz, "%s", cand); return; }
+    for (int n = 1; n < 10000; n++) {
+        snprintf(cand, sizeof(cand), "%s/%s (%d)%s", dir, stem, n, ext);
+        if (stat(cand, &st) != 0) { snprintf(out, outsz, "%s", cand); return; }
+    }
+    snprintf(out, outsz, "%s/%s", dir, name);
+}
+
+/* A download that could not be saved still owes the user a row. Published
+ * the same way as a success, so the pane can never be left showing a page
+ * that was never rendered. */
+static void downloads_publish_error(const char *msg) {
+    char tmp[PATH_BUF];
+    FILE *out = atomic_open(g_page_state_path, tmp, sizeof(tmp));
+    if (!out) return;
+    fprintf(out, "URL|%s\nTITLE|Download failed\nTEXT|%s\n", g_current_url, msg);
+    fclose(out);
+    atomic_commit(g_page_state_path, tmp);
+}
+
+/* Save the fetched bytes as a download and publish ONE row saying so.
+ * Returns 1 when a download was handled (the pane must then stop parsing).
+ *
+ * The row carries filename, size and path, because that is what the KPI
+ * asks for and what a user needs to find the file afterwards. A failed
+ * save is published as an ERROR row instead - never a silent no-op, and
+ * never a half-written file left behind pretending to be the download. */
+static int downloads_handle(const char *url, const char *ctype, const char *cd,
+                            const char *body_path, int record_history) {
+    char dir[PATH_BUF];
+    snprintf(dir, sizeof(dir), "%s/&.hq-apps/network/downloads", g_house);
+    struct stat st;
+    if (stat(dir, &st) != 0 || !S_ISDIR(st.st_mode)) {
+        if (mkdir(dir, 0777) != 0) {
+            /* NEGATIVE PATH (KPI: an unwritable location must say so). The
+             * row reports the refusal rather than pretending a save
+             * happened, and the pane stays usable. */
+            char msg[PATH_BUF + 128];
+            snprintf(msg, sizeof(msg),
+                     "download failed: cannot create %s (check permissions)", dir);
+            downloads_publish_error(msg);
+            publish_status("error: download could not be saved");
+            write_chtpm_projection();
+            if (record_history && g_current_url[0] && strcmp(g_current_url, url) != 0)
+                stack_push(g_back_path, g_current_url);
+            snprintf(g_current_url, sizeof(g_current_url), "%s", url);
+            return 1;
+        }
+    }
+
+    char name[512];
+    downloads_name_from_disposition(cd, name, sizeof(name));
+    if (!name[0]) downloads_name_from_url(url, name, sizeof(name));
+    if (!name[0]) downloads_safe_name("download", name, sizeof(name));
+
+    char dest[PATH_BUF];
+    downloads_unique_path(dir, name, dest, sizeof(dest));
+
+    FILE *in = fopen(body_path, "rb");
+    if (!in) {
+        downloads_publish_error("download failed: could not read the fetched bytes");
+        publish_status("error: download could not be saved");
+        write_chtpm_projection();
+        return 1;
+    }
+    FILE *out = fopen(dest, "wb");
+    if (!out) {
+        fclose(in);
+        char msg[PATH_BUF + 160];
+        snprintf(msg, sizeof(msg), "download failed: cannot write %s", dest);
+        downloads_publish_error(msg);
+        publish_status("error: download could not be saved");
+        write_chtpm_projection();
+        return 1;
+    }
+    long long total = 0;
+    char buf[65536];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), in)) > 0) {
+        if (fwrite(buf, 1, n, out) != n) { fclose(in); fclose(out); unlink(dest); return 0; }
+        total += (long long)n;
+    }
+    fclose(in);
+    if (fclose(out) != 0) { unlink(dest); return 0; }
+
+    /* One DOWNLOAD row on the state side; the projector turns it into the
+     * content row the template paints. Written the same way every other
+     * single-row result is (atomic_open/atomic_commit on page.state.txt),
+     * so a download cannot half-publish the way a bare UI_PUT could, and
+     * so UI_PUT - a macro local to the projector function - is not needed
+     * out here at all. */
+    char tmp[PATH_BUF];
+    FILE *out2 = atomic_open(g_page_state_path, tmp, sizeof(tmp));
+    if (!out2) { unlink(dest); return 0; }
+    fprintf(out2, "URL|%s\nTITLE|%s\n", url, name);
+    fprintf(out2, "DL|%s|%lld|%s\n", name, total, dest);
+    fclose(out2);
+    atomic_commit(g_page_state_path, tmp);
+    publish_status("downloaded");
+    write_chtpm_projection();
+    if (record_history && g_current_url[0] && strcmp(g_current_url, url) != 0)
+        stack_push(g_back_path, g_current_url);
+    snprintf(g_current_url, sizeof(g_current_url), "%s", url);
+    return 1;
+}
+
 static int run_curl_interruptible(const char *out_path, const char *cfg_path) {
     pid_t pid = fork();
     if (pid < 0) return 1;
+    snprintf(g_curl_hdr_path, sizeof(g_curl_hdr_path), "%s.hdr", out_path);
     if (pid == 0) {
         execlp("curl", "curl", "-sL", "--max-time", "12",
                "-A", "Mozilla/5.0 (NNEST network-browser-hq)",
                "-b", g_curl_cookie_path, "-c", g_curl_cookie_path,
+               "-D", g_curl_hdr_path,
                "-o", out_path, "-K", cfg_path, (char *)NULL);
         _exit(127);
     }
@@ -4461,6 +4799,29 @@ static void do_fetch(const char *url_in, int record_history) {
         return;
     }
 
+    /* DOWNLOADS (2026-10-13): a response that says it is an attachment,
+     * or that is a media type this window cannot render, is a DOWNLOAD -
+     * Chrome's rule, and the rule exists so nobody has to read a ZIP as
+     * HTML. Checked BEFORE any parsing, on the FINAL response's headers.
+     * The image sniff below is the other half of the same idea and stays
+     * where it is: a server that sends no type at all is still handled,
+     * by looking at the bytes. */
+    {
+        char ctype[256], cd[512];
+        int have_ctype = downloads_last_header("Content-Type:", ctype, sizeof(ctype));
+        int have_cd = downloads_last_header("Content-Disposition:", cd, sizeof(cd));
+        int is_attachment = have_cd && strstr(cd, "attachment") != NULL;
+        int is_inline_dl = have_cd && !strstr(cd, "attachment") &&
+                           strstr(cd, "filename=") != NULL;
+        int bad_type = have_ctype && !downloads_is_renderable_type(ctype);
+        if (is_attachment || bad_type) {
+            /* do_fetch's body file is exactly what we saved. */
+            downloads_handle(url, have_ctype ? ctype : "", have_cd ? cd : "",
+                             g_tmp_html_path, record_history);
+            return;
+        }
+        (void)is_inline_dl;
+    }
     if (looks_image_bytes((const unsigned char *)html, n)) {
         if (!publish_direct_image(url)) {
             publish_status("error: image decode failed");
@@ -6368,6 +6729,38 @@ static void write_ui_projection(void) {
                      * one). Without this a code block's shape is gone by the
                      * time it reaches the row. */
                     UI_PUT("c_%d_kind=code\nc_%d_is_code=1\nc_%d_text=\"%s\"\n", rc, rc, rc, t);
+                } else if (strcmp(kind, "DL") == 0) {
+                    /* DOWNLOADS (2026-10-13): DL = <name>|<bytes>|<path>.
+                     * The kind token is "DL", not "DOWNLOAD": the projector
+                     * reads every row kind into a char[8], so an 8-letter
+                     * kind arrives as "DOWNLOA" and silently matches
+                     * nothing - the file saved and the row never appeared.
+                     * The row shows all three because the KPI asks for
+                     * size and path, and because a user who cannot see
+                     * where a file went assumes the file was lost. */
+                    char nm[512] = "", pa[PATH_BUF] = "";
+                    long long bytes = 0;
+                    const char *p1 = strchr(rest, '|');
+                    if (p1) {
+                        const char *p2 = strchr(p1 + 1, '|');
+                        if (p2) {
+                            size_t nl = (size_t)(p1 - rest);
+                            if (nl >= sizeof(nm)) nl = sizeof(nm) - 1;
+                            memcpy(nm, rest, nl);
+                            nm[nl] = '\0';
+                            bytes = atoll(p1 + 1);
+                            snprintf(pa, sizeof(pa), "%s", p2 + 1);
+                        }
+                    }
+                    if (!nm[0]) snprintf(nm, sizeof(nm), "download");
+                    char shown[PATH_BUF + 400];
+                    snprintf(shown, sizeof(shown), "Downloaded %s (%lld bytes)\\n%s",
+                             nm, bytes, pa);
+                    uisan(shown, t, sizeof(t));
+                    UI_PUT("c_%d_kind=download\nc_%d_is_download=1\nc_%d_is_text=1\nc_%d_text=%s\n",
+                           rc, rc, rc, rc, t);
+                    UI_PUT("c_%d_name=%s\nc_%d_size=%lld\nc_%d_path=%s\n",
+                           rc, nm, rc, bytes, rc, pa);
                 } else if (strcmp(kind, "TEXT") == 0) {
                     /* swallowed by a rich-paragraph row above */
                     if (ri < rich_until) continue;

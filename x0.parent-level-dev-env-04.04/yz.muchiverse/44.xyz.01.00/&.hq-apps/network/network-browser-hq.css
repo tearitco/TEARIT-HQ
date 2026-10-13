@@ -48,6 +48,11 @@ sidebar { width: 200px; background-color: #1a1a1a; color: #cccccc; }
  * and its non-link spans draw black-on-black (the 2026-10-04 trap
  * above); the link spans carry their own tint from segments=. */
 .nb-rich { color: #cccccc; }
+/* DOWNLOADS (2026-10-13): the saved-file row. A cooler tint than body
+   text so "you saved something" reads differently from "you read
+   something" at a glance - and every class used in the .xhtpm needs a
+   colour rule here or themecheck.py (correctly) fails the build. */
+.nb-download { color: #9fd0ff; }
 /* 2026-10-07: <pre> rows. Monospace family + a dimmer tint than body
    text so a code block reads as a different kind of content; the row
    itself already carries one source line and its indentation. */
