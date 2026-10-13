@@ -386,6 +386,8 @@ static Window g_dock_menu_win;
  * move it while such a menu is open. 2026-10-08, owner: "thumb scroll to reach cancel". */
 static int g_dock_dd_scroll = 0, g_dock_dd_scrolling = 0, g_dock_dd_vis = 0, g_dock_dd_total = 0;
 static char g_dock_dd_target[64] = "";
+static int g_dock_dd_search = 0;       /* 1 = this open menu is long enough for a thumb, so the search row is up */
+static int g_dock_dd_search_jump = 0;  /* 1 = land focus on the search field once, when the menu opens */
 static int g_dock_dd_drag = 0;   /* 1 while button 1 drags the thumb / track of the long dropdown */
 /* #.desktop/hq_ui.pdl `dropdown_max_rows=N` (N >= 3): a dropdown with more rows than this scrolls (window of N-1 rows + pinned last row +
  * thumb) even when it would fit on screen. 0 / absent = only when it would run off the screen. Applies to the livedesk dock menus and
@@ -396,7 +398,26 @@ static int g_dropdown_max_rows = 0;
  * generic scrollbar's) at its ends and the thumb track between them. */
 #define DD_STRIP_W 62
 #define DD_ARROW_H 22
-static Elem g_dd_up_elem, g_dd_dn_elem;
+static Elem g_dd_up_elem, g_dd_dn_elem, g_dd_search_elem;
+/* Case-insensitive substring. Empty query matches everything. Used by the livedesk dropdown search row. */
+static int dock_dd_label_hit(const char *lab, const char *q) {
+    size_t nq, nl, i;
+    if (!q || !q[0]) return 1;
+    if (!lab) return 0;
+    nq = strlen(q); nl = strlen(lab);
+    if (nq > nl) return 0;
+    for (i = 0; i + nq <= nl; i++) {
+        size_t k;
+        for (k = 0; k < nq; k++) {
+            char a = lab[i + k], b = q[k];
+            if (a >= 'A' && a <= 'Z') a += 32;
+            if (b >= 'A' && b <= 'Z') b += 32;
+            if (a != b) break;
+        }
+        if (k == nq) return 1;
+    }
+    return 0;
+}
 static Pixmap g_dock_menu_buf;
 static XftDraw *g_dock_menu_xft;
 static GC g_dock_menu_gc;
@@ -7398,8 +7419,10 @@ static int layout_dock_bar(Elem *page) {
         char stack_keys[16][64];
         int stack_counts[16];
         int n_stack_keys = 0;
-        int col_w = 0, n_open = 0, open_idx = 0;
+        int col_w = 0, n_open = 0, n_all = 0, n_match = 0, open_idx = 0;
+        char dd_first_act[1024];
         Elem *trig0 = NULL;
+        dd_first_act[0] = '\0';
         for (i = 0; i < page->n_children; i++) {
             Elem *c = page->children[i];
             Elem *trigger;
@@ -7415,18 +7438,35 @@ static int layout_dock_bar(Elem *page) {
             if (dw < trigger->w) dw = trigger->w;
             if (dw > col_w) col_w = dw;
             trig0 = trigger;
-            n_open++;
+            n_all++;
+            if (dock_dd_label_hit(c->label, g_dd_search_elem.input_buffer)) n_match++;
         }
-        if (!is_bottom) { g_dock_dd_scrolling = 0; g_dock_dd_vis = 0; g_dock_dd_total = n_open; }   /* the bottom pass must not clear the top menu's state */
+        if (!is_bottom) { g_dock_dd_scrolling = 0; g_dock_dd_vis = 0; g_dock_dd_total = n_all; g_dock_dd_search = 0; }   /* the bottom pass must not clear the top menu's state */
         if (trig0 && !is_bottom) {
-            MwPlan mp;
+            MwPlan mp_all, mp;
             int cap = (kh_screen_h() - (trig0->y + trig0->h) - 8) / DOCK_BAR_H;
+            int plan_n;
             if (g_dropdown_max_rows >= 3 && g_dropdown_max_rows < cap) cap = g_dropdown_max_rows;   /* hq_ui.pdl dropdown_max_rows */
-            if (strcmp(g_dock_dd_target, trig0->id) != 0) { g_dock_dd_scroll = 0; snprintf(g_dock_dd_target, sizeof(g_dock_dd_target), "%s", trig0->id); }
-            mw_plan(&mp, n_open, cap, &g_dock_dd_scroll);
-            g_dock_dd_scrolling = mp.scrolling; g_dock_dd_vis = mp.vis;
+            if (strcmp(g_dock_dd_target, trig0->id) != 0) {
+                g_dock_dd_scroll = 0;
+                snprintf(g_dock_dd_target, sizeof(g_dock_dd_target), "%s", trig0->id);
+                g_dd_search_elem.input_buffer[0] = '\0'; g_dd_search_elem.cursor = 0; g_dd_search_elem.sel_anchor = 0;
+                if (g_default_input_elem == &g_dd_search_elem) { kh_set_default_input_elem(NULL); kh_ungrab_kbd(); }
+                g_dock_dd_search_jump = 1;
+                n_match = n_all;   /* query just cleared: every row matches */
+            }
+            mw_plan(&mp_all, n_all, cap, NULL);
+            g_dock_dd_search = mp_all.scrolling;   /* search row exists exactly when the full list needs a thumb */
+            plan_n = g_dock_dd_search ? n_match : n_all;
+            mw_plan(&mp, plan_n, cap, &g_dock_dd_scroll);
+            n_open = plan_n;
+            g_dock_dd_scrolling = mp.scrolling; g_dock_dd_vis = mp.vis; g_dock_dd_total = plan_n;
             if (mp.scrolling) col_w += DD_STRIP_W;     /* room for the ^/v arrows and the thumb right of the rows */
-        } else if (!trig0 && !is_bottom) { g_dock_dd_target[0] = '\0'; g_dock_dd_scroll = 0; }
+        } else if (!trig0 && !is_bottom) {
+            g_dock_dd_target[0] = '\0'; g_dock_dd_scroll = 0; g_dock_dd_search = 0; g_dock_dd_search_jump = 0;
+            g_dd_search_elem.input_buffer[0] = '\0'; g_dd_search_elem.cursor = 0;
+            if (g_default_input_elem == &g_dd_search_elem) { kh_set_default_input_elem(NULL); kh_ungrab_kbd(); }
+        }
         if (col_w < 48) col_w = 48;
         if (trig0 && trig0->x + col_w > sw - 8) {
             col_w = sw - 8 - trig0->x;
@@ -7450,6 +7490,11 @@ static int layout_dock_bar(Elem *page) {
             }
             stack_n = (ki < n_stack_keys) ? stack_counts[ki] : 0;
             css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
+            if (open && trigger && g_dock_dd_search && !dock_dd_label_hit(c->label, g_dd_search_elem.input_buffer)) {
+                c->x = 0; c->y = -100000; c->w = 0; c->h = 0; c->nav_index = 0;
+                if (ki < n_stack_keys) stack_counts[ki]++;
+                continue;
+            }
             if (open && trigger && g_dock_dd_scrolling) {
                 MwPlan mp; int slot;
                 mw_plan(&mp, n_open, n_open > g_dock_dd_vis + 1 ? g_dock_dd_vis + 1 : n_open, &g_dock_dd_scroll);
@@ -7467,6 +7512,7 @@ static int layout_dock_bar(Elem *page) {
                 g_nav[g_n_nav - 1] = c;
                 if (!g_dock_drop_lo) g_dock_drop_lo = c->nav_index;
                 g_dock_drop_hi = c->nav_index;
+                if (!dd_first_act[0] && c->onclick[0]) snprintf(dd_first_act, sizeof(dd_first_act), "%s", c->onclick);
             } else {
                 c->x = 0; c->y = -100000; c->w = 0; c->h = 0; c->nav_index = 0;
             }
@@ -7491,9 +7537,34 @@ static int layout_dock_bar(Elem *page) {
                 g_dock_drop_hi = a->nav_index;
             }
         }
+        if (trig0 && !is_bottom && g_dock_dd_search) {
+            /* Pinned under the rows, same job as pc-hq's dm-search: type to narrow, Enter runs the first match. */
+            Elem *s = &g_dd_search_elem;
+            if (strcmp(s->tag, "cli_io") != 0) {
+                memset(s, 0, sizeof(*s));
+                snprintf(s->tag, sizeof(s->tag), "cli_io");
+                snprintf(s->id, sizeof(s->id), "dd-search");
+                snprintf(s->label, sizeof(s->label), "search: ");
+            }
+            s->x = 0;
+            s->y = dd_rows_only * DOCK_BAR_H;
+            s->w = col_w - (g_dock_dd_scrolling ? DD_STRIP_W : 0);
+            s->h = DOCK_BAR_H;
+            snprintf(s->onclick, sizeof(s->onclick), "%s", dd_first_act);
+            css_compute_style(&g_sheet, s->tag, s->id, s->classes, s->n_classes, 0, &s->style);
+            s->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = s;
+            if (!g_dock_drop_lo) g_dock_drop_lo = s->nav_index;
+            g_dock_drop_hi = s->nav_index;
+            if (g_dock_dd_search_jump) {
+                g_focus_nav = s->nav_index;
+                kh_set_default_input_elem(s);
+                kh_grab_keyboard_retry();
+                g_dock_dd_search_jump = 0;
+            }
+        }
         if (!is_bottom) {
-            if (trig0 && g_dock_drop_lo) {
-                int n_rows = dd_rows_only;
+            if (trig0 && (g_dock_drop_lo || g_dock_dd_search)) {
+                int n_rows = dd_rows_only + (g_dock_dd_search ? 1 : 0);
                 g_dock_menu_w = col_w;
                 g_dock_menu_h = n_rows * DOCK_BAR_H;
                 if (g_dock_menu_w < 40) g_dock_menu_w = 40;
