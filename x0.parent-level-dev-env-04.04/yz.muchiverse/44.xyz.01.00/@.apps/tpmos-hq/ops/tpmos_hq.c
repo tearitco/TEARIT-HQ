@@ -28,10 +28,10 @@
 #include <time.h>
 #include <unistd.h>
 
-#define MAXROWS 80
+#define MAXROWS 400
 static char APP[PATH_MAX], HOUSE[PATH_MAX], ST[PATH_MAX];
 static char ROOT[PATH_MAX], FRAME[PATH_MAX], MARKER[PATH_MAX], KEYS[PATH_MAX], BACKEND[32] = "x11-hq";
-static int ROWS = 34, POLL_MS = 150;
+static int ROWS = 200, POLL_MS = 150;
 static char RELAY1[PATH_MAX], RELAY2[PATH_MAX], INTF[PATH_MAX];
 static int int_on(void);
 static volatile sig_atomic_t quit_flag;
@@ -100,8 +100,9 @@ static void write_ui(void) {
     fprintf(o, "status_line=%s  |  %d lines  |  frames seen (marker bytes): %ld  |  keys: %s\n", f ? "following TPMOS" : "waiting for pieces/display/current_frame.txt", n, ms < 0 ? 0 : ms, KEYS);
     fprintf(o, "frame_bytes=%ld\n", fs < 0 ? 0 : fs);
     fprintf(o, "n_rows=%d\n", n);
-    fprintf(o, "interact_class=%s\ninteract_label=%s\nrp_h1=%s\nrp_h2=%s\n", int_on() ? "interact-active" : "", int_on() ? "ON - typing goes to TPMOS" : "off", RELAY1, RELAY2);
-    for (int i = 0; i < ROWS; i++) fprintf(o, "f%d=%s\n", i, i < n ? (rows[i][0] ? rows[i] : " ") : " ");
+    fprintf(o, "interact_class=%s\ninteract_label=%s\nrp_h1=%s\nrp_h2=%s\n", int_on() ? "interact-active" : "", int_on() ? "ON (keys go to TPMOS)" : "off", RELAY1, RELAY2);
+    fprintf(o, "n_fr=%d\n", n);                                   /* the window's repeat bind=\"fr\" reads fr_<i>_text; a scrolllist gives it the thumb */
+    for (int i = 0; i < n; i++) fprintf(o, "fr_%d_text=%s\n", i, rows[i][0] ? rows[i] : " ");
     fclose(o);
     rename(tmp, out);
     for (int i = 0; i < n; i++) free(rows[i]);
