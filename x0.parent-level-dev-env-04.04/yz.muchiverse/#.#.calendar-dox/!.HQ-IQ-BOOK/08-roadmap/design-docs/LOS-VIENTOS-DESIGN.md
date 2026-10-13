@@ -29,6 +29,10 @@ Verified on the board picture after commit `c6eee9c80`:
 - 3D map glyphs for the city: `B` buildings, `t` trees, `P` people. The GPU height is the wall slot (two levels), not a walked-around model of each window. `extrusion.pdl` records `B` 4, `t` 2, `P` 3 for the file. The raymarcher maker path still raises a wall whenever the wall slot is non-zero.
 - Sockets in `brixels.pdl` are not checked when something moves. The car is not drivable.
 
+## 2b. Floors, added 2026-10-12
+
+2D shows one floor of a building: the wall ring, one window band, the door, and the floor inside. It does not draw the upper stories. 3D stacks that footprint. The Tower is glyph `M` and rises 8. The other four buildings are glyph `B` and rise 4. Each upper level uses a wall tile with one window, so the block is tall instead of the 2D picture lying flat. People stay shorter (`P` is 3). A person still does not replace a building cell.
+
 ## 3. First play slices, in order
 
 Each slice is done only when the owner can do it on the open board.

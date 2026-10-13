@@ -359,6 +359,8 @@ typedef struct {
      * boxes and the selector, hero and range wires share that list. */
     struct { int x, y, r, g, b, index, dir, pat; char name[40]; } ev[96];
     int ev_n;
+    char *glyph;            /* map.txt, w*h. 3D height comes from extrusion.pdl, not from the flat 2D picture. */
+    unsigned char zh[128];  /* extrusion height for each glyph. 0 = no row. */
 } MakerAtlas;
 static MakerAtlas g_mk;
 
@@ -427,7 +429,7 @@ static int maker_load(const char *root) {
     static long long held_stamp = -1;
     if (g_mk.key[0] && strcmp(g_mk.key, dir) == 0 && held_stamp == cell_stamp) return g_mk.ok;
     held_stamp = cell_stamp;
-    free(g_mk.atlas); free(g_mk.cells); free(g_mk.para);
+    free(g_mk.atlas); free(g_mk.cells); free(g_mk.para); free(g_mk.glyph);
     int prev_id = g_mk.id;
     memset(&g_mk, 0, sizeof(g_mk));
     g_mk.id = prev_id + 1;
@@ -481,6 +483,33 @@ static int maker_load(const char *root) {
     fclose(f);
     g_mk.para_stamp = -1; maker_read_parallax(dir);
     maker_read_events(dir);
+    g_mk.glyph = (char *)malloc((size_t)g_mk.w * (size_t)g_mk.h);
+    if (g_mk.glyph) {
+        memset(g_mk.glyph, '.', (size_t)g_mk.w * (size_t)g_mk.h);
+        snprintf(path, sizeof(path), "%s/map.txt", dir);
+        f = fopen(path, "r");
+        if (f) {
+            int row = 0; char mline[1024];
+            while (row < g_mk.h && fgets(mline, sizeof mline, f)) {
+                for (int x = 0; x < g_mk.w && mline[x] && mline[x] != '\n'; x++) g_mk.glyph[row * g_mk.w + x] = mline[x];
+                row++;
+            }
+            fclose(f);
+        }
+    }
+    snprintf(path, sizeof(path), "%s/extrusion.pdl", dir);
+    f = fopen(path, "r");
+    if (f) {
+        char mline[256];
+        while (fgets(mline, sizeof mline, f)) {
+            if (!strstr(mline, "EXTRUDE")) continue;
+            char *bar = strchr(mline, '|'); if (!bar) continue;
+            bar++; while (*bar == ' ') bar++;
+            char g = *bar; char *bar2 = strchr(bar, '|');
+            if (bar2 && g > 32 && g < 127) { int hv = atoi(bar2 + 1); if (hv > 0 && hv <= 64) g_mk.zh[(unsigned char)g] = (unsigned char)hv; }
+        }
+        fclose(f);
+    }
     g_mk.ok = 1;
     return 1;
 }
@@ -3545,21 +3574,39 @@ static int render_one_frame(void) {
             sc.eye[2] = (float)(cam.eye.z - voy);
             static unsigned short view_cells[BV_VIEW_DIM * BV_VIEW_DIM * 2];
             int cropped = (vox || voy || vww != g_mk.w || vwh != g_mk.h);
-            memset(gpu_grid, 0, (size_t)vww * (size_t)vwh * 3);
+            int z_count = 1;
             for (int row = 0; row < vwh; row++)
                 for (int col = 0; col < vww; col++) {
-                    size_t src = ((size_t)(row + voy) * g_mk.w + (size_t)(col + vox)) * 2;
-                    gpu_grid[col + row * vww] = 1;                                   /* level 0: floor */
-                    if (g_mk.cells[src + 1]) {
-                        gpu_grid[col + row * vww + vww * vwh] = 1;                 /* levels 1-2: wall */
-                        gpu_grid[col + row * vww + 2 * vww * vwh] = 1;
+                    int mx = col + vox, my = row + voy;
+                    int h = 1;
+                    if (g_mk.glyph && mx >= 0 && my >= 0 && mx < g_mk.w && my < g_mk.h) {
+                        unsigned char zg = (unsigned char)g_mk.glyph[my * g_mk.w + mx];
+                        if (zg < 128 && g_mk.zh[zg] > 1) h = g_mk.zh[zg];
                     }
+                    size_t src = ((size_t)my * g_mk.w + (size_t)mx) * 2;
+                    if (h <= 1 && my >= 0 && my < g_mk.h && mx >= 0 && mx < g_mk.w && g_mk.cells[src + 1]) h = 3;
+                    if (h > MAX_VOXEL_Z) h = MAX_VOXEL_Z;
+                    if (h > z_count) z_count = h;
+                }
+            memset(gpu_grid, 0, (size_t)vww * (size_t)vwh * (size_t)z_count);
+            for (int row = 0; row < vwh; row++)
+                for (int col = 0; col < vww; col++) {
+                    int mx = col + vox, my = row + voy;
+                    size_t src = ((size_t)my * g_mk.w + (size_t)mx) * 2;
+                    int h = 1;
+                    if (g_mk.glyph && mx >= 0 && my >= 0 && mx < g_mk.w && my < g_mk.h) {
+                        unsigned char zg = (unsigned char)g_mk.glyph[my * g_mk.w + mx];
+                        if (zg < 128 && g_mk.zh[zg] > 1) h = g_mk.zh[zg];
+                    }
+                    if (h <= 1 && my >= 0 && my < g_mk.h && mx >= 0 && mx < g_mk.w && g_mk.cells[src + 1]) h = 3;
+                    if (h > z_count) h = z_count;
+                    for (int lvl = 0; lvl < h; lvl++) gpu_grid[col + row * vww + lvl * vww * vwh] = 1;
                     if (cropped) {
                         view_cells[((size_t)row * vww + col) * 2] = g_mk.cells[src];
                         view_cells[((size_t)row * vww + col) * 2 + 1] = g_mk.cells[src + 1];
                     }
                 }
-            sc.board_w = vww; sc.board_h = vwh; sc.z_count = 3;
+            sc.board_w = vww; sc.board_h = vwh; sc.z_count = z_count;
             sc.grid = gpu_grid;
             sc.legend_n = 1; sc.legend_glyph[0] = 1;
             sc.legend_rgb[0][0] = sc.legend_rgb[0][1] = sc.legend_rgb[0][2] = 0.5f;

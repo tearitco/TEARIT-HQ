@@ -497,17 +497,17 @@ static void paint_scenery(const Scen *s, int index) {
             else if (x > dw / 3 && x < dw * 2 / 3) { r = 92; g = 64; b = 40; }
             else continue;
         } else {
-            r = wall[k][0]; g = wall[k][1]; b = wall[k][2];
-            if (y < dh / 8) { r = trim[k][0]; g = trim[k][1]; b = trim[k][2]; }
-            else if (k == 2 && y > dh / 8 && y < dh / 4) { r = trim[k][0]; g = trim[k][1]; b = trim[k][2]; }
-            else if (x > dw * 2 / 5 && x < dw * 3 / 5 && y > dh * 3 / 4) { r = 48; g = 36; b = 28; }
-            else {
-                int col = (x * 3) / dw, row = ((y - dh / 8) * 3) / (dh - dh / 8);
-                int gx0 = col * dw / 3 + dw / 18, gx1 = (col + 1) * dw / 3 - dw / 18;
-                int gy0 = dh / 8 + row * (dh - dh / 8) / 3 + 2, gy1 = dh / 8 + (row + 1) * (dh - dh / 8) / 3 - 3;
-                if (row < 2 && x > gx0 && x < gx1 && y > gy0 && y < gy1) { r = glass[k][0]; g = glass[k][1]; b = glass[k][2]; if (x < gx0 + 2) { r = 255; g = 255; b = 255; } }
-            }
-            if (k == 0 && x > dw / 2 - 1 && x < dw / 2 + 1 && y < dh / 8) { r = 220; g = 220; b = 210; }
+            /* One floor only. The stories above this plan exist in 3D (glyph M or B), not in this picture. */
+            int edge = dw / 7; if (edge < 2) edge = 2;
+            int door = (y > dh - edge && x > dw * 2 / 5 && x < dw * 3 / 5);
+            int rim = (x < edge || x >= dw - edge || y < edge || y >= dh - edge);
+            r = wall[k][0] + 28; g = wall[k][1] + 24; b = wall[k][2] + 18;
+            if (r > 255) r = 255; if (g > 255) g = 255; if (b > 255) b = 255;
+            if (rim && !door) {
+                r = wall[k][0]; g = wall[k][1]; b = wall[k][2];
+                int win = (y > edge / 2 && y < edge + edge / 2) || (x > edge / 2 && x < edge);
+                if (win && (x / (edge + 2)) % 2 == 0) { r = glass[k][0]; g = glass[k][1]; b = glass[k][2]; }
+            } else if (door) { r = 48; g = 36; b = 28; }
         }
         put_px(x0 + x, y0 + y, r, g, b);
     }
@@ -1115,13 +1115,14 @@ static void export3d(char *msg, size_t cap) {
             int sv = vroom; vroom = r; g_bg_only = 1; render(); g_bg_only = 0; vroom = sv; g_gr = r;
             for (int y = 0; y < rm->rows; y++) for (int x = 0; x < rm->cols; x++) { unsigned char cellpx[XT * XT * 4];
                 for (int yy = 0; yy < XT; yy++) for (int xx = 0; xx < XT; xx++) { int sx = OX + x * T + xx * T / XT, sy = OY + y * T + yy * T / XT; memcpy(cellpx + (yy * XT + xx) * 4, fr + ((size_t)sy * FW + sx) * 4, 4); }
-                int blocked = 0; for (int i = 0; i < nscen; i++) if (scen[i].room == r && x >= scen[i].x && x < scen[i].x + scen[i].w && y >= scen[i].y && y < scen[i].y + scen[i].h) blocked = 1;
-                char gch = '.'; if (blocked) { gch = 't'; for (int i = 0; i < nscen; i++) if (scen[i].room == r && strcmp(scen[i].sheet, "Outside_B") && x >= scen[i].x && x < scen[i].x + scen[i].w && y >= scen[i].y && y < scen[i].y + scen[i].h) gch = 'B'; }
-                glyph[y][x] = gch; fs[y][x] = slot_of(cellpx); ws[y][x] = 0; } }
-        if (g_art == 2) for (int i = -1; i < nparty; i++) { Ent *e = i < 0 ? &tr : &others[i]; if (e->room != r || e->x < 0 || e->y < 0 || e->x >= COLS || e->y >= ROWS) continue; if (glyph[e->y][e->x] == 'B' || glyph[e->y][e->x] == 't') continue; unsigned char face[XT * XT * 4]; if (!figure_tile(i < 0 ? "voss" : party[i].id, face, XT)) continue; ws[e->y][e->x] = slot_of(face); if (glyph[e->y][e->x] == '.' || glyph[e->y][e->x] == 'f') glyph[e->y][e->x] = 'P'; }
+                int blocked = 0, bkind = -1; for (int i = 0; i < nscen; i++) if (scen[i].room == r && x >= scen[i].x && x < scen[i].x + scen[i].w && y >= scen[i].y && y < scen[i].y + scen[i].h) blocked = 1;
+                char gch = '.'; if (blocked) { gch = 't'; int bk = 0; for (int i = 0; i < nscen; i++) if (scen[i].room == r && strcmp(scen[i].sheet, "Outside_B")) { if (x >= scen[i].x && x < scen[i].x + scen[i].w && y >= scen[i].y && y < scen[i].y + scen[i].h) { bkind = bk; gch = bk == 0 ? 'M' : 'B'; } bk++; } }
+                glyph[y][x] = gch; fs[y][x] = slot_of(cellpx); ws[y][x] = 0;
+                if (bkind >= 0) { unsigned char face[XT * XT * 4]; int wr = 42, wg = 52, wb = 68, gr = 150, gg = 196, gb = 214; if (bkind == 1) { wr = 168; wg = 162; wb = 146; } else if (bkind == 2) { wr = 186; wg = 132; wb = 96; } else if (bkind == 3) { wr = 142; wg = 144; wb = 140; } else if (bkind >= 4) { wr = 168; wg = 112; wb = 88; } for (int yy = 0; yy < XT; yy++) for (int xx = 0; xx < XT; xx++) { int gi = (yy * XT + xx) * 4; int glass = yy > XT / 5 && yy < XT * 3 / 5 && xx > XT / 6 && xx < XT * 5 / 6; face[gi] = (unsigned char)(glass ? gr : wr); face[gi+1] = (unsigned char)(glass ? gg : wg); face[gi+2] = (unsigned char)(glass ? gb : wb); face[gi+3] = 255; } ws[y][x] = slot_of(face); } } }
+        if (g_art == 2) for (int i = -1; i < nparty; i++) { Ent *e = i < 0 ? &tr : &others[i]; if (e->room != r || e->x < 0 || e->y < 0 || e->x >= COLS || e->y >= ROWS) continue; if (glyph[e->y][e->x] == 'B' || glyph[e->y][e->x] == 'M' || glyph[e->y][e->x] == 't') continue; unsigned char face[XT * XT * 4]; if (!figure_tile(i < 0 ? "voss" : party[i].id, face, XT)) continue; ws[e->y][e->x] = slot_of(face); if (glyph[e->y][e->x] == '.' || glyph[e->y][e->x] == 'f') glyph[e->y][e->x] = 'P'; }
         (void)fl;
         snprintf(p, sizeof p, "%s/map.txt", d); { FILE *f = fopen(p, "w"); if (f) { for (int y = 0; y < ROWS; y++) { glyph[y][COLS] = 0; fprintf(f, "%s\n", glyph[y]); } fclose(f); } }
-        snprintf(p, sizeof p, "%s/extrusion.pdl", d); { FILE *f = fopen(p, "w"); if (f) { fprintf(f, "SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\nMETA         | map_id             | gta-hq\nMETA         | desk_id            | %s\nMETA         | note               | %s (gta-hq house, exported from the live house)\nEXTRUDE      | W                  | 3\nEXTRUDE      | D                  | 3\nEXTRUDE      | T                  | 2\nEXTRUDE      | B                  | 4\nEXTRUDE      | t                  | 2\nEXTRUDE      | P                  | 3\nEXTRUDE      | f                  | 1\nEXTRUDE      | default            | 0\n", rooms[r].id, rooms[r].name); fclose(f); } }
+        snprintf(p, sizeof p, "%s/extrusion.pdl", d); { FILE *f = fopen(p, "w"); if (f) { fprintf(f, "SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\nMETA         | map_id             | gta-hq\nMETA         | desk_id            | %s\nMETA         | note               | %s (gta-hq house, exported from the live house)\nEXTRUDE      | W                  | 3\nEXTRUDE      | D                  | 3\nEXTRUDE      | T                  | 2\nEXTRUDE      | M                  | 8\nEXTRUDE      | B                  | 4\nEXTRUDE      | t                  | 2\nEXTRUDE      | P                  | 3\nEXTRUDE      | f                  | 1\nEXTRUDE      | default            | 0\n", rooms[r].id, rooms[r].name); fclose(f); } }
         int cols = 16, nrows = (nslot + cols - 1) / cols; int aw = cols * XT, ah = nrows * XT; unsigned char *atlas = calloc((size_t)aw * ah * 4, 1);
         for (int i = 0; i < nslot; i++) for (int y = 0; y < XT; y++) memcpy(atlas + ((size_t)((i / cols) * XT + y) * aw + (i % cols) * XT) * 4, slotpx[i] + y * XT * 4, XT * 4);
         snprintf(p, sizeof p, "%s/cells.rgba", d); { FILE *f = fopen(p, "wb"); if (f) { fwrite(atlas, 1, (size_t)aw * ah * 4, f); fclose(f); } } snprintf(p, sizeof p, "%s/cells.png", d); stbi_write_png(p, aw, ah, 4, atlas, aw * 4); free(atlas);
