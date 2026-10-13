@@ -3739,7 +3739,11 @@ static int click_focus_then_activate(Elem *hit) {
         /* first click of a two-step: focus moved but nothing fired yet -
          * tell the manager so the ASCII mirror + strip_focus_cell follow
          * the click, not just arrow keys (dock, header/tab cells only). */
-        if (window_is_dock() && !elem_has_class(hit, "dropdown-child"))
+        /* Dropdown rows, the ^/v arrows, and the search field are not header cells.
+         * Relaying 6000+their nav makes the manager retarget the strip, and the
+         * next state poll plus the dropdown clamp snaps the highlight to the first menu row. */
+        if (window_is_dock() && !elem_has_class(hit, "dropdown-child")
+            && !(g_dock_drop_lo && hit->nav_index >= g_dock_drop_lo && hit->nav_index <= g_dock_drop_hi))
             dock_relay_focus_code(6000 + hit->nav_index);
         return 0;
     }
@@ -10784,6 +10788,12 @@ static void dock_poll_strip_state(void) {
         }
         fclose(s);
     }
+    /* An open dropdown owns g_focus_nav. Applying the manager's header/tab cursor here
+     * is what yanked a click on a lower row, or on search, back to the first menu row. */
+    if (g_dock_drop_lo && g_default_active_scope_id[0]) {
+        if (!g_quit) redraw();
+        return;
+    }
     if (sfc >= 0) {
         int nv = sfc + 1;
         if (nv >= 1 && nv <= g_n_nav) g_focus_nav = nv;
@@ -11850,7 +11860,9 @@ static void dump_frame_png(void) {
  * alone. */
 static void dock_nav_after_step(void) {
     if (!window_is_dock()) return;
-    dock_relay_focus_code(6000 + g_focus_nav);
+    /* Inside an open dropdown the highlight is local. 6000+that nav is not a header cell. */
+    if (!(g_dock_drop_lo && g_focus_nav >= g_dock_drop_lo && g_focus_nav <= g_dock_drop_hi))
+        dock_relay_focus_code(6000 + g_focus_nav);
     if (g_dock_peer_win && g_focus_nav >= 1 && g_focus_nav <= g_n_nav) {
         Window want = (g_focus_nav > g_dock_header_nav_hi) ? g_dock_peer_win : win;
         XRaiseWindow(dpy, want);
