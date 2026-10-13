@@ -31,7 +31,7 @@ Verified on the board picture after commit `c6eee9c80`:
 
 ## 2b. Floors, added 2026-10-12
 
-2D shows one floor of a building: the wall ring, one window band, the door, and the floor inside. It does not draw the upper stories. 3D stacks that footprint. The Tower is glyph `M` and rises 8. The other four buildings are glyph `B` and rise 4. Each upper level uses a wall tile with one window, so the block is tall instead of the 2D picture lying flat. People stay shorter (`P` is 3). A person still does not replace a building cell.
+2D shows one floor of a building: the wall ring, one window band, the door, and the floor inside. It does not draw the upper stories. 3D stacks that footprint. The Tower is glyph `M` and rises 8. The other four buildings are glyph `B` and rise 4. Each upper level uses a wall tile with one window, so the block is tall instead of the 2D picture lying flat. People stay shorter (`P` is 3). A tree in 2D is a top-down crown with the trunk in the middle. The car stays that top-down picture in 2D. In 3D the cells it covers are glyph `C` and rise 2, with a body, a glass band, and wheels on the side. A person still does not replace a building cell.
 
 ## 3. First play slices, in order
 
