@@ -3739,11 +3739,7 @@ static int click_focus_then_activate(Elem *hit) {
         /* first click of a two-step: focus moved but nothing fired yet -
          * tell the manager so the ASCII mirror + strip_focus_cell follow
          * the click, not just arrow keys (dock, header/tab cells only). */
-        /* Dropdown rows, the ^/v arrows, and the search field are not header cells.
-         * Relaying 6000+their nav makes the manager retarget the strip, and the
-         * next state poll plus the dropdown clamp snaps the highlight to the first menu row. */
-        if (window_is_dock() && !elem_has_class(hit, "dropdown-child")
-            && !(g_dock_drop_lo && hit->nav_index >= g_dock_drop_lo && hit->nav_index <= g_dock_drop_hi))
+        if (window_is_dock() && !elem_has_class(hit, "dropdown-child"))
             dock_relay_focus_code(6000 + hit->nav_index);
         return 0;
     }
@@ -7559,12 +7555,9 @@ static int layout_dock_bar(Elem *page) {
             s->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = s;
             if (!g_dock_drop_lo) g_dock_drop_lo = s->nav_index;
             g_dock_drop_hi = s->nav_index;
-            if (g_dock_dd_search_jump) {
-                g_focus_nav = s->nav_index;
-                kh_set_default_input_elem(s);
-                kh_grab_keyboard_retry();
-                g_dock_dd_search_jump = 0;
-            }
+            /* Do not take g_focus_nav or the keyboard here. Arrow nav and number nav
+             * both die if this field is armed on open. A click on the row still arms it. */
+            g_dock_dd_search_jump = 0;
         }
         if (!is_bottom) {
             if (trig0 && (g_dock_drop_lo || g_dock_dd_search)) {
@@ -10788,12 +10781,6 @@ static void dock_poll_strip_state(void) {
         }
         fclose(s);
     }
-    /* An open dropdown owns g_focus_nav. Applying the manager's header/tab cursor here
-     * is what yanked a click on a lower row, or on search, back to the first menu row. */
-    if (g_dock_drop_lo && g_default_active_scope_id[0]) {
-        if (!g_quit) redraw();
-        return;
-    }
     if (sfc >= 0) {
         int nv = sfc + 1;
         if (nv >= 1 && nv <= g_n_nav) g_focus_nav = nv;
@@ -11860,9 +11847,7 @@ static void dump_frame_png(void) {
  * alone. */
 static void dock_nav_after_step(void) {
     if (!window_is_dock()) return;
-    /* Inside an open dropdown the highlight is local. 6000+that nav is not a header cell. */
-    if (!(g_dock_drop_lo && g_focus_nav >= g_dock_drop_lo && g_focus_nav <= g_dock_drop_hi))
-        dock_relay_focus_code(6000 + g_focus_nav);
+    dock_relay_focus_code(6000 + g_focus_nav);
     if (g_dock_peer_win && g_focus_nav >= 1 && g_focus_nav <= g_n_nav) {
         Window want = (g_focus_nav > g_dock_header_nav_hi) ? g_dock_peer_win : win;
         XRaiseWindow(dpy, want);
