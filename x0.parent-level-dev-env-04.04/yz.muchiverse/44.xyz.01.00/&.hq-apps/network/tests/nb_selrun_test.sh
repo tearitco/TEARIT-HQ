@@ -37,22 +37,25 @@
 #           row run (strictly more specific), so this did not regress
 #           inline-span copy
 #
-# WIP 2026-10-13 - NOT wired into nb_all_tests.sh, and NOT yet green.
-# The mechanism is understood and the harness is fixed, but the fixed run
-# has not happened yet, so do not treat this as a passing suite. What is
-# already proven live (see the commit message): Shift+Down extends a run,
-# Shift+Up shortens it, the band is painted on EVERY selected row (checked
-# per row against that row's own y/h in the frame dump), a plain arrow ends
-# the run, and Ctrl+C copies the run joined by newlines.
+# GREEN as of 2026-10-13 and wired into nb_all_tests.sh. It was WIP for one
+# commit because three of its own harness bugs read exactly like product
+# bugs; they are recorded here because the next person to write a relay-
+# driven suite will hit at least the first one:
 #
-# The harness bug that made it look broken, in case it bites again: two
-# presses of the SAME digit accumulate. g_nav_digit_accum treats "1" then
-# "1" as the number ELEVEN and jumps there, which in this 8-row fixture
-# clamps to nav 11 - a row that does not exist - and every run after that
-# was anchored on garbage. It read exactly like a product bug (focus
-# landing outside the window, runs anchored on rows the user never
-# touched). Reset with a plain Down arrow instead of a repeated digit:
-# the arrow collapses the run AND cannot accumulate.
+#   - relay codes are ASCII VALUES. `printf '1\n'` sends the NUMBER one,
+#     which no branch of dispatch_relay_code() claims (matching starts at
+#     32), so NO key is delivered at all. g_focus_nav already being 1 made
+#     the focus assertion pass anyway. The suite now proves keys arrive
+#     before it asserts anything about them.
+#   - two presses of the SAME digit accumulate: g_nav_digit_accum reads
+#     "1" then "1" as eleven and jumps to nav 11, which an 8-row fixture
+#     clamps - focus landed outside the window and runs anchored on rows
+#     nobody touched. Reset with a plain arrow instead (it cannot
+#     accumulate, and Down-then-Up is net-zero on focus).
+#   - the smallest run the arrows can make is TWO rows, not one: the first
+#     Shift+Down both anchors and moves. A one-row run needs shift-click,
+#     which is deliberately not built, and asserting it asserted a feature
+#     that does not exist.
 #
 # Usage: sh nb_selrun_test.sh
 set -u
@@ -97,6 +100,30 @@ trap 'kill $RPID 2>/dev/null' EXIT
 # ever delivered. The run then appeared to survive every "collapse" key,
 # which read exactly like a product bug; it was the test sending nothing,
 # and g_focus_nav already being 1 made the focus assertion pass anyway.
+# A plain arrow, NOT a digit: a repeated digit accumulates (see the header
+# note) and a second press of the same one jumps to a nav index this
+# 8-row fixture does not have. Down-then-Up is net-zero on focus and
+# collapses the run, so it resets without moving the cursor.
+#
+# DEFINED HERE, NOT LATER: the first version of this file defined esc_run
+# below its own first call, so every reset silently did nothing ("esc_run:
+# not found" on stderr, exit status swallowed) and the runs piled onto each
+# other - 3..5, then 5..6, then 6..7 - which reads like the feature
+# misbehaving when it is the reset that never ran.
+esc_run() { printf '201\n' >> "$RELAY"; sleep 1.2; printf '200\n' >> "$RELAY"; sleep 1.2; }
+# ...which means it PRESERVES the current row. Sections that state an
+# expected run therefore need focus parked on row 1 first, or they assert
+# against wherever the previous section left the cursor. The second version
+# of this suite failed exactly that way ("rows 3..4" where "rows 1..2" was
+# expected) - a stale expectation, not a broken feature.
+home() {
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+        [ "$(focused)" = "1" ] && break
+        printf '200\n' >> "$RELAY"; sleep 1.0
+    done
+    esc_run
+    [ "$(focused)" = "1" ]
+}
 ascii() { printf '%d' "'$1"; }
 key()   { printf '%d\n' "$(ascii "$1")" >> "$RELAY"; sleep "${2:-1.2}"; }
 sel()  { grep '\[SEL\]' "$MIRROR" 2>/dev/null | head -1; }
@@ -137,15 +164,20 @@ key 3 1.5
 if [ "$(focused)" != "3" ]; then
     echo "FAIL: relay digit did not move focus (focus='$(focused)') - the suite is sending codes nothing reads"; exit 1
 fi
-esc_run   # back toward row 1 without a second digit press
+# Walk back to row 1 with ARROWS, not another digit: a second press of the
+# same digit would accumulate ("1"+"1" -> nav 11). The guard above leaves
+# focus on row 3 on purpose, so every later expectation starts from 1 - and
+# this asserts that rather than assuming it, which is how the previous
+# version ended up asserting "rows 1..3" while focus was on row 3.
+printf '200\n' >> "$RELAY"; sleep 1.2
+printf '200\n' >> "$RELAY"; sleep 1.5
+if [ "$(focused)" != "1" ]; then
+    echo "FAIL: could not walk focus back to row 1 (focus='$(focused)')"; exit 1
+fi
 echo "PASS: focus on the first fixture row (nav $FIRST = $(navgeom "$FIRST"))"
 
 # ---------------------------------------------------------------- EXTEND
-# A plain arrow, NOT a digit: a repeated digit accumulates (see the header
-# note) and a second press of the same one jumps to a nav index this
-# 8-row fixture does not have.
-esc_run() { printf '201\n' >> "$RELAY"; sleep 1.2; printf '200\n' >> "$RELAY"; sleep 1.2; }
-esc_run
+home || { echo "FAIL: could not park focus on row 1"; exit 1; }
 printf '223\n' >> "$RELAY"; sleep 1.2                 # Shift+Down
 printf '223\n' >> "$RELAY"; sleep 1.5                 # Shift+Down
 line="$(sel)"
@@ -205,10 +237,11 @@ got="$(python3 "$HERE/xclipget.py" 2>/dev/null)"
 # built by PRINTING, not by appending and stripping: the first version
 # appended a newline per row and removed only the final one, so "want"
 # carried a trailing blank line and the comparison could never pass.
-want=""; for n in 1 2 3; do
-    l="$(label "$n")"
-    want="${want}${l}"$([ "$n" = 3 ] || printf '\n')
-done
+: > "$WORK/want.txt"
+# label() is awk's print, so it ALREADY terminates each row. Adding a
+# newline here too put a blank line between every row ("short.//Row one").
+for n in 1 2 3; do label "$n" >> "$WORK/want.txt"; done
+want="$(cat "$WORK/want.txt")"   # strips only the final newline
 if [ "$got" = "$want" ]; then
     echo "PASS: Ctrl+C copied the run joined by newlines (real X11 clipboard read)"
 else
@@ -218,7 +251,7 @@ else
 fi
 
 # ---------------------------------------------------------------- UP
-esc_run
+home || { echo "FAIL: could not park focus on row 1"; exit 1; }
 printf '223\n' >> "$RELAY"; sleep 1.5
 printf '223\n' >> "$RELAY"; sleep 1.5
 printf '222\n' >> "$RELAY"; sleep 1.5                # Shift+Up
@@ -229,21 +262,27 @@ else
     fail "Shift+Up did not shorten the run: '${line:-no [SEL] line}'"
 fi
 
-# ---------------------------------------------------------------- ONE
-esc_run
+# ---------------------------------------------------------------- MIN
+# The SMALLEST run the arrows can make is two rows, and that is correct:
+# the first Shift+Down anchors on the focused row AND moves the end, so
+# "one row selected" is not reachable by keyboard at all - it would need
+# shift-click, which is deliberately not built. Asserting a one-row run
+# here was asserting a feature that does not exist.
+home || { echo "FAIL: could not park focus on row 1"; exit 1; }
 printf '223\n' >> "$RELAY"; sleep 1.5
 line="$(sel)"
-if [ -z "$line" ]; then
-    echo "PASS: a run of one row is not reported as a run (nothing to distinguish from focus)"
+if printf '%s' "$line" | grep -q '\[SEL\] rows 1\.\.2 (2 selected)'; then
+    echo "PASS: the smallest arrow-made run is two rows ($line)"
 else
-    fail "a one-row run was reported: '$line'"
+    fail "expected a two-row run after one Shift+Down: '${line:-no [SEL] line}'"
 fi
 printf '3\n' >> "$RELAY"; sleep 2
 got="$(python3 "$HERE/xclipget.py" 2>/dev/null)"
-if [ "$got" = "$(label 1)" ]; then
-    echo "PASS: a one-row run copies just that row"
+: > "$WORK/want2.txt"; label 1 >> "$WORK/want2.txt"; label 2 >> "$WORK/want2.txt"
+if [ "$got" = "$(cat "$WORK/want2.txt")" ]; then
+    echo "PASS: a two-row run copies exactly those two rows"
 else
-    fail "one-row copy wrong: '$(printf '%s' "$got" | head -c 80)'"
+    fail "two-row copy wrong: '$(printf '%s' "$got" | head -c 80)'"
 fi
 
 # ---------------------------------------------------------------- CLEAR

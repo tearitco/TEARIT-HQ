@@ -76,6 +76,10 @@ echo "########## find in page (live browser: state + painted band)"
 sh "$HERE/nb_find_test.sh" || RC=1
 
 echo
+echo "########## row-run selection + copy (hermetic: own fixture window)"
+sh "$HERE/nb_selrun_test.sh" || RC=1
+
+echo
 echo "########## content-row reachability (live browser + own opt-in fixture)"
 sh "$HERE/nb_reach_test.sh" || RC=1
 
