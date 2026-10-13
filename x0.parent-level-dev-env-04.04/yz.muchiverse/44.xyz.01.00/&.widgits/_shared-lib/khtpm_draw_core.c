@@ -1106,6 +1106,45 @@ static int seg_cursor_on(const Elem *e) {
 static int seg_anchor_on(const Elem *e) {
     return seg_cursor_on(e) && g_seg_anchor >= 0 && g_seg_anchor != g_seg_idx;
 }
+
+/* ================= FIND IN PAGE (2026-10-12) =================
+ *
+ * Generic across every window (same contract as the span/hover state
+ * above it): Ctrl+F arms a query, Enter steps to the next match,
+ * Escape clears. Deliberately NOT an app feature - it searches
+ * whatever rows the window already has.
+ *
+ * WHY IT LIVES HERE AND NOT IN THE MANAGER: a match is a property of
+ * the RENDERED ROW, and this TU already owns "which row is focused" and
+ * "how a row's text is measured". Doing it here means the highlight
+ * lands under the exact glyph run the user can see, with no frame-
+ * protocol field and nothing for the state files to carry.
+ *
+ * Case-insensitive substring match on the row's own label. Honest
+ * about what it is NOT: no regex, no whole-word mode, and no match
+ * inside a rich row's LINK RUNS beyond its label text - a query for a
+ * domain does not match a row whose visible text is the link label. */
+static int kh_find_active(void) { return g_find_mode; }
+static int kh_find_label_match(const char *label, int *lo, int *hi) {
+    if (!g_find_query[0] || !label || !label[0]) return 0;
+    size_t ql = strlen(g_find_query);
+    if (ql == 0) return 0;
+    for (size_t i = 0; label[i]; i++) {
+        size_t k = 0;
+        while (k < ql && label[i + k]) {
+            int a = tolower((unsigned char)label[i + k]);
+            int b = tolower((unsigned char)g_find_query[k]);
+            if (a != b) break;
+            k++;
+        }
+        if (k == ql) { if (lo) *lo = (int)i; if (hi) *hi = (int)(i + ql); return 1; }
+    }
+    return 0;
+}
+static int kh_find_row_is_match(const Elem *e) {
+    return e && kh_find_active() && g_find_query[0] && kh_find_label_match(e->label, NULL, NULL);
+}
+int kh_find_is_armed(void) { return kh_find_active(); }
 /* seg_any_runs is defined further below (single-fit first, else
  * wrapped); the range helpers need it here. */
 static int seg_any_runs(Elem *e, SegRun *runs, int maxruns);
@@ -2391,6 +2430,8 @@ static void draw_elem(Elem *e, int hover_id_hash) {
          * this only activates for a box some other real code path
          * already decided needs to be taller. */
         int is_multiline_box = (e->h > (line_h * 3) / 2) && avail_w > 0;
+        int find_lo = -1, find_hi = -1;
+        if (kh_find_active()) kh_find_label_match(shown_label, &find_lo, &find_hi);
         /* INLINE SPANS (phase 2, step 1b/step 3, 2026-10-09) - when the
          * element carries a segments= payload (see khtpm_render_core.c's
          * own Elem.segments field comment for the encoding) and the whole
@@ -2844,6 +2885,36 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                 } else {
                     snprintf(line_buf, sizeof(line_buf), "%.*s", cut, p);
                 }
+                /* FIND IN PAGE (2026-10-12): paint the match band
+                 * behind the glyphs on THIS visual row only, clipped to
+                 * the row's own span and measured with the same
+                 * XftTextExtentsUtf8 prefix trick the cursor and the
+                 * selection band already use here, so the band agrees
+                 * with the glyphs by construction rather than by eye.
+                 *
+                 * The drawable is wrap_target_buf, NOT `buf`: this
+                 * block declares its own `char buf[]` (the text being
+                 * wrapped) which shadows the Pixmap `buf` for the rest
+                 * of the block - passing that char* to XFillRectangle
+                 * is a BadDrawable on every match, with no band painted
+                 * and an X-error spew per frame. The shadowing already
+                 * bit this file once, which is why the block above
+                 * captures the real drawable under that name. */
+                if (find_lo >= 0) {
+                    int fs = (int)(p - buf), fe = fs + (int)strlen(line_buf);
+                    int hl = find_lo > fs ? find_lo : fs;
+                    int hh2 = find_hi < fe ? find_hi : fe;
+                    if (hh2 > hl) {
+                        XGlyphInfo pre, span2;
+                        XftTextExtentsUtf8(dpy, font, (const FcChar8 *)p, hl - fs, &pre);
+                        XftTextExtentsUtf8(dpy, font, (const FcChar8 *)p, hh2 - fs, &span2);
+                        int hw = span2.width - pre.width;
+                        if (hw < 2) hw = 2;
+                        XSetForeground(dpy, gc, alloc_pixel("#7a5c00"));
+                        XFillRectangle(dpy, wrap_target_buf, gc, badge_label_x + pre.width,
+                                       ty - font->ascent, (unsigned)hw, (unsigned)line_h);
+                    }
+                }
                 draw_text_emoji(font, &col, badge_label_x, ty, line_buf);
                 if (cursor_off >= 0) {
                     int line_start_off = (int)(p - buf);
@@ -2907,6 +2978,22 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                 ty = e->y + e->h - 4;
                 if (ty < e->y + font->ascent) ty = e->y + font->ascent;
                 badge_label_x = e->x + pad;
+            }
+            if (find_lo >= 0) {
+                int dlen = (int)strlen(draw_label);
+                int hl = find_lo < dlen ? find_lo : dlen;
+                int hh2 = find_hi < dlen ? find_hi : dlen;
+                if (hh2 > hl) {
+                    XGlyphInfo pre, span2;
+                    XftTextExtentsUtf8(dpy, font, (const FcChar8 *)draw_label, hl, &pre);
+                    XftTextExtentsUtf8(dpy, font, (const FcChar8 *)draw_label, hh2, &span2);
+                    int hw = span2.width - pre.width;
+                    if (hw < 2) hw = 2;
+                    int band_h = font->ascent + (font->descent > 0 ? font->descent : 2);
+                    XSetForeground(dpy, gc, alloc_pixel("#7a5c00"));
+                    XFillRectangle(dpy, buf, gc, badge_label_x + pre.width,
+                                   ty - font->ascent, (unsigned)hw, (unsigned)band_h);
+                }
             }
             draw_text_emoji(font, &col, badge_label_x, ty, draw_label);
             /* REAL, NEW 2026-09-05 (CLI_IO-CURSOR-AND-TEXT_AREA-

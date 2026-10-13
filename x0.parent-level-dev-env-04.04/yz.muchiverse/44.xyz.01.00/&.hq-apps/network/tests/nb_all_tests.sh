@@ -72,6 +72,10 @@ echo "########## autofill (hermetic: sandbox house root + the real origin C)"
 sh "$HERE/nb_autofill_test.sh" || RC=1
 
 echo
+echo "########## find in page (live browser: state + painted band)"
+sh "$HERE/nb_find_test.sh" || RC=1
+
+echo
 echo "########## content-row reachability (live browser + own opt-in fixture)"
 sh "$HERE/nb_reach_test.sh" || RC=1
 

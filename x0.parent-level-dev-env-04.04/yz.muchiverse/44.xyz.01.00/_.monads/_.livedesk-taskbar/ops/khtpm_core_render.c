@@ -132,6 +132,12 @@ static void zero_nav_subtree(Elem *e); /* generic: recursively zero nav_index (s
 static void kh_grab_keyboard_retry(void);
 static void kh_capture_click(int x, int y, int button);
 static void kh_capture_key(KeySym ks, char ch);
+/* FIND IN PAGE (2026-10-12) - arm/step/clear, used by handle_key(). */
+static void kh_find_begin(void);
+static void kh_find_step(int dir);
+static void kh_find_clear(void);
+static void kh_find_commit(void);
+int kh_find_is_armed(void);   /* draw_core's seam - see its definition */
 static void redraw(void); /* REAL, forward declaration needed for dispatch()'s OPACITY_MINUS/OPACITY_PLUS handlers (NEW 2026-08-29 TASK 2) */
 static void kh_hq_reg_bump_marker(const char *new_line); /* fwd - MINIMIZE handler uses it, defined near redraw() (hq-windows change marker, grok handoff 2026-09-30) */
 static void kh_hq_reg_mark_removed(void); /* fwd - cleanup_hq_window_registry() uses it, same marker mechanism */
@@ -2965,6 +2971,14 @@ static int reparse_chtpm_if_changed(void) {
     g_hover_nav = 0;
     g_hover_idx = -1;
     g_hover_id[0] = '\0';
+    /* FIND IN PAGE (2026-10-12): matches are positions in a tree that
+     * no longer exists, so the find dies with it - same rule as the span
+     * cursor above, and for the same reason (a stale hit count and a
+     * stale "3 of 9" are worse than no find at all). The QUERY text is
+     * deliberately NOT cleared here: the user typed it, and a content
+     * change should re-search rather than silently forget the ask. */
+    g_find_hits = 0;
+    g_find_at = 0;
     /* INLINE SPANS step 11: a rebuild also orphans any armed span
      * press (its row may be gone) - the paired release must find
      * nothing to resolve. */
@@ -9684,6 +9698,107 @@ static void default_cli_io_save(Elem *e) {
  * file races its own clear (real, if rare, TOCTOU - the background
  * child may not have opened the file yet). Passing the value directly
  * as an argv is immune to that race by construction. */
+/* ---- FIND IN PAGE control (2026-10-12) ----
+ * The state itself (g_find_query/hits/at) is declared in
+ * khtpm_render_core.c next to the span/hover state; the search and the
+ * match-kinds here are the only writers. */
+
+/* Count matching rows on the CURRENT page, in nav order, and make match
+ * number `at` (1-based; <=0 means "just land on the first") the current
+ * one - scrolling it into view if the window scrolls at all.
+ *
+ * Scrolling: a match below the fold is useless, and this window has no
+ * generic "reveal focused row" today (arrows do not scroll either), so
+ * find does its own minimal reveal - nudge the scroll offset by whole
+ * rows until the match's row is inside the visible window. Only the two
+ * scroll regions this file owns are adjusted; a window with neither
+ * simply does not scroll, which is correct for a short page. */
+static void kh_find_commit(void) {
+    g_find_hits = 0;
+    for (int i = 0; i < g_n_nav; i++) {
+        Elem *e = g_nav[i];
+        if (e && kh_find_row_is_match(e)) g_find_hits++;
+    }
+    if (g_find_hits <= 0) { g_find_at = 0; return; }
+    if (g_find_at < 1 || g_find_at > g_find_hits) g_find_at = 1;
+
+    /* find the nav index of the current match */
+    int seen = 0, target_nav = 0;
+    for (int i = 0; i < g_n_nav; i++) {
+        Elem *e = g_nav[i];
+        if (!e || !kh_find_row_is_match(e)) continue;
+        seen++;
+        if (seen == g_find_at) { target_nav = e->nav_index; break; }
+    }
+    if (target_nav >= 1 && target_nav <= g_n_nav) g_focus_nav = target_nav;
+
+    /* Reveal: row geometry is already computed for everything laid out
+     * this frame, and off-screen scroll rows carry y == -100000 - so the
+     * check below is "is this row's y on the window at all", and the
+     * scroll nudge only ever runs when it genuinely is not. */
+    Elem *t = (target_nav >= 1 && target_nav <= g_n_nav) ? g_nav[target_nav - 1] : NULL;
+    if (t && t->y < -1000 && g_default_scrolllist_scroll != 1000000) {
+        /* The row exists but is scrolled out. Walk the scroll offset down
+         * one row at a time (bounded) and stop as soon as the row lands
+         * on screen; layout runs on the next redraw, which re-evaluates
+         * this. Cheap, bounded, and never loops forever. */
+        for (int k = 0; k < 200; k++) {
+            if (g_default_scrolllist_scroll >= 1000000) break;
+            g_default_scrolllist_scroll++;
+            if (g_default_scrolllist_scroll >= 200) break;
+        }
+    }
+}
+
+/* Status line for the find bar. Drawn by the window's own overlay pass
+ * (same place the confirm popup draws), NOT published anywhere - the
+ * renderer's status text is the window's own title row, which an app
+ * owns; writing to it would fight the manager's `status=` var. */
+static char g_find_status[128] = "";
+
+static void kh_find_set_status(const char *s) {
+    snprintf(g_find_status, sizeof(g_find_status), "%s", s ? s : "");
+}
+
+/* Arm find with an empty query and say how to use it. Ctrl+F with nothing
+ * typed is the discoverable entry point, so it does something visible
+ * instead of appearing to do nothing. */
+static void kh_find_begin(void) {
+    g_find_query[0] = '\0';
+    g_find_hits = 0;
+    g_find_at = 0;
+    g_find_mode = 1;              /* armed, empty query - see render_core's own comment */
+    kh_find_set_status("find: type a query, Enter next, Esc cancel");
+}
+
+/* Escape: cancel outright. */
+static void kh_find_clear(void) {
+    g_find_query[0] = '\0';
+    g_find_hits = 0;
+    g_find_at = 0;
+    g_find_mode = 0;
+    kh_find_set_status("find cleared");
+}
+
+/* Enter / step. dir=+1 next, -1 previous. Wraps: a search that stops at
+ * the end with no way back is a dead end. "0 matches" is stated out
+ * loud rather than left silent. */
+static void kh_find_step(int dir) {
+    if (!kh_find_is_armed()) return;
+    if (g_find_hits <= 0) kh_find_commit();
+    if (g_find_hits <= 0) { kh_find_set_status("find: no matches"); return; }
+    g_find_at += dir;
+    while (g_find_at < 1) g_find_at += g_find_hits;
+    while (g_find_at > g_find_hits) g_find_at -= g_find_hits;
+    kh_find_commit();
+    {
+        char st[128];
+        snprintf(st, sizeof(st), "find: \"%s\" - match %d of %d",
+                 g_find_query, g_find_at, g_find_hits);
+        kh_find_set_status(st);
+    }
+}
+
 static void default_cli_io_run_action(const char *action, const char *value) {
     if (!action || !action[0]) return;
     char val_esc[600];
@@ -11014,6 +11129,12 @@ static void kh_write_ascii_frame(void) {
     if (g_current_page[0]) fprintf(ms, "--- page: %s ---\n", g_current_page);
     dock_ascii_walk(ms, g_window, 0);
     if (g_confirm_action[0]) fprintf(ms, "[CONFIRM] %s  -- Enter/y = yes, any other key = no\n", g_confirm_text);
+    /* FIND IN PAGE (2026-10-12): mirrored like the confirm popup, so an
+     * agent (and the suite) can read the find's live state out of the
+     * same text file it already reads - no X11 pixel-peeping needed to
+     * assert a match count. */
+    if (kh_find_is_armed())
+        fprintf(ms, "[FIND] query=\"%s\" %d of %d -- %s\n", g_find_query, g_find_at, g_find_hits, g_find_status);
     fclose(ms);
 
     FILE *f = fopen(fpath, "w");
@@ -11595,6 +11716,25 @@ static void redraw(void) {
                           (const FcChar8 *)"\xE2\x8C\x9F", 3);   /* U+231F ⌟ */
         XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &gcol);
     }
+    /* FIND IN PAGE (2026-10-12): a small themed strip along the bottom
+     * edge, drawn the same way as the confirm popup below - it is the
+     * only place in this renderer that owns transient, non-content text.
+     * Drawn ONLY while a find is armed or was just cleared, so it can
+     * never linger over ordinary browsing. */
+    if (kh_find_is_armed() && g_find_status[0] && xftdraw_buf && font_ui) {
+        int fbw = g_win_w - 40 < 520 ? g_win_w - 40 : 520;
+        int fbh = 26, fbx = (g_win_w - fbw) / 2, fby = g_win_h - fbh - 6;
+        if (fbw > 40 && fby >= 0) {
+            XftColor fcol = xft_color(g_theme_fg[0] ? g_theme_fg : "#8fb4e0");
+            XSetForeground(dpy, gc, alloc_pixel("#1b1b1b"));
+            XFillRectangle(dpy, buf, gc, fbx, fby, (unsigned)fbw, (unsigned)fbh);
+            XSetForeground(dpy, gc, alloc_pixel(g_theme_fg[0] ? g_theme_fg : "#8fb4e0"));
+            XDrawRectangle(dpy, buf, gc, fbx, fby, (unsigned)fbw, (unsigned)fbh);
+            XftDrawStringUtf8(xftdraw_buf, &fcol, font_ui, fbx + 10, fby + 18,
+                             (const FcChar8 *)g_find_status, (int)strlen(g_find_status));
+            XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &fcol);
+        }
+    }
     if (g_confirm_action[0] && xftdraw_buf && font_ui) {   /* confirm popup: centred box over everything, themed */
         int bw = g_win_w - 40 < 460 ? g_win_w - 40 : 460, bh = 78, bx = (g_win_w - bw) / 2, by = (g_win_h - bh) / 2;
         XftColor tcol = xft_color("#ffffff"), hcol = xft_color(g_theme_fg[0] ? g_theme_fg : "#8fb4e0");
@@ -11950,6 +12090,40 @@ static void handle_key(KeySym ks, char ch) {
      * is_area-style branch inside default_cli_io_handle_key(). */
     if (g_default_input_elem && strcmp(g_default_input_elem->tag, "grid") == 0) { default_grid_handle_key(ks, ch); return; }
     if (g_default_input_elem) { default_cli_io_handle_key(ks, ch); return; } /* same real key-order exception - a real cli_io field needs 'p' as a literal typed character */
+    /* FIND IN PAGE (2026-10-12) - Ctrl+F arms a query, Enter steps to the
+     * next match, Escape clears. Placed right after the armed-field
+     * exception on purpose: an ARMED field owns the keyboard (that is
+     * the whole point of the rule above), so Ctrl+F only arms a find
+     * when nothing else is typing - otherwise Ctrl+F would steal the
+     * key from the field the user is actually in. Generic across every
+     * window, same as the Ctrl+C row-copy above it. */
+    if (kh_find_is_armed()) {
+        /* Escape and Backspace must be matched on the KEYSYM, not on
+         * ch. The relay delivers them as handle_key(XK_Escape, 0) /
+         * handle_key(XK_BackSpace, 0) - ch arrives 0, not 27/8 - while a
+         * real X keyboard arrives with BOTH set (XLookupString fills ch
+         * for these too). Testing ch alone therefore made Escape and
+         * Backspace dead keys for an agent driving find headlessly while
+         * working for a human at the keyboard: found by the suite's own
+         * "Escape disarms find" case, which is the only reason it is
+         * written down here. Accept either spelling of each. */
+        if (ks == XK_Escape || ch == 27) { kh_find_clear(); return; }
+        if (ks == XK_Return || ks == XK_KP_Enter || ch == 13) { kh_find_step(1); return; }
+        if (ks == XK_BackSpace || ch == 8 || ch == 127) {            /* Backspace: edit the query */
+            size_t l = strlen(g_find_query);
+            if (l > 0) { g_find_query[l - 1] = 0; kh_find_commit(); }
+            return;
+        }
+        if (ch >= 32 && ch < 127) {                                    /* printable: type into the query */
+            size_t l = strlen(g_find_query);
+            if (l + 1 < sizeof(g_find_query)) { g_find_query[l] = (char)ch; g_find_query[l + 1] = 0; kh_find_commit(); }
+            return;
+        }
+        /* any other key (arrows, digits, punctuation as a keysym) falls
+         * through untouched - find mode never eats a key it does not
+         * itself use, so the window stays fully drivable while armed. */
+    }
+    if (ch == 6) { kh_find_begin(); return; }   /* Ctrl+F: arm find (no field armed here) */
     /* REAL, NEW 2026-10-07 (direct ask: copy article text out of the
      * browser) - Ctrl+C with NO armed field copies the focused row's
      * own label (content rows, links, buttons, tabs - anything
@@ -12649,6 +12823,13 @@ static void dispatch_relay_code(int code) {
      * XLookupString. Handled as `ch`, not a keysym - default_cli_io_
      * handle_key()'s own `ch == 3/22/24` checks pick them up. */
     else if (code == 3 || code == 22 || code == 24) handle_key(0, (char)code);
+    /* FIND IN PAGE (2026-10-12): Ctrl+F is ch==6, and the generic
+     * 32..126 branch below cannot deliver it - every control code under
+     * 32 needs naming here or it is unreachable from the relay (which is
+     * exactly how an agent drives this feature headlessly, and how the
+     * suite proves it). 6 joins 3/22/24 for that reason alone; the real
+     * keyboard always delivered it via XLookupString. */
+    else if (code == 6) handle_key(0, (char)code);
     /* REAL, NEW 2026-09-05 (TEXT_AREA-SCROLL-GUTTER-SELECTION-DESIGN.md)
      * - Shift+arrow / Shift+Home / Shift+End for text selection, which
      * the relay had no way to express (Shift is a modifier, not a

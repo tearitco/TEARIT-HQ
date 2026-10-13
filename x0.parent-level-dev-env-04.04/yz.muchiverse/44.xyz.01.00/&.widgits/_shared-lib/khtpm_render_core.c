@@ -355,6 +355,29 @@ static int g_hover_nav = 0;
 static int g_hover_idx = -1;
 static char g_hover_id[64] = "";
 
+/* FIND IN PAGE (2026-10-12): the query the user is typing, plus which
+ * match is current. Lives beside the span/hover state because it obeys
+ * the same contract: renderer-side transient state that a reparse
+ * invalidates (khtpm_core_render.c clears it where it clears g_seg_*),
+ * never a frame-protocol field and never persisted.
+ *
+ * g_find_query is the ARMED query: non-empty means a find is active and
+ * matches are highlighted. g_find_hits counts matches on the CURRENT
+ * page; g_find_at is the 1-based index of the current one (0 = none
+ * selected yet), so the UI can say "2 of 7" without re-searching. */
+static char g_find_query[128] = "";
+static int g_find_hits = 0;
+static int g_find_at = 0;
+/* g_find_mode is the ARMED flag and is deliberately NOT the same thing
+ * as "the query is non-empty": Ctrl+F arms find BEFORE the user has
+ * typed anything, and a mode that only existed once a character was in
+ * it could never receive that first character (the key handler asks
+ * "is find armed?" to decide whether this keystroke is text, so an
+ * empty-query find would drop every letter on the floor). Highlights
+ * still key off the query being non-empty - arming with nothing typed
+ * highlights nothing, which is correct. */
+static int g_find_mode = 0;
+
 /* Pure Elem-tree geometry - topmost-child-first hit test (children drawn
  * later win the hit, matching draw order), no X11/global dependency.
  * Verified byte-identical across db-hq/events-hq/chat-hai before being
