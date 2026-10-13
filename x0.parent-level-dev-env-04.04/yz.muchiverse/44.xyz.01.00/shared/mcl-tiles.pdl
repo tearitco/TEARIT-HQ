@@ -1,0 +1,13 @@
+# mcl-tiles.pdl - roles the mcl-hq map paints from Mineclonia PNGs.
+# Root: shared/MINECLONIA-ASSET-SOURCE-LOCATION.pdl img_root
+# (#.NNEST_ASSETS/mineclonia/mods). PNGs stay outside the house zip.
+# People and furniture stay on the RPG Maker sheets. No player skin is a
+# front sprite; mcl_skins_character_1.png is a 64px skin sheet.
+ROLE | grass | ITEMS/mcl_core/textures/mcl_core_grass_block_top.png
+ROLE | sand | ITEMS/mcl_core/textures/default_sand.png
+ROLE | water | ITEMS/mcl_core/textures/default_water_source_animated.png
+ROLE | cobble | ITEMS/mcl_core/textures/default_cobble.png
+ROLE | planks | ITEMS/mcl_core/textures/mcl_core_planks_big_oak.png
+ROLE | door | ITEMS/mcl_doors/textures/mcl_doors_door_wood_lower.png
+ROLE | tree | ITEMS/mcl_core/textures/default_tree.png
+ROLE | chest | ITEMS/mcl_chests/textures/mcl_chests_normal.png
