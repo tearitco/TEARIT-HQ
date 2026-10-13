@@ -55,14 +55,22 @@ Rules while sharing a checkout:
 - Heaviest-collision file at the moment: `board-viewer/ops/bv_menu_input.c`
   is the placer/camera-fix merge point; only touch it if you are doing
   placer or camera work.
-- Lane split vs the `opencode-fix` work (2026-10-05): that lane owns
-  `ops/` worker/fetch/driver code, `tests/worker_*`, `nb_js_worker.+x`
-  sides, and the FETCH protocol, and leads edits to
-  `network_browser_manager.c` while mid-flight. The `opencode` lane
-  owns row-projection/layout into the window (page-state, xhtpm, css)
-  and should avoid touching worker/fetch C files. The handshake file is
-  `network_browser_manager.c` - rebase your row-projection batches over
-  whatever that lane landed last.
+- LANE SPLIT: **RETIRED 2026-10-13.** The `opencode-fix` lane no longer
+  exists, so the split that named it is gone with it. It used to read:
+  that lane owned `ops/` worker/fetch/driver code, `tests/worker_*`, the
+  `nb_js_worker.+x` sides and the FETCH protocol, and led edits to
+  `network_browser_manager.c`, while the `opencode` lane owned
+  row-projection into the window (page-state, xhtpm, css) and avoided
+  worker/fetch C files. None of that division stands now.
+  **The `opencode` lane owns the whole network browser surface** -
+  renderer, projection, manager AND `ops/nb_js_worker.c` - including the
+  worker tick loop and the push protocol, which are P0/G1 in
+  `08-roadmap/design-docs/2026-10-11-BROWSER-GAP-ASSESSMENT-AND-KPI-PLAN.md`
+  section 1a. Every other rule here stands unchanged (own branch, explicit
+  pathspec, never sweep another agent's staged files, never reset or
+  stash); what is gone is only the reason to hesitate before editing
+  worker code. `network_browser_manager.c` remains the handshake file
+  between manager and worker.
 - Driving the network browser: relay file
   `#.desktop/entity_menu_history/<pid>.txt` + reference at
   `08-roadmap/NB-DEBUG-QUICKREF.md`.
