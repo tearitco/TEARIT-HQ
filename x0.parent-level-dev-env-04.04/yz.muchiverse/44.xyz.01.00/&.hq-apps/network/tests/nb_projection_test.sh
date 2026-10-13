@@ -26,7 +26,7 @@ FRAME=/tmp/entity-menu-frame.png.frame.txt
 FAIL=0
 
 [ -f "$UI" ] || { echo "FAIL: no browser running ($UI missing)"; exit 1; }
-PID="$(pgrep -f 'khtpm_core_render.+x .*network-browser-hq' | head -1)"
+PID="$(sh "$HERE/browser_pid.sh")"
 [ -n "$PID" ] || { echo "FAIL: no network browser window"; exit 1; }
 
 load() {   # load <url> - wait until the manager reports ready

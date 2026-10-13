@@ -41,7 +41,13 @@ fail() { echo "FAIL: $*"; FAIL=1; }
 # for a moment and head -1 has twice handed this suite a dead PID whose
 # relay nobody reads (a relay write to a dead process is silently lost,
 # which reads exactly like "the feature does not work").
-PID="${BROWSER_PID:-$(pgrep -f 'khtpm_core_render.+x .*network-browser-hq' | tail -1)}"
+# PID selection goes through browser_pid.sh, NOT pgrep -f: pgrep matches
+# any command line CONTAINING the pattern, including the shell running
+# the search. Measured 2026-10-13: pgrep reported 3 renderers with
+# exactly one alive - the other two were this suite's own shell and the
+# tool running it - and the relay writes to a PID nobody reads are lost
+# silently, which reads exactly like a broken feature.
+PID="${BROWSER_PID:-$(sh "$HERE/browser_pid.sh")}"
 [ -n "$PID" ] || { echo "FAIL: no browser window"; exit 1; }
 RELAY="$HR/#.desktop/entity_menu_history/$PID.txt"
 MIRROR="$ASCII_DIR/$PID.frame.txt"

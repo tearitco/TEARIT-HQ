@@ -166,7 +166,7 @@ echo "== span click-through (relay MOUSE_EVENT, needs X)"
 if [ -z "${DISPLAY:-}" ] || ! command -v xwininfo >/dev/null 2>&1; then
     echo "SKIP: no X display for the click-through"
 else
-    BPID="$(pgrep -f 'khtpm_core_render.+x .*network-browser-hq' | head -1)"
+    BPID="$(sh "$HERE/browser_pid.sh")"
     DUMPOP="$HR/&.widgits/_shared-lib/ops/+x/dump_frame_png_op.+x"
     BANDPY="$HERE/bluebands.py"
     CLICKDONE=0
@@ -276,7 +276,7 @@ echo "== span keyboard nav (relay digits/arrows/Enter, needs X)"
 if [ -z "${DISPLAY:-}" ]; then
     echo "SKIP: no X display for the keyboard nav"
 else
-    BPID="$(pgrep -f 'khtpm_core_render.+x .*network-browser-hq' | head -1)"
+    BPID="$(sh "$HERE/browser_pid.sh")"
     if [ -z "$BPID" ]; then
         echo "FAIL: no network browser window"; FAIL=1
     else
@@ -400,7 +400,7 @@ else
     else
         echo "FAIL: no rich row for the long paragraph"; FAIL=1
     fi
-    BPID="$(pgrep -f 'khtpm_core_render.+x .*network-browser-hq' | head -1)"
+    BPID="$(sh "$HERE/browser_pid.sh")"
     DUMPOP="$HR/&.widgits/_shared-lib/ops/+x/dump_frame_png_op.+x"
     BANDPY="$HERE/bluebands.py"
     WRAPDONE=0
@@ -439,7 +439,7 @@ echo "== span wrapped click + cursor (longlinks, needs X)"
 if [ -z "${DISPLAY:-}" ] || ! command -v xwininfo >/dev/null 2>&1; then
     echo "SKIP: no X display for the wrapped proof"
 else
-    BPID="$(pgrep -f 'khtpm_core_render.+x .*network-browser-hq' | head -1)"
+    BPID="$(sh "$HERE/browser_pid.sh")"
     DUMPOP="$HR/&.widgits/_shared-lib/ops/+x/dump_frame_png_op.+x"
     BANDPY="$HERE/bluebands.py"
     HF="$HR/#.desktop/entity_menu_history/$BPID.txt"

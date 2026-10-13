@@ -109,7 +109,7 @@ echo "== column alignment in a captured frame (needs X)"
 if [ -z "${DISPLAY:-}" ] || ! command -v xwininfo >/dev/null 2>&1; then
     echo "SKIP: no X display for the alignment proof"
 else
-    BPID="$(pgrep -f 'khtpm_core_render.+x .*network-browser-hq' | head -1)"
+    BPID="$(sh "$HERE/browser_pid.sh")"
     DUMPOP="$HR/&.widgits/_shared-lib/ops/+x/dump_frame_png_op.+x"
     ALIGNED=0
     if [ -n "$BPID" ] && [ -x "$DUMPOP" ]; then
