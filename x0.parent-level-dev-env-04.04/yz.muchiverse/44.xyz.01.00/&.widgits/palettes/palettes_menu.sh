@@ -401,6 +401,12 @@ case "${1:-}" in
     set-cdda-dir)      shift; set_cdda dir "$1" "$2"; exit 0 ;;
     set-cdda-mod)      shift; set_cdda tileset "$1" "$2"; exit 0 ;;
     arm-cdda)          shift; arm_cdda "${1:-}" "${2:-}"; exit 0 ;;
+    set-df-dir)        shift; set_stem df dir "$1" "$2"; exit 0 ;;
+    set-df-mod)        shift; set_stem df tileset "$1" "$2"; exit 0 ;;
+    arm-df)            shift; printf '%s\n' "${1:-}" > "$STATE_DIR/df_brush.txt"; exit 0 ;;
+    set-doom-dir)      shift; set_stem doom dir "$1" "$2"; exit 0 ;;
+    set-doom-mod)      shift; set_stem doom tileset "$1" "$2"; exit 0 ;;
+    arm-doom)          shift; printf '%s\n' "${1:-}" > "$STATE_DIR/doom_brush.txt"; exit 0 ;;
     set-tiled-dir)     shift; set_stem tiled dir "$1" "$2"; exit 0 ;;
     set-tiled-mod)     shift; set_stem tiled tileset "$1" "$2"; exit 0 ;;
     set-ohr-dir)       shift; set_stem ohrrpgce dir "$1" "$2"; exit 0 ;;
