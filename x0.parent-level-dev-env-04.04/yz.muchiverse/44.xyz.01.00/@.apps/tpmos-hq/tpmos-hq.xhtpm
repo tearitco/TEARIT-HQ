@@ -5,7 +5,7 @@
      (khtpm relay= attribute) and the op appends the same line TPMOS's keyboard plugin writes (KEY_PRESSED: code) to the keys file named in display.pdl. The send rows do the same for one named key.
      Which backend, which TPMOS folder, which frame file: display.pdl. Static layout, shared khtpm_core_render.+x, zero renderer C.
      RULES: no angle brackets inside comments. -->
-<window label="${title}" class="tpmos-hq database-window fixed-size managed user-resizable" vars="state/ui.txt">
+<window label="${title}" class="tpmos-hq database-window managed user-resizable" vars="state/ui.txt">
   <module src="@.apps/tpmos-hq/ops/+x/tpmos_hq.+x"/>
   <page name="main">
     <tabbar id="toolbar" class="tab-bar">
