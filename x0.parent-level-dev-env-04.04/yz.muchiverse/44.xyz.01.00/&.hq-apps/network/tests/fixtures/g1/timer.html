@@ -1,0 +1,22 @@
+// G1.1 fixture: a live timer (2026-10-13).
+//
+// The page owns a counter and a setInterval that writes it into a row,
+// so a worker that keeps ticking produces a NEW, DIFFERENT row value over
+// time. A worker that renders once and then freezes produces the same
+// value forever - which is the whole failure this harness exists to catch.
+//
+// 500 ms, not 1000: the KPI asks for >= 6 self-updates in 10 s, which at
+// 1 Hz would be impossible by arithmetic (10 updates, but the last one
+// lands after the window closes) and would make the bar ambiguous rather
+// than hard. 500 ms gives 20 opportunities for 6.
+
+var n = 0;
+
+function bump() {
+  n = n + 1;
+  var el = document.getElementById("t");
+  if (el) { el.textContent = "tick " + n; }
+}
+
+setInterval(bump, 500);
+bump();
