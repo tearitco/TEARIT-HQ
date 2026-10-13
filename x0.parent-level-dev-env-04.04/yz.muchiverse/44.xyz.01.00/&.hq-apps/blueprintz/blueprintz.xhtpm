@@ -4,15 +4,66 @@
   <page name="main">
     <sidebar>
       <scrolllist class="from-top">
-        <text label="BOOK" class="quiet"/>
-        <text label="(no book loaded)" class="quiet"/>
-        <text label="PAGES" class="quiet"/>
-        <text label="(none)" class="quiet"/>
+        <text label="BOOKS" class="quiet"/>
+        <!-- BP-TREE -->
+        <text label="dsr-rpg (105 events)" class="quiet"/>
+        <text label="  day_tick" class="quiet"/>
+        <text label="  greet_fenn" class="quiet"/>
+        <text label="  greet_gus" class="quiet"/>
+        <text label="  greet_maren" class="quiet"/>
+        <text label="  greet_orin" class="quiet"/>
+        <text label="  greet_pip" class="quiet"/>
+        <text label="  greet_rex" class="quiet"/>
+        <text label="  int_off" class="quiet"/>
+        <text label="  int_on" class="quiet"/>
+        <text label="  phase_dawn" class="quiet"/>
+        <text label="  phase_day" class="quiet"/>
+        <text label="  phase_dusk" class="quiet"/>
+        <text label="cdda-hq (105 events)" class="quiet"/>
+        <text label="  day_tick" class="quiet"/>
+        <text label="  greet_fenn" class="quiet"/>
+        <text label="  greet_gus" class="quiet"/>
+        <text label="  greet_maren" class="quiet"/>
+        <text label="  greet_orin" class="quiet"/>
+        <text label="  greet_pip" class="quiet"/>
+        <text label="  greet_rex" class="quiet"/>
+        <text label="  int_off" class="quiet"/>
+        <text label="  int_on" class="quiet"/>
+        <text label="  phase_dawn" class="quiet"/>
+        <text label="  phase_day" class="quiet"/>
+        <text label="  phase_dusk" class="quiet"/>
+        <text label="df-hq (105 events)" class="quiet"/>
+        <text label="  day_tick" class="quiet"/>
+        <text label="  greet_fenn" class="quiet"/>
+        <text label="  greet_gus" class="quiet"/>
+        <text label="  greet_maren" class="quiet"/>
+        <text label="  greet_orin" class="quiet"/>
+        <text label="  greet_pip" class="quiet"/>
+        <text label="  greet_rex" class="quiet"/>
+        <text label="  int_off" class="quiet"/>
+        <text label="  int_on" class="quiet"/>
+        <text label="  phase_dawn" class="quiet"/>
+        <text label="  phase_day" class="quiet"/>
+        <text label="  phase_dusk" class="quiet"/>
+        <text label="gta-hq (105 events)" class="quiet"/>
+        <text label="  day_tick" class="quiet"/>
+        <text label="  greet_fenn" class="quiet"/>
+        <text label="  greet_gus" class="quiet"/>
+        <text label="  greet_maren" class="quiet"/>
+        <text label="  greet_orin" class="quiet"/>
+        <text label="  greet_pip" class="quiet"/>
+        <text label="  greet_rex" class="quiet"/>
+        <text label="  int_off" class="quiet"/>
+        <text label="  int_on" class="quiet"/>
+        <text label="  phase_dawn" class="quiet"/>
+        <text label="  phase_day" class="quiet"/>
+        <text label="  phase_dusk" class="quiet"/>
+        <!-- /BP-TREE -->
       </scrolllist>
     </sidebar>
     <panel>
       <text label="BLUEPRINTZ" class="bp-title"/>
-      <text label="Visual events of the whole loaded book - empty for now." class="quiet"/>
+      <text label="B1 read-only tree. event.pal is compiled from event.ir.pdl. The graph is still B5." class="quiet"/>
       <text label="Design: 08-roadmap/design-docs/BLUEPRINTZ-DESIGN.md" class="quiet"/>
     </panel>
   </page>

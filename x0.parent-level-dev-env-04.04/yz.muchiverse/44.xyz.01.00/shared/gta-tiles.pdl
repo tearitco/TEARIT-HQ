@@ -2,7 +2,7 @@ SECTION | KEY | VALUE
 ------------------------------
 # gta-tiles.pdl - the GTA-shaped slice of the CDDA tileset (2026-10-12, claude), curated by hand over shared/cdda-tiles.pdl; every id below was checked to exist as a TILE row (the generator asserts it).
 # GTA | role | tile id | layer | note       role = what gta-hq asks for; tile id = a TILE id in cdda-tiles.pdl (draw the first TILE row; multitile ids have PART rows); layer = terrain < furniture < vehicle_part < mover.
-# GAP | what | why                         things a GTA scene needs that this tileset does NOT provide by name. They are the brixels / RPG Maker / emoji work, not a mapping error.
+# GAP | what | why                         things a GTA scene needs that this tileset does NOT provide by name. gta-hq art=brixel draws them from shared/brixels.pdl (coloured clay). Not a mapping error.
 GTA | road | t_pavement | terrain | plain asphalt; variants t_pavement2..4 are random picks (see PART t_pavement weight rows)
 GTA | road_yellow | t_pavement_y | terrain | asphalt with a yellow centre line
 GTA | sidewalk | t_sidewalk_center | terrain | multitile: PART t_sidewalk lists corner/edge/t_connection/end_piece sprites

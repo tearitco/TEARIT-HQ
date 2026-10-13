@@ -393,6 +393,88 @@ static int cell_role(const char *role, int tx, int ty, int tw, int th) {
     Sheet *s = gta_png(role); if (!s) return 0;
     blit_fit(s, OX + tx * T, OY + (ty - (th - 1)) * T, tw * T, th * T); return 1;
 }
+/* art: cdda (default, gta-tiles roles), rmmv (the old sheets), brixel (socketed clay). emoji is a separate overlay. Keys 96 and 92 set the flags; the board may still eat 96 as cjk_view before it arrives. */
+static int g_art, g_emoji;
+static void art_refresh(void) {
+    char b[16]; flag_str("art", "cdda", b, sizeof b);
+    g_art = !strcmp(b, "rmmv") ? 0 : !strcmp(b, "brixel") ? 2 : 1;
+    g_emoji = flag_on("emoji", 0);
+}
+static void fill_cell(int tx, int ty, int r, int g, int b) {
+    int x0 = OX + tx * T, y0 = OY + ty * T;
+    for (int y = 0; y < T; y++) { int Y = y0 + y; if (Y < 0 || Y >= FH) continue;
+        for (int x = 0; x < T; x++) { int X = x0 + x; if (X < 0 || X >= FW) continue;
+            unsigned char *q = fr + ((size_t)Y * FW + X) * 4; q[0] = (unsigned char)r; q[1] = (unsigned char)g; q[2] = (unsigned char)b; q[3] = 255; } }
+}
+static void kind_rgb(const char *k, int *r, int *g, int *b) {
+    *r = 90; *g = 90; *b = 90;
+    if (!strcmp(k, "body")) { *r = 70; *g = 74; *b = 82; }
+    else if (!strcmp(k, "wheel")) { *r = 28; *g = 28; *b = 28; }
+    else if (!strcmp(k, "engine")) { *r = 190; *g = 48; *b = 40; }
+    else if (!strcmp(k, "glass")) { *r = 140; *g = 190; *b = 220; }
+    else if (!strcmp(k, "door")) { *r = 40; *g = 90; *b = 170; }
+    else if (!strcmp(k, "seat")) { *r = 150; *g = 96; *b = 48; }
+    else if (!strcmp(k, "roof")) { *r = 50; *g = 52; *b = 58; }
+    else if (!strcmp(k, "light")) { *r = 240; *g = 210; *b = 50; }
+    else if (!strcmp(k, "head")) { *r = 220; *g = 176; *b = 140; }
+    else if (!strcmp(k, "limb")) { *r = 196; *g = 140; *b = 110; }
+}
+/* Top-down clay for the GAP rows: car frame/engine/roof and a person, from shared/brixels.pdl sockets. Crosswalk stripes are painted on the road. CDDA parts that exist are drawn on top of the matching kind when emoji is off. */
+static void draw_brixels(int ox, int oy) {
+    char gp[PATH_MAX]; snprintf(gp, sizeof gp, "%s/shared/brixels.pdl", HOUSE);
+    FILE *f = fopen(gp, "r"); if (!f) return;
+    char kind_of[16][24], kind_name[16][16]; int nk = 0, line_w[16], line_h[16];
+    char sock_name[24][24], sock_bx[24][24]; int sock_x[24], sock_y[24], ns = 0;
+    char line[256];
+    while (fgets(line, sizeof line, f)) {
+        if (!strncmp(line, "BRIXEL |", 8) && nk < 16) {
+            char id[24], kind[16]; int w, h, d;
+            if (sscanf(line, "BRIXEL | %23s | %15s | %d | %d | %d", id, kind, &w, &h, &d) == 5) {
+                snprintf(kind_of[nk], 24, "%s", id); snprintf(kind_name[nk], 16, "%s", kind); line_w[nk] = w; line_h[nk] = h; nk++;
+            }
+        } else if (!strncmp(line, "SOCKET |", 8) && ns < 24) {
+            char bx[24], name[24], typ[24], face[8]; int x, y, z;
+            if (sscanf(line, "SOCKET | %23s | %23s | %23s | %d | %d | %d | %7s", bx, name, typ, &x, &y, &z, face) == 7) {
+                snprintf(sock_bx[ns], 24, "%s", bx); snprintf(sock_name[ns], 24, "%s", name); sock_x[ns] = x; sock_y[ns] = y; ns++;
+            }
+        }
+    }
+    fclose(f);
+    int sc = T / 2; if (sc < 4) sc = 4;
+    /* car root at (ox, oy), person one sidewalk row above, a few tiles to the right */
+    for (int i = 0; i < nk; i++) {
+        int px = 0, py = 0, on_car = !strncmp(kind_of[i], "car_", 4);
+        if (!strcmp(kind_of[i], "car_frame")) { px = 0; py = 0; }
+        else if (on_car) {
+            for (int s = 0; s < ns; s++) if (!strcmp(sock_bx[s], "car_frame")) {
+                if ((!strcmp(kind_of[i], "car_wheel") && !strcmp(sock_name[s], "fl_wheel")) ||
+                    (!strcmp(kind_of[i], "car_engine") && !strcmp(sock_name[s], "engine_bay")) ||
+                    (!strcmp(kind_of[i], "car_windshield") && !strcmp(sock_name[s], "windshield_frame")) ||
+                    (!strcmp(kind_of[i], "car_door") && !strcmp(sock_name[s], "left_door")) ||
+                    (!strcmp(kind_of[i], "car_seat") && !strcmp(sock_name[s], "driver_seat")) ||
+                    (!strcmp(kind_of[i], "car_roof") && !strcmp(sock_name[s], "roof_mount")) ||
+                    (!strcmp(kind_of[i], "car_headlight") && !strcmp(sock_name[s], "left_headlight"))) { px = sock_x[s]; py = sock_y[s]; }
+            }
+        } else {
+            px = 10; py = -2;
+            for (int s = 0; s < ns; s++) if (!strcmp(sock_bx[s], "person_torso")) {
+                if ((!strcmp(kind_of[i], "person_head") && !strcmp(sock_name[s], "neck")) ||
+                    (!strcmp(kind_of[i], "person_arm") && !strcmp(sock_name[s], "left_shoulder")) ||
+                    (!strcmp(kind_of[i], "person_leg") && !strcmp(sock_name[s], "left_hip"))) { px = 10 + sock_x[s]; py = -2 + sock_y[s]; }
+            }
+            if (!strcmp(kind_of[i], "person_torso")) { px = 10; py = -2; }
+        }
+        int r, g, b; kind_rgb(kind_name[i], &r, &g, &b);
+        int x0 = OX + ox * T + px * sc, y0 = OY + oy * T + py * sc;
+        int dw = line_w[i] * sc, dh = line_h[i] * sc; if (dw < 2) dw = 2; if (dh < 2) dh = 2;
+        for (int y = 0; y < dh; y++) { int Y = y0 + y; if (Y < 0 || Y >= FH) continue;
+            for (int x = 0; x < dw; x++) { int X = x0 + x; if (X < 0 || X >= FW) continue;
+                unsigned char *q = fr + ((size_t)Y * FW + X) * 4; q[0] = (unsigned char)r; q[1] = (unsigned char)g; q[2] = (unsigned char)b; q[3] = 255; } }
+        if (!g_emoji && !strcmp(kind_of[i], "car_wheel")) cell_role("car_wheel", ox + px * sc / T, oy + py * sc / T, 1, 1);
+        if (!g_emoji && !strcmp(kind_of[i], "car_windshield")) cell_role("car_windshield_n", ox + px * sc / T, oy + py * sc / T, 1, 1);
+        if (!g_emoji && !strcmp(kind_of[i], "car_door")) cell_role("car_door", ox + px * sc / T, oy + py * sc / T, 1, 1);
+    }
+}
 
 /* RPG Maker autotiles (verified against the tsots maps: tile id = kind * 48 + shape, shape picked from the 8 neighbours of the same kind; all 8 present = shape 0; the 48 shapes are 4 quadrant pieces).
  * Same rule as _.monads/_.livedesk-taskbar/ops/tile_autotile.c's FLOOR_AUTOTILE_TABLE, computed per quadrant: for each corner look at its two adjacent sides and its diagonal. Pieces are 24 px
@@ -429,35 +511,44 @@ static void draw_over(const Room *rm) {
 static void render(void) {
     g_gr = vroom;
     for (int i = 0; i < FW * FH; i++) { fr[i * 4] = 14; fr[i * 4 + 1] = 14; fr[i * 4 + 2] = 18; fr[i * 4 + 3] = 255; }
-    Room *rm = &rooms[vroom]; char phase[40] = "day"; { char dp[PATH_MAX], db[64]; spath(dp, "daylight.txt"); read_file(dp, db, sizeof db); if (strstr(db, "night")) snprintf(phase, sizeof phase, "night"); else if (strstr(db, "dusk")) snprintf(phase, sizeof phase, "dusk"); else if (strstr(db, "dawn")) snprintf(phase, sizeof phase, "dawn"); }
+    Room *rm = &rooms[vroom]; art_refresh(); char phase[40] = "day"; { char dp[PATH_MAX], db[64]; spath(dp, "daylight.txt"); read_file(dp, db, sizeof db); if (strstr(db, "night")) snprintf(phase, sizeof phase, "night"); else if (strstr(db, "dusk")) snprintf(phase, sizeof phase, "dusk"); else if (strstr(db, "dawn")) snprintf(phase, sizeof phase, "dawn"); }
+    int cdda = g_art != 0;
     if (rm->over) {
         for (int y = 0; y < rm->rows; y++) for (int x = 0; x < rm->cols; x++) {
-            if (over_sea(rm, x, y)) { if (!cell_role("water", x, y, 1, 1)) draw_auto("World_A1", 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, OX + x * T, OY + y * T); }
-            else if (!cell_role("grass", x, y, 1, 1)) draw_auto("World_A2", 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, OX + x * T, OY + y * T);
+            if (over_sea(rm, x, y)) { if (g_art == 2) fill_cell(x, y, 40, 70, 140); else if (!(cdda && cell_role("water", x, y, 1, 1))) draw_auto("World_A1", 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, OX + x * T, OY + y * T); }
+            else if (g_art == 2) fill_cell(x, y, 70, 120, 55); else if (!(cdda && cell_role("grass", x, y, 1, 1))) draw_auto("World_A2", 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, OX + x * T, OY + y * T);
         }
     } else if (rm->outdoor) {
         for (int x = 0; x < COLS; x++) {
-            if (!cell_role("wall_brick", x, WALL_ROW, 1, 1)) tile("Outside_A5", 2, 0, 1, 1, x, WALL_ROW);
+            if (g_art == 2) fill_cell(x, WALL_ROW, 90, 70, 60); else if (!(cdda && cell_role("wall_brick", x, WALL_ROW, 1, 1))) tile("Outside_A5", 2, 0, 1, 1, x, WALL_ROW);
             for (int y = TRIG_ROW; y < ROWS; y++) {
                 const char *role = (y == TRIG_ROW + 2) ? "road_yellow" : (y == TRIG_ROW + 1 || y == TRIG_ROW + 3) ? "sidewalk" : "grass";
-                if (!cell_role(role, x, y, 1, 1)) tile("Outside_A5", 0, 2, 1, 1, x, y);
+                if (g_art == 2) {
+                    if (y == TRIG_ROW + 2) fill_cell(x, y, 55, 55, 58);
+                    else if (y == TRIG_ROW + 1 || y == TRIG_ROW + 3) fill_cell(x, y, 150, 148, 142);
+                    else fill_cell(x, y, 70, 120, 55);
+                    if (y == TRIG_ROW + 2 && x >= 6 && x <= 8 && (x % 2 == 0)) fill_cell(x, y, 230, 230, 230);
+                } else if (!(cdda && cell_role(role, x, y, 1, 1))) tile("Outside_A5", 0, 2, 1, 1, x, y);
             }
         }
     } else
     for (int y = 0; y < ROWS; y++) for (int x = 0; x < COLS; x++) {
-        if (y == 0 || y == WALL_ROW) { if (!cell_role("wall_brick", x, y, 1, 1)) tile("Inside_A5", y == 0 ? 0 : 1, y == 0 ? 0 : 3, 1, 1, x, y); }
-        else if (!cell_role("floor", x, y, 1, 1)) tile("Inside_A5", rm->fc, rm->fr, 1, 1, x, y);
+        if (y == 0 || y == WALL_ROW) { if (g_art == 2) fill_cell(x, y, 90, 70, 60); else if (!(cdda && cell_role("wall_brick", x, y, 1, 1))) tile("Inside_A5", y == 0 ? 0 : 1, y == 0 ? 0 : 3, 1, 1, x, y); }
+        else if (g_art == 2) fill_cell(x, y, 120, 110, 96); else if (!(cdda && cell_role("floor", x, y, 1, 1))) tile("Inside_A5", rm->fc, rm->fr, 1, 1, x, y);
     }
     for (int i = 0; i < ndoor; i++) if (doors[i].room == vroom && !rm->over) {
-        if (!cell_role("door_closed", doors[i].tx, doors[i].ty, 1, 1)) { Sheet *dr = sheet("characters", "!Door1"); blit(dr, 0, 192, S48, S48, OX + doors[i].tx * T, OY + doors[i].ty * T); }
+        if (g_art == 2) fill_cell(doors[i].tx, doors[i].ty, 120, 80, 40);
+        else if (!(cdda && cell_role("door_closed", doors[i].tx, doors[i].ty, 1, 1))) { Sheet *dr = sheet("characters", "!Door1"); blit(dr, 0, 192, S48, S48, OX + doors[i].tx * T, OY + doors[i].ty * T); }
     }
     for (int i = 0; i < nscen; i++) if (scen[i].room == vroom) {
-        if (!strcmp(scen[i].sheet, "Outside_B") && cell_role("tree", scen[i].x, scen[i].y, scen[i].w, scen[i].h)) continue;
+        if (g_art == 2 && !strcmp(scen[i].sheet, "Outside_B")) { fill_cell(scen[i].x, scen[i].y, 30, 90, 40); continue; }
+        if (cdda && !strcmp(scen[i].sheet, "Outside_B") && cell_role("tree", scen[i].x, scen[i].y, scen[i].w, scen[i].h)) continue;
         tile(scen[i].sheet, scen[i].c, scen[i].r, scen[i].w, scen[i].h, scen[i].x, scen[i].y);
     }
     int idx[MAXP], n = 0; for (int i = 0; i < npl; i++) if (pl[i].room == vroom) idx[n++] = i;
     for (int a = 0; a < n; a++) for (int b = a + 1; b < n; b++) { Placed *p = &pl[idx[a]], *q = &pl[idx[b]]; int ka = (!cat[p->item].wall) * 1000 + p->y + cat[p->item].h, kb = (!cat[q->item].wall) * 1000 + q->y + cat[q->item].h; if (kb < ka || (kb == ka && q->x < p->x)) { int t = idx[a]; idx[a] = idx[b]; idx[b] = t; } }
-    for (int a = 0; a < n; a++) { Placed *p = &pl[idx[a]]; Item *d = &cat[p->item]; tile(d->sheet, d->c, d->r, d->w, d->h, p->x, p->y); }
+    for (int a = 0; a < n; a++) { Placed *p = &pl[idx[a]]; Item *d = &cat[p->item]; if (g_art == 2) fill_cell(p->x, p->y, 160, 120, 70); else tile(d->sheet, d->c, d->r, d->w, d->h, p->x, p->y); }
+    if (g_art == 2 && rm->outdoor && !rm->over) draw_brixels(1, TRIG_ROW + 2);
     static const int cyc[4] = {1, 0, 1, 2}; int order[NP + 1], no = 0;           /* walking frames 1,0,1,2; standing = middle frame. -1 = the trainer */
     for (int i = 0; i < nparty; i++) if (others[i].room == vroom) order[no++] = i;
     #define EY(k) ((k) < 0 ? tr.y : others[k].y)
@@ -465,7 +556,8 @@ static void render(void) {
     if (tr.room == vroom) order[no++] = -1;
     for (int a2 = 0; a2 < no; a2++) for (int b2 = a2 + 1; b2 < no; b2++) if (EY(order[b2]) < EY(order[a2])) { int tmp = order[a2]; order[a2] = order[b2]; order[b2] = tmp; }
     for (int k = 0; k < (g_bg_only ? 0 : no); k++) { int i = order[k]; Ent *e = i < 0 ? &tr : &others[i]; int col = e->steps ? cyc[e->steps % 4] : 1, ci = i < 0 ? 0 : party[i].idx;
-        blit(sheet("characters", i < 0 ? hero.sheet : party[i].sheet), (ci % 4) * 3 * S48 + col * S48, (ci / 4) * 4 * S48 + e->dir * S48, S48, S48, OX + e->x * T, OY + e->y * T - 8 * T / S48); }
+        if (g_emoji) fill_cell(e->x, e->y, 255, 200, 40);
+        else blit(sheet("characters", i < 0 ? hero.sheet : party[i].sheet), (ci % 4) * 3 * S48 + col * S48, (ci / 4) * 4 * S48 + e->dir * S48, S48, S48, OX + e->x * T, OY + e->y * T - 8 * T / S48); }
     if (!g_bg_only) { int tone[4]; if (read_tone(tone)) {      /* RPG Maker Tint Screen (events-hq tint_screen -> state/world/screen_state.pdl "value=r,g,b,gray"): add per channel, gray = pull toward the luminance; indoors it is only 40% */
         int od = rm->outdoor, pc = od ? 100 : 40, tr_ = tone[0] * pc / 100, tg_ = tone[1] * pc / 100, tb_ = tone[2] * pc / 100, gy = tone[3] * pc / 100;
         if (tr_ || tg_ || tb_ || gy) for (int y = OY + ((od && !rm->over) ? 2 * T : 0); y < OY + ROWS * T; y++) for (int x = OX; x < OX + COLS * T; x++) { unsigned char *q = fr + ((size_t)y * FW + x) * 4; int r = q[0], g = q[1], b = q[2], l = (r * 30 + g * 59 + b * 11) / 100;
@@ -636,7 +728,7 @@ static void out_all(const char *msg) {
     { char cc[16]; flag_str("ctl", "pet", cc, sizeof cc); char who[40]; snprintf(who, sizeof who, "on: %s", !strcmp(cc, "player") ? "you" : party[active].name); W("interact_class=%s\ninteract_label=%s\nrp_h1=%s\nrp_h2=%s\ncontrol_label=control: %s\n", in ? "interact-active" : "", in ? who : "off", h1, h2, !strcmp(cc, "player") ? "player" : party[active].name); }
     W("run_on=%d\nrun_label=%s\nrun_cls=%s\n", run_on(), run_on() ? "GO started" : "STOP stopped", run_on() ? "ph-green" : "ph-red");
     W("mode_label=%s\nmode_cls=%s\n", rogue_mode() ? "[rogue] live" : "rogue [live]", rogue_mode() ? "ph-green" : "ph-red");
-    W("chat_visible=%s\nhb_visible=%s\nview_label=view %s\nchat_toggle_label=window %s\n", chat ? "1" : "", hb ? "1" : "", view, chat ? "on" : "off");
+    { char ab[16]; flag_str("art", "cdda", ab, sizeof ab); W("chat_visible=%s\nhb_visible=%s\nview_label=view %s\nchat_toggle_label=window %s\nart=%s\nemoji=%d\nart_label=art %s%s\n", chat ? "1" : "", hb ? "1" : "", view, chat ? "on" : "off", ab, flag_on("emoji", 0), ab, flag_on("emoji", 0) ? " + emoji" : ""); }
     { char cp[PATH_MAX], cb[4000]; spath(cp, "chat.txt"); read_tail(cp, cb, sizeof cb); char *ln[6] = {0}; int k = 0; for (char *l = strtok(cb, "\n"); l; l = strtok(NULL, "\n")) { ln[k % 6] = l; k++; } for (int i = 0; i < 6; i++) { int j = k - 6 + i; W("chat_%d=%s\n", i, j >= 0 ? ln[j % 6] : ""); } }
     W("n_shop=%d\n", ncat); for (int i = 0; i < ncat; i++) { char own[16] = ""; if (owned[i] > 0) snprintf(own, sizeof own, " x%d", owned[i]); W("shop_%d_label=%s %dc%s\nshop_%d_key=%s\n", i, cat[i].label, cat[i].price, own, i, cat[i].key); }
     char fl[160], cc[16], hid[24]; flag_str("ctl", "pet", cc, sizeof cc); int hs = !strcmp(cc, "player"); snprintf(hid, sizeof hid, "%s", hero.name); for (char *c = hid; *c; c++) if (*c >= 'A' && *c <= 'Z') *c += 32;
@@ -1081,7 +1173,11 @@ static int daemon_main(void) {
         if (in && enter_pressed_in_engine() && possess_at_xelector(msg, sizeof msg)) { dirty = 1; follow_pchq(); }
         n = poll_keys(h1, &o1, codes, 32); n += poll_keys(h2, &o2, codes + n, 32);     /* the offsets always advance; keys only act while INT is on */
         if (in && n) replay();
-        if (in && n) { char kl[300], one[16]; kl[0] = 0; for (int i = 0; i < n && i < 20; i++) { snprintf(one, sizeof one, "%d ", codes[i]); strncat(kl, one, sizeof kl - strlen(kl) - 1); } char kp[PATH_MAX]; spath(kp, "keys_seen.txt"); write_if_changed(kp, kl, strlen(kl)); }      /* last batch of codes, for debugging */
+        if (n) { char kl[300], one[16]; kl[0] = 0; for (int i = 0; i < n && i < 20; i++) { snprintf(one, sizeof one, "%d ", codes[i]); strncat(kl, one, sizeof kl - strlen(kl) - 1); } char kp[PATH_MAX]; spath(kp, "keys_seen.txt"); write_if_changed(kp, kl, strlen(kl)); }
+        for (int i = 0; i < n; i++) {
+            if (codes[i] == 96) { set_flag("emoji", flag_on("emoji", 0) ? "0" : "1"); snprintf(msg, sizeof msg, "emoji %s", flag_on("emoji", 0) ? "on" : "off"); dirty = 1; }
+            else if (codes[i] == 92) { char ab[16]; flag_str("art", "cdda", ab, sizeof ab); const char *nx = !strcmp(ab, "rmmv") ? "cdda" : !strcmp(ab, "cdda") ? "brixel" : "rmmv"; set_flag("art", nx); snprintf(msg, sizeof msg, "art %s", nx); dirty = 1; }
+        }
         { int r = run_on() + 2 * rogue_mode(); if (r != was_run) { was_run = r; clock_sync(); dirty = 1; } }
         if (in) for (int i = 0; i < n; i++) { int c = codes[i], dx = 0, dy = 0;
             if (c == 1002 || c == 200) dy = -1; else if (c == 1003 || c == 201) dy = 1; else if (c == 1000 || c == 202) dx = -1; else if (c == 1001 || c == 203) dx = 1;
