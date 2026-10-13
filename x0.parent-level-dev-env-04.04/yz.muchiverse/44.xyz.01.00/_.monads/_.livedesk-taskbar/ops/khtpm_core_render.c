@@ -7780,6 +7780,8 @@ static void dock_paint_menu(void) {
         XMoveResizeWindow(dpy, g_dock_menu_win, g_dock_menu_sx, g_dock_menu_sy,
                           (unsigned)g_dock_menu_w, (unsigned)g_dock_menu_h);
         XMapRaised(dpy, g_dock_menu_win);
+        /* Same _NET_WM_WINDOW_OPACITY the pc-hq window already has. This menu is its own X window, so the in-window dropdown paint never inherited it. */
+        set_window_opacity(dpy, g_dock_menu_win, load_theme_opacity());
         g_dock_menu_mapped = 1;
         g_dock_menu_msx = g_dock_menu_sx; g_dock_menu_msy = g_dock_menu_sy;
         g_dock_menu_mw  = g_dock_menu_w;  g_dock_menu_mh  = g_dock_menu_h;
@@ -7835,15 +7837,17 @@ static void dock_paint_menu(void) {
             }
         }
         if (g_dock_dd_scrolling && g_dock_dd_vis > 0 && g_dock_dd_total > 1) {
-            int tx = g_win_w - 22, ty = DD_ARROW_H, th_all = g_dock_dd_vis * DOCK_BAR_H - 2 * DD_ARROW_H;
+            /* Same track the generic scrollbar paints on a pc-hq dropdown: 8px, #2a2a2a track, #888888 thumb. */
+            int tw = 8, tx = g_win_w - tw - 12, ty = DD_ARROW_H, th_all = g_dock_dd_vis * DOCK_BAR_H - 2 * DD_ARROW_H;
             MwPlan mp; int thumb_y, thumb_h;
+            if (th_all < 8) th_all = 8;
             mw_plan(&mp, g_dock_dd_total, g_dock_dd_vis + 1, NULL);
             mw_thumb(&mp, th_all, g_dock_dd_scroll, &thumb_y, &thumb_h);
             thumb_y += ty;
             XSetForeground(dpy, gc, alloc_pixel("#2a2a2a"));
-            XFillRectangle(dpy, buf, gc, tx, ty, 18, (unsigned)th_all);
-            XSetForeground(dpy, gc, alloc_pixel("#aaaaaa"));
-            XFillRectangle(dpy, buf, gc, tx + 2, thumb_y, 14, (unsigned)thumb_h);
+            XFillRectangle(dpy, buf, gc, tx, ty, (unsigned)tw, (unsigned)th_all);
+            XSetForeground(dpy, gc, alloc_pixel("#888888"));
+            XFillRectangle(dpy, buf, gc, tx + 1, thumb_y, (unsigned)(tw > 2 ? tw - 2 : tw), (unsigned)thumb_h);
         }
         /* 2px theme-secondary window frame in a dedicated margin,
          * drawn LAST, right before the present. */
@@ -13499,6 +13503,7 @@ static void hq_idle_tick(void) {
         load_theme_colors();
         hq_request_redraw();
         if (window_is_dock() && g_dock_peer_win) set_window_opacity(dpy, g_dock_peer_win, load_theme_opacity());
+        if (window_is_dock() && g_dock_menu_win) set_window_opacity(dpy, g_dock_menu_win, load_theme_opacity());
     }
     if (poll_agent_history() > 0 && !g_quit) hq_request_redraw();
     dock_poll_strip_state();   /* mirror terminal-driven nav into strip_ascii_current_frame.txt promptly */
@@ -13986,6 +13991,15 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
                     if (!g_quit) { assign_nav_and_layout(); redraw(); }
                     return;
                 }
+            }
+            /* Wheel / trackpad swipe anywhere on the menu. pc-hq does this via generic_sbar_wheel over the list box. This window used to return on button 4/5 before any scroll write. */
+            if (window_is_dock() && g_dock_menu_win && cw == g_dock_menu_win && g_dock_dd_scrolling &&
+                (ev->xbutton.button == 4 || ev->xbutton.button == 5)) {
+                MwPlan mp;
+                g_dock_dd_scroll += (ev->xbutton.button == 5) ? 1 : -1;
+                mw_plan(&mp, g_dock_dd_total, g_dock_dd_vis + 1, &g_dock_dd_scroll);
+                if (!g_quit) { assign_nav_and_layout(); redraw(); }
+                return;
             }
             if (window_is_dock() && g_dock_menu_win && cw == g_dock_menu_win && ev->xbutton.button == 1 &&
                 g_dock_dd_scrolling && ev->xbutton.x >= g_dock_menu_w - DD_STRIP_W &&
