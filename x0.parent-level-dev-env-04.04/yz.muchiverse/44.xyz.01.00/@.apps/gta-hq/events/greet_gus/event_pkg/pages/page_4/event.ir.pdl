@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | greet_gus
+STATE        | source               | events-hq
+NODE         | id=1 type=gta_pet_says | pet=gus|chat=Hello {other}, lovely day for a feast|voice=Hello {other}, lovely day for a feast

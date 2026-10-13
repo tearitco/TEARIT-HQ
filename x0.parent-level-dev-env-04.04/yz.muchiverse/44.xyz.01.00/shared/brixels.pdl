@@ -1,0 +1,68 @@
+SECTION | KEY | VALUE
+------------------------------
+# brixels.pdl - SEED vocabulary for brixels (2026-10-12, claude). The owner's words (handoff doc section 0): "in-house art ... evolving shape-clay used as Lego-like pieces ... an image concept bank (images associated by pixel maps) says what a piece looks like and what it does ... pieces socket together: arms + legs + head = a human; wheels + engine + windshield = a car."
+# Everything below is a PROPOSAL for Grok to confirm or replace (see design-docs/BRIXELS-DESIGN.md). Nothing reads this file yet. Sizes are in voxels on the same 16-grid as the engine's emoji voxel models (voxels_16.csv).
+# BRIXEL | id | kind | w | h | d | note                 one drawable piece (w x h x d voxels; x = left-right, y = front-back, z = up)
+# SOCKET | brixel | name | type | x | y | z | facing     where another piece plugs in; type must match the plugging piece's PLUG row; facing = n e s w up down
+# PLUG   | brixel | name | type | x | y | z | facing     the piece's own connector
+# ASSEMBLY | id | role | brixel | on_socket | note        a recipe: ROLE says what the assembled thing is (car, person); on_socket = the parent socket it plugs into (root = the first row)
+# CONCEPT | brixel | image | pixelmap | does              the concept bank row: an image (path, may be a CDDA/emoji id) associated with the piece by a pixel map file, and a sentence for what the piece DOES (an events-hq / blueprintz hook, not code)
+BRIXEL | car_frame | body | 8 | 4 | 2 | the chassis; every other car piece plugs into it
+BRIXEL | car_wheel | wheel | 2 | 2 | 2 | rolls; one per corner
+BRIXEL | car_engine | engine | 3 | 3 | 2 | gives speed; sits in the engine bay
+BRIXEL | car_windshield | glass | 4 | 1 | 2 | front glass
+BRIXEL | car_door | door | 2 | 1 | 2 | opens (events: door_open / door_closed)
+BRIXEL | car_seat | seat | 2 | 2 | 2 | where a person sits
+BRIXEL | car_roof | roof | 4 | 4 | 1 | hides the interior from above (roofs hide when the camera is inside, same rule as buildings)
+BRIXEL | car_headlight | light | 1 | 1 | 1 | light
+BRIXEL | person_torso | body | 3 | 2 | 4 | the root of a person
+BRIXEL | person_head | head | 2 | 2 | 2 | 
+BRIXEL | person_arm | limb | 1 | 1 | 4 | one per side
+BRIXEL | person_leg | limb | 1 | 1 | 4 | one per side
+SOCKET | car_frame | fl_wheel | wheel_mount | 0 | 0 | 0 | w
+SOCKET | car_frame | fr_wheel | wheel_mount | 7 | 0 | 0 | e
+SOCKET | car_frame | rl_wheel | wheel_mount | 0 | 3 | 0 | w
+SOCKET | car_frame | rr_wheel | wheel_mount | 7 | 3 | 0 | e
+SOCKET | car_frame | engine_bay | engine_mount | 5 | 1 | 1 | up
+SOCKET | car_frame | windshield_frame | glass_mount | 4 | 0 | 2 | n
+SOCKET | car_frame | left_door | door_hinge | 3 | 0 | 1 | w
+SOCKET | car_frame | right_door | door_hinge | 3 | 3 | 1 | e
+SOCKET | car_frame | driver_seat | seat_mount | 3 | 1 | 1 | up
+SOCKET | car_frame | roof_mount | roof_mount | 2 | 0 | 2 | up
+SOCKET | car_frame | left_headlight | light_mount | 7 | 0 | 1 | e
+SOCKET | car_frame | right_headlight | light_mount | 7 | 3 | 1 | e
+PLUG | car_wheel | axle | wheel_mount | 1 | 1 | 1 | up
+PLUG | car_engine | block | engine_mount | 1 | 1 | 0 | down
+PLUG | car_windshield | base | glass_mount | 0 | 0 | 0 | down
+PLUG | car_door | hinge | door_hinge | 0 | 0 | 0 | down
+PLUG | car_seat | base | seat_mount | 0 | 0 | 0 | down
+PLUG | car_roof | base | roof_mount | 0 | 0 | 0 | down
+PLUG | car_headlight | base | light_mount | 0 | 0 | 0 | w
+SOCKET | person_torso | neck | neck | 1 | 0 | 4 | up
+SOCKET | person_torso | left_shoulder | shoulder | 0 | 0 | 3 | w
+SOCKET | person_torso | right_shoulder | shoulder | 2 | 0 | 3 | e
+SOCKET | person_torso | left_hip | hip | 0 | 0 | 0 | down
+SOCKET | person_torso | right_hip | hip | 2 | 0 | 0 | down
+PLUG | person_head | neck | neck | 0 | 0 | 0 | down
+PLUG | person_arm | shoulder | shoulder | 0 | 0 | 3 | up
+PLUG | person_leg | hip | hip | 0 | 0 | 3 | up
+ASSEMBLY | car | role | car | root | a drivable vehicle (a mover on roads)
+ASSEMBLY | car | car_frame | car_frame | root | 
+ASSEMBLY | car | car_wheel | car_wheel | fl_wheel | x4: fl_wheel fr_wheel rl_wheel rr_wheel
+ASSEMBLY | car | car_engine | car_engine | engine_bay | 
+ASSEMBLY | car | car_windshield | car_windshield | windshield_frame | 
+ASSEMBLY | car | car_door | car_door | left_door | x2: left_door right_door
+ASSEMBLY | car | car_seat | car_seat | driver_seat | 
+ASSEMBLY | car | car_roof | car_roof | roof_mount | 
+ASSEMBLY | car | car_headlight | car_headlight | left_headlight | x2
+ASSEMBLY | person | role | person | root | a walking person (a mover on sidewalks and roads)
+ASSEMBLY | person | person_torso | person_torso | root | 
+ASSEMBLY | person | person_head | person_head | neck | 
+ASSEMBLY | person | person_arm | person_arm | left_shoulder | x2: left_shoulder right_shoulder
+ASSEMBLY | person | person_leg | person_leg | left_hip | x2: left_hip right_hip
+CONCEPT | car_door | cdda:vp_door_full_left | (none yet) | opens and closes; a person can enter through it
+CONCEPT | car_windshield | cdda:vp_windshield_full_faceN | (none yet) | glass; breaks on a crash (event)
+CONCEPT | car_seat | cdda:vp_seat_leather_left | (none yet) | the driver or a passenger sits here
+CONCEPT | car_headlight | cdda:vp_headlight_ne | (none yet) | lights the road at night (daylight.txt phase)
+CONCEPT | car_wheel | cdda:vp_wheel | (none yet) | turns with speed
+CONCEPT | person_torso | emoji:1F9CD | (none yet) | the voxel person-standing model is the nearest existing 3D shape

@@ -1233,3 +1233,21 @@ COMMAND df_pet_says
   PARAMS pet,chat,voice
   TEMPLATE exec "$D/@.apps/df-hq/ops/+x/df_hq.+x" pet_says '{pet}' '{chat}' '{voice}' "$RPG_OTHER"
 END
+
+# ---- gta-hq (2026-10-12): a scaffold copy of dsr-rpg has its OWN two commands, bound to its own binary (gta_hq.+x), so its event pages never run dsr-rpg's program.
+# gta_hq_verb = one generic command that runs a gta-hq verb ("gta_hq.+x <verb> [arg]"); gta_pet_says = a character says a line in the chat and aloud (same fields as pet_says).
+COMMAND gta_hq_verb
+  LABEL gta-hq: Run Verb
+  FIELD1 Verb:
+  FIELD2 Arg:
+  PARAMS verb,arg
+  TEMPLATE exec "$D/@.apps/gta-hq/ops/+x/gta_hq.+x" '{verb}'[ '{arg}']
+END
+
+COMMAND gta_pet_says
+  LABEL gta-hq: Character Says
+  FIELD1 Chat line:
+  FIELD2 Spoken line:
+  PARAMS pet,chat,voice
+  TEMPLATE exec "$D/@.apps/gta-hq/ops/+x/gta_hq.+x" pet_says '{pet}' '{chat}' '{voice}' "$RPG_OTHER"
+END

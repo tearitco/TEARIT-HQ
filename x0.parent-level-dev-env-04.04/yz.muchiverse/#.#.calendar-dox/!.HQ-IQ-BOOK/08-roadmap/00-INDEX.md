@@ -1,5 +1,6 @@
 # 08 — Roadmap
 
+- `design-docs/BRIXELS-DESIGN.md` — **brixels** (2026-10-12): the in-house shape-clay tile vocabulary for gta-hq (pieces, typed sockets, assemblies, concept bank), why gta-hq needs it (CDDA gaps measured), 5 slices; seed data `shared/brixels.pdl`.
 - `design-docs/CDDA-HQ-AND-DF-HQ-HANDOFF-2026-10-12.md` — **cdda-hq / df-hq, then gta-hq** (2026-10-12): copy recipe and tile notes; section 0 is the owner's later goal (Toys `gta-hq`, backtick emoji, `\` cycles RPG Maker / CDDA / brixels, `0` is 2D/3D for all, blueprintz visual map on `.pal`). cdda-hq and df-hq may be built first. Plan only.
 - `design-docs/CDDA-DF-SUBAGENT-BUILD-2026-10-12.md` — **how to build cdda-hq then df-hq** (2026-10-12): one slice per subagent (UltiCa JSON converted once to `.pdl`, copy, one CDDA room, two z levels, df-hq jobs). The game reads `.pdl` only, same as `rooms.pdl`. Plan only.
 - `design-docs/INMEM-DB-CPU-THEORY-REPORT.md` — **would the in-memory DB lower house CPU?** (2026-10-12): measured per-process CPU/syscalls, where the sys time goes, what a DB would and would not change, the on/off `STATE_BACKEND` A/B plan for end-of-sprint profiling.

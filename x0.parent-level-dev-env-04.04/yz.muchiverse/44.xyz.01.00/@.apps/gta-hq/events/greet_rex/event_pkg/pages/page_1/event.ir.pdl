@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | greet_rex
+STATE        | source               | events-hq
+NODE         | id=1 type=gta_pet_says | pet=rex|chat=Halt, friend! Oh, it is you, {other}|voice=Halt, friend! Oh, it is you, {other}

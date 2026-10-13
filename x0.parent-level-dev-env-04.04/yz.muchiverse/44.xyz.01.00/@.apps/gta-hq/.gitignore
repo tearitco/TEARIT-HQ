@@ -1,0 +1,5 @@
+state/
+audit/
+ops/+x/
+events/*/master_ledger.txt
+gta-hq-pchq/
