@@ -240,40 +240,74 @@ which is lane-local and can be taken one at a time.
 - XO copy: `x0.parent-level-dev-env-04.04/1.TPMOS_c_+rmmp.0103.0001/xo/23.network-browser/2026-10-11-BROWSER-GAP-ASSESSMENT-AND-KPI-PLAN.md`
 ---
 
-## 8. Addendum 2026-10-12 — the real long-article ceiling is the ELEMENT POOL
+## 8. Addendum 2026-10-12 — the long-article ceiling, measured then halved
 
-Found while making find-in-page scroll its match into view (which it now
-does, `khtpm_core_render.c`'s `g_find_reveal` hook inside
-`layout_scroll_region()`). Measured, not inferred:
+Originally written as "the pool caps the browser at ~40 rows, not fixed
+here". **Half of it is now fixed** (same day, next slice), and the rest of
+the chain is measured below. Superseded numbers are struck through so the
+history of the claim stays readable.
 
-- `network-browser-hq.xhtpm`'s content `<repeat>` emits **24 elements per
-  content row** — one `<text>`/`<item>`/`<cli_io>`/`<bar>`/`<canvas>` per
-  content KIND (`ct cx cr cd cl ci cb ck cs tr li dl ds h1..h6 tw cf cm cv
-  pp pa`), each hidden by its own `show="${c.is_*}"`. Only one is ever
-  visible.
-- `MAX_ELEMS` in `khtpm_core_render.c` is **1024** (raised from 512 on
-  2026-09-02). 1024 / 24 ≈ **42 rows**.
-- Live measurement on a 124-paragraph local article: the browser published
-  `content_count=124` and the ascii mirror said
-  `[WARN] element pool overflow: 1 element(s) DROPPED (MAX_ELEMS=1024)`,
-  while the tree held **39 content rows** (`cx0..cx38`, of which 29 parked at
-  y=-100000). Paragraphs 40..124 were never built at all.
+### 8.1 What the ceiling actually was
 
-Consequences, stated plainly:
+`network-browser-hq.xhtpm`'s content `<repeat>` emits **24 elements per
+content row** — one `<text>`/`<item>`/`<cli_io>`/`<bar>`/`<canvas>` per
+content KIND, each hidden by its own `show="${c.is_*}"`. Exactly one is
+ever visible.
 
-1. Find-in-page cannot see, let alone scroll to, row 40+ — the rows do not
-   exist. Search is limited to what the pool could hold.
-2. Scrolling has the same ceiling, and it is not find-specific: an article
-   longer than ~40 paragraphs is truncated no matter how the user scrolls.
-3. Raising `MAX_ELEMS` treats the symptom and costs memory: `Elem` embeds
-   `char text_area_buffer[4096]`, so the pool is already 4 MB at 1024 and
-   16 MB at 4096 (BSS, so committed lazily, but the per-reparse `memset`
-   scales with it).
+`parse_element()` allocated an element from the pool **first** and dropped
+it **afterwards**, when `show=` said so. So every gated alternative cost a
+pool slot to be thrown away: a 124-paragraph article asked for 24x124 =
+**2976** elements and got `MAX_ELEMS` = **1024**.
 
-The structural fix is to stop paying 24 elements per row — e.g. one
-`<text>` per row carrying the kind as data rather than as a sibling — which
-is a projection/xhtpm redesign in the `network_browser_manager.c` lane (see
-AGENTS.md lane split), not a renderer patch. Until then, treat ~40 content
-rows as the browser's real page length and say so in the UI rather than
-letting a truncated article look complete. **Not fixed here; recorded so the
-next slice starts from the measurement instead of rediscovering it.**
+### 8.2 Fixed: gated elements cost no pool slot
+
+The gate is now evaluated **before** the allocation; a gated element and
+its subtree are skipped by pointer arithmetic. Measured, same fixture, same
+binary path:
+
+| | before | after |
+|---|---|---|
+| `[POOL] elements` | **1024/1024** (overflow WARN) | **187/1024** |
+| content rows in the tree (124-paragraph page) | **37** | **122 of 122 published** |
+| renderer `VmRSS` on that page | 56 MB | 28-31 MB |
+
+The RSS number is the reason this beat raising `MAX_ELEMS`: `Elem` is
+**29,408 bytes** (measured from the binary: `g_pool` is 0x1e0e000 = 30.1 MB
+for 1024 slots), so 4096 slots would have cost 120 MB of BSS **plus** the
+same again for the pool's second index array. Freeing the waste was worth
+33x more than enlarging the tank.
+
+Honest scope: the gate, the three falsy values and attribute order are
+unchanged; the two window-level attributes (`drop_action`,
+`drop_highlight`) are still applied from a skipped element; and the peek
+**fails open** — an unterminated quote or a missing `>` means "no gate
+here", never "drop it". A parser may not guess in the dropping direction.
+
+### 8.3 Still open — the NEXT ceiling, measured 2026-10-12
+
+With the pool free, the 1500-paragraph page goes from 37 rows to **169**,
+and the limiter moves. It is now the **repeat expansion buffer**, in
+`parse_chtpm()`:
+
+```c
+size_t rcap = (size_t)sz * 48 + (size_t)512 * 1024;   /* sz = pre-expansion template */
+```
+
+`kh_expand_repeats()` stops emitting when the buffer is full
+(`o < oend`), silently. For the browser template that is ~1.4 MB, which
+holds ~170 expanded rows of 24 alternatives. Observed: ui.txt publishes
+**682** text rows for the 1500-paragraph page, the tree builds **169**.
+
+Two more ceilings sit behind it and are *not yet measured in anger*:
+- `MAX_CHILDREN` = 320 per container (`khtpm_render_core.c`). The content
+  scrolllist needs one child per visible row, so this bites above 320 rows.
+  Now counted and reported as `[WARN] children overflow` (it was silent).
+- `KH_MAX_VARS` = 4096. A 682-row page wants ~6 vars/row = ~4100, i.e.
+  this ceiling is about to be hit too.
+
+Suggested order: (1) grow `rcap` by doubling when the expansion filled the
+buffer, (2) `MAX_CHILDREN` 320 -> 1024, (3) measure `KH_MAX_VARS` on the
+same page and raise it if it bites. All three are renderer-side; none of
+them needs the manager lane. The structural alternative — one element per
+row with the kind as data instead of 24 gated siblings — stays the better
+end state and is a template redesign, not a C change.

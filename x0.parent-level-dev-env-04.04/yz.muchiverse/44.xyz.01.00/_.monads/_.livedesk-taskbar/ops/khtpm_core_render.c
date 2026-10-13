@@ -994,6 +994,10 @@ static void kh_launch_window_modules(Elem *window, const char *house_root, const
  * trace. Set here, reported in kh_write_ascii_frame() (the surface we
  * already read when debugging) and on stderr. Zero behavior change. */
 static int g_pool_overflow_count = 0;
+/* CHILDREN-CAP drops (2026-10-12): see the append site in parse_element().
+ * Zero behaviour change - the drop itself is exactly as before (the
+ * child is not appended); this only makes it countable. */
+static int g_children_dropped = 0;
 static int g_vars_dropped = 0;
 /* repeat-count clamps (2026-10-08): same visibility rule - a window that
  * silently rendered fewer rows than it asked for looked identical to one
@@ -1391,6 +1395,206 @@ static void apply_attr(Elem *e, const char *name, const char *val) {
     }
 }
 
+
+/* ================= GATED ELEMENTS COST NO POOL SLOT (2026-10-12) =============
+ *
+ * The parser used to allocate an element from the pool FIRST and drop it
+ * afterwards, when show="" / "0" / "false" said so. That is free for a
+ * handful of gated widgets and ruinous for a template that gates a whole
+ * ROW of alternatives per row: network-browser-hq.xhtpm's content
+ * <repeat> emits one element per content KIND per row (ct cx cr cd cl ci
+ * cb ck cs tr li dl ds h1..h6 tw cf cm cv pp pa - 24 of them), exactly one
+ * of which is ever visible. So a 124-paragraph article asked the pool for
+ * 2976 elements and got 1024, and the article was cut at row 37 with a
+ * single "[WARN] element pool overflow" line to explain it.
+ *
+ * Measured before this change (124-paragraph local article):
+ *   [POOL] elements 1024/1024, overflow WARN, 37 of 124 content rows in
+ *   the tree, ui.txt cheerfully reporting content_count=124.
+ *
+ * So the gate is now evaluated BEFORE the allocation. A gated element and
+ * its whole subtree are skipped by pointer arithmetic, costing zero pool
+ * slots and zero tree nodes. This is the difference between "the browser
+ * can show ~40 paragraphs" and "the pool is not the browser's limit any
+ * more" - and it costs nothing at all in memory, which raising MAX_ELEMS
+ * would not have (Elem is ~29 KB, and the process RSS proves it: 56 MB
+ * resident for a 30 MB pool + a second 30 MB index array).
+ *
+ * HONEST SCOPE. Three things this deliberately does NOT do:
+ *  - it does not change WHAT shows. Same gate, same three falsy values,
+ *    same order of attribute application.
+ *  - it does not skip the window-level attributes. apply_attr() has two
+ *    window-wide side effects (drop_action, drop_highlight) that are not
+ *    per-element state; a gated element carrying one of those still gets
+ *    it applied (scan_window_attrs), so nothing observable is lost.
+ *  - the scanner FAILS OPEN. If the peek cannot read a tag with full
+ *    confidence - unterminated quote, no '>' before the end of the buffer,
+ *    anything it does not recognise - it reports "no gate here" and the
+ *    ordinary path runs and allocates as before. A gate is only ever
+ *    honoured when the tag was read cleanly. Guessing wrong in the
+ *    dropping direction would silently delete a visible row, which is the
+ *    one failure mode a parser may not have. */
+
+/* Read one attribute value out of a tag, respecting quotes. Mirrors
+ * parse_attr_value()'s contract for the shapes templates actually use.
+ * Returns the position after the value, or NULL if the tag ends first. */
+static const char *peek_attr_value(const char *p, char *out, size_t outsz) {
+    if (out && outsz) out[0] = '\0';
+    if (*p != '=') return NULL;
+    p++;
+    if (*p == '"' || *p == '\'') {
+        char q = *p++;
+        const char *e = p;
+        while (*e && *e != q) e++;
+        if (*e != q) return NULL;              /* unterminated: fail open */
+        if (out && outsz) {
+            size_t n = (size_t)(e - p);
+            if (n >= outsz) return NULL;       /* too long to trust: fail open */
+            memcpy(out, p, n);
+            out[n] = '\0';
+        }
+        return e + 1;
+    }
+    const char *s = p;
+    while (*p && !isspace((unsigned char)*p) && *p != '>' && *p != '/') p++;
+    if (out && outsz) {
+        size_t n = (size_t)(p - s);
+        if (n >= outsz) return NULL;
+        memcpy(out, s, n);
+        out[n] = '\0';
+    }
+    return p;
+}
+
+/* Is the tag at `p` (just after its tag name) gated off? Returns 1 only
+ * when a show= attribute was READ CLEANLY and its value is falsy. */
+static int peek_tag_gated(const char *p) {
+    for (;;) {
+        while (*p && isspace((unsigned char)*p)) p++;
+        if (*p == '/' && p[1] == '>') return 0;
+        if (*p == '>') return 0;
+        if (!*p) return 0;
+        char attr[32]; size_t an = 0;
+        const char *name = p;
+        while (*p && *p != '=' && !isspace((unsigned char)*p) && *p != '>' && *p != '/') {
+            if (an + 1 < sizeof(attr)) attr[an++] = *p;
+            p++;
+        }
+        attr[an] = '\0';
+        (void)name;
+        while (*p && isspace((unsigned char)*p)) p++;
+        if (*p != '=') continue;              /* valueless attribute */
+        char val[16384];
+        const char *after = peek_attr_value(p, val, sizeof(val));
+        if (!after) return 0;                 /* fail open */
+        p = after;
+        if (strcmp(attr, "show") == 0)
+            return (val[0] == '\0' || strcmp(val, "0") == 0 || strcmp(val, "false") == 0);
+    }
+}
+
+/* Apply ONLY the two window-level attributes of a tag we are about to
+ * skip (see the honesty note above). Same decode path apply_attr() uses,
+ * so drop_action behaves identically whether or not its element shows. */
+static void scan_window_attrs(const char *p) {
+    for (;;) {
+        while (*p && isspace((unsigned char)*p)) p++;
+        if (*p == '>' || (!*p) || (*p == '/' && p[1] == '>')) return;
+        char attr[32]; size_t an = 0;
+        while (*p && *p != '=' && !isspace((unsigned char)*p) && *p != '>' && *p != '/') {
+            if (an + 1 < sizeof(attr)) attr[an++] = *p;
+            p++;
+        }
+        attr[an] = '\0';
+        while (*p && isspace((unsigned char)*p)) p++;
+        if (*p != '=') continue;
+        char val[16384];
+        const char *after = peek_attr_value(p, val, sizeof(val));
+        if (!after) return;
+        p = after;
+        if (strcmp(attr, "drop_action") == 0) {
+            char decoded[sizeof(g_drop_action)];
+            snprintf(decoded, sizeof(decoded), "%s", val);
+            decode_entities(decoded);
+            snprintf(g_drop_action, sizeof(g_drop_action), "%s", decoded);
+        } else if (strcmp(attr, "drop_highlight") == 0) {
+            snprintf(g_drop_highlight_color, sizeof(g_drop_highlight_color),
+                     "%s", val[0] ? val : "#88ff66");
+        }
+    }
+}
+
+/* Advance past a whole element, including children, without building
+ * anything. `p` points just after the tag name of the opening tag. The
+ * same comment/doctype rules parse_element() uses, so a gated subtree
+ * containing a comment or a doctype cannot desynchronise the depth
+ * count. Returns the position after the matching close tag, or at the
+ * end of the buffer if the element is never closed. */
+static const char *skip_subtree(const char *p) {
+    /* The OPENING tag first, and its self-closing form matters more than
+     * it looks: a gated <text .../> has no close tag, so a depth counter
+     * that starts at 1 runs off the end of the document and swallows
+     * every sibling after it. Found live the moment this landed - the
+     * browser's content <repeat> is nothing but gated self-closing
+     * elements, and the whole content pane came back empty
+     * ([POOL] 31/1024, zero content rows) instead of 37. */
+    const char *gt = p;
+    int self_close = 0;
+    while (*gt && *gt != '>') {
+        if (*gt == '"' || *gt == '\'') {
+            char ch = *gt++;
+            while (*gt && *gt != ch) gt++;
+            if (!*gt) return gt;              /* unterminated quote */
+        }
+        if (*gt == '/') self_close = 1;
+        gt++;
+    }
+    if (*gt != '>') return gt ? gt : p + strlen(p);
+    if (self_close) return gt + 1;
+    p = gt + 1;
+    int depth = 1;
+    while (*p && depth > 0) {
+        if (p[0] == '<' && p[1] == '!') {
+            if (strncmp(p, "<!--", 4) == 0) {
+                const char *end = strstr(p, "-->");
+                p = end ? end + 3 : p + strlen(p);
+            } else {
+                const char *gt = strchr(p, '>');
+                p = gt ? gt + 1 : p + strlen(p);
+            }
+            continue;
+        }
+        if (p[0] == '<' && p[1] == '/') {
+            const char *end = strchr(p, '>');
+            p = end ? end + 1 : p + strlen(p);
+            depth--;
+            continue;
+        }
+        if (p[0] == '<') {
+            const char *q = p + 1;
+            while (*q && !isspace((unsigned char)*q) && *q != '>' && *q != '/') q++;
+            /* window-level attrs on nested tags are honoured too */
+            scan_window_attrs(q);
+            const char *gt = q;
+            while (*gt && *gt != '>') {
+                if (*gt == '"' || *gt == '\'') {
+                    char ch = *gt++;
+                    while (*gt && *gt != ch) gt++;
+                    if (!*gt) break;
+                }
+                gt++;
+            }
+            if (*gt != '>') return p + strlen(p);      /* unterminated tag */
+            int self_close = (gt > q && gt[-1] == '/');
+            p = gt + 1;
+            if (!self_close) depth++;
+            continue;
+        }
+        p++;
+    }
+    return p;
+}
+
 static const char *parse_element(const char *p, Elem *parent) {
     skip_ws(&p);
     if (*p != '<') return p;
@@ -1416,6 +1620,14 @@ static const char *parse_element(const char *p, Elem *parent) {
         p++;
     }
     tag[tn] = '\0';
+    /* GATED ELEMENTS COST NO POOL SLOT (2026-10-12): decide BEFORE
+     * allocating - see the block comment above the peek_tag_gated()
+     * helpers for the measurement (37 of 124 rows reaching the tree) and
+     * for the three things this deliberately does not change. */
+    if (peek_tag_gated(p)) {
+        scan_window_attrs(p);
+        return skip_subtree(p);
+    }
     Elem *e = elem_new(tag);
     /* REAL BUG FIX 2026-09-11 (gdb-traced crash: a real, large loaded
      * page - 4chan's own /b/ front page, ~250+ real content rows,
@@ -1439,7 +1651,18 @@ static const char *parse_element(const char *p, Elem *parent) {
      * element up to this point is real and rendered normally. */
     if (!e) return p + strlen(p);
     e->parent = parent;
-    if (parent && parent->n_children < MAX_CHILDREN) parent->children[parent->n_children++] = e;
+    /* CHILDREN CAP (2026-10-12): the other half of the same truncation
+     * story, and it was completely silent - a parent at MAX_CHILDREN
+     * simply stopped taking children, with no counter anywhere. Found
+     * live the same day: after the gated-element fix freed the pool
+     * (231 of 1024 elements used, no overflow) the browser STILL showed
+     * only 169 of 682 published rows on a 1500-paragraph page. The pool
+     * was no longer the limiter; this was. Counted here so the mirror can
+     * say so - see g_children_dropped's line in kh_write_ascii_frame(). */
+    if (parent) {
+        if (parent->n_children < MAX_CHILDREN) parent->children[parent->n_children++] = e;
+        else g_children_dropped++;
+    }
 
     /* generic show="..." (CHTPM-ARCHITECTURE-FIX.md): with ${var} now
      * resolved at buffer level, a static template can gate a whole
@@ -11158,6 +11381,27 @@ static void kh_write_ascii_frame(void) {
         fprintf(ms, "[WARN] repeat truncated: %d repeat(s) clamped, %d row(s) DROPPED"
                     " (KH_REPEAT_MAX=%d)\n",
                 g_repeat_clamped, g_repeat_clamp_last, KH_REPEAT_MAX);
+    /* POOL USE (2026-10-12): how full the element pool is, ALWAYS - not
+     * only when it overflowed. The overflow WARN answers "is anything
+     * missing", which is the wrong question to have to ask: a window
+     * sitting at 1010 of 1024 elements is one small page away from
+     * silently losing rows, and nothing said so.
+     *
+     * This is also the instrument that shows WHY a window is close to
+     * the cap - the browser's content <repeat> emits one element per
+     * content KIND per row (network-browser-hq.xhtpm), 24 of them, of
+     * which exactly one is ever visible. So this number divided by the
+     * visible row count is the real per-row cost, and it was the
+     * measurement behind the 2026-10-12 parser fix (gated elements are
+     * now skipped before they take a pool slot). */
+    fprintf(ms, "[POOL] elements %d/%d\n", g_n_elems, MAX_ELEMS);
+    /* CHILDREN CAP (2026-10-12): rows that did not fit their parent's
+     * child list. Silently dropped until this counter existed - see the
+     * comment at the append site in parse_element(). */
+    if (g_children_dropped > 0)
+        fprintf(ms, "[WARN] children overflow: %d element(s) DROPPED (MAX_CHILDREN=%d)"
+                    " - a container took more rows than it can hold\n",
+                g_children_dropped, MAX_CHILDREN);
     if (g_current_page[0]) fprintf(ms, "--- page: %s ---\n", g_current_page);
     dock_ascii_walk(ms, g_window, 0);
     if (g_confirm_action[0]) fprintf(ms, "[CONFIRM] %s  -- Enter/y = yes, any other key = no\n", g_confirm_text);
