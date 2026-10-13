@@ -84,6 +84,10 @@ echo "########## page zoom (hermetic: own fixture window)"
 sh "$HERE/nb_zoom_test.sh" || RC=1
 
 echo
+echo "########## downloads (scratch house + a real fetch from a throwaway server)"
+sh "$HERE/nb_download_test.sh" || RC=1
+
+echo
 echo "########## content-row reachability (live browser + own opt-in fixture)"
 sh "$HERE/nb_reach_test.sh" || RC=1
 

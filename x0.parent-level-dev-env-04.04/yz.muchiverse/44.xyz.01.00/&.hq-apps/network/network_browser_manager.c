@@ -6754,7 +6754,11 @@ static void write_ui_projection(void) {
                     }
                     if (!nm[0]) snprintf(nm, sizeof(nm), "download");
                     char shown[PATH_BUF + 400];
-                    snprintf(shown, sizeof(shown), "Downloaded %s (%lld bytes)\\n%s",
+                    /* " - " not "\n": ui.txt is one key=value per line, so a
+                     * real newline would split the row in half, and the
+                     * literal backslash-n the first version produced is
+                     * what the pane actually showed. */
+                    snprintf(shown, sizeof(shown), "Downloaded %s (%lld bytes) - %s",
                              nm, bytes, pa);
                     uisan(shown, t, sizeof(t));
                     UI_PUT("c_%d_kind=download\nc_%d_is_download=1\nc_%d_is_text=1\nc_%d_text=%s\n",
