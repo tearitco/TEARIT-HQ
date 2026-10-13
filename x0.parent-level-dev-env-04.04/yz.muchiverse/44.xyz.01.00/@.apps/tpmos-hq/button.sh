@@ -1,6 +1,6 @@
 #!/bin/bash
 # button.sh - the TPMOS x11-hq toy (@.apps/tpmos-hq/toy.pdl). Usage: sh button.sh [run|start|stop|status]
-#   run    start the REAL TPMOS (its own button.sh run, under a pseudo-terminal) if it is not already running, then open the x11-hq window that reads its frames and relays keys
+#   run    (detached) start the REAL TPMOS (its own button.sh run, under a pseudo-terminal) if it is not already running, then open the x11-hq window that reads its frames and relays keys
 #   start  only start TPMOS      stop  stop the TPMOS processes this toy started      status  say what is running
 # Which TPMOS folder: display.pdl (tpmos_root). TPMOS's run_orchestrator.sh begins with `pkill -9 -f` patterns that match ANY process whose command line holds
 # pieces/<..>/+x/<..>.+x or projects/<..>/+x/<..>.+x (this house's board sessions do), so start refuses, and names the pids, when such a process exists
@@ -60,7 +60,10 @@ open_window() {
     sleep 2; echo "tpmos-hq window launched"
 }
 case "$ACTION" in
-    run)    start_tpmos; open_window ;;
+    run)    # detached: the menu that launched this returns at once; _run does the slow part (TPMOS takes a few seconds to come up)
+            setsid nohup sh "$0" _run > "$SCRIPT_DIR/audit/run.log" 2>&1 < /dev/null &
+            echo "tpmos-hq starting" ;;
+    _run)   start_tpmos; open_window ;;
     start)  start_tpmos ;;
     stop)   stop_tpmos ;;
     status) if tpmos_running; then echo "TPMOS running (pids: $(tpmos_pids | tr '\n' ' '))"; else echo "TPMOS not running"; fi ;;

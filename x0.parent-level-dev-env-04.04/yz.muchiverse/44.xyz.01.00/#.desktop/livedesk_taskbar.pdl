@@ -40,7 +40,9 @@ SECTION      | hq_menu_13_label    | proc-mon
 SECTION      | hq_menu_13_cmd      | sh _.monads/_.livedesk-taskbar/ops/open_mon.sh
 SECTION      | hq_menu_14_label    | tomom
 SECTION      | hq_menu_14_cmd      | sh _.monads/_.livedesk-taskbar/ops/open_tomom.sh
-SECTION      | hq_menu_15_label    | cancel
+SECTION      | hq_menu_15_label    | tpmos
+SECTION      | hq_menu_15_cmd      | sh _.monads/_.livedesk-taskbar/ops/open_tpmos.sh
+SECTION      | hq_menu_16_label    | cancel
 
 SECTION      | file_menu_1_label   | new-desk
 SECTION      | file_menu_1_cmd     | livedesk:new-desk
