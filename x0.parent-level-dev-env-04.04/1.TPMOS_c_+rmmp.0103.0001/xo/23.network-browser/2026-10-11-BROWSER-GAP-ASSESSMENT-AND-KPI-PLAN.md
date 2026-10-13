@@ -305,6 +305,49 @@ roughly 6 vars/row, so it sits right at the cap and did **not** trip it
 (no `[WARN] var table overflow`). It will bite on a larger page and is
 left alone until it does, with the WARN that would announce it.
 
+### 8.5 G3.2 ZOOM — attempted, measured, REJECTED (2026-10-13)
+
+The obvious implementation was to bind keys to the scale verbs that
+already exist: `UI_SCALE_PLUS` / `UI_SCALE_MINUS` are real, the resize and
+relayout path is real, and the taskbar settings window has had a "+" row
+driving them for weeks. **Nothing bound them to the keyboard**, so
+Ctrl+= / Ctrl+- / Ctrl+0 would have closed G3.2 in a dozen lines.
+
+It does not work, and the numbers are why. Same row, same window, pressing
+Ctrl+= (zoom **in**) once:
+
+| scale | short row h | long row h | long row lines |
+|---|---|---|---|
+| 125% | 30 px | 60 px | 2 |
+| 150% | 23 px | 46 px | 2 |
+| 175% | 27 px | 27 px | **1** |
+
+Text gets **smaller** as the reported scale goes up, and by 175% a wrapped
+paragraph has collapsed onto one line. Measured twice, in a hermetic
+fixture window and in the live network browser (content row `cx2`: 60 px →
+46 px), so it is not an artefact of the fixture. Ink pixel count in the
+same row moved the same way: 41071 px → 32304 px.
+
+Cause, as far as the evidence goes: `g_ui_scale_pct` is the **COMBINED**
+scale (font_scale x a screen-relative auto factor), and the verb's own
+comment warns that stepping it and writing the result back folds the auto
+factor into `font_scale`. `desktop_set_font_scale()` does exactly both -
+it writes `font_scale` AND assigns `g_ui_scale_pct` - so the reload path
+applies the factor a second time. It may be correct for the dock (whose
+auto factor is presumably 100%) and wrong for every ordinary window.
+
+**Not shipped.** A Ctrl+= that shrinks the page is worse than no Ctrl+=,
+so the key bindings were reverted and the probe suite deleted rather than
+committed red. What survives is this record.
+
+The next attempt should NOT reuse the desktop scale. A page zoom wants its
+own knob: a per-window percentage applied where the font size is resolved
+(`scaled()` / `font_for()`), gated on a container the template marks, so
+the browser opts its content pane in and no other window is affected. The
+reason it was not done here is budget, not difficulty - the design is in
+§4 S9 and the seam (`scaled()` is the single place every font size goes
+through) is already known.
+
 ### 8.4 Where the browser actually stands now
 
 The renderer is **no longer the limiter** at any measured page size: every
