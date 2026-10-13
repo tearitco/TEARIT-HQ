@@ -38,7 +38,7 @@ So: **db-hq edits the database; events-hq edits one event; blueprintz is the mis
 
 ## 7. Phases (each ends with a screenshot and a round trip, per the evidence rule)
 - **B0 shell** (done 2026-10-11): empty window + menu entries. Evidence: the window renders; the menu data is read by the taskbar.
-- **B1 read-only tree**: book > pages > events from disk (rpg-pet is the first test book: 3 rooms, ~30 events).
+- **B1 read-only tree**: book > pages > events from disk (rpg-pet is the first test book: 3 rooms, ~30 events). **2026-10-12 later:** `&.hq-apps/blueprintz/ops/bp_tree.sh` fills the `BP-TREE` block in `blueprintz.xhtpm` from `event.ir.pdl` under dsr-rpg, cdda-hq, df-hq, and gta-hq (12 names each). The window shows that list after it is opened again. Still read-only. B2–B5 are unchanged.
 - **B2 event detail** read-only; conditions and switches shown.
 - **B3 cross-references** (who sets / reads this switch).
 - **B4 editing through the ops** with a diff preview and undo; round trip: edit in blueprintz -> the `event.ir.pdl` diff is exactly the edit -> the game behaves (play the event).

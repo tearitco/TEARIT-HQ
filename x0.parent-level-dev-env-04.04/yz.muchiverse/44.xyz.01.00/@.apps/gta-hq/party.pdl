@@ -6,9 +6,10 @@ SECTION | KEY | VALUE
 # A DB ACTOR "character" value of Sheet:index would win over this file (the DB field holds just the sheet name today). This file is only the picture choice, never the data.
 # The PERSON (Actor1 sheet) is the trainer / player and lives in the village (not built in gta-hq yet).
 # PET | actor name | sheet | index
-PET | Rex   | People3 | 6
-PET | Gus   | People1 | 6
-PET | Pip   | People2 | 6
-PET | Orin  | People3 | 0
-PET | Maren | People3 | 1
-PET | Fenn  | Nature | 5
+PLAYER | Voss
+PET | Nico  | People3 | 6
+PET | Lucia | People1 | 6
+PET | Vic   | People2 | 6
+PET | Rio   | People3 | 0
+PET | Tess  | People3 | 1
+PET | Kane  | Nature | 5

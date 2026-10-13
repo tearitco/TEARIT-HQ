@@ -359,6 +359,8 @@ typedef struct {
      * boxes and the selector, hero and range wires share that list. */
     struct { int x, y, r, g, b, index, dir, pat; char name[40]; } ev[96];
     int ev_n;
+    char *glyph;            /* map.txt, w*h. 3D height comes from extrusion.pdl, not from the flat 2D picture. */
+    unsigned char zh[128];  /* extrusion height for each glyph. 0 = no row. */
 } MakerAtlas;
 static MakerAtlas g_mk;
 
@@ -421,8 +423,13 @@ static int maker_load(const char *root) {
     if (!map_id[0] || !desk_id[0]) return 0;
     char dir[4352];
     snprintf(dir, sizeof(dir), "%s/pieces/system/maps/%s/%s", root, map_id, desk_id);
-    if (g_mk.key[0] && strcmp(g_mk.key, dir) == 0) return g_mk.ok;
-    free(g_mk.atlas); free(g_mk.cells); free(g_mk.para);
+    /* Reload when cells.rgba changes. The directory key alone kept a stale atlas after gta-hq re-exported people and buildings. Camera state is not touched. */
+    struct stat cst; char rgba_path[4400]; snprintf(rgba_path, sizeof(rgba_path), "%s/cells.rgba", dir);
+    long long cell_stamp = (stat(rgba_path, &cst) == 0) ? (long long)cst.st_mtime : 0;
+    static long long held_stamp = -1;
+    if (g_mk.key[0] && strcmp(g_mk.key, dir) == 0 && held_stamp == cell_stamp) return g_mk.ok;
+    held_stamp = cell_stamp;
+    free(g_mk.atlas); free(g_mk.cells); free(g_mk.para); free(g_mk.glyph);
     int prev_id = g_mk.id;
     memset(&g_mk, 0, sizeof(g_mk));
     g_mk.id = prev_id + 1;
@@ -476,6 +483,33 @@ static int maker_load(const char *root) {
     fclose(f);
     g_mk.para_stamp = -1; maker_read_parallax(dir);
     maker_read_events(dir);
+    g_mk.glyph = (char *)malloc((size_t)g_mk.w * (size_t)g_mk.h);
+    if (g_mk.glyph) {
+        memset(g_mk.glyph, '.', (size_t)g_mk.w * (size_t)g_mk.h);
+        snprintf(path, sizeof(path), "%s/map.txt", dir);
+        f = fopen(path, "r");
+        if (f) {
+            int row = 0; char mline[1024];
+            while (row < g_mk.h && fgets(mline, sizeof mline, f)) {
+                for (int x = 0; x < g_mk.w && mline[x] && mline[x] != '\n'; x++) g_mk.glyph[row * g_mk.w + x] = mline[x];
+                row++;
+            }
+            fclose(f);
+        }
+    }
+    snprintf(path, sizeof(path), "%s/extrusion.pdl", dir);
+    f = fopen(path, "r");
+    if (f) {
+        char mline[256];
+        while (fgets(mline, sizeof mline, f)) {
+            if (!strstr(mline, "EXTRUDE")) continue;
+            char *bar = strchr(mline, '|'); if (!bar) continue;
+            bar++; while (*bar == ' ') bar++;
+            char g = *bar; char *bar2 = strchr(bar, '|');
+            if (bar2 && g > 32 && g < 127) { int hv = atoi(bar2 + 1); if (hv > 0 && hv <= 64) g_mk.zh[(unsigned char)g] = (unsigned char)hv; }
+        }
+        fclose(f);
+    }
     g_mk.ok = 1;
     return 1;
 }
@@ -1117,6 +1151,57 @@ typedef struct {
     unsigned char lx, ly, lz;       /* local 0..7 grid coords */
     unsigned char r, g, b;
 } PhymojiVoxel;
+
+/* A walking person is parts, not a skin box and not a flat picture. Each part is its own run of voxels: feet, leg bones, pants, pelvis, spine, ribs, heart, arms, hands, skull, brain, eyes, hair. Clothes differ by name. */
+static int brixel_put(PhymojiVoxel *v, int n, int max, int *mx, int *my, int *mz, int x, int y, int z, int r, int g, int b) {
+    if (n >= max || x < 0 || y < 0 || z < 0 || x > 31 || y > 31 || z > 7) return n;
+    v[n].lx = (unsigned char)x; v[n].ly = (unsigned char)y; v[n].lz = (unsigned char)z;
+    v[n].r = (unsigned char)r; v[n].g = (unsigned char)g; v[n].b = (unsigned char)b;
+    if (x > *mx) *mx = x; if (y > *my) *my = y; if (z > *mz) *mz = z;
+    return n + 1;
+}
+static int brixel_box(PhymojiVoxel *v, int n, int max, int *mx, int *my, int *mz, int x0, int y0, int z0, int x1, int y1, int z1, int r, int g, int b) {
+    for (int y = y0; y <= y1; y++) for (int x = x0; x <= x1; x++) for (int z = z0; z <= z1; z++)
+        n = brixel_put(v, n, max, mx, my, mz, x, y, z, r, g, b);
+    return n;
+}
+static int build_brixel_person(const char *name, PhymojiVoxel *v, int max, int *mx, int *my, int *mz) {
+    int jr = 36, jg = 48, jb = 72, hr = 28, hg = 22, hb = 18, pr = 42, pg = 58, pb = 86, skin = 214, sg = 166, sb = 130;
+    if (!strcmp(name, "nico")) { jr = 36; jg = 96; jb = 52; }
+    else if (!strcmp(name, "lucia")) { jr = 160; jg = 42; jb = 44; hr = 20; hg = 16; hb = 14; }
+    else if (!strcmp(name, "vic")) { jr = 48; jg = 48; jb = 54; hr = 36; hg = 36; hb = 40; }
+    else if (!strcmp(name, "rio")) { jr = 214; jg = 214; jb = 208; hr = 214; hg = 176; hb = 90; pr = 214; pg = 166; pb = 130; }
+    else if (!strcmp(name, "tess")) { jr = 210; jg = 168; jb = 40; }
+    else if (!strcmp(name, "kane")) { jr = 110; jg = 72; jb = 40; hr = 40; hg = 32; hb = 24; }
+    else if (strcmp(name, "voss")) return 0;
+    *mx = *my = *mz = 0;
+    int n = 0;
+    n = brixel_box(v, n, max, mx, my, mz, 4, 0, 2, 6, 1, 5, 24, 24, 26);          /* left shoe */
+    n = brixel_box(v, n, max, mx, my, mz, 9, 0, 2, 11, 1, 5, 24, 24, 26);         /* right shoe */
+    n = brixel_box(v, n, max, mx, my, mz, 5, 2, 3, 6, 11, 4, pr, pg, pb);         /* left leg */
+    n = brixel_box(v, n, max, mx, my, mz, 9, 2, 3, 10, 11, 4, pr, pg, pb);        /* right leg */
+    n = brixel_box(v, n, max, mx, my, mz, 5, 2, 3, 5, 11, 3, 230, 220, 190);      /* left bone */
+    n = brixel_box(v, n, max, mx, my, mz, 10, 2, 3, 10, 11, 3, 230, 220, 190);    /* right bone */
+    n = brixel_box(v, n, max, mx, my, mz, 4, 12, 2, 11, 15, 5, jr, jg, jb);       /* pelvis */
+    n = brixel_box(v, n, max, mx, my, mz, 7, 12, 3, 8, 23, 4, 230, 220, 190);     /* spine */
+    n = brixel_box(v, n, max, mx, my, mz, 5, 16, 2, 10, 23, 5, jr, jg, jb);       /* torso */
+    n = brixel_box(v, n, max, mx, my, mz, 5, 17, 2, 10, 20, 2, 236, 228, 210);    /* ribs, front */
+    n = brixel_box(v, n, max, mx, my, mz, 7, 18, 3, 8, 19, 4, 160, 32, 40);       /* heart */
+    n = brixel_box(v, n, max, mx, my, mz, 1, 16, 3, 3, 22, 4, jr, jg, jb);        /* left arm */
+    n = brixel_box(v, n, max, mx, my, mz, 12, 16, 3, 14, 22, 4, jr, jg, jb);      /* right arm */
+    n = brixel_box(v, n, max, mx, my, mz, 2, 16, 3, 2, 22, 3, 230, 220, 190);     /* left arm bone */
+    n = brixel_box(v, n, max, mx, my, mz, 13, 16, 3, 13, 22, 3, 230, 220, 190);   /* right arm bone */
+    n = brixel_box(v, n, max, mx, my, mz, 1, 14, 3, 3, 15, 4, skin, sg, sb);     /* left hand */
+    n = brixel_box(v, n, max, mx, my, mz, 12, 14, 3, 14, 15, 4, skin, sg, sb);    /* right hand */
+    n = brixel_box(v, n, max, mx, my, mz, 5, 24, 1, 10, 30, 6, skin, sg, sb);    /* skull */
+    n = brixel_box(v, n, max, mx, my, mz, 6, 26, 2, 9, 28, 5, 210, 150, 160);     /* brain */
+    n = brixel_box(v, n, max, mx, my, mz, 5, 28, 1, 6, 28, 1, 236, 232, 220);     /* left eye */
+    n = brixel_box(v, n, max, mx, my, mz, 9, 28, 1, 10, 28, 1, 236, 232, 220);    /* right eye */
+    n = brixel_box(v, n, max, mx, my, mz, 6, 28, 0, 6, 28, 0, 24, 28, 34);        /* pupils sit on the face */
+    n = brixel_box(v, n, max, mx, my, mz, 9, 28, 0, 9, 28, 0, 24, 28, 34);
+    n = brixel_box(v, n, max, mx, my, mz, 5, 29, 1, 10, 31, 6, hr, hg, hb);      /* hair */
+    return n;
+}
 
 /* REAL FIX 2026-08-04, follow-up to the same-day generator fix (direct
  * user report: "phymoji is only showing 2 parallel sides, empty in the
@@ -3540,21 +3625,39 @@ static int render_one_frame(void) {
             sc.eye[2] = (float)(cam.eye.z - voy);
             static unsigned short view_cells[BV_VIEW_DIM * BV_VIEW_DIM * 2];
             int cropped = (vox || voy || vww != g_mk.w || vwh != g_mk.h);
-            memset(gpu_grid, 0, (size_t)vww * (size_t)vwh * 3);
+            int z_count = 1;
             for (int row = 0; row < vwh; row++)
                 for (int col = 0; col < vww; col++) {
-                    size_t src = ((size_t)(row + voy) * g_mk.w + (size_t)(col + vox)) * 2;
-                    gpu_grid[col + row * vww] = 1;                                   /* level 0: floor */
-                    if (g_mk.cells[src + 1]) {
-                        gpu_grid[col + row * vww + vww * vwh] = 1;                 /* levels 1-2: wall */
-                        gpu_grid[col + row * vww + 2 * vww * vwh] = 1;
+                    int mx = col + vox, my = row + voy;
+                    int h = 1;
+                    if (g_mk.glyph && mx >= 0 && my >= 0 && mx < g_mk.w && my < g_mk.h) {
+                        unsigned char zg = (unsigned char)g_mk.glyph[my * g_mk.w + mx];
+                        if (zg < 128 && g_mk.zh[zg] > 1) h = g_mk.zh[zg];
                     }
+                    size_t src = ((size_t)my * g_mk.w + (size_t)mx) * 2;
+                    if (h <= 1 && my >= 0 && my < g_mk.h && mx >= 0 && mx < g_mk.w && g_mk.cells[src + 1]) h = 3;
+                    if (h > MAX_VOXEL_Z) h = MAX_VOXEL_Z;
+                    if (h > z_count) z_count = h;
+                }
+            memset(gpu_grid, 0, (size_t)vww * (size_t)vwh * (size_t)z_count);
+            for (int row = 0; row < vwh; row++)
+                for (int col = 0; col < vww; col++) {
+                    int mx = col + vox, my = row + voy;
+                    size_t src = ((size_t)my * g_mk.w + (size_t)mx) * 2;
+                    int h = 1;
+                    if (g_mk.glyph && mx >= 0 && my >= 0 && mx < g_mk.w && my < g_mk.h) {
+                        unsigned char zg = (unsigned char)g_mk.glyph[my * g_mk.w + mx];
+                        if (zg < 128 && g_mk.zh[zg] > 1) h = g_mk.zh[zg];
+                    }
+                    if (h <= 1 && my >= 0 && my < g_mk.h && mx >= 0 && mx < g_mk.w && g_mk.cells[src + 1]) h = 3;
+                    if (h > z_count) h = z_count;
+                    for (int lvl = 0; lvl < h; lvl++) gpu_grid[col + row * vww + lvl * vww * vwh] = 1;
                     if (cropped) {
                         view_cells[((size_t)row * vww + col) * 2] = g_mk.cells[src];
                         view_cells[((size_t)row * vww + col) * 2 + 1] = g_mk.cells[src + 1];
                     }
                 }
-            sc.board_w = vww; sc.board_h = vwh; sc.z_count = 3;
+            sc.board_w = vww; sc.board_h = vwh; sc.z_count = z_count;
             sc.grid = gpu_grid;
             sc.legend_n = 1; sc.legend_glyph[0] = 1;
             sc.legend_rgb[0][0] = sc.legend_rgb[0][1] = sc.legend_rgb[0][2] = 0.5f;
@@ -3687,6 +3790,42 @@ static int render_one_frame(void) {
                         if (!ff) continue;
                         got = fread(frame, 1, sizeof(frame), ff) == sizeof(frame);
                         fclose(ff);
+                    }
+                    if (!got) {
+                        /* Brixel people have no RPG frame. shared/brixels/<name>-front.txt is the picture that must move with the event. A missing file leaves the flesh box. */
+                        char bp[4400]; snprintf(bp, sizeof(bp), "%s", g_mk.key);
+                        for (int up = 0; up < 16 && !got; up++) {
+                            char *sl = strrchr(bp, '/'); if (!sl) break; *sl = 0;
+                            char tp[4400]; snprintf(tp, sizeof(tp), "%s/shared/brixels/%s-front.txt", bp, g_mk.ev[i].name);
+                            FILE *tf = fopen(tp, "r"); if (!tf) continue;
+                            char rows[48][40]; int ny = 0; char ln[80];
+                            while (ny < 48 && fgets(ln, sizeof ln, tf)) { if (ln[0] == '#' || ln[0] == '\n') continue; snprintf(rows[ny], 40, "%s", ln); ny++; }
+                            fclose(tf);
+                            if (ny < 20) continue;
+                            for (int py = 0; py < 24; py++) for (int px = 0; px < 16; px++) {
+                                int sy = py * ny / 24, sx = px * 32 / 16; char c = rows[sy][sx];
+                                int r = 0, g = 0, b = 0, a = 255;
+                                if (c == '.' || !c || c == '\n') a = 0;
+                                else if (c == 'H' || c == 'K' || c == 'D') { r = 28; g = 22; b = 18; }
+                                else if (c == 'h') { r = 62; g = 48; b = 36; }
+                                else if (c == 'L') { r = 214; g = 176; b = 90; }
+                                else if (c == 'S' || c == 'A') { r = 214; g = 166; b = 130; }
+                                else if (c == 's') { r = 176; g = 124; b = 96; }
+                                else if (c == 'W') { r = 236; g = 232; b = 220; }
+                                else if (c == 'e' || c == 'B') { r = 24; g = 28; b = 34; }
+                                else if (c == 'J') { r = 36; g = 48; b = 72; }
+                                else if (c == 'G' || c == 'g') { r = 36; g = 96; b = 52; }
+                                else if (c == 'R') { r = 160; g = 42; b = 44; }
+                                else if (c == 'Y') { r = 210; g = 168; b = 40; }
+                                else if (c == 'Z') { r = 110; g = 72; b = 40; }
+                                else if (c == 'T' || c == 'C') { r = 214; g = 214; b = 208; }
+                                else if (c == 'P' || c == 'p') { r = 42; g = 58; b = 86; }
+                                else if (c == 'O' || c == 'o') { r = 24; g = 24; b = 26; }
+                                else a = 0;
+                                unsigned char *d = frame + (py * 16 + px) * 4; d[0] = (unsigned char)r; d[1] = (unsigned char)g; d[2] = (unsigned char)b; d[3] = (unsigned char)a;
+                            }
+                            got = 1;
+                        }
                     }
                     if (got) {
                         /* Same extrusion as chicken: each opaque pixel

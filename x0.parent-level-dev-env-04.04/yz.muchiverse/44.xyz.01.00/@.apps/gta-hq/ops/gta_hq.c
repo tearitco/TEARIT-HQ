@@ -18,7 +18,7 @@
  * Player tab: Play, Stop, Save (slot 1), Load (slot 1) = copies of the state files under state/slots/<n>/.
  * Verbs: play | stop | save [n] | load [n] | status | buy KEY [X Y] | use KEY | place ID X Y | remove ID | step DX DY (trainer) | walk (one pet step, test) | select ID | goto ROOM (moves the trainer + the view)
  *        toggle chat|hb | view | int | clock rate|advance|start|stop|reinstall [arg] | reset
- * Every picture is an RPG Maker MV tile or character frame (sheets under #.NNEST_ASSETS/rmmv-www-img), nothing else is drawn.
+ * Map terrain is drawn from shared/gta-tiles.pdl roles (first TILE row in shared/cdda-tiles.pdl). People and furniture stay on the RPG Maker sheets.
  * State (state/, gitignored): house.txt = append-only ledger replayed on every call  BUY|ts|item|price  PLACE|id|ts|item|x|y|room  MOVE|id|ts|x|y  REMOVE|id|ts
  *   pet_<id>.txt + trainer.txt (room x y dir steps tx ty), flag_*.txt, chat.txt, events.txt (STEP/DOOR/DAY rows = the "event steps" ledger),
  *   relations.txt (append-only MEET rows: who met whom; the data a later "share a room" rule reads), daylight.txt, clock_ui.txt, clock_root/.
@@ -223,6 +223,7 @@ static void load_data(void) {
     snprintf(p, sizeof p, "%s/catalog.pdl", APP); ncat = 0;
     if ((fp = fopen(p, "r"))) { while (fgets(line, sizeof line, fp) && ncat < MAXI) { if (split_bar(line, f, 12) == 11 && !strcmp(f[0], "ITEM")) { Item *it = &cat[ncat++]; snprintf(it->key, 32, "%s", f[1]); snprintf(it->label, 40, "%s", f[2]); it->price = atoi(f[3]); snprintf(it->sheet, 24, "%s", f[4]); it->c = atoi(f[5]); it->r = atoi(f[6]); it->w = atoi(f[7]); it->h = atoi(f[8]); it->wall = !strcmp(f[9], "wall"); snprintf(it->effect, 12, "%s", f[10]); } } fclose(fp); }
     load_party();
+    { char np[PATH_MAX], nl[200]; snprintf(np, sizeof np, "%s/party.pdl", APP); FILE *nf = fopen(np, "r"); if (nf) { int pi = 0; while (fgets(nl, sizeof nl, nf)) { char *g[4]; char cp[200]; snprintf(cp, sizeof cp, "%s", nl); int n = split_bar(cp, g, 4); if (n >= 2 && !strcmp(g[0], "PLAYER")) { snprintf(hero.name, 24, "%s", g[1]); snprintf(hero.nick, 24, "%s", g[1]); } else if (n >= 2 && !strcmp(g[0], "PET") && pi < nparty) { snprintf(party[pi].name, 24, "%s", g[1]); snprintf(party[pi].id, 16, "%s", g[1]); for (char *c = party[pi].id; *c; c++) if (*c >= 'A' && *c <= 'Z') *c += 32; pi++; } } fclose(nf); } }
     snprintf(p, sizeof p, "%s/rooms.pdl", APP); nroom = ndoor = 0;
     if ((fp = fopen(p, "r"))) {
         while (fgets(line, sizeof line, fp)) { int n = split_bar(line, f, 12); if (n >= 5 && !strcmp(f[0], "ROOM") && nroom < 8) { Room *r = &rooms[nroom++]; memset(r, 0, sizeof *r); snprintf(r->id, 16, "%s", f[1]); snprintf(r->name, 32, "%s", f[2]); r->fc = atoi(f[3]); r->fr = atoi(f[4]); r->outdoor = n >= 6 && (!strcmp(f[5], "outdoor") || !strcmp(f[5], "over")); r->cols = 13; r->rows = 8; r->tpx = 48; r->trig = 2;
@@ -331,6 +332,283 @@ static void blit(Sheet *s, int sx, int sy, int w, int h, int dx, int dy) {      
 }
 static void tile(const char *sh, int c, int r, int w, int h, int tx, int ty) { blit(sheet("tilesets", sh), c * S48, r * S48, w * S48, h * S48, OX + tx * T, OY + ty * T); }
 
+/* gta-tiles.pdl role -> first TILE png in cdda-tiles.pdl. Loaded once. Missing role falls back to the RPG Maker tile. */
+static char ULTICA[PATH_MAX];
+typedef struct { char role[24]; char id[48]; char png[160]; } GRole;
+static GRole groles[48]; static int ngrole;
+static Sheet gpng[24]; static int ngpng;
+static void gta_tiles_load(void) {
+    if (ngrole) return;
+    char d[PATH_MAX]; snprintf(d, sizeof d, "%s", HOUSE[0] ? HOUSE : APP);
+    for (int i = 0; i < 8 && !ULTICA[0]; i++) {
+        char p[PATH_MAX]; snprintf(p, sizeof p, "%s/#.NNEST_ASSETS/cdda-tilesets/gfx/UltimateCataclysm", d);
+        if (is_dir(p)) snprintf(ULTICA, sizeof ULTICA, "%s", p);
+        char *s = strrchr(d, '/'); if (!s || s == d) break; *s = 0;
+    }
+    char gp[PATH_MAX]; snprintf(gp, sizeof gp, "%s/shared/gta-tiles.pdl", HOUSE);
+    FILE *f = fopen(gp, "r"); if (!f) return;
+    char line[512];
+    while (fgets(line, sizeof line, f) && ngrole < 47) {
+        if (strncmp(line, "GTA |", 5)) continue;
+        char role[24], id[48];
+        if (sscanf(line, "GTA | %23s | %47s", role, id) != 2) continue;
+        snprintf(groles[ngrole].role, 24, "%s", role);
+        snprintf(groles[ngrole].id, 48, "%s", id);
+        ngrole++;
+    }
+    fclose(f);
+    int have_floor = 0; for (int i = 0; i < ngrole; i++) if (!strcmp(groles[i].role, "floor")) have_floor = 1;
+    if (!have_floor && ngrole < 48) { snprintf(groles[ngrole].role, 24, "floor"); snprintf(groles[ngrole].id, 48, "t_floor_center"); ngrole++; }
+    char cp[PATH_MAX]; snprintf(cp, sizeof cp, "%s/shared/cdda-tiles.pdl", HOUSE);
+    f = fopen(cp, "r"); if (!f) return;
+    int left = ngrole;
+    while (left && fgets(line, sizeof line, f)) {
+        if (strncmp(line, "TILE |", 6)) continue;
+        char id[48], png[160];
+        if (sscanf(line, "TILE | %47s | %159s", id, png) != 2) continue;
+        for (int i = 0; i < ngrole; i++) if (!groles[i].png[0] && !strcmp(groles[i].id, id)) {
+            snprintf(groles[i].png, 160, "%s", png); left--; break;
+        }
+    }
+    fclose(f);
+}
+static Sheet *gta_png(const char *role) {
+    gta_tiles_load();
+    const char *rel = NULL;
+    for (int i = 0; i < ngrole; i++) if (!strcmp(groles[i].role, role)) { rel = groles[i].png; break; }
+    if (!rel || !rel[0] || !ULTICA[0]) return NULL;
+    for (int i = 0; i < ngpng; i++) if (!strcmp(gpng[i].name, role)) return gpng[i].px ? &gpng[i] : NULL;
+    if (ngpng >= 24) return NULL;
+    char p[PATH_MAX]; snprintf(p, sizeof p, "%s/%s", ULTICA, rel);
+    Sheet *s = &gpng[ngpng++]; int n; s->px = stbi_load(p, &s->w, &s->h, &n, 4);
+    snprintf(s->name, 40, "%s", role); return s->px ? s : NULL;
+}
+static void blit_fit(Sheet *s, int dx, int dy, int dw, int dh) {
+    if (!s || !s->px || dw < 1 || dh < 1) return;
+    for (int y = 0; y < dh; y++) { int Y = dy + y, srcy = y * s->h / dh; if (Y < 0 || Y >= FH || srcy < 0 || srcy >= s->h) continue;
+        for (int x = 0; x < dw; x++) { int X = dx + x, srcx = x * s->w / dw; if (X < 0 || X >= FW || srcx < 0 || srcx >= s->w) continue;
+            unsigned char *a = s->px + ((size_t)srcy * s->w + srcx) * 4, *b = fr + ((size_t)Y * FW + X) * 4; int al = a[3]; if (!al) continue;
+            for (int c = 0; c < 3; c++) b[c] = (unsigned char)((a[c] * al + b[c] * (255 - al)) / 255); b[3] = 255; } }
+}
+static int cell_role(const char *role, int tx, int ty, int tw, int th) {
+    Sheet *s = gta_png(role); if (!s) return 0;
+    blit_fit(s, OX + tx * T, OY + (ty - (th - 1)) * T, tw * T, th * T); return 1;
+}
+/* art: cdda (default, gta-tiles roles), rmmv (the old sheets), brixel (socketed clay). emoji is a separate overlay. Keys 96 and 92 set the flags; the board may still eat 96 as cjk_view before it arrives. */
+static int g_art, g_emoji;
+static void art_refresh(void) {
+    char b[16]; flag_str("art", "brixel", b, sizeof b);
+    g_art = !strcmp(b, "rmmv") ? 0 : !strcmp(b, "brixel") ? 2 : 1;
+    g_emoji = flag_on("emoji", 0);
+}
+/* A person stands in the cell. shared/brixels/<name>-front.txt is 32x48 named parts. Feet sit on the bottom of the cell. The same picture is the 3D wall face. */
+#define FIG_W 32
+#define FIG_H 48
+#define FIG_N 8
+static void figure_rgb(char c, int *r, int *g, int *b, int *a) {
+    *a = 255; *r = 0; *g = 0; *b = 0;
+    if (c == '.') *a = 0;
+    else if (c == 'H') { *r = 28; *g = 22; *b = 18; }
+    else if (c == 'h') { *r = 62; *g = 48; *b = 36; }
+    else if (c == 'L') { *r = 214; *g = 176; *b = 90; }
+    else if (c == 'S') { *r = 214; *g = 166; *b = 130; }
+    else if (c == 's') { *r = 176; *g = 124; *b = 96; }
+    else if (c == 'B') { *r = 42; *g = 32; *b = 26; }
+    else if (c == 'W') { *r = 236; *g = 232; *b = 220; }
+    else if (c == 'e') { *r = 24; *g = 28; *b = 34; }
+    else if (c == 'N') { *r = 168; *g = 112; *b = 86; }
+    else if (c == 'M') { *r = 150; *g = 72; *b = 68; }
+    else if (c == 'D') { *r = 70; *g = 48; *b = 36; }
+    else if (c == 'J') { *r = 36; *g = 48; *b = 72; }
+    else if (c == 'j') { *r = 22; *g = 28; *b = 44; }
+    else if (c == 'G') { *r = 36; *g = 96; *b = 52; }
+    else if (c == 'g') { *r = 22; *g = 64; *b = 36; }
+    else if (c == 'R') { *r = 160; *g = 42; *b = 44; }
+    else if (c == 'Y') { *r = 210; *g = 168; *b = 40; }
+    else if (c == 'Z') { *r = 110; *g = 72; *b = 40; }
+    else if (c == 'K') { *r = 36; *g = 36; *b = 40; }
+    else if (c == 'T') { *r = 214; *g = 214; *b = 208; }
+    else if (c == 'C') { *r = 186; *g = 186; *b = 178; }
+    else if (c == 'A') { *r = 214; *g = 166; *b = 130; }
+    else if (c == 'P') { *r = 42; *g = 58; *b = 86; }
+    else if (c == 'p') { *r = 28; *g = 38; *b = 58; }
+    else if (c == 'O') { *r = 28; *g = 28; *b = 30; }
+    else if (c == 'o') { *r = 12; *g = 12; *b = 14; }
+    else *a = 0;
+}
+static struct { char name[16]; unsigned char img[FIG_W * FIG_H * 4]; int ok; } g_fig[FIG_N];
+static int g_fig_n;
+static int figure_slot(const char *name) {
+    for (int i = 0; i < g_fig_n; i++) if (!strcmp(g_fig[i].name, name)) return i;
+    if (g_fig_n >= FIG_N) return -1;
+    int n = g_fig_n++; snprintf(g_fig[n].name, 16, "%s", name); g_fig[n].ok = 0;
+    char p[PATH_MAX]; snprintf(p, sizeof p, "%s/shared/brixels/%s-front.txt", HOUSE, name);
+    FILE *f = fopen(p, "r"); if (!f) return n;
+    char line[80]; int y = 0;
+    while (y < FIG_H && fgets(line, sizeof line, f)) {
+        if (line[0] == '#' || line[0] == '\n') continue;
+        for (int x = 0; x < FIG_W && line[x] && line[x] != '\n'; x++) {
+            int r, g, b, a; figure_rgb(line[x], &r, &g, &b, &a);
+            int i = (y * FIG_W + x) * 4; g_fig[n].img[i] = (unsigned char)r; g_fig[n].img[i+1] = (unsigned char)g; g_fig[n].img[i+2] = (unsigned char)b; g_fig[n].img[i+3] = (unsigned char)a;
+        }
+        y++;
+    }
+    fclose(f); g_fig[n].ok = y >= 40; return n;
+}
+static int blit_figure(const char *name, int tx, int ty) {
+    int n = figure_slot(name); if (n < 0 || !g_fig[n].ok) return 0;
+    int dw = T, dh = T * FIG_H / FIG_W; if (dh < 36) dh = 36;
+    int x0 = OX + tx * T, y0 = OY + (ty + 1) * T - dh;
+    for (int y = 0; y < dh; y++) for (int x = 0; x < dw; x++) {
+        int X = x0 + x, Y = y0 + y; if (X < 0 || Y < 0 || X >= FW || Y >= FH) continue;
+        int sx = x * FIG_W / dw, sy = y * FIG_H / dh; unsigned char *a = g_fig[n].img + (sy * FIG_W + sx) * 4; if (!a[3]) continue;
+        unsigned char *q = fr + ((size_t)Y * FW + X) * 4; q[0] = a[0]; q[1] = a[1]; q[2] = a[2]; q[3] = 255;
+    }
+    return 1;
+}
+/* The 3D block face is this same front view, scaled into one tile. Empty pixels stay transparent so the floor shows around the body. */
+static int figure_tile(const char *name, unsigned char *dst, int n) {
+    int s = figure_slot(name); if (s < 0 || !g_fig[s].ok || n < 1) return 0;
+    memset(dst, 0, (size_t)n * n * 4);
+    for (int y = 0; y < n; y++) for (int x = 0; x < n; x++) {
+        int sx = x * FIG_W / n, sy = y * FIG_H / n; unsigned char *a = g_fig[s].img + (sy * FIG_W + sx) * 4;
+        unsigned char *q = dst + (y * n + x) * 4; q[0] = a[0]; q[1] = a[1]; q[2] = a[2]; q[3] = a[3];
+    }
+    return 1;
+}
+/* A modern building covers its whole scenery footprint (the city ones are 2x2). kind is the count of World_B pieces before this one: tower, vault, shop, lot, motel. A tree is a canopy and a trunk. */
+static void put_px(int X, int Y, int r, int g, int b) {
+    if (X < 0 || Y < 0 || X >= FW || Y >= FH) return;
+    unsigned char *q = fr + ((size_t)Y * FW + X) * 4; q[0] = (unsigned char)r; q[1] = (unsigned char)g; q[2] = (unsigned char)b; q[3] = 255;
+}
+static void paint_scenery(const Scen *s, int index) {
+    int tree = !strcmp(s->sheet, "Outside_B");
+    int kind = 0; for (int i = 0; i < index; i++) if (scen[i].room == s->room && strcmp(scen[i].sheet, "Outside_B")) kind++;
+    int x0 = OX + s->x * T, y0 = OY + s->y * T, dw = s->w * T, dh = s->h * T; if (dw < 1) dw = T; if (dh < 1) dh = T;
+    static const int wall[5][3] = {{42, 52, 68}, {168, 162, 146}, {186, 132, 96}, {142, 144, 140}, {168, 112, 88}};
+    static const int glass[5][3] = {{150, 196, 214}, {196, 206, 196}, {210, 228, 232}, {120, 168, 190}, {230, 210, 170}};
+    static const int trim[5][3] = {{24, 26, 30}, {120, 96, 48}, {160, 36, 36}, {70, 74, 72}, {196, 48, 56}};
+    int k = kind % 5;
+    for (int y = 0; y < dh; y++) for (int x = 0; x < dw; x++) {
+        int r, g, b;
+        if (tree) {
+            /* Top-down: a round crown with the trunk in the middle. No side view. */
+            int cx = dw / 2, cy = dh / 2, dx = x - cx, dy = y - cy, rad = (dw < dh ? dw : dh) / 2;
+            int d2 = dx * dx + dy * dy;
+            if (d2 > rad * rad) continue;
+            if (d2 <= (rad / 5) * (rad / 5)) { r = 92; g = 64; b = 40; }
+            else if (d2 > (rad * 3 / 4) * (rad * 3 / 4)) { r = 22; g = 72; b = 32; }
+            else { r = 36; g = 118; b = 46; }
+        } else {
+            /* One floor only. The stories above this plan exist in 3D (glyph M or B), not in this picture. */
+            int edge = dw / 7; if (edge < 2) edge = 2;
+            int door = (y > dh - edge && x > dw * 2 / 5 && x < dw * 3 / 5);
+            int rim = (x < edge || x >= dw - edge || y < edge || y >= dh - edge);
+            r = wall[k][0] + 28; g = wall[k][1] + 24; b = wall[k][2] + 18;
+            if (r > 255) r = 255; if (g > 255) g = 255; if (b > 255) b = 255;
+            if (rim && !door) {
+                r = wall[k][0]; g = wall[k][1]; b = wall[k][2];
+                int win = (y > edge / 2 && y < edge + edge / 2) || (x > edge / 2 && x < edge);
+                if (win && (x / (edge + 2)) % 2 == 0) { r = glass[k][0]; g = glass[k][1]; b = glass[k][2]; }
+            } else if (door) { r = 48; g = 36; b = 28; }
+        }
+        put_px(x0 + x, y0 + y, r, g, b);
+    }
+}
+static void fill_cell(int tx, int ty, int r, int g, int b) {
+    int x0 = OX + tx * T, y0 = OY + ty * T;
+    for (int y = 0; y < T; y++) { int Y = y0 + y; if (Y < 0 || Y >= FH) continue;
+        for (int x = 0; x < T; x++) { int X = x0 + x; if (X < 0 || X >= FW) continue;
+            unsigned char *q = fr + ((size_t)Y * FW + X) * 4; q[0] = (unsigned char)r; q[1] = (unsigned char)g; q[2] = (unsigned char)b; q[3] = 255; } }
+}
+static void kind_rgb(const char *k, int *r, int *g, int *b) {
+    *r = 90; *g = 90; *b = 90;
+    if (!strcmp(k, "body")) { *r = 70; *g = 74; *b = 82; }
+    else if (!strcmp(k, "wheel")) { *r = 28; *g = 28; *b = 28; }
+    else if (!strcmp(k, "engine")) { *r = 190; *g = 48; *b = 40; }
+    else if (!strcmp(k, "glass")) { *r = 140; *g = 190; *b = 220; }
+    else if (!strcmp(k, "door")) { *r = 40; *g = 90; *b = 170; }
+    else if (!strcmp(k, "seat")) { *r = 150; *g = 96; *b = 48; }
+    else if (!strcmp(k, "roof")) { *r = 50; *g = 52; *b = 58; }
+    else if (!strcmp(k, "light")) { *r = 240; *g = 210; *b = 50; }
+    else if (!strcmp(k, "head")) { *r = 220; *g = 176; *b = 140; }
+    else if (!strcmp(k, "limb")) { *r = 196; *g = 140; *b = 110; }
+}
+/* Top-down clay for the GAP rows: car frame/engine/roof and a person, from shared/brixels.pdl sockets. Crosswalk stripes are painted on the road. CDDA parts that exist are drawn on top of the matching kind when emoji is off. */
+static void draw_brixels(int ox, int oy) {
+    char gp[PATH_MAX]; snprintf(gp, sizeof gp, "%s/shared/brixels.pdl", HOUSE);
+    FILE *f = fopen(gp, "r"); if (!f) return;
+    char kind_of[16][24], kind_name[16][16]; int nk = 0, line_w[16], line_h[16];
+    char sock_name[24][24], sock_bx[24][24]; int sock_x[24], sock_y[24], ns = 0;
+    char line[256];
+    while (fgets(line, sizeof line, f)) {
+        if (!strncmp(line, "BRIXEL |", 8) && nk < 16) {
+            char id[24], kind[16]; int w, h, d;
+            if (sscanf(line, "BRIXEL | %23s | %15s | %d | %d | %d", id, kind, &w, &h, &d) == 5) {
+                snprintf(kind_of[nk], 24, "%s", id); snprintf(kind_name[nk], 16, "%s", kind); line_w[nk] = w; line_h[nk] = h; nk++;
+            }
+        } else if (!strncmp(line, "SOCKET |", 8) && ns < 24) {
+            char bx[24], name[24], typ[24], face[8]; int x, y, z;
+            if (sscanf(line, "SOCKET | %23s | %23s | %23s | %d | %d | %d | %7s", bx, name, typ, &x, &y, &z, face) == 7) {
+                snprintf(sock_bx[ns], 24, "%s", bx); snprintf(sock_name[ns], 24, "%s", name); sock_x[ns] = x; sock_y[ns] = y; ns++;
+            }
+        }
+    }
+    fclose(f);
+    int sc = T / 2; if (sc < 4) sc = 4;
+    /* car root at (ox, oy), person one sidewalk row above, a few tiles to the right */
+    for (int i = 0; i < nk; i++) {
+        int px = 0, py = 0, on_car = !strncmp(kind_of[i], "car_", 4);
+        if (!strcmp(kind_of[i], "car_frame")) { px = 0; py = 0; }
+        else if (on_car) {
+            for (int s = 0; s < ns; s++) if (!strcmp(sock_bx[s], "car_frame")) {
+                if ((!strcmp(kind_of[i], "car_wheel") && !strcmp(sock_name[s], "fl_wheel")) ||
+                    (!strcmp(kind_of[i], "car_engine") && !strcmp(sock_name[s], "engine_bay")) ||
+                    (!strcmp(kind_of[i], "car_windshield") && !strcmp(sock_name[s], "windshield_frame")) ||
+                    (!strcmp(kind_of[i], "car_door") && !strcmp(sock_name[s], "left_door")) ||
+                    (!strcmp(kind_of[i], "car_seat") && !strcmp(sock_name[s], "driver_seat")) ||
+                    (!strcmp(kind_of[i], "car_roof") && !strcmp(sock_name[s], "roof_mount")) ||
+                    (!strcmp(kind_of[i], "car_headlight") && !strcmp(sock_name[s], "left_headlight"))) { px = sock_x[s]; py = sock_y[s]; }
+            }
+        } else {
+            px = 10; py = -2;
+            for (int s = 0; s < ns; s++) if (!strcmp(sock_bx[s], "person_torso")) {
+                if ((!strcmp(kind_of[i], "person_head") && !strcmp(sock_name[s], "neck")) ||
+                    (!strcmp(kind_of[i], "person_arm") && !strcmp(sock_name[s], "left_shoulder")) ||
+                    (!strcmp(kind_of[i], "person_leg") && !strcmp(sock_name[s], "left_hip"))) { px = 10 + sock_x[s]; py = -2 + sock_y[s]; }
+            }
+            if (!strcmp(kind_of[i], "person_torso")) { px = 10; py = -2; }
+        }
+        int r, g, b; kind_rgb(kind_name[i], &r, &g, &b);
+        int x0 = OX + ox * T + px * sc, y0 = OY + oy * T + py * sc;
+        int dw = line_w[i] * sc, dh = line_h[i] * sc; if (dw < 2) dw = 2; if (dh < 2) dh = 2;
+        int is_wheel = !strcmp(kind_of[i], "car_wheel");
+        int is_glass = !strcmp(kind_of[i], "car_windshield");
+        int is_light = !strcmp(kind_of[i], "car_headlight");
+        int is_frame = !strcmp(kind_of[i], "car_frame");
+        for (int y = 0; y < dh; y++) { int Y = y0 + y; if (Y < 0 || Y >= FH) continue;
+            for (int x = 0; x < dw; x++) { int X = x0 + x; if (X < 0 || X >= FW) continue;
+                int pr = r, pg = g, pb = b, draw = 1;
+                if (is_wheel) {
+                    int cx = dw / 2, cy = dh / 2, dx = x - cx, dy = y - cy;
+                    int d2 = dx * dx + dy * dy, rad = (dw < dh ? dw : dh) / 2;
+                    if (d2 > rad * rad) draw = 0;
+                    else if (d2 < (rad / 3) * (rad / 3)) { pr = 150; pg = 150; pb = 146; }
+                    else if (d2 > (rad * 3 / 4) * (rad * 3 / 4)) { pr = 16; pg = 16; pb = 16; }
+                } else if (is_glass && x > dw / 6 && x < dw * 5 / 6 && y > dh / 5 && y < dh * 4 / 5 && x < dw / 3) { pr = 210; pg = 230; pb = 240; }
+                else if (is_light && x > dw / 5 && x < dw * 4 / 5 && y > dh / 5 && y < dh * 4 / 5) { pr = 255; pg = 244; pb = 180; }
+                else if (is_frame && y < dh / 5) { pr = r + 18; pg = g + 18; pb = b + 16; }
+                else if (is_frame && y > dh * 3 / 5 && y < dh * 3 / 5 + 2) { pr = r - 16; pg = g - 16; pb = b - 14; }
+                if (!draw) continue;
+                if (pr < 0) pr = 0; if (pg < 0) pg = 0; if (pb < 0) pb = 0;
+                if (pr > 255) pr = 255; if (pg > 255) pg = 255; if (pb > 255) pb = 255;
+                unsigned char *q = fr + ((size_t)Y * FW + X) * 4; q[0] = (unsigned char)pr; q[1] = (unsigned char)pg; q[2] = (unsigned char)pb; q[3] = 255; } }
+        if (!g_emoji && !strcmp(kind_of[i], "car_wheel")) cell_role("car_wheel", ox + px * sc / T, oy + py * sc / T, 1, 1);
+        if (!g_emoji && !strcmp(kind_of[i], "car_windshield")) cell_role("car_windshield_n", ox + px * sc / T, oy + py * sc / T, 1, 1);
+        if (!g_emoji && !strcmp(kind_of[i], "car_door")) cell_role("car_door", ox + px * sc / T, oy + py * sc / T, 1, 1);
+    }
+}
+
 /* RPG Maker autotiles (verified against the tsots maps: tile id = kind * 48 + shape, shape picked from the 8 neighbours of the same kind; all 8 present = shape 0; the 48 shapes are 4 quadrant pieces).
  * Same rule as _.monads/_.livedesk-taskbar/ops/tile_autotile.c's FLOOR_AUTOTILE_TABLE, computed per quadrant: for each corner look at its two adjacent sides and its diagonal. Pieces are 24 px
  * halves inside the kind's 2 x 3 tile block (bx,by = the block's top-left tile in the sheet). */
@@ -366,19 +644,45 @@ static void draw_over(const Room *rm) {
 static void render(void) {
     g_gr = vroom;
     for (int i = 0; i < FW * FH; i++) { fr[i * 4] = 14; fr[i * 4 + 1] = 14; fr[i * 4 + 2] = 18; fr[i * 4 + 3] = 255; }
-    Room *rm = &rooms[vroom]; char phase[40] = "day"; { char dp[PATH_MAX], db[64]; spath(dp, "daylight.txt"); read_file(dp, db, sizeof db); if (strstr(db, "night")) snprintf(phase, sizeof phase, "night"); else if (strstr(db, "dusk")) snprintf(phase, sizeof phase, "dusk"); else if (strstr(db, "dawn")) snprintf(phase, sizeof phase, "dawn"); }
-    if (rm->over) draw_over(rm); else if (rm->outdoor) {      /* sky = an RPG Maker parallax picked by the game clock; ground, path and trees are Outside tiles */
-        Sheet *sk = sheet("parallaxes", !strcmp(phase, "night") ? "StarlitSky" : (!strcmp(phase, "dusk") || !strcmp(phase, "dawn")) ? "Sunset" : "CloudySky1"); if (sk) blit(sk, 0, !strcmp(phase, "day") ? 330 : 120, COLS * T, 2 * T, OX, OY);
-        for (int x = 0; x < COLS; x++) { tile("Outside_A5", 2, 0, 1, 1, x, WALL_ROW); for (int y = TRIG_ROW; y < ROWS; y++) tile("Outside_A5", 0, 2, 1, 1, x, y); }
-        for (int i = 0; i < ndoor; i++) if (doors[i].room == vroom) for (int y = TRIG_ROW; y < ROWS - 1; y++) tile("Outside_A5", 1, 2, 1, 1, doors[i].tx, y);
+    Room *rm = &rooms[vroom]; art_refresh(); char phase[40] = "day"; { char dp[PATH_MAX], db[64]; spath(dp, "daylight.txt"); read_file(dp, db, sizeof db); if (strstr(db, "night")) snprintf(phase, sizeof phase, "night"); else if (strstr(db, "dusk")) snprintf(phase, sizeof phase, "dusk"); else if (strstr(db, "dawn")) snprintf(phase, sizeof phase, "dawn"); }
+    int cdda = g_art != 0;
+    if (rm->over) {
+        for (int y = 0; y < rm->rows; y++) for (int x = 0; x < rm->cols; x++) {
+            if (over_sea(rm, x, y)) { if (g_art == 2) fill_cell(x, y, 40, 70, 140); else if (!(cdda && cell_role("water", x, y, 1, 1))) draw_auto("World_A1", 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, OX + x * T, OY + y * T); }
+            else if (g_art == 2) fill_cell(x, y, 70, 120, 55); else if (!(cdda && cell_role("grass", x, y, 1, 1))) draw_auto("World_A2", 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, OX + x * T, OY + y * T);
+        }
+    } else if (rm->outdoor) {
+        for (int x = 0; x < COLS; x++) {
+            if (g_art == 2) fill_cell(x, WALL_ROW, 90, 70, 60); else if (!(cdda && cell_role("wall_brick", x, WALL_ROW, 1, 1))) tile("Outside_A5", 2, 0, 1, 1, x, WALL_ROW);
+            for (int y = TRIG_ROW; y < ROWS; y++) {
+                const char *role = (y == TRIG_ROW + 2) ? "road_yellow" : (y == TRIG_ROW + 1 || y == TRIG_ROW + 3) ? "sidewalk" : "grass";
+                if (g_art == 2) {
+                    if (y == TRIG_ROW + 2) fill_cell(x, y, 55, 55, 58);
+                    else if (y == TRIG_ROW + 1 || y == TRIG_ROW + 3) fill_cell(x, y, 150, 148, 142);
+                    else fill_cell(x, y, 70, 120, 55);
+                    if (y == TRIG_ROW + 2 && x >= 6 && x <= 8 && (x % 2 == 0)) fill_cell(x, y, 230, 230, 230);
+                } else if (!(cdda && cell_role(role, x, y, 1, 1))) tile("Outside_A5", 0, 2, 1, 1, x, y);
+            }
+        }
     } else
-    for (int y = 0; y < ROWS; y++) for (int x = 0; x < COLS; x++) { if (y == 0) tile("Inside_A5", 0, 0, 1, 1, x, y); else if (y == WALL_ROW) tile("Inside_A5", 1, 3, 1, 1, x, y); else tile("Inside_A5", rm->fc, rm->fr, 1, 1, x, y); }
-    Sheet *dr = sheet("characters", "!Door1");                                  /* the wood panel door: closed frame of the 4th door object */
-    for (int i = 0; i < ndoor; i++) if (doors[i].room == vroom && !rm->over) { blit(dr, 0, 192, S48, S48, OX + doors[i].tx * T, OY + doors[i].ty * T); if (!rm->outdoor) tile("Inside_A5", 0, 6, 1, 1, doors[i].tx, doors[i].ty + 1); }
-    for (int i = 0; i < nscen; i++) if (scen[i].room == vroom) tile(scen[i].sheet, scen[i].c, scen[i].r, scen[i].w, scen[i].h, scen[i].x, scen[i].y);
+    for (int y = 0; y < ROWS; y++) for (int x = 0; x < COLS; x++) {
+        if (y == 0 || y == WALL_ROW) { if (g_art == 2) fill_cell(x, y, 90, 70, 60); else if (!(cdda && cell_role("wall_brick", x, y, 1, 1))) tile("Inside_A5", y == 0 ? 0 : 1, y == 0 ? 0 : 3, 1, 1, x, y); }
+        else if (g_art == 2) fill_cell(x, y, 120, 110, 96); else if (!(cdda && cell_role("floor", x, y, 1, 1))) tile("Inside_A5", rm->fc, rm->fr, 1, 1, x, y);
+    }
+    for (int i = 0; i < ndoor; i++) if (doors[i].room == vroom && !rm->over) {
+        if (g_art == 2) fill_cell(doors[i].tx, doors[i].ty, 120, 80, 40);
+        else if (!(cdda && cell_role("door_closed", doors[i].tx, doors[i].ty, 1, 1))) { Sheet *dr = sheet("characters", "!Door1"); blit(dr, 0, 192, S48, S48, OX + doors[i].tx * T, OY + doors[i].ty * T); }
+    }
+    for (int i = 0; i < nscen; i++) if (scen[i].room == vroom) {
+        if (g_art == 2) { paint_scenery(&scen[i], i); continue; }
+        if (cdda && !strcmp(scen[i].sheet, "Outside_B") && cell_role("tree", scen[i].x, scen[i].y, scen[i].w, scen[i].h)) continue;
+        tile(scen[i].sheet, scen[i].c, scen[i].r, scen[i].w, scen[i].h, scen[i].x, scen[i].y);
+    }
     int idx[MAXP], n = 0; for (int i = 0; i < npl; i++) if (pl[i].room == vroom) idx[n++] = i;
     for (int a = 0; a < n; a++) for (int b = a + 1; b < n; b++) { Placed *p = &pl[idx[a]], *q = &pl[idx[b]]; int ka = (!cat[p->item].wall) * 1000 + p->y + cat[p->item].h, kb = (!cat[q->item].wall) * 1000 + q->y + cat[q->item].h; if (kb < ka || (kb == ka && q->x < p->x)) { int t = idx[a]; idx[a] = idx[b]; idx[b] = t; } }
-    for (int a = 0; a < n; a++) { Placed *p = &pl[idx[a]]; Item *d = &cat[p->item]; tile(d->sheet, d->c, d->r, d->w, d->h, p->x, p->y); }
+    for (int a = 0; a < n; a++) { Placed *p = &pl[idx[a]]; Item *d = &cat[p->item]; if (g_art == 2) fill_cell(p->x, p->y, 160, 120, 70); else tile(d->sheet, d->c, d->r, d->w, d->h, p->x, p->y); }
+    if (g_art == 2 && rm->over) draw_brixels(6, 5);
+    else if (g_art == 2 && rm->outdoor) draw_brixels(1, TRIG_ROW + 2);
     static const int cyc[4] = {1, 0, 1, 2}; int order[NP + 1], no = 0;           /* walking frames 1,0,1,2; standing = middle frame. -1 = the trainer */
     for (int i = 0; i < nparty; i++) if (others[i].room == vroom) order[no++] = i;
     #define EY(k) ((k) < 0 ? tr.y : others[k].y)
@@ -386,7 +690,9 @@ static void render(void) {
     if (tr.room == vroom) order[no++] = -1;
     for (int a2 = 0; a2 < no; a2++) for (int b2 = a2 + 1; b2 < no; b2++) if (EY(order[b2]) < EY(order[a2])) { int tmp = order[a2]; order[a2] = order[b2]; order[b2] = tmp; }
     for (int k = 0; k < (g_bg_only ? 0 : no); k++) { int i = order[k]; Ent *e = i < 0 ? &tr : &others[i]; int col = e->steps ? cyc[e->steps % 4] : 1, ci = i < 0 ? 0 : party[i].idx;
-        blit(sheet("characters", i < 0 ? hero.sheet : party[i].sheet), (ci % 4) * 3 * S48 + col * S48, (ci / 4) * 4 * S48 + e->dir * S48, S48, S48, OX + e->x * T, OY + e->y * T - 8 * T / S48); }
+        if (g_art == 2 && blit_figure(i < 0 ? "voss" : party[i].id, e->x, e->y)) { }
+        else if (g_art == 2 || g_emoji) fill_cell(e->x, e->y, g_emoji ? 255 : 220, g_emoji ? 200 : 176, g_emoji ? 40 : 140);
+        else blit(sheet("characters", i < 0 ? hero.sheet : party[i].sheet), (ci % 4) * 3 * S48 + col * S48, (ci / 4) * 4 * S48 + e->dir * S48, S48, S48, OX + e->x * T, OY + e->y * T - 8 * T / S48); }
     if (!g_bg_only) { int tone[4]; if (read_tone(tone)) {      /* RPG Maker Tint Screen (events-hq tint_screen -> state/world/screen_state.pdl "value=r,g,b,gray"): add per channel, gray = pull toward the luminance; indoors it is only 40% */
         int od = rm->outdoor, pc = od ? 100 : 40, tr_ = tone[0] * pc / 100, tg_ = tone[1] * pc / 100, tb_ = tone[2] * pc / 100, gy = tone[3] * pc / 100;
         if (tr_ || tg_ || tb_ || gy) for (int y = OY + ((od && !rm->over) ? 2 * T : 0); y < OY + ROWS * T; y++) for (int x = OX; x < OX + COLS * T; x++) { unsigned char *q = fr + ((size_t)y * FW + x) * 4; int r = q[0], g = q[1], b = q[2], l = (r * 30 + g * 59 + b * 11) / 100;
@@ -418,7 +724,7 @@ static const char *pet_reply(const char *text) {
     if (strstr(s, "eat") || strstr(s, "food") || strstr(s, "table")) { g_rk = 1; g_ry = HAS("eat"); return g_ry ? "yum, a table to eat at" : "I have nowhere to eat."; }
     if (strstr(s, "book") || strstr(s, "read")) { g_rk = 2; g_ry = HAS("read"); return g_ry ? "I like reading." : "no books here."; }
     if (strstr(s, "piano") || strstr(s, "play")) { g_rk = 3; g_ry = HAS("play"); return g_ry ? "la la la" : "no piano..."; }
-    { static const char *dflt[4] = {"hmm, tell me more.", "I'm listening.", "interesting!", "okay, Harold."}; unsigned h = 0; for (const char *c = s; *c; c++) h = h * 31 + (unsigned char)*c;
+    { static const char *dflt[4] = {"hmm, tell me more.", "I'm listening.", "interesting!", "okay, Voss."}; unsigned h = 0; for (const char *c = s; *c; c++) h = h * 31 + (unsigned char)*c;
         const char *w[] = {"hi", "hey", "hello", "yo", "hiya", "howdy", "sup", NULL}; for (int k = 0; w[k]; k++) { size_t n = strlen(w[k]); if (!strncmp(s, w[k], n) && (s[n] == 0 || s[n] == ' ' || s[n] == '!' || s[n] == ',')) { snprintf(b, sizeof b, "hello %s!", g_speaker ? g_speaker : hero.name); return b; } }
         if (strchr(s, '?')) return "good question... let me think.";
         return dflt[h % 4]; }
@@ -547,7 +853,7 @@ static void clock_turn(void) { clock_paths(); if (!clock_ok() || !fexists(CFILE)
 /* ---------- outputs ---------- */
 static void out_all(const char *msg) {
     calc_view(); render();
-    char p[PATH_MAX]; spath(p, "scene.raw"); if (write_if_changed(p, fr, sizeof fr)) g_scene_ver++;
+    char p[PATH_MAX]; spath(p, "scene.raw"); if (write_if_changed(p, fr, sizeof fr)) { g_scene_ver++; char png[PATH_MAX]; spath(png, "scene.png"); stbi_write_png(png, FW, FH, 4, fr, FW * 4); }
     spath(p, "scene.receipt.txt"); { char b[64]; snprintf(b, sizeof b, "frame_w=%d\nframe_h=%d\n", FW, FH); write_if_changed(p, b, strlen(b)); }
     static char u[16384]; int o = 0;
 #define W(...) o += snprintf(u + o, sizeof u - o, __VA_ARGS__)
@@ -557,7 +863,7 @@ static void out_all(const char *msg) {
     { char cc[16]; flag_str("ctl", "pet", cc, sizeof cc); char who[40]; snprintf(who, sizeof who, "on: %s", !strcmp(cc, "player") ? "you" : party[active].name); W("interact_class=%s\ninteract_label=%s\nrp_h1=%s\nrp_h2=%s\ncontrol_label=control: %s\n", in ? "interact-active" : "", in ? who : "off", h1, h2, !strcmp(cc, "player") ? "player" : party[active].name); }
     W("run_on=%d\nrun_label=%s\nrun_cls=%s\n", run_on(), run_on() ? "GO started" : "STOP stopped", run_on() ? "ph-green" : "ph-red");
     W("mode_label=%s\nmode_cls=%s\n", rogue_mode() ? "[rogue] live" : "rogue [live]", rogue_mode() ? "ph-green" : "ph-red");
-    W("chat_visible=%s\nhb_visible=%s\nview_label=view %s\nchat_toggle_label=window %s\n", chat ? "1" : "", hb ? "1" : "", view, chat ? "on" : "off");
+    { char ab[16]; flag_str("art", "brixel", ab, sizeof ab); W("chat_visible=%s\nhb_visible=%s\nview_label=view %s\nchat_toggle_label=window %s\nart=%s\nemoji=%d\nart_label=art %s%s\n", chat ? "1" : "", hb ? "1" : "", view, chat ? "on" : "off", ab, flag_on("emoji", 0), ab, flag_on("emoji", 0) ? " + emoji" : ""); }
     { char cp[PATH_MAX], cb[4000]; spath(cp, "chat.txt"); read_tail(cp, cb, sizeof cb); char *ln[6] = {0}; int k = 0; for (char *l = strtok(cb, "\n"); l; l = strtok(NULL, "\n")) { ln[k % 6] = l; k++; } for (int i = 0; i < 6; i++) { int j = k - 6 + i; W("chat_%d=%s\n", i, j >= 0 ? ln[j % 6] : ""); } }
     W("n_shop=%d\n", ncat); for (int i = 0; i < ncat; i++) { char own[16] = ""; if (owned[i] > 0) snprintf(own, sizeof own, " x%d", owned[i]); W("shop_%d_label=%s %dc%s\nshop_%d_key=%s\n", i, cat[i].label, cat[i].price, own, i, cat[i].key); }
     char fl[160], cc[16], hid[24]; flag_str("ctl", "pet", cc, sizeof cc); int hs = !strcmp(cc, "player"); snprintf(hid, sizeof hid, "%s", hero.name); for (char *c = hid; *c; c++) if (*c >= 'A' && *c <= 'Z') *c += 32;
@@ -662,6 +968,19 @@ static void write_frame(const char *sh, int idx, int dir4, int pat) {
     for (int y = 0; y < 24; y++) for (int x = 0; x < 16; x++) { int px = sx + x * pw / 16, py = sy + y * ph / 24; memcpy(out + (y * 16 + x) * 4, s->px + ((size_t)py * s->w + px) * 4, 4); }
     FILE *f = fopen(p, "wb"); if (f) { fwrite(out, 1, sizeof out, f); fclose(f); }
 }
+/* The same 16x24 frame a pet uses, painted from the brixel front view. The 3D board extrudes every opaque pixel 8 deep. */
+static void write_brixel_frame(const char *name, int dir4, int pat) {
+    int n = figure_slot(name); if (n < 0 || !g_fig[n].ok) return;
+    char d[PATH_MAX], p[PATH_MAX]; snprintf(d, sizeof d, "%s/../tsots-characters/frames", ASSETS); mkdir(d, 0755);
+    static const int dc[4] = {2, 4, 6, 8};
+    snprintf(p, sizeof p, "%s/%s_0_%d_%d.rgba", d, name, dc[dir4 & 3], pat);
+    unsigned char out[16 * 24 * 4];
+    for (int y = 0; y < 24; y++) for (int x = 0; x < 16; x++) {
+        int sx = x * FIG_W / 16, sy = y * FIG_H / 24;
+        memcpy(out + (y * 16 + x) * 4, g_fig[n].img + (sy * FIG_W + sx) * 4, 4);
+    }
+    FILE *f = fopen(p, "wb"); if (f) { fwrite(out, 1, sizeof out, f); fclose(f); }
+}
 /* the average-ish colour of a sprite frame (the 3D box fallback colour in events.txt): the centre pixel of the frame */
 static void frame_rgb(Sheet *s, int idx, int dir4, unsigned char *px) {
     if (!s) return; int fx = (idx % 4) * 3 * S48 + S48 + S48 / 2, fy = (idx / 4) * 4 * S48 + dir4 * S48 + S48 / 2; if (fx < s->w && fy < s->h) memcpy(px, s->px + ((size_t)fy * s->w + fx) * 4, 4);
@@ -698,10 +1017,15 @@ static void write_room_sky(int r, const char *d) {
 static void write_room_events(int r) {
     char d[PATH_MAX], p[PATH_MAX], buf[4096]; int o = 0; static const int dc[4] = {2, 4, 6, 8};
     snprintf(d, sizeof d, "%s/pieces/system/maps/gta-hq/%s", PCHQ, rooms[r].id); mkdir(d, 0755);
-    for (int i = 0; i < nparty; i++) if (others[i].room == r) { int pat = others[i].steps % 3; write_frame(party[i].sheet, party[i].idx, others[i].dir, pat); unsigned char px[4] = {128, 128, 128, 255}; frame_rgb(sheet("characters", party[i].sheet), party[i].idx, others[i].dir & 3, px);
-        o += snprintf(buf + o, sizeof buf - o, "%d %d %d %d %d %s %d %d %d %c\n", others[i].x, others[i].y, px[0], px[1], px[2], party[i].sheet, party[i].idx, dc[others[i].dir & 3], pat, party[i].name[0] >= 'A' && party[i].name[0] <= 'Z' ? party[i].name[0] + 32 : (party[i].name[0] ? party[i].name[0] : 'm')); }
-    if (tr.room == r) { int pat = tr.steps % 3; write_frame(hero.sheet, 0, tr.dir, pat); unsigned char px[4] = {200, 60, 60, 255}; frame_rgb(sheet("characters", hero.sheet), 0, tr.dir & 3, px);
-        o += snprintf(buf + o, sizeof buf - o, "%d %d %d %d %d %s 0 %d %d @\n", tr.x, tr.y, px[0], px[1], px[2], hero.sheet, dc[tr.dir & 3], pat); }
+    art_refresh();
+    for (int i = 0; i < nparty; i++) if (others[i].room == r) { int pat = others[i].steps % 3; unsigned char px[4] = {220, 176, 140, 255};
+        if (g_art == 2) write_brixel_frame(party[i].id, others[i].dir, pat);
+        else { write_frame(party[i].sheet, party[i].idx, others[i].dir, pat); frame_rgb(sheet("characters", party[i].sheet), party[i].idx, others[i].dir & 3, px); }
+        o += snprintf(buf + o, sizeof buf - o, "%d %d %d %d %d %s %d %d %d %c\n", others[i].x, others[i].y, px[0], px[1], px[2], g_art == 2 ? party[i].id : party[i].sheet, g_art == 2 ? 0 : party[i].idx, dc[others[i].dir & 3], pat, party[i].name[0] >= 'A' && party[i].name[0] <= 'Z' ? party[i].name[0] + 32 : (party[i].name[0] ? party[i].name[0] : 'm')); }
+    if (tr.room == r) { int pat = tr.steps % 3; unsigned char px[4] = {220, 176, 140, 255};
+        if (g_art == 2) write_brixel_frame("voss", tr.dir, pat);
+        else { write_frame(hero.sheet, 0, tr.dir, pat); frame_rgb(sheet("characters", hero.sheet), 0, tr.dir & 3, px); }
+        o += snprintf(buf + o, sizeof buf - o, "%d %d %d %d %d %s 0 %d %d @\n", tr.x, tr.y, px[0], px[1], px[2], g_art == 2 ? "voss" : hero.sheet, dc[tr.dir & 3], pat); }
     snprintf(p, sizeof p, "%s/events.txt", d); write_if_changed(p, buf, o);
     write_room_sky(r, d);
     /* ascii_legend.txt: the ` (backtick) glyph view of this book. Rows are glyph|height|r|g|b|asset|name|char like terrain_legend.txt; events.txt carries a 10th column with each sprite's letter (@ = the trainer, the pet's lowercase initial) */
@@ -787,7 +1111,11 @@ static void export3d(char *msg, size_t cap) {
         g_gr = r; char glyph[MAXR][MAXC + 1]; int fs[MAXR][MAXC], ws[MAXR][MAXC]; unsigned char a[XT * XT * 4], b[XT * XT * 4], fl[XT * XT * 4]; nslot = 1; memset(slotpx[0], 0, XT * XT * 4);
         Room *rm = &rooms[r]; Sheet *a5i = sheet("tilesets", "Inside_A5"), *a5o = sheet("tilesets", "Outside_A5"), *dr = sheet("characters", "!Door1");
         unsigned char floorpx[XT * XT * 4], wallpx[XT * XT * 4], ceilpx[XT * XT * 4], doorpx[XT * XT * 4], pathpx[XT * XT * 4], matpx[XT * XT * 4];
-        if (rm->outdoor) { tile24(a5o, rm->fc * S48, rm->fr * S48, floorpx); tile24(a5o, 2 * S48, 0, wallpx); memcpy(ceilpx, wallpx, sizeof ceilpx); tile24(a5o, 1 * S48, 2 * S48, pathpx); }
+        art_refresh();
+        if (g_art == 2) {
+            for (int i = 0; i < XT * XT; i++) { floorpx[i*4]=120; floorpx[i*4+1]=110; floorpx[i*4+2]=96; floorpx[i*4+3]=255; wallpx[i*4]=90; wallpx[i*4+1]=70; wallpx[i*4+2]=60; wallpx[i*4+3]=255; ceilpx[i*4]=70; ceilpx[i*4+1]=72; ceilpx[i*4+2]=78; ceilpx[i*4+3]=255; pathpx[i*4]=150; pathpx[i*4+1]=148; pathpx[i*4+2]=142; pathpx[i*4+3]=255; }
+            for (int yy = 6; yy < 16; yy++) for (int xx = 6; xx < 18; xx++) { wallpx[(yy*XT+xx)*4]=160; wallpx[(yy*XT+xx)*4+1]=190; wallpx[(yy*XT+xx)*4+2]=200; }
+        } else if (rm->outdoor) { tile24(a5o, rm->fc * S48, rm->fr * S48, floorpx); tile24(a5o, 2 * S48, 0, wallpx); memcpy(ceilpx, wallpx, sizeof ceilpx); tile24(a5o, 1 * S48, 2 * S48, pathpx); }
         else { tile24(a5i, rm->fc * S48, rm->fr * S48, floorpx); tile24(a5i, 1 * S48, 3 * S48, wallpx); tile24(a5i, 0, 0, ceilpx); memcpy(pathpx, floorpx, sizeof pathpx); }
         tile24(dr, 0, 192, doorpx); tile24(a5i, 0, 6 * S48, matpx);
         for (int y = 0; y < ROWS; y++) for (int x = 0; x < COLS; x++) { glyph[y][x] = '.'; fs[y][x] = ws[y][x] = 0; }
@@ -805,11 +1133,17 @@ static void export3d(char *msg, size_t cap) {
             int sv = vroom; vroom = r; g_bg_only = 1; render(); g_bg_only = 0; vroom = sv; g_gr = r;
             for (int y = 0; y < rm->rows; y++) for (int x = 0; x < rm->cols; x++) { unsigned char cellpx[XT * XT * 4];
                 for (int yy = 0; yy < XT; yy++) for (int xx = 0; xx < XT; xx++) { int sx = OX + x * T + xx * T / XT, sy = OY + y * T + yy * T / XT; memcpy(cellpx + (yy * XT + xx) * 4, fr + ((size_t)sy * FW + sx) * 4, 4); }
-                int blocked = 0; for (int i = 0; i < nscen; i++) if (scen[i].room == r && x >= scen[i].x && x < scen[i].x + scen[i].w && y >= scen[i].y && y < scen[i].y + scen[i].h) blocked = 1;
-                glyph[y][x] = blocked ? 'T' : '.'; fs[y][x] = slot_of(cellpx); ws[y][x] = 0; } }
+                int blocked = 0, bkind = -1; for (int i = 0; i < nscen; i++) if (scen[i].room == r && x >= scen[i].x && x < scen[i].x + scen[i].w && y >= scen[i].y && y < scen[i].y + scen[i].h) blocked = 1;
+                char gch = '.'; if (blocked) { gch = 't'; int bk = 0; for (int i = 0; i < nscen; i++) if (scen[i].room == r && strcmp(scen[i].sheet, "Outside_B")) { if (x >= scen[i].x && x < scen[i].x + scen[i].w && y >= scen[i].y && y < scen[i].y + scen[i].h) { bkind = bk; gch = bk == 0 ? 'M' : 'B'; } bk++; } }
+                glyph[y][x] = gch; fs[y][x] = slot_of(cellpx); ws[y][x] = 0;
+                if (gch == 't') { unsigned char leaf[XT * XT * 4]; for (int yy = 0; yy < XT; yy++) for (int xx = 0; xx < XT; xx++) { int gi = (yy * XT + xx) * 4; int trunk = yy > XT * 2 / 3 && xx > XT / 3 && xx < XT * 2 / 3; int edge = xx < 2 || xx > XT - 3 || yy < 2; leaf[gi] = (unsigned char)(trunk ? 92 : edge ? 22 : 34); leaf[gi+1] = (unsigned char)(trunk ? 64 : edge ? 78 : 120); leaf[gi+2] = (unsigned char)(trunk ? 40 : edge ? 30 : 44); leaf[gi+3] = 255; } ws[y][x] = slot_of(leaf); }
+                if (bkind >= 0) { unsigned char face[XT * XT * 4]; int wr = 42, wg = 52, wb = 68, gr = 150, gg = 196, gb = 214; if (bkind == 1) { wr = 168; wg = 162; wb = 146; } else if (bkind == 2) { wr = 186; wg = 132; wb = 96; } else if (bkind == 3) { wr = 142; wg = 144; wb = 140; } else if (bkind >= 4) { wr = 168; wg = 112; wb = 88; } for (int yy = 0; yy < XT; yy++) for (int xx = 0; xx < XT; xx++) { int gi = (yy * XT + xx) * 4; int glass = yy > XT / 5 && yy < XT * 3 / 5 && xx > XT / 6 && xx < XT * 5 / 6; face[gi] = (unsigned char)(glass ? gr : wr); face[gi+1] = (unsigned char)(glass ? gg : wg); face[gi+2] = (unsigned char)(glass ? gb : wb); face[gi+3] = 255; } ws[y][x] = slot_of(face); }
+                /* The car is drawn at cell (6,5), 4 tiles by 2. 2D keeps that top-down picture. 3D gives those cells a body-high side so the car is a low block, not a flat decal. */
+                if (x >= 6 && x < 10 && y >= 5 && y < 7 && glyph[y][x] == '.') { unsigned char side[XT * XT * 4]; for (int yy = 0; yy < XT; yy++) for (int xx = 0; xx < XT; xx++) { int gi = (yy * XT + xx) * 4; int glass = yy < XT / 3; int wheel = yy > XT * 2 / 3 && (xx < XT / 5 || xx > XT * 4 / 5); side[gi] = (unsigned char)(wheel ? 20 : glass ? 140 : 70); side[gi+1] = (unsigned char)(wheel ? 20 : glass ? 190 : 74); side[gi+2] = (unsigned char)(wheel ? 22 : glass ? 220 : 82); side[gi+3] = 255; } glyph[y][x] = 'C'; ws[y][x] = slot_of(side); } } }
+        if (g_art == 2) for (int i = -1; i < nparty; i++) { Ent *e = i < 0 ? &tr : &others[i]; if (e->room != r || e->x < 0 || e->y < 0 || e->x >= COLS || e->y >= ROWS) continue; if (glyph[e->y][e->x] == 'B' || glyph[e->y][e->x] == 'M' || glyph[e->y][e->x] == 't' || glyph[e->y][e->x] == 'C') continue; (void)i; (void)e; }
         (void)fl;
         snprintf(p, sizeof p, "%s/map.txt", d); { FILE *f = fopen(p, "w"); if (f) { for (int y = 0; y < ROWS; y++) { glyph[y][COLS] = 0; fprintf(f, "%s\n", glyph[y]); } fclose(f); } }
-        snprintf(p, sizeof p, "%s/extrusion.pdl", d); { FILE *f = fopen(p, "w"); if (f) { fprintf(f, "SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\nMETA         | map_id             | gta-hq\nMETA         | desk_id            | %s\nMETA         | note               | %s (gta-hq house, exported from the live house)\nEXTRUDE      | W                  | 3\nEXTRUDE      | D                  | 3\nEXTRUDE      | T                  | 2\nEXTRUDE      | f                  | 1\nEXTRUDE      | default            | 0\n", rooms[r].id, rooms[r].name); fclose(f); } }
+        snprintf(p, sizeof p, "%s/extrusion.pdl", d); { FILE *f = fopen(p, "w"); if (f) { fprintf(f, "SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\nMETA         | map_id             | gta-hq\nMETA         | desk_id            | %s\nMETA         | note               | %s (gta-hq house, exported from the live house)\nEXTRUDE      | W                  | 3\nEXTRUDE      | D                  | 3\nEXTRUDE      | T                  | 2\nEXTRUDE      | M                  | 8\nEXTRUDE      | B                  | 4\nEXTRUDE      | t                  | 4\nEXTRUDE      | C                  | 2\nEXTRUDE      | P                  | 3\nEXTRUDE      | f                  | 1\nEXTRUDE      | default            | 0\n", rooms[r].id, rooms[r].name); fclose(f); } }
         int cols = 16, nrows = (nslot + cols - 1) / cols; int aw = cols * XT, ah = nrows * XT; unsigned char *atlas = calloc((size_t)aw * ah * 4, 1);
         for (int i = 0; i < nslot; i++) for (int y = 0; y < XT; y++) memcpy(atlas + ((size_t)((i / cols) * XT + y) * aw + (i % cols) * XT) * 4, slotpx[i] + y * XT * 4, XT * 4);
         snprintf(p, sizeof p, "%s/cells.rgba", d); { FILE *f = fopen(p, "wb"); if (f) { fwrite(atlas, 1, (size_t)aw * ah * 4, f); fclose(f); } } snprintf(p, sizeof p, "%s/cells.png", d); stbi_write_png(p, aw, ah, 4, atlas, aw * 4); free(atlas);
@@ -1002,7 +1336,11 @@ static int daemon_main(void) {
         if (in && enter_pressed_in_engine() && possess_at_xelector(msg, sizeof msg)) { dirty = 1; follow_pchq(); }
         n = poll_keys(h1, &o1, codes, 32); n += poll_keys(h2, &o2, codes + n, 32);     /* the offsets always advance; keys only act while INT is on */
         if (in && n) replay();
-        if (in && n) { char kl[300], one[16]; kl[0] = 0; for (int i = 0; i < n && i < 20; i++) { snprintf(one, sizeof one, "%d ", codes[i]); strncat(kl, one, sizeof kl - strlen(kl) - 1); } char kp[PATH_MAX]; spath(kp, "keys_seen.txt"); write_if_changed(kp, kl, strlen(kl)); }      /* last batch of codes, for debugging */
+        if (n) { char kl[300], one[16]; kl[0] = 0; for (int i = 0; i < n && i < 20; i++) { snprintf(one, sizeof one, "%d ", codes[i]); strncat(kl, one, sizeof kl - strlen(kl) - 1); } char kp[PATH_MAX]; spath(kp, "keys_seen.txt"); write_if_changed(kp, kl, strlen(kl)); }
+        for (int i = 0; i < n; i++) {
+            if (codes[i] == 96) { set_flag("emoji", flag_on("emoji", 0) ? "0" : "1"); snprintf(msg, sizeof msg, "emoji %s", flag_on("emoji", 0) ? "on" : "off"); dirty = 1; }
+            else if (codes[i] == 92) { char ab[16]; flag_str("art", "brixel", ab, sizeof ab); const char *nx = !strcmp(ab, "brixel") ? "rmmv" : !strcmp(ab, "rmmv") ? "cdda" : "brixel"; set_flag("art", nx); snprintf(msg, sizeof msg, "art %s", nx); dirty = 1; }
+        }
         { int r = run_on() + 2 * rogue_mode(); if (r != was_run) { was_run = r; clock_sync(); dirty = 1; } }
         if (in) for (int i = 0; i < n; i++) { int c = codes[i], dx = 0, dy = 0;
             if (c == 1002 || c == 200) dy = -1; else if (c == 1003 || c == 201) dy = 1; else if (c == 1000 || c == 202) dx = -1; else if (c == 1001 || c == 203) dx = 1;

@@ -2,11 +2,12 @@ SECTION | KEY | VALUE
 ------------------------------
 # gta-tiles.pdl - the GTA-shaped slice of the CDDA tileset (2026-10-12, claude), curated by hand over shared/cdda-tiles.pdl; every id below was checked to exist as a TILE row (the generator asserts it).
 # GTA | role | tile id | layer | note       role = what gta-hq asks for; tile id = a TILE id in cdda-tiles.pdl (draw the first TILE row; multitile ids have PART rows); layer = terrain < furniture < vehicle_part < mover.
-# GAP | what | why                         things a GTA scene needs that this tileset does NOT provide by name. They are the brixels / RPG Maker / emoji work, not a mapping error.
+# GAP | what | why                         things a GTA scene needs that this tileset does NOT provide by name. gta-hq art=brixel draws them from shared/brixels.pdl (coloured clay). Not a mapping error.
 GTA | road | t_pavement | terrain | plain asphalt; variants t_pavement2..4 are random picks (see PART t_pavement weight rows)
 GTA | road_yellow | t_pavement_y | terrain | asphalt with a yellow centre line
 GTA | sidewalk | t_sidewalk_center | terrain | multitile: PART t_sidewalk lists corner/edge/t_connection/end_piece sprites
 GTA | grass | t_grass | terrain | weighted variants t_grass_center..4 (PART t_grass)
+GTA | floor | t_floor_center | terrain | indoor floor; added so a room is not still an RPG Maker A5 sheet
 GTA | water | t_water_dp_center | terrain | deep water; multitile shore via PART
 GTA | bridge | t_bridge_center | terrain | multitile
 GTA | wall_brick | t_brick_wall_center | terrain | multitile building wall (PART t_brick_wall: unconnected corner edge t_connection end_piece)

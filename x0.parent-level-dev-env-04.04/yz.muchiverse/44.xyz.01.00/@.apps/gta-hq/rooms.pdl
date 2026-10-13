@@ -9,12 +9,12 @@ SECTION | KEY | VALUE
 # gta-hq (2026-10-12): ONE island city (an OVERMAP room: a world-map biome, tiles scaled to 32 px, island on a square ocean) + the five building interiors. Room kinds: normal (13 x 8 cells of 48 px with a wall strip), outdoor, over.
 # ROOM | id | name | floor_col | floor_row | over | cols | rows | tile_px | biome      (the overmap biome "worldmap" = World_A1 ocean + World_A2 sand/grass; the buildings are World_B tiles in SCENERY rows; later biomes: desert, snow ...)
 # DOOR | room | tx | dest | arrive_x | arrive_y | auto | ty    ty = the row of the door object (default 1 = the wall strip); its trigger is the cell below it. City doors sit on the building, the pet arrives next to the trigger.
-ROOM | city   | City         | 0 | 0 | over | 20 | 13 | 32 | worldmap
-ROOM | castle | Castle       | 3 | 4
-ROOM | bank   | Bank         | 1 | 4
-ROOM | store  | Store        | 1 | 2
-ROOM | school | School       | 0 | 2
-ROOM | hotel  | Hotel        | 2 | 4
+ROOM | city   | Los Vientos  | 0 | 0 | over | 20 | 13 | 32 | worldmap
+ROOM | castle | The Tower    | 3 | 4
+ROOM | bank   | The Vault    | 1 | 4
+ROOM | store  | The Corner   | 1 | 2
+ROOM | school | The Lot      | 0 | 2
+ROOM | hotel  | The Motel    | 2 | 4
 DOOR | city   | 9  | castle | 6 | 3 | 1 | 3
 DOOR | city   | 4  | bank   | 6 | 3 | 1 | 6
 DOOR | city   | 13 | store  | 6 | 3 | 1 | 6

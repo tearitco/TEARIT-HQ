@@ -417,6 +417,8 @@ static int range_key(int key, const char *froot) {
     return 0;
 }
 
+static char g_dump_sh[PATH_BUF];
+
 static int handle_one_key(int key) {
     char state_path[PATH_BUF];
     snprintf(state_path, sizeof(state_path), "%s/pieces/system/bv_state.txt", project_root);
@@ -789,12 +791,33 @@ static int handle_one_key(int key) {
     /* backslash (92) - 2D style toggle between the book's own painted frame ("scene": view.pdl scene_raw, rpg-pet draws its own picture) and the engine's tiles. Always lands in 2D. A book with no
      * scene file shows tiles either way. */
     if (key == 92) {
+        /* gta-hq: backslash cycles brixel -> rmmv -> cdda and stays on the painted scene. Other books keep the scene/tiles flip. The daemon reads "92" from its interact relay. */
+        if (strstr(focused_project_root, "/gta-hq/")) {
+            char relay[PATH_BUF];
+            snprintf(relay, sizeof(relay), "%s/../state/interact_relay.txt", focused_project_root);
+            FILE *rf = fopen(relay, "a");
+            if (rf) { fputs("92\n", rf); fclose(rf); }
+            write_kv_int(state_path, "render_mode", 0);
+            write_kv(state_path, "view_2d_style", "scene");
+            bump_screen_changed(project_root);
+            return 0;
+        }
         char cur[16] = "";
         read_kv_str(state_path, "view_2d_style", cur, sizeof(cur));
         if (!cur[0]) snprintf(cur, sizeof(cur), "scene");          /* unset = the book default (scene for a book that ships one), so a first press goes to tiles */
         write_kv_int(state_path, "render_mode", 0);
         write_kv(state_path, "view_2d_style", strcmp(cur, "scene") == 0 ? "tiles" : "scene");
         bump_screen_changed(project_root);
+        return 0;
+    }
+
+    /* 'p' (112) - house PNG dump. Same path as khtpm dump_frame_png():
+     * /tmp/entity-menu-frame.png. The board has no X window id of its
+     * own, so the bytes are the 2D frame it just painted. */
+    if (key == 'p' && g_dump_sh[0]) {
+        char cmd[PATH_BUF * 2];
+        snprintf(cmd, sizeof(cmd), "sh '%s' '%s' >/tmp/entity-menu-frame.log 2>&1", g_dump_sh, project_root);
+        if (system(cmd)) {}
         return 0;
     }
 
@@ -1347,6 +1370,11 @@ static int handle_one_key(int key) {
 int main(int argc, char **argv) {
     if (argc < 2) return 1;
     resolve_root();
+    { char exe[PATH_BUF]; if (realpath(argv[0], exe)) {
+        char *s = strrchr(exe, '/'); if (s) *s = 0;          /* .../ops/+x */
+        s = strrchr(exe, '/'); if (s) *s = 0;                /* .../ops */
+        snprintf(g_dump_sh, sizeof(g_dump_sh), "%s/dump_board_frame.sh", exe);
+    } }
     /* One process, N keys (P-6). key==0 = no-op tick, skip. */
     for (int ai = 1; ai < argc; ai++) {
         int key = atoi(argv[ai]);
