@@ -791,6 +791,17 @@ static int handle_one_key(int key) {
     /* backslash (92) - 2D style toggle between the book's own painted frame ("scene": view.pdl scene_raw, rpg-pet draws its own picture) and the engine's tiles. Always lands in 2D. A book with no
      * scene file shows tiles either way. */
     if (key == 92) {
+        /* gta-hq: backslash cycles brixel -> rmmv -> cdda and stays on the painted scene. Other books keep the scene/tiles flip. The daemon reads "92" from its interact relay. */
+        if (strstr(focused_project_root, "/gta-hq/")) {
+            char relay[PATH_BUF];
+            snprintf(relay, sizeof(relay), "%s/../state/interact_relay.txt", focused_project_root);
+            FILE *rf = fopen(relay, "a");
+            if (rf) { fputs("92\n", rf); fclose(rf); }
+            write_kv_int(state_path, "render_mode", 0);
+            write_kv(state_path, "view_2d_style", "scene");
+            bump_screen_changed(project_root);
+            return 0;
+        }
         char cur[16] = "";
         read_kv_str(state_path, "view_2d_style", cur, sizeof(cur));
         if (!cur[0]) snprintf(cur, sizeof(cur), "scene");          /* unset = the book default (scene for a book that ships one), so a first press goes to tiles */
