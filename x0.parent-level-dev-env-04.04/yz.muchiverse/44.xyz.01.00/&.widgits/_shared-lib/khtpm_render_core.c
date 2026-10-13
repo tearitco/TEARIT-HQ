@@ -362,6 +362,28 @@ static char g_seg_id[64] = "";
  * a stale range would survive on the same row. */
 static int g_seg_anchor = -1;
 
+/* ROW-RUN SELECTION (2026-10-12): a contiguous run of whole rows, the
+ * thing a browser user means by "select these paragraphs". Until now
+ * selection was a character range INSIDE one row (sel_anchor/cursor,
+ * seg_anchor/seg_idx), so "copy these three paragraphs" was impossible:
+ * copy took the focused row's label, or the span range within it.
+ *
+ * One nav index is the whole state: the row the run STARTED on. The
+ * running end is the focused row, g_focus_nav, which every other path
+ * already maintains - so there is no second copy of the cursor to keep
+ * honest. 0 means "no run".
+ *
+ * Nav indices, not Elem pointers, because the run is a DOCUMENT-ORDER
+ * range over rows that are laid out and therefore clickable: a row
+ * parked off screen has nav 0 and cannot be an endpoint of a selection a
+ * user made by clicking. It also means the run is contiguous in nav
+ * order, which is what a browser selects, chrome rows included.
+ *
+ * Dies with the tree on a reparse (cleared with the span cursor, right
+ * below): after a rebuild those numbers may address different rows, and a
+ * selection that silently re-points itself is worse than none. */
+static int g_sel_run_anchor = 0;
+
 /* INLINE SPANS step 8 (hover highlight, 2026-10-09): pointer hover
  * target. Same (nav, index, id) shape and lazy contract as the
  * keyboard cursor, but set by pointer motion instead of keys and

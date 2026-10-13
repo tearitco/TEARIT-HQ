@@ -152,6 +152,10 @@ static Elem *g_find_reveal = NULL;
 #define FIND_MAX_HITS 512
 static Elem *g_find_hits_list[FIND_MAX_HITS];
 int kh_find_is_armed(void);   /* draw_core's seam - see its definition */
+static void dock_nav_step(int dir);   /* declared far below; kh_row_run_extend()
+                                       * (row-run selection) needs it first */
+int kh_row_in_sel_run(const Elem *e);  /* ROW-RUN SELECTION (2026-10-12): draw_core's
+                                       * half of the run predicate - see its comment */
 int kh_find_count_in(Elem *container, Elem **out, int cap, int *n_out);
 static void redraw(void); /* REAL, forward declaration needed for dispatch()'s OPACITY_MINUS/OPACITY_PLUS handlers (NEW 2026-08-29 TASK 2) */
 static void kh_hq_reg_bump_marker(const char *new_line); /* fwd - MINIMIZE handler uses it, defined near redraw() (hq-windows change marker, grok handoff 2026-09-30) */
@@ -3259,6 +3263,10 @@ static int reparse_chtpm_if_changed(void) {
     /* INLINE SPANS step 10: the anchor borrows the cursor's identity -
      * a rebuild invalidates it identically. */
     g_seg_anchor = -1;
+    /* ROW-RUN SELECTION (2026-10-12): a run of nav indices points at
+     * rows in the tree being discarded, exactly like the anchor above -
+     * same reason, same place. */
+    g_sel_run_anchor = 0;
     /* INLINE SPANS step 12: dot-armed entry is one-shot intent, not
      * state that survives a rebuild. */
     g_seg_dot_armed = 0;
@@ -8257,9 +8265,41 @@ static int kh_elem_arrow_stop(Elem *e) {
         strcmp(e->id, g_default_active_scope_id) == 0) return 0;
     return 1;
 }
+/* ROW-RUN SELECTION, control side (2026-10-12): Shift+Up / Shift+Down
+ * extend a run of whole rows, the way a browser extends a block
+ * selection. The first shifted press ANCHORS on the row that had focus;
+ * every later one moves the running end, which is just the focused row.
+ *
+ * Returns 1 when it consumed the key, so the caller can leave the
+ * ordinary row stepping alone.
+ *
+ * Deliberately NOT here: shift-click (the click path would need the
+ * modifier threaded through MOUSE_EVENT) and drag-across-rows. Arrows
+ * first, because they are the ones a keyboard-only user and the test
+ * relay can both actually reach today - MOUSE_EVENT carries no modifier
+ * field, so a shift-click is currently inexpressible outside a real X
+ * session. Said here rather than half-built.
+ *
+ * Wrapping is kh_nav_step()'s existing wrap (2026-09-27), so extending
+ * past the last row wraps to row 1 and the run becomes [1, anchor] -
+ * still a contiguous range in nav order, which is what the band paints.
+ * It is not "select nothing", which is the failure that would be worth
+ * engineering around. */
+static int kh_row_run_extend(int dir) {
+    if (g_focus_nav < 1 || g_focus_nav > g_n_nav) return 0;
+    if (g_sel_run_anchor <= 0) g_sel_run_anchor = g_focus_nav;
+    dock_nav_step(dir);
+    return 1;
+}
+
 static void kh_nav_step(int dir) {
     int prev, n;
     if (g_n_nav < 1) return;
+    /* ROW-RUN SELECTION (2026-10-12): moving the cursor WITHOUT shift ends
+     * the run - the same collapse any text field does when you click or
+     * arrow away from a selection. A run that survived would keep
+     * painting a band the user can no longer see how they made. */
+    if (!g_key_shift) g_sel_run_anchor = 0;
     /* REAL FIX 2026-09-27, direct user request ("loop around index
      * mod we wanted to do? it should loop both ways"): navigation now
      * wraps at both boundaries instead of clamping - going below 1
@@ -11485,6 +11525,16 @@ static void kh_write_ascii_frame(void) {
      * assert a match count. */
     if (kh_find_is_armed())
         fprintf(ms, "[FIND] query=\"%s\" %d of %d -- %s\n", g_find_query, g_find_at, g_find_hits, g_find_status);
+    /* ROW-RUN SELECTION (2026-10-12): mirrored like find, for the same
+     * reason - the suite (and an agent) needs the run's extent as state,
+     * not inferred from pixels. Only while it spans more than one row:
+     * "selected" with one row is indistinguishable from "focused". */
+    if (g_sel_run_anchor > 0 && g_focus_nav >= 1) {
+        int lo = g_sel_run_anchor < g_focus_nav ? g_sel_run_anchor : g_focus_nav;
+        int hi = g_sel_run_anchor < g_focus_nav ? g_focus_nav : g_sel_run_anchor;
+        if (hi > lo)
+            fprintf(ms, "[SEL] rows %d..%d (%d selected)\n", lo, hi, hi - lo + 1);
+    }
     fclose(ms);
 
     FILE *f = fopen(fpath, "w");
@@ -12256,6 +12306,21 @@ static void dock_nav_step(int dir) {
 }
 
 static void handle_key(KeySym ks, char ch) {
+    /* ROW-RUN SELECTION (2026-10-12): every key EXCEPT the two that build
+     * a run ends the run. Found by testing, not by reading: a plain digit
+     * nav moved focus without clearing the anchor, so the next Shift+Down
+     * extended from a row the user had never selected - the mirror read
+     * "rows 15..19" after two Shift+Downs from row 17.
+     *
+     * Hooking here rather than at each of the ~20 places that assign
+     * g_focus_nav is the point: a run must not outlive the user's
+     * attention, and "any other key" is the browser's own rule. The
+     * paths that move focus with NO key at all (layout clamping, a
+     * dock dropdown opening) are the documented exception - they do not
+     * renumber rows, so lo..hi still means what it meant. */
+    if (!(g_key_shift && (ks == XK_Up || ks == XK_Down)) &&
+        !(ch == 3 || ch == 24))          /* Ctrl+C / Ctrl+X CONSUME the run */
+        g_sel_run_anchor = 0;
     /* INLINE SPANS step 12: dot-armed link entry voids on any key but
      * the addressing digit itself or a re-arming dot. First statement,
      * so modal early-returns (confirm, close-combo, armed fields,
@@ -12494,6 +12559,38 @@ static void handle_key(KeySym ks, char ch) {
                 return;
             }
         }
+        /* ROW-RUN SELECTION (2026-10-12): a run of two or more whole
+         * rows copies as the JOINED text, one paragraph per line, which
+         * is what the user selected. A run of exactly one row is left to
+         * the paths above: for one row, "copy this row" and "copy this
+         * selection" are the same request and must not differ.
+         *
+         * A span selection on the focused row still wins, because it is
+         * strictly more specific than "the whole row". */
+        if (f && g_sel_run_anchor > 0 && g_focus_nav >= 1) {
+            int lo = g_sel_run_anchor < g_focus_nav ? g_sel_run_anchor : g_focus_nav;
+            int hi = g_sel_run_anchor < g_focus_nav ? g_focus_nav : g_sel_run_anchor;
+            if (hi > lo) {
+                size_t need = 1;
+                for (int i = lo; i <= hi && i <= g_n_nav; i++)
+                    need += strlen(g_nav[i - 1]->label) + 1;
+                char *joined = malloc(need);
+                if (joined) {
+                    size_t at = 0;
+                    for (int i = lo; i <= hi && i <= g_n_nav; i++) {
+                        const char *t = g_nav[i - 1]->label;
+                        size_t l = strlen(t);
+                        if (i > lo) joined[at++] = '\n';
+                        memcpy(joined + at, t, l);
+                        at += l;
+                    }
+                    joined[at] = '\0';
+                    kh_clipboard_copy(joined);
+                    free(joined);
+                    return;
+                }
+            }
+        }
         if (f && f->label[0]) { kh_clipboard_copy(f->label); return; }
     }
     if (ch == 'p') { dump_frame_png(); return; }
@@ -12628,10 +12725,16 @@ static void handle_key(KeySym ks, char ch) {
          * Up anywhere, step rows exactly as before. */
         if (ks == XK_Left && g_focus_nav >= 1 && g_focus_nav <= g_n_nav &&
             seg_cursor_step(g_nav[g_focus_nav - 1], -1)) return;
+        /* ROW-RUN SELECTION (2026-10-12): Shift+Up, mirror of Shift+Down. */
+        if (g_key_shift && kh_row_run_extend(-1)) return;
         dock_nav_step(-1);
         return;
     }
     if (ks == XK_Down || ks == XK_Right) {
+        /* ROW-RUN SELECTION (2026-10-12): Shift+Down extends the run of
+         * whole rows, ahead of the span logic below (which is about
+         * characters inside one row). */
+        if (ks == XK_Down && g_key_shift && kh_row_run_extend(1)) return;
         /* step 10 mirror: Shift+Right extends at the first link span. */
         if (ks == XK_Right && g_key_shift && g_focus_nav >= 1 && g_focus_nav <= g_n_nav &&
             seg_anchor_extend(g_nav[g_focus_nav - 1], 1)) return;
@@ -14325,6 +14428,14 @@ static int kh_input_offset_at_click(Elem *e, int px, int py) {
 }
 
 static void popup_handle_click(int px, int py) {
+    /* ROW-RUN SELECTION (2026-10-12): a click ends the run. This is the
+     * single choke point for BOTH the relayed MOUSE_EVENT and a real X
+     * button press (both call this), so there is no path where a click
+     * leaves a stale anchor behind. Shift-click, which should EXTEND the
+     * run, is not built yet: MOUSE_EVENT carries no modifier field, so
+     * it is inexpressible outside a real X session - said in
+     * kh_row_run_extend()'s own comment rather than faked. */
+    g_sel_run_anchor = 0;
     g_bar_click_x = -1; /* fresh frame: no pending bar click until the
                          * bar-specific hit-test below arms one */
     /* INLINE SPANS step 10: a click is a plain (collapsed) move - it

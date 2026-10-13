@@ -1146,6 +1146,30 @@ static int kh_find_row_is_match(const Elem *e) {
 }
 int kh_find_is_armed(void) { return kh_find_active(); }
 
+/* ROW-RUN SELECTION, draw side (2026-10-12): is this row inside the
+ * contiguous run the user is selecting? Pure arithmetic on the two nav
+ * indices the renderer owns (the anchor and the focused row), so the
+ * draw pass asks one question per row and holds no state of its own.
+ * A run of one row answers true for that row alone - which is why the
+ * suite distinguishes "selected several rows" from "highlighted one" by
+ * the band spanning several visual rows, not by this predicate. */
+int kh_row_in_sel_run(const Elem *e) {
+    if (!e || g_sel_run_anchor <= 0 || g_focus_nav < 1) return 0;
+    int lo = g_sel_run_anchor < g_focus_nav ? g_sel_run_anchor : g_focus_nav;
+    int hi = g_sel_run_anchor < g_focus_nav ? g_focus_nav : g_sel_run_anchor;
+    return e->nav_index >= lo && e->nav_index <= hi;
+}
+
+/* Fill a selection band behind one visual line of text. Same colour as
+ * the in-row span selection (#2f5f8f) because it IS a selection to the
+ * user; drawn before the glyphs so the text stays readable on top, the
+ * same order the span band and the find band already use. */
+static void sel_band_fill(Drawable d, GC gc, int x, int y, int w, int h) {
+    if (w <= 0 || h <= 0) return;
+    XSetForeground(dpy, gc, alloc_pixel("#2f5f8f"));
+    XFillRectangle(dpy, d, gc, x, y, (unsigned)w, (unsigned)h);
+}
+
 /* Count matches over a WHOLE scroll region, not just the rows laid out
  * right now.
  *
@@ -2383,6 +2407,14 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                         XFillRectangle(dpy, buf, gc, hx, ty - font->ascent, (unsigned)hw, (unsigned)line_h);
                     }
                 }
+                if (kh_row_in_sel_run(e)) {
+                    /* the row's own right edge, not the wrap width: the
+                     * band should read as "this row is selected", which
+                     * is what a browser paints, and a band that stops at
+                     * the last glyph looks like a text selection. */
+                    int rw = e->x + e->w - text_x;
+                    sel_band_fill(buf, gc, text_x, ty - font->ascent, rw, line_h);
+                }
                 draw_text_emoji(font, &col, text_x, ty, row_buf);
                 if (cursor_off >= 0) {
                     int row_start_off = (int)(sp - shown_label);
@@ -2954,6 +2986,30 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                 } else {
                     snprintf(line_buf, sizeof(line_buf), "%.*s", cut, p);
                 }
+                /* ROW-RUN SELECTION (2026-10-12): the band for a selected
+                 * row goes on EVERY visual line of that row, drawn
+                 * before the glyphs so the text stays readable - the same
+                 * order the in-row span band and the find band use.
+                 *
+                 * This is the site that actually paints a content
+                 * paragraph. The two other band sites in this function
+                 * (the span-wrap path and the single-line path) cover
+                 * link rows and single-line rows respectively; a plain
+                 * multi-line <text> row takes THIS one, which is why the
+                 * first version of this feature painted nothing at all
+                 * on an article while looking perfectly correct on a
+                 * one-line row - found by measuring pixels, not by
+                 * reading the diff.
+                 *
+                 * The drawable is wrap_target_buf, NOT `buf`: this block
+                 * declares its own `char buf[]` for the text being
+                 * wrapped, which shadows the Pixmap `buf` for the rest
+                 * of the block (see the capture just above it). */
+                if (kh_row_in_sel_run(e)) {
+                    int band_h = font->ascent + (font->descent > 0 ? font->descent : 2);
+                    int rw = e->x + e->w - badge_label_x;
+                    sel_band_fill(wrap_target_buf, gc, badge_label_x, ty - font->ascent, rw, band_h);
+                }
                 /* FIND IN PAGE (2026-10-12): paint the match band
                  * behind the glyphs on THIS visual row only, clipped to
                  * the row's own span and measured with the same
@@ -3063,6 +3119,11 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                     XFillRectangle(dpy, buf, gc, badge_label_x + pre.width,
                                    ty - font->ascent, (unsigned)hw, (unsigned)band_h);
                 }
+            }
+            if (kh_row_in_sel_run(e)) {
+                int band_h = font->ascent + (font->descent > 0 ? font->descent : 2);
+                int rw = e->x + e->w - badge_label_x;
+                sel_band_fill(buf, gc, badge_label_x, ty - font->ascent, rw, band_h);
             }
             draw_text_emoji(font, &col, badge_label_x, ty, draw_label);
             /* REAL, NEW 2026-09-05 (CLI_IO-CURSOR-AND-TEXT_AREA-
