@@ -337,14 +337,17 @@ static int ktb_load_sample(const char *house_root) {
         fclose(f); } }
     { int hot = 0; for (int z = 0; z < 16; z++) { char tp[96]; snprintf(tp, sizeof(tp), "/sys/class/thermal/thermal_zone%d/temp", z); FILE *f = fopen(tp, "r"); if (!f) continue; int mt = 0; if (fscanf(f, "%d", &mt) == 1 && mt / 1000 > hot) hot = mt / 1000; fclose(f); } temp = hot; }
     if (win_tick++ % 2 == 0) { int cnt = 0; DIR *d = opendir("/proc"); if (d) { struct dirent *e; while ((e = readdir(d))) { if (e->d_name[0] < '1' || e->d_name[0] > '9') continue;
-            char cp[300], cm[32] = ""; snprintf(cp, sizeof(cp), "/proc/%s/comm", e->d_name); FILE *f = fopen(cp, "r"); if (!f) continue; if (fgets(cm, sizeof(cm), f)) { cm[strcspn(cm, "\n")] = 0; if (!strcmp(cm, "khtpm_core_rend")) cnt++; } fclose(f); }
+            char cp[300], cm[32] = ""; snprintf(cp, sizeof(cp), "/proc/%s/comm", e->d_name); FILE *f = fopen(cp, "r"); if (!f) continue; if (fgets(cm, sizeof(cm), f)) { cm[strcspn(cm, "\n")] = 0; if (!strcmp(cm, "khtpm_core_rend")) {
+                /* the header and the hotbar are always open: they are not "too many windows" (owner 2026-10-12: red at 10% CPU, the count sat at 4-5 with only the always-on bars and two boards) */
+                char kp[300], ka[1024] = ""; snprintf(kp, sizeof(kp), "/proc/%s/cmdline", e->d_name); FILE *kf = fopen(kp, "r"); if (kf) { size_t kn = fread(ka, 1, sizeof(ka) - 1, kf); fclose(kf); for (size_t ki = 0; ki < kn; ki++) if (!ka[ki]) ka[ki] = ' '; ka[kn] = 0; }
+                if (!strstr(ka, "khtpm_strip_header") && !strstr(ka, "hotbar-desk.xhtpm")) cnt++; } } fclose(f); }
         closedir(d); wins = cnt; } }
-    int wl = 6, cl = 85, tl = 80; { char pdl[KTB_PATH_BUF], v[16]; snprintf(pdl, sizeof(pdl), "%s/#.desktop/livedesk_taskbar.pdl", house_root);
+    int wl = 7, cl = 85, tl = 80; { char pdl[KTB_PATH_BUF], v[16]; snprintf(pdl, sizeof(pdl), "%s/#.desktop/livedesk_taskbar.pdl", house_root);
         v[0] = 0; read_key_value(pdl, "warn_windows", v, sizeof(v)); if (v[0]) wl = atoi(v); v[0] = 0; read_key_value(pdl, "warn_cpu", v, sizeof(v)); if (v[0]) cl = atoi(v); v[0] = 0; read_key_value(pdl, "warn_temp", v, sizeof(v)); if (v[0]) tl = atoi(v); }
     int cp5 = (cpu + 2) / 5 * 5; if (cp5 > 100) cp5 = 100;
-    /* hysteresis (owner: the top bar flickered when the CPU hovered at the limit): once warning, stay warning until every figure is clearly below its limit (10 points / 2 windows / 5 degrees lower) */
+    /* hysteresis (owner: the top bar flickered when the CPU hovered at the limit): once warning, stay warning until every figure is clearly below its limit (10 points / 2 windows / 5 degrees lower; windows = the open windows other than the header and the hotbar) */
     int warn = (wl > 0 && wins >= wl) || (cl > 0 && cpu >= cl) || (tl > 0 && temp >= tl);
-    if (!warn && g_load_warn) warn = (wl > 0 && wins >= wl - 1) || (cl > 0 && cpu >= cl - 10) || (tl > 0 && temp >= tl - 5);
+    if (!warn && g_load_warn) warn = (wl > 0 && wins >= wl - 2) || (cl > 0 && cpu >= cl - 10) || (tl > 0 && temp >= tl - 5);
     char lab[96]; snprintf(lab, sizeof(lab), warn ? "!%%%d" : "%%%d", cp5);      /* just the number (owner: "%<#>" next to the pid); the warning reasons (windows, temperature) only turn it red */
     /* Return bits: 1 = the label changed (reported at most every 10 s: the windows follow it through the load marker), 2 = the warning flipped (reported at once). The dock header is republished ONLY on bit 2: a
      * republish of the whole strip every 2 s made the top bar flicker (2026-10-12 owner bug), so its % follows the existing once-a-minute datetime publish. */
