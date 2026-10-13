@@ -401,13 +401,58 @@ static void art_refresh(void) {
     g_art = !strcmp(b, "rmmv") ? 0 : !strcmp(b, "brixel") ? 2 : 1;
     g_emoji = flag_on("emoji", 0);
 }
-/* Top-down of the standing-person voxel (emoji 1F9CD, 16x16 RGBA after the header). The player only. Crew stay blocks until they get their own csv. */
+/* Voss stands in the cell. shared/brixels/voss-front.txt is 32x48 named parts (hair, brow, eye, pupil, nose, mouth, lapel, shirt, arms, pants, shoes). Feet sit on the bottom of the cell. */
+#define VOSS_W 32
+#define VOSS_H 48
+static void voss_rgb(char c, int *r, int *g, int *b, int *a) {
+    *a = 255; *r = 0; *g = 0; *b = 0;
+    if (c == '.') *a = 0;
+    else if (c == 'H') { *r = 28; *g = 22; *b = 18; }
+    else if (c == 'h') { *r = 62; *g = 48; *b = 36; }
+    else if (c == 'S') { *r = 214; *g = 166; *b = 130; }
+    else if (c == 's') { *r = 176; *g = 124; *b = 96; }
+    else if (c == 'B') { *r = 42; *g = 32; *b = 26; }
+    else if (c == 'W') { *r = 236; *g = 232; *b = 220; }
+    else if (c == 'e') { *r = 24; *g = 28; *b = 34; }
+    else if (c == 'N') { *r = 168; *g = 112; *b = 86; }
+    else if (c == 'M') { *r = 150; *g = 72; *b = 68; }
+    else if (c == 'J') { *r = 36; *g = 48; *b = 72; }
+    else if (c == 'j') { *r = 22; *g = 28; *b = 44; }
+    else if (c == 'T') { *r = 214; *g = 214; *b = 208; }
+    else if (c == 'C') { *r = 186; *g = 186; *b = 178; }
+    else if (c == 'A') { *r = 214; *g = 166; *b = 130; }
+    else if (c == 'P') { *r = 42; *g = 58; *b = 86; }
+    else if (c == 'p') { *r = 28; *g = 38; *b = 58; }
+    else if (c == 'O') { *r = 28; *g = 28; *b = 30; }
+    else if (c == 'o') { *r = 12; *g = 12; *b = 14; }
+    else *a = 0;
+}
 static int blit_player_voxel(int tx, int ty) {
-    static unsigned char img[16 * 16 * 4]; static int loaded = 0, ok = 0;
-    if (!loaded) { loaded = 1; char p[PATH_MAX]; snprintf(p, sizeof p, "%s/&.widgits/board-viewer/pieces/registry/emoji_assets/1F9CD/voxels_16.csv", HOUSE); FILE *f = fopen(p, "r"); if (f) { char line[80]; int n = 0; while (n < 256 && fgets(line, sizeof line, f)) { int r, g, b, a; if (sscanf(line, "%d,%d,%d,%d", &r, &g, &b, &a) != 4) continue; img[n*4] = (unsigned char)r; img[n*4+1] = (unsigned char)g; img[n*4+2] = (unsigned char)b; img[n*4+3] = (unsigned char)a; n++; } fclose(f); ok = n == 256; } }
+    static unsigned char img[VOSS_W * VOSS_H * 4]; static int loaded = 0, ok = 0;
+    if (!loaded) {
+        loaded = 1;
+        char p[PATH_MAX]; snprintf(p, sizeof p, "%s/shared/brixels/voss-front.txt", HOUSE);
+        FILE *f = fopen(p, "r"); if (f) {
+            char line[80]; int y = 0;
+            while (y < VOSS_H && fgets(line, sizeof line, f)) {
+                if (line[0] == '#' || line[0] == '\n') continue;
+                for (int x = 0; x < VOSS_W && line[x] && line[x] != '\n'; x++) {
+                    int r, g, b, a; voss_rgb(line[x], &r, &g, &b, &a);
+                    int i = (y * VOSS_W + x) * 4; img[i] = (unsigned char)r; img[i+1] = (unsigned char)g; img[i+2] = (unsigned char)b; img[i+3] = (unsigned char)a;
+                }
+                y++;
+            }
+            fclose(f); ok = y >= 40;
+        }
+    }
     if (!ok) return 0;
-    int x0 = OX + tx * T, y0 = OY + ty * T;
-    for (int y = 0; y < T; y++) for (int x = 0; x < T; x++) { int X = x0 + x, Y = y0 + y; if (X < 0 || Y < 0 || X >= FW || Y >= FH) continue; int sx = x * 16 / T, sy = y * 16 / T; unsigned char *a = img + (sy * 16 + sx) * 4; if (!a[3]) continue; unsigned char *q = fr + ((size_t)Y * FW + X) * 4; q[0] = a[0]; q[1] = a[1]; q[2] = a[2]; q[3] = 255; }
+    int dw = T, dh = T * VOSS_H / VOSS_W; if (dh < 36) dh = 36;
+    int x0 = OX + tx * T, y0 = OY + (ty + 1) * T - dh;
+    for (int y = 0; y < dh; y++) for (int x = 0; x < dw; x++) {
+        int X = x0 + x, Y = y0 + y; if (X < 0 || Y < 0 || X >= FW || Y >= FH) continue;
+        int sx = x * VOSS_W / dw, sy = y * VOSS_H / dh; unsigned char *a = img + (sy * VOSS_W + sx) * 4; if (!a[3]) continue;
+        unsigned char *q = fr + ((size_t)Y * FW + X) * 4; q[0] = a[0]; q[1] = a[1]; q[2] = a[2]; q[3] = 255;
+    }
     return 1;
 }
 static void fill_cell(int tx, int ty, int r, int g, int b) {
@@ -477,9 +522,27 @@ static void draw_brixels(int ox, int oy) {
         int r, g, b; kind_rgb(kind_name[i], &r, &g, &b);
         int x0 = OX + ox * T + px * sc, y0 = OY + oy * T + py * sc;
         int dw = line_w[i] * sc, dh = line_h[i] * sc; if (dw < 2) dw = 2; if (dh < 2) dh = 2;
+        int is_wheel = !strcmp(kind_of[i], "car_wheel");
+        int is_glass = !strcmp(kind_of[i], "car_windshield");
+        int is_light = !strcmp(kind_of[i], "car_headlight");
+        int is_frame = !strcmp(kind_of[i], "car_frame");
         for (int y = 0; y < dh; y++) { int Y = y0 + y; if (Y < 0 || Y >= FH) continue;
             for (int x = 0; x < dw; x++) { int X = x0 + x; if (X < 0 || X >= FW) continue;
-                unsigned char *q = fr + ((size_t)Y * FW + X) * 4; q[0] = (unsigned char)r; q[1] = (unsigned char)g; q[2] = (unsigned char)b; q[3] = 255; } }
+                int pr = r, pg = g, pb = b, draw = 1;
+                if (is_wheel) {
+                    int cx = dw / 2, cy = dh / 2, dx = x - cx, dy = y - cy;
+                    int d2 = dx * dx + dy * dy, rad = (dw < dh ? dw : dh) / 2;
+                    if (d2 > rad * rad) draw = 0;
+                    else if (d2 < (rad / 3) * (rad / 3)) { pr = 150; pg = 150; pb = 146; }
+                    else if (d2 > (rad * 3 / 4) * (rad * 3 / 4)) { pr = 16; pg = 16; pb = 16; }
+                } else if (is_glass && x > dw / 6 && x < dw * 5 / 6 && y > dh / 5 && y < dh * 4 / 5 && x < dw / 3) { pr = 210; pg = 230; pb = 240; }
+                else if (is_light && x > dw / 5 && x < dw * 4 / 5 && y > dh / 5 && y < dh * 4 / 5) { pr = 255; pg = 244; pb = 180; }
+                else if (is_frame && y < dh / 5) { pr = r + 18; pg = g + 18; pb = b + 16; }
+                else if (is_frame && y > dh * 3 / 5 && y < dh * 3 / 5 + 2) { pr = r - 16; pg = g - 16; pb = b - 14; }
+                if (!draw) continue;
+                if (pr < 0) pr = 0; if (pg < 0) pg = 0; if (pb < 0) pb = 0;
+                if (pr > 255) pr = 255; if (pg > 255) pg = 255; if (pb > 255) pb = 255;
+                unsigned char *q = fr + ((size_t)Y * FW + X) * 4; q[0] = (unsigned char)pr; q[1] = (unsigned char)pg; q[2] = (unsigned char)pb; q[3] = 255; } }
         if (!g_emoji && !strcmp(kind_of[i], "car_wheel")) cell_role("car_wheel", ox + px * sc / T, oy + py * sc / T, 1, 1);
         if (!g_emoji && !strcmp(kind_of[i], "car_windshield")) cell_role("car_windshield_n", ox + px * sc / T, oy + py * sc / T, 1, 1);
         if (!g_emoji && !strcmp(kind_of[i], "car_door")) cell_role("car_door", ox + px * sc / T, oy + py * sc / T, 1, 1);
