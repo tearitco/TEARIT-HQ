@@ -1,0 +1,65 @@
+<!-- tpmos-hq.xhtpm - a TPMOS frame in an x11-hq window (the khtpm renderer), instead of TPMOS's own GL mirror. A toy: toy.pdl + button.sh.
+     TPMOS parser writes pieces/display/current_frame.txt (one writer) and appends to pieces/display/frame_changed.txt; ops/+x/tpmos_hq.+x (C) follows that marker and writes
+     state/ui.txt (f0..f33 = the frame's first 34 lines, ANSI colour removed).
+     INPUT: TPMOS has its own key handler and orchestrator reader, so this window never decides what a key means. Click INT, then type: the window relays every raw key
+     (khtpm relay= attribute) and the op appends the same line TPMOS's keyboard plugin writes (KEY_PRESSED: code) to the keys file named in display.pdl. The send rows do the same for one named key.
+     Which backend, which TPMOS folder, which frame file: display.pdl. Static layout, shared khtpm_core_render.+x, zero renderer C.
+     RULES: no angle brackets inside comments. -->
+<window label="${title}" class="tpmos-hq database-window fixed-size managed user-resizable" vars="state/ui.txt">
+  <module src="@.apps/tpmos-hq/ops/+x/tpmos_hq.+x"/>
+  <page name="main">
+    <tabbar id="toolbar" class="tab-bar">
+      <tab id="tb-int" class="tab tp-int ${interact_class}" label="INT ${interact_label}" relay="${rp_h1},${rp_h2}" onclick="'${HOUSE}/@.apps/tpmos-hq/ops/+x/tpmos_hq.+x' int"/>
+    </tabbar>
+    <sidebar id="side" class="sidebar">
+      <text label="send one key to TPMOS" class="tp-quiet"/>
+      <item id="tk13" class="tp-key" label="send Enter (13)" action="'${HOUSE}/@.apps/tpmos-hq/ops/+x/tpmos_hq.+x' key 13"/>
+      <item id="tk27" class="tp-key" label="send Esc (27)" action="'${HOUSE}/@.apps/tpmos-hq/ops/+x/tpmos_hq.+x' key 27"/>
+      <item id="tk9" class="tp-key" label="send Tab (9)" action="'${HOUSE}/@.apps/tpmos-hq/ops/+x/tpmos_hq.+x' key 9"/>
+      <item id="tk8" class="tp-key" label="send Backspace (8)" action="'${HOUSE}/@.apps/tpmos-hq/ops/+x/tpmos_hq.+x' key 8"/>
+      <item id="tk1000" class="tp-key" label="send Left (1000)" action="'${HOUSE}/@.apps/tpmos-hq/ops/+x/tpmos_hq.+x' key 1000"/>
+      <item id="tk1001" class="tp-key" label="send Right (1001)" action="'${HOUSE}/@.apps/tpmos-hq/ops/+x/tpmos_hq.+x' key 1001"/>
+      <item id="tk1002" class="tp-key" label="send Up (1002)" action="'${HOUSE}/@.apps/tpmos-hq/ops/+x/tpmos_hq.+x' key 1002"/>
+      <item id="tk1003" class="tp-key" label="send Down (1003)" action="'${HOUSE}/@.apps/tpmos-hq/ops/+x/tpmos_hq.+x' key 1003"/>
+    </sidebar>
+    <panel id="frame_p" class="tp-panel">
+      <text id="fr0" label="${f0}" class="tp-line"/>
+      <text id="fr1" label="${f1}" class="tp-line"/>
+      <text id="fr2" label="${f2}" class="tp-line"/>
+      <text id="fr3" label="${f3}" class="tp-line"/>
+      <text id="fr4" label="${f4}" class="tp-line"/>
+      <text id="fr5" label="${f5}" class="tp-line"/>
+      <text id="fr6" label="${f6}" class="tp-line"/>
+      <text id="fr7" label="${f7}" class="tp-line"/>
+      <text id="fr8" label="${f8}" class="tp-line"/>
+      <text id="fr9" label="${f9}" class="tp-line"/>
+      <text id="fr10" label="${f10}" class="tp-line"/>
+      <text id="fr11" label="${f11}" class="tp-line"/>
+      <text id="fr12" label="${f12}" class="tp-line"/>
+      <text id="fr13" label="${f13}" class="tp-line"/>
+      <text id="fr14" label="${f14}" class="tp-line"/>
+      <text id="fr15" label="${f15}" class="tp-line"/>
+      <text id="fr16" label="${f16}" class="tp-line"/>
+      <text id="fr17" label="${f17}" class="tp-line"/>
+      <text id="fr18" label="${f18}" class="tp-line"/>
+      <text id="fr19" label="${f19}" class="tp-line"/>
+      <text id="fr20" label="${f20}" class="tp-line"/>
+      <text id="fr21" label="${f21}" class="tp-line"/>
+      <text id="fr22" label="${f22}" class="tp-line"/>
+      <text id="fr23" label="${f23}" class="tp-line"/>
+      <text id="fr24" label="${f24}" class="tp-line"/>
+      <text id="fr25" label="${f25}" class="tp-line"/>
+      <text id="fr26" label="${f26}" class="tp-line"/>
+      <text id="fr27" label="${f27}" class="tp-line"/>
+      <text id="fr28" label="${f28}" class="tp-line"/>
+      <text id="fr29" label="${f29}" class="tp-line"/>
+      <text id="fr30" label="${f30}" class="tp-line"/>
+      <text id="fr31" label="${f31}" class="tp-line"/>
+      <text id="fr32" label="${f32}" class="tp-line"/>
+      <text id="fr33" label="${f33}" class="tp-line"/>
+    </panel>
+    <footer id="statusbar" class="tp-footer">
+      <text label="${status_line}" class="tp-status"/>
+    </footer>
+  </page>
+</window>

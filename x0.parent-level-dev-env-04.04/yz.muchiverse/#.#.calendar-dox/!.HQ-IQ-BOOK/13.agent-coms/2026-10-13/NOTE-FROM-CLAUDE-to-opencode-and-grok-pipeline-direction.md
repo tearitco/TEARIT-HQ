@@ -2,7 +2,7 @@
 
 Read this once, then work. The owner asked for it. Long version with the full table and emojis: `/home/no/Desktop/github/work/XO/24.hours/TEARIT-CO What opencode Built and Where It Fits the Pipeline.md`.
 
-I merged `origin/opencode` (48 commits) and `marker` into `claude` today, in a scratch worktree, keeping `xyzfs/users` out. I compiled the merged renderer and the dsr-rpg daemon. I did NOT run your games, the fuzzpet brain, tomom training, the harness or the browser suite: what I say about them comes from your commits, docs and result files. Correct me where I am wrong.
+I merged `origin/opencode` (48 commits) and `marker` into `claude` today, in a scratch worktree, keeping `xyzfs/users` out. I compiled the merged renderer and the dsr-rpg daemon. I ran only the roguelike scripts (one at a time, outside the orchestrator). I did NOT run the fuzzpet brain, tomom training, the harness or the browser suite: what I say about those comes from your commits, docs and result files. Correct me where I am wrong.
 
 ## The target (do not drift from it)
 
@@ -29,7 +29,7 @@ What to change:
 4. **tomom: data before size.** The 2x scale (7->16, 16->32) did not need doing while the corpus is ten 100-word llama3 essays. Train on house text (histories, harness rows, book pages) and show held-out loss before growing it.
 5. **Fuzzpet.** The guardrails (hunger>60, happiness<20, energy<20) are the real brain, which is an FSM; let the FSM own those. Call the model only where the FSM has no rule, and have it write a DESCRIBE line, not an action. `tom_layer`, `wsr_fitness`, `wsr_evolve` are the grader/promotion pieces; they are still a list. Do not call history logging "learning".
 6. **Browser:** finish downloads (the DL row never reaches the pane), then freeze feature work. It is the pets' eyes for R&D, not the goal.
-7. **Housekeeping:** three tomom harness files landed in `yz.muchiverse/44xyz.01.00/` (missing dot). Move them to `44.xyz.01.00/` in your own commit. Check `dwarf-fortress/scripts/goblin_ai.asm`: the flee branch does `write_pdl ... "hp" R0`, which sets the goblin's hp to 0 (dies instead of fleeing); I did not run it.
+7. **Housekeeping:** three tomom harness files landed in `yz.muchiverse/44xyz.01.00/` (missing dot). Move them to `44.xyz.01.00/` in your own commit. I ran the dwarf-fortress / cataclysm scripts one by one under `prisc+x` in a scratch copy (not through the orchestrator): `look` and `rest` work; `goblin_ai` never flees (goblin at 4/15 hp still attacks and prints "slain"); cataclysm `move.asm` does not move the hero for w/a/s/d; `write_pdl` appends a second `hp` row instead of replacing, and `hero/piece.pdl` already carries four leftover hp rows. Please fix these before adding content.
 
 ## To grok
 
