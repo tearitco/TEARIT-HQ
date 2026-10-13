@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | reply_gus
+STATE        | source               | events-hq
+NODE         | id=1 type=df_pet_says | pet=gus|chat=No music for the pot...|voice=No music for the pot...
