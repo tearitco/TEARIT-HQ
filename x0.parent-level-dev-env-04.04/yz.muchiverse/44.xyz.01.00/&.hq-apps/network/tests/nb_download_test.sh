@@ -115,10 +115,21 @@ if [ -f "$DL/hello world.txt" ] && cmp -s "$DL/hello world.txt" "$WORK/want.txt"
 else
     fail "attachment not saved correctly; downloads dir: $(ls -A "$DL" 2>/dev/null | tr '\n' ' ')"
 fi
-if grep -q 'c_0_is_download=1' "$UI" && grep -q 'c_0_size=16' "$UI"; then
-    echo "PASS: the row reports it is a download, with the real size ($(grep -m1 'c_0_size=' "$UI"))"
+# NOT c_0 specifically: the TITLE row takes c_0 and the download lands on
+# the next index. Asserting c_0 is_download made a working feature look
+# broken - the row, its size and its path were all in ui.txt the whole time.
+DLROW="$(grep -m1 '_is_download=1' "$UI")"
+DLIDX="$(printf '%s' "$DLROW" | sed -n 's/^c_\([0-9]*\)_is_download=1/\1/p')"
+if [ -n "$DLIDX" ] && grep -q "c_${DLIDX}_size=18" "$UI"; then
+    echo "PASS: the row reports it is a download, with the real size ($(grep -m1 "c_${DLIDX}_size=" "$UI"))"
 else
-    fail "no download row with size: $(grep -m1 'c_0_' "$UI")"
+    fail "no download row with a size; keys: $(grep -oE 'c_[0-9]+_(kind|is_download)=' "$UI" | tr '\n' ' ')"
+fi
+if grep -q "c_${DLIDX}_path=.*hello world.txt" "$UI" && \
+   grep -q "c_${DLIDX}_text=Downloaded hello world.txt (18 bytes)" "$UI"; then
+    echo "PASS: the row shows the name, the size and the full path"
+else
+    fail "download row is missing its path or its shown text: $(grep -m1 "c_${DLIDX}_text=" "$UI")"
 fi
 if grep -q 'ATTACHED-BODY' "$UI"; then
     fail "the attachment body leaked into the pane as page text"
@@ -141,7 +152,7 @@ fi
 
 # ---- TYPE: no disposition, unrenderable type ---------------------------
 go /octet || fail "/octet never published"
-if [ -f "$DL/octet" ] && grep -q 'c_0_is_download=1' "$UI"; then
+if [ -f "$DL/octet" ] && grep -q '_is_download=1' "$UI"; then
     echo "PASS: an unrenderable type downloads even with no disposition header"
 else
     fail "octet-stream not downloaded; dir: $(ls -A "$DL" 2>/dev/null | tr '\n' ' ')"
@@ -157,7 +168,7 @@ fi
 
 # ---- CONTROL: an ordinary page is still a page -------------------------
 go /page || fail "/page never published"
-if grep -q 'c_0_is_download=1' "$UI"; then
+if grep -q '_is_download=1' "$UI"; then
     fail "a plain text/html page was turned into a download"
 else
     echo "PASS: an ordinary text/html page still renders as a page"
