@@ -3679,6 +3679,12 @@ static int click_focus_then_activate(Elem *hit) {
         g_focus_nav = hit->nav_index;
         return 1;
     }
+    if (window_is_dock() && strcmp(hit->id, "dd-search") == 0) {
+        /* the dropdown's search row: ONE click arms it (a text field has no "focus first, then fire" step; under click_two_step
+         * the first click only moved the highlight, so it never took the ^ arm or the keyboard - owner 2026-10-13). */
+        g_focus_nav = hit->nav_index;
+        return 1;
+    }
     /* Out-of-scope rows stay numbered and drawn, but a click must not
      * steal focus or fire - same as chtpm_parser.c is_navigable().
      * REAL FIX 2026-09-30 (live report: "tried opening pc-hq from toys
