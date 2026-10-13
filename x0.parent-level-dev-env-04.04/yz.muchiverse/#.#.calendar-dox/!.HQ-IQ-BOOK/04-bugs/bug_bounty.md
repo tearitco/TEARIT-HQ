@@ -2,7 +2,7 @@
 
 ---
 
-## FIXED 2026-10-13 (owner-confirmed jump; search arm pending re-check): livedesk top-bar dropdown - click snapped the highlight to row 1, and the search row did not take input
+## FIXED 2026-10-13 (owner-confirmed live): livedesk top-bar dropdown - click snapped the highlight to row 1, and the search row did not take input
 
 **Reported by the owner (via grok's note `13.agent-coms/2026-10-13/livedesk-dropdown-jump.txt`):** in a long top-bar menu, clicking a lower row or the search row lands the highlight there, then it snaps to the first row. After the first fix the owner confirmed the jump is gone, but the search row still did not show the `^` armed state and took no typing.
 
@@ -10,7 +10,10 @@
 1. `dock_poll_strip_state` applied the manager's cursor (always a header cell or a bottom-tab index, never a dropdown row) to `g_focus_nav` on the next strip republish; the dropdown clamp in `assign_nav_and_layout` then sent focus to `g_dock_drop_lo`. Fix (`fb52d16b3`): while focus is already inside the open menu, a manager cursor outside the menu's rows is ignored. The 6000 relay and the poll stay (skipping either killed arrow and number nav; grok reverted that as `ffdbca1fd`).
 2. The search row (`dd-search`, a synthetic `cli_io`) went through the click_two_step path: the first click only moved the highlight and relayed 6000+n, and `activate_focused()` (which arms a cli_io) never ran. Fix: `click_focus_then_activate` treats `dd-search` as a one-click target.
 
-**Still to confirm by hand:** click the search row once -> `^` shows and typing filters the list; Escape disarms; arrow and typed-number nav still work with the menu open.
+3. Typing disarmed the field after every key: the dock rebuilds its tree on each republish, and the restore step looked the armed field up by id in the new tree; `dd-search` is the static `g_dd_search_elem`, outside the tree, so the log said `REPARSE key=dd-search NOT_FOUND - ungrabbed`. Fix: the restore re-arms it by identity.
+4. A filter like "ch" left a blank menu: rows the search hid still took a `stack_counts` slot, so the visible matches were placed at their old list positions below the shrunken menu. Fix: visible rows stack by `open_idx`.
+
+**Confirmed by the owner live (2026-10-13):** click-jump gone, search row arms on one click, typing stays armed and filters.
 
 ---
 

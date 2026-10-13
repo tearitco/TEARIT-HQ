@@ -3025,6 +3025,11 @@ static int reparse_chtpm_if_changed(void) {
     kh_cli_io_reload(new_window);
     if (saved_input_key[0]) {
         Elem *reelem = kh_find_input_by_key(new_window, saved_input_key);
+        /* the dock dropdown's search field is the static g_dd_search_elem, never part of the parsed tree: it survives a rebuild
+         * as is, so re-arm it by identity. Without this every keypress was followed by a reparse that logged NOT_FOUND and
+         * released the keyboard (owner 2026-10-13: "auto escapes after every single input"). */
+        if (!reelem && window_is_dock() && strcmp(saved_input_key, "dd-search") == 0 && strcmp(g_dd_search_elem.tag, "cli_io") == 0)
+            reelem = &g_dd_search_elem;
         if (reelem) {
             kh_set_default_input_elem(reelem);
             char *rbuf = strcmp(reelem->tag, "text_area") == 0 ? reelem->text_area_buffer : reelem->input_buffer;
@@ -7508,7 +7513,12 @@ static int layout_dock_bar(Elem *page) {
                 open_idx++;
                 if (slot < 0) { c->x = 0; c->y = -100000; c->w = 0; c->h = 0; c->nav_index = 0; if (ki < n_stack_keys) stack_counts[ki]++; continue; }
                 stack_n = slot;
-            } else if (open && trigger) open_idx++;
+            } else if (open && trigger) {
+                /* rows the search filtered out already took a stack_counts slot, so stack_n would put the matches at their old
+                 * list positions - below the shrunken menu (typing "ch" left a blank menu, owner 2026-10-13). Stack the visible ones. */
+                stack_n = open_idx;
+                open_idx++;
+            }
             if (open && trigger) {
                 c->x = 0;
                 c->y = stack_n * DOCK_BAR_H;
