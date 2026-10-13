@@ -49,24 +49,34 @@ Draw order for the first port, until a later slice reads CDDA's real layer stack
 
 Connected terrain for the first port: if the id's JSON has `multitile: true`, pick the `additional_tiles` entry from the 4-neighbour mask of the **same terrain id**, using the suffix the JSON already lists. If the PNG for that suffix is missing, use the JSON's default `fg`. Do not port RPG Maker's 48-shape autotile table.
 
-Index to build once, as data, not at frame time: one pdl or text row per sprite id, `id | png path | w | h | offset_x | offset_y`. Walk the `pngs_*` tree. 14k files is a cache, written by a one-shot C op. The game reads the cache.
+The game does not read JSON. UltiCa's JSON is source material for one converter, the same way RPG Maker sheets are named from `rooms.pdl` (`ROOM |`, `SCENERY |`, `DOOR |` rows in `@.apps/dsr-rpg/rooms.pdl`) and the op never parses an RPG Maker project file at frame time. The converter writes house `.pdl`. After that, slices C, D, and E open the pdl only. JSON stays under `#.NNEST_ASSETS/` and is not copied into the app.
 
 **Dwarf Fortress today.** `44.xyz.01.00/201.dwarf-fortress/ARCHITECTURE.md`. Freeglut, one z-level, 48 by 48. Designations, jobs, stockpiles, BFS to an adjacent stand tile, saves as `saves/<name>/{meta,map,items,dwarves}.txt`. Jobs are rebuilt from designations on load. It is not a khtpm window. Do not link it. Copy the ideas into a house project after cdda-hq has z-levels. Bitlands was not found. df-hq does not pick a substitute tileset.
 
-## 3. Slice A — index the tileset (one subagent)
+## 3. Slice A — convert the tileset to .pdl (one subagent)
 
-Owns: a new one-shot op and its output file under a new folder `@.apps/cdda-hq/` is **not** required yet. Write the op and the cache beside the asset note, or under `44.xyz.01.00/shared/` if that is where `CDDA-ASSET-SOURCE-LOCATION.pdl` already lives. Do not create the game in this slice.
+Owns: a one-shot C converter and the `.pdl` it writes. `@.apps/cdda-hq/` is **not** required yet. Put the pdl next to `44.xyz.01.00/shared/CDDA-ASSET-SOURCE-LOCATION.pdl`, or under that `shared/` directory. Do not create the game in this slice.
+
+The converter may read UltiCa JSON. Its output is pipe rows, same family as `rooms.pdl`:
+
+```text
+TILE | id | png | w | h | ox | oy
+PART | id | role | sprite
+```
+
+`TILE` is one row per drawable basename. `png` is the path under the UltiCa tree. `w` and `h` come from the directory name (`32x32`, `32x64`, `64x64`, `96x96`, `20x20`, `32x36`, `64x96`). `ox` and `oy` come from `tile_info.json` only when the bucket matches (tall `oy` -32, small `ox` 6). Any other bucket is `0 | 0`.
+
+`PART` is the connection table, copied out of the sprite JSON once. For `t_wall_wood`, the roles are the JSON's own names: `unconnected`, `center`, `corner`, `edge`, `t_connection`, `end_piece`, and `sprite` is the PNG basename (`t_wall_wood_corner_nw`, and so on). For `t_grass`, the roles are `weight` and `sprite` is `t_grass_center`, `t_grass_center2`, `t_grass_center3`, `t_grass_center4`. A season is another id (`t_grass_season_summer`), not a column the renderer invents.
 
 Does:
 
-1. Walk `#.NNEST_ASSETS/cdda-tilesets/gfx/UltimateCataclysm/pngs_*`.
-2. For each `<id>.json`, emit one row for the id and one row for every fg sprite basename that file names.
-3. Record width and height from the directory name (`32x32`, `32x64`, `64x64`, `96x96`, `20x20`, `32x36`, `64x96`). Record offset from `tile_info.json` only when the bucket matches (tall offset_y -32, small offset_x 6). If the bucket is not in `tile_info.json`, offset 0,0 and say so in the row.
-4. Print the row count and confirm it is in the same thousands as the PNG count. A missing output file is not a count of 0.
+1. Walk `pngs_*` and write those two row kinds.
+2. Print the `TILE` count and confirm it is in the same thousands as the PNG count. A missing pdl is not a count of 0.
+3. Leave the JSON where it is. Do not add a JSON parser to the game.
 
-Does not: draw, copy dsr-rpg, or invent a multitile algorithm beyond copying the JSON's `additional_tiles` ids into the cache as extra columns.
+Does not: draw, copy dsr-rpg, or keep a second copy of the table in JSON inside the app.
 
-Gate: the cache exists, `t_grass` and `t_wall_wood` rows resolve to real PNG paths, and `t_wall_wood` lists `unconnected`, `corner`, `edge`, `t_connection`, `end_piece`.
+Gate: the pdl exists, a `TILE` row for `t_grass` and for `t_wall_wood_unconnected` points at a real PNG, and `PART` rows for `t_wall_wood` list `unconnected`, `corner`, `edge`, `t_connection`, and `end_piece`.
 
 ## 4. Slice B — copy dsr-rpg to cdda-hq (one subagent, after or beside A, no shared files)
 
@@ -87,7 +97,7 @@ Gate: both windows open, `ps` shows one `cdda_hq` daemon and the old dsr daemon 
 
 ## 5. Slice C — draw one room with CDDA ids (one subagent, after A and B)
 
-Owns: `cdda-hq` ops and the pdl files inside `@.apps/cdda-hq/` that name tiles. Reads the slice A cache. Does not edit the cache format; if the format is wrong, stop and write that in the slice note.
+Owns: `cdda-hq` ops and the pdl files inside `@.apps/cdda-hq/` that name tiles. Reads slice A's `.pdl` only. Does not parse JSON, and does not edit the `TILE` / `PART` columns; if a row is missing, stop and name the id.
 
 First room only, one z, no scrolling yet. Replace `blit()`'s 48 px sheet assumption for this project with: cell size 32, sprite looked up by id, tall sprites drawn with their offset so they hang into the cell above. Mapping for this room, fixed in a pdl table the op reads (change the table, not the C, to retarget):
 
@@ -97,7 +107,7 @@ First room only, one z, no scrolling yet. Replace `blit()`'s 48 px sheet assumpt
 | floor | `t_floor` | confirm the id is in the cache; if absent, stop and name the nearest `t_floor*` row, do not guess a PNG |
 | wall | `t_wall_wood` | multitile from its JSON |
 | door | `t_door_c` or the cache's closed wood door | confirm before coding |
-| water | `t_water_dp` if present, else stop | same rule |
+| water | `t_water_dp` if a `TILE` row exists, else stop | same rule |
 
 Leave trees, sand, ocean, path, and furniture on the RPG Maker path until this one room is proven. A mixed room is the goal of this slice, not a full reskin.
 
