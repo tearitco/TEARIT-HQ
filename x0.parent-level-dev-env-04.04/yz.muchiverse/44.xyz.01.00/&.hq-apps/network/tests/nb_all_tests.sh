@@ -80,6 +80,10 @@ echo "########## row-run selection + copy (hermetic: own fixture window)"
 sh "$HERE/nb_selrun_test.sh" || RC=1
 
 echo
+echo "########## page zoom (hermetic: own fixture window)"
+sh "$HERE/nb_zoom_test.sh" || RC=1
+
+echo
 echo "########## content-row reachability (live browser + own opt-in fixture)"
 sh "$HERE/nb_reach_test.sh" || RC=1
 

@@ -103,7 +103,10 @@ static XftFont *font_for(const CssStyle *st) {
      * window's own real CSS font-family (st->has_font_family) always
      * wins - this is only the default this file used to hard-literal. */
     const char *fam = st->has_font_family ? st->font_family : g_ui_font_family;
-    int size = scaled(st->has_font_size ? st->font_size : 12);
+    /* PAGE ZOOM (2026-10-13): through zoomed(), not scaled(), so a zoom
+     * changes glyphs and re-wraps without moving ROW_H (which IS a
+     * scaled() macro - see zoomed()'s own comment for why that matters). */
+    int size = zoomed(st->has_font_size ? st->font_size : 12);
     snprintf(spec, sizeof(spec), "%s:pixelsize=%d%s", fam, size, (st->has_font_weight && st->font_weight_bold) ? ":bold" : "");
 
     static char cached_spec[128] = "";

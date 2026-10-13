@@ -4081,6 +4081,43 @@ static int scaled(int base_px) {
     return v;
 }
 
+/* PAGE ZOOM (2026-10-13, G3.2): a per-window text scale, separate from the
+ * house-wide UI scale above on purpose.
+ *
+ * WHY NOT INSIDE scaled(): ROW_H and CHROME_H are `scaled(24)` macros, so
+ * anything that touches scaled() also changes the ROW PITCH - and with it
+ * every nav slot, scroll offset, scrollbar division and hit-test rect in
+ * the window. That is a full-page zoom, it is a much bigger blast radius,
+ * and it is not what a reader wants when they hit Ctrl+= because the text
+ * is too small. This is TEXT zoom: glyphs grow, the column does not, and
+ * a wrapped row gets TALLER because it needs more visual lines. Same
+ * contract as the browser's text-only zoom.
+ *
+ * WHY NOT THE HOUSE SCALE: measured, it shrinks text. Pressing Ctrl+=
+ * once took a 60px content row to 46px and a wrapped paragraph to one line
+ * (gap plan §8.5) - g_ui_scale_pct is the COMBINED scale and
+ * desktop_set_font_scale() writes font_scale AND assigns the combined
+ * value, so the screen-relative auto factor is applied twice. This knob
+ * touches nothing global: no hq_ui.pdl write, no other window affected,
+ * and it dies with the window like find's state does.
+ *
+ * Range 50..300 rather than the house scale's 75..200: this is a reading
+ * aid, and 50% is a legitimate "fit a wide table on screen".
+ */
+static int g_page_zoom_pct = 100;
+
+/* The one place a font size becomes pixels. Both the layout-side measurer
+ * and the draw-side font_for() go through this, so a zoom re-wraps and
+ * redraws from the same number - which is why this feature needs no
+ * second code path to keep in step. */
+static int zoomed(int base_px) {
+    int v = scaled(base_px);
+    if (g_page_zoom_pct == 100) return v;
+    int z = (v * g_page_zoom_pct + 50) / 100;
+    if (base_px > 0 && z < 1) z = 1;
+    return z;
+}
+
 /* Screen dimensions - a constant under --headless (no dpy to ask), the
  * real X value otherwise. Every layout-path DisplayWidth/Height call
  * goes through these two so headless layout has a sane viewport. */
@@ -4386,7 +4423,7 @@ static int kh_measure_text_px(const CssStyle *st, const char *text) {
          * UTF-8 codepoint (bytes with (b & 0xC0) != 0x80). Good enough
          * for layout width decisions; the text mirror doesn't render
          * pixels anyway. */
-        int size = scaled(st->has_font_size ? st->font_size : 12);
+        int size = zoomed(st->has_font_size ? st->font_size : 12);
         int adv = (size * 55) / 100; if (adv < 5) adv = 5;
         int n = 0;
         for (const char *p = text ? text : ""; *p; p++)
@@ -4395,7 +4432,7 @@ static int kh_measure_text_px(const CssStyle *st, const char *text) {
     }
     char spec[128];
     const char *fam = st->has_font_family ? st->font_family : g_ui_font_family;
-    int size = scaled(st->has_font_size ? st->font_size : 12);
+    int size = zoomed(st->has_font_size ? st->font_size : 12);
     snprintf(spec, sizeof(spec), "%s:pixelsize=%d%s", fam, size, (st->has_font_weight && st->font_weight_bold) ? ":bold" : "");
 
     static char cached_spec[128] = "";
@@ -11502,6 +11539,10 @@ static void kh_write_ascii_frame(void) {
      * measurement behind the 2026-10-12 parser fix (gated elements are
      * now skipped before they take a pool slot). */
     fprintf(ms, "[POOL] elements %d/%d\n", g_n_elems, MAX_ELEMS);
+    /* PAGE ZOOM (2026-10-13): this window'"'"'s own text zoom. Per-window by
+     * design (see zoomed()) - two windows side by side legitimately
+     * report different numbers, and neither writes the other. */
+    fprintf(ms, "[ZOOM] page=%d%%\n", g_page_zoom_pct);
     /* CHILDREN CAP (2026-10-12): rows that did not fit their parent's
      * child list. Silently dropped until this counter existed - see the
      * comment at the append site in parse_element(). */
@@ -12321,6 +12362,37 @@ static void handle_key(KeySym ks, char ch) {
     if (!(g_key_shift && (ks == XK_Up || ks == XK_Down)) &&
         !(ch == 3 || ch == 24))          /* Ctrl+C / Ctrl+X CONSUME the run */
         g_sel_run_anchor = 0;
+    /* PAGE ZOOM (2026-10-13): Ctrl+= / Ctrl+- / Ctrl+0. G3.2 had been
+     * "absent" because nothing bound the keyboard to the house UI scale -
+     * and that scale is broken for ordinary windows (gap plan §8.5), so
+     * the keys go to the per-window text zoom instead, which touches no
+     * global state and no other window.
+     *
+     * Guarded on !g_default_input_elem: typing Ctrl+- into an armed field
+     * (a negative number, an offset) must not resize the window.
+     *
+     * Nothing is persisted. Zoom is a reading aid for the page in front of
+     * you; it belongs to this window and dies with it, exactly like the
+     * find query does. */
+    if (g_key_ctrl && !g_default_input_elem) {
+        int zstep = 0, zreset = 0;
+        if (ks == XK_equal || ks == XK_plus || ch == '=') zstep = +1;
+        else if (ks == XK_minus || ch == '-') zstep = -1;
+        else if (ks == XK_0 || ks == XK_KP_0 || ch == '0') zreset = 1;
+        if (zstep || zreset) {
+            int v = zreset ? 100 : g_page_zoom_pct + (zstep > 0 ? 25 : -25);
+            if (v < 50) v = 50;
+            if (v > 300) v = 300;
+            if (v != g_page_zoom_pct) {
+                g_page_zoom_pct = v;
+                /* relayout is the whole point: row heights come from
+                 * wrapped line counts, so without this the text would be
+                 * measured at the old size and clipped by the new one. */
+                if (!g_quit) { assign_nav_and_layout(); redraw(); }
+            }
+            return;
+        }
+    }
     /* INLINE SPANS step 12: dot-armed link entry voids on any key but
      * the addressing digit itself or a re-arming dot. First statement,
      * so modal early-returns (confirm, close-combo, armed fields,
@@ -13288,6 +13360,17 @@ static void dispatch_relay_code(int code) {
      * the relay had no way to express (Shift is a modifier, not a
      * key). 220-225, same reserved-band idea as the 200-205 plain
      * arrows. g_key_shift is set for exactly the one dispatched key. */
+    /* PAGE ZOOM (2026-10-13): 226/227/228 = Ctrl+= / Ctrl+- / Ctrl+0.
+     * The relay cannot express a MODIFIER on a printable character
+     * (g_key_ctrl only ever comes from a real X event), so without these
+     * zoom would exist for a human and not for the suite that has to
+     * prove it. Same reserved-band reasoning as 200-205 and 220-225:
+     * outside 0-126, so it can never collide with typed text. */
+    else if (code >= 226 && code <= 228) {
+        g_key_ctrl = 1;
+        handle_key(code == 226 ? XK_equal : code == 227 ? XK_minus : XK_0, 0);
+        g_key_ctrl = 0;
+    }
     else if (code >= 220 && code <= 225) {
         KeySym sk = (code == 220) ? XK_Left : (code == 221) ? XK_Right :
                     (code == 222) ? XK_Up   : (code == 223) ? XK_Down  :
