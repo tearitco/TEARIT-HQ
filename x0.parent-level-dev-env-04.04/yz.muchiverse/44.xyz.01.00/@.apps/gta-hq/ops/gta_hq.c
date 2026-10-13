@@ -223,6 +223,7 @@ static void load_data(void) {
     snprintf(p, sizeof p, "%s/catalog.pdl", APP); ncat = 0;
     if ((fp = fopen(p, "r"))) { while (fgets(line, sizeof line, fp) && ncat < MAXI) { if (split_bar(line, f, 12) == 11 && !strcmp(f[0], "ITEM")) { Item *it = &cat[ncat++]; snprintf(it->key, 32, "%s", f[1]); snprintf(it->label, 40, "%s", f[2]); it->price = atoi(f[3]); snprintf(it->sheet, 24, "%s", f[4]); it->c = atoi(f[5]); it->r = atoi(f[6]); it->w = atoi(f[7]); it->h = atoi(f[8]); it->wall = !strcmp(f[9], "wall"); snprintf(it->effect, 12, "%s", f[10]); } } fclose(fp); }
     load_party();
+    { char np[PATH_MAX], nl[200]; snprintf(np, sizeof np, "%s/party.pdl", APP); FILE *nf = fopen(np, "r"); if (nf) { int pi = 0; while (fgets(nl, sizeof nl, nf)) { char *g[4]; char cp[200]; snprintf(cp, sizeof cp, "%s", nl); int n = split_bar(cp, g, 4); if (n >= 2 && !strcmp(g[0], "PLAYER")) { snprintf(hero.name, 24, "%s", g[1]); snprintf(hero.nick, 24, "%s", g[1]); } else if (n >= 2 && !strcmp(g[0], "PET") && pi < nparty) { snprintf(party[pi].name, 24, "%s", g[1]); snprintf(party[pi].id, 16, "%s", g[1]); for (char *c = party[pi].id; *c; c++) if (*c >= 'A' && *c <= 'Z') *c += 32; pi++; } } fclose(nf); } }
     snprintf(p, sizeof p, "%s/rooms.pdl", APP); nroom = ndoor = 0;
     if ((fp = fopen(p, "r"))) {
         while (fgets(line, sizeof line, fp)) { int n = split_bar(line, f, 12); if (n >= 5 && !strcmp(f[0], "ROOM") && nroom < 8) { Room *r = &rooms[nroom++]; memset(r, 0, sizeof *r); snprintf(r->id, 16, "%s", f[1]); snprintf(r->name, 32, "%s", f[2]); r->fc = atoi(f[3]); r->fr = atoi(f[4]); r->outdoor = n >= 6 && (!strcmp(f[5], "outdoor") || !strcmp(f[5], "over")); r->cols = 13; r->rows = 8; r->tpx = 48; r->trig = 2;
@@ -400,6 +401,15 @@ static void art_refresh(void) {
     g_art = !strcmp(b, "rmmv") ? 0 : !strcmp(b, "brixel") ? 2 : 1;
     g_emoji = flag_on("emoji", 0);
 }
+/* Top-down of the standing-person voxel (emoji 1F9CD, 16x16 RGBA after the header). The player only. Crew stay blocks until they get their own csv. */
+static int blit_player_voxel(int tx, int ty) {
+    static unsigned char img[16 * 16 * 4]; static int loaded = 0, ok = 0;
+    if (!loaded) { loaded = 1; char p[PATH_MAX]; snprintf(p, sizeof p, "%s/&.widgits/board-viewer/pieces/registry/emoji_assets/1F9CD/voxels_16.csv", HOUSE); FILE *f = fopen(p, "r"); if (f) { char line[80]; int n = 0; while (n < 256 && fgets(line, sizeof line, f)) { int r, g, b, a; if (sscanf(line, "%d,%d,%d,%d", &r, &g, &b, &a) != 4) continue; img[n*4] = (unsigned char)r; img[n*4+1] = (unsigned char)g; img[n*4+2] = (unsigned char)b; img[n*4+3] = (unsigned char)a; n++; } fclose(f); ok = n == 256; } }
+    if (!ok) return 0;
+    int x0 = OX + tx * T, y0 = OY + ty * T;
+    for (int y = 0; y < T; y++) for (int x = 0; x < T; x++) { int X = x0 + x, Y = y0 + y; if (X < 0 || Y < 0 || X >= FW || Y >= FH) continue; int sx = x * 16 / T, sy = y * 16 / T; unsigned char *a = img + (sy * 16 + sx) * 4; if (!a[3]) continue; unsigned char *q = fr + ((size_t)Y * FW + X) * 4; q[0] = a[0]; q[1] = a[1]; q[2] = a[2]; q[3] = 255; }
+    return 1;
+}
 static void fill_cell(int tx, int ty, int r, int g, int b) {
     int x0 = OX + tx * T, y0 = OY + ty * T;
     for (int y = 0; y < T; y++) { int Y = y0 + y; if (Y < 0 || Y >= FH) continue;
@@ -557,7 +567,8 @@ static void render(void) {
     if (tr.room == vroom) order[no++] = -1;
     for (int a2 = 0; a2 < no; a2++) for (int b2 = a2 + 1; b2 < no; b2++) if (EY(order[b2]) < EY(order[a2])) { int tmp = order[a2]; order[a2] = order[b2]; order[b2] = tmp; }
     for (int k = 0; k < (g_bg_only ? 0 : no); k++) { int i = order[k]; Ent *e = i < 0 ? &tr : &others[i]; int col = e->steps ? cyc[e->steps % 4] : 1, ci = i < 0 ? 0 : party[i].idx;
-        if (g_art == 2 || g_emoji) fill_cell(e->x, e->y, g_emoji ? 255 : 220, g_emoji ? 200 : 176, g_emoji ? 40 : 140);
+        if (g_art == 2 && i < 0 && blit_player_voxel(e->x, e->y)) { }
+        else if (g_art == 2 || g_emoji) fill_cell(e->x, e->y, g_emoji ? 255 : 220, g_emoji ? 200 : 176, g_emoji ? 40 : 140);
         else blit(sheet("characters", i < 0 ? hero.sheet : party[i].sheet), (ci % 4) * 3 * S48 + col * S48, (ci / 4) * 4 * S48 + e->dir * S48, S48, S48, OX + e->x * T, OY + e->y * T - 8 * T / S48); }
     if (!g_bg_only) { int tone[4]; if (read_tone(tone)) {      /* RPG Maker Tint Screen (events-hq tint_screen -> state/world/screen_state.pdl "value=r,g,b,gray"): add per channel, gray = pull toward the luminance; indoors it is only 40% */
         int od = rm->outdoor, pc = od ? 100 : 40, tr_ = tone[0] * pc / 100, tg_ = tone[1] * pc / 100, tb_ = tone[2] * pc / 100, gy = tone[3] * pc / 100;
