@@ -1,5 +1,6 @@
 # 08 — Roadmap
 
+- `design-docs/CDDA-HQ-AND-DF-HQ-HANDOFF-2026-10-12.md` — **cdda-hq / df-hq handoff to Grok** (2026-10-12): copy recipe, CDDA tile source on disk, single-map z-level model, df-hq, bitlands (not found), landmines, open questions. Plan only.
 - `design-docs/INMEM-DB-CPU-THEORY-REPORT.md` — **would the in-memory DB lower house CPU?** (2026-10-12): measured per-process CPU/syscalls, where the sys time goes, what a DB would and would not change, the on/off `STATE_BACKEND` A/B plan for end-of-sprint profiling.
 - `design-docs/SANDBOX-TOYS-AND-BOARDS.md` — **sandbox toys and boards** (2026-10-12): why a game has two toys entries (small window + pc-hq board over one data set), the board's own book and pc-hq instance, and the rule for the next sandboxes (GTA / Dwarf Fortress / CDDA-like).
 - `design-docs/BLUEPRINTZ-DESIGN.md` — **blueprintz** (2026-10-11): the visual editor for all events of a whole book and its pages; empty shell + db-dropdown row + db tab on the game windows done, phases B1-B5 planned. `design-docs/DSR-RPG-DESIGN.md` — **dsr-rpg** (2026-10-11): carbon copy of rpg-pet as a two-city world, design only.
