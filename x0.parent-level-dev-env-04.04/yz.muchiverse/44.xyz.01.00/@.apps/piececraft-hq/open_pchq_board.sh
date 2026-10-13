@@ -234,7 +234,11 @@ done
 # ── single-instance guard: clean-restart the board window ────────────
 # Match the shared binary by its OWN chtpm path (bare-name match would
 # hit every other khtpm_core_render window) + the projector.
-board_pids() { for _bp in $(pgrep -f "khtpm_core_render\.\+x .*pchq-board\.xhtpm" 2>/dev/null); do same_instance "$_bp" && echo "$_bp"; done; true; }
+# A window that runs EXACTLY this launch'"'"'s custom template (a game'"'"'s own board, PCHQ_BOARD_TPL) is this game'"'"'s board whatever its environment says: one started without PCHQ_PKG (owner 2026-10-12, a cdda-hq board with no
+# engine session and no INT, left open beside the good one) used to survive the replace because same_instance() only matches the environment.
+board_pids() { for _bp in $(pgrep -f "khtpm_core_render\.\+x .*pchq-board\.xhtpm" 2>/dev/null); do
+    if same_instance "$_bp"; then echo "$_bp"; elif [ -n "${PCHQ_BOARD_TPL:-}" ] && tr '\0' '\n' < "/proc/$_bp/cmdline" 2>/dev/null | grep -qxF "$BOARD_TPL"; then echo "$_bp"; fi
+done; true; }
 proj_pids()  { for _bp in $(pgrep -f "pchq_board_projector\.\+x" 2>/dev/null); do same_instance "$_bp" && echo "$_bp"; done; true; }
 
 existing="$(board_pids) $(proj_pids)"
