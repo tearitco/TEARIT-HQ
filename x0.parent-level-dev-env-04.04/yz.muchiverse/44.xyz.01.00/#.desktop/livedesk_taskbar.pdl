@@ -21,12 +21,14 @@ SECTION      | hq_menu_7_label     | stats
 SECTION      | hq_menu_7_cmd       | livedesk:open-stats
 SECTION      | hq_menu_8_label     | cli
 SECTION      | hq_menu_8_cmd       | sh _.monads/_.livedesk-taskbar/ops/open_cli.sh
-SECTION      | hq_menu_9_label     | cursword
-SECTION      | hq_menu_9_cmd       | livedesk:spawn-cursword
-SECTION      | hq_menu_10_label    | !kill hq
-SECTION      | hq_menu_10_cmd      | sh _.monads/_.livedesk-taskbar/ops/kill_hq_windows.sh .
-SECTION      | hq_menu_11_label    | debug
-SECTION      | hq_menu_11_cmd      | livedesk:open-palette:debug
+SECTION      | hq_menu_9_label     | tpmos
+SECTION      | hq_menu_9_cmd       | sh _.monads/_.livedesk-taskbar/ops/open_tpmos.sh
+SECTION      | hq_menu_10_label     | cursword
+SECTION      | hq_menu_10_cmd       | livedesk:spawn-cursword
+SECTION      | hq_menu_11_label    | !kill hq
+SECTION      | hq_menu_11_cmd      | sh _.monads/_.livedesk-taskbar/ops/kill_hq_windows.sh .
+SECTION      | hq_menu_12_label    | debug
+SECTION      | hq_menu_12_cmd      | livedesk:open-palette:debug
 # proc-mon - "session monitor": lists every board/engine/hq process the
 # house spawned, classifies each (shell/pal/singleton/child/orphan/
 # detached), marks the stray ones, one-click KILL ALL STRAY. Wrapper
@@ -36,12 +38,10 @@ SECTION      | hq_menu_11_cmd      | livedesk:open-palette:debug
 # why the button in dropdown doesn't say proc-mon?") - this label was
 # never tied to the mon-hq -> proc-mon rename (a separate, standalone
 # string), just never updated for consistency until now.
-SECTION      | hq_menu_13_label    | proc-mon
-SECTION      | hq_menu_13_cmd      | sh _.monads/_.livedesk-taskbar/ops/open_mon.sh
-SECTION      | hq_menu_14_label    | tomom
-SECTION      | hq_menu_14_cmd      | sh _.monads/_.livedesk-taskbar/ops/open_tomom.sh
-SECTION      | hq_menu_15_label    | tpmos
-SECTION      | hq_menu_15_cmd      | sh _.monads/_.livedesk-taskbar/ops/open_tpmos.sh
+SECTION      | hq_menu_14_label    | proc-mon
+SECTION      | hq_menu_14_cmd      | sh _.monads/_.livedesk-taskbar/ops/open_mon.sh
+SECTION      | hq_menu_15_label    | tomom
+SECTION      | hq_menu_15_cmd      | sh _.monads/_.livedesk-taskbar/ops/open_tomom.sh
 SECTION      | hq_menu_16_label    | cancel
 
 SECTION      | file_menu_1_label   | new-desk
