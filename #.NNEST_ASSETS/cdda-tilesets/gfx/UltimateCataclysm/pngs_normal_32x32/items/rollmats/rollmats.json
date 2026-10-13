@@ -1,0 +1,10 @@
+[
+  {
+    "id": ["fur_rollmat", "broketent", "largebroketent"],
+    "fg": "fur_rollmat"
+  },
+  {
+    "id": ["rollmat"],
+    "fg": "rollmat"
+  }
+]

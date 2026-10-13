@@ -1,0 +1,67 @@
+[
+ {
+  "id": "vp_ram_spiked_front",
+  "fg": "vp_ram_spiked",
+  "rotates": true,
+  "multitile": true,
+  "additional_tiles": [
+    {
+      "id": "broken",
+      "fg": "crack_metal_center",
+      "bg": "vp_ram_spiked"
+    }
+  ]
+ }, 
+ {
+  "id": "vp_ram_steel_front",
+  "fg": "vp_ram_steel",
+  "rotates": true,
+  "multitile": true,
+  "additional_tiles": [
+    {
+      "id": "broken",
+      "fg": "crack_metal_center",
+      "bg": "vp_ram_spiked"
+    }
+  ]
+ },   
+ {
+  "id": "vp_spike",
+  "fg": "vp_spike",
+  "rotates": true,
+  "multitile": true,
+  "additional_tiles": [
+    {
+      "id": "broken",
+      "fg": "crack_metal_center",
+      "bg": "vp_spike"
+    }
+   ]
+  },
+   {
+  "id": "vp_ram_wood_front",
+  "fg": "vp_ram_wood",
+  "rotates": true,
+  "multitile": true,
+  "additional_tiles": [
+    {
+      "id": "broken",
+      "fg": "crack_metal_center",
+      "bg": "vp_ram_wood"
+    }
+  ]
+},
+{
+  "id": "vp_tearer",
+  "fg": "vp_tearer",
+  "rotates": true,
+  "multitile": true,
+  "additional_tiles": [
+    {
+      "id": "broken",
+      "fg": "crack_metal_center",
+      "bg": "vp_tearer"
+    }
+  ]
+}
+]

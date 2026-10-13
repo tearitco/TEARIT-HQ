@@ -1,0 +1,8 @@
+df-tilesets - Dwarf Fortress graphics packs from the DFgraphics GitHub org, stored as plain files like rmmv-www-img (each pack was a git clone; its .git was moved out on 2026-10-12 so the files commit normally).
+GemSet   https://github.com/DFgraphics/GemSet.git    a92ec4d (2021-03-06)
+Mayday   https://github.com/DFgraphics/Mayday.git    caa936f (2021-03-21)
+Spacefox https://github.com/DFgraphics/Spacefox.git  d93cb35 (2021-03-20)   <- the one @.apps/df-hq draws (data/art/Spacefox_16x16.png, CP437 16x16)
+CLA      https://github.com/DFgraphics/CLA.git       cfd863b (2020-02-04)
+Phoebus  https://github.com/DFgraphics/Phoebus.git   bb7a8f5 (2021-03-06)
+licence: NOT checked; each pack's own README / forum thread states its terms (Spacefox: http://www.bay12forums.com/smf/index.php?topic=129219.0). Check before redistributing outside this repo.
+backups of the original .git folders: /home/no/staging/backups/tilesets-git/ (local only)

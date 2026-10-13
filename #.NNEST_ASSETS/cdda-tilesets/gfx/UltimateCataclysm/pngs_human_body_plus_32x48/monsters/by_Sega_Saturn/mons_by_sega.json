@@ -1,0 +1,22 @@
+[
+  {
+    "id": "mon_zombie_prisoner_tough",
+    "fg": "mon_zombie_prisoner_tough",
+    "bg": "shadow_32x48_normal"
+  },
+  {
+    "id": "mon_zombie_prisoner_fat",
+    "fg": "mon_zombie_prisoner_fat",
+    "bg": "shadow_32x48_normal"
+  },
+  {
+    "id": "mon_zombie_prisoner_brute",
+    "fg": "mon_zombie_prisoner_brute",
+    "bg": "shadow_32x48_normal"
+  },
+  {
+    "id": "mon_zombie_resort_bouncer",
+    "fg": "mon_zombie_resort_bouncer",
+    "bg": "shadow_32x48_normal"
+  }
+]
