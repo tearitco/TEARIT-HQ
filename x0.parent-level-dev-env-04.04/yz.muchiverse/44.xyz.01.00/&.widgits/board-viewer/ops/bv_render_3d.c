@@ -1152,6 +1152,57 @@ typedef struct {
     unsigned char r, g, b;
 } PhymojiVoxel;
 
+/* A walking person is parts, not a skin box and not a flat picture. Each part is its own run of voxels: feet, leg bones, pants, pelvis, spine, ribs, heart, arms, hands, skull, brain, eyes, hair. Clothes differ by name. */
+static int brixel_put(PhymojiVoxel *v, int n, int max, int *mx, int *my, int *mz, int x, int y, int z, int r, int g, int b) {
+    if (n >= max || x < 0 || y < 0 || z < 0 || x > 31 || y > 31 || z > 7) return n;
+    v[n].lx = (unsigned char)x; v[n].ly = (unsigned char)y; v[n].lz = (unsigned char)z;
+    v[n].r = (unsigned char)r; v[n].g = (unsigned char)g; v[n].b = (unsigned char)b;
+    if (x > *mx) *mx = x; if (y > *my) *my = y; if (z > *mz) *mz = z;
+    return n + 1;
+}
+static int brixel_box(PhymojiVoxel *v, int n, int max, int *mx, int *my, int *mz, int x0, int y0, int z0, int x1, int y1, int z1, int r, int g, int b) {
+    for (int y = y0; y <= y1; y++) for (int x = x0; x <= x1; x++) for (int z = z0; z <= z1; z++)
+        n = brixel_put(v, n, max, mx, my, mz, x, y, z, r, g, b);
+    return n;
+}
+static int build_brixel_person(const char *name, PhymojiVoxel *v, int max, int *mx, int *my, int *mz) {
+    int jr = 36, jg = 48, jb = 72, hr = 28, hg = 22, hb = 18, pr = 42, pg = 58, pb = 86, skin = 214, sg = 166, sb = 130;
+    if (!strcmp(name, "nico")) { jr = 36; jg = 96; jb = 52; }
+    else if (!strcmp(name, "lucia")) { jr = 160; jg = 42; jb = 44; hr = 20; hg = 16; hb = 14; }
+    else if (!strcmp(name, "vic")) { jr = 48; jg = 48; jb = 54; hr = 36; hg = 36; hb = 40; }
+    else if (!strcmp(name, "rio")) { jr = 214; jg = 214; jb = 208; hr = 214; hg = 176; hb = 90; pr = 214; pg = 166; pb = 130; }
+    else if (!strcmp(name, "tess")) { jr = 210; jg = 168; jb = 40; }
+    else if (!strcmp(name, "kane")) { jr = 110; jg = 72; jb = 40; hr = 40; hg = 32; hb = 24; }
+    else if (strcmp(name, "voss")) return 0;
+    *mx = *my = *mz = 0;
+    int n = 0;
+    n = brixel_box(v, n, max, mx, my, mz, 4, 0, 2, 6, 1, 5, 24, 24, 26);          /* left shoe */
+    n = brixel_box(v, n, max, mx, my, mz, 9, 0, 2, 11, 1, 5, 24, 24, 26);         /* right shoe */
+    n = brixel_box(v, n, max, mx, my, mz, 5, 2, 3, 6, 11, 4, pr, pg, pb);         /* left leg */
+    n = brixel_box(v, n, max, mx, my, mz, 9, 2, 3, 10, 11, 4, pr, pg, pb);        /* right leg */
+    n = brixel_box(v, n, max, mx, my, mz, 5, 2, 3, 5, 11, 3, 230, 220, 190);      /* left bone */
+    n = brixel_box(v, n, max, mx, my, mz, 10, 2, 3, 10, 11, 3, 230, 220, 190);    /* right bone */
+    n = brixel_box(v, n, max, mx, my, mz, 4, 12, 2, 11, 15, 5, jr, jg, jb);       /* pelvis */
+    n = brixel_box(v, n, max, mx, my, mz, 7, 12, 3, 8, 23, 4, 230, 220, 190);     /* spine */
+    n = brixel_box(v, n, max, mx, my, mz, 5, 16, 2, 10, 23, 5, jr, jg, jb);       /* torso */
+    n = brixel_box(v, n, max, mx, my, mz, 5, 17, 2, 10, 20, 2, 236, 228, 210);    /* ribs, front */
+    n = brixel_box(v, n, max, mx, my, mz, 7, 18, 3, 8, 19, 4, 160, 32, 40);       /* heart */
+    n = brixel_box(v, n, max, mx, my, mz, 1, 16, 3, 3, 22, 4, jr, jg, jb);        /* left arm */
+    n = brixel_box(v, n, max, mx, my, mz, 12, 16, 3, 14, 22, 4, jr, jg, jb);      /* right arm */
+    n = brixel_box(v, n, max, mx, my, mz, 2, 16, 3, 2, 22, 3, 230, 220, 190);     /* left arm bone */
+    n = brixel_box(v, n, max, mx, my, mz, 13, 16, 3, 13, 22, 3, 230, 220, 190);   /* right arm bone */
+    n = brixel_box(v, n, max, mx, my, mz, 1, 14, 3, 3, 15, 4, skin, sg, sb);     /* left hand */
+    n = brixel_box(v, n, max, mx, my, mz, 12, 14, 3, 14, 15, 4, skin, sg, sb);    /* right hand */
+    n = brixel_box(v, n, max, mx, my, mz, 5, 24, 1, 10, 30, 6, skin, sg, sb);    /* skull */
+    n = brixel_box(v, n, max, mx, my, mz, 6, 26, 2, 9, 28, 5, 210, 150, 160);     /* brain */
+    n = brixel_box(v, n, max, mx, my, mz, 5, 28, 1, 6, 28, 1, 236, 232, 220);     /* left eye */
+    n = brixel_box(v, n, max, mx, my, mz, 9, 28, 1, 10, 28, 1, 236, 232, 220);    /* right eye */
+    n = brixel_box(v, n, max, mx, my, mz, 6, 28, 0, 6, 28, 0, 24, 28, 34);        /* pupils sit on the face */
+    n = brixel_box(v, n, max, mx, my, mz, 9, 28, 0, 9, 28, 0, 24, 28, 34);
+    n = brixel_box(v, n, max, mx, my, mz, 5, 29, 1, 10, 31, 6, hr, hg, hb);      /* hair */
+    return n;
+}
+
 /* REAL FIX 2026-08-04, follow-up to the same-day generator fix (direct
  * user report: "phymoji is only showing 2 parallel sides, empty in the
  * middle"): pc_phymoji_gen.c no longer stretches a crop's own pixels
@@ -3723,6 +3774,11 @@ static int render_one_frame(void) {
                          g_mk.ev[i].name, g_mk.ev[i].index, g_mk.ev[i].dir, g_mk.ev[i].pat);
                 for (int k = 0; k < used_n; k++)
                     if (strcmp(used_key[k], key) == 0) hm = used_model[k];
+                if (hm < 0) {
+                    PhymojiVoxel body[900]; int bmx = 0, bmy = 0, bmz = 0;
+                    int bn = build_brixel_person(g_mk.ev[i].name, body, 900, &bmx, &bmy, &bmz);
+                    if (bn > 0 && sc.model_n < BV_GPU_MAX_MODEL - 6) hm = GPU_ADD_MODEL(body, bn, bmx, bmy, bmz);
+                }
                 if (hm < 0 && used_n < 96 && sc.model_n < BV_GPU_MAX_MODEL - 6) {
                     unsigned char frame[16 * 24 * 4];
                     char walk[4352], fp[4400];
@@ -3804,6 +3860,7 @@ static int render_one_frame(void) {
                     }
                 }
                 float top = (g_mk.ev[i].name[0] == '!') ? 1.9f : 2.6f;
+                if (!strcmp(g_mk.ev[i].name, "voss") || !strcmp(g_mk.ev[i].name, "nico") || !strcmp(g_mk.ev[i].name, "lucia") || !strcmp(g_mk.ev[i].name, "vic") || !strcmp(g_mk.ev[i].name, "rio") || !strcmp(g_mk.ev[i].name, "tess") || !strcmp(g_mk.ev[i].name, "kane")) top = 3.6f;
                 ADDBOX(g_mk.ev[i].x + 0.15, 1.0, g_mk.ev[i].y + 0.15,
                        g_mk.ev[i].x + 0.85, top, g_mk.ev[i].y + 0.85,
                        g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b, 0);
