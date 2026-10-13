@@ -10781,12 +10781,18 @@ static void dock_poll_strip_state(void) {
         }
         fclose(s);
     }
-    if (sfc >= 0) {
-        int nv = sfc + 1;
-        if (nv >= 1 && nv <= g_n_nav) g_focus_nav = nv;
-    } else if (sfc == -1) {
-        int nv = g_dock_header_nav_hi + 1 + tfi;
-        if (nv >= 1 && nv <= g_n_nav) g_focus_nav = nv;
+    int nv_mgr = 0;
+    if (sfc >= 0) nv_mgr = sfc + 1;
+    else if (sfc == -1) nv_mgr = g_dock_header_nav_hi + 1 + tfi;
+    if (nv_mgr >= 1 && nv_mgr <= g_n_nav) {
+        /* DROPDOWN CLICK JUMP (2026-10-13, grok's note livedesk-dropdown-jump.txt): the manager only stores a header cell
+         * or a bottom-tab index, never a dropdown row. While a menu is open and focus is already on one of its rows, a
+         * manager cursor OUTSIDE [lo,hi] is stale for this purpose; applying it let the layout clamp snap focus to the
+         * first row on the next republish after a click. A cursor inside the range, or focus outside it, still applies. */
+        int in_menu = g_dock_drop_lo && g_default_active_scope_id[0] &&
+                      g_focus_nav >= g_dock_drop_lo && g_focus_nav <= g_dock_drop_hi;
+        int mgr_in_menu = nv_mgr >= g_dock_drop_lo && nv_mgr <= g_dock_drop_hi;
+        if (!in_menu || mgr_in_menu) g_focus_nav = nv_mgr;
     }
     if (!g_quit) redraw();
 }
