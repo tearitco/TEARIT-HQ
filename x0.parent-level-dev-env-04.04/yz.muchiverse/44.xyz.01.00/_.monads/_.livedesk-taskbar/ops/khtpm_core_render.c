@@ -7536,9 +7536,16 @@ static int layout_dock_bar(Elem *page) {
          * not from 0, so the focus-box offset has to be added here or the
          * rightmost cell (the no-nav status cell) gets clipped. */
         g_win_w = DOCK_FOCUS_BOX_W + content_w + 8;
+        /* TOP BAR FLICKER (2026-10-13, owner: the top bar flickers rarely, the bottom bar never): the bottom bar is a fixed bar_max wide but THIS width follows the cell text, and the
+         * text changes: the red load cell is bold (wider than the calm one) and the "%N" label gains or loses a digit, so under load the real X window was resized (XResizeWindow +
+         * XSync in redraw()) over and over. Same cure as the 2026-10-10 pet tab row (s_tabbar_hw): latch the widest width seen and never shrink inside one run; the cells stay
+         * left-packed so the extra width is only bar background. Measured first: the clock minute does not change the width (2079 px for 4 minutes), so this is for the label cells. */
+        static int s_hdr_w_latch = 0;
+        if (g_win_w < s_hdr_w_latch) g_win_w = s_hdr_w_latch;
         if (g_win_w < 80) g_win_w = 80;
         if (g_win_x + g_win_w > sw - ox) g_win_w = sw - ox - g_win_x;
         if (g_win_w < 40) g_win_w = 40;
+        s_hdr_w_latch = g_win_w;      /* after the screen clamp, so a smaller screen / new offset still wins */
         if (g_dock_menu_w > 0) {
             g_dock_menu_sx += g_win_x;
             g_dock_menu_sy += g_win_y;
