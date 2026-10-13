@@ -1,6 +1,22 @@
-# cdda-hq and df-hq: handoff to Grok (2026-10-12)
+# cdda-hq, df-hq, then gta-hq: handoff to Grok (2026-10-12)
 
-Status: **PLAN ONLY. Nothing here is built.** Written by claude at the owner's request ("lets just write documentation for now, we will hand it off to grok", "grok can fill in the blanks"). Facts marked *verified* were read from the repo or the disk today; everything under "Proposed" and "Open questions" is a proposal for Grok to confirm or replace. Related: `SANDBOX-TOYS-AND-BOARDS.md` (the sandbox rules and the checklist for new sandboxes), `PCHQ-SESSIONS-DESIGN.md` (several pc-hq boards at once), `INMEM-DB-CPU-THEORY-REPORT.md` section 9 (marker is the scale lane).
+Status: **PLAN ONLY. Nothing here is built.** Written by claude at the owner's request ("lets just write documentation for now, we will hand it off to grok", "grok can fill in the blanks"). Section 0 is the owner's amendment the same day, recorded by Grok on branch `grok`. Facts marked *verified* were read from the repo or the disk today; everything under "Proposed" and "Open questions" is a proposal. Related: `SANDBOX-TOYS-AND-BOARDS.md`, `PCHQ-SESSIONS-DESIGN.md`, `BLUEPRINTZ-DESIGN.md`, `INMEM-DB-CPU-THEORY-REPORT.md` section 9.
+
+## 0. Ultimate goal (owner, 2026-10-12, after the cdda/df handoff)
+
+**gta-hq** is the Toys destination: a pc-hq style project (small window plus a board entry, same pattern as dsr-rpg). **cdda-hq and df-hq may be built first.** They are steps and art modes, not a replacement for gta-hq.
+
+The picture is not "pick CDDA or emoji and stop." One board, four art modes, and the 2D/3D toggle applies to all of them:
+
+- **Backtick (`)** — emoji mode. Show the emoji set in **both 2D and 3D**. Today `piececraft-hq/pieces/system/keybinds.pdl` binds `` ` `` (key 96, `cjk_view`) to a 2D Chinese/ASCII terminal view. That binding is what exists. The owner's ask is emoji, in both views. Do not treat the current ASCII view as the finished backtick mode.
+- **Backslash (`\`)** — cycle the tile vocabulary: **RPG Maker tiles**, **CDDA tiles**, **brixels**. This key is not in that keybinds file today.
+- **`0`** — toggle 2D / 3D for whichever art mode is on. This key already exists (`render_mode_toggle`, key 48). The new rule is that it keeps working inside backtick mode and inside each `\` vocabulary.
+
+**Brixels** are the in-house art, not a downloaded tileset. The owner described them as evolving shape-clay used as Lego-like pieces. We write our own vocabulary for our own 2D/3D tile sets. An **image concept bank** (images associated by pixel maps) says what a piece looks like and what it does. Pieces socket together: arms + legs + head = a human; wheels + engine + windshield = a car. No folder named brixels was found in this pass. Do not substitute UltiCa or emoji for this mode.
+
+**Blueprintz.** Look up the empty shell (`BLUEPRINTZ-DESIGN.md`: taskbar db row and the game **db ▾** tab exist; the window does not edit yet). Wire gta-hq / cdda-hq / df-hq events to **events-hq**, and give blueprintz a macro map in the Unreal-blueprint sense: visual scripting whose underlying code is **`.pal`**. The 2026-10-11 design says `event.ir.pdl` stays the one event format and edits go through events-hq ops. The owner's new line is that the visual map sits on `.pal`. Reconcile those two before building a second event format.
+
+Order of work, as the owner put it: cdda-hq and df-hq may land first; gta-hq is the goal they are aiming at. Questions go to co-lab session `1791851915` (section 7).
 
 ## 1. Owner direction (the pivot)
 - Reuse dsr-rpg's engine guts, **copy** them and change the project to **cdda-hq**. (dsr-rpg itself stays; it was itself a carbon copy of rpg-pet.)
