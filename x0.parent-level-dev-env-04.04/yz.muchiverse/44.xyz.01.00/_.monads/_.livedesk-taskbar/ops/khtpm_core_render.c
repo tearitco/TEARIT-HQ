@@ -406,6 +406,7 @@ static int g_dock_menu_buf_w, g_dock_menu_buf_h;
  * at all. Drives the map/raise throttle in dock_paint_menu(); see the
  * comment there and 09-appendix/WINDOWS-TASKBAR-PORT.md. */
 static int g_dock_menu_mapped = 0;
+static int g_dock_menu_op_due = 0; /* 1 = re-apply theme opacity after this menu has actually been painted */
 static int g_dock_menu_msx = 0, g_dock_menu_msy = 0;
 static int g_dock_menu_mw = 0, g_dock_menu_mh = 0;
 static int g_dock_menu_sx, g_dock_menu_sy, g_dock_menu_w, g_dock_menu_h;
@@ -7787,8 +7788,8 @@ static void dock_paint_menu(void) {
         XMoveResizeWindow(dpy, g_dock_menu_win, g_dock_menu_sx, g_dock_menu_sy,
                           (unsigned)g_dock_menu_w, (unsigned)g_dock_menu_h);
         XMapRaised(dpy, g_dock_menu_win);
-        /* Same _NET_WM_WINDOW_OPACITY the pc-hq window already has. This menu is its own X window, so the in-window dropdown paint never inherited it. */
-        set_window_opacity(dpy, g_dock_menu_win, load_theme_opacity());
+        /* Mutter/XWayland drops _NET_WM_WINDOW_OPACITY set in the same breath as MapRaised. Re-set after the first present (flag below). */
+        g_dock_menu_op_due = 1;
         g_dock_menu_mapped = 1;
         g_dock_menu_msx = g_dock_menu_sx; g_dock_menu_msy = g_dock_menu_sy;
         g_dock_menu_mw  = g_dock_menu_w;  g_dock_menu_mh  = g_dock_menu_h;
@@ -7843,18 +7844,34 @@ static void dock_paint_menu(void) {
                 fclose(rf);
             }
         }
-        if (g_dock_dd_scrolling && g_dock_dd_vis > 0 && g_dock_dd_total > 1) {
-            /* Same track the generic scrollbar paints on a pc-hq dropdown: 8px, #2a2a2a track, #888888 thumb. */
-            int tw = 8, tx = g_win_w - tw - 12, ty = DD_ARROW_H, th_all = g_dock_dd_vis * DOCK_BAR_H - 2 * DD_ARROW_H;
-            MwPlan mp; int thumb_y, thumb_h;
-            if (th_all < 8) th_all = 8;
-            mw_plan(&mp, g_dock_dd_total, g_dock_dd_vis + 1, NULL);
-            mw_thumb(&mp, th_all, g_dock_dd_scroll, &thumb_y, &thumb_h);
-            thumb_y += ty;
-            XSetForeground(dpy, gc, alloc_pixel("#2a2a2a"));
-            XFillRectangle(dpy, buf, gc, tx, ty, (unsigned)tw, (unsigned)th_all);
-            XSetForeground(dpy, gc, alloc_pixel("#888888"));
-            XFillRectangle(dpy, buf, gc, tx + 1, thumb_y, (unsigned)(tw > 2 ? tw - 2 : tw), (unsigned)thumb_h);
+        {
+            /* The row column stays. The gutter beside the thumb is cut out of the window, same as a pc-hq dropdown, where that gap is not painted and the board shows through. Only the ^/v bands and the thumb itself stay. */
+            int strip = (g_dock_dd_scrolling && g_dock_dd_vis > 0 && g_dock_dd_total > 1) ? DD_STRIP_W : 0;
+            int tw = 8, tx = 0, thumb_y = 0, thumb_h = 0;
+            if (strip) {
+                int th_all = g_dock_dd_vis * DOCK_BAR_H - 2 * DD_ARROW_H;
+                MwPlan mp;
+                tx = g_win_w - tw - 12;
+                if (th_all < 8) th_all = 8;
+                mw_plan(&mp, g_dock_dd_total, g_dock_dd_vis + 1, NULL);
+                mw_thumb(&mp, th_all, g_dock_dd_scroll, &thumb_y, &thumb_h);
+                thumb_y += DD_ARROW_H;
+                XSetForeground(dpy, gc, alloc_pixel("#888888"));
+                XFillRectangle(dpy, buf, gc, tx, thumb_y, (unsigned)tw, (unsigned)thumb_h);
+            }
+            {
+                XRectangle rs[4];
+                int n = 0, body = strip ? g_win_w - strip : g_win_w;
+                if (body < 1) body = g_win_w;
+                rs[n].x = 0; rs[n].y = 0; rs[n].width = (unsigned short)body; rs[n].height = (unsigned short)g_win_h; n++;
+                if (strip && g_win_h > 2 * DD_ARROW_H) {
+                    rs[n].x = (short)body; rs[n].y = 0; rs[n].width = (unsigned short)strip; rs[n].height = (unsigned short)DD_ARROW_H; n++;
+                    rs[n].x = (short)body; rs[n].y = (short)(g_win_h - DD_ARROW_H); rs[n].width = (unsigned short)strip; rs[n].height = (unsigned short)DD_ARROW_H; n++;
+                    if (thumb_h > 0 && tx >= body)
+                        { rs[n].x = (short)tx; rs[n].y = (short)thumb_y; rs[n].width = (unsigned short)tw; rs[n].height = (unsigned short)thumb_h; n++; }
+                }
+                XShapeCombineRectangles(dpy, g_dock_menu_win, ShapeBounding, 0, 0, rs, n, ShapeSet, Unsorted);
+            }
         }
         /* 2px theme-secondary window frame in a dedicated margin,
          * drawn LAST, right before the present. */
@@ -7900,6 +7917,14 @@ static void dock_paint_menu(void) {
                 XPutImage(dpy, win, gc, frame, 0, 0, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h);
                 XDestroyImage(frame);
             }
+        }
+        set_window_opacity(dpy, g_dock_menu_win, load_theme_opacity());
+        if (g_dock_menu_op_due) {
+            XFlush(dpy);
+            usleep(200000); /* one frame of visibility, then the compositor will honor the property */
+            set_window_opacity(dpy, g_dock_menu_win, load_theme_opacity());
+            XFlush(dpy);
+            g_dock_menu_op_due = 0;
         }
         win = winh; buf = bufh; xftdraw_buf = xh; gc = gch;
         g_win_w = ww; g_win_h = hh;
