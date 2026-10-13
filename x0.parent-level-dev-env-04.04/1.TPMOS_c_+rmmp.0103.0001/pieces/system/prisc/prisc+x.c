@@ -285,7 +285,7 @@ void parse_line(char *line, int pass) {
             strcpy(i->custom_name, part);
             
             /* Parse arguments: layout_op x2, x1 (rd, menu_id) or move_player x1 */
-            char *args = strstr(original, part) + strlen(part);
+            char *args = strstr(line, part) + strlen(part);
             while (*args == ' ' || *args == '\t') args++;
             
             char arg_copy[64];
@@ -352,7 +352,7 @@ void parse_line(char *line, int pass) {
             }
         } else if (strcmp(part, "read_history") == 0) {
             i->op = OP_READ_HISTORY;
-            char *args = strstr(original, part) + strlen(part);
+            char *args = strstr(line, part) + strlen(part);
             while (*args == ' ' || *args == '\t') args++;
             char arg1[256] = "", arg2[256] = "";
             if (sscanf(args, "r%d, r%d", &i->rd, &i->rs1) == 2 || sscanf(args, "x%d, x%d", &i->rd, &i->rs1) == 2) {
@@ -370,12 +370,12 @@ void parse_line(char *line, int pass) {
             }
         } else if (strcmp(part, "read_pos") == 0) {
             i->op = OP_READ_POS;
-            char *args = strstr(original, part) + strlen(part);
+            char *args = strstr(line, part) + strlen(part);
             while (*args == ' ' || *args == '\t') args++;
             if (sscanf(args, "r%d", &i->rd) != 1) sscanf(args, "x%d", &i->rd);
         } else if (strcmp(part, "read_layout") == 0) {
             i->op = OP_READ_LAYOUT;
-            char *args = strstr(original, part) + strlen(part);
+            char *args = strstr(line, part) + strlen(part);
             while (*args == ' ' || *args == '\t') args++;
             char arg1[256] = "", arg2[256] = "";
             if (sscanf(args, "r%d, \"%[^\"]\"", &i->rd, arg2) == 2 || sscanf(args, "x%d, \"%[^\"]\"", &i->rd, arg2) == 2) {
@@ -383,14 +383,14 @@ void parse_line(char *line, int pass) {
             }
         } else if (strcmp(part, "sleep") == 0) {
             i->op = OP_SLEEP;
-            char *args = strstr(original, part) + strlen(part);
+            char *args = strstr(line, part) + strlen(part);
             while (*args == ' ' || *args == '\t') args++;
             if (sscanf(args, "r%d", &i->rs1) != 1 && sscanf(args, "x%d", &i->rs1) != 1) {
                 i->imm = atoi(args);
             }
         } else if (strcmp(part, "exec") == 0) {
             i->op = OP_EXEC;
-            char *args = strstr(original, part) + strlen(part);
+            char *args = strstr(line, part) + strlen(part);
             while (*args == ' ' || *args == '\t') args++;
             char arg1[256] = "", arg2[256] = "", arg3[256] = "";
             int count = sscanf(args, "%255s %255s %255s", arg1, arg2, arg3);
@@ -411,7 +411,7 @@ void parse_line(char *line, int pass) {
             i->op = OP_HIT_FRAME;
         } else if (strcmp(part, "read_state") == 0) {
             i->op = OP_READ_STATE;
-            char *args = strstr(original, part) + strlen(part);
+            char *args = strstr(line, part) + strlen(part);
             while (*args == ' ' || *args == '\t') args++;
             char arg1[256] = "", arg2[256] = "", arg3[256] = "";
             if (sscanf(args, "%255s %255s %255s", arg1, arg2, arg3) == 3) {
@@ -421,17 +421,17 @@ void parse_line(char *line, int pass) {
             }
         } else if (strcmp(part, "read_active_target") == 0) {
             i->op = OP_READ_ACTIVE_TARGET;
-            char *args = strstr(original, part) + strlen(part);
+            char *args = strstr(line, part) + strlen(part);
             while (*args == ' ' || *args == '\t') args++;
             if (sscanf(args, "r%d", &i->rd) != 1) sscanf(args, "x%d", &i->rd);
         } else if (strcmp(part, "read_env_key") == 0) {
             i->op = OP_READ_ENV_KEY;
-            char *args = strstr(original, part) + strlen(part);
+            char *args = strstr(line, part) + strlen(part);
             while (*args == ' ' || *args == '\t') args++;
             if (sscanf(args, "r%d", &i->rd) != 1) sscanf(args, "x%d", &i->rd);
         } else if (strcmp(part, "addi") == 0) {
             char rdstr[32], rs1str[32];
-            if (sscanf(line, "%*s %31s, %31s, %d", rdstr, rs1str, &i->imm) == 3) {
+            if (sscanf(line, "%*s %31s %31s %d", rdstr, rs1str, &i->imm) == 3) {
                 parse_reg(rdstr, &i->rd);
                 parse_reg(rs1str, &i->rs1);
             }
@@ -446,9 +446,8 @@ void parse_line(char *line, int pass) {
                 else { i->imm = atoi(rs2str); i->op = OP_ADDI; }
             }
         } else if (strcmp(part, "li") == 0) {
-            /* li rd, imm -> addi rd, x0, imm */
             char rdstr[32];
-            if (sscanf(line, "%*s %31s, %d", rdstr, &i->imm) == 2) {
+            if (sscanf(line, "%*s %31s %d", rdstr, &i->imm) == 2) {
                 parse_reg(rdstr, &i->rd);
             }
             i->rs1 = 0;
@@ -467,7 +466,7 @@ void parse_line(char *line, int pass) {
                OR read_pdl R<n> "section" "key" <rd> (uses default piece path) */
             i->op = OP_READ_PDL;
             i->literal_arg[0] = '\0';
-            char *args = strstr(original, part) + strlen(part);
+            char *args = strstr(line, part) + strlen(part);
             while (*args == ' ' || *args == '\t') args++;
             char first_arg[256] = "", section[32] = "", key[64] = "", reg[16] = "";
             if (sscanf(args, "\"%255[^\"]\" \"%31[^\"]\" \"%63[^\"]\" %15s", first_arg, section, key, reg) == 4) {
@@ -482,7 +481,7 @@ void parse_line(char *line, int pass) {
         } else if (strcmp(part, "write_pdl") == 0) {
             /* write_pdl "pdl_path"|"PROJECT_PDL" "section" "key" <rs1> | <literal_string> */
             i->op = OP_WRITE_PDL;
-            char *args = strstr(original, part) + strlen(part);
+            char *args = strstr(line, part) + strlen(part);
             while (*args == ' ' || *args == '\t') args++;
             char first_arg[256] = "", section[32] = "", key[64] = "", val_arg[64] = "";
             /* Try: "path" "section" "key" "literal" (literal string value) */
@@ -523,12 +522,12 @@ void parse_line(char *line, int pass) {
         } else if (strcmp(part, "call_method") == 0) {
             /* call_method <method_name> */
             i->op = OP_CALL_METHOD;
-            char *args = strstr(original, part) + strlen(part);
+            char *args = strstr(line, part) + strlen(part);
             while (*args == ' ' || *args == '\t') args++;
             sscanf(args, "%31s", i->custom_name);
         } else if (strcmp(part, "console_print") == 0) {
             i->op = OP_CONSOLE_PRINT;
-            char *args = strstr(original, part) + strlen(part);
+            char *args = strstr(line, part) + strlen(part);
             while (*args == ' ' || *args == '\t') args++;
             char *q = strchr(args, '"');
             if (q) {
@@ -552,18 +551,19 @@ void parse_line(char *line, int pass) {
         } else if (strcmp(part, "read_relay_row") == 0) {
             /* read_relay_row <key_name> <rd> <rs1> */
             i->op = OP_READ_RELAY_ROW;
-            char *args = strstr(original, part) + strlen(part);
+            char *args = strstr(line, part) + strlen(part);
             while (*args == ' ' || *args == '\t') args++;
             char key[64] = "", rd[16] = "", rs1[16] = "";
             if (sscanf(args, "%63s %15s %15s", key, rd, rs1) == 3) {
                 strncpy(i->literal_arg, key, 255);
-                if (sscanf(rd, "r%d", &i->rd) != 1) sscanf(rd, "x%d", &i->rd);
-                if (sscanf(rs1, "r%d", &i->rs1) != 1) sscanf(rs1, "x%d", &i->rs1);
+                i->literal_arg[255] = '\0';
+                parse_reg(rd, &i->rd);
+                parse_reg(rs1, &i->rs1);
             }
         } else if (strcmp(part, "relay_write") == 0) {
             /* relay_write "..." */
             i->op = OP_RELAY_WRITE;
-            char *args = strstr(original, part) + strlen(part);
+            char *args = strstr(line, part) + strlen(part);
             while (*args == ' ' || *args == '\t') args++;
             char *q = strchr(args, '"');
             if (q) {
@@ -577,11 +577,12 @@ void parse_line(char *line, int pass) {
                 }
             }
         } else if (strcmp(part, "strcmp") == 0) {
-            /* strcmp rd, "literal", rs1 */
+            /* strcmp rs1, "literal", rd — stores 0 if equal, 1 if not in rd */
             i->op = OP_STRCMP;
-            char *args = strstr(original, part) + strlen(part);
+            char *args = strstr(line, part) + strlen(part);
             while (*args == ' ' || *args == '\t') args++;
-            char rd[16] = "", rs1[16] = "";
+            char rs1[16] = "", rd[16] = "";
+            sscanf(args, "%15s", rs1);
             char *q = strchr(args, '"');
             if (q) {
                 q++;
@@ -593,11 +594,12 @@ void parse_line(char *line, int pass) {
                     strncpy(litbuf, q, len);
                     litbuf[len] = '\0';
                     strncpy(i->literal_arg, litbuf, 255);
-                    sscanf(end_q + 1, "%15s %15s", rd, rs1);
-                    parse_reg(rd, &i->rd);
-                    parse_reg(rs1, &i->rs1);
+                    i->literal_arg[255] = '\0';
+                    sscanf(end_q + 1, "%15s", rd);
                 }
             }
+            parse_reg(rs1, &i->rs1);
+            parse_reg(rd, &i->rd);
         } else if (strcmp(part, "sub") == 0) {
             char rdstr[32], rs1str[32], rs2str[32];
             if (sscanf(line, "%*s %31s %31s %31s", rdstr, rs1str, rs2str) == 3) {
@@ -834,6 +836,7 @@ int main(int argc, char **argv) {
         Inst i = program[pc];
         regs[0] = 0;
         int next_pc = pc + 1;
+        if (getenv("PRISC_DEBUG")) fprintf(stderr, "DEBUG pc=%d op=%d rd=%d rs1=%d rs2=%d imm=%d ui=%d\n", pc, i.op, i.rd, i.rs1, i.rs2, i.imm, i.uses_imm);
         
         if (i.op == OP_CUSTOM) {
             exec_custom_op(&i);
@@ -897,6 +900,10 @@ int main(int argc, char **argv) {
             /* Sleep: sleep rs1 (micros) or imm */
             if (i.imm > 0) usleep(i.imm);
             else if (regs[i.rs1] > 0) usleep(regs[i.rs1]);
+        } else if (i.op == OP_STRCMP) {
+            char *str2 = "";
+            if (regs[i.rs1] >= 0 && regs[i.rs1] < string_pool_count) str2 = string_pool[regs[i.rs1]];
+            regs[i.rd] = (strcmp(str2, i.literal_arg) == 0) ? 0 : 1;
         } else if (i.op == OP_EXEC) {
             char cmd[1024];
             char arg1[256] = "", arg2[256] = "";
@@ -1157,7 +1164,7 @@ int main(int argc, char **argv) {
                         p += strlen(i.literal_arg);
                         if (*p == '|' || *p == '=') p++;
                         char *end = p;
-                        while (*end && *end != '\n' && *end != '\r') end++;
+                        while (*end && *end != '\n' && *end != '\r' && *end != '|') end++;
                         *end = '\0';
                         if (atoi(p) != 0 || isdigit(p[0])) regs[i.rd] = atoi(p);
                         else {
