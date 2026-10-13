@@ -1125,16 +1125,18 @@ int main(int argc, char **argv) {
                     char cmd[2048];
                     char *script_path = method_path;
                     if (strncmp(method_path, "./", 2) == 0) script_path += 2;
+                    char *piece_id = getenv("PRISC_PIECE_ID");
+                    if (!piece_id) piece_id = "hero";
+                    char *proj_id = getenv("PRISC_PROJECT_ID");
+                    if (!proj_id) proj_id = "template";
+                    char *binary = getenv("PRISC_BINARY");
+                    if (!binary) binary = "pieces/system/prisc/+x/prisc+x";
                     if (strncmp(script_path, "/", 1) != 0 && proj_root) {
-                        snprintf(cmd, sizeof(cmd), "%s/%s", proj_root, script_path);
+                        snprintf(cmd, sizeof(cmd), "PRISC_PROJECT_ROOT=%s PRISC_PROJECT_ID=%s PRISC_PIECE_ID=%s %s %s/%s", proj_root, proj_id, piece_id, binary, proj_root, script_path);
                     } else {
-                        snprintf(cmd, sizeof(cmd), "%s", script_path);
+                        snprintf(cmd, sizeof(cmd), "PRISC_PROJECT_ROOT=%s PRISC_PROJECT_ID=%s PRISC_PIECE_ID=%s %s %s", proj_root, proj_id, piece_id, binary, script_path);
                     }
-                    if (proj_root) {
-                        char env_cmd[4096];
-                        snprintf(env_cmd, sizeof(env_cmd), "PRISC_PROJECT_ROOT=%s %s", proj_root, cmd);
-                        system(env_cmd);
-                    } else system(cmd);
+                    system(cmd);
                 }
             }
         } else if (i.op == OP_CONSOLE_PRINT) {
