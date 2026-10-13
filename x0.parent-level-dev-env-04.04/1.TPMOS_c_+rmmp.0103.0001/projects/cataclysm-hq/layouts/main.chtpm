@@ -1,0 +1,21 @@
+<panel>
+    <text label="+===========================================================+" /><br/>
+    <text label="|           C A T A C L Y S M - H Q                       |" /><br/>
+    <text label="+===========================================================+" /><br/>
+    <br/>
+    <module src="projects/cataclysm-hq/ops/+x/rng_op.+x" />
+    <module src="projects/cataclysm-hq/ops/+x/dungeon_gen.+x" />
+    <br/>
+    <text label="Map:" /><br/>
+    <text label="${map_display}" /><br/>
+    <br/>
+    <text label="Status: HP=${hero_hp}/${hero_max_hp} SP=${hero_sp}/${hero_max_sp} L${hero_level}" /><br/>
+    <text label="Hunger: ${hero_hunger}/100 | Thirst: ${hero_thirst}/100 | Gold: ${hero_gold}" /><br/>
+    <text label="Weapon: ${hero_weapon} | Armor: ${hero_armor} | XP: ${hero_xp}" /><br/>
+    <br/>
+    <text label="Commands: [w] Up [a] Left [s] Down [d] Right [e] Rest [f] Fight [l] Look [i] Inventory [x] Descend [ESC] Quit" /><br/>
+    <br/>
+    <button label="New Game" onClick="LAUNCH:CATACLYSM_NEW" href="projects/cataclysm-hq/layouts/game.chtpm" /><br/>
+    <button label="Load Game" onClick="LAUNCH:CATACLYSM_LOAD" href="projects/cataclysm-hq/layouts/game.chtpm" /><br/>
+    <button label="Back to Main Menu" href="pieces/chtpm/layouts/os.chtpm" /><br/>
+</panel>

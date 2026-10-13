@@ -1,0 +1,58 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | miner
+META         | version            | 1.0
+META         | type               | player
+
+STATE        | name               | Durin Stonecutter
+STATE        | hp                 | 50
+STATE        | max_hp             | 50
+STATE        | str                | 18
+STATE        | dex                | 14
+STATE        | con                | 20
+STATE        | int                | 12
+STATE        | wis                | 13
+STATE        | cha                | 10
+STATE        | level              | 1
+STATE        | xp                 | 0
+STATE        | hunger             | 0
+STATE        | thirst             | 0
+STATE        | alcohol            | 0
+STATE        | gold               | 0
+STATE        | profession         | miner
+STATE        | skill_mining       | 10
+STATE        | skill_fighting     | 5
+STATE        | skill_crafting     | 3
+STATE        | x                  | 50
+STATE        | y                  | 50
+STATE        | z                  | 0
+
+INV          | slot_01            | copper_pickaxe
+INV          | slot_02            | empty
+INV          | slot_03            | empty
+INV          | slot_04            | empty
+INV          | slot_05            | empty
+INV          | weapon_slot        | copper_pickaxe
+INV          | armor_slot         | leather_vest
+
+METHOD       | on_move            | projects/dwarf-fortress/scripts/move.asm
+METHOD       | on_mining          | projects/dwarf-fortress/scripts/mine.asm
+METHOD       | on_combat          | projects/dwarf-fortress/scripts/combat.asm
+METHOD       | on_rest           | projects/dwarf-fortress/scripts/rest.asm
+METHOD       | on_look            | projects/dwarf-fortress/scripts/look.asm
+METHOD       | on_build           | projects/dwarf-fortress/scripts/build.asm
+
+RESPONSE     | default            | The dwarf stands ready with pickaxe in hand.
+RESPONSE     | on_hurt            | "By Moradin's forge!"
+RESPONSE     | on_death           | "My beard... it's... tangled..."
+STATE        | xp               | 15
+STATE        | hp               | 32
+STATE        | xp               | 2
+STATE        | hp               | 50
+STATE        | hunger           | 1
+STATE        | thirst           | 1
+STATE        | hp               | 32
+STATE        | xp               | 2
+STATE        | hp               | 50
+STATE        | hunger           | 1
+STATE        | thirst           | 1

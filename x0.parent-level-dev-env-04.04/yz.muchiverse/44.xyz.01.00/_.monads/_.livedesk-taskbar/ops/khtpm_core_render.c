@@ -135,6 +135,31 @@ static void kh_capture_key(KeySym ks, char ch);
 /* LAYOUT REUSE (2026-10-12, measured on the dsr-rpg board window: redraw() ran assign_nav_and_layout() ~1.7 times per redraw and layout + CSS style was ~58% of repaint time). g_layout_fresh = 1 tells the NEXT
  * redraw() that the layout it would compute is already current (the caller just ran it, or nothing that changes layout happened since the last redraw: a canvas-only repaint). redraw() consumes it. */
 static int g_layout_fresh = 0;
+/* FIND IN PAGE (2026-10-12) - arm/step/clear, used by handle_key(). */
+static void kh_find_begin(void);
+static void kh_find_step(int dir);
+static void kh_find_clear(void);
+static void kh_find_commit(void);
+
+/* FIND IN PAGE (2026-10-12): the row a find wants scrolled into view,
+ * handed to layout_scroll_region() by kh_find_commit() and consumed by
+ * the one region that owns the row. Declared up here with the rest of
+ * find's surface because both the setter (find control) and the reader
+ * (layout, far below) need it before either is defined. */
+static Elem *g_find_reveal = NULL;
+
+/* The current page's matches, in document order, rebuilt on every
+ * query keystroke. Sized for a long article; a page with more matches
+ * than this reports the ones it kept rather than silently lying about
+ * a smaller total. */
+#define FIND_MAX_HITS 512
+static Elem *g_find_hits_list[FIND_MAX_HITS];
+int kh_find_is_armed(void);   /* draw_core's seam - see its definition */
+static void dock_nav_step(int dir);   /* declared far below; kh_row_run_extend()
+                                       * (row-run selection) needs it first */
+int kh_row_in_sel_run(const Elem *e);  /* ROW-RUN SELECTION (2026-10-12): draw_core's
+                                       * half of the run predicate - see its comment */
+int kh_find_count_in(Elem *container, Elem **out, int cap, int *n_out);
 static void redraw(void); /* REAL, forward declaration needed for dispatch()'s OPACITY_MINUS/OPACITY_PLUS handlers (NEW 2026-08-29 TASK 2) */
 static void kh_hq_reg_bump_marker(const char *new_line); /* fwd - MINIMIZE handler uses it, defined near redraw() (hq-windows change marker, grok handoff 2026-09-30) */
 static void kh_hq_reg_mark_removed(void); /* fwd - cleanup_hq_window_registry() uses it, same marker mechanism */
@@ -1019,12 +1044,26 @@ static void kh_launch_window_modules(Elem *window, const char *house_root, const
  * trace. Set here, reported in kh_write_ascii_frame() (the surface we
  * already read when debugging) and on stderr. Zero behavior change. */
 static int g_pool_overflow_count = 0;
+/* CHILDREN-CAP drops (2026-10-12): see the append site in parse_element().
+ * Zero behaviour change - the drop itself is exactly as before (the
+ * child is not appended); this only makes it countable. */
+static int g_children_dropped = 0;
 static int g_vars_dropped = 0;
 /* repeat-count clamps (2026-10-08): same visibility rule - a window that
  * silently rendered fewer rows than it asked for looked identical to one
  * that rendered all of them. */
 static int g_repeat_clamped = 0;
 static int g_repeat_clamp_last = 0;
+/* REPEAT EXPANSION BUFFER (2026-10-12): set by kh_expand_repeats() when it
+ * runs out of room mid-template. See the self-growing rcap block in
+ * parse_chtpm() for the measurement that made this necessary: the browser
+ * published 682 content rows and built 169, with the pool at 231/1024, and
+ * the buffer was the reason - silently. */
+static int g_repeat_buf_full = 0;
+/* how many times a bigger buffer was needed and got it, and how many times
+ * even rcap_max was not enough (the only remaining truncation) */
+static int g_repeat_grown = 0;
+static int g_repeat_still_short = 0;
 
 static Elem *elem_new(const char *tag) {
     /* 2026-09-11 - bumps whichever pool g_elem_pool_target/
@@ -1226,6 +1265,15 @@ static void apply_attr(Elem *e, const char *name, const char *val) {
         snprintf(decoded, sizeof(decoded), "%s", val);
         decode_entities(decoded);
         snprintf(e->cells, sizeof(e->cells), "%s", decoded);
+    } else if (strcmp(name, "ccounts") == 0) {
+        /* TABLE COMPUTED WIDTHS (2026-10-11): "n0,n1,..." column
+         * maxima. Digits and commas need no entity games, but run the
+         * same decode for uniformity; anything unparseable falls back
+         * at draw time, never here. */
+        char decoded[sizeof(e->ccounts)];
+        snprintf(decoded, sizeof(decoded), "%s", val);
+        decode_entities(decoded);
+        snprintf(e->ccounts, sizeof(e->ccounts), "%s", decoded);
     } else if (strcmp(name, "action") == 0 || strcmp(name, "onClick") == 0 || strcmp(name, "onclick") == 0) {
         /* REAL FIX 2026-08-25 (Stage 2 palettes migration, direct live
          * report: "no emojis just blank glyph... no navs"). This parser
@@ -1407,6 +1455,206 @@ static void apply_attr(Elem *e, const char *name, const char *val) {
     }
 }
 
+
+/* ================= GATED ELEMENTS COST NO POOL SLOT (2026-10-12) =============
+ *
+ * The parser used to allocate an element from the pool FIRST and drop it
+ * afterwards, when show="" / "0" / "false" said so. That is free for a
+ * handful of gated widgets and ruinous for a template that gates a whole
+ * ROW of alternatives per row: network-browser-hq.xhtpm's content
+ * <repeat> emits one element per content KIND per row (ct cx cr cd cl ci
+ * cb ck cs tr li dl ds h1..h6 tw cf cm cv pp pa - 24 of them), exactly one
+ * of which is ever visible. So a 124-paragraph article asked the pool for
+ * 2976 elements and got 1024, and the article was cut at row 37 with a
+ * single "[WARN] element pool overflow" line to explain it.
+ *
+ * Measured before this change (124-paragraph local article):
+ *   [POOL] elements 1024/1024, overflow WARN, 37 of 124 content rows in
+ *   the tree, ui.txt cheerfully reporting content_count=124.
+ *
+ * So the gate is now evaluated BEFORE the allocation. A gated element and
+ * its whole subtree are skipped by pointer arithmetic, costing zero pool
+ * slots and zero tree nodes. This is the difference between "the browser
+ * can show ~40 paragraphs" and "the pool is not the browser's limit any
+ * more" - and it costs nothing at all in memory, which raising MAX_ELEMS
+ * would not have (Elem is ~29 KB, and the process RSS proves it: 56 MB
+ * resident for a 30 MB pool + a second 30 MB index array).
+ *
+ * HONEST SCOPE. Three things this deliberately does NOT do:
+ *  - it does not change WHAT shows. Same gate, same three falsy values,
+ *    same order of attribute application.
+ *  - it does not skip the window-level attributes. apply_attr() has two
+ *    window-wide side effects (drop_action, drop_highlight) that are not
+ *    per-element state; a gated element carrying one of those still gets
+ *    it applied (scan_window_attrs), so nothing observable is lost.
+ *  - the scanner FAILS OPEN. If the peek cannot read a tag with full
+ *    confidence - unterminated quote, no '>' before the end of the buffer,
+ *    anything it does not recognise - it reports "no gate here" and the
+ *    ordinary path runs and allocates as before. A gate is only ever
+ *    honoured when the tag was read cleanly. Guessing wrong in the
+ *    dropping direction would silently delete a visible row, which is the
+ *    one failure mode a parser may not have. */
+
+/* Read one attribute value out of a tag, respecting quotes. Mirrors
+ * parse_attr_value()'s contract for the shapes templates actually use.
+ * Returns the position after the value, or NULL if the tag ends first. */
+static const char *peek_attr_value(const char *p, char *out, size_t outsz) {
+    if (out && outsz) out[0] = '\0';
+    if (*p != '=') return NULL;
+    p++;
+    if (*p == '"' || *p == '\'') {
+        char q = *p++;
+        const char *e = p;
+        while (*e && *e != q) e++;
+        if (*e != q) return NULL;              /* unterminated: fail open */
+        if (out && outsz) {
+            size_t n = (size_t)(e - p);
+            if (n >= outsz) return NULL;       /* too long to trust: fail open */
+            memcpy(out, p, n);
+            out[n] = '\0';
+        }
+        return e + 1;
+    }
+    const char *s = p;
+    while (*p && !isspace((unsigned char)*p) && *p != '>' && *p != '/') p++;
+    if (out && outsz) {
+        size_t n = (size_t)(p - s);
+        if (n >= outsz) return NULL;
+        memcpy(out, s, n);
+        out[n] = '\0';
+    }
+    return p;
+}
+
+/* Is the tag at `p` (just after its tag name) gated off? Returns 1 only
+ * when a show= attribute was READ CLEANLY and its value is falsy. */
+static int peek_tag_gated(const char *p) {
+    for (;;) {
+        while (*p && isspace((unsigned char)*p)) p++;
+        if (*p == '/' && p[1] == '>') return 0;
+        if (*p == '>') return 0;
+        if (!*p) return 0;
+        char attr[32]; size_t an = 0;
+        const char *name = p;
+        while (*p && *p != '=' && !isspace((unsigned char)*p) && *p != '>' && *p != '/') {
+            if (an + 1 < sizeof(attr)) attr[an++] = *p;
+            p++;
+        }
+        attr[an] = '\0';
+        (void)name;
+        while (*p && isspace((unsigned char)*p)) p++;
+        if (*p != '=') continue;              /* valueless attribute */
+        char val[16384];
+        const char *after = peek_attr_value(p, val, sizeof(val));
+        if (!after) return 0;                 /* fail open */
+        p = after;
+        if (strcmp(attr, "show") == 0)
+            return (val[0] == '\0' || strcmp(val, "0") == 0 || strcmp(val, "false") == 0);
+    }
+}
+
+/* Apply ONLY the two window-level attributes of a tag we are about to
+ * skip (see the honesty note above). Same decode path apply_attr() uses,
+ * so drop_action behaves identically whether or not its element shows. */
+static void scan_window_attrs(const char *p) {
+    for (;;) {
+        while (*p && isspace((unsigned char)*p)) p++;
+        if (*p == '>' || (!*p) || (*p == '/' && p[1] == '>')) return;
+        char attr[32]; size_t an = 0;
+        while (*p && *p != '=' && !isspace((unsigned char)*p) && *p != '>' && *p != '/') {
+            if (an + 1 < sizeof(attr)) attr[an++] = *p;
+            p++;
+        }
+        attr[an] = '\0';
+        while (*p && isspace((unsigned char)*p)) p++;
+        if (*p != '=') continue;
+        char val[16384];
+        const char *after = peek_attr_value(p, val, sizeof(val));
+        if (!after) return;
+        p = after;
+        if (strcmp(attr, "drop_action") == 0) {
+            char decoded[sizeof(g_drop_action)];
+            snprintf(decoded, sizeof(decoded), "%s", val);
+            decode_entities(decoded);
+            snprintf(g_drop_action, sizeof(g_drop_action), "%s", decoded);
+        } else if (strcmp(attr, "drop_highlight") == 0) {
+            snprintf(g_drop_highlight_color, sizeof(g_drop_highlight_color),
+                     "%s", val[0] ? val : "#88ff66");
+        }
+    }
+}
+
+/* Advance past a whole element, including children, without building
+ * anything. `p` points just after the tag name of the opening tag. The
+ * same comment/doctype rules parse_element() uses, so a gated subtree
+ * containing a comment or a doctype cannot desynchronise the depth
+ * count. Returns the position after the matching close tag, or at the
+ * end of the buffer if the element is never closed. */
+static const char *skip_subtree(const char *p) {
+    /* The OPENING tag first, and its self-closing form matters more than
+     * it looks: a gated <text .../> has no close tag, so a depth counter
+     * that starts at 1 runs off the end of the document and swallows
+     * every sibling after it. Found live the moment this landed - the
+     * browser's content <repeat> is nothing but gated self-closing
+     * elements, and the whole content pane came back empty
+     * ([POOL] 31/1024, zero content rows) instead of 37. */
+    const char *gt = p;
+    int self_close = 0;
+    while (*gt && *gt != '>') {
+        if (*gt == '"' || *gt == '\'') {
+            char ch = *gt++;
+            while (*gt && *gt != ch) gt++;
+            if (!*gt) return gt;              /* unterminated quote */
+        }
+        if (*gt == '/') self_close = 1;
+        gt++;
+    }
+    if (*gt != '>') return gt ? gt : p + strlen(p);
+    if (self_close) return gt + 1;
+    p = gt + 1;
+    int depth = 1;
+    while (*p && depth > 0) {
+        if (p[0] == '<' && p[1] == '!') {
+            if (strncmp(p, "<!--", 4) == 0) {
+                const char *end = strstr(p, "-->");
+                p = end ? end + 3 : p + strlen(p);
+            } else {
+                const char *gt = strchr(p, '>');
+                p = gt ? gt + 1 : p + strlen(p);
+            }
+            continue;
+        }
+        if (p[0] == '<' && p[1] == '/') {
+            const char *end = strchr(p, '>');
+            p = end ? end + 1 : p + strlen(p);
+            depth--;
+            continue;
+        }
+        if (p[0] == '<') {
+            const char *q = p + 1;
+            while (*q && !isspace((unsigned char)*q) && *q != '>' && *q != '/') q++;
+            /* window-level attrs on nested tags are honoured too */
+            scan_window_attrs(q);
+            const char *gt = q;
+            while (*gt && *gt != '>') {
+                if (*gt == '"' || *gt == '\'') {
+                    char ch = *gt++;
+                    while (*gt && *gt != ch) gt++;
+                    if (!*gt) break;
+                }
+                gt++;
+            }
+            if (*gt != '>') return p + strlen(p);      /* unterminated tag */
+            int self_close = (gt > q && gt[-1] == '/');
+            p = gt + 1;
+            if (!self_close) depth++;
+            continue;
+        }
+        p++;
+    }
+    return p;
+}
+
 static const char *parse_element(const char *p, Elem *parent) {
     skip_ws(&p);
     if (*p != '<') return p;
@@ -1432,6 +1680,14 @@ static const char *parse_element(const char *p, Elem *parent) {
         p++;
     }
     tag[tn] = '\0';
+    /* GATED ELEMENTS COST NO POOL SLOT (2026-10-12): decide BEFORE
+     * allocating - see the block comment above the peek_tag_gated()
+     * helpers for the measurement (37 of 124 rows reaching the tree) and
+     * for the three things this deliberately does not change. */
+    if (peek_tag_gated(p)) {
+        scan_window_attrs(p);
+        return skip_subtree(p);
+    }
     Elem *e = elem_new(tag);
     /* REAL BUG FIX 2026-09-11 (gdb-traced crash: a real, large loaded
      * page - 4chan's own /b/ front page, ~250+ real content rows,
@@ -1455,7 +1711,18 @@ static const char *parse_element(const char *p, Elem *parent) {
      * element up to this point is real and rendered normally. */
     if (!e) return p + strlen(p);
     e->parent = parent;
-    if (parent && parent->n_children < MAX_CHILDREN) parent->children[parent->n_children++] = e;
+    /* CHILDREN CAP (2026-10-12): the other half of the same truncation
+     * story, and it was completely silent - a parent at MAX_CHILDREN
+     * simply stopped taking children, with no counter anywhere. Found
+     * live the same day: after the gated-element fix freed the pool
+     * (231 of 1024 elements used, no overflow) the browser STILL showed
+     * only 169 of 682 published rows on a 1500-paragraph page. The pool
+     * was no longer the limiter; this was. Counted here so the mirror can
+     * say so - see g_children_dropped's line in kh_write_ascii_frame(). */
+    if (parent) {
+        if (parent->n_children < MAX_CHILDREN) parent->children[parent->n_children++] = e;
+        else g_children_dropped++;
+    }
 
     /* generic show="..." (CHTPM-ARCHITECTURE-FIX.md): with ${var} now
      * resolved at buffer level, a static template can gate a whole
@@ -2100,6 +2367,12 @@ static void kh_expand_repeats(const char *src, char *dst, size_t cap) {
         *o++ = *p++;
     }
     *o = '\0';
+    /* Ran out of room with input left: the template was TRUNCATED, not
+     * finished. Said out loud rather than assumed - the caller retries
+     * with a bigger buffer and only accepts a short result at its own
+     * ceiling. Found live 2026-10-12: this loop stopped emitting after
+     * ~169 of 682 published content rows with nothing saying so. */
+    if (*p) g_repeat_buf_full = 1;
 }
 
 /* expand nested <repeat> (pages -> commands, ...): run kh_expand_repeats
@@ -2110,11 +2383,18 @@ static void kh_expand_repeats(const char *src, char *dst, size_t cap) {
  * (either `a` or `b`), NUL-terminated. */
 static char *kh_expand_repeats_all(char *a, char *b, size_t cap) {
     char *src = a, *dst = b;
+    /* A pass that filled its buffer leaves the flag set, and no later pass
+     * can undo that - so OR it across the ping-pong and hand the caller a
+     * truthful answer for the WHOLE expansion, not just the last pass. */
+    int full = 0;
     for (int pass = 0; pass < 5; pass++) {
-        if (!strstr(src, "<repeat")) return src;
+        if (!strstr(src, "<repeat")) { g_repeat_buf_full = full; return src; }
+        g_repeat_buf_full = 0;
         kh_expand_repeats(src, dst, cap);
+        full |= g_repeat_buf_full;
         char *t = src; src = dst; dst = t;
     }
+    g_repeat_buf_full = full;
     return src;
 }
 
@@ -2312,19 +2592,54 @@ static Elem *parse_chtpm(const char *path) {
         }
 
         if (strstr(buf, "<repeat")) {
-            /* Big enough for a full 256-row tile grid whose <repeat> body
-             * carries long ${…} paths (rmmv/emoji): each expanded row is
-             * ~250B pre-sub, ~600B post-sub. */
-            size_t rcap = (size_t)sz * 48 + (size_t)512 * 1024;
-            char *a = malloc(rcap), *b = malloc(rcap);
-            if (a && b) {
-                snprintf(a, rcap, "%s", buf);
-                char *fin = kh_expand_repeats_all(a, b, rcap);
-                free(buf);
-                buf = strdup(fin);
-                free(a); free(b);
+            /* REPEAT EXPANSION SELF-GROWS (2026-10-12).
+             *
+             * The size was a GUESS - "big enough for a full 256-row tile
+             * grid" - and kh_expand_repeats() simply stopped emitting when
+             * it ran out, silently. Measured live on a 1500-paragraph page:
+             * ui.txt published 682 content rows, the tree built 169, and
+             * the element pool was at 231/1024 (i.e. not the limiter). The
+             * browser template's <repeat> emits 24 alternatives per row, so
+             * 682 rows is ~1.5 MB of expanded template and the guess was
+             * under it.
+             *
+             * Now the expansion TELLS us when it ran out of room and the
+             * caller doubles rcap and does it again, up to a ceiling. The
+             * initial guess is based on strlen(buf) rather than the
+             * original file size, because buf may have grown since (overlay
+             * fragments are spliced in before this point) - so the guess is
+             * about the text actually being expanded.
+             *
+             * A short result is accepted ONLY at the ceiling, and is
+             * counted as such; the common case costs exactly one extra
+             * expansion pass, only when the first one was too small. */
+            size_t base = strlen(buf);
+            size_t rcap = base * 48 + (size_t)512 * 1024;
+            const size_t rcap_max = (size_t)64 * 1024 * 1024;
+            char *orig = strdup(buf);
+            if (orig) {
+                for (int attempt = 0; attempt < 12; attempt++) {
+                    char *a = malloc(rcap), *b = malloc(rcap);
+                    if (!a || !b) { free(a); free(b); break; }
+                    memcpy(a, orig, base + 1);
+                    g_repeat_buf_full = 0;
+                    char *fin = kh_expand_repeats_all(a, b, rcap);
+                    int full = g_repeat_buf_full;
+                    if (!full || rcap >= rcap_max) {
+                        if (full) g_repeat_still_short++;
+                        else if (attempt > 0) g_repeat_grown++;
+                        free(buf);
+                        buf = strdup(fin);
+                        free(a); free(b);
+                        break;
+                    }
+                    free(a); free(b);
+                    rcap *= 2;
+                    if (rcap > rcap_max) rcap = rcap_max;
+                }
+                free(orig);
                 if (!buf) return NULL;
-            } else { free(a); free(b); }
+            }
         }
 
         size_t cap = strlen(buf) * 4 + 65536;
@@ -2514,6 +2829,13 @@ static int g_win_top_y = 90;   /* == WM_MANAGED_DRAG_MIN_Y (defined below) */
  * digit-jump is in khtpm_strip_parser.c / khtpm_taskbar_manager.c -
  * a separate fix if it regressed there too. */
 static int g_nav_digit_accum = 0;
+/* INLINE SPANS step 12 (dot-addressing, 2026-10-11): '.' arms link
+ * entry for the very next digit ("5.2" addresses row 5's link 2
+ * without entering the cursor first). One-shot and invisible: any
+ * non-digit key voids it (see handle_key's entry), a digit consumes
+ * it hit or miss, and clicks/reparse clear it with the anchor. Single
+ * digits only (1-9; walk covers longer rows). */
+static int g_seg_dot_armed = 0;
 /* Digits to echo next to the focus mark (nve_text, khtpm_nav_echo.c). Two
  * sources feed the same box: a REAL key typed into this window lands in
  * g_nav_digit_accum (found 2026-10-05 from the owner's report "not seeing the
@@ -2605,6 +2927,21 @@ static Elem *kh_parse_into_scratch(const char *path) {
  * below for where it's used. */
 static int g_default_scrolllist_scroll;
 static int window_is_dock(void); /* real def + header comment further down; forward-declared for the dock heartbeat below */
+/* INLINE SPANS step 11 (mouse drag-select, 2026-10-11): a button-1
+ * press on a link span no longer dispatches at press time - it ARMS
+ * this pending click. Release on the same link completes the click;
+ * motion past slop first turns it into a span selection (anchor stays
+ * the press link, the cursor follows the pointer through the step-10
+ * machinery). Relay clicks carry no release, so they keep instant
+ * dispatch (see the poll branch); only real (source-tagged) presses
+ * arm. Cleared on release-resolve, reparse, and any dispatch. Lives
+ * here (not with the drag state below) so the reparse path above the
+ * text-include can clear it. */
+static struct {
+    int active, button, px, py, nav, idx, two_step_ok, dragged;
+    char id[64];
+} g_span_pend;
+#define SPAN_DRAG_SLOP 6
 static int reparse_chtpm_if_changed(void) {
     if (!g_chtpm_path[0]) return 0;
     struct stat st;
@@ -2988,6 +3325,33 @@ static int reparse_chtpm_if_changed(void) {
     g_seg_nav = 0;
     g_seg_idx = -1;
     g_seg_id[0] = '\0';
+    /* INLINE SPANS step 10: the anchor borrows the cursor's identity -
+     * a rebuild invalidates it identically. */
+    g_seg_anchor = -1;
+    /* ROW-RUN SELECTION (2026-10-12): a run of nav indices points at
+     * rows in the tree being discarded, exactly like the anchor above -
+     * same reason, same place. */
+    g_sel_run_anchor = 0;
+    /* INLINE SPANS step 12: dot-armed entry is one-shot intent, not
+     * state that survives a rebuild. */
+    g_seg_dot_armed = 0;
+    /* INLINE SPANS step 8: hover names the same per-window triple - a
+     * rebuild invalidates it identically. */
+    g_hover_nav = 0;
+    g_hover_idx = -1;
+    g_hover_id[0] = '\0';
+    /* FIND IN PAGE (2026-10-12): matches are positions in a tree that
+     * no longer exists, so the find dies with it - same rule as the span
+     * cursor above, and for the same reason (a stale hit count and a
+     * stale "3 of 9" are worse than no find at all). The QUERY text is
+     * deliberately NOT cleared here: the user typed it, and a content
+     * change should re-search rather than silently forget the ask. */
+    g_find_hits = 0;
+    g_find_at = 0;
+    /* INLINE SPANS step 11: a rebuild also orphans any armed span
+     * press (its row may be gone) - the paired release must find
+     * nothing to resolve. */
+    g_span_pend.active = 0;
     g_n_elems = 0;
     /* REAL FIX 2026-10-08 (self-correction) - the truncation counters were
      * cumulative for the whole process lifetime, never reset. So a warning
@@ -3000,6 +3364,15 @@ static int reparse_chtpm_if_changed(void) {
     g_repeat_clamped = 0;
     g_repeat_clamp_last = 0;
     g_vars_dropped = 0;
+    /* Same rule for the counters added 2026-10-12, learned the same way:
+     * a negative test showed the repeat-truncation WARN outliving its
+     * cause (a small page after a big one still drew it), because these
+     * three were declared and reported but never reset here. Every
+     * truncation counter in this file describes the tree being BUILT
+     * NOW, not the history of the process. */
+    g_children_dropped = 0;
+    g_repeat_grown = 0;
+    g_repeat_still_short = 0;
     Elem *new_window = parse_chtpm(g_chtpm_path);
     if (!new_window) return 0;
     g_window = new_window;
@@ -3786,6 +4159,43 @@ static int scaled(int base_px) {
     return v;
 }
 
+/* PAGE ZOOM (2026-10-13, G3.2): a per-window text scale, separate from the
+ * house-wide UI scale above on purpose.
+ *
+ * WHY NOT INSIDE scaled(): ROW_H and CHROME_H are `scaled(24)` macros, so
+ * anything that touches scaled() also changes the ROW PITCH - and with it
+ * every nav slot, scroll offset, scrollbar division and hit-test rect in
+ * the window. That is a full-page zoom, it is a much bigger blast radius,
+ * and it is not what a reader wants when they hit Ctrl+= because the text
+ * is too small. This is TEXT zoom: glyphs grow, the column does not, and
+ * a wrapped row gets TALLER because it needs more visual lines. Same
+ * contract as the browser's text-only zoom.
+ *
+ * WHY NOT THE HOUSE SCALE: measured, it shrinks text. Pressing Ctrl+=
+ * once took a 60px content row to 46px and a wrapped paragraph to one line
+ * (gap plan §8.5) - g_ui_scale_pct is the COMBINED scale and
+ * desktop_set_font_scale() writes font_scale AND assigns the combined
+ * value, so the screen-relative auto factor is applied twice. This knob
+ * touches nothing global: no hq_ui.pdl write, no other window affected,
+ * and it dies with the window like find's state does.
+ *
+ * Range 50..300 rather than the house scale's 75..200: this is a reading
+ * aid, and 50% is a legitimate "fit a wide table on screen".
+ */
+static int g_page_zoom_pct = 100;
+
+/* The one place a font size becomes pixels. Both the layout-side measurer
+ * and the draw-side font_for() go through this, so a zoom re-wraps and
+ * redraws from the same number - which is why this feature needs no
+ * second code path to keep in step. */
+static int zoomed(int base_px) {
+    int v = scaled(base_px);
+    if (g_page_zoom_pct == 100) return v;
+    int z = (v * g_page_zoom_pct + 50) / 100;
+    if (base_px > 0 && z < 1) z = 1;
+    return z;
+}
+
 /* Screen dimensions - a constant under --headless (no dpy to ask), the
  * real X value otherwise. Every layout-path DisplayWidth/Height call
  * goes through these two so headless layout has a sane viewport. */
@@ -4091,7 +4501,7 @@ static int kh_measure_text_px(const CssStyle *st, const char *text) {
          * UTF-8 codepoint (bytes with (b & 0xC0) != 0x80). Good enough
          * for layout width decisions; the text mirror doesn't render
          * pixels anyway. */
-        int size = scaled(st->has_font_size ? st->font_size : 12);
+        int size = zoomed(st->has_font_size ? st->font_size : 12);
         int adv = (size * 55) / 100; if (adv < 5) adv = 5;
         int n = 0;
         for (const char *p = text ? text : ""; *p; p++)
@@ -4100,7 +4510,7 @@ static int kh_measure_text_px(const CssStyle *st, const char *text) {
     }
     char spec[128];
     const char *fam = st->has_font_family ? st->font_family : g_ui_font_family;
-    int size = scaled(st->has_font_size ? st->font_size : 12);
+    int size = zoomed(st->has_font_size ? st->font_size : 12);
     snprintf(spec, sizeof(spec), "%s:pixelsize=%d%s", fam, size, (st->has_font_weight && st->font_weight_bold) ? ":bold" : "");
 
     static char cached_spec[128] = "";
@@ -4351,12 +4761,19 @@ static void kh_serialize_frame_elem(FILE *f, Elem *e) {
     /* same 4KB honest-fallback cap as segments_esc just above. */
     if (strlen(e->cells) > 4096) cells_esc[0] = '\0';
     else frame_field_escape_pipe(e->cells, cells_esc, sizeof(cells_esc));
-    fprintf(f, "%s|%s|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d|%s|%s|%s|%s|%d|%s|%d|%d|%d|%s|%s|%d|%s|%s\n",
+    /* TABLE COMPUTED WIDTHS (2026-10-11): the maxima ride the same
+     * round trip or default-mode windows (the only cells= consumer)
+     * can never see them. 512 bytes worst case, no cap needed - it
+     * cannot move the 9000-byte line budget on its own. */
+    char ccounts_esc[512 * 2];
+    frame_field_escape_pipe(e->ccounts, ccounts_esc, sizeof(ccounts_esc));
+    fprintf(f, "%s|%s|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d|%s|%s|%s|%s|%d|%s|%d|%d|%d|%s|%s|%d|%s|%s|%s|%d|%d\n",
             e->tag, e->id, classes_joined, label_esc, e->sprite, e->onclick,
             e->nav_index, e->active, e->x, e->y, e->w, e->h,
             target_id_esc, input_buffer_esc, relay_esc, bg_esc, e->cursor, text_area_esc,
             e->grid_cur_row, e->grid_cur_col, e->grid_edit_mode, grid_jump_esc, grid_cell_esc,
-            e->sel_anchor, segments_esc, cells_esc);
+            e->sel_anchor, segments_esc, cells_esc, ccounts_esc,
+            e->bar_value, e->bar_max);
 }
 
 /* Real recursive serializer, same traversal order render_tree() itself
@@ -4488,7 +4905,7 @@ static void kh_paint_frame_line(const char *line) {
      * fields - the loop below returns (honest skip) rather than misparse
      * it, matching this function's existing "malformed line" convention
      * exactly. */
-    char *tail[20];
+    char *tail[23];
     /* REAL FIX 2026-08-28, same-day self-correction (first attempt at
      * this fix broke EVERY entity menu, not just book-stack's - see
      * git blame if this comment ever needs re-deriving why): the front
@@ -4500,7 +4917,7 @@ static void kh_paint_frame_line(const char *line) {
      * onward), so `p + strlen(p)` is the real end - `buf2 +
      * strlen(buf2)` is not. */
     char *scan_end = p + strlen(p);
-    for (int i = 19; i >= 0; i--) {
+    for (int i = 22; i >= 0; i--) {
         char *bar = NULL;
         for (char *q = scan_end - 1; q >= p; q--) { if (*q == '|') { bar = q; break; } }
         if (!bar) return; /* malformed line - honest skip, not a crash */
@@ -4584,6 +5001,18 @@ static void kh_paint_frame_line(const char *line) {
     /* INLINE TABLE COLUMNS (2026-10-09) - the writer's own new trailing
      * field, same pattern as segments= just above. */
     frame_field_unescape_pipe(tail[19], tmp.cells, sizeof(tmp.cells));
+    /* TABLE COMPUTED WIDTHS (2026-10-11) - the writer's own new
+     * trailing field, same pattern. A frame line from an older binary
+     * has 20 tail fields, not 21: the peel loop above returns early on
+     * those (honest skip, the established convention), so old frames
+     * never misparse - they just never carry widths. */
+    frame_field_unescape_pipe(tail[20], tmp.ccounts, sizeof(tmp.ccounts));
+    /* VIDEO PLAYHEAD (2026-10-11) - plain ints, same trap as every
+     * field above: without these halves the fill fraction never
+     * reaches draw_elem() on the tmp Elem, so every default-mode
+     * <bar> drew track-only while clicks (live tree) worked fine. */
+    tmp.bar_value = atoi(tail[21]);
+    tmp.bar_max = atoi(tail[22]);
 
     css_compute_style(&g_sheet, tmp.tag, tmp.id[0] ? tmp.id : NULL, tmp.classes, tmp.n_classes, tmp.active, &tmp.style);
     if (window_is_dock()) {
@@ -4747,6 +5176,8 @@ static int g_popup_drag_last_x = 0, g_popup_drag_last_y = 0;
  * out from under a drag (a reparse mid-drag, a real edge case) can't
  * write into a dangling pointer. */
 static Elem *g_text_drag_elem = NULL;
+/* INLINE SPANS step 11's pending-press state (g_span_pend) is declared
+ * up by the reparse path, which runs before this point in the file. */
 
 /* User drag-resize (2026-09-09, direct request: "we used to have window
  * grab stretch resize - definitely want that for this window, but
@@ -5560,14 +5991,36 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
             continue;
         }
         int is_grid = scroll_is_sprite_grid_row(c);
-        /* a canvas inside a scroll window is a real content row too
-         * (V3 video): same clip rules + own span from the receipt */
+        /* FIND IN PAGE (2026-10-12): reveal the row a find just landed
+         * on, HERE rather than in the key handler - this is the only
+         * place that knows the region's real geometry (the arrow-reduced
+         * band above, and each row's own scroll_row_span). Re-deriving
+         * any of it from outside gets the target index wrong as soon as
+         * the scrollbar narrows the content width, which is exactly the
+         * long-page case find exists for.
+         *
+         * Minimal and non-destructive: only ever scrolls when the row is
+         * genuinely OFF screen, and then just far enough to bring it to
+         * the nearest edge. A match already visible leaves the user's
+         * own scroll position alone, and a page that does not scroll
+         * (max_scroll == 0) is untouched. One-shot: cleared as soon as
+         * the region that owns the row has answered, so a later manual
+         * scroll is never yanked back. */
         if (!is_grid && strcmp(c->tag, "item") != 0 && strcmp(c->tag, "text") != 0 &&
             strcmp(c->tag, "cli_io") != 0 && strcmp(c->tag, "text_area") != 0 &&
             strcmp(c->tag, "canvas") != 0 && strcmp(c->tag, "bar") != 0) continue;
         if (strcmp(c->tag, "canvas") == 0) g_has_canvas = 1; /* live surface -> 30fps tick */
         int span = scroll_row_span(c, inner_w);
         int visible = (row + span > *scroll && row < *scroll + visible_rows);
+        if (g_find_reveal == c && max_scroll > 0) {
+            int top = *scroll, bot = *scroll + visible_rows;
+            if (row < top) *scroll = row;                       /* above: put it at the top edge */
+            else if (row + span > bot) *scroll = row + span - visible_rows;  /* below: last line visible */
+            if (*scroll < 0) *scroll = 0;
+            if (*scroll > max_scroll) *scroll = max_scroll;
+            g_find_reveal = NULL;
+        }
+
         if (is_grid) {
             layout_scroll_sprite_grid_row(c, x, content_y + (row - *scroll) * ROW_H, inner_w, span * ROW_H, visible, out_lo, out_hi);
         } else if (visible) {
@@ -5577,8 +6030,25 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
                 strcmp(c->tag, "text_area") == 0 || strcmp(c->tag, "bar") == 0 ||
                 /* INLINE SPANS step 4: a <text> carrying link segments is
                  * clickable (per-segment hit-testing in
-                 * popup_handle_click) - plain text rows keep nav 0. */
-                (strcmp(c->tag, "text") == 0 && c->segments[0])) {
+                 * popup_handle_click). */
+                (strcmp(c->tag, "text") == 0 &&
+                 (c->segments[0] ||
+                  /* CONTENT-ROW REACHABILITY (2026-10-12): a plain text
+                   * row is OPT-IN via class="nav-text", the inverse of the
+                   * long-standing class="no-nav". Without it a paragraph
+                   * is unreachable by the keyboard: arrows step g_nav[],
+                   * Ctrl+C copies g_nav[focus], the digit slots index
+                   * g_nav[] - so "copy this article" could never copy a
+                   * paragraph. Measured on the browser's own fixture: 9 of
+                   * 10 content rows were nav 0.
+                   *
+                   * Opt-IN, not a blanket change: a nav slot also draws a
+                   * badge (kh_elem_badge_label_x), and 44 house files use
+                   * <scrolllist> with plain <text> rows - numbering them all
+                   * would badge every paragraph in every window. A window
+                   * asks for this per row, exactly as it already asks per
+                   * row with no-nav. */
+                  elem_has_class(c, "nav-text")))) {
                 c->nav_index = ++g_n_nav;
                 g_nav[g_n_nav - 1] = c;
                 if (*out_lo == 0) *out_lo = c->nav_index;
@@ -8069,9 +8539,41 @@ static int kh_elem_arrow_stop(Elem *e) {
         strcmp(e->id, g_default_active_scope_id) == 0) return 0;
     return 1;
 }
+/* ROW-RUN SELECTION, control side (2026-10-12): Shift+Up / Shift+Down
+ * extend a run of whole rows, the way a browser extends a block
+ * selection. The first shifted press ANCHORS on the row that had focus;
+ * every later one moves the running end, which is just the focused row.
+ *
+ * Returns 1 when it consumed the key, so the caller can leave the
+ * ordinary row stepping alone.
+ *
+ * Deliberately NOT here: shift-click (the click path would need the
+ * modifier threaded through MOUSE_EVENT) and drag-across-rows. Arrows
+ * first, because they are the ones a keyboard-only user and the test
+ * relay can both actually reach today - MOUSE_EVENT carries no modifier
+ * field, so a shift-click is currently inexpressible outside a real X
+ * session. Said here rather than half-built.
+ *
+ * Wrapping is kh_nav_step()'s existing wrap (2026-09-27), so extending
+ * past the last row wraps to row 1 and the run becomes [1, anchor] -
+ * still a contiguous range in nav order, which is what the band paints.
+ * It is not "select nothing", which is the failure that would be worth
+ * engineering around. */
+static int kh_row_run_extend(int dir) {
+    if (g_focus_nav < 1 || g_focus_nav > g_n_nav) return 0;
+    if (g_sel_run_anchor <= 0) g_sel_run_anchor = g_focus_nav;
+    dock_nav_step(dir);
+    return 1;
+}
+
 static void kh_nav_step(int dir) {
     int prev, n;
     if (g_n_nav < 1) return;
+    /* ROW-RUN SELECTION (2026-10-12): moving the cursor WITHOUT shift ends
+     * the run - the same collapse any text field does when you click or
+     * arrow away from a selection. A run that survived would keep
+     * painting a band the user can no longer see how they made. */
+    if (!g_key_shift) g_sel_run_anchor = 0;
     /* REAL FIX 2026-09-27, direct user request ("loop around index
      * mod we wanted to do? it should loop both ways"): navigation now
      * wraps at both boundaries instead of clamping - going below 1
@@ -9838,6 +10340,102 @@ static void default_cli_io_save(Elem *e) {
  * file races its own clear (real, if rare, TOCTOU - the background
  * child may not have opened the file yet). Passing the value directly
  * as an argv is immune to that race by construction. */
+/* ---- FIND IN PAGE control (2026-10-12) ----
+ * The state itself (g_find_query/hits/at) is declared in
+ * khtpm_render_core.c next to the span/hover state; the search and the
+ * match-kinds here are the only writers. */
+
+/* Rebuild the hit list for the current query and make match number
+ * `at` (1-based) the current one, revealing it if it is off screen.
+ *
+ * Searched over the whole PAGE TREE, not over g_nav[]. Only rows inside
+ * the viewport get a nav slot - the rest are parked at y=-100000 with
+ * nav 0 - so a g_nav[]-only search is blind to everything below the
+ * fold, which on a long article is nearly everything worth finding.
+ * Measured live before the fix: a 124-paragraph article with one
+ * needle paragraph reported "0 of 0".
+ *
+ * Reveal: a match below the fold is a match the user cannot see, and
+ * this window has no generic "reveal focused row" (arrows do not
+ * scroll either). The row is handed to layout_scroll_region(), which
+ * owns the only correct geometry for the question (the arrow-reduced
+ * band, each row's own scroll_row_span, max_scroll) - see
+ * g_find_reveal. */
+static void kh_find_commit(void) {
+    const int cap = (int)(sizeof(g_find_hits_list) / sizeof(g_find_hits_list[0]));
+    g_find_hits = kh_find_count_in(find_page(g_current_page), g_find_hits_list, cap, NULL);
+    if (g_find_hits <= 0) { g_find_at = 0; g_find_reveal = NULL; return; }
+    /* More matches than the list holds: report the true total, but only
+     * step within the window actually kept. A count that silently
+     * shrank to fit the array would be a lie; Enter walking off the
+     * end of nothing is worse. */
+    const int steppable = g_find_hits < cap ? g_find_hits : cap;
+    if (g_find_at < 1 || g_find_at > steppable) g_find_at = 1;
+
+    /* It may be off-screen (nav 0), so it is addressed by its place in
+     * the hit list, NOT by g_nav[]. Focus only moves when the row is
+     * actually navigable - pointing focus at an invisible slot would
+     * move the visible caret somewhere unrelated. */
+    Elem *t = (g_find_at <= cap) ? g_find_hits_list[g_find_at - 1] : NULL;
+    if (!t) { g_find_at = 0; return; }
+    if (t->nav_index >= 1 && t->nav_index <= g_n_nav) g_focus_nav = t->nav_index;
+    g_find_reveal = t;
+}
+
+/* Status line for the find bar. Drawn by the window's own overlay pass
+ * (same place the confirm popup draws), NOT published anywhere - the
+ * renderer's status text is the window's own title row, which an app
+ * owns; writing to it would fight the manager's `status=` var. */
+static char g_find_status[128] = "";
+
+static void kh_find_set_status(const char *s) {
+    snprintf(g_find_status, sizeof(g_find_status), "%s", s ? s : "");
+}
+
+/* Arm find with an empty query and say how to use it. Ctrl+F with nothing
+ * typed is the discoverable entry point, so it does something visible
+ * instead of appearing to do nothing. */
+static void kh_find_begin(void) {
+    g_find_query[0] = '\0';
+    g_find_hits = 0;
+    g_find_at = 0;
+    g_find_mode = 1;              /* armed, empty query - see render_core's own comment */
+    kh_find_set_status("find: type a query, Enter next, Esc cancel");
+}
+
+/* Escape: cancel outright. */
+static void kh_find_clear(void) {
+    g_find_query[0] = '\0';
+    g_find_hits = 0;
+    g_find_at = 0;
+    g_find_mode = 0;
+    kh_find_set_status("find cleared");
+}
+
+/* Enter / step. dir=+1 next, -1 previous. Wraps: a search that stops at
+ * the end with no way back is a dead end. "0 matches" is stated out
+ * loud rather than left silent. */
+static void kh_find_step(int dir) {
+    if (!kh_find_is_armed()) return;
+    const int cap = (int)(sizeof(g_find_hits_list) / sizeof(g_find_hits_list[0]));
+    if (g_find_hits <= 0) kh_find_commit();
+    if (g_find_hits <= 0) { kh_find_set_status("find: no matches"); return; }
+    /* Wrap within what is actually steppable (see kh_find_commit): past
+     * the list cap there is no row to land on, so walking further would
+     * decrement into nothing and read as a broken Enter. */
+    const int n = g_find_hits < cap ? g_find_hits : cap;
+    g_find_at += dir;
+    while (g_find_at < 1) g_find_at += n;
+    while (g_find_at > n) g_find_at -= n;
+    kh_find_commit();
+    {
+        char st[128];
+        snprintf(st, sizeof(st), "find: \"%s\" - match %d of %d",
+                 g_find_query, g_find_at, g_find_hits);
+        kh_find_set_status(st);
+    }
+}
+
 static void default_cli_io_run_action(const char *action, const char *value) {
     if (!action || !action[0]) return;
     char val_esc[600];
@@ -11171,9 +11769,57 @@ static void kh_write_ascii_frame(void) {
         fprintf(ms, "[WARN] repeat truncated: %d repeat(s) clamped, %d row(s) DROPPED"
                     " (KH_REPEAT_MAX=%d)\n",
                 g_repeat_clamped, g_repeat_clamp_last, KH_REPEAT_MAX);
+    /* POOL USE (2026-10-12): how full the element pool is, ALWAYS - not
+     * only when it overflowed. The overflow WARN answers "is anything
+     * missing", which is the wrong question to have to ask: a window
+     * sitting at 1010 of 1024 elements is one small page away from
+     * silently losing rows, and nothing said so.
+     *
+     * This is also the instrument that shows WHY a window is close to
+     * the cap - the browser's content <repeat> emits one element per
+     * content KIND per row (network-browser-hq.xhtpm), 24 of them, of
+     * which exactly one is ever visible. So this number divided by the
+     * visible row count is the real per-row cost, and it was the
+     * measurement behind the 2026-10-12 parser fix (gated elements are
+     * now skipped before they take a pool slot). */
+    fprintf(ms, "[POOL] elements %d/%d\n", g_n_elems, MAX_ELEMS);
+    /* PAGE ZOOM (2026-10-13): this window'"'"'s own text zoom. Per-window by
+     * design (see zoomed()) - two windows side by side legitimately
+     * report different numbers, and neither writes the other. */
+    fprintf(ms, "[ZOOM] page=%d%%\n", g_page_zoom_pct);
+    /* CHILDREN CAP (2026-10-12): rows that did not fit their parent's
+     * child list. Silently dropped until this counter existed - see the
+     * comment at the append site in parse_element(). */
+    /* REPEAT EXPANSION BUFFER (2026-10-12): a bigger buffer was needed
+     * and got it (normal), or even rcap_max was not enough (the one case
+     * where a <repeat> is still truncated, and where saying so matters). */
+    if (g_repeat_still_short > 0)
+        fprintf(ms, "[WARN] repeat expansion truncated at rcap_max=%d bytes"
+                    " - a <repeat> still does not fit; %d expansion(s) short\n",
+                64 * 1024 * 1024, g_repeat_still_short);
+    if (g_children_dropped > 0)
+        fprintf(ms, "[WARN] children overflow: %d element(s) DROPPED (MAX_CHILDREN=%d)"
+                    " - a container took more rows than it can hold\n",
+                g_children_dropped, MAX_CHILDREN);
     if (g_current_page[0]) fprintf(ms, "--- page: %s ---\n", g_current_page);
     dock_ascii_walk(ms, g_window, 0);
     if (g_confirm_action[0]) fprintf(ms, "[CONFIRM] %s  -- Enter/y = yes, any other key = no\n", g_confirm_text);
+    /* FIND IN PAGE (2026-10-12): mirrored like the confirm popup, so an
+     * agent (and the suite) can read the find's live state out of the
+     * same text file it already reads - no X11 pixel-peeping needed to
+     * assert a match count. */
+    if (kh_find_is_armed())
+        fprintf(ms, "[FIND] query=\"%s\" %d of %d -- %s\n", g_find_query, g_find_at, g_find_hits, g_find_status);
+    /* ROW-RUN SELECTION (2026-10-12): mirrored like find, for the same
+     * reason - the suite (and an agent) needs the run's extent as state,
+     * not inferred from pixels. Only while it spans more than one row:
+     * "selected" with one row is indistinguishable from "focused". */
+    if (g_sel_run_anchor > 0 && g_focus_nav >= 1) {
+        int lo = g_sel_run_anchor < g_focus_nav ? g_sel_run_anchor : g_focus_nav;
+        int hi = g_sel_run_anchor < g_focus_nav ? g_focus_nav : g_sel_run_anchor;
+        if (hi > lo)
+            fprintf(ms, "[SEL] rows %d..%d (%d selected)\n", lo, hi, hi - lo + 1);
+    }
     fclose(ms);
 
     FILE *f = fopen(fpath, "w");
@@ -11755,6 +12401,25 @@ static void redraw(void) {
                           (const FcChar8 *)"\xE2\x8C\x9F", 3);   /* U+231F ⌟ */
         XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &gcol);
     }
+    /* FIND IN PAGE (2026-10-12): a small themed strip along the bottom
+     * edge, drawn the same way as the confirm popup below - it is the
+     * only place in this renderer that owns transient, non-content text.
+     * Drawn ONLY while a find is armed or was just cleared, so it can
+     * never linger over ordinary browsing. */
+    if (kh_find_is_armed() && g_find_status[0] && xftdraw_buf && font_ui) {
+        int fbw = g_win_w - 40 < 520 ? g_win_w - 40 : 520;
+        int fbh = 26, fbx = (g_win_w - fbw) / 2, fby = g_win_h - fbh - 6;
+        if (fbw > 40 && fby >= 0) {
+            XftColor fcol = xft_color(g_theme_fg[0] ? g_theme_fg : "#8fb4e0");
+            XSetForeground(dpy, gc, alloc_pixel("#1b1b1b"));
+            XFillRectangle(dpy, buf, gc, fbx, fby, (unsigned)fbw, (unsigned)fbh);
+            XSetForeground(dpy, gc, alloc_pixel(g_theme_fg[0] ? g_theme_fg : "#8fb4e0"));
+            XDrawRectangle(dpy, buf, gc, fbx, fby, (unsigned)fbw, (unsigned)fbh);
+            XftDrawStringUtf8(xftdraw_buf, &fcol, font_ui, fbx + 10, fby + 18,
+                             (const FcChar8 *)g_find_status, (int)strlen(g_find_status));
+            XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &fcol);
+        }
+    }
     if (g_confirm_action[0] && xftdraw_buf && font_ui) {   /* confirm popup: centred box over everything, themed */
         int bw = g_win_w - 40 < 460 ? g_win_w - 40 : 460, bh = 78, bx = (g_win_w - bw) / 2, by = (g_win_h - bh) / 2;
         XftColor tcol = xft_color("#ffffff"), hcol = xft_color(g_theme_fg[0] ? g_theme_fg : "#8fb4e0");
@@ -11926,6 +12591,58 @@ static void dock_nav_step(int dir) {
 }
 
 static void handle_key(KeySym ks, char ch) {
+    /* ROW-RUN SELECTION (2026-10-12): every key EXCEPT the two that build
+     * a run ends the run. Found by testing, not by reading: a plain digit
+     * nav moved focus without clearing the anchor, so the next Shift+Down
+     * extended from a row the user had never selected - the mirror read
+     * "rows 15..19" after two Shift+Downs from row 17.
+     *
+     * Hooking here rather than at each of the ~20 places that assign
+     * g_focus_nav is the point: a run must not outlive the user's
+     * attention, and "any other key" is the browser's own rule. The
+     * paths that move focus with NO key at all (layout clamping, a
+     * dock dropdown opening) are the documented exception - they do not
+     * renumber rows, so lo..hi still means what it meant. */
+    if (!(g_key_shift && (ks == XK_Up || ks == XK_Down)) &&
+        !(ch == 3 || ch == 24))          /* Ctrl+C / Ctrl+X CONSUME the run */
+        g_sel_run_anchor = 0;
+    /* PAGE ZOOM (2026-10-13): Ctrl+= / Ctrl+- / Ctrl+0. G3.2 had been
+     * "absent" because nothing bound the keyboard to the house UI scale -
+     * and that scale is broken for ordinary windows (gap plan §8.5), so
+     * the keys go to the per-window text zoom instead, which touches no
+     * global state and no other window.
+     *
+     * Guarded on !g_default_input_elem: typing Ctrl+- into an armed field
+     * (a negative number, an offset) must not resize the window.
+     *
+     * Nothing is persisted. Zoom is a reading aid for the page in front of
+     * you; it belongs to this window and dies with it, exactly like the
+     * find query does. */
+    if (g_key_ctrl && !g_default_input_elem) {
+        int zstep = 0, zreset = 0;
+        if (ks == XK_equal || ks == XK_plus || ch == '=') zstep = +1;
+        else if (ks == XK_minus || ch == '-') zstep = -1;
+        else if (ks == XK_0 || ks == XK_KP_0 || ch == '0') zreset = 1;
+        if (zstep || zreset) {
+            int v = zreset ? 100 : g_page_zoom_pct + (zstep > 0 ? 25 : -25);
+            if (v < 50) v = 50;
+            if (v > 300) v = 300;
+            if (v != g_page_zoom_pct) {
+                g_page_zoom_pct = v;
+                /* relayout is the whole point: row heights come from
+                 * wrapped line counts, so without this the text would be
+                 * measured at the old size and clipped by the new one. */
+                if (!g_quit) { assign_nav_and_layout(); redraw(); }
+            }
+            return;
+        }
+    }
+    /* INLINE SPANS step 12: dot-armed link entry voids on any key but
+     * the addressing digit itself or a re-arming dot. First statement,
+     * so modal early-returns (confirm, close-combo, armed fields,
+     * grids, arrows, Enter, Esc) all void uniformly - an armed dot
+     * never survives past the key that follows it. */
+    if (!(ch >= '0' && ch <= '9') && ch != '.') g_seg_dot_armed = 0;
     if (g_confirm_action[0]) {   /* a confirm popup is up: it eats the next key. Enter / y = yes, anything else = no. */
         char act[sizeof(g_confirm_action)];
         int yes = (ks == XK_Return || ks == XK_KP_Enter || ch == 13 || ch == 'y' || ch == 'Y');
@@ -12104,6 +12821,40 @@ static void handle_key(KeySym ks, char ch) {
      * is_area-style branch inside default_cli_io_handle_key(). */
     if (g_default_input_elem && strcmp(g_default_input_elem->tag, "grid") == 0) { default_grid_handle_key(ks, ch); return; }
     if (g_default_input_elem) { default_cli_io_handle_key(ks, ch); return; } /* same real key-order exception - a real cli_io field needs 'p' as a literal typed character */
+    /* FIND IN PAGE (2026-10-12) - Ctrl+F arms a query, Enter steps to the
+     * next match, Escape clears. Placed right after the armed-field
+     * exception on purpose: an ARMED field owns the keyboard (that is
+     * the whole point of the rule above), so Ctrl+F only arms a find
+     * when nothing else is typing - otherwise Ctrl+F would steal the
+     * key from the field the user is actually in. Generic across every
+     * window, same as the Ctrl+C row-copy above it. */
+    if (kh_find_is_armed()) {
+        /* Escape and Backspace must be matched on the KEYSYM, not on
+         * ch. The relay delivers them as handle_key(XK_Escape, 0) /
+         * handle_key(XK_BackSpace, 0) - ch arrives 0, not 27/8 - while a
+         * real X keyboard arrives with BOTH set (XLookupString fills ch
+         * for these too). Testing ch alone therefore made Escape and
+         * Backspace dead keys for an agent driving find headlessly while
+         * working for a human at the keyboard: found by the suite's own
+         * "Escape disarms find" case, which is the only reason it is
+         * written down here. Accept either spelling of each. */
+        if (ks == XK_Escape || ch == 27) { kh_find_clear(); return; }
+        if (ks == XK_Return || ks == XK_KP_Enter || ch == 13) { kh_find_step(1); return; }
+        if (ks == XK_BackSpace || ch == 8 || ch == 127) {            /* Backspace: edit the query */
+            size_t l = strlen(g_find_query);
+            if (l > 0) { g_find_query[l - 1] = 0; kh_find_commit(); }
+            return;
+        }
+        if (ch >= 32 && ch < 127) {                                    /* printable: type into the query */
+            size_t l = strlen(g_find_query);
+            if (l + 1 < sizeof(g_find_query)) { g_find_query[l] = (char)ch; g_find_query[l + 1] = 0; kh_find_commit(); }
+            return;
+        }
+        /* any other key (arrows, digits, punctuation as a keysym) falls
+         * through untouched - find mode never eats a key it does not
+         * itself use, so the window stays fully drivable while armed. */
+    }
+    if (ch == 6) { kh_find_begin(); return; }   /* Ctrl+F: arm find (no field armed here) */
     /* REAL, NEW 2026-10-07 (direct ask: copy article text out of the
      * browser) - Ctrl+C with NO armed field copies the focused row's
      * own label (content rows, links, buttons, tabs - anything
@@ -12113,6 +12864,49 @@ static void handle_key(KeySym ks, char ch) {
      * down here before. Generic: every window's rows, not per-app. */
     if (ch == 3 && g_focus_nav >= 1 && g_focus_nav <= g_n_nav) {
         Elem *f = g_nav[g_focus_nav - 1];
+        /* INLINE SPANS step 10: an active span selection copies the
+         * range's plain text (link text as text, never URLs - same
+         * contract as row-label copy); a collapsed or absent anchor
+         * copies the whole label exactly as before. */
+        if (f && seg_anchor_on(f)) {
+            char range[8192];
+            if (seg_range_text(f, range, sizeof(range))) {
+                kh_clipboard_copy(range);
+                return;
+            }
+        }
+        /* ROW-RUN SELECTION (2026-10-12): a run of two or more whole
+         * rows copies as the JOINED text, one paragraph per line, which
+         * is what the user selected. A run of exactly one row is left to
+         * the paths above: for one row, "copy this row" and "copy this
+         * selection" are the same request and must not differ.
+         *
+         * A span selection on the focused row still wins, because it is
+         * strictly more specific than "the whole row". */
+        if (f && g_sel_run_anchor > 0 && g_focus_nav >= 1) {
+            int lo = g_sel_run_anchor < g_focus_nav ? g_sel_run_anchor : g_focus_nav;
+            int hi = g_sel_run_anchor < g_focus_nav ? g_focus_nav : g_sel_run_anchor;
+            if (hi > lo) {
+                size_t need = 1;
+                for (int i = lo; i <= hi && i <= g_n_nav; i++)
+                    need += strlen(g_nav[i - 1]->label) + 1;
+                char *joined = malloc(need);
+                if (joined) {
+                    size_t at = 0;
+                    for (int i = lo; i <= hi && i <= g_n_nav; i++) {
+                        const char *t = g_nav[i - 1]->label;
+                        size_t l = strlen(t);
+                        if (i > lo) joined[at++] = '\n';
+                        memcpy(joined + at, t, l);
+                        at += l;
+                    }
+                    joined[at] = '\0';
+                    kh_clipboard_copy(joined);
+                    free(joined);
+                    return;
+                }
+            }
+        }
         if (f && f->label[0]) { kh_clipboard_copy(f->label); return; }
     }
     if (ch == 'p') { dump_frame_png(); return; }
@@ -12132,6 +12926,7 @@ static void handle_key(KeySym ks, char ch) {
                 if (seg_action_at_idx(focused, g_seg_idx, sact, sizeof(sact))) {
                     dispatch(sact);
                     g_seg_idx = -1;
+                    g_span_pend.active = 0; /* step 11: dispatch retires any armed press */
                     if (!g_quit) { assign_nav_and_layout(); redraw(); }
                     return;
                 }
@@ -12235,15 +13030,30 @@ static void handle_key(KeySym ks, char ch) {
         if (focused->backspace_action[0]) { dispatch_no_quit(focused->backspace_action); return; }
     }
     if (ks == XK_Up || ks == XK_Left) {
+        /* INLINE SPANS step 10: Shift+Left extends a selection anchor
+         * across the focused row's links (seg_anchor_extend); an
+         * unshifted Left walks the cursor exactly as before (step 5).
+         * g_key_shift covers physical Shift and relay 220/221 alike. */
+        if (ks == XK_Left && g_key_shift && g_focus_nav >= 1 && g_focus_nav <= g_n_nav &&
+            seg_anchor_extend(g_nav[g_focus_nav - 1], -1)) return;
         /* INLINE SPANS step 5: Left on a focused spans row walks the
          * link spans (entering at the last); rows without spans, and
          * Up anywhere, step rows exactly as before. */
         if (ks == XK_Left && g_focus_nav >= 1 && g_focus_nav <= g_n_nav &&
             seg_cursor_step(g_nav[g_focus_nav - 1], -1)) return;
+        /* ROW-RUN SELECTION (2026-10-12): Shift+Up, mirror of Shift+Down. */
+        if (g_key_shift && kh_row_run_extend(-1)) return;
         dock_nav_step(-1);
         return;
     }
     if (ks == XK_Down || ks == XK_Right) {
+        /* ROW-RUN SELECTION (2026-10-12): Shift+Down extends the run of
+         * whole rows, ahead of the span logic below (which is about
+         * characters inside one row). */
+        if (ks == XK_Down && g_key_shift && kh_row_run_extend(1)) return;
+        /* step 10 mirror: Shift+Right extends at the first link span. */
+        if (ks == XK_Right && g_key_shift && g_focus_nav >= 1 && g_focus_nav <= g_n_nav &&
+            seg_anchor_extend(g_nav[g_focus_nav - 1], 1)) return;
         /* mirror: Right enters at the first link span. */
         if (ks == XK_Right && g_focus_nav >= 1 && g_focus_nav <= g_n_nav &&
             seg_cursor_step(g_nav[g_focus_nav - 1], 1)) return;
@@ -12265,14 +13075,79 @@ static void handle_key(KeySym ks, char ch) {
             g_default_scrolllist_scroll += dir;
         return;
     }
+    /* INLINE SPANS step 12: '.' arms link entry for the next digit
+     * ("5.2"). Consumed here (a no-op like any unhandled key today);
+     * armed fields and grids return before this point, so typed dots
+     * still reach them as text. */
+    if (ch == '.') {
+        g_seg_dot_armed = 1;
+        return;
+    }
     if (ch >= '0' && ch <= '9') {
         int d = ch - '0';
         if (g_dock_drop_lo && g_default_active_scope_id[0]) {
             /* dock drop-zone: single-digit only, unchanged */
             g_nav_digit_accum = 0;
+            g_seg_dot_armed = 0; /* step 12: modal digits void a stale arm */
             int idx = g_dock_drop_lo + d - 1;
             if (idx >= g_dock_drop_lo && idx <= g_dock_drop_hi) g_focus_nav = idx;
             return;
+        }
+        /* INLINE SPANS step 12: a dot-armed digit addresses the focused
+         * row's link directly (no Right-entry needed). One-shot either
+         * way: a miss is ignored with the accumulator reset (never a
+         * row jump - the digit was meant as a link), so recovery is
+         * just re-dotting. Same actionable domain as walk/digits. */
+        if (g_seg_dot_armed) {
+            g_seg_dot_armed = 0;
+            if (g_focus_nav >= 1 && g_focus_nav <= g_n_nav) {
+                Elem *df = g_nav[g_focus_nav - 1];
+                if (df && df->segments[0]) {
+                    int dn = seg_actionable_count(df);
+                    if (d >= 1 && d <= dn) {
+                        g_seg_nav = df->nav_index;
+                        g_seg_idx = d - 1;
+                        snprintf(g_seg_id, sizeof(g_seg_id), "%s", df->id);
+                        g_seg_anchor = -1;
+                        g_nav_digit_accum = 0;
+                        redraw();
+                        return;
+                    }
+                }
+            }
+            g_nav_digit_accum = 0;
+            return;
+        }
+        /* INLINE SPANS step 9 (digit slots, 2026-10-11): while the
+         * segment cursor is active, digits address the focused row's
+         * LINKS, not rows (1-based: digit 1 is the first link). 0 drops
+         * back to row-level like Escape (0 is never a valid row);
+         * out-of-range digits hold the cursor (an overshoot must not
+         * yank focus to another row - agents discover link counts from
+         * ui.txt, but a probe must still be safe). Either way the digit
+         * is consumed by span mode and the row accumulator resets so it
+         * cannot leak into a later row number. Digits with no active
+         * cursor jump rows exactly as before - the primary contract is
+         * untouched, and every window without segments never reaches
+         * here (seg_cursor_on is false), so all other windows are
+         * byte-identical. Same actionable-run domain as walk (step 5)
+         * and Enter dispatch, single-line and wrapped alike. */
+        if (g_focus_nav >= 1 && g_focus_nav <= g_n_nav) {
+            Elem *focused = g_nav[g_focus_nav - 1];
+            if (seg_cursor_on(focused)) {
+                int nact = seg_actionable_count(focused);
+                if (nact > 0) {
+                    if (d == 0) g_seg_idx = -1;
+                    else if (d <= nact) g_seg_idx = d - 1;
+                    /* a digit is a plain (collapsed) move, never an
+                     * extension: clear any range from before (step 10)
+                     * on both the select and the 0-drop paths. */
+                    g_seg_anchor = -1;
+                    g_nav_digit_accum = 0;
+                    redraw();
+                    return;
+                }
+            }
         }
         /* multi-digit accumulate: "15" jumps to 15, not 5 (tpmos
          * chtpm_parser.c.bak digit_accum). Take accum*10+d when it's a
@@ -12717,11 +13592,29 @@ static void dispatch_relay_code(int code) {
      * XLookupString. Handled as `ch`, not a keysym - default_cli_io_
      * handle_key()'s own `ch == 3/22/24` checks pick them up. */
     else if (code == 3 || code == 22 || code == 24) handle_key(0, (char)code);
+    /* FIND IN PAGE (2026-10-12): Ctrl+F is ch==6, and the generic
+     * 32..126 branch below cannot deliver it - every control code under
+     * 32 needs naming here or it is unreachable from the relay (which is
+     * exactly how an agent drives this feature headlessly, and how the
+     * suite proves it). 6 joins 3/22/24 for that reason alone; the real
+     * keyboard always delivered it via XLookupString. */
+    else if (code == 6) handle_key(0, (char)code);
     /* REAL, NEW 2026-09-05 (TEXT_AREA-SCROLL-GUTTER-SELECTION-DESIGN.md)
      * - Shift+arrow / Shift+Home / Shift+End for text selection, which
      * the relay had no way to express (Shift is a modifier, not a
      * key). 220-225, same reserved-band idea as the 200-205 plain
      * arrows. g_key_shift is set for exactly the one dispatched key. */
+    /* PAGE ZOOM (2026-10-13): 226/227/228 = Ctrl+= / Ctrl+- / Ctrl+0.
+     * The relay cannot express a MODIFIER on a printable character
+     * (g_key_ctrl only ever comes from a real X event), so without these
+     * zoom would exist for a human and not for the suite that has to
+     * prove it. Same reserved-band reasoning as 200-205 and 220-225:
+     * outside 0-126, so it can never collide with typed text. */
+    else if (code >= 226 && code <= 228) {
+        g_key_ctrl = 1;
+        handle_key(code == 226 ? XK_equal : code == 227 ? XK_minus : XK_0, 0);
+        g_key_ctrl = 0;
+    }
     else if (code >= 220 && code <= 225) {
         KeySym sk = (code == 220) ? XK_Left : (code == 221) ? XK_Right :
                     (code == 222) ? XK_Up   : (code == 223) ? XK_Down  :
@@ -12854,7 +13747,14 @@ static void kh_capture_click(int x, int y, int button) {
     char path[PATH_BUF]; history_path(path, sizeof(path));
     if (g_history_cursor < 0) { struct stat st; g_history_cursor = (stat(path,&st)==0)?st.st_size:0; }
     FILE *f = fopen(path, "a"); if (!f) return;
-    fprintf(f, "MOUSE_EVENT: %d %d %d 1\n", button, x, y); fclose(f);
+    /* INLINE SPANS step 11: real presses carry a `real` source token.
+     * Relay-written lines have none, and sscanf ignores trailing text -
+     * so old binaries read new lines (and vice versa) with today's
+     * instant-dispatch meaning. Only a tagged press may arm the
+     * deferred click (release pairs it); untagged lines keep instant
+     * dispatch exactly as before, which is what every relay test and
+     * agent depends on. */
+    fprintf(f, "MOUSE_EVENT: %d %d %d 1 real\n", button, x, y); fclose(f);
     {   /* context: the element under the pointer (same first-match hit-test as the right-click path) */
         Elem *hit = NULL; int nav = 0; char a[640], idc[80], act[160], lab[100];
         for (int i = 0; i < g_n_nav; i++) {
@@ -12884,6 +13784,35 @@ static void kh_capture_key(KeySym ks, char ch) {
     }
 }
 
+/* INLINE SPANS step 11: link-span hit shared by the press-arm, drag
+ * and release paths. Walks g_nav rows by whole-row boxes, single-line
+ * geometry first then wrapped - the click path's own order and
+ * resolvers (seg_hit_action_idx/seg_hit_wrapped_idx), so press, drag,
+ * release and click all agree on what a link is. Returns 1 with
+ * (nav,idx,id); the id rides along so release can lazy-validate the
+ * row like the keyboard cursor does. */
+static int span_press_hit(int px, int py, int *nav_out, int *idx_out,
+                          char *id_out, size_t idsz) {
+    int i;
+    char dummy[1024];
+    for (i = 0; i < g_n_nav; i++) {
+        Elem *it = g_nav[i];
+        int idx = -1;
+        if (!it) continue;
+        if (px < it->x || px >= it->x + it->w || py < it->y || py >= it->y + it->h) continue;
+        if (!it->segments[0] || it->nav_index <= 0) continue;
+        if (seg_hit_action_idx(it, px, &idx, dummy, sizeof(dummy))) {
+            /* single-line span */
+        } else if (!seg_hit_wrapped_idx(it, px, py, &idx, dummy, sizeof(dummy))) {
+            continue;
+        }
+        if (nav_out) *nav_out = it->nav_index;
+        if (idx_out) *idx_out = idx;
+        if (id_out && idsz > 0) snprintf(id_out, idsz, "%s", it->id);
+        return 1;
+    }
+    return 0;
+}
 static int poll_agent_history(void) {
     char path[PATH_BUF];
     history_path(path, sizeof(path));
@@ -12931,8 +13860,20 @@ static int poll_agent_history(void) {
                  * works) and set the same window context the real ButtonPress
                  * handler sets from cw before dispatching. */
                 int nf = sscanf(line + 13, "%d %d %d %d %63s", &button, &mx, &my, &is_press, wname);
+                /* INLINE SPANS step 11: the deferred click is Linux-only
+                 * (untestable here, and this port's relay format owns
+                 * the 5th field already) - real presses keep instant
+                 * dispatch on Windows, exactly as before. */
+                int is_real = 0;
 #else
-                int nf = sscanf(line + 13, "%d %d %d %d", &button, &mx, &my, &is_press);
+                /* INLINE SPANS step 11: optional 5th token tags real
+                 * (press,release) pairs written by kh_capture_click and
+                 * the ButtonRelease branch; relay-written lines carry
+                 * none. sscanf ignores the tail either way, so the
+                 * format stays compatible in both directions. */
+                char msrc[16] = "";
+                int nf = sscanf(line + 13, "%d %d %d %d %15s", &button, &mx, &my, &is_press, msrc);
+                int is_real = (strcmp(msrc, "real") == 0);
 #endif
                 if (nf >= 3 && is_press && (button == 4 || button == 5)) {
                     if (generic_sbar_wheel(mx, my, (button == 5) ? 1 : -1))
@@ -12942,6 +13883,40 @@ static int poll_agent_history(void) {
                         n++;
                     } else {
                         g_default_scrolllist_scroll += (button == 5) ? 1 : -1;
+                        n++;
+                    }
+                } else if (nf >= 3 && is_press && button == 1 && is_real) {
+                    /* INLINE SPANS step 11: a REAL button-1 press on a
+                     * link span arms the deferred click instead of
+                     * dispatching - the paired release (written by the
+                     * ButtonRelease branch) completes or drag-selects
+                     * it. Anything else falls through to the instant
+                     * path below, byte-identical to before. Untagged
+                     * (relay) presses always take the instant path, so
+                     * every relay test and agent keeps working. */
+                    int pnav = 0, pidx = -1;
+                    char pid[64] = "";
+                    if (span_press_hit(mx, my, &pnav, &pidx, pid, sizeof(pid))) {
+                        Elem *row = (pnav >= 1 && pnav <= g_n_nav) ? g_nav[pnav - 1] : NULL;
+                        g_span_pend.active = 1;
+                        g_span_pend.button = 1;
+                        g_span_pend.px = mx; g_span_pend.py = my;
+                        g_span_pend.nav = pnav; g_span_pend.idx = pidx;
+                        /* two-step reads pre-press focus - the same
+                         * condition the instant path evaluates before
+                         * it focuses. */
+                        g_span_pend.two_step_ok = (!g_click_two_step ||
+                            (g_window && elem_has_class(g_window, "single-click")) ||
+                            (row && g_focus_nav == row->nav_index)) ? 1 : 0;
+                        g_span_pend.dragged = 0;
+                        snprintf(g_span_pend.id, sizeof(g_span_pend.id), "%s", pid);
+                        if (row) g_focus_nav = row->nav_index;
+                        g_seg_nav = pnav; g_seg_idx = pidx; g_seg_anchor = pidx;
+                        snprintf(g_seg_id, sizeof(g_seg_id), "%s", pid);
+                        redraw();
+                        n++;
+                    } else {
+                        popup_handle_click(mx, my);
                         n++;
                     }
                 } else if (nf >= 3 && is_press && button != 3 && button != 4 && button != 5) {
@@ -12955,6 +13930,60 @@ static int poll_agent_history(void) {
 #endif
                     popup_handle_click(mx, my);
                     n++;
+                } else if (nf >= 3 && !is_press && button == 1) {
+                    /* INLINE SPANS step 11: a button-1 release resolves
+                     * a pending real press. Same link, no drag, and the
+                     * press-time two-step gate: the deferred click
+                     * (same resolvers as the instant path, so relay and
+                     * real clicks agree on every link). Dragged: the
+                     * step-10 selection stands as drawn. Anything else:
+                     * plain row focus at the release point, no dispatch
+                     * (a click that changed its mind). Focus must still
+                     * name the pending row, or an interim keypress gets
+                     * a stale dispatch. A release with no armed press
+                     * is a no-op (hover owns moves, not releases). */
+                    if (g_span_pend.active && g_span_pend.button == 1) {
+                        int rnav = 0, ridx = -1, was_drag, was_ok;
+                        char rid[64] = "";
+                        int same = span_press_hit(mx, my, &rnav, &ridx, rid, sizeof(rid)) &&
+                                   rnav == g_span_pend.nav && ridx == g_span_pend.idx &&
+                                   strcmp(rid, g_span_pend.id) == 0 &&
+                                   g_focus_nav == g_span_pend.nav;
+                        was_drag = g_span_pend.dragged;
+                        was_ok = g_span_pend.two_step_ok;
+                        g_span_pend.active = 0;
+                        if (same && !was_drag && was_ok) {
+                            char sact[1024];
+                            Elem *row = (rnav >= 1 && rnav <= g_n_nav) ? g_nav[rnav - 1] : NULL;
+                            if (row && seg_action_at_idx(row, ridx, sact, sizeof(sact))) {
+                                g_focus_nav = row->nav_index;
+                                dispatch(sact);
+                                g_seg_idx = -1;
+                                if (!g_quit) assign_nav_and_layout();
+                                redraw();
+                            }
+                        } else if (!was_drag) {
+                            g_seg_idx = -1;
+                            g_seg_anchor = -1;
+                            if (rnav >= 1 && rnav <= g_n_nav) {
+                                g_focus_nav = rnav;
+                                redraw();
+                            }
+                        }
+                        n++;
+                    }
+                } else if (nf >= 3 && !is_press) {
+                    /* INLINE SPANS step 8: a relayed pointer MOVE
+                     * (is_press 0) feeds the span hover resolver - the
+                     * same real pointer position a human's MotionNotify
+                     * carries, so agent-driven replay gets the highlight
+                     * a live mouse gets. Deliberately does NOT n++:
+                     * PITFALL #52 (moves must not dirty the frame);
+                     * seg_hover_move redraws only when the target
+                     * actually changes. khtpm_strip_parser.c never
+                     * emits these today (it writes is_press 1 only), so
+                     * this is a pure test/agent affordance. */
+                    seg_hover_move(mx, my);
                 }
                 /* PITFALL #52 (tpmos: MOUSE MOVE REDRAW SPAM) - do NOT count
                  * a bare relayed pointer-move (button 0 / not a press / a
@@ -13750,8 +14779,24 @@ static int kh_input_offset_at_click(Elem *e, int px, int py) {
 }
 
 static void popup_handle_click(int px, int py) {
+    /* ROW-RUN SELECTION (2026-10-12): a click ends the run. This is the
+     * single choke point for BOTH the relayed MOUSE_EVENT and a real X
+     * button press (both call this), so there is no path where a click
+     * leaves a stale anchor behind. Shift-click, which should EXTEND the
+     * run, is not built yet: MOUSE_EVENT carries no modifier field, so
+     * it is inexpressible outside a real X session - said in
+     * kh_row_run_extend()'s own comment rather than faked. */
+    g_sel_run_anchor = 0;
     g_bar_click_x = -1; /* fresh frame: no pending bar click until the
                          * bar-specific hit-test below arms one */
+    /* INLINE SPANS step 10: a click is a plain (collapsed) move - it
+     * clears any keyboard range, even when it lands on the already-
+     * focused row (where the cursor, and hence a stale range, would
+     * otherwise survive). */
+    g_seg_anchor = -1;
+    /* INLINE SPANS step 12: a click voids a dot-armed entry too (the
+     * user clicked instead of addressing). */
+    g_seg_dot_armed = 0;
     /* REAL, NEW 2026-08-29 (direct instruction: "i think whole house
      * should have the same single|doubleclick rule or it could be
      * confusing... it should be house wide if possible/ez") - same
@@ -13796,6 +14841,7 @@ static void popup_handle_click(int px, int py) {
                      * page being left - drop it now, not at the reparse
                      * (same honesty as the reparse clear). */
                     g_seg_idx = -1;
+                    g_span_pend.active = 0; /* step 11: dispatch retires any armed press */
                     if (!g_quit) assign_nav_and_layout();
                     redraw();
                     return;
@@ -14334,6 +15380,15 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
         g_popup_dragging = 0;  /* REAL, NEW 2026-08-29 (TASK 1) */
         g_text_drag_elem = NULL; /* REAL, NEW 2026-09-14 - end any real text drag-select */
         g_ov_drag = NULL;
+        /* INLINE SPANS step 11: pair every button-1 press with a tagged
+         * release line in the same mailbox (uniform protocol - the poll
+         * pairs them into clicks or drags; a release with no armed press
+         * is ignored). kh_capture_click owns the press half. */
+        {
+            char path[PATH_BUF]; history_path(path, sizeof(path));
+            FILE *rf = fopen(path, "a");
+            if (rf) { fprintf(rf, "MOUSE_EVENT: 1 %d %d 0 real\n", ev->xbutton.x, ev->xbutton.y); fclose(rf); }
+        }
         if (g_win_resizing) {
             /* commit: ONE relayout + redraw now that the drag is done.
              * Doing it per-MotionNotify feeds back through the
@@ -14397,6 +15452,31 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
             return;
         }
         if (g_text_drag_elem && !(ev->xmotion.state & Button1Mask)) g_text_drag_elem = NULL; /* missed the real ButtonRelease - stop here instead */
+        /* INLINE SPANS step 11: buttons-held motion over an armed span
+         * press drags the step-10 selection (anchor holds the press
+         * link, the cursor follows the pointer while it stays on the
+         * same row's links). Past-slop motion flips the press into a
+         * drag, so its release selects instead of clicking - the slop
+         * matches the canvas-drag precedent. Redraws only when the
+         * cursor actually moves (PITFALL #52). Falls through to the
+         * buttons-held hover skip below, never into hover itself. */
+        if (g_span_pend.active && g_span_pend.button == 1 && (ev->xmotion.state & Button1Mask)) {
+            XEvent mdr;
+            while (XCheckTypedWindowEvent(dpy, win, MotionNotify, &mdr)) *ev = mdr;
+            if (abs(ev->xmotion.x - g_span_pend.px) >= SPAN_DRAG_SLOP ||
+                abs(ev->xmotion.y - g_span_pend.py) >= SPAN_DRAG_SLOP) {
+                int dnav = 0, didx = -1;
+                char did[64] = "";
+                g_span_pend.dragged = 1;
+                if (span_press_hit(ev->xmotion.x, ev->xmotion.y, &dnav, &didx, did, sizeof(did)) &&
+                    dnav == g_span_pend.nav && strcmp(did, g_span_pend.id) == 0 &&
+                    didx != g_seg_idx) {
+                    g_seg_idx = didx;
+                    redraw();
+                }
+            }
+            return;
+        }
         if (g_ov_drag && (ev->xmotion.state & Button1Mask)) {
             XEvent mdrain;
             while (XCheckTypedWindowEvent(dpy, win, MotionNotify, &mdrain)) *ev = mdrain;
@@ -14450,6 +15530,18 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
             XMoveWindow(dpy, win, g_win_x, g_win_y);
             g_popup_drag_last_x = ev->xmotion.x_root;
             g_popup_drag_last_y = ev->xmotion.y_root;
+        }
+        /* INLINE SPANS step 8: plain pointer motion (no buttons held -
+         * drags/resizes above already returned) updates the span hover
+         * highlight. Coalesced like the drags (only the last position
+         * matters); seg_hover_move redraws only on target change, so a
+         * motion storm costs one hit-test per event and zero repaints
+         * while hovering one span. Buttons-held motion skips hover (a
+         * drag-select owns the pointer then). */
+        if (!(ev->xmotion.state & (Button1Mask | Button2Mask | Button3Mask))) {
+            XEvent mdr;
+            while (XCheckTypedWindowEvent(dpy, win, MotionNotify, &mdr)) *ev = mdr;
+            seg_hover_move(ev->xmotion.x, ev->xmotion.y);
         }
         return;
     }
@@ -22287,7 +23379,16 @@ int main(int argc, char **argv) {
      * cleared it - same class of bug as the missing CWOverrideRedirect
      * mask entry found earlier this session (a struct field set but the
      * corresponding mask bit missing, so X11 silently ignores it). */
-    swa.event_mask = ExposureMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | KeyPressMask | StructureNotifyMask | FocusChangeMask;
+    /* INLINE SPANS step 8 (hover, 2026-10-10): PointerMotionMask added
+     * below - ButtonMotionMask alone only reports motion WHILE A BUTTON
+     * IS HELD, so a plain pointer glide (the actual hover case) was never
+     * delivered to this window at all: same class of bug as the two mask
+     * gaps called out immediately above (handler wired, mask bit
+     * missing, X11 silently drops the event). Cost is bounded -
+     * seg_hover_move() hit-tests g_nav[] once per motion event and
+     * redraws ONLY when the hovered span changes, so sweeping the mouse
+     * across a window with no span rows repaints nothing. */
+    swa.event_mask = ExposureMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | PointerMotionMask | KeyPressMask | StructureNotifyMask | FocusChangeMask;
     win = XCreateWindow(dpy, RootWindow(dpy, screen), g_win_x, g_win_y, (unsigned)g_win_w, (unsigned)g_win_h, 0,
                          CopyFromParent, InputOutput, CopyFromParent, CWBackPixel | CWOverrideRedirect | CWEventMask, &swa);
     if (window_is_dock()) apply_dock_window_hints(dpy, win, g_win_x, g_win_y);

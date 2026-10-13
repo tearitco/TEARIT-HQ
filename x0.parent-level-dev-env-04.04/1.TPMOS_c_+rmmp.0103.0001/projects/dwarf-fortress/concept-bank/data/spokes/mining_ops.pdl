@@ -1,0 +1,10 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | dwarf-fortress
+META         | version            | 1.0
+META         | last_updated       | 2026-10-13
+
+STATE        | concept_mining     | 0.5
+STATE        | concept_combat     | 0.3
+STATE        | turn_count         | 0
+STATE        | game_state         | active

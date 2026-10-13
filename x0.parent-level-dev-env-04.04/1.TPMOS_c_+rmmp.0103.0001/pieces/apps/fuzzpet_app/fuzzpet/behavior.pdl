@@ -1,0 +1,38 @@
+# behavior.pdl - Declarative behavior model for Fuzzball
+# Book:Page / Events Architecture (hybrid with relay event bus)
+# 
+# This file declares the pet's available behaviors as METHOD mappings.
+# Each method maps to an .asm script that reads from the relay event bus
+# and dispatches to the corresponding fuzzpet_action.+x op.
+#
+# The relay pattern (fuzzpet_brain.c -> interact_relay.txt) feeds the
+# brain_dispatch.asm loop, which reads PET_ACTION rows and jumps to
+# the appropriate handler script.
+
+SECTION      | KEY            | VALUE
+-------------|----------------|------------------------------------------
+META         | piece_id       | fuzzball
+META         | version        | 1.0
+META         | type           | digital_pet
+
+STATE        | name           | Fuzzball
+STATE        | level          | 1
+STATE        | state_file     | pieces/apps/fuzzpet_app/fuzzpet/state.txt
+STATE        | relay_file     | pieces/apps/player_app/interact_relay.txt
+
+# Behavior methods — each maps to an .asm event script
+METHOD       | dispatch       | pieces/apps/fuzzpet_app/fuzzpet/scripts/brain_dispatch.asm
+METHOD       | feed           | pieces/apps/fuzzpet_app/fuzzpet/scripts/pet_feed.asm
+METHOD       | play           | pieces/apps/fuzzpet_app/fuzzpet/scripts/pet_play.asm
+METHOD       | sleep          | pieces/apps/fuzzpet_app/fuzzpet/scripts/pet_sleep.asm
+METHOD       | explore        | pieces/apps/fuzzpet_app/fuzzpet/scripts/pet_explore.asm
+METHOD       | heal           | pieces/apps/fuzzpet_app/fuzzpet/scripts/pet_heal.asm
+METHOD       | evolve         | pieces/apps/fuzzpet_app/fuzzpet/scripts/pet_evolve.asm
+METHOD       | toggle_emoji   | pieces/apps/fuzzpet_app/fuzzpet/scripts/pet_toggle_emoji.asm
+
+# Need-based guardrails (read by fuzzpet_brain.c fallback policy)
+GUARDRAIL    | hunger_critical | 60
+GUARDRAIL    | happiness_low   | 20
+GUARDRAIL    | energy_low      | 20
+
+RESPONSE     | default        | *purrr*

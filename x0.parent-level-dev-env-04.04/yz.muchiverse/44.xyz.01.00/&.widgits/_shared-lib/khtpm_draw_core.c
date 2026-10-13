@@ -103,7 +103,10 @@ static XftFont *font_for(const CssStyle *st) {
      * window's own real CSS font-family (st->has_font_family) always
      * wins - this is only the default this file used to hard-literal. */
     const char *fam = st->has_font_family ? st->font_family : g_ui_font_family;
-    int size = scaled(st->has_font_size ? st->font_size : 12);
+    /* PAGE ZOOM (2026-10-13): through zoomed(), not scaled(), so a zoom
+     * changes glyphs and re-wraps without moving ROW_H (which IS a
+     * scaled() macro - see zoomed()'s own comment for why that matters). */
+    int size = zoomed(st->has_font_size ? st->font_size : 12);
     snprintf(spec, sizeof(spec), "%s:pixelsize=%d%s", fam, size, (st->has_font_weight && st->font_weight_bold) ? ":bold" : "");
 
     static char cached_spec[128] = "";
@@ -1066,21 +1069,36 @@ static int seg_fitting_runs(Elem *e, XftFont **font_out, SegRun *runs, int maxru
     return seg_measure_runs(e, font, x0, runs, maxruns);
 }
 
+/* step 8: index-carrying twin is defined right below - declared here so
+ * the thin wrapper below it can stay a one-liner. */
+static int seg_hit_action_idx(Elem *e, int px, int *seg_idx_out,
+                              char *actout, size_t actsz);
+
 static int seg_hit_action(Elem *e, int px, char *actout, size_t actsz) {
+    return seg_hit_action_idx(e, px, NULL, actout, actsz);
+}
+
+/* step 8: same with the actionable-run index out (NULL-tolerant, so
+ * the click path is untouched). */
+static int seg_hit_action_idx(Elem *e, int px, int *seg_idx_out,
+                              char *actout, size_t actsz) {
     SegRun runs[64];
-    int nrun, ri;
+    int nrun, ri, nact = 0;
     if (!actout || actsz == 0) return 0;
     nrun = seg_fitting_runs(e, NULL, runs, 64);
     if (nrun < 0) return 0;
     for (ri = 0; ri < nrun; ri++) {
-        if (runs[ri].is_link && runs[ri].actlen > 0 &&
-            px >= runs[ri].x0 && px < runs[ri].x1) {
-            size_t n = runs[ri].actlen;
+        size_t n;
+        if (!runs[ri].is_link || runs[ri].actlen == 0) continue;
+        if (px >= runs[ri].x0 && px < runs[ri].x1) {
+            if (seg_idx_out) *seg_idx_out = nact;
+            n = runs[ri].actlen;
             if (n >= actsz) n = actsz - 1;
             memcpy(actout, runs[ri].act, n);
             actout[n] = '\0';
             return 1;
         }
+        nact++;
     }
     return 0;
 }
@@ -1101,6 +1119,209 @@ static int seg_hit_action(Elem *e, int px, char *actout, size_t actsz) {
 static int seg_cursor_on(const Elem *e) {
     return e && g_seg_idx >= 0 && g_seg_nav == e->nav_index &&
            e->nav_index > 0 && e->id[0] && strcmp(g_seg_id, e->id) == 0;
+}
+/* INLINE SPANS step 10: an active SELECTION is a non-collapsed anchor
+ * on the cursor's own row (anchor == cursor draws nothing and copies
+ * the whole label, exactly like no anchor). Validity rides the cursor
+ * triple, so no second identity to invalidate anywhere. */
+static int seg_anchor_on(const Elem *e) {
+    return seg_cursor_on(e) && g_seg_anchor >= 0 && g_seg_anchor != g_seg_idx;
+}
+
+/* ================= FIND IN PAGE (2026-10-12) =================
+ *
+ * Generic across every window (same contract as the span/hover state
+ * above it): Ctrl+F arms a query, Enter steps to the next match,
+ * Escape clears. Deliberately NOT an app feature - it searches
+ * whatever rows the window already has.
+ *
+ * WHY IT LIVES HERE AND NOT IN THE MANAGER: a match is a property of
+ * the RENDERED ROW, and this TU already owns "which row is focused" and
+ * "how a row's text is measured". Doing it here means the highlight
+ * lands under the exact glyph run the user can see, with no frame-
+ * protocol field and nothing for the state files to carry.
+ *
+ * Case-insensitive substring match on the row's own label. Honest
+ * about what it is NOT: no regex, no whole-word mode, and no match
+ * inside a rich row's LINK RUNS beyond its label text - a query for a
+ * domain does not match a row whose visible text is the link label. */
+static int kh_find_active(void) { return g_find_mode; }
+static int kh_find_label_match(const char *label, int *lo, int *hi) {
+    if (!g_find_query[0] || !label || !label[0]) return 0;
+    size_t ql = strlen(g_find_query);
+    if (ql == 0) return 0;
+    for (size_t i = 0; label[i]; i++) {
+        size_t k = 0;
+        while (k < ql && label[i + k]) {
+            int a = tolower((unsigned char)label[i + k]);
+            int b = tolower((unsigned char)g_find_query[k]);
+            if (a != b) break;
+            k++;
+        }
+        if (k == ql) { if (lo) *lo = (int)i; if (hi) *hi = (int)(i + ql); return 1; }
+    }
+    return 0;
+}
+static int kh_find_row_is_match(const Elem *e) {
+    return e && kh_find_active() && g_find_query[0] && kh_find_label_match(e->label, NULL, NULL);
+}
+int kh_find_is_armed(void) { return kh_find_active(); }
+
+/* ROW-RUN SELECTION, draw side (2026-10-12): is this row inside the
+ * contiguous run the user is selecting? Pure arithmetic on the two nav
+ * indices the renderer owns (the anchor and the focused row), so the
+ * draw pass asks one question per row and holds no state of its own.
+ * A run of one row answers true for that row alone - which is why the
+ * suite distinguishes "selected several rows" from "highlighted one" by
+ * the band spanning several visual rows, not by this predicate. */
+int kh_row_in_sel_run(const Elem *e) {
+    if (!e || g_sel_run_anchor <= 0 || g_focus_nav < 1) return 0;
+    int lo = g_sel_run_anchor < g_focus_nav ? g_sel_run_anchor : g_focus_nav;
+    int hi = g_sel_run_anchor < g_focus_nav ? g_focus_nav : g_sel_run_anchor;
+    return e->nav_index >= lo && e->nav_index <= hi;
+}
+
+/* Fill a selection band behind one visual line of text. Same colour as
+ * the in-row span selection (#2f5f8f) because it IS a selection to the
+ * user; drawn before the glyphs so the text stays readable on top, the
+ * same order the span band and the find band already use. */
+static void sel_band_fill(Drawable d, GC gc, int x, int y, int w, int h) {
+    if (w <= 0 || h <= 0) return;
+    XSetForeground(dpy, gc, alloc_pixel("#2f5f8f"));
+    XFillRectangle(dpy, d, gc, x, y, (unsigned)w, (unsigned)h);
+}
+
+/* Count matches over a WHOLE scroll region, not just the rows laid out
+ * right now.
+ *
+ * Why this exists: only rows inside the viewport get a nav slot (the
+ * rest are parked at y=-100000 with nav 0), so a search that walked
+ * g_nav[] alone could only ever find what was already on screen. On a
+ * long article - the entire reason find-in-page exists - the needle is
+ * almost always below the fold, and find would report "0 matches" on the
+ * one page class it was built for. Measured live: a 124-row article, the
+ * single needle paragraph sat off-screen and find found nothing.
+ *
+ * Walks the container's children the same way the layout does, sprite-
+ * flow runs included, so every row counted here is a row the user could
+ * actually scroll to. first_out receives the matches (up to cap) so the
+ * caller can reveal the chosen one. */
+/* Recursive on purpose: a page's rows are NOT direct children of the
+ * page element. They sit inside <scrolllist>, which itself sits inside
+ * a <sidebar>/<panel> - so a direct-children walk sees the containers
+ * and none of the content, which is why the first version of this
+ * reported "0 matches" on a page whose needle was plainly there.
+ * Depth is bounded by the tree itself; every real row is a leaf-ish
+ * child so this cannot run away. */
+static int kh_find_walk(Elem *node, Elem **out, int cap, int n) {
+    if (!node) return n;
+    for (int i = 0; i < node->n_children; i++) {
+        Elem *c = node->children[i];
+        /* Same sprite-flow run skip the layout does. Inlined rather than
+         * calling the renderer's static helpers: this file is text-
+         * included after them, so they are not in scope here. */
+        if ((strcmp(c->tag, "item") == 0 || strcmp(c->tag, "text") == 0) &&
+            c->sprite[0] && elem_has_class(c, "sprite-flow")) {
+            int run = 1;
+            while (i + run < node->n_children) {
+                Elem *n2 = node->children[i + run];
+                if (!((strcmp(n2->tag, "item") == 0 || strcmp(n2->tag, "text") == 0) &&
+                      n2->sprite[0] && elem_has_class(n2, "sprite-flow"))) break;
+                run++;
+            }
+            i += run - 1;
+            continue;
+        }
+        int is_row = (strcmp(c->tag, "item") == 0 || strcmp(c->tag, "text") == 0 ||
+                      strcmp(c->tag, "cli_io") == 0 || strcmp(c->tag, "text_area") == 0 ||
+                      strcmp(c->tag, "bar") == 0);
+        if (is_row) {
+            if (kh_find_label_match(c->label, NULL, NULL)) {
+                if (out && n < cap) out[n] = c;
+                n++;
+            }
+        } else {
+            n = kh_find_walk(c, out, cap, n);
+        }
+    }
+    return n;
+}
+
+int kh_find_count_in(Elem *root, Elem **out, int cap, int *n_out) {
+    int n = 0;
+    if (out) out[0] = NULL;
+    if (n_out) *n_out = 0;
+    if (!root || !kh_find_active() || !g_find_query[0]) return 0;
+    n = kh_find_walk(root, out, cap, n);
+    /* Honest about the cap: report the true total even when the list
+     * filled up, so a page with 700 matches of a 512 slot never claims
+     * 512 and lets Enter walk off the end of nothing. */
+    if (n_out) *n_out = n;
+    return n;
+}
+/* seg_any_runs is defined further below (single-fit first, else
+ * wrapped); the range helpers need it here. */
+static int seg_any_runs(Elem *e, SegRun *runs, int maxruns);
+/* Label-offset span of the selected range, inclusive of everything
+ * between the anchor and cursor links (intermediate text spans ride
+ * along, so the copy is contiguous visible text). Same seg_any_runs
+ * domain as walk/digits/dispatch - single-line first, else wrapped -
+ * so the offsets agree with what those paths address. Returns 1 with
+ * [lo,hi) character offsets, else 0 (no selection). */
+static int seg_range_offsets(Elem *e, int *lo_out, int *hi_out) {
+    SegRun runs[64];
+    int nrun, ri, nact = 0, lo, hi, off = 0;
+    int slo = -1, shi = -1;
+    if (!e || !seg_anchor_on(e)) return 0;
+    lo = g_seg_anchor < g_seg_idx ? g_seg_anchor : g_seg_idx;
+    hi = g_seg_anchor < g_seg_idx ? g_seg_idx : g_seg_anchor;
+    nrun = seg_any_runs(e, runs, 64);
+    if (nrun < 0) return 0;
+    /* boundary links contribute their full text; text runs strictly
+     * between them ride by position (off-range overlap); trailing
+     * text past the hi-boundary link is NOT included. */
+    for (ri = 0; ri < nrun; ri++) {
+        int ai = -1;
+        if (runs[ri].is_link && runs[ri].actlen > 0) ai = nact++;
+        if (ai == lo && slo < 0) slo = off;
+        if (ai == hi) shi = off + (int)runs[ri].tlen;
+        off += (int)runs[ri].tlen;
+    }
+    if (slo < 0 || shi <= slo) return 0;
+    if (lo_out) *lo_out = slo;
+    if (hi_out) *hi_out = shi;
+    return 1;
+}
+/* Plain visible text of the selected range into buf (link text as
+ * text, never URLs - same contract as row-label copy). Returns 1 on
+ * success, else 0. */
+static int seg_range_text(Elem *e, char *buf, size_t bufsz) {
+    SegRun runs[64];
+    int nrun, ri, nact = 0, lo, hi;
+    size_t pos = 0;
+    int started = 0, done = 0;
+    if (!buf || bufsz == 0 || !e || !seg_anchor_on(e)) return 0;
+    lo = g_seg_anchor < g_seg_idx ? g_seg_anchor : g_seg_idx;
+    hi = g_seg_anchor < g_seg_idx ? g_seg_idx : g_seg_anchor;
+    nrun = seg_any_runs(e, runs, 64);
+    if (nrun < 0) return 0;
+    for (ri = 0; ri < nrun && !done; ri++) {
+        int ai = -1;
+        if (runs[ri].is_link && runs[ri].actlen > 0) {
+            ai = nact++;
+            if (ai == lo) started = 1;
+        }
+        if (started && !done) {
+            size_t tl = runs[ri].tlen;
+            if (pos + tl + 1 >= bufsz) return 0;
+            memcpy(buf + pos, runs[ri].text, tl);
+            pos += tl;
+        }
+        if (ai == hi) done = 1;
+    }
+    if (!started || !done) return 0;
+    buf[pos] = '\0';
+    return pos > 0;
 }
 /* INLINE SPANS step 7 (wrapped hit-testing): wrapped geometry for
  * click/keys, mirroring the segwrap draw block's own entry conditions
@@ -1158,7 +1379,16 @@ static int seg_wrapped_geom(Elem *e, SegRun *runs, int maxruns,
  * edge lines, the same whole-row mapping single-line uses for x),
  * then x walks that line's slices with the draw loop's own
  * (ri,rstart)/pos discipline, measuring each slice identically. */
+static int seg_hit_wrapped_idx(Elem *e, int px, int py, int *seg_idx_out,
+                               char *actout, size_t actsz);
+
 static int seg_hit_wrapped(Elem *e, int px, int py, char *actout, size_t actsz) {
+    return seg_hit_wrapped_idx(e, px, py, NULL, actout, actsz);
+}
+
+/* step 8: same with the actionable-run index out (NULL-tolerant). */
+static int seg_hit_wrapped_idx(Elem *e, int px, int py, int *seg_idx_out,
+                               char *actout, size_t actsz) {
     SegRun runs[64];
     int cuts[64][2];
     int nlines = 0, ty0 = 0, line_h = 0;
@@ -1205,6 +1435,13 @@ static int seg_hit_wrapped(Elem *e, int px, int py, char *actout, size_t actsz) 
             if (runs[ri].is_link && runs[ri].actlen > 0 &&
                 px >= lx && px < lx + sl_ext.xOff) {
                 size_t n = runs[ri].actlen;
+                if (seg_idx_out) {
+                    /* payload-order index: actionable runs before ri. */
+                    int kk, kkact = 0;
+                    for (kk = 0; kk < ri; kk++)
+                        if (runs[kk].is_link && runs[kk].actlen > 0) kkact++;
+                    *seg_idx_out = kkact;
+                }
                 if (n >= actsz) n = actsz - 1;
                 memcpy(actout, runs[ri].act, n);
                 actout[n] = '\0';
@@ -1270,6 +1507,48 @@ static int seg_action_at_idx(Elem *e, int idx, char *actout, size_t actsz) {
     }
     return 0;
 }
+/* step 8: hover validity. Same id rule intent as seg_cursor_on above,
+ * but the id check is OPTIONAL rather than required. A row whose markup
+ * carries no id= attribute (every hand-written fixture, and any generic
+ * window not built by the browser template) must still be able to
+ * highlight: nav_index is already unique per row per reparse, and
+ * reparse clears the whole triple outright, so an id-less row keyed on
+ * (nav,idx) alone can never go stale across a rebuild. */
+static int seg_hover_on(const Elem *e) {
+    return e && g_hover_idx >= 0 && g_hover_nav == e->nav_index &&
+           e->nav_index > 0 && (!e->id[0] || strcmp(g_hover_id, e->id) == 0);
+}
+/* step 8: pointer tracking. Tries single-line geometry first, then
+ * wrapped - the click path's own order. Sets (nav,idx,id) on a link
+ * span, clears otherwise. Redraws ONLY on change: a motion storm must
+ * not repaint (PITFALL #52), so callers never redraw around this. The
+ * dummy action buffer is never dispatched - hover only ever tints. */
+static int seg_hover_move(int px, int py) {
+    int i, nh_nav = 0, nh_idx = -1;
+    char nh_id[64] = "";
+    char dummy[1024];
+    for (i = 0; i < g_n_nav; i++) {
+        Elem *it = g_nav[i];
+        int idx = -1;
+        if (px < it->x || px >= it->x + it->w || py < it->y || py >= it->y + it->h) continue;
+        if (!it->segments[0] || it->nav_index <= 0) continue;
+        if (!kh_elem_in_scope(it)) continue;
+        if (seg_hit_action_idx(it, px, &idx, dummy, sizeof(dummy))) {
+            /* single-line span */
+        } else if (!seg_hit_wrapped_idx(it, px, py, &idx, dummy, sizeof(dummy))) {
+            continue;
+        }
+        nh_nav = it->nav_index; nh_idx = idx;
+        snprintf(nh_id, sizeof(nh_id), "%s", it->id);
+        break;
+    }
+    if (nh_nav == g_hover_nav && nh_idx == g_hover_idx &&
+        (nh_nav == 0 || strcmp(nh_id, g_hover_id) == 0)) return 0;
+    g_hover_nav = nh_nav; g_hover_idx = nh_idx;
+    snprintf(g_hover_id, sizeof(g_hover_id), "%s", nh_id);
+    redraw();
+    return 1;
+}
 /* Left/Right on a focused segments row: enter the spans (Right: first
  * link, Left: last), walk them, walk off either end back to row-level.
  * Returns 1 when consumed (already redrawn), 0 for normal row stepping
@@ -1282,6 +1561,9 @@ static int seg_cursor_step(Elem *focused, int dir) {
     cur = seg_cursor_on(focused) ? g_seg_idx : -1;
     if (cur < 0) cur = (dir > 0) ? 0 : nact - 1;
     else cur += dir;
+    /* a plain (unshifted) walk collapses any selection: the range
+     * cannot survive its endpoint moving without Shift. */
+    g_seg_anchor = -1;
     if (cur < 0 || cur >= nact) {
         g_seg_idx = -1;
     } else {
@@ -1290,6 +1572,115 @@ static int seg_cursor_step(Elem *focused, int dir) {
         snprintf(g_seg_id, sizeof(g_seg_id), "%s", focused->id);
     }
     redraw();
+    return 1;
+}
+/* INLINE SPANS step 10: Shift+Left/Right extends a selection anchor
+ * across the focused row's links. Entry mirrors seg_cursor_step
+ * (dir>0 at the first link, dir<0 at the last) with the anchor
+ * collapsed onto the cursor; further shifted steps move the cursor
+ * while the anchor holds, so the range grows and shrinks like any
+ * text selection. Walking off either end drops both (same honesty as
+ * the plain walk-off). Returns 1 when consumed, else 0 for normal row
+ * stepping (plain rows, overlong rows, grids). */
+static int seg_anchor_extend(Elem *focused, int dir) {
+    int nact, cur, fresh;
+    if (!focused || !focused->segments[0]) return 0;
+    nact = seg_actionable_count(focused);
+    if (nact <= 0) return 0;
+    /* read freshness BEFORE touching state: setting nav/id first and
+     * asking after would resurrect a stale idx from another row. */
+    fresh = !seg_cursor_on(focused);
+    if (fresh) {
+        cur = (dir > 0) ? 0 : nact - 1;
+    } else {
+        cur = g_seg_idx + dir;
+    }
+    if (cur < 0 || cur >= nact) {
+        g_seg_idx = -1;
+        g_seg_anchor = -1;
+    } else {
+        g_seg_nav = focused->nav_index;
+        g_seg_idx = cur;
+        snprintf(g_seg_id, sizeof(g_seg_id), "%s", focused->id);
+        if (fresh) g_seg_anchor = cur;
+    }
+    redraw();
+    return 1;
+}
+
+/* INLINE TABLE COLUMNS step 2 (computed widths, 2026-10-11): the
+ * equal split (avail_w / ncols, toolbar-row precedent, no cross-row
+ * state) is the honest fallback, but a [Team|<empty>] row should not
+ * spend half the pane on an empty column while [a & b|1] squeezes.
+ * Column widths come from content: the projector measures each table
+ * run's per-column code-point maxima (it holds the whole table; the
+ * draw path paints deserialized tmp Elems with parent == NULL, so no
+ * sibling scan can ever work there) and they ride the row as ccounts=
+ * ("n0,n1,..."), exactly like cells= itself. Leftover space goes back
+ * PROPORTIONALLY to content, not equally: on a wide pane equal shares
+ * wash short/long columns back toward equal, which is the thing being
+ * replaced. Both directions are deterministic functions of (counts,
+ * avail_w), so every row of the run computes identical widths and
+ * column starts stay aligned across rows - the table-test contract. */
+#define TABLE_COL_GAP 16
+#define TABLE_MAX_COLS 64
+
+/* "12,4,37" -> nat[], exactly ncols numbers in [0,1000000] with a
+ * nonzero total. Anything else (stale arity, hostile text, all-empty)
+ * returns 0 and the caller keeps the equal split. */
+static int table_parse_counts(const char *s, int ncols, int nat[64]) {
+    int i, total = 0;
+    const char *p;
+    if (!s || !s[0] || ncols < 1 || ncols > TABLE_MAX_COLS) return 0;
+    p = s;
+    for (i = 0; i < ncols; i++) {
+        long v = 0;
+        int ndig = 0;
+        while (*p >= '0' && *p <= '9') {
+            v = v * 10 + (*p - '0');
+            if (v > 1000000) return 0;
+            p++; ndig++;
+        }
+        if (ndig == 0) return 0;
+        nat[i] = (int)v;
+        total += nat[i];
+        if (i + 1 < ncols) {
+            if (*p != ',') return 0;
+            p++;
+        }
+    }
+    if (*p != '\0') return 0;
+    return total > 0;
+}
+
+/* Pure width math: nat[] maxima + avail_w -> col_w[]. Returns 0 when
+ * the grid cannot honor content (a non-empty column would starve below
+ * one "..." ellipsis) - the caller draws the joined label instead of
+ * "..." past its budget. */
+static int table_widths_from_nat(const int *nat, int ncols, int avail_w,
+                                 int ellw, int col_w[64]) {
+    int ci, total = 0, gaps, slack, budget, sum = 0, last_full = 0;
+    for (ci = 0; ci < ncols; ci++) total += nat[ci];
+    if (total <= 0) return 0;
+    gaps = TABLE_COL_GAP * (ncols - 1);
+    if (total + gaps <= avail_w) {
+        slack = avail_w - total - gaps;
+        for (ci = 0; ci < ncols; ci++) {
+            col_w[ci] = nat[ci] + (int)((long)slack * nat[ci] / total);
+            if (nat[ci] > 0) last_full = ci;
+        }
+        /* integer-division remainder lands on the last non-empty
+         * column so the grid still ends exactly at avail_w. */
+        for (ci = 0; ci < ncols; ci++) sum += col_w[ci];
+        col_w[last_full] += avail_w - gaps - sum;
+    } else {
+        budget = avail_w - gaps;
+        if (budget <= 0) return 0;
+        for (ci = 0; ci < ncols; ci++) {
+            col_w[ci] = (int)((long)nat[ci] * budget / total);
+            if (nat[ci] > 0 && col_w[ci] < ellw) return 0;
+        }
+    }
     return 1;
 }
 
@@ -1428,7 +1819,68 @@ static void draw_elem(Elem *e, int hover_id_hash) {
             int lx = e->x + (e->w - ext.width) / 2;
             if (lx < e->x) lx = e->x;
             int ly = e->y + (e->h + (font->ascent - font->descent)) / 2;
-            draw_text_emoji(font, &col, lx, ly, e->label);
+            /* VIDEO PLAYHEAD readability (2026-10-11): the centered
+             * label used to draw in one color, so wherever it crossed
+             * the green fill it read ~2.4:1. Split it at the fill edge
+             * instead: the part over the fill draws in a fill-luma-
+             * picked dark-or-light both chosen against the fill's own
+             * color (custom fills included, not just the default
+             * green), the rest exactly as before. Split point walks
+             * character starts only, so no multibyte glyph is ever cut.
+             * (The track side keeps today's color unconditionally - a
+             * custom light track with default text is still on the
+             * app to fix, same as any other element's own bg.) */
+            {
+                int fpx = 0;
+                if (e->bar_max > 0) {
+                    int fr = e->bar_value;
+                    if (fr < 0) fr = 0;
+                    if (fr > e->bar_max) fr = e->bar_max;
+                    fpx = (int)((long long)e->w * fr / e->bar_max);
+                }
+                int edge = e->x + fpx;
+                if (fpx > 0 && edge > lx && edge < lx + (int)ext.width) {
+                    const char *fill_hex = e->style.has_fg_color ? e->style.fg_color : "#2f8f5f";
+                    XftColor fcol = xft_color(kh_hex_luma(fill_hex) > 140 ? "#1c1c1c" : "#0e0e0e");
+                    size_t llen = strlen(e->label);
+                    size_t cut = 0;
+                    int cw = 0;
+                    char p1[2048], p2[2048];
+                    size_t i = 0;
+                    XGlyphInfo cur;
+                    if (llen >= sizeof(p1)) llen = sizeof(p1) - 1;
+                    /* measure prefixes at character ends only - never
+                     * mid-glyph (continuation bytes advance the end,
+                     * never start a measurement). */
+                    while (i < llen) {
+                        size_t en = i + 1;
+                        while (en < llen && ((unsigned char)e->label[en] & 0xC0) == 0x80) en++;
+                        XftTextExtentsUtf8(dpy, font, (const FcChar8 *)e->label, (int)en, &cur);
+                        if (lx + (int)cur.width > edge) break;
+                        cw = cur.width;
+                        i = en;
+                    }
+                    cut = i;
+                    memcpy(p1, e->label, cut);
+                    p1[cut] = '\0';
+                    snprintf(p2, sizeof(p2), "%s", e->label + cut);
+                    /* left part sits on the fill (dark-or-light above),
+                     * right part on the track (today's color). Which
+                     * side is which never depends on direction: edge is
+                     * always right of lx here. */
+                    draw_text_emoji(font, &fcol, lx, ly, p1);
+                    draw_text_emoji(font, &col, lx + cw, ly, p2);
+                    XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &fcol);
+                } else if (fpx > 0 && edge >= lx + (int)ext.width) {
+                    /* label fully over the fill: one dark-on-fill draw. */
+                    const char *fill_hex = e->style.has_fg_color ? e->style.fg_color : "#2f8f5f";
+                    XftColor fcol = xft_color(kh_hex_luma(fill_hex) > 140 ? "#1c1c1c" : "#0e0e0e");
+                    draw_text_emoji(font, &fcol, lx, ly, e->label);
+                    XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &fcol);
+                } else {
+                    draw_text_emoji(font, &col, lx, ly, e->label);
+                }
+            }
             XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &col);
         }
         return;
@@ -1977,6 +2429,14 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                         XFillRectangle(dpy, buf, gc, hx, ty - font->ascent, (unsigned)hw, (unsigned)line_h);
                     }
                 }
+                if (kh_row_in_sel_run(e)) {
+                    /* the row's own right edge, not the wrap width: the
+                     * band should read as "this row is selected", which
+                     * is what a browser paints, and a band that stops at
+                     * the last glyph looks like a text selection. */
+                    int rw = e->x + e->w - text_x;
+                    sel_band_fill(buf, gc, text_x, ty - font->ascent, rw, line_h);
+                }
                 draw_text_emoji(font, &col, text_x, ty, row_buf);
                 if (cursor_off >= 0) {
                     int row_start_off = (int)(sp - shown_label);
@@ -2093,6 +2553,8 @@ static void draw_elem(Elem *e, int hover_id_hash) {
          * this only activates for a box some other real code path
          * already decided needs to be taller. */
         int is_multiline_box = (e->h > (line_h * 3) / 2) && avail_w > 0;
+        int find_lo = -1, find_hi = -1;
+        if (kh_find_active()) kh_find_label_match(shown_label, &find_lo, &find_hi);
         /* INLINE SPANS (phase 2, step 1b/step 3, 2026-10-09) - when the
          * element carries a segments= payload (see khtpm_render_core.c's
          * own Elem.segments field comment for the encoding) and the whole
@@ -2128,8 +2590,33 @@ static void draw_elem(Elem *e, int hover_id_hash) {
              * branch, hence the !drew_sprite gate above). */
             nrun = seg_measure_runs(e, font, badge_label_x, runs, 64);
             if (nrun >= 0) {
+                /* step 10: selection band behind the anchor..cursor
+                 * span - the fields' own convention (solid #2f5f8f
+                 * under the glyphs, same alloc_pixel+fill as every
+                 * other rect here). Edges come from the boundary
+                 * links' own measured x-ranges, so the band agrees
+                 * with the glyphs by construction. */
+                if (seg_anchor_on(e)) {
+                    int loA = g_seg_anchor < g_seg_idx ? g_seg_anchor : g_seg_idx;
+                    int hiA = g_seg_anchor < g_seg_idx ? g_seg_idx : g_seg_anchor;
+                    int ai, ai_n = 0, xs = -1, xe = -1, q;
+                    for (q = 0; q < nrun; q++) {
+                        if (runs[q].is_link && runs[q].actlen > 0) {
+                            ai = ai_n++;
+                            if (ai == loA) xs = runs[q].x0;
+                            if (ai == hiA) xe = runs[q].x1;
+                        }
+                    }
+                    if (xs >= 0 && xe > xs) {
+                        XSetForeground(dpy, gc, alloc_pixel("#2f5f8f"));
+                        XFillRectangle(dpy, buf, gc, xs, sty - font->ascent,
+                                       (unsigned)(xe - xs), (unsigned)line_h);
+                    }
+                }
                 int ri, link_no = -1;
+                XftColor hov_col;
                 if (!seg_focus_px) seg_focus_px = alloc_pixel("#ffffff");
+                hov_col = xft_color("#ffffff");
                 for (ri = 0; ri < nrun; ri++) {
                     char seg_text[1024];
                     size_t tl = runs[ri].tlen;
@@ -2137,7 +2624,19 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                     if (tl >= sizeof(seg_text)) tl = sizeof(seg_text) - 1;
                     memcpy(seg_text, runs[ri].text, tl);
                     seg_text[tl] = '\0';
+                    /* link_no counts actionable runs in payload order
+                     * (same domain as cursor/hover indices and
+                     * seg_action_at_idx); incremented here so both the
+                     * text tint below and the underline focus check see
+                     * this run's own index. */
+                    if (runs[ri].is_link && runs[ri].actlen > 0) link_no++;
                     sc = runs[ri].is_link ? link_col : col;
+                    /* step 8: hovered link span draws white TEXT (the
+                     * keyboard cursor instead whitens the underline) -
+                     * the two marks compose, never collide. */
+                    if (runs[ri].is_link && runs[ri].actlen > 0 &&
+                        seg_hover_on(e) && link_no == g_hover_idx)
+                        sc = hov_col;
                     draw_text_emoji(font, &sc, runs[ri].x0, sty, seg_text);
                     if (runs[ri].is_link && runs[ri].x1 > runs[ri].x0) {
                         int focused = 0;
@@ -2147,7 +2646,6 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                          * XRenderFillRectangle. White when the keyboard
                          * cursor sits on this span (step 5). */
                         if (runs[ri].actlen > 0) {
-                            link_no++;
                             focused = seg_cursor_on(e) && link_no == g_seg_idx;
                         }
                         XSetForeground(dpy, gc, focused ? seg_focus_px : link_col.pixel);
@@ -2188,6 +2686,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                 int cuts[64][2];
                 int nlines, max_ln, li;
                 XftColor link_col = xft_color("#8fb8ff");
+                XftColor hov_col = xft_color("#ffffff");
                 snprintf(wrapbuf, sizeof(wrapbuf), "%s", shown_label);
                 if (wrapbuf[0]) {
                     nlines = wrap_line_bounds(font, wrapbuf, avail_w, cuts, 64);
@@ -2208,6 +2707,11 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                         int ri = 0;
                         size_t rstart = 0;
                         int act_seen = 0;
+                        /* step 10: selection offsets once per frame (not
+                         * per slice) - seg_range_offsets rewalks the
+                         * same runs, but only while a range is active. */
+                        int sel_loO = 0, sel_hiO = 0;
+                        int have_sel = seg_range_offsets(e, &sel_loO, &sel_hiO);
                         for (li = 0; li < nlines; li++) {
                             int ty_line = e->y + font->ascent + 2 + li * line_h;
                             int lx = badge_label_x;
@@ -2232,6 +2736,42 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                                     memcpy(slice, sgruns[ri].text + (pos - rstart), slen);
                                     slice[slen] = '\0';
                                     ssc = sgruns[ri].is_link ? link_col : col;
+                                    /* step 8: hovered link slice draws
+                                     * white text (cursor whitens the
+                                     * underline instead). act_seen is
+                                     * this slice's payload-order index,
+                                     * same domain as g_hover_idx. */
+                                    if (sgruns[ri].is_link && sgruns[ri].actlen > 0 &&
+                                        seg_hover_on(e) && act_seen == g_hover_idx)
+                                        ssc = hov_col;
+                                    /* step 10: selection band for the
+                                     * overlapped part of this slice -
+                                     * same #2f5f8f-under-glyphs as the
+                                     * fields. All four candidate edges
+                                     * (slice ends, link boundaries) are
+                                     * character-safe, so the sub-ranges
+                                     * measure exactly. */
+                                    if (have_sel) {
+                                        size_t olo = pos > (size_t)sel_loO ? pos : (size_t)sel_loO;
+                                        size_t ohi = se < (size_t)sel_hiO ? se : (size_t)sel_hiO;
+                                        if (ohi > olo) {
+                                            XGlyphInfo pre_ext, sub_ext;
+                                            int dx = 0;
+                                            if (olo > pos) {
+                                                XftTextExtentsUtf8(dpy, font, (const FcChar8 *)slice,
+                                                                   (int)(olo - pos), &pre_ext);
+                                                dx = pre_ext.xOff;
+                                            }
+                                            XftTextExtentsUtf8(dpy, font,
+                                                               (const FcChar8 *)(slice + (olo - pos)),
+                                                               (int)(ohi - olo), &sub_ext);
+                                            if (sub_ext.xOff > 0) {
+                                                XSetForeground(dpy, gc, alloc_pixel("#2f5f8f"));
+                                                XFillRectangle(dpy, buf, gc, lx + dx, ty_line - font->ascent,
+                                                               (unsigned)sub_ext.xOff, (unsigned)line_h);
+                                            }
+                                        }
+                                    }
                                     draw_text_emoji(font, &ssc, lx, ty_line, slice);
                                     XftTextExtentsUtf8(dpy, font, (const FcChar8 *)slice,
                                                        (int)slen, &sl_ext);
@@ -2262,35 +2802,64 @@ static void draw_elem(Elem *e, int hover_id_hash) {
         }
         int drew_cells = 0;
         if (!drew_segments && !drew_segwrap && e->cells[0] && !drew_sprite && avail_w > 0) {
-            /* INLINE TABLE COLUMNS (2026-10-09): equal-column table
-             * rows. cells= carries \x1F-joined cell texts (positional -
-             * empty cells significant, ragged rows grid differently per
-             * row, honestly). N columns share avail_w equally
-             * (toolbar-row precedent: w / n_items, no cross-row state,
-             * no measurement feedback loop); cells draw left-aligned on
-             * the row's first line, ellipsis-clipped to their column.
-             * The clip mirrors the single-line path's own
-             * measure/back-off/UTF-8-safe logic - duplicated, not
-             * refactored, so the proven hot path stays byte-identical.
-             * No wrapping, no per-cell clicks (cell links are already
-             * folded at extract), no nav change. Overlong payloads
-             * (>64 cells) or hairline columns fall back to the joined
-             * label exactly as today. */
+            /* INLINE TABLE COLUMNS (2026-10-09, widths computed
+             * 2026-10-11): cells= carries \x1F-joined cell texts
+             * (positional - empty cells significant, ragged rows grid
+             * differently per row, honestly). ccounts= carries the
+             * run's per-column code-point maxima ("n0,n1,..."); the
+             * widths below are a deterministic function of (counts,
+             * avail_w), so every row of the run computes identical
+             * widths and column starts stay aligned. No counts, stale
+             * arity, or a starved pane falls back to the plain equal
+             * split (avail_w / ncols, the 2026-10-09 behavior,
+             * pixel-identical: gap 0 and x == badge_label_x + ci * cw
+             * exactly). Cells draw left-aligned on the row's first
+             * line, ellipsis-clipped to their column. The clip mirrors
+             * the single-line path's own measure/back-off/UTF-8-safe
+             * logic - duplicated, not refactored, so the proven hot
+             * path stays byte-identical. No wrapping, no per-cell
+             * clicks (cell links are already folded at extract), no nav
+             * change. Overlong payloads (>64 cells) or hairline columns
+             * fall back to the joined label exactly as today. */
             int ncols = 1;
             const char *cc;
             for (cc = e->cells; *cc; cc++) if (*cc == '\x1f') ncols++;
             if (ncols >= 1 && ncols <= 64) {
-                int cw = avail_w / ncols;
-                if (cw > 0) {
-                    int cty = is_multiline_box ? e->y + font->ascent + 2
-                              : e->y + (e->h + font->ascent - font->descent) / 2;
+                int col_w[64], col_x[64], ci, cgap = 0;
+                int nat[64];
+                XGlyphInfo cw_ell;
+                int cw_ellw = 0;
+                /* the '...' floor for the starvation check below. */
+                XftTextExtentsUtf8(dpy, font, (const FcChar8 *)"...", 3, &cw_ell);
+                cw_ellw = cw_ell.width;
+                if (e->ccounts[0] && table_parse_counts(e->ccounts, ncols, nat) &&
+                    table_widths_from_nat(nat, ncols, avail_w, cw_ellw, col_w)) {
+                    cgap = TABLE_COL_GAP;
+                } else {
+                    int cw = avail_w / ncols;
+                    if (cw <= 0) cw = 0;
+                    for (ci = 0; ci < ncols; ci++) col_w[ci] = cw;
+                }
+                /* Gate matches the old `cw > 0` exactly on the fallback
+                 * path (all col_w equal cw there); on the computed path
+                 * at least one non-empty column always carries width
+                 * (the starvation check above guarantees it), while an
+                 * all-empty LEADING column legitimately holds 0 - so
+                 * the gate is "any width", never "first width". */
+                { int ci_any, any_w = 0;
+                  for (ci_any = 0; ci_any < ncols; ci_any++)
+                      if (col_w[ci_any] > 0) { any_w = 1; break; }
+                  if (any_w) {
+                    int cty = is_multiline_box ? e->y + font->ascent + 2                              : e->y + (e->h + font->ascent - font->descent) / 2;
                     const char *cp = e->cells;
-                    int ci;
                     if (cty < e->y + font->ascent) cty = e->y + font->ascent + pad / 2;
+                    col_x[0] = badge_label_x;
+                    for (ci = 1; ci < ncols; ci++)
+                        col_x[ci] = col_x[ci-1] + col_w[ci-1] + cgap;
                     for (ci = 0; ci < ncols; ci++) {
                         const char *ce = strchr(cp, '\x1f');
                         size_t clen = ce ? (size_t)(ce - cp) : strlen(cp);
-                        if (clen > 0) {
+                        if (clen > 0 && col_w[ci] > 0) {
                             char cellbuf[1024];
                             XGlyphInfo cw_ext;
                             static const char *CELL_ELLIPSIS = "...";
@@ -2298,12 +2867,12 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                             memcpy(cellbuf, cp, clen);
                             cellbuf[clen] = '\0';
                             XftTextExtentsUtf8(dpy, font, (const FcChar8 *)cellbuf, (int)clen, &cw_ext);
-                            if (cw_ext.width > cw) {
+                            if (cw_ext.width > col_w[ci]) {
                                 XGlyphInfo ell_ext;
                                 size_t len = clen;
                                 XftTextExtentsUtf8(dpy, font, (const FcChar8 *)CELL_ELLIPSIS, 3, &ell_ext);
                                 {
-                                    int target_w = cw - ell_ext.width;
+                                    int target_w = col_w[ci] - ell_ext.width;
                                     if (target_w < 0) target_w = 0;
                                     while (len > 0) {
                                         XGlyphInfo cur_ext;
@@ -2316,13 +2885,14 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                                 cellbuf[len] = '\0';
                                 snprintf(cellbuf + len, sizeof(cellbuf) - len, "%s", CELL_ELLIPSIS);
                             }
-                            draw_text_emoji(font, &col, badge_label_x + ci * cw, cty, cellbuf);
+                            draw_text_emoji(font, &col, col_x[ci], cty, cellbuf);
                         }
                         if (!ce) break;
                         cp = ce + 1;
                     }
                     drew_cells = 1;
-                }
+                    } /* if (any_w) */
+                } /* widths scope */
             }
         }
         if (!drew_segments && !drew_segwrap && !drew_cells && is_multiline_box) {
@@ -2438,6 +3008,60 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                 } else {
                     snprintf(line_buf, sizeof(line_buf), "%.*s", cut, p);
                 }
+                /* ROW-RUN SELECTION (2026-10-12): the band for a selected
+                 * row goes on EVERY visual line of that row, drawn
+                 * before the glyphs so the text stays readable - the same
+                 * order the in-row span band and the find band use.
+                 *
+                 * This is the site that actually paints a content
+                 * paragraph. The two other band sites in this function
+                 * (the span-wrap path and the single-line path) cover
+                 * link rows and single-line rows respectively; a plain
+                 * multi-line <text> row takes THIS one, which is why the
+                 * first version of this feature painted nothing at all
+                 * on an article while looking perfectly correct on a
+                 * one-line row - found by measuring pixels, not by
+                 * reading the diff.
+                 *
+                 * The drawable is wrap_target_buf, NOT `buf`: this block
+                 * declares its own `char buf[]` for the text being
+                 * wrapped, which shadows the Pixmap `buf` for the rest
+                 * of the block (see the capture just above it). */
+                if (kh_row_in_sel_run(e)) {
+                    int band_h = font->ascent + (font->descent > 0 ? font->descent : 2);
+                    int rw = e->x + e->w - badge_label_x;
+                    sel_band_fill(wrap_target_buf, gc, badge_label_x, ty - font->ascent, rw, band_h);
+                }
+                /* FIND IN PAGE (2026-10-12): paint the match band
+                 * behind the glyphs on THIS visual row only, clipped to
+                 * the row's own span and measured with the same
+                 * XftTextExtentsUtf8 prefix trick the cursor and the
+                 * selection band already use here, so the band agrees
+                 * with the glyphs by construction rather than by eye.
+                 *
+                 * The drawable is wrap_target_buf, NOT `buf`: this
+                 * block declares its own `char buf[]` (the text being
+                 * wrapped) which shadows the Pixmap `buf` for the rest
+                 * of the block - passing that char* to XFillRectangle
+                 * is a BadDrawable on every match, with no band painted
+                 * and an X-error spew per frame. The shadowing already
+                 * bit this file once, which is why the block above
+                 * captures the real drawable under that name. */
+                if (find_lo >= 0) {
+                    int fs = (int)(p - buf), fe = fs + (int)strlen(line_buf);
+                    int hl = find_lo > fs ? find_lo : fs;
+                    int hh2 = find_hi < fe ? find_hi : fe;
+                    if (hh2 > hl) {
+                        XGlyphInfo pre, span2;
+                        XftTextExtentsUtf8(dpy, font, (const FcChar8 *)p, hl - fs, &pre);
+                        XftTextExtentsUtf8(dpy, font, (const FcChar8 *)p, hh2 - fs, &span2);
+                        int hw = span2.width - pre.width;
+                        if (hw < 2) hw = 2;
+                        XSetForeground(dpy, gc, alloc_pixel("#7a5c00"));
+                        XFillRectangle(dpy, wrap_target_buf, gc, badge_label_x + pre.width,
+                                       ty - font->ascent, (unsigned)hw, (unsigned)line_h);
+                    }
+                }
                 draw_text_emoji(font, &col, badge_label_x, ty, line_buf);
                 if (cursor_off >= 0) {
                     int line_start_off = (int)(p - buf);
@@ -2501,6 +3125,27 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                 ty = e->y + e->h - 4;
                 if (ty < e->y + font->ascent) ty = e->y + font->ascent;
                 badge_label_x = e->x + pad;
+            }
+            if (find_lo >= 0) {
+                int dlen = (int)strlen(draw_label);
+                int hl = find_lo < dlen ? find_lo : dlen;
+                int hh2 = find_hi < dlen ? find_hi : dlen;
+                if (hh2 > hl) {
+                    XGlyphInfo pre, span2;
+                    XftTextExtentsUtf8(dpy, font, (const FcChar8 *)draw_label, hl, &pre);
+                    XftTextExtentsUtf8(dpy, font, (const FcChar8 *)draw_label, hh2, &span2);
+                    int hw = span2.width - pre.width;
+                    if (hw < 2) hw = 2;
+                    int band_h = font->ascent + (font->descent > 0 ? font->descent : 2);
+                    XSetForeground(dpy, gc, alloc_pixel("#7a5c00"));
+                    XFillRectangle(dpy, buf, gc, badge_label_x + pre.width,
+                                   ty - font->ascent, (unsigned)hw, (unsigned)band_h);
+                }
+            }
+            if (kh_row_in_sel_run(e)) {
+                int band_h = font->ascent + (font->descent > 0 ? font->descent : 2);
+                int rw = e->x + e->w - badge_label_x;
+                sel_band_fill(buf, gc, badge_label_x, ty - font->ascent, rw, band_h);
             }
             draw_text_emoji(font, &col, badge_label_x, ty, draw_label);
             /* REAL, NEW 2026-09-05 (CLI_IO-CURSOR-AND-TEXT_AREA-

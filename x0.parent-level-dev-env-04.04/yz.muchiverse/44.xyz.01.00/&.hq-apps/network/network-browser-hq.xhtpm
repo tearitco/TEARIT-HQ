@@ -35,6 +35,10 @@
            that only shows once there's real history to clear
            (show="${n_hist}" - falsy/"0" when the list is empty). -->
       <item id="nb-clearhist" class="nb-side" label="Clear All History" action="${clear_hist_action}" show="${n_hist}"/>
+      <!-- 2026-10-12 (autofill): same shape as Clear All History - the
+           row only exists when the jar holds something, so there is no
+           dead control on a browser that has never filled a form. -->
+      <item id="nb-clearautofill" class="nb-side" label="Clear Saved Form Values" action="${clear_autofill_action}" show="${n_autofill}"/>
       <scrolllist>
         <repeat count="${n_hist}" bind="h">
           <item id="hist${h.#}" class="nb-side" label="${h.label}" action="${h.action}" backspace_action="${h.del_action}"/>
@@ -76,8 +80,13 @@
       <text id="nbwarn" class="nb-warn" label="${render_warn}" show="${show_render_warn}"/>
       <scrolllist class="from-top nb-content">
         <repeat count="${content_count}" bind="c">
-<text id="ct${c.#}" class="page-title" label="${c.text}" action="${c.click_action}"        show="${c.is_title}"/>
-          <text id="cx${c.#}" class="nb-text"                   label="${c.text}" action="${c.click_action}"        show="${c.is_text}"/>
+<text id="ct${c.#}" class="page-title nav-text" label="${c.text}" action="${c.click_action}"        show="${c.is_title}"/>
+          <text id="cx${c.#}" class="nb-text nav-text"                   label="${c.text}" action="${c.click_action}"        show="${c.is_text}"/>
+          <!-- DOWNLOADS (2026-10-13): one row saying what was saved,
+               where, and how big. Carries c_name/c_size/c_path so an
+               agent (and the suite) can assert on the numbers instead of
+               parsing them back out of the visible text. -->
+          <text id="cdl${c.#}" class="nb-download nav-text"                label="${c.text}" show="${c.is_download}"/>
           <!-- 2026-10-09: inline clickable spans, phase 2 step 3. One
                verified RICH paragraph renders as a single sentence row;
                link segments draw tinted via segments= (see
@@ -85,11 +94,11 @@
                same run still emit, so clicks stay live until per-segment
                hit-testing lands. Rows without segments= take the
                proven-inert path - every other row is byte-identical. -->
-          <text id="cr${c.#}" class="nb-rich" label="${c.text}" segments="${c.segments}" action="${c.click_action}" show="${c.is_rich}"/>
+          <text id="cr${c.#}" class="nb-rich nav-text" label="${c.text}" segments="${c.segments}" action="${c.click_action}" show="${c.is_rich}"/>
           <!-- 2026-10-07: <pre> blocks keep their line structure and
                indentation (CODE rows, one per source line) instead of
                being collapsed into one run-on line. -->
-          <text id="cd${c.#}" class="nb-code"                   label="${c.text}" show="${c.is_code}"/>
+          <text id="cd${c.#}" class="nb-code nav-text"                   label="${c.text}" show="${c.is_code}"/>
           <item id="cl${c.#}" class="nb-link" label="${c.text}"  action="${c.action}"                       show="${c.is_link}"/>
           <!-- Milestone 4 slice 1 (2026-10-07): form controls. INPUT rows
                are editable cli_io (commit appends name=value via the
@@ -108,14 +117,14 @@
                a cell still reads as belonging to its column. Header rows
                are their own kind so they can be tinted apart. A real grid
                needs renderer column layout - separate slice. -->
-          <text id="tr${c.#}" class="nb-trow thead" label="${c.text}" cells="${c.cells}" show="${c.is_thead}"/>
+          <text id="tr${c.#}" class="nb-trow thead nav-text" label="${c.text}" cells="${c.cells}" ccounts="${c.ccounts}" show="${c.is_thead}"/>
           <!-- 2026-10-08: <ul>/<ol> items keep their marker and nesting. -->
-          <text id="li${c.#}" class="nb-list" label="${c.text}" show="${c.is_list}"/>
+          <text id="li${c.#}" class="nb-list nav-text" label="${c.text}" show="${c.is_list}"/>
           <!-- 2026-10-08: <dl> term/definition pairs, and the always-visible
                label of a collapsed <details>. The collapsed BODY is not
                emitted at all - it is not visible on the page either. -->
-          <text id="dl${c.#}" class="nb-drow"     label="${c.text}" show="${c.is_drow}"/>
-          <text id="ds${c.#}" class="nb-summary" label="${c.text}" show="${c.is_summary}"/>
+          <text id="dl${c.#}" class="nb-drow nav-text"     label="${c.text}" show="${c.is_drow}"/>
+          <text id="ds${c.#}" class="nb-summary nav-text" label="${c.text}" show="${c.is_summary}"/>
           <!-- 2026-10-08: <h1>..<h6> keep their level. Previously every
                heading was one identical TITLE row, so an article arrived
                with no outline at all. One element per level, each shown only
@@ -126,7 +135,7 @@
           <text id="h4${c.#}" class="nb-h4" label="${c.text}" show="${c.is_h4}"/>
           <text id="h5${c.#}" class="nb-h5" label="${c.text}" show="${c.is_h5}"/>
           <text id="h6${c.#}" class="nb-h6" label="${c.text}" show="${c.is_h6}"/>
-          <text id="tw${c.#}" class="nb-trow"         label="${c.text}" cells="${c.cells}" show="${c.is_trow}"/>
+          <text id="tw${c.#}" class="nb-trow"         label="${c.text}" cells="${c.cells}" ccounts="${c.ccounts}" show="${c.is_trow}"/>
           <!-- 2026-10-08: <input type=file>. Opens the house file-explorer
                and commits the chosen absolute path to the fields file;
                submit sends multipart when any committed value is a real

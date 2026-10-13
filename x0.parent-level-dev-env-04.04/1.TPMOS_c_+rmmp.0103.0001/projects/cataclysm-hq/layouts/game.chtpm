@@ -1,0 +1,18 @@
+<panel>
+    <text label="+===========================================================+" /><br/>
+    <text label="|           CAVE LEVEL ${current_dungeon_level}                      |" /><br/>
+    <text label="+===========================================================+" /><br/>
+    <br/>
+    <text label="${map_display}" /><br/>
+    <br/>
+    <text label="HP: ${hero_hp}/${hero_max_hp} | SP: ${hero_sp}/${hero_max_sp}" /><br/>
+    <text label="STR: ${hero_str} DEX: ${hero_dex} CON: ${hero_con}" /><br/>
+    <text label="Hunger: ${hero_hunger} | Gold: ${hero_gold} | XP: ${hero_xp}/${hero_xp_next}" /><br/>
+    <br/>
+    <text label="Messages:" /><br/>
+    <text label="${msg_line_1}" /><br/>
+    <text label="${msg_line_2}" /><br/>
+    <text label="${msg_line_3}" /><br/>
+    <br/>
+    <text label="[w/a/s/d] Move  [e] Rest  [f] Fight  [l] Look  [i] Inv  [x] Descend  [ESC] Quit" /><br/>
+</panel>

@@ -1,0 +1,4 @@
+x=15
+y=5
+z=0
+facing=north

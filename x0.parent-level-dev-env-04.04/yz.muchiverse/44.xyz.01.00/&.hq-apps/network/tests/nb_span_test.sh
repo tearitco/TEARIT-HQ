@@ -166,7 +166,7 @@ echo "== span click-through (relay MOUSE_EVENT, needs X)"
 if [ -z "${DISPLAY:-}" ] || ! command -v xwininfo >/dev/null 2>&1; then
     echo "SKIP: no X display for the click-through"
 else
-    BPID="$(pgrep -f 'khtpm_core_render.+x .*network-browser-hq' | head -1)"
+    BPID="$(sh "$HERE/browser_pid.sh")"
     DUMPOP="$HR/&.widgits/_shared-lib/ops/+x/dump_frame_png_op.+x"
     BANDPY="$HERE/bluebands.py"
     CLICKDONE=0
@@ -276,7 +276,7 @@ echo "== span keyboard nav (relay digits/arrows/Enter, needs X)"
 if [ -z "${DISPLAY:-}" ]; then
     echo "SKIP: no X display for the keyboard nav"
 else
-    BPID="$(pgrep -f 'khtpm_core_render.+x .*network-browser-hq' | head -1)"
+    BPID="$(sh "$HERE/browser_pid.sh")"
     if [ -z "$BPID" ]; then
         echo "FAIL: no network browser window"; FAIL=1
     else
@@ -400,7 +400,7 @@ else
     else
         echo "FAIL: no rich row for the long paragraph"; FAIL=1
     fi
-    BPID="$(pgrep -f 'khtpm_core_render.+x .*network-browser-hq' | head -1)"
+    BPID="$(sh "$HERE/browser_pid.sh")"
     DUMPOP="$HR/&.widgits/_shared-lib/ops/+x/dump_frame_png_op.+x"
     BANDPY="$HERE/bluebands.py"
     WRAPDONE=0
@@ -439,7 +439,7 @@ echo "== span wrapped click + cursor (longlinks, needs X)"
 if [ -z "${DISPLAY:-}" ] || ! command -v xwininfo >/dev/null 2>&1; then
     echo "SKIP: no X display for the wrapped proof"
 else
-    BPID="$(pgrep -f 'khtpm_core_render.+x .*network-browser-hq' | head -1)"
+    BPID="$(sh "$HERE/browser_pid.sh")"
     DUMPOP="$HR/&.widgits/_shared-lib/ops/+x/dump_frame_png_op.+x"
     BANDPY="$HERE/bluebands.py"
     HF="$HR/#.desktop/entity_menu_history/$BPID.txt"
@@ -505,9 +505,33 @@ else
         done
         sleep 2
         span_fresh_frame "$HF" "$FF" || echo "WARN: no fresh frame for badge read"
+        # 2026-10-12: this read was racing the reload. page.state swaps
+        # BEFORE the ui projection is rewritten, and status= is already
+        # "ready" from the PREVIOUS page, so the wait above can exit on a
+        # stale URL+status pair and dump the frame of the page we just
+        # navigated AWAY from - which then has no 'deliberately' row at
+        # all. The only honest readiness signal for THIS assertion is the
+        # mirror actually containing the row it is about to read, so wait
+        # on that instead of on a status string that outlives the page.
+        # The click block above sends MOUSE_EVENT in a retry loop, and a
+        # click on a rich row navigates (that is the span click-through
+        # feature under test). Any one still queued fires on a later tick
+        # and drags the page back to example.com/second, so the mirror
+        # never settles on longlinks. Quiesce first: park the pointer
+        # somewhere inert and let the relay drain, THEN read.
+        printf 'MOUSE_EVENT: 3 2 2 0\n' >> "$HF"; sleep 2
+        printf 'go:file://%s\n' "$LONGFX" > "$REQ"
+        for _ in $(seq 1 40); do
+            grep -q "^URL|file://$LONGFX\$" "$PF" 2>/dev/null && break
+            sleep 0.5
+        done
+        for _ in $(seq 1 20); do
+            grep -q "deliberately" "$FF" 2>/dev/null && break
+            span_fresh_frame "$HF" "$FF" >/dev/null 2>&1
+        done
         RN="$(grep "deliberately" "$FF" 2>/dev/null | head -1 | sed -n 's/.*\[.\] \([0-9][0-9]*\)\. This.*/\1/p')"
         if [ -z "$RN" ]; then
-            echo "FAIL: wrapped rich row badge not found"; FAIL=1
+            echo "FAIL: wrapped rich row badge not found (page: $(head -1 "$PF" | cut -c1-60))"; FAIL=1
         else
             printf '%s\n' "$RN" | fold -w1 | while read -r D; do printf '%d\n' "'$D" >> "$HF"; sleep 1; done
             sleep 3

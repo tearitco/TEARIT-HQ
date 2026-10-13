@@ -1,0 +1,16 @@
+<!-- hover fixture. segments= wire format: kind \x1F text \x1F url [\x1F action],
+     segments joined by \x1E. A text span MUST keep its trailing empty
+     url field; a link span is only actionable (clickable AND hoverable)
+     when the optional 4th action field is present. The action is a BARE
+     command - dispatch() wraps it in sh '...' itself, so an action that
+     already starts with `sh '...'` double-wraps into broken quoting and
+     dies silently. NB_HOVER_ACTION is spliced by nb_hover_test.sh so the
+     committed copy hardcodes no /tmp path. -->
+<window label="HoverFix" class="hover-fixture single-click database-window">
+  <page id="main">
+    <text class="plain" label="plain row above"/>
+    <text class="seg" label="hover me HOVERME tail text" segments="texthover me linkHOVERMEhttps://example.com/hovNB_HOVER_ACTION 'HOVERME'text tail text"/>
+    <text class="seg" label="go to ALPHA then BETA now." segments="textgo to linkALPHAhttps://a.exampleNB_HOVER_ACTION 'ALPHA'text then linkBETAhttps://b.exampleNB_HOVER_ACTION 'BETA'text now"/>
+    <text class="plain" label="plain row below"/>
+  </page>
+</window>

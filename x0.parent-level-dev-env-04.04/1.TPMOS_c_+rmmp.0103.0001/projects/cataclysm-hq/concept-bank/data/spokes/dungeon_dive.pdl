@@ -1,0 +1,11 @@
+SECTION      | KEY            | VALUE
+-------------+---------------+------------------
+NODE         | dungeon_dive   |
+KIND         | spoke          |
+N_SLOTS      | 4              |
+
+SLOT         | 0              | POINTS_TO=exploration | WEIGHT=0.85
+SLOT         | 1              | POINTS_TO=survival | WEIGHT=0.55
+
+MIRROR_FROM  | exploration    | WEIGHT=0.85
+MIRROR_FROM  | survival       | WEIGHT=0.55

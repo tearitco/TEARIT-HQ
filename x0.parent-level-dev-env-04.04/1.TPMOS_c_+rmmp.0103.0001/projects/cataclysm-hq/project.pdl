@@ -1,0 +1,45 @@
+SECTION      | KEY            | VALUE
+-------------+---------------+---------------------------
+META         | project_id    | cataclysm-hq
+META         | version       | 1.0
+META         | author        | opencode agent
+META         | entry_layout  | projects/cataclysm-hq/layouts/main.chtpm
+META         | engine        | tpmos
+
+STATE        | starting_map  | dng_0001
+STATE        | player_piece  | hero
+STATE        | current_world | cataclysm
+STATE        | current_map   | dng_0001
+STATE        | turn          | 0
+STATE        | game_over     | false
+
+# Book:Page integration - each METHOD maps to an .asm event script
+# Gemma API can generate new scripts here, validated by promotion ledger
+
+METHOD       | game_loop     | projects/cataclysm-hq/scripts/game_loop.asm
+METHOD       | move          | projects/cataclysm-hq/scripts/move.asm
+METHOD       | combat        | projects/cataclysm-hq/scripts/combat.asm
+METHOD       | look          | projects/cataclysm-hq/scripts/look.asm
+METHOD       | pickup        | projects/cataclysm-hq/scripts/pickup.asm
+METHOD       | inventory     | projects/cataclysm-hq/scripts/inventory.asm
+METHOD       | rest          | projects/cataclysm-hq/scripts/rest.asm
+METHOD       | descend       | projects/cataclysm-hq/scripts/descent.asm
+METHOD       | die           | projects/cataclysm-hq/scripts/death.asm
+
+# Concept Bank integration - game concepts tracked for self-building
+# Gemma proposes weight deltas on these slots; validator enforces bounds
+CONCEPT      | combat        | type=master
+CONCEPT      | exploration   | type=master
+CONCEPT      | survival      | type=master
+CONCEPT      | magic         | type=master
+CONCEPT      | stealth       | type=master
+CONCEPT      | crafting      | type=master
+CONCEPT      | hunger        | type=spoke | points_to=survival | weight=0.60
+CONCEPT      | weapon_combat | type=spoke | points_to=combat | weight=0.85
+CONCEPT      | potion_use    | type=spoke | points_to=magic | weight=0.40
+
+# Gemma's learning tier (per A-TEARIT bootstrap)
+TUNE         | max_tier      | preschool
+
+RESPONSE     | default       | Cataclysm-HQ: a procedural ASCII roguelike on TPMOS events.
+RESPONSE     | on_load       | Welcome, adventurer. Descending into the dungeon...

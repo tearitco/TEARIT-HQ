@@ -590,6 +590,45 @@ static int tag_attrval(const char *p, const char *tag_end, const char *key, char
     }
     return 0;
 }
+/* colspan/rowspan integer from a <td>/<th> open tag (2026-10-11,
+ * table spans). tag_attrval() above matches substrings, so an
+ * attribute VALUE containing the word ("title='a colspan b'") would
+ * false-match; this scans quote-aware instead and only accepts a real
+ * key (whitespace before, '=' after). Returns the leading integer or
+ * 1 when absent/junk - callers clamp to the grid, so junk degrades to
+ * a plain cell, never to a wild span. */
+static int tag_span_attr(const char *cp, const char *tag_end, const char *key) {
+    size_t klen = strlen(key);
+    const char *p = cp + 3; /* skip the <td/<th itself */
+    int in_q = 0;
+    char qc = 0;
+    while (p < tag_end) {
+        if (in_q) {
+            if (*p == qc) in_q = 0;
+            p++;
+            continue;
+        }
+        if (*p == '"' || *p == '\'') { in_q = 1; qc = *p; p++; continue; }
+        if (isspace((unsigned char)*p) && strncasecmp(p + 1, key, klen) == 0) {
+            const char *after = p + 1 + klen;
+            while (after < tag_end && isspace((unsigned char)*after)) after++;
+            if (after >= tag_end || *after != '=') { p++; continue; }
+            const char *v = after + 1;
+            int n = 0, nd = 0;
+            while (v < tag_end && isspace((unsigned char)*v)) v++;
+            if (v < tag_end && (*v == '"' || *v == '\'')) v++;
+            while (v < tag_end && *v >= '0' && *v <= '9') {
+                n = n * 10 + (*v - '0');
+                if (n > 1000000) break;
+                v++; nd++;
+            }
+            if (nd == 0) { p++; continue; }
+            return n;
+        }
+        p++;
+    }
+    return 1;
+}
 static void extract_and_publish(const char *html, const char *url, FILE *out) {
     fprintf(out, "URL|%s\n", url);
 
@@ -1043,14 +1082,22 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
              * it). The projector draws a row at a time; a real grid needs
              * renderer column layout, which is a separate slice.
              *
-             * Rowspan/colspan are NOT honoured - cells are emitted in
-             * document order. Inventing phantom cells to fill a grid we
-             * cannot draw would be worse than a flat row. */
+             * TABLE SPANS (2026-10-11): colspan expands in place (text in
+             * the first slot, empties after); rowspan repeats its text
+             * into the rows below, so every emitted row is already grid-
+             * aligned and the projector/renderer need no cross-row state.
+             * Genuinely ragged rows (missing cells, no spans) still emit
+             * short and grid per-row downstream - honest, not faked. */
             if (strncasecmp(p, "<table", 6) == 0 && !isalnum((unsigned char)p[6])) {
                 FLUSH_LINE();
                 const char *tbody_end = skip_named_element(p, "table");
                 if (line_count < MAX_LINES) {
                     const char *rp = p;
+                    /* rowspan state, reset per table: rows remaining
+                     * (excluding the current row) and fill text per
+                     * column. Same 64-column sizing as the row cells. */
+                    int rspan_left[64] = {0};
+                    char rspan_text[64][256];
                     /* <caption> is real content and used to vanish with the
                      * rest of the table region - emit it as a TEXT row so
                      * the table keeps its title. */
@@ -1094,12 +1141,29 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                               tr_end = c ? c + 5 : tbody_end; }
                             int header = 0;
                             char cells[64][256];
-                            int ncells = 0;
+                            int col = 0;
                             const char *cp = rp;
-                            while (cp < tr_end && ncells < 64) {
+                            /* pending rowspan fills first, in column
+                             * order (a rowspan owns its column in every
+                             * row it spans, including otherwise-empty
+                             * <tr></tr> rows). */
+                            while (col < 64 && rspan_left[col] > 0) {
+                                snprintf(cells[col], sizeof(cells[0]), "%s", rspan_text[col]);
+                                rspan_left[col]--;
+                                col++;
+                            }
+                            while (cp < tr_end && col < 64) {
                                 int is_th = (strncasecmp(cp, "<th", 3) == 0 && !isalnum((unsigned char)cp[3]));
                                 int is_td = (strncasecmp(cp, "<td", 3) == 0 && !isalnum((unsigned char)cp[3]));
                                 if (!is_th && !is_td) { cp++; continue; }
+                                /* filled columns belong to an earlier
+                                 * rowspan - consume, never overwrite. */
+                                while (col < 64 && rspan_left[col] > 0) {
+                                    snprintf(cells[col], sizeof(cells[0]), "%s", rspan_text[col]);
+                                    rspan_left[col]--;
+                                    col++;
+                                }
+                                if (col >= 64) break;
                                 const char *cell_end = cp;
                                 { const char *closer = is_th ? "</th" : "</td";
                                   const char *c = strcasestr_local(cp, closer);
@@ -1115,11 +1179,47 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
                                 collapse_ws(txt);
                                 strip_pipes(txt);
                                 if (is_th) header = 1;
-                                snprintf(cells[ncells], sizeof(cells[0]), "%s", txt);
-                                ncells++;
+                                /* TABLE SPANS (2026-10-11): colspan pads
+                                 * with empties (text stays in the first
+                                 * slot - repeating it would read twice
+                                 * in the label and in copies); rowspan
+                                 * registers its text for the rows below
+                                 * (each row keeps its context, like the
+                                 * merged cell reads). Expansion stops
+                                 * before pending columns and at 64. */
+                                {
+                                    const char *te = cp;
+                                    int cs, rs, k, w;
+                                    while (te < tr_end && *te != '>') te++;
+                                    cs = tag_span_attr(cp, te, "colspan");
+                                    rs = tag_span_attr(cp, te, "rowspan");
+                                    if (cs < 1) cs = 1;
+                                    if (rs < 1) rs = 1;
+                                    if (rs > 64) rs = 64;
+                                    w = 1;
+                                    while (w < cs && col + w < 64 && rspan_left[col + w] == 0) w++;
+                                    snprintf(cells[col], sizeof(cells[0]), "%s", txt);
+                                    for (k = 1; k < w; k++) cells[col + k][0] = '\0';
+                                    if (rs > 1) {
+                                        for (k = 0; k < w; k++) {
+                                            snprintf(rspan_text[col + k], sizeof(rspan_text[0]),
+                                                     "%s", k == 0 ? txt : "");
+                                            rspan_left[col + k] = rs - 1;
+                                        }
+                                    }
+                                    col += w;
+                                }
                                 cp = cell_end;
                             }
-                            if (ncells > 0) {
+                            /* trailing rowspan fills: a row shorter than
+                             * the pending width still carries them. */
+                            while (col < 64 && rspan_left[col] > 0) {
+                                snprintf(cells[col], sizeof(cells[0]), "%s", rspan_text[col]);
+                                rspan_left[col]--;
+                                col++;
+                            }
+                            if (col > 0) {
+                                int ncells = col;
                                 fprintf(out, "TROW|%d", header);
                                 for (int ci = 0; ci < ncells; ci++) fprintf(out, "|%s", cells[ci]);
                                 fprintf(out, "\n");
@@ -3134,13 +3234,351 @@ static void reap_or_kill(pid_t pid) {
 }
 
 /* 0 = curl ok, 1 = curl failed, 2 = Stop killed the child */
+/* DOWNLOADS (2026-10-13): where the response headers land. -D writes one
+ * block PER HOP, so with -L the LAST block is the response that actually
+ * mattered - the one whose Content-Disposition a browser is meant to
+ * honour. Read it through downloads_last_header() below, never the first
+ * block: a redirect chain's first hop routinely carries the disposition
+ * of a page the user never saw. */
+static char g_curl_hdr_path[PATH_BUF];
+
+/* ================= DOWNLOADS (2026-10-13, G3.3) =================
+ *
+ * What a browser does, and this is the whole contract:
+ *   1. A response that says `Content-Disposition: attachment` is a
+ *      DOWNLOAD, not a page. So is one whose media type this window
+ *      cannot render. Either way the bytes are saved and the pane
+ *      reports what was saved - it never tries to parse a ZIP as HTML.
+ *   2. The filename comes from the header first (RFC 5987 filename*=,
+ *      then the plain filename=), then from the URL's last path segment,
+ *      then "download". Never invented from the page's <title>.
+ *   3. A name already on disk becomes "name (1).ext", "name (2).ext" -
+ *      never an overwrite, never a silent uniquified suffix the user
+ *      cannot predict.
+ *   4. The pane shows filename, SIZE and PATH. A save that failed says so
+ *      instead of pretending.
+ *
+ * Where the files go: this app's own downloads/ directory, not a user's
+ * home. The house keeps user data under xyzfs/users/ on local data
+ * branches that must never be git-added, and a browser writing files
+ * there from a test run is exactly the kind of thing that ends up in a
+ * commit. App-owned is also where the pane can point at it.
+ */
+
+/* Case-insensitive lookup in the LAST response header block.
+ *
+ * curl -D writes one block PER HOP, blocks separated by a blank line, and
+ * a trailing blank line after the final one. With -L, the FIRST block is
+ * the redirect the user never saw - honouring its Content-Disposition is
+ * the classic download bug.
+ *
+ * The first version walked the file with ftell() and moved the block
+ * start forward on every blank line, which lands PAST the last block on
+ * that trailing blank: every lookup returned 0, so every download
+ * silently became a page - the fetch worked, the headers were on disk,
+ * and the feature did nothing. Caught by the suite's ATTACH case, which
+ * is the only one that can tell "saved a file" from "parsed it as text".
+ *
+ * So: accumulate blocks, keep the last one that had content, and search
+ * that. Lines are CRLF from curl, so \r is trimmed with \n. */
+static int downloads_last_header(const char *name, char *out, size_t outsz) {
+    if (out && outsz) out[0] = '\0';
+    if (!g_curl_hdr_path[0]) return 0;
+    FILE *f = fopen(g_curl_hdr_path, "r");
+    if (!f) return 0;
+    char line[4096];
+    char keep[8192], cur[8192];
+    size_t keeplen = 0, curlen = 0;
+    while (fgets(line, sizeof(line), f)) {
+        size_t l = strlen(line);
+        while (l > 0 && (line[l-1] == '\n' || line[l-1] == '\r')) line[--l] = '\0';
+        if (l == 0) {
+            if (curlen > 0) { memcpy(keep, cur, curlen); keeplen = curlen; }
+            curlen = 0;
+            continue;
+        }
+        if (curlen + l + 2 < sizeof(cur)) {
+            memcpy(cur + curlen, line, l);
+            curlen += l;
+            cur[curlen++] = '\n';
+        }
+    }
+    if (curlen > 0) { memcpy(keep, cur, curlen); keeplen = curlen; }
+    fclose(f);
+    if (keeplen == 0) return 0;
+
+    size_t nl = strlen(name);
+    const char *p = keep;
+    const char *endp = keep + keeplen;
+    while (p < endp) {
+        const char *eol = strchr(p, '\n');
+        size_t len = eol ? (size_t)(eol - p) : (size_t)(endp - p);
+        if (len > nl && strncasecmp(p, name, nl) == 0) {
+            const char *v = p + nl;
+            while (v < p + len && (*v == ' ' || *v == '\t')) v++;
+            size_t vlen = (size_t)((p + len) - v);
+            if (out && outsz) {
+                if (vlen >= outsz) vlen = outsz - 1;
+                memcpy(out, v, vlen);
+                out[vlen] = '\0';
+            }
+            return 1;
+        }
+        if (!eol) break;
+        p = eol + 1;
+    }
+    return 0;
+}
+
+/* Is this a media type the window renders? Deliberately a short, explicit
+ * allowlist rather than a blocklist: a browser that renders "anything not
+ * known to be binary" shows users a screenful of base64 as a page, which
+ * is the failure mode this is here to prevent. PDF is deliberately NOT in
+ * the list - this window has no PDF viewer, so a PDF is a download, which
+ * is what Chrome does with a type it cannot display inline too. */
+static int downloads_is_renderable_type(const char *ctype) {
+    if (!ctype || !ctype[0]) return 1;            /* nothing said: assume page */
+    char t[128];
+    snprintf(t, sizeof(t), "%s", ctype);
+    char *semi = strchr(t, ';');
+    if (semi) *semi = '\0';
+    /* t is an ARRAY: `while (*t == ' ') t++` does not compile (t++ is not
+     * an lvalue). Caught by -fsyntax-only before the first build. */
+    size_t lead = 0;
+    while (t[lead] == ' ') lead++;
+    for (size_t i = 0; t[lead + i]; i++)
+        t[lead + i] = (char)tolower((unsigned char)t[lead + i]);
+    memmove(t, t + lead, strlen(t + lead) + 1);
+    if (!strncmp(t, "text/", 5)) {
+        /* text/html and friends render; everything else text/* (css, csv,
+         * plain source) is something the user wanted as a file. */
+        if (!strcmp(t, "text/html") || !strcmp(t, "text/htm") ||
+            !strcmp(t, "text/plain") || !strcmp(t, "text/xml") ||
+            !strcmp(t, "text/xml-external-parsed-entity")) return 1;
+        return 0;
+    }
+    if (!strcmp(t, "application/xhtml+xml")) return 1;
+    if (!strcmp(t, "application/json")) return 1;
+    if (!strcmp(t, "application/xml")) return 1;
+    if (!strcmp(t, "application/x-javascript") || !strcmp(t, "application/javascript")) return 1;
+    if (!strncmp(t, "image/", 6)) return 1;
+    return 0;
+}
+
+/* Sanitise a filename the server suggested: no directory part, no control
+ * characters, nothing that could escape the downloads dir. A server is
+ * not trusted with paths - "../../.bashrc" is a real thing servers send. */
+static void downloads_safe_name(const char *in, char *out, size_t outsz) {
+    size_t o = 0;
+    for (const char *p = in; *p && o + 1 < outsz; p++) {
+        unsigned char c = (unsigned char)*p;
+        if (c < 0x20 || c == 0x7f) continue;
+        if (c == '/' || c == '\\') continue;
+        if (c == '.' && o == 0) continue;          /* no leading dot: no hidden files, no "." */
+        out[o++] = (char)c;
+    }
+    out[o] = '\0';
+    if (!out[0]) snprintf(out, outsz, "download");
+}
+
+/* Pull the filename out of Content-Disposition, RFC 5987 first. Chrome's
+ * order exactly: filename*=UTF-8''<pct-encoded> wins over filename=. */
+static void downloads_name_from_disposition(const char *cd, char *out, size_t outsz) {
+    if (out && outsz) out[0] = '\0';
+    if (!cd) return;
+    const char *star = strstr(cd, "filename*=");
+    if (star) {
+        const char *v = star + 10;
+        while (*v == ' ' || *v == '\t') v++;
+        /* skip charset'language' if present */
+        const char *q1 = strchr(v, '\'');
+        if (q1 && q1[1] == '\'') { v = strchr(q1 + 2, '\''); if (v) v++; }
+        char raw[512]; size_t o = 0;
+        while (*v && *v != ';' && *v != '\r' && *v != '\n' && o + 1 < sizeof(raw)) {
+            if (*v == '%' && v[1] && v[2]) {
+                char hex[3] = { v[1], v[2], 0 };
+                char *endp = NULL;
+                long d = strtol(hex, &endp, 16);
+                if (endp && *endp == '\0') { raw[o++] = (char)d; v += 3; continue; }
+            }
+            raw[o++] = *v++;
+        }
+        raw[o] = '\0';
+        if (o) { downloads_safe_name(raw, out, outsz); return; }
+    }
+    const char *plain = strstr(cd, "filename=");
+    if (plain) {
+        const char *v = plain + 9;
+        while (*v == ' ' || *v == '\t') v++;
+        char q = (*v == '"' || *v == '\'') ? *v : 0;
+        if (q) v++;
+        char raw[512]; size_t o = 0;
+        while (*v && o + 1 < sizeof(raw)) {
+            if (q && *v == q) break;
+            if (!q && (*v == ';' || *v == '\r' || *v == '\n')) break;
+            raw[o++] = *v++;
+        }
+        raw[o] = '\0';
+        if (o) { downloads_safe_name(raw, out, outsz); return; }
+    }
+}
+
+/* Last path segment of the URL, minus any query/fragment. */
+static void downloads_name_from_url(const char *url, char *out, size_t outsz) {
+    if (out && outsz) out[0] = '\0';
+    if (!url) return;
+    const char *start = strstr(url, "://");
+    start = start ? strchr(start + 3, '/') : strchr(url, '/');
+    if (!start) return;
+    const char *end = start + strlen(start);
+    for (const char *p = start; *p; p++) {
+        if (*p == '?' || *p == '#') { end = p; break; }
+    }
+    while (end > start && end[-1] == '/') end--;
+    if (end <= start) return;
+    char raw[512];
+    size_t n = (size_t)(end - start);
+    if (n >= sizeof(raw)) n = sizeof(raw) - 1;
+    memcpy(raw, start, n);
+    raw[n] = '\0';
+    downloads_safe_name(raw, out, outsz);
+}
+
+/* "name (1).ext" - Chrome's shape, so the user can predict the next one.
+ * Splits on the LAST dot so "archive.tar.gz" becomes "archive.tar (1).gz". */
+static void downloads_unique_path(const char *dir, const char *name, char *out, size_t outsz) {
+    char stem[512], ext[64];
+    snprintf(stem, sizeof(stem), "%s", name);
+    const char *dot = strrchr(stem, '.');
+    if (dot && dot != stem) {
+        snprintf(ext, sizeof(ext), "%s", dot);
+        stem[dot - stem] = '\0';
+    } else {
+        ext[0] = '\0';
+    }
+    char cand[PATH_BUF];
+    /* "%s/%s%s" with only two arguments: the third conversion read a
+     * garbage vararg and strlen() segfaulted inside snprintf. Found by an
+     * -fsanitize=address build after the release build "succeeded" - a
+     * missing argument is not a compile error unless -Wformat catches
+     * it, and this one walked straight past. */
+    snprintf(cand, sizeof(cand), "%s/%s", dir, name);
+    struct stat st;
+    if (stat(cand, &st) != 0) { snprintf(out, outsz, "%s", cand); return; }
+    for (int n = 1; n < 10000; n++) {
+        snprintf(cand, sizeof(cand), "%s/%s (%d)%s", dir, stem, n, ext);
+        if (stat(cand, &st) != 0) { snprintf(out, outsz, "%s", cand); return; }
+    }
+    snprintf(out, outsz, "%s/%s", dir, name);
+}
+
+/* A download that could not be saved still owes the user a row. Published
+ * the same way as a success, so the pane can never be left showing a page
+ * that was never rendered. */
+static void downloads_publish_error(const char *msg) {
+    char tmp[PATH_BUF];
+    FILE *out = atomic_open(g_page_state_path, tmp, sizeof(tmp));
+    if (!out) return;
+    fprintf(out, "URL|%s\nTITLE|Download failed\nTEXT|%s\n", g_current_url, msg);
+    fclose(out);
+    atomic_commit(g_page_state_path, tmp);
+}
+
+/* Save the fetched bytes as a download and publish ONE row saying so.
+ * Returns 1 when a download was handled (the pane must then stop parsing).
+ *
+ * The row carries filename, size and path, because that is what the KPI
+ * asks for and what a user needs to find the file afterwards. A failed
+ * save is published as an ERROR row instead - never a silent no-op, and
+ * never a half-written file left behind pretending to be the download. */
+static int downloads_handle(const char *url, const char *ctype, const char *cd,
+                            const char *body_path, int record_history) {
+    char dir[PATH_BUF];
+    snprintf(dir, sizeof(dir), "%s/&.hq-apps/network/downloads", g_house);
+    struct stat st;
+    if (stat(dir, &st) != 0 || !S_ISDIR(st.st_mode)) {
+        if (mkdir(dir, 0777) != 0) {
+            /* NEGATIVE PATH (KPI: an unwritable location must say so). The
+             * row reports the refusal rather than pretending a save
+             * happened, and the pane stays usable. */
+            char msg[PATH_BUF + 128];
+            snprintf(msg, sizeof(msg),
+                     "download failed: cannot create %s (check permissions)", dir);
+            downloads_publish_error(msg);
+            publish_status("error: download could not be saved");
+            write_chtpm_projection();
+            if (record_history && g_current_url[0] && strcmp(g_current_url, url) != 0)
+                stack_push(g_back_path, g_current_url);
+            snprintf(g_current_url, sizeof(g_current_url), "%s", url);
+            return 1;
+        }
+    }
+
+    char name[512];
+    downloads_name_from_disposition(cd, name, sizeof(name));
+    if (!name[0]) downloads_name_from_url(url, name, sizeof(name));
+    if (!name[0]) downloads_safe_name("download", name, sizeof(name));
+
+    char dest[PATH_BUF];
+    downloads_unique_path(dir, name, dest, sizeof(dest));
+
+    FILE *in = fopen(body_path, "rb");
+    if (!in) {
+        downloads_publish_error("download failed: could not read the fetched bytes");
+        publish_status("error: download could not be saved");
+        write_chtpm_projection();
+        return 1;
+    }
+    FILE *out = fopen(dest, "wb");
+    if (!out) {
+        fclose(in);
+        char msg[PATH_BUF + 160];
+        snprintf(msg, sizeof(msg), "download failed: cannot write %s", dest);
+        downloads_publish_error(msg);
+        publish_status("error: download could not be saved");
+        write_chtpm_projection();
+        return 1;
+    }
+    long long total = 0;
+    char buf[65536];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), in)) > 0) {
+        if (fwrite(buf, 1, n, out) != n) { fclose(in); fclose(out); unlink(dest); return 0; }
+        total += (long long)n;
+    }
+    fclose(in);
+    if (fclose(out) != 0) { unlink(dest); return 0; }
+
+    /* One DOWNLOAD row on the state side; the projector turns it into the
+     * content row the template paints. Written the same way every other
+     * single-row result is (atomic_open/atomic_commit on page.state.txt),
+     * so a download cannot half-publish the way a bare UI_PUT could, and
+     * so UI_PUT - a macro local to the projector function - is not needed
+     * out here at all. */
+    char tmp[PATH_BUF];
+    FILE *out2 = atomic_open(g_page_state_path, tmp, sizeof(tmp));
+    if (!out2) { unlink(dest); return 0; }
+    fprintf(out2, "URL|%s\nTITLE|%s\n", url, name);
+    fprintf(out2, "DL|%s|%lld|%s\n", name, total, dest);
+    fclose(out2);
+    atomic_commit(g_page_state_path, tmp);
+    publish_status("downloaded");
+    write_chtpm_projection();
+    if (record_history && g_current_url[0] && strcmp(g_current_url, url) != 0)
+        stack_push(g_back_path, g_current_url);
+    snprintf(g_current_url, sizeof(g_current_url), "%s", url);
+    return 1;
+}
+
 static int run_curl_interruptible(const char *out_path, const char *cfg_path) {
     pid_t pid = fork();
     if (pid < 0) return 1;
+    snprintf(g_curl_hdr_path, sizeof(g_curl_hdr_path), "%s.hdr", out_path);
     if (pid == 0) {
         execlp("curl", "curl", "-sL", "--max-time", "12",
                "-A", "Mozilla/5.0 (NNEST network-browser-hq)",
                "-b", g_curl_cookie_path, "-c", g_curl_cookie_path,
+               "-D", g_curl_hdr_path,
                "-o", out_path, "-K", cfg_path, (char *)NULL);
         _exit(127);
     }
@@ -3236,6 +3674,116 @@ static void history_delete_at(int display_idx) {
 static void history_clear_all(void) {
     FILE *w = fopen(g_visit_log_path, "w");
     if (w) fclose(w);
+}
+
+/* ---- AUTOFILL (2026-10-12) - remember form values per ORIGIN ----
+ *
+ * The jar's own format and its two verbs live in ops/nb_write_autofill.sh
+ * (one owner per on-disk format, same rule as nb_write_field.sh owning
+ * network_browser_fields.txt). This side only derives the origin key and
+ * calls that script; it never parses the jar itself.
+ *
+ * Origin is scheme://host[:port] - deliberately NOT the bare hostname:
+ * http://example.com and https://example.com are different jars, and
+ * a non-default port is a different site. Everything that is not
+ * http/https (file:// pages, bare paths) has no meaningful origin, so
+ * autofill simply stays off for it - a local test page must never
+ * inherit a value typed on a real site. */
+static void autofill_origin(const char *url, char *out, size_t outsz) {
+    out[0] = 0;
+    if (!url) return;
+    const char *se = strstr(url, "://");
+    if (!se) return;
+    size_t slen = (size_t)(se - url);
+    int is_http = (slen == 4 && strncasecmp(url, "http", 4) == 0) ||
+                  (slen == 5 && strncasecmp(url, "https", 5) == 0);
+    if (!is_http) return;
+    const char *host = se + 3;
+    /* userinfo is not part of the origin - strip it so
+     * http://a@host/ and http://host/ share one jar (RFC 6454). */
+    const char *at = memchr(host, '@', strcspn(host, "/?#"));
+    if (at) host = at + 1;
+    const char *hend = host + strcspn(host, "/?#");
+    if (hend <= host) return;
+    char hb[512];
+    size_t hl = (size_t)(hend - host);
+    if (hl >= sizeof(hb)) hl = sizeof(hb) - 1;
+    memcpy(hb, host, hl);
+    hb[hl] = 0;
+    /* A default port is not part of the origin either; a non-default one is. */
+    char *colon = strrchr(hb, ':');
+    if (colon && strchr(colon, ']') == NULL) {
+        int def = (slen == 5) ? 443 : 80;
+        if (atoi(colon + 1) == def) *colon = 0;
+    }
+    /* Lowercase the host: DNS names are case-insensitive, so
+     * https://Example.COM and https://example.com are ONE site and must
+     * not get two jars - the user would silently lose their saved value
+     * by following a link that capitalises the host differently. */
+    for (char *p = hb; *p; p++) *p = (char)tolower((unsigned char)*p);
+    /* Same for the scheme, so HTTP:// and http:// agree. */
+    for (size_t i = 0; i < slen && i < outsz; i++)
+        out[i] = (char)tolower((unsigned char)url[i]);
+    snprintf(out + slen, outsz - slen, "://%s", hb);
+}
+
+/* The jar path, kept beside the fields/checks files it lives with. */
+static void autofill_jar_path(char *out, size_t outsz) {
+    snprintf(out, outsz, "%s/#.desktop/network_browser_autofill.txt", g_house);
+}
+
+/* Look up one remembered value for (origin, name). Returns 1 and fills
+ * `out` on a hit, 0 on a miss. Runs the op script rather than reading
+ * the file, so the format has exactly one parser. */
+static int autofill_lookup(const char *origin, const char *name,
+                           char *out, size_t outsz) {
+    out[0] = 0;
+    if (!origin || !origin[0] || !name || !name[0]) return 0;
+    char cmd[PATH_BUF * 2];
+    char o_sq[1024], n_sq[1024];
+    shell_escape_squote(origin, o_sq, sizeof(o_sq));
+    shell_escape_squote(name, n_sq, sizeof(n_sq));
+    /* Same argv shape the renderer's own dispatch produces for a cli_io
+     * action (verb name origin dir house [typed]) - see the script's own
+     * header. This read-back passes no typed value, hence no 6th arg. */
+    snprintf(cmd, sizeof(cmd),
+             "'%s/ops/nb_write_autofill.sh' autofill '%s' '%s' '%s' '%s' 2>/dev/null",
+             g_package_dir, n_sq, o_sq, g_package_dir, g_house);
+    FILE *p = popen(cmd, "r");
+    if (!p) return 0;
+    if (fgets(out, (int)outsz, p)) {
+        size_t L = strlen(out);
+        while (L > 0 && (out[L-1] == '\n' || out[L-1] == '\r')) out[--L] = 0;
+    } else {
+        out[0] = 0;
+    }
+    pclose(p);
+    return out[0] ? 1 : 0;
+}
+
+/* "delete all" for the autofill jar - same turn and shape as
+ * history_clear_all() above. */
+static void autofill_clear_all(void) {
+    char jar[PATH_BUF];
+    autofill_jar_path(jar, sizeof(jar));
+    unlink(jar);
+}
+
+/* Does the jar hold anything at all? Drives the sidebar row's show=,
+ * so the delete affordance only appears when there is something to
+ * delete (same convention as n_hist / Clear All History). */
+static int autofill_has_entries(void) {
+    char jar[PATH_BUF];
+    autofill_jar_path(jar, sizeof(jar));
+    FILE *f = fopen(jar, "r");
+    if (!f) return 0;
+    char ln[1024];
+    int any = 0;
+    while (fgets(ln, sizeof(ln), f)) {
+        if (ln[0] && ln[0] != '\n') { any = 1; break; }
+    }
+    fclose(f);
+    return any;
 }
 
 static void load_page_title(char *out, size_t outsz) {
@@ -4039,7 +4587,6 @@ static void append_rich_rows(void) {
     if (!pf) return;
     typedef struct { int is_link; char text[1024]; char url[PATH_BUF]; } Seg;
     static Seg segs[RICH_MAX_SEG + 1];
-    int nseg = 0, has_link = 0;
     char (*pending)[PATH_BUF + 512] = malloc(sizeof(*pending) * RICH_RUN_MAX);
     if (!pending) { fclose(pf); return; }
     int npend = 0;
@@ -4252,6 +4799,29 @@ static void do_fetch(const char *url_in, int record_history) {
         return;
     }
 
+    /* DOWNLOADS (2026-10-13): a response that says it is an attachment,
+     * or that is a media type this window cannot render, is a DOWNLOAD -
+     * Chrome's rule, and the rule exists so nobody has to read a ZIP as
+     * HTML. Checked BEFORE any parsing, on the FINAL response's headers.
+     * The image sniff below is the other half of the same idea and stays
+     * where it is: a server that sends no type at all is still handled,
+     * by looking at the bytes. */
+    {
+        char ctype[256], cd[512];
+        int have_ctype = downloads_last_header("Content-Type:", ctype, sizeof(ctype));
+        int have_cd = downloads_last_header("Content-Disposition:", cd, sizeof(cd));
+        int is_attachment = have_cd && strstr(cd, "attachment") != NULL;
+        int is_inline_dl = have_cd && !strstr(cd, "attachment") &&
+                           strstr(cd, "filename=") != NULL;
+        int bad_type = have_ctype && !downloads_is_renderable_type(ctype);
+        if (is_attachment || bad_type) {
+            /* do_fetch's body file is exactly what we saved. */
+            downloads_handle(url, have_ctype ? ctype : "", have_cd ? cd : "",
+                             g_tmp_html_path, record_history);
+            return;
+        }
+        (void)is_inline_dl;
+    }
     if (looks_image_bytes((const unsigned char *)html, n)) {
         if (!publish_direct_image(url)) {
             publish_status("error: image decode failed");
@@ -4547,6 +5117,8 @@ static void handle_request(void) {
         history_delete_at(atoi(line + 8));
     } else if (strcmp(line, "clearhist:") == 0 || strcmp(line, "clearhist") == 0) {
         history_clear_all();
+    } else if (strcmp(line, "clearautofill:") == 0 || strcmp(line, "clearautofill") == 0) {
+        autofill_clear_all();
     } else if (strncmp(line, "tab:", 4) == 0) {
         tab_switch(atoi(line + 4));
     } else if (strcmp(line, "newtab:") == 0 || strcmp(line, "newtab") == 0) {
@@ -5218,6 +5790,16 @@ static void write_ui_projection(void) {
         UI_PUT("clear_hist_action='%s/ops/nb_write_clearhist.sh' 'clearhist'\n", g_package_dir);
     }
 
+    /* AUTOFILL (2026-10-12): the jar's delete affordance, same shape as
+     * Clear All History above - a row that only exists when there is
+     * something to delete, so an empty browser shows no dead control. */
+    {
+        int af_any = autofill_has_entries();
+        UI_PUT("n_autofill=%d\n", af_any);
+        if (af_any)
+            UI_PUT("clear_autofill_action='%s/ops/nb_write_clearautofill.sh' 'clearautofill'\n", g_package_dir);
+    }
+
     /* tab strip */
     {
         int ti;
@@ -5265,6 +5847,14 @@ static void write_ui_projection(void) {
         int *nb_row_para = NULL, *nb_row_rich = NULL;
         char *nb_row_tl = NULL;
         char *nb_scratch = NULL, *nb_scratch2 = NULL;
+        /* TABLE COMPUTED WIDTHS (2026-10-11): per input row, the
+         * "n0,n1,..." code-point width maxima of its table's run, or
+         * NULL (uneven run, all-empty run, or not a TROW row - the
+         * renderer keeps its equal split for those, pixel-identical).
+         * Heap strings freed next to free(rows), same as the rich
+         * groups above. */
+        char **nb_trow_counts = NULL;
+        int nb_trow_n = 0;
         if (pf) {
             /* in-memory rows so an IMG depleted by an adjacent LINK (the
              * watch-page related-tile pattern) reads far enough ahead. */
@@ -5315,6 +5905,7 @@ static void write_ui_projection(void) {
                 nb_row_tl = malloc((size_t)nrow);
                 nb_scratch = malloc(PATH_BUF + 512);
                 nb_scratch2 = malloc(PATH_BUF + 512);
+                nb_trow_counts = calloc((size_t)nrow, sizeof(char *));
             }
             if (nb_row_para && nb_row_rich && nb_row_tl && nb_scratch && nb_scratch2) {
                 int i, k;
@@ -5603,6 +6194,144 @@ static void write_ui_projection(void) {
                     nb_row_rich[i] = (int)(gm - nb_rg);
                 }
             }
+            /* TABLE COMPUTED WIDTHS pre-pass (2026-10-11): per TROW
+             * run, the code-point width maxima of its columns, stored as
+             * one "n0,n1,..." string per member row (nb_trow_counts).
+             * Read-only over rows[] like the rich sweeps above (the emit
+             * walk zeroes bars as it goes).
+             *
+             * Why here and not in the renderer: the real draw path paints
+             * deserialized tmp Elems with parent == NULL
+             * (kh_paint_frame_line), so no sibling scan can ever work at
+             * draw time - the group maxima have to ride the row, exactly
+             * like segments=/cells= already do. A run is consecutive
+             * TROW rows in page.state; SEL rows are transparent (they
+             * emit no element); anything else breaks the run, so a
+             * caption TEXT row between two tables keeps them separate.
+             *
+             * Deliberately NOT mirroring the emit walk's drop rules
+             * (all-empty rows, junk lines): a dropped row's counts are
+             * simply never emitted - the lookup happens past the
+             * branch's own `continue`s - and its content still counts
+             * toward the maxima, which only ever overstates slightly and
+             * stays deterministic. Ragged runs (mixed arity) get NULL:
+             * every row keeps the equal split, pixel-identical to today.
+             *
+             * Metric is code points, not glyph pixels: the manager has
+             * no font metrics, and proportions are what the layout
+             * needs. Capped per cell so one huge cell cannot starve its
+             * siblings out of the grid. */
+            if (nb_trow_counts) {
+                int ti = 0;
+                nb_trow_n = nrow;
+                /* run-member indices, heap like everything else here. */
+                int *trow_members = malloc(sizeof(int) * (size_t)nrow);
+                if (trow_members) {
+                while (ti < nrow) {
+                    char *ln = rows[ti];
+                    size_t ll = strcspn(ln, "\r\n");
+                    if (ll < 5 || (strncmp(ln, "TROW|", 5) != 0 && strncmp(ln, "SEL|", 4) != 0)) { ti++; continue; }
+                    /* run start (SELs lead transparently): collect member
+                     * row indices, skipping SEL. */
+                    int nmem = 0, tj;
+                    for (tj = ti; tj < nrow && nmem < nrow; tj++) {
+                        char *l2 = rows[tj];
+                        size_t l2l = strcspn(l2, "\r\n");
+                        if (l2l >= 4 && strncmp(l2, "SEL|", 4) == 0) continue;
+                        if (l2l < 5 || strncmp(l2, "TROW|", 5) != 0) break;
+                        trow_members[nmem++] = tj;
+                    }
+                    ti = tj;
+                    if (nmem < 1) continue;
+                    /* uniformity first (arity re-parsed, nothing
+                     * stored - no big stack locals, the 2026-10-08
+                     * stack-pressure lesson the rich groups above
+                     * follow): a mixed run is ragged and every
+                     * member keeps the equal split. */
+                    {
+                        int acells = 0, uniform = 1, m;
+                        for (m = 0; m < nmem && uniform; m++) {
+                            char *l3 = rows[trow_members[m]];
+                            char *p = strchr(l3, '|');
+                            int na;
+                            char *q;
+                            if (!p) { uniform = 0; break; }
+                            na = 1;
+                            for (q = p + 1; *q && *q != '\r' && *q != '\n'; q++)
+                                if (*q == '|') na++;
+                            /* na counts the header flag + cells;
+                             * cells = na - 1, same as the emit walk's
+                             * nparts - 1 below. */
+                            if (na - 1 < 1 || na - 1 > 64) { uniform = 0; break; }
+                            if (m == 0) acells = na - 1;
+                            else if (na - 1 != acells) uniform = 0;
+                        }
+                        if (!uniform) continue;
+                        /* second scan: column maxima in code points
+                         * (uisan'd, \x1E/\x1F blanked - the emit
+                         * walk's own cell pipeline, mirrored). */
+                        {
+                            int maxima[64] = {0};
+                            int total = 0, c;
+                            char counts[512];
+                            size_t co = 0;
+                            for (m = 0; m < nmem; m++) {
+                                char *l3 = rows[trow_members[m]];
+                                char *cp = strchr(l3, '|') + 1;
+                                char *bar = strchr(cp, '|');
+                                int c2;
+                                cp = bar + 1; /* skip header flag */
+                                for (c2 = 0; c2 < acells; c2++) {
+                                    char *ce = strchr(cp, '|');
+                                    char *le = cp + strcspn(cp, "\r\n");
+                                    char *end = (ce && ce < le) ? ce : le;
+                                    char cell[512], cellu[520];
+                                    size_t cl = (size_t)(end - cp);
+                                    int npt = 0;
+                                    char *u;
+                                    if (cl >= sizeof(cell)) cl = sizeof(cell) - 1;
+                                    memcpy(cell, cp, cl);
+                                    cell[cl] = '\0';
+                                    uisan(cell, cellu, sizeof(cellu));
+                                    for (u = cellu; *u; u++) {
+                                        if (*u == '\x1e' || *u == '\x1f') *u = ' ';
+                                        if (((unsigned char)*u & 0xC0) != 0x80) npt++;
+                                    }
+                                    if (npt > 256) npt = 256;
+                                    if (npt > maxima[c2]) maxima[c2] = npt;
+                                    if (!ce || ce >= le) break;
+                                    cp = ce + 1;
+                                }
+                            }
+                            for (c = 0; c < acells; c++) total += maxima[c];
+                            if (total <= 0) continue;
+                            for (c = 0; c < acells; c++) {
+                                int nw = snprintf(counts + co, sizeof(counts) - co,
+                                                  "%s%d", c ? "," : "", maxima[c]);
+                                if (nw < 0 || co + (size_t)nw >= sizeof(counts)) break;
+                                co += (size_t)nw;
+                            }
+                            if (c < acells) continue;
+                            for (m = 0; m < nmem; m++) {
+                                nb_trow_counts[trow_members[m]] = strdup(counts);
+                                if (!nb_trow_counts[trow_members[m]]) break;
+                            }
+                            if (m < nmem) {
+                                /* OOM mid-run: unwind to all-NULL so
+                                 * the run falls back uniformly
+                                 * instead of gridding half-computed. */
+                                int k;
+                                for (k = 0; k < m; k++) {
+                                    free(nb_trow_counts[trow_members[k]]);
+                                    nb_trow_counts[trow_members[k]] = NULL;
+                                }
+                            }
+                        }
+                    }
+                } /* while (ti < nrow) */
+                free(trow_members);
+                } /* if (trow_members) - NULL skips counts, projection continues */
+            }
             /* PROJECTION WINDOW (2026-10-08). The renderer turns each
              * content row into one layout element, and its pool is
              * MAX_ELEMS (1024) for the WHOLE window - chrome included.
@@ -5817,8 +6546,18 @@ static void write_ui_projection(void) {
                         for (char *c = cell; *c; c++)
                             if (*c == '\x1e' || *c == '\x1f') *c = ' ';
                         size_t cl = strlen(cell);
-                        if (po + (po ? 1 : 0) + cl + 1 >= sizeof(cellpay)) { pok = 0; break; }
-                        if (po) cellpay[po++] = '\x1f';
+                        /* REAL FIX 2026-10-11 (found proving computed
+                         * widths): the delimiter gate was `if (po)` -
+                         * position-based, so a LEADING empty cell wrote
+                         * no delimiter (po is still 0) and ['','B']
+                         * serialized as "B": one column, not two. The
+                         * renderer's own contract is "column i of every
+                         * row must mean the same column", which that
+                         * silently broke for exactly the rows the
+                         * computed grid needs it for. Delimit between
+                         * cells (ci > 1), not when output exists. */
+                        if (po + (ci > 1 ? 1 : 0) + cl + 1 >= sizeof(cellpay)) { pok = 0; break; }
+                        if (ci > 1) cellpay[po++] = '\x1f';
                         memcpy(cellpay + po, cell, cl);
                         po += cl;
                     }
@@ -5832,6 +6571,13 @@ static void write_ui_projection(void) {
                     else
                         UI_PUT("c_%d_kind=trow\nc_%d_is_trow=1\nc_%d_text=%s\n", rc, rc, rc, t);
                     if (cellpay[0]) UI_PUT("c_%d_cells=%s\n", rc, cellpay);
+                    /* TABLE COMPUTED WIDTHS (2026-10-11): the run's
+                     * column maxima ride the row (same pattern as
+                     * cells= just above). Looked up past this
+                     * branch's own drops, so a dropped row's counts
+                     * are simply never emitted. */
+                    if (nb_trow_counts && nb_trow_counts[ri])
+                        UI_PUT("c_%d_ccounts=%s\n", rc, nb_trow_counts[ri]);
                 } else if (strcmp(kind, "FILE") == 0) {
                     /* FILE|<name>|<accept>|<multiple>
                      * Not an editable field - there is no text to type. The
@@ -5983,6 +6729,38 @@ static void write_ui_projection(void) {
                      * one). Without this a code block's shape is gone by the
                      * time it reaches the row. */
                     UI_PUT("c_%d_kind=code\nc_%d_is_code=1\nc_%d_text=\"%s\"\n", rc, rc, rc, t);
+                } else if (strcmp(kind, "DL") == 0) {
+                    /* DOWNLOADS (2026-10-13): DL = <name>|<bytes>|<path>.
+                     * The kind token is "DL", not "DOWNLOAD": the projector
+                     * reads every row kind into a char[8], so an 8-letter
+                     * kind arrives as "DOWNLOA" and silently matches
+                     * nothing - the file saved and the row never appeared.
+                     * The row shows all three because the KPI asks for
+                     * size and path, and because a user who cannot see
+                     * where a file went assumes the file was lost. */
+                    char nm[512] = "", pa[PATH_BUF] = "";
+                    long long bytes = 0;
+                    const char *p1 = strchr(rest, '|');
+                    if (p1) {
+                        const char *p2 = strchr(p1 + 1, '|');
+                        if (p2) {
+                            size_t nl = (size_t)(p1 - rest);
+                            if (nl >= sizeof(nm)) nl = sizeof(nm) - 1;
+                            memcpy(nm, rest, nl);
+                            nm[nl] = '\0';
+                            bytes = atoll(p1 + 1);
+                            snprintf(pa, sizeof(pa), "%s", p2 + 1);
+                        }
+                    }
+                    if (!nm[0]) snprintf(nm, sizeof(nm), "download");
+                    char shown[PATH_BUF + 400];
+                    snprintf(shown, sizeof(shown), "Downloaded %s (%lld bytes)\\n%s",
+                             nm, bytes, pa);
+                    uisan(shown, t, sizeof(t));
+                    UI_PUT("c_%d_kind=download\nc_%d_is_download=1\nc_%d_is_text=1\nc_%d_text=%s\n",
+                           rc, rc, rc, rc, t);
+                    UI_PUT("c_%d_name=%s\nc_%d_size=%lld\nc_%d_path=%s\n",
+                           rc, nm, rc, bytes, rc, pa);
                 } else if (strcmp(kind, "TEXT") == 0) {
                     /* swallowed by a rich-paragraph row above */
                     if (ri < rich_until) continue;
@@ -6102,9 +6880,41 @@ static void write_ui_projection(void) {
                     }
                     char nm_sq[PATH_BUF];
                     shell_escape_squote(f[0], nm_sq, sizeof(nm_sq));
+                    /* AUTOFILL (2026-10-12): a value remembered for this
+                     * exact (origin, name) fills the field, so returning
+                     * to a form shows what you last typed. Deliberately
+                     * does NOT override a value the PAGE itself shipped:
+                     * a server-rendered default is the site's own answer
+                     * (a CSRF token, a chosen currency), and silently
+                     * replacing it would be worse than not filling at
+                     * all. type=password is never filled and never
+                     * remembered. */
+                    char af_origin[512];
+                    autofill_origin(g_current_url, af_origin, sizeof(af_origin));
+                    char af_val[1024];
+                    int is_password = !strcmp(f[1], "password");
+                    if (af_origin[0] && vv[0] == '\0' && !is_password &&
+                        autofill_lookup(af_origin, f[0], af_val, sizeof(af_val)))
+                        snprintf(vv, sizeof(vv), "%s", af_val);
                     UI_PUT("c_%d_kind=input\nc_%d_is_input=1\nc_%d_text=%s\n", rc, rc, rc, lab_s);
                     UI_PUT("c_%d_content=%s\n", rc, vv);
-                    UI_PUT("c_%d_action='%s/ops/nb_write_field.sh' 'field' '%s'\n", rc, g_package_dir, nm_sq);
+                    /* Two scripts on one Enter, in order: the live field
+                     * commit first (submit must see this session's value
+                     * even if the jar write is refused), then the remember.
+                     * A ';' not '&&' - a jar write that fails must not
+                     * swallow the commit that already happened. */
+                    if (af_origin[0] && !is_password) {
+                        char o_sq[1024];
+                        shell_escape_squote(af_origin, o_sq, sizeof(o_sq));
+                        /* The remember half carries only name+origin as its
+                         * own words; the renderer appends dir, house_root
+                         * and the typed value, which is exactly the 6-arg
+                         * shape the script documents. */
+                        UI_PUT("c_%d_action='%s/ops/nb_write_field.sh' 'field' '%s'; '%s/ops/nb_write_autofill.sh' remember '%s' '%s'\n",
+                               rc, g_package_dir, nm_sq, g_package_dir, nm_sq, o_sq);
+                    } else {
+                        UI_PUT("c_%d_action='%s/ops/nb_write_field.sh' 'field' '%s'\n", rc, g_package_dir, nm_sq);
+                    }
                 } else if (strcmp(kind, "BUTTON") == 0) {
                     /* BUTTON|action|method|label -> submit item. */
                     char *b2 = strchr(rest, '|');
@@ -6266,6 +7076,12 @@ static void write_ui_projection(void) {
             free(nb_row_tl);
             free(nb_scratch);
             free(nb_scratch2);
+            if (nb_trow_counts) {
+                int fi;
+                for (fi = 0; fi < nb_trow_n; fi++)
+                    free(nb_trow_counts[fi]);
+                free(nb_trow_counts);
+            }
             }
         }
         if (total_rows > processed) dropped_rows = total_rows - processed;

@@ -3,6 +3,12 @@
 Goal: render real web pages in the same khtpm window, with house nav
 inputs, **no new deps**, and honestly — not via a browser-engine
 embed. Reference: `2026-10-05-HANDROLLED-BROWSER-INVENTORY.md`.
+
+> **Gap analysis + KPIs (2026-10-11):** see
+> `design-docs/2026-10-11-BROWSER-GAP-ASSESSMENT-AND-KPI-PLAN.md` —
+> the code-level root cause, measurable KPIs and dependency-ordered
+> sprint ladder for everything still open below (Milestone 3 live pushes,
+> the box tree, and the chrome gaps).
 Definition of done (from FRONTEND-PLAN §2): a human can read a real
 content site without leaving the window; Chrome-pixel parity is not
 the bar.
@@ -43,9 +49,13 @@ the bar.
 ## Todo — Milestone 2 remaining
 
 - [x] ~~sprite-flow grid inside the panel path~~ — proven working (delegates to layout_scroll_region); narrow-pane stacking is 1-col degradation by design
-- [ ] True inline-clickable spans (segment row kind + renderer inline flow; needs xhtpm contract change)
+- [x] ~~True inline-clickable spans~~ — shipped additively as `segments=`
+  on `<text>` (no new tag, no contract break): tinted/underline draw,
+  wrapping, frame round-trip, click, keyboard cursor, hover, digit
+  slots, keyboard selection, mouse drag-select (2026-10-09..11, steps
+  1–11, all suite-pinned). Per-segment nav numbers stay future.
 - [ ] `file://` worker image resolution (worker emits zero IMG rows on file pages; static fallback covers it, but JS-driven pages depend on the worker path)
-- [ ] Column width as computed layout state (CSS cap is a stand-in)
+- [x] ~~Column width as computed layout state~~ — projector measures each TROW run's per-column code-point maxima (`c_*_ccounts`), rows share one content-proportional grid; ragged/starved rows keep the equal split (2026-10-11, `nb_table_width_test.sh`)
 
 ## Todo — Milestone 1: block flow (readable article) — SUPERSEDED by Done above
 
@@ -108,8 +118,9 @@ must be restored after it, never before.
 - [x] `TROW|<header>|<cell>…` per `<tr>`; header rows flagged and tinted
 - [x] `<caption>` emitted as TEXT (was silently dropped with the subtree)
 - [x] cells joined with U+00B7 — **not** `|`, which `uisan()` rewrites to `/`
-- [ ] rowspan/colspan not honoured (cells in document order) — real column
-  layout is a renderer slice, deliberately not faked
+- [x] colspan/rowspan honoured at extract (pads/repeats into aligned
+  rows; 2026-10-11, `nb_table_span_test.sh`) — genuinely ragged rows
+  still grid per-row downstream, honestly
 
 ## Lane note (2026-10-08)
 
@@ -208,6 +219,15 @@ both `form` and `form-file` for one name let the PATH win.
 
 - [ ] Manager owns the box tree; worker mutations (`textContent`, appendChild) reflow the subtree, not just rewrite a text row
 - [ ] `getBoundingClientRect` returns real numbers, `el.style` writes reflow
+- Scoped 2026-10-11, no slice yet: the worker APIs exist (`textContent`
+  get/set, `el.style`, gBCR simple block layout) but the worker runs
+  scripts + drains ≤800ms of timers into ONE RENDER snapshot (a live 1s
+  `setInterval` clock verified frozen at tick 0; a 100ms one renders
+  `tick 7` once and stops) - there are no live pushes at all, so
+  nothing flaps yet either. Needs worker-lane timer/event pumping +
+  push protocol first, then manager-side identity/tree; the manager's
+  `nb_dom` tree is currently serialize-only (projection flattens it
+  away).
 
 ## Todo — Milestone 4: nav behaviors
 
@@ -218,6 +238,12 @@ both `form` and `form-file` for one name let the PATH win.
 
 - [ ] `@media` evaluation, cascade layers, media-query-driven layouts
 - [ ] Flex row for toolbars; grid only after flex
+  - Scoped 2026-10-11, no slice: the engine is real (`css_layout_pass`
+    - row/wrap/grow/gap) and chrome toolbars are healthy (equal split,
+    tabs capped at 8). Page-side flex has no box tree to operate on
+    (content flattens to row kinds) - blocked on Milestone 3, not on
+    layout code. When the box tree lands, wiring content flex
+    containers to the existing engine is the first step.
 - [ ] Wikipedia homepage → usable
 - [ ] YouTube page → playable via V4 extraction only (already the special case); no plans to reverse-engineer Polymer UI
 

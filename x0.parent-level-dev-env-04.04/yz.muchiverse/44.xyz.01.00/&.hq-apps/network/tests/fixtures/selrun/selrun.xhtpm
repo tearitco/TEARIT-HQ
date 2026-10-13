@@ -1,0 +1,29 @@
+<!-- row-run selection fixture (2026-10-13).
+     Hermetic on purpose: row-run selection is a GENERIC renderer
+     capability (Shift+Up/Down select a contiguous run of whole rows), so
+     it must not need the shared network browser to prove - a live browser
+     on this box was being respawned under the test twice in one session,
+     and a suite that depends on another agent's window is not a suite.
+
+     Eight rows with deliberately different lengths, inside a scrolllist,
+     so the suite can tell "the band is on the rows I selected" from "the
+     band is on one long row" and from "the band is on the focused row".
+
+     nav-text is the opt-in that makes a text row reachable by the
+     keyboard (2026-10-12, content-row reachability): without it these
+     rows would be nav 0 and could not be focused at all, so this fixture
+     would silently test nothing. -->
+<window label="SelRun" class="selrun-fixture database-window">
+  <page id="main">
+    <scrolllist>
+      <text id="r0" class="nav-text" label="Row zero: the first selectable paragraph in this fixture, short."/>
+      <text id="r1" class="nav-text" label="Row one: a deliberately long paragraph so that it wraps onto more than one visual row, which is the path a real article row takes and therefore the one worth proving the band on. It keeps going for a while so the wrap is unambiguous."/>
+      <text id="r2" class="nav-text" label="Row two: medium length, wrapping onto a second visual line but no further."/>
+      <text id="r3" class="nav-text" label="Row three: short again, so a band that only ever lands on wrapped rows is caught here."/>
+      <text id="r4" class="nav-text" label="Row four: another long one, wrapping onto several visual rows, so the per-visual-line band has something to repeat on."/>
+      <text id="r5" class="nav-text" label="Row five: short."/>
+      <text id="r6" class="nav-text" label="Row six: medium length, one wrap."/>
+      <text id="r7" class="nav-text" label="Row seven: the last selectable paragraph in this fixture."/>
+    </scrolllist>
+  </page>
+</window>

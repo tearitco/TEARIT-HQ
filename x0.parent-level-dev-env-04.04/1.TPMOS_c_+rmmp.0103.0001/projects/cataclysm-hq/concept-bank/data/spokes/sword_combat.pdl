@@ -1,0 +1,11 @@
+SECTION      | KEY            | VALUE
+-------------+---------------+------------------
+NODE         | sword_combat   |
+KIND         | spoke          |
+N_SLOTS      | 4              |
+
+# Spoke: concrete skill in sword fighting
+SLOT         | 0              | POINTS_TO=combat | WEIGHT=0.80
+SLOT         | 1              | POINTS_TO=exploration | WEIGHT=0.10
+
+MIRROR_FROM  | combat         | WEIGHT=0.80

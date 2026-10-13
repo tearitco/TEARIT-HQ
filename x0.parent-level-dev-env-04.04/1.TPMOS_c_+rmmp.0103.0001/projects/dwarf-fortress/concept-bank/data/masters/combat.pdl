@@ -1,0 +1,10 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | concept_id         | combat
+META         | version            | 1.0
+META         | type               | master
+
+STATE        | delta_min          | -0.2
+STATE        | delta_max          | 0.2
+STATE        | current_weight     | 0.3
+STATE        | description        | Dwarf vs goblins, military tactics

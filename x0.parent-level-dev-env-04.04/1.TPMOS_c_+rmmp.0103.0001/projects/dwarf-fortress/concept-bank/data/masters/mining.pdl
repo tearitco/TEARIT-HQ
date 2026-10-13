@@ -1,0 +1,14 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | concept_id         | mining
+META         | version            | 1.0
+META         | type               | master
+
+STATE        | delta_min          | -0.2
+STATE        | delta_max          | 0.2
+STATE        | current_weight     | 0.5
+STATE        | description        | Stone, ore, crafting resources
+
+CHILD        | spoke              | precious_metals
+CHILD        | spoke              | gem_hunting
+CHILD        | spoke              | trap_construction

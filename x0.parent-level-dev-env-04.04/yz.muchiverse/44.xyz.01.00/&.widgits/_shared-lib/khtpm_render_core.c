@@ -69,7 +69,27 @@
 #include <string.h>
 #include <stdio.h>
 
-#define MAX_CHILDREN 320  /* was 64 - a <repeat> tile grid (rmmv/emoji: up to 256 tiles) + choosers + chrome overflowed it, silently dropping children past 64 */
+/* was 64, then 320. 320 was itself the browser's ceiling once the pool
+ * stopped being the limiter: the network browser's content <scrolllist>
+ * holds one child per visible content row, and at 320 children a
+ * 682-row article lost 364 of its rows (measured 2026-10-12, now
+ * reported as [WARN] children overflow instead of vanishing). 1024 puts
+ * the ceiling above the manager's own projection cap for a big page
+ * (content_count 683 on the 1500-paragraph fixture).
+ *
+ * WHAT IT COSTS, measured not guessed: this array is inline in Elem, so
+ * every element grows by 8 bytes per slot - Elem goes 29,408 -> 35,040
+ * bytes, and elem_new() memsets sizeof(Elem) per element. Measured on a
+ * FRESH renderer process: VmSize 173,828 kB, VmRSS 19,636 kB on the small
+ * article fixture (73 elements in use). The 683-row page peaks higher, but
+ * that peak is reached by allocating elements, not by the array being
+ * bigger - a window that uses 40 rows commits the same pages it always
+ * did.
+ *
+ * The alternative - a growable child list - would remove the ceiling for
+ * good instead of moving it, at the cost of one pointer chase per child
+ * on every layout, hit-test and draw pass. Not taken unilaterally. */
+#define MAX_CHILDREN 1024
 
 typedef struct Elem {
     char tag[32];
@@ -114,6 +134,15 @@ typedef struct Elem {
      * so a trailing delimiter still opens a column. Rows without this
      * attribute draw from `label` exactly as before. */
     char cells[8192];
+    /* TABLE COMPUTED WIDTHS (2026-10-11): per-column code-point width
+     * maxima of this row's table run ("n0,n1,...", one number per
+     * column), computed by the projector where the whole table is in
+     * memory. The draw path paints deserialized tmp Elems (parent ==
+     * NULL), so no sibling scan can ever work there - the maxima ride
+     * the row like cells= itself. Empty (default) means the equal
+     * split; arity or total mismatch also falls back, so stale or
+     * hostile values degrade to the old grid, never to garbage. */
+    char ccounts[512];
     /* REAL FIX 2026-08-16 (found live building khtpm_core_render.c,
      * Stage 2c proof): 64 was too small for a real objects.pdl-style
      * action= shell command (e.g. ava's real "Play" action is 200+
@@ -320,6 +349,76 @@ typedef struct Elem {
 static int g_seg_nav = 0;
 static int g_seg_idx = -1;
 static char g_seg_id[64] = "";
+
+/* INLINE SPANS step 10 (keyboard range selection, 2026-10-11):
+ * selection anchor as an actionable-run index on the cursor's own row.
+ * Valid if and only if seg_cursor_on() holds for the same element -
+ * the anchor borrows the cursor's (nav,index,id) identity instead of
+ * carrying its own, so every place that kills the cursor (reparse,
+ * dispatch, Esc, walk-off, clicks) kills the anchor with zero extra
+ * hooks. -1 means none (including collapsed: anchor == cursor draws
+ * no highlight and copies the whole label, exactly like no anchor).
+ * Plain cursor moves and digit selects reset it explicitly - otherwise
+ * a stale range would survive on the same row. */
+static int g_seg_anchor = -1;
+
+/* ROW-RUN SELECTION (2026-10-12): a contiguous run of whole rows, the
+ * thing a browser user means by "select these paragraphs". Until now
+ * selection was a character range INSIDE one row (sel_anchor/cursor,
+ * seg_anchor/seg_idx), so "copy these three paragraphs" was impossible:
+ * copy took the focused row's label, or the span range within it.
+ *
+ * One nav index is the whole state: the row the run STARTED on. The
+ * running end is the focused row, g_focus_nav, which every other path
+ * already maintains - so there is no second copy of the cursor to keep
+ * honest. 0 means "no run".
+ *
+ * Nav indices, not Elem pointers, because the run is a DOCUMENT-ORDER
+ * range over rows that are laid out and therefore clickable: a row
+ * parked off screen has nav 0 and cannot be an endpoint of a selection a
+ * user made by clicking. It also means the run is contiguous in nav
+ * order, which is what a browser selects, chrome rows included.
+ *
+ * Dies with the tree on a reparse (cleared with the span cursor, right
+ * below): after a rebuild those numbers may address different rows, and a
+ * selection that silently re-points itself is worse than none. */
+static int g_sel_run_anchor = 0;
+
+/* INLINE SPANS step 8 (hover highlight, 2026-10-09): pointer hover
+ * target. Same (nav, index, id) shape and lazy contract as the
+ * keyboard cursor, but set by pointer motion instead of keys and
+ * cleared the same places (reparse rebuild, plus any motion landing
+ * outside a link span). Hover only ever TINTS (link text goes white);
+ * clicks/keys/dispatch never consult it, so a stale hover is cosmetic
+ * for at most one frame. No LeaveNotify handling: leaving the window
+ * freezes the last highlight until the next motion lands - harmless,
+ * documented. */
+static int g_hover_nav = 0;
+static int g_hover_idx = -1;
+static char g_hover_id[64] = "";
+
+/* FIND IN PAGE (2026-10-12): the query the user is typing, plus which
+ * match is current. Lives beside the span/hover state because it obeys
+ * the same contract: renderer-side transient state that a reparse
+ * invalidates (khtpm_core_render.c clears it where it clears g_seg_*),
+ * never a frame-protocol field and never persisted.
+ *
+ * g_find_query is the ARMED query: non-empty means a find is active and
+ * matches are highlighted. g_find_hits counts matches on the CURRENT
+ * page; g_find_at is the 1-based index of the current one (0 = none
+ * selected yet), so the UI can say "2 of 7" without re-searching. */
+static char g_find_query[128] = "";
+static int g_find_hits = 0;
+static int g_find_at = 0;
+/* g_find_mode is the ARMED flag and is deliberately NOT the same thing
+ * as "the query is non-empty": Ctrl+F arms find BEFORE the user has
+ * typed anything, and a mode that only existed once a character was in
+ * it could never receive that first character (the key handler asks
+ * "is find armed?" to decide whether this keystroke is text, so an
+ * empty-query find would drop every letter on the floor). Highlights
+ * still key off the query being non-empty - arming with nothing typed
+ * highlights nothing, which is correct. */
+static int g_find_mode = 0;
 
 /* Pure Elem-tree geometry - topmost-child-first hit test (children drawn
  * later win the hit, matching draw order), no X11/global dependency.

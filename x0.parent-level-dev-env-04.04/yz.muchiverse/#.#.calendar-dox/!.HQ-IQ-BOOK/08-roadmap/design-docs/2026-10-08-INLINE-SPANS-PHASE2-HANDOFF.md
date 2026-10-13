@@ -1,5 +1,78 @@
 # INLINE SPANS — PHASE 2 HANDOFF (written 2026-10-08)
 
+> **ADDENDUM 2026-10-11 — full slot renumbering: scoped, declined.**
+> Giving every link its own nav slot would touch ~40 assignment sites
+> and ~80 `g_nav[]` consumers (stepping, scopes, dropdown/sidebar
+> ranges, copy, tabs, badges, frame protocol, every relay-digit test)
+> - and buy nothing that works today: addressability is solved (digits
+> in cursor via step 9, dot-direct via step 12), and arrows stopping at
+> every link would SLOW the primary row nav on link-dense pages. No
+> recorded pain needs it (agents count links from ui.txt; humans point
+> or arrow-then-Right). Verdict: superseded, not deferred. If Tab-
+> cycling through links or `5.2`-style badge precision gets asked for,
+> those are independent smalls on the cursor machinery, not renumbering.
+
+> **ADDENDUM 2026-10-11 — step 12 (dot-addressing) landed.**
+> `5.2` addresses row 5's link 2 with no Right entry: `.` (no hotkey
+> today, pure no-op unarmed) arms link entry for the very next digit.
+> One-shot and invisible: any non-digit voids it (first statement of
+> handle_key, so modal early-returns all void uniformly), a digit
+> consumes it hit or miss (misses are ignored, never row jumps -
+> recovery is re-dotting), clicks and reparse clear it. Single digits
+> only (walk covers longer rows); physical and relay identical (code
+> 46). The full per-segment nav renumbering stays future (it renumbers
+> the house). Test: E/F/G steps in `nb_span_digit_test.sh` (same
+> fixture, nav from the frame).
+
+> **ADDENDUM 2026-10-11 — step 11 (mouse drag-select) landed.**
+> A real button-1 press on a link span ARMS a deferred click instead of
+> dispatching: release on the same link completes it, motion past 6px
+> slop first turns it into a step-10 selection (anchor holds the press
+> link). Press/release pair through the history mailbox (real lines
+> carry a `real` 5th token; relay lines carry none and keep instant
+> dispatch - sscanf ignores the tail both ways, so the format is
+> compatible). Two-step reads pre-press focus, so click pairs behave
+> across the split. Cleared on resolve, reparse, and any dispatch.
+> Test: `nb_span_drag_test.sh`, hermetic (synthetic XSendEvent
+> press/motion/release via `xsendevent.py` - our dispatcher never
+> checks send_event; link geometry from parked underlines; copied bytes
+> via `xclipget.py`). Traps it hit: the /tmp fixture carried a literal
+> `$D` (quoted heredoc) so every dispatch died silently and the code
+> looked broken (the committed test passes paths via argv); a 760px
+> fixture row never wrapped (same lesson as step 10).
+
+> **ADDENDUM 2026-10-11 — step 10 (keyboard range selection) landed.**
+> Shift+Left/Right extends an anchor across the focused row's links;
+> the range highlights with the fields' own #2f5f8f band and unarmed
+> Ctrl+C copies its plain text (links as text, never URLs). The anchor
+> is one int borrowing the cursor's identity (valid iff the cursor is),
+> so reparse/dispatch/Esc/row-changes clear it free; plain walks,
+> digit selects, and any click clear it explicitly. Wrapped rows band
+> per overlapped slice (partial edges measured, not whole slices).
+> Mouse drag-select stays future (needs dispatch moved press->release).
+> Test: `nb_span_select_test.sh`, hermetic (own fixture, copied bytes
+> read back through the live X clipboard via `xclipget.py`). Traps it
+> hit: a stale ops-local `khtpm_render_core.c` shadowed the shared file
+> (git-ignored, refreshed by build_db_hq.sh) and broke the build with
+> undeclared-identifier errors - deleted; and a 760px fixture never
+> wrapped its selection, silently untesting the wrap bands (narrowed
+> to 560px so it genuinely wraps).
+
+> **ADDENDUM 2026-10-11 — step 9 (digit slots) landed.**
+> Digits address ROWS, always, unless the segment cursor is already
+> active on the focused row (entered with Right): then digits address
+> that row's LINKS (1-based), 0 drops back to row-level like Escape,
+> and out-of-range digits hold the cursor (an overshoot must not yank
+> focus elsewhere). Consumed digits reset the row accumulator. No
+> badge, scope, click, or two-step changes; physical and relay keys
+> share the path; wrapped rows work (same actionable-run domain as
+> walk/Enter). The full per-segment nav-number slot model stays future
+> (it renumbers the house); this composes with it whenever it lands.
+> Test: `nb_span_digit_test.sh`, hermetic (own fixture, actions to
+> click.log, nav numbers read from the frame, never hardcoded).
+> Trap it hit: text rows carry an empty action slot in the ascii frame,
+> so nav is field 6 for both tags, not 5 for text.
+
 > **ADDENDUM 2026-10-09 — read this first, it corrects §2 below.**
 > The draw snippet reproduced in §2 has two real bugs; trust the committed
 > tree, not the snippet:
@@ -65,6 +138,41 @@
 >   seg_any_runs (single-fit first, else wrapped). Relay digits address
 >   ROWS; per-segment digit slots still need the slot model (future).
 >   Selection across segments stays out of scope per the design.
+
+> **ADDENDUM 2026-10-10 — step 8 (hover) landed, commit `34d08b0b2`.**
+> - *Hover highlight*: a link span under the pointer draws its TEXT white
+>   (the keyboard cursor keeps the underline, so the marks compose).
+>   Same lazy (nav,index,id) contract as the cursor; cleared at reparse;
+>   redraw ONLY on target change (PITFALL #52 holds - a motion storm
+>   repaints nothing). The resolvers are the click path's own
+>   `seg_hit_action`/`seg_hit_wrapped` with the actionable-run index
+>   threaded out, so hover owns no input state: a click after a hover
+>   still dispatches.
+> - *Two mask/relay gaps this uncovered* (same class as the ones already
+>   called out in `hq_dispatch_xevent` - a handler wired, the delivery
+>   missing): the generic top-level window selected `ButtonMotionMask`
+>   but never `PointerMotionMask`, so a plain pointer glide was never
+>   delivered by X11 at all; and relayed pointer moves (`MOUSE_EVENT`
+>   with `is_press` 0) were dropped. Both fixed. The relay move
+>   deliberately does NOT count as consumed input.
+> - *Three wire-format traps*, each of which produced a confident wrong
+>   theory this session - they are documented in the committed fixture:
+>   a `text` span needs its TRAILING empty url field (`text\x1Fwords\x1F`);
+>   a `link` span is only actionable when the optional 4th action field
+>   is present (without it the payload parses, round-trips and TINTS, but
+>   has no actionable run - indistinguishable from "hover does not
+>   work"); and an action is a BARE command, because `dispatch()` wraps
+>   it in `sh '...'` itself - an action that already starts with `sh '...'`
+>   double-wraps into broken shell quoting and dies with no visible
+>   failure anywhere.
+> - *Test*: `nb_hover_test.sh`, hermetic (launches its own fixture
+>   window, never touches the running browser) and pixel-counted, since
+>   a passing assertion nobody can fail is decoration. It is
+>   negative-tested: suppressing the hover move, suppressing the
+>   move-off, and mis-clicking each turn it red.
+> - *Known suite red, NOT this commit*: `nb_layout_test.sh` fails on a
+>   missing `wb_viewer` snapshot; the fixture landed in `70280f557` with
+>   no snapshot beside it.
 
 Where the inline-clickable-spans feature stands after a long session, and
 exactly what the next person has to do. Read

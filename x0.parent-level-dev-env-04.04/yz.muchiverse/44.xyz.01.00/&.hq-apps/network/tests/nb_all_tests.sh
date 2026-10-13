@@ -32,12 +32,64 @@ echo "########## table columns (needs the browser)"
 sh "$HERE/nb_table_test.sh" || RC=1
 
 echo
+echo "########## table computed widths (hermetic: scratch manager + own fixture window)"
+sh "$HERE/nb_table_width_test.sh" || RC=1
+
+echo
+echo "########## table spans (hermetic: scratch fetch of span fixture)"
+sh "$HERE/nb_table_span_test.sh" || RC=1
+
+echo
 echo "########## history bound (needs the browser)"
 sh "$HERE/nb_history_test.sh" || RC=1
 
 echo
+echo "########## span hover highlight (hermetic: own fixture window)"
+sh "$HERE/nb_hover_test.sh" || RC=1
+
+echo
+echo "########## span digit slots (hermetic: own fixture window)"
+sh "$HERE/nb_span_digit_test.sh" || RC=1
+
+echo
+echo "########## span range selection (hermetic: own fixture window)"
+sh "$HERE/nb_span_select_test.sh" || RC=1
+
+echo
+echo "########## span mouse drag-select (hermetic: own fixture window)"
+sh "$HERE/nb_span_drag_test.sh" || RC=1
+
+echo
+echo "########## theme readability (static + hermetic fixture window)"
+sh "$HERE/nb_theme_test.sh" || RC=1
+
+echo
 echo "########## form gate (hermetic)"
 sh "$HERE/nb_form_test.sh" || RC=1
+
+echo
+echo "########## autofill (hermetic: sandbox house root + the real origin C)"
+sh "$HERE/nb_autofill_test.sh" || RC=1
+
+echo
+echo "########## find in page (live browser: state + painted band)"
+sh "$HERE/nb_find_test.sh" || RC=1
+
+echo
+echo "########## row-run selection + copy (hermetic: own fixture window)"
+sh "$HERE/nb_selrun_test.sh" || RC=1
+
+echo
+echo "########## page zoom (hermetic: own fixture window)"
+sh "$HERE/nb_zoom_test.sh" || RC=1
+
+echo
+echo "########## content-row reachability (live browser + own opt-in fixture)"
+sh "$HERE/nb_reach_test.sh" || RC=1
+
+echo
+echo "########## video playhead bar (hermetic: own fixture window)"
+sh "$HERE/nb_bar_test.sh" || RC=1
 
 echo
 [ "$RC" -eq 0 ] && echo "ALL TESTS PASS" || echo "SOME TESTS FAILED"
