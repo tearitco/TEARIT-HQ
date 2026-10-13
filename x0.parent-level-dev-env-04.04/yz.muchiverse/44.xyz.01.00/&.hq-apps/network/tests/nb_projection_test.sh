@@ -122,6 +122,51 @@ else
     else
         echo "FAIL: manager died (heap corruption?)"; FAIL=1
     fi
+    # 5. EVERY published row reached the tree, at full page size.
+    #    This is the assertion that pins the whole ceiling chain, and each
+    #    link of it was a real silent truncation found in the same week:
+    #      - gated elements took a pool slot before being dropped
+    #        (37 of 124 rows on a 124-paragraph page)
+    #      - the repeat expansion buffer stopped emitting when full
+    #        (169 of 682 rows here)
+    #      - MAX_CHILDREN=320 capped one container's row list
+    #        (319 of 683 here, 364 children dropped)
+    #    Reads the 206 full-tree dump, NOT the ascii mirror: the mirror
+    #    skips rows parked off screen, so it answers "6 of 682" for a
+    #    perfectly good build.
+    rm -f /tmp/entity-menu-frame.png.receipt.txt
+    printf '206\n' >> "$HR/#.desktop/entity_menu_history/$PID.txt"
+    got=0
+    for _ in $(seq 1 40); do
+        [ -f /tmp/entity-menu-frame.png.receipt.txt ] && { got=1; break; }
+        sleep 1
+    done
+    if [ "$got" -ne 1 ]; then
+        echo "FAIL: no full-tree frame dump for the big page"; FAIL=1
+    else
+        sleep 1
+        grep -oE '^c_[0-9]+_is_text=1' "$UI" 2>/dev/null | sed 's/c_//;s/_is_text=1//' | sort -n > /tmp/nb_big_pub.txt
+        awk -F'|' '$1=="text" && $2 ~ /^cx[0-9]+$/ {print substr($2,3)}' "$FRAME" | sort -n > /tmp/nb_big_got.txt
+        PUB="$(wc -l < /tmp/nb_big_pub.txt)"
+        MISSING="$(comm -23 /tmp/nb_big_pub.txt /tmp/nb_big_got.txt | wc -l)"
+        echo "  published text rows=$PUB  missing from tree=$MISSING"
+        if [ "$MISSING" -eq 0 ] && [ "$PUB" -gt 100 ]; then
+            echo "PASS: every published row reached the tree at full size ($PUB rows)"
+        else
+            echo "FAIL: $MISSING of $PUB published rows never reached the tree"; FAIL=1
+        fi
+    fi
+    # 6. and the renderer had nothing to complain about while doing it
+    if dump_frame; then
+        if [ "$FRAME_WARN" -eq 0 ]; then
+            echo "PASS: renderer reports no truncation on a full-size page"
+        else
+            grep WARN "$FRAME_FILE" | sed 's/^/    /'
+            echo "FAIL: renderer WARN line(s) on a page the manager published in full"; FAIL=1
+        fi
+    else
+        FAIL=1
+    fi
 fi
 rm -f "$BIG"
 

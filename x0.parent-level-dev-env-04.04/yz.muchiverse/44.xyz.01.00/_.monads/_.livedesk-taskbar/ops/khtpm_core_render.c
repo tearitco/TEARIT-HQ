@@ -1004,6 +1004,16 @@ static int g_vars_dropped = 0;
  * that rendered all of them. */
 static int g_repeat_clamped = 0;
 static int g_repeat_clamp_last = 0;
+/* REPEAT EXPANSION BUFFER (2026-10-12): set by kh_expand_repeats() when it
+ * runs out of room mid-template. See the self-growing rcap block in
+ * parse_chtpm() for the measurement that made this necessary: the browser
+ * published 682 content rows and built 169, with the pool at 231/1024, and
+ * the buffer was the reason - silently. */
+static int g_repeat_buf_full = 0;
+/* how many times a bigger buffer was needed and got it, and how many times
+ * even rcap_max was not enough (the only remaining truncation) */
+static int g_repeat_grown = 0;
+static int g_repeat_still_short = 0;
 
 static Elem *elem_new(const char *tag) {
     /* 2026-09-11 - bumps whichever pool g_elem_pool_target/
@@ -2299,6 +2309,12 @@ static void kh_expand_repeats(const char *src, char *dst, size_t cap) {
         *o++ = *p++;
     }
     *o = '\0';
+    /* Ran out of room with input left: the template was TRUNCATED, not
+     * finished. Said out loud rather than assumed - the caller retries
+     * with a bigger buffer and only accepts a short result at its own
+     * ceiling. Found live 2026-10-12: this loop stopped emitting after
+     * ~169 of 682 published content rows with nothing saying so. */
+    if (*p) g_repeat_buf_full = 1;
 }
 
 /* expand nested <repeat> (pages -> commands, ...): run kh_expand_repeats
@@ -2309,11 +2325,18 @@ static void kh_expand_repeats(const char *src, char *dst, size_t cap) {
  * (either `a` or `b`), NUL-terminated. */
 static char *kh_expand_repeats_all(char *a, char *b, size_t cap) {
     char *src = a, *dst = b;
+    /* A pass that filled its buffer leaves the flag set, and no later pass
+     * can undo that - so OR it across the ping-pong and hand the caller a
+     * truthful answer for the WHOLE expansion, not just the last pass. */
+    int full = 0;
     for (int pass = 0; pass < 5; pass++) {
-        if (!strstr(src, "<repeat")) return src;
+        if (!strstr(src, "<repeat")) { g_repeat_buf_full = full; return src; }
+        g_repeat_buf_full = 0;
         kh_expand_repeats(src, dst, cap);
+        full |= g_repeat_buf_full;
         char *t = src; src = dst; dst = t;
     }
+    g_repeat_buf_full = full;
     return src;
 }
 
@@ -2511,19 +2534,54 @@ static Elem *parse_chtpm(const char *path) {
         }
 
         if (strstr(buf, "<repeat")) {
-            /* Big enough for a full 256-row tile grid whose <repeat> body
-             * carries long ${…} paths (rmmv/emoji): each expanded row is
-             * ~250B pre-sub, ~600B post-sub. */
-            size_t rcap = (size_t)sz * 48 + (size_t)512 * 1024;
-            char *a = malloc(rcap), *b = malloc(rcap);
-            if (a && b) {
-                snprintf(a, rcap, "%s", buf);
-                char *fin = kh_expand_repeats_all(a, b, rcap);
-                free(buf);
-                buf = strdup(fin);
-                free(a); free(b);
+            /* REPEAT EXPANSION SELF-GROWS (2026-10-12).
+             *
+             * The size was a GUESS - "big enough for a full 256-row tile
+             * grid" - and kh_expand_repeats() simply stopped emitting when
+             * it ran out, silently. Measured live on a 1500-paragraph page:
+             * ui.txt published 682 content rows, the tree built 169, and
+             * the element pool was at 231/1024 (i.e. not the limiter). The
+             * browser template's <repeat> emits 24 alternatives per row, so
+             * 682 rows is ~1.5 MB of expanded template and the guess was
+             * under it.
+             *
+             * Now the expansion TELLS us when it ran out of room and the
+             * caller doubles rcap and does it again, up to a ceiling. The
+             * initial guess is based on strlen(buf) rather than the
+             * original file size, because buf may have grown since (overlay
+             * fragments are spliced in before this point) - so the guess is
+             * about the text actually being expanded.
+             *
+             * A short result is accepted ONLY at the ceiling, and is
+             * counted as such; the common case costs exactly one extra
+             * expansion pass, only when the first one was too small. */
+            size_t base = strlen(buf);
+            size_t rcap = base * 48 + (size_t)512 * 1024;
+            const size_t rcap_max = (size_t)64 * 1024 * 1024;
+            char *orig = strdup(buf);
+            if (orig) {
+                for (int attempt = 0; attempt < 12; attempt++) {
+                    char *a = malloc(rcap), *b = malloc(rcap);
+                    if (!a || !b) { free(a); free(b); break; }
+                    memcpy(a, orig, base + 1);
+                    g_repeat_buf_full = 0;
+                    char *fin = kh_expand_repeats_all(a, b, rcap);
+                    int full = g_repeat_buf_full;
+                    if (!full || rcap >= rcap_max) {
+                        if (full) g_repeat_still_short++;
+                        else if (attempt > 0) g_repeat_grown++;
+                        free(buf);
+                        buf = strdup(fin);
+                        free(a); free(b);
+                        break;
+                    }
+                    free(a); free(b);
+                    rcap *= 2;
+                    if (rcap > rcap_max) rcap = rcap_max;
+                }
+                free(orig);
                 if (!buf) return NULL;
-            } else { free(a); free(b); }
+            }
         }
 
         size_t cap = strlen(buf) * 4 + 65536;
@@ -3233,6 +3291,15 @@ static int reparse_chtpm_if_changed(void) {
     g_repeat_clamped = 0;
     g_repeat_clamp_last = 0;
     g_vars_dropped = 0;
+    /* Same rule for the counters added 2026-10-12, learned the same way:
+     * a negative test showed the repeat-truncation WARN outliving its
+     * cause (a small page after a big one still drew it), because these
+     * three were declared and reported but never reset here. Every
+     * truncation counter in this file describes the tree being BUILT
+     * NOW, not the history of the process. */
+    g_children_dropped = 0;
+    g_repeat_grown = 0;
+    g_repeat_still_short = 0;
     Elem *new_window = parse_chtpm(g_chtpm_path);
     if (!new_window) return 0;
     g_window = new_window;
@@ -11398,6 +11465,13 @@ static void kh_write_ascii_frame(void) {
     /* CHILDREN CAP (2026-10-12): rows that did not fit their parent's
      * child list. Silently dropped until this counter existed - see the
      * comment at the append site in parse_element(). */
+    /* REPEAT EXPANSION BUFFER (2026-10-12): a bigger buffer was needed
+     * and got it (normal), or even rcap_max was not enough (the one case
+     * where a <repeat> is still truncated, and where saying so matters). */
+    if (g_repeat_still_short > 0)
+        fprintf(ms, "[WARN] repeat expansion truncated at rcap_max=%d bytes"
+                    " - a <repeat> still does not fit; %d expansion(s) short\n",
+                64 * 1024 * 1024, g_repeat_still_short);
     if (g_children_dropped > 0)
         fprintf(ms, "[WARN] children overflow: %d element(s) DROPPED (MAX_CHILDREN=%d)"
                     " - a container took more rows than it can hold\n",

@@ -283,31 +283,37 @@ unchanged; the two window-level attributes (`drop_action`,
 **fails open** — an unterminated quote or a missing `>` means "no gate
 here", never "drop it". A parser may not guess in the dropping direction.
 
-### 8.3 Still open — the NEXT ceiling, measured 2026-10-12
+### 8.3 Closed too: the repeat buffer and MAX_CHILDREN (same day)
 
-With the pool free, the 1500-paragraph page goes from 37 rows to **169**,
-and the limiter moves. It is now the **repeat expansion buffer**, in
-`parse_chtpm()`:
+With the pool free, the limiter moved twice more. Both were silent.
 
-```c
-size_t rcap = (size_t)sz * 48 + (size_t)512 * 1024;   /* sz = pre-expansion template */
-```
+| link in the chain | symptom on the 1500-paragraph page | fix |
+|---|---|---|
+| repeat expansion buffer | stopped emitting after **169** of 682 rows, no warning | `rcap` self-grows: the expansion reports that it ran out of room and the caller doubles and retries, to a 64 MB ceiling. A short result is accepted only at the ceiling, and counted |
+| `MAX_CHILDREN` = 320 | **319** of 683 rows; 364 children dropped, no warning | raised to **1024**, above the manager's own projection cap for this page |
 
-`kh_expand_repeats()` stops emitting when the buffer is full
-(`o < oend`), silently. For the browser template that is ~1.4 MB, which
-holds ~170 expanded rows of 24 alternatives. Observed: ui.txt publishes
-**682** text rows for the 1500-paragraph page, the tree builds **169**.
+After both: **683 content rows built of 682 published**, pool 749/1024,
+and the renderer prints **no** truncation warning at all.
 
-Two more ceilings sit behind it and are *not yet measured in anger*:
-- `MAX_CHILDREN` = 320 per container (`khtpm_render_core.c`). The content
-  scrolllist needs one child per visible row, so this bites above 320 rows.
-  Now counted and reported as `[WARN] children overflow` (it was silent).
-- `KH_MAX_VARS` = 4096. A 682-row page wants ~6 vars/row = ~4100, i.e.
-  this ceiling is about to be hit too.
+Costs, measured on a fresh process: `MAX_CHILDREN` 320 -> 1024 grows Elem
+29,408 -> 35,040 bytes (the array is inline), i.e. **VmSize 173,828 kB,
+VmRSS 19,636 kB** on the small article fixture. Resident cost tracks
+elements actually allocated, not the array size.
 
-Suggested order: (1) grow `rcap` by doubling when the expansion filled the
-buffer, (2) `MAX_CHILDREN` 320 -> 1024, (3) measure `KH_MAX_VARS` on the
-same page and raise it if it bites. All three are renderer-side; none of
-them needs the manager lane. The structural alternative — one element per
-row with the kind as data instead of 24 gated siblings — stays the better
-end state and is a template redesign, not a C change.
+`KH_MAX_VARS` = 4096 was measured, not assumed: the 682-row page wants
+roughly 6 vars/row, so it sits right at the cap and did **not** trip it
+(no `[WARN] var table overflow`). It will bite on a larger page and is
+left alone until it does, with the WARN that would announce it.
+
+### 8.4 Where the browser actually stands now
+
+The renderer is **no longer the limiter** at any measured page size: every
+row the manager publishes reaches the tree, and the ceiling is now the
+manager's own projection cap (`content_count` 683 on the 1500-paragraph
+fixture, with an honest "[showing 683 of 3142 rows]" notice). That cap is
+`network_browser_manager.c`'s to raise, in its own lane.
+
+Still true, and worth keeping in view: the structural version of this fix
+— one element per row with the kind as data, instead of 24 gated siblings
+— is still the better end state. It just stopped being the bottleneck,
+because making the gated ones free was worth 33x.

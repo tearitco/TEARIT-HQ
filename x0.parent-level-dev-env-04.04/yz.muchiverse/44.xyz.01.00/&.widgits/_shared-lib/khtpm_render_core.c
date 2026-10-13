@@ -69,7 +69,27 @@
 #include <string.h>
 #include <stdio.h>
 
-#define MAX_CHILDREN 320  /* was 64 - a <repeat> tile grid (rmmv/emoji: up to 256 tiles) + choosers + chrome overflowed it, silently dropping children past 64 */
+/* was 64, then 320. 320 was itself the browser's ceiling once the pool
+ * stopped being the limiter: the network browser's content <scrolllist>
+ * holds one child per visible content row, and at 320 children a
+ * 682-row article lost 364 of its rows (measured 2026-10-12, now
+ * reported as [WARN] children overflow instead of vanishing). 1024 puts
+ * the ceiling above the manager's own projection cap for a big page
+ * (content_count 683 on the 1500-paragraph fixture).
+ *
+ * WHAT IT COSTS, measured not guessed: this array is inline in Elem, so
+ * every element grows by 8 bytes per slot - Elem goes 29,408 -> 35,040
+ * bytes, and elem_new() memsets sizeof(Elem) per element. Measured on a
+ * FRESH renderer process: VmSize 173,828 kB, VmRSS 19,636 kB on the small
+ * article fixture (73 elements in use). The 683-row page peaks higher, but
+ * that peak is reached by allocating elements, not by the array being
+ * bigger - a window that uses 40 rows commits the same pages it always
+ * did.
+ *
+ * The alternative - a growable child list - would remove the ceiling for
+ * good instead of moving it, at the cost of one pointer chase per child
+ * on every layout, hit-test and draw pass. Not taken unilaterally. */
+#define MAX_CHILDREN 1024
 
 typedef struct Elem {
     char tag[32];
