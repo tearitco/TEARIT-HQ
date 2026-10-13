@@ -3740,6 +3740,42 @@ static int render_one_frame(void) {
                         got = fread(frame, 1, sizeof(frame), ff) == sizeof(frame);
                         fclose(ff);
                     }
+                    if (!got) {
+                        /* Brixel people have no RPG frame. shared/brixels/<name>-front.txt is the picture that must move with the event. A missing file leaves the flesh box. */
+                        char bp[4400]; snprintf(bp, sizeof(bp), "%s", g_mk.key);
+                        for (int up = 0; up < 16 && !got; up++) {
+                            char *sl = strrchr(bp, '/'); if (!sl) break; *sl = 0;
+                            char tp[4400]; snprintf(tp, sizeof(tp), "%s/shared/brixels/%s-front.txt", bp, g_mk.ev[i].name);
+                            FILE *tf = fopen(tp, "r"); if (!tf) continue;
+                            char rows[48][40]; int ny = 0; char ln[80];
+                            while (ny < 48 && fgets(ln, sizeof ln, tf)) { if (ln[0] == '#' || ln[0] == '\n') continue; snprintf(rows[ny], 40, "%s", ln); ny++; }
+                            fclose(tf);
+                            if (ny < 20) continue;
+                            for (int py = 0; py < 24; py++) for (int px = 0; px < 16; px++) {
+                                int sy = py * ny / 24, sx = px * 32 / 16; char c = rows[sy][sx];
+                                int r = 0, g = 0, b = 0, a = 255;
+                                if (c == '.' || !c || c == '\n') a = 0;
+                                else if (c == 'H' || c == 'K' || c == 'D') { r = 28; g = 22; b = 18; }
+                                else if (c == 'h') { r = 62; g = 48; b = 36; }
+                                else if (c == 'L') { r = 214; g = 176; b = 90; }
+                                else if (c == 'S' || c == 'A') { r = 214; g = 166; b = 130; }
+                                else if (c == 's') { r = 176; g = 124; b = 96; }
+                                else if (c == 'W') { r = 236; g = 232; b = 220; }
+                                else if (c == 'e' || c == 'B') { r = 24; g = 28; b = 34; }
+                                else if (c == 'J') { r = 36; g = 48; b = 72; }
+                                else if (c == 'G' || c == 'g') { r = 36; g = 96; b = 52; }
+                                else if (c == 'R') { r = 160; g = 42; b = 44; }
+                                else if (c == 'Y') { r = 210; g = 168; b = 40; }
+                                else if (c == 'Z') { r = 110; g = 72; b = 40; }
+                                else if (c == 'T' || c == 'C') { r = 214; g = 214; b = 208; }
+                                else if (c == 'P' || c == 'p') { r = 42; g = 58; b = 86; }
+                                else if (c == 'O' || c == 'o') { r = 24; g = 24; b = 26; }
+                                else a = 0;
+                                unsigned char *d = frame + (py * 16 + px) * 4; d[0] = (unsigned char)r; d[1] = (unsigned char)g; d[2] = (unsigned char)b; d[3] = (unsigned char)a;
+                            }
+                            got = 1;
+                        }
+                    }
                     if (got) {
                         /* Same extrusion as chicken: each opaque pixel
                          * is a column, z 0..7, every layer the front
