@@ -330,6 +330,26 @@ static void blit(Sheet *s, int sx, int sy, int w, int h, int dx, int dy) {      
             for (int c = 0; c < 3; c++) b[c] = (unsigned char)((a[c] * al + b[c] * (255 - al)) / 255); b[3] = 255; } }
 }
 static void tile(const char *sh, int c, int r, int w, int h, int tx, int ty) { blit(sheet("tilesets", sh), c * S48, r * S48, w * S48, h * S48, OX + tx * T, OY + ty * T); }
+/* Spacefox 16x16 is a CP437 sheet (256x256, 16 columns). Codes: 247 water, 176 shore, 250 floor, 219 wall, 5 tree, 15 building, 197 door. Other packs stay on disk unused until one is chosen. */
+static Sheet df_sheet; static int df_sheet_try;
+static Sheet *df_tiles(void) {
+    if (df_sheet.px || df_sheet_try) return df_sheet.px ? &df_sheet : NULL; df_sheet_try = 1;
+    char d[PATH_MAX]; snprintf(d, sizeof d, "%s", HOUSE[0] ? HOUSE : APP);
+    for (int i = 0; i < 8; i++) { char p[PATH_MAX]; snprintf(p, sizeof p, "%s/#.NNEST_ASSETS/df-tilesets/Spacefox/data/art/Spacefox_16x16.png", d); if (fexists(p)) { int n; df_sheet.px = stbi_load(p, &df_sheet.w, &df_sheet.h, &n, 4); break; } char *s = strrchr(d, '/'); if (!s || s == d) break; *s = 0; }
+    return df_sheet.px ? &df_sheet : NULL;
+}
+static void blit_fit(Sheet *s, int sx, int sy, int sw, int sh, int dx, int dy, int dw, int dh) {
+    if (!s || !s->px || sw < 1 || sh < 1 || dw < 1 || dh < 1) return;
+    for (int y = 0; y < dh; y++) { int Y = dy + y, srcy = sy + y * sh / dh; if (Y < 0 || Y >= FH || srcy < 0 || srcy >= s->h) continue;
+        for (int x = 0; x < dw; x++) { int X = dx + x, srcx = sx + x * sw / dw; if (X < 0 || X >= FW || srcx < 0 || srcx >= s->w) continue;
+            unsigned char *a = s->px + ((size_t)srcy * s->w + srcx) * 4, *b = fr + ((size_t)Y * FW + X) * 4; int al = a[3]; if (!al) continue;
+            for (int c = 0; c < 3; c++) b[c] = (unsigned char)((a[c] * al + b[c] * (255 - al)) / 255); b[3] = 255; } }
+}
+static void df_glyph(int code, int tx, int ty, int tw, int th) {
+    Sheet *s = df_tiles(); if (!s) return; int ts = 16; if (s->w < 256) ts = s->w / 16; if (ts < 1) return;
+    int col = code % 16, row = code / 16;
+    blit_fit(s, col * ts, row * ts, ts, ts, OX + tx * T, OY + (ty - (th - 1)) * T, tw * T, th * T);
+}
 
 /* RPG Maker autotiles (verified against the tsots maps: tile id = kind * 48 + shape, shape picked from the 8 neighbours of the same kind; all 8 present = shape 0; the 48 shapes are 4 quadrant pieces).
  * Same rule as _.monads/_.livedesk-taskbar/ops/tile_autotile.c's FLOOR_AUTOTILE_TABLE, computed per quadrant: for each corner look at its two adjacent sides and its diagonal. Pieces are 24 px
@@ -359,23 +379,27 @@ static void draw_auto(const char *sh, int bx, int by, int n, int e, int s, int w
 /* the overmap biome "worldmap": the whole map is grass (World_A2 kind 0), the ocean is the World_A1 sea autotile (kind 0) whose edge shapes draw the shore wherever it meets land; the island is whatever over_land() says. */
 static int over_sea(const Room *rm, int x, int y) { if (x < 0 || y < 0 || x >= rm->cols || y >= rm->rows) return 1; return !over_land(rm, x, y); }      /* outside the map counts as sea (MV treats the border as connected) */
 static void draw_over(const Room *rm) {
-    for (int y = 0; y < rm->rows; y++) for (int x = 0; x < rm->cols; x++) { int dx = OX + x * T, dy = OY + y * T;
-        if (!over_sea(rm, x, y)) { draw_auto("World_A2", 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, dx, dy); continue; }
-        draw_auto("World_A1", 0, 0, over_sea(rm, x, y - 1), over_sea(rm, x + 1, y), over_sea(rm, x, y + 1), over_sea(rm, x - 1, y), over_sea(rm, x + 1, y - 1), over_sea(rm, x + 1, y + 1), over_sea(rm, x - 1, y + 1), over_sea(rm, x - 1, y - 1), dx, dy); }
+    for (int y = 0; y < rm->rows; y++) for (int x = 0; x < rm->cols; x++) {
+        int sea = over_sea(rm, x, y);
+        int shore = !sea && (over_sea(rm, x, y - 1) || over_sea(rm, x + 1, y) || over_sea(rm, x, y + 1) || over_sea(rm, x - 1, y));
+        df_glyph(sea ? 247 : shore ? 176 : 250, x, y, 1, 1);
+    }
 }
 static void render(void) {
     g_gr = vroom;
     for (int i = 0; i < FW * FH; i++) { fr[i * 4] = 14; fr[i * 4 + 1] = 14; fr[i * 4 + 2] = 18; fr[i * 4 + 3] = 255; }
     Room *rm = &rooms[vroom]; char phase[40] = "day"; { char dp[PATH_MAX], db[64]; spath(dp, "daylight.txt"); read_file(dp, db, sizeof db); if (strstr(db, "night")) snprintf(phase, sizeof phase, "night"); else if (strstr(db, "dusk")) snprintf(phase, sizeof phase, "dusk"); else if (strstr(db, "dawn")) snprintf(phase, sizeof phase, "dawn"); }
-    if (rm->over) draw_over(rm); else if (rm->outdoor) {      /* sky = an RPG Maker parallax picked by the game clock; ground, path and trees are Outside tiles */
-        Sheet *sk = sheet("parallaxes", !strcmp(phase, "night") ? "StarlitSky" : (!strcmp(phase, "dusk") || !strcmp(phase, "dawn")) ? "Sunset" : "CloudySky1"); if (sk) blit(sk, 0, !strcmp(phase, "day") ? 330 : 120, COLS * T, 2 * T, OX, OY);
-        for (int x = 0; x < COLS; x++) { tile("Outside_A5", 2, 0, 1, 1, x, WALL_ROW); for (int y = TRIG_ROW; y < ROWS; y++) tile("Outside_A5", 0, 2, 1, 1, x, y); }
-        for (int i = 0; i < ndoor; i++) if (doors[i].room == vroom) for (int y = TRIG_ROW; y < ROWS - 1; y++) tile("Outside_A5", 1, 2, 1, 1, doors[i].tx, y);
+    (void)phase;
+    if (rm->over) draw_over(rm); else if (rm->outdoor) {
+        for (int x = 0; x < COLS; x++) { df_glyph(219, x, WALL_ROW, 1, 1); for (int y = TRIG_ROW; y < ROWS; y++) df_glyph(250, x, y, 1, 1); }
     } else
-    for (int y = 0; y < ROWS; y++) for (int x = 0; x < COLS; x++) { if (y == 0) tile("Inside_A5", 0, 0, 1, 1, x, y); else if (y == WALL_ROW) tile("Inside_A5", 1, 3, 1, 1, x, y); else tile("Inside_A5", rm->fc, rm->fr, 1, 1, x, y); }
-    Sheet *dr = sheet("characters", "!Door1");                                  /* the wood panel door: closed frame of the 4th door object */
-    for (int i = 0; i < ndoor; i++) if (doors[i].room == vroom && !rm->over) { blit(dr, 0, 192, S48, S48, OX + doors[i].tx * T, OY + doors[i].ty * T); if (!rm->outdoor) tile("Inside_A5", 0, 6, 1, 1, doors[i].tx, doors[i].ty + 1); }
-    for (int i = 0; i < nscen; i++) if (scen[i].room == vroom) tile(scen[i].sheet, scen[i].c, scen[i].r, scen[i].w, scen[i].h, scen[i].x, scen[i].y);
+    for (int y = 0; y < ROWS; y++) for (int x = 0; x < COLS; x++) df_glyph((y == 0 || y == WALL_ROW) ? 219 : 250, x, y, 1, 1);
+    for (int i = 0; i < ndoor; i++) if (doors[i].room == vroom && !rm->over) df_glyph(197, doors[i].tx, doors[i].ty, 1, 1);
+    for (int i = 0; i < nscen; i++) if (scen[i].room == vroom) {
+        if (!strcmp(scen[i].sheet, "Outside_B")) df_glyph(5, scen[i].x, scen[i].y, scen[i].w, scen[i].h);
+        else if (!strcmp(scen[i].sheet, "World_B")) df_glyph(15, scen[i].x, scen[i].y, scen[i].w, scen[i].h);
+        else tile(scen[i].sheet, scen[i].c, scen[i].r, scen[i].w, scen[i].h, scen[i].x, scen[i].y);
+    }
     int idx[MAXP], n = 0; for (int i = 0; i < npl; i++) if (pl[i].room == vroom) idx[n++] = i;
     for (int a = 0; a < n; a++) for (int b = a + 1; b < n; b++) { Placed *p = &pl[idx[a]], *q = &pl[idx[b]]; int ka = (!cat[p->item].wall) * 1000 + p->y + cat[p->item].h, kb = (!cat[q->item].wall) * 1000 + q->y + cat[q->item].h; if (kb < ka || (kb == ka && q->x < p->x)) { int t = idx[a]; idx[a] = idx[b]; idx[b] = t; } }
     for (int a = 0; a < n; a++) { Placed *p = &pl[idx[a]]; Item *d = &cat[p->item]; tile(d->sheet, d->c, d->r, d->w, d->h, p->x, p->y); }
