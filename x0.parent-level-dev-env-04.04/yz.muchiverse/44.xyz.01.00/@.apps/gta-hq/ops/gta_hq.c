@@ -396,7 +396,7 @@ static int cell_role(const char *role, int tx, int ty, int tw, int th) {
 /* art: cdda (default, gta-tiles roles), rmmv (the old sheets), brixel (socketed clay). emoji is a separate overlay. Keys 96 and 92 set the flags; the board may still eat 96 as cjk_view before it arrives. */
 static int g_art, g_emoji;
 static void art_refresh(void) {
-    char b[16]; flag_str("art", "cdda", b, sizeof b);
+    char b[16]; flag_str("art", "brixel", b, sizeof b);
     g_art = !strcmp(b, "rmmv") ? 0 : !strcmp(b, "brixel") ? 2 : 1;
     g_emoji = flag_on("emoji", 0);
 }
@@ -548,7 +548,8 @@ static void render(void) {
     int idx[MAXP], n = 0; for (int i = 0; i < npl; i++) if (pl[i].room == vroom) idx[n++] = i;
     for (int a = 0; a < n; a++) for (int b = a + 1; b < n; b++) { Placed *p = &pl[idx[a]], *q = &pl[idx[b]]; int ka = (!cat[p->item].wall) * 1000 + p->y + cat[p->item].h, kb = (!cat[q->item].wall) * 1000 + q->y + cat[q->item].h; if (kb < ka || (kb == ka && q->x < p->x)) { int t = idx[a]; idx[a] = idx[b]; idx[b] = t; } }
     for (int a = 0; a < n; a++) { Placed *p = &pl[idx[a]]; Item *d = &cat[p->item]; if (g_art == 2) fill_cell(p->x, p->y, 160, 120, 70); else tile(d->sheet, d->c, d->r, d->w, d->h, p->x, p->y); }
-    if (g_art == 2 && rm->outdoor && !rm->over) draw_brixels(1, TRIG_ROW + 2);
+    if (g_art == 2 && rm->over) draw_brixels(6, 5);
+    else if (g_art == 2 && rm->outdoor) draw_brixels(1, TRIG_ROW + 2);
     static const int cyc[4] = {1, 0, 1, 2}; int order[NP + 1], no = 0;           /* walking frames 1,0,1,2; standing = middle frame. -1 = the trainer */
     for (int i = 0; i < nparty; i++) if (others[i].room == vroom) order[no++] = i;
     #define EY(k) ((k) < 0 ? tr.y : others[k].y)
@@ -718,7 +719,7 @@ static void clock_turn(void) { clock_paths(); if (!clock_ok() || !fexists(CFILE)
 /* ---------- outputs ---------- */
 static void out_all(const char *msg) {
     calc_view(); render();
-    char p[PATH_MAX]; spath(p, "scene.raw"); if (write_if_changed(p, fr, sizeof fr)) g_scene_ver++;
+    char p[PATH_MAX]; spath(p, "scene.raw"); if (write_if_changed(p, fr, sizeof fr)) { g_scene_ver++; char png[PATH_MAX]; spath(png, "scene.png"); stbi_write_png(png, FW, FH, 4, fr, FW * 4); }
     spath(p, "scene.receipt.txt"); { char b[64]; snprintf(b, sizeof b, "frame_w=%d\nframe_h=%d\n", FW, FH); write_if_changed(p, b, strlen(b)); }
     static char u[16384]; int o = 0;
 #define W(...) o += snprintf(u + o, sizeof u - o, __VA_ARGS__)
@@ -728,7 +729,7 @@ static void out_all(const char *msg) {
     { char cc[16]; flag_str("ctl", "pet", cc, sizeof cc); char who[40]; snprintf(who, sizeof who, "on: %s", !strcmp(cc, "player") ? "you" : party[active].name); W("interact_class=%s\ninteract_label=%s\nrp_h1=%s\nrp_h2=%s\ncontrol_label=control: %s\n", in ? "interact-active" : "", in ? who : "off", h1, h2, !strcmp(cc, "player") ? "player" : party[active].name); }
     W("run_on=%d\nrun_label=%s\nrun_cls=%s\n", run_on(), run_on() ? "GO started" : "STOP stopped", run_on() ? "ph-green" : "ph-red");
     W("mode_label=%s\nmode_cls=%s\n", rogue_mode() ? "[rogue] live" : "rogue [live]", rogue_mode() ? "ph-green" : "ph-red");
-    { char ab[16]; flag_str("art", "cdda", ab, sizeof ab); W("chat_visible=%s\nhb_visible=%s\nview_label=view %s\nchat_toggle_label=window %s\nart=%s\nemoji=%d\nart_label=art %s%s\n", chat ? "1" : "", hb ? "1" : "", view, chat ? "on" : "off", ab, flag_on("emoji", 0), ab, flag_on("emoji", 0) ? " + emoji" : ""); }
+    { char ab[16]; flag_str("art", "brixel", ab, sizeof ab); W("chat_visible=%s\nhb_visible=%s\nview_label=view %s\nchat_toggle_label=window %s\nart=%s\nemoji=%d\nart_label=art %s%s\n", chat ? "1" : "", hb ? "1" : "", view, chat ? "on" : "off", ab, flag_on("emoji", 0), ab, flag_on("emoji", 0) ? " + emoji" : ""); }
     { char cp[PATH_MAX], cb[4000]; spath(cp, "chat.txt"); read_tail(cp, cb, sizeof cb); char *ln[6] = {0}; int k = 0; for (char *l = strtok(cb, "\n"); l; l = strtok(NULL, "\n")) { ln[k % 6] = l; k++; } for (int i = 0; i < 6; i++) { int j = k - 6 + i; W("chat_%d=%s\n", i, j >= 0 ? ln[j % 6] : ""); } }
     W("n_shop=%d\n", ncat); for (int i = 0; i < ncat; i++) { char own[16] = ""; if (owned[i] > 0) snprintf(own, sizeof own, " x%d", owned[i]); W("shop_%d_label=%s %dc%s\nshop_%d_key=%s\n", i, cat[i].label, cat[i].price, own, i, cat[i].key); }
     char fl[160], cc[16], hid[24]; flag_str("ctl", "pet", cc, sizeof cc); int hs = !strcmp(cc, "player"); snprintf(hid, sizeof hid, "%s", hero.name); for (char *c = hid; *c; c++) if (*c >= 'A' && *c <= 'Z') *c += 32;
@@ -1176,7 +1177,7 @@ static int daemon_main(void) {
         if (n) { char kl[300], one[16]; kl[0] = 0; for (int i = 0; i < n && i < 20; i++) { snprintf(one, sizeof one, "%d ", codes[i]); strncat(kl, one, sizeof kl - strlen(kl) - 1); } char kp[PATH_MAX]; spath(kp, "keys_seen.txt"); write_if_changed(kp, kl, strlen(kl)); }
         for (int i = 0; i < n; i++) {
             if (codes[i] == 96) { set_flag("emoji", flag_on("emoji", 0) ? "0" : "1"); snprintf(msg, sizeof msg, "emoji %s", flag_on("emoji", 0) ? "on" : "off"); dirty = 1; }
-            else if (codes[i] == 92) { char ab[16]; flag_str("art", "cdda", ab, sizeof ab); const char *nx = !strcmp(ab, "rmmv") ? "cdda" : !strcmp(ab, "cdda") ? "brixel" : "rmmv"; set_flag("art", nx); snprintf(msg, sizeof msg, "art %s", nx); dirty = 1; }
+            else if (codes[i] == 92) { char ab[16]; flag_str("art", "brixel", ab, sizeof ab); const char *nx = !strcmp(ab, "brixel") ? "rmmv" : !strcmp(ab, "rmmv") ? "cdda" : "brixel"; set_flag("art", nx); snprintf(msg, sizeof msg, "art %s", nx); dirty = 1; }
         }
         { int r = run_on() + 2 * rogue_mode(); if (r != was_run) { was_run = r; clock_sync(); dirty = 1; } }
         if (in) for (int i = 0; i < n; i++) { int c = codes[i], dx = 0, dy = 0;
