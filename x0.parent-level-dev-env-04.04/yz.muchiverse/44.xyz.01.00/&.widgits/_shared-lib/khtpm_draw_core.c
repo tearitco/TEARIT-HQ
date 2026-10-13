@@ -1145,6 +1145,75 @@ static int kh_find_row_is_match(const Elem *e) {
     return e && kh_find_active() && g_find_query[0] && kh_find_label_match(e->label, NULL, NULL);
 }
 int kh_find_is_armed(void) { return kh_find_active(); }
+
+/* Count matches over a WHOLE scroll region, not just the rows laid out
+ * right now.
+ *
+ * Why this exists: only rows inside the viewport get a nav slot (the
+ * rest are parked at y=-100000 with nav 0), so a search that walked
+ * g_nav[] alone could only ever find what was already on screen. On a
+ * long article - the entire reason find-in-page exists - the needle is
+ * almost always below the fold, and find would report "0 matches" on the
+ * one page class it was built for. Measured live: a 124-row article, the
+ * single needle paragraph sat off-screen and find found nothing.
+ *
+ * Walks the container's children the same way the layout does, sprite-
+ * flow runs included, so every row counted here is a row the user could
+ * actually scroll to. first_out receives the matches (up to cap) so the
+ * caller can reveal the chosen one. */
+/* Recursive on purpose: a page's rows are NOT direct children of the
+ * page element. They sit inside <scrolllist>, which itself sits inside
+ * a <sidebar>/<panel> - so a direct-children walk sees the containers
+ * and none of the content, which is why the first version of this
+ * reported "0 matches" on a page whose needle was plainly there.
+ * Depth is bounded by the tree itself; every real row is a leaf-ish
+ * child so this cannot run away. */
+static int kh_find_walk(Elem *node, Elem **out, int cap, int n) {
+    if (!node) return n;
+    for (int i = 0; i < node->n_children; i++) {
+        Elem *c = node->children[i];
+        /* Same sprite-flow run skip the layout does. Inlined rather than
+         * calling the renderer's static helpers: this file is text-
+         * included after them, so they are not in scope here. */
+        if ((strcmp(c->tag, "item") == 0 || strcmp(c->tag, "text") == 0) &&
+            c->sprite[0] && elem_has_class(c, "sprite-flow")) {
+            int run = 1;
+            while (i + run < node->n_children) {
+                Elem *n2 = node->children[i + run];
+                if (!((strcmp(n2->tag, "item") == 0 || strcmp(n2->tag, "text") == 0) &&
+                      n2->sprite[0] && elem_has_class(n2, "sprite-flow"))) break;
+                run++;
+            }
+            i += run - 1;
+            continue;
+        }
+        int is_row = (strcmp(c->tag, "item") == 0 || strcmp(c->tag, "text") == 0 ||
+                      strcmp(c->tag, "cli_io") == 0 || strcmp(c->tag, "text_area") == 0 ||
+                      strcmp(c->tag, "bar") == 0);
+        if (is_row) {
+            if (kh_find_label_match(c->label, NULL, NULL)) {
+                if (out && n < cap) out[n] = c;
+                n++;
+            }
+        } else {
+            n = kh_find_walk(c, out, cap, n);
+        }
+    }
+    return n;
+}
+
+int kh_find_count_in(Elem *root, Elem **out, int cap, int *n_out) {
+    int n = 0;
+    if (out) out[0] = NULL;
+    if (n_out) *n_out = 0;
+    if (!root || !kh_find_active() || !g_find_query[0]) return 0;
+    n = kh_find_walk(root, out, cap, n);
+    /* Honest about the cap: report the true total even when the list
+     * filled up, so a page with 700 matches of a 512 slot never claims
+     * 512 and lets Enter walk off the end of nothing. */
+    if (n_out) *n_out = n;
+    return n;
+}
 /* seg_any_runs is defined further below (single-fit first, else
  * wrapped); the range helpers need it here. */
 static int seg_any_runs(Elem *e, SegRun *runs, int maxruns);

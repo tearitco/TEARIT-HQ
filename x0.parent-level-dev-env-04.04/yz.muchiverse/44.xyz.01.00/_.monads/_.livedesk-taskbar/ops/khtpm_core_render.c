@@ -137,7 +137,22 @@ static void kh_find_begin(void);
 static void kh_find_step(int dir);
 static void kh_find_clear(void);
 static void kh_find_commit(void);
+
+/* FIND IN PAGE (2026-10-12): the row a find wants scrolled into view,
+ * handed to layout_scroll_region() by kh_find_commit() and consumed by
+ * the one region that owns the row. Declared up here with the rest of
+ * find's surface because both the setter (find control) and the reader
+ * (layout, far below) need it before either is defined. */
+static Elem *g_find_reveal = NULL;
+
+/* The current page's matches, in document order, rebuilt on every
+ * query keystroke. Sized for a long article; a page with more matches
+ * than this reports the ones it kept rather than silently lying about
+ * a smaller total. */
+#define FIND_MAX_HITS 512
+static Elem *g_find_hits_list[FIND_MAX_HITS];
 int kh_find_is_armed(void);   /* draw_core's seam - see its definition */
+int kh_find_count_in(Elem *container, Elem **out, int cap, int *n_out);
 static void redraw(void); /* REAL, forward declaration needed for dispatch()'s OPACITY_MINUS/OPACITY_PLUS handlers (NEW 2026-08-29 TASK 2) */
 static void kh_hq_reg_bump_marker(const char *new_line); /* fwd - MINIMIZE handler uses it, defined near redraw() (hq-windows change marker, grok handoff 2026-09-30) */
 static void kh_hq_reg_mark_removed(void); /* fwd - cleanup_hq_window_registry() uses it, same marker mechanism */
@@ -5554,14 +5569,36 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
             continue;
         }
         int is_grid = scroll_is_sprite_grid_row(c);
-        /* a canvas inside a scroll window is a real content row too
-         * (V3 video): same clip rules + own span from the receipt */
+        /* FIND IN PAGE (2026-10-12): reveal the row a find just landed
+         * on, HERE rather than in the key handler - this is the only
+         * place that knows the region's real geometry (the arrow-reduced
+         * band above, and each row's own scroll_row_span). Re-deriving
+         * any of it from outside gets the target index wrong as soon as
+         * the scrollbar narrows the content width, which is exactly the
+         * long-page case find exists for.
+         *
+         * Minimal and non-destructive: only ever scrolls when the row is
+         * genuinely OFF screen, and then just far enough to bring it to
+         * the nearest edge. A match already visible leaves the user's
+         * own scroll position alone, and a page that does not scroll
+         * (max_scroll == 0) is untouched. One-shot: cleared as soon as
+         * the region that owns the row has answered, so a later manual
+         * scroll is never yanked back. */
         if (!is_grid && strcmp(c->tag, "item") != 0 && strcmp(c->tag, "text") != 0 &&
             strcmp(c->tag, "cli_io") != 0 && strcmp(c->tag, "text_area") != 0 &&
             strcmp(c->tag, "canvas") != 0 && strcmp(c->tag, "bar") != 0) continue;
         if (strcmp(c->tag, "canvas") == 0) g_has_canvas = 1; /* live surface -> 30fps tick */
         int span = scroll_row_span(c, inner_w);
         int visible = (row + span > *scroll && row < *scroll + visible_rows);
+        if (g_find_reveal == c && max_scroll > 0) {
+            int top = *scroll, bot = *scroll + visible_rows;
+            if (row < top) *scroll = row;                       /* above: put it at the top edge */
+            else if (row + span > bot) *scroll = row + span - visible_rows;  /* below: last line visible */
+            if (*scroll < 0) *scroll = 0;
+            if (*scroll > max_scroll) *scroll = max_scroll;
+            g_find_reveal = NULL;
+        }
+
         if (is_grid) {
             layout_scroll_sprite_grid_row(c, x, content_y + (row - *scroll) * ROW_H, inner_w, span * ROW_H, visible, out_lo, out_hi);
         } else if (visible) {
@@ -9703,51 +9740,41 @@ static void default_cli_io_save(Elem *e) {
  * khtpm_render_core.c next to the span/hover state; the search and the
  * match-kinds here are the only writers. */
 
-/* Count matching rows on the CURRENT page, in nav order, and make match
- * number `at` (1-based; <=0 means "just land on the first") the current
- * one - scrolling it into view if the window scrolls at all.
+/* Rebuild the hit list for the current query and make match number
+ * `at` (1-based) the current one, revealing it if it is off screen.
  *
- * Scrolling: a match below the fold is useless, and this window has no
- * generic "reveal focused row" today (arrows do not scroll either), so
- * find does its own minimal reveal - nudge the scroll offset by whole
- * rows until the match's row is inside the visible window. Only the two
- * scroll regions this file owns are adjusted; a window with neither
- * simply does not scroll, which is correct for a short page. */
+ * Searched over the whole PAGE TREE, not over g_nav[]. Only rows inside
+ * the viewport get a nav slot - the rest are parked at y=-100000 with
+ * nav 0 - so a g_nav[]-only search is blind to everything below the
+ * fold, which on a long article is nearly everything worth finding.
+ * Measured live before the fix: a 124-paragraph article with one
+ * needle paragraph reported "0 of 0".
+ *
+ * Reveal: a match below the fold is a match the user cannot see, and
+ * this window has no generic "reveal focused row" (arrows do not
+ * scroll either). The row is handed to layout_scroll_region(), which
+ * owns the only correct geometry for the question (the arrow-reduced
+ * band, each row's own scroll_row_span, max_scroll) - see
+ * g_find_reveal. */
 static void kh_find_commit(void) {
-    g_find_hits = 0;
-    for (int i = 0; i < g_n_nav; i++) {
-        Elem *e = g_nav[i];
-        if (e && kh_find_row_is_match(e)) g_find_hits++;
-    }
-    if (g_find_hits <= 0) { g_find_at = 0; return; }
-    if (g_find_at < 1 || g_find_at > g_find_hits) g_find_at = 1;
+    const int cap = (int)(sizeof(g_find_hits_list) / sizeof(g_find_hits_list[0]));
+    g_find_hits = kh_find_count_in(find_page(g_current_page), g_find_hits_list, cap, NULL);
+    if (g_find_hits <= 0) { g_find_at = 0; g_find_reveal = NULL; return; }
+    /* More matches than the list holds: report the true total, but only
+     * step within the window actually kept. A count that silently
+     * shrank to fit the array would be a lie; Enter walking off the
+     * end of nothing is worse. */
+    const int steppable = g_find_hits < cap ? g_find_hits : cap;
+    if (g_find_at < 1 || g_find_at > steppable) g_find_at = 1;
 
-    /* find the nav index of the current match */
-    int seen = 0, target_nav = 0;
-    for (int i = 0; i < g_n_nav; i++) {
-        Elem *e = g_nav[i];
-        if (!e || !kh_find_row_is_match(e)) continue;
-        seen++;
-        if (seen == g_find_at) { target_nav = e->nav_index; break; }
-    }
-    if (target_nav >= 1 && target_nav <= g_n_nav) g_focus_nav = target_nav;
-
-    /* Reveal: row geometry is already computed for everything laid out
-     * this frame, and off-screen scroll rows carry y == -100000 - so the
-     * check below is "is this row's y on the window at all", and the
-     * scroll nudge only ever runs when it genuinely is not. */
-    Elem *t = (target_nav >= 1 && target_nav <= g_n_nav) ? g_nav[target_nav - 1] : NULL;
-    if (t && t->y < -1000 && g_default_scrolllist_scroll != 1000000) {
-        /* The row exists but is scrolled out. Walk the scroll offset down
-         * one row at a time (bounded) and stop as soon as the row lands
-         * on screen; layout runs on the next redraw, which re-evaluates
-         * this. Cheap, bounded, and never loops forever. */
-        for (int k = 0; k < 200; k++) {
-            if (g_default_scrolllist_scroll >= 1000000) break;
-            g_default_scrolllist_scroll++;
-            if (g_default_scrolllist_scroll >= 200) break;
-        }
-    }
+    /* It may be off-screen (nav 0), so it is addressed by its place in
+     * the hit list, NOT by g_nav[]. Focus only moves when the row is
+     * actually navigable - pointing focus at an invisible slot would
+     * move the visible caret somewhere unrelated. */
+    Elem *t = (g_find_at <= cap) ? g_find_hits_list[g_find_at - 1] : NULL;
+    if (!t) { g_find_at = 0; return; }
+    if (t->nav_index >= 1 && t->nav_index <= g_n_nav) g_focus_nav = t->nav_index;
+    g_find_reveal = t;
 }
 
 /* Status line for the find bar. Drawn by the window's own overlay pass
@@ -9785,11 +9812,16 @@ static void kh_find_clear(void) {
  * loud rather than left silent. */
 static void kh_find_step(int dir) {
     if (!kh_find_is_armed()) return;
+    const int cap = (int)(sizeof(g_find_hits_list) / sizeof(g_find_hits_list[0]));
     if (g_find_hits <= 0) kh_find_commit();
     if (g_find_hits <= 0) { kh_find_set_status("find: no matches"); return; }
+    /* Wrap within what is actually steppable (see kh_find_commit): past
+     * the list cap there is no row to land on, so walking further would
+     * decrement into nothing and read as a broken Enter. */
+    const int n = g_find_hits < cap ? g_find_hits : cap;
     g_find_at += dir;
-    while (g_find_at < 1) g_find_at += g_find_hits;
-    while (g_find_at > g_find_hits) g_find_at -= g_find_hits;
+    while (g_find_at < 1) g_find_at += n;
+    while (g_find_at > n) g_find_at -= n;
     kh_find_commit();
     {
         char st[128];

@@ -19,6 +19,8 @@
 #   BAND   the highlight is painted on the visual row that actually
 #          carries the match, and MOVES when the match moves line
 #   NONE   a query with no matches says so instead of hanging
+#   DEEP   a match BELOW the fold is found AND scrolled into view, both
+#          directions, with the band painted on the revealed row
 #   ESC    Escape disarms and clears
 #   NOP    'p' (the house frame-dump key) dumps and does NOT become a
 #          query character - found the hard way, see the renderer comment
@@ -148,7 +150,70 @@ else
     fail "no-match query did not report 0: '$line'"
 fi
 
-# ---- 7. Escape clears and disarms
+# ---- 7. scroll-into-view. A match below the fold is a match the user
+#         cannot see, and find that does not reveal it is useless on a
+#         long article. Three independent claims, in order:
+#           a) the search SEES an off-screen row at all (before: find only
+#              walked the laid-out rows, so it reported 0 matches for a row
+#              that was plainly in the page)
+#           b) the row ends up ON screen (y is no longer the -100000
+#              park position), both directions
+#           c) the band is painted on the row it just revealed
+printf 'go:file://%s/tests/fixtures/scroll-article.html\n' "$NB" \
+    > "$HR/#.desktop/network_browser_request.txt"
+sleep 8
+esc; arm; dump
+row_y() { awk -F'|' -v pat="$1" 'index($4,pat)>0 {print $10; exit}' "$FRAME"; }
+row_nav() { awk -F'|' -v pat="$1" 'index($4,pat)>0 {print $7; exit}' "$FRAME"; }
+before_y="$(row_y NEEDLETOKEN)"
+if [ -z "$before_y" ] || [ "$before_y" -gt -1000 ] 2>/dev/null; then
+    fail "fixture precondition: NEEDLETOKEN row should start off screen (y=$before_y)"
+else
+    echo "PASS: precondition - needle row starts parked off screen (y=$before_y)"
+fi
+
+type_str "NEEDLE"; sleep 1; dump
+line="$(findline)"
+if printf '%s' "$line" | grep -q '" 1 of 1'; then
+    echo "PASS: an off-screen row is found (1 of 1)"
+else
+    fail "find did not see the off-screen row: '$line'"
+fi
+after_y="$(row_y NEEDLETOKEN)"; after_nav="$(row_nav NEEDLETOKEN)"
+if [ -n "$after_y" ] && [ "$after_y" -gt -1000 ]; then
+    echo "PASS: find scrolled the match into view (y $before_y -> $after_y, nav $after_nav)"
+else
+    fail "match still off screen after find (y=$after_y)"
+fi
+
+# band must be painted ON the revealed row, not merely somewhere
+python3 - "$HERE" "$after_y" <<'PY' || fail "band not painted on the revealed row"
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location('ws', sys.argv[1] + '/widthscan.py')
+m = importlib.util.module_from_spec(spec)
+exec(compile(open(spec.origin).read().replace('\nmain()\n', '\n'), 'ws', 'exec'), m.__dict__)
+w, h, px = m.decode('/tmp/nb_find_shot.png')
+def near(c): return abs(c[0]-0x7a) <= 26 and abs(c[1]-0x5c) <= 26 and abs(c[2]) <= 26
+ys = [y for y in range(h) for x in range(w) if near((px[(y*w+x)*3], px[(y*w+x)*3+1], px[(y*w+x)*3+2]))]
+assert ys, 'no band pixels on the revealed row'
+top, bot = int(sys.argv[2]), int(sys.argv[2]) + 30
+assert max(ys) >= top and min(ys) <= bot, \
+    'band %d..%d does not overlap the revealed row %d..%d' % (min(ys), max(ys), top, bot)
+print('PASS: band painted on the revealed row (band %d..%d, row %d..%d)' % (min(ys), max(ys), top, bot))
+PY
+
+# the OTHER direction: the page is scrolled to the bottom now, so a match
+# in the FIRST paragraph is above the fold and must scroll back UP. A
+# reveal that only ever scrolls down passes every assertion above.
+esc; arm; type_str "Filler paragraph 1,"; sleep 1; dump
+up_y="$(row_y 'Filler paragraph 1,')"
+if [ -n "$up_y" ] && [ "$up_y" -gt -1000 ] && [ "$up_y" -lt "$after_y" ]; then
+    echo "PASS: a match above the fold scrolls back up (y=$up_y, was $after_y)"
+else
+    fail "reveal did not scroll up (y=$up_y, was $after_y)"
+fi
+
+# ---- 8. Escape clears and disarms
 esc; dump
 if [ -z "$(findline)" ]; then
     echo "PASS: Escape disarms find"

@@ -238,3 +238,43 @@ which is lane-local and can be taken one at a time.
 - House roadmap: `08-roadmap/NETWORK-BROWSER-RENDER-ROADMAP-2026-10-05.md`
 - This gap/KPI doc: `08-roadmap/design-docs/2026-10-11-BROWSER-GAP-ASSESSMENT-AND-KPI-PLAN.md`
 - XO copy: `x0.parent-level-dev-env-04.04/1.TPMOS_c_+rmmp.0103.0001/xo/23.network-browser/2026-10-11-BROWSER-GAP-ASSESSMENT-AND-KPI-PLAN.md`
+
+---
+
+## 8. Addendum 2026-10-12 — the real long-article ceiling is the ELEMENT POOL
+
+Found while making find-in-page scroll its match into view (which it now
+does, `khtpm_core_render.c`'s `g_find_reveal` hook inside
+`layout_scroll_region()`). Measured, not inferred:
+
+- `network-browser-hq.xhtpm`'s content `<repeat>` emits **24 elements per
+  content row** — one `<text>`/`<item>`/`<cli_io>`/`<bar>`/`<canvas>` per
+  content KIND (`ct cx cr cd cl ci cb ck cs tr li dl ds h1..h6 tw cf cm cv
+  pp pa`), each hidden by its own `show="${c.is_*}"`. Only one is ever
+  visible.
+- `MAX_ELEMS` in `khtpm_core_render.c` is **1024** (raised from 512 on
+  2026-09-02). 1024 / 24 ≈ **42 rows**.
+- Live measurement on a 124-paragraph local article: the browser published
+  `content_count=124` and the ascii mirror said
+  `[WARN] element pool overflow: 1 element(s) DROPPED (MAX_ELEMS=1024)`,
+  while the tree held **39 content rows** (`cx0..cx38`, of which 29 parked at
+  y=-100000). Paragraphs 40..124 were never built at all.
+
+Consequences, stated plainly:
+
+1. Find-in-page cannot see, let alone scroll to, row 40+ — the rows do not
+   exist. Search is limited to what the pool could hold.
+2. Scrolling has the same ceiling, and it is not find-specific: an article
+   longer than ~40 paragraphs is truncated no matter how the user scrolls.
+3. Raising `MAX_ELEMS` treats the symptom and costs memory: `Elem` embeds
+   `char text_area_buffer[4096]`, so the pool is already 4 MB at 1024 and
+   16 MB at 4096 (BSS, so committed lazily, but the per-reparse `memset`
+   scales with it).
+
+The structural fix is to stop paying 24 elements per row — e.g. one
+`<text>` per row carrying the kind as data rather than as a sibling — which
+is a projection/xhtpm redesign in the `network_browser_manager.c` lane (see
+AGENTS.md lane split), not a renderer patch. Until then, treat ~40 content
+rows as the browser's real page length and say so in the UI rather than
+letting a truncated article look complete. **Not fixed here; recorded so the
+next slice starts from the measurement instead of rediscovering it.**
