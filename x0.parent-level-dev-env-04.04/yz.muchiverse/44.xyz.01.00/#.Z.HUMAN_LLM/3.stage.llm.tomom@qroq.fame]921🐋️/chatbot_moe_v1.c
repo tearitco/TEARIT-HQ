@@ -9,8 +9,8 @@
 #define MAX_VOCAB_SIZE 100000
 #define MAX_RESPONSE_TOKENS 100
 #define MAX_CURRICULA 10
-#define EMBEDDING_DIM 7
-#define HIDDEN_DIM 16
+#define EMBEDDING_DIM 16
+#define HIDDEN_DIM 32
 
 // Structure to hold a vocabulary entry
 struct VocabEntry {

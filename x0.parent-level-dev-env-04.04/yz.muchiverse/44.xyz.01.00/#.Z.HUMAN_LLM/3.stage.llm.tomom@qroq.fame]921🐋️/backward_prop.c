@@ -10,8 +10,8 @@
 
 #define MAX_LINE_LENGTH 1024
 #define MAX_VOCAB_SIZE 100000
-#define EMBEDDING_DIM 7
-#define HIDDEN_DIM 16
+#define EMBEDDING_DIM 16
+#define HIDDEN_DIM 32
 
 // --- Data Structures ---
 struct VocabEntry { int number; char word[100]; float embedding, pe, weight, bias1, bias2, bias3, bias4; };
