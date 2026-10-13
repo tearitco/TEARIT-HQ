@@ -541,7 +541,7 @@ static void render(void) {
         else if (!(cdda && cell_role("door_closed", doors[i].tx, doors[i].ty, 1, 1))) { Sheet *dr = sheet("characters", "!Door1"); blit(dr, 0, 192, S48, S48, OX + doors[i].tx * T, OY + doors[i].ty * T); }
     }
     for (int i = 0; i < nscen; i++) if (scen[i].room == vroom) {
-        if (g_art == 2 && !strcmp(scen[i].sheet, "Outside_B")) { fill_cell(scen[i].x, scen[i].y, 30, 90, 40); continue; }
+        if (g_art == 2) { fill_cell(scen[i].x, scen[i].y, !strcmp(scen[i].sheet, "Outside_B") ? 30 : 150, !strcmp(scen[i].sheet, "Outside_B") ? 90 : 120, !strcmp(scen[i].sheet, "Outside_B") ? 40 : 80); continue; }
         if (cdda && !strcmp(scen[i].sheet, "Outside_B") && cell_role("tree", scen[i].x, scen[i].y, scen[i].w, scen[i].h)) continue;
         tile(scen[i].sheet, scen[i].c, scen[i].r, scen[i].w, scen[i].h, scen[i].x, scen[i].y);
     }
@@ -557,7 +557,7 @@ static void render(void) {
     if (tr.room == vroom) order[no++] = -1;
     for (int a2 = 0; a2 < no; a2++) for (int b2 = a2 + 1; b2 < no; b2++) if (EY(order[b2]) < EY(order[a2])) { int tmp = order[a2]; order[a2] = order[b2]; order[b2] = tmp; }
     for (int k = 0; k < (g_bg_only ? 0 : no); k++) { int i = order[k]; Ent *e = i < 0 ? &tr : &others[i]; int col = e->steps ? cyc[e->steps % 4] : 1, ci = i < 0 ? 0 : party[i].idx;
-        if (g_emoji) fill_cell(e->x, e->y, 255, 200, 40);
+        if (g_art == 2 || g_emoji) fill_cell(e->x, e->y, g_emoji ? 255 : 220, g_emoji ? 200 : 176, g_emoji ? 40 : 140);
         else blit(sheet("characters", i < 0 ? hero.sheet : party[i].sheet), (ci % 4) * 3 * S48 + col * S48, (ci / 4) * 4 * S48 + e->dir * S48, S48, S48, OX + e->x * T, OY + e->y * T - 8 * T / S48); }
     if (!g_bg_only) { int tone[4]; if (read_tone(tone)) {      /* RPG Maker Tint Screen (events-hq tint_screen -> state/world/screen_state.pdl "value=r,g,b,gray"): add per channel, gray = pull toward the luminance; indoors it is only 40% */
         int od = rm->outdoor, pc = od ? 100 : 40, tr_ = tone[0] * pc / 100, tg_ = tone[1] * pc / 100, tb_ = tone[2] * pc / 100, gy = tone[3] * pc / 100;
@@ -870,10 +870,13 @@ static void write_room_sky(int r, const char *d) {
 static void write_room_events(int r) {
     char d[PATH_MAX], p[PATH_MAX], buf[4096]; int o = 0; static const int dc[4] = {2, 4, 6, 8};
     snprintf(d, sizeof d, "%s/pieces/system/maps/gta-hq/%s", PCHQ, rooms[r].id); mkdir(d, 0755);
-    for (int i = 0; i < nparty; i++) if (others[i].room == r) { int pat = others[i].steps % 3; write_frame(party[i].sheet, party[i].idx, others[i].dir, pat); unsigned char px[4] = {128, 128, 128, 255}; frame_rgb(sheet("characters", party[i].sheet), party[i].idx, others[i].dir & 3, px);
-        o += snprintf(buf + o, sizeof buf - o, "%d %d %d %d %d %s %d %d %d %c\n", others[i].x, others[i].y, px[0], px[1], px[2], party[i].sheet, party[i].idx, dc[others[i].dir & 3], pat, party[i].name[0] >= 'A' && party[i].name[0] <= 'Z' ? party[i].name[0] + 32 : (party[i].name[0] ? party[i].name[0] : 'm')); }
-    if (tr.room == r) { int pat = tr.steps % 3; write_frame(hero.sheet, 0, tr.dir, pat); unsigned char px[4] = {200, 60, 60, 255}; frame_rgb(sheet("characters", hero.sheet), 0, tr.dir & 3, px);
-        o += snprintf(buf + o, sizeof buf - o, "%d %d %d %d %d %s 0 %d %d @\n", tr.x, tr.y, px[0], px[1], px[2], hero.sheet, dc[tr.dir & 3], pat); }
+    art_refresh();
+    for (int i = 0; i < nparty; i++) if (others[i].room == r) { int pat = others[i].steps % 3; unsigned char px[4] = {220, 176, 140, 255};
+        if (g_art != 2) { write_frame(party[i].sheet, party[i].idx, others[i].dir, pat); frame_rgb(sheet("characters", party[i].sheet), party[i].idx, others[i].dir & 3, px); }
+        o += snprintf(buf + o, sizeof buf - o, "%d %d %d %d %d %s %d %d %d %c\n", others[i].x, others[i].y, px[0], px[1], px[2], g_art == 2 ? "-" : party[i].sheet, party[i].idx, dc[others[i].dir & 3], pat, party[i].name[0] >= 'A' && party[i].name[0] <= 'Z' ? party[i].name[0] + 32 : (party[i].name[0] ? party[i].name[0] : 'm')); }
+    if (tr.room == r) { int pat = tr.steps % 3; unsigned char px[4] = {220, 176, 140, 255};
+        if (g_art != 2) { write_frame(hero.sheet, 0, tr.dir, pat); frame_rgb(sheet("characters", hero.sheet), 0, tr.dir & 3, px); }
+        o += snprintf(buf + o, sizeof buf - o, "%d %d %d %d %d %s 0 %d %d @\n", tr.x, tr.y, px[0], px[1], px[2], g_art == 2 ? "-" : hero.sheet, dc[tr.dir & 3], pat); }
     snprintf(p, sizeof p, "%s/events.txt", d); write_if_changed(p, buf, o);
     write_room_sky(r, d);
     /* ascii_legend.txt: the ` (backtick) glyph view of this book. Rows are glyph|height|r|g|b|asset|name|char like terrain_legend.txt; events.txt carries a 10th column with each sprite's letter (@ = the trainer, the pet's lowercase initial) */
