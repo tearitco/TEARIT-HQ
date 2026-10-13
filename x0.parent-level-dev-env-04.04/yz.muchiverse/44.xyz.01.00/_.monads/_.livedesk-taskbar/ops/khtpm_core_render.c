@@ -7865,8 +7865,11 @@ static void dock_paint_menu(void) {
                 if (body < 1) body = g_win_w;
                 rs[n].x = 0; rs[n].y = 0; rs[n].width = (unsigned short)body; rs[n].height = (unsigned short)g_win_h; n++;
                 if (strip && g_win_h > 2 * DD_ARROW_H) {
+                    int dn_y = g_dock_dd_vis * DOCK_BAR_H - DD_ARROW_H; /* same y as dd-down, above the pinned cancel row */
+                    if (dn_y < DD_ARROW_H) dn_y = DD_ARROW_H;
+                    if (dn_y > g_win_h - DD_ARROW_H) dn_y = g_win_h - DD_ARROW_H;
                     rs[n].x = (short)body; rs[n].y = 0; rs[n].width = (unsigned short)strip; rs[n].height = (unsigned short)DD_ARROW_H; n++;
-                    rs[n].x = (short)body; rs[n].y = (short)(g_win_h - DD_ARROW_H); rs[n].width = (unsigned short)strip; rs[n].height = (unsigned short)DD_ARROW_H; n++;
+                    rs[n].x = (short)body; rs[n].y = (short)dn_y; rs[n].width = (unsigned short)strip; rs[n].height = (unsigned short)DD_ARROW_H; n++;
                     if (thumb_h > 0 && tx >= body)
                         { rs[n].x = (short)tx; rs[n].y = (short)thumb_y; rs[n].width = (unsigned short)tw; rs[n].height = (unsigned short)thumb_h; n++; }
                 }
