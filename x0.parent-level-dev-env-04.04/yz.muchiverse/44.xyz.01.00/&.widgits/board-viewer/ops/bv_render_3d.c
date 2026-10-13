@@ -3774,11 +3774,6 @@ static int render_one_frame(void) {
                          g_mk.ev[i].name, g_mk.ev[i].index, g_mk.ev[i].dir, g_mk.ev[i].pat);
                 for (int k = 0; k < used_n; k++)
                     if (strcmp(used_key[k], key) == 0) hm = used_model[k];
-                if (hm < 0) {
-                    PhymojiVoxel body[900]; int bmx = 0, bmy = 0, bmz = 0;
-                    int bn = build_brixel_person(g_mk.ev[i].name, body, 900, &bmx, &bmy, &bmz);
-                    if (bn > 0 && sc.model_n < BV_GPU_MAX_MODEL - 6) hm = GPU_ADD_MODEL(body, bn, bmx, bmy, bmz);
-                }
                 if (hm < 0 && used_n < 96 && sc.model_n < BV_GPU_MAX_MODEL - 6) {
                     unsigned char frame[16 * 24 * 4];
                     char walk[4352], fp[4400];
@@ -3860,7 +3855,6 @@ static int render_one_frame(void) {
                     }
                 }
                 float top = (g_mk.ev[i].name[0] == '!') ? 1.9f : 2.6f;
-                if (!strcmp(g_mk.ev[i].name, "voss") || !strcmp(g_mk.ev[i].name, "nico") || !strcmp(g_mk.ev[i].name, "lucia") || !strcmp(g_mk.ev[i].name, "vic") || !strcmp(g_mk.ev[i].name, "rio") || !strcmp(g_mk.ev[i].name, "tess") || !strcmp(g_mk.ev[i].name, "kane")) top = 3.6f;
                 ADDBOX(g_mk.ev[i].x + 0.15, 1.0, g_mk.ev[i].y + 0.15,
                        g_mk.ev[i].x + 0.85, top, g_mk.ev[i].y + 0.85,
                        g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b, 0);

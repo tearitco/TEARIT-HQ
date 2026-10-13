@@ -968,6 +968,19 @@ static void write_frame(const char *sh, int idx, int dir4, int pat) {
     for (int y = 0; y < 24; y++) for (int x = 0; x < 16; x++) { int px = sx + x * pw / 16, py = sy + y * ph / 24; memcpy(out + (y * 16 + x) * 4, s->px + ((size_t)py * s->w + px) * 4, 4); }
     FILE *f = fopen(p, "wb"); if (f) { fwrite(out, 1, sizeof out, f); fclose(f); }
 }
+/* The same 16x24 frame a pet uses, painted from the brixel front view. The 3D board extrudes every opaque pixel 8 deep. */
+static void write_brixel_frame(const char *name, int dir4, int pat) {
+    int n = figure_slot(name); if (n < 0 || !g_fig[n].ok) return;
+    char d[PATH_MAX], p[PATH_MAX]; snprintf(d, sizeof d, "%s/../tsots-characters/frames", ASSETS); mkdir(d, 0755);
+    static const int dc[4] = {2, 4, 6, 8};
+    snprintf(p, sizeof p, "%s/%s_0_%d_%d.rgba", d, name, dc[dir4 & 3], pat);
+    unsigned char out[16 * 24 * 4];
+    for (int y = 0; y < 24; y++) for (int x = 0; x < 16; x++) {
+        int sx = x * FIG_W / 16, sy = y * FIG_H / 24;
+        memcpy(out + (y * 16 + x) * 4, g_fig[n].img + (sy * FIG_W + sx) * 4, 4);
+    }
+    FILE *f = fopen(p, "wb"); if (f) { fwrite(out, 1, sizeof out, f); fclose(f); }
+}
 /* the average-ish colour of a sprite frame (the 3D box fallback colour in events.txt): the centre pixel of the frame */
 static void frame_rgb(Sheet *s, int idx, int dir4, unsigned char *px) {
     if (!s) return; int fx = (idx % 4) * 3 * S48 + S48 + S48 / 2, fy = (idx / 4) * 4 * S48 + dir4 * S48 + S48 / 2; if (fx < s->w && fy < s->h) memcpy(px, s->px + ((size_t)fy * s->w + fx) * 4, 4);
@@ -1006,10 +1019,12 @@ static void write_room_events(int r) {
     snprintf(d, sizeof d, "%s/pieces/system/maps/gta-hq/%s", PCHQ, rooms[r].id); mkdir(d, 0755);
     art_refresh();
     for (int i = 0; i < nparty; i++) if (others[i].room == r) { int pat = others[i].steps % 3; unsigned char px[4] = {220, 176, 140, 255};
-        if (g_art != 2) { write_frame(party[i].sheet, party[i].idx, others[i].dir, pat); frame_rgb(sheet("characters", party[i].sheet), party[i].idx, others[i].dir & 3, px); }
-        o += snprintf(buf + o, sizeof buf - o, "%d %d %d %d %d %s %d %d %d %c\n", others[i].x, others[i].y, px[0], px[1], px[2], g_art == 2 ? party[i].id : party[i].sheet, party[i].idx, dc[others[i].dir & 3], pat, party[i].name[0] >= 'A' && party[i].name[0] <= 'Z' ? party[i].name[0] + 32 : (party[i].name[0] ? party[i].name[0] : 'm')); }
+        if (g_art == 2) write_brixel_frame(party[i].id, others[i].dir, pat);
+        else { write_frame(party[i].sheet, party[i].idx, others[i].dir, pat); frame_rgb(sheet("characters", party[i].sheet), party[i].idx, others[i].dir & 3, px); }
+        o += snprintf(buf + o, sizeof buf - o, "%d %d %d %d %d %s %d %d %d %c\n", others[i].x, others[i].y, px[0], px[1], px[2], g_art == 2 ? party[i].id : party[i].sheet, g_art == 2 ? 0 : party[i].idx, dc[others[i].dir & 3], pat, party[i].name[0] >= 'A' && party[i].name[0] <= 'Z' ? party[i].name[0] + 32 : (party[i].name[0] ? party[i].name[0] : 'm')); }
     if (tr.room == r) { int pat = tr.steps % 3; unsigned char px[4] = {220, 176, 140, 255};
-        if (g_art != 2) { write_frame(hero.sheet, 0, tr.dir, pat); frame_rgb(sheet("characters", hero.sheet), 0, tr.dir & 3, px); }
+        if (g_art == 2) write_brixel_frame("voss", tr.dir, pat);
+        else { write_frame(hero.sheet, 0, tr.dir, pat); frame_rgb(sheet("characters", hero.sheet), 0, tr.dir & 3, px); }
         o += snprintf(buf + o, sizeof buf - o, "%d %d %d %d %d %s 0 %d %d @\n", tr.x, tr.y, px[0], px[1], px[2], g_art == 2 ? "voss" : hero.sheet, dc[tr.dir & 3], pat); }
     snprintf(p, sizeof p, "%s/events.txt", d); write_if_changed(p, buf, o);
     write_room_sky(r, d);
