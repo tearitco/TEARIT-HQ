@@ -3558,6 +3558,8 @@ static int g_bar_click_x = -1;
  * (1); set `click_two_step=0` in #.desktop/hq_ui.pdl to restore the
  * old single-click-activates "auto" behavior house-wide. */
 static int g_click_two_step = 1;
+/* hq_ui.pdl sbar_track: -1 auto (in-window lists draw the line, the livedesk menu does not), 0 thumb only, 1 line on both. */
+static int g_sbar_track = -1;
 /* UI scale (2026-09-09, LIVEDESK-UI-SCALE.md). Percent; 100 = 1.0x.
  * Loaded from #.desktop/hq_ui.pdl's `font_scale` key (which already
  * shipped 1.25 and was read by nothing) in desktop_load_click_two_step()
@@ -5053,9 +5055,11 @@ static void draw_generic_scrollbars(void) {
     int i;
     for (i = 0; i < g_n_generic_sbars; i++) {
         GenericScrollBar *b = &g_generic_sbars[i];
-        XSetForeground(dpy, gc, alloc_pixel("#2a2a2a"));
-        XFillRectangle(dpy, buf, gc, b->track_x, b->track_y,
-                       (unsigned)b->track_w, (unsigned)b->track_h);
+        if (g_sbar_track != 0) {
+            XSetForeground(dpy, gc, alloc_pixel("#2a2a2a"));
+            XFillRectangle(dpy, buf, gc, b->track_x, b->track_y,
+                           (unsigned)b->track_w, (unsigned)b->track_h);
+        }
         XSetForeground(dpy, gc, alloc_pixel("#888888"));
         XFillRectangle(dpy, buf, gc, b->track_x + 1, b->thumb_y,
                        (unsigned)(b->track_w > 2 ? b->track_w - 2 : b->track_w),
@@ -7847,15 +7851,19 @@ static void dock_paint_menu(void) {
         {
             /* The row column stays. The gutter beside the thumb is cut out of the window, same as a pc-hq dropdown, where that gap is not painted and the board shows through. Only the ^/v bands and the thumb itself stay. */
             int strip = (g_dock_dd_scrolling && g_dock_dd_vis > 0 && g_dock_dd_total > 1) ? DD_STRIP_W : 0;
-            int tw = 8, tx = 0, thumb_y = 0, thumb_h = 0;
+            int tw = 8, tx = 0, thumb_y = 0, thumb_h = 0, th_all = 0;
             if (strip) {
-                int th_all = g_dock_dd_vis * DOCK_BAR_H - 2 * DD_ARROW_H;
                 MwPlan mp;
+                th_all = g_dock_dd_vis * DOCK_BAR_H - 2 * DD_ARROW_H;
                 tx = g_win_w - tw - 12;
                 if (th_all < 8) th_all = 8;
                 mw_plan(&mp, g_dock_dd_total, g_dock_dd_vis + 1, NULL);
                 mw_thumb(&mp, th_all, g_dock_dd_scroll, &thumb_y, &thumb_h);
                 thumb_y += DD_ARROW_H;
+                if (g_sbar_track == 1) {
+                    XSetForeground(dpy, gc, alloc_pixel("#2a2a2a"));
+                    XFillRectangle(dpy, buf, gc, tx, DD_ARROW_H, (unsigned)tw, (unsigned)th_all);
+                }
                 XSetForeground(dpy, gc, alloc_pixel("#888888"));
                 XFillRectangle(dpy, buf, gc, tx, thumb_y, (unsigned)tw, (unsigned)thumb_h);
             }
@@ -7870,7 +7878,9 @@ static void dock_paint_menu(void) {
                     if (dn_y > g_win_h - DD_ARROW_H) dn_y = g_win_h - DD_ARROW_H;
                     rs[n].x = (short)body; rs[n].y = 0; rs[n].width = (unsigned short)strip; rs[n].height = (unsigned short)DD_ARROW_H; n++;
                     rs[n].x = (short)body; rs[n].y = (short)dn_y; rs[n].width = (unsigned short)strip; rs[n].height = (unsigned short)DD_ARROW_H; n++;
-                    if (thumb_h > 0 && tx >= body)
+                    if (g_sbar_track == 1 && th_all > 0 && tx >= body)
+                        { rs[n].x = (short)tx; rs[n].y = (short)DD_ARROW_H; rs[n].width = (unsigned short)tw; rs[n].height = (unsigned short)th_all; n++; }
+                    else if (thumb_h > 0 && tx >= body)
                         { rs[n].x = (short)tx; rs[n].y = (short)thumb_y; rs[n].width = (unsigned short)tw; rs[n].height = (unsigned short)thumb_h; n++; }
                 }
                 XShapeCombineRectangles(dpy, g_dock_menu_win, ShapeBounding, 0, 0, rs, n, ShapeSet, Unsorted);
@@ -15014,6 +15024,7 @@ static void desktop_load_click_two_step(const char *house_root) {
     if (!f) return;
     char line[128];
     g_dropdown_max_rows = 0;   /* key removed from the pdl = back to screen-limited */
+    g_sbar_track = -1;         /* key removed = auto */
     while (fgets(line, sizeof(line), f)) {
         char *eq = strchr(line, '=');
         if (!eq) continue;
@@ -15022,6 +15033,11 @@ static void desktop_load_click_two_step(const char *house_root) {
         char *nl = strchr(val, '\n');
         if (nl) *nl = '\0';
         if (strcmp(line, "click_two_step") == 0) g_click_two_step = atoi(val) != 0;
+        else if (strcmp(line, "sbar_track") == 0) {
+            if (strcmp(val, "1") == 0 || strcmp(val, "on") == 0) g_sbar_track = 1;
+            else if (strcmp(val, "0") == 0 || strcmp(val, "off") == 0) g_sbar_track = 0;
+            else g_sbar_track = -1; /* auto */
+        }
         else if (strcmp(line, "dropdown_max_rows") == 0) g_dropdown_max_rows = atoi(val) >= 3 ? atoi(val) : 0;
         /* 2026-09-11, CHTPM-INCREMENTAL-REPARSE-DESIGN.md - runtime
          * toggle for the incremental reparse path, OFF (0) unless this
