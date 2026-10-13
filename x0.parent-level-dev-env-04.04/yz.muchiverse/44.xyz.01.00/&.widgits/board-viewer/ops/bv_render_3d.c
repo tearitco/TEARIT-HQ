@@ -421,7 +421,12 @@ static int maker_load(const char *root) {
     if (!map_id[0] || !desk_id[0]) return 0;
     char dir[4352];
     snprintf(dir, sizeof(dir), "%s/pieces/system/maps/%s/%s", root, map_id, desk_id);
-    if (g_mk.key[0] && strcmp(g_mk.key, dir) == 0) return g_mk.ok;
+    /* Reload when cells.rgba changes. The directory key alone kept a stale atlas after gta-hq re-exported people and buildings. Camera state is not touched. */
+    struct stat cst; char rgba_path[4400]; snprintf(rgba_path, sizeof(rgba_path), "%s/cells.rgba", dir);
+    long long cell_stamp = (stat(rgba_path, &cst) == 0) ? (long long)cst.st_mtime : 0;
+    static long long held_stamp = -1;
+    if (g_mk.key[0] && strcmp(g_mk.key, dir) == 0 && held_stamp == cell_stamp) return g_mk.ok;
+    held_stamp = cell_stamp;
     free(g_mk.atlas); free(g_mk.cells); free(g_mk.para);
     int prev_id = g_mk.id;
     memset(&g_mk, 0, sizeof(g_mk));

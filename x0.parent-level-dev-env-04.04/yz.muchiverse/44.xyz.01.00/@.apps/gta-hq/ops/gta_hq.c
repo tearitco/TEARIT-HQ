@@ -401,14 +401,16 @@ static void art_refresh(void) {
     g_art = !strcmp(b, "rmmv") ? 0 : !strcmp(b, "brixel") ? 2 : 1;
     g_emoji = flag_on("emoji", 0);
 }
-/* Voss stands in the cell. shared/brixels/voss-front.txt is 32x48 named parts (hair, brow, eye, pupil, nose, mouth, lapel, shirt, arms, pants, shoes). Feet sit on the bottom of the cell. */
-#define VOSS_W 32
-#define VOSS_H 48
-static void voss_rgb(char c, int *r, int *g, int *b, int *a) {
+/* A person stands in the cell. shared/brixels/<name>-front.txt is 32x48 named parts. Feet sit on the bottom of the cell. The same picture is the 3D wall face. */
+#define FIG_W 32
+#define FIG_H 48
+#define FIG_N 8
+static void figure_rgb(char c, int *r, int *g, int *b, int *a) {
     *a = 255; *r = 0; *g = 0; *b = 0;
     if (c == '.') *a = 0;
     else if (c == 'H') { *r = 28; *g = 22; *b = 18; }
     else if (c == 'h') { *r = 62; *g = 48; *b = 36; }
+    else if (c == 'L') { *r = 214; *g = 176; *b = 90; }
     else if (c == 'S') { *r = 214; *g = 166; *b = 130; }
     else if (c == 's') { *r = 176; *g = 124; *b = 96; }
     else if (c == 'B') { *r = 42; *g = 32; *b = 26; }
@@ -416,8 +418,15 @@ static void voss_rgb(char c, int *r, int *g, int *b, int *a) {
     else if (c == 'e') { *r = 24; *g = 28; *b = 34; }
     else if (c == 'N') { *r = 168; *g = 112; *b = 86; }
     else if (c == 'M') { *r = 150; *g = 72; *b = 68; }
+    else if (c == 'D') { *r = 70; *g = 48; *b = 36; }
     else if (c == 'J') { *r = 36; *g = 48; *b = 72; }
     else if (c == 'j') { *r = 22; *g = 28; *b = 44; }
+    else if (c == 'G') { *r = 36; *g = 96; *b = 52; }
+    else if (c == 'g') { *r = 22; *g = 64; *b = 36; }
+    else if (c == 'R') { *r = 160; *g = 42; *b = 44; }
+    else if (c == 'Y') { *r = 210; *g = 168; *b = 40; }
+    else if (c == 'Z') { *r = 110; *g = 72; *b = 40; }
+    else if (c == 'K') { *r = 36; *g = 36; *b = 40; }
     else if (c == 'T') { *r = 214; *g = 214; *b = 208; }
     else if (c == 'C') { *r = 186; *g = 186; *b = 178; }
     else if (c == 'A') { *r = 214; *g = 166; *b = 130; }
@@ -427,31 +436,43 @@ static void voss_rgb(char c, int *r, int *g, int *b, int *a) {
     else if (c == 'o') { *r = 12; *g = 12; *b = 14; }
     else *a = 0;
 }
-static int blit_player_voxel(int tx, int ty) {
-    static unsigned char img[VOSS_W * VOSS_H * 4]; static int loaded = 0, ok = 0;
-    if (!loaded) {
-        loaded = 1;
-        char p[PATH_MAX]; snprintf(p, sizeof p, "%s/shared/brixels/voss-front.txt", HOUSE);
-        FILE *f = fopen(p, "r"); if (f) {
-            char line[80]; int y = 0;
-            while (y < VOSS_H && fgets(line, sizeof line, f)) {
-                if (line[0] == '#' || line[0] == '\n') continue;
-                for (int x = 0; x < VOSS_W && line[x] && line[x] != '\n'; x++) {
-                    int r, g, b, a; voss_rgb(line[x], &r, &g, &b, &a);
-                    int i = (y * VOSS_W + x) * 4; img[i] = (unsigned char)r; img[i+1] = (unsigned char)g; img[i+2] = (unsigned char)b; img[i+3] = (unsigned char)a;
-                }
-                y++;
-            }
-            fclose(f); ok = y >= 40;
+static struct { char name[16]; unsigned char img[FIG_W * FIG_H * 4]; int ok; } g_fig[FIG_N];
+static int g_fig_n;
+static int figure_slot(const char *name) {
+    for (int i = 0; i < g_fig_n; i++) if (!strcmp(g_fig[i].name, name)) return i;
+    if (g_fig_n >= FIG_N) return -1;
+    int n = g_fig_n++; snprintf(g_fig[n].name, 16, "%s", name); g_fig[n].ok = 0;
+    char p[PATH_MAX]; snprintf(p, sizeof p, "%s/shared/brixels/%s-front.txt", HOUSE, name);
+    FILE *f = fopen(p, "r"); if (!f) return n;
+    char line[80]; int y = 0;
+    while (y < FIG_H && fgets(line, sizeof line, f)) {
+        if (line[0] == '#' || line[0] == '\n') continue;
+        for (int x = 0; x < FIG_W && line[x] && line[x] != '\n'; x++) {
+            int r, g, b, a; figure_rgb(line[x], &r, &g, &b, &a);
+            int i = (y * FIG_W + x) * 4; g_fig[n].img[i] = (unsigned char)r; g_fig[n].img[i+1] = (unsigned char)g; g_fig[n].img[i+2] = (unsigned char)b; g_fig[n].img[i+3] = (unsigned char)a;
         }
+        y++;
     }
-    if (!ok) return 0;
-    int dw = T, dh = T * VOSS_H / VOSS_W; if (dh < 36) dh = 36;
+    fclose(f); g_fig[n].ok = y >= 40; return n;
+}
+static int blit_figure(const char *name, int tx, int ty) {
+    int n = figure_slot(name); if (n < 0 || !g_fig[n].ok) return 0;
+    int dw = T, dh = T * FIG_H / FIG_W; if (dh < 36) dh = 36;
     int x0 = OX + tx * T, y0 = OY + (ty + 1) * T - dh;
     for (int y = 0; y < dh; y++) for (int x = 0; x < dw; x++) {
         int X = x0 + x, Y = y0 + y; if (X < 0 || Y < 0 || X >= FW || Y >= FH) continue;
-        int sx = x * VOSS_W / dw, sy = y * VOSS_H / dh; unsigned char *a = img + (sy * VOSS_W + sx) * 4; if (!a[3]) continue;
+        int sx = x * FIG_W / dw, sy = y * FIG_H / dh; unsigned char *a = g_fig[n].img + (sy * FIG_W + sx) * 4; if (!a[3]) continue;
         unsigned char *q = fr + ((size_t)Y * FW + X) * 4; q[0] = a[0]; q[1] = a[1]; q[2] = a[2]; q[3] = 255;
+    }
+    return 1;
+}
+/* The 3D block face is this same front view, scaled into one tile. Empty pixels stay transparent so the floor shows around the body. */
+static int figure_tile(const char *name, unsigned char *dst, int n) {
+    int s = figure_slot(name); if (s < 0 || !g_fig[s].ok || n < 1) return 0;
+    memset(dst, 0, (size_t)n * n * 4);
+    for (int y = 0; y < n; y++) for (int x = 0; x < n; x++) {
+        int sx = x * FIG_W / n, sy = y * FIG_H / n; unsigned char *a = g_fig[s].img + (sy * FIG_W + sx) * 4;
+        unsigned char *q = dst + (y * n + x) * 4; q[0] = a[0]; q[1] = a[1]; q[2] = a[2]; q[3] = a[3];
     }
     return 1;
 }
@@ -666,7 +687,7 @@ static void render(void) {
     if (tr.room == vroom) order[no++] = -1;
     for (int a2 = 0; a2 < no; a2++) for (int b2 = a2 + 1; b2 < no; b2++) if (EY(order[b2]) < EY(order[a2])) { int tmp = order[a2]; order[a2] = order[b2]; order[b2] = tmp; }
     for (int k = 0; k < (g_bg_only ? 0 : no); k++) { int i = order[k]; Ent *e = i < 0 ? &tr : &others[i]; int col = e->steps ? cyc[e->steps % 4] : 1, ci = i < 0 ? 0 : party[i].idx;
-        if (g_art == 2 && i < 0 && blit_player_voxel(e->x, e->y)) { }
+        if (g_art == 2 && blit_figure(i < 0 ? "voss" : party[i].id, e->x, e->y)) { }
         else if (g_art == 2 || g_emoji) fill_cell(e->x, e->y, g_emoji ? 255 : 220, g_emoji ? 200 : 176, g_emoji ? 40 : 140);
         else blit(sheet("characters", i < 0 ? hero.sheet : party[i].sheet), (ci % 4) * 3 * S48 + col * S48, (ci / 4) * 4 * S48 + e->dir * S48, S48, S48, OX + e->x * T, OY + e->y * T - 8 * T / S48); }
     if (!g_bg_only) { int tone[4]; if (read_tone(tone)) {      /* RPG Maker Tint Screen (events-hq tint_screen -> state/world/screen_state.pdl "value=r,g,b,gray"): add per channel, gray = pull toward the luminance; indoors it is only 40% */
@@ -1097,9 +1118,10 @@ static void export3d(char *msg, size_t cap) {
                 int blocked = 0; for (int i = 0; i < nscen; i++) if (scen[i].room == r && x >= scen[i].x && x < scen[i].x + scen[i].w && y >= scen[i].y && y < scen[i].y + scen[i].h) blocked = 1;
                 char gch = '.'; if (blocked) { gch = 't'; for (int i = 0; i < nscen; i++) if (scen[i].room == r && strcmp(scen[i].sheet, "Outside_B") && x >= scen[i].x && x < scen[i].x + scen[i].w && y >= scen[i].y && y < scen[i].y + scen[i].h) gch = 'B'; }
                 glyph[y][x] = gch; fs[y][x] = slot_of(cellpx); ws[y][x] = 0; } }
+        if (g_art == 2) for (int i = -1; i < nparty; i++) { Ent *e = i < 0 ? &tr : &others[i]; if (e->room != r || e->x < 0 || e->y < 0 || e->x >= COLS || e->y >= ROWS) continue; if (glyph[e->y][e->x] == 'B' || glyph[e->y][e->x] == 't') continue; unsigned char face[XT * XT * 4]; if (!figure_tile(i < 0 ? "voss" : party[i].id, face, XT)) continue; ws[e->y][e->x] = slot_of(face); if (glyph[e->y][e->x] == '.' || glyph[e->y][e->x] == 'f') glyph[e->y][e->x] = 'P'; }
         (void)fl;
         snprintf(p, sizeof p, "%s/map.txt", d); { FILE *f = fopen(p, "w"); if (f) { for (int y = 0; y < ROWS; y++) { glyph[y][COLS] = 0; fprintf(f, "%s\n", glyph[y]); } fclose(f); } }
-        snprintf(p, sizeof p, "%s/extrusion.pdl", d); { FILE *f = fopen(p, "w"); if (f) { fprintf(f, "SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\nMETA         | map_id             | gta-hq\nMETA         | desk_id            | %s\nMETA         | note               | %s (gta-hq house, exported from the live house)\nEXTRUDE      | W                  | 3\nEXTRUDE      | D                  | 3\nEXTRUDE      | T                  | 2\nEXTRUDE      | B                  | 4\nEXTRUDE      | t                  | 2\nEXTRUDE      | f                  | 1\nEXTRUDE      | default            | 0\n", rooms[r].id, rooms[r].name); fclose(f); } }
+        snprintf(p, sizeof p, "%s/extrusion.pdl", d); { FILE *f = fopen(p, "w"); if (f) { fprintf(f, "SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\nMETA         | map_id             | gta-hq\nMETA         | desk_id            | %s\nMETA         | note               | %s (gta-hq house, exported from the live house)\nEXTRUDE      | W                  | 3\nEXTRUDE      | D                  | 3\nEXTRUDE      | T                  | 2\nEXTRUDE      | B                  | 4\nEXTRUDE      | t                  | 2\nEXTRUDE      | P                  | 3\nEXTRUDE      | f                  | 1\nEXTRUDE      | default            | 0\n", rooms[r].id, rooms[r].name); fclose(f); } }
         int cols = 16, nrows = (nslot + cols - 1) / cols; int aw = cols * XT, ah = nrows * XT; unsigned char *atlas = calloc((size_t)aw * ah * 4, 1);
         for (int i = 0; i < nslot; i++) for (int y = 0; y < XT; y++) memcpy(atlas + ((size_t)((i / cols) * XT + y) * aw + (i % cols) * XT) * 4, slotpx[i] + y * XT * 4, XT * 4);
         snprintf(p, sizeof p, "%s/cells.rgba", d); { FILE *f = fopen(p, "wb"); if (f) { fwrite(atlas, 1, (size_t)aw * ah * 4, f); fclose(f); } } snprintf(p, sizeof p, "%s/cells.png", d); stbi_write_png(p, aw, ah, 4, atlas, aw * 4); free(atlas);
