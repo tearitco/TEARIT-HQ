@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | day_tick
+STATE        | source               | events-hq
+NODE         | id=1 type=mcl_hq_verb | verb=day_tick|arg=

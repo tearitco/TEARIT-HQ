@@ -1,0 +1,8 @@
+# mcl-hq - SCAFFOLD (2026-10-12)
+
+A carbon copy of dsr-rpg's engine, made so Grok has something to work with. Nothing here is MCL-specific yet: it is dsr-rpg renamed (mcl-hq / mcl_hq, binary mcl_hq.+x, own state folder, own clock, own pc-hq instance mcl-hq-pchq, own event commands mcl_hq_verb and mcl_pet_says).
+
+Plan and open questions: `#.#.calendar-dox/!.HQ-IQ-BOOK/08-roadmap/design-docs/MCL-HQ-AND-DF-HQ-HANDOFF-2026-10-12.md` (sections 3 and 5). Questions channel: co-lab-hai session 1791851915.
+
+Shared on purpose (change when the project needs its own): the cast (DB party `DsrRpgParty`, actors 25-30), the RPG Maker tile sheets and the six dsr-rpg rooms (`rooms.pdl`), the dsr-rpg catalog/voices. Build: `sh ops/build_mcl_hq.sh`. Window: `sh button.sh run`. Board: `sh board/open_board.sh` (or the Toys entry "mcl-hq board").
+Status: copied and renamed only; see the commit message for what was observed.

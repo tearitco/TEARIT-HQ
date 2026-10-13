@@ -6,6 +6,12 @@
 # upper: timber-brace, stone-arch, metal-truss
 # center: wood-posts, neon-tube, iron-gate, red-curtain
 # lower: white-panel, and the existing wood-rail (bottom plank)
+# cdda-brick: UltiCa t_brick_wall west end / east-west / east end, nearest-scaled 32 to 48.
+# df-stone: Spacefox_16x16.png row 12 cols 10 / 11 / 13, nearest-scaled 16 to 48.
+# brix-tower / brix-awning / brix-car: Los Vientos colors, top band only (rows 0-21), clear below like stone-ledge.
+# cdda-rail: UltiCa t_railing west / east-west / east.
+# df-beam: Spacefox row 12 cols 1 / 4 / 2.
+# mcl-grass / mcl-cobble / mcl-oak / mcl-chest: Mineclonia 16px faces, nearest-scaled to 48. Chest middle is the front face of mcl_chests_normal.png.
 SKIN | stone-ledge | Stone ledge | &.widgits/taskbar-settings/skins/stone-ledge/left | &.widgits/taskbar-settings/skins/stone-ledge/mid | &.widgits/taskbar-settings/skins/stone-ledge/right
 SKIN | wood-rail | Wood rail | &.widgits/taskbar-settings/skins/wood-rail/left | &.widgits/taskbar-settings/skins/wood-rail/mid | &.widgits/taskbar-settings/skins/wood-rail/right
 SKIN | timber-brace | Timber brace | &.widgits/taskbar-settings/skins/timber-brace/left | &.widgits/taskbar-settings/skins/timber-brace/mid | &.widgits/taskbar-settings/skins/timber-brace/right
@@ -16,3 +22,14 @@ SKIN | neon-tube | Neon tube | &.widgits/taskbar-settings/skins/neon-tube/left |
 SKIN | iron-gate | Iron gate | &.widgits/taskbar-settings/skins/iron-gate/left | &.widgits/taskbar-settings/skins/iron-gate/mid | &.widgits/taskbar-settings/skins/iron-gate/right
 SKIN | red-curtain | Red curtain | &.widgits/taskbar-settings/skins/red-curtain/left | &.widgits/taskbar-settings/skins/red-curtain/mid | &.widgits/taskbar-settings/skins/red-curtain/right
 SKIN | white-panel | White panel | &.widgits/taskbar-settings/skins/white-panel/left | &.widgits/taskbar-settings/skins/white-panel/mid | &.widgits/taskbar-settings/skins/white-panel/right
+SKIN | cdda-brick | CDDA brick | &.widgits/taskbar-settings/skins/cdda-brick/left | &.widgits/taskbar-settings/skins/cdda-brick/mid | &.widgits/taskbar-settings/skins/cdda-brick/right
+SKIN | df-stone | DF stone | &.widgits/taskbar-settings/skins/df-stone/left | &.widgits/taskbar-settings/skins/df-stone/mid | &.widgits/taskbar-settings/skins/df-stone/right
+SKIN | brix-tower | Brix tower | &.widgits/taskbar-settings/skins/brix-tower/left | &.widgits/taskbar-settings/skins/brix-tower/mid | &.widgits/taskbar-settings/skins/brix-tower/right
+SKIN | brix-awning | Brix awning | &.widgits/taskbar-settings/skins/brix-awning/left | &.widgits/taskbar-settings/skins/brix-awning/mid | &.widgits/taskbar-settings/skins/brix-awning/right
+SKIN | brix-car | Brix car | &.widgits/taskbar-settings/skins/brix-car/left | &.widgits/taskbar-settings/skins/brix-car/mid | &.widgits/taskbar-settings/skins/brix-car/right
+SKIN | cdda-rail | CDDA rail | &.widgits/taskbar-settings/skins/cdda-rail/left | &.widgits/taskbar-settings/skins/cdda-rail/mid | &.widgits/taskbar-settings/skins/cdda-rail/right
+SKIN | df-beam | DF beam | &.widgits/taskbar-settings/skins/df-beam/left | &.widgits/taskbar-settings/skins/df-beam/mid | &.widgits/taskbar-settings/skins/df-beam/right
+SKIN | mcl-grass | MCL grass | &.widgits/taskbar-settings/skins/mcl-grass/left | &.widgits/taskbar-settings/skins/mcl-grass/mid | &.widgits/taskbar-settings/skins/mcl-grass/right
+SKIN | mcl-cobble | MCL cobble | &.widgits/taskbar-settings/skins/mcl-cobble/left | &.widgits/taskbar-settings/skins/mcl-cobble/mid | &.widgits/taskbar-settings/skins/mcl-cobble/right
+SKIN | mcl-oak | MCL oak | &.widgits/taskbar-settings/skins/mcl-oak/left | &.widgits/taskbar-settings/skins/mcl-oak/mid | &.widgits/taskbar-settings/skins/mcl-oak/right
+SKIN | mcl-chest | MCL chest | &.widgits/taskbar-settings/skins/mcl-chest/left | &.widgits/taskbar-settings/skins/mcl-chest/mid | &.widgits/taskbar-settings/skins/mcl-chest/right

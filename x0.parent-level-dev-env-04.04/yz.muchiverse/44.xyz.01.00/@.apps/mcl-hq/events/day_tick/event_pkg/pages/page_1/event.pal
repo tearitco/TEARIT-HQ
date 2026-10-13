@@ -1,0 +1,4 @@
+# event.pal - real prisc+x opcodes in the shape khtpm_events_hq_manager.c compiles (event.ir.pdl -> event.pal -> cmd_N.sh); hand-written by the mcl-hq conversion 2026-10-11
+# pkg=day_tick page=page_1
+exec cmd_1.sh
+halt
