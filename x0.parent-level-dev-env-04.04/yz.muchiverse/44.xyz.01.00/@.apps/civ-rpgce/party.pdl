@@ -1,0 +1,5 @@
+SECTION | KEY | VALUE
+------------------------------
+# Settlers are not the terumon and not Asa. People1 indexes are the stand-in colors. The viking sheet is 320px-Vikings_tilemaps_000.bmp.png and is not a walk sprite yet.
+PET | Blue  | People1 | 1
+PET | Green | People1 | 2

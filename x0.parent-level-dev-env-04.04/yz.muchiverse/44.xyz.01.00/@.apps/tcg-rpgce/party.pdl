@@ -1,0 +1,7 @@
+SECTION | KEY | VALUE
+------------------------------
+# Picture choice only. Ember, Glacine, Murmur, Solvent are actors 5-8 on page teru-test. Their character fields are empty, so these Monster indexes are the stand-in until a terumon sheet is named. Asa (actor 9, page office) is the walker and is not a row here.
+PET | Ember   | Monster | 0
+PET | Glacine | Monster | 1
+PET | Murmur  | Monster | 2
+PET | Solvent | Monster | 3
