@@ -85,6 +85,33 @@ static void send_payload(const char *payload, size_t n) {
     (void)!write(STDOUT_FILENO, "\n", 1);
 }
 
+/* Worker-side diagnostic frame (2026-10-13).
+ *
+ * The manager ALREADY handles an "ERROR|" frame: it logs it to the module
+ * log and keeps reading until STATUS, explicitly so worker diagnostics do
+ * not abort a load (network_browser_manager.c, "hygiene: worker-side
+ * JS/boot diagnostics"). So this uses the house'"'"'s existing frame kind
+ * rather than inventing a protocol nobody reads.
+ *
+ * It exists because a failed DOM load was completely SILENT: nb_dom_load()
+ * returns NULL for anything that is not its own serializer stream (and for
+ * a missing file, fopen just fails), g_dom_root stays NULL, and the page
+ * renders as its title and nothing else with STATUS ok. Measured on
+ * 2026-10-13 while building the G1 acceptance harness - four commits were
+ * spent proving that an HTML fixture is not a DOM, and every one of those
+ * runs said "ok" while rendering nothing.
+ */
+static void send_worker_error(const char *msg) {
+    char buf[1024];
+    snprintf(buf, sizeof(buf), "ERROR|%s", msg);
+    if (g_cli) {
+        (void)!write(STDOUT_FILENO, buf, strlen(buf));
+        (void)!write(STDOUT_FILENO, "\n", 1);
+        return;
+    }
+    send_payload(buf, strlen(buf));
+}
+
 static void send_status(const char *status) {
     if (g_cli) {
         g_cli_status_ok = (strncmp(status, "STATUS ok", 9) == 0);
@@ -7731,9 +7758,29 @@ static void run_page(void) {
     /* build the DOM tree from the manager's fetch.dom (if present) */
     if (g_fetch_dom[0]) {
         FILE *df = fopen(g_fetch_dom, "rb");
-        if (df) {
+        if (!df) {
+            /* SILENT BEFORE (2026-10-13): a fetch.dom the worker cannot
+             * open left g_dom_root NULL and the page rendered as its
+             * title only, with STATUS ok. */
+            char m[900];
+            snprintf(m, sizeof(m),
+                     "DOM: cannot open fetch.dom (%s) - the page will render as its title only",
+                     g_fetch_dom);
+            send_worker_error(m);
+        } else {
             g_dom_root = nb_dom_load(df);
             fclose(df);
+            if (!g_dom_root) {
+                /* Same silence, same consequence. nb_dom_load() reads the
+                 * nb_serialize() wire format, not HTML - anything else
+                 * (an HTML file, a stray comment at the top) returns
+                 * NULL, which until now looked exactly like a page with
+                 * no content. */
+                send_worker_error("DOM: fetch.dom did not deserialize "
+                                  "(nb_dom_load returned NULL; the file must be "
+                                  "nb_serialize output, not HTML) - the page will "
+                                  "render as its title only");
+            }
         }
     } else if (g_cli) {
         /* standalone nbjs: give the page an empty document/body */

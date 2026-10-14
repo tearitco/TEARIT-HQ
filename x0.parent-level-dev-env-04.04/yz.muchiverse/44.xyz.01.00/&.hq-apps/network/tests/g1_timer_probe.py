@@ -84,6 +84,36 @@ def send(p, payload):
         pass
 
 
+def dom_diagnostics(p):
+    """A DOM that will not load must SAY SO (2026-10-13).
+
+    Before this, a fetch.dom the worker could not open - or could not
+    deserialize, since nb_dom_load reads the nb_serialize wire format and
+    not HTML - left g_dom_root NULL and the page rendered as its title
+    and nothing else, with STATUS ok. Four commits of the G1 harness were
+    spent proving that an HTML fixture is not a DOM, and every run said
+    "ok" while rendering nothing.
+
+    So: LOAD a page whose fetch.dom does not exist, and require an ERROR
+    frame naming the problem. This is the assertion that makes the silence
+    a bug rather than a mystery.
+    """
+    bad = "/tmp/nb_definitely_not_here.dom"
+    frame = ("LOAD\n%s\n%s\nhttp://localhost/x\nX\n\n"
+             % (os.path.abspath(page_js), bad)).encode()
+    send(p, frame)
+    deadline = time.time() + 20
+    while time.time() < deadline:
+        fr = read_frame(p.stdout, deadline)
+        if fr is None:
+            break
+        if fr.startswith(b"ERROR|"):
+            return fr.decode("utf-8", "replace")
+        if fr.startswith(b"STATUS"):
+            break
+    return None
+
+
 def main():
     p = subprocess.Popen([worker], stdin=subprocess.PIPE,
                          stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
@@ -100,6 +130,15 @@ def main():
 
 def run(p):
     debug = bool(os.environ.get("NB_TIMER_DEBUG"))
+    diag = dom_diagnostics(p)
+    if diag:
+        print("  DOM diagnostics: %s" % diag[:110])
+        print("PASS: an unloadable DOM is reported, not swallowed")
+    else:
+        print("FAIL: a fetch.dom that cannot be opened produced no ERROR frame - "
+              "the page would render as its title only, silently")
+        return 1
+
     # Six fields, not five: the worker reads f[5] as the page's CSS
     # (nb_js_worker.c's LOAD handler), and the manager sends
     # js/dom/href/title/css. ABSOLUTE paths too - relative ones resolve
