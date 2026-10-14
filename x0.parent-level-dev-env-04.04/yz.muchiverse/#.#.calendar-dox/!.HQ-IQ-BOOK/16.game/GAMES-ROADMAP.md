@@ -42,6 +42,7 @@ Status words: `planned`, `designing`, `building`, `proven` (evidence recorded), 
 | G2 | **Detail-level op**: one brix assembly drawn at three distances from the same parts | Three screenshots of the same car at three distances | planned |
 | G3 | **Word-bank to image pilot** (by hand, no runtime generation) | One concept goes word bank, prompt, image, judged; the judged image becomes a brix asset | planned |
 | G4 | Scripted gta playthrough | As C6 | planned |
+| G3a | **img-hai window** (text-to-image GUI for brixels; owner's request 2026-10-13): slices H1-H6 in `IMG-HAI-DESIGN.md` | H1: window screenshot + ui state listing the parts and existing drafts; H3: a Draft click makes a new image on debil with the window responsive | designing |
 
 ## 3. Flight, scale and learning (needs the spine)
 
@@ -65,7 +66,7 @@ Each gets: what was built, proof recorded, how to use it, how to modify it, what
 | `CDDA-HQ-SPEC.md` | C0 |
 | `VEHICLES-AS-PART-CELLS.md` | C3 |
 | `DF-HQ-JOBS-AND-MOVERS.md` | D1-D2 |
-| `GTA-HQ-DESIGN.md`, `DETAIL-LEVEL-OP.md`, `WORD-BANK-TO-IMAGE.md` | G0, G2, G3 |
+| `GTA-HQ-DESIGN.md`, `DETAIL-LEVEL-OP.md`, `WORD-BANK-TO-IMAGE.md`, `IMG-HAI-DESIGN.md` | G0, G2, G3, G3a |
 | `FLIGHT-AND-SCALE.md` | F1-F4 |
 | `BEHAVIOUR-LEARNING-LOOP.md` | F5 |
 | `MICROBIOLOGY-CONCEPTS.md` | F6 |
