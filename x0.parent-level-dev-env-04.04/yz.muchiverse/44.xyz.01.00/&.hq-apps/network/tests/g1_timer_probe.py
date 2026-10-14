@@ -41,34 +41,39 @@ def read_exactly(f, n, deadline):
 
 
 def read_frame(f, deadline):
-    head = read_exactly(f, 6, deadline)
-    if head is None:
+    """One frame, in the worker's exact order (nb_js_worker.c: send is
+    "%.6d\\n" + payload + "\\n"; worker_dom_test.c's wreply reads it back the
+    same way).
+
+    The subtlety that cost this probe an entire session: the length
+    header is SIX DIGITS PLUS A NEWLINE, so reading a fixed 6 bytes leaves
+    that newline in the stream and every subsequent read is off by one.
+    The first frame still looked right, because a defensive lstrip() ate
+    the stray newline - which is exactly how a harness hides its own bug.
+    So: read up to the newline, then the body, then the trailing newline,
+    and do NOT strip anything from the body.
+    """
+    digits = b""
+    while len(digits) < 32:
+        if time.time() > deadline:
+            return None
+        ch = f.read(1)
+        if not ch:
+            return None
+        if ch == b"\n":
+            break
+        digits += ch
+    else:
         return None
     try:
-        ln = int(head)
+        ln = int(digits)
     except ValueError:
         return None
     body = read_exactly(f, ln, deadline)
     if body is None:
         return None
-    # The trailing newline is part of the framing and must be consumed.
-    # worker_dom_test.c's wreply does exactly this, and skipping it is what
-    # made this probe fail in a way that looked like a dead worker: the next
-    # header read started on that leftover newline, int() failed on
-    # "\n00012" and the probe reported "never answered STATUS" after a
-    # perfectly healthy keepalive.
-    read_exactly(f, 1, deadline)
-    # The worker emits a leading newline before some frame bodies: a
-    # LIVE|drain| keepalive arrives as newline + "LIVE|drain|", so every
-    # startswith() dispatch silently missed it and the keepalive looked
-    # like an unexpected reply. Strip CR/LF here, once.
-    #
-    # Written with bytes([13, 10]) rather than a b"\r\n" literal on
-    # purpose: one round of shell heredoc escaping turned b"\\r\\n" into
-    # the four characters backslash-r-backslash-n, and lstrip() then
-    # quietly stripped the letters r and n off every frame instead - a
-    # test that passed because it was deleting what it was looking for.
-    return body.lstrip(bytes([13, 10]))
+    read_exactly(f, 1, deadline)      # the framing's trailing newline
+    return body
 
 
 def send(p, payload):
@@ -108,6 +113,7 @@ def run(p):
             break
         if debug:
             print("  [frame] %r" % fr[:100])
+            print("  [len ] %d" % len(fr))
         if fr.startswith(b"LIVE|"):
             continue
         if fr.startswith(b"RENDER\n"):

@@ -1,22 +1,20 @@
-// G1.1 fixture: a live timer (2026-10-13).
-//
-// The page owns a counter and a setInterval that writes it into a row,
-// so a worker that keeps ticking produces a NEW, DIFFERENT row value over
-// time. A worker that renders once and then freezes produces the same
-// value forever - which is the whole failure this harness exists to catch.
-//
-// 500 ms, not 1000: the KPI asks for >= 6 self-updates in 10 s, which at
-// 1 Hz would be impossible by arithmetic (10 updates, but the last one
-// lands after the window closes) and would make the bar ambiguous rather
-// than hard. 500 ms gives 20 opportunities for 6.
+<!doctype html>
+<html>
+<head><title>Timer fixture</title></head>
+<body>
+<!-- G1.1 fixture (2026-10-13).
 
-var n = 0;
+     The DOM arrives here (the worker is LOADed with this as fetch.dom);
+     the behaviour arrives in timer.js. They are separate on purpose: that
+     is exactly how the worker is fed in production, and it means the
+     fixture cannot accidentally rely on script and DOM arriving together.
 
-function bump() {
-  n = n + 1;
-  var el = document.getElementById("t");
-  if (el) { el.textContent = "tick " + n; }
-}
-
-setInterval(bump, 500);
-bump();
+     #t is the row the timer writes into. Its initial text carries "tick
+     0" so a worker that runs the script exactly once still produces a
+     row the probe can find - the probe asserts on THAT before it asserts
+     anything about updates, so "the harness cannot see the page" and
+     "the timer is frozen" can never be confused for one another. -->
+<p id="t">tick 0</p>
+<p>Timer fixture: this paragraph must never change.</p>
+</body>
+</html>
