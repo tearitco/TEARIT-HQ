@@ -536,10 +536,37 @@ if it were whole; and prefer generating a fixture to writing one.
 ### 9.5 Next bite (G1.4)
 
 G1.4 is the last G1 risk this change introduced: an unsolicited push must
-never steal the address bar or reset the nav cursor mid-typing. It needs
-real keystrokes into a live window, and there is no `xdotool` on this leg
-— `tests/xsendevent.py` is mouse-only. So the bite is: extend it with
-`KeyPress`/`KeyRelease` (ctypes, same stdlib-only approach), verify a
-typed character actually lands, then assert the text survives several
-push-driven republishes **while the page's tick row advances in the same
-window** — without that second half the test passes vacuously.
+never steal the address bar or reset the nav cursor mid-typing.
+
+**CORRECTION, measured on the live window 2026-10-14: I was wrong about
+what G1.4 needs.** I extended `tests/xsendevent.py` with `KeyPress`/
+`KeyRelease` believing there was no way to type into a window. There is —
+and it was already there:
+
+- **`dispatch_relay_code()` maps relay codes 32..126 to literal
+  characters**: `else if (code >= 32 && code <= 126) handle_key(0,
+  (char)code);`. So `printf '122\n' >> <relay>` types a `z`.
+- What actually blocks the test is **arming**, not typing. Typed
+  characters go nowhere until the `cli_io` is armed, and arming happens on
+  a real click (`click_focus_then_activate()` → `g_default_input_elem`).
+  Verified live: three `z` codes into a running browser changed nothing in
+  the mirror except its timestamp. There is no `Ctrl+L`.
+
+So the xsendevent key support (commit `dc7ce76da`) is **not required for
+G1.4** and was built on a wrong assumption. It is harmless and correct on
+its own terms — the dispatcher reads keys through `XLookupString(&ev->xkey,
+…)`, so a synthetic key does need a real keycode — but it is not the
+tool this KPI needs.
+
+What G1.4 now needs, concretely:
+
+1. **The address bar's pixel coordinates**, to click it and arm it. The
+   `nb_span_drag_test.sh` suite already solves this ("link geometry comes
+   from the parked capture's own blue underlines", never hardcoded) — that
+   technique is the precedent to copy.
+   *Alternative, cheaper:* a relay code that arms the focused `cli_io`
+   without a click. That is a real renderer change, so it wants its own
+   decision, not a side effect of a test.
+2. Then: type a partial URL, let pushes republish, and assert **both**
+   that the text survives **and** that the page's tick row advanced in the
+   same window. The second half is what stops the test passing vacuously.
