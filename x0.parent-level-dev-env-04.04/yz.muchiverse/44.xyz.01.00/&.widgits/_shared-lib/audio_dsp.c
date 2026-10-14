@@ -58,11 +58,15 @@ static short *adsp_wsola(const short *x, long n, int sr, double ratio, long *out
     for (long i = 0; i < ol; i++) { double v = nm[i] > 1e-3 ? out[i] / nm[i] : 0; if (v > 32767) v = 32767; if (v < -32768) v = -32768; res[i] = (short)lrint(v); }
     free(out); free(nm); free(w); *outn = ol; return res;
 }
-/* read x at positions i*step (cubic Catmull-Rom); output length = n / step. step > 1 = higher pitch and shorter. */
+/* 8-tap Blackman-windowed sinc interpolation at fractional position t of x[0..n): flat to about 0.8 of Nyquist (cubic droops earlier and was eating the voice's high frequencies). */
+static double adsp_interp8(const short *x, long n, double t) {
+    long k = (long)floor(t); double u = t - k, acc = 0, wsum = 0; for (int j = -3; j <= 4; j++) { double d = u - j, sinc = fabs(d) < 1e-9 ? 1.0 : sin(M_PI * d) / (M_PI * d), wn = 0.42 + 0.5 * cos(M_PI * d / 4.0) + 0.08 * cos(2 * M_PI * d / 4.0), w = sinc * wn; long i = k + j; if (i < 0) i = 0; if (i >= n) i = n - 1; acc += x[i] * w; wsum += w; }
+    return wsum != 0 ? acc / wsum : 0;
+}
+/* read x at positions i*step (8-tap windowed sinc, was cubic); output length = n / step. step > 1 = higher pitch and shorter. */
 static short *adsp_resample(const short *x, long n, double step, long *outn) {
     long ol = (long)(n / step); if (ol < 1) return NULL; short *r = malloc((size_t)ol * 2); if (!r) return NULL;
-    for (long i = 0; i < ol; i++) { double t = i * step; long k = (long)t; double u = t - k; double p0 = x[k > 0 ? k - 1 : 0], p1 = x[k], p2 = x[k + 1 < n ? k + 1 : n - 1], p3 = x[k + 2 < n ? k + 2 : n - 1];
-        double v = 0.5 * ((2 * p1) + (-p0 + p2) * u + (2 * p0 - 5 * p1 + 4 * p2 - p3) * u * u + (-p0 + 3 * p1 - 3 * p2 + p3) * u * u * u); if (v > 32767) v = 32767; if (v < -32768) v = -32768; r[i] = (short)lrint(v); }
+    for (long i = 0; i < ol; i++) { double v = adsp_interp8(x, n, i * step); if (v > 32767) v = 32767; if (v < -32768) v = -32768; r[i] = (short)lrint(v); }
     *outn = ol; return r;
 }
 /* pitch shift by `st` semitones keeping the duration: stretch by r = 2^(st/12) with WSOLA, then read back r times faster. NOTE: this moves the formants with the pitch (a "chipmunk"/"giant" voice); a
@@ -70,4 +74,41 @@ static short *adsp_resample(const short *x, long n, double step, long *outn) {
 static short *adsp_pitch_shift(const short *x, long n, int sr, double st, long *outn) {
     double r = pow(2.0, st / 12.0); if (fabs(st) < 1e-9) { short *c = malloc((size_t)n * 2); if (c) { memcpy(c, x, (size_t)n * 2); *outn = n; } return c; }
     long sl = 0; short *s = adsp_wsola(x, n, sr, r, &sl); if (!s) return NULL; short *o = adsp_resample(s, sl, r, outn); free(s); return o;
+}
+
+/* ---- voice character effects (added 2026-10-14; BOOK 19.audio/VOICE-FX.md) ---- */
+static void adsp_ifft(AdspCx *x, int n) { for (int i = 0; i < n; i++) x[i].im = -x[i].im; adsp_fft(x, n); for (int i = 0; i < n; i++) { x[i].re /= n; x[i].im = -x[i].im / n; } }
+/* Formant shift that keeps pitch and duration: STFT (Hann, N=1024, hop N/4); per frame the spectral envelope is estimated by cepstral smoothing (keep quefrencies below one pitch period of a 450 Hz voice),
+ * the envelope is re-sampled along frequency by `ratio` (>1 moves the resonances up = a smaller vocal tract), the frame's own phases and fine structure (the harmonics) are kept, and frames are overlap-added.
+ * ratio 0.6..1.7 is sensible; quality falls off at the extremes. In-place on a copy; returns malloc'd buffer of length n (caller frees) or NULL. */
+static short *adsp_formant_shift(const short *x, long n, int sr, double ratio, long *outn) {
+    const int N = 1024, H = N / 4, K = N / 2; int Q = (int)(sr / 450.0); if (Q < 8) Q = 8; if (Q > N / 4) Q = N / 4; if (n < N) return NULL;
+    double *w = malloc(N * sizeof *w), *ola = calloc((size_t)n + 2 * N, sizeof *ola), *nm = calloc((size_t)n + 2 * N, sizeof *nm), *env = malloc((K + 1) * sizeof *env), *mag = malloc((K + 1) * sizeof *mag); AdspCx *X = malloc(N * sizeof *X), *C = malloc(N * sizeof *C); short *res = malloc((size_t)n * 2);
+    if (!w || !ola || !nm || !env || !mag || !X || !C || !res) { free(w); free(ola); free(nm); free(env); free(mag); free(X); free(C); free(res); return NULL; }
+    for (int i = 0; i < N; i++) w[i] = 0.5 - 0.5 * cos(2.0 * M_PI * (i + 0.5) / N);
+    for (long s = -(N - H); s < n; s += H) {
+        for (int i = 0; i < N; i++) { long k = s + i; X[i].re = (k >= 0 && k < n) ? x[k] / 32768.0 * w[i] : 0; X[i].im = 0; } adsp_fft(X, N);
+        for (int k = 0; k <= K; k++) { mag[k] = sqrt(X[k].re * X[k].re + X[k].im * X[k].im) + 1e-9; C[k].re = log(mag[k]); C[k].im = 0; } for (int k = K + 1; k < N; k++) { C[k].re = C[N - k].re; C[k].im = 0; }
+        adsp_ifft(C, N); for (int q = Q + 1; q < N - Q; q++) { C[q].re = 0; C[q].im = 0; } adsp_fft(C, N); for (int k = 0; k <= K; k++) env[k] = exp(C[k].re);
+        for (int k = 0; k <= K; k++) { double src = k / ratio; if (src > K) src = K; int i0 = (int)src; int i1 = i0 + 1 > K ? K : i0 + 1; double fr = src - i0, e2 = env[i0] * (1 - fr) + env[i1] * fr, g = e2 / env[k]; if (g > 8) g = 8; if (g < 0.125) g = 0.125; X[k].re *= g; X[k].im *= g; }
+        X[0].im = 0; X[K].im = 0; for (int k = K + 1; k < N; k++) { X[k].re = X[N - k].re; X[k].im = -X[N - k].im; } adsp_ifft(X, N);
+        for (int i = 0; i < N; i++) { long k = s + i; if (k >= 0 && k < n) { ola[k] += X[i].re * w[i]; nm[k] += w[i] * w[i]; } } }
+    for (long i = 0; i < n; i++) { double v = nm[i] > 1e-6 ? ola[i] / nm[i] * 32768.0 : 0; if (v > 32767) v = 32767; if (v < -32768) v = -32768; res[i] = (short)lrint(v); }
+    free(w); free(ola); free(nm); free(env); free(mag); free(X); free(C); *outn = n; return res;
+}
+/* RBJ shelving filter in place: kind 0 = low shelf, 1 = high shelf; f0 = corner Hz; gain_db +- . */
+static void adsp_shelf(short *x, long n, int sr, int kind, double f0, double gain_db) {
+    if (fabs(gain_db) < 1e-6 || n < 2) return; double A = pow(10.0, gain_db / 40.0), w0 = 2 * M_PI * f0 / sr, cw = cos(w0), sw = sin(w0), al = sw / 2 * sqrt(2.0), sq = 2 * sqrt(A) * al, b0, b1, b2, a0, a1, a2;
+    if (kind == 0) { b0 = A * ((A + 1) - (A - 1) * cw + sq); b1 = 2 * A * ((A - 1) - (A + 1) * cw); b2 = A * ((A + 1) - (A - 1) * cw - sq); a0 = (A + 1) + (A - 1) * cw + sq; a1 = -2 * ((A - 1) + (A + 1) * cw); a2 = (A + 1) + (A - 1) * cw - sq; }
+    else { b0 = A * ((A + 1) + (A - 1) * cw + sq); b1 = -2 * A * ((A - 1) + (A + 1) * cw); b2 = A * ((A + 1) + (A - 1) * cw - sq); a0 = (A + 1) - (A - 1) * cw + sq; a1 = 2 * ((A - 1) - (A + 1) * cw); a2 = (A + 1) - (A - 1) * cw - sq; }
+    b0 /= a0; b1 /= a0; b2 /= a0; a1 /= a0; a2 /= a0; double z1 = 0, z2 = 0; for (long i = 0; i < n; i++) { double v = x[i], y = b0 * v + z1; z1 = b1 * v - a1 * y + z2; z2 = b2 * v - a2 * y; if (y > 32767) y = 32767; if (y < -32768) y = -32768; x[i] = (short)lrint(y); }
+}
+/* vibrato: a delay that swings sinusoidally so the pitch wobbles by +-`cents` at `hz` (delay amplitude = (2^(cents/1200)-1) / (2 pi hz)); linear interpolation. In place. */
+static void adsp_vibrato(short *x, long n, int sr, double hz, double cents) {
+    if (hz <= 0 || cents <= 0 || n < 2) return; double amp = (pow(2.0, cents / 1200.0) - 1.0) / (2 * M_PI * hz) * sr, base = amp + 1; short *c = malloc((size_t)n * 2); if (!c) return; memcpy(c, x, (size_t)n * 2);
+    for (long i = 0; i < n; i++) { double t = i - (base + amp * sin(2 * M_PI * hz * i / sr)); if (t < 0) { x[i] = 0; continue; } double v = adsp_interp8(c, n, t); if (v > 32767) v = 32767; if (v < -32768) v = -32768; x[i] = (short)lrint(v); } free(c);
+}
+/* breath: noise (high-passed by differencing) mixed in proportion to the voice's own short-term level, so it is only there while speaking. mix 0..0.3. Deterministic. In place. */
+static void adsp_breath(short *x, long n, int sr, double mix) {
+    if (mix <= 0 || n < 2) return; uint32_t rs = 2463534242u; double env = 0, prev = 0, a = exp(-1.0 / (0.01 * sr)); for (long i = 0; i < n; i++) { env = a * env + (1 - a) * fabs((double)x[i]); rs ^= rs << 13; rs ^= rs >> 17; rs ^= rs << 5; double nz = (double)rs / 2147483648.0 - 1.0, hp = nz - prev; prev = nz; double y = x[i] + mix * env * hp * 1.2; if (y > 32767) y = 32767; if (y < -32768) y = -32768; x[i] = (short)lrint(y); }
 }

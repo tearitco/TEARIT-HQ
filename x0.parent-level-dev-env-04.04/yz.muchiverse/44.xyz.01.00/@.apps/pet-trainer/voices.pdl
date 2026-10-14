@@ -28,3 +28,23 @@ KMAP | ja-JP-KeitaNeural   | jm_kumo    | ja
 KMAP | zh-CN-XiaoyiNeural  | zf_xiaoyi  | cmn
 KMAP | zh-CN-XiaoxiaoNeural| zf_xiaoxiao| cmn
 KMAP | ko-KR-InJoonNeural  | -          | -
+# ACCENT | id | from phonemes | to phonemes | note     (rewrites a word's phonemes before speaking; applied in file order to every word that has no PRON override; English voices only. ^ = start of word, $ = end of word; to may be empty)
+ACCENT | th-stop | θ  | t | "think" -> "tink"
+ACCENT | th-stop | ð  | d | "the" -> "de"
+ACCENT | drop-r  | ɹ$ |   | "water" loses its final r (US-style ɹ)
+ACCENT | drop-r  | ɚ$ | ə | "water" ends in a schwa, not r-coloured
+ACCENT | w-for-v | v  | w | "very" -> "wery"
+ACCENT | short-i | ɪ  | i | "bit" -> "beet"-ish
+# FX | edge voice | pitch column of the VOICE row | key=value ...   (character of each pet voice, applied by _shared-lib/ops/audio_fx after the engine speaks; keys: pitch formant bright warm vib_hz vib_cents breath speed accent)
+# (a pet is identified by its voice name + pitch column: the C apps pass --voice and --pitch, not the species. Chosen by claude 2026-10-14 to make the species sound like different people; NOT yet heard by the owner)
+FX | en-US-AnaNeural     | +30Hz | pitch=2 formant=1.5 bright=2 vib_hz=5 vib_cents=12
+FX | en-US-GuyNeural     | -25Hz | pitch=-3 formant=-2 warm=4 bright=-2
+FX | en-GB-MaisieNeural  | +15Hz | pitch=1 formant=0.5 bright=3 breath=0.05
+FX | en-US-EricNeural    | -10Hz | pitch=-1 formant=-1 warm=2 vib_hz=7 vib_cents=35 accent=th-stop
+FX | en-US-AnaNeural     | +90Hz | pitch=5 formant=3 bright=4 vib_hz=8 vib_cents=20
+FX | en-GB-RyanNeural    | -35Hz | pitch=-4 formant=-3 warm=5 bright=-1 breath=0.04 accent=drop-r
+FX | ja-JP-NanamiNeural  | +60Hz | pitch=3 formant=1
+FX | zh-CN-XiaoyiNeural  | +50Hz | pitch=3 formant=1
+FX | zh-CN-XiaoxiaoNeural| +30Hz | pitch=2 formant=1
+FX | en-GB-ThomasNeural  | -40Hz | pitch=-3 formant=-2 warm=3
+FX | ja-JP-KeitaNeural   | -40Hz | pitch=-2 formant=-1 bright=1

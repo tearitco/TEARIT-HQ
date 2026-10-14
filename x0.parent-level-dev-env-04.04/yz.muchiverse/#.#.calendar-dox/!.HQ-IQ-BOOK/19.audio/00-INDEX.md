@@ -7,6 +7,7 @@ Owner's direction (2026-10-14): train our own voice software; a separate SFX gen
 | `VOICE-AND-SFX-DESIGN.md` | The whole design: goals, rails, formats, the five tools, how they plug into the DAW, the learning loop, licences, risks. Read first. |
 | `PRONUNCIATION-MAP.md` | The one word-to-phonemes file and its overrides; how every voice reads it. |
 | `SFX-TOY-DESIGN.md` | The sound-effect generator toy: recipes, tags, a first proof. |
+| `VOICE-FX.md` | Voice character: formant, EQ, vibrato, breath, accents, the six pet recipes, proof and problems. |
 | `PRON-CHECK.md` | Slice S2: the pronunciation bank, validator, voice override, proof, limits. |
 | `SFX-RENDERER.md` | Slice S3: the in-house sound renderer, proof, limits. |
 | `VOICE-DSP.md` | Slice S1: the in-house pitch/speed op, how it works, proof numbers, limits. |
