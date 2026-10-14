@@ -16,6 +16,8 @@ An x11-hq window for the SFX toy: **list sound recipes, filter by tag, make a so
 ## Files
 `sfx_hai_manager.c` (header lists verbs), `ops/sfx_hai_req.c`, `ops/sfx_make.c` (render + checks + ledger + play), `sfx.pdl` (the bank: `SFX | id | tags | kind | params`), `sfx-hai.xhtpm/.css`, `button.sh`, `build.sh`, `tests/`. State (not in git): `state/ui.txt`, `request.txt`, `sfx2.pdl` (working copies, latest row per id wins), `audio/*.wav`, `ledger.txt` (`SFX` rows with the check text), `verdicts.txt`, `say.txt`, `last.txt`.
 
+**Play button:** "▶ Play the last sound" (sidebar, id `play`) replays the most recent sound (`PLAY` verb, `paplay`); `Say`/`Make` still play automatically once.
+
 ## How to add something
 - **A recipe:** add an `SFX` row to `sfx.pdl` (params in its header). Press Make; read the check text.
 - **A check:** add it in `sfx_make.c` where `chk` is built; use the FFT helpers in `_shared-lib/audio_dsp.c` (`adsp_dominant_hz`, `adsp_dc`, `adsp_peak`, `adsp_rms`) or measure a file by hand with `&.widgits/_shared-lib/ops/+x/audio_probe.+x <wav> [start_ms] [window]`; add a bad recipe that must fail it.

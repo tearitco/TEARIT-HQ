@@ -11,6 +11,8 @@ STEP | expect | &.hq-apps/sfx-hai/state/ui.txt | contains | duration | 5
 STEP | expect | &.hq-apps/sfx-hai/state/ui.txt | absent | FAIL | 2
 STEP | press | fp
 STEP | expect | &.hq-apps/sfx-hai/state/ui.txt | contains | coin_pickup f0 1087 Hz | 5
+STEP | press | play
+STEP | expect | &.hq-apps/sfx-hai/state/ui.txt | contains | msg=playing coin_pickup | 5
 STEP | shot | &.hq-apps/sfx-hai/state/shot_made.png
 STEP | press | jc_yes
 STEP | expect | &.hq-apps/sfx-hai/state/ui.txt | contains | msg=claude said yes | 5

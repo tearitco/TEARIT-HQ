@@ -20,6 +20,8 @@ An x11-hq window for the voice-fx studio: **list voices, select one, change pitc
 State (not in git): `state/ui.txt` (what the window shows), `request.txt` (clicks, append-only, read by size growth), `voices2.pdl` (latest `VOICE2` row per id wins: this is where renames/knobs live), `audio/*.wav`, `ledger.txt` (`SAY` rows), `verdicts.txt` (`JUDGE` rows, same as img-hai), `say.txt`, `last.txt`.
 Voices list = the pet voices in `@.apps/pet-trainer/voices.pdl` (+ `voices2.pdl` rows). A voice's `id` never changes, its display name can.
 
+**Play button:** "▶ Play the last sound" (sidebar, id `play`) replays the most recent sound (`PLAY` verb, `paplay`); `Say`/`Make` still play automatically once.
+
 ## How to add something
 - **A button:** add a verb in `handle()`, one entry in the `k[]/vb[]` arrays in `write_ui()` (and the loop count), an `<item id=... action="${<id>_action}">` in the template; drive it with `relay_drive press <id>`; add a case. (Same recipe as img-hai EXTENDING A.)
 - **Another effect knob:** add the key to `_shared-lib/ops/audio_fx.c` (with its proof in BOOK 19.audio/VOICE-FX.md), a field in `Voice`, load/save in `voice_fx_manager.c` (`load_voices`, `save_voice`), a handler in `handle()`, two buttons in the template and the `k[]/vb[]` arrays, and pass it from `voice_say`.

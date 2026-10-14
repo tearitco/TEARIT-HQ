@@ -10,6 +10,7 @@
         <item id="sf${s.#}" class="ms-row ${s.class}" label="${s.label}" action="${s.action}"/>
       </repeat>
       <item id="make" label="Make this sound (and check it)" action="${make_action}"/>
+      <item id="play" label="▶ Play the last sound" action="${play_action}"/>
       <text label="recipe: ${sel_line}" class="quiet"/>
       <text label="${words_line}" class="quiet"/>
       <text label="${say_line}" class="quiet"/>

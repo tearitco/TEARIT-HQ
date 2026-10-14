@@ -10,6 +10,7 @@
         <item id="vo${v.#}" class="ms-row ${v.class}" label="${v.label}" action="${v.action}"/>
       </repeat>
       <item id="say" label="Say the words with this voice" action="${say_action}"/>
+      <item id="play" label="▶ Play the last sound" action="${play_action}"/>
       <item id="rename" label="Rename (new name = the words field)" action="${rename_action}"/>
       <item id="new" label="New voice from this one" action="${new_action}"/>
       <text label="${knob_line}" class="quiet"/>

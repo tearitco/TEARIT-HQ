@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -56,8 +57,8 @@ static void write_ui(void) {
     for (int i = 0; i < nV; i++) fprintf(f, "v_%d_label=%s%s  (pitch %+d st, speed %.2f)\nv_%d_class=%s\nv_%d_action='%s/ops/+x/voice_fx_req.+x' 'SEL:%d'\n", i, i == sel ? "* " : "", V[i].name, V[i].pitch, V[i].speed, i, i == sel ? "active" : "", i, g_pkg, i);
     if (v) fprintf(f, "knob_line=pitch %+d st  speed %.2f  formant %+.1f  bright %+.0f dB  warm %+.0f dB  vibrato %.0f Hz %.0f c  breath %.2f  accent %s\n", v->pitch, v->speed, v->formant, v->bright, v->warm, v->vib_hz, v->vib_cents, v->breath, v->accent[0] ? v->accent : "none"); else fprintf(f, "knob_line=-\n");
     fprintf(f, "sel_line=%s\nsay_line=%s\nmsg=%s\nwords_line=%s\n", v ? v->base : "-", g_say, g_msg, g_words[0] ? g_words : "(no words: Say uses a default line)");
-    { const char *k[] = { "pm", "pp", "sm", "sp", "say", "rename", "new", "jc_yes", "jc_no", "jo_yes", "jo_no", "fm", "fp", "bm", "bp", "wm", "wp", "vm", "vp", "rm", "rp", "ac" }; const char *vb[] = { "PITCH:-1", "PITCH:+1", "SPEED:-", "SPEED:+", "SAY", "RENAME", "NEW", "VERDICT:claude:yes", "VERDICT:claude:no", "VERDICT:owner:yes", "VERDICT:owner:no", "FORMANT:-", "FORMANT:+", "BRIGHT:-", "BRIGHT:+", "WARM:-", "WARM:+", "VIB:-", "VIB:+", "BREATH:-", "BREATH:+", "ACCENT" };
-      for (int i = 0; i < 22; i++) fprintf(f, "%s_action='%s/ops/+x/voice_fx_req.+x' '%s'\n", k[i], g_pkg, vb[i]); }
+    { const char *k[] = { "pm", "pp", "sm", "sp", "say", "rename", "new", "jc_yes", "jc_no", "jo_yes", "jo_no", "fm", "fp", "bm", "bp", "wm", "wp", "vm", "vp", "rm", "rp", "ac", "play" }; const char *vb[] = { "PITCH:-1", "PITCH:+1", "SPEED:-", "SPEED:+", "SAY", "RENAME", "NEW", "VERDICT:claude:yes", "VERDICT:claude:no", "VERDICT:owner:yes", "VERDICT:owner:no", "FORMANT:-", "FORMANT:+", "BRIGHT:-", "BRIGHT:+", "WARM:-", "WARM:+", "VIB:-", "VIB:+", "BREATH:-", "BREATH:+", "ACCENT", "PLAY" };
+      for (int i = 0; i < 23; i++) fprintf(f, "%s_action='%s/ops/+x/voice_fx_req.+x' '%s'\n", k[i], g_pkg, vb[i]); }
     fprintf(f, "words_action='%s/ops/+x/voice_fx_req.+x' 'WORDS'\n", g_pkg); fclose(f); rename(tmp, dst);
 }
 static void handle(const char *cmd) {
@@ -72,6 +73,7 @@ static void handle(const char *cmd) {
     else if (v && !strncmp(cmd, "VIB:", 4)) { if (cmd[4] == '-') { v->vib_cents -= 5; if (v->vib_cents <= 0) { v->vib_cents = 0; v->vib_hz = 0; } } else { if (v->vib_hz <= 0) v->vib_hz = 5; v->vib_cents += 5; if (v->vib_cents > 60) v->vib_cents = 60; } save_voice(v); snprintf(g_msg, sizeof g_msg, "%s vibrato %.0f Hz %.0f cents", v->name, v->vib_hz, v->vib_cents); }
     else if (v && !strncmp(cmd, "BREATH:", 7)) { v->breath += cmd[7] == '-' ? -0.02 : 0.02; if (v->breath < 0.001) v->breath = 0; if (v->breath > 0.3) v->breath = 0.3; save_voice(v); snprintf(g_msg, sizeof g_msg, "%s breath %.2f", v->name, v->breath); }
     else if (v && !strcmp(cmd, "ACCENT")) { int cur = -1; for (int i = 0; i < nAcc; i++) if (!strcmp(ACC[i], v->accent)) cur = i; cur++; if (cur >= nAcc) { v->accent[0] = 0; } else snprintf(v->accent, sizeof v->accent, "%s", ACC[cur]); save_voice(v); snprintf(g_msg, sizeof g_msg, "%s accent %s (English voices only)", v->name, v->accent[0] ? v->accent : "none"); }
+    else if (!strcmp(cmd, "PLAY")) { if (!g_last[0] || access(g_last, R_OK)) snprintf(g_msg, sizeof g_msg, "no sound to play yet: make one first"); else { pid_t p = fork(); if (p == 0) { setsid(); int nul = open("/dev/null", O_RDWR); if (nul >= 0) { dup2(nul, 1); dup2(nul, 2); } execlp("paplay", "paplay", "--volume=32000", g_last, (char *)NULL); _exit(127); } if (p > 0) { snprintf(g_msg, sizeof g_msg, "playing %s", strrchr(g_last, '/') ? strrchr(g_last, '/') + 1 : g_last); signal(SIGCHLD, SIG_IGN); } } }
     else if (v && !strcmp(cmd, "RENAME")) { if (!g_words[0]) snprintf(g_msg, sizeof g_msg, "type the new name in the words field first"); else { snprintf(v->name, sizeof v->name, "%.47s", g_words); save_voice(v); snprintf(g_msg, sizeof g_msg, "renamed (the id %s never changes)", v->id); } }
     else if (v && !strcmp(cmd, "NEW")) { if (nV >= 32) snprintf(g_msg, sizeof g_msg, "voice list is full"); else { char id[24]; snprintf(id, sizeof id, "v%ld", (long)time(NULL) % 1000000); Voice *n = voice_by_id(id); if (n) { Voice c = *v; snprintf(c.id, sizeof c.id, "%s", id); snprintf(c.name, sizeof c.name, "%.40s 2", v->name); *n = c; save_voice(n); sel = (int)(n - V); snprintf(g_msg, sizeof g_msg, "new voice %s made from %s", n->id, v->name); } } }
     else if (v && !strcmp(cmd, "SAY")) {
