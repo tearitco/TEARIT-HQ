@@ -5,7 +5,7 @@ Why: from 2026-10-12 Microsoft's read-aloud service answers the edge-tts websock
 How: the edge voice name from voices.pdl is mapped to a Kokoro voice by the KMAP rows in voices.pdl (`KMAP | edge voice | kokoro voice | language`); --rate becomes Kokoro speed (+10% -> 1.10); --pitch is ignored (Kokoro has no pitch control: say so in voices.pdl, not silently).
 Output: a real WAV written to the --write-media path whatever its extension (the callers pass it to ffmpeg, which detects the format from the content).
 Pronunciation map (slice S2): words listed as ACTIVE rows in &.widgits/concept-bank/data/audio/pron.pdl are spoken with the given phonemes (BOOK 19.audio/PRONUNCIATION-MAP.md); `--pron <file>` uses another map and also its `candidate` rows (a trial, nothing promoted); `--phonemes-only --text "..." [--lang en-us]` prints the phonemes the engine would use (with overrides) and exits (no audio, no --voice needed); `--no-pron` ignores the map; `--active-only` with `--pron` uses only the active rows. Text with no mapped word takes the exact old path.
-Character (2026-10-14, BOOK 19.audio/VOICE-FX.md): the `FX` row in voices.pdl whose voice name and pitch column match this call (the C apps pass --voice and --pitch, not the species) gives pitch, formant, bright, warm, vibrato, breath and an accent; the effects are applied by the in-house C op _shared-lib/ops/audio_fx after synthesis, the accent (ACCENT rows) rewrites phonemes before synthesis. No FX row, or `--no-fx`, = the old sound.
+Character (2026-10-14, BOOK 19.audio/VOICE-FX.md): the `FX` row in voices.pdl whose voice name and pitch column match this call (the C apps pass --voice and --pitch, not the species) gives pitch, formant, bright, warm, vibrato, breath and an accent; the effects are applied by the in-house C op _shared-lib/ops/audio_fx after synthesis, the accent (ACCENT rows) rewrites phonemes before synthesis. No FX row, or `--no-fx`, = the old sound; `--accent <id|none>` sets the accent itself (voice-fx).
 Manners: 2 threads, one synthesis at a time (a lock), niceness lowered, a phrase longer than 240 characters is cut. Exit 0 = wrote the file; exit 1 = no sound (unknown voice, language Kokoro lacks such as Korean, missing model, any error): callers treat that as quiet failure.
 Model files: ~/.local/share/kokoro/kokoro-v1.0.int8.onnx and voices-v1.0.bin (see #.#.calendar-dox/1-1.HARNECIENT.SMOL/convert_night_to_audio_local.py)."""
 import os, sys, fcntl
@@ -36,6 +36,7 @@ try:
         if len(f) >= 4 and f[0] == "ACCENT": accents.setdefault(f[1], []).append((f[2], f[3]))
 except OSError: pass
 if "--no-fx" in sys.argv: fx = {}
+if arg("--accent"): fx["accent"] = "" if arg("--accent") == "none" else arg("--accent")      # a caller (voice-fx) chooses the accent itself
 try: speed = max(0.5, min(1.6, 1.0 + float(rate.rstrip("%")) / 100.0))
 except ValueError: speed = 1.0
 try:

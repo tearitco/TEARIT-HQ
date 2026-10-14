@@ -3,15 +3,16 @@
 An x11-hq window for the voice-fx studio: **list voices, select one, change pitch and speed, rename it, make a new voice from it, say words with it, see the waveform, judge it.** Built so the next agent starts with a working window, not a blank page. Design and plan: BOOK `19.audio/` (`VOICE-AND-SFX-DESIGN.md`, `PRONUNCIATION-MAP.md`, `VOICE-ROADMAP.md`). Pattern copied from img-hai (`&.hq-apps/img-hai/docs/CODE.md` explains the renderer contracts and quirks; read section 3 and 7 before changing the layout).
 
 ## Run
-`sh '&.hq-apps/voice-fx/button.sh' run` (builds if needed) / `stop`. Window 1060x700. Test: `relay_drive <renderer pid> run '&.hq-apps/voice-fx/tests/voice-fx-smoke.pdl' <winid>` (fresh window; stop other 1060x700 windows first, `findwin` finds windows by size). Last run 2026-10-14: 20/20 pass, including a real offline voice made in 6 s.
+`sh '&.hq-apps/voice-fx/button.sh' run` (builds if needed) / `stop`. Window 1200x700. Test: `relay_drive <renderer pid> run '&.hq-apps/voice-fx/tests/voice-fx-smoke.pdl' <winid>` (fresh window; stop other 1200x700 windows first, `findwin 1200 700` finds windows by size; start from a clean `state/` without `voices2.pdl`). Last run 2026-10-14: 33/33 pass, including a real offline voice made with all effects (about 8 s). One earlier attempt of the same case failed once with "the voice engine made no sound" and could not be reproduced (a rerun and a direct command both passed): cause unknown, watch for it.
 
 ## What is real and what is a stand-in
 | Part | State |
 |---|---|
 | window, voice list, select, pitch/speed, rename, new voice, words field, verdict buttons, waveform | **built, relay-tested** |
 | the voice engine | **stand-in**: offline Kokoro through `@.apps/pet-trainer/ops/pet_tts_local.py` (voice name -> KMAP row) |
-| pitch | **in-house C** (2026-10-14): `&.widgits/_shared-lib/ops/audio_shift` (WSOLA + resample; duration kept; formants move with the pitch, so it is a chipmunk/giant effect, not a formant-preserving shift; see BOOK 19.audio/VOICE-DSP.md) |
-| formant, brightness knobs | stored in the row (always 0), **not applied** |
+| pitch, speed, formant, bright, warm, vibrato, breath | **in-house C** (2026-10-14): `&.widgits/_shared-lib/ops/audio_fx` (BOOK 19.audio/VOICE-FX.md, VOICE-DSP.md). Buttons: p-/p+, s-/s+ (bottom strip); form-/form+, brt-/brt+, warm-/warm+, vib-/vib+ (starts 5 Hz, steps of 5 cents, max 60; vib- to 0 switches it off), brth-/brth+ (right column) |
+| accent | **built**: the `accent` button cycles none / th-stop / drop-r / w-for-v / short-i (rules in `@.apps/pet-trainer/voices.pdl`, English voices only) |
+| pet recipes | the pets start with their `FX` rows from `@.apps/pet-trainer/voices.pdl`; edits are stored per voice in `state/voices2.pdl` (`VOICE2 | id | name | engine | base | pitch | speed | formant | bright | warm | vib_hz | vib_cents | breath | accent`; older shorter rows still load) |
 | in-house voices (v0/v1/v2), pronunciation map, candidate edits into a bank, batches, ledger review | **not built** |
 
 ## Files

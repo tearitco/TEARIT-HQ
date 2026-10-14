@@ -12,6 +12,7 @@
       <item id="say" label="Say the words with this voice" action="${say_action}"/>
       <item id="rename" label="Rename (new name = the words field)" action="${rename_action}"/>
       <item id="new" label="New voice from this one" action="${new_action}"/>
+      <text label="${knob_line}" class="quiet"/>
       <text label="engine voice: ${sel_line}" class="quiet"/>
       <text label="${words_line}" class="quiet"/>
       <text label="${say_line}" class="quiet"/>
@@ -30,6 +31,17 @@
         <item id="jc_no" class="ov-btn" label="c no" action="${jc_no_action}"/>
         <item id="jo_yes" class="ov-btn" label="o yes" action="${jo_yes_action}"/>
         <item id="jo_no" class="ov-btn" label="o no" action="${jo_no_action}"/>
+        <item id="fm" class="ov-btn" label="form-" action="${fm_action}"/>
+        <item id="fp" class="ov-btn" label="form+" action="${fp_action}"/>
+        <item id="bm" class="ov-btn" label="brt-" action="${bm_action}"/>
+        <item id="bp" class="ov-btn" label="brt+" action="${bp_action}"/>
+        <item id="wm" class="ov-btn" label="warm-" action="${wm_action}"/>
+        <item id="wp" class="ov-btn" label="warm+" action="${wp_action}"/>
+        <item id="vm" class="ov-btn" label="vib-" action="${vm_action}"/>
+        <item id="vp" class="ov-btn" label="vib+" action="${vp_action}"/>
+        <item id="rm" class="ov-btn" label="brth-" action="${rm_action}"/>
+        <item id="rp" class="ov-btn" label="brth+" action="${rp_action}"/>
+        <item id="ac" class="ov-btn" label="accent" action="${ac_action}"/>
       </row>
     </panel>
     <footer id="statusbar" class="pchq-footer">
