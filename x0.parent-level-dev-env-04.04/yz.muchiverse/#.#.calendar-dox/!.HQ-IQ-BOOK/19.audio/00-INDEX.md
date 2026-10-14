@@ -7,6 +7,9 @@ Owner's direction (2026-10-14): train our own voice software; a separate SFX gen
 | `VOICE-AND-SFX-DESIGN.md` | The whole design: goals, rails, formats, the five tools, how they plug into the DAW, the learning loop, licences, risks. Read first. |
 | `PRONUNCIATION-MAP.md` | The one word-to-phonemes file and its overrides; how every voice reads it. |
 | `SFX-TOY-DESIGN.md` | The sound-effect generator toy: recipes, tags, a first proof. |
+| `LISTENER-STT-DESIGN.md` | The listener: capture, VAD, STT engines (whisper baseline, in-house spotter), HEAR rows, checks, slices L0-L5. Design only. |
+| `HOTSPRINGS-VOICE-MODE-DESIGN.md` | The voice mode (v2 of the 2026-09-28 design): button + Space-to-arm, states, Kokoro out, cursword caveat. Design only. |
+| `LEARNING-FROM-HUMAN-SPEECH.md` | What learning from the owner's speech means: five loops, what it will not do, data flow, privacy. Design only. |
 | `VOICE-FX.md` | Voice character: formant, EQ, vibrato, breath, accents, the six pet recipes, proof and problems. |
 | `PRON-CHECK.md` | Slice S2: the pronunciation bank, validator, voice override, proof, limits. |
 | `SFX-RENDERER.md` | Slice S3: the in-house sound renderer, proof, limits. |

@@ -454,6 +454,8 @@ important"**:
   own 2026-08-25 section) rather than standing up a second TTS engine.
   STT engine: not yet chosen - open question for whoever builds this.
 
+**UPDATE 2026-10-14 (the TTS line above is stale):** edge-tts has been refused with HTTP 403 since 2026-10-12; speech out is now the offline Kokoro path (`@.apps/pet-trainer/ops/pet_tts_local.py`, with effects, accents and the pronunciation map), and speech in is one shared listener. The current design is `19.audio/HOTSPRINGS-VOICE-MODE-DESIGN.md` (with `LISTENER-STT-DESIGN.md` and `LEARNING-FROM-HUMAN-SPEECH.md`); nothing in it is built.
+
 **Sequencing, explicit**: build order stays 1) basic text chat window
 (§3.3 above), 2) THEN hotsprings voice mode on top of it - the ♨️ slot
 is reserved now so the symbol/intent aren't lost, not because it's
