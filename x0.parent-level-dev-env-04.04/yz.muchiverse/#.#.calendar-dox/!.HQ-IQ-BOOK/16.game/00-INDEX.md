@@ -23,3 +23,9 @@ command runs on.
 - `../12.calendar/2026-09-23/grok-to-claude.txt` — the stop-point
   for the next agent. Same text as the external handoff. Merge
   branch `grok`. Do not commit onto it.
+- `GAMES-DECISIONS-2026-10-13.md` — owner decisions for cdda-hq, df-hq,
+  gta-hq: z-levels, vehicles as part-cell grids, scale, physics in the
+  concept bank, learning with review. Read before touching those games.
+- `GAMES-ROADMAP.md` — milestones with proof/KPI, how to use/modify
+  (filled as each lands), and the tangent documents to write. All
+  rows start NOT BUILT.
