@@ -360,6 +360,21 @@ static void blit_box(Sheet *s, int sx, int sy, int sw, int sh, int dx, int dy, i
             b[0] = (unsigned char)((r * al + b[0] * (255 - al)) / 255); b[1] = (unsigned char)((g * al + b[1] * (255 - al)) / 255); b[2] = (unsigned char)((bl * al + b[2] * (255 - al)) / 255); b[3] = 255; } }
 }
 static void ohr_at(const char *file, int c, int r, int tx, int ty) { blit_box(ohr_sheet(file), c * 20, r * 20, 20, 20, OX + tx * T, OY + ty * T, T, T, 255, 255, 255); }
+static const char *ohr_file(const char *sh) {
+    if (!strcmp(sh, "house")) return "320px-TS07_house.bmp.png";
+    if (!strcmp(sh, "fantasy")) return "320px-Fantasy_tileset0FINISHED.bmp.png";
+    if (!strcmp(sh, "viking")) return "320px-Vikings_tilemaps_000.bmp.png";
+    if (!strcmp(sh, "town")) return "320px-TS02_town.bmp.png";
+    if (!strcmp(sh, "castle")) return "320px-TS10_castle.bmp.png";
+    if (!strcmp(sh, "forest")) return "320px-BG02_forest-bmp.png";
+    if (!strcmp(sh, "grass")) return "320px-BG01_grass-bmp.png";
+    return NULL;
+}
+static void paint_cells(const char *sh, int c, int r, int w, int h, int tx, int ty) {
+    const char *f = ohr_file(sh);
+    if (!f) { tile(sh, c, r, w, h, tx, ty); return; }
+    for (int j = 0; j < h; j++) for (int i = 0; i < w; i++) ohr_at(f, c + i, r + j, tx + i, ty + j);
+}
 static void paint_scen(const Scen *s) {
     if (!strcmp(s->sheet, "World_B") || !strcmp(s->sheet, "Outside_B")) {
         int tree = !strcmp(s->sheet, "Outside_B");
@@ -423,7 +438,7 @@ static void render(void) {
     for (int i = 0; i < nscen; i++) if (scen[i].room == vroom) paint_scen(&scen[i]);
     int idx[MAXP], n = 0; for (int i = 0; i < npl; i++) if (pl[i].room == vroom) idx[n++] = i;
     for (int a = 0; a < n; a++) for (int b = a + 1; b < n; b++) { Placed *p = &pl[idx[a]], *q = &pl[idx[b]]; int ka = (!cat[p->item].wall) * 1000 + p->y + cat[p->item].h, kb = (!cat[q->item].wall) * 1000 + q->y + cat[q->item].h; if (kb < ka || (kb == ka && q->x < p->x)) { int t = idx[a]; idx[a] = idx[b]; idx[b] = t; } }
-    for (int a = 0; a < n; a++) { Placed *p = &pl[idx[a]]; Item *d = &cat[p->item]; tile(d->sheet, d->c, d->r, d->w, d->h, p->x, p->y); }
+    for (int a = 0; a < n; a++) { Placed *p = &pl[idx[a]]; Item *d = &cat[p->item]; paint_cells(d->sheet, d->c, d->r, d->w, d->h, p->x, p->y); }
     static const int cyc[4] = {1, 0, 1, 2}; int order[NP + 1], no = 0;           /* walking frames 1,0,1,2; standing = middle frame. -1 = the trainer */
     for (int i = 0; i < nparty; i++) if (others[i].room == vroom) order[no++] = i;
     #define EY(k) ((k) < 0 ? tr.y : others[k].y)
@@ -864,9 +879,9 @@ static void export3d(char *msg, size_t cap) {
             if (rm->over) { } else if (rm->outdoor) { for (int y = TRIG_ROW; y < ROWS - 1; y++) fs[y][tx] = slot_of(pathpx); } else fs[doors[i].ty + 1][tx] = slot_of(matpx); }
         for (int i = 0; i < nscen; i++) if (scen[i].room == r) for (int ci = 0; ci < scen[i].w; ci++) for (int cj = 0; cj < scen[i].h; cj++) { int x = scen[i].x + ci, y = scen[i].y + cj; if (x < 0 || x >= COLS || y < 0 || y >= ROWS) continue;
             Sheet *s = sheet("tilesets", scen[i].sheet); memcpy(b, floorpx, sizeof b); tile24(s, (scen[i].c + ci) * S48, (scen[i].r + cj) * S48, a); over24(b, a); glyph[y][x] = scen[i].h >= 2 ? 'T' : 'f'; ws[y][x] = slot_of(b); }
-        for (int i = 0; i < npl; i++) if (pl[i].room == r) { Item *it = &cat[pl[i].item]; Sheet *s = sheet("tilesets", it->sheet);
+        for (int i = 0; i < npl; i++) if (pl[i].room == r) { Item *it = &cat[pl[i].item]; const char *of = ohr_file(it->sheet); Sheet *s = of ? NULL : sheet("tilesets", it->sheet);
             for (int ci = 0; ci < it->w; ci++) for (int cj = 0; cj < it->h; cj++) { int x = pl[i].x + ci, y = pl[i].y + cj; if (x < 0 || x >= COLS || y < 0 || y >= ROWS) continue;
-                tile24(s, (it->c + ci) * S48, (it->r + cj) * S48, a);
+                if (of) ohr24(of, it->c + ci, it->r + cj, a); else tile24(s, (it->c + ci) * S48, (it->r + cj) * S48, a);
                 if (it->wall) { memcpy(b, wallpx, sizeof b); over24(b, a); ws[y][x] = slot_of(b); } else { memcpy(b, floorpx, sizeof b); over24(b, a); glyph[y][x] = 'f'; ws[y][x] = slot_of(b); } } }
         if (rm->over) {      /* the overmap 3D: every cell = the painted 2D cell downscaled to a 24 px tile; the buildings (scenery) are 2 high blocks, the ocean is a flat floor */
             int sv = vroom; vroom = r; g_bg_only = 1; render(); g_bg_only = 0; vroom = sv; g_gr = r;
