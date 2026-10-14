@@ -9,9 +9,14 @@ relay_drive <pid> click <x> <y>          press + release (window pixels)
 relay_drive <pid> tap <x> <y>            two clicks: focus, then activate
 relay_drive findwin <w> <h>              the one unnamed X window of that size (khtpm windows have no name and no _NET_WM_PID)
 relay_drive shot <winid> <out.png>       dump_frame_png_op on that window
+relay_drive <pid> press <id|label:text>   find the element in a fresh frame dump and press it by its on-screen number (Esc, digits, Enter)
+relay_drive <pid> tapid <id|label:text>   same, with two mouse clicks at the middle of the element
 relay_drive <pid> run <cases.pdl> [winid]
 ```
 Case rows: `STEP | key|type|click|tap|sleep|shot|expect`, e.g. `STEP | expect | <file> | contains|absent | <text> | <timeout_s>`. Paths are relative to the house root. Exit 0 = all pass, 1 = a FAIL, 2 = cannot run. Verified once: `tests/img-hai-negative.pdl` (expects a state that never appears) exits 1 with FAIL lines.
+
+## Press by id (added later the same day)
+Row numbers shifted three times in one afternoon and broke tests, so `press`/`tapid` read the window's own element dump instead: key `p` (while no field is armed) makes the window write `/tmp/entity-menu-frame.png.frame.txt`, one line per element `tag|id|class|label|?|action|nav|?|x|y|w|h|...`. The driver sends Esc then `p`, waits for a newer file, finds the element by id (or `label:<text>`), and either types its nav number + Enter (`press`) or clicks its middle twice (`tapid`). nav 0 means not reachable (off screen). The dump path is shared by every khtpm window: drive one window at a time.
 
 ## What I learned about the relay (observed on img-hai)
 - Keys are **decimal codes**: `KEY_PRESSED: 112` is `p`; the literal line `KEY_PRESSED: p` is silently ignored.

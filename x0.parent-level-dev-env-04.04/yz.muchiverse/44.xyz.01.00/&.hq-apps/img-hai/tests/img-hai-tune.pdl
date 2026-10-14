@@ -1,0 +1,8 @@
+SECTION | KEY | VALUE
+------------------------------
+# img-hai-tune.pdl - choose the second batch (tune-1: a candidate tuning tested through an overlay, nothing promoted) and run it. 11 jobs: door 3, glass 3, torso 3, wheel 2. Fresh window.
+STEP | press | batchsel
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | batch file: tune-1 | 5
+STEP | press | batchrun
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | queue_line=batch tune-1: 9 waiting, 2 running | 10
+STEP | shot | &.hq-apps/img-hai/state/shot_11_tune.png

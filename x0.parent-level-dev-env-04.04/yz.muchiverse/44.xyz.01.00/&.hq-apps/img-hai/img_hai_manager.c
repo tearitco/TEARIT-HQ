@@ -1,11 +1,29 @@
 #define _GNU_SOURCE
-/* img_hai_manager - img-hai (BOOK 16.game/IMG-HAI-DESIGN.md): a palette of image tiles plus a canvas where tiles are mixed live.
- * Usage: img_hai_manager <house_root> [package_dir]   (started by the renderer through the <module> tag; exits when its renderer is gone)
- * Tiles = every image under the draft folders (<house>/&.widgits/concept-bank/data/img/draft/<day>/img/) and <package>/tiles/, any format stb_image reads
- * (png jpg bmp gif tga psd hdr pnm; first frame of a gif). Thumbnails are written as PNG to state/thumbs because the renderer's sprite= path draws PNG only.
- * Placements are non-destructive records {tile, cell x, cell y, rotation, flip, visible}; the canvas is re-composited from them, so a tile can be moved, turned or removed later.
- * Requests (state/request.txt, one per line): TILE:<n> place tile n at the cursor cell, SEL:<n> select placement, MOVE:L|R|U|D, ROT, FLIP, VIS, DEL, UP, DOWN,
- * CELL:<px> (cell size 16..256), CUR:<x>,<y>, CLEAR, EXPORT (canvas -> tiles/mix_<n>.png, which then shows up in the palette), RESCAN. Writes state/ui.txt, state/canvas.raw + canvas.receipt.txt. */
+/* img_hai_manager - the brain of img-hai, the text-to-image studio window. FULL DOCS: &.hq-apps/img-hai/docs/ (start at README.md; CODE.md has this map in more detail).
+ *
+ * WHAT IT IS: a small background process started by the shared renderer (khtpm_core_render.+x) through the <module> tag in img-hai.xhtpm. It owns all state. The window only draws
+ * what this process writes to state/ui.txt (text) and state/canvas.raw (pixels) and sends clicks back as lines appended to state/request.txt (by ops/img_hai_req.+x).
+ * Usage: img_hai_manager <house_root> [package_dir]. Exits by itself when the renderer is gone (module_parent.pid check). No other output; no extra logging by design.
+ *
+ * LOOP (main): every 60-200 ms: poll_requests() -> poll_job() -> dispatch_queue() -> if dirty { write_canvas(); write_ui(); }.
+ * DATA IN : data/img/draft/<day>/img/* and <package>/tiles/* (the tiles, any image format stb_image reads), data/img/draft/<day>/verdicts.txt and <package>/verdicts.txt (JUDGE rows),
+ *           models.pdl (HOST/MODEL rows), batches/*.pdl (BATCH rows), data/img/parts.pdl (part names), state/request.txt (clicks), state/job.txt (job status lines).
+ * DATA OUT: state/ui.txt, state/canvas.raw + canvas.receipt.txt, state/thumbs/*.png, state/prompt_*.txt, verdict lines, <package>/tiles/mix_<n>.png (Export),
+ *           data/img/accept_candidates.pdl (Accept; test_* tiles go to state/accept_test.pdl instead).
+ * CHILD PROCESSES (all fork+exec, never popen/system): ops/+x/img_hai_job.+x (one per busy host: ssh/scp, runs img_draft.py remotely) and &.widgits/concept-bank/ops/+x/img_prompt.+x (builds a prompt, short-lived).
+ *
+ * REQUEST VERBS (one per line in state/request.txt; handle()): TILE:<n> place tile n at the cursor | SEL:<n> select placement n | MOVE:L|R|U|D move the selected placement | CUR:L|R|U|D move the cursor
+ *   ROT turn 90 degrees | FLIP | VIS hide/show | DEL | UP / DOWN change draw order | CELL:<px> cell size 16..256 | CLEAR | EXPORT mix -> new tile | RESCAN | WORDS:<text> set the free prompt
+ *   DRAFT draft on the selected model's host | DRAFTALL one draft on every host | PARTNEXT / MODELNEXT cycle part / model | BATCHNEXT cycle the batch file | BATCHRUN load the selected batch and run it
+ *   BATCH:<name> load batches/<name>.pdl | BATCHSTOP cancel waiting jobs | VERDICT:owner|claude:yes|no judge the selected placement's tile | ACCEPT write a candidate if both said yes.
+ *
+ * DATA STRUCTURES: Tile T[] (path, label, size, thumb) | Place P[] (tile, cell x/y, rot 0-3, flip, vis) | Judge J[] (label, claude, owner) | Host H[] / Model M[] (from models.pdl)
+ *   Job Q[] (batch queue: part, words, model, overlay, seed, state 0 waiting 1 running 2 done 3 failed) | job_pid[host] / job_slot[host] (the running child and which Q entry it is).
+ * FUNCTION INDEX: tiles: has_img_ext scan_dir make_thumb scan_tiles | judging: load_judges judge_of | hosts/models/parts: load_models load_parts | prompts: build_prompt
+ *   drafting: start_on start_draft start_all host_of_model | batches: scan_batches load_batch dispatch_queue queue_counts poll_job | canvas: draw_place write_canvas | window: write_ui
+ *   input: handle poll_requests | lifecycle: parent_alive bye main.
+ * RENDERER QUIRKS THIS CODE WORKS AROUND (details in docs/CODE.md section 7): sprite= draws only .png and as BGRA (thumbs swap red/blue), the canvas blits raw RGBA 1:1 centred, nav numbers shift when rows are added.
+ * HOUSE RULES KEPT: change detection by file size growth (request.txt, job.txt), never mtime; no popen; no per-app C in the shared renderer; state under state/ (untracked); pure C. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -38,8 +56,8 @@ static unsigned char *comp; static char g_words[400] = "", g_job[200] = "no job"
 typedef struct { char id[96], host[24], steps[8], size[8]; } Model; static Model M[16]; static int nM, selM;
 typedef struct { char name[24], target[64], dir[64], py[64], prefix[64]; } Host; static Host H[4]; static int nH;
 static char PARTS[16][40]; static int nParts, selPart; static long job_off = 0; static pid_t job_pid[4]; static int job_slot[4];
-typedef struct { char part[40], words[300], model[96]; int seed, state; } Job;   /* state 0 waiting, 1 running, 2 done, 3 failed */
-static Job Q[256]; static int nQ; static char g_batch[64] = "";
+typedef struct { char part[40], words[300], model[96], overlay[64]; int seed, state; } Job;   /* state 0 waiting, 1 running, 2 done, 3 failed */
+static Job Q[256]; static int nQ; static char g_batch[64] = ""; static char BN[16][40]; static int nBN, selBN;
 static long req_off = 0;
 
 static int has_img_ext(const char *n) { const char *d = strrchr(n, '.'); if (!d) return 0; static const char *ext[] = { ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tga", ".psd", ".hdr", ".ppm", ".pgm", ".pnm", NULL };
@@ -95,40 +113,43 @@ static void load_parts(void) {
     fclose(fp);
 }
 /* fork+exec img_prompt for a part; stdout goes to a file in state/ (no popen) */
-static int build_prompt(const char *part, const char *outfile) {
+static int build_prompt(const char *part, const char *outfile, const char *overlay) {
     char words[PL], parts[PL], bin[PL]; snprintf(words, sizeof words, "%s/&.widgits/concept-bank/data/img/words.pdl", g_house); snprintf(parts, sizeof parts, "%s/&.widgits/concept-bank/data/img/parts.pdl", g_house); snprintf(bin, sizeof bin, "%s/&.widgits/concept-bank/ops/+x/img_prompt.+x", g_house);
     pid_t p = fork(); if (p < 0) return -1;
-    if (p == 0) { int fd = open(outfile, O_WRONLY | O_CREAT | O_TRUNC, 0644); if (fd >= 0) { dup2(fd, 1); close(fd); } char *a[] = { bin, words, parts, (char *)part, NULL }; execv(bin, a); _exit(127); }
+    if (p == 0) { int fd = open(outfile, O_WRONLY | O_CREAT | O_TRUNC, 0644); if (fd >= 0) { dup2(fd, 1); close(fd); } char ov[PL] = ""; if (overlay && overlay[0]) snprintf(ov, sizeof ov, "%s/&.widgits/concept-bank/data/img/candidates/%s.cand", g_house, overlay); char *a[] = { bin, words, parts, (char *)part, "0.30", ov, NULL }; if (!ov[0]) a[4] = NULL; execv(bin, a); _exit(127); }
     for (int t = 0; t < 50; t++) { int st; if (waitpid(p, &st, WNOHANG) == p) return WIFEXITED(st) ? WEXITSTATUS(st) : -1; usleep(100000); }
     kill(p, SIGKILL); waitpid(p, NULL, 0); return -1;
 }
-static int start_on(int hi, int mi, const char *part, const char *words, int seedv) {
+static int start_on(int hi, int mi, const char *part, const char *words, int seedv, const char *overlay) {
     if (hi < 0 || hi >= nH || mi < 0 || mi >= nM) return 0;
     if (job_pid[hi] > 0) { snprintf(g_msg, sizeof g_msg, "%s is busy with a draft", H[hi].name); return 0; }
-    Host *h = &H[hi]; char pf[PL]; snprintf(pf, sizeof pf, "%s/state/prompt_%s_%s_%d.txt", g_pkg, part, h->name, seedv);
+    Host *h = &H[hi]; char jpart[80]; if (overlay && overlay[0]) snprintf(jpart, sizeof jpart, "%s_%s", part, overlay); else snprintf(jpart, sizeof jpart, "%s", part);   /* an overlay (a trial tuning) is part of the picture's name so it can never replace the untuned one */
+    char pf[PL]; snprintf(pf, sizeof pf, "%s/state/prompt_%s_%s_%d.txt", g_pkg, jpart, h->name, seedv);
     if (words[0]) { FILE *f = fopen(pf, "w"); if (!f) return 0; fprintf(f, "PROMPT: %s\nNEGATIVE: text, watermark, blurry\n", words); fclose(f); }
-    else if (build_prompt(part, pf) != 0) { snprintf(g_msg, sizeof g_msg, "prompt build failed for %s", part); return 0; }
+    else if (build_prompt(part, pf, overlay) != 0) { snprintf(g_msg, sizeof g_msg, "prompt build failed for %s", part); return 0; }
     char seed[16]; snprintf(seed, sizeof seed, "%d", seedv);
     pid_t p = fork(); if (p < 0) return 0;
-    if (p == 0) { setsid(); char bin[PL]; snprintf(bin, sizeof bin, "%s/ops/+x/img_hai_job.+x", g_pkg); char *a[] = { bin, g_pkg, g_house, h->target, h->dir, h->py, M[mi].id, M[mi].steps, M[mi].size, seed, (char *)part, pf, h->prefix, NULL }; execv(bin, a); _exit(127); }
+    if (p == 0) { setsid(); char bin[PL]; snprintf(bin, sizeof bin, "%s/ops/+x/img_hai_job.+x", g_pkg); char *a[] = { bin, g_pkg, g_house, h->target, h->dir, h->py, M[mi].id, M[mi].steps, M[mi].size, seed, jpart, pf, h->prefix, NULL }; execv(bin, a); _exit(127); }
     job_pid[hi] = p; job_slot[hi] = -1; snprintf(g_msg, sizeof g_msg, "draft started on %s: %s / %s", h->name, part, M[mi].id); return 1;
 }
 static int host_of_model(int mi) { for (int i = 0; i < nH; i++) if (!strcmp(H[i].name, M[mi].host)) return i; return -1; }
-static void start_draft(void) { if (!nM || !nParts) { snprintf(g_msg, sizeof g_msg, "no model or part"); return; } int hi = host_of_model(selM); if (hi < 0) { snprintf(g_msg, sizeof g_msg, "model host not in models.pdl"); return; } start_on(hi, selM, g_words[0] ? "free" : PARTS[selPart], g_words, (int)(time(NULL) % 100000) + hi); }
+static void start_draft(void) { if (!nM || !nParts) { snprintf(g_msg, sizeof g_msg, "no model or part"); return; } int hi = host_of_model(selM); if (hi < 0) { snprintf(g_msg, sizeof g_msg, "model host not in models.pdl"); return; } start_on(hi, selM, g_words[0] ? "free" : PARTS[selPart], g_words, (int)(time(NULL) % 100000) + hi, ""); }
 /* delegate: one draft on every host at once, each with the first model listed for that host */
-static void start_all(void) { int started = 0; for (int hi = 0; hi < nH; hi++) { int mi = -1; for (int i = 0; i < nM; i++) if (!strcmp(M[i].host, H[hi].name)) { mi = i; break; } if (mi >= 0 && job_pid[hi] <= 0 && start_on(hi, mi, g_words[0] ? "free" : PARTS[selPart], g_words, (int)(time(NULL) % 100000) + hi)) started++; } snprintf(g_msg, sizeof g_msg, "drafts started on %d host(s)", started); }
+static void start_all(void) { int started = 0; for (int hi = 0; hi < nH; hi++) { int mi = -1; for (int i = 0; i < nM; i++) if (!strcmp(M[i].host, H[hi].name)) { mi = i; break; } if (mi >= 0 && job_pid[hi] <= 0 && start_on(hi, mi, g_words[0] ? "free" : PARTS[selPart], g_words, (int)(time(NULL) % 100000) + hi, "")) started++; } snprintf(g_msg, sizeof g_msg, "drafts started on %d host(s)", started); }
 /* batches/<name>.pdl rows: BATCH | label | part or "free" | words ("-" = use the word bank for the part) | seeds | model id or "any"
  * Each row becomes <seeds> jobs with seeds 1..n. Idle hosts take the next waiting job whose model is "any" (the host's first model) or on that host. */
+static void scan_batches(void) { char dir[PL]; snprintf(dir, sizeof dir, "%s/batches", g_pkg); DIR *d = opendir(dir); nBN = 0; if (!d) return; struct dirent *e; while ((e = readdir(d)) && nBN < 16) { size_t l = strlen(e->d_name); if (l > 4 && !strcmp(e->d_name + l - 4, ".pdl") && l - 4 < 40) { snprintf(BN[nBN], 40, "%.*s", (int)(l - 4), e->d_name); nBN++; } } closedir(d);
+    for (int i = 0; i < nBN; i++) for (int k = i + 1; k < nBN; k++) if (strcmp(BN[i], BN[k]) > 0) { char t[40]; memcpy(t, BN[i], 40); memcpy(BN[i], BN[k], 40); memcpy(BN[k], t, 40); } if (selBN >= nBN) selBN = 0; }
 static void load_batch(const char *name) {
     char p[PL], ln[1024], *f[8]; snprintf(p, sizeof p, "%s/batches/%s.pdl", g_pkg, name); FILE *fp = fopen(p, "r"); if (!fp) { snprintf(g_msg, sizeof g_msg, "no batch file batches/%s.pdl", name); return; } nQ = 0;
     while (fgets(ln, sizeof ln, fp)) { if (ln[0] == '#') continue; int n = split_bar(ln, f, 8); if (n < 6 || strcmp(f[0], "BATCH")) continue; int seeds = atoi(f[4]); if (seeds < 1) seeds = 1;
-        for (int k = 1; k <= seeds && nQ < 256; k++) { Job *j = &Q[nQ++]; memset(j, 0, sizeof *j); if (!strcmp(f[2], "free")) snprintf(j->part, 40, "free_%s", f[1]); else snprintf(j->part, 40, "%s", f[2]); snprintf(j->words, 300, "%s", strcmp(f[3], "-") ? f[3] : ""); snprintf(j->model, 96, "%s", f[5]); j->seed = k; } }
+        for (int k = 1; k <= seeds && nQ < 256; k++) { Job *j = &Q[nQ++]; memset(j, 0, sizeof *j); if (!strcmp(f[2], "free")) snprintf(j->part, 40, "free_%s", f[1]); else snprintf(j->part, 40, "%s", f[2]); snprintf(j->words, 300, "%s", strcmp(f[3], "-") ? f[3] : ""); snprintf(j->model, 96, "%s", f[5]); snprintf(j->overlay, 64, "%s", n >= 7 && strcmp(f[6], "-") ? f[6] : ""); j->seed = k; } }
     fclose(fp); snprintf(g_batch, sizeof g_batch, "%s", name); snprintf(g_msg, sizeof g_msg, "batch %s loaded: %d jobs", name, nQ);
 }
 static void dispatch_queue(void) {
     for (int hi = 0; hi < nH; hi++) { if (job_pid[hi] > 0) continue; int first = -1; for (int i = 0; i < nM; i++) if (!strcmp(M[i].host, H[hi].name)) { first = i; break; } if (first < 0) continue;
         for (int q = 0; q < nQ; q++) { Job *j = &Q[q]; if (j->state != 0) continue; int mi = -1; if (!strcmp(j->model, "any")) mi = first; else for (int i = 0; i < nM; i++) if (!strcmp(M[i].id, j->model) && !strcmp(M[i].host, H[hi].name)) mi = i; if (mi < 0) continue;
-            if (start_on(hi, mi, j->part, j->words, j->seed)) { j->state = 1; job_slot[hi] = q; dirty = 1; } else j->state = 3; break; } }
+            if (start_on(hi, mi, j->part, j->words, j->seed, j->overlay)) { j->state = 1; job_slot[hi] = q; dirty = 1; } else j->state = 3; break; } }
 }
 static void queue_counts(int *w, int *r, int *d, int *x) { *w = *r = *d = *x = 0; for (int q = 0; q < nQ; q++) { switch (Q[q].state) { case 0: (*w)++; break; case 1: (*r)++; break; case 2: (*d)++; break; default: (*x)++; } } }
 static void poll_job(void) {
@@ -167,7 +188,8 @@ static void write_ui(void) {
     fprintf(f, "place_count=%d\n", nP); for (int i = 0; i < nP; i++) { fprintf(f, "p_%d_label=%c %d %s @%d,%d r%d%s\np_%d_class=%s\np_%d_action='%s/ops/+x/img_hai_req.+x' 'SEL:%d'\n", i, P[i].vis ? '*' : '-', i + 1, P[i].tile < nT ? T[P[i].tile].label : "?", P[i].cx, P[i].cy, P[i].rot * 90, P[i].flip ? " flip" : "", i, i == sel ? "active" : "", i, g_pkg, i); }
     fprintf(f, "status_line=img-hai  tiles=%d  placed=%d  cell=%dpx  cursor=%d,%d\n", nT, nP, cell, curx, cury);
     { char jl[300] = "judge: place a tile, then judge it"; if (sel >= 0 && P[sel].tile < nT) { Judge *j = judge_of(T[P[sel].tile].label, 0); snprintf(jl, sizeof jl, "judge %s: claude=%s owner=%s", T[P[sel].tile].label, j ? jv(j->claude) : "?", j ? jv(j->owner) : "?"); } fprintf(f, "judge_line=%s\n", jl); }
-    { const char *jk[] = { "jo_yes", "jo_no", "jc_yes", "jc_no", "accept", "draftall", "batchrun", "batchstop" }; const char *jvb[] = { "VERDICT:owner:yes", "VERDICT:owner:no", "VERDICT:claude:yes", "VERDICT:claude:no", "ACCEPT", "DRAFTALL", "BATCH:default", "BATCHSTOP" }; for (int q = 0; q < 8; q++) fprintf(f, "%s_action='%s/ops/+x/img_hai_req.+x' '%s'\n", jk[q], g_pkg, jvb[q]); }
+    { const char *jk[] = { "jo_yes", "jo_no", "jc_yes", "jc_no", "accept", "draftall", "batchrun", "batchstop", "batchsel" }; const char *jvb[] = { "VERDICT:owner:yes", "VERDICT:owner:no", "VERDICT:claude:yes", "VERDICT:claude:no", "ACCEPT", "DRAFTALL", "BATCHRUN", "BATCHSTOP", "BATCHNEXT" }; for (int q = 0; q < 9; q++) fprintf(f, "%s_action='%s/ops/+x/img_hai_req.+x' '%s'\n", jk[q], g_pkg, jvb[q]); }
+    fprintf(f, "batchsel_line=batch file: %s (click to change)\n", nBN ? BN[selBN] : "(none)");
     { int w, r, d, x; queue_counts(&w, &r, &d, &x); if (nQ) fprintf(f, "queue_line=batch %s: %d waiting, %d running, %d done, %d failed/cancelled\n", g_batch, w, r, d, x); else fprintf(f, "queue_line=no batch loaded\n"); }
     fprintf(f, "msg=%s\n", g_msg);
     fprintf(f, "part_line=part: %s   model: %s\npart_action='%s/ops/+x/img_hai_req.+x' 'PARTNEXT'\nmodel_action='%s/ops/+x/img_hai_req.+x' 'MODELNEXT'\n", nParts ? PARTS[selPart] : "-", nM ? M[selM].id : "-", g_pkg, g_pkg);
@@ -179,7 +201,7 @@ static void write_ui(void) {
 }
 static void handle(char *cmd) {
     snprintf(g_msg, sizeof g_msg, "%s", cmd);
-    if (!strncmp(cmd, "WORDS:", 6)) { snprintf(g_words, sizeof g_words, "%s", cmd + 6); snprintf(g_msg, sizeof g_msg, "words set"); }
+    if (!strncmp(cmd, "WORDS:", 6)) { const char *w = cmd + 6; while (*w == ' ') w++; snprintf(g_words, sizeof g_words, "%s", w); size_t wl = strlen(g_words); while (wl && g_words[wl - 1] == ' ') g_words[--wl] = 0; snprintf(g_msg, sizeof g_msg, g_words[0] ? "words set" : "words cleared: prompts come from the word bank again"); }   /* leading/trailing spaces are trimmed; a request of only spaces clears the free words */
     else if (!strncmp(cmd, "VERDICT:", 8) && sel >= 0 && P[sel].tile < nT) { char who[16] = "", val[8] = ""; if (sscanf(cmd + 8, "%15[^:]:%7s", who, val) == 2 && (!strcmp(who, "owner") || !strcmp(who, "claude")) && (!strcmp(val, "yes") || !strcmp(val, "no"))) {
             char vp[PL]; snprintf(vp, sizeof vp, "%s", T[P[sel].tile].path); char *sl = strrchr(vp, '/'); if (sl) *sl = 0; sl = strrchr(vp, '/'); if (sl) { strcpy(sl, "/verdicts.txt"); FILE *vf = fopen(vp, "a"); if (vf) { time_t t = time(NULL); char day[16]; strftime(day, sizeof day, "%Y-%m-%d", localtime(&t)); fprintf(vf, "JUDGE | %s | %s | %s | %s\n", T[P[sel].tile].label, who, val, day); fclose(vf); load_judges(); snprintf(g_msg, sizeof g_msg, "%s says %s to %s", who, val, T[P[sel].tile].label); } } } }
     else if (!strcmp(cmd, "ACCEPT")) { if (sel < 0 || P[sel].tile >= nT) snprintf(g_msg, sizeof g_msg, "select a placed tile first"); else { Judge *j = judge_of(T[P[sel].tile].label, 0);
@@ -188,6 +210,8 @@ static void handle(char *cmd) {
     else if (!strcmp(cmd, "DRAFT")) start_draft();
     else if (!strcmp(cmd, "DRAFTALL")) start_all();
     else if (!strncmp(cmd, "BATCH:", 6)) load_batch(cmd + 6);
+    else if (!strcmp(cmd, "BATCHNEXT")) { scan_batches(); if (nBN) selBN = (selBN + 1) % nBN; }
+    else if (!strcmp(cmd, "BATCHRUN")) { scan_batches(); if (nBN) load_batch(BN[selBN]); else snprintf(g_msg, sizeof g_msg, "no batches/*.pdl files"); }
     else if (!strcmp(cmd, "BATCHSTOP")) { for (int q = 0; q < nQ; q++) if (Q[q].state == 0) Q[q].state = 3; snprintf(g_msg, sizeof g_msg, "waiting jobs cancelled (running ones finish)"); }
     else if (!strcmp(cmd, "PARTNEXT") && nParts) selPart = (selPart + 1) % nParts;
     else if (!strcmp(cmd, "MODELNEXT") && nM) selM = (selM + 1) % nM;
@@ -222,7 +246,7 @@ int main(int argc, char **argv) {
     signal(SIGTERM, bye); comp = calloc((size_t)CW * CH * 4, 1); if (!comp) return 1;
     { char p[PL]; snprintf(p, sizeof p, "%s/request.txt", g_state); struct stat st; if (!stat(p, &st)) req_off = st.st_size; }   /* ignore requests from before this start */
     load_models(); load_parts(); { char p[PL]; snprintf(p, sizeof p, "%s/job.txt", g_state); struct stat st; if (!stat(p, &st)) job_off = st.st_size; }
-    load_judges(); scan_tiles(); write_canvas(); write_ui();
+    load_judges(); scan_batches(); scan_tiles(); write_canvas(); write_ui();
     for (;;) { usleep(dirty ? 60000 : 200000); poll_requests(); poll_job(); dispatch_queue(); if (dirty) { write_canvas(); write_ui(); dirty = 0; } if (!parent_alive()) break; }
     return 0;
 }

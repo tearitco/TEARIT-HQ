@@ -32,3 +32,17 @@ JUDGE | free_door-free-2_bk-sdm-tiny_s2 | claude | no | 2026-10-13
 JUDGE | free_road_bk-sdm-tiny_s1 | claude | no | 2026-10-13
 JUDGE | free_road_bk-sdm-tiny_s2 | claude | no | 2026-10-13
 # why: car_wheel s2 is a clear round wheel with a hub and its 32 px version still reads as a wheel (yes, for a wheel part). windshield s1/s2 came out as pixel-art-looking vehicles, not glass. torso: photographic people, not pixel parts. door-free-2 s2 is a good flat cartoon car but a whole car, not a door. road: grey grid and stripe textures, no road.
+# 2026-10-13 late: the tune-1 batch REUSED the file names of earlier drafts (same part, model and seed) and overwrote them. Recovered: car_door s1-s3 (first trial) are the original 512 px files from the session scratch folder. The six default-batch pictures car_wheel s1/s2, car_windshield s1/s2, person_torso s1/s2 were recovered ONLY from the contact sheet at 256 px (the 512 px originals are lost); their _32px copies were regenerated from those 256 px crops with the same recipe. The tuned pictures are named <part>_tune-1_<model>_s<seed>.png. Cause fixed in the job op (it never overwrites: it adds _r2, _r3 ...) and in the manager (an overlay name is part of the job name). The JUDGE rows above refer to the ORIGINAL (recovered) pictures.
+# tune-1 batch (candidate tuning tested through an overlay, nothing promoted), 11 pictures. Sheet: XO/25.games-plan/img/sheet_tune1.png (row,col order: door s1 s2 s3 / wheel s1 | wheel s2, windshield s1 s2 s3 / torso s1 s2 s3). claude's verdicts:
+JUDGE | car_door_tune-1_bk-sdm-tiny_s3 | claude | yes | 2026-10-13
+JUDGE | car_door_tune-1_bk-sdm-tiny_s2 | claude | no | 2026-10-13
+JUDGE | car_door_tune-1_bk-sdm-tiny_s1 | claude | no | 2026-10-13
+JUDGE | car_windshield_tune-1_bk-sdm-tiny_s1 | claude | yes | 2026-10-13
+JUDGE | car_windshield_tune-1_bk-sdm-tiny_s2 | claude | no | 2026-10-13
+JUDGE | car_windshield_tune-1_bk-sdm-tiny_s3 | claude | no | 2026-10-13
+JUDGE | person_torso_tune-1_bk-sdm-tiny_s2 | claude | yes | 2026-10-13
+JUDGE | person_torso_tune-1_bk-sdm-tiny_s1 | claude | no | 2026-10-13
+JUDGE | person_torso_tune-1_bk-sdm-tiny_s3 | claude | no | 2026-10-13
+JUDGE | car_wheel_tune-1_bk-sdm-tiny_s2 | claude | yes | 2026-10-13
+JUDGE | car_wheel_tune-1_bk-sdm-tiny_s1 | claude | no | 2026-10-13
+# why (tune-1): door s3 = a flat red panelled door, front view (a usable door part). windshield s1 = a flat pale-blue glass pane in a frame. torso s2 = a pixel-art standing person with outlines (the best base-person so far). wheel s2 = a clear wheel with hub (same quality as the untuned one). Others: texture, double door, striped glass, lime-green figure with a red head, half-realistic woman, broken wheel.

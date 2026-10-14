@@ -1,0 +1,7 @@
+SECTION | KEY | VALUE
+------------------------------
+# img-hai-retest.pdl - select the second batch file (retest) and run it: two wheel drafts that must NOT overwrite existing pictures. Fresh window.
+STEP | press | batchsel
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | batch file: retest | 5
+STEP | press | batchrun
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | queue_line=batch retest: 0 waiting, 2 running | 10

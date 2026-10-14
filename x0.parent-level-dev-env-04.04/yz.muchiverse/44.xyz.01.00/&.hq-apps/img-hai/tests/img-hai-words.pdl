@@ -1,0 +1,11 @@
+SECTION | KEY | VALUE
+------------------------------
+# img-hai-words.pdl - the words field: set free words, then clear them with a lone space. Fresh window. (No draft is started.)
+STEP | tapid | words
+STEP | type | abc red door
+STEP | key | enter
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | prompt_line=abc red door | 5
+STEP | tapid | words
+STEP | type |  
+STEP | key | enter
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | words cleared | 5

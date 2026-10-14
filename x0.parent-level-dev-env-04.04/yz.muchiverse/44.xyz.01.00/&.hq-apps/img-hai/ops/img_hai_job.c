@@ -2,7 +2,7 @@
  * Usage: img_hai_job <package_dir> <house_root> <ssh_target> <remote_dir> <python> <model> <steps> <size> <seed> <part> <prompt_file> [command prefix, default "nice -n 15 ionice -c3"]
  * Steps: copy the prompt file to the host, run img_draft.py there under nice/ionice, copy the PNGs back into
  * <house>/&.widgits/concept-bank/data/img/draft/<day>/img/, append one LEDGER line, and append status lines to <package_dir>/state/job.txt
- * (append-only; the manager reads it by size growth). Children are fork+exec with a watchdog; there is no popen/system. */
+ * (append-only; the manager reads it by size growth). A picture is NEVER overwritten: if <id>.png already exists locally the new one is saved as <id>_r2.png, _r3 ... Children are fork+exec with a watchdog; there is no popen/system. */
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
     const char *pkg = argv[1], *house = argv[2], *host = argv[3], *rdir = argv[4], *py = argv[5], *model = argv[6], *steps = argv[7], *size = argv[8], *seed = argv[9], *part = argv[10], *pf = argv[11];
     snprintf(g_job, sizeof g_job, "%s/state/job.txt", pkg);
     const char *ms = strrchr(model, '/'); ms = ms ? ms + 1 : model;
-    char id[64]; snprintf(id, sizeof id, "%s_%s_s%s", part, ms, seed);
+    char id[64]; snprintf(id, sizeof id, "%s_%s_s%s", part, ms, seed);      /* id = the remote name (img_draft.py names its files part_model_sSEED); lid below is the local name */
     char msg[PL], tmpo[PL], rpath[PL], cmd[PL], day[16]; time_t now = time(NULL); strftime(day, sizeof day, "%Y-%m-%d", localtime(&now));
     snprintf(tmpo, sizeof tmpo, "%s/state/job_%s.out", pkg, id);
     snprintf(msg, sizeof msg, "running: %s on %s (about 2 min)", id, host); status(msg);
@@ -40,12 +40,13 @@ int main(int argc, char **argv) {
     double secs = 0; { FILE *f = fopen(tmpo, "r"); char ln[PL]; if (f) { while (fgets(ln, sizeof ln, f)) if (!strncmp(ln, "done ", 5)) secs = atof(ln + 5); fclose(f); } }
     char dd[PL], dimg[PL]; snprintf(dd, sizeof dd, "%s/&.widgits/concept-bank/data/img/draft/%s", house, day); snprintf(dimg, sizeof dimg, "%s/img", dd); mkdir(dd, 0755); mkdir(dimg, 0755);
     status("copying the image back");
+    char lid[96]; snprintf(lid, sizeof lid, "%s", id); { char t[PL]; struct stat st; for (int r = 2; r < 100; r++) { snprintf(t, sizeof t, "%s/%s.png", dimg, lid); if (stat(t, &st) != 0) break; snprintf(lid, sizeof lid, "%s_r%d", id, r); } }   /* never overwrite an earlier picture: add _r2, _r3 ... */
     char src[PL];
-    snprintf(src, sizeof src, "%s:%s/jobs/out/%s.png", host, rdir, id); { char *a[] = { "scp", "-q", "-o", "BatchMode=yes", src, dimg, NULL }; if (run(a, tmpo, 120) != 0) { status("failed: copying the image back"); return 1; } }
-    snprintf(src, sizeof src, "%s:%s/jobs/out/%s_32px.png", host, rdir, id); { char *a[] = { "scp", "-q", "-o", "BatchMode=yes", src, dimg, NULL }; run(a, tmpo, 120); }
+    snprintf(src, sizeof src, "%s:%s/jobs/out/%s.png", host, rdir, id); char dst1[PL]; snprintf(dst1, sizeof dst1, "%s/%s.png", dimg, lid); { char *a[] = { "scp", "-q", "-o", "BatchMode=yes", src, dst1, NULL }; if (run(a, tmpo, 120) != 0) { status("failed: copying the image back"); return 1; } }
+    snprintf(src, sizeof src, "%s:%s/jobs/out/%s_32px.png", host, rdir, id); char dst2[PL]; snprintf(dst2, sizeof dst2, "%s/%s_32px.png", dimg, lid); { char *a[] = { "scp", "-q", "-o", "BatchMode=yes", src, dst2, NULL }; run(a, tmpo, 120); }
     char prompt[2048] = ""; { FILE *f = fopen(pf, "r"); char ln[2300]; if (f) { while (fgets(ln, sizeof ln, f)) if (!strncmp(ln, "PROMPT:", 7)) { snprintf(prompt, sizeof prompt, "%s", ln + 8); char *n = strchr(prompt, '\n'); if (n) *n = 0; } fclose(f); } }
-    char lp[PL]; snprintf(lp, sizeof lp, "%s/ledger.txt", dd); FILE *lf = fopen(lp, "a"); if (lf) { fprintf(lf, "LEDGER | %s | %s | %s | %s | %s | %.1f | %s.png | %s\n", part, model, seed, steps, size, secs, id, prompt); fclose(lf); }
+    char lp[PL]; snprintf(lp, sizeof lp, "%s/ledger.txt", dd); FILE *lf = fopen(lp, "a"); if (lf) { fprintf(lf, "LEDGER | %s | %s | %s | %s | %s | %.1f | %s.png | %s\n", part, model, seed, steps, size, secs, lid, prompt); fclose(lf); }
     unlink(tmpo);
-    snprintf(msg, sizeof msg, "done: %s in %.0f s", id, secs); status(msg);
+    snprintf(msg, sizeof msg, "done: %s in %.0f s", lid, secs); status(msg);
     return 0;
 }

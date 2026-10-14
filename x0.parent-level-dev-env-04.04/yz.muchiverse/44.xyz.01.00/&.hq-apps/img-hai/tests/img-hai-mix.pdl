@@ -1,14 +1,18 @@
 SECTION | KEY | VALUE
 ------------------------------
-# img-hai-mix.pdl - mixing steps only, for a window that already has one tile placed (placed=1). Numbers read from a screenshot: rotate 33, flip 34, move right 30.
-STEP | key | esc
-STEP | type | 33
-STEP | key | enter
-STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | r90 | 5
-STEP | type | 34
-STEP | key | enter
-STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | flip | 5
-STEP | type | 30
-STEP | key | enter
+# img-hai-mix.pdl - mixing steps from a FRESH window: place the test tile (cursor 1,1), move left, down, rotate twice, hide, show, delete. Pressed by id.
+STEP | press | label:test_tile
 STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | @1,1 | 5
-STEP | shot | &.hq-apps/img-hai/state/shot_4_mix.png
+STEP | press | ml
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | @0,1 | 5
+STEP | press | md
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | @0,2 | 5
+STEP | press | rot
+STEP | press | rot
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | r180 | 5
+STEP | press | vis
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | - 1 | 5
+STEP | press | vis
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | * 1 | 5
+STEP | press | del
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | placed=0 | 5

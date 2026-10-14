@@ -1,0 +1,12 @@
+# tune-1.cand - claude's first proposed tuning of the image word bank (2026-10-13), from the 12-image batch (see &.hq-apps/img-hai/docs/HANDOFF.md section 7).
+# Problem seen: "car door panel" / "windshield" drew whole cars, "torso" drew photographs. Idea: say "a single ... nothing else", and add negative words for whole cars and photos.
+# Candidate only: tested with the overlay (img_prompt ... tune-1.cand, or the batch "tune-1"); it reaches words.pdl/parts.pdl only if a human promotes it with img_edit promote.
+EDIT | id=t1-01 | type=img_word_add | target=w_nocar | kind=negative | text="whole car, vehicle, wheels, people" | weight=0.9 | reason="door and glass prompts drew whole vehicles" | proposer=claude | status=candidate
+EDIT | id=t1-02 | type=img_word_add | target=w_nophoto | kind=negative | text="photograph, realistic, 3d render" | weight=0.9 | reason="torso prompt drew photographs, not sprites" | proposer=claude | status=candidate
+EDIT | id=t1-03 | type=img_word_text | target=w_car_door | text="a single red metal door panel, nothing else" | reason="'car door panel' was read as a car" | proposer=claude | status=candidate
+EDIT | id=t1-04 | type=img_word_text | target=w_car_windshield | text="a flat rectangle of tinted blue glass, nothing else" | reason="'car windshield' was read as a car" | proposer=claude | status=candidate
+EDIT | id=t1-05 | type=img_word_text | target=w_person_torso | text="a pixel art person standing, front view, simple flat colours" | reason="'a standing person's torso' gave photographs" | proposer=claude | status=candidate
+EDIT | id=t1-06 | type=img_part_words | target=car_door | words=w_car_door,w_steel,w_red,w_top,w_pixel,w_crisp,w_32,w_nobg,w_nowords,w_noblur,w_nocar,w_nophoto | reason="add the negatives to the door" | proposer=claude | status=candidate
+EDIT | id=t1-07 | type=img_part_words | target=car_windshield | words=w_car_windshield,w_glass,w_side,w_pixel,w_crisp,w_32,w_nobg,w_nowords,w_nocar,w_nophoto | reason="add the negatives to the glass" | proposer=claude | status=candidate
+EDIT | id=t1-08 | type=img_part_words | target=person_torso | words=w_person_torso,w_cloth,w_grey,w_top,w_pixel,w_32,w_nobg,w_nowords,w_noblur,w_nophoto | reason="add the photo negative to the person" | proposer=claude | status=candidate
+EDIT | id=t1-09 | type=img_word_weight_delta | target=w_crisp | delta=+0.2 | reason="outlines were soft; raise 'crisp outline'" | proposer=claude | status=candidate

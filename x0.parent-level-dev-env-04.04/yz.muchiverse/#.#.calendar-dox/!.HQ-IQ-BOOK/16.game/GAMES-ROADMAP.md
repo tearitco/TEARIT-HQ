@@ -42,7 +42,7 @@ Status words: `planned`, `designing`, `building`, `proven` (evidence recorded), 
 | G2 | **Detail-level op**: one brix assembly drawn at three distances from the same parts | Three screenshots of the same car at three distances | planned |
 | G3 | **Word-bank to image pilot** (by hand, no runtime generation) | One concept goes word bank, prompt, image, judged; the judged image becomes a brix asset | planned |
 | G4 | Scripted gta playthrough | As C6 | planned |
-| G3a | **img-hai window** (text-to-image GUI for brixels; owner's request 2026-10-13): slices H1-H6 in `IMG-HAI-DESIGN.md` | H1: window screenshot + ui state listing the parts and existing drafts; H3: a Draft click makes a new image on debil with the window responsive | designing |
+| G3a | **img-hai window** (text-to-image GUI for brixels; owner's request 2026-10-13): slices H1-H6 in `IMG-HAI-DESIGN.md` | H1: window screenshot + ui state listing the parts and existing drafts; H3: a Draft click makes a new image on debil with the window responsive | **built and relay-tested 2026-10-13** (H1-H5 done: palette, mixing canvas, words, Draft, Mac, batches, judging, tuning trials); owner review pending; menu entry not built. Docs: `&.hq-apps/img-hai/docs/` |
 
 ## 3. Flight, scale and learning (needs the spine)
 

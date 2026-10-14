@@ -1,0 +1,8 @@
+SECTION | KEY | VALUE
+------------------------------
+# batches/tune-1.pdl - tests the candidate tuning data/img/candidates/tune-1.cand WITHOUT promoting it (the 7th column names the overlay; "-" = none). Same seeds as the default batch for the wheel so the two runs can be compared.
+# BATCH | label | part or free | words ("-" = bank) | seeds | model id or any | overlay
+BATCH | door  | car_door       | - | 3 | any | tune-1
+BATCH | glass | car_windshield | - | 3 | any | tune-1
+BATCH | torso | person_torso   | - | 3 | any | tune-1
+BATCH | wheel | car_wheel      | - | 2 | any | tune-1

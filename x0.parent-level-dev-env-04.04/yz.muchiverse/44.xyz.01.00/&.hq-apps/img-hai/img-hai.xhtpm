@@ -12,7 +12,8 @@
       <item id="modelsel" label="next model" action="${model_action}"/>
       <item id="draft" label="Draft image (remote)" action="${draft_action}"/>
       <item id="draftall" label="Draft on ALL hosts" action="${draftall_action}"/>
-      <item id="batchrun" label="Run batch (default)" action="${batchrun_action}"/>
+      <item id="batchsel" label="${batchsel_line}" action="${batchsel_action}"/>
+      <item id="batchrun" label="Run selected batch" action="${batchrun_action}"/>
       <item id="batchstop" label="Stop batch" action="${batchstop_action}"/>
       <text label="${queue_line}" class="quiet"/>
       <text label="${judge_line}" class="quiet"/>
