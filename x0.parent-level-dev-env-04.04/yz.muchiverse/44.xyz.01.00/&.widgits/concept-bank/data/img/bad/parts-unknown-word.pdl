@@ -1,0 +1,8 @@
+SECTION | KEY | VALUE
+------------------------------
+# parts.pdl - which words describe which brixel part (ids from 44.xyz.01.00/shared/brixels.pdl). W0 of WORD-BANK-TO-IMAGE.md.
+# PART | brixel | word ids (comma list) | note
+PART | car_door       | w_car_door,w_nosuch,w_red,w_top,w_pixel,w_crisp,w_32,w_nobg,w_nowords,w_noblur | opens (door_open / door_closed)
+PART | car_wheel      | w_car_wheel,w_rubber,w_grey,w_top,w_pixel,w_crisp,w_32,w_nobg,w_dust,w_nowords | rolls
+PART | car_windshield | w_car_windshield,w_glass,w_side,w_pixel,w_crisp,w_32,w_nobg,w_nowords | front glass
+PART | person_torso   | w_person_torso,w_cloth,w_grey,w_top,w_pixel,w_32,w_nobg,w_nowords,w_noblur | root of a person
