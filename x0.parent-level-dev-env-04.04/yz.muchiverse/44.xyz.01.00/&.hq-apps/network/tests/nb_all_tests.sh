@@ -96,6 +96,10 @@ echo "########## G1.1 live timer, MANAGER side (scratch house + real push)"
 sh "$HERE/nb_tick_live_test.sh" || RC=1
 
 echo
+echo "########## G1.3 negative: an idle page must push nothing"
+sh "$HERE/nb_push_quiet_test.sh" || RC=1
+
+echo
 echo "########## content-row reachability (live browser + own opt-in fixture)"
 sh "$HERE/nb_reach_test.sh" || RC=1
 
