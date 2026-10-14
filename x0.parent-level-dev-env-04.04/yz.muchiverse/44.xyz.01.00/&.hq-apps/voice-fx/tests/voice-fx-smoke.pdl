@@ -1,0 +1,23 @@
+SECTION | KEY | VALUE
+------------------------------
+# voice-fx-smoke.pdl - select the 2nd voice, pitch up twice, set words, rename, say it (real offline Kokoro + sox, ~10 s), judge. Fresh window. Run: relay_drive <renderer pid> run <this file> <winid>
+STEP | press | vo1
+STEP | expect | &.hq-apps/voice-fx/state/ui.txt | contains | status_line=voice-fx  voices=6  selected=bear | 5
+STEP | press | pp
+STEP | press | pp
+STEP | expect | &.hq-apps/voice-fx/state/ui.txt | contains | pitch +2 st | 5
+STEP | tapid | words
+STEP | type | testing the voice
+STEP | key | enter
+STEP | expect | &.hq-apps/voice-fx/state/ui.txt | contains | words_line=testing the voice | 5
+STEP | press | say
+STEP | expect | &.hq-apps/voice-fx/state/ui.txt | contains | say_line=done: | 60
+STEP | expect | &.hq-apps/voice-fx/state/ledger.txt | contains | SAY | 5
+STEP | shot | &.hq-apps/voice-fx/state/shot_said.png
+STEP | press | jc_yes
+STEP | expect | &.hq-apps/voice-fx/state/ui.txt | contains | msg=claude said yes | 5
+STEP | tapid | words
+STEP | type | Bertie
+STEP | key | enter
+STEP | press | rename
+STEP | expect | &.hq-apps/voice-fx/state/ui.txt | contains | v_1_label=* Bertie | 5

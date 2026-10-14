@@ -1,0 +1,9 @@
+SECTION | KEY | VALUE
+------------------------------
+# sfx.pdl - the SFX bank (scaffold copy). SFX | id | tags (comma list) | kind | params (key=value ...)   Design: BOOK 19.audio/SFX-TOY-DESIGN.md.
+# params used by the stand-in renderer (ops/sfx_make, sox synth): wave=sine|square|sawtooth|triangle|noise  f0=<Hz> f1=<Hz, optional sweep end>  dur=<s>  attack=<s>  decay=<s>  vol=0..1  lp=<Hz, optional low-pass>
+# Changes made in the window go to state/sfx2.pdl (working copies); the bank changes only through candidate edits (not built yet).
+SFX | coin_pickup | pickup,coin,bright | synth | wave=square f0=988 f1=1319 dur=0.22 attack=0.002 decay=0.18 vol=0.5
+SFX | door_creak  | door,wood,slow     | synth | wave=sawtooth f0=140 f1=95 dur=0.9 attack=0.05 decay=0.6 vol=0.4 lp=900
+SFX | car_hit      | car,crash,heavy    | synth | wave=noise f0=0 dur=0.5 attack=0.001 decay=0.45 vol=0.7 lp=2400
+SFX | blip_select  | ui,select,short    | synth | wave=sine f0=660 dur=0.08 attack=0.002 decay=0.06 vol=0.5

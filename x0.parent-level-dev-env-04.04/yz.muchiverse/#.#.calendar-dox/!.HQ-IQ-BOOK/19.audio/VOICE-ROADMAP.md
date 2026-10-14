@@ -1,0 +1,19 @@
+# Voice, listening and SFX roadmap (2026-10-14)
+
+Every row is **NOT BUILT** unless the Status column says otherwise with evidence. A milestone is done only with a fresh build, a real run, and something the owner can look at or hear, plus a note on what was not verified. Order: S0 (windows, done as scaffolds), then S3, S1, S2, then D1, L1, V1... Nothing starts a later row before the earlier one's proof is recorded. Heavy work on debil/Mac.
+
+| # | Milestone | Proof / KPI (observable) | Status |
+|---|---|---|---|
+| S0 | **Scaffold windows** `voice-fx` and `sfx-hai` (x11-hq): lists, words field, Say/Make, knobs, verdict buttons; stand-in engines (Kokoro + `sox`) | window screenshot; relay case presses by id; a wav appears; ledger row | **built 2026-10-14, relay-tested**: voice-fx 20/20 (a real offline voice made, waveform drawn, rename/pitch/verdict rows), sfx-hai 13/13 (real sound, duration+peak checks ok; silent and clipped recipes reported FAIL from the command line). Screenshots `XO/25.games-plan/img/voice-fx-window.png`, `sfx-hai-window.png`. Stand-in engines; not heard by the owner yet. Handoff: each app's `README.md` |
+| S3 | **SFX recipes + C renderer** (`sfx_render`) | numeric checks pass on 2 recipes, 3 bad recipes each fail one check; audible by owner | planned |
+| S1 | **Pitch/speed/formant DSP op** (C): voice rows with knobs | 440 Hz test tone +12 st gives 880 Hz within 1 %, duration within 2 % at speed 1; spectrogram before/after; negative: out-of-range knob rejected | planned |
+| S2 | **Pronunciation map** + `pron_check` | one overridden word: phonemes and audio change; bad rows fail | planned |
+| D1 | **DAW audio clips** in `media-daw-hq` | a clip pointing at a wav shows in a lane and plays on Space | planned |
+| V0 | **v0 voice** (espeak-ng front end + our synth + knobs) used for one pet | a pet speaks in the v0 voice in a running window; owner verdict recorded | planned |
+| L1 | **Command spotter** (in-house, C): 10 spoken commands from the owner's clips | accuracy on a held-out set, number measured; compared with whisper.cpp tiny.en on the same clips | planned |
+| R1 | **Round-trip check**: speak a word list, transcribe, compare | pass rate per voice recorded in `HEAR` rows | planned (needs S2, L1 or whisper) |
+| A1 | **Attrition loop** for voice knobs and pronunciations (DESCRIBE -> fixed delta table -> candidate -> validate -> judge -> human promote) | one candidate accepted and one rejected, both recorded | planned |
+| V1 | **Recorded-unit voice** from rights-cleared recordings | judged sentence set; index built by our C tools | planned |
+| V2 | **Small trained voice model** (debil/Mac), only after V0/V1 corpus | held-out grader number; both judges yes | planned, no promise |
+Tangent docs to write with each: `SFX-RENDERER.md` (S3), `VOICE-DSP.md` (S1), `PRON-CHECK.md` (S2), `DAW-AUDIO-CLIPS.md` (D1), `SPOTTER.md` (L1), `VOICE-ATTRITION.md` (A1).
+First three slices for a new agent: **S3** (no model risk, unblocks in-game sound), then **S1**, then **S2**. Handoff for the scaffolds: `&.hq-apps/voice-fx/README.md` and `&.hq-apps/sfx-hai/README.md`.
