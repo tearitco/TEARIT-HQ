@@ -1,6 +1,6 @@
 /* voice_say - one spoken line, made off the window's thread: voice_say <package_dir> <house_root> <voice name> <speed> <pitch_st> <label> <text>
  * 1. stand-in engine: @.apps/pet-trainer/ops/pet_tts_local.py (offline Kokoro; voice name -> Kokoro voice by the KMAP rows; speed -> --rate) writes a wav;
- * 2. our knobs: sox applies pitch (semitones*100 cents) and resamples to 22.05 kHz mono 16 bit (the stand-in for the C DSP op, roadmap slice S1);
+ * 2. our knobs: &.widgits/_shared-lib/ops/audio_shift (in-house C: WSOLA + resample, pitch in semitones, duration kept, formants move with pitch; roadmap slice S1) writes the final mono 16-bit wav at the engine's sample rate;
  * 3. plays it with paplay (one at a time: a lock), appends  SAY | ts | label | voice | speed | pitch_st | seconds-to-make | file  to state/ledger.txt, writes the wav path to state/last.txt.
  * A file is never overwritten: <label>.wav, then <label>_r2.wav ... Status lines (append-only) go to state/say.txt. Exit 0 = made, 1 = failed.
  * Docs: &.hq-apps/voice-fx/README.md; design BOOK 19.audio/. */
@@ -33,8 +33,7 @@ int main(int argc, char **argv) {
     snprintf(msg, sizeof msg, "making: %s", label); status(msg);
     char rate[24]; snprintf(rate, sizeof rate, "--rate=%+d%%", (int)((atof(speed) - 1.0) * 100.0 + (atof(speed) >= 1.0 ? 0.5 : -0.5)));
     { char *a[] = { "nice", "-n", "10", tts, "--voice", (char *)voice, rate, "--pitch=+0Hz", "--text", (char *)text, "--write-media", tmp, NULL }; if (run(a, 90) != 0 || stat(tmp, &st) || st.st_size < 100) { unlink(tmp); status("failed: the voice engine made no sound (voice has no local Kokoro mapping?)"); return 1; } }
-    char cents[16]; snprintf(cents, sizeof cents, "%d", (int)(atof(pitch) * 100.0));
-    { char *a[] = { "sox", tmp, "-r", "22050", "-c", "1", "-b", "16", out, "pitch", cents, NULL }; if (run(a, 60) != 0 || stat(out, &st)) { unlink(tmp); status("failed: sox pitch step"); return 1; } }
+    { char shift[PL]; snprintf(shift, sizeof shift, "%s/&.widgits/_shared-lib/ops/+x/audio_shift.+x", house); char *a[] = { shift, tmp, out, (char *)pitch, "1.0", NULL }; if (run(a, 60) != 0 || stat(out, &st)) { unlink(tmp); status("failed: audio_shift (our own pitch DSP) step"); return 1; } }
     unlink(tmp);
     { char lp[PL]; snprintf(lp, sizeof lp, "%s/state/ledger.txt", pkg); FILE *f = fopen(lp, "a"); if (f) { fprintf(f, "SAY | %ld | %s | %s | %s | %s | %ld | %s\n", (long)t0, label, voice, speed, pitch, (long)(time(NULL) - t0), out); fclose(f); } }
     { char lp[PL]; snprintf(lp, sizeof lp, "%s/state/last.txt", pkg); FILE *f = fopen(lp, "w"); if (f) { fprintf(f, "%s\n", out); fclose(f); } }

@@ -10,7 +10,7 @@ An x11-hq window for the voice-fx studio: **list voices, select one, change pitc
 |---|---|
 | window, voice list, select, pitch/speed, rename, new voice, words field, verdict buttons, waveform | **built, relay-tested** |
 | the voice engine | **stand-in**: offline Kokoro through `@.apps/pet-trainer/ops/pet_tts_local.py` (voice name -> KMAP row) |
-| pitch | **stand-in**: `sox pitch` (changes the sound; the in-house C DSP is roadmap S1) |
+| pitch | **in-house C** (2026-10-14): `&.widgits/_shared-lib/ops/audio_shift` (WSOLA + resample; duration kept; formants move with the pitch, so it is a chipmunk/giant effect, not a formant-preserving shift; see BOOK 19.audio/VOICE-DSP.md) |
 | formant, brightness knobs | stored in the row (always 0), **not applied** |
 | in-house voices (v0/v1/v2), pronunciation map, candidate edits into a bank, batches, ledger review | **not built** |
 
