@@ -13747,6 +13747,37 @@ static int poll_agent_history(void) {
                  * wheel notches (handled above, each n++'d there) dirty the
                  * frame. Counting every move here made a focused generic
                  * window repaint on every mouse twitch over it = flicker. */
+            } else if (strncmp(line, "FOCUS_CLI_IO", 12) == 0) {
+                /* Arm the window's first <cli_io> without a click, so a
+                 * test or a remote agent can type into the address bar.
+                 *
+                 * WHY THIS EXISTS: the relay already maps codes 32..126 to
+                 * literal characters (dispatch_relay_code), so typing was
+                 * never the problem - ARMING was. Characters go nowhere
+                 * until g_default_input_elem is set, and that only
+                 * happened on a real click (click_focus_then_activate).
+                 * Measured 2026-10-14 on a live browser: three 'z' codes
+                 * into the relay changed nothing but the frame timestamp.
+                 * There is no Ctrl+L either.
+                 *
+                 * It arms through the SAME sequence the click path uses
+                 * (the arm site at ~10904), including arming at the end of
+                 * whatever is already typed and the keyboard grab - not a
+                 * second, subtly different way in. Pure test/agent
+                 * affordance, exactly like the MOUSE_MOVE relay above. */
+                for (int i = 0; i < g_n_nav; i++) {
+                    Elem *item = g_nav[i];
+                    if (!item || strcmp(item->tag, "cli_io") != 0) continue;
+                    int already = (g_default_input_elem == item);
+                    kh_set_default_input_elem(item);
+                    if (!already) {
+                        item->cursor = (int)strlen(item->input_buffer);
+                        item->sel_anchor = item->cursor;
+                    }
+                    kh_grab_keyboard_retry();
+                    n++;
+                    break;
+                }
             } else if (strncmp(line, "STRING: ", 8) == 0) {
                 kh_cliio_exec(line + 8);
                 n++;
