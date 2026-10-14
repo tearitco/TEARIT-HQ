@@ -213,6 +213,27 @@ def run(p):
           % first[-1].decode())
     print("  frames during LOAD: %d" % len(renders))
 
+    # Opt in to the tick loop. OFF by default in the worker so the resident
+    # manager never receives spontaneous frames before the manager side of
+    # the push protocol exists - so the KPI is measured against a loop the
+    # driver has explicitly asked for, and a red result can only mean the
+    # loop does not run, never that nobody turned it on.
+    send(p, ("TICK\n50\n").encode())
+    dl = time.time() + 10
+    ticked_on = False
+    while time.time() < dl:
+        fr = read_frame(p.stdout, dl)
+        if fr is None:
+            break
+        if fr.startswith(b"STATUS"):
+            ticked_on = fr.startswith(b"STATUS ok")
+            break
+    if not ticked_on:
+        print("FAIL: the worker refused TICK - the KPI would be measured "
+              "against a loop that was never enabled")
+        return 1
+    print("  tick loop enabled (TICK 50ms)")
+
     # ---- phase 2: the KPI - ten seconds, no input ----------------------
     start = time.time()
     after = []

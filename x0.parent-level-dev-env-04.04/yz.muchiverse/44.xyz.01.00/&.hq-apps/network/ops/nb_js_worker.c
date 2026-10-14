@@ -144,7 +144,14 @@ static long ms_until(long deadline_ms) {
  * already treat 0 as "no frame" and fall back, so a bounded wait degrades
  * into the direct-curl path instead of hanging the house.
  */
-static int recv_frame_budget(int budget_ms) {
+/* Why recv_frame_budget() gave up. Needed because "the caller timed out"
+ * and "the peer went away" were BOTH a bare 0, and the tick loop must
+ * do opposite things with them: keep ticking versus shut down. */
+#define NB_RECV_SHUTDOWN 0
+#define NB_RECV_TIMEOUT  1
+
+static int recv_frame_ex(int budget_ms, int *why) {
+    if (why) *why = NB_RECV_SHUTDOWN;
     long deadline = 0;
     if (budget_ms >= 0) {
         struct timespec now;
@@ -172,7 +179,7 @@ static int recv_frame_budget(int budget_ms) {
     size_t i = 0;
     for (;;) {
         char c;
-        if (!NB_READY_WAIT()) return 0;        /* budget spent */
+        if (!NB_READY_WAIT()) { if (why) *why = NB_RECV_TIMEOUT; return 0; }  /* budget spent */
         ssize_t r = read(STDIN_FILENO, &c, 1);
         if (r == 0) return 0;                 /* EOF */
         if (r < 0) {
@@ -187,7 +194,7 @@ static int recv_frame_budget(int budget_ms) {
     if (n < 0 || n > MAX_MSG) return 0;
     size_t got = 0;
     while (got < (size_t)n) {
-        if (!NB_READY_WAIT()) return 0;
+        if (!NB_READY_WAIT()) { if (why) *why = NB_RECV_TIMEOUT; return 0; }
         ssize_t r = read(STDIN_FILENO, g_rbuf + got, (size_t)n - got);
         if (r == 0) return 0;
         if (r < 0) { if (errno == EINTR) continue; return 0; }
@@ -209,6 +216,7 @@ static int recv_frame_budget(int budget_ms) {
     return 1;
 }
 
+static int recv_frame_budget(int budget_ms) { return recv_frame_ex(budget_ms, NULL); }
 static int recv_frame(void) { return recv_frame_budget(-1); }
 
 /* Split g_rbuf into the LOAD fields, copying each into a target buffer.
@@ -7369,6 +7377,89 @@ static void fire_event(JSContext *ctx, int kind, NbNode *n, const char *type) {
 
 /* ---- the loop: lifecycle -> job/timer drain until quiescent or budget ---- */
 /* returns nonzero if an event-loop callback threw (caller -> STATUS err) */
+/* ---- G1-b: the tick loop (2026-10-13) ----------------------------------
+ *
+ * A page's setInterval has to keep running AFTER LOAD returns. Until this,
+ * it did not: run_page() drained the timer queue once (bounded by
+ * MAX_DRAIN_MS = 800ms, which is why the G1 fixture came back saying
+ * "tick 2" and then stopped dead), emitted one RENDER, and the worker went
+ * back to blocking on stdin forever. Measured 2026-10-13: 0 frames in
+ * 10.1s of doing nothing at all.
+ *
+ * Deliberately NOT reusing run_event_loop() here. That drains to
+ * QUIESCENT and sleeps until the next timer, so calling it per tick would
+ * hold stdin hostage for up to MAX_DRAIN_MS and the page could not be
+ * clicked. The tick slice runs only what is DUE NOW and returns, which is
+ * the same pair run_event_loop() calls inside its own loop body:
+ * run_due_timers() + drain_jobs(). Same semantics, no waiting.
+ *
+ * Change detection is a string compare against the last pushed rows
+ * rather than a dirty flag in the DOM: one memcmp is exact, cannot be
+ * forgotten, and needs no new bookkeeping on every mutation site - which
+ * is where a dirty flag would rot.
+ *
+ * OFF by default (g_tick_cap_ms == 0). The resident manager worker must
+ * not start emitting spontaneous frames until the manager side of the
+ * push protocol is ready to consume them; the G1 probe opts in with an
+ * explicit TICK frame.
+ */
+static int g_tick_cap_ms;             /* 0 = off; else the max stdin wait */
+static char *g_last_push;             /* rows of the last frame we pushed */
+
+static void send_render_rows(const char *rows) {
+    size_t rn = rows ? strlen(rows) : 0;
+    if (!rn || rn >= RENDER_MAX) return;
+    size_t pn = 7 + rn;                        /* "RENDER\n" + rows */
+    char *pay = malloc(pn + 1);
+    if (!pay) return;
+    memcpy(pay, "RENDER\n", 7);
+    memcpy(pay + 7, rows, rn);
+    pay[pn] = 0;
+    send_payload(pay, pn);
+    free(pay);
+}
+
+/* How long the main loop may block on stdin before a tick is due. -1 when
+ * ticking is off (the historical indefinite wait), else the gap to the
+ * next scheduled timer, capped so a page cannot park the loop for long. */
+static int tick_wait_ms(void) {
+    if (g_tick_cap_ms <= 0) return -1;
+    uint64_t due = timer_min_due();
+    if (!due) return g_tick_cap_ms;            /* nothing scheduled */
+    uint64_t now = now_ms();
+    if (due <= now) return 0;                   /* already due: tick now */
+    uint64_t gap = due - now;
+    if (gap > (uint64_t)g_tick_cap_ms) gap = (uint64_t)g_tick_cap_ms;
+    return (int)gap;
+}
+
+/* One tick: fire whatever is due, drain microtasks, push only if the rows
+ * actually changed. Returns 1 if a frame went out. */
+static int tick_slice(void) {
+    if (!g_live_ctx) return 0;
+    uint64_t now = now_ms();
+    uint64_t due = timer_min_due();
+    if (!due || due > now) return 0;            /* nothing due yet */
+    run_due_timers(g_live_ctx, now);
+    drain_jobs(g_live_ctx);
+    if (g_pending_err) return 0;
+
+    SB r = {0, 0, 0};
+    dom_render_rows(&r);
+    int pushed = 0;
+    if (r.s && r.s[0]) {
+        if (!g_last_push || strcmp(g_last_push, r.s) != 0) {
+            send_render_rows(r.s);
+            free(g_last_push);
+            g_last_push = r.s;
+            r.s = NULL;                        /* ownership moved */
+            pushed = 1;
+        }
+    }
+    free(r.s);
+    return pushed;
+}
+
 static int run_event_loop(JSContext *ctx) {
     /* The page's timer queue can keep this loop busy for minutes under the
      * resident worker (no JIT), and the manager guards its LOAD read with a
@@ -8809,7 +8900,15 @@ int main(int argc, char **argv) {
     if (isatty(STDIN_FILENO)) return repl_main();
 
     for (;;) {
-        if (!recv_frame()) break;
+        /* A bounded wait is what lets a page keep running between inputs.
+         * NB_RECV_SHUTDOWN still ends the loop exactly as before; a budget
+         * timeout is not an exit, it is a tick that is due. */
+        int why = NB_RECV_SHUTDOWN;
+        if (!recv_frame_ex(tick_wait_ms(), &why)) {
+            if (why == NB_RECV_SHUTDOWN) break;
+            tick_slice();
+            continue;
+        }
 
         char *f[8];           split_lines(f);
         const char *cmd = f[0] ? f[0] : "";
@@ -8824,7 +8923,20 @@ int main(int argc, char **argv) {
             if (f[3]) snprintf(g_href, sizeof(g_href), "%s", f[3]);
             if (f[4]) snprintf(g_title, sizeof(g_title), "%s", f[4]);
             if (f[5]) snprintf(g_style_css, sizeof(g_style_css), "%s", f[5]);
+            free(g_last_push); g_last_push = NULL;   /* rows are per-page */
             run_page();
+        } else if (strcmp(cmd, "TICK") == 0) {
+            /* TICK\n<ms>\n - enable periodic ticking with stdin waits capped
+             * at <ms>. TICK\n0 disables it, restoring the historical
+             * indefinite wait. Opt-in: until the manager side of the push
+             * protocol is ready, the resident worker must not emit frames
+             * nobody asked for. A new page starts ticking only if it was
+             * already on - this flag is the driver's, not the page's. */
+            int want = f[1] ? atoi(f[1]) : 0;
+            if (want < 0) want = 0;
+            g_tick_cap_ms = want;
+            free(g_last_push); g_last_push = NULL;
+            send_status(want ? "STATUS ok" : "STATUS err:TICK wants ms >= 1");
         } else if (strcmp(cmd, "EVAL") == 0) {
             /* devtools console: eval:<js> — js is field 1 (address-bar single
              * line; embedded '\n' is split out by split_lines, fine for REPL) */
