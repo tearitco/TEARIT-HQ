@@ -1,7 +1,7 @@
 SECTION | KEY | VALUE
 ----------------------------------------
 # voices.pdl - how each species sounds. Edit, no rebuild.
-# VOICE | species | edge-tts voice | rate | pitch      (speech: pet_voice.sh; online edge-tts, cached per pet and phrase; no sound if offline)
+# VOICE | species | voice name (an edge-style name, kept as the key) | rate | pitch   (speech: pet_voice.sh -> ops/pet_tts_local.py, OFFLINE Kokoro, mapped by the KMAP rows below; cached per pet and phrase)
 # HUM   | species | wave | base_hz | steps (semitones) | note_ms      (a short melody made with sox, cached: pet_hum.sh; played only while the pet is on screen)
 # species: 0 bunny, 1 bear, 2 cat, 3 frog, 4 mouse, 5 dragon
 VOICE | 0 | en-US-AnaNeural     | +0%  | +30Hz
@@ -16,3 +16,15 @@ HUM | 2 | sine     | 392 | 0 4 7 12 7 4         | 200
 HUM | 3 | square   | 147 | 0 0 5 0 7 0          | 180
 HUM | 4 | sine     | 784 | 0 7 4 9 7 12 9 4     | 140
 HUM | 5 | sawtooth | 110 | 0 3 7 3 10 7         | 520
+# KMAP | edge voice | kokoro voice | language   (the OFFLINE voice used by ops/pet_tts_local.py; "-" = no local voice, the pet stays silent. rate maps to speed; pitch is ignored. Kokoro has no Korean voice.)
+KMAP | en-US-AnaNeural     | af_heart   | en-us
+KMAP | en-US-GuyNeural     | am_michael | en-us
+KMAP | en-GB-MaisieNeural  | bf_lily    | en-gb
+KMAP | en-US-EricNeural    | am_eric    | en-us
+KMAP | en-GB-RyanNeural    | bm_george  | en-gb
+KMAP | en-GB-ThomasNeural  | bm_daniel  | en-gb
+KMAP | ja-JP-NanamiNeural  | jf_alpha   | ja
+KMAP | ja-JP-KeitaNeural   | jm_kumo    | ja
+KMAP | zh-CN-XiaoyiNeural  | zf_xiaoyi  | cmn
+KMAP | zh-CN-XiaoxiaoNeural| zf_xiaoxiao| cmn
+KMAP | ko-KR-InJoonNeural  | -          | -

@@ -449,7 +449,7 @@ static const char *pet_reply(const char *text) {
         if (strchr(s, '?')) return "good question... let me think.";
         return dflt[h % 4]; }
 }
-/* ---------- voices: edge-tts per pet (voices.pdl), cached wav, one sound at a time, never blocks ---------- */
+/* ---------- voices: offline Kokoro per pet (voices.pdl VOICE+KMAP rows; ops/pet_tts_local.py), cached wav, one sound at a time, never blocks ---------- */
 static int run_quiet(char *const av[], int wait) {
     pid_t pid = fork(); if (pid < 0) return -1;
     if (pid == 0) { int fd = open("/dev/null", O_RDWR); if (fd >= 0) { dup2(fd, 0); dup2(fd, 1); dup2(fd, 2); } execvp(av[0], av[0] ? av : av); _exit(127); }
@@ -477,7 +477,7 @@ static void speak(int i, const char *text) {
     snprintf(wav, sizeof wav, "%s/say_%s_%08lx.wav", dir, party[i].id, h & 0xffffffffUL); snprintf(mp3, sizeof mp3, "%s/say_%s_%08lx.mp3", dir, party[i].id, h & 0xffffffffUL);
     pid_t pid = fork(); if (pid < 0) return; if (pid > 0) { waitpid(pid, NULL, 0); return; }          /* double fork: the grandchild does the slow work and is reparented */
     if (fork() != 0) _exit(0); setsid();
-    if (!fexists(wav)) { char rateA[40], pitchA[40], home[PATH_MAX], edge[PATH_MAX]; snprintf(rateA, sizeof rateA, "--rate=%s", rate); snprintf(pitchA, sizeof pitchA, "--pitch=%s", pitch); const char *hm = getenv("HOME"); snprintf(home, sizeof home, "%s", hm ? hm : ""); snprintf(edge, sizeof edge, "%s/.local/bin/edge-tts", home);
+    if (!fexists(wav)) { char rateA[40], pitchA[40], home[PATH_MAX], edge[PATH_MAX]; snprintf(rateA, sizeof rateA, "--rate=%s", rate); snprintf(pitchA, sizeof pitchA, "--pitch=%s", pitch); const char *hm = getenv("HOME"); snprintf(home, sizeof home, "%s", hm ? hm : ""); snprintf(edge, sizeof edge, "%s/../pet-trainer/ops/pet_tts_local.py", APP); (void)home;   /* offline Kokoro, same arguments as edge-tts (edge: HTTP 403 since 2026-10-12, rate-limit risk); writes a WAV into the "mp3" path, ffmpeg below re-encodes it */
         char *av[] = {"nice", "-n", "15", edge, "--voice", voice, rateA, pitchA, "--text", (char *)text, "--write-media", mp3, NULL}; if (run_quiet(av, 1) != 0 || !fexists(mp3)) _exit(0);
         char *cv[] = {"nice", "-n", "15", "ffmpeg", "-loglevel", "quiet", "-y", "-i", mp3, "-ar", "22050", "-ac", "1", wav, NULL}; run_quiet(cv, 1); remove(mp3); }
     if (!fexists(wav)) _exit(0);
