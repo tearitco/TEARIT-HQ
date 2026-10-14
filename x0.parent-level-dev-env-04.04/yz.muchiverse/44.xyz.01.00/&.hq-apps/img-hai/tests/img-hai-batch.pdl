@@ -1,0 +1,9 @@
+SECTION | KEY | VALUE
+------------------------------
+# img-hai-batch.pdl - start the default batch through the relay and confirm both hosts are working. Number 5 is "Run batch (default)" (read from a screenshot, fresh window, placed=0). Completion is read from queue_line afterwards.
+STEP | key | esc
+STEP | type | 5
+STEP | key | enter
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | queue_line=batch default: 10 waiting, 2 running | 10
+STEP | expect | &.hq-apps/img-hai/state/job.txt | contains | on lfs.master@10.0.0.144 | 15
+STEP | shot | &.hq-apps/img-hai/state/shot_10_batch.png

@@ -42,6 +42,12 @@ Driver and findings: `02-architecture/RELAY-DRIVE.md`. Cases: `&.hq-apps/img-hai
 - **Mac as a second host and Draft on ALL hosts (H5):** `models.pdl` lists debil and the Mac (Mac: torch 2.2.2 + diffusers 0.27.2, because diffusers 0.36 needs a newer torch than macOS-Intel offers). One press of "Draft on ALL hosts" (relay-driven, nav 4) started a job on each host in parallel; both finished: debil 119.4 s, Mac 118.5 s (the Mac's first run also downloaded its model). Two images from one press in about 2.5 minutes. The images (grey stripe textures for the words "asphalt road with dashed centre line") were no.
 - **Still manual:** which words to try; the verdicts; the owner's look.
 
+## 2f. Unattended batch (built and run 2026-10-13)
+`batches/default.pdl` (`BATCH | label | part or free | words or - | seeds | model or any`) + the window buttons **Run batch (default)** / **Stop batch** and a queue line (`batch default: N waiting, N running, N done, N failed`). Idle hosts pull the next job themselves; a row with `-` words uses the word bank for that part, `free` rows carry their own words; seeds 1..n make runs comparable. `ops/img_sheet.c` builds a contact sheet of any image list (prints row,col per file; exit 1 if no image could be read; a missing file is reported, not fatal).
+- **Run:** started by one relay-driven press (`tests/img-hai-batch.pdl`: queue_line showed `10 waiting, 2 running`, then the Mac job line). 12 jobs, both hosts, no input from me or the owner, finished with **12 done, 0 failed** in about 14 minutes (job times 111 to 183 s; the slower ones overlapped other work on the same machine).
+- **Result, my verdicts (owner blank):** one yes: `car_wheel_bk-sdm-tiny_s2` (a clear wheel with a hub; its 32 px version still reads as a wheel). Eleven no (windshield and door prompts gave whole vehicles or pixel-style cars, torso gave photographic people, road gave grey textures). So the word bank wording works for a wheel and fails for door, glass, torso, road. Next lever is bank/word editing, not more seeds of the same words. Sheet: `XO/25.games-plan/img/sheet_batch_default.png`; 32 px check: `wheel_and_car_32px.png`.
+- **First candidate for Accept:** `car_wheel_bk-sdm-tiny_s2`: claude=yes, owner=? . Nothing is accepted until the owner presses `o yes` on it.
+
 ## 3. Slices (each ends with a screenshot + a state file the owner can read)
 | # | Slice | Proof | Status |
 |---|---|---|---|

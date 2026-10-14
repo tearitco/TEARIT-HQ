@@ -18,3 +18,17 @@ JUDGE | car_door_bk-sdm-tiny_s54520 | claude | no | 2026-10-13
 JUDGE | free_bk-sdm-tiny_s57183 | claude | no | 2026-10-13
 JUDGE | free_bk-sdm-tiny_s57184 | claude | no | 2026-10-13
 # 57183 (debil) and 57184 (Mac): both are grey striped asphalt-like textures, no road, no dashed centre line, not pixel art. Usable at most as a texture reference. Words: "top-down flat colour tile of grey asphalt road with a white dashed centre line, pixel art". Drafted in parallel by one press of "Draft on ALL hosts" (relay-driven): debil 119.4 s, Mac 118.5 s.
+# batch "default" (12 jobs, both hosts, unattended, 2026-10-13). Sheet: XO/25.games-plan/img/sheet_batch_default.png, row,col as printed by img_sheet. claude's verdicts:
+JUDGE | car_wheel_bk-sdm-tiny_s2 | claude | yes | 2026-10-13
+JUDGE | car_wheel_bk-sdm-tiny_s1 | claude | no | 2026-10-13
+JUDGE | car_windshield_bk-sdm-tiny_s2 | claude | no | 2026-10-13
+JUDGE | car_windshield_bk-sdm-tiny_s1 | claude | no | 2026-10-13
+JUDGE | person_torso_bk-sdm-tiny_s1 | claude | no | 2026-10-13
+JUDGE | person_torso_bk-sdm-tiny_s2 | claude | no | 2026-10-13
+JUDGE | free_door-free-1_bk-sdm-tiny_s1 | claude | no | 2026-10-13
+JUDGE | free_door-free-1_bk-sdm-tiny_s2 | claude | no | 2026-10-13
+JUDGE | free_door-free-2_bk-sdm-tiny_s1 | claude | no | 2026-10-13
+JUDGE | free_door-free-2_bk-sdm-tiny_s2 | claude | no | 2026-10-13
+JUDGE | free_road_bk-sdm-tiny_s1 | claude | no | 2026-10-13
+JUDGE | free_road_bk-sdm-tiny_s2 | claude | no | 2026-10-13
+# why: car_wheel s2 is a clear round wheel with a hub and its 32 px version still reads as a wheel (yes, for a wheel part). windshield s1/s2 came out as pixel-art-looking vehicles, not glass. torso: photographic people, not pixel parts. door-free-2 s2 is a good flat cartoon car but a whole car, not a door. road: grey grid and stripe textures, no road.

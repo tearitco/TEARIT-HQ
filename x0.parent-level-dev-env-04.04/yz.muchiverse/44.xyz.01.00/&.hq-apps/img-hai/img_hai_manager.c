@@ -37,7 +37,9 @@ static Place P[MAXP]; static int nP, sel = -1, cell = 64, curx = 1, cury = 1, di
 static unsigned char *comp; static char g_words[400] = "", g_job[200] = "no job";
 typedef struct { char id[96], host[24], steps[8], size[8]; } Model; static Model M[16]; static int nM, selM;
 typedef struct { char name[24], target[64], dir[64], py[64], prefix[64]; } Host; static Host H[4]; static int nH;
-static char PARTS[16][40]; static int nParts, selPart; static long job_off = 0; static pid_t job_pid[4];
+static char PARTS[16][40]; static int nParts, selPart; static long job_off = 0; static pid_t job_pid[4]; static int job_slot[4];
+typedef struct { char part[40], words[300], model[96]; int seed, state; } Job;   /* state 0 waiting, 1 running, 2 done, 3 failed */
+static Job Q[256]; static int nQ; static char g_batch[64] = "";
 static long req_off = 0;
 
 static int has_img_ext(const char *n) { const char *d = strrchr(n, '.'); if (!d) return 0; static const char *ext[] = { ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tga", ".psd", ".hdr", ".ppm", ".pgm", ".pnm", NULL };
@@ -100,23 +102,37 @@ static int build_prompt(const char *part, const char *outfile) {
     for (int t = 0; t < 50; t++) { int st; if (waitpid(p, &st, WNOHANG) == p) return WIFEXITED(st) ? WEXITSTATUS(st) : -1; usleep(100000); }
     kill(p, SIGKILL); waitpid(p, NULL, 0); return -1;
 }
-static void start_on(int hi, int mi) {
-    if (hi < 0 || hi >= nH || mi < 0 || mi >= nM) return;
-    if (job_pid[hi] > 0) { snprintf(g_msg, sizeof g_msg, "%s is busy with a draft", H[hi].name); return; }
-    Host *h = &H[hi]; const char *part = g_words[0] ? "free" : PARTS[selPart]; char pf[PL]; snprintf(pf, sizeof pf, "%s/state/prompt_%s_%s.txt", g_pkg, part, h->name);
-    if (g_words[0]) { FILE *f = fopen(pf, "w"); if (!f) return; fprintf(f, "PROMPT: %s\nNEGATIVE: text, watermark, blurry\n", g_words); fclose(f); }
-    else if (build_prompt(part, pf) != 0) { snprintf(g_msg, sizeof g_msg, "prompt build failed for %s", part); return; }
-    char seed[16]; snprintf(seed, sizeof seed, "%ld", (long)(time(NULL) % 100000) + hi);
-    pid_t p = fork(); if (p < 0) return;
+static int start_on(int hi, int mi, const char *part, const char *words, int seedv) {
+    if (hi < 0 || hi >= nH || mi < 0 || mi >= nM) return 0;
+    if (job_pid[hi] > 0) { snprintf(g_msg, sizeof g_msg, "%s is busy with a draft", H[hi].name); return 0; }
+    Host *h = &H[hi]; char pf[PL]; snprintf(pf, sizeof pf, "%s/state/prompt_%s_%s_%d.txt", g_pkg, part, h->name, seedv);
+    if (words[0]) { FILE *f = fopen(pf, "w"); if (!f) return 0; fprintf(f, "PROMPT: %s\nNEGATIVE: text, watermark, blurry\n", words); fclose(f); }
+    else if (build_prompt(part, pf) != 0) { snprintf(g_msg, sizeof g_msg, "prompt build failed for %s", part); return 0; }
+    char seed[16]; snprintf(seed, sizeof seed, "%d", seedv);
+    pid_t p = fork(); if (p < 0) return 0;
     if (p == 0) { setsid(); char bin[PL]; snprintf(bin, sizeof bin, "%s/ops/+x/img_hai_job.+x", g_pkg); char *a[] = { bin, g_pkg, g_house, h->target, h->dir, h->py, M[mi].id, M[mi].steps, M[mi].size, seed, (char *)part, pf, h->prefix, NULL }; execv(bin, a); _exit(127); }
-    job_pid[hi] = p; snprintf(g_msg, sizeof g_msg, "draft started on %s: %s / %s", h->name, part, M[mi].id);
+    job_pid[hi] = p; job_slot[hi] = -1; snprintf(g_msg, sizeof g_msg, "draft started on %s: %s / %s", h->name, part, M[mi].id); return 1;
 }
 static int host_of_model(int mi) { for (int i = 0; i < nH; i++) if (!strcmp(H[i].name, M[mi].host)) return i; return -1; }
-static void start_draft(void) { if (!nM || !nParts) { snprintf(g_msg, sizeof g_msg, "no model or part"); return; } int hi = host_of_model(selM); if (hi < 0) { snprintf(g_msg, sizeof g_msg, "model host not in models.pdl"); return; } start_on(hi, selM); }
+static void start_draft(void) { if (!nM || !nParts) { snprintf(g_msg, sizeof g_msg, "no model or part"); return; } int hi = host_of_model(selM); if (hi < 0) { snprintf(g_msg, sizeof g_msg, "model host not in models.pdl"); return; } start_on(hi, selM, g_words[0] ? "free" : PARTS[selPart], g_words, (int)(time(NULL) % 100000) + hi); }
 /* delegate: one draft on every host at once, each with the first model listed for that host */
-static void start_all(void) { int started = 0; for (int hi = 0; hi < nH; hi++) { int mi = -1; for (int i = 0; i < nM; i++) if (!strcmp(M[i].host, H[hi].name)) { mi = i; break; } if (mi >= 0 && job_pid[hi] <= 0) { start_on(hi, mi); started++; } } snprintf(g_msg, sizeof g_msg, "drafts started on %d host(s)", started); }
+static void start_all(void) { int started = 0; for (int hi = 0; hi < nH; hi++) { int mi = -1; for (int i = 0; i < nM; i++) if (!strcmp(M[i].host, H[hi].name)) { mi = i; break; } if (mi >= 0 && job_pid[hi] <= 0 && start_on(hi, mi, g_words[0] ? "free" : PARTS[selPart], g_words, (int)(time(NULL) % 100000) + hi)) started++; } snprintf(g_msg, sizeof g_msg, "drafts started on %d host(s)", started); }
+/* batches/<name>.pdl rows: BATCH | label | part or "free" | words ("-" = use the word bank for the part) | seeds | model id or "any"
+ * Each row becomes <seeds> jobs with seeds 1..n. Idle hosts take the next waiting job whose model is "any" (the host's first model) or on that host. */
+static void load_batch(const char *name) {
+    char p[PL], ln[1024], *f[8]; snprintf(p, sizeof p, "%s/batches/%s.pdl", g_pkg, name); FILE *fp = fopen(p, "r"); if (!fp) { snprintf(g_msg, sizeof g_msg, "no batch file batches/%s.pdl", name); return; } nQ = 0;
+    while (fgets(ln, sizeof ln, fp)) { if (ln[0] == '#') continue; int n = split_bar(ln, f, 8); if (n < 6 || strcmp(f[0], "BATCH")) continue; int seeds = atoi(f[4]); if (seeds < 1) seeds = 1;
+        for (int k = 1; k <= seeds && nQ < 256; k++) { Job *j = &Q[nQ++]; memset(j, 0, sizeof *j); if (!strcmp(f[2], "free")) snprintf(j->part, 40, "free_%s", f[1]); else snprintf(j->part, 40, "%s", f[2]); snprintf(j->words, 300, "%s", strcmp(f[3], "-") ? f[3] : ""); snprintf(j->model, 96, "%s", f[5]); j->seed = k; } }
+    fclose(fp); snprintf(g_batch, sizeof g_batch, "%s", name); snprintf(g_msg, sizeof g_msg, "batch %s loaded: %d jobs", name, nQ);
+}
+static void dispatch_queue(void) {
+    for (int hi = 0; hi < nH; hi++) { if (job_pid[hi] > 0) continue; int first = -1; for (int i = 0; i < nM; i++) if (!strcmp(M[i].host, H[hi].name)) { first = i; break; } if (first < 0) continue;
+        for (int q = 0; q < nQ; q++) { Job *j = &Q[q]; if (j->state != 0) continue; int mi = -1; if (!strcmp(j->model, "any")) mi = first; else for (int i = 0; i < nM; i++) if (!strcmp(M[i].id, j->model) && !strcmp(M[i].host, H[hi].name)) mi = i; if (mi < 0) continue;
+            if (start_on(hi, mi, j->part, j->words, j->seed)) { j->state = 1; job_slot[hi] = q; dirty = 1; } else j->state = 3; break; } }
+}
+static void queue_counts(int *w, int *r, int *d, int *x) { *w = *r = *d = *x = 0; for (int q = 0; q < nQ; q++) { switch (Q[q].state) { case 0: (*w)++; break; case 1: (*r)++; break; case 2: (*d)++; break; default: (*x)++; } } }
 static void poll_job(void) {
-    for (int i = 0; i < 4; i++) if (job_pid[i] > 0) { int st; if (waitpid(job_pid[i], &st, WNOHANG) == job_pid[i]) { job_pid[i] = 0; scan_tiles(); dirty = 1; } }
+    for (int i = 0; i < 4; i++) if (job_pid[i] > 0) { int st; if (waitpid(job_pid[i], &st, WNOHANG) == job_pid[i]) { int ok = WIFEXITED(st) && WEXITSTATUS(st) == 0; if (job_slot[i] >= 0 && job_slot[i] < nQ) Q[job_slot[i]].state = ok ? 2 : 3; job_pid[i] = 0; job_slot[i] = -1; scan_tiles(); dirty = 1; } }
     char p[PL]; snprintf(p, sizeof p, "%s/job.txt", g_state); struct stat st; if (stat(p, &st) || st.st_size <= job_off) return;
     FILE *f = fopen(p, "r"); if (!f) return; fseek(f, job_off, SEEK_SET); char ln[300], last[300] = ""; while (fgets(ln, sizeof ln, f)) { size_t n = strlen(ln); if (!n || ln[n - 1] != '\n') break; ln[n - 1] = 0; job_off += (long)n; snprintf(last, sizeof last, "%s", ln); } fclose(f);
     if (last[0]) { snprintf(g_job, sizeof g_job, "%s", last); dirty = 1; }
@@ -151,7 +167,8 @@ static void write_ui(void) {
     fprintf(f, "place_count=%d\n", nP); for (int i = 0; i < nP; i++) { fprintf(f, "p_%d_label=%c %d %s @%d,%d r%d%s\np_%d_class=%s\np_%d_action='%s/ops/+x/img_hai_req.+x' 'SEL:%d'\n", i, P[i].vis ? '*' : '-', i + 1, P[i].tile < nT ? T[P[i].tile].label : "?", P[i].cx, P[i].cy, P[i].rot * 90, P[i].flip ? " flip" : "", i, i == sel ? "active" : "", i, g_pkg, i); }
     fprintf(f, "status_line=img-hai  tiles=%d  placed=%d  cell=%dpx  cursor=%d,%d\n", nT, nP, cell, curx, cury);
     { char jl[300] = "judge: place a tile, then judge it"; if (sel >= 0 && P[sel].tile < nT) { Judge *j = judge_of(T[P[sel].tile].label, 0); snprintf(jl, sizeof jl, "judge %s: claude=%s owner=%s", T[P[sel].tile].label, j ? jv(j->claude) : "?", j ? jv(j->owner) : "?"); } fprintf(f, "judge_line=%s\n", jl); }
-    { const char *jk[] = { "jo_yes", "jo_no", "jc_yes", "jc_no", "accept", "draftall" }; const char *jvb[] = { "VERDICT:owner:yes", "VERDICT:owner:no", "VERDICT:claude:yes", "VERDICT:claude:no", "ACCEPT", "DRAFTALL" }; for (int q = 0; q < 6; q++) fprintf(f, "%s_action='%s/ops/+x/img_hai_req.+x' '%s'\n", jk[q], g_pkg, jvb[q]); }
+    { const char *jk[] = { "jo_yes", "jo_no", "jc_yes", "jc_no", "accept", "draftall", "batchrun", "batchstop" }; const char *jvb[] = { "VERDICT:owner:yes", "VERDICT:owner:no", "VERDICT:claude:yes", "VERDICT:claude:no", "ACCEPT", "DRAFTALL", "BATCH:default", "BATCHSTOP" }; for (int q = 0; q < 8; q++) fprintf(f, "%s_action='%s/ops/+x/img_hai_req.+x' '%s'\n", jk[q], g_pkg, jvb[q]); }
+    { int w, r, d, x; queue_counts(&w, &r, &d, &x); if (nQ) fprintf(f, "queue_line=batch %s: %d waiting, %d running, %d done, %d failed/cancelled\n", g_batch, w, r, d, x); else fprintf(f, "queue_line=no batch loaded\n"); }
     fprintf(f, "msg=%s\n", g_msg);
     fprintf(f, "part_line=part: %s   model: %s\npart_action='%s/ops/+x/img_hai_req.+x' 'PARTNEXT'\nmodel_action='%s/ops/+x/img_hai_req.+x' 'MODELNEXT'\n", nParts ? PARTS[selPart] : "-", nM ? M[selM].id : "-", g_pkg, g_pkg);
     fprintf(f, "prompt_line=%s\njob_line=%s\nwords_action='%s/ops/+x/img_hai_req.+x' 'WORDS'\ndraft_action='%s/ops/+x/img_hai_req.+x' 'DRAFT'\n", g_words[0] ? g_words : "(no words yet: type above, Enter)", g_job, g_pkg, g_pkg);
@@ -170,6 +187,8 @@ static void handle(char *cmd) {
             else { char ap[PL]; if (!strncmp(T[P[sel].tile].label, "test_", 5)) snprintf(ap, sizeof ap, "%s/accept_test.pdl", g_state); else snprintf(ap, sizeof ap, "%s/&.widgits/concept-bank/data/img/accept_candidates.pdl", g_house); struct stat st; int fresh = stat(ap, &st) != 0; FILE *af = fopen(ap, "a"); if (af) { if (fresh) fputs("SECTION | KEY | VALUE\n------------------------------\n# CAND | tile label | image path | claude | owner | day : accepted by BOTH judges; a candidate for the brixel concept row, a human promotes it (no direct bank write)\n", af); time_t t = time(NULL); char day[16]; strftime(day, sizeof day, "%Y-%m-%d", localtime(&t)); fprintf(af, "CAND | %s | %s | yes | yes | %s\n", T[P[sel].tile].label, T[P[sel].tile].path, day); fclose(af); snprintf(g_msg, sizeof g_msg, "accepted %s (candidate written)", T[P[sel].tile].label); } } } }
     else if (!strcmp(cmd, "DRAFT")) start_draft();
     else if (!strcmp(cmd, "DRAFTALL")) start_all();
+    else if (!strncmp(cmd, "BATCH:", 6)) load_batch(cmd + 6);
+    else if (!strcmp(cmd, "BATCHSTOP")) { for (int q = 0; q < nQ; q++) if (Q[q].state == 0) Q[q].state = 3; snprintf(g_msg, sizeof g_msg, "waiting jobs cancelled (running ones finish)"); }
     else if (!strcmp(cmd, "PARTNEXT") && nParts) selPart = (selPart + 1) % nParts;
     else if (!strcmp(cmd, "MODELNEXT") && nM) selM = (selM + 1) % nM;
     else if (!strncmp(cmd, "TILE:", 5)) { int n = atoi(cmd + 5); if (n >= 0 && n < nT && nP < MAXP) { P[nP] = (Place){ n, curx, cury, 0, 0, 1 }; sel = nP++; } }
@@ -204,6 +223,6 @@ int main(int argc, char **argv) {
     { char p[PL]; snprintf(p, sizeof p, "%s/request.txt", g_state); struct stat st; if (!stat(p, &st)) req_off = st.st_size; }   /* ignore requests from before this start */
     load_models(); load_parts(); { char p[PL]; snprintf(p, sizeof p, "%s/job.txt", g_state); struct stat st; if (!stat(p, &st)) job_off = st.st_size; }
     load_judges(); scan_tiles(); write_canvas(); write_ui();
-    for (;;) { usleep(dirty ? 60000 : 200000); poll_requests(); poll_job(); if (dirty) { write_canvas(); write_ui(); dirty = 0; } if (!parent_alive()) break; }
+    for (;;) { usleep(dirty ? 60000 : 200000); poll_requests(); poll_job(); dispatch_queue(); if (dirty) { write_canvas(); write_ui(); dirty = 0; } if (!parent_alive()) break; }
     return 0;
 }

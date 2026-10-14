@@ -12,6 +12,9 @@
       <item id="modelsel" label="next model" action="${model_action}"/>
       <item id="draft" label="Draft image (remote)" action="${draft_action}"/>
       <item id="draftall" label="Draft on ALL hosts" action="${draftall_action}"/>
+      <item id="batchrun" label="Run batch (default)" action="${batchrun_action}"/>
+      <item id="batchstop" label="Stop batch" action="${batchstop_action}"/>
+      <text label="${queue_line}" class="quiet"/>
       <text label="${judge_line}" class="quiet"/>
       <text label="Placed on canvas" class="quiet"/>
       <repeat count="${place_count}" bind="p">
