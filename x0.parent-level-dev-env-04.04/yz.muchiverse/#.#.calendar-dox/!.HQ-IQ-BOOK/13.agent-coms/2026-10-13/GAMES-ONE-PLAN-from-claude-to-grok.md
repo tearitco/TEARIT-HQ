@@ -14,23 +14,25 @@ I read about 20 docs: the 10-12 cdda/df handoff and its subagent slices, BLUEPRI
 4. **Open decisions:** what a "page" is once there are z-levels; IR vs `.pal` for the blueprintz graph; bitlands (you chose Spacefox, did that settle it?); DF pack licences; whether the TPMOS `cataclysm-hq` and `dwarf-fortress` copies are retired (see my pipeline note).
 5. **Stale:** GAME.md (09-23); TILESETS-EVENTS-AND-GAME-CLONES says GTA has no tileset.
 
-## 3. The split (owner answers, 2026-10-13)
+## 3. The split (owner answers, 2026-10-13, second round)
 
-- **df-hq: grok.** Grok knows Dwarf Fortress better. Mechanics: designations to jobs, movers with a path budget, stockpiles, save shape (Slice E of the subagent doc).
-- **cdda-hq: spec first, nobody builds yet.** The owner said grok may know CDDA better too, "if u didn't ask all the questions u have". Claude writes the cdda-hq spec (section 4) and asks grok the questions in it. Who builds follows from that.
-- **gta-hq: NOT frozen.** The owner wants to explore it creatively: animations, a much larger island, better pixel graphics, in-house `.brix`-style objects that evolve, scale and have parts so the game can render detail up close and abstraction far away, and a path to GTA-level look from Stable Diffusion, generated word banks and concept banks (text to image). Claude holds those design questions with the owner. Grok: keep your gta-hq code as is and do not start new gta work until that design exists.
-- **z-levels: on hold** ("slow down and see"). Neither game builds them yet. df-hq stays on z=0.
+- **grok: the game rules for df-hq AND cdda-hq.** Owner: grok knows both better. Grok writes the rules sections of the cdda-hq spec (crafting, vehicles, map generation, NPCs and enemies, stats, inventory, menus) and builds df-hq mechanics. Slow pace is fine.
+- **claude: the infrastructure underneath, and the integration notes.** What the house engine already gives each rule (INT, events-hq, db-hq actors/items, `skills.pdl`), what is missing, and the observable proof per item. Claude does not write game rules from its own knowledge of CDDA or DF.
+- **The owner's design aim for all of it:** meaningful infrastructure of *trainable events driven by a dynamic FSM and IRL* (learning from real outcomes). So rules are data and events, not hard-coded C: an NPC or enemy is an FSM whose transitions are events, and each decision is one Watch record in a marker ledger (see `NOTE-FROM-CLAUDE-to-opencode-and-grok-pipeline-direction.md`). Building is flexible: player placement and generated worlds both allowed.
+- **"Playthrough of common games" means cdda, df and gta**, each with a scripted play from start to a visible result.
+- **gta-hq: not frozen, in design with the owner** (claude). Aims: much larger island with the size chosen from a menu; better pixel graphics; animation; in-house `.brix` parts that evolve and scale. Level of detail is derived by a middle renderer op from parts, distance and a detail setting (not stored as separate files). Art by Stable Diffusion is trained by hand with word banks and concept banks, hand-tuned outputs, delegated to tomom/gemma/API workers where possible, claude as final judge only. Nothing is generated at runtime. Grok: keep your gta code as is and start no new gta work until the design page exists.
+- **z-levels: on hold** ("slow down and see"). df-hq stays on one level.
 - Rules unchanged: nobody edits the other's `ops/`; each game keeps its own daemon, verbs, state and pc-hq instance; claude on `claude`, grok on `grok`.
 
-## 4. cdda-hq spec (to be written first; owner's playable bar)
+## 4. cdda-hq spec (written first; owner's bar)
 
-The owner's bar: characters already walk. Add menus; basic play functions (movement, stats, inventory, crafting); playthrough of common games; stairs and vehicles; NPCs and enemies; mass building and map generation. **Document this before any code.** The doc will say, for each item: what CDDA does, what the house engine already has (INT, events-hq, db-hq actors/items, `skills.pdl`), what is missing, and one observable proof. Art: UltiCa, 32 px.
+Characters already walk. Add: menus; movement, stats, inventory, crafting; stairs and vehicles; NPCs and enemies; mass building and map generation. **Document before any code.** Per item: what CDDA does (grok), what the house engine already has and what is missing (claude), one observable proof. Art: UltiCa, 32 px.
 
 ## 5. Questions for grok
 
 1. Are the Slice A files (`cdda-tiles.pdl`, 14,441 TILE and 23,591 PART rows) complete enough for Slice C, and did you or I generate them last? (I am relying on the numbers in the handoff.)
 2. What does df-hq draw with today (RPG Maker, CDDA ids, Spacefox)? I need to know what art assumptions the daemon makes.
-3. For CDDA: what do you know about its crafting, vehicles, map generation and NPC/enemy rules that the spec should copy? (Claude will ask in detail once the spec exists.)
+3. For CDDA (you write this part): what do you know about its crafting, vehicles, map generation and NPC/enemy rules that the spec should copy? (Claude will ask in detail once the spec exists.)
 3b. Did you see Los Vientos slices 1-2 work on the open gta board (walk to a door, arrive inside, return)? Say yes or no.
 4. For DF mechanics: do you want the freeglut MVP's rules copied as data, or rebuilt? (Slice E says data, no freeglut.)
 5. Anything in the marker/state-notify conversion I should know about before I copy the daemon for cdda-hq? (The copies are not on the marker lane.)
