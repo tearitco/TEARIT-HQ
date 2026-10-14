@@ -61,6 +61,12 @@ Work order, one KPI per step, each step red-before-green:
 | G2-b | G2.1 box tree | every visible node carries x/y/w/h; `div > p > span` reports strictly increasing y per depth |
 | G2-c | G2.2 gBCR honesty | +/-2 px on >= 95 % of sampled nodes; negative: `display:none` still returns 0,0,0,0 |
 
+**STATUS 2026-10-14: G1-a, G1-b and G1-e are DONE** (measured numbers,
+design decisions, four silent-failure modes found, and the next bite all
+in **[§9](#9-addendum-2026-10-1314--g11-and-g13-landed-measured)**).
+The next step is **G1-c / G1.4 focus safety** — the last G1 risk the push
+protocol introduced.
+
 **LANE OWNERSHIP — the thing to settle before G1-b starts.** AGENTS.md
 splits this repo: the `opencode-fix` lane owns `ops/` worker/fetch/driver
 code, `tests/worker_*`, the `nb_js_worker.+x` sides and the FETCH protocol,
@@ -414,3 +420,126 @@ Still true, and worth keeping in view: the structural version of this fix
 — one element per row with the kind as data, instead of 24 gated siblings
 — is still the better end state. It just stopped being the bottleneck,
 because making the gated ones free was worth 33x.
+
+---
+
+## 9. Addendum 2026-10-13/14 — G1.1 and G1.3 landed, measured
+
+**G1.1 (live timer tick) and G1.3 (push protocol) are DONE.** Both halves,
+both directions of G1.3, measured rather than argued.
+
+| Step | KPI | State |
+|---|---|---|
+| G1-a | harness | **done** — `nb_timer_test.sh`, was red by design, went green with the feature |
+| G1-b | G1.1 live timer tick | **done** — 20 distinct self-updates in 10.1 s, monotonic |
+| G1-c | G1.4 focus safety | **next** — needs key injection into a live window |
+| G1-d | G1.5 SPA click-through | not started — pin the existing `EVENT` re-render |
+| G1-e | G1.3 push protocol | **done** — positive *and* negative |
+| G1-f | G1.2 rAF / G1.6 canvas | not started — G1.6 should be cheap now that frames flow |
+
+### 9.1 What "done" was measured as
+
+Worker side, hermetic (`tests/nb_timer_test.sh`, worker RPC directly):
+
+    watched 10.1s with no input: 20 frames, 20 distinct tick values
+    [3, 4, 5, ... 22]
+    PASS: G1.1 live timer - 20 distinct self-updates in 10.1s
+
+Manager side, live (`tests/nb_tick_live_test.sh`, scratch house, real
+server, real push drained and merged):
+
+    TEXT|tick 10 -> 12 -> 14 -> 16 -> 18     (1 s apart, nobody touched it)
+    PASS: a page that updates itself repaints with no input (3 -> 9)
+    PASS: the invariant paragraph survived the updates
+
+G1.3 negative (`tests/nb_push_quiet_test.sh`) — both arms in ONE run,
+because a zero from a harness that cannot see frames is indistinguishable
+from a quiet page:
+
+    idle page:   1 frames during LOAD,  0 unsolicited in 5s
+    timer page:  1 frames during LOAD, 15 unsolicited in 3s
+
+Every assertion above was negative-tested: the tick suite drops to **0**
+with the `TICK` frame withheld; the quiet suite's zero is paired with a
+run that pushes 15.
+
+### 9.2 The design decisions worth keeping
+
+- **The tick slice is not `run_event_loop`.** That drains to *quiescent*
+  and sleeps until the next timer, so calling it per tick would hold stdin
+  hostage for up to `MAX_DRAIN_MS` and the page could not be clicked. The
+  slice runs only what is **due now** — the same `run_due_timers` +
+  `drain_jobs` pair, without the waiting.
+- **Change detection is a string compare** against the last pushed rows,
+  not a DOM dirty flag: one `memcmp` is exact, cannot be forgotten, and
+  needs no bookkeeping at every mutation site, which is where a dirty flag
+  would rot.
+- **Arming and draining land together.** The worker↔manager link is a
+  socketpair; a worker blocked writing into a full one stops ticking *and*
+  stops answering the next `LOAD`. There is no ordering where `TICK` goes
+  out and the drain arrives later.
+- **Arming is in `worker_load()`, not `worker_pump_reply()`.** The LOAD is
+  what leaves timers pending; nothing sends LOAD through the pump. This
+  cost two empty-log runs before it was instrumented.
+- **Push is opt-in** (`TICK\n<ms>`, off by default) so a red KPI can only
+  ever mean "the loop does not run", never "nobody turned it on".
+
+### 9.3 Four silent-failure modes found on the way
+
+All the same shape: something fails, the page still renders plausibly, and
+**nothing says so**. All four are now covered by a test.
+
+1. **A DOM the worker cannot load was dropped silently** — `nb_dom_load()`
+   returns NULL for anything that is not `nb_serialize` output, and a
+   missing file just fails `fopen`. The page rendered as its title and
+   nothing else, with `STATUS ok`. Now an `ERROR|` frame, which the
+   manager already handled for worker diagnostics.
+2. **The frame reader stole a byte.** Both the worker's
+   `recv_frame_ex()` and the manager's `worker_recv_line_to()` read one
+   byte unconditionally after a payload and dropped it if it was not a
+   newline — eating the next frame's first length digit, and *blocking
+   forever* against a peer that omits the newline and goes quiet. The
+   comment claimed a pushback that the code did not do. Both now peek with
+   a zero timeout and push the byte back.
+3. **The manager's worker probe fails silently.** `run_page_scripts()`
+   resolves the worker relative to the **house**
+   (`g_package_dir = "$house/&.hq-apps/network"`) and returns without a
+   word when it cannot open it. A house without the app installed renders
+   the static extraction and never ticks, with an empty log.
+4. **The id field is not the id.** In the `nb_serialize` wire format
+   `nb_attr_get()` parses the raw **attrs blob**; the serializer writes
+   `N|p|t||6|tick 0|8|p id="t"`, repeating the tag name and carrying the
+   attributes. A hand-written `N|p|t||6|tick 0|0|` loads fine, dumps fine,
+   renders its `tick 0` row like a healthy page — and is invisible to
+   `document.getElementById`. **Fixtures are generated now**
+   (`tests/g1_make_dom.c`), never hand-written.
+
+### 9.4 The method lesson, recorded because it recurred
+
+Four wrong turns in this sprint, and **three were misreading my own
+output rather than bad reasoning about the code**:
+
+- A multi-line `fprintf` read with `grep`, which shows only the **first
+  physical line** — a full row set read as a bare `TITLE`, which invented
+  an entire "the DOM's text is destroyed" theory.
+- Debug prints that went to a `DEVNULL` stderr in the harness, so "0
+  firings" was read as a finding while the loop was working all along.
+- "The `textContent` setter is at fault", argued instead of diffed. One
+  experiment against a generated DOM disproved it.
+- `nb_serialize` returning a **node count** printed as "bytes", which made
+  a good 370-byte fixture look like a 7-byte failure.
+
+Standing rules that came out of it: measure before theorising; never
+report a number you did not observe; never read a truncated diagnostic as
+if it were whole; and prefer generating a fixture to writing one.
+
+### 9.5 Next bite (G1.4)
+
+G1.4 is the last G1 risk this change introduced: an unsolicited push must
+never steal the address bar or reset the nav cursor mid-typing. It needs
+real keystrokes into a live window, and there is no `xdotool` on this leg
+— `tests/xsendevent.py` is mouse-only. So the bite is: extend it with
+`KeyPress`/`KeyRelease` (ctypes, same stdlib-only approach), verify a
+typed character actually lands, then assert the text survives several
+push-driven republishes **while the page's tick row advances in the same
+window** — without that second half the test passes vacuously.
