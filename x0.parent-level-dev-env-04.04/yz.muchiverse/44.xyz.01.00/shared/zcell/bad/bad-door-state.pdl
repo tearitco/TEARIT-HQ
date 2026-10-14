@@ -1,0 +1,120 @@
+SECTION | KEY | VALUE
+------------------------------
+# zcell-fixture.pdl - M1 fixture for the z-cell format (claude, 2026-10-13). Format: #.#.calendar-dox/!.HQ-IQ-BOOK/16.game/Z-CELL-FORMAT.md
+# ZWORLD  | id | kind(building|column|vehicle) | w | h | note        one self-contained grid stack
+# ZLEVEL  | world | z | span | alt_m | scale_concept | label         span = tiles per cell side (power of 2); alt_m = base altitude in metres
+# ZLEGEND | world | char | name | flags                              flags: walk solid stair air opaque seat (comma list); in a vehicle, name is a brixel id
+# ZGRID   | world | z | y | chars                                    one row of w chars; rows y = 0..h-1 for every ZLEVEL
+# ZLINK   | world | z | x | y | kind | to_z | to_x | to_y             stair/ladder: both ends must be stair cells and each end must have a reciprocal link
+# ZREGION | world | z | x | y | span | ref_world                    this cell is the far/abstract stand-in for ref_world (a large building seen from far)
+# ZPLACE  | world | vehicle_world | z | x | y | rot_deg              a vehicle sits in a world; rot in degrees, v1 accepts multiples of 90 only
+# ZSEAT   | vehicle_world | x | y | role                            a walk-to seat; the cell must carry the seat flag
+
+# ZFURN   | world | z | x | y | furniture_id | state(-|open|closed) | facing(-|n|e|s|w)    furniture or door on a walkable cell; the grid char stays the terrain
+# ZITEM   | world | z | x | y | item_id | count                                                 a pile of items
+# ZFIELD  | world | z | x | y | field_id | strength(1..10)                                      fire, smoke, gas
+# ZTRAP   | world | z | x | y | trap_id
+# ZJOB    | world | z | x | y | dig|channel|smooth | priority                                    a DF designation: the order, not the result. dig needs a solid cell; the result is a new cell char / level / link
+# ZLINK kinds: up, down, ladder (same x,y, z changes by 1) and ramp (z changes by 1, x,y may move by at most 1 cell, i.e. onto a neighbour)
+
+# ---- a 3-floor building with a cellar: z -1, 0, 1, 2 ----
+ZWORLD | house | building | 7 | 5 | cellar + ground + 2 floors, stairs at x=1 and x=5
+ZLEGEND | house | # | wall | solid,opaque
+ZLEGEND | house | . | floor | walk
+ZLEGEND | house | + | door | walk
+ZLEGEND | house | U | stair_up | walk,stair
+ZLEGEND | house | D | stair_down | walk,stair
+ZLEVEL | house | -1 | 1 | -3 | scale_tile | cellar
+ZLEVEL | house | 0 | 1 | 0 | scale_tile | ground floor
+ZLEVEL | house | 1 | 1 | 3 | scale_tile | first floor
+ZLEVEL | house | 2 | 1 | 6 | scale_tile | second floor
+ZGRID | house | -1 | 0 | #######
+ZGRID | house | -1 | 1 | #.....#
+ZGRID | house | -1 | 2 | #....U#
+ZGRID | house | -1 | 3 | #.....#
+ZGRID | house | -1 | 4 | #######
+ZGRID | house | 0 | 0 | ###+###
+ZGRID | house | 0 | 1 | #.....#
+ZGRID | house | 0 | 2 | #U...D#
+ZGRID | house | 0 | 3 | #.....#
+ZGRID | house | 0 | 4 | #######
+ZGRID | house | 1 | 0 | #######
+ZGRID | house | 1 | 1 | #.....#
+ZGRID | house | 1 | 2 | #D...U#
+ZGRID | house | 1 | 3 | #.....#
+ZGRID | house | 1 | 4 | #######
+ZGRID | house | 2 | 0 | #######
+ZGRID | house | 2 | 1 | #.....#
+ZGRID | house | 2 | 2 | #....D#
+ZGRID | house | 2 | 3 | #.....#
+ZGRID | house | 2 | 4 | #######
+ZLINK | house | -1 | 5 | 2 | up | 0 | 5 | 2
+ZLINK | house | 0 | 5 | 2 | down | -1 | 5 | 2
+ZLINK | house | 0 | 1 | 2 | up | 1 | 1 | 2
+ZLINK | house | 1 | 1 | 2 | down | 0 | 1 | 2
+ZLINK | house | 1 | 5 | 2 | up | 2 | 5 | 2
+ZLINK | house | 2 | 5 | 2 | down | 1 | 5 | 2
+
+# per-cell rows for the house
+ZFURN | house | 0 | 3 | 0 | door_wood | ajar | n
+ZFURN | house | 0 | 2 | 1 | fridge | - | s
+ZITEM | house | 0 | 2 | 1 | food_tin | 3
+ZFIELD | house | -1 | 2 | 3 | smoke | 4
+ZTRAP | house | -1 | 3 | 3 | tripwire
+ZJOB | house | -1 | 0 | 2 | dig | 1
+
+# ---- a DF-style pit with a ramp: z0 ramp cell (1,1) walks down onto the neighbour (2,1) of z-1 ----
+ZWORLD | pit | building | 5 | 3 | one dug level reached by a ramp, not straight down
+ZLEGEND | pit | # | rock | solid,opaque
+ZLEGEND | pit | . | floor | walk
+ZLEGEND | pit | R | ramp | walk,stair
+ZLEVEL | pit | -1 | 1 | -3 | scale_tile | dug level
+ZLEVEL | pit | 0 | 1 | 0 | scale_tile | surface
+ZGRID | pit | -1 | 0 | #####
+ZGRID | pit | -1 | 1 | #.R.#
+ZGRID | pit | -1 | 2 | #####
+ZGRID | pit | 0 | 0 | .....
+ZGRID | pit | 0 | 1 | .R...
+ZGRID | pit | 0 | 2 | .....
+ZLINK | pit | 0 | 1 | 1 | ramp | -1 | 2 | 1
+ZLINK | pit | -1 | 2 | 1 | ramp | 0 | 1 | 1
+
+# ---- a car: a grid of brixel part cells, same row shapes (brixel ids exist in shared/brixels.pdl) ----
+ZWORLD | car1 | vehicle | 3 | 2 | engine, frame, seat on the top row; wheels either side of the frame below
+ZLEGEND | car1 | e | car_engine | solid
+ZLEGEND | car1 | f | car_frame | walk
+ZLEGEND | car1 | s | car_seat | walk,seat
+ZLEGEND | car1 | w | car_wheel | solid
+ZLEVEL | car1 | 0 | 1 | 0 | scale_tile | body
+ZGRID | car1 | 0 | 0 | efs
+ZGRID | car1 | 0 | 1 | wfw
+ZSEAT | car1 | 2 | 0 | driver
+
+# ---- a ground-to-sky column: finer near the ground, coarser with height ----
+ZWORLD | skycol | column | 4 | 4 | one island column from ground to orbit; each level coarser than the one below
+ZLEGEND | skycol | g | ground | walk
+ZLEGEND | skycol | . | air | air
+ZLEGEND | skycol | o | orbit | air
+ZLEVEL | skycol | 0 | 1 | 0 | scale_tile | ground
+ZLEVEL | skycol | 1 | 4 | 100 | scale_region4 | low sky
+ZLEVEL | skycol | 2 | 16 | 1000 | scale_region16 | high sky
+ZLEVEL | skycol | 3 | 256 | 100000 | scale_orbit | orbit
+ZGRID | skycol | 0 | 0 | gggg
+ZGRID | skycol | 0 | 1 | gggg
+ZGRID | skycol | 0 | 2 | gggg
+ZGRID | skycol | 0 | 3 | gggg
+ZGRID | skycol | 1 | 0 | ....
+ZGRID | skycol | 1 | 1 | ....
+ZGRID | skycol | 1 | 2 | ....
+ZGRID | skycol | 1 | 3 | ....
+ZGRID | skycol | 2 | 0 | ....
+ZGRID | skycol | 2 | 1 | ....
+ZGRID | skycol | 2 | 2 | ....
+ZGRID | skycol | 2 | 3 | ....
+ZGRID | skycol | 3 | 0 | oooo
+ZGRID | skycol | 3 | 1 | oooo
+ZGRID | skycol | 3 | 2 | oooo
+ZGRID | skycol | 3 | 3 | oooo
+ZREGION | skycol | 0 | 2 | 2 | 4 | house
+ZPLACE | skycol | car1 | 0 | 0 | 0 | 90
+ZPLACE | skycol | car1 | 1 | 2 | 2 | 0

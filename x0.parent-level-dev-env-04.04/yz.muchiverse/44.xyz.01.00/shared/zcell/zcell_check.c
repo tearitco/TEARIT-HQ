@@ -10,6 +10,8 @@ typedef struct { char w[24]; int z, span; long alt; char scale[32]; } Level;
 typedef struct { char w[24]; char ch; char name[40]; char fl[40]; } Leg;
 typedef struct { char w[24]; int z, y; char row[MX + 1]; } Row;
 typedef struct { char w[24]; int z, x, y, tz, tx, ty; char kind[12]; } Link;
+typedef struct { char t[8]; char w[24]; int z, x, y, n, ln; char a[32], b[12], c[12]; } Thing;
+static Thing T[1024]; static int nT;
 static World W[MW]; static Level L[256]; static Leg G[512]; static Row R[2048]; static Link K[128];
 static int nW, nL, nG, nR, nK, errs, warns;
 static void err(int ln, const char *m, const char *a) { printf("ERR line %d: %s %s\n", ln, m, a ? a : ""); errs++; }
@@ -32,10 +34,13 @@ int main(int argc, char **argv) {
         else if (!strcmp(f[0], "ZLEVEL") && n >= 7) { if (!fw(f[1])) { err(ln, "level for unknown world", f[1]); continue; } Level *l = &L[nL++]; snprintf(l->w, 24, "%s", f[1]); l->z = atoi(f[2]); l->span = atoi(f[3]); l->alt = atol(f[4]); snprintf(l->scale, 32, "%s", f[5]); if (l->span < 1 || (l->span & (l->span - 1))) err(ln, "span is not a power of 2:", f[3]); }
         else if (!strcmp(f[0], "ZLEGEND") && n >= 5) { if (!fw(f[1])) { err(ln, "legend for unknown world", f[1]); continue; } if (strlen(f[2]) != 1) { err(ln, "legend char must be 1 char:", f[2]); continue; } if (fg(f[1], f[2][0])) { err(ln, "duplicate legend char", f[2]); continue; } Leg *g = &G[nG++]; snprintf(g->w, 24, "%s", f[1]); g->ch = f[2][0]; snprintf(g->name, 40, "%s", f[3]); snprintf(g->fl, 40, "%s", f[4]); }
         else if (!strcmp(f[0], "ZGRID") && n >= 5) { World *w = fw(f[1]); if (!w) { err(ln, "grid for unknown world", f[1]); continue; } Row *r = &R[nR++]; snprintf(r->w, 24, "%s", f[1]); r->z = atoi(f[2]); r->y = atoi(f[3]); snprintf(r->row, MX + 1, "%s", f[4]); if ((int)strlen(r->row) != w->w) err(ln, "row width differs from world width in", f[1]); if (r->y < 0 || r->y >= w->h) err(ln, "row y out of range in", f[1]); if (!fl(f[1], r->z)) err(ln, "grid row for a z with no ZLEVEL in", f[1]); for (int i = 0; r->row[i]; i++) if (!fg(f[1], r->row[i])) { char b[8] = { r->row[i], 0 }; err(ln, "char not in legend:", b); break; } }
-        else if (!strcmp(f[0], "ZLINK") && n >= 9) { Link *k = &K[nK++]; snprintf(k->w, 24, "%s", f[1]); k->z = atoi(f[2]); k->x = atoi(f[3]); k->y = atoi(f[4]); snprintf(k->kind, 12, "%s", f[5]); k->tz = atoi(f[6]); k->tx = atoi(f[7]); k->ty = atoi(f[8]); if (!fw(k->w)) err(ln, "link in unknown world", k->w); if (k->tz == k->z) err(ln, "link does not change z in", k->w); }
+        else if (!strcmp(f[0], "ZLINK") && n >= 9) { Link *k = &K[nK++]; snprintf(k->w, 24, "%s", f[1]); k->z = atoi(f[2]); k->x = atoi(f[3]); k->y = atoi(f[4]); snprintf(k->kind, 12, "%s", f[5]); k->tz = atoi(f[6]); k->tx = atoi(f[7]); k->ty = atoi(f[8]); if (!fw(k->w)) err(ln, "link in unknown world", k->w); if (k->tz == k->z) err(ln, "link does not change z in", k->w); if (abs(k->tz - k->z) != 1) err(ln, "link must change z by exactly 1 in", k->w); if (strcmp(k->kind, "up") && strcmp(k->kind, "down") && strcmp(k->kind, "ladder") && strcmp(k->kind, "ramp")) err(ln, "bad link kind:", k->kind); if (!strcmp(k->kind, "up") && k->tz < k->z) err(ln, "link kind up goes down in", k->w); if (!strcmp(k->kind, "down") && k->tz > k->z) err(ln, "link kind down goes up in", k->w); if (strcmp(k->kind, "ramp") && (k->tx != k->x || k->ty != k->y)) err(ln, "only a ramp may change x,y in", k->w); if (abs(k->tx - k->x) > 1 || abs(k->ty - k->y) > 1) err(ln, "link offset larger than 1 cell in", k->w); }
         else if (!strcmp(f[0], "ZREGION") && n >= 7) { if (nZ < 32) { Z[nZ].ln = ln; snprintf(Z[nZ].w, 24, "%s", f[1]); Z[nZ].z = atoi(f[2]); Z[nZ].x = atoi(f[3]); Z[nZ].y = atoi(f[4]); Z[nZ].span = atoi(f[5]); snprintf(Z[nZ].reg, 24, "%s", f[6]); nZ++; } }
         else if (!strcmp(f[0], "ZPLACE") && n >= 7) { if (nP < 32) { P[nP].ln = ln; snprintf(P[nP].w, 24, "%s", f[1]); snprintf(P[nP].v, 24, "%s", f[2]); P[nP].z = atoi(f[3]); P[nP].x = atoi(f[4]); P[nP].y = atoi(f[5]); P[nP].rot = atoi(f[6]); nP++; } }
         else if (!strcmp(f[0], "ZSEAT") && n >= 5) { if (nS < 32) { S[nS].ln = ln; snprintf(S[nS].v, 24, "%s", f[1]); S[nS].x = atoi(f[2]); S[nS].y = atoi(f[3]); nS++; } }
+        else if ((!strcmp(f[0], "ZFURN") && n >= 8) || (!strcmp(f[0], "ZITEM") && n >= 7) || (!strcmp(f[0], "ZFIELD") && n >= 7) || (!strcmp(f[0], "ZTRAP") && n >= 6) || (!strcmp(f[0], "ZJOB") && n >= 7)) {
+            if (nT >= 1024) continue; Thing *t = &T[nT++]; memset(t, 0, sizeof *t); t->ln = ln; snprintf(t->t, 8, "%s", f[0] + 1); snprintf(t->w, 24, "%s", f[1]); t->z = atoi(f[2]); t->x = atoi(f[3]); t->y = atoi(f[4]); snprintf(t->a, 32, "%s", f[5]);
+            if (!strcmp(f[0], "ZFURN")) { snprintf(t->b, 12, "%s", f[6]); snprintf(t->c, 12, "%s", f[7]); } else if (!strcmp(f[0], "ZITEM") || !strcmp(f[0], "ZFIELD")) t->n = atoi(f[6]); else if (!strcmp(f[0], "ZJOB")) { t->n = atoi(f[6]); } }
         else if (f[0][0] == 'Z') err(ln, "unknown or short row:", f[0]);
     }
     fclose(fp);
@@ -52,6 +57,14 @@ int main(int argc, char **argv) {
         if (!back) err(0, "link has no reciprocal:", m);
     }
     for (int i = 0; i < nZ; i++) { World *rw = fw(Z[i].reg); if (!rw) { err(Z[i].ln, "region refers to unknown world", Z[i].reg); continue; } Level *l = fl(Z[i].w, Z[i].z); if (!l || !cell(Z[i].w, Z[i].z, Z[i].x, Z[i].y)) err(Z[i].ln, "region cell is outside its grid in", Z[i].w); else if (Z[i].span < l->span) err(Z[i].ln, "region span is finer than its level in", Z[i].w); }
+    for (int i = 0; i < nT; i++) {      /* per-cell rows: keyed by world,z,x,y; the cell must exist and suit the row */
+        Thing *t = &T[i]; Leg *g = cell(t->w, t->z, t->x, t->y); char m[64]; snprintf(m, sizeof m, "%.20s z=%d (%d,%d)", t->w, t->z, t->x, t->y);
+        if (!fw(t->w) || !g) { err(t->ln, "cell row points outside its grid:", m); continue; }
+        if (!strcmp(t->t, "FURN")) { if (hasflag(g, "solid")) err(t->ln, "furniture on a solid cell:", m); if (strcmp(t->b, "-") && strcmp(t->b, "open") && strcmp(t->b, "closed")) err(t->ln, "bad furniture state:", t->b); if (strcmp(t->c, "-") && strcmp(t->c, "n") && strcmp(t->c, "e") && strcmp(t->c, "s") && strcmp(t->c, "w")) err(t->ln, "bad facing:", t->c); }
+        else if (!strcmp(t->t, "ITEM") && t->n < 1) err(t->ln, "item count must be 1 or more:", m);
+        else if (!strcmp(t->t, "FIELD") && (t->n < 1 || t->n > 10)) err(t->ln, "field strength must be 1..10:", m);
+        else if (!strcmp(t->t, "JOB")) { if (strcmp(t->a, "dig") && strcmp(t->a, "channel") && strcmp(t->a, "smooth")) err(t->ln, "unknown job:", t->a); else if (!strcmp(t->a, "dig") && !hasflag(g, "solid")) err(t->ln, "dig order on a cell that is not solid:", m); else if (strcmp(t->a, "dig") && !hasflag(g, "walk")) err(t->ln, "job needs a walkable cell:", m); }
+    }
     for (int i = 0; i < nP; i++) {      /* a vehicle's own grid keeps span 1; in a coarser level its footprint rounds up to whole cells */
         World *v = fw(P[i].v), *w = fw(P[i].w); if (!v || strcmp(v->kind, "vehicle")) { err(P[i].ln, "place: not a vehicle world:", P[i].v); continue; } if (!w) { err(P[i].ln, "place: unknown world", P[i].w); continue; }
         if (P[i].rot % 90) { char b[16]; snprintf(b, sizeof b, "%d", P[i].rot); err(P[i].ln, "rotation must be a multiple of 90 in v1:", b); continue; }
@@ -67,6 +80,7 @@ int main(int argc, char **argv) {
             printf("  z=%-3d span=%-3d alt=%-7ld %-14s cells=%d walk=%d solid=%d stair=%d air=%d seat=%d\n", L[j].z, L[j].span, L[j].alt, L[j].scale, cnt[0], cnt[1], cnt[2], cnt[3], cnt[4], cnt[5]); }
         if (!strcmp(w->kind, "vehicle")) for (int y = 0; y < w->h; y++) { Row *r = fr(w->id, 0, y); for (int x = 0; r && r->row[x]; x++) { Leg *g = fg(w->id, r->row[x]); if (g && !brix_known(argc > 2 ? argv[2] : 0, g->name)) { printf("WARN part not in brixels.pdl: %s\n", g->name); warns++; } } }
     }
+    { int c[5] = { 0 }; for (int i = 0; i < nT; i++) c[!strcmp(T[i].t, "FURN") ? 0 : !strcmp(T[i].t, "ITEM") ? 1 : !strcmp(T[i].t, "FIELD") ? 2 : !strcmp(T[i].t, "TRAP") ? 3 : 4]++; printf("cell rows: furn=%d item=%d field=%d trap=%d job=%d\n", c[0], c[1], c[2], c[3], c[4]); }
     printf("%s: %d worlds, %d levels, %d links, %d errors, %d warnings\n", errs ? "INVALID" : "VALID", nW, nL, nK, errs, warns);
     return errs ? 1 : 0;
 }

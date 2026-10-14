@@ -10,6 +10,13 @@ SECTION | KEY | VALUE
 # ZPLACE  | world | vehicle_world | z | x | y | rot_deg              a vehicle sits in a world; rot in degrees, v1 accepts multiples of 90 only
 # ZSEAT   | vehicle_world | x | y | role                            a walk-to seat; the cell must carry the seat flag
 
+# ZFURN   | world | z | x | y | furniture_id | state(-|open|closed) | facing(-|n|e|s|w)    furniture or door on a walkable cell; the grid char stays the terrain
+# ZITEM   | world | z | x | y | item_id | count                                                 a pile of items
+# ZFIELD  | world | z | x | y | field_id | strength(1..10)                                      fire, smoke, gas
+# ZTRAP   | world | z | x | y | trap_id
+# ZJOB    | world | z | x | y | dig|channel|smooth | priority                                    a DF designation: the order, not the result. dig needs a solid cell; the result is a new cell char / level / link
+# ZLINK kinds: up, down, ladder (same x,y, z changes by 1) and ramp (z changes by 1, x,y may move by at most 1 cell, i.e. onto a neighbour)
+
 # ---- a 3-floor building with a cellar: z -1, 0, 1, 2 ----
 ZWORLD | house | building | 7 | 5 | cellar + ground + 2 floors, stairs at x=1 and x=5
 ZLEGEND | house | # | wall | solid,opaque
@@ -47,6 +54,30 @@ ZLINK | house | 0 | 1 | 2 | up | 1 | 1 | 2
 ZLINK | house | 1 | 1 | 2 | down | 0 | 1 | 2
 ZLINK | house | 1 | 5 | 2 | up | 2 | 5 | 2
 ZLINK | house | 2 | 5 | 2 | down | 1 | 5 | 2
+
+# per-cell rows for the house
+ZFURN | house | 0 | 3 | 0 | door_wood | closed | n
+ZFURN | house | 0 | 2 | 1 | fridge | - | s
+ZITEM | house | 0 | 2 | 1 | food_tin | 3
+ZFIELD | house | -1 | 2 | 3 | smoke | 4
+ZTRAP | house | -1 | 3 | 3 | tripwire
+ZJOB | house | -1 | 0 | 2 | dig | 1
+
+# ---- a DF-style pit with a ramp: z0 ramp cell (1,1) walks down onto the neighbour (2,1) of z-1 ----
+ZWORLD | pit | building | 5 | 3 | one dug level reached by a ramp, not straight down
+ZLEGEND | pit | # | rock | solid,opaque
+ZLEGEND | pit | . | floor | walk
+ZLEGEND | pit | R | ramp | walk,stair
+ZLEVEL | pit | -1 | 1 | -3 | scale_tile | dug level
+ZLEVEL | pit | 0 | 1 | 0 | scale_tile | surface
+ZGRID | pit | -1 | 0 | #####
+ZGRID | pit | -1 | 1 | #.R.#
+ZGRID | pit | -1 | 2 | #####
+ZGRID | pit | 0 | 0 | .....
+ZGRID | pit | 0 | 1 | .R...
+ZGRID | pit | 0 | 2 | .....
+ZLINK | pit | 0 | 1 | 1 | ramp | -1 | 2 | 1
+ZLINK | pit | -1 | 2 | 1 | ramp | 0 | 1 | 1
 
 # ---- a car: a grid of brixel part cells, same row shapes (brixel ids exist in shared/brixels.pdl) ----
 ZWORLD | car1 | vehicle | 3 | 2 | engine, frame, seat on the top row; wheels either side of the frame below
