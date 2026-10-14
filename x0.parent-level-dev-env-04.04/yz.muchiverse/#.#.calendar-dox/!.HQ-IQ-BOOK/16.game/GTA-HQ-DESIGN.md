@@ -1,4 +1,4 @@
-# gta-hq design (roadmap G0) - DRAFT 1, 2026-10-13
+# gta-hq design (roadmap G0) - DRAFT 2, 2026-10-13 (owner answered the 8 questions)
 
 Status: **draft for the owner. Nothing here is built.** Labels: SAID = owner's words; READ = from files, not run; MINE = claude's proposal, needs the owner's yes. Grok keeps its gta code as is and starts no new gta work until this page is agreed.
 
@@ -35,15 +35,15 @@ Not known yet: whether Stable Diffusion can run here at all, or only through an 
 ## 4. Order
 G0 this page agreed -> G1 island sizes -> G2 detail op (needs brixel parts that exist) -> G3 word-bank pilot -> G4 scripted playthrough. Vehicles and flight come from the shared spine (M1 done on paper, M2, F1), not from here.
 
-## 5. Questions for the owner (answer any, in any order)
-1. Size presets: are 20x13 / 40x26 / 80x52 / 160x104 the right range? How large should "much larger" be in the end?
-2. Is the island one flat overmap, or does gta also want height (hills, rooftops, bridges) as z-levels from the start?
-3. "GTA-level graphics": top-down like today, or an angled/isometric view for gta? That changes what art we ask Stable Diffusion for (angle, size, shadows).
-4. Sprite size: keep 32 px cells with larger parts (a car spanning several cells), or raise the cell size? Which pixel size do you want people at?
-5. Animation: how many frames for walk and wheel turn is enough for the first proof (2, 4, 8)? Is a frame-by-frame sprite okay, or must parts rotate smoothly?
-6. Stable Diffusion: do you have a way to run it (the Mac, a GPU, an API key you are happy to spend on)? Which models can I use for drafting that you consider free?
-7. What is the GTA part to prove first: driving a car, a pedestrian crowd, the shops/jobs, police? One thing for the first playthrough.
-8. Who judges the art when the models drafted it: I look at the image and say yes/no, you look at a contact sheet, or both?
+## 5. Owner answers (SAID, 2026-10-13) and what they change
+1. **Size:** "double each check." MINE reading: each size step doubles the one before (20x13, 40x26, 80x52, 160x104, then 320x208 ...), the menu can keep going as far as the machine allows, and each size is measured before the next is offered. If you meant something else (for example doubling the check, i.e. verifying twice), tell me.
+2. **z-levels: yes.** The island is a z world from the start (hills, rooftops, bridges, interiors as levels), using `Z-CELL-FORMAT.md`. Gta therefore needs the ground column and ramps/stairs to rooftops, and its interiors become `building` worlds instead of teleport rooms. Door events stay the transfer mechanism.
+3. **Views:** "all views usual 1234 0 `\" - gta supports the same camera/POV keys as the other boards (the `1`-`4` views, `0` for 2D/3D, backtick for the emoji set, backslash for the vocabulary cycle). The detail op must therefore work for every view, not just top-down. Which exact set each key gives follows the existing pc-hq camera model (`pchq-camera-pov-keys` notes), not something new.
+4. **Sprite size:** normal (32 px cells) for now.
+5. **Animation:** simple but verifiable, flexible. First proof: a 2-frame walk and a 2-frame wheel, checked by a state file that shows the frame index changing as the entity moves.
+6. **Stable Diffusion:** run something in python for now; aim for an in-house model written in events/pal/ops like everything else. The plan is `WORD-BANK-TO-IMAGE.md` in this folder (written before going forward, as you asked).
+7. **First playthrough:** whatever opens up bottlenecks and is visually verifiable. So the first gta proof is chosen by what removes a blocker and can be photographed (an island regenerating at size N, a car at three distances), not by game content.
+8. **Judging:** both - I judge a drafted image and say yes/no with a reason; you look at a contact sheet. An image is only accepted into a brixel when both say yes.
 
 ## 6. Not verified
 No gta board was opened, no brixel code exists, no Stable Diffusion run was tried. The presets and the op's three levels are proposals.
