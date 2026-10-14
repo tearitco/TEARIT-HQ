@@ -150,6 +150,36 @@ static long ms_until(long deadline_ms) {
 #define NB_RECV_SHUTDOWN 0
 #define NB_RECV_TIMEOUT  1
 
+/* One-byte pushback for the frame reader (2026-10-13).
+ *
+ * This existed as a comment claiming the reader "buffered it back
+ * conceptually by not over-reading". It did the opposite: it read one
+ * byte unconditionally and THREW IT AWAY whenever that byte was not a
+ * newline. Two ways that loses data, both silent:
+ *
+ *   - a sender that omits the trailing newline has its NEXT frame's
+ *     first length digit eaten, and every frame after it is garbage;
+ *   - the read itself is BLOCKING, so a sender that omits the newline
+ *     and then goes quiet parks the resident worker in recv() forever.
+ *
+ * So: peek with a zero timeout, consume a newline if that is what is
+ * there, and otherwise push the byte back for the next frame to read. */
+static int g_pb = -1;              /* pushback byte, -1 = empty */
+
+static int recv_getc(int *why) {
+    if (g_pb >= 0) { int c = g_pb; g_pb = -1; return c; }
+    struct pollfd pfd;
+    pfd.fd = STDIN_FILENO; pfd.events = POLLIN; pfd.revents = 0;
+    int rc;
+    do { rc = poll(&pfd, 1, 0); } while (rc < 0 && errno == EINTR);
+    if (rc <= 0) return -1;                        /* nothing waiting */
+    char c;
+    ssize_t r = read(STDIN_FILENO, &c, 1);
+    if (r <= 0) return -1;
+    (void)why;
+    return (unsigned char)c;
+}
+
 static int recv_frame_ex(int budget_ms, int *why) {
     if (why) *why = NB_RECV_SHUTDOWN;
     long deadline = 0;
@@ -179,12 +209,15 @@ static int recv_frame_ex(int budget_ms, int *why) {
     size_t i = 0;
     for (;;) {
         char c;
-        if (!NB_READY_WAIT()) { if (why) *why = NB_RECV_TIMEOUT; return 0; }  /* budget spent */
-        ssize_t r = read(STDIN_FILENO, &c, 1);
-        if (r == 0) return 0;                 /* EOF */
-        if (r < 0) {
-            if (errno == EINTR) continue;
-            return 0;
+        if (g_pb >= 0) { c = (char)g_pb; g_pb = -1; }
+        else {
+            if (!NB_READY_WAIT()) { if (why) *why = NB_RECV_TIMEOUT; return 0; }
+            ssize_t r = read(STDIN_FILENO, &c, 1);
+            if (r == 0) return 0;                 /* EOF */
+            if (r < 0) {
+                if (errno == EINTR) continue;
+                return 0;
+            }
         }
         if (c == '\n') break;
         if (i < sizeof(lenbuf) - 1) lenbuf[i++] = c;
@@ -202,15 +235,11 @@ static int recv_frame_ex(int budget_ms, int *why) {
     }
     g_rbuf[got] = 0;
     g_rlen = got;
-    /* consume the trailing '\n' after payload (if any) */
+    /* The trailing '\n' is OPTIONAL and must never be stolen: peek with a
+     * zero timeout, eat it if it is there, push it back if it is not. */
     {
-        char c;
-        ssize_t r = read(STDIN_FILENO, &c, 1);
-        if (r > 0 && c != '\n') {
-            /* not a trailing newline: buffer it back conceptually by not
-             * over-reading; we simply ignore stray bytes here */
-            (void)c;
-        }
+        int c = recv_getc(why);
+        if (c >= 0 && c != '\n') g_pb = c;
     }
     #undef NB_READY_WAIT
     return 1;
