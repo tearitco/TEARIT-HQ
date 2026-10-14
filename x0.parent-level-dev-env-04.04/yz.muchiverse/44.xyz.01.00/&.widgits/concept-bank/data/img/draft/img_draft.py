@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """img_draft.py - W1 stand-in (BOOK 16.game/WORD-BANK-TO-IMAGE.md). Runs on debil/Mac, NOT on the dev machine. Off-line drafting only; the game never calls it.
 Usage: img_draft.py --prompt-file P.txt (output of img_prompt: PROMPT:/NEGATIVE: lines) --part car_door --model nota-ai/bk-sdm-tiny --out DIR [--steps 20 --size 512 --seed 1 --px 32]
-Writes DIR/<part>_s<seed>.png (full size), DIR/<part>_s<seed>_<px>px.png (nearest-neighbour, 16-colour palette) and appends one ledger line to DIR/ledger.txt:
+Writes DIR/<part>_<model>_s<seed>.png (full size), DIR/<part>_<model>_s<seed>_<px>px.png (nearest-neighbour, 16-colour palette) and appends one ledger line to DIR/ledger.txt:
 LEDGER | part | model | seed | steps | size | seconds | file | prompt   (verdict is added later by the judges, never by this script)."""
 import argparse, os, time
 ap = argparse.ArgumentParser()
@@ -22,7 +22,7 @@ pipe = pipe.to("cpu")
 t0 = time.time()
 img = pipe(pos, negative_prompt=neg or None, num_inference_steps=a.steps, guidance_scale=a.guidance, height=a.size, width=a.size, generator=torch.Generator("cpu").manual_seed(a.seed)).images[0]
 secs = time.time() - t0
-base = os.path.join(a.out, "%s_s%d" % (a.part, a.seed))
+base = os.path.join(a.out, "%s_%s_s%d" % (a.part, a.model.split("/")[-1], a.seed))
 img.save(base + ".png")
 small = img.resize((a.px, a.px), resample=0).quantize(colors=16).convert("RGB")
 small.save("%s_%dpx.png" % (base, a.px))

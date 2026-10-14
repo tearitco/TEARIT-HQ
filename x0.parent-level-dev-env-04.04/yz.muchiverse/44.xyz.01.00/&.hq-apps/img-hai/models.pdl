@@ -1,0 +1,8 @@
+SECTION | KEY | VALUE
+------------------------------
+# models.pdl - hosts and models img-hai may draft with (BOOK 16.game/IMG-HAI-DESIGN.md, WORD-BANK-TO-IMAGE.md). Free models only; licence read from the model card. No credentials here (ssh uses keys).
+# HOST  | name | ssh target | remote dir | python
+# MODEL | id | host | licence | steps | size_px | note
+HOST | debil | debil@10.0.0.16 | imggen | venv/bin/python
+MODEL | nota-ai/bk-sdm-tiny | debil | creativeml-openrail-m | 20 | 512 | measured 124-133 s per image on debil CPU (2026-10-13)
+MODEL | segmind/tiny-sd | debil | creativeml-openrail-m | 20 | 512 | measured 142 s on debil CPU (2026-10-13)

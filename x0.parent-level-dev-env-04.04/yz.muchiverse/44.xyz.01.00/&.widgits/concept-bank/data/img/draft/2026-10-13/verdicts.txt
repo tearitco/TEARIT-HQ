@@ -3,3 +3,5 @@ VERDICT | car_door | bk-sdm-tiny | 1 | claude=no | owner=? | dark red tile/grid 
 VERDICT | car_door | bk-sdm-tiny | 2 | claude=no | owner=? | red car rear/body, side-on and cropped; not a door panel, not pixel art, not top-down
 VERDICT | car_door | bk-sdm-tiny | 3 | claude=no | owner=? | small red car front/back on grey; reads as a whole car, not a part
 VERDICT | car_door | tiny-sd     | 1 | claude=no (door) / maybe (whole car side view) | owner=? | clearest: a red car side view with wheels; wrong part, not pixel art
+VERDICT | car_door | bk-sdm-tiny | 53705 | claude=no (door) / maybe (whole car side view) | owner=? | words "red car door, flat top-down game sprite, white background, pixel art": a red van side-on on grey, clean, not a door, not pixel art
+VERDICT | car_door | bk-sdm-tiny | 53883 | claude=no | owner=? | same words, drafted from the img-hai window: a red truck front on a striped background; not a door, not pixel art
