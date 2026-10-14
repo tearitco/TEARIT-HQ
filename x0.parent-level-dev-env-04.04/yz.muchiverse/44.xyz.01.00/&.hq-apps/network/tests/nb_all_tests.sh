@@ -88,6 +88,10 @@ echo "########## downloads (scratch house + a real fetch from a throwaway server
 sh "$HERE/nb_download_test.sh" || RC=1
 
 echo
+echo "########## G1.1 live timer (worker tick loop; hermetic, no browser)"
+sh "$HERE/nb_timer_test.sh" || RC=1
+
+echo
 echo "########## content-row reachability (live browser + own opt-in fixture)"
 sh "$HERE/nb_reach_test.sh" || RC=1
 

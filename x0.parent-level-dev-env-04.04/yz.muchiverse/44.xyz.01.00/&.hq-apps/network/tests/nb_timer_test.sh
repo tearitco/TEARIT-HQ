@@ -1,11 +1,11 @@
 #!/bin/bash
 # nb_timer_test.sh - G1.1 acceptance harness: does a live timer keep running?
 #
-# THE FIRST STEP OF G1, and deliberately RED on the code as it stands.
-# The plan says a 2-3 sprint worker rewrite (tick loop + push protocol)
-# must not start without a test that states what "fixed" means, so this is
-# that test. Today it fails, and that is the point: the failure is the
-# specification.
+# THE FIRST STEP OF G1. The plan says a 2-3 sprint worker rewrite (tick
+# loop + push protocol) must not start without a test that states what
+# "fixed" means, so this is that test. It was written RED on purpose - the
+# failure was the specification - and it went GREEN on 2026-10-13 when the
+# tick loop landed.
 #
 # WHAT IT MEASURES (gap plan G1.1): a page with setInterval(f, 500)
 # updating its own row must produce >= 6 DISTINCT self-updates in 10 s
@@ -23,31 +23,39 @@
 #
 # WHERE IT STANDS (2026-10-13), measured, not guessed:
 #
-#   LOAD alone is GREEN. The page's script runs during LOAD and its DOM
-#   mutation comes back through the row pipeline - timer.dom's "tick 0"
-#   is rendered as "tick 2", invariant paragraph untouched. JS -> DOM ->
-#   rows is proven end to end.
+#   GREEN: 20 distinct self-updates in 10.1 s, monotonic 3 -> 22.
 #
-#   The tick loop EXISTS and runs (nb_js_worker.c's TICK command, off by
-#   default): timers fire every 500 ms, invocations climb 1 -> 12 over
-#   10 s, setInterval re-arms correctly, and the push is change-detected
-#   by string compare rather than a dirty flag.
+#   Negative-tested the same run with the TICK frame withheld, so the
+#   assertion is known to be able to fail: 0 distinct tick values. A
+#   green test nobody has seen go red is decoration.
 #
-#   It still REDs at 1 frame, and the cause is now localised to ONE
-#   thing: the FIRST post-LOAD held-callback invocation destroys the
-#   DOM's text. After that, dom_render_rows() yields TITLE and nothing
-#   else, so there is no change left to push.
+#   HOW THE FIX LANDED, because the wrong turns are the useful part.
+#   The tick loop was built first and WORKED - timers firing every 500 ms,
+#   invocations climbing 1 -> 12, setInterval re-arming. It still pushed
+#   exactly one frame, because the rows never changed: the page's
+#   document.getElementById("t") was returning NULL.
 #
-#   Evidence that it is NOT the textContent setter - which was the
-#   obvious suspect, since the fixture's callback writes exactly that:
-#   a variant script with the SAME setInterval that never touches the
-#   DOM collapses the rows identically. And an EVAL re-render issued
-#   after LOAD but BEFORE any tick still returns the full row set, so the
-#   DOM is intact right up to the first tick. run_due_timers() is the
-#   thing that loses the text.
+#   The cause was the FIXTURE, not the loop, and it is a trap worth
+#   knowing: in the nb_serialize wire format the id FIELD is not the id
+#   the runtime reads. nb_attr_get() parses the raw ATTRS BLOB. The
+#   serializer writes  N|p|t||6|tick 0|8|p id="t"  - the blob repeats the
+#   tag name and carries the attributes. My hand-written fixture put the
+#   id in the field and left the blob empty, so the element was invisible
+#   to getElementById while loading and dumping perfectly. Only
+#   nb_serialize gets the blob right, so fixtures are now GENERATED:
+#   tests/g1_make_dom.c turns timer.html into timer.dom.
 #
-#   Next bite: the ownership of node text across held-callback invocation
-#   (run_due_timers -> the held ref the callback runs through).
+#   Two wrong theories got there first, both recorded because the method
+#   is the lesson:
+#     - "the first callback destroys the DOM's text" came from reading a
+#       multi-line fprintf with grep, which shows only the FIRST physical
+#       line. The row set was never truncated; the theory was fiction.
+#     - "the textContent setter is at fault" came from reasoning about
+#       the fixture instead of diffing it against a generated one. The
+#       setter was innocent and the diagnosis took one experiment.
+#
+#   The standing rule this bought: do not hand-write this wire format,
+#   and never read a multi-line diagnostic as if grep showed all of it.
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
 PKG="$(cd "$HERE/.." && pwd)"
