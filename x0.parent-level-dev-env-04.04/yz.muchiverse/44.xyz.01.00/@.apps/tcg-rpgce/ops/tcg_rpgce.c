@@ -376,11 +376,17 @@ static void paint_cells(const char *sh, int c, int r, int w, int h, int tx, int 
     for (int j = 0; j < h; j++) for (int i = 0; i < w; i++) ohr_at(f, c + i, r + j, tx + i, ty + j);
 }
 static void paint_scen(const Scen *s) {
-    if (!strcmp(s->sheet, "World_B") || !strcmp(s->sheet, "Outside_B")) {
-        int tree = !strcmp(s->sheet, "Outside_B");
-        const char *file = tree ? "320px-BG02_forest-bmp.png" : (s->y < 4 ? "320px-TS10_castle.bmp.png" : (s->x < 8 ? "320px-TS02_town.bmp.png" : "320px-TS07_house.bmp.png"));
-        int c0 = tree ? 0 : (s->y < 4 ? 1 : 2), r0 = tree ? 1 : 0;
-        for (int j = 0; j < s->h; j++) for (int i = 0; i < s->w; i++) ohr_at(file, c0, r0, s->x + i, s->y + j);
+    const char *town = "320px-TS02_town.bmp.png";
+    if (!strcmp(s->sheet, "Outside_B")) {
+        for (int j = 0; j < s->h && j < 2; j++) ohr_at(town, 14, 3 + j, s->x, s->y + j);
+        return;
+    }
+    if (!strcmp(s->sheet, "World_B")) {
+        /* Neighbors on the town sheet, copied as that block. Stone keep, or roof over windows. */
+        static const int keep[2][2][2] = {{{8, 0}, {9, 0}}, {{8, 2}, {9, 2}}};
+        static const int house[2][2][2] = {{{11, 3}, {12, 3}}, {{11, 4}, {12, 4}}};
+        const int (*b)[2][2] = s->y < 4 ? keep : house;
+        for (int j = 0; j < s->h && j < 2; j++) for (int i = 0; i < s->w && i < 2; i++) ohr_at(town, b[j][i][0], b[j][i][1], s->x + i, s->y + j);
         return;
     }
     tile(s->sheet, s->c, s->r, s->w, s->h, s->x, s->y);
@@ -418,8 +424,8 @@ static int sea_beside_land(const Room *rm, int x, int y) {
 }
 static void draw_over(const Room *rm) {
     for (int y = 0; y < rm->rows; y++) for (int x = 0; x < rm->cols; x++) {
-        if (!over_sea(rm, x, y)) ohr_at("320px-BG01_grass-bmp.png", 0, 2, x, y);
-        else if (sea_beside_land(rm, x, y)) ohr_at("320px-TS02_town.bmp.png", 4, 0, x, y);
+        if (!over_sea(rm, x, y)) ohr_at("320px-TS02_town.bmp.png", 1, 0, x, y);
+        else if (sea_beside_land(rm, x, y)) ohr_at("320px-TS02_town.bmp.png", 3, 1, x, y);
         else ohr_at("320px-TS02_town.bmp.png", 1, 7, x, y);
     }
 }
@@ -429,12 +435,14 @@ static void render(void) {
     Room *rm = &rooms[vroom]; char phase[40] = "day"; { char dp[PATH_MAX], db[64]; spath(dp, "daylight.txt"); read_file(dp, db, sizeof db); if (strstr(db, "night")) snprintf(phase, sizeof phase, "night"); else if (strstr(db, "dusk")) snprintf(phase, sizeof phase, "dusk"); else if (strstr(db, "dawn")) snprintf(phase, sizeof phase, "dawn"); }
     if (rm->over) draw_over(rm); else {
         int castle = !strcmp(rm->id, "castle");
-        const char *ff = castle ? "320px-TS10_castle.bmp.png" : "320px-TS02_town.bmp.png";
-        int flc = castle ? 0 : 3, flr = castle ? 2 : 0;
-        const char *wf = castle ? "320px-TS10_castle.bmp.png" : "320px-TS07_house.bmp.png";
-        for (int y = 0; y < ROWS; y++) for (int x = 0; x < COLS; x++) { if (y == 0 || y == WALL_ROW) ohr_at(wf, 0, y == 0 ? 1 : 2, x, y); else ohr_at(ff, flc, flr, x, y); }
+        const char *town = "320px-TS02_town.bmp.png";
+        for (int y = 0; y < ROWS; y++) for (int x = 0; x < COLS; x++) {
+            if (y == 0) ohr_at(town, 8, 0, x, y);
+            else if (y == WALL_ROW) ohr_at(town, castle ? 8 : 8, castle ? 7 : 2, x, y);
+            else ohr_at(town, castle ? 7 : 3, castle ? 8 : 1, x, y);
+        }
     }
-    for (int i = 0; i < ndoor; i++) if (doors[i].room == vroom && !rm->over) { ohr_at("320px-Vikings_tilemaps_000.bmp.png", 1, 3, doors[i].tx, doors[i].ty); if (!rm->outdoor) ohr_at("320px-TS02_town.bmp.png", 3, 0, doors[i].tx, doors[i].ty + 1); }
+    for (int i = 0; i < ndoor; i++) if (doors[i].room == vroom && !rm->over) { ohr_at("320px-TS02_town.bmp.png", 8, 6, doors[i].tx, doors[i].ty); if (!rm->outdoor) ohr_at("320px-TS02_town.bmp.png", 3, 1, doors[i].tx, doors[i].ty + 1); }
     for (int i = 0; i < nscen; i++) if (scen[i].room == vroom) paint_scen(&scen[i]);
     int idx[MAXP], n = 0; for (int i = 0; i < npl; i++) if (pl[i].room == vroom) idx[n++] = i;
     for (int a = 0; a < n; a++) for (int b = a + 1; b < n; b++) { Placed *p = &pl[idx[a]], *q = &pl[idx[b]]; int ka = (!cat[p->item].wall) * 1000 + p->y + cat[p->item].h, kb = (!cat[q->item].wall) * 1000 + q->y + cat[q->item].h; if (kb < ka || (kb == ka && q->x < p->x)) { int t = idx[a]; idx[a] = idx[b]; idx[b] = t; } }
@@ -874,8 +882,8 @@ static void export3d(char *msg, size_t cap) {
         g_gr = r; char glyph[MAXR][MAXC + 1]; int fs[MAXR][MAXC], ws[MAXR][MAXC]; unsigned char a[XT * XT * 4], b[XT * XT * 4], fl[XT * XT * 4]; nslot = 1; memset(slotpx[0], 0, XT * XT * 4);
         Room *rm = &rooms[r];
         unsigned char floorpx[XT * XT * 4], wallpx[XT * XT * 4], ceilpx[XT * XT * 4], doorpx[XT * XT * 4], pathpx[XT * XT * 4], matpx[XT * XT * 4];
-        { int castle = !strcmp(rm->id, "castle"); const char *ff = castle ? "320px-TS10_castle.bmp.png" : "320px-TS02_town.bmp.png"; const char *wf = castle ? "320px-TS10_castle.bmp.png" : "320px-TS07_house.bmp.png";
-          ohr24(ff, castle ? 0 : 3, castle ? 2 : 0, floorpx); ohr24(wf, 0, 2, wallpx); ohr24(wf, 0, 1, ceilpx); memcpy(pathpx, floorpx, sizeof pathpx); ohr24("320px-Vikings_tilemaps_000.bmp.png", 1, 3, doorpx); memcpy(matpx, floorpx, sizeof matpx); }
+        { int castle = !strcmp(rm->id, "castle"); const char *town = "320px-TS02_town.bmp.png";
+          ohr24(town, castle ? 7 : 3, castle ? 8 : 1, floorpx); ohr24(town, 8, castle ? 7 : 2, wallpx); ohr24(town, 8, 0, ceilpx); memcpy(pathpx, floorpx, sizeof pathpx); ohr24(town, 8, 6, doorpx); memcpy(matpx, floorpx, sizeof matpx); }
         for (int y = 0; y < ROWS; y++) for (int x = 0; x < COLS; x++) { glyph[y][x] = '.'; fs[y][x] = ws[y][x] = 0; }
         if (!rm->over) for (int x = 0; x < COLS; x++) { glyph[0][x] = glyph[1][x] = 'W'; ws[0][x] = slot_of(ceilpx); ws[1][x] = slot_of(wallpx); }
         for (int y = TRIG_ROW; y < ROWS; y++) for (int x = 0; x < COLS; x++) fs[y][x] = slot_of(floorpx);
