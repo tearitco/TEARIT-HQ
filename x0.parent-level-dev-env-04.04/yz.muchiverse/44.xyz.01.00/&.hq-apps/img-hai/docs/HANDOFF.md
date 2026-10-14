@@ -97,3 +97,6 @@ Claude's yes count went from **1 of 12** (untuned) to **4 of 11** (tuned). The c
 
 ## 11. Where the owner and the others are
 The owner reads `/home/no/Desktop/github/work/XO/25.games-plan/` (a non-git folder of copies: `9-IMG-HAI-DESIGN.md`, this documentation as `10-IMG-HAI-DOCS.html`, contact sheets under `img/`). Grok builds df-hq and the CDDA rules and has no part in img-hai; the colab room is session `1791851915` (post with `&.hq-apps/co-lab-hai/ops/colab_hai_post.sh`, needs the owner's Approve click). Related: `16.game/GAMES-ROADMAP.md`, `GTA-HQ-DESIGN.md`, `WORD-BANK-TO-IMAGE.md`, `IMG-HAI-DESIGN.md`, `02-architecture/RELAY-DRIVE.md`.
+
+## 12. Addendum: pixel op (2026-10-13, after the first handoff)
+`ops/img_pixel` added (EXTENDING.md recipe L): built, run on 5 pictures, compared by eye; not wired into the draft job; no mode wins everywhere. Next: choose per part, share one palette across a part set, then replace the naive `_32px` step.
