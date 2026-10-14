@@ -191,11 +191,11 @@ static int item_idx(const char *k) { for (int i = 0; i < ncat; i++) if (!strcmp(
 static void load_party(void) {
     char db[PATH_MAX], p[PATH_MAX], line[400]; char *f[6]; FILE *fp; const char *env = getenv("PET_DB");
     if (env && env[0]) snprintf(db, sizeof db, "%s", env); else snprintf(db, sizeof db, "%s/&.widgits/db-hq/data", HOUSE);
-    nparty = 0; char names[NP][24]; int nn = 0, inparty = 0, inhero = 0; memset(&hero, 0, sizeof hero); snprintf(hero.name, 24, "Red"); snprintf(hero.sheet, 24, "People1"); /* settler, not Asa and not Harold. People1 is the stand-in until the viking recolor. */
+    nparty = 0; char names[NP][24]; int nn = 0, inparty = 0, inhero = 0; memset(&hero, 0, sizeof hero); snprintf(hero.name, 24, "Red"); snprintf(hero.sheet, 24, "viking"); hero.idx = 0; /* settler. The picture is the grey armor on the viking sheet, tinted. */
     snprintf(p, sizeof p, "%s/system.pdl", db);
     if ((fp = fopen(p, "r"))) { while (fgets(line, sizeof line, fp)) { if (split_bar(line, f, 3) < 3 || strcmp(f[0], "SYSTEM")) continue; if (!strcmp(f[1], "name")) { inparty = !strcmp(f[2], getenv("PET_PARTY") && getenv("PET_PARTY")[0] ? getenv("PET_PARTY") : "civ_rpgceParty"); inhero = 0; } else if (inparty && !strncmp(f[1], "member", 6) && nn < NP) snprintf(names[nn++], 24, "%s", f[2]); } fclose(fp); }
     if (nn == 0) { const char *fb[] = {"Blue", "Green"}; for (int i = 0; i < 2 && nn < NP; i++) snprintf(names[nn++], 24, "%s", fb[i]); }
-    for (int i = 0; i < nn; i++) { memset(&party[nparty], 0, sizeof party[nparty]); snprintf(party[nparty].name, 24, "%s", names[i]); snprintf(party[nparty].id, 16, "%s", names[i]); for (char *c = party[nparty].id; *c; c++) if (*c >= 'A' && *c <= 'Z') *c += 32; party[nparty].idx = i; snprintf(party[nparty].sheet, 24, "Monster"); nparty++; }
+    for (int i = 0; i < nn; i++) { memset(&party[nparty], 0, sizeof party[nparty]); snprintf(party[nparty].name, 24, "%s", names[i]); snprintf(party[nparty].id, 16, "%s", names[i]); for (char *c = party[nparty].id; *c; c++) if (*c >= 'A' && *c <= 'Z') *c += 32; party[nparty].idx = i; snprintf(party[nparty].sheet, 24, "viking"); party[nparty].idx = i + 1; nparty++; }
     snprintf(p, sizeof p, "%s/actors.pdl", db); int cur = -1, curh = 0;
     if ((fp = fopen(p, "r"))) { while (fgets(line, sizeof line, fp)) { if (split_bar(line, f, 3) < 3 || strcmp(f[0], "ACTOR")) continue;
         if (!strcmp(f[1], "name")) { cur = -1; for (int i = 0; i < nparty; i++) if (!strcmp(party[i].name, f[2])) cur = i; curh = !strcmp(f[2], hero.name); continue; }
@@ -343,6 +343,34 @@ static void blit(Sheet *s, int sx, int sy, int w, int h, int dx, int dy) {      
 }
 static void tile(const char *sh, int c, int r, int w, int h, int tx, int ty) { blit(sheet("tilesets", sh), c * S48, r * S48, w * S48, h * S48, OX + tx * T, OY + ty * T); }
 
+static Sheet *ohr_sheet(const char *file) {
+    for (int i = 0; i < nsheet; i++) if (!strcmp(sheets[i].name, file)) return &sheets[i];
+    if (nsheet >= 24) return NULL;
+    char p[PATH_MAX]; snprintf(p, sizeof p, "%s/../ohrrpgce-tiles/%s", ASSETS, file); int n; Sheet *s = &sheets[nsheet];
+    s->px = stbi_load(p, &s->w, &s->h, &n, 4); if (!s->px) return NULL; snprintf(s->name, 40, "%s", file); nsheet++; return s;
+}
+/* 20 px OHR cells. Magenta (the sheet's empty colour) is skipped. tr,tg,tb recolor the pixel (255 = unchanged). */
+static void blit_box(Sheet *s, int sx, int sy, int sw, int sh, int dx, int dy, int dw, int dh, int tr, int tg, int tb) {
+    if (!s || sw < 1 || sh < 1 || dw < 1 || dh < 1) return;
+    for (int y = 0; y < dh; y++) { int Y = dy + y, srcy = sy + y * sh / dh; if (Y < 0 || Y >= FH || srcy < 0 || srcy >= s->h) continue;
+        for (int x = 0; x < dw; x++) { int X = dx + x, srcx = sx + x * sw / dw; if (X < 0 || X >= FW || srcx < 0 || srcx >= s->w) continue;
+            unsigned char *a = s->px + ((size_t)srcy * s->w + srcx) * 4, *b = fr + ((size_t)Y * FW + X) * 4; int al = a[3]; if (!al) continue;
+            if (a[0] > 240 && a[2] > 240 && a[1] < 40) continue;
+            int r = a[0] * tr / 255, g = a[1] * tg / 255, bl = a[2] * tb / 255;
+            b[0] = (unsigned char)((r * al + b[0] * (255 - al)) / 255); b[1] = (unsigned char)((g * al + b[1] * (255 - al)) / 255); b[2] = (unsigned char)((bl * al + b[2] * (255 - al)) / 255); b[3] = 255; } }
+}
+static void ohr_at(const char *file, int c, int r, int tx, int ty) { blit_box(ohr_sheet(file), c * 20, r * 20, 20, 20, OX + tx * T, OY + ty * T, T, T, 255, 255, 255); }
+static void paint_scen(const Scen *s) {
+    if (!strcmp(s->sheet, "World_B") || !strcmp(s->sheet, "Outside_B")) {
+        int tree = !strcmp(s->sheet, "Outside_B");
+        const char *file = tree ? "320px-BG02_forest-bmp.png" : (s->y < 4 ? "320px-TS10_castle.bmp.png" : (s->x < 8 ? "320px-TS02_town.bmp.png" : "320px-TS07_house.bmp.png"));
+        int c0 = tree ? 0 : (s->y < 4 ? 1 : 2), r0 = tree ? 1 : 0;
+        for (int j = 0; j < s->h; j++) for (int i = 0; i < s->w; i++) ohr_at(file, c0, r0, s->x + i, s->y + j);
+        return;
+    }
+    tile(s->sheet, s->c, s->r, s->w, s->h, s->x, s->y);
+}
+
 /* RPG Maker autotiles (verified against the tsots maps: tile id = kind * 48 + shape, shape picked from the 8 neighbours of the same kind; all 8 present = shape 0; the 48 shapes are 4 quadrant pieces).
  * Same rule as _.monads/_.livedesk-taskbar/ops/tile_autotile.c's FLOOR_AUTOTILE_TABLE, computed per quadrant: for each corner look at its two adjacent sides and its diagonal. Pieces are 24 px
  * halves inside the kind's 2 x 3 tile block (bx,by = the block's top-left tile in the sheet). */
@@ -370,24 +398,29 @@ static void draw_auto(const char *sh, int bx, int by, int n, int e, int s, int w
 }
 /* the overmap biome "worldmap": the whole map is grass (World_A2 kind 0), the ocean is the World_A1 sea autotile (kind 0) whose edge shapes draw the shore wherever it meets land; the island is whatever over_land() says. */
 static int over_sea(const Room *rm, int x, int y) { if (x < 0 || y < 0 || x >= rm->cols || y >= rm->rows) return 1; return !over_land(rm, x, y); }      /* outside the map counts as sea (MV treats the border as connected) */
+static int sea_beside_land(const Room *rm, int x, int y) {
+    for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) if (!over_sea(rm, x + dx, y + dy)) return 1; return 0;
+}
 static void draw_over(const Room *rm) {
-    for (int y = 0; y < rm->rows; y++) for (int x = 0; x < rm->cols; x++) { int dx = OX + x * T, dy = OY + y * T;
-        if (!over_sea(rm, x, y)) { draw_auto("World_A2", 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, dx, dy); continue; }
-        draw_auto("World_A1", 0, 0, over_sea(rm, x, y - 1), over_sea(rm, x + 1, y), over_sea(rm, x, y + 1), over_sea(rm, x - 1, y), over_sea(rm, x + 1, y - 1), over_sea(rm, x + 1, y + 1), over_sea(rm, x - 1, y + 1), over_sea(rm, x - 1, y - 1), dx, dy); }
+    for (int y = 0; y < rm->rows; y++) for (int x = 0; x < rm->cols; x++) {
+        if (!over_sea(rm, x, y)) ohr_at("320px-BG01_grass-bmp.png", 0, 2, x, y);
+        else if (sea_beside_land(rm, x, y)) ohr_at("320px-TS02_town.bmp.png", 4, 0, x, y);
+        else ohr_at("320px-TS02_town.bmp.png", 1, 7, x, y);
+    }
 }
 static void render(void) {
     g_gr = vroom;
     for (int i = 0; i < FW * FH; i++) { fr[i * 4] = 14; fr[i * 4 + 1] = 14; fr[i * 4 + 2] = 18; fr[i * 4 + 3] = 255; }
     Room *rm = &rooms[vroom]; char phase[40] = "day"; { char dp[PATH_MAX], db[64]; spath(dp, "daylight.txt"); read_file(dp, db, sizeof db); if (strstr(db, "night")) snprintf(phase, sizeof phase, "night"); else if (strstr(db, "dusk")) snprintf(phase, sizeof phase, "dusk"); else if (strstr(db, "dawn")) snprintf(phase, sizeof phase, "dawn"); }
-    if (rm->over) draw_over(rm); else if (rm->outdoor) {      /* sky = an RPG Maker parallax picked by the game clock; ground, path and trees are Outside tiles */
-        Sheet *sk = sheet("parallaxes", !strcmp(phase, "night") ? "StarlitSky" : (!strcmp(phase, "dusk") || !strcmp(phase, "dawn")) ? "Sunset" : "CloudySky1"); if (sk) blit(sk, 0, !strcmp(phase, "day") ? 330 : 120, COLS * T, 2 * T, OX, OY);
-        for (int x = 0; x < COLS; x++) { tile("Outside_A5", 2, 0, 1, 1, x, WALL_ROW); for (int y = TRIG_ROW; y < ROWS; y++) tile("Outside_A5", 0, 2, 1, 1, x, y); }
-        for (int i = 0; i < ndoor; i++) if (doors[i].room == vroom) for (int y = TRIG_ROW; y < ROWS - 1; y++) tile("Outside_A5", 1, 2, 1, 1, doors[i].tx, y);
-    } else
-    for (int y = 0; y < ROWS; y++) for (int x = 0; x < COLS; x++) { if (y == 0) tile("Inside_A5", 0, 0, 1, 1, x, y); else if (y == WALL_ROW) tile("Inside_A5", 1, 3, 1, 1, x, y); else tile("Inside_A5", rm->fc, rm->fr, 1, 1, x, y); }
-    Sheet *dr = sheet("characters", "!Door1");                                  /* the wood panel door: closed frame of the 4th door object */
-    for (int i = 0; i < ndoor; i++) if (doors[i].room == vroom && !rm->over) { blit(dr, 0, 192, S48, S48, OX + doors[i].tx * T, OY + doors[i].ty * T); if (!rm->outdoor) tile("Inside_A5", 0, 6, 1, 1, doors[i].tx, doors[i].ty + 1); }
-    for (int i = 0; i < nscen; i++) if (scen[i].room == vroom) tile(scen[i].sheet, scen[i].c, scen[i].r, scen[i].w, scen[i].h, scen[i].x, scen[i].y);
+    if (rm->over) draw_over(rm); else {
+        int castle = !strcmp(rm->id, "castle");
+        const char *ff = castle ? "320px-TS10_castle.bmp.png" : "320px-TS02_town.bmp.png";
+        int flc = castle ? 0 : 3, flr = castle ? 2 : 0;
+        const char *wf = castle ? "320px-TS10_castle.bmp.png" : "320px-TS07_house.bmp.png";
+        for (int y = 0; y < ROWS; y++) for (int x = 0; x < COLS; x++) { if (y == 0 || y == WALL_ROW) ohr_at(wf, 0, y == 0 ? 1 : 2, x, y); else ohr_at(ff, flc, flr, x, y); }
+    }
+    for (int i = 0; i < ndoor; i++) if (doors[i].room == vroom && !rm->over) { ohr_at("320px-Vikings_tilemaps_000.bmp.png", 1, 3, doors[i].tx, doors[i].ty); if (!rm->outdoor) ohr_at("320px-TS02_town.bmp.png", 3, 0, doors[i].tx, doors[i].ty + 1); }
+    for (int i = 0; i < nscen; i++) if (scen[i].room == vroom) paint_scen(&scen[i]);
     int idx[MAXP], n = 0; for (int i = 0; i < npl; i++) if (pl[i].room == vroom) idx[n++] = i;
     for (int a = 0; a < n; a++) for (int b = a + 1; b < n; b++) { Placed *p = &pl[idx[a]], *q = &pl[idx[b]]; int ka = (!cat[p->item].wall) * 1000 + p->y + cat[p->item].h, kb = (!cat[q->item].wall) * 1000 + q->y + cat[q->item].h; if (kb < ka || (kb == ka && q->x < p->x)) { int t = idx[a]; idx[a] = idx[b]; idx[b] = t; } }
     for (int a = 0; a < n; a++) { Placed *p = &pl[idx[a]]; Item *d = &cat[p->item]; tile(d->sheet, d->c, d->r, d->w, d->h, p->x, p->y); }
@@ -397,8 +430,9 @@ static void render(void) {
     for (int a2 = 0; a2 < no; a2++) for (int b2 = a2 + 1; b2 < no; b2++) if (EY(order[b2]) < EY(order[a2])) { int tmp = order[a2]; order[a2] = order[b2]; order[b2] = tmp; }
     if (tr.room == vroom) order[no++] = -1;
     for (int a2 = 0; a2 < no; a2++) for (int b2 = a2 + 1; b2 < no; b2++) if (EY(order[b2]) < EY(order[a2])) { int tmp = order[a2]; order[a2] = order[b2]; order[b2] = tmp; }
-    for (int k = 0; k < (g_bg_only ? 0 : no); k++) { int i = order[k]; Ent *e = i < 0 ? &tr : &others[i]; int col = e->steps ? cyc[e->steps % 4] : 1, ci = i < 0 ? 0 : party[i].idx;
-        blit(sheet("characters", i < 0 ? hero.sheet : party[i].sheet), (ci % 4) * 3 * S48 + col * S48, (ci / 4) * 4 * S48 + e->dir * S48, S48, S48, OX + e->x * T, OY + e->y * T - 8 * T / S48); }
+    for (int k = 0; k < (g_bg_only ? 0 : no); k++) { int i = order[k]; Ent *e = i < 0 ? &tr : &others[i]; int si = i < 0 ? hero.idx : party[i].idx; if (si < 0) si = 0; if (si > 2) si = 2;
+        static const int tn[3][3] = {{255, 70, 70}, {80, 140, 255}, {80, 220, 90}};
+        blit_box(ohr_sheet("320px-Vikings_tilemaps_000.bmp.png"), 10 * 20, 2 * 20, 20, 40, OX + e->x * T, OY + e->y * T - T / 2, T, T + T / 2, tn[si][0], tn[si][1], tn[si][2]); }
     if (!g_bg_only) { int tone[4]; if (read_tone(tone)) {      /* RPG Maker Tint Screen (events-hq tint_screen -> state/world/screen_state.pdl "value=r,g,b,gray"): add per channel, gray = pull toward the luminance; indoors it is only 40% */
         int od = rm->outdoor, pc = od ? 100 : 40, tr_ = tone[0] * pc / 100, tg_ = tone[1] * pc / 100, tb_ = tone[2] * pc / 100, gy = tone[3] * pc / 100;
         if (tr_ || tg_ || tb_ || gy) for (int y = OY + ((od && !rm->over) ? 2 * T : 0); y < OY + ROWS * T; y++) for (int x = OX; x < OX + COLS * T; x++) { unsigned char *q = fr + ((size_t)y * FW + x) * 4; int r = q[0], g = q[1], b = q[2], l = (r * 30 + g * 59 + b * 11) / 100;
@@ -430,7 +464,7 @@ static const char *pet_reply(const char *text) {
     if (strstr(s, "eat") || strstr(s, "food") || strstr(s, "table")) { g_rk = 1; g_ry = HAS("eat"); return g_ry ? "yum, a table to eat at" : "I have nowhere to eat."; }
     if (strstr(s, "book") || strstr(s, "read")) { g_rk = 2; g_ry = HAS("read"); return g_ry ? "I like reading." : "no books here."; }
     if (strstr(s, "piano") || strstr(s, "play")) { g_rk = 3; g_ry = HAS("play"); return g_ry ? "la la la" : "no piano..."; }
-    { static const char *dflt[4] = {"hmm, tell me more.", "I'm listening.", "interesting!", "okay, Harold."}; unsigned h = 0; for (const char *c = s; *c; c++) h = h * 31 + (unsigned char)*c;
+    { static const char *dflt[4] = {"hmm, tell me more.", "I'm listening.", "interesting!", "okay."}; unsigned h = 0; for (const char *c = s; *c; c++) h = h * 31 + (unsigned char)*c;
         const char *w[] = {"hi", "hey", "hello", "yo", "hiya", "howdy", "sup", NULL}; for (int k = 0; w[k]; k++) { size_t n = strlen(w[k]); if (!strncmp(s, w[k], n) && (s[n] == 0 || s[n] == ' ' || s[n] == '!' || s[n] == ',')) { snprintf(b, sizeof b, "hello %s!", g_speaker ? g_speaker : hero.name); return b; } }
         if (strchr(s, '?')) return "good question... let me think.";
         return dflt[h % 4]; }
@@ -654,6 +688,11 @@ static void end_turn(void) { if (!run_on() || !turn_mode()) return; clock_turn()
 #define XT 24
 #define MAXSLOT 400
 static unsigned char slotpx[MAXSLOT][XT * XT * 4]; static int nslot;
+
+static void ohr24(const char *file, int c, int r, unsigned char *out) {
+    Sheet *s = ohr_sheet(file); memset(out, 0, XT * XT * 4); if (!s) return; int sx = c * 20, sy = r * 20;
+    for (int y = 0; y < XT; y++) for (int x = 0; x < XT; x++) { int px = sx + x * 20 / XT, py = sy + y * 20 / XT; if (px >= 0 && py >= 0 && px < s->w && py < s->h) memcpy(out + (y * XT + x) * 4, s->px + ((size_t)py * s->w + px) * 4, 4); }
+}
 static void tile24(Sheet *s, int sx, int sy, unsigned char *out) {          /* 48x48 region -> 24x24 by 2x2 averaging; out is RGBA */
     for (int y = 0; y < XT; y++) for (int x = 0; x < XT; x++) { int acc[4] = {0, 0, 0, 0}, wsum = 0;
         for (int dy = 0; dy < 2; dy++) for (int dx = 0; dx < 2; dx++) { int px = sx + x * 2 + dx, py = sy + y * 2 + dy; if (!s || px >= s->w || py >= s->h) continue; unsigned char *a = s->px + ((size_t)py * s->w + px) * 4; acc[0] += a[0] * a[3]; acc[1] += a[1] * a[3]; acc[2] += a[2] * a[3]; acc[3] += a[3]; wsum += a[3]; }
@@ -668,6 +707,15 @@ static int slot_of(const unsigned char *px) {
 /* 3D sprite frames: the board-viewer 3D raymarcher extrudes a 16x24 RGBA frame per map event (8 voxels deep), looked up as <ASSETS>/../tsots-characters/frames/<charset>_<index>_<dir 2|4|6|8>_<pattern>.rgba
  * (found by walking up from the map folder; same files the 98 TSOTS desks use, tsots_events.py write_frame). No frame file = the flat colour box. A 3x4-frame cell of the 12x8 sheet, nearest-resized to 16x24. */
 static void write_frame(const char *sh, int idx, int dir4, int pat) {
+    if (!strcmp(sh, "viking")) {
+        Sheet *s = ohr_sheet("320px-Vikings_tilemaps_000.bmp.png"); if (!s) return; char d[PATH_MAX], p[PATH_MAX]; snprintf(d, sizeof d, "%s/../tsots-characters", ASSETS); mkdir(d, 0755); snprintf(d, sizeof d, "%s/../tsots-characters/frames", ASSETS); mkdir(d, 0755);
+        static const int dc[4] = {2, 4, 6, 8}; snprintf(p, sizeof p, "%s/viking_%d_%d_%d.rgba", d, idx, dc[dir4 & 3], pat); if (fexists(p)) return;
+        static const int tn[3][3] = {{255, 70, 70}, {80, 140, 255}, {80, 220, 90}}; int si = idx < 0 ? 0 : idx > 2 ? 2 : idx; unsigned char out[16 * 24 * 4];
+        for (int y = 0; y < 24; y++) for (int x = 0; x < 16; x++) { int px = 10 * 20 + x * 20 / 16, py = 2 * 20 + y * 40 / 24; unsigned char *a = s->px + ((size_t)py * s->w + px) * 4; unsigned char *o = out + (y * 16 + x) * 4;
+            if (px >= s->w || py >= s->h || (a[0] > 240 && a[2] > 240 && a[1] < 40)) { o[0] = o[1] = o[2] = o[3] = 0; continue; }
+            o[0] = (unsigned char)(a[0] * tn[si][0] / 255); o[1] = (unsigned char)(a[1] * tn[si][1] / 255); o[2] = (unsigned char)(a[2] * tn[si][2] / 255); o[3] = a[3]; }
+        FILE *f = fopen(p, "wb"); if (f) { fwrite(out, 1, sizeof out, f); fclose(f); } return;
+    }
     Sheet *s = sheet("characters", sh); if (!s) return; char d[PATH_MAX], p[PATH_MAX]; snprintf(d, sizeof d, "%s/../tsots-characters", ASSETS); mkdir(d, 0755); snprintf(d, sizeof d, "%s/../tsots-characters/frames", ASSETS); mkdir(d, 0755);
     static const int dc[4] = {2, 4, 6, 8}; snprintf(p, sizeof p, "%s/%s_%d_%d_%d.rgba", d, sh, idx, dc[dir4 & 3], pat); if (fexists(p)) return;
     int pw = s->w / 12, ph = s->h / 8; if (pw < 1 || ph < 1) return; int sx = ((idx % 4) * 3 + pat) * pw, sy = ((idx / 4) * 4 + dir4) * ph; unsigned char out[16 * 24 * 4];
@@ -710,10 +758,10 @@ static void write_room_sky(int r, const char *d) {
 static void write_room_events(int r) {
     char d[PATH_MAX], p[PATH_MAX], buf[4096]; int o = 0; static const int dc[4] = {2, 4, 6, 8};
     snprintf(d, sizeof d, "%s/pieces/system/maps/civ-rpgce/%s", PCHQ, rooms[r].id); mkdir(d, 0755);
-    for (int i = 0; i < nparty; i++) if (others[i].room == r) { int pat = others[i].steps % 3; write_frame(party[i].sheet, party[i].idx, others[i].dir, pat); unsigned char px[4] = {128, 128, 128, 255}; frame_rgb(sheet("characters", party[i].sheet), party[i].idx, others[i].dir & 3, px);
+    for (int i = 0; i < nparty; i++) if (others[i].room == r) { int pat = others[i].steps % 3; write_frame(party[i].sheet, party[i].idx, others[i].dir, pat); unsigned char px[4] = {128, 128, 128, 255}; static const int tn[3][3] = {{255, 70, 70}, {80, 140, 255}, {80, 220, 90}}; int si = party[i].idx; if (si < 0) si = 0; if (si > 2) si = 2; if (!strcmp(party[i].sheet, "viking")) { px[0] = (unsigned char)tn[si][0]; px[1] = (unsigned char)tn[si][1]; px[2] = (unsigned char)tn[si][2]; } else frame_rgb(sheet("characters", party[i].sheet), party[i].idx, others[i].dir & 3, px);
         o += snprintf(buf + o, sizeof buf - o, "%d %d %d %d %d %s %d %d %d %c\n", others[i].x, others[i].y, px[0], px[1], px[2], party[i].sheet, party[i].idx, dc[others[i].dir & 3], pat, party[i].name[0] >= 'A' && party[i].name[0] <= 'Z' ? party[i].name[0] + 32 : (party[i].name[0] ? party[i].name[0] : 'm')); }
-    if (tr.room == r) { int pat = tr.steps % 3; write_frame(hero.sheet, 0, tr.dir, pat); unsigned char px[4] = {200, 60, 60, 255}; frame_rgb(sheet("characters", hero.sheet), 0, tr.dir & 3, px);
-        o += snprintf(buf + o, sizeof buf - o, "%d %d %d %d %d %s 0 %d %d @\n", tr.x, tr.y, px[0], px[1], px[2], hero.sheet, dc[tr.dir & 3], pat); }
+    if (tr.room == r) { int pat = tr.steps % 3; write_frame(hero.sheet, hero.idx, tr.dir, pat); unsigned char px[4] = {255, 70, 70, 255}; if (strcmp(hero.sheet, "viking")) frame_rgb(sheet("characters", hero.sheet), hero.idx, tr.dir & 3, px);
+        o += snprintf(buf + o, sizeof buf - o, "%d %d %d %d %d %s %d %d %d @\n", tr.x, tr.y, px[0], px[1], px[2], hero.sheet, hero.idx, dc[tr.dir & 3], pat); }
     snprintf(p, sizeof p, "%s/events.txt", d); write_if_changed(p, buf, o);
     write_room_sky(r, d);
     /* ascii_legend.txt: the ` (backtick) glyph view of this book. Rows are glyph|height|r|g|b|asset|name|char like terrain_legend.txt; events.txt carries a 10th column with each sprite's letter (@ = the trainer, the pet's lowercase initial) */
@@ -805,11 +853,10 @@ static void export3d(char *msg, size_t cap) {
         go += snprintf(gl + go, sizeof gl - go, "GAME         | desk_%d_id          | %s\nGAME         | desk_%d_label       | %s\n", r + 1, rooms[r].id, r + 1, rooms[r].name);
         snprintf(d, sizeof d, "%s/%s", root, rooms[r].id); mkdir(d, 0755);
         g_gr = r; char glyph[MAXR][MAXC + 1]; int fs[MAXR][MAXC], ws[MAXR][MAXC]; unsigned char a[XT * XT * 4], b[XT * XT * 4], fl[XT * XT * 4]; nslot = 1; memset(slotpx[0], 0, XT * XT * 4);
-        Room *rm = &rooms[r]; Sheet *a5i = sheet("tilesets", "Inside_A5"), *a5o = sheet("tilesets", "Outside_A5"), *dr = sheet("characters", "!Door1");
+        Room *rm = &rooms[r];
         unsigned char floorpx[XT * XT * 4], wallpx[XT * XT * 4], ceilpx[XT * XT * 4], doorpx[XT * XT * 4], pathpx[XT * XT * 4], matpx[XT * XT * 4];
-        if (rm->outdoor) { tile24(a5o, rm->fc * S48, rm->fr * S48, floorpx); tile24(a5o, 2 * S48, 0, wallpx); memcpy(ceilpx, wallpx, sizeof ceilpx); tile24(a5o, 1 * S48, 2 * S48, pathpx); }
-        else { tile24(a5i, rm->fc * S48, rm->fr * S48, floorpx); tile24(a5i, 1 * S48, 3 * S48, wallpx); tile24(a5i, 0, 0, ceilpx); memcpy(pathpx, floorpx, sizeof pathpx); }
-        tile24(dr, 0, 192, doorpx); tile24(a5i, 0, 6 * S48, matpx);
+        { int castle = !strcmp(rm->id, "castle"); const char *ff = castle ? "320px-TS10_castle.bmp.png" : "320px-TS02_town.bmp.png"; const char *wf = castle ? "320px-TS10_castle.bmp.png" : "320px-TS07_house.bmp.png";
+          ohr24(ff, castle ? 0 : 3, castle ? 2 : 0, floorpx); ohr24(wf, 0, 2, wallpx); ohr24(wf, 0, 1, ceilpx); memcpy(pathpx, floorpx, sizeof pathpx); ohr24("320px-Vikings_tilemaps_000.bmp.png", 1, 3, doorpx); memcpy(matpx, floorpx, sizeof matpx); }
         for (int y = 0; y < ROWS; y++) for (int x = 0; x < COLS; x++) { glyph[y][x] = '.'; fs[y][x] = ws[y][x] = 0; }
         if (!rm->over) for (int x = 0; x < COLS; x++) { glyph[0][x] = glyph[1][x] = 'W'; ws[0][x] = slot_of(ceilpx); ws[1][x] = slot_of(wallpx); }
         for (int y = TRIG_ROW; y < ROWS; y++) for (int x = 0; x < COLS; x++) fs[y][x] = slot_of(floorpx);
