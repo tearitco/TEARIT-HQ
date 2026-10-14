@@ -100,6 +100,10 @@ echo "########## G1.3 negative: an idle page must push nothing"
 sh "$HERE/nb_push_quiet_test.sh" || RC=1
 
 echo
+echo "########## G1.4 focus safety (armed cli_io survives republish churn)"
+sh "$HERE/nb_focus_safety_test.sh" || RC=1
+
+echo
 echo "########## content-row reachability (live browser + own opt-in fixture)"
 sh "$HERE/nb_reach_test.sh" || RC=1
 
