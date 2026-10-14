@@ -14,3 +14,4 @@ sidebar { width: 340px; background-color: #1a1a22; color: #cccccc; }
 .mix-panel { background-color: #121214; }
 .ov-btn { width: 72px; height: 26px; background-color: #1a1a1a; color: #cccccc; border: 1px solid #444444; border-width: 1; }
 #tb-place { width: 84px; }
+.tile-list { height: 300px; }

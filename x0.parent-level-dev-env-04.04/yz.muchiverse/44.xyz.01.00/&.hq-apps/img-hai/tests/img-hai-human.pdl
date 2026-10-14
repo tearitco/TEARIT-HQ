@@ -1,0 +1,25 @@
+SECTION | KEY | VALUE
+------------------------------
+# img-hai-human.pdl - drives the real img-hai window through its input relay like a person: click the words field, type, Enter, jump to Draft by its on-screen number and press Enter, wait for the remote job, place the first tile, rotate it. Run:
+#   relay_drive.+x <renderer pid> run '&.hq-apps/img-hai/tests/img-hai-human.pdl' <window id>     (pid: state/renderer.pid; window: relay_drive.+x findwin 1060 900)
+# The house has two-step clicks and numbered rows, so most steps use the number printed on screen (nav jump + Enter), which survives text that wraps and moves rows. The words field is clicked (bottom centre of the canvas, which does not move).
+# Numbers used (read from a screenshot with placed=0): Draft 3, first tile 6. After one tile is placed every number after the placed list shifts by 1, so rotate is 33 (the numbers after the placed list also count the two scroll chips of the tile list and the words field; read from the screenshot shot_3, which first showed that 29 is "move left").
+STEP | tap | 700 826
+STEP | type | flat top-down pixel art sprite of a red sports car, white background
+STEP | key | enter
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | prompt_line=flat top-down pixel art sprite of a red sports car | 5
+STEP | shot | &.hq-apps/img-hai/state/shot_1_words.png
+STEP | key | esc
+STEP | type | 3
+STEP | key | enter
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | job_line=running | 10
+STEP | shot | &.hq-apps/img-hai/state/shot_2_running.png
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | job_line=done: | 420
+STEP | expect | &.widgits/concept-bank/data/img/draft/2026-10-13/ledger.txt | contains | flat top-down pixel art sprite of a red sports car | 5
+STEP | type | 6
+STEP | key | enter
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | placed=1 | 5
+STEP | type | 33
+STEP | key | enter
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | r90 | 5
+STEP | shot | &.hq-apps/img-hai/state/shot_3_mixed.png

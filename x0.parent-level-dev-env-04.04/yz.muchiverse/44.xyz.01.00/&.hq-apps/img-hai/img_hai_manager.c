@@ -91,7 +91,7 @@ static void start_draft(void) {
     if (job_pid > 0) { snprintf(g_msg, sizeof g_msg, "a draft is already running"); return; }
     if (!nM || !nParts) { snprintf(g_msg, sizeof g_msg, "no model or part"); return; }
     Host *h = NULL; for (int i = 0; i < nH; i++) if (!strcmp(H[i].name, M[selM].host)) h = &H[i]; if (!h) { snprintf(g_msg, sizeof g_msg, "model host not in models.pdl"); return; }
-    const char *part = PARTS[selPart]; char pf[PL]; snprintf(pf, sizeof pf, "%s/state/prompt_%s.txt", g_pkg, part);
+    const char *part = g_words[0] ? "free" : PARTS[selPart]; char pf[PL]; snprintf(pf, sizeof pf, "%s/state/prompt_%s.txt", g_pkg, part);
     if (g_words[0]) { FILE *f = fopen(pf, "w"); if (!f) return; fprintf(f, "PROMPT: %s\nNEGATIVE: text, watermark, blurry\n", g_words); fclose(f); }
     else if (build_prompt(part, pf) != 0) { snprintf(g_msg, sizeof g_msg, "prompt build failed for %s", part); return; }
     char seed[16]; snprintf(seed, sizeof seed, "%ld", (long)(time(NULL) % 100000));

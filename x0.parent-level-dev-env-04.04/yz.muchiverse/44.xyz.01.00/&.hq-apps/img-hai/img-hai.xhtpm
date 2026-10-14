@@ -6,7 +6,6 @@
   <page name="main">
     <sidebar>
       <text label="Words (text to image)" class="quiet"/>
-      <cli_io id="words" target_id="words" label="&gt; " action="${words_action}"/>
       <text label="${prompt_line}" class="quiet"/>
       <text label="${job_line}" class="quiet"/>
       <item id="partsel" label="${part_line}" action="${part_action}"/>
@@ -34,8 +33,9 @@
         <item id="c64" class="ov-btn" label="64" action="${c64_action}"/>
         <item id="c128" class="ov-btn" label="128" action="${c128_action}"/>
         <item id="rescan" class="ov-btn" label="scan" action="${rescan_action}"/>
+        <cli_io id="words" target_id="words" label="words &gt; " action="${words_action}"/>
       </row>
-      <row id="tb-place" class="canvas-overlay-left ov-top ov-chrome">
+      <row id="tb-place" class="canvas-overlay-right ov-top ov-chrome">
         <item id="ml" class="ov-btn" label="m&lt;" action="${mv_l_action}"/>
         <item id="mr" class="ov-btn" label="m&gt;" action="${mv_r_action}"/>
         <item id="mu" class="ov-btn" label="m^" action="${mv_u_action}"/>

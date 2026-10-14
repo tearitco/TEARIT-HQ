@@ -1,0 +1,5 @@
+SECTION | KEY | VALUE
+------------------------------
+# Must FAIL (exit 1): proves the driver can report a failure. Expects a state that is never produced.
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | placed=99 | 2
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | job_line=no such status | 1

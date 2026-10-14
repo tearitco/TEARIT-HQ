@@ -29,6 +29,14 @@ A new app `&.hq-apps/img-hai/`, built like its siblings `chat-hai` and `co-lab-h
 - **Part/model selectors:** buttons cycle the part (from `parts.pdl`) and the model (from `models.pdl`).
 - **Bugs found and fixed while building:** the job status never reached the window (wrong path to `job.txt`); the remote script was an older copy that named files differently, so one finished image had to be fetched by hand and its ledger line added by hand (it is marked in the ledger by its seed).
 
+## 2d. Tested through the input relay (2026-10-13)
+Driver and findings: `02-architecture/RELAY-DRIVE.md`. Cases: `&.hq-apps/img-hai/tests/`.
+- **`img-hai-human.pdl` (18 of 19 steps passed, first run):** clicked the words field, typed "flat top-down pixel art sprite of a red sports car, white background", Enter (the real cli_io), jumped to Draft by number and pressed Enter, waited for the remote job (120 s on debil), saw the ledger line, placed the first tile, then the rotate step FAILED because I had guessed the wrong number (29 is "move left"; rotate is 33). Fixed in the case file; the mixing steps were re-run on their own and passed (`img-hai-mix.pdl`, 11 of 11) and again from a fresh window (`img-hai-smoke.pdl`, 14 of 14, no remote job).
+- A negative case (`img-hai-negative.pdl`) fails with exit 1 as it must.
+- **Generated through the UI:** two red sports-car drafts (bk-sdm-tiny 120 s, tiny-sd 123 s). tiny-sd's is a clean red convertible, 3/4 view, game-asset look; neither is top-down pixel art. Verdicts in `data/img/draft/2026-10-13/verdicts.txt`, owner column blank.
+- Bugs found by driving it like a person: the words field sat under the tile list and was hidden (moved into the canvas's bottom strip); the tool column covered the canvas (moved to the right side); a free-words draft was logged under part car_door (now tagged `free`).
+- Still not driven by the relay: Export, scan, cell-size buttons, hide/delete/front/back, the part and model buttons through the number path.
+
 ## 3. Slices (each ends with a screenshot + a state file the owner can read)
 | # | Slice | Proof | Status |
 |---|---|---|---|

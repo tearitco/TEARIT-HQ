@@ -4,3 +4,5 @@ LEDGER | car_door | nota-ai/bk-sdm-tiny | 3 | 20 | 512 | 133.2 | car_door_bk-sdm
 LEDGER | car_door | segmind/tiny-sd | 1 | 20 | 512 | 142.3 | car_door_tiny-sd_s1.png | a car door panel, painted steel, dark red, seen from above, pixel art, plain flat background, crisp outline, 32 pixel sprite
 LEDGER | car_door | nota-ai/bk-sdm-tiny | 53705 | 20 | 512 | 117.5 | car_door_bk-sdm-tiny_s53705.png | red car door, flat top-down game sprite, white background, pixel art
 LEDGER | car_door | nota-ai/bk-sdm-tiny | 53883 | 20 | 512 | 119.4 | car_door_bk-sdm-tiny_s53883.png | red car door, flat top-down game sprite, white background, pixel art
+LEDGER | car_door | segmind/tiny-sd | 54360 | 20 | 512 | 123.4 | car_door_tiny-sd_s54360.png | flat top-down pixel art sprite of a red sports car, white background
+LEDGER | car_door | nota-ai/bk-sdm-tiny | 54520 | 20 | 512 | 120.1 | car_door_bk-sdm-tiny_s54520.png | flat top-down pixel art sprite of a red sports car, white background

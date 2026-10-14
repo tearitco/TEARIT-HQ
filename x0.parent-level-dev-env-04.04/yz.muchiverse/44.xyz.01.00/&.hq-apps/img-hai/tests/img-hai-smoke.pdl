@@ -1,0 +1,17 @@
+SECTION | KEY | VALUE
+------------------------------
+# img-hai-smoke.pdl - no remote job (fast): from a fresh window (placed=0) place the first tile with its number (6), then rotate (33), flip (34), move right (30). Numbers read from a screenshot of this layout.
+STEP | key | esc
+STEP | type | 6
+STEP | key | enter
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | placed=1 | 5
+STEP | type | 33
+STEP | key | enter
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | r90 | 5
+STEP | type | 34
+STEP | key | enter
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | flip | 5
+STEP | type | 30
+STEP | key | enter
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | @2,1 | 5
+STEP | shot | &.hq-apps/img-hai/state/shot_5_smoke.png
