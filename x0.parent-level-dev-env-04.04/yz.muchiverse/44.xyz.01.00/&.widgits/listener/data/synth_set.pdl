@@ -1,0 +1,16 @@
+SECTION | KEY | VALUE
+------------------------------
+# synth_set.pdl - 12 SYNTHETIC test sentences (spoken by the house's offline voices, not by a person) for the listener's first accuracy numbers. CLIP | id | voice (edge-style name, see pet-trainer KMAP) | reference text
+# Includes house vocabulary (khtpm, tomom, brixel, colab) on purpose: that is what the pronunciation map / hot words are for. Not a substitute for the owner's own clips (LEARNING-FROM-HUMAN-SPEECH.md section 4).
+CLIP | 01 | en-GB-ThomasNeural | Open the file and then press enter.
+CLIP | 02 | en-US-AnaNeural | The quick brown fox jumps over the lazy dog.
+CLIP | 03 | en-US-GuyNeural | Start the image studio and draft a car wheel.
+CLIP | 04 | en-GB-MaisieNeural | Judge the picture with a yes or a no.
+CLIP | 05 | en-GB-ThomasNeural | The pet is hungry, feed the bunny now.
+CLIP | 06 | en-US-AnaNeural | Open the khtpm window and press enter.
+CLIP | 07 | en-US-GuyNeural | Ask tomom to read the pronunciation map.
+CLIP | 08 | en-GB-MaisieNeural | Move the brixel to the left by one cell.
+CLIP | 09 | en-GB-ThomasNeural | Say hello in a lower voice with more warmth.
+CLIP | 10 | en-US-AnaNeural | Turn the volume down a little bit.
+CLIP | 11 | en-US-GuyNeural | Send the message to the colab room.
+CLIP | 12 | en-GB-MaisieNeural | Stop listening now.

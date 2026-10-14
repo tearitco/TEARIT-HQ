@@ -112,3 +112,21 @@ static void adsp_vibrato(short *x, long n, int sr, double hz, double cents) {
 static void adsp_breath(short *x, long n, int sr, double mix) {
     if (mix <= 0 || n < 2) return; uint32_t rs = 2463534242u; double env = 0, prev = 0, a = exp(-1.0 / (0.01 * sr)); for (long i = 0; i < n; i++) { env = a * env + (1 - a) * fabs((double)x[i]); rs ^= rs << 13; rs ^= rs >> 17; rs ^= rs << 5; double nz = (double)rs / 2147483648.0 - 1.0, hp = nz - prev; prev = nz; double y = x[i] + mix * env * hp * 1.2; if (y > 32767) y = 32767; if (y < -32768) y = -32768; x[i] = (short)lrint(y); }
 }
+
+/* ---- speech detection (added 2026-10-14; BOOK 19.audio/LISTENER-STT-DESIGN.md) ---- */
+typedef struct { long start, end; } AdspSeg;
+static double adsp_frame_db(const short *x, long n) { double a = 0; for (long i = 0; i < n; i++) a += (double)x[i] * x[i]; return 20.0 * log10(sqrt(n ? a / n : 0) / 32768.0 + 1e-9); }
+/* Energy VAD over a whole buffer: 20 ms frames in dBFS; noise floor = 10th percentile of the frame levels; threshold = max(floor + 9 dB, -50 dBFS); speech starts after 5 frames (100 ms) above it and ends
+ * after `hang_ms` of frames below it; a segment shorter than `min_ms` is dropped; each kept segment is padded by 100 ms. Returns the number of segments written (up to `max`).
+ * This detects LOUDNESS, not speech: a steady hum or hiss sets the floor and is ignored, but a loud non-speech burst is a segment. */
+static int adsp_vad(const short *x, long n, int sr, int hang_ms, int min_ms, AdspSeg *out, int max) {
+    long fl = sr / 50; long nf = n / fl; if (nf < 5) return 0; double *db = malloc((size_t)nf * sizeof *db), *srt = malloc((size_t)nf * sizeof *srt); if (!db || !srt) { free(db); free(srt); return 0; }
+    for (long i = 0; i < nf; i++) { db[i] = adsp_frame_db(x + i * fl, fl); srt[i] = db[i]; }
+    for (long i = 1; i < nf; i++) { double v = srt[i]; long j = i - 1; while (j >= 0 && srt[j] > v) { srt[j + 1] = srt[j]; j--; } srt[j + 1] = v; }      /* insertion sort: nf is small (50 per second) */
+    double floor_db = srt[nf / 10], thr = floor_db + 9.0; if (thr < -50.0) thr = -50.0; free(srt);
+    int cnt = 0; long hang = hang_ms / 20, run = 0, quiet = 0, start = -1, last_loud = -1; int in = 0;
+    for (long i = 0; i <= nf; i++) { int loud = i < nf && db[i] > thr;
+        if (!in) { if (loud) { run++; if (run >= 5) { in = 1; start = i - run + 1; last_loud = i; quiet = 0; } } else run = 0; }
+        else { if (loud) { last_loud = i; quiet = 0; } else { quiet++; } if (quiet >= hang || i == nf) { long s = start * fl - sr / 10, e = (last_loud + 1) * fl + sr / 10; if (s < 0) s = 0; if (e > n) e = n; if ((e - s) * 1000 / sr >= min_ms && cnt < max) { out[cnt].start = s; out[cnt].end = e; cnt++; } in = 0; run = 0; quiet = 0; } } }
+    free(db); return cnt;
+}

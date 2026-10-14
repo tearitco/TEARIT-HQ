@@ -1,6 +1,6 @@
 # The listener: speech to text in the house (design, draft 1, 2026-10-14)
 
-Design only. Nothing here is built. Context: `VOICE-AND-SFX-DESIGN.md` (rails, ladder), `INVENTORY-AND-PRIOR-ART.md` (what exists), `LEARNING-FROM-HUMAN-SPEECH.md` (what is learned from it), `HOTSPRINGS-VOICE-MODE-DESIGN.md` (the first consumer). Owner direction (2026-10-14): train our own, no reliance on outside services, C / ops / events / pal, attrition with the same rails as pictures; speech-to-text and sound-to-text in the same pipeline.
+Design; **L0 and L1 are built** (see `LISTENER-L0-L1.md`, and the code in `&.widgits/listener/`); L2-L5 are not. Context: `VOICE-AND-SFX-DESIGN.md` (rails, ladder), `INVENTORY-AND-PRIOR-ART.md` (what exists), `LEARNING-FROM-HUMAN-SPEECH.md` (what is learned from it), `HOTSPRINGS-VOICE-MODE-DESIGN.md` (the first consumer). Owner direction (2026-10-14): train our own, no reliance on outside services, C / ops / events / pal, attrition with the same rails as pictures; speech-to-text and sound-to-text in the same pipeline.
 
 ## 1. Where we really are
 | Thing | State |
