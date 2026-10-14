@@ -7,6 +7,7 @@
 | Edge TTS | broken: HTTP 403 on the websocket since 2026-10-12, re-probed 2026-10-14 | `convert_night_to_audio_local.py` header; probe |
 | Kokoro files | `~/.local/share/kokoro/kokoro-v1.0.int8.onnx` + `voices-v1.0.bin`; python `kokoro-onnx`, `onnxruntime`, `espeakng-loader`, `pyttsx3`, `gTTS` installed | pip list |
 | Tools | `sox`, `ffmpeg`, `paplay`, `aplay` present | `which` |
+| FFT | `045.muchi-pal-agent/lab-audio/fft.c` (radix-2, STFT pitch, 206 lines, README says round-trip tested) plus `wav_io.c`, `synth.c` (sine+ADSR). **Now also shared**: `_shared-lib/audio_dsp.c` + `ops/audio_probe.c` (2026-10-14) | ran |
 | `media-daw-hq` (+ `media-daw`, source `103.media-studio/103.daw`) | *read*: demo tracks with MIDI-ish clips, transport, piano roll, mixer chips. **No audio clips, no WAV, no real synth output** ("Software synth only; no audio clips/WAV; no automation lanes" - HOW2_DAW.md). Manager is 238 lines of C, file-backed actions | `@.apps/media-daw-hq/README.md` |
 | `103.media-studio/100.tts-point-2-anything` | *read*: shell scripts that read a document to speech | listing |
 | pet-trainer `voices.pdl` | VOICE (species -> voice, rate, pitch), HUM (sox melodies: wave, base Hz, semitone steps, note ms), KMAP (edge voice -> Kokoro voice) | file |

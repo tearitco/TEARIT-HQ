@@ -1,6 +1,6 @@
 /* sfx_make - render one sound effect and check it: sfx_make <package_dir> <label> <wave> <f0> <f1> <dur> <attack> <decay> <vol> <lp>     (SCAFFOLD, 2026-10-14)
  * Stand-in renderer: sox synth (the in-house C renderer is roadmap slice S3, BOOK 19.audio/SFX-TOY-DESIGN.md). Writes state/audio/<label>.wav (22.05 kHz mono 16 bit; never overwrites: _r2 ...),
- * then the first two NUMERIC CHECKS from the design, read from `sox ... stat`: length within 5% of dur (+0.02 s), peak amplitude between 0.05 and 0.98. Result line to state/say.txt,
+ * then the NUMERIC CHECKS from the design: length within 5% of dur (+0.02 s) and peak between 0.05 and 0.98 (from `sox ... stat`); and, measured with our own FFT (_shared-lib/audio_dsp.c): the dominant frequency of the first window within 8% (at least 2 bins) of the recipe's expected start frequency (tonal waves only; noise is skipped), and |DC offset| below 0.02. Result line to state/say.txt,
  * ledger row  SFX | ts | label | wave f0 f1 dur | seconds-to-make | checks | file  to state/ledger.txt, path to state/last.txt, then plays with paplay (a lock: one at a time).
  * Exit 0 = made (checks may still say FAIL in the line), 1 = could not make. A recipe that is silent or clipped is made anyway and reported, so a human can hear what failed. */
 #define _GNU_SOURCE
@@ -14,6 +14,9 @@
 #include <sys/stat.h>
 #include <sys/file.h>
 #include <sys/wait.h>
+#include <math.h>
+#include <stdint.h>
+#include "../../../&.widgits/_shared-lib/audio_dsp.c"      /* text-included FFT + measures (BOOK 19.audio/SFX-TOY-DESIGN.md section 3) */
 #define PL 4096
 static char g_say[PL];
 static void status(const char *m) { FILE *f = fopen(g_say, "a"); if (f) { fprintf(f, "%s\n", m); fclose(f); } }
@@ -36,7 +39,11 @@ int main(int argc, char **argv) {
     snprintf(st_out, sizeof st_out, "%s/stat_%d.txt", dir, (int)getpid()); { char *b[] = { "sox", out, "-n", "stat", NULL }; run(b, st_out, 15); }
     double len = -1, peak = -1; { FILE *f = fopen(st_out, "r"); char ln[256]; if (f) { while (fgets(ln, sizeof ln, f)) { if (!strncmp(ln, "Length (seconds):", 17)) len = atof(ln + 17); else if (!strncmp(ln, "Maximum amplitude:", 18)) peak = atof(ln + 18); } fclose(f); } unlink(st_out); }
     double want = atof(dur); int dur_ok = len >= 0 && len >= want * 0.95 - 0.02 && len <= want * 1.05 + 0.02, peak_ok = peak >= 0.05 && peak <= 0.98;
-    char chk[200]; snprintf(chk, sizeof chk, "duration %.3f s (want %.3f) %s; peak %.2f %s", len, want, dur_ok ? "ok" : "FAIL", peak, peak_ok ? "ok" : (peak < 0.05 ? "FAIL silent" : "FAIL clipped"));
+    char chk[320]; snprintf(chk, sizeof chk, "duration %.3f s (want %.3f) %s; peak %.2f %s", len, want, dur_ok ? "ok" : "FAIL", peak, peak_ok ? "ok" : (peak < 0.05 ? "FAIL silent" : "FAIL clipped"));
+    { short *sm = NULL; long ns = 0; int sr = 0; if (!adsp_read_wav(out, &sm, &ns, &sr)) { size_t l = strlen(chk);
+        if (strcmp(wave, "noise")) { double ff0 = atof(f0), ff1 = atof(f1); int win = ff0 < 400 ? 2048 : 1024; double want_hz = ff1 > 0 && want > 0 ? ff0 + (ff1 - ff0) * (0.5 * win / sr) / want : ff0; double tol = want_hz * 0.08; if (tol < 2.0 * sr / win) tol = 2.0 * sr / win; double dom = adsp_dominant_hz(sm, ns, sr, 0, win);
+            snprintf(chk + l, sizeof chk - l, "; dominant %.0f Hz (want ~%.0f) %s", dom, want_hz, dom > 0 && fabs(dom - want_hz) <= tol ? "ok" : "FAIL"); l = strlen(chk); }
+        double dc = adsp_dc(sm, ns); snprintf(chk + l, sizeof chk - l, "; dc %.3f %s", dc, fabs(dc) < 0.02 ? "ok" : "FAIL"); free(sm); } }
     { char lp2[PL]; snprintf(lp2, sizeof lp2, "%s/state/ledger.txt", pkg); FILE *f = fopen(lp2, "a"); if (f) { fprintf(f, "SFX | %ld | %s | %s %s %s %s | %ld | %s | %s\n", (long)t0, label, wave, f0, f1, dur, (long)(time(NULL) - t0), chk, out); fclose(f); } }
     { char lp2[PL]; snprintf(lp2, sizeof lp2, "%s/state/last.txt", pkg); FILE *f = fopen(lp2, "w"); if (f) { fprintf(f, "%s\n", out); fclose(f); } }
     snprintf(msg, sizeof msg, "done: %s | %s", strrchr(out, '/') + 1, chk); status(msg);

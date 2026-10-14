@@ -10,7 +10,7 @@ An x11-hq window for the SFX toy: **list sound recipes, filter by tag, make a so
 |---|---|
 | window, recipe list, tag filter, select, frequency/length nudges (working copies), waveform, verdicts | **built, relay-tested** |
 | renderer | **stand-in**: `sox synth` via `ops/sfx_make.c` (the in-house C synth is roadmap S3) |
-| numeric checks | **2 of 4 built**: duration within 5% and peak between 0.05 and 0.98. Not built: dominant frequency within 5% of f0, no DC offset. The duration check cannot fail yet (the renderer uses the recipe's own duration): it needs the in-house renderer or a mutation batch to test negatively |
+| numeric checks | **4 of 4 built** (2026-10-14): duration within 5%, peak 0.05..0.98, dominant frequency of the first window within 8% (at least 2 FFT bins) of the recipe's expected start frequency (tonal waves; noise skipped), |DC| < 0.02. Frequency and DC use our own FFT (`&.widgits/_shared-lib/audio_dsp.c`). Negative tests: silent and clipped recipes fail the peak check; a 15,000 Hz recipe (above Nyquist at 22.05 kHz, aliases to 8,674 Hz) fails the frequency check. **Not negatively tested:** the duration check (the renderer uses the recipe's own duration, so it can only fail if the renderer is wrong) and the DC check inside the window (it was proven in `audio_probe` on a 0.3 DC test file only; sox cannot make a DC-offset recipe) |
 | bank edits through candidates, mutation batches, DAW import, sound-to-text (`HEAR` rows) | **not built** |
 
 ## Files
@@ -18,7 +18,7 @@ An x11-hq window for the SFX toy: **list sound recipes, filter by tag, make a so
 
 ## How to add something
 - **A recipe:** add an `SFX` row to `sfx.pdl` (params in its header). Press Make; read the check text.
-- **A check:** add it in `sfx_make.c` after the `sox stat` step (dominant frequency: use `sox out -n stat -freq` or compute an FFT in C); add a bad recipe that must fail it.
+- **A check:** add it in `sfx_make.c` where `chk` is built; use the FFT helpers in `_shared-lib/audio_dsp.c` (`adsp_dominant_hz`, `adsp_dc`, `adsp_peak`, `adsp_rms`) or measure a file by hand with `&.widgits/_shared-lib/ops/+x/audio_probe.+x <wav> [start_ms] [window]`; add a bad recipe that must fail it.
 - **The C renderer (S3):** write `sfx_render` (oscillators, ADSR, filters, seeded noise) with the same arguments as `sfx_make`'s recipe; swap it in for the sox call; keep the checks; compare with the sox output by the same checks.
 - **A button / layout:** see `voice-fx/README.md` and img-hai's EXTENDING.md recipe A.
 - **DAW:** needs an audio-clip kind in `@.apps/media-daw-hq` first (roadmap D1).
