@@ -100,3 +100,8 @@ The owner reads `/home/no/Desktop/github/work/XO/25.games-plan/` (a non-git fold
 
 ## 12. Addendum: pixel op (2026-10-13, after the first handoff)
 `ops/img_pixel` added (EXTENDING.md recipe L): compared by eye on 5 pictures; no mode wins everywhere, so `pixel_modes.pdl` picks per part. **Wired into `img_hai_job`** (replaces the naive `_32px` copy); verified on 2 real remote drafts. Older pictures keep their naive copies. Not done: one shared palette across a part set, in-window re-reduce button, 8 colours.
+
+## 13. Addendum (2026-10-14): what the window shows, and a gap
+- The big canvas shows only what is **placed**. Drafts and 32 px copies land in the tile list; click a tile (two-step) to place it. At the default cell size 128 a 32 px picture is shown 4x.
+- **The canvas layout is not saved.** Closing or relaunching the window empties it (placements are in memory). Export writes a canvas as a tile; there is no save/restore of placements yet. Open item: persist placements as an append-only file.
+- Real generation exists: the wheel seen on 2026-10-13 (`car_wheel_bk-sdm-tiny_s2_r3`) was drafted by `nota-ai/bk-sdm-tiny` on the Mac (20 steps, 512 px, 107.9 s, seed 2, bank prompt for car_wheel), then reduced to 32 px by `img_pixel`. Ledger line in `data/img/draft/2026-10-13/ledger.txt`.
