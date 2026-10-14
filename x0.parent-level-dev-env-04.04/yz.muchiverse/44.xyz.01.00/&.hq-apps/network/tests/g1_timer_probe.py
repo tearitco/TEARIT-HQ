@@ -16,6 +16,7 @@ Two phases, and the split matters:
 """
 import os
 import re
+import select
 import subprocess
 import sys
 import time
@@ -31,7 +32,22 @@ def read_exactly(f, n, deadline):
     """Read n bytes or None on EOF/timeout."""
     out = b""
     while len(out) < n:
-        if time.time() > deadline:
+        remaining = deadline - time.time()
+        if remaining <= 0:
+            return None
+        # select() is load-bearing, not decoration. f.read(1) on a blocking
+        # pipe waits for a byte FOREVER, so the "has the deadline passed"
+        # check between reads never fires when nothing arrives. Measured
+        # consequence: phase 2 hung indefinitely instead of reporting zero
+        # frames - and "nothing ticked in ten seconds" is the very thing
+        # this KPI exists to measure. A test that cannot say "nothing
+        # happened" is not a test.
+        #
+        # select() on the fd is honest here because subprocess bufsize=0
+        # gives an UNBUFFERED FileIO, so read(1) is a direct syscall and
+        # no byte can sit in a Python-side buffer that select cannot see.
+        ready, _, _ = select.select([f], [], [], remaining)
+        if not ready:
             return None
         ch = f.read(1)
         if not ch:
@@ -55,7 +71,11 @@ def read_frame(f, deadline):
     """
     digits = b""
     while len(digits) < 32:
-        if time.time() > deadline:
+        remaining = deadline - time.time()
+        if remaining <= 0:
+            return None
+        ready, _, _ = select.select([f], [], [], remaining)
+        if not ready:
             return None
         ch = f.read(1)
         if not ch:
@@ -102,16 +122,23 @@ def dom_diagnostics(p):
     frame = ("LOAD\n%s\n%s\nhttp://localhost/x\nX\n\n"
              % (os.path.abspath(page_js), bad)).encode()
     send(p, frame)
+    # DRAIN TO STATUS. Returning on the ERROR frame leaves the rest of THIS
+    # load - its RENDER and its STATUS - sitting in the pipe, and phase 1
+    # then reads those leftovers instead of the real load: renders[-1] is a
+    # TITLE-only frame from the diagnostics load, which is exactly how a
+    # working timer gets reported as "carries no tick row". Frames belong
+    # to a load until its STATUS; consume the whole transaction.
+    seen_error = None
     deadline = time.time() + 20
     while time.time() < deadline:
         fr = read_frame(p.stdout, deadline)
         if fr is None:
             break
-        if fr.startswith(b"ERROR|"):
-            return fr.decode("utf-8", "replace")
+        if fr.startswith(b"ERROR|") and seen_error is None:
+            seen_error = fr.decode("utf-8", "replace")
         if fr.startswith(b"STATUS"):
             break
-    return None
+    return seen_error
 
 
 def main():
