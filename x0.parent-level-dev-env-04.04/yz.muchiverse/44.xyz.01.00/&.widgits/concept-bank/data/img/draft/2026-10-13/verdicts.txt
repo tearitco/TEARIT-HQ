@@ -7,3 +7,14 @@ VERDICT | car_door | bk-sdm-tiny | 53705 | claude=no (door) / maybe (whole car s
 VERDICT | car_door | bk-sdm-tiny | 53883 | claude=no | owner=? | same words, drafted from the img-hai window: a red truck front on a striped background; not a door, not pixel art
 VERDICT | free | tiny-sd | 54360 | claude=maybe (whole sports car, 3/4 view, clean, game-asset look; not top-down, not pixel art) | owner=? | words "flat top-down pixel art sprite of a red sports car, white background", drafted by pressing Draft with the key relay (123 s). Logged under part car_door in the ledger because this ran before the free-words tag was added.
 VERDICT | free | bk-sdm-tiny | 54520 | claude=no (distorted body, wheels wrong) | owner=? | same words, drafted by the scripted human scenario (120 s)
+# JUDGE rows below use the tile label (file name without .png); latest per (label, who) wins; the window writes these when a judge button is pressed. claude's verdicts from the notes above, restated:
+JUDGE | car_door_bk-sdm-tiny_s1 | claude | no | 2026-10-13
+JUDGE | car_door_bk-sdm-tiny_s2 | claude | no | 2026-10-13
+JUDGE | car_door_bk-sdm-tiny_s3 | claude | no | 2026-10-13
+JUDGE | car_door_tiny-sd_s1 | claude | no | 2026-10-13
+JUDGE | car_door_bk-sdm-tiny_s53705 | claude | no | 2026-10-13
+JUDGE | car_door_bk-sdm-tiny_s53883 | claude | no | 2026-10-13
+JUDGE | car_door_bk-sdm-tiny_s54520 | claude | no | 2026-10-13
+JUDGE | free_bk-sdm-tiny_s57183 | claude | no | 2026-10-13
+JUDGE | free_bk-sdm-tiny_s57184 | claude | no | 2026-10-13
+# 57183 (debil) and 57184 (Mac): both are grey striped asphalt-like textures, no road, no dashed centre line, not pixel art. Usable at most as a texture reference. Words: "top-down flat colour tile of grey asphalt road with a white dashed centre line, pixel art". Drafted in parallel by one press of "Draft on ALL hosts" (relay-driven): debil 119.4 s, Mac 118.5 s.

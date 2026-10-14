@@ -1,5 +1,5 @@
 /* img_hai_job - one text-to-image draft on a remote host, started by img_hai_manager (never blocks the window).
- * Usage: img_hai_job <package_dir> <house_root> <ssh_target> <remote_dir> <python> <model> <steps> <size> <seed> <part> <prompt_file>
+ * Usage: img_hai_job <package_dir> <house_root> <ssh_target> <remote_dir> <python> <model> <steps> <size> <seed> <part> <prompt_file> [command prefix, default "nice -n 15 ionice -c3"]
  * Steps: copy the prompt file to the host, run img_draft.py there under nice/ionice, copy the PNGs back into
  * <house>/&.widgits/concept-bank/data/img/draft/<day>/img/, append one LEDGER line, and append status lines to <package_dir>/state/job.txt
  * (append-only; the manager reads it by size growth). Children are fork+exec with a watchdog; there is no popen/system. */
@@ -24,7 +24,7 @@ static int run(char *const argv[], const char *outfile, int timeout_s) {
     kill(p, SIGKILL); waitpid(p, NULL, 0); return -1;
 }
 int main(int argc, char **argv) {
-    if (argc < 12) return 2;
+    if (argc < 12) return 2; const char *prefix = argc > 12 ? argv[12] : "nice -n 15 ionice -c3";
     const char *pkg = argv[1], *house = argv[2], *host = argv[3], *rdir = argv[4], *py = argv[5], *model = argv[6], *steps = argv[7], *size = argv[8], *seed = argv[9], *part = argv[10], *pf = argv[11];
     snprintf(g_job, sizeof g_job, "%s/state/job.txt", pkg);
     const char *ms = strrchr(model, '/'); ms = ms ? ms + 1 : model;
@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
     snprintf(rpath, sizeof rpath, "%s:%s/jobs/%s.txt", host, rdir, id);
     { snprintf(cmd, sizeof cmd, "mkdir -p %s/jobs/out", rdir); char *a[] = { "ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", (char *)host, cmd, NULL }; if (run(a, tmpo, 30) != 0) { status("failed: cannot reach host"); return 1; } }
     { char *a[] = { "scp", "-q", "-o", "BatchMode=yes", (char *)pf, rpath, NULL }; if (run(a, tmpo, 60) != 0) { status("failed: copying the prompt"); return 1; } }
-    snprintf(cmd, sizeof cmd, "cd %s && nice -n 15 ionice -c3 env IMG_THREADS=6 %s img_draft.py --prompt-file jobs/%s.txt --part %s --model %s --out jobs/out --steps %s --size %s --seed %s", rdir, py, id, part, model, steps, size, seed);
+    snprintf(cmd, sizeof cmd, "cd %s && %s env IMG_THREADS=6 %s img_draft.py --prompt-file jobs/%s.txt --part %s --model %s --out jobs/out --steps %s --size %s --seed %s", rdir, prefix, py, id, part, model, steps, size, seed);
     { char *a[] = { "ssh", "-o", "BatchMode=yes", "-o", "ServerAliveInterval=30", (char *)host, cmd, NULL }; int rc = run(a, tmpo, 1500); if (rc != 0) { snprintf(msg, sizeof msg, "failed: remote draft (exit %d) see state/job_%s.out", rc, id); status(msg); return 1; } }
     double secs = 0; { FILE *f = fopen(tmpo, "r"); char ln[PL]; if (f) { while (fgets(ln, sizeof ln, f)) if (!strncmp(ln, "done ", 5)) secs = atof(ln + 5); fclose(f); } }
     char dd[PL], dimg[PL]; snprintf(dd, sizeof dd, "%s/&.widgits/concept-bank/data/img/draft/%s", house, day); snprintf(dimg, sizeof dimg, "%s/img", dd); mkdir(dd, 0755); mkdir(dimg, 0755);

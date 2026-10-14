@@ -37,14 +37,19 @@ Driver and findings: `02-architecture/RELAY-DRIVE.md`. Cases: `&.hq-apps/img-hai
 - Bugs found by driving it like a person: the words field sat under the tile list and was hidden (moved into the canvas's bottom strip); the tool column covered the canvas (moved to the right side); a free-words draft was logged under part car_door (now tagged `free`).
 - Still not driven by the relay: Export, scan, cell-size buttons, hide/delete/front/back, the part and model buttons through the number path.
 
+## 2e. Delegation and judging built (2026-10-13)
+- **Verdict buttons + Accept (H4):** buttons `c yes` / `c no` (claude) and `o yes` / `o no` (owner) write `JUDGE | <tile label> | claude|owner | yes|no | date` lines (append-only, latest per judge wins) to the draft day's `verdicts.txt`; the palette and the judge line show `c:no o:?`. **Accept** writes a candidate line to `data/img/accept_candidates.pdl` only when both are yes (a human promotes it; no bank write). Relay-driven on a throw-away test tile: Accept with no verdicts -> refused, with only claude yes -> refused, with both yes -> `CAND | test_tile ...` written to `state/accept_test.pdl` (21 of 21 steps). Test tiles never touch the real data. The real `accept_candidates.pdl` does not exist yet: nothing has been accepted. **My own seven earlier "no" verdicts are loaded as JUDGE rows; the owner column is empty everywhere.**
+- **Mac as a second host and Draft on ALL hosts (H5):** `models.pdl` lists debil and the Mac (Mac: torch 2.2.2 + diffusers 0.27.2, because diffusers 0.36 needs a newer torch than macOS-Intel offers). One press of "Draft on ALL hosts" (relay-driven, nav 4) started a job on each host in parallel; both finished: debil 119.4 s, Mac 118.5 s (the Mac's first run also downloaded its model). Two images from one press in about 2.5 minutes. The images (grey stripe textures for the words "asphalt road with dashed centre line") were no.
+- **Still manual:** which words to try; the verdicts; the owner's look.
+
 ## 3. Slices (each ends with a screenshot + a state file the owner can read)
 | # | Slice | Proof | Status |
 |---|---|---|---|
 | H1 | Window opens; lists parts/tiles and the built prompt | window screenshot; ui state | built (parts list shows the current part only; ledger/verdict text not shown in the window yet) |
 | H2 | Show images in the window | tile palette with thumbnails; canvas for mixing | built (PNG thumbnails; big preview of one draft is the canvas) |
 | H3 | **Draft** button: ssh job to debil with status | a new ledger line appears and the new image shows, while the window stays responsive during the ~2 min run | built and observed once (seed 53883, 119 s); window stayed live; a failed copy path was fixed before |
-| H4 | Verdict buttons (owner row, claude row) and Accept gated on both | a verdict line per click; Accept stays disabled with one yes; with two yes it writes a candidate row | planned |
-| H5 | Second host (Mac) and a model list | same part drafted on both, two ledger lines with host and seconds | planned |
+| H4 | Verdict buttons (owner row, claude row) and Accept gated on both | a verdict line per click; Accept stays disabled with one yes; with two yes it writes a candidate row | built; tested on a test tile through the relay (Accept refused until both yes; message instead of a disabled button) |
+| H5 | Second host (Mac) and a model list | same part drafted on both, two ledger lines with host and seconds | built; one press drafted on both in parallel (119 s and 118 s). Same prompt, different seeds: not a like-for-like comparison |
 | H6 | Brixel view: show the accepted part in an assembly | the accepted door on the car assembly | planned |
 
 ## 4. Open questions

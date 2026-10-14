@@ -3,3 +3,5 @@ state/
 ops/+x/
 audit/
 tiles/mix_*.png
+tiles/test_*
+verdicts.txt

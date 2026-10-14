@@ -36,8 +36,8 @@ static Tile T[MAXT]; static int nT;
 static Place P[MAXP]; static int nP, sel = -1, cell = 64, curx = 1, cury = 1, dirty = 1;
 static unsigned char *comp; static char g_words[400] = "", g_job[200] = "no job";
 typedef struct { char id[96], host[24], steps[8], size[8]; } Model; static Model M[16]; static int nM, selM;
-typedef struct { char name[24], target[64], dir[64], py[64]; } Host; static Host H[4]; static int nH;
-static char PARTS[16][40]; static int nParts, selPart; static long job_off = 0; static pid_t job_pid = 0;
+typedef struct { char name[24], target[64], dir[64], py[64], prefix[64]; } Host; static Host H[4]; static int nH;
+static char PARTS[16][40]; static int nParts, selPart; static long job_off = 0; static pid_t job_pid[4];
 static long req_off = 0;
 
 static int has_img_ext(const char *n) { const char *d = strrchr(n, '.'); if (!d) return 0; static const char *ext[] = { ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tga", ".psd", ".hdr", ".ppm", ".pgm", ".pnm", NULL };
@@ -57,6 +57,19 @@ static void make_thumb(Tile *t, int idx) {
         unsigned char *q = o + ((size_t)y * tw + x) * 4; for (int k = 0; k < 4; k++) q[k] = n ? (unsigned char)(a[k] / n) : 0; unsigned char sw = q[0]; q[0] = q[2]; q[2] = sw; }   /* the renderer blits a .png sprite as BGRA, so red and blue are swapped here to show true colours */
     stbi_write_png(t->thumb, tw, th, 4, o, tw * 4); free(o); stbi_image_free(src);
 }
+static int split_bar(char *s, char **f, int max);
+typedef struct { char label[96], claude[4], owner[4]; } Judge; static Judge J[512]; static int nJ;
+static Judge *judge_of(const char *label, int create) { for (int i = 0; i < nJ; i++) if (!strcmp(J[i].label, label)) return &J[i]; if (!create || nJ >= 512) return NULL; Judge *j = &J[nJ++]; memset(j, 0, sizeof *j); snprintf(j->label, 96, "%s", label); return j; }
+/* JUDGE | <tile label> | claude|owner | yes|no | date  : append-only in <day>/verdicts.txt, the latest line per (label, who) wins */
+static void load_judges(void) {
+    nJ = 0; DIR *d = opendir(g_draft); if (!d) return; struct dirent *e; char *f[8];
+    while ((e = readdir(d))) { if (e->d_name[0] == '.') continue; char p[PL], ln[512]; snprintf(p, sizeof p, "%s/%s/verdicts.txt", g_draft, e->d_name); FILE *fp = fopen(p, "r"); if (!fp) continue;
+        while (fgets(ln, sizeof ln, fp)) { if (strncmp(ln, "JUDGE", 5)) continue; int n = split_bar(ln, f, 8); if (n < 4) continue; Judge *j = judge_of(f[1], 1); if (!j) continue; char *dst = !strcmp(f[2], "claude") ? j->claude : !strcmp(f[2], "owner") ? j->owner : NULL; if (dst) snprintf(dst, 4, "%s", f[3]); }
+        fclose(fp); }
+    closedir(d);
+    { char p2[PL], ln2[512]; snprintf(p2, sizeof p2, "%s/verdicts.txt", g_pkg); FILE *fp2 = fopen(p2, "r"); if (fp2) { while (fgets(ln2, sizeof ln2, fp2)) { if (strncmp(ln2, "JUDGE", 5)) continue; int n = split_bar(ln2, f, 8); if (n < 4) continue; Judge *j = judge_of(f[1], 1); if (!j) continue; char *dst = !strcmp(f[2], "claude") ? j->claude : !strcmp(f[2], "owner") ? j->owner : NULL; if (dst) snprintf(dst, 4, "%s", f[3]); } fclose(fp2); } }
+}
+static const char *jv(const char *v) { return v[0] ? v : "?"; }
 static void scan_tiles(void) {
     char thd[PL]; snprintf(thd, sizeof thd, "%s/thumbs", g_state); mkdir(thd, 0755);
     nT = 0; DIR *d = opendir(g_draft);
@@ -70,7 +83,7 @@ static int split_bar(char *s, char **f, int max) { int n = 0; f[n++] = s; for (c
 static void load_models(void) {
     char p[PL], ln[1024], *f[8]; snprintf(p, sizeof p, "%s/models.pdl", g_pkg); FILE *fp = fopen(p, "r"); if (!fp) return; nM = nH = 0;
     while (fgets(ln, sizeof ln, fp)) { if (ln[0] == '#') continue; int n = split_bar(ln, f, 8);
-        if (!strcmp(f[0], "HOST") && n >= 5 && nH < 4) { snprintf(H[nH].name, 24, "%s", f[1]); snprintf(H[nH].target, 64, "%s", f[2]); snprintf(H[nH].dir, 64, "%s", f[3]); snprintf(H[nH].py, 64, "%s", f[4]); nH++; }
+        if (!strcmp(f[0], "HOST") && n >= 5 && nH < 4) { snprintf(H[nH].name, 24, "%s", f[1]); snprintf(H[nH].target, 64, "%s", f[2]); snprintf(H[nH].dir, 64, "%s", f[3]); snprintf(H[nH].py, 64, "%s", f[4]); snprintf(H[nH].prefix, 64, "%s", n >= 6 && f[5][0] ? f[5] : "nice -n 15"); nH++; }
         else if (!strcmp(f[0], "MODEL") && n >= 6 && nM < 16) { snprintf(M[nM].id, 96, "%s", f[1]); snprintf(M[nM].host, 24, "%s", f[2]); snprintf(M[nM].steps, 8, "%s", f[4]); snprintf(M[nM].size, 8, "%s", f[5]); nM++; } }
     fclose(fp);
 }
@@ -87,20 +100,23 @@ static int build_prompt(const char *part, const char *outfile) {
     for (int t = 0; t < 50; t++) { int st; if (waitpid(p, &st, WNOHANG) == p) return WIFEXITED(st) ? WEXITSTATUS(st) : -1; usleep(100000); }
     kill(p, SIGKILL); waitpid(p, NULL, 0); return -1;
 }
-static void start_draft(void) {
-    if (job_pid > 0) { snprintf(g_msg, sizeof g_msg, "a draft is already running"); return; }
-    if (!nM || !nParts) { snprintf(g_msg, sizeof g_msg, "no model or part"); return; }
-    Host *h = NULL; for (int i = 0; i < nH; i++) if (!strcmp(H[i].name, M[selM].host)) h = &H[i]; if (!h) { snprintf(g_msg, sizeof g_msg, "model host not in models.pdl"); return; }
-    const char *part = g_words[0] ? "free" : PARTS[selPart]; char pf[PL]; snprintf(pf, sizeof pf, "%s/state/prompt_%s.txt", g_pkg, part);
+static void start_on(int hi, int mi) {
+    if (hi < 0 || hi >= nH || mi < 0 || mi >= nM) return;
+    if (job_pid[hi] > 0) { snprintf(g_msg, sizeof g_msg, "%s is busy with a draft", H[hi].name); return; }
+    Host *h = &H[hi]; const char *part = g_words[0] ? "free" : PARTS[selPart]; char pf[PL]; snprintf(pf, sizeof pf, "%s/state/prompt_%s_%s.txt", g_pkg, part, h->name);
     if (g_words[0]) { FILE *f = fopen(pf, "w"); if (!f) return; fprintf(f, "PROMPT: %s\nNEGATIVE: text, watermark, blurry\n", g_words); fclose(f); }
     else if (build_prompt(part, pf) != 0) { snprintf(g_msg, sizeof g_msg, "prompt build failed for %s", part); return; }
-    char seed[16]; snprintf(seed, sizeof seed, "%ld", (long)(time(NULL) % 100000));
+    char seed[16]; snprintf(seed, sizeof seed, "%ld", (long)(time(NULL) % 100000) + hi);
     pid_t p = fork(); if (p < 0) return;
-    if (p == 0) { setsid(); char bin[PL]; snprintf(bin, sizeof bin, "%s/ops/+x/img_hai_job.+x", g_pkg); char *a[] = { bin, g_pkg, g_house, h->target, h->dir, h->py, M[selM].id, M[selM].steps, M[selM].size, seed, (char *)part, pf, NULL }; execv(bin, a); _exit(127); }
-    job_pid = p; snprintf(g_msg, sizeof g_msg, "draft started: %s / %s", part, M[selM].id);
+    if (p == 0) { setsid(); char bin[PL]; snprintf(bin, sizeof bin, "%s/ops/+x/img_hai_job.+x", g_pkg); char *a[] = { bin, g_pkg, g_house, h->target, h->dir, h->py, M[mi].id, M[mi].steps, M[mi].size, seed, (char *)part, pf, h->prefix, NULL }; execv(bin, a); _exit(127); }
+    job_pid[hi] = p; snprintf(g_msg, sizeof g_msg, "draft started on %s: %s / %s", h->name, part, M[mi].id);
 }
+static int host_of_model(int mi) { for (int i = 0; i < nH; i++) if (!strcmp(H[i].name, M[mi].host)) return i; return -1; }
+static void start_draft(void) { if (!nM || !nParts) { snprintf(g_msg, sizeof g_msg, "no model or part"); return; } int hi = host_of_model(selM); if (hi < 0) { snprintf(g_msg, sizeof g_msg, "model host not in models.pdl"); return; } start_on(hi, selM); }
+/* delegate: one draft on every host at once, each with the first model listed for that host */
+static void start_all(void) { int started = 0; for (int hi = 0; hi < nH; hi++) { int mi = -1; for (int i = 0; i < nM; i++) if (!strcmp(M[i].host, H[hi].name)) { mi = i; break; } if (mi >= 0 && job_pid[hi] <= 0) { start_on(hi, mi); started++; } } snprintf(g_msg, sizeof g_msg, "drafts started on %d host(s)", started); }
 static void poll_job(void) {
-    if (job_pid > 0) { int st; if (waitpid(job_pid, &st, WNOHANG) == job_pid) { job_pid = 0; scan_tiles(); dirty = 1; } }
+    for (int i = 0; i < 4; i++) if (job_pid[i] > 0) { int st; if (waitpid(job_pid[i], &st, WNOHANG) == job_pid[i]) { job_pid[i] = 0; scan_tiles(); dirty = 1; } }
     char p[PL]; snprintf(p, sizeof p, "%s/job.txt", g_state); struct stat st; if (stat(p, &st) || st.st_size <= job_off) return;
     FILE *f = fopen(p, "r"); if (!f) return; fseek(f, job_off, SEEK_SET); char ln[300], last[300] = ""; while (fgets(ln, sizeof ln, f)) { size_t n = strlen(ln); if (!n || ln[n - 1] != '\n') break; ln[n - 1] = 0; job_off += (long)n; snprintf(last, sizeof last, "%s", ln); } fclose(f);
     if (last[0]) { snprintf(g_job, sizeof g_job, "%s", last); dirty = 1; }
@@ -130,9 +146,12 @@ static void write_canvas(void) {
 static void write_ui(void) {
     char dst[PL], tmp[PL]; snprintf(dst, sizeof dst, "%s/ui.txt", g_state); snprintf(tmp, sizeof tmp, "%s/ui.txt.tmp", g_state); FILE *f = fopen(tmp, "w"); if (!f) return;
     fprintf(f, "canvas_raw=%s/canvas.raw\n", g_state);
-    fprintf(f, "tiles_count=%d\n", nT); for (int i = 0; i < nT; i++) { fprintf(f, "t_%d_label=%s\nt_%d_sprite=%s\nt_%d_action='%s/ops/+x/img_hai_req.+x' 'TILE:%d'\nt_%d_show=%d\n", i, T[i].label, i, T[i].thumb, i, g_pkg, i, i, T[i].thumb[0] ? 1 : 0); }
+    fprintf(f, "tiles_count=%d\n", nT); for (int i = 0; i < nT; i++) { Judge *jt = judge_of(T[i].label, 0); char tl[160]; snprintf(tl, sizeof tl, "%s%s%s", T[i].label, jt ? " c:" : "", jt ? jv(jt->claude) : ""); if (jt) { char o[16]; snprintf(o, sizeof o, " o:%s", jv(jt->owner)); strncat(tl, o, sizeof tl - strlen(tl) - 1); }
+        fprintf(f, "t_%d_label=%s\nt_%d_sprite=%s\nt_%d_action='%s/ops/+x/img_hai_req.+x' 'TILE:%d'\nt_%d_show=%d\n", i, tl, i, T[i].thumb, i, g_pkg, i, i, T[i].thumb[0] ? 1 : 0); }
     fprintf(f, "place_count=%d\n", nP); for (int i = 0; i < nP; i++) { fprintf(f, "p_%d_label=%c %d %s @%d,%d r%d%s\np_%d_class=%s\np_%d_action='%s/ops/+x/img_hai_req.+x' 'SEL:%d'\n", i, P[i].vis ? '*' : '-', i + 1, P[i].tile < nT ? T[P[i].tile].label : "?", P[i].cx, P[i].cy, P[i].rot * 90, P[i].flip ? " flip" : "", i, i == sel ? "active" : "", i, g_pkg, i); }
     fprintf(f, "status_line=img-hai  tiles=%d  placed=%d  cell=%dpx  cursor=%d,%d\n", nT, nP, cell, curx, cury);
+    { char jl[300] = "judge: place a tile, then judge it"; if (sel >= 0 && P[sel].tile < nT) { Judge *j = judge_of(T[P[sel].tile].label, 0); snprintf(jl, sizeof jl, "judge %s: claude=%s owner=%s", T[P[sel].tile].label, j ? jv(j->claude) : "?", j ? jv(j->owner) : "?"); } fprintf(f, "judge_line=%s\n", jl); }
+    { const char *jk[] = { "jo_yes", "jo_no", "jc_yes", "jc_no", "accept", "draftall" }; const char *jvb[] = { "VERDICT:owner:yes", "VERDICT:owner:no", "VERDICT:claude:yes", "VERDICT:claude:no", "ACCEPT", "DRAFTALL" }; for (int q = 0; q < 6; q++) fprintf(f, "%s_action='%s/ops/+x/img_hai_req.+x' '%s'\n", jk[q], g_pkg, jvb[q]); }
     fprintf(f, "msg=%s\n", g_msg);
     fprintf(f, "part_line=part: %s   model: %s\npart_action='%s/ops/+x/img_hai_req.+x' 'PARTNEXT'\nmodel_action='%s/ops/+x/img_hai_req.+x' 'MODELNEXT'\n", nParts ? PARTS[selPart] : "-", nM ? M[selM].id : "-", g_pkg, g_pkg);
     fprintf(f, "prompt_line=%s\njob_line=%s\nwords_action='%s/ops/+x/img_hai_req.+x' 'WORDS'\ndraft_action='%s/ops/+x/img_hai_req.+x' 'DRAFT'\n", g_words[0] ? g_words : "(no words yet: type above, Enter)", g_job, g_pkg, g_pkg);
@@ -144,7 +163,13 @@ static void write_ui(void) {
 static void handle(char *cmd) {
     snprintf(g_msg, sizeof g_msg, "%s", cmd);
     if (!strncmp(cmd, "WORDS:", 6)) { snprintf(g_words, sizeof g_words, "%s", cmd + 6); snprintf(g_msg, sizeof g_msg, "words set"); }
+    else if (!strncmp(cmd, "VERDICT:", 8) && sel >= 0 && P[sel].tile < nT) { char who[16] = "", val[8] = ""; if (sscanf(cmd + 8, "%15[^:]:%7s", who, val) == 2 && (!strcmp(who, "owner") || !strcmp(who, "claude")) && (!strcmp(val, "yes") || !strcmp(val, "no"))) {
+            char vp[PL]; snprintf(vp, sizeof vp, "%s", T[P[sel].tile].path); char *sl = strrchr(vp, '/'); if (sl) *sl = 0; sl = strrchr(vp, '/'); if (sl) { strcpy(sl, "/verdicts.txt"); FILE *vf = fopen(vp, "a"); if (vf) { time_t t = time(NULL); char day[16]; strftime(day, sizeof day, "%Y-%m-%d", localtime(&t)); fprintf(vf, "JUDGE | %s | %s | %s | %s\n", T[P[sel].tile].label, who, val, day); fclose(vf); load_judges(); snprintf(g_msg, sizeof g_msg, "%s says %s to %s", who, val, T[P[sel].tile].label); } } } }
+    else if (!strcmp(cmd, "ACCEPT")) { if (sel < 0 || P[sel].tile >= nT) snprintf(g_msg, sizeof g_msg, "select a placed tile first"); else { Judge *j = judge_of(T[P[sel].tile].label, 0);
+            if (!j || strcmp(j->claude, "yes") || strcmp(j->owner, "yes")) snprintf(g_msg, sizeof g_msg, "accept needs BOTH yes (claude=%s owner=%s)", j ? jv(j->claude) : "?", j ? jv(j->owner) : "?");
+            else { char ap[PL]; if (!strncmp(T[P[sel].tile].label, "test_", 5)) snprintf(ap, sizeof ap, "%s/accept_test.pdl", g_state); else snprintf(ap, sizeof ap, "%s/&.widgits/concept-bank/data/img/accept_candidates.pdl", g_house); struct stat st; int fresh = stat(ap, &st) != 0; FILE *af = fopen(ap, "a"); if (af) { if (fresh) fputs("SECTION | KEY | VALUE\n------------------------------\n# CAND | tile label | image path | claude | owner | day : accepted by BOTH judges; a candidate for the brixel concept row, a human promotes it (no direct bank write)\n", af); time_t t = time(NULL); char day[16]; strftime(day, sizeof day, "%Y-%m-%d", localtime(&t)); fprintf(af, "CAND | %s | %s | yes | yes | %s\n", T[P[sel].tile].label, T[P[sel].tile].path, day); fclose(af); snprintf(g_msg, sizeof g_msg, "accepted %s (candidate written)", T[P[sel].tile].label); } } } }
     else if (!strcmp(cmd, "DRAFT")) start_draft();
+    else if (!strcmp(cmd, "DRAFTALL")) start_all();
     else if (!strcmp(cmd, "PARTNEXT") && nParts) selPart = (selPart + 1) % nParts;
     else if (!strcmp(cmd, "MODELNEXT") && nM) selM = (selM + 1) % nM;
     else if (!strncmp(cmd, "TILE:", 5)) { int n = atoi(cmd + 5); if (n >= 0 && n < nT && nP < MAXP) { P[nP] = (Place){ n, curx, cury, 0, 0, 1 }; sel = nP++; } }
@@ -178,7 +203,7 @@ int main(int argc, char **argv) {
     signal(SIGTERM, bye); comp = calloc((size_t)CW * CH * 4, 1); if (!comp) return 1;
     { char p[PL]; snprintf(p, sizeof p, "%s/request.txt", g_state); struct stat st; if (!stat(p, &st)) req_off = st.st_size; }   /* ignore requests from before this start */
     load_models(); load_parts(); { char p[PL]; snprintf(p, sizeof p, "%s/job.txt", g_state); struct stat st; if (!stat(p, &st)) job_off = st.st_size; }
-    scan_tiles(); write_canvas(); write_ui();
+    load_judges(); scan_tiles(); write_canvas(); write_ui();
     for (;;) { usleep(dirty ? 60000 : 200000); poll_requests(); poll_job(); if (dirty) { write_canvas(); write_ui(); dirty = 0; } if (!parent_alive()) break; }
     return 0;
 }

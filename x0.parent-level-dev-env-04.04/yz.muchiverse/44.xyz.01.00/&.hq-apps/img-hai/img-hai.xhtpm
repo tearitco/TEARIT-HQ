@@ -11,6 +11,8 @@
       <item id="partsel" label="${part_line}" action="${part_action}"/>
       <item id="modelsel" label="next model" action="${model_action}"/>
       <item id="draft" label="Draft image (remote)" action="${draft_action}"/>
+      <item id="draftall" label="Draft on ALL hosts" action="${draftall_action}"/>
+      <text label="${judge_line}" class="quiet"/>
       <text label="Placed on canvas" class="quiet"/>
       <repeat count="${place_count}" bind="p">
         <item id="pl${p.#}" class="ms-row ${p.class}" label="${p.label}" action="${p.action}"/>
@@ -48,6 +50,11 @@
         <item id="del" class="ov-btn" label="del" action="${del_action}"/>
         <item id="clear" class="ov-btn" label="clear" action="${clear_action}"/>
         <item id="export" class="ov-btn" label="exp" action="${export_action}"/>
+        <item id="jc_yes" class="ov-btn" label="c yes" action="${jc_yes_action}"/>
+        <item id="jc_no" class="ov-btn" label="c no" action="${jc_no_action}"/>
+        <item id="jo_yes" class="ov-btn" label="o yes" action="${jo_yes_action}"/>
+        <item id="jo_no" class="ov-btn" label="o no" action="${jo_no_action}"/>
+        <item id="accept" class="ov-btn" label="accept" action="${accept_action}"/>
       </row>
     </panel>
     <footer id="statusbar" class="pchq-footer">
