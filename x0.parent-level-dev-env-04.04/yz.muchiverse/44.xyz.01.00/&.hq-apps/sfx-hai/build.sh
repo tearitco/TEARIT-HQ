@@ -7,3 +7,4 @@ CC=${CC:-gcc}
 $CC -std=gnu11 -Wall -Wno-format-truncation -Wno-misleading-indentation -O2 -o "$SDIR/+x/sfx_hai_manager.+x" "$SDIR/sfx_hai_manager.c" && echo "OK sfx_hai_manager" || exit 1
 $CC -std=gnu11 -Wall -Wno-format-truncation -Wno-misleading-indentation -O2 -o "$SDIR/ops/+x/sfx_hai_req.+x" "$SDIR/ops/sfx_hai_req.c" && echo "OK sfx_hai_req" || exit 1
 $CC -std=gnu11 -Wall -Wno-format-truncation -Wno-misleading-indentation -O2 -o "$SDIR/ops/+x/sfx_make.+x" "$SDIR/ops/sfx_make.c" -lm && echo "OK sfx_make" || exit 1
+$CC -std=gnu11 -Wall -Wno-unused-function -Wno-misleading-indentation -O2 -o "$SDIR/ops/+x/sfx_render.+x" "$SDIR/ops/sfx_render.c" -lm && echo "OK sfx_render" || exit 1
