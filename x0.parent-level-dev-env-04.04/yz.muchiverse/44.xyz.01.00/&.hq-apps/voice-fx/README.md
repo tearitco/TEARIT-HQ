@@ -16,13 +16,13 @@ An x11-hq window for the voice-fx studio: **list voices, select one, change pitc
 | in-house voices (v0/v1/v2), pronunciation map, candidate edits into a bank, batches, ledger review | **not built** |
 
 ## Files
-`voice_fx_manager.c` (the brain; header lists verbs), `ops/voice_fx_req.c` (click -> request line), `ops/voice_say.c` (one spoken line: Kokoro -> sox pitch -> wav -> paplay; never overwrites; ledger row), `voice-fx.xhtpm` + `.css` (layout), `button.sh`, `build.sh`, `tests/`.
+`voice_fx_manager.c` (the brain; header lists verbs), `ops/voice_fx_req.c` (click -> request line), `ops/voice_say.c` (one spoken line: Kokoro engine with the accent -> audio_fx -> wav -> paplay; never overwrites; ledger row with every effect value), `voice-fx.xhtpm` + `.css` (layout), `button.sh`, `build.sh`, `tests/`.
 State (not in git): `state/ui.txt` (what the window shows), `request.txt` (clicks, append-only, read by size growth), `voices2.pdl` (latest `VOICE2` row per id wins: this is where renames/knobs live), `audio/*.wav`, `ledger.txt` (`SAY` rows), `verdicts.txt` (`JUDGE` rows, same as img-hai), `say.txt`, `last.txt`.
 Voices list = the pet voices in `@.apps/pet-trainer/voices.pdl` (+ `voices2.pdl` rows). A voice's `id` never changes, its display name can.
 
 ## How to add something
 - **A button:** add a verb in `handle()`, one entry in the `k[]/vb[]` arrays in `write_ui()` (and the loop count), an `<item id=... action="${<id>_action}">` in the template; drive it with `relay_drive press <id>`; add a case. (Same recipe as img-hai EXTENDING A.)
-- **A real knob (formant/brightness):** apply it in `ops/voice_say.c` (extra sox effect now; the C DSP op later) and show it in the list label.
+- **Another effect knob:** add the key to `_shared-lib/ops/audio_fx.c` (with its proof in BOOK 19.audio/VOICE-FX.md), a field in `Voice`, load/save in `voice_fx_manager.c` (`load_voices`, `save_voice`), a handler in `handle()`, two buttons in the template and the `k[]/vb[]` arrays, and pass it from `voice_say`.
 - **Our own engine:** replace step 1 in `voice_say.c` (the call to `pet_tts_local.py`) with the in-house op; keep the rest.
 - **Candidate edits instead of direct edits:** copy `img_edit`'s pattern (`&.widgits/concept-bank/ops/img_edit.c`): validate, overlay trial, promote by a different human.
 

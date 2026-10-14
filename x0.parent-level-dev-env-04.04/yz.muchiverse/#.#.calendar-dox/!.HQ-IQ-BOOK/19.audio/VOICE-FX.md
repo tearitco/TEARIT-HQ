@@ -41,4 +41,5 @@ The six pets are now separated in pitch (medians 93 to 250 Hz) and in brightness
 - A pet's character: edit its `FX` row in `@.apps/pet-trainer/voices.pdl` (no rebuild; delete the cached wav to hear it). Turn all effects off: `--no-fx` or delete the rows.
 - A new accent: add `ACCENT | id | from | to | note` rows and `accent=id` to an FX row. Test the phonemes with `pet_tts_local.py --phonemes-only --voice <v> --pitch=<p> --text "..."`.
 - One-off: `audio_fx in.wav out.wav formant=2 bright=3`.
-- Next: formant/bright/warm/vibrato knobs in the voice-fx window (the `VOICE2` row already has formant and bright columns, ignored); judged recipes through candidate edits (roadmap A1); a real speaker-style model (V2).
+- **voice-fx window (built 2026-10-14):** every effect above has +/- buttons, plus an accent cycle button; each voice stores its own values (pets start from their FX rows); Say runs engine -> `audio_fx`. Relay case 33/33 from clean state (one earlier run failed once with "no sound" and was not reproduced). Window is 1200x700 (the right-hand button column overlapped the waveform at 1060 wide; the waveform is now 420 px).
+- Next: judged recipes through candidate edits (roadmap A1); a real speaker-style model (V2).
