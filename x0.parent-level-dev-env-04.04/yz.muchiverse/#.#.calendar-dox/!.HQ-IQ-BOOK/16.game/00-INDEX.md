@@ -34,3 +34,4 @@ command runs on.
   guide, code guide, extension recipes, testing, operations, handoff) lives
   with the app: `44.xyz.01.00/&.hq-apps/img-hai/docs/` (start at README.md);
   a one-page copy is `XO/25.games-plan/10-IMG-HAI-DOCS.html`.**
+- `IMG-HAI-BREAKTHROUGH.md` - class-style lesson on the word-to-judged-pixel-art loop: what is proven or not, ten lessons, exercises, next steps.

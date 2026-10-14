@@ -76,3 +76,11 @@ reaching for directly, earlier, the next time a window silently
 vanishes with zero error output — this house has no crash handler
 installed, so "the process just disappeared" is a real, recurring
 symptom shape for this exact class of Xlib error, not a fluke.
+
+## img-hai session (2026-10-13), durable lessons
+Full class write-up: `16.game/IMG-HAI-BREAKTHROUGH.md`. Short form:
+- **Unique names per run.** A batch reused `<part>_<model>_s<seed>` and overwrote nine pictures (six now exist only as 256 px crops). Jobs never overwrite now (`_r2`...); overlay trials carry their name.
+- **Negative-test every validator and read the real exit code.** A `|` inside a candidate value slipped through until tested.
+- **Press by element id, not row number** (relay_drive `press`): numbers shifted three times in an afternoon.
+- **Heavy and GPU work goes to debil/Mac by ssh;** pin per-platform versions (Mac: torch 2.2.2 / diffusers 0.27.2) and keep remote script copies in step.
+- **Proposer is not promoter** held in a real trial: `tune-1` ran as an overlay and nothing was promoted.
