@@ -1,0 +1,3 @@
+# phonemes.txt - the characters a PRON row may use: Kokoro-82M's own phoneme vocabulary (kokoro_onnx tokenizer.vocab, one converter run 2026-10-14). One line, no spaces except the space itself written as the word SPACE on its own line below.
+!"(),.:;?AIOQSTWYabcdefhijklmnopqrstuvwxyzæçðøŋœɐɑɒɔɕɖəɚɛɜɟɡɣɤɥɨɪɯɰɲɳɴɸɹɻɽɾʁʂʃʈʊʋʌʎʒʔʝʣʤʥʦʧʨʰʲˈˌː̃βθχᵊᵝᵻ—“”…→↓↗↘ꭧ
+SPACE

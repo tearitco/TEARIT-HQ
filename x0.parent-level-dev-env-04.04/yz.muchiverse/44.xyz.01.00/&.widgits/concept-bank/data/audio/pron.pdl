@@ -1,0 +1,6 @@
+SECTION | KEY | VALUE
+------------------------------
+# pron.pdl - the pronunciation map: how a word is said, for every voice (design: BOOK 19.audio/PRONUNCIATION-MAP.md). Edited only through candidate edits (not built yet) and checked by ops/pron_check.
+# PRON | word (lower case, letters digits ' -) | phonemes (Kokoro/espeak IPA characters, see phonemes.txt) | source (cmudict|espeak|owner|model|llm) | status (candidate|active)
+# Only `active` rows are used when speaking. A `candidate` row is used only when a trial passes --pron explicitly. THE REAL BANK IS EMPTY ON PURPOSE (2026-10-14): nobody has yet listened and said which house words are wrong.
+# To find the engine's own phonemes for a word:  python3 @.apps/pet-trainer/ops/pet_tts_local.py --phonemes-only --text "word"

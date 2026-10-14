@@ -1,0 +1,7 @@
+SECTION | KEY | VALUE
+------------------------------
+# GOOD fixture for pron_check and the override proof (not the real bank)
+PRON | brixel | bɹˈiːksəl | owner | active
+PRON | tomom | tˈoʊmɑːm | owner | active
+PRON | co-lab | kˈoʊlæb | espeak | active
+PRON | brixel | bɹˈɪksɛl | model | candidate
