@@ -51,7 +51,7 @@ typedef struct { char path[PL], label[96]; long size; char thumb[PL]; } Tile;
 typedef struct { int tile, cx, cy, rot, flip, vis; } Place;
 static char g_house[PL], g_pkg[PL], g_state[PL], g_draft[PL], g_msg[200] = "";
 static Tile T[MAXT]; static int nT;
-static Place P[MAXP]; static int nP, sel = -1, cell = 64, curx = 1, cury = 1, dirty = 1;
+static Place P[MAXP]; static int nP, sel = -1, cell = 128, curx = 1, cury = 1, dirty = 1;
 static unsigned char *comp; static char g_words[400] = "", g_job[200] = "no job";
 typedef struct { char id[96], host[24], steps[8], size[8]; } Model; static Model M[16]; static int nM, selM;
 typedef struct { char name[24], target[64], dir[64], py[64], prefix[64]; } Host; static Host H[4]; static int nH;
