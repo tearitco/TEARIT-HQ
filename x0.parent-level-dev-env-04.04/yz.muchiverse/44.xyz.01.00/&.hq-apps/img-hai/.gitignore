@@ -5,3 +5,6 @@ audit/
 tiles/mix_*.png
 tiles/test_*
 verdicts.txt
+.hq_manager/
+canvas_view.txt
+module_parent.pid
