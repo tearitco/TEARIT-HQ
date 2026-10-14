@@ -92,6 +92,10 @@ echo "########## G1.1 live timer (worker tick loop; hermetic, no browser)"
 sh "$HERE/nb_timer_test.sh" || RC=1
 
 echo
+echo "########## G1.1 live timer, MANAGER side (scratch house + real push)"
+sh "$HERE/nb_tick_live_test.sh" || RC=1
+
+echo
 echo "########## content-row reachability (live browser + own opt-in fixture)"
 sh "$HERE/nb_reach_test.sh" || RC=1
 

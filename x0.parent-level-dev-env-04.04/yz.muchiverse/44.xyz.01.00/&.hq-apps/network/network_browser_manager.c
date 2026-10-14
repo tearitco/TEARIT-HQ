@@ -2449,13 +2449,20 @@ static int handle_worker_fetch(const char *payload) {
     return 1;
 }
 
+/* One-byte pushback for the worker frame reader (2026-10-13). */
+static int g_worker_pb = -1;
+
 static int worker_recv_line_to(char *out, size_t cap, int timeout_ms) {
     if (g_worker_fd < 0) return 0;
-    struct pollfd p = { g_worker_fd, POLLIN, 0 };
-    int pr = poll(&p, 1, timeout_ms);
-    if (pr <= 0) return 0;   /* worker stalled: caller closes + respawns */
+    if (g_worker_pb < 0) {
+        struct pollfd p = { g_worker_fd, POLLIN, 0 };
+        int pr = poll(&p, 1, timeout_ms);
+        if (pr <= 0) return 0;   /* worker stalled: caller closes + respawns */
+    }
     char lb[16]; size_t i = 0; char c;
-    while (read(g_worker_fd, &c, 1) == 1) {
+    for (;;) {
+        if (g_worker_pb >= 0) { c = (char)g_worker_pb; g_worker_pb = -1; }
+        else if (read(g_worker_fd, &c, 1) != 1) break;
         if (c == '\n') break;
         if (i < sizeof(lb) - 1) lb[i++] = c;
     }
@@ -2469,7 +2476,18 @@ static int worker_recv_line_to(char *out, size_t cap, int timeout_ms) {
         got += (size_t)r;
     }
     out[got] = 0;
-    if (read(g_worker_fd, &c, 1) != 1) return 0;
+    /* The trailing '\n' is optional and must never be stolen (same defect
+     * fixed in the worker's own reader the same day): peek without
+     * blocking, eat a newline if that is what is there, push anything else
+     * back for the next frame. Reading one byte unconditionally both ate
+     * the next frame's first length digit and could BLOCK forever against
+     * a worker that omits the newline and then goes quiet. */
+    {
+        struct pollfd q = { g_worker_fd, POLLIN, 0 };
+        int qr = poll(&q, 1, 0);
+        if (qr > 0 && read(g_worker_fd, &c, 1) == 1 && c != '\n')
+            g_worker_pb = (unsigned char)c;
+    }
     return 1;
 }
 
@@ -2578,6 +2596,18 @@ static void worker_spawn(void) {
     g_worker_pid = pid;
 }
 
+/* ---- push protocol, forward declarations ---------------------------------
+ * The full explanation lives with drain_worker_push() below; worker_load()
+ * arms the worker's tick loop, so it needs these names first. */
+static void worker_tick_arm(int cap_ms);   /* defined below */
+static int g_tick_armed;             /* we asked the worker to tick */
+static char g_push_buf[65536];
+
+/* How long the manager is willing to wait on the worker fd for a pushed
+ * frame. A page ticking faster than this still renders correctly, just no
+ * smoother: the drain coalesces to the newest frame it can read. */
+#define NB_TICK_CAP_MS 250
+
 /* Ask the worker to run a page. Reads the optional RENDER frame (step 4)
  * into g_worker_render[] then the STATUS frame. Returns 1 on "STATUS ok". */
 static int worker_load(const char *js_path, const char *dom_path,
@@ -2655,7 +2685,17 @@ static int worker_load(const char *js_path, const char *dom_path,
             fprintf(stderr, "[worker] %s\n", resp);
             continue;
         }
-        return strncmp(resp, "STATUS ok", 9) == 0;
+        int ok = strncmp(resp, "STATUS ok", 9) == 0;
+        if (ok && !g_tick_armed) {
+            /* LOAD left the page's timers pending in the resident worker.
+             * Arm the tick loop so they KEEP running after this returns -
+             * and only now, because drain_worker_push() is already in the
+             * main loop. Arming without a drain would leave the worker
+             * writing into a socketpair nobody reads, which wedges it
+             * mid-tick AND mid-LOAD. */
+            worker_tick_arm(NB_TICK_CAP_MS);
+        }
+        return ok;
     }
 }
 
@@ -2740,6 +2780,56 @@ static int worker_pump_reply(int quiet_ms) {
         }
         return strncmp(resp, "STATUS ok", 9) == 0;
     }
+}
+
+/* ---- push protocol: frames the worker sends with nobody asking -------
+ *
+ * The worker arms its tick loop only when told (TICK\n<ms>), and once
+ * armed it PUSHES a RENDER frame every time the page's own timers change
+ * the DOM. Until now this file only ever read that fd while waiting for
+ * the answer to a request, so those pushes had nowhere to go.
+ *
+ * Draining is not optional once TICK is armed: it is a socketpair, and a
+ * worker blocked writing into a full one is a worker that stops ticking
+ * AND stops answering the next LOAD. Arming and draining therefore land
+ * in the same change - there is no window where the worker is told to
+ * push and nobody is listening.
+ */
+
+static void drain_worker_push(void) {
+    if (g_worker_fd < 0 || !g_tick_armed) return;
+    struct pollfd p = { g_worker_fd, POLLIN, 0 };
+    if (poll(&p, 1, 0) <= 0) return;           /* nothing pushed */
+    int merged = 0;
+    for (;;) {
+        if (!worker_recv_line_to(g_push_buf, sizeof(g_push_buf), 0)) break;
+        if (strncmp(g_push_buf, "RENDER\n", 7) == 0) {
+            size_t rn = strlen(g_push_buf + 7);
+            if (rn + 1 < sizeof(g_worker_render)) {
+                memcpy(g_worker_render, g_push_buf + 7, rn + 1);
+                merged = 1;
+            }
+            continue;
+        }
+        if (strncmp(g_push_buf, "NAV|", 4) == 0 ||
+            strncmp(g_push_buf, "ERROR|", 6) == 0 ||
+            strncmp(g_push_buf, "LIVE|", 5) == 0) {
+            if (strncmp(g_push_buf, "ERROR|", 6) != 0)
+                fprintf(stderr, "[worker] %s\n", g_push_buf);
+            continue;
+        }
+        /* STATUS or anything unexpected while idle: stop rather than
+         * guess, and leave the frame for the next request to read. */
+        break;
+    }
+    if (merged && merge_render_rows()) write_chtpm_projection();
+}
+
+static void worker_tick_arm(int cap_ms) {
+    char cmd[32];
+    if (g_worker_fd < 0) return;
+    snprintf(cmd, sizeof(cmd), "TICK\n%d\n", cap_ms);
+    if (worker_send(cmd, strlen(cmd))) g_tick_armed = 1;
 }
 
 static void worker_quit(void) {
@@ -7250,6 +7340,12 @@ int main(int argc, char **argv) {
     for (;;) {
         handle_request();
         consume_pending_nav();
+        /* Pushed RENDER frames from the worker's tick loop. Drained HERE,
+         * in the idle path, before the projection is written - otherwise a
+         * page that updates itself while idle would only ever be seen on
+         * the next navigation. Cheap when idle: one poll that returns
+         * immediately, and the common case is "nothing pushed". */
+        drain_worker_push();
         write_chtpm_projection();
 
         if (!parent_still_alive()) {
