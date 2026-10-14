@@ -570,3 +570,37 @@ What G1.4 now needs, concretely:
 2. Then: type a partial URL, let pushes republish, and assert **both**
    that the text survives **and** that the page's tick row advanced in the
    same window. The second half is what stops the test passing vacuously.
+
+### 9.6 Verify a push with `git ls-remote`, never with `origin/<branch>`
+
+Measured 2026-10-14, after being caught out by it.
+
+`git push` printed a confident range line for every commit this sprint and
+every one of them landed. Checking them afterwards said the opposite:
+
+    git merge-base --is-ancestor c714a89d5 origin/opencode   -> false
+    git rev-list --left-right --count origin/opencode...HEAD -> 0  42
+
+Both were **wrong**, and the reason is this repo's fetch refspec:
+
+    remote.origin.fetch = +refs/heads/claude:refs/remotes/origin/claude
+
+Only `claude` is tracked. There is no refspec for `opencode`, so
+`refs/remotes/origin/opencode` is a **stale local ref that `git fetch`
+does not update**. It sat 42 commits behind while the real remote was
+exactly at HEAD — which is also why `git push` correctly said "Everything
+up-to-date": there genuinely was nothing to push.
+
+The trap is the worst kind: the stale ref produces a *specific, plausible,
+completely false* answer, and it points at "your work is unsaved" rather
+than "your check is broken".
+
+**So:**
+
+    git ls-remote origin refs/heads/opencode    # ground truth, asks the server
+    git fetch origin opencode:refs/remotes/origin/opencode   # repair the ref
+
+A push is only *believed* after `git merge-base --is-ancestor <sha>
+origin/opencode` — and that is itself only meaningful once the tracking
+ref has been repaired. Same family as the other three measurement traps in
+§9.4: the instrument, not the code, producing a confident wrong number.
