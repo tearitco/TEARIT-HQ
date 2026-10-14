@@ -2,18 +2,6 @@
 <html>
 <head><title>Timer fixture</title></head>
 <body>
-<!-- G1.1 fixture (2026-10-13).
-
-     The DOM arrives here (the worker is LOADed with this as fetch.dom);
-     the behaviour arrives in timer.js. They are separate on purpose: that
-     is exactly how the worker is fed in production, and it means the
-     fixture cannot accidentally rely on script and DOM arriving together.
-
-     #t is the row the timer writes into. Its initial text carries "tick
-     0" so a worker that runs the script exactly once still produces a
-     row the probe can find - the probe asserts on THAT before it asserts
-     anything about updates, so "the harness cannot see the page" and
-     "the timer is frozen" can never be confused for one another. -->
 <p id="t">tick 0</p>
 <p>Timer fixture: this paragraph must never change.</p>
 </body>

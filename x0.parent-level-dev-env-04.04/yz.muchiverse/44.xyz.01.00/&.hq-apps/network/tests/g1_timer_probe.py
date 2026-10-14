@@ -100,8 +100,14 @@ def main():
 
 def run(p):
     debug = bool(os.environ.get("NB_TIMER_DEBUG"))
-    frame = ("LOAD\n%s\n%s\nhttp://localhost/timer\nTimer fixture\n"
-             % (page_js, dom)).encode()
+    # Six fields, not five: the worker reads f[5] as the page's CSS
+    # (nb_js_worker.c's LOAD handler), and the manager sends
+    # js/dom/href/title/css. ABSOLUTE paths too - relative ones resolve
+    # against whatever CWD the worker inherited, which is not a thing to
+    # depend on and is exactly how a DOM can go missing while every status
+    # line still says ok.
+    frame = ("LOAD\n%s\n%s\nhttp://localhost/timer\nTimer fixture\n%s\n"
+             % (os.path.abspath(page_js), os.path.abspath(dom), "")).encode()
     send(p, frame)
 
     # ---- phase 1: the initial load -------------------------------------
