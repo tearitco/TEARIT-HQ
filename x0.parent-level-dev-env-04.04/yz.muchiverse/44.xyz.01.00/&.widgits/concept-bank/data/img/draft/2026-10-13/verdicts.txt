@@ -1,0 +1,5 @@
+# verdicts for the 2026-10-13 car_door drafts. Left to right on sheet_car_door.png: bk-sdm-tiny s1, bk-sdm-tiny s2, bk-sdm-tiny s3, tiny-sd s1. Nothing is accepted into a brixel until BOTH judges say yes (owner + claude).
+VERDICT | car_door | bk-sdm-tiny | 1 | claude=no | owner=? | dark red tile/grid texture; colour right, not a door, no outline, no background
+VERDICT | car_door | bk-sdm-tiny | 2 | claude=no | owner=? | red car rear/body, side-on and cropped; not a door panel, not pixel art, not top-down
+VERDICT | car_door | bk-sdm-tiny | 3 | claude=no | owner=? | small red car front/back on grey; reads as a whole car, not a part
+VERDICT | car_door | tiny-sd     | 1 | claude=no (door) / maybe (whole car side view) | owner=? | clearest: a red car side view with wheels; wrong part, not pixel art

@@ -1,0 +1,4 @@
+PROMPT: a car door panel, painted steel, dark red, seen from above, pixel art, plain flat background, crisp outline, 32 pixel sprite
+NEGATIVE: text, watermark, blurry
+USED: w_car_door(1.00) w_steel(0.80) w_red(0.60) w_top(0.90) w_pixel(1.00) w_nobg(0.80) w_crisp(0.70) w_32(0.90) w_nowords(0.90) w_noblur(0.80) 
+DROPPED(<0.30): -

@@ -26,6 +26,13 @@ Status: **W0 built and run 2026-10-13 (section 7); W1 and W2 are plan only.** Ow
 - **D. Skip pretrained SD for pixel parts:** draft pixel parts with the in-house route (W2) from the start, hand-seeded. Slowest to results, no download.
 Recommendation: A for a first timed trial of ONE part (a car door), because debil has the most RAM and a newer python; if one image takes minutes, we decide between more patience and C/D from a measured number.
 
+## 2c. W1 first trial (observed 2026-10-13, on debil, nothing on the dev machine)
+- **Setup:** `~/imggen/venv` on debil (python 3.11, torch 2.14.1+cpu, diffusers 0.41.0), models from Hugging Face. Licences read from the model cards: `nota-ai/bk-sdm-tiny` and `segmind/tiny-sd` are `creativeml-openrail-m` (ungated); `stabilityai/sd-turbo` lists no licence in its card data, so it was not used. The script is `data/img/draft/img_draft.py`; it appends one ledger line per image and never writes a verdict.
+- **Speed (measured):** 512 px, 20 steps, 6 threads, `nice -n 15 ionice -c3`: 127.8 s, 124.2 s, 133.2 s (bk-sdm-tiny, seeds 1-3) and 142.3 s (tiny-sd). About two minutes per image, CPU only. First run also downloaded ~2 GB.
+- **Quality (my verdict, owner's still blank):** four images of the `car_door` prompt, contact sheet `data/img/draft/2026-10-13/sheet_car_door.png` (copy at `XO/25.games-plan/img/`). One is a dark-red grid texture; the others are whole red cars (rear, front, side) not a door panel, none is pixel art or top-down. **All four are "no" for a car door.** The models draw "a car", not "a part of a car".
+- **What this says:** the pipeline works end to end (bank -> prompt -> image -> ledger -> contact sheet) and CPU speed is workable for a few drafts, but these tiny pretrained models do not follow our part/pixel/top-down words. Next levers, in order: (1) edit the bank (a subject like "red car door, flat top-down game sprite, white background" instead of "car door panel"), (2) a larger model, which costs minutes more per image, (3) the pixel/32 px step done by our own op after a clean larger image, (4) train our own W2 renderer on accepted examples.
+- **Not tried:** a larger model, more steps, an img2img pass from a hand-drawn base, a LoRA, the Mac.
+
 ## 3. Rules (from existing house rails)
 - A model drafts; it never sets a weight, never promotes a bank row, never approves its own output. Weight changes arrive as candidate EDIT lines checked by `concept_edit_validate` (the same path as physics rows), and a human promotes.
 - Every draft appends one marker-ledger line (concept, prompt, model, file, verdict). This is the training set for W2.
