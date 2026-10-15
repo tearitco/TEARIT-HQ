@@ -66,6 +66,50 @@ if [ ! -x "$PRISC" ]; then
   exit 1
 fi
 
+# --- blueprintz debugger gate (BLUEPRINTZ-DESIGN.md 12.4, 2026-10-15) ----------
+# No debug file = nothing in this block does anything and Play behaves exactly
+# as before. The file is #.desktop/blueprintz_debug.txt ("paused=1" holds
+# triggers). Paused: this trigger is appended to the queue and NOT run (not
+# dropped); the debugger's controller (blueprintz bp_ctl) releases it later with
+# BLUEPRINTZ_RELEASE=1. With the file present, START/END rows go to trace.txt.
+# BLUEPRINTZ_STEPCMD=1 (set by bp_ctl step-cmd) makes each VM run step one
+# instruction per marker byte (PRISC_STEP_DIR hook in prisc+x.c) - only if the
+# VM binary has that hook; otherwise it says so and runs normally.
+# Test overrides: BLUEPRINTZ_DEBUG_FILE, BLUEPRINTZ_STATE_DIR, BLUEPRINTZ_PRISC.
+BP_FLAG="${BLUEPRINTZ_DEBUG_FILE:-$HOUSE_ROOT/#.desktop/blueprintz_debug.txt}"
+BP_STATE="${BLUEPRINTZ_STATE_DIR:-$HOUSE_ROOT/&.hq-apps/blueprintz/state}"
+BP_PRISC="${BLUEPRINTZ_PRISC:-$PRISC}"
+BP_ON=0
+BP_STEPCMD="${BLUEPRINTZ_STEPCMD:-0}"
+bp_trace() { printf '%s | %s | %s | %s | %s\n' "$1" "$(date +%s)" "$NAME" "$TRIGGER" "$2" >> "$BP_STATE/trace.txt"; }
+if [ -f "$BP_FLAG" ]; then
+  BP_ON=1
+  mkdir -p "$BP_STATE"
+  if grep -q '^paused=1' "$BP_FLAG" && [ -z "${BLUEPRINTZ_RELEASE:-}" ]; then
+    printf 'QUEUED | %s | %s | %s\n' "$(date +%s)" "$PKG" "$TRIGGER" >> "$BP_STATE/queue.txt"
+    echo "play_event: paused; queued $NAME (trigger=$TRIGGER)"
+    exit 0
+  fi
+  if [ "$BP_STEPCMD" = "1" ] && ! grep -q PRISC_STEP_DIR "$BP_PRISC" 2>/dev/null; then
+    echo "play_event: this VM binary has no step hook; running without command stepping" >&2
+    BP_STEPCMD=0
+  fi
+  bp_trace START "page lookup"
+  trap 'bp_trace END "rc=$?"' EXIT
+fi
+# one VM run; $1 = label for the step directory, the rest is the command
+bp_run_vm() {
+  bp_lbl="$1"; shift
+  if [ "$BP_STEPCMD" = "1" ]; then
+    bp_d="$BP_STATE/vm/$bp_lbl"; rm -rf "$bp_d"; mkdir -p "$bp_d"; : > "$bp_d/step.marker"
+    echo "$bp_d" >> "$BP_STATE/vm/current.txt"
+    PRISC_STEP_DIR="$bp_d" "$@"
+  else
+    "$@"
+  fi
+}
+# --- end blueprintz gate -------------------------------------------------------
+
 # REAL, NEW 2026-09-28 (EVENT-MODULARITY-AND-BUILD-SPEED.md §1 drop-
 # target handler; direct instruction: "clacker should be numbered like
 # pages, in case there were more than one, one would take priority when
@@ -130,7 +174,7 @@ if [ -n "$PAGE_DIR" ]; then
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Play: matched $PAGE_NAME (trigger=$TRIGGER) but no event.pal for $NAME" >> "$PKG/master_ledger.txt"
   else
     # Run from muta system dir so relative default_op.txt noise is reduced if any
-    (cd "$(dirname "$PRISC")" && "$PRISC" "$PAL") >> "$PKG/master_ledger.txt" 2>&1 || true
+    (cd "$(dirname "$PRISC")" && bp_run_vm entity "$BP_PRISC" "$PAL") >> "$PKG/master_ledger.txt" 2>&1 || true
     RAN_ANYTHING=1
     # Snapshot inventory after play
     if [ -f "$PKG/inventory.txt" ]; then
@@ -196,7 +240,7 @@ if [ -d "$CE_ROOT" ]; then
     # common event can route player-visible UI (relay writes) to the
     # entity that was actually Played, while still logging/writing its
     # own result files into the common event's own directory.
-    (cd "$(dirname "$PRISC")" && MUCHI_CALLER_PKG="$PKG" "$PRISC" "$CE_PAL") >> "$CE_LEDGER" 2>&1 || true
+    (cd "$(dirname "$PRISC")" && MUCHI_CALLER_PKG="$PKG" bp_run_vm "ce_$CE_NAME" "$BP_PRISC" "$CE_PAL") >> "$CE_LEDGER" 2>&1 || true
     RAN_ANYTHING=1
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Play triggered common event $CE_NAME ($(basename "$CE_PAGE_DIR"), trigger=$TRIGGER) via $NAME" >> "$CE_LEDGER"
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Play: also triggered common event $CE_NAME (trigger=$TRIGGER)" >> "$PKG/master_ledger.txt"
