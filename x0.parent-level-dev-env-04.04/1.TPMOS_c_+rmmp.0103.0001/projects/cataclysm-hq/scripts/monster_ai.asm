@@ -36,9 +36,9 @@ attack_player:
 monster_dead:
     console_print "The orc crumples! (+20 XP)"
     relay_write "ORC_DEATH|orc_01|player=hero"
-    read_pdl R1 "STATE" "xp" R7
+    read_pdl "projects/cataclysm-hq/pieces/hero/piece.pdl" "STATE" "xp" R7
     addi R7, R7, 20
-    write_pdl "projects/cataclysm-hq/pieces/monster/piece.pdl" "STATE" "xp" R7
+    write_pdl "projects/cataclysm-hq/pieces/hero/piece.pdl" "STATE" "xp" R7
     hit_frame
     halt
 
