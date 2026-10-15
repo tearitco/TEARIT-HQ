@@ -10,6 +10,7 @@
 #define KHTPM_SKIN_TILES_C
 
 static int skt_on = 0;                       /* a skin is selected and all three tiles loaded */
+static int skt_light = 0;                    /* middle tile is bright: verse writing goes dark */
 static unsigned char *skt_px[3];             /* 48*48*4 RGBA, left / middle / right */
 static int skt_res[3];
 
@@ -35,6 +36,7 @@ static void skt_load(const char *house) {
     char want[48] = "", path[1400], line[1400];
     for (int k = 0; k < 3; k++) { free(skt_px[k]); skt_px[k] = NULL; }
     skt_on = 0;
+    skt_light = 0;
     snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house);
     FILE *f = fopen(path, "r");
     if (!f) return;
@@ -62,6 +64,16 @@ static void skt_load(const char *house) {
             if (!skt_px[k]) ok = 0;
         }
         skt_on = ok;
+        if (ok && skt_px[1] && skt_res[1] > 0) {
+            long sum = 0; int n = 0, N = skt_res[1] * skt_res[1];
+            for (int i = 0; i < N; i++) {
+                unsigned char *s = &skt_px[1][i * 4];
+                if (s[3] < 16) continue;
+                sum += (s[0] * 299 + s[1] * 587 + s[2] * 114) / 1000;
+                n++;
+            }
+            skt_light = n > 0 && (sum / n) >= 140;
+        }
         break;
     }
     fclose(f);
@@ -95,6 +107,12 @@ static void skt_blit(Display *dpy, Drawable d, GC gc, int k, int x, int y, int p
     img->byte_order = LSBFirst;
     XPutImage(dpy, d, gc, img, 0, 0, x, y, px, px);
     XDestroyImage(img);
+}
+
+/* Label color for text sitting on the loaded skin. NULL when the skin is off. */
+static const char *skt_label_hex(void) {
+    if (!skt_on) return NULL;
+    return skt_light ? "#111111" : "#ffffff";
 }
 
 /* whole blocks (block = h) across w, centred; returns 1 when painted */
