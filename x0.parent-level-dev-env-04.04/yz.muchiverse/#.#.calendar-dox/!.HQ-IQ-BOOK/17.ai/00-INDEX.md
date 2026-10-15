@@ -17,3 +17,4 @@ a game at all.
   `ai_fsm_transition`, and `ai_goap_plan`. None are in the registry.
 - `../13.agent-coms/README.md` — Co-lab, the approval room. It is not
   the local model.
+- `AUTO-AND-AUTO-STUDIO-DESIGN.md` — design (not built): per-user `auto` and `auto-studio`, relay-injection conductor, tiered brains, trained subs, safety rails, slices A0-A8. `AUTO-TOYS-AND-AGENT-LEVERAGE.md` — how it drives the 2026-10 toys and multiplies agents. Hand-off folder: `12.calendar/2026-10-14/`.
