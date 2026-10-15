@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | greet_orin
+STATE        | source               | events-hq
+NODE         | id=1 type=dsr_pet_says | pet=orin|chat=Hello {other}, as you were|voice=Hello {other}, as you were

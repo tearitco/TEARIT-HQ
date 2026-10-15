@@ -1,0 +1,5 @@
+SECTION | KEY | VALUE
+------------------------------
+# Settlers are not the terumon and not Asa. Sheet viking is the armor on 320px-Vikings_tilemaps_000.bmp.png. Index 0 red, 1 blue, 2 green. The painter tints that one cell.
+PET | Blue  | viking | 1
+PET | Green | viking | 2

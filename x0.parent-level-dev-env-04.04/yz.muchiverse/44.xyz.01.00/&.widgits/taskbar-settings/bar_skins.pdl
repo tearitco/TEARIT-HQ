@@ -33,3 +33,7 @@ SKIN | mcl-grass | MCL grass | &.widgits/taskbar-settings/skins/mcl-grass/left |
 SKIN | mcl-cobble | MCL cobble | &.widgits/taskbar-settings/skins/mcl-cobble/left | &.widgits/taskbar-settings/skins/mcl-cobble/mid | &.widgits/taskbar-settings/skins/mcl-cobble/right
 SKIN | mcl-oak | MCL oak | &.widgits/taskbar-settings/skins/mcl-oak/left | &.widgits/taskbar-settings/skins/mcl-oak/mid | &.widgits/taskbar-settings/skins/mcl-oak/right
 SKIN | mcl-chest | MCL chest | &.widgits/taskbar-settings/skins/mcl-chest/left | &.widgits/taskbar-settings/skins/mcl-chest/mid | &.widgits/taskbar-settings/skins/mcl-chest/right
+# ohr-roof: town 11,3 12,3 13,3 orange roof tiles. ohr-stone: town 8,2 9,2 10,2 white brick. ohr-wood: house 13,0 14,0 15,1. Nearest-scaled 20 to 48. Catalog is at the 24 cap.
+SKIN | ohr-roof | OHR roof | &.widgits/taskbar-settings/skins/ohr-roof/left | &.widgits/taskbar-settings/skins/ohr-roof/mid | &.widgits/taskbar-settings/skins/ohr-roof/right
+SKIN | ohr-stone | OHR stone | &.widgits/taskbar-settings/skins/ohr-stone/left | &.widgits/taskbar-settings/skins/ohr-stone/mid | &.widgits/taskbar-settings/skins/ohr-stone/right
+SKIN | ohr-wood | OHR wood | &.widgits/taskbar-settings/skins/ohr-wood/left | &.widgits/taskbar-settings/skins/ohr-wood/mid | &.widgits/taskbar-settings/skins/ohr-wood/right

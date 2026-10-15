@@ -1,0 +1,7 @@
+SECTION | KEY | VALUE
+------------------------------
+# Picture choice. Ember flame, Glacine crystal, Murmur bird, Solvent green creature: fantasy sheet cells. Asa is the white figure on the house sheet and is not a row here.
+PET | Ember   | teru | 0
+PET | Glacine | teru | 1
+PET | Murmur  | teru | 2
+PET | Solvent | teru | 3
