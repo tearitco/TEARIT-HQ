@@ -16,7 +16,7 @@ start:
     console_print "XP: R6"
     console_print ""
     console_print "A true adventurer's death is never forgotten."
-    relay_write GAME_OVER|reason=death|turn=R2
+    relay_write "GAME_OVER|reason=death|turn=R2"
 
     ; Record death to concept bank (for Gemma learning)
     exec ./&.widgits/concept-bank/ops/concept_edit_validate.c nil

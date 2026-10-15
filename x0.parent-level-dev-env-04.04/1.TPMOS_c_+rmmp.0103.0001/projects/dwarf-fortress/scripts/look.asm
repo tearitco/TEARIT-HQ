@@ -6,8 +6,8 @@ start:
     read_pdl R1 "STATE" "y" R3
 
     ; Check for goblin proximity (simple distance check)
-    read_pdl R5 "STATE" "x" R6
-    read_pdl R5 "STATE" "y" R7
+    read_pdl "projects/dwarf-fortress/pieces/monster/piece.pdl" "STATE" "x" R6
+    read_pdl "projects/dwarf-fortress/pieces/monster/piece.pdl" "STATE" "y" R7
     sub R8, R2, R6
     sub R9, R3, R7
     add R8, R8, R9

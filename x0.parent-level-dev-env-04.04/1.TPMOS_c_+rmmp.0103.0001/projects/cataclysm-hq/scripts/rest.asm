@@ -5,8 +5,8 @@ start:
     console_print "You rest and tend to your wounds..."
 
     ; Restore HP (10 + d10)
-    exec ./ops/+x/rng_op.+x 10
-    read_pdl R1 "STATE" "last_roll" R2
+    exec projects/cataclysm-hq/ops/+x/rng_op.+x 10
+    read_state hero last_roll R2
     addi R3, R2, 10                    ; heal = 10 + roll
 
     ; Get current HP
@@ -17,12 +17,12 @@ start:
     mov R5, R7
 
 hp_ok:
-    write_pdl "pieces/hero/piece.pdl" "STATE" "hp" R5
+    write_pdl "projects/cataclysm-hq/pieces/hero/piece.pdl" "STATE" "hp" R5
 
     ; Increase hunger
     read_pdl R8 "STATE" "hunger" R9
     addi R9, R9, 1
-    write_pdl "pieces/hero/piece.pdl" "STATE" "hunger" R9
+    write_pdl "projects/cataclysm-hq/pieces/hero/piece.pdl" "STATE" "hunger" R9
 
     console_print "You recovered some HP. (hunger increased)"
 

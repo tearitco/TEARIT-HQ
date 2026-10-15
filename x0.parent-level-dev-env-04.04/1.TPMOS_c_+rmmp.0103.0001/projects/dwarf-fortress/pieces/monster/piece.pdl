@@ -1,30 +1,15 @@
 SECTION      | KEY                | VALUE
 ----------------------------------------
-META         | piece_id           | goblin
-META         | version            | 1.0
-META         | type               | monster
-
-STATE        | name               | Goblin Scout
-STATE        | hp                 | 15
-STATE        | max_hp             | 15
-STATE        | str                | 10
-STATE        | dex                | 14
-STATE        | con                | 8
-STATE        | int                | 6
-STATE        | wis                | 6
-STATE        | cha                | 5
-STATE        | level              | 1
+STATE        | hp                 | 20
+STATE        | str                | 12
+STATE        | max_hp             | 20
 STATE        | xp                 | 0
-STATE        | weapon             | short_sword
-STATE        | armor              | hide
-STATE        | aggression         | 60
+STATE        | aggression         | 50
 STATE        | ai_state           | idle
-STATE        | x                  | 55
-STATE        | y                  | 45
-STATE        | z                  | 0
-
-METHOD       | on_combat          | projects/dwarf-fortress/scripts/goblin_ai.asm
-
-RESPONSE     | default            | The goblin cackles and readies its weapon.
-RESPONSE     | on_aggro           | "Me steal your face!"
-RESPONSE     | on_death           | "Grah... the darkness..."
+STATE        | name               | Goblin
+STATE        | x                  | 7
+STATE        | y                  | 7
+METHOD       | on_move            | projects/dwarf-fortress/scripts/goblin_ai.asm
+METHOD       | on_mining          | void
+METHOD       | on_attack          | void
+METHOD       | on_look            | projects/dwarf-fortress/scripts/look.asm

@@ -18,7 +18,7 @@ start:
 move_north:
     read_pdl R1 "STATE" "y" R4
     addi R4, R4, 1
-    write_pdl "pieces/hero/piece.pdl" "STATE" "y" R4
+    write_pdl "projects/dwarf-fortress/pieces/hero/piece.pdl" "STATE" "y" R4
     console_print "You move north."
     hit_frame
     halt
@@ -26,7 +26,7 @@ move_north:
 move_south:
     read_pdl R1 "STATE" "y" R4
     sub R4, R4, 1
-    write_pdl "pieces/hero/piece.pdl" "STATE" "y" R4
+    write_pdl "projects/dwarf-fortress/pieces/hero/piece.pdl" "STATE" "y" R4
     console_print "You move south."
     hit_frame
     halt
@@ -34,7 +34,7 @@ move_south:
 move_east:
     read_pdl R1 "STATE" "x" R4
     addi R4, R4, 1
-    write_pdl "pieces/hero/piece.pdl" "STATE" "x" R4
+    write_pdl "projects/dwarf-fortress/pieces/hero/piece.pdl" "STATE" "x" R4
     console_print "You move east."
     hit_frame
     halt
@@ -42,7 +42,7 @@ move_east:
 move_west:
     read_pdl R1 "STATE" "x" R4
     sub R4, R4, 1
-    write_pdl "pieces/hero/piece.pdl" "STATE" "x" R4
+    write_pdl "projects/dwarf-fortress/pieces/hero/piece.pdl" "STATE" "x" R4
     console_print "You move west."
     hit_frame
     halt
