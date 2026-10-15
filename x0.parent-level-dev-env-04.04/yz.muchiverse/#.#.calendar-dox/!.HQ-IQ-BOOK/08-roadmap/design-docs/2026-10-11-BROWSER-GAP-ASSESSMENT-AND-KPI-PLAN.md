@@ -611,3 +611,42 @@ A push is only *believed* after `git merge-base --is-ancestor <sha>
 origin/opencode` — and that is itself only meaningful once the tracking
 ref has been repaired. Same family as the other three measurement traps in
 §9.4: the instrument, not the code, producing a confident wrong number.
+
+### 9.7 G2.2 groundwork: the correspondence exists, and the dump cannot be parsed positionally
+
+Measured 2026-10-14, ahead of writing G2.2.
+
+**The correspondence is definable.** A 6-paragraph fixture projected to
+exactly **6 content rows** in the renderer's frame dump. So "the same node"
+across the two independent layout systems — the worker's DOM box tree and
+the renderer's painted rows — can be pinned as *the Nth projected content
+row corresponds to the Nth DOM element*. That is the definition G2.2
+needs, and it is now evidence rather than an assumption. (6 → 6, order
+preserved.)
+
+**But the dump is NOT positionally indexable**, which is a trap worth
+writing down before someone writes a parser against it:
+
+    1 text          <- tag
+    2 cx1           <- id
+    3 nb-text,nav-text  <- class
+    4 Paragraph 1 of the geometry correspondence fixture.
+                     <- LABEL: spans newlines and runs of EMPTY fields
+    5 21   6 0   7 200   8 180   9 389   10 30
+
+Labels contain newlines and empty fields, so every numeric column after
+the label **shifts per row**. A first attempt that guessed fields 8–11
+returned the *sidebar* columns (`cx1..cx6`, all plausible numbers, all
+the wrong numbers) and would have produced a confident, entirely wrong
+±2 px comparison.
+
+**So G2.2's first slice is the parser, not the tolerance.** Either the
+emitter (`dump_frame_png_op` / the renderer path behind
+`/tmp/entity-menu-frame.png.frame.txt`) gains explicit, fixed geometry
+columns, or the comparison anchors on the trailing numeric run. Until
+that is done and *verified against the emitter's actual format*, any
+±2 px number is not a measurement.
+
+Note the shape: this is the ninth instance of §9.4's lesson, and the
+first where the trap was found **before** it produced a wrong verdict
+rather than after.
