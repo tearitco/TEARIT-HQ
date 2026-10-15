@@ -108,6 +108,10 @@ echo "########## G1.5 SPA click-through (re-render, never a reload)"
 sh "$HERE/nb_spa_click_test.sh" || RC=1
 
 echo
+echo "########## G1.6 canvas liveness (>= 2 distinct PNGs in 5 s)"
+sh "$HERE/nb_canvas_test.sh" || RC=1
+
+echo
 echo "########## content-row reachability (live browser + own opt-in fixture)"
 sh "$HERE/nb_reach_test.sh" || RC=1
 
