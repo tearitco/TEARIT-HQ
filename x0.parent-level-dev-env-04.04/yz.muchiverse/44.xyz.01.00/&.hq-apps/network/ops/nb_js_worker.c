@@ -1082,15 +1082,45 @@ static double nb_content_h(NbNode *n) {
     return (double)lines * NB_LINE_PX;
 }
 
+/* Margin + padding of one edge, resolved from the element's own style. */
+static double nb_edge_pad(NbNode *n, int top) {
+    if (!n) return 0;
+    NbCssStyle st;
+    nb_css_resolve(g_css, n, nb_attr_get(n, "style"), &st);
+    double p = top ? (st.has_pad_top ? st.pad_top : 0)
+                   : (st.has_pad_bottom ? st.pad_bottom : 0);
+    double m = top ? (st.has_mar_top ? st.mar_top : 0)
+                   : (st.has_mar_bottom ? st.mar_bottom : 0);
+    return p + m;
+}
+
+/* Outer height of a node: its content plus its own vertical margin, which
+ * is what actually displaces the NEXT sibling. Without this a paragraph
+ * with margin-bottom 20px would be followed by the next one immediately,
+ * which is the "stacked but cramped" look you get when margins are
+ * dropped on the floor. */
+static double nb_outer_h(NbNode *n) {
+    if (!n || layout_hidden_anc(n)) return 0;
+    return nb_content_h(n) + nb_edge_pad(n, 0) + nb_edge_pad(n, 1);
+}
+
 static void layout_xy(NbNode *n, double *out_x, double *out_y) {
     if (!n || layout_hidden_anc(n)) { *out_x = 0; *out_y = 0; return; }
     double y = 0;
     if (n->parent && n->parent->tag) {
-        double px, py; layout_xy(n->parent, &px, &py); y += py;
+        double px, py;
+        layout_xy(n->parent, &px, &py);
+        y += py;
+        /* Inside the parent's content box: its padding-top, then this
+         * node's own margin-top. G2.1's "strictly increasing y per depth"
+         * depends on exactly this - without it a first child sits at the
+         * same y as its parent and no amount of walking produces depth. */
+        y += nb_edge_pad(n->parent, 1);
+        y += nb_edge_pad(n, 1);
     }
     for (NbNode *s = n->parent ? n->parent->first_child : NULL; s && s != n; s = s->next_sibling) {
         if (layout_hidden_anc(s)) continue;
-        y += nb_content_h(s);
+        y += nb_outer_h(s);
     }
     *out_x = 0; *out_y = y;
 }

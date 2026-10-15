@@ -50,6 +50,16 @@ typedef struct NbCssStyle {
     char opacity[16];       /* normalized string (e.g. "0.5"), else "" (=1) */
     double width, height;   /* CSS px when declared, else 0 */
     int has_width, has_height;
+    /* Box model (2026-10-14, G2.1). These existed NOWHERE before: the
+     * resolver had no fields for them, so a declared padding/margin was
+     * silently dropped and layout_xy could not offset a child from its
+     * parent. That is why the G2-a fixture's `#d1 { padding: 10px }` had
+     * no effect and every y came back 0 - the walk was correct, the BOX
+     * MODEL underneath it did not exist. Only the shorthand's first
+     * (top) value is modelled, which is all a single-number declaration
+     * carries; `padding: 1px 2px` parses its first component. */
+    double pad_top, pad_bottom, mar_top, mar_bottom;
+    int has_pad_top, has_pad_bottom, has_mar_top, has_mar_bottom;
 } NbCssStyle;
 
 /* Parse CSS text into a fresh NbCss (never NULL; rules may be 0). Free with

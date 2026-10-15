@@ -116,6 +116,10 @@ echo "########## G1.2 rAF loop (>= 10 fps for 3 s, no CPU runaway)"
 sh "$HERE/nb_raf_test.sh" || RC=1
 
 echo
+echo "########## G2.1 box tree (computed w/h + strictly increasing y per depth)"
+sh "$HERE/nb_geometry_test.sh" || RC=1
+
+echo
 echo "########## content-row reachability (live browser + own opt-in fixture)"
 sh "$HERE/nb_reach_test.sh" || RC=1
 
