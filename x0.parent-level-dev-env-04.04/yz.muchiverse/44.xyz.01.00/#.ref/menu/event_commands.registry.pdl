@@ -1266,3 +1266,20 @@ COMMAND mcl_pet_says
   PARAMS pet,chat,voice
   TEMPLATE exec "$D/@.apps/mcl-hq/ops/+x/mcl_hq.+x" pet_says '{pet}' '{chat}' '{voice}' "$RPG_OTHER"
 END
+
+# ---- civ-rpgce and tcg-rpgce (2026-10-15): dsr-rpg board clones whose event pages already use these two verb types (9 pages each) but had no registry entry, so the editor had no label or template for them (found by the blueprintz flag scan). Each is bound to its own binary like mcl-hq.
+COMMAND civ_rpgce_verb
+  LABEL civ-rpgce: Run Verb
+  FIELD1 Verb:
+  FIELD2 Arg:
+  PARAMS verb,arg
+  TEMPLATE exec "$D/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x" '{verb}'[ '{arg}']
+END
+
+COMMAND tcg_rpgce_verb
+  LABEL tcg-rpgce: Run Verb
+  FIELD1 Verb:
+  FIELD2 Arg:
+  PARAMS verb,arg
+  TEMPLATE exec "$D/@.apps/tcg-rpgce/ops/+x/tcg_rpgce.+x" '{verb}'[ '{arg}']
+END
