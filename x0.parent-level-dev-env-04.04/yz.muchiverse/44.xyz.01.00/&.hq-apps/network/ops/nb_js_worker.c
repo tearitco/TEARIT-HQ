@@ -276,6 +276,11 @@ static void split_lines(char *fields[8]) {
  * holds opaque pointer handles; the tree is C-side. No shared memory. */
 
 static NbNode *g_dom_root = NULL;  /* current page's DOM tree (#document) */
+
+/* Viewport width the page's box tree is computed against (G2.2). Defined
+ * next to NB_CONTENT_PX further down, forward-declared here because
+ * window.innerWidth is exported from the globals block. */
+static double g_viewport_px;
 static NbNode *g_active_node = NULL;  /* element.focus()/blur() tracker */
 static int g_search_wired = 0;  /* document-level Enter search proxy wired per page */
 static NbNode *g_orphans = NULL;   /* detached createElement() nodes still to free */
@@ -1020,6 +1025,20 @@ static int layout_hidden_anc(NbNode *n) {
 #define NB_CHAR_PX     7
 #define NB_CONTENT_PX  640
 
+/* VIEWPORT width, runtime (2026-10-14, G2.2).
+ *
+ * The worker's box tree assumed a 640px content column. Measured against
+ * the renderer's own element dump the pane is 389px, so every width the
+ * worker reports is wrong by ~250px - and no amount of box-model work
+ * fixes it: the worker simply does not know how wide the pane it lands in
+ * will be. This makes that width a VALUE rather than a compile-time
+ * constant, so it can be supplied per page and seen by the page itself.
+ *
+ * Defaults to NB_CONTENT_PX, so behaviour is unchanged until something
+ * supplies a real number - which is the point: the guess is now visible
+ * and replaceable instead of baked in. */
+static double g_viewport_px = NB_CONTENT_PX;
+
 /* WIDTH of an element's border box - the half of the box tree that was
  * missing (G2.1, slice 1, 2026-10-14).
  *
@@ -1065,14 +1084,14 @@ static double nb_box_w(NbNode *n) {
         double text_w = (n->text && n->text[0])
                         ? (double)strlen(n->text) * (double)NB_CHAR_PX : 0.0;
         double avail = nb_box_w(n->parent);
-        if (avail <= 0) avail = NB_CONTENT_PX;
+        if (avail <= 0) avail = g_viewport_px;
         return text_w < avail ? text_w : avail;
     }
     if (n->parent) {
         double avail = nb_box_w(n->parent);
         if (avail > 0) return avail;
     }
-    return NB_CONTENT_PX;          /* the document's content column */
+    return g_viewport_px;          /* the document's content column */
 }
 
 /* Height of an element's content box. A declared CSS height wins (that is what
@@ -1089,7 +1108,10 @@ static double nb_content_h(NbNode *n) {
     if (sum > 0) return sum;
     if (!n->text || !n->text[0]) return 0;
     int len = (int)strlen(n->text);
-    int per_line = NB_CONTENT_PX / NB_CHAR_PX;
+    /* wrap width follows the viewport, or the text wraps at a column the
+     * pane does not have and every line count downstream is wrong */
+    double col = g_viewport_px > 0 ? g_viewport_px : (double)NB_CONTENT_PX;
+    int per_line = (int)(col / NB_CHAR_PX);
     if (per_line < 1) per_line = 1;
     int lines = (len + per_line - 1) / per_line;
     if (lines < 1) lines = 1;
@@ -7696,6 +7718,12 @@ static void install_events_timers(JSContext *ctx) {
     JS_SetPropertyStr(ctx, g, "clearInterval", JS_NewCFunction(ctx, nb_timer_clearInterval, "clearInterval", 1));
     JS_SetPropertyStr(ctx, g, "queueMicrotask", JS_NewCFunction(ctx, nb_queueMicrotask, "queueMicrotask", 1));
     JS_SetPropertyStr(ctx, g, "requestAnimationFrame", JS_NewCFunction(ctx, nb_raf, "requestAnimationFrame", 1));
+    /* window.innerWidth is a VALUE in every browser, not a function. The
+     * first version registered a native function here and
+     * ""+window.innerWidth came back as "function innerWidth() { [native
+     * code] }" - a stringified function where a number belongs, which
+     * silently corrupts every page that does arithmetic on it. */
+    JS_SetPropertyStr(ctx, g, "innerWidth", JS_NewFloat64(ctx, g_viewport_px));
     JS_SetPropertyStr(ctx, g, "nbFetchSync", JS_NewCFunction(ctx, nb_fetch_sync, "nbFetchSync", 4));
     JS_SetPropertyStr(ctx, g, "addEventListener",    JS_NewCFunction(ctx, nb_win_addEventListener, "addEventListener", 2));
     JS_SetPropertyStr(ctx, g, "removeEventListener", JS_NewCFunction(ctx, nb_win_removeEventListener, "removeEventListener", 2));
