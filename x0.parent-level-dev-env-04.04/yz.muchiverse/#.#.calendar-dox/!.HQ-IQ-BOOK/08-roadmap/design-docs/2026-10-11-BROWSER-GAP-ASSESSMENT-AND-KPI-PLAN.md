@@ -704,3 +704,49 @@ design decision with real consequences (the worker owns the DOM; the
 renderer owns the pixels). G2.2's ±2 px stays red until someone makes
 that call — and it should stay red, because a green one here would mean
 the number had been tuned rather than earned.
+
+### 9.9 The scale gap is ONE CONSTANT, not a layout disagreement
+
+Follow-up measurement on the same 6-paragraph fixture, reading every row's
+height out of the renderer's dump with `tests/frame_geom.py`:
+
+    class                count   h
+    nb-text,nav-text         6   30     <- our content rows
+    quiet                   12   30
+    nb-side                  9   30
+    nb-side                 24  150     <- sidebar containers, not rows
+
+and the content y values step **180, 210, 240, 270, 300, 330** — exactly
++30 every row.
+
+So the renderer paints a content row at a **constant height of 30**. The
+worker models text at `NB_LINE_PX 14`, documented as "12px text on a 14px
+baseline". Those are not the same quantity: the worker is modelling a
+**line box**, the renderer a **row** (line + leading/padding). That single
+mismatch is the entire scale disagreement in §9.8 — not a disagreement
+about layout, about two constants meaning different words.
+
+Which makes the architecture call much smaller than it looked:
+
+1. **Scale first, and it is nearly free.** Decide that the worker models
+   ROW height rather than LINE height, and that constant becomes a shared
+   one. After that the y-step agrees (30 = 30).
+2. **Origin second, and it is a translation, not a conflict.** The residual
+   is the content pane's own offset (x +200, y +180 — the sidebar and the
+   chrome above it). That is not a disagreement about geometry at all; it
+   is two coordinate spaces, and the renderer already knows where its own
+   content pane starts. Feeding that origin to the worker (or asking the
+   worker for pane-relative coordinates) is plumbing, not redesign.
+
+The genuinely open question is only step 1's direction — whether the
+renderer's row metrics or the worker's line metrics become the shared
+definition — because that decides which system is authoritative for
+scale. Steps 2 and 3 follow mechanically from it.
+
+ALSO WORTH RECORDING: the resident worker does NOT pick up a rebuild. It
+lived from 15:53 while the binary it was running was rebuilt at 19:07, and
+`getBoundingClientRect` returned `w=0` — the exact symptom `nb_box_w` was
+written to fix. Measured on a stale resident process, that reads as a
+geometry bug and is not one. Restart the manager after rebuilding the
+worker, or every live geometry measurement is against the wrong binary.
+The renderer window has the same property (fixed earlier the same day).
