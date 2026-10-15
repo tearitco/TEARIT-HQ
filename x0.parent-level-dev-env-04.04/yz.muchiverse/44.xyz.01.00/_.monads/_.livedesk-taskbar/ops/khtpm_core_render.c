@@ -7667,7 +7667,7 @@ static void dock_paint_peer(void) {
         XGetInputFocus(dpy, &focus_win, &focus_revert);
         char mark[16], echo_buf[16];
         int ty = DOCK_BAR_H / 2 + (font_ui ? font_ui->ascent / 2 : 6);
-        XftColor mark_col = xft_color(window_is_dock() ? g_theme_fg : "#eeeeee");
+        XftColor mark_col = xft_color(kh_skin_label_hex() ? kh_skin_label_hex() : (window_is_dock() ? g_theme_fg : "#eeeeee"));
         /* focus mark + the nav digits typed so far (one shared buffer, so the
          * top bar, bottom bar and pc-hq windows echo the same digits). */
         int mark_n = nve_text((focus_win == win) ? "^" : ".", kh_nav_echo_digits(echo_buf, sizeof(echo_buf)), mark, sizeof(mark));
@@ -11391,7 +11391,7 @@ static void redraw(void) {
             char mark[16], echo_buf[16];
             XftFont *df = font_ui;
             int ty = DOCK_BAR_H / 2 + (df ? df->ascent / 2 : 6);
-            XftColor mark_col = xft_color(window_is_dock() ? g_theme_fg : "#eeeeee");
+            XftColor mark_col = xft_color(kh_skin_label_hex() ? kh_skin_label_hex() : (window_is_dock() ? g_theme_fg : "#eeeeee"));
             int mark_n = nve_text((focus_win == win) ? "^" : ".", kh_nav_echo_digits(echo_buf, sizeof(echo_buf)), mark, sizeof(mark));
             XftDrawStringUtf8(xftdraw_buf, &mark_col, df, 18, ty,
                                (const FcChar8 *)mark, mark_n);
@@ -11399,7 +11399,7 @@ static void redraw(void) {
             XSetForeground(dpy, gc, alloc_pixel("#4a4a4a"));
             XDrawLine(dpy, buf, gc, DOCK_FOCUS_BOX_W, 0, DOCK_FOCUS_BOX_W, g_win_h);
         } else {
-        XftColor title_col = xft_color(g_theme_fg);  /* themed (was hardcoded #eeeeee) - see the base-fill comment above */
+        XftColor title_col = xft_color(kh_skin_label_hex() ? kh_skin_label_hex() : g_theme_fg);  /* on a bar skin, match the tile; otherwise the theme fg */
         XftDrawStringUtf8(xftdraw_buf, &title_col, font_ui, 8,
                            window_is_entity_menu() ? (CHROME_H + 16) : 16,
                            (const FcChar8 *)title, (int)strlen(title));

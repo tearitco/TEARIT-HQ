@@ -320,6 +320,34 @@ static void hq_blit_sprite(HqSprite *sp, int x0, int y0, int px, unsigned long b
  * 2 blocks wide draws nothing special. Includers that never call kh_bar_skin_load() just see the skin off. */
 static char g_bar_skin_id[48];
 static char g_bar_skin_dir[3][400]; /* the SELECTED skin: left, middle, right - house-absolute */
+static int g_bar_skin_light; /* middle tile of the selected skin is bright: labels on it go dark */
+
+/* Average opaque luminance of a skin part's sprite.csv. Same cutoff the settings chips use (140). */
+static int kh_sprite_csv_light(const char *dir) {
+    char path[512], line[80];
+    long sum = 0;
+    int n = 0;
+    FILE *f;
+    if (!dir || !dir[0]) return 0;
+    snprintf(path, sizeof(path), "%s/sprite.csv", dir);
+    f = fopen(path, "r");
+    if (!f) return 0;
+    while (fgets(line, sizeof(line), f)) {
+        int r, g, b, a;
+        if (sscanf(line, "%d,%d,%d,%d", &r, &g, &b, &a) != 4) continue;
+        if (a < 16) continue;
+        sum += (r * 299 + g * 587 + b * 114) / 1000;
+        n++;
+    }
+    fclose(f);
+    return n > 0 && (sum / n) >= 140;
+}
+
+/* Label color for text that sits on the selected bar skin. NULL when the skin is off. */
+static const char *kh_skin_label_hex(void) {
+    if (!g_bar_skin_id[0]) return NULL;
+    return g_bar_skin_light ? "#111111" : "#ffffff";
+}
 /* the whole catalog, so a swatch can draw ITS OWN skin (class="skin-bar skin-for-<id>") */
 #define KH_SKIN_MAX 24
 static struct { char id[48]; char dir[3][400]; } g_skin_cat[KH_SKIN_MAX];
@@ -338,6 +366,7 @@ static void kh_bar_skin_load(const char *house_root) {
         }
     }
     g_bar_skin_id[0] = '\0';
+    g_bar_skin_light = 0;
     g_bar_skin_dir[0][0] = g_bar_skin_dir[1][0] = g_bar_skin_dir[2][0] = '\0';
     g_n_skin_cat = 0;
     if (!house_root || !house_root[0]) return;
@@ -378,6 +407,7 @@ static void kh_bar_skin_load(const char *house_root) {
             snprintf(g_bar_skin_id, sizeof(g_bar_skin_id), "%s", want);
             for (int k = 0; k < 3; k++)
                 snprintf(g_bar_skin_dir[k], sizeof(g_bar_skin_dir[k]), "%s", g_skin_cat[g_n_skin_cat].dir[k]);
+            g_bar_skin_light = kh_sprite_csv_light(g_bar_skin_dir[1]);
         }
         g_n_skin_cat++;
     }
@@ -1379,8 +1409,8 @@ static void draw_elem(Elem *e, int hover_id_hash) {
     }
     /* livedesk top + bottom bars: every dock cell (an <item> in a dock window) wears the selected skin */
     if (g_bar_skin_id[0] && window_is_dock() && strcmp(e->tag, "item") == 0) {
-        /* readable on any tile: white label (the orange theme text vanished on wood and neon) */
-        snprintf(e->style.fg_color, sizeof(e->style.fg_color), "#ffffff");
+        /* readable on the tile itself: dark writing on a bright skin, white on a dark one */
+        snprintf(e->style.fg_color, sizeof(e->style.fg_color), "%s", g_bar_skin_light ? "#111111" : "#ffffff");
         e->style.has_fg_color = 1;
         kh_draw_selected_skin(e->x, e->y, e->w, e->h, alloc_pixel(e->style.has_bg_color ? e->style.bg_color : "#2c2c2c"));
     }
