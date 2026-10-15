@@ -1003,6 +1003,20 @@ static int layout_hidden_anc(NbNode *n) {
  * ~7px; content wraps at the renderer's 640px column. */
 #define NB_FONT_PX     12
 #define NB_LINE_PX     14
+/* ROW height, which is NOT the line height (2026-10-14, G2.2).
+ *
+ * Measured off the renderer's own element dump on a 6-paragraph fixture:
+ * every content row is painted at a CONSTANT height of 30, and y steps
+ * 180, 210, 240, 270, 300, 330 - exactly +30 each. The worker's own
+ * NB_LINE_PX (14, "12px text on a 14px baseline") is a LINE box: text
+ * leading with no row padding around it. Using 14 for stack height made
+ * the worker's y-step disagree with the renderer's by more than 2x, which
+ * is the whole of G2.2's scale disagreement - two constants that meant
+ * different words, not a disagreement about layout.
+ *
+ * So block stacking uses NB_ROW_PX. NB_LINE_PX stays where it belongs:
+ * inside the wrap calculation, as the per-line text box. */
+#define NB_ROW_PX     30
 #define NB_CHAR_PX     7
 #define NB_CONTENT_PX  640
 
@@ -1079,7 +1093,9 @@ static double nb_content_h(NbNode *n) {
     if (per_line < 1) per_line = 1;
     int lines = (len + per_line - 1) / per_line;
     if (lines < 1) lines = 1;
-    return (double)lines * NB_LINE_PX;
+    /* Each wrapped line projects as its OWN row, so height is rows x row
+     * height - not lines x line height. */
+    return (double)lines * NB_ROW_PX;
 }
 
 /* Margin + padding of one edge, resolved from the element's own style. */

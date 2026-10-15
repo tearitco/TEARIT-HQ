@@ -750,3 +750,43 @@ written to fix. Measured on a stale resident process, that reads as a
 geometry bug and is not one. Restart the manager after rebuilding the
 worker, or every live geometry measurement is against the wrong binary.
 The renderer window has the same property (fixed earlier the same day).
+
+### 9.10 Scale aligned: the y-step now agrees EXACTLY (measured)
+
+Did the §9.9 step 1, and it landed on the prediction to the pixel.
+
+    before:  worker y = 0, 14, 28, 42, 56, 70   h=14   (NB_LINE_PX)
+             renderer y = 180, 210, 240, 270, 300, 330   h=30
+
+    after:   worker y = 0, 30, 60, 90, 120, 150   h=30   (NB_ROW_PX)
+             renderer y = 180, 210, 240, 270, 300, 330   h=30
+
+Same +30 step on both sides, and identical heights. The residual is now
+exactly what §9.9 said it would be:
+
+  - y: a CONSTANT 180 translation on every row (the chrome above the
+    content pane). Not a disagreement - an origin.
+  - h: agrees on every row (30 = 30).
+  - x: a CONSTANT 200 translation (the sidebar).
+  - **w: still genuinely wrong — 640 vs 389.** The worker assumes a
+    640px content column (NB_CONTENT_PX) while the renderer's pane is
+    389px. This one is NOT a translation and is not fixed by anything in
+    §9.9: the worker has no idea how wide the pane it lands in will be.
+
+Implementation note worth keeping: this was done by ADDING
+`NB_ROW_PX 30` rather than changing `NB_LINE_PX`. They are different
+quantities - a line box is text leading, a row is that plus the renderer's
+row padding - and overwriting 14 would have quietly redefined the wrap
+calculation that uses it. Block stacking now uses the row metric; the
+wrap calculation still uses the line metric.
+
+So G2.2 is reduced from "two systems disagree" to two items, one of which
+is plumbing:
+
+  1. Feed the worker the pane's real width (and origin), so w and the
+     translations stop being guesses. The renderer already knows both.
+  2. Decide whether ROW height is now the shared definition - which is
+     cheap to answer, since one constant now drives both sides.
+
+Full suite green (ALL TESTS PASS) with NB_ROW_PX in, so nothing that
+reads geometry regressed.
