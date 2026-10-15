@@ -20,6 +20,10 @@ RUN | $T/bin/pmq | $T | cmd | livedesk:reset-entities
 EXPECT_OUT_IS | reset | reset-row-still-there
 RUN | $T/bin/pmq | $T | cmd | livedesk:synch-from-pchq
 EXPECT_OUT_IS | Synch | synch-row-still-there
+RUN | $T/bin/pmq | $T | cmd | sh _.monads/_.livedesk-taskbar/ops/open_blueprintz.sh
+EXPECT_OUT_IS | blueprintz | blueprintz-row-present
+RUN | $T/bin/pmq | $T | row | 3
+EXPECT_OUT_IS | blueprintz\psh _.monads/_.livedesk-taskbar/ops/open_blueprintz.sh | blueprintz-row-right-after-stop
 
 RUN | $T/bin/pmq | $T | set-playtest | 1
 EXPECT_FILE | #.desktop/khtpm_play_mode.state.txt | mode=on\nplaytest=1\n | playtest-on-writes-two-lines
