@@ -61,7 +61,14 @@ Work order, one KPI per step, each step red-before-green:
 | G2-b | G2.1 box tree | every visible node carries x/y/w/h; `div > p > span` reports strictly increasing y per depth |
 | G2-c | G2.2 gBCR honesty | +/-2 px on >= 95 % of sampled nodes; negative: `display:none` still returns 0,0,0,0 |
 
-**STATUS 2026-10-14: G1-a, G1-b and G1-e are DONE** (measured numbers,
+**STATUS 2026-10-14 (late): G1 IS COMPLETE — all six KPIs done.** G1-a,
+G1-b (G1.1), G1-e (G1.3), G1-c (G1.4), G1-d (G1.5), G1-f (G1.6 **and**
+G1.2). G1.2 measured 23.6 fps for 3 s at 0.3 % of one core, with a
+control proving 0.0 fps without the tick loop. G1.6 measured 5 distinct
+canvas PNGs in 5 s, and 1 without the tick loop. The next P0 is **G2**
+(box tree): G2-a harness, then G2.1, then G2.2.
+
+Earlier status line (kept for the record): G1-a, G1-b and G1-e are DONE** (measured numbers,
 design decisions, four silent-failure modes found, and the next bite all
 in **[§9](#9-addendum-2026-10-1314--g11-and-g13-landed-measured)**).
 The next step is **G1-c / G1.4 focus safety** — the last G1 risk the push

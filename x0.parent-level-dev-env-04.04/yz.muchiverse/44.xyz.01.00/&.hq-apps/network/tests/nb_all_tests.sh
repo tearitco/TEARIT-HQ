@@ -112,6 +112,10 @@ echo "########## G1.6 canvas liveness (>= 2 distinct PNGs in 5 s)"
 sh "$HERE/nb_canvas_test.sh" || RC=1
 
 echo
+echo "########## G1.2 rAF loop (>= 10 fps for 3 s, no CPU runaway)"
+sh "$HERE/nb_raf_test.sh" || RC=1
+
+echo
 echo "########## content-row reachability (live browser + own opt-in fixture)"
 sh "$HERE/nb_reach_test.sh" || RC=1
 
