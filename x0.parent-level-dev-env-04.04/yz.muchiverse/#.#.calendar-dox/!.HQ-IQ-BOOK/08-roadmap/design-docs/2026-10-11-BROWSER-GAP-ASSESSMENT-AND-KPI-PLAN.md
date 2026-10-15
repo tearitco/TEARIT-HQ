@@ -790,3 +790,36 @@ is plumbing:
 
 Full suite green (ALL TESTS PASS) with NB_ROW_PX in, so nothing that
 reads geometry regressed.
+
+### 9.11 The last disagreement closes: feed the viewport, and w agrees
+
+`LOAD` now carries the viewport width as field 6 (js/dom/href/title/css/
+**viewport**). Fed the renderer's real pane width, the worker's boxes
+report exactly what the renderer paints:
+
+    viewport sent 640   ->  iw=640  w=640  h=30  y=0
+    viewport sent 389   ->  iw=389  w=389  h=30  y=0     <- the real pane
+    viewport sent 1200  ->  iw=1200 w=1200 h=30  y=0
+
+So the §9.8 disagreement is fully decomposed and each part is now either
+solved or explicitly plumbing:
+
+| axis | before | now |
+|---|---|---|
+| y-step | 14 vs 30 | **agrees** (NB_ROW_PX, §9.10) |
+| h | 14 vs 30 | **agrees** |
+| w | 640 vs 389 | **agrees when fed the pane width** |
+| x, y origin | 200 / 180 off | a translation; two coordinate spaces |
+
+What is still missing is only the SENDER. The worker honours the field
+and nobody sends it, because the pane width is the RENDERER's to know -
+it lays the pane out. So the remaining work is: the renderer publishes its
+content-pane box, the manager reads it and passes field 6. The renderer
+already writes both numbers (its receipt records the window; the element
+dump has the pane box at x=200 w=389), so this is discovery plus one
+field, not new geometry.
+
+Deliberately unchanged until then: absent or unusable (<= 0) leaves the
+viewport alone rather than resetting mid-session, and the default stays
+640. A wrong-but-supplied number would be worse than an obviously-default
+one - the same reason G2.2 stays red rather than tuned.

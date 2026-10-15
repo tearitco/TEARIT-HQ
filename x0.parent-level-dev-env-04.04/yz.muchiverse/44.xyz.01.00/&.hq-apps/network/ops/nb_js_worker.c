@@ -9081,6 +9081,21 @@ int main(int argc, char **argv) {
             if (f[3]) snprintf(g_href, sizeof(g_href), "%s", f[3]);
             if (f[4]) snprintf(g_title, sizeof(g_title), "%s", f[4]);
             if (f[5]) snprintf(g_style_css, sizeof(g_style_css), "%s", f[5]);
+            /* f[6] = the viewport width this page will be laid out in.
+             *
+             * Until now the box tree assumed a fixed 640px column while
+             * the renderer actually paints the content pane at 389px, so
+             * every width the worker reported was wrong by ~250px (G2.2).
+             * The manager does not know the pane width yet - it is the
+             * RENDERER that lays the pane out - so this field exists and
+             * is honoured, and nothing sends it yet. When it is sent, the
+             * guess becomes a fact; until then behaviour is unchanged,
+             * which is deliberate: a wrong-but-supplied number would be
+             * worse than an obviously-default one.
+             *
+             * Absent or unusable (<= 0) leaves the current value alone
+             * rather than resetting to the default mid-session. */
+            if (f[6] && atof(f[6]) > 0) g_viewport_px = atof(f[6]);
             free(g_last_push); g_last_push = NULL;   /* rows are per-page */
             run_page();
         } else if (strcmp(cmd, "TICK") == 0) {
