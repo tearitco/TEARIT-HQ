@@ -20,3 +20,4 @@ Owner's direction (2026-10-14): train our own voice software; a separate SFX gen
 
 Related today: `@.apps/pet-trainer/VOICE-OFFLINE.md` (pets speak with offline Kokoro), `16.game/IMG-HAI-BREAKTHROUGH.md` (the pattern copied), `17.ai/`.
 Status: **design docs plus two scaffold windows** (`44.xyz.01.00/&.hq-apps/voice-fx/`, `&.hq-apps/sfx-hai/`, each with a README handoff); the in-house engines, pronunciation map and listening ops are **not built**. Labels used: *read* = from a file, nothing run; *ran* = run by claude and observed; *online, unverified* = from a web search, check the project page.
+- `REMOTE-NARRATION-DEBIL.md` — Narration (Kokoro) on debil over ssh: setup, 244 s for NIGHT 50, listener check, gotchas.
