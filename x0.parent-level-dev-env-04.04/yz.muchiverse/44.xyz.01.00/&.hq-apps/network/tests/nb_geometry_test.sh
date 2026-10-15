@@ -159,11 +159,21 @@ while time.time() < deadline:
         break
 p.kill()
 
-verdict = ""
-for r in rows:
-    if r.startswith("VERDICT"):
-        verdict = r
-        break
+# JOIN EVERY TEXT ROW before looking for the verdict.
+#
+# The rows are WRAPPED at RWS_TEXT (88) chars by rw_wrap, so one logical
+# line arrives as SEVERAL rows. Reading only the first "VERDICT" row
+# silently truncated the verdict - which is why hidden_zero,
+# hidden_child_zero and a computed_display probe all appeared to be
+# "missing" when the page had in fact reported them perfectly well in the
+# continuation rows. Same shape as reading a multi-line diagnostic through
+# grep and seeing only the first physical line: an instrument that shows
+# you less than the thing contains, and never says so.
+# Rejoin wrapped fragments: the verdict is one logical string, so take
+# every row from the first VERDICT onwards and glue it back together.
+idx = next((i for i, r in enumerate(rows) if r.startswith("VERDICT")), None)
+if idx is not None:
+    verdict = " ".join(rows[idx:])
 if not verdict:
     print("FAIL: the page produced no verdict row - the harness is not "
           "reaching the page's own measurement")
@@ -171,7 +181,8 @@ if not verdict:
     sys.exit(1)
 
 print("  page's verdict: %s" % verdict)
-facts = dict(kv.split("=", 1) for kv in verdict.replace("VERDICT ", "").split())
+facts = dict(kv.split("=", 1) for kv in verdict.replace("VERDICT ", "").split()
+             if "=" in kv)
 
 
 def fact(name, default="?"):
