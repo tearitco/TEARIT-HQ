@@ -7,7 +7,7 @@ The blueprint is an event page of event pages. It shows the entire book. It comp
 
 ## 2. What exists (verified by reading files and counting)
 - **Event format**: `event_pkg/pages/page_N/{condition.pdl, event.ir.pdl, event.pal, cmd_N.sh}`. IR rows: `NODE | id=N type=<command> | args`. Chain: IR > `event.pal` > `cmd_N.sh` > `mr_<command>.+x`. Source: `EVENTS-PAL-BUILDOUT-PLAN.md`.
-- **109 `event.ir.pdl` files** in the house. Command types by count: comment 2,692; if/end 2,554 each; show_text 1,160; show_choices 773; choice_to_switch 770; control_self_switch 563; ret 294; the per-game `*_pet_says` and `*_verb` rows; about 30 types in all. Mostly imports and scaffolds, few hand-written.
+- **3,662 `event.ir.pdl` files** in the house (counted 2026-10-15, sessions excluded; 12,838 NODE rows, 52 command types): 2,487 are imported tsots maps in piececraft-hq, 109 are rpg-pet's, about 105 each in the game scaffolds. (An earlier version said 109 for the whole house; that was rpg-pet only, my counting mistake.) The largest file is 8,494 bytes and no file has over 128 NODE rows. Command types by count: comment 2,692; if/end 2,554 each; show_text 1,160; show_choices 773; choice_to_switch 770; control_self_switch 563; ret 294; the per-game `*_pet_says` and `*_verb` rows; about 30 types in all. Mostly imports and scaffolds, few hand-written.
 - **Command registry**: `#.ref/menu/event_commands.registry.pdl` (1,268 lines). Do not hard-code command lists.
 - **blueprintz**: window `&.hq-apps/blueprintz/` (B0 shell, B1 read-only list for dsr-rpg, cdda-hq, df-hq, gta-hq), design doc B0-B5.
 - **Editors that write the IR**: events-hq (`khtpm_events_hq_manager.c`), event-editor, event-ez, plus the converter `tsots_event_ir.py`. Only events-hq's ops were read for this.
@@ -25,14 +25,14 @@ Automatic coding needs (a) retrieval of the closest existing events for a new on
 ## 5. Facts found while checking that the links are safe (read, not run)
 - The readers I looked at take only `NODE` rows, so an added `META` row is ignored by them.
 - events-hq edit and delete copy other rows forward, so a concept row survives; add appends.
-- **Hazard**: edit and delete hold the whole IR in an 8,192-byte buffer. A larger IR is truncated silently on edit or delete. Fix before adding rows. Not reproduced.
-- Not run: a live edit with a concept row present; event-editor, event-ez and the converter with such a row.
+- **Hazard, reproduced and fixed 2026-10-15**: edit and delete held the whole IR in an 8,192-byte buffer. Scratch test: an 11,016-byte, 110-row IR lost 29 rows on one delete (81 left, cut at 8,164 bytes). Fixed with a growing buffer; the fixed build kept 109/109 after delete and after edit, and kept concept rows at the top and the end. One real file (8,494 bytes) was already over the old limit. Scratch copies only; the running events-hq manager has the old binary until rebuilt.
+- Not run: the events-hq window itself; event-editor, event-ez and the converter with a concept row. `compile_page` also stops silently at 128 NODE rows (largest real file: 61).
 
 ## 6. Next steps in order
-1. Reproduce the 8 KiB truncation on a copy; fix it; negative-test.
-2. Run one live events-hq edit on a scratch copy of an event that has a `META | concept` row; confirm the row and the compiled `event.pal` are right.
+1. ~~Reproduce the 8 KiB truncation; fix it; negative-test.~~ Done 2026-10-15 (scratch copies).
+2. Run the events-hq window (not just the manager) on a scratch copy of an event that has a `META | concept` row; confirm the row and the compiled `event.pal` are right; try event-editor, event-ez and the converter too.
 3. Hand-author the first game nodes in the bank (door, greeting, trade, travel, time, switch, the command types) and the validator.
-4. Seed links by rule over the 109 events; read the results by eye for wrong matches; write the "events for concept X" query.
+4. Seed links by rule over the rpg-pet events first (109 files), then the scaffolds; read the results by eye for wrong matches; write the "events for concept X" query.
 5. B4b: compile one book (rpg-pet) to `book.pal`; compare its behaviour with the per-event runs; keep both until they match.
 6. Plugins after the plugin manager exists.
 

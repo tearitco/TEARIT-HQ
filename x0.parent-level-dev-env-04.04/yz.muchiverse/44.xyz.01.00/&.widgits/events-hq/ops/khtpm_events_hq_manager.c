@@ -990,6 +990,23 @@ static void handle_new_page_request(void) {
     }
 }
 
+/* Growing buffer for the edit:/delete: rewrites below. These used a fixed
+ * char[8192]; any event.ir.pdl longer than that was silently cut off at 8,164
+ * bytes on the first edit or delete (reproduced 2026-10-15 on a 110-row copy:
+ * 29 rows lost; one real file, a tsots map event, is already 8,494 bytes).
+ * Rows are copied forward untouched, so extra META rows (concept links) survive. */
+static void ir_buf_add(char **buf, size_t *len, size_t *cap, const char *s, size_t n) {
+    if (*len + n + 1 > *cap) {
+        size_t nc = *cap ? *cap : 4096;
+        while (nc < *len + n + 1) nc *= 2;
+        char *nb = realloc(*buf, nc);
+        if (!nb) return; /* out of memory: drop this row's copy rather than crash */
+        *buf = nb; *cap = nc;
+    }
+    memcpy(*buf + *len, s, n);
+    *len += n;
+}
+
 static void handle_action_request(void) {
     FILE *f = fopen(g_action_path, "r");
     if (!f) return;
@@ -1143,7 +1160,7 @@ static void handle_action_request(void) {
         char pd[PATH_BUF]; page_dir(pd, sizeof(pd), g_current_page);
         char ir_path[PATH_BUF]; snprintf(ir_path, sizeof(ir_path), "%s/event.ir.pdl", pd);
 
-        char all[8192] = ""; size_t all_len = 0;
+        char *all = NULL; size_t all_len = 0, all_cap = 0;
         FILE *rf = fopen(ir_path, "r");
         if (rf) {
             char l[512];
@@ -1155,17 +1172,18 @@ static void handle_action_request(void) {
                         char newl[600];
                         snprintf(newl, sizeof(newl), "NODE         | id=%d type=%s | %s\n", edit_id, type, params_line);
                         size_t nl = strlen(newl);
-                        if (all_len + nl < sizeof(all)) { memcpy(all + all_len, newl, nl); all_len += nl; }
+                        ir_buf_add(&all, &all_len, &all_cap, newl, nl);
                         continue;
                     }
                 }
                 size_t ll = strlen(l);
-                if (all_len + ll < sizeof(all)) { memcpy(all + all_len, l, ll); all_len += ll; }
+                ir_buf_add(&all, &all_len, &all_cap, l, ll);
             }
             fclose(rf);
         }
         FILE *wf = fopen(ir_path, "w");
-        if (wf) { fwrite(all, 1, all_len, wf); fclose(wf); }
+        if (wf) { if (all_len) fwrite(all, 1, all_len, wf); fclose(wf); }
+        free(all);
 
         compile_page(g_current_page);
         publish_page_state();
@@ -1187,7 +1205,7 @@ static void handle_action_request(void) {
         char pd[PATH_BUF]; page_dir(pd, sizeof(pd), g_current_page);
         char ir_path[PATH_BUF]; snprintf(ir_path, sizeof(ir_path), "%s/event.ir.pdl", pd);
 
-        char all[8192] = ""; size_t all_len = 0;
+        char *all = NULL; size_t all_len = 0, all_cap = 0;
         FILE *rf = fopen(ir_path, "r");
         if (rf) {
             char l[512];
@@ -1198,12 +1216,13 @@ static void handle_action_request(void) {
                     if (this_id == del_id) continue; /* real delete: just don't copy this line forward */
                 }
                 size_t ll = strlen(l);
-                if (all_len + ll < sizeof(all)) { memcpy(all + all_len, l, ll); all_len += ll; }
+                ir_buf_add(&all, &all_len, &all_cap, l, ll);
             }
             fclose(rf);
         }
         FILE *wf = fopen(ir_path, "w");
-        if (wf) { fwrite(all, 1, all_len, wf); fclose(wf); }
+        if (wf) { if (all_len) fwrite(all, 1, all_len, wf); fclose(wf); }
+        free(all);
 
         compile_page(g_current_page);
         publish_page_state();

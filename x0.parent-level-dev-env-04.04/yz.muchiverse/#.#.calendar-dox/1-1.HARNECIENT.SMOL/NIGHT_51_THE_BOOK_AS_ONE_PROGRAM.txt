@@ -11,7 +11,7 @@
 
 **MAXINE:** Start with what an event is in this house, with the numbers.
 
-**TOMO:** A folder called an event package. Inside, pages. Each page has a condition file, a list of commands in a plain text form, a compiled program, and one small wrapper per command that calls a compiled operation. The chain is: list, program, wrapper, operation. I counted a hundred and nine of those command lists. The most common command type is the comment, twenty-six hundred and ninety-two of them. Then the if and the end that closes it, twenty-five hundred and fifty-four each. Then show text, show choices, set a switch.
+**TOMO:** A folder called an event package. Inside, pages. Each page has a condition file, a list of commands in a plain text form, a compiled program, and one small wrapper per command that calls a compiled operation. The chain is: list, program, wrapper, operation. I counted thirty-six hundred and sixty-two of those command lists, and I got it wrong the first time: my first count was a hundred and nine, because my shell was standing inside one game's folder. A count is only as good as the place you stood when you made it. The most common command type is the comment, twenty-six hundred and ninety-two of them. Then the if and the end that closes it, twenty-five hundred and fifty-four each. Then show text, show choices, set a switch.
 
 **RAHWEH:** Comments are the most common command? That sounds like a bad sign.
 
@@ -51,11 +51,11 @@
 
 **THE NARRATOR:** The hazard. Tomo.
 
-**TOMO:** Before adding rows to a file that several tools write, read how the tools write it. The readers take only the command rows, so an extra row is ignored. The editing operations copy every other row forward, so an extra row survives an edit. Good. But those operations hold the whole file in a buffer of eight thousand one hundred and ninety-two bytes. A longer file is cut off at that size when you edit or delete, and nothing says so. Concept rows add bytes. So the buffer comes first.
+**TOMO:** Before adding rows to a file that several tools write, read how the tools write it. The readers take only the command rows, so an extra row is ignored. The editing operations copy every other row forward, so an extra row survives an edit. Good. But those operations hold the whole file in a buffer of eight thousand one hundred and ninety-two bytes. A longer file is cut off at that size when you edit or delete, and nothing says so. The largest real file is eighty-four hundred and ninety-four bytes, so one is over the line already. Concept rows add bytes. So the buffer comes first.
 
 **RAHWEH:** Did you reproduce it?
 
-**TOMO:** No. I read it. The design document says read, not run, in those words. The first step is a copy of a long event, an edit, and a diff. If the diff shows the loss, we fix the buffer and test again. If it does not, the document gets corrected.
+**TOMO:** Afterwards, yes. First I only read it, and the document said read, not run. Then I made a copy of a long event, eleven thousand bytes, a hundred and ten rows, and asked the old program to delete one row. It came back with eighty-one. Twenty-nine rows gone, no message. I swapped the fixed buffer for one that grows, ran the same test, and got a hundred and nine, with the concept rows still there, including one at the very end where the old code would have cut it. The old program is the control: it fails the test, so the test can fail.
 
 **MAXINE:** That is the habit worth taking from tonight. A finding from reading code is a suspicion with a line number. It becomes a finding when something fails on purpose.
 
@@ -63,7 +63,7 @@
 
 **THE NARRATOR:** What comes next, in order.
 
-**MAXINE:** One, reproduce the cut-off on a copy and fix it. Two, one live edit on a scratch copy with a concept row present. Three, the first game nodes in the bank, written by hand, and the check. Four, seed the links by rule over the hundred and nine events and read the results with your own eyes for wrong ones. Five, compile one whole book to one program and compare its behaviour with the per-event runs. Six, plugins, last.
+**MAXINE:** One, done: the cut-off is reproduced and fixed on scratch copies. Two, the same with the real window instead of just the program behind it, and with the other editors. Three, the first game nodes in the bank, written by hand, and the check. Four, seed the links by rule, first over one game's events and then over the rest, and read the results with your own eyes for wrong ones. Five, compile one whole book to one program and compare its behaviour with the per-event runs. Six, plugins, last.
 
 **RAHWEH:** And the owner's questions?
 
