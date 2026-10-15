@@ -98,12 +98,10 @@
       <item id="mn-entbar" class="pchq-menu-row dropdown-child" target_id="tb-menu"
             label="Entities bar on/off"
             action="sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_toggle_pdl_opt.sh' '${HOUSE}/@.apps/piececraft-hq/pieces/system/pchq.pdl' 'entities_bar'"/>
-      <!-- db tab (owner 2026-10-11, replaces the old "Db (todo)" Menu row): the database / events editors, same rows as the desktop taskbar's db menu. blueprintz = the visual events editor of the whole loaded book (empty shell,
-           BLUEPRINTZ-DESIGN.md). Every pc-hq game window gets it from this one file. -->
+      <!-- db tab (owner 2026-10-11, replaces the old "Db (todo)" Menu row): the database / events editors, same rows as the desktop taskbar's db menu. blueprintz is not here: it is under the Player menu (the debugger, BLUEPRINTZ-DESIGN.md).
+           Every pc-hq game window gets this tab from this one file. -->
       <item id="db-hq" class="pchq-menu-row dropdown-child" target_id="tb-db"
             label="db-hq" action="sh '${HOUSE}/&.hq-apps/db-hq-pal/button.sh' '${HOUSE}'"/>
-      <item id="db-bp" class="pchq-menu-row dropdown-child" target_id="tb-db"
-            label="blueprintz (events of the whole book)" action="sh '${HOUSE}/_.monads/_.livedesk-taskbar/ops/open_blueprintz.sh'"/>
       <item id="db-sql" class="pchq-menu-row dropdown-child" target_id="tb-db"
             label="sql-hq" action="sh '${HOUSE}/&.hq-apps/sql-hq/button.sh' '${HOUSE}'"/>
       <item id="db-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-db"

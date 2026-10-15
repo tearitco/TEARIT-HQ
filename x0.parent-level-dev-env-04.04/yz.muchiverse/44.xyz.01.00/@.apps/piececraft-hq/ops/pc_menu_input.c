@@ -25,6 +25,12 @@
  * Self-contained, no shared headers.
  * Usage: pc_menu_input.+x <keycode> */
 #define _GNU_SOURCE
+#ifndef _WIN32
+#include <sys/wait.h>
+#else
+#define WIFEXITED(x) 1   /* system() returns the exit code directly on Windows */
+#define WEXITSTATUS(x) (x)
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -422,16 +428,26 @@ static void check_player_touch_trigger(const char *proj_root, int turn, int px, 
                 if (fgets(mb, sizeof(mb), pf) && strncmp(mb, "mode=on", 7) == 0) play_on = 1;
                 fclose(pf);
             }
-            if (known && play_on) {
+            if (play_on) {
                 char shcmd[PATH_BUF * 2];
-                if (!strcmp(cmd_name, "player_start") || !strcmp(cmd_name, "next_level"))
-                    snprintf(shcmd, sizeof(shcmd), "sh '%s/ops/doom_event.sh' '%s'", real_root_local, cmd_name);
-                else
-                    snprintf(shcmd, sizeof(shcmd),
-                        "sh '%s/ops/doom_event.sh' '%s'; sh '%s/ops/doom_event.sh' kill_event '%s' '%d'",
-                        real_root_local, cmd_name, real_root_local, desk_id, ev_n);
-                int rc = system(shcmd);
-                (void)rc;
+                /* 2026-10-15 (owner: all events go through play_event.sh): try the event page first. tsots_touch_event.sh finds the
+                 * event on this cell through the desk's bar.txt and runs it with play_event.sh (so the blueprintz pause / step / trace
+                 * gate sees it) but only when the page's own verb equals this tile's cmds= (the same thing the old call below would do; many
+                 * imported pages carry a different verb). It exits 3 when it does not apply (no bar.txt, no touch row on this cell, a different
+                 * verb, or nothing ran), and only then does the old direct verb call below run, so nothing runs twice. */
+                snprintf(shcmd, sizeof(shcmd), "sh '%s/ops/tsots_touch_event.sh' '%s' '%d' '%d' '%s'", real_root_local, real_root_local, px, py, cmd_name);
+                int rc0 = system(shcmd);
+                int handled = (rc0 != -1 && WIFEXITED(rc0) && WEXITSTATUS(rc0) != 3);
+                if (!handled && known) {
+                    if (!strcmp(cmd_name, "player_start") || !strcmp(cmd_name, "next_level"))
+                        snprintf(shcmd, sizeof(shcmd), "sh '%s/ops/doom_event.sh' '%s'", real_root_local, cmd_name);
+                    else
+                        snprintf(shcmd, sizeof(shcmd),
+                            "sh '%s/ops/doom_event.sh' '%s'; sh '%s/ops/doom_event.sh' kill_event '%s' '%d'",
+                            real_root_local, cmd_name, real_root_local, desk_id, ev_n);
+                    int rc = system(shcmd);
+                    (void)rc;
+                }
             }
         }
         break; /* one trigger per move */
