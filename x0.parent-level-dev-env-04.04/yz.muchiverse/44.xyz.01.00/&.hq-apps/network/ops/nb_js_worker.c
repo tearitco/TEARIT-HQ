@@ -1006,6 +1006,61 @@ static int layout_hidden_anc(NbNode *n) {
 #define NB_CHAR_PX     7
 #define NB_CONTENT_PX  640
 
+/* WIDTH of an element's border box - the half of the box tree that was
+ * missing (G2.1, slice 1, 2026-10-14).
+ *
+ * Before this, getBoundingClientRect() reported `w = st.width`, the
+ * DECLARED CSS width and nothing else, so every unstyled element on every
+ * page reported 0. Measured on the G2-a fixture: box_d1=w0/h+, box_p1=w0
+ * /h+, box_s1=w0/h+, box_p2=w0/h+ - heights were already right (nb_content_h
+ * below), only widths were absent. A browser that reports width 0 for
+ * ordinary markup is not reporting geometry, it is reporting an absence.
+ *
+ * Two rules, which is what block layout actually does:
+ *
+ *   - A BLOCK box fills its containing block. Declared width wins; else
+ *     the parent's own box; the document root is the content column.
+ *   - An INLINE box shrinks to fit its text - it does NOT stretch to the
+ *     column, and reporting 640px for a three-word <span> would be its own
+ *     kind of lie.
+ *
+ * Deliberately NOT here yet: padding/border/margin in the width sum, and
+ * inline-vs-block detection by tag beyond the common set. Those are
+ * slice-2 work and pretending otherwise is how a box tree starts lying.
+ */
+static int layout_is_block_tag(const char *t) {
+    if (!t) return 1;
+    static const char *inline_tags[] = {
+        "a", "b", "em", "i", "strong", "span", "code", "small", "u",
+        "label", "sub", "sup", "abbr", "cite", "q", "kbd", "samp", NULL
+    };
+    for (int i = 0; inline_tags[i]; i++)
+        if (!strcasecmp(t, inline_tags[i])) return 0;
+    return 1;
+}
+
+static double nb_box_w(NbNode *n) {
+    if (!n || layout_hidden_anc(n)) return 0;
+    NbCssStyle st;
+    nb_css_resolve(g_css, n, nb_attr_get(n, "style"), &st);
+    if (st.has_width && st.width > 0) return st.width;
+
+    if (!layout_is_block_tag(n->tag)) {
+        /* shrink to text, clamped to the column so a long span still has
+         * SOME width rather than none */
+        double text_w = (n->text && n->text[0])
+                        ? (double)strlen(n->text) * (double)NB_CHAR_PX : 0.0;
+        double avail = nb_box_w(n->parent);
+        if (avail <= 0) avail = NB_CONTENT_PX;
+        return text_w < avail ? text_w : avail;
+    }
+    if (n->parent) {
+        double avail = nb_box_w(n->parent);
+        if (avail > 0) return avail;
+    }
+    return NB_CONTENT_PX;          /* the document's content column */
+}
+
 /* Height of an element's content box. A declared CSS height wins (that is what
  * the offset/client metrics report). Otherwise a block sums its children and a
  * text node gets one line per full column of characters, so unstyled paragraphs
@@ -1050,7 +1105,7 @@ static JSValue nb_el_getBoundingClientRect(JSContext *ctx, JSValueConst this_val
     if (n && !layout_hidden_anc(n)) {
         NbCssStyle st;
         nb_css_resolve(g_css, n, nb_attr_get(n, "style"), &st);
-        w = st.width;
+        w = nb_box_w(n);
         h = st.has_height ? st.height : nb_content_h(n);
         layout_xy(n, &x, &y);
     }
