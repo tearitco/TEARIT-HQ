@@ -13,6 +13,10 @@ STEP | press | fp
 STEP | expect | &.hq-apps/sfx-hai/state/ui.txt | contains | coin_pickup f0 1087 Hz | 5
 STEP | press | play
 STEP | expect | &.hq-apps/sfx-hai/state/ui.txt | contains | msg=playing coin_pickup | 5
+# regression 2026-10-14: after Play, Make must still run (the play spawn once left SIGCHLD ignored: make was dropped as "still making" forever)
+STEP | press | make
+STEP | expect | &.hq-apps/sfx-hai/state/ui.txt | contains | busy=0 | 30
+STEP | expect | &.hq-apps/sfx-hai/state/ui.txt | absent | failed: | 2
 STEP | shot | &.hq-apps/sfx-hai/state/shot_made.png
 STEP | press | jc_yes
 STEP | expect | &.hq-apps/sfx-hai/state/ui.txt | contains | msg=claude said yes | 5

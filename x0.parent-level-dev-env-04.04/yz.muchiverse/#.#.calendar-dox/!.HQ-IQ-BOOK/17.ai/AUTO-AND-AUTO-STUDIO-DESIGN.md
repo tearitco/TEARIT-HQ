@@ -103,3 +103,13 @@ Each slice: build, relay/shell case, negative test, doc, commit (own paths only)
 3. Is it acceptable for the studio to drive windows while the owner is at the machine (focus-follows-mouse and display-wide grabs can fight a human)? Proposal: studio pauses when it sees human input on the relay.
 4. Which tier-3 free API providers are approved, and any data that must never leave the house.
 5. Where the owner wants the `auto-hq` entry (the hotbar and menu positions are theirs).
+
+---
+## 10. Status update 2026-10-14 (evening): A0-A3 built and proven on sfx-hai
+Details: `12.calendar/2026-10-14/DEVLOG-auto-A0-A3.md`; code `&.widgits/auto/`; class `NIGHT_50_THE_CONDUCTOR_AND_THE_OFF_SWITCH.txt`. Summary: `auto_ctl`, `auto_act`, `auto_observe`, `auto_plan` and a generic `case_run` exist; **34/34 proof cases pass** against a live sfx-hai window using a scratch user dir (off = zero relay bytes written, unknown verb / owner-gated verb / STOP refused with the relay untouched, expectation that cannot be met reports FAIL, a rules-only plan of 6 steps made 3 distinct validated sounds with no owner click). Not built: A4-A8.
+Changes to the design learned from building it:
+1. **Manifest rows added**: `READY | verb | file | text | timeout` and `NOTE | verb | file | field` (section 3). A window that can drop a press while busy must publish a busy flag (`busy=0|1` in its state); sfx-hai now does.
+2. **Success must be a marker, not a string**: a `contains` check on a rewritten state file can be satisfied by a stale line. The manifest expectations are `grew` (append-only file must grow, optionally with text on the new last row), `lastline-contains`, `lastline-absent` (both also require growth).
+3. **`--human` is a convention** (section 2 rule "neither switch turns itself on"); real enforcement needs the A7 window button.
+4. **Observe**: append files change by size, rewritten files by hash; missing = unknown (exit 3).
+5. **Rule found the hard way**: a handler must never leave `SIGCHLD` ignored (it is inherited by every later child). The proofs caught this bug in the Play buttons shipped earlier the same day.

@@ -1,0 +1,42 @@
+SECTION | KEY | VALUE
+------------------------------
+# auto_cases.pdl - proofs for slices A0-A3 (BOOK 17.ai/AUTO-AND-AUTO-STUDIO-DESIGN.md). Run: case_run tests/auto_cases.pdl  with env  A=<ops/+x dir> U=<scratch user dir> M=<sfx-hai manifest> H=<house root> R=<window relay file> NEG=<tests dir>  (see tests/run.txt).
+# CASE | name | expected exit code | stdout/stderr must contain (- none) | must NOT contain (- none) | command (sh -c). Needs a FRESH sfx-hai window for the A1-A3 cases (state/ledger.txt may already hold rows; cases compare growth, not totals).
+# ---- A0 the switches -------------------------------------------------------------------
+CASE | a0 fresh user is off | 0 | state ~ off | state ~ on | "$A/auto_ctl.+x" --user "$U/a0" status
+CASE | a0 on without --human refused | 4 | needs --human | - | "$A/auto_ctl.+x" --user "$U/a0" on
+CASE | a0 still off after refusal | 0 | state ~ off | state ~ on | "$A/auto_ctl.+x" --user "$U/a0" status
+CASE | a0 studio-on while off refused | 4 | studio needs auto=on | - | "$A/auto_ctl.+x" --user "$U/a0" studio-on --human
+CASE | a0 on with --human | 0 | ok on | - | "$A/auto_ctl.+x" --user "$U/a0" on --human
+CASE | a0 now on | 0 | state ~ on | - | "$A/auto_ctl.+x" --user "$U/a0" status
+CASE | a0 studio-on with auto on | 0 | ok studio-on | - | "$A/auto_ctl.+x" --user "$U/a0" studio-on --human
+CASE | a0 off also turns studio off | 0 | studio ~ off | studio ~ on | "$A/auto_ctl.+x" --user "$U/a0" off >/dev/null && "$A/auto_ctl.+x" --user "$U/a0" status
+CASE | a0 stop creates STOP file | 0 | stop_file ~ present | - | "$A/auto_ctl.+x" --user "$U/a0" stop >/dev/null && "$A/auto_ctl.+x" --user "$U/a0" status
+CASE | a0 on refused while STOP present | 4 | STOP file present | - | "$A/auto_ctl.+x" --user "$U/a0" on --human
+CASE | a0 clear-stop needs human | 4 | needs --human | - | "$A/auto_ctl.+x" --user "$U/a0" clear-stop
+CASE | a0 clear-stop with human | 0 | ok clear-stop | - | "$A/auto_ctl.+x" --user "$U/a0" clear-stop --human
+CASE | a0 garbage auto.pdl reads as off | 0 | state ~ off | state ~ on | mkdir -p "$U/a0g" && printf 'garbage\nAUTO state on\nAUTO | state | maybe\n' > "$U/a0g/auto.pdl" && "$A/auto_ctl.+x" --user "$U/a0g" status
+CASE | a0 every change is in the ledger | 0 | REFUSED | - | cat "$U/a0/auto/ledger.txt"
+# ---- A1 one verb, checked -----------------------------------------------------------------
+CASE | a1 auto off: refused and ZERO relay bytes written | 0 | relay unchanged | differ | b=$(wc -c < "$R"); "$A/auto_act.+x" --user "$U/a1" --manifest "$M" --house "$H" --verb make; a=$(wc -c < "$R"); [ "$a" = "$b" ] && echo "relay unchanged $b bytes" || echo "differ $b $a"
+CASE | a1 turn auto on (scope sfx-hai) | 0 | ok on | - | "$A/auto_ctl.+x" --user "$U/a1" on --human && printf 'AUTO | scope | sfx-hai\nAUTO | budget_actions_per_min | 50\n' >> "$U/a1/auto.pdl"
+CASE | a1 verb not in manifest refused, relay untouched | 0 | verb not in manifest | differ | b=$(wc -c < "$R"); "$A/auto_act.+x" --user "$U/a1" --manifest "$M" --house "$H" --verb delete_everything 2>&1; a=$(wc -c < "$R"); [ "$a" = "$b" ] || echo differ
+CASE | a1 owner-gated verb refused, relay untouched | 0 | owner-gated | differ | b=$(wc -c < "$R"); "$A/auto_act.+x" --user "$U/a1" --manifest "$M" --house "$H" --verb owner_yes 2>&1; a=$(wc -c < "$R"); [ "$a" = "$b" ] || echo differ
+CASE | a1 window outside scope refused | 4 | not in scope | - | mkdir -p "$U/a1s" && "$A/auto_ctl.+x" --user "$U/a1s" on --human >/dev/null && "$A/auto_act.+x" --user "$U/a1s" --manifest "$M" --house "$H" --verb make
+CASE | a1 make PASS (ledger grew, no FAIL) | 0 | PASS sfx-hai make | FAIL sfx | n=$(wc -l < "$H/&.hq-apps/sfx-hai/state/ledger.txt"); "$A/auto_act.+x" --user "$U/a1" --manifest "$M" --house "$H" --verb make; m=$(wc -l < "$H/&.hq-apps/sfx-hai/state/ledger.txt"); [ "$m" -gt "$n" ] || echo "LEDGER DID NOT GROW"
+CASE | a1 second make also PASS (stale text cannot satisfy it) | 0 | PASS sfx-hai make | - | "$A/auto_act.+x" --user "$U/a1" --manifest "$M" --house "$H" --verb make
+CASE | a1 expectation that cannot be met reports FAIL | 1 | FAIL sfx-hai make_bad | PASS | "$A/auto_act.+x" --user "$U/a1" --manifest "$NEG/neg_manifest.pdl" --house "$H" --verb make_bad
+CASE | a1 dead window refused (exit 6) | 6 | window not running | - | "$A/auto_act.+x" --user "$U/a1" --manifest "$NEG/neg_dead.pdl" --house "$H" --verb make 2>&1; exit $?
+CASE | a1 budget of 1 stops the second action | 5 | budget | - | mkdir -p "$U/a1b" && "$A/auto_ctl.+x" --user "$U/a1b" on --human >/dev/null && printf 'AUTO | scope | sfx-hai\nAUTO | budget_actions_per_min | 1\n' >> "$U/a1b/auto.pdl" && "$A/auto_act.+x" --user "$U/a1b" --manifest "$M" --house "$H" --verb play >/dev/null && "$A/auto_act.+x" --user "$U/a1b" --manifest "$M" --house "$H" --verb play
+CASE | a1 REGRESSION: make still PASSes after a play press (SIGCHLD bug) | 0 | PASS sfx-hai make | - | "$A/auto_act.+x" --user "$U/a1" --manifest "$M" --house "$H" --verb play >/dev/null && "$A/auto_act.+x" --user "$U/a1" --manifest "$M" --house "$H" --verb make
+CASE | a1 STOP file refuses, relay untouched | 0 | STOP file present | differ | "$A/auto_ctl.+x" --user "$U/a1" stop >/dev/null; b=$(wc -c < "$R"); "$A/auto_act.+x" --user "$U/a1" --manifest "$M" --house "$H" --verb make 2>&1; a=$(wc -c < "$R"); [ "$a" = "$b" ] || echo differ
+CASE | a1 ledger has ACT PASS, ACT FAIL and REFUSE rows | 0 | ACT | - | grep -c 'ACT | ' "$U/a1/auto/ledger.txt" && grep -c 'REFUSE | ' "$U/a1/auto/ledger.txt" && grep -q 'FAIL' "$U/a1/auto/ledger.txt" && echo ACT-FAIL-seen
+# ---- A2 observe: marker growth, not mtime ----------------------------------------------------------
+CASE | a2 first look | 0 | first | - | rm -rf "$U/a2" && "$A/auto_observe.+x" --manifest "$M" --cursor "$U/a2" --house "$H"
+CASE | a2 idle looks say same (3 in a row) | 0 | same | changed | "$A/auto_observe.+x" --manifest "$M" --cursor "$U/a2" --house "$H" >/dev/null; sleep 1; "$A/auto_observe.+x" --manifest "$M" --cursor "$U/a2" --house "$H" | grep ledger; sleep 1; "$A/auto_observe.+x" --manifest "$M" --cursor "$U/a2" --house "$H" | grep ledger
+CASE | a2 ledger growth is reported as changed | 0 | ledger append | - | "$A/auto_ctl.+x" --user "$U/a1" clear-stop --human >/dev/null; "$A/auto_act.+x" --user "$U/a1" --manifest "$M" --house "$H" --verb make >/dev/null; "$A/auto_observe.+x" --manifest "$M" --cursor "$U/a2" --house "$H" | grep -q 'ledger | [0-9]* | changed' && echo "ledger append"
+CASE | a2 missing file reads unknown, never zero (exit 3) | 3 | unknown | - | printf 'APP | x | p\nSTATE | nothing | does/not/exist.txt | append\n' > "$U/m_missing.pdl" && "$A/auto_observe.+x" --manifest "$U/m_missing.pdl" --cursor "$U/a2" --house "$H"
+# ---- A3 T0 rules driver (no model) -------------------------------------------------------------------------
+CASE | a3 plan of 3 x (freq_up, make) passes with 0 owner clicks | 0 | PLAN | FAIL | printf 'DO | freq_up | 1\nDO | make | 1\nDO | freq_up | 1\nDO | make | 1\nDO | freq_up | 1\nDO | make | 1\n' > "$U/plan1.pdl" && "$A/auto_ctl.+x" --user "$U/a3" on --human >/dev/null && printf 'AUTO | scope | sfx-hai\nAUTO | budget_actions_per_min | 50\n' >> "$U/a3/auto.pdl" && "$A/auto_plan.+x" --user "$U/a3" --manifest "$M" --plan "$U/plan1.pdl" --house "$H" | tee "$U/plan1.out" && grep -q 'PLAN | 6 | 6 | 0 | 0' "$U/plan1.out"
+CASE | a3 the three sounds are distinct (names in ledger notes) | 0 | distinct 3 | - | n=$(grep 'ACT | .* | make | rules | PASS' "$U/a3/auto/ledger.txt" | awk -F'|' '{print $8}' | sort -u | wc -l); echo "distinct $n"
+CASE | a3 plan stops at first refusal (owner-gated verb, 1 step, make never runs) | 0 | PLAN | - | printf 'DO | owner_yes | 1\nDO | make | 1\n' > "$U/plan2.pdl"; "$A/auto_plan.+x" --user "$U/a3" --manifest "$M" --plan "$U/plan2.pdl" --house "$H" > "$U/plan2.out"; rc=$?; cat "$U/plan2.out"; grep -q 'PLAN | 1 | 0 | 0 | 1' "$U/plan2.out" && [ $rc = 1 ]

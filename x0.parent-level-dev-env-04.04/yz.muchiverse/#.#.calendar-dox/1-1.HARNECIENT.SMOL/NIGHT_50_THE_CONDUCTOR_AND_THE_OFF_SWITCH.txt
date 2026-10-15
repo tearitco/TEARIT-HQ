@@ -1,0 +1,112 @@
+# 🎛️🔌 NIGHT 50 — The Conductor and the Off Switch 🔌🎛️
+# ====================================================================
+# Title: "🎛️🔌 NIGHT 50 — The Conductor and the Off Switch 🔌🎛️"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: Design and proof night. The first runnable part of the auto system: a per-user switch, a conductor that drives one real window through its relay, and the proofs that show what it does and does not do. Two real bugs the proofs found, one of them shipped the same day, and how each was caught. The next steps, in order.
+# Long-form: stays on the architecture and the proofs. Everything called built was run; everything called a plan is a plan. Nothing here has been heard by the owner. The numbers are from the test runs of 2026-10-14.
+# Companion documents: BOOK 17.ai AUTO-AND-AUTO-STUDIO-DESIGN (status section 10), BOOK 12.calendar 2026-10-14 DEVLOG-auto-A0-A3, XO 26.Oct15-lookahead (four hand-off files). Code: the house widgit folder auto.
+
+**THE NARRATOR:** NIGHT 31 said a test is a lesson with the grader already written. Tonight the grader runs a machine that presses buttons for a person. The question is not whether it can press them. The question is how you prove, in numbers, that it presses only the ones it is allowed to, and that when it says it worked, it worked.
+
+**MAXINE:** Start with what exists, so nobody pictures more than is there.
+
+**TOMO:** Four small programs and a runner. One sets the switches for a user: auto on or off, studio on or off, and a stop file. One presses one named button in one window through that window's relay and then checks that the window really did the thing. One watches a window's state files and says whether they changed. One runs a list of buttons in order. The runner is generic: it reads a file of cases, runs each command, and checks the exit code and the words in the output.
+
+**RAHWEH:** And the window is a real one?
+
+**TOMO:** The sound toy. A real window on the real renderer, started fresh, with a manifest file beside it that says which buttons the conductor may press and how to tell each one worked. Everything else in the house is untouched. No model is involved yet. The decisions are plain rules. That is on purpose: you prove the hands before you give them a brain.
+
+---
+
+**THE NARRATOR:** The first lesson is about the off switch. Maxine, what does it mean to prove a switch is off?
+
+**MAXINE:** The weak proof is that the program prints "refused". The strong proof is that the thing it refused to touch was not touched. The window listens to a relay file, one line per key press. So the case counts the bytes in that file, runs the conductor with auto off, counts again, and demands the same number. Same bytes, no key reached the window. The same measurement is used for an unknown button, for a button the owner reserved, and for the stop file.
+
+**RAHWEH:** Why not just read the log?
+
+**MAXINE:** Because a log is what the program says it did. The byte count is what the world says happened. When those two disagree, the world wins. It is the same rule as never reporting a number you did not observe, turned into a test.
+
+**TOMO:** Two more small proofs on the switch. Turning auto on without the human flag is refused and the state stays off. A garbage settings file reads as off, because the rule is that anything other than exactly "on" is off. A system that fails open is a system that has a bad day.
+
+**THE NARRATOR:** And the flag itself. Is it a lock?
+
+**TOMO:** No, and the class should say so plainly. The human flag is a convention that keeps the loop from enabling itself. Anyone who can run the program can type the flag. The real lock is a button in a window that only a person can press, and that is a later slice. Until then the flag stops accidents, not attackers.
+
+---
+
+**THE NARRATOR:** The second lesson is about what counts as success.
+
+**RAHWEH:** The window has a status file. If I press make and the status says "done", that is success, no?
+
+**MAXINE:** Press make twice. The second time the file already says "done" from the first. A check that looks for the word passes at once, before the second sound is even made. A stale line cannot be told apart from a fresh one.
+
+**TOMO:** So success is a marker. The sound toy keeps an append-only ledger, one row per sound. Press the button, and success means the ledger grew and the new last row has no failure in it. Growth cannot be faked by an old line. Observing works the same way: a file that only grows is judged by its size, a file that is rewritten is judged by a hash of its contents, and a file that is missing is reported as unknown, never as zero. An empty count that reads as zero is how this house once built a whole theory on nothing.
+
+**MAXINE:** And the negative test: an expectation that can never be met, with a three second timeout. It must report a failure. If a checker can only say yes, it is not a checker.
+
+---
+
+**THE NARRATOR:** Now the two bugs. Rahweh, tell the first one, because it is yours.
+
+**RAHWEH:** It is a parsing bug in the shared helper, mine, and it is the plain kind. A row of the case file is split on the pipe character into six fields. My splitter cut the sixth field at the next pipe too. Any command that contained a pipe lost the end of itself. Seventeen cases passed and sixteen failed on the first run with a message about an unterminated quote. Nothing was wrong with the conductor. The yardstick was bent.
+
+**MAXINE:** Say how you knew it was the yardstick.
+
+**RAHWEH:** The failures were uniform. Every case containing a pipe broke the same way, and cases without one passed. A real defect in the thing under test does not sort itself by punctuation. The fix was one line: the last field keeps everything after it.
+
+**THE NARRATOR:** The second one.
+
+**TOMO:** That one is not a yardstick bug. It is a bug in two windows, and it shipped earlier the same day. A play button was added to both toys so a sound could be heard again. To keep the finished player from lingering as a zombie, the handler told the process to ignore child exits. That setting is inherited by every program started afterwards. After one press of play, the sound maker could no longer wait for its own renderer and reported that the renderer rejected the recipe. And the window itself could never again see that its last job had finished, so it said it was still making the last sound, forever.
+
+**RAHWEH:** Why did the earlier test not catch it?
+
+**TOMO:** Because the earlier test pressed play after make and stopped. It never pressed make after play. A test only protects the orders it tries. The conductor's cases pressed things in a different order, and a plan that nudged the pitch and then made a sound failed in forty seconds with a message that did not look like what it was.
+
+**MAXINE:** The method matters more than the bug. The failure was reproduced outside the window first: the same recipe rendered fine by hand, so the recipe was innocent. Then the process list showed no child running while the window said busy, which means a finished child that nobody reaped. Then one search for the signal call found the cause. Each step removed a possibility. Nobody guessed.
+
+**TOMO:** The fix is a double fork: the player is started by a short-lived middle process, so the window never owns a child it cannot wait for, and the signal handling stays at its default. Then three regression steps were added, one in each window's own test and one in the conductor's. The voice window had the identical patch, so it got the identical fix and the identical step.
+
+**THE NARRATOR:** What does the class take from that?
+
+**MAXINE:** Three rules. A handler never changes process-wide signal behavior, because the change leaks into everything it starts. A test for a new button must press the old buttons after it, not only before it. And when a new kind of test fails somewhere an old test passed, the first suspect is the order, not the new tool.
+
+---
+
+**THE NARRATOR:** One more thing the proofs taught that is about design, not bugs.
+
+**RAHWEH:** The sound toy writes its ledger row and its done line first, and only then plays the sound. So a conductor that sees the row and immediately presses make again is pressing a window that is still busy, and the window correctly drops the press.
+
+**TOMO:** So there are two honest fixes and both were made. The window now publishes a busy flag in its state file, which the manager already knew internally. And the manifest has a ready row: before pressing, wait until the file says the window is not busy. The rule for every window that joins from now on: if a button can be dropped while the window is busy, the window must say when it is busy. A conductor should not guess how long a sound lasts.
+
+---
+
+**THE NARRATOR:** The numbers, then the limits. Maxine.
+
+**MAXINE:** The conductor's cases: thirty-four pass, none fail, on a freshly started window. The sound toy's own smoke test: eighteen. The voice toy's: thirty-eight. A rules-only plan of six steps made three sounds that the numeric checks accepted and that were different from each other, with no owner click. Each make took about nineteen hundred milliseconds.
+
+**TOMO:** And what was not proven, so nobody builds on it by mistake. One window only. No model has chosen anything; the first brain is a later slice. The human flag is not a lock. The relay is not real hardware input, so a focus or keyboard-grab bug would not show up here. The tests used a scratch user, not any real account. The sounds played through the speakers during the tests and nobody judged how they sound; valid and distinct means the checks passed and the numbers differ, not that they are good. And nothing here has anything to do with the microphone.
+
+**RAHWEH:** And the earlier runs?
+
+**MAXINE:** Written down in the log, failures included. Seventeen of thirty-three, then twenty-nine, then thirty, then thirty-four of thirty-four. A log that only shows the last run teaches the next person that it was easy.
+
+---
+
+**THE NARRATOR:** What comes next, in order. Tomo.
+
+**TOMO:** First, give the other toys manifests: the voice window and the image studio, so one plan can cross windows. The image studio's accept button stays reserved for the owner. Second, a night runner: every relay case and the conductor's cases, run on the other machines while the owner sleeps, writing a green and red map of the house so the next agent starts the day knowing what is broken. That needs no model and pays for itself at once. Third, the first brain: a small model on the network machine chooses among the listed buttons, and the number that matters is how often it chooses a button that exists. Fourth, the scheduler that runs several windows by load. Fifth, a window for the owner, with the big on and off, the stop button, and the queue of things waiting for a human verdict. The owner's ears and eyes are the scarce resource, and the best use of automation is making their yes or no cheap.
+
+**RAHWEH:** And the questions only the owner can answer?
+
+**TOMO:** Which accounts get the switches first. Which buttons are always reserved for a person. Whether the conductor may work while the owner is at the machine, since a person's hands and a conductor's hands share one keyboard focus. Which free services are allowed outside the house. And where the new window goes, because the hotbar and the menu are the owner's.
+
+---
+
+**THE NARRATOR:** Exercises, for anyone taking the class.
+
+**MAXINE:** One. Read the manifest for the sound toy and name three things it forbids. Two. Break the off switch on purpose, by making the conductor skip its first check, and watch which case turns red. If none does, you have found a gap in the proofs. Three. Write the ready row for a window that has no busy flag, and say what you would have to add to the window first.
+
+**TOMO:** Four. Find a test in the house that only tries one order of events. Add the reverse order. Report what happened, including if nothing did.
+
+**THE NARRATOR:** A switch is not proven off by the word refused. It is proven by the bytes that did not move. And a test is not finished when it passes in the order its author imagined. It is finished when the author has tried to make it fail.
