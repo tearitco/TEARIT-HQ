@@ -640,12 +640,23 @@ returned the *sidebar* columns (`cx1..cx6`, all plausible numbers, all
 the wrong numbers) and would have produced a confident, entirely wrong
 ±2 px comparison.
 
-**So G2.2's first slice is the parser, not the tolerance.** Either the
-emitter (`dump_frame_png_op` / the renderer path behind
-`/tmp/entity-menu-frame.png.frame.txt`) gains explicit, fixed geometry
-columns, or the comparison anchors on the trailing numeric run. Until
-that is done and *verified against the emitter's actual format*, any
-±2 px number is not a measurement.
+**DONE (same day): `tests/frame_geom.py`, verified against the real dump.**
+
+The emitter is `khtpm_core_render.c`'s frame serializer, a fixed 29-field
+pipe-separated row with x/y/w/h at positions 9-12. So the parser counts
+from the END (where the field count is known and cannot drift), and
+**verifies the count is exactly 29** - a row that does not match is
+refused, never guessed. Verified two ways:
+
+  - positives: the window reads **x=0 y=0 w=784 h=504**, which matches the
+    real window, and content rows step **y=180, 210, 240, 270 at h=30**.
+    The old guessing parser read the same row as `y=200 w=180 h=389`.
+  - negative: given a good row plus a short row plus a row with an
+    embedded newline, it parses 1 and **skips 3**, printing why.
+
+So G2.2's remaining work is the comparison itself: sample N pairs by
+order (Nth projected row ↔ Nth DOM element) and assert ≥ 95 % within
+±2 px. The instrument is ready; the tolerance is the easy part.
 
 Note the shape: this is the ninth instance of §9.4's lesson, and the
 first where the trap was found **before** it produced a wrong verdict
