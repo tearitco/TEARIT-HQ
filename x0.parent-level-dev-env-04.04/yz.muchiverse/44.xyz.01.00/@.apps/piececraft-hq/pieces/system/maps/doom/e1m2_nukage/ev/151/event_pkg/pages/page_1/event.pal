@@ -1,2 +1,2 @@
-# player_start at 0,78 glyph S
+# change_ammo at 56,47 glyph A
 exec cmd_1.sh

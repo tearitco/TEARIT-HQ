@@ -1,2 +1,2 @@
-# change_hp at 13,15 glyph H
+# start_battle at 61,19 glyph E
 exec cmd_1.sh

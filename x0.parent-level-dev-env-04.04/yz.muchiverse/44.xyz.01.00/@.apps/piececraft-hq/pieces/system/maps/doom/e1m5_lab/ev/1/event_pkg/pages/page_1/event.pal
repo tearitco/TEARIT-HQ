@@ -1,2 +1,2 @@
-# start_battle at 51,18 glyph E
+# player_start at 5,44 glyph S
 exec cmd_1.sh

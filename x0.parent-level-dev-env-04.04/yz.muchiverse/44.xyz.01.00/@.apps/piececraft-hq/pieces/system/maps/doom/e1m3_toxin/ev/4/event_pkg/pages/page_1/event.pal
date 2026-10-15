@@ -1,2 +1,2 @@
-# change_armor at 24,32 glyph H
+# change_ammo at 50,62 glyph A
 exec cmd_1.sh

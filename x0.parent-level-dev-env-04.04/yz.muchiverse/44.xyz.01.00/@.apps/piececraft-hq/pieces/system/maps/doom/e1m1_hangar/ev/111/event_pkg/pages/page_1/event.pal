@@ -1,2 +1,2 @@
-# start_battle at 9,18 glyph E
+# change_ammo at 74,102 glyph A
 exec cmd_1.sh
