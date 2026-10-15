@@ -197,3 +197,19 @@ Not decided: which of these should become an event page fired at `play_event.sh`
 
 ### 12.11 The VM does not step (checked, owner: "it should be able to step")
 `_shared-lib/system/prisc+x.c` is the canonical source (the wsr-pal, pal-chain, lpns and hai-horn build scripts compile their own copies from it). Events run the binary `101.mutaclsym*/system/prisc+x` (two such directories exist; `play_event.sh` takes the first). It has no step, trace or breakpoint; it reads only `PRISC_ACTIVE_TARGET`, `PRISC_KEY`, `PRISC_PROJECT_ID`, `PRISC_PROJECT_ROOT`. Adding the hook in the canonical source and rebuilding the copies is the work of phase D4 (design in 12.8).
+
+### 12.12 The VM step hook is built (2026-10-15; first part of D4, source only)
+`_shared-lib/system/prisc+x.c` now has a step and trace hook, **off unless `PRISC_STEP_DIR` names an existing directory** (a typo or missing directory leaves the hook off, so events cannot stall). Protocol, all append-only files in that directory:
+- Before each instruction the VM appends `STEP | n | pc | OPNAME | target` to `vm.trace`, then waits until `step.marker` has grown by one byte (the controller appends one byte per instruction it allows). `END | n` is written when the program ends.
+- `run` present: no waiting, still traced (free run). `abort` present: stops with `ABORT | n`, exit code 3. Waiting longer than `PRISC_STEP_TIMEOUT_S` (default 600): `TIMEOUT | n`, exit code 4.
+- Not compiled on Windows (no-op there).
+**Evidence** (patched VM built to scratch, run on the recompiled `m8_redhorned` Change Gold event in a scratch house; the committed VM built the same way is the control):
+| Case | Observed |
+|---|---|
+| hook off (no variable) | `qolq` 70, no trace files; committed VM also 70 |
+| step mode | held before the first instruction (`qolq` 35, still 35 after 0.5 s with no token); after token 1: 45 (cmd_1 ran); after token 2: 70 (cmd_2 ran); token 3: halt, `END | 3`. Trace: `EXEC cmd_1.sh`, `EXEC cmd_2.sh`, `HALT` |
+| abort file | exit 3, `ABORT | 1`, `qolq` 35 (nothing ran) |
+| timeout 1 s | exit 4, `TIMEOUT | 1`, `qolq` 35 |
+| free run file | exit 0, 4 rows, `qolq` 70 |
+| variable names a missing directory | first version waited out the timeout (found by this case); fixed; now exit 0, `qolq` 70 |
+**Not done:** the tracked VM binary `101.mutaclsym*/system/prisc+x` is **not rebuilt** (events still run the old binary); other copies built from this source pick the hook up on their next build; `play_event.sh` does not set `PRISC_STEP_DIR` yet and the window has no controller; one VM step is one pal instruction (`exec cmd_N.sh` runs a whole wrapper, which is the "step command" size); a nested VM started by a wrapper would inherit the variable and step with the same directory (not tested). The pre-existing compiler warning at `prisc+x.c` line 1395 (format truncation) is not from this change.
