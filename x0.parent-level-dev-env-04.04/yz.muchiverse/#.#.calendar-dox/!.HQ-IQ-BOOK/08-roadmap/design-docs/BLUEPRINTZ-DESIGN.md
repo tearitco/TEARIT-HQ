@@ -99,7 +99,7 @@ So: **db-hq edits the database; events-hq edits one event; blueprintz is the mis
 ### 12.1 What exists today (read from the files, 2026-10-15; not run unless stated)
 - **Play already exists as a desktop-wide switch.** `#.desktop/khtpm_play_mode.state.txt` holds `mode=on` (optionally a second line `playtest=1`: the game runs and editing is allowed). The player cell of the taskbar toggles it (`khtpm_taskbar_manager.c`, "1.play: ON/OFF"); pc-hq's `pchq_board_action.sh` has the sub-actions toggle, start, playtest, stop, synch, save:N, load:N. Older readers test only the first line, so extra lines are safe for them.
 - **Triggers only fire while `mode=on`.** `tsots_touch_event.sh` (on-touch, event-touch, player-touch) exits at once unless `mode=on`; edit mode (play off) opens the entity's context menu instead.
-- **One choke point runs events: `play_event.sh <pkg> [house] [trigger]`.** It picks the highest-numbered page whose `condition.pdl` trigger equals the trigger passed (default `on-click`) and runs its `event.pal`. It is called by the touch script, by `rpg_pet.c`, by the pals' `Play` method (`cursword/meta.pdl`) and by the events-hq Play button (harness `test_h8_play_button.sh`, 2026-08-25, checks a gold change). `rpg_pet.c` plays its events and the clock's `common:<event>` pages through it (read). `doom_event.sh` and `chess_event.sh` do **not** mention it (grep count 0), so a pause gate in `play_event.sh` would not cover them; `pc_entity_ctx.sh` mentions it once (not read).
+- **One choke point runs events: `play_event.sh <pkg> [house] [trigger]`.** It picks the highest-numbered page whose `condition.pdl` trigger equals the trigger passed (default `on-click`) and runs its `event.pal`. It is called by the touch script, by `rpg_pet.c`, by the pals' `Play` method (`cursword/meta.pdl`) and by the events-hq Play button (harness `test_h8_play_button.sh`, 2026-08-25, checks a gold change). `rpg_pet.c` plays its events and the clock's `common:<event>` pages through it (read). `doom_event.sh` and `chess_event.sh` do not mention it, but that needs care: they are **verb executors** that event commands call (2,557 event `cmd_N.sh` files call them), so those runs are already inside `play_event.sh`. The gap is the **direct callers** (see 12.8).
 - **Triggers in the house** (all `condition.pdl`, sessions excluded): on-click 2,634; on-touch 87; parallel 65; Autorun at least once (`greet_player`); plus the rpg-pet clock/time triggers. **Waiting is the normal state** of an event.
 - **Pause and Step do not exist.** The old inert play/pause rows were removed 2026-09-14 (comment in the taskbar manager); `play_event.sh` has no step, trace or breakpoint (grep). The mode file is on/off only.
 - **Per-event ledgers exist** for rpg-pet (`events/<name>/master_ledger.txt`, `history.txt`, e.g. `Play event page_1 (trigger=clock) for day_tick`), so a run history is partly recorded already.
@@ -121,14 +121,14 @@ So: **db-hq edits the database; events-hq edits one event; blueprintz is the mis
 - `#.desktop/blueprintz_debug.txt`: `paused=1` or missing. **Missing file = run exactly as today**; nothing changes for anyone who is not using blueprintz. This is the default-safe rule and gets a regression case.
 - `&.hq-apps/blueprintz/state/queue.txt` (append-only: `QUEUED | ts | pkg | page | trigger`) and `trace.txt` (append-only: `START`, `CMD n`, `END`, `ERR` rows per run). The window's change detection is the growth of these files, not mtime.
 - The gate sits in `play_event.sh`, the one choke point: if `paused=1`, append to the queue and exit instead of running. Step runs the queue entry with the gate bypassed.
-- Command stepping: either run the Nth `exec cmd_N.sh` of the pal (works for straight-line events), or single-step the pal in the prisc VM (not checked whether the VM supports it; check before promising), which is needed for if/else.
+- Command stepping: **decided by the owner 2026-10-15: use the prisc VM** (see 12.8), not a per-command shell loop.
 
 ### 12.5 Phases (each ends with a screenshot or state-file evidence and a negative test)
-- **D0 read-only page view** of the scratch page: events, triggers, `waiting` state, from the files. Evidence: screenshot. Estimate: one focused session (a guess).
+- **D0 read-only page view, visualize and flag only** (owner: "just visualize. flag problems"): events, triggers, `waiting` state, from the files, plus the problem flags of 12.8. Evidence: screenshot, and each flag proven on a known-bad copy and absent on a good one. Estimate: one focused session (a guess).
 - **D1 trace**: `play_event.sh` appends START/CMD/END rows; Change Gold shows its before/after gold. Regression: with no debug file, the events behave and the output is the same as before.
 - **D2 pause and queue**: with `paused=1` a relay click on the scratch entity leaves gold unchanged and adds a queue row; negative: remove the file and the same click changes gold by 35.
 - **D3 step event** and **Fire**.
-- **D4 step command** (needs the VM or per-command decision above); **D5** breakpoints and watch values.
+- **D4 step command in the prisc VM** (hook in the main loop, 12.8); **D5** breakpoints and watch values.
 - Player-menu rows (pause, step) and the player entry for the window: last, after confirming with the owner.
 
 ### 12.6 Risks and limits
@@ -142,3 +142,28 @@ So: **db-hq edits the database; events-hq edits one event; blueprintz is the mis
 1. Does Pause also hold the world clock, or only events? *Recommend: only events at first; the clock is a separate daemon.*
 2. Should Fire be in the first version? *Recommend: yes.*
 3. Where do the player-menu rows go (after "play", before "reset")? *Recommend: ask when built, since the menu is yours.*
+
+### 12.8 Owner decisions and findings, second pass (2026-10-15)
+**Decisions (owner):** (1) step with the **prisc VM**; (2) first build is **just visualize, and flag problems**; (3) `m8_redhorned` is an inventory item of `cursword`, and it can still fire its event through cursword: exactly the kind of path to **suss out**; (4) **all event firing should go through `play_event.sh`**, including doom and chess. Recorded here; nothing is built.
+
+**The one-door rule (proposed wording for the owner to approve):** every firing of an event page goes through events-hq's `play_event.sh`; scripts like `doom_event.sh` and `chess_event.sh` are verb executors that an event's commands call, and nothing else calls them. Reason: pause, trace, step, page conditions and the run history all live at that door.
+
+**How cursword fires it (read, not run):**
+- cursword's `Play` method (`cursword/meta.pdl` line 13, also the seed and `_.monads/_.cursword`) runs `$1/_.monads/_.muchi-pet/ops/play_event.sh`. That file is a 1,066-byte **compatibility shim** (2026-08-29) that `exec`s the real `&.widgits/events-hq/ops/play_event.sh` (10,849 bytes). So a gate placed in the real script covers cursword. Good: one place.
+- **Flag 1 (found):** the live copy of `m8_redhorned` (owner data, read only) has a `Play` object whose action is an **absolute path into another checkout** (`.../NNEST-11.17/...`). That directory exists on this machine but the script path inside it does not, so that Play object points at nothing. Only one `objects.pdl`/`meta.pdl` carries such a path (grep count 1). Not fixed (owner data); blueprintz should flag it.
+- Other shim users (read): `m6_golddeity`'s `objects.pdl`, `_.monads/_.cursword`, and two test harnesses hard-code the shim path. They work only because the shim exists; keep it.
+- `m8_redhorned` page 2 has trigger `pp6`, which matches nothing the game sends (flag it as an unused trigger, not an error); an `event.pal` sits loose in its `pages/` folder.
+
+**Direct callers that skip the door (read, not run):**
+| Caller | What it calls | Note |
+|---|---|---|
+| `piececraft-hq/ops/pc_entity_ctx.sh` (lines 78, 101-117) | `doom_event.sh` / `chess_event.sh` with a verb | play-mode entity menu rows call the verb directly |
+| `piececraft-hq/ops/pc_menu_input.c` (lines 428-431) | `doom_event.sh <cmd>` then `kill_event` | same, from C |
+| `piececraft-hq/ops/pchq_board_action.sh` (lines 260-289) | `start_game`, `stop_game`, `save_slot`, `load_slot` | session verbs (title screen, saves) |
+| `@.apps/chess/open.sh` (line 10) | `chess_event.sh start_standard` | launcher |
+Not decided: which of these should become an event page fired at `play_event.sh` and which are session verbs that are not events at all (new game, save, load). Recommend: audit table first (this one), then convert one row at a time, each with a relay case and a negative test (the old path must no longer change state).
+
+**Stepping in the prisc VM (read):** `_shared-lib/system/prisc+x.c` (1,619 lines) has no step, trace or breakpoint support (only a commented-out debug line). Its run loop is `int pc = 0; while (pc < inst_count) { Inst i = program[pc]; ... }`, so a hook at the top of that loop is the natural place: when a step file is named in the environment, write `pc`, the op and the registers to a state file, then wait for a step marker (append-only file growth, not mtime) before executing the instruction. Open points: (a) there are several copies of `prisc+x` in the house (per-project `system/` folders, `world-manager/system/prisc+x`), so it is unknown which binary runs events; the hook goes in the shared source and each copy needs the rebuild; (b) the default must be no hook, with a regression case; (c) `exec cmd_N.sh` is one VM instruction, so one VM step runs a whole shell wrapper: that is the right size for "step command", and a finer "step instruction" view is available for jumps.
+
+**Problem flags for D0 (each is a rule that reads files; each gets a known-bad and a known-good case):**
+1. duplicate `id=` in one `event.ir.pdl` (`greet_player`); 2. NODE with empty params where the registry requires some (`greet_player` id 4); 3. command type not in `event_commands.registry.pdl`; 4. `event.pal` older than its IR by content (recompile needed), judged by content, not mtime; 5. page with a trigger no sender uses (`pp6`); 6. page without a `condition.pdl` or without `cmd_N.sh` for a NODE; 7. object or method action that is an absolute path to another checkout, or points at a missing script (`m8_redhorned` Play); 8. more than 128 NODE rows (compile stops silently); 9. IR larger than the old 8 KiB limit (info only, fixed); 10. stray files in `pages/`.
