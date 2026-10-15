@@ -56,6 +56,18 @@ HTML
 "$GEN" "$WORK/page.html" "$WORK/page.dom" >/dev/null \
     || { echo "FAIL: fixture generator failed"; exit 1; }
 
+# The page's <style> block, extracted the way the manager extracts it and
+# shipped as the LOAD handler's SIXTH field (js/dom/href/title/css).
+#
+# Without this the harness was lying to itself: `#hiddenbox { display:none
+# }` never reached the worker, so the display:none assertions failed
+# because the CSS was absent - not because geometry is invented for hidden
+# nodes. The first run reported a product defect that was a missing test
+# input.
+sed -n '/<style>/,/<\/style>/p' "$WORK/page.html" | sed '1d;$d' > "$WORK/page.css"
+echo "  fixture css ($(wc -l < "$WORK/page.css") lines):"
+sed 's/^/    /' "$WORK/page.css"
+
 cat > "$WORK/page.js" <<'JS'
 // Measure like a page would, then write ONE verdict line per fact into the
 // DOM so the assertions come back through the real rows pipeline.
@@ -94,10 +106,10 @@ var out = document.getElementById("out");
 if (out) { out.textContent = "VERDICT " + lines.join(" "); }
 JS
 
-python3 - "$WORKER" "$WORK/page.js" "$WORK/page.dom" <<'PY'
+python3 - "$WORKER" "$WORK/page.js" "$WORK/page.dom" "$WORK/page.css" <<'PY'
 import re, select, subprocess, sys, time
 
-worker, js, dom = sys.argv[1], sys.argv[2], sys.argv[3]
+worker, js, dom, css = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 p = subprocess.Popen([worker], stdin=subprocess.PIPE,
                      stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=0)
 
@@ -133,7 +145,8 @@ def read_frame(deadline):
     return body
 
 
-send("LOAD\n%s\n%s\nhttp://localhost/geometry\nGeometry\n\n" % (js, dom))
+send("LOAD\n%s\n%s\nhttp://localhost/geometry\nGeometry\n%s\n"
+     % (js, dom, css))
 rows = []
 deadline = time.time() + 30
 while time.time() < deadline:
