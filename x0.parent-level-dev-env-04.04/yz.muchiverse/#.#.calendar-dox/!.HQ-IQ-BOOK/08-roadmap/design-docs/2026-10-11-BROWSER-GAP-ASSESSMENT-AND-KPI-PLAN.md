@@ -661,3 +661,46 @@ order (Nth projected row ↔ Nth DOM element) and assert ≥ 95 % within
 Note the shape: this is the ninth instance of §9.4's lesson, and the
 first where the trap was found **before** it produced a wrong verdict
 rather than after.
+
+### 9.8 G2.2 measured: the two geometry systems do not agree, and cannot yet
+
+After restarting the manager so the resident worker actually ran today's
+binary (see §9.9), both sides of a 6-paragraph fixture, same page, same
+moment:
+
+| row | worker `getBoundingClientRect` | renderer painted row |
+|---|---|---|
+| 1 | x=0 y=0 w=640 h=14 | x=200 y=180 w=389 h=30 |
+| 2 | x=0 y=14 w=640 h=14 | x=200 y=210 w=389 h=30 |
+| 3 | x=0 y=28 w=640 h=14 | x=200 y=240 w=389 h=30 |
+| 4 | x=0 y=42 w=640 h=14 | x=200 y=270 w=389 h=30 |
+| 5 | x=0 y=56 w=640 h=14 | x=200 y=300 w=389 h=30 |
+| 6 | x=0 y=70 w=640 h=14 | x=200 y=330 w=389 h=30 |
+
+**0 of 24 values are within ±2 px.** G2.2 as written would score 0 %,
+not 95 %.
+
+But read the shape before reading the verdict, because the shape is the
+useful part:
+
+- **Both are internally consistent.** The worker steps y by 14, the
+  renderer by 30, every row, no drift. Neither is jittery.
+- **Both are monotonic and order-preserving.** Row N is row N on both
+  sides.
+- **They disagree on scale and origin, not on structure.** The worker
+  reports DOM-node geometry in its own space, with the renderer's 200px
+  sidebar and 180px chrome simply not existing; the renderer lays out
+  PROJECTED ROWS in its own column at its own row height.
+
+So the honest conclusion is not "geometry is broken" — it is that **the
+two systems have never been one system.** The worker's box tree (§9.7 and
+G2.1) is a self-consistent model of the DOM; the renderer is a
+self-consistent model of the rows it was handed. Nothing has ever made
+them agree, because nothing has ever required it.
+
+Closing that gap is an ARCHITECTURE change, not a tolerance change: one
+of the two has to become authoritative for the other, and the choice is a
+design decision with real consequences (the worker owns the DOM; the
+renderer owns the pixels). G2.2's ±2 px stays red until someone makes
+that call — and it should stay red, because a green one here would mean
+the number had been tuned rather than earned.
