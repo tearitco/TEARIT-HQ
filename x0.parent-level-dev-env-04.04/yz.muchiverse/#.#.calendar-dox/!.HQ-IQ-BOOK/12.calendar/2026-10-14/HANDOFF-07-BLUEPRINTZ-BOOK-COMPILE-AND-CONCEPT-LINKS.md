@@ -44,3 +44,13 @@ Automatic coding needs (a) retrieval of the closest existing events for a new on
 
 ## 8. Honest limits
 Everything in sections 3, 4 and 6 is a plan. Section 5 is a reading of source, not a run. The counts in section 2 were counted from files on disk on 2026-10-14. The owner has not reviewed the refinement text.
+
+## 9. Update 2026-10-15: blueprintz as the debugger (play, pause, step)
+Owner: blueprintz should also sit under **player**; it is about stepping through the visual code. It shows **all events on the page**; Play runs the page; an event such as Change Gold **waits for its trigger**. Full design: BOOK `BLUEPRINTZ-DESIGN.md` **section 12** (it wins if they differ).
+- **Exists (read):** the desktop play switch `#.desktop/khtpm_play_mode.state.txt` (`mode=on`, optional `playtest=1`); triggers only fire while it is on; every event is run by one script, `play_event.sh <pkg> [house] [trigger]` (called by the touch script, `rpg_pet.c`, the pals' Play method, the events-hq Play button). Triggers in the house: on-click 2,634, on-touch 87, parallel 65, Autorun at least one.
+- **Does not exist:** pause, step, trace, breakpoints. The old inert pause row was removed 2026-09-14.
+- **Plan:** a tiny gate in `play_event.sh` (missing debug file = run as today); paused triggers go to an append-only queue; Step event runs the oldest queued event; Step command runs one command (needs a decision: run the Nth `exec cmd_N.sh`, or single-step the pal in the VM, not checked); per-row Fire; page view with a state column (waiting, queued, running, done, error) and before/after values.
+- **First example:** `m8_redhorned` (template in `_.muchi-pet/entities`): on-click, Change Gold +10 and +25, has `gold.txt`. The owner's live copy is owner data: read only. Demo on a scratch page with copies of it and `greet_player` (Autorun, +1 and +777, and a malformed duplicate `id=4`).
+- **Not covered by the gate:** `doom_event.sh` and `chess_event.sh` do not go through `play_event.sh`.
+- **Phases:** D0 read-only page view (one session, a guess), D1 trace, D2 pause and queue (negative: remove the debug file and gold changes by 35), D3 step event and Fire, D4 step command, D5 breakpoints and watches. Player-menu rows last, after asking the owner.
+- Nothing here is built.

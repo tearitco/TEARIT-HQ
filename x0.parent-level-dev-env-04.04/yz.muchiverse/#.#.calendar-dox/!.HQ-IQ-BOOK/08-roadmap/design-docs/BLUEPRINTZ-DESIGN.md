@@ -92,3 +92,53 @@ So: **db-hq edits the database; events-hq edits one event; blueprintz is the mis
 1. Does `book.pal` replace the per-event `event.pal` at run time, or sit beside it? *Recommend: beside it at first (the per-event files keep working), replace only after B4b shows the same behaviour.*
 2. Order of calls in the loop: page events by trigger type (autorun, parallel, touch, action) as in RPG Maker, common events by switch. *Recommend: copy RPG Maker's order and write it down before building.*
 3. Concept granularity beyond per event, and who creates the game nodes (door, greeting, trade, travel, time, the command types). *Recommend: hand-authored nodes, per event now.*
+
+## 12. Blueprintz as the debugger: page view, Play, Pause, Step (owner 2026-10-15; design, nothing built)
+**Owner, 2026-10-15:** blueprintz belongs under **player** as well, because it is about stepping through the visual code, like a debugger. It should show **all events on the page**; pressing **Play** runs the page; an event like Change Gold is **waiting for its trigger**, so it waits. "We will have a play, and pause, and step through, for debugging." Decision recorded: the window keeps its db-dropdown entry (book editor, sections 1-11) and gains a player-menu entry (debugger); one window, two entry points. Editing the player menu rows is an owner-owned config: confirm before changing it when this is built.
+
+### 12.1 What exists today (read from the files, 2026-10-15; not run unless stated)
+- **Play already exists as a desktop-wide switch.** `#.desktop/khtpm_play_mode.state.txt` holds `mode=on` (optionally a second line `playtest=1`: the game runs and editing is allowed). The player cell of the taskbar toggles it (`khtpm_taskbar_manager.c`, "1.play: ON/OFF"); pc-hq's `pchq_board_action.sh` has the sub-actions toggle, start, playtest, stop, synch, save:N, load:N. Older readers test only the first line, so extra lines are safe for them.
+- **Triggers only fire while `mode=on`.** `tsots_touch_event.sh` (on-touch, event-touch, player-touch) exits at once unless `mode=on`; edit mode (play off) opens the entity's context menu instead.
+- **One choke point runs events: `play_event.sh <pkg> [house] [trigger]`.** It picks the highest-numbered page whose `condition.pdl` trigger equals the trigger passed (default `on-click`) and runs its `event.pal`. It is called by the touch script, by `rpg_pet.c`, by the pals' `Play` method (`cursword/meta.pdl`) and by the events-hq Play button (harness `test_h8_play_button.sh`, 2026-08-25, checks a gold change). `rpg_pet.c` plays its events and the clock's `common:<event>` pages through it (read). `doom_event.sh` and `chess_event.sh` do **not** mention it (grep count 0), so a pause gate in `play_event.sh` would not cover them; `pc_entity_ctx.sh` mentions it once (not read).
+- **Triggers in the house** (all `condition.pdl`, sessions excluded): on-click 2,634; on-touch 87; parallel 65; Autorun at least once (`greet_player`); plus the rpg-pet clock/time triggers. **Waiting is the normal state** of an event.
+- **Pause and Step do not exist.** The old inert play/pause rows were removed 2026-09-14 (comment in the taskbar manager); `play_event.sh` has no step, trace or breakpoint (grep). The mode file is on/off only.
+- **Per-event ledgers exist** for rpg-pet (`events/<name>/master_ledger.txt`, `history.txt`, e.g. `Play event page_1 (trigger=clock) for day_tick`), so a run history is partly recorded already.
+- **A compiled event is simple.** For the Change Gold events: `exec cmd_1.sh`, `exec cmd_2.sh`, `halt`. Events with if/else compile to labels and jumps (not read in this pass), so command stepping must handle those.
+
+### 12.2 The first example
+`m8_redhorned` (template at `_.monads/_.muchi-pet/entities/m8_redhorned`): page 1, trigger `on-click`, two Change Gold commands (+10, +25), and the entity has a `gold.txt`, so the effect is a number. A live copy sits in the owner's data (`xyzfs/users/<owner>/home/livedesk/pals/cursword/inventory/m8_redhorned`): **owner data, read only for us, never edited or staged**. It is an inventory item of the pal `cursword`; I did not establish that it is placed on a map page. The demo therefore runs on a **scratch page** holding a copy of `m8_redhorned` and of `greet_player` (common event: Autorun, Change Gold +1 and +777, and two rows with `id=4`, one empty: an IR defect blueprintz should flag).
+
+### 12.3 Behaviour
+- **Page view**: one row per event on the selected page: name, position, trigger, condition, **state**. States: `waiting (on-click)`, `queued` (trigger arrived while paused), `running (cmd 2/3)`, `done`, `error`. Values the event changes (gold) are shown beside the row, before and after.
+- **Play** = the existing switch (`mode=on`), the same one the player menu uses; Autorun events run at once, parallel events loop, the rest go to `waiting`.
+- **Pause** (new): triggers that arrive are not run and not dropped; they are appended to a queue and shown as `queued`.
+- **Step event** (new): run the oldest queued event, then stay paused.
+- **Step command** (new): run exactly one command of the event that is mid-run, show the values after it.
+- **Fire** (per row): send the trigger a click would send, for a waiting event. A debugger convenience; it goes through the same `play_event.sh`.
+- **Stop** = `mode=off`, as the player menu's stop.
+
+### 12.4 Where the new state lives (marker style, append-only, no new format)
+- `#.desktop/blueprintz_debug.txt`: `paused=1` or missing. **Missing file = run exactly as today**; nothing changes for anyone who is not using blueprintz. This is the default-safe rule and gets a regression case.
+- `&.hq-apps/blueprintz/state/queue.txt` (append-only: `QUEUED | ts | pkg | page | trigger`) and `trace.txt` (append-only: `START`, `CMD n`, `END`, `ERR` rows per run). The window's change detection is the growth of these files, not mtime.
+- The gate sits in `play_event.sh`, the one choke point: if `paused=1`, append to the queue and exit instead of running. Step runs the queue entry with the gate bypassed.
+- Command stepping: either run the Nth `exec cmd_N.sh` of the pal (works for straight-line events), or single-step the pal in the prisc VM (not checked whether the VM supports it; check before promising), which is needed for if/else.
+
+### 12.5 Phases (each ends with a screenshot or state-file evidence and a negative test)
+- **D0 read-only page view** of the scratch page: events, triggers, `waiting` state, from the files. Evidence: screenshot. Estimate: one focused session (a guess).
+- **D1 trace**: `play_event.sh` appends START/CMD/END rows; Change Gold shows its before/after gold. Regression: with no debug file, the events behave and the output is the same as before.
+- **D2 pause and queue**: with `paused=1` a relay click on the scratch entity leaves gold unchanged and adds a queue row; negative: remove the file and the same click changes gold by 35.
+- **D3 step event** and **Fire**.
+- **D4 step command** (needs the VM or per-command decision above); **D5** breakpoints and watch values.
+- Player-menu rows (pause, step) and the player entry for the window: last, after confirming with the owner.
+
+### 12.6 Risks and limits
+- `play_event.sh` is shared by many callers; the gate must be tiny and default to run. Callers that do not go through it are not covered until checked.
+- The relay is not real hardware input; a click that works through the relay can still fail with real focus.
+- `play_event.sh` is shell; window logic stays C or pal, so the page view and queue handling are C (manager) and only the one-line gate lives in the script.
+- `compile_page` reads at most 128 command rows and says nothing when it stops (see section 11).
+- Pause covers events started by triggers; it does not freeze the rest of the game (clock, daemons).
+
+### 12.7 Questions for the owner (recommended answer)
+1. Does Pause also hold the world clock, or only events? *Recommend: only events at first; the clock is a separate daemon.*
+2. Should Fire be in the first version? *Recommend: yes.*
+3. Where do the player-menu rows go (after "play", before "reset")? *Recommend: ask when built, since the menu is yours.*
