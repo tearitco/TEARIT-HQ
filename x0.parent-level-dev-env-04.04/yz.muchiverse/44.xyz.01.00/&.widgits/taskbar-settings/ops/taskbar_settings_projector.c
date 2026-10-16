@@ -193,11 +193,29 @@ static void read_bar_skin_label(const char *house, char *out, size_t out_sz) {
     fclose(f);
 }
 
-/* skin catalog for the swatch-style picker: sk_<i>_id / _label / _ring (+ an Off entry first). */
+/* same cut as the swatch labels: luminance under 140 keeps white writing, lighter fills use the dark writing. */
+static const char *skin_tone(const char *house, const char *reldir) {
+    char path[PATH_MAX], line[128];
+    snprintf(path, sizeof(path), "%s/%s/sprite.csv", house, reldir);
+    FILE *f = fopen(path, "r");
+    if (!f) return "tone-dark";
+    long sum = 0; int n = 0, r, g, b, a;
+    while (fgets(line, sizeof(line), f)) {
+        if (sscanf(line, "%d,%d,%d,%d", &r, &g, &b, &a) != 4) continue;
+        if (a < 16) continue;
+        sum += (r * 299 + g * 587 + b * 114) / 1000;
+        n++;
+    }
+    fclose(f);
+    if (!n) return "tone-dark";
+    return (sum / n) < 140 ? "tone-dark" : "tone-light";
+}
+
+/* skin catalog for the swatch-style picker: sk_<i>_id / _label / _ring / _tone (+ an Off entry first). */
 static int append_skin_rows(const char *house, char *ui, size_t cap, size_t off, const char *cur) {
     char path[PATH_MAX], line[1200];
     int n = 0;
-    off += (size_t)snprintf(ui + off, cap - off, "sk_0_id=\nsk_0_label=Off (solid)\nsk_0_bar=no-skin\nsk_0_ring=%s\n", cur[0] ? "" : "ring-bg");
+    off += (size_t)snprintf(ui + off, cap - off, "sk_0_id=\nsk_0_label=Off (solid)\nsk_0_bar=no-skin\nsk_0_ring=%s\nsk_0_tone=tone-dark\n", cur[0] ? "" : "ring-bg");
     n = 1;
     snprintf(path, sizeof(path), "%s/&.widgits/taskbar-settings/bar_skins.pdl", house);
     FILE *f = fopen(path, "r");
@@ -213,8 +231,15 @@ static int append_skin_rows(const char *house, char *ui, size_t cap, size_t off,
             char *c = strchr(lab, '|'); if (!c) continue;
             *c = '\0';
             l = strlen(lab); while (l > 0 && lab[l - 1] == ' ') lab[--l] = '\0';
-            off += (size_t)snprintf(ui + off, cap - off, "sk_%d_id=%s\nsk_%d_label=%s\nsk_%d_bar=skin-bar skin-for-%s\nsk_%d_ring=%s\n",
-                                    n, a, n, lab, n, a, n, strcmp(a, cur) == 0 ? "ring-bg" : "");
+            char *left = c + 1;
+            char *left_end = strchr(left, '|'); if (!left_end) continue;
+            char *mid = left_end + 1; while (*mid == ' ') mid++;
+            char *mid_end = strchr(mid, '|'); if (!mid_end) continue;
+            *mid_end = '\0';
+            l = strlen(mid); while (l > 0 && mid[l - 1] == ' ') mid[--l] = '\0';
+            const char *tone = skin_tone(house, mid);
+            off += (size_t)snprintf(ui + off, cap - off, "sk_%d_id=%s\nsk_%d_label=%s\nsk_%d_bar=skin-bar skin-for-%s\nsk_%d_ring=%s\nsk_%d_tone=%s\n",
+                                    n, a, n, lab, n, a, n, strcmp(a, cur) == 0 ? "ring-bg" : "", n, tone);
             n++;
         }
         fclose(f);
@@ -240,8 +265,26 @@ static void read_state(const char *path, int *phase, int *bg, int *fg, int *appl
     fclose(f);
 }
 
+static int read_grid_cell(const char *house) {
+    char path[PATH_MAX];
+    snprintf(path, sizeof(path), "%s/#.desktop/desk_grid.pdl", house);
+    FILE *f = fopen(path, "r");
+    int v = 80;
+    if (!f) return v;
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "GRID", 4) == 0 && strstr(line, "cell_px")) {
+            char *p = strrchr(line, '|');
+            if (p) { int n = atoi(p + 1); if (n > 0) v = n; }
+            break;
+        }
+    }
+    fclose(f);
+    return v;
+}
+
 static void build_ui(char *ui, size_t cap, int phase, int bg, int fg, int click_two_step, const char *font_family,
-                     double opacity, double font_scale, const char *bar_label) {
+                     double opacity, double font_scale, const char *bar_label, int grid_cell) {
     const char *prompt =
         phase <= 0 ? "pick a background swatch" :
         phase == 1 ? "pick a text swatch"       :
@@ -273,6 +316,7 @@ static void build_ui(char *ui, size_t cap, int phase, int bg, int fg, int click_
     off += (size_t)snprintf(ui + off, cap - off, "bar_skin_label=%s\n", bar_label);
     off = (size_t)append_skin_rows(g_house_for_skins, ui, cap, off, g_cur_skin_id);
     off += (size_t)snprintf(ui + off, cap - off, "size_label=Size: %d%%\n", (int)(font_scale * 100.0 + 0.5));
+    off += (size_t)snprintf(ui + off, cap - off, "grid_label=Grid: %d px\n", grid_cell);
     off += (size_t)snprintf(ui + off, cap - off, "colors_label=Colors - background: %s, text: %s. Pick below (green ring = background, gold ring = text)\n",
                             (bg >= 0 && bg < g_n_swatches) ? g_name_buf[bg] : "-",
                             (fg >= 0 && fg < g_n_swatches) ? g_name_buf[fg] : "-");
@@ -318,7 +362,7 @@ int main(int argc, char **argv) {
             }
         }
         build_ui(ui, sizeof(ui), phase, bg, fg, click_two_step, font_family,
-                 read_opacity(house), read_font_scale(house), bar_label);
+                 read_opacity(house), read_font_scale(house), bar_label, read_grid_cell(house));
 
         if (strcmp(ui, last) != 0) {              /* content-gated write */
             FILE *f = fopen(tmp_path, "w");

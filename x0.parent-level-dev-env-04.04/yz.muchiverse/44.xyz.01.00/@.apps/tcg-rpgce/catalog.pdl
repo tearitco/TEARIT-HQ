@@ -1,0 +1,18 @@
+# tcg-rpgce shop catalog. Pictures are 20 px cells on the OHR sheets. sheet is house, fantasy, or viking (see ohr_file in the painter).
+# ITEM | key | label | price | sheet | col | row | w_tiles | h_tiles | kind | effect
+# kind: floor (stands on the floor, blocks its cells) | wall (hangs on the wall row)
+# effect: what the item DOES for the pet once the events layer reads it (v0: stored, shown, not acted on yet): sleep, eat, read, play, decor
+ITEM | bed_blue     | Blue bed      | 120 | viking  | 0  | 0 | 1 | 2 | floor | sleep
+ITEM | bed_orange   | Orange bed    | 120 | fantasy | 2  | 2 | 1 | 2 | floor | sleep
+ITEM | table_round  | Round table   |  60 | house   | 13 | 2 | 1 | 1 | floor | eat
+ITEM | table_white  | White table   |  70 | fantasy | 2  | 2 | 1 | 1 | floor | eat
+ITEM | stool_red    | Red stool     |  25 | house   | 13 | 1 | 1 | 1 | floor | decor
+ITEM | bookshelf    | Bookshelf     | 150 | house   | 4  | 8 | 1 | 2 | floor | read
+ITEM | cupboard     | Cupboard      | 130 | house   | 11 | 8 | 1 | 2 | floor | eat
+ITEM | piano        | Piano         | 400 | fantasy | 6  | 1 | 2 | 2 | floor | play
+ITEM | throne_red   | Red armchair  | 220 | fantasy | 1  | 3 | 1 | 1 | floor | decor
+ITEM | flowers      | Flower vase   |  35 | fantasy | 4  | 0 | 1 | 1 | floor | decor
+ITEM | barrel       | Barrel        |  30 | house   | 6  | 2 | 1 | 1 | floor | decor
+ITEM | clock        | Wall clock    |  80 | house   | 9  | 0 | 1 | 2 | wall  | decor
+ITEM | mirror       | Wall mirror   |  90 | house   | 5  | 3 | 1 | 2 | wall  | decor
+ITEM | window       | Window        |  50 | house   | 6  | 3 | 1 | 2 | wall  | decor

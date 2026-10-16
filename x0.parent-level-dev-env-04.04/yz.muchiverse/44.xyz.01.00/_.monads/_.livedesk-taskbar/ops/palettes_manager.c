@@ -1543,6 +1543,130 @@ static void publish_cdda(void) {
     rename(tmp_path, g_state_path);
 }
 
+/* Walk up from the house root to #.NNEST_ASSETS/<sub>. */
+static int asset_sub(const char *sub, char *out, size_t outsz) {
+    char d[PATH_BUF];
+    snprintf(d, sizeof(d), "%s", g_house_root);
+    for (int i = 0; i < 8; i++) {
+        snprintf(out, outsz, "%s/#.NNEST_ASSETS/%s", d, sub);
+        if (access(out, F_OK) == 0) return 1;
+        char *s = strrchr(d, '/');
+        if (!s || s == d) break;
+        *s = 0;
+    }
+    out[0] = 0;
+    return 0;
+}
+
+static void read_active_pair(const char *stem, char *dir, size_t dsz, const char *dir0,
+                              char *tileset, size_t tsz, const char *ts0) {
+    snprintf(dir, dsz, "%s", dir0);
+    snprintf(tileset, tsz, "%s", ts0);
+    char p[PATH_BUF];
+    snprintf(p, sizeof(p), "%s/%s_active.txt", g_package_dir, stem);
+    FILE *af = fopen(p, "r");
+    if (!af) return;
+    char line[256];
+    while (fgets(line, sizeof(line), af)) {
+        char *eq = strchr(line, '='); if (!eq) continue;
+        *eq = 0; char *v = eq + 1;
+        size_t vn = strlen(v);
+        while (vn > 0 && (v[vn-1]=='\n'||v[vn-1]=='\r')) v[--vn]=0;
+        if (!strcmp(line, "dir") && v[0]) snprintf(dir, dsz, "%s", v);
+        else if (!strcmp(line, "tileset") && v[0]) snprintf(tileset, tsz, "%s", v);
+    }
+    fclose(af);
+}
+
+/* DF community packs are one CP437 sheet each. Slice the active sheet into sprite.csv cells. */
+static void publish_df(void) {
+    static const struct { const char *key; const char *rel; int tile; } packs[] = {
+        { "Spacefox", "Spacefox/data/art/Spacefox_16x16.png", 16 },
+        { "Phoebus",  "Phoebus/data/art/Phoebus_16x16.png", 16 },
+        { "GemSet",   "GemSet/data/art/gemset_map.png", 24 },
+        { "CLA",      "CLA/data/art/CLA.png", 18 },
+        { "Mayday",   "Mayday/data/art/mayday.png", 16 },
+    };
+    const int np = 5;
+    char root[PATH_BUF];
+    if (!asset_sub("df-tilesets", root, sizeof(root))) return;
+    char active[64], unused[64];
+    read_active_pair("df", active, sizeof(active), "Spacefox", unused, sizeof(unused), "sheet");
+    char opt_path[PATH_BUF], opt_tmp[PATH_BUF];
+    snprintf(opt_path, sizeof(opt_path), "%s/df_options.txt", g_package_dir);
+    snprintf(opt_tmp, sizeof(opt_tmp), "%s.tmp", opt_path);
+    FILE *opt = fopen(opt_tmp, "w");
+    if (!opt) return;
+    int found = 0;
+    for (int i = 0; i < np; i++) if (!strcmp(packs[i].key, active)) found = 1;
+    if (!found) snprintf(active, sizeof(active), "%s", packs[0].key);
+    fprintf(opt, "ACTIVE_DIR|%s\nACTIVE_TILESET|sheet\nACTIVE_CATEGORY|sheet\n", active);
+    for (int i = 0; i < np; i++) fprintf(opt, "DIR|%s|%s\n", packs[i].key, packs[i].key);
+    fprintf(opt, "TILESET|sheet|CP437 sheet\n");
+    fclose(opt);
+    rename(opt_tmp, opt_path);
+
+    const char *rel = packs[0].rel; int ts = 16;
+    for (int i = 0; i < np; i++) if (!strcmp(packs[i].key, active)) { rel = packs[i].rel; ts = packs[i].tile; }
+    char png[PATH_BUF];
+    snprintf(png, sizeof(png), "%s/%s", root, rel);
+    int w = 0, h = 0, ch = 0;
+    unsigned char *px = stbi_load(png, &w, &h, &ch, 4);
+    if (!px || w < ts || h < ts) { if (px) stbi_image_free(px); return; }
+    int cols = w / ts, rows = h / ts;
+    char tmp_path[PATH_BUF];
+    snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", g_state_path);
+    FILE *out = fopen(tmp_path, "w");
+    if (!out) { stbi_image_free(px); return; }
+    char sprite_root[PATH_BUF];
+    snprintf(sprite_root, sizeof(sprite_root), "%s/sprites/df/%s", g_package_dir, active);
+    int n = 0;
+    for (int r = 0; r < rows && n < 256; r++) for (int c = 0; c < cols && n < 256; c++) {
+        char label[32];
+        snprintf(label, sizeof(label), "%s %d", active, r * cols + c);
+        rmmv_emit_cell(out, &n, sprite_root, label, px, w, h, c * ts, r * ts, ts, ts);
+    }
+    fclose(out);
+    stbi_image_free(px);
+    rename(tmp_path, g_state_path);
+}
+
+/* Doom cells are pre-sliced sprite.csv dirs: sprites/doom/flats and sprites/doom/sprites. */
+static void publish_doom(void) {
+    char active[64], unused[64];
+    read_active_pair("doom", active, sizeof(active), "flats", unused, sizeof(unused), "freedoom");
+    if (strcmp(active, "flats") && strcmp(active, "sprites")) snprintf(active, sizeof(active), "flats");
+    char opt_path[PATH_BUF], opt_tmp[PATH_BUF];
+    snprintf(opt_path, sizeof(opt_path), "%s/doom_options.txt", g_package_dir);
+    snprintf(opt_tmp, sizeof(opt_tmp), "%s.tmp", opt_path);
+    FILE *opt = fopen(opt_tmp, "w");
+    if (!opt) return;
+    fprintf(opt, "ACTIVE_DIR|%s\nACTIVE_TILESET|freedoom\nACTIVE_CATEGORY|freedoom\n", active);
+    fprintf(opt, "DIR|flats|flats\nDIR|sprites|sprites\nTILESET|freedoom|Freedoom\n");
+    fclose(opt);
+    rename(opt_tmp, opt_path);
+
+    char sprite_root[PATH_BUF], tmp_path[PATH_BUF];
+    snprintf(sprite_root, sizeof(sprite_root), "%s/sprites/doom/%s", g_package_dir, active);
+    snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", g_state_path);
+    FILE *out = fopen(tmp_path, "w");
+    if (!out) return;
+    for (int i = 1; i <= MAX_TILES; i++) {
+        char dir[PATH_BUF], csv[PATH_BUF], namef[PATH_BUF];
+        snprintf(dir, sizeof(dir), "%s/%03d", sprite_root, i);
+        snprintf(csv, sizeof(csv), "%s/sprite.csv", dir);
+        if (access(csv, F_OK) != 0) break;
+        char label[64];
+        snprintf(label, sizeof(label), "%s %03d", active, i);
+        snprintf(namef, sizeof(namef), "%s/name.txt", dir);
+        FILE *nf = fopen(namef, "r");
+        if (nf) { if (fgets(label, sizeof(label), nf)) { char *nl = strpbrk(label, "\r\n"); if (nl) *nl = 0; } fclose(nf); }
+        fprintf(out, "%s\t%s\t%s\n", label, label, dir);
+    }
+    fclose(out);
+    rename(tmp_path, g_state_path);
+}
+
 static int pdl_img_root_named(const char *pdl_name, char *out, size_t outsz) {
     char pdl[PATH_BUF];
     asset_source_pdl_path(g_house_root, pdl_name, pdl, sizeof(pdl));
@@ -2037,6 +2161,25 @@ static void publish(void) {
         publish_cdda();
         return;
     }
+    if (strcmp(g_category, "df") == 0 || strcmp(g_category, "doom") == 0) {
+        static char s_last[256] = "";
+        char active_path[PATH_BUF];
+        snprintf(active_path, sizeof(active_path), "%s/%s_active.txt", g_package_dir, g_category);
+        char active_content[256] = "";
+        FILE *af_check = fopen(active_path, "r");
+        if (af_check) {
+            size_t n = fread(active_content, 1, sizeof(active_content) - 1, af_check);
+            active_content[n] = '\0';
+            fclose(af_check);
+        }
+        int changed = strcmp(active_content, s_last) != 0;
+        snprintf(s_last, sizeof(s_last), "%s", active_content);
+        if (!changed && g_source_mtime != 0) return;
+        g_source_mtime = 1;
+        if (!strcmp(g_category, "df")) publish_df();
+        else publish_doom();
+        return;
+    }
     if (strcmp(g_category, "tiled") == 0 || strcmp(g_category, "ohrrpgce") == 0
         || strcmp(g_category, "my-palettes") == 0) {
         static char s_last_atlas[256] = "";
@@ -2092,6 +2235,7 @@ int main(int argc, char **argv) {
     if (strcmp(g_category, "elements") == 0) {
         snprintf(g_source_path, sizeof(g_source_path), "%s/#.ref/menu/palletes/chemistry_tiles_expanded🏆.csv", g_house_root);
     } else if (strcmp(g_category, "rmmv") == 0 || strcmp(g_category, "piececraft") == 0 || strcmp(g_category, "cdda") == 0
+            || strcmp(g_category, "df") == 0 || strcmp(g_category, "doom") == 0
             || strcmp(g_category, "tiled") == 0 || strcmp(g_category, "ohrrpgce") == 0 || strcmp(g_category, "my-palettes") == 0) {
         g_source_path[0] = '\0';
     } else if (strcmp(g_category, "emojis") == 0) {
@@ -2130,7 +2274,7 @@ int main(int argc, char **argv) {
         /* rmmv tab/chooser clicks must land on press 1. 1s sleep made
          * A/B/C and Dungeon/Inside need 2-3 presses (live). Other
          * palettes still 1s. */
-        usleep(strcmp(g_category, "debug") == 0 ? 300000 : (strcmp(g_category, "rmmv") == 0 || strcmp(g_category, "piececraft") == 0 || strcmp(g_category, "cdda") == 0 || strcmp(g_category, "emojis") == 0 || strcmp(g_category, "tiled") == 0 || strcmp(g_category, "ohrrpgce") == 0 || strcmp(g_category, "my-palettes") == 0) ? 100000 : 1000000);
+        usleep(strcmp(g_category, "debug") == 0 ? 300000 : (strcmp(g_category, "rmmv") == 0 || strcmp(g_category, "piececraft") == 0 || strcmp(g_category, "cdda") == 0 || strcmp(g_category, "df") == 0 || strcmp(g_category, "doom") == 0 || strcmp(g_category, "emojis") == 0 || strcmp(g_category, "tiled") == 0 || strcmp(g_category, "ohrrpgce") == 0 || strcmp(g_category, "my-palettes") == 0) ? 100000 : 1000000);
     }
     return 0;
 }

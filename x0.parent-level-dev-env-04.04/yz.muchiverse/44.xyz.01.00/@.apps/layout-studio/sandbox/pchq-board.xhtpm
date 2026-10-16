@@ -18,7 +18,7 @@
 
      Free: X/!/_ chrome, taskbar entry, minimize/restore, REAL Desk/Menu
      dropdowns. Rollback: pchq-board.hascanvas.xhtpm (PCHQ_BOARD_HASCANVAS=1). -->
-<window label="piececraft-hq board" class="pchq-board-pal database-window managed user-resizable" vars="state/ui.txt state/pchq/ui.txt state/menu.txt state/ctx.txt">
+<window label="piececraft-hq board" class="pchq-board-pal database-window managed user-resizable" vars="state/ui.txt state/pchq/ui.txt state/sides.txt state/menu.txt state/ctx.txt">
   <module src="@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x" args="piececraft-hq"/>
   <!-- the hotbar's manager (@.apps/hotbar-hq, 18.pc-hq/CURSWORD-POSSESSION-DESIGN.md): publishes
        state/pchq/ui.txt (hb_ keys) for the overlay strip in the view panel below. -->
@@ -137,6 +137,22 @@
       </row>
       <!-- SANDBOX (IN-GAME-LAYOUTS-PLAN.md phase 0): a user-made menu loaded from a fragment file -->
       <overlay src="@.apps/layout-studio/sandbox/test-menu/layout.chtpm"/>
+      <!-- PINNED SIDE BARS (ov-pin): each takes its width out of the canvas so the view shrinks, full height. Width = css width on the row, else
+           side_style.pdl (STYLE | pin_width_<id> | N, STYLE | pin_width | N), else 180. Shown by show="${side_left}" (state/sides.txt: 1 = shown,
+           empty = hidden); the "_" hides, the bottom bar cell (left / right) toggles. Spec: KHTPM-DOCK-ELEMENT-SPEC (revised: hotbar pin, vertical). -->
+      <row id="side-l" class="canvas-overlay-left ov-pin ov-chrome pchq-hotbar theme" show="${side_left}">
+        <text label="left bar" class="hb-quiet ov-title theme-3"/>
+        <item id="sl-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/layout-studio/sandbox/state/sides.txt' side_left hide"/>
+        <item id="sl-1" class="pchq-ft skin-bar" label="Harold" action="void"/>
+        <item id="sl-2" class="pchq-ft skin-bar" label="Blip" action="void"/>
+        <item id="sl-3" class="pchq-ft skin-bar" label="Shop" action="void"/>
+      </row>
+      <row id="side-r" class="canvas-overlay-right ov-pin ov-chrome pchq-hotbar theme" show="${side_right}">
+        <text label="right bar" class="hb-quiet ov-title theme-3"/>
+        <item id="sr-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/layout-studio/sandbox/state/sides.txt' side_right hide"/>
+        <item id="sr-1" class="pchq-ft skin-bar" label="chat" action="void"/>
+        <item id="sr-2" class="pchq-ft skin-bar" label="minimap" action="void"/>
+      </row>
       <!-- in-board entity context menu: pc_entity_ctx.sh writes state/ctx_menu.chtpm (the same menu markup the
            window used) + state/ctx.txt (ctx_visible, ctx_x, ctx_y). inner="page" splices that file's page content;
            the first <text> is the title bar, its Close row is dropped (the chrome x does it). -->
@@ -154,6 +170,8 @@
       <!-- show/hide the hotbar overlay ("minimize" it into this bar) -->
       <item id="hb-toggle" class="pchq-ft" label="hotbar"
             action="sh '${HOUSE}/@.apps/hotbar-hq/ops/hotbar_toggle.sh' pchq '${HOUSE}/@.apps/layout-studio/sandbox'"/>
+      <item id="sl-toggle" class="pchq-ft" label="left" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/layout-studio/sandbox/state/sides.txt' side_left toggle"/>
+      <item id="sr-toggle" class="pchq-ft" label="right" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/layout-studio/sandbox/state/sides.txt' side_right toggle"/>
       <!-- show/hide the sandbox test menu -->
       <item id="tm-toggle" class="pchq-ft" label="menu"
             action="sh '${HOUSE}/@.apps/layout-studio/sandbox/ops/menu_toggle.sh'"/>

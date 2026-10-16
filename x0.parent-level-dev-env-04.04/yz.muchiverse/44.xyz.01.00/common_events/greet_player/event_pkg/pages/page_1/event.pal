@@ -3,5 +3,4 @@
 exec cmd_2.sh
 exec cmd_3.sh
 exec cmd_4.sh
-exec cmd_4.sh
 halt

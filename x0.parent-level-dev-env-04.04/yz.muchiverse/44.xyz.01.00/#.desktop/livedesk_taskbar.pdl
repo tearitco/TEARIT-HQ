@@ -21,12 +21,14 @@ SECTION      | hq_menu_7_label     | stats
 SECTION      | hq_menu_7_cmd       | livedesk:open-stats
 SECTION      | hq_menu_8_label     | cli
 SECTION      | hq_menu_8_cmd       | sh _.monads/_.livedesk-taskbar/ops/open_cli.sh
-SECTION      | hq_menu_9_label     | cursword
-SECTION      | hq_menu_9_cmd       | livedesk:spawn-cursword
-SECTION      | hq_menu_10_label    | !kill hq
-SECTION      | hq_menu_10_cmd      | sh _.monads/_.livedesk-taskbar/ops/kill_hq_windows.sh .
-SECTION      | hq_menu_11_label    | debug
-SECTION      | hq_menu_11_cmd      | livedesk:open-palette:debug
+SECTION      | hq_menu_9_label     | tpmos
+SECTION      | hq_menu_9_cmd       | sh _.monads/_.livedesk-taskbar/ops/open_tpmos.sh
+SECTION      | hq_menu_10_label     | cursword
+SECTION      | hq_menu_10_cmd       | livedesk:spawn-cursword
+SECTION      | hq_menu_11_label    | !kill hq
+SECTION      | hq_menu_11_cmd      | sh _.monads/_.livedesk-taskbar/ops/kill_hq_windows.sh .
+SECTION      | hq_menu_12_label    | debug
+SECTION      | hq_menu_12_cmd      | livedesk:open-palette:debug
 # proc-mon - "session monitor": lists every board/engine/hq process the
 # house spawned, classifies each (shell/pal/singleton/child/orphan/
 # detached), marks the stray ones, one-click KILL ALL STRAY. Wrapper
@@ -36,11 +38,11 @@ SECTION      | hq_menu_11_cmd      | livedesk:open-palette:debug
 # why the button in dropdown doesn't say proc-mon?") - this label was
 # never tied to the mon-hq -> proc-mon rename (a separate, standalone
 # string), just never updated for consistency until now.
-SECTION      | hq_menu_13_label    | proc-mon
-SECTION      | hq_menu_13_cmd      | sh _.monads/_.livedesk-taskbar/ops/open_mon.sh
-SECTION      | hq_menu_14_label    | tomom
-SECTION      | hq_menu_14_cmd      | sh _.monads/_.livedesk-taskbar/ops/open_tomom.sh
-SECTION      | hq_menu_15_label    | cancel
+SECTION      | hq_menu_14_label    | proc-mon
+SECTION      | hq_menu_14_cmd      | sh _.monads/_.livedesk-taskbar/ops/open_mon.sh
+SECTION      | hq_menu_15_label    | tomom
+SECTION      | hq_menu_15_cmd      | sh _.monads/_.livedesk-taskbar/ops/open_tomom.sh
+SECTION      | hq_menu_16_label    | cancel
 
 SECTION      | file_menu_1_label   | new-desk
 SECTION      | file_menu_1_cmd     | livedesk:new-desk
@@ -110,6 +112,7 @@ SECTION      | db_menu_2_cmd         | livedesk:open-db-hq-pal
 # sql-hq: SQL over .csv / .pdl (wired 2026-09-08). SQL-HQ-DESIGN.md.
 SECTION      | db_menu_3_label       | sql-hq
 SECTION      | db_menu_3_cmd         | livedesk:open-sql-hq
+# blueprintz is under the player menu now (it is the debugger), not here.
 SECTION      | db_menu_4_label       | Cancel
 
 SECTION      | palettes_menu_1_label  | canvas-craft
@@ -126,17 +129,19 @@ SECTION      | palettes_menu_6_label  | cdda tiles
 SECTION      | palettes_menu_6_cmd    | livedesk:open-palette:cdda
 SECTION      | palettes_menu_7_label  | dwarf fortress
 SECTION      | palettes_menu_7_cmd    | livedesk:open-palette:df
-SECTION      | palettes_menu_8_label  | kenney 3d
-SECTION      | palettes_menu_8_cmd    | livedesk:open-palette:kenney
-SECTION      | palettes_menu_9_label  | paint colors
-SECTION      | palettes_menu_9_cmd    | livedesk:open-palette:paint
-SECTION      | palettes_menu_10_label | generate
-SECTION      | palettes_menu_10_cmd   | livedesk:open-palette:generate
-SECTION      | palettes_menu_11_label | my palettes
-SECTION      | palettes_menu_11_cmd   | livedesk:open-palette:my-palettes
-SECTION      | palettes_menu_12_label | terumon
+SECTION      | palettes_menu_8_label  | doom
+SECTION      | palettes_menu_8_cmd    | livedesk:open-palette:doom
+SECTION      | palettes_menu_9_label  | kenney 3d
+SECTION      | palettes_menu_9_cmd    | livedesk:open-palette:kenney
+SECTION      | palettes_menu_10_label | paint colors
+SECTION      | palettes_menu_10_cmd   | livedesk:open-palette:paint
+SECTION      | palettes_menu_11_label | generate
+SECTION      | palettes_menu_11_cmd   | livedesk:open-palette:generate
+SECTION      | palettes_menu_12_label | my palettes
 SECTION      | palettes_menu_12_cmd   | livedesk:open-palette:my-palettes
-SECTION      | palettes_menu_13_label | cancel
+SECTION      | palettes_menu_13_label | terumon
+SECTION      | palettes_menu_13_cmd   | livedesk:open-palette:my-palettes
+SECTION      | palettes_menu_14_label | cancel
 
 # network cell (13.network, NETWORK-CELL-HQ-WINDOWS-DESIGN.md) - real
 # rows wired 2026-08-31, dispatching via livedesk:open-network:<key> to
@@ -192,6 +197,9 @@ SECTION      | dock_focus_box_px      | 64
 SECTION      | dock_pager_px          | 110
 SECTION      | strip_user_cmd         |
 SECTION      | datetime_lang          | zh
+SECTION      | warn_windows           | 7
+SECTION      | warn_cpu               | 85
+SECTION      | warn_temp              | 80
 SECTION      | strip_btn_0_label       | file
 SECTION      | strip_btn_0_menu_0_label | new
 SECTION      | strip_btn_0_menu_0_cmd   | livedesk:new

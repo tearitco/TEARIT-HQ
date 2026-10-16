@@ -1,2 +1,2 @@
-# player_start at 4,34 glyph S
+# change_hp at 50,25 glyph H
 exec cmd_1.sh

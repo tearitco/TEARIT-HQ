@@ -1,0 +1,21 @@
+SECTION | KEY | VALUE
+------------------------------
+# auto.manifest.pdl - sfx-hai opts in to the auto conductor (BOOK 17.ai/AUTO-AND-AUTO-STUDIO-DESIGN.md). Paths are relative to the house root. ops: &.widgits/auto/ops (auto_act, auto_observe, auto_plan).
+# READY | verb | file | text | timeout s   (wait until the file contains the text before pressing: a busy window drops presses)
+# APP | name | pid file          STATE | name | file | append|rewrite          VERB | id | press target | expect kind | file | text | timeout s | safety          NOTE | verb | file | field (1-based, last line)
+# expect kinds: grew (append-only file must grow; with text, the new last line must also contain it) | lastline-contains | lastline-absent (needs growth too) | none.   safety OWNER = never automatic.
+APP | sfx-hai | &.hq-apps/sfx-hai/state/renderer.pid
+STATE | ui | &.hq-apps/sfx-hai/state/ui.txt | rewrite
+STATE | ledger | &.hq-apps/sfx-hai/state/ledger.txt | append
+# make = render the selected sound and run its numeric checks; success = the append-only SFX ledger grew and the new row has no FAIL. NOTE keeps the sound's name (field 3 of the SFX row).
+VERB | make | make | lastline-absent | &.hq-apps/sfx-hai/state/ledger.txt | FAIL | 40 | free
+READY | make | &.hq-apps/sfx-hai/state/ui.txt | busy=0 | 30
+NOTE | make | &.hq-apps/sfx-hai/state/ledger.txt | 3
+VERB | play | play | none | &.hq-apps/sfx-hai/state/ui.txt | - | 5 | free
+VERB | freq_up | fp | none | &.hq-apps/sfx-hai/state/ui.txt | - | 5 | free
+VERB | freq_down | fm | none | &.hq-apps/sfx-hai/state/ui.txt | - | 5 | free
+# verdicts are judgements, never automatic
+VERB | owner_yes | jo_yes | none | &.hq-apps/sfx-hai/state/ui.txt | - | 5 | OWNER
+VERB | owner_no | jo_no | none | &.hq-apps/sfx-hai/state/ui.txt | - | 5 | OWNER
+VERB | claude_yes | jc_yes | none | &.hq-apps/sfx-hai/state/ui.txt | - | 5 | OWNER
+VERB | claude_no | jc_no | none | &.hq-apps/sfx-hai/state/ui.txt | - | 5 | OWNER

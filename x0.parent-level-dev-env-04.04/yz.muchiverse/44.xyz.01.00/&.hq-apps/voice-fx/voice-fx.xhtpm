@@ -1,0 +1,52 @@
+<!-- voice-fx.xhtpm - STATIC TEMPLATE (SCAFFOLD; design BOOK 19.audio/VOICE-AND-SFX-DESIGN.md). Layout only; copied from the working img-hai layout shape
+     (sidebar rows + one panel with a canvas and two overlay rows). The module tag forks voice_fx_manager.+x which writes state/ui.txt and the waveform canvas.
+     Left: voices (click one), actions, status lines. Centre: waveform of the last sound. Bottom strip: knobs and the words field (cli_io). Right column: verdicts. -->
+<window label="voice-fx - ${status_line}" class="database-window" vars="state/ui.txt">
+  <module src="&.hq-apps/voice-fx/+x/voice_fx_manager.+x" id="_"/>
+  <page name="main">
+    <sidebar>
+      <text label="Voices (click to select)" class="quiet"/>
+      <repeat count="${v_count}" bind="v">
+        <item id="vo${v.#}" class="ms-row ${v.class}" label="${v.label}" action="${v.action}"/>
+      </repeat>
+      <item id="say" label="Say the words with this voice" action="${say_action}"/>
+      <item id="play" label="▶ Play the last sound" action="${play_action}"/>
+      <item id="rename" label="Rename (new name = the words field)" action="${rename_action}"/>
+      <item id="new" label="New voice from this one" action="${new_action}"/>
+      <text label="${knob_line}" class="quiet"/>
+      <text label="engine voice: ${sel_line}" class="quiet"/>
+      <text label="${words_line}" class="quiet"/>
+      <text label="${say_line}" class="quiet"/>
+    </sidebar>
+    <panel id="wave_p" class="mix-panel">
+      <canvas id="view" class="ms-canvas" sprite="${canvas_raw}"/>
+      <row id="tb-cursor" class="canvas-overlay-bottom ov-chrome">
+        <item id="pm" class="ov-btn" label="p-" action="${pm_action}"/>
+        <item id="pp" class="ov-btn" label="p+" action="${pp_action}"/>
+        <item id="sm" class="ov-btn" label="s-" action="${sm_action}"/>
+        <item id="sp" class="ov-btn" label="s+" action="${sp_action}"/>
+        <cli_io id="words" target_id="words" label="words &gt; " action="${words_action}"/>
+      </row>
+      <row id="tb-place" class="canvas-overlay-right ov-top ov-chrome">
+        <item id="jc_yes" class="ov-btn" label="c yes" action="${jc_yes_action}"/>
+        <item id="jc_no" class="ov-btn" label="c no" action="${jc_no_action}"/>
+        <item id="jo_yes" class="ov-btn" label="o yes" action="${jo_yes_action}"/>
+        <item id="jo_no" class="ov-btn" label="o no" action="${jo_no_action}"/>
+        <item id="fm" class="ov-btn" label="form-" action="${fm_action}"/>
+        <item id="fp" class="ov-btn" label="form+" action="${fp_action}"/>
+        <item id="bm" class="ov-btn" label="brt-" action="${bm_action}"/>
+        <item id="bp" class="ov-btn" label="brt+" action="${bp_action}"/>
+        <item id="wm" class="ov-btn" label="warm-" action="${wm_action}"/>
+        <item id="wp" class="ov-btn" label="warm+" action="${wp_action}"/>
+        <item id="vm" class="ov-btn" label="vib-" action="${vm_action}"/>
+        <item id="vp" class="ov-btn" label="vib+" action="${vp_action}"/>
+        <item id="rm" class="ov-btn" label="brth-" action="${rm_action}"/>
+        <item id="rp" class="ov-btn" label="brth+" action="${rp_action}"/>
+        <item id="ac" class="ov-btn" label="accent" action="${ac_action}"/>
+      </row>
+    </panel>
+    <footer id="statusbar" class="pchq-footer">
+      <text label="${msg}" class="quiet"/>
+    </footer>
+  </page>
+</window>

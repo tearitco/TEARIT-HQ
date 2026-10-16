@@ -1,3 +1,0 @@
-item_id=rag
-pos_x=12
-pos_y=5

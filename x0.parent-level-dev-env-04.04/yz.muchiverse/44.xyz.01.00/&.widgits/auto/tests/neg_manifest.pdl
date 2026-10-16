@@ -1,0 +1,5 @@
+SECTION | KEY | VALUE
+------------------------------
+# negative-test manifests for tests/auto_cases.pdl: an expectation that can never be met, and a window whose pid file names a dead process.
+APP | sfx-hai | &.hq-apps/sfx-hai/state/renderer.pid
+VERB | make_bad | make | lastline-contains | &.hq-apps/sfx-hai/state/ledger.txt | THIS_TEXT_NEVER_APPEARS | 3 | free

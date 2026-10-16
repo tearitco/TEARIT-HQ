@@ -1,0 +1,18 @@
+SECTION | KEY | VALUE
+------------------------------
+# img-hai-human.pdl - the full human path with a REAL remote draft (about 2 min): click the words field (by id), type, Enter, press Draft, wait for the job, place a tile, rotate it. Fresh window. Run: relay_drive.+x <renderer pid> run '&.hq-apps/img-hai/tests/img-hai-human.pdl' <window id>
+STEP | tapid | words
+STEP | type | flat top-down pixel art sprite of a red sports car, white background
+STEP | key | enter
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | prompt_line=flat top-down pixel art sprite of a red sports car | 5
+STEP | shot | &.hq-apps/img-hai/state/shot_1_words.png
+STEP | press | draft
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | job_line=running | 10
+STEP | shot | &.hq-apps/img-hai/state/shot_2_running.png
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | job_line=done: | 420
+STEP | expect | &.widgits/concept-bank/data/img/draft/2026-10-13/ledger.txt | contains | flat top-down pixel art sprite of a red sports car | 5
+STEP | press | tl0
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | placed=1 | 5
+STEP | press | rot
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | r90 | 5
+STEP | shot | &.hq-apps/img-hai/state/shot_3_mixed.png

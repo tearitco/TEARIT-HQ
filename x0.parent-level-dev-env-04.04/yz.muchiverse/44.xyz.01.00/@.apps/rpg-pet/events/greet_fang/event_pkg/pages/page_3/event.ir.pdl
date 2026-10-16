@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | greet_fang
+STATE        | source               | events-hq
+NODE         | id=1 type=pet_says | pet=fang|chat=oh, {other}|voice=哦，是{other}

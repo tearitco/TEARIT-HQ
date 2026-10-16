@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | greet_gus
+STATE        | source               | events-hq
+NODE         | id=1 type=gta_pet_says | pet=gus|chat=Ah, {other}, the soup is ready|voice=Ah, {other}, the soup is ready

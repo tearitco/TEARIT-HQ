@@ -4513,6 +4513,8 @@ static int livedesk_build_player_menu(const char *house_root, HQMenuItem *menu, 
      * label first. See ktb_hq_activate()'s own "livedesk:play-stop"
      * handler. */
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "stop"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:play-stop"); n++; }
+    /* 2026-10-15 (owner: blueprintz belongs under player, it is the debugger): opens the blueprintz window (page events, Play / Pause / Step / Fire). Same script as the db menu's blueprintz row. */
+    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "blueprintz"); snprintf(menu[n].command, sizeof(menu[n].command), "sh _.monads/_.livedesk-taskbar/ops/open_blueprintz.sh"); n++; }
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "reset"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:reset-entities"); n++; }
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "Synch"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:synch-from-pchq"); n++; }
     /* 2026-10-06 (owner request): save-game / load-game, each opens a 16-slot picker (PLAYER_MENU_SAVE / _LOAD) with Cancel (back). */

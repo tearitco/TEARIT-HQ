@@ -5,7 +5,9 @@
 set -u
 SELF=$(cd "$(dirname "$0")" && pwd)
 HOUSE=$(cd "$SELF/../../.." && pwd)
-PCHQ="$HOUSE/@.apps/piececraft-hq"
+CODE="$HOUSE/@.apps/piececraft-hq"
+PCHQ="$CODE"      # the DATA root: another pc-hq instance when the board window carries PCHQ_PKG (inherited from the window), else the default
+if [ -n "${PCHQ_PKG:-}" ] && [ -d "$PCHQ_PKG" ]; then PCHQ="$(cd "$PCHQ_PKG" && pwd)"; fi
 RX=${1:-0}; RY=${2:-0}; WX=${3:-0}; WY=${4:-0}; WW=${5:-0}; WH=${6:-0}
 CX=${7:-0}; CY=${8:-0}; CW=${9:-1}; CH=${10:-1}
 MAP="$PCHQ/pieces/display/view_map.txt"
@@ -37,4 +39,4 @@ MX=$RX; MY=$RY
 if [ "$CAM" = 1 ] && [ "$WW" -gt 0 ]; then
     MX=$((WX + WW / 2)); MY=$((WY + WH / 2))
 fi
-CTX_AT_X=$CX CTX_AT_Y=$CY MENU_X=$MX MENU_Y=$MY sh "$PCHQ/ops/pc_entity_ctx.sh" "$PCHQ" "$SX" "$SY" "$SZ" "$KIND" "${ID:-_}"
+CTX_AT_X=$CX CTX_AT_Y=$CY MENU_X=$MX MENU_Y=$MY sh "$CODE/ops/pc_entity_ctx.sh" "$PCHQ" "$SX" "$SY" "$SZ" "$KIND" "${ID:-_}"

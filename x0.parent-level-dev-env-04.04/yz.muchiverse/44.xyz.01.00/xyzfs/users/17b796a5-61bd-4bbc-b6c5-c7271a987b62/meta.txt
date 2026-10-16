@@ -1,4 +1,0 @@
-uuid=17b796a5-61bd-4bbc-b6c5-c7271a987b62
-user_id=diag2_2516801
-display_name=Diag2
-created_at=1787297114

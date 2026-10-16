@@ -76,3 +76,14 @@ reaching for directly, earlier, the next time a window silently
 vanishes with zero error output — this house has no crash handler
 installed, so "the process just disappeared" is a real, recurring
 symptom shape for this exact class of Xlib error, not a fluke.
+
+## img-hai session (2026-10-13), durable lessons
+Full class write-up: `16.game/IMG-HAI-BREAKTHROUGH.md`. Short form:
+- **Unique names per run.** A batch reused `<part>_<model>_s<seed>` and overwrote nine pictures (six now exist only as 256 px crops). Jobs never overwrite now (`_r2`...); overlay trials carry their name.
+- **Negative-test every validator and read the real exit code.** A `|` inside a candidate value slipped through until tested.
+- **Press by element id, not row number** (relay_drive `press`): numbers shifted three times in an afternoon.
+- **Heavy and GPU work goes to debil/Mac by ssh;** pin per-platform versions (Mac: torch 2.2.2 / diffusers 0.27.2) and keep remote script copies in step.
+- **Proposer is not promoter** held in a real trial: `tune-1` ran as an overlay and nothing was promoted.
+
+## Pet voices are offline now (2026-10-14)
+edge-tts has answered HTTP 403 since 2026-10-12 (re-probed 2026-10-14: still 403), and many speaking pets could also hit a rate limit. All pet speech now goes through `@.apps/pet-trainer/ops/pet_tts_local.py` (Kokoro-82M, offline): same arguments as the old edge-tts call, so `pet_voice.sh` and the six C apps that embed `speak()` (rpg-pet, cdda-hq, gta-hq, df-hq, dsr-rpg, mcl-hq) changed by one line each. Voice mapping: `KMAP` rows in each `voices.pdl` (only `pet-trainer/voices.pdl` has them so far; the script reads that one). Limits: no pitch control (the VOICE pitch column is ignored), no Korean voice (the `gruk` pet is silent), about 4-9 s to make a new phrase (2 threads, niced, one at a time), cached as wav afterwards. Running windows keep the old binary until relaunched.

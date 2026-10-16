@@ -1,3 +1,0 @@
-item_id=jerky
-pos_x=33
-pos_y=7

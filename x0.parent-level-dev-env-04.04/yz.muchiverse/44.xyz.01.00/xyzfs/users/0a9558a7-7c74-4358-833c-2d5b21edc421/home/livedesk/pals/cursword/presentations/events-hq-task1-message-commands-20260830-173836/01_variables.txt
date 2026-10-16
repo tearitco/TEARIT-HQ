@@ -1,2 +1,0 @@
-pick_idx=1
-hp=5

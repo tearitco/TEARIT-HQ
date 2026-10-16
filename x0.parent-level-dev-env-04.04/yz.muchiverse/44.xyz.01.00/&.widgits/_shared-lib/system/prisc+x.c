@@ -1133,6 +1133,68 @@ void exec_custom_op(Inst *i) {
     }
 }
 
+/* STEP / TRACE HOOK (2026-10-15, blueprintz debugger; BOOK BLUEPRINTZ-DESIGN.md
+ * sections 12.8 and 12.11). OFF unless the environment names a directory in
+ * PRISC_STEP_DIR, so every existing run is byte-for-byte unchanged.
+ * When on, BEFORE each instruction the VM appends one row to <dir>/vm.trace
+ *     STEP | <n> | <pc> | <OPNAME> | <target or name>
+ * and then waits until <dir>/step.marker has grown by one byte (append-only
+ * marker, never mtime): the controller appends a byte per instruction it
+ * allows. If <dir>/run exists the VM does not wait (free run, still traced).
+ * If <dir>/abort exists the VM stops with an ABORT row. A wait longer than
+ * PRISC_STEP_TIMEOUT_S (default 600) stops with a TIMEOUT row so a forgotten
+ * variable cannot hang an event forever. END | <n> is written when the
+ * program ends. Not compiled on Windows (the hook is a no-op there). */
+#ifndef _WIN32
+#include <stdarg.h>
+static const char *g_step_dir = NULL;
+static long g_step_seen = 0, g_step_n = 0;
+static void step_row(const char *fmt, ...) {
+    char path[MAX_PATH]; snprintf(path, sizeof(path), "%s/vm.trace", g_step_dir);
+    FILE *f = fopen(path, "a"); if (!f) return;
+    va_list ap; va_start(ap, fmt); vfprintf(f, fmt, ap); va_end(ap);
+    fclose(f);
+}
+static int step_exists(const char *name) {
+    char path[MAX_PATH]; snprintf(path, sizeof(path), "%s/%s", g_step_dir, name);
+    struct stat st; return stat(path, &st) == 0;
+}
+static long step_marker_size(void) {
+    char path[MAX_PATH]; snprintf(path, sizeof(path), "%s/step.marker", g_step_dir);
+    struct stat st; return stat(path, &st) == 0 ? (long)st.st_size : 0;
+}
+static const char *step_opname(OpBase op) {
+#define N(x) case x: return #x + 3;
+    switch (op) {
+        N(OP_ADDI) N(OP_BEQ) N(OP_BNE) N(OP_LW) N(OP_SW) N(OP_JALR) N(OP_J) N(OP_HALT)
+        N(OP_CUSTOM) N(OP_READ_HISTORY) N(OP_EXEC) N(OP_HIT_FRAME) N(OP_READ_STATE)
+        N(OP_READ_ACTIVE_TARGET) N(OP_READ_ENV_KEY) N(OP_SLEEP) N(OP_READ_LAYOUT)
+        N(OP_READ_POS) N(OP_ECALL) N(OP_SLIT) N(OP_SCPY) N(OP_SAPPEND) N(OP_SGETENV)
+        N(OP_SFMT) N(OP_SREAD) N(OP_SSPLIT) N(OP_SFIND) N(OP_SLEN) N(OP_SFOPEN)
+        N(OP_SFAPPEND) N(OP_SWRITE) N(OP_SFCLOSE) N(OP_SBEQ) N(OP_SBNE) N(OP_STRIM) N(OP_SATOI)
+        default: return "?";
+    }
+#undef N
+}
+static void step_gate(int pc, const Inst *i) {
+    if (!g_step_dir) return;
+    const char *what = i->op == OP_CUSTOM ? i->custom_name : i->literal_arg;
+    step_row("STEP | %ld | %d | %s | %.200s\n", ++g_step_n, pc, step_opname(i->op), what);
+    if (step_exists("run")) return;
+    const char *tm = getenv("PRISC_STEP_TIMEOUT_S");
+    long cap_ms = (tm && atol(tm) > 0 ? atol(tm) : 600) * 1000L, waited = 0;
+    while (step_marker_size() <= g_step_seen) {
+        if (step_exists("abort")) { step_row("ABORT | %ld\n", g_step_n); exit(3); }
+        if (step_exists("run")) return;
+        if (waited >= cap_ms) { step_row("TIMEOUT | %ld\n", g_step_n); exit(4); }
+        usleep(10000); waited += 10;
+    }
+    g_step_seen++;
+}
+#else
+#define step_gate(pc, i) ((void)0)
+#endif
+
 int main(int argc, char **argv) {
     if (argc < 2) return printf("Usage: %s <prog> [mem_in] [mem_out] [ops_file]\n", argv[0]), 1;
     
@@ -1223,9 +1285,15 @@ int main(int argc, char **argv) {
     if (argc > 2) load_mem(argv[2]);
     
     int pc = 0;
+#ifndef _WIN32
+    /* hook stays OFF unless the variable names an existing directory (a typo must not stall an event) */
+    { const char *sd = getenv("PRISC_STEP_DIR"); struct stat sst;
+      if (sd && sd[0] && stat(sd, &sst) == 0 && S_ISDIR(sst.st_mode)) g_step_dir = sd; }
+#endif
     while (pc < inst_count) {
         Inst i = program[pc];
         regs[0] = 0;
+        step_gate(pc, &i);
         int next_pc = pc + 1;
         
         if (i.op == OP_CUSTOM) {
@@ -1614,6 +1682,9 @@ int main(int argc, char **argv) {
         pc = next_pc;
     }
     
+#ifndef _WIN32
+    if (g_step_dir) step_row("END | %ld\n", g_step_n);
+#endif
     if (argc > 3) save_mem(argv[3]);
     exit(0);
 }

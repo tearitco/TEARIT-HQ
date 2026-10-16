@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | reply_fang
+STATE        | source               | events-hq
+NODE         | id=1 type=pet_says | pet=fang|chat=la la la|voice=啦啦啦

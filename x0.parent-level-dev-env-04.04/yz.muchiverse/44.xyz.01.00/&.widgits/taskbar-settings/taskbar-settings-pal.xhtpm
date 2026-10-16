@@ -77,6 +77,9 @@
     <item id="size-value" class="row-size info-chip skin-bar" label="${size_label}"/>
     <item id="ui-scale-minus" action="UI_SCALE_MINUS" class="row-size opacity-btn step-btn" label="-"/>
     <item id="ui-scale-plus"  action="UI_SCALE_PLUS"  class="row-size opacity-btn step-btn" label="+"/>
+    <item id="grid-cell-value" class="row-grid info-chip skin-bar" label="${grid_label}"/>
+    <item id="grid-cell-minus" action="GRID_CELL_MINUS" class="row-grid opacity-btn step-btn" label="-"/>
+    <item id="grid-cell-plus"  action="GRID_CELL_PLUS"  class="row-grid opacity-btn step-btn" label="+"/>
     <item id="font-family-name" class="row-font info-chip skin-bar info-long" label="${font_label}"/>
     <item id="font-family-prev" action="UI_FONT_FAMILY_PREV" class="row-font opacity-btn step-btn" label="&lt;"/>
     <item id="font-family-next" action="UI_FONT_FAMILY_NEXT" class="row-font opacity-btn step-btn" label="&gt;"/>
@@ -88,7 +91,7 @@
     <item id="bar-skin-next" action="BAR_SKIN_NEXT" class="row-bars opacity-btn step-btn" label="&gt;"/>
     <item id="click-twostep-toggle" action="CLICK_TWOSTEP_TOGGLE" class="row-click opacity-btn" label="${click_two_step_label} (press to switch)"/>
     <repeat count="${n_skins}" bind="sk">
-    <item id="skin${sk.#}" action="BAR_SKIN_SET:${sk.id}" class="row-skins skin-pick ${sk.bar} ${sk.ring}" label="${sk.label}"/>
+    <item id="skin${sk.#}" action="BAR_SKIN_SET:${sk.id}" class="row-skins skin-pick ${sk.bar} ${sk.ring} ${sk.tone}" label="${sk.label}"/>
     </repeat>
     <item id="bar-preview" class="row-preview info-chip skin-bar bar-big" label="book:pre-design"/>
     <item id="close" action="CLOSE" class="close-btn" label="x"/>

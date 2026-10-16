@@ -1,0 +1,8 @@
+SECTION | KEY | VALUE
+------------------------------
+# pixel_modes.pdl - which img_pixel mode makes a part's _32px copy (chosen by eye on 2026-10-13, sheet XO/25.games-plan/img/sheet_pixel_modes.png). A picture's part name is matched by prefix (car_door_tune-1 matches car_door); anything unlisted uses mode.
+# PIXEL | part prefix | mode (mode = crisp outlines, avg = clean flat areas)
+PIXEL | car_door | avg
+PIXEL | car_windshield | avg
+PIXEL | person_torso | mode
+PIXEL | car_wheel | mode

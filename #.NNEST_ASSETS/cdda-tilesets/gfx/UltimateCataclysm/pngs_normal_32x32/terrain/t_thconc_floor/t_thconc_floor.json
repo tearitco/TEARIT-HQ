@@ -1,0 +1,12 @@
+{
+    "id": "t_thconc_floor",
+    "fg": [
+      { "weight": 1, "sprite": "t_thconc_floor_center" },
+      { "weight": 1, "sprite": "t_thconc_floor_center2" },
+      { "weight": 1, "sprite": "t_thconc_floor_center3" },
+      { "weight": 1, "sprite": "t_thconc_floor_center4" },
+      { "weight": 1, "sprite": "t_thconc_floor_center5" },
+      { "weight": 1, "sprite": "t_thconc_floor_center6" }
+    ],
+    "bg": ""
+}

@@ -1,0 +1,5 @@
+SECTION | KEY | VALUE
+------------------------------
+# batches/retest.pdl - re-runs the untuned wheel with seeds 1 and 2: proves the job never overwrites (the pictures car_wheel_bk-sdm-tiny_s1/s2 already exist, so the new ones must arrive as _r2) and shows whether one seed gives the same picture again.
+# BATCH | label | part or free | words ("-" = from the bank) | seeds | model id or any | overlay
+BATCH | wheel-again | car_wheel | - | 2 | any | -

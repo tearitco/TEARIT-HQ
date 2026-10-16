@@ -48,6 +48,13 @@
 #define MAX_ENT      256
 
 static char project_root[PATH_BUF] = ".";
+
+/* pc-hq sessions (PCHQ-SESSIONS-DESIGN.md): prefer the file the board window wrote INSIDE this engine session (pieces/display/<name>) over the house-wide #.desktop one, so two boards do not read
+ * each other's canvas size or click. A window launched before this change only writes the house-wide file: the path is then left alone (fallback). */
+static void bv_prefer_session_file(char *path, size_t cap, const char *name) {
+    char sp[4400]; snprintf(sp, sizeof(sp), "%s/pieces/display/%s", project_root, name);
+    struct stat sst; if (stat(sp, &sst) == 0) snprintf(path, cap, "%s", sp);
+}
 static char house_root[PATH_BUF]   = "";
 static char focused_root[PATH_BUF] = "";
 
@@ -695,7 +702,20 @@ static void load_actors(int cur_z) {
 /* ---- board glyphs (one z-slice) ---- */
 static char g_board[MAX_DIM][MAX_DIM];
 static int  g_bw = 0, g_bh = 0;
+static int desk_dir(char *out, size_t osz);
 static void load_board(int current_z) {
+    {   /* a book with its own ASCII legend (maps/<book>/<desk>/ascii_legend.txt) draws its own map.txt in the ` view */
+        char dd[PATH_BUF], lg[PATH_BUF], mt[PATH_BUF];
+        if (desk_dir(dd, sizeof(dd))) {
+            snprintf(lg, sizeof(lg), "%s/ascii_legend.txt", dd); snprintf(mt, sizeof(mt), "%s/map.txt", dd);
+            FILE *lf = host_fopen(lg, "r");
+            if (lf) { fclose(lf);
+                FILE *mf = host_fopen(mt, "r");
+                if (mf) { char line[MAX_LINE]; int row = 0;
+                    while (row < MAX_DIM && fgets(line, sizeof(line), mf)) { line[strcspn(line, "\r\n")] = 0; int len = (int)strlen(line); if (!len) continue; if (len > MAX_DIM) len = MAX_DIM; memcpy(g_board[row], line, len); if (len > g_bw) g_bw = len; row++; }
+                    if (row > g_bh) g_bh = row; fclose(mf); return; } }
+        }
+    }
     /* z-manifest? board_manifest.txt: "z_base=<prefix>" + "z_count=N" */
     char man[PATH_BUF], zbase[256] = "";
     int zcount = 0;
@@ -981,6 +1001,72 @@ static int desk_parallax(const char *map_png, int *loop_x, int *loop_y) {
     return show == 1;
 }
 
+/* The current desk folder (maps/<book>/<desk>), or "" when the world names none. */
+static int desk_dir(char *out, size_t osz) {
+    out[0] = '\0';
+    const char *root = focused_root[0] ? focused_root : project_root;
+    char wst[PATH_BUF], desk[64] = "", map_id[64] = "";
+    snprintf(wst, sizeof(wst), "%s/pieces/world_01/state.txt", root);
+    read_kv_str(wst, "desk_id", desk, sizeof(desk));
+    read_kv_str(wst, "map_id", map_id, sizeof(map_id));
+    if (!desk[0] || !map_id[0] || strchr(desk, '/') || strchr(map_id, '/')) return 0;
+    snprintf(out, osz, "%s/pieces/system/maps/%s/%s", root, map_id, desk);
+    return 1;
+}
+/* ASCII view (` key) of a book that has its own glyphs: <desk>/ascii_legend.txt, same rows as terrain_legend.txt
+ * (glyph|height|r|g|b|asset|name|char). Its rows come first so they win over the host legend. The char column may be
+ * any single character (an ASCII letter or a CJK one). */
+static int g_own_ascii = 0;   /* this desk has its own ASCII legend: its events are the entities, the host pieces (hero, trees) are not drawn */
+static void load_desk_ascii_legend(void) {
+    char dd[PATH_BUF], path[PATH_BUF];
+    if (!desk_dir(dd, sizeof(dd))) return;
+    snprintf(path, sizeof(path), "%s/ascii_legend.txt", dd);
+    FILE *f = host_fopen(path, "r");
+    if (!f) return;
+    g_own_ascii = 1;
+    char line[MAX_LINE];
+    while (g_nleg < MAX_LEGEND && fgets(line, sizeof(line), f)) {
+        line[strcspn(line, "\r\n")] = '\0';
+        if (!line[0] || (line[0] == '#' && line[1] != '|')) continue;
+        char *sv = NULL, *g = strtok_r(line, "|", &sv);
+        strtok_r(NULL, "|", &sv);
+        char *rt = strtok_r(NULL, "|", &sv), *gt = strtok_r(NULL, "|", &sv), *bt = strtok_r(NULL, "|", &sv);
+        strtok_r(NULL, "|", &sv); strtok_r(NULL, "|", &sv);
+        char *ct = strtok_r(NULL, "|", &sv);
+        if (!g || !g[0] || !rt || !gt || !bt) continue;
+        int i = g_nleg;
+        for (int k = 0; k < g_nleg; k++) if (g_leg[k].glyph == g[0]) { i = k; break; }   /* replace a host row of the same glyph */
+        g_leg[i].glyph = g[0]; g_leg[i].r = (unsigned char)atoi(rt); g_leg[i].g = (unsigned char)atoi(gt); g_leg[i].b = (unsigned char)atoi(bt);
+        g_leg_hex[i][0] = '\0'; g_leg_cjk[i][0] = '\0';
+        if (ct && ct[0] && strcmp(ct, "-") != 0) snprintf(g_leg_cjk[i], sizeof(g_leg_cjk[0]), "%s", ct);
+        if (i == g_nleg) g_nleg++;
+    }
+    fclose(f);
+}
+/* ASCII view of events.txt (x y r g b charset index dir pattern [glyph]): one glyph per event in the event's own colour,
+ * brightened; no glyph column = the first letter of the sheet name. Replaces the sprites while view_2d_style=ascii. */
+static void draw_map_event_glyphs(unsigned char *px, int W, int ox, int oy, int cols, int rows, int cell) {
+    char dd[PATH_BUF], path[PATH_BUF];
+    if (!desk_dir(dd, sizeof(dd))) return;
+    snprintf(path, sizeof(path), "%s/events.txt", dd);
+    FILE *f = host_fopen(path, "r");
+    if (!f) return;
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        int ex, ey, r, g, b, index, dir, pat, n = 0;
+        char name[64], gl[8] = "";
+        if (sscanf(line, "%d %d %d %d %d %63s %d %d %d %7s%n", &ex, &ey, &r, &g, &b, name, &index, &dir, &pat, gl, &n) < 9) continue;
+        int scx = ex - ox, scy = ey - oy;
+        if (scx < 0 || scy < 0 || scx >= cols || scy >= rows) continue;
+        if (!gl[0]) { gl[0] = name[0] == '!' || name[0] == '$' ? name[1] : name[0]; gl[1] = '\0'; }
+        unsigned int cp = bv_cjk_utf8_first(gl);
+        if (!cp) continue;
+        unsigned char gr = (unsigned char)(r + (255 - r) * 3 / 5), gg = (unsigned char)(g + (255 - g) * 3 / 5), gb = (unsigned char)(b + (255 - b) * 3 / 5);
+        blit_cjk(px, W, scx * cell, scy * cell, cell, cp, gr, gg, gb);
+    }
+    fclose(f);
+}
+
 /* map.png sits beside map.txt. Tile step is png width / map.txt columns.
  * The 24 px exports and a future 48 px render both fit this. */
 static int desk_map_png(char *path, size_t psz, int *tile_px) {
@@ -1008,6 +1094,31 @@ static int desk_map_png(char *path, size_t psz, int *tile_px) {
      * as a negative sentinel and let the caller divide. */
     *tile_px = cols;
     return 1;
+}
+
+/* view_2d_style=scene: show a picture a GAME paints itself instead of drawing the book's tiles (rpg-pet: its own 660x430 frame with its sprite scaling and look, the one its standalone window shows).
+ * Everything comes from the book's view.pdl: "VIEW | scene_raw | <path to a raw RGBA file>", "VIEW | scene_w | N", "VIEW | scene_h | N", and "VIEW | default_style | scene" (the style used while bv_state.txt
+ * view_2d_style is empty, so a book can choose its own default 2D look; '\\' toggles scene <-> tiles, '0' back to 2D lands on the default). */
+static int view_pdl_get(const char *key, char *out, size_t osz) {
+    char dd[PATH_BUF], vp[PATH_BUF]; out[0] = 0; if (!desk_dir(dd, sizeof(dd))) return 0; char *sl = strrchr(dd, '/'); if (!sl) return 0; *sl = 0; snprintf(vp, sizeof(vp), "%s/view.pdl", dd);
+    FILE *vf = host_fopen(vp, "r"); if (!vf) return 0; char l[MAX_LINE]; size_t kl = strlen(key); int got = 0;
+    while (!got && fgets(l, sizeof(l), vf)) { char *p = strchr(l, '|'); if (!p) continue; p++; while (*p == ' ') p++; if (strncmp(p, key, kl) != 0) continue; p += kl; while (*p == ' ') p++; if (*p != '|') continue; p++; while (*p == ' ') p++;
+        size_t n = strcspn(p, "\r\n"); while (n && p[n - 1] == ' ') n--; if (n >= osz) n = osz - 1; memcpy(out, p, n); out[n] = 0; got = 1; }
+    fclose(vf); return got;
+}
+static int blit_scene(unsigned char *px, int W, int H) {
+    char path[PATH_BUF], b[32]; int sw = 0, sh = 0;
+    if (!view_pdl_get("scene_raw", path, sizeof(path)) || !path[0]) return 0;
+    if (view_pdl_get("scene_w", b, sizeof(b))) sw = atoi(b);
+    if (view_pdl_get("scene_h", b, sizeof(b))) sh = atoi(b);
+    if (sw < 16 || sh < 16 || sw > 4096 || sh > 4096) return 0;
+    size_t n = (size_t)sw * sh * 4; unsigned char *src = (unsigned char *)malloc(n); if (!src) return 0;
+    FILE *f = host_fopen(path, "rb"); if (!f) { free(src); return 0; }
+    size_t got = fread(src, 1, n, f); fclose(f); if (got != n) { free(src); return 0; }
+    int x0 = (W - sw) / 2, y0 = (H - sh) / 2;                  /* centred; a smaller window crops */
+    for (int y = 0; y < sh; y++) { int dy = y0 + y; if (dy < 0 || dy >= H) continue;
+        for (int x = 0; x < sw; x++) { int dx = x0 + x; if (dx < 0 || dx >= W) continue; const unsigned char *s = src + ((size_t)y * sw + x) * 4; unsigned char *d = px + ((size_t)dy * W + dx) * 4; d[0] = s[0]; d[1] = s[1]; d[2] = s[2]; d[3] = 255; } }
+    free(src); return 1;
 }
 
 int main(void) {
@@ -1041,6 +1152,7 @@ int main(void) {
     int fixed_row = (sel_y >= 0) ? sel_y : 0;   /* the "depth" this slice is through */
 
     load_legend();
+    load_desk_ascii_legend();
     load_entities();
     g_any_z = side_mode;
     load_actors(cur_z);          /* hero_01 + world_01 animals - all heights in side_mode, this z-slice otherwise */
@@ -1094,6 +1206,12 @@ int main(void) {
         }
         fclose(gf);
       } }
+    {   /* a book may set its own tile size: maps/<book>/view.pdl "VIEW | cell_px | N" (rpg-pet: 48, its room is drawn 1:1 like its standalone window); the house value above stays for every other book */
+        char dd[PATH_BUF], vp[PATH_BUF];
+        if (desk_dir(dd, sizeof(dd))) { char *sl = strrchr(dd, '/'); if (sl) { *sl = 0; snprintf(vp, sizeof(vp), "%s/view.pdl", dd);
+            FILE *vf = host_fopen(vp, "r");
+            if (vf) { char l[MAX_LINE]; while (fgets(l, sizeof(l), vf)) { char *p = strstr(l, "cell_px"); if (!p) continue; p = strchr(p, '|'); if (!p) continue; int v = atoi(p + 1); if (v >= 8 && v <= 256) cell = v; break; } fclose(vf); } } }
+    }
 
     /* Viewport size = the board window's live canvas pixel size, which
      * the khtpm renderer writes to #.desktop/pchq_board_view.txt every
@@ -1101,7 +1219,7 @@ int main(void) {
      * resizes with it. Falls back to 640x480 (== the 3D overlay) if the
      * file isn't there yet. */
     int W = 640, H = 480;
-    { char vsz[PATH_BUF]; snprintf(vsz, sizeof(vsz), "%s/#.desktop/pchq_board_view.txt", house_root);
+    { char vsz[PATH_BUF]; snprintf(vsz, sizeof(vsz), "%s/#.desktop/pchq_board_view.txt", house_root); bv_prefer_session_file(vsz, sizeof(vsz), "board_view.txt");
       FILE *vf = host_fopen(vsz, "r");
       if (vf) { int a = 0, b = 0; if (fscanf(vf, "%d %d", &a, &b) == 2) {
                     if (a >= 160 && a <= 3840) W = a;
@@ -1139,6 +1257,20 @@ int main(void) {
         px[i*4+0] = air_r; px[i*4+1] = air_g; px[i*4+2] = air_b; px[i*4+3] = 255;
     }
 
+    {   /* view_2d_style=scene (the book's default while the style is unset, see view_pdl_get): a game-painted frame instead of the engine's tiles */
+        char sty[16] = ""; read_kv_str(st, "view_2d_style", sty, sizeof(sty));
+        if (!sty[0]) { char dsty[16]; if (view_pdl_get("default_style", dsty, sizeof(dsty))) snprintf(sty, sizeof(sty), "%s", dsty); }
+        if (!side_mode && strcmp(sty, "scene") == 0 && blit_scene(px, W, H)) {
+            char out[PATH_BUF], rec[PATH_BUF];
+            snprintf(out, sizeof(out), "%s/pieces/display/rgb_frame_2d.raw", project_root);
+            snprintf(rec, sizeof(rec), "%s/pieces/display/rgb_frame_2d.receipt.txt", project_root);
+            write_atomic(out, px, (size_t)W * H * 4);
+            { char rb[128]; int rn = snprintf(rb, sizeof(rb), "frame_w=%d\nframe_h=%d\n", W, H); if (rn > 0) write_atomic(rec, rb, (size_t)rn); }
+            free(px);
+            return 0;
+        }
+    }
+
     #define VP_PXR(SX,SY) (px + ((size_t)(SY) * W + (SX)) * 4)
 
     /* Phase 2: a desk with map.png is blitted 1:1. Scroll is the selector
@@ -1147,7 +1279,8 @@ int main(void) {
     unsigned char *map_px = NULL;
     int map_w = 0, map_h = 0, map_tile = 0, map_ok = 0;
     int map_px0 = 0, map_py0 = 0;
-    if (!side_mode) {
+    char style0[16] = ""; read_kv_str(st, "view_2d_style", style0, sizeof(style0));
+    if (!side_mode && strcmp(style0, "ascii") != 0) {   /* ` = the glyph view: a desk picture is not blitted */
         char mp[PATH_BUF];
         int map_cols = 0;
         if (desk_map_png(mp, sizeof(mp), &map_cols) &&
@@ -1283,7 +1416,7 @@ int main(void) {
 
     /* --- entities / hero / animals: emoji sprite if we have one, else
      * a solid colour square (inner 60%) --- */
-    for (int i = 0; !map_ok && i < g_nent; i++) {
+    for (int i = 0; !map_ok && !(g_own_ascii && want_ascii) && i < g_nent; i++) {
         /* side_mode: only entities standing in THIS depth slice (same
          * row the terrain slice is through) are visible at all - real
          * depth culling, not a simplification, matches what a real
@@ -1318,6 +1451,8 @@ int main(void) {
                 }
         }
     }
+
+    if (want_ascii && !side_mode) draw_map_event_glyphs(px, W, ox, oy, cols, rows, cell);
 
     /* --- the manual matrix grid (viewport-relative cell boundaries).
      * A grid is not part of the Maker picture, so it stays off when
@@ -1464,7 +1599,7 @@ int main(void) {
             }
         }
         char cpath[PATH_BUF], seenp[PATH_BUF];
-        snprintf(cpath, sizeof(cpath), "%s/#.desktop/pchq_canvas_click.txt", house_root);
+        snprintf(cpath, sizeof(cpath), "%s/#.desktop/pchq_canvas_click.txt", house_root); bv_prefer_session_file(cpath, sizeof(cpath), "canvas_click.txt");
         snprintf(seenp, sizeof(seenp), "%s/pieces/display/click_2d.seen", project_root);
         FILE *cf = host_fopen(cpath, "r");
         int cx = 0, cy = 0, cw = 0, ch = 0;
@@ -1483,7 +1618,14 @@ int main(void) {
                     char pp[PATH_BUF];
                     snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
                     FILE *pf = NULL;
-                    if (!bvr_click(focused_root, project_root, bx, by, 0, 0))   /* Move range open: select/place */
+                    /* Painted (maker) maps have no placer: an armed placer takes the arrow keys, so rpg-pet's INT / the xelector would stop answering the arrows after any canvas click (same rule as the 3D click path). */
+                    char mk_dir[PATH_BUF + 160], mk_map[128] = "", mk_desk[128] = "";
+                    { char wp[PATH_BUF + 64]; snprintf(wp, sizeof(wp), "%s/pieces/world_01/state.txt", focused_root);
+                      FILE *wf = host_fopen(wp, "r");
+                      if (wf) { char ln[256]; while (fgets(ln, sizeof ln, wf)) { ln[strcspn(ln, "\r\n")] = 0; if (!strncmp(ln, "map_id=", 7)) snprintf(mk_map, sizeof mk_map, "%s", ln + 7); else if (!strncmp(ln, "desk_id=", 8)) snprintf(mk_desk, sizeof mk_desk, "%s", ln + 8); } fclose(wf); } }
+                    snprintf(mk_dir, sizeof(mk_dir), "%s/pieces/system/maps/%s/%s", focused_root, mk_map, mk_desk);
+                    int mk_painted = mk_map[0] && mk_desk[0] && access(mk_dir, F_OK) == 0;
+                    if (!bvr_click(focused_root, project_root, bx, by, 0, 0) && !mk_painted)   /* Move range open: select/place */
                         pf = host_fopen(pp, "w");
                     if (pf) { fprintf(pf, "armed=1\nx=%d\ny=%d\nz=%d\n", bx, by, bz); fclose(pf); }
                     time_t now = time(NULL);

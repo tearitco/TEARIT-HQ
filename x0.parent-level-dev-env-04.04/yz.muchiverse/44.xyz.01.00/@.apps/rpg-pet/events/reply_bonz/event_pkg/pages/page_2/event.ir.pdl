@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | reply_bonz
+STATE        | source               | events-hq
+NODE         | id=1 type=pet_says | pet=bonz|chat=zzz... a bed!|voice=呼呼……有床了！

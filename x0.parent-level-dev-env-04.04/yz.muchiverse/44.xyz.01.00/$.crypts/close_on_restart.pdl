@@ -6,7 +6,9 @@
 # you closed yourself stays closed. quit / reset / button.sh run do not relaunch (run starts the autostart rows itself).
 # A process is closed only if its command line contains BOTH the substring AND this house's root path (so another checkout's windows are never touched).
 # Substrings must be specific: a match is TERMed, then KILLed after 1 s. Never write a pattern that could match a shell or this script's own command line.
-CLOSE | hotbar-desk window  | @.apps/hotbar-hq/hotbar-desk.xhtpm | sh @.apps/hotbar-hq/boot.sh
-CLOSE | hotbar manager      | @.apps/hotbar-hq/ops/+x/hotbar_manager.+x
+#   a relaunch command that starts with "swap:" means make-before-break: on a --relaunch restart the matched process is NOT closed first; the command starts the new one and removes the old one itself
+#   (the hotbar: the old window stays on screen until the new one is drawn). quit / reset / run still close it like any row.
+CLOSE | hotbar-desk window  | @.apps/hotbar-hq/hotbar-desk.xhtpm | swap: sh @.apps/hotbar-hq/ops/../open_hotbar.sh "$PWD" desk --swap
+CLOSE | hotbar manager      | @.apps/hotbar-hq/ops/+x/hotbar_manager.+x | swap:
 CLOSE | board windows       | @.apps/board-hq/board-
 CLOSE | board manager       | @.apps/board-hq/ops/+x/board_vars_op.+x

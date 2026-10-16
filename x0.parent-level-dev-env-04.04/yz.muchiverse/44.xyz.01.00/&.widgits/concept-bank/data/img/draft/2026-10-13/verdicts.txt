@@ -1,0 +1,48 @@
+# verdicts for the 2026-10-13 car_door drafts. Left to right on sheet_car_door.png: bk-sdm-tiny s1, bk-sdm-tiny s2, bk-sdm-tiny s3, tiny-sd s1. Nothing is accepted into a brixel until BOTH judges say yes (owner + claude).
+VERDICT | car_door | bk-sdm-tiny | 1 | claude=no | owner=? | dark red tile/grid texture; colour right, not a door, no outline, no background
+VERDICT | car_door | bk-sdm-tiny | 2 | claude=no | owner=? | red car rear/body, side-on and cropped; not a door panel, not pixel art, not top-down
+VERDICT | car_door | bk-sdm-tiny | 3 | claude=no | owner=? | small red car front/back on grey; reads as a whole car, not a part
+VERDICT | car_door | tiny-sd     | 1 | claude=no (door) / maybe (whole car side view) | owner=? | clearest: a red car side view with wheels; wrong part, not pixel art
+VERDICT | car_door | bk-sdm-tiny | 53705 | claude=no (door) / maybe (whole car side view) | owner=? | words "red car door, flat top-down game sprite, white background, pixel art": a red van side-on on grey, clean, not a door, not pixel art
+VERDICT | car_door | bk-sdm-tiny | 53883 | claude=no | owner=? | same words, drafted from the img-hai window: a red truck front on a striped background; not a door, not pixel art
+VERDICT | free | tiny-sd | 54360 | claude=maybe (whole sports car, 3/4 view, clean, game-asset look; not top-down, not pixel art) | owner=? | words "flat top-down pixel art sprite of a red sports car, white background", drafted by pressing Draft with the key relay (123 s). Logged under part car_door in the ledger because this ran before the free-words tag was added.
+VERDICT | free | bk-sdm-tiny | 54520 | claude=no (distorted body, wheels wrong) | owner=? | same words, drafted by the scripted human scenario (120 s)
+# JUDGE rows below use the tile label (file name without .png); latest per (label, who) wins; the window writes these when a judge button is pressed. claude's verdicts from the notes above, restated:
+JUDGE | car_door_bk-sdm-tiny_s1 | claude | no | 2026-10-13
+JUDGE | car_door_bk-sdm-tiny_s2 | claude | no | 2026-10-13
+JUDGE | car_door_bk-sdm-tiny_s3 | claude | no | 2026-10-13
+JUDGE | car_door_tiny-sd_s1 | claude | no | 2026-10-13
+JUDGE | car_door_bk-sdm-tiny_s53705 | claude | no | 2026-10-13
+JUDGE | car_door_bk-sdm-tiny_s53883 | claude | no | 2026-10-13
+JUDGE | car_door_bk-sdm-tiny_s54520 | claude | no | 2026-10-13
+JUDGE | free_bk-sdm-tiny_s57183 | claude | no | 2026-10-13
+JUDGE | free_bk-sdm-tiny_s57184 | claude | no | 2026-10-13
+# 57183 (debil) and 57184 (Mac): both are grey striped asphalt-like textures, no road, no dashed centre line, not pixel art. Usable at most as a texture reference. Words: "top-down flat colour tile of grey asphalt road with a white dashed centre line, pixel art". Drafted in parallel by one press of "Draft on ALL hosts" (relay-driven): debil 119.4 s, Mac 118.5 s.
+# batch "default" (12 jobs, both hosts, unattended, 2026-10-13). Sheet: XO/25.games-plan/img/sheet_batch_default.png, row,col as printed by img_sheet. claude's verdicts:
+JUDGE | car_wheel_bk-sdm-tiny_s2 | claude | yes | 2026-10-13
+JUDGE | car_wheel_bk-sdm-tiny_s1 | claude | no | 2026-10-13
+JUDGE | car_windshield_bk-sdm-tiny_s2 | claude | no | 2026-10-13
+JUDGE | car_windshield_bk-sdm-tiny_s1 | claude | no | 2026-10-13
+JUDGE | person_torso_bk-sdm-tiny_s1 | claude | no | 2026-10-13
+JUDGE | person_torso_bk-sdm-tiny_s2 | claude | no | 2026-10-13
+JUDGE | free_door-free-1_bk-sdm-tiny_s1 | claude | no | 2026-10-13
+JUDGE | free_door-free-1_bk-sdm-tiny_s2 | claude | no | 2026-10-13
+JUDGE | free_door-free-2_bk-sdm-tiny_s1 | claude | no | 2026-10-13
+JUDGE | free_door-free-2_bk-sdm-tiny_s2 | claude | no | 2026-10-13
+JUDGE | free_road_bk-sdm-tiny_s1 | claude | no | 2026-10-13
+JUDGE | free_road_bk-sdm-tiny_s2 | claude | no | 2026-10-13
+# why: car_wheel s2 is a clear round wheel with a hub and its 32 px version still reads as a wheel (yes, for a wheel part). windshield s1/s2 came out as pixel-art-looking vehicles, not glass. torso: photographic people, not pixel parts. door-free-2 s2 is a good flat cartoon car but a whole car, not a door. road: grey grid and stripe textures, no road.
+# 2026-10-13 late: the tune-1 batch REUSED the file names of earlier drafts (same part, model and seed) and overwrote them. Recovered: car_door s1-s3 (first trial) are the original 512 px files from the session scratch folder. The six default-batch pictures car_wheel s1/s2, car_windshield s1/s2, person_torso s1/s2 were recovered ONLY from the contact sheet at 256 px (the 512 px originals are lost); their _32px copies were regenerated from those 256 px crops with the same recipe. The tuned pictures are named <part>_tune-1_<model>_s<seed>.png. Cause fixed in the job op (it never overwrites: it adds _r2, _r3 ...) and in the manager (an overlay name is part of the job name). The JUDGE rows above refer to the ORIGINAL (recovered) pictures.
+# tune-1 batch (candidate tuning tested through an overlay, nothing promoted), 11 pictures. Sheet: XO/25.games-plan/img/sheet_tune1.png (row,col order: door s1 s2 s3 / wheel s1 | wheel s2, windshield s1 s2 s3 / torso s1 s2 s3). claude's verdicts:
+JUDGE | car_door_tune-1_bk-sdm-tiny_s3 | claude | yes | 2026-10-13
+JUDGE | car_door_tune-1_bk-sdm-tiny_s2 | claude | no | 2026-10-13
+JUDGE | car_door_tune-1_bk-sdm-tiny_s1 | claude | no | 2026-10-13
+JUDGE | car_windshield_tune-1_bk-sdm-tiny_s1 | claude | yes | 2026-10-13
+JUDGE | car_windshield_tune-1_bk-sdm-tiny_s2 | claude | no | 2026-10-13
+JUDGE | car_windshield_tune-1_bk-sdm-tiny_s3 | claude | no | 2026-10-13
+JUDGE | person_torso_tune-1_bk-sdm-tiny_s2 | claude | yes | 2026-10-13
+JUDGE | person_torso_tune-1_bk-sdm-tiny_s1 | claude | no | 2026-10-13
+JUDGE | person_torso_tune-1_bk-sdm-tiny_s3 | claude | no | 2026-10-13
+JUDGE | car_wheel_tune-1_bk-sdm-tiny_s2 | claude | yes | 2026-10-13
+JUDGE | car_wheel_tune-1_bk-sdm-tiny_s1 | claude | no | 2026-10-13
+# why (tune-1): door s3 = a flat red panelled door, front view (a usable door part). windshield s1 = a flat pale-blue glass pane in a frame. torso s2 = a pixel-art standing person with outlines (the best base-person so far). wheel s2 = a clear wheel with hub (same quality as the untuned one). Others: texture, double door, striped glass, lime-green figure with a red head, half-realistic woman, broken wheel.

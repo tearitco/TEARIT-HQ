@@ -1,0 +1,7 @@
+SECTION | KEY | VALUE
+------------------------------
+# img-hai-batch.pdl - start the first batch file (alphabetical: default) and confirm both hosts are working. Fresh window.
+STEP | press | batchrun
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | queue_line=batch default: 10 waiting, 2 running | 10
+STEP | expect | &.hq-apps/img-hai/state/job.txt | contains | on lfs.master@10.0.0.144 | 15
+STEP | shot | &.hq-apps/img-hai/state/shot_10_batch.png

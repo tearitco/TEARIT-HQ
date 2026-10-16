@@ -1,5 +1,0 @@
-23:39:00.353 GRAB key=cmd attempts=1 rc=0(0=success) real_focus_is_us=1
-23:39:01.545 KEYPRESS key=cmd ks=104 ch=104(h)
-23:39:01.621 KEYPRESS key=cmd ks=105 ch=105(i)
-23:39:02.494 KEYPRESS key=cmd ks=65307 ch=27(?)
-23:39:02.494 ESCAPE key=cmd - explicit user disarm

@@ -1,0 +1,12 @@
+SECTION | KEY | VALUE
+------------------------------
+# img-hai-smoke.pdl - fast, no remote job. From a FRESH window (placed=0): place the test tile, rotate, flip, move right. Buttons are pressed by their element id / label (relay_drive 'press'), so the test does not depend on nav numbers.
+STEP | press | label:test_tile
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | placed=1 | 5
+STEP | press | rot
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | r90 | 5
+STEP | press | flip
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | flip | 5
+STEP | press | mr
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | @2,1 | 5
+STEP | shot | &.hq-apps/img-hai/state/shot_5_smoke.png

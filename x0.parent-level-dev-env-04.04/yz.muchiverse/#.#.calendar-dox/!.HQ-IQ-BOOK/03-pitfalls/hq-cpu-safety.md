@@ -173,3 +173,43 @@ holding future work to:
   were verified with the same real technique — `/proc/<pid>/stat`'s
   four CPU-time fields, delta over a real wall-clock window, before
   and after — not "it compiles" or "the number sounds better now."
+
+---
+
+## 4. A game daemon must not drive a viewer that is not there (rpg-pet, 2026-10-11)
+
+Found by the owner stopping work for "high CPU, maybe an orphan". Measured with all four `/proc/<pid>/stat` fields (children included), 30 s windows:
+
+- The rpg-pet daemon nudged the pc-hq board engine (a redraw key into its relay) every time its scene changed, and re-rendered its own scene / ui files at every pet step, with **no window open**. The leaked engine stack (`chtpm_rgb_render` 7% + `prisc+x` 3-4%) kept re-rendering for hours; the daemon itself was 12% (7% own, 5% in reaped children). With no viewer the whole stack is now daemon 3% + lc_clock 3%.
+- Per-100 ms-tick costs that never needed to run that often (profile by a timed copy of the daemon, because `perf` is blocked here at paranoid level 4): `load_data()` re-parsed static catalog / party / rooms / door pages every tick (now every 2 s); every `flag_on()` re-read two files (now a 150 ms in-daemon cache, dropped by `set_flag`); `replay()` re-parsed the append-only house ledger per pet step (now only when its size changes); `follow_pchq()` re-compared three exported rooms per tick (now at most every 400 ms and only while a board window exists); a pet stepping in a room nobody watches repainted the scene (now at most every 1.5 s).
+- **Child launches are the hidden cost**: an events-hq page run (`sh` + `bash play_event.sh` + `prisc`) costs about 150 ms of CPU. A greeting page per meeting was ~1 launch a second; now at most one per 6 s and the C text (identical) is used in between. Plain `top` shows none of it; `cutime`/`cstime` do.
+- **Rule that fixed the class**: before rendering or exporting for a viewer, ask whether one exists. `viewer_kinds()` in `rpg_pet.c` scans `/proc` every 2 s for a `khtpm_core_render` window of `pchq-board.xhtpm` / `rpg-pet.xhtpm`; a window opening forces one immediate render. The same applies to verbs: every event page that calls a verb used to render a whole 660x430 scene.
+- Testing traps hit while measuring: `pgrep -f` / `pkill -f` match the tool shell itself (killed it once, leaving instrumented copies running: use `pgrep -x`, or verify with the count); a test that greps for a process name must not put the name in its own command line (build it at runtime).
+- Not an rpg-pet bug but worth knowing: at the fast clock (`sec`, a 24 s game day) the five `time.pdl` rows cost `lc_clock` about 3-5% of a core through the event processes it launches; at `min` it is negligible.
+- Window side (khtpm_core_render, 2026-10-11, measured with all four stat fields, 40 s, rpg-pet board live mode): 36% -> 24% of a core; INT-on idle 9% -> 2%. Three per-tick costs: a canvas window forced a full layout+draw+readback every 1 s (now 5 s); a canvas repaint re-read and per-pixel-converted an unchanged raw frame (now cached by inode+size+mtime); `hq_idle_tick` re-parsed every vars file about 18x/s (now one stat each, reload on change) and ran a SECOND full redraw after every ui-file reparse (now only for the dock or when the size moved). Profile with an instrumented copy compiled to /tmp (gdb/perf are blocked by ptrace_scope): per-phase layout 12 ms, draw 45 ms, present 10 ms per redraw. What remains in live mode is the repaint rate itself (~3 frame changes/s x ~67 ms).
+
+---
+
+## 5. A board window at 25-30% of a core: how it was found and what fixed it (dsr-rpg board, 2026-10-12)
+
+Measured, not guessed. The order that worked, and the traps:
+
+1. **Count first, per process, with real elapsed time.** `/proc/<pid>/stat` utime+stime (fields 14+15) over a measured window; the first attempt (a scan of every `/proc` entry) took 1.5 s per pass and a first reading that included `cutime/cstime` (reaped children) inflated every parent. Use a targeted pid list and `date +%s.%N` around the sleep. The top bar's `%` is the WHOLE machine (`/proc/stat`), not a window; a browser can make it read 90%.
+2. **user vs system split + wakeups** (`/proc/<pid>/status` voluntary_ctxt_switches): the dsr board window was 24.5% user, 3.6% system, 131 wakeups/s (the 16 ms canvas poll tick).
+3. **gprof works here, perf/gdb/strace do not** (ptrace). Build a copy of `khtpm_core_render.c` with `-pg -O1 -fno-inline` plus a 4-line shim that calls `exit(0)` on SIGTERM (`signal()` in a `__attribute__((constructor))`), or gmon.out is never written. It profiles user code only (libc/Xlib time is not attributed), so compare the call counts as much as the percentages.
+4. **`KH_REDRAW_TRACE=1`** makes `redraw()` log `[REDRAW n] t=... ra=<return address>` to stderr. Build a **`-g -no-pie`** copy so `addr2line -f -e <bin> <ra>` names the caller. Result: 166 redraws in 50 s; 100 from `hq_idle_tick` after a vars/template reparse (line `assign_nav_and_layout(); redraw();`), 60 from the canvas-dirty flag in the event loop.
+5. **Find which vars file changes**: copy each file named in the template's `vars=` once a second and diff. `clock_ui.txt` `time_label` changed 12 times in 20 s because the game clock runs at `sec` rate; every change reparsed and redrew the whole window.
+6. **gprof call counts**: `css_compute_style` was called 59,059 times and `selector_tier_match` 14.2 million times in 70 s (32% of repaint time): the style code re-parsed every selector string (copy, strstr, strtok) once per rule per tier (3 tiers).
+
+Fixes and results (dsr board window, 30 s windows, all measured):
+- clock label written at most once per 5 s when only `time_label` differs (`clock_ui_write()` in both daemons): label changes 12 -> 4 per 20 s, window ~28% -> 17%.
+- `css_compute_style_ex` matches each rule once with a cheap reject on the last selector segment, merges tier by tier in the same order: 17% -> 14%. **Differential test** (old vs new over 32,000 random elements and 4 real stylesheets: identical hash) and a **mutant check** (tier order reversed gives a different hash) so the test is known to be able to fail.
+- layout reuse: `g_layout_fresh` lets a canvas-only repaint (nothing else dirty this pass, not the 5 s safety repaint, not a reparse) and the redraw right after a reparse skip `assign_nav_and_layout()`. Built and committed; its own CPU gain was NOT cleanly measured (a browser was loading the machine during the runs), so treat the number as unproven.
+- The CPU tabs added to the boards the same day (`<pid> %<cpu>`) were A/B tested by removing them from the template live: 16% with, 18% without = not the cause.
+
+Top-bar load label rules learned the hard way:
+- Republishing the whole dock strip when the CPU figure moves (every ~2 s) made the top bar flicker (`strip_frame_changed.txt` grew 3 per 6 s). The dock is republished only when the warning flips (with hysteresis: stays on until 10 points / 1 window / 5 degrees below the limit); its `%` rides the once-a-minute datetime publish (so after a manager restart it can read `%0` for up to a minute); game windows follow `load_changed.txt` marker growth (<= one change per 10 s); dock windows are exempt from that marker.
+- The red warning colour needs the header window restarted (css is read at start); `.dock-cell.dock-warn` is the rule.
+- Testing traps hit: `pgrep -f` matched and killed my own tool shell again (use exact `comm` and pids); a profiled copy of a window left running keeps burning CPU; killing the window's keep-alive 3D daemon does not respawn it (relaunch the board).
+
+Still open: ~1 canvas repaint per second when characters move; the 16 ms canvas poll tick (131 wakeups/s) is a polling loop where a marker-growth wait would do (the `marker` branch exists, nothing converted yet).

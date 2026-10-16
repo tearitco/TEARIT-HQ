@@ -411,7 +411,8 @@ int main(void) {
                             strtok_r(NULL, "|", &save);
                             strtok_r(NULL, "|", &save);
                             char *proj_tok = strtok_r(NULL, "|", &save);
-                            if (proj_tok && sess_tok && strcmp(proj_tok, "board-viewer:piececraft-hq") == 0) {
+                            char want_id[160]; { const char *hid = getenv("PCHQ_HOST_ID"); snprintf(want_id, sizeof(want_id), "board-viewer:%s", (hid && hid[0]) ? hid : "piececraft-hq"); }      /* pc-hq sessions: this instance's own engine session */
+                            if (proj_tok && sess_tok && strcmp(proj_tok, want_id) == 0) {
                                 char bv_marker_path[PATH_BUF];
                                 snprintf(bv_marker_path, sizeof(bv_marker_path), "%s/pieces/display/bv_screen_changed.txt", sess_tok);
                                 FILE *bvmf = fopen(bv_marker_path, "a");

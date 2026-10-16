@@ -1,0 +1,50 @@
+SECTION | KEY | VALUE
+------------------------------
+# gta-tiles.pdl - the GTA-shaped slice of the CDDA tileset (2026-10-12, claude), curated by hand over shared/cdda-tiles.pdl; every id below was checked to exist as a TILE row (the generator asserts it).
+# GTA | role | tile id | layer | note       role = what gta-hq asks for; tile id = a TILE id in cdda-tiles.pdl (draw the first TILE row; multitile ids have PART rows); layer = terrain < furniture < vehicle_part < mover.
+# GAP | what | why                         things a GTA scene needs that this tileset does NOT provide by name. gta-hq art=brixel draws them from shared/brixels.pdl (coloured clay). Not a mapping error.
+GTA | road | t_pavement | terrain | plain asphalt; variants t_pavement2..4 are random picks (see PART t_pavement weight rows)
+GTA | road_yellow | t_pavement_y | terrain | asphalt with a yellow centre line
+GTA | sidewalk | t_sidewalk_center | terrain | multitile: PART t_sidewalk lists corner/edge/t_connection/end_piece sprites
+GTA | grass | t_grass | terrain | weighted variants t_grass_center..4 (PART t_grass)
+GTA | floor | t_floor_center | terrain | indoor floor; added so a room is not still an RPG Maker A5 sheet
+GTA | water | t_water_dp_center | terrain | deep water; multitile shore via PART
+GTA | bridge | t_bridge_center | terrain | multitile
+GTA | wall_brick | t_brick_wall_center | terrain | multitile building wall (PART t_brick_wall: unconnected corner edge t_connection end_piece)
+GTA | wall_metal | t_wall_prefab_metal_center | terrain | multitile
+GTA | door_closed | t_door_c | terrain | 
+GTA | door_open | t_door_o | terrain | 
+GTA | door_glass_closed | t_door_glass_c | terrain | shop front
+GTA | door_glass_open | t_door_glass_o | terrain | 
+GTA | window | t_window | terrain | 
+GTA | window_domestic | t_window_domestic | terrain | 
+GTA | manhole | t_manhole_cover | terrain | 
+GTA | tree | t_tree | terrain | 
+GTA | tree_young | t_tree_young | terrain | 
+GTA | shrub | t_shrub | terrain | 
+GTA | traffic_light | f_traffic_light | furniture | a prop on a road corner; no signal-phase sprites checked
+GTA | bench | f_bench_center | furniture | multitile
+GTA | car_door | vp_door_full_left | vehicle_part | door, left side; _open for open
+GTA | car_door_open | vp_door_full_left_open | vehicle_part | 
+GTA | car_windshield_n | vp_windshield_full_faceN | vehicle_part | faceE/S/W for the other headings
+GTA | car_windshield_e | vp_windshield_full_faceE | vehicle_part | 
+GTA | car_windshield_s | vp_windshield_full_faceS | vehicle_part | 
+GTA | car_windshield_w | vp_windshield_full_faceW | vehicle_part | 
+GTA | car_seat | vp_seat_leather_left | vehicle_part | also vp_seat_leather_down
+GTA | car_trunk | vp_trunk | vehicle_part | 
+GTA | car_trunk_edge | vp_trunk_rear_edge | vehicle_part | 
+GTA | car_headlight_ne | vp_headlight_ne | vehicle_part | 
+GTA | car_headlight_nw | vp_headlight_nw | vehicle_part | 
+GTA | car_cargo | vp_cargo_space | vehicle_part | 
+GTA | car_wheel | vp_wheel | vehicle_part | rotN/E/S/W variants exist for some wheel kinds (vp_wheel_motor_rear_rot*)
+GTA | animal_dog | mon_dog | mover | placeholder pedestrian-scale mover
+GTA | animal_cat | mon_cat | mover | 
+GTA | animal_deer | mon_deer_buck | mover | 
+GTA | animal_pigeon | mon_pigeon | mover | 
+GAP | car_frame | NO sprite in UltiCa by name (no vp_frame*): the car body is exactly what brixels must supply
+GAP | car_engine | NO sprite by name (no vp_engine*)
+GAP | car_roof | NO sprite by name (no vp_roof*)
+GAP | car_muffler_fuel_tank | NO sprite by name
+GAP | pedestrian_base_body | NO base person sprite found by name search in the loose tree (only clothing / mutation / effect overlays under pngs_human_body_*): use RPG Maker characters (rmmv-www-img/characters) or build a person from brixels (arms+legs+head)
+GAP | road_markings_crosswalk_curb | NO t_road / t_asphalt / t_curb / crosswalk ids; only t_pavement (+ _y centre line) and the sidewalk set
+GAP | traffic_signal_phases | only f_traffic_light, no red/green phase sprites checked

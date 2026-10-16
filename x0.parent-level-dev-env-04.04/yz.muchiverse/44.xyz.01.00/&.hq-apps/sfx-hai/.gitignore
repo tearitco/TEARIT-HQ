@@ -1,0 +1,7 @@
+state/
++x/
+ops/+x/
+audit/
+.hq_manager/
+canvas_view.txt
+module_parent.pid

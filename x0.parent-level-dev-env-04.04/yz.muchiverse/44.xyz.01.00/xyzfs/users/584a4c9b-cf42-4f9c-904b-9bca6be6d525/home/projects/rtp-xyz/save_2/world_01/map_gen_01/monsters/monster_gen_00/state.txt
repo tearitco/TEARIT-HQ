@@ -1,4 +1,0 @@
-monster_type=slime
-pos_x=32
-pos_y=29
-hp=20

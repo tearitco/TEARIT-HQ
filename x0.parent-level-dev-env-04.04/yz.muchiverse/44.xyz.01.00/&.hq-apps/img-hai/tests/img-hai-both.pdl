@@ -1,0 +1,10 @@
+SECTION | KEY | VALUE
+------------------------------
+# img-hai-both.pdl - delegate one draft to EVERY host at once (debil and the Mac). Checks that both jobs start; completion is read from the ledger afterwards. Fresh window.
+STEP | tapid | words
+STEP | type | top-down flat colour tile of grey asphalt road with a white dashed centre line, pixel art
+STEP | key | enter
+STEP | press | draftall
+STEP | expect | &.hq-apps/img-hai/state/job.txt | contains | on debil@10.0.0.16 | 15
+STEP | expect | &.hq-apps/img-hai/state/job.txt | contains | on lfs.master@10.0.0.144 | 15
+STEP | shot | &.hq-apps/img-hai/state/shot_9_both_running.png

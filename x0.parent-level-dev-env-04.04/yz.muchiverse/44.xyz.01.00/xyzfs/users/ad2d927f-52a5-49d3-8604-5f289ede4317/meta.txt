@@ -1,4 +1,0 @@
-uuid=ad2d927f-52a5-49d3-8604-5f289ede4317
-user_id=schar_2517878
-display_name=SessionChar
-created_at=1787297510

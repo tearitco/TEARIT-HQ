@@ -72,7 +72,7 @@
 #define MAX_LINE 512
 #define MAX_PATH 4096
 #define PATH_BUF (MAX_PATH + 256)
-#define MAX_BOARD_DIM 256   /* Doom at 32 map-units per cell is up to ~216 on a side. 128 cut E1M4 and the rest off the board. */
+#define MAX_BOARD_DIM 256   /* Doom at 32 map-units per cell is up to ~216 on a side. 128 cut E1M4 and the rest off the board. Fog (18..48) still hides the distance. */
 
 /* Overlay dimensions - see bv_compose_frame.c's own matching marker-
  * skip line count (OVERLAY_H/GLYPH_H must divide evenly, kept in sync
@@ -107,6 +107,13 @@
 typedef struct { double x, y, z; } Vec3;
 
 static char project_root[MAX_PATH] = ".";
+
+/* pc-hq sessions (PCHQ-SESSIONS-DESIGN.md): prefer the file the board window wrote INSIDE this engine session (pieces/display/<name>) over the house-wide #.desktop one, so two boards do not read
+ * each other's canvas size or click. A window launched before this change only writes the house-wide file: the path is then left alone (fallback). */
+static void bv_prefer_session_file(char *path, size_t cap, const char *name) {
+    char sp[4400]; snprintf(sp, sizeof(sp), "%s/pieces/display/%s", project_root, name);
+    struct stat sst; if (stat(sp, &sst) == 0) snprintf(path, cap, "%s", sp);
+}
 static char house_root[MAX_PATH] = "";
 /* vertical FOV, degrees. Wider default (was 60) so the sky / sun /
  * horizon are in frame, not tunnel-visioned onto the board - direct
@@ -346,13 +353,67 @@ typedef struct {
     /* Parallax sky. parallax.rgba is raw RGBA8, size in parallax.pdl.
      * NULL when this desk has show=0. sx/sy are not applied. */
     unsigned char *para;
-    int para_w, para_h, para_lx, para_ly;
+    int para_w, para_h, para_lx, para_ly, para_ver;
+    long para_stamp;
     /* Visible map events (events.txt). Capped: the GPU scene holds 128
      * boxes and the selector, hero and range wires share that list. */
     struct { int x, y, r, g, b, index, dir, pat; char name[40]; } ev[96];
     int ev_n;
+    char *glyph;            /* map.txt, w*h. 3D height comes from extrusion.pdl, not from the flat 2D picture. */
+    unsigned char zh[128];  /* extrusion height for each glyph. 0 = no row. */
 } MakerAtlas;
 static MakerAtlas g_mk;
+
+/* The parallax sky of a painted desk: parallax.pdl (show, width, height, loop_x, loop_y, stamp) + parallax.rgba (raw RGBA8). A missing file leaves the old flat sky colour.
+ * Called at load and again every frame: a changed `stamp` row (rpg-pet bumps it when its day / night phase changes the sky picture) reloads the pixels and bumps para_ver so the
+ * GPU path re-uploads the texture; with no stamp (TSOTS) nothing is re-read after the load. */
+static void maker_read_parallax(const char *dir) {
+    char path[4400], line[256]; int pshow = 0, pw = 0, ph = 0, lx = 0, ly = 0; long stamp = 0;
+    snprintf(path, sizeof(path), "%s/parallax.pdl", dir);
+    FILE *f = fopen(path, "r");
+    if (f) {
+        while (fgets(line, sizeof(line), f)) {
+            char *bar = strrchr(line, '|');
+            if (!bar) continue;
+            if (strstr(line, "show")) pshow = atoi(bar + 1);
+            else if (strstr(line, "loop_x")) lx = atoi(bar + 1);
+            else if (strstr(line, "loop_y")) ly = atoi(bar + 1);
+            else if (strstr(line, "width")) pw = atoi(bar + 1);
+            else if (strstr(line, "height")) ph = atoi(bar + 1);
+            else if (strstr(line, "stamp")) stamp = atol(bar + 1);
+        }
+        fclose(f);
+    }
+    if (g_mk.para_stamp != -1 && stamp == g_mk.para_stamp) return;      /* unchanged since the last read (-1 = the first read of this desk) */
+    g_mk.para_stamp = stamp; free(g_mk.para); g_mk.para = NULL; g_mk.para_w = g_mk.para_h = 0; g_mk.para_lx = lx; g_mk.para_ly = ly; g_mk.para_ver++;
+    if (pshow == 1 && pw > 0 && ph > 0 && pw <= 4096 && ph <= 4096) {
+        snprintf(path, sizeof(path), "%s/parallax.rgba", dir);
+        f = fopen(path, "rb");
+        size_t pn = (size_t)pw * (size_t)ph * 4;
+        if (f) {
+            g_mk.para = (unsigned char *)malloc(pn);
+            if (g_mk.para && fread(g_mk.para, 1, pn, f) == pn) { g_mk.para_w = pw; g_mk.para_h = ph; }
+            else { free(g_mk.para); g_mk.para = NULL; }
+            fclose(f);
+        }
+    }
+}
+
+/* Map events (events.txt): x y r g b charset index direction pattern. Colour is the frame center; the charset name is for the 2D blit and the frame file lookup; the box uses r g b.
+ * First 96 only. Re-read EVERY frame (the file is tiny): rpg-pet rewrites it as its monsters walk, and the old read-once-per-desk cache froze the sprites while the selector kept moving
+ * (owner 2026-10-11: "the sprite stayed still but a blue block moved"). */
+static void maker_read_events(const char *dir) {
+    char path[4400], line[256]; snprintf(path, sizeof(path), "%s/events.txt", dir); g_mk.ev_n = 0;
+    FILE *f = fopen(path, "r"); if (!f) return;
+    while (g_mk.ev_n < 96 && fgets(line, sizeof(line), f)) {
+        int x, y, r, g, b, index, dir_, pat; char name[40];
+        if (sscanf(line, "%d %d %d %d %d %39s %d %d %d", &x, &y, &r, &g, &b, name, &index, &dir_, &pat) != 9) continue;
+        g_mk.ev[g_mk.ev_n].x = x; g_mk.ev[g_mk.ev_n].y = y; g_mk.ev[g_mk.ev_n].r = r; g_mk.ev[g_mk.ev_n].g = g; g_mk.ev[g_mk.ev_n].b = b;
+        g_mk.ev[g_mk.ev_n].index = index; g_mk.ev[g_mk.ev_n].dir = dir_; g_mk.ev[g_mk.ev_n].pat = pat;
+        snprintf(g_mk.ev[g_mk.ev_n].name, sizeof(g_mk.ev[0].name), "%s", name); g_mk.ev_n++;
+    }
+    fclose(f);
+}
 
 static int maker_load(const char *root) {
     char wpath[4352], map_id[128] = "", desk_id[128] = "";
@@ -362,8 +423,13 @@ static int maker_load(const char *root) {
     if (!map_id[0] || !desk_id[0]) return 0;
     char dir[4352];
     snprintf(dir, sizeof(dir), "%s/pieces/system/maps/%s/%s", root, map_id, desk_id);
-    if (g_mk.key[0] && strcmp(g_mk.key, dir) == 0) return g_mk.ok;
-    free(g_mk.atlas); free(g_mk.cells); free(g_mk.para);
+    /* Reload when cells.rgba changes. The directory key alone kept a stale atlas after gta-hq re-exported people and buildings. Camera state is not touched. */
+    struct stat cst; char rgba_path[4400]; snprintf(rgba_path, sizeof(rgba_path), "%s/cells.rgba", dir);
+    long long cell_stamp = (stat(rgba_path, &cst) == 0) ? (long long)cst.st_mtime : 0;
+    static long long held_stamp = -1;
+    if (g_mk.key[0] && strcmp(g_mk.key, dir) == 0 && held_stamp == cell_stamp) return g_mk.ok;
+    held_stamp = cell_stamp;
+    free(g_mk.atlas); free(g_mk.cells); free(g_mk.para); free(g_mk.glyph);
     int prev_id = g_mk.id;
     memset(&g_mk, 0, sizeof(g_mk));
     g_mk.id = prev_id + 1;
@@ -415,59 +481,32 @@ static int maker_load(const char *root) {
     g_mk.atlas = (unsigned char *)malloc(need);
     if (!g_mk.atlas || fread(g_mk.atlas, 1, need, f) != need) { fclose(f); return 0; }
     fclose(f);
-    /* Sky is optional. A missing file leaves the old flat sky colour. */
-    snprintf(path, sizeof(path), "%s/parallax.pdl", dir);
-    f = fopen(path, "r");
-    int pshow = 0, pw = 0, ph = 0;
-    if (f) {
-        while (fgets(line, sizeof(line), f)) {
-            char *bar = strrchr(line, '|');
-            if (!bar) continue;
-            if (strstr(line, "show")) pshow = atoi(bar + 1);
-            else if (strstr(line, "loop_x")) g_mk.para_lx = atoi(bar + 1);
-            else if (strstr(line, "loop_y")) g_mk.para_ly = atoi(bar + 1);
-            else if (strstr(line, "width")) pw = atoi(bar + 1);
-            else if (strstr(line, "height")) ph = atoi(bar + 1);
-        }
-        fclose(f);
-    }
-    if (pshow == 1 && pw > 0 && ph > 0 && pw <= 4096 && ph <= 4096) {
-        snprintf(path, sizeof(path), "%s/parallax.rgba", dir);
-        f = fopen(path, "rb");
-        size_t pn = (size_t)pw * (size_t)ph * 4;
+    g_mk.para_stamp = -1; maker_read_parallax(dir);
+    maker_read_events(dir);
+    g_mk.glyph = (char *)malloc((size_t)g_mk.w * (size_t)g_mk.h);
+    if (g_mk.glyph) {
+        memset(g_mk.glyph, '.', (size_t)g_mk.w * (size_t)g_mk.h);
+        snprintf(path, sizeof(path), "%s/map.txt", dir);
+        f = fopen(path, "r");
         if (f) {
-            g_mk.para = (unsigned char *)malloc(pn);
-            if (g_mk.para && fread(g_mk.para, 1, pn, f) == pn) {
-                g_mk.para_w = pw;
-                g_mk.para_h = ph;
-            } else {
-                free(g_mk.para);
-                g_mk.para = NULL;
+            int row = 0; char mline[1024];
+            while (row < g_mk.h && fgets(mline, sizeof mline, f)) {
+                for (int x = 0; x < g_mk.w && mline[x] && mline[x] != '\n'; x++) g_mk.glyph[row * g_mk.w + x] = mline[x];
+                row++;
             }
             fclose(f);
         }
     }
-    /* x y r g b charset index direction pattern. Colour is the frame
-     * center. The charset name is for the 2D blit; the box uses r g b.
-     * First 64 only. A later page that needs a switch is already absent. */
-    snprintf(path, sizeof(path), "%s/events.txt", dir);
+    snprintf(path, sizeof(path), "%s/extrusion.pdl", dir);
     f = fopen(path, "r");
     if (f) {
-        while (g_mk.ev_n < 96 && fgets(line, sizeof(line), f)) {
-            int x, y, r, g, b, index, dir, pat;
-            char name[40];
-            if (sscanf(line, "%d %d %d %d %d %39s %d %d %d",
-                       &x, &y, &r, &g, &b, name, &index, &dir, &pat) != 9) continue;
-            g_mk.ev[g_mk.ev_n].x = x;
-            g_mk.ev[g_mk.ev_n].y = y;
-            g_mk.ev[g_mk.ev_n].r = r;
-            g_mk.ev[g_mk.ev_n].g = g;
-            g_mk.ev[g_mk.ev_n].b = b;
-            g_mk.ev[g_mk.ev_n].index = index;
-            g_mk.ev[g_mk.ev_n].dir = dir;
-            g_mk.ev[g_mk.ev_n].pat = pat;
-            snprintf(g_mk.ev[g_mk.ev_n].name, sizeof(g_mk.ev[0].name), "%s", name);
-            g_mk.ev_n++;
+        char mline[256];
+        while (fgets(mline, sizeof mline, f)) {
+            if (!strstr(mline, "EXTRUDE")) continue;
+            char *bar = strchr(mline, '|'); if (!bar) continue;
+            bar++; while (*bar == ' ') bar++;
+            char g = *bar; char *bar2 = strchr(bar, '|');
+            if (bar2 && g > 32 && g < 127) { int hv = atoi(bar2 + 1); if (hv > 0 && hv <= 64) g_mk.zh[(unsigned char)g] = (unsigned char)hv; }
         }
         fclose(f);
     }
@@ -1112,6 +1151,57 @@ typedef struct {
     unsigned char lx, ly, lz;       /* local 0..7 grid coords */
     unsigned char r, g, b;
 } PhymojiVoxel;
+
+/* A walking person is parts, not a skin box and not a flat picture. Each part is its own run of voxels: feet, leg bones, pants, pelvis, spine, ribs, heart, arms, hands, skull, brain, eyes, hair. Clothes differ by name. */
+static int brixel_put(PhymojiVoxel *v, int n, int max, int *mx, int *my, int *mz, int x, int y, int z, int r, int g, int b) {
+    if (n >= max || x < 0 || y < 0 || z < 0 || x > 31 || y > 31 || z > 7) return n;
+    v[n].lx = (unsigned char)x; v[n].ly = (unsigned char)y; v[n].lz = (unsigned char)z;
+    v[n].r = (unsigned char)r; v[n].g = (unsigned char)g; v[n].b = (unsigned char)b;
+    if (x > *mx) *mx = x; if (y > *my) *my = y; if (z > *mz) *mz = z;
+    return n + 1;
+}
+static int brixel_box(PhymojiVoxel *v, int n, int max, int *mx, int *my, int *mz, int x0, int y0, int z0, int x1, int y1, int z1, int r, int g, int b) {
+    for (int y = y0; y <= y1; y++) for (int x = x0; x <= x1; x++) for (int z = z0; z <= z1; z++)
+        n = brixel_put(v, n, max, mx, my, mz, x, y, z, r, g, b);
+    return n;
+}
+static int build_brixel_person(const char *name, PhymojiVoxel *v, int max, int *mx, int *my, int *mz) {
+    int jr = 36, jg = 48, jb = 72, hr = 28, hg = 22, hb = 18, pr = 42, pg = 58, pb = 86, skin = 214, sg = 166, sb = 130;
+    if (!strcmp(name, "nico")) { jr = 36; jg = 96; jb = 52; }
+    else if (!strcmp(name, "lucia")) { jr = 160; jg = 42; jb = 44; hr = 20; hg = 16; hb = 14; }
+    else if (!strcmp(name, "vic")) { jr = 48; jg = 48; jb = 54; hr = 36; hg = 36; hb = 40; }
+    else if (!strcmp(name, "rio")) { jr = 214; jg = 214; jb = 208; hr = 214; hg = 176; hb = 90; pr = 214; pg = 166; pb = 130; }
+    else if (!strcmp(name, "tess")) { jr = 210; jg = 168; jb = 40; }
+    else if (!strcmp(name, "kane")) { jr = 110; jg = 72; jb = 40; hr = 40; hg = 32; hb = 24; }
+    else if (strcmp(name, "voss")) return 0;
+    *mx = *my = *mz = 0;
+    int n = 0;
+    n = brixel_box(v, n, max, mx, my, mz, 4, 0, 2, 6, 1, 5, 24, 24, 26);          /* left shoe */
+    n = brixel_box(v, n, max, mx, my, mz, 9, 0, 2, 11, 1, 5, 24, 24, 26);         /* right shoe */
+    n = brixel_box(v, n, max, mx, my, mz, 5, 2, 3, 6, 11, 4, pr, pg, pb);         /* left leg */
+    n = brixel_box(v, n, max, mx, my, mz, 9, 2, 3, 10, 11, 4, pr, pg, pb);        /* right leg */
+    n = brixel_box(v, n, max, mx, my, mz, 5, 2, 3, 5, 11, 3, 230, 220, 190);      /* left bone */
+    n = brixel_box(v, n, max, mx, my, mz, 10, 2, 3, 10, 11, 3, 230, 220, 190);    /* right bone */
+    n = brixel_box(v, n, max, mx, my, mz, 4, 12, 2, 11, 15, 5, jr, jg, jb);       /* pelvis */
+    n = brixel_box(v, n, max, mx, my, mz, 7, 12, 3, 8, 23, 4, 230, 220, 190);     /* spine */
+    n = brixel_box(v, n, max, mx, my, mz, 5, 16, 2, 10, 23, 5, jr, jg, jb);       /* torso */
+    n = brixel_box(v, n, max, mx, my, mz, 5, 17, 2, 10, 20, 2, 236, 228, 210);    /* ribs, front */
+    n = brixel_box(v, n, max, mx, my, mz, 7, 18, 3, 8, 19, 4, 160, 32, 40);       /* heart */
+    n = brixel_box(v, n, max, mx, my, mz, 1, 16, 3, 3, 22, 4, jr, jg, jb);        /* left arm */
+    n = brixel_box(v, n, max, mx, my, mz, 12, 16, 3, 14, 22, 4, jr, jg, jb);      /* right arm */
+    n = brixel_box(v, n, max, mx, my, mz, 2, 16, 3, 2, 22, 3, 230, 220, 190);     /* left arm bone */
+    n = brixel_box(v, n, max, mx, my, mz, 13, 16, 3, 13, 22, 3, 230, 220, 190);   /* right arm bone */
+    n = brixel_box(v, n, max, mx, my, mz, 1, 14, 3, 3, 15, 4, skin, sg, sb);     /* left hand */
+    n = brixel_box(v, n, max, mx, my, mz, 12, 14, 3, 14, 15, 4, skin, sg, sb);    /* right hand */
+    n = brixel_box(v, n, max, mx, my, mz, 5, 24, 1, 10, 30, 6, skin, sg, sb);    /* skull */
+    n = brixel_box(v, n, max, mx, my, mz, 6, 26, 2, 9, 28, 5, 210, 150, 160);     /* brain */
+    n = brixel_box(v, n, max, mx, my, mz, 5, 28, 1, 6, 28, 1, 236, 232, 220);     /* left eye */
+    n = brixel_box(v, n, max, mx, my, mz, 9, 28, 1, 10, 28, 1, 236, 232, 220);    /* right eye */
+    n = brixel_box(v, n, max, mx, my, mz, 6, 28, 0, 6, 28, 0, 24, 28, 34);        /* pupils sit on the face */
+    n = brixel_box(v, n, max, mx, my, mz, 9, 28, 0, 9, 28, 0, 24, 28, 34);
+    n = brixel_box(v, n, max, mx, my, mz, 5, 29, 1, 10, 31, 6, hr, hg, hb);      /* hair */
+    return n;
+}
 
 /* REAL FIX 2026-08-04, follow-up to the same-day generator fix (direct
  * user report: "phymoji is only showing 2 parallel sides, empty in the
@@ -2732,6 +2822,8 @@ static int bv_ray_click(const char *house, const Camera *cam,
     char path[PATH_BUF], seen_path[PATH_BUF];
     snprintf(path, sizeof(path), "%s/#.desktop/pchq_canvas_click.txt", house);
     snprintf(seen_path, sizeof(seen_path), "%s/#.desktop/pchq_canvas_click.seen", house);
+    bv_prefer_session_file(path, sizeof(path), "canvas_click.txt");
+    if (strstr(path, "/pieces/display/canvas_click.txt")) snprintf(seen_path, sizeof(seen_path), "%s/pieces/display/click_3d.seen", project_root);      /* a session click is tracked by a session stamp too */
     FILE *f = host_fopen(path, "r");
     if (!f) return 0;
     int cx = 0, cy = 0, cw = 0, ch = 0;
@@ -2901,7 +2993,7 @@ static int render_one_frame(void) {
      * (a bigger canvas letterboxes the rest - kh_draw_canvas centres). */
     {
         char vsz[PATH_BUF];
-        snprintf(vsz, sizeof(vsz), "%s/#.desktop/pchq_board_view.txt", house_root);
+        snprintf(vsz, sizeof(vsz), "%s/#.desktop/pchq_board_view.txt", house_root); bv_prefer_session_file(vsz, sizeof(vsz), "board_view.txt");
         FILE *vf = host_fopen(vsz, "r");
         if (vf) {
             int a = 0, b = 0;
@@ -2941,7 +3033,7 @@ static int render_one_frame(void) {
 
     /* Real unified voxel grid - see load_voxel_chunk()'s own header
      * comment for the full writeup. static: MAX_VOXEL_Z(64) *
-     * MAX_BOARD_DIM(256) * MAX_BOARD_DIM(256) is too big for
+     * MAX_BOARD_DIM(128) * MAX_BOARD_DIM(128) = 1M chars, too big for
      * the stack. */
     static char board3d[MAX_VOXEL_Z][MAX_BOARD_DIM][MAX_BOARD_DIM];
     int board_w = 0, board_h = 0;
@@ -3281,7 +3373,9 @@ static int render_one_frame(void) {
             char pp[PATH_BUF];
             snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
             /* Move range finder open: the click selects / places (desk behaviour). */
-            if (!bvr_click(focused_project_root, project_root, hx, hy, board_w, board_h)) {
+            /* Painted (maker) maps have no placer: the arrows must drive the xelector (rpg-pet INT moves its monster from it), and a stored canvas click re-arming the placer on every frame turned them into a giant
+             * green selector in the sky. */
+            if (!bvr_click(focused_project_root, project_root, hx, hy, board_w, board_h) && !maker_ground) {
                 FILE *pf = host_fopen(pp, "w");
                 if (pf) { fprintf(pf, "armed=1\nx=%d\ny=%d\nz=%d\n", hx, hy, hz); fclose(pf); }
             }
@@ -3387,6 +3481,14 @@ static int render_one_frame(void) {
      * before the real per-cell DDA ever ran. */
     const double board_bbox_y0 = -0.4, board_bbox_y1 = (double)z_count + 0.5;
     int frame_max_steps = board_w + board_h + z_count + 32;
+    /* A 256-wide page made this board_w+board_h, so every pixel walked
+     * hundreds of cells on the CPU. Fog already hides past fog_end.
+     * Cap the walk there. 96 is the hard ceiling either way. */
+    if (fog_end > fog_start) {
+        int fog_steps = (int)fog_end + 8;
+        if (fog_steps < frame_max_steps) frame_max_steps = fog_steps;
+    }
+    if (frame_max_steps > 96) frame_max_steps = 96;
 
     /* Real texture-cache warm-up, added 2026-08-03 for the OpenMP
      * parallel per-pixel loop just below (real perf fix - see
@@ -3523,21 +3625,39 @@ static int render_one_frame(void) {
             sc.eye[2] = (float)(cam.eye.z - voy);
             static unsigned short view_cells[BV_VIEW_DIM * BV_VIEW_DIM * 2];
             int cropped = (vox || voy || vww != g_mk.w || vwh != g_mk.h);
-            memset(gpu_grid, 0, (size_t)vww * (size_t)vwh * 3);
+            int z_count = 1;
             for (int row = 0; row < vwh; row++)
                 for (int col = 0; col < vww; col++) {
-                    size_t src = ((size_t)(row + voy) * g_mk.w + (size_t)(col + vox)) * 2;
-                    gpu_grid[col + row * vww] = 1;                                   /* level 0: floor */
-                    if (g_mk.cells[src + 1]) {
-                        gpu_grid[col + row * vww + vww * vwh] = 1;                 /* levels 1-2: wall */
-                        gpu_grid[col + row * vww + 2 * vww * vwh] = 1;
+                    int mx = col + vox, my = row + voy;
+                    int h = 1;
+                    if (g_mk.glyph && mx >= 0 && my >= 0 && mx < g_mk.w && my < g_mk.h) {
+                        unsigned char zg = (unsigned char)g_mk.glyph[my * g_mk.w + mx];
+                        if (zg < 128 && g_mk.zh[zg] > 1) h = g_mk.zh[zg];
                     }
+                    size_t src = ((size_t)my * g_mk.w + (size_t)mx) * 2;
+                    if (h <= 1 && my >= 0 && my < g_mk.h && mx >= 0 && mx < g_mk.w && g_mk.cells[src + 1]) h = 3;
+                    if (h > MAX_VOXEL_Z) h = MAX_VOXEL_Z;
+                    if (h > z_count) z_count = h;
+                }
+            memset(gpu_grid, 0, (size_t)vww * (size_t)vwh * (size_t)z_count);
+            for (int row = 0; row < vwh; row++)
+                for (int col = 0; col < vww; col++) {
+                    int mx = col + vox, my = row + voy;
+                    size_t src = ((size_t)my * g_mk.w + (size_t)mx) * 2;
+                    int h = 1;
+                    if (g_mk.glyph && mx >= 0 && my >= 0 && mx < g_mk.w && my < g_mk.h) {
+                        unsigned char zg = (unsigned char)g_mk.glyph[my * g_mk.w + mx];
+                        if (zg < 128 && g_mk.zh[zg] > 1) h = g_mk.zh[zg];
+                    }
+                    if (h <= 1 && my >= 0 && my < g_mk.h && mx >= 0 && mx < g_mk.w && g_mk.cells[src + 1]) h = 3;
+                    if (h > z_count) h = z_count;
+                    for (int lvl = 0; lvl < h; lvl++) gpu_grid[col + row * vww + lvl * vww * vwh] = 1;
                     if (cropped) {
                         view_cells[((size_t)row * vww + col) * 2] = g_mk.cells[src];
                         view_cells[((size_t)row * vww + col) * 2 + 1] = g_mk.cells[src + 1];
                     }
                 }
-            sc.board_w = vww; sc.board_h = vwh; sc.z_count = 3;
+            sc.board_w = vww; sc.board_h = vwh; sc.z_count = z_count;
             sc.grid = gpu_grid;
             sc.legend_n = 1; sc.legend_glyph[0] = 1;
             sc.legend_rgb[0][0] = sc.legend_rgb[0][1] = sc.legend_rgb[0][2] = 0.5f;
@@ -3547,7 +3667,7 @@ static int render_one_frame(void) {
             sc.cells = cropped ? view_cells : g_mk.cells;
             sc.cells_w = vww; sc.cells_h = vwh;
             sc.para = g_mk.para; sc.para_w = g_mk.para_w; sc.para_h = g_mk.para_h;
-            sc.para_loop_x = g_mk.para_lx; sc.para_loop_y = g_mk.para_ly;
+            sc.para_loop_x = g_mk.para_lx; sc.para_loop_y = g_mk.para_ly; sc.para_ver = g_mk.para_ver;
         }
         double ll = lighting_enabled ? game_light_level_sky : 1.0;
         if (ll < 0.15) ll = 0.15;
@@ -3590,10 +3710,12 @@ static int render_one_frame(void) {
         /* Maker (TSOTS-style painted) maps: the selector, the hero and the map events must be the SAME box - same 0.7 footprint, standing on the floor top (1.0) up to the sprite's 2.6 -
          * not a 0.7 cube floating at the pc-hq z level (owner 2026-10-10: "xelector and other cube should be same size and on same level as sprite"). */
         if (g_xelector_present && camera_mode != 1) {
-            if (sc.maker) ADDBOX(g_xelector_x+0.15, 1.0, g_xelector_y+0.15, g_xelector_x+0.85, 2.6, g_xelector_y+0.85, 60,220,220, 0);
+            if (sc.maker) ADDWIRE(g_xelector_x+0.15, 1.0, g_xelector_y+0.15, g_xelector_x+0.85, 2.6, g_xelector_y+0.85, 40,255,80);      /* the same box as a sprite, as an outline so the selected sprite inside it stays visible */
             else ADDBOX(g_xelector_x+0.15, g_xelector_z+0.15, g_xelector_y+0.15,
                    g_xelector_x+0.85, g_xelector_z+0.85, g_xelector_y+0.85, 60,220,220, 0);
-        if (g_ray_hit)
+        }
+        /* The cyan click marker is not drawn on painted (maker) maps: it did not follow the click there (owner 2026-10-11: "it doesn't work, prove it works or get rid of it") and the green xelector box is the one cursor. Other boards keep it. */
+        if (g_ray_hit && !sc.maker)
             ADDWIRE(g_ray_x + 0.04, g_ray_z + 0.04, g_ray_y + 0.04,
                     g_ray_x + 0.96, g_ray_z + 0.96, g_ray_y + 0.96, 40, 220, 255);
         /* Green selector. Arrows move it while armed. Escape clears it. */
@@ -3601,7 +3723,6 @@ static int render_one_frame(void) {
             char pp[PATH_BUF];
             snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
             { BvRange rg; if (bvr_load(focused_project_root, &rg)) bvr_arm_placer(pp, focused_project_root); }
-        }
             if (read_kv_int(pp, "armed", 0)) {
                 int sx = read_kv_int(pp, "x", 0);
                 int sy = read_kv_int(pp, "y", 0);
@@ -3641,6 +3762,7 @@ static int render_one_frame(void) {
          * which is the same extrusion a phymoji model gets. No frame
          * file, or no free model slot: the old flat colour box. */
         if (sc.maker) {
+            maker_read_events(g_mk.key); maker_read_parallax(g_mk.key);
             int budget = 80;
             int used_model[96];
             char used_key[96][64];
@@ -3668,6 +3790,42 @@ static int render_one_frame(void) {
                         if (!ff) continue;
                         got = fread(frame, 1, sizeof(frame), ff) == sizeof(frame);
                         fclose(ff);
+                    }
+                    if (!got) {
+                        /* Brixel people have no RPG frame. shared/brixels/<name>-front.txt is the picture that must move with the event. A missing file leaves the flesh box. */
+                        char bp[4400]; snprintf(bp, sizeof(bp), "%s", g_mk.key);
+                        for (int up = 0; up < 16 && !got; up++) {
+                            char *sl = strrchr(bp, '/'); if (!sl) break; *sl = 0;
+                            char tp[4400]; snprintf(tp, sizeof(tp), "%s/shared/brixels/%s-front.txt", bp, g_mk.ev[i].name);
+                            FILE *tf = fopen(tp, "r"); if (!tf) continue;
+                            char rows[48][40]; int ny = 0; char ln[80];
+                            while (ny < 48 && fgets(ln, sizeof ln, tf)) { if (ln[0] == '#' || ln[0] == '\n') continue; snprintf(rows[ny], 40, "%s", ln); ny++; }
+                            fclose(tf);
+                            if (ny < 20) continue;
+                            for (int py = 0; py < 24; py++) for (int px = 0; px < 16; px++) {
+                                int sy = py * ny / 24, sx = px * 32 / 16; char c = rows[sy][sx];
+                                int r = 0, g = 0, b = 0, a = 255;
+                                if (c == '.' || !c || c == '\n') a = 0;
+                                else if (c == 'H' || c == 'K' || c == 'D') { r = 28; g = 22; b = 18; }
+                                else if (c == 'h') { r = 62; g = 48; b = 36; }
+                                else if (c == 'L') { r = 214; g = 176; b = 90; }
+                                else if (c == 'S' || c == 'A') { r = 214; g = 166; b = 130; }
+                                else if (c == 's') { r = 176; g = 124; b = 96; }
+                                else if (c == 'W') { r = 236; g = 232; b = 220; }
+                                else if (c == 'e' || c == 'B') { r = 24; g = 28; b = 34; }
+                                else if (c == 'J') { r = 36; g = 48; b = 72; }
+                                else if (c == 'G' || c == 'g') { r = 36; g = 96; b = 52; }
+                                else if (c == 'R') { r = 160; g = 42; b = 44; }
+                                else if (c == 'Y') { r = 210; g = 168; b = 40; }
+                                else if (c == 'Z') { r = 110; g = 72; b = 40; }
+                                else if (c == 'T' || c == 'C') { r = 214; g = 214; b = 208; }
+                                else if (c == 'P' || c == 'p') { r = 42; g = 58; b = 86; }
+                                else if (c == 'O' || c == 'o') { r = 24; g = 24; b = 26; }
+                                else a = 0;
+                                unsigned char *d = frame + (py * 16 + px) * 4; d[0] = (unsigned char)r; d[1] = (unsigned char)g; d[2] = (unsigned char)b; d[3] = (unsigned char)a;
+                            }
+                            got = 1;
+                        }
                     }
                     if (got) {
                         /* Same extrusion as chicken: each opaque pixel
@@ -3710,6 +3868,8 @@ static int render_one_frame(void) {
                 hm = GPU_ADD_MODEL(g_hero_phymoji, hero_phymoji_count,
                                    hero_phymoji_max_lx, hero_phymoji_max_ly, hero_phymoji_max_lz);
             double hs = 0.9;
+            if (sc.maker) ADDBOX(g_hero_x+0.15, 1.0, g_hero_y+0.15, g_hero_x+0.85, 2.6, g_hero_y+0.85, 200,90,60, 0);      /* same box as a map event sprite */
+            else
             ADDBOX(g_hero_x+0.5-hs/2.0, g_hero_z+0.0, g_hero_y+0.5-hs/2.0,
                    g_hero_x+0.5+hs/2.0, g_hero_z+hs,  g_hero_y+0.5+hs/2.0, 200,90,60, 0);
             if (hm >= 0) sc.box[sc.box_n-1].model = hm;
@@ -3718,8 +3878,6 @@ static int render_one_frame(void) {
         for (int t=0; t<MAX_PHYMOJI_TEMPLATES; t++) tmpl_model[t] = -1;
         for (int wi=0; wi<g_phymoji_world_entity_count; wi++) {
             PhymojiWorldEntity *we = &g_phymoji_world_entities[wi];
-            if (sc.maker) ADDBOX(g_hero_x+0.15, 1.0, g_hero_y+0.15, g_hero_x+0.85, 2.6, g_hero_y+0.85, 200,90,60, 0);      /* same box as a map event sprite */
-            else
             double wsx=1.0, wsy=1.0, wsz=1.0; int cr=60,cg=140,cb=50;
             if (strcmp(we->entity_id, "tree_small")==0) wsy = 3.0;
             if (strcmp(we->entity_id, "chicken")==0) { wsx=wsy=wsz=0.6; cr=cg=cb=210; }
@@ -4365,7 +4523,14 @@ static int render_one_frame(void) {
      * g_fbuf, on top of the raymarch, before the atomic write. */
     g_mm_board3d = board3d; g_mm_col_top = col_top;
     g_mm_board_w = board_w; g_mm_board_h = board_h;
-    g_mm_selx = selector_x; g_mm_sely = selector_y;
+    /* The selector defaults to the middle of the glyph board. On a
+     * painted page the camera follows the xelector, so the minimap
+     * marker follows it too. */
+    if (maker_ground && g_xelector_present) {
+        g_mm_selx = g_xelector_x; g_mm_sely = g_xelector_y;
+    } else {
+        g_mm_selx = selector_x; g_mm_sely = selector_y;
+    }
     bv_draw_hud(focused_project_root, current_z, selector_x, selector_y);
 
     size_t byte_count = (size_t)g_fw * (size_t)g_fh * 4;
@@ -4376,7 +4541,12 @@ static int render_one_frame(void) {
      * are, since those never describe the <canvas> content. Digest is
      * over the FINAL g_fbuf (HUD included) so it matches exactly what
      * rgb_frame_3d_overlay.raw is about to hold. */
-    bv_write_scene_receipt(focused_project_root, board_w, board_h, z_count,
+    /* board_w here is the glyph board. A painted page replaces that
+     * grid, so the receipt names the page that was drawn. */
+    bv_write_scene_receipt(focused_project_root,
+                           (maker_ground && g_mk.w > 0) ? g_mk.w : board_w,
+                           (maker_ground && g_mk.h > 0) ? g_mk.h : board_h,
+                           z_count,
                            current_z, selector_x, selector_y,
                            camera_mode, cam_yaw, cam_pitch,
                            cam.eye.x, cam.eye.y, cam.eye.z,
@@ -4418,7 +4588,7 @@ static long long bv_file_size(const char *p) {
 static void bv_repaint_hud_only(void) {
     if (!g_click_ready || !g_click_focus[0] || !project_root[0] || !house_root[0]) return;
     char vsz[PATH_BUF];
-    snprintf(vsz, sizeof(vsz), "%s/#.desktop/pchq_board_view.txt", house_root);
+    snprintf(vsz, sizeof(vsz), "%s/#.desktop/pchq_board_view.txt", house_root); bv_prefer_session_file(vsz, sizeof(vsz), "board_view.txt");
     int a = g_fw, b = g_fh;
     FILE *vf = fopen(vsz, "r");
     if (vf) { if (fscanf(vf, "%d %d", &a, &b) != 2) { a = g_fw; b = g_fh; } fclose(vf); }
@@ -4487,7 +4657,7 @@ int main(int argc, char **argv) {
     char vszp[PATH_BUF]; vszp[0] = '\0';
     int last_vw = 0, last_vh = 0;
     if (house_root[0]) {
-        snprintf(vszp, sizeof(vszp), "%s/#.desktop/pchq_board_view.txt", house_root);
+        snprintf(vszp, sizeof(vszp), "%s/#.desktop/pchq_board_view.txt", house_root); bv_prefer_session_file(vszp, sizeof(vszp), "board_view.txt");
         FILE *vf0 = fopen(vszp, "r");
         if (vf0) { if (fscanf(vf0, "%d %d", &last_vw, &last_vh) != 2) { last_vw = last_vh = 0; } fclose(vf0); }
     }
@@ -4519,7 +4689,7 @@ int main(int argc, char **argv) {
         }
         if (g_click_ready && house_root[0]) {
             char cp[PATH_BUF], stamp[64] = "";
-            snprintf(cp, sizeof(cp), "%s/#.desktop/pchq_canvas_click.txt", house_root);
+            snprintf(cp, sizeof(cp), "%s/#.desktop/pchq_canvas_click.txt", house_root); bv_prefer_session_file(cp, sizeof(cp), "canvas_click.txt");
             FILE *cf = fopen(cp, "r");
             if (cf) { if (!fgets(stamp, sizeof(stamp), cf)) stamp[0] = '\0'; fclose(cf); }
             static char last_click[64];
@@ -4545,6 +4715,15 @@ int main(int argc, char **argv) {
             clock_gettime(CLOCK_MONOTONIC, &ta);
             int rc = render_one_frame();
             clock_gettime(CLOCK_MONOTONIC, &tb);
+            /* A slow frame must not be followed at the 30ms floor.
+             * house_wait_us is the house wait; back off by the frame
+             * itself so a pegged raymarch cannot queue the next one. */
+            {
+                long frame_us = (tb.tv_sec - ta.tv_sec) * 1000000L
+                              + (tb.tv_nsec - ta.tv_nsec) / 1000L;
+                if (frame_us > BV_IDLE_POLL_USEC)
+                    house_wait_us((int)frame_us);
+            }
             if (getenv("BV_GPU_DEBUG"))
                 fprintf(stderr, "bv_gpu daemon frame %lld: %.1f ms  [load %.1f | gpu %.1f | write %.1f] (rc=%d)\n",
                         served + 1, (tb.tv_sec - ta.tv_sec) * 1e3 + (tb.tv_nsec - ta.tv_nsec) / 1e6,

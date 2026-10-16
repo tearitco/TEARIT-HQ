@@ -1,0 +1,17 @@
+/* blueprintz.css - colour/size only; layout stays in the shared renderer. Same family as sfx-hai.css. */
+window { width: 1180px; height: 640px; background-color: #14161b; font-family: DejaVu Sans; font-size: 11px; }
+.quiet { background-color: #2a2d36; color: #c8cdd8; }
+.bp-title { background-color: #23262f; color: #f5b642; font-weight: bold; }
+.bp-head { background-color: #1d2027; color: #7ec8ff; font-weight: bold; }
+.bp-flag { background-color: #3a1f22; color: #ff9a9a; }
+sidebar { width: 520px; background-color: #1a1a22; color: #cccccc; }
+.ms-row { background-color: #1a1a1e; color: #d0d0d4; width: 500px; height: 20px; padding: 2px 6px; }
+.st-wait { color: #d0d0d4; }
+.st-queued { color: #f5b642; }
+.st-run { color: #7ee08a; }
+.st-ran { color: #8b93a7; }
+.active { background-color: #24384a; }
+.bp-panel { background-color: #14161b; }
+.bp-row { background-color: #14161b; }
+.bp-btn { width: 96px; height: 26px; background-color: #1a1a1a; color: #cccccc; border: 1px solid #444444; border-width: 1; }
+.bp-btn:hover { background-color: #2a3a4a; color: #ffffff; }

@@ -1,4 +1,0 @@
-TRIGGER|on-click
-CMD|1|if|switch_name=test_switch|compare=on|compare=on
-CMD|2|call_common_event|event_name=test_target|trigger=on-click|trigger=on-click
-CMD|3|end|

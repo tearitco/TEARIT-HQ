@@ -111,6 +111,9 @@
 #include <string.h>
 #include <signal.h>
 #include <time.h>
+#if defined(__linux__)
+#include <dirent.h>
+#endif
 #ifndef _WIN32
 #include <sys/types.h>
 #include <unistd.h>
@@ -311,6 +314,52 @@ static void write_small_file(const char *house_root, const char *rel_path, const
      * one outlier. Real fix: drop the redundant remove(), let rename()
      * do its one real atomic job. */
     ktb_atomic_rename(tmp, path);
+}
+
+/* LOAD GUARD (2026-10-12, owner: "show cpu % on the top bar, and a warning if too many windows are open" after an overheat crash): the label that the CPU cell shows ("%35", "!%92" when a limit is passed). Limits are keys of #.desktop/livedesk_taskbar.pdl (warn_windows 6, warn_cpu 85, warn_temp 80;
+ * 0 turns one off). House CPU standard: a long-lived process gates its expensive work with an in-memory CLOCK_MONOTONIC gate: sampled at most every 2 s (the /proc window scan every 4 s),
+ * the CPU figure rounded to 5% steps so the dock republishes only when the label really changes. System-wide CPU = delta of /proc/stat; temperature = the hottest thermal zone; windows = processes
+ * named khtpm_core_render (every khtpm window). Linux only: elsewhere the label stays empty and the cell is hidden. */
+static char g_load_label[96] = "";
+static int g_load_warn = 0;
+static int ktb_load_sample(const char *house_root) {
+#if defined(__linux__)
+    static struct timespec last; static unsigned long long p_busy = 0, p_tot = 0; static int wins = 0, cpu = 0, temp = 0; static int win_tick = 0;
+    struct timespec now; clock_gettime(CLOCK_MONOTONIC, &now);
+    double el = (double)(now.tv_sec - last.tv_sec) * 1000.0 + (double)(now.tv_nsec - last.tv_nsec) / 1e6;
+    if (last.tv_sec != 0 && el < 2000.0) return 0;
+    last = now;
+    { FILE *f = fopen("/proc/stat", "r"); if (f) { unsigned long long u = 0, n = 0, sy = 0, id = 0, io = 0, ir = 0, so = 0, st = 0;
+        if (fscanf(f, "cpu %llu %llu %llu %llu %llu %llu %llu %llu", &u, &n, &sy, &id, &io, &ir, &so, &st) >= 4) {
+            unsigned long long tot = u + n + sy + id + io + ir + so + st, busy = tot - id - io;
+            if (p_tot && tot > p_tot) cpu = (int)((busy - p_busy) * 100ULL / (tot - p_tot));
+            p_busy = busy; p_tot = tot; }
+        fclose(f); } }
+    { int hot = 0; for (int z = 0; z < 16; z++) { char tp[96]; snprintf(tp, sizeof(tp), "/sys/class/thermal/thermal_zone%d/temp", z); FILE *f = fopen(tp, "r"); if (!f) continue; int mt = 0; if (fscanf(f, "%d", &mt) == 1 && mt / 1000 > hot) hot = mt / 1000; fclose(f); } temp = hot; }
+    if (win_tick++ % 2 == 0) { int cnt = 0; DIR *d = opendir("/proc"); if (d) { struct dirent *e; while ((e = readdir(d))) { if (e->d_name[0] < '1' || e->d_name[0] > '9') continue;
+            char cp[300], cm[32] = ""; snprintf(cp, sizeof(cp), "/proc/%s/comm", e->d_name); FILE *f = fopen(cp, "r"); if (!f) continue; if (fgets(cm, sizeof(cm), f)) { cm[strcspn(cm, "\n")] = 0; if (!strcmp(cm, "khtpm_core_rend")) {
+                /* the header and the hotbar are always open: they are not "too many windows" (owner 2026-10-12: red at 10% CPU, the count sat at 4-5 with only the always-on bars and two boards) */
+                char kp[300], ka[1024] = ""; snprintf(kp, sizeof(kp), "/proc/%s/cmdline", e->d_name); FILE *kf = fopen(kp, "r"); if (kf) { size_t kn = fread(ka, 1, sizeof(ka) - 1, kf); fclose(kf); for (size_t ki = 0; ki < kn; ki++) if (!ka[ki]) ka[ki] = ' '; ka[kn] = 0; }
+                if (!strstr(ka, "khtpm_strip_header") && !strstr(ka, "hotbar-desk.xhtpm")) cnt++; } } fclose(f); }
+        closedir(d); wins = cnt; } }
+    int wl = 7, cl = 85, tl = 80; { char pdl[KTB_PATH_BUF], v[16]; snprintf(pdl, sizeof(pdl), "%s/#.desktop/livedesk_taskbar.pdl", house_root);
+        v[0] = 0; read_key_value(pdl, "warn_windows", v, sizeof(v)); if (v[0]) wl = atoi(v); v[0] = 0; read_key_value(pdl, "warn_cpu", v, sizeof(v)); if (v[0]) cl = atoi(v); v[0] = 0; read_key_value(pdl, "warn_temp", v, sizeof(v)); if (v[0]) tl = atoi(v); }
+    int cp5 = (cpu + 2) / 5 * 5; if (cp5 > 100) cp5 = 100;
+    /* hysteresis (owner: the top bar flickered when the CPU hovered at the limit): once warning, stay warning until every figure is clearly below its limit (10 points / 2 windows / 5 degrees lower; windows = the open windows other than the header and the hotbar) */
+    int warn = (wl > 0 && wins >= wl) || (cl > 0 && cpu >= cl) || (tl > 0 && temp >= tl);
+    if (!warn && g_load_warn) warn = (wl > 0 && wins >= wl - 2) || (cl > 0 && cpu >= cl - 10) || (tl > 0 && temp >= tl - 5);
+    char lab[96]; snprintf(lab, sizeof(lab), warn ? "!%%%d" : "%%%d", cp5);      /* just the number (owner: "%<#>" next to the pid); the warning reasons (windows, temperature) only turn it red */
+    /* Return bits: 1 = the label changed (reported at most every 10 s: the windows follow it through the load marker), 2 = the warning flipped (reported at once). The dock header is republished ONLY on bit 2: a
+     * republish of the whole strip every 2 s made the top bar flicker (2026-10-12 owner bug), so its % follows the existing once-a-minute datetime publish. */
+    static struct timespec last_rep; int r = 0;
+    int lab_changed = strcmp(lab, g_load_label) != 0, warn_flip = warn != g_load_warn;
+    double since = (double)(now.tv_sec - last_rep.tv_sec) * 1000.0 + (double)(now.tv_nsec - last_rep.tv_nsec) / 1e6;
+    if (warn_flip) r |= 2;
+    if (warn_flip || (lab_changed && (last_rep.tv_sec == 0 || since >= 10000.0))) { r |= 1; last_rep = now; snprintf(g_load_label, sizeof(g_load_label), "%s", lab); g_load_warn = warn; }
+    return r;
+#else
+    (void)house_root; return 0;
+#endif
 }
 
 static void format_datetime(char *out, size_t out_sz, const char *lang) {
@@ -593,6 +642,9 @@ static void publish_strip_ui(const KtbState *s, const char *house_root) {
     ui_put(body, &off, sizeof(body), "desks_label", desks_lab);
     ui_put(body, &off, sizeof(body), "avatar_dir", avatar);
     ui_put(body, &off, sizeof(body), "datetime", dt);
+    ui_put(body, &off, sizeof(body), "cpu_label", g_load_label);      /* the CPU / temperature / window-count cell; cpu_ok and cpu_warn pick the calm or the red cell (show=) */
+    ui_put(body, &off, sizeof(body), "cpu_ok", g_load_label[0] && !g_load_warn ? "1" : "");
+    ui_put(body, &off, sizeof(body), "cpu_warn", g_load_warn ? "1" : "");
     ui_put(body, &off, sizeof(body), "drop_target", drop);
 
     {
@@ -1159,6 +1211,13 @@ int main(int argc, char **argv) {
             if (strcmp(dt, last_dt) != 0) {
                 snprintf(last_dt, sizeof(last_dt), "%s", dt);
                 reload_changed = 1;
+            }
+            int lr = ktb_load_sample(house_root);      /* gated to one sample per 2 s inside; bit 1 = write the windows' state + marker, bit 2 = the warning flipped */
+            if (lr & 2) reload_changed = 1;      /* only a warning flip republishes the dock; the % in the header rides the minute datetime publish */
+            if (lr) {
+                { char ls[160]; snprintf(ls, sizeof(ls), "load_label=%s\nload_ok=%s\nload_warn=%s\n", g_load_label, g_load_label[0] && !g_load_warn ? "1" : "", g_load_warn ? "1" : "");
+                  write_small_file(house_root, "#.desktop/load_state.txt", ls);      /* the game windows read this; then the marker grows (append-only: its SIZE is the signal) */
+                  char mp[KTB_PATH_BUF]; path_join2(mp, sizeof(mp), house_root, "#.desktop/load_changed.txt"); FILE *mf = fopen(mp, "a"); if (mf) { fputc('x', mf); fclose(mf); } }
             }
         }
         if (mutated || reload_changed) {

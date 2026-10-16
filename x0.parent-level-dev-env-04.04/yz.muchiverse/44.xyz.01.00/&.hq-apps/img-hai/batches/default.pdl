@@ -1,0 +1,11 @@
+SECTION | KEY | VALUE
+------------------------------
+# batches/default.pdl - an unattended draft list for img-hai ("Run batch"). Both hosts work through it on their own; every image lands in the draft folder with a ledger line, and the palette shows it with c:?/o:? for judging.
+# BATCH | label | part or free | words ("-" = build the prompt from the word bank for that part) | seeds | model id or any | overlay (optional; a candidate file name under data/img/candidates/ without .cand, "-" or empty = none)
+# Seeds are 1..n, so the same prompt is comparable across runs and hosts.
+BATCH | wheel  | car_wheel      | -  | 2 | any
+BATCH | glass  | car_windshield | -  | 2 | any
+BATCH | torso  | person_torso   | -  | 2 | any
+BATCH | door-free-1 | free | red car door seen from above, flat game sprite, white background | 2 | any
+BATCH | door-free-2 | free | top-down sprite of a car driver side door, red metal, black outline, simple flat colours | 2 | any
+BATCH | road   | free | seamless top-down game tile of grey asphalt with one white dashed line down the middle, flat colours | 2 | any

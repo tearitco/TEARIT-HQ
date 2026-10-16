@@ -1,0 +1,47 @@
+<!-- blueprintz.xhtpm - STATIC TEMPLATE. The page view and debugger (design: BOOK 08-roadmap/design-docs/BLUEPRINTZ-DESIGN.md sections 12.3-12.15).
+     The module tag forks blueprintz_manager.+x, which writes state/ui.txt. Left: every event of the page with its trigger and state (waiting / queued / running / ran);
+     a "!! flags" mark means the problem scan found something. Right: debugger buttons (Play, Pause, Step event, Step command, Fire ...), the problems for the selected
+     event, and the last trace rows. Page = state/bp_sources.pdl (EVENT | name | pkg_dir). Target house = state/target.pdl (test runs point it at a scratch house). -->
+<window label="BLUEPRINTZ" class="database-window" vars="state/ui.txt">
+  <module src="&.hq-apps/blueprintz/+x/blueprintz_manager.+x" id="_"/>
+  <page name="main">
+    <sidebar>
+      <text label="Events on this page (click to select)" class="quiet"/>
+      <repeat count="${e_count}" bind="e">
+        <item id="ev${e.#}" class="${e.class}" label="${e.label}" action="${e.action}"/>
+      </repeat>
+    </sidebar>
+    <panel id="bp_p" class="bp-panel">
+      <text label="${status_line}" class="bp-title"/>
+      <text label="${sel_line}" class="quiet"/>
+      <row class="toolbar">
+        <item id="play" label="Play" action="${play_action}"/>
+        <item id="stopplay" label="Stop" action="${stopplay_action}"/>
+        <item id="pause" label="Pause" action="${pause_action}"/>
+        <item id="resume" label="Resume" action="${resume_action}"/>
+        <item id="fire" label="Fire" action="${fire_action}"/>
+      </row>
+      <row class="toolbar">
+        <item id="stepev" label="Step ev" action="${stepev_action}"/>
+        <item id="stepcmd" label="Step cmd" action="${stepcmd_action}"/>
+        <item id="runend" label="Run end" action="${runend_action}"/>
+        <item id="abort" label="Abort" action="${abort_action}"/>
+        <item id="detach" label="Detach" action="${detach_action}"/>
+        <item id="refresh" label="Refresh" action="${refresh_action}"/>
+      </row>
+      <text label="Problems for the selected event" class="bp-head"/>
+      <repeat count="${f_count}" bind="f">
+        <text id="fl${f.#}" class="bp-flag" label="${f.label}"/>
+      </repeat>
+      <text label="${f_none}" class="quiet"/>
+      <text label="Last debugger rows (trace)" class="bp-head"/>
+      <repeat count="${t_count}" bind="t">
+        <text id="tr${t.#}" class="quiet" label="${t.label}"/>
+      </repeat>
+      <text label="${target_line}" class="quiet"/>
+    </panel>
+    <footer id="statusbar" class="pchq-footer">
+      <text label="${msg}" class="quiet"/>
+    </footer>
+  </page>
+</window>

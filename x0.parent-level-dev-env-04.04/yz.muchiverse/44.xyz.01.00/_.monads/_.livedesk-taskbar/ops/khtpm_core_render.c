@@ -132,6 +132,9 @@ static void zero_nav_subtree(Elem *e); /* generic: recursively zero nav_index (s
 static void kh_grab_keyboard_retry(void);
 static void kh_capture_click(int x, int y, int button);
 static void kh_capture_key(KeySym ks, char ch);
+/* LAYOUT REUSE (2026-10-12, measured on the dsr-rpg board window: redraw() ran assign_nav_and_layout() ~1.7 times per redraw and layout + CSS style was ~58% of repaint time). g_layout_fresh = 1 tells the NEXT
+ * redraw() that the layout it would compute is already current (the caller just ran it, or nothing that changes layout happened since the last redraw: a canvas-only repaint). redraw() consumes it. */
+static int g_layout_fresh = 0;
 /* FIND IN PAGE (2026-10-12) - arm/step/clear, used by handle_key(). */
 static void kh_find_begin(void);
 static void kh_find_step(int dir);
@@ -352,6 +355,27 @@ static void slide_dx_put(const char *label, int dx) {
     fclose(f);
     rename(tmp, p);
 }
+/* Minimized state of a "vars-positioned" window (the hotbar), remembered across restarts (owner 2026-10-12: a hotbar minimized with "_" came back open after a desktop restart). Stored per window label in
+ *     #.desktop/hq_minimized.pdl      MIN | <label> | 1
+ * A row exists only while the window is minimized. Written when the window is minimized / restored, read once at startup: a minimized window is created unmapped, registered minimized=1 (so the bottom bar
+ * still offers it) and stays hidden until the taskbar restores it. */
+static int hq_min_get(const char *label) {
+    char p[PATH_BUF + 40], line[512], want[300]; FILE *f; int on = 0;
+    snprintf(p, sizeof(p), "%s/#.desktop/hq_minimized.pdl", g_house_root); snprintf(want, sizeof(want), "MIN | %s | 1", label);
+    if (!(f = fopen(p, "r"))) return 0;
+    while (fgets(line, sizeof(line), f)) if (!strncmp(line, want, strlen(want))) on = 1;
+    fclose(f); return on;
+}
+static void hq_min_put(const char *label, int on) {
+    char p[PATH_BUF + 40], tmp[PATH_BUF + 50], line[512], want[300], keep[16][512]; int n = 0, i; FILE *f;
+    snprintf(p, sizeof(p), "%s/#.desktop/hq_minimized.pdl", g_house_root); snprintf(tmp, sizeof(tmp), "%s.tmp", p); snprintf(want, sizeof(want), "MIN | %s | 1", label);
+    if ((f = fopen(p, "r"))) { while (n < 16 && fgets(line, sizeof(line), f)) if (strncmp(line, want, strlen(want)) && !strncmp(line, "MIN | ", 6)) snprintf(keep[n++], 512, "%s", line); fclose(f); }
+    if (!(f = fopen(tmp, "w"))) return;
+    fprintf(f, "# minimized vars-positioned windows (written by the renderer on minimize / restore)\n");
+    for (i = 0; i < n; i++) fputs(keep[i], f);
+    if (on) fprintf(f, "%s\n", want);
+    fclose(f); rename(tmp, p);
+}
 static int g_dock_want_rows = 0, g_dock_rows_loaded = 0;
 static void dock_state_path(char *out, size_t n) { snprintf(out, n, "%s/#.desktop/dock_state.pdl", g_house_root); }
 static void dock_rows_load(void) {
@@ -387,6 +411,8 @@ static Window g_dock_menu_win;
  * move it while such a menu is open. 2026-10-08, owner: "thumb scroll to reach cancel". */
 static int g_dock_dd_scroll = 0, g_dock_dd_scrolling = 0, g_dock_dd_vis = 0, g_dock_dd_total = 0;
 static char g_dock_dd_target[64] = "";
+static int g_dock_dd_search = 0;       /* 1 = this open menu is long enough for a thumb, so the search row is up */
+static int g_dock_dd_search_jump = 0;  /* 1 = land focus on the search field once, when the menu opens */
 static int g_dock_dd_drag = 0;   /* 1 while button 1 drags the thumb / track of the long dropdown */
 /* #.desktop/hq_ui.pdl `dropdown_max_rows=N` (N >= 3): a dropdown with more rows than this scrolls (window of N-1 rows + pinned last row +
  * thumb) even when it would fit on screen. 0 / absent = only when it would run off the screen. Applies to the livedesk dock menus and
@@ -397,7 +423,26 @@ static int g_dropdown_max_rows = 0;
  * generic scrollbar's) at its ends and the thumb track between them. */
 #define DD_STRIP_W 62
 #define DD_ARROW_H 22
-static Elem g_dd_up_elem, g_dd_dn_elem;
+static Elem g_dd_up_elem, g_dd_dn_elem, g_dd_search_elem;
+/* Case-insensitive substring. Empty query matches everything. Used by the livedesk dropdown search row. */
+static int dock_dd_label_hit(const char *lab, const char *q) {
+    size_t nq, nl, i;
+    if (!q || !q[0]) return 1;
+    if (!lab) return 0;
+    nq = strlen(q); nl = strlen(lab);
+    if (nq > nl) return 0;
+    for (i = 0; i + nq <= nl; i++) {
+        size_t k;
+        for (k = 0; k < nq; k++) {
+            char a = lab[i + k], b = q[k];
+            if (a >= 'A' && a <= 'Z') a += 32;
+            if (b >= 'A' && b <= 'Z') b += 32;
+            if (a != b) break;
+        }
+        if (k == nq) return 1;
+    }
+    return 0;
+}
 static Pixmap g_dock_menu_buf;
 static XftDraw *g_dock_menu_xft;
 static GC g_dock_menu_gc;
@@ -407,6 +452,7 @@ static int g_dock_menu_buf_w, g_dock_menu_buf_h;
  * at all. Drives the map/raise throttle in dock_paint_menu(); see the
  * comment there and 09-appendix/WINDOWS-TASKBAR-PORT.md. */
 static int g_dock_menu_mapped = 0;
+static int g_dock_menu_op_due = 0; /* 1 = re-apply theme opacity after this menu has actually been painted */
 static int g_dock_menu_msx = 0, g_dock_menu_msy = 0;
 static int g_dock_menu_mw = 0, g_dock_menu_mh = 0;
 static int g_dock_menu_sx, g_dock_menu_sy, g_dock_menu_w, g_dock_menu_h;
@@ -2035,6 +2081,14 @@ static void kh_load_vars_multi(const char *paths) {
      * of render_warn reads a truthful number. Ad-hoc kh_set_var() calls
      * outside loads can still only bump it upward (conservative). */
     g_vars_dropped = 0;
+    if (g_house_root[0]) {      /* the load guard vars (load_label / load_ok / load_warn) for every window; this runs every idle tick, so the file is re-read only when its marker (load_changed.txt) grew; the window's own files below override */
+        static long s_ld_marker = -2; static char s_ld_label[96], s_ld_ok[4], s_ld_warn[4]; char lm[PATH_BUF]; struct stat lst;
+        snprintf(lm, sizeof(lm), "%s/#.desktop/load_changed.txt", g_house_root);
+        long msz = stat(lm, &lst) == 0 ? (long)lst.st_size : -1;
+        if (msz != s_ld_marker) { s_ld_marker = msz; int nb = g_kh_nvars; char lp[PATH_BUF]; snprintf(lp, sizeof(lp), "%s/#.desktop/load_state.txt", g_house_root); kh_load_vars(lp);
+            snprintf(s_ld_label, sizeof(s_ld_label), "%s", kh_get_var("load_label")); snprintf(s_ld_ok, sizeof(s_ld_ok), "%s", kh_get_var("load_ok")); snprintf(s_ld_warn, sizeof(s_ld_warn), "%s", kh_get_var("load_warn")); g_kh_nvars = nb; }
+        if (s_ld_label[0]) { kh_set_var("load_label", s_ld_label); kh_set_var("load_ok", s_ld_ok); kh_set_var("load_warn", s_ld_warn); }
+    }
     if (!paths || !paths[0]) return;
     char work[PATH_BUF * 4];
     snprintf(work, sizeof(work), "%s", paths);
@@ -3090,6 +3144,17 @@ static int reparse_chtpm_if_changed(void) {
          * vars change is exactly as real a reason to refresh the peer as
          * a template edit - fold it in here rather than re-deriving a
          * second, parallel "did the tab list change" signal. */
+        /* LOAD GUARD (2026-10-12, owner: the CPU / temperature / window-count label belongs on the game windows with canvases too, "those are the troublemakers"): the taskbar manager writes
+         * #.desktop/load_state.txt (load_label, load_ok, load_warn) and APPENDS one byte to #.desktop/load_changed.txt when the label changes. Every window watches that marker's SIZE growth (rule 8: no
+         * mtime, no hash; one stat per poll) and reparses on growth, so the template's ${load_label} updates without any per-window sampling. The dock gets the same vars through strip_ui.txt. */
+        {
+            static long s_load_marker = -1; char lm[PATH_BUF]; struct stat lst;
+            snprintf(lm, sizeof(lm), "%s/#.desktop/load_changed.txt", g_house_root);
+            if (g_house_root[0] && !window_is_dock() && stat(lm, &lst) == 0) {      /* not the dock (header/bottom): it already follows the strip's own marker; a reparse per load change made the top bar flicker */
+                if (s_load_marker < 0 || lst.st_size < s_load_marker) s_load_marker = lst.st_size;      /* first sight / rotated: resync, no reparse */
+                else if (lst.st_size > s_load_marker) { s_load_marker = lst.st_size; vars_changed = 1; }
+            }
+        }
         if (vars_changed) peer_changed = 1;
         if (st.st_mtim.tv_sec == g_chtpm_mtime.tv_sec && st.st_mtim.tv_nsec == g_chtpm_mtime.tv_nsec && !peer_changed && !vars_changed)
             return 0;
@@ -3333,6 +3398,11 @@ static int reparse_chtpm_if_changed(void) {
     kh_cli_io_reload(new_window);
     if (saved_input_key[0]) {
         Elem *reelem = kh_find_input_by_key(new_window, saved_input_key);
+        /* the dock dropdown's search field is the static g_dd_search_elem, never part of the parsed tree: it survives a rebuild
+         * as is, so re-arm it by identity. Without this every keypress was followed by a reparse that logged NOT_FOUND and
+         * released the keyboard (owner 2026-10-13: "auto escapes after every single input"). */
+        if (!reelem && window_is_dock() && strcmp(saved_input_key, "dd-search") == 0 && strcmp(g_dd_search_elem.tag, "cli_io") == 0)
+            reelem = &g_dd_search_elem;
         if (reelem) {
             kh_set_default_input_elem(reelem);
             char *rbuf = strcmp(reelem->tag, "text_area") == 0 ? reelem->text_area_buffer : reelem->input_buffer;
@@ -3805,7 +3875,7 @@ static int g_has_canvas = 0;  /* set by assign_nav_and_layout when a <canvas> is
  * PRESSED: N" (pieces/keyboard/history.txt) - the SAME two-file dual
  * write pchq_append_key() always did, just no longer app-specific C. */
 static int g_interact_relay_on = 0;
-static char g_interact_relay_paths[2][PATH_BUF];
+static char g_interact_relay_paths[4][PATH_BUF];
 static int g_interact_relay_n = 0;
 static char g_interact_relay_raw[300] = "";  /* last-armed relay= string, for the re-arm check only */
 /* PC-HQ-FOCUS-AND-INTERACT-ACTIVATE.md: X11 focus vs Interact arm.
@@ -3887,6 +3957,8 @@ static int g_bar_click_x = -1;
  * (1); set `click_two_step=0` in #.desktop/hq_ui.pdl to restore the
  * old single-click-activates "auto" behavior house-wide. */
 static int g_click_two_step = 1;
+/* hq_ui.pdl sbar_track: -1 auto (in-window lists draw the line, the livedesk menu does not), 0 thumb only, 1 line on both. */
+static int g_sbar_track = -1;
 /* UI scale (2026-09-09, LIVEDESK-UI-SCALE.md). Percent; 100 = 1.0x.
  * Loaded from #.desktop/hq_ui.pdl's `font_scale` key (which already
  * shipped 1.25 and was read by nothing) in desktop_load_click_two_step()
@@ -3982,6 +4054,12 @@ static int click_focus_then_activate(Elem *hit) {
         /* the long dropdown's ^ / v: scroll on the first click. They are not rows the strip manager knows, so the generic
          * "first click = focus + relay focus code 6000+n" step made the manager reset focus to row 1 (owner: "jumping
          * back ... outside of its natural index"). */
+        g_focus_nav = hit->nav_index;
+        return 1;
+    }
+    if (window_is_dock() && strcmp(hit->id, "dd-search") == 0) {
+        /* the dropdown's search row: ONE click arms it (a text field has no "focus first, then fire" step; under click_two_step
+         * the first click only moved the highlight, so it never took the ^ arm or the keyboard - owner 2026-10-13). */
         g_focus_nav = hit->nav_index;
         return 1;
     }
@@ -5111,6 +5189,13 @@ static Elem *g_text_drag_elem = NULL;
 static int g_user_resizable = 0;
 /* only the pc-hq board window may write the global #.desktop/pchq_board_view.txt (producer-size handoff to bv_render_3d) */
 static int kh_is_pchq_board(void) { return strstr(g_chtpm_path, "pchq-board.xhtpm") != NULL; }
+/* pc-hq sessions (PCHQ-SESSIONS-DESIGN.md): the board's size and the last canvas click belong to ONE engine session. A board window publishes them inside its own session
+ * (<bv_session>/pieces/display/<name>) instead of the house-wide #.desktop files, so two boards no longer overwrite each other's; the engine ops read the session file first and fall back to
+ * the house-wide one for a window that was launched before this change. Returns 0 (caller uses the house-wide file) when the window has no bv_session var. */
+static int kh_session_display_path(const char *name, char *out, size_t cap) {
+    const char *s = kh_get_var("bv_session"); if (!s || !s[0]) return 0;
+    snprintf(out, cap, "%s/pieces/display/%s", s, name); return 1;
+}
 static int g_win_resizing = 0;
 /* Overlay chrome (IN-GAME-LAYOUTS-PLAN.md 4c): an overlay row with class ov-chrome whose FIRST child is a
  * <text class="ov-title"> can be dragged by that title with the mouse (class ov-slide-x: sideways only,
@@ -5433,9 +5518,11 @@ static void draw_generic_scrollbars(void) {
     int i;
     for (i = 0; i < g_n_generic_sbars; i++) {
         GenericScrollBar *b = &g_generic_sbars[i];
-        XSetForeground(dpy, gc, alloc_pixel("#2a2a2a"));
-        XFillRectangle(dpy, buf, gc, b->track_x, b->track_y,
-                       (unsigned)b->track_w, (unsigned)b->track_h);
+        if (g_sbar_track != 0) {
+            XSetForeground(dpy, gc, alloc_pixel("#2a2a2a"));
+            XFillRectangle(dpy, buf, gc, b->track_x, b->track_y,
+                           (unsigned)b->track_w, (unsigned)b->track_h);
+        }
         XSetForeground(dpy, gc, alloc_pixel("#888888"));
         XFillRectangle(dpy, buf, gc, b->track_x + 1, b->thumb_y,
                        (unsigned)(b->track_w > 2 ? b->track_w - 2 : b->track_w),
@@ -6466,7 +6553,8 @@ static void kh_ov_min_place(Elem *ov, int x0, int y0, int w, int rowh, int pad4)
         Elem *m = btn[b];
         if (!m) continue;
         css_compute_style(&g_sheet, m->tag, m->id, m->classes, m->n_classes, 0, &m->style);
-        m->w = scaled(66); m->h = rowh;
+        m->w = scaled(66); if (m->w > w / 3) m->w = w / 3;   /* a narrow pinned bar: the button is at most a third of it */
+        m->h = rowh;
         m->x = right - m->w; m->y = y0 + pad4;
         right = m->x - scaled(2);
     }
@@ -6480,7 +6568,7 @@ static void kh_ov_min_place(Elem *ov, int x0, int y0, int w, int rowh, int pad4)
     if ((mn || cl) && ov->n_children > 0 && elem_has_class(ov->children[0], "ov-title")) {
         Elem *t = ov->children[0];
         int tw = left - pad4 - t->x;
-        if (tw > 40) t->w = tw;
+        t->w = tw > scaled(8) ? tw : scaled(8);   /* ALWAYS cut the drag zone short of the buttons (a narrow bar left it over the "_" and the click started a drag) */
     }
 }
 
@@ -6515,6 +6603,37 @@ static void kh_ov_finish(Elem *ov) {
     }
 }
 
+/* Pinned side bars (class "ov-pin" on a canvas-overlay-left / canvas-overlay-right row): width from DATA. Precedence: css width on the row >
+ * <pkg>/side_style.pdl "STYLE | pin_width_<id> | N" > "STYLE | pin_width | N" > 180. The pdl is re-read at most every 400 ms, so editing it
+ * (or the css) re-lays the bar on the next redraw, no rebuild. */
+static int kh_pin_pdl_w(const char *id) {
+    static int dflt = 0, n = 0; static struct { char id[64]; int w; } ids[16]; static long lastms = 0;
+    struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts); long ms = ts.tv_sec * 1000L + ts.tv_nsec / 1000000L;
+    if (!lastms || ms - lastms >= 400) {
+        lastms = ms; dflt = 0; n = 0;
+        char path[PATH_BUF]; snprintf(path, sizeof(path), "%s/side_style.pdl", g_package_dir);
+        FILE *f = g_package_dir[0] ? fopen(path, "r") : NULL;
+        if (f) {
+            char ln[256];
+            while (fgets(ln, sizeof(ln), f)) {
+                char *k1 = strchr(ln, '|'); if (!k1) continue;
+                char *k2 = strchr(k1 + 1, '|'); if (!k2) continue;
+                *k1 = 0; *k2 = 0;
+                char *a = ln; while (*a == ' ') a++;
+                if (strncmp(a, "STYLE", 5) != 0) continue;
+                char *key = k1 + 1; while (*key == ' ') key++;
+                char *ke = key + strlen(key); while (ke > key && ke[-1] == ' ') *--ke = 0;
+                int v = atoi(k2 + 1); if (v <= 0) continue;
+                if (!strcmp(key, "pin_width")) dflt = v;
+                else if (!strncmp(key, "pin_width_", 10) && n < 16) { snprintf(ids[n].id, 64, "%s", key + 10); ids[n++].w = v; }
+            }
+            fclose(f);
+        }
+    }
+    for (int i = 0; i < n; i++) if (!strcmp(ids[i].id, id)) return ids[i].w;
+    return dflt;
+}
+
 static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int rh) {
     Elem *cv = NULL;
     for (int i = 0; i < region->n_children; i++)
@@ -6533,6 +6652,23 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
     if (cv->h < 64) cv->h = 64;
     cv->nav_index = 0;
     g_has_canvas = 1;
+
+    /* Pinned side bars (owner 2026-10-11, the hotbar's pin feature as a vertical bar): a canvas-overlay-left / -right row with class
+     * ov-pin TAKES its width out of the canvas, so the game view shrinks (the engine frame is resized from cv->w/cv->h) instead of
+     * being overlapped; the bar is full height. A hidden bar (show="${var}" false) was dropped at parse, so the canvas grows back; the
+     * bottom bar's cell flips that var. Recomputed from the template every pass (idempotent). */
+    Elem *pin_ov[8]; int pin_x[8], pin_w[8], npin = 0, pin_y0 = cv->y, pin_h = cv->h;
+    for (int oi = 0; oi < region->n_children && npin < 8; oi++) {
+        Elem *ov = region->children[oi]; int pl = elem_has_class(ov, "canvas-overlay-left"), pr = elem_has_class(ov, "canvas-overlay-right");
+        if (!elem_has_class(ov, "ov-pin") || (!pl && !pr)) continue;
+        css_compute_style(&g_sheet, ov->tag, ov->id, ov->classes, ov->n_classes, 0, &ov->style);
+        int w = ov->style.has_width ? ov->style.width : kh_pin_pdl_w(ov->id);
+        w = w > 0 ? scaled(w) : scaled(180);
+        if (w > cv->w - 64) w = cv->w - 64;   /* the view never shrinks below 64 px */
+        if (w < scaled(24)) continue;
+        if (pl) { pin_x[npin] = cv->x; cv->x += w; cv->w -= w; } else { cv->w -= w; pin_x[npin] = cv->x + cv->w; }
+        pin_w[npin] = w; pin_ov[npin++] = ov;
+    }
 
     /* class="canvas-overlay-bottom" (generic, owner 2026-10-05 - the pc-hq hotbar): a <row> of <item>s that
      * is a LATER sibling of the canvas is laid out as a strip centred at the bottom of the canvas region.
@@ -6625,8 +6761,9 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
     for (int oi = 0; oi < region->n_children; oi++) {
         Elem *ov = region->children[oi];
         int n_it = 0, n_tx = 0, n_cl = 0, colw = scaled(180), rowh = ROW_H, itemh = ROW_H + scaled(8), k;
-        int at_pt = elem_has_class(ov, "canvas-overlay-at");
-        if (!at_pt && !elem_has_class(ov, "canvas-overlay-right")) continue;
+        int at_pt = elem_has_class(ov, "canvas-overlay-at"), is_left = elem_has_class(ov, "canvas-overlay-left"), pin_i = -1;
+        if (!at_pt && !is_left && !elem_has_class(ov, "canvas-overlay-right")) continue;
+        for (int pk = 0; pk < npin; pk++) if (pin_ov[pk] == ov) pin_i = pk;
         css_compute_style(&g_sheet, ov->tag, ov->id, ov->classes, ov->n_classes, 0, &ov->style);
         for (k = 0; k < ov->n_children; k++) {
             Elem *it = ov->children[k];
@@ -6638,10 +6775,11 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
             if (it->style.has_width && it->style.width > colw) colw = it->style.width;
             n_it++;
         }
+        if (pin_i >= 0) colw = pin_w[pin_i];
         if (n_it == 0) continue;
         {
             int pad4 = scaled(4), hh = (n_tx + n_cl) * rowh + n_it * itemh + 2 * pad4 + (n_it ? (n_it - 1) * scaled(2) : 0);
-            int x0 = cv->x + cv->w - colw - scaled(10), y0 = cv->y + (cv->h - hh) / 2, yy;
+            int x0 = is_left ? cv->x + scaled(10) : cv->x + cv->w - colw - scaled(10), y0 = cv->y + (cv->h - hh) / 2, yy;
             if (at_pt) {   /* class canvas-overlay-at: the point comes from the vars <id>_x / <id>_y (canvas pixels); absent = centred */
                 char kx[80], ky[80];
                 snprintf(kx, sizeof(kx), "%s_x", ov->id); snprintf(ky, sizeof(ky), "%s_y", ov->id);
@@ -6650,10 +6788,13 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
                 y0 = vy && vy[0] ? cv->y + atoi(vy) : cv->y + (cv->h - hh) / 2;
             }
             if (!at_pt && elem_has_class(ov, "ov-top")) y0 = cv->y;   /* class ov-top: locked to the top of the canvas (under the top bar) instead of vertically centred, like the bottom strip is locked to the bottom */
-            if (x0 < cv->x) x0 = cv->x;
-            if (y0 < cv->y) y0 = cv->y;
-            if (y0 + hh > cv->y + cv->h) hh = cv->y + cv->h - y0;   /* never past the canvas bottom */
-            kh_ov_place(ov, cv, colw, hh, &x0, &y0);
+            if (pin_i >= 0) { x0 = pin_x[pin_i]; y0 = pin_y0; hh = pin_h; }   /* pinned: fixed, full height, no drag */
+            else {
+                if (x0 < cv->x) x0 = cv->x;
+                if (y0 < cv->y) y0 = cv->y;
+                if (y0 + hh > cv->y + cv->h) hh = cv->y + cv->h - y0;   /* never past the canvas bottom */
+                kh_ov_place(ov, cv, colw, hh, &x0, &y0);
+            }
             ov->x = x0; ov->y = y0; ov->w = colw; ov->h = hh; ov->nav_index = 0;
             yy = y0 + pad4;
             for (k = 0; k < ov->n_children; k++) {
@@ -6692,7 +6833,7 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
      * pchq_board_view.txt flip every pass and the 3D view flicker. */
     if (kh_is_pchq_board()) {      /* resizable or not: only the board window writes it, and it must (the resizable fill write below belongs to the generic panel path pc-hq does not take) */
         char vsz[PATH_BUF];
-        snprintf(vsz, sizeof(vsz), "%s/#.desktop/pchq_board_view.txt", g_house_root);
+        if (!kh_session_display_path("board_view.txt", vsz, sizeof(vsz))) snprintf(vsz, sizeof(vsz), "%s/#.desktop/pchq_board_view.txt", g_house_root);
         FILE *vf = fopen(vsz, "w");
         if (vf) { fprintf(vf, "%d %d\n", cv->w, cv->h); fclose(vf); }
     }
@@ -7759,8 +7900,10 @@ static int layout_dock_bar(Elem *page) {
         char stack_keys[16][64];
         int stack_counts[16];
         int n_stack_keys = 0;
-        int col_w = 0, n_open = 0, open_idx = 0;
+        int col_w = 0, n_open = 0, n_all = 0, n_match = 0, open_idx = 0;
+        char dd_first_act[1024];
         Elem *trig0 = NULL;
+        dd_first_act[0] = '\0';
         for (i = 0; i < page->n_children; i++) {
             Elem *c = page->children[i];
             Elem *trigger;
@@ -7776,18 +7919,35 @@ static int layout_dock_bar(Elem *page) {
             if (dw < trigger->w) dw = trigger->w;
             if (dw > col_w) col_w = dw;
             trig0 = trigger;
-            n_open++;
+            n_all++;
+            if (dock_dd_label_hit(c->label, g_dd_search_elem.input_buffer)) n_match++;
         }
-        if (!is_bottom) { g_dock_dd_scrolling = 0; g_dock_dd_vis = 0; g_dock_dd_total = n_open; }   /* the bottom pass must not clear the top menu's state */
+        if (!is_bottom) { g_dock_dd_scrolling = 0; g_dock_dd_vis = 0; g_dock_dd_total = n_all; g_dock_dd_search = 0; }   /* the bottom pass must not clear the top menu's state */
         if (trig0 && !is_bottom) {
-            MwPlan mp;
+            MwPlan mp_all, mp;
             int cap = (kh_screen_h() - (trig0->y + trig0->h) - 8) / DOCK_BAR_H;
+            int plan_n;
             if (g_dropdown_max_rows >= 3 && g_dropdown_max_rows < cap) cap = g_dropdown_max_rows;   /* hq_ui.pdl dropdown_max_rows */
-            if (strcmp(g_dock_dd_target, trig0->id) != 0) { g_dock_dd_scroll = 0; snprintf(g_dock_dd_target, sizeof(g_dock_dd_target), "%s", trig0->id); }
-            mw_plan(&mp, n_open, cap, &g_dock_dd_scroll);
-            g_dock_dd_scrolling = mp.scrolling; g_dock_dd_vis = mp.vis;
+            if (strcmp(g_dock_dd_target, trig0->id) != 0) {
+                g_dock_dd_scroll = 0;
+                snprintf(g_dock_dd_target, sizeof(g_dock_dd_target), "%s", trig0->id);
+                g_dd_search_elem.input_buffer[0] = '\0'; g_dd_search_elem.cursor = 0; g_dd_search_elem.sel_anchor = 0;
+                if (g_default_input_elem == &g_dd_search_elem) { kh_set_default_input_elem(NULL); kh_ungrab_kbd(); }
+                g_dock_dd_search_jump = 1;
+                n_match = n_all;   /* query just cleared: every row matches */
+            }
+            mw_plan(&mp_all, n_all, cap, NULL);
+            g_dock_dd_search = mp_all.scrolling;   /* search row exists exactly when the full list needs a thumb */
+            plan_n = g_dock_dd_search ? n_match : n_all;
+            mw_plan(&mp, plan_n, cap, &g_dock_dd_scroll);
+            n_open = plan_n;
+            g_dock_dd_scrolling = mp.scrolling; g_dock_dd_vis = mp.vis; g_dock_dd_total = plan_n;
             if (mp.scrolling) col_w += DD_STRIP_W;     /* room for the ^/v arrows and the thumb right of the rows */
-        } else if (!trig0 && !is_bottom) { g_dock_dd_target[0] = '\0'; g_dock_dd_scroll = 0; }
+        } else if (!trig0 && !is_bottom) {
+            g_dock_dd_target[0] = '\0'; g_dock_dd_scroll = 0; g_dock_dd_search = 0; g_dock_dd_search_jump = 0;
+            g_dd_search_elem.input_buffer[0] = '\0'; g_dd_search_elem.cursor = 0;
+            if (g_default_input_elem == &g_dd_search_elem) { kh_set_default_input_elem(NULL); kh_ungrab_kbd(); }
+        }
         if (col_w < 48) col_w = 48;
         if (trig0 && trig0->x + col_w > sw - 8) {
             col_w = sw - 8 - trig0->x;
@@ -7811,6 +7971,11 @@ static int layout_dock_bar(Elem *page) {
             }
             stack_n = (ki < n_stack_keys) ? stack_counts[ki] : 0;
             css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
+            if (open && trigger && g_dock_dd_search && !dock_dd_label_hit(c->label, g_dd_search_elem.input_buffer)) {
+                c->x = 0; c->y = -100000; c->w = 0; c->h = 0; c->nav_index = 0;
+                if (ki < n_stack_keys) stack_counts[ki]++;
+                continue;
+            }
             if (open && trigger && g_dock_dd_scrolling) {
                 MwPlan mp; int slot;
                 mw_plan(&mp, n_open, n_open > g_dock_dd_vis + 1 ? g_dock_dd_vis + 1 : n_open, &g_dock_dd_scroll);
@@ -7818,7 +7983,12 @@ static int layout_dock_bar(Elem *page) {
                 open_idx++;
                 if (slot < 0) { c->x = 0; c->y = -100000; c->w = 0; c->h = 0; c->nav_index = 0; if (ki < n_stack_keys) stack_counts[ki]++; continue; }
                 stack_n = slot;
-            } else if (open && trigger) open_idx++;
+            } else if (open && trigger) {
+                /* rows the search filtered out already took a stack_counts slot, so stack_n would put the matches at their old
+                 * list positions - below the shrunken menu (typing "ch" left a blank menu, owner 2026-10-13). Stack the visible ones. */
+                stack_n = open_idx;
+                open_idx++;
+            }
             if (open && trigger) {
                 c->x = 0;
                 c->y = stack_n * DOCK_BAR_H;
@@ -7828,6 +7998,7 @@ static int layout_dock_bar(Elem *page) {
                 g_nav[g_n_nav - 1] = c;
                 if (!g_dock_drop_lo) g_dock_drop_lo = c->nav_index;
                 g_dock_drop_hi = c->nav_index;
+                if (!dd_first_act[0] && c->onclick[0]) snprintf(dd_first_act, sizeof(dd_first_act), "%s", c->onclick);
             } else {
                 c->x = 0; c->y = -100000; c->w = 0; c->h = 0; c->nav_index = 0;
             }
@@ -7852,9 +8023,31 @@ static int layout_dock_bar(Elem *page) {
                 g_dock_drop_hi = a->nav_index;
             }
         }
+        if (trig0 && !is_bottom && g_dock_dd_search) {
+            /* Pinned under the rows, same job as pc-hq's dm-search: type to narrow, Enter runs the first match. */
+            Elem *s = &g_dd_search_elem;
+            if (strcmp(s->tag, "cli_io") != 0) {
+                memset(s, 0, sizeof(*s));
+                snprintf(s->tag, sizeof(s->tag), "cli_io");
+                snprintf(s->id, sizeof(s->id), "dd-search");
+                snprintf(s->label, sizeof(s->label), "search: ");
+            }
+            s->x = 0;
+            s->y = dd_rows_only * DOCK_BAR_H;
+            s->w = col_w - (g_dock_dd_scrolling ? DD_STRIP_W : 0);
+            s->h = DOCK_BAR_H;
+            snprintf(s->onclick, sizeof(s->onclick), "%s", dd_first_act);
+            css_compute_style(&g_sheet, s->tag, s->id, s->classes, s->n_classes, 0, &s->style);
+            s->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = s;
+            if (!g_dock_drop_lo) g_dock_drop_lo = s->nav_index;
+            g_dock_drop_hi = s->nav_index;
+            /* Do not take g_focus_nav or the keyboard here. Arrow nav and number nav
+             * both die if this field is armed on open. A click on the row still arms it. */
+            g_dock_dd_search_jump = 0;
+        }
         if (!is_bottom) {
-            if (trig0 && g_dock_drop_lo) {
-                int n_rows = dd_rows_only;
+            if (trig0 && (g_dock_drop_lo || g_dock_dd_search)) {
+                int n_rows = dd_rows_only + (g_dock_dd_search ? 1 : 0);
                 g_dock_menu_w = col_w;
                 g_dock_menu_h = n_rows * DOCK_BAR_H;
                 if (g_dock_menu_w < 40) g_dock_menu_w = 40;
@@ -7902,9 +8095,16 @@ static int layout_dock_bar(Elem *page) {
          * not from 0, so the focus-box offset has to be added here or the
          * rightmost cell (the no-nav status cell) gets clipped. */
         g_win_w = DOCK_FOCUS_BOX_W + content_w + 8;
+        /* TOP BAR FLICKER (2026-10-13, owner: the top bar flickers rarely, the bottom bar never): the bottom bar is a fixed bar_max wide but THIS width follows the cell text, and the
+         * text changes: the red load cell is bold (wider than the calm one) and the "%N" label gains or loses a digit, so under load the real X window was resized (XResizeWindow +
+         * XSync in redraw()) over and over. Same cure as the 2026-10-10 pet tab row (s_tabbar_hw): latch the widest width seen and never shrink inside one run; the cells stay
+         * left-packed so the extra width is only bar background. Measured first: the clock minute does not change the width (2079 px for 4 minutes), so this is for the label cells. */
+        static int s_hdr_w_latch = 0;
+        if (g_win_w < s_hdr_w_latch) g_win_w = s_hdr_w_latch;
         if (g_win_w < 80) g_win_w = 80;
         if (g_win_x + g_win_w > sw - ox) g_win_w = sw - ox - g_win_x;
         if (g_win_w < 40) g_win_w = 40;
+        s_hdr_w_latch = g_win_w;      /* after the screen clamp, so a smaller screen / new offset still wins */
         if (g_dock_menu_w > 0) {
             g_dock_menu_sx += g_win_x;
             g_dock_menu_sy += g_win_y;
@@ -7953,7 +8153,7 @@ static void dock_paint_peer(void) {
         XGetInputFocus(dpy, &focus_win, &focus_revert);
         char mark[16], echo_buf[16];
         int ty = DOCK_BAR_H / 2 + (font_ui ? font_ui->ascent / 2 : 6);
-        XftColor mark_col = xft_color(window_is_dock() ? g_theme_fg : "#eeeeee");
+        XftColor mark_col = xft_color(kh_skin_label_hex() ? kh_skin_label_hex() : (window_is_dock() ? g_theme_fg : "#eeeeee"));
         /* focus mark + the nav digits typed so far (one shared buffer, so the
          * top bar, bottom bar and pc-hq windows echo the same digits). */
         int mark_n = nve_text((focus_win == win) ? "^" : ".", kh_nav_echo_digits(echo_buf, sizeof(echo_buf)), mark, sizeof(mark));
@@ -8146,6 +8346,8 @@ static void dock_paint_menu(void) {
         XMoveResizeWindow(dpy, g_dock_menu_win, g_dock_menu_sx, g_dock_menu_sy,
                           (unsigned)g_dock_menu_w, (unsigned)g_dock_menu_h);
         XMapRaised(dpy, g_dock_menu_win);
+        /* Mutter/XWayland drops _NET_WM_WINDOW_OPACITY set in the same breath as MapRaised. Re-set after the first present (flag below). */
+        g_dock_menu_op_due = 1;
         g_dock_menu_mapped = 1;
         g_dock_menu_msx = g_dock_menu_sx; g_dock_menu_msy = g_dock_menu_sy;
         g_dock_menu_mw  = g_dock_menu_w;  g_dock_menu_mh  = g_dock_menu_h;
@@ -8200,16 +8402,43 @@ static void dock_paint_menu(void) {
                 fclose(rf);
             }
         }
-        if (g_dock_dd_scrolling && g_dock_dd_vis > 0 && g_dock_dd_total > 1) {
-            int tx = g_win_w - 22, ty = DD_ARROW_H, th_all = g_dock_dd_vis * DOCK_BAR_H - 2 * DD_ARROW_H;
-            MwPlan mp; int thumb_y, thumb_h;
-            mw_plan(&mp, g_dock_dd_total, g_dock_dd_vis + 1, NULL);
-            mw_thumb(&mp, th_all, g_dock_dd_scroll, &thumb_y, &thumb_h);
-            thumb_y += ty;
-            XSetForeground(dpy, gc, alloc_pixel("#2a2a2a"));
-            XFillRectangle(dpy, buf, gc, tx, ty, 18, (unsigned)th_all);
-            XSetForeground(dpy, gc, alloc_pixel("#aaaaaa"));
-            XFillRectangle(dpy, buf, gc, tx + 2, thumb_y, 14, (unsigned)thumb_h);
+        {
+            /* The row column stays. The gutter beside the thumb is cut out of the window, same as a pc-hq dropdown, where that gap is not painted and the board shows through. Only the ^/v bands and the thumb itself stay. */
+            int strip = (g_dock_dd_scrolling && g_dock_dd_vis > 0 && g_dock_dd_total > 1) ? DD_STRIP_W : 0;
+            int tw = 8, tx = 0, thumb_y = 0, thumb_h = 0, th_all = 0;
+            if (strip) {
+                MwPlan mp;
+                th_all = g_dock_dd_vis * DOCK_BAR_H - 2 * DD_ARROW_H;
+                tx = g_win_w - tw - 12;
+                if (th_all < 8) th_all = 8;
+                mw_plan(&mp, g_dock_dd_total, g_dock_dd_vis + 1, NULL);
+                mw_thumb(&mp, th_all, g_dock_dd_scroll, &thumb_y, &thumb_h);
+                thumb_y += DD_ARROW_H;
+                if (g_sbar_track == 1) {
+                    XSetForeground(dpy, gc, alloc_pixel("#2a2a2a"));
+                    XFillRectangle(dpy, buf, gc, tx, DD_ARROW_H, (unsigned)tw, (unsigned)th_all);
+                }
+                XSetForeground(dpy, gc, alloc_pixel("#888888"));
+                XFillRectangle(dpy, buf, gc, tx, thumb_y, (unsigned)tw, (unsigned)thumb_h);
+            }
+            {
+                XRectangle rs[4];
+                int n = 0, body = strip ? g_win_w - strip : g_win_w;
+                if (body < 1) body = g_win_w;
+                rs[n].x = 0; rs[n].y = 0; rs[n].width = (unsigned short)body; rs[n].height = (unsigned short)g_win_h; n++;
+                if (strip && g_win_h > 2 * DD_ARROW_H) {
+                    int dn_y = g_dock_dd_vis * DOCK_BAR_H - DD_ARROW_H; /* same y as dd-down, above the pinned cancel row */
+                    if (dn_y < DD_ARROW_H) dn_y = DD_ARROW_H;
+                    if (dn_y > g_win_h - DD_ARROW_H) dn_y = g_win_h - DD_ARROW_H;
+                    rs[n].x = (short)body; rs[n].y = 0; rs[n].width = (unsigned short)strip; rs[n].height = (unsigned short)DD_ARROW_H; n++;
+                    rs[n].x = (short)body; rs[n].y = (short)dn_y; rs[n].width = (unsigned short)strip; rs[n].height = (unsigned short)DD_ARROW_H; n++;
+                    if (g_sbar_track == 1 && th_all > 0 && tx >= body)
+                        { rs[n].x = (short)tx; rs[n].y = (short)DD_ARROW_H; rs[n].width = (unsigned short)tw; rs[n].height = (unsigned short)th_all; n++; }
+                    else if (thumb_h > 0 && tx >= body)
+                        { rs[n].x = (short)tx; rs[n].y = (short)thumb_y; rs[n].width = (unsigned short)tw; rs[n].height = (unsigned short)thumb_h; n++; }
+                }
+                XShapeCombineRectangles(dpy, g_dock_menu_win, ShapeBounding, 0, 0, rs, n, ShapeSet, Unsorted);
+            }
         }
         /* 2px theme-secondary window frame in a dedicated margin,
          * drawn LAST, right before the present. */
@@ -8255,6 +8484,14 @@ static void dock_paint_menu(void) {
                 XPutImage(dpy, win, gc, frame, 0, 0, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h);
                 XDestroyImage(frame);
             }
+        }
+        set_window_opacity(dpy, g_dock_menu_win, load_theme_opacity());
+        if (g_dock_menu_op_due) {
+            XFlush(dpy);
+            usleep(200000); /* one frame of visibility, then the compositor will honor the property */
+            set_window_opacity(dpy, g_dock_menu_win, load_theme_opacity());
+            XFlush(dpy);
+            g_dock_menu_op_due = 0;
         }
         win = winh; buf = bufh; xftdraw_buf = xh; gc = gch;
         g_win_w = ww; g_win_h = hh;
@@ -8462,7 +8699,7 @@ static void kh_scan_interact_relay(void) {
             char work[PATH_BUF * 2];
             snprintf(work, sizeof(work), "%s", paths);
             char *save = NULL, *tok = strtok_r(work, ",", &save);
-            while (tok && g_interact_relay_n < 2) {
+            while (tok && g_interact_relay_n < 4) {
                 snprintf(g_interact_relay_paths[g_interact_relay_n], sizeof(g_interact_relay_paths[0]), "%s", tok);
                 g_interact_relay_n++;
                 tok = strtok_r(NULL, ",", &save);
@@ -8501,7 +8738,7 @@ static int kh_interact_vars_on(void) {
 
 static void kh_interact_append_13(void) {
     int n = g_interact_relay_n;
-    const char *paths[2];
+    const char *paths[4];
     char h1buf[PATH_BUF], h2buf[PATH_BUF];
     if (n > 0) {
         for (int i = 0; i < n; i++) paths[i] = g_interact_relay_paths[i];
@@ -8602,7 +8839,7 @@ static void kh_publish_canvas_click(int px, int py, int button) {
         fclose(f);
     }
     if (!g_house_root[0]) return;
-    snprintf(path, sizeof(path), "%s/#.desktop/pchq_canvas_click.txt", g_house_root);
+    if (!kh_session_display_path("canvas_click.txt", path, sizeof(path))) snprintf(path, sizeof(path), "%s/#.desktop/pchq_canvas_click.txt", g_house_root);
     f = fopen(path, "w");
     if (!f) return;
     fprintf(f, "%d %d %d %d\n", cx, cy, cv->w, cv->h);
@@ -9176,7 +9413,7 @@ static void assign_nav_and_layout(void) {
                     if (item->h < 64) item->h = 64;
                     if (kh_is_pchq_board()) {      /* the GLOBAL file belongs to the pc-hq board only: any other canvas window (rpg-pet, pet-trainer) writing it made the board's 3D frame flip size every pass and letterbox (2026-10-10) */
                     char vsz[PATH_BUF];
-                    snprintf(vsz, sizeof(vsz), "%s/#.desktop/pchq_board_view.txt", g_house_root);
+                    if (!kh_session_display_path("board_view.txt", vsz, sizeof(vsz))) snprintf(vsz, sizeof(vsz), "%s/#.desktop/pchq_board_view.txt", g_house_root);
                     FILE *vf = fopen(vsz, "w");
                     if (vf) { fprintf(vf, "%d %d\n", item->w, item->h); fclose(vf); }
                     }
@@ -9874,6 +10111,7 @@ static void dispatch(const char *action) {
     if (strcmp(action, "MINIMIZE") == 0) {
         if (!window_is_dock() && g_default_has_sidebar_panel) {
             g_hq_minimized = 1;
+            if (g_window && elem_has_class(g_window, "vars-positioned")) hq_min_put(g_window->label, 1);
             {
                 char reg_path[PATH_BUF], reg_tmp[PATH_BUF];
                 const char *title_raw = (g_window && g_window->label[0] ? g_window->label : g_current_page);
@@ -11220,12 +11458,18 @@ static void dock_poll_strip_state(void) {
         }
         fclose(s);
     }
-    if (sfc >= 0) {
-        int nv = sfc + 1;
-        if (nv >= 1 && nv <= g_n_nav) g_focus_nav = nv;
-    } else if (sfc == -1) {
-        int nv = g_dock_header_nav_hi + 1 + tfi;
-        if (nv >= 1 && nv <= g_n_nav) g_focus_nav = nv;
+    int nv_mgr = 0;
+    if (sfc >= 0) nv_mgr = sfc + 1;
+    else if (sfc == -1) nv_mgr = g_dock_header_nav_hi + 1 + tfi;
+    if (nv_mgr >= 1 && nv_mgr <= g_n_nav) {
+        /* DROPDOWN CLICK JUMP (2026-10-13, grok's note livedesk-dropdown-jump.txt): the manager only stores a header cell
+         * or a bottom-tab index, never a dropdown row. While a menu is open and focus is already on one of its rows, a
+         * manager cursor OUTSIDE [lo,hi] is stale for this purpose; applying it let the layout clamp snap focus to the
+         * first row on the next republish after a click. A cursor inside the range, or focus outside it, still applies. */
+        int in_menu = g_dock_drop_lo && g_default_active_scope_id[0] &&
+                      g_focus_nav >= g_dock_drop_lo && g_focus_nav <= g_dock_drop_hi;
+        int mgr_in_menu = nv_mgr >= g_dock_drop_lo && nv_mgr <= g_dock_drop_hi;
+        if (!in_menu || mgr_in_menu) g_focus_nav = nv_mgr;
     }
     if (!g_quit) redraw();
 }
@@ -11747,7 +11991,7 @@ static void redraw(void) {
     /* REAL Stage 5 §5d.10 (2026-08-16) - db-hq mode: own real content
      * draw (chrome/tabbar/sidebar/panel), same shared present
      * (XGetImage->XPutImage) below every mode already uses. */
-    assign_nav_and_layout();
+    if (g_layout_fresh) g_layout_fresh = 0; else assign_nav_and_layout();
     /* REAL FIX 2026-09-05, direct live report ("fullscreen breaks
      * pdl-read layout - content stays squished bottom-left, most of
      * the window black"). Root cause (found by a parallel
@@ -11878,7 +12122,7 @@ static void redraw(void) {
             char mark[16], echo_buf[16];
             XftFont *df = font_ui;
             int ty = DOCK_BAR_H / 2 + (df ? df->ascent / 2 : 6);
-            XftColor mark_col = xft_color(window_is_dock() ? g_theme_fg : "#eeeeee");
+            XftColor mark_col = xft_color(kh_skin_label_hex() ? kh_skin_label_hex() : (window_is_dock() ? g_theme_fg : "#eeeeee"));
             int mark_n = nve_text((focus_win == win) ? "^" : ".", kh_nav_echo_digits(echo_buf, sizeof(echo_buf)), mark, sizeof(mark));
             XftDrawStringUtf8(xftdraw_buf, &mark_col, df, 18, ty,
                                (const FcChar8 *)mark, mark_n);
@@ -11886,7 +12130,7 @@ static void redraw(void) {
             XSetForeground(dpy, gc, alloc_pixel("#4a4a4a"));
             XDrawLine(dpy, buf, gc, DOCK_FOCUS_BOX_W, 0, DOCK_FOCUS_BOX_W, g_win_h);
         } else {
-        XftColor title_col = xft_color(g_theme_fg);  /* themed (was hardcoded #eeeeee) - see the base-fill comment above */
+        XftColor title_col = xft_color(kh_skin_label_hex() ? kh_skin_label_hex() : g_theme_fg);  /* on a bar skin, match the tile; otherwise the theme fg */
         XftDrawStringUtf8(xftdraw_buf, &title_col, font_ui, 8,
                            window_is_entity_menu() ? (CHROME_H + 16) : 16,
                            (const FcChar8 *)title, (int)strlen(title));
@@ -14258,6 +14502,11 @@ static void hq_ui_pdl_reload_if_changed(const char *house_root) {
     }
 }
 
+/* DEFERRED MAP for class="vars-positioned" windows (the desk hotbar; owner 2026-10-12: it appeared clipped to the top and bottom of the screen and then slid/resized into place). The window used to be
+ * mapped at its creation size and spot and only moved to its docked spot once the manager's anchor vars loaded. Now it is created unmapped and mapped by the placement block in hq_idle_tick once the anchor
+ * vars exist and its size has stopped changing (or after 2 s, so a manager that never publishes cannot leave it invisible): it first appears at its final position. */
+static int g_defer_map = 0; static time_t g_defer_t0 = 0;
+static void kh_defer_map_done(void) { char mp[PATH_BUF]; snprintf(mp, sizeof(mp), "%s/#.desktop/hq_mapped_%d.txt", g_house_root, (int)getpid()); FILE *mf = fopen(mp, "w"); if (mf) { fputs("1\n", mf); fclose(mf); } }      /* open_hotbar.sh --swap waits for this before it removes the old window */
 static void hq_idle_tick(void) {
     if (kh_is_drop_target_window()) {
         int hp = kh_read_drag_hover();
@@ -14284,7 +14533,16 @@ static void hq_idle_tick(void) {
             kh_focus_debug_log("GRAB-RETRY key=%s acquired", g_default_input_elem->target_id);
         }
     } else if (g_grab_pending) g_grab_pending = 0;
-    if (g_vars_path[0]) kh_load_vars_multi(g_vars_path);
+    /* CPU safety (hq-cpu-safety.md): every idle tick (~18/s) re-opened and re-parsed every vars file. Only when one of them changed (inode+size+mtime ns signature, one stat each) or the list changed. */
+    if (g_vars_path[0]) {
+        static char s_paths[PATH_BUF * 4]; static unsigned long s_sig = 0; unsigned long sig = 1469598103934665603UL; char work[PATH_BUF * 4]; char *sv = NULL; struct stat vst;
+        snprintf(work, sizeof(work), "%s", g_vars_path);
+        for (char *tok = strtok_r(work, " \t", &sv); tok; tok = strtok_r(NULL, " \t", &sv)) {
+            unsigned long v = 7; if (stat(tok, &vst) == 0) v = (unsigned long)vst.st_ino * 31UL + (unsigned long)vst.st_size * 1000003UL + (unsigned long)vst.st_mtim.tv_nsec * 17UL + (unsigned long)vst.st_mtim.tv_sec;
+            sig ^= v; sig *= 1099511628211UL;
+        }
+        if (sig != s_sig || strcmp(s_paths, g_vars_path) != 0) { s_sig = sig; snprintf(s_paths, sizeof(s_paths), "%s", g_vars_path); kh_load_vars_multi(g_vars_path); }
+    }
     /* class="vars-positioned": the window's manager publishes anchor_cx (centre x) and
      * anchor_bottom (bottom edge y); the window centres on / sits on them using its OWN
      * size. Generic: no knowledge of which app. Used by the hotbar (docked above the
@@ -14316,7 +14574,13 @@ static void hq_idle_tick(void) {
                 XMoveWindow(dpy, win, g_win_x, g_win_y);
             }
             s_last_x = nx;
+            if (g_defer_map) {      /* placed, and the size has not changed for 600 ms (the manager's rows arrive after the first layout; mapping earlier showed the window, then resized it: a flicker) */
+                static int s_w0 = -1, s_h0 = -1; static struct timespec s_chg; struct timespec nw; clock_gettime(CLOCK_MONOTONIC, &nw);
+                if (g_win_w != s_w0 || g_win_h != s_h0) { s_w0 = g_win_w; s_h0 = g_win_h; s_chg = nw; }
+                else if ((nw.tv_sec - s_chg.tv_sec) * 1000L + (nw.tv_nsec - s_chg.tv_nsec) / 1000000L >= 600) { XMapRaised(dpy, win); XSync(dpy, False); g_defer_map = 0; kh_defer_map_done(); }
+            }
         }
+        if (g_defer_map && time(NULL) - g_defer_t0 >= 3) { XMapRaised(dpy, win); XSync(dpy, False); g_defer_map = 0; kh_defer_map_done(); }
     }
     /* class="nav-after-top": number this window's cells after the top bar's (display only). */
     if (g_window && elem_has_class(g_window, "nav-after-top")) {
@@ -14440,7 +14704,8 @@ static void hq_idle_tick(void) {
         }
         if (_rp_changed) {
             if (_rp_dock) clock_gettime(CLOCK_MONOTONIC, &_rp_t0);
-            assign_nav_and_layout(); redraw();
+            int _rp_w0 = g_win_w, _rp_h0 = g_win_h;
+            assign_nav_and_layout(); g_layout_fresh = 1; redraw();      /* redraw() used to lay out a second time right after this one */
             if (_rp_dock) {
                 clock_gettime(CLOCK_MONOTONIC, &_rp_t1);
                 double _rp_ms = (_rp_t1.tv_sec - _rp_t0.tv_sec) * 1000.0 + (_rp_t1.tv_nsec - _rp_t0.tv_nsec) / 1e6;
@@ -14463,8 +14728,9 @@ static void hq_idle_tick(void) {
              * a second real redraw() repaints it for real THIS tick,
              * instead of leaving a blank window until the next
              * unrelated event. Cheap - a no-op second call whenever no
-             * resize was needed. */
-            redraw();
+             * resize was needed. CPU safety (hq-cpu-safety.md): it is only a no-op in cost terms when skipped - a second full layout+draw (about 67 ms for the rpg-pet board) ran on EVERY ui-file
+             * change; now only when the window size moved or for the dock. */
+            if (_rp_dock || g_win_w != _rp_w0 || g_win_h != _rp_h0) redraw();
         }
     }
     /* REAL FIX 2026-09-01 (live report: "entities changes opacity
@@ -14495,6 +14761,7 @@ static void hq_idle_tick(void) {
         load_theme_colors();
         hq_request_redraw();
         if (window_is_dock() && g_dock_peer_win) set_window_opacity(dpy, g_dock_peer_win, load_theme_opacity());
+        if (window_is_dock() && g_dock_menu_win) set_window_opacity(dpy, g_dock_menu_win, load_theme_opacity());
     }
     if (poll_agent_history() > 0 && !g_quit) hq_request_redraw();
     dock_poll_strip_state();   /* mirror terminal-driven nav into strip_ascii_current_frame.txt promptly */
@@ -14505,6 +14772,7 @@ static void hq_idle_tick(void) {
         if (access(restore_path, F_OK) == 0) {
             unlink(restore_path);
             g_hq_minimized = 0;
+            if (g_window && elem_has_class(g_window, "vars-positioned")) hq_min_put(g_window->label, 0);
             XMapWindow(dpy, win);
             XRaiseWindow(dpy, win);
             XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
@@ -14998,6 +15266,15 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
                     if (!g_quit) { assign_nav_and_layout(); redraw(); }
                     return;
                 }
+            }
+            /* Wheel / trackpad swipe anywhere on the menu. pc-hq does this via generic_sbar_wheel over the list box. This window used to return on button 4/5 before any scroll write. */
+            if (window_is_dock() && g_dock_menu_win && cw == g_dock_menu_win && g_dock_dd_scrolling &&
+                (ev->xbutton.button == 4 || ev->xbutton.button == 5)) {
+                MwPlan mp;
+                g_dock_dd_scroll += (ev->xbutton.button == 5) ? 1 : -1;
+                mw_plan(&mp, g_dock_dd_total, g_dock_dd_vis + 1, &g_dock_dd_scroll);
+                if (!g_quit) { assign_nav_and_layout(); redraw(); }
+                return;
             }
             if (window_is_dock() && g_dock_menu_win && cw == g_dock_menu_win && ev->xbutton.button == 1 &&
                 g_dock_dd_scrolling && ev->xbutton.x >= g_dock_menu_w - DD_STRIP_W &&
@@ -15673,7 +15950,9 @@ static void hq_run_event_loop(Atom wm_delete, int is_popup) {
          * Marker-drive it: stat the live canvas_raw file and only repaint
          * when its size/mtime moved, plus a slow ~2Hz safety repaint
          * (late-appearing var, window resize, receipt swap). */
+        int canvas_only_now = 0;      /* this pass's ONLY reason to repaint is a changed canvas frame: the layout from the last redraw is still exact, redraw() can skip it */
         if (g_has_canvas && !g_quit && !g_hq_minimized) {
+            int was_dirty = g_frame_dirty;
             static off_t  s_last_sz = -1;
             static time_t s_last_mt = 0;
             static time_t s_last_force = 0;
@@ -15684,14 +15963,19 @@ static void hq_run_event_loop(Atom wm_delete, int is_popup) {
                     s_last_sz = cst.st_size;
                     s_last_mt = cst.st_mtime;
                     g_frame_dirty = 1;
+                    canvas_only_now = !was_dirty;
                 }
             } else {
                 g_frame_dirty = 1;  /* no file/var yet: keep painting the dark bootstrap */
             }
             time_t nowt = time(NULL);
-            if (nowt - s_last_force >= 1) { s_last_force = nowt; g_frame_dirty = 1; }
+            /* CPU safety (hq-cpu-safety.md): this safety repaint was every second, i.e. a full layout + draw + readback (about 67 ms measured for the rpg-pet board) once a second per canvas window
+             * even when nothing changed: ~7% of a core, the idle floor of every board window. A changed canvas file, a resize, an Expose and a var reload all redraw on their own; this is only the
+             * net for a late-appearing var, so every 5 s is enough. */
+            if (nowt - s_last_force >= 5) { s_last_force = nowt; g_frame_dirty = 1; canvas_only_now = 0; }      /* the 5 s safety repaint does the full layout */
         }
-        if (g_frame_dirty && !g_quit) { g_frame_dirty = 0; redraw(); }
+        { static int s_redrawn_once = 0;
+          if (g_frame_dirty && !g_quit) { g_frame_dirty = 0; if (canvas_only_now && s_redrawn_once) g_layout_fresh = 1; redraw(); s_redrawn_once = 1; } }
         /* Bottom of every pass. select() above returns at once when a
          * canvas redraw queues another Expose, so its 16ms timeout
          * never elapses and this window pegs a core. house_wait_us
@@ -16016,6 +16300,7 @@ static void desktop_load_click_two_step(const char *house_root) {
     if (!f) return;
     char line[128];
     g_dropdown_max_rows = 0;   /* key removed from the pdl = back to screen-limited */
+    g_sbar_track = -1;         /* key removed = auto */
     while (fgets(line, sizeof(line), f)) {
         char *eq = strchr(line, '=');
         if (!eq) continue;
@@ -16024,6 +16309,11 @@ static void desktop_load_click_two_step(const char *house_root) {
         char *nl = strchr(val, '\n');
         if (nl) *nl = '\0';
         if (strcmp(line, "click_two_step") == 0) g_click_two_step = atoi(val) != 0;
+        else if (strcmp(line, "sbar_track") == 0) {
+            if (strcmp(val, "1") == 0 || strcmp(val, "on") == 0) g_sbar_track = 1;
+            else if (strcmp(val, "0") == 0 || strcmp(val, "off") == 0) g_sbar_track = 0;
+            else g_sbar_track = -1; /* auto */
+        }
         else if (strcmp(line, "dropdown_max_rows") == 0) g_dropdown_max_rows = atoi(val) >= 3 ? atoi(val) : 0;
         /* 2026-09-11, CHTPM-INCREMENTAL-REPARSE-DESIGN.md - runtime
          * toggle for the incremental reparse path, OFF (0) unless this
@@ -23241,7 +23531,11 @@ int main(int argc, char **argv) {
     XSizeHints *shints = XAllocSizeHints();
     if (shints) { shints->flags = PPosition; shints->x = g_win_x; shints->y = g_win_y; XSetWMNormalHints(dpy, win, shints); XFree(shints); }
 
-    XMapRaised(dpy, win);
+    if (g_window && elem_has_class(g_window, "vars-positioned") && !window_is_dock() && !g_default_is_fullscreen) {
+        if (hq_min_get(g_window->label)) { g_hq_minimized = 1; g_defer_map = 0; kh_defer_map_done(); }      /* it was minimized when the desktop went down: come back minimized (registered minimized=1 by redraw) */
+        else { g_defer_map = 1; g_defer_t0 = time(NULL); }
+    }
+    else XMapRaised(dpy, win);
     set_window_opacity(dpy, win, load_theme_opacity());
     XSync(dpy, False);
     if (window_is_dock()) XMoveWindow(dpy, win, g_win_x, g_win_y);

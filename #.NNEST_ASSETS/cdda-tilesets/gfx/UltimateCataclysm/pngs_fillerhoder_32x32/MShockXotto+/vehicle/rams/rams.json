@@ -1,0 +1,22 @@
+[
+  {
+    "id": "vp_ram_wood",
+    "fg": "vp_ram_wood",
+    "rotates": true
+  },
+  {
+    "id": "vp_ram_military_front",
+    "fg": "vp_ram_military",
+    "rotates": true
+  },
+  {
+    "id": "vp_ram_hardsteel_front",
+    "fg": "vp_ram_hardsteel",
+    "rotates": true
+  },
+  {
+    "id": "vp_ram_alloy_front",
+    "fg": "vp_ram_alloy",
+    "rotates": true
+  }
+]

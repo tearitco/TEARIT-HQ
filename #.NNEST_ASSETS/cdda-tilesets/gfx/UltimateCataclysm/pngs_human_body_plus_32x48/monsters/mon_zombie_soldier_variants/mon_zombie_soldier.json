@@ -1,0 +1,34 @@
+[
+  {
+    "id": "mon_zombie_soldier",
+    "fg": [ { "weight": 100, "sprite": "mon_zombie_soldier_1" }, { "weight": 100, "sprite": "mon_zombie_soldier_2" } ],
+    "bg": "shadow_32x48_normal"
+  },
+  {
+    "id": "mon_zombie_military_pilot",
+    "fg": "mon_zombie_military_pilot",
+    "bg": "shadow_32x48_normal"
+  },
+  {
+    "id": [ 
+      "corpse_mon_zombie_soldier", 
+      "corpse_mon_zombie_military_pilot" 
+    ],
+    "fg": "corpse_mon_zombie_soldier"
+  },
+  {
+    "id": "mon_zombie_milbase_personnel",
+    "fg": "mon_zombie_milbase_personnel",
+    "bg": "shadow_32x48_normal"
+  },
+  {
+    "id": "mon_zombie_marine",
+    "fg": "mon_zombie_marine",
+    "bg": "shadow_32x48_normal"
+  },
+  {
+    "id": "mon_zombie_marine_upgrade",
+    "fg": "mon_zombie_marine_upgrade",
+    "bg": "shadow_32x48_medium"
+  }
+]

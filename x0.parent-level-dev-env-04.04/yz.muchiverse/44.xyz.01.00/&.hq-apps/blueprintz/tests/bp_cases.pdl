@@ -1,0 +1,32 @@
+SECTION | KEY | VALUE
+------------------------------
+# bp_cases.pdl - proofs for the blueprintz debugger gate and controller (BOOK BLUEPRINTZ-DESIGN.md 12.4, 12.12). Run with auto's case_run:  case_run tests/bp_cases.pdl  with env  B=<bp_ctl.+x>  R=<SCRATCH house>  E=<entity dir inside R>  T=<template entity copy>  RS=<reset command>  HOOKLESS=<a VM binary without the step hook>  and BLUEPRINTZ_DEBUG_FILE / BLUEPRINTZ_STATE_DIR / BLUEPRINTZ_PLAY pointing into R. Never run against the real house: Play also fires matching common events and writes their tracked ledgers.
+# CASE | name | expected exit code | stdout/stderr must contain ONE substring (- none) | must NOT contain ONE substring (- none) | command (sh -c). Fields cannot contain a pipe character.
+# ---- hook absent: Play behaves exactly as before ----------------------------------------
+CASE | d0 no debug file: Play changes gold and creates no debug state | 0 | nostate | queued | eval "$RS"; g0=$(head -1 "$E/inventory.txt"); sh "$BLUEPRINTZ_PLAY" "$E" "$R" on-click >/dev/null 2>&1; echo "gold ${g0#qolq=} -> $(head -1 "$E/inventory.txt")"; [ ! -e "$BLUEPRINTZ_STATE_DIR/queue.txt" ] && [ ! -e "$BLUEPRINTZ_STATE_DIR/trace.txt" ] && echo nostate
+CASE | d0 gold really moved 35 to 70 with no debugger attached | 0 | 35 -> qolq=70 | - | eval "$RS"; g0=$(head -1 "$E/inventory.txt"); sh "$BLUEPRINTZ_PLAY" "$E" "$R" on-click >/dev/null 2>&1; echo "${g0#qolq=} -> $(head -1 "$E/inventory.txt")"
+# ---- pause: queued, not run, not dropped -------------------------------------------------
+CASE | d1 pause then fire: queued and gold unchanged | 0 | qolq=35 | qolq=70 | eval "$RS"; "$B" "$R" pause >/dev/null; "$B" "$R" fire "$E" on-click >/dev/null; head -1 "$E/inventory.txt"
+CASE | d1 status shows one pending | 0 | queue_pending=1 | paused=0 | "$B" "$R" status
+CASE | d1 status shows paused | 0 | paused=1 | paused=0 | "$B" "$R" status
+CASE | d1 queue lists the event | 0 | on-click | (empty) | "$B" "$R" queue
+CASE | d2 step-event runs it, gold becomes 70 | 0 | qolq=70 | qolq=35 | "$B" "$R" step-event >/dev/null; head -1 "$E/inventory.txt"
+CASE | d2 queue is empty afterwards | 0 | queue_pending=0 | queue_pending=1 | "$B" "$R" status
+CASE | d2 trace has START and END rows | 0 | END | - | cat "$BLUEPRINTZ_STATE_DIR/trace.txt"
+CASE | d2 step-event on an empty queue exits 3 | 3 | nothing queued | - | "$B" "$R" step-event
+# ---- resume releases the whole queue in order --------------------------------------------
+CASE | d3 two fires queued, resume runs both (35 to 105) | 0 | qolq=105 | qolq=70 | eval "$RS"; "$B" "$R" pause >/dev/null; "$B" "$R" fire "$E" on-click >/dev/null; "$B" "$R" fire "$E" on-click >/dev/null; "$B" "$R" resume >/dev/null; head -1 "$E/inventory.txt"
+CASE | d3 after resume a fire runs at once (140) | 0 | qolq=140 | queued | "$B" "$R" fire "$E" on-click >/dev/null; head -1 "$E/inventory.txt"
+CASE | d3 detach removes the debug file and Play is plain again | 0 | -> qolq=70 | - | eval "$RS"; "$B" "$R" pause >/dev/null; "$B" "$R" detach >/dev/null; [ ! -e "$BLUEPRINTZ_DEBUG_FILE" ]; sh "$BLUEPRINTZ_PLAY" "$E" "$R" on-click >/dev/null 2>&1; echo "35 -> $(head -1 "$E/inventory.txt")"
+# ---- step command: one VM instruction per step ---------------------------------------------
+CASE | d4 step-cmd starts the queued event held at its first instruction | 0 | held at: STEP | qolq=45 | eval "$RS"; "$B" "$R" pause >/dev/null; "$B" "$R" fire "$E" on-click >/dev/null; "$B" "$R" step-cmd; head -1 "$E/inventory.txt"
+CASE | d4 nothing has run yet while held (35) | 0 | qolq=35 | qolq=45 | head -1 "$E/inventory.txt"
+CASE | d4 step 1: first Change Gold ran (45) | 0 | qolq=45 | qolq=70 | "$B" "$R" step-cmd >/dev/null; head -1 "$E/inventory.txt"
+CASE | d4 step 2: second ran (70) | 0 | qolq=70 | - | "$B" "$R" step-cmd >/dev/null; head -1 "$E/inventory.txt"
+CASE | d4 step 3: halt, the run ends and nothing is held | 0 | vm_active=- | vm_active=/ | "$B" "$R" step-cmd >/dev/null; for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do "$B" "$R" status | grep -q 'last_trace=END' && break; sleep 0.2; done; "$B" "$R" status
+CASE | d5 abort leaves gold untouched (35) | 0 | qolq=35 | qolq=70 | eval "$RS"; "$B" "$R" pause >/dev/null; "$B" "$R" fire "$E" on-click >/dev/null; "$B" "$R" step-cmd >/dev/null; "$B" "$R" abort >/dev/null; sleep 1; head -1 "$E/inventory.txt"
+CASE | d5 run-to-end finishes the held run (70) | 0 | qolq=70 | - | eval "$RS"; "$B" "$R" pause >/dev/null; "$B" "$R" fire "$E" on-click >/dev/null; "$B" "$R" step-cmd >/dev/null; "$B" "$R" run-to-end >/dev/null; for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do [ "$(head -1 "$E/inventory.txt")" = qolq=70 ] && break; sleep 0.2; done; head -1 "$E/inventory.txt"
+CASE | d5 step-cmd with nothing queued and nothing held exits 3 | 3 | nothing queued | - | eval "$RS"; "$B" "$R" pause >/dev/null; "$B" "$R" step-cmd
+# ---- a VM without the hook: event-level only, said out loud ------------------------------------
+CASE | d6 hookless VM: run.log says no step hook | 0 | no step hook | - | eval "$RS"; "$B" "$R" pause >/dev/null; "$B" "$R" fire "$E" on-click >/dev/null; BLUEPRINTZ_PRISC="$HOOKLESS" "$B" "$R" step-cmd >/dev/null; sleep 1; cat "$BLUEPRINTZ_STATE_DIR/run.log"
+CASE | d6 hookless VM: the event still completed (70) | 0 | qolq=70 | - | head -1 "$E/inventory.txt"

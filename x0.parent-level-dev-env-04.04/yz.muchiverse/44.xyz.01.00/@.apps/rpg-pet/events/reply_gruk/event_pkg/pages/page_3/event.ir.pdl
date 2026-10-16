@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | reply_gruk
+STATE        | source               | events-hq
+NODE         | id=1 type=pet_says | pet=gruk|chat=I have nowhere to eat.|voice=밥 먹을 곳이 없어.

@@ -1,1 +1,1 @@
-change_armor
+change_hp

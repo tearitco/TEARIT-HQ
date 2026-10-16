@@ -1,0 +1,11 @@
+SECTION | KEY | VALUE
+----------------------------------------
+# display.pdl - how tpmos-hq shows a TPMOS (1.TPMOS_c_+rmmp.0103.0001) frame. TPMOS itself keeps its GL window mirror (pieces/display/gl_renderer.c); this file points the house at the SAME frame files and draws them in an x11-hq window instead.
+# Paths are relative to the house root (the folder that holds @.apps), tpmos_root included. Env TPMOS_HQ_DISPLAY=<file> replaces this whole file (used for testing against a scratch copy).
+DISPLAY | backend | x11-hq
+DISPLAY | tpmos_root | ../../1.TPMOS_c_+rmmp.0103.0001
+DISPLAY | frame_file | pieces/display/current_frame.txt
+DISPLAY | marker_file | pieces/display/frame_changed.txt
+DISPLAY | keys_file | pieces/keyboard/history.txt
+DISPLAY | rows | 200
+DISPLAY | poll_ms | 150

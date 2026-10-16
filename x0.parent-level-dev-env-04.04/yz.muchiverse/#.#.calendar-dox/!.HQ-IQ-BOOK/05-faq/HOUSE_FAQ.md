@@ -84,3 +84,6 @@ runtime-generated content (a stale `action=` in a live `.chtpm`, an
 old relay/log line) self-heals on the next write from `g_house_root`;
 a literal old path hardcoded in actual source is a real bug (the
 migration's own audit found and fixed the handful that existed).
+
+## Q: Where do pictures for gta-hq parts come from, and can I make one now?
+Open the img-hai window (`sh '&.hq-apps/img-hai/button.sh' run`), click `Draft image (remote)` (twice: the house click is two-step); a free image model on debil or the Mac draws it in about two minutes and our own op reduces it to 32 px. Judge it with the yes/no buttons. Full handbook: `44.xyz.01.00/&.hq-apps/img-hai/docs/README.md`; story and lessons: `16.game/IMG-HAI-BREAKTHROUGH.md`.

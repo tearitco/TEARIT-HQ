@@ -21,14 +21,24 @@ while IFS= read -r line; do
     [ -n "$SUB" ] || continue
     awk -v sub_="$SUB" -v house="$HOUSE" -v name="$NAME" 'NR > 1 { pid = $1; $1 = ""; if (index($0, sub_) > 0 && index($0, house) > 0) print pid "\t" name }' "$SNAP" >> "$HITS"
 done < "$LIST"
-sort -u "$HITS" | while IFS="$(printf '\t')" read -r pid name; do
+# make-before-break rows ("swap:" relaunch command, see close_on_restart.pdl): on a --relaunch run they are NOT closed here, their command replaces them
+KILLS="$(mktemp)"; trap 'rm -f "$SNAP" "$HITS" "$KILLS"' EXIT
+sort -u "$HITS" > "$KILLS"
+if [ "$RELAUNCH" = 1 ]; then
+    while IFS= read -r line; do
+        case "$line" in CLOSE*) ;; *) continue ;; esac
+        NAME="$(echo "$line" | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/,"",$2); print $2}')"; CMD="$(echo "$line" | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/,"",$4); print $4}')"
+        case "$CMD" in swap:*) awk -F'\t' -v n="$NAME" '$2 != n' "$KILLS" > "$KILLS.n" && mv "$KILLS.n" "$KILLS" ;; esac
+    done < "$LIST"
+fi
+sort -u "$KILLS" | while IFS="$(printf '\t')" read -r pid name; do
     case "$PROT" in *" $pid "*|*" $pid") continue ;; esac
     echo "close_listed: TERM $pid ($name)"
     [ "$DRY" = 1 ] || kill -TERM "$pid" 2>/dev/null
 done
-if [ "$DRY" = 0 ] && [ -s "$HITS" ]; then
+if [ "$DRY" = 0 ] && [ -s "$KILLS" ]; then
     sleep 1
-    sort -u "$HITS" | while IFS="$(printf '\t')" read -r pid name; do
+    sort -u "$KILLS" | while IFS="$(printf '\t')" read -r pid name; do
         case "$PROT" in *" $pid "*|*" $pid") continue ;; esac
         kill -0 "$pid" 2>/dev/null && { echo "close_listed: KILL $pid ($name)"; kill -KILL "$pid" 2>/dev/null; }
     done
@@ -41,6 +51,8 @@ if [ "$DRY" = 0 ] && [ "$RELAUNCH" = 1 ] && [ -s "$HITS" ]; then
         NAME="$(echo "$line" | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/,"",$2); print $2}')"; CMD="$(echo "$line" | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/,"",$4); print $4}')"
         [ -n "$CMD" ] || continue
         awk -F'\t' -v n="$NAME" '$2 == n {f = 1} END {exit !f}' "$HITS" || continue
+        case "$CMD" in swap:*) CMD="$(echo "${CMD#swap:}" | sed 's/^[ \t]*//')" ;; esac
+        [ -n "$CMD" ] || continue
         echo "close_listed: RELAUNCH ($NAME): $CMD"
         (cd "$HOUSE" && $SETSID sh -c "$CMD" </dev/null >/dev/null 2>&1 &)
     done < "$LIST"

@@ -25,6 +25,10 @@ mode opens the context menu.
 import json
 import os
 import re
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import tsots_event_ir  # noqa: E402
 
 BOOK = os.path.normpath(os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
@@ -103,40 +107,13 @@ def write_page(ev_dir, page, number):
     trig = TRIG.get(int(page.get("trigger") or 0), "on-click")
     with open(os.path.join(page_dir, "condition.pdl"), "w", encoding="utf-8") as f:
         f.write("COND | trigger | %s\n" % trig)
-    lines = []
-    cmds = page.get("list") or []
-    n = 0
-    i = 0
-    while i < len(cmds):
-        code = int(cmds[i].get("code") or 0)
-        if code == 0:
-            i += 1
-            continue
-        if code == SHOW_TEXT:
-            bits = []
-            j = i + 1
-            while j < len(cmds) and int(cmds[j].get("code") or 0) == TEXT_LINE:
-                params = cmds[j].get("parameters") or [""]
-                bits.append(str(params[0] if params else ""))
-                j += 1
-            text = " ".join(b for b in bits if b).strip()
-            n += 1
-            if text:
-                lines.append(write_cmd(page_dir, n, show_text_body(text)))
-            else:
-                lines.append(write_cmd(page_dir, n, comment_body("Show Text (empty)")))
-            i = j
-            continue
-        params = cmds[i].get("parameters") or []
-        short = " ".join(str(p)[:40] for p in params[:4])
-        n += 1
-        lines.append(write_cmd(page_dir, n, comment_body("mv %d %s" % (code, short))))
-        i += 1
-    if not lines:
-        lines.append(write_cmd(page_dir, 1, comment_body("empty page")))
-    with open(os.path.join(page_dir, "event.pal"), "w", encoding="utf-8") as f:
-        f.write("# event.pal - from the TSOTS map JSON\n")
-        f.writelines(lines)
+    # events-hq shape: event.ir.pdl (the nodes Events (hq) lists) + event.pal + cmd_N.sh, from the registry (tsots_event_ir.py)
+    state_dir = os.path.join(BOOK, "state")
+    os.makedirs(state_dir, exist_ok=True)
+    nodes = tsots_event_ir.convert(page.get("list") or [])
+    if not nodes:
+        nodes = [tsots_event_ir.node("comment", text="empty page")]
+    tsots_event_ir.write_page(page_dir, os.path.basename(ev_dir), nodes, state_dir)
 
 
 def write_db(data, book):
@@ -204,6 +181,7 @@ def main():
         if bar:
             print("map%03d" % mid, len(bar))
     print("events", events_n)
+    print("converted commands:", dict(sorted(tsots_event_ir.STATS.items(), key=lambda kv: -kv[1])))
 
 
 if __name__ == "__main__":

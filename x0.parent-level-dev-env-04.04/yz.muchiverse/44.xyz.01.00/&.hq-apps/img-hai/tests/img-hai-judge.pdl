@@ -1,0 +1,18 @@
+SECTION | KEY | VALUE
+------------------------------
+# img-hai-judge.pdl - judging and Accept on the throw-away tile tiles/test_tile.png (label test_tile). Its verdicts go to img-hai/verdicts.txt and its candidate to state/accept_test.pdl, never to the real data. Fresh window (placed=0).
+# The owner's real verdicts are never pressed by a test; "o yes" is pressed only on the test tile.
+STEP | press | label:test_tile
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | judge_line=judge test_tile: claude=? owner=? | 5
+STEP | press | accept
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | msg=accept needs BOTH yes (claude=? owner=?) | 5
+STEP | press | jc_yes
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | claude=yes owner=? | 5
+STEP | press | accept
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | msg=accept needs BOTH yes (claude=yes owner=?) | 5
+STEP | press | jo_yes
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | claude=yes owner=yes | 5
+STEP | press | accept
+STEP | expect | &.hq-apps/img-hai/state/ui.txt | contains | msg=accepted test_tile | 5
+STEP | expect | &.hq-apps/img-hai/state/accept_test.pdl | contains | CAND | 5
+STEP | shot | &.hq-apps/img-hai/state/shot_7_accepted.png

@@ -1,3 +1,0 @@
-item_id=scrap_metal
-pos_x=6
-pos_y=13

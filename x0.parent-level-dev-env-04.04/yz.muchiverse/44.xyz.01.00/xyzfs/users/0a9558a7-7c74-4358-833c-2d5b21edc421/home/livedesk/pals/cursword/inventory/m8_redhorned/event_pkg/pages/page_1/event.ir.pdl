@@ -1,9 +1,0 @@
-SECTION      | KEY                | VALUE
-----------------------------------------
-META         | piece_id           | m8_redhorned
-STATE        | source               | event-ez
-NODE         | id=1 type=change_gold | amount=10
-NODE         | id=2 type=change_gold | amount=25
-NODE         | id=3 type=change_gold | amount=7
-NODE         | id=4 type=show_text | text=Hi|speaker=
-NODE         | id=5 type=take_gold | amount=8

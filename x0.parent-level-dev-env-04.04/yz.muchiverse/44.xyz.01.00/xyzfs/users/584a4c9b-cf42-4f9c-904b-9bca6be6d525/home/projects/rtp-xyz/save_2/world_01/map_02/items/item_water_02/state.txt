@@ -1,3 +1,0 @@
-item_id=water_bottle
-pos_x=8
-pos_y=12

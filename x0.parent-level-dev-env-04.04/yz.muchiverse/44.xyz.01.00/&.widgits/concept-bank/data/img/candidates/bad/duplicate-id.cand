@@ -1,0 +1,2 @@
+EDIT | id=b8 | type=img_word_text | target=w_steel | text="a" | reason="x" | proposer=claude | status=candidate
+EDIT | id=b8 | type=img_word_text | target=w_red | text="b" | reason="x" | proposer=claude | status=candidate

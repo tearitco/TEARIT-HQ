@@ -1,0 +1,37 @@
+SECTION | KEY | VALUE
+------------------------------
+# emoji-gta.pdl - backtick (emoji) mode for gta-hq (2026-10-12, claude): which Unicode emoji stands for which GTA role, and whether the engine already has its 3D voxel model.
+# EMOJI | role | codepoint | glyph | unicode name | voxels | note     voxels = have (&.widgits/board-viewer/pieces/registry/emoji_assets/<codepoint>/voxels_16.csv exists) or missing (2D can use a font; 3D needs a model made).
+# Names from #.NNEST_ASSETS/unicode-emoji/emoji-test-17.0.txt. 2D emoji glyph drawing in gta-hq and the backtick binding are NOT built (today backtick = a 2D Chinese/ASCII view, piececraft-hq/pieces/system/keybinds.pdl key 96).
+# The registry also holds three CDDA-named voxel models (t_grass, t_tree, t_water_dp): the existing link between the CDDA ids in cdda-tiles.pdl and the voxel/3D side.
+EMOJI | road | 1F6E3 | 🛣️ | motorway | missing | a motorway glyph; the road itself stays a terrain tile (flat grey) in emoji mode
+EMOJI | car | 1F697 | 🚗 | automobile | missing | 
+EMOJI | taxi | 1F695 | 🚕 | taxi | missing | 
+EMOJI | bus | 1F68C | 🚌 | bus | missing | 
+EMOJI | truck | 1F69A | 🚚 | delivery truck | missing | 
+EMOJI | tractor | 1F69C | 🚜 | tractor | have | already has a voxel model
+EMOJI | motorcycle | 1F3CD | 🏍️ | motorcycle | missing | 
+EMOJI | bicycle | 1F6B2 | 🚲 | bicycle | missing | 
+EMOJI | pedestrian | 1F9CD | 🧍 | person standing | have | person standing: HAS a voxel model (the walking one 1F6B6 does not)
+EMOJI | pedestrian_walking | 1F6B6 | 🚶 | person walking | missing | 
+EMOJI | zombie | 1F9DF | 🧟 | zombie | have | has a voxel model
+EMOJI | police_car | 1F693 | 🚓 | police car | missing | 
+EMOJI | traffic_light | 1F6A6 | 🚦 | vertical traffic light | missing | 
+EMOJI | building | 1F3E2 | 🏢 | office building | missing | 
+EMOJI | house | 1F3E0 | 🏠 | house | missing | 
+EMOJI | shop | 1F3EA | 🏪 | convenience store | missing | 
+EMOJI | bank | 1F3E6 | 🏦 | bank | missing | 
+EMOJI | hotel | 1F3E8 | 🏨 | hotel | missing | 
+EMOJI | school | 1F3EB | 🏫 | school | missing | 
+EMOJI | castle | 1F3F0 | 🏰 | castle | have | has a voxel model
+EMOJI | brick_wall | 1F9F1 | 🧱 | brick | have | has a voxel model
+EMOJI | rock | 1FAA8 | 🪨 | rock | have | has a voxel model
+EMOJI | tree | 1F333 | 🌳 | deciduous tree | have | has a voxel model
+EMOJI | pine | 1F332 | 🌲 | evergreen tree | have | has a voxel model
+EMOJI | water | 1F30A | 🌊 | water wave | have | has a voxel model
+EMOJI | grass | 1F33F | 🌿 | herb | have | has a voxel model
+EMOJI | dog | 1F415 | 🐕 | dog | missing | 
+EMOJI | cat | 1F408 | 🐈 | cat | missing | 
+EMOJI | chicken | 1F414 | 🐔 | chicken | have | has a voxel model
+EMOJI | fire | 1F525 | 🔥 | fire | have | has a voxel model
+EMOJI | money | 1F4B5 | 💵 | dollar banknote | missing | 

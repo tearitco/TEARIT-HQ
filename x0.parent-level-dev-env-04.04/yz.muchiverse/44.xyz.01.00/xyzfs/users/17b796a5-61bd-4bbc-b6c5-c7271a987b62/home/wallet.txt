@@ -1,3 +1,0 @@
-name=diag2
-type=user
-tokens=0

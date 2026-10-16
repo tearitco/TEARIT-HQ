@@ -1,0 +1,4 @@
+SECTION | KEY | VALUE
+------------------------------
+APP | sfx-hai | &.widgits/auto/tests/dead.pid
+VERB | make | make | none | &.hq-apps/sfx-hai/state/ui.txt | - | 3 | free

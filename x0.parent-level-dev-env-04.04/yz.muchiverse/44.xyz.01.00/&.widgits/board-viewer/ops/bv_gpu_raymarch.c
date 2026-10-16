@@ -235,7 +235,7 @@ static EGLDisplay s_dpy = EGL_NO_DISPLAY;
 static EGLContext s_ctx = EGL_NO_CONTEXT;
 static GLuint     s_prog = 0, s_vao = 0, s_fbo = 0, s_rbo = 0, s_tex_grid = 0, s_tex_leg = 0, s_tex_terr = 0, s_tex_mdl = 0, s_tex_atlas = 0, s_tex_cells = 0, s_tex_para = 0;
 static int        s_maker_id = -1;            /* maker_id currently uploaded to s_tex_atlas / s_tex_cells */
-static int        s_para_id = -1;
+static int        s_para_id = -1, s_para_ver = -1;
 static int        s_fw = 0, s_fh = 0;          /* current FBO size */
 static int        s_gw = 0, s_gh = 0, s_gd = 0; /* current grid-tex dims */
 static int        s_leg_alloc = 0;            /* legend tex storage created */
@@ -370,7 +370,7 @@ static int gl_ensure_context(void) {
     { unsigned char px[4] = {0,0,0,0}; glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, px); }
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    s_para_id = -1;
+    s_para_id = -1; s_para_ver = -1;
 
     s_dpy = dpy; s_ctx = ctx; s_prog = prog; s_vao = vao; s_tex_leg = leg; s_tex_terr = terr; s_tex_mdl = mdl; s_tex_atlas = atl; s_tex_cells = cel; s_tex_para = para;
     s_leg_alloc = 0; s_terr_alloc = 0; s_mdl_alloc = 0;
@@ -585,12 +585,12 @@ int bv_gpu_raymarch(const BvGpuScene *s, unsigned char *out) {
     glUniform1i (s_u.atlas, 4);
     glUniform1i (s_u.cells, 5);
     glUniform1i (s_u.maker, (s->maker && s->atlas && s->cells) ? 1 : 0);
-    if (s->para && s->para_w > 0 && s->para_h > 0 && s->maker_id != s_para_id) {
+    if (s->para && s->para_w > 0 && s->para_h > 0 && (s->maker_id != s_para_id || s->para_ver != s_para_ver)) {
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
         glActiveTexture(GL_TEXTURE6);
         glBindTexture(GL_TEXTURE_2D, s_tex_para);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, s->para_w, s->para_h, 0, GL_RGBA, GL_UNSIGNED_BYTE, s->para);
-        s_para_id = s->maker_id;
+        s_para_id = s->maker_id; s_para_ver = s->para_ver;
     }
     glUniform1i(s_u.para, 6);
     glUniform1i(s_u.para_on, (s->para && s->para_w > 0) ? 1 : 0);

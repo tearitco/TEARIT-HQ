@@ -1,0 +1,5 @@
+cdda-tilesets - Cataclysm: DDA community tiles (UltiCa / UltimateCataclysm), stored as plain files like rmmv-www-img (sparse clone of the repo below; its .git was moved out on 2026-10-12 so the files commit normally).
+origin : https://github.com/I-am-Erk/CDDA-Tilesets.git   commit 67983be7 (2026-09-05)
+licence: CC-BY-SA 3.0 as stated in the repo's LICENSE.txt (see also 44.xyz.01.00/shared/CDDA-ASSET-SOURCE-LOCATION.pdl)
+used by: @.apps/cdda-hq (gfx/UltimateCataclysm/pngs_*), &.widgits/palettes (category cdda)
+backup of the original .git: /home/no/staging/backups/tilesets-git/cdda-tilesets.git (local only)

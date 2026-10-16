@@ -1,3 +1,0 @@
-item_id=stick
-pos_x=69
-pos_y=33

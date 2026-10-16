@@ -1,0 +1,24 @@
+SECTION | KEY | VALUE
+------------------------------
+# words.pdl - image word bank (W0, claude, 2026-10-13). Plan: BOOK 16.game/WORD-BANK-TO-IMAGE.md. Words say how a thing LOOKS; the entity word bank (zz.wordbank) is a different thing (names and aliases).
+# WORD | id | text | kind | weight        kind: subject material colour angle style size negative. weight 0..1: words under the cutoff (default 0.30) are left out of the prompt. Changing a weight is a candidate edit that a human promotes; a model never sets it.
+WORD | w_car_door      | a car door panel          | subject  | 1.00
+WORD | w_car_wheel     | a car wheel with tyre     | subject  | 1.00
+WORD | w_car_windshield| a car windshield          | subject  | 1.00
+WORD | w_person_torso  | a standing person's torso | subject  | 1.00
+WORD | w_steel         | painted steel             | material | 0.80
+WORD | w_rubber        | black rubber              | material | 0.80
+WORD | w_glass         | tinted glass              | material | 0.70
+WORD | w_cloth         | plain cloth               | material | 0.70
+WORD | w_dust          | worn and dusty            | material | 0.20
+WORD | w_red           | dark red                  | colour   | 0.60
+WORD | w_grey          | grey                      | colour   | 0.50
+WORD | w_top           | seen from above           | angle    | 0.90
+WORD | w_side          | side view                 | angle    | 0.40
+WORD | w_pixel         | pixel art                 | style    | 1.00
+WORD | w_crisp         | crisp outline             | style    | 0.70
+WORD | w_32            | 32 pixel sprite           | size     | 0.90
+WORD | w_nobg          | plain flat background     | style    | 0.80
+WORD | w_nowords       | text, watermark           | negative | 0.90
+WORD | w_noblur        | blurry                    | negative | 0.80
+WORD | w_red | red again | colour | 0.5

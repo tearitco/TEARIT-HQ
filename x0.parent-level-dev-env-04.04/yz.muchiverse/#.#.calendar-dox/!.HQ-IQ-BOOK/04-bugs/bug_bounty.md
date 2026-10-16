@@ -2,6 +2,38 @@
 
 ---
 
+## FIXED 2026-10-13 (owner-confirmed live): livedesk top-bar dropdown - click snapped the highlight to row 1, and the search row did not take input
+
+**Reported by the owner (via grok's note `13.agent-coms/2026-10-13/livedesk-dropdown-jump.txt`):** in a long top-bar menu, clicking a lower row or the search row lands the highlight there, then it snaps to the first row. After the first fix the owner confirmed the jump is gone, but the search row still did not show the `^` armed state and took no typing.
+
+**Causes (code reading + owner's live confirmation of the first):**
+1. `dock_poll_strip_state` applied the manager's cursor (always a header cell or a bottom-tab index, never a dropdown row) to `g_focus_nav` on the next strip republish; the dropdown clamp in `assign_nav_and_layout` then sent focus to `g_dock_drop_lo`. Fix (`fb52d16b3`): while focus is already inside the open menu, a manager cursor outside the menu's rows is ignored. The 6000 relay and the poll stay (skipping either killed arrow and number nav; grok reverted that as `ffdbca1fd`).
+2. The search row (`dd-search`, a synthetic `cli_io`) went through the click_two_step path: the first click only moved the highlight and relayed 6000+n, and `activate_focused()` (which arms a cli_io) never ran. Fix: `click_focus_then_activate` treats `dd-search` as a one-click target.
+
+3. Typing disarmed the field after every key: the dock rebuilds its tree on each republish, and the restore step looked the armed field up by id in the new tree; `dd-search` is the static `g_dd_search_elem`, outside the tree, so the log said `REPARSE key=dd-search NOT_FOUND - ungrabbed`. Fix: the restore re-arms it by identity.
+4. A filter like "ch" left a blank menu: rows the search hid still took a `stack_counts` slot, so the visible matches were placed at their old list positions below the shrunken menu. Fix: visible rows stack by `open_idx`.
+
+**Confirmed by the owner live (2026-10-13):** click-jump gone, search row arms on one click, typing stays armed and filters.
+
+---
+
+## OPEN 2026-10-11: rpg-pet board flashes to 3D (and a day sky at night) for about a second, at random
+
+**Reported by the owner, more than once:** "even in 2D it will flash to 3D every once and a while for a second", "during a room change even at night it will flash day (in 3D mode?)", and again while piloting Fang through a door ("randomly saw the random 3D flash"). Owner's call: mark it as a bug bounty, "it's more of a nuance". Flicker cannot be seen in a screenshot or a poll of `bv_state.txt` once it has passed, so it stays OPEN until the mechanism is confirmed.
+
+**Seen once by measurement (not explained):** during testing the board came up with `render_mode=1` (3D) in `pieces/system/bv_state.txt` after a sequence of INT on/off toggles, one arrow in the engine relay and a `126` wake; key `0` (via the relay) put it back to 2D. Nothing in `rpg_pet.c` writes `render_mode`.
+
+**Ruled out / checked:** the world-clock epoch is not the cause of the day flash on a room change; the daemon's own state writes are atomic (temp file + rename).
+
+**Leads, none confirmed:**
+1. The engine's `write_kv` (`&.widgits/board-viewer/ops/bv_menu_input.c`) truncates `bv_state.txt` in place, no lock. A reader that catches it empty gets defaults, and `default_render_mode()` is 3D. `bv_dispatch.c` and `bv_render_3d.c` read `render_mode` per frame, so one empty read = one 3D frame. (`pc_clock_daemon.c` already fixed the same pattern with `flock`.)
+2. Keys that write `render_mode=1`: POV keys (`1`-`4` remap), key `7`, Tab -> 2. A forwarded digit while the window is in Interact mode would flip it and stay until `0`.
+3. A room change rewrites the exported maker map (`follow_pchq`), and the 3D loader re-reads it (`maker_load`, `para_ver` parallax re-upload): a frame drawn before the new sky/map is loaded.
+
+**To close:** capture the frame sequence at a door crossing (`dump_frame_png_op` in a loop, or log `render_mode` reads in `bv_dispatch.c` with a timestamp) and show which read produced the 3D frame; then fix and have the owner confirm it is gone.
+
+---
+
 ## FIXED 2026-10-10 (verified in scratch): WSR `market_settle` cannot rebuild the shareholder registry (wrong relative op path)
 
 **Fix:** `ops/market_settle.c` now runs `./ops/+x/shareholder_registry.+x` from the project root. Verified: rebuild registry, quote (58 participants, 30 orders), settle (16 fills) and the registry was rebuilt after settle (18 holder rows), no warning. Also done: the 62 entity pieces are bundled in `WSR_PAL-PREFERED/projects/wsr-pal/pieces_template` and `ensure_entities.sh` seeds from them (idempotent). Note: the day order must run `shareholder_registry rebuild` BEFORE `market_quote` (quote reads shareholders.txt).
@@ -1964,3 +1996,12 @@ Once the pool is exhausted, every subsequent `elem_new()` call for the dock eith
 **Also found, real, house-wide, out of scope to fix tonight**: the undersized-realpath-buffer pattern in bug #2 above is NOT unique to world-manager - a house-wide grep found dozens of other files defining `MAX_PATH`/`PATH_BUF`-style macros well under 4096 (256/512/1024/2048, e.g. `101.ledger-player-npc-simple+3/ops/ledger_append.c` at 256, `014.wsr-pal.../system/chtpm_parser_pal.c` at 1024, `_.monads/_.livedesk-taskbar/ops/tile_registry.c` at 512) and passing them straight to `realpath()`. Every one of these is a latent, dormant crash that only manifests under a fortify-hardened build - exactly like this one did. Worth a dedicated house-wide sweep later; flagging here so it isn't lost, not fixing all of them under tonight's "#1 priority, we can't go forward" framing which was specifically about world_manager.
 
 **Files**: `&.hq-apps/world-manager/world_manager.pal`, `button.sh`, `ops/{world_manager_tick,world_manager_init,sync_entity_positions}.c`; `pages/test_page_001/manager/page_manager.pal` (twin). Design doc for the ledger-trunking recommendation: TBD, not yet written up separately - this entry is the design of record until it is.
+
+## OPEN 2026-10-12 - livedesk top bar flicker (intermittent, not reproduced)
+Owner report: the top bar (khtpm_strip_header, window ~2079x45 at the top) flickered for a while; the bottom bar stayed solid. Later: "I don't even see it happening recently". Not found in code, so parked here (owner: "just mark it in bug bounty").
+- **Seen / measured:** header repaints ~1.3/s (~490 KB/s written, ~1.5% CPU); `strip_frame_changed.txt` grew 0 in 20 s; the manager republishes the strip once a minute (`manager publish#N ... reload_changed=1` at each :00), `load_changed.txt` +1 per 20 s at the time. 253 frames of the top bar captured over the 17:17:00 minute change gave exactly two distinct frames (old time, new time), no blank or half-drawn frame.
+- **Caveat:** frame grabs at ~15/s can miss a one-frame blank, so this does not prove it is gone.
+- **Suspects if it returns:** the once-a-minute whole-strip reparse (the % label rides it, see hq-cpu-safety.md section 5); the load label / warn cell flipping the header cells; the same-day renderer changes (css_compute_style_ex, g_layout_fresh canvas reuse: neither applies to a canvas-less header). Earlier flicker of the same bar was the load label republishing the strip every ~2 s (fixed 4a2ed59e7, hysteresis 0d5dc85db).
+- **Next step when it reappears:** note the clock time, then count `strip_frame_changed.txt` growth and the `[REDRAW]` callers with `KH_REDRAW_TRACE=1` on the header.
+- **Update 2026-10-13 (owner: rare, top bar only, "never used to", also noted earlier "when cpu is high"): a likely mechanism found in code, NOT live-confirmed.** The bottom bar is a fixed `sw - 2*ox` wide (2096 px here); the top bar is `DOCK_FOCUS_BOX_W + content_w + 8` (`khtpm_core_render.c`, dock layout), i.e. its real X window width follows the cell text (2079 px now, 17 px under the cap). `redraw()` calls `XResizeWindow`+`XSync` whenever the width differs, and a width above the buffer paints one blank frame (its own comment). Cells that change width: the red load cell is bold (wider than the calm one, `.dock-cell.dock-warn`) and the `%N` label changes digit count, both added with the load guard on 2026-10-12 01:00, which fits "prior to the cpu stuff". Measured: the geometry polled every 0.4 s for 4 minutes spanning four clock-minute changes stayed 2079x45 (so the clock is NOT the trigger); a warn flip or a digit change could not be forced, so those were not observed.
+- **Change made (unproven live):** the top bar latches its widest width and never shrinks within a run (`s_hdr_w_latch`), the same cure as the 2026-10-10 pet tab row. Needs a header relaunch to take effect. **To close:** owner runs it under CPU load for a while and reports no flicker; or poll the header width during a warn flip and see it stay constant.

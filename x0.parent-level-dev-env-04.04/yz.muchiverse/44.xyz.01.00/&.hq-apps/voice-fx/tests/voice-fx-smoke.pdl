@@ -1,0 +1,42 @@
+SECTION | KEY | VALUE
+------------------------------
+# voice-fx-smoke.pdl - fresh window (1200x700), clean state (no state/voices2.pdl). Pets start with their FX recipes (pet-trainer/voices.pdl). Works the knobs, says (real offline voice + audio_fx, ~10 s), judges, renames. Run: relay_drive <renderer pid> run <this file> <winid>
+STEP | press | vo1
+STEP | expect | &.hq-apps/voice-fx/state/ui.txt | contains | selected=bear | 5
+STEP | expect | &.hq-apps/voice-fx/state/ui.txt | contains | knob_line=pitch -3 st  speed 0.90  formant -2.0  bright -2 dB  warm +4 dB | 5
+STEP | press | pp
+STEP | press | pp
+STEP | expect | &.hq-apps/voice-fx/state/ui.txt | contains | pitch -1 st | 5
+STEP | press | fp
+STEP | expect | &.hq-apps/voice-fx/state/ui.txt | contains | formant -1.5 | 5
+STEP | press | bp
+STEP | press | wm
+STEP | press | vp
+STEP | expect | &.hq-apps/voice-fx/state/ui.txt | contains | vibrato 5 Hz 5 c | 5
+STEP | press | rp
+STEP | press | ac
+STEP | expect | &.hq-apps/voice-fx/state/ui.txt | contains | accent th-stop | 5
+STEP | tapid | words
+STEP | type | the water is very good
+STEP | key | enter
+STEP | expect | &.hq-apps/voice-fx/state/ui.txt | contains | words_line=the water is very good | 5
+STEP | press | say
+STEP | expect | &.hq-apps/voice-fx/state/ui.txt | contains | say_line=done: | 90
+STEP | expect | &.hq-apps/voice-fx/state/ledger.txt | contains | formant=-1.5 | 5
+STEP | expect | &.hq-apps/voice-fx/state/ledger.txt | contains | accent=th-stop | 5
+STEP | press | play
+STEP | expect | &.hq-apps/voice-fx/state/ui.txt | contains | msg=playing | 5
+# regression 2026-10-14: after Play, Say must still run (the play spawn once left SIGCHLD ignored)
+STEP | press | say
+STEP | expect | &.hq-apps/voice-fx/state/ui.txt | absent | still making the last sound | 4
+STEP | expect | &.hq-apps/voice-fx/state/ui.txt | contains | say_line=done: | 90
+STEP | shot | &.hq-apps/voice-fx/state/shot_said.png
+STEP | press | jc_yes
+STEP | expect | &.hq-apps/voice-fx/state/ui.txt | contains | msg=claude said yes | 5
+STEP | press | vo4
+STEP | expect | &.hq-apps/voice-fx/state/ui.txt | contains | knob_line=pitch +5 st  speed 1.25  formant +3.0  bright +4 dB  warm +0 dB  vibrato 8 Hz 20 c | 5
+STEP | tapid | words
+STEP | type | Bertie
+STEP | key | enter
+STEP | press | rename
+STEP | expect | &.hq-apps/voice-fx/state/ui.txt | contains | v_4_label=* Bertie | 5

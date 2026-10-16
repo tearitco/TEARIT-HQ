@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | reply_gus
+STATE        | source               | events-hq
+NODE         | id=1 type=cdda_pet_says | pet=gus|chat=A table! Let me cook|voice=A table! Let me cook

@@ -1149,3 +1149,137 @@ COMMAND pet_load
   PARAMS slot
   TEMPLATE exec "$D/@.apps/pet-house/ops/pet_event.sh" load_slot '{slot}'
 END
+
+# ---- rpg-pet (2026-10-11): one generic command that runs an rpg-pet verb ("rpg_pet.+x <verb> [arg]"). rpg-pet's clock events (time.pdl AT rows)
+# are event pages in @.apps/rpg-pet/events/<name>/ that use it: phase <dawn|day|dusk|night> writes state/daylight.txt, day_tick appends a DAY row.
+COMMAND rpg_pet_verb
+  LABEL rpg-pet: Run Verb
+  FIELD1 Verb:
+  FIELD2 Arg:
+  PARAMS verb,arg
+  TEMPLATE exec "$D/@.apps/rpg-pet/ops/+x/rpg_pet.+x" '{verb}'[ '{arg}']
+END
+
+# ---- choices to switches (2026-10-11): after a Show Choices, set choice_<i> = 1 for the chosen index and 0 for the others in the given switches file, so the If blocks of the
+# branches (imported from RPG Maker 402 / 403) can run. mr_show_choices writes choice_result.txt; the If command only reads switches. See &.widgits/events-hq/ops/mr_choice_switch.c.
+COMMAND choice_to_switch
+  LABEL Choices -> Switches
+  FIELD1 Switches file:
+  FIELD2 Choices:
+  PARAMS switches_file,n
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_choice_switch.+x" "$ENT" '{switches_file}' '{n}'
+END
+
+# ---- rpg-pet greetings (2026-10-11): a pet says a line in the chat and aloud. pet = the pet id, chat = the English chat line, voice = the line it speaks in its own language ({other} = the name of
+# the pet it meets, passed by rpg-pet as the environment variable RPG_OTHER; RPG_SAY / RPG_SPEAK decide whether the chat line / the voice are heard). Used by @.apps/rpg-pet/events/greet_<pet>/.
+COMMAND pet_says
+  LABEL rpg-pet: Pet Says
+  FIELD1 Chat line:
+  FIELD2 Spoken line:
+  PARAMS pet,chat,voice
+  TEMPLATE exec "$D/@.apps/rpg-pet/ops/+x/rpg_pet.+x" pet_says '{pet}' '{chat}' '{voice}' "$RPG_OTHER"
+END
+
+# ---- dsr-rpg (2026-10-12): the carbon copy of rpg-pet has its OWN two commands, bound to its own binary (dsr_rpg.+x), so its event pages never run rpg-pet's program.
+# dsr_rpg_verb = one generic command that runs a dsr-rpg verb ("dsr_rpg.+x <verb> [arg]"); dsr_pet_says = a character says a line in the chat and aloud (same fields as pet_says).
+COMMAND dsr_rpg_verb
+  LABEL dsr-rpg: Run Verb
+  FIELD1 Verb:
+  FIELD2 Arg:
+  PARAMS verb,arg
+  TEMPLATE exec "$D/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x" '{verb}'[ '{arg}']
+END
+
+COMMAND dsr_pet_says
+  LABEL dsr-rpg: Character Says
+  FIELD1 Chat line:
+  FIELD2 Spoken line:
+  PARAMS pet,chat,voice
+  TEMPLATE exec "$D/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x" pet_says '{pet}' '{chat}' '{voice}' "$RPG_OTHER"
+END
+
+# ---- cdda-hq (2026-10-12): a scaffold copy of dsr-rpg has its OWN two commands, bound to its own binary (cdda_hq.+x), so its event pages never run dsr-rpg's program.
+# cdda_hq_verb = one generic command that runs a cdda-hq verb ("cdda_hq.+x <verb> [arg]"); cdda_pet_says = a character says a line in the chat and aloud (same fields as pet_says).
+COMMAND cdda_hq_verb
+  LABEL cdda-hq: Run Verb
+  FIELD1 Verb:
+  FIELD2 Arg:
+  PARAMS verb,arg
+  TEMPLATE exec "$D/@.apps/cdda-hq/ops/+x/cdda_hq.+x" '{verb}'[ '{arg}']
+END
+
+COMMAND cdda_pet_says
+  LABEL cdda-hq: Character Says
+  FIELD1 Chat line:
+  FIELD2 Spoken line:
+  PARAMS pet,chat,voice
+  TEMPLATE exec "$D/@.apps/cdda-hq/ops/+x/cdda_hq.+x" pet_says '{pet}' '{chat}' '{voice}' "$RPG_OTHER"
+END
+
+# ---- df-hq (2026-10-12): a scaffold copy of dsr-rpg has its OWN two commands, bound to its own binary (df_hq.+x), so its event pages never run dsr-rpg's program.
+# df_hq_verb = one generic command that runs a df-hq verb ("df_hq.+x <verb> [arg]"); df_pet_says = a character says a line in the chat and aloud (same fields as pet_says).
+COMMAND df_hq_verb
+  LABEL df-hq: Run Verb
+  FIELD1 Verb:
+  FIELD2 Arg:
+  PARAMS verb,arg
+  TEMPLATE exec "$D/@.apps/df-hq/ops/+x/df_hq.+x" '{verb}'[ '{arg}']
+END
+
+COMMAND df_pet_says
+  LABEL df-hq: Character Says
+  FIELD1 Chat line:
+  FIELD2 Spoken line:
+  PARAMS pet,chat,voice
+  TEMPLATE exec "$D/@.apps/df-hq/ops/+x/df_hq.+x" pet_says '{pet}' '{chat}' '{voice}' "$RPG_OTHER"
+END
+
+# ---- gta-hq (2026-10-12): a scaffold copy of dsr-rpg has its OWN two commands, bound to its own binary (gta_hq.+x), so its event pages never run dsr-rpg's program.
+# gta_hq_verb = one generic command that runs a gta-hq verb ("gta_hq.+x <verb> [arg]"); gta_pet_says = a character says a line in the chat and aloud (same fields as pet_says).
+COMMAND gta_hq_verb
+  LABEL gta-hq: Run Verb
+  FIELD1 Verb:
+  FIELD2 Arg:
+  PARAMS verb,arg
+  TEMPLATE exec "$D/@.apps/gta-hq/ops/+x/gta_hq.+x" '{verb}'[ '{arg}']
+END
+
+COMMAND gta_pet_says
+  LABEL gta-hq: Character Says
+  FIELD1 Chat line:
+  FIELD2 Spoken line:
+  PARAMS pet,chat,voice
+  TEMPLATE exec "$D/@.apps/gta-hq/ops/+x/gta_hq.+x" pet_says '{pet}' '{chat}' '{voice}' "$RPG_OTHER"
+# ---- mcl-hq (2026-10-12): a scaffold copy of cdda-hq has its OWN two commands, bound to its own binary (mcl_hq.+x), so its event pages never run cdda-hq's program.
+COMMAND mcl_hq_verb
+  LABEL mcl-hq: Run Verb
+  FIELD1 Verb:
+  FIELD2 Arg:
+  PARAMS verb,arg
+  TEMPLATE exec "$D/@.apps/mcl-hq/ops/+x/mcl_hq.+x" '{verb}'[ '{arg}']
+END
+
+COMMAND mcl_pet_says
+  LABEL mcl-hq: Character Says
+  FIELD1 Chat line:
+  FIELD2 Spoken line:
+  PARAMS pet,chat,voice
+  TEMPLATE exec "$D/@.apps/mcl-hq/ops/+x/mcl_hq.+x" pet_says '{pet}' '{chat}' '{voice}' "$RPG_OTHER"
+END
+
+# ---- civ-rpgce and tcg-rpgce (2026-10-15): dsr-rpg board clones whose event pages already use these two verb types (9 pages each) but had no registry entry, so the editor had no label or template for them (found by the blueprintz flag scan). Each is bound to its own binary like mcl-hq.
+COMMAND civ_rpgce_verb
+  LABEL civ-rpgce: Run Verb
+  FIELD1 Verb:
+  FIELD2 Arg:
+  PARAMS verb,arg
+  TEMPLATE exec "$D/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x" '{verb}'[ '{arg}']
+END
+
+COMMAND tcg_rpgce_verb
+  LABEL tcg-rpgce: Run Verb
+  FIELD1 Verb:
+  FIELD2 Arg:
+  PARAMS verb,arg
+  TEMPLATE exec "$D/@.apps/tcg-rpgce/ops/+x/tcg_rpgce.+x" '{verb}'[ '{arg}']
+END

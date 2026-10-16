@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | reply_orin
+STATE        | source               | events-hq
+NODE         | id=1 type=dsr_pet_says | pet=orin|chat=I enjoy reading decrees.|voice=I enjoy reading decrees.

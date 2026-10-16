@@ -1,7 +1,0 @@
-# event.pal - real prisc+x opcodes, hand-authored to match the exact
-# shape khtpm_events_hq_manager.c's own compiler produces (event.ir.pdl
-# -> event.pal -> cmd_N.sh) - robot_chat_001's real "ai_chat" Common
-# Event (2026-09-28).
-# pkg=robot_chat_001 page=page_1
-exec cmd_1.sh
-halt

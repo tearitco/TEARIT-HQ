@@ -1,0 +1,22 @@
+SECTION | KEY | VALUE
+------------------------------
+# sfx-hai-smoke.pdl - filter by tag, make coin_pickup (real sox render + numeric checks, plays aloud), nudge frequency, judge. Fresh window (1060x700). Run: relay_drive <renderer pid> run <this file> <winid>
+STEP | tapid | words
+STEP | type | coin
+STEP | key | enter
+STEP | expect | &.hq-apps/sfx-hai/state/ui.txt | contains | filter: 1 of 4 shown | 5
+STEP | press | make
+STEP | expect | &.hq-apps/sfx-hai/state/ui.txt | contains | say_line=done: coin_pickup | 30
+STEP | expect | &.hq-apps/sfx-hai/state/ui.txt | contains | duration | 5
+STEP | expect | &.hq-apps/sfx-hai/state/ui.txt | absent | FAIL | 2
+STEP | press | fp
+STEP | expect | &.hq-apps/sfx-hai/state/ui.txt | contains | coin_pickup f0 1087 Hz | 5
+STEP | press | play
+STEP | expect | &.hq-apps/sfx-hai/state/ui.txt | contains | msg=playing coin_pickup | 5
+# regression 2026-10-14: after Play, Make must still run (the play spawn once left SIGCHLD ignored: make was dropped as "still making" forever)
+STEP | press | make
+STEP | expect | &.hq-apps/sfx-hai/state/ui.txt | contains | busy=0 | 30
+STEP | expect | &.hq-apps/sfx-hai/state/ui.txt | absent | failed: | 2
+STEP | shot | &.hq-apps/sfx-hai/state/shot_made.png
+STEP | press | jc_yes
+STEP | expect | &.hq-apps/sfx-hai/state/ui.txt | contains | msg=claude said yes | 5

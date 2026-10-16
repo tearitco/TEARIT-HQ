@@ -1,2 +1,2 @@
-# change_hp at 39,19 glyph H
+# change_ammo at 60,81 glyph A
 exec cmd_1.sh

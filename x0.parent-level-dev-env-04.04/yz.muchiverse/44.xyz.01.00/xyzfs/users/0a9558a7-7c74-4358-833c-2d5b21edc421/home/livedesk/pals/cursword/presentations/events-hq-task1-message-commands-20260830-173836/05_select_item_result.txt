@@ -1,3 +1,0 @@
-select_item_value=1
-select_item_key=sword
-select_item_var=pick_idx

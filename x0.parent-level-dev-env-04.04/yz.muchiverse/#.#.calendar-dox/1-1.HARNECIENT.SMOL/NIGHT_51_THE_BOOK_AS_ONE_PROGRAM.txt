@@ -1,0 +1,74 @@
+# 📖⚙️ NIGHT 51 — The Book as One Program ⚙️📖
+# ====================================================================
+# Title: "📖⚙️ NIGHT 51 — The Book as One Program ⚙️📖"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: Design night. The visual event system of the house, what blueprintz is meant to become (the IDE for a whole book, compiled to one event loop), why events should carry concept-bank links, and one hazard found by reading the code.
+# Long-form: stays on the design and the checks. Everything called measured was counted or read on 2026-10-14; everything called a plan is a plan. Nothing here is built.
+# Companion documents: BOOK 08-roadmap design-docs BLUEPRINTZ-DESIGN (section 11), XO 26.Oct15-lookahead 07-BLUEPRINTZ-BOOK-COMPILE-AND-CONCEPT-LINKS.
+
+**THE NARRATOR:** NIGHT 50 ended on the idea that a switch is proven by the bytes that did not move. Tonight is about the opposite kind of thing: the pieces that move the whole game, the events, and how to give them a memory.
+
+**MAXINE:** Start with what an event is in this house, with the numbers.
+
+**TOMO:** A folder called an event package. Inside, pages. Each page has a condition file, a list of commands in a plain text form, a compiled program, and one small wrapper per command that calls a compiled operation. The chain is: list, program, wrapper, operation. I counted thirty-six hundred and sixty-two of those command lists, and I got it wrong the first time: my first count was a hundred and nine, because my shell was standing inside one game's folder. A count is only as good as the place you stood when you made it. The most common command type is the comment, twenty-six hundred and ninety-two of them. Then the if and the end that closes it, twenty-five hundred and fifty-four each. Then show text, show choices, set a switch.
+
+**RAHWEH:** Comments are the most common command? That sounds like a bad sign.
+
+**TOMO:** It is a sign of where the events came from. Most are imports and game scaffolds, converted from other games. Few are written by hand. That matters for the next part, because a library of imports teaches a generator the shape of the imports.
+
+---
+
+**THE NARRATOR:** Now the owner's idea. Maxine.
+
+**MAXINE:** The blueprint is an event page of event pages. It shows the whole book. Under it, it compiles every event of every page, the common events and the plugins into one program, an event loop for the game, which calls the events on each page. And it is a second way to edit: you can change an event from the book view, instead of finding the entity that owns it. Think of an editor for a whole project, not for one file.
+
+**RAHWEH:** Then there are two sources of truth. The entity's list and the book's program.
+
+**MAXINE:** That is the question the design has to answer, and the answer is one source. The command list stays the only source. The book program is generated from it, like a build output. You never edit the output by hand. Every edit made from the book goes through the same editing operations as an edit made from the entity. Two doors, one room.
+
+**TOMO:** And a rule for the first version: keep the per-event programs working beside the book program. Replace them only when a test shows the book program does the same thing in one real game. Not before.
+
+**THE NARRATOR:** And the plugins?
+
+**TOMO:** The plugin design is two months old and has no code. A plugin is a script that triggers compiled operations, switched on or off per project, in a defined order. The book program would include the enabled ones. So that part waits for the plugin manager. Saying it is in the design is true. Saying it works would be false.
+
+---
+
+**THE NARRATOR:** Now the concept links. Why do events need them?
+
+**MAXINE:** Because writing code automatically is mostly finding. Say a model must write an event where a shopkeeper greets the player. If it can only search by folder name, it finds greet-something and door-something. If every event carries a link to the concept it is about, greeting, trade, travel, it can ask for the three closest events by meaning and copy their shape. The thirty command types become nodes too, so the generator has a typed list of what it may use.
+
+**RAHWEH:** And a model that makes up a concept?
+
+**MAXINE:** Every link must name a real node in the bank, and a check rejects any that does not. The links come from a person or from plain rules first. A model's suggestion is accepted only after it beats the rules on events it has not seen. Otherwise it is decoration.
+
+**TOMO:** There is a second reason. The concept bank has a promotion rule written down and no data behind it. Nothing has ever been scored. A generated event that parses, compiles and runs, or does not, is the first honest score the bank would get.
+
+**THE NARRATOR:** The owner chose two things: the links are shared, kept with the command list and read by the compiler, so every editor gets them; and for now they are per event, not per command.
+
+---
+
+**THE NARRATOR:** The hazard. Tomo.
+
+**TOMO:** Before adding rows to a file that several tools write, read how the tools write it. The readers take only the command rows, so an extra row is ignored. The editing operations copy every other row forward, so an extra row survives an edit. Good. But those operations hold the whole file in a buffer of eight thousand one hundred and ninety-two bytes. A longer file is cut off at that size when you edit or delete, and nothing says so. The largest real file is eighty-four hundred and ninety-four bytes, so one is over the line already. Concept rows add bytes. So the buffer comes first.
+
+**RAHWEH:** Did you reproduce it?
+
+**TOMO:** Afterwards, yes. First I only read it, and the document said read, not run. Then I made a copy of a long event, eleven thousand bytes, a hundred and ten rows, and asked the old program to delete one row. It came back with eighty-one. Twenty-nine rows gone, no message. I swapped the fixed buffer for one that grows, ran the same test, and got a hundred and nine, with the concept rows still there, including one at the very end where the old code would have cut it. The old program is the control: it fails the test, so the test can fail.
+
+**MAXINE:** That is the habit worth taking from tonight. A finding from reading code is a suspicion with a line number. It becomes a finding when something fails on purpose.
+
+---
+
+**THE NARRATOR:** What comes next, in order.
+
+**MAXINE:** One, done: the cut-off is reproduced and fixed on scratch copies. Two, the same with the real window instead of just the program behind it, and with the other editors. Three, the first game nodes in the bank, written by hand, and the check. Four, seed the links by rule, first over one game's events and then over the rest, and read the results with your own eyes for wrong ones. Five, compile one whole book to one program and compare its behaviour with the per-event runs. Six, plugins, last.
+
+**RAHWEH:** And the owner's questions?
+
+**TOMO:** Whether the book program sits beside the per-event ones first, or replaces them. Which call order to use; copying the order the original maker used is the safe start. Who writes the first concept nodes. And whether links ever go below the event.
+
+**THE NARRATOR:** Exercises. One: count the command types in another folder of events and compare with tonight's list. Two: find one editing tool in the house that rewrites a file, and say what it does with a row it does not understand. Three: write the check that rejects an unknown concept, then write the case that proves it can fail.
+
+**THE NARRATOR:** A book is a program only when something builds it from one source. And a link is knowledge only when the check can refuse it.

@@ -323,6 +323,34 @@ static void hq_blit_sprite(HqSprite *sp, int x0, int y0, int px, unsigned long b
  * 2 blocks wide draws nothing special. Includers that never call kh_bar_skin_load() just see the skin off. */
 static char g_bar_skin_id[48];
 static char g_bar_skin_dir[3][400]; /* the SELECTED skin: left, middle, right - house-absolute */
+static int g_bar_skin_light; /* middle tile of the selected skin is bright: labels on it go dark */
+
+/* Average opaque luminance of a skin part's sprite.csv. Same cutoff the settings chips use (140). */
+static int kh_sprite_csv_light(const char *dir) {
+    char path[512], line[80];
+    long sum = 0;
+    int n = 0;
+    FILE *f;
+    if (!dir || !dir[0]) return 0;
+    snprintf(path, sizeof(path), "%s/sprite.csv", dir);
+    f = fopen(path, "r");
+    if (!f) return 0;
+    while (fgets(line, sizeof(line), f)) {
+        int r, g, b, a;
+        if (sscanf(line, "%d,%d,%d,%d", &r, &g, &b, &a) != 4) continue;
+        if (a < 16) continue;
+        sum += (r * 299 + g * 587 + b * 114) / 1000;
+        n++;
+    }
+    fclose(f);
+    return n > 0 && (sum / n) >= 140;
+}
+
+/* Label color for text that sits on the selected bar skin. NULL when the skin is off. */
+static const char *kh_skin_label_hex(void) {
+    if (!g_bar_skin_id[0]) return NULL;
+    return g_bar_skin_light ? "#111111" : "#ffffff";
+}
 /* the whole catalog, so a swatch can draw ITS OWN skin (class="skin-bar skin-for-<id>") */
 #define KH_SKIN_MAX 24
 static struct { char id[48]; char dir[3][400]; } g_skin_cat[KH_SKIN_MAX];
@@ -341,6 +369,7 @@ static void kh_bar_skin_load(const char *house_root) {
         }
     }
     g_bar_skin_id[0] = '\0';
+    g_bar_skin_light = 0;
     g_bar_skin_dir[0][0] = g_bar_skin_dir[1][0] = g_bar_skin_dir[2][0] = '\0';
     g_n_skin_cat = 0;
     if (!house_root || !house_root[0]) return;
@@ -381,6 +410,7 @@ static void kh_bar_skin_load(const char *house_root) {
             snprintf(g_bar_skin_id, sizeof(g_bar_skin_id), "%s", want);
             for (int k = 0; k < 3; k++)
                 snprintf(g_bar_skin_dir[k], sizeof(g_bar_skin_dir[k]), "%s", g_skin_cat[g_n_skin_cat].dir[k]);
+            g_bar_skin_light = kh_sprite_csv_light(g_bar_skin_dir[1]);
         }
         g_n_skin_cat++;
     }
@@ -720,6 +750,9 @@ static void kh_draw_canvas(Elem *e) {
     static int   c_w, c_h;
     static XImage *c_img;
     static unsigned char *c_buf;
+    /* CPU safety (hq-cpu-safety.md): the decoded frame is reused while the file is unchanged. A repaint caused by anything else (a label, a bar) used to re-read the whole raw file and convert
+     * every pixel through XPutPixel (about 25 ms for 660x430) before blitting the same picture. Identity = inode + size + mtime (the producers replace the file by rename). */
+    static int c_valid = 0; static unsigned long c_ino = 0; static long c_size = -1, c_mt_s = 0, c_mt_ns = 0;
     const char *spr = e->sprite;
     {
         const char *cr = kh_get_var("canvas_raw");
@@ -790,7 +823,7 @@ static void kh_draw_canvas(Elem *e) {
     if (strcmp(c_path, spr) != 0 || c_w != w || c_h != h || !c_img) {
         snprintf(c_path, sizeof(c_path), "%s", spr);
         c_w = w; c_h = h;
-        free(c_buf); c_buf = (unsigned char *)malloc((size_t)w * h * 4);
+        free(c_buf); c_buf = (unsigned char *)malloc((size_t)w * h * 4); c_valid = 0;
         if (c_img) { XDestroyImage(c_img); c_img = NULL; }
         char *data = (char *)malloc((size_t)w * h * 4);
         c_img = data ? XCreateImage(dpy, DefaultVisual(dpy, screen),
@@ -799,20 +832,34 @@ static void kh_draw_canvas(Elem *e) {
                      : NULL;
     }
     if (!c_img || !c_buf) return;
+    struct stat c_st; int c_same = (c_valid && stat(spr, &c_st) == 0 && (unsigned long)c_st.st_ino == c_ino && (long)c_st.st_size == c_size &&
+                                    (long)c_st.st_mtim.tv_sec == c_mt_s && (long)c_st.st_mtim.tv_nsec == c_mt_ns);
+    if (!c_same) {
     FILE *of = fopen(spr, "rb");
     if (of) {
         size_t need = (size_t)w * h * 4, got = fread(c_buf, 1, need, of);
         fclose(of);
         if (got == need) {
-            for (int y = 0; y < h; y++)
-                for (int x = 0; x < w; x++) {
-                    size_t o = ((size_t)y * w + x) * 4;
-                    unsigned long px = ((unsigned long)c_buf[o]   << 16) |
-                                       ((unsigned long)c_buf[o+1] <<  8) |
-                                        (unsigned long)c_buf[o+2];
-                    XPutPixel(c_img, x, y, px);
+            const unsigned int one = 1; int little = *(const unsigned char *)&one == 1;
+            if (little && c_img->bits_per_pixel == 32 && c_img->byte_order == LSBFirst && c_img->red_mask == 0xff0000UL && c_img->green_mask == 0xff00UL && c_img->blue_mask == 0xffUL) {
+                for (int y = 0; y < h; y++) {          /* direct 32-bit stores: the same 0xRRGGBB value XPutPixel would store, without a call per pixel */
+                    unsigned int *dst = (unsigned int *)(c_img->data + (size_t)y * (size_t)c_img->bytes_per_line);
+                    const unsigned char *s = c_buf + (size_t)y * w * 4;
+                    for (int x = 0; x < w; x++, s += 4) dst[x] = ((unsigned int)s[0] << 16) | ((unsigned int)s[1] << 8) | (unsigned int)s[2];
                 }
+            } else {
+                for (int y = 0; y < h; y++)
+                    for (int x = 0; x < w; x++) {
+                        size_t o = ((size_t)y * w + x) * 4;
+                        unsigned long px = ((unsigned long)c_buf[o]   << 16) |
+                                           ((unsigned long)c_buf[o+1] <<  8) |
+                                            (unsigned long)c_buf[o+2];
+                        XPutPixel(c_img, x, y, px);
+                    }
+            }
+            if (stat(spr, &c_st) == 0) { c_valid = 1; c_ino = (unsigned long)c_st.st_ino; c_size = (long)c_st.st_size; c_mt_s = (long)c_st.st_mtim.tv_sec; c_mt_ns = (long)c_st.st_mtim.tv_nsec; } else c_valid = 0;
         }
+    }
     }
     /* A frame the exact size of its canvas box blits 1:1 (bv_render_2d).
      * A smaller frame (bv_render_3d's fixed 640x480) is CENTRED, never
@@ -861,7 +908,8 @@ static int kh_elem_badge_label_x(Elem *e) {
                         strcmp(e->id, g_default_active_scope_id) == 0) ||
                        (g_default_scope_confine && g_default_active_tab_id[0] && e->id[0] &&
                         strcmp(e->id, g_default_active_tab_id) == 0) ||
-                       (g_interact_relay_on && e->relay[0]);
+                       (g_interact_relay_on && e->relay[0]) ||
+                       elem_has_class(e, "nav-selected");      /* a row the app marks as the selected one (the cast bar's selected character): "^" like the armed In: tab */
         elem_cursor_prefix(e, g_focus_nav, is_scope, prefix, sizeof(prefix));
         char nav_badge[16];
         snprintf(nav_badge, sizeof(nav_badge), "%s%d.", prefix, e->nav_index + g_nav_display_base);
@@ -1752,14 +1800,14 @@ static void draw_elem(Elem *e, int hover_id_hash) {
     }
     /* livedesk top + bottom bars: every dock cell (an <item> in a dock window) wears the selected skin */
     if (g_bar_skin_id[0] && window_is_dock() && strcmp(e->tag, "item") == 0) {
-        /* readable on any tile: white label (the orange theme text vanished on wood and neon) */
-        snprintf(e->style.fg_color, sizeof(e->style.fg_color), "#ffffff");
+        /* readable on the tile itself: dark writing on a bright skin, white on a dark one */
+        snprintf(e->style.fg_color, sizeof(e->style.fg_color), "%s", g_bar_skin_light ? "#111111" : "#ffffff");
         e->style.has_fg_color = 1;
         kh_draw_selected_skin(e->x, e->y, e->w, e->h, alloc_pixel(e->style.has_bg_color ? e->style.bg_color : "#2c2c2c"));
     }
     if (elem_has_class(e, "skin-bar") &&
         kh_draw_bar_skin(e, alloc_pixel(e->style.has_bg_color ? e->style.bg_color : "#2c2c2c"))) {
-        snprintf(e->style.fg_color, sizeof(e->style.fg_color), "#ffffff");   /* readable on tiles (theme text vanished on wood/neon) */
+        snprintf(e->style.fg_color, sizeof(e->style.fg_color), "%s", elem_has_class(e, "tone-light") ? "#111111" : "#ffffff");   /* light tiles use the same dark writing as the white and silver swatches */
         e->style.has_fg_color = 1;
     }
     /* REAL, NEW 2026-09-14 (network-browser video V4 "Nav row with
@@ -2123,7 +2171,8 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                         * the keyboard (matches run_pchq_board_mode's own
                         * is_engaged badge, see g_interact_relay_on's own
                         * declaration comment in khtpm_core_render.c). */
-                       (g_interact_relay_on && e->relay[0]);
+                       (g_interact_relay_on && e->relay[0]) ||
+                       elem_has_class(e, "nav-selected");
         elem_cursor_prefix(e, g_focus_nav, is_scope, prefix, sizeof(prefix));
         snprintf(nav_badge, sizeof(nav_badge), "%s%d.", prefix, e->nav_index + g_nav_display_base);
         (void)focused;

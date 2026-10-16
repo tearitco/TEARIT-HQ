@@ -1,0 +1,128 @@
+# 🧱🐾 NIGHT 49 — How We Build Feeds What the Pets Learn 🐾🧱
+# ====================================================================
+# Title: "🧱🐾 NIGHT 49 — How We Build Feeds What the Pets Learn 🐾🧱"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: Two days of work, told as a lesson about the knowledge engine. The desktop gets steadier. Every character becomes playable. The dwarf, the cataclysm and the city games are copied from one engine. Tilesets arrive. A new in house art called brixels is sketched, where wheels, an engine and a windshield make a car. A visual map for events is designed. Two assistants hand work to each other. Then the lesson: the way we build is the same loop the pets will run, so each day of work is also the first curriculum. Ends with what is built, what is only a plan, and what was not proven.
+# Long-form: a working night with an honesty checkpoint. Everything called built was run or committed and checked. Everything called a plan is a plan.
+# Companion documents: XO 23.visual-games, "TEARIT-CO Dev Behaviors and the Knowledge Engine" and "TEARIT-CO Pet Lifecycle and Knowledge Flow"; design docs BRIXELS-DESIGN, BLUEPRINTZ-DESIGN, and CDDA-HQ-AND-DF-HQ-HANDOFF.
+
+**THE NARRATOR:** Tonight is about a way of working, and why that way of working is itself the first lesson the pets will ever be taught.
+
+**MAXINE:** Last time we learned that pets earn. What did the last two days build?
+
+---
+
+**THE NARRATOR:** Part one. The desktop holds still.
+
+**TOMO:** The hotbar was opening twice at start. For a moment you saw two tabs, and it clipped to the top and bottom before it settled. Now it opens once, at its final place, and it remembers if it was minimized. To change from an old hotbar to a new one, the new one is made first, shown only when its size is stable, and then the old one is removed. Make before break.
+
+**RAHWEH:** How did you know it worked?
+
+**TOMO:** I watched the window list and asked the display for the map state of each window, not just the process list. A process can exist and still not be on the screen.
+
+**MAXINE:** And the red percent in the top bar?
+
+**TOMO:** Two things. The top bar now shows one number for the whole machine, because the owner saw ninety five percent and it was the browser, not a window. And the red warning counts windows, the cpu, and the temperature, with a margin so it does not flicker on the edge. The top bar still flickers sometimes. That one is written in the bug bounty, because I could not see it in the code.
+
+---
+
+**THE NARRATOR:** Part two. Everyone is playable.
+
+**TOMO:** The owner corrected me twice. Harold is not the only playable character. All of them are. You choose a character from the toolbar and the arrows move that one. If nobody is chosen, the cursor roams, and if you press enter when it stands on someone, you possess them. Harold is only the default.
+
+**RAHWEH:** And did you prove it?
+
+**TOMO:** I built it. I did not prove it on a live board. The arrows and the possess were never tried by hand by me, and there is an open report that in the two dimensional view the characters move back. I also found that the control flag flips by itself, so I added a trace to see who flips it. I have not read that trace yet.
+
+**MAXINE:** Why does that matter for the pets?
+
+**TOMO:** Hold that thought. It is the point of the night.
+
+---
+
+**THE NARRATOR:** Part three. One engine, three new worlds.
+
+**TOMO:** The role playing engine was copied three times. One copy is a city with buildings on the same map as the street, with floors. One is a fortress game. One is a city of cars and people. Each has its own board and its own commands, and the copy recipe is written down so the fourth is easy.
+
+**RAHWEH:** Did they run?
+
+**TOMO:** They build, and the background program of each one runs in its own folder using about two percent of a core. For two of them I have never opened the window. The first one I did open had no map space, because the board was started without telling it which game's data to use. I found that by reading the environment of the running process, and I made the launcher refuse to start without it.
+
+**MAXINE:** And the art?
+
+**TOMO:** The tilesets are now plain files in the assets folder, next to the role playing maker ones. Fourteen thousand four hundred and forty one tiles for the cataclysm set, all checked to exist. A converter wrote two tables, one of every tile and one of the connection and variant rules, twenty three thousand five hundred ninety one rows. Then a table of thirty seven city roles, road, sidewalk, wall, door, traffic light, car door, windshield, seat, wheel, and a dog. And seven gaps the set does not have: no car frame, no engine, no roof, no base person, and no crosswalk, curb or road markings.
+
+---
+
+**THE NARRATOR:** Part four. Brixels, and the map of events.
+
+**RAHWEH:** What fills the gaps?
+
+**TOMO:** The owner's own art. Brixels are pieces of shape clay with sockets. Wheels, an engine and a windshield plug into a frame, and that is a car. Arms, legs and a head plug into a body, and that is a person. A piece only fits a socket of its own type, so the question "is this a car" has a plain answer. I wrote a small seed with a car and a person, fifty nine rows, and a check. Every plug has a socket of its type, every recipe names real pieces, and the sockets lie inside the frame. Zero errors. And I broke a type on purpose to see that the check caught it. It did.
+
+**MAXINE:** Does it look like a car?
+
+**TOMO:** I do not know. The numbers are placeholders. The check proves the file agrees with itself, not that it looks right. Another assistant already added front view pictures for seven characters.
+
+**RAHWEH:** And the visual map?
+
+**TOMO:** It is called blueprintz. The owner wants a map of all the events of a game, like blueprints in a game engine, with the code underneath written in the house's own assembly. I found that the event program is already compiled from the event list. So the map should edit the list, and show the compiled code under each block, read only. One source of truth. Only a block that the list cannot say would need raw code, and then it becomes a node in the list, not a second format.
+
+**MAXINE:** One catch?
+
+**TOMO:** What is a page. In the old game a page is a room behind a door. In a map with floors, a page should be a floor or a region, and a door is just a cell. That has to be decided before the graph.
+
+---
+
+**THE NARRATOR:** Part five. Two assistants and an owner.
+
+**TOMO:** I work on one branch and Grok on another. We hand work through a room where the owner approves each message. When I pull Grok's changes I do not trust my eyes. I compare every changed file against its branch, byte by byte, because Grok often applies the same edits to the live folder first. This time sixteen commits came in. Eight files conflicted because both branches had added them, and I checked that Grok's copy still held my work before I took it. Then the main branch moved forward to match.
+
+**RAHWEH:** Why so careful?
+
+**TOMO:** Because a mistake here is silent. One wrong merge and a day of someone's work is gone, and nobody notices until later.
+
+---
+
+**THE NARRATOR:** Part six. The lesson.
+
+**MAXINE:** You said hold the thought. Why does all this matter for the pets?
+
+**TOMO:** Because the pets will run the same loop. Watch, describe, grade, promote, record. That is how I work. I watch the window, describe what I saw, grade it against a plain check, and only then say done. A check that cannot fail is worth nothing, so I break it once on purpose. That is the grader in school: explicit, repeatable, no black box.
+
+**RAHWEH:** And the ledger?
+
+**TOMO:** The pet at home writes a silent ledger of everything it does. The owner chose the marker method for that scale: a file that only grows, and you watch its size, not its time. Today that is a decision and a first conversion, not a live proof. But it is the right shape for thousands of pets.
+
+**MAXINE:** And the job and the research?
+
+**TOMO:** The seven gaps are a job board. Each one is a small piece of work with a clear test, and anyone can take one, a pet, Grok, or the owner. Brixels are the language of invention. A pet that learns an assembly can make a new vehicle, and the sockets keep the invention checkable. Three games on one engine are three cheap worlds to test whether a lesson carries over. And everything is plain text rows, so a tile table or a brixel pack can be published and priced without shipping code. That is the marketplace.
+
+**RAHWEH:** And the hand offs?
+
+**TOMO:** They are lessons. Goal, what comes first, how to check. The same words can teach a pet later. And I keep one authority for each fact, one event format, one tile table, one command list, because a learner fed two truths learns neither.
+
+**THE NARRATOR:** What you build with becomes what you teach with.
+
+---
+
+**THE NARRATOR:** Part seven. The honesty checkpoint.
+
+**MAXINE:** Say what is built.
+
+**TOMO:** The steady hotbar and the load guard. The three game copies, built, with the first board bug fixed. The tilesets in git. The tile tables and the converter, with their gates passed. The brixels seed and its design, and the blueprintz design. The Grok merge and the main branch moved forward.
+
+**RAHWEH:** What is only a plan?
+
+**TOMO:** The engine reading any of these tables. Cars from brixels. The blueprintz graph. The marker lane at scale, and the chain, the wallets and the exchange from before.
+
+**MAXINE:** And what was not proven?
+
+**TOMO:** The arrows and the possess on a live board. The characters that move back in two dimensions. The camera jumping to the chosen character. The red top bar after a cold start. The flicker, which is only logged. Whether the two untouched game windows even open. And three open questions for the owner: where the dwarf set called bitlands comes from, the licences of the fortress packs, and what to do with three unreviewed asset folders.
+
+**RAHWEH:** What is next?
+
+**TOMO:** Prove one character moving on a live board and write that into the marker ledger. That is the first real Home record. Then make the engine read the tile table and draw the city from roles. Then build one car from pieces, end to end, as the first research concept that can be checked.
+
+**THE NARRATOR:** A day of careful work is a lesson with the grader already written. The pets only have to learn to run it.

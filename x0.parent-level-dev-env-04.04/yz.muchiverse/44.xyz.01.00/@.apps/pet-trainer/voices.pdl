@@ -1,7 +1,7 @@
 SECTION | KEY | VALUE
 ----------------------------------------
 # voices.pdl - how each species sounds. Edit, no rebuild.
-# VOICE | species | edge-tts voice | rate | pitch      (speech: pet_voice.sh; online edge-tts, cached per pet and phrase; no sound if offline)
+# VOICE | species | voice name (an edge-style name, kept as the key) | rate | pitch   (speech: pet_voice.sh -> ops/pet_tts_local.py, OFFLINE Kokoro, mapped by the KMAP rows below; cached per pet and phrase)
 # HUM   | species | wave | base_hz | steps (semitones) | note_ms      (a short melody made with sox, cached: pet_hum.sh; played only while the pet is on screen)
 # species: 0 bunny, 1 bear, 2 cat, 3 frog, 4 mouse, 5 dragon
 VOICE | 0 | en-US-AnaNeural     | +0%  | +30Hz
@@ -16,3 +16,35 @@ HUM | 2 | sine     | 392 | 0 4 7 12 7 4         | 200
 HUM | 3 | square   | 147 | 0 0 5 0 7 0          | 180
 HUM | 4 | sine     | 784 | 0 7 4 9 7 12 9 4     | 140
 HUM | 5 | sawtooth | 110 | 0 3 7 3 10 7         | 520
+# KMAP | edge voice | kokoro voice | language   (the OFFLINE voice used by ops/pet_tts_local.py; "-" = no local voice, the pet stays silent. rate maps to speed; pitch is ignored. Kokoro has no Korean voice.)
+KMAP | en-US-AnaNeural     | af_heart   | en-us
+KMAP | en-US-GuyNeural     | am_michael | en-us
+KMAP | en-GB-MaisieNeural  | bf_lily    | en-gb
+KMAP | en-US-EricNeural    | am_eric    | en-us
+KMAP | en-GB-RyanNeural    | bm_george  | en-gb
+KMAP | en-GB-ThomasNeural  | bm_daniel  | en-gb
+KMAP | ja-JP-NanamiNeural  | jf_alpha   | ja
+KMAP | ja-JP-KeitaNeural   | jm_kumo    | ja
+KMAP | zh-CN-XiaoyiNeural  | zf_xiaoyi  | cmn
+KMAP | zh-CN-XiaoxiaoNeural| zf_xiaoxiao| cmn
+KMAP | ko-KR-InJoonNeural  | -          | -
+# ACCENT | id | from phonemes | to phonemes | note     (rewrites a word's phonemes before speaking; applied in file order to every word that has no PRON override; English voices only. ^ = start of word, $ = end of word; to may be empty)
+ACCENT | th-stop | θ  | t | "think" -> "tink"
+ACCENT | th-stop | ð  | d | "the" -> "de"
+ACCENT | drop-r  | ɹ$ |   | "water" loses its final r (US-style ɹ)
+ACCENT | drop-r  | ɚ$ | ə | "water" ends in a schwa, not r-coloured
+ACCENT | w-for-v | v  | w | "very" -> "wery"
+ACCENT | short-i | ɪ  | i | "bit" -> "beet"-ish
+# FX | edge voice | pitch column of the VOICE row | key=value ...   (character of each pet voice, applied by _shared-lib/ops/audio_fx after the engine speaks; keys: pitch formant bright warm vib_hz vib_cents breath speed accent)
+# (a pet is identified by its voice name + pitch column: the C apps pass --voice and --pitch, not the species. Chosen by claude 2026-10-14 to make the species sound like different people; NOT yet heard by the owner)
+FX | en-US-AnaNeural     | +30Hz | pitch=2 formant=1.5 bright=2 vib_hz=5 vib_cents=12
+FX | en-US-GuyNeural     | -25Hz | pitch=-3 formant=-2 warm=4 bright=-2
+FX | en-GB-MaisieNeural  | +15Hz | pitch=1 formant=0.5 bright=3 breath=0.05
+FX | en-US-EricNeural    | -10Hz | pitch=-1 formant=-1 warm=2 vib_hz=7 vib_cents=35 accent=th-stop
+FX | en-US-AnaNeural     | +90Hz | pitch=5 formant=3 bright=4 vib_hz=8 vib_cents=20
+FX | en-GB-RyanNeural    | -35Hz | pitch=-4 formant=-3 warm=5 bright=-1 breath=0.04 accent=drop-r
+FX | ja-JP-NanamiNeural  | +60Hz | pitch=3 formant=1
+FX | zh-CN-XiaoyiNeural  | +50Hz | pitch=3 formant=1
+FX | zh-CN-XiaoxiaoNeural| +30Hz | pitch=2 formant=1
+FX | en-GB-ThomasNeural  | -40Hz | pitch=-3 formant=-2 warm=3
+FX | ja-JP-KeitaNeural   | -40Hz | pitch=-2 formant=-1 bright=1

@@ -1,0 +1,68 @@
+<!-- img-hai.xhtpm - STATIC TEMPLATE (design: BOOK 16.game/IMG-HAI-DESIGN.md). Layout only. The module tag forks img_hai_manager.+x, which writes state/ui.txt
+     (tile palette, placements, prompt, job status) and state/canvas.raw. Left: words input, the placed list, the tile palette (any image under the draft folders or
+     tiles/). Centre: the mixing canvas; the two overlay rows hold the cursor and placement tools. Click a tile to place it at the cursor cell. -->
+<window label="img-hai - ${status_line}" class="database-window" vars="state/ui.txt">
+  <module src="&.hq-apps/img-hai/+x/img_hai_manager.+x" id="_"/>
+  <page name="main">
+    <sidebar>
+      <text label="Words (text to image)" class="quiet"/>
+      <text label="${prompt_line}" class="quiet"/>
+      <text label="${job_line}" class="quiet"/>
+      <item id="partsel" label="${part_line}" action="${part_action}"/>
+      <item id="modelsel" label="next model" action="${model_action}"/>
+      <item id="draft" label="Draft image (remote)" action="${draft_action}"/>
+      <item id="draftall" label="Draft on ALL hosts" action="${draftall_action}"/>
+      <item id="batchsel" label="${batchsel_line}" action="${batchsel_action}"/>
+      <item id="batchrun" label="Run selected batch" action="${batchrun_action}"/>
+      <item id="batchstop" label="Stop batch" action="${batchstop_action}"/>
+      <text label="${queue_line}" class="quiet"/>
+      <text label="${judge_line}" class="quiet"/>
+      <text label="Placed on canvas" class="quiet"/>
+      <repeat count="${place_count}" bind="p">
+        <item id="pl${p.#}" class="ms-row ${p.class}" label="${p.label}" action="${p.action}"/>
+      </repeat>
+      <text label="Tiles (click to place)" class="quiet"/>
+      <scrolllist id="tiles" class="tile-list">
+        <repeat count="${tiles_count}" bind="t">
+          <item id="tl${t.#}" class="quiet sprite-flow" label="${t.label}" sprite="${t.sprite}" action="${t.action}" show="${t.show}"/>
+        </repeat>
+      </scrolllist>
+    </sidebar>
+    <panel id="mix_p" class="mix-panel">
+      <canvas id="view" class="ms-canvas" sprite="${canvas_raw}"/>
+      <row id="tb-cursor" class="canvas-overlay-bottom ov-chrome">
+        <item id="cl" class="ov-btn" label="c&lt;" action="${cu_l_action}"/>
+        <item id="cr" class="ov-btn" label="c&gt;" action="${cu_r_action}"/>
+        <item id="cu" class="ov-btn" label="c^" action="${cu_u_action}"/>
+        <item id="cd" class="ov-btn" label="cv" action="${cu_d_action}"/>
+        <item id="c32" class="ov-btn" label="32" action="${c32_action}"/>
+        <item id="c64" class="ov-btn" label="64" action="${c64_action}"/>
+        <item id="c128" class="ov-btn" label="128" action="${c128_action}"/>
+        <item id="rescan" class="ov-btn" label="scan" action="${rescan_action}"/>
+        <cli_io id="words" target_id="words" label="words &gt; " action="${words_action}"/>
+      </row>
+      <row id="tb-place" class="canvas-overlay-right ov-top ov-chrome">
+        <item id="ml" class="ov-btn" label="m&lt;" action="${mv_l_action}"/>
+        <item id="mr" class="ov-btn" label="m&gt;" action="${mv_r_action}"/>
+        <item id="mu" class="ov-btn" label="m^" action="${mv_u_action}"/>
+        <item id="md" class="ov-btn" label="mv" action="${mv_d_action}"/>
+        <item id="rot" class="ov-btn" label="rot" action="${rot_action}"/>
+        <item id="flip" class="ov-btn" label="flip" action="${flip_action}"/>
+        <item id="vis" class="ov-btn" label="hid" action="${vis_action}"/>
+        <item id="up" class="ov-btn" label="top" action="${up_action}"/>
+        <item id="down" class="ov-btn" label="bot" action="${down_action}"/>
+        <item id="del" class="ov-btn" label="del" action="${del_action}"/>
+        <item id="clear" class="ov-btn" label="clear" action="${clear_action}"/>
+        <item id="export" class="ov-btn" label="exp" action="${export_action}"/>
+        <item id="jc_yes" class="ov-btn" label="c yes" action="${jc_yes_action}"/>
+        <item id="jc_no" class="ov-btn" label="c no" action="${jc_no_action}"/>
+        <item id="jo_yes" class="ov-btn" label="o yes" action="${jo_yes_action}"/>
+        <item id="jo_no" class="ov-btn" label="o no" action="${jo_no_action}"/>
+        <item id="accept" class="ov-btn" label="accept" action="${accept_action}"/>
+      </row>
+    </panel>
+    <footer id="statusbar" class="pchq-footer">
+      <text label="${msg}" class="quiet"/>
+    </footer>
+  </page>
+</window>

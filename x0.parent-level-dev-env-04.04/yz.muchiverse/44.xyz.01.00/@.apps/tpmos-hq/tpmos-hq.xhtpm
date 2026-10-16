@@ -1,0 +1,36 @@
+<!-- tpmos-hq.xhtpm - a TPMOS frame in an x11-hq window (the khtpm renderer), instead of TPMOS's own GL mirror. A toy: toy.pdl + button.sh.
+     TPMOS parser writes pieces/display/current_frame.txt (one writer) and appends to pieces/display/frame_changed.txt; ops/+x/tpmos_hq.+x (C) follows that marker and writes
+     state/ui.txt (n_fr and fr_i_text = the frame's lines, ANSI colour removed, up to the rows limit in display.pdl); the list is a scrolllist, so a long frame gets the house scroll thumb.
+     INPUT: TPMOS has its own key handler and orchestrator reader, so this window never decides what a key means. Click INT, then type: the window relays every raw key
+     (khtpm relay= attribute) and the op appends the same line TPMOS's keyboard plugin writes (KEY_PRESSED: code) to the keys file named in display.pdl. The send rows do the same for one named key.
+     Which backend, which TPMOS folder, which frame file: display.pdl. Static layout, shared khtpm_core_render.+x, zero renderer C.
+     RULES: no angle brackets inside comments. -->
+<window label="${title}" class="tpmos-hq database-window managed user-resizable" vars="state/ui.txt">
+  <module src="@.apps/tpmos-hq/ops/+x/tpmos_hq.+x"/>
+  <page name="main">
+    <tabbar id="toolbar" class="tab-bar">
+      <tab id="tb-int" class="tab tp-int ${interact_class}" label="INT ${interact_label}" relay="${rp_h1},${rp_h2}" onclick="'${HOUSE}/@.apps/tpmos-hq/ops/+x/tpmos_hq.+x' int"/>
+    </tabbar>
+    <sidebar id="side" class="sidebar">
+      <text label="send one key to TPMOS" class="tp-quiet"/>
+      <item id="tk13" class="tp-key" label="send Enter (13)" action="'${HOUSE}/@.apps/tpmos-hq/ops/+x/tpmos_hq.+x' key 13"/>
+      <item id="tk27" class="tp-key" label="send Esc (27)" action="'${HOUSE}/@.apps/tpmos-hq/ops/+x/tpmos_hq.+x' key 27"/>
+      <item id="tk9" class="tp-key" label="send Tab (9)" action="'${HOUSE}/@.apps/tpmos-hq/ops/+x/tpmos_hq.+x' key 9"/>
+      <item id="tk8" class="tp-key" label="send Backspace (8)" action="'${HOUSE}/@.apps/tpmos-hq/ops/+x/tpmos_hq.+x' key 8"/>
+      <item id="tk1000" class="tp-key" label="send Left (1000)" action="'${HOUSE}/@.apps/tpmos-hq/ops/+x/tpmos_hq.+x' key 1000"/>
+      <item id="tk1001" class="tp-key" label="send Right (1001)" action="'${HOUSE}/@.apps/tpmos-hq/ops/+x/tpmos_hq.+x' key 1001"/>
+      <item id="tk1002" class="tp-key" label="send Up (1002)" action="'${HOUSE}/@.apps/tpmos-hq/ops/+x/tpmos_hq.+x' key 1002"/>
+      <item id="tk1003" class="tp-key" label="send Down (1003)" action="'${HOUSE}/@.apps/tpmos-hq/ops/+x/tpmos_hq.+x' key 1003"/>
+    </sidebar>
+    <panel id="frame_p" class="tp-panel">
+      <scrolllist id="frlist" class="tp-list">
+        <repeat count="${n_fr}" bind="fr">
+          <text id="fr${fr.#}" label="${fr.text}" class="tp-line"/>
+        </repeat>
+      </scrolllist>
+    </panel>
+    <footer id="statusbar" class="tp-footer">
+      <text label="${status_line}" class="tp-status"/>
+    </footer>
+  </page>
+</window>

@@ -10,13 +10,17 @@
 # input.c) are seeded below, same real shape civ-txt's own button.sh
 # uses.
 ACTION="${1:-help}"
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+CODE_DIR="$(cd "$(dirname "$0")" && pwd)"   # where the PROGRAMS live: always @.apps/piececraft-hq, shared by every pc-hq instance (no symlinks, they do not work on Windows)
+# PCHQ_PKG (pc-hq sessions, PCHQ-SESSIONS-DESIGN.md): the DATA root of another pc-hq instance (a game's own world / hero / xelector / maps / sessions, e.g. @.apps/dsr-rpg/dsr-rpg-pchq).
+# SCRIPT_DIR below is that data root everywhere data is read or written; unset = this folder, exactly as before. The instance's folder NAME must be unique: board-viewer scopes its engine session by it.
+SCRIPT_DIR="$CODE_DIR"
+if [ -n "${PCHQ_PKG:-}" ] && [ -d "$PCHQ_PKG" ]; then SCRIPT_DIR="$(cd "$PCHQ_PKG" && pwd)"; fi
 # House root - two levels up from this project (piececraft-hq is
 # directly under @.apps/), same computation civ-txt's/tactics-txt's own
 # button.sh use. Written into each session as house_root.txt so ops
 # (like pc_menu_input.c's OPEN_BOARD_WIDGET handler) can find sibling
 # projects/widgets without hardcoding a path.
-HOUSE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+HOUSE_DIR="$(cd "$CODE_DIR/../.." && pwd)"
 
 # Own-scoped board-viewer widget cleanup (2026-08-03, direct user
 # correction: "kill orphan on quit(ctrl+c) and re kill on start just in
@@ -50,6 +54,19 @@ kill_own_board_widget() {
 # process (ops/pc_clock_daemon.c's own header comment), same real class
 # of "must not outlive its session" risk the board-viewer widget already
 # had.
+# kill processes whose command line is <this instance's sessions dir>/<id>/<suffix regex>, or whose cwd is inside that dir (orchestrator)
+kill_own_session_cmd() {
+    local sd_re; sd_re=$(printf '%s' "$SCRIPT_DIR/pieces/sessions/" | sed 's/[.[\*^$()+?{|]/\\&/g')
+    pkill -f "${sd_re}[^ ]*/$1" 2>/dev/null || true
+}
+kill_cwd_in_own_sessions() {
+    local pid cwd
+    for pid in $(pgrep -f "$1" 2>/dev/null); do
+        cwd="$(readlink -f "/proc/$pid/cwd" 2>/dev/null)"; cwd="${cwd% (deleted)}"
+        case "$cwd" in "$SCRIPT_DIR/pieces/sessions/"*) kill "$pid" 2>/dev/null || true ;; esac
+    done
+}
+
 kill_own_clock_daemon() {
     # REAL FIX 2026-08-04, direct user report ("random" ticker behavior,
     # traced to FOUR real daemons from four past sessions all running
@@ -61,14 +78,15 @@ kill_own_clock_daemon() {
     # +x" - never literally "$SCRIPT_DIR/ops/...". Real fix: match the
     # real binary's own suffix only (no session-specific prefix), which
     # catches every past session's own real orphan, not just this one.
-    pkill -f "ops/\+x/pc_clock_daemon\.\+x" 2>/dev/null || true
+    # PCHQ-SESSIONS-DESIGN.md: only THIS instance's own session daemons (a program-name pkill killed every instance's clock daemon)
+    kill_own_session_cmd "ops/\\+x/pc_clock_daemon\\.\\+x"
     rm -f "$SCRIPT_DIR/pieces/system/pc_clock_daemon.pid" 2>/dev/null || true
 }
 
 kill_own_hq_status_manager() {
     # Real, NEW 2026-08-30 - clean up the piececraft-hq status manager
     # daemon (same two-layer pattern as clock_daemon above).
-    pkill -f "ops/\+x/pc_hq_status_manager\.\+x" 2>/dev/null || true
+    kill_own_session_cmd "ops/\\+x/pc_hq_status_manager\\.\\+x"
 }
 
 # REAL, NEW 2026-08-30, direct live report ("they should quit when
@@ -86,20 +104,18 @@ kill_own_hq_status_manager() {
 # a bare "system/orchestrator" match would kill every OTHER project's
 # orchestrator too (confirmed real collateral-kill incident that day).
 kill_own_orchestrator() {
-    local script_dir_re
-    script_dir_re=$(printf '%s' "$SCRIPT_DIR" | sed 's/[.[\*^$()+?{|]/\\&/g')
-    pkill -f "$script_dir_re/system/orchestrator" 2>/dev/null || true
+    kill_cwd_in_own_sessions "system/orchestrator"
 }
 
 case "$ACTION" in
     compile|c|build)
-        bash "$SCRIPT_DIR/scripts/build.sh"
+        bash "$CODE_DIR/scripts/build.sh"
         ;;
     run|r|start)
-        cd "$SCRIPT_DIR"
-        if [ ! -x "$SCRIPT_DIR/system/orchestrator" ]; then
+        cd "$CODE_DIR"
+        if [ ! -x "$CODE_DIR/system/orchestrator" ]; then
             echo "Compiling..."
-            bash "$SCRIPT_DIR/scripts/build.sh"
+            bash "$CODE_DIR/scripts/build.sh"
         fi
         # Safety-net cleanup - see kill_own_board_widget()'s own header
         # comment above for why this must run on every fresh start, not
@@ -159,15 +175,15 @@ case "$ACTION" in
         # PRISC_PROJECT_ROOT were switched to $SCRIPT_DIR instead - see
         # sim-smell-fix.md's own "REAL, UNRESOLVED shared-engine bug"
         # section, don't attempt that strategy here.
-        cp -p "$SCRIPT_DIR/pieces/os/kill_all.sh" "$SESSION_DIR/pieces/os/kill_all.sh" 2>/dev/null
-        cp -r "$SCRIPT_DIR/system" "$SESSION_DIR/system"
-        cp -r "$SCRIPT_DIR/ops" "$SESSION_DIR/ops"
-        cp -r "$SCRIPT_DIR/pal" "$SESSION_DIR/pal"
-        cp -p "$SCRIPT_DIR/default_op.txt" "$SESSION_DIR/default_op.txt"
-        cp -r "$SCRIPT_DIR/pieces/chtpm" "$SESSION_DIR/pieces/chtpm"
-        cp -r "$SCRIPT_DIR/pieces/registry" "$SESSION_DIR/pieces/registry" 2>/dev/null
+        cp -p "$CODE_DIR/pieces/os/kill_all.sh" "$SESSION_DIR/pieces/os/kill_all.sh" 2>/dev/null
+        cp -r "$CODE_DIR/system" "$SESSION_DIR/system"
+        cp -r "$CODE_DIR/ops" "$SESSION_DIR/ops"
+        cp -r "$CODE_DIR/pal" "$SESSION_DIR/pal"
+        cp -p "$CODE_DIR/default_op.txt" "$SESSION_DIR/default_op.txt"
+        cp -r "$CODE_DIR/pieces/chtpm" "$SESSION_DIR/pieces/chtpm"
+        cp -r "$CODE_DIR/pieces/registry" "$SESSION_DIR/pieces/registry" 2>/dev/null
         mkdir -p "$SESSION_DIR/projects/piececraft-hq"
-        cp -r "$SCRIPT_DIR/projects/piececraft-hq/pieces" "$SESSION_DIR/projects/piececraft-hq/pieces"
+        cp -r "$CODE_DIR/projects/piececraft-hq/pieces" "$SESSION_DIR/projects/piececraft-hq/pieces"
         # data/ is real persistent state - copied back out in the EXIT
         # trap below (persist_session_state()), same pattern as
         # my-chara-txt's own working fix.
@@ -292,9 +308,10 @@ EOSTATE
 
         export PRISC_PROJECT_ROOT="$SESSION_DIR"
         export PRISC_PROJECT_ID="piececraft-hq"
+        export PCHQ_HOST_ID="$(basename "$SCRIPT_DIR")"   # board-viewer scopes its engine session by the host folder name: "piececraft-hq" for the default instance, the instance folder name otherwise (the project id above stays: it names folders inside the project)
         export NO_NET=1
         export PAL_LAYOUT="$PC_PAL_LAYOUT"
-        "$SCRIPT_DIR/system/orchestrator" 2>>pieces/system/orchestrator.log &
+        "$CODE_DIR/system/orchestrator" 2>>pieces/system/orchestrator.log &
         ORCH_PID=$!
         # REAL FIX 2026-09-15, direct live report ("those should show
         # up in our proc-mon we should beable to find and kill them
@@ -360,7 +377,7 @@ EOSTATE
             # the REAL project name, not the session dir's own
             # timestamp-based name. FORCE_GL_MIRROR=1 to force the
             # legacy GL path.
-            SHARED_MIRROR="$SCRIPT_DIR/../../&.widgits/_shared-lib/ops/+x/x11_mirror.+x"
+            SHARED_MIRROR="$CODE_DIR/../../&.widgits/_shared-lib/ops/+x/x11_mirror.+x"
             if [ -z "$FORCE_GL_MIRROR" ] && [ -x "$SHARED_MIRROR" ]; then
                 "$SHARED_MIRROR" "$SESSION_DIR" >/dev/null 2>&1 &
                 GL_PID=$!
@@ -440,11 +457,11 @@ EOSTATE
             # projectors" bug). Terminal `run` still opens one for
             # convenience.
             KHTPM_BIN="$HOUSE_DIR/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
-            BOARD_TPL="$SCRIPT_DIR/pchq-board.xhtpm"
+            BOARD_TPL="$CODE_DIR/pchq-board.xhtpm"
             if [ -z "${PCHQ_ENGINE_MODE:-}" ] && [ -x "$KHTPM_BIN" ] && [ -f "$BOARD_TPL" ]; then
                 # projector build-on-demand
-                [ -x "$SCRIPT_DIR/ops/+x/pchq_board_projector.+x" ] || \
-                    sh "$SCRIPT_DIR/ops/build_pchq_board_projector.sh" >/dev/null 2>&1 || true
+                [ -x "$CODE_DIR/ops/+x/pchq_board_projector.+x" ] || \
+                    sh "$CODE_DIR/ops/build_pchq_board_projector.sh" >/dev/null 2>&1 || true
                 ( sleep 1.5; setsid "$KHTPM_BIN" "$HOUSE_DIR" "$BOARD_TPL" "piececraft-hq" >/dev/null 2>&1 < /dev/null & ) &
             fi
         fi
@@ -532,12 +549,12 @@ EOSTATE
         for b in system/prisc+x system/keyboard_input system/renderer \
                  system/chtpm_parser_pal system/orchestrator \
                  ops/+x/pc_menu_input.+x ops/+x/pc_compose_frame.+x; do
-            if [ -x "$SCRIPT_DIR/$b" ]; then echo "OK   $b"; else echo "MISSING $b"; fi
+            if [ -x "$CODE_DIR/$b" ]; then echo "OK   $b"; else echo "MISSING $b"; fi
         done
         for b in system/chtpm_rgb_render system/gl_mirror; do
-            if [ -x "$SCRIPT_DIR/$b" ]; then echo "OK   $b (optional GL mirror)"; else echo "OPTIONAL-MISS $b"; fi
+            if [ -x "$CODE_DIR/$b" ]; then echo "OK   $b (optional GL mirror)"; else echo "OPTIONAL-MISS $b"; fi
         done
-        if [ -x "$SCRIPT_DIR/../../&.widgits/_shared-lib/ops/+x/x11_mirror.+x" ]; then
+        if [ -x "$CODE_DIR/../../&.widgits/_shared-lib/ops/+x/x11_mirror.+x" ]; then
             echo "OK   shared x11_mirror (preferred display mirror)"
         else
             echo "SKIP shared x11_mirror (see &.widgits/_shared-lib/ops/build_x11_mirror.sh)"

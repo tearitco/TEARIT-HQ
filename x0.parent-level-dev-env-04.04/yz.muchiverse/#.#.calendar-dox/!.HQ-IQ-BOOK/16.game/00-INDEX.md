@@ -23,3 +23,15 @@ command runs on.
 - `../12.calendar/2026-09-23/grok-to-claude.txt` — the stop-point
   for the next agent. Same text as the external handoff. Merge
   branch `grok`. Do not commit onto it.
+- `GAMES-DECISIONS-2026-10-13.md` — owner decisions for cdda-hq, df-hq,
+  gta-hq: z-levels, vehicles as part-cell grids, scale, physics in the
+  concept bank, learning with review. Read before touching those games.
+- `GAMES-ROADMAP.md` — milestones with proof/KPI, how to use/modify
+  (filled as each lands), and the tangent documents to write. All
+  rows start NOT BUILT.
+- `IMG-HAI-DESIGN.md`, `WORD-BANK-TO-IMAGE.md` - the text-to-image studio window
+  (img-hai) and the word-bank pipeline behind it. **The full handbook (user
+  guide, code guide, extension recipes, testing, operations, handoff) lives
+  with the app: `44.xyz.01.00/&.hq-apps/img-hai/docs/` (start at README.md);
+  a one-page copy is `XO/25.games-plan/10-IMG-HAI-DOCS.html`.**
+- `IMG-HAI-BREAKTHROUGH.md` - class-style lesson on the word-to-judged-pixel-art loop: what is proven or not, ten lessons, exercises, next steps.
