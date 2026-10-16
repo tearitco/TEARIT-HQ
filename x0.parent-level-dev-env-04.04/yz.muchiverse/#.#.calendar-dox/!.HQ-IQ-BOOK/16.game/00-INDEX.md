@@ -9,6 +9,8 @@ command runs on.
 - `GAME.md` — start here. Includes the open parity gaps: the
   battle screen, loading or saving an RPG Maker project, and range
   on the placing grid (not built; tactics proof waits on Ember's HP).
+- `GAME-MECHANICS-SPRINT.md` — short loops for df-hq, cdda-hq, and
+  mcl-hq. Shared event verbs.
 - `../02-architecture/PLAYTEST-DESK-AND-PCHQ.md` — taskbar cell 9 and
   the PC-HQ Player menu. The playtest button.
 - `../18.pc-hq/00-INDEX.md` — the board itself: the diamond, the
