@@ -62,10 +62,32 @@ print(' '.join(str(p) for p in found))
 PY
 )"
 
-n="$(printf '%s' "$pids" | grep -c . || true)"
+# REAL FIX 2026-10-16: this counted LINES, but $pids is a single line of
+# space-separated numbers, so `grep -c .` returned 1 for ANY number of
+# renderers. --require-one was therefore a guard that could never fail - it
+# passed while two browser windows were alive, which is worse than no guard
+# because it still reads as a passing check. Count WORDS.
+n="$(printf '%s\n' "$pids" | wc -w | tr -d ' ')"
 if [ "$REQUIRE_ONE" = "1" ] && [ "$n" != "1" ]; then
     [ "$QUIET" = "1" ] || echo "browser_pid.sh: expected exactly 1 live renderer, found $n (${pids:-none})" >&2
     exit 1
 fi
-[ "$QUIET" = "1" ] || [ -z "$pids" ] || printf '%s\n' "$pids" | tail -1
+# REAL FIX 2026-10-16: this printed the WHOLE space-joined list, not one pid.
+# `printf '%s\n' "$pids" | tail -1` looks like "last of many lines", but $pids
+# is ONE line of space-separated numbers, so tail -1 returned all of them.
+# Every caller does PID="$(sh browser_pid.sh)" and then builds a relay path
+# from it, so with several renderers alive they built
+# entity_menu_history/1612545 1942491 ...txt, the relay write went to a path
+# that does not exist, and G2.2 died with "no frame dump after relay 112" -
+# a harness failure dressed up as a browser failure.
+#
+# Highest pid is the best available "newest" signal; it is a proxy, not a
+# start time, and the --require-one mode is the honest way to insist on
+# there being exactly one.
+[ "$QUIET" = "1" ] && exit 0
+[ -z "$pids" ] && exit 0
+if [ "$n" != "1" ]; then
+    echo "browser_pid.sh: WARNING $n renderers alive (${pids}); using the newest" >&2
+fi
+printf '%s\n' "$pids" | tr ' ' '\n' | grep . | sort -n | tail -1
 exit 0
