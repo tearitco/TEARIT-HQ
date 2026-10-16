@@ -2173,7 +2173,7 @@ static XftColor tp_xft_color(Display *d, Visual *vis, Colormap cm, const char *h
     return xc;
 }
 
-static int g_popup_verse_skinned = 0; /* set around the Show Text rows while a tile skin is painted behind them: white text */
+static const char *g_popup_verse_fg = NULL; /* set around the Show Text rows: the color that reads on the tile behind them */
 static void popup_draw_text(Display *dpy, Drawable d, GC gc, int x, int y, const char *s) {
     (void)gc;
     ensure_popup_fontset_current(dpy);
@@ -2231,7 +2231,7 @@ static void popup_draw_text(Display *dpy, Drawable d, GC gc, int x, int y, const
              * (the XDrawRectangle call right before this loop, in the
              * SHOW_TEXT_FILE Expose handler) - both now track the same
              * real theme. */
-            XftColor col = tp_xft_color(dpy, vis, cm, g_popup_verse_skinned ? "#ffffff" : (g_theme_fg[0] ? g_theme_fg : "#cccccc"));
+            XftColor col = tp_xft_color(dpy, vis, cm, g_popup_verse_fg ? g_popup_verse_fg : (g_theme_fg[0] ? g_theme_fg : "#cccccc"));
             XftDrawStringUtf8(xd, &col, g_popup_fontset, x, y, (const FcChar8 *)s, (int)strlen(s));
             XftColorFree(dpy, vis, cm, &col);
             XftDrawDestroy(xd);
@@ -6338,12 +6338,16 @@ XSetClassHint(dpy, win, &(XClassHint){(char *)"MuchiverseLivedesk", (char *)"Muc
                     for (int li = 0; li < g_text_popup_n_lines; li++)
                         skt_bar(dpy, text_popup_win, popup_gc, 1, li * POPUP_ROW_H, pop_w2 - 2, POPUP_ROW_H, bgv);
                 }
-                XSetForeground(dpy, popup_gc, tp_hex_pixel(dpy, DefaultScreen(dpy), skt_on ? "#ffffff" : g_theme_fg));
-                g_popup_verse_skinned = skt_on;
+                {
+                    const char *vfg = skt_label_hex();
+                    if (!vfg) vfg = g_theme_fg[0] ? g_theme_fg : "#cccccc";
+                    XSetForeground(dpy, popup_gc, tp_hex_pixel(dpy, DefaultScreen(dpy), vfg));
+                    g_popup_verse_fg = vfg;
+                }
                 for (int li = 0; li < g_text_popup_n_lines; li++) {
                     popup_draw_text(dpy, text_popup_win, popup_gc, 8, (li + 1) * POPUP_ROW_H - 6, g_text_popup_lines[li]);
                 }
-                g_popup_verse_skinned = 0;
+                g_popup_verse_fg = NULL;
             } else if (text_popup_win && xev.type == ButtonPress &&
                        xev.xany.window == text_popup_win) {
                 /* REAL FIX 2026-08-24, direct user report ("i dont want it

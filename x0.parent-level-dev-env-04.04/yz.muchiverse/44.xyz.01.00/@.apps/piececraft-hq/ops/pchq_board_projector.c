@@ -403,11 +403,28 @@ static void read_pdl_kv(const char *path, const char *key, char *out, size_t out
     fclose(f);
 }
 
-/* pc-hq sessions (PCHQ-SESSIONS-DESIGN.md): the DATA folder of the instance this board belongs to. A second instance lives under its game (PCHQ_PKG, set by open_pchq_board.sh in the window's environment),
- * not at @.apps/<host id>; unset = the default @.apps/<host id> exactly as before. Returns a static buffer. */
+/* The xhtpm's package dir (argv[2]). A game board is @.apps/<game>/board, and its data is the sibling <game>-pchq. */
+static const char *g_board_pkg = "";
+
+/* pc-hq sessions (PCHQ-SESSIONS-DESIGN.md): the DATA folder of the instance this board belongs to.
+ * PCHQ_PKG (set by open_pchq_board.sh) wins. Otherwise @.apps/<host id> for the default piececraft-hq board.
+ * Edge case (2026-10-16): relaunching khtpm_core_render on a game template without PCHQ_PKG still spawns this
+ * projector. host id is then "df-hq-pchq", and @.apps/df-hq-pchq does not exist — the data is
+ * @.apps/df-hq/df-hq-pchq, the sibling of the board folder. Missing that lookup left canvas_raw empty, so the
+ * map was gone and INT (the board-viewer frame, fed by this canvas) could not arm. */
 static const char *host_root(const char *house, const char *host_id) {
-    static char buf[PATH_MAX]; const char *ip = getenv("PCHQ_PKG");
-    if (ip && ip[0]) snprintf(buf, sizeof(buf), "%s", ip); else snprintf(buf, sizeof(buf), "%s/@.apps/%s", house, host_id);
+    static char buf[PATH_MAX];
+    const char *ip = getenv("PCHQ_PKG");
+    if (ip && ip[0]) { snprintf(buf, sizeof(buf), "%s", ip); return buf; }
+    char fallback[PATH_MAX];
+    snprintf(fallback, sizeof(fallback), "%s/@.apps/%s", house, host_id);
+    if (access(fallback, F_OK) == 0) { snprintf(buf, sizeof(buf), "%s", fallback); return buf; }
+    if (g_board_pkg && g_board_pkg[0] && host_id && host_id[0]) {
+        char alt[PATH_MAX], resolved[PATH_MAX];
+        snprintf(alt, sizeof(alt), "%s/../%s", g_board_pkg, host_id);
+        if (realpath(alt, resolved)) { snprintf(buf, sizeof(buf), "%s", resolved); return buf; }
+    }
+    snprintf(buf, sizeof(buf), "%s", fallback);
     return buf;
 }
 
@@ -521,6 +538,7 @@ int main(int argc, char **argv) {
                     : (getenv("KHTPM_PKG") ? getenv("KHTPM_PKG") : ".");
     const char *host_id = (argc > 3 && argv[3][0]) ? argv[3]
                         : host_from_a1 ? host_from_a1 : "piececraft-hq";
+    g_board_pkg = pkg;
 
     char out_path[PATH_MAX], tmp_path[PATH_MAX], menu_path[PATH_MAX];
 #ifdef _WIN32
