@@ -8866,6 +8866,14 @@ static void kh_publish_canvas_click(int px, int py, int button) {
  * window in the house. The last published values are remembered and the
  * file is touched only when the box actually moves.
  */
+/* CALL-SITE TRAP, learned the hard way 2026-10-15: this was called only at
+ * the END of assign_nav_and_layout(), which has EARLY RETURNS - and the
+ * sidebar+panel branch is EXACTLY the network browser's window shape. So for
+ * this window the publisher was never reached at all: it wrote nothing,
+ * silently, and the renderer's stderr does not reach a log here, so there
+ * was no way to see the failure from the process itself. It must be called
+ * on EVERY exit path of that function; if you add an early return there,
+ * add the call with it. */
 static void publish_pane_geometry(void) {
     if (!g_window || !g_house_root[0]) return;
     Elem *best = NULL;
@@ -8985,6 +8993,7 @@ static void assign_nav_and_layout(void) {
         if (g_dock_drop_lo && g_default_active_scope_id[0] &&
             (g_focus_nav < g_dock_drop_lo || g_focus_nav > g_dock_drop_hi))
             g_focus_nav = g_dock_drop_lo;
+        publish_pane_geometry();   /* every exit path - see the trap note below */
         return;
     }
     if (!page) { g_win_h = CHROME_H + 8; return; }
@@ -9028,6 +9037,7 @@ static void assign_nav_and_layout(void) {
         kh_apply_scope_confine();
         if (g_focus_nav > g_n_nav) g_focus_nav = g_n_nav > 0 ? g_n_nav : 1;
         if (g_focus_nav < 1) g_focus_nav = 1;
+        publish_pane_geometry();   /* every exit path - see the trap note below */
         return;
     }
     generic_sbar_reset();
