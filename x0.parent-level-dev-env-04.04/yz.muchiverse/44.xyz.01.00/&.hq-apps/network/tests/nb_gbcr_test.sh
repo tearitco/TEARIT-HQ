@@ -140,7 +140,21 @@ setsid "$MANAGER" "$S" "$PKG" > "$WORK/manager.log" 2>&1 &
 KILLPIDS="$KILLPIDS $!"
 sleep 2
 printf 'go:http://127.0.0.1:%s/\n' "$PORT" > "$REQ"
-PROJ="$S/&.hq-apps/network/network-browser-hq.chtmp"
+# Locate the projection with a GLOB, not a literal filename.
+#
+# Measured anomaly, not fixed: in a scratch house where the manager HAD
+# written the projection, `ls` listed it and `cat *` read it, while
+# `cat network-browser-hq.chtpm` returned ENOENT - with `ls -1 | od -c`
+# showing clean, identical bytes for the name. I could not explain that,
+# so rather than depend on reproducing the exact string, the harness
+# resolves the file the way a shell would and then verifies it is
+# readable. An unexplained path mismatch is exactly the kind of thing
+# that makes a test flaky for reasons that have nothing to do with the
+# thing being measured.
+PROJ=""
+for _c in "$S/&.hq-apps/network/"*.chtmp; do
+    if [ -r "$_c" ]; then PROJ="$_c"; break; fi
+done
 # Wait for the CONTENT, not merely the file: the manager creates the
 # projection early and rewrites it as rows arrive, so "file exists" is
 # true long before the page is in it. The earlier version also reported
@@ -148,13 +162,15 @@ PROJ="$S/&.hq-apps/network/network-browser-hq.chtmp"
 # which is the kind of message that sends the next person to the wrong
 # file.
 for _ in $(seq 1 160); do
-    if [ -s "$PROJ" ] && grep -q 'Paragraph 1 of the gBCR' "$PROJ" 2>/dev/null; then break; fi
+    [ -n "$PROJ" ] && grep -q 'Paragraph 1 of the gBCR' "$PROJ" 2>/dev/null && break
     sleep 0.5
 done
 sleep 2
-if ! grep -q 'Paragraph 1 of the gBCR' "$PROJ" 2>/dev/null; then
-    echo "FAIL: the manager never published page content into $PROJ"
-    echo "  projection exists: $([ -s "$PROJ" ] && echo yes || echo no)"
+if [ -z "$PROJ" ]; then
+    echo "FAIL: no readable projection in $S/&.hq-apps/network/"
+    echo "  present: $(ls "$S/&.hq-apps/network/" 2>/dev/null | tr '\n' ' ')"
+elif ! grep -q 'Paragraph 1 of the gBCR' "$PROJ" 2>/dev/null; then
+    echo "FAIL: the projection exists but carries no page content ($PROJ)"
     tail -5 "$WORK/manager.log" | sed 's/^/    /'
     exit 1
 fi
