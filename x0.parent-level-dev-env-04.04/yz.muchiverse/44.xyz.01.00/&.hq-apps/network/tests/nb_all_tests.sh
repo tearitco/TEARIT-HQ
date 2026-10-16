@@ -120,6 +120,10 @@ echo "########## G2.1 box tree (computed w/h + strictly increasing y per depth)"
 sh "$HERE/nb_geometry_test.sh" || RC=1
 
 echo
+echo "########## G2.2 the worker's box tree vs the painted pixels (live browser)"
+sh "$HERE/nb_gbcr_test.sh" || RC=1
+
+echo
 echo "########## content-row reachability (live browser + own opt-in fixture)"
 sh "$HERE/nb_reach_test.sh" || RC=1
 

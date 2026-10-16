@@ -1098,6 +1098,33 @@ static double g_col_px(NbNode *from) {
     return g_gutter_state ? (g_viewport_px - NB_SCROLLBAR_W) : g_viewport_px;
 }
 
+/* The chrome the renderer puts ABOVE the first content row inside the
+ * scrolled column. Both terms are measured off the renderer, not guessed:
+ *
+ *   - GENERIC_SBAR_ARROW_H (14, khtpm_core_render.c:5428). layout_scroll_region
+ *     sets `content_y = y + (have_arrows ? GENERIC_SBAR_ARROW_H : 0)`, so a
+ *     column that scrolls starts its first row 14px down, under the scrollbar's
+ *     up-arrow. Only when it scrolls - have_arrows requires max_scroll > 0.
+ *   - NB_ROW_PX (30) for the page-title row. The manager projects <head><title>
+ *     into a `page-title` row as the FIRST child of the content scrolllist
+ *     (network_browser_manager.c:5570), so it occupies a real row before any
+ *     <p>. A DOM-only model cannot see it: <title> lives in <head> and takes no
+ *     space in a browser's body, which is exactly why this offset was 44px
+ *     (14 + 30) and looked like a mystery.
+ *
+ * This is the worker mirroring the house renderer on purpose. It is NOT
+ * claiming <title> takes body space in some other browser - it is saying the
+ * box tree must describe the pixels this renderer actually draws, which is
+ * what G2.2 measures. */
+#define NB_SBAR_ARROW_H 14
+static char g_page_title[256];
+
+static double g_content_inset_top(void) {
+    double inset = g_gutter_state ? (double)NB_SBAR_ARROW_H : 0.0;
+    if (g_page_title[0]) inset += (double)NB_ROW_PX;
+    return inset;
+}
+
 /* WIDTH of an element's border box - the half of the box tree that was
  * missing (G2.1, slice 1, 2026-10-14).
  *
@@ -1237,6 +1264,10 @@ static JSValue nb_el_getBoundingClientRect(JSContext *ctx, JSValueConst this_val
         w = nb_box_w(n);
         h = st.has_height ? st.height : nb_content_h(n);
         layout_xy(n, &x, &y);
+        /* Shift the whole tree down by the chrome the renderer puts above the
+         * first content row. Uniform, so every relative offset below the
+         * origin is untouched - see g_content_inset_top(). */
+        y += g_content_inset_top();
     }
     JSValue o = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, o, "x", JS_NewFloat64(ctx, x));
@@ -9161,6 +9192,16 @@ int main(int argc, char **argv) {
              * whether the column scrolls, and a scrolling column is 8px
              * narrower once the scrollbar is drawn - see g_col_px(). */
             g_viewport_h = (f[7] && atof(f[7]) > 0) ? atof(f[7]) : 0.0;
+            /* The page title, which the manager projects into the content
+             * scrolllist as a real row. Without it the worker's origin sits
+             * 30px above where the renderer paints the first paragraph. */
+            g_page_title[0] = '\0';
+            if (f[4]) {
+                size_t tl = strlen(f[4]);
+                if (tl >= sizeof(g_page_title)) tl = sizeof(g_page_title) - 1;
+                memcpy(g_page_title, f[4], tl);
+                g_page_title[tl] = '\0';
+            }
             /* New page, so the gutter is an open question again. Leaving the
              * previous page's verdict in place would carry a scrollbar
              * decision across a navigation onto a page that may not scroll. */

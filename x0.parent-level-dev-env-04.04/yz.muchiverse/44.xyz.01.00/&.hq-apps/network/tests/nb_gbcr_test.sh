@@ -106,15 +106,28 @@ printf '112\n' >> "$RELAY"
 for _ in $(seq 1 30); do [ -s "$FRAME" ] && break; sleep 0.5; done
 [ -s "$FRAME" ] || { echo "FAIL: no frame dump after relay 112"; exit 1; }
 
-# the worker's own gBCR, read back through the manager's console capture
-JS="var o=[];for(var i=1;i<=$N;i++){var e=document.getElementById('p'+i);var r=e.getBoundingClientRect();o.push('G'+i+' '+Math.round(r.x)+' '+Math.round(r.y)+' '+Math.round(r.width)+' '+Math.round(r.height));}o.join(';');"
+# The worker's own gBCR, read back through the manager's console capture.
+#
+# REAL FIX 2026-10-16 - the run token. The console capture APPENDS and is never
+# truncated, so waiting on `grep -q 'G1 '` was satisfied instantly by the
+# PREVIOUS run's samples: the test never waited for its own eval at all, then
+# parsed whatever numbers were newest in the file. Caught by negative-testing
+# the worker with the title offset deliberately removed - the truth was y=30 and
+# the test still reported 100%. A stale read that happens to agree with the
+# expected answer is the most dangerous kind, because it is indistinguishable
+# from a real pass. The token makes both the wait and the parse per-run.
+RUN_TOKEN="gbcr$$_$(date +%s)"
+JS="var o=[];for(var i=1;i<=$N;i++){var e=document.getElementById('p'+i);var r=e.getBoundingClientRect();o.push('G'+i+' '+Math.round(r.x)+' '+Math.round(r.y)+' '+Math.round(r.width)+' '+Math.round(r.height));}'$RUN_TOKEN|'+o.join(';');"
 printf 'eval:%s\n' "$JS" > "$REQ"
-for _ in $(seq 1 40); do grep -q 'G1 ' "$CONSOLE" 2>/dev/null && break; sleep 0.5; done
+tok_ok=0
+for _ in $(seq 1 60); do grep -q "$RUN_TOKEN" "$CONSOLE" 2>/dev/null && { tok_ok=1; break; }; sleep 0.5; done
+[ "$tok_ok" = 1 ] || echo "FAIL: the worker's gBCR never came back for this run (token $RUN_TOKEN)"
 
-python3 - "$HERE" "$N" "$PANEX" "$PANEY" "$PANEW" "$FRAME" "$CONSOLE" <<'PY'
+python3 - "$HERE" "$N" "$PANEX" "$PANEY" "$PANEW" "$FRAME" "$CONSOLE" "$RUN_TOKEN" <<'PY'
 import re, sys
-here, n, px, py, pw, frame, console = (sys.argv[1], int(sys.argv[2]), int(sys.argv[3]),
-                                      int(sys.argv[4]), int(sys.argv[5]), sys.argv[6], sys.argv[7])
+here, n, px, py, pw, frame, console, token = (sys.argv[1], int(sys.argv[2]), int(sys.argv[3]),
+                                             int(sys.argv[4]), int(sys.argv[5]), sys.argv[6],
+                                             sys.argv[7], sys.argv[8])
 
 # Parse through frame_geom itself rather than re-parsing its stdout. Two
 # reasons, both learned by getting them wrong first:
@@ -155,8 +168,14 @@ for r in rows:
 painted.sort(key=lambda r: r["y"])
 
 txt = open(console, errors="replace").read().replace("\n", " ")
+# ONLY the samples from THIS run: everything the console holds before our own
+# token is a previous run's answer and must not be able to satisfy us.
+marker = txt.rfind(token + "|")
+if marker < 0:
+    print("FAIL: this run's gBCR token is not in the console capture")
+    sys.exit(1)
 worker = {}
-for m in re.finditer(r"\bG(\d+)\s+(-?\d+)\s+(-?\d+)\s+(-?\d+)\s+(-?\d+)", txt):
+for m in re.finditer(r"\bG(\d+)\s+(-?\d+)\s+(-?\d+)\s+(-?\d+)\s+(-?\d+)", txt[marker:]):
     worker[int(m.group(1))] = tuple(int(m.group(i)) for i in (2, 3, 4, 5))
 
 print("  frame rows parsed: %d (skipped %d)" % (len(rows), skipped))
