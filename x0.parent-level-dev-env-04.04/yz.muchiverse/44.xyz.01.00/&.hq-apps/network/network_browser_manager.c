@@ -1546,7 +1546,30 @@ static char g_curl_cookie_path[PATH_BUF];  /* per-house Netscape jar shared by p
 static int g_lock_fd = -1;                 /* single-instance flock fd (held for life) */
 static char g_js_worker_path[PATH_BUF];
 static char g_js_script_path[PATH_BUF];
-static char g_js_style_path[PATH_BUF];   /* rung 7: concatenated page CSS */
+static char g_js_style_path[PATH_BUF];
+/* The renderer publishes the box of the pane it actually laid the content
+ * into (the browser window has a 200px sidebar and a console panel, so the
+ * content pane is neither the window nor anything derivable from it - it
+ * is whatever the renderer computed, and only the renderer knows).
+ *
+ * Written by the renderer into the house (same channel as dock_state.pdl
+ * and slide_offsets.pdl). Absent or unparsable means "no measurement",
+ * NOT "zero": the worker then keeps its documented default rather than
+ * being told a pane has no width. */
+static char g_pane_geom_path[PATH_BUF];
+static double read_pane_width(void) {
+    if (!g_pane_geom_path[0]) return 0.0;
+    FILE *f = fopen(g_pane_geom_path, "rb");
+    if (!f) return 0.0;
+    char line[256];
+    double w = 0.0;
+    while (fgets(line, sizeof(line), f)) {
+        const char *k = strstr(line, "content_w=");
+        if (k) { w = atof(k + 10); break; }
+    }
+    fclose(f);
+    return w > 0 ? w : 0.0;
+}   /* rung 7: concatenated page CSS */
 static char g_media_op_path[PATH_BUF];
 static char g_media_root[PATH_BUF];
 static char g_video_player_path[PATH_BUF];
@@ -2616,10 +2639,17 @@ static int worker_load(const char *js_path, const char *dom_path,
     worker_spawn();
     if (g_worker_fd < 0) return 0;
     char payload[8192];
-    int n = snprintf(payload, sizeof(payload), "LOAD\n%s\n%s\n%s\n%s\n%s",
+    /* SEVEN fields now: js/dom/href/title/css/viewport. The viewport is
+     * the width of the pane the renderer laid this page into, so the
+     * worker's box tree is computed against a real column instead of its
+     * 640px default (G2.2). 0 means "not measured" and the worker keeps
+     * its default - a wrong-but-supplied width is worse than an obviously
+     * default one. */
+    double pane_w = read_pane_width();
+    int n = snprintf(payload, sizeof(payload), "LOAD\n%s\n%s\n%s\n%s\n%s\n%d",
                      js_path ? js_path : "", dom_path ? dom_path : "",
                      href ? href : "", title ? title : "",
-                     css_path ? css_path : "");
+                     css_path ? css_path : "", (int)(pane_w > 0 ? pane_w : 0));
     if (!worker_send(payload, (size_t)n)) { worker_close(); return 0; }
 
     g_worker_render[0] = 0;
@@ -7282,6 +7312,7 @@ int main(int argc, char **argv) {
     path_join(g_visit_log_path, sizeof(g_visit_log_path), desktop, "network_browser_history.log.txt");
     path_join(g_bookmark_path, sizeof(g_bookmark_path), desktop, "network_browser_bookmarks.txt");
     path_join(g_worker_err_path, sizeof(g_worker_err_path), desktop, "network_browser_worker.err.log");
+    path_join(g_pane_geom_path, sizeof(g_pane_geom_path), desktop, "khtpm_pane_geom.state.txt");
     path_join(g_console_path, sizeof(g_console_path), desktop, "network_browser_console.txt");
     {
         char lockpath[PATH_BUF];
