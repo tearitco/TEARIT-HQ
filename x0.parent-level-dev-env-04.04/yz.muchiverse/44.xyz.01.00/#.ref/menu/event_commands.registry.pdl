@@ -1149,3 +1149,135 @@ COMMAND pet_load
   PARAMS slot
   TEMPLATE exec "$D/@.apps/pet-house/ops/pet_event.sh" load_slot '{slot}'
 END
+
+# ------------------------------------------------------------------
+# Dwarf Fortress dispatch commands (2026-10-13).
+# Each command is a single-primitive that invokes the prisc+x VM
+# with PRISC_PROJECT_ID=dwarf-fortress and PRISC_PIECE_ID=<piece>,
+# dispatching the named .asm script through the game engine's relay
+# event bus (interact_relay.txt). The entity_dir ($ENT) is the piece
+# dir (e.g. .../projects/dwarf-fortress/pieces/hero); df_event.sh
+# derives the project_id and piece_id from it. No project_id or
+# piece_id fields needed - they are always "dwarf-fortress" and the
+# entity's own dir basename, resolved by the wrapper.
+
+COMMAND df_mine
+  LABEL DF: Mine
+  FIELD1 -
+  FIELD2 -
+  PARAMS
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/df_event.sh" "$ENT" mine
+END
+
+COMMAND df_move
+  LABEL DF: Move
+  FIELD1 Direction (N/S/E/W):
+  FIELD2 -
+  PARAMS direction
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/df_event.sh" "$ENT" move '{direction}'
+END
+
+COMMAND df_rest
+  LABEL DF: Rest
+  FIELD1 -
+  FIELD2 -
+  PARAMS
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/df_event.sh" "$ENT" rest
+END
+
+COMMAND df_look
+  LABEL DF: Look Around
+  FIELD1 -
+  FIELD2 -
+  PARAMS
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/df_event.sh" "$ENT" look
+END
+
+COMMAND df_build
+  LABEL DF: Build
+  FIELD1 -
+  FIELD2 -
+  PARAMS
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/df_event.sh" "$ENT" build
+END
+
+COMMAND df_combat
+  LABEL DF: Combat
+  FIELD1 -
+  FIELD2 -
+  PARAMS
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/df_event.sh" "$ENT" combat
+END
+
+COMMAND df_game_loop
+  LABEL DF: Game Loop (turn tick)
+  FIELD1 -
+  FIELD2 -
+  PARAMS
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/df_event.sh" "$ENT" game_loop
+END
+
+COMMAND df_goblin_ai
+  LABEL DF: Goblin AI
+  FIELD1 -
+  FIELD2 -
+  PARAMS
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/df_event.sh" "$ENT" goblin_ai
+END
+
+# ------------------------------------------------------------------
+# Cataclysm-HQ dispatch commands (2026-10-13).
+# Same relay-event-bus shape as dwarf-fortress: df_event.sh is the
+# generic dispatcher; it derives project_id from the entity dir's
+# ancestors (projects/<id>/pieces/<piece>), so a cataclysm entity
+# at .../projects/cataclysm-hq/pieces/hero dispatches with
+# PRISC_PROJECT_ID=cataclysm-hq automatically.
+
+COMMAND chq_game_loop
+  LABEL CHQ: Game Loop (turn tick)
+  FIELD1 -
+  FIELD2 -
+  PARAMS
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/df_event.sh" "$ENT" game_loop
+END
+
+COMMAND chq_move
+  LABEL CHQ: Move
+  FIELD1 Direction (N/S/E/W):
+  FIELD2 -
+  PARAMS direction
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/df_event.sh" "$ENT" move '{direction}'
+END
+
+COMMAND chq_look
+  LABEL CHQ: Look Around
+  FIELD1 -
+  FIELD2 -
+  PARAMS
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/df_event.sh" "$ENT" look
+END
+
+COMMAND chq_combat
+  LABEL CHQ: Combat
+  FIELD1 -
+  FIELD2 -
+  PARAMS
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/df_event.sh" "$ENT" combat
+END
+
+COMMAND chq_rest
+  LABEL CHQ: Rest
+  FIELD1 -
+  FIELD2 -
+  PARAMS
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/df_event.sh" "$ENT" rest
+END
+
+COMMAND chq_inv
+  LABEL CHQ: Inventory
+  FIELD1 -
+  FIELD2 -
+  PARAMS
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/df_event.sh" "$ENT" inventory
+END
+
