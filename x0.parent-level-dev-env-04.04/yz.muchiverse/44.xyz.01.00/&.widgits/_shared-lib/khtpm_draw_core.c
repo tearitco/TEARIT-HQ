@@ -1416,7 +1416,17 @@ static void draw_elem(Elem *e, int hover_id_hash) {
     }
     if (elem_has_class(e, "skin-bar") &&
         kh_draw_bar_skin(e, alloc_pixel(e->style.has_bg_color ? e->style.bg_color : "#2c2c2c"))) {
-        snprintf(e->style.fg_color, sizeof(e->style.fg_color), "%s", elem_has_class(e, "tone-light") ? "#111111" : "#ffffff");   /* light tiles use the same dark writing as the white and silver swatches */
+        {
+            /* A picker chip names its own tone. A board row just wears the selected skin, so use that skin's brightness. */
+            int light = elem_has_class(e, "tone-light");
+            if (!light && !elem_has_class(e, "tone-dark")) {
+                int own = 0;
+                for (int c = 0; c < e->n_classes && !own; c++)
+                    if (strncmp(e->classes[c], "skin-for-", 9) == 0) own = 1;
+                light = !own && g_bar_skin_light;
+            }
+            snprintf(e->style.fg_color, sizeof(e->style.fg_color), "%s", light ? "#111111" : "#ffffff");
+        }
         e->style.has_fg_color = 1;
     }
     /* REAL, NEW 2026-09-14 (network-browser video V4 "Nav row with
