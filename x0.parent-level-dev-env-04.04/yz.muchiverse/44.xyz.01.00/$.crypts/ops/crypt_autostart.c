@@ -513,7 +513,7 @@ static void quit_current_livedesk(const char *house_root) {
     path_norm_slashes(claims_path);
     path_norm_slashes(tbar_pid_path);
 
-    printf("crypt_autostart: quitting current livedesk before re-launch\n");
+    printf("crypt_autostart: quitting current LyfeDesk before re-launch\n");
 
     /* 1) Graceful CLOSE to every registered entity package. */
     FILE *of = fopen(open_path, "r");
@@ -668,7 +668,7 @@ static void quit_current_livedesk(const char *house_root) {
         unlink(tbar_pid_path);
 #endif
     }
-    printf("crypt_autostart: livedesk quit complete\n");
+    printf("crypt_autostart: LyfeDesk quit complete\n");
 }
 #endif
 
@@ -697,7 +697,7 @@ static void clear_livedesk_registries(const char *house_root) {
     wf = fopen(open_path, "w"); if (wf) fclose(wf);
     wf = fopen(claims_path, "w"); if (wf) fclose(wf);
     remove(tbar_pid_path);
-    printf("crypt_autostart: cleared livedesk PID registries (win)\n");
+    printf("crypt_autostart: cleared LyfeDesk PID registries (win)\n");
 }
 #endif
 

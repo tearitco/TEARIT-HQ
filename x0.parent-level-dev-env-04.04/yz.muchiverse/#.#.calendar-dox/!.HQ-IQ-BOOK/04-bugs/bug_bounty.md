@@ -2,6 +2,25 @@
 
 ---
 
+## OPEN 2026-10-15: rename livedesk -> LyfeDesk (trademark; owner decision, written "LyfeDesk")
+
+**Why:** "livedesk" may conflict with an existing trademark one day; do it now. Not legal advice: "LyfeDesk" is a near spelling, so a trademark search on the new name is still the owner's to do.
+
+**Measured size (tracked files, 2026-10-15):** 772 files mention it, 7,230 times (286 files in the BOOK, 305 .md, 155 .sh, 88 .c, 44 .pdl); 162 tracked paths contain it (102 under `_.monads/_.livedesk-taskbar/`); the path `_.livedesk-taskbar` alone appears 1,024 times; 177 files under `xyzfs/users` mention it (those live on the local `user/*` data branches); 136 untracked/ignored files carry it in their name (build logs, `livedesk_index.txt`, runtime files).
+
+**Layer 1: what a user sees. DONE 2026-10-15 (superficial, per the owner):**
+- Desktop launcher and app-grid entry are now **LyfeDesk** (`~/Desktop/LyfeDesk.desktop`, `~/.local/share/applications/lyfedesk.desktop`, icon `lyfedesk.png`); the old three files were removed by `button.sh install-app` (it now migrates them itself) and backed up in `XO/lyfedesk-rename/backup/`. The generated `Exec` line is byte-identical to the old working one; the launcher was NOT launched (that would restart the desktop). The icon art has no text, so no new art was needed.
+- Source strings: splash ("Loading / Building LyfeDesk...", "BUILD FAILED - LyfeDesk not started", window title), `crypt_autostart` messages, installer/mac/ps1 banners, the eight game apps' "no LyfeDesk clock binary" message. Same length as before (8 characters), so the splash's fixed-length draw calls are unchanged. **Source only: the splash and `crypt_autostart` binaries are rebuilt on the next normal build, and a running window keeps the old text until relaunch.**
+- Docs prose: glossary (with the "formerly livedesk" explanation), WHAT-IS-THIS-HOUSE, the compact guide, `#.desktop/README.txt`, the Windows port doc title; a naming rule in `AGENTS.md`.
+
+**Layer 2: remaining docs. TODO.** The 168 design docs under `08-roadmap` and the other BOOK folders are mostly real paths and identifiers (a scripted replace would make them wrong); they should change together with layer 3. Dated hand-offs, incident notes and the archive stay as history. A glossary line already explains the old name.
+
+**Layer 3: the deep rename. TODO, not started, needs a scratch worktree and a backup first.** Rename map: directories `_.livedesk-taskbar`, `&.widgits/livedesk-clock`, `#.livedesk`; files `livedesk_*.pdl/txt/pid`, `livedesk-*.sh/c/py/png`, `win-start-livedesk.ps1`, `mac-start-livedesk.command`; the `livedesk:` command prefix (hundreds of pdl rows and C `strncmp`s); constants `KTB_LIVEDESK_*`; WM_CLASS `MuchiverseLivedesk` (Mutter/Hyprland window rules match it: change in step with those rules, and the Windows/Mac ports); runtime file names the renderers poll; per-user data paths on the `user/*` branches (verified backup + file count first, per AGENTS.md); old checkout `NNEST-11.17` paths in the owner's live data (they already point there). Rules: all agents share this checkout, so one agent does it in one window of time; rebuild every binary; run the harnesses and cases before and after; the running taskbar must be relaunched by the owner.
+
+**To close:** layer 3 done and verified with a fresh build and run (taskbar up, a menu opens, an entity spawns), `git grep -i livedesk` limited to the glossary, history and this entry.
+
+---
+
 ## FIXED 2026-10-13 (owner-confirmed live): livedesk top-bar dropdown - click snapped the highlight to row 1, and the search row did not take input
 
 **Reported by the owner (via grok's note `13.agent-coms/2026-10-13/livedesk-dropdown-jump.txt`):** in a long top-bar menu, clicking a lower row or the search row lands the highlight there, then it snaps to the first row. After the first fix the owner confirmed the jump is gone, but the search row still did not show the `^` armed state and took no typing.

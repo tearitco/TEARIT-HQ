@@ -5,7 +5,7 @@
 list.*
 
 - **house / TEARIT-HQ** — this whole repo; a file-backed desktop OS.
-- **livedesk** — the taskbar + desktop shell that spawns/manages entities.
+- **LyfeDesk** (formerly **livedesk**; renamed 2026-10-15 to avoid a trademark conflict) — the taskbar + desktop shell that spawns/manages entities. Only the displayed name changed so far: directories, files, commands and identifiers (`_.livedesk-taskbar`, `livedesk_*.pdl`, `livedesk:` command prefix, `KTB_LIVEDESK_*`, WM_CLASS `MuchiverseLivedesk`) still say `livedesk` until the deep rename (see `04-bugs/bug_bounty.md`). New user-facing text says LyfeDesk.
 - **entity** — one running app/game/tool spawned onto the desktop, its own process.
 - **pal (PAL)** — the tiny scripting language/VM (`prisc+x`) gluing ops together in a loop; also "muchi-pals" the pet/companion app family — context disambiguates.
 - **PDL** — the house's plain-text config format, `SECTION | KEY | VALUE` rows.

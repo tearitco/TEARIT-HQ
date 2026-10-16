@@ -219,7 +219,7 @@ int main(int argc, char **argv) {
     Window win = XCreateWindow(dpy, root, (sw - ww) / 2, boot ? (sh - wh - 6) : (sh - wh) / 3, ww, wh, 1,
                                CopyFromParent, InputOutput, CopyFromParent,
                                CWOverrideRedirect | CWBackPixel | CWBorderPixel | CWEventMask, &swa);
-    XStoreName(dpy, win, "livedesk");
+    XStoreName(dpy, win, "LyfeDesk");
     XMapRaised(dpy, win);
 
     GC gc = XCreateGC(dpy, win, 0, NULL);
@@ -254,7 +254,7 @@ int main(int argc, char **argv) {
                 XFillRectangle(dpy, win, gc, 0, 0, ww, wh);
                 XSetForeground(dpy, gc, failbar);
                 XFillRectangle(dpy, win, gc, 0, 0, ww, 4);
-                XftDrawStringUtf8(xft, &xfail, fbig, 14, 22, (const FcChar8 *)"BUILD FAILED - livedesk not started", 35);
+                XftDrawStringUtf8(xft, &xfail, fbig, 14, 22, (const FcChar8 *)"BUILD FAILED - LyfeDesk not started", 35);
                 XftDrawStringUtf8(xft, &xfail, fsm, 14, 38, (const FcChar8 *)"see ops/+x/build_error.log - click to dismiss", 45);
                 XFlush(dpy); usleep(120000);
                 if (el > 120) break;
@@ -280,7 +280,7 @@ int main(int argc, char **argv) {
                 double cf = (double)cdone / (double)N_TARGETS, ct = el / 30.0; if (ct > 0.97) ct = 0.97;
                 double frac = (cf > ct ? cf : ct) * 0.6;                    /* compile = first 60% of the bar */
                 XSetForeground(dpy, gc, bg); XFillRectangle(dpy, win, gc, 0, 0, ww, wh);
-                XftDrawStringUtf8(xft, &xfg, fbig, 14, 20, (const FcChar8 *)"Loading livedesk\xE2\x80\xA6", 18);
+                XftDrawStringUtf8(xft, &xfg, fbig, 14, 20, (const FcChar8 *)"Loading LyfeDesk\xE2\x80\xA6", 18);
                 { const char *st = "Compiling\xE2\x80\xA6"; XGlyphInfo gi; XftTextExtentsUtf8(dpy, fsm, (const FcChar8 *)st, (int)strlen(st), &gi);
                   XftDrawStringUtf8(xft, &xdimc, fsm, ww - 14 - gi.xOff, 19, (const FcChar8 *)st, (int)strlen(st)); }
                 { int bx = 14, by = 28, bw = ww - 28, bh = 8;
@@ -307,7 +307,7 @@ int main(int argc, char **argv) {
             }
             XSetForeground(dpy, gc, bg);
             XFillRectangle(dpy, win, gc, 0, 0, ww, wh);
-            XftDrawStringUtf8(xft, &xfg, fbig, 14, 20, (const FcChar8 *)"Loading livedesk\xE2\x80\xA6", 18);
+            XftDrawStringUtf8(xft, &xfg, fbig, 14, 20, (const FcChar8 *)"Loading LyfeDesk\xE2\x80\xA6", 18);
             {   XGlyphInfo gi; XftTextExtentsUtf8(dpy, fsm, (const FcChar8 *)step, (int)strlen(step), &gi);
                 XftDrawStringUtf8(xft, &xdimc, fsm, ww - 14 - gi.xOff, 19, (const FcChar8 *)step, (int)strlen(step)); }
             {   int bx = 14, by = 28, bw = ww - 28, bh = 8;
@@ -436,7 +436,7 @@ int main(int argc, char **argv) {
         XFillRectangle(dpy, win, gc, 0, 0, W, H);
 
         XftDrawStringUtf8(xft, &xfg, fbig, 20, 34,
-                          (const FcChar8 *)"Building livedesk\xE2\x80\xA6", 20);
+                          (const FcChar8 *)"Building LyfeDesk\xE2\x80\xA6", 20);
 
         int bx = 20, by = 58, bw = W - 40, bh = 20;
         XSetForeground(dpy, gc, trough);

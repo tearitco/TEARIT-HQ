@@ -38,7 +38,7 @@ HOUSE="$(cd "$SCRIPT_DIR/.." && pwd)"
 TASKBAR="$HOUSE/_.monads/_.livedesk-taskbar/ops"
 SUDO="${SUDO:-sudo}"
 
-echo "== livedesk taskbar (khtpm) build-dependency install =="
+echo "== LyfeDesk taskbar (khtpm) build-dependency install =="
 echo "house:   $HOUSE"
 echo "taskbar: $TASKBAR"
 
