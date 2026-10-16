@@ -1039,6 +1039,65 @@ static int layout_hidden_anc(NbNode *n) {
  * and replaceable instead of baked in. */
 static double g_viewport_px = NB_CONTENT_PX;
 
+/* The scrollbar gutter (G2.2, 2026-10-15).
+ *
+ * The renderer paints a VISIBLE scrollbar for any scrolllist that OVERFLOWS
+ * its viewport - track + thumb + arrow navs - and reserves GENERIC_SCROLLBAR_W
+ * (8) of the column for it (khtpm_core_render.c:5383). Measured live on the
+ * G2.2 fixture: the renderer publishes content_w=389 and the painted content
+ * rows are 381. So without this the box tree reports every scrolling row 8px
+ * wider than the renderer actually draws it, which is precisely the kind of
+ * confident wrong number G2 exists to remove.
+ *
+ * The deduction is CONDITIONAL: a page that fits has no scrollbar and keeps
+ * the full width. That means the decision needs the viewport HEIGHT, which
+ * LOAD did not carry - it sent width only (field 6). Field 7 now carries
+ * content_h. An absent or unusable height leaves the gutter OFF, because
+ * guessing "it probably scrolls" would be the same class of lie in the
+ * opposite direction.
+ *
+ * There is a genuine cycle here: wrapping (nb_content_h) depends on the
+ * column width, and the column width depends on whether the wrapped height
+ * overflows. It is broken by deciding ONCE per page - measure the document
+ * height at the FULL width, cache the verdict - with g_measuring making that
+ * inner measurement ignore the gutter. Deciding per call would make the
+ * answer depend on which element happened to be measured first. */
+#define NB_SCROLLBAR_W 8
+static double g_viewport_h = 0.0;
+static int    g_gutter_state = -1;   /* -1 undecided this page, 0 none, 1 present */
+static int    g_measuring = 0;
+
+static double nb_content_h(NbNode *n);
+
+/* Total height of the document `from` belongs to. Walks to the topmost
+ * ancestor, then sums its children - the same shape nb_content_h uses, so the
+ * measurement is the one the box tree would report anyway. */
+static double nb_doc_root_h(NbNode *from) {
+    if (!from) return 0.0;
+    NbNode *top = from;
+    while (top->parent) top = top->parent;
+    double sum = 0.0;
+    for (NbNode *c = top->first_child; c; c = c->next_sibling) sum += nb_content_h(c);
+    return sum;
+}
+
+/* The usable content column: the pane width, minus the scrollbar when the
+ * document actually overflows it. */
+static double g_col_px(NbNode *from) {
+    if (g_measuring) return g_viewport_px;
+    if (g_gutter_state < 0) {
+        if (g_viewport_h <= 0.0 || !from) {
+            g_gutter_state = 0;              /* no measurement -> no guess */
+        } else {
+            g_measuring = 1;
+            double doc_h = nb_doc_root_h(from);
+            g_measuring = 0;
+            g_gutter_state = (doc_h > g_viewport_h) ? 1 : 0;
+        }
+    }
+    return g_gutter_state ? (g_viewport_px - NB_SCROLLBAR_W) : g_viewport_px;
+}
+
 /* WIDTH of an element's border box - the half of the box tree that was
  * missing (G2.1, slice 1, 2026-10-14).
  *
@@ -1084,14 +1143,14 @@ static double nb_box_w(NbNode *n) {
         double text_w = (n->text && n->text[0])
                         ? (double)strlen(n->text) * (double)NB_CHAR_PX : 0.0;
         double avail = nb_box_w(n->parent);
-        if (avail <= 0) avail = g_viewport_px;
+        if (avail <= 0) avail = g_col_px(n);
         return text_w < avail ? text_w : avail;
     }
     if (n->parent) {
         double avail = nb_box_w(n->parent);
         if (avail > 0) return avail;
     }
-    return g_viewport_px;          /* the document's content column */
+    return g_col_px(n);            /* the document's usable content column */
 }
 
 /* Height of an element's content box. A declared CSS height wins (that is what
@@ -1108,9 +1167,11 @@ static double nb_content_h(NbNode *n) {
     if (sum > 0) return sum;
     if (!n->text || !n->text[0]) return 0;
     int len = (int)strlen(n->text);
-    /* wrap width follows the viewport, or the text wraps at a column the
-     * pane does not have and every line count downstream is wrong */
-    double col = g_viewport_px > 0 ? g_viewport_px : (double)NB_CONTENT_PX;
+    /* wrap width follows the USABLE column (pane minus the scrollbar gutter
+     * when it scrolls), or the text wraps at a column the pane does not have
+     * and every line count downstream is wrong. */
+    double col = g_col_px(n);
+    if (col <= 0) col = (double)NB_CONTENT_PX;
     int per_line = (int)(col / NB_CHAR_PX);
     if (per_line < 1) per_line = 1;
     int lines = (len + per_line - 1) / per_line;
@@ -9096,6 +9157,14 @@ int main(int argc, char **argv) {
              * Absent or unusable (<= 0) leaves the current value alone
              * rather than resetting to the default mid-session. */
             if (f[6] && atof(f[6]) > 0) g_viewport_px = atof(f[6]);
+            /* Field 7: the pane's content height. Width alone cannot say
+             * whether the column scrolls, and a scrolling column is 8px
+             * narrower once the scrollbar is drawn - see g_col_px(). */
+            g_viewport_h = (f[7] && atof(f[7]) > 0) ? atof(f[7]) : 0.0;
+            /* New page, so the gutter is an open question again. Leaving the
+             * previous page's verdict in place would carry a scrollbar
+             * decision across a navigation onto a page that may not scroll. */
+            g_gutter_state = -1;
             free(g_last_push); g_last_push = NULL;   /* rows are per-page */
             run_page();
         } else if (strcmp(cmd, "TICK") == 0) {

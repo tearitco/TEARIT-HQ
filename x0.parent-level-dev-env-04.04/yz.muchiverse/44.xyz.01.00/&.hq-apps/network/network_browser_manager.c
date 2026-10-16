@@ -1557,19 +1557,32 @@ static char g_js_style_path[PATH_BUF];
  * NOT "zero": the worker then keeps its documented default rather than
  * being told a pane has no width. */
 static char g_pane_geom_path[PATH_BUF];
-static double read_pane_width(void) {
-    if (!g_pane_geom_path[0]) return 0.0;
+/* Read one numeric field out of the renderer's published pane box. `key` is
+ * the full "content_w=" style prefix. Absent or unparsable means "no
+ * measurement", NOT "zero" - see the note above. */
+static double read_pane_metric(const char *key) {
+    if (!g_pane_geom_path[0] || !key) return 0.0;
     FILE *f = fopen(g_pane_geom_path, "rb");
     if (!f) return 0.0;
     char line[256];
-    double w = 0.0;
+    double v = 0.0;
+    size_t klen = strlen(key);
     while (fgets(line, sizeof(line), f)) {
-        const char *k = strstr(line, "content_w=");
-        if (k) { w = atof(k + 10); break; }
+        const char *k = strstr(line, key);
+        /* Require the key at a field start, so content_h= can never be matched
+         * by content_w='s own line and vice versa. */
+        if (k && (k == line || k[-1] == '\n')) { v = atof(k + klen); break; }
     }
     fclose(f);
-    return w > 0 ? w : 0.0;
-}   /* rung 7: concatenated page CSS */
+    return v > 0 ? v : 0.0;
+}
+static double read_pane_width(void)  { return read_pane_metric("content_w="); }
+/* The content HEIGHT, which is what tells the worker whether the column
+ * scrolls at all - and a scrollable column is 8px narrower once the renderer
+ * reserves GENERIC_SCROLLBAR_W for the track+thumb+arrows. See the G2.2 note
+ * on nb_js_worker.c's g_col_px(). */
+static double read_pane_height(void) { return read_pane_metric("content_h="); }
+   /* rung 7: concatenated page CSS */
 static char g_media_op_path[PATH_BUF];
 static char g_media_root[PATH_BUF];
 static char g_video_player_path[PATH_BUF];
@@ -2646,10 +2659,15 @@ static int worker_load(const char *js_path, const char *dom_path,
      * its default - a wrong-but-supplied width is worse than an obviously
      * default one. */
     double pane_w = read_pane_width();
-    int n = snprintf(payload, sizeof(payload), "LOAD\n%s\n%s\n%s\n%s\n%s\n%d",
+    /* Field 7: the pane's content HEIGHT. Width alone cannot decide whether the
+     * column scrolls, and only a scrolling column loses its 8px scrollbar
+     * gutter. 0 = not measured, and the worker then leaves the gutter off. */
+    double pane_h = read_pane_height();
+    int n = snprintf(payload, sizeof(payload), "LOAD\n%s\n%s\n%s\n%s\n%s\n%d\n%d",
                      js_path ? js_path : "", dom_path ? dom_path : "",
                      href ? href : "", title ? title : "",
-                     css_path ? css_path : "", (int)(pane_w > 0 ? pane_w : 0));
+                     css_path ? css_path : "", (int)(pane_w > 0 ? pane_w : 0),
+                     (int)(pane_h > 0 ? pane_h : 0));
     if (!worker_send(payload, (size_t)n)) { worker_close(); return 0; }
 
     g_worker_render[0] = 0;
