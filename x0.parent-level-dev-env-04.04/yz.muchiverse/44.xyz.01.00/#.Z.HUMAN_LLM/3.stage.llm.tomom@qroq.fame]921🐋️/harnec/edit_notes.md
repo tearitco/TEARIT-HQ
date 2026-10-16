@@ -108,12 +108,16 @@ All converge below uniform baseline ln(N):
 | recess | 108 | 4.682 | - | training... |
 
 ### Answer to "easier to train low grades than high?":
-**Yes.** Lower grades train to lower loss because:
-- Smaller vocabularies (67-102 words vs 130-170 words for College)
-- Simpler word correlation patterns (fewer concepts to learn)
-- Higher ln(N) gap means more "room" to beat baseline
+**No — higher grades are actually easier to train.**
+- Higher-grade subjects show LARGER loss improvements
+- College avg improvement: -0.78 (vs Elementary -0.55)
+- Social/Collaborative avg improvement: -0.76
+- Elementary (Grades 1-8): avg loss 3.857, avg improvement -0.554 (vocab 67-102 words)
+- High School: avg loss 3.918, avg improvement -0.713 (vocab 76-133 words)
+- College: avg loss 4.189, avg improvement -0.782 (vocab 127-171 words)
+- Social/Collaborative: avg loss 3.876, avg improvement -0.755 (vocab 80-118 words)
 
-College subjects show lowest loss (4.091 for quantum_physics with 171 vocab words = -1.051 improvement) because the large vocabulary gives the model more parameters to tune and more patterns to exploit in the loss computation.
+Larger vocabularies give more parameters in the output layer, providing more tuning opportunities. Lower grades train to lower absolute loss values but with smaller margins.
 
 ### Generation Quality with Top-K Sampling
 - Output diversity increased (different words each run with temperature > 0)
