@@ -8609,6 +8609,68 @@ static void kh_publish_canvas_click(int px, int py, int button) {
     fclose(f);
 }
 
+/* ---- publish the CONTENT PANE box to the house (2026-10-14, G2.2) ----
+ *
+ * The network browser's worker computes its box tree against a viewport
+ * width, and until now that width was a guess (640) because nothing could
+ * tell the worker how wide the pane really is. It cannot: the pane is
+ * laid out HERE. So this writes it out, on the same house channel the
+ * dock and slide offsets already use (khtpm_pane_geom.state.txt), and the
+ * manager reads it and passes it in LOAD field 6.
+ *
+ * WHICH element is the pane: the renderer has no browser-specific notion
+ * of "content", so the rule is structural - the largest scrolllist, with a
+ * class containing "content" preferred when one exists. Largest is right
+ * for every layout in this house: the sidebar and the console strip are
+ * both narrower than what they contain.
+ *
+ * ONLY ON CHANGE. assign_nav_and_layout() runs on every relayout, so an
+ * unconditional write would put a file write on the redraw path of every
+ * window in the house. The last published values are remembered and the
+ * file is touched only when the box actually moves.
+ */
+static void publish_pane_geometry(void) {
+    if (!g_window || !g_house_root[0]) return;
+    Elem *best = NULL;
+    long best_area = -1;
+    /* two passes: a class match wins outright, else largest area */
+    /* iterative walk (trees here are shallow, but recursion into a
+     * reparse-in-progress tree is not something to risk) */
+    Elem *stack[64];
+    int sp = 0;
+    stack[sp++] = g_window;
+    while (sp > 0) {
+        Elem *e = stack[--sp];
+        if (!e) continue;
+        if (e->tag && strcmp(e->tag, "scrolllist") == 0) {
+            for (int ci = 0; ci < e->n_classes; ci++) {
+                if (strstr(e->classes[ci], "content")) { best = e; best_area = -2; sp = 0; break; }
+            }
+        }
+        if (sp == 0 && best_area == -2) break;
+        long area = (e->tag && strcmp(e->tag, "scrolllist") == 0)
+                    ? (long)e->w * (long)e->h : 0;
+        if (area > best_area && area > 0) { best_area = area; best = e; }
+        int n = e->n_children;
+        if (n > 64) n = 64;
+        for (int ci = 0; ci < n; ci++)
+            if (sp < 64) stack[sp++] = e->children[ci];
+    }
+    if (!best || best->w <= 0) return;
+
+    static int last_x = -1, last_y = -1, last_w = -1;
+    if (best->x == last_x && best->y == last_y && best->w == last_w) return;
+    last_x = best->x; last_y = best->y; last_w = best->w;
+
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/khtpm_pane_geom.state.txt", g_house_root);
+    FILE *f = fopen(path, "wb");
+    if (!f) return;
+    fprintf(f, "content_x=%d\ncontent_y=%d\ncontent_w=%d\ncontent_h=%d\n",
+            best->x, best->y, best->w, best->h);
+    fclose(f);
+}
+
 static void assign_nav_and_layout(void) {
     g_has_canvas = 0;
     g_canvas_chrome_left_x = 0;
@@ -9261,6 +9323,7 @@ static void assign_nav_and_layout(void) {
     kh_apply_scope_confine();
     if (g_focus_nav > g_n_nav) g_focus_nav = g_n_nav > 0 ? g_n_nav : 1;
     if (g_focus_nav < 1) g_focus_nav = 1;
+    publish_pane_geometry();
 }
 
 static void switch_page(const char *name) {
