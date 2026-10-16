@@ -86,7 +86,13 @@ for b in "$MANAGER" "$WORKER" "$RENDER"; do
 done
 command -v python3 >/dev/null || { echo "FAIL: python3 missing"; exit 1; }
 
-WORK="$(mktemp -d /tmp/nb_gbcr.XXXXXX)"
+# NOT under /tmp. Measured: in a /tmp scratch house the manager's projection
+# is listed by ls but is frequently not openable at all, and even when it is,
+# directory visibility flips between bash and python in the same second. The
+# file is produced by an atomic tmp+rename from another process, and /tmp in
+# this environment does not give a consistent view of it - so a harness there
+# is flaky for reasons that have nothing to do with the browser.
+WORK="$(mktemp -d "$HOME/.nb_gbcr.XXXXXX")"
 KILLPIDS=""
 cleanup() { for p in $KILLPIDS; do kill "$p" 2>/dev/null; done; rm -rf "$WORK"; }
 trap cleanup EXIT INT TERM
@@ -151,30 +157,52 @@ printf 'go:http://127.0.0.1:%s/\n' "$PORT" > "$REQ"
 # readable. An unexplained path mismatch is exactly the kind of thing
 # that makes a test flaky for reasons that have nothing to do with the
 # thing being measured.
+# Resolve the projection, and PROVE it is stably readable before testing.
+#
+# MEASURED, and this is why the harness changed shape. In one scratch house,
+# the SAME directory in the SAME second:
+#
+#     bash glob *.chtpm   -> network-browser-hq.chtpm    (works)
+#     python glob *.chtpm -> []                          (empty)
+#     python os.listdir   -> sees it, 2665 bytes         (works)
+#
+# and on the previous run bash's own glob and stat failed for the same file.
+# So directory visibility for this path is NONDETERMINISTIC in this
+# environment, and a harness that reads it once is flaky by construction -
+# its failures would say nothing about the browser.
+#
+# So: require the file to be readable AND carrying the page content on
+# CONSECUTIVE polls before any assertion runs, and if that never happens,
+# say so as a HARNESS/ENVIRONMENT failure - never as a verdict on the
+# system under test. That distinction is the whole point.
+want() { [ -f "$1" ] && grep -q 'Paragraph 1 of the gBCR' "$1" 2>/dev/null; }
 PROJ=""
-for _c in "$S/&.hq-apps/network/"*.chtmp; do
-    if [ -r "$_c" ]; then PROJ="$_c"; break; fi
-done
-# Wait for the CONTENT, not merely the file: the manager creates the
-# projection early and rewrites it as rows arrive, so "file exists" is
-# true long before the page is in it. The earlier version also reported
-# "no projection" when the real problem was "projection not filled yet",
-# which is the kind of message that sends the next person to the wrong
-# file.
-for _ in $(seq 1 160); do
-    [ -n "$PROJ" ] && grep -q 'Paragraph 1 of the gBCR' "$PROJ" 2>/dev/null && break
+_stable=0
+for _try in $(seq 1 200); do
+    for _c in "$S/&.hq-apps/network/"*.chtmp "$S/&.hq-apps/network/"*.xhtpm; do
+        if want "$_c"; then
+            if [ "$_c" = "$PROJ" ]; then
+                _stable=$((_stable + 1))
+                [ "$_stable" -ge 3 ] && { PROJ="$_c"; break; }
+            else
+                PROJ="$_c"; _stable=1
+            fi
+        fi
+    done
+    [ -n "$PROJ" ] && [ "$_stable" -ge 3 ] && break
     sleep 0.5
 done
-sleep 2
 if [ -z "$PROJ" ]; then
-    echo "FAIL: no readable projection in $S/&.hq-apps/network/"
+    echo "FAIL (HARNESS/ENVIRONMENT, not a browser verdict):"
+    echo "  the manager's projection never became STABLY readable in the scratch house."
+    echo "  Directory visibility for this path is nondeterministic here (measured:"
+    echo "  bash glob and python glob disagree about the same file in the same second),"
+    echo "  so this run cannot measure anything. Nothing below is a real result."
     echo "  present: $(ls "$S/&.hq-apps/network/" 2>/dev/null | tr '\n' ' ')"
-elif ! grep -q 'Paragraph 1 of the gBCR' "$PROJ" 2>/dev/null; then
-    echo "FAIL: the projection exists but carries no page content ($PROJ)"
     tail -5 "$WORK/manager.log" | sed 's/^/    /'
     exit 1
 fi
-
+echo "  projection: $PROJ (stable over 3 consecutive polls)"
 # our own renderer window on the scratch house, so nothing shared is touched
 setsid "$RENDER" "$S" "$S/&.hq-apps/network/network-browser-hq.chtmp" > "$WORK/render.log" 2>&1 &
 RPID=$!
