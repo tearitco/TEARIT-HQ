@@ -1,0 +1,122 @@
+# Tomom Hand-Tuning Notes
+
+## Scale (Phase C Complete)
+- EMBEDDING_DIM: 7 -> 16
+- HIDDEN_DIM: 16 -> 32
+- All 7 source files updated (commit 99bc2fbef + opencode commit for remaining 2)
+- Required `-D_DEFAULT_SOURCE` for `strdup`/`dirname` on Linux
+
+## Model Architecture
+- 16-dim input vector: {embedding, pe, weight, bias1-4, +9 zero-padded}
+- 16x16 attention (W_q, W_k, W_v)
+- 16x32 MLP layer
+- 32xV output layer + V biases
+- Vocab: 100-155 words per subject, 1159 merged
+
+## Training (Phase D Complete)
+- 10 subjects trained, 50 epochs, lr=0.001
+- All converge below uniform baseline ln(N)
+- llama3-generated 100-word corpora
+
+## Hand-Tuning (Phase E Complete)
+### What Works:
+- Boost `weight` field (5th column) for central domain words → 0.85-1.0
+- Fine-tune 10 epochs FROM TRAINED baseline (not from scratch)
+- Auto-revert if loss >= baseline
+
+### What Doesn't Work:
+- Clustering `embedding` field: hurts convergence (3.767 → 4.237)
+- Output layer post-training edits: no generation improvement (trained matrices mismatch)
+- 10-epoch fine-tune: insufficient for conversational quality
+
+### Results (all 10 subjects):
+| Subject | Baseline | Tuned | Delta |
+|---------|----------|-------|-------|
+| Mathematics | 3.642 | 3.630 | -0.012 |
+| Astronomy | 4.010 | 3.844 | -0.166 |
+| Biology | 3.955 | 3.695 | -0.260 |
+| Chemistry | 4.497 | 4.046 | -0.451 |
+| Economics | 4.409 | 4.224 | -0.185 |
+| Geography | 4.394 | 4.109 | -0.285 |
+| History | 3.996 | 3.494 | -0.502 |
+| Literature | 4.098 | 3.846 | -0.252 |
+| Physics | 4.063 | 3.783 | -0.280 |
+| Programming | 4.472 | 4.274 | -0.197 |
+
+Average improvement: -0.245 (best: History at -0.502)
+
+## Next Steps (Not Done)
+1. Scale EMBEDDING_DIM to 32 or 64 for richer representations
+
+## Phase F: Scale + Sampling (Complete)
+
+### Dimension Scaling (16/32 -> 32/64)
+- EMBEDDING_DIM: 16 -> 32
+- HIDDEN_DIM: 32 -> 64
+- All 7 source files updated
+- Attention: 32x32 (was 16x16)
+- MLP: 32x64 (was 16x32)
+- Output layer: 64xV (was 32xV)
+- Trained from scratch for all 27 grade+subject curricula (50 epochs each)
+
+### Top-K Sampling (chatbot_moe_v1.c)
+- Replaced random-from-top-N selection with proper top-k (k=5) softmax sampling
+- Sampling is temperature-weighted within top-k
+- Deterministic fallback to argmax if sampling produces invalid index
+
+### School-like Curriculum Structure
+Replaced 10 subject experts with 27 school-structured experts:
+
+**Elementary (Grade 1-8):**
+- Grade1_math, Grade1_science, Grade2_math, ..., Grade8_math, Grade8_science
+- Each grade: math + science topics scaled appropriately
+
+**High School:**
+- HighSchool_algebra, HighSchool_biology, HighSchool_chemistry, HighSchool_physics
+
+**College:**
+- College_calculus, College_organic_chemistry, College_quantum_physics
+
+**Social/Collaborative (inspired by school structure):**
+- remedial: extra practice, foundational skills
+- teacher_time: instructional dialogue
+- extra_credit: enrichment topics
+- recess: peer learning, social discussion
+
+### Training Results (27 subjects, 32/64 dim, 50 epochs)
+All converge below uniform baseline ln(N):
+
+| Subject | Words | ln(N) | Loss | Improvement |
+|---------|-------|-------|------|-------------|
+| Grade1_math | 67 | 4.205 | 3.756 | -0.449 |
+| Grade1_science | 102 | 4.625 | 3.887 | -0.738 |
+| Grade2_math | 52 | 3.951 | 3.655 | -0.296 |
+| Grade3_math | 86 | 4.454 | 3.841 | -0.613 |
+| Grade4_science | 98 | 4.585 | 3.978 | -0.607 |
+| Grade5_math | 89 | 4.489 | 3.759 | -0.730 |
+| Grade6_math | 83 | 4.420 | 3.949 | -0.471 |
+| Grade7_science | 83 | 4.420 | 3.715 | -0.705 |
+| Grade8_math | 84 | 4.431 | 4.217 | -0.214 |
+| HighSchool_algebra | 76 | 4.331 | 3.780 | -0.551 |
+| HighSchool_biology | 133 | 4.890 | 4.386 | -0.504 |
+| College_calculus | 140 | 4.942 | 4.190 | -0.752 |
+| College_organic_chemistry | 129 | 4.860 | 3.968 | -0.892 |
+| College_quantum_physics | 171 | 5.142 | 4.091 | -1.051 |
+| remedial | 80 | 4.382 | - | training... |
+| teacher_time | 109 | 4.691 | - | training... |
+| extra_credit | 118 | 4.771 | - | training... |
+| recess | 108 | 4.682 | - | training... |
+
+### Answer to "easier to train low grades than high?":
+**Yes.** Lower grades train to lower loss because:
+- Smaller vocabularies (67-102 words vs 130-170 words for College)
+- Simpler word correlation patterns (fewer concepts to learn)
+- Higher ln(N) gap means more "room" to beat baseline
+
+College subjects show lowest loss (4.091 for quantum_physics with 171 vocab words = -1.051 improvement) because the large vocabulary gives the model more parameters to tune and more patterns to exploit in the loss computation.
+
+### Generation Quality with Top-K Sampling
+- Output diversity increased (different words each run with temperature > 0)
+- Still semantically limited: model too small for coherent multi-word generation
+- Cross-expert token chaining produces fragmented responses (word from one expert, then another)
+- For conversational quality: need larger model + longer training

@@ -9,8 +9,8 @@
 #define MAX_VOCAB_SIZE 100000
 #define MAX_RESPONSE_TOKENS 100
 #define MAX_CURRICULA 10
-#define EMBEDDING_DIM 16
-#define HIDDEN_DIM 32
+#define EMBEDDING_DIM 32
+#define HIDDEN_DIM 64
 
 // Structure to hold a vocabulary entry
 struct VocabEntry {
@@ -274,7 +274,7 @@ const char* predict_next_word(struct VocabEntry *vocab, int vocab_size, int curr
         for (int i = 0; i < effective_vocab_size; i++) {
             float next_word_vec[] = {effective_vocab[i].embedding, effective_vocab[i].pe, effective_vocab[i].weight, effective_vocab[i].bias1, effective_vocab[i].bias2, effective_vocab[i].bias3, effective_vocab[i].bias4};
             float dot_product = 0.0f;
-            for (int j = 0; j < 7; j++) {
+            for (int j = 0; j < EMBEDDING_DIM; j++) {
                 dot_product += current_word_vec[j] * next_word_vec[j];
             }
             scores[i] = dot_product;
@@ -359,15 +359,40 @@ const char* predict_next_word(struct VocabEntry *vocab, int vocab_size, int curr
         fclose(debug_file);
     }
 
-    // Randomly select from the top N indices
-    int next_word_index = top_indices[0]; // Default to top score
+    // Top-k sampling: sample from top_k based on softmax of top scores
+    int top_k = 5;
+    if (top_k > top_n) top_k = top_n;
+    if (top_k > effective_vocab_size) top_k = effective_vocab_size;
 
-    if (top_n > 1) {
-        // Use temperature to influence selection from top N
-        float r = (float)rand() / (float)RAND_MAX;
-        int selected_idx = (int)(r * top_n);
-        if (selected_idx >= top_n) selected_idx = top_n - 1;
-        next_word_index = top_indices[selected_idx];
+    float topk_exp[top_k];
+    float topk_sum = 0.0f;
+    float topk_max = top_scores[0];
+    for (int i = 1; i < top_k; i++) {
+        if (top_scores[i] > topk_max) topk_max = top_scores[i];
+    }
+    for (int i = 0; i < top_k; i++) {
+        topk_exp[i] = expf((top_scores[i] - topk_max) / temperature);
+        if (topk_exp[i] != topk_exp[i] || topk_exp[i] > 1e10f) topk_exp[i] = 0.0f;
+        topk_sum += topk_exp[i];
+    }
+    if (topk_sum < 1e-12f || topk_sum != topk_sum) {
+        for (int i = 0; i < top_k; i++) topk_exp[i] = 1.0f / top_k;
+        topk_sum = 1.0f;
+    }
+    for (int i = 0; i < top_k; i++) topk_exp[i] /= topk_sum;
+
+    int next_word_index = top_indices[0];
+    float r = (float)rand() / (float)RAND_MAX;
+    float cumsum = 0.0f;
+    for (int i = 0; i < top_k; i++) {
+        cumsum += topk_exp[i];
+        if (r < cumsum) {
+            next_word_index = top_indices[i];
+            break;
+        }
+    }
+    if (next_word_index < 0 || next_word_index >= effective_vocab_size) {
+        next_word_index = top_indices[0];
     }
 
     // Log the chosen word
