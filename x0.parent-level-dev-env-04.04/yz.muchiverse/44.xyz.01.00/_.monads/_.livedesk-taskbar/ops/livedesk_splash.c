@@ -237,6 +237,17 @@ int main(int argc, char **argv) {
         double done_at = -1.0;
         int tick = 0;
         int compile_seen = 0, compiling = 0, failed_boot = 0, marker_seen_any = 0;
+        /* Back buffer: every frame is composed off-screen and copied once, so the bar no longer flickers (the old code cleared the
+         * window and redrew it every 60 ms). Progress: the file count and a time estimate (the length of the LAST real compile, learned
+         * in #.desktop/boot_compile_seconds.txt) pick a target; the shown value eases toward it, never goes back, spans the whole bar,
+         * and only reaches 100% once the compile is over - no more 60% cap followed by a jump. */
+        Pixmap buf = XCreatePixmap(dpy, win, (unsigned)ww, (unsigned)wh, (unsigned)DefaultDepth(dpy, scr));
+        XftDraw *xftb = XftDrawCreate(dpy, buf, DefaultVisual(dpy, scr), cmap);
+        Drawable dr = buf;
+        double disp = 0.0, compile_t0 = -1.0, expect = 30.0;
+        char csp[4096];
+        snprintf(csp, sizeof(csp), "%s/#.desktop/boot_compile_seconds.txt", house);
+        { FILE *cf0 = fopen(csp, "r"); double v; if (cf0) { if (fscanf(cf0, "%lf", &v) == 1 && v >= 3.0 && v <= 300.0) expect = v; fclose(cf0); } }
         for (;;) {
             struct timespec bn; clock_gettime(CLOCK_MONOTONIC, &bn);
             double el = (bn.tv_sec - b0.tv_sec) + (bn.tv_nsec - b0.tv_nsec) / 1e9;
@@ -264,10 +275,13 @@ int main(int argc, char **argv) {
                 if (build_failed(xdir)) {
                     marker_seen_any = 1;
                     if (marker_since < 0) marker_since = el;
-                    if (el - marker_since >= 0.8) { compile_seen = 1; compiling = 1; }   /* a real compile; a ~0.6 s no-op build never shows the bar */
+                    if (el - marker_since >= 0.8) { compile_seen = 1; compiling = 1; if (compile_t0 < 0) compile_t0 = marker_since; }   /* a real compile; a ~0.6 s no-op build never shows the bar */
                 } else {
                     marker_since = -1.0;
-                    if (compiling) compiling = 0;
+                    if (compiling) {
+                        compiling = 0;
+                        if (compile_t0 >= 0) { FILE *wf = fopen(csp, "w"); if (wf) { fprintf(wf, "%.1f\n", el - compile_t0); fclose(wf); } }   /* learn this machine's compile time */
+                    }
                 }
             }
             if (compiling) {
@@ -277,24 +291,27 @@ int main(int argc, char **argv) {
                     snprintf(tp, sizeof(tp), "%s/%s", xdir, g_targets[i]);
                     if (stat(tp, &tst) == 0 && (!base_exists[i] || tst.st_mtime > base_mtime[i])) cdone++;
                 }
-                double cf = (double)cdone / (double)N_TARGETS, ct = el / 30.0; if (ct > 0.97) ct = 0.97;
-                double frac = (cf > ct ? cf : ct) * 0.6;                    /* compile = first 60% of the bar */
-                XSetForeground(dpy, gc, bg); XFillRectangle(dpy, win, gc, 0, 0, ww, wh);
-                XftDrawStringUtf8(xft, &xfg, fbig, 14, 20, (const FcChar8 *)"Loading LyfeDesk\xE2\x80\xA6", 18);
+                double cf = (double)cdone / (double)N_TARGETS, ct = (el - compile_t0) / expect * 0.9; if (ct > 0.9) ct = 0.9;
+                double target = cf > ct ? cf : ct; if (target > 0.95) target = 0.95;   /* 100% is only shown when the compile is really over */
+                if (target > disp) disp += (target - disp) * 0.2;           /* eased, monotonic: no jumps, no going back */
+                double frac = disp;
+                XSetForeground(dpy, gc, bg); XFillRectangle(dpy, dr, gc, 0, 0, ww, wh);
+                XftDrawStringUtf8(xftb, &xfg, fbig, 14, 20, (const FcChar8 *)"Loading LyfeDesk\xE2\x80\xA6", 18);
                 { const char *st = "Compiling\xE2\x80\xA6"; XGlyphInfo gi; XftTextExtentsUtf8(dpy, fsm, (const FcChar8 *)st, (int)strlen(st), &gi);
-                  XftDrawStringUtf8(xft, &xdimc, fsm, ww - 14 - gi.xOff, 19, (const FcChar8 *)st, (int)strlen(st)); }
+                  XftDrawStringUtf8(xftb, &xdimc, fsm, ww - 14 - gi.xOff, 19, (const FcChar8 *)st, (int)strlen(st)); }
                 { int bx = 14, by = 28, bw = ww - 28, bh = 8;
-                  XSetForeground(dpy, gc, trough); XFillRectangle(dpy, win, gc, bx, by, bw, bh);
-                  XSetForeground(dpy, gc, barfill); XFillRectangle(dpy, win, gc, bx, by, (int)(bw * frac + 0.5), bh);
+                  XSetForeground(dpy, gc, trough); XFillRectangle(dpy, dr, gc, bx, by, bw, bh);
+                  XSetForeground(dpy, gc, barfill); XFillRectangle(dpy, dr, gc, bx, by, (int)(bw * frac + 0.5), bh);
                   { int fw = (int)(bw * frac + 0.5), sx = fw > 0 ? (tick * 9) % (fw + 46) - 46 : 0, x0 = sx < 0 ? 0 : sx, x1 = sx + 46 > fw ? fw : sx + 46;
-                    if (x1 > x0) { XSetForeground(dpy, gc, shade_pix(dpy, cmap, fg_hex, 60, fg)); XFillRectangle(dpy, win, gc, bx + x0, by, x1 - x0, bh); } }
-                  XSetForeground(dpy, gc, dim); XDrawRectangle(dpy, win, gc, bx, by, bw, bh); }
-                XFlush(dpy); tick++; usleep(60000);
+                    if (x1 > x0) { XSetForeground(dpy, gc, shade_pix(dpy, cmap, fg_hex, 60, fg)); XFillRectangle(dpy, dr, gc, bx + x0, by, x1 - x0, bh); } }
+                  XSetForeground(dpy, gc, dim); XDrawRectangle(dpy, dr, gc, bx, by, bw, bh); }
+                XCopyArea(dpy, buf, win, gc, 0, 0, (unsigned)ww, (unsigned)wh, 0, 0); XFlush(dpy); tick++; usleep(60000);
                 continue;
             }
             /* The strip exists for the COMPILE only (owner 2026-10-06: "forget about entities ... stop strip when compile is done, entities is
              * lighting fast now"). Compile over -> a short "Ready" beat -> close. No compile (a ~0.6 s no-op build, or no build at all) -> close at once. */
             double frac = 1.0;
+            if (compile_seen) { disp += (1.0 - disp) * 0.5; if (disp > 0.995) disp = 1.0; frac = disp; }   /* the last stretch eases in instead of snapping */
             const char *step = "Ready";
             if (compile_seen) {
                 if (done_at < 0) done_at = el;
@@ -306,26 +323,26 @@ int main(int argc, char **argv) {
                 frac = 0.0; step = "Starting\xE2\x80\xA6";    /* build about to start / marker stood < 0.8 s */
             }
             XSetForeground(dpy, gc, bg);
-            XFillRectangle(dpy, win, gc, 0, 0, ww, wh);
-            XftDrawStringUtf8(xft, &xfg, fbig, 14, 20, (const FcChar8 *)"Loading LyfeDesk\xE2\x80\xA6", 18);
+            XFillRectangle(dpy, dr, gc, 0, 0, ww, wh);
+            XftDrawStringUtf8(xftb, &xfg, fbig, 14, 20, (const FcChar8 *)"Loading LyfeDesk\xE2\x80\xA6", 18);
             {   XGlyphInfo gi; XftTextExtentsUtf8(dpy, fsm, (const FcChar8 *)step, (int)strlen(step), &gi);
-                XftDrawStringUtf8(xft, &xdimc, fsm, ww - 14 - gi.xOff, 19, (const FcChar8 *)step, (int)strlen(step)); }
+                XftDrawStringUtf8(xftb, &xdimc, fsm, ww - 14 - gi.xOff, 19, (const FcChar8 *)step, (int)strlen(step)); }
             {   int bx = 14, by = 28, bw = ww - 28, bh = 8;
                 XSetForeground(dpy, gc, trough);
-                XFillRectangle(dpy, win, gc, bx, by, bw, bh);
+                XFillRectangle(dpy, dr, gc, bx, by, bw, bh);
                 XSetForeground(dpy, gc, barfill);
-                XFillRectangle(dpy, win, gc, bx, by, (int)(bw * frac + 0.5), bh);
+                XFillRectangle(dpy, dr, gc, bx, by, (int)(bw * frac + 0.5), bh);
                 if (done_at < 0) {   /* a bright sweep over the filled part: it is visibly alive even while the fraction holds */
                     int sweep_w = 46, span = (int)(bw * frac + 0.5) + sweep_w;
                     int sx = span > 0 ? (tick * 9) % span - sweep_w : 0;
                     int x0 = sx < 0 ? 0 : sx, x1 = sx + sweep_w > (int)(bw * frac + 0.5) ? (int)(bw * frac + 0.5) : sx + sweep_w;
-                    if (x1 > x0) { XSetForeground(dpy, gc, shade_pix(dpy, cmap, fg_hex, 60, fg)); XFillRectangle(dpy, win, gc, bx + x0, by, x1 - x0, bh); }
+                    if (x1 > x0) { XSetForeground(dpy, gc, shade_pix(dpy, cmap, fg_hex, 60, fg)); XFillRectangle(dpy, dr, gc, bx + x0, by, x1 - x0, bh); }
                 }
                 XSetForeground(dpy, gc, dim);
-                XDrawRectangle(dpy, win, gc, bx, by, bw, bh);
+                XDrawRectangle(dpy, dr, gc, bx, by, bw, bh);
             }
-            XFlush(dpy);
-            if (done_at >= 0 && el - done_at > 0.35) break;                // let "Ready" show a beat
+            XCopyArea(dpy, buf, win, gc, 0, 0, (unsigned)ww, (unsigned)wh, 0, 0); XFlush(dpy);
+            if (done_at >= 0 && el - done_at > 0.35 && disp >= 1.0) break;                // let "Ready" show a beat
             tick++;
             usleep(60000);
         }
@@ -346,6 +363,7 @@ int main(int argc, char **argv) {
         }
         {   char pp[4096]; snprintf(pp, sizeof(pp), "%s/#.desktop/livedesk_boot_splash.pid", house); unlink(pp); }
         {   char fp[4096]; snprintf(fp, sizeof(fp), "%s/#.desktop/boot_build_failed.txt", house); unlink(fp); }
+        XftDrawDestroy(xftb); XFreePixmap(dpy, buf);
         XftColorFree(dpy, DefaultVisual(dpy, scr), cmap, &xfg);
         XftColorFree(dpy, DefaultVisual(dpy, scr), cmap, &xdimc);
         XDestroyWindow(dpy, win);
