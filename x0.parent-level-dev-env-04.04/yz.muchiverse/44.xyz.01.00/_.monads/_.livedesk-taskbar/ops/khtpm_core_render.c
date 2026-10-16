@@ -7430,6 +7430,56 @@ static void dock_release_keyboard_if_left(void) {
     }
 }
 
+/* TOP BAR DRAG (2026-10-15, owner: "make the top bar a bit draggable using the place where the '.' is, near the top half of the screen only,
+ * but snap back to the original position if relatively close"). The '.' is the title-bar focus marker in the header's left margin (the strip
+ * of width DOCK_FOCUS_BOX_W before the first cell); pressing button 1 there and moving drags the header window. The offset from home
+ * (strip_x_offset / strip_y_offset in livedesk_taskbar.pdl, which this never edits) is g_hdr_dx/g_hdr_dy; layout_dock_bar() applies it every layout
+ * so a redraw cannot snap the bar back. The window is kept on screen and its bottom edge stays in the top half of the screen. On release,
+ * if the bar is within header_snap_px (pdl, default 90) of home it snaps back and the saved position is deleted; otherwise the offset is saved to
+ * #.desktop/strip_header_pos.txt and restored at the next start. Header only (the bottom bar and every other window are untouched). */
+static int g_hdr_dx = 0, g_hdr_dy = 0, g_hdr_pos_loaded = 0;
+static int g_hdr_dragging = 0, g_hdr_drag_xr = 0, g_hdr_drag_yr = 0, g_hdr_drag_dx0 = 0, g_hdr_drag_dy0 = 0, g_hdr_home_x = 0, g_hdr_home_y = 0;
+static int g_hdr_snap_px = 90;
+
+static void hdr_pos_path(char *out, size_t n) { snprintf(out, n, "%s/#.desktop/strip_header_pos.txt", g_house_root); }
+static void hdr_pos_load_once(void) {
+    char path[PATH_BUF]; FILE *f; char line[128];
+    if (g_hdr_pos_loaded) return;
+    g_hdr_pos_loaded = 1;
+    hdr_pos_path(path, sizeof(path));
+    if (!(f = fopen(path, "r"))) return;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "dx=", 3) == 0) g_hdr_dx = atoi(line + 3);
+        else if (strncmp(line, "dy=", 3) == 0) g_hdr_dy = atoi(line + 3);
+    }
+    fclose(f);
+}
+static void hdr_pos_save(void) {
+    char path[PATH_BUF]; FILE *f;
+    hdr_pos_path(path, sizeof(path));
+    if (g_hdr_dx == 0 && g_hdr_dy == 0) { unlink(path); return; }
+    if ((f = fopen(path, "w"))) { fprintf(f, "dx=%d\ndy=%d\n", g_hdr_dx, g_hdr_dy); fclose(f); }
+}
+/* keep the header on screen and its bottom edge in the top half of the screen */
+static void hdr_clamp(int *x, int *y, int w, int h) {
+    int sw = kh_screen_w(), sh = kh_screen_h();
+    if (*x > sw - w) *x = sw - w;
+    if (*x < 0) *x = 0;
+    if (*y > sh / 2 - h) *y = sh / 2 - h;
+    if (*y < 0) *y = 0;
+}
+
+/* end of a header drag (button released, or the release was missed): snap home when close, then save or delete the saved offset */
+static void hdr_drag_finish(void) {
+    g_hdr_dragging = 0;
+    if (g_hdr_dx * g_hdr_dx + g_hdr_dy * g_hdr_dy <= g_hdr_snap_px * g_hdr_snap_px) {
+        g_hdr_dx = 0; g_hdr_dy = 0;
+        g_win_x = g_hdr_home_x; g_win_y = g_hdr_home_y;
+        XMoveWindow(dpy, win, g_win_x, g_win_y);
+    }
+    hdr_pos_save();
+}
+
 static void load_dock_strip_offset(int *out_x, int *out_y) {
     *out_x = 0;
     *out_y = 40;
@@ -7471,6 +7521,7 @@ static void load_dock_strip_offset(int *out_x, int *out_y) {
         else if (strcmp(key, "dock_nav_badge_px") == 0) g_dock_nav_badge_base = atoi(v);
         else if (strcmp(key, "dock_focus_box_px") == 0) g_dock_focus_box_base = atoi(v);
         else if (strcmp(key, "dock_pager_px") == 0) g_dock_pager_base = atoi(v);
+        else if (strcmp(key, "header_snap_px") == 0) { int sp = atoi(v); if (sp >= 0 && sp <= 600) g_hdr_snap_px = sp; }
     }
     fclose(f);
     }
@@ -8105,6 +8156,14 @@ static int layout_dock_bar(Elem *page) {
         if (g_win_x + g_win_w > sw - ox) g_win_w = sw - ox - g_win_x;
         if (g_win_w < 40) g_win_w = 40;
         s_hdr_w_latch = g_win_w;      /* after the screen clamp, so a smaller screen / new offset still wins */
+        /* top bar drag offset (see g_hdr_dx): applied after the width clamp above, which must keep using the home x */
+        hdr_pos_load_once();
+        g_hdr_home_x = ox; g_hdr_home_y = oy;
+        if (g_hdr_dx || g_hdr_dy) {
+            g_win_x = ox + g_hdr_dx; g_win_y = oy + g_hdr_dy;
+            hdr_clamp(&g_win_x, &g_win_y, g_win_w, g_win_h);
+            g_hdr_dx = g_win_x - ox; g_hdr_dy = g_win_y - oy;   /* a smaller screen or a changed home pulls a saved offset back inside */
+        }
         if (g_dock_menu_w > 0) {
             g_dock_menu_sx += g_win_x;
             g_dock_menu_sy += g_win_y;
@@ -15092,6 +15151,15 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
             g_resize_start_h = g_win_h;
             return;
         }
+        /* top bar drag (see g_hdr_dx): button 1 in the header's left margin (the '.' focus marker), header window only, no dropdown open */
+        if (ev->xbutton.button == 1 && !g_hdr_dragging && g_window && elem_has_class(g_window, "dock-header") &&
+            ev->xbutton.window == win && g_dock_menu_w <= 0 && ev->xbutton.x >= 0 && ev->xbutton.x < DOCK_FOCUS_BOX_W) {
+            hdr_pos_load_once();
+            g_hdr_dragging = 1;
+            g_hdr_drag_xr = ev->xbutton.x_root; g_hdr_drag_yr = ev->xbutton.y_root;
+            g_hdr_drag_dx0 = g_hdr_dx; g_hdr_drag_dy0 = g_hdr_dy;
+            return;
+        }
         /* overlay title drag (see g_ov_drag): checked before any element hit-test, after the resize grip */
         if (ev->xbutton.button == 1 && !g_win_resizing && !g_ov_drag) {
             Elem *ovh = kh_ov_title_hit(g_window, ev->xbutton.x, ev->xbutton.y);
@@ -15373,6 +15441,10 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
         }
         return;
     }
+    if (ev->type == ButtonRelease && ev->xbutton.button == 1 && g_hdr_dragging) {
+        hdr_drag_finish();
+        return;
+    }
     if (ev->type == ButtonRelease && ev->xbutton.button == 1) {
         g_canvas_drag = 0;
         g_sbar_drag = -1;
@@ -15406,6 +15478,23 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
         while (XCheckTypedWindowEvent(dpy, ev->xmotion.window, MotionNotify, &msb)) *ev = msb;
         generic_sbar_scroll_from_y(g_sbar_drag, ev->xmotion.y);
         if (!g_quit) { assign_nav_and_layout(); redraw(); }
+        return;
+    }
+    if (ev->type == MotionNotify && g_hdr_dragging) {
+        if (ev->xmotion.state & Button1Mask) {
+            XEvent mh; int nx, ny;
+            while (XCheckTypedWindowEvent(dpy, ev->xmotion.window, MotionNotify, &mh)) *ev = mh;
+            nx = g_hdr_home_x + g_hdr_drag_dx0 + (ev->xmotion.x_root - g_hdr_drag_xr);
+            ny = g_hdr_home_y + g_hdr_drag_dy0 + (ev->xmotion.y_root - g_hdr_drag_yr);
+            hdr_clamp(&nx, &ny, g_win_w, g_win_h);
+            if (nx != g_win_x || ny != g_win_y) {
+                g_win_x = nx; g_win_y = ny;
+                g_hdr_dx = nx - g_hdr_home_x; g_hdr_dy = ny - g_hdr_home_y;
+                XMoveWindow(dpy, win, g_win_x, g_win_y);   /* window only: no relayout per motion tick */
+            }
+            return;
+        }
+        hdr_drag_finish();   /* button no longer held and the release was missed (outside our window): finish exactly like a release */
         return;
     }
     if (ev->type == MotionNotify && g_dock_dd_drag && (ev->xmotion.state & Button1Mask)) {

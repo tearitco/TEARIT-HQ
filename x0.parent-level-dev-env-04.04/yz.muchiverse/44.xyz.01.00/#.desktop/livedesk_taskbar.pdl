@@ -176,6 +176,10 @@ SECTION      | network_menu_8_label  | cancel
 # wired to a user-switcher - DIRECT INSTRUCTION 2026-08-08).
 SECTION      | strip_x_offset         | 200
 SECTION      | strip_y_offset         | 50
+# header_snap_px: the top bar can be dragged by its left margin (where the focus marker "." / "^" is), within the top half of the screen. When it is
+# let go this close (pixels, straight-line distance) to the home position above, it snaps back; further away it stays, and the offset is saved in
+# #.desktop/strip_header_pos.txt (not here: this file keeps the home position). 0 = never snap.
+SECTION      | header_snap_px         | 90
 # Dock cell metrics - REFERENCE (base) pixels, same units the old C literals
 # used. They are multiplied by the screen-relative UI scale at load time
 # (hq_ui.pdl ui_scale / ui_ref_width / ui_ref_height), so on a small monitor
