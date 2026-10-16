@@ -3,24 +3,45 @@
 # WIP 2026-10-15 - THIS SUITE DOES NOT PASS YET. DO NOT WIRE IT INTO
 # nb_all_tests.sh, and do not read its FAILs as a verdict on the browser.
 #
-# It is committed because the DESIGN is settled and worth keeping - the
-# coordinate convention below is the decision G2.2 actually needed - not
-# because it measures anything yet.
+# Committed for the DESIGN and the DIAGNOSIS, not for a result. This is the
+# first harness that compares the worker's box tree against the pixels the
+# renderer actually painted - the comparison G2.2 has been waiting for.
 #
-# WHERE IT IS STUCK: our own renderer window comes up on the scratch
-# house's projection and the renderer cannot parse it:
+# WHAT IS SETTLED (keep this):
 #
-#     khtpm_core_render: failed to parse <scratch>/network-browser-hq.xhtpm
+#   THE CONVENTION. getBoundingClientRect is viewport-relative - a page's
+#   viewport starts at the top-left of the pane it is rendered into, as in
+#   any real browser. The renderer paints in ABSOLUTE window coordinates.
+#   So renderer rows are TRANSLATED into the page's viewport space before
+#   comparing. The alternative (making the worker report absolute) would
+#   leak window chrome into a page's geometry, which is what
+#   viewport-relative exists to prevent. Decided BEFORE any number, so the
+#   convention cannot quietly follow whatever makes the test pass.
 #
-# The manager publishes that projection into $house/&.hq-apps/network/
-# (g_chtpm_output_path), and it is written only after a fetch completes,
-# so this is very likely a TIMING or a STATE problem - the window starts
-# before the projection exists, or starts on a projection the manager has
-# not rewritten since. Diagnosing that properly needs another pass; what
-# is NOT going to happen is shipping this as a green test.
+# WHAT WAS DIAGNOSED (the valuable part):
 #
-# Everything below the banner has been reasoned about, and the convention
-# it encodes is settled - see the header comment on the convention.
+#   The original "failed to parse <proj>.xhtpm" was THIS TEST'S BUG, and
+#   specifically the "ui" mode argument. In ui mode the manager emits the
+#   key=value ui.txt ONLY and never calls write_chtpm_projection(), so no
+#   parseable projection is ever produced and the renderer has nothing to
+#   read. Run WITHOUT that argument it publishes
+#   $house/&.hq-apps/network/network-browser-hq.chtpm - confirmed twice,
+#   3611 bytes, all 12 fixture paragraphs as ids text1..text12.
+#
+#   Also confirmed: the manager writes into the HOUSE it was given, not the
+#   package dir, so a scratch-house test genuinely cannot disturb a real
+#   window. That had been an assumption this harness asserted, not knew.
+#
+# WHAT IS STILL WRONG:
+#
+#   It is flaky, not merely unfinished. In the last run the projection was
+#   never produced at all ("projection exists: no") after 80 s, while two
+#   earlier runs produced it. The fetch-to-projection path is not
+#   deterministic from a cold scratch house, and until that is understood a
+#   red run here means nothing - neither about the browser nor about the
+#   comparison this harness was written to make.
+#
+#   Do not "fix" this by loosening the wait until it goes green.
 # ############################################################################
 # nb_gbcr_test.sh - G2.2: the worker's box tree vs the pixels the renderer
 # actually painted.
@@ -109,19 +130,37 @@ for _ in $(seq 1 40); do [ -s "$WORK/port.txt" ] && break; sleep 0.25; done
 [ -s "$WORK/port.txt" ] || { echo "FAIL: server never bound"; exit 1; }
 PORT="$(cat "$WORK/port.txt")"
 
-setsid "$MANAGER" "$S" "$PKG" ui > "$WORK/manager.log" 2>&1 &
+# NO "ui" MODE ARGUMENT, and that is the whole fix for "failed to parse".
+# In ui mode the manager emits the key=value ui.txt ONLY and never calls
+# write_chtpm_projection(), so no parseable projection is ever produced -
+# the renderer then has nothing to read. Measured: with "ui" the scratch
+# house gets ui.txt and nothing else; without it, the projection lands at
+# $house/&.hq-apps/network/network-browser-hq.chtmp.
+setsid "$MANAGER" "$S" "$PKG" > "$WORK/manager.log" 2>&1 &
 KILLPIDS="$KILLPIDS $!"
 sleep 2
-: > "$UI"
 printf 'go:http://127.0.0.1:%s/\n' "$PORT" > "$REQ"
-for _ in $(seq 1 60); do
-    grep -q 'content_count=' "$UI" 2>/dev/null && break
+PROJ="$S/&.hq-apps/network/network-browser-hq.chtmp"
+# Wait for the CONTENT, not merely the file: the manager creates the
+# projection early and rewrites it as rows arrive, so "file exists" is
+# true long before the page is in it. The earlier version also reported
+# "no projection" when the real problem was "projection not filled yet",
+# which is the kind of message that sends the next person to the wrong
+# file.
+for _ in $(seq 1 160); do
+    if [ -s "$PROJ" ] && grep -q 'Paragraph 1 of the gBCR' "$PROJ" 2>/dev/null; then break; fi
     sleep 0.5
 done
 sleep 2
+if ! grep -q 'Paragraph 1 of the gBCR' "$PROJ" 2>/dev/null; then
+    echo "FAIL: the manager never published page content into $PROJ"
+    echo "  projection exists: $([ -s "$PROJ" ] && echo yes || echo no)"
+    tail -5 "$WORK/manager.log" | sed 's/^/    /'
+    exit 1
+fi
 
 # our own renderer window on the scratch house, so nothing shared is touched
-setsid "$RENDER" "$S" "$S/&.hq-apps/network/network-browser-hq.xhtpm" > "$WORK/render.log" 2>&1 &
+setsid "$RENDER" "$S" "$S/&.hq-apps/network/network-browser-hq.chtmp" > "$WORK/render.log" 2>&1 &
 RPID=$!
 KILLPIDS="$KILLPIDS $RPID"
 sleep 7
