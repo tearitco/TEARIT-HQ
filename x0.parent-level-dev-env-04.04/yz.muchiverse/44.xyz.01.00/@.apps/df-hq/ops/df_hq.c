@@ -83,6 +83,13 @@ static Item cat[MAXI]; static int ncat;
 static Room rooms[8]; static int nroom;
 static Door doors[24]; static int ndoor;
 static Scen scen[24]; static int nscen;
+/* fortress state (see the fortress block below the entity code): rock rectangles, dug cells, pending dig marks */
+typedef struct { int room, x, y, w, h; } Stone;
+static Stone stn[8]; static int nstn;
+typedef struct { int room, x, y; } Cell;
+static Cell dug[256]; static int ndug;
+static Cell job[64]; static int njob;
+static long ev_off = 0, jb_off = 0;
 static Placed pl[MAXP]; static int npl, nid = 1, owned[MAXI], coins;
 static Sheet sheets[24]; static int nsheet;
 static unsigned char fr[FW * FH * 4];
@@ -231,6 +238,8 @@ static void load_data(void) {
         while (fgets(line, sizeof line, fp)) { int n = split_bar(line, f, 12); if (n >= 7 && !strcmp(f[0], "DOOR") && ndoor < 24) { int a = room_idx(f[1]), b = room_idx(f[3]); if (a < 0 || b < 0) continue; Door *d = &doors[ndoor++]; d->room = a; d->tx = atoi(f[2]); d->ty = n >= 8 ? atoi(f[7]) : WALL_ROW; d->dest = b; d->ax = atoi(f[4]); d->ay = atoi(f[5]); d->autow = atoi(f[6]); } }
         rewind(fp); nscen = 0;
         while (fgets(line, sizeof line, fp)) { int n = split_bar(line, f, 12); if (n >= 9 && !strcmp(f[0], "SCENERY") && nscen < 24) { int a = room_idx(f[1]); if (a < 0) continue; Scen *s = &scen[nscen++]; s->room = a; snprintf(s->sheet, 24, "%s", f[2]); s->c = atoi(f[3]); s->r = atoi(f[4]); s->w = atoi(f[5]); s->h = atoi(f[6]); s->x = atoi(f[7]); s->y = atoi(f[8]); } }
+        rewind(fp); nstn = 0;
+        while (fgets(line, sizeof line, fp)) { int n = split_bar(line, f, 12); if (n >= 6 && !strcmp(f[0], "STONE") && nstn < 8) { int a = room_idx(f[1]); if (a < 0) continue; stn[nstn++] = (Stone){ a, atoi(f[2]), atoi(f[3]), atoi(f[4]), atoi(f[5]) }; } }
         fclose(fp);
     }
     load_door_events();
@@ -244,9 +253,34 @@ static void ent_wallet(const char *id, char *out, size_t cap) {
 }
 static void pet_wallet(int i, char *out, size_t cap) { ent_wallet(party[i].id, out, cap); }
 
+/* ---------- fortress: rock, dig designations, dug cells (2026-10-16, sprint step D1) ----------
+ * STONE rows in rooms.pdl are solid rock. A designation is a DESIGNATE row in state/jobs.txt; a free pet in that room walks to a tile next to it and digs, which appends
+ * DIG to state/events.txt (the result) and DONE to jobs.txt. A dug cell is simply a DIG row: both files are append-only and read by a byte cursor, never by mtime. The rule
+ * for HOW LONG a dig takes, tools, stone type and what drops is left empty on purpose (grok's: see FORTRESS-TODO in the README). */
+static int cell_in(const Cell *a, int n, int room, int x, int y) { for (int i = 0; i < n; i++) if (a[i].room == room && a[i].x == x && a[i].y == y) return i; return -1; }
+static int in_rock(int room, int x, int y) { for (int i = 0; i < nstn; i++) if (stn[i].room == room && x >= stn[i].x && x < stn[i].x + stn[i].w && y >= stn[i].y && y < stn[i].y + stn[i].h) return 1; return 0; }
+static int is_stone(int room, int x, int y) { return in_rock(room, x, y) && cell_in(dug, ndug, room, x, y) < 0; }
+static void tail_lines(const char *name, long *off, void (*fn)(char **, int)) {      /* feed the new WHOLE lines since byte *off to fn (append-only ledger, read by size growth) */
+    char p[PATH_MAX], line[300]; spath(p, name); if (fsize(p) <= *off) return; FILE *fp = fopen(p, "r"); if (!fp) return; fseek(fp, *off, SEEK_SET);
+    while (fgets(line, sizeof line, fp)) { size_t l = strlen(line); if (!l || line[l - 1] != '\n') break; *off += (long)l; char *f[8]; int n = split_bar(line, f, 8); fn(f, n); }
+    fclose(fp);
+}
+static void ev_row(char **f, int n) { if (n >= 6 && !strcmp(f[0], "DIG") && ndug < 256) { int r = room_idx(f[3]), x = atoi(f[4]), y = atoi(f[5]); if (r >= 0 && cell_in(dug, ndug, r, x, y) < 0) dug[ndug++] = (Cell){ r, x, y }; } }
+static void jb_row(char **f, int n) {
+    if (n < 4) return; int r = room_idx(f[2]); if (r < 0) return; int x = atoi(f[3]), y = n >= 5 ? atoi(f[4]) : 0;
+    if (!strcmp(f[0], "DESIGNATE") && njob < 64 && cell_in(job, njob, r, x, y) < 0) job[njob++] = (Cell){ r, x, y };
+    else if (!strcmp(f[0], "DONE")) { int i = cell_in(job, njob, r, x, y); if (i >= 0) job[i] = job[--njob]; }
+}
+static void world_sync(void) {
+    char p[PATH_MAX];
+    spath(p, "events.txt"); if (fsize(p) < ev_off) { ndug = 0; ev_off = 0; }      /* a shorter file = the ledger was reset: start over */
+    spath(p, "jobs.txt");   if (fsize(p) < jb_off) { njob = 0; jb_off = 0; }
+    tail_lines("events.txt", &ev_off, ev_row); tail_lines("jobs.txt", &jb_off, jb_row);
+}
+
 /* ---------- ledger replay ---------- */
 static void replay(void) {
-    char p[PATH_MAX], line[300]; spath(p, "house.txt");
+    char p[PATH_MAX], line[300]; world_sync(); spath(p, "house.txt");
     { static long last_sz = -2; long sz = fsize(p); if (sz == last_sz) return; last_sz = sz; }      /* the ledger is append-only and only buy / use / build verbs write it: re-parsing it for every pet step was ~3% of a core */
     coins = START_COINS; npl = 0; nid = 1; memset(owned, 0, sizeof owned);
     FILE *fp = fopen(p, "r"); if (!fp) return;
@@ -289,7 +323,7 @@ static int other_at(int room, int x, int y) {
 
 /* ---------- placement rules ---------- */
 static int over_land(const Room *rm, int x, int y);
-static int floor_blocked(int room, int x, int y, int skip_id) { if (rooms[room].over && !over_land(&rooms[room], x, y)) return 9999; for (int i = 0; i < nscen; i++) if (scen[i].room == room && x >= scen[i].x && x < scen[i].x + scen[i].w && y >= scen[i].y && y < scen[i].y + scen[i].h) return 9999; for (int i = 0; i < npl; i++) { Placed *q = &pl[i]; if (q->room != room || q->id == skip_id || cat[q->item].wall) continue; if (x >= q->x && x < q->x + cat[q->item].w && y >= q->y && y < q->y + cat[q->item].h) return q->id; } return 0; }
+static int floor_blocked(int room, int x, int y, int skip_id) { if (rooms[room].over && !over_land(&rooms[room], x, y)) return 9999; if (is_stone(room, x, y)) return 9999; for (int i = 0; i < nscen; i++) if (scen[i].room == room && x >= scen[i].x && x < scen[i].x + scen[i].w && y >= scen[i].y && y < scen[i].y + scen[i].h) return 9999; for (int i = 0; i < npl; i++) { Placed *q = &pl[i]; if (q->room != room || q->id == skip_id || cat[q->item].wall) continue; if (x >= q->x && x < q->x + cat[q->item].w && y >= q->y && y < q->y + cat[q->item].h) return q->id; } return 0; }
 static int door_here(int room, int x, int y) { for (int i = 0; i < ndoor; i++) if (doors[i].room == room && doors[i].tx == x && y == doors[i].ty + 1) return i; return -1; }
 /* overmap land: an island on a square ocean. Cells inside the rounded rectangle (2..cols-3, 1..rows-2, corners cut) are land, the outermost land ring is beach. Everything else is ocean (blocked). */
 static int over_land(const Room *rm, int x, int y) { if (x < 2 || x > rm->cols - 3 || y < 1 || y > rm->rows - 2) return 0; if ((x <= 3 || x >= rm->cols - 4) && (y <= 2 || y >= rm->rows - 3)) return 0; return 1; }
@@ -400,6 +434,8 @@ static void render(void) {
         else if (!strcmp(scen[i].sheet, "World_B")) df_glyph(15, scen[i].x, scen[i].y, scen[i].w, scen[i].h);
         else tile(scen[i].sheet, scen[i].c, scen[i].r, scen[i].w, scen[i].h, scen[i].x, scen[i].y);
     }
+    for (int y = 0; y < ROWS; y++) for (int x = 0; x < COLS; x++) if (is_stone(vroom, x, y)) df_glyph(178, x, y, 1, 1);      /* rock (dug cells fall through to the floor) */
+    for (int i = 0; i < njob; i++) if (job[i].room == vroom) df_glyph(88, job[i].x, job[i].y, 1, 1);      /* an X on a cell marked for digging */
     int idx[MAXP], n = 0; for (int i = 0; i < npl; i++) if (pl[i].room == vroom) idx[n++] = i;
     for (int a = 0; a < n; a++) for (int b = a + 1; b < n; b++) { Placed *p = &pl[idx[a]], *q = &pl[idx[b]]; int ka = (!cat[p->item].wall) * 1000 + p->y + cat[p->item].h, kb = (!cat[q->item].wall) * 1000 + q->y + cat[q->item].h; if (kb < ka || (kb == ka && q->x < p->x)) { int t = idx[a]; idx[a] = idx[b]; idx[b] = t; } }
     for (int a = 0; a < n; a++) { Placed *p = &pl[idx[a]]; Item *d = &cat[p->item]; tile(d->sheet, d->c, d->r, d->w, d->h, p->x, p->y); }
@@ -645,9 +681,23 @@ static void pick_target(void) {
     for (int k = 0; k < 40; k++) { int x = rand() % COLS, y = TRIG_ROW + rand() % (ROWS - TRIG_ROW); if (passable(x, y) && door_here(pet.room, x, y) < 0) { pet.tx = x; pet.ty = y; return; } }
     pet.tx = pet.ty = -1;
 }
+/* dig jobs: the nearest marked cell in this pet's room, a free tile beside it, and the dig itself (the result is a DIG row; how long it takes / what drops is grok's rule) */
+static int job_pick(int *jx, int *jy) { int best = -1, bd = 1 << 30; for (int k = 0; k < njob; k++) if (job[k].room == pet.room) { int d = abs(job[k].x - pet.x) + abs(job[k].y - pet.y); if (d < bd) { bd = d; best = k; } } if (best < 0) return 0; *jx = job[best].x; *jy = job[best].y; return 1; }
+static int stand_tile(int jx, int jy, int *sx, int *sy) {
+    g_gr = pet.room; static const int nx[4] = {0, -1, 1, 0}, ny[4] = {1, 0, 0, -1}; int bd = 1 << 30, ok = 0;
+    for (int k = 0; k < 4; k++) { int x = jx + nx[k], y = jy + ny[k]; if (x < 0 || x >= COLS || y < TRIG_ROW || y >= ROWS || floor_blocked(pet.room, x, y, 0) || other_at(pet.room, x, y) || door_here(pet.room, x, y) >= 0) continue; int d = abs(x - pet.x) + abs(y - pet.y); if (d < bd) { bd = d; *sx = x; *sy = y; ok = 1; } }
+    return ok;
+}
+static void dig_now(int x, int y) {
+    char b[160]; long t = (long)time(NULL); snprintf(b, sizeof b, "DIG|%ld|%s|%s|%d|%d|stone", t, me < 0 ? "trainer" : party[me].id, rooms[pet.room].id, x, y); append_line("events.txt", b);
+    snprintf(b, sizeof b, "DONE|%ld|%s|%d|%d", t, rooms[pet.room].id, x, y); append_line("jobs.txt", b); world_sync();
+}
 /* ONE autonomous step of pet i: keep or pick a target, walk a tile, greet a neighbour. Pets are never owner controlled; this runs on a timer (INT off) or once per turn (INT on). */
 static int ai_step(int i) {
     use_ent(i); int moved = 0;
+    { int jx, jy, sx, sy; if (job_pick(&jx, &jy)) {      /* a marked cell in this room comes before wandering */
+        if (abs(jx - pet.x) + abs(jy - pet.y) == 1) { dig_now(jx, jy); pet.tx = pet.ty = -1; pet_save(); return 1; }
+        if (stand_tile(jx, jy, &sx, &sy)) { pet.tx = sx; pet.ty = sy; } } }
     if (pet.tx >= 0 && pet.x == pet.tx && pet.y == pet.ty) pet.tx = pet.ty = -1;
     if (pet.tx < 0 && rand() % 100 < 45) pick_target();
     if (pet.tx >= 0) { int before = pet.room, dx, dy; if (bfs_first(pet.tx, pet.ty, &dx, &dy) && do_step(dx, dy, NULL, 0)) { moved = 1; if (pet.room != before) pet.tx = pet.ty = -1; } else pet.tx = pet.ty = -1; }
@@ -884,6 +934,16 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
         snprintf(b, sizeof b, "room:%s", rooms[r].id); set_flag("follow", b); calc_view(); snprintf(msg, cap, "watching the %s", rooms[r].name); return; }
     if (!strcmp(v, "step") && argc >= 3) { if (!run_on()) { snprintf(msg, cap, "stopped: press Play (Player tab) first"); return; } if (!flag_on("int", 0)) { snprintf(msg, cap, "turn INT on first: INT lets you control %s or the player", party[active].name); return; } int ci = ctl_idx(); use_ent(ci); int moved = do_step(atoi(argv[1]), atoi(argv[2]), msg, cap); pet_save(); set_flag("follow", ci < 0 ? "player" : "pet"); if (moved) turn_taken = 1; return; }
     if (!strcmp(v, "control")) { g_ctl_why = "control-menu-verb"; char cur[16]; flag_str("ctl", "pet", cur, sizeof cur); const char *n = argc >= 2 ? argv[1] : (!strcmp(cur, "pet") ? "player" : "pet"); if (strcmp(n, "pet") && strcmp(n, "player")) { snprintf(msg, cap, "control pet or player"); return; } set_flag("ctl", n); set_flag("follow", !strcmp(n, "player") ? "player" : "pet"); calc_view(); snprintf(msg, cap, !strcmp(n, "player") ? "INT now controls you (the player)" : "INT now controls %s", party[active].name); return; }
+    if (!strcmp(v, "dig")) {      /* mark a cell for digging: the tile in front of the controlled mover, or "dig <x> <y>" in the room being viewed. The pets do the work. */
+        int ci = ctl_idx(); use_ent(ci); int room = pet.room, x, y;
+        if (argc >= 3 && argv[1][0] >= '0' && argv[1][0] <= '9' && argv[2][0] >= '0' && argv[2][0] <= '9') { room = vroom; x = atoi(argv[1]); y = atoi(argv[2]); } else {      /* the window appends extra words to a menu action: only two numbers mean coordinates */
+            static const int ddx[4] = {0, -1, 1, 0}, ddy[4] = {1, 0, 0, -1}; x = pet.x + ddx[pet.dir & 3]; y = pet.y + ddy[pet.dir & 3]; }
+        use_ent(active);
+        if (!in_rock(room, x, y)) snprintf(msg, cap, "nothing to dig at %d,%d", x, y);
+        else if (cell_in(dug, ndug, room, x, y) >= 0) snprintf(msg, cap, "%d,%d is already dug", x, y);
+        else if (cell_in(job, njob, room, x, y) >= 0) snprintf(msg, cap, "%d,%d is already marked", x, y);
+        else { char b[100]; snprintf(b, sizeof b, "DESIGNATE|%ld|%s|%d|%d", (long)time(NULL), rooms[room].id, x, y); append_line("jobs.txt", b); world_sync(); snprintf(msg, cap, "dig marked at %d,%d", x, y); }
+        return; }
     if (!strcmp(v, "walk")) { int moved = ai_step(active); use_ent(active); if (moved) snprintf(msg, cap, "%s took a step", party[active].name); else snprintf(msg, cap, "%s stays put", party[active].name); return; }
     if (!strcmp(v, "export3d")) { export3d(msg, cap); return; }
     if (!strcmp(v, "mode")) v = "int";      /* the mode tab is the INT switch now */

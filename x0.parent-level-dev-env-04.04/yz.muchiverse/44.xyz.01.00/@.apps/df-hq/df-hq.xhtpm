@@ -41,6 +41,7 @@
       <item id="mn-control" class="rp-menu-row dropdown-child" target_id="tb-menu" label="${control_label} (switch: Tab)" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' control"/>
       <item id="mn-voice" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Voice on / off" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' toggle voice"/>
       <item id="mn-view" class="rp-menu-row dropdown-child" target_id="tb-menu" label="View: 2D / 3D / glyph" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' view"/>
+      <item id="mn-dig" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Dig: mark the tile in front" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' dig"/>
       <item id="mn-reset" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Reset house (keeps a backup)" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' reset"/>
       <item id="mn-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-menu" label="- cancel -" action="void"/>
       <item id="pm-mode" class="rp-menu-row dropdown-child" target_id="tb-player" label="${mode_label}" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' mode"/>

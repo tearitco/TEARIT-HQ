@@ -32,3 +32,5 @@ SCENERY | city | World_B | 4  | 7  | 2 | 2 | 4  | 8
 SCENERY | city | World_B | 4  | 11 | 2 | 2 | 13 | 8
 SCENERY | city | Outside_B | 5 | 11 | 1 | 2 | 7  | 5
 SCENERY | city | Outside_B | 5 | 11 | 1 | 2 | 12 | 8
+# STONE | room | x | y | w | h     solid rock (blocks walking until dug; 2026-10-16). Mark it with the Dig menu row or `df_hq.+x dig <x> <y>`; a pet in the room digs it (DIG row in state/events.txt, DESIGNATE/DONE in state/jobs.txt).
+STONE | castle | 8 | 3 | 4 | 3
