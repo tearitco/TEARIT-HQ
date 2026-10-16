@@ -134,6 +134,16 @@ int main(void) {
     fprintf(f, "current_user_uuid=\n");
     fprintf(f, "current_xyzfs=\n");
     fclose(f);
+    /* the desktop shortcut reads "HQ:<user>", "HQ:guest" once logged out (owner 2026-10-15). house = two levels above install_root
+     * (<house>/0.user-pal/00.login-signup). Background, best effort, no-op unless the installed launcher belongs to this house. */
+    {
+        char hroot[PATH_BUF], rcmd[PATH_BUF * 2 + 128];
+        char *s1;
+        snprintf(hroot, sizeof(hroot), "%s", install_root);
+        if ((s1 = strrchr(hroot, '/')) != NULL) { *s1 = '\0'; if ((s1 = strrchr(hroot, '/')) != NULL) *s1 = '\0'; }
+        snprintf(rcmd, sizeof(rcmd), "[ -f '%s/$.crypts/lyfedesk-shortcut-refresh.sh' ] && sh '%s/$.crypts/lyfedesk-shortcut-refresh.sh' '%s' >/dev/null 2>&1 &", hroot, hroot, hroot);
+        if (system(rcmd) != 0) { /* best effort */ }
+    }
 
     write_session_pdl(install_root, "guest", "", "", "Guest", "", "", "");
 

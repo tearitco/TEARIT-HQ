@@ -248,6 +248,8 @@ case "$ACTION" in
             command -v gio >/dev/null 2>&1 && gio set "$HOME/Desktop/LyfeDesk.desktop" metadata::trusted true 2>/dev/null
             echo "installed desktop launcher: $HOME/Desktop/LyfeDesk.desktop (right-click > Allow Launching if it shows a gear icon)"
         fi
+        # the name reads "HQ:<user of the last login>" (and follows later logins: lyfedesk-shortcut-refresh.sh)
+        sh "$SCRIPT_DIR/lyfedesk-shortcut-refresh.sh" "$HOUSE"
         command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$HOME/.local/share/applications" 2>/dev/null
         ;;
     install-xdg)
