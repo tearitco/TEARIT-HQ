@@ -88,7 +88,7 @@ typedef struct { int room, x, y, w, h; } Stone;
 static Stone stn[8]; static int nstn;
 typedef struct { int room, x, y; } Cell;
 static Cell dug[256]; static int ndug;
-static Cell job[64]; static int njob;
+static Cell job[64]; static int njob; static char jowner[64][16]; static Cell corner = { -1, 0, 0 };      /* jowner: who took the job (CLAIM row), "" = nobody yet; corner: first corner of an area dig (CORNER row) */
 static long ev_off = 0, jb_off = 0;
 static Placed pl[MAXP]; static int npl, nid = 1, owned[MAXI], coins;
 static Sheet sheets[24]; static int nsheet;
@@ -266,15 +266,21 @@ static void tail_lines(const char *name, long *off, void (*fn)(char **, int)) { 
     fclose(fp);
 }
 static void ev_row(char **f, int n) { if (n >= 6 && !strcmp(f[0], "DIG") && ndug < 256) { int r = room_idx(f[3]), x = atoi(f[4]), y = atoi(f[5]); if (r >= 0 && cell_in(dug, ndug, r, x, y) < 0) dug[ndug++] = (Cell){ r, x, y }; } }
+static void job_remove(int i) { job[i] = job[njob - 1]; memcpy(jowner[i], jowner[njob - 1], 16); njob--; }
+/* jobs.txt rows: DESIGNATE|ts|room|x|y   CLAIM|ts|actor|room|x|y   DONE|ts|room|x|y   CANCEL|ts|room|x|y   CORNER|ts|room|x|y (room "-" clears the corner) */
 static void jb_row(char **f, int n) {
-    if (n < 4) return; int r = room_idx(f[2]); if (r < 0) return; int x = atoi(f[3]), y = n >= 5 ? atoi(f[4]) : 0;
-    if (!strcmp(f[0], "DESIGNATE") && njob < 64 && cell_in(job, njob, r, x, y) < 0) job[njob++] = (Cell){ r, x, y };
-    else if (!strcmp(f[0], "DONE")) { int i = cell_in(job, njob, r, x, y); if (i >= 0) job[i] = job[--njob]; }
+    if (n < 4) return;
+    if (!strcmp(f[0], "CLAIM")) { if (n < 6) return; int r = room_idx(f[3]); if (r < 0) return; int i = cell_in(job, njob, r, atoi(f[4]), atoi(f[5])); if (i >= 0) snprintf(jowner[i], 16, "%s", f[2]); return; }
+    int r = room_idx(f[2]);
+    if (!strcmp(f[0], "CORNER")) { corner = (r < 0 || n < 5) ? (Cell){ -1, 0, 0 } : (Cell){ r, atoi(f[3]), atoi(f[4]) }; return; }
+    if (r < 0) return; int x = atoi(f[3]), y = n >= 5 ? atoi(f[4]) : 0;
+    if (!strcmp(f[0], "DESIGNATE") && njob < 64 && cell_in(job, njob, r, x, y) < 0) { job[njob] = (Cell){ r, x, y }; jowner[njob][0] = 0; njob++; }
+    else if (!strcmp(f[0], "DONE") || !strcmp(f[0], "CANCEL")) { int i = cell_in(job, njob, r, x, y); if (i >= 0) job_remove(i); }
 }
 static void world_sync(void) {
     char p[PATH_MAX];
     spath(p, "events.txt"); if (fsize(p) < ev_off) { ndug = 0; ev_off = 0; }      /* a shorter file = the ledger was reset: start over */
-    spath(p, "jobs.txt");   if (fsize(p) < jb_off) { njob = 0; jb_off = 0; }
+    spath(p, "jobs.txt");   if (fsize(p) < jb_off) { njob = 0; jb_off = 0; corner.room = -1; }
     tail_lines("events.txt", &ev_off, ev_row); tail_lines("jobs.txt", &jb_off, jb_row);
 }
 
@@ -435,7 +441,8 @@ static void render(void) {
         else tile(scen[i].sheet, scen[i].c, scen[i].r, scen[i].w, scen[i].h, scen[i].x, scen[i].y);
     }
     for (int y = 0; y < ROWS; y++) for (int x = 0; x < COLS; x++) if (is_stone(vroom, x, y)) df_glyph(178, x, y, 1, 1);      /* rock (dug cells fall through to the floor) */
-    for (int i = 0; i < njob; i++) if (job[i].room == vroom) df_glyph(88, job[i].x, job[i].y, 1, 1);      /* an X on a cell marked for digging */
+    for (int i = 0; i < njob; i++) if (job[i].room == vroom) df_glyph(jowner[i][0] ? 4 : 88, job[i].x, job[i].y, 1, 1);      /* X = marked for digging, nobody on it yet; a diamond = a dwarf has taken it */
+    if (corner.room == vroom) df_glyph(43, corner.x, corner.y, 1, 1);      /* + = first corner of an area dig */
     int idx[MAXP], n = 0; for (int i = 0; i < npl; i++) if (pl[i].room == vroom) idx[n++] = i;
     for (int a = 0; a < n; a++) for (int b = a + 1; b < n; b++) { Placed *p = &pl[idx[a]], *q = &pl[idx[b]]; int ka = (!cat[p->item].wall) * 1000 + p->y + cat[p->item].h, kb = (!cat[q->item].wall) * 1000 + q->y + cat[q->item].h; if (kb < ka || (kb == ka && q->x < p->x)) { int t = idx[a]; idx[a] = idx[b]; idx[b] = t; } }
     for (int a = 0; a < n; a++) { Placed *p = &pl[idx[a]]; Item *d = &cat[p->item]; tile(d->sheet, d->c, d->r, d->w, d->h, p->x, p->y); }
@@ -616,7 +623,8 @@ static void out_all(const char *msg) {
 #define W(...) o += snprintf(u + o, sizeof u - o, __VA_ARGS__)
     char raw[PATH_MAX]; spath(raw, "scene.raw"); char h1[PATH_MAX], h2[PATH_MAX]; spath(h1, "interact_relay.txt"); snprintf(h2, sizeof h2, "%s/keyboard/history.txt", ST);
     int chat = flag_on("chat", 0), hb = flag_on("hb", 0), in = flag_on("int", 0); char view[16]; flag_str("view", "2d", view, sizeof view); for (char *c = view; *c; c++) if (*c >= 'a' && *c <= 'z') *c -= 32;
-    W("title=df-hq  -  %s  -  coins %d\nscene_raw=%s\ncanvas_raw=%s\ncoins=%d\nmsg=%s\nroom_label=%s\n", rooms[vroom].name, coins, raw, raw, coins, msg && msg[0] ? msg : (in ? "INT on: turn based like a roguelike. Time moves when you act. Tab switches pet/player." : "real time: the pets live on their own. INT lets you control a pet or the player."), rooms[vroom].name);
+    char nbuf[200]; { char np[PATH_MAX]; spath(np, "note.txt"); read_file(np, nbuf, sizeof nbuf); size_t nl = strlen(nbuf); while (nl && (nbuf[nl - 1] == '\n' || nbuf[nl - 1] == '\r')) nbuf[--nl] = 0; }
+    W("title=df-hq  -  %s  -  coins %d\nscene_raw=%s\ncanvas_raw=%s\ncoins=%d\nnote=%s\nmsg=%s\nroom_label=%s\n", rooms[vroom].name, coins, raw, raw, coins, nbuf, msg && msg[0] ? msg : (in ? "INT on: turn based like a roguelike. Time moves when you act. Tab switches pet/player." : "real time: the pets live on their own. INT lets you control a pet or the player."), rooms[vroom].name);
     { char cc[16]; flag_str("ctl", "pet", cc, sizeof cc); char who[40]; snprintf(who, sizeof who, "on: %s", !strcmp(cc, "player") ? "you" : party[active].name); W("interact_class=%s\ninteract_label=%s\nrp_h1=%s\nrp_h2=%s\ncontrol_label=control: %s\n", in ? "interact-active" : "", in ? who : "off", h1, h2, !strcmp(cc, "player") ? "player" : party[active].name); }
     W("run_on=%d\nrun_label=%s\nrun_cls=%s\n", run_on(), run_on() ? "GO started" : "STOP stopped", run_on() ? "ph-green" : "ph-red");
     W("mode_label=%s\nmode_cls=%s\n", rogue_mode() ? "[rogue] live" : "rogue [live]", rogue_mode() ? "ph-green" : "ph-red");
@@ -685,11 +693,25 @@ static void pick_target(void) {
     pet.tx = pet.ty = -1;
 }
 /* dig jobs: the nearest marked cell in this pet's room, a free tile beside it, and the dig itself (the result is a DIG row; how long it takes / what drops is grok's rule) */
-static int job_pick(int *jx, int *jy) { int best = -1, bd = 1 << 30; for (int k = 0; k < njob; k++) if (job[k].room == pet.room) { int d = abs(job[k].x - pet.x) + abs(job[k].y - pet.y); if (d < bd) { bd = d; best = k; } } if (best < 0) return 0; *jx = job[best].x; *jy = job[best].y; return 1; }
+static int stand_tile(int jx, int jy, int *sx, int *sy);
+static int g_jk = -1;      /* index of the job job_pick chose */
+static int taken_by_other(int k) {      /* a dwarf other than me took it and still stands in that room: leave it to them (a dwarf that left the room gives it up) */
+    if (!jowner[k][0]) return 0; const char *mine = me < 0 ? "trainer" : party[me].id; if (!strcmp(jowner[k], mine)) return 0;
+    for (int j = 0; j < nparty; j++) if (!strcmp(party[j].id, jowner[k])) return others[j].room == job[k].room; return 0;
+}
+static int job_pick(int *jx, int *jy) { int best = -1, bd = 1 << 30; for (int k = 0; k < njob; k++) if (job[k].room == pet.room && !taken_by_other(k) && (abs(job[k].x - pet.x) + abs(job[k].y - pet.y) == 1 || stand_tile(job[k].x, job[k].y, &(int){0}, &(int){0}))) {      /* a cell with no free tile beside it (rock all round) waits until a neighbour is dug; it must not block the reachable ones */
+         int d = abs(job[k].x - pet.x) + abs(job[k].y - pet.y); if (d < bd) { bd = d; best = k; } } if (best < 0) return 0; *jx = job[best].x; *jy = job[best].y; g_jk = best; return 1; }
 static int stand_tile(int jx, int jy, int *sx, int *sy) {
     g_gr = pet.room; static const int nx[4] = {0, -1, 1, 0}, ny[4] = {1, 0, 0, -1}; int bd = 1 << 30, ok = 0;
     for (int k = 0; k < 4; k++) { int x = jx + nx[k], y = jy + ny[k]; if (x < 0 || x >= COLS || y < TRIG_ROW || y >= ROWS || floor_blocked(pet.room, x, y, 0) || other_at(pet.room, x, y) || door_here(pet.room, x, y) >= 0) continue; int d = abs(x - pet.x) + abs(y - pet.y); if (d < bd) { bd = d; *sx = x; *sy = y; ok = 1; } }
     return ok;
+}
+static void note_set(const char *s) { char p[PATH_MAX]; spath(p, "note.txt"); FILE *f = fopen(p, "w"); if (f) { fprintf(f, "%s\n", s); fclose(f); } }      /* the last dig message, shown in the window (ui.txt note=): msg= is not painted anywhere */
+static int dig_target(int argc, char **argv, int *room, int *x, int *y) {      /* the tile in front of the controlled mover, or two numbers = coordinates in the room being viewed */
+    int ci = ctl_idx(); use_ent(ci); *room = pet.room;
+    if (argc >= 3 && argv[1][0] >= '0' && argv[1][0] <= '9' && argv[2][0] >= '0' && argv[2][0] <= '9') { *room = vroom; *x = atoi(argv[1]); *y = atoi(argv[2]); }      /* the window appends extra words to a menu action: only two numbers mean coordinates */
+    else { static const int ddx[4] = {0, -1, 1, 0}, ddy[4] = {1, 0, 0, -1}; *x = pet.x + ddx[pet.dir & 3]; *y = pet.y + ddy[pet.dir & 3]; }
+    use_ent(active); return 1;
 }
 static void dig_now(int x, int y) {
     char b[160]; long t = (long)time(NULL); snprintf(b, sizeof b, "DIG|%ld|%s|%s|%d|%d|stone", t, me < 0 ? "trainer" : party[me].id, rooms[pet.room].id, x, y); append_line("events.txt", b);
@@ -699,6 +721,7 @@ static void dig_now(int x, int y) {
 static int ai_step(int i) {
     use_ent(i); int moved = 0;
     { int jx, jy, sx, sy; if (job_pick(&jx, &jy)) {      /* a marked cell in this room comes before wandering */
+        if (!jowner[g_jk][0]) { char cb[160]; snprintf(cb, sizeof cb, "CLAIM|%ld|%s|%s|%d|%d", (long)time(NULL), me < 0 ? "trainer" : party[me].id, rooms[pet.room].id, jx, jy); append_line("jobs.txt", cb); world_sync(); }
         if (abs(jx - pet.x) + abs(jy - pet.y) == 1) { dig_now(jx, jy); pet.tx = pet.ty = -1; pet_save(); return 1; }
         if (stand_tile(jx, jy, &sx, &sy)) { pet.tx = sx; pet.ty = sy; } } }
     if (pet.tx >= 0 && pet.x == pet.tx && pet.y == pet.ty) pet.tx = pet.ty = -1;
@@ -938,15 +961,28 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
     if (!strcmp(v, "step") && argc >= 3) { if (!run_on()) { snprintf(msg, cap, "stopped: press Play (Player tab) first"); return; } if (!flag_on("int", 0)) { snprintf(msg, cap, "turn INT on first: INT lets you control %s or the player", party[active].name); return; } int ci = ctl_idx(); use_ent(ci); int moved = do_step(atoi(argv[1]), atoi(argv[2]), msg, cap); pet_save(); set_flag("follow", ci < 0 ? "player" : "pet"); if (moved) turn_taken = 1; return; }
     if (!strcmp(v, "control")) { g_ctl_why = "control-menu-verb"; char cur[16]; flag_str("ctl", "pet", cur, sizeof cur); const char *n = argc >= 2 ? argv[1] : (!strcmp(cur, "pet") ? "player" : "pet"); if (strcmp(n, "pet") && strcmp(n, "player")) { snprintf(msg, cap, "control pet or player"); return; } set_flag("ctl", n); set_flag("follow", !strcmp(n, "player") ? "player" : "pet"); calc_view(); snprintf(msg, cap, !strcmp(n, "player") ? "INT now controls you (the player)" : "INT now controls %s", party[active].name); return; }
     if (!strcmp(v, "dig")) {      /* mark a cell for digging: the tile in front of the controlled mover, or "dig <x> <y>" in the room being viewed. The pets do the work. */
-        int ci = ctl_idx(); use_ent(ci); int room = pet.room, x, y;
-        if (argc >= 3 && argv[1][0] >= '0' && argv[1][0] <= '9' && argv[2][0] >= '0' && argv[2][0] <= '9') { room = vroom; x = atoi(argv[1]); y = atoi(argv[2]); } else {      /* the window appends extra words to a menu action: only two numbers mean coordinates */
-            static const int ddx[4] = {0, -1, 1, 0}, ddy[4] = {1, 0, 0, -1}; x = pet.x + ddx[pet.dir & 3]; y = pet.y + ddy[pet.dir & 3]; }
-        use_ent(active);
+        int room, x, y; dig_target(argc, argv, &room, &x, &y);
         if (!in_rock(room, x, y)) snprintf(msg, cap, "nothing to dig at %d,%d", x, y);
         else if (cell_in(dug, ndug, room, x, y) >= 0) snprintf(msg, cap, "%d,%d is already dug", x, y);
         else if (cell_in(job, njob, room, x, y) >= 0) snprintf(msg, cap, "%d,%d is already marked", x, y);
         else { char b[100]; snprintf(b, sizeof b, "DESIGNATE|%ld|%s|%d|%d", (long)time(NULL), rooms[room].id, x, y); append_line("jobs.txt", b); world_sync(); snprintf(msg, cap, "dig marked at %d,%d", x, y); }
-        return; }
+        note_set(msg); return; }
+    if (!strcmp(v, "undig")) {      /* cancel the mark on the tile in front (or "undig <x> <y>") */
+        int room, x, y; dig_target(argc, argv, &room, &x, &y); int k = cell_in(job, njob, room, x, y);
+        if (k < 0) snprintf(msg, cap, "no dig mark at %d,%d", x, y);
+        else { char b[100]; snprintf(b, sizeof b, "CANCEL|%ld|%s|%d|%d", (long)time(NULL), rooms[room].id, x, y); append_line("jobs.txt", b); world_sync(); snprintf(msg, cap, "dig mark at %d,%d cancelled", x, y); }
+        note_set(msg); return; }
+    if (!strcmp(v, "dig_area")) {      /* area dig: first use stores a corner, second use marks every rock cell of the rectangle between the two corners (same room) */
+        int room, x, y; dig_target(argc, argv, &room, &x, &y); char b[100];
+        if (!in_rock(room, x, y)) snprintf(msg, cap, "nothing to dig at %d,%d: face rock to set a corner", x, y);
+        else if (corner.room < 0 || corner.room != room) { snprintf(b, sizeof b, "CORNER|%ld|%s|%d|%d", (long)time(NULL), rooms[room].id, x, y); append_line("jobs.txt", b); world_sync(); snprintf(msg, cap, "corner 1 at %d,%d: face the opposite corner and use Dig area again", x, y); }
+        else {
+            int x0 = corner.x < x ? corner.x : x, x1 = corner.x < x ? x : corner.x, y0 = corner.y < y ? corner.y : y, y1 = corner.y < y ? y : corner.y, cnt = 0, full = 0;
+            for (int yy = y0; yy <= y1; yy++) for (int xx = x0; xx <= x1; xx++) if (in_rock(room, xx, yy) && cell_in(dug, ndug, room, xx, yy) < 0 && cell_in(job, njob, room, xx, yy) < 0) {
+                if (njob >= 64) { full = 1; continue; } snprintf(b, sizeof b, "DESIGNATE|%ld|%s|%d|%d", (long)time(NULL), rooms[room].id, xx, yy); append_line("jobs.txt", b); world_sync(); cnt++; }
+            snprintf(b, sizeof b, "CORNER|%ld|-|0|0", (long)time(NULL)); append_line("jobs.txt", b); world_sync();
+            snprintf(msg, cap, full ? "area %d,%d to %d,%d: %d cells marked (job list is full at 64)" : "area %d,%d to %d,%d: %d cells marked", x0, y0, x1, y1, cnt); }
+        note_set(msg); return; }
     if (!strcmp(v, "walk")) { int moved = ai_step(active); use_ent(active); if (moved) snprintf(msg, cap, "%s took a step", party[active].name); else snprintf(msg, cap, "%s stays put", party[active].name); return; }
     if (!strcmp(v, "export3d")) { export3d(msg, cap); return; }
     if (!strcmp(v, "mode")) v = "int";      /* the mode tab is the INT switch now */
