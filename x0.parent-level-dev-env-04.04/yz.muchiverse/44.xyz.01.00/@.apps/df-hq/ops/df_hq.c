@@ -320,9 +320,11 @@ static void pet_load(void) {           /* everything: active pet, all pets, the 
 /* what INT controls: the selected pet, or the player (the person) */
 static int ctl_idx(void) { char b[16]; flag_str("ctl", "pet", b, sizeof b); return !strcmp(b, "player") ? -1 : active; }
 static void use_ent(int i) { me = i; pet = i < 0 ? tr : others[i]; if (pet.room >= 0 && pet.room < nroom) g_gr = pet.room; }
+static int g_daemon;      /* 1 inside daemon_main: its own pet_save needs no marker, its memory is already current */
+static void ent_mark(void) { append_line("ent_changed.txt", "."); }      /* append-only marker (size growth): a verb process changed an entity file, so the daemon re-reads them; N3 idle-cost gate */
 static void pet_save(void) {            /* commit the mover back and write its file */
     char p[PATH_MAX], b[240]; ent_file(me, p); snprintf(b, sizeof b, "room=%s\nx=%d\ny=%d\ndir=%d\nsteps=%d\ntx=%d\nty=%d\n", rooms[pet.room].id, pet.x, pet.y, pet.dir, pet.steps, pet.tx, pet.ty);
-    write_if_changed(p, b, strlen(b)); if (me < 0) tr = pet; else others[me] = pet; calc_view();
+    if (write_if_changed(p, b, strlen(b)) && !g_daemon) ent_mark(); if (me < 0) tr = pet; else others[me] = pet; calc_view();
 }
 /* who stands in a cell, besides the mover: 1.. = a pet, 100 = the trainer */
 static int other_at(int room, int x, int y) {
@@ -838,11 +840,16 @@ static void sync_selector(int x, int y) {
 /* CPU safety: follow_pchq() exports the rooms and wakes the board engine (a redraw key into its relay) every time the scene changes. With NO board window open that drove a headless engine at several
  * redraws a second (chtpm_rgb_render 7% + prisc 3-4% of a core, measured, for hours after the window was closed). Only follow when a window of a board layout (pchq-board.xhtpm: the df-hq board, pc-hq
  * or the layout-studio sandbox) is really running; the answer is cached for 2 s (one /proc scan). */
-static int viewer_kinds(void) {
-    static long last = 0; static int v = 3; long t = now_ms(); if (last && t - last < tune("viewer_scan_ms", 2000)) return v; last = t; v = 0;
+static int viewer_kinds(void) {      /* N3 idle-cost gate: the /proc scan (every cmdline of every process, ~170 opens a second on a busy desktop, measured as most of this daemon's idle kernel time) now runs only when the launchers' process list changed size (every launcher appends to #.desktop/livedesk_proc_list.txt), when a window found by the last scan is gone, or every viewer_full_ms (30 s) as a safety net; in between the answer costs one kill(pid, 0) per known window. */
+    static long last = 0, last_full = 0, sig = -1; static int v = 3, np = 0; static pid_t pids[8]; long t = now_ms();
+    if (last && t - last < tune("viewer_scan_ms", 2000)) return v;
+    last = t;
+    char pl[PATH_MAX]; snprintf(pl, sizeof pl, "%s/#.desktop/livedesk_proc_list.txt", HOUSE); long s = fsize(pl); int gone = 0; for (int i = 0; i < np; i++) if (kill(pids[i], 0) != 0 && errno == ESRCH) gone = 1;
+    if (last_full && s == sig && !gone && t - last_full < tune("viewer_full_ms", 30000)) return v;
+    last_full = t; sig = s; v = 0; np = 0;
     DIR *d = opendir("/proc"); if (!d) return 3; struct dirent *e;
     while ((e = readdir(d))) { if (e->d_name[0] < '1' || e->d_name[0] > '9') continue; char p[64], b[2048]; snprintf(p, sizeof p, "/proc/%s/cmdline", e->d_name); FILE *f = fopen(p, "r"); if (!f) continue; size_t n = fread(b, 1, sizeof b - 1, f); fclose(f); b[n] = 0;
-        if (!strstr(b, "khtpm_core_render")) continue; for (size_t i = 0; i < n; i++) if (!b[i]) b[i] = ' '; if (strstr(b, "/@.apps/df-hq/board/pchq-board.xhtpm")) v |= 1; if (strstr(b, "df-hq.xhtpm")) v |= 2; }
+        if (!strstr(b, "khtpm_core_render")) continue; for (size_t i = 0; i < n; i++) if (!b[i]) b[i] = ' '; int hit = 0; if (strstr(b, "/@.apps/df-hq/board/pchq-board.xhtpm")) { v |= 1; hit = 1; } if (strstr(b, "df-hq.xhtpm")) { v |= 2; hit = 1; } if (hit && np < 8) pids[np++] = (pid_t)atoi(e->d_name); }
     closedir(d); return v;
 }
 static int board_window_open(void) { return viewer_kinds() & 1; }
@@ -966,7 +973,7 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
     if (!strcmp(v, "select") && argc >= 2) { char hid[24]; snprintf(hid, sizeof hid, "%s", hero.name); for (char *c = hid; *c; c++) if (*c >= 'A' && *c <= 'Z') *c += 32;
         if (!strcmp(argv[1], hid)) { g_ctl_why = "select-hero-row"; set_flag("ctl", "player"); set_flag("follow", "player"); calc_view(); snprintf(msg, cap, "%s, the hero (owner of the monsters), in the %s - INT controls him", hero.name, rooms[tr.room].name); return; }
         int k = -1; for (int i = 0; i < nparty; i++) if (!strcmp(party[i].id, argv[1])) k = i; if (k < 0) { snprintf(msg, cap, "no pet %s", argv[1]); return; }
-        char p[PATH_MAX], bb[40]; spath(p, "active.txt"); snprintf(bb, sizeof bb, "%s\n", party[k].id); write_if_changed(p, bb, strlen(bb)); set_flag("follow", "pet"); set_flag("ctl", "pet"); active = k; calc_view(); snprintf(msg, cap, "watching %s (in the %s)", party[k].name, rooms[others[k].room].name); return; }
+        char p[PATH_MAX], bb[40]; spath(p, "active.txt"); snprintf(bb, sizeof bb, "%s\n", party[k].id); if (write_if_changed(p, bb, strlen(bb)) && !g_daemon) ent_mark(); set_flag("follow", "pet"); set_flag("ctl", "pet"); active = k; calc_view(); snprintf(msg, cap, "watching %s (in the %s)", party[k].name, rooms[others[k].room].name); return; }
     if (!strcmp(v, "goto") && argc >= 2) {        /* the Rooms menu: with INT on, the controlled pet goes there (a turn); with INT off, the window just watches that room */
         int r = room_idx(argv[1]); if (r < 0) { snprintf(msg, cap, "no room %s", argv[1]); return; }
         if (flag_on("int", 0)) { int ci = ctl_idx(); use_ent(ci); pet.room = r; g_gr = r; pet.dir = 0; pet.tx = pet.ty = -1; int placed = 0;
@@ -1141,14 +1148,18 @@ static int enter_pressed_in_engine(void) {
     if (hit && now_ms() - g_own13 < 2500) hit = 0; return hit;
 }
 static int daemon_main(void) {
-    signal(SIGTERM, bye); signal(SIGINT, bye); signal(SIGHUP, bye); srand((unsigned)(time(NULL) ^ getpid()));
+    signal(SIGTERM, bye); signal(SIGINT, bye); signal(SIGHUP, bye); srand((unsigned)(time(NULL) ^ getpid())); g_daemon = 1;
     char h1[PATH_MAX], h2[PATH_MAX], d[PATH_MAX]; snprintf(d, sizeof d, "%s/keyboard", ST); mkdir(d, 0755); spath(h1, "interact_relay.txt"); snprintf(h2, sizeof h2, "%s/keyboard/history.txt", ST);
     long o1 = fsize(h1), o2 = fsize(h2), next_ms[NP], last_ui = 0; int was_run = run_on() + 2 * rogue_mode(); for (int i = 0; i < NP; i++) next_ms[i] = now_ms() + 600 + 450L * i; char msg[200], lastday[40] = "", lasttone[300] = "";
     g_fcache_on = 1; load_tune(); load_data(); replay(); pet_load(); unstack(); clock_start(); out_all("");
     long last_load = now_ms(), last_follow = 0;
     while (!quit_flag) {
         usleep(100000); int dirty = 0, codes[64], n; msg[0] = 0; { long lt = now_ms(); if (lt - last_load >= tune("reload_ms", 2000)) { last_load = lt; load_tune(); load_data(); } }      /* catalog / party / rooms / door pages are static: re-parsing them every 100 ms was most of the daemon's own CPU */
-        pet_load(); int in = flag_on("int", 0), tm = turn_mode(); static int prev_in = 0; static long int_on_at = 0; if (in && !prev_in) int_on_at = now_ms(); prev_in = in;
+        {   /* N3 idle-cost gate (grok back-to-sonnet-oc16): pet_load re-read every pet file and the trainer on every 100 ms pass (measured 720 read calls/s, 106 KB/s idle). Now only when ent_changed.txt or world_epoch.txt GREW (a verb process changed an entity, a load or new game happened) or every pet_reload_ms (2 s) as a safety net for files written by hand; otherwise just the cheap reset of the mover and view. */
+            static long sig = -1, last_pl = 0; char mk[PATH_MAX], we[PATH_MAX]; spath(mk, "ent_changed.txt"); spath(we, "world_epoch.txt"); if (fsize(mk) > 262144) { FILE *tf = fopen(mk, "w"); if (tf) fclose(tf); sig = -1; }      /* only this daemon reads the marker: keep it small */
+            long ps = fsize(mk) * 1000003L + fsize(we), tn = now_ms();
+            if (ps != sig || tn - last_pl >= tune("pet_reload_ms", 2000)) { sig = ps; last_pl = tn; pet_load(); } else { me = active; pet = others[active]; calc_view(); } }
+        int in = flag_on("int", 0), tm = turn_mode(); static int prev_in = 0; static long int_on_at = 0; if (in && !prev_in) int_on_at = now_ms(); prev_in = in;
         if (in && enter_pressed_in_engine() && possess_at_xelector(msg, sizeof msg)) { dirty = 1; follow_pchq(); }
         n = poll_keys(h1, &o1, codes, 32); n += poll_keys(h2, &o2, codes + n, 32);     /* the offsets always advance; keys only act while INT is on */
         if (in && n) replay();
