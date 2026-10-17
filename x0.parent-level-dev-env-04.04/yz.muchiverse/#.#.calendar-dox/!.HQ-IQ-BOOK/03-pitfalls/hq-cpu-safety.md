@@ -213,3 +213,63 @@ Top-bar load label rules learned the hard way:
 - Testing traps hit: `pgrep -f` matched and killed my own tool shell again (use exact `comm` and pids); a profiled copy of a window left running keeps burning CPU; killing the window's keep-alive 3D daemon does not respawn it (relaunch the board).
 
 Still open: ~1 canvas repaint per second when characters move; the 16 ms canvas poll tick (131 wakeups/s) is a polling loop where a marker-growth wait would do (the `marker` branch exists, nothing converted yet).
+
+---
+
+## 6. 2026-10-17: idle-cost gates, a duplicate-daemon hole, and a clean way to tell "ours" from "not ours"
+
+Owner report: the machine was throttling again. Measured before touching anything (all `/proc/<pid>/stat` utime+stime, windowed, plus rss and fd count). Result: **our house processes were calm** (renderers 2-3% idle, taskbar manager under 1%, the df-hq board's 3D session under 2%). The sustained hog was a *foreign* process (another agent's CLI at ~120% of a core), with the browser and the shell/terminal behind it. Earlier 90% readings were my own scratch windows while I edited and relaunched them. **Always rank the whole machine first (`XO/top_cpu.sh` shape: sample every pid twice, 20 s apart, sort) before assuming it is the house.** What the check did find: two resident `df_hq` daemons on one game folder (see 6e).
+
+### 6a. Cost is mostly syscalls, not CPU math
+
+gprof of the df-hq daemon showed user time ~0.15% of a core. The measured idle cost (1.0% of a core, 555 file reads a second) was `open/read/stat` and a `/proc` scan. So the gates that paid off were all "do not touch the disk or `/proc` unless something changed":
+
+- **Marker gate (preferred, house rule):** a file that only grows (`ent_changed.txt`, `world_epoch.txt`, `blocks_changed.txt`, `livedesk_proc_list.txt`). Remember its size; re-read the real data only when the size grew. Size is exact; `st_mtime` is not (seconds-only on some paths, racy within a second). 1.05% -> 0.57-0.70% for the df-hq daemon, 555 -> 193 reads/s.
+- **Net under every gate:** a slow safety re-read (2 s for the pet files, 30 s for the viewer scan, 5 s full rebuild in the projector) so a missed marker can never freeze the picture for long.
+- **When the input is a rewritten key=value file (no append-only marker exists)**, gate on (size, mtime in nanoseconds) taken *before* the read, and keep a ~100 ms racy-timestamp guard: a write inside the same timestamp tick as your read is treated as "changed" again next pass. Disclose this when you use it, it deviates from the marker rule (projector 0.93% -> 0.20%, 3D daemon 0.47% -> 0.33%).
+- **Negative-test every gate:** rewrite the input with the same size and different content and prove the consumer still updates; run a stand-in viewer (`exec -a "khtpm_core_render fake <x>.xhtpm" sleep N`) to prove the "no viewer" shortcut turns off when a window opens.
+
+### 6b. Throttle the expensive call, never the tick, and never write what has not changed
+
+- A label that ticks with the game clock (`time_label`) re-lays-out and repaints the whole window on every change; write it at most once per 5 s unless something other than the label changed (`clock_ui_write`).
+- `write_if_changed()` for every derived file (ui.txt, events.txt, map.txt): an identical rewrite still wakes every watcher.
+- A re-export that is expensive (the glyph/3D book) runs on a **hash of the thing it exports** (the block table), the first pass only learns the hash, idle passes do nothing.
+- Chat/log files are trimmed (`chat_trim`); the S1 ledger has a 32 MB read cap. An append-only file with no cap is a slow leak (bug_bounty item 7).
+
+### 6c. How to measure so the number is real
+
+- `/proc/<pid>/stat` fields 14+15 (add 16+17 for children), over a measured wall-clock window of 20-40 s, old and new binary **alternated** on the same load. One 5 s reading is noise; the first reading after a relaunch or a reparse is a burst.
+- Also record `VmRSS` and the fd count at both ends: a flat rss/fd over 90 s is the leak check (a leak shows as growth, not as CPU).
+- `perf`/`gdb` are blocked here (paranoid 4); `gprof` works on a `-pg` copy, `strace` works only on a child you start.
+- **Per-session binary copies:** each board engine session runs its own copy of `bv_render_3d` etc.; a rebuilt binary only reaches a new session (memory: reference-board-engine-session-binary-copies).
+- Never report a number you did not observe; say what window it was.
+
+### 6d. Do not drive a viewer that is not there (generalised)
+
+Every daemon that renders or exports for a window asks first whether the window exists (`viewer_kinds()`: scan `/proc` cmdlines, but **only every 2-30 s and only when `livedesk_proc_list.txt` changed**), and a window that is minimized or closed gets nothing. A `/proc` scan every pass is itself the cost.
+
+### 6e. One resident daemon per game folder (found today, fixed in all eight)
+
+`df_hq`, `cdda_hq`, `mcl_hq`, `rpg_pet`, `civ_rpgce`, `dsr_rpg`, `gta_hq`, `tcg_rpgce` are started from two places (the board launcher and the standalone window's `<module>`). Nothing stopped both: two daemons ticked the same `state/`, doubled the work, and raced on every write. **Rule: every resident loop takes `flock(state/daemon.lock, LOCK_EX|LOCK_NB)` first and exits if it cannot** (close-on-exec so a leftover child never holds it; the kernel drops it on death so a crash needs no cleanup). Test: second instance exits at once, a new one starts after the first dies (`XO/test_lock.sh`). A new long-running binary gets this in its first ten lines.
+
+### 6f. Leaks and strays to check after any test session
+
+- `lc_clock` is left behind when a game daemon dies (bug_bounty item 4): scan `/proc/*/exe` and kill the ones whose cwd/args name your scratch folder.
+- Engine stacks (`khtpm_entity` x6, 3D daemon, projector) of a scratch board keep running after the window closes. Close them by pid, then `rm` the scratch folder.
+- **Never `pkill -f` / `pgrep -f`** with a pattern that also appears in your own command line (the tool shell dies, exit 144, instrumented copies keep running). Put the scan in a script file whose own command line does not contain the pattern.
+- A scratch copy that rewrites absolute paths (`sed s#@.apps/x/#@.apps/x-test/#`) must be checked before running: a copy once flipped the LIVE switch through an absolute path.
+
+### 6g. Best-practices checklist (use when adding or reviewing code)
+
+1. Any call inside a tick loop that touches more than one file, scans a directory/`/proc`, takes a lock or launches a child needs a written answer to "how often must this really run". Default: only when a marker grew, plus a slow safety net.
+2. Gate with an append-only marker size, not `st_mtime`. If you must use (size, mtime ns), add the racy guard and say so.
+3. Do not write a file whose content did not change; do not repaint for a label that changed alone.
+4. No work for an absent viewer; check for it rarely and only when the proc ledger changed.
+5. One resident daemon per folder (flock). Close-on-exec for the lock.
+6. Profile before you gate: syscalls (count reads with `/proc/<pid>/io` syscr) beat guessing at math.
+7. Verify with a windowed `/proc` sample, both fields, old vs new alternated, plus rss/fd flat over 90 s.
+8. Negative-test the gate (same size, new content; viewer appears; marker missed).
+9. Heavy background work (builds, TTS, ffmpeg): `nice -n 15 ionice -c3` (`XO/guard.sh`); the taskbar must stay responsive.
+10. Rank the whole machine before blaming the house; a foreign process (another agent, the browser) can be the hog.
+11. Clean up after every test: stray `lc_clock`, scratch board stacks, scratch folders; no `pkill -f`.
+12. Record the measured before/after in the commit message, with the window length.
