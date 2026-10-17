@@ -1,0 +1,40 @@
+df-hq help: digging
+The castle has a block of rock. Pets dig the
+cells you mark.
+
+Menu > Help is a one-line tip.
+This panel is the full help: Help > Next page.
+---
+1. Mark a cell
+Turn INT on. Face the rock and use Menu > Dig
+(or give two numbers x y to the dig verb).
+A marked cell shows an X; when a pet has
+claimed it the X turns into a diamond.
+---
+2. Mark an area
+Menu > Dig area: first use sets a corner,
+second use marks every rock cell between the
+two corners (up to 64).
+Menu > Dig: cancel the mark in front removes
+a mark.
+---
+3. What happens
+A free pet in the room walks next to a mark and
+digs it. The rock cell becomes floor and the
+digger gets one stone (chat scroll:
+pip: gets stone). The note line under the coins
+shows who dug what.
+---
+4. Save and test
+Player > Save / Load keep the dug cells and the
+marks. Player > New game starts a fresh one
+(your game goes to slot 0; Undo new game).
+Player > Load test fortress loads a ready-made
+castle with 9 marked cells.
+---
+Not built yet
+Hauling stone to a stockpile, labor choice,
+building, crafting.
+
+Full guide: BOOK 10-user-docs/
+DF-HQ-DIG-HOWTO.md

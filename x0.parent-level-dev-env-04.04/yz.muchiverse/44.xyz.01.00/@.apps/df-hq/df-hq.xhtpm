@@ -12,6 +12,7 @@
       <tab id="tb-page" class="tab rp-tb" label="${page_label} ▾" onclick="ACTIVATE" target_id="tb-page"/>
       <tab id="tb-shop" class="tab rp-tb" label="Shop ▾" onclick="ACTIVATE" target_id="tb-shop"/>
       <tab id="tb-menu" class="tab rp-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
+      <tab id="tb-help" class="tab rp-tb" label="Help ▾" onclick="ACTIVATE" target_id="tb-help"/>
       <tab id="tb-player" class="tab rp-tb" label="Player ▾" onclick="ACTIVATE" target_id="tb-player"/>
       <tab id="tb-time" class="tab rp-tb" label="${time_label} ▾" onclick="ACTIVATE" target_id="tb-time"/>
     </tabbar>
@@ -46,6 +47,11 @@
       <item id="mn-undig" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Dig: cancel the mark in front" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' undig"/>
       <item id="mn-help" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Help: how to dig (click for the next step)" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' help"/>
       <item id="mn-reset" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Reset house (keeps a backup)" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' reset"/>
+      <item id="hp-open" class="rp-menu-row dropdown-child" target_id="tb-help" label="Open help" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' helppanel open"/>
+      <item id="hp-next" class="rp-menu-row dropdown-child" target_id="tb-help" label="Next page" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' helppanel next"/>
+      <item id="hp-prev" class="rp-menu-row dropdown-child" target_id="tb-help" label="Prev page" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' helppanel prev"/>
+      <item id="hp-close" class="rp-menu-row dropdown-child" target_id="tb-help" label="Close help" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' helppanel close"/>
+      <item id="hp-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-help" label="- cancel -" action="void"/>
       <item id="mn-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-menu" label="- cancel -" action="void"/>
       <item id="pm-mode" class="rp-menu-row dropdown-child" target_id="tb-player" label="${mode_label}" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' mode"/>
       <item id="pm-play" class="rp-menu-row dropdown-child" target_id="tb-player" label="Play" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' play"/>
@@ -76,6 +82,21 @@
     </sidebar>
     <panel id="room_p" class="rp-panel">
       <canvas id="room" class="rp-room" sprite="${canvas_raw}"/>
+      <row id="help-ov" class="canvas-overlay-left ov-top ov-chrome ov-slide-x rp-help-ov theme" show="${help_visible}">
+        <text label="${help_0}" class="hb-quiet ov-title theme-3"/>
+        <text label="${help_1}" class="rp-chat"/>
+        <text label="${help_2}" class="rp-chat"/>
+        <text label="${help_3}" class="rp-chat"/>
+        <text label="${help_4}" class="rp-chat"/>
+        <text label="${help_5}" class="rp-chat"/>
+        <text label="${help_6}" class="rp-chat"/>
+        <text label="${help_7}" class="rp-chat"/>
+        <text label="${help_8}" class="rp-chat"/>
+        <text label="${help_9}" class="rp-chat"/>
+        <text label="${help_10}" class="rp-chat"/>
+        <item id="help-next" class="rp-menu-row rp-help-row" label="next page" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' helppanel next"/>
+        <item id="help-x" class="rp-menu-row rp-help-row" label="close help" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' helppanel close"/>
+      </row>
       <row id="chat-ov" class="canvas-overlay-right ov-top ov-chrome ov-slide-x rp-chat-ov theme" show="${chat_visible}">
         <text label="chat - ${active_name}" class="hb-quiet ov-title theme-3"/>
         <item id="chat-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' toggle chat"/>
@@ -86,6 +107,10 @@
         <text label="${chat_3}" class="rp-chat"/>
         <text label="${chat_4}" class="rp-chat"/>
         <text label="${chat_5}" class="rp-chat"/>
+        <text label="${chat_6}" class="rp-chat"/>
+        <text label="${chat_7}" class="rp-chat"/>
+        <text label="${chat_8}" class="rp-chat"/>
+        <text label="${chat_9}" class="rp-chat"/>
         <cli_io id="say" target_id="rp-say" rows="3" class="rp-say" label="&gt; " action="'${PKG}/ops/+x/df_hq.+x'"/>
       </row>
       <row id="hotbar-ov" class="canvas-overlay-bottom ov-chrome ov-slide-x rp-hotbar theme" show="${hb_visible}">

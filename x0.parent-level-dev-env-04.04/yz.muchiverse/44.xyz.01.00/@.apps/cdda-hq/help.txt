@@ -1,0 +1,47 @@
+cdda-hq help: crafting, the cellar, one zed
+You pick who acts with Menu > Control (Tab).
+Every pet and the player has its own bag.
+
+Craft > Help is a one-line tip.
+This panel is the full help: Help > Next page.
+
+Everything that happens is a line in the chat
+scroll (Menu > Chat show / hide).
+---
+1. Items and crafting
+Craft > Scavenge a rag gives one rag. It is a
+stand-in until a real item source exists.
+Craft > Craft bandage: 1 rag gives 1 bandage
+and costs 1 minute of game time.
+Craft > Bag and Recipes list what you have and
+what you can make (recipes.pdl).
+---
+2. The cellar
+The Castle has a second door in its left wall:
+the stair. It leads to the Cellar page, and the
+Cellar door leads back. There is no height
+level yet; it is an ordinary door.
+---
+3. The zed
+One zed lives in the Cellar. It acts only in
+INT (turn) mode, after each of your turns:
+next to you it hits you, otherwise it takes one
+step toward you. It never leaves the Cellar.
+Craft > Strike the zed beside me hits it when
+you stand next to it.
+---
+4. Wounds
+Six parts: head, torso, arm_l, arm_r, leg_l,
+leg_r. Each starts at max HP / 6 (Rex 34 gives
+5, the zed 18 gives 3). One hit takes 1 from
+one part. Craft > Wounds lists who is hurt.
+A leg at 0 makes walking "slow" but you still
+move one cell. Nobody dies yet.
+---
+Not built yet
+Killing, effects of head/arm/torso wounds, the
+zed in real time, more monsters, tools, skill
+checks, a real item source, healing.
+
+Full guide: BOOK 10-user-docs/
+CDDA-HQ-CRAFT-HOWTO.md

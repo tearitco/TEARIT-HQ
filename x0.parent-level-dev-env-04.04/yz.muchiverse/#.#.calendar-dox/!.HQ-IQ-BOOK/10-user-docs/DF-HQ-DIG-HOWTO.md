@@ -32,3 +32,7 @@ Face the marked tile and use **Menu > Dig: cancel the mark in front**. The X dis
 - The files behind it (append-only, nothing is edited): `@.apps/df-hq/state/jobs.txt` (`DESIGNATE`, `CLAIM`, `DONE`, `CANCEL`, `CORNER` rows) and `state/events.txt` (`DIG` rows).
 - Not built yet: how long a dig takes, tools, stone kinds, what drops, hauling, priorities, stairs and digging down. Those are the game rules and are listed in `@.apps/df-hq/README.md` (FORTRESS-TODO).
 - Typed form, if you prefer a command: `df_hq.+x dig`, `dig <x> <y>`, `undig`, `dig_area`, `help`.
+
+## The Help tab
+
+The top bar has a **Help** tab (2026-10-17): Open help, Next page, Prev page, Close help. It opens a panel on the left of the picture with the full help, one page at a time. The text is `help.txt` in the app folder (pages separated by a line `---`). The chat scroll is on by default, ten lines, dark strip.

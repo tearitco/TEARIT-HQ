@@ -33,3 +33,7 @@ Killing anything (nobody dies), effects of arm/head/torso wounds, the zed acting
 ## Tested
 
 Scratch copies and a scratch window, see the commit messages and `XO/cdda-c1-test.txt`, `XO/cdda-c2-test.txt`. Not tested: on the live cdda-hq window.
+
+## The Help tab
+
+The top bar has a **Help** tab (2026-10-17): Open help, Next page, Prev page, Close help. It opens a panel on the left of the picture with the full help for this game, one page at a time (CDDA-HQ-CRAFT-HOWTO.md). The text is `help.txt` in the app folder (pages separated by a line `---`, 47 characters wide, 10 non-blank lines a page); edit that file to change the help. The chat scroll is now on by default and shows the last ten lines on a dark strip.

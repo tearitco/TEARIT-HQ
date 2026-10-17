@@ -35,3 +35,7 @@ Gravity, chests, mobs, the 3x3 crafting table versus 2x2 (every recipe works any
 ## Tested
 
 Scratch copies, paths rewritten, verbs and a window: see the commit message of the mcl-hq blocks commit and `XO/mcl-blocks-test.txt`. Not tested: on the live mcl-hq window, with the pets' own walking around blocks over a long time, a block placed under a pet.
+
+## The Help tab
+
+The top bar has a **Help** tab (2026-10-17): Open help, Next page, Prev page, Close help. It opens a panel on the left of the picture with the full help for this game, one page at a time (MCL-HQ-BLOCKS-HOWTO.md). The text is `help.txt` in the app folder (pages separated by a line `---`, 47 characters wide, 10 non-blank lines a page); edit that file to change the help. The chat scroll is now on by default and shows the last ten lines on a dark strip.
