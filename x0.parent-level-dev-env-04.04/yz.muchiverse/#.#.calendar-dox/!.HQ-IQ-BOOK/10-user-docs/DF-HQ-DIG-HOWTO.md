@@ -21,6 +21,11 @@ If you face open floor, the green line says `nothing to dig at x,y` and nothing 
 ## Take a mark back
 Face the marked tile and use **Menu > Dig: cancel the mark in front**. The X disappears. (A mark a pet has already finished cannot be cancelled: it is dug.)
 
+## Save, load and reset
+- **Player > Save (slot 1)** now also saves the dug cells and the marks (`events.txt` and `jobs.txt` are in the slot); **Player > Load (slot 1)** brings them back exactly as saved: cells dug after the save are rock again, marks made after the save are gone.
+- **Menu > Reset house** moves the placed items aside (as before, kept as `house.txt.<time>.bak`) and now also **puts the rock back** and clears all marks. The old `DIG` rows stay in `events.txt` as history, followed by a `RESET` row.
+- Before 2026-10-16 evening neither Save nor Reset touched dug cells (dug cells stayed dug forever).
+
 ## Good to know
 - A cell enclosed by rock on all four sides is not worked until a neighbour is dug; the pets take the reachable marks first.
 - Only one pet takes a mark. A pet that leaves the room gives its mark back.

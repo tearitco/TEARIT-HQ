@@ -265,10 +265,12 @@ static void tail_lines(const char *name, long *off, void (*fn)(char **, int)) { 
     while (fgets(line, sizeof line, fp)) { size_t l = strlen(line); if (!l || line[l - 1] != '\n') break; *off += (long)l; char *f[8]; int n = split_bar(line, f, 8); fn(f, n); }
     fclose(fp);
 }
-static void ev_row(char **f, int n) { if (n >= 6 && !strcmp(f[0], "DIG") && ndug < 256) { int r = room_idx(f[3]), x = atoi(f[4]), y = atoi(f[5]); if (r >= 0 && cell_in(dug, ndug, r, x, y) < 0) dug[ndug++] = (Cell){ r, x, y }; } }
+static void ev_row(char **f, int n) { if (n >= 2 && !strcmp(f[0], "RESET")) { ndug = 0; return; }      /* RESET|ts: the rock is back (appended by the reset verb; the history before it stays in the file) */
+    if (n >= 6 && !strcmp(f[0], "DIG") && ndug < 256) { int r = room_idx(f[3]), x = atoi(f[4]), y = atoi(f[5]); if (r >= 0 && cell_in(dug, ndug, r, x, y) < 0) dug[ndug++] = (Cell){ r, x, y }; } }
 static void job_remove(int i) { job[i] = job[njob - 1]; memcpy(jowner[i], jowner[njob - 1], 16); njob--; }
 /* jobs.txt rows: DESIGNATE|ts|room|x|y   CLAIM|ts|actor|room|x|y   DONE|ts|room|x|y   CANCEL|ts|room|x|y   CORNER|ts|room|x|y (room "-" clears the corner) */
 static void jb_row(char **f, int n) {
+    if (n >= 2 && !strcmp(f[0], "RESET")) { njob = 0; corner.room = -1; return; }
     if (n < 4) return;
     if (!strcmp(f[0], "CLAIM")) { if (n < 6) return; int r = room_idx(f[3]); if (r < 0) return; int i = cell_in(job, njob, r, atoi(f[4]), atoi(f[5])); if (i >= 0) snprintf(jowner[i], 16, "%s", f[2]); return; }
     int r = room_idx(f[2]);
@@ -277,8 +279,10 @@ static void jb_row(char **f, int n) {
     if (!strcmp(f[0], "DESIGNATE") && njob < 64 && cell_in(job, njob, r, x, y) < 0) { job[njob] = (Cell){ r, x, y }; jowner[njob][0] = 0; njob++; }
     else if (!strcmp(f[0], "DONE") || !strcmp(f[0], "CANCEL")) { int i = cell_in(job, njob, r, x, y); if (i >= 0) job_remove(i); }
 }
+static long ep_off;      /* size of state/world_epoch.txt: one line is appended whenever a load replaces the ledgers wholesale */
 static void world_sync(void) {
     char p[PATH_MAX];
+    spath(p, "world_epoch.txt"); if (fsize(p) != ep_off) { ep_off = fsize(p); ndug = 0; ev_off = 0; njob = 0; jb_off = 0; corner.room = -1; }      /* a load swapped the files under us: read both from the start */
     spath(p, "events.txt"); if (fsize(p) < ev_off) { ndug = 0; ev_off = 0; }      /* a shorter file = the ledger was reset: start over */
     spath(p, "jobs.txt");   if (fsize(p) < jb_off) { njob = 0; jb_off = 0; corner.room = -1; }
     tail_lines("events.txt", &ev_off, ev_row); tail_lines("jobs.txt", &jb_off, jb_row);
@@ -706,6 +710,7 @@ static int stand_tile(int jx, int jy, int *sx, int *sy) {
     for (int k = 0; k < 4; k++) { int x = jx + nx[k], y = jy + ny[k]; if (x < 0 || x >= COLS || y < TRIG_ROW || y >= ROWS || floor_blocked(pet.room, x, y, 0) || other_at(pet.room, x, y) || door_here(pet.room, x, y) >= 0) continue; int d = abs(x - pet.x) + abs(y - pet.y); if (d < bd) { bd = d; *sx = x; *sy = y; ok = 1; } }
     return ok;
 }
+static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, "rb"); if (!in) return 0; FILE *out = fopen(to, "wb"); if (!out) { fclose(in); return 0; } char buf[8192]; size_t n; int ok = 1; while ((n = fread(buf, 1, sizeof buf, in)) > 0) if (fwrite(buf, 1, n, out) != n) { ok = 0; break; } fclose(in); if (fclose(out) != 0) ok = 0; return ok; }
 static void note_set(const char *s) { char p[PATH_MAX]; spath(p, "note.txt"); FILE *f = fopen(p, "w"); if (f) { fprintf(f, "%s\n", s); fclose(f); } }      /* the last dig message, shown in the window (ui.txt note=): msg= is not painted anywhere */
 static int dig_target(int argc, char **argv, int *room, int *x, int *y) {      /* the tile in front of the controlled mover, or two numbers = coordinates in the room being viewed */
     int ci = ctl_idx(); use_ent(ci); *room = pet.room;
@@ -933,7 +938,9 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
         clock_paths(); if (run_on()) clock_install(); clock_sync(); if (run_on()) lc_run(1, "daemon-start", NULL); snprintf(msg, cap, "synced"); return; }      /* the clock follows the running / int switches (the last node of the play and stop event pages) */
     if (!strcmp(v, "phase") && argc >= 2) { clock_event(argv[1]); snprintf(msg, cap, "phase %s", argv[1]); return; }
     if (!strcmp(v, "day_tick")) { clock_event("day_tick"); snprintf(msg, cap, "new day"); return; }
-    if (!strcmp(v, "reset")) { char p[PATH_MAX], q[PATH_MAX]; spath(p, "house.txt"); snprintf(q, sizeof q, "%s/house.txt.%ld.bak", ST, now); if (fexists(p)) rename(p, q); snprintf(msg, cap, "house reset (the old ledger is kept as house.txt.%ld.bak)", now); return; }
+    if (!strcmp(v, "reset")) { char p[PATH_MAX], q[PATH_MAX]; spath(p, "house.txt"); snprintf(q, sizeof q, "%s/house.txt.%ld.bak", ST, now); if (fexists(p)) rename(p, q);
+        { char rb[60]; snprintf(rb, sizeof rb, "RESET|%ld", now); append_line("events.txt", rb); append_line("jobs.txt", rb); world_sync(); }      /* the dug cells and the marks go too: the rock is back (rows before RESET stay as history) */
+        snprintf(msg, cap, "house reset, the rock is back (the old ledger is kept as house.txt.%ld.bak)", now); return; }
     if (!strcmp(v, "buy") && argc >= 2) {
         int i = item_idx(argv[1]); int x, y; if (i < 0) { snprintf(msg, cap, "unknown item %s", argv[1]); return; }
         if (cat[i].price > coins) { snprintf(msg, cap, "not enough coins: %s costs %d, you have %d", cat[i].label, cat[i].price, coins); return; }
@@ -997,12 +1004,15 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
     if (!strcmp(v, "stop")) { if (!(run_event("stop", "ui") && !run_on())) { set_flag("running", "0"); clock_sync(); } snprintf(msg, cap, "STOPPED: everything is frozen (building and chat still work). Play resumes"); return; }
     if (!strcmp(v, "save") || !strcmp(v, "load")) {      /* slot copies of the state files (pets, trainer, ledger, relations, chat, flags, clock time) */
         int slot = argc >= 2 ? atoi(argv[1]) : 1; if (slot < 1 || slot > 9) slot = 1; int saving = !strcmp(v, "save"); char sd[PATH_MAX]; snprintf(sd, sizeof sd, "%s/slots", ST); mkdir(sd, 0755); snprintf(sd, sizeof sd, "%s/slots/%d", ST, slot); mkdir(sd, 0755);
-        char names[40][48]; int nn = 0; snprintf(names[nn++], 48, "house.txt"); snprintf(names[nn++], 48, "trainer.txt"); snprintf(names[nn++], 48, "relations.txt"); snprintf(names[nn++], 48, "chat.txt"); snprintf(names[nn++], 48, "active.txt"); snprintf(names[nn++], 48, "daylight.txt"); snprintf(names[nn++], 48, "flag_ctl.txt"); snprintf(names[nn++], 48, "flag_follow.txt");
+        char names[40][48]; int nn = 0; snprintf(names[nn++], 48, "house.txt"); snprintf(names[nn++], 48, "trainer.txt"); snprintf(names[nn++], 48, "relations.txt"); snprintf(names[nn++], 48, "chat.txt"); snprintf(names[nn++], 48, "active.txt"); snprintf(names[nn++], 48, "daylight.txt"); snprintf(names[nn++], 48, "flag_ctl.txt"); snprintf(names[nn++], 48, "flag_follow.txt"); snprintf(names[nn++], 48, "jobs.txt"); snprintf(names[nn++], 48, "events.txt");      /* the dug cells and the marks (events.txt is bigger than the 64 KB read buffer below: streamed) */
         for (int i = 0; i < nparty && nn < 38; i++) snprintf(names[nn++], 48, "pet_%s.txt", party[i].id);
         if (!saving && !fexists(sd)) { snprintf(msg, cap, "slot %d is empty", slot); return; } char mp[PATH_MAX]; snprintf(mp, sizeof mp, "%s/clock_ms.txt", sd);
         if (saving) { clock_paths(); long long ms = clock_kv_ll("game_time_epoch_ms"); char b[40]; snprintf(b, sizeof b, "%lld\n", ms); write_if_changed(mp, b, strlen(b)); }
         int ok = 0; for (int i = 0; i < nn; i++) { char a[PATH_MAX], bpath[PATH_MAX], buf[65536]; if (saving) { spath(a, names[i]); snprintf(bpath, sizeof bpath, "%s/%s", sd, names[i]); } else { snprintf(a, sizeof a, "%s/%s", sd, names[i]); spath(bpath, names[i]); }
-            if (!fexists(a)) { if (!saving) remove(bpath); continue; } int n = read_file(a, buf, sizeof buf); write_if_changed(bpath, buf, n); ok++; }
+            if (!fexists(a)) { if (!saving) remove(bpath); continue; }
+            if (!strcmp(names[i], "events.txt") || !strcmp(names[i], "jobs.txt")) { if (copy_file(a, bpath)) ok++; continue; }
+            int n = read_file(a, buf, sizeof buf); write_if_changed(bpath, buf, n); ok++; }
+        if (!saving) { append_line("world_epoch.txt", "LOAD"); world_sync(); }
         if (!saving) { char b[40]; read_file(mp, b, sizeof b); long long ms = atoll(b); if (ms > 0) { clock_paths(); clock_install(); char ma[32]; snprintf(ma, sizeof ma, "%lld", ms); lc_run(0, "cmd", "rpg", "settime", ma, "--source", "rpg-load", NULL); lc_run(0, "step", "5", NULL); } pet_load(); }
         snprintf(msg, cap, "%s slot %d (%d files)", saving ? "saved to" : "loaded from", slot, ok); return; }
     if (!strcmp(v, "clearchat")) { char p[PATH_MAX], q[PATH_MAX]; spath(p, "chat.txt"); snprintf(q, sizeof q, "%s/chat.txt.%ld.bak", ST, now); if (fexists(p)) rename(p, q); snprintf(msg, cap, "chat cleared (kept as chat.txt.%ld.bak)", now); return; }
