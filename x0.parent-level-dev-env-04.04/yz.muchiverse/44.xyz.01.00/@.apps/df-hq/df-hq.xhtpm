@@ -52,10 +52,10 @@
       <item id="pm-stop" class="rp-menu-row dropdown-child" target_id="tb-player" label="Stop" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' stop"/>
       <item id="pm-save" class="rp-menu-row dropdown-child" target_id="tb-player" label="Save (slot 1)" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' save 1"/>
       <item id="pm-load" class="rp-menu-row dropdown-child" target_id="tb-player" label="Load (slot 1)" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' load 1"/>
+      <item id="pm-new" class="rp-menu-row dropdown-child" target_id="tb-player" label="New game" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' newgame"/>
+      <item id="pm-load0" class="rp-menu-row dropdown-child" target_id="tb-player" label="Undo new game" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' load 0"/>
       <item id="pm-save2" class="rp-menu-row dropdown-child" target_id="tb-player" label="Save (slot 2)" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' save 2"/>
       <item id="pm-load2" class="rp-menu-row dropdown-child" target_id="tb-player" label="Load (slot 2)" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' load 2"/>
-      <item id="pm-new" class="rp-menu-row dropdown-child" target_id="tb-player" label="New game (keeps this one in slot 0)" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' newgame"/>
-      <item id="pm-load0" class="rp-menu-row dropdown-child" target_id="tb-player" label="Load slot 0 (the game before New game)" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' load 0"/>
       <item id="pm-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-player" label="- cancel -" action="void"/>
       <text id="light" label="${run_label}" class="${run_cls}"/>
       <text label="coins ${coins}" class="rp-big"/>
