@@ -7,7 +7,7 @@
  *   EVENT|ts|actor|verb|target|at|queued     what happened, written by ge_append() (a verb, a menu row, or a pet)
  *   EVRES|ts|<byte offset of the EVENT row>|verb|result    written ONCE by ge_scan() after it applied the row
  *   REJECT|ts|<byte offset of the bad row>|reason          written ONCE for an EVENT-looking row that is malformed (never skipped silently)
- * verb is one of give_item take walk dig build craft. at is "-" or "<room>:<x>,<y>". No field may contain '|', CR or LF.
+ * verb is one of give_item take walk dig build craft strike. at is "-" or "<room>:<x>,<y>". No field may contain '|', CR or LF.
  *
  * NO SEPARATE CURSOR FILE. Resolution status lives in the ledger itself (an EVRES row names the offset of its EVENT row), so a Save, Load, New game or
  * reset, which swap events.txt as a whole, can never leave a cursor that disagrees with the ledger. ge_scan() replays the ledger from byte 0 into the
@@ -30,7 +30,7 @@
 
 #define GE_MAX_INV 512
 #define GE_MAX_FILE (32L * 1024 * 1024)
-static const char *ge_verbs[] = { "give_item", "take", "walk", "dig", "build", "craft", NULL };
+static const char *ge_verbs[] = { "give_item", "take", "walk", "dig", "build", "craft", "strike", NULL };      /* strike: RULES-cdda-hq.md (one wound) */
 typedef struct { char actor[24], item[24]; long n; } GeInv;
 static GeInv ge_inv[GE_MAX_INV]; static int ge_ninv;
 static char ge_last[48];      /* result of the last legal EVENT row the latest ge_scan applied ("" when none) */

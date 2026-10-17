@@ -13,7 +13,7 @@
   the manifest format, and the honest status of browser media.
 - `DF-HQ-DIG-HOWTO.md` — df-hq dig for players: mark a tile, mark a block, cancel, what the X and the diamond mean (same steps in the window: Menu > Help).
 - `MCL-HQ-BLOCKS-HOWTO.md` — mcl-hq blocks for players: mine, hold, place, craft, bag, help (Blocks tab in the window), where the block and recipe rows live, what is not built.
-- `CDDA-HQ-CRAFT-HOWTO.md` — cdda-hq crafting for players: scavenge, craft bandage (charges game time), bag, recipes, help (Craft tab), the Castle stair to the Cellar.
+- `CDDA-HQ-CRAFT-HOWTO.md` — cdda-hq for players: scavenge, craft bandage (charges game time), bag, recipes, strike the zed, wounds, help (Craft tab), the Castle stair to the Cellar.
 - `2026-09-18/WHY-DSR-WSR-PAUSED.md` — why Dustopia civ (WSR-CIV) and
   DSR menu-class are **paused, not cancelled**: inventory/robot-bag
   bootstrap first so those tracks have a real container.

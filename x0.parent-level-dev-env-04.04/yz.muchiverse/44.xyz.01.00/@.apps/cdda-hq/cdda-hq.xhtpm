@@ -46,6 +46,8 @@
       <item id="cr-scav" class="rp-menu-row dropdown-child" target_id="tb-craft" label="Scavenge a rag (stand-in)" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' scavenge"/>
       <item id="cr-bandage" class="rp-menu-row dropdown-child" target_id="tb-craft" label="Craft bandage (1 rag)" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' craft bandage"/>
       <item id="cr-bag" class="rp-menu-row dropdown-child" target_id="tb-craft" label="Bag: what I carry" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' bag"/>
+      <item id="cr-strike" class="rp-menu-row dropdown-child" target_id="tb-craft" label="Strike the zed beside me" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' strike"/>
+      <item id="cr-wounds" class="rp-menu-row dropdown-child" target_id="tb-craft" label="Wounds: who is hurt" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' wounds"/>
       <item id="cr-rec" class="rp-menu-row dropdown-child" target_id="tb-craft" label="Recipes" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' recipes"/>
       <item id="cr-help" class="rp-menu-row dropdown-child" target_id="tb-craft" label="Help: crafting and the cellar" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' help"/>
       <item id="cr-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-craft" label="- cancel -" action="void"/>
