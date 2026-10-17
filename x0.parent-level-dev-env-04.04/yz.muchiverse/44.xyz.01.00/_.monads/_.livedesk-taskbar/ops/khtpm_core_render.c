@@ -10781,6 +10781,17 @@ static void kh_clipboard_copy(const char *text) {
     XSetSelectionOwner(dpy, XA_PRIMARY, win, CurrentTime);
     XFlush(dpy);
     g_clip_copied_at = time(NULL);
+    /* REAL FIX 2026-10-17: a copy receipt. XSetSelectionOwner is asynchronous
+     * and answering the SelectionRequest is a round trip, so a client reading
+     * the clipboard straight after Ctrl+C can legitimately get the PREVIOUS
+     * owner's bytes - and a read that cannot tell "the answer" from "the last
+     * answer" silently returns stale data. That is not hypothetical: the
+     * selection suites were ~40% flaky, and tracing the renderer's whole key
+     * stream came back byte-identical between a passing and a failing run, so
+     * the renderer was never the variable. One line here gives any client
+     * something observable to wait on instead of sleeping and hoping. */
+    kh_focus_debug_log("COPY len=%d text=[%s]", (int)strlen(text ? text : ""),
+                       text ? text : "");
 }
 
 static void kh_clipboard_insert_text(Elem *e, const char *text);

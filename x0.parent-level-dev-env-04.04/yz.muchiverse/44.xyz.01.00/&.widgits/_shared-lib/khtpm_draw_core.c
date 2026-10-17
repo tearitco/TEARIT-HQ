@@ -1613,13 +1613,14 @@ static int seg_cursor_step(Elem *focused, int dir) {
  * the plain walk-off). Returns 1 when consumed, else 0 for normal row
  * stepping (plain rows, overlong rows, grids). */
 static int seg_anchor_extend(Elem *focused, int dir) {
-    int nact, cur, fresh;
+    int nact, cur, fresh, prev;
     if (!focused || !focused->segments[0]) return 0;
     nact = seg_actionable_count(focused);
     if (nact <= 0) return 0;
     /* read freshness BEFORE touching state: setting nav/id first and
      * asking after would resurrect a stale idx from another row. */
     fresh = !seg_cursor_on(focused);
+    prev = g_seg_idx;                 /* cursor BEFORE this move */
     if (fresh) {
         cur = (dir > 0) ? 0 : nact - 1;
     } else {
@@ -1632,7 +1633,23 @@ static int seg_anchor_extend(Elem *focused, int dir) {
         g_seg_nav = focused->nav_index;
         g_seg_idx = cur;
         snprintf(g_seg_id, sizeof(g_seg_id), "%s", focused->id);
-        if (fresh) g_seg_anchor = cur;
+        /* REAL FIX 2026-10-17. This used to be `if (fresh) g_seg_anchor = cur;`
+         * and that is wrong for the most ordinary sequence there is. A plain
+         * Right walks the cursor and sets g_seg_anchor = -1 (seg_cursor_step
+         * does it deliberately: an unshifted walk collapses the selection).
+         * A Shift+Right AFTER that is NOT `fresh` - the cursor is already on
+         * the row - so the anchor was never re-established: the index moved,
+         * the anchor stayed -1, seg_anchor_on() went false, and the row drew
+         * no band at all. Ctrl+C then took the no-selection path and copied
+         * the WHOLE label. Measured live: a 205-character copy where a
+         * two-character range had just been asked for.
+         *
+         * Which is why the suites were flaky rather than plainly broken: it
+         * only fires when a plain walk happened to precede the Shift, and
+         * that differs per test step. Right then Shift+Right selects one
+         * character in every real editor; here it selected nothing. */
+        if (fresh || g_seg_anchor < 0 || g_seg_anchor == cur)
+            g_seg_anchor = (prev >= 0 && prev < nact) ? prev : cur;
     }
     redraw();
     return 1;
