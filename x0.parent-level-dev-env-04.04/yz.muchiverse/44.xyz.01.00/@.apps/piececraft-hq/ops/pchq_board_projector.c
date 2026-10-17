@@ -70,7 +70,9 @@ static void tr_note(const char *p) {
     if (g_ntr >= PRJ_TRACK_MAX) { g_tr_over = 1; return; } g_tr[g_ntr].path = strdup(p); if (!g_tr[g_ntr].path) { g_tr_over = 1; return; } g_tr[g_ntr].mt = tr_sig(p, &g_tr[g_ntr].sz); g_ntr++;
 }
 static void tr_reset(void) { for (int i = 0; i < g_ntr; i++) { free(g_tr[i].path); g_tr[i].path = NULL; } g_ntr = 0; g_tr_over = 0; }
-static int tr_changed(void) { for (int i = 0; i < g_ntr; i++) { long long sz, mt = tr_sig(g_tr[i].path, &sz); if (sz != g_tr[i].sz || mt != g_tr[i].mt) return 1; } return 0; }
+static int tr_changed(void) {      /* a file modified in the last 100 ms counts as changed: the filesystem clock is coarse, a second same-size write in the same tick would not move (size, mtime) */
+    struct timespec n; clock_gettime(CLOCK_REALTIME, &n); long long now = (long long)n.tv_sec * 1000000000LL + n.tv_nsec;
+    for (int i = 0; i < g_ntr; i++) { long long sz, mt = tr_sig(g_tr[i].path, &sz); if (sz != g_tr[i].sz || mt != g_tr[i].mt || (mt > 0 && now - mt < 100000000LL)) return 1; } return 0; }
 static FILE *tr_fopen(const char *p, const char *m) { if (m && m[0] == 'r') tr_note(p); return fopen(p, m); }
 static DIR *tr_opendir(const char *p) { tr_note(p); return opendir(p); }
 static int tr_stat(const char *p, struct stat *s) { tr_note(p); return stat(p, s); }
