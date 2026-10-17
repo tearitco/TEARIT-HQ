@@ -101,16 +101,16 @@
         <text label="chat - ${active_name}" class="hb-quiet ov-title theme-3"/>
         <item id="chat-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' toggle chat"/>
         <item id="chat-clear" class="rp-menu-row" label="clear chat" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' clearchat"/>
-        <text label="${chat_0}" class="rp-chat"/>
-        <text label="${chat_1}" class="rp-chat"/>
-        <text label="${chat_2}" class="rp-chat"/>
-        <text label="${chat_3}" class="rp-chat"/>
-        <text label="${chat_4}" class="rp-chat"/>
-        <text label="${chat_5}" class="rp-chat"/>
-        <text label="${chat_6}" class="rp-chat"/>
-        <text label="${chat_7}" class="rp-chat"/>
-        <text label="${chat_8}" class="rp-chat"/>
-        <text label="${chat_9}" class="rp-chat"/>
+        <text label="${chat_0}" class="rp-chat ${chat_cls_0}"/>
+        <text label="${chat_1}" class="rp-chat ${chat_cls_1}"/>
+        <text label="${chat_2}" class="rp-chat ${chat_cls_2}"/>
+        <text label="${chat_3}" class="rp-chat ${chat_cls_3}"/>
+        <text label="${chat_4}" class="rp-chat ${chat_cls_4}"/>
+        <text label="${chat_5}" class="rp-chat ${chat_cls_5}"/>
+        <text label="${chat_6}" class="rp-chat ${chat_cls_6}"/>
+        <text label="${chat_7}" class="rp-chat ${chat_cls_7}"/>
+        <text label="${chat_8}" class="rp-chat ${chat_cls_8}"/>
+        <text label="${chat_9}" class="rp-chat ${chat_cls_9}"/>
         <cli_io id="say" target_id="rp-say" rows="3" class="rp-say" label="&gt; " action="'${PKG}/ops/+x/df_hq.+x'"/>
       </row>
       <row id="hotbar-ov" class="canvas-overlay-bottom ov-chrome ov-slide-x rp-hotbar theme" show="${hb_visible}">

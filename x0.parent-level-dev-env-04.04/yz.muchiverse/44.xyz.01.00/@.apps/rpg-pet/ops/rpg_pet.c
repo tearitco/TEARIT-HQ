@@ -952,6 +952,8 @@ static int enter_pressed_in_engine(void) {
     if (hit && now_ms() - g_own13 < 2500) hit = 0; return hit;
 }
 static int daemon_main(void) {
+    { char lp[PATH_MAX]; snprintf(lp, sizeof lp, "%s/daemon.lock", ST); static int lfd; lfd = open(lp, O_CREAT | O_RDWR, 0644);      /* ONE resident daemon per game folder (2026-10-17: a board launch and the standalone window each started one, both ticking the same state): flock is dropped by the kernel when this process dies, close-on-exec so a leftover child cannot hold it */
+      if (lfd >= 0) { fcntl(lfd, F_SETFD, FD_CLOEXEC); if (flock(lfd, LOCK_EX | LOCK_NB) != 0) { fprintf(stderr, "daemon already running for %s: this one exits\n", ST); return 0; } } }
     signal(SIGTERM, bye); signal(SIGINT, bye); signal(SIGHUP, bye); srand((unsigned)(time(NULL) ^ getpid()));
     char h1[PATH_MAX], h2[PATH_MAX], d[PATH_MAX]; snprintf(d, sizeof d, "%s/keyboard", ST); mkdir(d, 0755); spath(h1, "interact_relay.txt"); snprintf(h2, sizeof h2, "%s/keyboard/history.txt", ST);
     long o1 = fsize(h1), o2 = fsize(h2), next_ms[NP], last_ui = 0; int was_run = run_on() + 2 * rogue_mode(); for (int i = 0; i < NP; i++) next_ms[i] = now_ms() + 600 + 450L * i; char msg[200], lastday[40] = "", lasttone[300] = "";

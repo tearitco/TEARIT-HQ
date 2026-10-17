@@ -87,15 +87,16 @@ static const char *ge_apply(const char *actor, const char *verb, const char *tar
     snprintf(res, sizeof res, "todo:%s", verb); return res;      /* walk dig build craft: the rule body is grok's */
 }
 /* the plain-text line for one resolved event ("crafts bandage", "strikes rex: leg_l"); returns 0 when the event deserves no line (walk, the todo:* placeholders) */
+static const char *ge_art(const char *w) { return w && strchr("aeiou", w[0]) ? "an" : "a"; }      /* "finds a rag", "finds an apple" */
 static int ge_describe(const char *verb, const char *target, const char *res, char *out, size_t n) {
     int ok = !strcmp(res, "ok");
     if (!strncmp(res, "todo:", 5)) return 0;
-    if (!strcmp(verb, "give_item")) { if (ok) snprintf(out, n, "gets %s", target); else snprintf(out, n, "cannot carry %s (%s)", target, res); return 1; }
+    if (!strcmp(verb, "give_item")) { if (ok) snprintf(out, n, "finds %s %s", ge_art(target), target); else snprintf(out, n, "cannot carry %s (%s)", target, res); return 1; }
     if (!strcmp(verb, "take")) { if (ok) snprintf(out, n, "puts away %s", target); else snprintf(out, n, "has no %s", target); return 1; }
     if (!strcmp(verb, "dig")) { if (ok) snprintf(out, n, "mines %s", target); else if (!strcmp(res, "none")) snprintf(out, n, "finds no %s there", target); else snprintf(out, n, "cannot mine %s (%s)", target, res); return 1; }
-    if (!strcmp(verb, "build")) { if (ok) snprintf(out, n, "places %s", target); else if (!strcmp(res, "none")) snprintf(out, n, "has no %s to place", target); else if (!strcmp(res, "blocked")) snprintf(out, n, "cannot place %s there", target); else snprintf(out, n, "cannot place %s (%s)", target, res); return 1; }
-    if (!strcmp(verb, "craft")) { if (ok) snprintf(out, n, "crafts %s", target); else snprintf(out, n, "cannot craft %s: %s", target, !strcmp(res, "missing") ? "something is missing" : res); return 1; }
-    if (!strcmp(verb, "strike")) { if (!strncmp(res, "wound:", 6)) snprintf(out, n, "strikes %s: %s", target, res + 6); else snprintf(out, n, "strikes %s (%s)", target, res); return 1; }
+    if (!strcmp(verb, "build")) { if (ok) snprintf(out, n, "places %s", target); else if (!strcmp(res, "none")) snprintf(out, n, "has no %s to place", target); else if (!strcmp(res, "blocked")) snprintf(out, n, "cannot place %s: the cell is taken", target); else snprintf(out, n, "cannot place %s (%s)", target, res); return 1; }
+    if (!strcmp(verb, "craft")) { if (ok) snprintf(out, n, "crafts %s", target); else snprintf(out, n, "cannot craft %s: %s", target, !strcmp(res, "missing") ? "need the inputs" : res); return 1; }
+    if (!strcmp(verb, "strike")) { if (!strncmp(res, "wound:", 6)) snprintf(out, n, "hits %s: %s", target, res + 6); else snprintf(out, n, "cannot hit %s (%s)", target, res); return 1; }
     return 0;
 }
 /* split a row in place on '|'; returns the field count (max 8) */

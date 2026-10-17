@@ -36,3 +36,7 @@ Face the marked tile and use **Menu > Dig: cancel the mark in front**. The X dis
 ## The Help tab
 
 The top bar has a **Help** tab (2026-10-17): Open help, Next page, Prev page, Close help. It opens a panel on the left of the picture with the full help, one page at a time. The text is `help.txt` in the app folder (pages separated by a line `---`). The chat scroll is on by default, ten lines, dark strip.
+
+## The log lines (grok's spec, 2026-10-17)
+
+Each resolved event is one line in the chat scroll, `D1 08:02 Rex crafts bandage`: the game clock (left out when the game has no clock yet), the actor, a present-tense sentence. Finds and crafts that worked are green, hits and refusals grey. Examples: `Rex finds a rag`, `Rex cannot craft bandage: need the inputs`, `Rex hits the zed: torso 2/3`, `the zed hits Rex: leg_l 4/5`, `Rex cannot place stone: the cell is taken`. The scroll shows ten lines (grok asked for twelve; ten is what fits the pinned bar, every text row is about 30 px tall). Not built: door and day-change lines (the pets already say "went through the door"), scroll back.
