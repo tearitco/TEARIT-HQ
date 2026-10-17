@@ -41,6 +41,10 @@ typedef struct { long events, resolved_new, rejected_new, rejects_total; } GeSta
 #ifndef GE_RESET_HOOK
 #define GE_RESET_HOOK() ((void)0)
 #endif
+/* a game may also define GE_LOG_HOOK(actor, verb, target, at, result): called ONCE for every EVENT row the scan resolves now (never on a replay of a row that already has an EVRES, never when resolve is 0). The owner's call 2026-10-17: the output goes to the chat scroll for now; ge_describe() is the one place for the wording (a first draft, grok may change it). */
+#ifndef GE_LOG_HOOK
+#define GE_LOG_HOOK(a, v, t, at, r) ((void)0)
+#endif
 #ifndef GE_RULE_HOOK
 #define GE_RULE_HOOK(a, v, t, at) ((const char *)NULL)
 #endif
@@ -82,6 +86,18 @@ static const char *ge_apply(const char *actor, const char *verb, const char *tar
     if (!strcmp(verb, "take")) { GeInv *q = ge_inv_find(actor, target, 0); if (!q || q->n <= 0) return "none"; q->n--; return "ok"; }
     snprintf(res, sizeof res, "todo:%s", verb); return res;      /* walk dig build craft: the rule body is grok's */
 }
+/* the plain-text line for one resolved event ("crafts bandage", "strikes rex: leg_l"); returns 0 when the event deserves no line (walk, the todo:* placeholders) */
+static int ge_describe(const char *verb, const char *target, const char *res, char *out, size_t n) {
+    int ok = !strcmp(res, "ok");
+    if (!strncmp(res, "todo:", 5)) return 0;
+    if (!strcmp(verb, "give_item")) { if (ok) snprintf(out, n, "gets %s", target); else snprintf(out, n, "cannot carry %s (%s)", target, res); return 1; }
+    if (!strcmp(verb, "take")) { if (ok) snprintf(out, n, "puts away %s", target); else snprintf(out, n, "has no %s", target); return 1; }
+    if (!strcmp(verb, "dig")) { if (ok) snprintf(out, n, "mines %s", target); else if (!strcmp(res, "none")) snprintf(out, n, "finds no %s there", target); else snprintf(out, n, "cannot mine %s (%s)", target, res); return 1; }
+    if (!strcmp(verb, "build")) { if (ok) snprintf(out, n, "places %s", target); else if (!strcmp(res, "none")) snprintf(out, n, "has no %s to place", target); else if (!strcmp(res, "blocked")) snprintf(out, n, "cannot place %s there", target); else snprintf(out, n, "cannot place %s (%s)", target, res); return 1; }
+    if (!strcmp(verb, "craft")) { if (ok) snprintf(out, n, "crafts %s", target); else snprintf(out, n, "cannot craft %s: %s", target, !strcmp(res, "missing") ? "something is missing" : res); return 1; }
+    if (!strcmp(verb, "strike")) { if (!strncmp(res, "wound:", 6)) snprintf(out, n, "strikes %s: %s", target, res + 6); else snprintf(out, n, "strikes %s (%s)", target, res); return 1; }
+    return 0;
+}
 /* split a row in place on '|'; returns the field count (max 8) */
 static int ge_split(char *s, char **f, int max) { int n = 0; f[n++] = s; for (char *p = s; *p && n < max; p++) if (*p == '|') { *p = 0; f[n++] = p + 1; } return n; }
 static int ge_all_digits(const char *s) { if (!s || !*s) return 0; for (; *s; s++) if (!isdigit((unsigned char)*s)) return 0; return 1; }
@@ -105,7 +121,7 @@ static int ge_scan(const char *path, long now, int resolve, GeStats *st) {
         if (!ok && !why[0]) snprintf(why, sizeof why, over ? "row too long" : nf != 7 ? "want 7 fields" : "bad timestamp or result");
         int has = 0; for (int i = 0; i < ndone; i++) if (done[i] == row) { has = 1; break; }
         char line[160];
-        if (ok) { z.events++; const char *res = ge_apply(fl[2], fl[3], fl[4], fl[5]); snprintf(ge_last, sizeof ge_last, "%s", res); if (!has) { snprintf(line, sizeof line, "EVRES|%ld|%ld|%s|%s\n", now, row, fl[3], res); z.resolved_new++; } else line[0] = 0; }
+        if (ok) { z.events++; const char *res = ge_apply(fl[2], fl[3], fl[4], fl[5]); snprintf(ge_last, sizeof ge_last, "%s", res); if (!has) { if (resolve) GE_LOG_HOOK(fl[2], fl[3], fl[4], fl[5], res); snprintf(line, sizeof line, "EVRES|%ld|%ld|%s|%s\n", now, row, fl[3], res); z.resolved_new++; } else line[0] = 0; }
         else { if (!has) { snprintf(line, sizeof line, "REJECT|%ld|%ld|%s\n", now, row, why); z.rejected_new++; z.rejects_total++; } else line[0] = 0; }
         size_t ll = strlen(line); if (ll) { if (plen + ll + 1 > pcap) { size_t nc = (plen + ll + 1) * 2; char *np = realloc(pend, nc); if (!np) break; pend = np; pcap = nc; } memcpy(pend + plen, line, ll + 1); plen += ll; } }
     int okw = 1; if (resolve && plen) okw = ge_append_raw(path, pend);

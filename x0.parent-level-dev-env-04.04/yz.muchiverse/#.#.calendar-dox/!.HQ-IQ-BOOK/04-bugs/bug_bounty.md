@@ -14,6 +14,7 @@
 8. **OPEN, UNEXPLAINED - the machine hard-freezes.** 2026-10-15 (twice), 2026-10-16 about 20:09 and 2026-10-17 about 00:40: the journal simply stops (last lines 00:39:55, no panic, no OOM message), load was about 1 each time. Nothing in the code I touched explains it. Worth a hardware / thermal / disk check (the disk is 90% full).
 9. **INFO - `bv_gpu_raymarch.c` carries an uncommitted edit that is not mine** (shader loop 320 to 96 plus a fog break; grok says it is not theirs either). A rebuilt `bv_render_3d` links it.
 10. **INFO - every engine session runs its own copy of the board binaries** (`pieces/sessions/<id>/ops/+x/`), so a rebuilt `bv_render_3d` or `bv_menu_input` only reaches a new session; easy to test the old binary by mistake.
+11. **OPEN - the chat overlay text is hard to read.** Grey text on the light panel (screenshot `XO/games-screens/cdda_log_0.png`); it now carries the event log, so it matters. It is the existing `hb-quiet` style, not new. It shows six lines only and is off by default in the standalone windows (Menu > Chat show / hide).
 
 ---
 

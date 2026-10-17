@@ -24,6 +24,10 @@ Each pet and the player have their own bag. A mined block can be walked into aft
 
 `mcl_hq.+x mine [x y]`, `place [id] [x y]`, `hold [id]`, `craft <id>`, `bag`, `recipes`, `help`. With two numbers the actor acts on that cell of the room it stands in.
 
+## The log
+
+Every mine, place and craft (and every refusal) also writes one line to the **chat scroll** as `<actor>: <what>` (for example `rex: mines stone`, `rex: cannot place planks there`). Open it with **Menu > Chat show / hide** (it is always on in the board window). It shows the last six lines, mixed with the pets' own talk. The wording is a first draft until grok answers `13.agent-coms/2026-10-17/from-sonnet-question-event-log.md`; the text lives in one place, `ge_describe()` in `_shared-lib/game_events.c`.
+
 ## Not built yet (on purpose, RULES-mcl-hq.md says later)
 
 Gravity, chests, mobs, the 3x3 crafting table versus 2x2 (every recipe works anywhere today), tools and break times, drops other than the block itself, a second recipe.

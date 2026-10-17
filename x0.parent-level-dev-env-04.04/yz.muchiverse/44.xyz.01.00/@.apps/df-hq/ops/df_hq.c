@@ -47,6 +47,8 @@
 #include "../../../&.widgits/_shared-lib/stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "../../../&.widgits/_shared-lib/stb_image_write.h"
+static void ge_logline(const char *actor, const char *verb, const char *target, const char *res);
+#define GE_LOG_HOOK(a, v, t, at, r) ge_logline(a, v, t, r)
 #include "../../../&.widgits/_shared-lib/game_events.c"      /* S1 event line + resolver (also df-hq, cdda-hq, mcl-hq) */
 
 /* Per-room geometry: the room being processed is g_gr (set by render, use_ent, walking, placement, export). A normal room is 13 x 8 cells of 48 px with a sky/wall strip (trig row 2); an OVERMAP room (ROOM ... over) is a
@@ -483,6 +485,7 @@ static void chat_trim(void) {
     static char keep[9000]; read_tail(p, keep, sizeof keep); char tmp[PATH_MAX + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", p); FILE *f = fopen(tmp, "w"); if (!f) return; fputs(keep, f); fclose(f); rename(tmp, p);
 }
 static void say(const char *who, const char *text) { char b[300]; snprintf(b, sizeof b, "%s: %s", who, text); append_line("chat.txt", b); chat_trim(); }
+static void ge_logline(const char *actor, const char *verb, const char *target, const char *res) { char t[120]; if (ge_describe(verb, target, res, t, sizeof t)) say(actor, t); }      /* the event output goes to the chat scroll (owner 2026-10-17) */
 static int g_rk = -1, g_ry;      /* what the last reply was about (0 sleep 1 eat 2 read 3 play, -1 default) and whether the house has such an item: the native-language reply is picked from these */
 static const char *g_speaker = NULL;      /* who typed the line (the reply addresses them) */
 static const char *pet_reply(const char *text) {

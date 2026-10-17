@@ -22,6 +22,10 @@ For players. The same steps are in the window: **Craft > Help: crafting and the 
 
 `cdda_hq.+x craft <id>`, `scavenge`, `bag`, `recipes`, `help`, `strike`, `wounds`.
 
+## The log
+
+Scavenge, craft, strike (both sides) and every refusal also write one line to the **chat scroll** as `<actor>: <what>` (`rex: crafts bandage`, `zed: strikes rex: head`). Open it with **Menu > Chat show / hide** (always on in the board window). It shows the last six lines, mixed with the pets' own talk. Wording is a first draft until grok answers `13.agent-coms/2026-10-17/from-sonnet-question-event-log.md`; it lives in `ge_describe()` in `_shared-lib/game_events.c`.
+
 ## Not built yet
 
 Killing anything (nobody dies), effects of arm/head/torso wounds, the zed acting in real time (INT off), more than one monster or a spawn table, which pet is hostile (`party.pdl` column), tools, skill checks, a real item source, a z level for the cellar, a healing use for the bandage.
