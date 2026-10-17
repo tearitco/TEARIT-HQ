@@ -967,6 +967,11 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
         else if (cell_in(job, njob, room, x, y) >= 0) snprintf(msg, cap, "%d,%d is already marked", x, y);
         else { char b[100]; snprintf(b, sizeof b, "DESIGNATE|%ld|%s|%d|%d", (long)time(NULL), rooms[room].id, x, y); append_line("jobs.txt", b); world_sync(); snprintf(msg, cap, "dig marked at %d,%d", x, y); }
         note_set(msg); return; }
+    if (!strcmp(v, "help")) {      /* Menu > Help: one step of the dig instructions per click, painted in the note line (full text: BOOK 10-user-docs/DF-HQ-DIG-HOWTO.md) */
+        static const char *H[6] = { "Dig help 1/6: turn INT on (top-left tab). The arrow keys then walk your pet, one turn per key.", "Dig help 2/6: walk up to the rock and face it (an arrow key into the rock turns you to it).", "Dig help 3/6: Menu > Dig: mark the tile in front. An X appears on the rock.",
+            "Dig help 4/6: other pets in the room dig it on their turns. The X becomes a diamond once one has taken it.", "Dig help 5/6: Menu > Dig area: first use sets a corner, second use (facing the opposite corner) marks the whole block.", "Dig help 6/6: Menu > Dig: cancel the mark in front removes a mark. Click Help again to start over." };
+        char hp[PATH_MAX], hb[16]; spath(hp, "help_step.txt"); read_file(hp, hb, sizeof hb); int s = atoi(hb) % 6; FILE *hf = fopen(hp, "w"); if (hf) { fprintf(hf, "%d\n", s + 1); fclose(hf); }
+        snprintf(msg, cap, "%s", H[s]); note_set(msg); return; }
     if (!strcmp(v, "undig")) {      /* cancel the mark on the tile in front (or "undig <x> <y>") */
         int room, x, y; dig_target(argc, argv, &room, &x, &y); int k = cell_in(job, njob, room, x, y);
         if (k < 0) snprintf(msg, cap, "no dig mark at %d,%d", x, y);
