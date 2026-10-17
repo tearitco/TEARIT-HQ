@@ -86,7 +86,7 @@
     </sidebar>
     <panel id="room_p" class="rp-panel">
       <canvas id="room" class="rp-room" sprite="${canvas_raw}"/>
-      <row id="help-ov" class="canvas-overlay-left ov-top ov-chrome ov-slide-x rp-help-ov theme" show="${help_visible}">
+      <row id="help-ov" class="canvas-overlay-left ov-pin ov-chrome rp-help-ov theme" show="${help_visible}">
         <text label="${help_0}" class="hb-quiet ov-title theme-3"/>
         <text label="${help_1}" class="rp-chat"/>
         <text label="${help_2}" class="rp-chat"/>
@@ -101,7 +101,7 @@
         <item id="help-next" class="rp-menu-row rp-help-row" label="next page" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' helppanel next"/>
         <item id="help-x" class="rp-menu-row rp-help-row" label="close help" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' helppanel close"/>
       </row>
-      <row id="chat-ov" class="canvas-overlay-right ov-top ov-chrome ov-slide-x rp-chat-ov theme" show="${chat_visible}">
+      <row id="chat-ov" class="canvas-overlay-right ov-pin ov-chrome rp-chat-ov theme" show="${chat_visible}">
         <text label="chat - ${active_name}" class="hb-quiet ov-title theme-3"/>
         <item id="chat-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' toggle chat"/>
         <item id="chat-clear" class="rp-menu-row" label="clear chat" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' clearchat"/>

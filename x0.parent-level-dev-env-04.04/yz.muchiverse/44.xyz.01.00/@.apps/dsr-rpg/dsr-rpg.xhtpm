@@ -70,7 +70,7 @@
     </sidebar>
     <panel id="room_p" class="rp-panel">
       <canvas id="room" class="rp-room" sprite="${canvas_raw}"/>
-      <row id="chat-ov" class="canvas-overlay-right ov-top ov-chrome ov-slide-x rp-chat-ov theme" show="${chat_visible}">
+      <row id="chat-ov" class="canvas-overlay-right ov-pin ov-chrome rp-chat-ov theme" show="${chat_visible}">
         <text label="chat - ${active_name}" class="hb-quiet ov-title theme-3"/>
         <item id="chat-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' toggle chat"/>
         <item id="chat-clear" class="rp-menu-row" label="clear chat" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' clearchat"/>

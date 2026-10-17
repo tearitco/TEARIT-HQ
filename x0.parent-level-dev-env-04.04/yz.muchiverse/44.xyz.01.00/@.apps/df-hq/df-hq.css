@@ -22,7 +22,6 @@ window { width: 916px; height: 560px; background-color: #14161c; font-family: De
 .pchq-footer { height: 40px; background-color: #181818; border: 1px solid #2a2a2a; }
 .pchq-ft { background-color: #232323; color: #cfe8ff; font-weight: bold; width: 92px; height: 24px; font-size: 10px; padding: 2px; border: 1px solid #3a3a3a; }
 .quiet { color: #888888; font-size: 9px; }
-.rp-chat-ov { width: 190px; }
 .tab.rp-tb.interact-active { background-color: #2a5a2a; color: #ffffff; font-weight: bold; }
 .dropdown-child { width: 210px; }
 .rp-menu-row { background-color: #1c1c1c; color: #cccccc; font-weight: bold; width: 200px; height: 20px; font-size: 10px; padding: 2px; border: 1px solid #333333; }
@@ -31,4 +30,4 @@ window { width: 916px; height: 560px; background-color: #14161c; font-family: De
 .ph-green { color: #33dd55; font-weight: bold; padding: 4px 8px; }
 .ph-red { color: #ff4444; font-weight: bold; padding: 4px 8px; }
 .rp-help-row { width: 380px; }
-.rp-help-ov { width: 380px; background-color: #444444; border: 1px solid #666666; }
+.rp-help-ov { background-color: #444444; border: 1px solid #666666; }
