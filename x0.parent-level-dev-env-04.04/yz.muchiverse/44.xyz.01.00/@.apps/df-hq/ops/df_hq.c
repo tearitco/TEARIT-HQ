@@ -47,6 +47,7 @@
 #include "../../../&.widgits/_shared-lib/stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "../../../&.widgits/_shared-lib/stb_image_write.h"
+#include "../../../&.widgits/_shared-lib/game_events.c"      /* S1 event line + resolver (also df-hq, cdda-hq, mcl-hq) */
 
 /* Per-room geometry: the room being processed is g_gr (set by render, use_ent, walking, placement, export). A normal room is 13 x 8 cells of 48 px with a sky/wall strip (trig row 2); an OVERMAP room (ROOM ... over) is a
  * world-map biome (the island city): cols x rows cells of tpx px (the 48 px RPG Maker tiles are scaled down), no wall strip (trig row 0). Source tile size in the sheets is always S48. */
@@ -937,6 +938,12 @@ static void clock_event(const char *ev);
 static void verb(int argc, char **argv, char *msg, size_t cap) {
     const char *v = argc ? argv[0] : "status"; long now = (long)time(NULL); char b[200]; msg[0] = 0; use_ent(active);
     if (!strcmp(v, "status")) return;
+    if (!strcmp(v, "event") || !strcmp(v, "resolve") || !strcmp(v, "inventory")) {      /* S1 (GAME-MECHANICS-SPRINT.md): the event line and resolver of _shared-lib/game_events.c on this game's state/events.txt. event <actor> <verb> <target> <room:x,y|-> appends one validated EVENT row and resolves it; resolve = resolve any row that has no EVRES yet (idempotent); inventory [actor] = replay of the ledger, writes nothing */
+        char ep[PATH_MAX], er[60] = ""; spath(ep, "events.txt"); GeStats gs; long gnow = (long)time(NULL);
+        if (!strcmp(v, "event")) { if (argc < 5) { snprintf(msg, cap, "event <actor> <verb> <target> <room:x,y or ->"); return; } if (!ge_append(ep, gnow, argv[1], argv[2], argv[3], argv[4], er, sizeof er)) { snprintf(msg, cap, "event refused: %s", er); return; } }
+        if (!ge_scan(ep, gnow, strcmp(v, "inventory") != 0, &gs)) { snprintf(msg, cap, "ledger unreadable or not writable"); return; }
+        if (!strcmp(v, "inventory")) { size_t o = 0; msg[0] = 0; for (int i = 0; i < ge_ninv; i++) if ((argc < 2 || !strcmp(argv[1], ge_inv[i].actor)) && ge_inv[i].n > 0 && o + 60 < cap) o += (size_t)snprintf(msg + o, cap - o, "%s:%s=%ld ", ge_inv[i].actor, ge_inv[i].item, ge_inv[i].n); if (!o) snprintf(msg, cap, "(nothing)"); return; }
+        snprintf(msg, cap, "%s: %ld events, %ld resolved now, %ld rejected now (%ld rejects in all); last result %s", v, gs.events, gs.resolved_new, gs.rejected_new, gs.rejects_total, ge_last[0] ? ge_last : "-"); return; }
     if (!strcmp(v, "pet_says") && argc >= 4) {      /* the registered pet_says command of the greet pages: pet_says <pet id> <chat line> <spoken line> [other]; {other} is replaced; RPG_SAY / RPG_SPEAK say whether it is heard (chat / voice) */
         int pi = -1; for (int i = 0; i < nparty; i++) if (!strcmp(party[i].id, argv[1])) pi = i; if (pi < 0) { snprintf(msg, cap, "no such pet"); return; }
         const char *oth = argc >= 5 ? argv[4] : ""; char ch[200], vo[200]; for (int k = 0; k < 2; k++) { const char *s = argv[2 + k]; char *o = k ? vo : ch; size_t n = 0; while (*s && n < 190) { if (!strncmp(s, "{other}", 7)) { n += (size_t)snprintf(o + n, 200 - n, "%s", oth); s += 7; } else o[n++] = *s++; } o[n < 199 ? n : 199] = 0; }
