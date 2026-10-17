@@ -43,4 +43,9 @@ Same script on each game (`XO/test_s1.sh`): 8 scripted events give `pip:stone=1`
 are refused and the ledger size does not change; three hand-written bad rows (3 fields, 8 fields, non-numeric time) get 3 REJECT rows, a second `resolve` changes nothing (sha1 equal) and the inventory
 is unchanged; a fresh game given the same ledger replays to the same inventory and resolving it appends nothing; negative control: turning the first `give_item` into `take` in the copy
 changes the inventory (so the equality checks can fail). Result: 0 failures in df-hq, cdda-hq and mcl-hq.
+## First wired use (df-hq)
+
+A finished dig (`dig_now` in `ops/df_hq.c`, run by the pet that digs) appends `EVENT give_item stone <room:x,y>` for the digger and resolves it; the Menu note line shows `<pet> dug stone at x,y and carries N`.
+Tested on a scratch copy with a scratch daemon (INT off) on the shipped test fortress: in 100 s the pets dug all 9 marked cells, 9 DIG rows = 9 give_item rows = 9 EVRES rows, 0 rejects, and for each digger the number of digs equals the stones carried (pip 5, orin 3, gus 1). The haul to a stockpile is NOT built: that is a labor rule, grok's.
+
 Not tested: the verbs from a menu row or a pet (no menu row exists yet), a live game, a ledger over 32 MB (refused by design), concurrent writers.

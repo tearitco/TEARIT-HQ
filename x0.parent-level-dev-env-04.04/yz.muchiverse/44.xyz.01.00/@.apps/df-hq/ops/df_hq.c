@@ -724,6 +724,9 @@ static int dig_target(int argc, char **argv, int *room, int *x, int *y) {      /
 static void dig_now(int x, int y) {
     char b[160]; long t = (long)time(NULL); snprintf(b, sizeof b, "DIG|%ld|%s|%s|%d|%d|stone", t, me < 0 ? "trainer" : party[me].id, rooms[pet.room].id, x, y); append_line("events.txt", b);
     snprintf(b, sizeof b, "DONE|%ld|%s|%d|%d", t, rooms[pet.room].id, x, y); append_line("jobs.txt", b); world_sync();
+    {   /* S1: the dug stone goes to the digger as an EVENT give_item (the event line of _shared-lib/game_events.c; the haul / stockpile rule is grok's, TODO in S1-EVENT-LEDGER.md) */
+        char ep[PATH_MAX], er[40], at[40], nb[100]; const char *who = me < 0 ? "trainer" : party[me].id; spath(ep, "events.txt"); snprintf(at, sizeof at, "%s:%d,%d", rooms[pet.room].id, x, y);
+        if (ge_append(ep, t, who, "give_item", "stone", at, er, sizeof er) && ge_scan(ep, t, 1, NULL)) { snprintf(nb, sizeof nb, "%s dug stone at %d,%d and carries %ld", who, x, y, ge_inv_get(who, "stone")); note_set(nb); } }
 }
 /* ONE autonomous step of pet i: keep or pick a target, walk a tile, greet a neighbour. Pets are never owner controlled; this runs on a timer (INT off) or once per turn (INT on). */
 static int ai_step(int i) {
