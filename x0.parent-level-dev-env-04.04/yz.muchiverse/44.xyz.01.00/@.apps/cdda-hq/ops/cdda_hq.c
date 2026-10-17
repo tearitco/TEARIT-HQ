@@ -475,11 +475,14 @@ static void speak(int i, const char *text) {
     if (fp) { while (fgets(line, sizeof line, fp)) if (split_bar(line, f, 6) >= 5 && !strcmp(f[0], "VOICE") && !strcmp(f[1], party[i].id)) { snprintf(voice, sizeof voice, "%s", f[2]); snprintf(rate, sizeof rate, "%s", f[3]); snprintf(pitch, sizeof pitch, "%s", f[4]); } fclose(fp); }
     unsigned long h = 5381; for (const char *c = text; *c; c++) h = h * 33 + (unsigned char)*c; char dir[PATH_MAX], wav[PATH_MAX], mp3[PATH_MAX]; snprintf(dir, sizeof dir, "%s/audio", ST); mkdir(dir, 0755);
     snprintf(wav, sizeof wav, "%s/say_%s_%08lx.wav", dir, party[i].id, h & 0xffffffffUL); snprintf(mp3, sizeof mp3, "%s/say_%s_%08lx.mp3", dir, party[i].id, h & 0xffffffffUL);
-    pid_t pid = fork(); if (pid < 0) return; if (pid > 0) { waitpid(pid, NULL, 0); return; }          /* double fork: the grandchild does the slow work and is reparented */
+    /* one synthesis at a time, decided BEFORE the fork: each greeting is a fresh verb process, so a static timer cannot throttle; this lock is held by the grandchild until its wav exists, a speech that finds it taken is dropped, not queued (20 queued Kokoro processes at 200 MB each pegged the machine, 2026-10-16) */
+    int sfd = -1; if (!fexists(wav)) { char sp[PATH_MAX]; snprintf(sp, sizeof sp, "%s/synth.busy", dir); sfd = open(sp, O_CREAT | O_RDWR, 0644); if (sfd < 0 || flock(sfd, LOCK_EX | LOCK_NB) != 0) { if (sfd >= 0) close(sfd); return; } }
+    pid_t pid = fork(); if (pid < 0) { if (sfd >= 0) close(sfd); return; } if (pid > 0) { waitpid(pid, NULL, 0); if (sfd >= 0) close(sfd); return; }          /* double fork: the grandchild does the slow work and is reparented */
     if (fork() != 0) _exit(0); setsid();
     if (!fexists(wav)) { char rateA[40], pitchA[40], home[PATH_MAX], edge[PATH_MAX]; snprintf(rateA, sizeof rateA, "--rate=%s", rate); snprintf(pitchA, sizeof pitchA, "--pitch=%s", pitch); const char *hm = getenv("HOME"); snprintf(home, sizeof home, "%s", hm ? hm : ""); snprintf(edge, sizeof edge, "%s/../pet-trainer/ops/pet_tts_local.py", APP); (void)home;   /* offline Kokoro, same arguments as edge-tts (edge: HTTP 403 since 2026-10-12, rate-limit risk); writes a WAV into the "mp3" path, ffmpeg below re-encodes it */
         char *av[] = {"nice", "-n", "15", edge, "--voice", voice, rateA, pitchA, "--text", (char *)text, "--write-media", mp3, NULL}; if (run_quiet(av, 1) != 0 || !fexists(mp3)) _exit(0);
         char *cv[] = {"nice", "-n", "15", "ffmpeg", "-loglevel", "quiet", "-y", "-i", mp3, "-ar", "22050", "-ac", "1", wav, NULL}; run_quiet(cv, 1); remove(mp3); }
+    if (sfd >= 0) close(sfd);      /* synthesis over: the next greeting may synthesize while this one plays */
     if (!fexists(wav)) _exit(0);
     { char lp[PATH_MAX]; snprintf(lp, sizeof lp, "%s/play.lock", dir); int fd = open(lp, O_CREAT | O_RDWR, 0644); if (fd < 0 || flock(fd, LOCK_EX | LOCK_NB) != 0) _exit(0); char *pv[] = {"nice", "-n", "10", "paplay", "--volume=32000", wav, NULL}; run_quiet(pv, 1); }
     _exit(0);
