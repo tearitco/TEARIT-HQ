@@ -47,7 +47,10 @@
 #include "../../../&.widgits/_shared-lib/stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "../../../&.widgits/_shared-lib/stb_image_write.h"
-#include "../../../&.widgits/_shared-lib/game_events.c"      /* S1 event line + resolver (also df-hq, cdda-hq, mcl-hq) */
+static const char *cd_rule(const char *actor, const char *verb, const char *target, const char *at); static void cd_reset(void);
+#define GE_RULE_HOOK(a, v, t, at) cd_rule(a, v, t, at)
+#define GE_RESET_HOOK() cd_reset()
+#include "../../../&.widgits/_shared-lib/game_events.c"      /* S1 event line + resolver (also df-hq, cdda-hq, mcl-hq); cdda-hq's rules are cd_rule() below */
 
 /* Per-room geometry: the room being processed is g_gr (set by render, use_ent, walking, placement, export). A normal room is 13 x 8 cells of 48 px with a sky/wall strip (trig row 2); an OVERMAP room (ROOM ... over) is a
  * world-map biome (the island city): cols x rows cells of tpx px (the 48 px RPG Maker tiles are scaled down), no wall strip (trig row 0). Source tile size in the sheets is always S48. */
@@ -294,6 +297,29 @@ static int floor_blocked(int room, int x, int y, int skip_id) { if (rooms[room].
 static int door_here(int room, int x, int y) { for (int i = 0; i < ndoor; i++) if (doors[i].room == room && doors[i].tx == x && y == doors[i].ty + 1) return i; return -1; }
 /* overmap land: an island on a square ocean. Cells inside the rounded rectangle (2..cols-3, 1..rows-2, corners cut) are land, the outermost land ring is beach. Everything else is ocean (blocked). */
 static int over_land(const Room *rm, int x, int y) { if (x < 2 || x > rm->cols - 3 || y < 1 || y > rm->rows - 2) return 0; if ((x <= 3 || x >= rm->cols - 4) && (y <= 2 || y >= rm->rows - 3)) return 0; return 1; }
+/* ---------- crafting (2026-10-17, S1 slice; rules by RULES-cdda-hq.md) ---------- recipes.pdl: RECIPE | id | output | count | tool | skill | minutes | inputs   (inputs = item:count,item:count, no spaces).
+ * craft is an EVENT in state/events.txt; the bags are a replay of that ledger (cd_reset() reloads recipes.pdl at the top of every ge_scan). Only tool "none" is supported (any other tool: missing), skill is read and not
+ * checked yet, minutes are charged to the game clock by the craft verb (not by the replay). An empty or absent recipes.pdl means every craft is "missing". */
+#define MAXREC 24
+typedef struct { char id[16], out[16], in[8][16]; int cnt, nin, inn[8], minutes, tool; } Recipe;
+static Recipe recs[MAXREC]; static int nrec, nrec_bad;
+static void cd_reset(void) {
+    nrec = nrec_bad = 0; char p[PATH_MAX], line[400], *f[12]; snprintf(p, sizeof p, "%s/recipes.pdl", APP); FILE *fp = fopen(p, "r"); if (!fp) return;
+    while (fgets(line, sizeof line, fp)) { int n = split_bar(line, f, 12); if (n < 8 || strcmp(f[0], "RECIPE")) continue; Recipe r; memset(&r, 0, sizeof r);
+        int ok = f[1][0] && strlen(f[1]) < 16 && f[2][0] && strlen(f[2]) < 16 && atoi(f[3]) > 0 && atoi(f[3]) < 100 && atoi(f[7 - 1]) >= 0 && atoi(f[6]) >= 0 && atoi(f[6]) < 1000;
+        snprintf(r.id, 16, "%s", f[1]); snprintf(r.out, 16, "%s", f[2]); r.cnt = atoi(f[3]); r.minutes = atoi(f[6]); r.tool = strcmp(f[4], "none") != 0;
+        char ins[200]; snprintf(ins, sizeof ins, "%s", n > 7 ? f[7] : ""); for (char *t = strtok(ins, ","); ok && t; t = strtok(NULL, ",")) { char *c = strchr(t, ':'); if (!c || c == t || r.nin >= 8 || (size_t)(c - t) >= 16 || atoi(c + 1) < 1) { ok = 0; break; } *c = 0; snprintf(r.in[r.nin], 16, "%s", t); r.inn[r.nin++] = atoi(c + 1); }
+        if (!ok || r.nin == 0) { nrec_bad++; continue; } if (nrec < MAXREC) recs[nrec++] = r; }
+    fclose(fp);
+}
+static Recipe *cd_recipe(const char *id) { for (int i = 0; i < nrec; i++) if (!strcmp(recs[i].id, id)) return &recs[i]; return NULL; }
+/* craft: the named recipe, tool none; the inputs must be in the actor's bag, they are taken and count of output given. Result ok or missing (unknown recipe, other tool, short of an input). */
+static const char *cd_rule(const char *actor, const char *verb, const char *target, const char *at) {
+    (void)at; if (strcmp(verb, "craft")) return NULL; Recipe *rc = cd_recipe(target); if (!rc || rc->tool) return "missing";      /* tools are later: a recipe that names one cannot be crafted yet */
+    for (int i = 0; i < rc->nin; i++) { GeInv *q = ge_inv_find(actor, rc->in[i], 0); if (!q || q->n < rc->inn[i]) return "missing"; }
+    GeInv *o = ge_inv_find(actor, rc->out, 1); if (!o) return "full"; for (int i = 0; i < rc->nin; i++) { GeInv *q = ge_inv_find(actor, rc->in[i], 0); if (q) q->n -= rc->inn[i]; } o->n += rc->cnt; return "ok";
+}
+static void note_set(const char *s) { char p[PATH_MAX]; spath(p, "note.txt"); FILE *f = fopen(p, "w"); if (f) { fprintf(f, "%s\n", s); fclose(f); } }      /* the last craft / help message, painted green under the coins (a file: it must outlive the verb process) */
 static int over_beach(const Room *rm, int x, int y) { return over_land(rm, x, y) && (!over_land(rm, x - 1, y) || !over_land(rm, x + 1, y) || !over_land(rm, x, y - 1) || !over_land(rm, x, y + 1)); }
 static const char *check_place(int room, int item, int x, int y, int skip_id) {
     static char m[120]; Item *d = &cat[item]; g_gr = room;
@@ -583,7 +609,8 @@ static void out_all(const char *msg) {
 #define W(...) o += snprintf(u + o, sizeof u - o, __VA_ARGS__)
     char raw[PATH_MAX]; spath(raw, "scene.raw"); char h1[PATH_MAX], h2[PATH_MAX]; spath(h1, "interact_relay.txt"); snprintf(h2, sizeof h2, "%s/keyboard/history.txt", ST);
     int chat = flag_on("chat", 0), hb = flag_on("hb", 0), in = flag_on("int", 0); char view[16]; flag_str("view", "2d", view, sizeof view); for (char *c = view; *c; c++) if (*c >= 'a' && *c <= 'z') *c -= 32;
-    W("title=cdda-hq  -  %s  -  coins %d\nscene_raw=%s\ncanvas_raw=%s\ncoins=%d\nmsg=%s\nroom_label=%s\n", rooms[vroom].name, coins, raw, raw, coins, msg && msg[0] ? msg : (in ? "INT on: turn based like a roguelike. Time moves when you act. Tab switches pet/player." : "real time: the pets live on their own. INT lets you control a pet or the player."), rooms[vroom].name);
+    char nbuf[200]; { char np[PATH_MAX]; spath(np, "note.txt"); read_file(np, nbuf, sizeof nbuf); size_t nl = strlen(nbuf); while (nl && (nbuf[nl - 1] == '\n' || nbuf[nl - 1] == '\r')) nbuf[--nl] = 0; }
+    W("title=cdda-hq  -  %s  -  coins %d\nscene_raw=%s\ncanvas_raw=%s\ncoins=%d\nnote=%s\nmsg=%s\nroom_label=%s\n", rooms[vroom].name, coins, raw, raw, coins, nbuf, msg && msg[0] ? msg : (in ? "INT on: turn based like a roguelike. Time moves when you act. Tab switches pet/player." : "real time: the pets live on their own. INT lets you control a pet or the player."), rooms[vroom].name);
     { char cc[16]; flag_str("ctl", "pet", cc, sizeof cc); char who[40]; snprintf(who, sizeof who, "on: %s", !strcmp(cc, "player") ? "you" : party[active].name); W("interact_class=%s\ninteract_label=%s\nrp_h1=%s\nrp_h2=%s\ncontrol_label=control: %s\n", in ? "interact-active" : "", in ? who : "off", h1, h2, !strcmp(cc, "player") ? "player" : party[active].name); }
     W("run_on=%d\nrun_label=%s\nrun_cls=%s\n", run_on(), run_on() ? "GO started" : "STOP stopped", run_on() ? "ph-green" : "ph-red");
     W("mode_label=%s\nmode_cls=%s\n", rogue_mode() ? "[rogue] live" : "rogue [live]", rogue_mode() ? "ph-green" : "ph-red");
@@ -856,6 +883,26 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
 static void verb(int argc, char **argv, char *msg, size_t cap) {
     const char *v = argc ? argv[0] : "status"; long now = (long)time(NULL); char b[200]; msg[0] = 0; use_ent(active);
     if (!strcmp(v, "status")) return;
+    if (!strcmp(v, "craft") || !strcmp(v, "scavenge") || !strcmp(v, "bag") || !strcmp(v, "recipes") || !strcmp(v, "help")) {      /* survival basics (BOOK 10-user-docs/CDDA-HQ-CRAFT-HOWTO.md): the controlled mover crafts from its bag; every change is an S1 event */
+        int ci = ctl_idx(); const char *who = ci < 0 ? "trainer" : party[ci].id; char ep[PATH_MAX], nb[200], er[60]; spath(ep, "events.txt"); GeStats gs; long gnow = (long)time(NULL);
+        use_ent(ci); int room = pet.room, px = pet.x, py = pet.y; use_ent(active); char at[48]; snprintf(at, sizeof at, "%s:%d,%d", rooms[room].id, px, py);
+        if (!ge_scan(ep, gnow, 0, &gs)) { snprintf(msg, cap, "ledger unreadable"); return; }
+        if (!strcmp(v, "help")) {
+            static const char *H[6] = { "1/6 Pick who acts: Menu > Control (Tab).", "2/6 Craft > Scavenge a rag finds one (a stand-in until a real source exists).", "3/6 Craft > Bag shows what the actor carries.", "4/6 Craft > Craft bandage: 1 rag, 1 minute of game time.", "5/6 The Castle has a stair: walk through the door in its left wall to the Cellar.", "6/6 Craft > Recipes lists every recipe in recipes.pdl." };
+            char hs[PATH_MAX], hb[16]; spath(hs, "help_step.txt"); read_file(hs, hb, sizeof hb); int s = atoi(hb) % 6; FILE *hf = fopen(hs, "w"); if (hf) { fprintf(hf, "%d\n", s + 1); fclose(hf); } note_set(H[s]); snprintf(msg, cap, "%s", H[s]); return; }
+        if (!strcmp(v, "bag") || !strcmp(v, "recipes")) { size_t o = 0; nb[0] = 0;
+            if (!strcmp(v, "bag")) { for (int i = 0; i < ge_ninv; i++) if (!strcmp(ge_inv[i].actor, who) && ge_inv[i].n > 0 && o + 30 < sizeof nb) o += (size_t)snprintf(nb + o, sizeof nb - o, "%s %ld, ", ge_inv[i].item, ge_inv[i].n); if (o) nb[o - 2] = 0; else snprintf(nb, sizeof nb, "bag empty: Craft > Scavenge"); }
+            else { for (int i = 0; i < nrec && o + 40 < sizeof nb; i++) o += (size_t)snprintf(nb + o, sizeof nb - o, "%s%s (%s)", i ? ", " : "", recs[i].id, recs[i].nin ? recs[i].in[0] : "-"); if (!nrec) snprintf(nb, sizeof nb, "no recipes (recipes.pdl)"); if (nrec_bad && strlen(nb) + 24 < sizeof nb) snprintf(nb + strlen(nb), sizeof nb - strlen(nb), "; %d bad rows", nrec_bad); }
+            note_set(nb); snprintf(msg, cap, "%s", nb); return; }
+        const char *verb = !strcmp(v, "scavenge") ? "give_item" : "craft", *tgt = !strcmp(v, "scavenge") ? "rag" : (argc >= 2 ? argv[1] : "");
+        if (!strcmp(v, "craft") && !tgt[0]) { snprintf(nb, sizeof nb, "craft which? Craft > Craft bandage"); note_set(nb); snprintf(msg, cap, "%s", nb); return; }
+        if (!ge_append(ep, gnow, who, verb, tgt, !strcmp(v, "scavenge") ? at : "-", er, sizeof er)) { snprintf(nb, sizeof nb, "refused: %s", er); note_set(nb); snprintf(msg, cap, "%s", nb); return; }
+        if (!ge_scan(ep, gnow, 1, &gs)) { snprintf(msg, cap, "ledger not writable"); return; }
+        if (!strcmp(v, "scavenge")) snprintf(nb, sizeof nb, "found a rag (bag %ld)", ge_inv_get(who, "rag"));
+        else if (!strcmp(ge_last, "ok")) { Recipe *rc = cd_recipe(tgt); snprintf(nb, sizeof nb, "crafted %s x%d (bag %ld)", rc ? rc->out : tgt, rc ? rc->cnt : 0, rc ? ge_inv_get(who, rc->out) : 0L);
+            if (rc && rc->minutes > 0) { char dur[16]; snprintf(dur, sizeof dur, "%dm", rc->minutes); clock_paths(); if (clock_ok() && fexists(CFILE)) { lc_run(0, "cmd", "rpg", "advance", dur, "--source", "rpg-craft", NULL); lc_run(0, "step", "5", NULL); } } }      /* the minutes are charged here, once, never in the replay */
+        else if (cd_recipe(tgt) && cd_recipe(tgt)->tool) snprintf(nb, sizeof nb, "cannot craft %s: it needs a tool (not built yet)", tgt); else if (cd_recipe(tgt)) snprintf(nb, sizeof nb, "cannot craft %s: need the inputs in the bag", tgt); else snprintf(nb, sizeof nb, "no recipe named %s (Craft > Help)", tgt);
+        note_set(nb); snprintf(msg, cap, "%s", nb); return; }
     if (!strcmp(v, "event") || !strcmp(v, "resolve") || !strcmp(v, "inventory")) {      /* S1 (GAME-MECHANICS-SPRINT.md): the event line and resolver of _shared-lib/game_events.c on this game's state/events.txt. event <actor> <verb> <target> <room:x,y|-> appends one validated EVENT row and resolves it; resolve = resolve any row that has no EVRES yet (idempotent); inventory [actor] = replay of the ledger, writes nothing */
         char ep[PATH_MAX], er[60] = ""; spath(ep, "events.txt"); GeStats gs; long gnow = (long)time(NULL);
         if (!strcmp(v, "event")) { if (argc < 5) { snprintf(msg, cap, "event <actor> <verb> <target> <room:x,y or ->"); return; } if (!ge_append(ep, gnow, argv[1], argv[2], argv[3], argv[4], er, sizeof er)) { snprintf(msg, cap, "event refused: %s", er); return; } }
@@ -873,7 +920,7 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
     if (!strcmp(v, "newgame")) {      /* a fresh game: the current one is saved to slot 0 first (Undo new game = Load slot 0), then every game file is removed so the next read starts from the defaults. The clock is not touched. */
         char m2[200] = ""; char *sv[] = { (char *)"save", (char *)"0", NULL }; verb(2, sv, m2, sizeof m2);
         char sd[PATH_MAX]; snprintf(sd, sizeof sd, "%s/slots/0/events.txt", ST); if (!fexists(sd)) { snprintf(msg, cap, "new game NOT started: the backup to slot 0 failed (%s)", m2); return; }
-        static const char *fixed[] = { "house.txt", "trainer.txt", "relations.txt", "chat.txt", "active.txt", "daylight.txt", "flag_ctl.txt", "flag_follow.txt", "events.txt" };
+        static const char *fixed[] = { "house.txt", "trainer.txt", "relations.txt", "chat.txt", "active.txt", "daylight.txt", "flag_ctl.txt", "flag_follow.txt", "events.txt", "note.txt", "help_step.txt" };
         for (size_t i = 0; i < sizeof fixed / sizeof *fixed; i++) { char p[PATH_MAX]; spath(p, fixed[i]); remove(p); }
         for (int i = 0; i < nparty; i++) { char p[PATH_MAX], nm[48]; snprintf(nm, sizeof nm, "pet_%s.txt", party[i].id); spath(p, nm); remove(p); }
         pet_load(); replay();

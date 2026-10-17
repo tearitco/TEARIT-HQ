@@ -12,6 +12,7 @@
       <tab id="tb-page" class="tab rp-tb" label="${page_label} ▾" onclick="ACTIVATE" target_id="tb-page"/>
       <tab id="tb-shop" class="tab rp-tb" label="Shop ▾" onclick="ACTIVATE" target_id="tb-shop"/>
       <tab id="tb-menu" class="tab rp-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
+      <tab id="tb-craft" class="tab rp-tb" label="Craft ▾" onclick="ACTIVATE" target_id="tb-craft"/>
       <tab id="tb-player" class="tab rp-tb" label="Player ▾" onclick="ACTIVATE" target_id="tb-player"/>
       <tab id="tb-time" class="tab rp-tb" label="${time_label} ▾" onclick="ACTIVATE" target_id="tb-time"/>
     </tabbar>
@@ -42,6 +43,12 @@
       <item id="mn-voice" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Voice on / off" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' toggle voice"/>
       <item id="mn-view" class="rp-menu-row dropdown-child" target_id="tb-menu" label="View: 2D / 3D / glyph" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' view"/>
       <item id="mn-reset" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Reset house (keeps a backup)" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' reset"/>
+      <item id="cr-scav" class="rp-menu-row dropdown-child" target_id="tb-craft" label="Scavenge a rag (stand-in)" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' scavenge"/>
+      <item id="cr-bandage" class="rp-menu-row dropdown-child" target_id="tb-craft" label="Craft bandage (1 rag)" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' craft bandage"/>
+      <item id="cr-bag" class="rp-menu-row dropdown-child" target_id="tb-craft" label="Bag: what I carry" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' bag"/>
+      <item id="cr-rec" class="rp-menu-row dropdown-child" target_id="tb-craft" label="Recipes" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' recipes"/>
+      <item id="cr-help" class="rp-menu-row dropdown-child" target_id="tb-craft" label="Help: crafting and the cellar" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' help"/>
+      <item id="cr-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-craft" label="- cancel -" action="void"/>
       <item id="mn-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-menu" label="- cancel -" action="void"/>
       <item id="pm-mode" class="rp-menu-row dropdown-child" target_id="tb-player" label="${mode_label}" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' mode"/>
       <item id="pm-play" class="rp-menu-row dropdown-child" target_id="tb-player" label="Play" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' play"/>
@@ -55,6 +62,7 @@
       <item id="pm-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-player" label="- cancel -" action="void"/>
       <text id="light" label="${run_label}" class="${run_cls}"/>
       <text label="coins ${coins}" class="rp-big"/>
+      <text label="${note}" class="ph-green"/>
       <text label="${nick_line}" class="ph-quiet"/>
       <text label="${wallet_line}" class="ph-quiet"/>
       <text label="${profile_line}" class="ph-quiet"/>
