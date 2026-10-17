@@ -21,3 +21,5 @@ MENU | save_1     | player | Save slot 1  | save_slot | 1   | 1
 MENU | save_2     | player | Save slot 2  | save_slot | 2   | 1
 MENU | load_1     | player | Load slot 1  | load_slot | 1   | 1
 MENU | load_2     | player | Load slot 2  | load_slot | 2   | 1
+MENU | new_game   | player | New game     | new_game  | -   | 1
+MENU | load_0     | player | Undo new game | load_slot | 0  | 1

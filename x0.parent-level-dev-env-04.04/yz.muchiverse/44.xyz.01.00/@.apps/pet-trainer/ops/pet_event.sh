@@ -476,7 +476,7 @@ status() {
 # (and logged), exactly like Doom's play flag. The window shows it as a traffic light (green = started, red = stopped).
 running() { [ "$(cat "$PET/running.txt" 2>/dev/null)" = 1 ]; }
 case "$VERB" in
-    start|stop|ai_step|world_expand|explored|buy|sell|teach_me|study|lessons|lesson_accept|lesson_reject|help|tip|land_price|build_building|chat_toggle|phones|exchange|call|build_room|map|listen|chat_send|clock_event|time_rate|time_advance|time_reinstall|status|stats|new_pet|save_slot|load_slot|fire|gen_events|new_event|menu_group|menu_toggle|inv_toggle|open_events|teleport|hotbar_toggle|interact|player|party_toggle|view|select|world_move|world_talk|"") ;;
+    start|stop|ai_step|world_expand|explored|buy|sell|teach_me|study|lessons|lesson_accept|lesson_reject|help|tip|land_price|build_building|chat_toggle|phones|exchange|call|build_room|map|listen|chat_send|clock_event|time_rate|time_advance|time_reinstall|status|stats|new_pet|new_game|save_slot|load_slot|fire|gen_events|new_event|menu_group|menu_toggle|inv_toggle|open_events|teleport|hotbar_toggle|interact|player|party_toggle|view|select|world_move|world_talk|"") ;;
     *) if ! running && [ "${PET_TRAIN:-0}" != 1 ]; then mkdir -p "$PET"; printf '%s | stopped | ignored %s\n' "$(date '+%H:%M:%S')" "$VERB" >> "$PET/log.txt"
            case "$VERB" in chat_input|chat|chat_send) printf '(the pet is stopped - press Play first)\n' >> "$PET/chat.txt"; status >/dev/null 2>&1;; esac; exit 0; fi ;;
 esac
@@ -528,6 +528,10 @@ case "$VERB" in
         for x in variables.txt weights.pdl lexicon.pdl chat.txt obs_feedback_log.txt tuning_ledger.txt chat_ledger.txt running.txt; do [ -f "$d/$x" ] && cp "$d/$x" "$PET/$x"; done
         rm -rf "$PET/inventory" "$PET/used"; [ -d "$d/inventory" ] && cp -r "$d/inventory" "$PET/"; [ -d "$d/used" ] && cp -r "$d/used" "$PET/"; mkdir -p "$PET/inventory"
         rm -f "$PET/evolve_sig.txt"; evolve; status >/dev/null ;;
+    new_game) need_pet; sp="$(getv species)"; nm="$(getv name_id)"; sd="$(getv seed)"      # a fresh pet: the current one is saved to slot 0 first (Undo new game = Load slot 0); no backup, no new game
+        sh "$0" save_slot 0 >/dev/null 2>&1
+        [ -f "$PET/saves/slot_0/variables.txt" ] || { printf '%s | new game NOT started: the backup to slot 0 failed\n' "$(date '+%H:%M:%S')" >> "$PET/log.txt"; status >/dev/null; exit 0; }
+        PET_SPECIES="$sp" PET_NAME="$nm" PET_DIR="$PET" sh "$0" new_pet "${sd:-1}" >/dev/null 2>&1; status >/dev/null ;;
     gen_events) need_pet; gen_events ;;
     open_events) need_pet; sh "$HOUSE/&.widgits/events-hq/button.sh" "$PET" "$HOUSE" >/dev/null 2>&1 & ;;
     new_event) need_pet; gen_events; n=$(ls -d "$PET/event_pkg/pages/page_"* 2>/dev/null | wc -l); n=$((n + 1)); p="$PET/event_pkg/pages/page_$n"; mkdir -p "$p"

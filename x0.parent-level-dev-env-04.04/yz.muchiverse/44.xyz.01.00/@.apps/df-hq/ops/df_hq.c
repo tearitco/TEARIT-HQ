@@ -1019,7 +1019,7 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
         int ok = 0; for (int i = 0; i < nn; i++) { char a[PATH_MAX], bpath[PATH_MAX], buf[65536]; if (saving) { spath(a, names[i]); snprintf(bpath, sizeof bpath, "%s/%s", sd, names[i]); } else { snprintf(a, sizeof a, "%s/%s", sd, names[i]); spath(bpath, names[i]); }
             if (!fexists(a)) { if (!saving) remove(bpath); continue; }
             if (!strcmp(names[i], "events.txt") || !strcmp(names[i], "jobs.txt")) { if (copy_file(a, bpath)) ok++; continue; }
-            int n = read_file(a, buf, sizeof buf); write_if_changed(bpath, buf, n); ok++; }
+            if (copy_file(a, bpath)) ok++; }      /* every file is streamed: read_file stops at 64 KB and silently cut relations.txt (65,535 bytes) and chat.txt in the slot */
         if (!saving) { append_line("world_epoch.txt", "LOAD"); world_sync(); }
         if (!saving) { char b[40]; read_file(mp, b, sizeof b); long long ms = atoll(b); if (ms > 0) { clock_paths(); clock_install(); char ma[32]; snprintf(ma, sizeof ma, "%lld", ms); lc_run(0, "cmd", "rpg", "settime", ma, "--source", "rpg-load", NULL); lc_run(0, "step", "5", NULL); } pet_load(); }
         snprintf(msg, cap, "%s slot %d (%d files)", saving ? "saved to" : "loaded from", slot, ok); return; }

@@ -38,6 +38,10 @@
       <item id="pm-stop" class="ph-menu-row dropdown-child" target_id="tb-player" label="Stop" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' fire stop"/>
       <item id="pm-save" class="ph-menu-row dropdown-child" target_id="tb-player" label="Save (slot 1)" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' fire save_1"/>
       <item id="pm-load" class="ph-menu-row dropdown-child" target_id="tb-player" label="Load (slot 1)" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' fire load_1"/>
+      <item id="pm-new" class="ph-menu-row dropdown-child" target_id="tb-player" label="New game" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' fire new_game"/>
+      <item id="pm-load0" class="ph-menu-row dropdown-child" target_id="tb-player" label="Undo new game" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' fire load_0"/>
+      <item id="pm-save2" class="ph-menu-row dropdown-child" target_id="tb-player" label="Save (slot 2)" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' fire save_2"/>
+      <item id="pm-load2" class="ph-menu-row dropdown-child" target_id="tb-player" label="Load (slot 2)" action="sh '${HOUSE}/@.apps/pet-trainer/ops/pet_event.sh' fire load_2"/>
       <item id="pm-cancel" class="ph-menu-row dropdown-child quiet" target_id="tb-player" label="- cancel -" action="void"/>
       <text id="light" label="${run_label}" class="${run_cls}"/>
       <repeat count="${n_nav}" bind="nav">
