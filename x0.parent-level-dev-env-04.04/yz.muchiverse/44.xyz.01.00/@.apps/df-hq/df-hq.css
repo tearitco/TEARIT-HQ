@@ -33,3 +33,7 @@ window { width: 916px; height: 560px; background-color: #14161c; font-family: De
 .ph-red { color: #ff4444; font-weight: bold; padding: 4px 8px; }
 .rp-help-row { width: 380px; }
 .rp-help-ov { background-color: #444444; border: 1px solid #666666; }
+.rp-rail { width: 2px; }
+.rp-side-ov { background-color: #444444; border: 1px solid #666666; }
+.rp-side-row { width: 200px; }
+.rp-side-t { background-color: #262626; }

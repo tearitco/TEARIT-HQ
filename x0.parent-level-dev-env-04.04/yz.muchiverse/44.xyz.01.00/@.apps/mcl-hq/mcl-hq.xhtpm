@@ -17,7 +17,7 @@
       <tab id="tb-player" class="tab rp-tb" label="Player ▾" onclick="ACTIVATE" target_id="tb-player"/>
       <tab id="tb-time" class="tab rp-tb" label="${time_label} ▾" onclick="ACTIVATE" target_id="tb-time"/>
     </tabbar>
-    <sidebar id="side" class="sidebar">
+    <sidebar id="side" class="rp-rail sidebar">
       <repeat count="${n_party}" bind="party">
         <item id="bk-${party.#}" class="rp-menu-row dropdown-child ${party.cls}" target_id="tb-book" label="${party.label}" action="'${HOUSE}/@.apps/mcl-hq/ops/+x/mcl_hq.+x' select ${party.id}"/>
       </repeat>
@@ -38,6 +38,7 @@
         <item id="sh${shop.#}" class="rp-menu-row dropdown-child" target_id="tb-shop" label="${shop.label}" action="'${HOUSE}/@.apps/mcl-hq/ops/+x/mcl_hq.+x' buy ${shop.key}"/>
       </repeat>
       <item id="sh-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-shop" label="- cancel -" action="void"/>
+      <item id="mn-info" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Info show / hide" action="'${HOUSE}/@.apps/mcl-hq/ops/+x/mcl_hq.+x' toggle left"/>
       <item id="mn-chat" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Chat show / hide" action="'${HOUSE}/@.apps/mcl-hq/ops/+x/mcl_hq.+x' toggle chat"/>
       <item id="mn-hotbar" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Hotbar show / hide" action="'${HOUSE}/@.apps/mcl-hq/ops/+x/mcl_hq.+x' toggle hb"/>
       <item id="mn-control" class="rp-menu-row dropdown-child" target_id="tb-menu" label="${control_label} (switch: Tab)" action="'${HOUSE}/@.apps/mcl-hq/ops/+x/mcl_hq.+x' control"/>
@@ -67,24 +68,29 @@
       <item id="pm-save2" class="rp-menu-row dropdown-child" target_id="tb-player" label="Save (slot 2)" action="'${HOUSE}/@.apps/mcl-hq/ops/+x/mcl_hq.+x' save 2"/>
       <item id="pm-load2" class="rp-menu-row dropdown-child" target_id="tb-player" label="Load (slot 2)" action="'${HOUSE}/@.apps/mcl-hq/ops/+x/mcl_hq.+x' load 2"/>
       <item id="pm-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-player" label="- cancel -" action="void"/>
-      <text id="light" label="${run_label}" class="${run_cls}"/>
-      <text label="coins ${coins}" class="rp-big"/>
-      <text label="${note}" class="ph-green"/>
-      <text label="${nick_line}" class="ph-quiet"/>
-      <text label="${wallet_line}" class="ph-quiet"/>
-      <text label="${profile_line}" class="ph-quiet"/>
-      <text label="${friend_line}" class="ph-quiet"/>
-      <text label="${stat_line}" class="ph-quiet"/>
-      <text label="${stat_line2}" class="ph-quiet"/>
-      <text label="in this room (click to pick up)" class="rp-quiet"/>
-      <scrolllist>
-        <repeat count="${n_placed}" bind="placed">
-          <item id="pl${placed.#}" class="rp-row" label="${placed.label}" action="'${HOUSE}/@.apps/mcl-hq/ops/+x/mcl_hq.+x' remove ${placed.id}"/>
-        </repeat>
-      </scrolllist>
     </sidebar>
     <panel id="room_p" class="rp-panel">
       <canvas id="room" class="rp-room" sprite="${canvas_raw}"/>
+      <row id="side-l" class="canvas-overlay-left ov-pin ov-chrome rp-side-ov theme" show="${left_visible}">
+        <text label="info - ${active_name}" class="hb-quiet ov-title theme-3 rp-side-t"/>
+        <item id="side-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/mcl-hq/ops/+x/mcl_hq.+x' toggle left"/>
+        <text id="light" label="${run_label}" class="${run_cls} rp-side-t"/>
+        <text label="coins ${coins}" class="rp-big rp-side-t"/>
+        <text label="${note}" class="ph-green rp-side-t"/>
+        <text label="${nick_line_0}" class="ph-quiet rp-side-t"/>
+        <text label="${nick_line_1}" class="ph-quiet rp-side-t"/>
+        <text label="${nick_line_2}" class="ph-quiet rp-side-t"/>
+        <text label="${friend_line_0}" class="ph-quiet rp-side-t"/>
+        <text label="${friend_line_1}" class="ph-quiet rp-side-t"/>
+        <text label="${stat_line}" class="ph-quiet rp-side-t"/>
+        <text label="${stat_line2}" class="ph-quiet rp-side-t"/>
+        <text label="in this room (click to pick up)" class="rp-quiet rp-side-t"/>
+        <repeat count="${n_placed}" bind="placed">
+          <item id="pl${placed.#}" class="rp-row rp-side-row rp-side-t" label="${placed.label}" action="'${HOUSE}/@.apps/mcl-hq/ops/+x/mcl_hq.+x' remove ${placed.id}"/>
+        </repeat>
+      
+        <item id="side-hide" class="rp-menu-row rp-side-row quiet" label="hide info" action="'${HOUSE}/@.apps/mcl-hq/ops/+x/mcl_hq.+x' toggle left"/>
+      </row>
       <row id="help-ov" class="canvas-overlay-left ov-pin ov-chrome rp-help-ov theme" show="${help_visible}">
         <text label="${help_0}" class="hb-quiet ov-title theme-3"/>
         <text label="${help_1}" class="rp-chat"/>
