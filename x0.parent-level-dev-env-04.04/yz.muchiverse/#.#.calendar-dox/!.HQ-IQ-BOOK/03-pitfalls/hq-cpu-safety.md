@@ -259,6 +259,8 @@ Every daemon that renders or exports for a window asks first whether the window 
 - **Never `pkill -f` / `pgrep -f`** with a pattern that also appears in your own command line (the tool shell dies, exit 144, instrumented copies keep running). Put the scan in a script file whose own command line does not contain the pattern.
 - A scratch copy that rewrites absolute paths (`sed s#@.apps/x/#@.apps/x-test/#`) must be checked before running: a copy once flipped the LIVE switch through an absolute path.
 
+- **A test script must only touch processes it started (2026-10-17 incident).** An A/B script that picked "the process whose exe is the live renderer" and then `kill`ed it matched the OWNER'S live windows (the df-hq window and the df-hq board) and closed them; two of my scratch windows then sat on top of the same screen position, so the remaining buttons looked dead. Rules: take the pid from `$!` or match on the exact scratch path in the command line AND the exe; print what was matched before measuring; never `kill` a pid you did not just verify belongs to the test; put scratch windows away from the live ones; if you did close a live window, relaunch it with its own launcher at once and say so.
+
 ### 6g. Best-practices checklist (use when adding or reviewing code)
 
 1. Any call inside a tick loop that touches more than one file, scans a directory/`/proc`, takes a lock or launches a child needs a written answer to "how often must this really run". Default: only when a marker grew, plus a slow safety net.

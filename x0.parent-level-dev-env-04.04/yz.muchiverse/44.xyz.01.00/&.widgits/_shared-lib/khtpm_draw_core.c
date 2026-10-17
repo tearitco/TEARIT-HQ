@@ -752,6 +752,7 @@ static void kh_draw_canvas(Elem *e) {
     static unsigned char *c_buf;
     /* CPU safety (hq-cpu-safety.md): the decoded frame is reused while the file is unchanged. A repaint caused by anything else (a label, a bar) used to re-read the whole raw file and convert
      * every pixel through XPutPixel (about 25 ms for 660x430) before blitting the same picture. Identity = inode + size + mtime (the producers replace the file by rename). */
+    static unsigned long c_gen = 0;      /* bumped on every decoded frame: the scaled copy below is rebuilt only when this or the target size changes */
     static int c_valid = 0; static unsigned long c_ino = 0; static long c_size = -1, c_mt_s = 0, c_mt_ns = 0;
     const char *spr = e->sprite;
     {
@@ -840,7 +841,7 @@ static void kh_draw_canvas(Elem *e) {
         size_t need = (size_t)w * h * 4, got = fread(c_buf, 1, need, of);
         fclose(of);
         if (got == need) {
-            const unsigned int one = 1; int little = *(const unsigned char *)&one == 1;
+            c_gen++; const unsigned int one = 1; int little = *(const unsigned char *)&one == 1;
             if (little && c_img->bits_per_pixel == 32 && c_img->byte_order == LSBFirst && c_img->red_mask == 0xff0000UL && c_img->green_mask == 0xff00UL && c_img->blue_mask == 0xffUL) {
                 for (int y = 0; y < h; y++) {          /* direct 32-bit stores: the same 0xRRGGBB value XPutPixel would store, without a call per pixel */
                     unsigned int *dst = (unsigned int *)(c_img->data + (size_t)y * (size_t)c_img->bytes_per_line);
@@ -867,6 +868,33 @@ static void kh_draw_canvas(Elem *e) {
      * on screen, camera should be wider". A larger frame is cropped. */
     if (w == e->w && h == e->h) {
         XPutImage(dpy, buf, gc, c_img, 0, 0, e->x, e->y, (unsigned)w, (unsigned)h);
+    } else if (w > e->w || h > e->h) {
+        /* The frame is bigger than the canvas (a pinned side bar took width out of it, or the window is small; standalone game windows draw a fixed-size frame): scale it DOWN to fit, keeping the aspect ratio, nearest neighbour,
+         * instead of cropping the middle. Cached: the scaled image is rebuilt only for a new decoded frame or a new target size, so an idle repaint costs one XPutImage. A frame smaller than the canvas still draws 1:1, centred. */
+        int sw = w, sh = h;
+        if ((long)e->w * h <= (long)e->h * w) { sw = e->w; sh = (int)((long)h * e->w / w); } else { sh = e->h; sw = (int)((long)w * e->h / h); }
+        if (sw < 1) sw = 1; if (sh < 1) sh = 1;
+        static XImage *s_img; static int s_w, s_h; static unsigned long s_gen;
+        if (!s_img || s_w != sw || s_h != sh || s_gen != c_gen) {
+            if (!s_img || s_w != sw || s_h != sh) {
+                if (s_img) { XDestroyImage(s_img); s_img = NULL; }
+                char *sd = (char *)malloc((size_t)sw * sh * 4);
+                s_img = sd ? XCreateImage(dpy, DefaultVisual(dpy, screen), (unsigned)DefaultDepth(dpy, screen), ZPixmap, 0, sd, (unsigned)sw, (unsigned)sh, 32, 0) : NULL;
+                s_w = sw; s_h = sh;
+            }
+            if (s_img) {
+                const unsigned int one = 1; int fast = *(const unsigned char *)&one == 1 && s_img->bits_per_pixel == 32 && s_img->byte_order == LSBFirst && s_img->red_mask == 0xff0000UL && s_img->green_mask == 0xff00UL && s_img->blue_mask == 0xffUL;
+                for (int y = 0; y < sh; y++) {
+                    const unsigned char *srow = c_buf + (size_t)((long)y * h / sh) * w * 4;
+                    unsigned int *dst = (unsigned int *)(s_img->data + (size_t)y * (size_t)s_img->bytes_per_line);
+                    for (int x = 0; x < sw; x++) { const unsigned char *s = srow + (size_t)((long)x * w / sw) * 4; unsigned int px = ((unsigned int)s[0] << 16) | ((unsigned int)s[1] << 8) | (unsigned int)s[2]; if (fast) dst[x] = px; else XPutPixel(s_img, x, y, px); }
+                }
+                s_gen = c_gen;
+            }
+        }
+        XSetForeground(dpy, gc, alloc_pixel("#0c0c0c"));
+        XFillRectangle(dpy, buf, gc, e->x, e->y, (unsigned)e->w, (unsigned)e->h);
+        if (s_img) XPutImage(dpy, buf, gc, s_img, 0, 0, e->x + (e->w - sw) / 2, e->y + (e->h - sh) / 2, (unsigned)sw, (unsigned)sh);
     } else {
         int bw = w < e->w ? w : e->w;
         int bh = h < e->h ? h : e->h;
