@@ -802,7 +802,7 @@ static void write_room_events(int r) {
     snprintf(p, sizeof p, "%s/events.txt", d); write_if_changed(p, buf, o);
     write_room_sky(r, d);
     /* ascii_legend.txt: the ` (backtick) glyph view of this book. Rows are glyph|height|r|g|b|asset|name|char like terrain_legend.txt; events.txt carries a 10th column with each sprite's letter (@ = the trainer, the pet's lowercase initial) */
-    static const char leg[] = "W|3|150|150|160|-|wall|#\nD|3|170|110|50|-|door|+\nT|2|50|150|60|-|tree|T\nf|1|190|150|90|-|furniture|&\n.|0|90|80|60|-|floor|.\n";
+    static const char leg[] = "W|3|150|150|160|-|wall|#\nD|3|170|110|50|-|door|+\nT|2|50|150|60|-|tree|T\nf|1|190|150|90|-|furniture|&\nB|2|120|120|130|-|block|B\n.|0|90|80|60|-|floor|.\n";
     snprintf(p, sizeof p, "%s/ascii_legend.txt", d); write_if_changed(p, leg, sizeof leg - 1);
     { char bp[PATH_MAX]; snprintf(bp, sizeof bp, "%s/pieces/system/maps/mcl-hq/view.pdl", PCHQ); char vw[PATH_MAX + 160]; char sc[PATH_MAX]; spath(sc, "scene.raw"); int vn = snprintf(vw, sizeof vw, "VIEW | cell_px | 48\nVIEW | default_style | scene\nVIEW | scene_raw | %s\nVIEW | scene_w | %d\nVIEW | scene_h | %d\n", sc, FW, FH); write_if_changed(bp, vw, (size_t)vn); }      /* the engine draws this book's 2D at mcl-hq's own 48 px tile (house desk_grid.pdl says 80) */
     /* bar.txt: the bottom entities bar of the pc-hq board lists these (id<TAB>name<TAB>x<TAB>y<TAB>trigger), Harold first */
@@ -850,12 +850,16 @@ static void publish_sky(const char *wp) {
     { char o[4096], x[4096]; read_file(wp, x, sizeof x); int n = 0, f1 = 0, f2 = 0; for (char *l = strtok(x, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "game_time_epoch_sec=", 20)) { n += snprintf(o + n, sizeof o - n, "game_time_epoch_sec=%s\n", v); f1 = 1; } else if (!strncmp(l, "game_time_epoch_ms=", 19)) { n += snprintf(o + n, sizeof o - n, "game_time_epoch_ms=%s\n", v2); f2 = 1; } else n += snprintf(o + n, sizeof o - n, "%s\n", l); }
       if (!f1) n += snprintf(o + n, sizeof o - n, "game_time_epoch_sec=%s\n", v); if (!f2) n += snprintf(o + n, sizeof o - n, "game_time_epoch_ms=%s\n", v2); write_if_changed(wp, o, (size_t)n); }
 }
+static void export3d(char *msg, size_t cap);
 static void follow_pchq(void) {
     char wp[PATH_MAX], xp[PATH_MAX], hp[PATH_MAX], m[64] = "", dk[64] = ""; snprintf(wp, sizeof wp, "%s/pieces/world_01/state.txt", PCHQ);
     char wb[2048]; read_file(wp, wb, sizeof wb); for (char *l = strtok(wb, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "map_id=", 7)) snprintf(m, sizeof m, "%s", l + 7); else if (!strncmp(l, "desk_id=", 8)) snprintf(dk, sizeof dk, "%s", l + 8); }
     if (strcmp(m, "mcl-hq")) return;
     publish_sky(wp);
     for (int r = 0; r < nroom; r++) write_room_events(r);
+    { static unsigned long bh = 0; static int bh_init = 0; unsigned long s3 = 5381 + nmcell; for (int i = 0; i < nmcell; i++) s3 = s3 * 33 + (unsigned long)mcell[i].room * 4099 + mcell[i].x * 131 + mcell[i].y * 17 + (unsigned char)mcell[i].id[0] * 7 + (unsigned char)mcell[i].id[1];
+      if (bh_init && s3 != bh) { char em[256]; export3d(em, sizeof em); }      /* a mine / place / craft / new game / load changed the blocks: the glyph and 3D book (map.txt, cells.*) and map.png are rewritten (the first pass only learns the hash) */
+      bh = s3; bh_init = 1; }
     { static unsigned long hs = 0; unsigned long s2 = 5381 + npl; for (int i = 0; i < npl; i++) s2 = s2 * 33 + pl[i].item * 131 + pl[i].x * 17 + pl[i].y * 7 + pl[i].room; if (s2 != hs) { hs = s2; for (int r = 0; r < nroom; r++) write_room_png(r); } }
     snprintf(xp, sizeof xp, "%s/pieces/xelector_01/state.txt", PCHQ); snprintf(hp, sizeof hp, "%s/pieces/hero_01/state.txt", PCHQ);
     int ci = ctl_idx(); Ent *e = ci < 0 ? &tr : &others[ci]; static int lr = -1, lx = -1, ly = -1, ld = -1, lw = -1; int changed = 0;
@@ -904,6 +908,11 @@ static void export3d(char *msg, size_t cap) {
                 for (int yy = 0; yy < XT; yy++) for (int xx = 0; xx < XT; xx++) { int sx = OX + x * T + xx * T / XT, sy = OY + y * T + yy * T / XT; memcpy(cellpx + (yy * XT + xx) * 4, fr + ((size_t)sy * FW + sx) * 4, 4); }
                 int blocked = 0; for (int i = 0; i < nscen; i++) if (scen[i].room == r && x >= scen[i].x && x < scen[i].x + scen[i].w && y >= scen[i].y && y < scen[i].y + scen[i].h) blocked = 1;
                 glyph[y][x] = blocked ? 'T' : '.'; fs[y][x] = slot_of(cellpx); ws[y][x] = 0; } }
+        { int nb = 0; for (int i = 0; i < nmcell; i++) if (mcell[i].room == r) nb++;      /* blocks (2026-10-17): a solid 2-high cell in the glyph view and the 3D book, painted from the 2D picture (which already draws the Mineclonia texture) */
+          if (nb) { int sv = vroom; vroom = r; g_bg_only = 1; render(); g_bg_only = 0; vroom = sv; g_gr = r;
+            for (int i = 0; i < nmcell; i++) if (mcell[i].room == r && mcell[i].x >= 0 && mcell[i].x < COLS && mcell[i].y >= 0 && mcell[i].y < ROWS) { int x = mcell[i].x, y = mcell[i].y; unsigned char cellpx[XT * XT * 4];
+                for (int yy = 0; yy < XT; yy++) for (int xx = 0; xx < XT; xx++) { int sx = OX + x * T + xx * T / XT, sy = OY + y * T + yy * T / XT; memcpy(cellpx + (yy * XT + xx) * 4, fr + ((size_t)sy * FW + sx) * 4, 4); }
+                glyph[y][x] = 'B'; ws[y][x] = slot_of(cellpx); if (!fs[y][x]) fs[y][x] = slot_of(cellpx); } } }
         (void)fl;
         snprintf(p, sizeof p, "%s/map.txt", d); { FILE *f = fopen(p, "w"); if (f) { for (int y = 0; y < ROWS; y++) { glyph[y][COLS] = 0; fprintf(f, "%s\n", glyph[y]); } fclose(f); } }
         snprintf(p, sizeof p, "%s/extrusion.pdl", d); { FILE *f = fopen(p, "w"); if (f) { fprintf(f, "SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\nMETA         | map_id             | mcl-hq\nMETA         | desk_id            | %s\nMETA         | note               | %s (mcl-hq house, exported from the live house)\nEXTRUDE      | W                  | 3\nEXTRUDE      | D                  | 3\nEXTRUDE      | T                  | 2\nEXTRUDE      | f                  | 1\nEXTRUDE      | default            | 0\n", rooms[r].id, rooms[r].name); fclose(f); } }

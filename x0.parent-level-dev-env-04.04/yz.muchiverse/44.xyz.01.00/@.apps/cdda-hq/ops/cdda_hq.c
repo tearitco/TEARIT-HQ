@@ -807,6 +807,8 @@ static void write_room_events(int r) {
         o += snprintf(buf + o, sizeof buf - o, "%d %d %d %d %d %s %d %d %d %c\n", others[i].x, others[i].y, px[0], px[1], px[2], party[i].sheet, party[i].idx, dc[others[i].dir & 3], pat, party[i].name[0] >= 'A' && party[i].name[0] <= 'Z' ? party[i].name[0] + 32 : (party[i].name[0] ? party[i].name[0] : 'm')); }
     if (tr.room == r) { int pat = tr.steps % 3; write_frame(hero.sheet, 0, tr.dir, pat); unsigned char px[4] = {200, 60, 60, 255}; frame_rgb(sheet("characters", hero.sheet), 0, tr.dir & 3, px);
         o += snprintf(buf + o, sizeof buf - o, "%d %d %d %d %d %s 0 %d %d @\n", tr.x, tr.y, px[0], px[1], px[2], hero.sheet, dc[tr.dir & 3], pat); }
+    zed_load(); if (zed_ok && zed.room == r) { int pat = 1; write_frame("Monster", 0, zed.dir, pat); unsigned char px[4] = {90, 140, 80, 255}; frame_rgb(sheet("characters", "Monster"), 0, zed.dir & 3, px);      /* the zed is an entity row too (2026-10-17): the 3D book and the glyph view (letter z) show it where the 2D picture does */
+        o += snprintf(buf + o, sizeof buf - o, "%d %d %d %d %d Monster 0 %d %d z\n", zed.x, zed.y, px[0], px[1], px[2], dc[zed.dir & 3], pat); }
     snprintf(p, sizeof p, "%s/events.txt", d); write_if_changed(p, buf, o);
     write_room_sky(r, d);
     /* ascii_legend.txt: the ` (backtick) glyph view of this book. Rows are glyph|height|r|g|b|asset|name|char like terrain_legend.txt; events.txt carries a 10th column with each sprite's letter (@ = the trainer, the pet's lowercase initial) */

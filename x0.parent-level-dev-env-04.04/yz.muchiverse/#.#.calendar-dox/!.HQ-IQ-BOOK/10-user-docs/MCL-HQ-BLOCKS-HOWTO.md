@@ -39,3 +39,7 @@ Scratch copies, paths rewritten, verbs and a window: see the commit message of t
 ## The Help tab
 
 The top bar has a **Help** tab (2026-10-17): Open help, Next page, Prev page, Close help. It opens a panel on the left of the picture with the full help for this game, one page at a time (MCL-HQ-BLOCKS-HOWTO.md). The text is `help.txt` in the app folder (pages separated by a line `---`, 47 characters wide, 10 non-blank lines a page); edit that file to change the help. The chat scroll is now on by default and shows the last ten lines on a dark strip.
+
+## Glyph and 3D views
+
+The blocks are `B` cells (two high) in the glyph view and the 3D book; the board re-exports by itself when a block is mined, placed or crafted (a second or two). The standalone window is 2D only; open the board (Desk > mcl-hq) for the other views.
