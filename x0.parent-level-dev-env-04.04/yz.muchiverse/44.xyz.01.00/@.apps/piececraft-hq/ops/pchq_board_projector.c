@@ -50,6 +50,35 @@
  * until the next probe even though the engine is already up. */
 #ifdef _WIN32
 #define PCHQ_BV_RESCAN_SEC 30
+
+#endif
+
+#ifndef _WIN32
+/* N3 idle-cost gate (grok's back-to-sonnet-oc16): a pass rebuilt the whole ui text (dozens of files read, the maps dir scanned, entities emitted) every
+ * 300 ms though it writes ui.txt only when the text differs. Every file, directory and stat the build touches is now recorded through these wrappers
+ * with its (size, mtime ns) taken BEFORE it is read; the next passes only re-stat that list and skip the build while none changed. The inputs are
+ * rewritten key=value files (not append-only markers), so size alone cannot see a changed value: size AND mtime in nanoseconds are compared (no
+ * seconds-only stat). A full rebuild still runs at least every PRJ_FULL_MS as a net for anything not seen through the wrappers. */
+#define PRJ_TRACK_MAX 512
+#define PRJ_FULL_MS 5000
+static struct { char *path; long long sz, mt; } g_tr[PRJ_TRACK_MAX];
+static int g_ntr, g_tracking, g_tr_over;
+static long long tr_sig(const char *p, long long *sz) { struct stat s; if (stat(p, &s) != 0) { *sz = -1; return -1; } *sz = (long long)s.st_size; return (long long)s.st_mtim.tv_sec * 1000000000LL + s.st_mtim.tv_nsec; }
+static void tr_note(const char *p) {
+    if (!g_tracking) return;
+    for (int i = 0; i < g_ntr; i++) { if (!strcmp(g_tr[i].path, p)) return; }
+    if (g_ntr >= PRJ_TRACK_MAX) { g_tr_over = 1; return; } g_tr[g_ntr].path = strdup(p); if (!g_tr[g_ntr].path) { g_tr_over = 1; return; } g_tr[g_ntr].mt = tr_sig(p, &g_tr[g_ntr].sz); g_ntr++;
+}
+static void tr_reset(void) { for (int i = 0; i < g_ntr; i++) { free(g_tr[i].path); g_tr[i].path = NULL; } g_ntr = 0; g_tr_over = 0; }
+static int tr_changed(void) { for (int i = 0; i < g_ntr; i++) { long long sz, mt = tr_sig(g_tr[i].path, &sz); if (sz != g_tr[i].sz || mt != g_tr[i].mt) return 1; } return 0; }
+static FILE *tr_fopen(const char *p, const char *m) { if (m && m[0] == 'r') tr_note(p); return fopen(p, m); }
+static DIR *tr_opendir(const char *p) { tr_note(p); return opendir(p); }
+static int tr_stat(const char *p, struct stat *s) { tr_note(p); return stat(p, s); }
+static int tr_access(const char *p, int m) { tr_note(p); return access(p, m); }
+#define fopen(p, m) tr_fopen(p, m)
+#define opendir(p) tr_opendir(p)
+#define stat(p, s) tr_stat(p, s)
+#define access(p, m) tr_access(p, m)
 #endif
 
 /* REAL FIX 2026-10-02 (Windows port) - this file created its state dir with
@@ -570,7 +599,14 @@ int main(int argc, char **argv) {
     static time_t bv_last_scan = 0;
 #endif
 
+    long long last_full_ms = 0; unsigned long n_build = 0, n_skip = 0; const char *want_stats = getenv("PCHQ_PROJ_STATS");
     for (;;) {
+#ifndef _WIN32
+        {   struct timespec tsn; clock_gettime(CLOCK_MONOTONIC, &tsn); long long nowm = (long long)tsn.tv_sec * 1000LL + tsn.tv_nsec / 1000000;
+            if (g_ntr > 0 && !g_tr_over && nowm - last_full_ms < PRJ_FULL_MS && !tr_changed()) { n_skip++; usleep(300000); continue; }      /* nothing it reads changed: same ui, no rebuild */
+            last_full_ms = nowm; tr_reset(); g_tracking = 1; n_build++;
+            if (want_stats && (n_build + n_skip) % 50 == 0) fprintf(stderr, "projector: builds=%lu skips=%lu tracked=%d\n", n_build, n_skip, g_ntr); }
+#endif
         char bv[PATH_MAX] = "";
         int have;
         {
@@ -965,6 +1001,9 @@ int main(int argc, char **argv) {
             if (w) { fputs(ui, w); fclose(w); rename(tmp_path, out_path); }
             snprintf(last, sizeof(last), "%s", ui);
         }
+#ifndef _WIN32
+        g_tracking = 0;
+#endif
         usleep(300000);
     }
     return 0;
