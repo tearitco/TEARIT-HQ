@@ -13027,7 +13027,14 @@ static void handle_key(KeySym ks, char ch) {
      * thing Escape closes (same "closes THAT first" order as the armed
      * field and the dropdown below) - back to row-level, focus stays. */
     if (ks == XK_Escape && g_seg_idx >= 0 && g_seg_nav == g_focus_nav) {
+        /* REAL FIX 2026-10-17: Escape cleared the cursor but LEFT THE ANCHOR
+         * standing, so the triple was left half-live - anchor valid, cursor
+         * gone. seg_anchor_on() happens to mask it (it also requires
+         * seg_cursor_on), so it never drew a band, but the stale anchor
+         * survived into the next row and fought the fresh-cursor path there.
+         * Leaving no selection behind means clearing all of it. */
         g_seg_idx = -1;
+        g_seg_anchor = -1;
         redraw();
         return;
     }

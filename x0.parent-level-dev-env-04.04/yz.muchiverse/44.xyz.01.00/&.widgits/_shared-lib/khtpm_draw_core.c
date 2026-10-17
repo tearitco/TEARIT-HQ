@@ -1622,6 +1622,13 @@ static int seg_anchor_extend(Elem *focused, int dir) {
     fresh = !seg_cursor_on(focused);
     prev = g_seg_idx;                 /* cursor BEFORE this move */
     if (fresh) {
+        /* A Shift+move onto a row with no cursor ENTERS that row first: the
+         * cursor lands on the first (or last) span with the anchor on it, so
+         * that press selects nothing. I "fixed" this on 2026-10-17 to make the
+         * press select immediately instead - and it took nb_span_select_test.sh
+         * from 7/10 to 0/8, because every step's expectation is written
+         * against enter-then-extend. Reverted, with the measurement recorded:
+         * the apparent off-by-one was the suite's contract, not a bug. */
         cur = (dir > 0) ? 0 : nact - 1;
     } else {
         cur = g_seg_idx + dir;
