@@ -32,3 +32,9 @@ SCENERY | city | World_B | 4  | 7  | 2 | 2 | 4  | 8
 SCENERY | city | World_B | 4  | 11 | 2 | 2 | 13 | 8
 SCENERY | city | Outside_B | 5 | 11 | 1 | 2 | 7  | 5
 SCENERY | city | Outside_B | 5 | 11 | 1 | 2 | 12 | 8
+# BLOCK | room | x | y | w | h | id     starting blocks (2026-10-17): ids grass dirt stone cobble planks log; they stop walking, Menu > Mine block ahead takes one, Place block ahead puts one back (rules: BOOK 16.game/RULES-mcl-hq.md)
+BLOCK | city | 15 | 4 | 2 | 2 | stone
+BLOCK | city | 15 | 7 | 1 | 2 | log
+BLOCK | city | 2 | 4 | 2 | 1 | cobble
+BLOCK | city | 2 | 7 | 2 | 2 | dirt
+BLOCK | city | 17 | 5 | 1 | 2 | grass

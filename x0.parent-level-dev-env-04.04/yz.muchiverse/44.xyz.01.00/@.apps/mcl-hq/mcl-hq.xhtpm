@@ -12,6 +12,7 @@
       <tab id="tb-page" class="tab rp-tb" label="${page_label} ▾" onclick="ACTIVATE" target_id="tb-page"/>
       <tab id="tb-shop" class="tab rp-tb" label="Shop ▾" onclick="ACTIVATE" target_id="tb-shop"/>
       <tab id="tb-menu" class="tab rp-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
+      <tab id="tb-blocks" class="tab rp-tb" label="Blocks ▾" onclick="ACTIVATE" target_id="tb-blocks"/>
       <tab id="tb-player" class="tab rp-tb" label="Player ▾" onclick="ACTIVATE" target_id="tb-player"/>
       <tab id="tb-time" class="tab rp-tb" label="${time_label} ▾" onclick="ACTIVATE" target_id="tb-time"/>
     </tabbar>
@@ -42,6 +43,13 @@
       <item id="mn-voice" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Voice on / off" action="'${HOUSE}/@.apps/mcl-hq/ops/+x/mcl_hq.+x' toggle voice"/>
       <item id="mn-view" class="rp-menu-row dropdown-child" target_id="tb-menu" label="View: 2D / 3D / glyph" action="'${HOUSE}/@.apps/mcl-hq/ops/+x/mcl_hq.+x' view"/>
       <item id="mn-reset" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Reset house (keeps a backup)" action="'${HOUSE}/@.apps/mcl-hq/ops/+x/mcl_hq.+x' reset"/>
+      <item id="bl-mine" class="rp-menu-row dropdown-child" target_id="tb-blocks" label="Mine block ahead" action="'${HOUSE}/@.apps/mcl-hq/ops/+x/mcl_hq.+x' mine"/>
+      <item id="bl-hold" class="rp-menu-row dropdown-child" target_id="tb-blocks" label="Hold next block" action="'${HOUSE}/@.apps/mcl-hq/ops/+x/mcl_hq.+x' hold"/>
+      <item id="bl-place" class="rp-menu-row dropdown-child" target_id="tb-blocks" label="Place block ahead" action="'${HOUSE}/@.apps/mcl-hq/ops/+x/mcl_hq.+x' place"/>
+      <item id="bl-craft" class="rp-menu-row dropdown-child" target_id="tb-blocks" label="Craft planks (1 log = 4)" action="'${HOUSE}/@.apps/mcl-hq/ops/+x/mcl_hq.+x' craft planks"/>
+      <item id="bl-bag" class="rp-menu-row dropdown-child" target_id="tb-blocks" label="Bag: what I carry" action="'${HOUSE}/@.apps/mcl-hq/ops/+x/mcl_hq.+x' bag"/>
+      <item id="bl-help" class="rp-menu-row dropdown-child" target_id="tb-blocks" label="Help: blocks and crafting" action="'${HOUSE}/@.apps/mcl-hq/ops/+x/mcl_hq.+x' help"/>
+      <item id="bl-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-blocks" label="- cancel -" action="void"/>
       <item id="mn-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-menu" label="- cancel -" action="void"/>
       <item id="pm-mode" class="rp-menu-row dropdown-child" target_id="tb-player" label="${mode_label}" action="'${HOUSE}/@.apps/mcl-hq/ops/+x/mcl_hq.+x' mode"/>
       <item id="pm-play" class="rp-menu-row dropdown-child" target_id="tb-player" label="Play" action="'${HOUSE}/@.apps/mcl-hq/ops/+x/mcl_hq.+x' play"/>
@@ -55,6 +63,7 @@
       <item id="pm-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-player" label="- cancel -" action="void"/>
       <text id="light" label="${run_label}" class="${run_cls}"/>
       <text label="coins ${coins}" class="rp-big"/>
+      <text label="${note}" class="ph-green"/>
       <text label="${nick_line}" class="ph-quiet"/>
       <text label="${wallet_line}" class="ph-quiet"/>
       <text label="${profile_line}" class="ph-quiet"/>

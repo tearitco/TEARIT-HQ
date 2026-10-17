@@ -37,6 +37,10 @@ static char ge_last[48];      /* result of the last legal EVENT row the latest g
 typedef struct { long events, resolved_new, rejected_new, rejects_total; } GeStats;
 
 /* a game may define: static const char *ge_rule_hook(const char *actor, const char *verb, const char *target, const char *at) returning a result text, or NULL for the default */
+/* a game may also define GE_RESET_HOOK(): called at the start of every ge_scan, before the ledger is replayed, so game tables built from the ledger (blocks) start from their base state */
+#ifndef GE_RESET_HOOK
+#define GE_RESET_HOOK() ((void)0)
+#endif
 #ifndef GE_RULE_HOOK
 #define GE_RULE_HOOK(a, v, t, at) ((const char *)NULL)
 #endif
@@ -84,7 +88,7 @@ static int ge_all_digits(const char *s) { if (!s || !*s) return 0; for (; *s; s+
 
 /* Replay the whole ledger into the tables and, when resolve is 1, append the missing EVRES / REJECT rows (once each). Returns 1, or 0 when the file could not be read. */
 static int ge_scan(const char *path, long now, int resolve, GeStats *st) {
-    GeStats z = { 0, 0, 0, 0 }; if (st) *st = z; ge_ninv = 0; ge_last[0] = 0;
+    GeStats z = { 0, 0, 0, 0 }; if (st) *st = z; ge_ninv = 0; ge_last[0] = 0; GE_RESET_HOOK();
     FILE *f = fopen(path, "rb"); if (!f) return 1;      /* no ledger = empty state */
     fseek(f, 0, SEEK_END); long sz = ftell(f); rewind(f); if (sz < 0 || sz > GE_MAX_FILE) { fclose(f); return 0; }
     char *buf = malloc((size_t)sz + 1); if (!buf) { fclose(f); return 0; } size_t got = fread(buf, 1, (size_t)sz, f); fclose(f); buf[got] = 0; sz = (long)got;

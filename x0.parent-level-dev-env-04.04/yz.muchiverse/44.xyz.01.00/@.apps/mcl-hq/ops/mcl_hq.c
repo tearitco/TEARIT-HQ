@@ -47,7 +47,10 @@
 #include "../../../&.widgits/_shared-lib/stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "../../../&.widgits/_shared-lib/stb_image_write.h"
-#include "../../../&.widgits/_shared-lib/game_events.c"      /* S1 event line + resolver (also df-hq, cdda-hq, mcl-hq) */
+static const char *mcl_rule(const char *actor, const char *verb, const char *target, const char *at); static void mb_reset(void);
+#define GE_RULE_HOOK(a, v, t, at) mcl_rule(a, v, t, at)
+#define GE_RESET_HOOK() mb_reset()
+#include "../../../&.widgits/_shared-lib/game_events.c"      /* S1 event line + resolver (also df-hq, cdda-hq, mcl-hq); mcl-hq's block rules are mcl_rule() below */
 
 /* Per-room geometry: the room being processed is g_gr (set by render, use_ent, walking, placement, export). A normal room is 13 x 8 cells of 48 px with a sky/wall strip (trig row 2); an OVERMAP room (ROOM ... over) is a
  * world-map biome (the island city): cols x rows cells of tpx px (the 48 px RPG Maker tiles are scaled down), no wall strip (trig row 0). Source tile size in the sheets is always S48. */
@@ -290,7 +293,55 @@ static int other_at(int room, int x, int y) {
 
 /* ---------- placement rules ---------- */
 static int over_land(const Room *rm, int x, int y);
-static int floor_blocked(int room, int x, int y, int skip_id) { if (rooms[room].over && !over_land(&rooms[room], x, y)) return 9999; for (int i = 0; i < nscen; i++) if (scen[i].room == room && x >= scen[i].x && x < scen[i].x + scen[i].w && y >= scen[i].y && y < scen[i].y + scen[i].h) return 9999; for (int i = 0; i < npl; i++) { Placed *q = &pl[i]; if (q->room != room || q->id == skip_id || cat[q->item].wall) continue; if (x >= q->x && x < q->x + cat[q->item].w && y >= q->y && y < q->y + cat[q->item].h) return q->id; } return 0; }
+/* ---------- blocks (2026-10-17, S1 slice; rules by RULES-mcl-hq.md): the BLOCK rows of rooms.pdl are the starting world, EVENT dig / build / craft rows of state/events.txt change it. The table below is a
+ * REPLAY of that ledger: mb_reset() runs at the top of every ge_scan and rebuilds the base state, then each legal event is applied in order (a pure function of the files). Blocks stop walking and are drawn
+ * with the Mineclonia textures. BLOCK | room | x | y | w | h | id   and   RECIPE | id | grid | output | count   (recipes.pdl; the grid is nine cells row-major, "." empty, a name is a cell, "," may separate two names). ---------- */
+#define MAXMB 512
+#define MAXREC 16
+typedef struct { int room, x, y; char id[12]; } MCell;
+typedef struct { char id[16], out[16], in[9][16]; int cnt, nin; } Recipe;
+static MCell mcell[MAXMB]; static int nmcell;
+static Recipe recs[MAXREC]; static int nrec, nrec_bad;
+static const char *MB_IDS[] = { "grass", "dirt", "stone", "cobble", "planks", "log", NULL };
+static int mb_known(const char *id) { for (int i = 0; MB_IDS[i]; i++) if (!strcmp(id, MB_IDS[i])) return 1; return 0; }
+static const char *mb_png(const char *id) {
+    if (!strcmp(id, "grass")) return "ITEMS/mcl_core/textures/mcl_core_grass_block_top.png"; if (!strcmp(id, "dirt")) return "ITEMS/mcl_core/textures/default_dirt.png"; if (!strcmp(id, "stone")) return "ITEMS/mcl_core/textures/default_stone.png";
+    if (!strcmp(id, "cobble")) return "ITEMS/mcl_core/textures/default_cobble.png"; if (!strcmp(id, "planks")) return "ITEMS/mcl_core/textures/default_wood.png"; return "ITEMS/mcl_core/textures/default_tree.png";
+}
+static int mb_find(int room, int x, int y) { for (int i = 0; i < nmcell; i++) if (mcell[i].room == room && mcell[i].x == x && mcell[i].y == y) return i; return -1; }
+static int mb_add(int room, int x, int y, const char *id) { if (nmcell >= MAXMB || mb_find(room, x, y) >= 0) return 0; MCell *c = &mcell[nmcell++]; c->room = room; c->x = x; c->y = y; snprintf(c->id, sizeof c->id, "%s", id); return 1; }
+/* a cell a block may stand on, from the static data only (a replay must not depend on furniture placed later): inside the room's floor, land on the overworld, not scenery, not a door cell or its trigger cell */
+static int mb_base_free(int room, int x, int y) {
+    if (room < 0 || room >= nroom) return 0; const Room *rm = &rooms[room]; if (x < 0 || x >= rm->cols || y < rm->trig || y >= rm->rows) return 0; if (rm->over && !over_land(rm, x, y)) return 0;
+    for (int i = 0; i < nscen; i++) if (scen[i].room == room && x >= scen[i].x && x < scen[i].x + scen[i].w && y >= scen[i].y && y < scen[i].y + scen[i].h) return 0;
+    for (int i = 0; i < ndoor; i++) if (doors[i].room == room && x == doors[i].tx && (y == doors[i].ty || y == doors[i].ty + 1)) return 0; return 1;
+}
+static void mb_reset(void) {
+    nmcell = 0; nrec = nrec_bad = 0; char p[PATH_MAX], line[300], *f[12]; FILE *fp;
+    snprintf(p, sizeof p, "%s/rooms.pdl", APP); fp = fopen(p, "r");
+    if (fp) { while (fgets(line, sizeof line, fp)) { int n = split_bar(line, f, 12); if (n >= 7 && !strcmp(f[0], "BLOCK") && mb_known(f[6])) { int r = room_idx(f[1]); if (r < 0) continue; int x0 = atoi(f[2]), y0 = atoi(f[3]), w = atoi(f[4]), h = atoi(f[5]); for (int y = y0; y < y0 + h; y++) for (int x = x0; x < x0 + w; x++) if (mb_base_free(r, x, y)) mb_add(r, x, y, f[6]); } } fclose(fp); }
+    snprintf(p, sizeof p, "%s/recipes.pdl", APP); fp = fopen(p, "r");
+    if (fp) { while (fgets(line, sizeof line, fp)) { int n = split_bar(line, f, 12); if (n < 5 || strcmp(f[0], "RECIPE")) continue; Recipe *rc = &recs[nrec < MAXREC ? nrec : MAXREC - 1]; memset(rc, 0, sizeof *rc); int cells = 0, ok = f[1][0] && f[3][0] && atoi(f[4]) > 0 && atoi(f[4]) < 100 && strlen(f[1]) < 16 && strlen(f[3]) < 16;
+            for (const char *g = f[2]; ok && *g;) { if (*g == '.') { cells++; g++; } else if (*g == ',') g++; else if (isalpha((unsigned char)*g) || *g == '_') { char tok[16]; int t = 0; while (isalpha((unsigned char)*g) || *g == '_') { if (t < 15) tok[t++] = *g; g++; } tok[t] = 0; if (cells < 9 && rc->nin < 9) snprintf(rc->in[rc->nin++], 16, "%s", tok); cells++; } else ok = 0; }
+            if (!ok || cells != 9 || rc->nin == 0) { nrec_bad++; continue; } snprintf(rc->id, 16, "%s", f[1]); snprintf(rc->out, 16, "%s", f[3]); rc->cnt = atoi(f[4]); if (nrec < MAXREC) nrec++; } fclose(fp); }
+}
+/* the rules of RULES-mcl-hq.md: dig = break the block with that id at the cell, the actor gets one; build = place a held block on a free cell (costs one); craft = the recipe named by target, inputs from the bag; the rest is the default */
+static const char *mcl_rule(const char *actor, const char *verb, const char *target, const char *at) {
+    char rid[16]; int x = 0, y = 0;
+    if (!strcmp(verb, "dig") || !strcmp(verb, "build")) {
+        if (!mb_known(target)) return "unknown"; if (sscanf(at, "%15[^:]:%d,%d", rid, &x, &y) != 3) return "none"; int r = room_idx(rid); if (r < 0) return "none"; int i = mb_find(r, x, y);
+        if (!strcmp(verb, "dig")) { if (i < 0 || strcmp(mcell[i].id, target)) return "none"; mcell[i] = mcell[--nmcell]; GeInv *q = ge_inv_find(actor, target, 1); if (!q) return "full"; q->n++; return "ok"; }
+        GeInv *q = ge_inv_find(actor, target, 0); if (!q || q->n <= 0) return "none"; if (i >= 0 || !mb_base_free(r, x, y)) return "blocked"; if (!mb_add(r, x, y, target)) return "full"; q->n--; return "ok";
+    }
+    if (!strcmp(verb, "craft")) {
+        Recipe *rc = NULL; for (int i = 0; i < nrec; i++) if (!strcmp(recs[i].id, target)) rc = &recs[i]; if (!rc) return "missing";
+        for (int i = 0; i < rc->nin; i++) { int need = 0; for (int j = 0; j < rc->nin; j++) if (!strcmp(rc->in[j], rc->in[i])) need++; GeInv *q = ge_inv_find(actor, rc->in[i], 0); if (!q || q->n < need) return "missing"; }
+        GeInv *o = ge_inv_find(actor, rc->out, 1); if (!o) return "full"; for (int i = 0; i < rc->nin; i++) { GeInv *q = ge_inv_find(actor, rc->in[i], 0); if (q) q->n--; } o->n += rc->cnt; return "ok";
+    }
+    return NULL;
+}
+static int mb_find(int room, int x, int y);
+static int floor_blocked(int room, int x, int y, int skip_id) { if (mb_find(room, x, y) >= 0) return 9999; if (rooms[room].over && !over_land(&rooms[room], x, y)) return 9999; for (int i = 0; i < nscen; i++) if (scen[i].room == room && x >= scen[i].x && x < scen[i].x + scen[i].w && y >= scen[i].y && y < scen[i].y + scen[i].h) return 9999; for (int i = 0; i < npl; i++) { Placed *q = &pl[i]; if (q->room != room || q->id == skip_id || cat[q->item].wall) continue; if (x >= q->x && x < q->x + cat[q->item].w && y >= q->y && y < q->y + cat[q->item].h) return q->id; } return 0; }
 static int door_here(int room, int x, int y) { for (int i = 0; i < ndoor; i++) if (doors[i].room == room && doors[i].tx == x && y == doors[i].ty + 1) return i; return -1; }
 /* overmap land: an island on a square ocean. Cells inside the rounded rectangle (2..cols-3, 1..rows-2, corners cut) are land, the outermost land ring is beach. Everything else is ocean (blocked). */
 static int over_land(const Room *rm, int x, int y) { if (x < 2 || x > rm->cols - 3 || y < 1 || y > rm->rows - 2) return 0; if ((x <= 3 || x >= rm->cols - 4) && (y <= 2 || y >= rm->rows - 3)) return 0; return 1; }
@@ -379,6 +430,7 @@ static void draw_auto(const char *sh, int bx, int by, int n, int e, int s, int w
     for (int i = 0; i < 4; i++) blit(sp, bx * S48 + q[i][0] * 24, by * S48 + q[i][1] * 24, 24, 24, dx + (i % 2) * T / 2, dy + (i / 2) * T / 2);
 }
 /* the overmap biome "worldmap": the whole map is grass (World_A2 kind 0), the ocean is the World_A1 sea autotile (kind 0) whose edge shapes draw the shore wherever it meets land; the island is whatever over_land() says. */
+static void note_set(const char *s) { char p[PATH_MAX]; spath(p, "note.txt"); FILE *f = fopen(p, "w"); if (f) { fprintf(f, "%s\n", s); fclose(f); } }      /* the last block message, painted green under the coins (it must outlive the verb process, so a file) */
 static int over_sea(const Room *rm, int x, int y) { if (x < 0 || y < 0 || x >= rm->cols || y >= rm->rows) return 1; return !over_land(rm, x, y); }      /* outside the map counts as sea (MV treats the border as connected) */
 static void draw_over(const Room *rm) {
     for (int y = 0; y < rm->rows; y++) for (int x = 0; x < rm->cols; x++) {
@@ -403,6 +455,7 @@ static void render(void) {
         else if (!strcmp(scen[i].sheet, "World_B")) cell_png("ITEMS/mcl_core/textures/default_cobble.png", scen[i].x, scen[i].y, scen[i].w, scen[i].h);
         else tile(scen[i].sheet, scen[i].c, scen[i].r, scen[i].w, scen[i].h, scen[i].x, scen[i].y);
     }
+    for (int i = 0; i < nmcell; i++) if (mcell[i].room == vroom) cell_png(mb_png(mcell[i].id), mcell[i].x, mcell[i].y, 1, 1);      /* blocks (see the block section) */
     int idx[MAXP], n = 0; for (int i = 0; i < npl; i++) if (pl[i].room == vroom) idx[n++] = i;
     for (int a = 0; a < n; a++) for (int b = a + 1; b < n; b++) { Placed *p = &pl[idx[a]], *q = &pl[idx[b]]; int ka = (!cat[p->item].wall) * 1000 + p->y + cat[p->item].h, kb = (!cat[q->item].wall) * 1000 + q->y + cat[q->item].h; if (kb < ka || (kb == ka && q->x < p->x)) { int t = idx[a]; idx[a] = idx[b]; idx[b] = t; } }
     for (int a = 0; a < n; a++) { Placed *p = &pl[idx[a]]; Item *d = &cat[p->item]; tile(d->sheet, d->c, d->r, d->w, d->h, p->x, p->y); }
@@ -583,7 +636,8 @@ static void out_all(const char *msg) {
 #define W(...) o += snprintf(u + o, sizeof u - o, __VA_ARGS__)
     char raw[PATH_MAX]; spath(raw, "scene.raw"); char h1[PATH_MAX], h2[PATH_MAX]; spath(h1, "interact_relay.txt"); snprintf(h2, sizeof h2, "%s/keyboard/history.txt", ST);
     int chat = flag_on("chat", 0), hb = flag_on("hb", 0), in = flag_on("int", 0); char view[16]; flag_str("view", "2d", view, sizeof view); for (char *c = view; *c; c++) if (*c >= 'a' && *c <= 'z') *c -= 32;
-    W("title=mcl-hq  -  %s  -  coins %d\nscene_raw=%s\ncanvas_raw=%s\ncoins=%d\nmsg=%s\nroom_label=%s\n", rooms[vroom].name, coins, raw, raw, coins, msg && msg[0] ? msg : (in ? "INT on: turn based like a roguelike. Time moves when you act. Tab switches pet/player." : "real time: the pets live on their own. INT lets you control a pet or the player."), rooms[vroom].name);
+    char nbuf[200]; { char np[PATH_MAX]; spath(np, "note.txt"); read_file(np, nbuf, sizeof nbuf); size_t nl = strlen(nbuf); while (nl && (nbuf[nl - 1] == '\n' || nbuf[nl - 1] == '\r')) nbuf[--nl] = 0; }
+    W("title=mcl-hq  -  %s  -  coins %d\nscene_raw=%s\ncanvas_raw=%s\ncoins=%d\nnote=%s\nmsg=%s\nroom_label=%s\n", rooms[vroom].name, coins, raw, raw, coins, nbuf, msg && msg[0] ? msg : (in ? "INT on: turn based like a roguelike. Time moves when you act. Tab switches pet/player." : "real time: the pets live on their own. INT lets you control a pet or the player."), rooms[vroom].name);
     { char cc[16]; flag_str("ctl", "pet", cc, sizeof cc); char who[40]; snprintf(who, sizeof who, "on: %s", !strcmp(cc, "player") ? "you" : party[active].name); W("interact_class=%s\ninteract_label=%s\nrp_h1=%s\nrp_h2=%s\ncontrol_label=control: %s\n", in ? "interact-active" : "", in ? who : "off", h1, h2, !strcmp(cc, "player") ? "player" : party[active].name); }
     W("run_on=%d\nrun_label=%s\nrun_cls=%s\n", run_on(), run_on() ? "GO started" : "STOP stopped", run_on() ? "ph-green" : "ph-red");
     W("mode_label=%s\nmode_cls=%s\n", rogue_mode() ? "[rogue] live" : "rogue [live]", rogue_mode() ? "ph-green" : "ph-red");
@@ -856,10 +910,42 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
 static void verb(int argc, char **argv, char *msg, size_t cap) {
     const char *v = argc ? argv[0] : "status"; long now = (long)time(NULL); char b[200]; msg[0] = 0; use_ent(active);
     if (!strcmp(v, "status")) return;
+    if (!strcmp(v, "mine") || !strcmp(v, "place") || !strcmp(v, "hold") || !strcmp(v, "craft") || !strcmp(v, "bag") || !strcmp(v, "recipes") || !strcmp(v, "help")) {      /* blocks (BOOK 10-user-docs/MCL-HQ-BLOCKS-HOWTO.md): the controlled mover acts on the cell it faces, or on "x y" (two numbers) in the room it stands in; every change goes through the S1 event line */
+        int ci = ctl_idx(); const char *who = ci < 0 ? "trainer" : party[ci].id; char ep[PATH_MAX], hp[PATH_MAX], nb[200], er[60]; spath(ep, "events.txt"); spath(hp, "hold.txt"); GeStats gs; long gnow = (long)time(NULL);
+        use_ent(ci); int room = pet.room, fx, fy; { static const int ddx[4] = {0, -1, 1, 0}, ddy[4] = {1, 0, 0, -1}; fx = pet.x + ddx[pet.dir & 3]; fy = pet.y + ddy[pet.dir & 3]; } use_ent(active);
+        for (int k = 1; k + 1 < argc; k++) if (isdigit((unsigned char)argv[k][0]) && isdigit((unsigned char)argv[k + 1][0])) { fx = atoi(argv[k]); fy = atoi(argv[k + 1]); break; }      /* the window appends extra words to a menu action: only two numbers mean coordinates */
+        if (!ge_scan(ep, gnow, 0, &gs)) { snprintf(msg, cap, "ledger unreadable"); return; }      /* a replay: the block table and the bags as the ledger says */
+        char held[16] = ""; { char hb[32]; read_file(hp, hb, sizeof hb); char *e = strchr(hb, '\n'); if (e) *e = 0; if (mb_known(hb) && ge_inv_get(who, hb) > 0) snprintf(held, sizeof held, "%s", hb); }
+        if (!held[0]) for (int i = 0; MB_IDS[i]; i++) if (ge_inv_get(who, MB_IDS[i]) > 0) { snprintf(held, sizeof held, "%s", MB_IDS[i]); break; }
+        char at[48]; snprintf(at, sizeof at, "%s:%d,%d", rooms[room].id, fx, fy); char *ev[6] = { (char *)"event", (char *)who, NULL, NULL, at, NULL }; char res[24] = "";
+        if (!strcmp(v, "help")) {
+            static const char *H[6] = { "1/6 Pick who acts: Menu > Control (Tab).", "2/6 INT on: an arrow into a block turns you to face it.", "3/6 Menu > Mine block ahead takes the block.", "4/6 Menu > Hold next block, then Place block ahead.", "5/6 Menu > Craft planks: 1 log gives 4 planks.", "6/6 Menu > Bag shows what you carry." };
+            char hs[PATH_MAX], hb[16]; spath(hs, "help_step.txt"); read_file(hs, hb, sizeof hb); int s = atoi(hb) % 6; FILE *hf = fopen(hs, "w"); if (hf) { fprintf(hf, "%d\n", s + 1); fclose(hf); } note_set(H[s]); snprintf(msg, cap, "%s", H[s]); return; }
+        if (!strcmp(v, "bag") || !strcmp(v, "recipes")) { size_t o = 0; nb[0] = 0;
+            if (!strcmp(v, "bag")) { for (int i = 0; i < ge_ninv; i++) if (!strcmp(ge_inv[i].actor, who) && ge_inv[i].n > 0 && o + 30 < sizeof nb) o += (size_t)snprintf(nb + o, sizeof nb - o, "%s %ld, ", ge_inv[i].item, ge_inv[i].n); if (o) nb[o - 2] = 0; else snprintf(nb, sizeof nb, "bag empty: Mine a block"); if (o && held[0] && o + 20 < sizeof nb) snprintf(nb + strlen(nb), sizeof nb - strlen(nb), " (holding %s)", held); }
+            else { for (int i = 0; i < nrec && o + 30 < sizeof nb; i++) { o += (size_t)snprintf(nb + o, sizeof nb - o, "%s%s", i ? ", " : "", recs[i].id); } if (!nrec) snprintf(nb, sizeof nb, "no recipes (recipes.pdl)"); if (nrec_bad && strlen(nb) + 24 < sizeof nb) snprintf(nb + strlen(nb), sizeof nb - strlen(nb), "; %d bad rows", nrec_bad); }
+            note_set(nb); snprintf(msg, cap, "%s", nb); return; }
+        if (!strcmp(v, "hold")) { const char *want = argc >= 2 && mb_known(argv[1]) ? argv[1] : NULL; int start = 0; if (!want) { for (int i = 0; MB_IDS[i]; i++) if (!strcmp(MB_IDS[i], held)) start = i + 1; for (int k = 0; k < 6 && !want; k++) { const char *c = MB_IDS[(start + k) % 6]; if (ge_inv_get(who, c) > 0) want = c; } }
+            if (!want) { snprintf(nb, sizeof nb, "nothing to hold: mine a block first"); } else { FILE *hf = fopen(hp, "w"); if (hf) { fprintf(hf, "%s\n", want); fclose(hf); } snprintf(nb, sizeof nb, "holding %s (%ld)", want, ge_inv_get(who, want)); }
+            note_set(nb); snprintf(msg, cap, "%s", nb); return; }
+        if (!strcmp(v, "mine")) { int i = mb_find(room, fx, fy); if (i < 0) { snprintf(nb, sizeof nb, "no block at %d,%d: face a block", fx, fy); note_set(nb); snprintf(msg, cap, "%s", nb); return; } ev[2] = (char *)"dig"; ev[3] = mcell[i].id; snprintf(res, sizeof res, "%s", mcell[i].id); }
+        else if (!strcmp(v, "place")) { const char *id = argc >= 2 && mb_known(argv[1]) ? argv[1] : held; if (!id[0]) { snprintf(nb, sizeof nb, "bag has no block: Mine one"); note_set(nb); snprintf(msg, cap, "%s", nb); return; }
+            int occ = 0; for (int k = 0; k < nparty; k++) if (others[k].room == room && others[k].x == fx && others[k].y == fy) occ = 1; if (tr.room == room && tr.x == fx && tr.y == fy) occ = 1; if (occ) { snprintf(nb, sizeof nb, "someone stands at %d,%d", fx, fy); note_set(nb); snprintf(msg, cap, "%s", nb); return; }
+            ev[2] = (char *)"build"; ev[3] = (char *)id; snprintf(res, sizeof res, "%s", id); }
+        else { if (argc < 2) { snprintf(nb, sizeof nb, "craft which? Menu > Craft planks"); note_set(nb); snprintf(msg, cap, "%s", nb); return; } ev[2] = (char *)"craft"; ev[3] = argv[1]; ev[4] = (char *)"-"; snprintf(res, sizeof res, "%s", argv[1]); }
+        if (!ge_append(ep, gnow, ev[1], ev[2], ev[3], ev[4], er, sizeof er)) { snprintf(nb, sizeof nb, "refused: %s", er); note_set(nb); snprintf(msg, cap, "%s", nb); return; }
+        if (!ge_scan(ep, gnow, 1, &gs)) { snprintf(msg, cap, "ledger not writable"); return; } append_line("blocks_changed.txt", ".");
+        if (!strcmp(ge_last, "ok")) { if (!strcmp(v, "mine")) snprintf(nb, sizeof nb, "mined %s (bag %ld)", res, ge_inv_get(who, res)); else if (!strcmp(v, "place")) snprintf(nb, sizeof nb, "placed %s at %d,%d (bag %ld)", res, fx, fy, ge_inv_get(who, res)); else { Recipe *rc = NULL; for (int i = 0; i < nrec; i++) if (!strcmp(recs[i].id, res)) rc = &recs[i]; snprintf(nb, sizeof nb, "crafted %s x%d (bag %ld)", rc ? rc->out : res, rc ? rc->cnt : 0, rc ? ge_inv_get(who, rc->out) : 0L); } }
+        else if (!strcmp(ge_last, "missing")) { int known = 0; for (int i = 0; i < nrec; i++) if (!strcmp(recs[i].id, res)) known = 1; if (known) snprintf(nb, sizeof nb, "cannot craft %s: need the inputs in the bag", res); else snprintf(nb, sizeof nb, "no recipe named %s (Menu > Help)", res); }
+        else if (!strcmp(ge_last, "none")) snprintf(nb, sizeof nb, "%s: none to %s", res, !strcmp(v, "place") ? "place" : "mine");
+        else if (!strcmp(ge_last, "blocked")) snprintf(nb, sizeof nb, "cannot place at %d,%d: not free", fx, fy);
+        else snprintf(nb, sizeof nb, "%s: %s", v, ge_last);
+        note_set(nb); snprintf(msg, cap, "%s", nb); return; }
     if (!strcmp(v, "event") || !strcmp(v, "resolve") || !strcmp(v, "inventory")) {      /* S1 (GAME-MECHANICS-SPRINT.md): the event line and resolver of _shared-lib/game_events.c on this game's state/events.txt. event <actor> <verb> <target> <room:x,y|-> appends one validated EVENT row and resolves it; resolve = resolve any row that has no EVRES yet (idempotent); inventory [actor] = replay of the ledger, writes nothing */
         char ep[PATH_MAX], er[60] = ""; spath(ep, "events.txt"); GeStats gs; long gnow = (long)time(NULL);
         if (!strcmp(v, "event")) { if (argc < 5) { snprintf(msg, cap, "event <actor> <verb> <target> <room:x,y or ->"); return; } if (!ge_append(ep, gnow, argv[1], argv[2], argv[3], argv[4], er, sizeof er)) { snprintf(msg, cap, "event refused: %s", er); return; } }
         if (!ge_scan(ep, gnow, strcmp(v, "inventory") != 0, &gs)) { snprintf(msg, cap, "ledger unreadable or not writable"); return; }
+        if (gs.resolved_new) append_line("blocks_changed.txt", ".");      /* marker (size growth): the daemon replays the ledger into its block table */
         if (!strcmp(v, "inventory")) { size_t o = 0; msg[0] = 0; for (int i = 0; i < ge_ninv; i++) if ((argc < 2 || !strcmp(argv[1], ge_inv[i].actor)) && ge_inv[i].n > 0 && o + 60 < cap) o += (size_t)snprintf(msg + o, cap - o, "%s:%s=%ld ", ge_inv[i].actor, ge_inv[i].item, ge_inv[i].n); if (!o) snprintf(msg, cap, "(nothing)"); return; }
         snprintf(msg, cap, "%s: %ld events, %ld resolved now, %ld rejected now (%ld rejects in all); last result %s", v, gs.events, gs.resolved_new, gs.rejected_new, gs.rejects_total, ge_last[0] ? ge_last : "-"); return; }
     if (!strcmp(v, "pet_says") && argc >= 4) {      /* the registered pet_says command of the greet pages: pet_says <pet id> <chat line> <spoken line> [other]; {other} is replaced; RPG_SAY / RPG_SPEAK say whether it is heard (chat / voice) */
@@ -873,10 +959,10 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
     if (!strcmp(v, "newgame")) {      /* a fresh game: the current one is saved to slot 0 first (Undo new game = Load slot 0), then every game file is removed so the next read starts from the defaults. The clock is not touched. */
         char m2[200] = ""; char *sv[] = { (char *)"save", (char *)"0", NULL }; verb(2, sv, m2, sizeof m2);
         char sd[PATH_MAX]; snprintf(sd, sizeof sd, "%s/slots/0/events.txt", ST); if (!fexists(sd)) { snprintf(msg, cap, "new game NOT started: the backup to slot 0 failed (%s)", m2); return; }
-        static const char *fixed[] = { "house.txt", "trainer.txt", "relations.txt", "chat.txt", "active.txt", "daylight.txt", "flag_ctl.txt", "flag_follow.txt", "events.txt" };
+        static const char *fixed[] = { "house.txt", "trainer.txt", "relations.txt", "chat.txt", "active.txt", "daylight.txt", "flag_ctl.txt", "flag_follow.txt", "events.txt", "note.txt", "help_step.txt", "hold.txt" };
         for (size_t i = 0; i < sizeof fixed / sizeof *fixed; i++) { char p[PATH_MAX]; spath(p, fixed[i]); remove(p); }
         for (int i = 0; i < nparty; i++) { char p[PATH_MAX], nm[48]; snprintf(nm, sizeof nm, "pet_%s.txt", party[i].id); spath(p, nm); remove(p); }
-        pet_load(); replay();
+        pet_load(); replay(); append_line("blocks_changed.txt", ".");
         snprintf(msg, cap, "new game started; the game you left is in slot 0 (Player > Undo new game)"); return; }
     if (!strcmp(v, "reset")) { char p[PATH_MAX], q[PATH_MAX]; spath(p, "house.txt"); snprintf(q, sizeof q, "%s/house.txt.%ld.bak", ST, now); if (fexists(p)) rename(p, q); snprintf(msg, cap, "house reset (the old ledger is kept as house.txt.%ld.bak)", now); return; }
     if (!strcmp(v, "buy") && argc >= 2) {
@@ -923,6 +1009,7 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
             if (!strcmp(names[i], "events.txt")) { if (copy_file(a, bpath)) ok++; continue; }
             if (copy_file(a, bpath)) ok++; }      /* every file is streamed: read_file stops at 64 KB and silently cut relations.txt (65,535 bytes) and chat.txt in the slot */
         if (!saving) { char b[40]; read_file(mp, b, sizeof b); long long ms = atoll(b); if (ms > 0) { clock_paths(); clock_install(); char ma[32]; snprintf(ma, sizeof ma, "%lld", ms); lc_run(0, "cmd", "rpg", "settime", ma, "--source", "rpg-load", NULL); lc_run(0, "step", "5", NULL); } pet_load(); }
+        if (!saving) append_line("blocks_changed.txt", ".");
         snprintf(msg, cap, "%s slot %d (%d files)", saving ? "saved to" : "loaded from", slot, ok); return; }
     if (!strcmp(v, "clearchat")) { char p[PATH_MAX], q[PATH_MAX]; spath(p, "chat.txt"); snprintf(q, sizeof q, "%s/chat.txt.%ld.bak", ST, now); if (fexists(p)) rename(p, q); snprintf(msg, cap, "chat cleared (kept as chat.txt.%ld.bak)", now); return; }
     if (!strcmp(v, "toggle") && argc >= 2 && (!strcmp(argv[1], "chat") || !strcmp(argv[1], "hb") || !strcmp(argv[1], "voice"))) { set_flag(argv[1], flag_on(argv[1], !strcmp(argv[1], "voice")) ? "0" : "1"); snprintf(msg, cap, "%s toggled", argv[1]); return; }
@@ -1045,6 +1132,7 @@ static int daemon_main(void) {
     long last_load = now_ms(), last_follow = 0;
     while (!quit_flag) {
         usleep(100000); int dirty = 0, codes[64], n; msg[0] = 0; { long lt = now_ms(); if (lt - last_load >= tune("reload_ms", 2000)) { last_load = lt; load_tune(); load_data(); } }      /* catalog / party / rooms / door pages are static: re-parsing them every 100 ms was most of the daemon's own CPU */
+        { static long bsig = -1; char bp[PATH_MAX]; spath(bp, "blocks_changed.txt"); long bs = fsize(bp); if (bs != bsig) { bsig = bs; char ep[PATH_MAX]; spath(ep, "events.txt"); ge_scan(ep, (long)time(NULL), 0, NULL); dirty = 1; } }      /* the block table is a replay of the ledger; only a mine / place / craft / new game / load (blocks_changed.txt grew) needs a new one */
         pet_load(); int in = flag_on("int", 0), tm = turn_mode(); static int prev_in = 0; static long int_on_at = 0; if (in && !prev_in) int_on_at = now_ms(); prev_in = in;
         if (in && enter_pressed_in_engine() && possess_at_xelector(msg, sizeof msg)) { dirty = 1; follow_pchq(); }
         n = poll_keys(h1, &o1, codes, 32); n += poll_keys(h2, &o2, codes + n, 32);     /* the offsets always advance; keys only act while INT is on */
@@ -1125,7 +1213,7 @@ int main(int argc, char **argv) {
       if (!ASSETS[0] || !HOUSE[0]) { fprintf(stderr, "mcl_hq: no #.NNEST_ASSETS / &.widgits above %s\n", APP); return 1; } }
     if (mode == 2) return event_main(argv[1]);
     if (mode == 1) return daemon_main();
-    load_data(); replay(); pet_load(); clock_paths();
+    load_data(); replay(); pet_load(); clock_paths(); { char ep0[PATH_MAX]; spath(ep0, "events.txt"); ge_scan(ep0, (long)time(NULL), 0, NULL); }
     char msg[240]; verb(vargc, vargv, msg, sizeof msg);
     if (turn_taken && turn_mode()) end_turn();       /* INT on: the owner acted, so it is a turn: the clock advances and every pet steps */
     replay(); if (viewer_kinds()) out_all(msg); clock_ui(); printf("%s\n", msg[0] ? msg : "ok"); return 0;      /* a verb (and every event page that calls one: pet_says, sync, the clock events) used to render the whole scene and ui files even with no window open; with no viewer there is no reader */
