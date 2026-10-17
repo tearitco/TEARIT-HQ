@@ -1,0 +1,7 @@
+room=castle
+x=5
+y=3
+dir=2
+steps=1
+tx=-1
+ty=-1
