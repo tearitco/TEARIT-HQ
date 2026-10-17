@@ -2,6 +2,21 @@
 
 ---
 
+## Found 2026-10-17 while building the mcl-hq / cdda-hq slices (sonnet). Status per item.
+
+1. **OPEN - mcl-hq blocks are missing from the glyph view and not raised in 3D; cdda-hq's zed is missing from both.** Seen on a scratch board (screenshots `XO/games-screens/mcl_board_*.png`): the 2D tile view (key `0`) shows mined and placed blocks, the glyph view (backtick) shows only `T` and the pet letters, the 3D view shows the Overworld floor painted flat (and is dark at dusk), so a block is not distinguishable. Cause: `export3d` in `mcl_hq.c` / `cdda_hq.c` never looks at the block table or `state/zed.txt` (0 mentions in the function); interior rooms get nothing at all. Fix plan: blocks as 1-high `f` cells with their texture slot plus an `ascii_legend.txt` row, the zed as one entity row in the room's `events.txt`; re-export when `blocks_changed.txt` / the zed moves. Not done yet.
+2. **OPEN - the View row in the standalone windows does nothing visible.** `view` flips a flag and says "the picture is still 2D"; 3D and glyph exist only in the board windows. A player will read it as broken. Either hide the row in the standalone window or point it at the board.
+3. **WORKED AROUND - a top-bar dropdown clips at about ten rows.** The mcl-hq Menu had twelve rows; Craft/Bag/Help were hidden behind a scroll bar that is easy to miss (screenshot `mcl_blocks_3.png`). The new rows got their own Blocks / Craft tab. The generic dropdown has no "more below" hint.
+4. **OPEN - a game daemon leaves an `lc_clock` process behind.** Scratch copies of cdda-hq / mcl-hq each left an `lc_clock` running after the game daemon and window were killed (found two with cwd in my scratch folder, killed by pid). `clock_stop()` only pauses the clock. A live game probably does the same after the window closes (one per game, harmless but never exits). Next step: check whether `lc_clock` exits by itself when its clock root disappears.
+5. **FIXED 2026-10-17 - launching one game window killed any window whose command line merely contained `<name>.xhtpm`.** The eight game `button.sh` (cdda-hq, civ-rpgce, dsr-rpg, df-hq, rpg-pet, mcl-hq, tcg-rpgce, gta-hq) matched `index($0,"mcl-hq.xhtpm")`, so a scratch copy (`mcl-hq-test/mcl-hq.xhtpm`) would have closed the live window, and the reverse. Now it matches the script's own full `$XHTPM` path. Tested: a synthetic ps listing (old pattern selected both windows, new selects only its own), and a real relaunch of mcl-hq (its old window gone, the df-hq board untouched). Not changed: `tpmos-hq/button.sh` (different form, same idea).
+6. **OPEN - `pchq_board_projector` writes into the current directory when `KHTPM_PKG` is unset.** `pkg` defaults to `"."`, so a hand launch created `<house>/state/ui.txt` (removed). It should refuse instead of defaulting. The same hand launch found no board session because the module runner's setup is missing, which looks like a black board.
+7. **OPEN - the S1 ledger scan reads the whole file and refuses over 32 MB.** Fine for df/cdda/mcl (4 KB to 120 KB), but rpg-pet's ledger is already 15.8 MB; S1 is not enabled there. Do not enable it on a game whose `events.txt` is large without a cursor or a rotated ledger.
+8. **OPEN, UNEXPLAINED - the machine hard-freezes.** 2026-10-15 (twice), 2026-10-16 about 20:09 and 2026-10-17 about 00:40: the journal simply stops (last lines 00:39:55, no panic, no OOM message), load was about 1 each time. Nothing in the code I touched explains it. Worth a hardware / thermal / disk check (the disk is 90% full).
+9. **INFO - `bv_gpu_raymarch.c` carries an uncommitted edit that is not mine** (shader loop 320 to 96 plus a fog break; grok says it is not theirs either). A rebuilt `bv_render_3d` links it.
+10. **INFO - every engine session runs its own copy of the board binaries** (`pieces/sessions/<id>/ops/+x/`), so a rebuilt `bv_render_3d` or `bv_menu_input` only reaches a new session; easy to test the old binary by mistake.
+
+---
+
 ## OPEN 2026-10-15: rename livedesk -> LyfeDesk (trademark; owner decision, written "LyfeDesk")
 
 **Why:** "livedesk" may conflict with an existing trademark one day; do it now. Not legal advice: "LyfeDesk" is a near spelling, so a trademark search on the new name is still the owner's to do.

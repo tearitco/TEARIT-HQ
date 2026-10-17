@@ -10,7 +10,7 @@ XHTPM="$SCRIPT_DIR/civ-rpgce.xhtpm"
 mkdir -p "$SCRIPT_DIR/state" "$SCRIPT_DIR/audit"
 [ -x "$SCRIPT_DIR/ops/+x/civ_rpgce.+x" ] || sh "$SCRIPT_DIR/ops/build_civ_rpgce.sh" >/dev/null 2>&1 || true
 "$SCRIPT_DIR/ops/+x/civ_rpgce.+x" status >/dev/null     # ui.txt + scene.raw must exist before the window loads
-old="$(ps -eo pid,comm,args | awk '$2=="khtpm_core_rend" && index($0,"civ-rpgce.xhtpm"){print $1}')"
+old="$(ps -eo pid,comm,args | awk -v x="$XHTPM" '$2=="khtpm_core_rend" && index($0,x){print $1}')"
 [ -n "$old" ] && echo "$old" | xargs -r kill -TERM && sleep 1
 setsid nohup "$BIN" "$HOUSE_ROOT" "$XHTPM" >"$SCRIPT_DIR/audit/civ-rpgce.log" 2>&1 < /dev/null &
 printf '%s %s 0 0 civ-rpgce\n' "$!" "$!" >> "$HOUSE_ROOT/#.desktop/livedesk_proc_list.txt" 2>/dev/null || true
