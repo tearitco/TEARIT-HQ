@@ -1,0 +1,5 @@
+start-token	weight	0.95
+calculus	weight	0.925
+study	weight	0.875
+component	weight	0.85
+crucial	weight	0.875

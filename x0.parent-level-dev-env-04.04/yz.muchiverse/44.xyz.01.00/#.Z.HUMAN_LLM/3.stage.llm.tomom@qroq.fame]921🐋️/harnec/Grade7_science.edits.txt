@@ -1,0 +1,6 @@
+science	weight	0.95
+systems	weight	0.98
+body	weight	0.97
+learn	weight	0.96
+study	weight	0.94
+genetics	weight	0.93

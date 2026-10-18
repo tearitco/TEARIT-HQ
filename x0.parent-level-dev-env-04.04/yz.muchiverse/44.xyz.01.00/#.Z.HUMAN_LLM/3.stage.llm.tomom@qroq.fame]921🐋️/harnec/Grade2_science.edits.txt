@@ -1,0 +1,7 @@
+start-token	weight	0.92
+students	weight	0.93
+learning	weight	0.96
+about	weight	0.91
+habitats	weight	0.98
+creatures	weight	0.97
+the	weight	0.9

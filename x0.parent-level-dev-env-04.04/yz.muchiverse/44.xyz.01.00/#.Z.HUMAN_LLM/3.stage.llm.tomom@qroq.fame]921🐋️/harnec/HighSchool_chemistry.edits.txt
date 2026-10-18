@@ -1,0 +1,6 @@
+start-token	weight	0.95
+chemistry	weight	0.92
+school	weight	0.9
+atoms	weight	0.93
+molecules	weight	0.91
+end-token	weight	0.97

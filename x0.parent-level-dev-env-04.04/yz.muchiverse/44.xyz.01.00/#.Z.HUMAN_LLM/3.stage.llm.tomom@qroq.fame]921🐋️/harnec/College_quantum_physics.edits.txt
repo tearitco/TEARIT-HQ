@@ -1,0 +1,8 @@
+start-token	weight	0.87
+in	weight	0.92
+the	weight	0.86
+realm	weight	0.91
+of	weight	0.93
+physics	weight	1.0
+college	weight	0.95
+quantum	weight	0.96

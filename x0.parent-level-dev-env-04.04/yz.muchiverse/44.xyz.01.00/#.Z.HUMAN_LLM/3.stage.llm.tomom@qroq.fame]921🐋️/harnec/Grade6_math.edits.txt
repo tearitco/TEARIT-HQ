@@ -1,0 +1,6 @@
+math	weight	0.95
+students	weight	0.93
+learning	weight	0.91
+master	weight	0.96
+ratios	weight	0.98
+proportions	weight	0.97

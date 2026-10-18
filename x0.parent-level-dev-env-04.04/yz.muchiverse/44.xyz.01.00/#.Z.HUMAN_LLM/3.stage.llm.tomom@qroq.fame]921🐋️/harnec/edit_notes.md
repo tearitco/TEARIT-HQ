@@ -124,3 +124,44 @@ Larger vocabularies give more parameters in the output layer, providing more tun
 - Still semantically limited: model too small for coherent multi-word generation
 - Cross-expert token chaining produces fragmented responses (word from one expert, then another)
 - For conversational quality: need larger model + longer training
+
+## Phase G: Hand-Tuning Applied to 27 Grade+Subject Curricula
+
+### What Was Done
+- Applied the proven Phase E hand-tuning approach to all 27 new curricula
+- Used tune.py (llama3) to suggest weight boosts for central domain-specific words
+- Fine-tuned each subject for 10 epochs from its trained baseline
+- Auto-revert logic backed up both vocab AND trained model files (attention, mlp, output_layer, optimizer)
+- Result: **ALL 27 subjects improved — zero reverts needed**
+
+### Results (all 27 subjects, 32/64 dim, 10-epoch tune)
+
+| Category | Subjects | Avg Delta |
+|----------|----------|-----------|
+| Elementary (Grades 1-8) | 16 | -0.239 |
+| High School | 4 | -0.246 |
+| College | 3 | -0.181 |
+| Social/Collaborative | 4 | -0.258 |
+| **All 27** | 27 | **-0.236** |
+
+### Best Improvements
+| Subject | Baseline | Tuned | Delta |
+|---------|----------|-------|-------|
+| HighSchool_algebra | 3.670 | 3.365 | -0.305 |
+| Grade3_math | 3.841 | 3.546 | -0.295 |
+| recess | 3.727 | 3.441 | -0.286 |
+| Grade5_math | 3.759 | 3.474 | -0.285 |
+| teacher_time | 3.879 | 3.595 | -0.284 |
+
+### Key Findings
+- Hand-tuning generalizes strongly to the scaled 32/64 dim architecture (Phase G avg -0.236 vs Phase E avg -0.245 on 16/32 dims)
+- Social/Collaborative categories show the strongest tuning response (-0.258 avg) — these vocabularies have more common words that benefit from weight boosts
+- College subjects show the weakest response (-0.181 avg) — their specialized vocabulary has fewer central "hub" words to boost
+- All subjects converged below the `ln(N)` baseline after tuning
+- The auto-revert safety net was never triggered (all 27 improved)
+
+### Hand-Tuning Patterns by Category
+- **Elementary**: boosted arithmetic words (addition, subtraction, multiplication, division), learning verbs, counting
+- **High School**: boosted domain terms (quadratic, equations, forces, energy, molecules, replication)
+- **College**: boosted advanced concepts (calculus, carbon-based, quantum, realm, physics)
+- **Social/Collaborative**: boosted instructional/support words (instruction, experiments, collaboration, support)

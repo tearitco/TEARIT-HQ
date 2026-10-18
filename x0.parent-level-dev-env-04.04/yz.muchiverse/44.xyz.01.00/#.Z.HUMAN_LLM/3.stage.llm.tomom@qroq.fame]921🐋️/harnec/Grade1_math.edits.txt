@@ -1,0 +1,8 @@
+start-token	weight	1.0
+math	weight	0.95
+counting	weight	0.92
+addition	weight	0.93
+number	weight	0.92
+learn	weight	0.85
+recognize	weight	0.91
+end-token	weight	1.0

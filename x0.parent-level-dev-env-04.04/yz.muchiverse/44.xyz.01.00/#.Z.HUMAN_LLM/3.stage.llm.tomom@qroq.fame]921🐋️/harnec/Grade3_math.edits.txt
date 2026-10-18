@@ -1,0 +1,6 @@
+math	weight	0.92
+multiplication	weight	0.9
+division	weight	0.85
+students	weight	0.95
+learn	weight	0.88
+multiply	weight	0.93

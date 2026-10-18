@@ -1,0 +1,6 @@
+addition	weight	0.95
+subtraction	weight	0.92
+multiplication	weight	0.91
+and	weight	0.85
+operations	weight	0.88
+calculations	weight	0.9
