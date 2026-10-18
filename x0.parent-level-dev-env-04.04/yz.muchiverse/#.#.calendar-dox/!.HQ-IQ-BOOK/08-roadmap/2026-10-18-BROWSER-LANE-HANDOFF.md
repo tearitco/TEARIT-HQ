@@ -1,7 +1,52 @@
 # 2026-10-18 — Browser lane handoff
 
-**Branch `opencode`, tip `73b6d1e44` (local == remote).** Everything below is
+**Branch `opencode`.** Tip is the commit that added this document
+(local == remote, verified with `git ls-remote`). Everything below is
 measured, not estimated; where something is unproven it says so.
+
+---
+
+## 0. START HERE (if you are a model with no context, read this and nothing else first)
+
+You are picking up the **house network browser** lane. Everything below is
+measured. Do not trust a green number here until you have shown it can go red.
+
+**The task, in order.** §5a is the work: **G2.3 flex row**, three steps that
+must happen in this order — a RED test (already written and red, run it first),
+then the worker's flex model, then the manager's projection so the renderer
+lays the columns out the same way. **Step 2 alone re-opens G2.2** with a
+confident wrong number; that is the whole point of §4.
+
+```sh
+HR='.../yz.muchiverse/44.xyz.01.00'          # the house root
+
+cd "$HR" && sh '$.crypts/button.sh' build    # MUST be PASS=145 FAIL=0
+cd "$HR/_.monads/_.livedesk-taskbar/ops" && sh build_core_render.sh   # separate!
+cd "$HR/&.hq-apps/network/tests"
+sh nb_flex_test.sh     # G2.3 - RED by design, this is your starting point
+sh nb_gbcr_test.sh     # G2.2 - MUST stay 100% (9/9). re-run after every change
+sh nb_all_tests.sh     # whole suite: PASS=30 FAIL=0 expected
+```
+
+**Four things that will waste your hour if you do not know them now:**
+
+1. **`khtpm_core_render.c` is a separate build** (`build_core_render.sh`), and
+   **resident processes do not pick up rebuilds** — restart the manager after
+   worker changes, the window after renderer changes. A stale process will
+   report a bug you already fixed.
+2. **`xyzfs/users` is a git landmine.** Never reset/checkout/clean across a
+   branch that tracks fewer user files than your checkout; it deletes wallets
+   from disk. §3.
+3. **`fprintf(stderr)` is invisible in the renderer** — it never reaches a log.
+   Write diagnostics to a **file**.
+4. **The checkout is shared with other agents.** Stage and commit only your own
+   paths, with an explicit pathspec. Never `git stash`, never `git reset` with
+   someone's work staged.
+
+**Do not** wire `nb_flex_test.sh` into `nb_all_tests.sh` until G2.3 is
+actually done — it is red on purpose and would turn the suite red on purpose.
+
+---
 
 Companions: `2026-10-14-G1-SPRINT-VERDICT.md`,
 `2026-10-17-G2-VERDICT-ADDENDUM.md`, and
