@@ -1,5 +1,6 @@
 # 08 — Roadmap
 
+- `2026-10-18-BROWSER-LANE-HANDOFF.md` — **handoff for the browser lane** (2026-10-18): where G1/G2.1/G2.2 stand with measured numbers, the verify-in-order commands, the `xyzfs/users` fast-forward landmine (1,741 files + 18 wallets, survived), **the instrument catalogue** (six green numbers that were not measuring what they claimed), and the next three pieces of work scoped precisely — G2.3 flex row (**two-sided, red test already written**), the `span_drag` T2 pointer-path bug, and the flaky clipboard suites.
 - `2026-10-14-G1-SPRINT-VERDICT.md` — **sprint verdict: G1 "JS apps actually run" is closed and verified live** (2026-10-13→14): four KPIs landed in, six done.
 - `2026-10-17-G2-VERDICT-ADDENDUM.md` — **G2 closed and the merge landed** (2026-10-15→17): G2.1/G2.2 at **100 %** and wired into `nb_all_tests.sh`, `origin/claude` (199 commits) merged, the `xyzfs/users` fast-forward landmine measured and survived (1,741 files restored byte-identical), and the standing rule sharpened to *"a green number has not been measured until you have shown it can go red"*.
 - `design-docs/LOS-VIENTOS-DESIGN.md` — **Los Vientos playability** (2026-10-12): the city a new agent builds from. Start with the systems already in the board (INT, doors, art, extrusion). Do not invent a second engine.
