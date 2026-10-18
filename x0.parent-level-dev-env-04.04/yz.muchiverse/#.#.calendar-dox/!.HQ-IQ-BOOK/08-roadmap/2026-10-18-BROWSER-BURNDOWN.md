@@ -113,9 +113,26 @@ code reasons. **Do not wire it into K1.**
 
 The real gap is the other end: the rule says "run it manually before
 milestone claims", and nothing enforces that. The fix is a **milestone gate** —
-a named command whose output is pasted into the milestone note — not a new
-line in the always-green runner. That gate should exist before the next
-milestone claim (sprint A ends with one).
+`tests/nb_milestone_gate.sh`, now written — a named command whose output is
+pasted into the milestone note, not a new line in the always-green runner.
+
+**Measured the moment the gate existed:** K3 is **red today**.
+
+```
+== milestone gate ==
+== 1. type into search field, submit, land on Wikipedia
+FAIL: field commit missing
+== 2. clipboard round trip (copy row, paste into field)
+SKIP: bookmark row not visible
+K3 FAIL (rc=1)
+```
+
+So the bar the plan set for milestone claims is **not met right now**, and no
+amount of green hermetic suites would have said so. Given plan §9.5 (typing
+does nothing until the `cli_io` is armed, and arming needs a real click), the
+first thing to check is whether K3 can arm its field at all — that is a test
+mechanism question before it is a product question. Recorded, not yet
+diagnosed.
 
 ### 3.2 The runner is RED right now — measured, not inferred
 
