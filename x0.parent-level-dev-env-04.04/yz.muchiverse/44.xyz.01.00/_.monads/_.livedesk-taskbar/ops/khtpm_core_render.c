@@ -6957,6 +6957,7 @@ static int layout_sidebar_panel(Elem *page) {
                 }
             int ty = CHROME_H + tabbar_h + scaled(2);
             int tx = scaled(6);
+            const int nav_before_row = g_n_nav;      /* the wrap pass below renumbers this row */
             for (int i = 0; i < tabbar->n_children; i++) {
                 Elem *tab = tabbar->children[i];
                 if (strcmp(tab->tag, "tab") != 0) continue;
@@ -6995,6 +6996,16 @@ static int layout_sidebar_panel(Elem *page) {
              * the row has needed in this process: the window can still grow for a genuinely wider row, it
              * never shrinks and re-grows with a ticking label. */
             { static int s_tabbar_hw = 0; int need = tx + scaled(6); if (need > s_tabbar_hw) s_tabbar_hw = need;
+              /* 2026-10-17 (owner: the df-hq window got far wider than the others after four tabs were added): a row wider than TABROW_MAX_W no longer
+               * widens the window without limit; the window stops at TABROW_MAX_W and the row wraps onto a second line (kh_layout_tabbar_wrap, the same
+               * wrapper the canvas layout uses). A row that fits is laid out exactly as before. */
+              const int tabrow_max_w = 1260;      /* real pixels: about the width of the nine-tab cdda-hq window */
+              if (s_tabbar_hw > tabrow_max_w) {
+                  if (g_win_w < tabrow_max_w) { g_win_w = tabrow_max_w; g_window->w = g_win_w; }
+                  g_n_nav = nav_before_row;
+                  tabbar_h += kh_layout_tabbar_wrap(tabbar, scaled(6), CHROME_H + tabbar_h);
+                  continue;
+              }
               if (s_tabbar_hw > g_win_w) { g_win_w = s_tabbar_hw; g_window->w = g_win_w; } }
             tabbar->x = 0; tabbar->y = CHROME_H + tabbar_h; tabbar->w = g_win_w; tabbar->h = row_h;
             css_compute_style(&g_sheet, tabbar->tag, tabbar->id, tabbar->classes, tabbar->n_classes, 0, &tabbar->style);
