@@ -136,9 +136,41 @@ baseline, and it is the reason hygiene comes before feature work in sprint A.
 
 `nb_all_tests.sh` calls `nb_span_drag_test.sh` (T2, the mouse-motion path),
 `nb_find_test.sh`, `nb_selrun_test.sh`, `nb_reach_test.sh` (this one passed).
-They drive selection/find through the live clipboard, which has no
-read-your-writes guarantee (a copy read can return the previous owner's
-bytes).
+
+**Rates, measured (6 runs each, in sequence):**
+
+| suite | in-sequence | standalone | note |
+|---|---|---|---|
+| span drag-select | 1/6 | — | T2, no highlight band |
+| find in page | **0/6** | ~3/5 | see below |
+| row-run selection | 2/6 | — | selection does not extend |
+
+**The 0/6 was not "find is broken" — it is the mirror.** A single standalone
+run passed **13/13**. In a *failing* run the disagreement is precise:
+
+```
+PASS: Ctrl+F arms find
+FAIL: query/matches wrong: line='[FIND] query="the" 0 of 0 -- ...'
+FAIL: count mismatch: mirror says 0, frame says 2
+PASS: Enter advances to match 2        <- find itself works
+PASS: band is painted and tracks the match line
+```
+
+The renderer has **2 matches** — the band is painted, Enter advances — while
+the mirrored `[FIND]` line reports **0 of 0**. And both are written into the
+*same* dump (`open_memstream` at `khtpm_core_render.c:11839`, the `[FIND]`
+line at `:11896`), which is the part worth keeping: **the mirrored hit-count
+is computed against a row set that momentarily differs from the rows the same
+dump renders.** It self-corrects on a later frame, so the suite's verdict
+depends on *when* it reads — which is why the same suite is green standalone
+and red in sequence.
+
+That reframes the whole cluster. It is not "flaky tests" and it is not only
+"the live clipboard": the **mirrored state can disagree with the rendered
+state in the same artifact**, and `[SEL]` shows the same shape (`[SEL] rows
+2..3` when the run should be longer). Any consumer of the mirror — agent or
+suite — inherits that gap. This is the thing to fix, and it is a renderer
+finding, not a test finding.
 
 Consequence: **K1 "hermetic suite green" is not deterministic.** The runner's
 final line can be `SOME TESTS FAILED` for reasons unrelated to any code
@@ -183,9 +215,11 @@ Milestone 12); `nb_bar_test.sh`/`nb_reach_test.sh` reliability.
    with a RESOLVED box pointing at `b03bb8e7f`.
 2. Add the **milestone gate** (run `nb_interact_test.sh`, paste its output into
    the milestone note). Keep it out of K1.
-3. Decide the three currently-red suites' fate from measured rates
-   (quarantine into an explicitly informational section, or the receipt fix) —
-   ≥10 runs each before believing either direction.
+3. Fix the **mirror/rendered disagreement** (§3.2) — the three red suites are
+   a symptom, not the bug. Determine why the mirrored `[FIND]`/`[SEL]` state
+   can disagree with the rows in the same dump, and fix *that*. Do not
+   quarantine the suites to make K1 green: that would hide a renderer bug
+   every mirror consumer inherits.
 4. Then start sprint A: `nb_flex_test.sh` is already red — retain the display
    keyword in `nb_css.c`, worker flex model, then the renderer-half design
    decision (§6), keeping `nb_gbcr_test.sh` at 100 % after each step.
