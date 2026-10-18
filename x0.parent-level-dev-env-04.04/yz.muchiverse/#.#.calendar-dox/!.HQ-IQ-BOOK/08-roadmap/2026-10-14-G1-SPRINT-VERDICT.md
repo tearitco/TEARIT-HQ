@@ -108,3 +108,7 @@ Then **G2-a** (harness) → **G2.1** (box tree), the other P0 blocker.
 concluding *why* something fails, spend one cheap measurement proving it.
 Every expensive hour this sprint bought a theory that measurement gave away
 for free — and twice, measurement proved the theory wrong.
+---
+
+**Continued in `2026-10-17-G2-VERDICT-ADDENDUM.md`** — G2 closed,
+the merge landed, and the standing advice above got sharper.

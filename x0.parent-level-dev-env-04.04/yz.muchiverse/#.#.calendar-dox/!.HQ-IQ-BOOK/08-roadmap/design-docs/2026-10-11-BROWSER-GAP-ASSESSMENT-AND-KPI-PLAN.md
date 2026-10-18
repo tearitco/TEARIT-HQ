@@ -58,8 +58,10 @@ Work order, one KPI per step, each step red-before-green:
 | G1-e | G1.3 push protocol | frames arrive without a request; negative: an idle page produces ZERO unsolicited frames |
 | G1-f | G1.2 rAF / G1.6 canvas | >= 10 fps for 3 s; >= 2 distinct canvas PNGs in 5 s |
 | G2-a | harness | a test that measures geometry and is RED today |
-| G2-b | G2.1 box tree | every visible node carries x/y/w/h; `div > p > span` reports strictly increasing y per depth |
-| G2-c | G2.2 gBCR honesty | +/-2 px on >= 95 % of sampled nodes; negative: `display:none` still returns 0,0,0,0 |
+| G2-b | G2.1 box tree — **CLOSED 2026-10-14** | every visible node carries x/y/w/h; `div > p > span` reports strictly increasing y per depth |
+| G2-c | G2.2 gBCR honesty — **CLOSED 2026-10-17, 100 %** | +/-2 px on >= 95 % of sampled nodes; negative: `display:none` still returns 0,0,0,0 |
+
+**STATUS 2026-10-17: G1 and G2 are COMPLETE.** G1 closed 2026-10-14 (all six KPIs). **G2.1 and G2.2 closed 2026-10-17** — G2.2 measures **100 %** (`9/9 comparable rows within ±2 px`) and is wired into `nb_all_tests.sh`; see §9.12 for the three findings that got it there and §9.13 for the instruments that were reporting numbers they were not measuring. G2.3 (flex row) is the next slice.
 
 **STATUS 2026-10-14 (late): G1 IS COMPLETE — all six KPIs done.** G1-a,
 G1-b (G1.1), G1-e (G1.3), G1-c (G1.4), G1-d (G1.5), G1-f (G1.6 **and**
@@ -249,8 +251,8 @@ items are marked.
 |---|---|---|---|---|
 | S1 | **Worker tick loop + push protocol** (G1.1–G1.4) | worker lane + manager handshake (`network_browser_manager.c` is the merge point) | 2–3 sprints, cross-lane | Largest single item in the backlog. Everything JS-app-shaped queues behind it. Owner must be agreed before starting — this is not a row-projection task. |
 | S2 | Canvas liveness on top of S1 (G1.6) | S1 | 1 sprint | Cheap once frames flow; the publish path already exists and is dirty-flagged. |
-| S3 | **Box tree, phase 1** — geometry for every visible node (G2.1, G2.2) | manager lane owns the tree; projector consumes it | 2 sprints | This is the gate for all layout work. |
-| S4 | Box tree phase 2 — flex row (G2.3) | S3 | 1 sprint | The engine already does row/wrap/grow/gap for chrome; this is wiring, not invention. |
+| S3 | **Box tree, phase 1** — geometry for every visible node (G2.1, G2.2) — **DONE 2026-10-17** | manager lane owns the tree; projector consumes it | 2 sprints | This is the gate for all layout work. |
+| S4 | Box tree phase 2 — flex row (G2.3) — **NEXT** | S3 | 1 sprint | The engine already does row/wrap/grow/gap for chrome; this is wiring, not invention. |
 | S5 | Grid (G2.4) | S4 | 1–2 sprints | Roadmap rule stands: grid only after flex. |
 | S6 | `@media` + cascade completeness (G2.5, G2.6) | S3 | 1 sprint | Independent of S4/S5; can run in parallel. |
 | S7 | Find in page (G3.1) | — | 1 sprint | Fully independent of S1–S6. **Best first pick for the row-projection lane.** |
@@ -823,3 +825,107 @@ Deliberately unchanged until then: absent or unusable (<= 0) leaves the
 viewport alone rather than resetting mid-session, and the default stays
 640. A wrong-but-supplied number would be worse than an obviously-default
 one - the same reason G2.2 stays red rather than tuned.
+
+### 9.12 G2.2 CLOSED: the box tree and the painted pixels agree, 100 %
+
+`9/9 comparable rows agree within ±2 px after translation (100.0 %)`.
+Wired into `nb_all_tests.sh`, which it had never been.
+
+Getting there was three findings, in this order, and the middle one is the
+one worth remembering.
+
+| axis | §9.11 state | now |
+|---|---|---|
+| w | agreed, but 8 px too wide on any scrolling page | **agrees exactly** (`dw` 8 → 0) |
+| y origin | "a translation; two coordinate spaces" | **agrees exactly** (`dy` 44 → 0) |
+| rows below the fold | not accounted for | reported separately, never hidden |
+
+**The pane publisher was never called.** `publish_pane_geometry()` sat at the
+*end* of `assign_nav_and_layout()`, which has early returns - and one of them
+is the sidebar+panel branch, i.e. exactly this window's shape. So for the
+network browser the publisher was never reached: it wrote nothing, silently,
+and the renderer's stderr does not reach a log on this leg, so the process had
+no way to report its own failure. It is now called on **every** exit path, with
+a comment naming the trap so a fourth path cannot silently reintroduce it.
+
+**The 44 px was two things, not one.** I expected to remove the manager's
+`page-title` row and be done. Reading the renderer's layout instead of
+reasoning about it showed `44 = 14 + 30`:
+
+- 14 px - `layout_scroll_region()` computes `content_y = y + (have_arrows ?
+  GENERIC_SBAR_ARROW_H : 0)`, so a column that scrolls starts its first row
+  under the scrollbar's up-arrow;
+- 30 px - the manager projects `<head><title>` into a `page-title` row as the
+  first child of the content scrolllist. A DOM-only model cannot see it,
+  because `<title>` lives in `<head>` and takes no body space in any browser.
+
+Both are now modelled, conditional on the same scroll decision as the gutter.
+This is the worker mirroring the **house renderer** on purpose - not claiming
+`<title>` occupies body space elsewhere.
+
+**The scrollbar gutter is conditional, and that needed the pane HEIGHT.** The
+renderer reserves `GENERIC_SCROLLBAR_W` (8, `khtpm_core_render.c:5383`) when a
+scrolllist overflows, so painted rows are 381 in a 389 pane. Width alone cannot
+decide that, so `LOAD` gained field 7 (`content_h`). There is a real cycle -
+wrapping depends on the column and the column depends on whether the wrapped
+height overflows - broken by deciding once per page at the full width and
+caching. `nb_gutter_test.sh` is the negative control, and it is negative-tested:
+a fitting page keeps the full column, an overflowing page loses exactly 8 px.
+
+### 9.13 The 0/12 that was never a result, and the pattern behind it
+
+Worth writing down because the shape recurred far more often than the bugs.
+
+`nb_gbcr_test.sh` reported a confident `0/12 rows agree`. It had been comparing
+the wrong elements: it filtered on class `quiet`, believing that was the twelve
+paragraphs. `quiet` is the browser **chrome** - 7 nav buttons plus 5 tabs -
+which is *also exactly twelve rows*. The count matched by coincidence, so the
+test looked self-consistent while measuring nothing.
+
+Three more, all the same shape - a green number that was not measuring what it
+claimed:
+
+| instrument | what it actually did |
+|---|---|
+| class filter | compared chrome, not content (§9.12) |
+| `frame_geom.py` stdout | class column truncated to 18 chars, so `from-top,nb-content` was **unmatchable** |
+| `browser_pid.sh` | printed the whole pid list, not one; every caller's relay path was garbage |
+| `browser_pid.sh --require-one` | counted **lines** in a one-line string, so it was always 1 - a guard that **cannot fail** |
+| `xclipget.py` | returns whatever the clipboard holds; a read after Ctrl+C can succeed with the *previous* owner's bytes |
+| `nb_gutter_test.sh` (mine) | first "always scroll" injection was an assignment the next line overwrote - a dead statement, so the control broke nothing |
+
+That last one is the honest summary: **on this codebase a green test should not
+be trusted until it has been shown to go red.** Four of the six above were
+caught only by negative-testing, and the fifth by a byte-identical diff of a
+passing and a failing run.
+
+A separate measurement error worth keeping: I reported "17 files under
+`xyzfs/users`" from a *conflicted, uncommitted* index. The real number was
+**1,749** (`ls-tree` on a commit, not `ls-files` on a live index), and the bad
+instrument nearly caused the wrong call on the `origin/claude` merge.
+
+### 9.14 House state after the merge: the reset deleted 1,741 user files
+
+`origin/claude` (199 commits) merged into `opencode`. The live tree could not
+be fast-forwarded at first - 241 modified files and 328 deletions from other
+agents in flight - so the merge was built and tested in a scratch worktree and
+parked, then landed on the branch without moving anyone's working tree.
+
+Checked before touching anything, because AGENTS.md documents this exact
+landmine: `origin/claude` tracks **0** files under `xyzfs/users` while the live
+branch tracked **1,749**, so a fast-forward would have **deleted them from
+disk**, wallets included. Measured before and after:
+
+    ff: 2,004 files 18 wallets -> 255 files 0 wallets
+    restored from user/* branches: 2,004 files 18 wallets
+    sha256 verify against a pre-reset tarball: exit 0, all files identical
+
+So the data was never at risk - but only because `save-user-data.sh` had
+already snapshotted it, and only because the restore path was **proved** (a
+dry run through `git archive` per branch, hashed against a tarball taken
+outside the repo) *before* anything was deleted. A restore tested after the
+fact is a hope.
+
+Two things that went wrong here, both mine: `browser_pid.sh` sent five stale
+renderer windows' worth of leftovers into a relay path (fixed in 9.13), and my
+own negative control for the gutter was a dead statement (fixed in 9.13).
