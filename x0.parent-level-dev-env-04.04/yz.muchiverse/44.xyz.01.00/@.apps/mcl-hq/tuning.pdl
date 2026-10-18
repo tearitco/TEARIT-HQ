@@ -17,3 +17,4 @@ TUNE | step_jitter_ms  | 900   | the random part of that                        
 TUNE | edge_poll_ms    | 400   | how often the daemon looks at the board's Interact state (an In: click from the pc-hq key turns INT on)         | 400
 TUNE | engage_retry_ms | 20000 | INT on: how long to wait before sending the engine's Interact key a second time (it is a toggle: keep this long) | 20000
 TUNE | click_poll_ms   | 150   | how often a click on the board's 2D canvas is looked at (a click on a pet or the trainer selects them)          | 150
+TUNE | ledger_compact_kb | 4096 | the event ledger (state/events.txt) is compacted when a resolve leaves it this big (KB); the old ledger stays as state/events.archive.<n>.txt | 4096

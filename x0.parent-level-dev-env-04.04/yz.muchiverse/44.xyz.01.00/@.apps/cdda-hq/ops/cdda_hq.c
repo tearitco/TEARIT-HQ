@@ -30,6 +30,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <stdarg.h>
 #include <math.h>
 #include <unistd.h>
@@ -52,6 +53,12 @@ static const char *cd_rule(const char *actor, const char *verb, const char *targ
 #define GE_RESET_HOOK() cd_reset()
 static void ge_logline(const char *actor, const char *verb, const char *target, const char *res);
 #define GE_LOG_HOOK(a, v, t, at, r) ge_logline(a, v, t, r)
+#define GE_COMPACT_BYTES() ge_compact_limit()      /* tuning.pdl: ledger_compact_kb, default 4096 (4 MB) */
+static long ge_compact_limit(void); static int tune(const char *name, int def); static void ge_failnote(const char *why);
+#define GE_FAIL_HOOK(w) ge_failnote(w)
+static void cd_cksave(FILE *o); static void cd_ckload(char *p);
+#define GE_CKSAVE_HOOK(o) cd_cksave(o)
+#define GE_CKLOAD_HOOK(p) cd_ckload(p)
 #include "../../../&.widgits/_shared-lib/game_events.c"      /* S1 event line + resolver (also df-hq, cdda-hq, mcl-hq); cdda-hq's rules are cd_rule() below */
 
 /* Per-room geometry: the room being processed is g_gr (set by render, use_ent, walking, placement, export). A normal room is 13 x 8 cells of 48 px with a sky/wall strip (trig row 2); an OVERMAP room (ROOM ... over) is a
@@ -98,7 +105,7 @@ static int read_file(const char *p, char *buf, size_t cap);
 static int g_tone_stale = 0;      /* set by the daemon when screen_state.pdl changed: the next read_tone() re-reads at once */
 static int read_tone(int *t) {
     static long last_ms = 0; static int have = 0, tv[4]; struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts); long ms = ts.tv_sec * 1000L + ts.tv_nsec / 1000000L;
-    if (!last_ms || g_tone_stale || ms - last_ms > 400) { last_ms = ms; g_tone_stale = 0; have = 0; char p[PATH_MAX], b[300]; snprintf(p, sizeof p, "%s/world/screen_state.pdl", ST); if (read_file(p, b, sizeof b) > 0 && strstr(b, "mode=tint")) { char *v = strstr(b, "value="); if (v && sscanf(v + 6, "%d,%d,%d,%d", &tv[0], &tv[1], &tv[2], &tv[3]) == 4) have = 1; } }
+    if (!last_ms || g_tone_stale || ms - last_ms > 400) { last_ms = ms; g_tone_stale = 0; have = 0; char p[PATH_MAX], b[300]; snprintf(p, sizeof p, "%s/world/screen_state.pdl", ST); if (read_file(p, b, sizeof b) > 0 && strstr(b, "mode=tint")) { char *v = strstr(b, "value="); if (v && sscanf(v + 6, "%d,%d,%d,%d", &tv[0], &tv[1], &tv[2], &tv[3]) == 4) { for (int q = 0; q < 4; q++) tv[q] = tv[q] < -255 ? -255 : tv[q] > 255 ? 255 : tv[q]; have = 1; } } }
     if (have) memcpy(t, tv, sizeof tv); return have;
 }
 static struct { char id[16], name[24], sheet[24], nick[24], profile[96]; int idx, mhp, mmp, atk, def, mat, mdf, agi, luk; } party[NP]; static int nparty, active;
@@ -115,6 +122,13 @@ static int is_dir(const char *p) { struct stat s; return stat(p, &s) == 0 && S_I
 /* Play one of this app's events-hq pages (<app>/events/<name>/, trigger <trig>) through events-hq's play_event.sh. MUCHI_TARGET_ENT points every
  * event at ONE shared world dir (<app>/state/world) so state commands land in one place: map_state.pdl (transfer_player) and screen_state.pdl (tint_screen).
  * Returns 1 when the page ran. */
+/* HARDENING (hq-crash-hardening.md): every child this process waits for is waited on with a deadline; one that outlives it is killed and reaped, so a hung helper (lc_clock, bash, an event page) can never freeze a verb or the daemon loop */
+static int g_reap_to;      /* set by reap_timed when it had to kill the child */
+static int reap_timed(pid_t pid, int secs) { struct timespec t0, t1; clock_gettime(CLOCK_MONOTONIC, &t0); int st = 0;
+    for (;;) { pid_t r = waitpid(pid, &st, WNOHANG); if (r == pid) return WIFEXITED(st) ? WEXITSTATUS(st) : -1; if (r < 0 && errno != EINTR) return -1;
+        clock_gettime(CLOCK_MONOTONIC, &t1); if (t1.tv_sec - t0.tv_sec >= secs) { g_reap_to = 1; break; } usleep(5000); }
+    kill(-pid, SIGKILL); kill(pid, SIGKILL); for (int i = 0; i < 200; i++) { if (waitpid(pid, &st, WNOHANG) == pid) break; usleep(5000); } return -1; }
+static int sh_timed(const char *cmd, int secs) { pid_t pid = fork(); if (pid < 0) return -1; if (pid == 0) { setpgid(0, 0); signal(SIGPIPE, SIG_DFL); execl("/bin/sh", "sh", "-c", cmd, (char *)NULL); _exit(127); } return reap_timed(pid, secs); }
 static int run_event_x(const char *name, const char *trig, const char *envs);
 static int run_event(const char *name, const char *trig) { return run_event_x(name, trig, ""); }
 /* same, with extra environment words for the event's commands (e.g. "RPG_OTHER='Blip'", read by the registered pet_says command) */
@@ -123,7 +137,7 @@ static int run_event_x(const char *name, const char *trig, const char *envs) {
     snprintf(pd, sizeof pd, "%s/events/%s", APP, name); snprintf(pl, sizeof pl, "%s/&.widgits/events-hq/ops/play_event.sh", HOUSE); snprintf(wd, sizeof wd, "%s/world", ST);
     if (!fexists(pl) || !is_dir(pd)) return 0; mkdir(wd, 0755);
     snprintf(cmd, sizeof cmd, "%s MUCHI_TARGET_ENT='%s' bash '%s' '%s' '%s' '%s' >/dev/null 2>&1", envs, wd, pl, pd, HOUSE, trig);
-    return system(cmd) == 0;
+    return sh_timed(cmd, 20) == 0;
 }
 static long fsize(const char *p) { struct stat s; return stat(p, &s) == 0 ? (long)s.st_size : 0; }
 static long now_ms(void) { struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts); return ts.tv_sec * 1000L + ts.tv_nsec / 1000000L; }
@@ -136,9 +150,15 @@ static int write_if_changed(const char *p, const void *data, size_t n) {
     FILE *f = fopen(p, "rb");
     if (f) { fseek(f, 0, SEEK_END); long sz = ftell(f); if (sz == (long)n) { rewind(f); unsigned char *old = malloc(n ? n : 1); if (old && fread(old, 1, n, f) == n && !memcmp(old, data, n)) { free(old); fclose(f); return 0; } free(old); } fclose(f); }
     char tmp[PATH_MAX + 24]; snprintf(tmp, sizeof tmp, "%s.tmp.%d", p, (int)getpid());      /* per process: the daemon and a one-shot verb can write the same file at the same moment */
-    f = fopen(tmp, "wb"); if (!f) return 0; fwrite(data, 1, n, f); fclose(f); rename(tmp, p); return 1;
+    f = fopen(tmp, "wb"); if (!f) return 0; size_t wn = fwrite(data, 1, n, f); int ce = fclose(f); if (wn != n || ce != 0 || rename(tmp, p) != 0) { remove(tmp); return 0; } return 1;      /* ENOSPC / EIO: the good file stays, the half-written tmp goes (hq-crash-hardening.md) */
 }
-static void append_line(const char *name, const char *line) { char p[PATH_MAX]; spath(p, name); FILE *f = fopen(p, "a"); if (f) { fprintf(f, "%s\n", line); fclose(f); } }
+/* HARDENING: files another process reads (the 3D export for the board renderer) are written to <file>.tmp.<pid> and renamed on a clean close, never in place */
+static FILE *fopen_tmp(const char *p) { char t[PATH_MAX + 24]; snprintf(t, sizeof t, "%s.tmp.%d", p, (int)getpid()); return fopen(t, "wb"); }
+static int fclose_tmp(FILE *f, const char *p) { char t[PATH_MAX + 24]; snprintf(t, sizeof t, "%s.tmp.%d", p, (int)getpid()); int bad = ferror(f); if (fclose(f) != 0) bad = 1; if (bad || rename(t, p) != 0) { remove(t); return 0; } return 1; }
+static int png_atomic(const char *p, int w, int h, const unsigned char *px, int stride) { char t[PATH_MAX + 24]; snprintf(t, sizeof t, "%s.tmp.%d", p, (int)getpid()); if (stbi_write_png(t, w, h, 4, px, stride) && rename(t, p) == 0) return 1; remove(t); return 0; }
+/* HARDENING: one write() of the whole line on an O_APPEND fd (rows from two processes never interleave or tear); a log file past 4 MB drops further rows (the house.txt ledger never does) so a runaway loop cannot fill the disk */
+static void append_line(const char *name, const char *line) { char p[PATH_MAX], b[1100]; spath(p, name); int fd = open(p, O_WRONLY | O_APPEND | O_CREAT, 0644); if (fd < 0) return; struct stat sb; if (strcmp(name, "house.txt") && fstat(fd, &sb) == 0 && sb.st_size > 4L * 1024 * 1024) { close(fd); return; }
+    int n = snprintf(b, sizeof b, "%s\n", line); if (n >= (int)sizeof b) { n = (int)sizeof b - 1; b[n - 1] = '\n'; } ssize_t w = write(fd, b, (size_t)n); (void)w; close(fd); }
 /* SWITCHES: "running" (Play / Stop) and "int" (INT on / off) live as switches in <app>/state/world/switches.txt ("name=1"), the file events-hq's control_switch command writes (the events/play,
  * stop, int_on, int_off pages). flag_str() reads the switch first; set_flag() mirrors into it, so code that still sets the flag directly (Esc leaves INT) and the event pages stay one state. */
 static int sw_get(const char *name, char *out, size_t cap) {
@@ -174,7 +194,7 @@ static void flag_str(const char *name, const char *def, char *out, size_t cap) {
 static void flag_str_raw(const char *name, const char *def, char *out, size_t cap) { if (is_switch_flag(name) && sw_get(name, out, cap) && out[0]) return; char p[PATH_MAX], n[64]; snprintf(n, sizeof n, "flag_%s.txt", name); spath(p, n); char b[64]; read_file(p, b, sizeof b); char *e = strchr(b, '\n'); if (e) *e = 0; snprintf(out, cap, "%s", b[0] ? b : def); }
 static int flag_on(const char *name, int def) { char b[16]; flag_str(name, def ? "1" : "0", b, sizeof b); return b[0] == '1'; }
 static const char *g_ctl_why = "?";      /* who is changing ctl (pet/player): the owner reports it flips by itself; ctl_trace.txt names the cause of each flip */
-static void set_flag(const char *name, const char *v) { g_fcn = 0; if (!strcmp(name, "ctl")) { char tp[PATH_MAX]; snprintf(tp, sizeof tp, "%s/ctl_trace.txt", ST); FILE *tf = fopen(tp, "a"); if (tf) { fprintf(tf, "%ld ctl=%s why=%s pid=%d\n", (long)time(NULL), v, g_ctl_why, (int)getpid()); fclose(tf); } } if (is_switch_flag(name)) sw_set(name, v); char p[PATH_MAX], n[64], b[80]; snprintf(n, sizeof n, "flag_%s.txt", name); spath(p, n); snprintf(b, sizeof b, "%s\n", v); write_if_changed(p, b, strlen(b)); }
+static void set_flag(const char *name, const char *v) { g_fcn = 0; if (!strcmp(name, "ctl")) { char tp[PATH_MAX]; snprintf(tp, sizeof tp, "%s/ctl_trace.txt", ST); FILE *tf = fsize(tp) > 1000000 ? NULL : fopen(tp, "a"); if (tf) { fprintf(tf, "%ld ctl=%s why=%s pid=%d\n", (long)time(NULL), v, g_ctl_why, (int)getpid()); fclose(tf); } } if (is_switch_flag(name)) sw_set(name, v); char p[PATH_MAX], n[64], b[80]; snprintf(n, sizeof n, "flag_%s.txt", name); spath(p, n); snprintf(b, sizeof b, "%s\n", v); write_if_changed(p, b, strlen(b)); }
 
 /* ---------- Help panel (2026-10-17): help.txt in the app folder is the full help, pages separated by a line "---"; the panel (Help tab) shows one page at a time, 10 non-blank lines of 47 characters (blank lines are skipped: every row is tall). flags help (0/1) and help_page (0..); ui.txt gets help_visible and help_0..help_13 (help_0 = the "page N of M" title). ---------- */
 /* a pinned bar's text rows are one line high and never grow (the layout counts one row per text): long ui values are also written as <key>_0 .. <key>_1, split at spaces into pieces of at most 26 characters (2026-10-17) */
@@ -223,6 +243,7 @@ static void load_party(void) {
         else if (!strcmp(f[1], "character") && f[2][0]) { char *c = strchr(f[2], ':'); if (c) { *c = 0; snprintf(party[cur].sheet, 24, "%s", f[2]); party[cur].idx = atoi(c + 1); } else snprintf(party[cur].sheet, 24, "%s", f[2]); } } fclose(fp); }
     snprintf(p, sizeof p, "%s/party.pdl", APP);       /* the picture choice, unless the DB character field already named one (a "Sheet:index" value) */
     if ((fp = fopen(p, "r"))) { while (fgets(line, sizeof line, fp)) { char *g[6]; if (split_bar(line, g, 6) >= 4 && !strcmp(g[0], "PET")) for (int i = 0; i < nparty; i++) if (!strcmp(party[i].name, g[1])) { snprintf(party[i].sheet, 24, "%s", g[2]); party[i].idx = atoi(g[3]); } } fclose(fp); }
+    for (int i = 0; i < nparty; i++) if (party[i].idx < 0 || party[i].idx > 7) party[i].idx = 0;      /* HARDENING: the sheet cell index is used in pixel arithmetic */
 }
 /* DOORS ARE EVENTS: <app>/events/door_<room>_<tx>/event_pkg/pages/page_1/event.ir.pdl holds "META | door | <room> <tx> <auto>" and a real "transfer_player"
  * node (map=<dest room>|xy=<arrive x>,<arrive y>), the same page Events (hq) lists and play_event.sh can play (mr_world transfer). Stepping on a door is a
@@ -260,6 +281,12 @@ static void load_data(void) {
         while (fgets(line, sizeof line, fp)) { int n = split_bar(line, f, 12); if (n >= 9 && !strcmp(f[0], "SCENERY") && nscen < 24) { int a = room_idx(f[1]); if (a < 0) continue; Scen *s = &scen[nscen++]; s->room = a; snprintf(s->sheet, 24, "%s", f[2]); s->c = atoi(f[3]); s->r = atoi(f[4]); s->w = atoi(f[5]); s->h = atoi(f[6]); s->x = atoi(f[7]); s->y = atoi(f[8]); } }
         fclose(fp);
     }
+    /* HARDENING: sizes and cells from rooms.pdl / catalog.pdl are untrusted: a scenery of width 2147483648999 made blit() loop for ever (found by the fuzz harness, hugenum on rooms.pdl) */
+    for (int i = 0; i < nscen; i++) { Scen *s_ = &scen[i]; if (s_->c < 0 || s_->c > 255) s_->c = 0; if (s_->r < 0 || s_->r > 255) s_->r = 0; if (s_->w < 1 || s_->w > MAXC) s_->w = 1; if (s_->h < 1 || s_->h > MAXC) s_->h = 1; if (s_->x < -MAXC || s_->x > 2 * MAXC) s_->x = 0; if (s_->y < -MAXR || s_->y > 2 * MAXR) s_->y = 0; }
+    for (int i = 0; i < ncat; i++) { Item *t_ = &cat[i]; if (t_->c < 0 || t_->c > 255) t_->c = 0; if (t_->r < 0 || t_->r > 255) t_->r = 0; if (t_->w < 1 || t_->w > 8) t_->w = 1; if (t_->h < 1 || t_->h > 8) t_->h = 1; if (t_->price < 0 || t_->price > 1000000) t_->price = 0; }
+    for (int i = 0; i < ndoor; i++) { Door *d_ = &doors[i]; if (d_->tx < 0 || d_->tx >= MAXC) d_->tx = 0; if (d_->ty < 0 || d_->ty >= MAXR) d_->ty = 1; if (d_->ax < 0 || d_->ax >= MAXC) d_->ax = 0; if (d_->ay < 0 || d_->ay >= MAXR) d_->ay = 0; }
+    for (int i = 0; i < nroom; i++) { if (rooms[i].fc < 0 || rooms[i].fc > 255) rooms[i].fc = 0; if (rooms[i].fr < 0 || rooms[i].fr > 255) rooms[i].fr = 0; }
+    if (nroom == 0) { Room *r0 = &rooms[nroom++]; memset(r0, 0, sizeof *r0); snprintf(r0->id, 16, "home"); snprintf(r0->name, 32, "Home"); r0->cols = 13; r0->rows = 8; r0->tpx = 48; r0->trig = 2; }      /* HARDENING: rooms.pdl missing or all garbage = one default room, never a zero-size room (tpx 0 divides) */
     load_door_events();
 }
 
@@ -293,6 +320,9 @@ static void load_ent(int i, Ent *e) {
     char p[PATH_MAX], b[300]; ent_file(i, p); read_file(p, b, sizeof b);
     e->room = 0; e->x = i < 0 ? 8 : 7 + i; e->y = i < 0 ? 8 : 7; e->dir = 0; e->steps = 0; e->tx = e->ty = -1;
     for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "room=", 5)) { int r = room_idx(l + 5); if (r >= 0) e->room = r; } else if (!strncmp(l, "x=", 2)) e->x = atoi(l + 2); else if (!strncmp(l, "y=", 2)) e->y = atoi(l + 2); else if (!strncmp(l, "dir=", 4)) e->dir = atoi(l + 4); else if (!strncmp(l, "steps=", 6)) e->steps = atoi(l + 6); else if (!strncmp(l, "tx=", 3)) e->tx = atoi(l + 3); else if (!strncmp(l, "ty=", 3)) e->ty = atoi(l + 3); }
+    /* HARDENING: a pet file is untrusted (hand edit, truncation, garbage): coordinates, facing and the walk target are forced inside the room so no array is ever indexed from file data */
+    { int cw = (nroom > 0 && e->room >= 0 && e->room < nroom) ? rooms[e->room].cols : 13, ch = (nroom > 0 && e->room >= 0 && e->room < nroom) ? rooms[e->room].rows : 8; if (cw < 1) cw = 1; if (ch < 1) ch = 1; if (cw > MAXC) cw = MAXC; if (ch > MAXR) ch = MAXR;
+      if (e->x < 0 || e->x >= cw) e->x = cw / 2; if (e->y < 0 || e->y >= ch) e->y = ch / 2; e->dir = ((e->dir % 4) + 4) % 4; if (e->steps < 0 || e->steps > 1000000000) e->steps = 0; if (e->tx < 0 || e->tx >= cw || e->ty < 0 || e->ty >= ch) e->tx = e->ty = -1; }
 }
 static void calc_view(void) { char f[40]; flag_str("follow", "pet", f, sizeof f); vroom = !strcmp(f, "player") ? tr.room : others[active].room; if (!strncmp(f, "room:", 5)) { int r = room_idx(f + 5); if (r >= 0) vroom = r; } if (vroom < 0 || vroom >= nroom) vroom = 0; }   /* the window shows the watched pet's room, or a room picked from the Rooms menu */
 static void pet_load(void) {           /* everything: active pet, all pets, the trainer, the view room */
@@ -344,6 +374,9 @@ static void cd_reset(void) {
 }
 static Recipe *cd_recipe(const char *id) { for (int i = 0; i < nrec; i++) if (!strcmp(recs[i].id, id)) return &recs[i]; return NULL; }
 /* craft: the named recipe, tool none; the inputs must be in the actor's bag, they are taken and count of output given. Result ok or missing (unknown recipe, other tool, short of an input). */
+/* compaction snapshot of the wound table: the strike counter (it seeds the wound-part hash, so it must survive) and every wound in table order */
+static void cd_cksave(FILE *o) { fprintf(o, "CKG|NSTRIKE|%d\n", nstrike); for (int i = 0; i < nwd; i++) fprintf(o, "CKG|WND|%s|%d|%d|%d\n", wd[i].who, wd[i].part, wd[i].left, wd[i].max); }
+static void cd_ckload(char *p) { char *f[8]; int n = split_bar(p, f, 8); if (n >= 2 && !strcmp(f[0], "NSTRIKE")) nstrike = atoi(f[1]); else if (n >= 5 && !strcmp(f[0], "WND") && nwd < 64 && strlen(f[1]) < 16) { snprintf(wd[nwd].who, 16, "%s", f[1]); wd[nwd].part = atoi(f[2]) % 6; wd[nwd].left = atoi(f[3]); wd[nwd].max = atoi(f[4]); nwd++; } }
 static const char *cd_rule(const char *actor, const char *verb, const char *target, const char *at) {
     if (!strcmp(verb, "strike")) {      /* actor strikes target (a party id, trainer, or zed) */
         int m = mhp_of(target); if (m <= 0) return "unknown"; unsigned h = 5381; for (const char *s = actor; *s; s++) h = h * 33 + (unsigned char)*s; for (const char *s = target; *s; s++) h = h * 33 + (unsigned char)*s; for (const char *s = at; *s; s++) h = h * 33 + (unsigned char)*s;
@@ -360,7 +393,7 @@ static void write_wounds(void) { char p[PATH_MAX], b[2400]; size_t o = 0; b[0] =
 static int leg_hurt(const char *who) {      /* from the readable copy: a leg at 0 */
     char p[PATH_MAX], b[2400]; spath(p, "wounds.pdl"); read_file(p, b, sizeof b); for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) { char *f[6]; int n = split_bar(l, f, 6); if (n >= 5 && !strcmp(f[0], "WOUND") && !strcmp(f[1], who) && !strncmp(f[2], "leg_", 4) && atoi(f[3]) <= 0) return 1; } return 0;
 }
-static void note_set(const char *s) { char p[PATH_MAX]; spath(p, "note.txt"); FILE *f = fopen(p, "w"); if (f) { fprintf(f, "%s\n", s); fclose(f); } }      /* the last craft / help message, painted green under the coins (a file: it must outlive the verb process) */
+static void note_set(const char *s) { char p[PATH_MAX], b[320]; spath(p, "note.txt"); int n = snprintf(b, sizeof b, "%s\n", s); if (n >= (int)sizeof b) n = (int)sizeof b - 1; write_if_changed(p, b, (size_t)n); }      /* the last craft / help message, painted green under the coins (a file: it must outlive the verb process) */
 static int over_beach(const Room *rm, int x, int y) { return over_land(rm, x, y) && (!over_land(rm, x - 1, y) || !over_land(rm, x + 1, y) || !over_land(rm, x, y - 1) || !over_land(rm, x, y + 1)); }
 static const char *check_place(int room, int item, int x, int y, int skip_id) {
     static char m[120]; Item *d = &cat[item]; g_gr = room;
@@ -391,7 +424,7 @@ static Sheet *sheet(const char *dir, const char *name) {
     s->px = stbi_load(p, &s->w, &s->h, &n, 4); if (!s->px) return NULL; snprintf(s->name, 40, "%s", name); nsheet++; return s;
 }
 static void blit(Sheet *s, int sx, int sy, int w, int h, int dx, int dy) {      /* w,h = source px (48 px tiles); drawn T/S48 times the size (nearest) */
-    if (!s) return; int dw = w * T / S48, dh = h * T / S48;
+    if (!s) return; int dw = w * T / S48, dh = h * T / S48; if (dw < 0 || dh < 0 || dw > 4 * FW || dh > 4 * FH) return;      /* HARDENING: a size from a data file never makes this loop for ever */
     for (int y = 0; y < dh; y++) { int Y = dy + y, srcy = sy + y * S48 / T; if (Y < 0 || Y >= FH || srcy >= s->h) continue;
         for (int x = 0; x < dw; x++) { int X = dx + x, srcx = sx + x * S48 / T; if (X < 0 || X >= FW || srcx >= s->w) continue;
             unsigned char *a = s->px + ((size_t)srcy * s->w + srcx) * 4, *b = fr + ((size_t)Y * FW + X) * 4; int al = a[3]; if (!al) continue;
@@ -411,7 +444,7 @@ static Sheet *cdda_png(const char *rel) {
     char p[PATH_MAX]; snprintf(p, sizeof p, "%s/%s", CDDA, rel); Sheet *s = &cdda_s[n_cdda++]; int n; s->px = stbi_load(p, &s->w, &s->h, &n, 4); snprintf(s->name, 40, "%s", base); return s->px ? s : NULL;
 }
 static void blit_fit(Sheet *s, int dx, int dy, int dw, int dh) {
-    if (!s || !s->px || dw < 1 || dh < 1) return;
+    if (!s || !s->px || dw < 1 || dh < 1 || dw > 4 * FW || dh > 4 * FH) return;
     for (int y = 0; y < dh; y++) { int Y = dy + y, srcy = y * s->h / dh; if (Y < 0 || Y >= FH || srcy < 0 || srcy >= s->h) continue;
         for (int x = 0; x < dw; x++) { int X = dx + x, srcx = x * s->w / dw; if (X < 0 || X >= FW || srcx < 0 || srcx >= s->w) continue;
             unsigned char *a = s->px + ((size_t)srcy * s->w + srcx) * 4, *b = fr + ((size_t)Y * FW + X) * 4; int al = a[3]; if (!al) continue;
@@ -501,13 +534,15 @@ static int read_tail(const char *p, char *buf, size_t cap) {
 /* chat.txt is a rolling log: past ~24 KB keep only the newest ~8 KB */
 static void chat_trim(void) {
     char p[PATH_MAX]; spath(p, "chat.txt"); struct stat st; if (stat(p, &st) || st.st_size < 24000) return;
-    static char keep[9000]; read_tail(p, keep, sizeof keep); char tmp[PATH_MAX + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", p); FILE *f = fopen(tmp, "w"); if (!f) return; fputs(keep, f); fclose(f); rename(tmp, p);
+    static char keep[9000]; read_tail(p, keep, sizeof keep); write_if_changed(p, keep, strlen(keep));      /* pid-named tmp + checked rename: a kill mid-trim or a full disk never leaves a half chat.txt */
 }
 static void say(const char *who, const char *text) { char b[300]; snprintf(b, sizeof b, "%s: %s", who, text); append_line("chat.txt", b); chat_trim(); }
 static void clock_stamp(char *out, size_t cap);
 static void log_stamped(const char *who, const char *text) { char st[24], ln[300]; clock_stamp(st, sizeof st); snprintf(ln, sizeof ln, "%s%s%s %s", st, st[0] ? " " : "", who, text); append_line("chat.txt", ln); chat_trim(); }
 static const char *log_name(const char *id, char *buf, size_t n) { if (!strcmp(id, "zed")) return "the zed"; snprintf(buf, n, "%s", id); if (buf[0] >= 'a' && buf[0] <= 'z') buf[0] = (char)(buf[0] - 32); return buf; }
 /* the event log (grok 2026-10-17, from-sonnet-question-event-log.md): "D1 08:02 Rex crafts bandage" - the game clock, the actor, one present-tense line; appended once per newly resolved EVENT into chat.txt */
+static long ge_compact_limit(void) { if (!g_tnn) load_tune(); return (long)tune("ledger_compact_kb", 4096) * 1024L; }      /* a verb process never ran load_tune(): read tuning.pdl on first use */
+static void ge_failnote(const char *why) { note_set(why); }      /* a ledger over the hard cap: the reason goes to the note line (S1-EVENT-LEDGER.md) */
 static void ge_logline(const char *actor, const char *verb, const char *target, const char *res) { char t[160], st[24], an[40], tn[40], ln[300]; t[0] = 0; (void)tn; if (!strcmp(verb, "strike") && !strncmp(res, "wound:", 6)) for (int i = 0; i < nwd; i++) if (!strcmp(wd[i].who, target) && !strcmp(PARTS[wd[i].part], res + 6)) { snprintf(t, sizeof t, "hits %s: %s %d/%d", log_name(target, tn, sizeof tn), res + 6, wd[i].left, wd[i].max); break; }
     if (!t[0] && !ge_describe(verb, target, res, t, sizeof t)) return; clock_stamp(st, sizeof st); snprintf(ln, sizeof ln, "%s%s%s %s", st, st[0] ? " " : "", log_name(actor, an, sizeof an), t); append_line("chat.txt", ln); chat_trim(); }
 static int g_rk = -1, g_ry;      /* what the last reply was about (0 sleep 1 eat 2 read 3 play, -1 default) and whether the house has such an item: the native-language reply is picked from these */
@@ -527,8 +562,8 @@ static const char *pet_reply(const char *text) {
 /* ---------- voices: offline Kokoro per pet (voices.pdl VOICE+KMAP rows; ops/pet_tts_local.py), cached wav, one sound at a time, never blocks ---------- */
 static int run_quiet(char *const av[], int wait) {
     pid_t pid = fork(); if (pid < 0) return -1;
-    if (pid == 0) { int fd = open("/dev/null", O_RDWR); if (fd >= 0) { dup2(fd, 0); dup2(fd, 1); dup2(fd, 2); } execvp(av[0], av[0] ? av : av); _exit(127); }
-    if (!wait) return 0; int st = 0; waitpid(pid, &st, 0); return WIFEXITED(st) ? WEXITSTATUS(st) : -1;
+    if (pid == 0) { int fd = open("/dev/null", O_RDWR); if (fd >= 0) { dup2(fd, 0); dup2(fd, 1); dup2(fd, 2); } signal(SIGPIPE, SIG_DFL); execvp(av[0], av[0] ? av : av); _exit(127); }
+    if (!wait) return 0; return reap_timed(pid, 20);
 }
 /* each pet speaks its own language (voices.pdl 6th column: en | zh | ja | ko); the chat window keeps showing English for the owner to read */
 static int pet_lang(int i) {
@@ -597,9 +632,11 @@ static int clock_ok(void) { return fexists(LC); }
 /* run lc_clock.+x <root> args... (NULL ended); daemon=1 gives it the event runner (this binary) so reminders call back into event-runner mode */
 static int lc_run(int daemon, ...) {
     char *av[24]; int n = 0; va_list ap; va_start(ap, daemon); av[n++] = LC; av[n++] = CROOT; const char *a; while (n < 22 && (a = va_arg(ap, const char *))) av[n++] = (char *)a; va_end(ap); av[n] = NULL;
+    /* HARDENING: a clock helper that hung once (killed after 3 s) is not called again for 20 s, so one stuck lc_clock costs one verb 3 s, never 3 s per call */
+    static long dead_until; if (now_ms() < dead_until) return -1;
     pid_t pid = fork(); if (pid < 0) return -1;
-    if (pid == 0) { int fd = open("/dev/null", O_RDWR); if (fd >= 0) { dup2(fd, 0); dup2(fd, 1); dup2(fd, 2); } setenv("LC_CLOCK_NO_POPUP", "1", 1); if (daemon) setenv("LC_CLOCK_EVENT_RUNNER", SELF, 1); setenv("CDDA_HQ_ROOT", APP, 1); execv(LC, av); _exit(127); }
-    int st = 0; waitpid(pid, &st, 0); return WIFEXITED(st) ? WEXITSTATUS(st) : -1;
+    if (pid == 0) { int fd = open("/dev/null", O_RDWR); if (fd >= 0) { dup2(fd, 0); dup2(fd, 1); dup2(fd, 2); } setenv("LC_CLOCK_NO_POPUP", "1", 1); if (daemon) setenv("LC_CLOCK_EVENT_RUNNER", SELF, 1); setenv("CDDA_HQ_ROOT", APP, 1); signal(SIGPIPE, SIG_DFL); execv(LC, av); _exit(127); }
+    g_reap_to = 0; int rc_ = reap_timed(pid, 3); if (g_reap_to) dead_until = now_ms() + 20000; return rc_;
 }
 static long long clock_kv_ll(const char *key) { char b[2048]; read_file(CFILE, b, sizeof b); size_t kl = strlen(key); for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, key, kl) && l[kl] == '=') return atoll(l + kl + 1); return -1; }
 static void clock_kv_s(const char *key, char *out, size_t cap) { char b[2048]; out[0] = 0; read_file(CFILE, b, sizeof b); size_t kl = strlen(key); for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, key, kl) && l[kl] == '=') { snprintf(out, cap, "%s", l + kl + 1); return; } }
@@ -626,7 +663,9 @@ static void clock_stamp(char *out, size_t cap) {      /* "D3 06:10", the same ar
     out[0] = 0; clock_paths(); if (!clock_ok()) return; long long ms = clock_kv_ll("game_time_epoch_ms"); if (ms < 0) return; char d0b[32], dp[PATH_MAX]; d0b[0] = 0; spath(dp, "clock_day0.txt"); read_file(dp, d0b, sizeof d0b);
     long long d0 = atoll(d0b), d = ms / 86400000, s = (ms - d * 86400000) / 1000; snprintf(out, cap, "D%lld %02d:%02d", d - d0 + 1, (int)(s / 3600), (int)(s % 3600 / 60));
 }
-static void turn_str(char *out, size_t cap) { char p[PATH_MAX], line[300]; char *f[6]; snprintf(p, sizeof p, "%s/time.pdl", APP); snprintf(out, cap, "5m"); FILE *fp = fopen(p, "r"); if (!fp) return; while (fgets(line, sizeof line, fp)) if (split_bar(line, f, 6) >= 3 && !strcmp(f[0], "TURN")) snprintf(out, cap, "%s", f[2]); fclose(fp); }
+/* HARDENING: an amount handed to lc_clock (advance / rate / the TURN row of time.pdl) is 1-4 digits + a unit word, or a bare word; lc_clock 'advance 2147483648999m' spun for 10+ s of CPU */
+static int lc_amount_ok(const char *s) { int d = 0, l = 0; while (s[d] >= '0' && s[d] <= '9') d++; if (d > 4) return 0; while (s[d + l] >= 'a' && s[d + l] <= 'z') l++; return s[d + l] == 0 && l >= 1 && l <= 8; }
+static void turn_str(char *out, size_t cap) { char p[PATH_MAX], line[300]; char *f[6]; snprintf(p, sizeof p, "%s/time.pdl", APP); snprintf(out, cap, "5m"); FILE *fp = fopen(p, "r"); if (!fp) return; while (fgets(line, sizeof line, fp)) if (split_bar(line, f, 6) >= 3 && !strcmp(f[0], "TURN")) if (lc_amount_ok(f[2])) snprintf(out, cap, "%s", f[2]); fclose(fp); }
 static void clock_install(void) {
     clock_paths(); if (!clock_ok()) return; char d[PATH_MAX]; snprintf(d, sizeof d, "%s/#.desktop", CROOT); mkdir(CROOT, 0755); mkdir(d, 0755); snprintf(d, sizeof d, "%s/#.desktop/clocks", CROOT); mkdir(d, 0755); snprintf(d, sizeof d, "%s/common_events", CROOT); mkdir(d, 0755);
     if (!fexists(CFILE)) { lc_run(0, "new", "rpg", "user", "cdda-hq time", NULL); lc_run(0, "rate", "rpg", "sec", NULL); lc_run(0, "cmd", "rpg", "settime", "21600000", "--source", "rpg-install", NULL);
@@ -661,11 +700,11 @@ static void out_all(const char *msg) {
     calc_view(); render();
     char p[PATH_MAX]; spath(p, "scene.raw"); if (write_if_changed(p, fr, sizeof fr)) g_scene_ver++;
     spath(p, "scene.receipt.txt"); { char b[64]; snprintf(b, sizeof b, "frame_w=%d\nframe_h=%d\n", FW, FH); write_if_changed(p, b, strlen(b)); }
-    static char u[16384]; int o = 0;
-#define W(...) o += snprintf(u + o, sizeof u - o, __VA_ARGS__)
+    static char u[65536]; int o = 0;
+#define W(...) do { if (o < (int)sizeof u - 1) { int w_ = snprintf(u + o, sizeof u - o, __VA_ARGS__); if (w_ > 0) o += w_; if (o > (int)sizeof u - 1) o = (int)sizeof u - 1; } } while (0)      /* HARDENING: snprintf returns the WOULD-BE length; unclamped it ran o past the buffer and wrapped size_t */
     char raw[PATH_MAX]; spath(raw, "scene.raw"); char h1[PATH_MAX], h2[PATH_MAX]; spath(h1, "interact_relay.txt"); snprintf(h2, sizeof h2, "%s/keyboard/history.txt", ST);
     int chat = flag_on("chat", 1), hb = flag_on("hb", 0), in = flag_on("int", 0); char view[16]; flag_str("view", "2d", view, sizeof view); for (char *c = view; *c; c++) if (*c >= 'a' && *c <= 'z') *c -= 32;
-    char nbuf[200]; { char np[PATH_MAX]; spath(np, "note.txt"); read_file(np, nbuf, sizeof nbuf); size_t nl = strlen(nbuf); while (nl && (nbuf[nl - 1] == '\n' || nbuf[nl - 1] == '\r')) nbuf[--nl] = 0; }
+    char nbuf[200]; { char np[PATH_MAX]; spath(np, "note.txt"); read_file(np, nbuf, sizeof nbuf); size_t nl = strlen(nbuf); while (nl && (nbuf[nl - 1] == '\n' || nbuf[nl - 1] == '\r')) nbuf[--nl] = 0; for (char *q_ = nbuf; *q_; q_++) if ((unsigned char)*q_ < 32) *q_ = ' '; }
     W("title=cdda-hq  -  %s  -  coins %d\nscene_raw=%s\ncanvas_raw=%s\ncoins=%d\nnote=%s\nmsg=%s\nroom_label=%s\n", rooms[vroom].name, coins, raw, raw, coins, nbuf, msg && msg[0] ? msg : (in ? "INT on: turn based like a roguelike. Time moves when you act. Tab switches pet/player." : "real time: the pets live on their own. INT lets you control a pet or the player."), rooms[vroom].name);
     { char cc[16]; flag_str("ctl", "pet", cc, sizeof cc); char who[40]; snprintf(who, sizeof who, "on: %s", !strcmp(cc, "player") ? "you" : party[active].name); W("interact_class=%s\ninteract_label=%s\nrp_h1=%s\nrp_h2=%s\ncontrol_label=control: %s\n", in ? "interact-active" : "", in ? who : "off", h1, h2, !strcmp(cc, "player") ? "player" : party[active].name); }
     W("run_on=%d\nrun_label=%s\nrun_cls=%s\n", run_on(), run_on() ? "GO started" : "STOP stopped", run_on() ? "ph-green" : "ph-red");
@@ -702,6 +741,9 @@ static void out_all(const char *msg) {
       int nd2 = 0; for (int i = 0; i < ndoor && nl < 8; i++) if (doors[i].room == me2->room) { nd2++; LK("to %s", rooms[doors[i].dest].name); } if (!nd2) LK("no doors");
       W("n_look=%d\n", nl); }
     o = ui_wrap_keys(u, o, sizeof u);
+    { /* HARDENING: ui.txt is a complete key=value file whatever the state files held: only lines "key=value" (key = letters digits _) survive, control bytes in a value become spaces, a cut-off last line is dropped */
+      int r_ = 0, w_ = 0; while (r_ < o) { int e_ = r_; while (e_ < o && u[e_] != '\n') e_++; if (e_ >= o) break; int k_ = r_; while (k_ < e_ && (isalnum((unsigned char)u[k_]) || u[k_] == '_')) k_++;
+        if (k_ > r_ && k_ < e_ && u[k_] == '=') { for (int q_ = r_; q_ < e_; q_++) u[w_++] = ((unsigned char)u[q_] < 32) ? ' ' : u[q_]; u[w_++] = '\n'; } r_ = e_ + 1; } o = w_; }
     spath(p, "ui.txt"); write_if_changed(p, u, o);
 }
 
@@ -767,7 +809,7 @@ static int ai_step(int i) {
  * No spawn table, no second monster, and it acts only in turn mode (INT on) in this slice. */
 static void zed_load(void) {
     char p[PATH_MAX], b[200], rid[16] = "cellar"; int x = 6, y = 7, d = 0; spath(p, "zed.txt"); if (fexists(p)) { read_file(p, b, sizeof b); char *q = strstr(b, "room="); if (q) sscanf(q + 5, "%15[^\n]", rid); q = strstr(b, "x="); if (q) x = atoi(q + 2); q = strstr(b, "y="); if (q) y = atoi(q + 2); q = strstr(b, "dir="); if (q) d = atoi(q + 4); }
-    memset(&zed, 0, sizeof zed); zed.room = room_idx(rid); zed.x = x; zed.y = y; zed.dir = d & 3; zed.tx = zed.ty = -1; zed_ok = zed.room >= 0;
+    memset(&zed, 0, sizeof zed); zed.room = room_idx(rid); zed.x = x; zed.y = y; zed.dir = d & 3; zed.tx = zed.ty = -1; if (zed.room >= 0) { int cw = rooms[zed.room].cols, ch = rooms[zed.room].rows; if (cw < 1) cw = 1; if (ch < 1) ch = 1; if (zed.x < 0 || zed.x >= cw) zed.x = cw / 2; if (zed.y < 0 || zed.y >= ch) zed.y = ch / 2; } zed_ok = zed.room >= 0;
 }
 static void zed_save(void) { char p[PATH_MAX], b[120]; spath(p, "zed.txt"); snprintf(b, sizeof b, "room=%s\nx=%d\ny=%d\ndir=%d\n", rooms[zed.room].id, zed.x, zed.y, zed.dir); write_if_changed(p, b, strlen(b)); }
 static void zed_turn(void) {
@@ -820,7 +862,7 @@ static void write_room_png(int r) {
     static unsigned long last[16]; int saved = vroom; vroom = r; g_bg_only = 1; render(); g_bg_only = 0;
     static unsigned char crop[FW * FH * 4]; unsigned long sum = 5381; for (int y = 0; y < ROWS * T; y++) memcpy(crop + (size_t)y * COLS * T * 4, fr + ((size_t)(OY + y) * FW + OX) * 4, COLS * T * 4);
     for (size_t i = 0; i < sizeof crop; i += 7) sum = sum * 33 + crop[i];
-    if (r >= 0 && r < 16 && sum != last[r]) { last[r] = sum; char d[PATH_MAX], p[PATH_MAX]; snprintf(d, sizeof d, "%s/pieces/system/maps/cdda-hq/%s", PCHQ, rooms[r].id); mkdir(d, 0755); snprintf(p, sizeof p, "%s/map.png", d); stbi_write_png(p, COLS * T, ROWS * T, 4, crop, COLS * T * 4); }
+    if (r >= 0 && r < 16 && sum != last[r]) { last[r] = sum; char d[PATH_MAX], p[PATH_MAX]; snprintf(d, sizeof d, "%s/pieces/system/maps/cdda-hq/%s", PCHQ, rooms[r].id); mkdir(d, 0755); snprintf(p, sizeof p, "%s/map.png", d); png_atomic(p, COLS * T, ROWS * T, crop, COLS * T * 4); }
     vroom = saved; calc_view();
 }
 /* The 3D sky of an OUTDOOR room (the same picture the 2D painter uses, so 2D and 3D share one day / night cycle): maps/cdda-hq/<room>/parallax.rgba (raw RGBA8, the RPG Maker parallax image for the phase:
@@ -838,9 +880,9 @@ static void write_room_sky(int r, const char *d) {
     if (ht) for (size_t i = 0; i < n; i += 4) { int rr = b[i], gg = b[i + 1], bb = b[i + 2], l = (rr * 30 + gg * 59 + bb * 11) / 100, gy = tone[3];
         if (gy) { rr += (l - rr) * gy / 255; gg += (l - gg) * gy / 255; bb += (l - bb) * gy / 255; } rr += tone[0]; gg += tone[1]; bb += tone[2];
         b[i] = (unsigned char)(rr < 0 ? 0 : rr > 255 ? 255 : rr); b[i + 1] = (unsigned char)(gg < 0 ? 0 : gg > 255 ? 255 : gg); b[i + 2] = (unsigned char)(bb < 0 ? 0 : bb > 255 ? 255 : bb); }
-    { char tmp[PATH_MAX + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", rp); FILE *fp = fopen(tmp, "wb"); if (fp) { fwrite(b, 1, n, fp); fclose(fp); rename(tmp, rp); } } free(b);
+    { char tmp[PATH_MAX + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", rp); FILE *fp = fopen(tmp, "wb"); if (fp) { size_t wn_ = fwrite(b, 1, n, fp); if (fclose(fp) == 0 && wn_ == n) rename(tmp, rp); else remove(tmp); } } free(b);
     char pd[240]; int po = snprintf(pd, sizeof pd, "PARALLAX | show | 1\nPARALLAX | name | %s\nPARALLAX | width | %d\nPARALLAX | height | %d\nPARALLAX | loop_x | 1\nPARALLAX | stamp | %ld\n", ph, sk->w, sk->h, (long)now_ms());
-    { char tmp[PATH_MAX + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", pp); FILE *fp = fopen(tmp, "w"); if (fp) { fwrite(pd, 1, (size_t)po, fp); fclose(fp); rename(tmp, pp); } }
+    { char tmp[PATH_MAX + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", pp); FILE *fp = fopen(tmp, "w"); if (fp) { size_t wn_ = fwrite(pd, 1, (size_t)po, fp); if (fclose(fp) == 0 && wn_ == (size_t)po) rename(tmp, pp); else remove(tmp); } }
 }
 static void write_room_events(int r) {
     char d[PATH_MAX], p[PATH_MAX], buf[4096]; int o = 0; static const int dc[4] = {2, 4, 6, 8};
@@ -957,21 +999,21 @@ static void export3d(char *msg, size_t cap) {
                 int blocked = 0; for (int i = 0; i < nscen; i++) if (scen[i].room == r && x >= scen[i].x && x < scen[i].x + scen[i].w && y >= scen[i].y && y < scen[i].y + scen[i].h) blocked = 1;
                 glyph[y][x] = blocked ? 'T' : '.'; fs[y][x] = slot_of(cellpx); ws[y][x] = 0; } }
         (void)fl;
-        snprintf(p, sizeof p, "%s/map.txt", d); { FILE *f = fopen(p, "w"); if (f) { for (int y = 0; y < ROWS; y++) { glyph[y][COLS] = 0; fprintf(f, "%s\n", glyph[y]); } fclose(f); } }
-        snprintf(p, sizeof p, "%s/extrusion.pdl", d); { FILE *f = fopen(p, "w"); if (f) { fprintf(f, "SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\nMETA         | map_id             | cdda-hq\nMETA         | desk_id            | %s\nMETA         | note               | %s (cdda-hq house, exported from the live house)\nEXTRUDE      | W                  | 3\nEXTRUDE      | D                  | 3\nEXTRUDE      | T                  | 2\nEXTRUDE      | f                  | 1\nEXTRUDE      | default            | 0\n", rooms[r].id, rooms[r].name); fclose(f); } }
+        snprintf(p, sizeof p, "%s/map.txt", d); { FILE *f = fopen_tmp(p); if (f) { for (int y = 0; y < ROWS; y++) { glyph[y][COLS] = 0; fprintf(f, "%s\n", glyph[y]); } fclose_tmp(f, p); } }
+        snprintf(p, sizeof p, "%s/extrusion.pdl", d); { FILE *f = fopen_tmp(p); if (f) { fprintf(f, "SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\nMETA         | map_id             | cdda-hq\nMETA         | desk_id            | %s\nMETA         | note               | %s (cdda-hq house, exported from the live house)\nEXTRUDE      | W                  | 3\nEXTRUDE      | D                  | 3\nEXTRUDE      | T                  | 2\nEXTRUDE      | f                  | 1\nEXTRUDE      | default            | 0\n", rooms[r].id, rooms[r].name); fclose_tmp(f, p); } }
         int cols = 16, nrows = (nslot + cols - 1) / cols; int aw = cols * XT, ah = nrows * XT; unsigned char *atlas = calloc((size_t)aw * ah * 4, 1);
         for (int i = 0; i < nslot; i++) for (int y = 0; y < XT; y++) memcpy(atlas + ((size_t)((i / cols) * XT + y) * aw + (i % cols) * XT) * 4, slotpx[i] + y * XT * 4, XT * 4);
-        snprintf(p, sizeof p, "%s/cells.rgba", d); { FILE *f = fopen(p, "wb"); if (f) { fwrite(atlas, 1, (size_t)aw * ah * 4, f); fclose(f); } } snprintf(p, sizeof p, "%s/cells.png", d); stbi_write_png(p, aw, ah, 4, atlas, aw * 4); free(atlas);
-        snprintf(p, sizeof p, "%s/cells.txt", d); { FILE *f = fopen(p, "w"); if (f) { fprintf(f, "width=%d\nheight=%d\ntile_px=%d\natlas_cols=16\natlas_tiles=%d\ncells\n", COLS, ROWS, XT, nslot); for (int y = 0; y < ROWS; y++) { for (int x = 0; x < COLS; x++) fprintf(f, "%s%d,%d", x ? " " : "", fs[y][x], ws[y][x]); fputc('\n', f); } fclose(f); } }
+        snprintf(p, sizeof p, "%s/cells.rgba", d); { FILE *f = fopen_tmp(p); if (f) { fwrite(atlas, 1, (size_t)aw * ah * 4, f); fclose_tmp(f, p); } } snprintf(p, sizeof p, "%s/cells.png", d); png_atomic(p, aw, ah, atlas, aw * 4); free(atlas);
+        snprintf(p, sizeof p, "%s/cells.txt", d); { FILE *f = fopen_tmp(p); if (f) { fprintf(f, "width=%d\nheight=%d\ntile_px=%d\natlas_cols=16\natlas_tiles=%d\ncells\n", COLS, ROWS, XT, nslot); for (int y = 0; y < ROWS; y++) { for (int x = 0; x < COLS; x++) fprintf(f, "%s%d,%d", x ? " " : "", fs[y][x], ws[y][x]); fputc('\n', f); } fclose_tmp(f, p); } }
         write_room_events(r); write_room_png(r);
     }
-    snprintf(p, sizeof p, "%s/game.pdl", root); { FILE *f = fopen(p, "w"); if (f) { fputs(gl, f); fclose(f); } }
+    snprintf(p, sizeof p, "%s/game.pdl", root); { FILE *f = fopen_tmp(p); if (f) { fputs(gl, f); fclose_tmp(f, p); } }
     snprintf(msg, cap, "exported %d rooms as a pc-hq book: maps/cdda-hq (open it in pc-hq: Desk > cdda-hq, then 1-4 / 0 for 3D)", nroom);
 }
 
 /* ---------- verbs ---------- */
 static void clock_event(const char *ev);
-static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, "rb"); if (!in) return 0; FILE *out = fopen(to, "wb"); if (!out) { fclose(in); return 0; } char buf[8192]; size_t n; int ok = 1; while ((n = fread(buf, 1, sizeof buf, in)) > 0) if (fwrite(buf, 1, n, out) != n) { ok = 0; break; } fclose(in); if (fclose(out) != 0) ok = 0; return ok; }
+static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, "rb"); if (!in) return 0; char tmpc[PATH_MAX + 24]; snprintf(tmpc, sizeof tmpc, "%s.tmp.%d", to, (int)getpid()); FILE *out = fopen(tmpc, "wb"); if (!out) { fclose(in); return 0; } char buf[8192]; size_t n; int ok = 1; while ((n = fread(buf, 1, sizeof buf, in)) > 0) if (fwrite(buf, 1, n, out) != n) { ok = 0; break; } fclose(in); if (fclose(out) != 0) ok = 0; if (ok && rename(tmpc, to) != 0) ok = 0; if (!ok) remove(tmpc); return ok; }
 static void verb(int argc, char **argv, char *msg, size_t cap) {
     const char *v = argc ? argv[0] : "status"; long now = (long)time(NULL); char b[200]; msg[0] = 0; use_ent(active);
     if (!strcmp(v, "status")) return;
@@ -998,7 +1040,7 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
         if (!ge_scan(ep, gnow, 0, &gs)) { snprintf(msg, cap, "ledger unreadable"); return; }
         if (!strcmp(v, "help")) {
             static const char *H[8] = { "1/8 Pick who acts: Menu > Control (Tab).", "2/8 Inventory > Scavenge rag finds one (a stand-in until a real source exists).", "3/8 Craft > bandage: 1 rag, 1 minute of game time. Inventory lists what you have.", "4/8 The Castle has a stair: walk through the door in its left wall to the Cellar.", "5/8 The Cellar has one zed. It acts only in INT (turn) mode, after each of your turns.", "6/8 Next to it: Body > Strike zed hits it. Body shows who is hurt.", "7/8 Six body parts, each starts at max HP / 6. One hit takes 1 from one part.", "8/8 A leg at 0 makes walking slow, but you still move one cell." };
-            char hs[PATH_MAX], hb[16]; spath(hs, "help_step.txt"); read_file(hs, hb, sizeof hb); int s = atoi(hb) % 8; FILE *hf = fopen(hs, "w"); if (hf) { fprintf(hf, "%d\n", s + 1); fclose(hf); } note_set(H[s]); snprintf(msg, cap, "%s", H[s]); return; }
+            char hs[PATH_MAX], hb[16]; spath(hs, "help_step.txt"); read_file(hs, hb, sizeof hb); int s = ((atoi(hb) % 8) + 8) % 8; { char hv[16]; int hn = snprintf(hv, sizeof hv, "%d\n", s + 1); write_if_changed(hs, hv, (size_t)hn); } note_set(H[s]); snprintf(msg, cap, "%s", H[s]); return; }
         if (!strcmp(v, "bag") || !strcmp(v, "recipes")) { size_t o = 0; nb[0] = 0;
             if (!strcmp(v, "bag")) { for (int i = 0; i < ge_ninv; i++) if (!strcmp(ge_inv[i].actor, who) && ge_inv[i].n > 0 && o + 30 < sizeof nb) o += (size_t)snprintf(nb + o, sizeof nb - o, "%s %ld, ", ge_inv[i].item, ge_inv[i].n); if (o) nb[o - 2] = 0; else snprintf(nb, sizeof nb, "bag empty: Craft > Scavenge"); }
             else { for (int i = 0; i < nrec && o + 40 < sizeof nb; i++) o += (size_t)snprintf(nb + o, sizeof nb - o, "%s%s (%s)", i ? ", " : "", recs[i].id, recs[i].nin ? recs[i].in[0] : "-"); if (!nrec) snprintf(nb, sizeof nb, "no recipes (recipes.pdl)"); if (nrec_bad && strlen(nb) + 24 < sizeof nb) snprintf(nb + strlen(nb), sizeof nb - strlen(nb), "; %d bad rows", nrec_bad); }
@@ -1012,6 +1054,9 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
             if (rc && rc->minutes > 0) { char dur[16]; snprintf(dur, sizeof dur, "%dm", rc->minutes); clock_paths(); if (clock_ok() && fexists(CFILE)) { lc_run(0, "cmd", "rpg", "advance", dur, "--source", "rpg-craft", NULL); lc_run(0, "step", "5", NULL); } } }      /* the minutes are charged here, once, never in the replay */
         else if (cd_recipe(tgt) && cd_recipe(tgt)->tool) snprintf(nb, sizeof nb, "cannot craft %s: it needs a tool (not built yet)", tgt); else if (cd_recipe(tgt)) snprintf(nb, sizeof nb, "cannot craft %s: need the inputs in the bag", tgt); else snprintf(nb, sizeof nb, "no recipe named %s (Craft > Help)", tgt);
         note_set(nb); snprintf(msg, cap, "%s", nb); return; }
+    if (!strcmp(v, "compact")) {      /* S1 compaction (BOOK 16.game/S1-EVENT-LEDGER.md): force it now; the old ledger stays as state/events.archive.<n>.txt */
+        char ep[PATH_MAX]; spath(ep, "events.txt"); GeCompact cc; if (!ge_compact(ep, (long)time(NULL), &cc)) { snprintf(msg, cap, "compact: not done (%s)", cc.why); return; }
+        snprintf(msg, cap, "compact: %ld -> %ld bytes, old ledger kept as events.archive.%d.txt", cc.before, cc.after, cc.archive); return; }
     if (!strcmp(v, "event") || !strcmp(v, "resolve") || !strcmp(v, "inventory")) {      /* S1 (GAME-MECHANICS-SPRINT.md): the event line and resolver of _shared-lib/game_events.c on this game's state/events.txt. event <actor> <verb> <target> <room:x,y|-> appends one validated EVENT row and resolves it; resolve = resolve any row that has no EVRES yet (idempotent); inventory [actor] = replay of the ledger, writes nothing */
         char ep[PATH_MAX], er[60] = ""; spath(ep, "events.txt"); GeStats gs; long gnow = (long)time(NULL);
         if (!strcmp(v, "event")) { if (argc < 5) { snprintf(msg, cap, "event <actor> <verb> <target> <room:x,y or ->"); return; } if (!ge_append(ep, gnow, argv[1], argv[2], argv[3], argv[4], er, sizeof er)) { snprintf(msg, cap, "event refused: %s", er); return; } }
@@ -1088,8 +1133,8 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
         clock_sync(); if (on) { set_flag("follow", "pet"); calc_view(); }
         { char cc[16]; flag_str("ctl", "pet", cc, sizeof cc); snprintf(msg, cap, on ? "INT on: you control %s - turn based like a roguelike, time moves when you act, the other pets act on their own, Tab switches pet/player, Esc leaves" : "INT off: real time, every pet lives on its own", !strcmp(cc, "player") ? "the player" : party[active].name); } return; }
     if (!strcmp(v, "clock") && argc >= 2) { clock_paths(); if (!clock_ok()) { snprintf(msg, cap, "no LyfeDesk clock binary"); return; } clock_install();
-        if (!strcmp(argv[1], "rate") && argc >= 3) { lc_run(0, "cmd", "rpg", "rate", argv[2], "--source", "rpg-menu", NULL); snprintf(msg, cap, "clock speed %s (real time mode)", argv[2]); }
-        else if (!strcmp(argv[1], "advance") && argc >= 3) { lc_run(0, "cmd", "rpg", "advance", argv[2], "--source", "rpg-menu", NULL); lc_run(0, "step", "5", NULL); long long ms = clock_kv_ll("game_time_epoch_ms"); if (ms >= 0) write_phase(ms); snprintf(msg, cap, "skipped %s", argv[2]); }
+        if (!strcmp(argv[1], "rate") && argc >= 3 && lc_amount_ok(argv[2])) { lc_run(0, "cmd", "rpg", "rate", argv[2], "--source", "rpg-menu", NULL); snprintf(msg, cap, "clock speed %s (real time mode)", argv[2]); }
+        else if (!strcmp(argv[1], "advance") && argc >= 3 && lc_amount_ok(argv[2])) { lc_run(0, "cmd", "rpg", "advance", argv[2], "--source", "rpg-menu", NULL); lc_run(0, "step", "5", NULL); long long ms = clock_kv_ll("game_time_epoch_ms"); if (ms >= 0) write_phase(ms); snprintf(msg, cap, "skipped %s", argv[2]); }
         else if (!strcmp(argv[1], "start")) { clock_start(); snprintf(msg, cap, "clock started"); } else if (!strcmp(argv[1], "stop")) { clock_stop(); snprintf(msg, cap, "clock stopped"); }
         else if (!strcmp(argv[1], "reinstall")) { lc_run(0, "daemon-stop", NULL); char q[PATH_MAX]; snprintf(q, sizeof q, "%s/.schedule_installed", CROOT); remove(q); clock_install(); lc_run(1, "daemon-start", NULL); snprintf(msg, cap, "schedule reinstalled"); }
         clock_ui(); return; }
@@ -1154,7 +1199,7 @@ static void board_interact(int want, int force) {
         for (char *l = strtok(ub, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "bv_session=", 11)) snprintf(sess, sizeof sess, "%s", l + 11); else if (!strncmp(l, "interact_armed=", 15)) armed = atoi(l + 15); }
         if (!sess[0] || !fexists(sess) || board_armed() == want) continue; if (k != 0) continue;      /* only the cdda-hq board's own window */
         last = now; g_own13 = now; if (!want) { board_esc(); return; }      /* leaving Interact takes Esc: the engage key (Enter) is an ordinary key inside it */
-        char cmd[PATH_MAX * 2 + 64]; snprintf(cmd, sizeof cmd, "sh '%s/@.apps/piececraft-hq/ops/pchq_board_action.sh' '%s' interact >/dev/null 2>&1", HOUSE, sess); if (system(cmd)) {}
+        char cmd[PATH_MAX * 2 + 64]; snprintf(cmd, sizeof cmd, "sh '%s/@.apps/piececraft-hq/ops/pchq_board_action.sh' '%s' interact >/dev/null 2>&1", HOUSE, sess); sh_timed(cmd, 10);
         { char rp[PATH_MAX]; snprintf(rp, sizeof rp, "%s/pieces/apps/player_app/interact_relay.txt", sess); FILE *nf = fopen(rp, "a"); if (nf) { fputs("126\n", nf); fclose(nf); } }      /* an idle engine only reads its relay when woken: 126 is the unbound "render now" key */
         return; }
 }
@@ -1203,7 +1248,8 @@ static int daemon_main(void) {
     g_fcache_on = 1; load_tune(); load_data(); replay(); pet_load(); unstack(); clock_start(); out_all("");
     long last_load = now_ms(), last_follow = 0;
     while (!quit_flag) {
-        usleep(100000); int dirty = 0, codes[64], n; msg[0] = 0; { long lt = now_ms(); if (lt - last_load >= tune("reload_ms", 2000)) { last_load = lt; load_tune(); load_data(); } }      /* catalog / party / rooms / door pages are static: re-parsing them every 100 ms was most of the daemon's own CPU */
+        usleep(100000); while (waitpid(-1, NULL, WNOHANG) > 0) {}      /* reap fire-and-forget children (run_quiet wait=0): no zombies pile up */
+        int dirty = 0, codes[64], n; msg[0] = 0; { long lt = now_ms(); if (lt - last_load >= tune("reload_ms", 2000)) { last_load = lt; load_tune(); load_data(); } }      /* catalog / party / rooms / door pages are static: re-parsing them every 100 ms was most of the daemon's own CPU */
         pet_load(); int in = flag_on("int", 0), tm = turn_mode(); static int prev_in = 0; static long int_on_at = 0; if (in && !prev_in) int_on_at = now_ms(); prev_in = in;
         if (in && enter_pressed_in_engine() && possess_at_xelector(msg, sizeof msg)) { dirty = 1; follow_pchq(); }
         n = poll_keys(h1, &o1, codes, 32); n += poll_keys(h2, &o2, codes + n, 32);     /* the offsets always advance; keys only act while INT is on */
@@ -1277,6 +1323,8 @@ int main(int argc, char **argv) {
         else if (argc >= 4 && is_dir(argv[1])) { snprintf(textbuf, sizeof textbuf, "%s", argv[3]); for (char *t = strtok(textbuf, " "); t && vargc < 31; t = strtok(NULL, " ")) vargv[vargc++] = t; }
         else for (int i = 1; i < argc && vargc < 31; i++) vargv[vargc++] = argv[i];
     }
+    signal(SIGPIPE, SIG_IGN);      /* a closed pipe / dead child must never kill a verb or the daemon (the children get SIG_DFL back before exec) */
+    signal(SIGPIPE, SIG_IGN);      /* a closed pipe / dead child must never kill a verb or the daemon (the children get SIG_DFL back before exec) */
     snprintf(ST, sizeof ST, "%s/state", APP); mkdir(ST, 0755);
     snprintf(PCHQ, sizeof PCHQ, "%s/cdda-hq-pchq", APP);
     { char d[PATH_MAX]; snprintf(d, sizeof d, "%s", APP); ASSETS[0] = HOUSE[0] = 0;

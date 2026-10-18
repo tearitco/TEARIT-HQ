@@ -52,11 +52,15 @@ forever — ~10 % of a core, per stack, indefinitely. Two of them survived
   weak-box symptom: a producer/consumer file-handoff gap).
 - `HOUSE_CODE_PITFALLS.md` #25 — a wait that does not sleep pegs the
   CPU. No new `sleep`/`usleep` that the loop can skip. No second
-  render daemon. Open suggestion, not built: one shared wait in
-  `04-bugs/bug_bounty.md` ("one house wait") so a C poll loop cannot
-  put `usleep` in an idle-only else.
+  render daemon. The shared wait is `house_wait.h` (`house_wait_us`).
+- `HOUSE_CODE_PITFALLS.md` #26 — a 256-wide board made every pixel
+  walk the whole page. Profile with
+  `sh &.widgits/board-viewer/ops/bv_cost_before_run.sh` before
+  launching `bv_render_3d`. Bounty: `04-bugs/bug_bounty.md`
+  (2026-10-09, still open until a real launch stays cool).
 - `44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/kill_hq_windows.sh` —
   the ledger-pgid emergency reaper behind the `!kill hq` row; blind
   (kills by registry, shows nothing). `proc-mon` is the observable,
   engine-aware companion.
 - `REMOTE-HOUSE-RESTART-AND-DELEGATION-EXPERIENCE-2026-10-07.md` — how the Mac and debil desktops went "down" (non-login ssh PATH, macOS has no `setsid`, strip renderer dead while the manager lived), the exact commands that fixed them, the `desk_restart` tool + harness, and the delegation workflow (worktree from tip, tight prompt, independent re-verification, harness locations table). Read before any remote restart or any delegation.
+- `hq-crash-hardening.md` - 2026-10-17 crash hardening of the df-hq / cdda-hq / mcl-hq daemons (and their five copies): failure classes with the real finding for each (file data as an array index, in-place and unchecked writes, torn appends, ui.txt overflow and injection, hung children, SIGPIPE, unbounded growth), the rules for every new game daemon, the file read/write audit table, how `XO/test_fuzz_state.sh` works (fuzz, daemon-on-garbage, kill -9 test, negative controls) and a checklist.
