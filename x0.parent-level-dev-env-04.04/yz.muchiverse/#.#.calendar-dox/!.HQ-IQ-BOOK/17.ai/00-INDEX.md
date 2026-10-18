@@ -18,4 +18,5 @@ a game at all.
 - `../13.agent-coms/README.md` — Co-lab, the approval room. It is not
   the local model.
 - `AUTO-AND-AUTO-STUDIO-DESIGN.md` — design (not built): per-user `auto` and `auto-studio`, relay-injection conductor, tiered brains, trained subs, safety rails, slices A0-A8. `AUTO-TOYS-AND-AGENT-LEVERAGE.md` — how it drives the 2026-10 toys and multiplies agents. Hand-off folder: `12.calendar/2026-10-14/`.
+- `../16.game/DECISION-LEDGER-AND-DAILY-REVIEW.md` — the built decision ledger (one DEC row per actor choice) and the daily review verb; the learner input the behavior bank will read.
 - `HARNESS-AS-GAME-BRAIN.md` — the whole picture of harness as judge and memory for in-game AI: game verb, ledger, phase table, harness verdict, RESULT ledger, behavior-bank weights, concept bank / tomom / pet decisions, with an ASCII diagram, what is built vs designed, the AI hook, and the planned decision ledger (2026-10-17).
