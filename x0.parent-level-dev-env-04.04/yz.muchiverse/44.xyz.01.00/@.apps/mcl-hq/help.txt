@@ -7,7 +7,7 @@ Every pet and the player has its own bag.
 The actor is whoever Menu > Control (Tab)
 has selected.
 
-Menu: Blocks > Help is a one-line tip.
+Craft > Help is a one-line tip.
 This panel is the full help: Help > Next page.
 ---
 1. Face a block
@@ -16,26 +16,26 @@ block turns you to face it; you cannot walk
 into it.
 
 2. Mine it
-Blocks > Mine block ahead takes the block in
+Inventory > Mine block ahead takes the block in
 front of you into your bag.
 The chat scroll says: rex: mines stone
 If nothing is in front: "no block at x,y".
 ---
 3. Place a block
-Blocks > Hold next block picks which block of
-your bag Place uses (it cycles).
-Blocks > Place block ahead puts it on the free
-cell in front. It costs one from the bag.
+Inventory > Hold next block picks the block
+Place uses from your bag (it cycles).
+Inventory > Place block ahead puts it on the
+free cell in front. It costs one from the bag.
 It refuses on a block, water, scenery, a door
 cell, or a cell where someone stands.
 ---
 4. Craft
-Blocks > Craft planks: 1 log gives 4 planks.
+Craft > planks x4: 1 log gives 4 planks.
 Without a log: "cannot craft planks".
 Recipes are rows in recipes.pdl in the game
 folder (RECIPE | id | grid | output | count).
 
-Blocks > Bag lists what the actor carries.
+Craft > Bag lists what the actor carries.
 ---
 5. The log
 Every mine, place and craft (and every refusal)

@@ -673,6 +673,11 @@ static void out_all(const char *msg) {
 
     { char hl[11][64]; char hb[16]; flag_str("help_page", "0", hb, sizeof hb); int pg = atoi(hb), np = help_pages(-1, hl); if (pg < 0 || pg >= np) pg = 0; help_pages(pg, hl); snprintf(hl[0], 64, "help - page %d of %d", pg + 1, np); W("help_visible=%s\n", flag_on("help", 0) ? "1" : ""); for (int i = 0; i < 11; i++) W("help_%d=%s\n", i, hl[i]); } }
     W("n_shop=%d\n", ncat); for (int i = 0; i < ncat; i++) { char own[16] = ""; if (owned[i] > 0) snprintf(own, sizeof own, " x%d", owned[i]); W("shop_%d_label=%s %dc%s\nshop_%d_key=%s\n", i, cat[i].label, cat[i].price, own, i, cat[i].key); }
+    { static off_t sg_sz = -1; static long sg_ns = -1; static int sg_cnt[16]; struct stat sst; char evp[PATH_MAX]; spath(evp, "events.txt"); off_t zs = 0; long zn = 0; if (!stat(evp, &sst)) { zs = sst.st_size; zn = sst.st_mtim.tv_nsec; }
+      if (zs != sg_sz || zn != sg_ns) { sg_sz = zs; sg_ns = zn; memset(sg_cnt, 0, sizeof sg_cnt); if (ge_scan(evp, (long)time(NULL), 0, NULL)) for (int i = 0; i < nparty && i < 16; i++) sg_cnt[i] = (int)ge_inv_get(party[i].id, "stone"); }      /* stone per dwarf: replay of events.txt, re-run only when the ledger file changed (size + mtime ns), read-only (resolve 0) */
+      int tot = 0, ns = 0; for (int i = 0; i < nparty && i < 16; i++) { tot += sg_cnt[i]; if (sg_cnt[i] > 0) ns++; }
+      W("stock_total=Stone total %d\nn_stock=%d\n", tot, ns); ns = 0; for (int i = 0; i < nparty && i < 16; i++) if (sg_cnt[i] > 0) { W("stock_%d_label=%.8s: stone %d\nstock_%d_key=%s\n", ns, party[i].name, sg_cnt[i], ns, party[i].id); ns++; }
+      W("n_unit=%d\n", nparty); for (int i = 0; i < nparty; i++) W("unit_%d_label=%.6s, %.8s, %d stone\nunit_%d_key=%s\n", i, party[i].name, rooms[others[i].room].name, i < 16 ? sg_cnt[i] : 0, i, party[i].id); }
     char fl[160], cc[16], hid[24]; flag_str("ctl", "pet", cc, sizeof cc); int hs = !strcmp(cc, "player"); snprintf(hid, sizeof hid, "%s", hero.name); for (char *c = hid; *c; c++) if (*c >= 'A' && *c <= 'Z') *c += 32;
     if (hs) { int o = snprintf(fl, sizeof fl, "owns:"); for (int k = 0; k < nparty && o < (int)sizeof fl - 12; k++) o += snprintf(fl + o, sizeof fl - o, "%s %s", k ? "," : "", party[k].name); } else friend_line(active, fl, sizeof fl);
     const char *an = hs ? hero.name : party[active].name;

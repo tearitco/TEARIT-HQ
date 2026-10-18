@@ -1,16 +1,16 @@
 # mcl-hq blocks: mine, place, craft (2026-10-17)
 
-For players. The same six steps are in the window: **Blocks > Help: blocks and crafting** (one step per click, painted in the green line under the coins).
+For players. The same six steps are in the window: **Craft > Help: blocks, crafting** (one step per click, painted in the green line under the coins).
 
 ## What you can do
 
 1. **Pick who acts.** Menu > Control (or Tab) switches between the pets and the player. The chosen one is the actor.
 2. **Face a block.** Turn INT on and press an arrow into a block: you cannot walk into it, but you turn to face it. Blocks are drawn with the Mineclonia textures (stone, cobble, dirt, grass, planks, log). The starting ones are in the Overworld, east and west of the middle.
-3. **Blocks > Mine block ahead** takes the block in front of the actor. It goes into the actor's bag (green line: `mined stone (bag 2)`). Nothing in front: `no block at x,y: face a block`.
-4. **Blocks > Hold next block** picks which block in the bag Place will use (it cycles; the green line says `holding planks (3)`).
-5. **Blocks > Place block ahead** puts the held block on the free cell in front. It costs one from the bag. It refuses on a block, on water, on scenery, on a door cell, and on a cell where someone stands (`cannot place at x,y: not free`).
-6. **Blocks > Craft planks** turns 1 log in the bag into 4 planks. Without a log: `cannot craft planks: need the inputs in the bag`.
-7. **Blocks > Bag** lists what the actor carries.
+3. **Inventory > Mine block ahead** takes the block in front of the actor. It goes into the actor's bag (green line: `mined stone (bag 2)`). Nothing in front: `no block at x,y: face a block`.
+4. **Inventory > Hold next block** picks which block in the bag Place will use (it cycles; the green line says `holding planks (3)`).
+5. **Inventory > Place block ahead** puts the held block on the free cell in front. It costs one from the bag. It refuses on a block, on water, on scenery, on a door cell, and on a cell where someone stands (`cannot place at x,y: not free`).
+6. **Craft > planks x4** turns 1 log in the bag into 4 planks. Without a log: `cannot craft planks: need the inputs in the bag`.
+7. **Craft > Bag: what I carry** lists what the actor carries.
 
 Each pet and the player have their own bag. A mined block can be walked into afterwards: the cell is free again.
 
@@ -47,3 +47,15 @@ The blocks are `B` cells (two high) in the glyph view and the 3D book; the board
 ## The log lines (grok's spec, 2026-10-17)
 
 Each resolved event is one line in the chat scroll, `D1 08:02 Rex crafts bandage`: the game clock (left out when the game has no clock yet), the actor, a present-tense sentence. Finds and crafts that worked are green, hits and refusals grey. Examples: `Rex finds a rag`, `Rex cannot craft bandage: need the inputs`, `Rex hits the zed: torso 2/3`, `the zed hits Rex: leg_l 4/5`, `Rex cannot place stone: the cell is taken`. The scroll shows ten lines (grok asked for twelve; ten is what fits the pinned bar, every text row is about 30 px tall). Not built: door and day-change lines (the pets already say "went through the door"), scroll back.
+
+## Tabs (2026-10-17)
+
+The old Blocks tab is now two tabs, after Help.
+
+**Inventory** (the bag of whoever is controlled): one row per item in the bag, `stone x3`, the block Place will use marked `(held)`; clicking a row holds that block. Then Hold next block, Mine block ahead, Place block ahead, - cancel -. An empty bag shows one quiet row `(bag empty: mine)`. At most six item rows (there are six block kinds).
+
+**Craft**: one row per `RECIPE` line of `recipes.pdl`, labelled with the output (`planks x4`); clicking it crafts that recipe. Then Recipes, Bag: what I carry, Help: blocks, crafting, - cancel -. At most six recipe rows.
+
+Data: `state/ui.txt` keys `n_inv`, `inv_<i>_label`, `inv_<i>_key`, `n_rec`, `rec_<i>_label`, `rec_<i>_id`; they follow the ledger replay, so they change after every mine, place, hold and craft.
+
+Later (not shown, no fake rows): chest, furnace, the 9-slot hotbar (`state/hotbar.txt` does not exist yet; the inventory replay is the whole bag), hunger, armor, a 3x3 versus 2x2 crafting grid.

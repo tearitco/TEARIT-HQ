@@ -2,20 +2,20 @@ df-hq help: digging
 The castle has a block of rock. Pets dig the
 cells you mark.
 
-Menu > Help is a one-line tip.
+Help tab: Open help shows this panel.
 This panel is the full help: Help > Next page.
 ---
 1. Mark a cell
-Turn INT on. Face the rock and use Menu > Dig
-(or give two numbers x y to the dig verb).
+Turn INT on. Face the rock and use Designations
+> Mine (or give x y to the dig verb).
 A marked cell shows an X; when a pet has
 claimed it the X turns into a diamond.
 ---
 2. Mark an area
-Menu > Dig area: first use sets a corner,
+Designations > Mine area: 1st use = a corner,
 second use marks every rock cell between the
 two corners (up to 64).
-Menu > Dig: cancel the mark in front removes
+Designations > cancel the mark in front removes
 a mark.
 ---
 3. What happens

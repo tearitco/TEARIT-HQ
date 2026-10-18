@@ -13,7 +13,10 @@
       <tab id="tb-shop" class="tab rp-tb" label="Shop ▾" onclick="ACTIVATE" target_id="tb-shop"/>
       <tab id="tb-menu" class="tab rp-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
       <tab id="tb-help" class="tab rp-tb" label="Help ▾" onclick="ACTIVATE" target_id="tb-help"/>
+      <tab id="tb-inv" class="tab rp-tb" label="Inventory ▾" onclick="ACTIVATE" target_id="tb-inv"/>
       <tab id="tb-craft" class="tab rp-tb" label="Craft ▾" onclick="ACTIVATE" target_id="tb-craft"/>
+      <tab id="tb-body" class="tab rp-tb" label="Body ▾" onclick="ACTIVATE" target_id="tb-body"/>
+      <tab id="tb-look" class="tab rp-tb" label="Look ▾" onclick="ACTIVATE" target_id="tb-look"/>
       <tab id="tb-player" class="tab rp-tb" label="Player ▾" onclick="ACTIVATE" target_id="tb-player"/>
       <tab id="tb-time" class="tab rp-tb" label="${time_label} ▾" onclick="ACTIVATE" target_id="tb-time"/>
     </tabbar>
@@ -50,14 +53,29 @@
       <item id="hp-prev" class="rp-menu-row dropdown-child" target_id="tb-help" label="Prev page" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' helppanel prev"/>
       <item id="hp-close" class="rp-menu-row dropdown-child" target_id="tb-help" label="Close help" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' helppanel close"/>
       <item id="hp-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-help" label="- cancel -" action="void"/>
-      <item id="cr-scav" class="rp-menu-row dropdown-child" target_id="tb-craft" label="Scavenge a rag (stand-in)" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' scavenge"/>
-      <item id="cr-bandage" class="rp-menu-row dropdown-child" target_id="tb-craft" label="Craft bandage (1 rag)" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' craft bandage"/>
-      <item id="cr-bag" class="rp-menu-row dropdown-child" target_id="tb-craft" label="Bag: what I carry" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' bag"/>
-      <item id="cr-strike" class="rp-menu-row dropdown-child" target_id="tb-craft" label="Strike the zed beside me" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' strike"/>
-      <item id="cr-wounds" class="rp-menu-row dropdown-child" target_id="tb-craft" label="Wounds: who is hurt" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' wounds"/>
+      <item id="iv-scav" class="rp-menu-row dropdown-child" target_id="tb-inv" label="Scavenge rag" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' scavenge"/>
+      <repeat count="${n_inv}" bind="inv">
+        <item id="iv${inv.#}" class="rp-menu-row dropdown-child" target_id="tb-inv" label="${inv.label}" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' bag"/>
+      </repeat>
+      <item id="iv-wear" class="rp-menu-row dropdown-child quiet" target_id="tb-inv" label="Wear (later)" action="void"/>
+      <item id="iv-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-inv" label="- cancel -" action="void"/>
+      <repeat count="${n_craft}" bind="craft">
+        <item id="cr${craft.#}" class="rp-menu-row dropdown-child" target_id="tb-craft" label="${craft.label}" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' craft ${craft.id}"/>
+      </repeat>
       <item id="cr-rec" class="rp-menu-row dropdown-child" target_id="tb-craft" label="Recipes" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' recipes"/>
-      <item id="cr-help" class="rp-menu-row dropdown-child" target_id="tb-craft" label="Help: crafting and the cellar" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' help"/>
+      <item id="cr-help" class="rp-menu-row dropdown-child" target_id="tb-craft" label="Help" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' help"/>
+      <item id="cr-cons" class="rp-menu-row dropdown-child quiet" target_id="tb-craft" label="Build later" action="void"/>
       <item id="cr-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-craft" label="- cancel -" action="void"/>
+      <repeat count="${n_body}" bind="body">
+        <item id="bd${body.#}" class="rp-menu-row dropdown-child" target_id="tb-body" label="${body.label}" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' wounds"/>
+      </repeat>
+      <item id="bd-strike" class="rp-menu-row dropdown-child" target_id="tb-body" label="Strike zed" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' strike"/>
+      <item id="bd-skill" class="rp-menu-row dropdown-child quiet" target_id="tb-body" label="Skills later" action="void"/>
+      <item id="bd-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-body" label="- cancel -" action="void"/>
+      <repeat count="${n_look}" bind="look">
+        <item id="lk${look.#}" class="rp-menu-row dropdown-child quiet" target_id="tb-look" label="${look.label}" action="void"/>
+      </repeat>
+      <item id="lk-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-look" label="- cancel -" action="void"/>
       <item id="mn-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-menu" label="- cancel -" action="void"/>
       <item id="pm-mode" class="rp-menu-row dropdown-child" target_id="tb-player" label="${mode_label}" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' mode"/>
       <item id="pm-play" class="rp-menu-row dropdown-child" target_id="tb-player" label="Play" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' play"/>

@@ -45,3 +45,14 @@ The zed is an entity (letter `z`) in the glyph view and the 3D book of its room;
 ## The log lines (grok's spec, 2026-10-17)
 
 Each resolved event is one line in the chat scroll, `D1 08:02 Rex crafts bandage`: the game clock (left out when the game has no clock yet), the actor, a present-tense sentence. Finds and crafts that worked are green, hits and refusals grey. Examples: `Rex finds a rag`, `Rex cannot craft bandage: need the inputs`, `Rex hits the zed: torso 2/3`, `the zed hits Rex: leg_l 4/5`, `Rex cannot place stone: the cell is taken`. The scroll shows ten lines (grok asked for twelve; ten is what fits the pinned bar, every text row is about 30 px tall). Not built: door and day-change lines (the pets already say "went through the door"), scroll back.
+
+## Tabs (2026-10-17)
+
+The old Craft tab is replaced by four, after Help: Inventory, Craft, Body, Look. Rows are built from data in `state/ui.txt` (keys below), each dropdown has ten rows or fewer and ends with `- cancel -`. They follow whoever you control (Menu > Control, Tab).
+
+- **Inventory**: `Scavenge a rag`, then one row per item in the controlled actor's bag (`rag x2`, up to 7; `(bag empty)` when none; a click lists the bag in the note), then `Wear (later)`. Keys `n_inv`, `inv_<i>_label`.
+- **Craft**: one row per RECIPE line in `recipes.pdl`, `Craft bandage 1m` (the recipe id and its minutes; up to 6), then `Recipes`, `Help: craft and cellar`, `Construct (later)`. Keys `n_craft`, `craft_<i>_label`, `craft_<i>_id`.
+- **Body**: one row per body part of the controlled actor, `torso 2/3` (left over max, max is max HP / 6; head, torso, arm_l, arm_r, leg_l, leg_r; a click runs Wounds), then `Strike the zed beside me`, `Skills (later)`. Keys `n_body`, `body_<i>_label`.
+- **Look**: quiet rows, no action: the zed (`zed here at 6,7` or `no zed in this room`), the cell ahead (`ahead: the zed`, a door, a placed item or nothing), up to three placed items, then the room's doors. Keys `n_look`, `look_<i>_label`.
+
+Later (shown greyed, they do nothing): Wear, Construct, Skills; hunger, thirst and volume are not shown at all. Messages is the chat bar, not a tab. The verbs (`scavenge`, `craft <id>`, `bag`, `recipes`, `help`, `strike`, `wounds`) are unchanged. Test: XO/test_tabs_cdda_hq.sh.

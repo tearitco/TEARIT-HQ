@@ -40,3 +40,12 @@ The top bar has a **Help** tab (2026-10-17): Open help, Next page, Prev page, Cl
 ## The log lines (grok's spec, 2026-10-17)
 
 Each resolved event is one line in the chat scroll, `D1 08:02 Rex crafts bandage`: the game clock (left out when the game has no clock yet), the actor, a present-tense sentence. Finds and crafts that worked are green, hits and refusals grey. Examples: `Rex finds a rag`, `Rex cannot craft bandage: need the inputs`, `Rex hits the zed: torso 2/3`, `the zed hits Rex: leg_l 4/5`, `Rex cannot place stone: the cell is taken`. The scroll shows ten lines (grok asked for twelve; ten is what fits the pinned bar, every text row is about 30 px tall). Not built: door and day-change lines (the pets already say "went through the door"), scroll back.
+
+## Tabs (2026-10-17, from grok's list: Designations, Build, Stocks, Units)
+
+The four dwarf-fortress tabs sit after Menu. The dig rows moved out of Menu into Designations (same verbs: `dig`, `dig_area`, `undig`, `help`), so "Menu > Dig: ..." in the text above is now **Designations > Mine: ...**.
+- **Designations**: Mine: mark in front, Mine area: corner / area, Mine: cancel the mark, then quiet `(later)` rows channel, stairs, chop (labels until a rule exists), How to mine (next step), cancel.
+- **Build**: three quiet `(later)` rows (wall, door, workshop) and cancel. No build rules exist yet.
+- **Stocks**: first row `Stone total N`, then one row per dwarf that carries stone (`Pip: stone 5`, click selects that dwarf), then a quiet `(later) stockpiles` (the STOCK rows file does not exist yet). The counts are a replay of `state/events.txt` (`give_item` / `take` of stone), re-read only when that file changes.
+- **Units**: one row per dwarf, `Name, room, N stone`; click selects it (the same action as the book dropdown). A quiet `(later) labor, skills` row. World generation is later; announcements are the chat bar.
+Keys in `state/ui.txt`: `stock_total`, `n_stock`, `stock_<i>_label/key`, `n_unit`, `unit_<i>_label/key`. Test: `XO/test_tabs_df-hq.sh`.
