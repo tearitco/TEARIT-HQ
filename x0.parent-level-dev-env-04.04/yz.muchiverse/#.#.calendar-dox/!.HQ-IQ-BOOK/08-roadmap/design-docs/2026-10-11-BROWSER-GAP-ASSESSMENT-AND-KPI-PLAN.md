@@ -374,7 +374,16 @@ roughly 6 vars/row, so it sits right at the cap and did **not** trip it
 (no `[WARN] var table overflow`). It will bite on a larger page and is
 left alone until it does, with the WARN that would announce it.
 
-### 8.5 G3.2 ZOOM — attempted, measured, REJECTED (2026-10-13)
+### 8.5 G3.2 ZOOM — the desk-scale route was rejected; a per-window knob shipped (2026-10-13)
+
+> **RESOLVED the same day — read this box before the record below.**
+> What follows correctly rejects the *desktop-scale* approach. It is **not**
+> a statement that G3.2 is open: a **per-window text zoom** landed hours
+> later as the section's own recommended design (`zoomed()` in the renderer),
+> committed `b03bb8e7f` with `tests/nb_zoom_test.sh` pinning state, geometry
+> and pixels. **G3.2 is DONE.** The rejected route below is kept because the
+> measurement (a Ctrl+= that *shrinks* text) is the reason the shipped design
+> does not reuse the desk scale.
 
 The obvious implementation was to bind keys to the scale verbs that
 already exist: `UI_SCALE_PLUS` / `UI_SCALE_MINUS` are real, the resize and
