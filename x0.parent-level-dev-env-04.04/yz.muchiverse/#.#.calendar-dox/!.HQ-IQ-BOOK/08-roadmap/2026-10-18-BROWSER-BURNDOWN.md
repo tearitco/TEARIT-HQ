@@ -166,6 +166,56 @@ Milestone 12); `nb_bar_test.sh`/`nb_reach_test.sh` reliability.
    worker flex model → manager projection → `nb_gbcr_test.sh` still 100 %
    after each step.
 
+---
+
+## 6. Sprint A reconnaissance — what flex actually needs (read before coding)
+
+Read the code rather than the ladder's "wiring, not invention". **The ladder
+is wrong on both halves.** Four findings, each a file+line.
+
+**6.1 The very first change is in `nb_css.c`, not the layout code.** The CSS
+layer does *not* keep the display keyword:
+
+```c
+/* nb_css.h:48 */  char display[16];  /* "none" if display:none, else "" */
+/* nb_css.c:311-319 */ if (strcasecmp(cv,"none")==0) ... else out->display[0]=0;
+```
+
+So `display:flex` and `display:block` are **the same value today**. The
+handoff's "`nb_css` already parses `display`" is half true — it parses it
+only to detect `none`. Step 0 is to retain the keyword.
+
+**6.2 The worker has no x-axis at all.** `layout_xy()` ends `*out_x = 0`
+(`ops/nb_js_worker.c:1251`) — unconditionally. That is *why* a flex div
+reports `x=[0,0,0]`: not a missing flex branch, a missing horizontal axis.
+Flex is the first x-accumulation the model will ever have.
+
+**6.3 Three worker changes, all small.** `nb_box_w()` fills the parent's
+width for block children (`:1176-1180`) → a flex child needs a *share*;
+`layout_xy()` accumulates sibling heights → a flex parent must accumulate
+*widths* and hold `y`; `nb_content_h()` sums children (`:1193`) → a flex
+container's height is the *max*, not the sum. The red test's four clauses map
+onto exactly these.
+
+**6.4 The renderer's row engine is CHROME-scoped, so the manager half is not
+wiring.** `<row>` is only laid out when it carries a chrome class —
+`class="toolbar"` (`khtpm_core_render.c:6189, 6224`), `tabbar`, or
+`pal-grid-row` — via the shared `css_layout_pass()` in
+`khtpm_render_core.c`. `network_browser_manager.c` has **no** flex handling
+whatsoever (`grep flex` → nothing). And the content pane is a fixed per-kind
+`<repeat>` in `network-browser-hq.xhtpm` (§8.1: 24 gated siblings per row).
+
+So a flex content container has **no path** to the row engine as things
+stand. The manager half is one of (a) a new content row *kind* in the
+template that is a `<row>`, or (b) generalizing the layout pass past the
+chrome classes. Both are design decisions, and (b) touches every window.
+
+**Consequence for sizing:** the plan's S4 "1 sprint, wiring not invention" is
+optimistic. The worker half (6.1–6.3) is a day. The renderer half (6.4) is a
+design decision that deserves its own note before code — which is exactly the
+kind of call the plan's §5.5 reserves for the owner. **Do not ship the worker
+half alone** (it would re-open G2.2 with a confident wrong number).
+
 *Companions: `2026-10-18-BROWSER-LANE-HANDOFF.md` (START HERE), `2026-10-17-G2-
 VERDICT-ADDENDUM.md`, `design-docs/2026-10-11-BROWSER-GAP-ASSESSMENT-AND-KPI-
 PLAN.md`.*
