@@ -124,6 +124,10 @@ echo "########## G2.2 the worker's box tree vs the painted pixels (live browser)
 sh "$HERE/nb_gbcr_test.sh" || RC=1
 
 echo
+echo "########## G2.2b the scrollbar gutter is CONDITIONAL (both directions, live browser)"
+sh "$HERE/nb_gutter_test.sh" || RC=1
+
+echo
 echo "########## content-row reachability (live browser + own opt-in fixture)"
 sh "$HERE/nb_reach_test.sh" || RC=1
 
