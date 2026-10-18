@@ -65,9 +65,41 @@ Plain text, same style as the other state files, so a window, a harness case or 
 * A test that only counts rows passes vacuously when the file is missing. The "decisions were written" check exists to stop that.
 * The wrapper reads the pet's saved state (`others[i]`, `tr`) after the step, not the working copy `pet`, because `meet()` can run in between.
 
+## The behavior-bank wiring (built 2026-10-18)
+
+`dec_bank_update` (in `game_decisions.c`) turns the ledger into **bank entries**, one per action, in the same sidecar shape the harness behavior bank already uses (`harness/ops/harness_bank_op.c`, design `HARNESS-BEHAVIOR-BANK-DESIGN.md`):
+
+```
+state/bank/dec_<game>_<action>.behavior.pdl      e.g. dec_mcl-hq_walk.behavior.pdl
+BEHAVIOR | dec.mcl-hq.walk
+KEYWORDS | walk, mcl-hq, decision
+SENTENCE | How often the mcl-hq choice 'walk' ends well (...) in mcl-hq's decision ledger.
+SOURCE | measured from state/decisions.txt by dec_bank_update; not hand-authored
+COUNTS | reward=31 | punish=4 | cursor=2210
+WEIGHT | 0.8919                                  (reward+1)/(reward+punish+2), live Laplace estimate
+```
+
+* A row is a **reward** when its outcome is anything but `blocked`, `miss` or `refused`, a **punish** otherwise.
+* The read position is `state/bank/dec_cursor.txt`: a byte offset into `decisions.txt`, an append-only marker, never mtime. Running the update twice counts nothing twice; a torn last line is left for the next pass; a ledger that rotated (shorter than the cursor) restarts the cursor at 0 and keeps the counts.
+* It runs on the `review` verb and automatically every 200 decisions inside the game. Each entry is written tmp + rename; the cursor last. **A crash between the entry writes and the cursor write double-counts at most one batch** (at-least-once; the weight is an estimate, so this is acceptable and stated here instead of hidden).
+* Because the files are in the house sidecar shape, the existing ranking works with no new reader: `harness_bank_op find <game>/state/bank walk` prints `score|id|file`, best first.
+* Action names containing `/`, `.` or a backslash are skipped (the action becomes part of a file name); at most 32 actions are tracked.
+
+### The read-back (the loop is closed for one choice)
+
+`dec_weight(bank_dir, game, action)` returns the live weight, or **0.5 when there is no entry or the file is garbage** (no evidence changes nothing). The one choice wired to it so far is **how readily a pet picks a new target**:
+
+```
+pick chance = 45 + (0.5 - weight("walk")) * 60 , clamped to 15..85     (percent per step, was a constant 45)
+```
+
+A pet whose own walk choices keep getting blocked (weight under 0.5) gives up and retargets sooner; a pet whose walks succeed keeps its goal longer. The weight file is re-read at most every 10 seconds. `<game> decpct` prints the current chance and says where it comes from. Tested: weight 0.1 gives 69 %, 0.9 gives 21 %, no entry or garbage gives 45 %, and a build with the read-back removed fails exactly those checks.
+
+**Honest limits.** The weight is per game, not per actor (a pet that never got blocked shares the number with one that always is). Only the pick chance reads it; no other choice does. The pick chance was tested through `decpct` and the code path (`rand() % 100 < dec_pick_pct()`), **not** by watching a population of pets change behavior over a long run. Nothing validates the effect (is retargeting sooner actually better?): that judgement belongs to a harness/review step that does not exist yet. The weights are measured counts, so nothing here is hand-authored.
+
 ## How a game AI reads it
 
-Today: read `state/review.txt` (small, bounded) for a summary, or tail `state/decisions.txt` from a remembered byte offset. Feeding rows to the behavior bank is the designed next step: `harness_bank_op` already turns an append-only ledger into live weights (`17.ai/HARNESS-AS-GAME-BRAIN.md`); a DEC row per `action|outcome` is the natural key. **Not built**: that wiring, any actor that reads these weights back to change its choices, and per-actor scoring.
+Today: read `state/review.txt` for a day summary, `state/bank/dec_<game>_<action>.behavior.pdl` for a weight, or tail `state/decisions.txt` from a remembered offset. **Not built**: per-actor weights, a score or reason column, more choices reading their weight, and a judge that checks whether a changed weight helped.
 
 ## Adding a new game or a new decision source
 

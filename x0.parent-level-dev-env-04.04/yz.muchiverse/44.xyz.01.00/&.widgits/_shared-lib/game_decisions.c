@@ -88,4 +88,57 @@ static int dec_review(const char *path, const char *out, int day) {
     fsync(fileno(o)); fclose(o); if (rename(tmp, out) != 0) { unlink(tmp); return -1; }
     return rows;
 }
+
+/* ---- the behavior-bank wiring (HARNESS-AS-GAME-BRAIN.md): DEC rows -> one bank entry per action -> a weight the actor reads back ----
+ * dec_bank_update(dec_path, bank_dir, game) reads the decision ledger from the byte offset in <bank_dir>/dec_cursor.txt (append-only marker, never mtime),
+ * adds one reward per row whose outcome is not blocked/miss/refused and one punish per row whose outcome is, per ACTION, and rewrites
+ * <bank_dir>/dec_<game>_<action>.behavior.pdl in the house behavior-bank sidecar shape (BEHAVIOR / KEYWORDS / SENTENCE / SOURCE / COUNTS / WEIGHT) so that
+ * `harness_bank_op find <bank_dir> <word>` ranks the actions with no new reader. WEIGHT is the live Laplace estimate (reward+1)/(reward+punish+2).
+ * Each file is written tmp+rename. The cursor is written last: a crash between the two double-counts at most one batch (at-least-once, stated in the doc).
+ * Returns the number of rows consumed, -1 on error. A ledger shorter than the cursor (it rotated) restarts the cursor at 0; counts are kept. */
+static int dec_is_bad(const char *o) { return !strcmp(o, "blocked") || !strcmp(o, "miss") || !strcmp(o, "refused"); }
+static void dec_read_counts(const char *path, long *rw, long *pn) {
+    *rw = *pn = 0; FILE *f = fopen(path, "r"); if (!f) return; char ln[300];
+    while (fgets(ln, sizeof ln, f)) if (!strncmp(ln, "COUNTS", 6)) { char *a = strstr(ln, "reward="), *b = strstr(ln, "punish="); if (a) *rw = atol(a + 7); if (b) *pn = atol(b + 7); break; }
+    fclose(f);
+}
+static int dec_bank_update(const char *dec_path, const char *bank_dir, const char *game) {
+    char cp[4200], ln[512]; snprintf(cp, sizeof cp, "%s/dec_cursor.txt", bank_dir); mkdir(bank_dir, 0755);
+    long cursor = 0; { FILE *f = fopen(cp, "r"); if (f) { if (fscanf(f, "%ld", &cursor) != 1) cursor = 0; fclose(f); } }
+    FILE *f = fopen(dec_path, "r"); if (!f) return -1;
+    fseek(f, 0, SEEK_END); long sz = ftell(f); if (cursor < 0 || cursor > sz) cursor = 0;
+    fseek(f, cursor, SEEK_SET);
+    struct { char act[DEC_MAXKEY]; long rw, pn; } t[32]; int nt = 0, rows = 0; long pos = cursor;
+    while (fgets(ln, sizeof ln, f)) {
+        size_t L = strlen(ln); if (!L || ln[L - 1] != '\n') break;                 /* torn last line: stop BEFORE it, the cursor stays on it */
+        pos += (long)L; ln[L - 1] = 0; if (strncmp(ln, "DEC|", 4)) continue;
+        char *fld[8]; int nf = 0; char *q = ln + 4; fld[nf++] = q; for (; *q && nf < 8; q++) if (*q == '|') { *q = 0; fld[nf++] = q + 1; }
+        if (nf < 7) continue;
+        if (strpbrk(fld[4], "/.\\")) continue;                                     /* the action becomes part of a file name */
+        int k; for (k = 0; k < nt; k++) if (!strcmp(t[k].act, fld[4])) break;
+        if (k == nt) { if (nt == 32) continue; snprintf(t[nt].act, DEC_MAXKEY, "%s", fld[4]); t[nt].rw = t[nt].pn = 0; nt++; }
+        if (dec_is_bad(fld[6])) t[k].pn++; else t[k].rw++;
+        rows++;
+    }
+    fclose(f);
+    for (int k = 0; k < nt; k++) {
+        char fp[4200], tp[4300]; snprintf(fp, sizeof fp, "%s/dec_%s_%s.behavior.pdl", bank_dir, game, t[k].act); snprintf(tp, sizeof tp, "%s.tmp", fp);
+        long rw, pn; dec_read_counts(fp, &rw, &pn); rw += t[k].rw; pn += t[k].pn;
+        FILE *o = fopen(tp, "w"); if (!o) continue;
+        fprintf(o, "BEHAVIOR | dec.%s.%s\nKEYWORDS | %s, %s, decision\nSENTENCE | How often the %s choice '%s' ends well (outcome not blocked, miss or refused) in %s's decision ledger.\n"
+                   "SOURCE | measured from state/decisions.txt by dec_bank_update; not hand-authored\nCOUNTS | reward=%ld | punish=%ld | cursor=%ld\nWEIGHT | %.4f\n",
+                game, t[k].act, t[k].act, game, game, t[k].act, game, rw, pn, pos, (double)(rw + 1) / (double)(rw + pn + 2));
+        if (fflush(o) != 0 || ferror(o)) { fclose(o); unlink(tp); continue; }
+        fsync(fileno(o)); fclose(o); rename(tp, fp);
+    }
+    char tc[4300]; snprintf(tc, sizeof tc, "%s.tmp", cp); FILE *c = fopen(tc, "w"); if (!c) return -1;
+    fprintf(c, "%ld\n", pos); fflush(c); fsync(fileno(c)); fclose(c); if (rename(tc, cp) != 0) return -1;
+    return rows;
+}
+/* the weight of one action for this game, or 0.5 (no evidence = no change) when the entry does not exist yet */
+static double dec_weight(const char *bank_dir, const char *game, const char *action) {
+    char fp[4200], ln[300]; snprintf(fp, sizeof fp, "%s/dec_%s_%s.behavior.pdl", bank_dir, game, action); FILE *f = fopen(fp, "r"); if (!f) return 0.5;
+    double w = 0.5; while (fgets(ln, sizeof ln, f)) if (!strncmp(ln, "WEIGHT", 6)) { char *b = strchr(ln, '|'); if (b) w = atof(b + 1); break; }
+    fclose(f); return w < 0 ? 0 : w > 1 ? 1 : w;
+}
 #endif
