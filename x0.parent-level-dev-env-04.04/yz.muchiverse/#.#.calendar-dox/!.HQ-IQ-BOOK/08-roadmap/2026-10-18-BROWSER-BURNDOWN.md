@@ -98,24 +98,45 @@ Three things surfaced while building this baseline. All three are about the
 **measuring equipment**, which is the failure mode this lane has hit more
 than any other.
 
-### 3.1 K3 is not wired, so the milestone bar is currently unenforceable
+### 3.1 K3 is unwired *by design* — and so the milestone bar has no gate
 
 The plan's rule §5.6: *"Milestone claims require K2/K3 evidence, not just
 hermetic PASS."* K3 is `nb_interact_test.sh` — the only suite that drives the
 **live** window through the relay (typing, submit, nav-jump clicks,
-copy/paste). It is **not in `nb_all_tests.sh`**, and it is the only test that
-can catch a focus/typing regression in the live window.
+copy/paste).
 
-So today, every "milestone" claim rests on K2 (live suite), never K3. Wiring
-it is cheap and should land **before** the next milestone claim, not after.
-(It discovers nav numbers from frame dumps and reports SKIP rather than
-FAIL when it cannot, so it is safe to wire.)
+It is **not** in `nb_all_tests.sh`, and correctly so: §3.1 records it as
+"deliberately outside the hermetic runner". It is not hermetic — it needs a
+live window *and* the network (it submits a form to Wikipedia), so putting it
+in the pass/fail bar would make K1 red for environmental reasons rather than
+code reasons. **Do not wire it into K1.**
 
-### 3.2 Four known-flaky suites are *inside* the runner
+The real gap is the other end: the rule says "run it manually before
+milestone claims", and nothing enforces that. The fix is a **milestone gate** —
+a named command whose output is pasted into the milestone note — not a new
+line in the always-green runner. That gate should exist before the next
+milestone claim (sprint A ends with one).
 
-`nb_all_tests.sh` calls `nb_span_drag_test.sh` (T2, measured ~60 % failing on
-the mouse-motion path), `nb_find_test.sh` (~33 % pass), `nb_selrun_test.sh`
-(~50 %), `nb_reach_test.sh`. They read the live clipboard, which has no
+### 3.2 The runner is RED right now — measured, not inferred
+
+**`sh nb_all_tests.sh` at `f6bd309aa` returned `SOME TESTS FAILED`, exit 1.**
+30 suites ran; 3 failed:
+
+```
+FAIL  span mouse drag-select   (T2: no highlight band)
+FAIL  find in page             (no wrap at=0)
+FAIL  row-run selection + copy (no [SEL] line; band not on every selected row)
+```
+
+Every other suite passed, including G2.1, G2.2 (100 %), the gutter control,
+all six G1, zoom, downloads, autofill and reach. So the KPI statuses in §1
+stand — but **standing KPI K1 ("suite green") is FAILING today**, and the
+three red suites are exactly the flaky ones below. That is the honest
+baseline, and it is the reason hygiene comes before feature work in sprint A.
+
+`nb_all_tests.sh` calls `nb_span_drag_test.sh` (T2, the mouse-motion path),
+`nb_find_test.sh`, `nb_selrun_test.sh`, `nb_reach_test.sh` (this one passed).
+They drive selection/find through the live clipboard, which has no
 read-your-writes guarantee (a copy read can return the previous owner's
 bytes).
 
@@ -158,13 +179,16 @@ Milestone 12); `nb_bar_test.sh`/`nb_reach_test.sh` reliability.
 
 ## 5. Do this before the sprint claims a milestone
 
-1. Fix §8.5's "rejected" wording with a pointer to `b03bb8e7f` so zoom is not
-   re-litigated.
-2. Wire `nb_interact_test.sh` (K3) into the runner, or document why not.
-3. Decide the four flaky suites' fate (quarantine vs receipt-fix, ≥10 runs).
-4. Then start sprint A: `nb_flex_test.sh` is already red —
-   worker flex model → manager projection → `nb_gbcr_test.sh` still 100 %
-   after each step.
+1. ~~Fix §8.5's "rejected" wording~~ — **done in this block**: §8.5 now opens
+   with a RESOLVED box pointing at `b03bb8e7f`.
+2. Add the **milestone gate** (run `nb_interact_test.sh`, paste its output into
+   the milestone note). Keep it out of K1.
+3. Decide the three currently-red suites' fate from measured rates
+   (quarantine into an explicitly informational section, or the receipt fix) —
+   ≥10 runs each before believing either direction.
+4. Then start sprint A: `nb_flex_test.sh` is already red — retain the display
+   keyword in `nb_css.c`, worker flex model, then the renderer-half design
+   decision (§6), keeping `nb_gbcr_test.sh` at 100 % after each step.
 
 ---
 
