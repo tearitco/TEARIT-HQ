@@ -275,3 +275,24 @@ Every daemon that renders or exports for a window asks first whether the window 
 10. Rank the whole machine before blaming the house; a foreign process (another agent, the browser) can be the hog.
 11. Clean up after every test: stray `lc_clock`, scratch board stacks, scratch folders; no `pkill -f`.
 12. Record the measured before/after in the commit message, with the window length.
+
+## 7. Hard freezes and the CPU quota guard (2026-10-17)
+
+**What happened.** The machine (Surface Laptop 3, Ryzen 7, 8 threads) froze hard four times: 2026-10-15 twice, 2026-10-16 about 20:09, 2026-10-17 about 00:40. The journal of each boot simply stops mid-activity: no kernel panic, no out-of-memory kill, no disk or NVMe error, no machine-check line. The kernel logs `ACPI thermal: [Firmware Bug]: No valid trip points`, so Linux is not enforcing thermal limits on this firmware, and the `linux-surface` kernel is not installed (stock 6.8.0-138-generic). Temperatures read normal when idle (36 to 43 C), so a live catch was not possible. Cause is **not proven**; the likeliest is sustained all-core load (test suites, builds, parallel agents) meeting firmware thermal/power handling.
+
+**What we do about it.** A cap on how much CPU our own heavy jobs may take, which is cheap and removes the likeliest trigger.
+
+| Piece | Where | What |
+|---|---|---|
+| `cpu-quota.sh <cmd...>` | `$.crypts/cpu-quota.sh` | the one entry point; env `QUOTA_CPU` (percent of one core, default 300 of 800), `QUOTA_MEM` (default 3G), `QUOTA_NICE` (15). Prints the tier it used on stderr. Passes the command's exit status through. |
+| tier 1 | systemd user scope with `CPUQuota=` | a kernel-enforced cap. Needs the cpu controller delegated to user services. **Not delegated here** (measured: `user@1000.service` has only `memory pids`), so the script detects this and skips it. |
+| tier 2 | `$.crypts/ops/cpu_cap.c` -> `ops/+x/cpu_cap.+x` | our own limiter: runs the job in its own process group and, every 100 ms, compares the group's CPU time (read from /proc, children included) with `cap x elapsed`; when ahead it SIGSTOPs the whole group until the budget catches up, then SIGCONTs. Only ever signals its own child group. Memory is capped through the user scope (`MemoryMax`) when one is available. |
+| tier 3 | nice + ionice only | used if neither of the above exists. No cap. |
+
+**Measured (2026-10-17, 4 to 8 busy loops, other agents running, so noise is real).** Uncapped: 340 to 516 %. Cap 300: 288 to 305 %. Cap 200: about 330 % (4 loops, overshoot). Cap 100: 150 to 200 %. So it holds a cap of 300 well, and is loose (up to about 1.8x) for small caps because the group runs a burst after every release. It is a ceiling against pinning all 8 threads, not a precise governor. `cpulimit` 2.4 (installed) was measured too and is NOT usable: it throttles only the top process (732 % for a job whose children did the work), and `timeout` puts its child in a new process group, which also escapes cpu_cap (use `timeout --foreground`).
+
+**Use it.** `$.crypts/cpu-quota.sh gcc ...`, `QUOTA_CPU=200 $.crypts/cpu-quota.sh sh XO/run_all.sh`. All multi-minute suites, builds, TTS and ffmpeg runs, and every subagent brief, should use it. Build the limiter once: `gcc -O2 -Wall -Wextra -o '$.crypts/ops/+x/cpu_cap.+x' '$.crypts/ops/cpu_cap.c'`.
+
+**The real fix needs root (owner action, one time).** Delegate the cpu controller so tier 1 works: `sudo mkdir -p /etc/systemd/system/user@.service.d && printf '[Service]\nDelegate=cpu cpuset io memory pids\n' | sudo tee /etc/systemd/system/user@.service.d/delegate.conf`, then log out and in. Also worth doing, as freeze mitigations: install the `linux-surface` kernel and check for a firmware/BIOS update for the Laptop 3. Both need sudo and are not done.
+
+**Rules.** Never run more than two CPU-heavy things at once; bound every test loop; a freeze that leaves no log is a hardware/firmware suspect first, our code second, but our code is the part we can fix.
