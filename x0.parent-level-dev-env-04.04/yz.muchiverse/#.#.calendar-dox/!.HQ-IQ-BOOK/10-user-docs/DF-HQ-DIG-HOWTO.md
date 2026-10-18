@@ -39,7 +39,7 @@ The top bar has a **Help** tab (2026-10-17): Open help, Next page, Prev page, Cl
 
 ## The log lines (grok's spec, 2026-10-17)
 
-Each resolved event is one line in the chat scroll, `D1 08:02 Rex crafts bandage`: the game clock (left out when the game has no clock yet), the actor, a present-tense sentence. Finds and crafts that worked are green, hits and refusals grey. Examples: `Rex finds a rag`, `Rex cannot craft bandage: need the inputs`, `Rex hits the zed: torso 2/3`, `the zed hits Rex: leg_l 4/5`, `Rex cannot place stone: the cell is taken`. The scroll shows ten lines (grok asked for twelve; ten is what fits the pinned bar, every text row is about 30 px tall). Not built: door and day-change lines (the pets already say "went through the door"), scroll back.
+Each resolved event is one line in the chat scroll, `D1 08:02 Rex crafts bandage`: the game clock (left out when the game has no clock yet), the actor, a present-tense sentence. Finds and crafts that worked are green, hits and refusals grey. Examples: `Rex finds a rag`, `Rex cannot craft bandage: need the inputs`, `Rex hits the zed: torso 2/3`, `the zed hits Rex: leg_l 4/5`, `Rex cannot place stone: the cell is taken`. The scroll shows ten lines (grok asked for twelve; ten is what fits the pinned bar, every text row is about 30 px tall). Door crossings of the controlled pet are `D1 08:20 Rex moves to the Cellar`, and each new game day is `D2 00:00 the day turns` (the last day is kept in `state/clock_lastday.txt`). Not built: scroll back.
 
 ## Tabs (2026-10-17, from grok's list: Designations, Build, Stocks, Units)
 
