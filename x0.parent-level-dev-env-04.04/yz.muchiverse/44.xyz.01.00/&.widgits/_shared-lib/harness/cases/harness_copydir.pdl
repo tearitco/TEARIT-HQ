@@ -1,0 +1,18 @@
+# harness_copydir - the case verb COPYDIR (added 2026-10-17 for the playthrough harnesses): copies a tree, skips names at any depth, keeps modes, skips symlinks.
+RESULTS | ../results/harness_copydir.txt
+CASE    | copydir
+SCRATCH |
+COPYDIR | &.widgits/_shared-lib/harness/fixtures/copydir | out | skipme
+EXPECT_FILE   | out/a.txt | alpha\n | top-file-copied
+EXPECT_FILE   | out/sub/b.txt | beta\n | nested-file-copied
+EXPECT_FILE   | out/sub/deep/d.txt | delta\n | deeper-file-copied
+EXPECT_NOFILE | out/skipme | skipped-name-as-top-file-left-out
+EXPECT_NOFILE | out/sub/skipme | skipped-name-as-nested-dir-left-out
+EXPECT_NOFILE | out/sub/skipme/c.txt | nothing-below-a-skipped-dir
+RUN | test | -x | $T/out/tool.x
+EXPECT_EXIT | 0 | exec-mode-kept
+# no skip list: everything comes across
+COPYDIR | &.widgits/_shared-lib/harness/fixtures/copydir | all
+EXPECT_FILE | all/sub/skipme/c.txt | gamma\n | no-skip-list-copies-all
+EXPECT_FILE | all/skipme | top skip file\n | no-skip-list-copies-top-file
+CLEAN |

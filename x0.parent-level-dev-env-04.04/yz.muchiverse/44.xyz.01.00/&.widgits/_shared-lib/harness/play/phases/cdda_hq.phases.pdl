@@ -1,0 +1,100 @@
+# cdda_hq.phases.pdl - scripted playthrough of cdda-hq through its REAL verbs (roadmap C3). Format: BOOK 06-testing/GAME-PLAYTHROUGH-HARNESSES.md
+# Header rows:  GAME | <folder under @.apps> | <binary base name>      INIT | <path in the game folder> | <text>      NEEDS | <path under $HOUSE> | <dst under $T, default same>
+# A phase:      PHASE | <id> | <title> | <extra keywords>       then rows until the next PHASE:
+#   DO | verb | args...      run the game binary         PUT | path | text         write a file in the game folder (state surgery: say so in a NOTE)
+#   SAY / NOSAY / SAYIS | text | label       the last DO's output contains / lacks / equals
+#   HAS / LACKS / FILEIS | path | text | label      EXISTS / NOFILE | path | label      COUNT | path | line-prefix | n | label      UI | key | value | label      UIKEY | key | label
+#   MARK | var | path | key    CAP | var    DELTA | before | after | n | label    EQ / NE | var | var | label    CP | src | dst    SUM | var | dir
+GAME | cdda-hq | cdda_hq
+INIT | state/flag_int.txt | 1
+INIT | state/flag_running.txt | 1
+INIT | state/active.txt | rex\n
+INIT | state/pet_rex.txt | room=castle\nx=2\ny=3\ndir=3\nsteps=1\ntx=-1\nty=-1\n
+
+PHASE | p1_scavenge | scavenge two rags and see them in the bag, the ledger and the Inventory tab | bag, rag, inventory
+DO | bag
+SAY | bag empty | empty-bag-at-start
+DO | craft | bandage
+SAY | need the inputs | craft-refused-without-rag
+DO | scavenge
+SAY | found a rag | first-scavenge
+DO | scavenge
+SAY | found a rag | second-scavenge
+DO | bag
+SAYIS | rag 2 | bag-holds-two-rags
+DO | inventory
+SAY | rex:rag=2 | ledger-replay-says-two-rags
+UI | n_inv | 1 | inventory-tab-has-one-row
+UI | inv_0_label | rag x2 | inventory-tab-row-is-rag-x2
+HAS | state/chat.txt | Rex finds a rag | chat-logs-the-find
+
+PHASE | p2_craft | craft a bandage: one rag becomes a bandage and the clock moves by the recipe minutes | craft, recipe, bandage, clock
+DO | clock | rate | hour
+MARK | c0 | state/clock_root/#.desktop/clocks/rpg.pdl | game_time_epoch_ms
+DO | craft | bandage
+SAY | crafted bandage | craft-succeeds
+MARK | c1 | state/clock_root/#.desktop/clocks/rpg.pdl | game_time_epoch_ms
+DELTA | c0 | c1 | 60000 | clock-advanced-exactly-one-minute
+DO | bag
+SAYIS | rag 1, bandage 1 | bag-after-craft
+UI | n_craft | 1 | craft-tab-has-the-recipe
+UI | craft_0_label | Craft bandage 1m | craft-tab-row-shows-minutes
+UI | inv_1_label | bandage x1 | inventory-tab-shows-the-bandage
+
+PHASE | p3_door | walk through the castle stair door to the cellar | door, step, cellar, room
+NOTE | state surgery: put Rex on the cell below the castle's stair door (the same start as XO/test_cdda_c1.sh)
+PUT | state/pet_rex.txt | room=castle\nx=2\ny=3\ndir=3\nsteps=1\ntx=-1\nty=-1\n
+DO | step | 0 | -1
+SAY | now in the Cellar | door-message
+HAS | state/pet_rex.txt | room=cellar | rex-is-in-the-cellar
+COUNT | state/chat.txt | D[0-9]* [0-9:]* Rex moves to the Cellar$ | 1 | stamped-moves-to-the-line
+UI | look_3_label | to Castle | look-tab-lists-the-way-back
+
+PHASE | p4_strike | strike the zed twice: the wound rows change and the zed answers | strike, wounds, zed, body
+NOTE | state surgery: zed one cell below Rex (the cellar default spot is 6,7)
+PUT | state/zed.txt | room=cellar\nx=6\ny=7\ndir=0\n
+PUT | state/pet_rex.txt | room=cellar\nx=6\ny=6\ndir=3\nsteps=1\ntx=-1\nty=-1\n
+DO | wounds
+SAYIS | nobody here is wounded | no-wounds-yet
+DO | strike
+SAY | zed | first-strike-reports-the-zed
+DO | wounds
+SAY | zed | wounds-lists-the-zed
+CAP | w1
+HAS | state/wounds.pdl | WOUND \p zed | wound-table-has-zed-rows
+HAS | state/chat.txt | the zed hits Rex | zed-answers
+DO | strike
+DO | wounds
+CAP | w2
+NE | w1 | w2 | wounds-differ-after-the-second-strike
+UI | n_body | 6 | body-tab-has-six-parts
+
+PHASE | p5_saveload | save to slot 2, new game wipes the bag and wounds, load slot 2 brings them back | save, load, newgame, slot
+DO | inventory
+CAP | inv_saved
+DO | save | 2
+SAY | saved to slot 2 | save-reports-slot-2
+DO | newgame
+SAY | new game started | newgame-reports
+DO | bag
+SAY | bag empty | newgame-empties-the-bag
+NOFILE | state/wounds.pdl | newgame-removes-wounds
+DO | load | 2
+SAY | loaded from slot 2 | load-reports-slot-2
+DO | inventory
+CAP | inv_loaded
+EQ | inv_saved | inv_loaded | load-restores-the-same-bags
+EXISTS | state/wounds.pdl | load-brings-wounds-back
+
+PHASE | p6_replay | a fresh game fed the same event ledger replays to the same bags | replay, ledger, determinism
+DO | inventory
+CAP | inv_before
+CP | state/events.txt | state/events.keep
+DO | newgame
+DO | inventory
+SAY | (nothing) | fresh-game-has-nothing
+CP | state/events.keep | state/events.txt
+DO | inventory
+CAP | inv_replayed
+EQ | inv_before | inv_replayed | replay-equals-the-original
+COUNT | state/events.txt | EVENT\p | 8 | ledger-has-the-event-rows

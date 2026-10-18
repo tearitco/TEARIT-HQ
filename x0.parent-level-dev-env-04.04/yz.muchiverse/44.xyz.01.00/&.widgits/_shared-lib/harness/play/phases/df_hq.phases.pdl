@@ -1,0 +1,95 @@
+# df_hq.phases.pdl - scripted playthrough of df-hq through its REAL verbs (roadmap D4). Row formats: see cdda_hq.phases.pdl and BOOK 06-testing/GAME-PLAYTHROUGH-HARNESSES.md
+GAME | df-hq | df_hq
+INIT | state/flag_int.txt | 1
+INIT | state/flag_running.txt | 1
+INIT | state/active.txt | pip\n
+INIT | state/pet_pip.txt | room=castle\nx=5\ny=3\ndir=2\nsteps=1\ntx=-1\nty=-1\n
+INIT | state/pet_orin.txt | room=castle\nx=4\ny=6\ndir=0\nsteps=1\ntx=-1\nty=-1\n
+
+PHASE | p1_mark | mark a 3x3 block of castle rock for digging with dig_area, cancel one mark and set it again | dig_area, undig, designate, jobs
+DO | dig_area | 9 | 3
+SAY | corner 1 at 9,3 | first-corner-stored
+DO | dig_area | 11 | 5
+SAY | 9 cells marked | area-marks-nine-cells
+COUNT | state/jobs.txt | DESIGNATE\p | 9 | nine-designate-rows
+DO | undig | 9 | 3
+SAY | cancelled | undig-reports
+COUNT | state/jobs.txt | CANCEL\p | 1 | one-cancel-row
+DO | dig | 9 | 3
+SAY | marked | dig-marks-the-cell-again
+COUNT | state/jobs.txt | DESIGNATE\p | 10 | ten-designate-rows-after-the-re-mark
+UI | stock_total | Stone total 0 | stocks-tab-starts-at-zero
+UI | n_unit | 6 | units-tab-lists-six-dwarves
+
+PHASE | p2_dig | the controlled dwarf walks and digs all nine marked cells: DIG rows, give_item events, stone carried | walk, dig, stone, event, labor
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+COUNT | state/events.txt | DIG\p | 9 | nine-dig-rows
+COUNT | state/jobs.txt | DONE\p | 9 | nine-done-rows
+COUNT | state/events.txt | EVENT\p[0-9]*\p[a-z]*\pgive_item\pstone | 9 | nine-give-item-stone-events
+COUNT | state/events.txt | EVRES\p | 9 | nine-resolved
+COUNT | state/events.txt | REJECT\p | 0 | no-rejects
+DO | inventory
+SAY | pip:stone=9 | pip-carries-nine-stone
+HAS | state/chat.txt | Pip finds a stone | chat-logs-the-find
+
+PHASE | p3_tabs | the Stocks and Units tab rows show the stone | stocks, units, tabs, ui
+DO | status
+UI | stock_total | Stone total 9 | stocks-total-nine
+UI | n_stock | 1 | stocks-has-one-row
+UI | stock_0_label | Pip: stone 9 | stocks-row-names-the-digger
+UI | stock_0_key | pip | stocks-row-key
+UI | unit_2_label | Pip, Castle, 9 stone | units-row-for-pip-shows-nine-stone
+
+PHASE | p4_saveload | save to slot 3, new game puts the rock back and wipes the stone, load slot 3 restores the dug cells | save, load, newgame, slot, rock
+DO | save | 3
+SAY | saved to slot 3 | save-reports-slot-3
+DO | newgame
+SAY | new game started | newgame-reports
+DO | inventory
+SAYIS | (nothing) | newgame-empties-the-bags
+NOFILE | state/jobs.txt | newgame-clears-the-marks
+DO | status
+UI | stock_total | Stone total 0 | stocks-tab-back-to-zero
+DO | load | 3
+SAY | loaded from slot 3 | load-reports-slot-3
+DO | inventory
+SAY | pip:stone=9 | load-restores-the-stone
+COUNT | state/events.txt | DIG\p | 9 | load-restores-the-dig-rows
+COUNT | state/jobs.txt | DESIGNATE\p | 10 | load-restores-the-marks-9-plus-the-re-mark
+DO | status
+UI | stock_total | Stone total 9 | stocks-tab-says-nine-again
+
+PHASE | p5_replay | a fresh game fed the same event ledger replays to the same stone | replay, ledger, determinism
+DO | inventory
+CAP | inv_before
+CP | state/events.txt | state/events.keep
+DO | newgame
+DO | inventory
+SAYIS | (nothing) | fresh-game-has-nothing
+CP | state/events.keep | state/events.txt
+DO | inventory
+CAP | inv_replayed
+EQ | inv_before | inv_replayed | replay-equals-the-original

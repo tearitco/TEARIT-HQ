@@ -1,0 +1,26 @@
+# Behavior Bank entry for the harness `play_cdda_hq` (see HARNESS-BEHAVIOR-BANK-DESIGN.md). Weights on SYNONYM / SLOT / CORPUS rows are hand-seeded; only WEIGHT (from COUNTS) is measured.
+BEHAVIOR | harness.play_cdda_hq
+KIND | spoke
+KEYWORDS | cdda, cdda-hq, playthrough, scavenge, craft, bandage, strike, zed, wounds, cellar, door, save, load, newgame, replay, inventory tab, body tab
+SYNONYM | survival game | 0.70
+SYNONYM | zombie | 0.60
+SYNONYM | scripted play | 0.90
+SYNONYM | play test | 0.80
+SYNONYM | smoke test | 0.60
+SENTENCE | Plays cdda-hq from a fresh scratch copy with its real verbs: scavenge two rags, craft a bandage and check the clock moved by exactly the recipe minutes, walk through the castle stair door to the cellar, strike the zed until the wound rows change and the zed answers.
+SENTENCE | Then saves to slot 2, starts a new game, loads the slot back, and replays the event ledger in a fresh game to prove the bags are a pure function of the ledger; every phase checks the ledger, the ui.txt tab rows and the files.
+SLOT | 0 | POINTS_TO=survival | WEIGHT=0.80
+SLOT | 1 | POINTS_TO=crafting | WEIGHT=0.80
+SLOT | 2 | POINTS_TO=combat | WEIGHT=0.70
+SLOT | 3 | POINTS_TO=ledger | WEIGHT=0.70
+SLOT | 4 | POINTS_TO=save-load | WEIGHT=0.60
+CORPUS | game-engine | WEIGHT=0.90
+CORPUS | ai-layers | WEIGHT=0.60
+SEQUENCE | 1 | exec ./ops/+x/playthrough_op.+x compile play/phases/cdda_hq.phases.pdl cases
+SEQUENCE | 2 | exec ./ops/+x/harness_case_op.+x cases/play_cdda_hq.pdl
+SEQUENCE | 3 | exec ./ops/+x/harness_verdict_op.+x cases/play_cdda_hq.pdl
+SEQUENCE | 4 | exec ./ops/+x/playthrough_op.+x ledger play/phases/cdda_hq.phases.pdl cases
+SEQUENCE | 5 | exec ./ops/+x/harness_bank_op.+x cases/play_cdda_hq.pdl
+SOURCE | hand-authored 2026-10-17 (claude, play lane); masters/synonyms/weights are seeds awaiting owner validation
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

@@ -1,0 +1,99 @@
+# mcl_hq.phases.pdl - scripted playthrough of mcl-hq through its REAL verbs (roadmap D4/C3 family). Row formats: see cdda_hq.phases.pdl and BOOK 06-testing/GAME-PLAYTHROUGH-HARNESSES.md
+GAME | mcl-hq | mcl_hq
+INIT | state/flag_int.txt | 1
+INIT | state/flag_running.txt | 1
+INIT | state/active.txt | rex\n
+INIT | state/pet_rex.txt | room=city\nx=14\ny=4\ndir=2\nsteps=1\ntx=-1\nty=-1\n
+
+PHASE | p1_mine | mine a stone and two logs; mining an empty cell is refused | mine, stone, log, bag
+DO | bag
+SAY | bag empty | empty-bag-at-start
+DO | mine | 12 | 9
+SAY | no block at 12,9 | mining-an-empty-cell-is-refused
+DO | mine | 15 | 4
+SAY | mined stone (bag 1) | mine-stone
+DO | mine | 15 | 7
+SAY | mined log (bag 1) | mine-first-log
+DO | mine | 15 | 8
+SAY | mined log (bag 2) | mine-second-log
+DO | bag
+SAYIS | stone 1, log 2 (holding stone) | bag-holds-stone-and-two-logs
+DO | inventory
+SAY | rex:stone=1 | ledger-says-one-stone
+SAY | rex:log=2 | ledger-says-two-logs
+UI | n_inv | 2 | inventory-tab-has-two-rows
+UI | inv_0_label | stone x1 (held) | inventory-tab-stone-row-is-held
+COUNT | state/events.txt | EVENT\p | 3 | three-event-rows
+COUNT | state/events.txt | EVRES\p | 3 | three-resolved-rows
+
+PHASE | p2_craft | craft planks twice from the logs; the third craft has no log | craft, planks, recipe
+DO | craft | planks
+SAY | crafted planks x4 (bag 4) | first-craft
+DO | bag
+SAYIS | stone 1, log 1, planks 4 (holding stone) | one-log-used
+DO | craft | planks
+SAY | crafted planks x4 (bag 8) | second-craft
+DO | craft | planks
+NOSAY | crafted | third-craft-has-no-log
+DO | bag
+SAYIS | stone 1, planks 8 (holding stone) | bag-after-two-crafts
+DO | craft | sword
+SAY | no recipe named sword | unknown-recipe-refused
+UI | n_rec | 1 | craft-tab-one-recipe
+UI | rec_0_label | planks x4 | craft-tab-recipe-row
+
+PHASE | p3_place | hold planks and place one; a taken cell, scenery, and a block not in the bag are refused; a placed block stops a walker until it is mined | hold, place, refuse, block, step
+DO | hold
+SAY | holding planks (8) | hold-switches-to-planks
+DO | place | 15 | 4
+SAY | placed planks at 15,4 (bag 7) | place-succeeds
+DO | place | 15 | 5
+SAY | cannot place at 15,5: not free | place-on-a-block-refused
+DO | place | 9 | 2
+SAY | cannot place at 9,2: not free | place-on-scenery-refused
+DO | place | dirt | 12 | 9
+SAY | dirt: none to place | place-a-block-not-in-the-bag-refused
+HAS | state/chat.txt | Rex cannot place planks: the cell is taken | refusal-is-logged
+DO | bag
+SAYIS | stone 1, planks 7 (holding planks) | bag-after-place
+NOTE | state surgery: put Rex back on the cell left of the placed block
+PUT | state/pet_rex.txt | room=city\nx=14\ny=4\ndir=2\nsteps=1\ntx=-1\nty=-1\n
+DO | step | 1 | 0
+HAS | state/pet_rex.txt | x=14 | placed-block-stops-the-walker
+DO | mine | 15 | 4
+SAY | mined planks (bag 8) | mine-the-placed-block
+DO | step | 1 | 0
+HAS | state/pet_rex.txt | x=15 | walker-passes-once-mined
+
+PHASE | p4_saveload | save to slot 1, new game brings the rock back and empties the bag, load slot 1 restores both | save, load, newgame, slot
+DO | inventory
+CAP | inv_saved
+DO | save | 1
+SAY | saved to slot 1 | save-reports-slot-1
+DO | newgame
+SAY | new game started | newgame-reports
+DO | bag
+SAY | bag empty | newgame-empties-the-bag
+DO | mine | 15 | 4
+SAY | mined stone (bag 1) | newgame-stone-block-is-back
+DO | load | 1
+SAY | loaded from slot 1 | load-reports-slot-1
+DO | inventory
+CAP | inv_loaded
+EQ | inv_saved | inv_loaded | load-restores-the-same-bags
+
+PHASE | p5_replay | a fresh game fed the same event ledger replays to the same bags AND the same blocks | replay, ledger, determinism, blocks
+DO | inventory
+CAP | inv_before
+CP | state/events.txt | state/events.keep
+DO | newgame
+DO | inventory
+SAYIS | (nothing) | fresh-game-has-nothing
+DO | mine | 15 | 7
+SAY | mined log | fresh-game-has-the-log-block-back
+CP | state/events.keep | state/events.txt
+DO | inventory
+CAP | inv_replayed
+EQ | inv_before | inv_replayed | replay-equals-the-bags
+DO | mine | 15 | 7
+SAY | no block at 15,7 | replay-reopens-the-mined-block

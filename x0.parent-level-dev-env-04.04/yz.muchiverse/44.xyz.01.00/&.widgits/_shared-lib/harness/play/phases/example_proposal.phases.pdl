@@ -1,0 +1,20 @@
+# example_proposal.phases.pdl - what a game AI would hand to the runner: a SHORT phase list it proposed itself (here: "get a stone and put it down").
+# Run it:  ops/+x/playthrough_op.+x run play/phases/example_proposal.phases.pdl     (prints one PLAYTHROUGH line and one line per phase with its live weight; exit 0 = all checks passed)
+# The phase ids (mine_stone, put_it_down) are the proposer's own; the bank entry of a phase is keyed <game>__<phase id>, so the same id proposed again adds to the same weight.
+GAME | mcl-hq | mcl_hq
+INIT | state/flag_int.txt | 1
+INIT | state/flag_running.txt | 1
+INIT | state/active.txt | rex\n
+INIT | state/pet_rex.txt | room=city\nx=14\ny=4\ndir=2\nsteps=1\ntx=-1\nty=-1\n
+
+PHASE | mine_stone | mine the stone block in front of Rex | mine, stone
+DO | mine | 15 | 4
+SAY | mined stone (bag 1) | the-stone-is-in-the-bag
+DO | inventory
+SAY | rex:stone=1 | the-ledger-agrees
+
+PHASE | put_it_down | put the stone on a free cell and see it leave the bag | place, stone
+DO | place | 15 | 4
+SAY | placed stone at 15,4 (bag 0) | placed
+DO | inventory
+NOSAY | rex:stone=1 | the-bag-no-longer-holds-the-stone

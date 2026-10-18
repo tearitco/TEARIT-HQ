@@ -1,0 +1,5 @@
+# harness_copydir.pal - the COPYDIR case verb (cases/harness_copydir.pdl). Read results/harness_copydir.txt.verdict.txt
+exec ./ops/+x/harness_case_op.+x cases/harness_copydir.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/harness_copydir.pdl
+exec ./ops/+x/harness_bank_op.+x cases/harness_copydir.pdl
+halt
