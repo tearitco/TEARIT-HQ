@@ -13026,17 +13026,29 @@ static void handle_key(KeySym ks, char ch) {
     /* INLINE SPANS step 5: an active segment cursor is the innermost
      * thing Escape closes (same "closes THAT first" order as the armed
      * field and the dropdown below) - back to row-level, focus stays. */
-    if (ks == XK_Escape && g_seg_idx >= 0 && g_seg_nav == g_focus_nav) {
-        /* REAL FIX 2026-10-17: Escape cleared the cursor but LEFT THE ANCHOR
-         * standing, so the triple was left half-live - anchor valid, cursor
-         * gone. seg_anchor_on() happens to mask it (it also requires
-         * seg_cursor_on), so it never drew a band, but the stale anchor
-         * survived into the next row and fought the fresh-cursor path there.
-         * Leaving no selection behind means clearing all of it. */
+    if (ks == XK_Escape && g_seg_idx >= 0) {
+        /* REAL FIX 2026-10-17, the hijack. This used to require
+         * `g_seg_nav == g_focus_nav` to clear anything. A segment cursor left
+         * on a row that is NOT the focused one therefore survived Escape - and
+         * that is the dangerous case, because while a cursor is live, digits
+         * address the focused row's LINKS instead of row numbers (see the
+         * g_seg_dot_armed / digit branch below). So the very next row jump was
+         * swallowed as link input, focus never moved, and every key after it
+         * landed on the wrong row.
+         *
+         * Measured live: the Shift+Right keys went to r2 (nav 2) while the copy
+         * targeted r4 (nav 3), so seg_cursor_on() was false, no band was drawn,
+         * and Ctrl+C copied the whole 205-character label. This is what made the
+         * selection suites ~40% flaky - it fires only when the previous step
+         * happened to leave a cursor on a non-focused row.
+         *
+         * Clearing a cursor that is not on the focused row costs nothing: it
+         * draws nothing anyway (seg_cursor_on is false for it). Escape still
+         * falls through when the cursor was elsewhere, so it can go on closing
+         * whatever else is open - only the hijack is removed. */
         g_seg_idx = -1;
         g_seg_anchor = -1;
-        redraw();
-        return;
+        if (g_seg_nav == g_focus_nav) { redraw(); return; }
     }
     /* REAL, NEW 2026-09-03 (direct instruction: "esc closes drop down
      * and deactivates", matching the taskbar's own separate ktb_hq_
