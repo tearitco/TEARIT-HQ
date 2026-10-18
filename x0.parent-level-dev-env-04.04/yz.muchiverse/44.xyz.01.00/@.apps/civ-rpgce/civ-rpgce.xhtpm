@@ -41,7 +41,6 @@
       <item id="mn-hotbar" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Hotbar show / hide" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' toggle hb"/>
       <item id="mn-control" class="rp-menu-row dropdown-child" target_id="tb-menu" label="${control_label} (switch: Tab)" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' control"/>
       <item id="mn-voice" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Voice on / off" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' toggle voice"/>
-      <item id="mn-view" class="rp-menu-row dropdown-child" target_id="tb-menu" label="View: 2D / 3D / glyph" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' view"/>
       <item id="mn-reset" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Reset house (keeps a backup)" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' reset"/>
       <item id="mn-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-menu" label="- cancel -" action="void"/>
       <item id="pm-mode" class="rp-menu-row dropdown-child" target_id="tb-player" label="${mode_label}" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' mode"/>

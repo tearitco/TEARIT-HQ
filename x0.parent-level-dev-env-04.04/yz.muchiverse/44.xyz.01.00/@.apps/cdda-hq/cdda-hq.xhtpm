@@ -46,7 +46,6 @@
       <item id="mn-hotbar" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Hotbar show / hide" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' toggle hb"/>
       <item id="mn-control" class="rp-menu-row dropdown-child" target_id="tb-menu" label="${control_label} (switch: Tab)" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' control"/>
       <item id="mn-voice" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Voice on / off" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' toggle voice"/>
-      <item id="mn-view" class="rp-menu-row dropdown-child" target_id="tb-menu" label="View: 2D / 3D / glyph" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' view"/>
       <item id="mn-reset" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Reset house (keeps a backup)" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' reset"/>
       <item id="hp-open" class="rp-menu-row dropdown-child" target_id="tb-help" label="Open help" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' helppanel open"/>
       <item id="hp-next" class="rp-menu-row dropdown-child" target_id="tb-help" label="Next page" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' helppanel next"/>

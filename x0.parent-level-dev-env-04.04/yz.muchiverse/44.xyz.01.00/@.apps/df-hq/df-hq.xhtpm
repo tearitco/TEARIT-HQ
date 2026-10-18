@@ -46,7 +46,6 @@
       <item id="mn-hotbar" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Hotbar show / hide" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' toggle hb"/>
       <item id="mn-control" class="rp-menu-row dropdown-child" target_id="tb-menu" label="${control_label} (switch: Tab)" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' control"/>
       <item id="mn-voice" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Voice on / off" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' toggle voice"/>
-      <item id="mn-view" class="rp-menu-row dropdown-child" target_id="tb-menu" label="View: 2D / 3D / glyph" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' view"/>
       <item id="mn-dig" class="rp-menu-row dropdown-child" target_id="tb-desig" label="Mine: mark in front" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' dig"/>
       <item id="mn-dig-area" class="rp-menu-row dropdown-child" target_id="tb-desig" label="Mine area: corner / area" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' dig_area"/>
       <item id="mn-undig" class="rp-menu-row dropdown-child" target_id="tb-desig" label="Mine: cancel the mark" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' undig"/>

@@ -464,7 +464,7 @@ status() {
           hv=1; [ "$(cat "$SHARED/hotbar_hidden.txt" 2>/dev/null)" = 1 ] && hv=""
           hn=${n:-0}; [ "$hn" -gt 5 ] && hn=5      # the bar shows the first five items (it must fit over the 360 px picture)
           printf 'hb_visible=%s\nhb_n_slots=%s\n' "$hv" "$hn"
-          cv=1; [ "$(cat "$SHARED/chat_hidden.txt" 2>/dev/null)" = 1 ] && cv=""; printf 'chat_visible=%s\n' "$cv"
+          cv=1; [ "$(cat "$SHARED/chat_hidden.txt" 2>/dev/null)" = 1 ] && cv=""; printf 'chat_visible=%s\n' "$cv"; lv=""; [ "$(cat "$SHARED/left_hidden.txt" 2>/dev/null)" = 0 ] && lv=1; printf 'left_visible=%s\n' "$lv"      # the info bar starts HIDDEN here (file 0 = shown): the window is only about 840 px wide and chat is already pinned
           selname=$(sed -n "s/^slot_${sel:-0}=.*|//p" "$PET/inv_proj.txt" 2>/dev/null | head -1); printf 'hb_title=%s - slot: %s\n' "$(getv name_id)" "${selname:-empty}"
           [ -f "$PET/inv_proj.txt" ] && awk -F'[=|]' -v s="${sel:-0}" '/^slot_/{i=substr($1,6)+0; if (i>4) next; printf "hbs_%d_text=%s\nhbs_%d_cls=%s\n", i, $2, i, (i==s ? "hb-sel" : "")}' "$PET/inv_proj.txt"; }
     } > "$SHARED/ui.tmp.$$"; if cmp -s "$SHARED/ui.tmp.$$" "$SHARED/ui.txt"; then rm -f "$SHARED/ui.tmp.$$"; else mv -f "$SHARED/ui.tmp.$$" "$SHARED/ui.txt"; fi; printf '%s\n' "$PET" > "$SHARED/active_dir.txt"
@@ -476,7 +476,7 @@ status() {
 # (and logged), exactly like Doom's play flag. The window shows it as a traffic light (green = started, red = stopped).
 running() { [ "$(cat "$PET/running.txt" 2>/dev/null)" = 1 ]; }
 case "$VERB" in
-    start|stop|ai_step|world_expand|explored|buy|sell|teach_me|study|lessons|lesson_accept|lesson_reject|help|tip|land_price|build_building|chat_toggle|phones|exchange|call|build_room|map|listen|chat_send|clock_event|time_rate|time_advance|time_reinstall|status|stats|new_pet|new_game|save_slot|load_slot|fire|gen_events|new_event|menu_group|menu_toggle|inv_toggle|open_events|teleport|hotbar_toggle|interact|player|party_toggle|view|select|world_move|world_talk|"") ;;
+    start|stop|ai_step|world_expand|explored|buy|sell|teach_me|study|lessons|lesson_accept|lesson_reject|help|tip|land_price|build_building|chat_toggle|left_toggle|phones|exchange|call|build_room|map|listen|chat_send|clock_event|time_rate|time_advance|time_reinstall|status|stats|new_pet|new_game|save_slot|load_slot|fire|gen_events|new_event|menu_group|menu_toggle|inv_toggle|open_events|teleport|hotbar_toggle|interact|player|party_toggle|view|select|world_move|world_talk|"") ;;
     *) if ! running && [ "${PET_TRAIN:-0}" != 1 ]; then mkdir -p "$PET"; printf '%s | stopped | ignored %s\n' "$(date '+%H:%M:%S')" "$VERB" >> "$PET/log.txt"
            case "$VERB" in chat_input|chat|chat_send) printf '(the pet is stopped - press Play first)\n' >> "$PET/chat.txt"; status >/dev/null 2>&1;; esac; exit 0; fi ;;
 esac
@@ -713,6 +713,7 @@ A: <the answer>"
     menu_toggle) need_pet; if [ "$(cat "$PET/menu_open.txt" 2>/dev/null)" = 1 ]; then echo 0 > "$PET/menu_open.txt"; else echo 1 > "$PET/menu_open.txt"; fi; status >/dev/null ;;
     grant) need_pet; inv_add "$ARG" "${3:-1}"; printf '%s | gift | %s x%s\n' "$(date '+%H:%M:%S')" "$ARG" "${3:-1}" >> "$PET/log.txt"; status >/dev/null ;;     # the master gives the pet an item
     menu_group) need_pet; printf '%s\n' "$ARG" > "$PET/menu_group.txt"; status >/dev/null ;;
+    left_toggle) need_pet; if [ "$(cat "$SHARED/left_hidden.txt" 2>/dev/null)" = 0 ]; then echo 1 > "$SHARED/left_hidden.txt"; else echo 0 > "$SHARED/left_hidden.txt"; fi; status >/dev/null ;;
     chat_toggle) need_pet; if [ "$(cat "$SHARED/chat_hidden.txt" 2>/dev/null)" = 1 ]; then echo 0 > "$SHARED/chat_hidden.txt"; else echo 1 > "$SHARED/chat_hidden.txt"; fi; status >/dev/null ;;
     hotbar_toggle) need_pet; if [ "$(cat "$SHARED/hotbar_hidden.txt" 2>/dev/null)" = 1 ]; then echo 0 > "$SHARED/hotbar_hidden.txt"; else echo 1 > "$SHARED/hotbar_hidden.txt"; fi; status >/dev/null ;;
     inv_toggle) need_pet; if [ "$(cat "$PET/inv_open.txt" 2>/dev/null)" = 1 ]; then echo 0 > "$PET/inv_open.txt"; else echo 1 > "$PET/inv_open.txt"; fi; status >/dev/null ;;
