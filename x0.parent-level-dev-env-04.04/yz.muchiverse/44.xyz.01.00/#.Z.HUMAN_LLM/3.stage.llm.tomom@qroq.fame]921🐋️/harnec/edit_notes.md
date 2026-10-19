@@ -165,3 +165,28 @@ Larger vocabularies give more parameters in the output layer, providing more tun
 - **High School**: boosted domain terms (quadratic, equations, forces, energy, molecules, replication)
 - **College**: boosted advanced concepts (calculus, carbon-based, quantum, realm, physics)
 - **Social/Collaborative**: boosted instructional/support words (instruction, experiments, collaboration, support)
+
+## Phase I: Cross-Expert Generation (Complete)
+
+### What Was Done
+- Increased MAX_CURRICULA from 10 to 30 (required for 27 grade+subject curricula)
+- Rewrote predict_next_word() in chatbot_moe_v1.c to score ALL words in merged vocab
+  - Previously: only scored words within the owning curriculum's vocabulary
+  - Now: dot product scoring across entire 2610-word merged vocab
+  - Trained model scores override dot product for owning curriculum's words
+  - Top-k=5 sampling from global score space
+- Masked end-token/start-token from dot product scoring (weight=1.0 caused dominance)
+
+### Results
+Before Phase I: generation stopped after 1-2 words (isolated to single curriculum vocab)
+After Phase I: full 6-8 token generation with cross-curriculum word chaining
+
+Example outputs (temperature=1.0, 6 tokens):
+- hello -> about learners their their the the
+- calculate -> the structures biology polynomial academic biology
+- learn -> skills skills learning learning the the
+- math -> language of their their the the
+
+### Key Insight
+Cross-expert dot product enables word chaining across curriculum boundaries. For
+truly coherent generation: larger model (64/128+ dims) + longer training.
