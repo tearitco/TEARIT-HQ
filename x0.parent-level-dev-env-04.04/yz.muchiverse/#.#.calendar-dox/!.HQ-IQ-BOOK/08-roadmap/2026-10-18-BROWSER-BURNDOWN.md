@@ -134,6 +134,50 @@ first thing to check is whether K3 can arm its field at all — that is a test
 mechanism question before it is a product question. Recorded, not yet
 diagnosed.
 
+**Diagnosed 2026-10-19 — both bugs were in the test, not the product.**
+Two independent defects, each sufficient on its own to produce
+`FAIL: field commit missing` no matter what the renderer did:
+
+1. **`digits()` sent raw characters instead of ASCII values.** Relay codes
+   are ASCII *values*; codes below 32 other than the named ones are no-ops
+   in `dispatch_relay_code()`. So `printf '%s\n' "2"` delivered code `2`,
+   not the digit — the nav jump never landed, focus stayed on the already
+   focused "Go", Enter dispatched the submit instead of arming the field,
+   and the form submitted empty. The landmine is documented verbatim in
+   `nb_selrun_test.sh`'s header, and `nb_selrun`'s own `key()`/`ascii()`
+   idiom is the correct form. Fix: `printf '%d\n' "'$d"`.
+
+2. **The commit check could never match a correct commit.** The test grepped
+   `grep -q "^search\tBlockly$"` against `fields.txt`. Inside double quotes
+   bash keeps the backslash and a grep BRE matches a literal
+   backslash-t — there is no tab in the pattern. Measured: the file held
+   `search<TAB>Blockly` and the grep still failed; with a real tab
+   (`TAB="$(printf '\t')"`) it matches.
+
+Evidence the product was never at fault: with only those two test lines
+changed, `kh_focus_debug.log` shows `GRAB key=ci3 rc=0`, the seven
+`KEYPRESS key=ci3` lines for `B l o c k l y`, then Enter and Escape — and
+`network_browser_fields.txt` holds `search\tBlockly` exactly. Run
+`sh nb_milestone_gate.sh` twice, back to back:
+
+```
+PASS: field commit
+PASS: submit navigates
+K3 PASS
+```
+
+Step 2 still SKIPs on `bookmark row not visible` — a skip, not a failure.
+**The milestone bar's K3 requirement is now met by the gate's own output.**
+
+Two operational traps cost real time in this diagnosis and are worth
+recording: (a) `nb_interact_test.sh` restarts the window via `button.sh`
+when `BROWSER_PID` is unset, so a manual experiment driven at a stale pid
+talks to a dead relay and produces *no* log lines at all — read artifacts
+by identity (`browser_pid.sh`), never by an old pid; (b) a renderer **or
+worker** rebuild is not picked up by a resident process — the worker at
+03:37:21 kept the pre-rebuild binary until the window was restarted at
+03:55, which made a correct `nb_css.c` change look like a no-op.
+
 ### 3.2 The runner is RED right now — measured, not inferred
 
 **`sh nb_all_tests.sh` at `f6bd309aa` returned `SOME TESTS FAILED`, exit 1.**
@@ -290,6 +334,31 @@ optimistic. The worker half (6.1–6.3) is a day. The renderer half (6.4) is a
 design decision that deserves its own note before code — which is exactly the
 kind of call the plan's §5.5 reserves for the owner. **Do not ship the worker
 half alone** (it would re-open G2.2 with a confident wrong number).
+
+**6.5 Progress 2026-10-19 — step 6.1 landed, nothing else.** `nb_css.c` now
+retains the display keyword instead of clearing it to `""`
+(`commit e19a0f0bd`, branch `opencode`). Measured live after a fresh
+`sh build.sh` **and a window restart** — see the trap in §3.1, a resident
+`nb_js_worker` keeps the pre-rebuild binary, so a rebuild alone looks like
+a no-op:
+
+```
+getComputedStyle().display -> f=flex g=block h=EMPTY
+```
+
+`h=EMPTY` is the guard that matters: an element with no `display`
+declaration still computes to `""`, so pages that never set `display` are
+byte-for-byte unaffected. `nb_gbcr_test.sh` PASS (9/9 within ±2 px, 100 %),
+`nb_flex_test.sh` still FAILs with the children stacked
+(`y=[30,60,90]`, `x=[0,0,0]`) — correct, because 6.1 changes no geometry;
+it only makes the request *visible* to the code that will consume it.
+
+**Still not done, in order:** 6.2 (`layout_xy()` accumulates sibling
+*widths* for a flex parent), 6.3 (`nb_box_w()` gives a flex child a
+*share*), and 6.4 — the design decision that gates shipping either half.
+`nb_flex_test.sh` is deliberately **not** wired into `nb_all_tests.sh`
+until G2.3 is complete, so K1's verdict line does not change from this
+work.
 
 ---
 
