@@ -314,7 +314,22 @@ static void apply_decl(int pid, const char *val, size_t vlen, int important,
                 scores[pid] = score;
             }
         } else if (score >= scores[pid]) {
-            out->display[0] = 0;
+            /* RETAIN the keyword (2026-10-19, burndown 6.1 - "step 0").
+             * This used to clear to "", so display:flex, display:block and
+             * display:inline all computed to the SAME value and G2.3 could
+             * not even see which one a page asked for.
+             *
+             * Consumers today, checked before touching this:
+             *   nb_css.c:445     strcmp(st.display, "none") -> hidden. Still
+             *                    exact; only "none" is special there.
+             *   nb_js_worker.c:901  getComputedStyle().display, which now
+             *                    reports the real keyword instead of "".
+             * No C layout code reads this field, and no .js file reads
+             * .display, so THIS ALONE CHANGES NO GEOMETRY - it only makes the
+             * request visible. The flex row model is a separate change
+             * (burndown 6.2-6.3) and its renderer half is a design decision
+             * (6.4, do not ship the worker half alone). */
+            snprintf(out->display, sizeof(out->display), "%s", cv);
             scores[pid] = score;
         }
         break;
