@@ -71,6 +71,40 @@ house build    145 scripts — PASS=145 FAIL=0 TIMEOUT=0
 hermetic suite PASS=30 FAIL=0   (G2.2 and the gutter control both PASS)
 ```
 
+**Update 2026-10-19 — the mirror/rendered disagreement is root-caused and
+`nb_find` is green.** The symptom §3.2 called "computed against a row set that
+momentarily differs" was **not** a race: `dump_frame_png()` redraws *before*
+serializing, so the mirror and the frame come from one tree in one tick, and
+only a **stale cached count** can disagree. `reparse_chtpm_if_changed()` zeroed
+`g_find_hits`/`g_find_at` on every rebuild while its own comment promised
+"a content change should re-search", and nothing re-ran `kh_find_commit()`.
+Fixed at the two reparse sites (`khtpm_core_render.c` `:3256`, `:3560`, +52/−1);
+the reveal had to run **before the caller's layout**, not at `redraw()`'s top,
+because `g_layout_fresh` skips that layout (`:12066`). Full write-up, the
+deterministic before/after and the pitfalls are in the burndown **§7** — read it
+before touching find or reparse.
+
+Measured on the final build (rebuild + window restart), ≥6 runs each, plus a
+full `sh nb_all_tests.sh`:
+
+```
+nb_all_tests.sh       SOME TESTS FAILED, exit 1 — 30 suites, 3 FAIL lines,
+                      all in the mouse-span family (was 3 failing suites)
+nb_find_test.sh       8/8 pass, 0 FAIL + PASS in the runner (baseline: FAIL)
+nb_selrun_test.sh     2/6 standalone + PASS in the runner (baseline: FAIL)
+nb_gbcr_test.sh       6/6 pass, 0 FAIL   (KPI held at 100 %)
+nb_span_select_test.sh 5/6 pass          (failed S1/S2 once → 1-in-6 flake)
+nb_span_drag_test.sh   3/6 pass          (T2; still undiagnosed)
+```
+
+**K1 is not green, but its floor moved**: the mouse-span suites are now the
+only reds. Both are hermetic fixtures that never arm find, so they are
+provably independent of the fix above — and a single green run of the runner
+proves a *rate*, not a fix (a 1-in-6 flake reds the whole verdict).
+
+**If you did not rebuild + restart the window, you are measuring yesterday's
+renderer.** The renderer is *not* picked up by resident processes.
+
 **S3 is done.** The plan marked it *"the gate for all layout work"*, so G2.3
 is the natural next slice — see §5.
 
@@ -216,13 +250,41 @@ The keyboard-side hijack is fixed; this is the pointer side.
 Note the variance is large (`1/4, 6/8, 4/10, 1/10` across configurations), so
 take ≥10 runs before believing any number here.
 
+**Measured 2026-10-19, final build, 6 runs: 3/6 pass (50 % fail).** Two
+corrections to what was believed before, both re-measured:
+
+- `click.log` is **not** always missing. T1 passed 3/6, and two *failed*
+  runs printed `FAIL: T6: late release did nothing (log: CLICKED LINK1 …)`
+  — the deferred click completes, sometimes. Do not debug this as "the
+  action never fires".
+- The **stale-fixture-window** theory is **refuted**: no `764x264` window
+  exists on screen, and the only two long-lived renderers are legitimate
+  house windows (`khtpm_strip_header.xhtpm`, `hotbar-desk.xhtpm`).
+
+**It shares one shape with `nb_span_select_test.sh`** (5/6 standalone that
+same day — and *that* suite is what reds the runner, a 1-in-6 flake): the
+range never lands and the copy falls back to the whole row text —
+`clipboard was [go to ONE then TWO then THREE now]` plus
+`no highlight band (0)`. Debug the two **together**: one bug with two entry
+points (drag vs. click-range), not two bugs. Neither suite arms find
+(`grep -c 'Ctrl+F\|find in page'` → `0` in both), so neither can be caused
+by the find/reparse fix in the burndown §7.
+
 ### 5c. Also flaky, lower priority
 
-`nb_find_test.sh` (~33 % pass), `nb_selrun_test.sh` (~50 %). All three read
-the live clipboard. `nb_span_select_test.sh` already got the copy-receipt fix
-(45 % → 85 %); the same fix was applied to the other two and **measured worse
-on both**, so it was reverted. Do not re-apply it without ≥10 runs — the
-principle is sound but the noise is larger than the effect.
+`nb_find_test.sh` (~33 % pass) is **no longer flaky — it was a real bug**:
+root-caused and fixed 2026-10-19, 8/8 runs green, see the burndown §7. Treat
+that as the warning: "flaky" was a diagnosis, and it was wrong. It was a
+stale cached hit count that only looked nondeterministic because the
+procedure around it was.
+
+Still flaky: `nb_selrun_test.sh` (2/6 standalone on 2026-10-19, though it
+**PASSED** in the runner that same day — one pass proves a rate, not a fix)
+and `nb_span_select_test.sh` (5/6). `nb_span_select_test.sh` already got the
+copy-receipt fix (45 % → 85 %); the same fix was applied to the other two
+and **measured worse on both**, so it was reverted. Do not re-apply it
+without ≥10 runs — the principle is sound but the noise is larger than the
+effect.
 
 ---
 

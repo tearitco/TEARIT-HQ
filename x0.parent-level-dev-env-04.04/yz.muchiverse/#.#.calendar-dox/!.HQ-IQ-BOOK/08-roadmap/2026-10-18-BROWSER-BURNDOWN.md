@@ -291,6 +291,199 @@ design decision that deserves its own note before code — which is exactly the
 kind of call the plan's §5.5 reserves for the owner. **Do not ship the worker
 half alone** (it would re-open G2.2 with a confident wrong number).
 
+---
+
+## 7. Sprint A, first bite — the mirror/rendered disagreement: root cause, fix, evidence
+
+*Worked 2026-10-18 → 2026-10-19. Branch `opencode`, file
+`44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c` only
+(52 insertions / 1 deletion, verified `git diff --stat`), rebuilt with
+`build_core_render.sh` and re-tested against a restarted window each time.*
+
+### 7.1 It was not a race, and it was not two different row sets
+
+§3.2 read the symptom as *"computed against a row set that momentarily
+differs from the rows the same dump renders"*. **That reading is wrong, and
+the wrongness was load-bearing** — a race implies you can't fix it
+deterministically, so this one took the long way round to disprove.
+
+`dump_frame_png()` (`:12617`) calls `redraw()` **first**, `redraw()` writes
+the ASCII mirror at the end of its own body (`:12576` →
+`kh_write_ascii_frame()`), and only then is `g_window` serialized to the
+frame. Same tick, same thread, same tree. A disagreement between `[FIND]`
+and the frame therefore **cannot** be two row sets: it can only be a
+**stale cached count**.
+
+And that is exactly what it is:
+
+```
+khtpm_core_render.c:3364-3370  reparse_chtpm_if_changed()
+    /* ... The QUERY text is deliberately NOT cleared here: the user typed
+     * it, and a content change should re-search rather than silently
+     * forget the ask. */
+    g_find_hits = 0;            <- :3370, what shipped
+    g_find_at   = 0;
+```
+
+The comment states the intent — **re-search** — and only the *drop*
+shipped. `kh_find_commit()` (`:10488`) had **four** call sites before this
+fix — the two keystroke sites (`:12970` backspace, `:12975` append) and two
+inside `kh_find_step` (`:10535`, `:10544`) — **every one of them keyed on
+user input**; nothing re-ran it after a rebuild. So on every full `.chtpm` rebuild the query
+survived, the hit list (which holds **pointers** into the tree being
+discarded) was zeroed, and the window stayed "query=`the` **0 of 0**" until
+the next Enter forced a commit. The band still painted, Enter still
+advanced, the frame still showed the rows — the *count* was the only stale
+thing, which is the precise §3.2 signature.
+
+`incremental_reparse=0` live in `hq_ui.pdl`, so the full-rebuild path is
+the one that runs.
+
+### 7.2 The fix — finish the sentence the comment already wrote
+
+Three parts, all at the reparse sites rather than in the mirror (fixing the
+mirror would make the *reporter* agree with a wrong value):
+
+1. **Re-search at the end of both reparse paths** — `:3256` (incremental,
+   unexecuted, labelled as reasoned-not-observed in its own comment) and
+   `:3560` (full rebuild), each guarded on `g_find_query[0]`:
+   `if (g_find_query[0]) kh_find_commit();`
+2. **Do not zero `g_find_at`** in the reset (`:3370-3371`). The query
+   survives a content change; the ask includes *which match the user was
+   on*. Zeroing it dropped the cursor back to match 1, which is what made
+   one Enter read as "did not advance".
+3. **Order matters: it must run before the caller's layout.** The reparse
+   callers do `assign_nav_and_layout(); g_layout_fresh = 1; redraw();`, and
+   `redraw()` **skips** its own layout when `g_layout_fresh` is set
+   (`:12066`). A re-search left to run at the top of `redraw()` therefore
+   set `g_find_reveal` after the last layout of the tick, and the reveal was
+   never consumed — while the same reparse had just put a
+   `<scrolllist class="from-top">` back to scroll 0. Observed directly:
+   `y=434` right after a dump, `y=-100000` two seconds later.
+
+That third point is the reason the fix moved during the session. The first
+working version (re-search at the top of `redraw()`) fixed the **count**
+(8/8 runs) but *still* failed the reveal 2/8 — because ordering, not
+presence, was the problem. Measured before/after on the same 4-attempt
+manual procedure:
+
+| | reveal held? |
+|---|---|
+| first version (hook in `redraw()`) | 2/4 then reverted to `y=-100000` |
+| final version (hook at end of reparse) | **5/5 hold at `y=434`**, stable 3 s later |
+
+### 7.3 Evidence
+
+**Deterministic before/after** — same procedure, arm find on one article,
+then replace the content with find still armed (no new keystroke):
+
+| | mirrored `[FIND]` | rows in the *same* frame |
+|---|---|---|
+| before | `query="the" 0 of 0` | 4 visible / 31 total carry "the" |
+| after | `query="the" 1 of 31` | **31** total (independent recount) |
+
+The 31 is an independent `awk` over all serialized rows in that same dump —
+mirror and frame now agree on the number *and* it is the right number.
+
+**`nb_find_test.sh`, 8 consecutive runs after the final build:**
+
+```
+run 1..8: PASS=13 FAIL=0
+==== nb_find: total FAIL across 8 runs: 0 ====
+```
+
+(baseline §3.2: **0/6** in-sequence, ~3/5 standalone.)
+
+**No regression in the KPI suite:**
+
+```
+nb_gbcr_test.sh: 6 runs, total FAIL = 0   (G2.2 must stay 100 %)
+```
+
+**Negative test.** The suite carries its own: clause 6 types
+`zzzznotpresent` and *requires* `0 of 0`, so a fix that merely inflated
+counts would fail it — it still passes. The pre-fix red runs above are the
+other half: the same clauses failed 3 of 8 with the exact same pair
+(`Enter did not advance (at=1)` / `no wrap (at=2)`), and 0 of 8 after.
+
+### 7.4 The runner verdict on the final build — and what is still red
+
+**`sh nb_all_tests.sh` → `SOME TESTS FAILED`, exit 1: 30 suites, 3 FAIL
+lines.** All three FAIL lines are in the *mouse-span* family. The two
+suites §3.2 listed red for this report are green:
+
+| suite | baseline §3.2 (2026-10-18) | in the runner, final build | standalone ≥6 runs |
+|---|---|---|---|
+| `nb_find_test.sh` | **FAIL** | **PASS** ✅ | **8/8 pass** × 13 asserts, 0 FAIL |
+| row-run selection (`nb_selrun`) | **FAIL** | **PASS** ✅ | 2/6 pass |
+| `nb_gbcr` (K2, KPI) | PASS | PASS | **6/6, 0 FAIL** |
+| span mouse drag-select (T2) | FAIL | FAIL | 3/6 pass |
+| span range selection (S1/S2) | PASS | **FAIL** | 5/6 pass → **flaky, not a regression** |
+
+So K1 is *closer*, not green: **the floor is now the mouse-span suites**,
+not find. The runner runs each suite **once**, so a 1-in-6 flake
+(`span range selection`) is enough to turn the whole verdict red — that is
+exactly what happened here (it failed S1+S2 in the runner, then 1 of 6
+standalone).
+
+**Both remaining reds are independent of this fix.** Proven, not asserted:
+`grep -c 'Ctrl+F\|find in page'` → **0** in `nb_span_select_test.sh` *and*
+in `nb_span_drag_test.sh` (and 0 in `nb_selrun_test.sh`), so all three run
+their own hermetic fixture renderer with `g_find_query` empty — the new
+re-search is behind `if (g_find_query[0])` and never executes there.
+
+**`nb_selrun`** — failures are two shapes, `no [SEL] line` and a
+`[SEL] rows 2..3` where `1..3`/`2..4` was expected. `[SEL]` is computed
+**live** from `g_sel_run_anchor`/`g_focus_nav` at frame time (`:11956`), not
+cached, so the value is a fact about state, not a stale buffer. `2..3`
+instead of `1..3` says the anchor was set while focus was already **2**,
+i.e. the *first* of two `223` codes did not extend. Candidates, none yet
+measured: `g_focus_nav`/`g_n_nav` invalid at dispatch (`kh_row_run_extend`
+returns 0 without moving — `:8613`), or a focus change landing between
+`home()`'s mirror read and the first code. `dispatch_relay_code` itself
+sets `g_key_shift = 1` *before* `handle_key` and clears it after
+(`:13772`), so the shift plumbing on that path is not obviously wrong.
+**Mechanism UNDIAGNOSED — do not treat the candidates as findings.**
+
+**`nb_span_drag` / `nb_span_select` share one shape**: the range never
+lands, and the copy falls back to the *whole* row text —
+`clipboard was [go to ONE then TWO then THREE now]` with
+`no highlight band (0)`. Two corrections to an earlier draft of this
+section, both from re-measurement:
+
+1. `click.log` is **not** always absent. This batch: T1 passed 3/6, and
+   two *failed* runs printed `FAIL: T6: late release did nothing (log:
+   CLICKED LINK1 …)` — the deferred click **does** complete, sometimes.
+2. **A stale-fixture-window theory was checked and refuted**: no `764x264`
+   window exists on screen, and the only two long-lived renderers are
+   legitimate house windows (`khtpm_strip_header.xhtpm`,
+   `hotbar-desk.xhtpm`). Do not assume it is this.
+
+Consequence for K1: **the runner is not green yet.** The honest floor for
+the next session is the table above; re-measure ≥6 runs after any change,
+and remember a single runner pass proves a *rate*, not a fix.
+
+### 7.5 Pitfalls reported
+
+1. **My own probe lied before the product did.** The first attempt at a
+   deterministic repro got **6/6** "arm → dump → type → `0 of 0`". Its
+   `dump()` watched a receipt path that is never written, so every dump
+   silently slept 10 s instead of 1 s, and the entire result was an
+   artifact of my harness — repeating with the correct receipt path gave
+   `1 of 2` immediately. Exactly §"never report a number you did not
+   observe": **negative-test your own instrumentation before drawing a
+   conclusion from it.**
+2. **Idle time was a third suspect and a dead end** — 1 s / 4 s / 12 s gaps
+   between arming and typing all gave the correct count (2× each). Ruling
+   this out is what forced the switch from *when* to *what*.
+3. **`pgrep -f 'network_browser_manager'` matched my own shell** and
+   printed the shell's argv as the manager's — the `browser_pid.sh`
+   comment (`nb_find_test.sh:44-49`) warns about exactly this.
+4. **A timed-out test command is a truncated run, not a verdict.** The
+   first full-runner attempt was killed at 120 s and left a partial log
+   with no verdict line; only re-running it in the background produced a
+   real one.
+
 *Companions: `2026-10-18-BROWSER-LANE-HANDOFF.md` (START HERE), `2026-10-17-G2-
 VERDICT-ADDENDUM.md`, `design-docs/2026-10-11-BROWSER-GAP-ASSESSMENT-AND-KPI-
 PLAN.md`.*
