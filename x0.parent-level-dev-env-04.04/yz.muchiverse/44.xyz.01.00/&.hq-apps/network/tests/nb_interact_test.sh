@@ -23,6 +23,12 @@ fi
 RELAY="$HR/#.desktop/entity_menu_history/$PID.txt"
 FRAME=/tmp/entity-menu-frame.png.frame.txt
 FAIL=0
+# fields.txt records "name<TAB>value". A literal \t inside a double-quoted
+# grep pattern is NOT a tab (bash keeps the backslash, grep BRE matches a
+# literal backslash-t), so the commit check never matched a CORRECT commit -
+# it failed on "field commit missing" no matter what was written. Use a real
+# tab; also send ASCII values, not the characters (relay codes are ASCII).
+TAB="$(printf '\t')"
 send() { printf '%b\n' "$1" >> "$RELAY"; }
 digits() { printf '%s' "$1" | grep -o . | while read -r d; do printf '%d\n' "'$d" >> "$RELAY"; done; sleep 1.2; }
 dump() { send '112'; sleep 1; }
@@ -38,7 +44,7 @@ N="$(nav_for 'Search Wikipedia')"
 if [ -z "$N" ]; then echo "SKIP: search field not visible"; else
   send '27'; digits "$N"; send '13'; sleep 2
   printf '66\n108\n111\n99\n107\n108\n121\n13\n27\n' >> "$RELAY"; sleep 2
-  if grep -q "^search\tBlockly$" "$HR/#.desktop/network_browser_fields.txt" 2>/dev/null; then
+  if grep -q "^search${TAB}Blockly$" "$HR/#.desktop/network_browser_fields.txt" 2>/dev/null; then
     echo "PASS: field commit"
     dump
     N="$(nav_for 'Go')"
