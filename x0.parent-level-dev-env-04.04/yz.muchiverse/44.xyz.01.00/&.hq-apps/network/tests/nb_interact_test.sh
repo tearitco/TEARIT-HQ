@@ -24,7 +24,7 @@ RELAY="$HR/#.desktop/entity_menu_history/$PID.txt"
 FRAME=/tmp/entity-menu-frame.png.frame.txt
 FAIL=0
 send() { printf '%b\n' "$1" >> "$RELAY"; }
-digits() { printf '%s' "$1" | grep -o . | while read -r d; do printf '%s\n' "$d" >> "$RELAY"; done; }
+digits() { printf '%s' "$1" | grep -o . | while read -r d; do printf '%d\n' "'$d" >> "$RELAY"; done; sleep 1.2; }
 dump() { send '112'; sleep 1; }
 # nav number for the first row whose label contains $1 (0 = not visible)
 nav_for() { awk -F'|' -v pat="$1" '($1=="item"||$1=="text"||$1=="cli_io") && index($4, pat) && $7+0>0 {print $7; exit}' "$FRAME"; }
