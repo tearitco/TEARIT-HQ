@@ -154,6 +154,16 @@ static Elem *g_find_reveal = NULL;
  * a smaller total. */
 #define FIND_MAX_HITS 512
 static Elem *g_find_hits_list[FIND_MAX_HITS];
+/* FIND IN PAGE across a content change (2026-10-18). The list holds
+ * POINTERS into the page tree, so reparse_chtpm_if_changed() must drop it
+ * when that tree is discarded - and its own comment there states the real
+ * intent: "a content change should re-search rather than silently forget
+ * the ask". The drop shipped; the re-search did not, so the state left
+ * behind was query="the" 0 of 0 while the tree carried matching rows -
+ * measured live, and why nb_find_test.sh's own "count agrees with the
+ * frame" clause failed. Both reparse paths now finish that sentence: each
+ * calls kh_find_commit() once its new tree is in place, before the caller
+ * lays it out. See that call's own comment for the ordering it needs. */
 int kh_find_is_armed(void);   /* draw_core's seam - see its definition */
 static void dock_nav_step(int dir);   /* declared far below; kh_row_run_extend()
                                        * (row-run selection) needs it first */
@@ -3233,6 +3243,17 @@ static int reparse_chtpm_if_changed(void) {
                     { struct stat pst; if (g_dock_peer && stat(g_dock_peer_path, &pst) == 0) g_dock_peer_mtime = pst.st_mtim; }
                 }
                 kh_focus_debug_log("INCREMENTAL_REPARSE ok removed=%d", rl.n);
+                /* Same content change, same re-search - see the
+                 * full-rebuild path's own closing comment for why it must
+                 * happen before the caller lays out. This engine patches
+                 * matched elements in place, so the hit list's pointers
+                 * stay valid rather than dangling - but the match SET can
+                 * still have changed under them, and a count that no
+                 * longer describes the tree on screen is the bug this
+                 * closes. NOTE: incremental_reparse is 0 in the live
+                 * hq_ui.pdl, so this line is reasoned from the design, not
+                 * yet observed on a live run. */
+                if (g_find_query[0]) kh_find_commit();
                 return 1;
             }
             kh_focus_debug_log("INCREMENTAL_REPARSE diff failed rc=%d - falling back to full rebuild this tick", ok);
@@ -3347,7 +3368,23 @@ static int reparse_chtpm_if_changed(void) {
      * deliberately NOT cleared here: the user typed it, and a content
      * change should re-search rather than silently forget the ask. */
     g_find_hits = 0;
-    g_find_at = 0;
+    /* g_find_at is deliberately NOT cleared here, unlike the hits it
+     * accompanies. This reset and the query keep above are one decision
+     * split in two: the query survives because "a content change should
+     * re-search rather than silently forget the ask" - and the ask
+     * includes WHICH match the user was on. Zeroing the index alongside
+     * the hits meant a page that happened to redraw between two Enters
+     * dropped the user from match 2 back to match 1, so the next Enter
+     * read as "did not advance". Measured: nb_find_test.sh failed its
+     * Enter-advance and wrap clauses together on 3 runs in 8. The
+     * re-search below clamps the kept index into range (and clears it
+     * outright when the new tree has no matches), so it cannot go stale. */
+    /* ...and the other half of that sentence shipped missing: ASK AGAIN
+     * once the new tree exists. Zeroing the list without re-searching is
+     * exactly what left query="the" 0 of 0 against a tree that carried
+     * matching rows. It cannot run here - the tree being parsed is still
+     * being built - so this function re-searches at its own end; see that
+     * call's comment for why it must be before the caller's layout. */
     /* INLINE SPANS step 11: a rebuild also orphans any armed span
      * press (its row may be gone) - the paired release must find
      * nothing to resolve. */
@@ -3507,6 +3544,20 @@ static int reparse_chtpm_if_changed(void) {
             }
         }
     }
+    /* FIND IN PAGE: the other half of the promise the reset above makes
+     * ("a content change should re-search"). It has to run HERE - once the
+     * new tree is installed, but BEFORE the caller lays it out:
+     *   - the reparse sites do assign_nav_and_layout() then redraw(), and
+     *     redraw() SKIPS its own layout when that call set g_layout_fresh
+     *     (line ~12054) - so a re-search left to redraw would set
+     *     g_find_reveal too late for any layout to consume it, and the
+     *     match would sit off screen (measured: y=434 -> -100000);
+     *   - the reset above has just put a <scrolllist class="from-top">
+     *     back to scroll 0, so the reveal must be re-issued in the same
+     *     pass that did that, or find's own scroll is undone by it.
+     * The mirror is correct too: redraw() writes [FIND] later in the same
+     * tick, from the tree this just searched. */
+    if (g_find_query[0]) kh_find_commit();
     return 1;
 }
 
