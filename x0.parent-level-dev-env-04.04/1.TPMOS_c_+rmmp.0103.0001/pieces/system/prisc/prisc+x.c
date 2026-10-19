@@ -495,13 +495,19 @@ void parse_line(char *line, int pass) {
                 i->custom_name[255] = '\0';
                 i->uses_imm = 1;
             } else if (sscanf(args, "\"%255[^\"]\" \"%31[^\"]\" \"%63[^\"]\" %15s", first_arg, section, key, val_arg) == 4) {
-                /* "path" "section" "key" R<n> */
+                /* "path" "section" "key" R<n> or literal value */
                 strncpy(i->literal_arg, first_arg, 255);
                 i->literal_arg[255] = '\0';
                 strncpy(i->literal_arg2, key, 255);
                 i->literal_arg2[255] = '\0';
-                i->uses_imm = 0;
-                parse_reg(val_arg, &i->rs1);
+                if (is_reg_ref(val_arg)) {
+                    i->uses_imm = 0;
+                    parse_reg(val_arg, &i->rs1);
+                } else {
+                    i->uses_imm = 1;
+                    strncpy(i->custom_name, val_arg, 255);
+                    i->custom_name[255] = '\0';
+                }
             } else if (sscanf(args, "%255s \"%31[^\"]\" \"%63[^\"]\" \"%63[^\"]\"", first_arg, section, key, val_arg) == 4) {
                 /* PROJECT_PDL "section" "key" "literal" */
                 strncpy(i->literal_arg, first_arg, 255);
@@ -512,13 +518,19 @@ void parse_line(char *line, int pass) {
                 i->custom_name[255] = '\0';
                 i->uses_imm = 1;
             } else if (sscanf(args, "%255s \"%31[^\"]\" \"%63[^\"]\" %15s", first_arg, section, key, val_arg) == 4) {
-                /* PROJECT_PDL "section" "key" R<n> */
+                /* PROJECT_PDL "section" "key" R<n> or literal value */
                 strncpy(i->literal_arg, first_arg, 255);
                 i->literal_arg[255] = '\0';
                 strncpy(i->literal_arg2, key, 255);
                 i->literal_arg2[255] = '\0';
-                i->uses_imm = 0;
-                parse_reg(val_arg, &i->rs1);
+                if (is_reg_ref(val_arg)) {
+                    i->uses_imm = 0;
+                    parse_reg(val_arg, &i->rs1);
+                } else {
+                    i->uses_imm = 1;
+                    strncpy(i->custom_name, val_arg, 255);
+                    i->custom_name[255] = '\0';
+                }
             }
         } else if (strcmp(part, "call_method") == 0) {
             /* call_method <method_name> */
