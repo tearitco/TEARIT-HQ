@@ -1,0 +1,27 @@
+<!-- rpg-pvp-hq window (step P1): the seeded city on a canvas. Shared khtpm_core_render.+x, zero renderer C.
+     state/ui.txt and state/scene.raw are written by ops/+x/rpg_pvp_hq.+x on every verb. Design: BOOK 16.game/RPG-PVP-HQ-DESIGN.md.
+     RULES: no angle brackets inside comments. -->
+<window label="${title}" class="rpg-pvp-hq database-window fixed-size managed user-resizable" vars="state/ui.txt">
+  <page name="main">
+    <tabbar id="toolbar" class="tab-bar">
+      <tab id="tb-city" class="tab rp-tb" label="City ▾" onclick="ACTIVATE" target_id="tb-city"/>
+      <tab id="tb-check" class="tab rp-tb" label="Check" onclick="'${HOUSE}/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x' check"/>
+      <tab id="tb-weap" class="tab rp-tb" label="Weapons" onclick="'${HOUSE}/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x' weapons"/>
+    </tabbar>
+    <sidebar id="side" class="rp-rail sidebar">
+      <item id="ct-s" class="rp-menu-row dropdown-child" target_id="tb-city" label="Small 48x36" action="'${HOUSE}/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x' gen new 48 36"/>
+      <item id="ct-m" class="rp-menu-row dropdown-child" target_id="tb-city" label="Med 64x48" action="'${HOUSE}/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x' gen new 64 48"/>
+      <item id="ct-l" class="rp-menu-row dropdown-child" target_id="tb-city" label="Large 96x64" action="'${HOUSE}/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x' gen new 96 64"/>
+      <item id="ct-h" class="rp-menu-row dropdown-child" target_id="tb-city" label="Huge 160x120" action="'${HOUSE}/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x' gen new 160 120"/>
+      <item id="ct-7" class="rp-menu-row dropdown-child" target_id="tb-city" label="Demo seed 7" action="'${HOUSE}/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x' gen 7 64 48"/>
+      <item id="ct-x" class="rp-menu-row dropdown-child quiet" target_id="tb-city" label="- cancel -" action="void"/>
+    </sidebar>
+    <panel id="room_p" class="rp-panel">
+      <canvas id="room" class="rp-room" sprite="${canvas_raw}"/>
+    </panel>
+    <footer id="statusbar" class="pchq-footer">
+      <text label="${msg}" class="rp-quiet"/>
+      <text label="${city_line}" class="rp-quiet"/>
+    </footer>
+  </page>
+</window>

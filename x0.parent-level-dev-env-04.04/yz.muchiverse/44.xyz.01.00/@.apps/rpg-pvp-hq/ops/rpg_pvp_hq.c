@@ -5,6 +5,9 @@
  *   rpg_pvp_hq check                re-read the files from disk and test the invariants (exit 1 and a reason on the first failure)
  *   rpg_pvp_hq status               one line about the files that exist
  *   rpg_pvp_hq weapons              the WEAPON rows of tuning.pdl as the op reads them
+ *   rpg_pvp_hq view                 (re)write the window files from the city on disk: state/scene.raw + scene.receipt.txt (the canvas) and state/ui.txt (the window's variables)
+ * gen / check / status / weapons also refresh the window files, with their one-line result as the window's message. `gen new` picks a seed from the clock.
+ * The window is rpg-pvp-hq.xhtpm (shared khtpm_core_render.+x, no per-project renderer code); toys menu entry = toy.pdl + button.sh.
  * Env: RPGPVP_STATE=<dir> overrides the state folder (tests run in a scratch folder this way); default <app>/state.
  *
  * Map glyphs: '.' ground  '=' road  '#' wall  'W' window  'D' door  ',' floor (inside).  Loot and spawns are rows in city.pdl, not glyphs.
@@ -18,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <unistd.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "../../../&.widgits/_shared-lib/stb_image_write.h"
@@ -156,6 +160,14 @@ static void loot_rgb(const char *item, unsigned char *c) {
     else { c[0] = 0; c[1] = 230; c[2] = 230; }
 }
 
+static void cell_rgb(char g, unsigned char *c) {
+    switch (g) {
+        case '=': c[0] = 70; c[1] = 70; c[2] = 78; break;     case '#': c[0] = 150; c[1] = 140; c[2] = 130; break;
+        case 'W': c[0] = 120; c[1] = 180; c[2] = 220; break;  case 'D': c[0] = 200; c[1] = 120; c[2] = 40; break;
+        case ',': c[0] = 190; c[1] = 175; c[2] = 140; break;  default: c[0] = 60; c[1] = 120; c[2] = 60;
+    }
+}
+
 static int write_all(void) {
     char p[PATH_MAX + 16]; static char buf[MAXH * (MAXW + 1) + 64];
     mkdir(g_state, 0755);
@@ -169,10 +181,7 @@ static int write_all(void) {
     snprintf(p, sizeof p, "%s/city.pdl", g_state); if (!write_atomic(p, rows, n)) return 0;
     int W = g_w * CELL_PX, H = g_h * CELL_PX; unsigned char *px = malloc((size_t)W * H * 3); if (!px) return 0;
     for (int y = 0; y < g_h; y++) for (int x = 0; x < g_w; x++) {
-        unsigned char c[3]; switch (g_map[y][x]) {
-            case '=': c[0] = 70; c[1] = 70; c[2] = 78; break;     case '#': c[0] = 150; c[1] = 140; c[2] = 130; break;
-            case 'W': c[0] = 120; c[1] = 180; c[2] = 220; break;  case 'D': c[0] = 200; c[1] = 120; c[2] = 40; break;
-            case ',': c[0] = 190; c[1] = 175; c[2] = 140; break;  default: c[0] = 60; c[1] = 120; c[2] = 60; }
+        unsigned char c[3]; cell_rgb(g_map[y][x], c);
         for (int j = 0; j < CELL_PX; j++) for (int i = 0; i < CELL_PX; i++) memcpy(px + ((size_t)(y * CELL_PX + j) * W + x * CELL_PX + i) * 3, c, 3);
     }
     for (int k = 0; k < g_nl; k++) { unsigned char c[3]; loot_rgb(g_l[k].item, c);
@@ -184,6 +193,28 @@ static int write_all(void) {
     int ok = stbi_write_png(tmp, W, H, 3, px, W * 3); free(px);
     if (ok && rename(tmp, p) == 0) return 1;
     unlink(tmp); return 0;
+}
+
+/* ---- the window's files: a fixed 512x384 RGBA canvas (cell size = the largest whole number that fits) + ui.txt ---- */
+#define VIEW_W 512
+#define VIEW_H 384
+static void write_view(const char *msg) {
+    static unsigned char fr[VIEW_W * VIEW_H * 4]; char p[PATH_MAX + 24], ui[PATH_MAX * 2 + 600];
+    int cell = VIEW_W / g_w < VIEW_H / g_h ? VIEW_W / g_w : VIEW_H / g_h; if (cell < 1) cell = 1;
+    int ox = (VIEW_W - g_w * cell) / 2, oy = (VIEW_H - g_h * cell) / 2;
+    for (int i = 0; i < VIEW_W * VIEW_H; i++) { fr[i * 4] = 20; fr[i * 4 + 1] = 22; fr[i * 4 + 2] = 28; fr[i * 4 + 3] = 255; }
+    for (int y = 0; y < g_h * cell && y + oy < VIEW_H; y++) for (int x = 0; x < g_w * cell && x + ox < VIEW_W; x++) {
+        unsigned char c[3]; cell_rgb(g_map[y / cell][x / cell], c); unsigned char *d = fr + ((size_t)(y + oy) * VIEW_W + x + ox) * 4; d[0] = c[0]; d[1] = c[1]; d[2] = c[2];
+    }
+    for (int k = 0; k < g_nl; k++) { unsigned char c[3]; loot_rgb(g_l[k].item, c); int s0 = cell > 3 ? cell / 4 : 0, s1 = cell > 3 ? cell - cell / 4 : cell;
+        for (int j = s0; j < s1; j++) for (int i = s0; i < s1; i++) { unsigned char *d = fr + ((size_t)(oy + g_l[k].y * cell + j) * VIEW_W + ox + g_l[k].x * cell + i) * 4; d[0] = c[0]; d[1] = c[1]; d[2] = c[2]; } }
+    for (int k = 0; k < g_ns; k++) { int s0 = cell > 3 ? cell / 3 : 0, s1 = cell > 3 ? cell - cell / 3 : cell;
+        for (int j = s0; j < s1; j++) for (int i = s0; i < s1; i++) { unsigned char *d = fr + ((size_t)(oy + g_s[k].y * cell + j) * VIEW_W + ox + g_s[k].x * cell + i) * 4; d[0] = 255; d[1] = 0; d[2] = 255; } }
+    mkdir(g_state, 0755);
+    snprintf(p, sizeof p, "%s/scene.raw", g_state); write_atomic(p, fr, sizeof fr);
+    { char r[64]; int n = snprintf(r, sizeof r, "frame_w=%d\nframe_h=%d\n", VIEW_W, VIEW_H); snprintf(p, sizeof p, "%s/scene.receipt.txt", g_state); write_atomic(p, r, (size_t)n); }
+    int n = snprintf(ui, sizeof ui, "title=rpg-pvp-hq  -  seed %u  %dx%d\ncanvas_raw=%s/scene.raw\nmsg=%s\ncity_line=%d buildings, %d loot, %d spawns\n", g_seed, g_w, g_h, g_state, msg && msg[0] ? msg : "ready", g_nb, g_nl, g_ns);
+    snprintf(p, sizeof p, "%s/ui.txt", g_state); write_atomic(p, ui, (size_t)n);
 }
 
 /* ---- read back from disk (the checker never trusts the in-memory copy) ---- */
@@ -260,20 +291,27 @@ int main(int argc, char **argv) {
     load_tuning();
     const char *v = argc > 1 ? argv[1] : "status"; char why[400];
     if (!strcmp(v, "gen") && argc >= 3) {
-        unsigned seed = (unsigned)strtoul(argv[2], 0, 10); int w = argc >= 5 ? atoi(argv[3]) : 64, h = argc >= 5 ? atoi(argv[4]) : 48;
+        unsigned seed = !strcmp(argv[2], "new") ? (unsigned)time(NULL) % 100000u : (unsigned)strtoul(argv[2], 0, 10); int w = argc >= 5 ? atoi(argv[3]) : 64, h = argc >= 5 ? atoi(argv[4]) : 48;
         if (w < 20 || h < 20 || w > MAXW || h > MAXH) { fprintf(stderr, "gen: size must be 20..%d x 20..%d\n", MAXW, MAXH); return 2; }
         gen(seed, w, h);
         if (!write_all()) { fprintf(stderr, "gen: could not write %s\n", g_state); return 1; }
+        { char m[200]; snprintf(m, sizeof m, "new city: seed %u %dx%d, %d buildings, %d loot", seed, w, h, g_nb, g_nl); write_view(m); }
         printf("gen: seed %u %dx%d: %d buildings, %d loot, %d spawns -> %s\n", seed, w, h, g_nb, g_nl, g_ns, g_state); return 0;
     }
-    if (!strcmp(v, "check")) { int ok = check(why, sizeof why); printf("check: %s%s\n", ok ? "ok: " : "FAIL: ", why); return ok ? 0 : 1; }
+    if (!strcmp(v, "check")) { int ok = check(why, sizeof why); printf("check: %s%s\n", ok ? "ok: " : "FAIL: ", why);
+        if (ok || g_nb || g_w >= 8) { char m[460]; snprintf(m, sizeof m, "check %s: %s", ok ? "ok" : "FAILED", why); write_view(m); }
+        return ok ? 0 : 1; }
+    if (!strcmp(v, "view")) {
+        if (!read_back(why, sizeof why)) { gen(1, 64, 48); write_all(); }      /* first run: a default city so the window has something to show */
+        write_view("ready"); printf("view: wrote scene.raw, scene.receipt.txt, ui.txt in %s\n", g_state); return 0; }
     if (!strcmp(v, "status")) {
         char p[PATH_MAX + 16]; struct stat st; snprintf(p, sizeof p, "%s/city.pdl", g_state);
         if (stat(p, &st) || !read_back(why, sizeof why)) { printf("status: no city yet (%s)\n", g_state); return 0; }
-        printf("status: seed %u %dx%d, %d buildings, %d loot, %d spawns (%s)\n", g_seed, g_w, g_h, g_nb, g_nl, g_ns, g_state); return 0;
+        printf("status: seed %u %dx%d, %d buildings, %d loot, %d spawns (%s)\n", g_seed, g_w, g_h, g_nb, g_nl, g_ns, g_state); write_view("ready"); return 0;
     }
     if (!strcmp(v, "weapons")) {
         if (!g_nwp) { printf("weapons: no WEAPON rows in %s/tuning.pdl\n", g_app); return 1; }
+        if (read_back(why, sizeof why)) { char m[300]; int o = 0; for (int i = 0; i < g_nwp && o < 250; i++) o += snprintf(m + o, sizeof m - o, "%s%s %.0f dmg %.2fs", i ? "  |  " : "", g_wp[i].id, g_wp[i].dmg, g_wp[i].cd); write_view(m); }
         for (int i = 0; i < g_nwp; i++) printf("%-8s dmg %.0f  cd %.2fs  speed %.0f  pellets %d  spread %.2f  pickup_ammo %d  range %.1f\n", g_wp[i].id, g_wp[i].dmg, g_wp[i].cd, g_wp[i].speed, g_wp[i].pellets, g_wp[i].spread, g_wp[i].ammo, g_wp[i].range);
         return 0;
     }
