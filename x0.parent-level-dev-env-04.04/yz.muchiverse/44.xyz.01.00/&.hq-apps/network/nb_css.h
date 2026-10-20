@@ -50,6 +50,23 @@ typedef struct NbCssStyle {
     char opacity[16];       /* normalized string (e.g. "0.5"), else "" (=1) */
     double width, height;   /* CSS px when declared, else 0 */
     int has_width, has_height;
+    /* FLEX, G2.3 steps 6.2/6.3 (2026-10-19). Mirrors the renderer's own
+     * shared CSS layer (khtpm_css_parser.h:42-45 has exactly these four,
+     * with has_/value pairs and the same meanings) rather than inventing a
+     * second vocabulary - CENTROID_GOLD_STD §1a: share the shape, do not
+     * write a private copy of the idea. The worker originally had none of
+     * these, which is why a flex div laid its children out vertically: the
+     * model had no horizontal axis at all (layout_xy() ended `*out_x = 0`).
+     *
+     * has_display_flex is DELIBERATELY separate from display[16] above:
+     * display keeps the raw keyword for getComputedStyle, while these are
+     * the typed values layout reads. Same split the renderer makes. */
+    int has_display_flex, display_flex;      /* 1 when display:flex on this node */
+    int has_flex_direction, flex_row;        /* 1=row, 0=column. CSS default (like the
+                                              * renderer's model) is ROW, so layout must
+                                              * treat "no direction set" as row, NOT column:
+                                              * only an explicit column is vertical. */
+    int has_flex_grow; double flex_grow;     /* weight for remaining main-axis space */
     /* Box model (2026-10-14, G2.1). These existed NOWHERE before: the
      * resolver had no fields for them, so a declared padding/margin was
      * silently dropped and layout_xy could not offset a child from its

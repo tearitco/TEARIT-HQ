@@ -1068,6 +1068,11 @@ static int    g_gutter_state = -1;   /* -1 undecided this page, 0 none, 1 presen
 static int    g_measuring = 0;
 
 static double nb_content_h(NbNode *n);
+/* 6.2/6.3 (2026-10-19): both are called from functions defined ABOVE their
+ * own definitions (nb_box_w -> nb_edge_pad_h, nb_content_h -> nb_outer_h),
+ * so forward-declare rather than reorder the file. */
+static double nb_outer_h(NbNode *n);
+static double nb_edge_pad_h(NbNode *n);
 
 /* Total height of the document `from` belongs to. Walks to the topmost
  * ancestor, then sums its children - the same shape nb_content_h uses, so the
@@ -1164,6 +1169,49 @@ static double nb_box_w(NbNode *n) {
     nb_css_resolve(g_css, n, nb_attr_get(n, "style"), &st);
     if (st.has_width && st.width > 0) return st.width;
 
+    /* 6.3 (2026-10-19) - a FLEX ROW's child takes a SHARE of the row, not
+     * the whole content column. Without this every child of the test's
+     * `#fx` would report w=389 (the full column), so three "columns" would
+     * total 1167px inside a 389px span and clause 4 of nb_flex_test.sh
+     * would fail - the widths, not the positions, are what make it a row.
+     *
+     * Equal share when no child declares flex-grow; otherwise weighted by
+     * flex-grow, which is what the renderer's css_layout_pass() already
+     * does (grow_total/fixed_total). The test's three children carry no
+     * CSS beyond display:flex, so they take the equal-share path.
+     *
+     * Only block-level children are sized here; an inline child keeps its
+     * shrink-to-fit behaviour below (a <span> in a flex row still hugs its
+     * text), matching how the renderer treats inline content. */
+    if (n->parent && n->parent->tag) {
+        NbCssStyle pst;
+        nb_css_resolve(g_css, n->parent, nb_attr_get(n->parent, "style"), &pst);
+        if (pst.has_display_flex && pst.display_flex &&
+            !(pst.has_flex_direction && !pst.flex_row) &&  /* default is ROW */
+            layout_is_block_tag(n->tag)) {
+            double row_w = nb_box_w(n->parent);
+            if (row_w > 0) {
+                int nvis = 0;
+                double grow_total = 0.0, grow_me = 0.0;
+                for (NbNode *s = n->parent->first_child; s; s = s->next_sibling) {
+                    if (layout_hidden_anc(s)) continue;
+                    nvis++;
+                    NbCssStyle sst;
+                    nb_css_resolve(g_css, s, nb_attr_get(s, "style"), &sst);
+                    if (sst.has_flex_grow && sst.flex_grow > 0) grow_total += sst.flex_grow;
+                    if (s == n && sst.has_flex_grow && sst.flex_grow > 0) grow_me = sst.flex_grow;
+                }
+                if (nvis < 1) nvis = 1;
+                if (grow_total > 0.0 && grow_me > 0.0)
+                    return row_w * (grow_me / grow_total);
+                if (grow_total <= 0.0)
+                    return row_w / (double)nvis;   /* equal share */
+                /* mixed: a grow child is handled above; a fixed child with
+                 * no grow falls through to shrink-to-text/column below. */
+            }
+        }
+    }
+
     if (!layout_is_block_tag(n->tag)) {
         /* shrink to text, clamped to the column so a long span still has
          * SOME width rather than none */
@@ -1189,6 +1237,22 @@ static double nb_content_h(NbNode *n) {
     NbCssStyle st;
     nb_css_resolve(g_css, n, nb_attr_get(n, "style"), &st);
     if (st.has_height && st.height > 0) return st.height;
+    /* 6.3 (2026-10-19) - a flex ROW's height is the MAX of its children's,
+     * not their sum. Summing is correct for a stacked column (that is what
+     * this did), but a row's children all occupy the SAME vertical band, so
+     * summing would make the container three times too tall and push
+     * everything after it down. This mirrors the renderer's flex path,
+     * where the cross-axis size is the largest child, not the total. */
+    int flex_row = st.has_display_flex && st.display_flex &&
+                   !(st.has_flex_direction && !st.flex_row);  /* default is ROW */
+    if (flex_row) {
+        double mx = 0;
+        for (NbNode *c = n->first_child; c; c = c->next_sibling) {
+            double ch = nb_outer_h(c);
+            if (ch > mx) mx = ch;
+        }
+        return mx;
+    }
     double sum = 0;
     for (NbNode *c = n->first_child; c; c = c->next_sibling) sum += nb_content_h(c);
     if (sum > 0) return sum;
@@ -1220,6 +1284,18 @@ static double nb_edge_pad(NbNode *n, int top) {
     return p + m;
 }
 
+/* Horizontal counterpart of nb_edge_pad: left+right padding/margin, the
+ * amount that displaces the NEXT sibling along a flex row's main axis.
+ * 6.2/6.3 (2026-10-19). */
+static double nb_edge_pad_h(NbNode *n) {
+    if (!n) return 0;
+    NbCssStyle st;
+    nb_css_resolve(g_css, n, nb_attr_get(n, "style"), &st);
+    double p = (st.has_pad_top ? st.pad_top : 0); /* only a top value is modelled */
+    double m = (st.has_mar_top ? st.mar_top : 0);
+    return p + m;
+}
+
 /* Outer height of a node: its content plus its own vertical margin, which
  * is what actually displaces the NEXT sibling. Without this a paragraph
  * with margin-bottom 20px would be followed by the next one immediately,
@@ -1232,11 +1308,12 @@ static double nb_outer_h(NbNode *n) {
 
 static void layout_xy(NbNode *n, double *out_x, double *out_y) {
     if (!n || layout_hidden_anc(n)) { *out_x = 0; *out_y = 0; return; }
-    double y = 0;
+    double x = 0, y = 0;
     if (n->parent && n->parent->tag) {
         double px, py;
         layout_xy(n->parent, &px, &py);
         y += py;
+        x += px;   /* 6.2: the parent ORIGIN, both axes */
         /* Inside the parent's content box: its padding-top, then this
          * node's own margin-top. G2.1's "strictly increasing y per depth"
          * depends on exactly this - without it a first child sits at the
@@ -1244,11 +1321,51 @@ static void layout_xy(NbNode *n, double *out_x, double *out_y) {
         y += nb_edge_pad(n->parent, 1);
         y += nb_edge_pad(n, 1);
     }
+    /* 6.2/6.3 (2026-10-19) - THE HORIZONTAL AXIS. Before this, the walk
+     * below accumulated heights unconditionally and finished `*out_x = 0`,
+     * so a flex row's children all reported x=0 and only the renderer (once
+     * it consumed display:flex) would have disagreed. That is the G2.2
+     * re-open nb_flex_test.sh warns about.
+     *
+     * When the parent is a flex ROW, the main axis is horizontal: siblings
+     * accumulate along x and every child shares the parent's content-box
+     * top (NOT a stacked y). When it is not, behaviour is exactly as before
+     * - heights accumulate, x stays at the parent origin - so no existing
+     * page moves by a pixel. `flex-direction` defaults to ROW in CSS, so a
+     * bare `display:flex` IS a row; only an explicit
+     * `flex-direction:column` stacks. (Getting this backwards is how the
+     * first cut kept the test red - see the note on parent_is_row below.)
+     *
+     * The child's own horizontal share is nb_box_w()'s job (6.3), not this
+     * function's - this walk only places origins. */
+    NbCssStyle pst;
+    int parent_is_row = 0;
+    if (n->parent && n->parent->tag) {
+        nb_css_resolve(g_css, n->parent, nb_attr_get(n->parent, "style"), &pst);
+        /* flex-direction DEFAULTS TO ROW, per CSS. Only an explicit
+         * `flex-direction:column` turns the main axis vertical. The first
+         * cut of this required an explicit flex-direction:row, which made a
+         * bare `display:flex` stack - the exact page nb_flex_test.sh uses,
+         * so the test stayed red with the children stacked. Found by
+         * probing the resolver directly rather than guessing: fx resolved
+         * display_flex=1 but has_flex_direction=0. */
+        int dir_col = pst.has_flex_direction && !pst.flex_row;
+        parent_is_row = pst.has_display_flex && pst.display_flex && !dir_col;
+    }
+    if (parent_is_row) {
+        for (NbNode *s = n->parent->first_child; s && s != n; s = s->next_sibling) {
+            if (layout_hidden_anc(s)) continue;
+            x += nb_box_w(s) + nb_edge_pad_h(s);
+        }
+        *out_x = x;
+        *out_y = y;
+        return;
+    }
     for (NbNode *s = n->parent ? n->parent->first_child : NULL; s && s != n; s = s->next_sibling) {
         if (layout_hidden_anc(s)) continue;
         y += nb_outer_h(s);
     }
-    *out_x = 0; *out_y = y;
+    *out_x = x; *out_y = y;
 }
 
 static JSValue nb_rect_tojson(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {

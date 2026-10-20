@@ -251,7 +251,14 @@ NbCss *nb_css_parse(const char *text, size_t len) {
 /* ----------------------- cascade ----------------------- */
 
 enum { PD_DISPLAY = 0, PD_VIS, PD_OP, PD_W, PD_H,
-       PD_PAD_TOP, PD_PAD_BOTTOM, PD_MAR_TOP, PD_MAR_BOTTOM, PD_COUNT };
+       PD_PAD_TOP, PD_PAD_BOTTOM, PD_MAR_TOP, PD_MAR_BOTTOM,
+       /* G2.3 steps 6.2/6.3 (2026-10-19). Two new properties only -
+        * `display` itself already carries flex-ness via PD_DISPLAY above,
+        * so there is no separate PD_DISPLAY_FLEX (that would let
+        * `display:flex` and `display:block` fight over two score slots).
+        * Mirrors the renderer's shared parser, which likewise keys
+        * display_flex off its single `display` property. */
+       PD_FLEX_DIR, PD_FLEX_GROW, PD_COUNT };
 
 static int prop_id(const char *key) {
     if (strcmp(key, "display") == 0) return PD_DISPLAY;
@@ -265,6 +272,8 @@ static int prop_id(const char *key) {
     if (strcmp(key, "margin") == 0) return PD_MAR_TOP;
     if (strcmp(key, "margin-top") == 0) return PD_MAR_TOP;
     if (strcmp(key, "margin-bottom") == 0) return PD_MAR_BOTTOM;
+    if (strcmp(key, "flex-direction") == 0) return PD_FLEX_DIR;
+    if (strcmp(key, "flex-grow") == 0) return PD_FLEX_GROW;
     return -1;
 }
 
@@ -300,7 +309,8 @@ static void apply_decl(int pid, const char *val, size_t vlen, int important,
      * one (the width/height invariant the G1 CSS tests rely on). */
     if (scores[pid] == score && (pid == PD_W || pid == PD_H ||
         pid == PD_PAD_TOP || pid == PD_PAD_BOTTOM ||
-        pid == PD_MAR_TOP || pid == PD_MAR_BOTTOM)) return;
+        pid == PD_MAR_TOP || pid == PD_MAR_BOTTOM ||
+        pid == PD_FLEX_GROW)) return;
 
     switch (pid) {
     case PD_DISPLAY:
@@ -311,6 +321,7 @@ static void apply_decl(int pid, const char *val, size_t vlen, int important,
         if (strcasecmp(cv, "none") == 0) {
             if (score >= scores[pid]) {
                 snprintf(out->display, sizeof(out->display), "none");
+                out->has_display_flex = 0;   /* 6.2: none is not flex */
                 scores[pid] = score;
             }
         } else if (score >= scores[pid]) {
@@ -330,6 +341,11 @@ static void apply_decl(int pid, const char *val, size_t vlen, int important,
              * (burndown 6.2-6.3) and its renderer half is a design decision
              * (6.4, do not ship the worker half alone). */
             snprintf(out->display, sizeof(out->display), "%s", cv);
+            /* 6.2/6.3: the typed flag layout reads. Set in the SAME
+             * score-gated slot as the keyword so it can never disagree
+             * with display[16] - a single property, a single decision. */
+            out->has_display_flex = (strcasecmp(cv, "flex") == 0);
+            out->display_flex     = out->has_display_flex;
             scores[pid] = score;
         }
         break;
@@ -350,6 +366,39 @@ static void apply_decl(int pid, const char *val, size_t vlen, int important,
         if (ep && ep != cv && *ep == 0 && dv >= 0.0 && dv <= 1.0) {
             if (score >= scores[pid]) {
                 snprintf(out->opacity, sizeof(out->opacity), "%g", dv);
+                scores[pid] = score;
+            }
+        }
+        break;
+    }
+    case PD_FLEX_DIR:
+        /* 6.2/6.3: only the two real keywords. No keyword stored means
+         * flex-direction is UNSET, and CSS's default for it is ROW - so
+         * layout treats has_flex_direction==0 as a row, not a column.
+         * Getting that backwards kept nb_flex_test.sh red with a bare
+         * `display:flex` fixture, whose whole point is the default. */
+        if (score >= scores[pid]) {
+            if (strcasecmp(cv, "row") == 0) {
+                out->has_flex_direction = 1; out->flex_row = 1;
+            } else if (strcasecmp(cv, "column") == 0) {
+                out->has_flex_direction = 1; out->flex_row = 0;
+            } else {
+                break;
+            }
+            scores[pid] = score;
+        }
+        break;
+    case PD_FLEX_GROW: {
+        /* 6.2/6.3: non-negative unitless number, per CSS. */
+        char tmp[64];
+        int i2 = 0;
+        const char *v2 = clean_value(val, vlen, tmp, sizeof(tmp), &i2);
+        char *ep = NULL;
+        double dv = strtod(v2, &ep);
+        while (ep && is_ws(*ep)) ep++;
+        if (ep && ep != v2 && *ep == 0 && dv >= 0.0) {
+            if (score >= scores[pid]) {
+                out->flex_grow = dv; out->has_flex_grow = 1;
                 scores[pid] = score;
             }
         }
