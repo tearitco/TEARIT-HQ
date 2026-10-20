@@ -1,74 +1,49 @@
-<!-- game-dev-hq uses the same window shape as mcl-hq: INT, a book of people, a canvas, a chat sidebar, a Player tab.
-     The verbs are the studio week (hire, train, start, assign, advance, ship). RULES: no angle brackets inside comments. -->
+<!-- game-dev-hq. Top bar is INT, Book, Page, the same two slots as the other games.
+     Book and Page open the left menu: hire and train on Book, contract and advertise on Page.
+     Staff names are the footer buttons only. RULES: no angle brackets inside comments. -->
 <window label="${title}" class="database-window fixed-size managed user-resizable" vars="state/ui.txt">
   <module src="@.apps/game-dev-hq/ops/+x/game_dev_hq.+x"/>
   <page name="main">
     <tabbar id="toolbar" class="tab-bar">
       <tab id="tb-int" class="tab rp-tb ${interact_class}" label="INT ${interact_label}" relay="${rp_h1},${rp_h2}" onclick="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' int"/>
-      <tab id="tb-book" class="tab rp-tb" label="${book_label} ▾" onclick="ACTIVATE" target_id="tb-book"/>
-      <tab id="tb-cash" class="tab rp-tb" label="${cash_label}" onclick="ACTIVATE" target_id="tb-cash"/>
-      <tab id="tb-fame" class="tab rp-tb" label="${fame_label} ▾" onclick="ACTIVATE" target_id="tb-fame"/>
-      <tab id="tb-hire" class="tab rp-tb" label="Hire ▾" onclick="ACTIVATE" target_id="tb-hire"/>
-      <tab id="tb-contract" class="tab rp-tb" label="Contract ▾" onclick="ACTIVATE" target_id="tb-contract"/>
-      <tab id="tb-train" class="tab rp-tb" label="Train ▾" onclick="ACTIVATE" target_id="tb-train"/>
-      <tab id="tb-player" class="tab rp-tb" label="Player ▾" onclick="ACTIVATE" target_id="tb-player"/>
-      <tab id="tb-menu" class="tab rp-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
+      <tab id="tb-book" class="tab rp-tb" label="Book ▾" onclick="ACTIVATE" target_id="tb-book"/>
+      <tab id="tb-page" class="tab rp-tb" label="Page ▾" onclick="ACTIVATE" target_id="tb-page"/>
     </tabbar>
     <sidebar id="side" class="rp-rail sidebar">
-      <repeat count="${n_party}" bind="party">
-        <item id="bk-${party.#}" class="rp-menu-row dropdown-child ${party.cls}" target_id="tb-book" label="${party.label}" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' select ${party.id}"/>
-      </repeat>
-      <item id="bk-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-book" label="- cancel -" action="void"/>
-      <item id="cash-funds" class="rp-menu-row dropdown-child" target_id="tb-cash" label="Cash ${funds}" action="void"/>
-      <item id="cash-week" class="rp-menu-row dropdown-child" target_id="tb-cash" label="Week ${week}   office ${office}" action="void"/>
-      <item id="cash-game" class="rp-menu-row dropdown-child" target_id="tb-cash" label="${game_line}" action="void"/>
-      <item id="cash-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-cash" label="- cancel -" action="void"/>
-      <item id="ad-s" class="rp-menu-row dropdown-child" target_id="tb-fame" label="Advertise small  $5000" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' advertise small"/>
-      <item id="ad-m" class="rp-menu-row dropdown-child" target_id="tb-fame" label="Advertise mid  $15000" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' advertise mid"/>
-      <item id="ad-b" class="rp-menu-row dropdown-child" target_id="tb-fame" label="Advertise big  $40000" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' advertise big"/>
-      <item id="ad-h" class="rp-menu-row dropdown-child" target_id="tb-fame" label="Hype ${hype}" action="void"/>
-      <item id="ad-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-fame" label="- cancel -" action="void"/>
       <repeat count="${n_hire}" bind="hire">
-        <item id="h${hire.#}" class="rp-menu-row dropdown-child" target_id="tb-hire" label="${hire.line}" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' hire ${hire.job} ${hire.name}"/>
+        <item id="h${hire.#}" class="rp-menu-row dropdown-child" target_id="tb-book" label="${hire.line}" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' hire ${hire.job} ${hire.name}"/>
       </repeat>
-      <item id="hi-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-hire" label="- cancel -" action="void"/>
-      <item id="ct-ar" class="rp-menu-row dropdown-child" target_id="tb-contract" label="New game  action/rpg" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' start action:rpg"/>
-      <item id="ct-ra" class="rp-menu-row dropdown-child" target_id="tb-contract" label="New game  rpg/adventure" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' start rpg:adventure"/>
-      <item id="ct-ps" class="rp-menu-row dropdown-child" target_id="tb-contract" label="New game  puzzle/sim" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' start puzzle:sim"/>
-      <repeat count="${n_party}" bind="party">
-        <item id="as${party.#}" class="rp-menu-row dropdown-child" target_id="tb-contract" label="Assign ${party.label}" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' assign ${party.id}"/>
-      </repeat>
-      <item id="ct-go" class="rp-menu-row dropdown-child" target_id="tb-contract" label="Advance one phase" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' advance"/>
-      <item id="ct-ship" class="rp-menu-row dropdown-child" target_id="tb-contract" label="Ship" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' ship"/>
-      <item id="ct-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-contract" label="- cancel -" action="void"/>
-      <item id="tr-1" class="rp-menu-row dropdown-child" target_id="tb-train" label="Train the selected programming" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' train s1:programming"/>
-      <item id="tr-r" class="rp-menu-row dropdown-child" target_id="tb-train" label="Rest the selected" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' rest s1"/>
-      <item id="tr-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-train" label="- cancel -" action="void"/>
-      <item id="pm-play" class="rp-menu-row dropdown-child" target_id="tb-player" label="Play" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' play"/>
-      <item id="pm-stop" class="rp-menu-row dropdown-child" target_id="tb-player" label="Stop" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' stop"/>
-      <item id="pm-step" class="rp-menu-row dropdown-child" target_id="tb-player" label="Step right" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' step 1 0"/>
-      <item id="pm-say" class="rp-menu-row dropdown-child" target_id="tb-player" label="Say hello" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' say hello"/>
-      <item id="pm-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-player" label="- cancel -" action="void"/>
-      <item id="mn-chat" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Chat show / hide" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' toggle chat"/>
-      <item id="mn-info" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Studio show / hide" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' toggle left"/>
-      <item id="mn-clear" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Clear chat" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' clearchat"/>
-      <item id="mn-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-menu" label="- cancel -" action="void"/>
+      <item id="tr-prog" class="rp-menu-row dropdown-child" target_id="tb-book" label="Train selected programming" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' train ${active_id}:programming"/>
+      <item id="tr-sc" class="rp-menu-row dropdown-child" target_id="tb-book" label="Train selected scenario" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' train ${active_id}:scenario"/>
+      <item id="tr-gr" class="rp-menu-row dropdown-child" target_id="tb-book" label="Train selected graphics" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' train ${active_id}:graphics"/>
+      <item id="tr-rest" class="rp-menu-row dropdown-child" target_id="tb-book" label="Rest selected" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' rest ${active_id}"/>
+      <item id="bk-play" class="rp-menu-row dropdown-child" target_id="tb-book" label="Play" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' play"/>
+      <item id="bk-stop" class="rp-menu-row dropdown-child" target_id="tb-book" label="Stop" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' stop"/>
+      <item id="bk-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-book" label="- cancel -" action="void"/>
+      <item id="ct-ar" class="rp-menu-row dropdown-child" target_id="tb-page" label="New game  action/rpg" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' start action:rpg"/>
+      <item id="ct-ra" class="rp-menu-row dropdown-child" target_id="tb-page" label="New game  rpg/adventure" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' start rpg:adventure"/>
+      <item id="ct-ps" class="rp-menu-row dropdown-child" target_id="tb-page" label="New game  puzzle/sim" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' start puzzle:sim"/>
+      <item id="ct-as" class="rp-menu-row dropdown-child" target_id="tb-page" label="Assign selected" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' assign ${active_id}"/>
+      <item id="ct-go" class="rp-menu-row dropdown-child" target_id="tb-page" label="Advance one phase" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' advance"/>
+      <item id="ct-ship" class="rp-menu-row dropdown-child" target_id="tb-page" label="Ship" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' ship"/>
+      <item id="ad-s" class="rp-menu-row dropdown-child" target_id="tb-page" label="Advertise small  $5000" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' advertise small"/>
+      <item id="ad-m" class="rp-menu-row dropdown-child" target_id="tb-page" label="Advertise mid  $15000" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' advertise mid"/>
+      <item id="ad-b" class="rp-menu-row dropdown-child" target_id="tb-page" label="Advertise big  $40000" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' advertise big"/>
+      <item id="pg-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-page" label="- cancel -" action="void"/>
     </sidebar>
     <panel id="room_p" class="rp-panel">
       <canvas id="room" class="rp-room" sprite="${canvas_raw}"/>
       <row id="side-l" class="canvas-overlay-left ov-pin ov-chrome rp-side-ov" show="${left_visible}">
-        <text label="studio - ${active_name}" class="gd-title"/>
+        <text label="studio" class="gd-title"/>
         <item id="side-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' toggle left"/>
-        <text label="${run_label}" class="gd-note"/>
-        <text label="${studio_line}" class="gd-ink"/>
+        <text label="${cash_label}" class="gd-ink"/>
+        <text label="${fame_label}   hype ${hype}" class="gd-ink"/>
+        <text label="Week ${week}   office ${office}" class="gd-ink"/>
         <text label="${game_line}" class="gd-ink"/>
         <text label="${note}" class="gd-note"/>
-        <repeat count="${n_party}" bind="party">
-          <item id="sl${party.#}" class="gd-ink" label="${party.label}" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' select ${party.id}"/>
-        </repeat>
       </row>
       <row id="chat-ov" class="canvas-overlay-right ov-pin ov-chrome rp-chat-ov theme" show="${chat_visible}">
-        <text label="chat - ${active_name}" class="hb-quiet ov-title theme-3"/>
+        <text label="chat" class="hb-quiet ov-title theme-3"/>
         <item id="chat-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' toggle chat"/>
         <item id="chat-clear" class="rp-menu-row" label="clear chat" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' clearchat"/>
         <text label="${chat_0}" class="rp-chat ${chat_cls_0}"/>

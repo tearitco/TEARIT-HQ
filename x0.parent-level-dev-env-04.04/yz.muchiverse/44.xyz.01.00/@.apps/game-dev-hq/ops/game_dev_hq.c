@@ -252,7 +252,7 @@ static void write_ui(void) {
     fprintf(f, "interact_class=%s\ninteract_label=%s\n", ion ? "interact-active" : "", ion ? who : "off");
     fprintf(f, "rp_h1=%s/interact_relay.txt\nrp_h2=%s/keyboard/history.txt\n", ST, ST);
     fprintf(f, "chat_visible=%d\nleft_visible=%d\n", chat, left);
-    fprintf(f, "active_name=%s\nbook_label=%s\npage_label=Office\n", who, who);
+    fprintf(f, "active_name=%s\nactive_id=%s\nbook_label=Book\npage_label=Page\n", who, nstaff ? staff[g_active].id : "-");
     fprintf(f, "run_label=%s\nrun_cls=%s\n", run ? "GO started" : "STOP stopped", run ? "ph-green" : "ph-red");
     fprintf(f, "control_label=control: %s\n", who);
     fprintf(f, "n_staff=%d\nn_party=%d\n", nstaff, nstaff);
