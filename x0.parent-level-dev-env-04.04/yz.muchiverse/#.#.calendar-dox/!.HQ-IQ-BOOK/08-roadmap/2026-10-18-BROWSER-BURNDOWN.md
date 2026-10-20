@@ -342,6 +342,28 @@ design decision that deserves its own note before code — which is exactly the
 kind of call the plan's §5.5 reserves for the owner. **Do not ship the worker
 half alone** (it would re-open G2.2 with a confident wrong number).
 
+> **SUPERSEDED 2026-10-19 — the owner chose (b), and reading the real code
+> changed the answer.** The design note is
+> `design-docs/2026-10-19-G2.3-FLEX-6.4-DESIGN.md`. Headline: **neither (a)
+> nor (b) is what is missing.** `css_layout_pass()` **already is** a complete
+> general flexbox engine (display:flex, flex-direction, flex-grow,
+> flex-wrap, padding/gap, absolute out-of-flow), the CSS layer already parses
+> and cascades all of it (`khtpm_css_parser.h:42-45`), and it is already
+> reachable from CSS — `<page style="display:flex; flex-direction:row">`
+> routes sidebar+panels through it, generalized live since 2026-09-11. The
+> browser does not get flex because **its `<page>` never asks for it**
+> (verified: 0 occurrences of `flex` in the 182-line template), not because
+> of a chrome-class gate. So "touches every window" was too pessimistic: the
+> generalization already happened, and its only consumer is this browser.
+>
+> **What is actually missing is the *worker* half** — `nb_flex_test.sh`
+> reads `getBoundingClientRect()` out of a worker `eval`, so it measures the
+> worker's box tree, and the two halves must land so worker and renderer
+> agree or `nb_gbcr` breaks. That sequencing is the real risk, not the layout
+> engine. See the note's §2 for the per-step plan and §3 for the gate
+> (`CENTROID_GOLD_STD` rule 7: no per-app branch in the shared engine).
+
+
 **6.5 Progress 2026-10-19 — step 6.1 landed, nothing else.** `nb_css.c` now
 retains the display keyword instead of clearing it to `""`
 (`commit e19a0f0bd`, branch `opencode`). Measured live after a fresh
@@ -366,6 +388,63 @@ it only makes the request *visible* to the code that will consume it.
 `nb_flex_test.sh` is deliberately **not** wired into `nb_all_tests.sh`
 until G2.3 is complete, so K1's verdict line does not change from this
 work.
+
+**6.6 Progress 2026-10-20 — steps 6.2 and 6.3 landed; G2.3's worker half is
+green.** Branch `opencode`, commit `543de563c`. The worker now has a
+horizontal axis and flex semantics:
+
+- `nb_css.{h,c}` — the style model gained `has_display_flex`/`display_flex`,
+  `has_flex_direction`/`flex_row`, `has_flex_grow`/`flex_grow`, plus
+  `flex-direction`/`flex-grow` in `prop_id` and the cascade. This mirrors the
+  renderer's shared parser (`khtpm_css_parser.h:42-45`) field-for-field, so
+  the two halves agree by construction.
+- `ops/nb_js_worker.c` — `layout_xy()` accumulates *widths* for a flex-row
+  parent and holds `y` (instead of always stacking and ending `*out_x = 0`);
+  `nb_box_w()` gives a flex-row block child a *share* of the row (equal, or
+  weighted by `flex-grow`); `nb_content_h()` takes the **max** of a flex
+  row's children, not their sum. Every branch is gated on the parent being a
+  flex row, so a non-flex page is byte-for-byte unchanged.
+
+Measured, on binary md5 `57d43be35f968d04b1b7aab301fb96f2` (fresh
+`sh build.sh` **and a window restart** — the §3.1 trap again):
+
+```
+nb_flex_test.sh PASS, twice, identical numbers:
+  c1 x=0   y=30 w=130
+  c2 x=130 y=30 w=130
+  c3 x=259 y=30 w=130
+one row (shared y=30); edges share within 1px (gaps [0,1]);
+x advances; widths fit.
+nb_gbcr_test.sh PASS — 9/9 rows within ±2px, 100.0% (K2 holds).
+```
+
+**Two bugs were found and fixed while proving it** — both worth recording
+because neither was visible by reading:
+
+1. **The first cut segfaulted the worker.** `layout_xy()` dereferenced
+   `n->parent` in the new flex check with no NULL guard; the document root
+   has no parent. `worker_css_test.c` crashed with `signal 11`, and ASAN
+   named the line (`layout_xy:1343`). This is the §3.1 class of error in
+   reverse: a *rebuild* is required to see it, and the resident-worker trap
+   hid it from the live test until a restart.
+2. **`flex-direction` defaults to ROW, not column.** The first cut required
+   an explicit `flex-direction:row`, so a bare `display:flex` kept stacking —
+   which is *exactly* the page `nb_flex_test.sh` uses. Found by probing
+   `nb_css_resolve` in isolation (`fx` resolved `display_flex=1` but
+   `has_flex_direction=0`), not by guessing. The renderer's own parser has
+   the same reversal latent (`has_flex_direction ? flex_row : 0`), which is a
+   separate finding for 6.4's wiring step.
+
+`worker_css_test.c` runs 10/10 and is identical to HEAD; its one remaining
+failure (`wcs[px-size]`, `B6b stack=60`) **reproduces on the unmodified HEAD
+worker**, so it is pre-existing and not from this change.
+
+**Still not done:** 6.4 — but the design note
+(`design-docs/2026-10-19-G2.3-FLEX-6.4-DESIGN.md`) found the renderer's flex
+engine *already exists* (`css_layout_pass()`) and is already reachable from
+CSS; the browser's `<page>` simply never declares `display:flex`. So 6.4 is
+wiring, not invention — the renderer half is authoring flex into the
+template, not a new layout branch.
 
 ---
 
