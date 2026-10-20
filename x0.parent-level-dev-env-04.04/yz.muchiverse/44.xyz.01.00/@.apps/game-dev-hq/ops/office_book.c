@@ -129,6 +129,7 @@ void gd_export_office(const char *app) {
     }
     static const int desks[] = {2, 5, 8, 11};
     for (int i = 0; i < 4; i++) blit48(fr, fw, &furn, 1 * S48, 12 * S48, desks[i] * TW, 4 * TW);
+    { Img door = load_img(assets, "characters", "!Door1"); blit48(fr, fw, &door, 0, 0, 6 * TW, 6 * TW); stbi_image_free(door.px); }
 
     char st[PATH_MAX], party[PATH_MAX], staffp[PATH_MAX];
     join2(st, sizeof st, app, "state");
@@ -149,20 +150,20 @@ void gd_export_office(const char *app) {
             Img ch = load_img(assets, "characters", sheet);
             int sx = (idx % 4) * 3 * S48 + S48;
             int sy = (idx / 4) * 4 * S48 + 3 * S48;
-            int x = desks[si], y = 5;
+            int x = desks[si], y = 5, skip = 0;
             { char posp[PATH_MAX]; FILE *pf;
               if (join2(posp, sizeof posp, st, "pos.txt") && (pf = fopen(posp, "r"))) {
                 char pid[16]; int px, py;
-                while (fscanf(pf, "%15s %d %d", pid, &px, &py) == 3) if (!strcmp(pid, id)) { x = px; y = py; }
+                while (fscanf(pf, "%15s %d %d", pid, &px, &py) == 3) if (!strcmp(pid, id)) { x = px; y = py; if (py < 0) skip = 1; }
                 fclose(pf);
               } }
-            blit48(fr, fw, &ch, sx, sy, x * TW, y * TW - 8);
+            if (!skip) blit48(fr, fw, &ch, sx, sy, x * TW, y * TW - 8);
             write_frame(assets, &ch, sheet, idx);
             unsigned char rgb[4] = {180, 180, 180, 255};
             if (ch.px) for (int v = sy; v < sy + S48 && v < ch.h; v++) for (int u = sx; u < sx + S48 && u < ch.w; u++) {
                 unsigned char *sp = ch.px + ((size_t)v * ch.w + u) * 4; if (sp[3] > 200) { memcpy(rgb, sp, 4); v = sy + S48; break; } }
             char letter = name[0] ? name[0] : 'a'; if (letter >= 'A' && letter <= 'Z') letter = (char)(letter + 32);
-            eo += snprintf(ev + eo, sizeof ev - eo, "%d %d %d %d %d %s %d 8 1 %c\n", x, y, rgb[0], rgb[1], rgb[2], sheet, idx, letter);
+            if (!skip) eo += snprintf(ev + eo, sizeof ev - eo, "%d %d %d %d %d %s %d 8 1 %c\n", x, y, rgb[0], rgb[1], rgb[2], sheet, idx, letter);
             stbi_image_free(ch.px); si++;
         }
         fclose(sf);

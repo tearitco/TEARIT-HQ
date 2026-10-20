@@ -171,12 +171,9 @@ static void seed(void) {
     save_all();
 }
 
-static void pay_week(void) {
-    long pay = 0;
-    for (int i = 0; i < nstaff; i++) pay += staff[i].salary;
-    funds -= pay;
-    week++;
-}
+static void pay_week(void);
+static void day_out(void);
+void gd_export_office(const char *app);
 
 static int job_add(Staff *s, int scale) {
     if (s->energy <= 0) return 0;
@@ -281,7 +278,31 @@ static void write_ui(void) {
     fclose(f); rename(tmp, p);
 }
 
+static void write_spots(int away) {
+    char pp[1200]; snprintf(pp, sizeof pp, "%s/pos.txt", ST);
+    static const int desks[] = {2, 5, 8, 11};
+    FILE *pf = fopen(pp, "w"); if (!pf) return;
+    for (int i = 0; i < nstaff && i < 4; i++) fprintf(pf, "%s %d %d\n", staff[i].id, desks[i], away ? -1 : 5);
+    fclose(pf);
+}
+static void pay_week(void) {
+    long pay = 0;
+    for (int i = 0; i < nstaff; i++) pay += staff[i].salary;
+    funds -= pay;
+    week++;
+    day_out();
+}
+static void day_out(void) {
+    write_spots(1); flag_set("away", 1);
+    log_line("the staff head out the door");
+}
+static void day_in(void) {
+    write_spots(0); flag_set("away", 0);
+    log_line("the staff come in for the day");
+    gd_export_office(APP);
+}
 static void staff_chat(void) {
+    if (flag_get("away", 0)) { static int wait; if (++wait >= 2) { wait = 0; day_in(); } return; }
     if (!flag_get("running", 1) || flag_get("int", 0) || nstaff < 2) return;
     static int tick;
     if (++tick % 4) return;
