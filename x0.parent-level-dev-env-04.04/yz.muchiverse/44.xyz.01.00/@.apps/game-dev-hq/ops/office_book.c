@@ -281,6 +281,10 @@ void gd_export_office(const char *app) {
               "GAME         | desk_1_label       | Office\n", gf);
         fclose(gf);
     }
+    /* Same 48px scene the other books ship. House desk_grid is 80, which is why the tile view was huge. \ flips scene and tiles. */
+    { char vp[PATH_MAX]; join2(vp, sizeof vp, root, "view.pdl");
+      FILE *vf = fopen(vp, "w");
+      if (vf) { fprintf(vf, "VIEW | cell_px | 48\nVIEW | default_style | scene\nVIEW | scene_raw | %s\nVIEW | scene_w | %d\nVIEW | scene_h | %d\n", rawp, fw, fh); fclose(vf); } }
     char bar[PATH_MAX]; join2(bar, sizeof bar, room, "bar.txt");
     FILE *bf = fopen(bar, "w");
     if (bf) {
