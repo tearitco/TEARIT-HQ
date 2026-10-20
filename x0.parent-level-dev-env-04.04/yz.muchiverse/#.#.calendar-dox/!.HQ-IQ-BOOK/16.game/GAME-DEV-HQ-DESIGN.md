@@ -2,7 +2,7 @@
 
 A studio sim in the same shape as df-hq, cdda-hq, and mcl-hq: one daemon, one board, one ledger. The game it copies is Kairosoft's Game Dev Story. The old CLI under the share drive (`kairosoft-grok`, the `gds` C files) is a sketch only. Do not compile it and do not import its stock, bond, or four-company rules. Those were a later pivot. This page is the studio.
 
-Not built. No `@.apps/game-dev-hq` yet.
+Built as `@.apps/game-dev-hq`. Open with `sh @.apps/game-dev-hq/button.sh run`. Three staff start, so one hire fits in an office of 4.
 
 ## The week
 

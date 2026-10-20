@@ -1,0 +1,6 @@
+window { width: 720px; height: 480px; background-color: #14161c; color: #e8e8e8; font-family: DejaVu Sans; font-size: 12px; }
+.tab-bar { background-color: #1a1a1a; border: 1px solid #444444; }
+.tab { background-color: #1a1a1a; color: #cccccc; border: 1px solid #444444; width: 110px; }
+.gd-line { color: #ffd966; padding: 6px 8px; }
+.gd-note { color: #7be08f; padding: 2px 8px; }
+.gd-row { color: #d6d9e3; padding: 2px 8px; }
