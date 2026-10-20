@@ -45,6 +45,9 @@
         <text label="${studio_line}" class="rp-big"/>
         <text label="${game_line}" class="rp-quiet"/>
         <text label="${note}" class="ph-green"/>
+        <repeat count="${n_party}" bind="party">
+          <item id="sl${party.#}" class="rp-row" label="${party.label}" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' select ${party.id}"/>
+        </repeat>
       </row>
       <row id="chat-ov" class="canvas-overlay-right ov-pin ov-chrome rp-chat-ov theme" show="${chat_visible}">
         <text label="chat - ${active_name}" class="hb-quiet ov-title theme-3"/>
