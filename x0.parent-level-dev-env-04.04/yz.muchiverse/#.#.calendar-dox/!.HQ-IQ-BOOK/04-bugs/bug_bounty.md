@@ -18,6 +18,18 @@
 
 ---
 
+## Found 2026-10-20 (owner report): palette tile switch lags; a user may click again. Status per item.
+
+Doc with all numbers, proof and limits: `03-pitfalls/palette-tile-load-lag.md`.
+
+1. **FIXED (sprite decode) 2026-10-20 - switching palette tiles froze the window while every visible tile's `sprite.csv` (text, about 1,000 lines each) was parsed in the paint.** Measured: the first paint of the cdda page took 268-269 ms with the old behaviour, 63-64 ms with the new disk cache warm, and 124 ms on a first-ever view with progressive load (about 324 visible tiles; screenshots byte-identical in every case). Fix: `_shared-lib/sprite_cache.c` (decoded RGBA cache in `~/.cache/lyfedesk-sprites`, validated against the csv, safe to delete) plus a per-paint decode budget for palette grid tiles (`LYFEDESK_SPRITE_BUDGET_MS`, default 60) with a repaint owed for the rest. 7,070 / 7,070 real sprites identical to the csv decode; 20 unit checks with negative controls and mutants; failure paths (unwritable cache, `HOME` unset, torn or garbage cache file) all fall back to the old decode. Not tested: dock/taskbar callers beyond code review, a rapid double click on a live window, heavy CPU load.
+2. **OPEN - every khtpm window waits `select(150 ms)` before a requested repaint** (`hq_run_event_loop`), plus the 30 ms `house_wait_us` floor: a repaint that is not a direct `redraw()` call is about 0.18 s late. Seen as the 0.23-0.28 s spacing between the repaints of a new palette window (strace shows the repeated 0.150 s `pselect6`). Changed only for the one case it blocked (an owed progressive-load slice). A blanket "dirty means no wait" is NOT safe: windows that re-dirty every tick (hover fills, `hq_request_redraw()` in the tick) would repaint at the 33 Hz floor. Needs a CPU-safe design (marker-driven wake) and the owner's go-ahead.
+3. **OPEN (unmeasured) - a rapid second click on a palette tab or tile may double-apply.** The actions (`set-cdda-mod`, `arm-cdda`) are one `palettes_menu.sh` process per click. Not reproduced either way. If real: latest-wins on the manager side with the marker file as the ack (technique list in the doc, section 1).
+4. **OPEN (limit) - sprite-grid-row / sprite-flow layouts keep parked (hidden) tiles at full size, so `draw_elem` would decode them too.** The palettes use the swatch grid, which zeroes hidden tiles, so they are not affected; other windows using those layouts may be.
+5. **INFO - `KH_REDRAW_TRACE=1` now prints a `[REDRAW-COST]` line per paint** (total ms, tile decode ms and count, blit ms and count, deferred). Use it before guessing at paint lag; no `perf` here (`perf_event_paranoid` forbids it without root), `strace -f -tt -T` works on a child.
+
+---
+
 ## OPEN 2026-10-15: rename livedesk -> LyfeDesk (trademark; owner decision, written "LyfeDesk")
 
 **Why:** "livedesk" may conflict with an existing trademark one day; do it now. Not legal advice: "LyfeDesk" is a near spelling, so a trademark search on the new name is still the owner's to do.

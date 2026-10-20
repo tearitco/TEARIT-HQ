@@ -128,6 +128,7 @@ static XftFont *font_for(const CssStyle *st) {
  * stateless, X11-drawing code with zero db-hq/palettes-specific
  * dependencies - any future mode gets it for free. */
 #define HQ_SPRITE_PX_MAX 64
+#include "sprite_cache.c" /* decoded-sprite disk cache + per-frame load budget (palette tile lag, BOOK 03-pitfalls/palette-tile-load-lag.md) */
 /* Display-only offset for the nav badge number (owner 2026-10-05, 18.pc-hq/CURSWORD-POSSESSION-
  * DESIGN.md): a window of class "nav-after-top" (the hotbar) shows its cells numbered AFTER the top
  * bar's, i.e. local index + base. Internal nav indexes (g_nav[], nav_index) stay local 1..N; only the
@@ -164,7 +165,10 @@ static double g_hqs_skin_ms = 0; static int g_hqs_skin_blocks = 0; /* tile-skin 
 static double hqs_now_ms(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return t.tv_sec * 1000.0 + t.tv_nsec / 1e6; }
 static long g_hq_sprite_tick = 0;
 
-static HqSprite *hq_sprite(const char *dir) {
+/* defer_ok=1 (palette/swatch grid tiles only): when this paint has already spent its load budget (sprite_cache.c), a COLD tile is not
+ * decoded now; NULL comes back, the cell stays empty and spc_frame_deferred() makes redraw() schedule another paint. Cache hits
+ * and callers with defer_ok=0 behave exactly as before. */
+static HqSprite *hq_sprite_ex(const char *dir, int defer_ok) {
     if (!dir || !dir[0]) return NULL;
     char pth[512];
     snprintf(pth, sizeof(pth), "%s", dir);
@@ -176,7 +180,8 @@ static HqSprite *hq_sprite(const char *dir) {
     snprintf(csv_path, sizeof(csv_path), "%s/sprite.csv", pth);
     struct stat st;
     time_t mt = 0;
-    if (stat(csv_path, &st) == 0) mt = st.st_mtime;
+    int have_st = (stat(csv_path, &st) == 0);
+    if (have_st) mt = st.st_mtime;
     for (int i = 0; i < HQ_SPRITE_CACHE_N; i++) {
         if (g_hq_sprite_cache[i].rgba && strcmp(g_hq_sprite_cache[i].path, pth) == 0) {
             if (mt != g_hq_sprite_cache[i].mtime) {
@@ -188,30 +193,12 @@ static HqSprite *hq_sprite(const char *dir) {
             return &g_hq_sprite_cache[i];
         }
     }
+    if (!have_st) return NULL;
+    if (defer_ok && !spc_may_load()) return NULL; /* progressive load: budget spent, redraw() repaints for the rest */
     double _hqs_t0 = hqs_now_ms();
-    FILE *f = fopen(csv_path, "r");
-    if (!f) return NULL;
-    char line[256];
-    int res = 0;
-    while (fgets(line, sizeof(line), f)) {
-        if (strncmp(line, "# resolution=", 13) == 0) { res = atoi(line + 13); break; }
-    }
-    if (res <= 0 || res > 256) { fclose(f); return NULL; }
-    unsigned char *pixels = malloc((size_t)res * (size_t)res * 4);
-    if (!pixels) { fclose(f); return NULL; }
-    int count = 0;
-    while (count < res * res && fgets(line, sizeof(line), f)) {
-        int rr, gg, bb, aa;
-        if (sscanf(line, "%d,%d,%d,%d", &rr, &gg, &bb, &aa) == 4) {
-            pixels[count * 4 + 0] = (unsigned char)rr;
-            pixels[count * 4 + 1] = (unsigned char)gg;
-            pixels[count * 4 + 2] = (unsigned char)bb;
-            pixels[count * 4 + 3] = (unsigned char)aa;
-            count++;
-        }
-    }
-    fclose(f);
-    if (count != res * res) { free(pixels); return NULL; }
+    int res = 0, _src = 0;
+    unsigned char *pixels = spc_load(pth, &st, &res, &_src);
+    if (!pixels) return NULL;
     int slot = -1;
     for (int i = 0; i < HQ_SPRITE_CACHE_N; i++) {
         if (!g_hq_sprite_cache[i].rgba) { slot = i; break; }
@@ -236,9 +223,11 @@ static HqSprite *hq_sprite(const char *dir) {
     g_hq_sprite_cache[slot].res = res;
     g_hq_sprite_cache[slot].mtime = mt;
     g_hq_sprite_cache[slot].last_used = ++g_hq_sprite_tick;
+    spc_loaded(hqs_now_ms() - _hqs_t0);
     g_hqs_load_ms += hqs_now_ms() - _hqs_t0; g_hqs_loads++;
     return &g_hq_sprite_cache[slot];
 }
+static HqSprite *hq_sprite(const char *dir) { return hq_sprite_ex(dir, 0); }
 
 /* sample_backdrop: when set, composite transparent pixels over the pixels
  * ACTUALLY already painted in `buf` behind the sprite (read back with
@@ -2267,7 +2256,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
             if (!drew_sprite) free(rgba);
         }
     } else if (e->sprite[0]) {
-        HqSprite *sp = hq_sprite(e->sprite);
+        HqSprite *sp = hq_sprite_ex(e->sprite, elem_has_class(e, "swatch") || elem_has_class(e, "pal-tile"));
         if (sp) {
             int pad_s = e->style.has_padding ? e->style.padding : 4;
             int has_under_label = (e->h >= 64 && e->label[0] && !(e->label[0] == ' ' && e->label[1] == '\0'));

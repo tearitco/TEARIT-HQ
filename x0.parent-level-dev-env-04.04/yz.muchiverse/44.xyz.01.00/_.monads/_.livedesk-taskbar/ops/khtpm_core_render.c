@@ -11968,7 +11968,7 @@ static void kh_hq_reg_mark_removed(void) {
     g_hq_reg_last_line[0] = '\0';
 }
 
-static void redraw(void) {
+static void redraw_body(void) {
     /* --headless: there is no window to blit to. redraw() is the one
      * choke point every "something changed, repaint" path funnels
      * through, so intercept it here - run the real layout, then write
@@ -12510,6 +12510,23 @@ static void redraw(void) {
     XFlush(dpy);
     dock_write_ascii_frame();   /* strip: the "cli" mirror (dock only, else no-op) */
     kh_write_ascii_frame();     /* every other window: per-PID text mirror */
+}
+
+/* Progressive tile load (BOOK 03-pitfalls/palette-tile-load-lag.md): every paint starts with a fresh sprite-decode budget; when palette
+ * tiles were left for later (sprite_cache.c), schedule one more paint through the same g_frame_dirty flag every other repaint request
+ * uses, so the grid fills in over a few frames instead of freezing the window for one long paint. g_frame_dirty is cleared by the loop
+ * BEFORE it calls redraw(), so setting it here survives to the next pass. */
+static void redraw(void) {
+    static int trace = -1;                 /* KH_REDRAW_TRACE=1: one cost line per paint (where the time went), next to the [REDRAW n] line */
+    if (trace < 0) trace = getenv("KH_REDRAW_TRACE") != NULL;
+    double t0 = trace ? hqs_now_ms() : 0, l0 = g_hqs_load_ms, b0 = g_hqs_blit_ms;
+    int k0 = g_hqs_loads, n0 = g_hqs_blits;
+    spc_frame_begin();
+    redraw_body();
+    if (spc_frame_deferred() && !g_quit) g_frame_dirty = 1;
+    if (trace)
+        fprintf(stderr, "[REDRAW-COST] total=%.1fms sprite_decode=%.1fms (%d tiles) blit=%.1fms (%d tiles) deferred=%d\n",
+                hqs_now_ms() - t0, g_hqs_load_ms - l0, g_hqs_loads - k0, g_hqs_blit_ms - b0, g_hqs_blits - n0, spc_frame_deferred());
 }
 
 /* on-demand debug PNG dump, same real convention every other khtpm app
@@ -15937,6 +15954,11 @@ static void hq_run_event_loop(Atom wm_delete, int is_popup) {
                              || kh_is_drop_target_window()))
                                 ? (struct timeval){ 0, 16667 }
                                 : (struct timeval){ 0, 150000 };
+        /* Progressive tile load (sprite_cache.c): the last paint left palette tiles for later and owes one more. Do not idle the
+         * 150 ms tick first (measured: each slice cost ~0.27 s, of which ~0.15 s was this wait). Scoped to the owed repaint only:
+         * a blanket "dirty means no wait" would let windows that re-dirty every tick (hover fills) repaint at the 33 Hz floor. Bounded:
+         * every slice loads at least one tile, and spc_frame_deferred() clears with the next paint that has nothing left to defer. */
+        if (g_frame_dirty && spc_frame_deferred()) tv = (struct timeval){ 0, 0 };
         select(xfd + 1, &fds, NULL, NULL, &tv);
         /* Events that arrive during THIS select() wait are deliberately
          * left queued - they'll be the very first thing drained at the
