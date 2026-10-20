@@ -29,8 +29,13 @@
       <item id="tr-r3" class="dropdown-child" target_id="tb-train" label="Rest Gus" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' rest s3"/>
       <item id="tr-cancel" class="dropdown-child quiet" target_id="tb-train" label="- cancel -" action="void"/>
     </sidebar>
-    <canvas id="room" class="gd-room" sprite="${canvas_raw}"/>
     <panel id="body" class="gd-panel">
+      <canvas id="room" class="gd-room" sprite="${canvas_raw}"/>
+      <row id="gd-status" class="canvas-overlay-bottom">
+        <item class="gd-line" label="${studio_line}"/>
+        <item class="gd-line" label="${game_line}"/>
+        <item class="gd-note" label="${note}"/>
+      </row>
       <item class="gd-line" label="${studio_line}"/>
       <item class="gd-line" label="${game_line}"/>
       <item class="gd-note" label="${note}"/>
