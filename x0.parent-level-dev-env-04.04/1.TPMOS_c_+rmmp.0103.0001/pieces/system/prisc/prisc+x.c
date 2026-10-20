@@ -348,6 +348,8 @@ void parse_line(char *line, int pass) {
                     int reg;
                     if (sscanf(arg_copy, "x%d", &reg) == 1) {
                         i->rs1 = reg;
+                    } else if (is_reg_ref(arg_copy)) {
+                        parse_reg(arg_copy, &i->rs1);
                     } else {
                         /* Treat as literal piece name/arg */
                         strncpy(i->literal_arg, arg_copy, 255);
