@@ -182,6 +182,20 @@ void gd_export_office(const char *app) {
     mkdir_p(room);
 
     char rawp[PATH_MAX], recp[PATH_MAX];
+    { char dp[PATH_MAX], phase[32] = "day"; FILE *df;
+      if (join2(dp, sizeof dp, st, "daylight.txt") && (df = fopen(dp, "r"))) {
+        char b[64]; if (fgets(b, sizeof b, df)) { if (strstr(b, "night")) snprintf(phase, sizeof phase, "night"); else if (strstr(b, "dusk")) snprintf(phase, sizeof phase, "dusk"); else if (strstr(b, "dawn")) snprintf(phase, sizeof phase, "dawn"); }
+        fclose(df);
+      }
+      int mr = 256, mg = 256, mb = 256;
+      if (!strcmp(phase, "night")) { mr = 200; mg = 205; mb = 235; }
+      else if (!strcmp(phase, "dusk")) { mr = 256; mg = 235; mb = 215; }
+      else if (!strcmp(phase, "dawn")) { mr = 256; mg = 240; mb = 225; }
+      if (mr != 256 || mg != 256 || mb != 256) for (int y = 0; y < fh; y++) for (int x = 0; x < fw; x++) {
+        unsigned char *q = fr + ((size_t)y * fw + x) * 4;
+        q[0] = (unsigned char)(q[0] * mr / 256); q[1] = (unsigned char)(q[1] * mg / 256); q[2] = (unsigned char)(q[2] * mb / 256);
+      }
+    }
     join2(rawp, sizeof rawp, st, "scene.raw");
     join2(recp, sizeof recp, st, "scene.receipt.txt");
     { FILE *rf = fopen(rawp, "wb"); if (rf) { fwrite(fr, 1, (size_t)fw * fh * 4, rf); fclose(rf); } }

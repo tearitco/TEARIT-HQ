@@ -3,11 +3,14 @@
  * Resident (house, app-dir) refreshes state/ui.txt. A verb is a short run.
  */
 #define _POSIX_C_SOURCE 200809L
+#include <fcntl.h>
 #include <limits.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -252,7 +255,7 @@ static void write_ui(void) {
     fprintf(f, "active_name=%s\nactive_id=%s\nbook_label=Book\npage_label=Page\n", who, nstaff ? staff[g_active].id : "-");
     { char rate[32] = "week"; char rp[1200]; snprintf(rp, sizeof rp, "%s/clock_rate.txt", ST);
       FILE *rf = fopen(rp, "r"); if (rf) { if (fscanf(rf, "%31s", rate) != 1) snprintf(rate, sizeof rate, "week"); fclose(rf); }
-      fprintf(f, "time_label=Wk %ld\ntime_rate=%s\n", week, rate); }
+      fprintf(f, "week_label=Wk %ld\n", week); }
     fprintf(f, "run_label=%s\nrun_cls=%s\n", run ? "GO started" : "STOP stopped", run ? "ph-green" : "ph-red");
     fprintf(f, "control_label=control: %s\n", who);
     fprintf(f, "n_staff=%d\nn_party=%d\n", nstaff, nstaff);
@@ -442,6 +445,91 @@ static int slot_copy(int n, int to_slot) {
     return any;
 }
 
+/* Livedesk clock, same root shape as mcl-hq. Phase tints the office. The label is its own file. */
+static char LC[1024], CROOT[1200], CFILE[1200];
+static int gd_exists(const char *p) { return p && access(p, F_OK) == 0; }
+static void gd_clock_paths(void) {
+    char house[1024], realh[PATH_MAX];
+    snprintf(house, sizeof house, "%s/../..", APP);
+    if (!realpath(house, realh)) snprintf(realh, sizeof realh, "%s", house);
+    snprintf(LC, sizeof LC, "%s/&.widgits/livedesk-clock/ops/+x/lc_clock.+x", realh);
+    snprintf(CROOT, sizeof CROOT, "%s/clock_root", ST);
+    snprintf(CFILE, sizeof CFILE, "%s/#.desktop/clocks/rpg.pdl", CROOT);
+}
+static int lc_run(const char *a, const char *b, const char *c, const char *d, const char *e) {
+    if (!gd_exists(LC)) return -1;
+    pid_t pid = fork();
+    if (pid < 0) return -1;
+    if (pid == 0) {
+        int fd = open("/dev/null", O_RDWR);
+        if (fd >= 0) { dup2(fd, 0); dup2(fd, 1); dup2(fd, 2); if (fd > 2) close(fd); }
+        setenv("LC_CLOCK_NO_POPUP", "1", 1);
+        execl(LC, LC, CROOT, a, b ? b : (char *)NULL, c, d, e, (char *)NULL);
+        _exit(127);
+    }
+    int st = 0;
+    for (int i = 0; i < 30; i++) {
+        pid_t r = waitpid(pid, &st, WNOHANG);
+        if (r == pid) return st;
+        if (r < 0) return -1;
+        usleep(100000);
+    }
+    kill(pid, SIGKILL);
+    waitpid(pid, &st, 0);
+    return -1;
+}
+static long long clock_epoch(void) {
+    FILE *f = fopen(CFILE, "r"); if (!f) return -1;
+    char line[256]; long long ms = -1;
+    while (fgets(line, sizeof line, f)) if (!strncmp(line, "game_time_epoch_ms=", 19)) ms = atoll(line + 19);
+    fclose(f); return ms;
+}
+static void gd_clock_phase(long long ms) {
+    int h = (int)((ms / 3600000) % 24);
+    const char *p = (h >= 19 || h < 6) ? "night" : h < 8 ? "dawn" : h >= 17 ? "dusk" : "day";
+    char path[1200], body[40]; snprintf(path, sizeof path, "%s/daylight.txt", ST);
+    snprintf(body, sizeof body, "phase=%s\n", p);
+    char old[40] = ""; FILE *rf = fopen(path, "r"); if (rf) { if (!fgets(old, sizeof old, rf)) old[0] = 0; fclose(rf); }
+    if (!strcmp(old, body)) return;
+    FILE *wf = fopen(path, "w"); if (wf) { fputs(body, wf); fclose(wf); }
+    gd_export_office(APP);
+}
+static void gd_clock_label(long long ms) {
+    char path[1200], body[80]; snprintf(path, sizeof path, "%s/clock_ui.txt", ST);
+    long long d = ms / 86400000, s = (ms - d * 86400000) / 1000;
+    snprintf(body, sizeof body, "time_label=D%lld %02d:%02d\n", d + 1, (int)(s / 3600), (int)((s % 3600) / 60));
+    static time_t last; if (time(NULL) - last < 5) return; last = time(NULL);
+    FILE *wf = fopen(path, "w"); if (wf) { fputs(body, wf); fclose(wf); }
+}
+static void gd_clock_ensure(void) {
+    gd_clock_paths(); if (!gd_exists(LC)) return;
+    char d[1200];
+    snprintf(d, sizeof d, "%s/#.desktop/clocks", CROOT);
+    mkdir(CROOT, 0755); mkdir(d, 0755);
+    if (!gd_exists(CFILE)) {
+        lc_run("new", "rpg", "user", "game-dev-hq time", NULL);
+        lc_run("rate", "rpg", "sec", NULL, NULL);
+        lc_run("cmd", "rpg", "settime", "21600000", "--source");
+    }
+}
+static void gd_clock_sync(void) {
+    gd_clock_ensure(); if (!gd_exists(CFILE)) return;
+    int pause = !flag_get("running", 1) || flag_get("int", 0);
+    lc_run("cmd", "rpg", pause ? "pause" : "resume", "--source", "gd");
+    long long ms = clock_epoch(); if (ms >= 0) { gd_clock_phase(ms); gd_clock_label(ms); }
+}
+static void gd_clock_cmd(int argc, char **argv) {
+    gd_clock_ensure();
+    if (argc >= 2 && !strcmp(argv[0], "rate")) {
+        lc_run("rate", "rpg", argv[1], NULL, NULL);
+        snprintf(note, sizeof note, "clock %s", argv[1]);
+    } else if (argc >= 2 && !strcmp(argv[0], "advance")) {
+        lc_run("cmd", "rpg", "advance", argv[1], "--source");
+        snprintf(note, sizeof note, "clock +%s", argv[1]);
+    } else snprintf(note, sizeof note, "clock rate|advance");
+    long long ms = clock_epoch(); if (ms >= 0) { gd_clock_phase(ms); gd_clock_label(ms); }
+}
+
 static void verb(int argc, char **argv) {
     const char *v = argc > 0 ? argv[0] : "status";
     if (!strcmp(v, "hire") && argc >= 2) do_hire(argv[1], argc >= 3 ? argv[2] : "");
@@ -457,7 +545,7 @@ static void verb(int argc, char **argv) {
     else if (!strcmp(v, "int")) {
         int on = !flag_get("int", 0); flag_set("int", on); read_active();
         snprintf(note, sizeof note, on ? "INT on: %s" : "INT off", nstaff ? staff[g_active].name : "nobody");
-        log_line(note);
+        log_line(note); gd_clock_sync();
     }
     else if (!strcmp(v, "select") && argc >= 2) {
         read_active();
@@ -469,15 +557,8 @@ static void verb(int argc, char **argv) {
         int on = !flag_get(argv[1], 1); flag_set(argv[1], on);
         snprintf(note, sizeof note, "%s %s", argv[1], on ? "on" : "off");
     }
-    else if (!strcmp(v, "play")) { flag_set("running", 1); snprintf(note, sizeof note, "GO started"); log_line(note); }
-    else if (!strcmp(v, "clock") && argc >= 3 && !strcmp(argv[1], "rate")) {
-        char rp[1200]; snprintf(rp, sizeof rp, "%s/clock_rate.txt", ST);
-        FILE *rf = fopen(rp, "w"); if (rf) { fprintf(rf, "%s\n", argv[2]); fclose(rf); }
-        snprintf(note, sizeof note, "clock %s", argv[2]);
-    }
-    else if (!strcmp(v, "clock") && argc >= 3 && !strcmp(argv[1], "advance")) {
-        pay_week(); snprintf(note, sizeof note, "skipped to week %ld", week); log_line(note);
-    }
+    else if (!strcmp(v, "play")) { flag_set("running", 1); snprintf(note, sizeof note, "GO started"); log_line(note); gd_clock_sync(); }
+    else if (!strcmp(v, "clock") && argc >= 2) { gd_clock_cmd(argc - 1, argv + 1); }
     else if (!strcmp(v, "save") && argc >= 2) { slot_copy(atoi(argv[1]), 1); snprintf(note, sizeof note, "saved slot %s", argv[1]); }
     else if (!strcmp(v, "load") && argc >= 2) { if (slot_copy(atoi(argv[1]), 0)) { load_all(); snprintf(note, sizeof note, "loaded slot %s", argv[1]); } else snprintf(note, sizeof note, "empty slot"); }
     else if (!strcmp(v, "newgame")) {
@@ -487,7 +568,7 @@ static void verb(int argc, char **argv) {
         nstaff = ngames = 0; funds = 100000; fame = 0; week = 1; hype = 0; office = 1;
         seed(); log_line("new game");
     }
-    else if (!strcmp(v, "stop")) { flag_set("running", 0); snprintf(note, sizeof note, "STOP stopped"); log_line(note); }
+    else if (!strcmp(v, "stop")) { flag_set("running", 0); snprintf(note, sizeof note, "STOP stopped"); log_line(note); gd_clock_sync(); }
     else if (!strcmp(v, "say") && argc >= 2) {
         char b[160]; snprintf(b, sizeof b, "You: %s", argv[1]); log_line(b);
         read_active();
@@ -536,7 +617,8 @@ int main(int argc, char **argv) {
     mkdir(ST, 0755);
     load_all(); seed(); gd_export_office(APP); write_ui();
     if (resident) {
-        while (1) { load_all(); staff_chat(); write_ui(); sleep(2); }
+        gd_clock_sync();
+        while (1) { load_all(); staff_chat(); write_ui(); gd_clock_sync(); sleep(2); }
     }
     verb(argc - 1, argv + 1);
     return 0;

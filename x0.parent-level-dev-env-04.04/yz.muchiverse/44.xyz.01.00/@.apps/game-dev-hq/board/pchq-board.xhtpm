@@ -1,28 +1,94 @@
-<!-- game-dev-hq board. The canvas is the office book. Tabs are the Game Dev Story commands. -->
-<window label="game-dev-hq" class="pchq-board-pal database-window managed user-resizable" vars="../state/ui.txt state/ui.txt">
+<!-- game-dev-hq board. The canvas is the board engine frame of maps/game-dev-hq
+     (2D default, 0 = 3D, 1-4 POV, camera keys, backtick = glyph view).
+     Game vars come first. Board vars come after, so canvas_raw is the engine frame.
+     Launch: sh @.apps/game-dev-hq/board/open_board.sh.
+     RULES: no angle brackets inside comments. -->
+<window label="game-dev-hq" class="pchq-board-pal database-window managed user-resizable" vars="../state/ui.txt ../state/clock_ui.txt state/ui.txt state/pchq/ui.txt state/sides.txt">
   <module src="@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x" args="game-dev-hq-pchq"/>
   <page name="main">
-    <tabbar id="toolbar" class="tab-bar">
-      <tab id="tb-staff" class="tab" label="Staff ▾" onclick="ACTIVATE" target_id="tb-staff"/>
-      <tab id="tb-dev" class="tab" label="Develop ▾" onclick="ACTIVATE" target_id="tb-dev"/>
-      <tab id="tb-train" class="tab" label="Train ▾" onclick="ACTIVATE" target_id="tb-train"/>
+    <tabbar id="toolbar" class="pchq-toolbar">
+      <tab id="tb-int" class="pchq-tb ${interact_class}" label="INT ${interact_label}" relay="${bv_h1},${bv_h2}" onclick="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' int"/>
+      <tab id="tb-book" class="pchq-tb" label="Book ▾" onclick="ACTIVATE" target_id="tb-book"/>
+      <tab id="tb-page" class="pchq-tb" label="Page ▾" onclick="ACTIVATE" target_id="tb-page"/>
+      <tab id="tb-player" class="pchq-tb" label="Player ▾" onclick="ACTIVATE" target_id="tb-player"/>
+      <tab id="tb-time" class="pchq-tb" label="${time_label} ▾" onclick="ACTIVATE" target_id="tb-time"/>
+      <tab id="tb-menu" class="pchq-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
     </tabbar>
-    <sidebar id="side" class="sidebar">
-      <item id="h-dir" class="dropdown-child" target_id="tb-staff" label="Hire director" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' hire director Ada"/>
-      <item id="dv-rs" class="dropdown-child" target_id="tb-dev" label="Start rpg/adventure" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' start rpg:adventure"/>
-      <item id="dv-a1" class="dropdown-child" target_id="tb-dev" label="Assign Rex" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' assign s1"/>
-      <item id="dv-a2" class="dropdown-child" target_id="tb-dev" label="Assign Pip" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' assign s2"/>
-      <item id="dv-a3" class="dropdown-child" target_id="tb-dev" label="Assign Gus" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' assign s3"/>
-      <item id="dv-go" class="dropdown-child" target_id="tb-dev" label="Advance one phase" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' advance"/>
-      <item id="dv-ship" class="dropdown-child" target_id="tb-dev" label="Ship" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' ship"/>
-      <item id="tr-1" class="dropdown-child" target_id="tb-train" label="Train Rex programming" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' train s1:programming"/>
-      <item id="tr-r1" class="dropdown-child" target_id="tb-train" label="Rest Rex" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' rest s1"/>
+    <sidebar id="rail" class="pchq-rail sidebar">
+      <repeat count="${n_hire}" bind="hire">
+        <item id="h${hire.#}" class="pchq-menu-row dropdown-child" target_id="mn-hire" label="${hire.line}" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' hire ${hire.job} ${hire.name}"/>
+      </repeat>
+      <item id="hi-x" class="pchq-menu-row dropdown-child quiet" target_id="mn-hire" label="- cancel -" action="void"/>
+      <item id="tr-prog" class="pchq-menu-row dropdown-child" target_id="mn-train" label="Programming" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' train ${active_id}:programming"/>
+      <item id="tr-sc" class="pchq-menu-row dropdown-child" target_id="mn-train" label="Scenario" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' train ${active_id}:scenario"/>
+      <item id="tr-gr" class="pchq-menu-row dropdown-child" target_id="mn-train" label="Graphics" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' train ${active_id}:graphics"/>
+      <item id="tr-rest" class="pchq-menu-row dropdown-child" target_id="mn-train" label="Rest" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' rest ${active_id}"/>
+      <item id="tr-x" class="pchq-menu-row dropdown-child quiet" target_id="mn-train" label="- cancel -" action="void"/>
+      <item id="ct-ar" class="pchq-menu-row dropdown-child" target_id="mn-contract" label="New game action/rpg" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' start action:rpg"/>
+      <item id="ct-ra" class="pchq-menu-row dropdown-child" target_id="mn-contract" label="New game rpg/adventure" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' start rpg:adventure"/>
+      <item id="ct-ps" class="pchq-menu-row dropdown-child" target_id="mn-contract" label="New game puzzle/sim" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' start puzzle:sim"/>
+      <item id="ct-as" class="pchq-menu-row dropdown-child" target_id="mn-contract" label="Assign selected" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' assign ${active_id}"/>
+      <item id="ct-go" class="pchq-menu-row dropdown-child" target_id="mn-contract" label="Advance" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' advance"/>
+      <item id="ct-ship" class="pchq-menu-row dropdown-child" target_id="mn-contract" label="Ship" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' ship"/>
+      <item id="ct-x" class="pchq-menu-row dropdown-child quiet" target_id="mn-contract" label="- cancel -" action="void"/>
+      <item id="ad-s" class="pchq-menu-row dropdown-child" target_id="mn-ad" label="Small $5000" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' advertise small"/>
+      <item id="ad-m" class="pchq-menu-row dropdown-child" target_id="mn-ad" label="Mid $15000" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' advertise mid"/>
+      <item id="ad-b" class="pchq-menu-row dropdown-child" target_id="mn-ad" label="Big $40000" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' advertise big"/>
+      <item id="ad-x" class="pchq-menu-row dropdown-child quiet" target_id="mn-ad" label="- cancel -" action="void"/>
+      <item id="pm-play" class="pchq-menu-row dropdown-child" target_id="tb-player" label="Play" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' play"/>
+      <item id="pm-stop" class="pchq-menu-row dropdown-child" target_id="tb-player" label="Stop" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' stop"/>
+      <item id="pm-save" class="pchq-menu-row dropdown-child" target_id="tb-player" label="Save (slot 1)" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' save 1"/>
+      <item id="pm-load" class="pchq-menu-row dropdown-child" target_id="tb-player" label="Load (slot 1)" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' load 1"/>
+      <item id="pm-new" class="pchq-menu-row dropdown-child" target_id="tb-player" label="New game" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' newgame"/>
+      <item id="pm-undo" class="pchq-menu-row dropdown-child" target_id="tb-player" label="Undo new game" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' load 0"/>
+      <item id="pm-x" class="pchq-menu-row dropdown-child quiet" target_id="tb-player" label="- cancel -" action="void"/>
+      <item id="tm-cent" class="pchq-menu-row dropdown-child" target_id="tb-time" label="speed: turbo" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' clock rate cent"/>
+      <item id="tm-sec" class="pchq-menu-row dropdown-child" target_id="tb-time" label="speed: fast" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' clock rate sec"/>
+      <item id="tm-min" class="pchq-menu-row dropdown-child" target_id="tb-time" label="speed: normal" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' clock rate min"/>
+      <item id="tm-hour" class="pchq-menu-row dropdown-child" target_id="tb-time" label="speed: real time" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' clock rate hour"/>
+      <item id="tm-adv1d" class="pchq-menu-row dropdown-child" target_id="tb-time" label="skip +1 day" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' clock advance 1d"/>
+      <item id="tm-x" class="pchq-menu-row dropdown-child quiet" target_id="tb-time" label="- cancel -" action="void"/>
+      <item id="mn-info" class="pchq-menu-row dropdown-child" target_id="tb-menu" label="Studio show / hide" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' toggle left"/>
+      <item id="mn-chat" class="pchq-menu-row dropdown-child" target_id="tb-menu" label="Chat show / hide" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' toggle chat"/>
+      <item id="mn-clear" class="pchq-menu-row dropdown-child" target_id="tb-menu" label="Clear chat" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' clearchat"/>
+      <item id="mn-x" class="pchq-menu-row dropdown-child quiet" target_id="tb-menu" label="- cancel -" action="void"/>
     </sidebar>
-    <canvas id="view" sprite="${canvas_raw}"/>
-    <panel id="body" class="gd-panel">
-      <item class="gd-line" label="${studio_line}"/>
-      <item class="gd-line" label="${game_line}"/>
-      <item class="gd-note" label="${note}"/>
+    <panel id="view-panel" class="pchq-view">
+      <canvas id="view" sprite="${canvas_raw}"/>
+      <row id="side-l" class="canvas-overlay-left ov-pin ov-chrome pchq-hotbar theme" show="${left_visible}">
+        <text label="studio" class="hb-quiet ov-title theme-3"/>
+        <item id="side-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' toggle left"/>
+        <text label="${cash_label}" class="ph-quiet"/>
+        <text label="${fame_label}   hype ${hype}" class="ph-quiet"/>
+        <text label="Week ${week}   office ${office}" class="ph-quiet"/>
+        <text label="${game_line}" class="ph-quiet"/>
+        <text label="${note}" class="ph-green"/>
+        <item id="mn-hire" class="pchq-ft skin-bar" label="Hire" onclick="ACTIVATE"/>
+        <item id="mn-train" class="pchq-ft skin-bar" label="Train" onclick="ACTIVATE"/>
+        <item id="mn-contract" class="pchq-ft skin-bar" label="Contract" onclick="ACTIVATE"/>
+        <item id="mn-ad" class="pchq-ft skin-bar" label="Advertise" onclick="ACTIVATE"/>
+      </row>
+      <row id="chat-ov" class="canvas-overlay-right ov-pin ov-chrome pchq-hotbar theme" show="${chat_visible}">
+        <text label="chat" class="hb-quiet ov-title theme-3"/>
+        <item id="chat-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' toggle chat"/>
+        <item id="chat-clear" class="pchq-ft skin-bar" label="clear chat" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' clearchat"/>
+        <text label="${chat_0}" class="rp-chat"/>
+        <text label="${chat_1}" class="rp-chat"/>
+        <text label="${chat_2}" class="rp-chat"/>
+        <text label="${chat_3}" class="rp-chat"/>
+        <text label="${chat_4}" class="rp-chat"/>
+        <text label="${chat_5}" class="rp-chat"/>
+      </row>
     </panel>
+    <footer id="statusbar" class="pchq-footer">
+      <text label="${cash_label}" class="rp-big"/>
+      <text label="${fame_label}" class="rp-big"/>
+      <text label="Wk ${week}" class="rp-quiet"/>
+      <item id="chat-toggle" class="pchq-ft skin-bar" label="chat" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' toggle chat"/>
+      <repeat count="${n_party}" bind="party">
+        <item id="pt${party.#}" class="pchq-ft skin-bar ${party.cls}" label="${party.label}" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' select ${party.id}"/>
+      </repeat>
+    </footer>
+    <text label="No live board session yet. The office book is maps/game-dev-hq." class="quiet" show="${no_session}"/>
   </page>
 </window>

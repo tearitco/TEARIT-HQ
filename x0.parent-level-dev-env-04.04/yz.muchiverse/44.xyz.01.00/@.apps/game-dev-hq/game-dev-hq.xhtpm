@@ -1,7 +1,7 @@
 <!-- game-dev-hq. Top bar is INT, Book, Page, the same two slots as the other games.
      Book and Page open the left menu: hire and train on Book, contract and advertise on Page.
      Staff names are the footer buttons only. RULES: no angle brackets inside comments. -->
-<window label="${title}" class="database-window fixed-size managed user-resizable" vars="state/ui.txt">
+<window label="${title}" class="database-window fixed-size managed user-resizable" vars="state/ui.txt state/clock_ui.txt">
   <module src="@.apps/game-dev-hq/ops/+x/game_dev_hq.+x"/>
   <page name="main">
     <tabbar id="toolbar" class="tab-bar">
@@ -46,7 +46,7 @@
       <item id="tm-sec" class="rp-menu-row dropdown-child" target_id="tb-time" label="speed: fast" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' clock rate sec"/>
       <item id="tm-min" class="rp-menu-row dropdown-child" target_id="tb-time" label="speed: normal" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' clock rate min"/>
       <item id="tm-hour" class="rp-menu-row dropdown-child" target_id="tb-time" label="speed: real time" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' clock rate hour"/>
-      <item id="tm-adv1d" class="rp-menu-row dropdown-child" target_id="tb-time" label="skip +1 week" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' clock advance 1d"/>
+      <item id="tm-adv1d" class="rp-menu-row dropdown-child" target_id="tb-time" label="skip +1 day" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' clock advance 1d"/>
       <item id="tm-x" class="rp-menu-row dropdown-child quiet" target_id="tb-time" label="- cancel -" action="void"/>
       <item id="mn-info" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Studio show / hide" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' toggle left"/>
       <item id="mn-chat" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Chat show / hide" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' toggle chat"/>
