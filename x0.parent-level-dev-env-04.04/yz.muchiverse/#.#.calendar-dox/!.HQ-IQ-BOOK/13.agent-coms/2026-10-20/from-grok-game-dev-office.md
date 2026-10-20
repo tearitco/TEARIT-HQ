@@ -48,3 +48,7 @@ The picture in that game is the office, with the menus over it. The menu window 
 `map.png` is 50628 bytes at `game-dev-hq-pchq/pieces/system/maps/game-dev-hq/office/map.png`. Glyph map is a wall strip, then four `f` desks. `events.txt` has four sprites facing up (dir 8): Rex `People3` 6, Pip `People2` 6, Gus `People1` 6, Ada `People3` 0. Ada is in the file because an earlier hire was still in `staff.pdl`. The first color sample for Rex was a clear pixel, so the sampler now takes the first opaque pixel.
 
 The board window was not opened. `board/open_board.sh` is the launcher. I have not watched the canvas.
+
+## Window after the later passes
+
+The live window is `button.sh run`, not a separate board. Top bar is INT, Book, Page. The left pin holds cash, fame, and the four menus Hire, Train, Contract, Advertise. Those open in the sidebar. Names are footer buttons only. A `!Door1` sits on the office floor. A week-ending verb sends the staff out. The resident brings them back. Design page `16.game/GAME-DEV-HQ-DESIGN.md` matches this.

@@ -47,7 +47,9 @@ GAME | g1 | Pip Quest | rpg | adventure | production | 0 | 0 | 0 | 0 | 0 | s1,s2
 
 `assigned` is staff ids, comma-separated, no spaces. Debug is the same add, smaller. Review does not add. It turns the five scores into one rank and a sale.
 
-Ship: rank is the average of the five scores, 0–100 after a cap. Sales are rank times a fame factor. Funds increase by sales. Fame increases by rank. Then the game row is kept as history and the studio may start another. Sequels, console licenses, contests, and the hall of fame are **later**. They read this same row.
+Ship: rank is the average of the five scores, 0–100 after a cap. Sales are rank times 1000, plus fame times 10, plus hype times 100. Funds increase by sales. Fame increases by rank / 10. Hype clears. Then the game row is kept as history and the studio may start another. Sequels, console licenses, contests, and the hall of fame are **later**. They read this same row.
+
+Advertise spends cash for hype and does not end the week. Small is 5000 for 5 hype, mid is 15000 for 15, big is 40000 for 40. Fame also moves by hype / 5.
 
 ## Verbs
 
@@ -62,12 +64,22 @@ Same ledger as the other games (`state/events.txt`, `EVENT|ts|actor|verb|target|
 | assign | `staff` | that id joins the open game |
 | advance | `-` | one phase, scores move, week +1, salaries paid |
 | ship | `-` | rank, sales, fame. Only legal in review |
+| advertise | small, mid, or big | cash down, hype up. Does not end the week |
+| int | `-` | take the floor. Staff stop talking |
+| select | staff id | the footer name. Train and assign use that person |
+| play / stop | `-` | staff chatter on or off |
 
-`at` stays `-` or `office`. People do not walk the map in this slice. They stand at a desk.
+`at` stays `-` or `office`. People stand at a desk while the week is open. A week-ending verb (train, rest, advance) pays salaries and sends them out the door. The resident brings them back in for the next day. The door is `!Door1` on the office floor, cell 6,6, and a `DOOR` row in `rooms.pdl`.
 
 ## What the window is
 
-The picture is one interior, `office`, painted from the house sheets (`Inside_A5` floor and wall, `Inside_B` desks, the same character sheets `party.pdl` names). `exportbook` writes that as the pc-hq book `maps/game-dev-hq`. Open it with `sh @.apps/game-dev-hq/board/open_board.sh`. The tabs are the Game Dev Story commands: Staff, Develop, Train. The log stays one line of the week, not a step spam. Notes for this pass: `13.agent-coms/2026-10-20/from-grok-game-dev-office.md`.
+Open the live window with `sh @.apps/game-dev-hq/button.sh run`. The picture is one interior, `office`, painted from the house sheets (`Inside_A5` floor and wall, `Inside_B` desks, `!Door1`, the character sheets `party.pdl` names). `exportbook` also writes the pc-hq book `maps/game-dev-hq`.
+
+Top bar: INT, Book, Page. Book and Page are the two slots the other games use. They are not a second staff list.
+
+Left pane: cash, fame, hype, week, the open game, then the main rows Hire, Train, Contract, Advertise, Play, Stop. Hire, Train, Contract, and Advertise open their choices in the sidebar. Staff names are the footer buttons only. The right pane is the chat. Both panes have a `_` that hides them. Studio text is `#111111` on the cream pane. Chat text stays light on the dark strip.
+
+The playthrough is `&.widgits/_shared-lib/harness/play/phases/game_dev_hq.phases.pdl`, same runner as df, cdda, and mcl.
 
 ## First build
 
