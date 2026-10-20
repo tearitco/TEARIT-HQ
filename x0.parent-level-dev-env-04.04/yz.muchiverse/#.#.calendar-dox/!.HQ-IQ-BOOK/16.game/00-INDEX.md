@@ -13,6 +13,7 @@ command runs on.
   mcl-hq. Shared event verbs.
 - `S1-EVENT-LEDGER.md` — the event line that is built.
 - `RULES-df-hq.md`, `RULES-cdda-hq.md`, `RULES-mcl-hq.md` — verb, who, cost, result, file.
+- `GAME-DEV-HQ-DESIGN.md` — Game Dev Story as a studio week: staff, one game, ship. Not built.
 - `../02-architecture/PLAYTEST-DESK-AND-PCHQ.md` — taskbar cell 9 and
   the PC-HQ Player menu. The playtest button.
 - `../18.pc-hq/00-INDEX.md` — the board itself: the diamond, the
