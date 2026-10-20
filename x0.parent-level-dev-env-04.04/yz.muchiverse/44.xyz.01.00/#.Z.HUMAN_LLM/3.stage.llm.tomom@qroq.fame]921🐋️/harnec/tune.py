@@ -1,6 +1,15 @@
 #!/usr/bin/env python3
-"""Hand-tuning: ask llama3 to suggest weight/bias edits for tomom vocab."""
-import json, urllib.request, sys, re, time
+"""Hand-tuning: ask llama3 to suggest weight/bias edits for tomom vocab.
+
+Emits both a simple edits.txt (word\\tfield\\tvalue) and TEARIT EDIT records
+in the format from A-TEARIT-IS-ALL-YOU-NEED.md §2.3:
+  EDIT | id=uuid | type=spoke_weight_delta | target=<word> | slot=weight
+    | delta=<change> | reason="<prompt text>" | proposer=llama3 | status=candidate
+
+These EDIT records can be ingested by the Concept Bank's promotion ledger,
+bridging tomom's hand-tuning to the broader attrition-model pipeline.
+"""
+import json, urllib.request, sys, re, time, uuid, os
 
 VALID_FIELDS = {'weight', 'bias1', 'bias2', 'bias3', 'bias4'}
 
