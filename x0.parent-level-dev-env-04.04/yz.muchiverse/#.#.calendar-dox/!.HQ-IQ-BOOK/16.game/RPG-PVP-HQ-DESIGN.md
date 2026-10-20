@@ -40,6 +40,25 @@ Take as **numbers and algorithms** (read from `main.c`, not tested here), re-wri
 
 Do **not** take: the freeglut window, global mutable state, the frame loop owning the rules, the no-reload design, direct-pursuit AI as the final AI.
 
+### 4.1 How 007-goldeye folds into the plan (MINE, owner asked 2026-10-20)
+
+Three separate roles, because only part of it fits the house standard:
+
+1. **Reference, untouched.** `007-goldeye+01.00` stays where it is. It compiles here (gcc with `-lglut -lGLU -lGL -lm`, built into `XO/goldeye_try/ge`, no errors; not run). Use it to see the target feel and as a cross-check: the same seed and weapon numbers in our version should give a comparable fight.
+2. **Rules ported as a C op.** Its simulation functions are separate from its drawing code. Copy them into a new `rpg_pvp_sim.c` (op, house style) and change three things: input comes from INTENT rows, not GLUT keys; results append to the S1 ledger and `world.txt`; every GL call is gone. The 007 numbers move into a tuning file (`tuning.pdl` style, as in gta-hq) so they are data.
+3. **Its renderer is dropped.** The 2D board and the pc-hq 3D view draw `world.txt` instead of the freeglut window.
+
+| step | 007 function(s) it reuses (source line in `src/main.c`) | what changes |
+| --- | --- | --- |
+| P1 city | `place_building` (255), `gen_level` (398), `add_spawn` (348), `outdoor_open` (360), `rng_*` (100-103) | terrain and biomes are not used; the city layout (roads, blocks, interiors) is new and comes from the gta-hq z-cell format; buildings reuse the stairs/windows/roofs code |
+| P1 walking | `collide_player` (527), `snap_feet` (543), `integrate_vertical` (568), `try_move_player` (596) | steps come from `walk` intents; position goes to `world.txt`, not the ledger |
+| P2 guns | `fire` (707), `pickup_guns` (787) | weapon stats read from the tuning file; `reload` and magazines are new (007 has none); each shot and pickup is an EVENT row |
+| P3 duel | `update_play` (893) bullet loop, `respawn` (803), frag-limit check in `fire` | hit location from the cdda-hq wound table; replay = seed + intents |
+| P4 AI | `ai_step` (825) as the starting behaviour | rewritten as an FSM with logged decisions; direct pursuit is only the first state |
+| later | `enter_exit_vehicle` (628), `drive_vehicle` (659), `place_vehicle` (371) | vehicles wait for the shared vehicle-as-parts work (`GAMES-DECISIONS-2026-10-13.md` section 4) |
+
+Scope warning: 007's map is open voxel terrain with buildings on it. The city described by the owner (roads, blocks, interiors, later player-built structures) is a different generator, so only the building and collision code carry over, not the map.
+
 ## 5. The shape (MINE)
 
 One rule makes AI and human "the same": **both only ever write INTENT rows.**
@@ -81,4 +100,4 @@ state/world.txt     snapshot of positions, hp, ammo, facing (rewritten each tick
 4. Fortnite-style building under fire needs build speed and materials. OK to leave the first slice with only guns and doors, and add building at P8?
 
 ## 8. Not verified
-007-goldeye was read, not compiled or run (numbers above are from the source). The Freedoom WAD is not on disk. The 3D frame rate was last measured on an earlier day. The art-clash risk is a guess until the section 3 screenshot exists. No code, folder or ledger for rpg-pvp-hq has been created.
+007-goldeye was read and compiled in scratch (`XO/goldeye_try/ge`, no errors) but never run (numbers above are from the source; the source line numbers in section 4.1 were taken from the function list, not re-checked after any edit). The Freedoom WAD is not on disk. The 3D frame rate was last measured on an earlier day. The art-clash risk is a guess until the section 3 screenshot exists. No code, folder or ledger for rpg-pvp-hq has been created.
