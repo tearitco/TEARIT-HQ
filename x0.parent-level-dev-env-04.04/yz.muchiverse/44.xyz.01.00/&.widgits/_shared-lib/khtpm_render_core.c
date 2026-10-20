@@ -600,6 +600,8 @@ static void css_layout_pass(Elem *e, int x, int y, int avail_w, int avail_h) {
 
     int is_flex = e->style.has_display && e->style.display_flex;
     if (!is_flex) return; /* block: children untouched, caller manages them by hand */
+    /* display:flex = 1, display:grid = 2 */
+    int is_grid = (e->style.display_flex == 2);
 
     /* CSS default: flex-direction is row when unset. The worker mirrors this
      * (nb_css.c/nb_js_worker.c) after the first cut got it backwards. Treat
@@ -613,6 +615,53 @@ static void css_layout_pass(Elem *e, int x, int y, int avail_w, int avail_h) {
      * width, it starts a fresh line one (tallest-so-far + gap) below.
      * flex-grow is ignored in this mode (a wrapped grid has fixed
      * cells); nowrap / column keep the original path below. */
+    if (is_grid) {
+        int wpad = e->style.has_padding ? e->style.padding : 0;
+        int wgap = e->style.has_gap ? e->style.gap : 0;
+        int x0 = e->x + wpad, y0 = e->y + wpad;
+        int cols = e->style.has_grid_template_columns ? e->style.grid_cols : 1;
+        if (cols <= 0) cols = 1;
+        int cw_eff[8];
+        int avail_inner = e->w - 2 * wpad;
+        if (cols <= 1) {
+            cw_eff[0] = avail_inner;
+            for (int i = 1; i < cols && i < 8; i++) cw_eff[i] = avail_inner;
+        } else {
+            int fixed = 0, fr_count = 0;
+            for (int i = 0; i < cols && i < 8; i++) {
+                if (e->style.grid_col_w[i] > 0) fixed += e->style.grid_col_w[i];
+                else fr_count++;
+            }
+            int remain = avail_inner - fixed - (cols - 1) * wgap;
+            if (remain < 0) remain = avail_inner - (cols - 1) * wgap;
+            for (int i = 0; i < cols && i < 8; i++) {
+                if (e->style.grid_col_w[i] > 0) cw_eff[i] = e->style.grid_col_w[i];
+                else cw_eff[i] = fr_count > 0 ? remain / fr_count : 0;
+            }
+        }
+        int cx = x0, cy = y0, line_h = 0;
+        int k = 0;
+        for (int i = 0; i < n; i++) {
+            Elem *c = e->children[i];
+            if (c->style.has_position && c->style.position_absolute) {
+                int t = c->style.has_top ? c->style.top : 0;
+                int l = c->style.has_left ? c->style.left : 0;
+                css_layout_pass(c, e->x + l, e->y + t, c->w, c->h);
+                continue;
+            }
+            int col = k % cols;
+            if (col == 0 && k > 0) {
+                cx = x0; cy += line_h + wgap; line_h = 0;
+            }
+            int chh = c->style.has_height ? c->style.height : (c->h > 0 ? c->h : 24);
+            css_layout_pass(c, cx, cy, cw_eff[col], chh);
+            cx += cw_eff[col] + wgap;
+            if (chh > line_h) line_h = chh;
+            k++;
+        }
+        return;
+    }
+
     if (e->style.has_flex_wrap && e->style.flex_wrap && is_row) {
         int wpad = e->style.has_padding ? e->style.padding : 0;
         int wgap = e->style.has_gap ? e->style.gap : 0;

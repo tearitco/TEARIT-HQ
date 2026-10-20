@@ -35,11 +35,11 @@ typedef struct {
      * inventory-confirmed fields only (see that doc's own §5.1b for the
      * exact evidence from all 3 real consumers' current layout_pass()
      * functions before this was added - db-hq/events-hq/chat-hai).
-     * gap/justify-content/align-items deliberately NOT added - that
+     * justify-content/align-items deliberately NOT added - that
      * same real inventory confirmed none of the 3 apps' current layouts
      * need them, adding them speculatively would be untested surface
      * area. */
-    int has_display;         int display_flex; /* 0=block (default), 1=flex */
+    int has_display;         int display_flex; /* 0=block (default), 1=flex, 2=grid */
     int has_flex_direction;  int flex_row;      /* 0=column, 1=row - only meaningful if display_flex */
     int has_flex_grow;       int flex_grow;     /* real weight; a child with this set consumes remaining space on the main axis */
     int has_flex_wrap;       int flex_wrap;     /* 0=nowrap (default), 1=wrap - flow children onto new cross-axis lines when the main axis fills (css_layout_pass) */
@@ -56,6 +56,10 @@ typedef struct {
      * db-hq's own tabbar needed - see khtpm-merge-how2.md's own real
      * step-4 writeup). */
     int has_gap;              int gap;
+    /* G2.4 grid: minimal support for grid-template-columns count/widths */
+    int has_grid_template_columns;
+    int grid_cols;            /* number of columns if parsed as integer/count form */
+    int grid_col_w[8];        /* column widths in px if specified as lengths; 0 means fr/unset */
 } CssStyle;
 
 typedef struct {
