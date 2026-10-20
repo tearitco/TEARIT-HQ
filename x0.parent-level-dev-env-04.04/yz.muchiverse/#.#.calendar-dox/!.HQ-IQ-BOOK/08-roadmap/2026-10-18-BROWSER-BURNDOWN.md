@@ -195,6 +195,13 @@ stand — but **standing KPI K1 ("suite green") is FAILING today**, and the
 three red suites are exactly the flaky ones below. That is the honest
 baseline, and it is the reason hygiene comes before feature work in sprint A.
 
+> **2026-10-19 update:** `find` was fixed (§7.4) and `nb_selrun` is now
+> fixed too (`24c8ac325`, §7.4 boxed note) — **10/10 twice**, from a
+> 4–5-of-10 baseline. The row-run row in the table below was therefore
+> never a flake: the ~50 % failure rate was the anchor reset firing on
+> unchanged-content reparses, which is timing-dependent and so *looked*
+> like noise. K1's floor is now **the three mouse-span suites only**.
+
 `nb_all_tests.sh` calls `nb_span_drag_test.sh` (T2, the mouse-motion path),
 `nb_find_test.sh`, `nb_selrun_test.sh`, `nb_reach_test.sh` (this one passed).
 
@@ -484,7 +491,7 @@ suites §3.2 listed red for this report are green:
 | suite | baseline §3.2 (2026-10-18) | in the runner, final build | standalone ≥6 runs |
 |---|---|---|---|
 | `nb_find_test.sh` | **FAIL** | **PASS** ✅ | **8/8 pass** × 13 asserts, 0 FAIL |
-| row-run selection (`nb_selrun`) | **FAIL** | **PASS** ✅ | 2/6 pass |
+| row-run selection (`nb_selrun`) | **FAIL** | **PASS** ✅ | **10/10 pass**, twice (was 2/6) |
 | `nb_gbcr` (K2, KPI) | PASS | PASS | **6/6, 0 FAIL** |
 | span mouse drag-select (T2) | FAIL | FAIL | 3/6 pass |
 | span range selection (S1/S2) | PASS | **FAIL** | 5/6 pass → **flaky, not a regression** |
@@ -494,6 +501,14 @@ not find. The runner runs each suite **once**, so a 1-in-6 flake
 (`span range selection`) is enough to turn the whole verdict red — that is
 exactly what happened here (it failed S1+S2 in the runner, then 1 of 6
 standalone).
+
+**`nb_selrun` is fixed** (`24c8ac325`) — see §7.4's boxed note. It is now
+**10/10 twice** against a 4–5-of-10 baseline, and the ~50% flake rate was
+never a flake: it was the anchor reset firing on unchanged-content
+reparses, which is timing-dependent, which is what a "flake" looks like
+from outside. With that gone, the row-run table's 2/6 was a *rate of a
+real bug*, not noise — worth remembering the next time a suite is called
+flaky.
 
 **Both remaining reds are independent of this fix.** Proven, not asserted:
 `grep -c 'Ctrl+F\|find in page'` → **0** in `nb_span_select_test.sh` *and*
@@ -514,6 +529,51 @@ sets `g_key_shift = 1` *before* `handle_key` and clears it after
 (`:13772`), so the shift plumbing on that path is not obviously wrong.
 **Mechanism UNDIAGNOSED — do not treat the candidates as findings.**
 
+> **CLOSED 2026-10-19 (`24c8ac325`). The candidates above were all
+> wrong.** The mechanism is the anchor reset in
+> `reparse_chtpm_if_changed()`: `g_sel_run_anchor` was zeroed on **every**
+> content rebuild, including one whose content did not change. A
+> spontaneous reparse landing between two Shift+Downs destroyed the
+> anchor the first press had just set, so the second press re-anchored at
+> the current focus — `2..3`, exactly the observed shape — and a reparse
+> landing just before the mirror read lost the run outright (`no [SEL]
+> line`). The ANCHOR receipts added in `f37d4c919` show it on every
+> failing run:
+>
+> ```
+> ANCHOR set anchor=1 focus=1
+> ANCHOR cleared by content rebuild     <- 0.5-1.0s later, no key
+> ANCHOR set anchor=2 focus=2           <- re-anchor, too late
+> ```
+>
+> **All four observed failure shapes were that one mechanism**, so they
+> were never four bugs. The fix mirrors the 2026-09-14 decision already
+> made in the same function for in-field selections: capture a digest of
+> the page before the tree is discarded, and keep the anchor only if the
+> newly installed tree digests identically.
+>
+> **Evidence** (binary md5 `5577f762`, strings-checked):
+> 10/10 clean `nb_selrun_test.sh` runs, twice, against a 4–5-of-10 dirty
+> baseline; `ANCHOR kept` fired 9 and 17 times. Negative test (same ids,
+> same row count, every label rewritten): `ANCHOR content changed (digest
+> 8fe0df4c… -> a9e91cbf…)`, the run collapses, and the next Shift+Down
+> re-anchors at the live row (`3..4`), not a stale `1..3`.
+>
+> **Trap for the next reader:** the first attempt matched rows by element
+> id through `kh_nav_elem()` and restored 0 of 23 rebuilds — **nav does
+> not exist mid-reparse** (`g_n_nav` is 0 until the caller's
+> `assign_nav_and_layout()` runs, so every lookup returned NULL). The
+> fix compares content because content is what exists there. Any future
+> restore inside a reparse must respect that ordering.
+>
+> **A second trap, mine, which cost a whole battery:** an earlier
+> "the fix does not work" measurement (4/10) was actually the
+> **pre-change binary** — I had built HEAD into the same path to compare
+> suites and copied the wrong file back. `strings "$BIN" | grep 'ANCHOR
+> kept'` is what caught it. Verify the artifact by content (a hash or a
+> string it must contain), never by the copy you believe you made.
+
+
 **`nb_span_drag` / `nb_span_select` share one shape**: the range never
 lands, and the copy falls back to the *whole* row text —
 `clipboard was [go to ONE then TWO then THREE now]` with
@@ -530,7 +590,11 @@ section, both from re-measurement:
 
 Consequence for K1: **the runner is not green yet.** The honest floor for
 the next session is the table above; re-measure ≥6 runs after any change,
-and remember a single runner pass proves a *rate*, not a fix.
+and remember a single runner pass proves a *rate*, not a fix. With
+`nb_selrun` fixed, the floor is **exactly the three mouse-span suites**
+(`nb_span_test`, `nb_span_select`, `nb_span_drag`) — every one of them
+already proven pre-existing by running them against the pre-change
+binary.
 
 ### 7.5 Pitfalls reported
 
@@ -552,6 +616,28 @@ and remember a single runner pass proves a *rate*, not a fix.
    first full-runner attempt was killed at 120 s and left a partial log
    with no verdict line; only re-running it in the background produced a
    real one.
+5. **I measured the wrong binary and believed the number**
+   (2026-10-19, and it cost a full battery). To prove the span failures
+   were pre-existing I built HEAD's source into the live path, then
+   "restored" by copying back a file that had itself already been
+   overwritten — so a battery I read as "4/10, the fix does not work"
+   was in fact the *pre-change* binary, and a battery I read as "10/10"
+   had run the fix. Two opposite readings of "the same binary" that were
+   never the same binary. What caught it: `strings "$BIN" | grep 'ANCHOR
+   kept'` → 0, and `md5sum` showing the installed file byte-identical to
+   the HEAD build. **Verify the artifact by its content, never by the
+   copy you meant to make** — this is §"never report a number you did
+   not observe" wearing a new hat, and the reason the fix's evidence
+   above names its binary hash.
+6. **Nav does not exist inside a reparse**, and the code will not tell
+   you. The first fix attempt restored `g_sel_run_anchor` by looking up
+   element ids with `kh_nav_elem()` and restored **0 of 23** rebuilds.
+   No error, no warning — `kh_nav_elem()` simply returns NULL, because
+   `g_n_nav` is 0 until the caller's `assign_nav_and_layout()` runs
+   *after* `reparse_chtpm_if_changed()` returns. One temporary receipt
+   (`na=NULL nf=3 nfelem=NULL`) answered it in a single run. Any state
+   about *rows* must be decided on **content** at reparse time, or
+   deferred past the layout call — never on nav indices.
 
 *Companions: `2026-10-18-BROWSER-LANE-HANDOFF.md` (START HERE), `2026-10-17-G2-
 VERDICT-ADDENDUM.md`, `design-docs/2026-10-11-BROWSER-GAP-ASSESSMENT-AND-KPI-
