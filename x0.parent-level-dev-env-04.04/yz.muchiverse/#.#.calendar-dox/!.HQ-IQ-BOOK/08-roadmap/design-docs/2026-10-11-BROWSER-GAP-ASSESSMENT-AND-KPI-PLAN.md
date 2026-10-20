@@ -31,6 +31,75 @@ not an application runtime.
 
 ---
 
+## 1a. PRIORITY (set 2026-10-13) — the two load-bearing blockers
+
+Everything else in this document is polish next to these two. Decided this
+date, at the user's direction: **G1 and G2 are P0, worked one sprint at a
+time, one KPI at a time**, and nothing else starts until they move.
+
+Why these two and not the rest:
+
+- **G1 (JS apps do not run)** is not "missing a feature", it is *the*
+  difference between a readable-content window and a browser. One
+  `setInterval` clock stays frozen at tick 0. Every Google-class site is
+  downstream of this one item.
+- **G2 (no box tree)** means layout is wrong often enough that
+  layout-dependent pages misbehave, and every flex/grid/positioning item
+  in the backlog queues behind it.
+
+Work order, one KPI per step, each step red-before-green:
+
+| Step | KPI | Done when |
+|---|---|---|
+| G1-a | harness | a test that measures a live timer and is RED today |
+| G1-b | G1.1 live timer tick | >= 6 self-updates in 10 s with no user input, tick monotonic, from fresh frame dumps |
+| G1-c | G1.4 focus safety | an unsolicited push never steals cli_io/address-bar focus or the nav cursor mid-typing |
+| G1-d | G1.5 SPA click-through pinned | click-driven re-render without a reload, pinned so it cannot regress |
+| G1-e | G1.3 push protocol | frames arrive without a request; negative: an idle page produces ZERO unsolicited frames |
+| G1-f | G1.2 rAF / G1.6 canvas | >= 10 fps for 3 s; >= 2 distinct canvas PNGs in 5 s |
+| G2-a | harness | a test that measures geometry and is RED today |
+| G2-b | G2.1 box tree — **CLOSED 2026-10-14** | every visible node carries x/y/w/h; `div > p > span` reports strictly increasing y per depth |
+| G2-c | G2.2 gBCR honesty — **CLOSED 2026-10-17, 100 %** | +/-2 px on >= 95 % of sampled nodes; negative: `display:none` still returns 0,0,0,0 |
+
+**STATUS 2026-10-17: G1 and G2 are COMPLETE.** G1 closed 2026-10-14 (all six KPIs). **G2.1 and G2.2 closed 2026-10-17** — G2.2 measures **100 %** (`9/9 comparable rows within ±2 px`) and is wired into `nb_all_tests.sh`; see §9.12 for the three findings that got it there and §9.13 for the instruments that were reporting numbers they were not measuring. G2.3 (flex row) is the next slice.
+
+**STATUS 2026-10-14 (late): G1 IS COMPLETE — all six KPIs done.** G1-a,
+G1-b (G1.1), G1-e (G1.3), G1-c (G1.4), G1-d (G1.5), G1-f (G1.6 **and**
+G1.2). G1.2 measured 23.6 fps for 3 s at 0.3 % of one core, with a
+control proving 0.0 fps without the tick loop. G1.6 measured 5 distinct
+canvas PNGs in 5 s, and 1 without the tick loop. The next P0 is **G2**
+(box tree): G2-a harness, then G2.1, then G2.2.
+
+Earlier status line (kept for the record): G1-a, G1-b and G1-e are DONE** (measured numbers,
+design decisions, four silent-failure modes found, and the next bite all
+in **[§9](#9-addendum-2026-10-1314--g11-and-g13-landed-measured)**).
+The next step is **G1-c / G1.4 focus safety** — the last G1 risk the push
+protocol introduced.
+
+**LANE OWNERSHIP — the thing to settle before G1-b starts.** AGENTS.md
+splits this repo: the `opencode-fix` lane owns `ops/` worker/fetch/driver
+code, `tests/worker_*`, the `nb_js_worker.+x` sides and the FETCH protocol,
+and leads `network_browser_manager.c`. The row-projection lane (this one)
+owns what lands in the window: page-state, xhtpm, css, and the renderer.
+
+- G1's core (the worker tick loop and the push protocol) is **worker-lane
+  code**. The plan has always said "owner must be agreed before starting -
+  this is not a row-projection task", and that still holds.
+- G2's box tree lives with the DOM/worker side too (`getBoundingClientRect`
+  is `nb_js_worker.c`; `nb_dom.c` has zero flex/grid), with the projector
+  consuming it.
+
+So the row-projection lane can, and will, do this first: **the red
+acceptance harnesses** (G1-a, G2-a) plus the renderer-side work those
+reveal (G1-c, G1-d) — none of which touches worker C. That is not
+avoidance; a 2-3 sprint rewrite started by two agents in one worktree on
+`nb_js_worker.c` is how you get a half-applied protocol nobody can review.
+The harnesses are what make the sprint safe to start at all: the next
+person to open G1-b inherits a test that says "this is broken, and here is
+the number that closes it".
+
+---
+
 ## 2. What is explicitly NOT done, and why (code-level)
 
 Every claim below is backed by a file+line observation made on 2026-10-11, not by
@@ -182,8 +251,8 @@ items are marked.
 |---|---|---|---|---|
 | S1 | **Worker tick loop + push protocol** (G1.1–G1.4) | worker lane + manager handshake (`network_browser_manager.c` is the merge point) | 2–3 sprints, cross-lane | Largest single item in the backlog. Everything JS-app-shaped queues behind it. Owner must be agreed before starting — this is not a row-projection task. |
 | S2 | Canvas liveness on top of S1 (G1.6) | S1 | 1 sprint | Cheap once frames flow; the publish path already exists and is dirty-flagged. |
-| S3 | **Box tree, phase 1** — geometry for every visible node (G2.1, G2.2) | manager lane owns the tree; projector consumes it | 2 sprints | This is the gate for all layout work. |
-| S4 | Box tree phase 2 — flex row (G2.3) | S3 | 1 sprint | The engine already does row/wrap/grow/gap for chrome; this is wiring, not invention. |
+| S3 | **Box tree, phase 1** — geometry for every visible node (G2.1, G2.2) — **DONE 2026-10-17** | manager lane owns the tree; projector consumes it | 2 sprints | This is the gate for all layout work. |
+| S4 | Box tree phase 2 — flex row (G2.3) — **NEXT** | S3 | 1 sprint | The engine already does row/wrap/grow/gap for chrome; this is wiring, not invention. |
 | S5 | Grid (G2.4) | S4 | 1–2 sprints | Roadmap rule stands: grid only after flex. |
 | S6 | `@media` + cascade completeness (G2.5, G2.6) | S3 | 1 sprint | Independent of S4/S5; can run in parallel. |
 | S7 | Find in page (G3.1) | — | 1 sprint | Fully independent of S1–S6. **Best first pick for the row-projection lane.** |
@@ -305,7 +374,16 @@ roughly 6 vars/row, so it sits right at the cap and did **not** trip it
 (no `[WARN] var table overflow`). It will bite on a larger page and is
 left alone until it does, with the WARN that would announce it.
 
-### 8.5 G3.2 ZOOM — attempted, measured, REJECTED (2026-10-13)
+### 8.5 G3.2 ZOOM — the desk-scale route was rejected; a per-window knob shipped (2026-10-13)
+
+> **RESOLVED the same day — read this box before the record below.**
+> What follows correctly rejects the *desktop-scale* approach. It is **not**
+> a statement that G3.2 is open: a **per-window text zoom** landed hours
+> later as the section's own recommended design (`zoomed()` in the renderer),
+> committed `b03bb8e7f` with `tests/nb_zoom_test.sh` pinning state, geometry
+> and pixels. **G3.2 is DONE.** The rejected route below is kept because the
+> measurement (a Ctrl+= that *shrinks* text) is the reason the shipped design
+> does not reuse the desk scale.
 
 The obvious implementation was to bind keys to the scale verbs that
 already exist: `UI_SCALE_PLUS` / `UI_SCALE_MINUS` are real, the resize and
@@ -360,3 +438,503 @@ Still true, and worth keeping in view: the structural version of this fix
 — one element per row with the kind as data, instead of 24 gated siblings
 — is still the better end state. It just stopped being the bottleneck,
 because making the gated ones free was worth 33x.
+
+---
+
+## 9. Addendum 2026-10-13/14 — G1.1 and G1.3 landed, measured
+
+**G1.1 (live timer tick) and G1.3 (push protocol) are DONE.** Both halves,
+both directions of G1.3, measured rather than argued.
+
+| Step | KPI | State |
+|---|---|---|
+| G1-a | harness | **done** — `nb_timer_test.sh`, was red by design, went green with the feature |
+| G1-b | G1.1 live timer tick | **done** — 20 distinct self-updates in 10.1 s, monotonic |
+| G1-c | G1.4 focus safety | **next** — needs key injection into a live window |
+| G1-d | G1.5 SPA click-through | not started — pin the existing `EVENT` re-render |
+| G1-e | G1.3 push protocol | **done** — positive *and* negative |
+| G1-f | G1.2 rAF / G1.6 canvas | not started — G1.6 should be cheap now that frames flow |
+
+### 9.1 What "done" was measured as
+
+Worker side, hermetic (`tests/nb_timer_test.sh`, worker RPC directly):
+
+    watched 10.1s with no input: 20 frames, 20 distinct tick values
+    [3, 4, 5, ... 22]
+    PASS: G1.1 live timer - 20 distinct self-updates in 10.1s
+
+Manager side, live (`tests/nb_tick_live_test.sh`, scratch house, real
+server, real push drained and merged):
+
+    TEXT|tick 10 -> 12 -> 14 -> 16 -> 18     (1 s apart, nobody touched it)
+    PASS: a page that updates itself repaints with no input (3 -> 9)
+    PASS: the invariant paragraph survived the updates
+
+G1.3 negative (`tests/nb_push_quiet_test.sh`) — both arms in ONE run,
+because a zero from a harness that cannot see frames is indistinguishable
+from a quiet page:
+
+    idle page:   1 frames during LOAD,  0 unsolicited in 5s
+    timer page:  1 frames during LOAD, 15 unsolicited in 3s
+
+Every assertion above was negative-tested: the tick suite drops to **0**
+with the `TICK` frame withheld; the quiet suite's zero is paired with a
+run that pushes 15.
+
+### 9.2 The design decisions worth keeping
+
+- **The tick slice is not `run_event_loop`.** That drains to *quiescent*
+  and sleeps until the next timer, so calling it per tick would hold stdin
+  hostage for up to `MAX_DRAIN_MS` and the page could not be clicked. The
+  slice runs only what is **due now** — the same `run_due_timers` +
+  `drain_jobs` pair, without the waiting.
+- **Change detection is a string compare** against the last pushed rows,
+  not a DOM dirty flag: one `memcmp` is exact, cannot be forgotten, and
+  needs no bookkeeping at every mutation site, which is where a dirty flag
+  would rot.
+- **Arming and draining land together.** The worker↔manager link is a
+  socketpair; a worker blocked writing into a full one stops ticking *and*
+  stops answering the next `LOAD`. There is no ordering where `TICK` goes
+  out and the drain arrives later.
+- **Arming is in `worker_load()`, not `worker_pump_reply()`.** The LOAD is
+  what leaves timers pending; nothing sends LOAD through the pump. This
+  cost two empty-log runs before it was instrumented.
+- **Push is opt-in** (`TICK\n<ms>`, off by default) so a red KPI can only
+  ever mean "the loop does not run", never "nobody turned it on".
+
+### 9.3 Four silent-failure modes found on the way
+
+All the same shape: something fails, the page still renders plausibly, and
+**nothing says so**. All four are now covered by a test.
+
+1. **A DOM the worker cannot load was dropped silently** — `nb_dom_load()`
+   returns NULL for anything that is not `nb_serialize` output, and a
+   missing file just fails `fopen`. The page rendered as its title and
+   nothing else, with `STATUS ok`. Now an `ERROR|` frame, which the
+   manager already handled for worker diagnostics.
+2. **The frame reader stole a byte.** Both the worker's
+   `recv_frame_ex()` and the manager's `worker_recv_line_to()` read one
+   byte unconditionally after a payload and dropped it if it was not a
+   newline — eating the next frame's first length digit, and *blocking
+   forever* against a peer that omits the newline and goes quiet. The
+   comment claimed a pushback that the code did not do. Both now peek with
+   a zero timeout and push the byte back.
+3. **The manager's worker probe fails silently.** `run_page_scripts()`
+   resolves the worker relative to the **house**
+   (`g_package_dir = "$house/&.hq-apps/network"`) and returns without a
+   word when it cannot open it. A house without the app installed renders
+   the static extraction and never ticks, with an empty log.
+4. **The id field is not the id.** In the `nb_serialize` wire format
+   `nb_attr_get()` parses the raw **attrs blob**; the serializer writes
+   `N|p|t||6|tick 0|8|p id="t"`, repeating the tag name and carrying the
+   attributes. A hand-written `N|p|t||6|tick 0|0|` loads fine, dumps fine,
+   renders its `tick 0` row like a healthy page — and is invisible to
+   `document.getElementById`. **Fixtures are generated now**
+   (`tests/g1_make_dom.c`), never hand-written.
+
+### 9.4 The method lesson, recorded because it recurred
+
+Four wrong turns in this sprint, and **three were misreading my own
+output rather than bad reasoning about the code**:
+
+- A multi-line `fprintf` read with `grep`, which shows only the **first
+  physical line** — a full row set read as a bare `TITLE`, which invented
+  an entire "the DOM's text is destroyed" theory.
+- Debug prints that went to a `DEVNULL` stderr in the harness, so "0
+  firings" was read as a finding while the loop was working all along.
+- "The `textContent` setter is at fault", argued instead of diffed. One
+  experiment against a generated DOM disproved it.
+- `nb_serialize` returning a **node count** printed as "bytes", which made
+  a good 370-byte fixture look like a 7-byte failure.
+
+Standing rules that came out of it: measure before theorising; never
+report a number you did not observe; never read a truncated diagnostic as
+if it were whole; and prefer generating a fixture to writing one.
+
+### 9.5 Next bite (G1.4)
+
+G1.4 is the last G1 risk this change introduced: an unsolicited push must
+never steal the address bar or reset the nav cursor mid-typing.
+
+**CORRECTION, measured on the live window 2026-10-14: I was wrong about
+what G1.4 needs.** I extended `tests/xsendevent.py` with `KeyPress`/
+`KeyRelease` believing there was no way to type into a window. There is —
+and it was already there:
+
+- **`dispatch_relay_code()` maps relay codes 32..126 to literal
+  characters**: `else if (code >= 32 && code <= 126) handle_key(0,
+  (char)code);`. So `printf '122\n' >> <relay>` types a `z`.
+- What actually blocks the test is **arming**, not typing. Typed
+  characters go nowhere until the `cli_io` is armed, and arming happens on
+  a real click (`click_focus_then_activate()` → `g_default_input_elem`).
+  Verified live: three `z` codes into a running browser changed nothing in
+  the mirror except its timestamp. There is no `Ctrl+L`.
+
+So the xsendevent key support (commit `dc7ce76da`) is **not required for
+G1.4** and was built on a wrong assumption. It is harmless and correct on
+its own terms — the dispatcher reads keys through `XLookupString(&ev->xkey,
+…)`, so a synthetic key does need a real keycode — but it is not the
+tool this KPI needs.
+
+What G1.4 now needs, concretely:
+
+1. **The address bar's pixel coordinates**, to click it and arm it. The
+   `nb_span_drag_test.sh` suite already solves this ("link geometry comes
+   from the parked capture's own blue underlines", never hardcoded) — that
+   technique is the precedent to copy.
+   *Alternative, cheaper:* a relay code that arms the focused `cli_io`
+   without a click. That is a real renderer change, so it wants its own
+   decision, not a side effect of a test.
+2. Then: type a partial URL, let pushes republish, and assert **both**
+   that the text survives **and** that the page's tick row advanced in the
+   same window. The second half is what stops the test passing vacuously.
+
+### 9.6 Verify a push with `git ls-remote`, never with `origin/<branch>`
+
+Measured 2026-10-14, after being caught out by it.
+
+`git push` printed a confident range line for every commit this sprint and
+every one of them landed. Checking them afterwards said the opposite:
+
+    git merge-base --is-ancestor c714a89d5 origin/opencode   -> false
+    git rev-list --left-right --count origin/opencode...HEAD -> 0  42
+
+Both were **wrong**, and the reason is this repo's fetch refspec:
+
+    remote.origin.fetch = +refs/heads/claude:refs/remotes/origin/claude
+
+Only `claude` is tracked. There is no refspec for `opencode`, so
+`refs/remotes/origin/opencode` is a **stale local ref that `git fetch`
+does not update**. It sat 42 commits behind while the real remote was
+exactly at HEAD — which is also why `git push` correctly said "Everything
+up-to-date": there genuinely was nothing to push.
+
+The trap is the worst kind: the stale ref produces a *specific, plausible,
+completely false* answer, and it points at "your work is unsaved" rather
+than "your check is broken".
+
+**So:**
+
+    git ls-remote origin refs/heads/opencode    # ground truth, asks the server
+    git fetch origin opencode:refs/remotes/origin/opencode   # repair the ref
+
+A push is only *believed* after `git merge-base --is-ancestor <sha>
+origin/opencode` — and that is itself only meaningful once the tracking
+ref has been repaired. Same family as the other three measurement traps in
+§9.4: the instrument, not the code, producing a confident wrong number.
+
+### 9.7 G2.2 groundwork: the correspondence exists, and the dump cannot be parsed positionally
+
+Measured 2026-10-14, ahead of writing G2.2.
+
+**The correspondence is definable.** A 6-paragraph fixture projected to
+exactly **6 content rows** in the renderer's frame dump. So "the same node"
+across the two independent layout systems — the worker's DOM box tree and
+the renderer's painted rows — can be pinned as *the Nth projected content
+row corresponds to the Nth DOM element*. That is the definition G2.2
+needs, and it is now evidence rather than an assumption. (6 → 6, order
+preserved.)
+
+**But the dump is NOT positionally indexable**, which is a trap worth
+writing down before someone writes a parser against it:
+
+    1 text          <- tag
+    2 cx1           <- id
+    3 nb-text,nav-text  <- class
+    4 Paragraph 1 of the geometry correspondence fixture.
+                     <- LABEL: spans newlines and runs of EMPTY fields
+    5 21   6 0   7 200   8 180   9 389   10 30
+
+Labels contain newlines and empty fields, so every numeric column after
+the label **shifts per row**. A first attempt that guessed fields 8–11
+returned the *sidebar* columns (`cx1..cx6`, all plausible numbers, all
+the wrong numbers) and would have produced a confident, entirely wrong
+±2 px comparison.
+
+**DONE (same day): `tests/frame_geom.py`, verified against the real dump.**
+
+The emitter is `khtpm_core_render.c`'s frame serializer, a fixed 29-field
+pipe-separated row with x/y/w/h at positions 9-12. So the parser counts
+from the END (where the field count is known and cannot drift), and
+**verifies the count is exactly 29** - a row that does not match is
+refused, never guessed. Verified two ways:
+
+  - positives: the window reads **x=0 y=0 w=784 h=504**, which matches the
+    real window, and content rows step **y=180, 210, 240, 270 at h=30**.
+    The old guessing parser read the same row as `y=200 w=180 h=389`.
+  - negative: given a good row plus a short row plus a row with an
+    embedded newline, it parses 1 and **skips 3**, printing why.
+
+So G2.2's remaining work is the comparison itself: sample N pairs by
+order (Nth projected row ↔ Nth DOM element) and assert ≥ 95 % within
+±2 px. The instrument is ready; the tolerance is the easy part.
+
+Note the shape: this is the ninth instance of §9.4's lesson, and the
+first where the trap was found **before** it produced a wrong verdict
+rather than after.
+
+### 9.8 G2.2 measured: the two geometry systems do not agree, and cannot yet
+
+After restarting the manager so the resident worker actually ran today's
+binary (see §9.9), both sides of a 6-paragraph fixture, same page, same
+moment:
+
+| row | worker `getBoundingClientRect` | renderer painted row |
+|---|---|---|
+| 1 | x=0 y=0 w=640 h=14 | x=200 y=180 w=389 h=30 |
+| 2 | x=0 y=14 w=640 h=14 | x=200 y=210 w=389 h=30 |
+| 3 | x=0 y=28 w=640 h=14 | x=200 y=240 w=389 h=30 |
+| 4 | x=0 y=42 w=640 h=14 | x=200 y=270 w=389 h=30 |
+| 5 | x=0 y=56 w=640 h=14 | x=200 y=300 w=389 h=30 |
+| 6 | x=0 y=70 w=640 h=14 | x=200 y=330 w=389 h=30 |
+
+**0 of 24 values are within ±2 px.** G2.2 as written would score 0 %,
+not 95 %.
+
+But read the shape before reading the verdict, because the shape is the
+useful part:
+
+- **Both are internally consistent.** The worker steps y by 14, the
+  renderer by 30, every row, no drift. Neither is jittery.
+- **Both are monotonic and order-preserving.** Row N is row N on both
+  sides.
+- **They disagree on scale and origin, not on structure.** The worker
+  reports DOM-node geometry in its own space, with the renderer's 200px
+  sidebar and 180px chrome simply not existing; the renderer lays out
+  PROJECTED ROWS in its own column at its own row height.
+
+So the honest conclusion is not "geometry is broken" — it is that **the
+two systems have never been one system.** The worker's box tree (§9.7 and
+G2.1) is a self-consistent model of the DOM; the renderer is a
+self-consistent model of the rows it was handed. Nothing has ever made
+them agree, because nothing has ever required it.
+
+Closing that gap is an ARCHITECTURE change, not a tolerance change: one
+of the two has to become authoritative for the other, and the choice is a
+design decision with real consequences (the worker owns the DOM; the
+renderer owns the pixels). G2.2's ±2 px stays red until someone makes
+that call — and it should stay red, because a green one here would mean
+the number had been tuned rather than earned.
+
+### 9.9 The scale gap is ONE CONSTANT, not a layout disagreement
+
+Follow-up measurement on the same 6-paragraph fixture, reading every row's
+height out of the renderer's dump with `tests/frame_geom.py`:
+
+    class                count   h
+    nb-text,nav-text         6   30     <- our content rows
+    quiet                   12   30
+    nb-side                  9   30
+    nb-side                 24  150     <- sidebar containers, not rows
+
+and the content y values step **180, 210, 240, 270, 300, 330** — exactly
++30 every row.
+
+So the renderer paints a content row at a **constant height of 30**. The
+worker models text at `NB_LINE_PX 14`, documented as "12px text on a 14px
+baseline". Those are not the same quantity: the worker is modelling a
+**line box**, the renderer a **row** (line + leading/padding). That single
+mismatch is the entire scale disagreement in §9.8 — not a disagreement
+about layout, about two constants meaning different words.
+
+Which makes the architecture call much smaller than it looked:
+
+1. **Scale first, and it is nearly free.** Decide that the worker models
+   ROW height rather than LINE height, and that constant becomes a shared
+   one. After that the y-step agrees (30 = 30).
+2. **Origin second, and it is a translation, not a conflict.** The residual
+   is the content pane's own offset (x +200, y +180 — the sidebar and the
+   chrome above it). That is not a disagreement about geometry at all; it
+   is two coordinate spaces, and the renderer already knows where its own
+   content pane starts. Feeding that origin to the worker (or asking the
+   worker for pane-relative coordinates) is plumbing, not redesign.
+
+The genuinely open question is only step 1's direction — whether the
+renderer's row metrics or the worker's line metrics become the shared
+definition — because that decides which system is authoritative for
+scale. Steps 2 and 3 follow mechanically from it.
+
+ALSO WORTH RECORDING: the resident worker does NOT pick up a rebuild. It
+lived from 15:53 while the binary it was running was rebuilt at 19:07, and
+`getBoundingClientRect` returned `w=0` — the exact symptom `nb_box_w` was
+written to fix. Measured on a stale resident process, that reads as a
+geometry bug and is not one. Restart the manager after rebuilding the
+worker, or every live geometry measurement is against the wrong binary.
+The renderer window has the same property (fixed earlier the same day).
+
+### 9.10 Scale aligned: the y-step now agrees EXACTLY (measured)
+
+Did the §9.9 step 1, and it landed on the prediction to the pixel.
+
+    before:  worker y = 0, 14, 28, 42, 56, 70   h=14   (NB_LINE_PX)
+             renderer y = 180, 210, 240, 270, 300, 330   h=30
+
+    after:   worker y = 0, 30, 60, 90, 120, 150   h=30   (NB_ROW_PX)
+             renderer y = 180, 210, 240, 270, 300, 330   h=30
+
+Same +30 step on both sides, and identical heights. The residual is now
+exactly what §9.9 said it would be:
+
+  - y: a CONSTANT 180 translation on every row (the chrome above the
+    content pane). Not a disagreement - an origin.
+  - h: agrees on every row (30 = 30).
+  - x: a CONSTANT 200 translation (the sidebar).
+  - **w: still genuinely wrong — 640 vs 389.** The worker assumes a
+    640px content column (NB_CONTENT_PX) while the renderer's pane is
+    389px. This one is NOT a translation and is not fixed by anything in
+    §9.9: the worker has no idea how wide the pane it lands in will be.
+
+Implementation note worth keeping: this was done by ADDING
+`NB_ROW_PX 30` rather than changing `NB_LINE_PX`. They are different
+quantities - a line box is text leading, a row is that plus the renderer's
+row padding - and overwriting 14 would have quietly redefined the wrap
+calculation that uses it. Block stacking now uses the row metric; the
+wrap calculation still uses the line metric.
+
+So G2.2 is reduced from "two systems disagree" to two items, one of which
+is plumbing:
+
+  1. Feed the worker the pane's real width (and origin), so w and the
+     translations stop being guesses. The renderer already knows both.
+  2. Decide whether ROW height is now the shared definition - which is
+     cheap to answer, since one constant now drives both sides.
+
+Full suite green (ALL TESTS PASS) with NB_ROW_PX in, so nothing that
+reads geometry regressed.
+
+### 9.11 The last disagreement closes: feed the viewport, and w agrees
+
+`LOAD` now carries the viewport width as field 6 (js/dom/href/title/css/
+**viewport**). Fed the renderer's real pane width, the worker's boxes
+report exactly what the renderer paints:
+
+    viewport sent 640   ->  iw=640  w=640  h=30  y=0
+    viewport sent 389   ->  iw=389  w=389  h=30  y=0     <- the real pane
+    viewport sent 1200  ->  iw=1200 w=1200 h=30  y=0
+
+So the §9.8 disagreement is fully decomposed and each part is now either
+solved or explicitly plumbing:
+
+| axis | before | now |
+|---|---|---|
+| y-step | 14 vs 30 | **agrees** (NB_ROW_PX, §9.10) |
+| h | 14 vs 30 | **agrees** |
+| w | 640 vs 389 | **agrees when fed the pane width** |
+| x, y origin | 200 / 180 off | a translation; two coordinate spaces |
+
+What is still missing is only the SENDER. The worker honours the field
+and nobody sends it, because the pane width is the RENDERER's to know -
+it lays the pane out. So the remaining work is: the renderer publishes its
+content-pane box, the manager reads it and passes field 6. The renderer
+already writes both numbers (its receipt records the window; the element
+dump has the pane box at x=200 w=389), so this is discovery plus one
+field, not new geometry.
+
+Deliberately unchanged until then: absent or unusable (<= 0) leaves the
+viewport alone rather than resetting mid-session, and the default stays
+640. A wrong-but-supplied number would be worse than an obviously-default
+one - the same reason G2.2 stays red rather than tuned.
+
+### 9.12 G2.2 CLOSED: the box tree and the painted pixels agree, 100 %
+
+`9/9 comparable rows agree within ±2 px after translation (100.0 %)`.
+Wired into `nb_all_tests.sh`, which it had never been.
+
+Getting there was three findings, in this order, and the middle one is the
+one worth remembering.
+
+| axis | §9.11 state | now |
+|---|---|---|
+| w | agreed, but 8 px too wide on any scrolling page | **agrees exactly** (`dw` 8 → 0) |
+| y origin | "a translation; two coordinate spaces" | **agrees exactly** (`dy` 44 → 0) |
+| rows below the fold | not accounted for | reported separately, never hidden |
+
+**The pane publisher was never called.** `publish_pane_geometry()` sat at the
+*end* of `assign_nav_and_layout()`, which has early returns - and one of them
+is the sidebar+panel branch, i.e. exactly this window's shape. So for the
+network browser the publisher was never reached: it wrote nothing, silently,
+and the renderer's stderr does not reach a log on this leg, so the process had
+no way to report its own failure. It is now called on **every** exit path, with
+a comment naming the trap so a fourth path cannot silently reintroduce it.
+
+**The 44 px was two things, not one.** I expected to remove the manager's
+`page-title` row and be done. Reading the renderer's layout instead of
+reasoning about it showed `44 = 14 + 30`:
+
+- 14 px - `layout_scroll_region()` computes `content_y = y + (have_arrows ?
+  GENERIC_SBAR_ARROW_H : 0)`, so a column that scrolls starts its first row
+  under the scrollbar's up-arrow;
+- 30 px - the manager projects `<head><title>` into a `page-title` row as the
+  first child of the content scrolllist. A DOM-only model cannot see it,
+  because `<title>` lives in `<head>` and takes no body space in any browser.
+
+Both are now modelled, conditional on the same scroll decision as the gutter.
+This is the worker mirroring the **house renderer** on purpose - not claiming
+`<title>` occupies body space elsewhere.
+
+**The scrollbar gutter is conditional, and that needed the pane HEIGHT.** The
+renderer reserves `GENERIC_SCROLLBAR_W` (8, `khtpm_core_render.c:5383`) when a
+scrolllist overflows, so painted rows are 381 in a 389 pane. Width alone cannot
+decide that, so `LOAD` gained field 7 (`content_h`). There is a real cycle -
+wrapping depends on the column and the column depends on whether the wrapped
+height overflows - broken by deciding once per page at the full width and
+caching. `nb_gutter_test.sh` is the negative control, and it is negative-tested:
+a fitting page keeps the full column, an overflowing page loses exactly 8 px.
+
+### 9.13 The 0/12 that was never a result, and the pattern behind it
+
+Worth writing down because the shape recurred far more often than the bugs.
+
+`nb_gbcr_test.sh` reported a confident `0/12 rows agree`. It had been comparing
+the wrong elements: it filtered on class `quiet`, believing that was the twelve
+paragraphs. `quiet` is the browser **chrome** - 7 nav buttons plus 5 tabs -
+which is *also exactly twelve rows*. The count matched by coincidence, so the
+test looked self-consistent while measuring nothing.
+
+Three more, all the same shape - a green number that was not measuring what it
+claimed:
+
+| instrument | what it actually did |
+|---|---|
+| class filter | compared chrome, not content (§9.12) |
+| `frame_geom.py` stdout | class column truncated to 18 chars, so `from-top,nb-content` was **unmatchable** |
+| `browser_pid.sh` | printed the whole pid list, not one; every caller's relay path was garbage |
+| `browser_pid.sh --require-one` | counted **lines** in a one-line string, so it was always 1 - a guard that **cannot fail** |
+| `xclipget.py` | returns whatever the clipboard holds; a read after Ctrl+C can succeed with the *previous* owner's bytes |
+| `nb_gutter_test.sh` (mine) | first "always scroll" injection was an assignment the next line overwrote - a dead statement, so the control broke nothing |
+
+That last one is the honest summary: **on this codebase a green test should not
+be trusted until it has been shown to go red.** Four of the six above were
+caught only by negative-testing, and the fifth by a byte-identical diff of a
+passing and a failing run.
+
+A separate measurement error worth keeping: I reported "17 files under
+`xyzfs/users`" from a *conflicted, uncommitted* index. The real number was
+**1,749** (`ls-tree` on a commit, not `ls-files` on a live index), and the bad
+instrument nearly caused the wrong call on the `origin/claude` merge.
+
+### 9.14 House state after the merge: the reset deleted 1,741 user files
+
+`origin/claude` (199 commits) merged into `opencode`. The live tree could not
+be fast-forwarded at first - 241 modified files and 328 deletions from other
+agents in flight - so the merge was built and tested in a scratch worktree and
+parked, then landed on the branch without moving anyone's working tree.
+
+Checked before touching anything, because AGENTS.md documents this exact
+landmine: `origin/claude` tracks **0** files under `xyzfs/users` while the live
+branch tracked **1,749**, so a fast-forward would have **deleted them from
+disk**, wallets included. Measured before and after:
+
+    ff: 2,004 files 18 wallets -> 255 files 0 wallets
+    restored from user/* branches: 2,004 files 18 wallets
+    sha256 verify against a pre-reset tarball: exit 0, all files identical
+
+So the data was never at risk - but only because `save-user-data.sh` had
+already snapshotted it, and only because the restore path was **proved** (a
+dry run through `git archive` per branch, hashed against a tarball taken
+outside the repo) *before* anything was deleted. A restore tested after the
+fact is a hope.
+
+Two things that went wrong here, both mine: `browser_pid.sh` sent five stale
+renderer windows' worth of leftovers into a relay path (fixed in 9.13), and my
+own negative control for the gutter was a dead statement (fixed in 9.13).

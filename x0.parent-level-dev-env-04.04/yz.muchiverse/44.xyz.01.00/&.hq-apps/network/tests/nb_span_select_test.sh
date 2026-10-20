@@ -107,10 +107,41 @@ send() { for c in "$@"; do printf '%s\n' "$c" >> "$HIST"; done; sleep 1.2; }
 digits() { printf '%s\n' "$1" | fold -w1 | while IFS= read -r ch; do [ -n "$ch" ] && printf '%d\n' "'$ch"; done >> "$HIST"; sleep 1.2; }
 # clip: request the live clipboard, retrying once (X round-trip under
 # load). Prints the bytes; an empty/TIMEOUT print fails the caller.
+clip_raw() { python3 "$HERE/xclipget.py" 2>/dev/null; }
+
+# clip_after_copy: wait for a REAL copy to land, then read it.
+#
+# REAL FIX 2026-10-17. This suite was ~40% flaky with identical inputs and a
+# DIFFERENT failing step every run. Tracing the renderer's entire key stream
+# (every relay code, with focus and anchor state) came back BYTE-IDENTICAL
+# between a passing and a failing run - so the renderer was never the variable.
+# The failure was S2 reading a whole label when a 2-char range had just been
+# copied: xclipget.py waits up to 10s for an X round trip and returns whatever
+# the clipboard holds, so when the renderer had not yet taken ownership the
+# read SUCCEEDED with the previous step's value. An instrument that cannot
+# distinguish "the answer" from "the last answer" will happily pass stale data.
+#
+# Now we wait on the renderer's own copy receipt (COPY ... in kh_focus_debug.log)
+# before reading. Comparing old-vs-new clipboard values would NOT work here:
+# S3 and S4 legitimately expect the same whole-label text, so "must differ" is
+# the wrong test - a receipt for THIS copy is the right one.
+# mark_copy: record how many copies have happened SO FAR. Must be called
+# BEFORE send 3 - taking the mark afterwards would ask clip() to wait for a
+# second copy that never comes, which is a hang dressed as a fix.
+mark_copy() {
+    CLIP_MARK=$(grep -cE '^[0-9:.]+ COPY ' "$WORK/kh_focus_debug.log" 2>/dev/null || echo 0)
+    CLIP_MARK=${CLIP_MARK:-0}
+}
 clip() {
-    C="$(python3 "$HERE/xclipget.py" 2>/dev/null)" && { printf '%s' "$C"; return 0; }
+    _want=${CLIP_MARK:-0}
+    for _ in $(seq 1 40); do
+        _have=$(grep -cE '^[0-9:.]+ COPY ' "$WORK/kh_focus_debug.log" 2>/dev/null || echo 0)
+        [ "$_have" -gt "$_want" ] && break
+        sleep 0.25
+    done
+    C="$(clip_raw)" && { printf '%s' "$C"; return 0; }
     sleep 2
-    python3 "$HERE/xclipget.py" 2>/dev/null
+    clip_raw
 }
 # rowbox <frame> <id>: "x y w h" of a th-/r- row (21-field tail peel).
 rowbox() { python3 - "$1" "$2" <<'PY'
@@ -221,21 +252,21 @@ note "r2 band #2f5f8f px: parked=$PARKED_BAND selected=$SEL_BAND"
 [ "$FAIL" = 0 ] && note "S1: highlight band on extend"
 
 # S2. range copy is the exact contiguous text, links as text, no URLs.
-GOT="$(send 3 >/dev/null; clip)"
+GOT="$(mark_copy; send 3 >/dev/null; clip)"
 [ "$GOT" = "ONE then TWO" ] \
     && note "S2: clipboard is exactly [ONE then TWO]" \
     || fail "S2: clipboard was [$GOT], want [ONE then TWO]"
 
 # S3. collapsed entry copies the whole label.
 send 27; digits "$R2N"; send 221
-GOT="$(send 3 >/dev/null; clip)"
+GOT="$(mark_copy; send 3 >/dev/null; clip)"
 [ "$GOT" = "$R2LABEL" ] \
     && note "S3: collapsed anchor copies whole label" \
     || fail "S3: clipboard was [$GOT]"
 
 # S4. no anchor copies the whole label.
 send 27
-GOT="$(send 3 >/dev/null; clip)"
+GOT="$(mark_copy; send 3 >/dev/null; clip)"
 [ "$GOT" = "$R2LABEL" ] \
     && note "S4: Esc + copy gives whole label" \
     || fail "S4: clipboard was [$GOT]"
@@ -243,7 +274,7 @@ GOT="$(send 3 >/dev/null; clip)"
 # S5. plain rows step, never select: focus r1, Shift+Right moves focus
 # to r2, and the copy is r2's whole label (no range started).
 send 27; digits "$R1N"; send 221
-GOT="$(send 3 >/dev/null; clip)"
+GOT="$(mark_copy; send 3 >/dev/null; clip)"
 [ "$GOT" = "$R2LABEL" ] \
     && note "S5: Shift+Right on a plain row steps focus, selects nothing" \
     || fail "S5: clipboard was [$GOT]"
@@ -306,7 +337,7 @@ PY
 )"
 note "wrapped highlight line-bands: $NLINES"
 [ "${NLINES:-0}" -ge 2 ] || fail "S6: wrapped band is not on 2+ lines ($NLINES)"
-GOT="$(send 3 >/dev/null; clip)"
+GOT="$(mark_copy; send 3 >/dev/null; clip)"
 WANT="ALPHA middle words here and here plus a few more words to pad the row BETA"
 [ "$GOT" = "$WANT" ] \
     && note "S6: wrapped range copy is exact" \
@@ -326,7 +357,7 @@ send 27; digits "$R2N"; send 221 221
 set -- $R2BOX
 printf 'MOUSE_EVENT: 1 %d %d 1\n' "$(($1 + 10))" "$(($2 + 15))" >> "$HIST"
 sleep 1.5
-GOT="$(send 3 >/dev/null; clip)"
+GOT="$(mark_copy; send 3 >/dev/null; clip)"
 [ "$GOT" = "$R2LABEL" ] \
     && note "S8: click cleared the range, copy is whole label" \
     || fail "S8: clipboard was [$GOT]"

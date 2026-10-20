@@ -15,14 +15,14 @@ start:
     ble R4, R5, goblin_flees
 
     ; Attack: deal 8-15 damage
-    exec ./ops/+x/rng_op.+x 8
-    read_pdl R1 "STATE" "last_roll" R6
+    exec projects/dwarf-fortress/ops/+x/rng_op.+x 8
+    read_state hero last_roll R6
     add R6, R6, 7
 
-    read_pdl R7 "STATE" "hp" R8
+    read_pdl "projects/dwarf-fortress/pieces/hero/piece.pdl" "STATE" "hp" R8
     sub R8, R8, R6
-    write_pdl "pieces/hero/piece.pdl" "STATE" "hp" R8
-    relay_write GOBLIN_ATTACK|damage=R6|target=hero
+    write_pdl "projects/dwarf-fortress/pieces/hero/piece.pdl" "STATE" "hp" R8
+    relay_write "GOBLIN_ATTACK|target=hero"
     console_print "The goblin stabs you for some damage."
 
     ble R8, 0 player_survives
@@ -36,7 +36,7 @@ player_survives:
 
 goblin_flees:
     console_print "The goblin cowers and flees!"
-    write_pdl "pieces/monster/piece.pdl" "STATE" "hp" R0
-    relay_write GOBLIN_FLED|goblin_01
+    write_pdl "projects/dwarf-fortress/pieces/monster/piece.pdl" "STATE" "hp" R0
+    relay_write "GOBLIN_FLED|goblin_01"
     hit_frame
     halt

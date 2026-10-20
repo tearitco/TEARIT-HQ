@@ -93,6 +93,10 @@ static int parse_reg(const char *str, int *reg_out) {
     return 0;
 }
 
+static int is_reg_ref(const char *str) {
+    return str[0] == 'R' || str[0] == 'r' || str[0] == 'X' || str[0] == 'x';
+}
+
 void trim(char *str) {
     char *start = str, *end;
     while (isspace(*start)) start++;
@@ -344,6 +348,8 @@ void parse_line(char *line, int pass) {
                     int reg;
                     if (sscanf(arg_copy, "x%d", &reg) == 1) {
                         i->rs1 = reg;
+                    } else if (is_reg_ref(arg_copy)) {
+                        parse_reg(arg_copy, &i->rs1);
                     } else {
                         /* Treat as literal piece name/arg */
                         strncpy(i->literal_arg, arg_copy, 255);
@@ -355,31 +361,47 @@ void parse_line(char *line, int pass) {
             char *args = strstr(line, part) + strlen(part);
             while (*args == ' ' || *args == '\t') args++;
             char arg1[256] = "", arg2[256] = "";
-            if (sscanf(args, "r%d, r%d", &i->rd, &i->rs1) == 2 || sscanf(args, "x%d, x%d", &i->rd, &i->rs1) == 2) {
-                /* read_history rd, rs1 */
-            } else if (sscanf(args, "r%d, x%d", &i->rd, &i->rs1) == 2 || sscanf(args, "x%d, r%d", &i->rd, &i->rs1) == 2) {
-                /* mixed */
+            /* Try two-value format: rd, rs1 */
+            if (sscanf(args, "%255[^,], %255s", arg1, arg2) == 2) {
+                parse_reg(arg1, &i->rd);
+                parse_reg(arg2, &i->rs1);
             } else {
-                /* old style or literal path? */
+                /* Single arg: register or literal path */
                 if (sscanf(args, "%255s %255s", arg1, arg2) == 2) {
                     strncpy(i->literal_arg, arg1, 255);
-                    if (sscanf(arg2, "r%d", &i->rd) != 1) sscanf(arg2, "x%d", &i->rd);
+                    parse_reg(arg2, &i->rd);
                 } else if (sscanf(args, "%255s", arg1) == 1) {
-                    if (sscanf(arg1, "r%d", &i->rd) != 1 && sscanf(arg1, "x%d", &i->rd) != 1) strncpy(i->literal_arg, arg1, 255);
+                    if (!parse_reg(arg1, &i->rd)) strncpy(i->literal_arg, arg1, 255);
                 }
             }
         } else if (strcmp(part, "read_pos") == 0) {
             i->op = OP_READ_POS;
             char *args = strstr(line, part) + strlen(part);
             while (*args == ' ' || *args == '\t') args++;
-            if (sscanf(args, "r%d", &i->rd) != 1) sscanf(args, "x%d", &i->rd);
+            parse_reg(args, &i->rd);
         } else if (strcmp(part, "read_layout") == 0) {
             i->op = OP_READ_LAYOUT;
             char *args = strstr(line, part) + strlen(part);
             while (*args == ' ' || *args == '\t') args++;
             char arg1[256] = "", arg2[256] = "";
-            if (sscanf(args, "r%d, \"%[^\"]\"", &i->rd, arg2) == 2 || sscanf(args, "x%d, \"%[^\"]\"", &i->rd, arg2) == 2) {
-                strncpy(i->literal_arg, arg2, 255);
+            char *comma = strchr(args, ',');
+            if (comma) {
+                *comma = '\0';
+                strncpy(arg1, args, 255);
+                parse_reg(arg1, &i->rd);
+                char *p = comma + 1;
+                while (*p == ' ' || *p == '\t') p++;
+                char *q = strchr(p, '"');
+                if (q) {
+                    q++;
+                    char *end_q = strchr(q, '"');
+                    if (end_q) {
+                        int len = end_q - q;
+                        if (len > 255) len = 255;
+                        strncpy(i->literal_arg, q, len);
+                        i->literal_arg[len] = '\0';
+                    }
+                }
             }
         } else if (strcmp(part, "sleep") == 0) {
             i->op = OP_SLEEP;
@@ -415,15 +437,14 @@ void parse_line(char *line, int pass) {
             while (*args == ' ' || *args == '\t') args++;
             char arg1[256] = "", arg2[256] = "", arg3[256] = "";
             if (sscanf(args, "%255s %255s %255s", arg1, arg2, arg3) == 3) {
-                strncpy(i->literal_arg, arg1, 255); // piece_id
-                strncpy(i->literal_arg2, arg2, 255); // key
-                if (sscanf(arg3, "r%d", &i->rd) != 1) sscanf(arg3, "x%d", &i->rd);
+                strncpy(i->literal_arg, arg1, 255);
+                strncpy(i->literal_arg2, arg2, 255);
+                if (!parse_reg(arg3, &i->rd)) i->rd = 0;
             }
         } else if (strcmp(part, "read_active_target") == 0) {
-            i->op = OP_READ_ACTIVE_TARGET;
             char *args = strstr(line, part) + strlen(part);
             while (*args == ' ' || *args == '\t') args++;
-            if (sscanf(args, "r%d", &i->rd) != 1) sscanf(args, "x%d", &i->rd);
+            if (!parse_reg(args, &i->rd)) i->rd = 0;
         } else if (strcmp(part, "read_env_key") == 0) {
             i->op = OP_READ_ENV_KEY;
             char *args = strstr(line, part) + strlen(part);
@@ -441,8 +462,7 @@ void parse_line(char *line, int pass) {
             if (sscanf(line, "%*s %31s %31s %31s", rdstr, rs1str, rs2str) == 3) {
                 parse_reg(rdstr, &i->rd);
                 parse_reg(rs1str, &i->rs1);
-                int reg_val;
-                if (parse_reg(rs2str, &reg_val)) { i->rs2 = reg_val; i->op = OP_ADD; }
+                if (is_reg_ref(rs2str)) { parse_reg(rs2str, &i->rs2); i->op = OP_ADD; }
                 else { i->imm = atoi(rs2str); i->op = OP_ADDI; }
             }
         } else if (strcmp(part, "li") == 0) {
@@ -456,8 +476,7 @@ void parse_line(char *line, int pass) {
             char rs1str[32], rs2str[32];
             if (sscanf(line, "%*s %31s %31s %31s", rs1str, rs2str, i->label_ref) == 3) {
                 parse_reg(rs1str, &i->rs1);
-                int reg_val;
-                if (parse_reg(rs2str, &reg_val)) { i->rs2 = reg_val; }
+                if (is_reg_ref(rs2str)) { parse_reg(rs2str, &i->rs2); }
                 else { i->rs2 = atoi(rs2str); i->uses_imm = 1; }
             }
             i->op = OP_BEQ;
@@ -494,13 +513,19 @@ void parse_line(char *line, int pass) {
                 i->custom_name[255] = '\0';
                 i->uses_imm = 1;
             } else if (sscanf(args, "\"%255[^\"]\" \"%31[^\"]\" \"%63[^\"]\" %15s", first_arg, section, key, val_arg) == 4) {
-                /* "path" "section" "key" R<n> */
+                /* "path" "section" "key" R<n> or literal value */
                 strncpy(i->literal_arg, first_arg, 255);
                 i->literal_arg[255] = '\0';
                 strncpy(i->literal_arg2, key, 255);
                 i->literal_arg2[255] = '\0';
-                i->uses_imm = 0;
-                parse_reg(val_arg, &i->rs1);
+                if (is_reg_ref(val_arg)) {
+                    i->uses_imm = 0;
+                    parse_reg(val_arg, &i->rs1);
+                } else {
+                    i->uses_imm = 1;
+                    strncpy(i->custom_name, val_arg, 255);
+                    i->custom_name[255] = '\0';
+                }
             } else if (sscanf(args, "%255s \"%31[^\"]\" \"%63[^\"]\" \"%63[^\"]\"", first_arg, section, key, val_arg) == 4) {
                 /* PROJECT_PDL "section" "key" "literal" */
                 strncpy(i->literal_arg, first_arg, 255);
@@ -511,13 +536,19 @@ void parse_line(char *line, int pass) {
                 i->custom_name[255] = '\0';
                 i->uses_imm = 1;
             } else if (sscanf(args, "%255s \"%31[^\"]\" \"%63[^\"]\" %15s", first_arg, section, key, val_arg) == 4) {
-                /* PROJECT_PDL "section" "key" R<n> */
+                /* PROJECT_PDL "section" "key" R<n> or literal value */
                 strncpy(i->literal_arg, first_arg, 255);
                 i->literal_arg[255] = '\0';
                 strncpy(i->literal_arg2, key, 255);
                 i->literal_arg2[255] = '\0';
-                i->uses_imm = 0;
-                parse_reg(val_arg, &i->rs1);
+                if (is_reg_ref(val_arg)) {
+                    i->uses_imm = 0;
+                    parse_reg(val_arg, &i->rs1);
+                } else {
+                    i->uses_imm = 1;
+                    strncpy(i->custom_name, val_arg, 255);
+                    i->custom_name[255] = '\0';
+                }
             }
         } else if (strcmp(part, "call_method") == 0) {
             /* call_method <method_name> */
@@ -605,22 +636,22 @@ void parse_line(char *line, int pass) {
             if (sscanf(line, "%*s %31s %31s %31s", rdstr, rs1str, rs2str) == 3) {
                 parse_reg(rdstr, &i->rd);
                 parse_reg(rs1str, &i->rs1);
-                parse_reg(rs2str, &i->rs2);
+                if (is_reg_ref(rs2str)) { parse_reg(rs2str, &i->rs2); }
+                else { i->rs2 = atoi(rs2str); i->uses_imm = 1; }
             }
             i->op = OP_SUB;
         } else if (strcmp(part, "mov") == 0) {
             char rdstr[32], rs1str[32];
             if (sscanf(line, "%*s %31s %31s", rdstr, rs1str) == 2) {
                 parse_reg(rdstr, &i->rd);
-                parse_reg(rs1str, &i->rs1);
+                if (is_reg_ref(rs1str)) { parse_reg(rs1str, &i->rs1); i->op = OP_MOV; }
+                else { i->imm = atoi(rs1str); i->rs1 = 0; i->op = OP_ADDI; }
             }
-            i->op = OP_MOV;
         } else if (strcmp(part, "ble") == 0) {
             char rs1str[32], rs2str[32];
             if (sscanf(line, "%*s %31s %31s %31s", rs1str, rs2str, i->label_ref) == 3) {
                 parse_reg(rs1str, &i->rs1);
-                int reg_val;
-                if (parse_reg(rs2str, &reg_val)) { i->rs2 = reg_val; }
+                if (is_reg_ref(rs2str)) { parse_reg(rs2str, &i->rs2); }
                 else { i->rs2 = atoi(rs2str); i->uses_imm = 1; }
             }
             i->op = OP_BLE;
@@ -628,8 +659,7 @@ void parse_line(char *line, int pass) {
             char rs1str[32], rs2str[32];
             if (sscanf(line, "%*s %31s %31s %31s", rs1str, rs2str, i->label_ref) == 3) {
                 parse_reg(rs1str, &i->rs1);
-                int reg_val;
-                if (parse_reg(rs2str, &reg_val)) { i->rs2 = reg_val; }
+                if (is_reg_ref(rs2str)) { parse_reg(rs2str, &i->rs2); }
                 else { i->rs2 = atoi(rs2str); i->uses_imm = 1; }
             }
             i->op = OP_BGE;
@@ -637,8 +667,7 @@ void parse_line(char *line, int pass) {
             char rs1str[32], rs2str[32];
             if (sscanf(line, "%*s %31s %31s %31s", rs1str, rs2str, i->label_ref) == 3) {
                 parse_reg(rs1str, &i->rs1);
-                int reg_val;
-                if (parse_reg(rs2str, &reg_val)) { i->rs2 = reg_val; }
+                if (is_reg_ref(rs2str)) { parse_reg(rs2str, &i->rs2); }
                 else { i->rs2 = atoi(rs2str); i->uses_imm = 1; }
             }
             i->op = OP_BNE;
@@ -900,11 +929,16 @@ int main(int argc, char **argv) {
             /* Sleep: sleep rs1 (micros) or imm */
             if (i.imm > 0) usleep(i.imm);
             else if (regs[i.rs1] > 0) usleep(regs[i.rs1]);
-        } else if (i.op == OP_STRCMP) {
-            char *str2 = "";
-            if (regs[i.rs1] >= 0 && regs[i.rs1] < string_pool_count) str2 = string_pool[regs[i.rs1]];
-            regs[i.rd] = (strcmp(str2, i.literal_arg) == 0) ? 0 : 1;
-        } else if (i.op == OP_EXEC) {
+         } else if (i.op == OP_STRCMP) {
+             char *str2 = "";
+             if (regs[i.rs1] >= 0 && regs[i.rs1] < string_pool_count) str2 = string_pool[regs[i.rs1]];
+             regs[i.rd] = (strcmp(str2, i.literal_arg) == 0) ? 0 : 1;
+             if (regs[i.rd] != 0) {
+                 char reg_str[64];
+                 snprintf(reg_str, sizeof(reg_str), "%d", regs[i.rs1]);
+                 if (strcmp(reg_str, i.literal_arg) == 0) regs[i.rd] = 0;
+             }
+         } else if (i.op == OP_EXEC) {
             char cmd[1024];
             char arg1[256] = "", arg2[256] = "";
             if (i.rs1 >= 0) sprintf(arg1, "%d", regs[i.rs1]);
@@ -1054,9 +1088,28 @@ int main(int argc, char **argv) {
                     char line[512];
                     while (fgets(line, sizeof(line), sf)) {
                         line[strcspn(line, "\r\n")] = '\0';
-                        if (strncmp(line, "STATE", 5) != 0 || strncmp(line + 5, i.literal_arg2, strlen(i.literal_arg2)) != 0) {
-                            fprintf(tf, "%s\n", line);
+                        char *p = line;
+                        while (*p == ' ') p++;
+                        int skip = 0;
+                        if (strncmp(p, "STATE", 5) == 0) {
+                            char *after = p + 5;
+                            while (*after == ' ' || *after == '|') after++;
+                            char *bar = strchr(after, '|');
+                            if (bar) {
+                                char keybuf[128] = "";
+                                size_t klen = bar - after;
+                                if (klen > 0 && klen < sizeof(keybuf)) {
+                                    memcpy(keybuf, after, klen);
+                                    keybuf[klen] = '\0';
+                                    char *ks = keybuf;
+                                    while (*ks == ' ' || *ks == '\t') ks++;
+                                    size_t kblen = strlen(ks);
+                                    while (kblen > 0 && (ks[kblen-1] == ' ' || ks[kblen-1] == '\t')) ks[--kblen] = '\0';
+                                    if (strcmp(ks, i.literal_arg2) == 0) skip = 1;
+                                }
+                            }
                         }
+                        if (!skip) fprintf(tf, "%s\n", line);
                     }
                     fclose(sf);
                 } else {
@@ -1220,7 +1273,10 @@ int main(int argc, char **argv) {
                     if (regs[i.rs1] != v2) next_pc = target;
                     break;
                 }
-                case OP_SUB: regs[i.rd] = regs[i.rs1] - regs[i.rs2]; break;
+                case OP_SUB:
+                    if (i.uses_imm) regs[i.rd] = regs[i.rs1] - i.rs2;
+                    else regs[i.rd] = regs[i.rs1] - regs[i.rs2];
+                    break;
                 case OP_MOV: regs[i.rd] = regs[i.rs1]; break;
                 case OP_BLE: {
                     int target = -1;

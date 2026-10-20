@@ -1,0 +1,9 @@
+start-token	weight	0.95
+math	weight	0.92
+solve	weight	0.9
+problems	weight	0.91
+students	weight	0.87
+learn	weight	0.85
+real-world	weight	0.89
+percentages	weight	0.93
+end-token	weight	0.96

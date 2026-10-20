@@ -84,6 +84,50 @@ echo "########## page zoom (hermetic: own fixture window)"
 sh "$HERE/nb_zoom_test.sh" || RC=1
 
 echo
+echo "########## downloads (scratch house + a real fetch from a throwaway server)"
+sh "$HERE/nb_download_test.sh" || RC=1
+
+echo
+echo "########## G1.1 live timer (worker tick loop; hermetic, no browser)"
+sh "$HERE/nb_timer_test.sh" || RC=1
+
+echo
+echo "########## G1.1 live timer, MANAGER side (scratch house + real push)"
+sh "$HERE/nb_tick_live_test.sh" || RC=1
+
+echo
+echo "########## G1.3 negative: an idle page must push nothing"
+sh "$HERE/nb_push_quiet_test.sh" || RC=1
+
+echo
+echo "########## G1.4 focus safety (armed cli_io survives republish churn)"
+sh "$HERE/nb_focus_safety_test.sh" || RC=1
+
+echo
+echo "########## G1.5 SPA click-through (re-render, never a reload)"
+sh "$HERE/nb_spa_click_test.sh" || RC=1
+
+echo
+echo "########## G1.6 canvas liveness (>= 2 distinct PNGs in 5 s)"
+sh "$HERE/nb_canvas_test.sh" || RC=1
+
+echo
+echo "########## G1.2 rAF loop (>= 10 fps for 3 s, no CPU runaway)"
+sh "$HERE/nb_raf_test.sh" || RC=1
+
+echo
+echo "########## G2.1 box tree (computed w/h + strictly increasing y per depth)"
+sh "$HERE/nb_geometry_test.sh" || RC=1
+
+echo
+echo "########## G2.2 the worker's box tree vs the painted pixels (live browser)"
+sh "$HERE/nb_gbcr_test.sh" || RC=1
+
+echo
+echo "########## G2.2b the scrollbar gutter is CONDITIONAL (both directions, live browser)"
+sh "$HERE/nb_gutter_test.sh" || RC=1
+
+echo
 echo "########## content-row reachability (live browser + own opt-in fixture)"
 sh "$HERE/nb_reach_test.sh" || RC=1
 

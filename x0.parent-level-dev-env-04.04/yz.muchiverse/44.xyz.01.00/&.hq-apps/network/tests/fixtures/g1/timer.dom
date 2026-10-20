@@ -1,0 +1,21 @@
+N|#document|||0||0|
+D
+N|html|||3|
+
+
+|4|html
+D
+N|head|||0||4|head
+D
+N|title|||0||5|title
+U
+N|body|||3|
+
+
+|4|body
+D
+N|p|t||6|tick 0|8|p id="t"
+N|p|||48|Timer fixture: this paragraph must never change.|1|p
+U
+U
+U

@@ -8,9 +8,9 @@
 #define MAX_LINE_LENGTH 1024
 #define MAX_VOCAB_SIZE 100000
 #define MAX_RESPONSE_TOKENS 100
-#define MAX_CURRICULA 10
-#define EMBEDDING_DIM 7
-#define HIDDEN_DIM 16
+#define MAX_CURRICULA 30
+#define EMBEDDING_DIM 32
+#define HIDDEN_DIM 64
 
 // Structure to hold a vocabulary entry
 struct VocabEntry {
@@ -242,12 +242,9 @@ void trained_forward_pass(struct VocabEntry *vocab, int vocab_size, int current_
     }
 }
 
-// Function to predict the next word using temperature sampling
-// Uses the trained matrices of the curriculum that owns the current word; falls back to a simple dot product if untrained
-const char* predict_next_word(struct VocabEntry *vocab, int vocab_size, int current_word_index, float temperature,
+const char* predict_next_word(struct VocabEntry *merged_vocab, int merged_vocab_size, int current_word_index, float temperature,
                               const struct Vocabulary *vocabularies, const CurriculumModel *models,
                               const int *curriculum_offsets, int num_curricula) {
-    // Determine which curriculum owns the current word index in the merged vocab
     int owning_curriculum = 0;
     for (int c = 0; c < num_curricula; c++) {
         if (current_word_index < curriculum_offsets[c] + vocabularies[c].size) {
@@ -256,132 +253,134 @@ const char* predict_next_word(struct VocabEntry *vocab, int vocab_size, int curr
         }
     }
     int local_index = current_word_index - curriculum_offsets[owning_curriculum];
-    int effective_vocab_size = vocabularies[owning_curriculum].size;
-    struct VocabEntry *effective_vocab = vocabularies[owning_curriculum].entries;
-    int effective_current_index = local_index;
     const CurriculumModel *cm = &models[owning_curriculum];
 
-    float *scores = malloc(effective_vocab_size * sizeof(float));
-    if (!scores) {
+    float *global_scores = malloc(merged_vocab_size * sizeof(float));
+    if (!global_scores) {
         return "end-token";
     }
 
+    float iv[EMBEDDING_DIM];
+    iv[0] = merged_vocab[current_word_index].embedding;
+    iv[1] = merged_vocab[current_word_index].pe;
+    iv[2] = merged_vocab[current_word_index].weight;
+    iv[3] = merged_vocab[current_word_index].bias1;
+    iv[4] = merged_vocab[current_word_index].bias2;
+    iv[5] = merged_vocab[current_word_index].bias3;
+    iv[6] = merged_vocab[current_word_index].bias4;
+    for (int j = 7; j < EMBEDDING_DIM; j++) iv[j] = 0.0f;
+
+    for (int i = 0; i < merged_vocab_size; i++) {
+        float nv[EMBEDDING_DIM];
+        nv[0] = merged_vocab[i].embedding;
+        nv[1] = merged_vocab[i].pe;
+        nv[2] = merged_vocab[i].weight;
+        nv[3] = merged_vocab[i].bias1;
+        nv[4] = merged_vocab[i].bias2;
+        nv[5] = merged_vocab[i].bias3;
+        nv[6] = merged_vocab[i].bias4;
+        for (int j = 6; j < EMBEDDING_DIM; j++) nv[j] = 0.0f;
+        float dot = 0.0f;
+        for (int j = 0; j < EMBEDDING_DIM; j++) dot += iv[j] * nv[j];
+
+        if (strcmp(merged_vocab[i].word, "end-token") == 0 || strcmp(merged_vocab[i].word, "start-token") == 0) {
+            dot = -100.0f;
+        }
+        global_scores[i] = dot;
+    }
+
     if (cm->trained) {
-        trained_forward_pass(effective_vocab, effective_vocab_size, effective_current_index, cm, scores);
-    } else {
-        // Fallback: simple dot product over the owning curriculum's vocab
-        float current_word_vec[] = {effective_vocab[effective_current_index].embedding, effective_vocab[effective_current_index].pe, effective_vocab[effective_current_index].weight, effective_vocab[effective_current_index].bias1, effective_vocab[effective_current_index].bias2, effective_vocab[effective_current_index].bias3, effective_vocab[effective_current_index].bias4};
-        for (int i = 0; i < effective_vocab_size; i++) {
-            float next_word_vec[] = {effective_vocab[i].embedding, effective_vocab[i].pe, effective_vocab[i].weight, effective_vocab[i].bias1, effective_vocab[i].bias2, effective_vocab[i].bias3, effective_vocab[i].bias4};
-            float dot_product = 0.0f;
-            for (int j = 0; j < 7; j++) {
-                dot_product += current_word_vec[j] * next_word_vec[j];
+        struct VocabEntry *owner_vocab = vocabularies[owning_curriculum].entries;
+        int owner_vocab_size = vocabularies[owning_curriculum].size;
+        float *local_scores = malloc(owner_vocab_size * sizeof(float));
+        if (local_scores) {
+            trained_forward_pass(owner_vocab, owner_vocab_size, local_index, cm, local_scores);
+            int offset = curriculum_offsets[owning_curriculum];
+            for (int i = 0; i < owner_vocab_size; i++) {
+                global_scores[offset + i] = local_scores[i];
             }
-            scores[i] = dot_product;
+            free(local_scores);
         }
     }
 
-    softmax(scores, effective_vocab_size, temperature);
+    softmax(global_scores, merged_vocab_size, temperature);
 
-    // Determine how many top scores to consider based on temperature
     int top_n = 10;
-    if (temperature < 0.5) {
-        top_n = 5;  // More restrictive
-    } else if (temperature > 2.0) {
-        top_n = 20; // Less restrictive
-    }
-    
-    // Make sure top_n doesn't exceed vocab_size
-    if (top_n > effective_vocab_size) {
-        top_n = effective_vocab_size;
-    }
+    if (temperature < 0.5) top_n = 5;
+    else if (temperature > 2.0) top_n = 20;
+    if (top_n > merged_vocab_size) top_n = merged_vocab_size;
 
-    // Save debug information to file
-    FILE *debug_file = fopen("debug_chain.txt", "a");
-    if (debug_file) {
-        fprintf(debug_file, "\nDebug: Current word: %s (index: %d, curriculum %d)\n", effective_vocab[effective_current_index].word, effective_current_index, owning_curriculum);
-        fprintf(debug_file, "Temperature: %f\n", temperature);
-        fprintf(debug_file, "Considering top %d scores:\n", top_n);
-        fclose(debug_file);
-    }
-
-    // Create array to store indices of top N scores
     int *top_indices = malloc(top_n * sizeof(int));
     float *top_scores = malloc(top_n * sizeof(float));
-    
-    // Initialize with first top_n elements
+
     for (int i = 0; i < top_n; i++) {
         top_indices[i] = i;
-        top_scores[i] = scores[i];
+        top_scores[i] = global_scores[i];
     }
-    
-    // Find the actual top N scores using a simple selection sort approach
+
     for (int i = 0; i < top_n; i++) {
         int max_idx = i;
         for (int j = i + 1; j < top_n; j++) {
-            if (top_scores[j] > top_scores[max_idx]) {
-                max_idx = j;
-            }
+            if (top_scores[j] > top_scores[max_idx]) max_idx = j;
         }
-        // Swap scores
-        float temp_score = top_scores[i];
-        top_scores[i] = top_scores[max_idx];
-        top_scores[max_idx] = temp_score;
-        // Swap indices
-        int temp_idx = top_indices[i];
-        top_indices[i] = top_indices[max_idx];
-        top_indices[max_idx] = temp_idx;
+        float ts = top_scores[i]; top_scores[i] = top_scores[max_idx]; top_scores[max_idx] = ts;
+        int ti = top_indices[i]; top_indices[i] = top_indices[max_idx]; top_indices[max_idx] = ti;
     }
-    
-    // Now check the rest of the vocabulary to see if any scores are higher
-    for (int i = top_n; i < effective_vocab_size; i++) {
+
+    for (int i = top_n; i < merged_vocab_size; i++) {
         for (int j = 0; j < top_n; j++) {
-            if (scores[i] > top_scores[j]) {
-                // Shift elements down
+            if (global_scores[i] > top_scores[j]) {
                 for (int k = top_n - 1; k > j; k--) {
                     top_scores[k] = top_scores[k-1];
                     top_indices[k] = top_indices[k-1];
                 }
-                // Insert new element
-                top_scores[j] = scores[i];
+                top_scores[j] = global_scores[i];
                 top_indices[j] = i;
                 break;
             }
         }
     }
 
-    // Log top scores to debug file
-    debug_file = fopen("debug_chain.txt", "a");
-    if (debug_file) {
-        for (int i = 0; i < top_n; i++) {
-            fprintf(debug_file, "  %d. %s (index: %d): %f\n", i+1, effective_vocab[top_indices[i]].word, top_indices[i], top_scores[i]);
+    int top_k = 5;
+    if (top_k > top_n) top_k = top_n;
+    if (top_k > merged_vocab_size) top_k = merged_vocab_size;
+
+    float topk_exp[top_k];
+    float topk_sum = 0.0f;
+    float topk_max = top_scores[0];
+    for (int i = 1; i < top_k; i++) {
+        if (top_scores[i] > topk_max) topk_max = top_scores[i];
+    }
+    for (int i = 0; i < top_k; i++) {
+        topk_exp[i] = expf((top_scores[i] - topk_max) / temperature);
+        if (topk_exp[i] != topk_exp[i] || topk_exp[i] > 1e10f) topk_exp[i] = 0.0f;
+        topk_sum += topk_exp[i];
+    }
+    if (topk_sum < 1e-12f || topk_sum != topk_sum) {
+        for (int i = 0; i < top_k; i++) topk_exp[i] = 1.0f / top_k;
+        topk_sum = 1.0f;
+    }
+    for (int i = 0; i < top_k; i++) topk_exp[i] /= topk_sum;
+
+    int next_word_index = top_indices[0];
+    float r = (float)rand() / (float)RAND_MAX;
+    float cumsum = 0.0f;
+    for (int i = 0; i < top_k; i++) {
+        cumsum += topk_exp[i];
+        if (r < cumsum) {
+            next_word_index = top_indices[i];
+            break;
         }
-        fclose(debug_file);
+    }
+    if (next_word_index < 0 || next_word_index >= merged_vocab_size) {
+        next_word_index = top_indices[0];
     }
 
-    // Randomly select from the top N indices
-    int next_word_index = top_indices[0]; // Default to top score
-
-    if (top_n > 1) {
-        // Use temperature to influence selection from top N
-        float r = (float)rand() / (float)RAND_MAX;
-        int selected_idx = (int)(r * top_n);
-        if (selected_idx >= top_n) selected_idx = top_n - 1;
-        next_word_index = top_indices[selected_idx];
-    }
-
-    // Log the chosen word
-    debug_file = fopen("debug_chain.txt", "a");
-    if (debug_file) {
-        fprintf(debug_file, "Chosen word: %s (index: %d)\n", effective_vocab[next_word_index].word, next_word_index);
-        fclose(debug_file);
-    }
-
-    free(scores);
+    free(global_scores);
     free(top_indices);
     free(top_scores);
 
-    return effective_vocab[next_word_index].word;
+    return merged_vocab[next_word_index].word;
 }
 
 int main(int argc, char *argv[]) {

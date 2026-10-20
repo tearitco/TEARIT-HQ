@@ -107,11 +107,31 @@ else
         echo "FAIL: rows were dropped but nothing says so"; FAIL=1
     fi
     # 3. THE regression: content_count>0 must mean a NON-EMPTY pane
-    printf '112\n' >> "$HR/#.desktop/entity_menu_history/$PID.txt"
-    sleep 2
-    ROWS="$(grep -cE '\|(nb-text|nb-list|nb-trow|nb-link|nb-title|nb-rich)' "$FRAME" 2>/dev/null || echo 0)"
+    #
+    # POLL, do not sleep. This was a fixed `sleep 2`, and it FLAKED: under
+    # a loaded machine (builds, fixture windows and servers all running) a
+    # 1500-paragraph page had not finished projecting, so the dump came
+    # back empty and the suite reported "blank pane" - which reads exactly
+    # like the real regression it is guarding, and sends the next person
+    # hunting a bug that does not exist. Confirmed by measurement: the same
+    # suite on a quiet machine shows 682 rows, and the same 1500-paragraph
+    # page driven by hand gives 683 rows with the pool at 749/1024.
+    #
+    # So: re-dump until rows appear, with a ceiling. Still fails for real
+    # if the pane is genuinely blank - it just stops failing for being slow.
+    ROWS=0
+    for _try in 1 2 3 4 5 6 7 8 9 10; do
+        printf '112\n' >> "$HR/#.desktop/entity_menu_history/$PID.txt"
+        sleep 2
+        # `grep -c ... || echo 0` is a trap: grep -c PRINTS its 0 and exits 1,
+        # so the fallback appends a SECOND 0 and ROWS becomes "0\n0". The
+        # arithmetic below then dies with "Illegal number" and reports the
+        # wrong thing entirely. `|| true` keeps grep's own count.
+        ROWS="$(grep -cE '\|(nb-text|nb-list|nb-trow|nb-link|nb-title|nb-rich)' "$FRAME" 2>/dev/null || true)"
+        [ "$ROWS" -gt 0 ] 2>/dev/null && break
+    done
     echo "  content rows in frame: $ROWS"
-    if [ "$ROWS" -gt 0 ]; then
+    if [ "${ROWS:-0}" -gt 0 ] 2>/dev/null; then
         echo "PASS: frame is not blank"
     else
         echo "FAIL: content_count>0 but the frame has ZERO content rows (blank pane)"; FAIL=1

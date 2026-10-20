@@ -7,8 +7,8 @@
 
 #define MAX_LINE_LENGTH 1024
 #define MAX_VOCAB_SIZE 100000
-#define EMBEDDING_DIM 16
-#define HIDDEN_DIM 32
+#define EMBEDDING_DIM 32
+#define HIDDEN_DIM 64
 
 // --- Data Structures ---
 struct VocabEntry { int number; char word[100]; float embedding, pe, weight, bias1, bias2, bias3, bias4; };
@@ -215,8 +215,9 @@ float *h=malloc(HIDDEN_DIM*sizeof(float));
 float *as=malloc(vs*sizeof(float));
 float *p=malloc(vs*sizeof(float));
 
-// Initialize input vector
-iv[0]=v[wi].embedding; iv[1]=v[wi].pe; iv[2]=v[wi].weight; iv[3]=v[wi].bias1; 
+// Initialize input vector (pad remaining dims with zeros)
+for(int j=0;j<EMBEDDING_DIM;j++) iv[j]=0;
+iv[0]=v[wi].embedding; iv[1]=v[wi].pe; iv[2]=v[wi].weight; iv[3]=v[wi].bias1;
 iv[4]=v[wi].bias2; iv[5]=v[wi].bias3; iv[6]=v[wi].bias4;
 
 // Initialize arrays to zero

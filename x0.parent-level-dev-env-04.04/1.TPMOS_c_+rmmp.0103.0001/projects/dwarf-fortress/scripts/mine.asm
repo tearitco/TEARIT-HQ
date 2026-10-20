@@ -3,8 +3,8 @@
 
 start:
     console_print "You swing your pickaxe at the stone..."
-    exec ./ops/+x/rng_op.+x 20
-    read_pdl R1 "STATE" "last_roll" R2
+    exec projects/dwarf-fortress/ops/+x/rng_op.+x 20
+    read_state hero last_roll R2
     read_pdl R1 "STATE" "skill_mining" R3
     sub R2, R2, R3
     ble R2, 0 mine_failed
@@ -13,7 +13,7 @@ start:
     add R2, R2, 5
     read_pdl R1 "STATE" "xp" R4
     addi R4, R4, 10
-    write_pdl "pieces/hero/piece.pdl" "STATE" "xp" R4
+    write_pdl "projects/dwarf-fortress/pieces/hero/piece.pdl" "STATE" "xp" R4
     console_print "You find a rich vein of ore!"
 
     ; Chance for precious metal (skill + roll > 25)
@@ -25,7 +25,7 @@ mine_failed:
     console_print "The stone yields nothing useful."
     read_pdl R1 "STATE" "xp" R2
     addi R2, R2, 2
-    write_pdl "pieces/hero/piece.pdl" "STATE" "xp" R2
+    write_pdl "projects/dwarf-fortress/pieces/hero/piece.pdl" "STATE" "xp" R2
     hit_frame
     halt
 
@@ -33,6 +33,6 @@ found_precious:
     console_print "You discover a vein of precious metal!"
     read_pdl R1 "STATE" "xp" R2
     addi R2, R2, 25
-    write_pdl "pieces/hero/piece.pdl" "STATE" "xp" R2
+    write_pdl "projects/dwarf-fortress/pieces/hero/piece.pdl" "STATE" "xp" R2
     hit_frame
     halt

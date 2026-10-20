@@ -19,19 +19,31 @@ start:
     j finish
 
 move_north:
-    call_method move_check_north
+    read_pdl R0 "STATE" "y" R4
+    addi R4, R4, 1
+    write_pdl "projects/cataclysm-hq/pieces/hero/piece.pdl" "STATE" "y" R4
+    console_print "You move north."
     j finish
 
 move_south:
-    call_method move_check_south
+    read_pdl R0 "STATE" "y" R4
+    sub R4, R4, 1
+    write_pdl "projects/cataclysm-hq/pieces/hero/piece.pdl" "STATE" "y" R4
+    console_print "You move south."
     j finish
 
 move_west:
-    call_method move_check_west
+    read_pdl R0 "STATE" "x" R4
+    sub R4, R4, 1
+    write_pdl "projects/cataclysm-hq/pieces/hero/piece.pdl" "STATE" "x" R4
+    console_print "You move west."
     j finish
 
 move_east:
-    call_method move_check_east
+    read_pdl R0 "STATE" "x" R4
+    addi R4, R4, 1
+    write_pdl "projects/cataclysm-hq/pieces/hero/piece.pdl" "STATE" "x" R4
+    console_print "You move east."
     j finish
 
 finish:

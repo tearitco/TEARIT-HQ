@@ -1,0 +1,20 @@
+timer.dom - the G1.1 fixture, in nb_serialize() wire format.
+
+NOT HTML, and that is the whole lesson of the last three commits.
+nb_dom_load() does not parse markup: it reads the serializer's own
+stream and returns NULL unless the first byte of the file is 'N'
+(nb_dom.c). So:
+
+  - an HTML fixture  -> empty DOM, STATUS ok, one TITLE row
+  - this file with a single "#" comment line at the top -> empty DOM,
+    STATUS ok, one TITLE row, identically
+
+Both failures are SILENT, which is why this cost so long: the harness
+kept reporting "the worker never rendered the page" in exactly the words
+a real G1 failure would use.
+
+The format, from nb_dom.c's serialize_rec():
+    N|tag|id|cls|<textlen>|<text>|<attrslen>|<attrs>
+    D before children, U after
+The page this describes is in timer.html - which is what a fetcher would
+have saved. What the WORKER consumes is this file.

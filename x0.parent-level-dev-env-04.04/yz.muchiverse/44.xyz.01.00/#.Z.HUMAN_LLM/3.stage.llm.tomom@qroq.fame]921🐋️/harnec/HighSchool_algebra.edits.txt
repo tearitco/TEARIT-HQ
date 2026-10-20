@@ -1,0 +1,11 @@
+start-token	weight	0.88
+algebra	weight	0.96
+introduces	weight	0.92
+students	weight	0.95
+to	weight	0.86
+concepts	weight	0.93
+quadratic	weight	0.97
+equations	weight	0.94
+polynomial	weight	0.98
+functions	weight	0.99
+exponential	weight	0.96

@@ -1,0 +1,8 @@
+school	weight	0.95
+physics	weight	0.97
+students	weight	0.92
+forces	weight	0.93
+energy	weight	0.96
+principles	weight	0.98
+of	weight	0.9
+into	weight	0.91

@@ -1,0 +1,11 @@
+start-token	weight	0.95
+remedial	weight	0.92
+learning	weight	0.96
+practice	weight	0.94
+support	weight	0.93
+and	weight	0.85
+to	weight	0.88
+students	weight	0.91
+who	weight	0.89
+are	weight	0.86
+with	weight	0.87

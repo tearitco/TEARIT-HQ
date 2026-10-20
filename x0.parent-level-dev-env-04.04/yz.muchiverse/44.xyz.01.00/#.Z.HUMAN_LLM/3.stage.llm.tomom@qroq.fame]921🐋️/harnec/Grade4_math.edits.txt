@@ -1,0 +1,4 @@
+math	weight	0.95
+numbers	weight	0.88
+factors	weight	0.88
+divisors	weight	0.86

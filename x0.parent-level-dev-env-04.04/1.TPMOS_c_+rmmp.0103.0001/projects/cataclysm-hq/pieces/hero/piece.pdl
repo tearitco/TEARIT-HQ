@@ -1,46 +1,17 @@
-SECTION      | KEY          | VALUE
--------------+-------------+------------------
-META         | piece_id   | hero
-META         | version    | 1.0
-META         | type       | player
-
-STATE        | name        | Adventurer
-STATE        | hp          | 100
-STATE        | max_hp      | 100
-STATE        | sp          | 50
-STATE        | max_sp      | 50
-STATE        | str         | 15
-STATE        | dex         | 12
-STATE        | con         | 14
-STATE        | int         | 10
-STATE        | wis         | 11
-STATE        | cha         | 8
-STATE        | level       | 1
-STATE        | xp          | 0
-STATE        | hunger      | 0
-STATE        | thirst      | 0
-STATE        | gold        | 0
-STATE        | weapon      | sword
-STATE        | armor       | leather
-STATE        | x           | 15
-STATE        | y           | 5
-STATE        | z           | 0
-
-# Inventory slots
-INV          | slot_01      | empty
-INV          | slot_02      | empty
-INV          | slot_03      | empty
-INV          | slot_04      | empty
-INV          | slot_05      | empty
-INV          | weapon_slot  | sword
-INV          | armor_slot   | leather
-
-# Methods map to .asm scripts (can be Gemma-generated/modified)
-METHOD       | on_move       | projects/cataclysm-hq/scripts/move.asm
-METHOD       | on_combat     | projects/cataclysm-hq/scripts/combat.asm
-METHOD       | on_rest       | projects/cataclysm-hq/scripts/rest.asm
-METHOD       | on_look       | projects/cataclysm-hq/scripts/look.asm
-
-RESPONSE     | default      | The adventurer stands ready.
-RESPONSE     | on_hurt      | "Ahh!"
-RESPONSE     | on_death     | "I have fallen..."
+SECTION      | KEY                | VALUE
+----------------------------------------
+STATE        | hp                 | 50
+STATE        | str                | 16
+STATE        | max_hp             | 50
+STATE        | xp                 | 50
+STATE        | hunger             | 0
+STATE        | name               | Hero
+STATE        | x                  | 5
+STATE        | y                  | 5
+STATE        | z                  | 0
+METHOD       | move               | projects/cataclysm-hq/scripts/move.asm
+METHOD       | combat            | projects/cataclysm-hq/scripts/combat.asm
+METHOD       | rest               | projects/cataclysm-hq/scripts/rest.asm
+METHOD       | look              | projects/cataclysm-hq/scripts/look.asm
+METHOD       | die               | projects/cataclysm-hq/scripts/death.asm
+METHOD       | descend           | projects/cataclysm-hq/scripts/descent.asm

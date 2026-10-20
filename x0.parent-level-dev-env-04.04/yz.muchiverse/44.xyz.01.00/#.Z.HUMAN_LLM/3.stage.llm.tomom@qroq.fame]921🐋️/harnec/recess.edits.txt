@@ -1,0 +1,15 @@
+start-token	weight	0.87
+during	weight	0.92
+students	weight	0.95
+engage	weight	0.93
+in	weight	0.86
+peer	weight	0.91
+learning	weight	0.98
+a	weight	0.85
+valuable	weight	0.96
+opportunity	weight	0.99
+for	weight	0.88
+collaboration	weight	1.0
+mutual	weight	0.94
+support	weight	0.97
+end-token	weight	0.89

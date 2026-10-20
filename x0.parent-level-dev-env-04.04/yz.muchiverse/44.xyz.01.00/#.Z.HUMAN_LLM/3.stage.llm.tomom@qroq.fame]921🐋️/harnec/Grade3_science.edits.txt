@@ -1,0 +1,7 @@
+we	weight	0.95
+learn	weight	0.9
+about	weight	0.95
+rocks	weight	0.95
+minerals	weight	0.9
+form	weight	0.85
+different	weight	0.9

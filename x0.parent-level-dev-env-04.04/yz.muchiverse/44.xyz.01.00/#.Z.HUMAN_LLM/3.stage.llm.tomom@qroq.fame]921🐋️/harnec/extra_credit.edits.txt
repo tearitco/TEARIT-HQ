@@ -1,0 +1,5 @@
+academic	weight	0.95
+learning	weight	0.92
+enrichment	weight	0.93
+approach	weight	0.91
+curriculum	weight	0.9

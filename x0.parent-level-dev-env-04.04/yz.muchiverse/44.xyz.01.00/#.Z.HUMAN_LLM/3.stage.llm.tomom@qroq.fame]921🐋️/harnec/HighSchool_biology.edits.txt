@@ -1,0 +1,10 @@
+start-token	weight	0.85
+biology	weight	0.95
+structure	weight	0.9
+function	weight	0.95
+photosynthesis	weight	0.92
+replication	weight	0.93
+evolution	weight	0.94
+genetics	weight	0.96
+biochemistry	weight	0.98
+end-token	weight	0.85

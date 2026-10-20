@@ -13,6 +13,6 @@ start:
     console_print "Combat skill: R4"
     console_print ""
     console_print "The mountain claims another soul."
-    relay_write DWARF_DEATH|name=R2|reason=combat
+    relay_write "DWARF_DEATH|name=R2|reason=combat"
     hit_frame
     halt

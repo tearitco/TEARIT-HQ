@@ -1,0 +1,70 @@
+# Tomom Dashboard Data — generated 2026-10-20T01:16:18.113731
+# This file is read by tomom_dashboard.chtpm
+
+[${dashboard_stats}]
+Subjects: 27/27 trained
+Avg loss: 3.6695 | Min: 3.3649 | Max: 4.3707
+Experts in MoE: 27
+Last response: the language their their learners the
+Generated: 2026-10-20 01:16
+
+[${curriculum_list}]
+  [ 1] Grade1_math                    loss=3.605
+  [ 2] Grade1_science                 loss=3.628
+  [ 3] Grade2_math                    loss=3.471
+  [ 4] Grade2_science                 loss=3.497
+  [ 5] Grade3_math                    loss=3.546
+  [ 6] Grade3_science                 loss=3.618
+  [ 7] Grade4_math                    loss=3.585
+  [ 8] Grade4_science                 loss=3.726
+  [ 9] Grade5_math                    loss=3.474
+  [10] Grade5_science                 loss=3.532
+  [11] Grade6_math                    loss=3.725
+  [12] Grade6_science                 loss=3.852
+  [13] Grade7_math                    loss=3.612
+  [14] Grade7_science                 loss=3.434
+  [15] Grade8_math                    loss=3.975
+  [16] Grade8_science                 loss=3.613
+  [17] HighSchool_algebra             loss=3.365
+  [18] HighSchool_biology             loss=3.918
+  [19] HighSchool_chemistry           loss=3.798
+  [20] HighSchool_physics             loss=3.606
+  [21] College_calculus               loss=3.947
+  [22] College_organic_chemistry      loss=3.708
+  [23] College_quantum_physics        loss=4.371
+  [24] remedial                       loss=3.556
+  [25] teacher_time                   loss=3.595
+  [26] extra_credit                   loss=3.880
+  [27] recess                         loss=3.441
+
+[${routing_decisions}]
+Experts loaded: 27
+Merged vocabulary size: 2610
+Last selected experts:
+  Expert 23: curriculum/College_quantum_physics/College_quantum_physics.txt
+  Expert 24: curriculum/remedial/remedial.txt
+  Expert 25: curriculum/teacher_time/teacher_time.txt
+  Expert 26: curriculum/extra_credit/extra_credit.txt
+  Expert 27: curriculum/recess/recess.txt
+
+[${chat_bubbles}]
+[USER] math
+[ROUTER] cross-expert merge across 27 experts (dot-product scoring)
+[EXPERT] response generated from top-weighted experts
+[MODEL] the language their their learners the
+
+[${token_inspector}]
+  Showing first 10 tokens from Grade1_math.txt:
+  [  1] start-token          weight=1.0000
+  [  2] Grade                weight=0.7984
+  [  3] 1                    weight=0.1976
+  [  4] math                 weight=0.9500
+  [  5] focuses              weight=0.5540
+  [  6] on                   weight=0.6289
+  [  7] building             weight=0.5134
+  [  8] a                    weight=0.9162
+  [  9] strong               weight=0.7173
+  [ 10] foundation           weight=0.6070
+
+[${piece_methods}]
+[1] Generate  [2] Apply Weight Edit  [3] Hand-Tune Cycle  [4] Refresh

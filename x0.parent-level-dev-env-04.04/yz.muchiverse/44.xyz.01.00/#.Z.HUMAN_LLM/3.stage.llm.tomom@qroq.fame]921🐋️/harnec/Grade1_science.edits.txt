@@ -1,0 +1,6 @@
+we	weight	0.95
+science	weight	0.92
+learn	weight	0.87
+about	weight	0.89
+the	weight	0.86
+world	weight	0.98

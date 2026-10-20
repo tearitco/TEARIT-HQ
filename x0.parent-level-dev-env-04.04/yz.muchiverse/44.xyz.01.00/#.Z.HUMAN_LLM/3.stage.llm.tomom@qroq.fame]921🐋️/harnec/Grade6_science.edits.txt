@@ -1,0 +1,6 @@
+cell	weight	0.95
+learn	weight	0.93
+about	weight	0.92
+how	weight	0.91
+discover	weight	0.9
+they	weight	0.88

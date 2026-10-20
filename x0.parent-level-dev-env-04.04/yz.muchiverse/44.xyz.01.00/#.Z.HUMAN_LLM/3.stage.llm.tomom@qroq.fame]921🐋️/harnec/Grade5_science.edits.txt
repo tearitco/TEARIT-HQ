@@ -1,0 +1,10 @@
+start-token	weight	1.0
+science	weight	0.95
+students	weight	0.92
+learn	weight	0.9
+method	weight	0.93
+experiments	weight	0.91
+the	weight	0.85
+systems	weight	0.88
+functions	weight	0.89
+circulatory	weight	0.87

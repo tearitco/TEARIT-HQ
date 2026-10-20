@@ -1,35 +1,15 @@
-SECTION      | KEY          | VALUE
--------------+-------------+------------------
-META         | piece_id   | orc_01
-META         | version    | 1.0
-META         | type       | monster
-
-STATE        | name        | Orc Warrior
-STATE        | hp          | 30
-STATE        | max_hp      | 30
-STATE        | str         | 14
-STATE        | dex         | 10
-STATE        | con         | 12
-STATE        | int         | 6
-STATE        | wis         | 8
-STATE        | cha         | 6
-STATE        | level       | 1
-STATE        | xp          | 0
-STATE        | weapon      | club
-STATE        | armor       | hide
-STATE        | x           | 18
-STATE        | y           | 8
-STATE        | z           | 0
-
-STATE        | ai_state    | idle
-STATE        | target_x    | -1
-STATE        | target_y    | -1
-STATE        | aggression  | 50
-
-METHOD       | on_approach | projects/cataclysm-hq/scripts/monster_ai.asm
-METHOD       | on_combat   | projects/cataclysm-hq/scripts/combat.asm
-METHOD       | on_death    | projects/cataclysm-hq/scripts/monster_death.asm
-
-RESPONSE     | default     | The orc growls.
-RESPONSE     | on_aggro    | Me smash!
-RESPONSE     | on_death    | Grah...
+SECTION      | KEY                | VALUE
+----------------------------------------
+STATE        | hp                 | 30
+STATE        | str                | 14
+STATE        | max_hp             | 30
+STATE        | xp                 | 0
+STATE        | aggression         | 60
+STATE        | ai_state           | idle
+STATE        | name               | Orc Warrior
+STATE        | x                  | 7
+STATE        | y                  | 7
+METHOD       | move               | void
+METHOD       | combat             | projects/cataclysm-hq/scripts/monster_ai.asm
+METHOD       | die               | projects/cataclysm-hq/scripts/monster_death.asm
+METHOD       | look              | projects/cataclysm-hq/scripts/look.asm

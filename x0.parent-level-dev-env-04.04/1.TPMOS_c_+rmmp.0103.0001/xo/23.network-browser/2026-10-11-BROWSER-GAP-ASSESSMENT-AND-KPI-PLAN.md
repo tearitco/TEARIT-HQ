@@ -31,6 +31,60 @@ not an application runtime.
 
 ---
 
+## 1a. PRIORITY (set 2026-10-13) — the two load-bearing blockers
+
+Everything else in this document is polish next to these two. Decided this
+date, at the user's direction: **G1 and G2 are P0, worked one sprint at a
+time, one KPI at a time**, and nothing else starts until they move.
+
+Why these two and not the rest:
+
+- **G1 (JS apps do not run)** is not "missing a feature", it is *the*
+  difference between a readable-content window and a browser. One
+  `setInterval` clock stays frozen at tick 0. Every Google-class site is
+  downstream of this one item.
+- **G2 (no box tree)** means layout is wrong often enough that
+  layout-dependent pages misbehave, and every flex/grid/positioning item
+  in the backlog queues behind it.
+
+Work order, one KPI per step, each step red-before-green:
+
+| Step | KPI | Done when |
+|---|---|---|
+| G1-a | harness | a test that measures a live timer and is RED today |
+| G1-b | G1.1 live timer tick | >= 6 self-updates in 10 s with no user input, tick monotonic, from fresh frame dumps |
+| G1-c | G1.4 focus safety | an unsolicited push never steals cli_io/address-bar focus or the nav cursor mid-typing |
+| G1-d | G1.5 SPA click-through pinned | click-driven re-render without a reload, pinned so it cannot regress |
+| G1-e | G1.3 push protocol | frames arrive without a request; negative: an idle page produces ZERO unsolicited frames |
+| G1-f | G1.2 rAF / G1.6 canvas | >= 10 fps for 3 s; >= 2 distinct canvas PNGs in 5 s |
+| G2-a | harness | a test that measures geometry and is RED today |
+| G2-b | G2.1 box tree | every visible node carries x/y/w/h; `div > p > span` reports strictly increasing y per depth |
+| G2-c | G2.2 gBCR honesty | +/-2 px on >= 95 % of sampled nodes; negative: `display:none` still returns 0,0,0,0 |
+
+**LANE OWNERSHIP — the thing to settle before G1-b starts.** AGENTS.md
+splits this repo: the `opencode-fix` lane owns `ops/` worker/fetch/driver
+code, `tests/worker_*`, the `nb_js_worker.+x` sides and the FETCH protocol,
+and leads `network_browser_manager.c`. The row-projection lane (this one)
+owns what lands in the window: page-state, xhtpm, css, and the renderer.
+
+- G1's core (the worker tick loop and the push protocol) is **worker-lane
+  code**. The plan has always said "owner must be agreed before starting -
+  this is not a row-projection task", and that still holds.
+- G2's box tree lives with the DOM/worker side too (`getBoundingClientRect`
+  is `nb_js_worker.c`; `nb_dom.c` has zero flex/grid), with the projector
+  consuming it.
+
+So the row-projection lane can, and will, do this first: **the red
+acceptance harnesses** (G1-a, G2-a) plus the renderer-side work those
+reveal (G1-c, G1-d) — none of which touches worker C. That is not
+avoidance; a 2-3 sprint rewrite started by two agents in one worktree on
+`nb_js_worker.c` is how you get a half-applied protocol nobody can review.
+The harnesses are what make the sprint safe to start at all: the next
+person to open G1-b inherits a test that says "this is broken, and here is
+the number that closes it".
+
+---
+
 ## 2. What is explicitly NOT done, and why (code-level)
 
 Every claim below is backed by a file+line observation made on 2026-10-11, not by

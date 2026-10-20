@@ -1,0 +1,8 @@
+chemistry	weight	0.98
+organic	weight	0.92
+the	weight	0.9
+of	weight	0.88
+into	weight	0.85
+discipline	weight	0.96
+molecules	weight	0.93
+carbon-based	weight	0.91

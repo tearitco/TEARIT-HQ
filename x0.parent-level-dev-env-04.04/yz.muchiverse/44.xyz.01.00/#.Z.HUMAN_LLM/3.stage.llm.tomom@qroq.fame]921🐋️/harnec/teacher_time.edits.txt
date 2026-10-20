@@ -1,0 +1,7 @@
+start-token	weight	0.95
+classroom	weight	0.92
+instruction	weight	0.95
+explains	weight	0.93
+demonstrations	weight	0.92
+material	weight	0.9
+end-token	weight	0.85

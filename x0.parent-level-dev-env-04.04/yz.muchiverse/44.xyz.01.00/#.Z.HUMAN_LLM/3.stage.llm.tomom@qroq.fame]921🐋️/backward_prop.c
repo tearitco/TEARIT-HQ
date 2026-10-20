@@ -10,8 +10,8 @@
 
 #define MAX_LINE_LENGTH 1024
 #define MAX_VOCAB_SIZE 100000
-#define EMBEDDING_DIM 7
-#define HIDDEN_DIM 16
+#define EMBEDDING_DIM 32
+#define HIDDEN_DIM 64
 
 // --- Data Structures ---
 struct VocabEntry { int number; char word[100]; float embedding, pe, weight, bias1, bias2, bias3, bias4; };
@@ -344,7 +344,7 @@ int main(int argc, char *argv[]) {
     }
 
     float *g_as=malloc(vs*sizeof(float)); 
-    float scale=1.0f/sqrt(EMBEDDING_DIM);
+    float scale=1.0f/sqrtf(EMBEDDING_DIM);
     
     // Initialize attention score gradients
     for(int i=0;i<vs;i++) g_as[i]=0;

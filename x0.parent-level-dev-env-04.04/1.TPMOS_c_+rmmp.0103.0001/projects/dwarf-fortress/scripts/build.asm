@@ -3,8 +3,8 @@
 
 start:
     console_print "You begin constructing fortifications..."
-    exec ./ops/+x/rng_op.+x 10
-    read_pdl R1 "STATE" "last_roll" R2
+    exec projects/dwarf-fortress/ops/+x/rng_op.+x 10
+    read_state hero last_roll R2
     read_pdl R1 "STATE" "skill_crafting" R3
     add R2, R2, R3
 
@@ -12,7 +12,7 @@ start:
     console_print "You build a sturdy stone wall section."
     read_pdl R1 "STATE" "xp" R4
     addi R4, R4, 15
-    write_pdl "pieces/hero/piece.pdl" "STATE" "xp" R4
+    write_pdl "projects/dwarf-fortress/pieces/hero/piece.pdl" "STATE" "xp" R4
     hit_frame
     halt
 

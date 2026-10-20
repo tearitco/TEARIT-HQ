@@ -85,6 +85,33 @@ static void send_payload(const char *payload, size_t n) {
     (void)!write(STDOUT_FILENO, "\n", 1);
 }
 
+/* Worker-side diagnostic frame (2026-10-13).
+ *
+ * The manager ALREADY handles an "ERROR|" frame: it logs it to the module
+ * log and keeps reading until STATUS, explicitly so worker diagnostics do
+ * not abort a load (network_browser_manager.c, "hygiene: worker-side
+ * JS/boot diagnostics"). So this uses the house'"'"'s existing frame kind
+ * rather than inventing a protocol nobody reads.
+ *
+ * It exists because a failed DOM load was completely SILENT: nb_dom_load()
+ * returns NULL for anything that is not its own serializer stream (and for
+ * a missing file, fopen just fails), g_dom_root stays NULL, and the page
+ * renders as its title and nothing else with STATUS ok. Measured on
+ * 2026-10-13 while building the G1 acceptance harness - four commits were
+ * spent proving that an HTML fixture is not a DOM, and every one of those
+ * runs said "ok" while rendering nothing.
+ */
+static void send_worker_error(const char *msg) {
+    char buf[1024];
+    snprintf(buf, sizeof(buf), "ERROR|%s", msg);
+    if (g_cli) {
+        (void)!write(STDOUT_FILENO, buf, strlen(buf));
+        (void)!write(STDOUT_FILENO, "\n", 1);
+        return;
+    }
+    send_payload(buf, strlen(buf));
+}
+
 static void send_status(const char *status) {
     if (g_cli) {
         g_cli_status_ok = (strncmp(status, "STATUS ok", 9) == 0);
@@ -117,7 +144,44 @@ static long ms_until(long deadline_ms) {
  * already treat 0 as "no frame" and fall back, so a bounded wait degrades
  * into the direct-curl path instead of hanging the house.
  */
-static int recv_frame_budget(int budget_ms) {
+/* Why recv_frame_budget() gave up. Needed because "the caller timed out"
+ * and "the peer went away" were BOTH a bare 0, and the tick loop must
+ * do opposite things with them: keep ticking versus shut down. */
+#define NB_RECV_SHUTDOWN 0
+#define NB_RECV_TIMEOUT  1
+
+/* One-byte pushback for the frame reader (2026-10-13).
+ *
+ * This existed as a comment claiming the reader "buffered it back
+ * conceptually by not over-reading". It did the opposite: it read one
+ * byte unconditionally and THREW IT AWAY whenever that byte was not a
+ * newline. Two ways that loses data, both silent:
+ *
+ *   - a sender that omits the trailing newline has its NEXT frame's
+ *     first length digit eaten, and every frame after it is garbage;
+ *   - the read itself is BLOCKING, so a sender that omits the newline
+ *     and then goes quiet parks the resident worker in recv() forever.
+ *
+ * So: peek with a zero timeout, consume a newline if that is what is
+ * there, and otherwise push the byte back for the next frame to read. */
+static int g_pb = -1;              /* pushback byte, -1 = empty */
+
+static int recv_getc(int *why) {
+    if (g_pb >= 0) { int c = g_pb; g_pb = -1; return c; }
+    struct pollfd pfd;
+    pfd.fd = STDIN_FILENO; pfd.events = POLLIN; pfd.revents = 0;
+    int rc;
+    do { rc = poll(&pfd, 1, 0); } while (rc < 0 && errno == EINTR);
+    if (rc <= 0) return -1;                        /* nothing waiting */
+    char c;
+    ssize_t r = read(STDIN_FILENO, &c, 1);
+    if (r <= 0) return -1;
+    (void)why;
+    return (unsigned char)c;
+}
+
+static int recv_frame_ex(int budget_ms, int *why) {
+    if (why) *why = NB_RECV_SHUTDOWN;
     long deadline = 0;
     if (budget_ms >= 0) {
         struct timespec now;
@@ -145,12 +209,15 @@ static int recv_frame_budget(int budget_ms) {
     size_t i = 0;
     for (;;) {
         char c;
-        if (!NB_READY_WAIT()) return 0;        /* budget spent */
-        ssize_t r = read(STDIN_FILENO, &c, 1);
-        if (r == 0) return 0;                 /* EOF */
-        if (r < 0) {
-            if (errno == EINTR) continue;
-            return 0;
+        if (g_pb >= 0) { c = (char)g_pb; g_pb = -1; }
+        else {
+            if (!NB_READY_WAIT()) { if (why) *why = NB_RECV_TIMEOUT; return 0; }
+            ssize_t r = read(STDIN_FILENO, &c, 1);
+            if (r == 0) return 0;                 /* EOF */
+            if (r < 0) {
+                if (errno == EINTR) continue;
+                return 0;
+            }
         }
         if (c == '\n') break;
         if (i < sizeof(lenbuf) - 1) lenbuf[i++] = c;
@@ -160,7 +227,7 @@ static int recv_frame_budget(int budget_ms) {
     if (n < 0 || n > MAX_MSG) return 0;
     size_t got = 0;
     while (got < (size_t)n) {
-        if (!NB_READY_WAIT()) return 0;
+        if (!NB_READY_WAIT()) { if (why) *why = NB_RECV_TIMEOUT; return 0; }
         ssize_t r = read(STDIN_FILENO, g_rbuf + got, (size_t)n - got);
         if (r == 0) return 0;
         if (r < 0) { if (errno == EINTR) continue; return 0; }
@@ -168,20 +235,17 @@ static int recv_frame_budget(int budget_ms) {
     }
     g_rbuf[got] = 0;
     g_rlen = got;
-    /* consume the trailing '\n' after payload (if any) */
+    /* The trailing '\n' is OPTIONAL and must never be stolen: peek with a
+     * zero timeout, eat it if it is there, push it back if it is not. */
     {
-        char c;
-        ssize_t r = read(STDIN_FILENO, &c, 1);
-        if (r > 0 && c != '\n') {
-            /* not a trailing newline: buffer it back conceptually by not
-             * over-reading; we simply ignore stray bytes here */
-            (void)c;
-        }
+        int c = recv_getc(why);
+        if (c >= 0 && c != '\n') g_pb = c;
     }
     #undef NB_READY_WAIT
     return 1;
 }
 
+static int recv_frame_budget(int budget_ms) { return recv_frame_ex(budget_ms, NULL); }
 static int recv_frame(void) { return recv_frame_budget(-1); }
 
 /* Split g_rbuf into the LOAD fields, copying each into a target buffer.
@@ -212,6 +276,11 @@ static void split_lines(char *fields[8]) {
  * holds opaque pointer handles; the tree is C-side. No shared memory. */
 
 static NbNode *g_dom_root = NULL;  /* current page's DOM tree (#document) */
+
+/* Viewport width the page's box tree is computed against (G2.2). Defined
+ * next to NB_CONTENT_PX further down, forward-declared here because
+ * window.innerWidth is exported from the globals block. */
+static double g_viewport_px;
 static NbNode *g_active_node = NULL;  /* element.focus()/blur() tracker */
 static int g_search_wired = 0;  /* document-level Enter search proxy wired per page */
 static NbNode *g_orphans = NULL;   /* detached createElement() nodes still to free */
@@ -939,8 +1008,225 @@ static int layout_hidden_anc(NbNode *n) {
  * ~7px; content wraps at the renderer's 640px column. */
 #define NB_FONT_PX     12
 #define NB_LINE_PX     14
+/* ROW height, which is NOT the line height (2026-10-14, G2.2).
+ *
+ * Measured off the renderer's own element dump on a 6-paragraph fixture:
+ * every content row is painted at a CONSTANT height of 30, and y steps
+ * 180, 210, 240, 270, 300, 330 - exactly +30 each. The worker's own
+ * NB_LINE_PX (14, "12px text on a 14px baseline") is a LINE box: text
+ * leading with no row padding around it. Using 14 for stack height made
+ * the worker's y-step disagree with the renderer's by more than 2x, which
+ * is the whole of G2.2's scale disagreement - two constants that meant
+ * different words, not a disagreement about layout.
+ *
+ * So block stacking uses NB_ROW_PX. NB_LINE_PX stays where it belongs:
+ * inside the wrap calculation, as the per-line text box. */
+#define NB_ROW_PX     30
 #define NB_CHAR_PX     7
 #define NB_CONTENT_PX  640
+
+/* VIEWPORT width, runtime (2026-10-14, G2.2).
+ *
+ * The worker's box tree assumed a 640px content column. Measured against
+ * the renderer's own element dump the pane is 389px, so every width the
+ * worker reports is wrong by ~250px - and no amount of box-model work
+ * fixes it: the worker simply does not know how wide the pane it lands in
+ * will be. This makes that width a VALUE rather than a compile-time
+ * constant, so it can be supplied per page and seen by the page itself.
+ *
+ * Defaults to NB_CONTENT_PX, so behaviour is unchanged until something
+ * supplies a real number - which is the point: the guess is now visible
+ * and replaceable instead of baked in. */
+static double g_viewport_px = NB_CONTENT_PX;
+
+/* The scrollbar gutter (G2.2, 2026-10-15).
+ *
+ * The renderer paints a VISIBLE scrollbar for any scrolllist that OVERFLOWS
+ * its viewport - track + thumb + arrow navs - and reserves GENERIC_SCROLLBAR_W
+ * (8) of the column for it (khtpm_core_render.c:5383). Measured live on the
+ * G2.2 fixture: the renderer publishes content_w=389 and the painted content
+ * rows are 381. So without this the box tree reports every scrolling row 8px
+ * wider than the renderer actually draws it, which is precisely the kind of
+ * confident wrong number G2 exists to remove.
+ *
+ * The deduction is CONDITIONAL: a page that fits has no scrollbar and keeps
+ * the full width. That means the decision needs the viewport HEIGHT, which
+ * LOAD did not carry - it sent width only (field 6). Field 7 now carries
+ * content_h. An absent or unusable height leaves the gutter OFF, because
+ * guessing "it probably scrolls" would be the same class of lie in the
+ * opposite direction.
+ *
+ * There is a genuine cycle here: wrapping (nb_content_h) depends on the
+ * column width, and the column width depends on whether the wrapped height
+ * overflows. It is broken by deciding ONCE per page - measure the document
+ * height at the FULL width, cache the verdict - with g_measuring making that
+ * inner measurement ignore the gutter. Deciding per call would make the
+ * answer depend on which element happened to be measured first. */
+#define NB_SCROLLBAR_W 8
+static double g_viewport_h = 0.0;
+static int    g_gutter_state = -1;   /* -1 undecided this page, 0 none, 1 present */
+static int    g_measuring = 0;
+
+static double nb_content_h(NbNode *n);
+/* 6.2/6.3 (2026-10-19): both are called from functions defined ABOVE their
+ * own definitions (nb_box_w -> nb_edge_pad_h, nb_content_h -> nb_outer_h),
+ * so forward-declare rather than reorder the file. */
+static double nb_outer_h(NbNode *n);
+static double nb_edge_pad_h(NbNode *n);
+
+/* Total height of the document `from` belongs to. Walks to the topmost
+ * ancestor, then sums its children - the same shape nb_content_h uses, so the
+ * measurement is the one the box tree would report anyway. */
+static double nb_doc_root_h(NbNode *from) {
+    if (!from) return 0.0;
+    NbNode *top = from;
+    while (top->parent) top = top->parent;
+    double sum = 0.0;
+    for (NbNode *c = top->first_child; c; c = c->next_sibling) sum += nb_content_h(c);
+    return sum;
+}
+
+/* The usable content column: the pane width, minus the scrollbar when the
+ * document actually overflows it. */
+static double g_col_px(NbNode *from) {
+    if (g_measuring) return g_viewport_px;
+    if (g_gutter_state < 0) {
+        if (g_viewport_h <= 0.0 || !from) {
+            g_gutter_state = 0;              /* no measurement -> no guess */
+        } else {
+            g_measuring = 1;
+            double doc_h = nb_doc_root_h(from);
+            g_measuring = 0;
+            g_gutter_state = (doc_h > g_viewport_h) ? 1 : 0;
+        }
+    }
+    return g_gutter_state ? (g_viewport_px - NB_SCROLLBAR_W) : g_viewport_px;
+}
+
+/* The chrome the renderer puts ABOVE the first content row inside the
+ * scrolled column. Both terms are measured off the renderer, not guessed:
+ *
+ *   - GENERIC_SBAR_ARROW_H (14, khtpm_core_render.c:5428). layout_scroll_region
+ *     sets `content_y = y + (have_arrows ? GENERIC_SBAR_ARROW_H : 0)`, so a
+ *     column that scrolls starts its first row 14px down, under the scrollbar's
+ *     up-arrow. Only when it scrolls - have_arrows requires max_scroll > 0.
+ *   - NB_ROW_PX (30) for the page-title row. The manager projects <head><title>
+ *     into a `page-title` row as the FIRST child of the content scrolllist
+ *     (network_browser_manager.c:5570), so it occupies a real row before any
+ *     <p>. A DOM-only model cannot see it: <title> lives in <head> and takes no
+ *     space in a browser's body, which is exactly why this offset was 44px
+ *     (14 + 30) and looked like a mystery.
+ *
+ * This is the worker mirroring the house renderer on purpose. It is NOT
+ * claiming <title> takes body space in some other browser - it is saying the
+ * box tree must describe the pixels this renderer actually draws, which is
+ * what G2.2 measures. */
+#define NB_SBAR_ARROW_H 14
+static char g_page_title[256];
+
+static double g_content_inset_top(void) {
+    double inset = g_gutter_state ? (double)NB_SBAR_ARROW_H : 0.0;
+    if (g_page_title[0]) inset += (double)NB_ROW_PX;
+    return inset;
+}
+
+/* WIDTH of an element's border box - the half of the box tree that was
+ * missing (G2.1, slice 1, 2026-10-14).
+ *
+ * Before this, getBoundingClientRect() reported `w = st.width`, the
+ * DECLARED CSS width and nothing else, so every unstyled element on every
+ * page reported 0. Measured on the G2-a fixture: box_d1=w0/h+, box_p1=w0
+ * /h+, box_s1=w0/h+, box_p2=w0/h+ - heights were already right (nb_content_h
+ * below), only widths were absent. A browser that reports width 0 for
+ * ordinary markup is not reporting geometry, it is reporting an absence.
+ *
+ * Two rules, which is what block layout actually does:
+ *
+ *   - A BLOCK box fills its containing block. Declared width wins; else
+ *     the parent's own box; the document root is the content column.
+ *   - An INLINE box shrinks to fit its text - it does NOT stretch to the
+ *     column, and reporting 640px for a three-word <span> would be its own
+ *     kind of lie.
+ *
+ * Deliberately NOT here yet: padding/border/margin in the width sum, and
+ * inline-vs-block detection by tag beyond the common set. Those are
+ * slice-2 work and pretending otherwise is how a box tree starts lying.
+ */
+static int layout_is_block_tag(const char *t) {
+    if (!t) return 1;
+    static const char *inline_tags[] = {
+        "a", "b", "em", "i", "strong", "span", "code", "small", "u",
+        "label", "sub", "sup", "abbr", "cite", "q", "kbd", "samp", NULL
+    };
+    for (int i = 0; inline_tags[i]; i++)
+        if (!strcasecmp(t, inline_tags[i])) return 0;
+    return 1;
+}
+
+static double nb_box_w(NbNode *n) {
+    if (!n || layout_hidden_anc(n)) return 0;
+    NbCssStyle st;
+    nb_css_resolve(g_css, n, nb_attr_get(n, "style"), &st);
+    if (st.has_width && st.width > 0) return st.width;
+
+    /* 6.3 (2026-10-19) - a FLEX ROW's child takes a SHARE of the row, not
+     * the whole content column. Without this every child of the test's
+     * `#fx` would report w=389 (the full column), so three "columns" would
+     * total 1167px inside a 389px span and clause 4 of nb_flex_test.sh
+     * would fail - the widths, not the positions, are what make it a row.
+     *
+     * Equal share when no child declares flex-grow; otherwise weighted by
+     * flex-grow, which is what the renderer's css_layout_pass() already
+     * does (grow_total/fixed_total). The test's three children carry no
+     * CSS beyond display:flex, so they take the equal-share path.
+     *
+     * Only block-level children are sized here; an inline child keeps its
+     * shrink-to-fit behaviour below (a <span> in a flex row still hugs its
+     * text), matching how the renderer treats inline content. */
+    if (n->parent && n->parent->tag) {
+        NbCssStyle pst;
+        nb_css_resolve(g_css, n->parent, nb_attr_get(n->parent, "style"), &pst);
+        if (pst.has_display_flex && pst.display_flex &&
+            !(pst.has_flex_direction && !pst.flex_row) &&  /* default is ROW */
+            layout_is_block_tag(n->tag)) {
+            double row_w = nb_box_w(n->parent);
+            if (row_w > 0) {
+                int nvis = 0;
+                double grow_total = 0.0, grow_me = 0.0;
+                for (NbNode *s = n->parent->first_child; s; s = s->next_sibling) {
+                    if (layout_hidden_anc(s)) continue;
+                    nvis++;
+                    NbCssStyle sst;
+                    nb_css_resolve(g_css, s, nb_attr_get(s, "style"), &sst);
+                    if (sst.has_flex_grow && sst.flex_grow > 0) grow_total += sst.flex_grow;
+                    if (s == n && sst.has_flex_grow && sst.flex_grow > 0) grow_me = sst.flex_grow;
+                }
+                if (nvis < 1) nvis = 1;
+                if (grow_total > 0.0 && grow_me > 0.0)
+                    return row_w * (grow_me / grow_total);
+                if (grow_total <= 0.0)
+                    return row_w / (double)nvis;   /* equal share */
+                /* mixed: a grow child is handled above; a fixed child with
+                 * no grow falls through to shrink-to-text/column below. */
+            }
+        }
+    }
+
+    if (!layout_is_block_tag(n->tag)) {
+        /* shrink to text, clamped to the column so a long span still has
+         * SOME width rather than none */
+        double text_w = (n->text && n->text[0])
+                        ? (double)strlen(n->text) * (double)NB_CHAR_PX : 0.0;
+        double avail = nb_box_w(n->parent);
+        if (avail <= 0) avail = g_col_px(n);
+        return text_w < avail ? text_w : avail;
+    }
+    if (n->parent) {
+        double avail = nb_box_w(n->parent);
+        if (avail > 0) return avail;
+    }
+    return g_col_px(n);            /* the document's usable content column */
+}
 
 /* Height of an element's content box. A declared CSS height wins (that is what
  * the offset/client metrics report). Otherwise a block sums its children and a
@@ -951,29 +1237,135 @@ static double nb_content_h(NbNode *n) {
     NbCssStyle st;
     nb_css_resolve(g_css, n, nb_attr_get(n, "style"), &st);
     if (st.has_height && st.height > 0) return st.height;
+    /* 6.3 (2026-10-19) - a flex ROW's height is the MAX of its children's,
+     * not their sum. Summing is correct for a stacked column (that is what
+     * this did), but a row's children all occupy the SAME vertical band, so
+     * summing would make the container three times too tall and push
+     * everything after it down. This mirrors the renderer's flex path,
+     * where the cross-axis size is the largest child, not the total. */
+    int flex_row = st.has_display_flex && st.display_flex &&
+                   !(st.has_flex_direction && !st.flex_row);  /* default is ROW */
+    if (flex_row) {
+        double mx = 0;
+        for (NbNode *c = n->first_child; c; c = c->next_sibling) {
+            double ch = nb_outer_h(c);
+            if (ch > mx) mx = ch;
+        }
+        return mx;
+    }
     double sum = 0;
     for (NbNode *c = n->first_child; c; c = c->next_sibling) sum += nb_content_h(c);
     if (sum > 0) return sum;
     if (!n->text || !n->text[0]) return 0;
     int len = (int)strlen(n->text);
-    int per_line = NB_CONTENT_PX / NB_CHAR_PX;
+    /* wrap width follows the USABLE column (pane minus the scrollbar gutter
+     * when it scrolls), or the text wraps at a column the pane does not have
+     * and every line count downstream is wrong. */
+    double col = g_col_px(n);
+    if (col <= 0) col = (double)NB_CONTENT_PX;
+    int per_line = (int)(col / NB_CHAR_PX);
     if (per_line < 1) per_line = 1;
     int lines = (len + per_line - 1) / per_line;
     if (lines < 1) lines = 1;
-    return (double)lines * NB_LINE_PX;
+    /* Each wrapped line projects as its OWN row, so height is rows x row
+     * height - not lines x line height. */
+    return (double)lines * NB_ROW_PX;
+}
+
+/* Margin + padding of one edge, resolved from the element's own style. */
+static double nb_edge_pad(NbNode *n, int top) {
+    if (!n) return 0;
+    NbCssStyle st;
+    nb_css_resolve(g_css, n, nb_attr_get(n, "style"), &st);
+    double p = top ? (st.has_pad_top ? st.pad_top : 0)
+                   : (st.has_pad_bottom ? st.pad_bottom : 0);
+    double m = top ? (st.has_mar_top ? st.mar_top : 0)
+                   : (st.has_mar_bottom ? st.mar_bottom : 0);
+    return p + m;
+}
+
+/* Horizontal counterpart of nb_edge_pad: left+right padding/margin, the
+ * amount that displaces the NEXT sibling along a flex row's main axis.
+ * 6.2/6.3 (2026-10-19). */
+static double nb_edge_pad_h(NbNode *n) {
+    if (!n) return 0;
+    NbCssStyle st;
+    nb_css_resolve(g_css, n, nb_attr_get(n, "style"), &st);
+    double p = (st.has_pad_top ? st.pad_top : 0); /* only a top value is modelled */
+    double m = (st.has_mar_top ? st.mar_top : 0);
+    return p + m;
+}
+
+/* Outer height of a node: its content plus its own vertical margin, which
+ * is what actually displaces the NEXT sibling. Without this a paragraph
+ * with margin-bottom 20px would be followed by the next one immediately,
+ * which is the "stacked but cramped" look you get when margins are
+ * dropped on the floor. */
+static double nb_outer_h(NbNode *n) {
+    if (!n || layout_hidden_anc(n)) return 0;
+    return nb_content_h(n) + nb_edge_pad(n, 0) + nb_edge_pad(n, 1);
 }
 
 static void layout_xy(NbNode *n, double *out_x, double *out_y) {
     if (!n || layout_hidden_anc(n)) { *out_x = 0; *out_y = 0; return; }
-    double y = 0;
+    double x = 0, y = 0;
     if (n->parent && n->parent->tag) {
-        double px, py; layout_xy(n->parent, &px, &py); y += py;
+        double px, py;
+        layout_xy(n->parent, &px, &py);
+        y += py;
+        x += px;   /* 6.2: the parent ORIGIN, both axes */
+        /* Inside the parent's content box: its padding-top, then this
+         * node's own margin-top. G2.1's "strictly increasing y per depth"
+         * depends on exactly this - without it a first child sits at the
+         * same y as its parent and no amount of walking produces depth. */
+        y += nb_edge_pad(n->parent, 1);
+        y += nb_edge_pad(n, 1);
+    }
+    /* 6.2/6.3 (2026-10-19) - THE HORIZONTAL AXIS. Before this, the walk
+     * below accumulated heights unconditionally and finished `*out_x = 0`,
+     * so a flex row's children all reported x=0 and only the renderer (once
+     * it consumed display:flex) would have disagreed. That is the G2.2
+     * re-open nb_flex_test.sh warns about.
+     *
+     * When the parent is a flex ROW, the main axis is horizontal: siblings
+     * accumulate along x and every child shares the parent's content-box
+     * top (NOT a stacked y). When it is not, behaviour is exactly as before
+     * - heights accumulate, x stays at the parent origin - so no existing
+     * page moves by a pixel. `flex-direction` defaults to ROW in CSS, so a
+     * bare `display:flex` IS a row; only an explicit
+     * `flex-direction:column` stacks. (Getting this backwards is how the
+     * first cut kept the test red - see the note on parent_is_row below.)
+     *
+     * The child's own horizontal share is nb_box_w()'s job (6.3), not this
+     * function's - this walk only places origins. */
+    NbCssStyle pst;
+    int parent_is_row = 0;
+    if (n->parent && n->parent->tag) {
+        nb_css_resolve(g_css, n->parent, nb_attr_get(n->parent, "style"), &pst);
+        /* flex-direction DEFAULTS TO ROW, per CSS. Only an explicit
+         * `flex-direction:column` turns the main axis vertical. The first
+         * cut of this required an explicit flex-direction:row, which made a
+         * bare `display:flex` stack - the exact page nb_flex_test.sh uses,
+         * so the test stayed red with the children stacked. Found by
+         * probing the resolver directly rather than guessing: fx resolved
+         * display_flex=1 but has_flex_direction=0. */
+        int dir_col = pst.has_flex_direction && !pst.flex_row;
+        parent_is_row = pst.has_display_flex && pst.display_flex && !dir_col;
+    }
+    if (parent_is_row) {
+        for (NbNode *s = n->parent->first_child; s && s != n; s = s->next_sibling) {
+            if (layout_hidden_anc(s)) continue;
+            x += nb_box_w(s) + nb_edge_pad_h(s);
+        }
+        *out_x = x;
+        *out_y = y;
+        return;
     }
     for (NbNode *s = n->parent ? n->parent->first_child : NULL; s && s != n; s = s->next_sibling) {
         if (layout_hidden_anc(s)) continue;
-        y += nb_content_h(s);
+        y += nb_outer_h(s);
     }
-    *out_x = 0; *out_y = y;
+    *out_x = x; *out_y = y;
 }
 
 static JSValue nb_rect_tojson(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
@@ -986,9 +1378,13 @@ static JSValue nb_el_getBoundingClientRect(JSContext *ctx, JSValueConst this_val
     if (n && !layout_hidden_anc(n)) {
         NbCssStyle st;
         nb_css_resolve(g_css, n, nb_attr_get(n, "style"), &st);
-        w = st.width;
+        w = nb_box_w(n);
         h = st.has_height ? st.height : nb_content_h(n);
         layout_xy(n, &x, &y);
+        /* Shift the whole tree down by the chrome the renderer puts above the
+         * first content row. Uniform, so every relative offset below the
+         * origin is untouched - see g_content_inset_top(). */
+        y += g_content_inset_top();
     }
     JSValue o = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, o, "x", JS_NewFloat64(ctx, x));
@@ -7342,6 +7738,89 @@ static void fire_event(JSContext *ctx, int kind, NbNode *n, const char *type) {
 
 /* ---- the loop: lifecycle -> job/timer drain until quiescent or budget ---- */
 /* returns nonzero if an event-loop callback threw (caller -> STATUS err) */
+/* ---- G1-b: the tick loop (2026-10-13) ----------------------------------
+ *
+ * A page's setInterval has to keep running AFTER LOAD returns. Until this,
+ * it did not: run_page() drained the timer queue once (bounded by
+ * MAX_DRAIN_MS = 800ms, which is why the G1 fixture came back saying
+ * "tick 2" and then stopped dead), emitted one RENDER, and the worker went
+ * back to blocking on stdin forever. Measured 2026-10-13: 0 frames in
+ * 10.1s of doing nothing at all.
+ *
+ * Deliberately NOT reusing run_event_loop() here. That drains to
+ * QUIESCENT and sleeps until the next timer, so calling it per tick would
+ * hold stdin hostage for up to MAX_DRAIN_MS and the page could not be
+ * clicked. The tick slice runs only what is DUE NOW and returns, which is
+ * the same pair run_event_loop() calls inside its own loop body:
+ * run_due_timers() + drain_jobs(). Same semantics, no waiting.
+ *
+ * Change detection is a string compare against the last pushed rows
+ * rather than a dirty flag in the DOM: one memcmp is exact, cannot be
+ * forgotten, and needs no new bookkeeping on every mutation site - which
+ * is where a dirty flag would rot.
+ *
+ * OFF by default (g_tick_cap_ms == 0). The resident manager worker must
+ * not start emitting spontaneous frames until the manager side of the
+ * push protocol is ready to consume them; the G1 probe opts in with an
+ * explicit TICK frame.
+ */
+static int g_tick_cap_ms;             /* 0 = off; else the max stdin wait */
+static char *g_last_push;             /* rows of the last frame we pushed */
+
+static void send_render_rows(const char *rows) {
+    size_t rn = rows ? strlen(rows) : 0;
+    if (!rn || rn >= RENDER_MAX) return;
+    size_t pn = 7 + rn;                        /* "RENDER\n" + rows */
+    char *pay = malloc(pn + 1);
+    if (!pay) return;
+    memcpy(pay, "RENDER\n", 7);
+    memcpy(pay + 7, rows, rn);
+    pay[pn] = 0;
+    send_payload(pay, pn);
+    free(pay);
+}
+
+/* How long the main loop may block on stdin before a tick is due. -1 when
+ * ticking is off (the historical indefinite wait), else the gap to the
+ * next scheduled timer, capped so a page cannot park the loop for long. */
+static int tick_wait_ms(void) {
+    if (g_tick_cap_ms <= 0) return -1;
+    uint64_t due = timer_min_due();
+    if (!due) return g_tick_cap_ms;            /* nothing scheduled */
+    uint64_t now = now_ms();
+    if (due <= now) return 0;                   /* already due: tick now */
+    uint64_t gap = due - now;
+    if (gap > (uint64_t)g_tick_cap_ms) gap = (uint64_t)g_tick_cap_ms;
+    return (int)gap;
+}
+
+/* One tick: fire whatever is due, drain microtasks, push only if the rows
+ * actually changed. Returns 1 if a frame went out. */
+static int tick_slice(void) {
+    if (!g_live_ctx) return 0;
+    uint64_t now = now_ms();
+    uint64_t due = timer_min_due();
+    if (!due || due > now) return 0;            /* nothing due yet */
+    run_due_timers(g_live_ctx, now);
+    drain_jobs(g_live_ctx);
+    if (g_pending_err) return 0;
+
+    SB r = {0, 0, 0};
+    dom_render_rows(&r);
+    int pushed = 0;
+    if (r.s && r.s[0]) {
+        if (!g_last_push || strcmp(g_last_push, r.s) != 0) {
+            send_render_rows(r.s);
+            free(g_last_push);
+            g_last_push = r.s;
+            r.s = NULL;                        /* ownership moved */
+            pushed = 1;
+        }
+    }
+    free(r.s);
+    return pushed;
+}
+
 static int run_event_loop(JSContext *ctx) {
     /* The page's timer queue can keep this loop busy for minutes under the
      * resident worker (no JIT), and the manager guards its LOAD read with a
@@ -7448,6 +7927,12 @@ static void install_events_timers(JSContext *ctx) {
     JS_SetPropertyStr(ctx, g, "clearInterval", JS_NewCFunction(ctx, nb_timer_clearInterval, "clearInterval", 1));
     JS_SetPropertyStr(ctx, g, "queueMicrotask", JS_NewCFunction(ctx, nb_queueMicrotask, "queueMicrotask", 1));
     JS_SetPropertyStr(ctx, g, "requestAnimationFrame", JS_NewCFunction(ctx, nb_raf, "requestAnimationFrame", 1));
+    /* window.innerWidth is a VALUE in every browser, not a function. The
+     * first version registered a native function here and
+     * ""+window.innerWidth came back as "function innerWidth() { [native
+     * code] }" - a stringified function where a number belongs, which
+     * silently corrupts every page that does arithmetic on it. */
+    JS_SetPropertyStr(ctx, g, "innerWidth", JS_NewFloat64(ctx, g_viewport_px));
     JS_SetPropertyStr(ctx, g, "nbFetchSync", JS_NewCFunction(ctx, nb_fetch_sync, "nbFetchSync", 4));
     JS_SetPropertyStr(ctx, g, "addEventListener",    JS_NewCFunction(ctx, nb_win_addEventListener, "addEventListener", 2));
     JS_SetPropertyStr(ctx, g, "removeEventListener", JS_NewCFunction(ctx, nb_win_removeEventListener, "removeEventListener", 2));
@@ -7731,9 +8216,29 @@ static void run_page(void) {
     /* build the DOM tree from the manager's fetch.dom (if present) */
     if (g_fetch_dom[0]) {
         FILE *df = fopen(g_fetch_dom, "rb");
-        if (df) {
+        if (!df) {
+            /* SILENT BEFORE (2026-10-13): a fetch.dom the worker cannot
+             * open left g_dom_root NULL and the page rendered as its
+             * title only, with STATUS ok. */
+            char m[900];
+            snprintf(m, sizeof(m),
+                     "DOM: cannot open fetch.dom (%s) - the page will render as its title only",
+                     g_fetch_dom);
+            send_worker_error(m);
+        } else {
             g_dom_root = nb_dom_load(df);
             fclose(df);
+            if (!g_dom_root) {
+                /* Same silence, same consequence. nb_dom_load() reads the
+                 * nb_serialize() wire format, not HTML - anything else
+                 * (an HTML file, a stray comment at the top) returns
+                 * NULL, which until now looked exactly like a page with
+                 * no content. */
+                send_worker_error("DOM: fetch.dom did not deserialize "
+                                  "(nb_dom_load returned NULL; the file must be "
+                                  "nb_serialize output, not HTML) - the page will "
+                                  "render as its title only");
+            }
         }
     } else if (g_cli) {
         /* standalone nbjs: give the page an empty document/body */
@@ -8762,7 +9267,15 @@ int main(int argc, char **argv) {
     if (isatty(STDIN_FILENO)) return repl_main();
 
     for (;;) {
-        if (!recv_frame()) break;
+        /* A bounded wait is what lets a page keep running between inputs.
+         * NB_RECV_SHUTDOWN still ends the loop exactly as before; a budget
+         * timeout is not an exit, it is a tick that is due. */
+        int why = NB_RECV_SHUTDOWN;
+        if (!recv_frame_ex(tick_wait_ms(), &why)) {
+            if (why == NB_RECV_SHUTDOWN) break;
+            tick_slice();
+            continue;
+        }
 
         char *f[8];           split_lines(f);
         const char *cmd = f[0] ? f[0] : "";
@@ -8777,7 +9290,53 @@ int main(int argc, char **argv) {
             if (f[3]) snprintf(g_href, sizeof(g_href), "%s", f[3]);
             if (f[4]) snprintf(g_title, sizeof(g_title), "%s", f[4]);
             if (f[5]) snprintf(g_style_css, sizeof(g_style_css), "%s", f[5]);
+            /* f[6] = the viewport width this page will be laid out in.
+             *
+             * Until now the box tree assumed a fixed 640px column while
+             * the renderer actually paints the content pane at 389px, so
+             * every width the worker reported was wrong by ~250px (G2.2).
+             * The manager does not know the pane width yet - it is the
+             * RENDERER that lays the pane out - so this field exists and
+             * is honoured, and nothing sends it yet. When it is sent, the
+             * guess becomes a fact; until then behaviour is unchanged,
+             * which is deliberate: a wrong-but-supplied number would be
+             * worse than an obviously-default one.
+             *
+             * Absent or unusable (<= 0) leaves the current value alone
+             * rather than resetting to the default mid-session. */
+            if (f[6] && atof(f[6]) > 0) g_viewport_px = atof(f[6]);
+            /* Field 7: the pane's content height. Width alone cannot say
+             * whether the column scrolls, and a scrolling column is 8px
+             * narrower once the scrollbar is drawn - see g_col_px(). */
+            g_viewport_h = (f[7] && atof(f[7]) > 0) ? atof(f[7]) : 0.0;
+            /* The page title, which the manager projects into the content
+             * scrolllist as a real row. Without it the worker's origin sits
+             * 30px above where the renderer paints the first paragraph. */
+            g_page_title[0] = '\0';
+            if (f[4]) {
+                size_t tl = strlen(f[4]);
+                if (tl >= sizeof(g_page_title)) tl = sizeof(g_page_title) - 1;
+                memcpy(g_page_title, f[4], tl);
+                g_page_title[tl] = '\0';
+            }
+            /* New page, so the gutter is an open question again. Leaving the
+             * previous page's verdict in place would carry a scrollbar
+             * decision across a navigation onto a page that may not scroll. */
+            g_gutter_state = -1;
+            free(g_last_push); g_last_push = NULL;   /* rows are per-page */
             run_page();
+        } else if (strcmp(cmd, "TICK") == 0) {
+            /* TICK\n<ms>\n - enable periodic ticking with stdin waits capped
+             * at <ms>. TICK\n0 disables it, restoring the historical
+             * indefinite wait. Opt-in: until the manager side of the push
+             * protocol is ready, the resident worker must not emit frames
+             * nobody asked for. A new page starts ticking only if it was
+             * already on - this flag is the driver's, not the page's. */
+            int want = f[1] ? atoi(f[1]) : 0;
+            if (want < 0) want = 0;
+            g_tick_cap_ms = want;
+            free(g_last_push); g_last_push = NULL;
+            send_status(want ? "STATUS ok" : "STATUS err:TICK wants ms >= 1");
         } else if (strcmp(cmd, "EVAL") == 0) {
             /* devtools console: eval:<js> — js is field 1 (address-bar single
              * line; embedded '\n' is split out by split_lines, fine for REPL) */

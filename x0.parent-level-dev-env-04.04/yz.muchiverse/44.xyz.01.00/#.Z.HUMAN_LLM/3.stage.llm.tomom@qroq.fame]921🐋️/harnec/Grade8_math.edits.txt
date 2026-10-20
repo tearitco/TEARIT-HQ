@@ -1,0 +1,8 @@
+math	weight	0.9
+linear	weight	0.92
+equations	weight	0.93
+functions	weight	0.94
+students	bias1	0.85
+learn	bias2	0.88
+solve	bias3	0.91
+unknowns	bias4	0.9

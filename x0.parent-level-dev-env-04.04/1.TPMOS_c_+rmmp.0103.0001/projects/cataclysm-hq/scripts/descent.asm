@@ -6,17 +6,17 @@ start:
 
     ; Increment dungeon level
     read_pdl R1 "STATE" "turn" R2
-    write_pdl "STATE" "turn" R2
+    write_pdl "projects/cataclysm-hq/project.pdl" "STATE" "turn" R2
 
     ; Generate new dungeon level
-    exec ./ops/+x/dungeon_gen.+x 15 10
+    exec projects/cataclysm-hq/ops/+x/dungeon_gen.+x 15 10
 
     ; Reset player position (spawn near top)
-    write_pdl "pieces/hero/piece.pdl" "STATE" "x" 7
-    write_pdl "pieces/hero/piece.pdl" "STATE" "y" 1
-    write_pdl "pieces/hero/piece.pdl" "STATE" "z" R2
+    write_pdl "projects/cataclysm-hq/pieces/hero/piece.pdl" "STATE" "x" 7
+    write_pdl "projects/cataclysm-hq/pieces/hero/piece.pdl" "STATE" "y" 1
+    write_pdl "projects/cataclysm-hq/pieces/hero/piece.pdl" "STATE" "z" R2
 
     console_print "New dungeon level generated. Survive deeper..."
-    relay_write LEVEL_CHANGE|new_level=
+    relay_write "LEVEL_CHANGE|new_level=0"
     hit_frame
     halt

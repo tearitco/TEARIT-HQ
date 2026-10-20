@@ -154,6 +154,16 @@ static Elem *g_find_reveal = NULL;
  * a smaller total. */
 #define FIND_MAX_HITS 512
 static Elem *g_find_hits_list[FIND_MAX_HITS];
+/* FIND IN PAGE across a content change (2026-10-18). The list holds
+ * POINTERS into the page tree, so reparse_chtpm_if_changed() must drop it
+ * when that tree is discarded - and its own comment there states the real
+ * intent: "a content change should re-search rather than silently forget
+ * the ask". The drop shipped; the re-search did not, so the state left
+ * behind was query="the" 0 of 0 while the tree carried matching rows -
+ * measured live, and why nb_find_test.sh's own "count agrees with the
+ * frame" clause failed. Both reparse paths now finish that sentence: each
+ * calls kh_find_commit() once its new tree is in place, before the caller
+ * lays it out. See that call's own comment for the ordering it needs. */
 int kh_find_is_armed(void);   /* draw_core's seam - see its definition */
 static void dock_nav_step(int dir);   /* declared far below; kh_row_run_extend()
                                        * (row-run selection) needs it first */
@@ -2942,6 +2952,38 @@ static struct {
     char id[64];
 } g_span_pend;
 #define SPAN_DRAG_SLOP 6
+/* ROW-RUN SELECTION, 2026-10-19: FNV-1a digest of an element subtree -
+ * tag, id, label, inline payload (segments/cells) and children, in tree
+ * order. The row-run guard in reparse_chtpm_if_changed() uses it to ask
+ * the only question that matters at that point: is the content this
+ * rebuild is installing the SAME content the discarded tree had?
+ *
+ * Content is compared as a tree digest because content is what exists
+ * there. Nav does NOT: assign_nav_and_layout() has not run yet when a
+ * reparse is mid-flight (g_n_nav is 0, every kh_nav_elem() returns NULL
+ * - measured live, 2026-10-19: "ANCHOR guard: ... -> na=NULL nf=3
+ * nfelem=NULL", 0 of 23 rebuilds able to restore). Row identity is
+ * therefore decided where the rows still exist: before the parse
+ * destroys the old tree (elem_new()'s shared pool is reused in place),
+ * and after the new one is installed.
+ *
+ * Identity, not security: computed layout geometry is deliberately
+ * excluded (it is recomputed from content on the next layout anyway),
+ * everything a row SAYS is included. */
+static unsigned long long kh_tree_digest(const Elem *e) {
+    unsigned long long h = 14695981039346656037ull;   /* FNV-1a 64 offset basis */
+    #define KH_DG_STR(s) do { const unsigned char *_p = (const unsigned char *)(s); \
+        while (*_p) { h ^= *_p++; h *= 1099511628211ull; } } while (0)
+    if (!e) { h ^= 0x1f; h *= 1099511628211ull; return h; }
+    KH_DG_STR(e->tag);  KH_DG_STR(e->id);  KH_DG_STR(e->label);
+    KH_DG_STR(e->segments);  KH_DG_STR(e->cells);
+    h ^= (unsigned long long)e->n_children; h *= 1099511628211ull;
+    for (int i = 0; i < e->n_children; i++) {
+        h ^= kh_tree_digest(e->children[i]); h *= 1099511628211ull;
+    }
+    #undef KH_DG_STR
+    return h;
+}
 static int reparse_chtpm_if_changed(void) {
     if (!g_chtpm_path[0]) return 0;
     struct stat st;
@@ -3233,6 +3275,17 @@ static int reparse_chtpm_if_changed(void) {
                     { struct stat pst; if (g_dock_peer && stat(g_dock_peer_path, &pst) == 0) g_dock_peer_mtime = pst.st_mtim; }
                 }
                 kh_focus_debug_log("INCREMENTAL_REPARSE ok removed=%d", rl.n);
+                /* Same content change, same re-search - see the
+                 * full-rebuild path's own closing comment for why it must
+                 * happen before the caller lays out. This engine patches
+                 * matched elements in place, so the hit list's pointers
+                 * stay valid rather than dangling - but the match SET can
+                 * still have changed under them, and a count that no
+                 * longer describes the tree on screen is the bug this
+                 * closes. NOTE: incremental_reparse is 0 in the live
+                 * hq_ui.pdl, so this line is reasoned from the design, not
+                 * yet observed on a live run. */
+                if (g_find_query[0]) kh_find_commit();
                 return 1;
             }
             kh_focus_debug_log("INCREMENTAL_REPARSE diff failed rc=%d - falling back to full rebuild this tick", ok);
@@ -3315,6 +3368,44 @@ static int reparse_chtpm_if_changed(void) {
      * slot is a real, live crash risk, not a cosmetic one. */
     g_default_active_scope_root = NULL;
     g_default_scope_confine = 0;
+    /* ROW-RUN SELECTION, 2026-10-19 - CONTENT-IDENTITY GUARD. Captured
+     * BEFORE the tree below is discarded (the parse reuses elem_new()'s
+     * pool in place, so the old tree dies during parse_chtpm, not after
+     * it): a digest of everything the current page says, and which nav
+     * row the run's anchor sits on.
+     *
+     * Why this exists: g_sel_run_anchor used to be zeroed on EVERY
+     * rebuild, including one whose content did not change. A spontaneous
+     * reparse landing between two Shift+Downs destroyed the anchor the
+     * first press had just set, so the second re-anchored at the current
+     * focus and the run came out 2..3 instead of 1..3 - and when the
+     * reparse landed just before the mirror was read, the run was gone
+     * outright. Measured on nb_selrun_test.sh via the ANCHOR receipts:
+     *   ANCHOR set anchor=1 focus=1
+     *   ANCHOR cleared by content rebuild      <- 0.5-1.0s later, no key
+     *   ANCHOR set anchor=2 focus=2            <- re-anchor, too late
+     * Four separate-looking failures (no [SEL] line, wrong extent, band
+     * missing, clipboard mismatch) were that one mechanism.
+     *
+     * The correct shape is already in this same function, ~50 lines down,
+     * for in-field selections (2026-09-14: "used to unconditionally
+     * collapse the selection every single time a reparse landed, whether
+     * or not the buffer actually changed"). This is the same decision
+     * for the row run: a run points at ROWS, so it survives a rebuild
+     * whose content is unchanged and dies honestly when it isn't.
+     *
+     * FIRST ATTEMPT, SHIPPED-AND-RETRACTED SAME DAY: matched the anchor
+     * and focus rows by element id via kh_nav_elem(), restored at this
+     * function's end. It restored 0 of 23 rebuilds: nav does not exist
+     * mid-reparse (g_n_nav is 0 until assign_nav_and_layout() runs, so
+     * every lookup returned NULL - see the GUARD DIAGNOSTIC receipts in
+     * /tmp/nb_selrun_test/kh_focus_debug.log). Identity is decided on
+     * CONTENT, here, where the rows still exist - never on nav inside a
+     * reparse. */
+    int saved_run_anchor = g_sel_run_anchor;
+    unsigned long long saved_tree_digest = 0;
+    if (saved_run_anchor > 0)
+        saved_tree_digest = kh_tree_digest(g_window);
     /* INLINE SPANS step 5: the segment cursor names a (nav, run-index,
      * element-id) triple in the tree being discarded - after this
      * rebuild those numbers may address a different row, or nothing.
@@ -3331,6 +3422,9 @@ static int reparse_chtpm_if_changed(void) {
     /* ROW-RUN SELECTION (2026-10-12): a run of nav indices points at
      * rows in the tree being discarded, exactly like the anchor above -
      * same reason, same place. */
+    /* (no focus readout here: this site is above g_focus_nav's
+     * declaration, and the point of the receipt is WHICH site fired.) */
+    kh_focus_debug_log("ANCHOR cleared by content rebuild");
     g_sel_run_anchor = 0;
     /* INLINE SPANS step 12: dot-armed entry is one-shot intent, not
      * state that survives a rebuild. */
@@ -3347,7 +3441,23 @@ static int reparse_chtpm_if_changed(void) {
      * deliberately NOT cleared here: the user typed it, and a content
      * change should re-search rather than silently forget the ask. */
     g_find_hits = 0;
-    g_find_at = 0;
+    /* g_find_at is deliberately NOT cleared here, unlike the hits it
+     * accompanies. This reset and the query keep above are one decision
+     * split in two: the query survives because "a content change should
+     * re-search rather than silently forget the ask" - and the ask
+     * includes WHICH match the user was on. Zeroing the index alongside
+     * the hits meant a page that happened to redraw between two Enters
+     * dropped the user from match 2 back to match 1, so the next Enter
+     * read as "did not advance". Measured: nb_find_test.sh failed its
+     * Enter-advance and wrap clauses together on 3 runs in 8. The
+     * re-search below clamps the kept index into range (and clears it
+     * outright when the new tree has no matches), so it cannot go stale. */
+    /* ...and the other half of that sentence shipped missing: ASK AGAIN
+     * once the new tree exists. Zeroing the list without re-searching is
+     * exactly what left query="the" 0 of 0 against a tree that carried
+     * matching rows. It cannot run here - the tree being parsed is still
+     * being built - so this function re-searches at its own end; see that
+     * call's comment for why it must be before the caller's layout. */
     /* INLINE SPANS step 11: a rebuild also orphans any armed span
      * press (its row may be gone) - the paired release must find
      * nothing to resolve. */
@@ -3505,6 +3615,44 @@ static int reparse_chtpm_if_changed(void) {
                         g_default_scrolllist_scroll = 0;
                 }
             }
+        }
+    }
+    /* FIND IN PAGE: the other half of the promise the reset above makes
+     * ("a content change should re-search"). It has to run HERE - once the
+     * new tree is installed, but BEFORE the caller lays it out:
+     *   - the reparse sites do assign_nav_and_layout() then redraw(), and
+     *     redraw() SKIPS its own layout when that call set g_layout_fresh
+     *     (line ~12054) - so a re-search left to redraw would set
+     *     g_find_reveal too late for any layout to consume it, and the
+     *     match would sit off screen (measured: y=434 -> -100000);
+     *   - the reset above has just put a <scrolllist class="from-top">
+     *     back to scroll 0, so the reveal must be re-issued in the same
+     *     pass that did that, or find's own scroll is undone by it.
+     * The mirror is correct too: redraw() writes [FIND] later in the same
+     * tick, from the tree this just searched. */
+    if (g_find_query[0]) kh_find_commit();
+    /* ROW-RUN SELECTION, 2026-10-19 - the other half of the guard
+     * above. Restore the run only if the tree just installed says
+     * exactly what the discarded one said (kh_tree_digest covers tag,
+     * id, label, segments, cells and full child structure). A rebuild
+     * whose content is unchanged keeps the run alive; a rebuild that
+     * changed anything leaves the anchor at 0, which is honest: the
+     * rows it named may be gone, or may have moved.
+     *
+     * Why the anchor's nav index is safe to reuse after an identical
+     * digest: nav indices are assigned from tree order by
+     * assign_nav_and_layout(), which the reparse sites run immediately
+     * after this function returns - an unchanged tree re-derives the
+     * same indices, so saved_run_anchor still names the same row. */
+    if (saved_run_anchor > 0) {
+        unsigned long long now_digest = kh_tree_digest(g_window);
+        if (now_digest == saved_tree_digest) {
+            g_sel_run_anchor = saved_run_anchor;
+            kh_focus_debug_log("ANCHOR kept anchor=%d (content identical, digest %016llx)",
+                               saved_run_anchor, now_digest);
+        } else {
+            kh_focus_debug_log("ANCHOR content changed (digest %016llx -> %016llx), anchor stays dead",
+                               saved_tree_digest, now_digest);
         }
     }
     return 1;
@@ -8631,7 +8779,16 @@ static int kh_elem_arrow_stop(Elem *e) {
  * engineering around. */
 static int kh_row_run_extend(int dir) {
     if (g_focus_nav < 1 || g_focus_nav > g_n_nav) return 0;
-    if (g_sel_run_anchor <= 0) g_sel_run_anchor = g_focus_nav;
+    if (g_sel_run_anchor <= 0) {
+        g_sel_run_anchor = g_focus_nav;
+        /* ANCHOR receipt (2026-10-19): nb_selrun goes red with "no [SEL]
+         * line" while focus provably advances, i.e. the run's anchor is
+         * being lost rather than never set. Three separate sites zero
+         * it (this file: kh_nav_step, handle_key, and the rebuild at
+         * content_changed) and none of them said which one fired. */
+        kh_focus_debug_log("ANCHOR set anchor=%d focus=%d",
+                           g_sel_run_anchor, g_focus_nav);
+    }
     dock_nav_step(dir);
     return 1;
 }
@@ -8643,7 +8800,12 @@ static void kh_nav_step(int dir) {
      * the run - the same collapse any text field does when you click or
      * arrow away from a selection. A run that survived would keep
      * painting a band the user can no longer see how they made. */
-    if (!g_key_shift) g_sel_run_anchor = 0;
+    if (!g_key_shift) {
+        if (g_sel_run_anchor > 0)
+            kh_focus_debug_log("ANCHOR cleared by nav_step focus=%d",
+                               g_focus_nav);
+        g_sel_run_anchor = 0;
+    }
     /* REAL FIX 2026-09-27, direct user request ("loop around index
      * mod we wanted to do? it should loop both ways"): navigation now
      * wraps at both boundaries instead of clamping - going below 1
@@ -8916,6 +9078,76 @@ static void kh_publish_canvas_click(int px, int py, int button) {
     fclose(f);
 }
 
+/* ---- publish the CONTENT PANE box to the house (2026-10-14, G2.2) ----
+ *
+ * The network browser's worker computes its box tree against a viewport
+ * width, and until now that width was a guess (640) because nothing could
+ * tell the worker how wide the pane really is. It cannot: the pane is
+ * laid out HERE. So this writes it out, on the same house channel the
+ * dock and slide offsets already use (khtpm_pane_geom.state.txt), and the
+ * manager reads it and passes it in LOAD field 6.
+ *
+ * WHICH element is the pane: the renderer has no browser-specific notion
+ * of "content", so the rule is structural - the largest scrolllist, with a
+ * class containing "content" preferred when one exists. Largest is right
+ * for every layout in this house: the sidebar and the console strip are
+ * both narrower than what they contain.
+ *
+ * ONLY ON CHANGE. assign_nav_and_layout() runs on every relayout, so an
+ * unconditional write would put a file write on the redraw path of every
+ * window in the house. The last published values are remembered and the
+ * file is touched only when the box actually moves.
+ */
+/* CALL-SITE TRAP, learned the hard way 2026-10-15: this was called only at
+ * the END of assign_nav_and_layout(), which has EARLY RETURNS - and the
+ * sidebar+panel branch is EXACTLY the network browser's window shape. So for
+ * this window the publisher was never reached at all: it wrote nothing,
+ * silently, and the renderer's stderr does not reach a log here, so there
+ * was no way to see the failure from the process itself. It must be called
+ * on EVERY exit path of that function; if you add an early return there,
+ * add the call with it. */
+static void publish_pane_geometry(void) {
+    if (!g_window || !g_house_root[0]) return;
+    Elem *best = NULL;
+    long best_area = -1;
+    /* two passes: a class match wins outright, else largest area */
+    /* iterative walk (trees here are shallow, but recursion into a
+     * reparse-in-progress tree is not something to risk) */
+    Elem *stack[64];
+    int sp = 0;
+    stack[sp++] = g_window;
+    while (sp > 0) {
+        Elem *e = stack[--sp];
+        if (!e) continue;
+        if (e->tag && strcmp(e->tag, "scrolllist") == 0) {
+            for (int ci = 0; ci < e->n_classes; ci++) {
+                if (strstr(e->classes[ci], "content")) { best = e; best_area = -2; sp = 0; break; }
+            }
+        }
+        if (sp == 0 && best_area == -2) break;
+        long area = (e->tag && strcmp(e->tag, "scrolllist") == 0)
+                    ? (long)e->w * (long)e->h : 0;
+        if (area > best_area && area > 0) { best_area = area; best = e; }
+        int n = e->n_children;
+        if (n > 64) n = 64;
+        for (int ci = 0; ci < n; ci++)
+            if (sp < 64) stack[sp++] = e->children[ci];
+    }
+    if (!best || best->w <= 0) return;
+
+    static int last_x = -1, last_y = -1, last_w = -1;
+    if (best->x == last_x && best->y == last_y && best->w == last_w) return;
+    last_x = best->x; last_y = best->y; last_w = best->w;
+
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/khtpm_pane_geom.state.txt", g_house_root);
+    FILE *f = fopen(path, "wb");
+    if (!f) return;
+    fprintf(f, "content_x=%d\ncontent_y=%d\ncontent_w=%d\ncontent_h=%d\n",
+            best->x, best->y, best->w, best->h);
+    fclose(f);
+}
+
 static void assign_nav_and_layout(void) {
     g_has_canvas = 0;
     g_canvas_chrome_left_x = 0;
@@ -8993,6 +9225,7 @@ static void assign_nav_and_layout(void) {
         if (g_dock_drop_lo && g_default_active_scope_id[0] &&
             (g_focus_nav < g_dock_drop_lo || g_focus_nav > g_dock_drop_hi))
             g_focus_nav = g_dock_drop_lo;
+        publish_pane_geometry();   /* every exit path - see the trap note below */
         return;
     }
     if (!page) { g_win_h = CHROME_H + 8; return; }
@@ -9036,6 +9269,7 @@ static void assign_nav_and_layout(void) {
         kh_apply_scope_confine();
         if (g_focus_nav > g_n_nav) g_focus_nav = g_n_nav > 0 ? g_n_nav : 1;
         if (g_focus_nav < 1) g_focus_nav = 1;
+        publish_pane_geometry();   /* every exit path - see the trap note below */
         return;
     }
     generic_sbar_reset();
@@ -9568,6 +9802,7 @@ static void assign_nav_and_layout(void) {
     kh_apply_scope_confine();
     if (g_focus_nav > g_n_nav) g_focus_nav = g_n_nav > 0 ? g_n_nav : 1;
     if (g_focus_nav < 1) g_focus_nav = 1;
+    publish_pane_geometry();
 }
 
 static void switch_page(const char *name) {
@@ -10778,6 +11013,17 @@ static void kh_clipboard_copy(const char *text) {
     XSetSelectionOwner(dpy, XA_PRIMARY, win, CurrentTime);
     XFlush(dpy);
     g_clip_copied_at = time(NULL);
+    /* REAL FIX 2026-10-17: a copy receipt. XSetSelectionOwner is asynchronous
+     * and answering the SelectionRequest is a round trip, so a client reading
+     * the clipboard straight after Ctrl+C can legitimately get the PREVIOUS
+     * owner's bytes - and a read that cannot tell "the answer" from "the last
+     * answer" silently returns stale data. That is not hypothetical: the
+     * selection suites were ~40% flaky, and tracing the renderer's whole key
+     * stream came back byte-identical between a passing and a failing run, so
+     * the renderer was never the variable. One line here gives any client
+     * something observable to wait on instead of sleeping and hoping. */
+    kh_focus_debug_log("COPY len=%d text=[%s]", (int)strlen(text ? text : ""),
+                       text ? text : "");
 }
 
 static void kh_clipboard_insert_text(Elem *e, const char *text);
@@ -12691,8 +12937,12 @@ static void handle_key(KeySym ks, char ch) {
      * dock dropdown opening) are the documented exception - they do not
      * renumber rows, so lo..hi still means what it meant. */
     if (!(g_key_shift && (ks == XK_Up || ks == XK_Down)) &&
-        !(ch == 3 || ch == 24))          /* Ctrl+C / Ctrl+X CONSUME the run */
+        !(ch == 3 || ch == 24)) {        /* Ctrl+C / Ctrl+X CONSUME the run */
+        if (g_sel_run_anchor > 0)
+            kh_focus_debug_log("ANCHOR cleared by key ks=%ld ch=%d shift=%d focus=%d",
+                               (long)ks, ch, g_key_shift, g_focus_nav);
         g_sel_run_anchor = 0;
+    }
     /* PAGE ZOOM (2026-10-13): Ctrl+= / Ctrl+- / Ctrl+0. G3.2 had been
      * "absent" because nothing bound the keyboard to the house UI scale -
      * and that scale is broken for ordinary windows (gap plan §8.5), so
@@ -13029,10 +13279,29 @@ static void handle_key(KeySym ks, char ch) {
     /* INLINE SPANS step 5: an active segment cursor is the innermost
      * thing Escape closes (same "closes THAT first" order as the armed
      * field and the dropdown below) - back to row-level, focus stays. */
-    if (ks == XK_Escape && g_seg_idx >= 0 && g_seg_nav == g_focus_nav) {
+    if (ks == XK_Escape && g_seg_idx >= 0) {
+        /* REAL FIX 2026-10-17, the hijack. This used to require
+         * `g_seg_nav == g_focus_nav` to clear anything. A segment cursor left
+         * on a row that is NOT the focused one therefore survived Escape - and
+         * that is the dangerous case, because while a cursor is live, digits
+         * address the focused row's LINKS instead of row numbers (see the
+         * g_seg_dot_armed / digit branch below). So the very next row jump was
+         * swallowed as link input, focus never moved, and every key after it
+         * landed on the wrong row.
+         *
+         * Measured live: the Shift+Right keys went to r2 (nav 2) while the copy
+         * targeted r4 (nav 3), so seg_cursor_on() was false, no band was drawn,
+         * and Ctrl+C copied the whole 205-character label. This is what made the
+         * selection suites ~40% flaky - it fires only when the previous step
+         * happened to leave a cursor on a non-focused row.
+         *
+         * Clearing a cursor that is not on the focused row costs nothing: it
+         * draws nothing anyway (seg_cursor_on is false for it). Escape still
+         * falls through when the cursor was elsewhere, so it can go on closing
+         * whatever else is open - only the hijack is removed. */
         g_seg_idx = -1;
-        redraw();
-        return;
+        g_seg_anchor = -1;
+        if (g_seg_nav == g_focus_nav) { redraw(); return; }
     }
     /* REAL, NEW 2026-09-03 (direct instruction: "esc closes drop down
      * and deactivates", matching the taskbar's own separate ktb_hq_
@@ -14078,6 +14347,37 @@ static int poll_agent_history(void) {
                  * wheel notches (handled above, each n++'d there) dirty the
                  * frame. Counting every move here made a focused generic
                  * window repaint on every mouse twitch over it = flicker. */
+            } else if (strncmp(line, "FOCUS_CLI_IO", 12) == 0) {
+                /* Arm the window's first <cli_io> without a click, so a
+                 * test or a remote agent can type into the address bar.
+                 *
+                 * WHY THIS EXISTS: the relay already maps codes 32..126 to
+                 * literal characters (dispatch_relay_code), so typing was
+                 * never the problem - ARMING was. Characters go nowhere
+                 * until g_default_input_elem is set, and that only
+                 * happened on a real click (click_focus_then_activate).
+                 * Measured 2026-10-14 on a live browser: three 'z' codes
+                 * into the relay changed nothing but the frame timestamp.
+                 * There is no Ctrl+L either.
+                 *
+                 * It arms through the SAME sequence the click path uses
+                 * (the arm site at ~10904), including arming at the end of
+                 * whatever is already typed and the keyboard grab - not a
+                 * second, subtly different way in. Pure test/agent
+                 * affordance, exactly like the MOUSE_MOVE relay above. */
+                for (int i = 0; i < g_n_nav; i++) {
+                    Elem *item = g_nav[i];
+                    if (!item || strcmp(item->tag, "cli_io") != 0) continue;
+                    int already = (g_default_input_elem == item);
+                    kh_set_default_input_elem(item);
+                    if (!already) {
+                        item->cursor = (int)strlen(item->input_buffer);
+                        item->sel_anchor = item->cursor;
+                    }
+                    kh_grab_keyboard_retry();
+                    n++;
+                    break;
+                }
             } else if (strncmp(line, "STRING: ", 8) == 0) {
                 kh_cliio_exec(line + 8);
                 n++;

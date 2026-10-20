@@ -1,0 +1,8 @@
+start-token	weight	0.95
+math	weight	0.9
+skills	weight	0.88
+in	weight	0.85
+addition	weight	0.98
+subtraction	weight	0.96
+numbers	weight	0.99
+solve	weight	0.97
