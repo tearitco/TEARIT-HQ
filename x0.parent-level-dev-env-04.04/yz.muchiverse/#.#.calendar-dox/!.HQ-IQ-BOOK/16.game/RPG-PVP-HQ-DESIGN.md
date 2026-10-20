@@ -2,6 +2,8 @@
 
 Status: **draft for the owner. Nothing here is built.** No folder `@.apps/rpg-pvp-hq` exists yet. Labels: SAID = the owner's words; READ = from files, not run; MINE = claude's proposal, needs the owner's yes.
 
+> **Status update 2026-10-20 (later):** the app folder now exists and is a rename-copy of cdda-hq (INT mode, Book/Page, Shop, Menu, Help, Inventory, Craft, Body, Look, Player, game clock with day/night, pets in the footer, chat) opened from the toys menu. The city generator is a separate op (`ops/rpg_pvp_city.c`) not yet joined to the engine. Events and blueprintz: `RPG-PVP-HQ-EVENTS.md`. The step list in section 6 below is still the plan; P0 is done, P1 is half done (generator done, joining it to the engine open).
+
 ## 1. What the owner wants (SAID, 2026-10-20)
 - A 2D/3D shooter in the style of GoldenEye 64, played by AI or human **the same way** (like df-hq, cdda-hq, mcl-hq and the pets).
 - Pets live in a **city**: go into buildings, shoot, find guns, reload. **Later:** build their own buildings and fortifications, like Fortnite.

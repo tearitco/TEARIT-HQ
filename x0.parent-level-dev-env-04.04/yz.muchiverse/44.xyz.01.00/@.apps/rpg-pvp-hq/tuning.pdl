@@ -1,5 +1,25 @@
 SECTION | KEY | VALUE
 ----------------------------------------
+# tuning.pdl - the numbers of rpg-pvp-hq that get changed often (milliseconds unless noted). Edit, no rebuild: the daemon re-reads this file whenever its size or modified time changes (checked every reload_ms).
+# TUNE | name | value | what it does                                                              (a missing or bad row falls back to the built-in default shown in the last column)
+# Both front ends read this file: the old toys-menu window (rpg-pvp-hq.xhtpm) and the pc-hq board window (board/pchq-board.xhtpm); the daemon (ops/rpg_pvp_hq.c) is the one program behind both. See TWO-CODEBASES.md.
+# --- CPU safety (house hq-cpu-safety.md): raising these lowers CPU, lowering them makes the window react sooner ---
+TUNE | reload_ms       | 2000  | how often the static data (catalog, party, rooms, door pages) and this file are re-read                         | 2000
+TUNE | flag_cache_ms   | 150   | how long a flag / switch read is reused inside the daemon                                                       | 150
+TUNE | follow_ms       | 400   | at most how often the board's rooms are exported and the engine woken when nothing changed                      | 400
+TUNE | viewer_scan_ms  | 2000  | how often /proc is scanned for an open rpg-pvp-hq / board window (no window = nothing is rendered)                 | 2000
+TUNE | far_repaint_ms  | 1500  | a pet stepping in a room nobody watches repaints the scene at most this often                                   | 1500
+TUNE | greet_page_ms   | 6000  | at most one events-hq greeting page per this long (each costs ~150 ms of CPU); the built-in text covers the rest | 6000
+# --- game feel ---
+TUNE | step_min_ms     | 1500  | a pet walks on its own (INT off) every step_min_ms + a random 0..step_jitter_ms                                 | 900
+TUNE | step_jitter_ms  | 900   | the random part of that                                                                                         | 700
+# --- board window input ---
+TUNE | edge_poll_ms    | 400   | how often the daemon looks at the board's Interact state (an In: click from the pc-hq key turns INT on)         | 400
+TUNE | engage_retry_ms | 20000 | INT on: how long to wait before sending the engine's Interact key a second time (it is a toggle: keep this long) | 20000
+TUNE | click_poll_ms   | 150   | how often a click on the board's 2D canvas is looked at (a click on a pet or the trainer selects them)          | 150
+TUNE | ledger_compact_kb | 4096 | the event ledger (state/events.txt) is compacted when a resolve leaves it this big (KB); the old ledger stays as state/events.archive.<n>.txt | 4096
+
+# ---- rpg-pvp-hq's own rows (read by ops/rpg_pvp_city.c; the engine ignores them) ----
 # tuning.pdl - the numbers of rpg-pvp-hq, as data (edit, no rebuild). The first WEAPON table is READ from the older project 007-goldeye+01.00/src/main.c (fire(), pickup_guns()); it is a
 # starting point to compare against, not a balance decision. Source lines: fists fire() 'weapon == 0', pistol 'weapon == 1', auto 'weapon == 2', shotgun 'weapon == 3' (5 pellets).
 # WEAPON | id | damage | cooldown_s | bullet_speed | pellets | spread | pickup_ammo | range        (fists: melee, range in cells, no bullet; pickup_ammo is what a loot pickup gives)

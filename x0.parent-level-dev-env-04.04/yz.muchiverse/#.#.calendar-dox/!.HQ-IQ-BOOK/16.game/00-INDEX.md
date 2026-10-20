@@ -15,6 +15,7 @@ command runs on.
 - `RULES-df-hq.md`, `RULES-cdda-hq.md`, `RULES-mcl-hq.md` — verb, who, cost, result, file.
 - `GAME-DEV-HQ-DESIGN.md` — Game Dev Story as a studio week: staff, one game, ship. Not built.
 - `RPG-PVP-HQ-DESIGN.md` — GoldenEye-style city shooter for the pets (AI and human write the same INTENT rows): Doom vs cdda art split, what to take from `007-goldeye`, steps P0-P9 incl. later Fortnite-style building. Draft, not built.
+- `RPG-PVP-HQ-EVENTS.md` — which games use event pages vs ledger rows, how rpg-pvp-hq fires events (RAN), the registry/bp_scan rule so blueprintz can read and later edit its scripting. grok's game-dev-hq has no event pages.
 - `../02-architecture/PLAYTEST-DESK-AND-PCHQ.md` — taskbar cell 9 and
   the PC-HQ Player menu. The playtest button.
 - `../18.pc-hq/00-INDEX.md` — the board itself: the diamond, the

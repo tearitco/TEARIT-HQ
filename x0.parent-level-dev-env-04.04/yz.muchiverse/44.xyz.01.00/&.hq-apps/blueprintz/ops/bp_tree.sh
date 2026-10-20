@@ -8,7 +8,7 @@ HOUSE="$(cd "$APP/../.." && pwd)"
 X="$APP/blueprintz.xhtpm"
 TMP="$(mktemp)"
 : > "$TMP"
-for game in dsr-rpg cdda-hq df-hq gta-hq mcl-hq tcg-rpgce civ-rpgce game-dev-hq; do
+for game in dsr-rpg cdda-hq df-hq gta-hq mcl-hq tcg-rpgce civ-rpgce game-dev-hq rpg-pvp-hq; do
     root="$HOUSE/@.apps/$game/events"
     [ -d "$root" ] || continue
     n=$(find "$root" -name event.ir.pdl | wc -l)

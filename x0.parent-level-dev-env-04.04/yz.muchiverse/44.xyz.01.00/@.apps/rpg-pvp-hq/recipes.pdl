@@ -1,0 +1,4 @@
+# recipes.pdl - rpg-pvp-hq crafting (2026-10-17). RECIPE | id | output | count | tool | skill | minutes | inputs
+# inputs = item:count, repeated, separated by commas, no spaces. tool "none" only (a recipe naming a tool cannot be crafted yet); skill is read, not checked yet.
+# minutes are charged to the game clock by the craft verb. An empty file means every craft is "missing". Rules text: BOOK 16.game/RULES-rpg-pvp-hq.md
+RECIPE | bandage | bandage | 1 | none | 0 | 1 | rag:1
