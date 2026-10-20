@@ -8216,7 +8216,8 @@ static int layout_dock_bar(Elem *page) {
         if (!is_bottom) { g_dock_dd_scrolling = 0; g_dock_dd_vis = 0; g_dock_dd_total = n_all; g_dock_dd_search = 0; }   /* the bottom pass must not clear the top menu's state */
         if (trig0 && !is_bottom) {
             MwPlan mp_all, mp;
-            int cap = (kh_screen_h() - (trig0->y + trig0->h) - 8) / DOCK_BAR_H;
+            /* g_win_y: the popup sits at g_win_y + the trigger's bottom, so the room left on screen starts there, not at this window's own top. The - 1 keeps a row for the search field that a scrolling list adds under the rows (without both, a full-screen dropdown ran 50-65 px past the bottom edge and the search row was off screen) */
+            int cap = (kh_screen_h() - (g_win_y + trig0->y + trig0->h) - 8) / DOCK_BAR_H - 1;
             int plan_n;
             if (g_dropdown_max_rows >= 3 && g_dropdown_max_rows < cap) cap = g_dropdown_max_rows;   /* hq_ui.pdl dropdown_max_rows */
             if (strcmp(g_dock_dd_target, trig0->id) != 0) {
