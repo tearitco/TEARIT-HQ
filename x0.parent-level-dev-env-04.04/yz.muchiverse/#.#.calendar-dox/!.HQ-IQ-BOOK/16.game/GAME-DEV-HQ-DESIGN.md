@@ -2,7 +2,7 @@
 
 A studio sim in the same shape as df-hq, cdda-hq, and mcl-hq: one daemon, one board, one ledger. The game it copies is Kairosoft's Game Dev Story. The old CLI under the share drive (`kairosoft-grok`, the `gds` C files) is a sketch only. Do not compile it and do not import its stock, bond, or four-company rules. Those were a later pivot. This page is the studio.
 
-Built as `@.apps/game-dev-hq`. Open with `sh @.apps/game-dev-hq/button.sh run`. Three staff start, so one hire fits in an office of 4.
+Built as `@.apps/game-dev-hq`. The menu window is `sh @.apps/game-dev-hq/button.sh run`. The office picture is `sh @.apps/game-dev-hq/board/open_board.sh`. Three staff start, so one hire fits in an office of 4.
 
 ## The week
 
@@ -16,7 +16,7 @@ Office 1 holds 4 people. A bigger office is **later**. It only raises the cap.
 
 ## People
 
-A person is a row, not a walker. Jobs: `writer designer programmer artist sound director`. Stats, each 0–500: `scenario graphics programming sound creativity`. Plus `energy` 0–100 and `salary` per week.
+A person is a row and a sprite in the office. Jobs: `writer designer programmer artist sound director`. Stats, each 0–500: `scenario graphics programming sound creativity`. Plus `energy` 0–100 and `salary` per week.
 
 ```
 STAFF | id | name | job | scenario | graphics | programming | sound | creativity | energy | salary
@@ -63,11 +63,11 @@ Same ledger as the other games (`state/events.txt`, `EVENT|ts|actor|verb|target|
 | advance | `-` | one phase, scores move, week +1, salaries paid |
 | ship | `-` | rank, sales, fame. Only legal in review |
 
-`at` stays `-` or a room id. The office is one room. No map walk in this slice.
+`at` stays `-` or `office`. People do not walk the map in this slice. They stand at a desk.
 
 ## What the window is
 
-The board is the office, not a town. Left pin: funds, fame, week, the open game's five scores. Right pin: the log, same rules as the other games (no per-step spam). Tabs: Staff, Develop, Train. Help is the week order: hire, train, start, assign, advance four times, ship.
+The picture is one interior, `office`, painted from the house sheets (`Inside_A5` floor and wall, `Inside_B` desks, the same character sheets `party.pdl` names). `exportbook` writes that as the pc-hq book `maps/game-dev-hq`. Open it with `sh @.apps/game-dev-hq/board/open_board.sh`. The tabs are the Game Dev Story commands: Staff, Develop, Train. The log stays one line of the week, not a step spam. Notes for this pass: `13.agent-coms/2026-10-20/from-grok-game-dev-office.md`.
 
 ## First build
 

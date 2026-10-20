@@ -1,0 +1,8 @@
+SECTION | KEY | VALUE
+------------------------------
+# One interior. Floor Inside_A5 col 1 row 4, wall col 1 row 3. Desks are Inside_B table_white (1, 12), the catalog row mcl-hq already uses.
+ROOM | office | Office | 1 | 4
+SCENERY | office | Inside_B | 1 | 12 | 1 | 1 | 2 | 4
+SCENERY | office | Inside_B | 1 | 12 | 1 | 1 | 5 | 4
+SCENERY | office | Inside_B | 1 | 12 | 1 | 1 | 8 | 4
+SCENERY | office | Inside_B | 1 | 12 | 1 | 1 | 11 | 4

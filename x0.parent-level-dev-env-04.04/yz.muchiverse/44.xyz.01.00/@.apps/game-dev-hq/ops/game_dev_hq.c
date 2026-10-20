@@ -327,6 +327,8 @@ static void do_ship(void) {
     event_row("ship", g->id);
 }
 
+void gd_export_office(const char *app);
+
 static void verb(int argc, char **argv) {
     const char *v = argc > 0 ? argv[0] : "status";
     if (!strcmp(v, "hire") && argc >= 2) do_hire(argv[1], argc >= 3 ? argv[2] : "");
@@ -337,8 +339,10 @@ static void verb(int argc, char **argv) {
     else if (!strcmp(v, "advance")) do_advance();
     else if (!strcmp(v, "ship")) do_ship();
     else if (!strcmp(v, "status")) { if (!note[0]) snprintf(note, sizeof note, "ready"); }
-    else snprintf(note, sizeof note, "verbs: hire train rest start assign advance ship status");
+    else if (!strcmp(v, "exportbook")) { if (!note[0]) snprintf(note, sizeof note, "office book"); }
+    else snprintf(note, sizeof note, "verbs: hire train rest start assign advance ship status exportbook");
     save_all(); write_ui();
+    gd_export_office(APP);
     printf("%s\n", note);
 }
 

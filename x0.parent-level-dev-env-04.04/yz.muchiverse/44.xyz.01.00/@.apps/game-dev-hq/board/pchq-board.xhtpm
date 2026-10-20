@@ -1,0 +1,28 @@
+<!-- game-dev-hq board. The canvas is the office book. Tabs are the Game Dev Story commands. -->
+<window label="game-dev-hq" class="pchq-board-pal database-window managed user-resizable" vars="../state/ui.txt state/ui.txt">
+  <module src="@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x" args="game-dev-hq-pchq"/>
+  <page name="main">
+    <tabbar id="toolbar" class="tab-bar">
+      <tab id="tb-staff" class="tab" label="Staff ▾" onclick="ACTIVATE" target_id="tb-staff"/>
+      <tab id="tb-dev" class="tab" label="Develop ▾" onclick="ACTIVATE" target_id="tb-dev"/>
+      <tab id="tb-train" class="tab" label="Train ▾" onclick="ACTIVATE" target_id="tb-train"/>
+    </tabbar>
+    <sidebar id="side" class="sidebar">
+      <item id="h-dir" class="dropdown-child" target_id="tb-staff" label="Hire director" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' hire director Ada"/>
+      <item id="dv-rs" class="dropdown-child" target_id="tb-dev" label="Start rpg/adventure" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' start rpg:adventure"/>
+      <item id="dv-a1" class="dropdown-child" target_id="tb-dev" label="Assign Rex" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' assign s1"/>
+      <item id="dv-a2" class="dropdown-child" target_id="tb-dev" label="Assign Pip" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' assign s2"/>
+      <item id="dv-a3" class="dropdown-child" target_id="tb-dev" label="Assign Gus" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' assign s3"/>
+      <item id="dv-go" class="dropdown-child" target_id="tb-dev" label="Advance one phase" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' advance"/>
+      <item id="dv-ship" class="dropdown-child" target_id="tb-dev" label="Ship" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' ship"/>
+      <item id="tr-1" class="dropdown-child" target_id="tb-train" label="Train Rex programming" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' train s1:programming"/>
+      <item id="tr-r1" class="dropdown-child" target_id="tb-train" label="Rest Rex" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' rest s1"/>
+    </sidebar>
+    <canvas id="view" sprite="${canvas_raw}"/>
+    <panel id="body" class="gd-panel">
+      <item class="gd-line" label="${studio_line}"/>
+      <item class="gd-line" label="${game_line}"/>
+      <item class="gd-note" label="${note}"/>
+    </panel>
+  </page>
+</window>
