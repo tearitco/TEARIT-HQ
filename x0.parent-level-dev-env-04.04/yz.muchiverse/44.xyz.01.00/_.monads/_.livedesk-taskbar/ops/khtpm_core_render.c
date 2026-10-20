@@ -2952,6 +2952,38 @@ static struct {
     char id[64];
 } g_span_pend;
 #define SPAN_DRAG_SLOP 6
+/* ROW-RUN SELECTION, 2026-10-19: FNV-1a digest of an element subtree -
+ * tag, id, label, inline payload (segments/cells) and children, in tree
+ * order. The row-run guard in reparse_chtpm_if_changed() uses it to ask
+ * the only question that matters at that point: is the content this
+ * rebuild is installing the SAME content the discarded tree had?
+ *
+ * Content is compared as a tree digest because content is what exists
+ * there. Nav does NOT: assign_nav_and_layout() has not run yet when a
+ * reparse is mid-flight (g_n_nav is 0, every kh_nav_elem() returns NULL
+ * - measured live, 2026-10-19: "ANCHOR guard: ... -> na=NULL nf=3
+ * nfelem=NULL", 0 of 23 rebuilds able to restore). Row identity is
+ * therefore decided where the rows still exist: before the parse
+ * destroys the old tree (elem_new()'s shared pool is reused in place),
+ * and after the new one is installed.
+ *
+ * Identity, not security: computed layout geometry is deliberately
+ * excluded (it is recomputed from content on the next layout anyway),
+ * everything a row SAYS is included. */
+static unsigned long long kh_tree_digest(const Elem *e) {
+    unsigned long long h = 14695981039346656037ull;   /* FNV-1a 64 offset basis */
+    #define KH_DG_STR(s) do { const unsigned char *_p = (const unsigned char *)(s); \
+        while (*_p) { h ^= *_p++; h *= 1099511628211ull; } } while (0)
+    if (!e) { h ^= 0x1f; h *= 1099511628211ull; return h; }
+    KH_DG_STR(e->tag);  KH_DG_STR(e->id);  KH_DG_STR(e->label);
+    KH_DG_STR(e->segments);  KH_DG_STR(e->cells);
+    h ^= (unsigned long long)e->n_children; h *= 1099511628211ull;
+    for (int i = 0; i < e->n_children; i++) {
+        h ^= kh_tree_digest(e->children[i]); h *= 1099511628211ull;
+    }
+    #undef KH_DG_STR
+    return h;
+}
 static int reparse_chtpm_if_changed(void) {
     if (!g_chtpm_path[0]) return 0;
     struct stat st;
@@ -3336,6 +3368,44 @@ static int reparse_chtpm_if_changed(void) {
      * slot is a real, live crash risk, not a cosmetic one. */
     g_default_active_scope_root = NULL;
     g_default_scope_confine = 0;
+    /* ROW-RUN SELECTION, 2026-10-19 - CONTENT-IDENTITY GUARD. Captured
+     * BEFORE the tree below is discarded (the parse reuses elem_new()'s
+     * pool in place, so the old tree dies during parse_chtpm, not after
+     * it): a digest of everything the current page says, and which nav
+     * row the run's anchor sits on.
+     *
+     * Why this exists: g_sel_run_anchor used to be zeroed on EVERY
+     * rebuild, including one whose content did not change. A spontaneous
+     * reparse landing between two Shift+Downs destroyed the anchor the
+     * first press had just set, so the second re-anchored at the current
+     * focus and the run came out 2..3 instead of 1..3 - and when the
+     * reparse landed just before the mirror was read, the run was gone
+     * outright. Measured on nb_selrun_test.sh via the ANCHOR receipts:
+     *   ANCHOR set anchor=1 focus=1
+     *   ANCHOR cleared by content rebuild      <- 0.5-1.0s later, no key
+     *   ANCHOR set anchor=2 focus=2            <- re-anchor, too late
+     * Four separate-looking failures (no [SEL] line, wrong extent, band
+     * missing, clipboard mismatch) were that one mechanism.
+     *
+     * The correct shape is already in this same function, ~50 lines down,
+     * for in-field selections (2026-09-14: "used to unconditionally
+     * collapse the selection every single time a reparse landed, whether
+     * or not the buffer actually changed"). This is the same decision
+     * for the row run: a run points at ROWS, so it survives a rebuild
+     * whose content is unchanged and dies honestly when it isn't.
+     *
+     * FIRST ATTEMPT, SHIPPED-AND-RETRACTED SAME DAY: matched the anchor
+     * and focus rows by element id via kh_nav_elem(), restored at this
+     * function's end. It restored 0 of 23 rebuilds: nav does not exist
+     * mid-reparse (g_n_nav is 0 until assign_nav_and_layout() runs, so
+     * every lookup returned NULL - see the GUARD DIAGNOSTIC receipts in
+     * /tmp/nb_selrun_test/kh_focus_debug.log). Identity is decided on
+     * CONTENT, here, where the rows still exist - never on nav inside a
+     * reparse. */
+    int saved_run_anchor = g_sel_run_anchor;
+    unsigned long long saved_tree_digest = 0;
+    if (saved_run_anchor > 0)
+        saved_tree_digest = kh_tree_digest(g_window);
     /* INLINE SPANS step 5: the segment cursor names a (nav, run-index,
      * element-id) triple in the tree being discarded - after this
      * rebuild those numbers may address a different row, or nothing.
@@ -3561,6 +3631,30 @@ static int reparse_chtpm_if_changed(void) {
      * The mirror is correct too: redraw() writes [FIND] later in the same
      * tick, from the tree this just searched. */
     if (g_find_query[0]) kh_find_commit();
+    /* ROW-RUN SELECTION, 2026-10-19 - the other half of the guard
+     * above. Restore the run only if the tree just installed says
+     * exactly what the discarded one said (kh_tree_digest covers tag,
+     * id, label, segments, cells and full child structure). A rebuild
+     * whose content is unchanged keeps the run alive; a rebuild that
+     * changed anything leaves the anchor at 0, which is honest: the
+     * rows it named may be gone, or may have moved.
+     *
+     * Why the anchor's nav index is safe to reuse after an identical
+     * digest: nav indices are assigned from tree order by
+     * assign_nav_and_layout(), which the reparse sites run immediately
+     * after this function returns - an unchanged tree re-derives the
+     * same indices, so saved_run_anchor still names the same row. */
+    if (saved_run_anchor > 0) {
+        unsigned long long now_digest = kh_tree_digest(g_window);
+        if (now_digest == saved_tree_digest) {
+            g_sel_run_anchor = saved_run_anchor;
+            kh_focus_debug_log("ANCHOR kept anchor=%d (content identical, digest %016llx)",
+                               saved_run_anchor, now_digest);
+        } else {
+            kh_focus_debug_log("ANCHOR content changed (digest %016llx -> %016llx), anchor stays dead",
+                               saved_tree_digest, now_digest);
+        }
+    }
     return 1;
 }
 
