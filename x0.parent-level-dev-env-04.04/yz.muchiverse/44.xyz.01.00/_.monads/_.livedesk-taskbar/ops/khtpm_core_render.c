@@ -3352,6 +3352,9 @@ static int reparse_chtpm_if_changed(void) {
     /* ROW-RUN SELECTION (2026-10-12): a run of nav indices points at
      * rows in the tree being discarded, exactly like the anchor above -
      * same reason, same place. */
+    /* (no focus readout here: this site is above g_focus_nav's
+     * declaration, and the point of the receipt is WHICH site fired.) */
+    kh_focus_debug_log("ANCHOR cleared by content rebuild");
     g_sel_run_anchor = 0;
     /* INLINE SPANS step 12: dot-armed entry is one-shot intent, not
      * state that survives a rebuild. */
@@ -8612,7 +8615,16 @@ static int kh_elem_arrow_stop(Elem *e) {
  * engineering around. */
 static int kh_row_run_extend(int dir) {
     if (g_focus_nav < 1 || g_focus_nav > g_n_nav) return 0;
-    if (g_sel_run_anchor <= 0) g_sel_run_anchor = g_focus_nav;
+    if (g_sel_run_anchor <= 0) {
+        g_sel_run_anchor = g_focus_nav;
+        /* ANCHOR receipt (2026-10-19): nb_selrun goes red with "no [SEL]
+         * line" while focus provably advances, i.e. the run's anchor is
+         * being lost rather than never set. Three separate sites zero
+         * it (this file: kh_nav_step, handle_key, and the rebuild at
+         * content_changed) and none of them said which one fired. */
+        kh_focus_debug_log("ANCHOR set anchor=%d focus=%d",
+                           g_sel_run_anchor, g_focus_nav);
+    }
     dock_nav_step(dir);
     return 1;
 }
@@ -8624,7 +8636,12 @@ static void kh_nav_step(int dir) {
      * the run - the same collapse any text field does when you click or
      * arrow away from a selection. A run that survived would keep
      * painting a band the user can no longer see how they made. */
-    if (!g_key_shift) g_sel_run_anchor = 0;
+    if (!g_key_shift) {
+        if (g_sel_run_anchor > 0)
+            kh_focus_debug_log("ANCHOR cleared by nav_step focus=%d",
+                               g_focus_nav);
+        g_sel_run_anchor = 0;
+    }
     /* REAL FIX 2026-09-27, direct user request ("loop around index
      * mod we wanted to do? it should loop both ways"): navigation now
      * wraps at both boundaries instead of clamping - going below 1
@@ -12739,8 +12756,12 @@ static void handle_key(KeySym ks, char ch) {
      * dock dropdown opening) are the documented exception - they do not
      * renumber rows, so lo..hi still means what it meant. */
     if (!(g_key_shift && (ks == XK_Up || ks == XK_Down)) &&
-        !(ch == 3 || ch == 24))          /* Ctrl+C / Ctrl+X CONSUME the run */
+        !(ch == 3 || ch == 24)) {        /* Ctrl+C / Ctrl+X CONSUME the run */
+        if (g_sel_run_anchor > 0)
+            kh_focus_debug_log("ANCHOR cleared by key ks=%ld ch=%d shift=%d focus=%d",
+                               (long)ks, ch, g_key_shift, g_focus_nav);
         g_sel_run_anchor = 0;
+    }
     /* PAGE ZOOM (2026-10-13): Ctrl+= / Ctrl+- / Ctrl+0. G3.2 had been
      * "absent" because nothing bound the keyboard to the house UI scale -
      * and that scale is broken for ordinary windows (gap plan §8.5), so
