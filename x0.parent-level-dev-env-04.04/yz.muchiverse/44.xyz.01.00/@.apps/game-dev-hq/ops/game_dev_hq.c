@@ -36,7 +36,7 @@ static Staff staff[MAXS];
 static int nstaff;
 static Game games[8];
 static int ngames;
-static long funds, fame, week;
+static long funds, fame, week, hype;
 static int office;
 static char note[240];
 
@@ -83,6 +83,8 @@ static void save_all(void) {
     char p[1200]; FILE *f;
     snprintf(p, sizeof p, "%s/studio.txt", ST);
     f = fopen(p, "w"); if (f) { fprintf(f, "STUDIO | %ld | %ld | %d | %ld\n", funds, fame, office, week); fclose(f); }
+    snprintf(p, sizeof p, "%s/hype.txt", ST);
+    f = fopen(p, "w"); if (f) { fprintf(f, "%ld\n", hype); fclose(f); }
     snprintf(p, sizeof p, "%s/staff.pdl", ST);
     f = fopen(p, "w");
     if (f) {
@@ -111,7 +113,7 @@ static void save_all(void) {
 }
 
 static void load_all(void) {
-    char p[1200], line[400]; FILE *f; nstaff = ngames = 0; funds = 100000; fame = 0; week = 1; office = 1; note[0] = 0;
+    char p[1200], line[400]; FILE *f; nstaff = ngames = 0; funds = 100000; fame = 0; week = 1; hype = 0; office = 1; note[0] = 0;
     snprintf(p, sizeof p, "%s/studio.txt", ST);
     f = fopen(p, "r");
     if (f) {
@@ -149,6 +151,8 @@ static void load_all(void) {
         }
         fclose(f);
     }
+    snprintf(p, sizeof p, "%s/hype.txt", ST);
+    f = fopen(p, "r"); if (f) { if (fscanf(f, "%ld", &hype) != 1) hype = 0; fclose(f); }
     snprintf(p, sizeof p, "%s/note.txt", ST);
     f = fopen(p, "r"); if (f) { if (fgets(note, sizeof note, f)) note[strcspn(note, "\n")] = 0; fclose(f); }
 }
@@ -237,7 +241,9 @@ static void write_ui(void) {
     const char *who = nstaff ? staff[g_active].name : "nobody";
     fprintf(f, "title=game-dev-hq\n");
     fprintf(f, "canvas_raw=%s/scene.raw\n", ST);
-    fprintf(f, "studio_line=funds %ld   fame %ld   office %d   week %ld\n", funds, fame, office, week);
+    fprintf(f, "funds=%ld\nfame=%ld\nweek=%ld\nhype=%ld\noffice=%d\n", funds, fame, week, hype, office);
+    fprintf(f, "cash_label=Cash %ld\nfame_label=Fame %ld\n", funds, fame);
+    fprintf(f, "studio_line=funds %ld   fame %ld   hype %ld   office %d   week %ld\n", funds, fame, hype, office, week);
     fprintf(f, "note=%s\n", note[0] ? note : " ");
     Game *g = open_game();
     if (g) fprintf(f, "game_line=%s %s/%s  %s  fun %d creativity %d polish %d graphics %d sound %d  [%s]\n",
@@ -369,14 +375,24 @@ static void do_advance(void) {
     event_row("advance", g->phase);
 }
 
+static void do_advertise(const char *tier) {
+    long cost = 15000, add = 15;
+    if (!strcmp(tier, "small")) { cost = 5000; add = 5; }
+    else if (!strcmp(tier, "big")) { cost = 40000; add = 40; }
+    else tier = "mid";
+    if (funds < cost) { snprintf(note, sizeof note, "broke"); log_line(note); return; }
+    funds -= cost; hype += add; fame += add / 5;
+    char b[80]; snprintf(b, sizeof b, "advertised %s  hype %ld", tier, hype); log_line(b);
+}
+
 static void do_ship(void) {
     Game *g = open_game();
     if (!g) { snprintf(note, sizeof note, "no game"); return; }
     if (strcmp(g->phase, "review")) { snprintf(note, sizeof note, "not in review"); log_line(note); return; }
     int rank = (g->fun + g->creativity + g->polish + g->graphics + g->sound) / 5;
     if (rank > 100) rank = 100;
-    long sales = (long)rank * 1000 + fame * 10;
-    funds += sales; fame += rank / 10; if (fame < 0) fame = 0;
+    long sales = (long)rank * 1000 + fame * 10 + hype * 100;
+    funds += sales; fame += rank / 10; if (fame < 0) fame = 0; hype = 0;
     g->open = 0;
     char b[120]; snprintf(b, sizeof b, "shipped %s  rank %d  sales %ld", g->title, rank, sales); log_line(b);
     event_row("ship", g->id);
@@ -387,6 +403,7 @@ void gd_export_office(const char *app);
 static void verb(int argc, char **argv) {
     const char *v = argc > 0 ? argv[0] : "status";
     if (!strcmp(v, "hire") && argc >= 2) do_hire(argv[1], argc >= 3 ? argv[2] : "");
+    else if (!strcmp(v, "advertise") && argc >= 2) do_advertise(argv[1]);
     else if (!strcmp(v, "train") && argc >= 2) do_train(argv[1]);
     else if (!strcmp(v, "rest") && argc >= 2) do_rest(argv[1]);
     else if (!strcmp(v, "start") && argc >= 2) do_start(argv[1]);
