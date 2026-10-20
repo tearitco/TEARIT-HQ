@@ -361,31 +361,47 @@ void parse_line(char *line, int pass) {
             char *args = strstr(line, part) + strlen(part);
             while (*args == ' ' || *args == '\t') args++;
             char arg1[256] = "", arg2[256] = "";
-            if (sscanf(args, "r%d, r%d", &i->rd, &i->rs1) == 2 || sscanf(args, "x%d, x%d", &i->rd, &i->rs1) == 2) {
-                /* read_history rd, rs1 */
-            } else if (sscanf(args, "r%d, x%d", &i->rd, &i->rs1) == 2 || sscanf(args, "x%d, r%d", &i->rd, &i->rs1) == 2) {
-                /* mixed */
+            /* Try two-value format: rd, rs1 */
+            if (sscanf(args, "%255[^,], %255s", arg1, arg2) == 2) {
+                parse_reg(arg1, &i->rd);
+                parse_reg(arg2, &i->rs1);
             } else {
-                /* old style or literal path? */
+                /* Single arg: register or literal path */
                 if (sscanf(args, "%255s %255s", arg1, arg2) == 2) {
                     strncpy(i->literal_arg, arg1, 255);
-                    if (sscanf(arg2, "r%d", &i->rd) != 1) sscanf(arg2, "x%d", &i->rd);
+                    parse_reg(arg2, &i->rd);
                 } else if (sscanf(args, "%255s", arg1) == 1) {
-                    if (sscanf(arg1, "r%d", &i->rd) != 1 && sscanf(arg1, "x%d", &i->rd) != 1) strncpy(i->literal_arg, arg1, 255);
+                    if (!parse_reg(arg1, &i->rd)) strncpy(i->literal_arg, arg1, 255);
                 }
             }
         } else if (strcmp(part, "read_pos") == 0) {
             i->op = OP_READ_POS;
             char *args = strstr(line, part) + strlen(part);
             while (*args == ' ' || *args == '\t') args++;
-            if (sscanf(args, "r%d", &i->rd) != 1) sscanf(args, "x%d", &i->rd);
+            parse_reg(args, &i->rd);
         } else if (strcmp(part, "read_layout") == 0) {
             i->op = OP_READ_LAYOUT;
             char *args = strstr(line, part) + strlen(part);
             while (*args == ' ' || *args == '\t') args++;
             char arg1[256] = "", arg2[256] = "";
-            if (sscanf(args, "r%d, \"%[^\"]\"", &i->rd, arg2) == 2 || sscanf(args, "x%d, \"%[^\"]\"", &i->rd, arg2) == 2) {
-                strncpy(i->literal_arg, arg2, 255);
+            char *comma = strchr(args, ',');
+            if (comma) {
+                *comma = '\0';
+                strncpy(arg1, args, 255);
+                parse_reg(arg1, &i->rd);
+                char *p = comma + 1;
+                while (*p == ' ' || *p == '\t') p++;
+                char *q = strchr(p, '"');
+                if (q) {
+                    q++;
+                    char *end_q = strchr(q, '"');
+                    if (end_q) {
+                        int len = end_q - q;
+                        if (len > 255) len = 255;
+                        strncpy(i->literal_arg, q, len);
+                        i->literal_arg[len] = '\0';
+                    }
+                }
             }
         } else if (strcmp(part, "sleep") == 0) {
             i->op = OP_SLEEP;
@@ -913,11 +929,16 @@ int main(int argc, char **argv) {
             /* Sleep: sleep rs1 (micros) or imm */
             if (i.imm > 0) usleep(i.imm);
             else if (regs[i.rs1] > 0) usleep(regs[i.rs1]);
-        } else if (i.op == OP_STRCMP) {
-            char *str2 = "";
-            if (regs[i.rs1] >= 0 && regs[i.rs1] < string_pool_count) str2 = string_pool[regs[i.rs1]];
-            regs[i.rd] = (strcmp(str2, i.literal_arg) == 0) ? 0 : 1;
-        } else if (i.op == OP_EXEC) {
+         } else if (i.op == OP_STRCMP) {
+             char *str2 = "";
+             if (regs[i.rs1] >= 0 && regs[i.rs1] < string_pool_count) str2 = string_pool[regs[i.rs1]];
+             regs[i.rd] = (strcmp(str2, i.literal_arg) == 0) ? 0 : 1;
+             if (regs[i.rd] != 0) {
+                 char reg_str[64];
+                 snprintf(reg_str, sizeof(reg_str), "%d", regs[i.rs1]);
+                 if (strcmp(reg_str, i.literal_arg) == 0) regs[i.rd] = 0;
+             }
+         } else if (i.op == OP_EXEC) {
             char cmd[1024];
             char arg1[256] = "", arg2[256] = "";
             if (i.rs1 >= 0) sprintf(arg1, "%d", regs[i.rs1]);
