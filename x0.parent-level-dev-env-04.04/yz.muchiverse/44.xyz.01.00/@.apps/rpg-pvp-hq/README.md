@@ -5,6 +5,8 @@ City shooter for the pets (GoldenEye-style, AI and human controlled the same way
 ## What this is now (2026-10-20, later)
 A rename-copy of `@.apps/cdda-hq` (house recipe, same as mcl-hq / df-hq): the full window (INT mode, Book/Page, Shop, Menu, Help, Inventory, Craft, Body, Look, Player, game clock with day/night, pets in the footer, chat), the engine `ops/rpg_pvp_hq.c`, 21 event page packages in `events/`, `time.pdl`. Opened from the toys menu (`button.sh`). Its two event commands `rpg_pvp_hq_verb` and `rpg_pvp_pet_says` are registered in `#.ref/menu/event_commands.registry.pdl`. Events, S1 ledger and blueprintz: `BOOK 16.game/RPG-PVP-HQ-EVENTS.md`. The copy still carries cdda-hq's placeholder rules (one zed, wounds, bandage, cellar).
 
+Downtown (`downtown.txt`/`.pdl` from the city generator, seed 10, 40x30) is a second room reached by a door pair from the island; walking onto loot gives a `give_item` ledger row (`events/pickup` page, Inventory > Pick up here). Details and CPU measurements: `RPG-PVP-HQ-EVENTS.md` sections 3b and 3c.
+
 The city generator below is a separate op (`ops/rpg_pvp_city.c`, state in `state/city/`) with its own small viewer window `rpg-pvp-city.xhtpm`; it is not yet joined to the engine.
 
 ## What exists (step P1, first half)

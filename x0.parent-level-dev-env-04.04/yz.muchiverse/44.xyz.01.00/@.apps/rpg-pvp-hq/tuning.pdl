@@ -30,4 +30,4 @@ WEAPON | shotgun | 14 | 0.50 | 48 | 5 | 0.15 | 16 | 0
 # ACTOR | hp_start | hp_player1       007: 100 for everyone, 150 for player 1 (kept only as a number to compare)
 ACTOR | 100 | 150
 # CITY | block | min_building | loot_min | loot_max | fill_percent     block = cells from one road line to the next (road is 2 wide)
-CITY | 16 | 5 | 1 | 3 | 85
+CITY | 12 | 5 | 1 | 3 | 85

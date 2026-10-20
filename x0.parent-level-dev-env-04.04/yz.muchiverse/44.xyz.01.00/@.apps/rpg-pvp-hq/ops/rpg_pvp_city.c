@@ -131,9 +131,11 @@ static void gen(unsigned seed, int w, int h) {
     for (int y = 0; y < g_h; y++) { memset(g_map[y], '.', g_w); g_map[y][g_w] = 0; }
     int B = t_block;
     for (int y = 0; y < g_h; y++) for (int x = 0; x < g_w; x++) if (x % B < 2 || y % B < 2) g_map[y][x] = '=';
-    for (int by = 0; by * B + B <= g_h; by++)
-        for (int bx = 0; bx * B + B <= g_w; bx++) {
+    for (int by = 0; by * B + 4 + t_minb <= g_h; by++)                           /* the last row/column of blocks may be smaller than a full block (the map edge ends it) */
+        for (int bx = 0; bx * B + 4 + t_minb <= g_w; bx++) {
             int x0 = bx * B + 2, y0 = by * B + 2, bw = B - 2, bh = B - 2;       /* the block interior between two road lines */
+            if (x0 + bw > g_w) bw = g_w - x0;
+            if (y0 + bh > g_h) bh = g_h - y0;
             if (rng_i(100) >= t_fill) continue;
             int maxw = bw - 2, maxh = bh - 2;                                   /* one cell of ground left on every side so the door opens on walkable ground */
             if (maxw < t_minb || maxh < t_minb) continue;

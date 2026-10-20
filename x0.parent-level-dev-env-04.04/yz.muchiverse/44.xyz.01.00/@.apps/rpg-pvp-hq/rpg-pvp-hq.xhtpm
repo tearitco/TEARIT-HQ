@@ -52,6 +52,7 @@
       <item id="hp-prev" class="rp-menu-row dropdown-child" target_id="tb-help" label="Prev page" action="'${HOUSE}/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x' helppanel prev"/>
       <item id="hp-close" class="rp-menu-row dropdown-child" target_id="tb-help" label="Close help" action="'${HOUSE}/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x' helppanel close"/>
       <item id="hp-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-help" label="- cancel -" action="void"/>
+      <item id="iv-pick" class="rp-menu-row dropdown-child" target_id="tb-inv" label="Pick up here" action="'${HOUSE}/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x' pickup"/>
       <item id="iv-scav" class="rp-menu-row dropdown-child" target_id="tb-inv" label="Scavenge rag" action="'${HOUSE}/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x' scavenge"/>
       <repeat count="${n_inv}" bind="inv">
         <item id="iv${inv.#}" class="rp-menu-row dropdown-child" target_id="tb-inv" label="${inv.label}" action="'${HOUSE}/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x' bag"/>

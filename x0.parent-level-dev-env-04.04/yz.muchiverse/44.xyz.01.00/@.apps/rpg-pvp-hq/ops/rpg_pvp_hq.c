@@ -83,7 +83,7 @@ static int g_gr;
 #define NP 6
 
 typedef struct { char key[32], label[40], sheet[24], effect[12]; int price, c, r, w, h, wall; } Item;
-typedef struct { char id[16], name[32], biome[16]; int fc, fr, outdoor, over, cols, rows, tpx, trig; } Room;
+typedef struct { char id[16], name[32], biome[40]; int fc, fr, outdoor, over, cols, rows, tpx, trig, cmap; } Room;      /* cmap = 1: an overmap room drawn from a city glyph map (biome city:<file>, see city_load) */
 typedef struct { int room, c, r, w, h, x, y; char sheet[24]; } Scen;
 typedef struct { int room, tx, ty, dest, ax, ay, autow; } Door;      /* the door object is the cell (tx,ty); its trigger is the cell below it (tx,ty+1); ty = WALL_ROW in a normal room */
 typedef struct { int id, item, x, y, room; } Placed;
@@ -267,6 +267,59 @@ static void load_door_events(void) {
         closedir(dp); }
     if (ncache > 0) { ndoor = 0; for (int i = 0; i < ncache; i++) doors[ndoor++] = cache[i]; }
 }
+/* ---------- city rooms (rpg-pvp-hq) ----------
+ * An overmap room whose biome is "city:<file>" is drawn from a glyph map made by ops/rpg_pvp_city (gen <seed> <w> <h>, then copy city.txt here under that name):
+ *   . ground  = road  # wall  W window  D door  , floor.   # and W block walking, everything else is open ground, so a pet or the player walks in through a D.
+ * <file> sits in the app folder with <stem>.pdl next to it holding the LOOT rows (guns and ammo lying in the buildings). The file is untrusted: a wrong size or glyph
+ * makes the room fall back to the plain island (nothing is half-loaded), and the name may not contain a slash or "..". Loot taken is read back from the S1 ledger
+ * (a give_item EVENT at that room:x,y), so Save, Load and New game bring the loot back with the ledger, no second file. */
+static char cmaps[8][MAXR][MAXC + 1]; static int cmap_gen;      /* cmap_gen counts changes of any city map: the painted background is cached per generation */
+typedef struct { int room, x, y, qty; char item[16]; } Loot;
+static Loot loots[96]; static int nloot; static char loot_gone[96];
+static void city_load(void) {
+    static char prev[8][MAXR][MAXC + 1]; static int prev_n = -1; nloot = 0;
+    for (int ri = 0; ri < nroom; ri++) {
+        Room *r = &rooms[ri]; r->cmap = 0; if (!r->over || strncmp(r->biome, "city:", 5)) continue;
+        const char *fn = r->biome + 5; char p[PATH_MAX], line[400], *f[12];
+        if (!fn[0] || strchr(fn, '/') || strstr(fn, "..")) { snprintf(r->biome, sizeof r->biome, "worldmap"); continue; }
+        snprintf(p, sizeof p, "%s/%s", APP, fn); FILE *fp = fopen(p, "r"); int ok = fp != NULL;
+        for (int y = 0; ok && y < r->rows; y++) {
+            if (!fgets(line, sizeof line, fp)) { ok = 0; break; }
+            line[strcspn(line, "\r\n")] = 0; if ((int)strlen(line) != r->cols) { ok = 0; break; }
+            for (int x = 0; x < r->cols; x++) if (!strchr(".=#WD,", line[x])) ok = 0;
+            if (ok) memcpy(cmaps[ri][y], line, (size_t)r->cols + 1);
+        }
+        if (fp) fclose(fp);
+        if (!ok) { snprintf(r->biome, sizeof r->biome, "worldmap"); continue; }
+        r->cmap = 1;
+        char *dot = strrchr(p, '.'); if (dot && strlen(dot) == 4) strcpy(dot, ".pdl");
+        if ((fp = fopen(p, "r"))) { while (fgets(line, sizeof line, fp) && nloot < 96) { int n = split_bar(line, f, 12);
+            if (n >= 6 && !strcmp(f[0], "LOOT")) { int x = atoi(f[2]), y = atoi(f[3]); if (x < 0 || y < 0 || x >= r->cols || y >= r->rows || cmaps[ri][y][x] != ',') continue;
+                Loot *L = &loots[nloot++]; L->room = ri; L->x = x; L->y = y; L->qty = atoi(f[5]); snprintf(L->item, sizeof L->item, "%s", f[4]); } } fclose(fp); }
+    }
+    if (prev_n != nroom || memcmp(prev, cmaps, sizeof cmaps)) { memcpy(prev, cmaps, sizeof cmaps); prev_n = nroom; cmap_gen++; }
+}
+/* which loot is gone: a give_item EVENT row whose target is the item and whose "at" is room:x,y. Read incrementally (the ledger only grows; a shorter file = start over) */
+static void loot_scan(void) {
+    static long off = 0; char ep[PATH_MAX]; struct stat st; spath(ep, "events.txt"); if (stat(ep, &st)) { off = 0; memset(loot_gone, 0, sizeof loot_gone); return; }
+    if ((long)st.st_size < off) { off = 0; memset(loot_gone, 0, sizeof loot_gone); } if ((long)st.st_size == off) return;
+    FILE *fp = fopen(ep, "r"); if (!fp) return; fseek(fp, off, SEEK_SET); char line[400], *f[8];
+    while (fgets(line, sizeof line, fp)) { size_t l = strlen(line); if (!l || line[l - 1] != '\n') break; off += (long)l;      /* a half-written last row is read again next time */
+        if (strncmp(line, "EVENT|", 6)) continue; int n = split_bar(line, f, 8); if (n < 6 || strcmp(f[3], "give_item")) continue;
+        for (int i = 0; i < nloot; i++) { char at[48]; snprintf(at, sizeof at, "%s:%d,%d", rooms[loots[i].room].id, loots[i].x, loots[i].y); if (!strcmp(f[5], at) && !strcmp(f[4], loots[i].item)) loot_gone[i] = 1; } }
+    fclose(fp);
+}
+/* the mover (who) stands on loot: take it through the S1 ledger (give_item), the same line a pet or a menu row would append. 1 = picked up. msg (optional) says what happened */
+static int try_pickup(const char *who, int room, int x, int y, char *msg, size_t cap) {
+    loot_scan();
+    for (int i = 0; i < nloot; i++) if (loots[i].room == room && loots[i].x == x && loots[i].y == y && !loot_gone[i]) {
+        char ep[PATH_MAX], at[48], er[60] = ""; GeStats gs; long now = (long)time(NULL); spath(ep, "events.txt"); snprintf(at, sizeof at, "%s:%d,%d", rooms[room].id, x, y);
+        if (!ge_append(ep, now, who, "give_item", loots[i].item, at, er, sizeof er)) { if (msg) snprintf(msg, cap, "cannot pick up %s: %s", loots[i].item, er); return 0; }
+        ge_scan(ep, now, 1, &gs); loot_gone[i] = 1;
+        if (msg) snprintf(msg, cap, "picked up %s%s", loots[i].item, !strcmp(loots[i].item, "ammo") ? "" : " (ammo rounds come with reload, not built yet)");
+        return 1; }
+    return 0;
+}
 static void load_data(void) {
     char p[PATH_MAX], line[400]; char *f[12]; FILE *fp;
     snprintf(p, sizeof p, "%s/catalog.pdl", APP); ncat = 0;
@@ -275,7 +328,8 @@ static void load_data(void) {
     snprintf(p, sizeof p, "%s/rooms.pdl", APP); nroom = ndoor = 0;
     if ((fp = fopen(p, "r"))) {
         while (fgets(line, sizeof line, fp)) { int n = split_bar(line, f, 12); if (n >= 5 && !strcmp(f[0], "ROOM") && nroom < 8) { Room *r = &rooms[nroom++]; memset(r, 0, sizeof *r); snprintf(r->id, 16, "%s", f[1]); snprintf(r->name, 32, "%s", f[2]); r->fc = atoi(f[3]); r->fr = atoi(f[4]); r->outdoor = n >= 6 && (!strcmp(f[5], "outdoor") || !strcmp(f[5], "over")); r->cols = 13; r->rows = 8; r->tpx = 48; r->trig = 2;
-            if (n >= 9 && !strcmp(f[5], "over")) { r->over = 1; r->cols = atoi(f[6]); r->rows = atoi(f[7]); r->tpx = atoi(f[8]); r->trig = 0; snprintf(r->biome, 16, "%s", n >= 10 ? f[9] : "worldmap"); if (r->cols < 4 || r->cols > MAXC || r->rows < 4 || r->rows > MAXR || r->tpx < 8 || r->tpx > 48) { r->cols = 20; r->rows = 13; r->tpx = 32; } } } }
+            if (n >= 9 && !strcmp(f[5], "over")) { r->over = 1; r->cols = atoi(f[6]); r->rows = atoi(f[7]); r->tpx = atoi(f[8]); r->trig = 0; snprintf(r->biome, sizeof r->biome, "%s", n >= 10 ? f[9] : "worldmap"); if (r->cols < 4 || r->cols > MAXC || r->rows < 4 || r->rows > MAXR || r->tpx < 8 || r->tpx > 48) { r->cols = 20; r->rows = 13; r->tpx = 32; } } } }
+        city_load();
         rewind(fp);
         while (fgets(line, sizeof line, fp)) { int n = split_bar(line, f, 12); if (n >= 7 && !strcmp(f[0], "DOOR") && ndoor < 24) { int a = room_idx(f[1]), b = room_idx(f[3]); if (a < 0 || b < 0) continue; Door *d = &doors[ndoor++]; d->room = a; d->tx = atoi(f[2]); d->ty = n >= 8 ? atoi(f[7]) : WALL_ROW; d->dest = b; d->ax = atoi(f[4]); d->ay = atoi(f[5]); d->autow = atoi(f[6]); } }
         rewind(fp); nscen = 0;
@@ -347,17 +401,17 @@ static int other_at(int room, int x, int y) {
 
 /* ---------- placement rules ---------- */
 static int over_land(const Room *rm, int x, int y);
-static int floor_blocked(int room, int x, int y, int skip_id) { if (rooms[room].over && !over_land(&rooms[room], x, y)) return 9999; for (int i = 0; i < nscen; i++) if (scen[i].room == room && x >= scen[i].x && x < scen[i].x + scen[i].w && y >= scen[i].y && y < scen[i].y + scen[i].h) return 9999; for (int i = 0; i < npl; i++) { Placed *q = &pl[i]; if (q->room != room || q->id == skip_id || cat[q->item].wall) continue; if (x >= q->x && x < q->x + cat[q->item].w && y >= q->y && y < q->y + cat[q->item].h) return q->id; } return 0; }
+static int floor_blocked(int room, int x, int y, int skip_id) { if (rooms[room].over && !over_land(&rooms[room], x, y)) return 9999; if (rooms[room].cmap && strchr("#W", cmaps[room][y][x])) return 9999; for (int i = 0; i < nscen; i++) if (scen[i].room == room && x >= scen[i].x && x < scen[i].x + scen[i].w && y >= scen[i].y && y < scen[i].y + scen[i].h) return 9999; for (int i = 0; i < npl; i++) { Placed *q = &pl[i]; if (q->room != room || q->id == skip_id || cat[q->item].wall) continue; if (x >= q->x && x < q->x + cat[q->item].w && y >= q->y && y < q->y + cat[q->item].h) return q->id; } return 0; }
 static int door_here(int room, int x, int y) { for (int i = 0; i < ndoor; i++) if (doors[i].room == room && doors[i].tx == x && y == doors[i].ty + 1) return i; return -1; }
 /* overmap land: an island on a square ocean. Cells inside the rounded rectangle (2..cols-3, 1..rows-2, corners cut) are land, the outermost land ring is beach. Everything else is ocean (blocked). */
-static int over_land(const Room *rm, int x, int y) { if (x < 2 || x > rm->cols - 3 || y < 1 || y > rm->rows - 2) return 0; if ((x <= 3 || x >= rm->cols - 4) && (y <= 2 || y >= rm->rows - 3)) return 0; return 1; }
-/* ---------- crafting (2026-10-17, S1 slice; rules by RULES-rpg-pvp-hq.md) ---------- recipes.pdl: RECIPE | id | output | count | tool | skill | minutes | inputs   (inputs = item:count,item:count, no spaces).
+static int over_land(const Room *rm, int x, int y) { if (rm->cmap) return x >= 0 && y >= 0 && x < rm->cols && y < rm->rows; if (x < 2 || x > rm->cols - 3 || y < 1 || y > rm->rows - 2) return 0; if ((x <= 3 || x >= rm->cols - 4) && (y <= 2 || y >= rm->rows - 3)) return 0; return 1; }
+/* ---------- crafting (2026-10-17, S1 slice; rules by RULES-cdda-hq.md) ---------- recipes.pdl: RECIPE | id | output | count | tool | skill | minutes | inputs   (inputs = item:count,item:count, no spaces).
  * craft is an EVENT in state/events.txt; the bags are a replay of that ledger (cd_reset() reloads recipes.pdl at the top of every ge_scan). Only tool "none" is supported (any other tool: missing), skill is read and not
  * checked yet, minutes are charged to the game clock by the craft verb (not by the replay). An empty or absent recipes.pdl means every craft is "missing". */
 #define MAXREC 24
 typedef struct { char id[16], out[16], in[8][16]; int cnt, nin, inn[8], minutes, tool; } Recipe;
 static Recipe recs[MAXREC]; static int nrec, nrec_bad;
-/* wounds (RULES-rpg-pvp-hq.md, C1 slice 2): six parts, each starts at the victim's mhp / 6 (integer); one strike takes 1 from one part. The part is a pure function of the ledger prefix (a hash of the row plus the number of
+/* wounds (RULES-cdda-hq.md, C1 slice 2): six parts, each starts at the victim's mhp / 6 (integer); one strike takes 1 from one part. The part is a pure function of the ledger prefix (a hash of the row plus the number of
  * strikes before it), so a replay gives the same wounds. state/wounds.pdl is the readable copy, rewritten by the strike verbs. A leg at 0 only makes walking "slow" (one cell still). Fighting beyond this is later. */
 typedef struct { char who[16]; int part, left, max; } Wnd;
 static Wnd wd[64]; static int nwd, nstrike;
@@ -481,7 +535,26 @@ static void draw_auto(const char *sh, int bx, int by, int n, int e, int s, int w
 }
 /* the overmap biome "worldmap": the whole map is grass (World_A2 kind 0), the ocean is the World_A1 sea autotile (kind 0) whose edge shapes draw the shore wherever it meets land; the island is whatever over_land() says. */
 static int over_sea(const Room *rm, int x, int y) { if (x < 0 || y < 0 || x >= rm->cols || y >= rm->rows) return 1; return !over_land(rm, x, y); }      /* outside the map counts as sea (MV treats the border as connected) */
+static const char *loot_png(const char *item) {      /* placeholders: the cdda tileset has no 9 mm pistol under this name, so a colt SMG stands in for it */
+    if (!strcmp(item, "pistol")) return "pngs_normal_32x32/items/aunt_su_guns/colt_ro635.png";
+    if (!strcmp(item, "auto")) return "pngs_normal_32x32/items/aunt_su_guns/ak47.png";
+    if (!strcmp(item, "shotgun")) return "pngs_normal_32x32/items/aunt_su_guns/shotgun_s.png";
+    return "pngs_normal_32x32/items/ammunition/.308win/308_b.png";
+}
+static void draw_city(const Room *rm) {
+    static unsigned char bg[FW * FH * 4]; static int bg_room = -1, bg_gen = -1; int ri = (int)(rm - rooms);
+    if (bg_room == ri && bg_gen == cmap_gen) memcpy(fr, bg, sizeof bg);      /* the ground, walls and doors only change when the map file does: paint them once, not on every repaint */
+    else {
+        for (int y = 0; y < rm->rows; y++) for (int x = 0; x < rm->cols; x++) { char g = cmaps[ri][y][x]; const char *t;
+            switch (g) { case '=': t = "pngs_normal_32x32/terrain/t_pavement/t_pavement_unconnected.png"; break; case '#': t = "pngs_normal_32x32/terrain/t_wall/t_wall_unconnected.png"; break;
+                case 'W': t = "pngs_normal_32x32/terrain/t_window_and_variants/t_window_bars_domestic.png"; break; case 'D': t = "pngs_normal_32x32/terrain/t_door/t_door_c.png"; break;
+                case ',': t = "pngs_normal_32x32/terrain/t_floor/t_floor_center.png"; break; default: t = "pngs_normal_32x32/terrain/t_grass/t_grass_center.png"; }
+            cell_png(t, x, y, 1, 1); }
+        memcpy(bg, fr, sizeof bg); bg_room = ri; bg_gen = cmap_gen; }
+    loot_scan(); for (int i = 0; i < nloot; i++) if (loots[i].room == ri && !loot_gone[i]) cell_png(loot_png(loots[i].item), loots[i].x, loots[i].y, 1, 1);
+}
 static void draw_over(const Room *rm) {
+    if (rm->cmap) { draw_city(rm); return; }
     for (int y = 0; y < rm->rows; y++) for (int x = 0; x < rm->cols; x++) {
         int sea = over_sea(rm, x, y);
         int shore = !sea && (over_sea(rm, x, y - 1) || over_sea(rm, x + 1, y) || over_sea(rm, x, y + 1) || over_sea(rm, x - 1, y));
@@ -658,7 +731,10 @@ static void clock_ui(void) {          /* state/clock_ui.txt: its own tiny vars f
         char lp[PATH_MAX], lb[24]; spath(lp, "clock_lastday.txt"); lb[0] = 0; read_file(lp, lb, sizeof lb); long long was = lb[0] ? atoll(lb) : -1;
         if (was >= 0 && dn > was) { char ln[40]; snprintf(ln, sizeof ln, "D%lld 00:00 the day turns", dn); append_line("chat.txt", ln); chat_trim(); }
         if (dn != was) { snprintf(lb, sizeof lb, "%lld", dn); write_if_changed(lp, lb, strlen(lb)); } } }
-    snprintf(b, sizeof b, "time_label=D%lld %02d:%02d\ntime_rate=%s\ntime_running=%s\n", d - d0 + 1, (int)(s / 3600), (int)(s % 3600 / 60), rate, run[0] ? run : "0"); clock_ui_write(p, b);
+    /* CPU safety (owner 2026-10-20, "the pvp is a hog"): the label changing is a repaint of the whole window (~65 ms measured), so at the "min" speed (1 game minute per second) a label with minutes repainted once a second for nothing.
+     * The label shows the time rounded down to 10 minutes at "min" and to the hour at "sec"/"cent"; the clock itself, the phase events and the day/night tint still run on exact time. */
+    int mq = !strcmp(rate, "min") ? 10 : (!strcmp(rate, "sec") || !strcmp(rate, "cent")) ? 60 : 1, mm = (int)(s % 3600 / 60); mm -= mm % mq;
+    snprintf(b, sizeof b, "time_label=D%lld %02d:%02d\ntime_rate=%s\ntime_running=%s\n", d - d0 + 1, (int)(s / 3600), mm, rate, run[0] ? run : "0"); clock_ui_write(p, b);
 }
 static void clock_stamp(char *out, size_t cap) {      /* "D3 06:10", the same arithmetic as clock_ui, computed now (the label file is up to 5 s old) */
     out[0] = 0; clock_paths(); if (!clock_ok()) return; long long ms = clock_kv_ll("game_time_epoch_ms"); if (ms < 0) return; char d0b[32], dp[PATH_MAX]; d0b[0] = 0; spath(dp, "clock_day0.txt"); read_file(dp, d0b, sizeof d0b);
@@ -669,7 +745,7 @@ static int lc_amount_ok(const char *s) { int d = 0, l = 0; while (s[d] >= '0' &&
 static void turn_str(char *out, size_t cap) { char p[PATH_MAX], line[300]; char *f[6]; snprintf(p, sizeof p, "%s/time.pdl", APP); snprintf(out, cap, "5m"); FILE *fp = fopen(p, "r"); if (!fp) return; while (fgets(line, sizeof line, fp)) if (split_bar(line, f, 6) >= 3 && !strcmp(f[0], "TURN")) if (lc_amount_ok(f[2])) snprintf(out, cap, "%s", f[2]); fclose(fp); }
 static void clock_install(void) {
     clock_paths(); if (!clock_ok()) return; char d[PATH_MAX]; snprintf(d, sizeof d, "%s/#.desktop", CROOT); mkdir(CROOT, 0755); mkdir(d, 0755); snprintf(d, sizeof d, "%s/#.desktop/clocks", CROOT); mkdir(d, 0755); snprintf(d, sizeof d, "%s/common_events", CROOT); mkdir(d, 0755);
-    if (!fexists(CFILE)) { lc_run(0, "new", "rpg", "user", "rpg-pvp-hq time", NULL); lc_run(0, "rate", "rpg", "sec", NULL); lc_run(0, "cmd", "rpg", "settime", "21600000", "--source", "rpg-install", NULL);
+    if (!fexists(CFILE)) { lc_run(0, "new", "rpg", "user", "rpg-pvp-hq time", NULL); lc_run(0, "rate", "rpg", "min", NULL); lc_run(0, "cmd", "rpg", "settime", "21600000", "--source", "rpg-install", NULL);
         lc_run(0, "cmd", "rpg", "pause", "--source", "rpg-install", NULL); lc_run(0, "step", "5", NULL); char p[PATH_MAX]; spath(p, "clock_day0.txt"); write_if_changed(p, "0\n", 2); }
     char tp[PATH_MAX], tb[8192], sp[PATH_MAX], sb[40]; snprintf(tp, sizeof tp, "%s/time.pdl", APP); int tn = read_file(tp, tb, sizeof tb); unsigned long sig = 5381; for (int i = 0; i < tn; i++) sig = sig * 33 + (unsigned char)tb[i];
     snprintf(sp, sizeof sp, "%s/.schedule_installed", CROOT); read_file(sp, sb, sizeof sb);
@@ -775,7 +851,8 @@ static int do_step(int dx, int dy, char *msg, size_t cap) {
     if (!passable(nx, ny)) { if (msg) snprintf(msg, cap, "bump"); return 0; }
     pet.x = nx; pet.y = ny; pet.steps++; char b[100]; snprintf(b, sizeof b, "STEP|%ld|%s|%s|%d|%d", (long)time(NULL), me < 0 ? "trainer" : party[me].id, rooms[pet.room].id, nx, ny); append_line("events.txt", b);
     int di = door_here(pet.room, nx, ny); if (di >= 0) { teleport(di); if (msg) snprintf(msg, cap, "door: now in the %s", rooms[pet.room].name); } else if (msg) snprintf(msg, cap, "at %d,%d", nx, ny);
-    if (msg && leg_hurt(me < 0 ? "trainer" : party[me].id)) { size_t ml = strlen(msg); snprintf(msg + ml, cap - ml, " (slow: a leg is wounded)"); }      /* RULES-rpg-pvp-hq.md: a leg at 0 = walk answers slow, still one cell */
+    if (di < 0 && rooms[pet.room].cmap) { char pm[120] = ""; if (try_pickup(me < 0 ? "trainer" : party[me].id, pet.room, nx, ny, pm, sizeof pm) && msg) { size_t ml = strlen(msg); snprintf(msg + ml, cap - ml, "; %s", pm); } }      /* walking onto loot takes it */
+    if (msg && leg_hurt(me < 0 ? "trainer" : party[me].id)) { size_t ml = strlen(msg); snprintf(msg + ml, cap - ml, " (slow: a leg is wounded)"); }      /* RULES-cdda-hq.md: a leg at 0 = walk answers slow, still one cell */
     return 1;
 }
 /* breadth-first path over free cells; fills the first move toward (tx,ty) */
@@ -830,7 +907,7 @@ static int ai_step_inner(int i) {
     for (int j = 0; j < nparty; j++) if (j != i && others[j].room == others[i].room && abs(others[j].x - others[i].x) + abs(others[j].y - others[i].y) == 1) { meet(i < j ? i : j, i < j ? j : i); break; }
     return moved;
 }
-/* the one zed (RULES-rpg-pvp-hq.md): a single hostile actor in the Cellar, state/zed.txt (room x y dir; absent = the default spot). After the controlled mover's turn, if it is in the zed's room the zed acts: adjacent = it strikes (an EVENT strike, resolved), else one bfs step toward it.
+/* the one zed (RULES-cdda-hq.md): a single hostile actor in the Cellar, state/zed.txt (room x y dir; absent = the default spot). After the controlled mover's turn, if it is in the zed's room the zed acts: adjacent = it strikes (an EVENT strike, resolved), else one bfs step toward it.
  * No spawn table, no second monster, and it acts only in turn mode (INT on) in this slice. */
 static void zed_load(void) {
     char p[PATH_MAX], b[200], rid[16] = "cellar"; int x = 6, y = 7, d = 0; spath(p, "zed.txt"); if (fexists(p)) { read_file(p, b, sizeof b); char *q = strstr(b, "room="); if (q) sscanf(q + 5, "%15[^\n]", rid); q = strstr(b, "x="); if (q) x = atoi(q + 2); q = strstr(b, "y="); if (q) y = atoi(q + 2); q = strstr(b, "dir="); if (q) d = atoi(q + 4); }
@@ -1079,6 +1156,10 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
         else if (!strcmp(ge_last, "ok")) { Recipe *rc = cd_recipe(tgt); snprintf(nb, sizeof nb, "crafted %s x%d (bag %ld)", rc ? rc->out : tgt, rc ? rc->cnt : 0, rc ? ge_inv_get(who, rc->out) : 0L);
             if (rc && rc->minutes > 0) { char dur[16]; snprintf(dur, sizeof dur, "%dm", rc->minutes); clock_paths(); if (clock_ok() && fexists(CFILE)) { lc_run(0, "cmd", "rpg", "advance", dur, "--source", "rpg-craft", NULL); lc_run(0, "step", "5", NULL); } } }      /* the minutes are charged here, once, never in the replay */
         else if (cd_recipe(tgt) && cd_recipe(tgt)->tool) snprintf(nb, sizeof nb, "cannot craft %s: it needs a tool (not built yet)", tgt); else if (cd_recipe(tgt)) snprintf(nb, sizeof nb, "cannot craft %s: need the inputs in the bag", tgt); else snprintf(nb, sizeof nb, "no recipe named %s (Craft > Help)", tgt);
+        note_set(nb); snprintf(msg, cap, "%s", nb); return; }
+    if (!strcmp(v, "pickup")) {      /* the controlled mover takes the loot under its feet (also what the events/pickup page runs); walking onto loot does the same */
+        int ci = ctl_idx(); const char *who = ci < 0 ? "trainer" : party[ci].id; use_ent(ci); int room = pet.room, px = pet.x, py = pet.y; use_ent(active); char nb[200] = "";
+        if (!try_pickup(who, room, px, py, nb, sizeof nb) && !nb[0]) snprintf(nb, sizeof nb, "nothing to pick up here");
         note_set(nb); snprintf(msg, cap, "%s", nb); return; }
     if (!strcmp(v, "decpct")) { snprintf(msg, cap, "a pet without a target picks a new one with %d%% chance each step (base 45, moved by the walk weight in state/bank)", dec_pick_pct()); return; }
     if (!strcmp(v, "review")) {      /* M3: the daily review of state/decisions.txt -> state/review.txt (review [day-number], default the latest day) */

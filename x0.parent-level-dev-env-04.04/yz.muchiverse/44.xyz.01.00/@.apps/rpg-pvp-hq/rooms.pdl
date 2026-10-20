@@ -16,6 +16,8 @@ ROOM | store  | Store        | 1 | 2
 ROOM | school | School       | 0 | 2
 ROOM | hotel  | Hotel        | 2 | 4
 ROOM | cellar | Cellar       | 0 | 4
+# downtown (rpg-pvp-hq): an overmap room drawn from downtown.txt (glyph map from ops/rpg_pvp_city, loot rows in downtown.pdl); # and W walls block walking, a D is a door you walk through
+ROOM | downtown | Downtown | 0 | 0 | over | 40 | 30 | 14 | city:downtown.txt
 DOOR | city   | 9  | castle | 6 | 3 | 1 | 3
 DOOR | city   | 4  | bank   | 6 | 3 | 1 | 6
 DOOR | city   | 13 | store  | 6 | 3 | 1 | 6
@@ -28,6 +30,9 @@ DOOR | school | 6  | city   | 4  | 10 | 1
 DOOR | hotel  | 6  | city   | 13 | 10 | 1
 DOOR | castle | 2  | cellar | 6  | 3  | 1
 DOOR | cellar | 6  | castle | 2  | 3  | 1
+# the road out of the island city into downtown and back: the trigger is the cell below the door row (tx, ty+1); both ends are open ground
+DOOR | city     | 10 | downtown | 14 | 12 | 1 | 9
+DOOR | downtown | 12 | city     | 10 | 11 | 1 | 11
 SCENERY | city | World_B | 8  | 0  | 2 | 2 | 9  | 2
 SCENERY | city | World_B | 6  | 11 | 2 | 2 | 4  | 5
 SCENERY | city | World_B | 0  | 7  | 2 | 2 | 13 | 5
