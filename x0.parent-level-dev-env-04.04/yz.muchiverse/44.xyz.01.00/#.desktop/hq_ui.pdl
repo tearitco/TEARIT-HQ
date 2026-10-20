@@ -108,3 +108,4 @@ font_family=DejaVu Sans
 # CHTPM-INCREMENTAL-REPARSE-DESIGN.md and 04-bugs/bug_bounty.md for the
 # full writeup. Do not flip this back to 1 without fixing that first.
 incremental_reparse=0
+bar_skin=brix-car

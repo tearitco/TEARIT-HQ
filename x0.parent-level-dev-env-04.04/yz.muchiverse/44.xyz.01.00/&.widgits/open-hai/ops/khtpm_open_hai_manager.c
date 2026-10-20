@@ -352,7 +352,14 @@ typedef struct { const char *name; BackendMode mode; } ModelEntry;
  * session's testing confirmed this directly) - if a model here 404s
  * later, re-check GET https://openrouter.ai/api/v1/models for a
  * current ":free" entry with "tools" in supported_parameters. */
+/* 2026-08-12: "agent-45 relay kept as a documented-but-not-yet-wired
+ * "legacy hook" (see file header v1 scope). The enum value exists;
+ * the model entry below activates it: agent-45 is selectable in the
+ * model cycle. Routes the prompt to ops/+x/opencode_ask.+x (agent-45's
+ * own LLM relay via a headless opencode server on 127.0.0.1:4123),
+ * which prints the agent's response to stdout. */
 static const ModelEntry g_models[] = {
+    { "agent-45 (legacy)", BACKEND_AGENT45_LEGACY },
     { "stable-code:latest", BACKEND_HARNECIENT },
     { "gemma3:1b", BACKEND_HARNECIENT },
     { "gemma3:270m", BACKEND_HARNECIENT },
@@ -690,6 +697,50 @@ static void send_to_ollama(const char *prompt) {
         g_pending = 1;
         g_pending_pid = pid;
         g_pending_backend_mode = BACKEND_OLLAMA_RAW;
+        snprintf(g_pending_model_name, sizeof(g_pending_model_name), "%s", model_name);
+        write_busy_state();
+    }
+}
+
+/* REAL, NEW 2026-10-11 - BACKEND_AGENT45_LEGACY: relay the prompt to
+ * agent-45's own LLM arm via opencode_ask.+x. That op talks to a
+ * headless opencode server (127.0.0.1:4123) and prints the agent's
+ * plain-text response to stdout - same fork+write-to-file pattern as
+ * send_to_ollama(), but no JSON wrapping (opencode_ask returns raw text
+ * like the local Harnecient-hack path). The response is persisted verbatim.
+ * Requires: opencode serve --port 4123 --hostname 127.0.0.1 running. */
+static void send_to_agent45(const char *prompt) {
+    if (g_pending) { persist_msg(0, "[dropped: previous request to agent-45 is still in flight - wait for it, or switch models to cancel it]"); return; }
+
+    char model_name[128]; BackendMode backend_mode;
+    current_model(model_name, sizeof(model_name), &backend_mode);
+
+    char esc[MSG_LEN * 2 + 4096];
+    escape_json_string(prompt, esc, sizeof(esc));
+
+    char payload_path[PATH_BUF];
+    snprintf(payload_path, sizeof(payload_path), "%s/payload-agent45-%d.txt", g_audit_dir, (int)getpid());
+    FILE *pf = fopen(payload_path, "w");
+    if (!pf) return;
+    fprintf(pf, "%s", prompt);
+    fclose(pf);
+
+    snprintf(g_pending_outfile, sizeof(g_pending_outfile), "%s/agent45-response-%d.txt", g_audit_dir, (int)getpid());
+    unlink(g_pending_outfile);
+
+    char ask_bin[PATH_BUF];
+    snprintf(ask_bin, sizeof(ask_bin), "%s/045.muchi-pal-agent🤖️+1++/ops/+x/opencode_ask.+x", g_house_root);
+
+    pid_t pid = fork();
+    if (pid == 0) {
+        int fd = open(g_pending_outfile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        if (fd >= 0) { dup2(fd, 1); close(fd); }
+        execlp(ask_bin, ask_bin, prompt, "http://127.0.0.1:4123", (char *)NULL);
+        _exit(127);
+    } else if (pid > 0) {
+        g_pending = 1;
+        g_pending_pid = pid;
+        g_pending_backend_mode = BACKEND_AGENT45_LEGACY;
         snprintf(g_pending_model_name, sizeof(g_pending_model_name), "%s", model_name);
         write_busy_state();
     }
@@ -1269,6 +1320,17 @@ static void check_pending(void) {
         else persist_msg(0, "[error: no 'content' field in TokenRouter reply - check model name / key / raw response in tr-response-*.json under the audit dir]");
         return;
     }
+    if (g_pending_backend_mode == BACKEND_AGENT45_LEGACY) {
+        /* opencode_ask prints the agent's plain-text response directly to
+         * stdout (no JSON wrapper) - persist verbatim, trimmed of trailing
+         * whitespace. */
+        unlink(g_pending_outfile);
+        size_t end = n;
+        while (end > 0 && isspace((unsigned char)buf[end-1])) buf[--end] = '\0';
+        if (buf[0]) persist_msg(0, buf);
+        else persist_msg(0, "[error: agent-45 returned no response - check opencode_ask output in the audit dir]");
+        return;
+    }
     extract_response_field(buf, resp, sizeof(resp));
     if (resp[0]) persist_msg(0, resp);
     else persist_msg(0, "[error: no 'response' field in Ollama reply - check model name / endpoint]");
@@ -1751,6 +1813,7 @@ static void dispatch_send(const char *prompt) {
         snprintf(msg, sizeof(msg), "[cancelled: switched away from %s while it was still answering]", g_pending_model_name);
         cancel_pending(msg);
     }
+    if (backend_mode == BACKEND_AGENT45_LEGACY) { send_to_agent45(prompt); return; }
     if (backend_mode == BACKEND_OPENROUTER) { send_to_openrouter(prompt, model_name); return; }
     if (backend_mode == BACKEND_TOKENROUTER) { send_to_tokenrouter(prompt, model_name); return; }
     send_to_ollama(prompt);
@@ -1784,6 +1847,14 @@ static void handle_submit(const char *prompt) {
     BackendMode backend_mode;
     current_model(model_name, sizeof(model_name), &backend_mode);
     if (backend_mode == BACKEND_OPENROUTER) {
+        dispatch_send(prompt);
+        return;
+    }
+    /* AGENT45: agent-45 has its own tool pipeline (plan_cells →
+     * execute_tool), so skip the local Harnecient-hack detector and
+     * let the agent decide on its tools - same "un-harnessed" rationale
+     * as the OpenRouter path above. */
+    if (backend_mode == BACKEND_AGENT45_LEGACY) {
         dispatch_send(prompt);
         return;
     }

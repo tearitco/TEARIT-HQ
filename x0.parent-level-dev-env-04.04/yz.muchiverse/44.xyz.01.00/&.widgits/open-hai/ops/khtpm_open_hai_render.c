@@ -539,6 +539,7 @@ static const ModelEntry g_models[] = {
     { "llama3-groq-tool-use:8b", BACKEND_OLLAMA_RAW },
     { "llama2:latest", BACKEND_HARNECIENT },
     { "google/gemma-4-26b-a4b-it:free", BACKEND_OPENROUTER },
+    { "agent-45 (legacy)", BACKEND_AGENT45_LEGACY },
     /* REAL FIX 2026-08-18, mirrored from khtpm_open_hai_manager.c's own
      * g_models[] same-day fix (see that file's own comment for the
      * live curl test that found these) - this file's own header
@@ -1999,7 +2000,10 @@ int main(int argc, char **argv) {
     g_px_bshift = mask_shift(vis->blue_mask);
     load_emoji_tiles();
 
-    (void)g_backend_mode; /* referenced when BACKEND_AGENT45_LEGACY gets implemented, see file header */
+    /* g_backend_mode is set during model cycling (above) and read by
+     * the manager's dispatch_send() — the renderer just tracks it for
+     * UI display (model label), same as every other backend mode. */
+    (void)g_backend_mode;
     mkdir(g_sessions_root, 0755);
     load_model_choice();
     init_ipc_paths();

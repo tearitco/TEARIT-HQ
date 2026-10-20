@@ -601,7 +601,10 @@ static void css_layout_pass(Elem *e, int x, int y, int avail_w, int avail_h) {
     int is_flex = e->style.has_display && e->style.display_flex;
     if (!is_flex) return; /* block: children untouched, caller manages them by hand */
 
-    int is_row = e->style.has_flex_direction ? e->style.flex_row : 0;
+    /* CSS default: flex-direction is row when unset. The worker mirrors this
+     * (nb_css.c/nb_js_worker.c) after the first cut got it backwards. Treat
+     * an explicit column as column; everything else is row. */
+    int is_row = !(e->style.has_flex_direction && !e->style.flex_row);
     int n = e->n_children;
 
     /* flex-wrap:wrap on a row container = a wrapping grid (periodic

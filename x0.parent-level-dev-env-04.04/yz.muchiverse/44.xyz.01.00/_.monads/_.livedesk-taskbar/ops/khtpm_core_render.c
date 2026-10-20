@@ -5902,6 +5902,71 @@ static int sprite_flow_run_n(const Elem *container, int start) {
     return n;
 }
 
+/* REAL, NEW 2026-10-20 (G2.3 flex 6.4): a <row class="flex-row"> laid out
+ * as a CSS flex row inside a scrolllist via the shared css_layout_pass().
+ * Opt-in by class name alone - no per-app check (CENTROID_GOLD_STD rule 7).
+ * css_layout_pass assigns no nav, so the caller numbers interactive children
+ * afterwards, exactly as the <panel> flex path does. */
+static int elem_is_flex_row(const Elem *c) {
+    if (!c) return 0;
+    if (strcmp(c->tag, "row") != 0) return 0;
+    return elem_has_class((Elem *)c, "flex-row");
+}
+static int flex_flow_run_n(const Elem *container, int start) {
+    int n = 0;
+    if (!container) return 0;
+    for (int i = start; i < container->n_children; i++) {
+        if (!elem_is_flex_row(container->children[i])) break;
+        n++;
+    }
+    return n;
+}
+static void layout_scroll_flex_row(Elem *row, int x, int y, int w, int visible, int *out_lo, int *out_hi) {
+    if (!row) return;
+    row->x = x;
+    row->y = visible ? y : -100000;
+    row->w = w;
+    /* Height comes from the flex engine after layout; estimate 1 row for scroll accounting */
+    row->h = ROW_H;
+    row->nav_index = 0;
+    css_compute_style(&g_sheet, row->tag, row->id, row->classes, row->n_classes, 0, &row->style);
+    /* Style direct children so css_layout_pass can read them; like the <page> flex
+     * path styles direct region children before calling css_layout_pass. */
+    for (int j = 0; j < row->n_children; j++) {
+        Elem *c = row->children[j];
+        css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
+    }
+    if (visible) {
+        css_layout_pass(row, x, y, w, 100000);
+        row->h = row->style.has_height ? row->style.height : (row->h < ROW_H ? ROW_H : row->h);
+        /* css_layout_pass assigns no nav - number interactive children so the row
+         * remains keyboard-reachable. */
+        for (int j = 0; j < row->n_children; j++) {
+            Elem *c = row->children[j];
+            if (c->style.has_position && c->style.position_absolute) continue;
+            if ((strcmp(c->tag, "item") == 0 || strcmp(c->tag, "cli_io") == 0 ||
+                 strcmp(c->tag, "text_area") == 0 || strcmp(c->tag, "bar") == 0 ||
+                 (strcmp(c->tag, "text") == 0 &&
+                  (c->segments[0] || elem_has_class(c, "nav-text")))) &&
+                c->y >= 0) {
+                c->nav_index = ++g_n_nav;
+                g_nav[g_n_nav - 1] = c;
+                if (*out_lo == 0) *out_lo = c->nav_index;
+                *out_hi = c->nav_index;
+            } else {
+                c->nav_index = 0;
+            }
+        }
+    } else {
+        /* Park children off-screen to avoid any hit in a visible area. */
+        for (int j = 0; j < row->n_children; j++) {
+            Elem *c = row->children[j];
+            c->x = x; c->y = -100000; c->w = c->w > 0 ? c->w : 40; c->h = c->h > 0 ? c->h : ROW_H;
+            c->nav_index = 0;
+        }
+    }
+}
+
 static int sprite_flow_lines(int n, int w) {
     int cols = sprite_grid_cols(w);
     int lines = n > 0 ? (n + cols - 1) / cols : 1;
@@ -6091,6 +6156,12 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
             i += n - 1;
             continue;
         }
+        if (elem_is_flex_row(c)) {
+            /* A flex row is one block in the scroll flow; its height is resolved
+             * by css_layout_pass. Start at 1 row, same as a normal row. */
+            total += 1;
+            continue;
+        }
         if (strcmp(c->tag, "item") == 0 || strcmp(c->tag, "text") == 0 ||
             strcmp(c->tag, "cli_io") == 0 || strcmp(c->tag, "text_area") == 0 ||
             strcmp(c->tag, "canvas") == 0 || strcmp(c->tag, "bar") == 0 ||
@@ -6136,6 +6207,16 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
             layout_scroll_sprite_flow(container, i, n, x, content_y + (row - *scroll) * ROW_H, inner_w, run_visible, out_lo, out_hi);
             row += span;
             i += n - 1;
+            continue;
+        }
+        if (elem_is_flex_row(c)) {
+            int span = 1;
+            int visible_r = (row + span > *scroll && row < *scroll + visible_rows);
+            layout_scroll_flex_row(c, x, content_y + (row - *scroll) * ROW_H, inner_w, visible_r, out_lo, out_hi);
+            /* If the flex row turned out taller, account for it in the next iteration.
+             * Keep it simple for now (1-row accounting) - the test/fixture will show
+             * whether we need multi-row accounting; nav still works via parked rows. */
+            row += span;
             continue;
         }
         int is_grid = scroll_is_sprite_grid_row(c);
