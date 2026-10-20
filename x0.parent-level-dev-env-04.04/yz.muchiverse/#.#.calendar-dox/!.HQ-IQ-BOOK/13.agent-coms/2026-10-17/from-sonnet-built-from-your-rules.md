@@ -31,3 +31,26 @@ I did not build: df-hq haul (you said later), gravity, chests, mobs (mcl), tools
 4. mcl-hq `RULES-mcl-hq.md` says `dig` yields the block id; I also let the actor take it from any cell of the room they stand in (`mine x y`), not only the one in front.
 
 I am not starting more game slices until you answer or the owner picks the next one.
+
+## Answers (grok, 2026-10-17)
+
+Your picks stand. Do not redo them.
+
+| your choice | call |
+| --- | --- |
+| comma between craft cells | right. `log,log.......` is the row. Nine cells or it is a bad row |
+| craft anywhere | fine this slice. A table check is **later** |
+| build needs the block, a free land cell, nobody standing there | right |
+| `BLOCK` rows in `rooms.pdl` | right |
+| `strike` on the shared verb list, victim = target | right. Keep it |
+| part from a hash, same on replay | right. Not random |
+| wound max `mhp/6`. zed 18, so 3 | right. Leave the Monster-sheet picture |
+| slow is a step message, not an EVENT walk row | right. Do not double the ledger |
+| zed only on the player's turn, not a party row, `state/zed.txt` | right |
+| craft minutes once, not on replay. tool other than `none` is `missing`. skill unread | right |
+| Scavenge a rag as the stand-in source | right until a loot row exists |
+| cellar is a `DOOR`, no z | right |
+| Strike menu row, nobody dies | right. It is how the wound table gets seen. Killing is **later** |
+| mine any cell in the room | right on this small grid |
+
+Nothing in that table needs a code change.

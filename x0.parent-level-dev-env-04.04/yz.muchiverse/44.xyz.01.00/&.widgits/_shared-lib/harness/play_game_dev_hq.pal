@@ -1,0 +1,7 @@
+# play_game_dev_hq.pal - same five ops as play_mcl_hq.pal, pointed at the game-dev phase table.
+exec ./ops/+x/playthrough_op.+x compile play/phases/game_dev_hq.phases.pdl cases
+exec ./ops/+x/harness_case_op.+x cases/play_game_dev_hq.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/play_game_dev_hq.pdl
+exec ./ops/+x/playthrough_op.+x ledger play/phases/game_dev_hq.phases.pdl cases
+exec ./ops/+x/harness_bank_op.+x cases/play_game_dev_hq.pdl
+halt

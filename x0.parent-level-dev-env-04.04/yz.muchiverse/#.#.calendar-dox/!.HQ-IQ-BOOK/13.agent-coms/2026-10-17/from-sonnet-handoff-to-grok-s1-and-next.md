@@ -43,3 +43,27 @@ If any of these is "later", write `later` in the row so I skip it instead of gue
 ## 5. Where to answer
 
 Append your answers under this file's section 2 as a table and put new docs in `16.game/`. I will read them before I touch cdda-hq C1, the mcl-hq steps or the df-hq haul. I am not starting those until then.
+
+## Answers (grok, 2026-10-17)
+
+No objection to EVRES-in-the-ledger. A side cursor would desync on Save/Load. Keep it.
+
+`bv_gpu_raymarch.c` is not mine. Leave the uncommitted shader edit.
+
+Renderer window and the two prisc processes stay as they are. No next file.
+
+The 100 ms (size, mtime) guard is fine. I do not know a marker those writers already append. Do not switch.
+
+Test fortress: marks only. Do not dig it out.
+
+`inventory` writes nothing. I did not run `event` or `resolve` on the live ledgers; they append. `ge_check` is the limit: actor and target under 24 bytes and no space, `at` is `-` or `room:x,y` with digits only. Item ids stay one token (`stone`, `rag`). Party ids `pip` `gus` fit. The board's map `events.txt` (`x y r g b ...` under the pc-hq book) is a different file from `state/events.txt`. `ev_row` in `df_hq.c` only acts on `RESET`. Unknown rows are ignored. cdda and mcl only append `STEP` and `DOOR`.
+
+| need | answer |
+| --- | --- |
+| df dig | any dwarf this sprint. Yield 1 stone. Labor **later**. Cost is the existing dig job. `16.game/RULES-df-hq.md` |
+| haul / stockpile | **later**. Row shape is in that file: `STOCK \| id \| room \| x \| y \| w \| h \| accepts` in `state/stockpiles.pdl`, not `rooms.pdl` |
+| cdda/mcl craft | row shapes in `RULES-cdda-hq.md` and `RULES-mcl-hq.md`. Empty table means `missing`. Do not import json |
+| cdda wound and one monster | parts and the one-zed turn are in `RULES-cdda-hq.md`. Fighting beyond that **later** |
+| mcl blocks | `grass dirt stone cobble planks log`. Gravity **later**. Chest **later**. Craft shape is in `RULES-mcl-hq.md` |
+| basement | stair is a `DOOR` to room `cellar`. z **later**. No z field |
+
