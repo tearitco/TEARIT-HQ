@@ -73,9 +73,10 @@ static Game *open_game(void) {
 }
 
 static void log_line(const char *s) {
+    char keep[400]; snprintf(keep, sizeof keep, "%s", s);
     char p[1200]; snprintf(p, sizeof p, "%s/chat.txt", ST);
-    FILE *f = fopen(p, "a"); if (f) { fprintf(f, "W%ld %s\n", week, s); fclose(f); }
-    snprintf(note, sizeof note, "%s", s);
+    FILE *f = fopen(p, "a"); if (f) { fprintf(f, "W%ld %s\n", week, keep); fclose(f); }
+    snprintf(note, sizeof note, "%s", keep);
 }
 
 static void save_all(void) {
@@ -208,9 +209,32 @@ static void event_row(const char *verb, const char *target) {
     fclose(f);
 }
 
+static int flag_get(const char *name, int def) {
+    char p[1200]; snprintf(p, sizeof p, "%s/flag_%s.txt", ST, name);
+    FILE *f = fopen(p, "r"); if (!f) return def;
+    int v = def; if (fscanf(f, "%d", &v) != 1) v = def; fclose(f); return v;
+}
+static void flag_set(const char *name, int v) {
+    char p[1200]; snprintf(p, sizeof p, "%s/flag_%s.txt", ST, name);
+    FILE *f = fopen(p, "w"); if (f) { fprintf(f, "%d\n", v); fclose(f); }
+}
+static int g_active;
+static void read_active(void) {
+    char p[1200]; snprintf(p, sizeof p, "%s/active.txt", ST);
+    FILE *f = fopen(p, "r"); g_active = 0; if (f) { fscanf(f, "%d", &g_active); fclose(f); }
+    if (g_active < 0 || g_active >= nstaff) g_active = 0;
+}
+static void write_active(void) {
+    char p[1200]; snprintf(p, sizeof p, "%s/active.txt", ST);
+    FILE *f = fopen(p, "w"); if (f) { fprintf(f, "%d\n", g_active); fclose(f); }
+}
+
 static void write_ui(void) {
     char p[1200], tmp[1200]; snprintf(p, sizeof p, "%s/ui.txt", ST); snprintf(tmp, sizeof tmp, "%s/ui.txt.tmp", ST);
     FILE *f = fopen(tmp, "w"); if (!f) return;
+    read_active();
+    int ion = flag_get("int", 0), chat = flag_get("chat", 1), left = flag_get("left", 1), run = flag_get("running", 1);
+    const char *who = nstaff ? staff[g_active].name : "nobody";
     fprintf(f, "title=game-dev-hq\n");
     fprintf(f, "canvas_raw=%s/scene.raw\n", ST);
     fprintf(f, "studio_line=funds %ld   fame %ld   office %d   week %ld\n", funds, fame, office, week);
@@ -219,17 +243,47 @@ static void write_ui(void) {
     if (g) fprintf(f, "game_line=%s %s/%s  %s  fun %d creativity %d polish %d graphics %d sound %d  [%s]\n",
         g->title, g->genre, g->type, g->phase, g->fun, g->creativity, g->polish, g->graphics, g->sound, g->assigned[0] ? g->assigned : "nobody");
     else fprintf(f, "game_line=no game in progress\n");
-    fprintf(f, "n_staff=%d\n", nstaff);
+    fprintf(f, "interact_class=%s\ninteract_label=%s\n", ion ? "interact-active" : "", ion ? who : "off");
+    fprintf(f, "rp_h1=%s/interact_relay.txt\nrp_h2=%s/keyboard/history.txt\n", ST, ST);
+    fprintf(f, "chat_visible=%d\nleft_visible=%d\n", chat, left);
+    fprintf(f, "active_name=%s\nbook_label=%s\npage_label=Office\n", who, who);
+    fprintf(f, "run_label=%s\nrun_cls=%s\n", run ? "GO started" : "STOP stopped", run ? "ph-green" : "ph-red");
+    fprintf(f, "control_label=control: %s\n", who);
+    fprintf(f, "n_staff=%d\nn_party=%d\n", nstaff, nstaff);
     for (int i = 0; i < nstaff; i++) {
         Staff *s = &staff[i];
         fprintf(f, "st_%d_id=%s\nst_%d_line=%s %s  %s  sc %d gr %d pr %d so %d cr %d  energy %d\n",
             i, s->id, i, s->name, s->id, s->job, s->scenario, s->graphics, s->programming, s->sound, s->creativity, s->energy);
+        fprintf(f, "party_%d_id=%s\nparty_%d_label=%s\nparty_%d_cls=%s\n", i, s->id, i, s->name, i, i == g_active ? "ph-green" : "");
     }
     const char *jobs[] = {"writer","designer","programmer","artist","sound","director"};
     const char *names[] = {"Ada","Bea","Cal","Dee","Eve","Fay"};
     for (int i = 0; i < 6; i++) fprintf(f, "hire_%d_job=%s\nhire_%d_name=%s\nhire_%d_line=Hire %s (%s)  $%d\n", i, jobs[i], i, names[i], i, names[i], jobs[i], HIRE_COST);
     fprintf(f, "n_hire=%d\n", 6);
+    char chatp[1200], lines[10][180]; int nln = 0;
+    snprintf(chatp, sizeof chatp, "%s/chat.txt", ST);
+    FILE *cf = fopen(chatp, "r");
+    if (cf) {
+        char b[180];
+        while (fgets(b, sizeof b, cf)) { b[strcspn(b, "\n")] = 0; if (!b[0]) continue; snprintf(lines[nln % 10], 180, "%s", b); nln++; }
+        fclose(cf);
+    }
+    for (int i = 0; i < 10; i++) {
+        int j = nln - 10 + i; const char *cl = j >= 0 ? lines[j % 10] : "";
+        fprintf(f, "chat_%d=%s\nchat_cls_%d=%s\n", i, cl, i, "");
+    }
     fclose(f); rename(tmp, p);
+}
+
+static void staff_chat(void) {
+    if (!flag_get("running", 1) || flag_get("int", 0) || nstaff < 2) return;
+    static int tick;
+    if (++tick % 4) return;
+    int a = tick % nstaff, b = (a + 1) % nstaff;
+    const char *bit[] = {"the fun score is thin", "I can take the polish", "graphics need another pass", "ship when review opens"};
+    char line[160];
+    snprintf(line, sizeof line, "%s: %s, %s", staff[a].name, staff[b].name, bit[tick % 4]);
+    log_line(line);
 }
 
 static int known_job(const char *j) {
@@ -341,7 +395,49 @@ static void verb(int argc, char **argv) {
     else if (!strcmp(v, "ship")) do_ship();
     else if (!strcmp(v, "status")) { if (!note[0]) snprintf(note, sizeof note, "ready"); }
     else if (!strcmp(v, "exportbook")) { if (!note[0]) snprintf(note, sizeof note, "office book"); }
-    else snprintf(note, sizeof note, "verbs: hire train rest start assign advance ship status exportbook");
+    else if (!strcmp(v, "int")) {
+        int on = !flag_get("int", 0); flag_set("int", on); read_active();
+        snprintf(note, sizeof note, on ? "INT on: %s" : "INT off", nstaff ? staff[g_active].name : "nobody");
+        log_line(note);
+    }
+    else if (!strcmp(v, "select") && argc >= 2) {
+        read_active();
+        for (int i = 0; i < nstaff; i++) if (!strcmp(staff[i].id, argv[1]) || !strcmp(staff[i].name, argv[1])) g_active = i;
+        write_active();
+        snprintf(note, sizeof note, "selected %s", staff[g_active].name);
+    }
+    else if (!strcmp(v, "toggle") && argc >= 2) {
+        int on = !flag_get(argv[1], 1); flag_set(argv[1], on);
+        snprintf(note, sizeof note, "%s %s", argv[1], on ? "on" : "off");
+    }
+    else if (!strcmp(v, "play")) { flag_set("running", 1); snprintf(note, sizeof note, "GO started"); log_line(note); }
+    else if (!strcmp(v, "stop")) { flag_set("running", 0); snprintf(note, sizeof note, "STOP stopped"); log_line(note); }
+    else if (!strcmp(v, "say") && argc >= 2) {
+        char b[160]; snprintf(b, sizeof b, "You: %s", argv[1]); log_line(b);
+        read_active();
+        if (nstaff) { snprintf(b, sizeof b, "%s: heard", staff[g_active].name); log_line(b); }
+        snprintf(note, sizeof note, "said");
+    }
+    else if (!strcmp(v, "clearchat")) {
+        char p[1200]; snprintf(p, sizeof p, "%s/chat.txt", ST);
+        FILE *f = fopen(p, "w"); if (f) fclose(f);
+        snprintf(note, sizeof note, "chat cleared");
+    }
+    else if (!strcmp(v, "step") && argc >= 3) {
+        read_active();
+        int dx = atoi(argv[1]), dy = atoi(argv[2]);
+        int x = 2 + g_active * 3, y = 5;
+        char pp[1200]; snprintf(pp, sizeof pp, "%s/pos.txt", ST);
+        FILE *pf = fopen(pp, "r");
+        int xs[8], ys[8]; for (int i = 0; i < 8; i++) { xs[i] = 2 + (i % 4) * 3; ys[i] = 5; }
+        if (pf) { char id[16]; int px, py; while (fscanf(pf, "%15s %d %d", id, &px, &py) == 3) for (int i = 0; i < nstaff; i++) if (!strcmp(staff[i].id, id)) { xs[i] = px; ys[i] = py; } fclose(pf); }
+        xs[g_active] += dx; ys[g_active] += dy;
+        if (xs[g_active] < 1) xs[g_active] = 1; if (xs[g_active] > 11) xs[g_active] = 11;
+        if (ys[g_active] < 2) ys[g_active] = 2; if (ys[g_active] > 7) ys[g_active] = 7;
+        pf = fopen(pp, "w"); if (pf) { for (int i = 0; i < nstaff; i++) fprintf(pf, "%s %d %d\n", staff[i].id, xs[i], ys[i]); fclose(pf); }
+        snprintf(note, sizeof note, "%s steps", staff[g_active].name);
+    }
+    else snprintf(note, sizeof note, "verbs: hire train rest start assign advance ship int select say play stop step");
     save_all(); write_ui();
     gd_export_office(APP);
     printf("%s\n", note);
@@ -364,8 +460,11 @@ int main(int argc, char **argv) {
     mkdir(ST, 0755);
     load_all(); seed(); gd_export_office(APP); write_ui();
     if (resident) {
-        while (1) { load_all(); write_ui(); sleep(2); }
+        while (1) { load_all(); staff_chat(); write_ui(); sleep(2); }
     }
     verb(argc - 1, argv + 1);
     return 0;
 }
+
+/* The playthrough harness compiles this one file. The office painter stays in its own file. */
+#include "office_book.c"

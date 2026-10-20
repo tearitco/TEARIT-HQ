@@ -150,6 +150,12 @@ void gd_export_office(const char *app) {
             int sx = (idx % 4) * 3 * S48 + S48;
             int sy = (idx / 4) * 4 * S48 + 3 * S48;
             int x = desks[si], y = 5;
+            { char posp[PATH_MAX]; FILE *pf;
+              if (join2(posp, sizeof posp, st, "pos.txt") && (pf = fopen(posp, "r"))) {
+                char pid[16]; int px, py;
+                while (fscanf(pf, "%15s %d %d", pid, &px, &py) == 3) if (!strcmp(pid, id)) { x = px; y = py; }
+                fclose(pf);
+              } }
             blit48(fr, fw, &ch, sx, sy, x * TW, y * TW - 8);
             write_frame(assets, &ch, sheet, idx);
             unsigned char rgb[4] = {180, 180, 180, 255};

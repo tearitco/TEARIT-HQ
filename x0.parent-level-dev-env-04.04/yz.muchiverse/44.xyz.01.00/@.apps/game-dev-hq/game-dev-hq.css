@@ -1,7 +1,24 @@
-window { width: 900px; height: 640px; background-color: #14161c; color: #e8e8e8; font-family: DejaVu Sans; font-size: 12px; }
-.gd-room { width: 624px; height: 384px; }
+/* Same classes the other game windows use (mcl-hq.css). The picture is the office canvas. */
+window { width: 916px; height: 640px; background-color: #14161c; font-family: DejaVu Sans; font-size: 11px; }
 .tab-bar { background-color: #1a1a1a; border: 1px solid #444444; }
-.tab { background-color: #1a1a1a; color: #cccccc; border: 1px solid #444444; width: 110px; }
-.gd-line { color: #ffd966; padding: 6px 8px; }
-.gd-note { color: #7be08f; padding: 2px 8px; }
-.gd-row { color: #d6d9e3; padding: 2px 8px; }
+.tab { background-color: #1a1a1a; color: #aaaaaa; border: 1px solid #444444; padding: 2px 2px; width: 90px; }
+.tab.active { background-color: #2a2a2a; color: #ffffff; font-weight: bold; }
+.rp-tb { width: 110px; }
+.rp-panel { background-color: #181818; border: 1px solid #2a2a2a; }
+.rp-row { color: #cccccc; }
+.rp-quiet { color: #8a93a8; font-size: 10px; padding: 6px 8px 2px 8px; }
+.rp-big { color: #ffd966; font-size: 14px; padding: 6px 8px; }
+.rp-room { width: 624px; height: 384px; }
+.rp-menu-row { color: #d6d9e3; }
+.rp-chat { color: #ffffff; background-color: #262626; font-size: 10px; }
+.rp-chat-ov { background-color: #1c1c1c; border: 1px solid #444444; }
+.rp-side-ov { background-color: #1c1c1c; border: 1px solid #444444; }
+.hb-slot { width: 40px; height: 22px; font-size: 11px; background-color: #444444; border: 1px solid #666666; color: #ffffff; }
+.hb-quiet { color: #ffffff; }
+.ov-title { background-color: #333333; color: #ffffff; }
+.ov-min { width: 40px; height: 20px; }
+.pchq-footer { height: 36px; background-color: #181818; }
+.pchq-ft { background-color: #232323; color: #cfe8ff; width: 72px; height: 24px; font-size: 10px; }
+.ph-green { color: #7be08f; }
+.ph-red { color: #e07070; }
+.interact-active { color: #ffd966; }
