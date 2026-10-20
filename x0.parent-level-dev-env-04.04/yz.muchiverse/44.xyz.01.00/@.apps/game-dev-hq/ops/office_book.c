@@ -129,7 +129,9 @@ void gd_export_office(const char *app) {
     }
     static const int desks[] = {2, 5, 8, 11};
     for (int i = 0; i < 4; i++) blit48(fr, fw, &furn, 1 * S48, 12 * S48, desks[i] * TW, 4 * TW);
-    { Img door = load_img(assets, "characters", "!Door1"); blit48(fr, fw, &door, 0, 0, 6 * TW, 6 * TW); stbi_image_free(door.px); }
+    /* Same door the other RPG rooms use: !Door1 at (0, 192) on the wall row, mat on the cell in front. */
+    { Img door = load_img(assets, "characters", "!Door1"); blit48(fr, fw, &door, 0, 192, 6 * TW, 1 * TW); stbi_image_free(door.px); }
+    blit48(fr, fw, &floor, 0, 6 * S48, 6 * TW, 2 * TW);
 
     char st[PATH_MAX], party[PATH_MAX], staffp[PATH_MAX];
     join2(st, sizeof st, app, "state");
@@ -229,7 +231,7 @@ void gd_export_office(const char *app) {
     if (mf) {
         for (int y = 0; y < ROWS; y++) {
             for (int x = 0; x < COLS; x++) {
-                char g = '.'; if (y < 2) g = 'W';
+                char g = '.'; if (y < 2) g = 'W'; if (x == 6 && y == 1) g = 'D';
                 for (int i = 0; i < 4; i++) if (x == desks[i] && y == 4) g = 'f';
                 fputc(g, mf);
             }
@@ -245,6 +247,7 @@ void gd_export_office(const char *app) {
               "META         | map_id             | game-dev-hq\n"
               "META         | desk_id            | office\n"
               "EXTRUDE      | W                  | 3\n"
+              "EXTRUDE      | D                  | 3\n"
               "EXTRUDE      | f                  | 1\n"
               "EXTRUDE      | default            | 0\n", xf);
         fclose(xf);

@@ -69,7 +69,7 @@ Same ledger as the other games (`state/events.txt`, `EVENT|ts|actor|verb|target|
 | select | staff id | the footer name. Train and assign use that person |
 | play / stop | `-` | staff chatter on or off |
 
-`at` stays `-` or `office`. People stand at a desk while the week is open. A week-ending verb (train, rest, advance) pays salaries and sends them out the door. The resident brings them back in for the next day. The door is `!Door1` on the office floor, cell 6,6, and a `DOOR` row in `rooms.pdl`.
+`at` stays `-` or `office`. People stand at a desk while the week is open. A week-ending verb (train, rest, advance) pays salaries and sends them out the door. The resident brings them back in for the next day. The door is the same `!Door1` crop the other RPG rooms use, on the wall row at column 6, with the mat on the cell in front. A `DOOR` row in `rooms.pdl` records that.
 
 ## What the window is
 
