@@ -56,15 +56,15 @@
     </sidebar>
     <panel id="room_p" class="rp-panel">
       <canvas id="room" class="rp-room" sprite="${canvas_raw}"/>
-      <row id="side-l" class="canvas-overlay-left ov-pin ov-chrome rp-side-ov theme" show="${left_visible}">
-        <text label="studio - ${active_name}" class="hb-quiet ov-title theme-3"/>
+      <row id="side-l" class="canvas-overlay-left ov-pin ov-chrome rp-side-ov" show="${left_visible}">
+        <text label="studio - ${active_name}" class="gd-title"/>
         <item id="side-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' toggle left"/>
-        <text label="${run_label}" class="${run_cls}"/>
-        <text label="${studio_line}" class="rp-big"/>
-        <text label="${game_line}" class="rp-quiet"/>
-        <text label="${note}" class="ph-green"/>
+        <text label="${run_label}" class="gd-note"/>
+        <text label="${studio_line}" class="gd-ink"/>
+        <text label="${game_line}" class="gd-ink"/>
+        <text label="${note}" class="gd-note"/>
         <repeat count="${n_party}" bind="party">
-          <item id="sl${party.#}" class="rp-row" label="${party.label}" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' select ${party.id}"/>
+          <item id="sl${party.#}" class="gd-ink" label="${party.label}" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' select ${party.id}"/>
         </repeat>
       </row>
       <row id="chat-ov" class="canvas-overlay-right ov-pin ov-chrome rp-chat-ov theme" show="${chat_visible}">

@@ -13,7 +13,10 @@ window { width: 916px; height: 640px; background-color: #14161c; font-family: De
 .rp-menu-row { color: #d6d9e3; }
 .rp-chat { color: #ffffff; background-color: #262626; font-size: 10px; }
 .rp-chat-ov { background-color: #1c1c1c; border: 1px solid #444444; }
-.rp-side-ov { background-color: #1c1c1c; border: 1px solid #444444; }
+.rp-side-ov { background-color: #f4f1ea; border: 1px solid #c8c2b4; }
+.gd-ink { color: #111111; }
+.gd-title { background-color: #e4dfd4; color: #111111; }
+.gd-note { color: #0b5a24; }
 .hb-slot { width: 40px; height: 22px; font-size: 11px; background-color: #444444; border: 1px solid #666666; color: #ffffff; }
 .hb-quiet { color: #ffffff; }
 .ov-title { background-color: #333333; color: #ffffff; }
