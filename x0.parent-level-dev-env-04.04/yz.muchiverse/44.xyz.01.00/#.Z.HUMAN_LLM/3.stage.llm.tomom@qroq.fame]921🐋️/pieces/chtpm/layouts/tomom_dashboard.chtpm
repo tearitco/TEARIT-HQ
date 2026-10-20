@@ -1,0 +1,33 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/tomom_dashboard_module.pal</module>
+    <interact src="pieces/apps/tomom_app/interact_relay.txt" />
+    <text label="+============================================================================+" /><br/>
+    <text label="|    T O M O M   H A N D - T U N I N G   D A S H B O A R D                     |" /><br/>
+    <text label="|    Explainable AI: Every weight, every decision, every token                |" /><br/>
+    <text label="+============================================================================+" /><br/>
+    <br/>
+    ${dashboard_stats}<br/>
+    <br/>
+    <text label="=== Curricula (27 Experts) ===" /><br/>
+    ${curriculum_list}<br/>
+    <br/>
+    <text label="=== Routing Decisions (Latest Generation) ===" /><br/>
+    ${routing_decisions}<br/>
+    <br/>
+    <text label="=== Chat History ===" /><br/>
+    ${chat_bubbles}<br/>
+    <br/>
+    <text label="=== Vocab Token Inspector ===" /><br/>
+    ${token_inspector}<br/>
+    <br/>
+    <cli_io id="prompt_input" label="Prompt:" target_id="prompt_input" /><br/>
+    <cli_io id="word_edit" label="Word (edit):" target_id="word_edit" /><br/>
+    <cli_io id="weight_edit" label="New weight (0.00-1.00):" target_id="weight_edit" /><br/>
+    <button label="Generate" onClick="GENERATE" /><br/>
+    <button label="Apply Weight Edit" onClick="WEIGHTEDIT" /><br/>
+    <button label="Run Hand-Tuning Cycle" onClick="HANDDUNE" /><br/>
+    <button label="Refresh Stats" onClick="REFRESH" /><br/>
+    ${piece_methods}<br/>
+    <text label=" [Gener8ate] [Apply Edit] [Hand-Tune Cycle] [Refresh]  (Ctrl+C to quit)" /><br/>
+    <text label="+============================================================================+" /><br/>
+</panel>
