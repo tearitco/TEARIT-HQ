@@ -1,4 +1,5 @@
-window { width: 720px; height: 480px; background-color: #14161c; color: #e8e8e8; font-family: DejaVu Sans; font-size: 12px; }
+window { width: 720px; height: 860px; background-color: #14161c; color: #e8e8e8; font-family: DejaVu Sans; font-size: 12px; }
+.gd-room { width: 624px; height: 384px; }
 .tab-bar { background-color: #1a1a1a; border: 1px solid #444444; }
 .tab { background-color: #1a1a1a; color: #cccccc; border: 1px solid #444444; width: 110px; }
 .gd-line { color: #ffd966; padding: 6px 8px; }

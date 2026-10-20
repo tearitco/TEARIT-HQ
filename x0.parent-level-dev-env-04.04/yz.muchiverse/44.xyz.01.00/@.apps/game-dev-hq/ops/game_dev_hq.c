@@ -212,6 +212,7 @@ static void write_ui(void) {
     char p[1200], tmp[1200]; snprintf(p, sizeof p, "%s/ui.txt", ST); snprintf(tmp, sizeof tmp, "%s/ui.txt.tmp", ST);
     FILE *f = fopen(tmp, "w"); if (!f) return;
     fprintf(f, "title=game-dev-hq\n");
+    fprintf(f, "canvas_raw=%s/scene.raw\n", ST);
     fprintf(f, "studio_line=funds %ld   fame %ld   office %d   week %ld\n", funds, fame, office, week);
     fprintf(f, "note=%s\n", note[0] ? note : " ");
     Game *g = open_game();
@@ -361,7 +362,7 @@ int main(int argc, char **argv) {
     else locate(exe);
     snprintf(ST, sizeof ST, "%s/state", APP);
     mkdir(ST, 0755);
-    load_all(); seed(); write_ui();
+    load_all(); seed(); gd_export_office(APP); write_ui();
     if (resident) {
         while (1) { load_all(); write_ui(); sleep(2); }
     }

@@ -172,6 +172,11 @@ void gd_export_office(const char *app) {
     join2(room, sizeof room, root, "office");
     mkdir_p(room);
 
+    char rawp[PATH_MAX], recp[PATH_MAX];
+    join2(rawp, sizeof rawp, st, "scene.raw");
+    join2(recp, sizeof recp, st, "scene.receipt.txt");
+    { FILE *rf = fopen(rawp, "wb"); if (rf) { fwrite(fr, 1, (size_t)fw * fh * 4, rf); fclose(rf); } }
+    { FILE *rcf = fopen(recp, "w"); if (rcf) { fprintf(rcf, "frame_w=%d\nframe_h=%d\n", fw, fh); fclose(rcf); } }
     char png[PATH_MAX]; join2(png, sizeof png, room, "map.png");
     char tmp[PATH_MAX]; snprintf(tmp, sizeof tmp, "%s.tmp", png);
     if (stbi_write_png(tmp, fw, fh, 4, fr, fw * 4)) rename(tmp, png); else remove(tmp);
