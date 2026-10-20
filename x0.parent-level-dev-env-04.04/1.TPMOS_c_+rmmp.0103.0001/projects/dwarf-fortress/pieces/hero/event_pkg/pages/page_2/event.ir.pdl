@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | miner_hero_look
+STATE        | source               | events-hq
+NODE         | id=1 type=df_look |

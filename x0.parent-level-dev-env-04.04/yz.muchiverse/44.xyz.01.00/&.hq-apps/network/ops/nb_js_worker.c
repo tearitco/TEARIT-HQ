@@ -1186,7 +1186,29 @@ static double nb_box_w(NbNode *n) {
     if (n->parent && n->parent->tag) {
         NbCssStyle pst;
         nb_css_resolve(g_css, n->parent, nb_attr_get(n->parent, "style"), &pst);
-        if (pst.has_display_flex && pst.display_flex &&
+        if (pst.has_display_flex && pst.display_flex == 2) {
+            /* simple grid: distribute across grid_cols */
+            int cols = pst.has_grid_template_columns && pst.grid_cols > 0 ? pst.grid_cols : 1;
+            if (cols < 1) cols = 1;
+            double row_w = nb_box_w(n->parent);
+            if (row_w > 0) {
+                /* count visible children to place */
+                int idx = 0;
+                for (NbNode *s = n->parent->first_child; s && s != n; s = s->next_sibling) {
+                    if (layout_hidden_anc(s)) continue;
+                    idx++;
+                }
+                int col = idx % cols;
+                /* compute column width */
+                double col_w = row_w / (double)cols;
+                if (pst.has_grid_template_columns) {
+                    /* rough equal split */
+                    col_w = row_w / (double)cols;
+                }
+                return col_w;
+            }
+        }
+        if (pst.has_display_flex && pst.display_flex == 1 &&
             !(pst.has_flex_direction && !pst.flex_row) &&  /* default is ROW */
             layout_is_block_tag(n->tag)) {
             double row_w = nb_box_w(n->parent);
@@ -1342,15 +1364,32 @@ static void layout_xy(NbNode *n, double *out_x, double *out_y) {
     int parent_is_row = 0;
     if (n->parent && n->parent->tag) {
         nb_css_resolve(g_css, n->parent, nb_attr_get(n->parent, "style"), &pst);
+        if (pst.has_display_flex && pst.display_flex == 2) {
+            /* grid layout */
+            int cols = pst.has_grid_template_columns && pst.grid_cols > 0 ? pst.grid_cols : 1;
+            if (cols < 1) cols = 1;
+            int idx = 0;
+            for (NbNode *s = n->parent->first_child; s && s != n; s = s->next_sibling) {
+                if (layout_hidden_anc(s)) continue;
+                idx++;
+            }
+            int col = idx % cols;
+            double row_w = nb_box_w(n->parent);
+            if (row_w <= 0) row_w = g_col_px(n->parent);
+            double gap = (pst.has_gap ? pst.gap : 0);
+            double col_w = (row_w - gap * (cols - 1)) / (double)cols;
+            if (col_w < 0) col_w = row_w / (double)cols;
+            x += col * (col_w + gap);
+            int row_idx = idx / cols;
+            y += row_idx * 30;
+            *out_x = x;
+            *out_y = y;
+            return;
+        }
         /* flex-direction DEFAULTS TO ROW, per CSS. Only an explicit
-         * `flex-direction:column` turns the main axis vertical. The first
-         * cut of this required an explicit flex-direction:row, which made a
-         * bare `display:flex` stack - the exact page nb_flex_test.sh uses,
-         * so the test stayed red with the children stacked. Found by
-         * probing the resolver directly rather than guessing: fx resolved
-         * display_flex=1 but has_flex_direction=0. */
+         * `flex-direction:column` turns the main axis vertical. */
         int dir_col = pst.has_flex_direction && !pst.flex_row;
-        parent_is_row = pst.has_display_flex && pst.display_flex && !dir_col;
+        parent_is_row = pst.has_display_flex && pst.display_flex == 1 && !dir_col;
     }
     if (parent_is_row) {
         for (NbNode *s = n->parent->first_child; s && s != n; s = s->next_sibling) {
