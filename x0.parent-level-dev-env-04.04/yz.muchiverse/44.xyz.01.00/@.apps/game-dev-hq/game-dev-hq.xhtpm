@@ -8,6 +8,9 @@
       <tab id="tb-int" class="tab rp-tb ${interact_class}" label="INT ${interact_label}" relay="${rp_h1},${rp_h2}" onclick="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' int"/>
       <tab id="tb-book" class="tab rp-tb" label="Book ▾" onclick="ACTIVATE" target_id="tb-book"/>
       <tab id="tb-page" class="tab rp-tb" label="Page ▾" onclick="ACTIVATE" target_id="tb-page"/>
+      <tab id="tb-player" class="tab rp-tb" label="Player ▾" onclick="ACTIVATE" target_id="tb-player"/>
+      <tab id="tb-time" class="tab rp-tb" label="${time_label} ▾" onclick="ACTIVATE" target_id="tb-time"/>
+      <tab id="tb-menu" class="tab rp-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
     </tabbar>
     <sidebar id="side" class="rp-rail sidebar">
       <repeat count="${n_hire}" bind="hire">
@@ -30,6 +33,26 @@
       <item id="ad-m" class="rp-menu-row dropdown-child" target_id="mn-ad" label="Mid $15000" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' advertise mid"/>
       <item id="ad-b" class="rp-menu-row dropdown-child" target_id="mn-ad" label="Big $40000" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' advertise big"/>
       <item id="ad-x" class="rp-menu-row dropdown-child quiet" target_id="mn-ad" label="- cancel -" action="void"/>
+      <item id="pm-play" class="rp-menu-row dropdown-child" target_id="tb-player" label="Play" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' play"/>
+      <item id="pm-stop" class="rp-menu-row dropdown-child" target_id="tb-player" label="Stop" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' stop"/>
+      <item id="pm-save" class="rp-menu-row dropdown-child" target_id="tb-player" label="Save (slot 1)" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' save 1"/>
+      <item id="pm-load" class="rp-menu-row dropdown-child" target_id="tb-player" label="Load (slot 1)" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' load 1"/>
+      <item id="pm-save2" class="rp-menu-row dropdown-child" target_id="tb-player" label="Save (slot 2)" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' save 2"/>
+      <item id="pm-load2" class="rp-menu-row dropdown-child" target_id="tb-player" label="Load (slot 2)" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' load 2"/>
+      <item id="pm-new" class="rp-menu-row dropdown-child" target_id="tb-player" label="New game" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' newgame"/>
+      <item id="pm-undo" class="rp-menu-row dropdown-child" target_id="tb-player" label="Undo new game" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' load 0"/>
+      <item id="pm-x" class="rp-menu-row dropdown-child quiet" target_id="tb-player" label="- cancel -" action="void"/>
+      <item id="tm-cent" class="rp-menu-row dropdown-child" target_id="tb-time" label="speed: turbo" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' clock rate cent"/>
+      <item id="tm-sec" class="rp-menu-row dropdown-child" target_id="tb-time" label="speed: fast" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' clock rate sec"/>
+      <item id="tm-min" class="rp-menu-row dropdown-child" target_id="tb-time" label="speed: normal" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' clock rate min"/>
+      <item id="tm-hour" class="rp-menu-row dropdown-child" target_id="tb-time" label="speed: real time" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' clock rate hour"/>
+      <item id="tm-adv1d" class="rp-menu-row dropdown-child" target_id="tb-time" label="skip +1 week" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' clock advance 1d"/>
+      <item id="tm-x" class="rp-menu-row dropdown-child quiet" target_id="tb-time" label="- cancel -" action="void"/>
+      <item id="mn-info" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Studio show / hide" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' toggle left"/>
+      <item id="mn-chat" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Chat show / hide" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' toggle chat"/>
+      <item id="mn-clear" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Clear chat" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' clearchat"/>
+      <item id="mn-reset" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Reset house (keeps a backup)" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' newgame"/>
+      <item id="mn-x" class="rp-menu-row dropdown-child quiet" target_id="tb-menu" label="- cancel -" action="void"/>
     </sidebar>
     <panel id="room_p" class="rp-panel">
       <canvas id="room" class="rp-room" sprite="${canvas_raw}"/>
@@ -45,8 +68,6 @@
         <item id="mn-train" class="gd-ink" label="Train" onclick="ACTIVATE"/>
         <item id="mn-contract" class="gd-ink" label="Contract" onclick="ACTIVATE"/>
         <item id="mn-ad" class="gd-ink" label="Advertise" onclick="ACTIVATE"/>
-        <item id="bk-play" class="gd-ink" label="Play" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' play"/>
-        <item id="bk-stop" class="gd-ink" label="Stop" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' stop"/>
       </row>
       <row id="chat-ov" class="canvas-overlay-right ov-pin ov-chrome rp-chat-ov theme" show="${chat_visible}">
         <text label="chat" class="hb-quiet ov-title theme-3"/>

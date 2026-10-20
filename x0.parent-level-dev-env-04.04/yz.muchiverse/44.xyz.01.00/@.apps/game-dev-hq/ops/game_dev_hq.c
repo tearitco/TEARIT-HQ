@@ -250,6 +250,9 @@ static void write_ui(void) {
     fprintf(f, "rp_h1=%s/interact_relay.txt\nrp_h2=%s/keyboard/history.txt\n", ST, ST);
     fprintf(f, "chat_visible=%d\nleft_visible=%d\n", chat, left);
     fprintf(f, "active_name=%s\nactive_id=%s\nbook_label=Book\npage_label=Page\n", who, nstaff ? staff[g_active].id : "-");
+    { char rate[32] = "week"; char rp[1200]; snprintf(rp, sizeof rp, "%s/clock_rate.txt", ST);
+      FILE *rf = fopen(rp, "r"); if (rf) { if (fscanf(rf, "%31s", rate) != 1) snprintf(rate, sizeof rate, "week"); fclose(rf); }
+      fprintf(f, "time_label=Wk %ld\ntime_rate=%s\n", week, rate); }
     fprintf(f, "run_label=%s\nrun_cls=%s\n", run ? "GO started" : "STOP stopped", run ? "ph-green" : "ph-red");
     fprintf(f, "control_label=control: %s\n", who);
     fprintf(f, "n_staff=%d\nn_party=%d\n", nstaff, nstaff);
@@ -421,6 +424,24 @@ static void do_ship(void) {
 
 void gd_export_office(const char *app);
 
+static int slot_copy(int n, int to_slot) {
+    char slots[1200], dir[1200];
+    snprintf(slots, sizeof slots, "%s/slots", ST); mkdir(slots, 0755);
+    snprintf(dir, sizeof dir, "%s/%d", slots, n); mkdir(dir, 0755);
+    const char *names[] = {"studio.txt","staff.pdl","games.pdl","hype.txt","chat.txt","note.txt","pos.txt", NULL};
+    int any = 0;
+    for (int i = 0; names[i]; i++) {
+        char src[1200], dst[1200];
+        if (to_slot) { snprintf(src, sizeof src, "%s/%s", ST, names[i]); snprintf(dst, sizeof dst, "%s/%s", dir, names[i]); }
+        else { snprintf(src, sizeof src, "%s/%s", dir, names[i]); snprintf(dst, sizeof dst, "%s/%s", ST, names[i]); }
+        FILE *in = fopen(src, "rb"); if (!in) continue;
+        FILE *out = fopen(dst, "wb"); if (!out) { fclose(in); continue; }
+        char buf[1024]; size_t k; while ((k = fread(buf, 1, sizeof buf, in)) > 0) fwrite(buf, 1, k, out);
+        fclose(in); fclose(out); any = 1;
+    }
+    return any;
+}
+
 static void verb(int argc, char **argv) {
     const char *v = argc > 0 ? argv[0] : "status";
     if (!strcmp(v, "hire") && argc >= 2) do_hire(argv[1], argc >= 3 ? argv[2] : "");
@@ -449,6 +470,23 @@ static void verb(int argc, char **argv) {
         snprintf(note, sizeof note, "%s %s", argv[1], on ? "on" : "off");
     }
     else if (!strcmp(v, "play")) { flag_set("running", 1); snprintf(note, sizeof note, "GO started"); log_line(note); }
+    else if (!strcmp(v, "clock") && argc >= 3 && !strcmp(argv[1], "rate")) {
+        char rp[1200]; snprintf(rp, sizeof rp, "%s/clock_rate.txt", ST);
+        FILE *rf = fopen(rp, "w"); if (rf) { fprintf(rf, "%s\n", argv[2]); fclose(rf); }
+        snprintf(note, sizeof note, "clock %s", argv[2]);
+    }
+    else if (!strcmp(v, "clock") && argc >= 3 && !strcmp(argv[1], "advance")) {
+        pay_week(); snprintf(note, sizeof note, "skipped to week %ld", week); log_line(note);
+    }
+    else if (!strcmp(v, "save") && argc >= 2) { slot_copy(atoi(argv[1]), 1); snprintf(note, sizeof note, "saved slot %s", argv[1]); }
+    else if (!strcmp(v, "load") && argc >= 2) { if (slot_copy(atoi(argv[1]), 0)) { load_all(); snprintf(note, sizeof note, "loaded slot %s", argv[1]); } else snprintf(note, sizeof note, "empty slot"); }
+    else if (!strcmp(v, "newgame")) {
+        slot_copy(0, 1);
+        const char *nm[] = {"studio.txt","staff.pdl","games.pdl","hype.txt","pos.txt", NULL};
+        for (int i = 0; nm[i]; i++) { char p[1200]; snprintf(p, sizeof p, "%s/%s", ST, nm[i]); remove(p); }
+        nstaff = ngames = 0; funds = 100000; fame = 0; week = 1; hype = 0; office = 1;
+        seed(); log_line("new game");
+    }
     else if (!strcmp(v, "stop")) { flag_set("running", 0); snprintf(note, sizeof note, "STOP stopped"); log_line(note); }
     else if (!strcmp(v, "say") && argc >= 2) {
         char b[160]; snprintf(b, sizeof b, "You: %s", argv[1]); log_line(b);

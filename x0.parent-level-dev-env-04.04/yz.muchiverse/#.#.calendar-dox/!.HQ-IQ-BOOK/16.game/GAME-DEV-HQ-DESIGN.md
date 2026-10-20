@@ -75,7 +75,7 @@ Same ledger as the other games (`state/events.txt`, `EVENT|ts|actor|verb|target|
 
 Open the live window with `sh @.apps/game-dev-hq/button.sh run`. The picture is one interior, `office`, painted from the house sheets (`Inside_A5` floor and wall, `Inside_B` desks, `!Door1`, the character sheets `party.pdl` names). `exportbook` also writes the pc-hq book `maps/game-dev-hq`.
 
-Top bar: INT, Book, Page. Book and Page are the two slots the other games use. They are not a second staff list.
+Top bar: INT, Book, Page, Player, Clock, Menu. Those last three are the common entries the other games use. Player is play, stop, save, load, and new game (the old studio is slot 0). Clock sets a speed name and skip +1 week, which is the same week-end as train or advance. Menu shows or hides the studio and the chat, clears the chat, and resets with that same backup.
 
 Left pane: cash, fame, hype, week, the open game, then the main rows Hire, Train, Contract, Advertise, Play, Stop. Hire, Train, Contract, and Advertise open their choices in the sidebar. Staff names are the footer buttons only. The right pane is the chat. Both panes have a `_` that hides them. Studio text is `#111111` on the cream pane. Chat text stays light on the dark strip.
 
