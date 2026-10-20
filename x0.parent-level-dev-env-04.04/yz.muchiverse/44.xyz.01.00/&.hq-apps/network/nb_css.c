@@ -252,13 +252,8 @@ NbCss *nb_css_parse(const char *text, size_t len) {
 
 enum { PD_DISPLAY = 0, PD_VIS, PD_OP, PD_W, PD_H,
        PD_PAD_TOP, PD_PAD_BOTTOM, PD_MAR_TOP, PD_MAR_BOTTOM,
-       /* G2.3 steps 6.2/6.3 (2026-10-19). Two new properties only -
-        * `display` itself already carries flex-ness via PD_DISPLAY above,
-        * so there is no separate PD_DISPLAY_FLEX (that would let
-        * `display:flex` and `display:block` fight over two score slots).
-        * Mirrors the renderer's shared parser, which likewise keys
-        * display_flex off its single `display` property. */
-       PD_FLEX_DIR, PD_FLEX_GROW, PD_COUNT };
+       PD_FLEX_DIR, PD_FLEX_GROW,
+       PD_GRID_TEMPLATE_COLUMNS, PD_COUNT };
 
 static int prop_id(const char *key) {
     if (strcmp(key, "display") == 0) return PD_DISPLAY;
@@ -274,6 +269,7 @@ static int prop_id(const char *key) {
     if (strcmp(key, "margin-bottom") == 0) return PD_MAR_BOTTOM;
     if (strcmp(key, "flex-direction") == 0) return PD_FLEX_DIR;
     if (strcmp(key, "flex-grow") == 0) return PD_FLEX_GROW;
+    if (strcmp(key, "grid-template-columns") == 0) return PD_GRID_TEMPLATE_COLUMNS;
     return -1;
 }
 
@@ -344,8 +340,9 @@ static void apply_decl(int pid, const char *val, size_t vlen, int important,
             /* 6.2/6.3: the typed flag layout reads. Set in the SAME
              * score-gated slot as the keyword so it can never disagree
              * with display[16] - a single property, a single decision. */
-            out->has_display_flex = (strcasecmp(cv, "flex") == 0);
-            out->display_flex     = out->has_display_flex;
+            if (strcasecmp(cv, "flex") == 0) { out->has_display_flex = 1; out->display_flex = 1; }
+            else if (strcasecmp(cv, "grid") == 0) { out->has_display_flex = 1; out->display_flex = 2; }
+            else { out->has_display_flex = 0; out->display_flex = 0; }
             scores[pid] = score;
         }
         break;
@@ -401,6 +398,40 @@ static void apply_decl(int pid, const char *val, size_t vlen, int important,
                 out->flex_grow = dv; out->has_flex_grow = 1;
                 scores[pid] = score;
             }
+        }
+        break;
+    }
+    case PD_GRID_TEMPLATE_COLUMNS: {
+        char tmp[512];
+        int i2 = 0;
+        const char *v2 = clean_value(val, vlen, tmp, sizeof(tmp), &i2);
+        if (score >= scores[pid]) {
+            out->has_grid_template_columns = 1;
+            char buf[512];
+            strncpy(buf, v2, 511); buf[511] = 0;
+            char *r = strstr(buf, "repeat(");
+            if (r) {
+                r += 7;
+                int N = atoi(r);
+                if (N < 0) N = 0;
+                if (N > 8) N = 8;
+                out->grid_cols = N;
+                for (int i = 0; i < N && i < 8; i++) out->grid_col_w[i] = 0;
+            } else {
+                char *tok = strtok(buf, " ,");
+                int N = 0;
+                while (tok && N < 8) {
+                    if (strstr(tok, "fr") || strcasecmp(tok, "auto") == 0 || strstr(tok, "minmax")) {
+                        out->grid_col_w[N] = 0; N++; tok = strtok(NULL, " ,"); continue;
+                    }
+                    if (strstr(tok, "px")) { out->grid_col_w[N] = atoi(tok); N++; tok = strtok(NULL, " ,"); continue; }
+                    if (isdigit((unsigned char)*tok) || (*tok=='-' && isdigit((unsigned char)tok[1]))) { out->grid_col_w[N] = atoi(tok); N++; tok = strtok(NULL, " ,"); continue; }
+                    out->grid_col_w[N] = 0; N++;
+                    tok = strtok(NULL, " ,");
+                }
+                out->grid_cols = N;
+            }
+            scores[pid] = score;
         }
         break;
     }

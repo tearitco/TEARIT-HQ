@@ -61,12 +61,14 @@ typedef struct NbCssStyle {
      * has_display_flex is DELIBERATELY separate from display[16] above:
      * display keeps the raw keyword for getComputedStyle, while these are
      * the typed values layout reads. Same split the renderer makes. */
-    int has_display_flex, display_flex;      /* 1 when display:flex on this node */
+    int has_display_flex, display_flex;      /* 1 flex, 2 grid */
     int has_flex_direction, flex_row;        /* 1=row, 0=column. CSS default (like the
                                               * renderer's model) is ROW, so layout must
                                               * treat "no direction set" as row, NOT column:
                                               * only an explicit column is vertical. */
     int has_flex_grow; double flex_grow;     /* weight for remaining main-axis space */
+    int has_grid_template_columns, grid_cols;
+    int grid_col_w[8];
     /* Box model (2026-10-14, G2.1). These existed NOWHERE before: the
      * resolver had no fields for them, so a declared padding/margin was
      * silently dropped and layout_xy could not offset a child from its
