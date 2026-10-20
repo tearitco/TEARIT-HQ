@@ -1,0 +1,13 @@
+SECTION | KEY | VALUE
+----------------------------------------
+# tuning.pdl - the numbers of rpg-pvp-hq, as data (edit, no rebuild). The first WEAPON table is READ from the older project 007-goldeye+01.00/src/main.c (fire(), pickup_guns()); it is a
+# starting point to compare against, not a balance decision. Source lines: fists fire() 'weapon == 0', pistol 'weapon == 1', auto 'weapon == 2', shotgun 'weapon == 3' (5 pellets).
+# WEAPON | id | damage | cooldown_s | bullet_speed | pellets | spread | pickup_ammo | range        (fists: melee, range in cells, no bullet; pickup_ammo is what a loot pickup gives)
+WEAPON | fists   | 14 | 0.30 | 0  | 1 | 0.00 | 0  | 2.5
+WEAPON | pistol  | 20 | 0.18 | 55 | 1 | 0.02 | 28 | 0
+WEAPON | auto    | 11 | 0.07 | 60 | 1 | 0.02 | 48 | 0
+WEAPON | shotgun | 14 | 0.50 | 48 | 5 | 0.15 | 16 | 0
+# ACTOR | hp_start | hp_player1       007: 100 for everyone, 150 for player 1 (kept only as a number to compare)
+ACTOR | 100 | 150
+# CITY | block | min_building | loot_min | loot_max | fill_percent     block = cells from one road line to the next (road is 2 wide)
+CITY | 16 | 5 | 1 | 3 | 85
