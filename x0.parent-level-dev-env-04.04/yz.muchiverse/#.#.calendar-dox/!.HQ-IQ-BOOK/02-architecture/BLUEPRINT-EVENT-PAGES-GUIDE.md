@@ -53,7 +53,7 @@ Apps done: rpg-pvp-hq (13 page verbs), game-dev-hq (17). INT keyboard bindings s
 
 All edits end at the events-hq manager, which rewrites `event.ir.pdl` and recompiles. Nothing else writes an IR.
 1. **events-hq** window: writes `edit:<id>|<type>|<params>`, `append:<type>|<params>`, `delete:<id>` into `<pkg>/.hq_manager/action.txt`.
-2. **blueprintz** window (editing panel, BLUEPRINTZ-DESIGN.md 12.22): select a command, type `key=value|key=value` or `type|key=value`, add, delete, undo (16 steps). Runs `ops/bp_edit_op` in the background. Refuses characters outside letters/digits/`_ - . : , = | / space` and any type not in the registry.
+2. **blueprintz** window (editing panel, BLUEPRINTZ-DESIGN.md 12.22): pick an event (a game's verbs with `Load <game> verbs`, or the house's common events with `Load common events`), pick one of its pages, add a page, set a page's trigger, select a command, type `key=value|key=value` or `type|key=value`, add, delete, undo (16 steps, each remembers its page). A "who calls whom" list shows `call_common_event` links among the loaded events. Runs `ops/bp_edit_op` in the background. Refuses characters outside letters/digits/`_ - . : , = | / space` and any type not in the registry.
 3. **Headless / harness:** `ops/bp_edit_op <house> <event_pkg> <label> edit|append|delete|show ...` and the phase-table rows `BP | <event> | edit|append|delete|show | args` and `BPWIN | REQ:... | EXPECT:...` (harness README). A table can be saved and versioned.
 
 Proof it is the real logic: with the contract page edited to `advance` the same button advanced no weeks and said "no game"; edited back it played again; an emptied page logged `fallback:page-did-not-run` and the verb still ran (`play/phases/game_dev_hq_blueprint.phases.pdl`, PASS).
@@ -74,7 +74,7 @@ Proof it is the real logic: with the contract page edited to `advance` the same 
 
 - **Can:** reorder, swap, add or remove whole commands; change a command's parameters; make a trigger run something else; be debugged (pause, step, trace) and be tested headless.
 - **Cannot:** change what happens *inside* a C op (e.g. the contract's payroll math is C; a page only chooses to run it). Logic that needs to be editable has to be split into smaller ops and a registry row.
-- **Not yet:** events with several pages are listed but only `page_1` is edited in blueprintz; INT key bindings bypass pages; there is no graph view (BLUEPRINTZ-DESIGN.md B5); compiling a whole book to one `book.pal` (B4b) is designed, not built.
+- **Not yet:** no delete-page (the manager has none); INT key bindings bypass pages; there is no graph view (BLUEPRINTZ-DESIGN.md B5); compiling a whole book to one `book.pal` (B4b) is designed, not built.
 
 ## 9. Checklist: make a new game's verbs blueprints
 
@@ -105,3 +105,10 @@ Proof it is the real logic: with the contract page edited to `advance` the same 
 **In blueprintz.** Common events are one of the four planned sources of a book (desk events, app-local packages, common events, clock rows; BLUEPRINTZ-DESIGN.md section 9). Today the window loads a game's `events/` folders through `Load <game> verbs`; there is no button that loads `common_events/` yet, and no cross-reference view ("which events call this common event") because that scan is designed, not built.
 
 **Plugins are related, but only as a design.** `08-roadmap/design-docs/PLUGINS-ARCHITECTURE-SCOPING.md` (2026-08-25, "NO CODE YET"): a per-project list, each plugin toggleable and applied in a defined order, each one a `.pal` script that triggers compiled ops (the RPG-Maker plugin idea), with a `10.plugins` toolbar cell. The owner's 2026-10-14 refinement makes plugins part of the whole-book program: blueprintz would compile page events, common events and enabled plugins into one `book.pal`, an event loop that calls them in order (BLUEPRINTZ-DESIGN.md section 11, phases B4b for events and common events, B6 for plugins). A plugin is therefore the same kind of object as a common event (a pal that calls ops), with an on/off switch and an order; it needs a plugin manager that does not exist. No plugin code exists in db-hq or events-hq (searched 2026-10-21).
+
+## 11. Tests that keep this honest (harness tables, 2026-10-21)
+Run from `&.widgits/_shared-lib/harness`: `ops/+x/playthrough_op.+x run play/phases/<table>.phases.pdl` (scratch house under /tmp, nothing live touched; README there lists the rows).
+- `common_events.phases.pdl` (rows `COMMON | yes`, `BPCE`, `PLAYCE`, `HASROOT`): a common event acts on the played entity; pages with their own triggers; the nested call through the registry; the old `OP` form is a no-op. Needs `call_event_op.+x` built.
+- `blueprintz_common_pages.phases.pdl` and `blueprintz_window.phases.pdl` (row `BPWIN`): the blueprintz window logic, headless, through its real manager.
+- `game_dev_hq_blueprint` / `rpg_pvp_hq_blueprint`: editing a game's verb page changes what the game button does.
+Method note: seed a new common event from an EMPTY `pages/` folder with the real manager (`BPCE | <event> | trigger | <t>` then `append`), never with hand-written files: the harness WRITE row adds no trailing newline and an appended node then glues onto the last header line.

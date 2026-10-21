@@ -39,7 +39,7 @@ static char HARN[P];                      /* .../_shared-lib/harness */
 
 typedef struct { char *f[MAXF]; int n; } Row;
 typedef struct { char id[64], title[256], kw[256]; Row body[MAXL]; int nb; } Phase;
-typedef struct { char name[128], game[64], bin[64]; int events; Row init[MAXL], needs[32]; int ninit, nneeds; Phase ph[MAXPH]; int nph; char path[P]; } Table;
+typedef struct { char name[128], game[64], bin[64]; int events, common; Row init[MAXL], needs[32]; int ninit, nneeds; Phase ph[MAXPH]; int nph; char path[P]; } Table;
 
 static long long now_ms(void) { struct timeval tv; gettimeofday(&tv, NULL); return (long long)tv.tv_sec * 1000 + tv.tv_usec / 1000; }
 static char *trim(char *s) { char *e; while (*s == ' ' || *s == '\t') s++; e = s + strlen(s); while (e > s && (e[-1] == ' ' || e[-1] == '\t' || e[-1] == '\r' || e[-1] == '\n')) *--e = 0; return s; }
@@ -71,6 +71,7 @@ static int parse_table(const char *path, Table *t) {
         split_row(p, &r); const char *v = r.f[0];
         if (!strcmp(v, "GAME") && r.n >= 3) { snprintf(t->game, sizeof t->game, "%s", r.f[1]); snprintf(t->bin, sizeof t->bin, "%s", r.f[2]); }
         else if (!strcmp(v, "EVENTS") && r.n >= 2) t->events = !strcmp(r.f[1], "yes");      /* the game folder keeps events/ and the scratch house gets the real event runner, the manager and bp_edit_op (blueprint-programming tables) */
+        else if (!strcmp(v, "COMMON") && r.n >= 2) t->common = !strcmp(r.f[1], "yes");      /* with EVENTS: common_events/ in the scratch house, the fixed call_event_op, mr_change_gold, and a caller entity <app>/ce_caller (BPCE, PLAYCE rows) */
         else if (!strcmp(v, "INIT") && r.n >= 3 && t->ninit < MAXL) t->init[t->ninit++] = r;
         else if (!strcmp(v, "NEEDS") && r.n >= 2 && t->nneeds < 32) t->needs[t->nneeds++] = r;
         else if (!strcmp(v, "PHASE") && r.n >= 2) {
@@ -147,6 +148,21 @@ static int emit_body_row(const Row *r) {
         for (int i = 1; i < r->n; i++) o += (size_t)snprintf(row + o, sizeof row - o, " | %s", r->f[i]);
         emit("%s", row);
     }
+    else if (!strcmp(v, "BPCE")) {   /* BPCE | <event>[@<page>] | edit|append|delete|show|new_page|trigger | args...: one edit of a COMMON event (common_events/<event>) through the real events-hq manager (bp_edit_op); \p = a bar */
+        NEED(3); if (!CT->common) return bad_row("BPCE needs `EVENTS | yes` and `COMMON | yes` rows", r);
+        char ev[96], pg[32] = "page_1"; snprintf(ev, sizeof ev, "%s", r->f[1]); char *at = strchr(ev, '@'); if (at) { *at = 0; snprintf(pg, sizeof pg, "%s", at + 1); }
+        char row[P]; size_t o = (size_t)snprintf(row, sizeof row, "RUN | env | BP_PAGE=%s | $T/&.hq-apps/blueprintz/ops/+x/bp_edit_op.+x | $T | $T/common_events/%s/event_pkg | %s | %s", pg, ev, ev, r->f[2]);
+        for (int i = 3; i < r->n; i++) o += (size_t)snprintf(row + o, sizeof row - o, " | %s", r->f[i]);
+        emit("%s", row);
+    }
+    else if (!strcmp(v, "PLAYCE")) {   /* PLAYCE | <trigger>: play_event.sh on the caller entity <app>/ce_caller with that trigger (the way a Play does: the entity's pages, then every common event with the trigger) */
+        NEED(2); if (!CT->common) return bad_row("PLAYCE needs `EVENTS | yes` and `COMMON | yes` rows", r);
+        emit("RUN | bash | $T/&.widgits/events-hq/ops/play_event.sh | $T/%s/ce_caller | $T | %s", CAPP, r->f[1]);
+    }
+    else if (!strcmp(v, "HASROOT")) { NEED(4); LAB(3); emit("EXPECT_HAS | %s | %s | %s", r->f[1], r->f[2], lab); }      /* HASROOT | <path relative to the scratch house root> | <text> | <label> */
+    else if (!strcmp(v, "MKDIRROOT")) { NEED(2); emit("MKDIR | %s", r->f[1]); }      /* MKDIRROOT | <dir relative to the scratch house root> */
+    else if (!strcmp(v, "PUTROOT")) { NEED(3); rejoin(r, 2, tx, sizeof tx); emit("WRITE | %s | %s", r->f[1], tx); }      /* PUTROOT | <file relative to the scratch house root> | <one line of text> */
+    else if (!strcmp(v, "NOFILEROOT")) { NEED(3); LAB(2); emit("EXPECT_NOFILE | %s | %s", r->f[1], lab); }
     else if (!strcmp(v, "NOTE")) { /* a comment that travels with the table */ }
     else return bad_row("unknown row verb", r);
     return 0;
@@ -218,6 +234,21 @@ static int cmd_compile(const char *phases, const char *casedir_arg) {
                   snprintf(rel, sizeof rel, "%s", house + strlen(rr) + 1); char dir[P]; snprintf(dir, sizeof dir, "%s", rel); char *ls = strrchr(dir, '/'); if (ls) *ls = 0;
                   emit("COPY | %s | 101.mutaclsym-scratch/system/prisc+x", rel); (void)dir; } }      /* no default_op.txt in the house system dir: prisc prints its usual "could not open ops file" line and the page still runs (known, same in the live house) */
           globfree(&g); }
+        if (t->common) {
+            emit("# COMMON: common_events/ + the call_event op (fixed 2026-10-21), its op registry in the VM's system dir, mr_change_gold, and a caller entity with its own gold");
+            glob_t g2; char pat2[P], real2[P];
+            snprintf(pat2, sizeof pat2, "%s/../../../101.mutaclsym*/default_op.txt", HARN);
+            if (glob(pat2, 0, NULL, &g2) == 0 && g2.gl_pathc >= 1 && realpath(g2.gl_pathv[0], real2)) {
+                char root2[P], rr2[P]; snprintf(root2, sizeof root2, "%s/../../..", HARN);
+                if (realpath(root2, rr2) && !strncmp(real2, rr2, strlen(rr2))) {
+                    char rel2[P]; snprintf(rel2, sizeof rel2, "%s", real2 + strlen(rr2) + 1); char md[P]; snprintf(md, sizeof md, "%s", rel2); char *sl2 = strrchr(md, '/'); if (sl2) *sl2 = 0;
+                    emit("MKDIR | 101.mutaclsym-scratch/system/ops/+x");
+                    emit("COPY | %s | 101.mutaclsym-scratch/system/default_op.txt", rel2);
+                    emit("COPY | %s/ops/+x/call_event_op.+x | 101.mutaclsym-scratch/system/ops/+x/call_event_op.+x", md); } }
+            globfree(&g2);
+            emit("MKDIR | common_events"); emit("COPY | &.widgits/events-hq/ops/+x/mr_change_gold.+x | &.widgits/events-hq/ops/+x/mr_change_gold.+x");
+            emit("MKDIR | %s/ce_caller", CAPP); emit("WRITE | %s/ce_caller/inventory.txt | qolq=35", CAPP);
+        }
     }
     for (int i = 0; i < t->nneeds; i++) emit("COPY | %s | %s", t->needs[i].f[1], t->needs[i].n >= 3 ? t->needs[i].f[2] : t->needs[i].f[1]);
     emit("RUN | nice | -n | 15 | gcc | -std=gnu11 | -O0 | -w | -o | %s | $T/%s/ops/%s.c | -lm", CBIN, CAPP, t->bin);

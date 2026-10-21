@@ -5,7 +5,7 @@
  *
  *   bp_win_op <house> <app_dir> <step> [<step> ...]
  *     step  REQ:<request line>          append it to <app_dir>/state/request.txt (what bp_req does), then wait for the manager: an edit-type
- *                                       request (EDIT: ADD: CDEL UNDO) runs in the background, so wait until the message no longer ends in "..."
+ *                                       request (EDIT: ADD: CDEL UNDO PNEW TRIG:) runs in the background, so wait until the message no longer ends in "..."
  *           EXPECT:<ui key>~<text>      the value of that ui.txt key must contain <text>
  *           EXPECTNOT:<ui key>~<text>   ... must NOT contain <text>
  *   The real blueprintz_manager is started on <app_dir> with state/target.pdl pointing at <house>, and always killed and reaped. In a step, a literal bar is
@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
         if (!strncmp(step, "REQ:", 4)) {
             char before[400]; ui_get("msg", before, sizeof before);
             FILE *f = fopen(req, "a"); if (!f) { fprintf(stderr, "bp_win: cannot write the request\n"); return 2; } fprintf(f, "%s\n", step + 4); fclose(f);
-            int edit = !strncmp(step + 4, "EDIT:", 5) || !strncmp(step + 4, "ADD:", 4) || !strcmp(step + 4, "CDEL") || !strcmp(step + 4, "UNDO");
+            int edit = !strncmp(step + 4, "EDIT:", 5) || !strncmp(step + 4, "ADD:", 4) || !strcmp(step + 4, "CDEL") || !strcmp(step + 4, "UNDO") || !strcmp(step + 4, "PNEW") || !strncmp(step + 4, "TRIG:", 5);
             long t0 = now_ms(); char m[400] = "";
             while (now_ms() - t0 < (edit ? 25000 : 3000)) {
                 usleep(150000); ui_get("msg", m, sizeof m);

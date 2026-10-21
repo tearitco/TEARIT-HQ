@@ -7,7 +7,7 @@
   <page name="main">
     <sidebar>
       <text label="Events on this page (click to select)" class="quiet"/>
-      <scrolllist>
+      <scrolllist class="from-top">
         <repeat count="${e_count}" bind="e">
           <item id="ev${e.#}" class="${e.class}" label="${e.label}" action="${e.action}"/>
         </repeat>
@@ -33,10 +33,18 @@
       <row class="toolbar">
         <item id="loadgdh" label="Load game-dev-hq verbs" action="${load_gdh_action}"/>
         <item id="loadrpg" label="Load rpg-pvp-hq verbs" action="${load_rpg_action}"/>
+        <item id="loadce" label="Load common events" action="${loadce_action}"/>
       </row>
-      <scrolllist>
+      <scrolllist class="from-top">
         <text label="${sel_line}" class="quiet"/>
-        <text label="Commands of the selected event (page_1; click one to select)" class="bp-head"/>
+        <text label="Pages of the selected event (click one to edit it)" class="bp-head"/>
+        <repeat count="${pg_count}" bind="pg">
+          <item id="pg${pg.#}" class="${pg.class}" label="${pg.label}" action="${pg.action}"/>
+        </repeat>
+        <item id="pgnew" class="data-item" label="+ New page (trigger on-click)" action="${pgnew_action}"/>
+        <cli_io id="trigline" target_id="trigline" rows="1" class="bp-edit top" label="set trigger of this page ..." action="${trig_action}"/>
+        <text label="${page_line}" class="quiet"/>
+        <text label="Commands of the selected page (click one to select)" class="bp-head"/>
         <repeat count="${n_count}" bind="n">
           <item id="nd${n.#}" class="${n.class}" label="${n.label}" action="${n.action}"/>
         </repeat>
@@ -49,6 +57,11 @@
           <item id="undo" label="Undo" action="${undo_action}"/>
           <text label="${undo_line}" class="quiet"/>
         </row>
+        <text label="Calls between the loaded events (who calls whom)" class="bp-head"/>
+        <repeat count="${x_count}" bind="x">
+          <text id="xr${x.#}" class="quiet" label="${x.label}"/>
+        </repeat>
+        <text label="${x_none}" class="quiet"/>
         <text label="Problems for the selected event" class="bp-head"/>
         <repeat count="${f_count}" bind="f">
           <text id="fl${f.#}" class="bp-flag" label="${f.label}"/>

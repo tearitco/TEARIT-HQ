@@ -1,0 +1,38 @@
+# blueprintz_common_pages.phases.pdl - the blueprintz WINDOW layer on COMMON events with several pages (BOOK BLUEPRINTZ-DESIGN.md 12.22, 2026-10-21):
+# Load common events, the page list, picking a page, editing a command on page 2 (undo returns to that page), a new page, a page trigger (and its undo and refusals),
+# and the "who calls whom" list. Same style as blueprintz_window.phases.pdl (BPWIN rows = one real blueprintz_manager session each); the events are seeded
+# through the real events-hq manager (BPCE rows) from an empty pages/ folder. Runner: ops/+x/playthrough_op.+x run play/phases/blueprintz_common_pages.phases.pdl
+GAME | game-dev-hq | game_dev_hq
+EVENTS | yes
+COMMON | yes
+
+PHASE | p1_seed | two common events: bump (page_1 player-touch +10, page_2 player-hit +5) and outer (on-click, calls bump) | seed
+MKDIRROOT | common_events/bump/event_pkg/pages
+BPCE | bump | trigger | player-touch
+BPCE | bump | append | change_gold | amount=10
+BPCE | bump | new_page
+BPCE | bump@page_2 | append | change_gold | amount=5
+BPCE | bump@page_2 | trigger | player-hit
+EXIT | 0 | bump-seeded
+MKDIRROOT | common_events/outer/event_pkg/pages
+BPCE | outer | trigger | on-click
+BPCE | outer | append | call_common_event | event_name=bump\ptrigger=player-touch
+EXIT | 0 | outer-seeded
+
+PHASE | p2_load_and_pages | Load common events lists both; bump shows its two pages with their triggers; selecting page_2 shows its command | window, load, pages
+BPWIN | REQ:LOADCE | EXPECT:msg~loaded 2 event(s) of common events | EXPECT:e_count~2 | EXPECT:e_0_label~bump | REQ:SEL:0 | EXPECT:pg_count~2 | EXPECT:pg_0_label~trigger: player-touch | EXPECT:pg_1_label~trigger: player-hit | EXPECT:n_0_label~amount=10 | REQ:PSEL:page_2 | EXPECT:page_line~editing page_2 of bump | EXPECT:n_0_label~amount=5 | REQ:PSEL:page_9 | EXPECT:msg~no such page
+EXIT | 0 | load-and-page-list
+
+PHASE | p3_edit_on_page_2 | edit a command on page_2, undo returns to page_2's command, page_1 is untouched | window, pages, edit, undo
+BPWIN | REQ:LOADCE | REQ:SEL:0 | REQ:PSEL:page_2 | REQ:EDIT:amount=7 | EXPECT:n_0_label~amount=7 | REQ:PSEL:page_1 | EXPECT:n_0_label~amount=10 | REQ:PSEL:page_2 | REQ:UNDO | EXPECT:n_0_label~amount=5
+EXIT | 0 | page-2-edit-and-undo
+HASROOT | common_events/bump/event_pkg/pages/page_2/cmd_1.sh | '5' | page-2-file-back-to-5
+HASROOT | common_events/bump/event_pkg/pages/page_1/cmd_1.sh | '10' | page-1-file-never-changed
+
+PHASE | p4_new_page_and_trigger | add a page (starts on-click), set and undo its trigger, refusals leave it alone | window, pages, trigger
+BPWIN | REQ:LOADCE | REQ:SEL:0 | REQ:PNEW | EXPECT:msg~added page_3 | EXPECT:pg_count~3 | EXPECT:pg_2_label~trigger: on-click | REQ:TRIG:player-use | EXPECT:pg_2_label~trigger: player-use | REQ:UNDO | EXPECT:pg_2_label~trigger: on-click | REQ:TRIG:bad'trigger | EXPECT:msg~refused: a trigger may only | EXPECT:pg_2_label~trigger: on-click
+EXIT | 0 | new-page-trigger-undo-refusal
+
+PHASE | p5_who_calls_whom | the call list shows outer calling bump, and bump called by outer | window, xref, common
+BPWIN | REQ:LOADCE | REQ:SEL:1 | EXPECT:sel_line~outer | EXPECT:x_0_label~calls  bump | EXPECT:x_0_label~from page_1 | REQ:SEL:0 | EXPECT:x_0_label~called by  outer | EXPECT:x_none~
+EXIT | 0 | call-list-both-directions

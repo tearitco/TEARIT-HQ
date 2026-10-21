@@ -34,7 +34,11 @@ static char last_ui[24000];
 
 /* ---- B4 editing: the commands (NODE rows) of the selected event's page_1, and an undo stack of inverse edits ---- */
 typedef struct { int id; char type[40], params[400]; } Nd;
-typedef struct { char pkg[P], label[64], mode[8], id[12], type[40], params[400]; } Undo;
+/* pages of the selected event (B4 multi-page, 2026-10-21): name + trigger read from pages/<name>/condition.pdl; cpage = the page being edited */
+typedef struct { char name[32], trig[64]; } Pg;
+#define MAXPG 24
+static Pg PG[MAXPG]; static int nPG = 0; static char cpage[32] = "";
+typedef struct { char pkg[P], label[64], page[32], mode[8], id[12], type[40], params[400]; } Undo;
 #define MAXN 64
 #define MAXU 16
 static Nd N[MAXN]; static int nN = 0, csel = -1;
@@ -163,9 +167,28 @@ static const char *first_trigger(const Ev *e, char *out, size_t n) {   /* "page_
 
 
 /* ---- B4: command list + edits (every write goes through ops/bp_edit_op -> the events-hq manager; this file never writes an IR) ---- */
+static int pgnum(const char *n) { return atoi(n + 5); }
+static void load_pages(void) {
+    nPG = 0; if (!nE) return;
+    char root[P]; snprintf(root, P, "%s/event_pkg/pages", E[sel].pkg); DIR *d = opendir(root); if (!d) return;
+    struct dirent *de;
+    while ((de = readdir(d)) && nPG < MAXPG) { if (strncmp(de->d_name, "page_", 5) || strlen(de->d_name) >= 32) continue; snprintf(PG[nPG].name, 32, "%s", de->d_name); PG[nPG].trig[0] = 0; nPG++; }
+    closedir(d);
+    for (int i = 1; i < nPG; i++) { Pg t = PG[i]; int j = i - 1; while (j >= 0 && pgnum(PG[j].name) > pgnum(t.name)) { PG[j + 1] = PG[j]; j--; } PG[j + 1] = t; }
+    for (int i = 0; i < nPG; i++) {
+        char c[P], l[300]; snprintf(c, P, "%s/%s/condition.pdl", root, PG[i].name); FILE *f = fopen(c, "r"); if (!f) continue;
+        while (fgets(l, sizeof l, f)) if (!strncmp(l, "COND", 4)) {      /* "COND | trigger | x" and the padded "COND         | trigger              | x" both occur */
+            char *t = strstr(l, "trigger"); if (!t) continue; char *bar = strchr(t, '|'); if (!bar) continue; snprintf(PG[i].trig, 64, "%s", trim(bar + 1)); }
+        fclose(f);
+    }
+    int ok = 0; for (int i = 0; i < nPG; i++) if (!strcmp(PG[i].name, cpage)) ok = 1;
+    if (!ok) snprintf(cpage, sizeof cpage, "%s", nPG ? PG[0].name : "");
+}
+static const char *page_trig(const char *name) { for (int i = 0; i < nPG; i++) if (!strcmp(PG[i].name, name)) return PG[i].trig; return ""; }
 static void load_nodes(void) {
     nN = 0; if (!nE) return;
-    char p[P], l[900]; snprintf(p, P, "%s/event_pkg/pages/page_1/event.ir.pdl", E[sel].pkg);
+    load_pages(); if (!cpage[0]) return;
+    char p[P], l[900]; snprintf(p, P, "%s/event_pkg/pages/%s/event.ir.pdl", E[sel].pkg, cpage);
     FILE *f = fopen(p, "r"); if (!f) return;
     while (fgets(l, sizeof l, f) && nN < MAXN) {
         if (strncmp(l, "NODE", 4)) continue;
@@ -199,11 +222,11 @@ static int known_type(const char *type) {
 }
 /* An edit runs as a background child (bp_edit_op takes 2-3 s: it starts the events-hq manager, writes the request, waits for the recompile), so the
  * window keeps updating and the click returns at once. One edit at a time; poll_pending() (main loop) finishes it. */
-typedef struct { pid_t pid; long t0; char kind[8], mode[8], id[12], type[40], params[400], pkg[P], label[64]; Nd old; int before; } Pend;
+typedef struct { pid_t pid; long t0; char kind[8], mode[12], id[12], type[40], params[400], pkg[P], label[64], page[32]; Nd old; int before; } Pend;
 static Pend pend;
-static void push_undo(const char *pkg, const char *label, const char *mode, const char *id, const char *type, const char *params) {
+static void push_undo(const char *pkg, const char *label, const char *page, const char *mode, const char *id, const char *type, const char *params) {
     if (nU == MAXU) { memmove(&U[0], &U[1], sizeof(Undo) * (MAXU - 1)); nU--; }
-    Undo *u = &U[nU++]; snprintf(u->pkg, P, "%s", pkg); snprintf(u->label, 64, "%s", label);
+    Undo *u = &U[nU++]; snprintf(u->pkg, P, "%s", pkg); snprintf(u->label, 64, "%s", label); snprintf(u->page, 32, "%s", page);
     snprintf(u->mode, 8, "%s", mode); snprintf(u->id, 12, "%s", id); snprintf(u->type, 40, "%s", type); snprintf(u->params, 400, "%s", params);
 }
 static long now_s(void) { return (long)time(NULL); }
@@ -211,18 +234,21 @@ static int max_id(void);
 /* start bp_edit_op for the selected event in the background; kind = edit | add | del | undo (what finish_edit does with the result) */
 static int start_edit(const char *kind, const char *mode, const char *id, const char *type, const char *params, const Nd *old) {
     memset(&pend, 0, sizeof pend);
-    snprintf(pend.kind, 8, "%s", kind); snprintf(pend.mode, 8, "%s", mode); snprintf(pend.id, 12, "%s", id); snprintf(pend.type, 40, "%s", type); snprintf(pend.params, 400, "%s", params);
+    snprintf(pend.kind, 8, "%s", kind); snprintf(pend.mode, 12, "%s", mode); snprintf(pend.page, 32, "%s", cpage); snprintf(pend.id, 12, "%s", id); snprintf(pend.type, 40, "%s", type); snprintf(pend.params, 400, "%s", params);
     snprintf(pend.pkg, P, "%s", E[sel].pkg); snprintf(pend.label, 64, "%s", E[sel].name); if (old) pend.old = *old; pend.before = max_id();
     char bin[P], out[P], pkg[P]; snprintf(bin, P, "%s/ops/+x/bp_edit_op.+x", g_pkg); join(out, g_state, "edit.out"); snprintf(pkg, P, "%s/event_pkg", pend.pkg);
     char *av[10]; int n = 0; av[n++] = bin; av[n++] = g_target; av[n++] = pkg; av[n++] = pend.label; av[n++] = pend.mode;
     if (!strcmp(mode, "edit")) { av[n++] = pend.id; av[n++] = pend.type; av[n++] = pend.params; }
     else if (!strcmp(mode, "append")) { av[n++] = pend.type; av[n++] = pend.params; }
+    else if (!strcmp(mode, "trigger")) { av[n++] = pend.params; }
+    else if (!strcmp(mode, "new_page")) { }
     else av[n++] = pend.id;
     av[n] = NULL;
     pid_t pid = fork(); if (pid < 0) { pend.pid = 0; return -1; }
     if (pid == 0) {
         if (!freopen(out, "w", stdout) || !freopen(out, "a", stderr)) _exit(126);
         if (!freopen("/dev/null", "r", stdin)) _exit(126);
+        setenv("BP_PAGE", pend.page[0] ? pend.page : "page_1", 1);
         execv(av[0], av); _exit(127);
     }
     pend.pid = pid; pend.t0 = now_s(); return 0;
@@ -231,20 +257,28 @@ static int start_edit(const char *kind, const char *mode, const char *id, const 
 static void finish_edit(int rc) {
     Pend p = pend; pend.pid = 0;
     if (!strcmp(p.kind, "undo")) {
-        if (rc) { snprintf(msg, sizeof msg, "undo %s on %s FAILED (rc=%d), see state/edit.out", p.mode, p.label, rc); push_undo(p.pkg, p.label, p.mode, p.id, p.type, p.params); }
+        if (rc) { snprintf(msg, sizeof msg, "undo %s on %s FAILED (rc=%d), see state/edit.out", p.mode, p.label, rc); push_undo(p.pkg, p.label, p.page, p.mode, p.id, p.type, p.params); }
         else snprintf(msg, sizeof msg, "undone: %s on %s", p.mode, p.label);
         load_nodes(); return;
     }
     if (rc) { snprintf(msg, sizeof msg, "%s FAILED (rc=%d), see state/edit.out", p.kind, rc); return; }
+    if (!strcmp(p.kind, "page")) {
+        load_pages(); if (nPG) snprintf(cpage, sizeof cpage, "%s", PG[nPG - 1].name); load_nodes();
+        snprintf(msg, sizeof msg, "added %s (trigger on-click, no commands); a page cannot be removed from here, so this step has no undo", cpage); return;
+    }
     load_nodes();
+    if (!strcmp(p.kind, "trig")) {
+        push_undo(p.pkg, p.label, p.page, "trigger", "", "", p.old.type);       /* old trigger kept in old.type */
+        snprintf(msg, sizeof msg, "%s trigger: %s  ->  %s", p.page, p.old.type[0] ? p.old.type : "(none)", p.params); return;
+    }
     if (!strcmp(p.kind, "del")) {
-        push_undo(p.pkg, p.label, "append", "", p.old.type, p.old.params);
+        push_undo(p.pkg, p.label, p.page, "append", "", p.old.type, p.old.params);
         snprintf(msg, sizeof msg, "deleted command %d (%s %s); undo puts it back at the end of the list", p.old.id, p.old.type, p.old.params);
     } else if (!strcmp(p.kind, "add")) {
-        int nid = max_id(); if (nid > p.before) { char b[12]; snprintf(b, sizeof b, "%d", nid); push_undo(p.pkg, p.label, "delete", b, "", ""); csel = nid; }
+        int nid = max_id(); if (nid > p.before) { char b[12]; snprintf(b, sizeof b, "%d", nid); push_undo(p.pkg, p.label, p.page, "delete", b, "", ""); csel = nid; }
         snprintf(msg, sizeof msg, "added command %d: %s %s", nid, p.type, p.params);
     } else {
-        push_undo(p.pkg, p.label, "edit", p.id, p.old.type, p.old.params);
+        push_undo(p.pkg, p.label, p.page, "edit", p.id, p.old.type, p.old.params);
         snprintf(msg, sizeof msg, "command %d: %s %s  ->  %s %s", p.old.id, p.old.type, p.old.params, p.type, p.params);
     }
 }
@@ -266,6 +300,25 @@ static int split_typed(const char *t, const Nd *cur, char *type, size_t tn, char
 }
 /* LOAD:<app> - make the page "every verb page of one game": rows EVENT | verb | @.apps/<app>/events/<verb> for each events/<verb>/event_pkg, sorted */
 static int cmp_s(const void *a, const void *b) { return strcmp((const char *)a, (const char *)b); }
+/* rows for bp_sources.pdl from one folder of event folders (each with event_pkg/pages): sorted, relative to the target house */
+static void write_rows(const char *dir, const char *rel_prefix, const char *what) {
+    DIR *d = opendir(dir); if (!d) { snprintf(msg, sizeof msg, "no events folder for %s (%s)", what, dir); return; }
+    static char names[MAXE][64]; int n = 0; struct dirent *de;
+    while ((de = readdir(d)) && n < MAXE) {
+        if (de->d_name[0] == '.' || strlen(de->d_name) >= 64) continue;
+        char t[P]; snprintf(t, P, "%s/%s/event_pkg/pages", dir, de->d_name); if (access(t, F_OK) == 0) snprintf(names[n++], 64, "%s", de->d_name);
+    }
+    closedir(d); qsort(names, (size_t)n, 64, cmp_s);
+    char out[P], tmp[P]; join(out, g_state, "bp_sources.pdl"); snprintf(tmp, P, "%s.tmp", out);
+    FILE *f = fopen(tmp, "w"); if (!f) { snprintf(msg, sizeof msg, "cannot write bp_sources.pdl"); return; }
+    for (int i = 0; i < n; i++) fprintf(f, "EVENT | %s | %s/%s\n", names[i], rel_prefix, names[i]);
+    fclose(f); rename(tmp, out); sel = 0; csel = -1; cpage[0] = 0; nU = 0;
+    snprintf(msg, sizeof msg, "loaded %d event(s) of %s (undo history cleared)", n, what);
+}
+static void load_common(void) {
+    char dir[P]; snprintf(dir, P, "%s/common_events", g_target);
+    write_rows(dir, "common_events", "common events");
+}
 static void load_game(const char *app) {
     if (!app[0] || !clean(app, 0)) { snprintf(msg, sizeof msg, "refused: bad game name"); return; }
     char dir[P]; snprintf(dir, P, "%s/@.apps/%s/events", g_target, app);
@@ -286,12 +339,32 @@ static void edit_verb(const char *verb) {
     if (!nE) { snprintf(msg, sizeof msg, "no event selected"); return; }
     load_nodes();
     if (!strncmp(verb, "CSEL:", 5)) { csel = atoi(verb + 5); snprintf(msg, sizeof msg, "command %d selected", csel); return; }
+    if (!strncmp(verb, "PSEL:", 5)) {
+        load_pages(); int ok = 0; for (int i = 0; i < nPG; i++) if (!strcmp(PG[i].name, verb + 5)) ok = 1;
+        if (!ok) { snprintf(msg, sizeof msg, "no such page: %s", verb + 5); return; }
+        snprintf(cpage, sizeof cpage, "%s", verb + 5); csel = -1; load_nodes(); snprintf(msg, sizeof msg, "%s selected (trigger %s)", cpage, page_trig(cpage)); return;
+    }
     if (pend.pid) { snprintf(msg, sizeof msg, "an edit is still running (%s on %s): wait for it", pend.kind, pend.label); return; }
+    if (!strcmp(verb, "PNEW")) {
+        if (start_edit("page", "new_page", "", "", "", NULL)) snprintf(msg, sizeof msg, "new page: could not start the edit");
+        else snprintf(msg, sizeof msg, "adding a page to %s ...", E[sel].name);
+        return;
+    }
+    if (!strncmp(verb, "TRIG:", 5)) {
+        const char *tv = verb + 5; load_pages();
+        if (!*tv) { snprintf(msg, sizeof msg, "type a trigger first (for example on-click, player-touch, Autorun)"); return; }
+        if (!clean(tv, 0)) { snprintf(msg, sizeof msg, "refused: a trigger may only contain letters, digits and _ - ."); return; }
+        if (!cpage[0]) { snprintf(msg, sizeof msg, "no page selected"); return; }
+        Nd old; memset(&old, 0, sizeof old); snprintf(old.type, sizeof old.type, "%s", page_trig(cpage));
+        if (start_edit("trig", "trigger", "", "", tv, &old)) snprintf(msg, sizeof msg, "trigger: could not start the edit");
+        else snprintf(msg, sizeof msg, "setting the trigger of %s ...", cpage);
+        return;
+    }
     if (!strcmp(verb, "UNDO")) {
         if (!nU) { snprintf(msg, sizeof msg, "nothing to undo"); return; }
         Undo u = U[--nU]; int found = -1; for (int i = 0; i < nE; i++) if (!strcmp(E[i].pkg, u.pkg)) found = i;
         if (found < 0) { snprintf(msg, sizeof msg, "undo: the event %s is not on this page any more", u.label); return; }
-        sel = found;
+        sel = found; snprintf(cpage, sizeof cpage, "%s", u.page);
         if (start_edit("undo", u.mode, u.id, u.type, u.params, NULL)) snprintf(msg, sizeof msg, "undo: could not start the edit");
         else snprintf(msg, sizeof msg, "undoing %s on %s ...", u.mode, u.label);
         return;
@@ -319,6 +392,29 @@ static void edit_verb(const char *verb) {
     Nd old = *cur;
     if (start_edit("edit", "edit", idb, type, params, &old)) snprintf(msg, sizeof msg, "edit: could not start the edit");
     else snprintf(msg, sizeof msg, "editing command %d ...", old.id);
+}
+
+/* ---- who calls whom: call_common_event nodes of every loaded event (all pages). Computed by scanning, never stored (design 12.22, section 4 of the design). ---- */
+typedef struct { int from; char page[32], to[64]; } Edge;
+#define MAXEDGE 128
+static Edge EG[MAXEDGE]; static int nEG = 0; static time_t eg_at = 0;
+static void scan_edges(void) {
+    if (time(NULL) == eg_at) return; eg_at = time(NULL); nEG = 0;
+    for (int i = 0; i < nE; i++) {
+        char root[P]; snprintf(root, P, "%s/event_pkg/pages", E[i].pkg); DIR *d = opendir(root); if (!d) continue;
+        struct dirent *de;
+        while ((de = readdir(d))) {
+            if (strncmp(de->d_name, "page_", 5)) continue;
+            char ir[P], l[900]; snprintf(ir, P, "%s/%s/event.ir.pdl", root, de->d_name); FILE *f = fopen(ir, "r"); if (!f) continue;
+            while (fgets(l, sizeof l, f) && nEG < MAXEDGE) {
+                if (strncmp(l, "NODE", 4) || !strstr(l, "type=call_common_event")) continue;
+                char *en = strstr(l, "event_name="); if (!en) continue; en += 11; size_t k = strcspn(en, "|\r\n ");
+                EG[nEG].from = i; snprintf(EG[nEG].page, 32, "%s", de->d_name); snprintf(EG[nEG].to, 64, "%.*s", (int)(k < 63 ? k : 63), en); nEG++;
+            }
+            fclose(f);
+        }
+        closedir(d);
+    }
 }
 
 /* ---- ui.txt ---- */
@@ -351,7 +447,23 @@ static void write_ui(void) {
         PUT("n_%d_class=%s\n", i, N[i].id == csel ? "bp-node active" : "bp-node");
         PUT("n_%d_action=%s 'CSEL:%d'\n", i, act, N[i].id);
     }
-    PUT("n_none=%s\n", nN ? "" : "this event has no commands on page_1");
+    PUT("n_none=%s\n", nN ? "" : "this page has no commands");
+    PUT("pg_count=%d\n", nPG);
+    for (int i = 0; i < nPG; i++) {
+        int on = !strcmp(PG[i].name, cpage);
+        PUT("pg_%d_label=%s%s   trigger: %s\n", i, on ? "* " : "  ", PG[i].name, PG[i].trig[0] ? PG[i].trig : "(none)");
+        PUT("pg_%d_class=%s\n", i, on ? "bp-node active" : "bp-node");
+        PUT("pg_%d_action=%s 'PSEL:%s'\n", i, act, PG[i].name);
+    }
+    PUT("page_line=editing %s of %s   (%d page%s)\n", cpage[0] ? cpage : "-", nE ? E[sel].name : "-", nPG, nPG == 1 ? "" : "s");
+    scan_edges();
+    { int xi = 0, total = 0;
+      for (int i = 0; i < nEG; i++) {
+        if (nE && EG[i].from == sel) { PUT("x_%d_label=calls  %s   (from %s)%s\n", xi, EG[i].to, EG[i].page, ""); xi++; }
+        else if (nE && !strcmp(EG[i].to, E[sel].name)) { PUT("x_%d_label=called by  %s   (%s)\n", xi, E[EG[i].from].name, EG[i].page); xi++; }
+      }
+      total = xi; PUT("x_count=%d\n", total); PUT("x_none=%s\n", total ? "" : "no calls to or from this event among the loaded events"); }
+    PUT("pgnew_action=%s 'PNEW'\ntrig_action=%s 'TRIG'\nloadce_action=%s 'LOADCE'\n", act, act, act);
     PUT("n_hint=%s\n", nN && csel >= 0 ? "type below: key=value|key=value  edits the selected command;  type|key=value  sets both" : "");
     PUT("load_gdh_action=%s 'LOAD:game-dev-hq'\nload_rpg_action=%s 'LOAD:rpg-pvp-hq'\n", act, act);
     PUT("edit_action=%s 'EDIT'\nadd_action=%s 'ADD'\ncdel_action=%s 'CDEL'\nundo_action=%s 'UNDO'\nundo_line=undo steps: %d\n", act, act, act, act, nU);
@@ -369,9 +481,10 @@ static void write_ui(void) {
 }
 
 static void handle(const char *verb) {
-    if (!strncmp(verb, "SEL:", 4)) { sel = atoi(verb + 4); csel = -1; snprintf(msg, sizeof msg, "selected"); return; }
+    if (!strncmp(verb, "SEL:", 4)) { sel = atoi(verb + 4); csel = -1; cpage[0] = 0; snprintf(msg, sizeof msg, "selected"); return; }
+    if (!strcmp(verb, "LOADCE")) { load_common(); return; }
     if (!strncmp(verb, "LOAD:", 5)) { load_game(verb + 5); return; }
-    if (!strncmp(verb, "CSEL:", 5) || !strncmp(verb, "EDIT:", 5) || !strncmp(verb, "ADD:", 4) || !strcmp(verb, "CDEL") || !strcmp(verb, "UNDO")) { edit_verb(verb); return; }
+    if (!strncmp(verb, "CSEL:", 5) || !strncmp(verb, "EDIT:", 5) || !strncmp(verb, "ADD:", 4) || !strcmp(verb, "CDEL") || !strcmp(verb, "UNDO") || !strncmp(verb, "PSEL:", 5) || !strcmp(verb, "PNEW") || !strncmp(verb, "TRIG:", 5)) { edit_verb(verb); return; }
     if (!strcmp(verb, "REFRESH")) { snprintf(msg, sizeof msg, "refreshed"); return; }
     if (!strcmp(verb, "PLAY")) {
         set_play(1); int n = 0;

@@ -1,0 +1,52 @@
+# common_events.phases.pdl - COMMON EVENTS act on the entity that was Played, pages and triggers, and a common event calling another (BOOK
+# 02-architecture/BLUEPRINT-EVENT-PAGES-GUIDE.md section 10; fixes of 2026-10-21 in play_event.sh, call_event_op.c and the registry's call_common_event).
+# Runner: ops/+x/playthrough_op.+x run play/phases/common_events.phases.pdl     (a scratch house under /tmp: nothing live is touched)
+# A common event starts as an EMPTY pages/ folder: the real events-hq manager makes page_1 (BPCE ... trigger) and its commands, so no hand-written files.
+# Rows: `COMMON | yes` seeds common_events/, the fixed call_event_op and a caller entity <app>/ce_caller (own gold: qolq=35); `BPCE | <event>[@<page>] |
+# edit|append|delete|show|new_page|trigger | args` edits a COMMON event through the real events-hq manager; `PLAYCE | <trigger>` plays the caller (its pages, then
+# every common event with that trigger); `HASROOT | <path from the house root> | <text> | <label>`; `MKDIRROOT`, `PUTROOT`, `NOFILEROOT` for files outside the app folder.
+GAME | game-dev-hq | game_dev_hq
+EVENTS | yes
+COMMON | yes
+
+PHASE | p1_acts_on_the_caller | a common event on trigger player-touch gives gold to the played entity, not to its own folder | common, caller, gold
+MKDIRROOT | common_events/bump/event_pkg/pages
+BPCE | bump | trigger | player-touch
+EXIT | 0 | the-manager-made-page-1-with-its-trigger
+BPCE | bump | append | change_gold | amount=10
+EXIT | 0 | common-event-compiled-by-the-manager
+HASROOT | common_events/bump/event_pkg/pages/page_1/cmd_1.sh | MUCHI_TARGET_ENT | the-wrapper-honors-the-caller-override
+PLAYCE | player-touch
+EXIT | 0 | play-event-ran
+HAS | ce_caller/inventory.txt | qolq=45 | the-caller-gained-10
+NOFILEROOT | common_events/bump/inventory.txt | nothing-landed-in-the-common-events-own-folder
+
+PHASE | p2_more_pages | a second page with its own trigger and commands, like events-hq: only the page whose trigger matches runs | common, pages, trigger
+BPCE | bump | new_page
+EXIT | 0 | page-2-added
+HASROOT | common_events/bump/event_pkg/pages/page_2/condition.pdl | on-click | new-page-starts-on-click
+BPCE | bump@page_2 | append | change_gold | amount=5
+EXIT | 0 | command-added-to-page-2
+BPCE | bump@page_2 | trigger | player-hit
+EXIT | 0 | trigger-set-on-page-2
+HASROOT | common_events/bump/event_pkg/pages/page_2/condition.pdl | player-hit | page-2-has-its-trigger
+HASROOT | common_events/bump/event_pkg/pages/page_1/condition.pdl | player-touch | page-1-trigger-untouched
+PLAYCE | player-hit
+HAS | ce_caller/inventory.txt | qolq=50 | page-2-gave-5
+PLAYCE | player-touch
+HAS | ce_caller/inventory.txt | qolq=60 | page-1-gave-10
+
+PHASE | p3_nested_call | an on-click common event calls bump (player-touch) through the registry's call_common_event: the caller gains gold | common, nested, call | 
+MKDIRROOT | common_events/outer/event_pkg/pages
+BPCE | outer | trigger | on-click
+EXIT | 0 | outer-page-1-made-with-trigger-on-click
+BPCE | outer | append | call_common_event | event_name=bump\ptrigger=player-touch
+EXIT | 0 | call-node-compiled
+HASROOT | common_events/outer/event_pkg/pages/page_1/event.pal | call_event "bump\pplayer-touch" | compiled-without-the-OP-prefix-trigger-in-the-name
+PLAYCE | on-click
+HAS | ce_caller/inventory.txt | qolq=70 | the-nested-event-acted-on-the-caller
+
+PHASE | p4_old_form_is_a_noop | the pre-fix pal form (OP prefix) does nothing: the harness can fail | common, negative, nested
+PUTROOT | common_events/outer/event_pkg/pages/page_1/event.pal | OP call_event "bump" player-touch
+PLAYCE | on-click
+HAS | ce_caller/inventory.txt | qolq=70 | gold-unchanged-the-old-form-does-nothing

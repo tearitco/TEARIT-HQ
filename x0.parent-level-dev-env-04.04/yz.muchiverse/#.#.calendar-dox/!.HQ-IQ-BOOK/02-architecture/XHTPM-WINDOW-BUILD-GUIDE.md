@@ -6,6 +6,8 @@ What the window edits (event pages, pal, prisc, C ops) is explained in BLUEPRINT
 
 Reference app: `44.xyz.01.00/&.hq-apps/blueprintz/` (`blueprintz.xhtpm`, `blueprintz.css`, `blueprintz_manager.c`, `ops/bp_req.c`, `ops/bp_edit_op.c`, `ops/build.sh`, `button.sh`).
 
+Section 3 is the tool-panel look. Section 8 is the game look: the small pet window and the pc-hq board. A new game uses section 8. It does not restyle blueprintz.
+
 ## 1. The shape: three parts, no new renderer code
 
 1. **A static template** (`blueprintz.xhtpm`) that never changes at run time. It only names slots: `${status_line}`, `${e_count}`, `<repeat count="${n_count}" bind="n">`, `action="${edit_action}"`.
@@ -48,6 +50,7 @@ Layout rules used: a left **sidebar** list (what exists, click to select) and a 
 ### Scrolling and small windows (added 2026-10-20, owner: "missing thumb scroll ... if window is too small")
 
 A window the user can shrink must scroll. This is **not** renderer work: wrap every list that can outgrow the window in the generic `<scrolllist>` (it brings the scrollbar thumb, the up/down arrows as nav numbers, wheel and PgUp/PgDn; see XHTPM-PARSER-REFERENCE.md, `generic_sbar_register`). blueprintz had none, so at 856x404 the lists were cut off. What worked, tried and screenshot-checked:
+- **Use `<scrolllist class="from-top">` for a list that starts at its top.** A plain `<scrolllist>` is bottom-anchored (chat style): blueprintz's tall panel opened scrolled to the bottom until `from-top` was added (auction-hq already had it).
 - **Sidebar:** keep the heading `<text>` fixed, put the `<repeat>` of rows inside `<scrolllist>`.
 - **Panel:** keep what must always be reachable fixed (status line, the button `<row class="toolbar">` rows); put the long, variable content (selection line, command list, fields, problems, trace) in one `<scrolllist>` below.
 - **Do not put toolbar `<row>`s of several `<item>`s inside a `<scrolllist>`:** they vanished from the render (tried; reverted). Rows of single items, `<text>`, `<item>`, `<cli_io>` and `<repeat>` rendered and scrolled fine.
@@ -92,3 +95,40 @@ A window the user can shrink must scroll. This is **not** renderer work: wrap ev
 7. Wrap every list that can grow in `<scrolllist>`; test the window shrunk.
 8. Headless test, relay test with screenshots, negative tests, restore state.
 9. Doc the limits in the design page the same day (what is not done), and commit with explicit pathspecs.
+10. A game window follows section 8. Copy the pet-window classes or the board template. Do not invent a third chrome, and do not edit the board camera.
+
+## 8. Game look: the pet window and the pc-hq board (added 2026-10-21)
+
+A house game is two windows over one app, not one blueprintz panel with a picture dropped in. Both stay on the shared renderer. Neither needs a new tag.
+
+### 8.1 The small window
+
+Reference: `44.xyz.01.00/@.apps/rpg-pvp-hq/rpg-pvp-hq.xhtpm` and `rpg-pvp-hq.css`. game-dev-hq uses the same class names.
+
+- Window class `database-window fixed-size managed user-resizable`. Background `#14161c`, DejaVu Sans 11px. Size is in the css (`window { width: 916px; height: 560px; }` on the shooter).
+- Top `<tabbar class="tab-bar">`. Each tab is `class="tab rp-tb"`. A menu tab is `onclick="ACTIVATE"` plus `target_id`. The rows that drop from it are `class="rp-menu-row dropdown-child"` with the same `target_id`. A row that only labels something uses `action="void"`.
+- INT is a tab whose class includes `${interact_class}`. On is `.tab.rp-tb.interact-active` (`#2a5a2a`). The label still says on or off.
+- The room is a canvas. Three chrome pieces, one of each. Left pin `canvas-overlay-left` plus `ov-pin` (`rp-side-ov`): the info the player is watching (phase, room, who is where). Right pin `canvas-overlay-right` (`rp-chat-ov`): the chat log. One bottom bar: footer `pchq-footer` / `pchq-ft`, and on a pet window that bar is the players (one button per name in `party.pdl`). A `canvas-overlay-bottom` is a second strip (the shooter's bag). Do not put the same player names on both. The menu `<sidebar>` is a 2px rail (`rp-rail`); a wide sidebar leaves a blank column and hides the pins. A left or right pin with no `<item>` child is skipped by the renderer. Quiet lines are `#8a93a8`. A number the player is watching (coins, a clock, the phase) is `rp-big` (`#ffd966`). Day and night come from the app clock into `state/daylight.txt` (night 19:00–06:00, dawn to 08:00, day to 17:00, dusk to 19:00) and tint the canvas. Doors are `rooms.pdl` rows: the trigger is the cell under the door picture.
+- Vars are `state/ui.txt` plus `state/clock_ui.txt` when the LyfeDesk clock label is on the bar. The module is the game binary (`ops/+x/rpg_pvp_hq.+x`), not a second renderer.
+- The cast is this app's `party.pdl` (`PET | name | sheet | index`). Sheets are the RPG Maker files under `&.widgits/palettes/sprites/rmmv/dir_characters/`. One app does not wear another app's names or cells. The island note is `16.game/BET-RPG-DESIGN.md`. A later generator is `16.game/CHAR-CREATE-DESIGN.md`.
+
+### 8.2 The board
+
+Reference: `44.xyz.01.00/@.apps/game-dev-hq/board/pchq-board.xhtpm`, `board/pchq-board.css`, `board/open_board.sh`. The same template shape is under each game's `board/`. The opener is `piececraft-hq/open_pchq_board.sh` with `PCHQ_BOARD_TPL` set to that game's `pchq-board.xhtpm` and `PCHQ_PKG` set to `<app>/<game>-pchq`.
+
+- Window class `pchq-board-pal database-window managed user-resizable`. The module is `piececraft-hq/ops/+x/pchq_board_projector.+x`, not the game binary. The game binary is what the tab actions call.
+- Chrome is the board's, not `rp-*`. Toolbar `pchq-toolbar`, tabs `tab pchq-tb` (idle `#232323` / `#cfe8ff`, active `#2f5f8f`). A 2px `pchq-rail` exists only so the sidebar-plus-panel layout runs. Footer `pchq-footer` / `pchq-ft`. Size on the studio board is 1074 by 556.
+- The picture is the book, not a widget you draw in css. `open_board.sh` runs the game's export (studio: `game_dev_hq.+x exportbook`) which writes `maps/<book>/<room>/` : `map.png`, `events.txt`, `bar.txt`, and the frames. People are event rows: x, y, then the sheet name and the cell (`Actor3 0` is the studio programmer). Furniture is map glyphs plus `extrusion.pdl` (`EXTRUDE | glyph | height`). A height makes a cube. The word `sprite` extrudes the opaque pixels of the cell and is the wrong look for a table tile.
+- Game vars are listed first on the window (`../state/ui.txt`). Board vars come after, so the canvas is the engine frame.
+- The comment at the top of `game-dev-hq/board/pchq-board.xhtpm` is the key list: 2D is the default, `0` is 3D, `1`–`4` are POV, backtick is the glyph view. Do not change camera equations, `bv_menu_input.c`, or `bv_render_3d.c` to chase a look. The owner sets the camera. Cell size, when a map has it, is `view.pdl` `VIEW | cell_px | 48` (dsr-rpg). The house default grid is larger. Do not invent a size.
+- A frame check is key `112` (the letter p) on `#.desktop/entity_menu_history/<pid>.txt`, which writes `/tmp/entity-menu-frame.png`. Read that file by the window's own pid.
+
+### 8.3 Which one to copy
+
+| You are making | Copy | Do not |
+| --- | --- | --- |
+| A tool (editor, h-ai, img-hai) | section 3, blueprintz.css | the board camera, a `toy.pdl` on an h-ai app |
+| A walkable game the player drives from menus | section 8.1, `rpg-pvp-hq.css` | a new palette |
+| The town, the office, the map you walk inside | section 8.2, that game's `board/pchq-board.xhtpm` | a second board renderer, a camera edit |
+
+h-ai apps (img-hai, and later char-hai) are section 3 windows. They are rows in `#.desktop/livedesk_taskbar.pdl` `ai_menu_N_*`. A `toy.pdl` would put them on the toys menu. img-hai's `toy.pdl` was removed for that reason.
