@@ -1,6 +1,6 @@
 # 2026-10-18 — Browser lane: re-baseline + burndown
 
-> **2026-10-20:** this burndown counts only the 18 tracked KPIs. The goal is now a fully Chrome-replaceable browser; the full sized backlog (142-262 sprints, groups A-I) is in `2026-10-20-CHROME-REPLACEMENT-SIZING.md`. The 5 open items here are its group A plus print.
+> **2026-10-20:** this burndown counts only the 18 tracked KPIs. The goal is now a fully Chrome-replaceable browser; the full sized backlog (149-273 sprints, groups A-I) is in `2026-10-20-CHROME-REPLACEMENT-SIZING.md`. The 5 open items here are its group A plus print.
 
 **Why this file exists.** A burndown drawn from the KPI plan's §4 sprint
 ladder would be fiction. That ladder was written 2026-10-11 and the
