@@ -237,8 +237,8 @@ int main(int argc, char **argv) {
         pet[i].r = col[i][0]; pet[i].g = col[i][1]; pet[i].b = col[i][2];
         snprintf(pet[i].name, sizeof pet[i].name, "%s", nm[i]); pet[i].letter = let[i];
     }
-    {   /* terumon art: app art/<id>.csv (copied from the pet folders, 64x64 sprite.csv) -> frames under <ASSETS>/../tsots-characters/frames; Ava has none yet and keeps her colour box */
-        static const char *art_id[8] = {"terumon_001_ember","terumon_002_glacine","terumon_003_murmur","terumon_004_solvent",0,"cursword","asa","robot_chat_001"};
+    {   /* terumon art: app art/<id>.csv (copied from the pet folders, 64x64 sprite.csv) -> frames under <ASSETS>/../tsots-characters/frames; Ava is pals/ava/sprite.csv */
+        static const char *art_id[8] = {"terumon_001_ember","terumon_002_glacine","terumon_003_murmur","terumon_004_solvent","ava","cursword","asa","robot_chat_001"};
         char fd[PATH_MAX]; snprintf(fd, sizeof fd, "%s/../tsots-characters", ASSETS); mkdir(fd, 0755); snprintf(fd, sizeof fd, "%s/../tsots-characters/frames", ASSETS); mkdir(fd, 0755);
         for (int i = 0; i < 8; i++) {
             if (!art_id[i]) continue;
