@@ -297,9 +297,23 @@ Chips are integers. A wager larger than the replayed bankroll is `refused` and m
 
 ### What the window shows
 
-**MINE.** The same 2D room the pet window already draws: pets as People4 cells 0–5, buildings as the glyph map, a short chat line from `GE_LOG_HOOK` ("Vale wagers 2 at pier", "the wheel is 17", "Nia cannot pay the grand"). The clock label is the existing `D<n> HH:MM` plus the phase word. No new art pass.
+**SAID, 2026-10-21.** When the playing character is in a hand, the view changes to that game's board. Poker, blackjack, roulette, slots, and craps each have their own board. The user drives that board with the navs: bet, hit, and the other acts for that game.
 
-Play / stop: while stopped, pets do not walk and the clock pauses, matching the shooter header. Menu and Help still work. There is no free-text chat input in v1. Save / load copies `state/` the way the shooter copies a slot, including `events.txt`, so the next scan rebuilds chips from the ledger and any checkpoint.
+**MINE.** Two pictures, one window, one canvas. Which picture is up follows the selected pet (the footer name, the playing character).
+
+- Not seated, or walking, or inside a hotel: the island or the interior, as the room view already draws. People4 cells, World_B buildings, door teleports, left info, right chat, one player footer.
+- Seated in an open hand (`sit` accepted, no `settle` yet for that actor at that table): the canvas is that table's board, not the room. Selecting another pet who is still walking switches back to the room. Selecting a pet who is in a different hand switches to that hand's board.
+
+The board is still this window's canvas. It is not the pc-hq 3D board and it does not move the camera. No new art files. Cards, the wheel, the reels, and the dice are drawn from the ledger rows already specified (`card:`, `wheel:`, `reels:`, `dice:`). Chips on the board are the replayed bankroll, not a second counter.
+
+The navs are the footer buttons, and they change with the picture:
+
+- Room view: chat, info, and the six player names.
+- Table view: the legal acts for that game, as buttons that emit the same verbs a pet would emit. Blackjack: Bet, Hit, Stand, Double. Hold'em: Bet, Check, Call, Raise, Fold. Roulette: Bet, then the selection (red, black, odd, even, low, high, or a number). Slots: Bet (one pull). Craps: Bet (pass line; further rolls are the house `reveal`). A button that the rules would `refuse` stays visible and returns that result. Leave, or the hand's `settle`, returns the room view and the player names.
+
+INT on means those buttons are the human playing that seat. INT off means the agent emits the same verbs and the board still updates if that pet is the one selected. The human does not get a second set of words. There is one button per verb token already in this note, not a new verb.
+
+Play / stop: while stopped, pets do not walk and the clock pauses, matching the shooter header. Menu and Help still work. There is no free-text chat input in v1. Save / load copies `state/` the way the shooter copies a slot, including `events.txt`, so the next scan rebuilds chips from the ledger and any checkpoint. The open picture is not saved as a camera. The next launch shows the room, then the board again if the selected pet still has an open hand.
 
 ## API / Interface Changes
 
@@ -433,7 +447,8 @@ Still not decided:
 7. Rest numbers (100 vs 40 stamina, 8 per settle) are proposals in `tuning.pdl`, selected by `RULES|1` at reset.
 8. Five games, one verb sequence (`sit wager act reveal settle`). `at` is a chair tile or `-`. Payouts use the stake-removed tokens: blackjack 3:2 on 2 chips is `pay:+5`; roulette even-money on 1 is `pay:+2` and a straight is `pay:+36`; slots AAA is `pay:+15`; craps pass-line win on 1 is `pay:+2`. Limit hold'em has no rake. Each player settles their own row. Edges: roulette about 2.70%, slots about 6.5% on the strip above, craps pass line about 1.41%. No basic-strategy percent for this blackjack.
 9. Human and agent emit the same verbs. Seats use the existing session file shape. v1 is local only. No sockets.
-10. Out of scope stays out: real money, payments, accounts, cross-machine play, 3D, guns, HP, building, new pets.
+10. The selected pet picks the picture. Walking or indoors is the room. An open hand is that game's board (poker, blackjack, roulette, slots, craps) in the same canvas. Footer navs become that game's acts (bet, hit, stand, and the rest). Not the pc-hq board. Not a camera change. Not a second verb list.
+11. Out of scope stays out: real money, payments, accounts, cross-machine play, 3D, guns, HP, building, new pets.
 
 ## PR Plan
 
@@ -459,22 +474,27 @@ Nothing below is built. Each PR is one review. Later PRs do not start inside the
    - **Depends on:** PR 2 and PR 3.
    - **Description:** `bet_rule`, `GE_RESET_HOOK`, `GE_CKSAVE_HOOK`, and `GE_CKLOAD_HOOK`. Reset scans the whole file for `SEED` / `START` / `RULES`, not the prefix before `CKPT`. `CKG` rows cover chips and stamina in this PR. The card, pot, and night rows are added by the PRs that create those facts, and the same hooks must already have a place for them. `GE_COMPACT_BYTES()` is 0 only until the hooks are in this same PR, then compaction is on. Starting chips are `START|100` for each pet. The reset hook reads that row. It is the owner's number, not a placeholder. A dummy `settle` returns the stake as `pay:+n`. Negative tests: wager above the total is `refused`; a second resolve appends nothing; after compact, `SEED` is still in the live file after `CKEND`, and the next `settle` matches the uncompacted file. Still no cards.
 
-5. **Title:** bet-rpg: blackjack sequence
+5. **Title:** bet-rpg: the table picture and its navs
+   - **Files:** `bet-rpg.xhtpm`, `bet-rpg.css`, `ops/bet_rpg.c`, `help.txt`. No edit to the pc-hq camera, `bv_menu_input.c`, or `bv_render_3d.c`.
+   - **Depends on:** PR 4, and one game's `sit` so a hand can be open. The picture can land with blackjack (the next PR) if that is the first hand. It does not wait for all five games.
+   - **Description:** The canvas follows the selected pet. No open hand: the room. Open hand: that table's board, drawn from the ledger (`card:`, `wheel:`, `reels:`, `dice:`). The footer drops the duplicate-name problem already fixed: room view keeps the six player names; table view replaces them with that game's acts (blackjack Bet, Hit, Stand, Double; hold'em Bet, Check, Call, Raise, Fold; roulette Bet plus the selection; slots Bet; craps Bet). Each button is the same verb the agent emits. INT on plays the seat. INT off leaves the agent on those verbs and still shows the board for the selected pet. `settle` or leaving the chair returns the room. Not built in the walk window.
+
+6. **Title:** bet-rpg: blackjack sequence
    - **Files:** `bet_rpg.c`, `tuning.pdl`, help text, one event page only if the window needs a button (same page pattern as the shooter, not a new dispatcher).
    - **Depends on:** PR 4.
    - **Description:** One table. `at` is the chair tile. A 2-chip blackjack settles `pay:+5` after `pay:-2`. Dealer cards are their own `reveal` rows (`card:Kh`), each under 47 characters. No whole-shoe row. Dealer stands soft 17. The pet hits below 17 and never doubles. Human INT emits the same `act` tokens. A fixed `SEED` plus the reveal index replays the same hook memory. The EVRES log matches those tokens. It is not what the hook reads. Other four games are not in this PR.
 
-6. **Title:** bet-rpg: roulette, slots, craps, limit hold'em
+7. **Title:** bet-rpg: roulette, slots, craps, limit hold'em
    - **Files:** `bet_rpg.c`, `tuning.pdl`, help text.
-   - **Depends on:** PR 5 (the sequence and the chip replay). The four games can be four commits inside one PR or four PRs with the same shape; each game's tests fail if that game's payout is wrong and do not require the other games.
+   - **Depends on:** PR 6 (the blackjack sequence and the chip replay). The four games can be four commits inside one PR or four PRs with the same shape; each game's tests fail if that game's payout is wrong and do not require the other games. The table picture (PR 5) already has a slot for each game's navs.
    - **Description:** Rules as in this note, version row `RULES|1` read at reset. No rake. No odds bet. No split. No new art. Hold'em includes a two-winner fixture: two `settle` rows, `pay:+k` on each winner, sum equal to the pot, and a second `settle` by the same actor is `refused`. Roulette checks `pay:+2` and `pay:+36`. Slots checks `pay:+15`. Craps checks `pay:+2`.
 
-7. **Title:** bet-rpg: night bill and hotel refusal
+8. **Title:** bet-rpg: night bill and hotel refusal
    - **Files:** `bet_rpg.c`, `time.pdl` (already has `phase_night` / `phase_dawn`), `town.pdl`, `tuning.pdl`.
    - **Depends on:** PR 4. Does not depend on every card game. A pet can be charged without blackjack existing.
    - **Description:** `phase_night` appends one `night|<day>` row (`ok`, no chips), then sets walk targets in party order toward the dearest open hotel the pet can pay. The resident appends one `sleep` when that pet is on the tile and has no `sleep` after that `night`. `phase_dawn` appends `missed` for anyone still without one, then `wake` only for a paid night. `CKG|NIGHT` and `CKG|SLEPT` survive a compact. Negative tests: a pet who cannot pay the cheap bed gets `missed`, keeps their chips, stamina is 40, and keeps walking (`sit` and `wager` stay blocked); a pet who `missed` night 1 is billed again after `night` for day 2; a two-pet, one-bed fixture claims the bed for the earlier party member. The map is three hotels and three casinos. The sample prices in `town.pdl` are not law.
 
-8. **Title:** bet-rpg: local seats on the session ledger
+9. **Title:** bet-rpg: local seats on the session ledger
    - **Files:** `bet_rpg.c`, `state` layout only as created at runtime (do not commit live `state/`), help text for INT.
    - **Depends on:** PR 2. Works before the card games if the only verbs are walk and select.
    - **Description:** `state/session.txt` with `SESSION` and `SEAT` rows. INT on writes `human`, INT off writes `agent`, last row wins. No outbox, no peer, no socket. A spectator is not offered yet.

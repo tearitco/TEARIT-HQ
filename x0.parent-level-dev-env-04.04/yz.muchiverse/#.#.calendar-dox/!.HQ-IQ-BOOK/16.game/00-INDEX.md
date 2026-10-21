@@ -39,6 +39,7 @@ command runs on.
   rows start NOT BUILT.
 - `IMG-HAI-DESIGN.md`, `WORD-BANK-TO-IMAGE.md` - the text-to-image studio window. It is an h-ai menu row now, not a toy.
 - `CHAR-CREATE-DESIGN.md` — a later h-ai window that writes `party.pdl` rows from arguments, a free sprite cell, or an img-hai draft. Not built.
+- `BET-RPG-DESIGN.md` — Casino Island. Three hotels, three casinos, People4 cast. The room view is the island. An open hand switches the same window to that game's board (poker, blackjack, roulette, slots, craps), and the footer navs become bet, hit, and the other acts. The walk window is open. The table picture is not built.
   (img-hai) and the word-bank pipeline behind it. **The full handbook (user
   guide, code guide, extension recipes, testing, operations, handoff) lives
   with the app: `44.xyz.01.00/&.hq-apps/img-hai/docs/` (start at README.md);
