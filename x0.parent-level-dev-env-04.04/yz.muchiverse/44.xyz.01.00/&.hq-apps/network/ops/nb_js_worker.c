@@ -3745,7 +3745,9 @@ static void install_dom_classes(JSContext *ctx) {
             "Event", "CustomEvent", "MouseEvent", "KeyboardEvent",
             "PointerEvent", "TouchEvent", "FocusEvent", "InputEvent",
             "WheelEvent", "UIEvent", "ProgressEvent", "ErrorEvent",
-            "MessageEvent", "DragEvent", "AnimationEvent", "TransitionEvent"
+            "MessageEvent", "DragEvent", "AnimationEvent", "TransitionEvent",
+            "FormData", "Blob", "File", "FileReader", "URLSearchParams",
+            "IntersectionObserver", "ResizeObserver", "PerformanceObserver"
         };
         for (size_t i = 0; i < sizeof(plain) / sizeof(plain[0]); i++)
             add_global_class(ctx, g, plain[i], JS_UNDEFINED);
@@ -3757,6 +3759,23 @@ static void install_dom_classes(JSContext *ctx) {
         JS_SetPropertyStr(ctx, p, "takeRecords", JS_NewCFunction(ctx, nb_empty_array, "takeRecords", 0));
         JS_FreeValue(ctx, p);
         JS_SetPropertyStr(ctx, g, "MutationObserver", f);
+        /* IntersectionObserver */
+        f = add_class(ctx, "IntersectionObserver", JS_UNDEFINED);
+        p = JS_GetPropertyStr(ctx, f, "prototype");
+        JS_SetPropertyStr(ctx, p, "observe", JS_NewCFunction(ctx, class_noop, "observe", 1));
+        JS_SetPropertyStr(ctx, p, "unobserve", JS_NewCFunction(ctx, class_noop, "unobserve", 1));
+        JS_SetPropertyStr(ctx, p, "disconnect", JS_NewCFunction(ctx, class_noop, "disconnect", 0));
+        JS_SetPropertyStr(ctx, p, "takeRecords", JS_NewCFunction(ctx, nb_empty_array, "takeRecords", 0));
+        JS_FreeValue(ctx, p);
+        JS_SetPropertyStr(ctx, g, "IntersectionObserver", f);
+        /* ResizeObserver */
+        f = add_class(ctx, "ResizeObserver", JS_UNDEFINED);
+        p = JS_GetPropertyStr(ctx, f, "prototype");
+        JS_SetPropertyStr(ctx, p, "observe", JS_NewCFunction(ctx, class_noop, "observe", 1));
+        JS_SetPropertyStr(ctx, p, "unobserve", JS_NewCFunction(ctx, class_noop, "unobserve", 1));
+        JS_SetPropertyStr(ctx, p, "disconnect", JS_NewCFunction(ctx, class_noop, "disconnect", 0));
+        JS_FreeValue(ctx, p);
+        JS_SetPropertyStr(ctx, g, "ResizeObserver", f);
         f = add_class(ctx, "DOMParser", JS_UNDEFINED);
         p = JS_GetPropertyStr(ctx, f, "prototype");
         JS_SetPropertyStr(ctx, p, "parseFromString", JS_NewCFunction(ctx, nb_empty_object, "parseFromString", 2));
