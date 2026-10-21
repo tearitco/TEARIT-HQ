@@ -3,6 +3,7 @@
  * Resident (house, app-dir) refreshes state/ui.txt. A verb is a short run.
  */
 #define _POSIX_C_SOURCE 200809L
+#define _DEFAULT_SOURCE      /* usleep under -std=c11 */
 #include <fcntl.h>
 #include <limits.h>
 #include <signal.h>
@@ -516,7 +517,7 @@ static void do_console(const char *spec) {
     memset(g, 0, sizeof *g);
     snprintf(g->id, 8, "g%d", ngames);
     snprintf(g->title, 24, "%s console", spec);
-    snprintf(g->genre, 16, "%s", supports);
+    snprintf(g->genre, sizeof g->genre, "%s", supports);
     snprintf(g->type, 16, "console");
     snprintf(g->phase, 16, "proposal");
     g->open = 1;
@@ -751,6 +752,61 @@ static void verb(int argc, char **argv) {
     printf("%s\n", note);
 }
 
+/* FIRE: the window plays the verb's event page (BOOK 16.game/EVENT-VERB-PAGES-DESIGN.md, built first for rpg-pvp-hq).
+ * The window calls "game_dev_hq.+x fire <verb> [args]". When verbs.pdl says the verb is page=yes and events/<verb>/ exists, the engine plays that
+ * package through events-hq's play_event.sh (trigger ui); the page runs the registered command game_dev_hq_verb, i.e. this binary with the plain verb
+ * (the leaf). Environment words carry the arguments (GDHQ_ARG) and a one-time token (GDHQ_VIA) that the leaf writes to state/via.txt, so a page that
+ * ran is told from one that did not and a verb is never run twice. No page, a broken page or a page=no verb: the verb runs directly and one line goes
+ * to state/fire_log.txt (never silent). */
+static int manifest_page(const char *verb, char *out, size_t cap) {
+    char p[1200], buf[16384]; snprintf(p, sizeof p, "%s/verbs.pdl", APP); out[0] = 0;
+    FILE *f = fopen(p, "r"); if (!f) return 0; size_t n = fread(buf, 1, sizeof buf - 1, f); buf[n] = 0; fclose(f);
+    for (char *l = strtok(buf, "\n"); l; l = strtok(NULL, "\n")) {
+        if (strncmp(l, "VERB", 4)) continue; char *fl[4]; int k = 0; char *q = l;
+        while (k < 4) { fl[k++] = q; char *b = strchr(q, '|'); if (!b) break; *b = 0; q = b + 1; }
+        if (k < 3) continue; for (int i = 1; i < 3; i++) { while (*fl[i] == ' ') fl[i]++; char *e = fl[i] + strlen(fl[i]); while (e > fl[i] && e[-1] == ' ') *--e = 0; }
+        if (!strcmp(fl[1], verb)) { snprintf(out, cap, "%s", fl[2]); return 1; }
+    }
+    return 0;
+}
+static void fire_log(const char *verb, const char *what) { char p[1200]; snprintf(p, sizeof p, "%s/fire_log.txt", ST); FILE *f = fopen(p, "a"); if (f) { fprintf(f, "%ld|%s|%s\n", (long)time(NULL), verb, what); fclose(f); } }
+/* play events/<name>/ with a 20 s deadline; the child and its group are killed and reaped when it overruns */
+static int run_event_x(const char *name, const char *envs) {
+    char house[1024], realh[PATH_MAX], pd[1200], pl[PATH_MAX + 64], wd[1200], cmd[4800];
+    snprintf(house, sizeof house, "%s/../..", APP); if (!realpath(house, realh)) snprintf(realh, sizeof realh, "%s", house);
+    snprintf(pd, sizeof pd, "%s/events/%s", APP, name); snprintf(pl, sizeof pl, "%s/&.widgits/events-hq/ops/play_event.sh", realh); snprintf(wd, sizeof wd, "%s/world", ST);
+    if (!gd_exists(pl) || !is_dir(pd)) return 0; mkdir(wd, 0755);
+    snprintf(cmd, sizeof cmd, "%s MUCHI_TARGET_ENT='%s' bash '%s' '%s' '%s' ui >/dev/null 2>&1", envs, wd, pl, pd, realh);
+    pid_t pid = fork(); if (pid < 0) return 0;
+    if (pid == 0) { setpgid(0, 0); signal(SIGPIPE, SIG_DFL); execl("/bin/sh", "sh", "-c", cmd, (char *)NULL); _exit(127); }
+    int st = 0; for (int i = 0; i < 200; i++) { pid_t r = waitpid(pid, &st, WNOHANG); if (r == pid) return WIFEXITED(st) && WEXITSTATUS(st) == 0; if (r < 0) return 0; usleep(100000); }
+    kill(-pid, SIGKILL); kill(pid, SIGKILL); waitpid(pid, &st, 0); return 0;
+}
+/* returns 1 when it handled the call (page ran, or the arguments were refused); 0 = run the verb directly */
+static int fire_main(int vargc, char **vargv) {
+    if (vargc < 2) { printf("fire <verb> [args]\n"); return 1; }
+    const char *verb = vargv[1]; char args[200] = "", pg[16];
+    for (const char *q = verb; *q; q++) if (!((*q >= 'a' && *q <= 'z') || (*q >= '0' && *q <= '9') || *q == '_')) { printf("fire: bad verb\n"); return 1; }
+    for (int i = 2; i < vargc; i++) {
+        for (const char *q = vargv[i]; *q; q++) if (!((*q >= 'a' && *q <= 'z') || (*q >= 'A' && *q <= 'Z') || (*q >= '0' && *q <= '9') || strchr("_:.,-", *q))) {
+            char why[400]; size_t k; snprintf(why, sizeof why, "refused:bad-arg(%d of %d):", i - 1, vargc - 2); k = strlen(why);
+            for (const char *c = vargv[i]; *c && k + 2 < sizeof why; c++) why[k++] = (*c >= 32 && *c < 127 && *c != '|') ? *c : '?'; why[k] = 0;
+            printf("fire: bad character in an argument\n"); fire_log(verb, why); return 1; }
+        size_t o = strlen(args); if (o + strlen(vargv[i]) + 2 >= sizeof args) { printf("fire: arguments too long\n"); return 1; } snprintf(args + o, sizeof args - o, "%s%s", o ? " " : "", vargv[i]);
+    }
+    char pd[1200]; snprintf(pd, sizeof pd, "%s/events/%s", APP, verb);
+    if (!manifest_page(verb, pg, sizeof pg) || strcmp(pg, "yes")) { fire_log(verb, !pg[0] ? "direct:not-in-manifest" : "direct:page-no"); return 0; }
+    if (!is_dir(pd)) { fire_log(verb, "fallback:no-package"); return 0; }
+    char tok[64], envs[400], vp[1200], got[64] = ""; snprintf(tok, sizeof tok, "%ld-%d", (long)time(NULL), (int)getpid()); snprintf(vp, sizeof vp, "%s/via.txt", ST);
+    snprintf(envs, sizeof envs, "GDHQ_VIA='%s' GDHQ_ARG='%s'", tok, args);
+    run_event_x(verb, envs);
+    { FILE *f = fopen(vp, "r"); if (f) { if (fgets(got, sizeof got, f)) got[strcspn(got, "\n")] = 0; fclose(f); } }
+    if (strcmp(got, tok)) { fire_log(verb, "fallback:page-did-not-run"); return 0; }
+    { char lg[260]; snprintf(lg, sizeof lg, "page:%s", args); fire_log(verb, lg); } printf("ok\n"); return 1;
+}
+
+static volatile sig_atomic_t g_gd_quit;
+static void gd_on_term(int sig) { (void)sig; g_gd_quit = 1; }
 static void locate(const char *exe) {
     char d[1024]; snprintf(d, sizeof d, "%s", exe);
     for (int i = 0; i < 3; i++) { char *s = strrchr(d, '/'); if (s) *s = 0; }
@@ -766,12 +822,26 @@ int main(int argc, char **argv) {
     else locate(exe);
     snprintf(ST, sizeof ST, "%s/state", APP);
     mkdir(ST, 0755);
+    char *vargv[32]; int vargc = 0; for (int i = 1; i < argc && vargc < 31; i++) vargv[vargc++] = argv[i];
+    if (!resident) {
+        while (vargc >= 2 && vargv[vargc - 1][0] == '/' && is_dir(vargv[vargc - 1])) vargc--;      /* the renderer appends the house root and the app dir to every window action: not arguments */
+        if (vargc >= 1 && !strcmp(vargv[0], "fire")) { if (fire_main(vargc, vargv)) return 0; for (int i = 0; i + 1 < vargc; i++) vargv[i] = vargv[i + 1]; vargc--; }
+        { static char argbuf[200]; const char *va = getenv("GDHQ_VIA"), *ar = getenv("GDHQ_ARG");      /* the leaf of a fired page: record the token, take the arguments; cleared at once */
+          if (va && *va) { char vp[1200]; snprintf(vp, sizeof vp, "%s/via.txt", ST); FILE *vf = fopen(vp, "w"); if (vf) { fprintf(vf, "%s\n", va); fclose(vf); } }
+          if (ar && *ar && vargc == 1) { snprintf(argbuf, sizeof argbuf, "%s", ar); for (char *t = strtok(argbuf, " "); t && vargc < 31; t = strtok(NULL, " ")) vargv[vargc++] = t; }
+          unsetenv("GDHQ_VIA"); unsetenv("GDHQ_ARG"); }
+    }
     load_all(); seed(); gd_export_office(APP); write_ui();
     if (resident) {
+        /* closing the window ends this process with SIGTERM/SIGHUP; the clock daemon it started (daemon-start in gd_clock_ensure) is its child's child and
+         * used to outlive it for ever (RAN 2026-10-20: after the window closed, lc_clock.+x stayed, parent init). Stop it on the way out. */
+        struct sigaction sa; memset(&sa, 0, sizeof sa); sa.sa_handler = gd_on_term; sigaction(SIGTERM, &sa, NULL); sigaction(SIGHUP, &sa, NULL); sigaction(SIGINT, &sa, NULL);
         gd_clock_sync();
-        while (1) { load_all(); staff_chat(); write_ui(); gd_clock_sync(); sleep(2); }
+        while (!g_gd_quit) { load_all(); staff_chat(); write_ui(); gd_clock_sync(); for (int i = 0; i < 20 && !g_gd_quit; i++) usleep(100000); }
+        gd_clock_paths(); { const char *stop[] = {"daemon-stop", NULL}; lc_run(stop); }
+        return 0;
     }
-    verb(argc - 1, argv + 1);
+    verb(vargc, vargv);
     return 0;
 }
 

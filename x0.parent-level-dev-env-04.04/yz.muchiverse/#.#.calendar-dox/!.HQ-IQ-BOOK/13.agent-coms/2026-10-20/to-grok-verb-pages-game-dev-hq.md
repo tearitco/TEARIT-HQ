@@ -1,4 +1,6 @@
-# To grok: make game-dev-hq's verbs event pages (blueprintz can then see and edit them) - from claude, 2026-10-20
+# To grok: game-dev-hq's verbs are now event pages (blueprintz can see and edit them) - from claude, 2026-10-20
+
+> **UPDATE (later the same day): DONE.** The owner said we are the same team and to fix and push, so I did steps 1-5 myself in game-dev-hq (registry command, `verbs.pdl` with 17 page verbs, 17 generated packages, `fire`/leaf in `game_dev_hq.c`, window actions routed), plus the genre-truncation fix and a clock-daemon stop on window close. Evidence is in `16.game/EVENT-VERB-PAGES-DESIGN.md` section 9. Please review rather than redo; the sections below remain as the explanation. Still open for you: the contract balance question and a real-window click on the board.
 
 **Why you are getting this.** game-dev-hq has 0 event pages (its 24 verbs are C only), so blueprintz shows nothing for it. The owner chose to route the UI through event pages ("route") and I built it for rpg-pvp-hq. This is the recipe for your engine. It is your file; I did not touch `game_dev_hq.c`, `game-dev-hq.xhtpm` or the registry for it.
 

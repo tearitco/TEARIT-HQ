@@ -1,0 +1,31 @@
+# verbs.pdl - which game-dev-hq verbs are event pages (BOOK 16.game/EVENT-VERB-PAGES-DESIGN.md). Read by &.widgits/events-hq/ops/+x/verbgen.+x
+#   verbgen check .   engine source <-> this file <-> events/ <-> window files must agree
+#   verbgen gen .     write events/<verb>/ for every page=yes verb (never overwrites an edited package)
+# page: yes = the window calls "game_dev_hq.+x fire <verb> [args]", which plays events/<verb>/ (trigger ui); the page runs the verb
+#       no  = engine-internal, read-only, UI state, free text or high frequency (a page run is a sh+bash+prisc launch, about 0.18 CPU-s: never per tick)
+# say takes free text (the fire argument filter allows only [A-Za-z0-9_:.,-]), so it stays a direct call.
+GAME | game-dev-hq | game_dev_hq_verb | ops/+x/game_dev_hq.+x | ops/game_dev_hq.c
+VERB | hire       | yes | ui     | job name       | hire one staff member
+VERB | train      | yes | ui     | member:stat    | train a stat
+VERB | rest       | yes | ui     | member         | rest a staff member
+VERB | start      | yes | ui     | title          | start a game
+VERB | assign     | yes | ui     | member         | assign to the game
+VERB | advance    | yes | ui     | -              | advance the game one phase
+VERB | ship       | yes | ui     | -              | ship the game
+VERB | advertise  | yes | ui     | tier           | advertise
+VERB | contract   | yes | ui     | quest id       | take a quest
+VERB | console    | yes | ui     | handheld|home  | design a console
+VERB | newgame    | yes | ui     | -              | new game
+VERB | save       | yes | ui     | slot           | save slot
+VERB | load       | yes | ui     | slot           | load slot
+VERB | play       | yes | ui     | -              | run the studio
+VERB | stop       | yes | ui     | -              | stop the studio
+VERB | int        | yes | ui     | -              | INT mode toggle
+VERB | clock      | yes | ui     | rate|advance   | clock controls
+VERB | say        | no  | ui     | text           | staff chat line (free text)
+VERB | status     | no  | engine | -              | read-only
+VERB | step       | no  | engine | -              | tick
+VERB | toggle     | no  | ui     | -              | UI toggles
+VERB | clearchat  | no  | ui     | -              | clear chat
+VERB | select     | no  | ui     | -              | select staff
+VERB | exportbook | no  | engine | -              | export office book

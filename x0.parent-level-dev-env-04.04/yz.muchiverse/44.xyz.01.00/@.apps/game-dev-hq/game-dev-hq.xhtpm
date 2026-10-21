@@ -5,7 +5,7 @@
   <module src="@.apps/game-dev-hq/ops/+x/game_dev_hq.+x"/>
   <page name="main">
     <tabbar id="toolbar" class="tab-bar">
-      <tab id="tb-int" class="tab rp-tb ${interact_class}" label="INT ${interact_label}" relay="${rp_h1},${rp_h2}" onclick="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' int"/>
+      <tab id="tb-int" class="tab rp-tb ${interact_class}" label="INT ${interact_label}" relay="${rp_h1},${rp_h2}" onclick="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire int"/>
       <tab id="tb-book" class="tab rp-tb" label="Book ▾" onclick="ACTIVATE" target_id="tb-book"/>
       <tab id="tb-page" class="tab rp-tb" label="Page ▾" onclick="ACTIVATE" target_id="tb-page"/>
       <tab id="tb-player" class="tab rp-tb" label="Player ▾" onclick="ACTIVATE" target_id="tb-player"/>
@@ -14,50 +14,50 @@
     </tabbar>
     <sidebar id="side" class="rp-rail sidebar">
       <repeat count="${n_hire}" bind="hire">
-        <item id="h${hire.#}" class="rp-menu-row dropdown-child" target_id="mn-hire" label="${hire.line}" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' hire ${hire.job} ${hire.name}"/>
+        <item id="h${hire.#}" class="rp-menu-row dropdown-child" target_id="mn-hire" label="${hire.line}" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire hire ${hire.job} ${hire.name}"/>
       </repeat>
       <item id="hi-x" class="rp-menu-row dropdown-child quiet" target_id="mn-hire" label="- cancel -" action="void"/>
-      <item id="tr-prog" class="rp-menu-row dropdown-child" target_id="mn-train" label="Programming" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' train ${active_id}:programming"/>
-      <item id="tr-sc" class="rp-menu-row dropdown-child" target_id="mn-train" label="Scenario" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' train ${active_id}:scenario"/>
-      <item id="tr-gr" class="rp-menu-row dropdown-child" target_id="mn-train" label="Graphics" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' train ${active_id}:graphics"/>
-      <item id="tr-rest" class="rp-menu-row dropdown-child" target_id="mn-train" label="Rest" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' rest ${active_id}"/>
+      <item id="tr-prog" class="rp-menu-row dropdown-child" target_id="mn-train" label="Programming" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire train ${active_id}:programming"/>
+      <item id="tr-sc" class="rp-menu-row dropdown-child" target_id="mn-train" label="Scenario" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire train ${active_id}:scenario"/>
+      <item id="tr-gr" class="rp-menu-row dropdown-child" target_id="mn-train" label="Graphics" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire train ${active_id}:graphics"/>
+      <item id="tr-rest" class="rp-menu-row dropdown-child" target_id="mn-train" label="Rest" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire rest ${active_id}"/>
       <item id="tr-x" class="rp-menu-row dropdown-child quiet" target_id="mn-train" label="- cancel -" action="void"/>
       <repeat count="${n_contract}" bind="contract">
-        <item id="cq${contract.#}" class="rp-menu-row dropdown-child" target_id="mn-contract" label="${contract.line}" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' contract ${contract.id}"/>
+        <item id="cq${contract.#}" class="rp-menu-row dropdown-child" target_id="mn-contract" label="${contract.line}" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire contract ${contract.id}"/>
       </repeat>
       <item id="ct-x" class="rp-menu-row dropdown-child quiet" target_id="mn-contract" label="- cancel -" action="void"/>
-      <item id="pr-ar" class="rp-menu-row dropdown-child" target_id="mn-product" label="Game action / PC" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' start action:adventure"/>
-      <item id="pr-rp" class="rp-menu-row dropdown-child" target_id="mn-product" label="Game rpg / PC" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' start rpg:adventure"/>
-      <item id="pr-pz" class="rp-menu-row dropdown-child" target_id="mn-product" label="Game puzzle / PC" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' start puzzle:sim"/>
-      <item id="pr-hh" class="rp-menu-row dropdown-child" target_id="mn-product" label="Console handheld" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' console handheld"/>
-      <item id="pr-hm" class="rp-menu-row dropdown-child" target_id="mn-product" label="Console home" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' console home"/>
-      <item id="pr-as" class="rp-menu-row dropdown-child" target_id="mn-product" label="Assign selected" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' assign ${active_id}"/>
-      <item id="pr-go" class="rp-menu-row dropdown-child" target_id="mn-product" label="Advance" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' advance"/>
-      <item id="pr-ship" class="rp-menu-row dropdown-child" target_id="mn-product" label="Ship" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' ship"/>
+      <item id="pr-ar" class="rp-menu-row dropdown-child" target_id="mn-product" label="Game action / PC" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire start action:adventure"/>
+      <item id="pr-rp" class="rp-menu-row dropdown-child" target_id="mn-product" label="Game rpg / PC" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire start rpg:adventure"/>
+      <item id="pr-pz" class="rp-menu-row dropdown-child" target_id="mn-product" label="Game puzzle / PC" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire start puzzle:sim"/>
+      <item id="pr-hh" class="rp-menu-row dropdown-child" target_id="mn-product" label="Console handheld" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire console handheld"/>
+      <item id="pr-hm" class="rp-menu-row dropdown-child" target_id="mn-product" label="Console home" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire console home"/>
+      <item id="pr-as" class="rp-menu-row dropdown-child" target_id="mn-product" label="Assign selected" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire assign ${active_id}"/>
+      <item id="pr-go" class="rp-menu-row dropdown-child" target_id="mn-product" label="Advance" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire advance"/>
+      <item id="pr-ship" class="rp-menu-row dropdown-child" target_id="mn-product" label="Ship" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire ship"/>
       <item id="pr-x" class="rp-menu-row dropdown-child quiet" target_id="mn-product" label="- cancel -" action="void"/>
-      <item id="ad-s" class="rp-menu-row dropdown-child" target_id="mn-ad" label="Small $5000" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' advertise small"/>
-      <item id="ad-m" class="rp-menu-row dropdown-child" target_id="mn-ad" label="Mid $15000" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' advertise mid"/>
-      <item id="ad-b" class="rp-menu-row dropdown-child" target_id="mn-ad" label="Big $40000" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' advertise big"/>
+      <item id="ad-s" class="rp-menu-row dropdown-child" target_id="mn-ad" label="Small $5000" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire advertise small"/>
+      <item id="ad-m" class="rp-menu-row dropdown-child" target_id="mn-ad" label="Mid $15000" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire advertise mid"/>
+      <item id="ad-b" class="rp-menu-row dropdown-child" target_id="mn-ad" label="Big $40000" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire advertise big"/>
       <item id="ad-x" class="rp-menu-row dropdown-child quiet" target_id="mn-ad" label="- cancel -" action="void"/>
-      <item id="pm-play" class="rp-menu-row dropdown-child" target_id="tb-player" label="Play" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' play"/>
-      <item id="pm-stop" class="rp-menu-row dropdown-child" target_id="tb-player" label="Stop" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' stop"/>
-      <item id="pm-save" class="rp-menu-row dropdown-child" target_id="tb-player" label="Save (slot 1)" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' save 1"/>
-      <item id="pm-load" class="rp-menu-row dropdown-child" target_id="tb-player" label="Load (slot 1)" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' load 1"/>
-      <item id="pm-save2" class="rp-menu-row dropdown-child" target_id="tb-player" label="Save (slot 2)" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' save 2"/>
-      <item id="pm-load2" class="rp-menu-row dropdown-child" target_id="tb-player" label="Load (slot 2)" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' load 2"/>
-      <item id="pm-new" class="rp-menu-row dropdown-child" target_id="tb-player" label="New game" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' newgame"/>
-      <item id="pm-undo" class="rp-menu-row dropdown-child" target_id="tb-player" label="Undo new game" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' load 0"/>
+      <item id="pm-play" class="rp-menu-row dropdown-child" target_id="tb-player" label="Play" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire play"/>
+      <item id="pm-stop" class="rp-menu-row dropdown-child" target_id="tb-player" label="Stop" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire stop"/>
+      <item id="pm-save" class="rp-menu-row dropdown-child" target_id="tb-player" label="Save (slot 1)" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire save 1"/>
+      <item id="pm-load" class="rp-menu-row dropdown-child" target_id="tb-player" label="Load (slot 1)" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire load 1"/>
+      <item id="pm-save2" class="rp-menu-row dropdown-child" target_id="tb-player" label="Save (slot 2)" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire save 2"/>
+      <item id="pm-load2" class="rp-menu-row dropdown-child" target_id="tb-player" label="Load (slot 2)" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire load 2"/>
+      <item id="pm-new" class="rp-menu-row dropdown-child" target_id="tb-player" label="New game" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire newgame"/>
+      <item id="pm-undo" class="rp-menu-row dropdown-child" target_id="tb-player" label="Undo new game" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire load 0"/>
       <item id="pm-x" class="rp-menu-row dropdown-child quiet" target_id="tb-player" label="- cancel -" action="void"/>
-      <item id="tm-cent" class="rp-menu-row dropdown-child" target_id="tb-time" label="speed: turbo" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' clock rate cent"/>
-      <item id="tm-sec" class="rp-menu-row dropdown-child" target_id="tb-time" label="speed: fast" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' clock rate sec"/>
-      <item id="tm-min" class="rp-menu-row dropdown-child" target_id="tb-time" label="speed: normal" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' clock rate min"/>
-      <item id="tm-hour" class="rp-menu-row dropdown-child" target_id="tb-time" label="speed: real time" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' clock rate hour"/>
-      <item id="tm-adv1d" class="rp-menu-row dropdown-child" target_id="tb-time" label="skip +1 day" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' clock advance 1d"/>
+      <item id="tm-cent" class="rp-menu-row dropdown-child" target_id="tb-time" label="speed: turbo" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire clock rate cent"/>
+      <item id="tm-sec" class="rp-menu-row dropdown-child" target_id="tb-time" label="speed: fast" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire clock rate sec"/>
+      <item id="tm-min" class="rp-menu-row dropdown-child" target_id="tb-time" label="speed: normal" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire clock rate min"/>
+      <item id="tm-hour" class="rp-menu-row dropdown-child" target_id="tb-time" label="speed: real time" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire clock rate hour"/>
+      <item id="tm-adv1d" class="rp-menu-row dropdown-child" target_id="tb-time" label="skip +1 day" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire clock advance 1d"/>
       <item id="tm-x" class="rp-menu-row dropdown-child quiet" target_id="tb-time" label="- cancel -" action="void"/>
       <item id="mn-info" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Studio show / hide" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' toggle left"/>
       <item id="mn-chat" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Chat show / hide" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' toggle chat"/>
       <item id="mn-clear" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Clear chat" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' clearchat"/>
-      <item id="mn-reset" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Reset house (keeps a backup)" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' newgame"/>
+      <item id="mn-reset" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Reset house (keeps a backup)" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire newgame"/>
       <item id="mn-x" class="rp-menu-row dropdown-child quiet" target_id="tb-menu" label="- cancel -" action="void"/>
     </sidebar>
     <panel id="room_p" class="rp-panel">

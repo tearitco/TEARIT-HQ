@@ -1432,3 +1432,12 @@ COMMAND rpg_pvp_pet_says
   PARAMS pet,chat,voice
   TEMPLATE exec "$D/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x" pet_says '{pet}' '{chat}' '{voice}' "$RPG_OTHER"
 END
+
+# game_dev_hq_verb = one generic command that runs a game-dev-hq verb ("game_dev_hq.+x <verb> [arg]"); the event pages of verbs.pdl (verbgen) use it (BOOK 16.game/EVENT-VERB-PAGES-DESIGN.md).
+COMMAND game_dev_hq_verb
+  LABEL game-dev-hq: Run Verb
+  FIELD1 Verb:
+  FIELD2 Arg:
+  PARAMS verb,arg
+  TEMPLATE exec "$D/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x" '{verb}'[ '{arg}']
+END

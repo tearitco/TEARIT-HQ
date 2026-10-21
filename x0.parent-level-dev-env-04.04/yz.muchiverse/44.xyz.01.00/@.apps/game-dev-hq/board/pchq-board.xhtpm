@@ -7,7 +7,7 @@
   <module src="@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x" args="game-dev-hq-pchq"/>
   <page name="main">
     <tabbar id="toolbar" class="pchq-toolbar">
-      <tab id="tb-int" class="pchq-tb ${interact_class}" label="INT ${interact_label}" relay="${bv_h1},${bv_h2}" onclick="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' int"/>
+      <tab id="tb-int" class="pchq-tb ${interact_class}" label="INT ${interact_label}" relay="${bv_h1},${bv_h2}" onclick="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire int"/>
       <tab id="tb-book" class="pchq-tb" label="Book ▾" onclick="ACTIVATE" target_id="tb-book"/>
       <tab id="tb-page" class="pchq-tb" label="Page ▾" onclick="ACTIVATE" target_id="tb-page"/>
       <tab id="tb-player" class="pchq-tb" label="Player ▾" onclick="ACTIVATE" target_id="tb-player"/>
@@ -16,43 +16,43 @@
     </tabbar>
     <sidebar id="rail" class="pchq-rail sidebar">
       <repeat count="${n_hire}" bind="hire">
-        <item id="h${hire.#}" class="pchq-menu-row dropdown-child" target_id="mn-hire" label="${hire.line}" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' hire ${hire.job} ${hire.name}"/>
+        <item id="h${hire.#}" class="pchq-menu-row dropdown-child" target_id="mn-hire" label="${hire.line}" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire hire ${hire.job} ${hire.name}"/>
       </repeat>
       <item id="hi-x" class="pchq-menu-row dropdown-child quiet" target_id="mn-hire" label="- cancel -" action="void"/>
-      <item id="tr-prog" class="pchq-menu-row dropdown-child" target_id="mn-train" label="Programming" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' train ${active_id}:programming"/>
-      <item id="tr-sc" class="pchq-menu-row dropdown-child" target_id="mn-train" label="Scenario" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' train ${active_id}:scenario"/>
-      <item id="tr-gr" class="pchq-menu-row dropdown-child" target_id="mn-train" label="Graphics" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' train ${active_id}:graphics"/>
-      <item id="tr-rest" class="pchq-menu-row dropdown-child" target_id="mn-train" label="Rest" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' rest ${active_id}"/>
+      <item id="tr-prog" class="pchq-menu-row dropdown-child" target_id="mn-train" label="Programming" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire train ${active_id}:programming"/>
+      <item id="tr-sc" class="pchq-menu-row dropdown-child" target_id="mn-train" label="Scenario" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire train ${active_id}:scenario"/>
+      <item id="tr-gr" class="pchq-menu-row dropdown-child" target_id="mn-train" label="Graphics" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire train ${active_id}:graphics"/>
+      <item id="tr-rest" class="pchq-menu-row dropdown-child" target_id="mn-train" label="Rest" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire rest ${active_id}"/>
       <item id="tr-x" class="pchq-menu-row dropdown-child quiet" target_id="mn-train" label="- cancel -" action="void"/>
       <repeat count="${n_contract}" bind="contract">
-        <item id="cq${contract.#}" class="pchq-menu-row dropdown-child" target_id="mn-contract" label="${contract.line}" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' contract ${contract.id}"/>
+        <item id="cq${contract.#}" class="pchq-menu-row dropdown-child" target_id="mn-contract" label="${contract.line}" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire contract ${contract.id}"/>
       </repeat>
       <item id="ct-x" class="pchq-menu-row dropdown-child quiet" target_id="mn-contract" label="- cancel -" action="void"/>
-      <item id="pr-ar" class="pchq-menu-row dropdown-child" target_id="mn-product" label="Game action / PC" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' start action:adventure"/>
-      <item id="pr-rp" class="pchq-menu-row dropdown-child" target_id="mn-product" label="Game rpg / PC" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' start rpg:adventure"/>
-      <item id="pr-pz" class="pchq-menu-row dropdown-child" target_id="mn-product" label="Game puzzle / PC" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' start puzzle:sim"/>
-      <item id="pr-hh" class="pchq-menu-row dropdown-child" target_id="mn-product" label="Console handheld" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' console handheld"/>
-      <item id="pr-hm" class="pchq-menu-row dropdown-child" target_id="mn-product" label="Console home" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' console home"/>
-      <item id="pr-as" class="pchq-menu-row dropdown-child" target_id="mn-product" label="Assign selected" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' assign ${active_id}"/>
-      <item id="pr-go" class="pchq-menu-row dropdown-child" target_id="mn-product" label="Advance" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' advance"/>
-      <item id="pr-ship" class="pchq-menu-row dropdown-child" target_id="mn-product" label="Ship" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' ship"/>
+      <item id="pr-ar" class="pchq-menu-row dropdown-child" target_id="mn-product" label="Game action / PC" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire start action:adventure"/>
+      <item id="pr-rp" class="pchq-menu-row dropdown-child" target_id="mn-product" label="Game rpg / PC" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire start rpg:adventure"/>
+      <item id="pr-pz" class="pchq-menu-row dropdown-child" target_id="mn-product" label="Game puzzle / PC" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire start puzzle:sim"/>
+      <item id="pr-hh" class="pchq-menu-row dropdown-child" target_id="mn-product" label="Console handheld" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire console handheld"/>
+      <item id="pr-hm" class="pchq-menu-row dropdown-child" target_id="mn-product" label="Console home" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire console home"/>
+      <item id="pr-as" class="pchq-menu-row dropdown-child" target_id="mn-product" label="Assign selected" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire assign ${active_id}"/>
+      <item id="pr-go" class="pchq-menu-row dropdown-child" target_id="mn-product" label="Advance" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire advance"/>
+      <item id="pr-ship" class="pchq-menu-row dropdown-child" target_id="mn-product" label="Ship" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire ship"/>
       <item id="pr-x" class="pchq-menu-row dropdown-child quiet" target_id="mn-product" label="- cancel -" action="void"/>
-      <item id="ad-s" class="pchq-menu-row dropdown-child" target_id="mn-ad" label="Small $5000" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' advertise small"/>
-      <item id="ad-m" class="pchq-menu-row dropdown-child" target_id="mn-ad" label="Mid $15000" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' advertise mid"/>
-      <item id="ad-b" class="pchq-menu-row dropdown-child" target_id="mn-ad" label="Big $40000" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' advertise big"/>
+      <item id="ad-s" class="pchq-menu-row dropdown-child" target_id="mn-ad" label="Small $5000" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire advertise small"/>
+      <item id="ad-m" class="pchq-menu-row dropdown-child" target_id="mn-ad" label="Mid $15000" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire advertise mid"/>
+      <item id="ad-b" class="pchq-menu-row dropdown-child" target_id="mn-ad" label="Big $40000" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire advertise big"/>
       <item id="ad-x" class="pchq-menu-row dropdown-child quiet" target_id="mn-ad" label="- cancel -" action="void"/>
-      <item id="pm-play" class="pchq-menu-row dropdown-child" target_id="tb-player" label="Play" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' play"/>
-      <item id="pm-stop" class="pchq-menu-row dropdown-child" target_id="tb-player" label="Stop" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' stop"/>
-      <item id="pm-save" class="pchq-menu-row dropdown-child" target_id="tb-player" label="Save (slot 1)" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' save 1"/>
-      <item id="pm-load" class="pchq-menu-row dropdown-child" target_id="tb-player" label="Load (slot 1)" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' load 1"/>
-      <item id="pm-new" class="pchq-menu-row dropdown-child" target_id="tb-player" label="New game" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' newgame"/>
-      <item id="pm-undo" class="pchq-menu-row dropdown-child" target_id="tb-player" label="Undo new game" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' load 0"/>
+      <item id="pm-play" class="pchq-menu-row dropdown-child" target_id="tb-player" label="Play" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire play"/>
+      <item id="pm-stop" class="pchq-menu-row dropdown-child" target_id="tb-player" label="Stop" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire stop"/>
+      <item id="pm-save" class="pchq-menu-row dropdown-child" target_id="tb-player" label="Save (slot 1)" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire save 1"/>
+      <item id="pm-load" class="pchq-menu-row dropdown-child" target_id="tb-player" label="Load (slot 1)" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire load 1"/>
+      <item id="pm-new" class="pchq-menu-row dropdown-child" target_id="tb-player" label="New game" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire newgame"/>
+      <item id="pm-undo" class="pchq-menu-row dropdown-child" target_id="tb-player" label="Undo new game" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire load 0"/>
       <item id="pm-x" class="pchq-menu-row dropdown-child quiet" target_id="tb-player" label="- cancel -" action="void"/>
-      <item id="tm-cent" class="pchq-menu-row dropdown-child" target_id="tb-time" label="speed: turbo" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' clock rate cent"/>
-      <item id="tm-sec" class="pchq-menu-row dropdown-child" target_id="tb-time" label="speed: fast" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' clock rate sec"/>
-      <item id="tm-min" class="pchq-menu-row dropdown-child" target_id="tb-time" label="speed: normal" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' clock rate min"/>
-      <item id="tm-hour" class="pchq-menu-row dropdown-child" target_id="tb-time" label="speed: real time" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' clock rate hour"/>
-      <item id="tm-adv1d" class="pchq-menu-row dropdown-child" target_id="tb-time" label="skip +1 day" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' clock advance 1d"/>
+      <item id="tm-cent" class="pchq-menu-row dropdown-child" target_id="tb-time" label="speed: turbo" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire clock rate cent"/>
+      <item id="tm-sec" class="pchq-menu-row dropdown-child" target_id="tb-time" label="speed: fast" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire clock rate sec"/>
+      <item id="tm-min" class="pchq-menu-row dropdown-child" target_id="tb-time" label="speed: normal" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire clock rate min"/>
+      <item id="tm-hour" class="pchq-menu-row dropdown-child" target_id="tb-time" label="speed: real time" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire clock rate hour"/>
+      <item id="tm-adv1d" class="pchq-menu-row dropdown-child" target_id="tb-time" label="skip +1 day" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' fire clock advance 1d"/>
       <item id="tm-x" class="pchq-menu-row dropdown-child quiet" target_id="tb-time" label="- cancel -" action="void"/>
       <item id="mn-info" class="pchq-menu-row dropdown-child" target_id="tb-menu" label="Studio show / hide" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' toggle left"/>
       <item id="mn-chat" class="pchq-menu-row dropdown-child" target_id="tb-menu" label="Chat show / hide" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' toggle chat"/>
