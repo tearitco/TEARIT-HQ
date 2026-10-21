@@ -28,6 +28,7 @@
 #include <sys/wait.h>
 #include <sys/time.h>
 #include <libgen.h>
+#include <glob.h>
 #include <limits.h>
 
 #define P 4096
@@ -38,7 +39,7 @@ static char HARN[P];                      /* .../_shared-lib/harness */
 
 typedef struct { char *f[MAXF]; int n; } Row;
 typedef struct { char id[64], title[256], kw[256]; Row body[MAXL]; int nb; } Phase;
-typedef struct { char name[128], game[64], bin[64]; Row init[MAXL], needs[32]; int ninit, nneeds; Phase ph[MAXPH]; int nph; char path[P]; } Table;
+typedef struct { char name[128], game[64], bin[64]; int events; Row init[MAXL], needs[32]; int ninit, nneeds; Phase ph[MAXPH]; int nph; char path[P]; } Table;
 
 static long long now_ms(void) { struct timeval tv; gettimeofday(&tv, NULL); return (long long)tv.tv_sec * 1000 + tv.tv_usec / 1000; }
 static char *trim(char *s) { char *e; while (*s == ' ' || *s == '\t') s++; e = s + strlen(s); while (e > s && (e[-1] == ' ' || e[-1] == '\t' || e[-1] == '\r' || e[-1] == '\n')) *--e = 0; return s; }
@@ -69,6 +70,7 @@ static int parse_table(const char *path, Table *t) {
         char *p = trim(line); Row r; if (!*p || *p == '#') continue;
         split_row(p, &r); const char *v = r.f[0];
         if (!strcmp(v, "GAME") && r.n >= 3) { snprintf(t->game, sizeof t->game, "%s", r.f[1]); snprintf(t->bin, sizeof t->bin, "%s", r.f[2]); }
+        else if (!strcmp(v, "EVENTS") && r.n >= 2) t->events = !strcmp(r.f[1], "yes");      /* the game folder keeps events/ and the scratch house gets the real event runner, the manager and bp_edit_op (blueprint-programming tables) */
         else if (!strcmp(v, "INIT") && r.n >= 3 && t->ninit < MAXL) t->init[t->ninit++] = r;
         else if (!strcmp(v, "NEEDS") && r.n >= 2 && t->nneeds < 32) t->needs[t->nneeds++] = r;
         else if (!strcmp(v, "PHASE") && r.n >= 2) {
@@ -133,6 +135,12 @@ static int emit_body_row(const Row *r) {
     else if (!strcmp(v, "CP")) { NEED(3); emit("RUN | cp | $T/%s/%s | $T/%s/%s", CAPP, r->f[1], CAPP, r->f[2]); }
     else if (!strcmp(v, "RM")) { NEED(2); emit("RUN | rm | -f | $T/%s/%s", CAPP, r->f[1]); }
     else if (!strcmp(v, "SLEEP")) { NEED(2); emit("SLEEP | %s", r->f[1]); }
+    else if (!strcmp(v, "BP")) {   /* BP | <event> | edit|append|delete|show | args...: drive one blueprint edit through the real events-hq manager (bp_edit_op); \p = a bar in the params */
+        NEED(3); if (!CT->events) return bad_row("BP needs an `EVENTS | yes` row", r);
+        char row[P]; size_t o = (size_t)snprintf(row, sizeof row, "RUN | $T/&.hq-apps/blueprintz/ops/+x/bp_edit_op.+x | $T | $T/%s/events/%s/event_pkg | %s | %s", CAPP, r->f[1], r->f[1], r->f[2]);
+        for (int i = 3; i < r->n; i++) o += (size_t)snprintf(row + o, sizeof row - o, " | %s", r->f[i]);
+        emit("%s", row);
+    }
     else if (!strcmp(v, "NOTE")) { /* a comment that travels with the table */ }
     else return bad_row("unknown row verb", r);
     return 0;
@@ -179,7 +187,7 @@ static int cmd_compile(const char *phases, const char *casedir_arg) {
     emit("RESULTS | %s", rel); emit("CASE | %s", t->game); emit("SCRATCH |");
     emit("RUN | %s | mark | %s | RUN", PTOP, MARKS); emit("RUN | %s | mark | %s | setup", PTOP, MARKS);
     emit("# setup: a minimal house skeleton under $T (the game finds its house by walking up to &.widgits and #.NNEST_ASSETS), the game folder without runtime state, the text-included sources, the pet DB, lc_clock");
-    emit("COPYDIR | %s | %s | state,board,audit,+x,saves,%s-pchq,.hq_manager,events", CAPP, CAPP, t->game);
+    emit("COPYDIR | %s | %s | state,board,audit,+x,saves,%s-pchq,.hq_manager%s", CAPP, CAPP, t->game, t->events ? "" : ",events");
     emit("MKDIR | %s/ops/+x", CAPP); emit("MKDIR | %s/state", CAPP); emit("MKDIR | #.NNEST_ASSETS/rmmv-www-img");
     emit("COPY | &.widgits/_shared-lib/stb_image.h | &.widgits/_shared-lib/stb_image.h");
     emit("COPY | &.widgits/_shared-lib/stb_image_write.h | &.widgits/_shared-lib/stb_image_write.h");
@@ -187,6 +195,20 @@ static int cmd_compile(const char *phases, const char *casedir_arg) {
     emit("COPY | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | &.widgits/livedesk-clock/ops/+x/lc_clock.+x");
     emit("COPY | &.widgits/db-hq/data/system.pdl | &.widgits/db-hq/data/system.pdl");
     emit("COPY | &.widgits/db-hq/data/actors.pdl | &.widgits/db-hq/data/actors.pdl");
+    if (t->events) {
+        emit("# EVENTS: a scratch house that can run and edit event pages: xyzfs marker (the pages find the game by walking up to it), the real play_event.sh, the command registry, the events-hq manager, bp_edit_op, and a prisc VM in a 101.mutaclsym*/system dir (play_event.sh walks up to find one)");
+        emit("MKDIR | xyzfs"); emit("MKDIR | #.ref/menu"); emit("MKDIR | 101.mutaclsym-scratch/system");
+        emit("COPY | &.widgits/events-hq/ops/play_event.sh | &.widgits/events-hq/ops/play_event.sh");
+        emit("COPY | #.ref/menu/event_commands.registry.pdl | #.ref/menu/event_commands.registry.pdl");
+        emit("COPY | &.widgits/events-hq/ops/+x/khtpm_events_hq_manager.+x | &.widgits/events-hq/ops/+x/khtpm_events_hq_manager.+x");
+        emit("COPY | &.hq-apps/blueprintz/ops/+x/bp_edit_op.+x | &.hq-apps/blueprintz/ops/+x/bp_edit_op.+x");
+        { glob_t g; char pat[P], house[P]; snprintf(pat, sizeof pat, "%s/../../../101.mutaclsym*/system/prisc+x", HARN);
+          if (glob(pat, 0, NULL, &g) == 0 && g.gl_pathc >= 1 && realpath(g.gl_pathv[0], house)) {      /* the directory name has emoji in it: take it from the disk, never type it */
+              char *sl = strstr(house, "/101.mutaclsym"); char rel[P]; char root[P]; snprintf(root, sizeof root, "%s/../../..", HARN); char rr[P]; if (sl && realpath(root, rr) && !strncmp(house, rr, strlen(rr))) {
+                  snprintf(rel, sizeof rel, "%s", house + strlen(rr) + 1); char dir[P]; snprintf(dir, sizeof dir, "%s", rel); char *ls = strrchr(dir, '/'); if (ls) *ls = 0;
+                  emit("COPY | %s | 101.mutaclsym-scratch/system/prisc+x", rel); (void)dir; } }      /* no default_op.txt in the house system dir: prisc prints its usual "could not open ops file" line and the page still runs (known, same in the live house) */
+          globfree(&g); }
+    }
     for (int i = 0; i < t->nneeds; i++) emit("COPY | %s | %s", t->needs[i].f[1], t->needs[i].n >= 3 ? t->needs[i].f[2] : t->needs[i].f[1]);
     emit("RUN | nice | -n | 15 | gcc | -std=gnu11 | -O0 | -w | -o | %s | $T/%s/ops/%s.c | -lm", CBIN, CAPP, t->bin);
     emit("EXPECT_EXIT | 0 | setup.build"); emit("EXPECT_EXISTS | %s/ops/+x/%s.+x | setup.binary-exists", CAPP, t->bin);

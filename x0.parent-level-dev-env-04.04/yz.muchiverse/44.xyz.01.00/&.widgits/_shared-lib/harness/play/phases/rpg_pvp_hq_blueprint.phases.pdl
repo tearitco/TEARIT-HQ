@@ -1,0 +1,25 @@
+# rpg_pvp_hq_blueprint.phases.pdl - PROGRAM rpg-pvp-hq BY BLUEPRINT, then play it (BOOK 16.game/EVENT-VERB-PAGES-DESIGN.md section 10). Same idea as game_dev_hq_blueprint.phases.pdl.
+# Runner: ops/+x/playthrough_op.+x run play/phases/rpg_pvp_hq_blueprint.phases.pdl   (scratch house under /tmp; nothing live is touched)
+GAME | rpg-pvp-hq | rpg_pvp_hq
+EVENTS | yes
+NEEDS | &.widgits/_shared-lib/game_decisions.c
+
+PHASE | p1_buy | the shop button plays the buy page and one bed is bought | blueprint, buy, fire
+DO | status
+DO | fire | buy | bed_blue
+HAS | state/fire_log.txt | buy\ppage:bed_blue | the-buy-page-was-played
+COUNT | state/house.txt | BUY\p | 1 | one-purchase
+
+PHASE | p2_reprogram | edit the buy page in the blueprint so its command is scavenge; the same shop button now finds a rag and buys nothing | blueprint, edit, scavenge
+BP | buy | edit | 1 | rpg_pvp_hq_verb | verb=scavenge\parg=
+EXIT | 0 | blueprint-edit-applied-by-the-manager
+DO | fire | buy | bed_orange
+HAS | state/fire_log.txt | buy\ppage:bed_orange | edited-page-was-played
+COUNT | state/house.txt | BUY\p | 1 | no-second-purchase
+HAS | state/events.txt | give_item\p | the-rag-scavenge-ran
+
+PHASE | p3_restore | edit it back and the shop buys again | blueprint, edit, buy
+BP | buy | edit | 1 | rpg_pvp_hq_verb | verb=buy\parg=
+EXIT | 0 | blueprint-edit-back-applied
+DO | fire | buy | bed_orange
+COUNT | state/house.txt | BUY\p | 2 | the-shop-buys-again

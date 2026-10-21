@@ -1,6 +1,6 @@
 # Closing the events / blueprintz gap: verb pages (design, 2026-10-20)
 
-Status: **BUILT AND PROVEN for rpg-pvp-hq (phases V1-V5, 2026-10-20, owner: "route"; section 8) and BUILT for game-dev-hq (V6, same day, section 9).** The blueprintz edit round trip (V7) is not done. Owner, 2026-10-20: "can we fix the event / blueprintz gap? doc a solution first in house", then "route".
+Status: **BUILT AND PROVEN for rpg-pvp-hq (phases V1-V5, 2026-10-20, owner: "route"; section 8) and BUILT for game-dev-hq (V6, same day, section 9).** V7 (programming by blueprint, driven by a harness) is built and proven for both games, headless (section 10); the blueprintz WINDOW itself still has no edit UI (B4). Owner, 2026-10-20: "can we fix the event / blueprintz gap? doc a solution first in house", then "route".
 Labels: READ = from files today; RAN = I ran it today; PROPOSED = the design; NOT MEASURED.
 
 ## 1. The gap, stated exactly
@@ -113,3 +113,22 @@ Everything above is a design. Not run: any `fire` path, the generator, a CPU che
 2. **Clock daemon outlived the window:** RAN: after the window closed, `game_dev_hq.+x` was gone but `lc_clock.+x` stayed (parent init). The resident engine now handles SIGTERM/SIGHUP/SIGINT and runs `lc_clock daemon-stop` on the way out; RAN: started the resident engine, `kill -TERM`, both processes gone (and `daemon-stop` on the existing orphan removed it). A SIGKILL still cannot clean up.
 3. `usleep`/POSIX declarations under `-std=c11` made explicit (`_DEFAULT_SOURCE`), no more implicit-declaration warning.
 **Not done / not measured:** no real-window click on game-dev-hq (a bare launch of the xhtpm gave an unresponsive window; the production route is the pc-hq board via `button.sh`, not exercised because it starts the 3D board); the only evidence is the command line plus the rpg-pvp-hq real-window result for the renderer's appended arguments. The contract balance (a first contract with the starting staff loses about $4,400 once two weeks of payroll are paid) is a design question left as it was.
+
+## 10. V7: programming the game by blueprint, driven by a harness (2026-10-20; owner: "when you can program the game using blueprints by driving, through harness shortcuts we save, then we are on track")
+**The idea, as built:** a verb page is the game logic; an edit to the page, made through the real events-hq manager (the write path a click in events-hq / blueprintz uses), changes what the same button does; a phase table (data) records the edits and the play, runs in a scratch house, and keeps a result ledger and per-phase weights. Nothing here needs a window.
+
+**Pieces:**
+- `&.hq-apps/blueprintz/ops/bp_edit_op.c` (built to `ops/+x/`, in `build.sh`): `bp_edit_op <house> <event_pkg> <label> edit <id> <type> <params> | append <type> <params> | delete <id> | show`. It starts the real `khtpm_events_hq_manager`, writes the same request line `evhq_action.sh commit/del` writes, waits until the manager has consumed it and the IR shows it, kills the manager. The IR edit and the compile are the manager's; the op never writes IR.
+- `playthrough_op` (the shared playthrough harness) got two table rows: `EVENTS | yes` (keep `events/`, build the scratch house that can run and edit pages: `xyzfs` marker, the real `play_event.sh`, the registry, the manager, `bp_edit_op`, a prisc VM found by glob because the house dir name has emoji) and `BP | <event> | edit|append|delete|show | args` (`\p` is a bar in the params).
+- Phase tables: `play/phases/game_dev_hq_blueprint.phases.pdl` (4 phases) and `play/phases/rpg_pvp_hq_blueprint.phases.pdl` (3 phases). Run: `ops/+x/playthrough_op.+x run play/phases/<name>.phases.pdl`.
+
+**RAN (evidence):**
+- game-dev-hq: `PLAYTHROUGH|...|PASS|6.9 s|failed=0`, verdict `passed=16 failed=0`. p1 the contract page plays the contract (weeks 1 -> 3); p2 `BP edit` makes the contract page run `advance`: the same button now leaves week 3 and the note says "no game" (advance ran); p3 edit back: the contract works again; p4 `BP delete` empties the page: `fallback:page-did-not-run` is logged and the plain verb still runs (weeks pass).
+- rpg-pvp-hq: `PLAYTHROUGH|...|PASS|4.6 s|failed=0`: the shop button buys; after `BP edit` to `scavenge` the same click finds a rag and buys nothing (one BUY row); edited back it buys again (two BUY rows).
+- `bp_edit_op`: usage errors and a newline in a request refused; a real edit applied in about 1.6 s with the manager gone afterwards; an edit of a command id that does not exist reports failure after 10 s and does not claim ok.
+- **The harness can fail:** with the OLD manager binary the game-dev-hq table gave `p2_reprogram FAIL` (the bug below); with the fixed manager it passes again.
+- Live round trip first (before the harness): edited the live contract page through `evhq_action.sh`, played it, edited back, and the IR and `cmd_1.sh` were identical to the originals.
+
+**A latent house bug found and fixed because of this:** `khtpm_events_hq_manager.c` read at most `MAX_REGISTRY_CMDS` = 48 commands from `#.ref/menu/event_commands.registry.pdl`, which now has 135, and stopped at the cap with no message. Every command after the 48th (`rpg_pvp_hq_verb`, `game_dev_hq_verb`, and any other late one) compiled to a `cmd_N.sh` with **no exec line**: an edit made in events-hq or blueprintz silently produced a page that did nothing. The `fire` fallback hid it in the game (the plain verb ran), which is exactly why the page-in-path test mattered. Cap now 512 and an overflow prints a line to stderr. The events-hq command picker shares that registry; whether its projector has its own cap was not checked.
+
+**Not done / not measured:** blueprintz's own window still has no edit UI (B4): these edits go through the manager headless, the same ops path the window will use. The scratch house copies the real `play_event.sh` and prisc VM; the tables were run on this machine only. INT key bindings still bypass the pages. A concurrent edit while a game is running was not tested. "Saved and sellable" is a statement about the form (tables are plain data under version control), not something I priced or packaged.

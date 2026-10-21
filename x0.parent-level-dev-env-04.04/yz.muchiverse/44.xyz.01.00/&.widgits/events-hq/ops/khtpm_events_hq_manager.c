@@ -46,7 +46,7 @@
 #define PATH_BUF 4096
 #define MAX_PAGES 16
 #define MAX_CMDS 64
-#define MAX_REGISTRY_CMDS 48
+#define MAX_REGISTRY_CMDS 512      /* was 48: the registry now has 135 commands and load_command_registry stopped reading at the cap with no message, so every command after the 48th (rpg_pvp_hq_verb, game_dev_hq_verb, ...) compiled to a cmd_N.sh with no exec line (found 2026-10-20 editing a verb page) */
 #define MAX_FIELDS 4
 
 static char g_house_root[PATH_BUF];
@@ -181,7 +181,7 @@ static void load_command_registry(void) {
         char *p = line;
         while (*p == ' ') p++;
         if (strncmp(p, "COMMAND ", 8) == 0) {
-            if (g_n_registry >= MAX_REGISTRY_CMDS) break;
+            if (g_n_registry >= MAX_REGISTRY_CMDS) { fprintf(stderr, "khtpm_events_hq_manager: command registry has more than %d commands, the rest are NOT loaded\n", MAX_REGISTRY_CMDS); break; }
             cur = &g_registry[g_n_registry++];
             memset(cur, 0, sizeof(*cur));
             snprintf(cur->type, sizeof(cur->type), "%s", p + 8);

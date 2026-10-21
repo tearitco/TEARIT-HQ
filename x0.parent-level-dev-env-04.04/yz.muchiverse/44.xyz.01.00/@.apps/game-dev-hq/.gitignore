@@ -2,3 +2,4 @@ state/
 ops/+x/
 game-dev-hq-pchq/
 events/*/master_ledger.txt
+events/*/event_pkg/.hq_manager/

@@ -1,0 +1,40 @@
+# game_dev_hq_blueprint.phases.pdl - PROGRAM game-dev-hq BY BLUEPRINT, then play it (BOOK 16.game/EVENT-VERB-PAGES-DESIGN.md section 10).
+# Runner: ops/+x/playthrough_op.+x run play/phases/game_dev_hq_blueprint.phases.pdl     (a scratch house under /tmp: nothing live is touched)
+# The new row `BP | <event> | edit|append|delete|show | args` drives one edit through the REAL events-hq manager (the same write path as a click in
+# events-hq / blueprintz) and the game is then played through `fire`, which plays that page. `\p` is a literal bar in the page parameters.
+# What it proves: the page IS the game logic. Change a node in the blueprint and the same button does something else; empty the page and the safety net
+# (the plain verb, logged) takes over. Each phase is data: a table like this can be saved, versioned, handed to another studio or sold.
+GAME | game-dev-hq | game_dev_hq
+EVENTS | yes
+
+PHASE | p1_original | the contract page runs the contract verb: two weeks pass | blueprint, contract, fire
+DO | status
+UI | week | 1 | starts-in-week-one
+DO | fire | contract | q0
+HAS | state/fire_log.txt | contract\ppage:q0 | the-page-was-played
+UI | week | 3 | contract-took-two-weeks
+
+PHASE | p2_reprogram | edit the contract page in the blueprint so its command is advance; the same button now does something else | blueprint, edit, advance
+BP | contract | edit | 1 | game_dev_hq_verb | verb=advance\parg=
+EXIT | 0 | blueprint-edit-applied-by-the-manager
+HAS | events/contract/event_pkg/pages/page_1/event.ir.pdl | verb=advance | ir-holds-the-edit
+DO | fire | contract | q0
+HAS | state/fire_log.txt | contract\ppage:q0 | edited-page-was-played
+UI | week | 3 | no-weeks-passed-the-contract-did-not-run
+UI | note | no game | advance-ran-instead-no-game-in-progress
+MARK | w2 | state/ui.txt | week
+
+PHASE | p3_restore | edit it back through the blueprint and the contract works again | blueprint, edit, contract
+BP | contract | edit | 1 | game_dev_hq_verb | verb=contract\parg=
+EXIT | 0 | blueprint-edit-back-applied
+DO | fire | contract | q0
+MARK | w3 | state/ui.txt | week
+NE | w2 | w3 | contract-works-again-weeks-passed
+
+PHASE | p4_safety_net | an emptied page does nothing, so the game falls back to the plain verb and logs it | blueprint, delete, fallback
+BP | contract | delete | 1
+EXIT | 0 | blueprint-delete-applied
+DO | fire | contract | q0
+HAS | state/fire_log.txt | contract\pfallback:page-did-not-run | fallback-was-logged
+MARK | w4 | state/ui.txt | week
+NE | w3 | w4 | the-verb-still-ran-weeks-passed
