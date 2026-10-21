@@ -87,8 +87,11 @@ The island page is live in `@.apps/rpg-edit-hq/ops/rpg_edit.c` (24 x 17, grid ab
 
 Renderer change that made it possible (owner: "z levels in the negative give the float depth, and yes we can have holes"), in `board-viewer/ops/bv_render_3d.c` + `bv_gpu_raymarch.{c,h}`, maker maps only, no effect when the keys are absent:
 
-- `extrusion.pdl`: `EXTRUDE | <glyph> | hole` = the cell has no block at all, the sky shows through (the void is `_`).
-- `extrusion.pdl`: `DEPTH | <glyph> | n` (1..16) = n blocks hung below the floor (negative z levels). The deepest DEPTH in the map lifts the whole grid, the camera eye and every box (sprites, selector) by that many levels so floor level stays the same for sprites. The shader treats levels at or below the floor as "floor slot" and tints the hung blocks earthy.
-- Used here: G/p/B/T/D/S/F depth 3, rubble 2, bridges/ramp/pond 1, so the main island is thick, the bridges are thin planks, and the rubble floats.
+- No hole keyword (owner: "we dont need fake holes, we have negative z levels"). Once a map uses `DEPTH`, a cell with no floor tile and no wall tile simply has no block, so the sky shows. Maps without `DEPTH` are untouched.
+- `extrusion.pdl`: `DEPTH | <glyph> | n` (1..16) = n blocks hung below the floor (negative z levels). The deepest DEPTH lifts the whole grid, the camera eye and every box (sprites, selector) by that many levels so floor level stays the same for sprites.
+- Rock: `cells.txt` takes `rock_slot=<n>`, an atlas slot painted on every hung block (rpg_edit uses the Outside_A4 rocky-earth cliff face, row 13 of the sheet). Without it the hung blocks use the cell floor tile tinted brown.
+- View limit: the window that is drawn whole grew from 128 to 256 cells (= MAX_BOARD_DIM), and `pieces/system/view.pdl` may set `view_fog_start` / `view_fog_end` for one map (the house default in hq_ui.pdl fades everything past 48 cells to sky; this map asks 90..250).
+- Left panel: the edit board had no `board/pchq-board.css`, so the renderer gave the empty rail its default 220 px; the stylesheet (copy of piececraft's) sets it to 2 px.
+- Used here: G/p/B/T/D/S/F depth 3, rubble 2, bridges/ramp/pond 1.
 
-Not done: the camera default still frames part of the 24 x 17 map (press back/up keys); cliff texture is the grass tile tinted, not a dirt tile; no 2D `map.png`.
+Not done: the camera default still frames part of the 24 x 17 map (press back/up keys); islands are the same thickness everywhere (no tapered undersides yet); no 2D `map.png`.

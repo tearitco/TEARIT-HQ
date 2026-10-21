@@ -123,7 +123,7 @@ static const char *ISL[ROWS] = {
     "........................" };
 typedef struct { int x, y, bx, by, wx, wy; const char *name; } Bld;      /* building top-left, World_B cell (col,row) */
 static const Bld bld[5] = {{9, 9, 8, 0, 0, 0, "cabin"}, {3, 1, 6, 11, 0, 0, "bank"}, {13, 1, 0, 7, 0, 0, "store"}, {9, 5, 4, 7, 0, 0, "school"}, {22, 2, 4, 11, 0, 0, "hotel"}};
-static int doorx[8], doory[8], ndoor, lastdoor;
+static int doorx[8], doory[8], ndoor, lastdoor, rockslot;      /* rockslot: Outside_A4 rock-cliff tile, painted on the hung (negative z) blocks via cells.txt rock_slot= */
 static void solid(int desk, int x, int y, char g, int r, int gr, int b, int plank, int tall) {
     unsigned char t[XT * XT * 4];
     for (int i = 0; i < XT * XT; i++) {
@@ -176,7 +176,7 @@ static void write_atlas(const char *dir, int desk) {
               "META         | map_id             | edit\n"
               "EXTRUDE      | W                  | 3\nEXTRUDE      | D                  | 3\n"
               "EXTRUDE      | T                  | 2\nEXTRUDE      | f                  | 1\n"
-              "EXTRUDE      | B                  | 3\nEXTRUDE      | _                  | hole\n"
+              "EXTRUDE      | B                  | 3\n"
               "DEPTH        | G                  | 3\nDEPTH        | p                  | 3\nDEPTH        | B                  | 3\n"
               "DEPTH        | T                  | 3\nDEPTH        | D                  | 3\nDEPTH        | S                  | 3\n"
               "DEPTH        | F                  | 3\nDEPTH        | r                  | 2\nDEPTH        | b                  | 1\n"
@@ -194,7 +194,7 @@ static void write_atlas(const char *dir, int desk) {
     snprintf(p, sizeof p, "%s/cells.txt", dir);
     f = fopen(p, "w");
     if (f) {
-        fprintf(f, "width=%d\nheight=%d\ntile_px=%d\natlas_cols=16\natlas_tiles=%d\ncells\n", COLS, ROWS, XT, nslot);
+        fprintf(f, "width=%d\nheight=%d\ntile_px=%d\natlas_cols=16\natlas_tiles=%d\nrock_slot=%d\ncells\n", COLS, ROWS, XT, nslot, rockslot);
         for (int y = 0; y < ROWS; y++) {
             for (int x = 0; x < COLS; x++) fprintf(f, "%s%d,%d", x ? " " : "", fs[desk][y][x], ws[desk][y][x]);
             fputc('\n', f);
@@ -276,6 +276,9 @@ int main(int argc, char **argv) {
     if (!a5.px || !wb.px) { fprintf(stderr, "rpg_edit: missing RPG Maker sheets under %s\n", ASSETS); return 1; }
     paint_desk(0, &a5, 0, 2 * S48, &a5, 2 * S48, 0);          /* grass floor */
     paint_desk(1, &in.px ? &in : &a5, 0, 0, &in.px ? &in : &a5, S48, 3 * S48);
+    {   Sheet a4 = load_rel("tilesets/Outside_A4.png");        /* the rocky-earth cliff face (row 3, first block) */
+        if (a4.px) { unsigned char rk[XT * XT * 4]; tile24(&a4, 0, 13 * S48, rk); rockslot = slot_of(rk); }
+    }
     paint_islands(&wb, &ob, &door);
     {   /* the interior's way out: one door in the middle of the south wall row */
         unsigned char dpx[XT * XT * 4], bb[XT * XT * 4];
@@ -313,6 +316,11 @@ int main(int argc, char **argv) {
             if (csv_write_frames(cp, fd, "terumon", i, avg)) { pet[i].art = 1; pet[i].r = avg[0]; pet[i].g = avg[1]; pet[i].b = avg[2]; }
             else fprintf(stderr, "rpg_edit: no art for %s (%s)\n", pet[i].name, cp);
         }
+    }
+    {   /* wide islands: this map sets its own fog (the house default fades everything past 48 cells to sky) */
+        char vp[PATH_MAX], buf[4096] = ""; snprintf(vp, sizeof vp, "%s/pieces/system/view.pdl", PCHQ);
+        FILE *vf = fopen(vp, "r"); if (vf) { size_t n = fread(buf, 1, sizeof buf - 1, vf); buf[n] = 0; fclose(vf); }
+        if (!strstr(buf, "view_fog_end") && (vf = fopen(vp, "a"))) { fputs("# the island map is wide: fog from 90 to 250 cells, not the house 18..48\nview_fog_start=90\nview_fog_end=250\n", vf); fclose(vf); }
     }
     srand((unsigned)time(NULL));
     write_events();

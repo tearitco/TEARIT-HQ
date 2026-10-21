@@ -361,9 +361,9 @@ typedef struct {
     int ev_n;
     char *glyph;            /* map.txt, w*h. 3D height comes from extrusion.pdl, not from the flat 2D picture. */
     unsigned char zh[128];  /* extrusion height for each glyph. 0 = no row. */
-    unsigned char hole[128]; /* 1 = EXTRUDE value "hole": no block at all in that cell (the sky shows through). */
+    int rock;               /* cells.txt rock_slot=: atlas slot painted on the hung (negative z) blocks; 0 = the cell floor tile. */
     unsigned char depth[128]; /* DEPTH row: blocks hung BELOW the floor (negative z levels), the float depth of an island. */
-    int zoff;               /* the deepest DEPTH in use: every grid level and every box is lifted by this so levels below the floor have a place. */
+    int zoff;               /* the deepest DEPTH in use: every grid level and every box is lifted by this so levels below the floor have a place. With DEPTH in use a cell with no floor and no wall tile has no block (the sky shows), so there is no separate hole key. */
     unsigned char draw[128]; /* 1 = EXTRUDE value "sprite": opaque pixels of the cell picture, same as a person. */
 } MakerAtlas;
 static MakerAtlas g_mk;
@@ -451,6 +451,7 @@ static int maker_load(const char *root) {
             else if (strncmp(line, "tile_px=", 8) == 0) g_mk.tile_px = atoi(line + 8);
             else if (strncmp(line, "atlas_cols=", 11) == 0) g_mk.cols = atoi(line + 11);
             else if (strncmp(line, "atlas_tiles=", 12) == 0) g_mk.tiles = atoi(line + 12);
+            else if (strncmp(line, "rock_slot=", 10) == 0) g_mk.rock = atoi(line + 10);
             else if (strncmp(line, "cells", 5) == 0) {
                 if (g_mk.w < 1 || g_mk.h < 1 || g_mk.w > 512 || g_mk.h > 512 || g_mk.cols < 1 || g_mk.tile_px < 1) { fclose(f); return 0; }
                 g_mk.cells = (unsigned short *)calloc((size_t)g_mk.w * (size_t)g_mk.h * 2, sizeof(unsigned short));
@@ -514,7 +515,6 @@ static int maker_load(const char *root) {
             if (bar2 && g > 32 && g < 127) {
                 char *val = bar2 + 1; while (*val == ' ' || *val == '\t') val++;
                 if (is_depth) { int dv = atoi(val); if (dv > 0 && dv <= 16) { g_mk.depth[(unsigned char)g] = (unsigned char)dv; if (dv > g_mk.zoff) g_mk.zoff = dv; } }
-                else if (strncmp(val, "hole", 4) == 0) g_mk.hole[(unsigned char)g] = 1;
                 else if (strncmp(val, "sprite", 6) == 0) g_mk.draw[(unsigned char)g] = 1;
                 else { int hv = atoi(val); if (hv > 0 && hv <= 64) g_mk.zh[(unsigned char)g] = (unsigned char)hv; }
             }
@@ -2533,7 +2533,7 @@ static unsigned long long bv_fnv1a64(const unsigned char *p, size_t n) {
  * whole, origin 0. Camera yaw, pitch, and the stored eye are not
  * written. The GPU copy of the eye moves with the window. */
 #define BV_VIEW_CHUNK 16
-#define BV_VIEW_DIM   (BV_VIEW_CHUNK * 8)
+#define BV_VIEW_DIM   (BV_VIEW_CHUNK * 16)      /* 256 = MAX_BOARD_DIM: a map up to that size is drawn whole (was 8 chunks / 128), so wide floating-island forms are not cut */
 static int g_view_ox, g_view_oy, g_view_w, g_view_h;
 
 static int bv_snap_chunk(int v) {
@@ -3426,6 +3426,11 @@ static int render_one_frame(void) {
         fog_end   = (double)read_kv_int(hqp, "view_fog_end", 0);
         if (fog_start < 0) fog_start = 0;
     }
+    {   /* a map may set its own fog (view.pdl view_fog_start / view_fog_end) so a wide floating-island form is not faded to sky at 48 cells */
+        char vq[PATH_BUF]; snprintf(vq, sizeof(vq), "%s/pieces/system/view.pdl", focused_project_root);
+        int fe = read_kv_int(vq, "view_fog_end", -1), fs = read_kv_int(vq, "view_fog_start", -1);
+        if (fe >= 0) { fog_end = (double)fe; if (fs >= 0) fog_start = (double)fs; }
+    }
     { unsigned char *fp = FB(g_fw / 2, g_fh / 2); fog_sky[0] = fp[0]; fog_sky[1] = fp[1]; fog_sky[2] = fp[2]; }   /* sky just filled, before any hit */
 
     CelestialBody sun_body = lighting_enabled ? load_celestial_body(focused_project_root, "sun_01") : (CelestialBody){0,0,0,0};
@@ -3676,8 +3681,9 @@ static int render_one_frame(void) {
                         int zo = g_mk.zoff, lo = zo, hi = zo + h, hole = 0;
                         if (g_mk.glyph && mx >= 0 && my >= 0 && mx < g_mk.w && my < g_mk.h) {
                             unsigned char zg = (unsigned char)g_mk.glyph[my * g_mk.w + mx];
-                            if (zg < 128) { hole = g_mk.hole[zg]; lo = zo - g_mk.depth[zg]; }
+                            if (zg < 128) lo = zo - g_mk.depth[zg];
                         }
+                        if (zo && !g_mk.cells[src] && !g_mk.cells[src + 1]) hole = 1;     /* no tile at all = air, once negative levels are in use */
                         if (hi > z_count) hi = z_count;
                         if (!hole) for (int lvl = lo; lvl < hi; lvl++) gpu_grid[col + row * vww + lvl * vww * vwh] = 1;
                     }
@@ -3693,7 +3699,7 @@ static int render_one_frame(void) {
             sc.legend_n = 1; sc.legend_glyph[0] = 1;
             sc.legend_rgb[0][0] = sc.legend_rgb[0][1] = sc.legend_rgb[0][2] = 0.5f;
             sc.legend_has_tex[0] = 0;
-            sc.maker = 1; sc.maker_id = g_mk.id + (card_furn ? 100000 : 0); sc.zoff = g_mk.zoff;
+            sc.maker = 1; sc.maker_id = g_mk.id + (card_furn ? 100000 : 0); sc.zoff = g_mk.zoff; sc.rock = g_mk.rock;
             sc.atlas = g_mk.atlas; sc.atlas_w = g_mk.aw; sc.atlas_h = g_mk.ah; sc.atlas_cols = g_mk.cols; sc.tile_px = g_mk.tile_px;
             sc.cells = (cropped || card_furn) ? view_cells : g_mk.cells;
             sc.cells_w = vww; sc.cells_h = vwh;
