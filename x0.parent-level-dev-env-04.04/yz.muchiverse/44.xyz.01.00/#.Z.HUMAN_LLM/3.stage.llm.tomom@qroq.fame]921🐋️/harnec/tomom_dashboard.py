@@ -132,7 +132,8 @@ def format_routing_decisions(debug: dict) -> str:
     if debug['routing']:
         lines.append("Last selected experts:")
         for r in debug['routing']:
-            lines.append(f"  Expert {r['idx']}: {r['path']}")
+            name = Path(r['path']).stem
+            lines.append(f"  Expert {r['idx']}: {name}")
     else:
         lines.append("  (run a generation to see routing)")
     return '\n'.join(lines)
