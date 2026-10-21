@@ -22,10 +22,10 @@ It is the LyfeDesk window **Casino Island**, app id `bet-rpg`:
   folder, the walk window, and the five table games are in the tree.
   The night hotel bill is not.
 
-Why it was easy to miss: `bp_tree.sh` does not list `bet-rpg`, and the
-window is not a book inside the TON board. The next session should
-say that in one sentence if the owner asks again, and only add a
-launcher row if they ask. Do not rename the folder to `rpg-bet`.
+The owner later said the dropdown name they were looking for is
+`casino-island`, not "bet island". The folder is still `bet-rpg`.
+The window title is Casino Island. Do not rename the folder unless
+they ask. `bp_tree.sh` still does not list it.
 
 Chrome law that later edits of this window must keep: one footer of
 the six pets, game acts on the left bar only, right bar is chat, both
@@ -45,8 +45,22 @@ What the first pass is:
    its own `button.sh`, `toy.pdl`, `party.pdl`, daemon, and its own
    pc-hq instance (`rpg-edit-hq-pchq`). Same launch shape as mcl-hq
    and bet-rpg. Not a mode of bet-rpg, rpg-pvp-hq, or the TON book.
-2. New pet names and new sprite cells. Do not reuse Vale/Nia/Sol/Kit/
-   Bram/Wynn, the shooter cast, or the studio cast.
+2. Cast, locked 2026-10-21 from `sessions/s1/desks/teru-test.pdl`
+   and `&.widgits/db-hq/data/actors.pdl`. Trainer is **Ava**, not Asa.
+   Footer is these six, in this order. Glyphs are the desk marks
+   (actor face/character fields are empty; there is no separate
+   Terumon PNG sheet):
+
+   - Ember, `terumon_001_ember`, 🔴
+   - Glacine, `terumon_002_glacine`, 🔵
+   - Murmur, `terumon_003_murmur`, 🟣
+   - Solvent, `terumon_004_solvent`, 🟢
+   - Ava, trainer, 👩
+   - Cursword, 🗡️
+
+   Robot `robot_chat_001` (🤖) is the extra only if a seventh slot
+   is asked for. Do not put Asa on the footer. Do not reuse the
+   casino, shooter, or studio names.
 3. The pet chrome from `16.game/PET-HQ-MUST-HAVES.md`: one footer of
    pets, acts on the left, chat on the right, minimize, shared
    day/night clock, INT, and `0` / `1`–`4` forwarded to that board's
