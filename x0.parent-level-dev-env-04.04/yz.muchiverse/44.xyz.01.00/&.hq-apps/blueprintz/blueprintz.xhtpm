@@ -7,13 +7,14 @@
   <page name="main">
     <sidebar>
       <text label="Events on this page (click to select)" class="quiet"/>
-      <repeat count="${e_count}" bind="e">
-        <item id="ev${e.#}" class="${e.class}" label="${e.label}" action="${e.action}"/>
-      </repeat>
+      <scrolllist>
+        <repeat count="${e_count}" bind="e">
+          <item id="ev${e.#}" class="${e.class}" label="${e.label}" action="${e.action}"/>
+        </repeat>
+      </scrolllist>
     </sidebar>
     <panel id="bp_p" class="bp-panel">
       <text label="${status_line}" class="bp-title"/>
-      <text label="${sel_line}" class="quiet"/>
       <row class="toolbar">
         <item id="play" label="Play" action="${play_action}"/>
         <item id="stopplay" label="Stop" action="${stopplay_action}"/>
@@ -33,29 +34,32 @@
         <item id="loadgdh" label="Load game-dev-hq verbs" action="${load_gdh_action}"/>
         <item id="loadrpg" label="Load rpg-pvp-hq verbs" action="${load_rpg_action}"/>
       </row>
-      <text label="Commands of the selected event (page_1; click one to select)" class="bp-head"/>
-      <repeat count="${n_count}" bind="n">
-        <item id="nd${n.#}" class="${n.class}" label="${n.label}" action="${n.action}"/>
-      </repeat>
-      <text label="${n_none}" class="quiet"/>
-      <text label="${n_hint}" class="quiet"/>
-      <cli_io id="editline" target_id="editline" rows="1" class="bp-edit top" label="edit selected ..." action="${edit_action}"/>
-      <cli_io id="addline" target_id="addline" rows="1" class="bp-edit top" label="add command ..." action="${add_action}"/>
-      <row class="toolbar">
-        <item id="cdel" label="Delete cmd" action="${cdel_action}"/>
-        <item id="undo" label="Undo" action="${undo_action}"/>
-        <text label="${undo_line}" class="quiet"/>
-      </row>
-      <text label="Problems for the selected event" class="bp-head"/>
-      <repeat count="${f_count}" bind="f">
-        <text id="fl${f.#}" class="bp-flag" label="${f.label}"/>
-      </repeat>
-      <text label="${f_none}" class="quiet"/>
-      <text label="Last debugger rows (trace)" class="bp-head"/>
-      <repeat count="${t_count}" bind="t">
-        <text id="tr${t.#}" class="quiet" label="${t.label}"/>
-      </repeat>
-      <text label="${target_line}" class="quiet"/>
+      <scrolllist>
+        <text label="${sel_line}" class="quiet"/>
+        <text label="Commands of the selected event (page_1; click one to select)" class="bp-head"/>
+        <repeat count="${n_count}" bind="n">
+          <item id="nd${n.#}" class="${n.class}" label="${n.label}" action="${n.action}"/>
+        </repeat>
+        <text label="${n_none}" class="quiet"/>
+        <text label="${n_hint}" class="quiet"/>
+        <cli_io id="editline" target_id="editline" rows="1" class="bp-edit top" label="edit selected ..." action="${edit_action}"/>
+        <cli_io id="addline" target_id="addline" rows="1" class="bp-edit top" label="add command ..." action="${add_action}"/>
+        <row class="toolbar">
+          <item id="cdel" label="Delete cmd" action="${cdel_action}"/>
+          <item id="undo" label="Undo" action="${undo_action}"/>
+          <text label="${undo_line}" class="quiet"/>
+        </row>
+        <text label="Problems for the selected event" class="bp-head"/>
+        <repeat count="${f_count}" bind="f">
+          <text id="fl${f.#}" class="bp-flag" label="${f.label}"/>
+        </repeat>
+        <text label="${f_none}" class="quiet"/>
+        <text label="Last debugger rows (trace)" class="bp-head"/>
+        <repeat count="${t_count}" bind="t">
+          <text id="tr${t.#}" class="quiet" label="${t.label}"/>
+        </repeat>
+        <text label="${target_line}" class="quiet"/>
+      </scrolllist>
     </panel>
     <footer id="statusbar" class="pchq-footer">
       <text label="${msg}" class="quiet"/>

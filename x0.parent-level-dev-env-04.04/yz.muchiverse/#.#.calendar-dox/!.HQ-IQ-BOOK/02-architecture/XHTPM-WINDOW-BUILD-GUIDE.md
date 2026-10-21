@@ -43,6 +43,14 @@ The look is a dark tool panel, same family as `sfx-hai.css` / `database-window`.
 
 Layout rules used: a left **sidebar** list (what exists, click to select) and a right **panel** (what you can do to the selection, then problems, then trace); a **footer** line for the last message; toolbar **rows** of short verbs (Play, Stop, Step ...). Put the selection summary above the buttons, controls in the middle, evidence (flags, trace) below. Colour carries state, never decoration; text always says the state too ("waiting", "!! flags"), so nothing depends on colour alone. Size is set in CSS only (`window { width: 1180px; height: 780px; }`); layout stays in the shared renderer.
 
+### Scrolling and small windows (added 2026-10-20, owner: "missing thumb scroll ... if window is too small")
+
+A window the user can shrink must scroll. This is **not** renderer work: wrap every list that can outgrow the window in the generic `<scrolllist>` (it brings the scrollbar thumb, the up/down arrows as nav numbers, wheel and PgUp/PgDn; see XHTPM-PARSER-REFERENCE.md, `generic_sbar_register`). blueprintz had none, so at 856x404 the lists were cut off. What worked, tried and screenshot-checked:
+- **Sidebar:** keep the heading `<text>` fixed, put the `<repeat>` of rows inside `<scrolllist>`.
+- **Panel:** keep what must always be reachable fixed (status line, the button `<row class="toolbar">` rows); put the long, variable content (selection line, command list, fields, problems, trace) in one `<scrolllist>` below.
+- **Do not put toolbar `<row>`s of several `<item>`s inside a `<scrolllist>`:** they vanished from the render (tried; reverted). Rows of single items, `<text>`, `<item>`, `<cli_io>` and `<repeat>` rendered and scrolled fine.
+- Verify by shrinking the window (blueprintz opened at 856x404) and driving the scroll arrow's nav number through the relay; the content moved to Problems/Trace after three clicks. Not verified: a window larger than the saved size (the desktop kept the saved geometry when I tried to resize with xdotool). Button labels truncate when the window is very narrow; widen it or shorten labels.
+
 ## 4. `<cli_io>` fields (typed input) - what to know
 
 - Give the field `class="... top"` or two fields stack at the bottom of the window, on top of each other (first build: only "add command" was visible).
@@ -79,5 +87,6 @@ Layout rules used: a left **sidebar** list (what exists, click to select) and a 
 4. Every write through an op that a harness can also call.
 5. Whitelist typed text; check types against their registry; refuse before writing.
 6. CSS: reuse the palette above; colour = state, words say it too.
-7. Headless test, relay test with screenshots, negative tests, restore state.
-8. Doc the limits in the design page the same day (what is not done), and commit with explicit pathspecs.
+7. Wrap every list that can grow in `<scrolllist>`; test the window shrunk.
+8. Headless test, relay test with screenshots, negative tests, restore state.
+9. Doc the limits in the design page the same day (what is not done), and commit with explicit pathspecs.
