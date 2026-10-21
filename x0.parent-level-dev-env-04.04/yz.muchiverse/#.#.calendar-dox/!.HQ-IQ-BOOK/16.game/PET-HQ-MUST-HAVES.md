@@ -88,11 +88,13 @@ Game rules stay in that game's daemon.
 | pet-trainer | trainer, not a city board | n/a | n/a | keys are listed; this file is the source the city tables claim to copy | yes |
 | bet-rpg | one footer of pets, acts on the left. An older design line that put acts on the footer is out of date | yes, island | yes | not on the city daemon path yet | not surveyed as a second keybind file |
 
-## What a later patch is allowed to do
+## Wired 2026-10-21
 
-Point the INT `0` and `1`–`4` handlers at the board session the viewer
-already updates, and add the two missing `pov_mode_2` and `pov_mode_3`
-rows so the city tables match pet-trainer. Leave `bv_render_3d.c`,
-`bv_menu_input.c`, and `pieces/system/keybinds.pdl` alone unless the
-owner asks for a camera change in that conversation. Do not restore a
-previous camera position.
+The nine pet daemons (`mcl`, `cdda`, `df`, `gta`, `rpg-pvp`, `dsr`,
+`rpg-pet`, `tcg`, `civ`) append `0` and `1`–`4` to that board's own
+session `interact_relay.txt`. The viewer applies them. Their
+`keybinds.pdl` files now list `pov_mode_2` (50) and `pov_mode_3` (51).
+The camera equations and `pieces/system/keybinds.pdl` were not edited.
+A running daemon keeps the old binary until it is restarted. mcl-hq
+was rebuilt and its resident was restarted. The other eight were not
+rebuilt in this pass.

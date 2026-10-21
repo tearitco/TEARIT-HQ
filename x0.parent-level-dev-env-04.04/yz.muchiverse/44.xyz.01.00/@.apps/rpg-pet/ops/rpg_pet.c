@@ -24,7 +24,7 @@
  *   relations.txt (append-only MEET rows: who met whom; the data a later "share a room" rule reads), daylight.txt, clock_ui.txt, clock_root/.
  * Outputs: state/scene.raw (RGBA 660x430) + scene.receipt.txt, state/ui.txt + state/clock_ui.txt. Written only when their content changed (the renderer repaints a canvas
  * when its file changes - an unconditional rewrite costs CPU).
- * Keys in INT (state/interact_relay.txt, "<decimal code> <ms>", same codes as pet-trainer keybinds.pdl): arrows 1000 left / 1001 right / 1002 up / 1003 down (the agent relay band 200-203 is also accepted), 9 Tab, 27 Esc = INT off, 0 view, 1-4 pov (stored only: 3D is sprint item 7).
+ * Keys in INT (state/interact_relay.txt, "<decimal code> <ms>", same codes as pet-trainer keybinds.pdl): arrows 1000 left / 1001 right / 1002 up / 1003 down (the agent relay band 200-203 is also accepted), 9 Tab, 27 Esc = INT off, 0 view, 1-4 pov (forwarded to this board session; the viewer sets the camera).
  */
 #define _GNU_SOURCE
 #include <stdio.h>
@@ -991,6 +991,18 @@ static int enter_pressed_in_engine(void) {
     if (sz == off) return 0; int codes[32]; int n = poll_keys(hp, &off, codes, 32); int hit = 0; for (int i = 0; i < n; i++) if (codes[i] == 13) hit = 1;
     if (hit && now_ms() - g_own13 < 2500) hit = 0; return hit;
 }
+static void board_cam_key(int code) {
+    /* INT ate 0 and 1-4 before the viewer saw them. Hand the same code to THIS board's session only. The viewer applies render_mode / camera_mode. Piececraft and other desks are not written. */
+    char up[PATH_MAX], ub[1024], sess[PATH_MAX] = "", rp[PATH_MAX];
+    snprintf(up, sizeof up, "%s/@.apps/rpg-pet/board/state/ui.txt", HOUSE);
+    if (!fexists(up)) return;
+    read_file(up, ub, sizeof ub);
+    for (char *l = strtok(ub, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "bv_session=", 11)) snprintf(sess, sizeof sess, "%s", l + 11);
+    if (!sess[0]) return;
+    snprintf(rp, sizeof rp, "%s/pieces/apps/player_app/interact_relay.txt", sess);
+    FILE *f = fopen(rp, "a");
+    if (f) { fprintf(f, "%d\n", code); fclose(f); }
+}
 static int daemon_main(void) {
     { char lp[PATH_MAX]; snprintf(lp, sizeof lp, "%s/daemon.lock", ST); static int lfd; lfd = open(lp, O_CREAT | O_RDWR, 0644);      /* ONE resident daemon per game folder (2026-10-17: a board launch and the standalone window each started one, both ticking the same state): flock is dropped by the kernel when this process dies, close-on-exec so a leftover child cannot hold it */
       if (lfd >= 0) { fcntl(lfd, F_SETFD, FD_CLOEXEC); if (flock(lfd, LOCK_EX | LOCK_NB) != 0) { fprintf(stderr, "daemon already running for %s: this one exits\n", ST); return 0; } } }
@@ -1013,8 +1025,8 @@ static int daemon_main(void) {
             else if (c == 27) { set_flag("int", "0"); clock_sync(); snprintf(msg, sizeof msg, "INT off: real time"); dirty = 1; break; }      /* Esc leaves INT (keyboard/history.txt: KEY_PRESSED: 27) */
             else if (!run_on()) continue;
             else if (c == 9) continue;      /* owner 2026-10-12: no Tab pet/player toggle - INT controls whoever is chosen from the toolbar (every cast member is playable, Harold is just the default selection) */
-            else if (c == '0') { char cv[16]; flag_str("view", "2d", cv, sizeof cv); set_flag("view", !strcmp(cv, "2d") ? "3d" : "2d"); snprintf(msg, sizeof msg, "view toggled (3D draws with sprint item 7)"); dirty = 1; continue; }
-            else if (c >= '1' && c <= '4') { char pv[8]; snprintf(pv, sizeof pv, "%c", c); set_flag("pov", pv); snprintf(msg, sizeof msg, "pov %c stored (3D draws with sprint item 7)", c); dirty = 1; continue; }
+            else if (c == '0') { char cv[16]; flag_str("view", "2d", cv, sizeof cv); set_flag("view", !strcmp(cv, "2d") ? "3d" : "2d"); board_cam_key(c); snprintf(msg, sizeof msg, "view toggled"); dirty = 1; continue; }
+            else if (c >= '1' && c <= '4') { char pv[8]; snprintf(pv, sizeof pv, "%c", c); set_flag("pov", pv); board_cam_key(c); snprintf(msg, sizeof msg, "pov %c", c); dirty = 1; continue; }
             else continue;
             { int ci = ctl_idx(); use_ent(ci); if (do_step(dx, dy, msg, sizeof msg)) { pet_save(); set_flag("follow", ci < 0 ? "player" : "pet"); end_turn(); } else pet_save(); }      /* a bump costs no turn */
             dirty = 1; }

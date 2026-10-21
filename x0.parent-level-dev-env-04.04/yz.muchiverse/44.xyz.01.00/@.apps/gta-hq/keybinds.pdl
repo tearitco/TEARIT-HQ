@@ -9,5 +9,7 @@ KEY | arrow_down  | 1003
 KEY | control_switch | 9      # Tab: INT drives the selected pet <-> the player
 KEY | render_mode_toggle | 48 # 0
 KEY | pov_mode_1 | 49
+KEY | pov_mode_2 | 50
+KEY | pov_mode_3 | 51
 KEY | pov_mode_4 | 52
 KEY | escape | 27
