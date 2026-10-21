@@ -1,0 +1,32 @@
+SECTION | KEY | VALUE
+------------------------------
+# Casino Island rooms. Same row shapes as rpg-pvp-hq/rooms.pdl.
+# The door picture sits at (tx, ty). The trigger is the floor cell under it (tx, ty+1).
+# Walking that cell teleports to dest at arrive_x, arrive_y. auto=1: a pet may walk there.
+# ROOM | id | name | floor_col | floor_row | over | cols | rows | tile_px | biome
+# A normal room is 13 x 8 cells. Floor is Inside_A5. Buildings on the island are World_B.
+ROOM | island | Island       | 0 | 0 | over | 20 | 13 | 24 | worldmap
+ROOM | pier   | Pier casino  | 1 | 2
+ROOM | mid    | Mid casino   | 1 | 4
+ROOM | grand  | Grand casino | 3 | 4
+ROOM | cot    | Cot hotel    | 0 | 2
+ROOM | inn    | Inn          | 2 | 4
+ROOM | suite  | Suite        | 0 | 4
+DOOR | island | 5  | pier  | 6 | 3 | 1 | 4
+DOOR | island | 9  | mid   | 6 | 3 | 1 | 4
+DOOR | island | 13 | grand | 6 | 3 | 1 | 4
+DOOR | island | 5  | cot   | 6 | 3 | 1 | 8
+DOOR | island | 9  | inn   | 6 | 3 | 1 | 8
+DOOR | island | 13 | suite | 6 | 3 | 1 | 8
+DOOR | pier   | 6 | island | 5  | 6 | 1
+DOOR | mid    | 6 | island | 9  | 6 | 1
+DOOR | grand  | 6 | island | 13 | 6 | 1
+DOOR | cot    | 6 | island | 5  | 10 | 1
+DOOR | inn    | 6 | island | 9  | 10 | 1
+DOOR | suite  | 6 | island | 13 | 10 | 1
+SCENERY | island | World_B | 0 | 7  | 2 | 2 | 5  | 3
+SCENERY | island | World_B | 4 | 7  | 2 | 2 | 9  | 3
+SCENERY | island | World_B | 8 | 0  | 2 | 2 | 13 | 3
+SCENERY | island | World_B | 6 | 11 | 2 | 2 | 5  | 7
+SCENERY | island | World_B | 4 | 11 | 2 | 2 | 9  | 7
+SCENERY | island | World_B | 2 | 11 | 2 | 2 | 13 | 7

@@ -15,6 +15,7 @@ command runs on.
 - `RULES-df-hq.md`, `RULES-cdda-hq.md`, `RULES-mcl-hq.md` — verb, who, cost, result, file.
 - `GAME-DEV-HQ-DESIGN.md` — Game Dev Story as a studio week: staff, one game, ship. Not built.
 - `RPG-PVP-HQ-DESIGN.md` — GoldenEye-style city shooter for the pets (AI and human write the same INTENT rows): Doom vs cdda art split, what to take from `007-goldeye`, steps P0-P9 incl. later Fortnite-style building. Draft, not built.
+- `EVENT-VERB-PAGES-DESIGN.md` — **closing the events / blueprintz gap** (2026-10-20): game verbs get event pages that the UI really plays (`fire`/`run`, fallback to the raw verb), generated from one `verbs.pdl` manifest; phases V0-V7. **Built and proven for rpg-pvp-hq (V1-V5, 2026-10-20, section 8)**: verbs.pdl, verbgen check/gen, 13 verb pages, `fire` in the engine, window actions routed through the pages; game-dev-hq (V6) built the same day (section 9: 17 verb pages, genre bug fixed, the clock daemon now stops with the window); V7 built (section 10): `bp_edit_op` plus the `EVENTS`/`BP` playthrough rows program a verb page by blueprint, headless; phase tables for both games PASS; the events-hq manager's 48-command registry cap (late commands compiled to pages that did nothing) is fixed.
 - `RPG-PVP-HQ-EVENTS.md` — which games use event pages vs ledger rows, how rpg-pvp-hq fires events (RAN), the registry/bp_scan rule so blueprintz can read and later edit its scripting. grok's game-dev-hq has no event pages.
 - `../02-architecture/PLAYTEST-DESK-AND-PCHQ.md` — taskbar cell 9 and
   the PC-HQ Player menu. The playtest button.
@@ -36,7 +37,8 @@ command runs on.
 - `GAMES-ROADMAP.md` — milestones with proof/KPI, how to use/modify
   (filled as each lands), and the tangent documents to write. All
   rows start NOT BUILT.
-- `IMG-HAI-DESIGN.md`, `WORD-BANK-TO-IMAGE.md` - the text-to-image studio window
+- `IMG-HAI-DESIGN.md`, `WORD-BANK-TO-IMAGE.md` - the text-to-image studio window. It is an h-ai menu row now, not a toy.
+- `CHAR-CREATE-DESIGN.md` — a later h-ai window that writes `party.pdl` rows from arguments, a free sprite cell, or an img-hai draft. Not built.
   (img-hai) and the word-bank pipeline behind it. **The full handbook (user
   guide, code guide, extension recipes, testing, operations, handoff) lives
   with the app: `44.xyz.01.00/&.hq-apps/img-hai/docs/` (start at README.md);

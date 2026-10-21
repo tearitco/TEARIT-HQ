@@ -1,0 +1,4 @@
+Casino Island. Vale, Nia, Sol, Kit, Bram, and Wynn walk the island.
+INT on holds the selected pet. INT off hands that pet back to its walk.
+No tables, no chips, and no hotel bill in this window yet.
+The clock id is bet. The shooter clock stays rpg.

@@ -1,0 +1,56 @@
+<!-- Casino Island. Cast and clock are this app's. No wagers yet. No angle brackets in comments. -->
+<window label="Casino Island" class="bet-rpg database-window fixed-size managed user-resizable" vars="state/ui.txt state/clock_ui.txt">
+  <module src="@.apps/bet-rpg/ops/+x/bet_rpg.+x"/>
+  <page name="main">
+    <tabbar id="toolbar" class="tab-bar">
+      <tab id="tb-int" class="tab rp-tb ${interact_class}" label="INT ${interact_label}" onclick="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' int"/>
+      <tab id="tb-book" class="tab rp-tb" label="Book ▾" onclick="ACTIVATE" target_id="tb-book"/>
+      <tab id="tb-page" class="tab rp-tb" label="Page ▾" onclick="ACTIVATE" target_id="tb-page"/>
+      <tab id="tb-menu" class="tab rp-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
+      <tab id="tb-help" class="tab rp-tb" label="Help ▾" onclick="ACTIVATE" target_id="tb-help"/>
+      <tab id="tb-time" class="tab rp-tb" label="${time_label}" onclick="void"/>
+    </tabbar>
+    <sidebar id="rail" class="sidebar rp-rail">
+      <repeat count="${n_party}" bind="pet">
+        <item id="bk${pet.#}" class="rp-menu-row dropdown-child" target_id="tb-book" label="${pet.label}" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' select ${pet.id}"/>
+      </repeat>
+      <repeat count="${n_town}" bind="town">
+        <item id="pg${town.#}" class="rp-menu-row dropdown-child quiet" target_id="tb-page" label="${town.label}" action="void"/>
+      </repeat>
+      <item id="mn-help" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Help" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' help"/>
+      <item id="hp-0" class="rp-menu-row dropdown-child quiet" target_id="tb-help" label="${help_line}" action="void"/>
+    </sidebar>
+    <panel id="mainp" class="rp-panel">
+      <canvas id="island" class="rp-room" sprite="${canvas_raw}"/>
+      <row id="side-l" class="canvas-overlay-left ov-pin ov-chrome rp-side-ov theme" show="${left_visible}">
+        <text label="info - ${active_name}" class="hb-quiet ov-title theme-3 rp-side-t"/>
+        <item id="side-min" class="rp-menu-row rp-side-row" label="info" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' toggle left"/>
+        <text label="${phase_line}" class="rp-big rp-side-t"/>
+        <text label="${room_line}" class="ph-green rp-side-t"/>
+        <text label="${note}" class="ph-quiet rp-side-t"/>
+        <repeat count="${n_party}" bind="walk">
+          <text label="${walk.where}" class="rp-quiet rp-side-t"/>
+        </repeat>
+      </row>
+      <row id="chat-ov" class="canvas-overlay-right ov-pin ov-chrome rp-chat-ov theme" show="${chat_visible}">
+        <text label="chat - ${active_name}" class="hb-quiet ov-title theme-3"/>
+        <item id="chat-min" class="rp-menu-row" label="chat" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' toggle chat"/>
+        <text label="${chat_0}" class="rp-chat"/>
+        <text label="${chat_1}" class="rp-chat"/>
+        <text label="${chat_2}" class="rp-chat"/>
+        <text label="${chat_3}" class="rp-chat"/>
+        <text label="${chat_4}" class="rp-chat"/>
+        <text label="${chat_5}" class="rp-chat"/>
+        <text label="${chat_6}" class="rp-chat"/>
+        <text label="${chat_7}" class="rp-chat"/>
+      </row>
+    </panel>
+    <footer id="statusbar" class="pchq-footer">
+      <item id="chat-toggle" class="pchq-ft skin-bar" label="chat" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' toggle chat"/>
+      <item id="left-toggle" class="pchq-ft skin-bar" label="info" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' toggle left"/>
+      <repeat count="${n_party}" bind="party">
+        <item id="pt${party.#}" class="pchq-ft skin-bar ${party.cls}" label="${party.label}" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' select ${party.id}"/>
+      </repeat>
+    </footer>
+  </page>
+</window>

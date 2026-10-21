@@ -1,0 +1,9 @@
+# First island. Three casinos, three hotels, one casino beside each tier.
+# The min_bank numbers are samples, not law. No game rules in this file.
+# ROOM | id | kind | min_bank | label
+ROOM | pier  | casino | 0   | Pier tables
+ROOM | mid   | casino | 40  | Mid tables
+ROOM | grand | casino | 80  | Grand tables
+ROOM | cot   | hotel  | 10  | Cot house
+ROOM | inn   | hotel  | 50  | Inn
+ROOM | suite | hotel  | 100 | Suite house
