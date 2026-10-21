@@ -456,15 +456,19 @@ static void gd_clock_paths(void) {
     snprintf(CROOT, sizeof CROOT, "%s/clock_root", ST);
     snprintf(CFILE, sizeof CFILE, "%s/#.desktop/clocks/rpg.pdl", CROOT);
 }
-static int lc_run(const char *a, const char *b, const char *c, const char *d, const char *e) {
-    if (!gd_exists(LC)) return -1;
+static int lc_run(const char *const *av) {
+    if (!gd_exists(LC) || !av || !av[0]) return -1;
     pid_t pid = fork();
     if (pid < 0) return -1;
     if (pid == 0) {
         int fd = open("/dev/null", O_RDWR);
         if (fd >= 0) { dup2(fd, 0); dup2(fd, 1); dup2(fd, 2); if (fd > 2) close(fd); }
+        char *args[12]; int n = 0;
+        args[n++] = LC; args[n++] = CROOT;
+        for (int i = 0; av[i] && n < 11; i++) args[n++] = (char *)av[i];
+        args[n] = NULL;
         setenv("LC_CLOCK_NO_POPUP", "1", 1);
-        execl(LC, LC, CROOT, a, b ? b : (char *)NULL, c, d, e, (char *)NULL);
+        execv(LC, args);
         _exit(127);
     }
     int st = 0;
@@ -506,25 +510,45 @@ static void gd_clock_ensure(void) {
     char d[1200];
     snprintf(d, sizeof d, "%s/#.desktop/clocks", CROOT);
     mkdir(CROOT, 0755); mkdir(d, 0755);
+    /* min, not sec: sec is a game-day every 24 real seconds and the other games measured that as a CPU hog. */
+    const char *rate[] = {"rate", "rpg", "min", NULL};
+    const char *set[] = {"cmd", "rpg", "settime", "36000000", "--source", "gd-install", NULL};
+    const char *step[] = {"step", "2000", NULL};
+    const char *go[] = {"daemon-start", NULL};
     if (!gd_exists(CFILE)) {
-        lc_run("new", "rpg", "user", "game-dev-hq time", NULL);
-        lc_run("rate", "rpg", "sec", NULL, NULL);
-        lc_run("cmd", "rpg", "settime", "21600000", "--source");
+        const char *nw[] = {"new", "rpg", "user", "game-dev-hq time", NULL};
+        lc_run(nw);
     }
+    lc_run(rate);
+    if (clock_epoch() <= 0) lc_run(set);
+    lc_run(step);
+    lc_run(go);
 }
 static void gd_clock_sync(void) {
-    gd_clock_ensure(); if (!gd_exists(CFILE)) return;
+    static int started, was_pause = -1;
+    gd_clock_paths(); if (!gd_exists(LC)) return;
+    if (!started) { gd_clock_ensure(); started = 1; }
+    if (!gd_exists(CFILE)) return;
     int pause = !flag_get("running", 1) || flag_get("int", 0);
-    lc_run("cmd", "rpg", pause ? "pause" : "resume", "--source", "gd");
+    if (pause != was_pause) {
+        const char *ps[] = {"cmd", "rpg", pause ? "pause" : "resume", "--source", "gd", NULL};
+        lc_run(ps);
+        const char *step[] = {"step", "200", NULL};
+        lc_run(step);
+        was_pause = pause;
+    }
     long long ms = clock_epoch(); if (ms >= 0) { gd_clock_phase(ms); gd_clock_label(ms); }
 }
 static void gd_clock_cmd(int argc, char **argv) {
     gd_clock_ensure();
     if (argc >= 2 && !strcmp(argv[0], "rate")) {
-        lc_run("rate", "rpg", argv[1], NULL, NULL);
+        const char *a[] = {"rate", "rpg", argv[1], NULL};
+        lc_run(a);
         snprintf(note, sizeof note, "clock %s", argv[1]);
     } else if (argc >= 2 && !strcmp(argv[0], "advance")) {
-        lc_run("cmd", "rpg", "advance", argv[1], "--source");
+        const char *a[] = {"cmd", "rpg", "advance", argv[1], "--source", "gd", NULL};
+        const char *step[] = {"step", "200", NULL};
+        lc_run(a); lc_run(step);
         snprintf(note, sizeof note, "clock +%s", argv[1]);
     } else snprintf(note, sizeof note, "clock rate|advance");
     long long ms = clock_epoch(); if (ms >= 0) { gd_clock_phase(ms); gd_clock_label(ms); }
