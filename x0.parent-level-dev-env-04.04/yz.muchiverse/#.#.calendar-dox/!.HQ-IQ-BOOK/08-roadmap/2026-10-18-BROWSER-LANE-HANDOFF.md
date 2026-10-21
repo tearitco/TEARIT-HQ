@@ -6,6 +6,19 @@ measured, not estimated; where something is unproven it says so.
 
 ---
 
+## 00. DIRECTION CHANGE 2026-10-20 - read this before section 0
+
+**The owner's goal for this browser is now a fully Chrome-replaceable browser** (use it instead of Chrome, every day, for everything). "Chrome parity is a non-goal" - in the 10-05 roadmap, the 10-11 gap assessment section 1 and section 6 - is **withdrawn**. Nothing is out of scope up front: a feature Chrome has and we lack is an open, sized, queued item.
+
+Read, in this order: **`2026-10-20-CHROME-REPLACEMENT-SIZING.md`** (same folder). It has the sized backlog (groups A-I, about 148-271 sprints, estimates), the four rungs R1-R4, the order of work, and the evidence behind the numbers.
+
+What it changes for you:
+1. **JIT is decided** (owner: "we need JIT"). Group F: measured 4-12x slower than V8 on hot JS loops and calls (fib(35) 1.3 s vs 0.1 s). Order: benchmark suite on real pages, then evaluate and adopt a JIT-enabled QuickJS, then a JIT-safe sandbox. Our own JIT only if the adoption fails.
+2. **Next after flex and grid** (group A, section 5a below stays your task order): import the Web Platform Tests and a top-50 site sweep as the yardstick, then the cheap compatibility items (send `--compressed`, page ES modules, FormData/Blob, observers, `position:fixed` / `z-index`, `@font-face`), then sandbox the JS worker.
+3. **Still true:** one KPI at a time, red before green, never report a number you did not observe. The sizes are estimates; correct the calendar mapping (2-4 days per sprint) when real work lands.
+4. **Open owner decision:** protected-video (DRM) streaming. Do not start it.
+5. If you cannot find these files: `git pull origin opencode` - they are on `origin/opencode` since commit `acc042035`.
+
 ## 0. START HERE (if you are a model with no context, read this and nothing else first)
 
 You are picking up the **house network browser** lane. Everything below is

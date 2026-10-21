@@ -1423,6 +1423,43 @@ static int daemon_main(void) {
     return 0;
 }
 
+/* ---------- FIRE: the window plays the verb's event page (BOOK 16.game/EVENT-VERB-PAGES-DESIGN.md) ----------
+ * The window calls "rpg_pvp_hq.+x fire <verb> [args]". When verbs.pdl says the verb is page=yes and events/<verb>/ exists, the engine plays
+ * that package through events-hq (run_event_x, trigger ui); the page runs the registered command rpg_pvp_hq_verb, i.e. this binary with the
+ * plain verb (the leaf). Environment words carry the arguments (RPGPVP_ARG) and a one-time token (RPGPVP_VIA) that the leaf writes to
+ * state/via.txt, so a page that ran is told from a page that did not, and a verb is never run twice. No page, a broken page or a page=no verb:
+ * the verb runs directly and one line goes to state/fire_log.txt (never silent). */
+static int manifest_page(const char *verb, char *out, size_t cap) {
+    char p[PATH_MAX], buf[16384]; snprintf(p, sizeof p, "%s/verbs.pdl", APP); out[0] = 0; if (!read_file(p, buf, sizeof buf)) return 0;
+    for (char *l = strtok(buf, "\n"); l; l = strtok(NULL, "\n")) {
+        if (strncmp(l, "VERB", 4)) continue; char *f[4]; int n = 0; char *q = l;
+        while (n < 4) { f[n++] = q; char *b = strchr(q, '|'); if (!b) break; *b = 0; q = b + 1; }
+        if (n < 3) continue; for (int i = 1; i < 3; i++) { while (*f[i] == ' ') f[i]++; char *e = f[i] + strlen(f[i]); while (e > f[i] && e[-1] == ' ') *--e = 0; }
+        if (!strcmp(f[1], verb)) { snprintf(out, cap, "%s", f[2]); return 1; }
+    }
+    return 0;
+}
+static void fire_log(const char *verb, const char *what) { char p[PATH_MAX]; snprintf(p, sizeof p, "%s/fire_log.txt", ST); FILE *f = fopen(p, "a"); if (f) { fprintf(f, "%ld|%s|%s\n", (long)time(NULL), verb, what); fclose(f); } }
+/* returns 1 when it handled the call (page ran, or the arguments were refused); 0 = run the verb directly */
+static int fire_main(int vargc, char **vargv) {
+    if (vargc < 2) { printf("fire <verb> [args]\n"); return 1; }
+    const char *verb = vargv[1]; char args[200] = "", pg[16];
+    for (const char *q = verb; *q; q++) if (!((*q >= 'a' && *q <= 'z') || (*q >= '0' && *q <= '9') || *q == '_')) { printf("fire: bad verb\n"); return 1; }
+    for (int i = 2; i < vargc; i++) {
+        for (const char *q = vargv[i]; *q; q++) if (!((*q >= 'a' && *q <= 'z') || (*q >= 'A' && *q <= 'Z') || (*q >= '0' && *q <= '9') || strchr("_:.,-", *q))) { { char why[400]; size_t k = 0; snprintf(why, sizeof why, "refused:bad-arg(%d of %d):", i - 1, vargc - 2); k = strlen(why); for (const char *c = vargv[i]; *c && k + 2 < sizeof why; c++) why[k++] = (*c >= 32 && *c < 127 && *c != '|') ? *c : '?'; why[k] = 0; printf("fire: bad character in an argument\n"); fire_log(verb, why); } return 1; }
+        size_t o = strlen(args); if (o + strlen(vargv[i]) + 2 >= sizeof args) { printf("fire: arguments too long\n"); return 1; } snprintf(args + o, sizeof args - o, "%s%s", o ? " " : "", vargv[i]);
+    }
+    char pd[PATH_MAX]; snprintf(pd, sizeof pd, "%s/events/%s", APP, verb);
+    if (!manifest_page(verb, pg, sizeof pg) || strcmp(pg, "yes")) { fire_log(verb, !pg[0] ? "direct:not-in-manifest" : "direct:page-no"); return 0; }
+    if (!is_dir(pd)) { fire_log(verb, "fallback:no-package"); return 0; }
+    char tok[64], envs[400], vp[PATH_MAX], got[64]; snprintf(tok, sizeof tok, "%ld-%d", (long)time(NULL), (int)getpid()); snprintf(vp, sizeof vp, "%s/via.txt", ST);
+    snprintf(envs, sizeof envs, "RPGPVP_VIA='%s' RPGPVP_ARG='%s'", tok, args);
+    run_event_x(verb, "ui", envs);
+    read_file(vp, got, sizeof got); got[strcspn(got, "\n")] = 0;
+    if (strcmp(got, tok)) { fire_log(verb, "fallback:page-did-not-run"); return 0; }
+    { char lg[260]; snprintf(lg, sizeof lg, "page:%s", args); fire_log(verb, lg); } printf("ok\n"); return 1;
+}
+
 /* ---------- main ---------- */
 int main(int argc, char **argv) {
     int mode = 0; char *vargv[32]; int vargc = 0; char textbuf[400];          /* 0 verb, 1 resident, 2 event runner */
@@ -1443,6 +1480,17 @@ int main(int argc, char **argv) {
       if (!ASSETS[0] || !HOUSE[0]) { fprintf(stderr, "rpg_pvp_hq: no #.NNEST_ASSETS / &.widgits above %s\n", APP); return 1; } }
     if (mode == 2) return event_main(argv[1]);
     if (mode == 1) return daemon_main();
+    if (mode == 0) while (vargc >= 2 && vargv[vargc - 1][0] == '/' && is_dir(vargv[vargc - 1])) vargc--;      /* the renderer appends the house root and the app dir to every window action (found 2026-10-20: "buy <key> <house> <app>" read the two paths as x,y and always placed at 0,0); they are not arguments */
+    if (mode == 0 && vargc >= 1 && !strcmp(vargv[0], "fire")) {      /* the window's entry for page=yes verbs: play the page, else fall through to the verb */
+        if (fire_main(vargc, vargv)) return 0;
+        for (int i = 0; i + 1 < vargc; i++) vargv[i] = vargv[i + 1]; vargc--;
+    }
+    if (mode == 0) {      /* the leaf of a fired page: record the token, take the arguments; cleared at once so nested engine calls never inherit them */
+        static char argbuf[200]; const char *va = getenv("RPGPVP_VIA"), *ar = getenv("RPGPVP_ARG");
+        if (va && *va) { char vp[PATH_MAX]; snprintf(vp, sizeof vp, "%s/via.txt", ST); FILE *vf = fopen(vp, "w"); if (vf) { fprintf(vf, "%s\n", va); fclose(vf); } }
+        if (ar && *ar && vargc == 1) { snprintf(argbuf, sizeof argbuf, "%s", ar); for (char *t = strtok(argbuf, " "); t && vargc < 31; t = strtok(NULL, " ")) vargv[vargc++] = t; }
+        unsetenv("RPGPVP_VIA"); unsetenv("RPGPVP_ARG");
+    }
     load_data(); replay(); pet_load(); clock_paths();
     char msg[240]; verb(vargc, vargv, msg, sizeof msg);
     if (turn_taken && turn_mode()) end_turn();       /* INT on: the owner acted, so it is a turn: the clock advances and every pet steps */

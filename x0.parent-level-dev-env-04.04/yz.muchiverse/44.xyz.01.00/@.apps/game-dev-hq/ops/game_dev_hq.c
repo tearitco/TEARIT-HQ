@@ -30,7 +30,7 @@ typedef struct {
 } Staff;
 
 typedef struct {
-    char id[8], title[24], genre[16], type[16], phase[16], assigned[64];
+    char id[8], title[24], genre[32], type[16], phase[16], assigned[64];
     int fun, creativity, polish, graphics, sound;
     int open; /* 1 = the game in progress */
 } Game;
@@ -41,6 +41,7 @@ static Game games[8];
 static int ngames;
 static long funds, fame, week, hype;
 static int office;
+static int reputation, goodwill, infrastructure;
 static char note[240];
 
 static int is_dir(const char *p) { struct stat s; return stat(p, &s) == 0 && S_ISDIR(s.st_mode); }
@@ -113,6 +114,8 @@ static void save_all(void) {
     }
     snprintf(p, sizeof p, "%s/note.txt", ST);
     f = fopen(p, "w"); if (f) { fprintf(f, "%s\n", note); fclose(f); }
+    snprintf(p, sizeof p, "%s/company.txt", ST);
+    f = fopen(p, "w"); if (f) { fprintf(f, "COMPANY | %d | %d | %d\n", reputation, goodwill, infrastructure); fclose(f); }
 }
 
 static void load_all(void) {
@@ -158,6 +161,16 @@ static void load_all(void) {
     f = fopen(p, "r"); if (f) { if (fscanf(f, "%ld", &hype) != 1) hype = 0; fclose(f); }
     snprintf(p, sizeof p, "%s/note.txt", ST);
     f = fopen(p, "r"); if (f) { if (fgets(note, sizeof note, f)) note[strcspn(note, "\n")] = 0; fclose(f); }
+    reputation = goodwill = infrastructure = 0;
+    snprintf(p, sizeof p, "%s/company.txt", ST);
+    f = fopen(p, "r");
+    if (f) {
+        if (fgets(line, sizeof line, f)) {
+            char *fl[6]; int n = 0; split(line, fl, 6, &n);
+            if (n >= 4 && !strcmp(fl[0], "COMPANY")) { reputation = atoi(fl[1]); goodwill = atoi(fl[2]); infrastructure = atoi(fl[3]); }
+        }
+        fclose(f);
+    }
 }
 
 static void seed(void) {
@@ -233,6 +246,66 @@ static void write_active(void) {
     FILE *f = fopen(p, "w"); if (f) { fprintf(f, "%d\n", g_active); fclose(f); }
 }
 
+/* The board is the week's quests. It stays put until the week changes, then the offers, lengths, prices, and difficulty change. */
+#define NQUEST 3
+typedef struct { char id[8], name[16], stat[16]; int weeks, price, diff; } Quest;
+static Quest quests[NQUEST];
+static int nquest;
+
+static void save_quests(long posted) {
+    char p[1200]; snprintf(p, sizeof p, "%s/quests.txt", ST);
+    FILE *f = fopen(p, "w"); if (!f) return;
+    fprintf(f, "BOARD | %ld\n", posted);
+    for (int i = 0; i < nquest; i++)
+        fprintf(f, "QUEST | %s | %s | %s | %d | %d | %d\n", quests[i].id, quests[i].name, quests[i].stat, quests[i].weeks, quests[i].price, quests[i].diff);
+    fclose(f);
+}
+static void load_quests(long *posted) {
+    char p[1200], line[200]; nquest = 0; *posted = -1;
+    snprintf(p, sizeof p, "%s/quests.txt", ST);
+    FILE *f = fopen(p, "r"); if (!f) return;
+    while (fgets(line, sizeof line, f) && nquest < NQUEST) {
+        char *fl[8]; int n = 0; split(line, fl, 8, &n);
+        if (n >= 2 && !strcmp(fl[0], "BOARD")) *posted = atol(fl[1]);
+        if (n < 7 || strcmp(fl[0], "QUEST")) continue;
+        Quest *q = &quests[nquest++];
+        snprintf(q->id, 8, "%s", fl[1]); snprintf(q->name, 16, "%s", fl[2]); snprintf(q->stat, 16, "%s", fl[3]);
+        q->weeks = atoi(fl[4]); q->price = atoi(fl[5]); q->diff = atoi(fl[6]);
+    }
+    fclose(f);
+}
+static void roll_quests(void) {
+    static const char *names[] = {"logo","jingle","bounty","icon","voice","manual"};
+    static const char *stats[] = {"graphics","sound","programming","graphics","sound","scenario"};
+    unsigned r = (unsigned)(week * 1103515245u + 12345u);
+    nquest = 0;
+    for (int i = 0; i < NQUEST; i++) {
+        r = r * 1664525u + 1013904223u;
+        int k = (r >> 16) % 6;
+        Quest *q = &quests[nquest++];
+        snprintf(q->id, 8, "q%d", i);
+        snprintf(q->name, 16, "%s", names[k]);
+        snprintf(q->stat, 16, "%s", stats[k]);
+        q->weeks = 1 + (int)((r >> 8) % 4);
+        q->diff = 15 + reputation + (int)((r >> 4) % 50);
+        if (q->diff > 95) q->diff = 95;
+        q->price = 3000 + q->weeks * 2500 + q->diff * 60 + reputation * 100;
+    }
+    save_quests(week);
+}
+static void ensure_quests(void) {
+    long posted = -1; load_quests(&posted);
+    if (posted != week || nquest == 0) roll_quests();
+}
+static void pass_weeks(int n) {
+    if (n < 1) n = 1;
+    long pay = 0;
+    for (int i = 0; i < nstaff; i++) pay += staff[i].salary;
+    funds -= pay * n;
+    week += n;
+    day_out();
+}
+
 static void write_ui(void) {
     char p[1200], tmp[1200]; snprintf(p, sizeof p, "%s/ui.txt", ST); snprintf(tmp, sizeof tmp, "%s/ui.txt.tmp", ST);
     FILE *f = fopen(tmp, "w"); if (!f) return;
@@ -243,6 +316,7 @@ static void write_ui(void) {
     fprintf(f, "canvas_raw=%s/scene.raw\n", ST);
     fprintf(f, "funds=%ld\nfame=%ld\nweek=%ld\nhype=%ld\noffice=%d\n", funds, fame, week, hype, office);
     fprintf(f, "cash_label=Cash %ld\nfame_label=Fame %ld\n", funds, fame);
+    fprintf(f, "company_line=rep %d   goodwill %d   infra %d\n", reputation, goodwill, infrastructure);
     fprintf(f, "studio_line=funds %ld   fame %ld   hype %ld   office %d   week %ld\n", funds, fame, hype, office, week);
     fprintf(f, "note=%s\n", note[0] ? note : " ");
     Game *g = open_game();
@@ -269,6 +343,11 @@ static void write_ui(void) {
     const char *names[] = {"Ada","Bea","Cal","Dee","Eve","Fay"};
     for (int i = 0; i < 6; i++) fprintf(f, "hire_%d_job=%s\nhire_%d_name=%s\nhire_%d_line=Hire %s (%s)  $%d\n", i, jobs[i], i, names[i], i, names[i], jobs[i], HIRE_COST);
     fprintf(f, "n_hire=%d\n", 6);
+    ensure_quests();
+    fprintf(f, "n_contract=%d\n", nquest);
+    for (int i = 0; i < nquest; i++)
+        fprintf(f, "contract_%d_id=%s\ncontract_%d_line=%s  %dwk  $%d  %d%%\n",
+            i, quests[i].id, i, quests[i].name, quests[i].weeks, quests[i].price, quests[i].diff);
     char chatp[1200], lines[10][180]; int nln = 0;
     snprintf(chatp, sizeof chatp, "%s/chat.txt", ST);
     FILE *cf = fopen(chatp, "r");
@@ -402,6 +481,49 @@ static void do_advance(void) {
     event_row("advance", g->phase);
 }
 
+/* Take one posted quest. The price and the length are the ones on the board. Difficulty is the percent shown. */
+static void do_contract(const char *id) {
+    ensure_quests();
+    int ix = -1;
+    for (int i = 0; i < nquest; i++) if (!strcmp(quests[i].id, id)) ix = i;
+    if (ix < 0) { snprintf(note, sizeof note, "that quest is gone"); log_line(note); return; }
+    Quest q = quests[ix];
+    read_active();
+    Staff *s = nstaff ? &staff[g_active] : NULL;
+    int *sp = s ? stat_ptr(s, q.stat) : NULL;
+    if (!s || !sp) { snprintf(note, sizeof note, "no one to take it"); return; }
+    if (s->energy < 20) { snprintf(note, sizeof note, "%s is tired", s->name); log_line(note); return; }
+    int got = *sp >= q.diff ? q.price : q.price * *sp / (q.diff ? q.diff : 1);
+    *sp += 2; if (*sp > 500) *sp = 500;
+    s->energy -= 20;
+    reputation += 1; goodwill += 1;
+    if (!strcmp(q.stat, "programming")) infrastructure += 1;
+    funds += got;
+    pass_weeks(q.weeks);
+    roll_quests();
+    char b[160]; snprintf(b, sizeof b, "%s did %s  %dwk  $%d  diff %d%%", s->name, q.name, q.weeks, got, q.diff); log_line(b);
+    event_row("contract", q.name);
+}
+
+static void do_console(const char *spec) {
+    if (open_game()) { snprintf(note, sizeof note, "busy"); log_line(note); return; }
+    const char *supports = NULL;
+    if (!strcmp(spec, "handheld")) supports = "puzzle,action";
+    else if (!strcmp(spec, "home")) supports = "action,rpg,adventure";
+    else { snprintf(note, sizeof note, "console handheld|home"); return; }
+    if (infrastructure < 10) { snprintf(note, sizeof note, "need infrastructure 10"); log_line(note); return; }
+    Game *g = &games[ngames++];
+    memset(g, 0, sizeof *g);
+    snprintf(g->id, 8, "g%d", ngames);
+    snprintf(g->title, 24, "%s console", spec);
+    snprintf(g->genre, 16, "%s", supports);
+    snprintf(g->type, 16, "console");
+    snprintf(g->phase, 16, "proposal");
+    g->open = 1;
+    char b[80]; snprintf(b, sizeof b, "designing %s", g->title); log_line(b);
+    event_row("console", spec);
+}
+
 static void do_advertise(const char *tier) {
     long cost = 15000, add = 15;
     if (!strcmp(tier, "small")) { cost = 5000; add = 5; }
@@ -420,6 +542,8 @@ static void do_ship(void) {
     if (rank > 100) rank = 100;
     long sales = (long)rank * 1000 + fame * 10 + hype * 100;
     funds += sales; fame += rank / 10; if (fame < 0) fame = 0; hype = 0;
+    reputation += rank / 10; goodwill += 1; infrastructure += 1;
+    if (!strcmp(g->type, "console")) infrastructure += 4;
     g->open = 0;
     char b[120]; snprintf(b, sizeof b, "shipped %s  rank %d  sales %ld", g->title, rank, sales); log_line(b);
     event_row("ship", g->id);
@@ -431,7 +555,7 @@ static int slot_copy(int n, int to_slot) {
     char slots[1200], dir[1200];
     snprintf(slots, sizeof slots, "%s/slots", ST); mkdir(slots, 0755);
     snprintf(dir, sizeof dir, "%s/%d", slots, n); mkdir(dir, 0755);
-    const char *names[] = {"studio.txt","staff.pdl","games.pdl","hype.txt","chat.txt","note.txt","pos.txt", NULL};
+    const char *names[] = {"studio.txt","staff.pdl","games.pdl","hype.txt","chat.txt","note.txt","pos.txt","company.txt","quests.txt", NULL};
     int any = 0;
     for (int i = 0; names[i]; i++) {
         char src[1200], dst[1200];
@@ -456,15 +580,19 @@ static void gd_clock_paths(void) {
     snprintf(CROOT, sizeof CROOT, "%s/clock_root", ST);
     snprintf(CFILE, sizeof CFILE, "%s/#.desktop/clocks/rpg.pdl", CROOT);
 }
-static int lc_run(const char *a, const char *b, const char *c, const char *d, const char *e) {
-    if (!gd_exists(LC)) return -1;
+static int lc_run(const char *const *av) {
+    if (!gd_exists(LC) || !av || !av[0]) return -1;
     pid_t pid = fork();
     if (pid < 0) return -1;
     if (pid == 0) {
         int fd = open("/dev/null", O_RDWR);
         if (fd >= 0) { dup2(fd, 0); dup2(fd, 1); dup2(fd, 2); if (fd > 2) close(fd); }
+        char *args[12]; int n = 0;
+        args[n++] = LC; args[n++] = CROOT;
+        for (int i = 0; av[i] && n < 11; i++) args[n++] = (char *)av[i];
+        args[n] = NULL;
         setenv("LC_CLOCK_NO_POPUP", "1", 1);
-        execl(LC, LC, CROOT, a, b ? b : (char *)NULL, c, d, e, (char *)NULL);
+        execv(LC, args);
         _exit(127);
     }
     int st = 0;
@@ -506,25 +634,45 @@ static void gd_clock_ensure(void) {
     char d[1200];
     snprintf(d, sizeof d, "%s/#.desktop/clocks", CROOT);
     mkdir(CROOT, 0755); mkdir(d, 0755);
+    /* min, not sec: sec is a game-day every 24 real seconds and the other games measured that as a CPU hog. */
+    const char *rate[] = {"rate", "rpg", "min", NULL};
+    const char *set[] = {"cmd", "rpg", "settime", "36000000", "--source", "gd-install", NULL};
+    const char *step[] = {"step", "2000", NULL};
+    const char *go[] = {"daemon-start", NULL};
     if (!gd_exists(CFILE)) {
-        lc_run("new", "rpg", "user", "game-dev-hq time", NULL);
-        lc_run("rate", "rpg", "sec", NULL, NULL);
-        lc_run("cmd", "rpg", "settime", "21600000", "--source");
+        const char *nw[] = {"new", "rpg", "user", "game-dev-hq time", NULL};
+        lc_run(nw);
     }
+    lc_run(rate);
+    if (clock_epoch() <= 0) lc_run(set);
+    lc_run(step);
+    lc_run(go);
 }
 static void gd_clock_sync(void) {
-    gd_clock_ensure(); if (!gd_exists(CFILE)) return;
+    static int started, was_pause = -1;
+    gd_clock_paths(); if (!gd_exists(LC)) return;
+    if (!started) { gd_clock_ensure(); started = 1; }
+    if (!gd_exists(CFILE)) return;
     int pause = !flag_get("running", 1) || flag_get("int", 0);
-    lc_run("cmd", "rpg", pause ? "pause" : "resume", "--source", "gd");
+    if (pause != was_pause) {
+        const char *ps[] = {"cmd", "rpg", pause ? "pause" : "resume", "--source", "gd", NULL};
+        lc_run(ps);
+        const char *step[] = {"step", "200", NULL};
+        lc_run(step);
+        was_pause = pause;
+    }
     long long ms = clock_epoch(); if (ms >= 0) { gd_clock_phase(ms); gd_clock_label(ms); }
 }
 static void gd_clock_cmd(int argc, char **argv) {
     gd_clock_ensure();
     if (argc >= 2 && !strcmp(argv[0], "rate")) {
-        lc_run("rate", "rpg", argv[1], NULL, NULL);
+        const char *a[] = {"rate", "rpg", argv[1], NULL};
+        lc_run(a);
         snprintf(note, sizeof note, "clock %s", argv[1]);
     } else if (argc >= 2 && !strcmp(argv[0], "advance")) {
-        lc_run("cmd", "rpg", "advance", argv[1], "--source");
+        const char *a[] = {"cmd", "rpg", "advance", argv[1], "--source", "gd", NULL};
+        const char *step[] = {"step", "200", NULL};
+        lc_run(a); lc_run(step);
         snprintf(note, sizeof note, "clock +%s", argv[1]);
     } else snprintf(note, sizeof note, "clock rate|advance");
     long long ms = clock_epoch(); if (ms >= 0) { gd_clock_phase(ms); gd_clock_label(ms); }
@@ -537,6 +685,8 @@ static void verb(int argc, char **argv) {
     else if (!strcmp(v, "train") && argc >= 2) do_train(argv[1]);
     else if (!strcmp(v, "rest") && argc >= 2) do_rest(argv[1]);
     else if (!strcmp(v, "start") && argc >= 2) do_start(argv[1]);
+    else if (!strcmp(v, "contract") && argc >= 2) do_contract(argv[1]);
+    else if (!strcmp(v, "console") && argc >= 2) do_console(argv[1]);
     else if (!strcmp(v, "assign") && argc >= 2) do_assign(argv[1]);
     else if (!strcmp(v, "advance")) do_advance();
     else if (!strcmp(v, "ship")) do_ship();
@@ -563,9 +713,10 @@ static void verb(int argc, char **argv) {
     else if (!strcmp(v, "load") && argc >= 2) { if (slot_copy(atoi(argv[1]), 0)) { load_all(); snprintf(note, sizeof note, "loaded slot %s", argv[1]); } else snprintf(note, sizeof note, "empty slot"); }
     else if (!strcmp(v, "newgame")) {
         slot_copy(0, 1);
-        const char *nm[] = {"studio.txt","staff.pdl","games.pdl","hype.txt","pos.txt", NULL};
+        const char *nm[] = {"studio.txt","staff.pdl","games.pdl","hype.txt","pos.txt","company.txt","quests.txt", NULL};
         for (int i = 0; nm[i]; i++) { char p[1200]; snprintf(p, sizeof p, "%s/%s", ST, nm[i]); remove(p); }
         nstaff = ngames = 0; funds = 100000; fame = 0; week = 1; hype = 0; office = 1;
+        reputation = goodwill = infrastructure = 0;
         seed(); log_line("new game");
     }
     else if (!strcmp(v, "stop")) { flag_set("running", 0); snprintf(note, sizeof note, "STOP stopped"); log_line(note); gd_clock_sync(); }

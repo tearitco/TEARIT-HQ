@@ -279,3 +279,6 @@ Screenshots (XO `26.Oct15-lookahead/07-blueprintz-shots/`): `bp_02_buttons.png` 
 5. The sweep script used (one-off, ~25 min at `nice -n 15 ionice -c3`, resumable) is `XO/doom-sweep-scratch/sweep/sweep.sh`; `env.sh` sets `S` and `REPO`. Do not start two at once: they share the scratch state (an earlier pair of overlapping runs gave garbage and was discarded).
 6. Case file for single cells: `@.apps/piececraft-hq/tests/doom_touch_cases.pdl` (needs `case_run.+x` and the env vars listed in its header).
 **Not tested:** the real game window (pc-hq relaunched, keys pressed on the board). The handler binary is rebuilt but a running pc-hq keeps the old code until relaunch; I did not relaunch your window. A manual check when you relaunch: step on a Monster tile and a Health tile; with the Player menu's blueprintz window set to Pause, the touch should show as queued and nothing should change until Step event / Resume.
+
+### 12.21 Games with no event pages, and pages the game does not run (2026-10-20)
+Gameplay verbs are C code in every game, so blueprintz sees only chrome events (and nothing for game-dev-hq). The design to make verb pages part of the execution path, with a manifest, a generator and a fallback, is `16.game/EVENT-VERB-PAGES-DESIGN.md` (design only).

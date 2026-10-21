@@ -1,0 +1,4 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | strike
+COND | trigger | ui
