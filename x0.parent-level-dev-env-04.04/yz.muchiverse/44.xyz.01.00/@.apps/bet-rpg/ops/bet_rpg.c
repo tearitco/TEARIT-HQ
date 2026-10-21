@@ -222,14 +222,60 @@ static void rect(int x, int y, int w, int h, int r, int g, int b) {
     if (x + w > FW) w = FW - x; if (y + h > FH) h = FH - y; if (w < 1 || h < 1) return;
     for (int yy = y; yy < y + h; yy++) for (int xx = x; xx < x + w; xx++) { unsigned char *q = fr + ((size_t)yy * FW + xx) * 4; q[0] = (unsigned char)r; q[1] = (unsigned char)g; q[2] = (unsigned char)b; q[3] = 255; }
 }
+static void glyph(int x, int y, char ch, int s, int r, int g, int b) {
+    const char *d = "00000";
+    if (ch == 'A') d = "01110 10001 10001 11111 10001 10001 10001";
+    else if (ch == 'K') d = "10001 10010 10100 11000 10100 10010 10001";
+    else if (ch == 'Q') d = "01110 10001 10001 10001 10101 10010 01101";
+    else if (ch == 'J') d = "00111 00010 00010 00010 10010 10010 01100";
+    else if (ch == 'T') d = "11111 00100 00100 00100 00100 00100 00100";
+    else if (ch == '9') d = "01110 10001 10001 01111 00001 10001 01110";
+    else if (ch == '8') d = "01110 10001 10001 01110 10001 10001 01110";
+    else if (ch == '7') d = "11111 00001 00010 00100 01000 01000 01000";
+    else if (ch == '4') d = "10010 10010 10010 11111 00010 00010 00010";
+    else if (ch == '0') d = "01110 10001 10011 10101 11001 10001 01110";
+    else if (ch == '1') d = "00100 01100 00100 00100 00100 00100 01110";
+    int row = 0, col = 0;
+    for (int i = 0; d[i]; i++) {
+        if (d[i] == ' ') { row++; col = 0; continue; }
+        if (d[i] == '1') for (int dy = 0; dy < s; dy++) for (int dx = 0; dx < s; dx++) rect(x + col * s + dx, y + row * s + dy, 1, 1, r, g, b);
+        col++;
+    }
+}
+static void suit_mark(int x, int y, int suit, int s) {
+    int red = suit == 0 || suit == 1, r = red ? 190 : 20, g = red ? 20 : 20, b = red ? 30 : 20;
+    if (suit == 1) { for (int i = -3; i <= 3; i++) rect(x + i * s, y + (3 - (i < 0 ? -i : i)) * s, s, s * (4 + (i < 0 ? -i : i)), r, g, b); return; }
+    if (suit == 0) { rect(x - 3 * s, y, 3 * s, 3 * s, r, g, b); rect(x, y, 3 * s, 3 * s, r, g, b); for (int i = 0; i < 4; i++) rect(x - (3 - i) * s, y + (3 + i) * s, (7 - 2 * i) * s, s, r, g, b); return; }
+    if (suit == 3) { rect(x - s, y - 3 * s, 2 * s, 6 * s, r, g, b); rect(x - 3 * s, y - s, 6 * s, 2 * s, r, g, b); rect(x - s, y + 2 * s, 2 * s, 3 * s, r, g, b); return; }
+    for (int i = 0; i < 4; i++) rect(x - i * s, y + i * s, (1 + 2 * i) * s, s, r, g, b);
+    rect(x - s, y + 4 * s, 2 * s, 2 * s, r, g, b);
+}
+static void face(int x, int y, char rank, int suit) {
+    int red = suit == 0 || suit == 1;
+    rect(x, y, 86, 120, 248, 246, 238);
+    rect(x, y, 86, 4, 40, 40, 46); rect(x, y + 116, 86, 4, 40, 40, 46);
+    glyph(x + 8, y + 8, rank, 3, red ? 180 : 16, 16, red ? 28 : 16);
+    suit_mark(x + 34, y + 58, suit, 2);
+}
+static void chips(int x, int y) {
+    for (int i = 0; i < 3; i++) { rect(x + i * 6, y - i * 8, 36, 36, 20, 20, 24); rect(x + 4 + i * 6, y + 4 - i * 8, 28, 28, i == 2 ? 212 : 186, i == 2 ? 168 : 32, 28); }
+    glyph(x + 48, y + 4, '1', 3, 240, 210, 80); glyph(x + 66, y + 4, '0', 3, 240, 210, 80); glyph(x + 84, y + 4, '0', 3, 240, 210, 80);
+}
 static void paint_table(const char *game) {
     rect(0, 0, FW, FH, 10, 62, 32);
     rect(70, 36, FW - 140, FH - 72, 14, 92, 46);
-    if (!strcmp(game, "bj")) { rect(FW / 2 - 40, 70, 80, 110, 236, 236, 230); rect(FW / 2 - 100, FH - 200, 80, 110, 236, 236, 230); rect(FW / 2 + 20, FH - 200, 80, 110, 236, 236, 230); }
-    else if (!strcmp(game, "hl")) { for (int i = 0; i < 5; i++) rect(160 + i * 150, FH / 2 - 60, 90, 120, 236, 236, 230); }
-    else if (!strcmp(game, "rl")) { int cx = FW / 2, cy = FH / 2; for (int y = cy - 180; y < cy + 180; y++) for (int x = cx - 180; x < cx + 180; x++) { int d = (x - cx) * (x - cx) + (y - cy) * (y - cy); if (d < 180 * 180 && d > 70 * 70) { int red = ((x + y) / 28) & 1; rect(x, y, 1, 1, red ? 150 : 20, red ? 24 : 20, red ? 24 : 20); } } rect(cx - 8, cy - 8, 16, 16, 240, 240, 240); }
-    else if (!strcmp(game, "sl")) { for (int i = 0; i < 3; i++) rect(FW / 2 - 220 + i * 160, FH / 2 - 90, 120, 180, 30, 30, 36); }
-    else { rect(FW / 2 - 140, FH / 2 - 50, 80, 80, 236, 236, 230); rect(FW / 2 + 40, FH / 2 - 50, 80, 80, 236, 236, 230); }
+    chips(80, FH - 90);
+    if (!strcmp(game, "bj")) { face(FW / 2 - 43, 50, 'K', 2); face(FW / 2 - 120, FH - 210, 'A', 0); face(FW / 2 + 10, FH - 210, '9', 1); }
+    else if (!strcmp(game, "hl")) { char rk[] = {'A', 'K', 'Q', 'J', 'T'}; for (int i = 0; i < 5; i++) face(140 + i * 160, FH / 2 - 70, rk[i], i % 4); }
+    else if (!strcmp(game, "rl")) {
+        int cx = FW / 2, cy = FH / 2 - 20;
+        for (int y = cy - 160; y < cy + 160; y++) for (int x = cx - 160; x < cx + 160; x++) { int d = (x - cx) * (x - cx) + (y - cy) * (y - cy); if (d < 160 * 160 && d > 60 * 60) { int red = ((x / 16) + (y / 16)) & 1; rect(x, y, 1, 1, red ? 160 : 16, 16, red ? 24 : 16); } }
+        glyph(cx - 8, cy - 40, '1', 3, 240, 240, 240); glyph(cx + 14, cy - 40, '7', 3, 240, 240, 240);
+        glyph(cx - 70, cy + 10, '0', 3, 40, 160, 40);
+    } else if (!strcmp(game, "sl")) {
+        for (int i = 0; i < 3; i++) rect(FW / 2 - 230 + i * 160, FH / 2 - 100, 130, 180, 24, 24, 30);
+        glyph(FW / 2 - 190, FH / 2 - 20, '7', 6, 220, 40, 40); glyph(FW / 2 - 30, FH / 2 - 20, '7', 6, 220, 40, 40); glyph(FW / 2 + 130, FH / 2 - 20, '7', 6, 240, 200, 40);
+    } else { rect(FW / 2 - 150, FH / 2 - 40, 70, 70, 248, 246, 238); rect(FW / 2 + 40, FH / 2 - 40, 70, 70, 248, 246, 238); for (int i = 0; i < 5; i++) rect(FW / 2 - 128 + (i % 3) * 16, FH / 2 - 16 + (i / 3) * 16, 8, 8, 20, 20, 24); for (int i = 0; i < 2; i++) rect(FW / 2 + 62 + (i % 2) * 18, FH / 2 - 8, 8, 8, 20, 20, 24); }
 }
 static void paint(void) {
     if (!fr) fr = calloc((size_t)FW * FH, 4);
@@ -313,7 +359,7 @@ static void write_ui(const char *note) {
     { char sid[16], sg[16]; load_seat(sid, sg); int seated = nparty && sid[0] && !strcmp(sid, party[active].id);
       if (seated) fprintf(f, "room_line=%s at %s\n", party[active].name, sg);
       else fprintf(f, "room_line=%s\n", nroom ? rooms[v].name : "-");
-      fprintf(f, "nav_room=%s\nnav_bj=%s\nnav_hl=%s\nnav_rl=%s\nnav_sl=%s\nnav_cr=%s\n", seated ? "" : "1", seated && !strcmp(sg, "bj") ? "1" : "", seated && !strcmp(sg, "hl") ? "1" : "", seated && !strcmp(sg, "rl") ? "1" : "", seated && !strcmp(sg, "sl") ? "1" : "", seated && !strcmp(sg, "cr") ? "1" : ""); }
+      fprintf(f, "nav_room=1\nnav_table=%s\nnav_bj=%s\nnav_hl=%s\nnav_rl=%s\nnav_sl=%s\nnav_cr=%s\nacts_x=16\nacts_y=200\n", seated ? "1" : "", seated && !strcmp(sg, "bj") ? "1" : "", seated && !strcmp(sg, "hl") ? "1" : "", seated && !strcmp(sg, "rl") ? "1" : "", seated && !strcmp(sg, "sl") ? "1" : "", seated && !strcmp(sg, "cr") ? "1" : ""); }
     for (int i = 0; i < nparty; i++) {
         fprintf(f, "pet_%d_label=%s\npet_%d_id=%s\nwalk_%d_where=%s in %s\nwalk_%d_id=%s\n", i, party[i].name, i, party[i].id, i, party[i].name, party[i].room, i, party[i].id);
         fprintf(f, "party_%d_label=%s\nparty_%d_id=%s\nparty_%d_cls=%s\n", i, party[i].name, i, party[i].id, i, i == active ? "active" : "");
