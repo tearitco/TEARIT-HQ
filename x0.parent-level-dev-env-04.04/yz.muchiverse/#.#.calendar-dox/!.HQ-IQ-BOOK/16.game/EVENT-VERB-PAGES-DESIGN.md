@@ -1,6 +1,6 @@
 # Closing the events / blueprintz gap: verb pages (design, 2026-10-20)
 
-Status: **DESIGN ONLY. Nothing in this page is built.** Owner, 2026-10-20: "can we fix the event / blueprintz gap? doc a solution first in house."
+Status: **BUILT AND PROVEN for rpg-pvp-hq (phases V1-V5, 2026-10-20, owner: "route"); see section 8.** game-dev-hq (V6) and blueprintz edit round trip (V7) are not done. Owner, 2026-10-20: "can we fix the event / blueprintz gap? doc a solution first in house", then "route".
 Labels: READ = from files today; RAN = I ran it today; PROPOSED = the design; NOT MEASURED.
 
 ## 1. The gap, stated exactly
@@ -86,3 +86,21 @@ Order: rpg-pvp-hq first (mine, already the pilot for events), then hand the reci
 
 ## 7. Not done / not measured
 Everything above is a design. Not run: any `fire` path, the generator, a CPU check of a page-run verb, blueprintz on a verb page. The verb lists in 3.2 are from `strcmp(v, ...)` names in the two engines, not from a per-verb read.
+
+## 8. Built for rpg-pvp-hq (2026-10-20): what was done, what was measured, what differs from the plan
+**Files:** `@.apps/rpg-pvp-hq/verbs.pdl` (42 verbs: 13 page=yes, 3 native, 26 no); `&.widgits/events-hq/ops/verbgen.c` + `build_verbgen.sh` (`check` and `gen`); 12 new packages `events/{buy,craft,scavenge,place,remove,use,strike,goto,control,newgame,save,load}/` (plus the existing `pickup`); engine `ops/rpg_pvp_hq.c` (`fire`, the leaf, the argument strip); `rpg-pvp-hq.xhtpm` (15 window actions now `fire <verb>`).
+
+**RAN (evidence):**
+- V1 `verbgen check`: engine 42 verbs = manifest 42, PASS. Negative: removing the `strike` row gave `MISSING from verbs.pdl: strike`, FAIL.
+- V2 `verbgen gen`: made 12; a second run made 0, changed 0 files (identical files are not rewritten). Negative: a package whose node was edited was `skipped (generated, then edited)` and left alone. `bp_scan` over all 34 packages: `flags=0` (the extra `META | generated | verbgen` row is tolerated).
+- V3 `fire` in the engine; direct-call check added to `verbgen check` (a window file calling a page=yes verb directly fails it: it found 15, now 0). **Real window, relay-driven**: clicked Shop > Red stool; `state/fire_log.txt` got `buy|page:stool_red`, `events/buy/master_ledger.txt` got `Play event page_1 (trigger=ui) for buy`, `house.txt` got exactly one `BUY|...|stool_red|25` row, coins 90 -> 65.
+- V4 page in the path: with the buy page's node edited to `scavenge`, `fire buy bed_blue` ran **scavenge** (chat "found a rag", a `give_item rag` ledger row) and did not buy. With the package moved away, `fire buy` logged `fallback:no-package` and bought exactly once (one BUY row). A hostile argument (`x';touch /tmp/PWNED;'`) was refused (`refused:bad-arg`), nothing ran, no file created. `fire status` (page=no) ran directly (`direct:page-no`).
+- V5 CPU, 10 runs each, `time` including children: direct `pickup` 0.38 CPU-s total (0.04 s each); `fire pickup` 1.83 CPU-s total (**0.18 CPU-s each**, about 0.15 s real). Fine for a human click, not for anything per tick: that is why the manifest keeps step/walk/phase out of pages.
+
+**Differences from the plan (decided while building):**
+1. **No `run` verb.** The page's registered command already calls the plain verb, and `fire` is a different word, so there is no recursion; fewer moving parts.
+2. **Fallback is logged to `state/fire_log.txt`** (`ts|verb|page:<args>` / `fallback:<reason>` / `direct:<reason>` / `refused:bad-arg:<arg>`), not as an S1 row: an unknown verb in the ledger could be refused or counted by the resolver. The log is append-only and one line per fire, so it doubles as the audit trail.
+3. **Double-run guard:** the leaf writes a one-time token (from the environment word `RPGPVP_VIA`) to `state/via.txt`; `fire` runs the verb itself only when the token did not appear, so a page that ran is never repeated. The two environment words are cleared at once so nested engine calls do not inherit them.
+4. **Found a pre-existing bug on the way:** the renderer appends the house root and the app dir to every window action (`bin <verb> <args> <house> <app>`). The old `buy <key>` therefore arrived as `buy <key> <path> <path>`, which the engine read as x,y = 0,0: every window purchase was placed at 0,0. The engine now drops trailing absolute-directory arguments, so a window purchase is placed at the first free cell (RAN: placed at 2,0 / 3,0). This also let the `fire` argument check work (it refused the two paths until the strip was added: caught by the real-window test, not by the CLI tests).
+
+**Not done / not measured:** INT-mode key bindings still call verbs inside the engine, not through pages (a keyboard shortcut for buy/use bypasses the page; the window's mouse and menu path does not). Blueprintz was not opened on the new pages (B1 read-only scan only). A concurrent double click was not tested. V6 (game-dev-hq: register `game_dev_hq_verb`, manifest, `fire`) and V7 (blueprintz edit round trip) are open. The `Prisc Error ... default_op.txt` line in each package's `master_ledger.txt` is the known cdda-copy issue, still there.
