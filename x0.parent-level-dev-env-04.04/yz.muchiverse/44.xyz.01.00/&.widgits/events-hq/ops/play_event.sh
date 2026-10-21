@@ -202,6 +202,8 @@ fi
 # scoped to page_N variants inside a single named event, not across
 # distinct common events.
 #
+# (FIXED 2026-10-21, see the MUCHI_TARGET_ENT comment at the run line below: the caller is now the default target for wrappers that honor the
+# override. The text below is the original note, kept for history.)
 # KNOWN LIMITATION (real, not silently glossed over): a common event's
 # compiled cmd_N.sh resolves its OWN target directory via
 # `cd "$(dirname "$0")/../../.."` (see ez_menu_input.c/khtpm_events_hq_
@@ -240,7 +242,13 @@ if [ -d "$CE_ROOT" ]; then
     # common event can route player-visible UI (relay writes) to the
     # entity that was actually Played, while still logging/writing its
     # own result files into the common event's own directory.
-    (cd "$(dirname "$PRISC")" && MUCHI_CALLER_PKG="$PKG" bp_run_vm "ce_$CE_NAME" "$BP_PRISC" "$CE_PAL") >> "$CE_LEDGER" 2>&1 || true
+    # REAL FIX 2026-10-21 (the "known limitation" above): state-changing commands in a common event's cmd_N.sh resolve their target as
+    # ENT="${MUCHI_TARGET_ENT:-$PWD}" (khtpm_events_hq_manager.c compile_page; the same override the robot-method and rpg-pet paths already use),
+    # and $PWD is the common event's own folder, so a common event could never change the entity that was Played. Default the override to the
+    # caller ($PKG, the entity folder: its inventory.txt, gold, switches); an explicit MUCHI_TARGET_ENT from the caller of play_event.sh wins
+    # (rpg-pet passes its own). A nested "Call Common Event" runs inside this VM and inherits both variables. Wrappers compiled BEFORE the override
+    # existed (ENT="$PWD" with no ${MUCHI_TARGET_ENT:-...}) still act on the common event's own folder until their page is saved/recompiled.
+    (cd "$(dirname "$PRISC")" && MUCHI_CALLER_PKG="$PKG" MUCHI_TARGET_ENT="${MUCHI_TARGET_ENT:-$PKG}" bp_run_vm "ce_$CE_NAME" "$BP_PRISC" "$CE_PAL") >> "$CE_LEDGER" 2>&1 || true
     RAN_ANYTHING=1
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Play triggered common event $CE_NAME ($(basename "$CE_PAGE_DIR"), trigger=$TRIGGER) via $NAME" >> "$CE_LEDGER"
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Play: also triggered common event $CE_NAME (trigger=$TRIGGER)" >> "$PKG/master_ledger.txt"
