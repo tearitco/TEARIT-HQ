@@ -734,6 +734,15 @@ static int wrap_line_count(XftFont *font, const char *text, int avail_w) {
  * to the element rect. XImage + read buffer cached per (path,w,h). The
  * board-viewer 2D/3D view for piececraft-hq is the first consumer; some
  * other process keeps the .raw fresh (this only ever reads it). */
+/* A canvas with nothing to show yet (no engine session, or its first frame not written): a "loading" panel in the 3D sky colour, so the first real frame replaces it without a black flash
+ * (owner 2026-10-21: "whats the black screen when it first starts up, looks bad"). Was a flat #101014 fill. */
+static void kh_draw_canvas_loading(Elem *e) {
+    XSetForeground(dpy, gc, alloc_pixel("#84aeca"));
+    XFillRectangle(dpy, buf, gc, e->x, e->y, (unsigned)e->w, (unsigned)e->h);
+    static const char msg[] = "loading...";
+    XSetForeground(dpy, gc, alloc_pixel("#1c2733"));
+    XDrawString(dpy, buf, gc, e->x + e->w / 2 - 30, e->y + e->h / 2, msg, (int)(sizeof msg - 1));
+}
 static void kh_draw_canvas(Elem *e) {
     static char  c_path[512];
     static int   c_w, c_h;
@@ -749,8 +758,7 @@ static void kh_draw_canvas(Elem *e) {
         if (cr && cr[0]) spr = cr;
     }
     if (!spr[0]) {
-        XSetForeground(dpy, gc, alloc_pixel("#101014"));
-        XFillRectangle(dpy, buf, gc, e->x, e->y, (unsigned)e->w, (unsigned)e->h);
+        kh_draw_canvas_loading(e);
         return;
     }
     /* the board-viewer convention is <base>.raw next to <base>.receipt.txt
@@ -805,8 +813,7 @@ static void kh_draw_canvas(Elem *e) {
         if (c_img && c_w > 0 && c_h > 0) {
             w = c_w; h = c_h;
         } else {
-            XSetForeground(dpy, gc, alloc_pixel("#101014"));
-            XFillRectangle(dpy, buf, gc, e->x, e->y, (unsigned)e->w, (unsigned)e->h);
+            kh_draw_canvas_loading(e);
             return;
         }
     }

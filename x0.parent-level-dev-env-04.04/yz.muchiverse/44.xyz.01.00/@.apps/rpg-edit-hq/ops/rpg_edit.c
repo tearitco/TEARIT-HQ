@@ -18,7 +18,7 @@
 
 #define XT 24
 #define S48 48
-#define COLS 220      /* the town is 24 wide; the rest is the far island, an unconnected width test (BOOK EDIT-ISLANDS-DESIGN section 8) */
+#define COLS 56       /* the town is 24 wide; the rest holds the far island, an unconnected width test within normal camera scrolling (BOOK EDIT-ISLANDS-DESIGN section 8) */
 #define ROWS 17
 #define IW 24          /* the interior's width: the outdoor page is COLS wide, the room is not */
 #define MAXSLOT 64
@@ -123,9 +123,9 @@ static const char *ISL[ROWS] = {
     "........GGGGGTGGGpGGG...",
     "........GGGGGGGGGGGGG...",
     "........................" };
-/* Far island: unconnected, 10 x 7, at the right edge of the page (x COLS-12, y 5). No bridge, no door, nobody can walk there: it only proves the board draws that wide. */
+/* Far island: unconnected, 10 x 7, 15 cells past the hotel island (x 38, y 5). No bridge, no door, nobody can walk there: it only proves the board draws that wide. */
 static const char *FAR[7] = { "..GGGG....", ".GGGTGGG..", "GGGGGGGGG.", "GGpppGGGGG", "GGGGFGGTG.", ".GGGGGGG..", "..GGGG...." };
-#define FARX (COLS - 12)
+#define FARX 38
 #define FARY 5
 static char isl_at(int x, int y) {
     if (x < 24) return ISL[y][x];
