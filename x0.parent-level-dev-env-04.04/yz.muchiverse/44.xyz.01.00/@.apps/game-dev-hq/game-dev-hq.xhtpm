@@ -22,10 +22,9 @@
       <item id="tr-gr" class="rp-menu-row dropdown-child" target_id="mn-train" label="Graphics" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' train ${active_id}:graphics"/>
       <item id="tr-rest" class="rp-menu-row dropdown-child" target_id="mn-train" label="Rest" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' rest ${active_id}"/>
       <item id="tr-x" class="rp-menu-row dropdown-child quiet" target_id="mn-train" label="- cancel -" action="void"/>
-      <item id="ct-logo" class="rp-menu-row dropdown-child" target_id="mn-contract" label="Logo" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' contract logo"/>
-      <item id="ct-jing" class="rp-menu-row dropdown-child" target_id="mn-contract" label="Jingle" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' contract jingle"/>
-      <item id="ct-bty" class="rp-menu-row dropdown-child" target_id="mn-contract" label="Bug bounty" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' contract bounty"/>
-      <item id="ct-sc" class="rp-menu-row dropdown-child" target_id="mn-contract" label="Scenario" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' contract scenario"/>
+      <repeat count="${n_contract}" bind="contract">
+        <item id="cq${contract.#}" class="rp-menu-row dropdown-child" target_id="mn-contract" label="${contract.line}" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' contract ${contract.id}"/>
+      </repeat>
       <item id="ct-x" class="rp-menu-row dropdown-child quiet" target_id="mn-contract" label="- cancel -" action="void"/>
       <item id="pr-ar" class="rp-menu-row dropdown-child" target_id="mn-product" label="Game action / PC" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' start action:adventure"/>
       <item id="pr-rp" class="rp-menu-row dropdown-child" target_id="mn-product" label="Game rpg / PC" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' start rpg:adventure"/>

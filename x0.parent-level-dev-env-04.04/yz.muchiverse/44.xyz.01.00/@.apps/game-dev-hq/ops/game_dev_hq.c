@@ -246,6 +246,66 @@ static void write_active(void) {
     FILE *f = fopen(p, "w"); if (f) { fprintf(f, "%d\n", g_active); fclose(f); }
 }
 
+/* The board is the week's quests. It stays put until the week changes, then the offers, lengths, prices, and difficulty change. */
+#define NQUEST 3
+typedef struct { char id[8], name[16], stat[16]; int weeks, price, diff; } Quest;
+static Quest quests[NQUEST];
+static int nquest;
+
+static void save_quests(long posted) {
+    char p[1200]; snprintf(p, sizeof p, "%s/quests.txt", ST);
+    FILE *f = fopen(p, "w"); if (!f) return;
+    fprintf(f, "BOARD | %ld\n", posted);
+    for (int i = 0; i < nquest; i++)
+        fprintf(f, "QUEST | %s | %s | %s | %d | %d | %d\n", quests[i].id, quests[i].name, quests[i].stat, quests[i].weeks, quests[i].price, quests[i].diff);
+    fclose(f);
+}
+static void load_quests(long *posted) {
+    char p[1200], line[200]; nquest = 0; *posted = -1;
+    snprintf(p, sizeof p, "%s/quests.txt", ST);
+    FILE *f = fopen(p, "r"); if (!f) return;
+    while (fgets(line, sizeof line, f) && nquest < NQUEST) {
+        char *fl[8]; int n = 0; split(line, fl, 8, &n);
+        if (n >= 2 && !strcmp(fl[0], "BOARD")) *posted = atol(fl[1]);
+        if (n < 7 || strcmp(fl[0], "QUEST")) continue;
+        Quest *q = &quests[nquest++];
+        snprintf(q->id, 8, "%s", fl[1]); snprintf(q->name, 16, "%s", fl[2]); snprintf(q->stat, 16, "%s", fl[3]);
+        q->weeks = atoi(fl[4]); q->price = atoi(fl[5]); q->diff = atoi(fl[6]);
+    }
+    fclose(f);
+}
+static void roll_quests(void) {
+    static const char *names[] = {"logo","jingle","bounty","icon","voice","manual"};
+    static const char *stats[] = {"graphics","sound","programming","graphics","sound","scenario"};
+    unsigned r = (unsigned)(week * 1103515245u + 12345u);
+    nquest = 0;
+    for (int i = 0; i < NQUEST; i++) {
+        r = r * 1664525u + 1013904223u;
+        int k = (r >> 16) % 6;
+        Quest *q = &quests[nquest++];
+        snprintf(q->id, 8, "q%d", i);
+        snprintf(q->name, 16, "%s", names[k]);
+        snprintf(q->stat, 16, "%s", stats[k]);
+        q->weeks = 1 + (int)((r >> 8) % 4);
+        q->diff = 15 + reputation + (int)((r >> 4) % 50);
+        if (q->diff > 95) q->diff = 95;
+        q->price = 3000 + q->weeks * 2500 + q->diff * 60 + reputation * 100;
+    }
+    save_quests(week);
+}
+static void ensure_quests(void) {
+    long posted = -1; load_quests(&posted);
+    if (posted != week || nquest == 0) roll_quests();
+}
+static void pass_weeks(int n) {
+    if (n < 1) n = 1;
+    long pay = 0;
+    for (int i = 0; i < nstaff; i++) pay += staff[i].salary;
+    funds -= pay * n;
+    week += n;
+    day_out();
+}
+
 static void write_ui(void) {
     char p[1200], tmp[1200]; snprintf(p, sizeof p, "%s/ui.txt", ST); snprintf(tmp, sizeof tmp, "%s/ui.txt.tmp", ST);
     FILE *f = fopen(tmp, "w"); if (!f) return;
@@ -283,6 +343,11 @@ static void write_ui(void) {
     const char *names[] = {"Ada","Bea","Cal","Dee","Eve","Fay"};
     for (int i = 0; i < 6; i++) fprintf(f, "hire_%d_job=%s\nhire_%d_name=%s\nhire_%d_line=Hire %s (%s)  $%d\n", i, jobs[i], i, names[i], i, names[i], jobs[i], HIRE_COST);
     fprintf(f, "n_hire=%d\n", 6);
+    ensure_quests();
+    fprintf(f, "n_contract=%d\n", nquest);
+    for (int i = 0; i < nquest; i++)
+        fprintf(f, "contract_%d_id=%s\ncontract_%d_line=%s  %dwk  $%d  %d%%\n",
+            i, quests[i].id, i, quests[i].name, quests[i].weeks, quests[i].price, quests[i].diff);
     char chatp[1200], lines[10][180]; int nln = 0;
     snprintf(chatp, sizeof chatp, "%s/chat.txt", ST);
     FILE *cf = fopen(chatp, "r");
@@ -416,34 +481,28 @@ static void do_advance(void) {
     event_row("advance", g->phase);
 }
 
-/* A contract is one week for an outside firm. The person's stat and the company's stats set the pay. */
-static void do_contract(const char *kind) {
-    static const struct { const char *id, *stat; int base, need; } jobs[] = {
-        {"logo", "graphics", 8000, 0},
-        {"jingle", "sound", 12000, 8},
-        {"bounty", "programming", 18000, 15},
-        {"scenario", "scenario", 22000, 25},
-    };
-    const struct { const char *id, *stat; int base, need; } *job = NULL;
-    for (size_t i = 0; i < sizeof jobs / sizeof jobs[0]; i++) if (!strcmp(jobs[i].id, kind)) job = &jobs[i];
-    if (!job) { snprintf(note, sizeof note, "contract logo|jingle|bounty|scenario"); return; }
+/* Take one posted quest. The price and the length are the ones on the board. Difficulty is the percent shown. */
+static void do_contract(const char *id) {
+    ensure_quests();
+    int ix = -1;
+    for (int i = 0; i < nquest; i++) if (!strcmp(quests[i].id, id)) ix = i;
+    if (ix < 0) { snprintf(note, sizeof note, "that quest is gone"); log_line(note); return; }
+    Quest q = quests[ix];
     read_active();
     Staff *s = nstaff ? &staff[g_active] : NULL;
-    int *sp = s ? stat_ptr(s, job->stat) : NULL;
+    int *sp = s ? stat_ptr(s, q.stat) : NULL;
     if (!s || !sp) { snprintf(note, sizeof note, "no one to take it"); return; }
-    if (reputation < job->need) { snprintf(note, sizeof note, "%s wants reputation %d", job->id, job->need); log_line(note); return; }
     if (s->energy < 20) { snprintf(note, sizeof note, "%s is tired", s->name); log_line(note); return; }
-    int q = *sp + reputation / 2 + goodwill / 4 + infrastructure / 4;
-    long pay = job->base + (long)q * 40;
+    int got = *sp >= q.diff ? q.price : q.price * *sp / (q.diff ? q.diff : 1);
     *sp += 2; if (*sp > 500) *sp = 500;
     s->energy -= 20;
-    reputation += 1 + q / 40;
-    goodwill += 1;
-    if (!strcmp(job->id, "bounty")) infrastructure += 1;
-    funds += pay;
-    pay_week();
-    char b[140]; snprintf(b, sizeof b, "%s did a %s for $%ld", s->name, job->id, pay); log_line(b);
-    event_row("contract", job->id);
+    reputation += 1; goodwill += 1;
+    if (!strcmp(q.stat, "programming")) infrastructure += 1;
+    funds += got;
+    pass_weeks(q.weeks);
+    roll_quests();
+    char b[160]; snprintf(b, sizeof b, "%s did %s  %dwk  $%d  diff %d%%", s->name, q.name, q.weeks, got, q.diff); log_line(b);
+    event_row("contract", q.name);
 }
 
 static void do_console(const char *spec) {
@@ -496,7 +555,7 @@ static int slot_copy(int n, int to_slot) {
     char slots[1200], dir[1200];
     snprintf(slots, sizeof slots, "%s/slots", ST); mkdir(slots, 0755);
     snprintf(dir, sizeof dir, "%s/%d", slots, n); mkdir(dir, 0755);
-    const char *names[] = {"studio.txt","staff.pdl","games.pdl","hype.txt","chat.txt","note.txt","pos.txt","company.txt", NULL};
+    const char *names[] = {"studio.txt","staff.pdl","games.pdl","hype.txt","chat.txt","note.txt","pos.txt","company.txt","quests.txt", NULL};
     int any = 0;
     for (int i = 0; names[i]; i++) {
         char src[1200], dst[1200];
@@ -654,7 +713,7 @@ static void verb(int argc, char **argv) {
     else if (!strcmp(v, "load") && argc >= 2) { if (slot_copy(atoi(argv[1]), 0)) { load_all(); snprintf(note, sizeof note, "loaded slot %s", argv[1]); } else snprintf(note, sizeof note, "empty slot"); }
     else if (!strcmp(v, "newgame")) {
         slot_copy(0, 1);
-        const char *nm[] = {"studio.txt","staff.pdl","games.pdl","hype.txt","pos.txt","company.txt", NULL};
+        const char *nm[] = {"studio.txt","staff.pdl","games.pdl","hype.txt","pos.txt","company.txt","quests.txt", NULL};
         for (int i = 0; nm[i]; i++) { char p[1200]; snprintf(p, sizeof p, "%s/%s", ST, nm[i]); remove(p); }
         nstaff = ngames = 0; funds = 100000; fame = 0; week = 1; hype = 0; office = 1;
         reputation = goodwill = infrastructure = 0;
