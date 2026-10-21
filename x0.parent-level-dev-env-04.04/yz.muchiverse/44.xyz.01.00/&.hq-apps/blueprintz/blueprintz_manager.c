@@ -498,7 +498,7 @@ static void write_ui(void) {
         else if (nE && !strcmp(EG[i].to, E[sel].name)) { PUT("x_%d_label=called by  %s   (%s)%s\n", xi, EG[i].from, EG[i].page, is_loaded(EG[i].from) ? "" : "   [not loaded]"); xi++; }
       }
       total = xi; PUT("x_count=%d\n", total); PUT("x_none=%s\n", total ? "" : "no calls to or from this event (loaded events and the house's common events)"); }
-    PUT("pgnew_action=%s 'PNEW'\ntrig_action=%s 'TRIG'\nloadce_action=%s 'LOADCE'\npdel_action=%s 'PDEL'\nsw_action=%s 'SWITCH'\n", act, act, act, act, act);
+    PUT("pgnew_action=%s 'PNEW'\ntrig_action=%s 'TRIG'\nloadce_action=%s 'LOADCE'\nbook_action=%s 'BOOK'\npdel_action=%s 'PDEL'\nsw_action=%s 'SWITCH'\n", act, act, act, act, act, act);
     PUT("n_hint=%s\n", nN && csel >= 0 ? "type below: key=value|key=value  edits the selected command;  type|key=value  sets both" : "");
     PUT("load_gdh_action=%s 'LOAD:game-dev-hq'\nload_rpg_action=%s 'LOAD:rpg-pvp-hq'\n", act, act);
     PUT("edit_action=%s 'EDIT'\nadd_action=%s 'ADD'\ncdel_action=%s 'CDEL'\nundo_action=%s 'UNDO'\nundo_line=undo steps: %d\n", act, act, act, act, nU);
@@ -517,6 +517,13 @@ static void write_ui(void) {
 
 static void handle(const char *verb) {
     if (!strncmp(verb, "SEL:", 4)) { sel = atoi(verb + 4); csel = -1; cpage[0] = 0; snprintf(msg, sizeof msg, "selected"); return; }
+    if (!strcmp(verb, "BOOK")) {   /* B4b: compile the loaded events plus the house's common events into per-trigger programs under state/book/ (generated, never the source) */
+        char bin[P], src[P], out[P], res[P]; ops_path(bin, "bp_book_op"); join(src, g_state, "bp_sources.pdl"); join(out, g_state, "book"); join(res, g_state, "book.out");
+        char *av[] = { bin, g_target, src, out, NULL }; int rc = run(av, res, 20); char line[300] = "";
+        if (!first_line(res, line, sizeof line)) snprintf(line, sizeof line, "no output");
+        if (rc == 0) snprintf(msg, sizeof msg, "%s", line); else snprintf(msg, sizeof msg, "book compile failed (%d): %s", rc, line);
+        return;
+    }
     if (!strcmp(verb, "LOADCE")) { load_common(); return; }
     if (!strncmp(verb, "LOAD:", 5)) { load_game(verb + 5); return; }
     if (!strncmp(verb, "CSEL:", 5) || !strncmp(verb, "EDIT:", 5) || !strncmp(verb, "ADD:", 4) || !strcmp(verb, "CDEL") || !strcmp(verb, "UNDO") || !strncmp(verb, "PSEL:", 5) || !strcmp(verb, "PNEW") || !strncmp(verb, "TRIG:", 5) || !strncmp(verb, "PDEL:", 5) || !strncmp(verb, "SWITCH", 6)) { edit_verb(verb); return; }

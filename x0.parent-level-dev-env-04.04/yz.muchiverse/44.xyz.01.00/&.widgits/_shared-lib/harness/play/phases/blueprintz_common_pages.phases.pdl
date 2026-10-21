@@ -50,3 +50,10 @@ EXIT | 0 | caller-not-loaded-shown
 PUTROOT | &.hq-apps/blueprintz/state/bp_sources.pdl | EVENT \p outer \p common_events/outer
 BPWIN | REQ:SEL:0 | EXPECT:x_0_label~calls  bump | EXPECT:x_0_label~[not loaded]
 EXIT | 0 | callee-not-loaded-shown
+
+PHASE | p8_compile_book | the window's Compile book button writes per-trigger programs for the loaded events plus the common events, and the on-click one holds the nested call | window, book, b4b
+BPWIN | REQ:LOADCE | REQ:BOOK | EXPECT:msg~bp_book: ok
+EXIT | 0 | compile-book-reported-ok
+HASROOT | &.hq-apps/blueprintz/state/book/book.index.pdl | BOOK | index-written
+HASROOT | &.hq-apps/blueprintz/state/book/book.common.player-touch.pal | exec shims/ | common-program-for-player-touch
+HASROOT | &.hq-apps/blueprintz/state/book/book.common.on-click.pal | call_event "bump\pplayer-touch" | the-nested-call-is-in-the-on-click-program

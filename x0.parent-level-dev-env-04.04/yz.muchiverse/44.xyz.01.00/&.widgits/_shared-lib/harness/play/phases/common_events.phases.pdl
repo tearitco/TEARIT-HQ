@@ -50,3 +50,15 @@ PHASE | p4_old_form_is_a_noop | the pre-fix pal form (OP prefix) does nothing: t
 PUTROOT | common_events/outer/event_pkg/pages/page_1/event.pal | OP call_event "bump" player-touch
 PLAYCE | on-click
 HAS | ce_caller/inventory.txt | qolq=70 | gold-unchanged-the-old-form-does-nothing
+
+PHASE | p5_book_equals_per_event | the whole-book program (bp_book_op, B4b) gives the caller the same gold as the per-event Play, and a negative: a trigger no page has runs nothing | common, book, b4b
+BOOKCE | player-touch
+EXIT | 0 | book-ran-player-touch
+HAS | ce_caller/inventory.txt | qolq=80 | book-player-touch-gave-10-like-play
+BOOKCE | player-hit
+HAS | ce_caller/inventory.txt | qolq=85 | book-player-hit-gave-5-like-play
+PUTROOT | common_events/outer/event_pkg/pages/page_1/event.pal | call_event "bump\pplayer-touch"
+BOOKCE | on-click
+HAS | ce_caller/inventory.txt | qolq=95 | book-on-click-outer-called-bump-for-10
+BOOKCE | no-such-trigger
+HAS | ce_caller/inventory.txt | qolq=95 | no-page-no-change

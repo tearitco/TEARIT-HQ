@@ -120,3 +120,6 @@ The IRC window version (the same peers started by `irc-chat-hq`, one scratch hou
 
 ### RUN rows keep 48 arguments and fail loudly beyond that (2026-10-21)
 `harness_case_op` used to copy only the first 16 fields of a `RUN` row (and `SPAWN`) and drop the rest silently; a long `BPWIN` row lost its tail steps while its `EXIT | 0` still passed. `RUNMAX` is now 48; more arguments fail the row ("too many arguments for a RUN row"), and `playthrough_op` rejects a `BPWIN` row of more than 36 steps at compile time. Re-run any older table with a long BPWIN row.
+
+### BOOKCE row (2026-10-21)
+`BOOKCE | <trigger>` compiles the scratch house's common events with `bp_book_op` and runs the book program for that trigger on the caller `<app>/ce_caller`: the whole-book twin of `PLAYCE`. Table `common_events` p5 compares the two.

@@ -43,6 +43,9 @@
       <row class="toolbar">
         <item id="loadce" label="Load common events" action="${loadce_action}"/>
       </row>
+      <row class="toolbar">
+        <item id="bookc" label="Compile book" action="${book_action}"/>
+      </row>
       <scrolllist class="from-top">
         <repeat count="${e_count}" bind="e">
           <item id="ev${e.#}" class="${e.class}" label="${e.label}" action="${e.action}"/>
@@ -70,6 +73,7 @@
         <item id="loadgdh" label="Load game-dev-hq verbs" action="${load_gdh_action}"/>
         <item id="loadrpg" label="Load rpg-pvp-hq verbs" action="${load_rpg_action}"/>
         <item id="loadce" label="Load common events" action="${loadce_action}"/>
+        <item id="bookc" label="Compile book" action="${book_action}"/>
       </row>
       <scrolllist class="from-top">
         <text label="${sel_line}" class="quiet"/>

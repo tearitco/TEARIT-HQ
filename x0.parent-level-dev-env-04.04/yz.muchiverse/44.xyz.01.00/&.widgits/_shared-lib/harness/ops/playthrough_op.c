@@ -161,6 +161,12 @@ static int emit_body_row(const Row *r) {
         NEED(2); if (!CT->common) return bad_row("PLAYCE needs `EVENTS | yes` and `COMMON | yes` rows", r);
         emit("RUN | bash | $T/&.widgits/events-hq/ops/play_event.sh | $T/%s/ce_caller | $T | %s", CAPP, r->f[1]);
     }
+    else if (!strcmp(v, "BOOKCE")) {   /* BOOKCE | <trigger>: compile the scratch house's common events into book.<trigger>.pal (bp_book_op, B4b) and run that ONE program for the caller <app>/ce_caller: the whole-book twin of PLAYCE */
+        NEED(2); if (!CT->common) return bad_row("BOOKCE needs `EVENTS | yes` and `COMMON | yes` rows", r);
+        emit("RUN | $T/&.hq-apps/blueprintz/ops/+x/bp_book_op.+x | $T | - | $T/book_out");
+        emit("EXIT | 0 | book-compiled");
+        emit("RUN | $T/&.hq-apps/blueprintz/ops/+x/bp_book_op.+x | $T | --run | $T/book_out | %s | $T/%s/ce_caller", r->f[1], CAPP);
+    }
     else if (!strcmp(v, "HASROOT")) { NEED(4); LAB(3); emit("EXPECT_HAS | %s | %s | %s", r->f[1], r->f[2], lab); }      /* HASROOT | <path relative to the scratch house root> | <text> | <label> */
     else if (!strcmp(v, "MKDIRROOT")) { NEED(2); emit("MKDIR | %s", r->f[1]); }      /* MKDIRROOT | <dir relative to the scratch house root> */
     else if (!strcmp(v, "PUTROOT")) { NEED(3); rejoin(r, 2, tx, sizeof tx); emit("WRITE | %s | %s", r->f[1], tx); }      /* PUTROOT | <file relative to the scratch house root> | <one line of text> */
@@ -226,6 +232,7 @@ static int cmd_compile(const char *phases, const char *casedir_arg) {
         emit("COPY | #.ref/menu/event_commands.registry.pdl | #.ref/menu/event_commands.registry.pdl");
         emit("COPY | &.widgits/events-hq/ops/+x/khtpm_events_hq_manager.+x | &.widgits/events-hq/ops/+x/khtpm_events_hq_manager.+x");
         emit("COPY | &.hq-apps/blueprintz/ops/+x/bp_edit_op.+x | &.hq-apps/blueprintz/ops/+x/bp_edit_op.+x");
+        emit("COPY | &.hq-apps/blueprintz/ops/+x/bp_book_op.+x | &.hq-apps/blueprintz/ops/+x/bp_book_op.+x");
         emit("COPY | &.hq-apps/blueprintz/ops/+x/bp_win_op.+x | &.hq-apps/blueprintz/ops/+x/bp_win_op.+x");      /* the blueprintz window layer: its manager and the ops it forks */
         emit("COPY | &.hq-apps/blueprintz/+x/blueprintz_manager.+x | &.hq-apps/blueprintz/+x/blueprintz_manager.+x");
         emit("COPY | &.hq-apps/blueprintz/ops/+x/bp_scan.+x | &.hq-apps/blueprintz/ops/+x/bp_scan.+x");
