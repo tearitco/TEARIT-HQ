@@ -42,7 +42,7 @@
 #ifndef GE_MAX_FILE      /* a test may build with -DGE_MAX_FILE=<bytes> to see the refusal */
 #define GE_MAX_FILE (256L * 1024 * 1024)
 #endif
-static const char *ge_verbs[] = { "give_item", "take", "walk", "dig", "build", "craft", "strike", NULL };      /* strike: RULES-cdda-hq.md (one wound) */
+static const char *ge_verbs[] = { "give_item", "take", "walk", "dig", "build", "craft", "strike", "equip", "fire", "reload", NULL };      /* strike: a wound. equip/fire/reload: rpg-pvp-hq guns, ruled by GE_RULE_HOOK */
 typedef struct { char actor[24], item[24]; long n; } GeInv;
 static GeInv ge_inv[GE_MAX_INV]; static int ge_ninv;
 static char ge_last[48];      /* result of the last legal EVENT row the latest ge_scan applied ("" when none) */
@@ -125,6 +125,9 @@ static int ge_describe(const char *verb, const char *target, const char *res, ch
     if (!strcmp(verb, "build")) { if (ok) snprintf(out, n, "places %s", target); else if (!strcmp(res, "none")) snprintf(out, n, "has no %s to place", target); else if (!strcmp(res, "blocked")) snprintf(out, n, "cannot place %s: the cell is taken", target); else snprintf(out, n, "cannot place %s (%s)", target, res); return 1; }
     if (!strcmp(verb, "craft")) { if (ok) snprintf(out, n, "crafts %s", target); else snprintf(out, n, "cannot craft %s: %s", target, !strcmp(res, "missing") ? "need the inputs" : res); return 1; }
     if (!strcmp(verb, "strike")) { if (!strncmp(res, "wound:", 6)) snprintf(out, n, "hits %s: %s", target, res + 6); else snprintf(out, n, "cannot hit %s (%s)", target, res); return 1; }
+    if (!strcmp(verb, "equip")) { if (!strncmp(res, "armed:", 6)) snprintf(out, n, "equips %s %s", ge_art(target), target); else snprintf(out, n, "cannot equip %s", target); return 1; }
+    if (!strcmp(verb, "fire")) { if (!strncmp(res, "hit:", 4)) snprintf(out, n, "fires and hits %s", target); else if (!strncmp(res, "miss:", 5)) snprintf(out, n, "fires and misses"); else if (!strcmp(res, "empty")) snprintf(out, n, "cannot fire: the magazine is empty"); else snprintf(out, n, "cannot fire"); return 1; }
+    if (!strcmp(verb, "reload")) { if (!strncmp(res, "reloaded:", 9)) snprintf(out, n, "reloads"); else if (!strcmp(res, "full")) snprintf(out, n, "magazine is already full"); else snprintf(out, n, "cannot reload"); return 1; }
     return 0;
 }
 /* split a row in place on '|'; returns the field count (max 8) */

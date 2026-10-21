@@ -1,0 +1,52 @@
+# verbs.pdl - which rpg-pvp-hq verbs are event pages (BOOK 16.game/EVENT-VERB-PAGES-DESIGN.md). Read by &.widgits/events-hq/ops/+x/verbgen.+x
+#   verbgen check .   engine source <-> this file <-> events/ must agree
+#   verbgen gen .     write events/<verb>/ for every page=yes verb (never overwrites an edited package)
+# page: yes    = the window calls "rpg_pvp_hq.+x fire <verb> [args]", which plays events/<verb>/ (trigger ui); the page runs the verb
+#       native = the verb already plays its own event pages inside the engine (play, stop, int -> events/play, stop, int_on, int_off)
+#       no     = engine-internal, read-only, UI state or high frequency (a page run is a sh+bash+prisc launch: never per tick)
+GAME | rpg-pvp-hq | rpg_pvp_hq_verb | ops/+x/rpg_pvp_hq.+x | ops/rpg_pvp_hq.c
+VERB | buy       | yes    | ui     | item key      | buy a shop item with coins
+VERB | craft     | yes    | ui     | recipe id     | craft a recipe from the bag
+VERB | scavenge  | yes    | ui     | -             | scavenge a rag
+VERB | pickup    | yes    | ui     | -             | take the loot under the controlled mover
+VERB | equip     | no     | ui     | pistol auto shotgun | hold a gun from the bag; the magazine starts full
+VERB | fire      | no     | ui     | -             | hitscan along facing; an empty magazine is refused
+VERB | reload    | no     | ui     | -             | fill the held magazine from bag ammo
+VERB | place     | yes    | ui     | item x y      | place a furniture item
+VERB | remove    | yes    | ui     | -             | remove a placed item
+VERB | use       | yes    | ui     | hotbar key    | use the item in a hotbar slot
+VERB | strike    | yes    | ui     | -             | hit an adjacent zed
+VERB | goto      | yes    | ui     | room          | travel to a room
+VERB | control   | yes    | ui     | pet id        | take control of a character
+VERB | newgame   | yes    | ui     | -             | start a new game
+VERB | save      | yes    | ui     | slot          | save to a slot
+VERB | load      | yes    | ui     | slot          | load a slot
+VERB | play      | native | ui     | -             | start the world (plays events/play)
+VERB | stop      | native | ui     | -             | stop the world (plays events/stop)
+VERB | int       | native | ui     | -             | INT mode on/off (plays events/int_on, int_off)
+VERB | status    | no     | engine | -             | read-only state
+VERB | helppanel | no     | ui     | open next prev close | help panel (UI state)
+VERB | help      | no     | ui     | -             | help text
+VERB | wounds    | no     | ui     | -             | list who is wounded (read-only)
+VERB | bag       | no     | ui     | -             | bag listing (read-only)
+VERB | recipes   | no     | ui     | -             | recipe listing (read-only)
+VERB | inventory | no     | ui     | -             | inventory listing (read-only)
+VERB | review    | no     | engine | -             | decision review (read-only)
+VERB | decpct    | no     | engine | -             | decision percent (read-only)
+VERB | compact   | no     | engine | -             | ledger compaction
+VERB | event     | no     | engine | -             | engine-side event runner entry
+VERB | resolve   | no     | engine | -             | S1 resolver pass
+VERB | pet_says  | no     | engine | -             | a pet speaks (already its own registered command)
+VERB | sync      | no     | engine | -             | state sync
+VERB | phase     | no     | clock  | -             | day phase (called by clock pages)
+VERB | day_tick  | no     | clock  | -             | day tick (called by the clock page)
+VERB | reset     | no     | ui     | -             | reset view state
+VERB | select    | no     | ui     | -             | select a character (UI state)
+VERB | step      | no     | engine | -             | one tick (high frequency)
+VERB | walk      | no     | engine | -             | one walking step (high frequency)
+VERB | export3d  | no     | engine | -             | export the scene for the 3D view
+VERB | mode      | no     | ui     | -             | window mode
+VERB | clearchat | no     | ui     | -             | clear the chat panel
+VERB | toggle    | no     | ui     | -             | UI toggles
+VERB | view      | no     | ui     | -             | camera / view
+VERB | clock     | no     | ui     | -             | clock rate and advance
