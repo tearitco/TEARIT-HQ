@@ -207,10 +207,20 @@ void gd_export_office(const char *app) {
     char ep[PATH_MAX]; join2(ep, sizeof ep, room, "events.txt");
     FILE *ef = fopen(ep, "w"); if (ef) { fwrite(ev, 1, (size_t)eo, ef); fclose(ef); }
 
-    unsigned char floor24[24 * 24 * 4], wall24[24 * 24 * 4], desk24[24 * 24 * 4];
+    unsigned char floor24[24 * 24 * 4], wall24[24 * 24 * 4], desk24[24 * 24 * 4], side24[24 * 24 * 4];
     sample24(&floor, 1 * S48, 4 * S48, floor24);
     sample24(&floor, 1 * S48, 3 * S48, wall24);
     sample24(&furn, 1 * S48, 12 * S48, desk24);
+    /* Side of the desk: the top edge of the desk picture, pulled down. Not the whole picture on the side. */
+    for (int y = 0; y < 24; y++) for (int x = 0; x < 24; x++) {
+        unsigned char *e = desk24 + (0 * 24 + x) * 4;
+        unsigned char *d = side24 + (y * 24 + x) * 4;
+        int shade = 255 - y * 4;
+        d[0] = (unsigned char)(e[0] * shade / 255);
+        d[1] = (unsigned char)(e[1] * shade / 255);
+        d[2] = (unsigned char)(e[2] * shade / 255);
+        d[3] = 255;
+    }
     int aw = 16 * 24, ah = 24;
     unsigned char *atlas = calloc((size_t)aw * ah, 4);
     if (atlas) {
@@ -218,6 +228,7 @@ void gd_export_office(const char *app) {
             memcpy(atlas + (y * aw + 0) * 4, floor24 + y * 24 * 4, 24 * 4);
             memcpy(atlas + (y * aw + 24) * 4, wall24 + y * 24 * 4, 24 * 4);
             memcpy(atlas + (y * aw + 48) * 4, desk24 + y * 24 * 4, 24 * 4);
+            memcpy(atlas + (y * aw + 72) * 4, side24 + y * 24 * 4, 24 * 4);
         }
         char cr[PATH_MAX]; join2(cr, sizeof cr, room, "cells.rgba");
         FILE *cf = fopen(cr, "wb"); if (cf) { fwrite(atlas, 1, (size_t)aw * ah * 4, cf); fclose(cf); }
@@ -229,11 +240,11 @@ void gd_export_office(const char *app) {
     char ct[PATH_MAX]; join2(ct, sizeof ct, room, "cells.txt");
     FILE *tf = fopen(ct, "w");
     if (tf) {
-        fprintf(tf, "width=%d\nheight=%d\ntile_px=24\natlas_cols=16\natlas_tiles=3\ncells\n", COLS, ROWS);
+        fprintf(tf, "width=%d\nheight=%d\ntile_px=24\natlas_cols=16\natlas_tiles=4\ncells\n", COLS, ROWS);
         for (int y = 0; y < ROWS; y++) {
             for (int x = 0; x < COLS; x++) {
                 int fls = 0, wl = (y < 2) ? 1 : 0;
-                for (int i = 0; i < 4; i++) if (x == desks[i] && y == 4) wl = 2;
+                for (int i = 0; i < 4; i++) if (x == desks[i] && y == 4) { fls = 2; wl = 3; }
                 fprintf(tf, "%s%d,%d", x ? " " : "", fls, wl);
             }
             fputc('\n', tf);
@@ -262,7 +273,7 @@ void gd_export_office(const char *app) {
               "META         | desk_id            | office\n"
               "EXTRUDE      | W                  | 3\n"
               "EXTRUDE      | D                  | 3\n"
-              "EXTRUDE      | f                  | 1\n"
+              "EXTRUDE      | f                  | 2\n"
               "EXTRUDE      | default            | 0\n", xf);
         fclose(xf);
     }
