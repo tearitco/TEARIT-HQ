@@ -251,6 +251,10 @@ static void write_events(void) {
     }
 }
 static void follow_ava(void) {
+    /* The board stays on the island page when Ava goes through a door (she just vanishes into the building and comes back out). Following her switched the whole board to the cabin page, which renders as empty sky from the island camera, so the xelector and camera looked gone (owner 2026-10-21). Open the cabin by hand from the Desk menu; build with -DFOLLOW_AVA to bring the old behaviour back. */
+#ifndef FOLLOW_AVA
+    return;
+#endif
     char p[PATH_MAX]; snprintf(p, sizeof p, "%s/pieces/system/widget_cmds/inbox.txt", PCHQ);
     FILE *f = fopen(p, "a"); if (!f) return;
     fprintf(f, "CONFIRM_SET_DESK:%s\n", pet[4].room ? "cabin" : "start");
