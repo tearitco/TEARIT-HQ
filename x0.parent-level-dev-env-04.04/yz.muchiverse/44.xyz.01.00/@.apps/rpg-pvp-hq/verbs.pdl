@@ -9,6 +9,9 @@ VERB | buy       | yes    | ui     | item key      | buy a shop item with coins
 VERB | craft     | yes    | ui     | recipe id     | craft a recipe from the bag
 VERB | scavenge  | yes    | ui     | -             | scavenge a rag
 VERB | pickup    | yes    | ui     | -             | take the loot under the controlled mover
+VERB | equip     | no     | ui     | pistol auto shotgun | hold a gun from the bag; the magazine starts full
+VERB | fire      | no     | ui     | -             | hitscan along facing; an empty magazine is refused
+VERB | reload    | no     | ui     | -             | fill the held magazine from bag ammo
 VERB | place     | yes    | ui     | item x y      | place a furniture item
 VERB | remove    | yes    | ui     | -             | remove a placed item
 VERB | use       | yes    | ui     | hotbar key    | use the item in a hotbar slot

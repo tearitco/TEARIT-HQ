@@ -18,6 +18,7 @@
       <tab id="tb-body" class="tab rp-tb" label="Body ▾" onclick="ACTIVATE" target_id="tb-body"/>
       <tab id="tb-look" class="tab rp-tb" label="Look ▾" onclick="ACTIVATE" target_id="tb-look"/>
       <tab id="tb-player" class="tab rp-tb" label="Player ▾" onclick="ACTIVATE" target_id="tb-player"/>
+      <tab id="tb-net" class="tab rp-tb" label="Network ▾" onclick="ACTIVATE" target_id="tb-net"/>
       <tab id="tb-time" class="tab rp-tb" label="${time_label} ▾" onclick="ACTIVATE" target_id="tb-time"/>
     </tabbar>
     <sidebar id="side" class="rp-rail sidebar">
@@ -70,6 +71,9 @@
         <item id="bd${body.#}" class="rp-menu-row dropdown-child" target_id="tb-body" label="${body.label}" action="'${HOUSE}/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x' wounds"/>
       </repeat>
       <item id="bd-strike" class="rp-menu-row dropdown-child" target_id="tb-body" label="Strike zed" action="'${HOUSE}/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x' fire strike"/>
+      <item id="bd-equip" class="rp-menu-row dropdown-child" target_id="tb-body" label="Equip pistol" action="'${HOUSE}/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x' fire equip pistol"/>
+      <item id="bd-fire" class="rp-menu-row dropdown-child" target_id="tb-body" label="Fire" action="'${HOUSE}/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x' fire fire"/>
+      <item id="bd-reload" class="rp-menu-row dropdown-child" target_id="tb-body" label="Reload" action="'${HOUSE}/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x' fire reload"/>
       <item id="bd-skill" class="rp-menu-row dropdown-child quiet" target_id="tb-body" label="Skills later" action="void"/>
       <item id="bd-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-body" label="- cancel -" action="void"/>
       <repeat count="${n_look}" bind="look">
@@ -87,6 +91,12 @@
       <item id="pm-save2" class="rp-menu-row dropdown-child" target_id="tb-player" label="Save (slot 2)" action="'${HOUSE}/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x' fire save 2"/>
       <item id="pm-load2" class="rp-menu-row dropdown-child" target_id="tb-player" label="Load (slot 2)" action="'${HOUSE}/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x' fire load 2"/>
       <item id="pm-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-player" label="- cancel -" action="void"/>
+      <repeat count="${n_net}" bind="net">
+        <item id="nt${net.#}" class="rp-menu-row dropdown-child quiet" target_id="tb-net" label="${net.label}" action="void"/>
+      </repeat>
+      <item id="nt-peer" class="rp-menu-row dropdown-child" target_id="tb-net" label="Open peer room" action="'${HOUSE}/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x' net peer"/>
+      <item id="nt-leave" class="rp-menu-row dropdown-child" target_id="tb-net" label="Log out (AI back)" action="'${HOUSE}/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x' net leave"/>
+      <item id="nt-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-net" label="- cancel -" action="void"/>
     </sidebar>
     <panel id="room_p" class="rp-panel">
       <canvas id="room" class="rp-room" sprite="${canvas_raw}"/>

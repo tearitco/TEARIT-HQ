@@ -316,7 +316,7 @@ static int try_pickup(const char *who, int room, int x, int y, char *msg, size_t
         char ep[PATH_MAX], at[48], er[60] = ""; GeStats gs; long now = (long)time(NULL); spath(ep, "events.txt"); snprintf(at, sizeof at, "%s:%d,%d", rooms[room].id, x, y);
         if (!ge_append(ep, now, who, "give_item", loots[i].item, at, er, sizeof er)) { if (msg) snprintf(msg, cap, "cannot pick up %s: %s", loots[i].item, er); return 0; }
         ge_scan(ep, now, 1, &gs); loot_gone[i] = 1;
-        if (msg) snprintf(msg, cap, "picked up %s%s", loots[i].item, !strcmp(loots[i].item, "ammo") ? "" : " (ammo rounds come with reload, not built yet)");
+        if (msg) snprintf(msg, cap, "picked up %s", loots[i].item);
         return 1; }
     return 0;
 }
@@ -415,11 +415,16 @@ static Recipe recs[MAXREC]; static int nrec, nrec_bad;
  * strikes before it), so a replay gives the same wounds. state/wounds.pdl is the readable copy, rewritten by the strike verbs. A leg at 0 only makes walking "slow" (one cell still). Fighting beyond this is later. */
 typedef struct { char who[16]; int part, left, max; } Wnd;
 static Wnd wd[64]; static int nwd, nstrike;
+/* one held gun per actor. Rebuilt from equip/fire/reload rows. Mag size is the pickup_ammo column of tuning.pdl. */
+typedef struct { char who[16], gun[16]; int mag; } Hold;
+static Hold holds[16]; static int nhold;
+static int gun_cap(const char *id) { if (!strcmp(id, "pistol")) return 28; if (!strcmp(id, "auto")) return 48; if (!strcmp(id, "shotgun")) return 16; return 0; }
+static Hold *hold_of(const char *who, int make) { for (int i = 0; i < nhold; i++) if (!strcmp(holds[i].who, who)) return &holds[i]; if (!make || nhold >= 16 || !who || strlen(who) >= 16) return NULL; Hold *h = &holds[nhold++]; memset(h, 0, sizeof *h); snprintf(h->who, 16, "%s", who); return h; }
 static const char *PARTS[6] = { "head", "torso", "arm_l", "arm_r", "leg_l", "leg_r" };
 static int mhp_of(const char *who);
 static Ent zed; static int zed_ok; static void zed_load(void);      /* the one zed, defined below */
 static void cd_reset(void) {
-    nrec = nrec_bad = 0; nwd = 0; nstrike = 0; char p[PATH_MAX], line[400], *f[12]; snprintf(p, sizeof p, "%s/recipes.pdl", APP); FILE *fp = fopen(p, "r"); if (!fp) return;
+    nrec = nrec_bad = 0; nwd = 0; nstrike = 0; nhold = 0; char p[PATH_MAX], line[400], *f[12]; snprintf(p, sizeof p, "%s/recipes.pdl", APP); FILE *fp = fopen(p, "r"); if (!fp) return;
     while (fgets(line, sizeof line, fp)) { int n = split_bar(line, f, 12); if (n < 8 || strcmp(f[0], "RECIPE")) continue; Recipe r; memset(&r, 0, sizeof r);
         int ok = f[1][0] && strlen(f[1]) < 16 && f[2][0] && strlen(f[2]) < 16 && atoi(f[3]) > 0 && atoi(f[3]) < 100 && atoi(f[7 - 1]) >= 0 && atoi(f[6]) >= 0 && atoi(f[6]) < 1000;
         snprintf(r.id, 16, "%s", f[1]); snprintf(r.out, 16, "%s", f[2]); r.cnt = atoi(f[3]); r.minutes = atoi(f[6]); r.tool = strcmp(f[4], "none") != 0;
@@ -430,14 +435,38 @@ static void cd_reset(void) {
 static Recipe *cd_recipe(const char *id) { for (int i = 0; i < nrec; i++) if (!strcmp(recs[i].id, id)) return &recs[i]; return NULL; }
 /* craft: the named recipe, tool none; the inputs must be in the actor's bag, they are taken and count of output given. Result ok or missing (unknown recipe, other tool, short of an input). */
 /* compaction snapshot of the wound table: the strike counter (it seeds the wound-part hash, so it must survive) and every wound in table order */
-static void cd_cksave(FILE *o) { fprintf(o, "CKG|NSTRIKE|%d\n", nstrike); for (int i = 0; i < nwd; i++) fprintf(o, "CKG|WND|%s|%d|%d|%d\n", wd[i].who, wd[i].part, wd[i].left, wd[i].max); }
-static void cd_ckload(char *p) { char *f[8]; int n = split_bar(p, f, 8); if (n >= 2 && !strcmp(f[0], "NSTRIKE")) nstrike = atoi(f[1]); else if (n >= 5 && !strcmp(f[0], "WND") && nwd < 64 && strlen(f[1]) < 16) { snprintf(wd[nwd].who, 16, "%s", f[1]); wd[nwd].part = atoi(f[2]) % 6; wd[nwd].left = atoi(f[3]); wd[nwd].max = atoi(f[4]); nwd++; } }
+static void cd_cksave(FILE *o) { fprintf(o, "CKG|NSTRIKE|%d\n", nstrike); for (int i = 0; i < nwd; i++) fprintf(o, "CKG|WND|%s|%d|%d|%d\n", wd[i].who, wd[i].part, wd[i].left, wd[i].max); for (int i = 0; i < nhold; i++) if (holds[i].gun[0]) fprintf(o, "CKG|HOLD|%s|%s|%d\n", holds[i].who, holds[i].gun, holds[i].mag); }
+static void cd_ckload(char *p) { char *f[8]; int n = split_bar(p, f, 8); if (n >= 2 && !strcmp(f[0], "NSTRIKE")) nstrike = atoi(f[1]); else if (n >= 5 && !strcmp(f[0], "WND") && nwd < 64 && strlen(f[1]) < 16) { snprintf(wd[nwd].who, 16, "%s", f[1]); wd[nwd].part = atoi(f[2]) % 6; wd[nwd].left = atoi(f[3]); wd[nwd].max = atoi(f[4]); nwd++; } else if (n >= 4 && !strcmp(f[0], "HOLD") && nhold < 16 && strlen(f[1]) < 16 && strlen(f[2]) < 16) { snprintf(holds[nhold].who, 16, "%s", f[1]); snprintf(holds[nhold].gun, 16, "%s", f[2]); holds[nhold].mag = atoi(f[3]); nhold++; } }
 static const char *cd_rule(const char *actor, const char *verb, const char *target, const char *at) {
     if (!strcmp(verb, "strike")) {      /* actor strikes target (a party id, trainer, or zed) */
         int m = mhp_of(target); if (m <= 0) return "unknown"; unsigned h = 5381; for (const char *s = actor; *s; s++) h = h * 33 + (unsigned char)*s; for (const char *s = target; *s; s++) h = h * 33 + (unsigned char)*s; for (const char *s = at; *s; s++) h = h * 33 + (unsigned char)*s;
         int part = (int)((h + (unsigned)nstrike++) % 6), i; for (i = 0; i < nwd; i++) if (!strcmp(wd[i].who, target) && wd[i].part == part) break;
         if (i == nwd) { if (nwd >= 64) return "full"; snprintf(wd[nwd].who, 16, "%s", target); wd[nwd].part = part; wd[nwd].max = m / 6; wd[nwd].left = m / 6; nwd++; }
-        if (wd[i].left > 0) wd[i].left--; static char res[24]; snprintf(res, sizeof res, "wound:%s", PARTS[part]); return res;
+        if (wd[i].left > 0) wd[i].left--; static char res[40]; snprintf(res, sizeof res, "wound:%s", PARTS[part]); return res;
+    }
+    if (!strcmp(verb, "equip")) {
+        static char res[40]; if (!gun_cap(target)) return "unknown";
+        GeInv *q = ge_inv_find(actor, target, 0); if (!q || q->n < 1) return "none";
+        Hold *h = hold_of(actor, 1); if (!h) return "full";
+        if (strcmp(h->gun, target)) { snprintf(h->gun, 16, "%s", target); h->mag = gun_cap(target); }
+        snprintf(res, sizeof res, "armed:%s:%d", h->gun, h->mag); return res;
+    }
+    if (!strcmp(verb, "fire")) {
+        static char res[48]; Hold *h = hold_of(actor, 0);
+        if (!h || !h->gun[0]) return "none";
+        if (h->mag <= 0) return "empty";
+        h->mag--;
+        if (!strcmp(target, "miss")) snprintf(res, sizeof res, "miss:%s:%d", h->gun, h->mag);
+        else snprintf(res, sizeof res, "hit:%s:%s:%d", target, h->gun, h->mag);
+        return res;
+    }
+    if (!strcmp(verb, "reload")) {
+        static char res[32]; Hold *h = hold_of(actor, 0);
+        if (!h || !h->gun[0]) return "none";
+        int capg = gun_cap(h->gun); if (h->mag >= capg) return "full";
+        GeInv *a = ge_inv_find(actor, "ammo", 0); if (!a || a->n <= 0) return "none";
+        int need = capg - h->mag, mv = need < (int)a->n ? need : (int)a->n;
+        a->n -= mv; h->mag += mv; snprintf(res, sizeof res, "reloaded:%d", h->mag); return res;
     }
     (void)at; if (strcmp(verb, "craft")) return NULL; Recipe *rc = cd_recipe(target); if (!rc || rc->tool) return "missing";      /* tools are later: a recipe that names one cannot be crafted yet */
     for (int i = 0; i < rc->nin; i++) { GeInv *q = ge_inv_find(actor, rc->in[i], 0); if (!q || q->n < rc->inn[i]) return "missing"; }
@@ -772,6 +801,47 @@ static void clock_stop(void) { clock_paths(); if (!clock_ok() || !fexists(CFILE)
 /* a roguelike turn's worth of game time: advance, then one deterministic pass so reminders fire now (no daemon wait) */
 static void clock_turn(void) { clock_paths(); if (!clock_ok() || !fexists(CFILE)) return; char t[32]; turn_str(t, sizeof t); lc_run(0, "cmd", "rpg", "advance", t, "--source", "rpg-turn", NULL); lc_run(0, "step", "5", NULL); long long ms = clock_kv_ll("game_time_epoch_ms"); if (ms >= 0) write_phase(ms); clock_ui(); }
 
+/* Match session (BOOK 16.game/RPG-PVP-HQ-SESSIONS.md). state/session.txt is append-only:
+ * SESSION|<id> once, then SEAT|<who>|<human|agent|peer|closed>|<local|peer> when a seat changes.
+ * The last row for a name wins. A peer seat is not rewritten by the local INT sync.
+ * Peer traffic is one line in <app>/net/outbox.txt. This file never opens a socket. */
+static char g_sess[48];
+static void sess_id(void) {
+    if (g_sess[0]) return;
+    char p[PATH_MAX], b[8192]; spath(p, "session.txt");
+    if (read_file(p, b, sizeof b) > 0) for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n"))
+        if (!strncmp(l, "SESSION|", 8) && l[8]) { snprintf(g_sess, sizeof g_sess, "%.40s", l + 8); return; }
+    snprintf(g_sess, sizeof g_sess, "rpg-%ld-%d", (long)time(NULL), (int)getpid());
+    char line[80]; snprintf(line, sizeof line, "SESSION|%s", g_sess); append_line("session.txt", line);
+}
+static void sess_last(const char *who, char *kind, size_t cap) {
+    kind[0] = 0; char p[PATH_MAX], b[16384]; spath(p, "session.txt"); if (read_file(p, b, sizeof b) <= 0) return;
+    size_t wl = strlen(who);
+    for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) {
+        if (strncmp(l, "SEAT|", 5)) continue; char *a = l + 5, *bar = strchr(a, '|'); if (!bar || (size_t)(bar - a) != wl || strncmp(a, who, wl)) continue;
+        char *k = bar + 1, *b2 = strchr(k, '|'); if (!b2) continue; size_t n = (size_t)(b2 - k); if (n >= cap) n = cap - 1; memcpy(kind, k, n); kind[n] = 0;
+    }
+}
+static void sess_set(const char *who, const char *kind, const char *link) {
+    char cur[16]; sess_last(who, cur, sizeof cur); if (!strcmp(cur, kind)) return;
+    if (!strcmp(cur, "peer")) return;      /* a peer seat stays until a later verb names it; INT sync must not steal it */
+    char line[120]; snprintf(line, sizeof line, "SEAT|%s|%s|%s", who, kind, link); append_line("session.txt", line);
+}
+static void sess_sync(void) {
+    sess_id(); int in = flag_on("int", 0); char cc[16]; flag_str("ctl", "pet", cc, sizeof cc); int player = in && !strcmp(cc, "player");
+    for (int i = 0; i < nparty; i++) sess_set(party[i].id, (in && !player && i == active) ? "human" : "agent", "local");
+    if (player) sess_set("trainer", "human", "local");
+    else { char cur[16]; sess_last("trainer", cur, sizeof cur); if (!strcmp(cur, "human")) sess_set("trainer", "closed", "local"); }
+}
+static void sess_peer(char *msg, size_t cap) {
+    sess_id(); char name[24] = "";
+    for (int n = 1; n < 8 && !name[0]; n++) { char try[24], cur[16]; snprintf(try, sizeof try, "peer%d", n); sess_last(try, cur, sizeof cur); if (!cur[0]) snprintf(name, sizeof name, "%s", try); }
+    if (!name[0]) { snprintf(msg, cap, "peer seats full (8)"); return; }
+    char line[120]; snprintf(line, sizeof line, "SEAT|%s|peer|peer", name); append_line("session.txt", line);
+    char nd[PATH_MAX], op[PATH_MAX]; snprintf(nd, sizeof nd, "%s/net", APP); mkdir(nd, 0755); snprintf(op, sizeof op, "%s/net/outbox.txt", APP);
+    FILE *f = fopen(op, "a"); if (f) { fprintf(f, "ROOM|%s|SEAT|%s|peer\n", g_sess, name); fclose(f); }
+    snprintf(msg, cap, "peer seat %s, room %s (outbox line only)", name, g_sess);
+}
 /* ---------- outputs ---------- */
 static void out_all(const char *msg) {
     calc_view(); render();
@@ -817,6 +887,18 @@ static void out_all(const char *msg) {
       int np2 = 0; for (int i = 0; i < npl; i++) if (pl[i].room == me2->room) { np2++; if (np2 <= 3) LK("%.12s at %d,%d", cat[pl[i].item].label, pl[i].x, pl[i].y); } if (np2 > 3) LK("+%d more", np2 - 3); if (!np2) LK("no items");
       int nd2 = 0; for (int i = 0; i < ndoor && nl < 8; i++) if (doors[i].room == me2->room) { nd2++; LK("to %s", rooms[doors[i].dest].name); } if (!nd2) LK("no doors");
       W("n_look=%d\n", nl); }
+    sess_sync();
+    { char sp[PATH_MAX], sb[16384]; struct { char who[24], kind[12], link[12]; } st[8]; int ns = 0; spath(sp, "session.txt");
+      if (read_file(sp, sb, sizeof sb) > 0) for (char *l = strtok(sb, "\n"); l; l = strtok(NULL, "\n")) {
+          if (strncmp(l, "SEAT|", 5)) continue; char *a = l + 5, *b1 = strchr(a, '|'); if (!b1) continue; char *k = b1 + 1, *b2 = strchr(k, '|'); if (!b2) continue;
+          char who[24], kind[12], link[12]; size_t nw = (size_t)(b1 - a); if (nw >= sizeof who) nw = sizeof who - 1; memcpy(who, a, nw); who[nw] = 0;
+          size_t nk = (size_t)(b2 - k); if (nk >= sizeof kind) nk = sizeof kind - 1; memcpy(kind, k, nk); kind[nk] = 0; snprintf(link, sizeof link, "%.10s", b2 + 1);
+          int fnd = -1; for (int i = 0; i < ns; i++) if (!strcmp(st[i].who, who)) fnd = i; if (fnd < 0 && ns < 8) fnd = ns++;
+          if (fnd >= 0) { snprintf(st[fnd].who, sizeof st[fnd].who, "%s", who); snprintf(st[fnd].kind, sizeof st[fnd].kind, "%s", kind); snprintf(st[fnd].link, sizeof st[fnd].link, "%s", link); }
+      }
+      W("n_net=%d\nnet_0_label=session %.22s\n", ns + 1, g_sess[0] ? g_sess : "-");
+      for (int i = 0; i < ns; i++) W("net_%d_label=%.10s %.8s %.8s\n", i + 1, st[i].who, st[i].kind, st[i].link);
+    }
     o = ui_wrap_keys(u, o, sizeof u);
     { /* HARDENING: ui.txt is a complete key=value file whatever the state files held: only lines "key=value" (key = letters digits _) survive, control bytes in a value become spaces, a cut-off last line is dropped */
       int r_ = 0, w_ = 0; while (r_ < o) { int e_ = r_; while (e_ < o && u[e_] != '\n') e_++; if (e_ >= o) break; int k_ = r_; while (k_ < e_ && (isalnum((unsigned char)u[k_]) || u[k_] == '_')) k_++;
@@ -1157,6 +1239,45 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
             if (rc && rc->minutes > 0) { char dur[16]; snprintf(dur, sizeof dur, "%dm", rc->minutes); clock_paths(); if (clock_ok() && fexists(CFILE)) { lc_run(0, "cmd", "rpg", "advance", dur, "--source", "rpg-craft", NULL); lc_run(0, "step", "5", NULL); } } }      /* the minutes are charged here, once, never in the replay */
         else if (cd_recipe(tgt) && cd_recipe(tgt)->tool) snprintf(nb, sizeof nb, "cannot craft %s: it needs a tool (not built yet)", tgt); else if (cd_recipe(tgt)) snprintf(nb, sizeof nb, "cannot craft %s: need the inputs in the bag", tgt); else snprintf(nb, sizeof nb, "no recipe named %s (Craft > Help)", tgt);
         note_set(nb); snprintf(msg, cap, "%s", nb); return; }
+    if (!strcmp(v, "equip") || !strcmp(v, "fire") || !strcmp(v, "reload")) {
+        int ci = ctl_idx(); const char *who = ci < 0 ? "trainer" : party[ci].id; char ep[PATH_MAX], nb[200], er[60] = ""; spath(ep, "events.txt"); GeStats gs; long gnow = (long)time(NULL);
+        use_ent(ci); Ent mv = pet; use_ent(active); zed_load();
+        if (!ge_scan(ep, gnow, 0, &gs)) { snprintf(msg, cap, "ledger unreadable"); return; }
+        if (!strcmp(v, "equip")) {
+            const char *gun = argc >= 2 ? argv[1] : "";
+            if (!gun_cap(gun)) { snprintf(nb, sizeof nb, "refused: %s is not a gun", gun[0] ? gun : "(none)"); note_set(nb); snprintf(msg, cap, "%s", nb); return; }
+            if (!ge_append(ep, gnow, who, "equip", gun, "-", er, sizeof er)) { snprintf(nb, sizeof nb, "refused: %s", er); note_set(nb); snprintf(msg, cap, "%s", nb); return; }
+        } else if (!strcmp(v, "reload")) {
+            if (!ge_append(ep, gnow, who, "reload", "mag", "-", er, sizeof er)) { snprintf(nb, sizeof nb, "refused: %s", er); note_set(nb); snprintf(msg, cap, "%s", nb); return; }
+        } else {
+            Hold *h = hold_of(who, 0);
+            if (!h || !h->gun[0]) { snprintf(nb, sizeof nb, "refused: nothing equipped"); note_set(nb); snprintf(msg, cap, "%s", nb); return; }
+            int dx = mv.dir == 1 ? -1 : mv.dir == 2 ? 1 : 0, dy = mv.dir == 0 ? 1 : mv.dir == 3 ? -1 : 0;
+            const char *hit = "miss";
+            for (int s = 1; s <= 12 && (dx || dy); s++) {
+                int cx = mv.x + dx * s, cy = mv.y + dy * s;
+                if (cx < 0 || cy < 0 || cx >= rooms[mv.room].cols || cy >= rooms[mv.room].rows) break;
+                if (rooms[mv.room].cmap && (cmaps[mv.room][cy][cx] == '#' || cmaps[mv.room][cy][cx] == 'W')) break;
+                if (zed_ok && zed.room == mv.room && zed.x == cx && zed.y == cy) { hit = "zed"; break; }
+                int found = 0; for (int i = 0; i < nparty; i++) if (strcmp(party[i].id, who) && others[i].room == mv.room && others[i].x == cx && others[i].y == cy) { hit = party[i].id; found = 1; break; }
+                if (found) break;
+                if (strcmp(who, "trainer") && tr.room == mv.room && tr.x == cx && tr.y == cy) { hit = "trainer"; break; }
+            }
+            char at[48]; snprintf(at, sizeof at, "%s:%d,%d", rooms[mv.room].id, mv.x, mv.y);
+            if (!ge_append(ep, gnow, who, "fire", hit, at, er, sizeof er)) { snprintf(nb, sizeof nb, "refused: %s", er); note_set(nb); snprintf(msg, cap, "%s", nb); return; }
+        }
+        if (!ge_scan(ep, gnow, 1, &gs)) { snprintf(msg, cap, "ledger not writable"); return; }
+        if (!strcmp(ge_last, "empty")) snprintf(nb, sizeof nb, "refused: empty magazine");
+        else if (!strcmp(ge_last, "none")) snprintf(nb, sizeof nb, "refused: not in the bag");
+        else if (!strcmp(ge_last, "unknown")) snprintf(nb, sizeof nb, "refused: not a gun");
+        else if (!strcmp(ge_last, "full")) snprintf(nb, sizeof nb, "magazine already full");
+        else if (!strncmp(ge_last, "armed:", 6)) snprintf(nb, sizeof nb, "equipped %s", ge_last + 6);
+        else if (!strncmp(ge_last, "miss:", 5)) snprintf(nb, sizeof nb, "fired %s", ge_last + 5);
+        else if (!strncmp(ge_last, "hit:", 4)) snprintf(nb, sizeof nb, "hit %s", ge_last + 4);
+        else if (!strncmp(ge_last, "reloaded:", 9)) snprintf(nb, sizeof nb, "reloaded, mag %s", ge_last + 9);
+        else snprintf(nb, sizeof nb, "%s", ge_last[0] ? ge_last : "no result");
+        note_set(nb); snprintf(msg, cap, "%s", nb); return;
+    }
     if (!strcmp(v, "pickup")) {      /* the controlled mover takes the loot under its feet (also what the events/pickup page runs); walking onto loot does the same */
         int ci = ctl_idx(); const char *who = ci < 0 ? "trainer" : party[ci].id; use_ent(ci); int room = pet.room, px = pet.x, py = pet.y; use_ent(active); char nb[200] = "";
         if (!try_pickup(who, room, px, py, nb, sizeof nb) && !nb[0]) snprintf(nb, sizeof nb, "nothing to pick up here");
@@ -1220,6 +1341,15 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
     if (!strcmp(v, "control")) { g_ctl_why = "control-menu-verb"; char cur[16]; flag_str("ctl", "pet", cur, sizeof cur); const char *n = argc >= 2 ? argv[1] : (!strcmp(cur, "pet") ? "player" : "pet"); if (strcmp(n, "pet") && strcmp(n, "player")) { snprintf(msg, cap, "control pet or player"); return; } set_flag("ctl", n); set_flag("follow", !strcmp(n, "player") ? "player" : "pet"); calc_view(); snprintf(msg, cap, !strcmp(n, "player") ? "INT now controls you (the player)" : "INT now controls %s", party[active].name); return; }
     if (!strcmp(v, "walk")) { int moved = ai_step(active); use_ent(active); if (moved) snprintf(msg, cap, "%s took a step", party[active].name); else snprintf(msg, cap, "%s stays put", party[active].name); return; }
     if (!strcmp(v, "export3d")) { export3d(msg, cap); return; }
+    if (!strcmp(v, "net")) {
+        if (argc >= 2 && !strcmp(argv[1], "peer")) { sess_peer(msg, cap); return; }
+        if (argc >= 2 && !strcmp(argv[1], "leave")) {
+            if (!flag_on("int", 0)) { sess_sync(); snprintf(msg, cap, "already with the AI"); return; }
+            if (!(run_event("int_off", "ui") && !flag_on("int", 0))) set_flag("int", "0");
+            board_interact(0, 1); clock_sync(); sess_sync(); snprintf(msg, cap, "logged out: the AI has the seat"); return;
+        }
+        sess_id(); snprintf(msg, cap, "session %s", g_sess); return;
+    }
     if (!strcmp(v, "mode")) v = "int";      /* the mode tab is the INT switch now */
     if (!strcmp(v, "mode")) { int to_rogue = argc >= 2 ? !strcmp(argv[1], "rogue") : !rogue_mode(); set_flag("timemode", to_rogue ? "rogue" : "live"); clock_sync();
         snprintf(msg, cap, to_rogue ? "rogue: with INT on, time moves only when you act" : "live: time keeps running, even with INT on"); return; }
