@@ -18,8 +18,9 @@
 
 #define XT 24
 #define S48 48
-#define COLS 24
+#define COLS 220      /* the town is 24 wide; the rest is the far island, an unconnected width test (BOOK EDIT-ISLANDS-DESIGN section 8) */
 #define ROWS 17
+#define IW 24          /* the interior's width: the outdoor page is COLS wide, the room is not */
 #define MAXSLOT 64
 
 static char HOUSE[PATH_MAX], APP[PATH_MAX], ASSETS[PATH_MAX], PCHQ[PATH_MAX];
@@ -73,7 +74,7 @@ static void find_assets(void) {
 typedef struct { int x, y, dir, room, r, g, b, steps, art; char name[16]; char letter; } Pet;     /* art = 1: terumon frames exist, so events.txt names charset "terumon" and this index */
 static Pet pet[8];
 static char glyph[2][ROWS][COLS + 1];
-static int fs[2][ROWS][COLS], ws[2][ROWS][COLS];
+static int fs[2][ROWS][COLS], ws[2][ROWS][COLS], cdep[2][ROWS][COLS];      /* cdep: blocks hung under the cell (negative z), tapered by taper_islands() */
 
 static void paint_desk(int desk, Sheet *floorS, int fx, int fy, Sheet *wallS, int wx, int wy) {
     unsigned char fl[XT * XT * 4], wa[XT * XT * 4];
@@ -85,7 +86,8 @@ static void paint_desk(int desk, Sheet *floorS, int fx, int fy, Sheet *wallS, in
     }
     if (desk == 1) {
         for (int x = 0; x < COLS; x++) { glyph[1][0][x] = glyph[1][1][x] = 'W'; ws[1][0][x] = ws[1][1][x] = was; }
-        for (int y = 0; y < ROWS; y++) { glyph[1][y][0] = glyph[1][y][COLS - 1] = 'W'; ws[1][y][0] = ws[1][y][COLS - 1] = was; }
+        for (int y = 0; y < ROWS; y++) for (int x = IW - 1; x < COLS; x++) { glyph[1][y][x] = 'W'; ws[1][y][x] = was; }
+        for (int y = 0; y < ROWS; y++) { glyph[1][y][0] = 'W'; ws[1][y][0] = was; }
     }
 }
 static void stamp(int desk, Sheet *s, int c, int r, int w, int h, int x, int y, char g, int tall) {
@@ -121,6 +123,15 @@ static const char *ISL[ROWS] = {
     "........GGGGGTGGGpGGG...",
     "........GGGGGGGGGGGGG...",
     "........................" };
+/* Far island: unconnected, 10 x 7, at the right edge of the page (x COLS-12, y 5). No bridge, no door, nobody can walk there: it only proves the board draws that wide. */
+static const char *FAR[7] = { "..GGGG....", ".GGGTGGG..", "GGGGGGGGG.", "GGpppGGGGG", "GGGGFGGTG.", ".GGGGGGG..", "..GGGG...." };
+#define FARX (COLS - 12)
+#define FARY 5
+static char isl_at(int x, int y) {
+    if (x < 24) return ISL[y][x];
+    if (x >= FARX && x < FARX + 10 && y >= FARY && y < FARY + 7) return FAR[y - FARY][x - FARX];
+    return '.';
+}
 typedef struct { int x, y, bx, by, wx, wy; const char *name; } Bld;      /* building top-left, World_B cell (col,row) */
 static const Bld bld[5] = {{9, 9, 8, 0, 0, 0, "cabin"}, {3, 1, 6, 11, 0, 0, "bank"}, {13, 1, 0, 7, 0, 0, "store"}, {9, 5, 4, 7, 0, 0, "school"}, {22, 2, 4, 11, 0, 0, "hotel"}};
 static int doorx[8], doory[8], ndoor, lastdoor, rockslot;      /* rockslot: Outside_A4 rock-cliff tile, painted on the hung (negative z) blocks via cells.txt rock_slot= */
@@ -135,7 +146,7 @@ static void solid(int desk, int x, int y, char g, int r, int gr, int b, int plan
 static void paint_islands(Sheet *wb, Sheet *ob, Sheet *door) {
     int grass = fs[0][0][0];
     for (int y = 0; y < ROWS; y++) for (int x = 0; x < COLS; x++) {
-        char c = ISL[y][x]; glyph[0][y][x] = c; fs[0][y][x] = grass; ws[0][y][x] = 0;
+        char c = isl_at(x, y); glyph[0][y][x] = c; fs[0][y][x] = grass; ws[0][y][x] = 0;
         switch (c) {
         case '.': glyph[0][y][x] = '_'; fs[0][y][x] = 0; break;      /* the void is a hole: extrusion.pdl `_ | hole` leaves the cell without a block, so the sky shows */
         case '~': solid(0, x, y, '~', 50, 110, 200, 0, 0); break;
@@ -147,7 +158,7 @@ static void paint_islands(Sheet *wb, Sheet *ob, Sheet *door) {
     }
     for (int i = 0; i < 5; i++) stamp(0, wb, bld[i].bx, bld[i].by, 2, 2, bld[i].x, bld[i].y, 'B', 1);
     for (int y = 0; y < ROWS; y++) for (int x = 0; x < COLS; x++) {
-        char c = ISL[y][x];
+        char c = isl_at(x, y);
         if (c == 'T' && ob->px) stamp(0, ob, (x + y) & 1, 0, 1, 1, x, y, 'T', 1);
         else if (c == 'T') solid(0, x, y, 'T', 40, 120, 50, 0, 1);
         else if (c == 'S') solid(0, x, y, 'S', 130, 90, 50, 0, 1);
@@ -164,6 +175,24 @@ static void paint_islands(Sheet *wb, Sheet *ob, Sheet *door) {
     }
 }
 
+/* Island undersides taper: the hung depth grows with the ring distance from the nearest air cell (edge 1, then 3, 5, 7, cap 9), so each island ends in an inverted cone; bridges and rubble stay thin. */
+static void taper_islands(void) {
+    for (int y = 0; y < ROWS; y++) for (int x = 0; x < COLS; x++) {
+        char c = glyph[0][y][x];
+        if (c == '_') { cdep[0][y][x] = 0; continue; }
+        if (c == 'b' || c == 's') { cdep[0][y][x] = 1; continue; }
+        if (c == 'r') { cdep[0][y][x] = 2; continue; }
+        int best = 99;
+        for (int yy = -1; yy <= ROWS; yy++) for (int xx = -1; xx <= COLS; xx++) {
+            int air = (yy < 0 || xx < 0 || yy >= ROWS || xx >= COLS) || glyph[0][yy][xx] == '_';
+            if (!air) continue;
+            int dx = abs(xx - x), dy = abs(yy - y), d = dx > dy ? dx : dy;
+            if (d < best) best = d;
+        }
+        int dep = 2 * best - 1; if (dep > 9) dep = 9; if (dep < 1) dep = 1;
+        cdep[0][y][x] = dep;
+    }
+}
 static void write_atlas(const char *dir, int desk) {
     mkdir(dir, 0755);
     char p[PATH_MAX]; FILE *f;
@@ -177,10 +206,6 @@ static void write_atlas(const char *dir, int desk) {
               "EXTRUDE      | W                  | 3\nEXTRUDE      | D                  | 3\n"
               "EXTRUDE      | T                  | 2\nEXTRUDE      | f                  | 1\n"
               "EXTRUDE      | B                  | 3\n"
-              "DEPTH        | G                  | 3\nDEPTH        | p                  | 3\nDEPTH        | B                  | 3\n"
-              "DEPTH        | T                  | 3\nDEPTH        | D                  | 3\nDEPTH        | S                  | 3\n"
-              "DEPTH        | F                  | 3\nDEPTH        | r                  | 2\nDEPTH        | b                  | 1\n"
-              "DEPTH        | s                  | 1\nDEPTH        | ~                  | 1\n"
               "EXTRUDE      | default            | 0\n", f);
         fclose(f);
     }
@@ -196,7 +221,7 @@ static void write_atlas(const char *dir, int desk) {
     if (f) {
         fprintf(f, "width=%d\nheight=%d\ntile_px=%d\natlas_cols=16\natlas_tiles=%d\nrock_slot=%d\ncells\n", COLS, ROWS, XT, nslot, rockslot);
         for (int y = 0; y < ROWS; y++) {
-            for (int x = 0; x < COLS; x++) fprintf(f, "%s%d,%d", x ? " " : "", fs[desk][y][x], ws[desk][y][x]);
+            for (int x = 0; x < COLS; x++) fprintf(f, "%s%d,%d,%d", x ? " " : "", fs[desk][y][x], ws[desk][y][x], cdep[desk][y][x]);
             fputc('\n', f);
         }
         fclose(f);
@@ -207,7 +232,7 @@ static void write_atlas(const char *dir, int desk) {
 }
 
 static int blocked(int desk, int x, int y) {
-    if (desk && (x < 1 || y < 1 || x >= COLS - 1 || y >= ROWS - 1)) return 1;
+    if (desk && (x < 1 || y < 1 || x >= IW - 1 || y >= ROWS - 1)) return 1;
     char g = glyph[desk][y][x];
     return g == 'W' || g == 'T' || g == 'B' || g == '_' || g == '~' || g == 'r' || g == 'F' || g == 'S';
 }
@@ -242,7 +267,7 @@ static void step_all(void) {
             if (i != 4) continue; /* Ava is the one who uses the door */
             if (desk == 0) {      /* any island door leads into the shared interior; remember which one */
                 for (int k = 0; k < ndoor; k++) if (doorx[k] == nx && doory[k] == ny) lastdoor = k;
-                pet[i].room = 1; pet[i].x = COLS / 2; pet[i].y = ROWS - 3;
+                pet[i].room = 1; pet[i].x = IW / 2; pet[i].y = ROWS - 3;
             } else {              /* back out beside the door she came in by (down, left, right, up: the first walkable cell) */
                 static const int ox[4] = {0, -1, 1, 0}, oy[4] = {1, 0, 0, -1};
                 int bx = doorx[lastdoor], by = doory[lastdoor];
@@ -282,9 +307,10 @@ int main(int argc, char **argv) {
     paint_islands(&wb, &ob, &door);
     {   /* the interior's way out: one door in the middle of the south wall row */
         unsigned char dpx[XT * XT * 4], bb[XT * XT * 4];
-        glyph[1][ROWS - 2][COLS / 2] = 'D';
-        if (door.px) { tile24(&door, 0, 192, dpx); memcpy(bb, slotpx[fs[1][ROWS - 2][COLS / 2]], sizeof bb); over24(bb, dpx); ws[1][ROWS - 2][COLS / 2] = slot_of(bb); }
+        glyph[1][ROWS - 2][IW / 2] = 'D';
+        if (door.px) { tile24(&door, 0, 192, dpx); memcpy(bb, slotpx[fs[1][ROWS - 2][IW / 2]], sizeof bb); over24(bb, dpx); ws[1][ROWS - 2][IW / 2] = slot_of(bb); }
     }
+    taper_islands();
     char root[PATH_MAX];
     snprintf(root, sizeof root, "%s/pieces/system/maps/edit", PCHQ); mkdir(root, 0755);
     char d0[PATH_MAX], d1[PATH_MAX];

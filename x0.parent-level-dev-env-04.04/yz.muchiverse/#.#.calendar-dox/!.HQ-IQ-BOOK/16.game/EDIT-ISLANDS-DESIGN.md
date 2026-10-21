@@ -95,3 +95,10 @@ Renderer change that made it possible (owner: "z levels in the negative give the
 - Used here: G/p/B/T/D/S/F depth 3, rubble 2, bridges/ramp/pond 1.
 
 Not done: the camera default still frames part of the 24 x 17 map (press back/up keys); islands are the same thickness everywhere (no tapered undersides yet); no 2D `map.png`.
+
+## 8. Tapered undersides and the far island (2026-10-21)
+
+- Taper: `cells.txt` tokens may carry a third number, `floor,wall,depth` (hung blocks under that cell). The renderer takes it over the glyph `DEPTH` rows when present. `rpg_edit.c` fills it with 2 x (ring distance to the nearest air cell) - 1, cap 9, so each island ends in an inverted cone; bridges stay 1, rubble 2. Seen in a screenshot before the page was widened.
+- Far island (width test): the page is now 220 cells wide (the town is the first 24); a 10 x 7 island with a pine, a path and a campfire sits at x 208..217, y 5..11, with no bridge and no door. The interior stays 24 wide (`IW`). The viewer draws a map up to 256 wide whole; map.txt rows are read through a 1024-byte buffer; fog for this map is 90..250.
+- NOT verified: the 220-wide page was written and parsed (cells.txt 220 tokens per row) but the board window died before a screenshot of the far island (the house was stopped from outside this session). Still to do: relaunch and pan to x ~ 210.
+- Controls note: arrows do not move the xelector on this board because `pieces/system/board.txt` is empty (bv_menu_input reads its size); the camera keys work. The board window can also sit flagged minimized (`#.desktop/livedesk_hq_windows_<pid>.txt minimized=1`), which pauses the engine: write `restore=1` to `#.desktop/livedesk_hq_restore_<pid>.txt` to undo.

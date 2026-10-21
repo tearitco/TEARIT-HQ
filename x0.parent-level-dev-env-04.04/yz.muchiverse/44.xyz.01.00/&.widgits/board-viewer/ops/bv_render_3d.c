@@ -361,6 +361,8 @@ typedef struct {
     int ev_n;
     char *glyph;            /* map.txt, w*h. 3D height comes from extrusion.pdl, not from the flat 2D picture. */
     unsigned char zh[128];  /* extrusion height for each glyph. 0 = no row. */
+    unsigned char *cdepth;  /* cells.txt third token per cell ("F,Wl,D"): hung blocks under THIS cell, so an island underside can taper; absent = the glyph DEPTH row. */
+    int cdepth_any;
     int rock;               /* cells.txt rock_slot=: atlas slot painted on the hung (negative z) blocks; 0 = the cell floor tile. */
     unsigned char depth[128]; /* DEPTH row: blocks hung BELOW the floor (negative z levels), the float depth of an island. */
     int zoff;               /* the deepest DEPTH in use: every grid level and every box is lifted by this so levels below the floor have a place. With DEPTH in use a cell with no floor and no wall tile has no block (the sky shows), so there is no separate hole key. */
@@ -433,7 +435,7 @@ static int maker_load(const char *root) {
     static long long held_stamp = -1;
     if (g_mk.key[0] && strcmp(g_mk.key, dir) == 0 && held_stamp == cell_stamp) return g_mk.ok;
     held_stamp = cell_stamp;
-    free(g_mk.atlas); free(g_mk.cells); free(g_mk.para); free(g_mk.glyph);
+    free(g_mk.atlas); free(g_mk.cells); free(g_mk.cdepth); free(g_mk.para); free(g_mk.glyph);
     int prev_id = g_mk.id;
     memset(&g_mk, 0, sizeof(g_mk));
     g_mk.id = prev_id + 1;
@@ -455,7 +457,8 @@ static int maker_load(const char *root) {
             else if (strncmp(line, "cells", 5) == 0) {
                 if (g_mk.w < 1 || g_mk.h < 1 || g_mk.w > 512 || g_mk.h > 512 || g_mk.cols < 1 || g_mk.tile_px < 1) { fclose(f); return 0; }
                 g_mk.cells = (unsigned short *)calloc((size_t)g_mk.w * (size_t)g_mk.h * 2, sizeof(unsigned short));
-                if (!g_mk.cells) { fclose(f); return 0; }
+                g_mk.cdepth = (unsigned char *)calloc((size_t)g_mk.w * (size_t)g_mk.h, 1);
+                if (!g_mk.cells || !g_mk.cdepth) { fclose(f); return 0; }
                 in_cells = 1;
             }
             continue;
@@ -469,6 +472,10 @@ static int maker_load(const char *root) {
             q = e + 1;
             long wl = strtol(q, &e, 10);
             q = e;
+            if (*q == ',') {      /* optional per-cell depth */
+                long dv = strtol(q + 1, &e, 10); q = e;
+                if (dv > 0 && dv <= 16) { g_mk.cdepth[(size_t)row * g_mk.w + x] = (unsigned char)dv; g_mk.cdepth_any = 1; if (dv > g_mk.zoff) g_mk.zoff = (int)dv; }
+            }
             g_mk.cells[((size_t)row * g_mk.w + x) * 2 + 0] = (unsigned short)fl;
             g_mk.cells[((size_t)row * g_mk.w + x) * 2 + 1] = (unsigned short)wl;
         }
@@ -3683,6 +3690,7 @@ static int render_one_frame(void) {
                             unsigned char zg = (unsigned char)g_mk.glyph[my * g_mk.w + mx];
                             if (zg < 128) lo = zo - g_mk.depth[zg];
                         }
+                        if (g_mk.cdepth_any && mx >= 0 && my >= 0 && mx < g_mk.w && my < g_mk.h) lo = zo - g_mk.cdepth[(size_t)my * g_mk.w + mx];      /* per-cell depth wins: tapered undersides */
                         if (zo && !g_mk.cells[src] && !g_mk.cells[src + 1]) hole = 1;     /* no tile at all = air, once negative levels are in use */
                         if (hi > z_count) hi = z_count;
                         if (!hole) for (int lvl = lo; lvl < hi; lvl++) gpu_grid[col + row * vww + lvl * vww * vwh] = 1;
