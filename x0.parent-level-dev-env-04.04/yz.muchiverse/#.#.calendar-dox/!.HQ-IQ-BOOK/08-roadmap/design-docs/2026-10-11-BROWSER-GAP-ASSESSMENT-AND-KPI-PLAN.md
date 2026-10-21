@@ -296,7 +296,7 @@ which is lane-local and can be taken one at a time.
   (digits in cursor, `5.2` dot-direct, arrow-then-Right), and arrows stopping at
   every link would slow primary row nav. Declined as **superseded, not
   deferred** (addendum in `2026-10-08-INLINE-SPANS-PHASE2-HANDOFF.md`).
-- **Chrome-pixel parity as a launch bar** — stated non-goal.
+- ~~**Chrome-pixel parity as a launch bar** — stated non-goal.~~ **Withdrawn 2026-10-20 (owner): the goal is now a fully Chrome-replaceable browser; see `08-roadmap/2026-10-20-CHROME-REPLACEMENT-SIZING.md`.** Do not re-decline it.
 - **Reverse-engineering YouTube's Polymer UI** — video stays on the V4
   extraction carve-out.
 

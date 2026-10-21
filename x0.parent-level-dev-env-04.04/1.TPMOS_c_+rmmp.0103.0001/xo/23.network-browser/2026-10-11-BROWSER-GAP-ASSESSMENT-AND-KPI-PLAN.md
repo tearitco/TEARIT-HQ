@@ -1,5 +1,7 @@
 # NETWORK-BROWSER GAP ASSESSMENT + KPI PLAN (2026-10-11)
 
+> **2026-10-20 note:** this XO copy is older than the house copy and still says Chrome-parity is a non-goal. That is withdrawn: the goal is a fully Chrome-replaceable browser. Read `yz.muchiverse/#.#.calendar-dox/!.HQ-IQ-BOOK/08-roadmap/2026-10-20-CHROME-REPLACEMENT-SIZING.md` and the house copy of this file.
+
 House copy. XO copy: `x0.parent-level-dev-env-04.04/1.TPMOS_c_+rmmp.0103.0001/xo/23.network-browser/` (kept in step).
 
 Written after the 2026-10-11 relaunch-on-merged-binaries run, where the full suite
