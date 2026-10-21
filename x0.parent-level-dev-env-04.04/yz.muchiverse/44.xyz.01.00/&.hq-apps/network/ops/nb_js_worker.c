@@ -3578,6 +3578,225 @@ static JSValue nb_empty_array(JSContext *ctx, JSValueConst this_val, int argc, J
 static JSValue nb_empty_object(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     return JS_NewObject(ctx);
 }
+/* ---- FormData / Blob / FileReader: real instance state (2026-10-20) ----
+ * Stub constructors alone were not enough: `new FormData()` worked but
+ * `new FormData().append('a','b')` threw TypeError, and form-posting SPAs
+ * hit exactly that. These carry real data, not just a name.
+ * FormData entries live in a hidden `__nb_fd` array as [k,v,k,v,...]. */
+static JSValue add_class(JSContext *ctx, const char *name, JSValueConst parent);
+static JSValue class_noop(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_fd_entries(JSContext *ctx, JSValueConst this_val) {
+    JSValue a = JS_GetPropertyStr(ctx, this_val, "__nb_fd");
+    if (!JS_IsArray(ctx, a)) {
+        JS_FreeValue(ctx, a);
+        a = JS_NewArray(ctx);
+        JS_SetPropertyStr(ctx, this_val, "__nb_fd", JS_DupValue(ctx, a));
+    }
+    return a;
+}
+static JSValue nb_fd_append(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    if (argc < 2) return JS_UNDEFINED;
+    JSValue a = nb_fd_entries(ctx, this_val);
+    uint32_t n = 0;
+    JSValue lenv = JS_GetPropertyStr(ctx, a, "length");
+    JS_ToUint32(ctx, &n, lenv); JS_FreeValue(ctx, lenv);
+    JS_SetPropertyUint32(ctx, a, n,     JS_DupValue(ctx, argv[0]));
+    /* form fields are stringified; a File/Blob value keeps its object */
+    JSValue v = argv[1];
+    if (JS_IsObject(v) && !JS_IsFunction(ctx, v)) {
+        JS_SetPropertyUint32(ctx, a, n + 1, JS_DupValue(ctx, v));
+    } else {
+        JSValue s = JS_ToString(ctx, v);
+        JS_SetPropertyUint32(ctx, a, n + 1, s);
+    }
+    JS_FreeValue(ctx, a);
+    return JS_UNDEFINED;
+}
+static JSValue nb_fd_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    if (argc < 1) return JS_NULL;
+    JSValue key = JS_ToString(ctx, argv[0]);
+    JSValue a = nb_fd_entries(ctx, this_val);
+    JSValue lenv = JS_GetPropertyStr(ctx, a, "length");
+    uint32_t n = 0; JS_ToUint32(ctx, &n, lenv); JS_FreeValue(ctx, lenv);
+    JSValue out = JS_NULL;
+    for (uint32_t i = 0; i + 1 < n; i += 2) {
+        JSValue k = JS_GetPropertyUint32(ctx, a, i);
+        int eq = JS_StrictEq(ctx, k, key);
+        JS_FreeValue(ctx, k);
+        if (eq) { out = JS_GetPropertyUint32(ctx, a, i + 1); break; }
+    }
+    JS_FreeValue(ctx, key); JS_FreeValue(ctx, a);
+    return out;
+}
+static JSValue nb_fd_has(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue v = nb_fd_get(ctx, this_val, argc, argv);
+    int r = !JS_IsNull(v);
+    JS_FreeValue(ctx, v);
+    return JS_NewBool(ctx, r);
+}
+static JSValue nb_fd_getAll(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue arr = JS_NewArray(ctx);
+    if (argc < 1) return arr;
+    JSValue key = JS_ToString(ctx, argv[0]);
+    JSValue a = nb_fd_entries(ctx, this_val);
+    JSValue lenv = JS_GetPropertyStr(ctx, a, "length");
+    uint32_t n = 0; JS_ToUint32(ctx, &n, lenv); JS_FreeValue(ctx, lenv);
+    uint32_t o = 0;
+    for (uint32_t i = 0; i + 1 < n; i += 2) {
+        JSValue k = JS_GetPropertyUint32(ctx, a, i);
+        int eq = JS_StrictEq(ctx, k, key);
+        JS_FreeValue(ctx, k);
+        if (eq) {
+            JSValue v = JS_GetPropertyUint32(ctx, a, i + 1);
+            JS_SetPropertyUint32(ctx, arr, o++, v);
+        }
+    }
+    JS_FreeValue(ctx, key); JS_FreeValue(ctx, a);
+    return arr;
+}
+static JSValue nb_fd_delete(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    if (argc < 1) return JS_UNDEFINED;
+    JSValue key = JS_ToString(ctx, argv[0]);
+    JSValue a = nb_fd_entries(ctx, this_val);
+    JSValue out = JS_NewArray(ctx);
+    JSValue lenv = JS_GetPropertyStr(ctx, a, "length");
+    uint32_t n = 0; JS_ToUint32(ctx, &n, lenv); JS_FreeValue(ctx, lenv);
+    uint32_t o = 0;
+    for (uint32_t i = 0; i + 1 < n; i += 2) {
+        JSValue k = JS_GetPropertyUint32(ctx, a, i);
+        JSValue v = JS_GetPropertyUint32(ctx, a, i + 1);
+        int eq = JS_StrictEq(ctx, k, key);
+        if (eq) { JS_FreeValue(ctx, k); JS_FreeValue(ctx, v); }
+        else {
+            JS_SetPropertyUint32(ctx, out, o++, k);
+            JS_SetPropertyUint32(ctx, out, o++, v);
+        }
+    }
+    JS_SetPropertyStr(ctx, this_val, "__nb_fd", out);
+    JS_FreeValue(ctx, key); JS_FreeValue(ctx, a);
+    return JS_UNDEFINED;
+}
+/* Blob: real bytes (hidden `__nb_bytes` string) + size/type/slice.
+ * slice and size are attached as own properties of every instance rather
+ * than on Blob.prototype: registering on the prototype of a
+ * JS_NewCFunction2 constructor did not take in this QuickJS build (measured
+ * live 2026-10-21: typeof new Blob(['x']).slice was undefined, while the
+ * identical add_class pattern works for FormData). Per-instance attachment
+ * is equivalent for an immutable value object and cannot silently miss. */
+static JSValue nb_blob_bytes(JSContext *ctx, JSValueConst this_val) {
+    JSValue b = JS_GetPropertyStr(ctx, this_val, "__nb_bytes");
+    if (JS_IsUndefined(b)) { JS_FreeValue(ctx, b); b = JS_NewString(ctx, ""); }
+    return b;
+}
+static JSValue nb_blob_slice(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue b = nb_blob_bytes(ctx, this_val);
+    size_t n = 0; const char *s = JS_ToCStringLen(ctx, &n, b);
+    int32_t a = 0, z = (int32_t)n;
+    if (argc > 0) JS_ToInt32(ctx, &a, argv[0]);
+    if (argc > 1) JS_ToInt32(ctx, &z, argv[1]);
+    if (a < 0) a += (int32_t)n;
+    if (z < 0) z += (int32_t)n;
+    if (a < 0) a = 0; if (z > (int32_t)n) z = (int32_t)n; if (z < a) z = a;
+    JSValue out = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, out, "__nb_bytes", JS_NewStringLen(ctx, s + a, (size_t)(z - a)));
+    JS_SetPropertyStr(ctx, out, "size", JS_NewInt64(ctx, (int64_t)(z - a)));
+    JS_SetPropertyStr(ctx, out, "slice", JS_NewCFunction(ctx, nb_blob_slice, "slice", 2));
+    if (argc > 1) {
+        JSValue t = JS_GetPropertyStr(ctx, this_val, "type");
+        if (!JS_IsUndefined(t)) JS_SetPropertyStr(ctx, out, "type", t);
+        else JS_FreeValue(ctx, t);
+    }
+    if (s) JS_FreeCString(ctx, s);
+    JS_FreeValue(ctx, b);
+    return out;
+}
+static JSValue nb_blob_from_parts(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue out = JS_NewObject(ctx);
+    JSValue parts_out = JS_NewArray(ctx);
+    uint32_t o = 0;
+    if (argc > 0) {
+        JSValue parts = JS_GetPropertyStr(ctx, argv[0], "length");
+        uint32_t n = 0; JS_ToUint32(ctx, &n, parts); JS_FreeValue(ctx, parts);
+        for (uint32_t i = 0; i < n; i++) {
+            JSValue el = JS_GetPropertyUint32(ctx, argv[0], i);
+            JSValue es = JS_ToString(ctx, el);
+            JS_SetPropertyUint32(ctx, parts_out, o++, es);
+            JS_FreeValue(ctx, el);
+        }
+    }
+    /* join in the engine: no public JS_ConcatString in this QuickJS build */
+    JSAtom join_atom = JS_NewAtom(ctx, "join");
+    JSValue sep = JS_NewString(ctx, "");
+    JSValue joined = JS_Invoke(ctx, parts_out, join_atom, 1, &sep);
+    JS_FreeValue(ctx, sep);
+    JS_FreeAtom(ctx, join_atom);
+    JS_FreeValue(ctx, parts_out);
+    JS_SetPropertyStr(ctx, out, "__nb_bytes", joined);
+    /* size as a plain data property; slice attached per-instance */
+    {
+        size_t n = 0;
+        const char *cs = JS_ToCStringLen(ctx, &n, joined);
+        if (cs) JS_FreeCString(ctx, cs);
+        JS_SetPropertyStr(ctx, out, "size", JS_NewInt64(ctx, (int64_t)n));
+    }
+    JS_SetPropertyStr(ctx, out, "slice", JS_NewCFunction(ctx, nb_blob_slice, "slice", 2));
+    if (argc > 1) {
+        JSValue t = JS_GetPropertyStr(ctx, argv[1], "type");
+        if (!JS_IsUndefined(t)) JS_SetPropertyStr(ctx, out, "type", t);
+        else JS_FreeValue(ctx, t);
+    }
+    return out;
+}
+/* FileReader: synchronous readAs* — the async model is not modelled yet,
+ * but `result` and onload fire so feature-detect paths keep working. */
+static JSValue nb_fr_read(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue b = (argc > 0) ? JS_GetPropertyStr(ctx, argv[0], "__nb_bytes") : JS_UNDEFINED;
+    if (JS_IsUndefined(b)) { JS_FreeValue(ctx, b); b = JS_NewString(ctx, ""); }
+    JS_SetPropertyStr(ctx, this_val, "result", JS_DupValue(ctx, b));
+    JS_SetPropertyStr(ctx, this_val, "readyState", JS_NewInt32(ctx, 2));
+    JSValue cb = JS_GetPropertyStr(ctx, this_val, "onload");
+    if (JS_IsFunction(ctx, cb)) {
+        JSValue ev = JS_NewObject(ctx);
+        JS_SetPropertyStr(ctx, ev, "target", JS_DupValue(ctx, this_val));
+        JSValue r = JS_Call(ctx, cb, this_val, 1, &ev);
+        JS_FreeValue(ctx, r); JS_FreeValue(ctx, ev);
+    }
+    JS_FreeValue(ctx, cb);
+    JS_FreeValue(ctx, b);
+    return JS_UNDEFINED;
+}
+static void nb_install_formdata_blob(JSContext *ctx, JSValueConst g) {
+    JSValue f = add_class(ctx, "FormData", JS_UNDEFINED);
+    JSValue p = JS_GetPropertyStr(ctx, f, "prototype");
+    JS_SetPropertyStr(ctx, p, "append",  JS_NewCFunction(ctx, nb_fd_append,  "append", 2));
+    JS_SetPropertyStr(ctx, p, "set",     JS_NewCFunction(ctx, nb_fd_append,  "set", 2));
+    JS_SetPropertyStr(ctx, p, "get",     JS_NewCFunction(ctx, nb_fd_get,     "get", 1));
+    JS_SetPropertyStr(ctx, p, "getAll",  JS_NewCFunction(ctx, nb_fd_getAll,  "getAll", 1));
+    JS_SetPropertyStr(ctx, p, "has",     JS_NewCFunction(ctx, nb_fd_has,     "has", 1));
+    JS_SetPropertyStr(ctx, p, "delete",  JS_NewCFunction(ctx, nb_fd_delete,  "delete", 1));
+    JS_FreeValue(ctx, p);
+    JS_SetPropertyStr(ctx, g, "FormData", f);
+
+    /* Blob needs a custom constructor, so build its prototype explicitly and
+     * attach it — mirroring add_class. Reading the auto-created .prototype off
+     * a JS_CFUNC_constructor right after creation did not stick: slice ended
+     * up undefined on every instance (measured live, 2026-10-21). */
+    f = JS_NewCFunction2(ctx, nb_blob_from_parts, "Blob", 2, JS_CFUNC_constructor, 0);
+    p = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, p, "slice", JS_NewCFunction(ctx, nb_blob_slice, "slice", 2));
+    JS_SetPropertyStr(ctx, f, "prototype", p);
+    JS_FreeValue(ctx, p);
+    JS_SetPropertyStr(ctx, g, "Blob", f);
+
+    f = add_class(ctx, "FileReader", JS_UNDEFINED);
+    p = JS_GetPropertyStr(ctx, f, "prototype");
+    JS_SetPropertyStr(ctx, p, "readAsText",    JS_NewCFunction(ctx, nb_fr_read, "readAsText", 1));
+    JS_SetPropertyStr(ctx, p, "readAsDataURL", JS_NewCFunction(ctx, nb_fr_read, "readAsDataURL", 1));
+    JS_SetPropertyStr(ctx, p, "readAsArrayBuffer", JS_NewCFunction(ctx, nb_fr_read, "readAsArrayBuffer", 1));
+    JS_SetPropertyStr(ctx, p, "abort",         JS_NewCFunction(ctx, class_noop, "abort", 0));
+    JS_FreeValue(ctx, p);
+    JS_SetPropertyStr(ctx, g, "FileReader", f);
+}
 /* construct an inert constructor whose .prototype chains off `parent`
  * (or Object.prototype when parent is not an object). Returns an owned
  * function object; calling it yields undefined (see class_noop). */
@@ -3746,11 +3965,14 @@ static void install_dom_classes(JSContext *ctx) {
             "PointerEvent", "TouchEvent", "FocusEvent", "InputEvent",
             "WheelEvent", "UIEvent", "ProgressEvent", "ErrorEvent",
             "MessageEvent", "DragEvent", "AnimationEvent", "TransitionEvent",
-            "FormData", "Blob", "File", "FileReader", "URLSearchParams",
+            "File", "URLSearchParams",
             "IntersectionObserver", "ResizeObserver", "PerformanceObserver"
         };
         for (size_t i = 0; i < sizeof(plain) / sizeof(plain[0]); i++)
             add_global_class(ctx, g, plain[i], JS_UNDEFINED);
+        /* FormData / Blob / FileReader carry real state, so they are built
+         * explicitly rather than by the inert-stub loop above. */
+        nb_install_formdata_blob(ctx, g);
         /* MutationObserver / DOMParser are newable with instance methods */
         JSValue f = add_class(ctx, "MutationObserver", JS_UNDEFINED);
         JSValue p = JS_GetPropertyStr(ctx, f, "prototype");
