@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 #define STB_IMAGE_IMPLEMENTATION
 #include "../../../&.widgits/_shared-lib/stb_image.h"
+#include "../../../&.widgits/_shared-lib/csv_frames.c"      /* sprite.csv -> 16x24 3D walk frames (shared; also usable by any pet board) */
 
 #define XT 24
 #define S48 48
@@ -68,7 +69,7 @@ static void find_assets(void) {
     ASSETS[0] = 0;
 }
 
-typedef struct { int x, y, dir, room, r, g, b; char name[16]; char letter; } Pet;
+typedef struct { int x, y, dir, room, r, g, b, steps, art; char name[16]; char letter; } Pet;     /* art = 1: terumon frames exist, so events.txt names charset "terumon" and this index */
 static Pet pet[8];
 static char glyph[2][ROWS][COLS + 1];
 static int fs[2][ROWS][COLS], ws[2][ROWS][COLS];
@@ -148,9 +149,10 @@ static void write_events(void) {
         char p[PATH_MAX]; snprintf(p, sizeof p, "%s/pieces/system/maps/edit/%s/events.txt", PCHQ, page[d]);
         FILE *f = fopen(p, "w"); if (!f) continue;
         for (int i = 0; i < 8; i++) if (pet[i].room == d) {
-            int dir = (pet[i].dir & 3);
-            static const int dc[4] = {2, 4, 6, 8};
-            fprintf(f, "%d %d %d %d %d edit 0 %d %d %c\n", pet[i].x, pet[i].y, pet[i].r, pet[i].g, pet[i].b, dc[dir], pet[i].dir % 3, pet[i].letter);
+            static const int face[4] = {8, 6, 2, 4};      /* dir index 0 up, 1 right, 2 down, 3 left -> RPG Maker 8/6/2/4 */
+            int dir = pet[i].dir & 3;
+            if (pet[i].art) fprintf(f, "%d %d %d %d %d terumon %d 2 %d %c\n", pet[i].x, pet[i].y, pet[i].r, pet[i].g, pet[i].b, i, pet[i].steps % 3, pet[i].letter);      /* one front picture: always the front plane (a side facing plane is seen edge-on by the 3D camera) */
+            else fprintf(f, "%d %d %d %d %d edit 0 %d %d %c\n", pet[i].x, pet[i].y, pet[i].r, pet[i].g, pet[i].b, face[dir], pet[i].steps % 3, pet[i].letter);
         }
         fclose(f);
     }
@@ -181,7 +183,7 @@ static void step_all(void) {
         int occ = 0;
         for (int k = 0; k < 8; k++) if (k != i && pet[k].room == desk && pet[k].x == nx && pet[k].y == ny) occ = 1;
         if (occ) continue;
-        pet[i].x = nx; pet[i].y = ny; pet[i].dir = dir;
+        pet[i].x = nx; pet[i].y = ny; pet[i].dir = dir; pet[i].steps++;
     }
     write_events();
 }
@@ -234,6 +236,16 @@ int main(int argc, char **argv) {
         pet[i].x = sx[i]; pet[i].y = sy[i]; pet[i].room = 0; pet[i].dir = 0;
         pet[i].r = col[i][0]; pet[i].g = col[i][1]; pet[i].b = col[i][2];
         snprintf(pet[i].name, sizeof pet[i].name, "%s", nm[i]); pet[i].letter = let[i];
+    }
+    {   /* terumon art: app art/<id>.csv (copied from the pet folders, 64x64 sprite.csv) -> frames under <ASSETS>/../tsots-characters/frames; Ava has none yet and keeps her colour box */
+        static const char *art_id[8] = {"terumon_001_ember","terumon_002_glacine","terumon_003_murmur","terumon_004_solvent",0,"cursword","asa","robot_chat_001"};
+        char fd[PATH_MAX]; snprintf(fd, sizeof fd, "%s/../tsots-characters", ASSETS); mkdir(fd, 0755); snprintf(fd, sizeof fd, "%s/../tsots-characters/frames", ASSETS); mkdir(fd, 0755);
+        for (int i = 0; i < 8; i++) {
+            if (!art_id[i]) continue;
+            char cp[PATH_MAX]; int avg[3] = {pet[i].r, pet[i].g, pet[i].b}; snprintf(cp, sizeof cp, "%s/art/%s.csv", APP, art_id[i]);
+            if (csv_write_frames(cp, fd, "terumon", i, avg)) { pet[i].art = 1; pet[i].r = avg[0]; pet[i].g = avg[1]; pet[i].b = avg[2]; }
+            else fprintf(stderr, "rpg_edit: no art for %s (%s)\n", pet[i].name, cp);
+        }
     }
     srand((unsigned)time(NULL));
     write_events();
