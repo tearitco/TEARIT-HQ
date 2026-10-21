@@ -23,7 +23,7 @@ Three different bars, all of which have been confused in conversation:
 |---|---|---|
 | **Roadmap definition of done** | "a human can read a real content site without leaving the window" (`NETWORK-BROWSER-RENDER-ROADMAP-2026-10-05.md` header) | **MET** |
 | **Expanded scope commitment** (same file, "Maximal ambition mode") | "the full class of modern web pages, including Google-class JS apps (Gmail, GMaps, Photos-grade)" | **NOT MET** — and this is the gap §2 is about |
-| **Chrome-parity** | feature-for-feature against a desktop browser | **NOT MET, not the target** (stated non-goal in the roadmap) |
+| **Chrome-replaceable** (was "Chrome-parity", a non-goal until 2026-10-20) | the owner can use it instead of Chrome for everything | **NOT MET, and now THE target** (owner directive 2026-10-20). Sized backlog and rungs R1-R4: `08-roadmap/2026-10-20-CHROME-REPLACEMENT-SIZING.md` |
 
 Anyone reading this later should not take the first row as a claim about the
 second. The browser is a readable-content browser with real inline interaction,

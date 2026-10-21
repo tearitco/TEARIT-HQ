@@ -255,6 +255,8 @@ both `form` and `form-file` for one name let the PATH win.
 
 ## Non-goals, stated once
 
+**SUPERSEDED 2026-10-20 (owner): the goal is now a fully Chrome-replaceable browser; the first bullet below is no longer a non-goal. See `2026-10-20-CHROME-REPLACEMENT-SIZING.md` (sized backlog, four rungs, two open decisions).**
+
 - Chrome-pixel-parity for complex SPAs as a launch bar (incremental SPA
   support as we go and see fit — QuickJS bridge, box reflow, canvas/WebGL
   surfaces each land when they land; no page class is refused up front)
