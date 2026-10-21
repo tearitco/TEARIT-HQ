@@ -32,10 +32,31 @@ not at light speed."
    confirmed present 2026-09-10). Each caption is synthesized with
    edge_tts and burned onto the bottom of its frame.
 
+## Where the videos live
+
+The archive is outside the house git tree, next to the other Cursword
+media. Do not put the mp4s in the game app folders or in `xyzfs/users`.
+
+    /home/no/Desktop/🧩️Piecemark-IT/中.SP_00.00/🗡️.crswrd.media-archive
+
+`make_presentation_video.py` at that root is the canonical script.
+A second copy lives in the livedesk Cursword pal at
+`xyzfs/users/<id>/home/livedesk/pals/cursword/presentations/make_presentation_video.py`.
+Run the archive copy.
+
+One folder per proof, under the month-day the frames were taken:
+
+    October-20/game-dev-hq-progress-20261020/
+    October-20/rpg-pvp-hq-progress-20261020/
+
+Same shape as `August-26/events-hq-task2-test-20260826-211501` and
+`August-27/marketing-20260827`. A later "after" video, once a feature
+lands, is a new folder. It does not overwrite the progress cut.
+
 ## Directory shape (one dir per feature/proof)
 
 Media archive is organized by date (`August-26/<feature>/`,
-`August-27/<feature>/`, ...) or under `presentations/<feature>/`:
+`August-27/<feature>/`, `September-10/<feature>/`, ...) :
 
     <feature>/
       snapshots/01_<state>.png ...
