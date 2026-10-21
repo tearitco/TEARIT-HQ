@@ -71,16 +71,37 @@ Ava cast note, `47257dd34` the INT camera forward. Not pushed unless
 the owner asks. Commit with an explicit pathspec from that worktree.
 The live tree stays `claude`. Do not `git add -A`, stash, or reset.
 
-## Next push, in order
+## Added 2026-10-21 05:19 PDT — the map is not RPG Maker yet
 
-1. Confirm the owner can see the edit window (book `edit`, page
-   `start`). If the process is up and they still cannot see it, raise
-   that window. Do not open piececraft.
-2. When they name the TON file, swap `start` for that map. Keep the
-   eight footer names.
-3. Pet chrome (left acts, right chat, minimize, clock, INT) is the
-   must-have list in `16.game/PET-HQ-MUST-HAVES.md`. The edit board
-   is still the plain pc-hq template, not that chrome. Add it only
-   when they ask.
-4. Do not start a daemon, a party walker, or editor tools until they
-   ask.
+The owner said so. `start/map.txt` is still the 16x16 glyph patch.
+The next build of this board replaces that with the same kind of
+town the other pet boards use:
+
+- Buildings from RPG Maker overworld art (`World_B` cells, the way
+  `mcl-hq/rooms.pdl` `SCENERY` rows do). Not cobble blocks, not the
+  shooter's house stand-in.
+- Trees that stay trees (`Outside_B` on the other boards).
+- Rooms and doors. A door teleports in and out. The trigger is the
+  floor in front of the door. Same `ROOM` / `DOOR` / `SCENERY` row
+  shapes as `mcl-hq/rooms.pdl`.
+- The eight sprites wander: Ember, Glacine, Murmur, Solvent, Ava,
+  Cursword, Asa, robot. They are on the footer already. They do not
+  walk yet. There is no daemon. Do not use People4, Actor2, or Actor3.
+
+Book TON / page centroid-u is still not a file on disk. If the owner
+points at that floating-island picture, that page becomes the
+outside. Until then, build the town on book `edit` page `start`.
+
+## Later, this window is an editor
+
+Not in this pass. The owner said the same window will later work the
+way the palette tools and the events editor work: you edit an RPG
+game's events from it. Palettes pick the art. Events are the pages
+the pets already run (doors, speech, the walk). Do not invent a
+second event format. Do not build the editor until they ask. The
+town and the walking sprites come first.
+
+Hotbar `_` on this board was fixed in `b30627d89`. It writes
+`rpg-edit-hq/board/state/pchq/visible.txt`, not piececraft's. `grok`
+was pushed through that commit at 05:19. New commits still go on
+`grok` and are not pushed unless they ask again.
