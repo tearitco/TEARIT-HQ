@@ -29,6 +29,10 @@
         <item id="detach" label="Detach" action="${detach_action}"/>
         <item id="refresh" label="Refresh" action="${refresh_action}"/>
       </row>
+      <row class="toolbar">
+        <item id="loadgdh" label="Load game-dev-hq verbs" action="${load_gdh_action}"/>
+        <item id="loadrpg" label="Load rpg-pvp-hq verbs" action="${load_rpg_action}"/>
+      </row>
       <text label="Commands of the selected event (page_1; click one to select)" class="bp-head"/>
       <repeat count="${n_count}" bind="n">
         <item id="nd${n.#}" class="${n.class}" label="${n.label}" action="${n.action}"/>

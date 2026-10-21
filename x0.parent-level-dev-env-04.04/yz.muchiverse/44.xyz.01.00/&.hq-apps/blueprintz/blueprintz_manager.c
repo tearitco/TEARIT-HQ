@@ -17,6 +17,7 @@
 #include <time.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <dirent.h>
 #include <sys/wait.h>
 
 #define P 4400
@@ -220,6 +221,24 @@ static int split_typed(const char *t, const Nd *cur, char *type, size_t tn, char
     if (!bar) { snprintf(type, tn, "%s", t); params[0] = 0; return 1; }
     snprintf(type, tn, "%.*s", (int)(bar - t), t); snprintf(params, pn, "%s", bar + 1); return 1;
 }
+/* LOAD:<app> - make the page "every verb page of one game": rows EVENT | verb | @.apps/<app>/events/<verb> for each events/<verb>/event_pkg, sorted */
+static int cmp_s(const void *a, const void *b) { return strcmp((const char *)a, (const char *)b); }
+static void load_game(const char *app) {
+    if (!app[0] || !clean(app, 0)) { snprintf(msg, sizeof msg, "refused: bad game name"); return; }
+    char dir[P]; snprintf(dir, P, "%s/@.apps/%s/events", g_target, app);
+    DIR *d = opendir(dir); if (!d) { snprintf(msg, sizeof msg, "no events folder for %s (%s)", app, dir); return; }
+    static char names[MAXE][64]; int n = 0; struct dirent *de;
+    while ((de = readdir(d)) && n < MAXE) {
+        if (de->d_name[0] == '.' || strlen(de->d_name) >= 64) continue;
+        char t[P]; snprintf(t, P, "%s/%s/event_pkg/pages", dir, de->d_name); if (access(t, F_OK) == 0) snprintf(names[n++], 64, "%s", de->d_name);
+    }
+    closedir(d); qsort(names, (size_t)n, 64, cmp_s);
+    char out[P], tmp[P]; join(out, g_state, "bp_sources.pdl"); snprintf(tmp, P, "%s.tmp", out);
+    FILE *f = fopen(tmp, "w"); if (!f) { snprintf(msg, sizeof msg, "cannot write bp_sources.pdl"); return; }
+    for (int i = 0; i < n; i++) fprintf(f, "EVENT | %s | @.apps/%s/events/%s\n", names[i], app, names[i]);
+    fclose(f); rename(tmp, out); sel = 0; csel = -1; nU = 0;
+    snprintf(msg, sizeof msg, "loaded %d verb pages of %s (undo history cleared)", n, app);
+}
 static void edit_verb(const char *verb) {
     if (!nE) { snprintf(msg, sizeof msg, "no event selected"); return; }
     load_nodes();
@@ -293,6 +312,7 @@ static void write_ui(void) {
     }
     PUT("n_none=%s\n", nN ? "" : "this event has no commands on page_1");
     PUT("n_hint=%s\n", nN && csel >= 0 ? "type below: key=value|key=value  edits the selected command;  type|key=value  sets both" : "");
+    PUT("load_gdh_action=%s 'LOAD:game-dev-hq'\nload_rpg_action=%s 'LOAD:rpg-pvp-hq'\n", act, act);
     PUT("edit_action=%s 'EDIT'\nadd_action=%s 'ADD'\ncdel_action=%s 'CDEL'\nundo_action=%s 'UNDO'\nundo_line=undo steps: %d\n", act, act, act, act, nU);
     PUT("t_count=%d\n", ntrace);
     for (int i = 0; i < ntrace; i++) PUT("t_%d_label=%s\n", i, trace_rows[i]);
@@ -309,6 +329,7 @@ static void write_ui(void) {
 
 static void handle(const char *verb) {
     if (!strncmp(verb, "SEL:", 4)) { sel = atoi(verb + 4); csel = -1; snprintf(msg, sizeof msg, "selected"); return; }
+    if (!strncmp(verb, "LOAD:", 5)) { load_game(verb + 5); return; }
     if (!strncmp(verb, "CSEL:", 5) || !strncmp(verb, "EDIT:", 5) || !strncmp(verb, "ADD:", 4) || !strcmp(verb, "CDEL") || !strcmp(verb, "UNDO")) { edit_verb(verb); return; }
     if (!strcmp(verb, "REFRESH")) { snprintf(msg, sizeof msg, "refreshed"); return; }
     if (!strcmp(verb, "PLAY")) {
