@@ -50,24 +50,27 @@
         <text label="${chat_6}" class="rp-chat"/>
         <text label="${chat_7}" class="rp-chat"/>
       </row>
+      <row id="acts" class="canvas-overlay-bottom ov-chrome ov-slide-x rp-hotbar theme" show="${nav_table}">
+        <text label="play" class="hb-quiet ov-title theme-3"/>
+        <item id="nv-bet" class="hb-slot skin-bar" label="Bet" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' act bet" show="${nav_table}"/>
+        <item id="nv-hit" class="hb-slot skin-bar" label="Hit" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' act hit" show="${nav_bj}"/>
+        <item id="nv-stand" class="hb-slot skin-bar" label="Stand" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' act stand" show="${nav_bj}"/>
+        <item id="nv-double" class="hb-slot skin-bar" label="Double" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' act double" show="${nav_bj}"/>
+        <item id="nv-check" class="hb-slot skin-bar" label="Check" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' act check" show="${nav_hl}"/>
+        <item id="nv-call" class="hb-slot skin-bar" label="Call" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' act call" show="${nav_hl}"/>
+        <item id="nv-raise" class="hb-slot skin-bar" label="Raise" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' act raise" show="${nav_hl}"/>
+        <item id="nv-fold" class="hb-slot skin-bar" label="Fold" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' act fold" show="${nav_hl}"/>
+        <item id="nv-red" class="hb-slot skin-bar" label="Red" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' act red" show="${nav_rl}"/>
+        <item id="nv-black" class="hb-slot skin-bar" label="Black" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' act black" show="${nav_rl}"/>
+        <item id="nv-leave" class="hb-slot skin-bar" label="Leave" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' leave" show="${nav_table}"/>
+      </row>
     </panel>
     <footer id="statusbar" class="pchq-footer">
       <item id="chat-toggle" class="pchq-ft skin-bar" label="chat" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' toggle chat"/>
       <item id="left-toggle" class="pchq-ft skin-bar" label="info" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' toggle left"/>
       <repeat count="${n_party}" bind="party">
-        <item id="pt${party.#}" class="pchq-ft skin-bar ${party.cls}" label="${party.label}" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' select ${party.id}" show="${nav_room}"/>
+        <item id="pt${party.#}" class="pchq-ft skin-bar ${party.cls}" label="${party.label}" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' select ${party.id}"/>
       </repeat>
-      <item id="nv-bet" class="pchq-ft skin-bar" label="Bet" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' act bet" show="${nav_bj}${nav_hl}${nav_rl}${nav_sl}${nav_cr}"/>
-      <item id="nv-hit" class="pchq-ft skin-bar" label="Hit" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' act hit" show="${nav_bj}"/>
-      <item id="nv-stand" class="pchq-ft skin-bar" label="Stand" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' act stand" show="${nav_bj}"/>
-      <item id="nv-double" class="pchq-ft skin-bar" label="Double" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' act double" show="${nav_bj}"/>
-      <item id="nv-check" class="pchq-ft skin-bar" label="Check" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' act check" show="${nav_hl}"/>
-      <item id="nv-call" class="pchq-ft skin-bar" label="Call" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' act call" show="${nav_hl}"/>
-      <item id="nv-raise" class="pchq-ft skin-bar" label="Raise" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' act raise" show="${nav_hl}"/>
-      <item id="nv-fold" class="pchq-ft skin-bar" label="Fold" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' act fold" show="${nav_hl}"/>
-      <item id="nv-red" class="pchq-ft skin-bar" label="Red" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' act red" show="${nav_rl}"/>
-      <item id="nv-black" class="pchq-ft skin-bar" label="Black" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' act black" show="${nav_rl}"/>
-      <item id="nv-leave" class="pchq-ft skin-bar" label="Leave" action="'${HOUSE}/@.apps/bet-rpg/ops/+x/bet_rpg.+x' leave" show="${nav_bj}${nav_hl}${nav_rl}${nav_sl}${nav_cr}"/>
     </footer>
   </page>
 </window>
