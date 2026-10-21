@@ -37,7 +37,8 @@ command runs on.
 - `GAMES-ROADMAP.md` — milestones with proof/KPI, how to use/modify
   (filled as each lands), and the tangent documents to write. All
   rows start NOT BUILT.
-- `IMG-HAI-DESIGN.md`, `WORD-BANK-TO-IMAGE.md` - the text-to-image studio window
+- `IMG-HAI-DESIGN.md`, `WORD-BANK-TO-IMAGE.md` - the text-to-image studio window. It is an h-ai menu row now, not a toy.
+- `CHAR-CREATE-DESIGN.md` — a later h-ai window that writes `party.pdl` rows from arguments, a free sprite cell, or an img-hai draft. Not built.
   (img-hai) and the word-bank pipeline behind it. **The full handbook (user
   guide, code guide, extension recipes, testing, operations, handoff) lives
   with the app: `44.xyz.01.00/&.hq-apps/img-hai/docs/` (start at README.md);

@@ -1,0 +1,7 @@
+# Clock id is bet, root is this app's state/clock_root. It does not touch the shooter clock id rpg.
+AT | phase_dawn  | 06:00 | every:1day | sunrise
+AT | phase_day   | 08:00 | every:1day | day
+AT | phase_dusk  | 17:00 | every:1day | dusk
+AT | phase_night | 19:00 | every:1day | night, hotel bill is a later PR
+TURN | advance | 5m
+SPEED | min
