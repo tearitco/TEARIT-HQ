@@ -6941,7 +6941,7 @@ static JSValue nb_fetch_sync(JSContext *ctx, JSValueConst this_val, int argc, JS
                 fputs("write-out = \"%{http_code}\"\n", cf);
                 fclose(cf);
                 char cmd[2048];
-                snprintf(cmd, sizeof(cmd), "curl -sS -K '%s' 2>/dev/null", cfgpath);
+                snprintf(cmd, sizeof(cmd), "curl --compressed -sS -K '%s' 2>/dev/null", cfgpath);
                 FILE *po = popen(cmd, "r");
                 if (po) {
                     char code[16] = ""; size_t got = 0;
