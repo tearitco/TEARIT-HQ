@@ -1,0 +1,10 @@
+# page_1: Game Loop - runs every turn tick (parallel trigger)
+# Calls the dwarf-fortress game_loop.asm script via df_event.sh
+# The script reads input from interact_relay.txt and dispatches to piece methods
+exec cmd_1.sh
+exec cmd_2.sh
+exec cmd_3.sh
+exec cmd_4.sh
+exec cmd_5.sh
+exec cmd_6.sh
+halt

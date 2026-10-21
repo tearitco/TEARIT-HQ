@@ -1,0 +1,5 @@
+# page_1: Monster AI - runs every turn tick (parallel trigger)
+# Dispatches cataclysm-hq game_loop.asm then combat AI via relay event bus
+exec cmd_1.sh
+exec cmd_2.sh
+halt

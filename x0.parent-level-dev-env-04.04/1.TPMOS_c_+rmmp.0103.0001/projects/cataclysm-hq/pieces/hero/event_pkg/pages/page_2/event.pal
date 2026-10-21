@@ -1,0 +1,3 @@
+# page_2: Combat - on-click trigger, engages monster via game engine
+exec cmd_1.sh
+halt

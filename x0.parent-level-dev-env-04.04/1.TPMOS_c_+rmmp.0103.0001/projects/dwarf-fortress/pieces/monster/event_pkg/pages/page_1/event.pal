@@ -1,0 +1,7 @@
+# page_1: Goblin AI - runs every turn tick (parallel trigger)
+# Dispatches game_loop (turn increment + state sync) then goblin_ai (combat decisions)
+# via the relay event bus (interact_relay.txt)
+exec cmd_1.sh
+exec cmd_2.sh
+exec cmd_3.sh
+halt

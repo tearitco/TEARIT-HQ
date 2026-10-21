@@ -1,0 +1,3 @@
+# page_2: Look - on-click trigger, examines surroundings via game engine
+exec cmd_1.sh
+halt
