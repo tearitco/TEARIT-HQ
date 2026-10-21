@@ -28,9 +28,11 @@ not at light speed."
 2. `make_presentation_video.py` — canonical copy at the piecemark
    media-archive root; an identical copy lives at
    `livedesk/pals/cursword/presentations/make_presentation_video.py`.
-   Requires on PATH: `ffmpeg`, Pillow, `edge_tts`, `pydub` (all
-   confirmed present 2026-09-10). Each caption is synthesized with
-   edge_tts and burned onto the bottom of its frame.
+   Requires on PATH: `ffmpeg`, Pillow, `pydub`. Speech is the pet voice,
+   `@.apps/pet-trainer/ops/pet_tts_local.py` (Kokoro, offline). The
+   `--voice` name is an edge-style name from `voices.pdl` (`en-US-AnaNeural`
+   maps to `af_heart`). Edge speech itself has answered HTTP 403 since
+   2026-10-12 and is not used. The caption is also burned onto the frame.
 
 ## Where the videos live
 

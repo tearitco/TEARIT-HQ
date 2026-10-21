@@ -38,8 +38,8 @@ MANIFEST FORMAT (manifest.txt, one row per snapshot, in playback order):
 
 TTS (2026-08-25, direct instruction: "get tts output synch with the
 video that actually explains what the injection/harness is doing as it
-plays"): each caption is synthesized with edge_tts (same engine as
-1-1.HARNECIENT.SMOL/convert_one_session.py elsewhere in this house),
+plays"): each caption is synthesized with the pet voice
+(@.apps/pet-trainer/ops/pet_tts_local.py, Kokoro, offline),
 one clip per frame, silence-padded to exactly that frame's real hold
 duration so audio and video timing always match exactly. All
 intermediate audio files are deleted after muxing into
@@ -54,11 +54,12 @@ Usage:
 
 Requires: ffmpeg on PATH, Pillow (PIL) importable. Both confirmed present
 in this house's environment as of 2026-08-25. TTS additionally needs
-edge_tts + pydub importable (also confirmed present) - if either is
-missing, TTS is silently skipped with a warning, video still renders.
+pydub and the pet voice script. The --voice name is the edge-style
+name from voices.pdl (en-US-AnaNeural maps to af_heart). Edge speech
+answered HTTP 403 since 2026-10-12 and is not used. If the pet script
+or pydub is missing, TTS is skipped with a warning and the video still renders.
 """
 import argparse
-import asyncio
 import shutil
 import subprocess
 import sys
@@ -67,10 +68,13 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
+# Pets speak through pet_tts_local.py (Kokoro, offline).
+PET_TTS = Path(__file__).resolve().parents[7] / "44.xyz.01.00" / "@.apps" / "pet-trainer" / "ops" / "pet_tts_local.py"
+if not PET_TTS.is_file():
+    PET_TTS = Path("/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/@.apps/pet-trainer/ops/pet_tts_local.py")
 try:
-    import edge_tts
     from pydub import AudioSegment
-    TTS_AVAILABLE = True
+    TTS_AVAILABLE = PET_TTS.is_file()
 except ImportError:
     TTS_AVAILABLE = False
 
@@ -160,18 +164,15 @@ def render_captioned_frame(src_path: Path, caption: str, target_w: int, out_path
     canvas.save(out_path)
 
 
-async def _synthesize_one(text: str, voice: str, out_path: Path):
-    communicate = edge_tts.Communicate(text, voice)
-    await communicate.save(str(out_path))
-
-
 def synthesize_caption(caption: str, voice: str, out_path: Path) -> float:
-    """Render caption to out_path via edge_tts, return its duration in
-    seconds (0.0 if synthesis produced nothing - e.g. empty caption)."""
-    asyncio.run(_synthesize_one(caption, voice, out_path))
-    if not out_path.exists() or out_path.stat().st_size == 0:
-        return 0.0
-    return len(AudioSegment.from_mp3(str(out_path))) / 1000.0
+    """Speak the caption with the pet voice. Returns seconds, or 0 if it wrote nothing."""
+    proc = subprocess.run(
+        [sys.executable, str(PET_TTS), "--voice", voice, "--text", caption, "--write-media", str(out_path)],
+        capture_output=True, text=True,
+    )
+    if proc.returncode != 0 or not out_path.exists() or out_path.stat().st_size == 0:
+        raise RuntimeError((proc.stderr or proc.stdout or "pet tts wrote nothing")[-300:])
+    return len(AudioSegment.from_file(str(out_path))) / 1000.0
 
 
 def title_from_feature_name(feature_dir: Path) -> str:
@@ -226,8 +227,7 @@ def build_video(feature_dir: Path, fps: int, width: int, use_tts: bool, voice: s
 
     do_tts = use_tts and TTS_AVAILABLE
     if use_tts and not TTS_AVAILABLE:
-        print("warning: --tts requested but edge_tts/pydub not importable - "
-              "rendering a silent video instead", file=sys.stderr)
+        print("warning: pet voice or pydub is missing - rendering a silent video", file=sys.stderr)
 
     rendered_dir = feature_dir / ".rendered_frames"
     if rendered_dir.exists():
@@ -246,7 +246,7 @@ def build_video(feature_dir: Path, fps: int, width: int, use_tts: bool, voice: s
 
         frame_secs = secs
         if do_tts:
-            audio_path = rendered_dir / f"frame_{i:03d}.mp3"
+            audio_path = rendered_dir / f"frame_{i:03d}.wav"
             try:
                 dur = synthesize_caption(caption, voice, audio_path)
             except Exception as e:
@@ -255,7 +255,7 @@ def build_video(feature_dir: Path, fps: int, width: int, use_tts: bool, voice: s
             frame_secs = max(secs, dur + 0.6 if dur > 0 else secs)
             clip = AudioSegment.silent(duration=0)
             if dur > 0 and audio_path.exists():
-                clip = AudioSegment.from_mp3(str(audio_path))
+                clip = AudioSegment.from_file(str(audio_path))
             pad_ms = int(frame_secs * 1000) - len(clip)
             if pad_ms > 0:
                 clip = clip + AudioSegment.silent(duration=pad_ms)
@@ -340,7 +340,7 @@ def main():
     ap.add_argument("--no-tts", dest="tts", action="store_false", default=True,
                      help="render a silent video (default: narrate captions via TTS)")
     ap.add_argument("--voice", default=DEFAULT_VOICE,
-                     help=f"edge_tts voice name (default: {DEFAULT_VOICE})")
+                     help=f"pet voice name, edge-style from voices.pdl (default: {DEFAULT_VOICE})")
     ap.add_argument("--title", default=None,
                      help="YouTube-ready title (default: derived from the feature dir name)")
     args = ap.parse_args()
