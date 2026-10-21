@@ -1,4 +1,4 @@
-<!-- blueprintz.xhtpm - STATIC TEMPLATE. The page view and debugger (design: BOOK 08-roadmap/design-docs/BLUEPRINTZ-DESIGN.md sections 12.3-12.15).
+<!-- blueprintz.xhtpm - STATIC TEMPLATE. The page view and debugger (design: BOOK 08-roadmap/design-docs/BLUEPRINTZ-DESIGN.md sections 12.3-12.15, editing 12.22).
      The module tag forks blueprintz_manager.+x, which writes state/ui.txt. Left: every event of the page with its trigger and state (waiting / queued / running / ran);
      a "!! flags" mark means the problem scan found something. Right: debugger buttons (Play, Pause, Step event, Step command, Fire ...), the problems for the selected
      event, and the last trace rows. Page = state/bp_sources.pdl (EVENT | name | pkg_dir). Target house = state/target.pdl (test runs point it at a scratch house). -->
@@ -28,6 +28,19 @@
         <item id="abort" label="Abort" action="${abort_action}"/>
         <item id="detach" label="Detach" action="${detach_action}"/>
         <item id="refresh" label="Refresh" action="${refresh_action}"/>
+      </row>
+      <text label="Commands of the selected event (page_1; click one to select)" class="bp-head"/>
+      <repeat count="${n_count}" bind="n">
+        <item id="nd${n.#}" class="${n.class}" label="${n.label}" action="${n.action}"/>
+      </repeat>
+      <text label="${n_none}" class="quiet"/>
+      <text label="${n_hint}" class="quiet"/>
+      <cli_io id="editline" target_id="editline" rows="1" class="bp-edit top" label="edit selected ..." action="${edit_action}"/>
+      <cli_io id="addline" target_id="addline" rows="1" class="bp-edit top" label="add command ..." action="${add_action}"/>
+      <row class="toolbar">
+        <item id="cdel" label="Delete cmd" action="${cdel_action}"/>
+        <item id="undo" label="Undo" action="${undo_action}"/>
+        <text label="${undo_line}" class="quiet"/>
       </row>
       <text label="Problems for the selected event" class="bp-head"/>
       <repeat count="${f_count}" bind="f">

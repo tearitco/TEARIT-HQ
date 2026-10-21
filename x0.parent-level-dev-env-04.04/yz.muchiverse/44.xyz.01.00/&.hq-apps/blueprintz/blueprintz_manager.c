@@ -3,7 +3,7 @@
  * WHAT IT SHOWS: every event of one page (state/bp_sources.pdl rows  EVENT | name | pkg_dir ), with trigger, state (waiting / queued /
  *   running / ran) and problem flags, all read by ops/bp_scan; the debugger status and the last trace rows from bp_ctl.
  * VERBS (state/request.txt, appended by ops/bp_req, read by size growth): SEL:<i> PLAY STOPPLAY PAUSE RESUME DETACH STEPEV STEPCMD RUNEND
- *   ABORT FIRE REFRESH.  PLAY = the desktop play switch (mode=on in <target>/#.desktop/khtpm_play_mode.state.txt, the same file the player
+ *   ABORT FIRE REFRESH  CSEL:<id> EDIT:<typed> ADD:<typed> CDEL UNDO  (B4, design 12.22: edit the selected event's page_1 commands).  PLAY = the desktop play switch (mode=on in <target>/#.desktop/khtpm_play_mode.state.txt, the same file the player
  *   menu toggles) and fires the page's Autorun events once; events with other triggers stay "waiting" until a trigger comes or FIRE.
  * TARGET: state/target.pdl  (TARGET | house | <path>) points the controls and the scan at another house root, so a test never touches the live
  *   desktop switch or the real common events; missing = the house the window runs in.
@@ -30,6 +30,14 @@ static Ev E[MAXE]; static int nE = 0, sel = 0;
 static Fl F[MAXF]; static int nF = 0;
 static char msg[300] = "ready", ctl_status[600] = "", trace_rows[6][240]; static int ntrace = 0;
 static char last_ui[24000];
+
+/* ---- B4 editing: the commands (NODE rows) of the selected event's page_1, and an undo stack of inverse edits ---- */
+typedef struct { int id; char type[40], params[400]; } Nd;
+typedef struct { char pkg[P], label[64], mode[8], id[12], type[40], params[400]; } Undo;
+#define MAXN 64
+#define MAXU 16
+static Nd N[MAXN]; static int nN = 0, csel = -1;
+static Undo U[MAXU]; static int nU = 0;
 
 static void join(char *o, const char *a, const char *b) { snprintf(o, P, "%s/%s", a, b); }
 static long fsize(const char *p) { struct stat st; return stat(p, &st) == 0 ? (long)st.st_size : 0; }
@@ -152,6 +160,107 @@ static const char *first_trigger(const Ev *e, char *out, size_t n) {   /* "page_
     snprintf(out, n, "%s", c + 1); out[strcspn(out, ",")] = 0; return out;
 }
 
+
+/* ---- B4: command list + edits (every write goes through ops/bp_edit_op -> the events-hq manager; this file never writes an IR) ---- */
+static void load_nodes(void) {
+    nN = 0; if (!nE) return;
+    char p[P], l[900]; snprintf(p, P, "%s/event_pkg/pages/page_1/event.ir.pdl", E[sel].pkg);
+    FILE *f = fopen(p, "r"); if (!f) return;
+    while (fgets(l, sizeof l, f) && nN < MAXN) {
+        if (strncmp(l, "NODE", 4)) continue;
+        l[strcspn(l, "\r\n")] = 0;
+        char *idp = strstr(l, "id="), *tp = strstr(l, "type="), *bar = tp ? strstr(tp, " | ") : NULL;
+        if (!idp || !tp) continue;
+        N[nN].id = atoi(idp + 3);
+        snprintf(N[nN].type, sizeof N[nN].type, "%.*s", (int)(bar ? bar - (tp + 5) : (long)strlen(tp + 5)), tp + 5);
+        snprintf(N[nN].params, sizeof N[nN].params, "%s", bar ? trim(bar + 3) : "");
+        nN++;
+    }
+    fclose(f);
+    int ok = 0; for (int i = 0; i < nN; i++) if (N[i].id == csel) ok = 1;
+    if (!ok) csel = nN ? N[0].id : -1;
+}
+static Nd *node_by_id(int id) { for (int i = 0; i < nN; i++) if (N[i].id == id) return &N[i]; return NULL; }
+/* what a hand-typed value may contain: it ends up inside a single-quoted word of cmd_N.sh, so no quote, $, backtick, ; & or newline */
+static int clean(const char *s, int allow_params) {
+    for (; *s; s++) { unsigned char c = (unsigned char)*s;
+        if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-' || c == '.') continue;
+        if (allow_params && (c == ':' || c == ',' || c == '=' || c == '|' || c == '/' || c == ' ')) continue;
+        return 0; }
+    return 1;
+}
+/* a command type must be one the events-hq registry knows: an unknown type compiles to a page with no exec line (the silent failure of 2026-10-20) */
+static int known_type(const char *type) {
+    char p[P], l[600], want[80]; snprintf(p, P, "%s/#.ref/menu/event_commands.registry.pdl", g_target); snprintf(want, sizeof want, "COMMAND %s", type);
+    FILE *f = fopen(p, "r"); if (!f) return 1;      /* no registry readable: do not block, the manager decides */
+    int ok = 0; while (fgets(l, sizeof l, f)) { l[strcspn(l, "\r\n")] = 0; if (!strcmp(l, want)) { ok = 1; break; } }
+    fclose(f); return ok;
+}
+/* run bp_edit_op for the selected event; returns 0 when the manager applied it */
+static int do_edit(const char *mode, const char *id, const char *type, const char *params) {
+    char bin[P], out[P]; snprintf(bin, P, "%s/ops/+x/bp_edit_op.+x", g_pkg); join(out, g_state, "edit.out");
+    char pkg[P]; snprintf(pkg, P, "%s/event_pkg", E[sel].pkg);
+    char *av[10]; int n = 0; av[n++] = bin; av[n++] = g_target; av[n++] = pkg; av[n++] = E[sel].name; av[n++] = (char *)mode;
+    if (!strcmp(mode, "edit")) { av[n++] = (char *)id; av[n++] = (char *)type; av[n++] = (char *)params; }
+    else if (!strcmp(mode, "append")) { av[n++] = (char *)type; av[n++] = (char *)params; }
+    else av[n++] = (char *)id;
+    av[n] = NULL;
+    return run(av, out, 30);
+}
+static void push_undo(const char *mode, const char *id, const char *type, const char *params) {
+    if (nU == MAXU) { memmove(&U[0], &U[1], sizeof(Undo) * (MAXU - 1)); nU--; }
+    Undo *u = &U[nU++]; snprintf(u->pkg, P, "%s", E[sel].pkg); snprintf(u->label, 64, "%s", E[sel].name);
+    snprintf(u->mode, 8, "%s", mode); snprintf(u->id, 12, "%s", id); snprintf(u->type, 40, "%s", type); snprintf(u->params, 400, "%s", params);
+}
+static int max_id(void) { int m = 0; for (int i = 0; i < nN; i++) if (N[i].id > m) m = N[i].id; return m; }
+/* typed value -> type + params. "verb=advance|arg=" (first field has '=') keeps the selected command's type; "type|params" sets both. */
+static int split_typed(const char *t, const Nd *cur, char *type, size_t tn, char *params, size_t pn) {
+    const char *bar = strchr(t, '|'), *eq = strchr(t, '=');
+    if (eq && (!bar || eq < bar)) { if (!cur) return 0; snprintf(type, tn, "%s", cur->type); snprintf(params, pn, "%s", t); return 1; }
+    if (!bar) { snprintf(type, tn, "%s", t); params[0] = 0; return 1; }
+    snprintf(type, tn, "%.*s", (int)(bar - t), t); snprintf(params, pn, "%s", bar + 1); return 1;
+}
+static void edit_verb(const char *verb) {
+    if (!nE) { snprintf(msg, sizeof msg, "no event selected"); return; }
+    load_nodes();
+    if (!strncmp(verb, "CSEL:", 5)) { csel = atoi(verb + 5); snprintf(msg, sizeof msg, "command %d selected", csel); return; }
+    if (!strcmp(verb, "UNDO")) {
+        if (!nU) { snprintf(msg, sizeof msg, "nothing to undo"); return; }
+        Undo u = U[--nU]; int found = -1; for (int i = 0; i < nE; i++) if (!strcmp(E[i].pkg, u.pkg)) found = i;
+        if (found < 0) { snprintf(msg, sizeof msg, "undo: the event %s is not on this page any more", u.label); return; }
+        sel = found;
+        int rc = do_edit(u.mode, u.id, u.type, u.params);
+        if (rc) snprintf(msg, sizeof msg, "undo %s on %s FAILED (rc=%d), see state/edit.out", u.mode, u.label, rc);
+        else snprintf(msg, sizeof msg, "undone: %s on %s", u.mode, u.label);
+        load_nodes(); return;
+    }
+    Nd *cur = node_by_id(csel); char type[40], params[400], idb[12]; snprintf(idb, sizeof idb, "%d", csel);
+    if (!strcmp(verb, "CDEL")) {
+        if (!cur) { snprintf(msg, sizeof msg, "no command selected"); return; }
+        Nd old = *cur; int rc = do_edit("delete", idb, "", "");
+        if (rc) { snprintf(msg, sizeof msg, "delete FAILED (rc=%d), see state/edit.out", rc); return; }
+        push_undo("append", "", old.type, old.params); load_nodes();
+        snprintf(msg, sizeof msg, "deleted command %d (%s %s); undo puts it back at the end of the list", old.id, old.type, old.params); return;
+    }
+    int is_add = !strncmp(verb, "ADD:", 4); const char *typed = verb + (is_add ? 4 : 5);
+    if (!is_add && strncmp(verb, "EDIT:", 5)) { snprintf(msg, sizeof msg, "unknown verb %s", verb); return; }
+    if (!*typed) { snprintf(msg, sizeof msg, "type a value first"); return; }
+    if (!clean(typed, 1)) { snprintf(msg, sizeof msg, "refused: only letters, digits and _ - . : , = | / space are allowed"); return; }
+    if (!split_typed(typed, is_add ? NULL : cur, type, sizeof type, params, sizeof params) || !*type || !clean(type, 0)) { snprintf(msg, sizeof msg, "need  type|params  (or key=value|key=value for the selected command)"); return; }
+    if (!known_type(type)) { snprintf(msg, sizeof msg, "refused: '%s' is not a command type in the events-hq registry (#.ref/menu/event_commands.registry.pdl)", type); return; }
+    if (is_add) {
+        int before = max_id(), rc = do_edit("append", "", type, params);
+        if (rc) { snprintf(msg, sizeof msg, "add FAILED (rc=%d), see state/edit.out", rc); return; }
+        load_nodes(); int nid = max_id(); if (nid > before) { char b[12]; snprintf(b, sizeof b, "%d", nid); push_undo("delete", b, "", ""); csel = nid; }
+        snprintf(msg, sizeof msg, "added command %d: %s %s", nid, type, params); return;
+    }
+    if (!cur) { snprintf(msg, sizeof msg, "no command selected"); return; }
+    Nd old = *cur; int rc = do_edit("edit", idb, type, params);
+    if (rc) { snprintf(msg, sizeof msg, "edit FAILED (rc=%d), see state/edit.out", rc); return; }
+    push_undo("edit", idb, old.type, old.params); load_nodes();
+    snprintf(msg, sizeof msg, "command %d: %s %s  ->  %s %s", old.id, old.type, old.params, type, params);
+}
+
 /* ---- ui.txt ---- */
 static void write_ui(void) {
     static char buf[24000]; size_t o = 0;
@@ -175,6 +284,16 @@ static void write_ui(void) {
         int j = 0; for (int i = 0; i < nF; i++) if (!strcmp(F[i].ev, E[sel].name)) { PUT("f_%d_label=FLAG %s  %s: %s\n", j, F[i].code, F[i].page, F[i].detail); j++; }
         if (!k) PUT("f_none=no problems found for this event\n"); else PUT("f_none=\n");
     } else { PUT("sel_line=no events: put EVENT rows in state/bp_sources.pdl\nf_count=0\nf_none=\n"); }
+    load_nodes();
+    PUT("n_count=%d\n", nN);
+    for (int i = 0; i < nN; i++) {
+        PUT("n_%d_label=%s%d  %s  %s\n", i, N[i].id == csel ? "* " : "  ", N[i].id, N[i].type, N[i].params);
+        PUT("n_%d_class=%s\n", i, N[i].id == csel ? "bp-node active" : "bp-node");
+        PUT("n_%d_action=%s 'CSEL:%d'\n", i, act, N[i].id);
+    }
+    PUT("n_none=%s\n", nN ? "" : "this event has no commands on page_1");
+    PUT("n_hint=%s\n", nN && csel >= 0 ? "type below: key=value|key=value  edits the selected command;  type|key=value  sets both" : "");
+    PUT("edit_action=%s 'EDIT'\nadd_action=%s 'ADD'\ncdel_action=%s 'CDEL'\nundo_action=%s 'UNDO'\nundo_line=undo steps: %d\n", act, act, act, act, nU);
     PUT("t_count=%d\n", ntrace);
     for (int i = 0; i < ntrace; i++) PUT("t_%d_label=%s\n", i, trace_rows[i]);
     static const char *verbs[][2] = { {"play","PLAY"}, {"stopplay","STOPPLAY"}, {"pause","PAUSE"}, {"resume","RESUME"}, {"stepev","STEPEV"}, {"stepcmd","STEPCMD"},
@@ -189,7 +308,8 @@ static void write_ui(void) {
 }
 
 static void handle(const char *verb) {
-    if (!strncmp(verb, "SEL:", 4)) { sel = atoi(verb + 4); snprintf(msg, sizeof msg, "selected"); return; }
+    if (!strncmp(verb, "SEL:", 4)) { sel = atoi(verb + 4); csel = -1; snprintf(msg, sizeof msg, "selected"); return; }
+    if (!strncmp(verb, "CSEL:", 5) || !strncmp(verb, "EDIT:", 5) || !strncmp(verb, "ADD:", 4) || !strcmp(verb, "CDEL") || !strcmp(verb, "UNDO")) { edit_verb(verb); return; }
     if (!strcmp(verb, "REFRESH")) { snprintf(msg, sizeof msg, "refreshed"); return; }
     if (!strcmp(verb, "PLAY")) {
         set_play(1); int n = 0;
