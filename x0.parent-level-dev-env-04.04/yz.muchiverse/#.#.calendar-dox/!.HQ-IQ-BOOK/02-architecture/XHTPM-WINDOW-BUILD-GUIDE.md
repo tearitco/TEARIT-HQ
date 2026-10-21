@@ -2,6 +2,8 @@
 
 Written 2026-10-20 by the `claude` engineer (Sonnet 5.5), from building the blueprintz window and its edit panel (BLUEPRINTZ-DESIGN.md 12.16 and 12.22) and from the verb-page work (16.game/EVENT-VERB-PAGES-DESIGN.md). Every rule below is something that was done or hit in those files; the path of each is given so you can open the real thing. This guide does not replace `CENTROID_GOLD_STD.md`, `X11-HQ-APP-DESIGN-WISDOMS.md` or `RELAY-DRIVE.md`; read those first, this is the worked example that sits on top of them.
 
+What the window edits (event pages, pal, prisc, C ops) is explained in BLUEPRINT-EVENT-PAGES-GUIDE.md.
+
 Reference app: `44.xyz.01.00/&.hq-apps/blueprintz/` (`blueprintz.xhtpm`, `blueprintz.css`, `blueprintz_manager.c`, `ops/bp_req.c`, `ops/bp_edit_op.c`, `ops/build.sh`, `button.sh`).
 
 ## 1. The shape: three parts, no new renderer code
