@@ -19,8 +19,8 @@
 #define MAXR 16
 #define MAXD 24
 #define MAXS 16
-#define FW 512
-#define FH 320
+#define FW 1100
+#define FH 520
 static char HOUSE[PATH_MAX], APP[PATH_MAX], ST[PATH_MAX], SELF[PATH_MAX];
 static char LC[PATH_MAX], CROOT[PATH_MAX], CFILE[PATH_MAX];
 typedef struct { char id[16], name[32]; int fc, fr, over, cols, rows, tw; } Room;
@@ -29,6 +29,9 @@ typedef struct { int room, c, r, w, h, x, y; char sheet[24]; } Scen;
 typedef struct { char name[24], id[16], sheet[24], room[16]; int idx, ri, x, y; } Pet;
 static Pet party[NP]; static int nparty, active;
 static void chat_line(const char *s);
+static int casino_room(const char *id);
+static void load_seat(char *id, char *game);
+static void save_seat(const char *id, const char *game);
 static Room rooms[MAXR]; static int nroom;
 static Door doors[MAXD]; static int ndoor;
 static Scen scen[MAXS]; static int nscen;
@@ -139,7 +142,9 @@ static void step_one(Pet *a) {
 }
 static void step_pets(void) {
     int hold = flag_int();
-    for (int i = 0; i < nparty; i++) { if (hold && i == active) continue; if (party[i].ri < 0) continue; step_one(&party[i]); }
+    char sid[16], sg[16]; load_seat(sid, sg);
+    for (int i = 0; i < nparty; i++) { if (hold && i == active) continue; if (sid[0] && !strcmp(party[i].id, sid)) continue; if (party[i].ri < 0) continue; step_one(&party[i]); }
+    if (sid[0]) { for (int i = 0; i < nparty; i++) if (!strcmp(party[i].id, sid) && !casino_room(party[i].room)) save_seat("", ""); }
     save_pets();
 }
 static int read_file(const char *p, char *b, int n) { FILE *f = fopen(p, "r"); if (!f) { b[0] = 0; return 0; } int k = (int)fread(b, 1, n - 1, f); b[k] = 0; fclose(f); return k; }
@@ -203,14 +208,46 @@ static int find_assets(char *out, int n) {
     }
     return 0;
 }
+static int casino_room(const char *id) { return id && (!strcmp(id, "pier") || !strcmp(id, "mid") || !strcmp(id, "grand")); }
+static void load_seat(char *id, char *game) {
+    id[0] = game[0] = 0; char p[PATH_MAX], b[40]; snprintf(p, sizeof p, "%s/seat.txt", ST); FILE *f = fopen(p, "r");
+    if (f) { if (fgets(b, sizeof b, f)) sscanf(b, "%15s %15s", id, game); fclose(f); }
+}
+static void save_seat(const char *id, const char *game) {
+    char p[PATH_MAX]; snprintf(p, sizeof p, "%s/seat.txt", ST); FILE *f = fopen(p, "w");
+    if (f) { if (id && id[0]) fprintf(f, "%s %s\n", id, game); fclose(f); }
+}
+static void rect(int x, int y, int w, int h, int r, int g, int b) {
+    if (x < 0) { w += x; x = 0; } if (y < 0) { h += y; y = 0; }
+    if (x + w > FW) w = FW - x; if (y + h > FH) h = FH - y; if (w < 1 || h < 1) return;
+    for (int yy = y; yy < y + h; yy++) for (int xx = x; xx < x + w; xx++) { unsigned char *q = fr + ((size_t)yy * FW + xx) * 4; q[0] = (unsigned char)r; q[1] = (unsigned char)g; q[2] = (unsigned char)b; q[3] = 255; }
+}
+static void paint_table(const char *game) {
+    rect(0, 0, FW, FH, 10, 62, 32);
+    rect(70, 36, FW - 140, FH - 72, 14, 92, 46);
+    if (!strcmp(game, "bj")) { rect(FW / 2 - 40, 70, 80, 110, 236, 236, 230); rect(FW / 2 - 100, FH - 200, 80, 110, 236, 236, 230); rect(FW / 2 + 20, FH - 200, 80, 110, 236, 236, 230); }
+    else if (!strcmp(game, "hl")) { for (int i = 0; i < 5; i++) rect(160 + i * 150, FH / 2 - 60, 90, 120, 236, 236, 230); }
+    else if (!strcmp(game, "rl")) { int cx = FW / 2, cy = FH / 2; for (int y = cy - 180; y < cy + 180; y++) for (int x = cx - 180; x < cx + 180; x++) { int d = (x - cx) * (x - cx) + (y - cy) * (y - cy); if (d < 180 * 180 && d > 70 * 70) { int red = ((x + y) / 28) & 1; rect(x, y, 1, 1, red ? 150 : 20, red ? 24 : 20, red ? 24 : 20); } } rect(cx - 8, cy - 8, 16, 16, 240, 240, 240); }
+    else if (!strcmp(game, "sl")) { for (int i = 0; i < 3; i++) rect(FW / 2 - 220 + i * 160, FH / 2 - 90, 120, 180, 30, 30, 36); }
+    else { rect(FW / 2 - 140, FH / 2 - 50, 80, 80, 236, 236, 230); rect(FW / 2 + 40, FH / 2 - 50, 80, 80, 236, 236, 230); }
+}
 static void paint(void) {
     if (!fr) fr = calloc((size_t)FW * FH, 4);
     if (!fr) return;
     memset(fr, 0, (size_t)FW * FH * 4);
     char assets[PATH_MAX], path[PATH_MAX];
     if (!find_assets(assets, sizeof assets) || nroom < 1) return;
+    char seat_id[16], seat_game[16]; load_seat(seat_id, seat_game);
+    if (nparty && seat_id[0] && !strcmp(seat_id, party[active].id) && seat_game[0]) {
+        paint_table(seat_game);
+        char raw[PATH_MAX], rec[PATH_MAX]; snprintf(raw, sizeof raw, "%s/scene.raw", ST); snprintf(rec, sizeof rec, "%s/scene.receipt.txt", ST);
+        FILE *sf = fopen(raw, "wb"); if (sf) { fwrite(fr, 1, (size_t)FW * FH * 4, sf); fclose(sf); }
+        sf = fopen(rec, "w"); if (sf) { fprintf(sf, "frame_w=%d\nframe_h=%d\n", FW, FH); fclose(sf); }
+        return;
+    }
     int v = party[active].ri; if (v < 0 || v >= nroom) v = 0;
     Room *rm = &rooms[v]; int tw = rm->tw > 0 ? rm->tw : 32;
+    { int twx = rm->cols > 0 ? FW / rm->cols : tw, twy = rm->rows > 0 ? FH / rm->rows : tw; if (twx > 8 && twy > 8) tw = twx < twy ? twx : twy; }
     int ox = (FW - rm->cols * tw) / 2; if (ox < 0) ox = 0;
     int oy = (FH - rm->rows * tw) / 2; if (oy < 0) oy = 0;
     int w, h, n;
@@ -273,9 +310,12 @@ static void write_ui(const char *note) {
     fprintf(f, "left_visible=%s\nchat_visible=%s\nhb_visible=%s\n", flag_on("left", 1) ? "1" : "", flag_on("chat", 1) ? "1" : "", flag_on("hb", 1) ? "1" : "");
     fprintf(f, "n_party=%d\n", nparty);
     int v = nparty ? party[active].ri : 0; if (v < 0 || v >= nroom) v = 0;
-    fprintf(f, "room_line=%s\n", nroom ? rooms[v].name : "-");
+    { char sid[16], sg[16]; load_seat(sid, sg); int seated = nparty && sid[0] && !strcmp(sid, party[active].id);
+      if (seated) fprintf(f, "room_line=%s at %s\n", party[active].name, sg);
+      else fprintf(f, "room_line=%s\n", nroom ? rooms[v].name : "-");
+      fprintf(f, "nav_room=%s\nnav_bj=%s\nnav_hl=%s\nnav_rl=%s\nnav_sl=%s\nnav_cr=%s\n", seated ? "" : "1", seated && !strcmp(sg, "bj") ? "1" : "", seated && !strcmp(sg, "hl") ? "1" : "", seated && !strcmp(sg, "rl") ? "1" : "", seated && !strcmp(sg, "sl") ? "1" : "", seated && !strcmp(sg, "cr") ? "1" : ""); }
     for (int i = 0; i < nparty; i++) {
-        fprintf(f, "pet_%d_label=%s\npet_%d_id=%s\nwalk_%d_where=%s in %s\n", i, party[i].name, i, party[i].id, i, party[i].name, party[i].room);
+        fprintf(f, "pet_%d_label=%s\npet_%d_id=%s\nwalk_%d_where=%s in %s\nwalk_%d_id=%s\n", i, party[i].name, i, party[i].id, i, party[i].name, party[i].room, i, party[i].id);
         fprintf(f, "party_%d_label=%s\nparty_%d_id=%s\nparty_%d_cls=%s\n", i, party[i].name, i, party[i].id, i, i == active ? "active" : "");
     }
     { char cp[PATH_MAX], cb[2400]; snprintf(cp, sizeof cp, "%s/chat.txt", ST); read_file(cp, cb, sizeof cb); char *ln[8] = {0}; int k = 0; for (char *l = strtok(cb, "\n"); l; l = strtok(NULL, "\n")) { ln[k % 8] = l; k++; } for (int i = 0; i < 8; i++) { int j = k - 8 + i; fprintf(f, "chat_%d=%s\n", i, j >= 0 ? ln[j % 8] : ""); } }
@@ -292,6 +332,14 @@ static void verb(int argc, char **argv) {
     else if (!strcmp(v, "select") && argc > 1) { for (int i = 0; i < nparty; i++) if (!strcmp(party[i].id, argv[1])) { active = i; save_active(); snprintf(note, sizeof note, "selected %s", party[i].name); } }
     else if (!strcmp(v, "toggle") && argc > 1) { int on = !flag_on(argv[1], 1); set_flag(argv[1], on); snprintf(note, sizeof note, "%s %s", argv[1], on ? "on" : "off"); }
     else if (!strcmp(v, "say") && argc > 1) { char b[200]; snprintf(b, sizeof b, "%s: %s", nparty ? party[active].name : "?", argv[1]); chat_line(b); snprintf(note, sizeof note, "said"); }
+    else if (!strcmp(v, "clearchat")) { char p[PATH_MAX]; snprintf(p, sizeof p, "%s/chat.txt", ST); FILE *cf = fopen(p, "w"); if (cf) fclose(cf); snprintf(note, sizeof note, "chat cleared"); }
+    else if (!strcmp(v, "play") && argc > 1) {
+        const char *g = argv[1]; int ok = !strcmp(g, "bj") || !strcmp(g, "hl") || !strcmp(g, "rl") || !strcmp(g, "sl") || !strcmp(g, "cr");
+        if (!nparty || !ok || !casino_room(party[active].room)) snprintf(note, sizeof note, "sit inside a casino first");
+        else { save_seat(party[active].id, g); set_int(1); char b[80]; snprintf(b, sizeof b, "%s sits for %s", party[active].name, g); chat_line(b); snprintf(note, sizeof note, "%s", b); }
+    }
+    else if (!strcmp(v, "leave")) { save_seat("", ""); set_int(0); snprintf(note, sizeof note, "left the table"); }
+    else if (!strcmp(v, "act") && argc > 1) { char sid[16], sg[16], b[80]; load_seat(sid, sg); if (!nparty || strcmp(sid, party[active].id)) snprintf(note, sizeof note, "nobody is sitting"); else { snprintf(b, sizeof b, "%s %s", party[active].name, argv[1]); chat_line(b); snprintf(note, sizeof note, "%s", b); } }
     else if (!strcmp(v, "help")) snprintf(note, sizeof note, "see help.txt");
     else if (!strcmp(v, "step")) { step_pets(); snprintf(note, sizeof note, "one step"); }
     else if (!strcmp(v, "door") && argc > 1) {
@@ -305,7 +353,7 @@ static void resident(void) {
     load_party(); clock_ensure(); mkdir(ST, 0755); int n = 0;
     for (;;) {
         if ((n++ % 5) == 0) { lc_run("step", "5", NULL, NULL); clock_ui(); }
-        step_pets(); paint(); write_ui("pets walking the island");
+        load_party(); step_pets(); paint(); write_ui("pets walking the island");
         sleep(1);
     }
 }
