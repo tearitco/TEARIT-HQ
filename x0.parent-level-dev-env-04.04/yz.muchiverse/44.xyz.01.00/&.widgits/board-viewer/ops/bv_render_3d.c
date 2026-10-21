@@ -361,6 +361,9 @@ typedef struct {
     int ev_n;
     char *glyph;            /* map.txt, w*h. 3D height comes from extrusion.pdl, not from the flat 2D picture. */
     unsigned char zh[128];  /* extrusion height for each glyph. 0 = no row. */
+    unsigned char hole[128]; /* 1 = EXTRUDE value "hole": no block at all in that cell (the sky shows through). */
+    unsigned char depth[128]; /* DEPTH row: blocks hung BELOW the floor (negative z levels), the float depth of an island. */
+    int zoff;               /* the deepest DEPTH in use: every grid level and every box is lifted by this so levels below the floor have a place. */
     unsigned char draw[128]; /* 1 = EXTRUDE value "sprite": opaque pixels of the cell picture, same as a person. */
 } MakerAtlas;
 static MakerAtlas g_mk;
@@ -503,13 +506,16 @@ static int maker_load(const char *root) {
     if (f) {
         char mline[256];
         while (fgets(mline, sizeof mline, f)) {
-            if (!strstr(mline, "EXTRUDE")) continue;
+            int is_depth = strstr(mline, "DEPTH") != NULL;
+            if (!is_depth && !strstr(mline, "EXTRUDE")) continue;
             char *bar = strchr(mline, '|'); if (!bar) continue;
             bar++; while (*bar == ' ') bar++;
             char g = *bar; char *bar2 = strchr(bar, '|');
             if (bar2 && g > 32 && g < 127) {
                 char *val = bar2 + 1; while (*val == ' ' || *val == '\t') val++;
-                if (strncmp(val, "sprite", 6) == 0) g_mk.draw[(unsigned char)g] = 1;
+                if (is_depth) { int dv = atoi(val); if (dv > 0 && dv <= 16) { g_mk.depth[(unsigned char)g] = (unsigned char)dv; if (dv > g_mk.zoff) g_mk.zoff = dv; } }
+                else if (strncmp(val, "hole", 4) == 0) g_mk.hole[(unsigned char)g] = 1;
+                else if (strncmp(val, "sprite", 6) == 0) g_mk.draw[(unsigned char)g] = 1;
                 else { int hv = atoi(val); if (hv > 0 && hv <= 64) g_mk.zh[(unsigned char)g] = (unsigned char)hv; }
             }
         }
@@ -3649,8 +3655,8 @@ static int render_one_frame(void) {
                     }
                     size_t src = ((size_t)my * g_mk.w + (size_t)mx) * 2;
                     if (h <= 1 && !sprite && my >= 0 && my < g_mk.h && mx >= 0 && mx < g_mk.w && g_mk.cells[src + 1]) h = 3;
-                    if (h > MAX_VOXEL_Z) h = MAX_VOXEL_Z;
-                    if (h > z_count) z_count = h;
+                    if (h > MAX_VOXEL_Z - g_mk.zoff) h = MAX_VOXEL_Z - g_mk.zoff;
+                    if (h + g_mk.zoff > z_count) z_count = h + g_mk.zoff;
                 }
             memset(gpu_grid, 0, (size_t)vww * (size_t)vwh * (size_t)z_count);
             for (int row = 0; row < vwh; row++)
@@ -3666,8 +3672,15 @@ static int render_one_frame(void) {
                         else if (zg < 128 && g_mk.zh[zg] > 1) h = g_mk.zh[zg];
                     }
                     if (h <= 1 && !sprite && my >= 0 && my < g_mk.h && mx >= 0 && mx < g_mk.w && g_mk.cells[src + 1]) h = 3;
-                    if (h > z_count) h = z_count;
-                    for (int lvl = 0; lvl < h; lvl++) gpu_grid[col + row * vww + lvl * vww * vwh] = 1;
+                    {   /* holes have no block; DEPTH hangs blocks below the floor level (level zoff) */
+                        int zo = g_mk.zoff, lo = zo, hi = zo + h, hole = 0;
+                        if (g_mk.glyph && mx >= 0 && my >= 0 && mx < g_mk.w && my < g_mk.h) {
+                            unsigned char zg = (unsigned char)g_mk.glyph[my * g_mk.w + mx];
+                            if (zg < 128) { hole = g_mk.hole[zg]; lo = zo - g_mk.depth[zg]; }
+                        }
+                        if (hi > z_count) hi = z_count;
+                        if (!hole) for (int lvl = lo; lvl < hi; lvl++) gpu_grid[col + row * vww + lvl * vww * vwh] = 1;
+                    }
                     if (cropped || card_furn) {
                         unsigned short fl = g_mk.cells[src], wl = g_mk.cells[src + 1];
                         if (furn) { fl = 0; wl = 0; }   /* the cube's tile moves onto the card */
@@ -3680,7 +3693,7 @@ static int render_one_frame(void) {
             sc.legend_n = 1; sc.legend_glyph[0] = 1;
             sc.legend_rgb[0][0] = sc.legend_rgb[0][1] = sc.legend_rgb[0][2] = 0.5f;
             sc.legend_has_tex[0] = 0;
-            sc.maker = 1; sc.maker_id = g_mk.id + (card_furn ? 100000 : 0);
+            sc.maker = 1; sc.maker_id = g_mk.id + (card_furn ? 100000 : 0); sc.zoff = g_mk.zoff;
             sc.atlas = g_mk.atlas; sc.atlas_w = g_mk.aw; sc.atlas_h = g_mk.ah; sc.atlas_cols = g_mk.cols; sc.tile_px = g_mk.tile_px;
             sc.cells = (cropped || card_furn) ? view_cells : g_mk.cells;
             sc.cells_w = vww; sc.cells_h = vwh;
@@ -3999,6 +4012,10 @@ static int render_one_frame(void) {
         #undef ADDWIRE_THIN
         #undef ADDWIRE
         #undef ADDBOX
+        if (sc.maker && g_mk.zoff) {      /* everything stands on level zoff now, not level 0 */
+            sc.eye[1] += (float)g_mk.zoff;
+            for (int bi = 0; bi < sc.box_n; bi++) { sc.box[bi].min_y += (float)g_mk.zoff; sc.box[bi].max_y += (float)g_mk.zoff; }
+        }
         if (vox || voy) {
             for (int bi = 0; bi < sc.box_n; bi++) {
                 sc.box[bi].min_x -= (float)vox; sc.box[bi].max_x -= (float)vox;

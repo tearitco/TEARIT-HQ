@@ -1,5 +1,6 @@
-/* rpg_edit.c — town for the edit board. One outdoor page (start) and one
- * cabin. RPG Maker tiles. Eight sprites walk. Ava uses the door and the
+/* rpg_edit.c — floating-island town for the edit board (BOOK 16.game/
+ * EDIT-ISLANDS-DESIGN.md). One outdoor page (start: five islands joined by
+ * bridges, one building and one door each) and one shared interior (cabin). RPG Maker tiles. Eight sprites walk. Ava uses the door and the
  * board page follows her. No camera math. No People4, Actor2, or Actor3.
  *   rpg_edit.+x <house> <app>     resident
  */
@@ -17,8 +18,8 @@
 
 #define XT 24
 #define S48 48
-#define COLS 16
-#define ROWS 12
+#define COLS 24
+#define ROWS 17
 #define MAXSLOT 64
 
 static char HOUSE[PATH_MAX], APP[PATH_MAX], ASSETS[PATH_MAX], PCHQ[PATH_MAX];
@@ -101,6 +102,68 @@ static void stamp(int desk, Sheet *s, int c, int r, int w, int h, int x, int y, 
     }
 }
 
+/* The island page, drawn in EDIT-ISLANDS-DESIGN.md section 2: G grass, p path, T pine, B building, D door, ~ water, b bridge, s ramp, F fire, S sign, r rubble, . sky */
+static const char *ISL[ROWS] = {
+    "........................",
+    "..GBBSGGG...GBBGGGTT....",
+    "TGGBBGGGGbbbGBBGGGGT.GBB",
+    "..GTDGGTG...GGDGGGGGbGBB",
+    "..GGGGGGG....GGGGGb..GGD",
+    ".........BBTT.....bb....",
+    ".........BB~~......b....",
+    ".........GDGG......b....",
+    "...........b.......b....",
+    "..r.r...GBBGGG..GGGGG...",
+    "...r....GBBFGG..GGGTG...",
+    ".....r..GTDGGGGGGGGGG...",
+    "...r....GGpppppGGTGGs...",
+    "........TGGGGGppppGGG...",
+    "........GGGGGTGGGpGGG...",
+    "........GGGGGGGGGGGGG...",
+    "........................" };
+typedef struct { int x, y, bx, by, wx, wy; const char *name; } Bld;      /* building top-left, World_B cell (col,row) */
+static const Bld bld[5] = {{9, 9, 8, 0, 0, 0, "cabin"}, {3, 1, 6, 11, 0, 0, "bank"}, {13, 1, 0, 7, 0, 0, "store"}, {9, 5, 4, 7, 0, 0, "school"}, {22, 2, 4, 11, 0, 0, "hotel"}};
+static int doorx[8], doory[8], ndoor, lastdoor;
+static void solid(int desk, int x, int y, char g, int r, int gr, int b, int plank, int tall) {
+    unsigned char t[XT * XT * 4];
+    for (int i = 0; i < XT * XT; i++) {
+        int sh = ((i * 2654435761u) >> 28) % 7 - 3, dk = (plank && ((i / XT) % 6 == 5)) ? -30 : 0;
+        t[i * 4] = (unsigned char)(r + sh + dk); t[i * 4 + 1] = (unsigned char)(gr + sh + dk); t[i * 4 + 2] = (unsigned char)(b + sh + dk); t[i * 4 + 3] = 255;
+    }
+    glyph[desk][y][x] = g; if (tall) ws[desk][y][x] = slot_of(t); else fs[desk][y][x] = slot_of(t);
+}
+static void paint_islands(Sheet *wb, Sheet *ob, Sheet *door) {
+    int grass = fs[0][0][0];
+    for (int y = 0; y < ROWS; y++) for (int x = 0; x < COLS; x++) {
+        char c = ISL[y][x]; glyph[0][y][x] = c; fs[0][y][x] = grass; ws[0][y][x] = 0;
+        switch (c) {
+        case '.': glyph[0][y][x] = '_'; fs[0][y][x] = 0; break;      /* the void is a hole: extrusion.pdl `_ | hole` leaves the cell without a block, so the sky shows */
+        case '~': solid(0, x, y, '~', 50, 110, 200, 0, 0); break;
+        case 'p': solid(0, x, y, 'p', 214, 190, 130, 0, 0); break;
+        case 'r': solid(0, x, y, 'r', 190, 165, 110, 0, 0); break;
+        case 'b': case 's': solid(0, x, y, c, 150, 100, 55, 1, 0); break;
+        case 'T': case 'B': case 'D': case 'S': case 'F': glyph[0][y][x] = 'G'; break;
+        }
+    }
+    for (int i = 0; i < 5; i++) stamp(0, wb, bld[i].bx, bld[i].by, 2, 2, bld[i].x, bld[i].y, 'B', 1);
+    for (int y = 0; y < ROWS; y++) for (int x = 0; x < COLS; x++) {
+        char c = ISL[y][x];
+        if (c == 'T' && ob->px) stamp(0, ob, (x + y) & 1, 0, 1, 1, x, y, 'T', 1);
+        else if (c == 'T') solid(0, x, y, 'T', 40, 120, 50, 0, 1);
+        else if (c == 'S') solid(0, x, y, 'S', 130, 90, 50, 0, 1);
+        else if (c == 'F') solid(0, x, y, 'F', 230, 110, 30, 0, 1);
+        else if (c == 'D' && ndoor < 8) {
+            doorx[ndoor] = x; doory[ndoor] = y; ndoor++;
+            if (door->px) {
+                unsigned char dpx[XT * XT * 4], b[XT * XT * 4];
+                tile24(door, 0, 192, dpx);
+                memcpy(b, slotpx[fs[0][y][x]], sizeof b); over24(b, dpx);
+                glyph[0][y][x] = 'D'; ws[0][y][x] = slot_of(b);
+            } else glyph[0][y][x] = 'D';
+        }
+    }
+}
+
 static void write_atlas(const char *dir, int desk) {
     mkdir(dir, 0755);
     char p[PATH_MAX]; FILE *f;
@@ -113,6 +176,11 @@ static void write_atlas(const char *dir, int desk) {
               "META         | map_id             | edit\n"
               "EXTRUDE      | W                  | 3\nEXTRUDE      | D                  | 3\n"
               "EXTRUDE      | T                  | 2\nEXTRUDE      | f                  | 1\n"
+              "EXTRUDE      | B                  | 3\nEXTRUDE      | _                  | hole\n"
+              "DEPTH        | G                  | 3\nDEPTH        | p                  | 3\nDEPTH        | B                  | 3\n"
+              "DEPTH        | T                  | 3\nDEPTH        | D                  | 3\nDEPTH        | S                  | 3\n"
+              "DEPTH        | F                  | 3\nDEPTH        | r                  | 2\nDEPTH        | b                  | 1\n"
+              "DEPTH        | s                  | 1\nDEPTH        | ~                  | 1\n"
               "EXTRUDE      | default            | 0\n", f);
         fclose(f);
     }
@@ -139,9 +207,9 @@ static void write_atlas(const char *dir, int desk) {
 }
 
 static int blocked(int desk, int x, int y) {
-    if (x < 1 || y < 1 || x >= COLS - 1 || y >= ROWS - 1) return 1;
+    if (desk && (x < 1 || y < 1 || x >= COLS - 1 || y >= ROWS - 1)) return 1;
     char g = glyph[desk][y][x];
-    return g == 'W' || g == 'T' || g == 'B';
+    return g == 'W' || g == 'T' || g == 'B' || g == '_' || g == '~' || g == 'r' || g == 'F' || g == 'S';
 }
 static void write_events(void) {
     const char *page[2] = {"start", "cabin"};
@@ -172,9 +240,15 @@ static void step_all(void) {
         if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) continue;
         if (glyph[desk][ny][nx] == 'D') {
             if (i != 4) continue; /* Ava is the one who uses the door */
-            pet[i].room = desk ? 0 : 1;
-            pet[i].x = desk ? 7 : 8;
-            pet[i].y = desk ? 6 : 6;
+            if (desk == 0) {      /* any island door leads into the shared interior; remember which one */
+                for (int k = 0; k < ndoor; k++) if (doorx[k] == nx && doory[k] == ny) lastdoor = k;
+                pet[i].room = 1; pet[i].x = COLS / 2; pet[i].y = ROWS - 3;
+            } else {              /* back out beside the door she came in by (down, left, right, up: the first walkable cell) */
+                static const int ox[4] = {0, -1, 1, 0}, oy[4] = {1, 0, 0, -1};
+                int bx = doorx[lastdoor], by = doory[lastdoor];
+                pet[i].room = 0; pet[i].x = bx; pet[i].y = by;
+                for (int k = 0; k < 4; k++) if (!blocked(0, bx + ox[k], by + oy[k]) && glyph[0][by + oy[k]][bx + ox[k]] != 'D') { pet[i].x = bx + ox[k]; pet[i].y = by + oy[k]; break; }
+            }
             pet[i].dir = dir;
             follow_ava();
             continue;
@@ -202,19 +276,12 @@ int main(int argc, char **argv) {
     if (!a5.px || !wb.px) { fprintf(stderr, "rpg_edit: missing RPG Maker sheets under %s\n", ASSETS); return 1; }
     paint_desk(0, &a5, 0, 2 * S48, &a5, 2 * S48, 0);          /* grass floor */
     paint_desk(1, &in.px ? &in : &a5, 0, 0, &in.px ? &in : &a5, S48, 3 * S48);
-    /* town house, World_B town cell 6,11 (2x2), and a second house 4,7 */
-    stamp(0, &wb, 6, 11, 2, 2, 3, 2, 'B', 1);
-    stamp(0, &wb, 4, 7, 2, 2, 10, 2, 'B', 1);
-    if (ob.px) { stamp(0, &ob, 0, 0, 1, 1, 1, 3, 'T', 1); stamp(0, &ob, 0, 0, 1, 1, 14, 4, 'T', 1); stamp(0, &ob, 1, 0, 1, 1, 8, 8, 'T', 1); }
-    /* door in front of the first house, and the cabin door back */
-    if (door.px) {
-        unsigned char dpx[XT * XT * 4], b[XT * XT * 4];
-        tile24(&door, 0, 192, dpx);
-        memcpy(b, slotpx[fs[0][6][4]], sizeof b); over24(b, dpx);
-        glyph[0][6][4] = 'D'; ws[0][6][4] = slot_of(b);
-        memcpy(b, slotpx[fs[1][6][8]], sizeof b); over24(b, dpx);
-        glyph[1][6][8] = 'D'; ws[1][6][8] = slot_of(b);
-    } else { glyph[0][6][4] = 'D'; glyph[1][6][8] = 'D'; }
+    paint_islands(&wb, &ob, &door);
+    {   /* the interior's way out: one door in the middle of the south wall row */
+        unsigned char dpx[XT * XT * 4], bb[XT * XT * 4];
+        glyph[1][ROWS - 2][COLS / 2] = 'D';
+        if (door.px) { tile24(&door, 0, 192, dpx); memcpy(bb, slotpx[fs[1][ROWS - 2][COLS / 2]], sizeof bb); over24(bb, dpx); ws[1][ROWS - 2][COLS / 2] = slot_of(bb); }
+    }
     char root[PATH_MAX];
     snprintf(root, sizeof root, "%s/pieces/system/maps/edit", PCHQ); mkdir(root, 0755);
     char d0[PATH_MAX], d1[PATH_MAX];
@@ -231,7 +298,7 @@ int main(int argc, char **argv) {
     static const int col[8][3] = {{220,40,40},{40,80,220},{160,40,200},{40,180,60},{240,180,200},{200,200,210},{60,80,200},{180,180,190}};
     static const char *nm[8] = {"Ember","Glacine","Murmur","Solvent","Ava","Cursword","Asa","robot"};
     static const char let[8] = {'e','g','m','s','a','c','A','r'};
-    static const int sx[8] = {2,3,6,9,12,13,7,11}, sy[8] = {8,9,9,8,9,7,10,10};
+    static const int sx[8] = {9,10,11,12,12,13,10,11}, sy[8] = {13,13,13,13,14,13,14,15};      /* island F, in front of the cabin */
     for (int i = 0; i < 8; i++) {
         pet[i].x = sx[i]; pet[i].y = sy[i]; pet[i].room = 0; pet[i].dir = 0;
         pet[i].r = col[i][0]; pet[i].g = col[i][1]; pet[i].b = col[i][2];

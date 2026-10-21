@@ -80,3 +80,15 @@ The existing `start` + `cabin` pages of rpg_edit.c become `start` (the islands) 
 - Negative test, one bridge cell removed at a time: without (19,8) the bank, store and hotel doors are cut off; without (11,8) the school door; without (10,2) the
   bank door; without (20,3) the hotel door. So every bridge is needed and the islands do not touch each other.
 - Not checked: the real 3D look (heights, cliffs, sky), that the viewer accepts 24 x 17, interiors. Those need the build.
+
+## 7. Built (2026-10-21)
+
+The island page is live in `@.apps/rpg-edit-hq/ops/rpg_edit.c` (24 x 17, grid above, five buildings, five doors, the eight terumon walking; Ava went through a door and the board followed her to the cabin page). Doors all lead to one shared interior and return beside the door she used; per-building interiors are still open.
+
+Renderer change that made it possible (owner: "z levels in the negative give the float depth, and yes we can have holes"), in `board-viewer/ops/bv_render_3d.c` + `bv_gpu_raymarch.{c,h}`, maker maps only, no effect when the keys are absent:
+
+- `extrusion.pdl`: `EXTRUDE | <glyph> | hole` = the cell has no block at all, the sky shows through (the void is `_`).
+- `extrusion.pdl`: `DEPTH | <glyph> | n` (1..16) = n blocks hung below the floor (negative z levels). The deepest DEPTH in the map lifts the whole grid, the camera eye and every box (sprites, selector) by that many levels so floor level stays the same for sprites. The shader treats levels at or below the floor as "floor slot" and tints the hung blocks earthy.
+- Used here: G/p/B/T/D/S/F depth 3, rubble 2, bridges/ramp/pond 1, so the main island is thick, the bridges are thin planks, and the rubble floats.
+
+Not done: the camera default still frames part of the 24 x 17 map (press back/up keys); cliff texture is the grass tile tinted, not a dirt tile; no 2D `map.png`.

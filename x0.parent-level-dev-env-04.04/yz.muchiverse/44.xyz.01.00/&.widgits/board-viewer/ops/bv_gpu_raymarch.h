@@ -67,6 +67,7 @@ typedef struct {
      * voxel is textured from the atlas: level 0 uses the cell's floor slot, levels above use its wall slot. cells = cells_w*cells_h
      * pairs of uint16 {floor_slot, wall_slot} (slot 0 = blank); atlas = RGBA8 atlas_w x atlas_h, atlas_cols tiles per row of tile_px px.
      * maker_id changes whenever the atlas/cell data changes (the GL textures are re-uploaded only then). */
+    int   zoff;                 /* maker maps: grid level of the floor (levels below it are DEPTH blocks) */
     int   maker, maker_id, atlas_w, atlas_h, atlas_cols, tile_px, cells_w, cells_h;
     const unsigned char  *atlas;
     const unsigned short *cells;
