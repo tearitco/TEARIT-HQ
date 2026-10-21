@@ -126,7 +126,7 @@ COMMAND call_common_event
   FIELD2 Trigger:
   SELECT2 None:on-click:autorun:parallel
   PARAMS event_name,trigger
-  PAL OP call_event "{event_name}" [{trigger}]
+  PAL call_event "{event_name}[|{trigger}]"
 END
 
 COMMAND if

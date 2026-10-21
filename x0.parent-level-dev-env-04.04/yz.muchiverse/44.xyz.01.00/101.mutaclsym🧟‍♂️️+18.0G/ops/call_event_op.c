@@ -62,8 +62,14 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    const char *target_event = argv[1];
-    const char *trigger = (argc >= 3 && argv[2][0]) ? argv[2] : "on-click";
+    /* 2026-10-21: the prisc VM keeps only the first quoted argument of a custom op, so a compiled page cannot pass a second one. The registry's
+     * call_common_event therefore compiles to  call_event "<name>|<trigger>"  and the trigger is split off here; an explicit argv[2] still wins, and
+     * no "|" keeps the old meaning (argv[1] is the name, trigger from argv[2] or on-click). */
+    char name_buf[256]; snprintf(name_buf, sizeof name_buf, "%s", argv[1]);
+    char *bar = strchr(name_buf, '|'); const char *bar_trigger = NULL;
+    if (bar) { *bar = '\0'; bar_trigger = bar + 1; }
+    const char *target_event = name_buf;
+    const char *trigger = (argc >= 3 && argv[2][0]) ? argv[2] : (bar_trigger && bar_trigger[0]) ? bar_trigger : "on-click";
 
     /* Resolve our own binary's real path so we can walk up to house root */
     char self_path[MAX_PATH];
