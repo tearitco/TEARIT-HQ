@@ -10,12 +10,30 @@ These EDIT records can be ingested by the Concept Bank's promotion ledger,
 bridging tomom's hand-tuning to the broader attrition-model pipeline.
 """
 import json, urllib.request, sys, re, time, uuid, os
+from pathlib import Path
 
 VALID_FIELDS = {'weight', 'bias1', 'bias2', 'bias3', 'bias4'}
 
+def resolve_api_url():
+    """Read ollama endpoint from house-shared #.desktop/ai_backend.pdl."""
+    # Walk up from harnec/ to find #.desktop/ai_backend.pdl
+    project_root = Path(__file__).resolve().parent
+    for _ in range(20):
+        pdl_path = project_root / "#.desktop" / "ai_backend.pdl"
+        if pdl_path.exists():
+            for line in open(pdl_path):
+                line = line.strip()
+                if line.startswith("gemma_lan_url="):
+                    base = line.split("=", 1)[1].strip()
+                    return base + "/api/generate"
+            break
+        project_root = project_root.parent
+    return "http://127.0.0.1:11434/api/generate"
+
 def call_llama3(prompt, timeout=300):
+    api_url = resolve_api_url()
     data = json.dumps({"model":"llama3:latest","prompt":prompt,"stream":False}).encode()
-    req = urllib.request.Request("http://127.0.0.1:11434/api/generate",
+    req = urllib.request.Request(api_url,
                                   data=data, headers={"Content-Type":"application/json"})
     for _ in range(3):
         try:

@@ -30,7 +30,7 @@ suites. Where a claim is not backed by one of those, it says so.
 | G2.2 gBCR honesty | ✅ **100 %** | `nb_gbcr_test.sh` — 9/9 within ±2 px (§9.12) |
 | G2.2b conditional gutter | ✅ | `nb_gutter_test.sh`, negative-tested both directions |
 | G2.3 flex row | ✅ | `nb_flex_test.sh` PASS; worker+renderer (f4dd683cb) |
-| G2.4 grid | 🟡 | groundwork in shared engine+worker (88f61c451, bebba94b8); no suite yet |
+| G2.4 grid | ✅ | `nb_grid_test.sh` PASS; shared engine+worker (bebba94b8+) |
 | **G2.5 `@media`** | ❌ | no suite; OPEN-ITEMS item 11: "`@media` never fires (no viewport)" |
 | **G2.6 cascade completeness** | ❌ | no suite; needs the property list defined by G2.1–G2.5 |
 | G3.1 find in page | ✅ | `nb_find_test.sh` (`cdc514b98`, 2026-10-13) |

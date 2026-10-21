@@ -1,0 +1,4 @@
+EDIT | id=bea030ea | type=spoke_weight_delta | target=start-token | slot=weight | delta=+0.9500 | reason="tune.py suggestion for start-token" | proposer=llama3 | status=candidate | timestamp=2026-10-20T18:07:43.819094
+EDIT | id=548a5f42 | type=spoke_weight_delta | target=counting | slot=weight | delta=+0.9200 | reason="tune.py suggestion for counting" | proposer=llama3 | status=candidate | timestamp=2026-10-20T18:07:43.819151
+EDIT | id=f3b5406e | type=spoke_weight_delta | target=addition | slot=weight | delta=+0.9100 | reason="tune.py suggestion for addition" | proposer=llama3 | status=candidate | timestamp=2026-10-20T18:07:43.819162
+EDIT | id=f0b11797 | type=spoke_weight_delta | target=number | slot=weight | delta=+0.9300 | reason="tune.py suggestion for number" | proposer=llama3 | status=candidate | timestamp=2026-10-20T18:07:43.819181
