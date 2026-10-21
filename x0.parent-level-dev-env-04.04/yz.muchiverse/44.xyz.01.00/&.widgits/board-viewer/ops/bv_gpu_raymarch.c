@@ -111,7 +111,9 @@ static const char *FS_SRC =
 "  for (int i = 0; i < u_nbox; i++) {\n"
 "    float t; int f;\n"
 "    if (!slab(ro, rd, u_bmin[i], u_bmax[i], t, f) || t >= bestT) continue;\n"
-"    int mdl = u_bmdl[i];\n"
+"    int raw = u_bmdl[i];\n"
+"    bool swp = raw >= 128;\n" /* billboard facing world X: sprite columns run along Z */
+"    int mdl = swp ? raw - 128 : raw;\n"
 "    if (mdl < 0) {\n"
 "      bool wire = (u_bcol[i].a > 0.12 && u_bcol[i].a < 0.4);\n"
 "      float we = (u_bcol[i].a < 0.2) ? u_wire_thin : u_wire_edge;\n"
@@ -122,7 +124,8 @@ static const char *FS_SRC =
 "    }\n"
 "    /* raymarch the dense model grid inside the box (fixed sub-cell step) */\n"
 "    vec3 bsz = max(u_bmax[i] - u_bmin[i], vec3(1e-4));\n"
-"    ivec3 md = u_mdim[mdl];\n"
+"    ivec3 md0 = u_mdim[mdl];\n"
+"    ivec3 md = swp ? md0.zyx : md0;\n"
 "    vec3  cellw = bsz / vec3(md);\n"
 "    float mn = min(min(cellw.x, cellw.y), cellw.z);\n"
 "    float stepT = 0.5 * mn / max(length(rd), 1e-4);\n"
@@ -132,7 +135,8 @@ static const char *FS_SRC =
 "      vec3 lf = (wp - u_bmin[i]) / bsz;\n"
 "      if (lf.x < -0.02 || lf.y < -0.02 || lf.z < -0.02 ||\n"
 "          lf.x > 1.02 || lf.y > 1.02 || lf.z > 1.02) break;\n"
-"      ivec3 li = clamp(ivec3(lf * vec3(md)), ivec3(0), md - 1);\n"
+"      ivec3 li0 = clamp(ivec3(lf * vec3(md)), ivec3(0), md - 1);\n"
+"      ivec3 li = swp ? li0.zyx : li0;\n"
 "      vec4 mv = texelFetch(u_mdl, ivec3(li.x, li.y, mdl * 8 + li.z), 0);\n"
 "      if (mv.a > 0.5) {\n"
 "        if (mt < bestT) { bestT = mt; col = mv.rgb; hit = true; self_lit = false; face = f; }\n"
@@ -621,7 +625,11 @@ int bv_gpu_raymarch(const BvGpuScene *s, unsigned char *out) {
                 bmax[i*3+0]=s->box[i].max_x; bmax[i*3+1]=s->box[i].max_y; bmax[i*3+2]=s->box[i].max_z;
                 bcol[i*4+0]=s->box[i].r; bcol[i*4+1]=s->box[i].g; bcol[i*4+2]=s->box[i].b;
                 bcol[i*4+3]=s->box[i].wire == 2 ? 0.15f : s->box[i].wire ? 0.25f : (s->box[i].self_lit ? 0.0f : 1.0f);
-                bmdl[i] = (s->box[i].model >= 0 && s->box[i].model < BV_GPU_MAX_MODEL) ? s->box[i].model : -1;
+                {
+                    int m = s->box[i].model, sw = 0;
+                    if (m >= 128) { sw = 1; m -= 128; }
+                    bmdl[i] = (m >= 0 && m < BV_GPU_MAX_MODEL) ? (m + (sw ? 128 : 0)) : -1;
+                }
             }
             glUniform3fv(s_u.bmin, nb, bmin);
             glUniform3fv(s_u.bmax, nb, bmax);
