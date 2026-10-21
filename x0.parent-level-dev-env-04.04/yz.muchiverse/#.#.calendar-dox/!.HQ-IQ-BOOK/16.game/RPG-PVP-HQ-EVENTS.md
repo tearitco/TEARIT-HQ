@@ -46,6 +46,8 @@ rpg-pvp-hq is **a rename-copy of cdda-hq** (house recipe, same as mcl-hq/df-hq):
 5. Add the game to `&.hq-apps/blueprintz/ops/bp_tree.sh` (its hard-coded game list) so the B1 tree lists it. Done for rpg-pvp-hq in the same commit as this page.
 
 ## 5. What is not done
+
+> **2026-10-20 later:** the blueprintz gap below is analysed and a fix is designed in `EVENT-VERB-PAGES-DESIGN.md` (the real gap has two parts: no pages, and pages that the player's path does not run). Design only, not built.
 - Only the 21 copied chrome events exist. **No shooter event page exists yet** (pickup, door, reload, spawn). The city generator (`ops/rpg_pvp_city.c`) is still separate from the engine: the engine's map is the copied cdda island. Joining them (city as the overmap room, buildings as rooms through door events) is the next step, see `RPG-PVP-HQ-DESIGN.md` section 6, P1.
 - blueprintz itself is B0/B1 (a shell and a read-only tree per its design); editing (B4) is not built, so "use blueprintz later" means: keep to the format above and it can read and later edit these pages. I did not open the blueprintz window.
 - game-dev-hq has no event pages: to make it blueprintz-visible grok's verbs would need pages calling a registered `game_dev_hq_verb`. That is grok's to do; I did not touch it.
