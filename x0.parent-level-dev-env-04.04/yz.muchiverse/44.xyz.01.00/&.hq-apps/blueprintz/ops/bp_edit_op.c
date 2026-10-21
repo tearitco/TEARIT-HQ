@@ -9,6 +9,8 @@
  *   bp_edit_op <house> <event_pkg_dir> <label> show
  *   bp_edit_op <house> <event_pkg_dir> <label> new_page          (adds pages/page_<next>/ with trigger on-click, like events-hq's "new page")
  *   bp_edit_op <house> <event_pkg_dir> <label> trigger <value>   (sets "COND | trigger | <value>" of the page)
+ *   bp_edit_op <house> <event_pkg_dir> <label> delete_page       (removes $BP_PAGE's folder; refused by the manager for the only page)
+ *   bp_edit_op <house> <event_pkg_dir> <label> switch <name>     (sets "COND | switch | <name>" of the page: the switch an Autorun/Parallel page watches)
  * The page is $BP_PAGE (default page_1): the op writes it to <pkg>/.hq_manager/selected_page.txt, the file events-hq's page tabs write, before the request.
  *
  * It does what a click in events-hq does, with no window: starts the real events-hq manager (<house>/&.widgits/events-hq/ops/+x/
@@ -43,6 +45,14 @@ static int count_pages(const char *pkg) {
     int n = 0; struct dirent *de; while ((de = readdir(d))) if (!strncmp(de->d_name, "page_", 5)) n++;
     closedir(d); return n;
 }
+static int cond_has_key(const char *page, const char *key, const char *want) {
+    char p[PATH_MAX], buf[4096]; snprintf(p, sizeof p, "%s/condition.pdl", page); if (read_all(p, buf, sizeof buf) < 0) return 0;
+    for (char *l = strtok(buf, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "COND", 4)) {
+        char *t = strstr(l, key); char *bar = t ? strchr(t, '|') : NULL; if (!bar) continue;
+        char *v = bar + 1; while (*v == ' ') v++; char *e = v + strlen(v); while (e > v && (e[-1] == ' ' || e[-1] == '\r')) *--e = 0;
+        if (!strcmp(v, want)) return 1; }
+    return 0;
+}
 static int cond_has_trigger(const char *page, const char *want) {
     char p[PATH_MAX], buf[4096]; snprintf(p, sizeof p, "%s/condition.pdl", page); if (read_all(p, buf, sizeof buf) < 0) return 0;
     char pat[300]; snprintf(pat, sizeof pat, "| trigger | %s", want);
@@ -69,13 +79,15 @@ int main(int argc, char **argv) {
     snprintf(page, sizeof page, "%s/pages/%s", pkg, pg); snprintf(ir, sizeof ir, "%s/event.ir.pdl", page);
     if (!exists(mgr)) { fprintf(stderr, "bp_edit: no manager at %s\n", mgr); return 2; }
     { char pr[PATH_MAX]; snprintf(pr, sizeof pr, "%s/pages", pkg);
-      int creates = !strcmp(mode, "append") || !strcmp(mode, "trigger") || !strcmp(mode, "new_page");      /* these can start from an empty pages/ folder: the manager makes the page (its lazy page_1, or the next page_N) */
+      int creates = !strcmp(mode, "append") || !strcmp(mode, "trigger") || !strcmp(mode, "new_page") || !strcmp(mode, "switch");      /* these can start from an empty pages/ folder: the manager makes the page (its lazy page_1, or the next page_N) */
       if (creates ? !exists(pr) : !exists(ir)) { fprintf(stderr, "bp_edit: no %s in %s\n", creates ? "pages/ folder" : "page IR", pkg); return 2; } }
     const char *id = "", *type = "", *params = "";
     if (!strcmp(mode, "edit") && argc >= 8) { id = argv[5]; type = argv[6]; params = argv[7]; snprintf(line, sizeof line, "edit:%s|%s|%s\n", id, type, params); }
     else if (!strcmp(mode, "append") && argc >= 7) { type = argv[5]; params = argv[6]; snprintf(line, sizeof line, "append:%s|%s\n", type, params); }
     else if (!strcmp(mode, "delete") && argc >= 6) { id = argv[5]; snprintf(line, sizeof line, "delete:%s\n", id); }
     else if (!strcmp(mode, "new_page")) snprintf(line, sizeof line, "new_page\n");
+    else if (!strcmp(mode, "delete_page")) snprintf(line, sizeof line, "delete_page:%s\n", pg);
+    else if (!strcmp(mode, "switch") && argc >= 6) { params = argv[5]; snprintf(line, sizeof line, "switch:%s\n", params); }
     else if (!strcmp(mode, "trigger") && argc >= 6) { params = argv[5]; snprintf(line, sizeof line, "trigger:%s\n", params); }
     else if (strcmp(mode, "show")) { fprintf(stderr, "bp_edit: bad mode or arguments\n"); return 2; }
     for (const char *c = line; *c; c++) if (*c == '\r' || (*c == '\n' && c[1])) { fprintf(stderr, "bp_edit: a newline in the request\n"); return 2; }
@@ -96,6 +108,8 @@ int main(int argc, char **argv) {
         while (now_ms() - t2 < 10000) {
             if (!strcmp(mode, "new_page")) { if (fsz(act) == 0 && count_pages(pkg) > pages_before) { applied = 1; break; } }
             else if (!strcmp(mode, "trigger")) { if (fsz(act) == 0 && cond_has_trigger(page, params)) { applied = 1; break; } }
+            else if (!strcmp(mode, "switch")) { if (fsz(act) == 0 && cond_has_key(page, "switch", params)) { applied = 1; break; } }
+            else if (!strcmp(mode, "delete_page")) { if (fsz(act) == 0 && !exists(page)) { applied = 1; break; } }
             else if (fsz(act) == 0 && ir_shows(ir, mode, id, type, params)) { applied = 1; break; }
             usleep(100000); }
         if (!applied) { fprintf(stderr, "bp_edit: the manager did not apply the request in 10 s (action.txt %ld bytes)\n", fsz(act)); return 1; }

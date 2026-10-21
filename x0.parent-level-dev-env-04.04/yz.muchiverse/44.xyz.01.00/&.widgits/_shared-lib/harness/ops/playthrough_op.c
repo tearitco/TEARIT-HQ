@@ -138,12 +138,14 @@ static int emit_body_row(const Row *r) {
     else if (!strcmp(v, "SLEEP")) { NEED(2); emit("SLEEP | %s", r->f[1]); }
     else if (!strcmp(v, "BP")) {   /* BP | <event> | edit|append|delete|show | args...: drive one blueprint edit through the real events-hq manager (bp_edit_op); \p = a bar in the params */
         NEED(3); if (!CT->events) return bad_row("BP needs an `EVENTS | yes` row", r);
+        if (r->n + 3 > 40) return bad_row("BP row has too many arguments", r);
         char row[P]; size_t o = (size_t)snprintf(row, sizeof row, "RUN | $T/&.hq-apps/blueprintz/ops/+x/bp_edit_op.+x | $T | $T/%s/events/%s/event_pkg | %s | %s", CAPP, r->f[1], r->f[1], r->f[2]);
         for (int i = 3; i < r->n; i++) o += (size_t)snprintf(row + o, sizeof row - o, " | %s", r->f[i]);
         emit("%s", row);
     }
     else if (!strcmp(v, "BPWIN")) {   /* BPWIN | REQ:<request> | EXPECT:<ui key>~<text> | EXPECTNOT:<ui key>~<text> | ...: drive the blueprintz WINDOW layer (its real manager, the same request lines a click writes) in one session, so undo history is kept between steps; \p = a bar */
         NEED(2); if (!CT->events) return bad_row("BPWIN needs an `EVENTS | yes` row", r);
+        if (r->n - 1 > 36) return bad_row("BPWIN takes at most 36 steps (the case runner passes at most 48 arguments to a RUN row and now fails loudly beyond that; the table parser holds 40 fields)", r);
         char row[P]; size_t o = (size_t)snprintf(row, sizeof row, "RUN | $T/&.hq-apps/blueprintz/ops/+x/bp_win_op.+x | $T | $T/&.hq-apps/blueprintz");
         for (int i = 1; i < r->n; i++) o += (size_t)snprintf(row + o, sizeof row - o, " | %s", r->f[i]);
         emit("%s", row);

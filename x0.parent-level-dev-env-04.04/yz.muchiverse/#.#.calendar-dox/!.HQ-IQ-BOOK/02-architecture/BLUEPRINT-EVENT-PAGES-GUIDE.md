@@ -53,7 +53,7 @@ Apps done: rpg-pvp-hq (13 page verbs), game-dev-hq (17). INT keyboard bindings s
 
 All edits end at the events-hq manager, which rewrites `event.ir.pdl` and recompiles. Nothing else writes an IR.
 1. **events-hq** window: writes `edit:<id>|<type>|<params>`, `append:<type>|<params>`, `delete:<id>` into `<pkg>/.hq_manager/action.txt`.
-2. **blueprintz** window (editing panel, BLUEPRINTZ-DESIGN.md 12.22): pick an event (a game's verbs with `Load <game> verbs`, or the house's common events with `Load common events`), pick one of its pages, add a page, set a page's trigger, select a command, type `key=value|key=value` or `type|key=value`, add, delete, undo (16 steps, each remembers its page). A "who calls whom" list shows `call_common_event` links among the loaded events. Runs `ops/bp_edit_op` in the background. Refuses characters outside letters/digits/`_ - . : , = | / space` and any type not in the registry.
+2. **blueprintz** window (editing panel, BLUEPRINTZ-DESIGN.md 12.22): pick an event (a game's verbs with `Load <game> verbs`, or the house's common events with `Load common events`), pick one of its pages, add a page, delete a page (type its name; no undo), set a page's trigger or switch, select a command, type `key=value|key=value` or `type|key=value`, add, delete, undo (16 steps, each remembers its page). A "who calls whom" list shows `call_common_event` links among the loaded events. Runs `ops/bp_edit_op` in the background. Refuses characters outside letters/digits/`_ - . : , = | / space` and any type not in the registry.
 3. **Headless / harness:** `ops/bp_edit_op <house> <event_pkg> <label> edit|append|delete|show ...` and the phase-table rows `BP | <event> | edit|append|delete|show | args` and `BPWIN | REQ:... | EXPECT:...` (harness README). A table can be saved and versioned.
 
 Proof it is the real logic: with the contract page edited to `advance` the same button advanced no weeks and said "no game"; edited back it played again; an emptied page logged `fallback:page-did-not-run` and the verb still ran (`play/phases/game_dev_hq_blueprint.phases.pdl`, PASS).
@@ -74,7 +74,7 @@ Proof it is the real logic: with the contract page edited to `advance` the same 
 
 - **Can:** reorder, swap, add or remove whole commands; change a command's parameters; make a trigger run something else; be debugged (pause, step, trace) and be tested headless.
 - **Cannot:** change what happens *inside* a C op (e.g. the contract's payroll math is C; a page only chooses to run it). Logic that needs to be editable has to be split into smaller ops and a registry row.
-- **Not yet:** no delete-page (the manager has none); INT key bindings bypass pages; there is no graph view (BLUEPRINTZ-DESIGN.md B5); compiling a whole book to one `book.pal` (B4b) is designed, not built.
+- **Not yet:** a deleted page cannot be restored (no undo); INT key bindings bypass pages; there is no graph view (BLUEPRINTZ-DESIGN.md B5); compiling a whole book to one `book.pal` (B4b) is designed, not built.
 
 ## 9. Checklist: make a new game's verbs blueprints
 
@@ -112,3 +112,5 @@ Run from `&.widgits/_shared-lib/harness`: `ops/+x/playthrough_op.+x run play/pha
 - `blueprintz_common_pages.phases.pdl` and `blueprintz_window.phases.pdl` (row `BPWIN`): the blueprintz window logic, headless, through its real manager.
 - `game_dev_hq_blueprint` / `rpg_pvp_hq_blueprint`: editing a game's verb page changes what the game button does.
 Method note: seed a new common event from an EMPTY `pages/` folder with the real manager (`BPCE | <event> | trigger | <t>` then `append`), never with hand-written files: the harness WRITE row adds no trailing newline and an appended node then glues onto the last header line.
+
+**Harness trap fixed 2026-10-21:** a `RUN` row used to keep only its first 16 arguments and drop the rest without a word, so a long `BPWIN` row lost its last steps and still passed. The runner now allows 48 and fails loudly beyond that; keep one BPWIN row under 36 steps. If a table you wrote before that date has a long BPWIN row, re-run it: some of its checks may not have executed.

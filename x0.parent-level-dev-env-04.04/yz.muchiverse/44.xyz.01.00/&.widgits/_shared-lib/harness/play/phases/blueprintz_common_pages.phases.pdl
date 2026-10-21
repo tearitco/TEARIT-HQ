@@ -36,3 +36,17 @@ EXIT | 0 | new-page-trigger-undo-refusal
 PHASE | p5_who_calls_whom | the call list shows outer calling bump, and bump called by outer | window, xref, common
 BPWIN | REQ:LOADCE | REQ:SEL:1 | EXPECT:sel_line~outer | EXPECT:x_0_label~calls  bump | EXPECT:x_0_label~from page_1 | REQ:SEL:0 | EXPECT:x_0_label~called by  outer | EXPECT:x_none~
 EXIT | 0 | call-list-both-directions
+
+PHASE | p6_switch_and_delete_page | set and undo a page's switch (blank clears it); delete a page only by typing its name; the only page is never deleted | window, switch, delete page
+BPWIN | REQ:LOADCE | REQ:SEL:0 | REQ:PSEL:page_2 | REQ:SWITCH:door_open | EXPECT:msg~(none)  ->  door_open | EXPECT:pg_1_label~switch: door_open | REQ:UNDO | EXPECT:msg~undone: switch | EXPECTNOT:pg_1_label~door_open | REQ:SWITCH:bad'sw | EXPECT:msg~refused: a switch name | REQ:PSEL:page_3 | REQ:PDEL:page_1 | EXPECT:msg~not deleted: to delete the selected page type its name exactly (page_3) | REQ:PDEL:page_3 | EXPECT:msg~deleted page_3 | EXPECT:page_line~(2 pages)
+EXIT | 0 | switch-and-delete-page
+NOFILEROOT | common_events/bump/event_pkg/pages/page_3/condition.pdl | the-deleted-page-folder-is-gone
+HASROOT | common_events/bump/event_pkg/pages/page_2/condition.pdl | player-hit | page-2-kept
+
+PHASE | p7_calls_to_events_not_loaded | with only bump loaded the call list still shows outer calling it, marked not loaded; and the other way round | window, xref
+PUTROOT | &.hq-apps/blueprintz/state/bp_sources.pdl | EVENT \p bump \p common_events/bump
+BPWIN | REQ:SEL:0 | EXPECT:e_count~1 | EXPECT:x_0_label~called by  outer | EXPECT:x_0_label~[not loaded]
+EXIT | 0 | caller-not-loaded-shown
+PUTROOT | &.hq-apps/blueprintz/state/bp_sources.pdl | EVENT \p outer \p common_events/outer
+BPWIN | REQ:SEL:0 | EXPECT:x_0_label~calls  bump | EXPECT:x_0_label~[not loaded]
+EXIT | 0 | callee-not-loaded-shown

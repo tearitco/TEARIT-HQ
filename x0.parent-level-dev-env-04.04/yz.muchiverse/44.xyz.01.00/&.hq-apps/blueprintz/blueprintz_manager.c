@@ -35,7 +35,7 @@ static char last_ui[24000];
 /* ---- B4 editing: the commands (NODE rows) of the selected event's page_1, and an undo stack of inverse edits ---- */
 typedef struct { int id; char type[40], params[400]; } Nd;
 /* pages of the selected event (B4 multi-page, 2026-10-21): name + trigger read from pages/<name>/condition.pdl; cpage = the page being edited */
-typedef struct { char name[32], trig[64]; } Pg;
+typedef struct { char name[32], trig[64], sw[64]; } Pg;
 #define MAXPG 24
 static Pg PG[MAXPG]; static int nPG = 0; static char cpage[32] = "";
 typedef struct { char pkg[P], label[64], page[32], mode[8], id[12], type[40], params[400]; } Undo;
@@ -172,19 +172,21 @@ static void load_pages(void) {
     nPG = 0; if (!nE) return;
     char root[P]; snprintf(root, P, "%s/event_pkg/pages", E[sel].pkg); DIR *d = opendir(root); if (!d) return;
     struct dirent *de;
-    while ((de = readdir(d)) && nPG < MAXPG) { if (strncmp(de->d_name, "page_", 5) || strlen(de->d_name) >= 32) continue; snprintf(PG[nPG].name, 32, "%s", de->d_name); PG[nPG].trig[0] = 0; nPG++; }
+    while ((de = readdir(d)) && nPG < MAXPG) { if (strncmp(de->d_name, "page_", 5) || strlen(de->d_name) >= 32) continue; snprintf(PG[nPG].name, 32, "%s", de->d_name); PG[nPG].trig[0] = 0; PG[nPG].sw[0] = 0; nPG++; }
     closedir(d);
     for (int i = 1; i < nPG; i++) { Pg t = PG[i]; int j = i - 1; while (j >= 0 && pgnum(PG[j].name) > pgnum(t.name)) { PG[j + 1] = PG[j]; j--; } PG[j + 1] = t; }
     for (int i = 0; i < nPG; i++) {
         char c[P], l[300]; snprintf(c, P, "%s/%s/condition.pdl", root, PG[i].name); FILE *f = fopen(c, "r"); if (!f) continue;
         while (fgets(l, sizeof l, f)) if (!strncmp(l, "COND", 4)) {      /* "COND | trigger | x" and the padded "COND         | trigger              | x" both occur */
-            char *t = strstr(l, "trigger"); if (!t) continue; char *bar = strchr(t, '|'); if (!bar) continue; snprintf(PG[i].trig, 64, "%s", trim(bar + 1)); }
+            char *t = strstr(l, "trigger"), *w = strstr(l, "switch"); char *k = t ? t : w; if (!k) continue; char *bar = strchr(k, '|'); if (!bar) continue;
+            snprintf(t ? PG[i].trig : PG[i].sw, 64, "%s", trim(bar + 1)); }
         fclose(f);
     }
     int ok = 0; for (int i = 0; i < nPG; i++) if (!strcmp(PG[i].name, cpage)) ok = 1;
     if (!ok) snprintf(cpage, sizeof cpage, "%s", nPG ? PG[0].name : "");
 }
 static const char *page_trig(const char *name) { for (int i = 0; i < nPG; i++) if (!strcmp(PG[i].name, name)) return PG[i].trig; return ""; }
+static const char *page_sw(const char *name) { for (int i = 0; i < nPG; i++) if (!strcmp(PG[i].name, name)) return PG[i].sw; return ""; }
 static void load_nodes(void) {
     nN = 0; if (!nE) return;
     load_pages(); if (!cpage[0]) return;
@@ -240,7 +242,8 @@ static int start_edit(const char *kind, const char *mode, const char *id, const 
     char *av[10]; int n = 0; av[n++] = bin; av[n++] = g_target; av[n++] = pkg; av[n++] = pend.label; av[n++] = pend.mode;
     if (!strcmp(mode, "edit")) { av[n++] = pend.id; av[n++] = pend.type; av[n++] = pend.params; }
     else if (!strcmp(mode, "append")) { av[n++] = pend.type; av[n++] = pend.params; }
-    else if (!strcmp(mode, "trigger")) { av[n++] = pend.params; }
+    else if (!strcmp(mode, "trigger") || !strcmp(mode, "switch")) { av[n++] = pend.params; }
+    else if (!strcmp(mode, "delete_page")) { }
     else if (!strcmp(mode, "new_page")) { }
     else av[n++] = pend.id;
     av[n] = NULL;
@@ -262,11 +265,19 @@ static void finish_edit(int rc) {
         load_nodes(); return;
     }
     if (rc) { snprintf(msg, sizeof msg, "%s FAILED (rc=%d), see state/edit.out", p.kind, rc); return; }
+    if (!strcmp(p.kind, "pdel")) {
+        load_pages(); cpage[0] = 0; load_nodes();
+        snprintf(msg, sizeof msg, "deleted %s of %s (now %d page%s); a deleted page cannot be brought back from here", p.page, p.label, nPG, nPG == 1 ? "" : "s"); return;
+    }
     if (!strcmp(p.kind, "page")) {
         load_pages(); if (nPG) snprintf(cpage, sizeof cpage, "%s", PG[nPG - 1].name); load_nodes();
         snprintf(msg, sizeof msg, "added %s (trigger on-click, no commands); a page cannot be removed from here, so this step has no undo", cpage); return;
     }
     load_nodes();
+    if (!strcmp(p.kind, "sw")) {
+        push_undo(p.pkg, p.label, p.page, "switch", "", "", p.old.type);       /* old switch kept in old.type */
+        snprintf(msg, sizeof msg, "%s switch: %s  ->  %s", p.page, p.old.type[0] ? p.old.type : "(none)", p.params[0] ? p.params : "(none)"); return;
+    }
     if (!strcmp(p.kind, "trig")) {
         push_undo(p.pkg, p.label, p.page, "trigger", "", "", p.old.type);       /* old trigger kept in old.type */
         snprintf(msg, sizeof msg, "%s trigger: %s  ->  %s", p.page, p.old.type[0] ? p.old.type : "(none)", p.params); return;
@@ -350,6 +361,23 @@ static void edit_verb(const char *verb) {
         else snprintf(msg, sizeof msg, "adding a page to %s ...", E[sel].name);
         return;
     }
+    if (!strncmp(verb, "PDEL:", 5)) {      /* typed confirmation: the page name; a deleted page cannot be undone */
+        load_pages(); if (!cpage[0]) { snprintf(msg, sizeof msg, "no page selected"); return; }
+        if (strcmp(verb + 5, cpage)) { snprintf(msg, sizeof msg, "not deleted: to delete the selected page type its name exactly (%s)", cpage); return; }
+        if (nPG <= 1) { snprintf(msg, sizeof msg, "not deleted: %s is the only page of %s", cpage, E[sel].name); return; }
+        if (start_edit("pdel", "delete_page", "", "", "", NULL)) snprintf(msg, sizeof msg, "delete page: could not start the edit");
+        else snprintf(msg, sizeof msg, "deleting %s ...", cpage);
+        return;
+    }
+    if (!strncmp(verb, "SWITCH", 6)) {
+        const char *sv = verb[6] == ':' ? verb + 7 : ""; load_pages();      /* a blank field arrives as a bare SWITCH: clears the switch */
+        if (!clean(sv, 0)) { snprintf(msg, sizeof msg, "refused: a switch name may only contain letters, digits and _ - ."); return; }
+        if (!cpage[0]) { snprintf(msg, sizeof msg, "no page selected"); return; }
+        Nd old; memset(&old, 0, sizeof old); snprintf(old.type, sizeof old.type, "%s", page_sw(cpage));
+        if (start_edit("sw", "switch", "", "", sv, &old)) snprintf(msg, sizeof msg, "switch: could not start the edit");
+        else snprintf(msg, sizeof msg, "setting the switch of %s ...", cpage);
+        return;
+    }
     if (!strncmp(verb, "TRIG:", 5)) {
         const char *tv = verb + 5; load_pages();
         if (!*tv) { snprintf(msg, sizeof msg, "type a trigger first (for example on-click, player-touch, Autorun)"); return; }
@@ -395,26 +423,33 @@ static void edit_verb(const char *verb) {
 }
 
 /* ---- who calls whom: call_common_event nodes of every loaded event (all pages). Computed by scanning, never stored (design 12.22, section 4 of the design). ---- */
-typedef struct { int from; char page[32], to[64]; } Edge;
-#define MAXEDGE 128
+typedef struct { char from[64], page[32], to[64]; } Edge;
+#define MAXEDGE 256
 static Edge EG[MAXEDGE]; static int nEG = 0; static time_t eg_at = 0;
+static int is_loaded(const char *name) { for (int i = 0; i < nE; i++) if (!strcmp(E[i].name, name)) return 1; return 0; }
+static void edges_of(const char *name, const char *pkg) {
+    char root[P]; snprintf(root, P, "%s/event_pkg/pages", pkg); DIR *d = opendir(root); if (!d) return;
+    struct dirent *de;
+    while ((de = readdir(d))) {
+        if (strncmp(de->d_name, "page_", 5)) continue;
+        char ir[P], l[900]; snprintf(ir, P, "%s/%s/event.ir.pdl", root, de->d_name); FILE *f = fopen(ir, "r"); if (!f) continue;
+        while (fgets(l, sizeof l, f) && nEG < MAXEDGE) {
+            if (strncmp(l, "NODE", 4) || !strstr(l, "type=call_common_event")) continue;
+            char *en = strstr(l, "event_name="); if (!en) continue; en += 11; size_t k = strcspn(en, "|\r\n ");
+            snprintf(EG[nEG].from, 64, "%s", name); snprintf(EG[nEG].page, 32, "%s", de->d_name); snprintf(EG[nEG].to, 64, "%.*s", (int)(k < 63 ? k : 63), en); nEG++;
+        }
+        fclose(f);
+    }
+    closedir(d);
+}
+/* who calls whom: call_common_event nodes of every loaded event AND of every common event of the target house that is not loaded (marked "not loaded" in the list) */
 static void scan_edges(void) {
     if (time(NULL) == eg_at) return; eg_at = time(NULL); nEG = 0;
-    for (int i = 0; i < nE; i++) {
-        char root[P]; snprintf(root, P, "%s/event_pkg/pages", E[i].pkg); DIR *d = opendir(root); if (!d) continue;
-        struct dirent *de;
-        while ((de = readdir(d))) {
-            if (strncmp(de->d_name, "page_", 5)) continue;
-            char ir[P], l[900]; snprintf(ir, P, "%s/%s/event.ir.pdl", root, de->d_name); FILE *f = fopen(ir, "r"); if (!f) continue;
-            while (fgets(l, sizeof l, f) && nEG < MAXEDGE) {
-                if (strncmp(l, "NODE", 4) || !strstr(l, "type=call_common_event")) continue;
-                char *en = strstr(l, "event_name="); if (!en) continue; en += 11; size_t k = strcspn(en, "|\r\n ");
-                EG[nEG].from = i; snprintf(EG[nEG].page, 32, "%s", de->d_name); snprintf(EG[nEG].to, 64, "%.*s", (int)(k < 63 ? k : 63), en); nEG++;
-            }
-            fclose(f);
-        }
-        closedir(d);
-    }
+    for (int i = 0; i < nE; i++) edges_of(E[i].name, E[i].pkg);
+    char dir[P]; snprintf(dir, P, "%s/common_events", g_target); DIR *d = opendir(dir); if (!d) return;
+    struct dirent *de;
+    while ((de = readdir(d))) { if (de->d_name[0] == '.' || is_loaded(de->d_name)) continue; char pk[P]; snprintf(pk, P, "%s/%s", dir, de->d_name); edges_of(de->d_name, pk); }
+    closedir(d);
 }
 
 /* ---- ui.txt ---- */
@@ -451,7 +486,7 @@ static void write_ui(void) {
     PUT("pg_count=%d\n", nPG);
     for (int i = 0; i < nPG; i++) {
         int on = !strcmp(PG[i].name, cpage);
-        PUT("pg_%d_label=%s%s   trigger: %s\n", i, on ? "* " : "  ", PG[i].name, PG[i].trig[0] ? PG[i].trig : "(none)");
+        PUT("pg_%d_label=%s%s   trigger: %s%s%s\n", i, on ? "* " : "  ", PG[i].name, PG[i].trig[0] ? PG[i].trig : "(none)", PG[i].sw[0] ? "   switch: " : "", PG[i].sw);
         PUT("pg_%d_class=%s\n", i, on ? "bp-node active" : "bp-node");
         PUT("pg_%d_action=%s 'PSEL:%s'\n", i, act, PG[i].name);
     }
@@ -459,11 +494,11 @@ static void write_ui(void) {
     scan_edges();
     { int xi = 0, total = 0;
       for (int i = 0; i < nEG; i++) {
-        if (nE && EG[i].from == sel) { PUT("x_%d_label=calls  %s   (from %s)%s\n", xi, EG[i].to, EG[i].page, ""); xi++; }
-        else if (nE && !strcmp(EG[i].to, E[sel].name)) { PUT("x_%d_label=called by  %s   (%s)\n", xi, E[EG[i].from].name, EG[i].page); xi++; }
+        if (nE && !strcmp(EG[i].from, E[sel].name)) { PUT("x_%d_label=calls  %s   (from %s)%s\n", xi, EG[i].to, EG[i].page, is_loaded(EG[i].to) ? "" : "   [not loaded]"); xi++; }
+        else if (nE && !strcmp(EG[i].to, E[sel].name)) { PUT("x_%d_label=called by  %s   (%s)%s\n", xi, EG[i].from, EG[i].page, is_loaded(EG[i].from) ? "" : "   [not loaded]"); xi++; }
       }
-      total = xi; PUT("x_count=%d\n", total); PUT("x_none=%s\n", total ? "" : "no calls to or from this event among the loaded events"); }
-    PUT("pgnew_action=%s 'PNEW'\ntrig_action=%s 'TRIG'\nloadce_action=%s 'LOADCE'\n", act, act, act);
+      total = xi; PUT("x_count=%d\n", total); PUT("x_none=%s\n", total ? "" : "no calls to or from this event (loaded events and the house's common events)"); }
+    PUT("pgnew_action=%s 'PNEW'\ntrig_action=%s 'TRIG'\nloadce_action=%s 'LOADCE'\npdel_action=%s 'PDEL'\nsw_action=%s 'SWITCH'\n", act, act, act, act, act);
     PUT("n_hint=%s\n", nN && csel >= 0 ? "type below: key=value|key=value  edits the selected command;  type|key=value  sets both" : "");
     PUT("load_gdh_action=%s 'LOAD:game-dev-hq'\nload_rpg_action=%s 'LOAD:rpg-pvp-hq'\n", act, act);
     PUT("edit_action=%s 'EDIT'\nadd_action=%s 'ADD'\ncdel_action=%s 'CDEL'\nundo_action=%s 'UNDO'\nundo_line=undo steps: %d\n", act, act, act, act, nU);
@@ -484,7 +519,7 @@ static void handle(const char *verb) {
     if (!strncmp(verb, "SEL:", 4)) { sel = atoi(verb + 4); csel = -1; cpage[0] = 0; snprintf(msg, sizeof msg, "selected"); return; }
     if (!strcmp(verb, "LOADCE")) { load_common(); return; }
     if (!strncmp(verb, "LOAD:", 5)) { load_game(verb + 5); return; }
-    if (!strncmp(verb, "CSEL:", 5) || !strncmp(verb, "EDIT:", 5) || !strncmp(verb, "ADD:", 4) || !strcmp(verb, "CDEL") || !strcmp(verb, "UNDO") || !strncmp(verb, "PSEL:", 5) || !strcmp(verb, "PNEW") || !strncmp(verb, "TRIG:", 5)) { edit_verb(verb); return; }
+    if (!strncmp(verb, "CSEL:", 5) || !strncmp(verb, "EDIT:", 5) || !strncmp(verb, "ADD:", 4) || !strcmp(verb, "CDEL") || !strcmp(verb, "UNDO") || !strncmp(verb, "PSEL:", 5) || !strcmp(verb, "PNEW") || !strncmp(verb, "TRIG:", 5) || !strncmp(verb, "PDEL:", 5) || !strncmp(verb, "SWITCH", 6)) { edit_verb(verb); return; }
     if (!strcmp(verb, "REFRESH")) { snprintf(msg, sizeof msg, "refreshed"); return; }
     if (!strcmp(verb, "PLAY")) {
         set_play(1); int n = 0;

@@ -49,6 +49,7 @@
 #include <dirent.h>
 
 #define P 4096
+#define RUNMAX 48   /* arguments of a RUN/spawn row (was 16, and the rest were dropped without a word: a long BPWIN row lost its last steps and still passed) */
 #define FMAX 128   /* fields per row; a WRITE of a whole .pdl is one row with many bars */
 static char T[P], HOUSE[P], CASE[256] = "", RESULTS[P], OUT[16384];
 static int last_exit = -1, made_scratch;
@@ -197,8 +198,9 @@ int main(int argc, char **argv) {
             { char d[P + 8]; snprintf(d, sizeof d, "%s", pa); char *sl = strrchr(d, '/'); if (sl) { *sl = 0; mkdirs(d); } }
             FILE *w = fopen(pa, "w"); if (w) { fputs(b, w); fclose(w); } else check(0, "write", pa);
         } else if (!strcmp(v, "RUN") && nf >= 2) {
-            char *av[18]; char store[16][P]; int ac = 0, pfd[2]; pid_t pid; int st = 0; size_t k = 0;
-            for (int i = 1; i < nf && ac < 16; i++) { expand(fld[i], store[ac], P); av[ac] = store[ac]; ac++; }
+            char *av[RUNMAX + 2]; static char store[RUNMAX][P]; int ac = 0, pfd[2]; pid_t pid; int st = 0; size_t k = 0;
+            if (nf - 1 > RUNMAX) { check(0, "RUN", "too many arguments for a RUN row (RUNMAX): the extra ones would be dropped silently"); continue; }
+            for (int i = 1; i < nf && ac < RUNMAX; i++) { expand(fld[i], store[ac], P); av[ac] = store[ac]; ac++; }
             av[ac] = NULL; OUT[0] = 0;
             if (pipe(pfd) != 0) continue;
             fflush(stdout);
@@ -239,8 +241,9 @@ int main(int argc, char **argv) {
         else if (!strcmp(v, "ENV") && nf >= 2) { expand(fld[2 < nf ? 2 : 1], b, sizeof b); if (nf >= 3 && b[0]) setenv(fld[1], b, 1); else unsetenv(fld[1]); }
         else if (!strcmp(v, "SLEEP") && nf >= 2) usleep((useconds_t)atoi(fld[1]) * 1000);
         else if (!strcmp(v, "SPAWN") && nf >= 3 && NSPAWNED < 64) {
-            char *av[18]; char store[16][P]; int ac = 0; pid_t pid;
-            for (int i = 2; i < nf && ac < 16; i++) { expand(fld[i], store[ac], P); av[ac] = store[ac]; ac++; }
+            char *av[RUNMAX + 2]; static char store[RUNMAX][P]; int ac = 0; pid_t pid;
+            if (nf - 2 > RUNMAX) { check(0, "SPAWN", "too many arguments (RUNMAX): the extra ones would be dropped silently"); continue; }
+            for (int i = 2; i < nf && ac < RUNMAX; i++) { expand(fld[i], store[ac], P); av[ac] = store[ac]; ac++; }
             av[ac] = NULL; fflush(stdout);
             if ((pid = fork()) == 0) { setpgid(0, 0); { int dn = open("/dev/null", O_RDWR); if (dn >= 0) { dup2(dn, 0); dup2(dn, 1); dup2(dn, 2); if (dn > 2) close(dn); } } if (T[0]) { if (chdir(T)) {} } execvp(av[0], av); _exit(127); }
             setpgid(pid, pid); SPAWNED[NSPAWNED++] = pid; snprintf(b, sizeof b, "%d", (int)pid); var_set(fld[1], b);

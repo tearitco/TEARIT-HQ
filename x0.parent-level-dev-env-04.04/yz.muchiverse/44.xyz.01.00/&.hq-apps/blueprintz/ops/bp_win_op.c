@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
         if (!strncmp(step, "REQ:", 4)) {
             char before[400]; ui_get("msg", before, sizeof before);
             FILE *f = fopen(req, "a"); if (!f) { fprintf(stderr, "bp_win: cannot write the request\n"); return 2; } fprintf(f, "%s\n", step + 4); fclose(f);
-            int edit = !strncmp(step + 4, "EDIT:", 5) || !strncmp(step + 4, "ADD:", 4) || !strcmp(step + 4, "CDEL") || !strcmp(step + 4, "UNDO") || !strcmp(step + 4, "PNEW") || !strncmp(step + 4, "TRIG:", 5);
+            int edit = !strncmp(step + 4, "EDIT:", 5) || !strncmp(step + 4, "ADD:", 4) || !strcmp(step + 4, "CDEL") || !strcmp(step + 4, "UNDO") || !strcmp(step + 4, "PNEW") || !strncmp(step + 4, "TRIG:", 5) || !strncmp(step + 4, "PDEL:", 5) || !strncmp(step + 4, "SWITCH", 6);
             long t0 = now_ms(); char m[400] = "";
             while (now_ms() - t0 < (edit ? 25000 : 3000)) {
                 usleep(150000); ui_get("msg", m, sizeof m);
@@ -72,5 +72,8 @@ int main(int argc, char **argv) {
             else printf("bp_win: ok step %d: %s%s %s '%s'\n", i - 2, neg ? "not " : "", k, neg ? "has no" : "has", tl + 1);
         } else { fprintf(stderr, "bp_win: unknown step %s\n", step); return 2; }
     }
+    {   /* one line with the window's final state, for a harness HASROOT row to show when a later check fails */
+        char m[400], pl[300], pc[40], l[PATH_MAX]; ui_get("msg", m, sizeof m); ui_get("page_line", pl, sizeof pl); ui_get("pg_count", pc, sizeof pc);
+        snprintf(l, sizeof l, "%s/last_win.txt", st); FILE *f = fopen(l, "w"); if (f) { fprintf(f, "msg=%s | page_line=%s | pg_count=%s\n", m, pl, pc); fclose(f); } }
     return bad ? 1 : 0;
 }

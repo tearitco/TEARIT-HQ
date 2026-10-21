@@ -1016,6 +1016,27 @@ static void handle_action_request(void) {
     line[strcspn(line, "\r\n")] = '\0';
     if (line[0] == '\0') return;
 
+    /* "delete_page:<page_N>" (2026-10-21, blueprintz): remove one page folder. Refused (action cleared, nothing touched) when the name is not page_<digits>,
+     * the folder does not exist, it is the ONLY page, or it holds anything but plain files (a page is condition.pdl, event.ir.pdl, event.pal, cmd_N.sh). */
+    if (strncmp(line, "delete_page:", 12) == 0) {
+        const char *nm = line + 12; int ok = strncmp(nm, "page_", 5) == 0 && nm[5] != '\0';
+        for (const char *c = nm + 5; ok && *c; c++) if (*c < '0' || *c > '9') ok = 0;
+        char dir[PATH_BUF]; snprintf(dir, sizeof(dir), "%s/pages/%s", g_pkg_dir, nm);
+        struct stat dst;
+        if (ok && g_n_pages > 1 && stat(dir, &dst) == 0 && S_ISDIR(dst.st_mode)) {
+            int plain = 1; DIR *dd = opendir(dir); struct dirent *de;
+            if (dd) { while ((de = readdir(dd))) { if (de->d_name[0] == '.') continue; char f[PATH_BUF]; snprintf(f, sizeof(f), "%s/%s", dir, de->d_name); struct stat fs; if (lstat(f, &fs) != 0 || !S_ISREG(fs.st_mode)) plain = 0; } closedir(dd); }
+            if (plain && (dd = opendir(dir))) {
+                while ((de = readdir(dd))) { if (de->d_name[0] == '.') continue; char f[PATH_BUF]; snprintf(f, sizeof(f), "%s/%s", dir, de->d_name); unlink(f); }
+                closedir(dd); rmdir(dir);
+                g_current_page = 0; publish_pages(); publish_page_state();
+            }
+        }
+        FILE *cw = fopen(g_action_path, "w");
+        if (cw) fclose(cw);
+        return;
+    }
+
     if (strncmp(line, "new_page", 8) == 0) {
         handle_new_page_request();
         FILE *cw = fopen(g_action_path, "w");

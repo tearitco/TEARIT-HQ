@@ -19,6 +19,42 @@
         <item id="play" label="Play" action="${play_action}"/>
         <item id="stopplay" label="Stop" action="${stopplay_action}"/>
         <item id="pause" label="Pause" action="${pause_action}"/>
+      </row>
+      <row class="toolbar">
+        <item id="resume" label="Resume" action="${resume_action}"/>
+        <item id="fire" label="Fire" action="${fire_action}"/>
+        <item id="stepev" label="Step ev" action="${stepev_action}"/>
+      </row>
+      <row class="toolbar">
+        <item id="stepcmd" label="Step cmd" action="${stepcmd_action}"/>
+        <item id="runend" label="Run end" action="${runend_action}"/>
+        <item id="abort" label="Abort" action="${abort_action}"/>
+      </row>
+      <row class="toolbar">
+        <item id="detach" label="Detach" action="${detach_action}"/>
+        <item id="refresh" label="Refresh" action="${refresh_action}"/>
+      </row>
+      <row class="toolbar">
+        <item id="loadgdh" label="Load game-dev-hq verbs" action="${load_gdh_action}"/>
+      </row>
+      <row class="toolbar">
+        <item id="loadrpg" label="Load rpg-pvp-hq verbs" action="${load_rpg_action}"/>
+      </row>
+      <row class="toolbar">
+        <item id="loadce" label="Load common events" action="${loadce_action}"/>
+      </row>
+      <scrolllist class="from-top">
+        <repeat count="${e_count}" bind="e">
+          <item id="ev${e.#}" class="${e.class}" label="${e.label}" action="${e.action}"/>
+        </repeat>
+      </scrolllist>
+    </sidebar>
+    <panel id="bp_p" class="bp-panel">
+      <text label="${status_line}" class="bp-title"/>
+      <row class="toolbar">
+        <item id="play" label="Play" action="${play_action}"/>
+        <item id="stopplay" label="Stop" action="${stopplay_action}"/>
+        <item id="pause" label="Pause" action="${pause_action}"/>
         <item id="resume" label="Resume" action="${resume_action}"/>
         <item id="fire" label="Fire" action="${fire_action}"/>
       </row>
@@ -43,6 +79,8 @@
         </repeat>
         <item id="pgnew" class="data-item" label="+ New page (trigger on-click)" action="${pgnew_action}"/>
         <cli_io id="trigline" target_id="trigline" rows="1" class="bp-edit top" label="set trigger of this page ..." action="${trig_action}"/>
+        <cli_io id="swline" target_id="swline" rows="1" class="bp-edit top" label="set switch of this page (blank = none) ..." action="${sw_action}"/>
+        <cli_io id="pdelline" target_id="pdelline" rows="1" class="bp-edit top" label="delete this page: type its name (no undo) ..." action="${pdel_action}"/>
         <text label="${page_line}" class="quiet"/>
         <text label="Commands of the selected page (click one to select)" class="bp-head"/>
         <repeat count="${n_count}" bind="n">
