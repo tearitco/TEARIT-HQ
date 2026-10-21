@@ -36,7 +36,9 @@ static void walk_up_find(const char *from, const char *target_name, char *out) {
     out[0] = '\0';
     char cur[MAX_PATH];
     snprintf(cur, sizeof(cur), "%s", from);
-    while (cur[0] != '\0' && cur[0] != '/') {
+    /* 2026-10-21: was `cur[0] != '/'`, which is false at once for an absolute path (the caller passes /proc/self/exe's dir), so the walk never ran and
+     * common_events/ was never found. Stop when the path is used up instead (an absolute path ends as "" after the root is stripped). */
+    while (cur[0] != '\0') {
         /* strip trailing slash */
         size_t sl = strlen(cur);
         if (sl > 1 && cur[sl - 1] == '/') cur[sl - 1] = '\0';
@@ -100,6 +102,9 @@ int main(int argc, char **argv) {
         snprintf(house_root, sizeof(house_root), "%s", ce_root);
         size_t hl = strlen(house_root);
         if (hl > 1 && house_root[hl - 1] == '/') house_root[hl - 1] = '\0';
+        /* 2026-10-21: walk_up_find returns the common_events dir ITSELF ("<house>/common_events/"), so the line above leaves "<house>/common_events"; the
+         * house root is its parent (the old code looked for 101.mutaclsym* inside common_events/ and always failed). */
+        { char *cs = strrchr(house_root, '/'); if (cs && cs != house_root) *cs = '\0'; }
         /* house_root is now <house_root>, find 101.mutaclsym* subdir */
         DIR *hd = opendir(house_root);
         if (!hd) {
