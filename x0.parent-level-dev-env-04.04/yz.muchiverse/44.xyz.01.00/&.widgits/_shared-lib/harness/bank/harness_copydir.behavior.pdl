@@ -1,0 +1,17 @@
+# Behavior Bank entry for the harness `harness_copydir` (see HARNESS-BEHAVIOR-BANK-DESIGN.md). Weights on SYNONYM / SLOT / CORPUS rows are hand-seeded; only WEIGHT (from COUNTS) is measured.
+BEHAVIOR | harness.harness_copydir
+KIND | spoke
+KEYWORDS | copydir, copy tree, scratch copy, recursive copy, skip names, case verb
+SYNONYM | copy folder | 0.9
+SYNONYM | clone directory | 0.7
+SYNONYM | scratch copy | 0.8
+SENTENCE | Checks the COPYDIR case verb: a whole tree is copied under the scratch dir, names on the skip list are left out at any depth, file modes are kept.
+SLOT | 0 | POINTS_TO=pal-harness | WEIGHT=0.70
+SLOT | 1 | POINTS_TO=scratch | WEIGHT=0.60
+CORPUS | game-engine | WEIGHT=0.40
+SEQUENCE | 1 | exec ./ops/+x/harness_case_op.+x cases/harness_copydir.pdl
+SEQUENCE | 2 | exec ./ops/+x/harness_verdict_op.+x cases/harness_copydir.pdl
+SEQUENCE | 3 | exec ./ops/+x/harness_bank_op.+x cases/harness_copydir.pdl
+SOURCE | hand-authored 2026-10-17 (claude, play lane); weights are seeds awaiting owner validation
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

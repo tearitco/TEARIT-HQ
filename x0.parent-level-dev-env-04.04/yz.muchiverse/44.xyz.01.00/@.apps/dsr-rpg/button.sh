@@ -10,7 +10,7 @@ XHTPM="$SCRIPT_DIR/dsr-rpg.xhtpm"
 mkdir -p "$SCRIPT_DIR/state" "$SCRIPT_DIR/audit"
 [ -x "$SCRIPT_DIR/ops/+x/dsr_rpg.+x" ] || sh "$SCRIPT_DIR/ops/build_dsr_rpg.sh" >/dev/null 2>&1 || true
 "$SCRIPT_DIR/ops/+x/dsr_rpg.+x" status >/dev/null     # ui.txt + scene.raw must exist before the window loads
-old="$(ps -eo pid,comm,args | awk '$2=="khtpm_core_rend" && index($0,"dsr-rpg.xhtpm"){print $1}')"
+old="$(ps -eo pid,comm,args | awk -v x="$XHTPM" '$2=="khtpm_core_rend" && index($0,x){print $1}')"
 [ -n "$old" ] && echo "$old" | xargs -r kill -TERM && sleep 1
 setsid nohup "$BIN" "$HOUSE_ROOT" "$XHTPM" >"$SCRIPT_DIR/audit/dsr-rpg.log" 2>&1 < /dev/null &
 printf '%s %s 0 0 dsr-rpg\n' "$!" "$!" >> "$HOUSE_ROOT/#.desktop/livedesk_proc_list.txt" 2>/dev/null || true

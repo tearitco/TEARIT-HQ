@@ -37,9 +37,9 @@ RULES
 See: 101.mutaclsym…/dox/xelector-context.md § desktop + event-editor widget
      &.widgits/event-editor/
 
-LIVEDESK CONFIG (.pdl) — canonical set
---------------------------------------
-#.desktop also hosts the livedesk taskbar (khtpm) state/config. This is the
+LYFEDESK CONFIG (.pdl) — canonical set  (LyfeDesk was called livedesk; the file names below keep the old name for now)
+---------------------------------------------------------------------------------------------------
+#.desktop also hosts the LyfeDesk taskbar (khtpm) state/config. This is the
 canonical map — every file here is read at runtime by the khtpm binaries from
 house_root (khtpm_taskbar_manager.c / khtpm_strip_parser.c / khtpm_hq_render.c
 / crypt_autostart.c), so moving/renaming one here means recompiling C.

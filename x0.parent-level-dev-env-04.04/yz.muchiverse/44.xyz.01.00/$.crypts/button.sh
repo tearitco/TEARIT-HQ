@@ -227,25 +227,29 @@ case "$ACTION" in
         # the app grid and on the Desktop. Generated for THIS checkout's location, never committed (no absolute paths in git);
         # re-run after moving the checkout.
         _icon_dir="$HOME/.local/share/icons/hicolor/256x256/apps"
-        _df="$HOME/.local/share/applications/livedesk.desktop"
+        _df="$HOME/.local/share/applications/lyfedesk.desktop"
+        # renamed Livedesk -> LyfeDesk (2026-10-15): drop the old launcher and icon so the grid and Desktop show one entry
+        rm -f "$HOME/.local/share/applications/livedesk.desktop" "$HOME/Desktop/Livedesk.desktop" "$_icon_dir/livedesk.png"
         mkdir -p "$_icon_dir" "$HOME/.local/share/applications"
         # the icon is drawn from the CURRENT livedesk_theme.pdl colors (re-run install-app after changing the theme);
         # no Pillow -> the shipped livedesk-icon-256.png
-        python3 "$SCRIPT_DIR/livedesk-icon-gen.py" "$HOUSE" "$_icon_dir/livedesk.png" 256 \
-            || cp "$SCRIPT_DIR/livedesk-icon-256.png" "$_icon_dir/livedesk.png"
+        python3 "$SCRIPT_DIR/livedesk-icon-gen.py" "$HOUSE" "$_icon_dir/lyfedesk.png" 256 \
+            || cp "$SCRIPT_DIR/livedesk-icon-256.png" "$_icon_dir/lyfedesk.png"
         # Exec must be quoted, with $ ` " \ escaped (the house folder is literally named "$.crypts"; the keyfile also doubles the backslash)
         _exec="$(printf '%s' "$SCRIPT_DIR/livedesk-launch.sh" | sed 's/[$`"\\]/\\\\&/g')"
-        printf '%s\n' '[Desktop Entry]' 'Version=1.0' 'Type=Application' 'Name=Livedesk' \
-            'Comment=Start the livedesk desktop (taskbar, entities, autostart)' \
-            "Exec=\"$_exec\"" "Icon=$_icon_dir/livedesk.png" \
+        printf '%s\n' '[Desktop Entry]' 'Version=1.0' 'Type=Application' 'Name=LyfeDesk' \
+            'Comment=Start the LyfeDesk desktop (taskbar, entities, autostart)' \
+            "Exec=\"$_exec\"" "Icon=$_icon_dir/lyfedesk.png" \
             'Terminal=false' 'StartupNotify=false' 'Categories=Utility;' > "$_df"
         chmod +x "$_df"
         echo "installed app entry: $_df"
         if [ -d "$HOME/Desktop" ]; then
-            cp "$_df" "$HOME/Desktop/Livedesk.desktop"; chmod +x "$HOME/Desktop/Livedesk.desktop"
-            command -v gio >/dev/null 2>&1 && gio set "$HOME/Desktop/Livedesk.desktop" metadata::trusted true 2>/dev/null
-            echo "installed desktop launcher: $HOME/Desktop/Livedesk.desktop (right-click > Allow Launching if it shows a gear icon)"
+            cp "$_df" "$HOME/Desktop/LyfeDesk.desktop"; chmod +x "$HOME/Desktop/LyfeDesk.desktop"
+            command -v gio >/dev/null 2>&1 && gio set "$HOME/Desktop/LyfeDesk.desktop" metadata::trusted true 2>/dev/null
+            echo "installed desktop launcher: $HOME/Desktop/LyfeDesk.desktop (right-click > Allow Launching if it shows a gear icon)"
         fi
+        # the name reads "HQ:<user of the last login>" (and follows later logins: lyfedesk-shortcut-refresh.sh)
+        sh "$SCRIPT_DIR/lyfedesk-shortcut-refresh.sh" "$HOUSE"
         command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$HOME/.local/share/applications" 2>/dev/null
         ;;
     install-xdg)

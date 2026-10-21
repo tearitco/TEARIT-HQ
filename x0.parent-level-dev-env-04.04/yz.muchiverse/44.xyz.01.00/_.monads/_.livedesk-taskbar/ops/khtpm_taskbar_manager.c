@@ -4516,6 +4516,8 @@ static int livedesk_build_player_menu(const char *house_root, HQMenuItem *menu, 
     /* 2026-10-15 (owner: blueprintz belongs under player, it is the debugger): opens the blueprintz window (page events, Play / Pause / Step / Fire). Same script as the db menu's blueprintz row. */
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "blueprintz"); snprintf(menu[n].command, sizeof(menu[n].command), "sh _.monads/_.livedesk-taskbar/ops/open_blueprintz.sh"); n++; }
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "reset"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:reset-entities"); n++; }
+    /* 2026-10-16 (owner: "new game" belongs in every Player menu, tb included): record the state the desk is leaving, then start fresh. See the "livedesk:new-game" handler. */
+    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "new-game"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:new-game"); n++; }
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "Synch"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:synch-from-pchq"); n++; }
     /* 2026-10-06 (owner request): save-game / load-game, each opens a 16-slot picker (PLAYER_MENU_SAVE / _LOAD) with Cancel (back). */
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "save-game"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:savegame-menu:save"); n++; }
@@ -6128,6 +6130,23 @@ void ktb_hq_activate(KtbState *s, int row) {
                      launcher, s->house_root);
             int rc = ktb_system_recorded(s->house_root, sh);
             (void)rc;
+        }
+        ktb_hq_close(s);
+    } else if (strcmp(m->command, "livedesk:new-game") == 0) {
+        /* player cell's "new-game" row (2026-10-16): the audit manifest of the current entity tree goes into the LAST save slot (16, same op and files as save-game: it
+         * copies and changes no entity data, 0.2 s for 2,300 files, so it runs here and finishes BEFORE anything is respawned; the ledger keeps every earlier slot-16 save),
+         * then the same fresh respawn as "reset". NOT an undo: load-game still restores nothing (game_slot_op v1 only reports what changed), so there is no "undo new game"
+         * row here until load restores. */
+        if (have_sroot) {
+            char sg[KTB_PATH_BUF], pals[KTB_PATH_BUF], shs[KTB_PATH_BUF * 4], cur[KTB_PATH_BUF] = "";
+            if (livedesk_savegames_dir(s->house_root, sg, sizeof(sg)) && livedesk_pals_root(s->house_root, pals, sizeof(pals))) {
+                snprintf(shs, sizeof(shs), "mkdir -p '%s' && nice -n 15 '%s/&.widgits/_shared-lib/ops/+x/game_slot_op.+x' '%s' '%s' save %d > '%s/last_result.txt' 2>&1",
+                         sg, s->house_root, sg, pals, GAME_SLOTS, sg);
+                int src = system(shs);
+                (void)src;
+            }
+            livedesk_default_session(s->house_root, sroot, cur, sizeof(cur));
+            livedesk_reset_entities(s->house_root, sroot, cur);
         }
         ktb_hq_close(s);
     } else if (strcmp(m->command, "livedesk:reset-entities") == 0) {

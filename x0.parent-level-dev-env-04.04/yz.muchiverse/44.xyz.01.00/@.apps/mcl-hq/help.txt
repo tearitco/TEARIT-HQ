@@ -1,0 +1,56 @@
+mcl-hq help: blocks and crafting
+Blocks stand on the Overworld map and stop
+walking. You can mine them, carry them, place
+them and craft with them.
+
+Every pet and the player has its own bag.
+The actor is whoever Menu > Control (Tab)
+has selected.
+
+Craft > Help is a one-line tip.
+This panel is the full help: Help > Next page.
+---
+1. Face a block
+Turn INT on (the INT tab). An arrow key into a
+block turns you to face it; you cannot walk
+into it.
+
+2. Mine it
+Inventory > Mine block ahead takes the block in
+front of you into your bag.
+The chat scroll says: rex: mines stone
+If nothing is in front: "no block at x,y".
+---
+3. Place a block
+Inventory > Hold next block picks the block
+Place uses from your bag (it cycles).
+Inventory > Place block ahead puts it on the
+free cell in front. It costs one from the bag.
+It refuses on a block, water, scenery, a door
+cell, or a cell where someone stands.
+---
+4. Craft
+Craft > planks x4: 1 log gives 4 planks.
+Without a log: "cannot craft planks".
+Recipes are rows in recipes.pdl in the game
+folder (RECIPE | id | grid | output | count).
+
+Craft > Bag lists what the actor carries.
+---
+5. The log
+Every mine, place and craft (and every refusal)
+is one line in the chat scroll.
+Menu > Chat show / hide opens or closes it.
+The scroll shows the last ten lines.
+
+Save, Load and New game cover the blocks and
+the bags (they are rebuilt from events.txt).
+New game puts the starting blocks back.
+---
+Not built yet
+Gravity, chests, mobs, the crafting table
+(every recipe works anywhere), tools and break
+times, drops other than the block itself.
+
+Full guide: BOOK 10-user-docs/
+MCL-HQ-BLOCKS-HOWTO.md

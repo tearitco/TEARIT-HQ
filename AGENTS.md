@@ -124,6 +124,13 @@ instrumentation rather than the code under test:
 Corollary: read artifacts by identity (our own pid), never "newest on disk" —
 with two clones running that is another window's file.
 
+## Product name: LyfeDesk (2026-10-15)
+
+The product is **LyfeDesk** (written "LyfeDesk"), formerly "livedesk", renamed to avoid a future trademark conflict. Anything a user
+sees (window titles, labels, banners, launchers, icon, docs prose) says LyfeDesk. Internal identifiers still say `livedesk` on purpose
+until the deep rename (directories, file names, `livedesk:` command prefix, constants, WM_CLASS, user-data paths): do not rename those
+piecemeal, and do not write new user-facing text with the old name. The plan and checklist are in `04-bugs/bug_bounty.md`.
+
 ## Source of truth
 
 Full house conventions live in the HQ-IQ-BOOK:

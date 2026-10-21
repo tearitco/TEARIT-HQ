@@ -1203,7 +1203,37 @@ the leaked engine stacks in this chapter's index.
 The 3D daemon's 30ms wait now runs at the bottom of every pass, including
 after a frame. A shared `house_wait_us` so the next loop cannot hide its
 sleep in an else is an open bounty, not a header yet
-(`04-bugs/bug_bounty.md`, "one house wait").
+(`04-bugs/bug_bounty.md`, "one house wait"). `house_wait.h` did land
+the same day. The 2026-10-09 board walk is pitfall 26, not this one.
+
+
+## 26. A bigger board makes every pixel walk the whole map (2026-10-09)
+
+**Symptom:** opening the 3D board, or dumping one frame of a Doom page,
+heats the machine until the session dies. It looks like a GPU crash.
+The box rebooted. Uptime after the incident was minutes, and
+`bv_render_3d` was not running anymore.
+
+**Real cause:** `frame_max_steps` was `board_w + board_h + z_count + 32`.
+At a 64-wide board that is a short walk. At 256 it is a few hundred
+steps per pixel, and the canvas was 2101×948. Fog already hides past
+48 cells (`view_fog_end=48`), so the extra steps never reached the
+picture. The daemon then slept only its 30ms floor and took the next
+frame. `house_wait.h` stops a loop that skips its sleep. It does not
+stop a frame whose own work is the peg.
+
+**Real fix:** the CPU walk stops at `fog_end + 8` and never walks more
+than 96 cells. The GPU walk has the same fog stop and a 96-step cap
+(it was 320). After a frame slower than 30ms the daemon calls
+`house_wait_us` for as long as that frame took, then the normal floor.
+The guarded binary was compiled and installed. It was not launched.
+Do not start `bv_render_3d.+x` to "see if the guard works" until the
+dry cost below is in the safe band.
+
+**Profile before a run:** `sh &.widgits/board-viewer/ops/bv_cost_before_run.sh`
+reads the caps out of the source and the last scene receipt. It does
+not start the renderer. `proc-mon` only sees a process that is already
+alive, so it is the check after a launch, not the check before one.
 
 
 ## Manager waits for a child that writes to the manager's own pipe (found 2026-10-08, video-player-hq)

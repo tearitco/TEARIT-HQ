@@ -7186,6 +7186,7 @@ static int layout_sidebar_panel(Elem *page) {
                 }
             int ty = CHROME_H + tabbar_h + scaled(2);
             int tx = scaled(6);
+            const int nav_before_row = g_n_nav;      /* the wrap pass below renumbers this row */
             for (int i = 0; i < tabbar->n_children; i++) {
                 Elem *tab = tabbar->children[i];
                 if (strcmp(tab->tag, "tab") != 0) continue;
@@ -7224,6 +7225,16 @@ static int layout_sidebar_panel(Elem *page) {
              * the row has needed in this process: the window can still grow for a genuinely wider row, it
              * never shrinks and re-grows with a ticking label. */
             { static int s_tabbar_hw = 0; int need = tx + scaled(6); if (need > s_tabbar_hw) s_tabbar_hw = need;
+              /* 2026-10-17 (owner: the df-hq window got far wider than the others after four tabs were added): a row wider than TABROW_MAX_W no longer
+               * widens the window without limit; the window stops at TABROW_MAX_W and the row wraps onto a second line (kh_layout_tabbar_wrap, the same
+               * wrapper the canvas layout uses). A row that fits is laid out exactly as before. */
+              const int tabrow_max_w = 1260;      /* real pixels: about the width of the nine-tab cdda-hq window */
+              if (s_tabbar_hw > tabrow_max_w) {
+                  if (g_win_w < tabrow_max_w) { g_win_w = tabrow_max_w; g_window->w = g_win_w; }
+                  g_n_nav = nav_before_row;
+                  tabbar_h += kh_layout_tabbar_wrap(tabbar, scaled(6), CHROME_H + tabbar_h);
+                  continue;
+              }
               if (s_tabbar_hw > g_win_w) { g_win_w = s_tabbar_hw; g_window->w = g_win_w; } }
             tabbar->x = 0; tabbar->y = CHROME_H + tabbar_h; tabbar->w = g_win_w; tabbar->h = row_h;
             css_compute_style(&g_sheet, tabbar->tag, tabbar->id, tabbar->classes, tabbar->n_classes, 0, &tabbar->style);
@@ -7659,6 +7670,56 @@ static void dock_release_keyboard_if_left(void) {
     }
 }
 
+/* TOP BAR DRAG (2026-10-15, owner: "make the top bar a bit draggable using the place where the '.' is, near the top half of the screen only,
+ * but snap back to the original position if relatively close"). The '.' is the title-bar focus marker in the header's left margin (the strip
+ * of width DOCK_FOCUS_BOX_W before the first cell); pressing button 1 there and moving drags the header window. The offset from home
+ * (strip_x_offset / strip_y_offset in livedesk_taskbar.pdl, which this never edits) is g_hdr_dx/g_hdr_dy; layout_dock_bar() applies it every layout
+ * so a redraw cannot snap the bar back. The window is kept on screen and its bottom edge stays in the top half of the screen. On release,
+ * if the bar is within header_snap_px (pdl, default 90) of home it snaps back and the saved position is deleted; otherwise the offset is saved to
+ * #.desktop/strip_header_pos.txt and restored at the next start. Header only (the bottom bar and every other window are untouched). */
+static int g_hdr_dx = 0, g_hdr_dy = 0, g_hdr_pos_loaded = 0;
+static int g_hdr_dragging = 0, g_hdr_drag_xr = 0, g_hdr_drag_yr = 0, g_hdr_drag_dx0 = 0, g_hdr_drag_dy0 = 0, g_hdr_home_x = 0, g_hdr_home_y = 0;
+static int g_hdr_snap_px = 90;
+
+static void hdr_pos_path(char *out, size_t n) { snprintf(out, n, "%s/#.desktop/strip_header_pos.txt", g_house_root); }
+static void hdr_pos_load_once(void) {
+    char path[PATH_BUF]; FILE *f; char line[128];
+    if (g_hdr_pos_loaded) return;
+    g_hdr_pos_loaded = 1;
+    hdr_pos_path(path, sizeof(path));
+    if (!(f = fopen(path, "r"))) return;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "dx=", 3) == 0) g_hdr_dx = atoi(line + 3);
+        else if (strncmp(line, "dy=", 3) == 0) g_hdr_dy = atoi(line + 3);
+    }
+    fclose(f);
+}
+static void hdr_pos_save(void) {
+    char path[PATH_BUF]; FILE *f;
+    hdr_pos_path(path, sizeof(path));
+    if (g_hdr_dx == 0 && g_hdr_dy == 0) { unlink(path); return; }
+    if ((f = fopen(path, "w"))) { fprintf(f, "dx=%d\ndy=%d\n", g_hdr_dx, g_hdr_dy); fclose(f); }
+}
+/* keep the header on screen and its bottom edge in the top half of the screen */
+static void hdr_clamp(int *x, int *y, int w, int h) {
+    int sw = kh_screen_w(), sh = kh_screen_h();
+    if (*x > sw - w) *x = sw - w;
+    if (*x < 0) *x = 0;
+    if (*y > sh / 2 - h) *y = sh / 2 - h;
+    if (*y < 0) *y = 0;
+}
+
+/* end of a header drag (button released, or the release was missed): snap home when close, then save or delete the saved offset */
+static void hdr_drag_finish(void) {
+    g_hdr_dragging = 0;
+    if (g_hdr_dx * g_hdr_dx + g_hdr_dy * g_hdr_dy <= g_hdr_snap_px * g_hdr_snap_px) {
+        g_hdr_dx = 0; g_hdr_dy = 0;
+        g_win_x = g_hdr_home_x; g_win_y = g_hdr_home_y;
+        XMoveWindow(dpy, win, g_win_x, g_win_y);
+    }
+    hdr_pos_save();
+}
+
 static void load_dock_strip_offset(int *out_x, int *out_y) {
     *out_x = 0;
     *out_y = 40;
@@ -7700,6 +7761,7 @@ static void load_dock_strip_offset(int *out_x, int *out_y) {
         else if (strcmp(key, "dock_nav_badge_px") == 0) g_dock_nav_badge_base = atoi(v);
         else if (strcmp(key, "dock_focus_box_px") == 0) g_dock_focus_box_base = atoi(v);
         else if (strcmp(key, "dock_pager_px") == 0) g_dock_pager_base = atoi(v);
+        else if (strcmp(key, "header_snap_px") == 0) { int sp = atoi(v); if (sp >= 0 && sp <= 600) g_hdr_snap_px = sp; }
     }
     fclose(f);
     }
@@ -8154,7 +8216,8 @@ static int layout_dock_bar(Elem *page) {
         if (!is_bottom) { g_dock_dd_scrolling = 0; g_dock_dd_vis = 0; g_dock_dd_total = n_all; g_dock_dd_search = 0; }   /* the bottom pass must not clear the top menu's state */
         if (trig0 && !is_bottom) {
             MwPlan mp_all, mp;
-            int cap = (kh_screen_h() - (trig0->y + trig0->h) - 8) / DOCK_BAR_H;
+            /* g_win_y: the popup sits at g_win_y + the trigger's bottom, so the room left on screen starts there, not at this window's own top. The - 1 keeps a row for the search field that a scrolling list adds under the rows (without both, a full-screen dropdown ran 50-65 px past the bottom edge and the search row was off screen) */
+            int cap = (kh_screen_h() - (g_win_y + trig0->y + trig0->h) - 8) / DOCK_BAR_H - 1;
             int plan_n;
             if (g_dropdown_max_rows >= 3 && g_dropdown_max_rows < cap) cap = g_dropdown_max_rows;   /* hq_ui.pdl dropdown_max_rows */
             if (strcmp(g_dock_dd_target, trig0->id) != 0) {
@@ -8334,6 +8397,14 @@ static int layout_dock_bar(Elem *page) {
         if (g_win_x + g_win_w > sw - ox) g_win_w = sw - ox - g_win_x;
         if (g_win_w < 40) g_win_w = 40;
         s_hdr_w_latch = g_win_w;      /* after the screen clamp, so a smaller screen / new offset still wins */
+        /* top bar drag offset (see g_hdr_dx): applied after the width clamp above, which must keep using the home x */
+        hdr_pos_load_once();
+        g_hdr_home_x = ox; g_hdr_home_y = oy;
+        if (g_hdr_dx || g_hdr_dy) {
+            g_win_x = ox + g_hdr_dx; g_win_y = oy + g_hdr_dy;
+            hdr_clamp(&g_win_x, &g_win_y, g_win_w, g_win_h);
+            g_hdr_dx = g_win_x - ox; g_hdr_dy = g_win_y - oy;   /* a smaller screen or a changed home pulls a saved offset back inside */
+        }
         if (g_dock_menu_w > 0) {
             g_dock_menu_sx += g_win_x;
             g_dock_menu_sy += g_win_y;
@@ -12225,7 +12296,7 @@ static void kh_hq_reg_mark_removed(void) {
     g_hq_reg_last_line[0] = '\0';
 }
 
-static void redraw(void) {
+static void redraw_body(void) {
     /* --headless: there is no window to blit to. redraw() is the one
      * choke point every "something changed, repaint" path funnels
      * through, so intercept it here - run the real layout, then write
@@ -12767,6 +12838,23 @@ static void redraw(void) {
     XFlush(dpy);
     dock_write_ascii_frame();   /* strip: the "cli" mirror (dock only, else no-op) */
     kh_write_ascii_frame();     /* every other window: per-PID text mirror */
+}
+
+/* Progressive tile load (BOOK 03-pitfalls/palette-tile-load-lag.md): every paint starts with a fresh sprite-decode budget; when palette
+ * tiles were left for later (sprite_cache.c), schedule one more paint through the same g_frame_dirty flag every other repaint request
+ * uses, so the grid fills in over a few frames instead of freezing the window for one long paint. g_frame_dirty is cleared by the loop
+ * BEFORE it calls redraw(), so setting it here survives to the next pass. */
+static void redraw(void) {
+    static int trace = -1;                 /* KH_REDRAW_TRACE=1: one cost line per paint (where the time went), next to the [REDRAW n] line */
+    if (trace < 0) trace = getenv("KH_REDRAW_TRACE") != NULL;
+    double t0 = trace ? hqs_now_ms() : 0, l0 = g_hqs_load_ms, b0 = g_hqs_blit_ms;
+    int k0 = g_hqs_loads, n0 = g_hqs_blits;
+    spc_frame_begin();
+    redraw_body();
+    if (spc_frame_deferred() && !g_quit) g_frame_dirty = 1;
+    if (trace)
+        fprintf(stderr, "[REDRAW-COST] total=%.1fms sprite_decode=%.1fms (%d tiles) blit=%.1fms (%d tiles) deferred=%d\n",
+                hqs_now_ms() - t0, g_hqs_load_ms - l0, g_hqs_loads - k0, g_hqs_blit_ms - b0, g_hqs_blits - n0, spc_frame_deferred());
 }
 
 /* on-demand debug PNG dump, same real convention every other khtpm app
@@ -15473,6 +15561,15 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
             g_resize_start_h = g_win_h;
             return;
         }
+        /* top bar drag (see g_hdr_dx): button 1 in the header's left margin (the '.' focus marker), header window only, no dropdown open */
+        if (ev->xbutton.button == 1 && !g_hdr_dragging && g_window && elem_has_class(g_window, "dock-header") &&
+            ev->xbutton.window == win && g_dock_menu_w <= 0 && ev->xbutton.x >= 0 && ev->xbutton.x < DOCK_FOCUS_BOX_W) {
+            hdr_pos_load_once();
+            g_hdr_dragging = 1;
+            g_hdr_drag_xr = ev->xbutton.x_root; g_hdr_drag_yr = ev->xbutton.y_root;
+            g_hdr_drag_dx0 = g_hdr_dx; g_hdr_drag_dy0 = g_hdr_dy;
+            return;
+        }
         /* overlay title drag (see g_ov_drag): checked before any element hit-test, after the resize grip */
         if (ev->xbutton.button == 1 && !g_win_resizing && !g_ov_drag) {
             Elem *ovh = kh_ov_title_hit(g_window, ev->xbutton.x, ev->xbutton.y);
@@ -15754,6 +15851,10 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
         }
         return;
     }
+    if (ev->type == ButtonRelease && ev->xbutton.button == 1 && g_hdr_dragging) {
+        hdr_drag_finish();
+        return;
+    }
     if (ev->type == ButtonRelease && ev->xbutton.button == 1) {
         g_canvas_drag = 0;
         g_sbar_drag = -1;
@@ -15787,6 +15888,23 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
         while (XCheckTypedWindowEvent(dpy, ev->xmotion.window, MotionNotify, &msb)) *ev = msb;
         generic_sbar_scroll_from_y(g_sbar_drag, ev->xmotion.y);
         if (!g_quit) { assign_nav_and_layout(); redraw(); }
+        return;
+    }
+    if (ev->type == MotionNotify && g_hdr_dragging) {
+        if (ev->xmotion.state & Button1Mask) {
+            XEvent mh; int nx, ny;
+            while (XCheckTypedWindowEvent(dpy, ev->xmotion.window, MotionNotify, &mh)) *ev = mh;
+            nx = g_hdr_home_x + g_hdr_drag_dx0 + (ev->xmotion.x_root - g_hdr_drag_xr);
+            ny = g_hdr_home_y + g_hdr_drag_dy0 + (ev->xmotion.y_root - g_hdr_drag_yr);
+            hdr_clamp(&nx, &ny, g_win_w, g_win_h);
+            if (nx != g_win_x || ny != g_win_y) {
+                g_win_x = nx; g_win_y = ny;
+                g_hdr_dx = nx - g_hdr_home_x; g_hdr_dy = ny - g_hdr_home_y;
+                XMoveWindow(dpy, win, g_win_x, g_win_y);   /* window only: no relayout per motion tick */
+            }
+            return;
+        }
+        hdr_drag_finish();   /* button no longer held and the release was missed (outside our window): finish exactly like a release */
         return;
     }
     if (ev->type == MotionNotify && g_dock_dd_drag && (ev->xmotion.state & Button1Mask)) {
@@ -16218,6 +16336,11 @@ static void hq_run_event_loop(Atom wm_delete, int is_popup) {
                              || kh_is_drop_target_window()))
                                 ? (struct timeval){ 0, 16667 }
                                 : (struct timeval){ 0, 150000 };
+        /* Progressive tile load (sprite_cache.c): the last paint left palette tiles for later and owes one more. Do not idle the
+         * 150 ms tick first (measured: each slice cost ~0.27 s, of which ~0.15 s was this wait). Scoped to the owed repaint only:
+         * a blanket "dirty means no wait" would let windows that re-dirty every tick (hover fills) repaint at the 33 Hz floor. Bounded:
+         * every slice loads at least one tile, and spc_frame_deferred() clears with the next paint that has nothing left to defer. */
+        if (g_frame_dirty && spc_frame_deferred()) tv = (struct timeval){ 0, 0 };
         select(xfd + 1, &fds, NULL, NULL, &tv);
         /* Events that arrive during THIS select() wait are deliberately
          * left queued - they'll be the very first thing drained at the

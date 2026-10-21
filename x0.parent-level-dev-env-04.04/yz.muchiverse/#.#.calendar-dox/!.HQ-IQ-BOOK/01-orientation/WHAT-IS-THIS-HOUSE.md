@@ -3,7 +3,7 @@
 *Condensed from `SKILLS.md` §1-2 and `!.HOUSE_STDS.md` §A, 2026-09-02.*
 
 TEARIT-HQ ("the house") is a file-backed desktop OS project: a
-"livedesk" taskbar spawns entities (apps/games/tools, each its own
+"LyfeDesk" (formerly livedesk) taskbar spawns entities (apps/games/tools, each its own
 process) onto a virtual desktop, and every one of them communicates
 through plain files, never shared memory or synthetic input events.
 

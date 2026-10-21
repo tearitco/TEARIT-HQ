@@ -32,7 +32,7 @@ while ($true) {
 
     Clear-Host
 
-    Write-Host "=== livedesk cli ===  Ctrl+C to close"
+    Write-Host "=== LyfeDesk cli ===  Ctrl+C to close"
 
     Write-Host $House
 

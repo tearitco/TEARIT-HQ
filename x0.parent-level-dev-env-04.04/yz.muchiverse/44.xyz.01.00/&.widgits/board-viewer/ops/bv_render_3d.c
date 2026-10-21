@@ -4576,6 +4576,16 @@ static int render_one_frame(void) {
 
 #ifdef BV_HAVE_GPU
 static volatile sig_atomic_t g_daemon_stop = 0;
+/* N3 idle-cost gate (grok's back-to-sonnet-oc16): the daemon opened pchq_board_view.txt and pchq_canvas_click.txt on every 30 ms pass. A file is now only
+ * re-read when its (size, mtime ns) differ from the last read, or when it was modified in the last 100 ms (the filesystem clock is coarse: a second write
+ * in the same tick, same size, would otherwise be missed). The files are rewritten key/value lines, not append-only markers, so size alone cannot see a
+ * changed value. */
+typedef struct { long long sz, mt; } bv_sig_t;
+static int bv_sig_changed(const char *p, bv_sig_t *s) {
+    struct stat st; long long sz = -1, mt = -1; int racy = 0;
+    if (stat(p, &st) == 0) { sz = (long long)st.st_size; mt = (long long)st.st_mtim.tv_sec * 1000000000LL + st.st_mtim.tv_nsec; struct timespec n; clock_gettime(CLOCK_REALTIME, &n); racy = ((long long)n.tv_sec * 1000000000LL + n.tv_nsec) - mt < 100000000LL; }
+    int ch = (sz != s->sz || mt != s->mt || racy); s->sz = sz; s->mt = mt; return ch;
+}
 static void bv_daemon_on_term(int sig) { (void)sig; g_daemon_stop = 1; }
 
 static long long bv_file_size(const char *p) {
@@ -4681,7 +4691,8 @@ int main(int argc, char **argv) {
     while (!g_daemon_stop) {
         long long now = bv_file_size(reqp);
         int vw = last_vw, vh = last_vh, view_changed = 0;
-        if (vszp[0]) {
+        static bv_sig_t vsig = { -2, -2 };
+        if (vszp[0] && bv_sig_changed(vszp, &vsig)) {
             FILE *vf = fopen(vszp, "r");
             if (vf) { if (fscanf(vf, "%d %d", &vw, &vh) == 2 &&
                           (vw != last_vw || vh != last_vh)) view_changed = 1;
@@ -4690,8 +4701,9 @@ int main(int argc, char **argv) {
         if (g_click_ready && house_root[0]) {
             char cp[PATH_BUF], stamp[64] = "";
             snprintf(cp, sizeof(cp), "%s/#.desktop/pchq_canvas_click.txt", house_root); bv_prefer_session_file(cp, sizeof(cp), "canvas_click.txt");
-            FILE *cf = fopen(cp, "r");
-            if (cf) { if (!fgets(stamp, sizeof(stamp), cf)) stamp[0] = '\0'; fclose(cf); }
+            static bv_sig_t csig = { -2, -2 }; static char cstamp[64];
+            if (bv_sig_changed(cp, &csig)) { FILE *cf = fopen(cp, "r"); cstamp[0] = '\0'; if (cf) { if (!fgets(cstamp, sizeof(cstamp), cf)) cstamp[0] = '\0'; fclose(cf); } }
+            snprintf(stamp, sizeof(stamp), "%s", cstamp);
             static char last_click[64];
             if (stamp[0] && strcmp(stamp, last_click) != 0) {
                 int hx = 0, hy = 0, hz = 0, cx = 0, cy = 0;

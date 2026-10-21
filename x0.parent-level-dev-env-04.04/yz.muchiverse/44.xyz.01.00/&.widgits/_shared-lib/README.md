@@ -67,3 +67,4 @@ Phase-1 installer follow-up in `04.harnecient-fresh-install-design.md`
 §10 — not needed today since every current consumer builds from dev
 source before packaging.
 - `audio_dsp.c` (text-include: WAV read, radix-2 FFT, dominant frequency, DC/peak/rms) and `ops/audio_probe.c` (measure a WAV): pure audio helpers for the voice/SFX work (BOOK `19.audio/`). Added 2026-10-14.
+- `sprite_cache.c` (text-include, pure, 2 consumers: `khtpm_draw_core.c` hq_sprite and `palettes/ops/sprite_cache_op.c`): decoded-sprite disk cache (`~/.cache/lyfedesk-sprites`, validated against the csv, safe to delete) + a per-paint decode budget for progressive palette tile loading. Added 2026-10-20. BOOK `03-pitfalls/palette-tile-load-lag.md`.

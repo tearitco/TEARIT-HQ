@@ -15,7 +15,7 @@
       <tab id="tb-player" class="tab rp-tb" label="Player ▾" onclick="ACTIVATE" target_id="tb-player"/>
       <tab id="tb-time" class="tab rp-tb" label="${time_label} ▾" onclick="ACTIVATE" target_id="tb-time"/>
     </tabbar>
-    <sidebar id="side" class="sidebar">
+    <sidebar id="side" class="rp-rail sidebar">
       <repeat count="${n_party}" bind="party">
         <item id="bk-${party.#}" class="rp-menu-row dropdown-child ${party.cls}" target_id="tb-book" label="${party.label}" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' select ${party.id}"/>
       </repeat>
@@ -36,11 +36,11 @@
         <item id="sh${shop.#}" class="rp-menu-row dropdown-child" target_id="tb-shop" label="${shop.label}" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' buy ${shop.key}"/>
       </repeat>
       <item id="sh-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-shop" label="- cancel -" action="void"/>
+      <item id="mn-info" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Info show / hide" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' toggle left"/>
       <item id="mn-chat" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Chat show / hide" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' toggle chat"/>
       <item id="mn-hotbar" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Hotbar show / hide" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' toggle hb"/>
       <item id="mn-control" class="rp-menu-row dropdown-child" target_id="tb-menu" label="${control_label} (switch: Tab)" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' control"/>
       <item id="mn-voice" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Voice on / off" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' toggle voice"/>
-      <item id="mn-view" class="rp-menu-row dropdown-child" target_id="tb-menu" label="View: 2D / 3D / glyph" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' view"/>
       <item id="mn-reset" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Reset house (keeps a backup)" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' reset"/>
       <item id="mn-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-menu" label="- cancel -" action="void"/>
       <item id="pm-mode" class="rp-menu-row dropdown-child" target_id="tb-player" label="${mode_label}" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' mode"/>
@@ -48,25 +48,34 @@
       <item id="pm-stop" class="rp-menu-row dropdown-child" target_id="tb-player" label="Stop" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' stop"/>
       <item id="pm-save" class="rp-menu-row dropdown-child" target_id="tb-player" label="Save (slot 1)" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' save 1"/>
       <item id="pm-load" class="rp-menu-row dropdown-child" target_id="tb-player" label="Load (slot 1)" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' load 1"/>
+      <item id="pm-new" class="rp-menu-row dropdown-child" target_id="tb-player" label="New game" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' newgame"/>
+      <item id="pm-load0" class="rp-menu-row dropdown-child" target_id="tb-player" label="Undo new game" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' load 0"/>
+      <item id="pm-save2" class="rp-menu-row dropdown-child" target_id="tb-player" label="Save (slot 2)" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' save 2"/>
+      <item id="pm-load2" class="rp-menu-row dropdown-child" target_id="tb-player" label="Load (slot 2)" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' load 2"/>
       <item id="pm-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-player" label="- cancel -" action="void"/>
-      <text id="light" label="${run_label}" class="${run_cls}"/>
-      <text label="coins ${coins}" class="rp-big"/>
-      <text label="${nick_line}" class="ph-quiet"/>
-      <text label="${wallet_line}" class="ph-quiet"/>
-      <text label="${profile_line}" class="ph-quiet"/>
-      <text label="${friend_line}" class="ph-quiet"/>
-      <text label="${stat_line}" class="ph-quiet"/>
-      <text label="${stat_line2}" class="ph-quiet"/>
-      <text label="in this room (click to pick up)" class="rp-quiet"/>
-      <scrolllist>
-        <repeat count="${n_placed}" bind="placed">
-          <item id="pl${placed.#}" class="rp-row" label="${placed.label}" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' remove ${placed.id}"/>
-        </repeat>
-      </scrolllist>
     </sidebar>
     <panel id="room_p" class="rp-panel">
       <canvas id="room" class="rp-room" sprite="${canvas_raw}"/>
-      <row id="chat-ov" class="canvas-overlay-right ov-top ov-chrome ov-slide-x rp-chat-ov theme" show="${chat_visible}">
+      <row id="side-l" class="canvas-overlay-left ov-pin ov-chrome rp-side-ov theme" show="${left_visible}">
+        <text label="info - ${active_name}" class="hb-quiet ov-title theme-3 rp-side-t"/>
+        <item id="side-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' toggle left"/>
+        <text id="light" label="${run_label}" class="${run_cls} rp-side-t"/>
+        <text label="coins ${coins}" class="rp-big rp-side-t"/>
+        <text label="${nick_line_0}" class="ph-quiet rp-side-t"/>
+        <text label="${nick_line_1}" class="ph-quiet rp-side-t"/>
+        <text label="${nick_line_2}" class="ph-quiet rp-side-t"/>
+        <text label="${friend_line_0}" class="ph-quiet rp-side-t"/>
+        <text label="${friend_line_1}" class="ph-quiet rp-side-t"/>
+        <text label="${stat_line}" class="ph-quiet rp-side-t"/>
+        <text label="${stat_line2}" class="ph-quiet rp-side-t"/>
+        <text label="in this room (click to pick up)" class="rp-quiet rp-side-t"/>
+        <repeat count="${n_placed}" bind="placed">
+          <item id="pl${placed.#}" class="rp-row rp-side-row rp-side-t" label="${placed.label}" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' remove ${placed.id}"/>
+        </repeat>
+      
+        <item id="side-hide" class="rp-menu-row rp-side-row quiet" label="hide info" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' toggle left"/>
+      </row>
+      <row id="chat-ov" class="canvas-overlay-right ov-pin ov-chrome rp-chat-ov theme" show="${chat_visible}">
         <text label="chat - ${active_name}" class="hb-quiet ov-title theme-3"/>
         <item id="chat-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' toggle chat"/>
         <item id="chat-clear" class="rp-menu-row" label="clear chat" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' clearchat"/>

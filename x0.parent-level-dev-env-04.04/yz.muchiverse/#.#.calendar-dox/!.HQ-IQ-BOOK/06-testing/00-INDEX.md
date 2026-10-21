@@ -12,6 +12,7 @@
   text-relay → text-state-dump → PNG-last ordering, presentation-video
   archive convention. Moved verbatim (read alongside
   `TESTING_STRATEGY.md`, not instead of it).
+- `GAME-PLAYTHROUGH-HARNESSES.md` — scripted playthroughs of df-hq, cdda-hq and mcl-hq as pal harnesses driven by a data phase table: how to run, the table format with a worked example, the RESULT ledger and per-phase weights, traps found (2026-10-17).
 - `CPU-AND-SESSION-SAFETY.md` — CPU-safety discipline, headless
   testing technique, pixel-verification-without-a-screen. Condensed
   from `!.HOUSE_STDS.md` §C.

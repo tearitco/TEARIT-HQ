@@ -1,0 +1,4 @@
+# event.pal - real prisc+x opcodes in the shape khtpm_events_hq_manager.c compiles (event.ir.pdl -> event.pal -> cmd_N.sh); hand-written (copy of day_tick) for rpg-pvp-hq 2026-10-20: the loot pickup action
+# pkg=pickup page=page_1
+exec cmd_1.sh
+halt

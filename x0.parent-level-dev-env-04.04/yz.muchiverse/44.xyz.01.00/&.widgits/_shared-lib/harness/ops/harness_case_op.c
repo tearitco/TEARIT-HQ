@@ -8,6 +8,8 @@
  *   SCRATCH   |                        create a scratch dir (/tmp/hc_XXXXXX) = $T
  *   MKDIR     | <path under $T>
  *   COPY      | <src under $HOUSE> | <dst under $T>      copies a file, keeps its mode
+ *   COPYDIR   | <dir under $HOUSE> | <dst dir under $T> | <names to skip, comma separated, optional>     copies a whole tree (regular files and dirs only, modes kept, symlinks skipped); a skipped name is
+ *                                                  left out at ANY depth (e.g. state,board,+x). Added 2026-10-17 so a playthrough harness can copy a game folder without a shell
  *   WRITE     | <path under $T> | <text>                write a file (the text is everything after the path, so it may contain ' | ')
  *   RUN       | <argv0> | <arg1> | ...                   fork/exec (NO shell), stdout+stderr captured, exit code kept; fields are argv entries, so no quoting
  *   EXPECT_EXIT   | <n>            | <label>
@@ -44,6 +46,7 @@
 #include <libgen.h>
 #include <signal.h>
 #include <fcntl.h>
+#include <dirent.h>
 
 #define P 4096
 #define FMAX 128   /* fields per row; a WRITE of a whole .pdl is one row with many bars */
@@ -129,6 +132,27 @@ static int copy_file(const char *src, const char *dst) {
     if (stat(src, &st) == 0) chmod(dst, st.st_mode & 0777);
     return 0;
 }
+/* COPYDIR: recursive copy, regular files + dirs only (a symlink is skipped, never followed); skip = comma list of basenames left out at any depth */
+static int name_skipped(const char *name, const char *skip) {
+    const char *s = skip; size_t n = strlen(name);
+    while (s && *s) { const char *e = strchr(s, ','); size_t l = e ? (size_t)(e - s) : strlen(s); if (l == n && !strncmp(s, name, l)) return 1; s = e ? e + 1 : NULL; }
+    return 0;
+}
+static void mkdirs(const char *path);
+static int copy_tree(const char *src, const char *dst, const char *skip) {
+    DIR *d = opendir(src); struct dirent *e; int n = 0;
+    if (!d) return -1;
+    mkdirs(dst);
+    while ((e = readdir(d))) {
+        char s2[P + 8], d2[P + 8]; struct stat st;
+        if (!strcmp(e->d_name, ".") || !strcmp(e->d_name, "..") || name_skipped(e->d_name, skip)) continue;
+        snprintf(s2, sizeof s2, "%s/%s", src, e->d_name); snprintf(d2, sizeof d2, "%s/%s", dst, e->d_name);
+        if (lstat(s2, &st) != 0) continue;
+        if (S_ISDIR(st.st_mode)) { int k = copy_tree(s2, d2, skip); if (k > 0) n += k; }
+        else if (S_ISREG(st.st_mode) && copy_file(s2, d2) == 0) n++;
+    }
+    closedir(d); return n;
+}
 static void mkdirs(const char *path) { char t[P]; snprintf(t, sizeof t, "%s", path); for (char *p = t + 1; *p; p++) if (*p == '/') { *p = 0; mkdir(t, 0755); *p = '/'; } mkdir(t, 0755); }
 
 int main(int argc, char **argv) {
@@ -147,7 +171,7 @@ int main(int argc, char **argv) {
         for (int i = 0; i < nf; i++) fld[i] = trim(fld[i]);
         const char *v = fld[0]; char a[P], b[P], pa[P + 8], pb[P + 8];
         {   /* more fields than the verb takes = an unescaped '|' in the text (use \p): fail loudly instead of misreading the row */
-            static const struct { const char *verb; int max; } LIM[] = { {"RESULTS",2},{"CASE",2},{"SCRATCH",1},{"MKDIR",2},{"COPY",3},{"EXPECT_EXIT",3},{"EXPECT_FILE",4},{"EXPECT_NOFILE",3},{"CAPTURE",2},{"SUMTREE",3},{"EXPECT_EQ",4},{"EXPECT_NE",4},{"EXPECT_EXISTS",3},
+            static const struct { const char *verb; int max; } LIM[] = { {"RESULTS",2},{"CASE",2},{"SCRATCH",1},{"MKDIR",2},{"COPY",3},{"COPYDIR",4},{"EXPECT_EXIT",3},{"EXPECT_FILE",4},{"EXPECT_NOFILE",3},{"CAPTURE",2},{"SUMTREE",3},{"EXPECT_EQ",4},{"EXPECT_NE",4},{"EXPECT_EXISTS",3},
                 {"EXPECT_HAS",4},{"EXPECT_LACKS",4},{"EXPECT_OUT",3},{"EXPECT_OUT_IS",3},{"EXPECT_OUT_LACKS",3},{"ENV",3},{"SLEEP",2},{"WAIT_HAS",5},{"EXPECT_ALIVE",3},{"EXPECT_DEAD",3},{"CLEAN",1} };
             int bad = 0; for (size_t li = 0; li < sizeof LIM / sizeof LIM[0]; li++) if (!strcmp(v, LIM[li].verb) && nf > LIM[li].max && !(nf == LIM[li].max + 1 && !fld[nf - 1][0])) bad = 1;
             if (bad) { check(0, v, "row has extra fields: an unescaped | in the text? use \\p"); continue; }
@@ -162,6 +186,10 @@ int main(int argc, char **argv) {
             expand(fld[1], a, sizeof a); expand(fld[2], b, sizeof b); snprintf(pa, sizeof pa, "%s/%s", HOUSE, a); snprintf(pb, sizeof pb, "%s/%s", T, b);
             { char d[P + 8]; snprintf(d, sizeof d, "%s", pb); char *sl = strrchr(d, '/'); if (sl) { *sl = 0; mkdirs(d); } }
             if (copy_file(pa, pb) != 0) check(0, "copy", pa);
+        } else if (!strcmp(v, "COPYDIR") && nf >= 3 && T[0]) {
+            char sk[P] = ""; int n; expand(fld[1], a, sizeof a); expand(fld[2], b, sizeof b); if (nf >= 4) expand(fld[3], sk, sizeof sk);
+            snprintf(pa, sizeof pa, "%s/%s", HOUSE, a); snprintf(pb, sizeof pb, "%s/%s", T, b);
+            n = copy_tree(pa, pb, sk); if (n < 0) check(0, "copydir", pa); else printf("  (copydir %d files)\n", n);
         } else if (!strcmp(v, "WRITE") && nf >= 3 && T[0]) {
             char raw[P * 2]; size_t rl = 0; raw[0] = 0;   /* the text is everything after the path, so it may itself contain " | " (a .pdl row): rejoin the fields */
             for (int i = 2; i < nf; i++) rl += (size_t)snprintf(raw + rl, sizeof raw - rl, "%s%s", i > 2 ? " | " : "", fld[i]);

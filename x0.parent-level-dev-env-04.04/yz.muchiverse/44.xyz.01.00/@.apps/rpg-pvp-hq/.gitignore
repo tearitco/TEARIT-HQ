@@ -1,0 +1,7 @@
+state/
+audit/
+ops/+x/
+events/*/master_ledger.txt
+rpg-pvp-hq-pchq/
+kh_focus_debug.log
+module_parent.pid

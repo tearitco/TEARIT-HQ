@@ -1415,3 +1415,20 @@ COMMAND chq_inv
   TEMPLATE exec "$D/&.widgits/events-hq/ops/df_event.sh" "$ENT" inventory
 END
 
+# ---- rpg-pvp-hq (2026-10-20): a copy of cdda-hq has its OWN two commands, bound to its own binary (rpg_pvp_hq.+x), so its event pages never run cdda-hq's program.
+# rpg_pvp_hq_verb = one generic command that runs an rpg-pvp-hq verb ("rpg_pvp_hq.+x <verb> [arg]"); rpg_pvp_pet_says = a character says a line in the chat and aloud (same fields as pet_says).
+COMMAND rpg_pvp_hq_verb
+  LABEL rpg-pvp-hq: Run Verb
+  FIELD1 Verb:
+  FIELD2 Arg:
+  PARAMS verb,arg
+  TEMPLATE exec "$D/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x" '{verb}'[ '{arg}']
+END
+
+COMMAND rpg_pvp_pet_says
+  LABEL rpg-pvp-hq: Character Says
+  FIELD1 Chat line:
+  FIELD2 Spoken line:
+  PARAMS pet,chat,voice
+  TEMPLATE exec "$D/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x" pet_says '{pet}' '{chat}' '{voice}' "$RPG_OTHER"
+END

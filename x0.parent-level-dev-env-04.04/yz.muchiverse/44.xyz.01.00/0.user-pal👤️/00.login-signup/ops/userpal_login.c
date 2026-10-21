@@ -306,6 +306,13 @@ int main(int argc, char **argv) {
     fprintf(f, "current_xyzfs=%s\n", xyzfs_rel);
     fprintf(f, "logged_in_at=%ld\n", (long)time(NULL));
     fclose(f);
+    /* the desktop shortcut reads "HQ:<user>" (owner 2026-10-15): refresh it now that the last login changed. Background, output dropped, a no-op unless
+     * the installed launcher belongs to this house (so a test house never touches the real shortcut). */
+    {
+        char rcmd[MAX_PATH * 2 + 128];
+        snprintf(rcmd, sizeof(rcmd), "[ -f '%s/$.crypts/lyfedesk-shortcut-refresh.sh' ] && sh '%s/$.crypts/lyfedesk-shortcut-refresh.sh' '%s' >/dev/null 2>&1 &", house_root, house_root, house_root);
+        if (system(rcmd) != 0) { /* best effort */ }
+    }
 
     /* Preserve active avatar if re-logging same user; else clear. */
     char prev_uuid[UUID_LEN], av_uuid[128], av_path[PATH_BUF];

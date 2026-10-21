@@ -96,6 +96,7 @@ db_hq_*.state.txt
 /strip_cells_changed.txt
 /strip_frame_changed.txt
 /strip_history.txt
+/strip_header_pos.txt
 /strip_input_history.txt
 /strip_state.txt
 /strip_ui.txt

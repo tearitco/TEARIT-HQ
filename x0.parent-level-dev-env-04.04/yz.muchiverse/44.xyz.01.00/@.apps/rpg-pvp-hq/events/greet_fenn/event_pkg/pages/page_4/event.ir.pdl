@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | greet_fenn
+STATE        | source               | events-hq
+NODE         | id=1 type=rpg_pvp_pet_says | pet=fenn|chat=Hello {other}, nice wings day|voice=Hello {other}, nice wings day

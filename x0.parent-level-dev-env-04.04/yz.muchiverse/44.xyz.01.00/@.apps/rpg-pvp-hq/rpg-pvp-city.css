@@ -1,0 +1,12 @@
+/* Same classes as the other game windows (game-dev-hq.css). The picture is the city canvas (512x384 RGBA). */
+window { width: 540px; height: 470px; background-color: #14161c; font-family: DejaVu Sans; font-size: 11px; }
+.tab-bar { background-color: #1a1a1a; border: 1px solid #444444; }
+.tab { background-color: #1a1a1a; color: #aaaaaa; border: 1px solid #444444; padding: 2px 2px; width: 90px; }
+.tab.active { background-color: #2a2a2a; color: #ffffff; font-weight: bold; }
+.rp-tb { width: 88px; }
+.rp-rail { width: 2px; }
+.rp-panel { background-color: #181818; border: 1px solid #2a2a2a; }
+.rp-quiet { color: #8a93a8; font-size: 10px; padding: 6px 8px 2px 8px; }
+.rp-room { width: 512px; height: 384px; }
+.rp-menu-row { color: #d6d9e3; }
+.pchq-footer { height: 36px; background-color: #181818; }

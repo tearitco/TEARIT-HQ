@@ -1,0 +1,5 @@
+# recipes.pdl - mcl-hq crafting (2026-10-17). RECIPE | id | grid | output | count
+# grid = nine cells, row-major, no spaces: "." is an empty cell, a name (letters, _) is a cell; put a "," between two names that touch (log,log.......).
+# craft <id> takes the named cells from the bag and gives count of output. A row that is not exactly nine cells is counted as bad (Menu > Bag-style note: "recipes").
+# 3x3 versus 2x2 and a crafting table are NOT checked yet (RULES-mcl-hq.md: later).
+RECIPE | planks | log........ | planks | 4

@@ -1,0 +1,26 @@
+# Behavior Bank entry for the harness `play_df_hq` (see HARNESS-BEHAVIOR-BANK-DESIGN.md). Weights on SYNONYM / SLOT / CORPUS rows are hand-seeded; only WEIGHT (from COUNTS) is measured.
+BEHAVIOR | harness.play_df_hq
+KIND | spoke
+KEYWORDS | df, df-hq, dwarf fortress, playthrough, dig, dig_area, undig, designate, stone, stocks, units, walk, save, load, newgame, replay, labor
+SYNONYM | scripted play | 0.90
+SYNONYM | play test | 0.80
+SYNONYM | mining | 0.80
+SYNONYM | fortress | 0.70
+SYNONYM | smoke test | 0.60
+SENTENCE | Plays df-hq from a fresh scratch copy with its real verbs: mark a 3x3 block of castle rock with dig_area, cancel one mark and set it again, then let the controlled dwarf walk until all nine cells are dug.
+SENTENCE | Checks the DIG, DONE, give_item and EVRES rows in the ledger, the stone the dwarf carries, the Stocks and Units tab rows in ui.txt, then save to a slot, new game (rock back, stone gone), load (dug cells back) and a ledger replay in a fresh game.
+SLOT | 0 | POINTS_TO=labor | WEIGHT=0.80
+SLOT | 1 | POINTS_TO=mining | WEIGHT=0.80
+SLOT | 2 | POINTS_TO=ledger | WEIGHT=0.70
+SLOT | 3 | POINTS_TO=save-load | WEIGHT=0.60
+SLOT | 4 | POINTS_TO=stockpile | WEIGHT=0.50
+CORPUS | game-engine | WEIGHT=0.90
+CORPUS | ai-layers | WEIGHT=0.60
+SEQUENCE | 1 | exec ./ops/+x/playthrough_op.+x compile play/phases/df_hq.phases.pdl cases
+SEQUENCE | 2 | exec ./ops/+x/harness_case_op.+x cases/play_df_hq.pdl
+SEQUENCE | 3 | exec ./ops/+x/harness_verdict_op.+x cases/play_df_hq.pdl
+SEQUENCE | 4 | exec ./ops/+x/playthrough_op.+x ledger play/phases/df_hq.phases.pdl cases
+SEQUENCE | 5 | exec ./ops/+x/harness_bank_op.+x cases/play_df_hq.pdl
+SOURCE | hand-authored 2026-10-17 (claude, play lane); masters/synonyms/weights are seeds awaiting owner validation
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

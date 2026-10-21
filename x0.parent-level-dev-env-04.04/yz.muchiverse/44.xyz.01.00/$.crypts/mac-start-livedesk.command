@@ -90,4 +90,4 @@ while IFS= read -r line || [ -n "$line" ]; do
     launched=$((launched+1))
 done < "$PDL"
 
-echo "launched $launched livedesk component(s) (DISPLAY=$DISPLAY)"
+echo "launched $launched LyfeDesk component(s) (DISPLAY=$DISPLAY)"

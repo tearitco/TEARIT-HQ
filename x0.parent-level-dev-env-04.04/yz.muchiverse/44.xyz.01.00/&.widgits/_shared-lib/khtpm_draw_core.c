@@ -128,6 +128,7 @@ static XftFont *font_for(const CssStyle *st) {
  * stateless, X11-drawing code with zero db-hq/palettes-specific
  * dependencies - any future mode gets it for free. */
 #define HQ_SPRITE_PX_MAX 64
+#include "sprite_cache.c" /* decoded-sprite disk cache + per-frame load budget (palette tile lag, BOOK 03-pitfalls/palette-tile-load-lag.md) */
 /* Display-only offset for the nav badge number (owner 2026-10-05, 18.pc-hq/CURSWORD-POSSESSION-
  * DESIGN.md): a window of class "nav-after-top" (the hotbar) shows its cells numbered AFTER the top
  * bar's, i.e. local index + base. Internal nav indexes (g_nav[], nav_index) stay local 1..N; only the
@@ -164,7 +165,10 @@ static double g_hqs_skin_ms = 0; static int g_hqs_skin_blocks = 0; /* tile-skin 
 static double hqs_now_ms(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return t.tv_sec * 1000.0 + t.tv_nsec / 1e6; }
 static long g_hq_sprite_tick = 0;
 
-static HqSprite *hq_sprite(const char *dir) {
+/* defer_ok=1 (palette/swatch grid tiles only): when this paint has already spent its load budget (sprite_cache.c), a COLD tile is not
+ * decoded now; NULL comes back, the cell stays empty and spc_frame_deferred() makes redraw() schedule another paint. Cache hits
+ * and callers with defer_ok=0 behave exactly as before. */
+static HqSprite *hq_sprite_ex(const char *dir, int defer_ok) {
     if (!dir || !dir[0]) return NULL;
     char pth[512];
     snprintf(pth, sizeof(pth), "%s", dir);
@@ -176,7 +180,8 @@ static HqSprite *hq_sprite(const char *dir) {
     snprintf(csv_path, sizeof(csv_path), "%s/sprite.csv", pth);
     struct stat st;
     time_t mt = 0;
-    if (stat(csv_path, &st) == 0) mt = st.st_mtime;
+    int have_st = (stat(csv_path, &st) == 0);
+    if (have_st) mt = st.st_mtime;
     for (int i = 0; i < HQ_SPRITE_CACHE_N; i++) {
         if (g_hq_sprite_cache[i].rgba && strcmp(g_hq_sprite_cache[i].path, pth) == 0) {
             if (mt != g_hq_sprite_cache[i].mtime) {
@@ -188,30 +193,12 @@ static HqSprite *hq_sprite(const char *dir) {
             return &g_hq_sprite_cache[i];
         }
     }
+    if (!have_st) return NULL;
+    if (defer_ok && !spc_may_load()) return NULL; /* progressive load: budget spent, redraw() repaints for the rest */
     double _hqs_t0 = hqs_now_ms();
-    FILE *f = fopen(csv_path, "r");
-    if (!f) return NULL;
-    char line[256];
-    int res = 0;
-    while (fgets(line, sizeof(line), f)) {
-        if (strncmp(line, "# resolution=", 13) == 0) { res = atoi(line + 13); break; }
-    }
-    if (res <= 0 || res > 256) { fclose(f); return NULL; }
-    unsigned char *pixels = malloc((size_t)res * (size_t)res * 4);
-    if (!pixels) { fclose(f); return NULL; }
-    int count = 0;
-    while (count < res * res && fgets(line, sizeof(line), f)) {
-        int rr, gg, bb, aa;
-        if (sscanf(line, "%d,%d,%d,%d", &rr, &gg, &bb, &aa) == 4) {
-            pixels[count * 4 + 0] = (unsigned char)rr;
-            pixels[count * 4 + 1] = (unsigned char)gg;
-            pixels[count * 4 + 2] = (unsigned char)bb;
-            pixels[count * 4 + 3] = (unsigned char)aa;
-            count++;
-        }
-    }
-    fclose(f);
-    if (count != res * res) { free(pixels); return NULL; }
+    int res = 0, _src = 0;
+    unsigned char *pixels = spc_load(pth, &st, &res, &_src);
+    if (!pixels) return NULL;
     int slot = -1;
     for (int i = 0; i < HQ_SPRITE_CACHE_N; i++) {
         if (!g_hq_sprite_cache[i].rgba) { slot = i; break; }
@@ -236,9 +223,11 @@ static HqSprite *hq_sprite(const char *dir) {
     g_hq_sprite_cache[slot].res = res;
     g_hq_sprite_cache[slot].mtime = mt;
     g_hq_sprite_cache[slot].last_used = ++g_hq_sprite_tick;
+    spc_loaded(hqs_now_ms() - _hqs_t0);
     g_hqs_load_ms += hqs_now_ms() - _hqs_t0; g_hqs_loads++;
     return &g_hq_sprite_cache[slot];
 }
+static HqSprite *hq_sprite(const char *dir) { return hq_sprite_ex(dir, 0); }
 
 /* sample_backdrop: when set, composite transparent pixels over the pixels
  * ACTUALLY already painted in `buf` behind the sprite (read back with
@@ -752,6 +741,7 @@ static void kh_draw_canvas(Elem *e) {
     static unsigned char *c_buf;
     /* CPU safety (hq-cpu-safety.md): the decoded frame is reused while the file is unchanged. A repaint caused by anything else (a label, a bar) used to re-read the whole raw file and convert
      * every pixel through XPutPixel (about 25 ms for 660x430) before blitting the same picture. Identity = inode + size + mtime (the producers replace the file by rename). */
+    static unsigned long c_gen = 0;      /* bumped on every decoded frame: the scaled copy below is rebuilt only when this or the target size changes */
     static int c_valid = 0; static unsigned long c_ino = 0; static long c_size = -1, c_mt_s = 0, c_mt_ns = 0;
     const char *spr = e->sprite;
     {
@@ -840,7 +830,7 @@ static void kh_draw_canvas(Elem *e) {
         size_t need = (size_t)w * h * 4, got = fread(c_buf, 1, need, of);
         fclose(of);
         if (got == need) {
-            const unsigned int one = 1; int little = *(const unsigned char *)&one == 1;
+            c_gen++; const unsigned int one = 1; int little = *(const unsigned char *)&one == 1;
             if (little && c_img->bits_per_pixel == 32 && c_img->byte_order == LSBFirst && c_img->red_mask == 0xff0000UL && c_img->green_mask == 0xff00UL && c_img->blue_mask == 0xffUL) {
                 for (int y = 0; y < h; y++) {          /* direct 32-bit stores: the same 0xRRGGBB value XPutPixel would store, without a call per pixel */
                     unsigned int *dst = (unsigned int *)(c_img->data + (size_t)y * (size_t)c_img->bytes_per_line);
@@ -867,6 +857,33 @@ static void kh_draw_canvas(Elem *e) {
      * on screen, camera should be wider". A larger frame is cropped. */
     if (w == e->w && h == e->h) {
         XPutImage(dpy, buf, gc, c_img, 0, 0, e->x, e->y, (unsigned)w, (unsigned)h);
+    } else if (w > e->w || h > e->h) {
+        /* The frame is bigger than the canvas (a pinned side bar took width out of it, or the window is small; standalone game windows draw a fixed-size frame): scale it DOWN to fit, keeping the aspect ratio, nearest neighbour,
+         * instead of cropping the middle. Cached: the scaled image is rebuilt only for a new decoded frame or a new target size, so an idle repaint costs one XPutImage. A frame smaller than the canvas still draws 1:1, centred. */
+        int sw = w, sh = h;
+        if ((long)e->w * h <= (long)e->h * w) { sw = e->w; sh = (int)((long)h * e->w / w); } else { sh = e->h; sw = (int)((long)w * e->h / h); }
+        if (sw < 1) sw = 1; if (sh < 1) sh = 1;
+        static XImage *s_img; static int s_w, s_h; static unsigned long s_gen;
+        if (!s_img || s_w != sw || s_h != sh || s_gen != c_gen) {
+            if (!s_img || s_w != sw || s_h != sh) {
+                if (s_img) { XDestroyImage(s_img); s_img = NULL; }
+                char *sd = (char *)malloc((size_t)sw * sh * 4);
+                s_img = sd ? XCreateImage(dpy, DefaultVisual(dpy, screen), (unsigned)DefaultDepth(dpy, screen), ZPixmap, 0, sd, (unsigned)sw, (unsigned)sh, 32, 0) : NULL;
+                s_w = sw; s_h = sh;
+            }
+            if (s_img) {
+                const unsigned int one = 1; int fast = *(const unsigned char *)&one == 1 && s_img->bits_per_pixel == 32 && s_img->byte_order == LSBFirst && s_img->red_mask == 0xff0000UL && s_img->green_mask == 0xff00UL && s_img->blue_mask == 0xffUL;
+                for (int y = 0; y < sh; y++) {
+                    const unsigned char *srow = c_buf + (size_t)((long)y * h / sh) * w * 4;
+                    unsigned int *dst = (unsigned int *)(s_img->data + (size_t)y * (size_t)s_img->bytes_per_line);
+                    for (int x = 0; x < sw; x++) { const unsigned char *s = srow + (size_t)((long)x * w / sw) * 4; unsigned int px = ((unsigned int)s[0] << 16) | ((unsigned int)s[1] << 8) | (unsigned int)s[2]; if (fast) dst[x] = px; else XPutPixel(s_img, x, y, px); }
+                }
+                s_gen = c_gen;
+            }
+        }
+        XSetForeground(dpy, gc, alloc_pixel("#0c0c0c"));
+        XFillRectangle(dpy, buf, gc, e->x, e->y, (unsigned)e->w, (unsigned)e->h);
+        if (s_img) XPutImage(dpy, buf, gc, s_img, 0, 0, e->x + (e->w - sw) / 2, e->y + (e->h - sh) / 2, (unsigned)sw, (unsigned)sh);
     } else {
         int bw = w < e->w ? w : e->w;
         int bh = h < e->h ? h : e->h;
@@ -1831,7 +1848,17 @@ static void draw_elem(Elem *e, int hover_id_hash) {
     }
     if (elem_has_class(e, "skin-bar") &&
         kh_draw_bar_skin(e, alloc_pixel(e->style.has_bg_color ? e->style.bg_color : "#2c2c2c"))) {
-        snprintf(e->style.fg_color, sizeof(e->style.fg_color), "%s", elem_has_class(e, "tone-light") ? "#111111" : "#ffffff");   /* light tiles use the same dark writing as the white and silver swatches */
+        {
+            /* A picker chip names its own tone. A board row just wears the selected skin, so use that skin's brightness. */
+            int light = elem_has_class(e, "tone-light");
+            if (!light && !elem_has_class(e, "tone-dark")) {
+                int own = 0;
+                for (int c = 0; c < e->n_classes && !own; c++)
+                    if (strncmp(e->classes[c], "skin-for-", 9) == 0) own = 1;
+                light = !own && g_bar_skin_light;
+            }
+            snprintf(e->style.fg_color, sizeof(e->style.fg_color), "%s", light ? "#111111" : "#ffffff");
+        }
         e->style.has_fg_color = 1;
     }
     /* REAL, NEW 2026-09-14 (network-browser video V4 "Nav row with
@@ -2253,7 +2280,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
             if (!drew_sprite) free(rgba);
         }
     } else if (e->sprite[0]) {
-        HqSprite *sp = hq_sprite(e->sprite);
+        HqSprite *sp = hq_sprite_ex(e->sprite, elem_has_class(e, "swatch") || elem_has_class(e, "pal-tile"));
         if (sp) {
             int pad_s = e->style.has_padding ? e->style.padding : 4;
             int has_under_label = (e->h >= 64 && e->label[0] && !(e->label[0] == ' ' && e->label[1] == '\0'));

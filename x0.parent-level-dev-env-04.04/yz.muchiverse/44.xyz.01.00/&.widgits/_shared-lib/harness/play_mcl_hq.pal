@@ -1,0 +1,7 @@
+# play_mcl_hq.pal - scripted playthrough of mcl-hq (phase table play/phases/mcl_hq.phases.pdl). Read results/play_mcl_hq.txt.verdict.txt and play/results/play_ledger.txt
+exec ./ops/+x/playthrough_op.+x compile play/phases/mcl_hq.phases.pdl cases
+exec ./ops/+x/harness_case_op.+x cases/play_mcl_hq.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/play_mcl_hq.pdl
+exec ./ops/+x/playthrough_op.+x ledger play/phases/mcl_hq.phases.pdl cases
+exec ./ops/+x/harness_bank_op.+x cases/play_mcl_hq.pdl
+halt

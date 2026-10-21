@@ -1,0 +1,44 @@
+# game_dev_hq.phases.pdl - one studio week through the same verbs the window calls.
+# Runner: ops/+x/playthrough_op.+x run play/phases/game_dev_hq.phases.pdl
+# Format: 06-testing/GAME-PLAYTHROUGH-HARNESSES.md. The table is the reusable part. The runner is shared with df, cdda, and mcl.
+GAME | game-dev-hq | game_dev_hq
+
+PHASE | p1_open | a fresh studio has three staff and the INT label is off | studio, staff
+DO | status
+SAY | Week 1 | seed-note
+UI | interact_label | off | int-starts-off
+UI | n_party | 3 | three-staff
+UI | chat_visible | 1 | chat-sidebar-on
+UIKEY | canvas_raw | office-picture-path
+
+PHASE | p2_int | INT takes the floor and names the selected person | int, select
+DO | int
+SAY | INT on: Rex | int-on
+UI | interact_label | Rex | int-label-is-the-person
+DO | select | s2
+SAY | selected Pip | select-pip
+DO | int
+SAY | INT off | int-off
+
+PHASE | p3_talk | the player line and the staff reply land in the chat the sidebar reads | chat, say
+DO | say | hello
+HAS | state/chat.txt | You: hello | player-line
+HAS | state/chat.txt | Pip: heard | staff-reply
+UIKEY | chat_0 | chat-row-exported
+
+PHASE | p4_ship | hire, start, assign, advance three times, ship | hire, ship, week
+DO | hire | director | Ada
+SAY | hired Ada | hire-director
+DO | start | rpg:adventure
+SAY | started rpg adventure | start-contract
+DO | assign | s1
+DO | assign | s2
+DO | assign | s3
+DO | advance
+DO | advance
+DO | advance
+DO | ship
+SAY | shipped | shipped
+HAS | state/chat.txt | shipped | chat-says-shipped
+HAS | state/games.pdl | review | row-kept-at-review
+UI | n_party | 4 | office-holds-the-hire

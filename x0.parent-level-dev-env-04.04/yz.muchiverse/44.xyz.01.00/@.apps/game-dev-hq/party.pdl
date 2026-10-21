@@ -1,0 +1,7 @@
+SECTION | KEY | VALUE
+------------------------------
+# Same character sheets the other books already wear. Index is col + 4*row on the RPG Maker sheet.
+PET | Rex | People3 | 6
+PET | Pip | People2 | 6
+PET | Gus | People1 | 6
+PET | Ada | People3 | 0

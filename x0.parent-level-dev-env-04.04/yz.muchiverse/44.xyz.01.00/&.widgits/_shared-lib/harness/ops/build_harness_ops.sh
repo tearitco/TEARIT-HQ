@@ -6,7 +6,7 @@ set -e
 cd "$(dirname "$0")"
 mkdir -p +x
 CC="${CC:-gcc}"
-for n in args_echo_op game_setup_query_op harness_bank_op harness_case_op harness_verdict_op music_wav_audit_op race_audit_op ring_audit_op; do
+for n in args_echo_op game_setup_query_op harness_bank_op harness_case_op harness_verdict_op music_wav_audit_op playthrough_op race_audit_op ring_audit_op; do
     $CC -std=gnu11 -Wall -Wextra -Wno-format-truncation -Wno-unused-result -O2 -o "+x/$n.+x" "$n.c" -lm
     echo "OK +x/$n.+x"
 done

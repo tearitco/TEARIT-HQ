@@ -46,6 +46,16 @@ SRC="x0.parent-level-dev-env-04.04"
 OUT="${SRC}_$(date +%Y%m%d-%H%M%S).7z"
 OUTP="${OUT%.7z}.partial.7z"
 FULL=1
+
+# CPU SAFETY (2026-10-20, owner: "it keeps crashing my cpu"): 7z -mx=5 used every core
+# at normal priority for the whole run, which starved the desktop on this 8-core box.
+# Now: 2 compression threads (REZIP_THREADS=N to change), lowest CPU priority (nice 19,
+# plus the idle scheduling class when chrt exists) and idle disk priority (ionice -c3).
+# The archive takes longer; the desktop stays responsive. Same archive contents.
+THREADS="${REZIP_THREADS:-2}"
+LOW="nice -n 19"
+command -v ionice >/dev/null 2>&1 && LOW="$LOW ionice -c3"
+command -v chrt >/dev/null 2>&1 && chrt -i 0 true 2>/dev/null && LOW="chrt -i 0 $LOW"
 [ "${1:-}" = "--source-only" ] && FULL=0
 
 # pieces/sessions/ are tracked engine run copies that the engine deletes whenever
@@ -70,7 +80,7 @@ fi
 # hitting twice in a row on two different files is not realistic.
 zip_once() {
     if [ "$FULL" = 1 ]; then set --; else set -- -xr'!*.+x' -xr'!*.exe' -xr'!*.o' -xr'!*.a' -xr'!*.so' -xr'!*.mp3'; fi
-    7z a -t7z -mx=5 "$OUTP" "$SRC" "$@" \
+    $LOW 7z a -t7z -mx=5 -mmt="$THREADS" "$OUTP" "$SRC" "$@" \
         -xr'!.git' \
         -xr'!#.NNEST_ASSETS' \
         -xr'!*.raw' -xr'!*.rgba32' \
