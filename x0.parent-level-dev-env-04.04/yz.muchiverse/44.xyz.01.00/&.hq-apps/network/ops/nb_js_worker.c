@@ -1376,8 +1376,9 @@ static void layout_xy(NbNode *n, double *out_x, double *out_y) {
             int col = idx % cols;
             double row_w = nb_box_w(n->parent);
             if (row_w <= 0) row_w = g_col_px(n->parent);
-            double gap = (pst.has_gap ? pst.gap : 0);
-            double col_w = (row_w - gap * (cols - 1)) / (double)cols;
+            double gap = 0;
+            double col_w = row_w / (double)cols;
+            if (cols > 1) col_w = (row_w - gap * (cols - 1)) / (double)cols;
             if (col_w < 0) col_w = row_w / (double)cols;
             x += col * (col_w + gap);
             int row_idx = idx / cols;
