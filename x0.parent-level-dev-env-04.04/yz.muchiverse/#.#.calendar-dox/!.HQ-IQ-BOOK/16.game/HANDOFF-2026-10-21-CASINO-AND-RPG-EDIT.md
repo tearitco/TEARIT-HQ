@@ -41,10 +41,12 @@ Do not start it until this handoff has been read.
 
 What the first pass is:
 
-1. A new app beside the others: `44.xyz.01.00/@.apps/rpg-edit-hq`,
-   its own `button.sh`, `toy.pdl`, `party.pdl`, daemon, and its own
-   pc-hq instance (`rpg-edit-hq-pchq`). Same launch shape as mcl-hq
-   and bet-rpg. Not a mode of bet-rpg, rpg-pvp-hq, or the TON book.
+1. A new app beside the others: `44.xyz.01.00/@.apps/rpg-edit-hq`.
+   `toy.pdl` title is `edit`, so taskbar cell 12 (the toys menu)
+   lists it. `button.sh run` opens the pc-hq board through
+   `piececraft-hq/open_pchq_board.sh`. That row is in place. The
+   own pc-hq instance, daemon, and party are still later. Not a
+   mode of bet-rpg or rpg-pvp-hq.
 2. Cast, locked 2026-10-21 from `sessions/s1/desks/teru-test.pdl`
    and `&.widgits/db-hq/data/actors.pdl`. Trainer is **Ava**, not Asa.
    Footer is these six, in this order. Glyphs are the desk marks

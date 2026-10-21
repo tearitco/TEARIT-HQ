@@ -459,6 +459,33 @@ static void blit_fit(Sheet *s, int dx, int dy, int dw, int dh) {
             for (int c = 0; c < 3; c++) b[c] = (unsigned char)((a[c] * al + b[c] * (255 - al)) / 255); b[3] = 255; } }
 }
 static void cell_png(const char *rel, int tx, int ty, int tw, int th) { blit_fit(mcl_png(rel), OX + tx * T, OY + (ty - (th - 1)) * T, tw * T, th * T); }
+/* Mineclonia has no building picture. The overmap houses borrow one or two
+ * from each tileset that does: MV World_B, a CDDA overmap house, and the
+ * DF Spacefox building glyph. */
+static Sheet *asset_png(const char *rel) {
+    static Sheet hs[6]; static int n;
+    const char *base = strrchr(rel, '/'); base = base ? base + 1 : rel;
+    for (int i = 0; i < n; i++) if (!strcmp(hs[i].name, base)) return hs[i].px ? &hs[i] : NULL;
+    if (n >= 6) return NULL;
+    char d[PATH_MAX], p[PATH_MAX]; snprintf(d, sizeof d, "%s", HOUSE[0] ? HOUSE : APP); int found = 0;
+    for (int i = 0; i < 8 && !found; i++) {
+        snprintf(p, sizeof p, "%s/#.NNEST_ASSETS/%s", d, rel);
+        if (fexists(p)) found = 1; else { char *s = strrchr(d, '/'); if (!s || s == d) break; *s = 0; }
+    }
+    if (!found) return NULL;
+    Sheet *s = &hs[n++]; int ch; s->px = stbi_load(p, &s->w, &s->h, &ch, 4); snprintf(s->name, 40, "%s", base); return s->px ? s : NULL;
+}
+static void asset_fit(const char *rel, int tx, int ty, int tw, int th) { blit_fit(asset_png(rel), OX + tx * T, OY + (ty - (th - 1)) * T, tw * T, th * T); }
+static void df_house(int code, int tx, int ty, int tw, int th) {
+    Sheet *s = asset_png("df-tilesets/Spacefox/data/art/Spacefox_16x16.png"); if (!s || s->w < 16) return;
+    int ts = s->w / 16; if (ts < 1) return; int col = code % 16, row = code / 16;
+    int dx = OX + tx * T, dy = OY + (ty - (th - 1)) * T, dw = tw * T, dh = th * T;
+    if (dw < 1 || dh < 1 || dw > 4 * FW || dh > 4 * FH) return;
+    for (int y = 0; y < dh; y++) { int Y = dy + y, srcy = row * ts + y * ts / dh; if (Y < 0 || Y >= FH || srcy < 0 || srcy >= s->h) continue;
+        for (int x = 0; x < dw; x++) { int X = dx + x, srcx = col * ts + x * ts / dw; if (X < 0 || X >= FW || srcx < 0 || srcx >= s->w) continue;
+            unsigned char *a = s->px + ((size_t)srcy * s->w + srcx) * 4, *b = fr + ((size_t)Y * FW + X) * 4; int al = a[3]; if (!al) continue;
+            for (int c = 0; c < 3; c++) b[c] = (unsigned char)((a[c] * al + b[c] * (255 - al)) / 255); b[3] = 255; } }
+}
 static void tile(const char *sh, int c, int r, int w, int h, int tx, int ty) { blit(sheet("tilesets", sh), c * S48, r * S48, w * S48, h * S48, OX + tx * T, OY + ty * T); }
 
 /* RPG Maker autotiles (verified against the tsots maps: tile id = kind * 48 + shape, shape picked from the 8 neighbours of the same kind; all 8 present = shape 0; the 48 shapes are 4 quadrant pieces).
@@ -509,7 +536,15 @@ static void render(void) {
     for (int i = 0; i < ndoor; i++) if (doors[i].room == vroom && !rm->over) cell_png("ITEMS/mcl_doors/textures/mcl_doors_door_wood_lower.png", doors[i].tx, doors[i].ty, 1, 1);
     for (int i = 0; i < nscen; i++) if (scen[i].room == vroom) {
         if (!strcmp(scen[i].sheet, "Outside_B")) cell_png("ITEMS/mcl_core/textures/default_tree.png", scen[i].x, scen[i].y, scen[i].w, scen[i].h);
-        else if (!strcmp(scen[i].sheet, "World_B")) cell_png("ITEMS/mcl_core/textures/default_cobble.png", scen[i].x, scen[i].y, scen[i].w, scen[i].h);
+        else if (!strcmp(scen[i].sheet, "World_B")) {
+            int which = 0; for (int k = 0; k <= i; k++) if (scen[k].room == vroom && !strcmp(scen[k].sheet, "World_B")) which++;
+            which--;
+            if (which <= 0) tile("World_B", scen[i].c, scen[i].r, scen[i].w, scen[i].h, scen[i].x, scen[i].y);
+            else if (which == 1) tile("World_B", scen[i].c, scen[i].r, scen[i].w, scen[i].h, scen[i].x, scen[i].y);
+            else if (which == 2) asset_fit("cdda-tilesets/gfx/UltimateCataclysm/pngs_normal_32x32/overmap/otr_house_1_faceN.png", scen[i].x, scen[i].y, scen[i].w, scen[i].h);
+            else if (which == 3) asset_fit("cdda-tilesets/gfx/UltimateCataclysm/pngs_normal_32x32/overmap/rural_house/rural_house_faceN.png", scen[i].x, scen[i].y, scen[i].w, scen[i].h);
+            else df_house(15, scen[i].x, scen[i].y, scen[i].w, scen[i].h);
+        }
         else tile(scen[i].sheet, scen[i].c, scen[i].r, scen[i].w, scen[i].h, scen[i].x, scen[i].y);
     }
     for (int i = 0; i < nmcell; i++) if (mcell[i].room == vroom) cell_png(mb_png(mcell[i].id), mcell[i].x, mcell[i].y, 1, 1);      /* blocks (see the block section) */

@@ -232,6 +232,10 @@ static void glyph(int x, int y, char ch, int s, int r, int g, int b) {
     else if (ch == '9') d = "01110 10001 10001 01111 00001 10001 01110";
     else if (ch == '8') d = "01110 10001 10001 01110 10001 10001 01110";
     else if (ch == '7') d = "11111 00001 00010 00100 01000 01000 01000";
+    else if (ch == '2') d = "01110 10001 00001 00010 00100 01000 11111";
+    else if (ch == '3') d = "11110 00001 00001 01110 00001 00001 11110";
+    else if (ch == '5') d = "11111 10000 10000 11110 00001 00001 11110";
+    else if (ch == '6') d = "01110 10000 10000 11110 10001 10001 01110";
     else if (ch == '4') d = "10010 10010 10010 11111 00010 00010 00010";
     else if (ch == '0') d = "01110 10001 10011 10101 11001 10001 01110";
     else if (ch == '1') d = "00100 01100 00100 00100 00100 00100 01110";
@@ -257,25 +261,91 @@ static void face(int x, int y, char rank, int suit) {
     glyph(x + 8, y + 8, rank, 3, red ? 180 : 16, 16, red ? 28 : 16);
     suit_mark(x + 34, y + 58, suit, 2);
 }
-static void chips(int x, int y) {
+static void chips(int x, int y, int n) {
     for (int i = 0; i < 3; i++) { rect(x + i * 6, y - i * 8, 36, 36, 20, 20, 24); rect(x + 4 + i * 6, y + 4 - i * 8, 28, 28, i == 2 ? 212 : 186, i == 2 ? 168 : 32, 28); }
-    glyph(x + 48, y + 4, '1', 3, 240, 210, 80); glyph(x + 66, y + 4, '0', 3, 240, 210, 80); glyph(x + 84, y + 4, '0', 3, 240, 210, 80);
+    char dig[8]; snprintf(dig, sizeof dig, "%d", n < 0 ? 0 : n);
+    for (int i = 0; dig[i]; i++) glyph(x + 48 + i * 20, y + 4, dig[i], 3, 240, 210, 80);
 }
+typedef struct { char game[4], phase[8]; int stake, pot, point, due, np, nd; int p[8], d[8]; } G;
+static void g_clear(G *g) { memset(g, 0, sizeof *g); snprintf(g->phase, sizeof g->phase, "bet"); }
+static void g_load(G *g) {
+    g_clear(g); char pth[PATH_MAX], b[240]; snprintf(pth, sizeof pth, "%s/hand.txt", ST); FILE *f = fopen(pth, "r"); if (!f) return;
+    if (!fgets(b, sizeof b, f)) { fclose(f); return; } fclose(f);
+    sscanf(b, "%3s %7s %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d", g->game, g->phase, &g->stake, &g->pot, &g->point, &g->due, &g->np, &g->nd, &g->p[0], &g->p[1], &g->p[2], &g->p[3], &g->p[4], &g->p[5], &g->p[6], &g->p[7], &g->d[0], &g->d[1], &g->d[2], &g->d[3], &g->d[4], &g->d[5]);
+    if (g->np > 8) g->np = 8; if (g->nd > 8) g->nd = 8;
+}
+static void g_save(G *g) {
+    char pth[PATH_MAX]; snprintf(pth, sizeof pth, "%s/hand.txt", ST); FILE *f = fopen(pth, "w"); if (!f) return;
+    fprintf(f, "%s %s %d %d %d %d %d %d", g->game, g->phase, g->stake, g->pot, g->point, g->due, g->np, g->nd);
+    for (int i = 0; i < 8; i++) fprintf(f, " %d", g->p[i]); for (int i = 0; i < 6; i++) fprintf(f, " %d", g->d[i]);
+    fprintf(f, "\n"); fclose(f);
+}
+static int bank_of(const char *id) {
+    char pth[PATH_MAX], b[80]; snprintf(pth, sizeof pth, "%s/bank.txt", ST); FILE *f = fopen(pth, "r"); if (!f) return 100;
+    int n = 100, found = 0; while (fgets(b, sizeof b, f)) { char w[16]; int v; if (sscanf(b, "%15s %d", w, &v) == 2 && !strcmp(w, id)) { n = v; found = 1; } } fclose(f); return found ? n : 100;
+}
+static void bank_set(const char *id, int n) {
+    char pth[PATH_MAX], b[80], out[800]; snprintf(pth, sizeof pth, "%s/bank.txt", ST); FILE *f = fopen(pth, "r"); int k = 0, hit = 0; out[0] = 0;
+    if (f) { while (fgets(b, sizeof b, f) && k < 700) { char w[16]; int v; if (sscanf(b, "%15s %d", w, &v) == 2) { if (!strcmp(w, id)) { v = n; hit = 1; } k += snprintf(out + k, sizeof out - k, "%s %d\n", w, v); } } fclose(f); }
+    if (!hit && k < 700) snprintf(out + k, sizeof out - k, "%s %d\n", id, n);
+    f = fopen(pth, "w"); if (f) { fputs(out, f); fclose(f); }
+}
+static int draw_card(int *used, int n) { int c; do { c = rand() % 52; int bad = 0; for (int i = 0; i < n; i++) if (used[i] == c) bad = 1; if (!bad) return c; } while (1); }
+static int pip(int c) { int r = c % 13; if (r == 0) return 11; if (r >= 9) return 10; return r + 1; }
+static int bj_total(int *c, int n) { int t = 0, aces = 0; for (int i = 0; i < n; i++) { int p = pip(c[i]); if (p == 11) aces++; t += p; } while (t > 21 && aces) { t -= 10; aces--; } return t; }
+static void show_card(int x, int y, int c) { int r = c % 13; char ch = "A23456789TJQK"[r]; int suit = c / 13; int sm = suit == 0 ? 0 : suit == 1 ? 1 : suit == 2 ? 3 : 2; face(x, y, ch, sm); }
+static int rl_red(int n) { static const int R[] = {1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36}; for (int i = 0; i < 18; i++) if (R[i] == n) return 1; return 0; }
+static long five_score(int *c) {
+    int r[5], s0 = c[0] / 13, flush = 1;
+    for (int i = 0; i < 5; i++) { r[i] = c[i] % 13; r[i] = r[i] == 0 ? 14 : r[i] + 1; if (c[i] / 13 != s0) flush = 0; }
+    for (int i = 0; i < 5; i++) for (int j = i + 1; j < 5; j++) if (r[j] > r[i]) { int t = r[i]; r[i] = r[j]; r[j] = t; }
+    int straight = r[0] == r[1] + 1 && r[1] == r[2] + 1 && r[2] == r[3] + 1 && r[3] == r[4] + 1, high = r[0];
+    if (r[0] == 14 && r[1] == 5 && r[2] == 4 && r[3] == 3 && r[4] == 2) { straight = 1; high = 5; }
+    int cnt[15] = {0}; for (int i = 0; i < 5; i++) cnt[r[i]]++;
+    int four = 0, three = 0, pair = 0, pair2 = 0;
+    for (int v = 14; v >= 2; v--) { if (cnt[v] == 4) four = v; else if (cnt[v] == 3) three = v; else if (cnt[v] == 2) { if (!pair) pair = v; else pair2 = v; } }
+    if (straight && flush) return (8L << 20) | high;
+    if (four) return (7L << 20) | (four << 4);
+    if (three && pair) return (6L << 20) | (three << 4) | pair;
+    if (flush) return (5L << 20) | (r[0] << 16) | (r[1] << 12) | (r[2] << 8) | (r[3] << 4) | r[4];
+    if (straight) return (4L << 20) | high;
+    if (three) return (3L << 20) | (three << 8);
+    if (pair && pair2) return (2L << 20) | (pair << 8) | pair2;
+    if (pair) return (1L << 20) | (pair << 8);
+    return (r[0] << 16) | (r[1] << 12) | (r[2] << 8) | (r[3] << 4) | r[4];
+}
+static long best_score(int *c, int n) {
+    if (n < 5) { long s = 0; for (int i = 0; i < n; i++) { int r = c[i] % 13; r = r == 0 ? 14 : r + 1; s = (s << 4) | r; } return s; }
+    long best = 0; int pick[5];
+    for (int a = 0; a < n; a++) for (int b = a + 1; b < n; b++) for (int c0 = b + 1; c0 < n; c0++) for (int d = c0 + 1; d < n; d++) for (int e = d + 1; e < n; e++) {
+        pick[0] = c[a]; pick[1] = c[b]; pick[2] = c[c0]; pick[3] = c[d]; pick[4] = c[e]; long s = five_score(pick); if (s > best) best = s;
+    }
+    return best;
+}
+static void paint_num(int x, int y, int n, int s, int r, int g, int b) { char dig[8]; snprintf(dig, sizeof dig, "%d", n); for (int i = 0; dig[i]; i++) glyph(x + i * (s * 6), y, dig[i], s, r, g, b); }
 static void paint_table(const char *game) {
-    rect(0, 0, FW, FH, 10, 62, 32);
-    rect(70, 36, FW - 140, FH - 72, 14, 92, 46);
-    chips(80, FH - 90);
-    if (!strcmp(game, "bj")) { face(FW / 2 - 43, 50, 'K', 2); face(FW / 2 - 120, FH - 210, 'A', 0); face(FW / 2 + 10, FH - 210, '9', 1); }
-    else if (!strcmp(game, "hl")) { char rk[] = {'A', 'K', 'Q', 'J', 'T'}; for (int i = 0; i < 5; i++) face(140 + i * 160, FH / 2 - 70, rk[i], i % 4); }
-    else if (!strcmp(game, "rl")) {
-        int cx = FW / 2, cy = FH / 2 - 20;
-        for (int y = cy - 160; y < cy + 160; y++) for (int x = cx - 160; x < cx + 160; x++) { int d = (x - cx) * (x - cx) + (y - cy) * (y - cy); if (d < 160 * 160 && d > 60 * 60) { int red = ((x / 16) + (y / 16)) & 1; rect(x, y, 1, 1, red ? 160 : 16, 16, red ? 24 : 16); } }
-        glyph(cx - 8, cy - 40, '1', 3, 240, 240, 240); glyph(cx + 14, cy - 40, '7', 3, 240, 240, 240);
-        glyph(cx - 70, cy + 10, '0', 3, 40, 160, 40);
+    G g; g_load(&g); char sid[16], sg[16]; load_seat(sid, sg); int bank = sid[0] ? bank_of(sid) : 100;
+    rect(0, 0, FW, FH, 10, 62, 32); rect(70, 36, FW - 140, FH - 72, 14, 92, 46); chips(80, FH - 90, bank);
+    int mine = g.game[0] && !strcmp(g.game, game);
+    if (!strcmp(game, "bj") && mine) {
+        for (int i = 0; i < g.nd; i++) { if (i == 1 && !strcmp(g.phase, "play")) rect(FW / 2 - 43 + 96, 50, 86, 120, 20, 48, 90); else show_card(FW / 2 - 43 + i * 96, 50, g.d[i]); }
+        for (int i = 0; i < g.np; i++) show_card(FW / 2 - 160 + i * 96, FH - 210, g.p[i]);
+    } else if (!strcmp(game, "hl") && mine) {
+        for (int i = 0; i < g.np && i < 2; i++) show_card(80 + i * 96, FH - 210, g.p[i]);
+        for (int i = 2; i < g.np; i++) show_card(140 + (i - 2) * 150, FH / 2 - 80, g.p[i]);
+        if (!strcmp(g.phase, "over")) for (int i = 0; i < g.nd && i < 2; i++) show_card(80 + i * 96, 40, g.d[i]);
+    } else if (!strcmp(game, "rl")) {
+        int cx = FW / 2, cy = FH / 2 - 10, n = mine ? g.point : -1;
+        for (int y = cy - 150; y < cy + 150; y++) for (int x = cx - 150; x < cx + 150; x++) { int dd = (x - cx) * (x - cx) + (y - cy) * (y - cy); if (dd < 150 * 150 && dd > 50 * 50) { int red = ((x / 18) ^ (y / 18)) & 1; rect(x, y, 1, 1, red ? 160 : 16, 16, red ? 24 : 16); } }
+        if (n >= 0) paint_num(cx - 20, cy - 16, n, 4, 240, 240, 240);
     } else if (!strcmp(game, "sl")) {
-        for (int i = 0; i < 3; i++) rect(FW / 2 - 230 + i * 160, FH / 2 - 100, 130, 180, 24, 24, 30);
-        glyph(FW / 2 - 190, FH / 2 - 20, '7', 6, 220, 40, 40); glyph(FW / 2 - 30, FH / 2 - 20, '7', 6, 220, 40, 40); glyph(FW / 2 + 130, FH / 2 - 20, '7', 6, 240, 200, 40);
-    } else { rect(FW / 2 - 150, FH / 2 - 40, 70, 70, 248, 246, 238); rect(FW / 2 + 40, FH / 2 - 40, 70, 70, 248, 246, 238); for (int i = 0; i < 5; i++) rect(FW / 2 - 128 + (i % 3) * 16, FH / 2 - 16 + (i / 3) * 16, 8, 8, 20, 20, 24); for (int i = 0; i < 2; i++) rect(FW / 2 + 62 + (i % 2) * 18, FH / 2 - 8, 8, 8, 20, 20, 24); }
+        char sym[4] = {'?', '?', '?', 0};
+        if (mine && g.np >= 3) { sym[0] = "AKQJT98"[g.p[0]]; sym[1] = "AKQJT98"[g.p[1]]; sym[2] = "AKQJT98"[g.p[2]]; }
+        for (int i = 0; i < 3; i++) { rect(FW / 2 - 230 + i * 160, FH / 2 - 100, 130, 180, 24, 24, 30); glyph(FW / 2 - 190 + i * 160, FH / 2 - 20, sym[i], 6, 230, 210, 60); }
+    } else if (!strcmp(game, "cr") && mine && g.np >= 2) {
+        for (int k = 0; k < 2; k++) { int n = g.p[k], x = FW / 2 - 120 + k * 140; rect(x, FH / 2 - 50, 90, 90, 248, 246, 238); for (int i = 0; i < n && i < 6; i++) rect(x + 16 + (i % 3) * 22, FH / 2 - 28 + (i / 3) * 22, 12, 12, 20, 20, 24); }
+        if (g.point > 0 && strcmp(g.phase, "over")) paint_num(FW / 2 - 20, 80, g.point, 4, 240, 220, 80);
+    }
 }
 static void paint(void) {
     if (!fr) fr = calloc((size_t)FW * FH, 4);
@@ -357,7 +427,7 @@ static void write_ui(const char *note) {
     fprintf(f, "n_party=%d\n", nparty);
     int v = nparty ? party[active].ri : 0; if (v < 0 || v >= nroom) v = 0;
     { char sid[16], sg[16]; load_seat(sid, sg); int seated = nparty && sid[0] && !strcmp(sid, party[active].id);
-      if (seated) fprintf(f, "room_line=%s at %s\n", party[active].name, sg);
+      if (seated) fprintf(f, "room_line=%s at %s  %d\n", party[active].name, sg, bank_of(party[active].id));
       else fprintf(f, "room_line=%s\n", nroom ? rooms[v].name : "-");
       fprintf(f, "nav_room=1\nnav_table=%s\nnav_bj=%s\nnav_hl=%s\nnav_rl=%s\nnav_sl=%s\nnav_cr=%s\nacts_x=16\nacts_y=200\n", seated ? "1" : "", seated && !strcmp(sg, "bj") ? "1" : "", seated && !strcmp(sg, "hl") ? "1" : "", seated && !strcmp(sg, "rl") ? "1" : "", seated && !strcmp(sg, "sl") ? "1" : "", seated && !strcmp(sg, "cr") ? "1" : ""); }
     for (int i = 0; i < nparty; i++) {
@@ -382,10 +452,78 @@ static void verb(int argc, char **argv) {
     else if (!strcmp(v, "play") && argc > 1) {
         const char *g = argv[1]; int ok = !strcmp(g, "bj") || !strcmp(g, "hl") || !strcmp(g, "rl") || !strcmp(g, "sl") || !strcmp(g, "cr");
         if (!nparty || !ok || !casino_room(party[active].room)) snprintf(note, sizeof note, "sit inside a casino first");
-        else { save_seat(party[active].id, g); set_int(1); char b[80]; snprintf(b, sizeof b, "%s sits for %s", party[active].name, g); chat_line(b); snprintf(note, sizeof note, "%s", b); }
+        else { G h; g_clear(&h); snprintf(h.game, sizeof h.game, "%s", g); g_save(&h); save_seat(party[active].id, g); set_int(1); char b[80]; snprintf(b, sizeof b, "%s sits for %s  bank %d", party[active].name, g, bank_of(party[active].id)); chat_line(b); snprintf(note, sizeof note, "%s", b); }
     }
-    else if (!strcmp(v, "leave")) { save_seat("", ""); set_int(0); snprintf(note, sizeof note, "left the table"); }
-    else if (!strcmp(v, "act") && argc > 1) { char sid[16], sg[16], b[80]; load_seat(sid, sg); if (!nparty || strcmp(sid, party[active].id)) snprintf(note, sizeof note, "nobody is sitting"); else { snprintf(b, sizeof b, "%s %s", party[active].name, argv[1]); chat_line(b); snprintf(note, sizeof note, "%s", b); } }
+    else if (!strcmp(v, "leave")) { G h; g_clear(&h); g_save(&h); save_seat("", ""); set_int(0); snprintf(note, sizeof note, "left the table"); }
+    else if (!strcmp(v, "act") && argc > 1) {
+        char sid[16], sg[16]; load_seat(sid, sg);
+        if (!nparty || strcmp(sid, party[active].id)) snprintf(note, sizeof note, "nobody is sitting");
+        else {
+            G h; g_load(&h); const char *id = party[active].id; const char *a = argv[1]; int bank = bank_of(id);
+            if (!h.game[0]) snprintf(h.game, sizeof h.game, "%s", sg);
+            if (!strcmp(h.game, "bj")) {
+                if (!strcmp(a, "bet") && (!strcmp(h.phase, "bet") || !strcmp(h.phase, "over"))) {
+                    if (bank < 2) snprintf(note, sizeof note, "refused: need 2");
+                    else { g_clear(&h); snprintf(h.game, 4, "bj"); h.stake = 2; h.pot = 2; bank_set(id, bank - 2); int u[8], n = 0; h.p[0] = draw_card(u, n); u[n++] = h.p[0]; h.p[1] = draw_card(u, n); u[n++] = h.p[1]; h.d[0] = draw_card(u, n); u[n++] = h.d[0]; h.d[1] = draw_card(u, n); h.np = 2; h.nd = 2; snprintf(h.phase, 8, "play"); snprintf(note, sizeof note, "dealt  bank %d", bank_of(id)); if (bj_total(h.p, 2) == 21) { while (bj_total(h.d, h.nd) < 17) { int uu[12], nn = 0; for (int i = 0; i < h.np; i++) uu[nn++] = h.p[i]; for (int i = 0; i < h.nd; i++) uu[nn++] = h.d[i]; h.d[h.nd++] = draw_card(uu, nn); } int pay = bj_total(h.d, 2) == 21 ? 2 : 5; bank_set(id, bank_of(id) + pay); snprintf(h.phase, 8, "over"); snprintf(note, sizeof note, "blackjack pay %d  bank %d", pay, bank_of(id)); } }
+                } else if (!strcmp(h.phase, "play") && !strcmp(a, "hit")) {
+                    int uu[12], nn = 0; for (int i = 0; i < h.np; i++) uu[nn++] = h.p[i]; for (int i = 0; i < h.nd; i++) uu[nn++] = h.d[i]; h.p[h.np++] = draw_card(uu, nn);
+                    if (bj_total(h.p, h.np) > 21) { snprintf(h.phase, 8, "over"); snprintf(note, sizeof note, "bust  bank %d", bank_of(id)); }
+                    else snprintf(note, sizeof note, "hit %d", bj_total(h.p, h.np));
+                } else if (!strcmp(h.phase, "play") && (!strcmp(a, "stand") || !strcmp(a, "double"))) {
+                    if (!strcmp(a, "double")) { if (h.np != 2 || bank_of(id) < h.stake) snprintf(note, sizeof note, "refused: double"); else { bank_set(id, bank_of(id) - h.stake); h.stake *= 2; int uu[12], nn = 0; for (int i = 0; i < h.np; i++) uu[nn++] = h.p[i]; for (int i = 0; i < h.nd; i++) uu[nn++] = h.d[i]; h.p[h.np++] = draw_card(uu, nn); } }
+                    if (strcmp(note, "refused: double")) {
+                        if (bj_total(h.p, h.np) > 21) { snprintf(h.phase, 8, "over"); snprintf(note, sizeof note, "bust  bank %d", bank_of(id)); }
+                        else { while (bj_total(h.d, h.nd) < 17 && h.nd < 7) { int uu[12], nn = 0; for (int i = 0; i < h.np; i++) uu[nn++] = h.p[i]; for (int i = 0; i < h.nd; i++) uu[nn++] = h.d[i]; h.d[h.nd++] = draw_card(uu, nn); } int pt = bj_total(h.p, h.np), dt = bj_total(h.d, h.nd), pay = 0; const char *w = "lose"; if (dt > 21 || pt > dt) { pay = h.stake * 2; w = "win"; } else if (pt == dt) { pay = h.stake; w = "push"; } bank_set(id, bank_of(id) + pay); snprintf(h.phase, 8, "over"); snprintf(note, sizeof note, "%s pay %d  bank %d", w, pay, bank_of(id)); }
+                    }
+                } else snprintf(note, sizeof note, "bet, hit, stand, or double");
+            } else if (!strcmp(h.game, "hl")) {
+                if (!strcmp(a, "bet") && (!strcmp(h.phase, "bet") || !strcmp(h.phase, "over"))) {
+                    if (bank < 2) snprintf(note, sizeof note, "refused: need 2");
+                    else { g_clear(&h); snprintf(h.game, 4, "hl"); bank_set(id, bank - 2); h.stake = 2; h.pot = 4; int u[8], n = 0; h.p[0] = draw_card(u, n); u[n++] = h.p[0]; h.p[1] = draw_card(u, n); u[n++] = h.p[1]; h.d[0] = draw_card(u, n); u[n++] = h.d[0]; h.d[1] = draw_card(u, n); h.np = 2; h.nd = 2; h.point = 0; snprintf(h.phase, 8, "go"); snprintf(note, sizeof note, "hole cards  pot 4"); }
+                } else if (!strcmp(h.phase, "go") && (!strcmp(a, "check") || !strcmp(a, "call") || !strcmp(a, "raise") || !strcmp(a, "fold"))) {
+                    if (!strcmp(a, "fold")) { snprintf(h.phase, 8, "over"); snprintf(note, sizeof note, "fold  bank %d", bank_of(id)); }
+                    else {
+                        int unit = h.point == 0 ? 2 : 4;
+                        if (!strcmp(a, "raise")) { if (h.d[5] >= 3 || bank_of(id) < h.due + unit) snprintf(note, sizeof note, "refused: raise"); else { bank_set(id, bank_of(id) - (h.due + unit)); h.pot += (h.due + unit) * 2; h.due = 0; h.d[5]++; } }
+                        else if (!strcmp(a, "call") && h.due) { if (bank_of(id) < h.due) snprintf(note, sizeof note, "refused: call"); else { bank_set(id, bank_of(id) - h.due); h.pot += h.due * 2; h.due = 0; } }
+                        if (strncmp(note, "refused", 7)) {
+                            if (h.point >= 3) {
+                                int mine[7], house[7], nm = 0, nh = 0; mine[nm++] = h.p[0]; mine[nm++] = h.p[1]; house[nh++] = h.d[0]; house[nh++] = h.d[1]; for (int i = 2; i < h.np; i++) { mine[nm++] = h.p[i]; house[nh++] = h.p[i]; }
+                                long ms = best_score(mine, nm), hs = best_score(house, nh); int pay = ms > hs ? h.pot : ms == hs ? h.pot / 2 : 0; bank_set(id, bank_of(id) + pay); snprintf(h.phase, 8, "over"); snprintf(note, sizeof note, "%s pay %d  bank %d", ms > hs ? "win" : ms == hs ? "split" : "lose", pay, bank_of(id));
+                            } else { h.point++; int add = h.point == 1 ? 3 : 1; for (int k = 0; k < add; k++) { int uu[16], nn = 0; for (int i = 0; i < h.np; i++) uu[nn++] = h.p[i]; for (int i = 0; i < h.nd; i++) uu[nn++] = h.d[i]; h.p[h.np++] = draw_card(uu, nn); } h.due = 0; snprintf(note, sizeof note, "street %d  pot %d", h.point, h.pot); }
+                        }
+                    }
+                } else snprintf(note, sizeof note, "bet, check, call, raise, or fold");
+            } else if (!strcmp(h.game, "rl")) {
+                if (!strcmp(a, "bet") && (!strcmp(h.phase, "bet") || !strcmp(h.phase, "over") || !strcmp(h.phase, "pick"))) {
+                    if (bank < 1) snprintf(note, sizeof note, "refused: need 1"); else { g_clear(&h); snprintf(h.game, 4, "rl"); bank_set(id, bank - 1); h.stake = 1; snprintf(h.phase, 8, "pick"); h.point = -1; snprintf(note, sizeof note, "pick red or black"); }
+                } else if (!strcmp(h.phase, "pick")) {
+                    int n = rand() % 37, win = 0, pay = 0;
+                    if (!strcmp(a, "red")) win = rl_red(n); else if (!strcmp(a, "black")) win = n && !rl_red(n); else if (!strcmp(a, "odd")) win = n && (n % 2); else if (!strcmp(a, "even")) win = n && !(n % 2); else if (!strcmp(a, "low")) win = n >= 1 && n <= 18; else if (!strcmp(a, "high")) win = n >= 19; else if (a[0] == 'n') { int t = atoi(a + 1); win = t == n; pay = win ? 36 : 0; }
+                    else { snprintf(note, sizeof note, "red, black, odd, even, low, high"); g_save(&h); }
+                    if (!strncmp(note, "red", 3) || note[0] == 0 || !strncmp(a, "red", 3) || !strncmp(a, "black", 5) || !strncmp(a, "odd", 3) || !strncmp(a, "even", 4) || !strncmp(a, "low", 3) || !strncmp(a, "high", 4) || a[0] == 'n') {
+                        if (!pay) pay = win ? 2 : 0; bank_set(id, bank_of(id) + pay); h.point = n; snprintf(h.phase, 8, "over"); snprintf(note, sizeof note, "wheel %d %s  bank %d", n, win ? "win" : "lose", bank_of(id));
+                    }
+                } else snprintf(note, sizeof note, "bet first");
+            } else if (!strcmp(h.game, "sl")) {
+                if (!strcmp(a, "bet")) {
+                    if (bank < 1) snprintf(note, sizeof note, "refused: need 1");
+                    else { static const char strip[] = "AAABBCDEFG"; static const int payt[] = {15, 25, 40, 50, 60, 80, 100}; g_clear(&h); snprintf(h.game, 4, "sl"); bank_set(id, bank - 1); h.np = 3; int let[3]; for (int i = 0; i < 3; i++) { let[i] = strip[rand() % 10] - 'A'; h.p[i] = let[i]; } int pay = (let[0] == let[1] && let[1] == let[2]) ? payt[let[0]] : 0; bank_set(id, bank_of(id) + pay); snprintf(h.phase, 8, "over"); snprintf(note, sizeof note, "reels %c%c%c pay %d  bank %d", 'A' + let[0], 'A' + let[1], 'A' + let[2], pay, bank_of(id)); }
+                } else snprintf(note, sizeof note, "bet pulls");
+            } else if (!strcmp(h.game, "cr")) {
+                if (!strcmp(a, "bet") && (!strcmp(h.phase, "bet") || !strcmp(h.phase, "over"))) {
+                    if (bank < 1) snprintf(note, sizeof note, "refused: need 1");
+                    else { g_clear(&h); snprintf(h.game, 4, "cr"); bank_set(id, bank - 1); h.stake = 1; h.p[0] = 1 + rand() % 6; h.p[1] = 1 + rand() % 6; h.np = 2; int s = h.p[0] + h.p[1]; if (s == 7 || s == 11) { bank_set(id, bank_of(id) + 2); snprintf(h.phase, 8, "over"); snprintf(note, sizeof note, "natural %d  bank %d", s, bank_of(id)); } else if (s == 2 || s == 3 || s == 12) { snprintf(h.phase, 8, "over"); snprintf(note, sizeof note, "craps %d  bank %d", s, bank_of(id)); } else { h.point = s; snprintf(h.phase, 8, "point"); snprintf(note, sizeof note, "point %d", s); } }
+                } else if (!strcmp(h.phase, "point") && !strcmp(a, "bet")) {
+                    h.p[0] = 1 + rand() % 6; h.p[1] = 1 + rand() % 6; int s = h.p[0] + h.p[1];
+                    if (s == h.point) { bank_set(id, bank_of(id) + 2); snprintf(h.phase, 8, "over"); snprintf(note, sizeof note, "point made  bank %d", bank_of(id)); }
+                    else if (s == 7) { snprintf(h.phase, 8, "over"); snprintf(note, sizeof note, "seven out  bank %d", bank_of(id)); }
+                    else snprintf(note, sizeof note, "roll %d  point %d", s, h.point);
+                } else snprintf(note, sizeof note, "bet rolls");
+            } else snprintf(note, sizeof note, "no game");
+            g_save(&h); chat_line(note);
+        }
+    }
     else if (!strcmp(v, "help")) snprintf(note, sizeof note, "see help.txt");
     else if (!strcmp(v, "step")) { step_pets(); snprintf(note, sizeof note, "one step"); }
     else if (!strcmp(v, "door") && argc > 1) {
