@@ -30,7 +30,7 @@ typedef struct {
 } Staff;
 
 typedef struct {
-    char id[8], title[24], genre[16], type[16], phase[16], assigned[64];
+    char id[8], title[24], genre[32], type[16], phase[16], assigned[64];
     int fun, creativity, polish, graphics, sound;
     int open; /* 1 = the game in progress */
 } Game;
@@ -41,6 +41,7 @@ static Game games[8];
 static int ngames;
 static long funds, fame, week, hype;
 static int office;
+static int reputation, goodwill, infrastructure;
 static char note[240];
 
 static int is_dir(const char *p) { struct stat s; return stat(p, &s) == 0 && S_ISDIR(s.st_mode); }
@@ -113,6 +114,8 @@ static void save_all(void) {
     }
     snprintf(p, sizeof p, "%s/note.txt", ST);
     f = fopen(p, "w"); if (f) { fprintf(f, "%s\n", note); fclose(f); }
+    snprintf(p, sizeof p, "%s/company.txt", ST);
+    f = fopen(p, "w"); if (f) { fprintf(f, "COMPANY | %d | %d | %d\n", reputation, goodwill, infrastructure); fclose(f); }
 }
 
 static void load_all(void) {
@@ -158,6 +161,16 @@ static void load_all(void) {
     f = fopen(p, "r"); if (f) { if (fscanf(f, "%ld", &hype) != 1) hype = 0; fclose(f); }
     snprintf(p, sizeof p, "%s/note.txt", ST);
     f = fopen(p, "r"); if (f) { if (fgets(note, sizeof note, f)) note[strcspn(note, "\n")] = 0; fclose(f); }
+    reputation = goodwill = infrastructure = 0;
+    snprintf(p, sizeof p, "%s/company.txt", ST);
+    f = fopen(p, "r");
+    if (f) {
+        if (fgets(line, sizeof line, f)) {
+            char *fl[6]; int n = 0; split(line, fl, 6, &n);
+            if (n >= 4 && !strcmp(fl[0], "COMPANY")) { reputation = atoi(fl[1]); goodwill = atoi(fl[2]); infrastructure = atoi(fl[3]); }
+        }
+        fclose(f);
+    }
 }
 
 static void seed(void) {
@@ -243,6 +256,7 @@ static void write_ui(void) {
     fprintf(f, "canvas_raw=%s/scene.raw\n", ST);
     fprintf(f, "funds=%ld\nfame=%ld\nweek=%ld\nhype=%ld\noffice=%d\n", funds, fame, week, hype, office);
     fprintf(f, "cash_label=Cash %ld\nfame_label=Fame %ld\n", funds, fame);
+    fprintf(f, "company_line=rep %d   goodwill %d   infra %d\n", reputation, goodwill, infrastructure);
     fprintf(f, "studio_line=funds %ld   fame %ld   hype %ld   office %d   week %ld\n", funds, fame, hype, office, week);
     fprintf(f, "note=%s\n", note[0] ? note : " ");
     Game *g = open_game();
@@ -402,6 +416,55 @@ static void do_advance(void) {
     event_row("advance", g->phase);
 }
 
+/* A contract is one week for an outside firm. The person's stat and the company's stats set the pay. */
+static void do_contract(const char *kind) {
+    static const struct { const char *id, *stat; int base, need; } jobs[] = {
+        {"logo", "graphics", 8000, 0},
+        {"jingle", "sound", 12000, 8},
+        {"bounty", "programming", 18000, 15},
+        {"scenario", "scenario", 22000, 25},
+    };
+    const struct { const char *id, *stat; int base, need; } *job = NULL;
+    for (size_t i = 0; i < sizeof jobs / sizeof jobs[0]; i++) if (!strcmp(jobs[i].id, kind)) job = &jobs[i];
+    if (!job) { snprintf(note, sizeof note, "contract logo|jingle|bounty|scenario"); return; }
+    read_active();
+    Staff *s = nstaff ? &staff[g_active] : NULL;
+    int *sp = s ? stat_ptr(s, job->stat) : NULL;
+    if (!s || !sp) { snprintf(note, sizeof note, "no one to take it"); return; }
+    if (reputation < job->need) { snprintf(note, sizeof note, "%s wants reputation %d", job->id, job->need); log_line(note); return; }
+    if (s->energy < 20) { snprintf(note, sizeof note, "%s is tired", s->name); log_line(note); return; }
+    int q = *sp + reputation / 2 + goodwill / 4 + infrastructure / 4;
+    long pay = job->base + (long)q * 40;
+    *sp += 2; if (*sp > 500) *sp = 500;
+    s->energy -= 20;
+    reputation += 1 + q / 40;
+    goodwill += 1;
+    if (!strcmp(job->id, "bounty")) infrastructure += 1;
+    funds += pay;
+    pay_week();
+    char b[140]; snprintf(b, sizeof b, "%s did a %s for $%ld", s->name, job->id, pay); log_line(b);
+    event_row("contract", job->id);
+}
+
+static void do_console(const char *spec) {
+    if (open_game()) { snprintf(note, sizeof note, "busy"); log_line(note); return; }
+    const char *supports = NULL;
+    if (!strcmp(spec, "handheld")) supports = "puzzle,action";
+    else if (!strcmp(spec, "home")) supports = "action,rpg,adventure";
+    else { snprintf(note, sizeof note, "console handheld|home"); return; }
+    if (infrastructure < 10) { snprintf(note, sizeof note, "need infrastructure 10"); log_line(note); return; }
+    Game *g = &games[ngames++];
+    memset(g, 0, sizeof *g);
+    snprintf(g->id, 8, "g%d", ngames);
+    snprintf(g->title, 24, "%s console", spec);
+    snprintf(g->genre, 16, "%s", supports);
+    snprintf(g->type, 16, "console");
+    snprintf(g->phase, 16, "proposal");
+    g->open = 1;
+    char b[80]; snprintf(b, sizeof b, "designing %s", g->title); log_line(b);
+    event_row("console", spec);
+}
+
 static void do_advertise(const char *tier) {
     long cost = 15000, add = 15;
     if (!strcmp(tier, "small")) { cost = 5000; add = 5; }
@@ -420,6 +483,8 @@ static void do_ship(void) {
     if (rank > 100) rank = 100;
     long sales = (long)rank * 1000 + fame * 10 + hype * 100;
     funds += sales; fame += rank / 10; if (fame < 0) fame = 0; hype = 0;
+    reputation += rank / 10; goodwill += 1; infrastructure += 1;
+    if (!strcmp(g->type, "console")) infrastructure += 4;
     g->open = 0;
     char b[120]; snprintf(b, sizeof b, "shipped %s  rank %d  sales %ld", g->title, rank, sales); log_line(b);
     event_row("ship", g->id);
@@ -431,7 +496,7 @@ static int slot_copy(int n, int to_slot) {
     char slots[1200], dir[1200];
     snprintf(slots, sizeof slots, "%s/slots", ST); mkdir(slots, 0755);
     snprintf(dir, sizeof dir, "%s/%d", slots, n); mkdir(dir, 0755);
-    const char *names[] = {"studio.txt","staff.pdl","games.pdl","hype.txt","chat.txt","note.txt","pos.txt", NULL};
+    const char *names[] = {"studio.txt","staff.pdl","games.pdl","hype.txt","chat.txt","note.txt","pos.txt","company.txt", NULL};
     int any = 0;
     for (int i = 0; names[i]; i++) {
         char src[1200], dst[1200];
@@ -561,6 +626,8 @@ static void verb(int argc, char **argv) {
     else if (!strcmp(v, "train") && argc >= 2) do_train(argv[1]);
     else if (!strcmp(v, "rest") && argc >= 2) do_rest(argv[1]);
     else if (!strcmp(v, "start") && argc >= 2) do_start(argv[1]);
+    else if (!strcmp(v, "contract") && argc >= 2) do_contract(argv[1]);
+    else if (!strcmp(v, "console") && argc >= 2) do_console(argv[1]);
     else if (!strcmp(v, "assign") && argc >= 2) do_assign(argv[1]);
     else if (!strcmp(v, "advance")) do_advance();
     else if (!strcmp(v, "ship")) do_ship();
@@ -587,9 +654,10 @@ static void verb(int argc, char **argv) {
     else if (!strcmp(v, "load") && argc >= 2) { if (slot_copy(atoi(argv[1]), 0)) { load_all(); snprintf(note, sizeof note, "loaded slot %s", argv[1]); } else snprintf(note, sizeof note, "empty slot"); }
     else if (!strcmp(v, "newgame")) {
         slot_copy(0, 1);
-        const char *nm[] = {"studio.txt","staff.pdl","games.pdl","hype.txt","pos.txt", NULL};
+        const char *nm[] = {"studio.txt","staff.pdl","games.pdl","hype.txt","pos.txt","company.txt", NULL};
         for (int i = 0; nm[i]; i++) { char p[1200]; snprintf(p, sizeof p, "%s/%s", ST, nm[i]); remove(p); }
         nstaff = ngames = 0; funds = 100000; fame = 0; week = 1; hype = 0; office = 1;
+        reputation = goodwill = infrastructure = 0;
         seed(); log_line("new game");
     }
     else if (!strcmp(v, "stop")) { flag_set("running", 0); snprintf(note, sizeof note, "STOP stopped"); log_line(note); gd_clock_sync(); }

@@ -24,13 +24,20 @@
       <item id="tr-gr" class="pchq-menu-row dropdown-child" target_id="mn-train" label="Graphics" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' train ${active_id}:graphics"/>
       <item id="tr-rest" class="pchq-menu-row dropdown-child" target_id="mn-train" label="Rest" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' rest ${active_id}"/>
       <item id="tr-x" class="pchq-menu-row dropdown-child quiet" target_id="mn-train" label="- cancel -" action="void"/>
-      <item id="ct-ar" class="pchq-menu-row dropdown-child" target_id="mn-contract" label="New game action/rpg" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' start action:rpg"/>
-      <item id="ct-ra" class="pchq-menu-row dropdown-child" target_id="mn-contract" label="New game rpg/adventure" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' start rpg:adventure"/>
-      <item id="ct-ps" class="pchq-menu-row dropdown-child" target_id="mn-contract" label="New game puzzle/sim" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' start puzzle:sim"/>
-      <item id="ct-as" class="pchq-menu-row dropdown-child" target_id="mn-contract" label="Assign selected" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' assign ${active_id}"/>
-      <item id="ct-go" class="pchq-menu-row dropdown-child" target_id="mn-contract" label="Advance" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' advance"/>
-      <item id="ct-ship" class="pchq-menu-row dropdown-child" target_id="mn-contract" label="Ship" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' ship"/>
+      <item id="ct-logo" class="pchq-menu-row dropdown-child" target_id="mn-contract" label="Logo" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' contract logo"/>
+      <item id="ct-jing" class="pchq-menu-row dropdown-child" target_id="mn-contract" label="Jingle" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' contract jingle"/>
+      <item id="ct-bty" class="pchq-menu-row dropdown-child" target_id="mn-contract" label="Bug bounty" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' contract bounty"/>
+      <item id="ct-sc" class="pchq-menu-row dropdown-child" target_id="mn-contract" label="Scenario" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' contract scenario"/>
       <item id="ct-x" class="pchq-menu-row dropdown-child quiet" target_id="mn-contract" label="- cancel -" action="void"/>
+      <item id="pr-ar" class="pchq-menu-row dropdown-child" target_id="mn-product" label="Game action / PC" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' start action:adventure"/>
+      <item id="pr-rp" class="pchq-menu-row dropdown-child" target_id="mn-product" label="Game rpg / PC" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' start rpg:adventure"/>
+      <item id="pr-pz" class="pchq-menu-row dropdown-child" target_id="mn-product" label="Game puzzle / PC" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' start puzzle:sim"/>
+      <item id="pr-hh" class="pchq-menu-row dropdown-child" target_id="mn-product" label="Console handheld" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' console handheld"/>
+      <item id="pr-hm" class="pchq-menu-row dropdown-child" target_id="mn-product" label="Console home" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' console home"/>
+      <item id="pr-as" class="pchq-menu-row dropdown-child" target_id="mn-product" label="Assign selected" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' assign ${active_id}"/>
+      <item id="pr-go" class="pchq-menu-row dropdown-child" target_id="mn-product" label="Advance" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' advance"/>
+      <item id="pr-ship" class="pchq-menu-row dropdown-child" target_id="mn-product" label="Ship" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' ship"/>
+      <item id="pr-x" class="pchq-menu-row dropdown-child quiet" target_id="mn-product" label="- cancel -" action="void"/>
       <item id="ad-s" class="pchq-menu-row dropdown-child" target_id="mn-ad" label="Small $5000" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' advertise small"/>
       <item id="ad-m" class="pchq-menu-row dropdown-child" target_id="mn-ad" label="Mid $15000" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' advertise mid"/>
       <item id="ad-b" class="pchq-menu-row dropdown-child" target_id="mn-ad" label="Big $40000" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' advertise big"/>
@@ -60,12 +67,14 @@
         <item id="side-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x' toggle left"/>
         <text label="${cash_label}" class="ph-quiet"/>
         <text label="${fame_label}   hype ${hype}" class="ph-quiet"/>
+        <text label="${company_line}" class="ph-quiet"/>
         <text label="Week ${week}   office ${office}" class="ph-quiet"/>
         <text label="${game_line}" class="ph-quiet"/>
         <text label="${note}" class="ph-green"/>
         <item id="mn-hire" class="pchq-ft skin-bar" label="Hire" onclick="ACTIVATE"/>
         <item id="mn-train" class="pchq-ft skin-bar" label="Train" onclick="ACTIVATE"/>
         <item id="mn-contract" class="pchq-ft skin-bar" label="Contract" onclick="ACTIVATE"/>
+        <item id="mn-product" class="pchq-ft skin-bar" label="Product" onclick="ACTIVATE"/>
         <item id="mn-ad" class="pchq-ft skin-bar" label="Advertise" onclick="ACTIVATE"/>
       </row>
       <row id="chat-ov" class="canvas-overlay-right ov-pin ov-chrome pchq-hotbar theme" show="${chat_visible}">
