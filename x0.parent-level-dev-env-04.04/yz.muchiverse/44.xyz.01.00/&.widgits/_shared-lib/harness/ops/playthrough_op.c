@@ -141,6 +141,12 @@ static int emit_body_row(const Row *r) {
         for (int i = 3; i < r->n; i++) o += (size_t)snprintf(row + o, sizeof row - o, " | %s", r->f[i]);
         emit("%s", row);
     }
+    else if (!strcmp(v, "BPWIN")) {   /* BPWIN | REQ:<request> | EXPECT:<ui key>~<text> | EXPECTNOT:<ui key>~<text> | ...: drive the blueprintz WINDOW layer (its real manager, the same request lines a click writes) in one session, so undo history is kept between steps; \p = a bar */
+        NEED(2); if (!CT->events) return bad_row("BPWIN needs an `EVENTS | yes` row", r);
+        char row[P]; size_t o = (size_t)snprintf(row, sizeof row, "RUN | $T/&.hq-apps/blueprintz/ops/+x/bp_win_op.+x | $T | $T/&.hq-apps/blueprintz");
+        for (int i = 1; i < r->n; i++) o += (size_t)snprintf(row + o, sizeof row - o, " | %s", r->f[i]);
+        emit("%s", row);
+    }
     else if (!strcmp(v, "NOTE")) { /* a comment that travels with the table */ }
     else return bad_row("unknown row verb", r);
     return 0;
@@ -202,6 +208,10 @@ static int cmd_compile(const char *phases, const char *casedir_arg) {
         emit("COPY | #.ref/menu/event_commands.registry.pdl | #.ref/menu/event_commands.registry.pdl");
         emit("COPY | &.widgits/events-hq/ops/+x/khtpm_events_hq_manager.+x | &.widgits/events-hq/ops/+x/khtpm_events_hq_manager.+x");
         emit("COPY | &.hq-apps/blueprintz/ops/+x/bp_edit_op.+x | &.hq-apps/blueprintz/ops/+x/bp_edit_op.+x");
+        emit("COPY | &.hq-apps/blueprintz/ops/+x/bp_win_op.+x | &.hq-apps/blueprintz/ops/+x/bp_win_op.+x");      /* the blueprintz window layer: its manager and the ops it forks */
+        emit("COPY | &.hq-apps/blueprintz/+x/blueprintz_manager.+x | &.hq-apps/blueprintz/+x/blueprintz_manager.+x");
+        emit("COPY | &.hq-apps/blueprintz/ops/+x/bp_scan.+x | &.hq-apps/blueprintz/ops/+x/bp_scan.+x");
+        emit("COPY | &.hq-apps/blueprintz/ops/+x/bp_ctl.+x | &.hq-apps/blueprintz/ops/+x/bp_ctl.+x");
         { glob_t g; char pat[P], house[P]; snprintf(pat, sizeof pat, "%s/../../../101.mutaclsym*/system/prisc+x", HARN);
           if (glob(pat, 0, NULL, &g) == 0 && g.gl_pathc >= 1 && realpath(g.gl_pathv[0], house)) {      /* the directory name has emoji in it: take it from the disk, never type it */
               char *sl = strstr(house, "/101.mutaclsym"); char rel[P]; char root[P]; snprintf(root, sizeof root, "%s/../../..", HARN); char rr[P]; if (sl && realpath(root, rr) && !strncmp(house, rr, strlen(rr))) {

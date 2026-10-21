@@ -197,21 +197,64 @@ static int known_type(const char *type) {
     int ok = 0; while (fgets(l, sizeof l, f)) { l[strcspn(l, "\r\n")] = 0; if (!strcmp(l, want)) { ok = 1; break; } }
     fclose(f); return ok;
 }
-/* run bp_edit_op for the selected event; returns 0 when the manager applied it */
-static int do_edit(const char *mode, const char *id, const char *type, const char *params) {
-    char bin[P], out[P]; snprintf(bin, P, "%s/ops/+x/bp_edit_op.+x", g_pkg); join(out, g_state, "edit.out");
-    char pkg[P]; snprintf(pkg, P, "%s/event_pkg", E[sel].pkg);
-    char *av[10]; int n = 0; av[n++] = bin; av[n++] = g_target; av[n++] = pkg; av[n++] = E[sel].name; av[n++] = (char *)mode;
-    if (!strcmp(mode, "edit")) { av[n++] = (char *)id; av[n++] = (char *)type; av[n++] = (char *)params; }
-    else if (!strcmp(mode, "append")) { av[n++] = (char *)type; av[n++] = (char *)params; }
-    else av[n++] = (char *)id;
-    av[n] = NULL;
-    return run(av, out, 30);
-}
-static void push_undo(const char *mode, const char *id, const char *type, const char *params) {
+/* An edit runs as a background child (bp_edit_op takes 2-3 s: it starts the events-hq manager, writes the request, waits for the recompile), so the
+ * window keeps updating and the click returns at once. One edit at a time; poll_pending() (main loop) finishes it. */
+typedef struct { pid_t pid; long t0; char kind[8], mode[8], id[12], type[40], params[400], pkg[P], label[64]; Nd old; int before; } Pend;
+static Pend pend;
+static void push_undo(const char *pkg, const char *label, const char *mode, const char *id, const char *type, const char *params) {
     if (nU == MAXU) { memmove(&U[0], &U[1], sizeof(Undo) * (MAXU - 1)); nU--; }
-    Undo *u = &U[nU++]; snprintf(u->pkg, P, "%s", E[sel].pkg); snprintf(u->label, 64, "%s", E[sel].name);
+    Undo *u = &U[nU++]; snprintf(u->pkg, P, "%s", pkg); snprintf(u->label, 64, "%s", label);
     snprintf(u->mode, 8, "%s", mode); snprintf(u->id, 12, "%s", id); snprintf(u->type, 40, "%s", type); snprintf(u->params, 400, "%s", params);
+}
+static long now_s(void) { return (long)time(NULL); }
+static int max_id(void);
+/* start bp_edit_op for the selected event in the background; kind = edit | add | del | undo (what finish_edit does with the result) */
+static int start_edit(const char *kind, const char *mode, const char *id, const char *type, const char *params, const Nd *old) {
+    memset(&pend, 0, sizeof pend);
+    snprintf(pend.kind, 8, "%s", kind); snprintf(pend.mode, 8, "%s", mode); snprintf(pend.id, 12, "%s", id); snprintf(pend.type, 40, "%s", type); snprintf(pend.params, 400, "%s", params);
+    snprintf(pend.pkg, P, "%s", E[sel].pkg); snprintf(pend.label, 64, "%s", E[sel].name); if (old) pend.old = *old; pend.before = max_id();
+    char bin[P], out[P], pkg[P]; snprintf(bin, P, "%s/ops/+x/bp_edit_op.+x", g_pkg); join(out, g_state, "edit.out"); snprintf(pkg, P, "%s/event_pkg", pend.pkg);
+    char *av[10]; int n = 0; av[n++] = bin; av[n++] = g_target; av[n++] = pkg; av[n++] = pend.label; av[n++] = pend.mode;
+    if (!strcmp(mode, "edit")) { av[n++] = pend.id; av[n++] = pend.type; av[n++] = pend.params; }
+    else if (!strcmp(mode, "append")) { av[n++] = pend.type; av[n++] = pend.params; }
+    else av[n++] = pend.id;
+    av[n] = NULL;
+    pid_t pid = fork(); if (pid < 0) { pend.pid = 0; return -1; }
+    if (pid == 0) {
+        if (!freopen(out, "w", stdout) || !freopen(out, "a", stderr)) _exit(126);
+        if (!freopen("/dev/null", "r", stdin)) _exit(126);
+        execv(av[0], av); _exit(127);
+    }
+    pend.pid = pid; pend.t0 = now_s(); return 0;
+}
+/* the child ended (rc) or was killed: do what the synchronous code used to do after the edit */
+static void finish_edit(int rc) {
+    Pend p = pend; pend.pid = 0;
+    if (!strcmp(p.kind, "undo")) {
+        if (rc) { snprintf(msg, sizeof msg, "undo %s on %s FAILED (rc=%d), see state/edit.out", p.mode, p.label, rc); push_undo(p.pkg, p.label, p.mode, p.id, p.type, p.params); }
+        else snprintf(msg, sizeof msg, "undone: %s on %s", p.mode, p.label);
+        load_nodes(); return;
+    }
+    if (rc) { snprintf(msg, sizeof msg, "%s FAILED (rc=%d), see state/edit.out", p.kind, rc); return; }
+    load_nodes();
+    if (!strcmp(p.kind, "del")) {
+        push_undo(p.pkg, p.label, "append", "", p.old.type, p.old.params);
+        snprintf(msg, sizeof msg, "deleted command %d (%s %s); undo puts it back at the end of the list", p.old.id, p.old.type, p.old.params);
+    } else if (!strcmp(p.kind, "add")) {
+        int nid = max_id(); if (nid > p.before) { char b[12]; snprintf(b, sizeof b, "%d", nid); push_undo(p.pkg, p.label, "delete", b, "", ""); csel = nid; }
+        snprintf(msg, sizeof msg, "added command %d: %s %s", nid, p.type, p.params);
+    } else {
+        push_undo(p.pkg, p.label, "edit", p.id, p.old.type, p.old.params);
+        snprintf(msg, sizeof msg, "command %d: %s %s  ->  %s %s", p.old.id, p.old.type, p.old.params, p.type, p.params);
+    }
+}
+/* main loop: has the background edit finished? (30 s limit) */
+static int poll_pending(void) {
+    if (!pend.pid) return 0;
+    int st; pid_t r = waitpid(pend.pid, &st, WNOHANG);
+    if (r == pend.pid) { finish_edit(WIFEXITED(st) ? WEXITSTATUS(st) : -1); return 1; }
+    if (now_s() - pend.t0 > 30) { kill(pend.pid, SIGKILL); waitpid(pend.pid, NULL, 0); finish_edit(-1); return 1; }
+    return 0;
 }
 static int max_id(void) { int m = 0; for (int i = 0; i < nN; i++) if (N[i].id > m) m = N[i].id; return m; }
 /* typed value -> type + params. "verb=advance|arg=" (first field has '=') keeps the selected command's type; "type|params" sets both. */
@@ -243,23 +286,23 @@ static void edit_verb(const char *verb) {
     if (!nE) { snprintf(msg, sizeof msg, "no event selected"); return; }
     load_nodes();
     if (!strncmp(verb, "CSEL:", 5)) { csel = atoi(verb + 5); snprintf(msg, sizeof msg, "command %d selected", csel); return; }
+    if (pend.pid) { snprintf(msg, sizeof msg, "an edit is still running (%s on %s): wait for it", pend.kind, pend.label); return; }
     if (!strcmp(verb, "UNDO")) {
         if (!nU) { snprintf(msg, sizeof msg, "nothing to undo"); return; }
         Undo u = U[--nU]; int found = -1; for (int i = 0; i < nE; i++) if (!strcmp(E[i].pkg, u.pkg)) found = i;
         if (found < 0) { snprintf(msg, sizeof msg, "undo: the event %s is not on this page any more", u.label); return; }
         sel = found;
-        int rc = do_edit(u.mode, u.id, u.type, u.params);
-        if (rc) snprintf(msg, sizeof msg, "undo %s on %s FAILED (rc=%d), see state/edit.out", u.mode, u.label, rc);
-        else snprintf(msg, sizeof msg, "undone: %s on %s", u.mode, u.label);
-        load_nodes(); return;
+        if (start_edit("undo", u.mode, u.id, u.type, u.params, NULL)) snprintf(msg, sizeof msg, "undo: could not start the edit");
+        else snprintf(msg, sizeof msg, "undoing %s on %s ...", u.mode, u.label);
+        return;
     }
     Nd *cur = node_by_id(csel); char type[40], params[400], idb[12]; snprintf(idb, sizeof idb, "%d", csel);
     if (!strcmp(verb, "CDEL")) {
         if (!cur) { snprintf(msg, sizeof msg, "no command selected"); return; }
-        Nd old = *cur; int rc = do_edit("delete", idb, "", "");
-        if (rc) { snprintf(msg, sizeof msg, "delete FAILED (rc=%d), see state/edit.out", rc); return; }
-        push_undo("append", "", old.type, old.params); load_nodes();
-        snprintf(msg, sizeof msg, "deleted command %d (%s %s); undo puts it back at the end of the list", old.id, old.type, old.params); return;
+        Nd old = *cur;
+        if (start_edit("del", "delete", idb, "", "", &old)) snprintf(msg, sizeof msg, "delete: could not start the edit");
+        else snprintf(msg, sizeof msg, "deleting command %d ...", old.id);
+        return;
     }
     int is_add = !strncmp(verb, "ADD:", 4); const char *typed = verb + (is_add ? 4 : 5);
     if (!is_add && strncmp(verb, "EDIT:", 5)) { snprintf(msg, sizeof msg, "unknown verb %s", verb); return; }
@@ -268,16 +311,14 @@ static void edit_verb(const char *verb) {
     if (!split_typed(typed, is_add ? NULL : cur, type, sizeof type, params, sizeof params) || !*type || !clean(type, 0)) { snprintf(msg, sizeof msg, "need  type|params  (or key=value|key=value for the selected command)"); return; }
     if (!known_type(type)) { snprintf(msg, sizeof msg, "refused: '%s' is not a command type in the events-hq registry (#.ref/menu/event_commands.registry.pdl)", type); return; }
     if (is_add) {
-        int before = max_id(), rc = do_edit("append", "", type, params);
-        if (rc) { snprintf(msg, sizeof msg, "add FAILED (rc=%d), see state/edit.out", rc); return; }
-        load_nodes(); int nid = max_id(); if (nid > before) { char b[12]; snprintf(b, sizeof b, "%d", nid); push_undo("delete", b, "", ""); csel = nid; }
-        snprintf(msg, sizeof msg, "added command %d: %s %s", nid, type, params); return;
+        if (start_edit("add", "append", "", type, params, NULL)) snprintf(msg, sizeof msg, "add: could not start the edit");
+        else snprintf(msg, sizeof msg, "adding %s ...", type);
+        return;
     }
     if (!cur) { snprintf(msg, sizeof msg, "no command selected"); return; }
-    Nd old = *cur; int rc = do_edit("edit", idb, type, params);
-    if (rc) { snprintf(msg, sizeof msg, "edit FAILED (rc=%d), see state/edit.out", rc); return; }
-    push_undo("edit", idb, old.type, old.params); load_nodes();
-    snprintf(msg, sizeof msg, "command %d: %s %s  ->  %s %s", old.id, old.type, old.params, type, params);
+    Nd old = *cur;
+    if (start_edit("edit", "edit", idb, type, params, &old)) snprintf(msg, sizeof msg, "edit: could not start the edit");
+    else snprintf(msg, sizeof msg, "editing command %d ...", old.id);
 }
 
 /* ---- ui.txt ---- */
@@ -376,6 +417,7 @@ int main(int argc, char **argv) {
                 fclose(f); }
             seen = sz;
         }
+        if (poll_pending()) dirty = 1;
         time_t now = time(NULL);
         if (dirty || now != last_scan) { scan(); status(); write_ui(); last_scan = now; }
         struct timespec ts = { 0, 150 * 1000000L }; nanosleep(&ts, NULL);

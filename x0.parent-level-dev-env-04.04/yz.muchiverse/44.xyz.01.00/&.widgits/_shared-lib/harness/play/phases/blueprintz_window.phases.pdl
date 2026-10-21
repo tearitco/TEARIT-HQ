@@ -1,0 +1,41 @@
+# blueprintz_window.phases.pdl - the blueprintz WINDOW layer, headless, then the game it edits (BOOK 08-roadmap/design-docs/BLUEPRINTZ-DESIGN.md 12.22).
+# Runner: ops/+x/playthrough_op.+x run play/phases/blueprintz_window.phases.pdl     (a scratch house under /tmp: nothing live is touched)
+# Row `BPWIN | REQ:<request> | EXPECT:<ui key>~<text> | EXPECTNOT:<ui key>~<text> | ...` starts the REAL blueprintz_manager on the scratch house, sends the
+# same request lines a click writes (SEL:<i> CSEL:<id> EDIT:<typed> ADD:<typed> CDEL UNDO LOAD:<app>), and checks the ui.txt the window draws. One BPWIN row is
+# one manager session (the undo history lives only inside it); `\p` is a literal bar. Pixels are not tested here: the relay screenshots are in the design page.
+# Saved with the other tables, this is the regression test for the window: load, select, edit, add, delete, undo, the refusals, and the game running the edit.
+GAME | game-dev-hq | game_dev_hq
+EVENTS | yes
+
+PHASE | p1_load_select | Load game-dev-hq verbs fills the event list; selecting contract shows its one command | window, load, select
+BPWIN | REQ:LOAD:game-dev-hq | EXPECT:e_count~17 | EXPECT:msg~loaded 17 verb pages | REQ:SEL:5 | EXPECT:sel_line~selected: contract | EXPECT:n_count~1 | EXPECT:n_0_label~verb=contract
+EXIT | 0 | load-and-select-show-the-real-contract-page
+
+PHASE | p2_edit_undo | edit the command in the window, see the diff, undo twice: the page is back and a third undo says nothing to undo | window, edit, undo
+BPWIN | REQ:LOAD:game-dev-hq | REQ:SEL:5 | REQ:EDIT:verb=advance\parg= | EXPECT:msg~verb=contract\parg=  -> | EXPECT:n_0_label~verb=advance | EXPECT:undo_line~undo steps: 1 | REQ:UNDO | EXPECT:msg~undone: edit on contract | EXPECT:n_0_label~verb=contract | EXPECT:undo_line~undo steps: 0 | REQ:UNDO | EXPECT:msg~nothing to undo
+EXIT | 0 | edit-diff-and-undo-round-trip
+HAS | events/contract/event_pkg/pages/page_1/event.ir.pdl | verb=contract | the-page-file-is-back-to-contract
+
+PHASE | p3_refusals | a hostile value, an unknown command type and an empty value are refused and nothing is written | window, refuse, negative
+BPWIN | REQ:LOAD:game-dev-hq | REQ:SEL:5 | REQ:EDIT:verb=a';touch /tmp/bp_pwned;'\parg= | EXPECT:msg~refused: only letters | REQ:EDIT:17 | EXPECT:msg~not a command type in the events-hq registry | REQ:EDIT:nosuch_type\pa=b | EXPECT:msg~not a command type | EXPECT:n_0_label~verb=contract | EXPECT:undo_line~undo steps: 0
+EXIT | 0 | refusals-leave-the-page-and-the-undo-stack-alone
+HAS | events/contract/event_pkg/pages/page_1/event.ir.pdl | verb=contract | the-page-file-is-unchanged
+
+PHASE | p4_add_delete_undo | add a command, delete it, undo both: the command list follows each step | window, add, delete, undo
+BPWIN | REQ:LOAD:game-dev-hq | REQ:SEL:5 | REQ:ADD:game_dev_hq_verb\pverb=status\parg= | EXPECT:msg~added command 2 | EXPECT:n_count~2 | EXPECT:n_1_label~verb=status | REQ:CDEL | EXPECT:msg~deleted command 2 | EXPECT:n_count~1 | REQ:UNDO | EXPECT:n_count~2 | REQ:UNDO | EXPECT:n_count~1 | EXPECT:n_0_label~verb=contract
+EXIT | 0 | add-delete-undo-list-follows
+HAS | events/contract/event_pkg/pages/page_1/event.ir.pdl | verb=contract | the-page-file-is-back
+
+PHASE | p5_window_edit_changes_the_game | edit contract to advance in the window; the game's same button now runs advance; edit it back and the contract plays | window, game, edit
+DO | status
+UI | week | 1 | starts-in-week-one
+BPWIN | REQ:LOAD:game-dev-hq | REQ:SEL:5 | REQ:EDIT:verb=advance\parg= | EXPECT:n_0_label~verb=advance
+EXIT | 0 | window-edited-the-page
+DO | fire | contract | q0
+HAS | state/fire_log.txt | contract\ppage:q0 | the-edited-page-was-played
+UI | week | 1 | no-weeks-passed-the-page-ran-advance
+UI | note | no game | advance-said-no-game
+BPWIN | REQ:LOAD:game-dev-hq | REQ:SEL:5 | REQ:EDIT:verb=contract\parg= | EXPECT:n_0_label~verb=contract
+EXIT | 0 | window-edited-it-back
+DO | fire | contract | q0
+UI | week | 3 | the-contract-plays-again-two-weeks
