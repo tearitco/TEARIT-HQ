@@ -2,3 +2,6 @@
 # alpha 0 so the desktop (and later a USB camera) can show behind
 # the map. 0 brings the sky and the parallax back.
 see_through=0
+# event_draw=billboard draws height-2 tables and stools as one thin card
+# of their tile, facing the camera. People stay extruded.
+event_draw=billboard

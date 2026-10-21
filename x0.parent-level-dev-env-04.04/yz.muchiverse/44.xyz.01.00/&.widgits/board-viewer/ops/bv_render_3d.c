@@ -361,6 +361,7 @@ typedef struct {
     int ev_n;
     char *glyph;            /* map.txt, w*h. 3D height comes from extrusion.pdl, not from the flat 2D picture. */
     unsigned char zh[128];  /* extrusion height for each glyph. 0 = no row. */
+    unsigned char draw[128]; /* 1 = EXTRUDE value "sprite": opaque pixels of the cell picture, same as a person. */
 } MakerAtlas;
 static MakerAtlas g_mk;
 
@@ -506,7 +507,11 @@ static int maker_load(const char *root) {
             char *bar = strchr(mline, '|'); if (!bar) continue;
             bar++; while (*bar == ' ') bar++;
             char g = *bar; char *bar2 = strchr(bar, '|');
-            if (bar2 && g > 32 && g < 127) { int hv = atoi(bar2 + 1); if (hv > 0 && hv <= 64) g_mk.zh[(unsigned char)g] = (unsigned char)hv; }
+            if (bar2 && g > 32 && g < 127) {
+                char *val = bar2 + 1; while (*val == ' ' || *val == '\t') val++;
+                if (strncmp(val, "sprite", 6) == 0) g_mk.draw[(unsigned char)g] = 1;
+                else { int hv = atoi(val); if (hv > 0 && hv <= 64) g_mk.zh[(unsigned char)g] = (unsigned char)hv; }
+            }
         }
         fclose(f);
     }
@@ -3625,17 +3630,25 @@ static int render_one_frame(void) {
             sc.eye[2] = (float)(cam.eye.z - voy);
             static unsigned short view_cells[BV_VIEW_DIM * BV_VIEW_DIM * 2];
             int cropped = (vox || voy || vww != g_mk.w || vwh != g_mk.h);
+            char vp[PATH_BUF], mode[32];
+            snprintf(vp, sizeof(vp), "%s/pieces/system/view.pdl", focused_project_root);
+            read_kv_str(vp, "event_draw", mode, sizeof(mode));
+            int card_furn = strncmp(mode, "billboard", 9) == 0;
             int z_count = 1;
             for (int row = 0; row < vwh; row++)
                 for (int col = 0; col < vww; col++) {
                     int mx = col + vox, my = row + voy;
-                    int h = 1;
+                    int h = 1, sprite = 0;
                     if (g_mk.glyph && mx >= 0 && my >= 0 && mx < g_mk.w && my < g_mk.h) {
                         unsigned char zg = (unsigned char)g_mk.glyph[my * g_mk.w + mx];
-                        if (zg < 128 && g_mk.zh[zg] > 1) h = g_mk.zh[zg];
+                        /* Height 2 is a table or stool. Billboard mode does not stack a cube. */
+                        int furn = card_furn && zg < 128 && g_mk.zh[zg] == 2;
+                        if (zg < 128 && g_mk.draw[zg]) sprite = 1;
+                        else if (furn) sprite = 1;
+                        else if (zg < 128 && g_mk.zh[zg] > 1) h = g_mk.zh[zg];
                     }
                     size_t src = ((size_t)my * g_mk.w + (size_t)mx) * 2;
-                    if (h <= 1 && my >= 0 && my < g_mk.h && mx >= 0 && mx < g_mk.w && g_mk.cells[src + 1]) h = 3;
+                    if (h <= 1 && !sprite && my >= 0 && my < g_mk.h && mx >= 0 && mx < g_mk.w && g_mk.cells[src + 1]) h = 3;
                     if (h > MAX_VOXEL_Z) h = MAX_VOXEL_Z;
                     if (h > z_count) z_count = h;
                 }
@@ -3644,17 +3657,22 @@ static int render_one_frame(void) {
                 for (int col = 0; col < vww; col++) {
                     int mx = col + vox, my = row + voy;
                     size_t src = ((size_t)my * g_mk.w + (size_t)mx) * 2;
-                    int h = 1;
+                    int h = 1, sprite = 0, furn = 0;
                     if (g_mk.glyph && mx >= 0 && my >= 0 && mx < g_mk.w && my < g_mk.h) {
                         unsigned char zg = (unsigned char)g_mk.glyph[my * g_mk.w + mx];
-                        if (zg < 128 && g_mk.zh[zg] > 1) h = g_mk.zh[zg];
+                        furn = card_furn && zg < 128 && g_mk.zh[zg] == 2;
+                        if (zg < 128 && g_mk.draw[zg]) sprite = 1;
+                        else if (furn) sprite = 1;
+                        else if (zg < 128 && g_mk.zh[zg] > 1) h = g_mk.zh[zg];
                     }
-                    if (h <= 1 && my >= 0 && my < g_mk.h && mx >= 0 && mx < g_mk.w && g_mk.cells[src + 1]) h = 3;
+                    if (h <= 1 && !sprite && my >= 0 && my < g_mk.h && mx >= 0 && mx < g_mk.w && g_mk.cells[src + 1]) h = 3;
                     if (h > z_count) h = z_count;
                     for (int lvl = 0; lvl < h; lvl++) gpu_grid[col + row * vww + lvl * vww * vwh] = 1;
-                    if (cropped) {
-                        view_cells[((size_t)row * vww + col) * 2] = g_mk.cells[src];
-                        view_cells[((size_t)row * vww + col) * 2 + 1] = g_mk.cells[src + 1];
+                    if (cropped || card_furn) {
+                        unsigned short fl = g_mk.cells[src], wl = g_mk.cells[src + 1];
+                        if (furn) { fl = 0; wl = 0; }   /* the cube's tile moves onto the card */
+                        view_cells[((size_t)row * vww + col) * 2] = fl;
+                        view_cells[((size_t)row * vww + col) * 2 + 1] = wl;
                     }
                 }
             sc.board_w = vww; sc.board_h = vwh; sc.z_count = z_count;
@@ -3662,9 +3680,9 @@ static int render_one_frame(void) {
             sc.legend_n = 1; sc.legend_glyph[0] = 1;
             sc.legend_rgb[0][0] = sc.legend_rgb[0][1] = sc.legend_rgb[0][2] = 0.5f;
             sc.legend_has_tex[0] = 0;
-            sc.maker = 1; sc.maker_id = g_mk.id;
+            sc.maker = 1; sc.maker_id = g_mk.id + (card_furn ? 100000 : 0);
             sc.atlas = g_mk.atlas; sc.atlas_w = g_mk.aw; sc.atlas_h = g_mk.ah; sc.atlas_cols = g_mk.cols; sc.tile_px = g_mk.tile_px;
-            sc.cells = cropped ? view_cells : g_mk.cells;
+            sc.cells = (cropped || card_furn) ? view_cells : g_mk.cells;
             sc.cells_w = vww; sc.cells_h = vwh;
             sc.para = g_mk.para; sc.para_w = g_mk.para_w; sc.para_h = g_mk.para_h;
             sc.para_loop_x = g_mk.para_lx; sc.para_loop_y = g_mk.para_ly; sc.para_ver = g_mk.para_ver;
@@ -3762,6 +3780,65 @@ static int render_one_frame(void) {
          * which is the same extrusion a phymoji model gets. No frame
          * file, or no free model slot: the old flat colour box. */
         if (sc.maker) {
+            /* EXTRUDE | glyph | sprite. The cell stays flat. The picture in its wall slot
+             * (else its floor slot) is extruded the same way a person frame is: each opaque
+             * pixel is a column. A number in that column is still a solid slab. */
+            /* event_draw=billboard is for table/stool sprites only. People stay columns. */
+            char vp[PATH_BUF], mode[32];
+            snprintf(vp, sizeof(vp), "%s/pieces/system/view.pdl", focused_project_root);
+            read_kv_str(vp, "event_draw", mode, sizeof(mode));
+            int card = strncmp(mode, "billboard", 9) == 0;
+            /* Extrusion shows the sprite on the X/Y face (depth along Z).
+             * The card keeps that face, and turns onto Z/Y when the camera looks along X. */
+            int face_x = card && fabs(cam.forward.x) > fabs(cam.forward.z);
+            if (g_mk.atlas && g_mk.glyph && g_mk.cells && g_mk.tile_px > 0 && g_mk.cols > 0) {
+                int tp = g_mk.tile_px;
+                for (int my = 0; my < g_mk.h && sc.model_n < BV_GPU_MAX_MODEL - 6; my++)
+                    for (int mx = 0; mx < g_mk.w && sc.model_n < BV_GPU_MAX_MODEL - 6; mx++) {
+                        unsigned char zg = (unsigned char)g_mk.glyph[my * g_mk.w + mx];
+                        int furn = card && zg < 128 && g_mk.zh[zg] == 2;
+                        if (zg >= 128 || (!g_mk.draw[zg] && !furn)) continue;
+                        unsigned short *cell = g_mk.cells + ((size_t)my * g_mk.w + mx) * 2;
+                        int slot = cell[1] ? cell[1] : cell[0];
+                        if (slot <= 0) continue;
+                        int ox = (slot % g_mk.cols) * tp, oy = (slot / g_mk.cols) * tp;
+                        PhymojiVoxel vox[16 * 24 * 8];
+                        int nv = 0, cr = 160, cg = 120, cb = 70;
+                        int depth = card ? 1 : 8;
+                        for (int py = 0; py < 24; py++)
+                            for (int px = 0; px < 16; px++) {
+                                int sx = ox + px * tp / 16, sy = oy + py * tp / 24;
+                                if (sx < 0 || sy < 0 || sx >= g_mk.aw || sy >= g_mk.ah) continue;
+                                const unsigned char *s = g_mk.atlas + ((size_t)sy * g_mk.aw + sx) * 4;
+                                if (s[3] < 16) continue;
+                                cr = s[0]; cg = s[1]; cb = s[2];
+                                for (int z = 0; z < depth && nv < 16 * 24 * 8; z++) {
+                                    vox[nv].lx = (unsigned char)px;
+                                    vox[nv].ly = (unsigned char)(23 - py);
+                                    vox[nv].lz = (unsigned char)z;
+                                    vox[nv].r = s[0]; vox[nv].g = s[1]; vox[nv].b = s[2];
+                                    nv++;
+                                }
+                            }
+                        int hm = (nv > 0) ? GPU_ADD_MODEL(vox, nv, 15, 23, depth - 1) : -1;
+                        if (card) {
+                            if (hm < 0) continue;
+                            float x0, x1, z0, z1;
+                            if (!face_x) {
+                                x0 = mx + 0.10f; x1 = mx + 0.90f;
+                                z0 = my + 0.48f; z1 = my + 0.52f;
+                            } else {
+                                x0 = mx + 0.48f; x1 = mx + 0.52f;
+                                z0 = my + 0.10f; z1 = my + 0.90f;
+                            }
+                            ADDBOX(x0, 1.0, z0, x1, 1.9, z1, cr, cg, cb, 0);
+                            if (sc.box_n > 0) sc.box[sc.box_n - 1].model = hm + (face_x ? 128 : 0);
+                        } else {
+                            ADDBOX(mx + 0.15, 1.0, my + 0.15, mx + 0.85, 1.9, my + 0.85, cr, cg, cb, 0);
+                            if (hm >= 0 && sc.box_n > 0) sc.box[sc.box_n - 1].model = hm;
+                        }
+                    }
+            }
             maker_read_events(g_mk.key); maker_read_parallax(g_mk.key);
             int budget = 80;
             int used_model[96];
@@ -3828,9 +3905,7 @@ static int render_one_frame(void) {
                         }
                     }
                     if (got) {
-                        /* Same extrusion as chicken: each opaque pixel
-                         * is a column, z 0..7, every layer the front
-                         * colour. One slice was a flat card. */
+                        /* People stay thick columns. Empty pixels are not written. */
                         PhymojiVoxel vox[16 * 24 * 8];
                         int nv = 0;
                         for (int py = 0; py < 24; py++)
@@ -3855,8 +3930,8 @@ static int render_one_frame(void) {
                     }
                 }
                 float top = (g_mk.ev[i].name[0] == '!') ? 1.9f : 2.6f;
-                ADDBOX(g_mk.ev[i].x + 0.15, 1.0, g_mk.ev[i].y + 0.15,
-                       g_mk.ev[i].x + 0.85, top, g_mk.ev[i].y + 0.85,
+                ADDBOX(g_mk.ev[i].x + 0.15f, 1.0, g_mk.ev[i].y + 0.15f,
+                       g_mk.ev[i].x + 0.85f, top, g_mk.ev[i].y + 0.85f,
                        g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b, 0);
                 if (hm >= 0 && sc.box_n > 0) sc.box[sc.box_n - 1].model = hm;
             }
