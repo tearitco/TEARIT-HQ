@@ -25,6 +25,7 @@
       <repeat count="${n_room}" bind="room">
         <item id="rm${room.#}" class="pchq-menu-row dropdown-child " target_id="tb-page" label="${room.label}" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' goto ${room.id}"/>
       </repeat>
+      <item id="rm-new" class="pchq-menu-row dropdown-child" target_id="tb-page" label="+ new room" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' newroom"/>
       <item id="rm-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-page" label="- cancel -" action="void"/>
       <repeat count="${n_shop}" bind="shop">
         <item id="sh${shop.#}" class="pchq-menu-row dropdown-child " target_id="tb-shop" label="${shop.label}" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' buy ${shop.key}"/>
