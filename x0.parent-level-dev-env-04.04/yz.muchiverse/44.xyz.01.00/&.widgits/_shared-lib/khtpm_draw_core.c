@@ -297,6 +297,34 @@ static void hq_blit_sprite(HqSprite *sp, int x0, int y0, int px, unsigned long b
     if (back) XDestroyImage(back);
 }
 
+/* SKIN TILE CACHE (owner 2026-10-22: "cache those and push"). A skin tile is rescaled from its sprite.csv and alpha-blended over a flat colour one pixel at a time, then sent to the server with
+ * XPutImage, on EVERY paint of every skinned tab and button: hq_blit_sprite under kh_draw_skin_rect was about half of the CPU of a board window (SIGPROF profile). With sample_backdrop off the
+ * result depends only on (sprite file + mtime, tile size, background colour), so each distinct tile is rendered ONCE through hq_blit_sprite, captured into a server-side Pixmap, and every later
+ * paint is one XCopyArea (no pixel work, no data over the socket). 128 tiles, least recently used is freed. A tile that would not lie fully inside the buffer is drawn the slow way, uncached. */
+typedef struct { char path[512]; time_t mtime; int px; unsigned long bg; Pixmap pm; long used; } KhSkinTile;
+static KhSkinTile g_skin_tiles[128];
+static long g_skin_tile_tick = 0;
+static void kh_blit_skin_tile(HqSprite *sp, int x0, int y0, int px, unsigned long bg_pixel) {
+    KhSkinTile *hit = NULL, *free_slot = NULL, *lru = NULL;
+    for (int i = 0; i < 128; i++) {
+        KhSkinTile *t = &g_skin_tiles[i];
+        if (!t->pm) { if (!free_slot) free_slot = t; continue; }
+        if (t->px == px && t->bg == bg_pixel && t->mtime == sp->mtime && strcmp(t->path, sp->path) == 0) { hit = t; break; }
+        if (!lru || t->used < lru->used) lru = t;
+    }
+    if (hit) { hit->used = ++g_skin_tile_tick; XCopyArea(dpy, hit->pm, buf, gc, 0, 0, (unsigned)px, (unsigned)px, x0, y0); return; }
+    hq_blit_sprite(sp, x0, y0, px, bg_pixel, 0);      /* the one slow render of this tile */
+    Window root_ret; int gx, gy; unsigned int gw, gh, gb, gd;
+    if (x0 < 0 || y0 < 0 || !XGetGeometry(dpy, buf, &root_ret, &gx, &gy, &gw, &gh, &gb, &gd) || x0 + px > (int)gw || y0 + px > (int)gh) return;
+    KhSkinTile *t = free_slot ? free_slot : lru;
+    if (!t) return;
+    if (t->pm) { XFreePixmap(dpy, t->pm); t->pm = 0; }
+    Pixmap pm = XCreatePixmap(dpy, buf, (unsigned)px, (unsigned)px, gd);
+    if (!pm) return;
+    XCopyArea(dpy, buf, pm, gc, x0, y0, (unsigned)px, (unsigned)px, 0, 0);
+    snprintf(t->path, sizeof(t->path), "%s", sp->path); t->mtime = sp->mtime; t->px = px; t->bg = bg_pixel; t->pm = pm; t->used = ++g_skin_tile_tick;
+}
+
 /* ---------- RPG Maker tile bar skin (2026-10-08, owner: "we need these tile renders") ----------
  * bar_skin=<id> in #.desktop/hq_ui.pdl (empty = off = today's solid fills) names a SKIN row in
  * &.widgits/taskbar-settings/bar_skins.pdl: three folders (left cap, repeated middle, right cap) that each hold
@@ -414,7 +442,7 @@ static int kh_draw_skin_rect(const char (*dirs)[400], int x, int y, int w, int h
     int x0 = x + (w - n * b) / 2;
     double _sk0 = hqs_now_ms();
     for (int i = 0; i < n; i++)   /* n == 1: a single middle block (a narrow dock cell) */
-        hq_blit_sprite(n == 1 ? m : (i == 0 ? l : (i == n - 1 ? r : m)), x0 + i * b, y, b, bg_pixel, 0);
+        kh_blit_skin_tile(n == 1 ? m : (i == 0 ? l : (i == n - 1 ? r : m)), x0 + i * b, y, b, bg_pixel);
     g_hqs_skin_ms += hqs_now_ms() - _sk0; g_hqs_skin_blocks += n;
     return 1;
 }
