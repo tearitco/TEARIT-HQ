@@ -282,6 +282,16 @@ static void load_petpic(int i) {
     static unsigned char big[64 * 64 * 4]; char ln[64]; int n = 0;
     while (fgets(ln, sizeof ln, f) && n < 64 * 64) { int r, g, b, a; if (sscanf(ln, "%d,%d,%d,%d", &r, &g, &b, &a) != 4) continue; big[n * 4] = (unsigned char)r; big[n * 4 + 1] = (unsigned char)g; big[n * 4 + 2] = (unsigned char)b; big[n * 4 + 3] = (unsigned char)a; n++; }
     fclose(f); if (n < 64 * 64) return;
+    {   /* the footer's picture: <pchq>/pieces/<event id>/sprite.csv at 32x32 (the footer re-reads it on every redraw, so 1024 rows, not 4096; event id = roster index + 1) */
+        char sd[PATH_MAX]; snprintf(sd, sizeof sd, "%s/pieces/%d", PCHQ, i + 1); mkdir(sd, 0755); strncat(sd, "/sprite.csv", sizeof sd - strlen(sd) - 1);
+        FILE *o = fopen(sd, "w");
+        if (o) { fputs("# resolution=32\n# scale=1.0\n# transform=0,0,0\nr,g,b,a\n", o);
+            for (int y = 0; y < 32; y++) for (int x = 0; x < 32; x++) {
+                int acc[4] = {0}, w = 0; for (int yy = y * 2; yy < y * 2 + 2; yy++) for (int xx = x * 2; xx < x * 2 + 2; xx++) { unsigned char *q = big + (yy * 64 + xx) * 4; acc[0] += q[0] * q[3]; acc[1] += q[1] * q[3]; acc[2] += q[2] * q[3]; acc[3] += q[3]; w++; }
+                if (acc[3]) fprintf(o, "%d,%d,%d,%d\n", acc[0] / acc[3], acc[1] / acc[3], acc[2] / acc[3], acc[3] / w); else fputs("0,0,0,0\n", o);
+            }
+            fclose(o); }
+    }
     for (int y = 0; y < XT; y++) for (int x = 0; x < XT; x++) {
         int acc[4] = {0}, w = 0, x0 = x * 64 / XT, x1 = (x + 1) * 64 / XT, y0 = y * 64 / XT, y1 = (y + 1) * 64 / XT;
         for (int yy = y0; yy < y1; yy++) for (int xx = x0; xx < x1; xx++) { unsigned char *q = big + (yy * 64 + xx) * 4; acc[0] += q[0] * q[3]; acc[1] += q[1] * q[3]; acc[2] += q[2] * q[3]; acc[3] += q[3]; w++; }
@@ -290,48 +300,78 @@ static void load_petpic(int i) {
     }
     petpic_ok[i] = 1;
 }
+/* One pet's 24x24 picture: its art, or a coloured disc for a pal without art. */
+static void pet_cell(int i, unsigned char *sp) {
+    if (petpic_ok[i]) { memcpy(sp, petpic[i], XT * XT * 4); return; }
+    for (int y = 0; y < XT; y++) for (int x = 0; x < XT; x++) { int dx = x - 12, dy = y - 12, in = dx * dx + dy * dy <= 100; unsigned char *o = sp + (y * XT + x) * 4; o[0] = (unsigned char)pet[i].r; o[1] = (unsigned char)pet[i].g; o[2] = (unsigned char)pet[i].b; o[3] = in ? 255 : 0; }
+}
+/* The pets in the 2D tile view: events.txt names charset "!edit<g>" index <i%8> (g = i / 8), and the 2D renderer draws a pet from the RPG Maker style sheet #.NNEST_ASSETS/tsots-characters/!edit<g>.png (12x8
+ * cells of 24 px, the same picture in every direction and walk frame; "!" = one cell tall). The pets are NOT painted into map.png: that file is only the background and is rewritten when the sky phase changes. */
+static void write_sheets(void) {
+    char dir[PATH_MAX]; snprintf(dir, sizeof dir, "%s/../tsots-characters", ASSETS); mkdir(dir, 0755);
+    for (int g = 0; g <= (npet - 1) / 8; g++) {
+        static unsigned char sh[288 * 192 * 4]; memset(sh, 0, sizeof sh);
+        for (int k = 0; k < 8 && g * 8 + k < npet; k++) {
+            unsigned char cell[XT * XT * 4]; pet_cell(g * 8 + k, cell);
+            for (int pat = 0; pat < 3; pat++) for (int row = 0; row < 4; row++) { int sx = ((k % 4) * 3 + pat) * XT, sy = ((k / 4) * 4 + row) * XT; for (int y = 0; y < XT; y++) memcpy(sh + ((size_t)(sy + y) * 288 + sx) * 4, cell + y * XT * 4, XT * 4); }
+        }
+        char pp[PATH_MAX + 16], tp[PATH_MAX + 32]; snprintf(pp, sizeof pp, "%s/!edit%d.png", dir, g); snprintf(tp, sizeof tp, "%s.tmp", pp);
+        if (stbi_write_png(tp, 288, 192, 4, sh, 288 * 4)) rename(tp, pp); else remove(tp);
+    }
+}
+/* The scene frame ('\\' in the engine: view.pdl scene_raw): the used part of the island page fitted into SW x SH with the phase sky behind. The background (sky + tiles) is built when map.png is; every step
+ * copies it and lays the pets on top (a few small blits and one 3 MB write), so a step costs milliseconds, not a PNG encode. */
+enum { SW = 1200, SH = 640 };
+static unsigned char scbg[SW * SH * 4], scfr[SW * SH * 4];
+static int sc_cx0, sc_cy0, sc_cw, sc_ch, sc_dw, sc_dh, sc_ok;
+static void write_scene(void) {
+    if (!sc_ok) return;
+    memcpy(scfr, scbg, sizeof scfr);
+    for (int i = 0; i < npet; i++) if (pet[i].room == 0) {
+        unsigned char cell[XT * XT * 4]; pet_cell(i, cell);
+        int ds = XT * sc_dw / sc_cw; if (ds < 1) ds = 1;
+        int x0 = (SW - sc_dw) / 2 + (pet[i].x * XT - sc_cx0 * XT) * sc_dw / sc_cw, y0 = (SH - sc_dh) / 2 + (pet[i].y * XT - sc_cy0 * XT) * sc_dh / sc_ch;
+        for (int y = 0; y < ds; y++) for (int x = 0; x < ds; x++) {
+            int px = x0 + x, py = y0 + y; if (px < 0 || py < 0 || px >= SW || py >= SH) continue;
+            const unsigned char *q = cell + ((y * XT / ds) * XT + x * XT / ds) * 4; int al = q[3]; if (!al) continue;
+            unsigned char *o = scfr + ((size_t)py * SW + px) * 4; for (int c = 0; c < 3; c++) o[c] = (unsigned char)((q[c] * al + o[c] * (255 - al)) / 255);
+        }
+    }
+    char rp[PATH_MAX], tr_[PATH_MAX + 8]; snprintf(rp, sizeof rp, "%s/board/state/scene.raw", APP); snprintf(tr_, sizeof tr_, "%s.tmp", rp);
+    FILE *sf = fopen(tr_, "wb"); if (sf) { size_t wn = fwrite(scfr, 1, sizeof scfr, sf); if (fclose(sf) == 0 && wn == sizeof scfr) rename(tr_, rp); else remove(tr_); }
+}
 static void write_map_png(void) {
-    static unsigned long last[NPG];
+    static int lastkey[NPG];
     for (int d = 0; d < npage; d++) {
-        unsigned long sum = 5381; for (int i = 0; i < npet; i++) if (pet[i].room == d) sum = sum * 131 + (unsigned long)(pet[i].x * 64 + pet[i].y + (i << 16) + (petpic_ok[i] << 24)); sum = sum * 131 + (unsigned long)skyver * (unsigned long)(d == 0);
-        if (sum == last[d]) continue; last[d] = sum;
+        int key = (d == 0 ? skyver : 0) + 1; if (lastkey[d] == key) continue; lastkey[d] = key;
         int w = COLS * XT, h = ROWS * XT; unsigned char *im = malloc((size_t)w * h * 4); if (!im) return;
         for (int y = 0; y < ROWS; y++) for (int x = 0; x < COLS; x++) {
-            unsigned char cell[XT * XT * 4]; for (int k = 0; k < XT * XT; k++) { cell[k * 4] = 120; cell[k * 4 + 1] = 170; cell[k * 4 + 2] = 220; cell[k * 4 + 3] = 255; }      /* no tile: the parallax sky on the island page (painted in below), flat blue in the cabin */
+            unsigned char cell[XT * XT * 4]; for (int k = 0; k < XT * XT; k++) { cell[k * 4] = 120; cell[k * 4 + 1] = 170; cell[k * 4 + 2] = 220; cell[k * 4 + 3] = 255; }      /* no tile: the parallax sky on the island page (painted in below), flat blue in the interiors */
             if (d == 0 && cursky.px) for (int r = 0; r < XT; r++) for (int c = 0; c < XT; c++) { const unsigned char *q = cursky.px + ((size_t)((y * XT + r) % cursky.h) * cursky.w + (x * XT + c) % cursky.w) * 4; memcpy(cell + (r * XT + c) * 4, q, 3); }
-            if (fs[d][y][x] > 0) over24(cell, slotpx[fs[d][y][x]]);      /* over24 turns the pixel opaque */
+            if (fs[d][y][x] > 0) over24(cell, slotpx[fs[d][y][x]]);
             if (ws[d][y][x] > 0) over24(cell, slotpx[ws[d][y][x]]);
             for (int r = 0; r < XT; r++) memcpy(im + ((size_t)(y * XT + r) * w + x * XT) * 4, cell + r * XT * 4, XT * 4);
         }
-        for (int i = 0; i < npet; i++) if (pet[i].room == d) {
-            unsigned char sp[XT * XT * 4];
-            if (petpic_ok[i]) memcpy(sp, petpic[i], sizeof sp);
-            else for (int y = 0; y < XT; y++) for (int x = 0; x < XT; x++) { int dx = x - 12, dy = y - 12, in = dx * dx + dy * dy <= 100; unsigned char *o = sp + (y * XT + x) * 4; o[0] = (unsigned char)pet[i].r; o[1] = (unsigned char)pet[i].g; o[2] = (unsigned char)pet[i].b; o[3] = in ? 255 : 0; }
-            for (int y = 0; y < XT; y++) for (int x = 0; x < XT; x++) {
-                unsigned char *s = sp + (y * XT + x) * 4, *o = im + ((size_t)(pet[i].y * XT + y) * w + pet[i].x * XT + x) * 4; int al = s[3]; if (!al) continue;
-                for (int c = 0; c < 3; c++) o[c] = (unsigned char)((s[c] * al + o[c] * (255 - al)) / 255);
-            }
-        }
         char pp[PATH_MAX], tp[PATH_MAX + 24]; snprintf(pp, sizeof pp, "%s/pieces/system/maps/edit/%s/map.png", PCHQ, pgname[d]); snprintf(tp, sizeof tp, "%s.tmp", pp);
         if (stbi_write_png(tp, w, h, 4, im, w * 4)) rename(tp, pp); else remove(tp);
-        if (d == 0) {      /* the book's own painted frame ('\\' toggles it, view.pdl scene_raw): the used part of the island page fitted into 1200x640, the phase sky behind */
-            enum { SW = 1200, SH = 640 }; static unsigned char sc[SW * SH * 4]; int cx0 = COLS, cx1 = 0, cy0 = ROWS, cy1 = 0;
+        if (d == 0) {
+            int cx0 = COLS, cx1 = 0, cy0 = ROWS, cy1 = 0;
             for (int y = 0; y < ROWS; y++) for (int x = 0; x < COLS; x++) if (fs[0][y][x] > 0 || ws[0][y][x] > 0) { if (x < cx0) cx0 = x; if (x > cx1) cx1 = x; if (y < cy0) cy0 = y; if (y > cy1) cy1 = y; }
             if (cx1 < cx0) { cx0 = 0; cx1 = COLS - 1; cy0 = 0; cy1 = ROWS - 1; }
             int cw = (cx1 - cx0 + 1) * XT, ch = (cy1 - cy0 + 1) * XT, dw = SW, dh = SW * ch / cw; if (dh > SH) { dh = SH; dw = SH * cw / ch; }
-            for (int i = 0; i < SW * SH; i++) { int sx = i % SW, sy = i / SW; const unsigned char *q = cursky.px ? cursky.px + ((size_t)(sy % cursky.h) * cursky.w + sx % cursky.w) * 4 : NULL; sc[i * 4] = q ? q[0] : 120; sc[i * 4 + 1] = q ? q[1] : 170; sc[i * 4 + 2] = q ? q[2] : 220; sc[i * 4 + 3] = 255; }      /* the sky, then the used part of the page fitted into the frame */
+            for (int i = 0; i < SW * SH; i++) { int sx = i % SW, sy = i / SW; const unsigned char *q = cursky.px ? cursky.px + ((size_t)(sy % cursky.h) * cursky.w + sx % cursky.w) * 4 : NULL; scbg[i * 4] = q ? q[0] : 120; scbg[i * 4 + 1] = q ? q[1] : 170; scbg[i * 4 + 2] = q ? q[2] : 220; scbg[i * 4 + 3] = 255; }
             for (int y = 0; y < dh; y++) for (int x = 0; x < dw; x++) {
-                const unsigned char *q = im + ((size_t)(cy0 * XT + y * ch / dh) * w + cx0 * XT + x * cw / dw) * 4; unsigned char *o = sc + ((size_t)(y + (SH - dh) / 2) * SW + x + (SW - dw) / 2) * 4;
+                const unsigned char *q = im + ((size_t)(cy0 * XT + y * ch / dh) * w + cx0 * XT + x * cw / dw) * 4; unsigned char *o = scbg + ((size_t)(y + (SH - dh) / 2) * SW + x + (SW - dw) / 2) * 4;
                 o[0] = q[0]; o[1] = q[1]; o[2] = q[2];
             }
-            char rp[PATH_MAX], tr_[PATH_MAX + 8]; snprintf(rp, sizeof rp, "%s/board/state/scene.raw", APP); snprintf(tr_, sizeof tr_, "%s.tmp", rp);
-            FILE *sf = fopen(tr_, "wb"); if (sf) { size_t wn = fwrite(sc, 1, sizeof sc, sf); if (fclose(sf) == 0 && wn == sizeof sc) rename(tr_, rp); else remove(tr_); }
-            char vp[PATH_MAX], vw[PATH_MAX + 200]; snprintf(vp, sizeof vp, "%s/pieces/system/maps/edit/view.pdl", PCHQ);
+            sc_cx0 = cx0; sc_cy0 = cy0; sc_cw = cw; sc_ch = ch; sc_dw = dw; sc_dh = dh; sc_ok = 1;
+            char rp[PATH_MAX], vp[PATH_MAX], vw[PATH_MAX + 200]; snprintf(rp, sizeof rp, "%s/board/state/scene.raw", APP); snprintf(vp, sizeof vp, "%s/pieces/system/maps/edit/view.pdl", PCHQ);
             int vn = snprintf(vw, sizeof vw, "VIEW | cell_px | 24\nVIEW | default_style | tiles\nVIEW | scene_raw | %s\nVIEW | scene_w | %d\nVIEW | scene_h | %d\n", rp, (int)SW, (int)SH);
             FILE *vf = fopen(vp, "w"); if (vf) { fwrite(vw, 1, (size_t)vn, vf); fclose(vf); }
         }
         free(im);
     }
+    write_scene();
 }
 static void write_events(void) {
     for (int d = 0; d < npage; d++) {
@@ -340,8 +380,8 @@ static void write_events(void) {
         for (int i = 0; i < npet; i++) if (pet[i].room == d) {
             static const int face[4] = {8, 6, 2, 4};      /* dir index 0 up, 1 right, 2 down, 3 left -> RPG Maker 8/6/2/4 */
             int dir = pet[i].dir & 3;
-            if (pet[i].art) fprintf(f, "%d %d %d %d %d terumon %d 2 %d %c\n", pet[i].x, pet[i].y, pet[i].r, pet[i].g, pet[i].b, i, pet[i].steps % 3, pet[i].letter);      /* one front picture: always the front plane (a side facing plane is seen edge-on by the 3D camera) */
-            else fprintf(f, "%d %d %d %d %d edit 0 %d %d %c\n", pet[i].x, pet[i].y, pet[i].r, pet[i].g, pet[i].b, face[dir], pet[i].steps % 3, pet[i].letter);
+            if (pet[i].art) fprintf(f, "%d %d %d %d %d !edit%d %d 2 %d %c\n", pet[i].x, pet[i].y, pet[i].r, pet[i].g, pet[i].b, i / 8, i % 8, pet[i].steps % 3, pet[i].letter);      /* one front picture: always the front plane (a side facing plane is seen edge-on by the 3D camera) */
+            else fprintf(f, "%d %d %d %d %d !edit%d %d %d %d %c\n", pet[i].x, pet[i].y, pet[i].r, pet[i].g, pet[i].b, i / 8, i % 8, face[dir], pet[i].steps % 3, pet[i].letter);
         }
         fclose(f);
     }
@@ -391,7 +431,7 @@ static void read_inbox(void) {
             snprintf(pp->name, sizeof pp->name, "Pal %d", k + 1); artid[k][0] = 0; pp->letter = 'p'; pp->r = r; pp->g = g; pp->b = b; pp->x = 9 + k % 5; pp->y = 13 + (k / 5) % 3; npet++;
             char rp[PATH_MAX]; snprintf(rp, sizeof rp, "%s/party.pdl", APP); FILE *rf = fopen(rp, "a");
             if (rf) { fprintf(rf, "PET | %s | none | p | %d | %d | %d | %d | %d\n", pp->name, r, g, b, pp->x, pp->y); fclose(rf); }
-            load_petpic(k); say("you", pp->name); continue; }
+            load_petpic(k); write_sheets(); say("you", pp->name); continue; }
         if (!strncmp(ln, "sel ", 4)) {
             int n = atoi(ln + 4); if (n < 0 || n >= npet) continue;
             char xp[PATH_MAX], v[16]; snprintf(xp, sizeof xp, "%s/pieces/xelector_01/state.txt", PCHQ);
@@ -561,18 +601,8 @@ int main(int argc, char **argv) {
         for (int i = 0; i < npet; i++) {
             if (!artid[i][0]) continue;
             char cp[PATH_MAX]; int avg[3] = {pet[i].r, pet[i].g, pet[i].b}; snprintf(cp, sizeof cp, "%s/art/%s.csv", APP, artid[i]);
-            if (csv_write_frames(cp, fd, "terumon", i, avg)) { pet[i].art = 1; pet[i].r = avg[0]; pet[i].g = avg[1]; pet[i].b = avg[2]; }
+            char csn[16]; snprintf(csn, sizeof csn, "!edit%d", i / 8); if (csv_write_frames(cp, fd, csn, i % 8, avg)) { pet[i].art = 1; pet[i].r = avg[0]; pet[i].g = avg[1]; pet[i].b = avg[2]; }
             else fprintf(stderr, "rpg_edit: no art for %s (%s)\n", pet[i].name, cp);
-        }
-    }
-    {   /* the footer's entity images: the projector draws <PCHQ>/pieces/<event id>/sprite.csv (event id = roster index + 1), the same file as the pet's art csv */
-        for (int i = 0; i < npet; i++) {
-            if (!pet[i].art) continue;
-            char sd[PATH_MAX], src[PATH_MAX]; snprintf(sd, sizeof sd, "%s/pieces/%d", PCHQ, i + 1); mkdir(sd, 0755);
-            snprintf(src, sizeof src, "%s/art/%s.csv", APP, artid[i]); strncat(sd, "/sprite.csv", sizeof sd - strlen(sd) - 1);
-            FILE *in_ = fopen(src, "rb"), *out = in_ ? fopen(sd, "wb") : NULL; char cb[8192]; size_t cn;
-            while (out && (cn = fread(cb, 1, sizeof cb, in_)) > 0) fwrite(cb, 1, cn, out);
-            if (out) fclose(out); if (in_) fclose(in_);
         }
     }
     {   /* wide islands: this map sets its own fog (the house default fades everything past 48 cells to sky) */
@@ -584,6 +614,7 @@ int main(int argc, char **argv) {
     }
     srand((unsigned)time(NULL));
     for (int i = 0; i < npet; i++) load_petpic(i);
+    write_sheets();
     ensure_autotick(); write_sky(); write_events(); write_map_png(); write_side();
     { char bp[PATH_MAX]; snprintf(bp, sizeof bp, "%s/bar.txt", d0); FILE *bf = fopen(bp, "w");
       if (bf) { for (int i = 0; i < npet; i++) fprintf(bf, "%d\t%s\t%d\t%d\ton-click\n", i + 1, pet[i].name, pet[i].x, pet[i].y); fclose(bf); } }
