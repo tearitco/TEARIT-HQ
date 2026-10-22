@@ -904,6 +904,7 @@ static JSValue push_computed_style(JSContext *ctx, NbNode *n) {
     JS_SetPropertyStr(ctx, o, "opacity", JS_NewString(ctx, st.opacity[0] ? st.opacity : "1"));
     JS_SetPropertyStr(ctx, o, "width", JS_NewFloat64(ctx, st.width));
     JS_SetPropertyStr(ctx, o, "height", JS_NewFloat64(ctx, st.height));
+    JS_SetPropertyStr(ctx, o, "font-family", JS_NewString(ctx, st.font_family[0] ? st.font_family : ""));
     /* font-size is read as a CSS string (kevlar: fontSize.replace('px','')) */
     JS_SetPropertyStr(ctx, o, "fontSize", JS_NewString(ctx, "16px"));
     JS_SetPropertyStr(ctx, o, "getPropertyValue",

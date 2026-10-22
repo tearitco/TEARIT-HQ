@@ -38,9 +38,29 @@ typedef struct NbCssRule {
     int n_id, n_cls, n_type;/* specificity triple (summed over the list) */
 } NbCssRule;
 
+/* @font-face rule (2026-10-22). Minimal: font-family, src, font-weight, font-style. */
+typedef struct {
+    char font_family[64];
+    char src[256];
+    int font_weight;  /* 400 normal, 700 bold, etc. */
+    int font_style;   /* 0 normal, 1 italic, 2 oblique */
+    unsigned char *font_data;
+    size_t font_data_len;
+} NbFontFace;
+
 typedef struct NbCss {
     NbCssRule *r;
     size_t nr, cap;
+    /* @font-face rules (2026-10-22). Up to 8 fonts. */
+    int font_face_count;
+    struct {
+        char font_family[64];
+        char src[256];
+        int font_weight;    /* 400 normal, 700 bold, etc. */
+        int font_style;     /* 0 normal, 1 italic, 2 oblique */
+        unsigned char *font_data;
+        size_t font_data_len;
+    } font_faces[8];
 } NbCss;
 
 /* Resolved computed style for one element (the properties we model). */
@@ -87,6 +107,8 @@ typedef struct NbCssStyle {
     int has_top;            double top;    /* px, signed */
     int has_left;           double left;   /* px, signed */
     int has_z_index;        int z_index;   /* stacking context */
+    /* font-family (2026-10-22). Resolved font-family for @font-face resolution. */
+    char font_family[64];
 } NbCssStyle;
 
 /* Parse CSS text into a fresh NbCss (never NULL; rules may be 0). Free with
