@@ -32,6 +32,14 @@ SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
 PKG_STATE="$(cd "$SELF_DIR/.." && pwd)/state"
 mkdir -p "$PKG_STATE"
 
+# The game this board shows: the viewer session records it (pieces/system/real_project_root.txt), so a board of another project
+# (rpg-edit-hq-pchq ...) that reuses this script drives ITS OWN inbox and maps, not piececraft-hq's. Falls back to piececraft-hq.
+real_pchq() {
+    R=""
+    [ -n "$BV" ] && [ -f "$BV/pieces/system/real_project_root.txt" ] && R="$(head -n1 "$BV/pieces/system/real_project_root.txt" 2>/dev/null)"
+    if [ -n "$R" ] && [ -d "$R/pieces/system" ]; then printf '%s\n' "$R"; else (cd "$SELF_DIR/.." && pwd); fi
+}
+
 # menu open/close is pure local state for the projector
 if [ "$VERB" = "menu" ]; then
     case "$ARG" in
@@ -140,7 +148,7 @@ case "$VERB" in
         # so no engage_if_needed/append_key/restore_interact dance is
         # needed here at all.
         HOUSE="$(cd "$SELF_DIR/../../.." && pwd)"
-        PCHQ="$(cd "$SELF_DIR/.." && pwd)"
+        PCHQ="$(real_pchq)"
         printf 'open=\n' > "$PKG_STATE/menu.txt"
         PICK="$(sh "$HOUSE/&.widgits/file-explorer/fe-pick.sh" LOAD "$PCHQ/pieces/system/maps")"
         [ -n "$PICK" ] || exit 0
@@ -170,7 +178,7 @@ case "$VERB" in
         # full story (dead chunk_0_0_z0.txt/board_config.txt writes and
         # an unhandled key 54 replaced with the one real, working
         # CONFIRM_START_MAP inbox command).
-        PCHQ="$(cd "$SELF_DIR/.." && pwd)"
+        PCHQ="$(real_pchq)"
         mkdir -p "$PCHQ/pieces/system/widget_cmds"
         printf 'CONFIRM_START_MAP:%s\n' "$ARG" > "$PCHQ/pieces/system/widget_cmds/inbox.txt"
         printf 'open=\n' > "$PKG_STATE/menu.txt"
@@ -206,10 +214,56 @@ case "$VERB" in
         # command (pc_menu_input.c). ARG is the desk_id
         # (pchq-board.xhtpm's repeat now passes ${d.id}, not a bare row
         # index).
-        PCHQ="$(cd "$SELF_DIR/.." && pwd)"
+        PCHQ="$(real_pchq)"
         [ -n "$ARG" ] || exit 0
         mkdir -p "$PCHQ/pieces/system/widget_cmds"
         printf 'CONFIRM_SET_DESK:%s\n' "$ARG" > "$PCHQ/pieces/system/widget_cmds/inbox.txt"
+        printf 'open=\n' > "$PKG_STATE/menu.txt"
+        ;;
+    newpage)
+        # "+ new page": an EMPTY page (desk) in the current book, then switch to it. A copy of the current page's folder (atlas, legend,
+        # extrusion) with the cells cleared, the map blanked, no events; listed in the book's game.pdl (n_desks + desk_N rows).
+        PCHQ="$(real_pchq)"
+        WS="$PCHQ/pieces/world_01/state.txt"
+        MAPID="$(sed -n 's/^map_id=//p' "$WS" | head -n1)"; CUR="$(sed -n 's/^desk_id=//p' "$WS" | head -n1)"
+        BOOK="$PCHQ/pieces/system/maps/$MAPID"
+        [ -n "$MAPID" ] && [ -f "$BOOK/game.pdl" ] || exit 0
+        [ -d "$BOOK/$CUR" ] || CUR="$(sed -n 's/^GAME *| *desk_1_id *| *//p' "$BOOK/game.pdl" | head -n1)"
+        [ -d "$BOOK/$CUR" ] || exit 0
+        N=2; while [ -e "$BOOK/page_$N" ]; do N=$((N + 1)); done
+        NEW="page_$N"
+        cp -r "$BOOK/$CUR" "$BOOK/$NEW" && rm -f "$BOOK/$NEW/bar.txt"
+        if [ -f "$BOOK/$NEW/cells.txt" ]; then
+            awk 'BEGIN{r=0} r==1{n=split($0,a," "); o=""; for(i=1;i<=n;i++) o=o (i>1?" ":"") "0,0"; print o; next} {print} /^cells$/{r=1}' "$BOOK/$NEW/cells.txt" > "$BOOK/$NEW/cells.new" && mv "$BOOK/$NEW/cells.new" "$BOOK/$NEW/cells.txt"
+        fi
+        [ -f "$BOOK/$NEW/map.txt" ] && sed -i 's/./_/g' "$BOOK/$NEW/map.txt"
+        : > "$BOOK/$NEW/events.txt"
+        COUNT="$(sed -n 's/^GAME *| *n_desks *| *//p' "$BOOK/game.pdl" | head -n1)"; COUNT=$((COUNT + 1))
+        sed -i "s/^\(GAME *| *n_desks *| *\).*/\1$COUNT/" "$BOOK/game.pdl"
+        printf 'GAME         | desk_%s_id          | %s\nGAME         | desk_%s_label       | %s\n' "$COUNT" "$NEW" "$COUNT" "$NEW" >> "$BOOK/game.pdl"
+        mkdir -p "$PCHQ/pieces/system/widget_cmds"
+        printf 'CONFIRM_SET_DESK:%s\n' "$NEW" >> "$PCHQ/pieces/system/widget_cmds/inbox.txt"
+        printf 'open=\n' > "$PKG_STATE/menu.txt"
+        ;;
+    newbook)
+        # "+ new book": an EMPTY book (map) with one empty page "start", then switch to it (the same inbox command the File menu uses).
+        PCHQ="$(real_pchq)"
+        WS="$PCHQ/pieces/world_01/state.txt"
+        MAPID="$(sed -n 's/^map_id=//p' "$WS" | head -n1)"; CUR="$(sed -n 's/^desk_id=//p' "$WS" | head -n1)"
+        SRC="$PCHQ/pieces/system/maps/$MAPID"
+        [ -n "$MAPID" ] && [ -d "$SRC/$CUR" ] || exit 0
+        N=2; while [ -e "$PCHQ/pieces/system/maps/book_$N" ]; do N=$((N + 1)); done
+        NB="book_$N"; DST="$PCHQ/pieces/system/maps/$NB"
+        mkdir -p "$DST" && cp -r "$SRC/$CUR" "$DST/start" && rm -f "$DST/start/bar.txt"
+        if [ -f "$DST/start/cells.txt" ]; then
+            awk 'BEGIN{r=0} r==1{n=split($0,a," "); o=""; for(i=1;i<=n;i++) o=o (i>1?" ":"") "0,0"; print o; next} {print} /^cells$/{r=1}' "$DST/start/cells.txt" > "$DST/start/cells.new" && mv "$DST/start/cells.new" "$DST/start/cells.txt"
+        fi
+        [ -f "$DST/start/map.txt" ] && sed -i 's/./_/g' "$DST/start/map.txt"
+        : > "$DST/start/events.txt"
+        sed -e "s/^\(GAME *| *label *| *\).*/\1$NB/" -e "s/^\(GAME *| *n_desks *| *\).*/\11/" -e '/desk_[0-9]*_\(id\|label\)/d' "$SRC/game.pdl" > "$DST/game.pdl"
+        printf 'GAME         | desk_1_id          | start\nGAME         | desk_1_label       | start\n' >> "$DST/game.pdl"
+        mkdir -p "$PCHQ/pieces/system/widget_cmds"
+        printf 'CONFIRM_START_MAP:%s\n' "$NB" >> "$PCHQ/pieces/system/widget_cmds/inbox.txt"
         printf 'open=\n' > "$PKG_STATE/menu.txt"
         ;;
     player)
@@ -251,7 +305,8 @@ case "$VERB" in
                 printf 'mode=%s\n' "$NEXT" > "$PM"
                 ;;
             start|play)
-                # Same verb as the Start Game event command.
+                # Same verb as the Start Game event command (registry
+                # start_game -> doom_event.sh). New Game in RPG Maker.
                 WORLD_STATE="$PCHQ/pieces/world_01/state.txt"
                 MAP_ID=""; DESK_ID=""
                 [ -f "$WORLD_STATE" ] && MAP_ID="$(sed -n 's/^map_id=//p' "$WORLD_STATE" | head -1)"
@@ -279,6 +334,7 @@ case "$VERB" in
                 sh "$PCHQ/ops/doom_event.sh" stop_game
                 ;;
             save:*|load:*)
+                # Player-menu slots 1-16. save:3 / load:3.
                 kind=${SUB%%:*}
                 num=${SUB#*:}
                 if [ "$kind" = save ]; then

@@ -391,14 +391,21 @@ int main(int argc, char **argv) {
     char d0[PATH_MAX], d1[PATH_MAX];
     snprintf(d0, sizeof d0, "%s/start", root); snprintf(d1, sizeof d1, "%s/cabin", root);
     write_atlas(d0, 0); write_atlas(d1, 1);
-    { char gp[PATH_MAX]; snprintf(gp, sizeof gp, "%s/game.pdl", root); FILE *f = fopen(gp, "w");
+    { char gp[PATH_MAX], extra[16][48]; int nx = 0; snprintf(gp, sizeof gp, "%s/game.pdl", root);
+      { FILE *g = fopen(gp, "r"); char ln[200];      /* pages added from the Desk menu (+ new page) stay listed: keep every desk id that is not one of the two built here */
+        while (g && fgets(ln, sizeof ln, g)) { char *k = strstr(ln, "| desk_"), *v = k ? strstr(k, "_id") : NULL; if (!v) continue; v = strchr(v, '|'); if (!v) continue;
+            v++; while (*v == ' ') v++; v[strcspn(v, " \r\n")] = 0;
+            if (v[0] && strcmp(v, "start") && strcmp(v, "cabin") && nx < 16) snprintf(extra[nx++], 48, "%s", v); }
+        if (g) fclose(g); }
+      FILE *f = fopen(gp, "w");
       if (f) { fputs("SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\n"
         "GAME         | type               | board-game\nGAME         | icon               | 🖊️\n"
         "GAME         | label              | edit\nGAME         | n_chunks           | 1\n"
         "GAME         | chunk_0_x          | 0\nGAME         | chunk_0_y          | 0\n"
-        "GAME         | n_desks            | 2\n"
         "GAME         | desk_1_id          | start\nGAME         | desk_1_label       | start\n"
-        "GAME         | desk_2_id          | cabin\nGAME         | desk_2_label       | cabin\n", f); fclose(f); } }
+        "GAME         | desk_2_id          | cabin\nGAME         | desk_2_label       | cabin\n", f);
+        for (int i = 0; i < nx; i++) fprintf(f, "GAME         | desk_%d_id          | %s\nGAME         | desk_%d_label       | %s\n", i + 3, extra[i], i + 3, extra[i]);
+        fprintf(f, "GAME         | n_desks            | %d\n", 2 + nx); fclose(f); } }
     static const int col[8][3] = {{220,40,40},{40,80,220},{160,40,200},{40,180,60},{240,180,200},{200,200,210},{60,80,200},{180,180,190}};
     static const char *nm[8] = {"Ember","Glacine","Murmur","Solvent","Ava","Cursword","Asa","robot"};
     static const char let[8] = {'e','g','m','s','a','c','A','r'};
