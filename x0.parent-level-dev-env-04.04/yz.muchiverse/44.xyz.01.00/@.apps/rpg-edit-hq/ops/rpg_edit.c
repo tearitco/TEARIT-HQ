@@ -244,6 +244,34 @@ static int blocked(int desk, int x, int y) {
 /* The 2D tile view ('0' in the engine, the same view the other pets boards show): maps/edit/<page>/map.png, tile = png width / map.txt columns = 24 px, the room painted from the cell atlas
  * (floor slot, then wall slot over it) with the pets drawn on top from their art. Rewritten only when a pet moved. The events.txt charsets ("terumon", "edit") are not RPG Maker sheets, so the 2D
  * renderer skips them and the pets exist in the png itself. */
+/* Game time and the sky, the way the other pets boards do it (petslike_core.c write_room_sky): the day phase (night 19-6, dawn to 8, dusk from 17) picks the RPG Maker parallax (StarlitSky, Sunset,
+ * CloudySky1); the outdoor page gets maps/edit/start/parallax.rgba + parallax.pdl (the 2D view and the 3D sky both read them), the cabin has none. Rewritten only when the phase changes. */
+static void set_kv(const char *path, const char *key, const char *val);
+static const char *phase_now(void) {
+    char wp[PATH_MAX], b[2048]; snprintf(wp, sizeof wp, "%s/pieces/world_01/state.txt", PCHQ); FILE *f = fopen(wp, "r"); long long ms = 1767268800000LL;
+    if (f) { size_t n = fread(b, 1, sizeof b - 1, f); b[n] = 0; fclose(f); for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "game_time_epoch_ms=", 19)) ms = atoll(l + 19); }
+    int h = (int)(ms / 3600000 % 24); return (h >= 19 || h < 6) ? "night" : h < 8 ? "dawn" : h >= 17 ? "dusk" : "day";
+}
+static void ensure_autotick(void) {      /* the board's bootstrap resets the world, so the running day is asked for again whenever it is off */
+    char wp[PATH_MAX], b[2048]; snprintf(wp, sizeof wp, "%s/pieces/world_01/state.txt", PCHQ); FILE *f = fopen(wp, "r"); if (!f) return;
+    size_t n = fread(b, 1, sizeof b - 1, f); b[n] = 0; fclose(f); if (strstr(b, "autotick_enabled=1")) return; set_kv(wp, "autotick_enabled", "1");
+}
+static Sheet cursky;      /* the parallax picture of the current phase: the island page's map.png is painted over it */
+static int skyver;        /* bumped when the phase changes, so map.png is repainted */
+static void write_sky(void) {
+    static char lastph[16]; const char *ph = phase_now(); if (!strcmp(ph, lastph)) return; snprintf(lastph, sizeof lastph, "%s", ph); skyver++;
+    char dir[PATH_MAX], pp[PATH_MAX], rp[PATH_MAX], pd[240]; snprintf(dir, sizeof dir, "%s/pieces/system/maps/edit/start", PCHQ); snprintf(pp, sizeof pp, "%s/parallax.pdl", dir); snprintf(rp, sizeof rp, "%s/parallax.rgba", dir);
+    char rel[64]; snprintf(rel, sizeof rel, "parallaxes/%s.png", !strcmp(ph, "night") ? "StarlitSky" : (!strcmp(ph, "dusk") || !strcmp(ph, "dawn")) ? "Sunset" : "CloudySky1");
+    Sheet sk = load_rel(rel); int po; if (cursky.px) stbi_image_free(cursky.px); cursky = sk;
+    if (!sk.px || sk.w < 1 || sk.h < 1 || sk.w > 4096 || sk.h > 4096) po = snprintf(pd, sizeof pd, "PARALLAX | show | 0\nPARALLAX | name | \n");
+    else {
+        char tmp[PATH_MAX + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", rp); FILE *f = fopen(tmp, "wb"); size_t n = (size_t)sk.w * sk.h * 4;
+        if (f) { size_t wn = fwrite(sk.px, 1, n, f); if (fclose(f) == 0 && wn == n) rename(tmp, rp); else remove(tmp); }
+        po = snprintf(pd, sizeof pd, "PARALLAX | show | 1\nPARALLAX | name | %s\nPARALLAX | width | %d\nPARALLAX | height | %d\nPARALLAX | loop_x | 1\nPARALLAX | stamp | %ld\n", ph, sk.w, sk.h, (long)time(NULL));
+    }
+    { char tmp[PATH_MAX + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", pp); FILE *f = fopen(tmp, "w"); if (f) { size_t wn = fwrite(pd, 1, (size_t)po, f); if (fclose(f) == 0 && wn == (size_t)po) rename(tmp, pp); else remove(tmp); } }
+    snprintf(pp, sizeof pp, "%s/pieces/system/maps/edit/cabin/parallax.pdl", PCHQ); { FILE *f = fopen(pp, "w"); if (f) { fputs("PARALLAX | show | 0\nPARALLAX | name | \n", f); fclose(f); } }
+}
 static unsigned char petpic[MAXPET][XT * XT * 4];      /* the pet's 64x64 art box-filtered to 24x24; alpha 0 where the pet has no art */
 static int petpic_ok[MAXPET];
 static void load_petpic(int i) {
@@ -263,12 +291,13 @@ static void load_petpic(int i) {
 static void write_map_png(void) {
     static const char *page[2] = {"start", "cabin"}; static unsigned long last[2];
     for (int d = 0; d < 2; d++) {
-        unsigned long sum = 5381; for (int i = 0; i < npet; i++) if (pet[i].room == d) sum = sum * 131 + (unsigned long)(pet[i].x * 64 + pet[i].y + (i << 16) + (petpic_ok[i] << 24));
+        unsigned long sum = 5381; for (int i = 0; i < npet; i++) if (pet[i].room == d) sum = sum * 131 + (unsigned long)(pet[i].x * 64 + pet[i].y + (i << 16) + (petpic_ok[i] << 24)); sum = sum * 131 + (unsigned long)skyver * (unsigned long)(d == 0);
         if (sum == last[d]) continue; last[d] = sum;
         int w = COLS * XT, h = ROWS * XT; unsigned char *im = malloc((size_t)w * h * 4); if (!im) return;
         for (int y = 0; y < ROWS; y++) for (int x = 0; x < COLS; x++) {
-            unsigned char cell[XT * XT * 4]; for (int k = 0; k < XT * XT; k++) { cell[k * 4] = 120; cell[k * 4 + 1] = 170; cell[k * 4 + 2] = 220; cell[k * 4 + 3] = 255; }      /* sky where the page has no tile */
-            if (fs[d][y][x] > 0) over24(cell, slotpx[fs[d][y][x]]);
+            unsigned char cell[XT * XT * 4]; for (int k = 0; k < XT * XT; k++) { cell[k * 4] = 120; cell[k * 4 + 1] = 170; cell[k * 4 + 2] = 220; cell[k * 4 + 3] = 255; }      /* no tile: the parallax sky on the island page (painted in below), flat blue in the cabin */
+            if (d == 0 && cursky.px) for (int r = 0; r < XT; r++) for (int c = 0; c < XT; c++) { const unsigned char *q = cursky.px + ((size_t)((y * XT + r) % cursky.h) * cursky.w + (x * XT + c) % cursky.w) * 4; memcpy(cell + (r * XT + c) * 4, q, 3); }
+            if (fs[d][y][x] > 0) over24(cell, slotpx[fs[d][y][x]]);      /* over24 turns the pixel opaque */
             if (ws[d][y][x] > 0) over24(cell, slotpx[ws[d][y][x]]);
             for (int r = 0; r < XT; r++) memcpy(im + ((size_t)(y * XT + r) * w + x * XT) * 4, cell + r * XT * 4, XT * 4);
         }
@@ -283,6 +312,22 @@ static void write_map_png(void) {
         }
         char pp[PATH_MAX], tp[PATH_MAX + 24]; snprintf(pp, sizeof pp, "%s/pieces/system/maps/edit/%s/map.png", PCHQ, page[d]); snprintf(tp, sizeof tp, "%s.tmp", pp);
         if (stbi_write_png(tp, w, h, 4, im, w * 4)) rename(tp, pp); else remove(tp);
+        if (d == 0) {      /* the book's own painted frame ('\\' toggles it, view.pdl scene_raw): the whole island page fitted into 660x430, sky colour behind */
+            enum { SW = 660, SH = 430 }; static unsigned char sc[SW * SH * 4]; int cx0 = COLS, cx1 = 0, cy0 = ROWS, cy1 = 0;
+            for (int y = 0; y < ROWS; y++) for (int x = 0; x < COLS; x++) if (fs[0][y][x] > 0 || ws[0][y][x] > 0) { if (x < cx0) cx0 = x; if (x > cx1) cx1 = x; if (y < cy0) cy0 = y; if (y > cy1) cy1 = y; }
+            if (cx1 < cx0) { cx0 = 0; cx1 = COLS - 1; cy0 = 0; cy1 = ROWS - 1; }
+            int cw = (cx1 - cx0 + 1) * XT, ch = (cy1 - cy0 + 1) * XT, dw = SW, dh = SW * ch / cw; if (dh > SH) { dh = SH; dw = SH * cw / ch; }
+            for (int i = 0; i < SW * SH; i++) { sc[i * 4] = 40; sc[i * 4 + 1] = 40; sc[i * 4 + 2] = 48; sc[i * 4 + 3] = 255; }      /* the used part of the page fitted into the frame */
+            for (int y = 0; y < dh; y++) for (int x = 0; x < dw; x++) {
+                const unsigned char *q = im + ((size_t)(cy0 * XT + y * ch / dh) * w + cx0 * XT + x * cw / dw) * 4; unsigned char *o = sc + ((size_t)(y + (SH - dh) / 2) * SW + x + (SW - dw) / 2) * 4;
+                o[0] = q[0]; o[1] = q[1]; o[2] = q[2];
+            }
+            char rp[PATH_MAX], tr_[PATH_MAX + 8]; snprintf(rp, sizeof rp, "%s/board/state/scene.raw", APP); snprintf(tr_, sizeof tr_, "%s.tmp", rp);
+            FILE *sf = fopen(tr_, "wb"); if (sf) { size_t wn = fwrite(sc, 1, sizeof sc, sf); if (fclose(sf) == 0 && wn == sizeof sc) rename(tr_, rp); else remove(tr_); }
+            char vp[PATH_MAX], vw[PATH_MAX + 200]; snprintf(vp, sizeof vp, "%s/pieces/system/maps/edit/view.pdl", PCHQ);
+            int vn = snprintf(vw, sizeof vw, "VIEW | cell_px | 24\nVIEW | default_style | tiles\nVIEW | scene_raw | %s\nVIEW | scene_w | %d\nVIEW | scene_h | %d\n", rp, (int)SW, (int)SH);
+            FILE *vf = fopen(vp, "w"); if (vf) { fwrite(vw, 1, (size_t)vn, vf); fclose(vf); }
+        }
         free(im);
     }
 }
@@ -423,7 +468,7 @@ static void step_all(void) {
             quiet[i][k] = quiet[k][i] = 40;
         }
     }
-    write_events(); write_map_png(); write_side();
+    ensure_autotick(); write_sky(); write_events(); write_map_png(); write_side();
     nudge_engine();
 }
 
@@ -522,7 +567,7 @@ int main(int argc, char **argv) {
     }
     srand((unsigned)time(NULL));
     for (int i = 0; i < npet; i++) load_petpic(i);
-    write_events(); write_map_png(); write_side();
+    ensure_autotick(); write_sky(); write_events(); write_map_png(); write_side();
     { char bp[PATH_MAX]; snprintf(bp, sizeof bp, "%s/bar.txt", d0); FILE *bf = fopen(bp, "w");
       if (bf) { for (int i = 0; i < npet; i++) fprintf(bf, "%d\t%s\t%d\t%d\ton-click\n", i + 1, pet[i].name, pet[i].x, pet[i].y); fclose(bf); } }
     for (;;) { step_all(); usleep(700000); }
