@@ -49,6 +49,24 @@ if [ "$VERB" = "menu" ]; then
     exit 0
 fi
 
+# Empty a copied page folder: every cell becomes the page's most common cell (the ground / sky of the page it was copied from), so the page keeps
+# its size, atlas and legend but holds nothing. cells.txt (maker maps: rows of floor,wall[,depth] tokens after the "cells" line) and map.txt (glyph rows).
+blank_page() {
+    D="$1"
+    if [ -f "$D/cells.txt" ]; then
+        TOP="$(awk 'BEGIN{r=0} r==1{for(i=1;i<=NF;i++) c[$i]++} /^cells$/{r=1} END{m=0; for(k in c) if(c[k]>m){m=c[k]; t=k} print t}' "$D/cells.txt")"
+        [ -n "$TOP" ] || TOP="0,0"
+        awk -v t="$TOP" 'BEGIN{r=0} r==1{o=""; for(i=1;i<=NF;i++) o=o (i>1?" ":"") t; print o; next} {print} /^cells$/{r=1}' "$D/cells.txt" > "$D/cells.new" && mv "$D/cells.new" "$D/cells.txt"
+    fi
+    if [ -f "$D/map.txt" ]; then
+        G="$(fold -w1 "$D/map.txt" | grep -v '^$' | sort | uniq -c | sort -rn | head -n1 | awk '{print $2}')"
+        [ -n "$G" ] || G="_"
+        awk -v g="$G" '{o=""; for(i=1;i<=length($0);i++) o=o g; print o}' "$D/map.txt" > "$D/map.new" && mv "$D/map.new" "$D/map.txt"
+    fi
+    [ -f "$D/events.txt" ] && : > "$D/events.txt"
+    return 0
+}
+
 HAVE_BV=0
 if [ -n "$BV" ] && [ -d "$BV" ]; then
     HAVE_BV=1
@@ -233,11 +251,7 @@ case "$VERB" in
         N=2; while [ -e "$BOOK/page_$N" ]; do N=$((N + 1)); done
         NEW="page_$N"
         cp -r "$BOOK/$CUR" "$BOOK/$NEW" && rm -f "$BOOK/$NEW/bar.txt"
-        if [ -f "$BOOK/$NEW/cells.txt" ]; then
-            awk 'BEGIN{r=0} r==1{n=split($0,a," "); o=""; for(i=1;i<=n;i++) o=o (i>1?" ":"") "0,0"; print o; next} {print} /^cells$/{r=1}' "$BOOK/$NEW/cells.txt" > "$BOOK/$NEW/cells.new" && mv "$BOOK/$NEW/cells.new" "$BOOK/$NEW/cells.txt"
-        fi
-        [ -f "$BOOK/$NEW/map.txt" ] && sed -i 's/./_/g' "$BOOK/$NEW/map.txt"
-        : > "$BOOK/$NEW/events.txt"
+        blank_page "$BOOK/$NEW"
         COUNT="$(sed -n 's/^GAME *| *n_desks *| *//p' "$BOOK/game.pdl" | head -n1)"; COUNT=$((COUNT + 1))
         sed -i "s/^\(GAME *| *n_desks *| *\).*/\1$COUNT/" "$BOOK/game.pdl"
         printf 'GAME         | desk_%s_id          | %s\nGAME         | desk_%s_label       | %s\n' "$COUNT" "$NEW" "$COUNT" "$NEW" >> "$BOOK/game.pdl"
@@ -255,11 +269,7 @@ case "$VERB" in
         N=2; while [ -e "$PCHQ/pieces/system/maps/book_$N" ]; do N=$((N + 1)); done
         NB="book_$N"; DST="$PCHQ/pieces/system/maps/$NB"
         mkdir -p "$DST" && cp -r "$SRC/$CUR" "$DST/start" && rm -f "$DST/start/bar.txt"
-        if [ -f "$DST/start/cells.txt" ]; then
-            awk 'BEGIN{r=0} r==1{n=split($0,a," "); o=""; for(i=1;i<=n;i++) o=o (i>1?" ":"") "0,0"; print o; next} {print} /^cells$/{r=1}' "$DST/start/cells.txt" > "$DST/start/cells.new" && mv "$DST/start/cells.new" "$DST/start/cells.txt"
-        fi
-        [ -f "$DST/start/map.txt" ] && sed -i 's/./_/g' "$DST/start/map.txt"
-        : > "$DST/start/events.txt"
+        blank_page "$DST/start"
         sed -e "s/^\(GAME *| *label *| *\).*/\1$NB/" -e "s/^\(GAME *| *n_desks *| *\).*/\11/" -e '/desk_[0-9]*_\(id\|label\)/d' "$SRC/game.pdl" > "$DST/game.pdl"
         printf 'GAME         | desk_1_id          | start\nGAME         | desk_1_label       | start\n' >> "$DST/game.pdl"
         mkdir -p "$PCHQ/pieces/system/widget_cmds"

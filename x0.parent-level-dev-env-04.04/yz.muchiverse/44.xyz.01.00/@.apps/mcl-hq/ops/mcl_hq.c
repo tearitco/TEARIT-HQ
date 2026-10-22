@@ -1154,6 +1154,13 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
         if (!strcmp(argv[1], hid)) { g_ctl_why = "select-hero-row"; set_flag("ctl", "player"); set_flag("follow", "player"); calc_view(); snprintf(msg, cap, "%s, the hero (owner of the monsters), in the %s - INT controls him", hero.name, rooms[tr.room].name); return; }
         int k = -1; for (int i = 0; i < nparty; i++) if (!strcmp(party[i].id, argv[1])) k = i; if (k < 0) { snprintf(msg, cap, "no pet %s", argv[1]); return; }
         char p[PATH_MAX], bb[40]; spath(p, "active.txt"); snprintf(bb, sizeof bb, "%s\n", party[k].id); write_if_changed(p, bb, strlen(bb)); set_flag("follow", "pet"); set_flag("ctl", "pet"); active = k; calc_view(); snprintf(msg, cap, "watching %s (in the %s)", party[k].name, rooms[others[k].room].name); return; }
+    if (!strcmp(v, "newroom")) {      /* the Rooms menu "+ new room": an empty room row appended to rooms.pdl (floor Inside_A5 1,2), then the window goes there like goto */
+        if (nroom >= 8) { snprintf(msg, cap, "no more rooms (the house holds 8)"); return; }
+        int n = nroom + 1; char id[24]; do { snprintf(id, sizeof id, "room_%d", n++); } while (room_idx(id) >= 0);
+        char rp[PATH_MAX], rl[120]; snprintf(rp, sizeof rp, "%s/rooms.pdl", APP); FILE *rf = fopen(rp, "a");
+        if (!rf) { snprintf(msg, cap, "cannot write rooms.pdl"); return; }
+        snprintf(rl, sizeof rl, "ROOM | %s | Room %d | 1 | 2\n", id, nroom + 1); fputs(rl, rf); fclose(rf);
+        load_data(); char *ga[2] = { "goto", id }; verb(2, ga, msg, cap); return; }
     if (!strcmp(v, "goto") && argc >= 2) {        /* the Rooms menu: with INT on, the controlled pet goes there (a turn); with INT off, the window just watches that room */
         int r = room_idx(argv[1]); if (r < 0) { snprintf(msg, cap, "no room %s", argv[1]); return; }
         if (flag_on("int", 0)) { int ci = ctl_idx(); use_ent(ci); pet.room = r; g_gr = r; pet.dir = 0; pet.tx = pet.ty = -1; int placed = 0;

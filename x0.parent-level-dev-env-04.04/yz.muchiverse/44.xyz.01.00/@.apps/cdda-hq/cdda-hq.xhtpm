@@ -28,6 +28,7 @@
       <repeat count="${n_room}" bind="room">
         <item id="rm${room.#}" class="rp-menu-row dropdown-child" target_id="tb-page" label="${room.label}" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' goto ${room.id}"/>
       </repeat>
+      <item id="rm-new" class="rp-menu-row dropdown-child" target_id="tb-page" label="+ new room" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' newroom"/>
       <item id="rm-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-page" label="- cancel -" action="void"/>
       <item id="tm-cent" class="rp-menu-row dropdown-child" target_id="tb-time" label="speed: turbo (testing)" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' clock rate cent"/>
       <item id="tm-sec" class="rp-menu-row dropdown-child" target_id="tb-time" label="speed: fast (1 hour/sec)" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' clock rate sec"/>
