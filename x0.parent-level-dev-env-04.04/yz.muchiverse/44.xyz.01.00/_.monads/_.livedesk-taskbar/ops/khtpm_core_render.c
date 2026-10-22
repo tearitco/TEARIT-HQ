@@ -4179,6 +4179,15 @@ static XftFont *kh_font_cached(const char *spec, const char *fallback) {
     fonts[slot] = f; last_hit = slot;
     return f;
 }
+/* PRESENT: every window shows its back buffer with ONE server-side XCopyArea (owner 2026-10-22: "make the default the most efficient. efficiency is speed"). It was XGetImage + XPutImage: the whole
+ * buffer (about 5.6 MB for a board window) read back through the X socket and sent straight back on every redraw. A SIGPROF sampler on the live rpg-edit board window had that at 32 percent of its CPU;
+ * with the copy the same window settles at about 8 percent instead of 13-14, pixel-identical in a screenshot. KH_PRESENT_XGETIMAGE=1 brings the old path back (for a server where the copy misbehaves). */
+static void kh_present(Pixmap src, Window dst, GC pgc, int w, int h) {
+    static int old_path = -1; if (old_path < 0) old_path = getenv("KH_PRESENT_XGETIMAGE") != NULL;
+    XImage *frame = old_path ? XGetImage(dpy, src, 0, 0, (unsigned)w, (unsigned)h, AllPlanes, ZPixmap) : NULL;
+    if (frame) { XPutImage(dpy, dst, pgc, frame, 0, 0, 0, 0, (unsigned)w, (unsigned)h); XDestroyImage(frame); }
+    else XCopyArea(dpy, src, dst, pgc, 0, 0, (unsigned)w, (unsigned)h, 0, 0);
+}
 /* Curated font-family picker list (Settings' own "Font -/+ " cycle) -
  * real fontconfig names, real TrueType fonts already covered by this
  * house's own font stack (fontconfig substitutes a close match for any
@@ -8559,13 +8568,7 @@ static void dock_paint_peer(void) {
                        (unsigned)(g_win_w - 1), (unsigned)(g_win_h - 1));
     }
     {
-        XImage *frame = XGetImage(dpy, buf, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h, AllPlanes, ZPixmap);
-        if (frame) {
-            XPutImage(dpy, win, gc, frame, 0, 0, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h);
-            XDestroyImage(frame);
-        } else {
-            XCopyArea(dpy, buf, win, gc, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h, 0, 0);
-        }
+        kh_present(buf, win, gc, g_win_w, g_win_h);
     }
     g_window = hold; win = winh; buf = bufh; xftdraw_buf = xh; gc = gch;
     g_win_x = x; g_win_y = y; g_win_w = w; g_win_h = h; g_buf_w = bw; g_buf_h = bh;
@@ -8779,11 +8782,7 @@ static void dock_paint_menu(void) {
             }
         }
         {
-            XImage *frame = XGetImage(dpy, buf, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h, AllPlanes, ZPixmap);
-            if (frame) {
-                XPutImage(dpy, win, gc, frame, 0, 0, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h);
-                XDestroyImage(frame);
-            }
+            kh_present(buf, win, gc, g_win_w, g_win_h);
         }
         set_window_opacity(dpy, g_dock_menu_win, load_theme_opacity());
         if (g_dock_menu_op_due) {
@@ -12828,17 +12827,7 @@ static void redraw_body(void) {
         XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &tcol); XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &hcol);
     }
     XSync(dpy, False);
-    /* KH_PRESENT_COPY=1 (opt-in, default unchanged): present with ONE server-side XCopyArea instead of XGetImage + XPutImage, which reads the whole back buffer
-     * (about 5.6 MB for a board window) through the X socket and sends it straight back on every redraw. Measured as the second hotspot of a board window
-     * (hq_idle_tick -> XGetImage, 32 percent of its CPU). Left opt-in because the XGetImage path is the house-wide present ("proven pixel-identical"). */
-    static int present_copy = -1; if (present_copy < 0) present_copy = getenv("KH_PRESENT_COPY") != NULL;
-    XImage *frame = present_copy ? NULL : XGetImage(dpy, buf, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h, AllPlanes, ZPixmap);
-    if (frame) {
-        XPutImage(dpy, win, gc, frame, 0, 0, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h);
-        XDestroyImage(frame);
-    } else {
-        XCopyArea(dpy, buf, win, gc, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h, 0, 0);
-    }
+    kh_present(buf, win, gc, g_win_w, g_win_h);      /* one server-side copy; see kh_present() */
     XFlush(dpy);
     dock_write_ascii_frame();   /* strip: the "cli" mirror (dock only, else no-op) */
     kh_write_ascii_frame();     /* every other window: per-PID text mirror */
@@ -23143,13 +23132,7 @@ static int tp_main(int argc, char **argv) {
              * exactly WIN_PX otherwise/for every other entity. */
             int present_h = WIN_PX + (g_is_cursword && g_cursword_armed ? CURSWORD_LOG_H : 0);
             int present_w = (g_is_cursword && g_cursword_armed) ? CURSWORD_LOG_W : WIN_PX;
-            XImage *frame = XGetImage(dpy, g_buf, 0, 0, present_w, present_h, AllPlanes, ZPixmap);
-            if (frame) {
-                XPutImage(dpy, win, g_buf_gc, frame, 0, 0, 0, 0, present_w, present_h);
-                XDestroyImage(frame);
-            } else {
-                XCopyArea(dpy, g_buf, win, g_buf_gc, 0, 0, (unsigned)present_w, (unsigned)present_h, 0, 0);
-            }
+            kh_present(g_buf, win, g_buf_gc, present_w, present_h);
         }
         skip_zfiltered_draw:
         last_frame = now;
