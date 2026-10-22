@@ -254,9 +254,9 @@ static const char *phase_now(void) {
     if (f) { size_t n = fread(b, 1, sizeof b - 1, f); b[n] = 0; fclose(f); for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "game_time_epoch_ms=", 19)) ms = atoll(l + 19); }
     int h = (int)(ms / 3600000 % 24); return (h >= 19 || h < 6) ? "night" : h < 8 ? "dawn" : h >= 17 ? "dusk" : "day";
 }
-static void ensure_autotick(void) {      /* the board's bootstrap resets the world, so the running day is asked for again whenever it is off */
+static void ensure_autotick(void) {      /* the board's bootstrap resets the world to its starting time with the clock off: switch the day on then */
     char wp[PATH_MAX], b[2048]; snprintf(wp, sizeof wp, "%s/pieces/world_01/state.txt", PCHQ); FILE *f = fopen(wp, "r"); if (!f) return;
-    size_t n = fread(b, 1, sizeof b - 1, f); b[n] = 0; fclose(f); if (strstr(b, "autotick_enabled=1")) return; set_kv(wp, "autotick_enabled", "1");
+    size_t n = fread(b, 1, sizeof b - 1, f); b[n] = 0; fclose(f); if (strstr(b, "autotick_enabled=1") || !strstr(b, "game_time_epoch_ms=1767268800000")) return; set_kv(wp, "autotick_enabled", "1");      /* only a freshly reset world (the starting time): a pause from the toolbar clock tab stays paused */
 }
 static Sheet cursky;      /* the parallax picture of the current phase: the island page's map.png is painted over it */
 static int skyver;        /* bumped when the phase changes, so map.png is repainted */

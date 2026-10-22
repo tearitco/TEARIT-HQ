@@ -139,6 +139,15 @@ case "$VERB" in
     interact)
         append_key 13
         ;;
+    autotick)
+        # The clock tab of the toolbar: play / pause the game clock of THIS board's world (the same flag the pc-hq ']' key flips, world_01 autotick_enabled;
+        # pc_clock_daemon runs the day while it is 1). Starting it resets the baseline so a pause does not count as elapsed time.
+        W="$(real_pchq)/pieces/world_01/state.txt"
+        [ -f "$W" ] || exit 0
+        if grep -q '^autotick_enabled=1' "$W"; then NEW=0; else NEW=1; fi
+        sed -i "s/^autotick_enabled=.*/autotick_enabled=$NEW/" "$W"
+        [ "$NEW" = 1 ] && sed -i 's/^autotick_last_real_ms=.*/autotick_last_real_ms=0/' "$W"
+        ;;
     file-hq)
         # REAL FIX 2026-09-15 (direct live report: "pc-hq opens files
         # which currently suggest 2 different files that don't actually

@@ -64,7 +64,7 @@
       <tab id="tb-db" class="pchq-tb skin-bar" label="db ▾" onclick="ACTIVATE" target_id="tb-db"/>
       <tab id="tb-load" class="pchq-tb" label="${PID} ${load_label}" onclick="void" show="${load_ok}"/>
       <tab id="tb-loadw" class="pchq-tb pchq-tb-warn" label="${PID} ${load_label}" onclick="void" show="${load_warn}"/>
-      <tab id="tb-clock" class="pchq-tb skin-bar" label="${clock}" onclick="void"/>
+      <tab id="tb-clock" class="pchq-tb skin-bar" label="${clock}" onclick="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' autotick"/>
     </tabbar>
 
     <!-- zero-width rail: satisfies layout_sidebar_panel's sidebar+panel
