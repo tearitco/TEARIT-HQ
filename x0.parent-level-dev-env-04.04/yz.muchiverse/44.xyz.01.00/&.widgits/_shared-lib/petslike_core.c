@@ -865,7 +865,7 @@ static void publish_sky(const char *wp) {
 #define PET_SECTION 47
 #include PET_SKIN
 #undef PET_SECTION
-/* Footer pictures: the board footer draws <pchq>/pieces/<event id>/sprite.csv for every map event (pchq_board_projector, append_entity_sprites), and an event's id is its line number in the shown room's events.txt. So read that file and write, for line n, the front standing frame of its charset cell as a 64x64 sprite.csv (the same format the desk pals use). The text is rebuilt only when the (charset, index) list of the room changes. */
+/* Footer pictures: the board footer draws <pchq>/pieces/<event id>/sprite.csv for every map event (pchq_board_projector, append_entity_sprites), and an event's id is its line number in the shown room's events.txt. So read that file and write, for line n, the front standing frame of its charset cell as a 32x32 sprite.csv (the footer re-reads it on every redraw, so a small one; the same format the desk pals use). The text is rebuilt only when the (charset, index) list of the room changes. */
 static void write_entity_sprites(const char *room_id) {
     char ep[PATH_MAX], eb[4096]; snprintf(ep, sizeof ep, "%s/pieces/system/maps/" PET_APP "/%s/events.txt", PCHQ, room_id);
     if (read_file(ep, eb, sizeof eb) <= 0) return;
@@ -885,8 +885,8 @@ static void write_entity_sprites(const char *room_id) {
         int pw = sh->w / 12, ph = sh->h / 8; if (pw < 1 || ph < 1) continue; idx &= 7;
         int sx = ((idx % 4) * 3 + 1) * pw, sy = (idx / 4) * 4 * ph;      /* middle walk pattern, facing down */
         char d[PATH_MAX], f[PATH_MAX]; snprintf(d, sizeof d, "%s/pieces/%d", PCHQ, k); mkdir(d, 0755); snprintf(f, sizeof f, "%s/sprite.csv", d);
-        size_t cap = 64 * 64 * 16 + 256; char *out = malloc(cap); if (!out) return; size_t oo = (size_t)snprintf(out, 256, "# resolution=64\n# scale=1.0\n# transform=0,0,0\nr,g,b,a\n");
-        for (int yy = 0; yy < 64; yy++) for (int xx = 0; xx < 64; xx++) { const unsigned char *q = sh->px + ((size_t)(sy + yy * ph / 64) * sh->w + (sx + xx * pw / 64)) * 4; oo += (size_t)snprintf(out + oo, cap - oo, "%d,%d,%d,%d\n", q[0], q[1], q[2], q[3]); }
+        size_t cap = 32 * 32 * 16 + 256; char *out = malloc(cap); if (!out) return; size_t oo = (size_t)snprintf(out, 256, "# resolution=32\n# scale=1.0\n# transform=0,0,0\nr,g,b,a\n");
+        for (int yy = 0; yy < 32; yy++) for (int xx = 0; xx < 32; xx++) { const unsigned char *q = sh->px + ((size_t)(sy + yy * ph / 32) * sh->w + (sx + xx * pw / 32)) * 4; oo += (size_t)snprintf(out + oo, cap - oo, "%d,%d,%d,%d\n", q[0], q[1], q[2], q[3]); }
         write_if_changed(f, out, oo); free(out);
     }
 }
