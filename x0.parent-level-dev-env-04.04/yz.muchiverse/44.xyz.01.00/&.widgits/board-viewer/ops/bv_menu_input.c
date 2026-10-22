@@ -814,7 +814,18 @@ static int handle_one_key(int key) {
         }
         char cur[16] = "";
         read_kv_str(state_path, "view_2d_style", cur, sizeof(cur));
-        if (!cur[0]) snprintf(cur, sizeof(cur), "scene");          /* unset = the book default (scene for a book that ships one), so a first press goes to tiles */
+        if (!cur[0]) {          /* unset = the book's own default (maps/<map_id>/view.pdl "VIEW | default_style"; scene when the book names none and ships a scene), so the first press always goes to the OTHER style */
+            snprintf(cur, sizeof(cur), "scene");
+            char wp[PATH_BUF], wb[2048] = "", mid[64] = ""; snprintf(wp, sizeof(wp), "%s/pieces/world_01/state.txt", focused_project_root);
+            FILE *wf = fopen(wp, "r"); if (wf) { size_t wn = fread(wb, 1, sizeof(wb) - 1, wf); wb[wn] = 0; fclose(wf); }
+            for (char *l = strtok(wb, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "map_id=", 7)) snprintf(mid, sizeof(mid), "%s", l + 7);
+            if (mid[0]) {
+                char vp[PATH_BUF]; snprintf(vp, sizeof(vp), "%s/pieces/system/maps/%s/view.pdl", focused_project_root, mid);
+                FILE *vf = fopen(vp, "r"); char vl[256];
+                while (vf && fgets(vl, sizeof(vl), vf)) { char *d = strstr(vl, "default_style"); if (!d || !strchr(vl, '|')) continue; d = strchr(d, '|'); if (!d) continue; d++; while (*d == ' ') d++; d[strcspn(d, " \r\n")] = 0; if (d[0]) snprintf(cur, sizeof(cur), "%s", d); }
+                if (vf) fclose(vf);
+            }
+        }
         write_kv_int(state_path, "render_mode", 0);
         write_kv(state_path, "view_2d_style", strcmp(cur, "scene") == 0 ? "tiles" : "scene");
         bump_screen_changed(project_root);
