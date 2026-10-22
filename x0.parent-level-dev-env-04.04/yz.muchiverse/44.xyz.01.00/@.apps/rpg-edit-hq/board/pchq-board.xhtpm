@@ -99,6 +99,8 @@
            The dropdown jumps nav focus here when it opens. Empty text = full list; empty desk_first_id = the script exits. -->
       <cli_io id="dm-search" target_id="tb-desk" class="pchq-menu-row dropdown-child" label="search: "
               action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'desk' '${desk_first_id}'"/>
+      <item id="mn-newpal" class="pchq-menu-row dropdown-child" target_id="tb-menu" label="+ new pal"
+            action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit.+x' '${HOUSE}/@.apps/rpg-edit-hq/board' newpal"/>
       <item id="mn-entbar" class="pchq-menu-row dropdown-child" target_id="tb-menu"
             label="Entities bar on/off"
             action="sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_toggle_pdl_opt.sh' '${HOUSE}/@.apps/piececraft-hq/pieces/system/pchq.pdl' 'entities_bar'"/>
@@ -194,14 +196,7 @@
       <row id="side-l" class="canvas-overlay-left ov-pin ov-chrome pchq-hotbar theme" show="${side_left}">
         <text label="pets" class="hb-quiet ov-title theme-3"/>
         <item id="sl-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/rpg-edit-hq/board/state/sides.txt' side_left hide"/>
-        <item id="pt0" class="pchq-ft skin-bar" label="${pet_0}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit.+x' '${HOUSE}/@.apps/rpg-edit-hq/board' sel 0"/>
-        <item id="pt1" class="pchq-ft skin-bar" label="${pet_1}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit.+x' '${HOUSE}/@.apps/rpg-edit-hq/board' sel 1"/>
-        <item id="pt2" class="pchq-ft skin-bar" label="${pet_2}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit.+x' '${HOUSE}/@.apps/rpg-edit-hq/board' sel 2"/>
-        <item id="pt3" class="pchq-ft skin-bar" label="${pet_3}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit.+x' '${HOUSE}/@.apps/rpg-edit-hq/board' sel 3"/>
-        <item id="pt4" class="pchq-ft skin-bar" label="${pet_4}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit.+x' '${HOUSE}/@.apps/rpg-edit-hq/board' sel 4"/>
-        <item id="pt5" class="pchq-ft skin-bar" label="${pet_5}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit.+x' '${HOUSE}/@.apps/rpg-edit-hq/board' sel 5"/>
-        <item id="pt6" class="pchq-ft skin-bar" label="${pet_6}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit.+x' '${HOUSE}/@.apps/rpg-edit-hq/board' sel 6"/>
-        <item id="pt7" class="pchq-ft skin-bar" label="${pet_7}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit.+x' '${HOUSE}/@.apps/rpg-edit-hq/board' sel 7"/>
+        <repeat count="${n_pet}" bind="pet"><item id="pt${pet.#}" class="pchq-ft skin-bar" label="${pet.label}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit.+x' '${HOUSE}/@.apps/rpg-edit-hq/board' sel ${pet.idx}"/></repeat>
       </row>
       <!-- RIGHT pinned bar: the pets chat (ops/rpg_edit.c: greetings when two meet, doors) and the action options. -->
       <row id="side-r" class="canvas-overlay-right ov-pin ov-chrome pchq-hotbar theme" show="${side_right}">

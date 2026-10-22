@@ -72,7 +72,10 @@ static void find_assets(void) {
 }
 
 typedef struct { int x, y, dir, room, r, g, b, steps, art; char name[16]; char letter; } Pet;     /* art = 1: terumon frames exist, so events.txt names charset "terumon" and this index */
-static Pet pet[8];
+#define MAXPET 16
+static Pet pet[MAXPET]; static int npet;      /* the roster: party.pdl */
+static char artid[MAXPET][48];
+static int doorpet = -1;      /* the pet that uses doors (party.pdl DOOR | name); -1 = nobody */
 static char glyph[2][ROWS][COLS + 1];
 static int fs[2][ROWS][COLS], ws[2][ROWS][COLS], cdep[2][ROWS][COLS];      /* cdep: blocks hung under the cell (negative z), tapered by taper_islands() */
 
@@ -241,7 +244,7 @@ static void write_events(void) {
     for (int d = 0; d < 2; d++) {
         char p[PATH_MAX]; snprintf(p, sizeof p, "%s/pieces/system/maps/edit/%s/events.txt", PCHQ, page[d]);
         FILE *f = fopen(p, "w"); if (!f) continue;
-        for (int i = 0; i < 8; i++) if (pet[i].room == d) {
+        for (int i = 0; i < npet; i++) if (pet[i].room == d) {
             static const int face[4] = {8, 6, 2, 4};      /* dir index 0 up, 1 right, 2 down, 3 left -> RPG Maker 8/6/2/4 */
             int dir = pet[i].dir & 3;
             if (pet[i].art) fprintf(f, "%d %d %d %d %d terumon %d 2 %d %c\n", pet[i].x, pet[i].y, pet[i].r, pet[i].g, pet[i].b, i, pet[i].steps % 3, pet[i].letter);      /* one front picture: always the front plane (a side facing plane is seen edge-on by the 3D camera) */
@@ -259,8 +262,8 @@ static void say(const char *who, const char *text) {
 static void write_side(void) {
     char p[PATH_MAX]; snprintf(p, sizeof p, "%s/board/state/side_ui.txt", APP);
     FILE *f = fopen(p, "w"); if (!f) return;
-    fprintf(f, "n_pet=8\n");
-    for (int i = 0; i < 8; i++) fprintf(f, "pet_%d=%s %d,%d %s\n", i, pet[i].name, pet[i].x, pet[i].y, pet[i].room ? "(inside)" : "");
+    fprintf(f, "n_pet=%d\n", npet);
+    for (int i = 0; i < npet; i++) fprintf(f, "pet_%d_label=%s %d,%d %s\npet_%d_idx=%d\n", i, pet[i].name, pet[i].x, pet[i].y, pet[i].room ? "(inside)" : "", i, i);
     for (int i = 0; i < 6; i++) fprintf(f, "chat_%d=%s\n", i, sidelog[i]);
     fclose(f);
 }
@@ -289,8 +292,15 @@ static void read_inbox(void) {
     while (fgets(ln, sizeof ln, f)) {
         ln[strcspn(ln, "\n")] = 0; if (!ln[0]) continue;
         static const char *re[6] = {"hello!", "I was just walking", "nice weather up here", "have you seen the bank?", "the sky is so big", "hi hi"};
+        if (!strcmp(ln, "newpal")) {      /* the Menu "+ new pal": one more PET row in party.pdl (a coloured block, spawn in front of the cabin), live */
+            if (npet >= MAXPET) { say("you", "no more pals (16)"); continue; }
+            int k = npet, r = 60 + (k * 53) % 180, g = 60 + (k * 97) % 180, b = 60 + (k * 29) % 180; Pet *pp = &pet[npet]; memset(pp, 0, sizeof *pp);
+            snprintf(pp->name, sizeof pp->name, "Pal %d", k + 1); artid[k][0] = 0; pp->letter = 'p'; pp->r = r; pp->g = g; pp->b = b; pp->x = 9 + k % 5; pp->y = 13 + (k / 5) % 3; npet++;
+            char rp[PATH_MAX]; snprintf(rp, sizeof rp, "%s/party.pdl", APP); FILE *rf = fopen(rp, "a");
+            if (rf) { fprintf(rf, "PET | %s | none | p | %d | %d | %d | %d | %d\n", pp->name, r, g, b, pp->x, pp->y); fclose(rf); }
+            say("you", pp->name); continue; }
         if (!strncmp(ln, "sel ", 4)) {
-            int n = atoi(ln + 4); if (n < 0 || n > 7) continue;
+            int n = atoi(ln + 4); if (n < 0 || n >= npet) continue;
             char xp[PATH_MAX], v[16]; snprintf(xp, sizeof xp, "%s/pieces/xelector_01/state.txt", PCHQ);
             snprintf(v, sizeof v, "%d", pet[n].x); set_kv(xp, "pos_x", v);
             snprintf(v, sizeof v, "%d", pet[n].y); set_kv(xp, "pos_y", v);
@@ -298,7 +308,7 @@ static void read_inbox(void) {
               FILE *mf = fopen(mp, "r"); if (mf) { while (fgets(ln2, sizeof ln2, mf)) if (!strncmp(ln2, "floor_z=", 8)) fz = atoi(ln2 + 8); fclose(mf); }
               snprintf(v, sizeof v, "%d", fz + 1); set_kv(xp, "pos_z", v); }
             say("you", pet[n].name);
-        } else { say("you", ln); say(pet[rand() % 8].name, re[rand() % 6]); }
+        } else { say("you", ln); if (npet) say(pet[rand() % npet].name, re[rand() % 6]); }
     }
     sayoff = ftell(f); fclose(f);
 }
@@ -309,21 +319,21 @@ static void follow_ava(void) {
 #endif
     char p[PATH_MAX]; snprintf(p, sizeof p, "%s/pieces/system/widget_cmds/inbox.txt", PCHQ);
     FILE *f = fopen(p, "a"); if (!f) return;
-    fprintf(f, "CONFIRM_SET_DESK:%s\n", pet[4].room ? "cabin" : "start");
+    fprintf(f, "CONFIRM_SET_DESK:%s\n", doorpet >= 0 && pet[doorpet].room ? "cabin" : "start");
     fclose(f);
 }
-static int quiet[8][8];      /* steps until a pair of pets greets again */
+static int quiet[MAXPET][MAXPET];      /* steps until a pair of pets greets again */
 static void step_all(void) {
     read_inbox();
-    for (int a = 0; a < 8; a++) for (int b = 0; b < 8; b++) if (quiet[a][b] > 0) quiet[a][b]--;
+    for (int a = 0; a < npet; a++) for (int b = 0; b < npet; b++) if (quiet[a][b] > 0) quiet[a][b]--;
     static const int dx[4] = {0, 1, 0, -1}, dy[4] = {-1, 0, 1, 0};
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < npet; i++) {
         int dir = rand() % 4;
         int nx = pet[i].x + dx[dir], ny = pet[i].y + dy[dir];
         int desk = pet[i].room;
         if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) continue;
         if (glyph[desk][ny][nx] == 'D') {
-            if (i != 4) continue; /* Ava is the one who uses the door */
+            if (i != doorpet) continue; /* the door pet (party.pdl DOOR row) is the one who uses doors */
             if (desk == 0) {      /* any island door leads into the shared interior; remember which one */
                 for (int k = 0; k < ndoor; k++) if (doorx[k] == nx && doory[k] == ny) lastdoor = k;
                 pet[i].room = 1; pet[i].x = IW / 2; pet[i].y = ROWS - 3;
@@ -340,10 +350,10 @@ static void step_all(void) {
         }
         if (blocked(desk, nx, ny)) continue;
         int occ = 0;
-        for (int k = 0; k < 8; k++) if (k != i && pet[k].room == desk && pet[k].x == nx && pet[k].y == ny) occ = 1;
+        for (int k = 0; k < npet; k++) if (k != i && pet[k].room == desk && pet[k].x == nx && pet[k].y == ny) occ = 1;
         if (occ) continue;
         pet[i].x = nx; pet[i].y = ny; pet[i].dir = dir; pet[i].steps++;
-        for (int k = 0; k < 8; k++) {      /* two pets side by side greet each other (chat bar); a pair stays quiet for a while after */
+        for (int k = 0; k < npet; k++) {      /* two pets side by side greet each other (chat bar); a pair stays quiet for a while after */
             if (k == i || pet[k].room != desk || abs(pet[k].x - nx) + abs(pet[k].y - ny) != 1) continue;
             if (quiet[i][k] > 0) continue;
             static const char *hi[4] = {"hi %s!", "hello %s", "oh, %s", "hey %s, nice day"};
@@ -360,6 +370,7 @@ int main(int argc, char **argv) {
         char ip[PATH_MAX]; snprintf(ip, sizeof ip, "%s/state/say_in.txt", argv[1]);
         FILE *f = fopen(ip, "a"); if (!f) return 1;
         if (!strcmp(argv[2], "sel") && argc >= 4) fprintf(f, "sel %s\n", argv[3]);
+        else if (!strcmp(argv[2], "newpal")) fprintf(f, "newpal\n");
         else if (argc >= 4) fprintf(f, "%s\n", argv[3]);
         fclose(f); return 0;
     }
@@ -406,21 +417,26 @@ int main(int argc, char **argv) {
         "GAME         | desk_2_id          | cabin\nGAME         | desk_2_label       | cabin\n", f);
         for (int i = 0; i < nx; i++) fprintf(f, "GAME         | desk_%d_id          | %s\nGAME         | desk_%d_label       | %s\n", i + 3, extra[i], i + 3, extra[i]);
         fprintf(f, "GAME         | n_desks            | %d\n", 2 + nx); fclose(f); } }
-    static const int col[8][3] = {{220,40,40},{40,80,220},{160,40,200},{40,180,60},{240,180,200},{200,200,210},{60,80,200},{180,180,190}};
-    static const char *nm[8] = {"Ember","Glacine","Murmur","Solvent","Ava","Cursword","Asa","robot"};
-    static const char let[8] = {'e','g','m','s','a','c','A','r'};
-    static const int sx[8] = {9,10,11,12,12,13,10,11}, sy[8] = {13,13,13,13,14,13,14,15};      /* island F, in front of the cabin */
-    for (int i = 0; i < 8; i++) {
-        pet[i].x = sx[i]; pet[i].y = sy[i]; pet[i].room = 0; pet[i].dir = 0;
-        pet[i].r = col[i][0]; pet[i].g = col[i][1]; pet[i].b = col[i][2];
-        snprintf(pet[i].name, sizeof pet[i].name, "%s", nm[i]); pet[i].letter = let[i];
+    {   /* the roster is data: party.pdl, PET | name | art id | letter | r | g | b | spawn x | spawn y */
+        char rp[PATH_MAX], ln[300]; snprintf(rp, sizeof rp, "%s/party.pdl", APP); FILE *rf = fopen(rp, "r");
+        while (rf && fgets(ln, sizeof ln, rf) && npet < MAXPET) {
+            char *g[10]; int n = 0; char *q = ln;
+            if (!strncmp(ln, "DOOR", 4) && ln[4] == ' ') { char *bar = strchr(ln, '|'); if (bar) { bar++; while (*bar == ' ') bar++; bar[strcspn(bar, " \r\n")] = 0; for (int k = 0; k < npet; k++) if (!strcmp(pet[k].name, bar)) doorpet = k; } continue; }
+            if (strncmp(ln, "PET", 3)) continue;
+            for (; n < 10; n++) { char *bar = strchr(q, '|'); if (bar) *bar = 0; while (*q == ' ') q++; { size_t l = strlen(q); while (l && (q[l-1] == ' ' || q[l-1] == '\n' || q[l-1] == '\r')) q[--l] = 0; } g[n] = q; if (!bar) { n++; break; } q = bar + 1; }
+            if (n < 9) continue;
+            Pet *pp = &pet[npet]; memset(pp, 0, sizeof *pp);
+            snprintf(pp->name, sizeof pp->name, "%s", g[1]); snprintf(artid[npet], sizeof artid[npet], "%s", g[2]); pp->letter = g[3][0] ? g[3][0] : '?';
+            pp->r = atoi(g[4]); pp->g = atoi(g[5]); pp->b = atoi(g[6]); pp->x = atoi(g[7]); pp->y = atoi(g[8]); pp->room = 0; pp->dir = 0; npet++;
+        }
+        if (rf) fclose(rf);
+        if (!npet) fprintf(stderr, "rpg_edit: no PET rows in %s: the island has no pets\n", rp);
     }
     {   /* terumon art: app art/<id>.csv (copied from the pet folders, 64x64 sprite.csv) -> frames under <ASSETS>/../tsots-characters/frames; Ava is pals/ava/sprite.csv */
-        static const char *art_id[8] = {"terumon_001_ember","terumon_002_glacine","terumon_003_murmur","terumon_004_solvent","ava","cursword","asa","robot_chat_001"};
         char fd[PATH_MAX]; snprintf(fd, sizeof fd, "%s/../tsots-characters", ASSETS); mkdir(fd, 0755); snprintf(fd, sizeof fd, "%s/../tsots-characters/frames", ASSETS); mkdir(fd, 0755);
-        for (int i = 0; i < 8; i++) {
-            if (!art_id[i]) continue;
-            char cp[PATH_MAX]; int avg[3] = {pet[i].r, pet[i].g, pet[i].b}; snprintf(cp, sizeof cp, "%s/art/%s.csv", APP, art_id[i]);
+        for (int i = 0; i < npet; i++) {
+            if (!artid[i][0]) continue;
+            char cp[PATH_MAX]; int avg[3] = {pet[i].r, pet[i].g, pet[i].b}; snprintf(cp, sizeof cp, "%s/art/%s.csv", APP, artid[i]);
             if (csv_write_frames(cp, fd, "terumon", i, avg)) { pet[i].art = 1; pet[i].r = avg[0]; pet[i].g = avg[1]; pet[i].b = avg[2]; }
             else fprintf(stderr, "rpg_edit: no art for %s (%s)\n", pet[i].name, cp);
         }
@@ -435,6 +451,6 @@ int main(int argc, char **argv) {
     srand((unsigned)time(NULL));
     write_events(); write_side();
     { char bp[PATH_MAX]; snprintf(bp, sizeof bp, "%s/bar.txt", d0); FILE *bf = fopen(bp, "w");
-      if (bf) { for (int i = 0; i < 8; i++) fprintf(bf, "%d\t%s\t%d\t%d\ton-click\n", i + 1, pet[i].name, pet[i].x, pet[i].y); fclose(bf); } }
+      if (bf) { for (int i = 0; i < npet; i++) fprintf(bf, "%d\t%s\t%d\t%d\ton-click\n", i + 1, pet[i].name, pet[i].x, pet[i].y); fclose(bf); } }
     for (;;) { step_all(); usleep(700000); }
 }

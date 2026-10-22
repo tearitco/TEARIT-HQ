@@ -8,7 +8,7 @@
     <tabbar id="toolbar" class="pchq-toolbar">
       <tab id="tb-in" class="pchq-tb ${interact_class}" label="In: ${interact_label}" relay="${bv_h1},${bv_h2}" onclick="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' int"/>
       <tab id="tb-book" class="pchq-tb" label="Cast ▾" onclick="ACTIVATE" target_id="tb-book"/>
-      <tab id="tb-pals" class="pchq-tb" label="Pals ▾" onclick="ACTIVATE" target_id="tb-pals"/>
+      <repeat count="${n_tab}" bind="tb"><tab id="${tb.id}" class="pchq-tb" label="${tb.label} ▾" onclick="ACTIVATE" target_id="${tb.id}"/></repeat>
       <tab id="tb-page" class="pchq-tb" label="${room_label} ▾" onclick="ACTIVATE" target_id="tb-page"/>
       <tab id="tb-shop" class="pchq-tb" label="Shop ▾" onclick="ACTIVATE" target_id="tb-shop"/>
       <tab id="tb-menu" class="pchq-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
@@ -23,14 +23,10 @@
         <item id="bk-${party.#}" class="pchq-menu-row dropdown-child ${party.cls}" target_id="tb-book" label="${party.label}" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' select ${party.id}"/>
       </repeat>
       <item id="bk-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-book" label="- cancel -" action="void"/>
-      <item id="pl-new" class="pchq-menu-row dropdown-child" target_id="tb-pals" label="+ new pal" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' newpal"/>
-      <item id="pl-del" class="pchq-menu-row dropdown-child" target_id="tb-pals" label="- remove last pal" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' delpal"/>
-      <item id="pl-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-pals" label="- cancel -" action="void"/>
       <repeat count="${n_room}" bind="room">
         <item id="rm${room.#}" class="pchq-menu-row dropdown-child " target_id="tb-page" label="${room.label}" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' goto ${room.id}"/>
       </repeat>
-      <item id="rm-new" class="pchq-menu-row dropdown-child" target_id="tb-page" label="+ new room" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' newroom"/>
-      <item id="rm-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-page" label="- cancel -" action="void"/>
+      <repeat count="${n_item}" bind="it"><item id="ti-${it.#}" class="pchq-menu-row dropdown-child" target_id="${it.tab}" label="${it.label}" action="${it.act}"/></repeat>
       <repeat count="${n_shop}" bind="shop">
         <item id="sh${shop.#}" class="pchq-menu-row dropdown-child " target_id="tb-shop" label="${shop.label}" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' buy ${shop.key}"/>
       </repeat>
