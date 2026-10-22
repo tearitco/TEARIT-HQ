@@ -865,6 +865,31 @@ static void publish_sky(const char *wp) {
 #define PET_SECTION 47
 #include PET_SKIN
 #undef PET_SECTION
+/* Footer pictures: the board footer draws <pchq>/pieces/<event id>/sprite.csv for every map event (pchq_board_projector, append_entity_sprites), and an event's id is its line number in the shown room's events.txt. So read that file and write, for line n, the front standing frame of its charset cell as a 64x64 sprite.csv (the same format the desk pals use). The text is rebuilt only when the (charset, index) list of the room changes. */
+static void write_entity_sprites(const char *room_id) {
+    char ep[PATH_MAX], eb[4096]; snprintf(ep, sizeof ep, "%s/pieces/system/maps/" PET_APP "/%s/events.txt", PCHQ, room_id);
+    if (read_file(ep, eb, sizeof eb) <= 0) return;
+    static char last[4096]; char sig[4096]; size_t so = 0; sig[0] = 0;
+    char *sv = NULL; int n = 0;
+    for (char *l = strtok_r(eb, "\n", &sv); l && n < 64; l = strtok_r(NULL, "\n", &sv)) {
+        int x, y, r, g, b, idx = 0, dr = 0, pt = 0; char cs[40] = "";
+        if (sscanf(l, "%d %d %d %d %d %39s %d %d %d", &x, &y, &r, &g, &b, cs, &idx, &dr, &pt) < 7) continue;
+        n++; so += (size_t)snprintf(sig + so, sizeof sig - so, "%d:%s:%d;", n, cs, idx);
+        if (so >= sizeof sig - 80) break;
+    }
+    if (!strcmp(sig, last)) return; snprintf(last, sizeof last, "%s", sig);
+    char *sg = sig; char *sv2 = NULL;
+    for (char *t = strtok_r(sg, ";", &sv2); t; t = strtok_r(NULL, ";", &sv2)) {
+        int k = 0, idx = 0; char cs[40] = ""; { char *c1 = strchr(t, ':'), *c2 = c1 ? strrchr(t, ':') : NULL; if (!c1 || c1 == c2) continue; k = atoi(t); idx = atoi(c2 + 1); *c2 = 0; snprintf(cs, sizeof cs, "%s", c1 + 1); }
+        Sheet *sh = sheet("characters", cs); if (!sh) continue;
+        int pw = sh->w / 12, ph = sh->h / 8; if (pw < 1 || ph < 1) continue; idx &= 7;
+        int sx = ((idx % 4) * 3 + 1) * pw, sy = (idx / 4) * 4 * ph;      /* middle walk pattern, facing down */
+        char d[PATH_MAX], f[PATH_MAX]; snprintf(d, sizeof d, "%s/pieces/%d", PCHQ, k); mkdir(d, 0755); snprintf(f, sizeof f, "%s/sprite.csv", d);
+        size_t cap = 64 * 64 * 16 + 256; char *out = malloc(cap); if (!out) return; size_t oo = (size_t)snprintf(out, 256, "# resolution=64\n# scale=1.0\n# transform=0,0,0\nr,g,b,a\n");
+        for (int yy = 0; yy < 64; yy++) for (int xx = 0; xx < 64; xx++) { const unsigned char *q = sh->px + ((size_t)(sy + yy * ph / 64) * sh->w + (sx + xx * pw / 64)) * 4; oo += (size_t)snprintf(out + oo, cap - oo, "%d,%d,%d,%d\n", q[0], q[1], q[2], q[3]); }
+        write_if_changed(f, out, oo); free(out);
+    }
+}
 static void follow_pchq(void) {
     char wp[PATH_MAX], xp[PATH_MAX], hp[PATH_MAX], m[64] = "", dk[64] = ""; snprintf(wp, sizeof wp, "%s/pieces/world_01/state.txt", PCHQ);
     char wb[2048]; read_file(wp, wb, sizeof wb); for (char *l = strtok(wb, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "map_id=", 7)) snprintf(m, sizeof m, "%s", l + 7); else if (!strncmp(l, "desk_id=", 8)) snprintf(dk, sizeof dk, "%s", l + 8); }
@@ -885,6 +910,7 @@ static void follow_pchq(void) {
     /* any pet/Harold stepping changes the sprites too: redraw when the events text changed (write_room_events reports via the checksum below) */
     static unsigned long ev_sum = 0; unsigned long s = 0; for (int i = 0; i < nparty; i++) s = s * 131 + (others[i].room * 97 + others[i].x * 31 + others[i].y * 7 + others[i].dir + others[i].steps % 3); s = s * 131 + tr.x * 31 + tr.y + tr.room; if (s != ev_sum) { ev_sum = s; changed = 1; } (void)ld;
     { static int last_scene = -1; if (last_scene != g_scene_ver) { last_scene = g_scene_ver; changed = 1; } }      /* the painted scene changed (a sprite stepped, the tone changed): the engine shows it in its "scene" 2D style, so wake it */
+    write_entity_sprites(dk[0] ? dk : rooms[e->room].id);
     if (changed) {      /* nudge the LIVE engine session so it redraws (an idle engine only renders on input): every board window has its own ui.txt with bv_session=; the one whose session dir exists and whose ui.txt is the newest wins (a stale file points at a dead session). The nudge key is 126 (tilde), bound to nothing, so the view and camera are never touched (the old "1" is the POV key). */
         const char *cand[3] = {"@.apps/" PET_APP "/board/state/ui.txt", "@.apps/piececraft-hq/state/ui.txt", "@.apps/layout-studio/sandbox/state/ui.txt"}; char best[PATH_MAX] = ""; time_t bt = 0;
         for (int k = 0; k < 3; k++) { char up[PATH_MAX], ub[1024], sess[PATH_MAX] = "", rp[PATH_MAX]; struct stat us; snprintf(up, sizeof up, "%s/%s", HOUSE, cand[k]); if (stat(up, &us)) continue; read_file(up, ub, sizeof ub);
