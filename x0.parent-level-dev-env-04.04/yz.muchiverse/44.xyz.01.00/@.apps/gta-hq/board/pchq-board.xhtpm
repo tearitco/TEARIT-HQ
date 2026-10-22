@@ -21,18 +21,18 @@
       <repeat count="${n_party}" bind="party">
         <item id="bk-${party.#}" class="pchq-menu-row dropdown-child ${party.cls}" target_id="tb-book" label="${party.label}" action="'${HOUSE}/@.apps/gta-hq/ops/+x/gta_hq.+x' select ${party.id}"/>
       </repeat>
-      <repeat count="${n_room}" bind="room">
-        <item id="rm${room.#}" class="pchq-menu-row dropdown-child " target_id="tb-page" label="${room.label}" action="'${HOUSE}/@.apps/gta-hq/ops/+x/gta_hq.+x' goto ${room.id}"/>
-      </repeat>
-      <repeat count="${n_item}" bind="it"><item id="ti-${it.#}" class="pchq-menu-row dropdown-child" target_id="${it.tab}" label="${it.label}" action="${it.act}"/></repeat>
       <item id="tp-book-0" class="pchq-menu-row dropdown-child" target_id="tb-book" label="${book_post_0_label}" action="${book_post_0_act}" show="${book_post_0_label}"/>
       <item id="tp-book-1" class="pchq-menu-row dropdown-child" target_id="tb-book" label="${book_post_1_label}" action="${book_post_1_act}" show="${book_post_1_label}"/>
       <item id="tp-book-2" class="pchq-menu-row dropdown-child" target_id="tb-book" label="${book_post_2_label}" action="${book_post_2_act}" show="${book_post_2_label}"/>
       <item id="tp-book-3" class="pchq-menu-row dropdown-child" target_id="tb-book" label="${book_post_3_label}" action="${book_post_3_act}" show="${book_post_3_label}"/>
+      <repeat count="${n_room}" bind="room">
+        <item id="rm${room.#}" class="pchq-menu-row dropdown-child " target_id="tb-page" label="${room.label}" action="'${HOUSE}/@.apps/gta-hq/ops/+x/gta_hq.+x' goto ${room.id}"/>
+      </repeat>
       <item id="tp-page-0" class="pchq-menu-row dropdown-child" target_id="tb-page" label="${page_post_0_label}" action="${page_post_0_act}" show="${page_post_0_label}"/>
       <item id="tp-page-1" class="pchq-menu-row dropdown-child" target_id="tb-page" label="${page_post_1_label}" action="${page_post_1_act}" show="${page_post_1_label}"/>
       <item id="tp-page-2" class="pchq-menu-row dropdown-child" target_id="tb-page" label="${page_post_2_label}" action="${page_post_2_act}" show="${page_post_2_label}"/>
       <item id="tp-page-3" class="pchq-menu-row dropdown-child" target_id="tb-page" label="${page_post_3_label}" action="${page_post_3_act}" show="${page_post_3_label}"/>
+      <repeat count="${n_item}" bind="it"><item id="ti-${it.#}" class="pchq-menu-row dropdown-child" target_id="${it.tab}" label="${it.label}" action="${it.act}"/></repeat>
       <repeat count="${n_shop}" bind="shop">
         <item id="sh${shop.#}" class="pchq-menu-row dropdown-child " target_id="tb-shop" label="${shop.label}" action="'${HOUSE}/@.apps/gta-hq/ops/+x/gta_hq.+x' buy ${shop.key}"/>
       </repeat>
