@@ -1,0 +1,49 @@
+# verbs.pdl - which mcl-hq verbs are event pages (BOOK 16.game/EVENT-VERB-PAGES-DESIGN.md, PETSLIKE-FRAMEWORK-PLAN.md). Read by &.widgits/events-hq/ops/+x/verbgen.+x
+#   verbgen check .   engine source (this game file + the shared core) <-> this file <-> events/ must agree
+#   verbgen gen .     write events/<verb>/ for every page=yes verb (never overwrites an edited package)
+# page: yes = the window calls "mcl_hq.+x fire <verb> [args]" (the shared core), which plays events/<verb>/ and falls back to the plain verb; native = the verb plays its own event pages (play, stop, int);
+#       no = engine-internal, read-only, UI state or high frequency (a page run is a sh+bash+prisc launch: never per tick)
+GAME | mcl-hq | mcl_hq_verb | ops/+x/mcl_hq.+x | ops/mcl_hq.c,../../&.widgits/_shared-lib/petslike_core.c
+VERB | buy       | yes    | ui     | item key      | buy a shop item with coins
+VERB | control   | yes    | ui     | pet id        | take control of a character
+VERB | craft     | yes    | ui     | recipe id     | craft a recipe from the bag
+VERB | delpal    | yes    | ui     | -             | remove the last pal
+VERB | goto      | yes    | ui     | room          | travel to a room
+VERB | hold      | yes    | ui     | item          | hold an item from the bag
+VERB | load      | yes    | ui     | slot          | load the game from a slot
+VERB | mine      | yes    | ui     | x y           | mine a block
+VERB | newgame   | yes    | ui     | -             | start a fresh game (the current one is kept in slot 0)
+VERB | newpal    | yes    | ui     | name          | add a pal to the party (Pals menu)
+VERB | newroom   | yes    | ui     | -             | add a room (Rooms menu)
+VERB | place     | yes    | ui     | item x y      | place a furniture item
+VERB | remove    | yes    | ui     | -             | remove a placed item
+VERB | save      | yes    | ui     | slot          | save the game to a slot
+VERB | use       | yes    | ui     | hotbar key    | use the item in a hotbar slot
+VERB | int       | native | ui     | -             | INT mode on/off (plays events/int_on, int_off)
+VERB | play      | native | ui     | -             | start the world (plays events/play)
+VERB | stop      | native | ui     | -             | stop the world (plays events/stop)
+VERB | bag       | no     | ui     | -             | read-only panel
+VERB | clearchat | no     | ui     | -             | wipe the chat
+VERB | clock     | no     | ui     | -             | clock rate / advance / start / stop
+VERB | compact   | no     | ui     | -             | UI panel
+VERB | day_tick  | no     | ui     | -             | engine: one day passes (event runner)
+VERB | decpct    | no     | ui     | -             | UI panel
+VERB | event     | no     | ui     | -             | event relay
+VERB | export3d   | no     | ui     | -             | engine: export the rooms as the pc-hq book
+VERB | help      | no     | ui     | -             | UI panel
+VERB | helppanel | no     | ui     | -             | UI panel
+VERB | inventory | no     | ui     | -             | read-only panel
+VERB | mode      | no     | ui     | -             | engine: turn mode
+VERB | pet_says  | no     | ui     | -             | a character says a line (event command)
+VERB | phase     | no     | ui     | -             | engine: day phase event
+VERB | recipes   | no     | ui     | -             | read-only panel
+VERB | reset     | no     | ui     | -             | reset the game state (destructive; direct on purpose)
+VERB | resolve   | no     | ui     | -             | engine: resolve fortress jobs
+VERB | review    | no     | ui     | -             | read-only panel
+VERB | select    | no     | ui     | -             | UI state: select a pet
+VERB | status    | no     | ui     | -             | read-only
+VERB | step      | no     | ui     | -             | one tick (high frequency)
+VERB | sync      | no     | ui     | -             | engine: re-render
+VERB | toggle    | no     | ui     | -             | UI state: chat / hb / voice / left panels
+VERB | view      | no     | ui     | -             | UI state: 2d / 3d / glyph
+VERB | walk      | no     | ui     | -             | one pet step (test)

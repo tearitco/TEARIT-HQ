@@ -24,7 +24,7 @@
       <item id="tp-book-2" class="rp-menu-row dropdown-child" target_id="tb-book" label="${book_post_2_label}" action="${book_post_2_act}" show="${book_post_2_label}"/>
       <item id="tp-book-3" class="rp-menu-row dropdown-child" target_id="tb-book" label="${book_post_3_label}" action="${book_post_3_act}" show="${book_post_3_label}"/>
       <repeat count="${n_room}" bind="room">
-        <item id="rm${room.#}" class="rp-menu-row dropdown-child" target_id="tb-page" label="${room.label}" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' goto ${room.id}"/>
+        <item id="rm${room.#}" class="rp-menu-row dropdown-child" target_id="tb-page" label="${room.label}" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' fire goto ${room.id}"/>
       </repeat>
       <item id="tp-page-0" class="rp-menu-row dropdown-child" target_id="tb-page" label="${page_post_0_label}" action="${page_post_0_act}" show="${page_post_0_label}"/>
       <item id="tp-page-1" class="rp-menu-row dropdown-child" target_id="tb-page" label="${page_post_1_label}" action="${page_post_1_act}" show="${page_post_1_label}"/>
@@ -40,25 +40,25 @@
       <item id="tm-reinst" class="rp-menu-row dropdown-child" target_id="tb-time" label="reinstall schedule" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' clock reinstall"/>
       <item id="tm-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-time" label="- cancel -" action="void"/>
       <repeat count="${n_shop}" bind="shop">
-        <item id="sh${shop.#}" class="rp-menu-row dropdown-child" target_id="tb-shop" label="${shop.label}" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' buy ${shop.key}"/>
+        <item id="sh${shop.#}" class="rp-menu-row dropdown-child" target_id="tb-shop" label="${shop.label}" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' fire buy ${shop.key}"/>
       </repeat>
       <item id="sh-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-shop" label="- cancel -" action="void"/>
       <item id="mn-info" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Info show / hide" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' toggle left"/>
       <item id="mn-chat" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Chat show / hide" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' toggle chat"/>
       <item id="mn-hotbar" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Hotbar show / hide" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' toggle hb"/>
-      <item id="mn-control" class="rp-menu-row dropdown-child" target_id="tb-menu" label="${control_label} (switch: Tab)" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' control"/>
+      <item id="mn-control" class="rp-menu-row dropdown-child" target_id="tb-menu" label="${control_label} (switch: Tab)" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' fire control"/>
       <item id="mn-voice" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Voice on / off" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' toggle voice"/>
       <item id="mn-reset" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Reset house (keeps a backup)" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' reset"/>
       <item id="mn-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-menu" label="- cancel -" action="void"/>
       <item id="pm-mode" class="rp-menu-row dropdown-child" target_id="tb-player" label="${mode_label}" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' mode"/>
       <item id="pm-play" class="rp-menu-row dropdown-child" target_id="tb-player" label="Play" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' play"/>
       <item id="pm-stop" class="rp-menu-row dropdown-child" target_id="tb-player" label="Stop" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' stop"/>
-      <item id="pm-save" class="rp-menu-row dropdown-child" target_id="tb-player" label="Save (slot 1)" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' save 1"/>
-      <item id="pm-load" class="rp-menu-row dropdown-child" target_id="tb-player" label="Load (slot 1)" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' load 1"/>
-      <item id="pm-new" class="rp-menu-row dropdown-child" target_id="tb-player" label="New game" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' newgame"/>
-      <item id="pm-load0" class="rp-menu-row dropdown-child" target_id="tb-player" label="Undo new game" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' load 0"/>
-      <item id="pm-save2" class="rp-menu-row dropdown-child" target_id="tb-player" label="Save (slot 2)" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' save 2"/>
-      <item id="pm-load2" class="rp-menu-row dropdown-child" target_id="tb-player" label="Load (slot 2)" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' load 2"/>
+      <item id="pm-save" class="rp-menu-row dropdown-child" target_id="tb-player" label="Save (slot 1)" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' fire save 1"/>
+      <item id="pm-load" class="rp-menu-row dropdown-child" target_id="tb-player" label="Load (slot 1)" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' fire load 1"/>
+      <item id="pm-new" class="rp-menu-row dropdown-child" target_id="tb-player" label="New game" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' fire newgame"/>
+      <item id="pm-load0" class="rp-menu-row dropdown-child" target_id="tb-player" label="Undo new game" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' fire load 0"/>
+      <item id="pm-save2" class="rp-menu-row dropdown-child" target_id="tb-player" label="Save (slot 2)" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' fire save 2"/>
+      <item id="pm-load2" class="rp-menu-row dropdown-child" target_id="tb-player" label="Load (slot 2)" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' fire load 2"/>
       <item id="pm-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-player" label="- cancel -" action="void"/>
     </sidebar>
     <panel id="room_p" class="rp-panel">
@@ -77,7 +77,7 @@
         <text label="${stat_line2}" class="ph-quiet rp-side-t"/>
         <text label="in this room (click to pick up)" class="rp-quiet rp-side-t"/>
         <repeat count="${n_placed}" bind="placed">
-          <item id="pl${placed.#}" class="rp-row rp-side-row rp-side-t" label="${placed.label}" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' remove ${placed.id}"/>
+          <item id="pl${placed.#}" class="rp-row rp-side-row rp-side-t" label="${placed.label}" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' fire remove ${placed.id}"/>
         </repeat>
       
         <item id="side-hide" class="rp-menu-row rp-side-row quiet" label="hide info" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' toggle left"/>
@@ -98,7 +98,7 @@
         <text label="${hb_title}" class="hb-quiet ov-title theme-3"/>
         <item id="hb-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' toggle hb"/>
         <repeat count="${hb_n_slots}" bind="hb">
-          <item id="hbs${hb.#}" class="hb-slot skin-bar" label="${hb.text}" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' use ${hb.key}"/>
+          <item id="hbs${hb.#}" class="hb-slot skin-bar" label="${hb.text}" action="'${HOUSE}/@.apps/dsr-rpg/ops/+x/dsr_rpg.+x' fire use ${hb.key}"/>
         </repeat>
       </row>
     </panel>

@@ -93,20 +93,25 @@ static int gen_one(const char *app, const char *name) {
 
 /* engine source: every strcmp(v, "name") */
 static int source_verbs(const char *app, char names[][48], int max) {
-    char p[PATH_MAX]; snprintf(p, sizeof p, "%s/%s", app, gsrc);
-    FILE *f = fopen(p, "r"); if (!f) { fprintf(stderr, "verbgen: cannot read %s\n", p); return -1; }
-    int n = 0; char line[8192];
-    while (fgets(line, sizeof line, f)) {
-        char *s = line;
-        while ((s = strstr(s, "strcmp(v,")) != NULL) {
-            s += 9; while (*s == ' ') s++;
-            if (*s == '"') { char *e = strchr(s + 1, '"'); if (e && e - s - 1 < 47) {
-                char nm[48]; memcpy(nm, s + 1, (size_t)(e - s - 1)); nm[e - s - 1] = 0; int dup = 0;
-                for (int i = 0; i < n; i++) if (!strcmp(names[i], nm)) dup = 1;
-                if (!dup && n < max) snprintf(names[n++], 48, "%s", nm); s = e; } }
+    /* the GAME row's source field may list several files separated by "," (a game built from a shared core plus its own skin) */
+    int n = 0; char list[300]; snprintf(list, sizeof list, "%s", gsrc);
+    for (char *tok = strtok(list, ","); tok; tok = strtok(NULL, ",")) {
+        char p[PATH_MAX]; if (tok[0] == '/') snprintf(p, sizeof p, "%s", tok); else snprintf(p, sizeof p, "%s/%s", app, tok);
+        FILE *f = fopen(p, "r"); if (!f) { fprintf(stderr, "verbgen: cannot read %s\n", p); return -1; }
+        char line[8192];
+        while (fgets(line, sizeof line, f)) {
+            char *s = line;
+            while ((s = strstr(s, "strcmp(v,")) != NULL) {
+                s += 9; while (*s == ' ') s++;
+                if (*s == '"') { char *e = strchr(s + 1, '"'); if (e && e - s - 1 < 47) {
+                    char nm[48]; memcpy(nm, s + 1, (size_t)(e - s - 1)); nm[e - s - 1] = 0; int dup = 0;
+                    for (int i = 0; i < n; i++) if (!strcmp(names[i], nm)) dup = 1;
+                    if (!dup && n < max) snprintf(names[n++], 48, "%s", nm); s = e; } }
+            }
         }
+        fclose(f);
     }
-    fclose(f); return n;
+    return n;
 }
 
 /* a window file that calls a page=yes verb directly (not through "fire") would bypass the page: report it */

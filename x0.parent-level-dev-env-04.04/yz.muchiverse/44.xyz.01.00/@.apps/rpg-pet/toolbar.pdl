@@ -8,12 +8,12 @@ SECTION | KEY | VALUE
 #   _cmd:  op:<verb and args> = this app's op verb (newpal, newroom ...) | empty = just close | anything else = a shell string, run as written
 # Pets are pals: ONE menu. The pals list, then + new pal / remove / cancel.
 SECTION | book_menu_post_1_label   | + new pal
-SECTION | book_menu_post_1_cmd     | op:newpal
+SECTION | book_menu_post_1_cmd     | op:fire newpal
 SECTION | book_menu_post_2_label   | - remove last pal
-SECTION | book_menu_post_2_cmd     | op:delpal
+SECTION | book_menu_post_2_cmd     | op:fire delpal
 SECTION | book_menu_post_3_label   | - cancel -
 SECTION | book_menu_post_3_cmd     |
 SECTION | page_menu_post_1_label   | + new room
-SECTION | page_menu_post_1_cmd     | op:newroom
+SECTION | page_menu_post_1_cmd     | op:fire newroom
 SECTION | page_menu_post_2_label   | - cancel -
 SECTION | page_menu_post_2_cmd     |

@@ -1,0 +1,6 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | use
+META         | generated          | verbgen
+STATE        | source               | events-hq
+NODE         | id=1 type=gta_hq_verb | verb=use|arg=

@@ -26,7 +26,7 @@
       <item id="tp-book-2" class="pchq-menu-row dropdown-child" target_id="tb-book" label="${book_post_2_label}" action="${book_post_2_act}" show="${book_post_2_label}"/>
       <item id="tp-book-3" class="pchq-menu-row dropdown-child" target_id="tb-book" label="${book_post_3_label}" action="${book_post_3_act}" show="${book_post_3_label}"/>
       <repeat count="${n_room}" bind="room">
-        <item id="rm${room.#}" class="pchq-menu-row dropdown-child " target_id="tb-page" label="${room.label}" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' goto ${room.id}"/>
+        <item id="rm${room.#}" class="pchq-menu-row dropdown-child " target_id="tb-page" label="${room.label}" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' fire goto ${room.id}"/>
       </repeat>
       <item id="tp-page-0" class="pchq-menu-row dropdown-child" target_id="tb-page" label="${page_post_0_label}" action="${page_post_0_act}" show="${page_post_0_label}"/>
       <item id="tp-page-1" class="pchq-menu-row dropdown-child" target_id="tb-page" label="${page_post_1_label}" action="${page_post_1_act}" show="${page_post_1_label}"/>
@@ -34,10 +34,10 @@
       <item id="tp-page-3" class="pchq-menu-row dropdown-child" target_id="tb-page" label="${page_post_3_label}" action="${page_post_3_act}" show="${page_post_3_label}"/>
       <repeat count="${n_item}" bind="it"><item id="ti-${it.#}" class="pchq-menu-row dropdown-child" target_id="${it.tab}" label="${it.label}" action="${it.act}"/></repeat>
       <repeat count="${n_shop}" bind="shop">
-        <item id="sh${shop.#}" class="pchq-menu-row dropdown-child " target_id="tb-shop" label="${shop.label}" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' buy ${shop.key}"/>
+        <item id="sh${shop.#}" class="pchq-menu-row dropdown-child " target_id="tb-shop" label="${shop.label}" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' fire buy ${shop.key}"/>
       </repeat>
       <item id="sh-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-shop" label="- cancel -" action="void"/>
-      <item id="mn-control" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="${control_label} (switch: Tab)" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' control"/>
+      <item id="mn-control" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="${control_label} (switch: Tab)" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' fire control"/>
       <item id="mn-voice" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="Voice on / off" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' toggle voice"/>
       <item id="mn-reset" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="Reset house (keeps a backup)" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' reset"/>
       <item id="mn-entbar" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="Entities bar on/off" action="sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_toggle_pdl_opt.sh' '${HOUSE}/@.apps/civ-rpgce/civ-rpgce-pchq/pieces/system/pchq.pdl' 'entities_bar'"/>
@@ -49,8 +49,8 @@
       <item id="pm-mode" class="pchq-menu-row dropdown-child " target_id="tb-player" label="${mode_label}" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' mode"/>
       <item id="pm-play" class="pchq-menu-row dropdown-child " target_id="tb-player" label="Play" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' play"/>
       <item id="pm-stop" class="pchq-menu-row dropdown-child " target_id="tb-player" label="Stop" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' stop"/>
-      <item id="pm-save" class="pchq-menu-row dropdown-child " target_id="tb-player" label="Save (slot 1)" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' save 1"/>
-      <item id="pm-load" class="pchq-menu-row dropdown-child " target_id="tb-player" label="Load (slot 1)" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' load 1"/>
+      <item id="pm-save" class="pchq-menu-row dropdown-child " target_id="tb-player" label="Save (slot 1)" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' fire save 1"/>
+      <item id="pm-load" class="pchq-menu-row dropdown-child " target_id="tb-player" label="Load (slot 1)" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' fire load 1"/>
       <item id="pm-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-player" label="- cancel -" action="void"/>
       <item id="tm-cent" class="pchq-menu-row dropdown-child " target_id="tb-time" label="speed: turbo (testing)" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' clock rate cent"/>
       <item id="tm-sec" class="pchq-menu-row dropdown-child " target_id="tb-time" label="speed: fast (1 hour/sec)" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' clock rate sec"/>
@@ -92,7 +92,7 @@
         <text label="${hb_title}" class="hb-quiet ov-title theme-3"/>
         <item id="hb-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' toggle hb"/>
         <repeat count="${hb_n_slots}" bind="hb">
-          <item id="hbs${hb.#}" class="hb-slot skin-bar" label="${hb.text}" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' use ${hb.key}"/>
+          <item id="hbs${hb.#}" class="hb-slot skin-bar" label="${hb.text}" action="'${HOUSE}/@.apps/civ-rpgce/ops/+x/civ_rpgce.+x' fire use ${hb.key}"/>
         </repeat>
       </row>
     </panel>

@@ -1,0 +1,6 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | goto
+META         | generated          | verbgen
+STATE        | source               | events-hq
+NODE         | id=1 type=mcl_hq_verb | verb=goto|arg=

@@ -29,7 +29,7 @@
       <item id="tp-book-2" class="rp-menu-row dropdown-child" target_id="tb-book" label="${book_post_2_label}" action="${book_post_2_act}" show="${book_post_2_label}"/>
       <item id="tp-book-3" class="rp-menu-row dropdown-child" target_id="tb-book" label="${book_post_3_label}" action="${book_post_3_act}" show="${book_post_3_label}"/>
       <repeat count="${n_room}" bind="room">
-        <item id="rm${room.#}" class="rp-menu-row dropdown-child" target_id="tb-page" label="${room.label}" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' goto ${room.id}"/>
+        <item id="rm${room.#}" class="rp-menu-row dropdown-child" target_id="tb-page" label="${room.label}" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' fire goto ${room.id}"/>
       </repeat>
       <item id="tp-page-0" class="rp-menu-row dropdown-child" target_id="tb-page" label="${page_post_0_label}" action="${page_post_0_act}" show="${page_post_0_label}"/>
       <item id="tp-page-1" class="rp-menu-row dropdown-child" target_id="tb-page" label="${page_post_1_label}" action="${page_post_1_act}" show="${page_post_1_label}"/>
@@ -45,17 +45,17 @@
       <item id="tm-reinst" class="rp-menu-row dropdown-child" target_id="tb-time" label="reinstall schedule" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' clock reinstall"/>
       <item id="tm-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-time" label="- cancel -" action="void"/>
       <repeat count="${n_shop}" bind="shop">
-        <item id="sh${shop.#}" class="rp-menu-row dropdown-child" target_id="tb-shop" label="${shop.label}" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' buy ${shop.key}"/>
+        <item id="sh${shop.#}" class="rp-menu-row dropdown-child" target_id="tb-shop" label="${shop.label}" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' fire buy ${shop.key}"/>
       </repeat>
       <item id="sh-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-shop" label="- cancel -" action="void"/>
       <item id="mn-info" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Info show / hide" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' toggle left"/>
       <item id="mn-chat" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Chat show / hide" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' toggle chat"/>
       <item id="mn-hotbar" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Hotbar show / hide" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' toggle hb"/>
-      <item id="mn-control" class="rp-menu-row dropdown-child" target_id="tb-menu" label="${control_label} (switch: Tab)" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' control"/>
+      <item id="mn-control" class="rp-menu-row dropdown-child" target_id="tb-menu" label="${control_label} (switch: Tab)" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' fire control"/>
       <item id="mn-voice" class="rp-menu-row dropdown-child" target_id="tb-menu" label="Voice on / off" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' toggle voice"/>
-      <item id="mn-dig" class="rp-menu-row dropdown-child" target_id="tb-desig" label="Mine: mark in front" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' dig"/>
-      <item id="mn-dig-area" class="rp-menu-row dropdown-child" target_id="tb-desig" label="Mine area: corner / area" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' dig_area"/>
-      <item id="mn-undig" class="rp-menu-row dropdown-child" target_id="tb-desig" label="Mine: cancel the mark" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' undig"/>
+      <item id="mn-dig" class="rp-menu-row dropdown-child" target_id="tb-desig" label="Mine: mark in front" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' fire dig"/>
+      <item id="mn-dig-area" class="rp-menu-row dropdown-child" target_id="tb-desig" label="Mine area: corner / area" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' fire dig_area"/>
+      <item id="mn-undig" class="rp-menu-row dropdown-child" target_id="tb-desig" label="Mine: cancel the mark" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' fire undig"/>
       <item id="ds-channel" class="rp-menu-row dropdown-child quiet" target_id="tb-desig" label="(later) channel" action="void"/>
       <item id="ds-stairs" class="rp-menu-row dropdown-child quiet" target_id="tb-desig" label="(later) stairs" action="void"/>
       <item id="ds-chop" class="rp-menu-row dropdown-child quiet" target_id="tb-desig" label="(later) chop trees" action="void"/>
@@ -86,13 +86,13 @@
       <item id="pm-mode" class="rp-menu-row dropdown-child" target_id="tb-player" label="${mode_label}" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' mode"/>
       <item id="pm-play" class="rp-menu-row dropdown-child" target_id="tb-player" label="Play" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' play"/>
       <item id="pm-stop" class="rp-menu-row dropdown-child" target_id="tb-player" label="Stop" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' stop"/>
-      <item id="pm-save" class="rp-menu-row dropdown-child" target_id="tb-player" label="Save (slot 1)" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' save 1"/>
-      <item id="pm-load" class="rp-menu-row dropdown-child" target_id="tb-player" label="Load (slot 1)" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' load 1"/>
-      <item id="pm-new" class="rp-menu-row dropdown-child" target_id="tb-player" label="New game" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' newgame"/>
-      <item id="pm-load0" class="rp-menu-row dropdown-child" target_id="tb-player" label="Undo new game" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' load 0"/>
-      <item id="pm-save2" class="rp-menu-row dropdown-child" target_id="tb-player" label="Save (slot 2)" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' save 2"/>
-      <item id="pm-load2" class="rp-menu-row dropdown-child" target_id="tb-player" label="Load (slot 2)" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' load 2"/>
-      <item id="pm-fort" class="rp-menu-row dropdown-child" target_id="tb-player" label="Load test fortress" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' load fortress"/>
+      <item id="pm-save" class="rp-menu-row dropdown-child" target_id="tb-player" label="Save (slot 1)" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' fire save 1"/>
+      <item id="pm-load" class="rp-menu-row dropdown-child" target_id="tb-player" label="Load (slot 1)" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' fire load 1"/>
+      <item id="pm-new" class="rp-menu-row dropdown-child" target_id="tb-player" label="New game" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' fire newgame"/>
+      <item id="pm-load0" class="rp-menu-row dropdown-child" target_id="tb-player" label="Undo new game" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' fire load 0"/>
+      <item id="pm-save2" class="rp-menu-row dropdown-child" target_id="tb-player" label="Save (slot 2)" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' fire save 2"/>
+      <item id="pm-load2" class="rp-menu-row dropdown-child" target_id="tb-player" label="Load (slot 2)" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' fire load 2"/>
+      <item id="pm-fort" class="rp-menu-row dropdown-child" target_id="tb-player" label="Load test fortress" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' fire load fortress"/>
       <item id="pm-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-player" label="- cancel -" action="void"/>
     </sidebar>
     <panel id="room_p" class="rp-panel">
@@ -112,7 +112,7 @@
         <text label="${stat_line2}" class="ph-quiet rp-side-t"/>
         <text label="in this room (click to pick up)" class="rp-quiet rp-side-t"/>
         <repeat count="${n_placed}" bind="placed">
-          <item id="pl${placed.#}" class="rp-row rp-side-row rp-side-t" label="${placed.label}" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' remove ${placed.id}"/>
+          <item id="pl${placed.#}" class="rp-row rp-side-row rp-side-t" label="${placed.label}" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' fire remove ${placed.id}"/>
         </repeat>
       
         <item id="side-hide" class="rp-menu-row rp-side-row quiet" label="hide info" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' toggle left"/>
@@ -152,7 +152,7 @@
         <text label="${hb_title}" class="hb-quiet ov-title theme-3"/>
         <item id="hb-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' toggle hb"/>
         <repeat count="${hb_n_slots}" bind="hb">
-          <item id="hbs${hb.#}" class="hb-slot skin-bar" label="${hb.text}" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' use ${hb.key}"/>
+          <item id="hbs${hb.#}" class="hb-slot skin-bar" label="${hb.text}" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' fire use ${hb.key}"/>
         </repeat>
       </row>
     </panel>
