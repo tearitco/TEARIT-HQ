@@ -2602,7 +2602,29 @@ static void worker_err_tail(void) {
 
 /* Spawn the worker on first need. Child keeps socketpair end as stdin/stdout. */
 static void worker_spawn(void) {
-    if (g_worker_fd >= 0) return;
+    if (g_worker_fd >= 0) {
+        /* Reap any zombie worker process first. */
+        if (g_worker_pid > 0) {
+            int status;
+            pid_t r = waitpid(g_worker_pid, &status, WNOHANG);
+            if (r == g_worker_pid) {
+                /* Worker exited, clean up */
+                if (g_worker_fd >= 0) { close(g_worker_fd); g_worker_fd = -1; }
+                g_worker_pid = -1;
+            } else if (r == 0) {
+                /* Worker still alive */
+                return;
+            } else if (r < 0 && errno == ECHILD) {
+                /* No such child, clean up */
+                if (g_worker_fd >= 0) { close(g_worker_fd); g_worker_fd = -1; }
+                g_worker_pid = -1;
+            } else {
+                return;  /* Worker is alive, fd is valid */
+            }
+        } else {
+            return;  /* Worker is alive, fd is valid */
+        }
+    }
     if (!g_js_worker_path[0]) return;
     FILE *probe = fopen(g_js_worker_path, "r");
     if (!probe) return;

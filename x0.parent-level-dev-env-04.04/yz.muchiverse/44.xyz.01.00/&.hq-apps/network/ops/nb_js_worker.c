@@ -59,6 +59,7 @@ static char g_title[512];
 static int g_cli = 0;            /* argv mode: plain text out, no RPC framing */
 static int g_cli_status_ok = 0;  /* CLI exit-status latch set by send_status */
 static int g_nav_emit = 0;       /* rung-6 slice 2: daemon only (!g_cli, set */
+static int g_module_page_loaded = 0;  /* set when a module page is loaded; worker exits after */
                                  /* per run_page) - NAV frames go to manager */
 
 /* devtools console EVAL: the last LOAD's QuickJS context + DOM tree stay live
@@ -8621,26 +8622,7 @@ static void run_page(void) {
         }
     }
 
-    JSRuntime *rt = JS_NewRuntime();
-    if (!rt) { live_teardown(); send_status("STATUS err:heap"); return; }
-    JSContext *ctx = JS_NewContext(rt);
-    if (!ctx) { JS_FreeRuntime(rt); live_teardown(); send_status("STATUS err:heap"); return; }
-    g_live_rt = rt;
-    g_live_ctx = ctx;   /* resident from here on — kept alive for EVAL */
-    install_host(ctx);
-
-    /* rung 7: the resident worker's CSS resolve wins over install_host's
-     * minimal __nb_ges default (the prelude reads __nb_ges at call time). */
-    JSValue ge = JS_GetGlobalObject(ctx);
-    JS_SetPropertyStr(ctx, ge, "__nb_ges",
-                      JS_NewCFunction(ctx, nb_ges_rich, "__nb_ges", 1));
-    JS_FreeValue(ctx, ge);
-
-    /* rung-6 prelude: swallow its own failure, page continues */
-    (void)peval_budget(ctx, g_js_prelude, strlen(g_js_prelude), NULL, 0);
-
-    boot_install_safe(ctx);
-
+    /* Read page.js FIRST to detect modules BEFORE creating runtime. */
     char *src = NULL;
     size_t src_n = 0;
     if (!read_file_big(g_page_js, &src, &src_n)) {
@@ -8650,66 +8632,212 @@ static void run_page(void) {
     }
     if (src_n == 0) { free(src); send_status("STATUS ok"); return; }
 
-    run_scripts_slices(ctx, src, src_n);
-    free(src);
-    /* phase-2 (commit 7): lifecycle + event loop — timers/microtasks now fire */
-    int ev_err = run_event_loop(ctx);
-    if (ev_err) {
-        char msg[1100];
-        snprintf(msg, sizeof(msg), "STATUS err:%s",
-                 g_pending_errmsg[0] ? g_pending_errmsg : "event loop error");
-        send_status(msg);
-        live_teardown();
-        return;
-    }
-
-    /* step 4: emit RENDER rows from the post-JS DOM, then STATUS. The
-     * manager merges these into page.state.txt so JS mutations show. */
-    SB r = {0, 0, 0};
-    dom_render_rows(&r);
-    if (r.s && r.s[0]) {
-        size_t rn = strlen(r.s);
-        char *pay = NULL;
-        size_t pn = 0;
-        if (rn < RENDER_MAX) {
-            pn = 7 + rn;                       /* "RENDER\n" + rows */
-            pay = malloc(pn + 1);
-            if (pay) {
-                memcpy(pay, "RENDER\n", 7);
-                memcpy(pay + 7, r.s, rn);
-                pay[pn] = 0;
-                send_payload(pay, pn);
-            }
-        }
-        free(pay);
-    }
-    free(r.s);
-
-    /* rung-6 slice 2: if the page asked to navigate, ship a NAV frame so the
-     * manager follows it through its own fetch/stack machinery (manager
-     * worker_load captures it, the main loop consumes it next tick). */
-    if (g_nav_emit && g_nav_kind[0]) {
-        char pay[4600];
-        int pn = 0;
-        if (g_nav_kind[0] == 'B' || g_nav_kind[0] == 'F')  /* BACK/FORWARD: step count */
-            pn = snprintf(pay, sizeof(pay), "NAV\n%s\n%d\n", g_nav_kind,
-                          g_nav_count > 0 ? g_nav_count : 1);
-        else
-            pn = snprintf(pay, sizeof(pay), "NAV\n%s\n%s\n", g_nav_kind, g_nav_url);
-        if (pn > 0 && pn < (int)sizeof(pay)) {
-            char *ppay = malloc((size_t)pn + 1);
-            if (ppay) {
-                memcpy(ppay, pay, (size_t)pn); ppay[pn] = 0;
-                send_payload(ppay, (size_t)pn);
-                free(ppay);
+    /* Detect if page has any module scripts (by checking for marker). */
+    int has_module = 0;
+    if (src_n >= 15 && memcmp(src, "/*nbjs-module*/", 15) == 0) has_module = 1;
+    else {
+        const char *p = src;
+        for (; p + 15 < src + src_n; p++) {
+            if (p[0] == '/' && p[1] == '*' && memcmp(p, "/*nbjs-module*/", 15) == 0) {
+                has_module = 1; break;
             }
         }
     }
 
-    /* devtools console EVAL: keep the heap + DOM tree resident so an
-     * eval:<js> snippet can run against this page context (see cmd_eval);
-     * live_teardown() reclaims it at the next LOAD / QUIT / error. */
-    send_status("STATUS ok");
+    if (has_module) {
+        /* Module page: use a completely isolated, non-resident runtime.
+         * Module evaluation corrupts the runtime (GC list not empty), so we
+         * create a fresh runtime, run the page, and free it immediately.
+         * No resident context = no EVAL support for module pages. */
+        JSRuntime *rt = JS_NewRuntime();
+        if (!rt) { free(src); send_status("STATUS err:heap"); return; }
+        JSContext *ctx = JS_NewContext(rt);
+        if (!ctx) { JS_FreeRuntime(rt); free(src); send_status("STATUS err:heap"); return; }
+        install_host(ctx);
+
+        /* rung 7: the worker's CSS resolve wins over install_host's
+         * minimal __nb_ges default (the prelude reads __nb_ges at call time). */
+        JSValue ge = JS_GetGlobalObject(ctx);
+        JS_SetPropertyStr(ctx, ge, "__nb_ges",
+                          JS_NewCFunction(ctx, nb_ges_rich, "__nb_ges", 1));
+        JS_FreeValue(ctx, ge);
+
+        /* rung-6 prelude: swallow its own failure, page continues */
+        (void)peval_budget(ctx, g_js_prelude, strlen(g_js_prelude), NULL, 0);
+
+        boot_install_safe(ctx);
+
+        /* For module pages in isolated runtime: strip 'export ' and module markers,
+         * evaluate as classic script to avoid JS_EVAL_TYPE_MODULE GC corruption. */
+        {
+            char *buf = malloc(src_n + 1);
+            if (buf) {
+                size_t j = 0;
+                for (size_t i = 0; i < src_n; ) {
+                    if (i + 7 <= src_n && memcmp(src + i, "export ", 7) == 0) {
+                        i += 7;
+                    } else if (i + 6 <= src_n && memcmp(src + i, "export", 6) == 0 &&
+                               (i+6 == src_n || isspace((unsigned char)src[i+6]))) {
+                        i += 6;
+                    } else if (i + 15 <= src_n && memcmp(src + i, "/*nbjs-module*/", 15) == 0) {
+                        i += 15;
+                        /* skip optional whitespace/newline after marker */
+                        while (i < src_n && (src[i] == '\n' || src[i] == '\r' || src[i] == ' ' || src[i] == '\t'))
+                            i++;
+                    } else {
+                        buf[j++] = src[i++];
+                    }
+                }
+                buf[j] = 0;
+                run_scripts_slices(ctx, buf, j);
+                free(buf);
+            } else {
+                run_scripts_slices(ctx, src, src_n);
+            }
+        }
+        free(src);
+
+        /* phase-2: lifecycle + event loop — timers/microtasks now fire */
+        int ev_err = run_event_loop(ctx);
+        if (ev_err) {
+            char msg[1100];
+            snprintf(msg, sizeof(msg), "STATUS err:%s",
+                     g_pending_errmsg[0] ? g_pending_errmsg : "event loop error");
+            send_status(msg);
+            JS_FreeContext(ctx);
+            JS_FreeRuntime(rt);
+            return;
+        }
+
+        /* Emit RENDER rows from the post-JS DOM, then STATUS. */
+        SB r = {0, 0, 0};
+        dom_render_rows(&r);
+        if (r.s && r.s[0]) {
+            size_t rn = strlen(r.s);
+            char *pay = NULL;
+            size_t pn = 0;
+            if (rn < RENDER_MAX) {
+                pn = 7 + rn;
+                pay = malloc(pn + 1);
+                if (pay) {
+                    memcpy(pay, "RENDER\n", 7);
+                    memcpy(pay + 7, r.s, rn);
+                    pay[pn] = 0;
+                    send_payload(pay, pn);
+                }
+            }
+            free(pay);
+        }
+        free(r.s);
+
+        /* Navigation handling */
+        if (g_nav_emit && g_nav_kind[0]) {
+            char pay[4600];
+            int pn = 0;
+            if (g_nav_kind[0] == 'B' || g_nav_kind[0] == 'F')
+                pn = snprintf(pay, sizeof(pay), "NAV\n%s\n%d\n", g_nav_kind,
+                              g_nav_count > 0 ? g_nav_count : 1);
+            else
+                pn = snprintf(pay, sizeof(pay), "NAV\n%s\n%s\n", g_nav_kind, g_nav_url);
+            if (pn > 0 && pn < (int)sizeof(pay)) {
+                char *ppay = malloc((size_t)pn + 1);
+                if (ppay) {
+                    memcpy(ppay, pay, (size_t)pn); ppay[pn] = 0;
+                    send_payload(ppay, (size_t)pn);
+                    free(ppay);
+                }
+            }
+        }
+
+        /* Free the isolated runtime immediately - no resident context */
+        JS_FreeContext(ctx);
+        JS_FreeRuntime(rt);
+        g_module_page_loaded = 1;
+        send_status("STATUS ok (no EVAL for module pages)");
+    } else {
+        /* Classic page: use the standard resident runtime for EVAL support. */
+        JSRuntime *rt = JS_NewRuntime();
+        if (!rt) { free(src); live_teardown(); send_status("STATUS err:heap"); return; }
+        JSContext *ctx = JS_NewContext(rt);
+        if (!ctx) { JS_FreeRuntime(rt); free(src); live_teardown(); send_status("STATUS err:heap"); return; }
+        g_live_rt = rt;
+        g_live_ctx = ctx;   /* resident from here on — kept alive for EVAL */
+        install_host(ctx);
+
+        /* rung 7: the resident worker's CSS resolve wins over install_host's
+         * minimal __nb_ges default (the prelude reads __nb_ges at call time). */
+        JSValue ge = JS_GetGlobalObject(ctx);
+        JS_SetPropertyStr(ctx, ge, "__nb_ges",
+                          JS_NewCFunction(ctx, nb_ges_rich, "__nb_ges", 1));
+        JS_FreeValue(ctx, ge);
+
+        /* rung-6 prelude: swallow its own failure, page continues */
+        (void)peval_budget(ctx, g_js_prelude, strlen(g_js_prelude), NULL, 0);
+
+        boot_install_safe(ctx);
+
+        run_scripts_slices(ctx, src, src_n);
+        free(src);
+
+        /* phase-2 (commit 7): lifecycle + event loop — timers/microtasks now fire */
+        int ev_err = run_event_loop(ctx);
+        if (ev_err) {
+            char msg[1100];
+            snprintf(msg, sizeof(msg), "STATUS err:%s",
+                     g_pending_errmsg[0] ? g_pending_errmsg : "event loop error");
+            send_status(msg);
+            live_teardown();
+            return;
+        }
+
+        /* step 4: emit RENDER rows from the post-JS DOM, then STATUS. The
+         * manager merges these into page.state.txt so JS mutations show. */
+        SB r = {0, 0, 0};
+        dom_render_rows(&r);
+        if (r.s && r.s[0]) {
+            size_t rn = strlen(r.s);
+            char *pay = NULL;
+            size_t pn = 0;
+            if (rn < RENDER_MAX) {
+                pn = 7 + rn;                       /* "RENDER\n" + rows */
+                pay = malloc(pn + 1);
+                if (pay) {
+                    memcpy(pay, "RENDER\n", 7);
+                    memcpy(pay + 7, r.s, rn);
+                    pay[pn] = 0;
+                    send_payload(pay, pn);
+                }
+            }
+            free(pay);
+        }
+        free(r.s);
+
+        /* rung-6 slice 2: if the page asked to navigate, ship a NAV frame so the
+         * manager follows it through its own fetch/stack machinery (manager
+         * worker_load captures it, the main loop consumes it next tick). */
+        if (g_nav_emit && g_nav_kind[0]) {
+            char pay[4600];
+            int pn = 0;
+            if (g_nav_kind[0] == 'B' || g_nav_kind[0] == 'F')  /* BACK/FORWARD: step count */
+                pn = snprintf(pay, sizeof(pay), "NAV\n%s\n%d\n", g_nav_kind,
+                              g_nav_count > 0 ? g_nav_count : 1);
+            else
+                pn = snprintf(pay, sizeof(pay), "NAV\n%s\n%s\n", g_nav_kind, g_nav_url);
+            if (pn > 0 && pn < (int)sizeof(pay)) {
+                char *ppay = malloc((size_t)pn + 1);
+                if (ppay) {
+                    memcpy(ppay, pay, (size_t)pn); ppay[pn] = 0;
+                    send_payload(ppay, (size_t)pn);
+                    free(ppay);
+                }
+            }
+        }
+
+        /* devtools console EVAL: keep the heap + DOM tree resident so an
+         * eval:<js> snippet can run against this page context (see cmd_eval);
+         * live_teardown() reclaims it at the next LOAD / QUIT / error. */
+        send_status("STATUS ok");
+    }
 }
 
 /* devtools console EVAL: run a <js> snippet against the resident page heap
@@ -9689,6 +9817,10 @@ int main(int argc, char **argv) {
             g_gutter_state = -1;
             free(g_last_push); g_last_push = NULL;   /* rows are per-page */
             run_page();
+            if (g_module_page_loaded) {
+                g_module_page_loaded = 0;
+                break;  /* exit worker so manager respawns fresh worker */
+            }
         } else if (strcmp(cmd, "TICK") == 0) {
             /* TICK\n<ms>\n - enable periodic ticking with stdin waits capped
              * at <ms>. TICK\n0 disables it, restoring the historical
