@@ -1613,11 +1613,10 @@ static void acquire_house_lock(const char *lock_path) {
     }
 }
 
-/* Browsers execute only classic-JS scripts (absent/empty type, or a
- * javascript MIME). Everything else — module, application/json,
- * application/ld+json, text/template, and any other custom type — is
- * skipped; the DOM parser already drops those nodes, so running them would
- * just emit WERR noise (and module syntax the engine can't parse anyway). */
+/* Browsers execute classic-JS scripts (absent/empty type, or a
+ * javascript MIME) and ES modules (type=module). Other types —
+ * application/json, application/ld+json, text/template, etc. — are
+ * skipped; the DOM parser already drops those nodes. */
 static int script_type_skip(const char *tag, const char *tag_end) {
     const char *t = strcasestr_local(tag, "type=");
     if (!t || t >= tag_end) return 0;
@@ -1634,7 +1633,27 @@ static int script_type_skip(const char *tag, const char *tag_end) {
     memcpy(buf, t, n); buf[n] = 0;
     for (size_t i = 0; i < n; i++) buf[i] = (char)tolower((unsigned char)buf[i]);
     if (strstr(buf, "javascript")) return 0;
+    if (strcmp(buf, "module") == 0) return 0;
     return 1;
+}
+
+/* Return 1 if the script tag has type=module. */
+static int script_is_module(const char *tag, const char *tag_end) {
+    const char *t = strcasestr_local(tag, "type=");
+    if (!t || t >= tag_end) return 0;
+    t += 5;
+    char q = 0;
+    if (*t == '"' || *t == '\'') { q = *t; t++; }
+    const char *u = t;
+    while (u < tag_end && *u && (q ? (*u != q)
+                            : (*u != ' ' && *u != '\t' && *u != '>'))) u++;
+    size_t n = (size_t)(u - t);
+    if (n == 0) return 0;
+    if (n >= 32) n = 32;
+    char buf[64];
+    memcpy(buf, t, n); buf[n] = 0;
+    for (size_t i = 0; i < n; i++) buf[i] = (char)tolower((unsigned char)buf[i]);
+    return strcmp(buf, "module") == 0;
 }
 
 /* True if `tag` sits inside an unclosed <noscript> element. With scripting
@@ -1701,6 +1720,7 @@ static void collect_scripts(const char *html, const char *page_url, FILE *js_out
             p = close + 9;
             continue;
         }
+        int is_module = script_is_module(tag, gt);
         const char *src = strcasestr_local(tag, "src=");
         if (src && src < gt) {
             if (n_ext >= NB_MAX_EXT_SCRIPTS) { p = close + 9; continue; }
@@ -1726,6 +1746,7 @@ static void collect_scripts(const char *html, const char *page_url, FILE *js_out
                         char buf[4096];
                         size_t r;
                         fprintf(js_out, SCRIPT_BOUNDARY "\n");
+                        if (is_module) fprintf(js_out, "/*nbjs-module*/\n");
                         while ((r = fread(buf, 1, sizeof(buf), ef)) > 0) fwrite(buf, 1, r, js_out);
                         fprintf(js_out, "\n");
                         fclose(ef);
@@ -1740,6 +1761,7 @@ static void collect_scripts(const char *html, const char *page_url, FILE *js_out
         const char *body = gt + 1;
         if (close > body) {
             fprintf(js_out, SCRIPT_BOUNDARY "\n");
+            if (is_module) fprintf(js_out, "/*nbjs-module*/\n");
             fwrite(body, 1, (size_t)(close - body), js_out);
             fprintf(js_out, "\n");
             n++;

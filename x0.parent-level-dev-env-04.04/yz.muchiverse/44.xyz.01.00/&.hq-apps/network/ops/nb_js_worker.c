@@ -8288,6 +8288,29 @@ static JSValue peval_budget_value(JSContext *ctx, const char *src, size_t src_n)
     alarm(0);
     return r;
 }
+/* Like peval_budget but uses JS_EVAL_TYPE_MODULE for ES module scripts.
+ * Modules without imports work; imports need a module loader (not yet set). */
+static int peval_budget_module(JSContext *ctx, const char *src, size_t src_n,
+                               char *errbuf, size_t errlen) {
+    signal(SIGALRM, sigalrm);
+    alarm(nb_budget());
+    JSValue r = JS_Eval(ctx, src, src_n, "<module>", JS_EVAL_TYPE_MODULE);
+    alarm(0);
+    if (JS_IsException(r)) {
+        if (errbuf && errlen) {
+            char tmp[512];
+            const char *m = js_error_to_cstr(ctx, tmp, sizeof(tmp));
+            snprintf(errbuf, errlen, "%s", m);
+        } else {
+            JSValue e = JS_GetException(ctx);
+            JS_FreeValue(ctx, e);
+        }
+        JS_FreeValue(ctx, r);
+        return 1;
+    }
+    JS_FreeValue(ctx, r);
+    return 0;
+}
 /* Format a value for console display (duk_safe_to_string semantics); clears
  * any exception a throwing toString() may have left behind. */
 static const char *js_display_cstr(JSContext *ctx, JSValueConst v, char *buf, size_t bl) {
@@ -8460,8 +8483,32 @@ static void run_scripts_slices(JSContext *ctx, char *src, size_t src_n) {
              * contiguous buffer, so terminate in place; the boundary's first
              * byte is never read again (next = the position after it). */
             ((char *)p)[slice] = 0;
-            if (peval_budget(ctx, p, slice, errbuf, sizeof(errbuf)) != 0)
-                fprintf(stderr, "WERR| script %d: %s\n", idx, errbuf[0] ? errbuf : "eval error");
+            /* Check for module marker at slice start (skip leading whitespace). */
+            int is_module = 0;
+            const char *p2 = p;
+            size_t slice2 = slice;
+            while (slice2 > 0 && (*p2 == '\n' || *p2 == '\r' || *p2 == ' ' || *p2 == '\t')) {
+                p2++; slice2--;
+            }
+            if (slice2 >= 15 && memcmp(p2, "/*nbjs-module*/", 15) == 0) {
+                is_module = 1;
+                /* Advance p past the marker and optional whitespace. */
+                const char *marker_end = p2 + 15;
+                while (marker_end < p + slice && (*marker_end == '\n' || *marker_end == '\r' || *marker_end == ' ' || *marker_end == '\t'))
+                    marker_end++;
+                size_t skip = (size_t)(marker_end - p);
+                p = marker_end;
+                slice = (slice > skip) ? (slice - skip) : 0;
+            }
+            if (slice > 0) {
+                if (is_module) {
+                    if (peval_budget_module(ctx, p, slice, errbuf, sizeof(errbuf)) != 0)
+                        fprintf(stderr, "WERR| module %d: %s\n", idx, errbuf[0] ? errbuf : "eval error");
+                } else {
+                    if (peval_budget(ctx, p, slice, errbuf, sizeof(errbuf)) != 0)
+                        fprintf(stderr, "WERR| script %d: %s\n", idx, errbuf[0] ? errbuf : "eval error");
+                }
+            }
         }
         idx++;
         if (!bn) break;
