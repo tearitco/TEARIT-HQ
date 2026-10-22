@@ -9,7 +9,6 @@
     <tabbar id="toolbar" class="tab-bar">
       <tab id="tb-int" class="tab rp-tb ${interact_class}" label="INT ${interact_label}" relay="${rp_h1},${rp_h2}" onclick="'${HOUSE}/@.apps/mcl-hq/ops/+x/mcl_hq.+x' int"/>
       <tab id="tb-book" class="tab rp-tb" label="${book_label} ▾" onclick="ACTIVATE" target_id="tb-book"/>
-      <repeat count="${n_tab}" bind="tb"><tab id="${tb.id}" class="tab rp-tb" label="${tb.label} ▾" onclick="ACTIVATE" target_id="${tb.id}"/></repeat>
       <tab id="tb-page" class="tab rp-tb" label="${page_label} ▾" onclick="ACTIVATE" target_id="tb-page"/>
       <tab id="tb-shop" class="tab rp-tb" label="Shop ▾" onclick="ACTIVATE" target_id="tb-shop"/>
       <tab id="tb-menu" class="tab rp-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
@@ -20,16 +19,21 @@
       <tab id="tb-time" class="tab rp-tb" label="${time_label} ▾" onclick="ACTIVATE" target_id="tb-time"/>
     </tabbar>
     <sidebar id="side" class="rp-rail sidebar">
-      <repeat count="${n_pre}" bind="pre"><item id="tq-${pre.#}" class="rp-menu-row dropdown-child" target_id="${pre.tab}" label="${pre.label}" action="${pre.act}"/></repeat>
       <repeat count="${n_party}" bind="party">
         <item id="bk-${party.#}" class="rp-menu-row dropdown-child ${party.cls}" target_id="tb-book" label="${party.label}" action="'${HOUSE}/@.apps/mcl-hq/ops/+x/mcl_hq.+x' select ${party.id}"/>
       </repeat>
-      <item id="bk-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-book" label="- cancel -" action="void"/>
       <repeat count="${n_room}" bind="room">
         <item id="rm${room.#}" class="rp-menu-row dropdown-child" target_id="tb-page" label="${room.label}" action="'${HOUSE}/@.apps/mcl-hq/ops/+x/mcl_hq.+x' goto ${room.id}"/>
       </repeat>
       <repeat count="${n_item}" bind="it"><item id="ti-${it.#}" class="rp-menu-row dropdown-child" target_id="${it.tab}" label="${it.label}" action="${it.act}"/></repeat>
-      <repeat count="${n_post}" bind="post"><item id="tp-${post.#}" class="rp-menu-row dropdown-child" target_id="${post.tab}" label="${post.label}" action="${post.act}"/></repeat>
+      <item id="tp-book-0" class="rp-menu-row dropdown-child" target_id="tb-book" label="${book_post_0_label}" action="${book_post_0_act}" show="${book_post_0_label}"/>
+      <item id="tp-book-1" class="rp-menu-row dropdown-child" target_id="tb-book" label="${book_post_1_label}" action="${book_post_1_act}" show="${book_post_1_label}"/>
+      <item id="tp-book-2" class="rp-menu-row dropdown-child" target_id="tb-book" label="${book_post_2_label}" action="${book_post_2_act}" show="${book_post_2_label}"/>
+      <item id="tp-book-3" class="rp-menu-row dropdown-child" target_id="tb-book" label="${book_post_3_label}" action="${book_post_3_act}" show="${book_post_3_label}"/>
+      <item id="tp-page-0" class="rp-menu-row dropdown-child" target_id="tb-page" label="${page_post_0_label}" action="${page_post_0_act}" show="${page_post_0_label}"/>
+      <item id="tp-page-1" class="rp-menu-row dropdown-child" target_id="tb-page" label="${page_post_1_label}" action="${page_post_1_act}" show="${page_post_1_label}"/>
+      <item id="tp-page-2" class="rp-menu-row dropdown-child" target_id="tb-page" label="${page_post_2_label}" action="${page_post_2_act}" show="${page_post_2_label}"/>
+      <item id="tp-page-3" class="rp-menu-row dropdown-child" target_id="tb-page" label="${page_post_3_label}" action="${page_post_3_act}" show="${page_post_3_label}"/>
       <item id="tm-cent" class="rp-menu-row dropdown-child" target_id="tb-time" label="speed: turbo (testing)" action="'${HOUSE}/@.apps/mcl-hq/ops/+x/mcl_hq.+x' clock rate cent"/>
       <item id="tm-sec" class="rp-menu-row dropdown-child" target_id="tb-time" label="speed: fast (1 hour/sec)" action="'${HOUSE}/@.apps/mcl-hq/ops/+x/mcl_hq.+x' clock rate sec"/>
       <item id="tm-min" class="rp-menu-row dropdown-child" target_id="tb-time" label="speed: normal (1 min/sec)" action="'${HOUSE}/@.apps/mcl-hq/ops/+x/mcl_hq.+x' clock rate min"/>

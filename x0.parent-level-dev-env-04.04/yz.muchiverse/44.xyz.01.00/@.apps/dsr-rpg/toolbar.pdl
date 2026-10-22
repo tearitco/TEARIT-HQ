@@ -2,18 +2,17 @@ SECTION | KEY | VALUE
 ------------------------------
 # toolbar.pdl - the fixed header menus of this window, written like #.desktop/livedesk_taskbar.pdl (TASKBAR-MENUS-DATA-DRIVEN.md): flat SECTION keys, no rebuild to change a row.
 # Reader: &.widgits/_shared-lib/petslike_toolbar.c. Template: the repeat blocks (tab bar, and the pre / fixed / post rows in the rail).
-#   tab_<N>_cell / tab_<N>_label            a fixed toolbar tab (cell pals = tab id tb-pals); the pets (book) and rooms (page) tabs stay in the template, their rows come from the op
+#   tab_<N>_cell / tab_<N>_label            a fixed toolbar tab (cell x = tab id tb-x). None here: the pals (book) and rooms (page) tabs are in the template, their rows come from the op.
 #   <cell>_menu_<N>_label / _cmd            a dropdown row of that cell
-#   <cell>_menu_pre_<N>_* / _post_<N>_*     rows before / after the list the op builds (book = the pets, page = the rooms), like the taskbar's pals_menu_pre / pals_menu_post
+#   <cell>_menu_pre_<N>_* / _post_<N>_*     rows before / after the list the op builds (book = the pals, page = the rooms), like the taskbar's pals_menu_pre / pals_menu_post
 #   _cmd:  op:<verb and args> = this app's op verb (newpal, newroom ...) | empty = just close | anything else = a shell string, run as written
-SECTION | tab_0_cell                | pals
-SECTION | tab_0_label               | Pals
-SECTION | pals_menu_1_label         | + new pal
-SECTION | pals_menu_1_cmd           | op:newpal
-SECTION | pals_menu_2_label         | - remove last pal
-SECTION | pals_menu_2_cmd           | op:delpal
-SECTION | pals_menu_3_label         | - cancel -
-SECTION | pals_menu_3_cmd           |
+# Pets are pals: ONE menu. The pals list, then + new pal / remove / cancel.
+SECTION | book_menu_post_1_label   | + new pal
+SECTION | book_menu_post_1_cmd     | op:newpal
+SECTION | book_menu_post_2_label   | - remove last pal
+SECTION | book_menu_post_2_cmd     | op:delpal
+SECTION | book_menu_post_3_label   | - cancel -
+SECTION | book_menu_post_3_cmd     |
 SECTION | page_menu_post_1_label   | + new room
 SECTION | page_menu_post_1_cmd     | op:newroom
 SECTION | page_menu_post_2_label   | - cancel -

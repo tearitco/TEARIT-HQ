@@ -14,8 +14,10 @@
  * _cmd grammar (the taskbar's, with its `livedesk:` internal form renamed for a window): `op:<verb and args>` = the app op's own verb line; empty = just closes the menu;
  * anything else = a shell string, run as written (the taskbar's bare-string form).
  *
- * ptb_publish() writes ui.txt lines the template repeats over (bind "tb" tabs, "it" fixed rows, "pre" and "post" staged rows):
- *   n_tab tb_N_id (= "tb-<cell>") tb_N_label    n_item it_N_tab it_N_label it_N_act    n_pre pre_N_*    n_post post_N_*     (act = the full action= string)
+ * ptb_publish() writes ui.txt lines the template uses (bind "tb" tabs, "it" fixed rows):
+ *   n_tab tb_N_id (= "tb-<cell>") tb_N_label    n_item it_N_tab it_N_label it_N_act    (act = the full action= string)
+ *   and the staged rows as numbered slots per cell: <cell>_pre_<N>_label/_act, <cell>_post_<N>_label/_act (a template lists 4 slots as plain items, show= the label;
+ *   a second repeat block into the same dropdown would stack from the top and cover the list)
  * The cell's tab id in the template is `tb-<cell>` (tb-book, tb-page, tb-pals ...). Limits: 8 tabs, 48 rows per group. */
 #ifndef PETSLIKE_TOOLBAR_C
 #define PETSLIKE_TOOLBAR_C
@@ -85,12 +87,21 @@ static int ptb_publish(const char *pdl, const char *op, char *out, size_t cap) {
         else if (!strncmp(cmd, "op:", 3)) snprintf(r->act, sizeof r->act, "%s %s", op, cmd + 3);
         else snprintf(r->act, sizeof r->act, "%s", cmd);
     }
-    o += snprintf(out + o, cap - o, "n_tab=%d\n", nt);
-    static const char *grp[3][2] = {{"n_item", "it"}, {"n_pre", "pre"}, {"n_post", "post"}};
-    for (int g = 0; g < 3; g++) {
-        o += snprintf(out + o, cap - o, "%s=%d\n", grp[g][0], nrow[g]);
-        for (int i = 0; i < nrow[g] && (size_t)o + 600 < cap; i++)
-            o += snprintf(out + o, cap - o, "%s_%d_tab=%s\n%s_%d_label=%s\n%s_%d_act=%s\n", grp[g][1], i, rows[g][i].cell, grp[g][1], i, rows[g][i].label, grp[g][1], i, rows[g][i].act);
+    o += snprintf(out + o, cap - o, "n_tab=%d\nn_item=%d\n", nt, nrow[0]);
+    for (int i = 0; i < nrow[0] && (size_t)o + 600 < cap; i++)
+        o += snprintf(out + o, cap - o, "it_%d_tab=%s\nit_%d_label=%s\nit_%d_act=%s\n", i, rows[0][i].cell, i, rows[0][i].label, i, rows[0][i].act);
+    /* staged rows (pre / post a list the op builds): the template cannot repeat a second block into the same dropdown (each repeat stacks from the top and covers the list),
+     * so they are published per cell and stage as numbered slots the template lists as plain items:  <cell>_pre_<N>_label / _act, <cell>_post_<N>_label / _act */
+    for (int st = 1; st <= 2; st++) {
+        int cnt[16]; char cells[16][48]; int nc = 0;
+        for (int i = 0; i < nrow[st] && (size_t)o + 600 < cap; i++) {
+            int c = -1; const char *cell = rows[st][i].cell + 3;      /* skip "tb-" */
+            for (int k = 0; k < nc; k++) if (!strcmp(cells[k], cell)) c = k;
+            if (c < 0 && nc < 16) { c = nc++; snprintf(cells[c], 48, "%s", cell); cnt[c] = 0; }
+            if (c < 0) continue;
+            o += snprintf(out + o, cap - o, "%s_%s_%d_label=%s\n%s_%s_%d_act=%s\n", cell, st == 1 ? "pre" : "post", cnt[c], rows[st][i].label, cell, st == 1 ? "pre" : "post", cnt[c], rows[st][i].act);
+            cnt[c]++;
+        }
     }
     return o;
 }
