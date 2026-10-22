@@ -2,3 +2,12 @@ SECTION | KEY | VALUE
 ------------------------------
 SECTION | title | cdda-hq
 SECTION | launch | button.sh
+# per-game constants read by the shared core (petslike_core.c cfg()); see PETSLIKE-FRAMEWORK-PLAN.md P1
+SECTION | sibling       | rpg-pet
+SECTION | hero_name     | Harold
+SECTION | hero_sheet    | Actor1
+SECTION | hero_from_db  | 1
+SECTION | party_row     | DsrRpgParty
+SECTION | party_sheet   | Monster
+SECTION | party_idx_base| 0
+SECTION | reply_tail    | , Harold

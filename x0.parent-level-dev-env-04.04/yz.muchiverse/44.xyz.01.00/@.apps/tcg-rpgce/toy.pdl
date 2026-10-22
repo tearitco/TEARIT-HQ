@@ -2,3 +2,13 @@ SECTION | KEY | VALUE
 ------------------------------
 SECTION | title | TCG-rpgce
 SECTION | launch | button.sh
+# per-game constants read by the shared core (petslike_core.c cfg()); see PETSLIKE-FRAMEWORK-PLAN.md P1
+SECTION | sibling       | rpg-pet
+SECTION | hero_name     | Asa
+SECTION | hero_sheet    | asa
+SECTION | hero_from_db  | 0
+SECTION | party_row     | tcg_rpgceParty
+SECTION | party_sheet   | teru
+SECTION | party_idx_base| 0
+SECTION | fallback_party| Ember,Glacine,Murmur,Solvent
+SECTION | reply_tail    | , Harold

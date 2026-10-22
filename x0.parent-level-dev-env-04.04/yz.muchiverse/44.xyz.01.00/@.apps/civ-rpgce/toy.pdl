@@ -2,3 +2,13 @@ SECTION | KEY | VALUE
 ------------------------------
 SECTION | title | civ-rpgce
 SECTION | launch | button.sh
+# per-game constants read by the shared core (petslike_core.c cfg()); see PETSLIKE-FRAMEWORK-PLAN.md P1
+SECTION | sibling       | rpg-pet
+SECTION | hero_name     | Red
+SECTION | hero_sheet    | viking
+SECTION | hero_from_db  | 0
+SECTION | party_row     | civ_rpgceParty
+SECTION | party_sheet   | viking
+SECTION | party_idx_base| 1
+SECTION | fallback_party| Blue,Green
+SECTION | reply_tail    | 

@@ -23,19 +23,16 @@ static void mb_cksave(FILE *o); static void mb_ckload(char *p);
 #include "../../../&.widgits/_shared-lib/game_events.c"      /* S1 event line + resolver (also df-hq, cdda-hq, mcl-hq); mcl-hq's block rules are mcl_rule() below */
 #include "../../../&.widgits/_shared-lib/game_decisions.c"      /* M3 decision ledger (append-only DEC rows + daily review) */
 #elif PET_SECTION == 3
-static char PCHQ[PATH_MAX];      /* this game's OWN pc-hq instance (data only: world, hero, xelector, maps, engine sessions): <app>/mcl-hq-pchq, see PCHQ-SESSIONS-DESIGN.md. Programs stay in @.apps/piececraft-hq. */
-#define SIBLING_APP "/@.apps/" "rpg-pet" "/"      /* the carbon-copy game that shares the one pc-hq engine + world: its board window is NOT a viewer of this game (see viewer_kinds); the copy sets this to the other game */
 #elif PET_SECTION == 4
 #elif PET_SECTION == 5
-#elif PET_SECTION == 6
     f = fopen(tmp, "wb"); if (!f) return 0; size_t wn = fwrite(data, 1, n, f); int ce = fclose(f); if (wn != n || ce != 0 || rename(tmp, p) != 0) { remove(tmp); return 0; } return 1;      /* ENOSPC / EIO: the good file stays, the half-written tmp goes (hq-crash-hardening.md) */
-#elif PET_SECTION == 7
+#elif PET_SECTION == 6
 static struct { char k[48]; char v[64]; long t; } g_fc[32];
-#elif PET_SECTION == 8
+#elif PET_SECTION == 7
     char ck[48]; long cnow = 0; if (g_fcache_on) { snprintf(ck, sizeof ck, "%s|%s", name, def); cnow = now_ms(); for (int i = 0; i < g_fcn; i++) if (cnow - g_fc[i].t < tune("flag_cache_ms", 150) && !strcmp(g_fc[i].k, ck)) { snprintf(out, cap, "%s", g_fc[i].v); return; } }
-#elif PET_SECTION == 9
+#elif PET_SECTION == 8
     if (g_fcache_on) { int s = -1; for (int i = 0; i < g_fcn; i++) if (!strcmp(g_fc[i].k, ck)) s = i; if (s < 0 && g_fcn < 32) s = g_fcn++; if (s >= 0) { snprintf(g_fc[s].k, sizeof g_fc[s].k, "%s", ck); snprintf(g_fc[s].v, sizeof g_fc[s].v, "%s", out); g_fc[s].t = cnow; } }
-#elif PET_SECTION == 10
+#elif PET_SECTION == 9
 
 /* ---------- Help panel (2026-10-17): help.txt in the app folder is the full help, pages separated by a line "---"; the panel (Help tab) shows one page at a time, 10 non-blank lines of 47 characters (blank lines are skipped: every row is tall). flags help (0/1) and help_page (0..); ui.txt gets help_visible and help_0..help_13 (help_0 = the "page N of M" title). ---------- */
 /* a pinned bar's text rows are one line high and never grow (the layout counts one row per text): long ui values are also written as <key>_0 .. <key>_1, split at spaces into pieces of at most 26 characters (2026-10-17) */
@@ -57,28 +54,23 @@ static int help_pages(int want, char out[11][64]) {
     char ln[256]; while (fgets(ln, sizeof ln, f)) { ln[strcspn(ln, "\r\n")] = 0; if (!strcmp(ln, "---")) { n++; continue; } if (n - 1 == want && ln[0] && k < 11) { snprintf(out[k], 64, "%.47s", ln); k++; } }
     fclose(f); return n;
 }
+#elif PET_SECTION == 10
 #elif PET_SECTION == 11
-    nparty = 0; char names[NP][24]; int nn = 0, inparty = 0, inhero = 0; memset(&hero, 0, sizeof hero); snprintf(hero.name, 24, "Harold"); snprintf(hero.sheet, 24, "Actor1");
 #elif PET_SECTION == 12
-    if ((fp = fopen(p, "r"))) { while (fgets(line, sizeof line, fp)) { if (split_bar(line, f, 3) < 3 || strcmp(f[0], "SYSTEM")) continue; if (!strcmp(f[1], "name")) { inparty = !strcmp(f[2], getenv("PET_PARTY") && getenv("PET_PARTY")[0] ? getenv("PET_PARTY") : "DsrRpgParty"); inhero = !strcmp(f[2], "Party"); } else if (inhero && !strcmp(f[1], "member1")) snprintf(hero.name, 24, "%s", f[2]); else if (inparty && !strncmp(f[1], "member", 6) && nn < NP) snprintf(names[nn++], 24, "%s", f[2]); } fclose(fp); }
-    for (int i = 0; i < nn; i++) { memset(&party[nparty], 0, sizeof party[nparty]); snprintf(party[nparty].name, 24, "%s", names[i]); snprintf(party[nparty].id, 16, "%s", names[i]); for (char *c = party[nparty].id; *c; c++) if (*c >= 'A' && *c <= 'Z') *c += 32; party[nparty].idx = i; snprintf(party[nparty].sheet, 24, "Monster"); nparty++; }
-#elif PET_SECTION == 13
-#elif PET_SECTION == 14
-#elif PET_SECTION == 15
     /* HARDENING: sizes and cells from rooms.pdl / catalog.pdl are untrusted: a scenery of width 2147483648999 made blit() loop for ever (found by the fuzz harness, hugenum on rooms.pdl) */
     for (int i = 0; i < nscen; i++) { Scen *s_ = &scen[i]; if (s_->c < 0 || s_->c > 255) s_->c = 0; if (s_->r < 0 || s_->r > 255) s_->r = 0; if (s_->w < 1 || s_->w > MAXC) s_->w = 1; if (s_->h < 1 || s_->h > MAXC) s_->h = 1; if (s_->x < -MAXC || s_->x > 2 * MAXC) s_->x = 0; if (s_->y < -MAXR || s_->y > 2 * MAXR) s_->y = 0; }
     for (int i = 0; i < ncat; i++) { Item *t_ = &cat[i]; if (t_->c < 0 || t_->c > 255) t_->c = 0; if (t_->r < 0 || t_->r > 255) t_->r = 0; if (t_->w < 1 || t_->w > 8) t_->w = 1; if (t_->h < 1 || t_->h > 8) t_->h = 1; if (t_->price < 0 || t_->price > 1000000) t_->price = 0; }
     for (int i = 0; i < ndoor; i++) { Door *d_ = &doors[i]; if (d_->tx < 0 || d_->tx >= MAXC) d_->tx = 0; if (d_->ty < 0 || d_->ty >= MAXR) d_->ty = 1; if (d_->ax < 0 || d_->ax >= MAXC) d_->ax = 0; if (d_->ay < 0 || d_->ay >= MAXR) d_->ay = 0; }
     for (int i = 0; i < nroom; i++) { if (rooms[i].fc < 0 || rooms[i].fc > 255) rooms[i].fc = 0; if (rooms[i].fr < 0 || rooms[i].fr > 255) rooms[i].fr = 0; }
     if (nroom == 0) { Room *r0 = &rooms[nroom++]; memset(r0, 0, sizeof *r0); snprintf(r0->id, 16, "home"); snprintf(r0->name, 32, "Home"); r0->cols = 13; r0->rows = 8; r0->tpx = 48; r0->trig = 2; }      /* HARDENING: rooms.pdl missing or all garbage = one default room, never a zero-size room (tpx 0 divides) */
-#elif PET_SECTION == 16
-#elif PET_SECTION == 17
+#elif PET_SECTION == 13
+#elif PET_SECTION == 14
     char p[PATH_MAX], line[300]; spath(p, "house.txt");
-#elif PET_SECTION == 18
+#elif PET_SECTION == 15
 static void use_ent(int i) { me = i; pet = i < 0 ? tr : others[i]; if (pet.room >= 0 && pet.room < nroom) g_gr = pet.room; }
-#elif PET_SECTION == 19
+#elif PET_SECTION == 16
     write_if_changed(p, b, strlen(b)); if (me < 0) tr = pet; else others[me] = pet; calc_view();
-#elif PET_SECTION == 20
+#elif PET_SECTION == 17
 static int over_land(const Room *rm, int x, int y);
 /* ---------- blocks (2026-10-17, S1 slice; rules by RULES-mcl-hq.md): the BLOCK rows of rooms.pdl are the starting world, EVENT dig / build / craft rows of state/events.txt change it. The table below is a
  * REPLAY of that ledger: mb_reset() runs at the top of every ge_scan and rebuilds the base state, then each legal event is applied in order (a pure function of the files). Blocks stop walking and are drawn
@@ -136,7 +128,7 @@ static int door_here(int room, int x, int y) { for (int i = 0; i < ndoor; i++) i
 /* overmap land: an island on a square ocean. Cells inside the rounded rectangle (2..cols-3, 1..rows-2, corners cut) are land, the outermost land ring is beach. Everything else is ocean (blocked). */
 static int over_land(const Room *rm, int x, int y) { if (x < 2 || x > rm->cols - 3 || y < 1 || y > rm->rows - 2) return 0; if ((x <= 3 || x >= rm->cols - 4) && (y <= 2 || y >= rm->rows - 3)) return 0; return 1; }
 static int over_beach(const Room *rm, int x, int y) { return over_land(rm, x, y) && (!over_land(rm, x - 1, y) || !over_land(rm, x + 1, y) || !over_land(rm, x, y - 1) || !over_land(rm, x, y + 1)); }
-#elif PET_SECTION == 21
+#elif PET_SECTION == 18
 /* Mineclonia loose PNGs under #.NNEST_ASSETS/mineclonia/mods. People and furniture stay on the RPG Maker sheets. An animated strip (h > w) uses its first frame only. */
 static char MCL[PATH_MAX];
 static Sheet mcl_s[32]; static int n_mcl;
@@ -224,7 +216,7 @@ static void draw_over(const Room *rm) {
         else cell_png("ITEMS/mcl_core/textures/mcl_core_grass_block_top.png", x, y, 1, 1);
     }
 }
-#elif PET_SECTION == 22
+#elif PET_SECTION == 19
     Room *rm = &rooms[vroom]; char phase[40] = "day"; { char dp[PATH_MAX], db[64]; spath(dp, "daylight.txt"); read_file(dp, db, sizeof db); if (strstr(db, "night")) snprintf(phase, sizeof phase, "night"); else if (strstr(db, "dusk")) snprintf(phase, sizeof phase, "dusk"); else if (strstr(db, "dawn")) snprintf(phase, sizeof phase, "dawn"); }
     if (rm->over) draw_over(rm); else if (rm->outdoor) {
         for (int x = 0; x < COLS; x++) { cell_png("ITEMS/mcl_core/textures/default_cobble.png", x, WALL_ROW, 1, 1); for (int y = TRIG_ROW; y < ROWS; y++) cell_png("ITEMS/mcl_core/textures/mcl_core_grass_block_top.png", x, y, 1, 1); }
@@ -245,12 +237,12 @@ static void draw_over(const Room *rm) {
         else tile(scen[i].sheet, scen[i].c, scen[i].r, scen[i].w, scen[i].h, scen[i].x, scen[i].y);
     }
     for (int i = 0; i < nmcell; i++) if (mcell[i].room == vroom) cell_png(mb_png(mcell[i].id), mcell[i].x, mcell[i].y, 1, 1);      /* blocks (see the block section) */
-#elif PET_SECTION == 23
+#elif PET_SECTION == 20
     for (int a = 0; a < n; a++) { Placed *p = &pl[idx[a]]; Item *d = &cat[p->item]; tile(d->sheet, d->c, d->r, d->w, d->h, p->x, p->y); }
-#elif PET_SECTION == 24
+#elif PET_SECTION == 21
     for (int k = 0; k < (g_bg_only ? 0 : no); k++) { int i = order[k]; Ent *e = i < 0 ? &tr : &others[i]; int col = e->steps ? cyc[e->steps % 4] : 1, ci = i < 0 ? 0 : party[i].idx;
         blit(sheet("characters", i < 0 ? hero.sheet : party[i].sheet), (ci % 4) * 3 * S48 + col * S48, (ci / 4) * 4 * S48 + e->dir * S48, S48, S48, OX + e->x * T, OY + e->y * T - 8 * T / S48); }
-#elif PET_SECTION == 25
+#elif PET_SECTION == 22
 static void clock_stamp(char *out, size_t cap);
 static void log_stamped(const char *who, const char *text) { char st[24], ln[300]; clock_stamp(st, sizeof st); snprintf(ln, sizeof ln, "%s%s%s %s", st, st[0] ? " " : "", who, text); append_line("chat.txt", ln); chat_trim(); }
 static const char *log_name(const char *id, char *buf, size_t n) { if (!strcmp(id, "zed")) return "the zed"; snprintf(buf, n, "%s", id); if (buf[0] >= 'a' && buf[0] <= 'z') buf[0] = (char)(buf[0] - 32); return buf; }
@@ -259,28 +251,24 @@ static long ge_compact_limit(void) { if (!g_tnn) load_tune(); return (long)tune(
 static void ge_failnote(const char *why) { note_set(why); }      /* a ledger over the hard cap: the reason goes to the note line (S1-EVENT-LEDGER.md) */
 static void ge_logline(const char *actor, const char *verb, const char *target, const char *res) { char t[160], st[24], an[40], tn[40], ln[300]; t[0] = 0; (void)tn; 
     if (!t[0] && !ge_describe(verb, target, res, t, sizeof t)) return; clock_stamp(st, sizeof st); snprintf(ln, sizeof ln, "%s%s%s %s", st, st[0] ? " " : "", log_name(actor, an, sizeof an), t); append_line("chat.txt", ln); chat_trim(); }
-#elif PET_SECTION == 26
-    { static const char *dflt[4] = {"hmm, tell me more.", "I'm listening.", "interesting!", "okay, Harold."}; unsigned h = 0; for (const char *c = s; *c; c++) h = h * 31 + (unsigned char)*c;
-#elif PET_SECTION == 27
-    if (pid == 0) { int fd = open("/dev/null", O_RDWR); if (fd >= 0) { dup2(fd, 0); dup2(fd, 1); dup2(fd, 2); } setenv("LC_CLOCK_NO_POPUP", "1", 1); if (daemon) setenv("LC_CLOCK_EVENT_RUNNER", SELF, 1); setenv("CDDA_HQ_ROOT", APP, 1); signal(SIGPIPE, SIG_DFL); execv(LC, av); _exit(127); }
-#elif PET_SECTION == 28
+#elif PET_SECTION == 23
     { static long long cdn = -1; long long dn = d - d0 + 1; if (dn != cdn) { cdn = dn;      /* "D2 00:00 the day turns" (grok 2026-10-17): the last day number lives in state/clock_lastday.txt (a verb is a new process), read only when the number changed; New game / Load going back in time writes no line */
         char lp[PATH_MAX], lb[24]; spath(lp, "clock_lastday.txt"); lb[0] = 0; read_file(lp, lb, sizeof lb); long long was = lb[0] ? atoll(lb) : -1;
         if (was >= 0 && dn > was) { char ln[40]; snprintf(ln, sizeof ln, "D%lld 00:00 the day turns", dn); append_line("chat.txt", ln); chat_trim(); }
         if (dn != was) { snprintf(lb, sizeof lb, "%lld", dn); write_if_changed(lp, lb, strlen(lb)); } } }
-#elif PET_SECTION == 29
+#elif PET_SECTION == 24
 }
 static void clock_stamp(char *out, size_t cap) {      /* "D3 06:10", the same arithmetic as clock_ui, computed now (the label file is up to 5 s old) */
     out[0] = 0; clock_paths(); if (!clock_ok()) return; long long ms = clock_kv_ll("game_time_epoch_ms"); if (ms < 0) return; char d0b[32], dp[PATH_MAX]; d0b[0] = 0; spath(dp, "clock_day0.txt"); read_file(dp, d0b, sizeof d0b);
     long long d0 = atoll(d0b), d = ms / 86400000, s = (ms - d * 86400000) / 1000; snprintf(out, cap, "D%lld %02d:%02d", d - d0 + 1, (int)(s / 3600), (int)(s % 3600 / 60));
-#elif PET_SECTION == 30
-#elif PET_SECTION == 31
+#elif PET_SECTION == 25
+#elif PET_SECTION == 26
     char p[PATH_MAX]; spath(p, "scene.raw"); if (write_if_changed(p, fr, sizeof fr)) g_scene_ver++;
-#elif PET_SECTION == 32
+#elif PET_SECTION == 27
     int chat = flag_on("chat", 1), hb = flag_on("hb", 0), in = flag_on("int", 0); char view[16]; flag_str("view", "2d", view, sizeof view); for (char *c = view; *c; c++) if (*c >= 'a' && *c <= 'z') *c -= 32;
     char nbuf[200]; { char np[PATH_MAX]; spath(np, "note.txt"); read_file(np, nbuf, sizeof nbuf); size_t nl = strlen(nbuf); while (nl && (nbuf[nl - 1] == '\n' || nbuf[nl - 1] == '\r')) nbuf[--nl] = 0; for (char *q_ = nbuf; *q_; q_++) if ((unsigned char)*q_ < 32) *q_ = ' '; }
     W("title=mcl-hq  -  %s  -  coins %d\nscene_raw=%s\ncanvas_raw=%s\ncoins=%d\nnote=%s\nmsg=%s\nroom_label=%s\n", rooms[vroom].name, coins, raw, raw, coins, nbuf, msg && msg[0] ? msg : (in ? "INT on: turn based like a roguelike. Time moves when you act. Tab switches pet/player." : "real time: the pets live on their own. INT lets you control a pet or the player."), rooms[vroom].name);
-#elif PET_SECTION == 33
+#elif PET_SECTION == 28
     W("left_visible=%s\n", flag_on("left", 1) ? "1" : "");      /* the pinned info bar (default on, Menu > Info show / hide, its _ button) */
     W("chat_visible=%s\nhb_visible=%s\nview_label=view %s\nchat_toggle_label=window %s\n", chat ? "1" : "", hb ? "1" : "", view, chat ? "on" : "off");
     { char cp[PATH_MAX], cb[4000]; spath(cp, "chat.txt"); read_tail(cp, cb, sizeof cb); char *ln[10] = {0}; int k = 0; for (char *l = strtok(cb, "\n"); l; l = strtok(NULL, "\n")) { ln[k % 10] = l; k++; } for (int i = 0; i < 10; i++) { int j = k - 10 + i; const char *cl = j >= 0 ? ln[j % 10] : ""; W("chat_%d=%s\nchat_cls_%d=%s\n", i, cl, i, (strstr(cl, " cannot ") || strstr(cl, " hits ") || strstr(cl, " has no ") || strstr(cl, " finds no ")) ? "rp-chat-bad" : (strstr(cl, " finds ") || strstr(cl, " crafts ")) ? "rp-chat-ok" : ""); }      /* the last ten lines (was six): the event log shares this scroll */
@@ -292,14 +280,14 @@ static void clock_stamp(char *out, size_t cap) {      /* "D3 06:10", the same ar
         int ni = 0; for (int i = 0; i < ge_ninv && ni < 6; i++) if (!strcmp(ge_inv[i].actor, who2) && ge_inv[i].n > 0) ni++;
         if (!ni) W("n_inv=1\ninv_0_label=(bag empty: mine)\ninv_0_key=none\n"); else { W("n_inv=%d\n", ni); int k = 0; for (int i = 0; i < ge_ninv && k < ni; i++) if (!strcmp(ge_inv[i].actor, who2) && ge_inv[i].n > 0) { W("inv_%d_label=%.12s x%ld%s\ninv_%d_key=%s\n", k, ge_inv[i].item, ge_inv[i].n, !strcmp(ge_inv[i].item, held2) ? " (held)" : "", k, ge_inv[i].item); k++; } }
         int nr = nrec < 6 ? nrec : 6; W("n_rec=%d\n", nr); for (int i = 0; i < nr; i++) W("rec_%d_label=%.15s x%d\nrec_%d_id=%s\n", i, recs[i].out, recs[i].cnt, i, recs[i].id); }
-#elif PET_SECTION == 34
-#elif PET_SECTION == 35
-#elif PET_SECTION == 36
+#elif PET_SECTION == 29
+#elif PET_SECTION == 30
+#elif PET_SECTION == 31
     pet.room = d->dest; g_gr = pet.room; pet.x = d->ax; pet.y = d->ay; pet.dir = 0; pet.tx = pet.ty = -1; { int fx, fy; if (free_near(pet.x, pet.y, &fx, &fy)) { pet.x = fx; pet.y = fy; } }      /* land on the nearest FREE cell, not on whoever is already there */
     if (me >= 0 && me == active && (pet.room == vroom || di_from_room == vroom)) { snprintf(b, sizeof b, "moves to the %s", rooms[pet.room].name); log_stamped(party[me].name, b); }      /* "D1 08:20 Rex moves to the Cellar" (grok 2026-10-17) */
-#elif PET_SECTION == 37
-#elif PET_SECTION == 38
-#elif PET_SECTION == 39
+#elif PET_SECTION == 32
+#elif PET_SECTION == 33
+#elif PET_SECTION == 34
 /* M3 decision ledger (BOOK 16.game/DECISION-LEDGER-AND-DAILY-REVIEW.md): one DEC row per autonomous choice of a pet (pick a target, walk, dig, blocked), written
  * AFTER the step from the before/after state, so ai_step_inner's own logic is untouched. Idle steps (nothing chosen) write nothing. */
 static void dec_bank(void) { char dp[PATH_MAX], bp[PATH_MAX]; spath(dp, "decisions.txt"); spath(bp, "bank"); dec_bank_update(dp, bp, "mcl-hq"); }      /* DEC rows -> bank entries (state/bank/dec_mcl-hq_<action>.behavior.pdl) */
@@ -313,7 +301,7 @@ static int dec_pick_pct(void) {
     if (nw - at >= 10) { char bp[PATH_MAX]; spath(bp, "bank"); w = dec_weight(bp, "mcl-hq", "walk"); at = nw; }
     int pct = 45 + (int)((0.5 - w) * 60.0); return pct < 15 ? 15 : pct > 85 ? 85 : pct; }
 static int ai_step_inner(int i);
-#elif PET_SECTION == 40
+#elif PET_SECTION == 35
     use_ent(i); Ent *e0 = i < 0 ? &tr : &others[i]; int tx0 = e0->tx, x0 = e0->x, y0 = e0->y, r0 = e0->room;
     int moved = ai_step_inner(i); Ent *e = i < 0 ? &tr : &others[i]; char tg[32];
     const char *act = NULL, *out = "ok";
@@ -325,47 +313,47 @@ static int ai_step_inner(int i);
     return moved;
 }
 static int ai_step_inner(int i) {
+#elif PET_SECTION == 36
+#elif PET_SECTION == 37
+    if (pet.tx < 0 && rand() % 100 < dec_pick_pct()) pick_target();
+#elif PET_SECTION == 38
+#elif PET_SECTION == 39
+static void end_turn(void) { if (!run_on() || !turn_mode()) return; clock_turn(); int in = flag_on("int", 0), c = ctl_idx(); for (int i = 0; i < nparty; i++) if (!(in && i == c)) ai_step(i); use_ent(active); }      /* the pet you control does not act on its own */
+#elif PET_SECTION == 40
 #elif PET_SECTION == 41
 #elif PET_SECTION == 42
-    if (pet.tx < 0 && rand() % 100 < dec_pick_pct()) pick_target();
 #elif PET_SECTION == 43
-#elif PET_SECTION == 44
-static void end_turn(void) { if (!run_on() || !turn_mode()) return; clock_turn(); int in = flag_on("int", 0), c = ctl_idx(); for (int i = 0; i < nparty; i++) if (!(in && i == c)) ai_step(i); use_ent(active); }      /* the pet you control does not act on its own */
-#elif PET_SECTION == 45
-#elif PET_SECTION == 46
-#elif PET_SECTION == 47
-#elif PET_SECTION == 48
     snprintf(d, sizeof d, "%s/pieces/system/maps/mcl-hq/%s", PCHQ, rooms[r].id); mkdir(d, 0755);
     for (int i = 0; i < nparty; i++) if (others[i].room == r) { int pat = others[i].steps % 3; write_frame(party[i].sheet, party[i].idx, others[i].dir, pat); unsigned char px[4] = {128, 128, 128, 255}; frame_rgb(sheet("characters", party[i].sheet), party[i].idx, others[i].dir & 3, px);
         o += snprintf(buf + o, sizeof buf - o, "%d %d %d %d %d %s %d %d %d %c\n", others[i].x, others[i].y, px[0], px[1], px[2], party[i].sheet, party[i].idx, dc[others[i].dir & 3], pat, party[i].name[0] >= 'A' && party[i].name[0] <= 'Z' ? party[i].name[0] + 32 : (party[i].name[0] ? party[i].name[0] : 'm')); }
     if (tr.room == r) { int pat = tr.steps % 3; write_frame(hero.sheet, 0, tr.dir, pat); unsigned char px[4] = {200, 60, 60, 255}; frame_rgb(sheet("characters", hero.sheet), 0, tr.dir & 3, px);
         o += snprintf(buf + o, sizeof buf - o, "%d %d %d %d %d %s 0 %d %d @\n", tr.x, tr.y, px[0], px[1], px[2], hero.sheet, dc[tr.dir & 3], pat); }
-#elif PET_SECTION == 49
+#elif PET_SECTION == 44
     static const char leg[] = "W|3|150|150|160|-|wall|#\nD|3|170|110|50|-|door|+\nT|2|50|150|60|-|tree|T\nf|1|190|150|90|-|furniture|&\nB|2|120|120|130|-|block|B\n.|0|90|80|60|-|floor|.\n";
-#elif PET_SECTION == 50
+#elif PET_SECTION == 45
 static int viewer_kinds(void) {
     static long last = 0; static int v = 3; long t = now_ms(); if (last && t - last < tune("viewer_scan_ms", 2000)) return v; last = t; v = 0;
-#elif PET_SECTION == 51
+#elif PET_SECTION == 46
         if (!strstr(b, "khtpm_core_render")) continue; for (size_t i = 0; i < n; i++) if (!b[i]) b[i] = ' '; if (strstr(b, "/@.apps/mcl-hq/board/pchq-board.xhtpm")) v |= 1; if (strstr(b, "mcl-hq.xhtpm")) v |= 2; }
-#elif PET_SECTION == 52
+#elif PET_SECTION == 47
 static void export3d(char *msg, size_t cap);
-#elif PET_SECTION == 53
+#elif PET_SECTION == 48
     { static unsigned long bh = 0; static int bh_init = 0; unsigned long s3 = 5381 + nmcell; for (int i = 0; i < nmcell; i++) s3 = s3 * 33 + (unsigned long)mcell[i].room * 4099 + mcell[i].x * 131 + mcell[i].y * 17 + (unsigned char)mcell[i].id[0] * 7 + (unsigned char)mcell[i].id[1];
       if (bh_init && s3 != bh) { char em[256]; export3d(em, sizeof em); }      /* a mine / place / craft / new game / load changed the blocks: the glyph and 3D book (map.txt, cells.*) and map.png are rewritten (the first pass only learns the hash) */
       bh = s3; bh_init = 1; }
-#elif PET_SECTION == 54
+#elif PET_SECTION == 49
         g_gr = r; char glyph[MAXR][MAXC + 1]; int fs[MAXR][MAXC], ws[MAXR][MAXC]; unsigned char a[XT * XT * 4], b[XT * XT * 4], fl[XT * XT * 4]; nslot = 1; memset(slotpx[0], 0, XT * XT * 4);
         Room *rm = &rooms[r]; Sheet *a5i = sheet("tilesets", "Inside_A5"), *a5o = sheet("tilesets", "Outside_A5"), *dr = sheet("characters", "!Door1");
-#elif PET_SECTION == 55
+#elif PET_SECTION == 50
         if (rm->outdoor) { tile24(a5o, rm->fc * S48, rm->fr * S48, floorpx); tile24(a5o, 2 * S48, 0, wallpx); memcpy(ceilpx, wallpx, sizeof ceilpx); tile24(a5o, 1 * S48, 2 * S48, pathpx); }
         else { tile24(a5i, rm->fc * S48, rm->fr * S48, floorpx); tile24(a5i, 1 * S48, 3 * S48, wallpx); tile24(a5i, 0, 0, ceilpx); memcpy(pathpx, floorpx, sizeof pathpx); }
         tile24(dr, 0, 192, doorpx); tile24(a5i, 0, 6 * S48, matpx);
-#elif PET_SECTION == 56
+#elif PET_SECTION == 51
             Sheet *s = sheet("tilesets", scen[i].sheet); memcpy(b, floorpx, sizeof b); tile24(s, (scen[i].c + ci) * S48, (scen[i].r + cj) * S48, a); over24(b, a); glyph[y][x] = scen[i].h >= 2 ? 'T' : 'f'; ws[y][x] = slot_of(b); }
         for (int i = 0; i < npl; i++) if (pl[i].room == r) { Item *it = &cat[pl[i].item]; Sheet *s = sheet("tilesets", it->sheet);
-#elif PET_SECTION == 57
+#elif PET_SECTION == 52
                 tile24(s, (it->c + ci) * S48, (it->r + cj) * S48, a);
-#elif PET_SECTION == 58
+#elif PET_SECTION == 53
         if (rm->over) {      /* the overmap 3D: every cell = the painted 2D cell downscaled to a 24 px tile; the buildings (scenery) are 2 high blocks, the ocean is a flat floor */
             int sv = vroom; vroom = r; g_bg_only = 1; render(); g_bg_only = 0; vroom = sv; g_gr = r;
             for (int y = 0; y < rm->rows; y++) for (int x = 0; x < rm->cols; x++) { unsigned char cellpx[XT * XT * 4];
@@ -377,11 +365,11 @@ static void export3d(char *msg, size_t cap);
             for (int i = 0; i < nmcell; i++) if (mcell[i].room == r && mcell[i].x >= 0 && mcell[i].x < COLS && mcell[i].y >= 0 && mcell[i].y < ROWS) { int x = mcell[i].x, y = mcell[i].y; unsigned char cellpx[XT * XT * 4];
                 for (int yy = 0; yy < XT; yy++) for (int xx = 0; xx < XT; xx++) { int sx = OX + x * T + xx * T / XT, sy = OY + y * T + yy * T / XT; memcpy(cellpx + (yy * XT + xx) * 4, fr + ((size_t)sy * FW + sx) * 4, 4); }
                 glyph[y][x] = 'B'; ws[y][x] = slot_of(cellpx); if (!fs[y][x]) fs[y][x] = slot_of(cellpx); } } }
-#elif PET_SECTION == 59
+#elif PET_SECTION == 54
         snprintf(p, sizeof p, "%s/extrusion.pdl", d); { FILE *f = fopen_tmp(p); if (f) { fprintf(f, "SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\nMETA         | map_id             | mcl-hq\nMETA         | desk_id            | %s\nMETA         | note               | %s (mcl-hq house, exported from the live house)\nEXTRUDE      | W                  | 3\nEXTRUDE      | D                  | 3\nEXTRUDE      | T                  | 2\nEXTRUDE      | f                  | 1\nEXTRUDE      | default            | 0\n", rooms[r].id, rooms[r].name); fclose_tmp(f, p); } }
-#elif PET_SECTION == 60
+#elif PET_SECTION == 55
 static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, "rb"); if (!in) return 0; char tmpc[PATH_MAX + 24]; snprintf(tmpc, sizeof tmpc, "%s.tmp.%d", to, (int)getpid()); FILE *out = fopen(tmpc, "wb"); if (!out) { fclose(in); return 0; } char buf[8192]; size_t n; int ok = 1; while ((n = fread(buf, 1, sizeof buf, in)) > 0) if (fwrite(buf, 1, n, out) != n) { ok = 0; break; } fclose(in); if (fclose(out) != 0) ok = 0; if (ok && rename(tmpc, to) != 0) ok = 0; if (!ok) remove(tmpc); return ok; }
-#elif PET_SECTION == 61
+#elif PET_SECTION == 56
     if (!strcmp(v, "helppanel")) {      /* Help tab: open / next / prev / close the help panel (help.txt, pages split by ---) */
         const char *w = argc >= 2 ? argv[1] : "open"; char hb[16]; flag_str("help_page", "0", hb, sizeof hb); int pg = atoi(hb), np = help_pages(-1, NULL);
         if (!strcmp(w, "close")) { set_flag("help", "0"); snprintf(msg, cap, "help closed"); return; }
@@ -433,42 +421,42 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
         if (gs.resolved_new) append_line("blocks_changed.txt", ".");      /* marker (size growth): the daemon replays the ledger into its block table */
         if (!strcmp(v, "inventory")) { size_t o = 0; msg[0] = 0; for (int i = 0; i < ge_ninv; i++) if ((argc < 2 || !strcmp(argv[1], ge_inv[i].actor)) && ge_inv[i].n > 0 && o + 60 < cap) o += (size_t)snprintf(msg + o, cap - o, "%s:%s=%ld ", ge_inv[i].actor, ge_inv[i].item, ge_inv[i].n); if (!o) snprintf(msg, cap, "(nothing)"); return; }
         snprintf(msg, cap, "%s: %ld events, %ld resolved now, %ld rejected now (%ld rejects in all); last result %s", v, gs.events, gs.resolved_new, gs.rejected_new, gs.rejects_total, ge_last[0] ? ge_last : "-"); return; }
-#elif PET_SECTION == 62
+#elif PET_SECTION == 57
     if (!strcmp(v, "newgame")) {      /* a fresh game: the current one is saved to slot 0 first (Undo new game = Load slot 0), then every game file is removed so the next read starts from the defaults. The clock is not touched. */
-#elif PET_SECTION == 63
+#elif PET_SECTION == 58
         static const char *fixed[] = { "house.txt", "trainer.txt", "relations.txt", "chat.txt", "active.txt", "daylight.txt", "flag_ctl.txt", "flag_follow.txt", "events.txt", "note.txt", "help_step.txt", "hold.txt" };
-#elif PET_SECTION == 64
+#elif PET_SECTION == 59
         pet_load(); replay(); append_line("blocks_changed.txt", ".");
         snprintf(msg, cap, "new game started; the game you left is in slot 0 (Player > Undo new game)"); return; }
     if (!strcmp(v, "reset")) { char p[PATH_MAX], q[PATH_MAX]; spath(p, "house.txt"); snprintf(q, sizeof q, "%s/house.txt.%ld.bak", ST, now); if (fexists(p)) rename(p, q); snprintf(msg, cap, "house reset (the old ledger is kept as house.txt.%ld.bak)", now); return; }
-#elif PET_SECTION == 65
+#elif PET_SECTION == 60
         char p[PATH_MAX], bb[40]; spath(p, "active.txt"); snprintf(bb, sizeof bb, "%s\n", party[k].id); write_if_changed(p, bb, strlen(bb)); set_flag("follow", "pet"); set_flag("ctl", "pet"); active = k; calc_view(); snprintf(msg, cap, "watching %s (in the %s)", party[k].name, rooms[others[k].room].name); return; }
-#elif PET_SECTION == 66
-#elif PET_SECTION == 67
+#elif PET_SECTION == 61
+#elif PET_SECTION == 62
         char names[40][48]; int nn = 0; snprintf(names[nn++], 48, "house.txt"); snprintf(names[nn++], 48, "trainer.txt"); snprintf(names[nn++], 48, "relations.txt"); snprintf(names[nn++], 48, "chat.txt"); snprintf(names[nn++], 48, "active.txt"); snprintf(names[nn++], 48, "daylight.txt"); snprintf(names[nn++], 48, "flag_ctl.txt"); snprintf(names[nn++], 48, "flag_follow.txt"); snprintf(names[nn++], 48, "events.txt");      /* events.txt is bigger than the 64 KB read buffer below: streamed */
-#elif PET_SECTION == 68
+#elif PET_SECTION == 63
             if (!strcmp(names[i], "events.txt")) { if (copy_file(a, bpath)) ok++; continue; }
-#elif PET_SECTION == 69
+#elif PET_SECTION == 64
         if (!saving) { char b[40]; read_file(mp, b, sizeof b); long long ms = atoll(b); if (ms > 0) { clock_paths(); clock_install(); char ma[32]; snprintf(ma, sizeof ma, "%lld", ms); lc_run(0, "cmd", "rpg", "settime", ma, "--source", "rpg-load", NULL); lc_run(0, "step", "5", NULL); } pet_load(); }
         if (!saving) append_line("blocks_changed.txt", ".");
         snprintf(msg, cap, "%s slot %d (%d files)", saving ? "saved to" : "loaded from", slot, ok); return; }
-#elif PET_SECTION == 70
+#elif PET_SECTION == 65
     if (!strcmp(v, "toggle") && argc >= 2 && (!strcmp(argv[1], "chat") || !strcmp(argv[1], "hb") || !strcmp(argv[1], "voice") || !strcmp(argv[1], "left"))) { set_flag(argv[1], flag_on(argv[1], !strcmp(argv[1], "voice") || !strcmp(argv[1], "chat") || !strcmp(argv[1], "left")) ? "0" : "1");      /* the defaults of voice and chat are on: a toggle with no flag file yet must turn them OFF */ snprintf(msg, cap, "%s toggled", argv[1]); return; }
-#elif PET_SECTION == 71
+#elif PET_SECTION == 66
     signal(SIGTERM, bye); signal(SIGINT, bye); signal(SIGHUP, bye); srand((unsigned)(time(NULL) ^ getpid()));
-#elif PET_SECTION == 72
+#elif PET_SECTION == 67
         { static long bsig = -1; char bp[PATH_MAX]; spath(bp, "blocks_changed.txt"); long bs = fsize(bp); if (bs != bsig) { bsig = bs; char ep[PATH_MAX]; spath(ep, "events.txt"); ge_scan(ep, (long)time(NULL), 0, NULL); dirty = 1; } }      /* the block table is a replay of the ledger; only a mine / place / craft / new game / load (blocks_changed.txt grew) needs a new one */
         pet_load(); int in = flag_on("int", 0), tm = turn_mode(); static int prev_in = 0; static long int_on_at = 0; if (in && !prev_in) int_on_at = now_ms(); prev_in = in;
-#elif PET_SECTION == 73
+#elif PET_SECTION == 68
         if (in && n) { char kl[300], one[16]; kl[0] = 0; for (int i = 0; i < n && i < 20; i++) { snprintf(one, sizeof one, "%d ", codes[i]); strncat(kl, one, sizeof kl - strlen(kl) - 1); } char kp[PATH_MAX]; spath(kp, "keys_seen.txt"); write_if_changed(kp, kl, strlen(kl)); }      /* last batch of codes, for debugging */
-#elif PET_SECTION == 74
+#elif PET_SECTION == 69
         { char dp[PATH_MAX], db[40]; spath(dp, "daylight.txt"); read_file(dp, db, sizeof db); if (strcmp(db, lastday)) { snprintf(lastday, sizeof lastday, "%s", db); dirty = 1; } }
-#elif PET_SECTION == 75
+#elif PET_SECTION == 70
     signal(SIGPIPE, SIG_IGN);      /* a closed pipe / dead child must never kill a verb or the daemon (the children get SIG_DFL back before exec) */
     signal(SIGPIPE, SIG_IGN);      /* a closed pipe / dead child must never kill a verb or the daemon (the children get SIG_DFL back before exec) */
     snprintf(ST, sizeof ST, "%s/state", APP); mkdir(ST, 0755);
     snprintf(PCHQ, sizeof PCHQ, "%s/mcl-hq-pchq", APP);
-#elif PET_SECTION == 76
+#elif PET_SECTION == 71
     load_data(); replay(); pet_load(); clock_paths(); { char ep0[PATH_MAX]; spath(ep0, "events.txt"); ge_scan(ep0, (long)time(NULL), 0, NULL); }
 #endif
 #endif
