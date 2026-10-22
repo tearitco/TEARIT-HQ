@@ -32,6 +32,22 @@ Known from the code and docs, not all checked line by line:
 4. **One template per window kind, generated from data.** The tab bar (done through toolbar.pdl), the left pet bar, the right chat bar and the footer are the same in all eight: one shared template body with the game's `toolbar.pdl`, `party.pdl` and `flow.pdl` filling it. Today there are sixteen .xhtpm files (board plus standalone) that I had to patch by script for every menu change.
 5. **rpg-edit-hq joins as a front end, not as a ninth copy.** Its map painter is the one thing no other game has; its pets and chat should come from the same core (the roster is already a `party.pdl`).
 
+## Can the per-game rules move into events/, pals, or at worst ops? (owner 2026-10-21; answer from the code, not built)
+
+Which verbs are per game: counted from `strcmp(v, "<verb>")` in the eight ops (READ).
+
+- **Common to all eight:** buy, clearchat, clock, control, day_tick, goto, int, load, mode, newgame, phase, place, play, remove, reset, save, select, status, step, stop, sync, toggle, use, view, walk, pet_says, and since this week newpal, delpal, newroom.
+- **Extra verbs only in three:** df-hq: dig, dig_area, undig, resolve, review, compact, decpct, event, help, helppanel, inventory. cdda-hq: bag, craft, recipes, scavenge, strike, wounds (plus compact, decpct, event, help, helppanel, inventory, resolve, review). mcl-hq: bag, craft, hold, mine, recipes (plus the same shared extras).
+- **gta-hq, tcg-rpgce, civ-rpgce and dsr-rpg have NO extra verb.** Their 307 to 638 differing lines are not rules: they are per-room geometry (dsr-rpg has a `Room` with cols, rows, tile size and a world-map biome that `rpg_pet.c` lacks), the STATE_BACKEND marker notifier, game names and paths. They need the core, not a rules module. Note the direction: the clones are AHEAD of `rpg_pet.c` in places, so the best-of core is the union, not rpg-pet.
+
+Three places a rule can live:
+
+1. **events/ (verb pages), yes, and the house already built it.** EVENT-VERB-PAGES-DESIGN.md (built and proven for rpg-pvp-hq, 45 verbs in its `verbs.pdl`, and built for game-dev-hq): a `verbs.pdl` manifest, `verbgen` writes `events/<verb>/` packages, the UI calls `fire <verb>`, the page plays a registered command that calls `run <verb>` (the C verb stays the leaf), with a fallback to the raw verb and a CPU rule (a page run is a sh + bash + prisc launch, fine for a click, never for per-tick verbs). The pets-like eight already have about 21 `events/` packages each (doors, greetings, day_tick, int on/off, phases) but NO `verbs.pdl` and no `fire` path. So: the extra verbs above (dig, undig, craft, strike, scavenge, mine, hold, recipes, wounds ...) are page candidates; step, walk, status, the clock tick and the scene painter are not. What does NOT move: the effect itself. A page chains nodes (`pet_says`, `transfer_player`, give item ...), but a rule like craft or strike that checks inputs and writes the S1 ledger stays C behind `run`; the page makes it visible and editable (blueprintz), it does not remove the code.
+2. **pals, partly.** A pal (house library entity) carries its own `event_pkg/`, `stats.pdl`, `menu.chtpm`, an `entity_uid` and a sprite. Things that belong to ONE character (its greetings, voice, schedule, stats) fit there, and rpg-pet already keeps them as `events/greet_<pet>`. Rules of a GAME (digging, crafting) do not belong to any pal; putting them there would copy them into every pal.
+3. **ops, at worst, and it works.** A game's rules as their own small op (`<game>_rules.+x`) registered in `#.ref/menu/event_commands.registry.pdl` (`COMMAND <game>_verb`), called by the pages or by the window. That is the house's op + fork + IPC form, and it is what rpg-pvp-hq's `rpg_pvp_hq.+x` already is. The cost is one process launch per call, so it suits click verbs, not ticks.
+
+Result for the plan: core (shared text-include or one resident op) holds everything per-tick and everything common; df, cdda and mcl keep their extra verbs as a rules op or a rules file behind `run`; those verbs get a `verbs.pdl` and event pages through the existing `verbgen`; gta, tcg, civ and dsr become the core plus data and need no rules code at all. That is 4 of 7 clones removed from the maintenance list by the core alone.
+
 ## Order and risk
 
 - Step 1 for the loaders and the `ui.txt` writer first (smallest, most shared), with step 2's diff as the gate. Then chat and clock. Rules files last.
