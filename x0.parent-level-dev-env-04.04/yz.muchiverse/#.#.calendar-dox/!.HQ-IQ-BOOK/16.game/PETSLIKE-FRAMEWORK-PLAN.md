@@ -4,6 +4,17 @@
 
 **Update 2026-10-21 (later): steps 1-2 and rpg-pet's own instance done.** rpg-pet runs on `rpg-pet/rpg-pet-pchq` like the other seven, and 43 identical sections were folded into the core (76 left). `fire <verb>` lives in the core; every game has a `verbs.pdl` (verbgen check PASS for all eight, 12-15 page=yes verbs each, packages under `events/<verb>/`) and the windows and the toolbar call `fire`. blueprintz has a Games menu listing every game with a verbs.pdl (loaded df-hq: 36 pages, 0 flags). The tb menus player, clock, user (New User / Cancel), the closing rows of pals / toys / session / clock subs / slots / common events, and the db-ez list are rows in `livedesk_taskbar.pdl` (see TASKBAR-MENUS-DATA-DRIVEN.md). Still open: turning the small remaining seams into data, one shared .xhtpm template body, rpg-edit-hq on the core, V5 CPU budget per page verb, a live window click through `fire`.
 
+# PRIORITY LIST (owner 2026-10-21: "these are priority", in this order)
+
+| # | Item | State |
+|---|---|---|
+| P1 | **Seams to data**: the ~76 game-specific sections in `petslike_core.c` - first the small ones (hero name and sheet, fallback party, default replies, party filter, sibling app) as `party.pdl` / `toy.pdl` rows read by the core | NOT STARTED |
+| P2 | **One shared window template** for the 16 near-duplicate `.xhtpm` (board + standalone, 8 games): one body, the game's `toolbar.pdl` / `party.pdl` / `flow.pdl` fill it | NOT STARTED |
+| P3 | **rpg-edit-hq on the core**: its pets and chat come from the shared core (its map painter stays its own) | NOT STARTED |
+| P4 | **Scanned tb menus to data** so the 1.hq search over every top-tb sub can read them: pals, toys, desks, sessions, accounts, clocks, slots, common events, plus `clock_cal` (per-clock ids) and `menu_menu` | NOT STARTED (static rows and closing rows are done, see TASKBAR-MENUS-DATA-DRIVEN.md) |
+
+Rules for all four: gate every step (verb-script diff per game, plus a negative test), commit scoped, a live window run before calling it done, no push unless asked.
+
 (Original plan follows.)
 
 Owner 2026-10-21: "did we ever figure out how to get the 'best of' all pets boards as a framework instead of writing separate managers, and all things can be data?" (and earlier: "i dont understand why all these pet / pc-hq like projects dont use the same layout / manager and just use some kind of framework to share the differences").
