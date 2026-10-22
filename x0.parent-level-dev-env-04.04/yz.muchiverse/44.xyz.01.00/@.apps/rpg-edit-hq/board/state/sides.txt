@@ -1,0 +1,2 @@
+side_left=1
+side_right=1

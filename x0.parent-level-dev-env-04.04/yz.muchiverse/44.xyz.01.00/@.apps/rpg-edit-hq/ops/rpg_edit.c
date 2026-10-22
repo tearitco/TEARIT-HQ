@@ -250,6 +250,20 @@ static void write_events(void) {
         fclose(f);
     }
 }
+/* Side bars (left: the eight pets, right: the log). state/side_ui.txt is a var file of the board window: pet_0..7, log_0..5, n_pet. */
+static char sidelog[6][64];
+static void say(const char *who, const char *text) {
+    memmove(sidelog[0], sidelog[1], sizeof sidelog[0] * 5);
+    snprintf(sidelog[5], sizeof sidelog[5], "%s: %s", who, text);
+}
+static void write_side(void) {
+    char p[PATH_MAX]; snprintf(p, sizeof p, "%s/board/state/side_ui.txt", APP);
+    FILE *f = fopen(p, "w"); if (!f) return;
+    fprintf(f, "n_pet=8\n");
+    for (int i = 0; i < 8; i++) fprintf(f, "pet_%d=%s %d,%d %s\n", i, pet[i].name, pet[i].x, pet[i].y, pet[i].room ? "(inside)" : "");
+    for (int i = 0; i < 6; i++) fprintf(f, "chat_%d=%s\n", i, sidelog[i]);
+    fclose(f);
+}
 static void follow_ava(void) {
     /* The board stays on the island page when Ava goes through a door (she just vanishes into the building and comes back out). Following her switched the whole board to the cabin page, which renders as empty sky from the island camera, so the xelector and camera looked gone (owner 2026-10-21). Open the cabin by hand from the Desk menu; build with -DFOLLOW_AVA to bring the old behaviour back. */
 #ifndef FOLLOW_AVA
@@ -260,7 +274,9 @@ static void follow_ava(void) {
     fprintf(f, "CONFIRM_SET_DESK:%s\n", pet[4].room ? "cabin" : "start");
     fclose(f);
 }
+static int quiet[8][8];      /* steps until a pair of pets greets again */
 static void step_all(void) {
+    for (int a = 0; a < 8; a++) for (int b = 0; b < 8; b++) if (quiet[a][b] > 0) quiet[a][b]--;
     static const int dx[4] = {0, 1, 0, -1}, dy[4] = {-1, 0, 1, 0};
     for (int i = 0; i < 8; i++) {
         int dir = rand() % 4;
@@ -279,6 +295,7 @@ static void step_all(void) {
                 for (int k = 0; k < 4; k++) if (!blocked(0, bx + ox[k], by + oy[k]) && glyph[0][by + oy[k]][bx + ox[k]] != 'D') { pet[i].x = bx + ox[k]; pet[i].y = by + oy[k]; break; }
             }
             pet[i].dir = dir;
+            { char t[48]; snprintf(t, sizeof t, "%s door %d", pet[i].room ? "went in at" : "came out of", lastdoor); say(pet[i].name, t); }
             follow_ava();
             continue;
         }
@@ -287,8 +304,16 @@ static void step_all(void) {
         for (int k = 0; k < 8; k++) if (k != i && pet[k].room == desk && pet[k].x == nx && pet[k].y == ny) occ = 1;
         if (occ) continue;
         pet[i].x = nx; pet[i].y = ny; pet[i].dir = dir; pet[i].steps++;
+        for (int k = 0; k < 8; k++) {      /* two pets side by side greet each other (chat bar); a pair stays quiet for a while after */
+            if (k == i || pet[k].room != desk || abs(pet[k].x - nx) + abs(pet[k].y - ny) != 1) continue;
+            if (quiet[i][k] > 0) continue;
+            static const char *hi[4] = {"hi %s!", "hello %s", "oh, %s", "hey %s, nice day"};
+            char t[48]; snprintf(t, sizeof t, hi[rand() % 4], pet[k].name); say(pet[i].name, t);
+            snprintf(t, sizeof t, "hello %s", pet[i].name); say(pet[k].name, t);
+            quiet[i][k] = quiet[k][i] = 40;
+        }
     }
-    write_events();
+    write_events(); write_side();
 }
 
 int main(int argc, char **argv) {
@@ -353,7 +378,7 @@ int main(int argc, char **argv) {
         if (!strstr(buf, "view_fog_end") && (vf = fopen(vp, "a"))) { fputs("# the island map is wide: fog from 90 to 250 cells, not the house 18..48\nview_fog_start=90\nview_fog_end=250\n", vf); fclose(vf); }
     }
     srand((unsigned)time(NULL));
-    write_events();
+    write_events(); write_side();
     { char bp[PATH_MAX]; snprintf(bp, sizeof bp, "%s/bar.txt", d0); FILE *bf = fopen(bp, "w");
       if (bf) { for (int i = 0; i < 8; i++) fprintf(bf, "%d\t%s\t%d\t%d\ton-click\n", i + 1, pet[i].name, pet[i].x, pet[i].y); fclose(bf); } }
     for (;;) { step_all(); usleep(700000); }
