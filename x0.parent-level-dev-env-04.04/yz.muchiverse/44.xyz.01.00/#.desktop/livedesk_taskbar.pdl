@@ -239,3 +239,41 @@ SECTION      | strip_btn_14_menu_0_cmd      | setsid nohup bash '&.widgits/open-
 SECTION      | strip_btn_14_menu_1_label    | Chat-h-ai
 SECTION      | strip_btn_14_menu_1_cmd      | livedesk:open-chat-hai
 SECTION      | strip_btn_14_menu_2_label    | cancel
+
+# ---- moved out of C 2026-10-21 (owner: "we will need to move those hardcoded to pdl"; the 1.hq search over every top-tb sub reads these rows) ----
+# Tokens in a label or cmd are expanded each time the menu opens: {play} {playtest} (ON|OFF), {clock_sel} (clock chosen in the clocks menu).
+# blueprintz lives under player (it is the debugger), same script as before.
+# player cell
+SECTION      | player_menu_1_label   | 1.play: {play}
+SECTION      | player_menu_1_cmd     | livedesk:play-toggle
+SECTION      | player_menu_2_label   | play-test: {playtest}
+SECTION      | player_menu_2_cmd     | livedesk:playtest-toggle
+SECTION      | player_menu_3_label   | stop
+SECTION      | player_menu_3_cmd     | livedesk:play-stop
+SECTION      | player_menu_4_label   | blueprintz
+SECTION      | player_menu_4_cmd     | sh _.monads/_.livedesk-taskbar/ops/open_blueprintz.sh
+SECTION      | player_menu_5_label   | reset
+SECTION      | player_menu_5_cmd     | livedesk:reset-entities
+SECTION      | player_menu_6_label   | new-game
+SECTION      | player_menu_6_cmd     | livedesk:new-game
+SECTION      | player_menu_7_label   | Synch
+SECTION      | player_menu_7_cmd     | livedesk:synch-from-pchq
+SECTION      | player_menu_8_label   | save-game
+SECTION      | player_menu_8_cmd     | livedesk:savegame-menu:save
+SECTION      | player_menu_9_label   | load-game
+SECTION      | player_menu_9_cmd     | livedesk:savegame-menu:load
+SECTION      | player_menu_10_label  | Cancel
+# clock cell
+SECTION      | clock_menu_1_label    | clocks & cals
+SECTION      | clock_menu_1_cmd      | livedesk:clock:clocks
+SECTION      | clock_menu_2_label    | reminders
+SECTION      | clock_menu_2_cmd      | livedesk:clock:reminders
+SECTION      | clock_menu_3_label    | game clocks
+SECTION      | clock_menu_3_cmd      | livedesk:clock:game
+SECTION      | clock_menu_4_label    | clock as event…
+SECTION      | clock_menu_4_cmd      | livedesk:clock:event-ez:{clock_sel}
+SECTION      | clock_menu_5_label    | Cancel
+# user cell: the account list between these rows is scanned from 0.user-pal/users (Switch / Logout stay C: they depend on who is logged in)
+SECTION      | user_menu_pre_1_label | New User...
+SECTION      | user_menu_pre_1_cmd   | user:new
+SECTION      | user_menu_post_1_label | Cancel

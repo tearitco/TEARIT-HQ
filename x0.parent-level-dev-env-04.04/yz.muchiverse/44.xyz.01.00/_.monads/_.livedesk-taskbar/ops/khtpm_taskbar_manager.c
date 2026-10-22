@@ -3932,6 +3932,25 @@ static int livedesk_build_palettes_menu(const char *house_root, HQMenuItem *menu
  * shape livedesk_build_hq_menu()/_file_menu() already use). Extracted
  * 2026-09-08 so the remaining C-hardcoded builders (player/ai/db/...)
  * can convert with one line each instead of a copy-pasted loop. */
+/* Menu rows that are data (livedesk_taskbar.pdl `<cell>_menu_N_label` / `_cmd`) may carry live tokens, expanded each time the menu opens:
+ * {play} = ON|OFF (play mode), {playtest} = ON|OFF (play-test), {clock_sel} = the clock chosen in the clocks menu. One place, so a row never needs C. */
+static int khtpm_load_play_mode(const char *house_root);
+static int khtpm_load_playtest(const char *house_root);
+static char g_clock_sel_id[64];
+static void livedesk_pdl_expand_tokens(const char *house_root, char *s, size_t cap) {
+    static const char *tok[] = { "{play}", "{playtest}", "{clock_sel}" };
+    for (int t = 0; t < 3; t++) {
+        char *at;
+        while ((at = strstr(s, tok[t]))) {
+            const char *val = t == 0 ? (khtpm_load_play_mode(house_root) ? "ON" : "OFF")
+                            : t == 1 ? (khtpm_load_playtest(house_root) ? "ON" : "OFF") : g_clock_sel_id;
+            char tail[KTB_PATH_BUF];
+            snprintf(tail, sizeof(tail), "%s", at + strlen(tok[t]));
+            snprintf(at, cap - (size_t)(at - s), "%s%s", val, tail);
+        }
+    }
+}
+
 static int livedesk_pdl_menu_rows(const char *house_root, const char *prefix,
                                   HQMenuItem *menu, int max) {
     char pdl[KTB_PATH_BUF];
@@ -3945,6 +3964,8 @@ static int livedesk_pdl_menu_rows(const char *house_root, const char *prefix,
         read_key_value(pdl, lkey, lab, sizeof(lab));
         read_key_value(pdl, ckey, cmd, sizeof(cmd));
         if (!lab[0]) continue;
+        livedesk_pdl_expand_tokens(house_root, lab, sizeof(lab));
+        livedesk_pdl_expand_tokens(house_root, cmd, sizeof(cmd));
         snprintf(menu[count].label, sizeof(menu[count].label), "%s", lab);
         snprintf(menu[count].command, sizeof(menu[count].command), "%s", cmd);
         count++;
@@ -3974,6 +3995,8 @@ static int livedesk_pdl_menu_rows_staged(const char *house_root, const char *cel
         read_key_value(pdl, lkey, lab, sizeof(lab));
         read_key_value(pdl, ckey, cmd, sizeof(cmd));
         if (!lab[0]) continue;
+        livedesk_pdl_expand_tokens(house_root, lab, sizeof(lab));
+        livedesk_pdl_expand_tokens(house_root, cmd, sizeof(cmd));
         snprintf(menu[count].label, sizeof(menu[count].label), "%s", lab);
         snprintf(menu[count].command, sizeof(menu[count].command), "%s", cmd);
         count++;
@@ -4489,48 +4512,10 @@ static int livedesk_build_game_slots_menu(const char *house_root, HQMenuItem *me
 }
 
 static int livedesk_build_player_menu(const char *house_root, HQMenuItem *menu, int max) {
+    /* Rows are data: livedesk_taskbar.pdl player_menu_N_label/_cmd (moved out of C 2026-10-21; {play} / {playtest} tokens carry the live ON/OFF).
+     * Per-row history (play-test 2026-10-06, stop 2026-09-15, blueprintz 2026-10-15, new-game 2026-10-16, save/load-game 2026-10-06) is in git. */
     int n = livedesk_pdl_menu_rows(house_root, "player", menu, max);
-    if (n > 0) return n;
-    /* fallback: hardcoded rows (used only when the .pdl defines no
-     * player_menu_N_* rows) */
-    if (n < max) {
-        int on = khtpm_load_play_mode(house_root);
-        snprintf(menu[n].label, sizeof(menu[n].label), "1.play: %s", on ? "ON" : "OFF");
-        snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:play-toggle");
-        n++;
-    }
-    /* play-test (owner 2026-10-06): the game runs AND editing is allowed. ON from off or plain play = play-test; OFF returns to plain play (use stop/play to leave). */
-    if (n < max) {
-        snprintf(menu[n].label, sizeof(menu[n].label), "play-test: %s", khtpm_load_playtest(house_root) ? "ON" : "OFF");
-        snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:playtest-toggle");
-        n++;
-    }
-    /* REAL, NEW 2026-09-15, direct live report ("our tb hq dropdown
-     * player is missing 'stop'" - same live report that added pc-hq's
-     * own Player dropdown, deliberately kept in sync with this menu's
-     * row set). Explicit force-off, distinct from the toggle above -
-     * "make sure it's definitely stopped" without reading the current
-     * label first. See ktb_hq_activate()'s own "livedesk:play-stop"
-     * handler. */
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "stop"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:play-stop"); n++; }
-    /* 2026-10-15 (owner: blueprintz belongs under player, it is the debugger): opens the blueprintz window (page events, Play / Pause / Step / Fire). Same script as the db menu's blueprintz row. */
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "blueprintz"); snprintf(menu[n].command, sizeof(menu[n].command), "sh _.monads/_.livedesk-taskbar/ops/open_blueprintz.sh"); n++; }
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "reset"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:reset-entities"); n++; }
-    /* 2026-10-16 (owner: "new game" belongs in every Player menu, tb included): record the state the desk is leaving, then start fresh. See the "livedesk:new-game" handler. */
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "new-game"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:new-game"); n++; }
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "Synch"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:synch-from-pchq"); n++; }
-    /* 2026-10-06 (owner request): save-game / load-game, each opens a 16-slot picker (PLAYER_MENU_SAVE / _LOAD) with Cancel (back). */
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "save-game"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:savegame-menu:save"); n++; }
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "load-game"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:savegame-menu:load"); n++; }
-    /* REAL FIX 2026-09-15, direct live correction ("u gave player in tb
-     * another notes-db (it already had one)") - a "notes-db" row here
-     * duplicated the real, already-existing GENERIC "notes-<cell>" row
-     * every header-cell menu already gets (ktb_hq_open()'s own real
-     * mechanism, ~line 4583 below: "notes-player" via #.desktop/
-     * scripts/notes.sh) - removed. pc-hq's own separate "Notes"
-     * dropdown row is unaffected (a different window, no pre-existing
-     * per-cell notes mechanism to duplicate there). */
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "Cancel"); menu[n].command[0] = '\0'; n++; }
+    if (n == 0 && max > 0) { snprintf(menu[0].label, sizeof(menu[0].label), "Cancel"); menu[0].command[0] = '\0'; n = 1; }   /* pdl missing: still dismissible */
     return n;
 }
 
@@ -4699,18 +4684,9 @@ static int livedesk_clock_rows(const char *house_root, HQMenuItem *menu, int max
 }
 
 static int livedesk_build_clock_menu(const char *house_root, HQMenuItem *menu, int max) {
-    /* TASKBAR-MENUS-DATA-DRIVEN.md §4 step 3 - "clock" was the one
-     * "REMAINING" debt-list entry that's actually STATIC (4 fixed
-     * rows, no directory scan), so it takes the exact same player/ai/
-     * db shape: pdl rows win when livedesk_taskbar.pdl defines any
-     * clock_menu_N_*, hardcoded rows are the count==0 fallback. */
+    /* Rows are data: livedesk_taskbar.pdl clock_menu_N_label/_cmd ({clock_sel} = the chosen clock). */
     int n = livedesk_pdl_menu_rows(house_root, "clock", menu, max);
-    if (n > 0) return n;
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "clocks & cals"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:clock:clocks"); n++; }
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "reminders"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:clock:reminders"); n++; }
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "game clocks"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:clock:game"); n++; }
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "clock as event…"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:clock:event-ez:%s", g_clock_sel_id); n++; }
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "Cancel"); menu[n].command[0] = '\0'; n++; }
+    if (n == 0 && max > 0) { snprintf(menu[0].label, sizeof(menu[0].label), "Cancel"); menu[0].command[0] = '\0'; n = 1; }
     return n;
 }
 
@@ -4908,8 +4884,6 @@ static int livedesk_build_user_menu(const char *house_root, HQMenuItem *menu, in
      * last (falls back to the old hardcoded "Cancel" only when the pdl
      * defines no post rows). */
     int n = livedesk_pdl_menu_rows_staged(house_root, "user", "pre", menu, max);
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "New User..."); snprintf(menu[n].command, sizeof(menu[n].command), "user:new"); n++; }
-
     char login_root[KTB_PATH_BUF];
     if (livedesk_login_root(house_root, login_root, sizeof(login_root))) {
         char users_dir[KTB_PATH_BUF];
