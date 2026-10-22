@@ -4159,6 +4159,26 @@ static void kh_ui_apply_scale(void);
  * site). Loaded by desktop_load_click_two_step() below, same file/same
  * function font_scale already uses - one settings reload path, not two. */
 static char g_ui_font_family[64] = "M+ 1m"; /* GameFont: RPG Maker's own font is the house default (owner 2026-10-08), registered by kh_bar_skin_load() */
+/* ONE font cache for the whole window (owner 2026-10-22, "check cpu... make sure we fix that everywhere"). draw (khtpm_draw_core.c font_for), text measurement (kh_measure_text_px) and the
+ * dock font each kept their OWN single slot, so a window that alternates two font specs (regular / bold, two sizes - every board) closed and re-opened a font through fontconfig on every label:
+ * a SIGPROF sampler on the live rpg-edit board window put font_for -> XftFontOpenName -> FcFontMatch at 55 percent of its CPU. One slot per distinct spec (a window uses a handful); only past
+ * KH_FONT_CACHE_N distinct specs is the oldest slot closed and reused. Callers must NOT XftFontClose() the result. */
+#define KH_FONT_CACHE_N 48
+static XftFont *kh_font_cached(const char *spec, const char *fallback) {
+    static char specs[KH_FONT_CACHE_N][128];
+    static XftFont *fonts[KH_FONT_CACHE_N];
+    static int nfonts = 0, last_hit = 0, evict = 0;
+    if (nfonts && strcmp(specs[last_hit], spec) == 0) return fonts[last_hit];
+    for (int i = 0; i < nfonts; i++) if (strcmp(specs[i], spec) == 0) { last_hit = i; return fonts[i]; }
+    XftFont *f = XftFontOpenName(dpy, screen, spec);
+    if (!f && fallback) f = XftFontOpenName(dpy, screen, fallback);
+    int slot;
+    if (nfonts < KH_FONT_CACHE_N) slot = nfonts++;
+    else { slot = evict; evict = (evict + 1) % KH_FONT_CACHE_N; if (fonts[slot]) XftFontClose(dpy, fonts[slot]); }
+    snprintf(specs[slot], sizeof(specs[slot]), "%s", spec);
+    fonts[slot] = f; last_hit = slot;
+    return f;
+}
 /* Curated font-family picker list (Settings' own "Font -/+ " cycle) -
  * real fontconfig names, real TrueType fonts already covered by this
  * house's own font stack (fontconfig substitutes a close match for any
@@ -4641,8 +4661,7 @@ static int elem_has_class(Elem *e, const char *cls) {
 #define WM_DEFAULT_PCT_H 67
 
 
-/* Real, single-slot font cache for text measurement, ported verbatim
- * (khtpm-merge-how2.md §3.2's own cache pattern, already proven). */
+/* Text measurement through the shared multi-entry font cache kh_font_cached() above (it was a single-slot cache of its own). */
 static int kh_measure_text_px(const CssStyle *st, const char *text) {
     if (g_headless) {
         /* no Xft without a display - estimate: ~0.55em advance per
@@ -4661,18 +4680,7 @@ static int kh_measure_text_px(const CssStyle *st, const char *text) {
     int size = zoomed(st->has_font_size ? st->font_size : 12);
     snprintf(spec, sizeof(spec), "%s:pixelsize=%d%s", fam, size, (st->has_font_weight && st->font_weight_bold) ? ":bold" : "");
 
-    static char cached_spec[128] = "";
-    static XftFont *cached_font = NULL;
-    XftFont *f;
-    if (cached_font && strcmp(cached_spec, spec) == 0) {
-        f = cached_font;
-    } else {
-        if (cached_font) XftFontClose(dpy, cached_font);
-        f = XftFontOpenName(dpy, screen, spec);
-        if (!f) f = XftFontOpenName(dpy, screen, "DejaVu Sans:pixelsize=10");
-        cached_font = f;
-        snprintf(cached_spec, sizeof(cached_spec), "%s", spec);
-    }
+    XftFont *f = kh_font_cached(spec, "DejaVu Sans:pixelsize=10");
     if (!f) return (int)strlen(text) * 8;
     XGlyphInfo ext;
     XftTextExtentsUtf8(dpy, f, (const FcChar8 *)text, (int)strlen(text), &ext);
@@ -7786,17 +7794,9 @@ static XftFont *dock_font(void) {
     if (g_dock_font_px <= 0) return font_ui;
     /* cache keyed by the whole spec (family + size): a family switch (GameFont while a bar skin is on)
      * must re-measure, or cells get sized with the old font and the new one wraps inside them */
-    static char cached_spec[128] = "";
-    static XftFont *cached = NULL;
     char spec[128];
     snprintf(spec, sizeof(spec), "%s:pixelsize=%d", g_ui_font_family, g_dock_font_px);
-    if (cached && strcmp(cached_spec, spec) == 0) return cached;
-    if (cached) XftFontClose(dpy, cached);
-    XftFont *f = XftFontOpenName(dpy, screen, spec);
-    if (!f) f = XftFontOpenName(dpy, screen, "DejaVu Sans:pixelsize=9");
-    cached = f;
-    snprintf(cached_spec, sizeof(cached_spec), "%s", spec);
-    return f;
+    return kh_font_cached(spec, "DejaVu Sans:pixelsize=9");      /* the shared cache: a family switch just selects another slot */
 }
 
 static int dock_text_px(const char *s) {
@@ -12828,7 +12828,11 @@ static void redraw_body(void) {
         XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &tcol); XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &hcol);
     }
     XSync(dpy, False);
-    XImage *frame = XGetImage(dpy, buf, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h, AllPlanes, ZPixmap);
+    /* KH_PRESENT_COPY=1 (opt-in, default unchanged): present with ONE server-side XCopyArea instead of XGetImage + XPutImage, which reads the whole back buffer
+     * (about 5.6 MB for a board window) through the X socket and sends it straight back on every redraw. Measured as the second hotspot of a board window
+     * (hq_idle_tick -> XGetImage, 32 percent of its CPU). Left opt-in because the XGetImage path is the house-wide present ("proven pixel-identical"). */
+    static int present_copy = -1; if (present_copy < 0) present_copy = getenv("KH_PRESENT_COPY") != NULL;
+    XImage *frame = present_copy ? NULL : XGetImage(dpy, buf, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h, AllPlanes, ZPixmap);
     if (frame) {
         XPutImage(dpy, win, gc, frame, 0, 0, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h);
         XDestroyImage(frame);

@@ -109,15 +109,9 @@ static XftFont *font_for(const CssStyle *st) {
     int size = zoomed(st->has_font_size ? st->font_size : 12);
     snprintf(spec, sizeof(spec), "%s:pixelsize=%d%s", fam, size, (st->has_font_weight && st->font_weight_bold) ? ":bold" : "");
 
-    static char cached_spec[128] = "";
-    static XftFont *cached_font = NULL;
-    if (cached_font && strcmp(cached_spec, spec) == 0) return cached_font;
-    if (cached_font) XftFontClose(dpy, cached_font);
-    XftFont *f = XftFontOpenName(dpy, screen, spec);
-    if (!f) f = XftFontOpenName(dpy, screen, "DejaVu Sans:pixelsize=10");
-    cached_font = f;
-    snprintf(cached_spec, sizeof(cached_spec), "%s", spec);
-    return f;
+    /* kh_font_cached(): the window's one multi-entry font cache, declared in khtpm_core_render.c before this file is #include'd (owner 2026-10-22: the single slot that used to be here
+     * re-opened a font through fontconfig on every label whenever two specs alternated - 55 percent of a board window's CPU). Callers still must NOT XftFontClose() the result. */
+    return kh_font_cached(spec, "DejaVu Sans:pixelsize=10");
 }
 
 /* ---------- REAL sprite textures (2026-08-25, Stage 2 palettes port -
