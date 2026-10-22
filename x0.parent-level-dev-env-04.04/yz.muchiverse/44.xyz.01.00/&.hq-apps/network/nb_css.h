@@ -79,6 +79,14 @@ typedef struct NbCssStyle {
      * carries; `padding: 1px 2px` parses its first component. */
     double pad_top, pad_bottom, mar_top, mar_bottom;
     int has_pad_top, has_pad_bottom, has_mar_top, has_mar_bottom;
+    /* Position (2026-10-21). Mirrors khtpm_css_parser.h: position_absolute,
+     * position_fixed, top, left, z_index. Used by layout_xy() for
+     * fixed/absolute positioning. */
+    int has_position;       int position_absolute;  /* 0=static/relative, 1=absolute */
+    int position_fixed;     /* 1=fixed (viewport-relative), 0=absolute/relative */
+    int has_top;            double top;    /* px, signed */
+    int has_left;           double left;   /* px, signed */
+    int has_z_index;        int z_index;   /* stacking context */
 } NbCssStyle;
 
 /* Parse CSS text into a fresh NbCss (never NULL; rules may be 0). Free with

@@ -1330,6 +1330,42 @@ static double nb_outer_h(NbNode *n) {
 
 static void layout_xy(NbNode *n, double *out_x, double *out_y) {
     if (!n || layout_hidden_anc(n)) { *out_x = 0; *out_y = 0; return; }
+    NbCssStyle st;
+    nb_css_resolve(g_css, n, nb_attr_get(n, "style"), &st);
+    /* position:absolute or position:fixed handling - positioned elements
+     * are taken out of normal flow and positioned via top/left. */
+    if (st.has_position && (st.position_absolute || st.position_fixed)) {
+        double x = st.has_left ? st.left : 0;
+        double y = st.has_top ? st.top : 0;
+        if (st.position_fixed) {
+            /* fixed: relative to viewport (window), not parent. Viewport
+             * origin is (0,0) at window top-left. g_viewport_px is width. */
+            *out_x = x;
+            *out_y = y;
+            return;
+        }
+        /* absolute: relative to nearest positioned ancestor (one with
+         * has_position). relative/absolute/fixed all create positioning
+         * contexts. If none, use viewport. */
+        NbNode *anc = n->parent;
+        while (anc && anc->tag) {
+            NbCssStyle ast;
+            nb_css_resolve(g_css, anc, nb_attr_get(anc, "style"), &ast);
+            if (ast.has_position) {
+                layout_xy(anc, out_x, out_y);
+                *out_x += x;
+                *out_y += y;
+                return;
+            }
+            anc = anc->parent;
+        }
+        /* no positioned ancestor: fall back to viewport origin */
+        *out_x = x;
+        *out_y = y;
+        return;
+    }
+
+    /* normal flow layout - original code continues below */
     double x = 0, y = 0;
     if (n->parent && n->parent->tag) {
         double px, py;

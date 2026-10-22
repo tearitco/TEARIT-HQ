@@ -643,10 +643,16 @@ static void css_layout_pass(Elem *e, int x, int y, int avail_w, int avail_h) {
         int k = 0;
         for (int i = 0; i < n; i++) {
             Elem *c = e->children[i];
-            if (c->style.has_position && c->style.position_absolute) {
+            if (c->style.has_position && (c->style.position_absolute || c->style.position_fixed)) {
                 int t = c->style.has_top ? c->style.top : 0;
                 int l = c->style.has_left ? c->style.left : 0;
-                css_layout_pass(c, e->x + l, e->y + t, c->w, c->h);
+                if (c->style.position_fixed) {
+                    /* fixed: relative to viewport (window), not parent */
+                    extern int g_win_w, g_win_h;
+                    css_layout_pass(c, l, t, c->w, c->h);
+                } else {
+                    css_layout_pass(c, e->x + l, e->y + t, c->w, c->h);
+                }
                 continue;
             }
             int col = k % cols;
@@ -670,10 +676,15 @@ static void css_layout_pass(Elem *e, int x, int y, int avail_w, int avail_h) {
         int cx = x0, cy = y0, line_h = 0;
         for (int i = 0; i < n; i++) {
             Elem *c = e->children[i];
-            if (c->style.has_position && c->style.position_absolute) {
+            if (c->style.has_position && (c->style.position_absolute || c->style.position_fixed)) {
                 int t = c->style.has_top ? c->style.top : 0;
                 int l = c->style.has_left ? c->style.left : 0;
-                css_layout_pass(c, e->x + l, e->y + t, c->w, c->h);
+                if (c->style.position_fixed) {
+                    extern int g_win_w, g_win_h;
+                    css_layout_pass(c, l, t, c->w, c->h);
+                } else {
+                    css_layout_pass(c, e->x + l, e->y + t, c->w, c->h);
+                }
                 continue;
             }
             int cw = c->style.has_width  ? c->style.width  : (c->w > 0 ? c->w : 40);
@@ -702,7 +713,7 @@ static void css_layout_pass(Elem *e, int x, int y, int avail_w, int avail_h) {
     int fixed_total = 0, grow_total = 0, flow_count = 0;
     for (int i = 0; i < n; i++) {
         Elem *c = e->children[i];
-        if (c->style.has_position && c->style.position_absolute) continue; /* real pattern #5 - out of flow entirely */
+        if (c->style.has_position && (c->style.position_absolute || c->style.position_fixed)) continue; /* out of flow entirely */
         flow_count++;
         int c_grow = c->style.has_flex_grow ? c->style.flex_grow : 0;
         if (c_grow > 0) { grow_total += c_grow; continue; }
@@ -721,10 +732,15 @@ static void css_layout_pass(Elem *e, int x, int y, int avail_w, int avail_h) {
     int cross_size = (is_row ? e->h : e->w) - 2 * pad;
     for (int i = 0; i < n; i++) {
         Elem *c = e->children[i];
-        if (c->style.has_position && c->style.position_absolute) {
+        if (c->style.has_position && (c->style.position_absolute || c->style.position_fixed)) {
             int t = c->style.has_top ? c->style.top : 0;
             int l = c->style.has_left ? c->style.left : 0;
-            css_layout_pass(c, e->x + l, e->y + t, c->w, c->h);
+            if (c->style.position_fixed) {
+                extern int g_win_w, g_win_h;
+                css_layout_pass(c, l, t, c->w, c->h);
+            } else {
+                css_layout_pass(c, e->x + l, e->y + t, c->w, c->h);
+            }
             continue;
         }
         int c_grow = c->style.has_flex_grow ? c->style.flex_grow : 0;

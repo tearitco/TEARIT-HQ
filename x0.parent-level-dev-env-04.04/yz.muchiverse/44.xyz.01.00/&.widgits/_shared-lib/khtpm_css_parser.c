@@ -98,7 +98,9 @@ static void parse_declaration(const char *prop, const char *val, CssStyle *out) 
         out->has_border_width = 1; out->border_width = w;
         out->has_border_color = 1; snprintf(out->border_color, sizeof(out->border_color), "%s", color);
     } else if (strcmp(prop, "position") == 0) {
-        out->has_position = 1; out->position_absolute = (strcmp(v, "absolute") == 0);
+        out->has_position = 1;
+        out->position_absolute = (strcmp(v, "absolute") == 0);
+        out->position_fixed = (strcmp(v, "fixed") == 0);
     } else if (strcmp(prop, "top") == 0) {
         out->has_top = 1; out->top = css_len(v);
     } else if (strcmp(prop, "left") == 0) {

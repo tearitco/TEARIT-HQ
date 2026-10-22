@@ -22,6 +22,7 @@ typedef struct {
     int has_border_color;  char border_color[32];
     int has_border_width;  int border_width;
     int has_position;      int position_absolute; /* 0=relative/static, 1=absolute */
+    int position_fixed;    /* 1=fixed (viewport-relative), 0=absolute/relative */
     int has_top;            int top;    /* px, signed */
     int has_left;           int left;   /* px, signed */
     int has_width;           int width;   int width_is_pct;

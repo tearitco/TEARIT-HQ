@@ -253,7 +253,9 @@ NbCss *nb_css_parse(const char *text, size_t len) {
 enum { PD_DISPLAY = 0, PD_VIS, PD_OP, PD_W, PD_H,
        PD_PAD_TOP, PD_PAD_BOTTOM, PD_MAR_TOP, PD_MAR_BOTTOM,
        PD_FLEX_DIR, PD_FLEX_GROW,
-       PD_GRID_TEMPLATE_COLUMNS, PD_COUNT };
+       PD_GRID_TEMPLATE_COLUMNS,
+       PD_POSITION, PD_TOP, PD_LEFT, PD_Z_INDEX,
+       PD_COUNT };
 
 static int prop_id(const char *key) {
     if (strcmp(key, "display") == 0) return PD_DISPLAY;
@@ -270,6 +272,10 @@ static int prop_id(const char *key) {
     if (strcmp(key, "flex-direction") == 0) return PD_FLEX_DIR;
     if (strcmp(key, "flex-grow") == 0) return PD_FLEX_GROW;
     if (strcmp(key, "grid-template-columns") == 0) return PD_GRID_TEMPLATE_COLUMNS;
+    if (strcmp(key, "position") == 0) return PD_POSITION;
+    if (strcmp(key, "top") == 0) return PD_TOP;
+    if (strcmp(key, "left") == 0) return PD_LEFT;
+    if (strcmp(key, "z-index") == 0) return PD_Z_INDEX;
     return -1;
 }
 
@@ -462,6 +468,69 @@ static void apply_decl(int pid, const char *val, size_t vlen, int important,
                 else if (pid == PD_PAD_BOTTOM) { out->pad_bottom = dv; out->has_pad_bottom = 1; }
                 else if (pid == PD_MAR_TOP) { out->mar_top = dv; out->has_mar_top = 1; }
                 else { out->mar_bottom = dv; out->has_mar_bottom = 1; }
+                scores[pid] = score;
+            }
+        }
+        break;
+    }
+    case PD_POSITION:
+        if (score >= scores[pid]) {
+            if (strcasecmp(cv, "absolute") == 0) {
+                out->has_position = 1; out->position_absolute = 1; out->position_fixed = 0;
+            } else if (strcasecmp(cv, "fixed") == 0) {
+                out->has_position = 1; out->position_absolute = 1; out->position_fixed = 1;
+            } else if (strcasecmp(cv, "relative") == 0) {
+                /* relative: creates positioning context but stays in flow.
+                 * has_position=1, position_absolute=0 marks it as a
+                 * positioned ancestor for absolute children. */
+                out->has_position = 1; out->position_absolute = 0; out->position_fixed = 0;
+            } else {
+                /* static/others: no positioning context */
+                out->has_position = 0; out->position_absolute = 0; out->position_fixed = 0;
+            }
+            scores[pid] = score;
+        }
+        break;
+    case PD_TOP: {
+        char tmp[64];
+        int i2 = 0;
+        const char *v2 = clean_value(val, vlen, tmp, sizeof(tmp), &i2);
+        char *ep = NULL;
+        double dv = strtod(v2, &ep);
+        while (ep && is_ws(*ep)) ep++;
+        if (ep && ep != v2 && (*ep == 0 || (ep[0] == 'p' && ep[1] == 'x' && ep[2] == 0))) {
+            if (score >= scores[pid]) {
+                out->top = dv; out->has_top = 1;
+                scores[pid] = score;
+            }
+        }
+        break;
+    }
+    case PD_LEFT: {
+        char tmp[64];
+        int i2 = 0;
+        const char *v2 = clean_value(val, vlen, tmp, sizeof(tmp), &i2);
+        char *ep = NULL;
+        double dv = strtod(v2, &ep);
+        while (ep && is_ws(*ep)) ep++;
+        if (ep && ep != v2 && (*ep == 0 || (ep[0] == 'p' && ep[1] == 'x' && ep[2] == 0))) {
+            if (score >= scores[pid]) {
+                out->left = dv; out->has_left = 1;
+                scores[pid] = score;
+            }
+        }
+        break;
+    }
+    case PD_Z_INDEX: {
+        char tmp[64];
+        int i2 = 0;
+        const char *v2 = clean_value(val, vlen, tmp, sizeof(tmp), &i2);
+        char *ep = NULL;
+        long iv = strtol(v2, &ep, 10);
+        while (ep && is_ws(*ep)) ep++;
+        if (ep && ep != v2 && *ep == 0) {
+            if (score >= scores[pid]) {
+                out->z_index = (int)iv; out->has_z_index = 1;
                 scores[pid] = score;
             }
         }
