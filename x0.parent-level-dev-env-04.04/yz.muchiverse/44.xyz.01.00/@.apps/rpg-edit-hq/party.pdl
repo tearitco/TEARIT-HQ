@@ -16,4 +16,8 @@ PET | Asa      | asa                 | A |  60 |  80 | 200 | 10 | 14
 PET | robot    | robot_chat_001      | r | 180 | 180 | 190 | 11 | 15
 # DOOR | name   the pet that walks through the building doors (the others stay outside)
 DOOR | Ava
-PET | Pal 9 | none | p | 124 | 116 | 112 | 12 | 14
+PET | Pal 9 | terumon_orange | p | 124 | 116 | 112 | 12 | 14
+PET | Pal 10 | terumon_yellow | p | 177 | 213 | 141 | 13 | 14
+PET | Pal 11 | terumon_pink | p | 230 | 130 | 170 | 9 | 15
+PET | Pal 12 | terumon_black | p | 103 | 227 | 199 | 10 | 15
+PET | Pal 13 | none | p | 156 | 144 | 228 | 11 | 15
