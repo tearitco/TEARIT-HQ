@@ -38,11 +38,11 @@ What a pet IS (rpg-pet, same in the clones):
 - The count is fixed in code: `#define NP 6` sizes `party[]`, `others[]` and the per-pet state files.
 - rpg-edit-hq has eight pets hard-coded in `rpg_edit.c`.
 
-Plan:
+Built (2026-10-21), as a smaller step than the plan first wrote down:
 
-1. A "pals" tab (new toolbar tab next to the Pets / Cast one) with rows: each pal (select), "+ new pal", "- cancel -".
-2. `newpal` verb: next free ACTOR id and a name (`Pal N`), an `ACTOR` block with default stats, a member row in `RpgPetParty`, a `PET` row in `party.pdl` (next unused sheet index), then select it. The uid file is made by the existing code on first load.
-3. Raise `NP` (6 -> 12) and check every array sized by it and the UI rows (`n_party`, `party_N` rows, footer cells); keep the existing six first so saved state stays valid.
-4. The DB is house-wide (db-hq shows these actors): the new actor must be marked as made by the board (note column) so it can be found and removed; "remove pal" is the matching verb.
-5. Clones: the same verb, one op each; rpg-edit-hq: pets are code, so "pals" there appends to a `pals.txt` the daemon reads.
-Execution status: see the HANDOFF / commit that follows this document.
+1. A **Pals** toolbar tab (right after Pets / Cast) with `+ new pal`, `- remove last pal`, `- cancel -`, in the board and the standalone window of rpg-pet and the seven clones.
+2. `newpal` verb: appends `PAL | pal_N | Pal N | <monster picture index>` to the app's own `pals.pdl` and selects it. `load_party()` reads `pals.pdl` after the DB members: default stats (40 hp, 20 mp, 10 atk / def / agi / luk, 8 mat / mdf), the picture sheet of the first pet. `delpal` drops the last row. The entity uid (and so the wallet identity) is made by the existing code on first use (`state/uid_pal_N.txt`).
+3. `NP` 6 -> 8 (the 8 Monster.png pictures). The pets arrays and per-pet loops follow `NP`; the saved state of the original six is untouched. At 8 the verb answers "no more pals (the house holds 8 pets)".
+4. **Decision: app-local `pals.pdl`, not the house DB.** The plan wanted a new ACTOR in `&.widgits/db-hq/data`, but that DB is shared by db-hq and every app; a board button creating house-wide records is a bigger decision than "+ new". Moving a pal into the DB (ACTOR id, `RpgPetParty` member row) is a later step, with a "remove" that can find what the board made.
+5. Not done: rpg-edit-hq (its eight pets are code in `rpg_edit.c`; a `pals.txt` read by the daemon is the way), a pal with its own picture choice (it takes the next monster index, the sheet of the first pet), voices, chat greetings and relations for pals beyond the defaults, pet-trainer.
+Evidence: rpg-pet and the seven clones rebuilt; `newpal` x2, `delpal` x2 on each (pals.pdl grew to 2 rows then emptied; "watching Pal 1 / Pal 2"); rpg-pet board window showed the Pals tab and "chat - Pal 1" with the pal's stats. The Pals dropdown rows themselves were not seen opened (a click on the tab only moved nav focus in my run).

@@ -61,7 +61,7 @@
 #define START_COINS 500
 #define MAXI 40
 #define MAXP 200
-#define NP 6
+#define NP 8      /* the party: up to 6 DB monsters + the pals made with "+ new pal" (pals.pdl); 8 = the 8 Monster.png pictures */
 
 typedef struct { char key[32], label[40], sheet[24], effect[12]; int price, c, r, w, h, wall; } Item;
 typedef struct { char id[16], name[32]; int fc, fr, outdoor; } Room;
@@ -191,6 +191,10 @@ static void load_party(void) {
     snprintf(p, sizeof p, "%s/system.pdl", db);
     if ((fp = fopen(p, "r"))) { while (fgets(line, sizeof line, fp)) { if (split_bar(line, f, 3) < 3 || strcmp(f[0], "SYSTEM")) continue; if (!strcmp(f[1], "name")) { inparty = !strcmp(f[2], getenv("PET_PARTY") && getenv("PET_PARTY")[0] ? getenv("PET_PARTY") : "RpgPetParty"); inhero = !strcmp(f[2], "Party"); } else if (inhero && !strcmp(f[1], "member1")) snprintf(hero.name, 24, "%s", f[2]); else if (inparty && !strncmp(f[1], "member", 6) && nn < NP) snprintf(names[nn++], 24, "%s", f[2]); } fclose(fp); }
     for (int i = 0; i < nn; i++) { memset(&party[nparty], 0, sizeof party[nparty]); snprintf(party[nparty].name, 24, "%s", names[i]); snprintf(party[nparty].id, 16, "%s", names[i]); for (char *c = party[nparty].id; *c; c++) if (*c >= 'A' && *c <= 'Z') *c += 32; party[nparty].idx = i; snprintf(party[nparty].sheet, 24, "Monster"); nparty++; }
+    snprintf(p, sizeof p, "%s/pals.pdl", APP);      /* pals: PAL | id | name | monster picture index. Made by the Pals menu (newpal), app-local: the house DB is not touched */
+    if ((fp = fopen(p, "r"))) { while (fgets(line, sizeof line, fp)) { char *g[6]; if (split_bar(line, g, 6) < 4 || strcmp(g[0], "PAL") || nparty >= NP) continue;
+        memset(&party[nparty], 0, sizeof party[nparty]); snprintf(party[nparty].id, 16, "%s", g[1]); snprintf(party[nparty].name, 24, "%s", g[2]); snprintf(party[nparty].nick, 24, "pal"); snprintf(party[nparty].profile, 96, "A pal made in the Pals menu.");
+        party[nparty].idx = atoi(g[3]) & 7; snprintf(party[nparty].sheet, 24, "Monster"); party[nparty].mhp = 40; party[nparty].mmp = 20; party[nparty].atk = party[nparty].def = party[nparty].agi = party[nparty].luk = 10; party[nparty].mat = party[nparty].mdf = 8; nparty++; } fclose(fp); }
     snprintf(p, sizeof p, "%s/actors.pdl", db); int cur = -1, curh = 0;
     if ((fp = fopen(p, "r"))) { while (fgets(line, sizeof line, fp)) { if (split_bar(line, f, 3) < 3 || strcmp(f[0], "ACTOR")) continue;
         if (!strcmp(f[1], "name")) { cur = -1; for (int i = 0; i < nparty; i++) if (!strcmp(party[i].name, f[2])) cur = i; curh = !strcmp(f[2], hero.name); continue; }
@@ -851,6 +855,18 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
         if (!strcmp(argv[1], hid)) { g_ctl_why = "select-hero-row"; set_flag("ctl", "player"); set_flag("follow", "player"); calc_view(); snprintf(msg, cap, "%s, the hero (owner of the monsters), in the %s - INT controls him", hero.name, rooms[tr.room].name); return; }
         int k = -1; for (int i = 0; i < nparty; i++) if (!strcmp(party[i].id, argv[1])) k = i; if (k < 0) { snprintf(msg, cap, "no pet %s", argv[1]); return; }
         char p[PATH_MAX], bb[40]; spath(p, "active.txt"); snprintf(bb, sizeof bb, "%s\n", party[k].id); write_if_changed(p, bb, strlen(bb)); set_flag("follow", "pet"); set_flag("ctl", "pet"); active = k; calc_view(); snprintf(msg, cap, "watching %s (in the %s)", party[k].name, rooms[others[k].room].name); return; }
+    if (!strcmp(v, "newpal")) {       /* the Pals menu "+ new pal": a new pet row in pals.pdl (default stats, next monster picture), then select it */
+        if (nparty >= NP) { snprintf(msg, cap, "no more pals (the house holds %d pets)", NP); return; }
+        int n = 1; char id[24], pp[PATH_MAX];
+        for (;;) { snprintf(id, sizeof id, "pal_%d", n); int dup = 0; for (int i = 0; i < nparty; i++) if (!strcmp(party[i].id, id)) dup = 1; if (!dup) break; n++; }
+        snprintf(pp, sizeof pp, "%s/pals.pdl", APP); FILE *pf = fopen(pp, "a"); if (!pf) { snprintf(msg, cap, "cannot write pals.pdl"); return; }
+        fprintf(pf, "PAL | %s | Pal %d | %d\n", id, n, nparty & 7); fclose(pf);
+        load_data(); char *sa[2] = { "select", id }; verb(2, sa, msg, cap); return; }
+    if (!strcmp(v, "delpal")) {       /* the Pals menu "- remove last pal": drops the last PAL row (its saved state file stays, harmless) */
+        char pp[PATH_MAX], keep[8192] = ""; snprintf(pp, sizeof pp, "%s/pals.pdl", APP); FILE *pf = fopen(pp, "r"); if (!pf) { snprintf(msg, cap, "no pals to remove"); return; }
+        char ln[300], last[300] = ""; size_t o = 0; while (fgets(ln, sizeof ln, pf)) { if (!strncmp(ln, "PAL", 3)) { if (last[0] && o + strlen(last) < sizeof keep) { memcpy(keep + o, last, strlen(last)); o += strlen(last); } snprintf(last, sizeof last, "%s", ln); } else if (o + strlen(ln) < sizeof keep) { memcpy(keep + o, ln, strlen(ln)); o += strlen(ln); } } fclose(pf);
+        if (!last[0]) { snprintf(msg, cap, "no pals to remove"); return; }
+        keep[o] = 0; pf = fopen(pp, "w"); if (pf) { fputs(keep, pf); fclose(pf); } load_data(); if (active >= nparty) active = 0; snprintf(msg, cap, "removed the last pal"); return; }
     if (!strcmp(v, "newroom")) {      /* the Rooms menu "+ new room": an empty room row appended to rooms.pdl (floor Inside_A5 1,2), then the window goes there like goto */
         if (nroom >= 8) { snprintf(msg, cap, "no more rooms (the house holds 8)"); return; }
         int n = nroom + 1; char id[24]; do { snprintf(id, sizeof id, "room_%d", n++); } while (room_idx(id) >= 0);
