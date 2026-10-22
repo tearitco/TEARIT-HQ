@@ -49,3 +49,4 @@ command runs on.
   a one-page copy is `XO/25.games-plan/10-IMG-HAI-DOCS.html`.**
 - `IMG-HAI-BREAKTHROUGH.md` - class-style lesson on the word-to-judged-pixel-art loop: what is proven or not, ten lessons, exercises, next steps.
 - `PETSLIKE-NEW-ENTRIES.md` - the "+ new page / book / room" rows of every pets-like board (two families, what each verb does, evidence) and the research + plan for "+ new pet" under a "pals" tab.
+- `PETSLIKE-FRAMEWORK-PLAN.md` - are the pets-like boards one framework yet (no): what exists, measured duplication of the eight copies, the best-of table, proposed core + rules + data split, the diff gate.
