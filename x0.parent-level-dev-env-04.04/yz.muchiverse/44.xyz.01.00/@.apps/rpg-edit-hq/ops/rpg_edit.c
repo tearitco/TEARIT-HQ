@@ -71,11 +71,11 @@ static void find_assets(void) {
     ASSETS[0] = 0;
 }
 
-typedef struct { int x, y, dir, room, r, g, b, steps, art; char name[16]; char letter; } Pet;     /* art = 1: terumon frames exist, so events.txt names charset "terumon" and this index */
+typedef struct { int x, y, dir, room, door, r, g, b, steps, art; char name[16]; char letter; } Pet;     /* art = 1: terumon frames exist, so events.txt names charset "terumon" and this index */
 #define MAXPET 16
 static Pet pet[MAXPET]; static int npet;      /* the roster: party.pdl */
 static char artid[MAXPET][48];
-static int doorpet = -1;      /* the pet that uses doors (party.pdl DOOR | name); -1 = nobody */
+static int doorpet = -1;      /* the pet the board page follows through a door when built with -DFOLLOW_AVA (party.pdl DOOR | name); every pet uses the doors */
 static char glyph[2][ROWS][COLS + 1];
 static int fs[2][ROWS][COLS], ws[2][ROWS][COLS], cdep[2][ROWS][COLS];      /* cdep: blocks hung under the cell (negative z), tapered by taper_islands() */
 
@@ -344,18 +344,21 @@ static void step_all(void) {
         int desk = pet[i].room;
         if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) continue;
         if (glyph[desk][ny][nx] == 'D') {
-            if (i != doorpet) continue; /* the door pet (party.pdl DOOR row) is the one who uses doors */
             if (desk == 0) {      /* any island door leads into the shared interior; remember which one */
-                for (int k = 0; k < ndoor; k++) if (doorx[k] == nx && doory[k] == ny) lastdoor = k;
+                for (int k = 0; k < ndoor; k++) if (doorx[k] == nx && doory[k] == ny) lastdoor = pet[i].door = k;
                 pet[i].room = 1; pet[i].x = IW / 2; pet[i].y = ROWS - 3;
+                for (int t = 0; t < 40; t++) {      /* the first free cell near the cabin door, not on top of a pet already inside */
+                    int cx = IW / 2 + (t % 5) - 2, cy = ROWS - 3 - t / 5, occ = 0;
+                    for (int k = 0; k < npet; k++) if (k != i && pet[k].room == 1 && pet[k].x == cx && pet[k].y == cy) occ = 1;
+                    if (!occ && !blocked(1, cx, cy) && glyph[1][cy][cx] != 'D') { pet[i].x = cx; pet[i].y = cy; break; } }
             } else {              /* back out beside the door she came in by (down, left, right, up: the first walkable cell) */
                 static const int ox[4] = {0, -1, 1, 0}, oy[4] = {1, 0, 0, -1};
-                int bx = doorx[lastdoor], by = doory[lastdoor];
+                int bx = doorx[pet[i].door], by = doory[pet[i].door];
                 pet[i].room = 0; pet[i].x = bx; pet[i].y = by;
                 for (int k = 0; k < 4; k++) if (!blocked(0, bx + ox[k], by + oy[k]) && glyph[0][by + oy[k]][bx + ox[k]] != 'D') { pet[i].x = bx + ox[k]; pet[i].y = by + oy[k]; break; }
             }
             pet[i].dir = dir;
-            { char t[48]; snprintf(t, sizeof t, "%s door %d", pet[i].room ? "went in at" : "came out of", lastdoor); say(pet[i].name, t); }
+            { char t[48]; snprintf(t, sizeof t, "%s door %d", pet[i].room ? "went in at" : "came out of", pet[i].door); say(pet[i].name, t); }
             follow_ava();
             continue;
         }
@@ -451,6 +454,16 @@ int main(int argc, char **argv) {
             char cp[PATH_MAX]; int avg[3] = {pet[i].r, pet[i].g, pet[i].b}; snprintf(cp, sizeof cp, "%s/art/%s.csv", APP, artid[i]);
             if (csv_write_frames(cp, fd, "terumon", i, avg)) { pet[i].art = 1; pet[i].r = avg[0]; pet[i].g = avg[1]; pet[i].b = avg[2]; }
             else fprintf(stderr, "rpg_edit: no art for %s (%s)\n", pet[i].name, cp);
+        }
+    }
+    {   /* the footer's entity images: the projector draws <PCHQ>/pieces/<event id>/sprite.csv (event id = roster index + 1), the same file as the pet's art csv */
+        for (int i = 0; i < npet; i++) {
+            if (!pet[i].art) continue;
+            char sd[PATH_MAX], src[PATH_MAX]; snprintf(sd, sizeof sd, "%s/pieces/%d", PCHQ, i + 1); mkdir(sd, 0755);
+            snprintf(src, sizeof src, "%s/art/%s.csv", APP, artid[i]); strncat(sd, "/sprite.csv", sizeof sd - strlen(sd) - 1);
+            FILE *in_ = fopen(src, "rb"), *out = in_ ? fopen(sd, "wb") : NULL; char cb[8192]; size_t cn;
+            while (out && (cn = fread(cb, 1, sizeof cb, in_)) > 0) fwrite(cb, 1, cn, out);
+            if (out) fclose(out); if (in_) fclose(in_);
         }
     }
     {   /* wide islands: this map sets its own fog (the house default fades everything past 48 cells to sky) */
