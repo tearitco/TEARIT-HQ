@@ -322,6 +322,17 @@ static void follow_ava(void) {
     fprintf(f, "CONFIRM_SET_DESK:%s\n", doorpet >= 0 && pet[doorpet].room ? "cabin" : "start");
     fclose(f);
 }
+/* An idle engine only renders on input (BOOK 16.game/PETSLIKE-FRAMEWORK-PLAN.md, same rule as petslike_core.c): after the pets stepped, append the no-op key 126 to this board's engine session relay so the 3D view redraws the moved sprites. The session is the bv_session= line of board/state/ui.txt. */
+static void nudge_engine(void) {
+    char up[PATH_MAX], ub[2048], sess[PATH_MAX] = "", rp[PATH_MAX]; snprintf(up, sizeof up, "%s/board/state/ui.txt", APP);
+    FILE *f = fopen(up, "r"); if (!f) return;
+    size_t n = fread(ub, 1, sizeof ub - 1, f); ub[n] = 0; fclose(f);
+    for (char *l = strtok(ub, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "bv_session=", 11)) snprintf(sess, sizeof sess, "%s", l + 11);
+    if (!sess[0]) return;
+    snprintf(rp, sizeof rp, "%s/pieces/apps/player_app/interact_relay.txt", sess);
+    if (access(rp, F_OK)) return;
+    f = fopen(rp, "a"); if (f) { fputs("126\n", f); fclose(f); }
+}
 static int quiet[MAXPET][MAXPET];      /* steps until a pair of pets greets again */
 static void step_all(void) {
     read_inbox();
@@ -363,6 +374,7 @@ static void step_all(void) {
         }
     }
     write_events(); write_side();
+    nudge_engine();
 }
 
 int main(int argc, char **argv) {
