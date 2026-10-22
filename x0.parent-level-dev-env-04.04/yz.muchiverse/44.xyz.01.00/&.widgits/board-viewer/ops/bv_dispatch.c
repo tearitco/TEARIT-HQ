@@ -312,7 +312,9 @@ int main(void) {
         if (got >= 1 && keycode != 0) {
             /* got==2 -> timestamped: drop if the user already let go.
              * got==1 -> old bare format: always fresh. */
-            if (compensator && got == 2 && (drain_now_ms - ts_ms) > stale_ms) {
+            /* z / x (xelector level down / up) are single steps, not held movement: with a slow frame (about 1 s on the wide island board) every one of them aged out and the xelector seemed dead */
+            int is_level_key = (keycode == 'z' || keycode == 'x');
+            if (compensator && got == 2 && !is_level_key && (drain_now_ms - ts_ms) > stale_ms) {
                 dropped_stale++;
             } else {
                 int is_arrow = (keycode >= 1000 && keycode <= 1003);
