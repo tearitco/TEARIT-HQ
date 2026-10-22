@@ -22,7 +22,15 @@ case "$ACTION" in
         echo "Starting tomom hand-tuning dashboard..."
         python3 "$SCRIPT_DIR/harnec/tomom_dashboard.py" --refresh
         echo "Dashboard data written to pieces/chtpm/layouts/tomom_dashboard_data.txt"
-        echo "Launch with: chtpm_parser pieces/chtpm/layouts/tomom_dashboard.chtpm"
+        # Render via shared house renderer
+        HOUSE_ROOT="$(cd "$SCRIPT_DIR/../../../../../../.." && pwd)"
+        RENDERER="$HOUSE_ROOT/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
+        if [ -x "$RENDERER" ]; then
+            echo "Rendering via shared khtpm_core_render..."
+            "$RENDERER" "$HOUSE_ROOT" "$SCRIPT_DIR/pieces/chtpm/layouts/tomom_dashboard.chtpm" 0 0 &
+        else
+            echo "Note: khtpm_core_render.+x not found at $RENDERER"
+        fi
         ;;
     watch|w)
         python3 "$SCRIPT_DIR/harnec/tomom_dashboard.py" --watch
@@ -41,7 +49,7 @@ case "$ACTION" in
     *)
         echo "Usage: $0 {compile|run|watch|handtune|kill}"
         echo "  compile  - verify Python scripts compile"
-        echo "  run      - generate dashboard data once"
+        echo "  run      - generate dashboard data and render"
         echo "  watch    - live-updating dashboard (refreshes every 5s)"
         echo "  handtune - run full hand-tuning cycle for a curriculum"
         echo "  kill     - stop running dashboard processes"
