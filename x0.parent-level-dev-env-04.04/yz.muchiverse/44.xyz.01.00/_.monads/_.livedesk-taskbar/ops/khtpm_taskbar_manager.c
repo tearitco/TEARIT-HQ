@@ -6406,3 +6406,35 @@ void ktb_nav_enter(KtbState *s) {
      * livedesk_build_user_menu(). */
     ktb_hq_open(s, which);
 }
+
+/* The menu index: every top-tb sub menu, one row per entry, for a search over all of them (owner 2026-10-21: "a search in 1.hq that lets us search all top tb
+ * subs, and will drop it down if found"). `khtpm_taskbar_manager_main <house> --dump-menus` prints  cell|N|label|command  for each builder - the pdl rows plus
+ * the scanned ones (pals, toys, desks, accounts, sessions, clocks, slots, common events), expanded as they would be when the menu opens. Read-only, no window. */
+void ktb_dump_menu_index(const char *house_root) {
+    static HQMenuItem m[KTB_LIVEDESK_DYN_MAX + 8];
+#define KTB_DUMP(name, call) do { memset(m, 0, sizeof m); int n_ = (call); for (int i_ = 0; i_ < n_; i_++) printf("%s|%d|%s|%s\n", name, i_ + 1, m[i_].label, m[i_].command); } while (0)
+    const int mx = KTB_LIVEDESK_DYN_MAX;
+    KTB_DUMP("hq", livedesk_build_hq_menu(house_root, m, mx));
+    KTB_DUMP("user", livedesk_build_user_menu(house_root, m, mx));
+    KTB_DUMP("file", livedesk_build_file_menu(house_root, m, mx));
+    KTB_DUMP("desk", livedesk_build_desk_menu(house_root, m, mx));
+    KTB_DUMP("menu", livedesk_build_menu_menu(house_root, m, mx));
+    KTB_DUMP("pals", livedesk_build_pals_menu(house_root, m, mx));
+    KTB_DUMP("palettes", livedesk_build_palettes_menu(house_root, m, mx));
+    KTB_DUMP("player", livedesk_build_player_menu(house_root, m, mx));
+    KTB_DUMP("db", livedesk_build_db_menu(house_root, m, mx));
+    KTB_DUMP("db_ez", livedesk_build_db_ez_sections_menu(house_root, m, mx));
+    KTB_DUMP("db_ce", livedesk_build_db_common_events_menu(house_root, m, mx));
+    KTB_DUMP("toys", livedesk_build_toys_menu(house_root, m, mx));
+    KTB_DUMP("network", livedesk_build_network_menu(house_root, m, mx));
+    KTB_DUMP("ai", livedesk_build_ai_menu(house_root, m, mx));
+    KTB_DUMP("clock", livedesk_build_clock_menu(house_root, m, mx));
+    KTB_DUMP("clock_cals", livedesk_build_clock_cals_menu(house_root, m, mx));
+    KTB_DUMP("clock_reminders", livedesk_build_clock_reminders_menu(house_root, m, mx));
+    KTB_DUMP("clock_game", livedesk_build_clock_game_menu(house_root, m, mx));
+    KTB_DUMP("clock_cal", livedesk_build_clock_cal_menu(house_root, m, mx));
+    KTB_DUMP("session", livedesk_build_session_menu(house_root, m, mx));
+    KTB_DUMP("slots_save", livedesk_build_game_slots_menu(house_root, m, mx, 1));
+    KTB_DUMP("slots_load", livedesk_build_game_slots_menu(house_root, m, mx, 0));
+#undef KTB_DUMP
+}

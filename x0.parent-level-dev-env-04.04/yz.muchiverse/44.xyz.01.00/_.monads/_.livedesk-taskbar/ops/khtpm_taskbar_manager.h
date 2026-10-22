@@ -255,6 +255,7 @@ typedef struct {
 void ktb_init(KtbState *s, const char *house_root);
 /* REAL, NEW 2026-08-16 - see KtbState's own cell_id_pos/cell_id_str field comment. */
 void ktb_load_cell_ids(KtbState *s);
+void ktb_dump_menu_index(const char *house_root); /* prints cell|N|label|command for every top-tb sub menu (the search index) */
 const char *ktb_cell_id(const KtbState *s, int which);
 int ktb_cell_pos_by_id(const KtbState *s, const char *id, int fallback_pos);
 void ktb_write_pidfile(KtbState *s, int pid);

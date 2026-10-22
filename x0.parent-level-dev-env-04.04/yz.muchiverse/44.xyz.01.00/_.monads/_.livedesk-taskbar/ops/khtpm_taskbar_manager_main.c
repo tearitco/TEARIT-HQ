@@ -1058,6 +1058,7 @@ int main(int argc, char **argv) {
         return 1;
     }
     const char *house_root = argv[1];
+    if (argc >= 3 && !strcmp(argv[2], "--dump-menus")) { ktb_dump_menu_index(house_root); return 0; }      /* the menu index for the 1.hq search; no window, no relay */
 
     /* REAL FIX 2026-08-19 (direct live report: taskbar HQ menu's "cli"
      * row - and any other row whose command is a relative/portable path,
