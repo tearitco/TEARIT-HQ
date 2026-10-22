@@ -3,7 +3,7 @@
      the dropdowns are rpg-pet's. The canvas is the board engine frame (2D default, 0 = 3D, 1-4 POV, camera keys, backtick = glyph view) of the book maps/rpg-pet that rpg_pet.+x exports.
      Launch: sh @.apps/rpg-pet/board/open_board.sh. vars: rpg-pet's state files FIRST, the board's after, so canvas_raw / interact_* are the board's. RULES: no angle brackets inside comments. -->
 <window label="rpg-pet board" class="pchq-board-pal database-window managed user-resizable" vars="../state/ui.txt ../state/clock_ui.txt state/ui.txt state/pchq/ui.txt state/sides.txt state/ctx.txt">
-  <module src="@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x" args="piececraft-hq"/>
+  <module src="@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x" args="rpg-pet-pchq"/>
   <page name="main">
     <tabbar id="toolbar" class="pchq-toolbar">
       <tab id="tb-in" class="pchq-tb ${interact_class}" label="In: ${interact_label}" relay="${bv_h1},${bv_h2}" onclick="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' int"/>
@@ -40,7 +40,7 @@
       <item id="mn-control" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="${control_label} (switch: Tab)" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' control"/>
       <item id="mn-voice" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="Voice on / off" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' toggle voice"/>
       <item id="mn-reset" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="Reset house (keeps a backup)" action="'${HOUSE}/@.apps/rpg-pet/ops/+x/rpg_pet.+x' reset"/>
-      <item id="mn-entbar" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="Entities bar on/off" action="sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_toggle_pdl_opt.sh' '${HOUSE}/@.apps/piececraft-hq/pieces/system/pchq.pdl' 'entities_bar'"/>
+      <item id="mn-entbar" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="Entities bar on/off" action="sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_toggle_pdl_opt.sh' '${HOUSE}/@.apps/rpg-pet/rpg-pet-pchq/pieces/system/pchq.pdl' 'entities_bar'"/>
       <item id="mn-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-menu" label="- cancel -" action="void"/>
       <item id="db-hq" class="pchq-menu-row dropdown-child " target_id="tb-db" label="db-hq" action="sh '${HOUSE}/&.hq-apps/db-hq-pal/button.sh' '${HOUSE}'"/>
       <item id="db-sql" class="pchq-menu-row dropdown-child " target_id="tb-db" label="sql-hq" action="sh '${HOUSE}/&.hq-apps/sql-hq/button.sh' '${HOUSE}'"/>

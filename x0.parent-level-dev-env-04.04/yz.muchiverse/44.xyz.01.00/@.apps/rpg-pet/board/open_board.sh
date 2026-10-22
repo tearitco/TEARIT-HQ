@@ -4,9 +4,13 @@
 # (open_pchq_board.sh takes PCHQ_BOARD_TPL; the template must be named pchq-board.xhtpm)  3) tell the board to open the rpg-pet book.
 HERE="$(cd "$(dirname "$0")" && pwd)"; APP="$(dirname "$HERE")"; HOUSE="$(cd "$APP/../.." && pwd)"
 mkdir -p "$HERE/state"; [ -f "$HERE/state/sides.txt" ] || printf "side_left=1\nside_right=1\n" > "$HERE/state/sides.txt"
+# rpg-pet runs on its OWN pc-hq instance (PCHQ-SESSIONS-DESIGN.md S3): data folder <app>/rpg-pet-pchq (world, hero, xelector, maps, engine sessions), programs shared from @.apps/piececraft-hq.
+# The launcher creates the folder when it is missing and only ever replaces THIS instance's board window, never another game's.
+export PCHQ_PKG="$APP/rpg-pet-pchq"
+sh "$HOUSE/@.apps/piececraft-hq/ops/pchq_instance_init.sh" "$PCHQ_PKG" >/dev/null 2>&1
 "$APP/ops/+x/rpg_pet.+x" export3d >/dev/null 2>&1
 # the ONE rpg-pet daemon (walks the pets, chat, clock, writes ../state/ui.txt): not a <module> of this window, a module runs with THIS folder as its app dir and would start a second house in board/state
 ps -eo stat,comm | awk '$2=="rpg_pet.+x" && $1 !~ /Z/{f=1} END{exit !f}' || { setsid nohup "$APP/ops/+x/rpg_pet.+x" "$HOUSE" "$APP" >/dev/null 2>&1 < /dev/null & }
 PCHQ_BOARD_TPL="$HERE/pchq-board.xhtpm" sh "$HOUSE/@.apps/piececraft-hq/open_pchq_board.sh" "$HOUSE" || exit 1
-INBOX="$HOUSE/@.apps/piececraft-hq/pieces/system/widget_cmds/inbox.txt"
+INBOX="$PCHQ_PKG/pieces/system/widget_cmds/inbox.txt"
 sleep 8; printf 'CONFIRM_START_MAP:rpg-pet\n' >> "$INBOX"

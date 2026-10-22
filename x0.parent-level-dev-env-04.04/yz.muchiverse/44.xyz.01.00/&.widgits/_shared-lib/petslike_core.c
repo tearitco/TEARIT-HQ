@@ -60,54 +60,47 @@
 #include PET_SKIN
 #undef PET_SECTION
 
-#define PET_SECTION 3
-#include PET_SKIN
-#undef PET_SECTION
+/* Per-room geometry: the room being processed is g_gr (set by render, use_ent, walking, placement, export). A normal room is 13 x 8 cells of 48 px with a sky/wall strip (trig row 2); an OVERMAP room (ROOM ... over) is a
+ * world-map biome (the island city): cols x rows cells of tpx px (the 48 px RPG Maker tiles are scaled down), no wall strip (trig row 0). Source tile size in the sheets is always S48. */
+#define S48 48
+#define MAXC 40
+#define MAXR 30
+static int g_gr;
+#define T (rooms[g_gr].tpx)
 #define FW 660
 #define FH 430
-#define PET_SECTION 4
-#include PET_SKIN
-#undef PET_SECTION
+#define COLS (rooms[g_gr].cols)
+#define ROWS (rooms[g_gr].rows)
 #define OX ((FW - COLS * T) / 2)
 #define OY ((FH - ROWS * T) / 2)
 #define WALL_ROW 1
-#define PET_SECTION 5
-#include PET_SKIN
-#undef PET_SECTION
+#define TRIG_ROW (rooms[g_gr].trig)
 #define START_COINS 500
 #define MAXI 40
 #define MAXP 200
-#define PET_SECTION 6
-#include PET_SKIN
-#undef PET_SECTION
+#define NP 8      /* up to 6 DB members + the pals made with "+ new pal" (pals.pdl) */
 
 typedef struct { char key[32], label[40], sheet[24], effect[12]; int price, c, r, w, h, wall; } Item;
-#define PET_SECTION 7
-#include PET_SKIN
-#undef PET_SECTION
+typedef struct { char id[16], name[32], biome[16]; int fc, fr, outdoor, over, cols, rows, tpx, trig; } Room;
 typedef struct { int room, c, r, w, h, x, y; char sheet[24]; } Scen;
-#define PET_SECTION 8
-#include PET_SKIN
-#undef PET_SECTION
+typedef struct { int room, tx, ty, dest, ax, ay, autow; } Door;      /* the door object is the cell (tx,ty); its trigger is the cell below it (tx,ty+1); ty = WALL_ROW in a normal room */
 typedef struct { int id, item, x, y, room; } Placed;
 typedef struct { char name[40]; unsigned char *px; int w, h; } Sheet;
 typedef struct { int room, x, y, dir, steps, tx, ty; } Ent;          /* a walking thing: a pet, or the trainer. tx,ty = the walk target (-1 none) */
 
 static char APP[PATH_MAX], ST[PATH_MAX], ASSETS[PATH_MAX], HOUSE[PATH_MAX], SELF[PATH_MAX];
-#define PET_SECTION 9
+#define PET_SECTION 3
 #include PET_SKIN
 #undef PET_SECTION
 static Item cat[MAXI]; static int ncat;
 static Room rooms[8]; static int nroom;
 static Door doors[24]; static int ndoor;
 static Scen scen[24]; static int nscen;
-#define PET_SECTION 10
+#define PET_SECTION 4
 #include PET_SKIN
 #undef PET_SECTION
 static Placed pl[MAXP]; static int npl, nid = 1, owned[MAXI], coins;
-#define PET_SECTION 11
-#include PET_SKIN
-#undef PET_SECTION
+static Sheet sheets[24]; static int nsheet;
 static unsigned char fr[FW * FH * 4];
 static int g_bg_only = 0;      /* render() without pets, Harold and the day/night tint: the static background the pc-hq 2D view blits as map.png (its sprites come from events.txt) */
 /* the standard RPG Maker screen tone written by events-hq's tint_screen command: state/world/screen_state.pdl has "mode=tint" and "value=r,g,b,gray" (1 = a tone is set). Read at most every 400 ms. */
@@ -156,14 +149,14 @@ static long now_ms(void) { struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &t
 static int read_file(const char *p, char *buf, size_t cap) { FILE *f = fopen(p, "r"); if (!f) { buf[0] = 0; return 0; } size_t n = fread(buf, 1, cap - 1, f); buf[n] = 0; fclose(f); return (int)n; }
 /* replace a file atomically, only when the bytes differ; returns 1 when written */
 static int g_scene_ver = 0;      /* bumped whenever the painted scene frame (state/scene.raw) changed: the board engine only redraws when woken, follow_pchq nudges it */
-#define PET_SECTION 12
+#define PET_SECTION 5
 #include PET_SKIN
 #undef PET_SECTION
 static int write_if_changed(const char *p, const void *data, size_t n) {
     FILE *f = fopen(p, "rb");
     if (f) { fseek(f, 0, SEEK_END); long sz = ftell(f); if (sz == (long)n) { rewind(f); unsigned char *old = malloc(n ? n : 1); if (old && fread(old, 1, n, f) == n && !memcmp(old, data, n)) { free(old); fclose(f); return 0; } free(old); } fclose(f); }
     char tmp[PATH_MAX + 24]; snprintf(tmp, sizeof tmp, "%s.tmp.%d", p, (int)getpid());      /* per process: the daemon and a one-shot verb can write the same file at the same moment */
-#define PET_SECTION 13
+#define PET_SECTION 6
 #include PET_SKIN
 #undef PET_SECTION
 }
@@ -200,15 +193,15 @@ static int tune(const char *name, int def) { for (int i = 0; i < g_tnn; i++) if 
  * switches file and the flag file. Inside the daemon a value is reused for 150 ms; set_flag() drops the cache so the daemon sees its own writes at once, and the one-shot verb processes never cache. */
 static void flag_str_raw(const char *name, const char *def, char *out, size_t cap);
 static int g_fcache_on = 0, g_fcn = 0;
-#define PET_SECTION 14
+#define PET_SECTION 7
 #include PET_SKIN
 #undef PET_SECTION
 static void flag_str(const char *name, const char *def, char *out, size_t cap) {
-#define PET_SECTION 15
+#define PET_SECTION 8
 #include PET_SKIN
 #undef PET_SECTION
     flag_str_raw(name, def, out, cap);
-#define PET_SECTION 16
+#define PET_SECTION 9
 #include PET_SKIN
 #undef PET_SECTION
 }
@@ -216,7 +209,7 @@ static void flag_str_raw(const char *name, const char *def, char *out, size_t ca
 static int flag_on(const char *name, int def) { char b[16]; flag_str(name, def ? "1" : "0", b, sizeof b); return b[0] == '1'; }
 static const char *g_ctl_why = "?";      /* who is changing ctl (pet/player): the owner reports it flips by itself; ctl_trace.txt names the cause of each flip */
 static void set_flag(const char *name, const char *v) { g_fcn = 0; if (!strcmp(name, "ctl")) { char tp[PATH_MAX]; snprintf(tp, sizeof tp, "%s/ctl_trace.txt", ST); FILE *tf = fsize(tp) > 1000000 ? NULL : fopen(tp, "a"); if (tf) { fprintf(tf, "%ld ctl=%s why=%s pid=%d\n", (long)time(NULL), v, g_ctl_why, (int)getpid()); fclose(tf); } } if (is_switch_flag(name)) sw_set(name, v); char p[PATH_MAX], n[64], b[80]; snprintf(n, sizeof n, "flag_%s.txt", name); spath(p, n); snprintf(b, sizeof b, "%s\n", v); write_if_changed(p, b, strlen(b)); }
-#define PET_SECTION 17
+#define PET_SECTION 10
 #include PET_SKIN
 #undef PET_SECTION
 
@@ -230,19 +223,17 @@ static int item_idx(const char *k) { for (int i = 0; i < ncat; i++) if (!strcmp(
 static void load_party(void) {
     char db[PATH_MAX], p[PATH_MAX], line[400]; char *f[6]; FILE *fp; const char *env = getenv("PET_DB");
     if (env && env[0]) snprintf(db, sizeof db, "%s", env); else snprintf(db, sizeof db, "%s/&.widgits/db-hq/data", HOUSE);
-#define PET_SECTION 18
+#define PET_SECTION 11
 #include PET_SKIN
 #undef PET_SECTION
     snprintf(p, sizeof p, "%s/system.pdl", db);
-#define PET_SECTION 19
+#define PET_SECTION 12
 #include PET_SKIN
 #undef PET_SECTION
     snprintf(p, sizeof p, "%s/pals.pdl", APP);      /* pals: PAL | id | name | monster picture index. Made by the Pals menu (newpal), app-local: the house DB is not touched */
     if ((fp = fopen(p, "r"))) { while (fgets(line, sizeof line, fp)) { char *g[6]; if (split_bar(line, g, 6) < 4 || strcmp(g[0], "PAL") || nparty >= NP) continue;
         memset(&party[nparty], 0, sizeof party[nparty]); snprintf(party[nparty].id, 16, "%s", g[1]); snprintf(party[nparty].name, 24, "%s", g[2]); snprintf(party[nparty].nick, 24, "pal"); snprintf(party[nparty].profile, 96, "A pal made in the Pals menu.");
-#define PET_SECTION 20
-#include PET_SKIN
-#undef PET_SECTION
+        party[nparty].idx = atoi(g[3]) & 7; snprintf(party[nparty].sheet, 24, "%s", nparty ? party[0].sheet : "Monster"); party[nparty].mhp = 40; party[nparty].mmp = 20; party[nparty].atk = party[nparty].def = party[nparty].agi = party[nparty].luk = 10; party[nparty].mat = party[nparty].mdf = 8; nparty++; } fclose(fp); }
     snprintf(p, sizeof p, "%s/actors.pdl", db); int cur = -1, curh = 0;
     if ((fp = fopen(p, "r"))) { while (fgets(line, sizeof line, fp)) { if (split_bar(line, f, 3) < 3 || strcmp(f[0], "ACTOR")) continue;
         if (!strcmp(f[1], "name")) { cur = -1; for (int i = 0; i < nparty; i++) if (!strcmp(party[i].name, f[2])) cur = i; curh = !strcmp(f[2], hero.name); continue; }
@@ -274,9 +265,7 @@ static void load_door_events(void) {
                 else if (strstr(line, "type=transfer_player")) { char *m = strstr(line, "map="), *x = strstr(line, "xy="); if (m && x) { sscanf(m + 4, "%15[^|]", dest); sscanf(x + 3, "%d,%d", &ax, &ay); got = 1; } }
                 (void)f; }
             fclose(fp); int a = room_idx(room), b = room_idx(dest); if (!got || tx < 0 || a < 0 || b < 0) continue;
-#define PET_SECTION 21
-#include PET_SKIN
-#undef PET_SECTION
+            Door *d = &cache[ncache++]; d->room = a; d->tx = tx; d->ty = WALL_ROW; d->dest = b; d->ax = ax; d->ay = ay; d->autow = au; }
         closedir(dp); }
     if (ncache > 0) { ndoor = 0; for (int i = 0; i < ncache; i++) doors[ndoor++] = cache[i]; }
 }
@@ -285,26 +274,23 @@ static void load_data(void) {
     snprintf(p, sizeof p, "%s/catalog.pdl", APP); ncat = 0;
     if ((fp = fopen(p, "r"))) { while (fgets(line, sizeof line, fp) && ncat < MAXI) { if (split_bar(line, f, 12) == 11 && !strcmp(f[0], "ITEM")) { Item *it = &cat[ncat++]; snprintf(it->key, 32, "%s", f[1]); snprintf(it->label, 40, "%s", f[2]); it->price = atoi(f[3]); snprintf(it->sheet, 24, "%s", f[4]); it->c = atoi(f[5]); it->r = atoi(f[6]); it->w = atoi(f[7]); it->h = atoi(f[8]); it->wall = !strcmp(f[9], "wall"); snprintf(it->effect, 12, "%s", f[10]); } } fclose(fp); }
     load_party();
-#define PET_SECTION 22
+#define PET_SECTION 13
 #include PET_SKIN
 #undef PET_SECTION
     snprintf(p, sizeof p, "%s/rooms.pdl", APP); nroom = ndoor = 0;
     if ((fp = fopen(p, "r"))) {
-#define PET_SECTION 23
-#include PET_SKIN
-#undef PET_SECTION
+        while (fgets(line, sizeof line, fp)) { int n = split_bar(line, f, 12); if (n >= 5 && !strcmp(f[0], "ROOM") && nroom < 8) { Room *r = &rooms[nroom++]; memset(r, 0, sizeof *r); snprintf(r->id, 16, "%s", f[1]); snprintf(r->name, 32, "%s", f[2]); r->fc = atoi(f[3]); r->fr = atoi(f[4]); r->outdoor = n >= 6 && (!strcmp(f[5], "outdoor") || !strcmp(f[5], "over")); r->cols = 13; r->rows = 8; r->tpx = 48; r->trig = 2;
+            if (n >= 9 && !strcmp(f[5], "over")) { r->over = 1; r->cols = atoi(f[6]); r->rows = atoi(f[7]); r->tpx = atoi(f[8]); r->trig = 0; snprintf(r->biome, 16, "%s", n >= 10 ? f[9] : "worldmap"); if (r->cols < 4 || r->cols > MAXC || r->rows < 4 || r->rows > MAXR || r->tpx < 8 || r->tpx > 48) { r->cols = 20; r->rows = 13; r->tpx = 32; } } } }
         rewind(fp);
-#define PET_SECTION 24
-#include PET_SKIN
-#undef PET_SECTION
+        while (fgets(line, sizeof line, fp)) { int n = split_bar(line, f, 12); if (n >= 7 && !strcmp(f[0], "DOOR") && ndoor < 24) { int a = room_idx(f[1]), b = room_idx(f[3]); if (a < 0 || b < 0) continue; Door *d = &doors[ndoor++]; d->room = a; d->tx = atoi(f[2]); d->ty = n >= 8 ? atoi(f[7]) : WALL_ROW; d->dest = b; d->ax = atoi(f[4]); d->ay = atoi(f[5]); d->autow = atoi(f[6]); } }
         rewind(fp); nscen = 0;
         while (fgets(line, sizeof line, fp)) { int n = split_bar(line, f, 12); if (n >= 9 && !strcmp(f[0], "SCENERY") && nscen < 24) { int a = room_idx(f[1]); if (a < 0) continue; Scen *s = &scen[nscen++]; s->room = a; snprintf(s->sheet, 24, "%s", f[2]); s->c = atoi(f[3]); s->r = atoi(f[4]); s->w = atoi(f[5]); s->h = atoi(f[6]); s->x = atoi(f[7]); s->y = atoi(f[8]); } }
-#define PET_SECTION 25
+#define PET_SECTION 14
 #include PET_SKIN
 #undef PET_SECTION
         fclose(fp);
     }
-#define PET_SECTION 26
+#define PET_SECTION 15
 #include PET_SKIN
 #undef PET_SECTION
     load_door_events();
@@ -318,12 +304,12 @@ static void ent_wallet(const char *id, char *out, size_t cap) {
 }
 static void pet_wallet(int i, char *out, size_t cap) { ent_wallet(party[i].id, out, cap); }
 
-#define PET_SECTION 27
+#define PET_SECTION 16
 #include PET_SKIN
 #undef PET_SECTION
 /* ---------- ledger replay ---------- */
 static void replay(void) {
-#define PET_SECTION 28
+#define PET_SECTION 17
 #include PET_SKIN
 #undef PET_SECTION
     { static long last_sz = -2; long sz = fsize(p); if (sz == last_sz) return; last_sz = sz; }      /* the ledger is append-only and only buy / use / build verbs write it: re-parsing it for every pet step was ~3% of a core */
@@ -343,14 +329,10 @@ static void replay(void) {
 static void ent_file(int i, char *p) { char n[64]; if (i < 0) snprintf(n, sizeof n, "trainer.txt"); else snprintf(n, sizeof n, "pet_%s.txt", party[i].id); spath(p, n); }
 static void load_ent(int i, Ent *e) {
     char p[PATH_MAX], b[300]; ent_file(i, p); read_file(p, b, sizeof b);
-#define PET_SECTION 29
-#include PET_SKIN
-#undef PET_SECTION
+    e->room = 0; e->x = i < 0 ? 8 : 7 + i; e->y = i < 0 ? 8 : 7; e->dir = 0; e->steps = 0; e->tx = e->ty = -1;
     for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "room=", 5)) { int r = room_idx(l + 5); if (r >= 0) e->room = r; } else if (!strncmp(l, "x=", 2)) e->x = atoi(l + 2); else if (!strncmp(l, "y=", 2)) e->y = atoi(l + 2); else if (!strncmp(l, "dir=", 4)) e->dir = atoi(l + 4); else if (!strncmp(l, "steps=", 6)) e->steps = atoi(l + 6); else if (!strncmp(l, "tx=", 3)) e->tx = atoi(l + 3); else if (!strncmp(l, "ty=", 3)) e->ty = atoi(l + 3); }
     /* HARDENING: a pet file is untrusted (hand edit, truncation, garbage): coordinates, facing and the walk target are forced inside the room so no array is ever indexed from file data */
-#define PET_SECTION 30
-#include PET_SKIN
-#undef PET_SECTION
+    { int cw = (nroom > 0 && e->room >= 0 && e->room < nroom) ? rooms[e->room].cols : 13, ch = (nroom > 0 && e->room >= 0 && e->room < nroom) ? rooms[e->room].rows : 8; if (cw < 1) cw = 1; if (ch < 1) ch = 1; if (cw > MAXC) cw = MAXC; if (ch > MAXR) ch = MAXR;
       if (e->x < 0 || e->x >= cw) e->x = cw / 2; if (e->y < 0 || e->y >= ch) e->y = ch / 2; e->dir = ((e->dir % 4) + 4) % 4; if (e->steps < 0 || e->steps > 1000000000) e->steps = 0; if (e->tx < 0 || e->tx >= cw || e->ty < 0 || e->ty >= ch) e->tx = e->ty = -1; }
 }
 static void calc_view(void) { char f[40]; flag_str("follow", "pet", f, sizeof f); vroom = !strcmp(f, "player") ? tr.room : others[active].room; if (!strncmp(f, "room:", 5)) { int r = room_idx(f + 5); if (r >= 0) vroom = r; } if (vroom < 0 || vroom >= nroom) vroom = 0; }   /* the window shows the watched pet's room, or a room picked from the Rooms menu */
@@ -361,12 +343,12 @@ static void pet_load(void) {           /* everything: active pet, all pets, the 
 }
 /* what INT controls: the selected pet, or the player (the person) */
 static int ctl_idx(void) { char b[16]; flag_str("ctl", "pet", b, sizeof b); return !strcmp(b, "player") ? -1 : active; }
-#define PET_SECTION 31
+#define PET_SECTION 18
 #include PET_SKIN
 #undef PET_SECTION
 static void pet_save(void) {            /* commit the mover back and write its file */
     char p[PATH_MAX], b[240]; ent_file(me, p); snprintf(b, sizeof b, "room=%s\nx=%d\ny=%d\ndir=%d\nsteps=%d\ntx=%d\nty=%d\n", rooms[pet.room].id, pet.x, pet.y, pet.dir, pet.steps, pet.tx, pet.ty);
-#define PET_SECTION 32
+#define PET_SECTION 19
 #include PET_SKIN
 #undef PET_SECTION
 }
@@ -378,13 +360,11 @@ static int other_at(int room, int x, int y) {
 }
 
 /* ---------- placement rules ---------- */
-#define PET_SECTION 33
+#define PET_SECTION 20
 #include PET_SKIN
 #undef PET_SECTION
 static const char *check_place(int room, int item, int x, int y, int skip_id) {
-#define PET_SECTION 34
-#include PET_SKIN
-#undef PET_SECTION
+    static char m[120]; Item *d = &cat[item]; g_gr = room;
     if (d->wall) {
         int wy = WALL_ROW + 1 - d->h; if (rooms[room].outdoor) return "wall items only go inside";
         if (y != wy || x < 0 || x + d->w > COLS) { snprintf(m, sizeof m, "wall items go on the wall: x 0-%d, y %d", COLS - d->w, wy); return m; }
@@ -402,38 +382,34 @@ static const char *check_place(int room, int item, int x, int y, int skip_id) {
     }
     me = sv; return "";
 }
-#define PET_SECTION 35
-#include PET_SKIN
-#undef PET_SECTION
+static int first_free(int room, int item, int *ox, int *oy) { Item *d = &cat[item]; g_gr = room; if (d->wall) { int wy = WALL_ROW + 1 - d->h; for (int x = 0; x < COLS; x++) if (!check_place(room, item, x, wy, 0)[0]) { *ox = x; *oy = wy; return 1; } return 0; } for (int y = TRIG_ROW; y < ROWS; y++) for (int x = 0; x < COLS; x++) if (!check_place(room, item, x, y, 0)[0]) { *ox = x; *oy = y; return 1; } return 0; }
 
 /* ---------- drawing ---------- */
 static Sheet *sheet(const char *dir, const char *name) {
     for (int i = 0; i < nsheet; i++) if (!strcmp(sheets[i].name, name)) return &sheets[i];
-#define PET_SECTION 36
-#include PET_SKIN
-#undef PET_SECTION
+    if (nsheet >= 24) return NULL;
     char p[PATH_MAX]; snprintf(p, sizeof p, "%s/%s/%s.png", ASSETS, dir, name); int n; Sheet *s = &sheets[nsheet];
     s->px = stbi_load(p, &s->w, &s->h, &n, 4); if (!s->px) return NULL; snprintf(s->name, 40, "%s", name); nsheet++; return s;
 }
-#define PET_SECTION 37
-#include PET_SKIN
-#undef PET_SECTION
+static void blit(Sheet *s, int sx, int sy, int w, int h, int dx, int dy) {      /* w,h = source px (48 px tiles); drawn T/S48 times the size (nearest) */
+    if (!s) return; int dw = w * T / S48, dh = h * T / S48; if (dw < 0 || dh < 0 || dw > 4 * FW || dh > 4 * FH) return;      /* HARDENING: a size from a data file never makes this loop for ever */
+    for (int y = 0; y < dh; y++) { int Y = dy + y, srcy = sy + y * S48 / T; if (Y < 0 || Y >= FH || srcy >= s->h) continue;
+        for (int x = 0; x < dw; x++) { int X = dx + x, srcx = sx + x * S48 / T; if (X < 0 || X >= FW || srcx >= s->w) continue;
+            unsigned char *a = s->px + ((size_t)srcy * s->w + srcx) * 4, *b = fr + ((size_t)Y * FW + X) * 4; int al = a[3]; if (!al) continue;
             for (int c = 0; c < 3; c++) b[c] = (unsigned char)((a[c] * al + b[c] * (255 - al)) / 255); b[3] = 255; } }
 }
-#define PET_SECTION 38
+#define PET_SECTION 21
 #include PET_SKIN
 #undef PET_SECTION
 static void render(void) {
-#define PET_SECTION 39
-#include PET_SKIN
-#undef PET_SECTION
+    g_gr = vroom;
     for (int i = 0; i < FW * FH; i++) { fr[i * 4] = 14; fr[i * 4 + 1] = 14; fr[i * 4 + 2] = 18; fr[i * 4 + 3] = 255; }
-#define PET_SECTION 40
+#define PET_SECTION 22
 #include PET_SKIN
 #undef PET_SECTION
     int idx[MAXP], n = 0; for (int i = 0; i < npl; i++) if (pl[i].room == vroom) idx[n++] = i;
     for (int a = 0; a < n; a++) for (int b = a + 1; b < n; b++) { Placed *p = &pl[idx[a]], *q = &pl[idx[b]]; int ka = (!cat[p->item].wall) * 1000 + p->y + cat[p->item].h, kb = (!cat[q->item].wall) * 1000 + q->y + cat[q->item].h; if (kb < ka || (kb == ka && q->x < p->x)) { int t = idx[a]; idx[a] = idx[b]; idx[b] = t; } }
-#define PET_SECTION 41
+#define PET_SECTION 23
 #include PET_SKIN
 #undef PET_SECTION
     static const int cyc[4] = {1, 0, 1, 2}; int order[NP + 1], no = 0;           /* walking frames 1,0,1,2; standing = middle frame. -1 = the trainer */
@@ -442,21 +418,17 @@ static void render(void) {
     for (int a2 = 0; a2 < no; a2++) for (int b2 = a2 + 1; b2 < no; b2++) if (EY(order[b2]) < EY(order[a2])) { int tmp = order[a2]; order[a2] = order[b2]; order[b2] = tmp; }
     if (tr.room == vroom) order[no++] = -1;
     for (int a2 = 0; a2 < no; a2++) for (int b2 = a2 + 1; b2 < no; b2++) if (EY(order[b2]) < EY(order[a2])) { int tmp = order[a2]; order[a2] = order[b2]; order[b2] = tmp; }
-#define PET_SECTION 42
+#define PET_SECTION 24
 #include PET_SKIN
 #undef PET_SECTION
     if (!g_bg_only) { int tone[4]; if (read_tone(tone)) {      /* RPG Maker Tint Screen (events-hq tint_screen -> state/world/screen_state.pdl "value=r,g,b,gray"): add per channel, gray = pull toward the luminance; indoors it is only 40% */
         int od = rm->outdoor, pc = od ? 100 : 40, tr_ = tone[0] * pc / 100, tg_ = tone[1] * pc / 100, tb_ = tone[2] * pc / 100, gy = tone[3] * pc / 100;
-#define PET_SECTION 43
-#include PET_SKIN
-#undef PET_SECTION
+        if (tr_ || tg_ || tb_ || gy) for (int y = OY + ((od && !rm->over) ? 2 * T : 0); y < OY + ROWS * T; y++) for (int x = OX; x < OX + COLS * T; x++) { unsigned char *q = fr + ((size_t)y * FW + x) * 4; int r = q[0], g = q[1], b = q[2], l = (r * 30 + g * 59 + b * 11) / 100;
             if (gy) { r += (l - r) * gy / 255; g += (l - g) * gy / 255; b += (l - b) * gy / 255; } r += tr_; g += tg_; b += tb_;
             q[0] = (unsigned char)(r < 0 ? 0 : r > 255 ? 255 : r); q[1] = (unsigned char)(g < 0 ? 0 : g > 255 ? 255 : g); q[2] = (unsigned char)(b < 0 ? 0 : b > 255 ? 255 : b); } }
       else { int mr = 256, mg = 256, mb = 256, od = rm->outdoor;      /* phase tint (clock events write daylight.txt): strong outside, only a mild dimming indoors */
       if (!strcmp(phase, "night")) { if (od) { mr = 110; mg = 120; mb = 190; } else { mr = 200; mg = 205; mb = 235; } } else if (!strcmp(phase, "dusk")) { if (od) { mr = 256; mg = 200; mb = 160; } else { mr = 256; mg = 235; mb = 215; } } else if (!strcmp(phase, "dawn")) { if (od) { mr = 256; mg = 215; mb = 185; } else { mr = 256; mg = 240; mb = 225; } }
-#define PET_SECTION 44
-#include PET_SKIN
-#undef PET_SECTION
+      if (mr != 256 || mg != 256 || mb != 256) for (int y = OY + ((od && !rm->over) ? 2 * T : 0); y < OY + ROWS * T; y++) for (int x = OX; x < OX + COLS * T; x++) { unsigned char *q = fr + ((size_t)y * FW + x) * 4; q[0] = (unsigned char)(q[0] * mr / 256); q[1] = (unsigned char)(q[1] * mg / 256); q[2] = (unsigned char)(q[2] * mb / 256); } } }
 }
 
 /* ---------- chat, relations ---------- */
@@ -471,7 +443,7 @@ static void chat_trim(void) {
     static char keep[9000]; read_tail(p, keep, sizeof keep); write_if_changed(p, keep, strlen(keep));      /* pid-named tmp + checked rename: a kill mid-trim or a full disk never leaves a half chat.txt */
 }
 static void say(const char *who, const char *text) { char b[300]; snprintf(b, sizeof b, "%s: %s", who, text); append_line("chat.txt", b); chat_trim(); }
-#define PET_SECTION 45
+#define PET_SECTION 25
 #include PET_SKIN
 #undef PET_SECTION
 static int g_rk = -1, g_ry;      /* what the last reply was about (0 sleep 1 eat 2 read 3 play, -1 default) and whether the house has such an item: the native-language reply is picked from these */
@@ -483,7 +455,7 @@ static const char *pet_reply(const char *text) {
     if (strstr(s, "eat") || strstr(s, "food") || strstr(s, "table")) { g_rk = 1; g_ry = HAS("eat"); return g_ry ? "yum, a table to eat at" : "I have nowhere to eat."; }
     if (strstr(s, "book") || strstr(s, "read")) { g_rk = 2; g_ry = HAS("read"); return g_ry ? "I like reading." : "no books here."; }
     if (strstr(s, "piano") || strstr(s, "play")) { g_rk = 3; g_ry = HAS("play"); return g_ry ? "la la la" : "no piano..."; }
-#define PET_SECTION 46
+#define PET_SECTION 26
 #include PET_SKIN
 #undef PET_SECTION
         const char *w[] = {"hi", "hey", "hello", "yo", "hiya", "howdy", "sup", NULL}; for (int k = 0; w[k]; k++) { size_t n = strlen(w[k]); if (!strncmp(s, w[k], n) && (s[n] == 0 || s[n] == ' ' || s[n] == '!' || s[n] == ',')) { snprintf(b, sizeof b, "hello %s!", g_speaker ? g_speaker : hero.name); return b; } }
@@ -566,7 +538,7 @@ static int lc_run(int daemon, ...) {
     /* HARDENING: a clock helper that hung once (killed after 3 s) is not called again for 20 s, so one stuck lc_clock costs one verb 3 s, never 3 s per call */
     static long dead_until; if (now_ms() < dead_until) return -1;
     pid_t pid = fork(); if (pid < 0) return -1;
-#define PET_SECTION 47
+#define PET_SECTION 27
 #include PET_SKIN
 #undef PET_SECTION
     g_reap_to = 0; int rc_ = reap_timed(pid, 3); if (g_reap_to) dead_until = now_ms() + 20000; return rc_;
@@ -586,11 +558,11 @@ static void clock_ui(void) {          /* state/clock_ui.txt: its own tiny vars f
     if (ms < 0) { snprintf(b, sizeof b, "time_label=--:--\ntime_rate=-\ntime_running=0\n"); write_if_changed(p, b, strlen(b)); return; }
     char d0b[32]; char dp[PATH_MAX]; spath(dp, "clock_day0.txt"); read_file(dp, d0b, sizeof d0b); long long d0 = atoll(d0b), d = ms / 86400000, s = (ms - d * 86400000) / 1000;
     clock_kv_s("rate", rate, sizeof rate); clock_kv_s("running", run, sizeof run);
-#define PET_SECTION 48
+#define PET_SECTION 28
 #include PET_SKIN
 #undef PET_SECTION
     snprintf(b, sizeof b, "time_label=D%lld %02d:%02d\ntime_rate=%s\ntime_running=%s\n", d - d0 + 1, (int)(s / 3600), (int)(s % 3600 / 60), rate, run[0] ? run : "0"); clock_ui_write(p, b);
-#define PET_SECTION 49
+#define PET_SECTION 29
 #include PET_SKIN
 #undef PET_SECTION
 }
@@ -627,29 +599,29 @@ static void clock_stop(void) { clock_paths(); if (!clock_ok() || !fexists(CFILE)
 static void clock_turn(void) { clock_paths(); if (!clock_ok() || !fexists(CFILE)) return; char t[32]; turn_str(t, sizeof t); lc_run(0, "cmd", "rpg", "advance", t, "--source", "rpg-turn", NULL); lc_run(0, "step", "5", NULL); long long ms = clock_kv_ll("game_time_epoch_ms"); if (ms >= 0) write_phase(ms); clock_ui(); }
 
 /* ---------- outputs ---------- */
-#define PET_SECTION 50
+#define PET_SECTION 30
 #include PET_SKIN
 #undef PET_SECTION
 static void out_all(const char *msg) {
     calc_view(); render();
-#define PET_SECTION 51
+#define PET_SECTION 31
 #include PET_SKIN
 #undef PET_SECTION
     spath(p, "scene.receipt.txt"); { char b[64]; snprintf(b, sizeof b, "frame_w=%d\nframe_h=%d\n", FW, FH); write_if_changed(p, b, strlen(b)); }
     static char u[65536]; int o = 0;
 #define W(...) do { if (o < (int)sizeof u - 1) { int w_ = snprintf(u + o, sizeof u - o, __VA_ARGS__); if (w_ > 0) o += w_; if (o > (int)sizeof u - 1) o = (int)sizeof u - 1; } } while (0)      /* HARDENING: snprintf returns the WOULD-BE length; unclamped it ran o past the buffer and wrapped size_t */
     char raw[PATH_MAX]; spath(raw, "scene.raw"); char h1[PATH_MAX], h2[PATH_MAX]; spath(h1, "interact_relay.txt"); snprintf(h2, sizeof h2, "%s/keyboard/history.txt", ST);
-#define PET_SECTION 52
+#define PET_SECTION 32
 #include PET_SKIN
 #undef PET_SECTION
     { char cc[16]; flag_str("ctl", "pet", cc, sizeof cc); char who[40]; snprintf(who, sizeof who, "on: %s", !strcmp(cc, "player") ? "you" : party[active].name); W("interact_class=%s\ninteract_label=%s\nrp_h1=%s\nrp_h2=%s\ncontrol_label=control: %s\n", in ? "interact-active" : "", in ? who : "off", h1, h2, !strcmp(cc, "player") ? "player" : party[active].name); }
     W("run_on=%d\nrun_label=%s\nrun_cls=%s\n", run_on(), run_on() ? "GO started" : "STOP stopped", run_on() ? "ph-green" : "ph-red");
     W("mode_label=%s\nmode_cls=%s\n", rogue_mode() ? "[rogue] live" : "rogue [live]", rogue_mode() ? "ph-green" : "ph-red");
-#define PET_SECTION 53
+#define PET_SECTION 33
 #include PET_SKIN
 #undef PET_SECTION
     W("n_shop=%d\n", ncat); for (int i = 0; i < ncat; i++) { char own[16] = ""; if (owned[i] > 0) snprintf(own, sizeof own, " x%d", owned[i]); W("shop_%d_label=%s %dc%s\nshop_%d_key=%s\n", i, cat[i].label, cat[i].price, own, i, cat[i].key); }
-#define PET_SECTION 54
+#define PET_SECTION 34
 #include PET_SKIN
 #undef PET_SECTION
     char fl[160], cc[16], hid[24]; flag_str("ctl", "pet", cc, sizeof cc); int hs = !strcmp(cc, "player"); snprintf(hid, sizeof hid, "%s", hero.name); for (char *c = hid; *c; c++) if (*c >= 'A' && *c <= 'Z') *c += 32;
@@ -664,7 +636,7 @@ static void out_all(const char *msg) {
     W("n_room=%d\n", nroom); for (int i = 0; i < nroom; i++) { int c = 0, pc = 0; for (int j = 0; j < npl; j++) if (pl[j].room == i) c++; for (int j = 0; j < nparty; j++) if (others[j].room == i) pc++; W("room_%d_label=%s%s (%d things, %d pets)\nroom_%d_id=%s\n", i, rooms[i].name, i == vroom ? "  <- here" : "", c, pc, i, rooms[i].id); }
     int nb = 0; for (int i = 0; i < ncat && nb < 5; i++) if (owned[i] > 0) nb++; W("hb_n_slots=%d\nhb_title=bag: click a slot to place it\n", nb ? nb : 1); if (!nb) W("hb_0_text=(bag empty - Shop)\nhb_0_key=none\n"); nb = 0; for (int i = 0; i < ncat && nb < 5; i++) if (owned[i] > 0) { W("hb_%d_text=%s x%d\nhb_%d_key=%s\n", nb, cat[i].label, owned[i], nb, cat[i].key); nb++; }
     int np = 0; for (int i = 0; i < npl; i++) if (pl[i].room == vroom) np++; W("n_placed=%d\n", np); np = 0; for (int i = 0; i < npl; i++) if (pl[i].room == vroom) { W("placed_%d_label=#%d %s (%d,%d) %s\nplaced_%d_id=%d\n", np, pl[i].id, cat[pl[i].item].label, pl[i].x, pl[i].y, cat[pl[i].item].effect, np, pl[i].id); np++; }
-#define PET_SECTION 55
+#define PET_SECTION 35
 #include PET_SKIN
 #undef PET_SECTION
     o = ui_wrap_keys(u, o, sizeof u);
@@ -675,22 +647,18 @@ static void out_all(const char *msg) {
 }
 
 /* ---------- walking: event steps ---------- */
-#define PET_SECTION 56
-#include PET_SKIN
-#undef PET_SECTION
+static int passable(int x, int y) { g_gr = pet.room; return x >= 0 && x < COLS && y >= TRIG_ROW && y < ROWS && !floor_blocked(pet.room, x, y, 0) && !other_at(pet.room, x, y); }
 static int free_near(int x, int y, int *ox, int *oy);
 static void teleport(int di) {
     Door *d = &doors[di]; int di_from_room = d->room; char b[160]; snprintf(b, sizeof b, "DOOR|%ld|%s|%s|%s", (long)time(NULL), me < 0 ? "trainer" : party[me].id, rooms[d->room].id, rooms[d->dest].id); append_line("events.txt", b);
-#define PET_SECTION 57
+#define PET_SECTION 36
 #include PET_SKIN
 #undef PET_SECTION
 }
 /* one tile step of the mover; returns 1 if it moved. A step onto a door's trigger cell teleports (the door contract). The caller commits with pet_save(). */
 /* the free cell nearest (x,y) in the mover's room (ring search): arrivals and unstacking use it so two pets never share a cell */
 static int free_near(int x, int y, int *ox, int *oy) {
-#define PET_SECTION 58
-#include PET_SKIN
-#undef PET_SECTION
+    g_gr = pet.room;
     for (int r = 0; r < COLS + ROWS; r++) for (int dy = -r; dy <= r; dy++) for (int dx = -r; dx <= r; dx++) { if (abs(dx) + abs(dy) != r) continue; int cx = x + dx, cy = y + dy;
         if (cx >= 0 && cx < COLS && cy >= TRIG_ROW && cy < ROWS && !floor_blocked(pet.room, cx, cy, 0) && !other_at(pet.room, cx, cy) && door_here(pet.room, cx, cy) < 0) { *ox = cx; *oy = cy; return 1; } }
     return 0;
@@ -701,57 +669,51 @@ static int unstack(void) {
         if (i < 0) continue; int fx, fy; if (free_near(pet.x, pet.y, &fx, &fy)) { pet.x = fx; pet.y = fy; pet.tx = pet.ty = -1; pet_save(); moved++; } }
     use_ent(active); return moved; }
 static int do_step(int dx, int dy, char *msg, size_t cap) {
-#define PET_SECTION 59
-#include PET_SKIN
-#undef PET_SECTION
+    g_gr = pet.room;
     pet.dir = dy > 0 ? 0 : dx < 0 ? 1 : dx > 0 ? 2 : 3; int nx = pet.x + dx, ny = pet.y + dy;
     if (!passable(nx, ny)) { if (msg) snprintf(msg, cap, "bump"); return 0; }
     pet.x = nx; pet.y = ny; pet.steps++; char b[100]; snprintf(b, sizeof b, "STEP|%ld|%s|%s|%d|%d", (long)time(NULL), me < 0 ? "trainer" : party[me].id, rooms[pet.room].id, nx, ny); append_line("events.txt", b);
     int di = door_here(pet.room, nx, ny); if (di >= 0) { teleport(di); if (msg) snprintf(msg, cap, "door: now in the %s", rooms[pet.room].name); } else if (msg) snprintf(msg, cap, "at %d,%d", nx, ny);
-#define PET_SECTION 60
+#define PET_SECTION 37
 #include PET_SKIN
 #undef PET_SECTION
     return 1;
 }
 /* breadth-first path over free cells; fills the first move toward (tx,ty) */
 static int bfs_first(int tx, int ty, int *dx, int *dy) {
-#define PET_SECTION 61
-#include PET_SKIN
-#undef PET_SECTION
+    g_gr = pet.room; int dist[MAXR][MAXC], qx[MAXR * MAXC], qy[MAXR * MAXC], h = 0, t = 0; for (int y = 0; y < ROWS; y++) for (int x = 0; x < COLS; x++) dist[y][x] = -1;
+    int fx[MAXR][MAXC], fy[MAXR][MAXC]; dist[ty][tx] = 0; qx[t] = tx; qy[t++] = ty; static const int mx[4] = {0, -1, 1, 0}, my[4] = {1, 0, 0, -1};
     while (h < t) { int x = qx[h], y = qy[h++]; for (int k = 0; k < 4; k++) { int nx = x + mx[k], ny = y + my[k]; if (nx < 0 || nx >= COLS || ny < TRIG_ROW || ny >= ROWS || dist[ny][nx] >= 0) continue; if (floor_blocked(pet.room, nx, ny, 0) || (other_at(pet.room, nx, ny) && !(nx == pet.x && ny == pet.y))) continue; dist[ny][nx] = dist[y][x] + 1; fx[ny][nx] = x; fy[ny][nx] = y; qx[t] = nx; qy[t++] = ny; } }
     if (dist[pet.y][pet.x] <= 0) return 0;      /* already there or unreachable */
     int nx = fx[pet.y][pet.x], ny = fy[pet.y][pet.x]; *dx = nx - pet.x; *dy = ny - pet.y; return 1;
 }
 /* where this pet wanders next: sometimes toward another pet (association), sometimes an auto door (then the walk ends in a teleport), otherwise a random free cell */
 static void pick_target(void) {
-#define PET_SECTION 62
-#include PET_SKIN
-#undef PET_SECTION
+    g_gr = pet.room; int r = rand() % 100;
     if (r < 32 && nparty > 1) { int j = rand() % nparty; if (j == me) j = (j + 1) % nparty;
         if (others[j].room == pet.room) { static const int nx[4] = {1, -1, 0, 0}, ny[4] = {0, 0, 1, -1}; for (int k = 0; k < 4; k++) { int cx = others[j].x + nx[k], cy = others[j].y + ny[k]; if (passable(cx, cy) && door_here(pet.room, cx, cy) < 0) { pet.tx = cx; pet.ty = cy; return; } } }
-#define PET_SECTION 63
-#include PET_SKIN
-#undef PET_SECTION
+        else { int pick = -1; for (int i = 0; i < ndoor; i++) if (doors[i].room == pet.room && doors[i].autow && doors[i].dest == others[j].room) pick = i; if (pick < 0) for (int i = 0; i < ndoor; i++) if (doors[i].room == pet.room && doors[i].autow) pick = i; if (pick >= 0) { pet.tx = doors[pick].tx; pet.ty = doors[pick].ty + 1; return; } } }
+    if (r < 47) { int cand[8], nc = 0; for (int i = 0; i < ndoor; i++) if (doors[i].room == pet.room && doors[i].autow && nc < 8) cand[nc++] = i; if (nc) { Door *d = &doors[cand[rand() % nc]]; pet.tx = d->tx; pet.ty = d->ty + 1; return; } }
     for (int k = 0; k < 40; k++) { int x = rand() % COLS, y = TRIG_ROW + rand() % (ROWS - TRIG_ROW); if (passable(x, y) && door_here(pet.room, x, y) < 0) { pet.tx = x; pet.ty = y; return; } }
     pet.tx = pet.ty = -1;
 }
-#define PET_SECTION 64
+#define PET_SECTION 38
 #include PET_SKIN
 #undef PET_SECTION
 /* ONE autonomous step of pet i: keep or pick a target, walk a tile, greet a neighbour. Pets are never owner controlled; this runs on a timer (INT off) or once per turn (INT on). */
-#define PET_SECTION 65
+#define PET_SECTION 39
 #include PET_SKIN
 #undef PET_SECTION
 static int ai_step(int i) {
-#define PET_SECTION 66
+#define PET_SECTION 40
 #include PET_SKIN
 #undef PET_SECTION
     use_ent(i); int moved = 0;
-#define PET_SECTION 67
+#define PET_SECTION 41
 #include PET_SKIN
 #undef PET_SECTION
     if (pet.tx >= 0 && pet.x == pet.tx && pet.y == pet.ty) pet.tx = pet.ty = -1;
-#define PET_SECTION 68
+#define PET_SECTION 42
 #include PET_SKIN
 #undef PET_SECTION
     if (pet.tx >= 0) { int before = pet.room, dx, dy; if (bfs_first(pet.tx, pet.ty, &dx, &dy) && do_step(dx, dy, NULL, 0)) { moved = 1; if (pet.room != before) pet.tx = pet.ty = -1; } else pet.tx = pet.ty = -1; }
@@ -759,11 +721,11 @@ static int ai_step(int i) {
     for (int j = 0; j < nparty; j++) if (j != i && others[j].room == others[i].room && abs(others[j].x - others[i].x) + abs(others[j].y - others[i].y) == 1) { meet(i < j ? i : j, i < j ? j : i); break; }
     return moved;
 }
-#define PET_SECTION 69
+#define PET_SECTION 43
 #include PET_SKIN
 #undef PET_SECTION
 /* a roguelike turn: the clock moves on, and every pet takes its step */
-#define PET_SECTION 70
+#define PET_SECTION 44
 #include PET_SKIN
 #undef PET_SECTION
 
@@ -775,7 +737,7 @@ static int ai_step(int i) {
 #define XT 24
 #define MAXSLOT 400
 static unsigned char slotpx[MAXSLOT][XT * XT * 4]; static int nslot;
-#define PET_SECTION 71
+#define PET_SECTION 45
 #include PET_SKIN
 #undef PET_SECTION
 static void tile24(Sheet *s, int sx, int sy, unsigned char *out) {          /* 48x48 region -> 24x24 by 2x2 averaging; out is RGBA */
@@ -792,36 +754,30 @@ static int slot_of(const unsigned char *px) {
 /* 3D sprite frames: the board-viewer 3D raymarcher extrudes a 16x24 RGBA frame per map event (8 voxels deep), looked up as <ASSETS>/../tsots-characters/frames/<charset>_<index>_<dir 2|4|6|8>_<pattern>.rgba
  * (found by walking up from the map folder; same files the 98 TSOTS desks use, tsots_events.py write_frame). No frame file = the flat colour box. A 3x4-frame cell of the 12x8 sheet, nearest-resized to 16x24. */
 static void write_frame(const char *sh, int idx, int dir4, int pat) {
-#define PET_SECTION 72
+#define PET_SECTION 46
 #include PET_SKIN
 #undef PET_SECTION
     Sheet *s = sheet("characters", sh); if (!s) return; char d[PATH_MAX], p[PATH_MAX]; snprintf(d, sizeof d, "%s/../tsots-characters", ASSETS); mkdir(d, 0755); snprintf(d, sizeof d, "%s/../tsots-characters/frames", ASSETS); mkdir(d, 0755);
     static const int dc[4] = {2, 4, 6, 8}; snprintf(p, sizeof p, "%s/%s_%d_%d_%d.rgba", d, sh, idx, dc[dir4 & 3], pat); if (fexists(p)) return;
     int pw = s->w / 12, ph = s->h / 8; if (pw < 1 || ph < 1) return; int sx = ((idx % 4) * 3 + pat) * pw, sy = ((idx / 4) * 4 + dir4) * ph; unsigned char out[16 * 24 * 4];
     for (int y = 0; y < 24; y++) for (int x = 0; x < 16; x++) { int px = sx + x * pw / 16, py = sy + y * ph / 24; memcpy(out + (y * 16 + x) * 4, s->px + ((size_t)py * s->w + px) * 4, 4); }
-#define PET_SECTION 73
+#define PET_SECTION 47
 #include PET_SKIN
 #undef PET_SECTION
     FILE *f = fopen(p, "wb"); if (f) { fwrite(out, 1, sizeof out, f); fclose(f); }
 }
 /* the average-ish colour of a sprite frame (the 3D box fallback colour in events.txt): the centre pixel of the frame */
 static void frame_rgb(Sheet *s, int idx, int dir4, unsigned char *px) {
-#define PET_SECTION 74
-#include PET_SKIN
-#undef PET_SECTION
+    if (!s) return; int fx = (idx % 4) * 3 * S48 + S48 + S48 / 2, fy = (idx / 4) * 4 * S48 + dir4 * S48 + S48 / 2; if (fx < s->w && fy < s->h) memcpy(px, s->px + ((size_t)fy * s->w + fx) * 4, 4);
 }
 /* events.txt of one room for the 3D book: one row per monster / Harold in it, "x y r g b charset index dir pattern" (dir 2/4/6/8, pattern 0-2 = the walk frame, from the step count),
  * plus the 16x24 frame file for that exact facing and pattern. Rewritten only when the text changes (atomic tmp+rename in write_if_changed). */
 /* map.png of one room for the pc-hq 2D view: the room painted by render() (floor, wall, doors, scenery, furniture), COLS*T x ROWS*T = 624 x 384 (tile step = width / map.txt columns = 48). Written only when the picture changed. */
 static void write_room_png(int r) {
     static unsigned long last[16]; int saved = vroom; vroom = r; g_bg_only = 1; render(); g_bg_only = 0;
-#define PET_SECTION 75
-#include PET_SKIN
-#undef PET_SECTION
+    static unsigned char crop[FW * FH * 4]; unsigned long sum = 5381; for (int y = 0; y < ROWS * T; y++) memcpy(crop + (size_t)y * COLS * T * 4, fr + ((size_t)(OY + y) * FW + OX) * 4, COLS * T * 4);
     for (size_t i = 0; i < sizeof crop; i += 7) sum = sum * 33 + crop[i];
-#define PET_SECTION 76
-#include PET_SKIN
-#undef PET_SECTION
+    if (r >= 0 && r < 16 && sum != last[r]) { last[r] = sum; char d[PATH_MAX], p[PATH_MAX]; snprintf(d, sizeof d, "%s/pieces/system/maps/" PET_APP "/%s", PCHQ, rooms[r].id); mkdir(d, 0755); snprintf(p, sizeof p, "%s/map.png", d); png_atomic(p, COLS * T, ROWS * T, crop, COLS * T * 4); }
     vroom = saved; calc_view();
 }
 /* The 3D sky of an OUTDOOR room (the same picture the 2D painter uses, so 2D and 3D share one day / night cycle): maps/<app>/<room>/parallax.rgba (raw RGBA8, the RPG Maker parallax image for the phase:
@@ -845,19 +801,17 @@ static void write_room_sky(int r, const char *d) {
 }
 static void write_room_events(int r) {
     char d[PATH_MAX], p[PATH_MAX], buf[4096]; int o = 0; static const int dc[4] = {2, 4, 6, 8};
-#define PET_SECTION 77
+#define PET_SECTION 48
 #include PET_SKIN
 #undef PET_SECTION
     snprintf(p, sizeof p, "%s/events.txt", d); write_if_changed(p, buf, o);
     write_room_sky(r, d);
     /* ascii_legend.txt: the ` (backtick) glyph view of this book. Rows are glyph|height|r|g|b|asset|name|char like terrain_legend.txt; events.txt carries a 10th column with each sprite's letter (@ = the trainer, the pet's lowercase initial) */
-#define PET_SECTION 78
+#define PET_SECTION 49
 #include PET_SKIN
 #undef PET_SECTION
     snprintf(p, sizeof p, "%s/ascii_legend.txt", d); write_if_changed(p, leg, sizeof leg - 1);
-#define PET_SECTION 79
-#include PET_SKIN
-#undef PET_SECTION
+    { char bp[PATH_MAX]; snprintf(bp, sizeof bp, "%s/pieces/system/maps/" PET_APP "/view.pdl", PCHQ); char vw[PATH_MAX + 160]; char sc[PATH_MAX]; spath(sc, "scene.raw"); int vn = snprintf(vw, sizeof vw, "VIEW | cell_px | 48\nVIEW | default_style | scene\nVIEW | scene_raw | %s\nVIEW | scene_w | %d\nVIEW | scene_h | %d\n", sc, FW, FH); write_if_changed(bp, vw, (size_t)vn); }      /* the engine draws this book's 2D at <app>'s own 48 px tile (house desk_grid.pdl says 80) */
     /* bar.txt: the bottom entities bar of the pc-hq board lists these (id<TAB>name<TAB>x<TAB>y<TAB>trigger), Harold first */
     char bb[2048]; int bo = 0, id = 1; if (tr.room == r) bo += snprintf(bb + bo, sizeof bb - bo, "%d\t%s\t%d\t%d\ton-click\n", id++, hero.name, tr.x, tr.y);
     for (int i = 0; i < nparty; i++) if (others[i].room == r) bo += snprintf(bb + bo, sizeof bb - bo, "%d\t%s\t%d\t%d\ton-click\n", id++, party[i].name, others[i].x, others[i].y);
@@ -883,12 +837,12 @@ static void sync_selector(int x, int y) {
 /* CPU safety: follow_pchq() exports the rooms and wakes the board engine (a redraw key into its relay) every time the scene changes. With NO board window open that drove a headless engine at several
  * redraws a second (chtpm_rgb_render 7% + prisc 3-4% of a core, measured, for hours after the window was closed). Only follow when a window of a board layout (pchq-board.xhtpm: the <app> board, pc-hq
  * or the layout-studio sandbox) is really running; the answer is cached for 2 s (one /proc scan). */
-#define PET_SECTION 80
+#define PET_SECTION 50
 #include PET_SKIN
 #undef PET_SECTION
     DIR *d = opendir("/proc"); if (!d) return 3; struct dirent *e;
     while ((e = readdir(d))) { if (e->d_name[0] < '1' || e->d_name[0] > '9') continue; char p[64], b[2048]; snprintf(p, sizeof p, "/proc/%s/cmdline", e->d_name); FILE *f = fopen(p, "r"); if (!f) continue; size_t n = fread(b, 1, sizeof b - 1, f); fclose(f); b[n] = 0;
-#define PET_SECTION 81
+#define PET_SECTION 51
 #include PET_SKIN
 #undef PET_SECTION
     closedir(d); return v;
@@ -906,31 +860,25 @@ static void publish_sky(const char *wp) {
     { char o[4096], x[4096]; read_file(wp, x, sizeof x); int n = 0, f1 = 0, f2 = 0; for (char *l = strtok(x, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "game_time_epoch_sec=", 20)) { n += snprintf(o + n, sizeof o - n, "game_time_epoch_sec=%s\n", v); f1 = 1; } else if (!strncmp(l, "game_time_epoch_ms=", 19)) { n += snprintf(o + n, sizeof o - n, "game_time_epoch_ms=%s\n", v2); f2 = 1; } else n += snprintf(o + n, sizeof o - n, "%s\n", l); }
       if (!f1) n += snprintf(o + n, sizeof o - n, "game_time_epoch_sec=%s\n", v); if (!f2) n += snprintf(o + n, sizeof o - n, "game_time_epoch_ms=%s\n", v2); write_if_changed(wp, o, (size_t)n); }
 }
-#define PET_SECTION 82
+#define PET_SECTION 52
 #include PET_SKIN
 #undef PET_SECTION
 static void follow_pchq(void) {
-#define PET_SECTION 83
-#include PET_SKIN
-#undef PET_SECTION
+    char wp[PATH_MAX], xp[PATH_MAX], hp[PATH_MAX], m[64] = "", dk[64] = ""; snprintf(wp, sizeof wp, "%s/pieces/world_01/state.txt", PCHQ);
     char wb[2048]; read_file(wp, wb, sizeof wb); for (char *l = strtok(wb, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "map_id=", 7)) snprintf(m, sizeof m, "%s", l + 7); else if (!strncmp(l, "desk_id=", 8)) snprintf(dk, sizeof dk, "%s", l + 8); }
     if (strcmp(m, "" PET_APP "")) return;
     publish_sky(wp);
     for (int r = 0; r < nroom; r++) write_room_events(r);
-#define PET_SECTION 84
+#define PET_SECTION 53
 #include PET_SKIN
 #undef PET_SECTION
     { static unsigned long hs = 0; unsigned long s2 = 5381 + npl; for (int i = 0; i < npl; i++) s2 = s2 * 33 + pl[i].item * 131 + pl[i].x * 17 + pl[i].y * 7 + pl[i].room; if (s2 != hs) { hs = s2; for (int r = 0; r < nroom; r++) write_room_png(r); } }
-#define PET_SECTION 85
-#include PET_SKIN
-#undef PET_SECTION
+    snprintf(xp, sizeof xp, "%s/pieces/xelector_01/state.txt", PCHQ); snprintf(hp, sizeof hp, "%s/pieces/hero_01/state.txt", PCHQ);
     int ci = ctl_idx(); Ent *e = ci < 0 ? &tr : &others[ci]; static int lr = -1, lx = -1, ly = -1, ld = -1, lw = -1; int changed = 0;
     int pin = g_pin_now; g_pin_now = 0;
     if (pin || e->room != lr || e->x != lx || e->y != ly) { lr = e->room; lx = e->x; ly = e->y; changed = 1;
         kv_set_int(xp, "pos_x", e->x); kv_set_int(xp, "pos_y", e->y); kv_set_int(hp, "pos_x", e->x); kv_set_int(hp, "pos_y", e->y); sync_selector(e->x, e->y); }
-#define PET_SECTION 86
-#include PET_SKIN
-#undef PET_SECTION
+    if (strcmp(dk, rooms[e->room].id) && lw != e->room) { lw = e->room; char ib[PATH_MAX], c[96]; snprintf(ib, sizeof ib, "%s/pieces/system/widget_cmds/inbox.txt", PCHQ); snprintf(c, sizeof c, "CONFIRM_SET_DESK:%s", rooms[e->room].id); FILE *f = fopen(ib, "a"); if (f) { fprintf(f, "%s\n", c); fclose(f); } changed = 1; }
     if (!strcmp(dk, rooms[e->room].id)) lw = e->room;
     /* any pet/Harold stepping changes the sprites too: redraw when the events text changed (write_room_events reports via the checksum below) */
     static unsigned long ev_sum = 0; unsigned long s = 0; for (int i = 0; i < nparty; i++) s = s * 131 + (others[i].room * 97 + others[i].x * 31 + others[i].y * 7 + others[i].dir + others[i].steps % 3); s = s * 131 + tr.x * 31 + tr.y + tr.room; if (s != ev_sum) { ev_sum = s; changed = 1; } (void)ld;
@@ -943,43 +891,39 @@ static void follow_pchq(void) {
         if (best[0]) { FILE *f = fopen(best, "a"); if (f) { fputs("126\n", f); fclose(f); } } }
 }
 static void export3d(char *msg, size_t cap) {
-#define PET_SECTION 87
-#include PET_SKIN
-#undef PET_SECTION
+    char root[PATH_MAX], d[PATH_MAX], p[PATH_MAX]; snprintf(root, sizeof root, "%s/pieces/system/maps/" PET_APP "", PCHQ);
+    { char a[PATH_MAX]; snprintf(a, sizeof a, "%s/pieces/system/maps", PCHQ); mkdir(a, 0755); } mkdir(root, 0755);
     char gl[8192]; int go = 0; go += snprintf(gl + go, sizeof gl - go, "SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\nGAME         | type               | board-game\nGAME         | icon               | \xF0\x9F\x8F\xA0\nGAME         | label              | RPG-Pet\nGAME         | n_chunks           | 1\nGAME         | chunk_0_x          | 0\nGAME         | chunk_0_y          | 0\nGAME         | n_desks            | %d\n", nroom);
     for (int r = 0; r < nroom; r++) {
         go += snprintf(gl + go, sizeof gl - go, "GAME         | desk_%d_id          | %s\nGAME         | desk_%d_label       | %s\n", r + 1, rooms[r].id, r + 1, rooms[r].name);
         snprintf(d, sizeof d, "%s/%s", root, rooms[r].id); mkdir(d, 0755);
-#define PET_SECTION 88
+#define PET_SECTION 54
 #include PET_SKIN
 #undef PET_SECTION
         unsigned char floorpx[XT * XT * 4], wallpx[XT * XT * 4], ceilpx[XT * XT * 4], doorpx[XT * XT * 4], pathpx[XT * XT * 4], matpx[XT * XT * 4];
-#define PET_SECTION 89
+#define PET_SECTION 55
 #include PET_SKIN
 #undef PET_SECTION
         for (int y = 0; y < ROWS; y++) for (int x = 0; x < COLS; x++) { glyph[y][x] = '.'; fs[y][x] = ws[y][x] = 0; }
-#define PET_SECTION 90
-#include PET_SKIN
-#undef PET_SECTION
+        if (!rm->over) for (int x = 0; x < COLS; x++) { glyph[0][x] = glyph[1][x] = 'W'; ws[0][x] = slot_of(ceilpx); ws[1][x] = slot_of(wallpx); }
         for (int y = TRIG_ROW; y < ROWS; y++) for (int x = 0; x < COLS; x++) fs[y][x] = slot_of(floorpx);
-#define PET_SECTION 91
-#include PET_SKIN
-#undef PET_SECTION
+        for (int i = 0; i < ndoor; i++) if (doors[i].room == r) { int tx = doors[i].tx; memcpy(a, wallpx, sizeof a); over24(a, doorpx); glyph[doors[i].ty][tx] = 'D'; ws[doors[i].ty][tx] = slot_of(a);
+            if (rm->over) { } else if (rm->outdoor) { for (int y = TRIG_ROW; y < ROWS - 1; y++) fs[y][tx] = slot_of(pathpx); } else fs[doors[i].ty + 1][tx] = slot_of(matpx); }
         for (int i = 0; i < nscen; i++) if (scen[i].room == r) for (int ci = 0; ci < scen[i].w; ci++) for (int cj = 0; cj < scen[i].h; cj++) { int x = scen[i].x + ci, y = scen[i].y + cj; if (x < 0 || x >= COLS || y < 0 || y >= ROWS) continue;
-#define PET_SECTION 92
+#define PET_SECTION 56
 #include PET_SKIN
 #undef PET_SECTION
             for (int ci = 0; ci < it->w; ci++) for (int cj = 0; cj < it->h; cj++) { int x = pl[i].x + ci, y = pl[i].y + cj; if (x < 0 || x >= COLS || y < 0 || y >= ROWS) continue;
-#define PET_SECTION 93
+#define PET_SECTION 57
 #include PET_SKIN
 #undef PET_SECTION
                 if (it->wall) { memcpy(b, wallpx, sizeof b); over24(b, a); ws[y][x] = slot_of(b); } else { memcpy(b, floorpx, sizeof b); over24(b, a); glyph[y][x] = 'f'; ws[y][x] = slot_of(b); } } }
-#define PET_SECTION 94
+#define PET_SECTION 58
 #include PET_SKIN
 #undef PET_SECTION
         (void)fl;
         snprintf(p, sizeof p, "%s/map.txt", d); { FILE *f = fopen_tmp(p); if (f) { for (int y = 0; y < ROWS; y++) { glyph[y][COLS] = 0; fprintf(f, "%s\n", glyph[y]); } fclose_tmp(f, p); } }
-#define PET_SECTION 95
+#define PET_SECTION 59
 #include PET_SKIN
 #undef PET_SECTION
         int cols = 16, nrows = (nslot + cols - 1) / cols; int aw = cols * XT, ah = nrows * XT; unsigned char *atlas = calloc((size_t)aw * ah * 4, 1);
@@ -994,13 +938,13 @@ static void export3d(char *msg, size_t cap) {
 
 /* ---------- verbs ---------- */
 static void clock_event(const char *ev);
-#define PET_SECTION 96
+#define PET_SECTION 60
 #include PET_SKIN
 #undef PET_SECTION
 static void verb(int argc, char **argv, char *msg, size_t cap) {
     const char *v = argc ? argv[0] : "status"; long now = (long)time(NULL); char b[200]; msg[0] = 0; use_ent(active);
     if (!strcmp(v, "status")) return;
-#define PET_SECTION 97
+#define PET_SECTION 61
 #include PET_SKIN
 #undef PET_SECTION
     if (!strcmp(v, "pet_says") && argc >= 4) {      /* the registered pet_says command of the greet pages: pet_says <pet id> <chat line> <spoken line> [other]; {other} is replaced; RPG_SAY / RPG_SPEAK say whether it is heard (chat / voice) */
@@ -1011,17 +955,17 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
         clock_paths(); if (run_on()) clock_install(); clock_sync(); if (run_on()) lc_run(1, "daemon-start", NULL); snprintf(msg, cap, "synced"); return; }      /* the clock follows the running / int switches (the last node of the play and stop event pages) */
     if (!strcmp(v, "phase") && argc >= 2) { clock_event(argv[1]); snprintf(msg, cap, "phase %s", argv[1]); return; }
     if (!strcmp(v, "day_tick")) { clock_event("day_tick"); snprintf(msg, cap, "new day"); return; }
-#define PET_SECTION 98
+#define PET_SECTION 62
 #include PET_SKIN
 #undef PET_SECTION
         char m2[200] = ""; char *sv[] = { (char *)"save", (char *)"0", NULL }; verb(2, sv, m2, sizeof m2);
         char sd[PATH_MAX]; snprintf(sd, sizeof sd, "%s/slots/0/events.txt", ST); if (!fexists(sd)) { snprintf(msg, cap, "new game NOT started: the backup to slot 0 failed (%s)", m2); return; }
-#define PET_SECTION 99
+#define PET_SECTION 63
 #include PET_SKIN
 #undef PET_SECTION
         for (size_t i = 0; i < sizeof fixed / sizeof *fixed; i++) { char p[PATH_MAX]; spath(p, fixed[i]); remove(p); }
         for (int i = 0; i < nparty; i++) { char p[PATH_MAX], nm[48]; snprintf(nm, sizeof nm, "pet_%s.txt", party[i].id); spath(p, nm); remove(p); }
-#define PET_SECTION 100
+#define PET_SECTION 64
 #include PET_SKIN
 #undef PET_SECTION
     if (!strcmp(v, "buy") && argc >= 2) {
@@ -1041,7 +985,7 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
     if (!strcmp(v, "select") && argc >= 2) { char hid[24]; snprintf(hid, sizeof hid, "%s", hero.name); for (char *c = hid; *c; c++) if (*c >= 'A' && *c <= 'Z') *c += 32;
         if (!strcmp(argv[1], hid)) { g_ctl_why = "select-hero-row"; set_flag("ctl", "player"); set_flag("follow", "player"); calc_view(); snprintf(msg, cap, "%s, the hero (owner of the monsters), in the %s - INT controls him", hero.name, rooms[tr.room].name); return; }
         int k = -1; for (int i = 0; i < nparty; i++) if (!strcmp(party[i].id, argv[1])) k = i; if (k < 0) { snprintf(msg, cap, "no pet %s", argv[1]); return; }
-#define PET_SECTION 101
+#define PET_SECTION 65
 #include PET_SKIN
 #undef PET_SECTION
     if (!strcmp(v, "newpal")) {       /* the Pals menu "+ new pal": a new pet row in pals.pdl (default stats, next monster picture), then select it */
@@ -1065,15 +1009,13 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
         load_data(); char *ga[2] = { "goto", id }; verb(2, ga, msg, cap); return; }
     if (!strcmp(v, "goto") && argc >= 2) {        /* the Rooms menu: with INT on, the controlled pet goes there (a turn); with INT off, the window just watches that room */
         int r = room_idx(argv[1]); if (r < 0) { snprintf(msg, cap, "no room %s", argv[1]); return; }
-#define PET_SECTION 102
-#include PET_SKIN
-#undef PET_SECTION
+        if (flag_on("int", 0)) { int ci = ctl_idx(); use_ent(ci); pet.room = r; g_gr = r; pet.dir = 0; pet.tx = pet.ty = -1; int placed = 0;
             for (int k = 0; k < COLS * ROWS && !placed; k++) { int x = (6 + k) % COLS, y = TRIG_ROW + 3 + ((6 + k) / COLS) % (ROWS - TRIG_ROW - 3 > 0 ? ROWS - TRIG_ROW - 3 : 1); if (passable(x, y) && door_here(r, x, y) < 0) { pet.x = x; pet.y = y; placed = 1; } }
             snprintf(b, sizeof b, "DOOR|%ld|%s|menu|%s", now, ci < 0 ? "player" : party[ci].id, rooms[r].id); append_line("events.txt", b); pet_save(); set_flag("follow", ci < 0 ? "player" : "pet"); turn_taken = 1; snprintf(msg, cap, "%s is now in the %s", ci < 0 ? "you" : party[ci].name, rooms[r].name); return; }
         snprintf(b, sizeof b, "room:%s", rooms[r].id); set_flag("follow", b); calc_view(); snprintf(msg, cap, "watching the %s", rooms[r].name); return; }
     if (!strcmp(v, "step") && argc >= 3) { if (!run_on()) { snprintf(msg, cap, "stopped: press Play (Player tab) first"); return; } if (!flag_on("int", 0)) { snprintf(msg, cap, "turn INT on first: INT lets you control %s or the player", party[active].name); return; } int ci = ctl_idx(); use_ent(ci); int moved = do_step(atoi(argv[1]), atoi(argv[2]), msg, cap); pet_save(); set_flag("follow", ci < 0 ? "player" : "pet"); if (moved) turn_taken = 1; return; }
     if (!strcmp(v, "control")) { g_ctl_why = "control-menu-verb"; char cur[16]; flag_str("ctl", "pet", cur, sizeof cur); const char *n = argc >= 2 ? argv[1] : (!strcmp(cur, "pet") ? "player" : "pet"); if (strcmp(n, "pet") && strcmp(n, "player")) { snprintf(msg, cap, "control pet or player"); return; } set_flag("ctl", n); set_flag("follow", !strcmp(n, "player") ? "player" : "pet"); calc_view(); snprintf(msg, cap, !strcmp(n, "player") ? "INT now controls you (the player)" : "INT now controls %s", party[active].name); return; }
-#define PET_SECTION 103
+#define PET_SECTION 66
 #include PET_SKIN
 #undef PET_SECTION
     if (!strcmp(v, "walk")) { int moved = ai_step(active); use_ent(active); if (moved) snprintf(msg, cap, "%s took a step", party[active].name); else snprintf(msg, cap, "%s stays put", party[active].name); return; }
@@ -1085,7 +1027,7 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
     if (!strcmp(v, "stop")) { if (!(run_event("stop", "ui") && !run_on())) { set_flag("running", "0"); clock_sync(); } snprintf(msg, cap, "STOPPED: everything is frozen (building and chat still work). Play resumes"); return; }
     if (!strcmp(v, "save") || !strcmp(v, "load")) {      /* slot copies of the state files (pets, trainer, ledger, relations, chat, flags, clock time) */
         int slot = (argc >= 2 && argv[1][0] >= '0' && argv[1][0] <= '9' && !argv[1][1]) ? argv[1][0] - '0' : 1;      /* slots 1-9 are yours; slot 0 is the automatic copy New game makes of the game it replaces */ int saving = !strcmp(v, "save"); char sd[PATH_MAX]; snprintf(sd, sizeof sd, "%s/slots", ST); mkdir(sd, 0755); snprintf(sd, sizeof sd, "%s/slots/%d", ST, slot); mkdir(sd, 0755);
-#define PET_SECTION 104
+#define PET_SECTION 67
 #include PET_SKIN
 #undef PET_SECTION
         for (int i = 0; i < nparty && nn < 38; i++) snprintf(names[nn++], 48, "pet_%s.txt", party[i].id);
@@ -1093,15 +1035,15 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
         if (saving) { clock_paths(); long long ms = clock_kv_ll("game_time_epoch_ms"); char b[40]; snprintf(b, sizeof b, "%lld\n", ms); write_if_changed(mp, b, strlen(b)); }
         int ok = 0; for (int i = 0; i < nn; i++) { char a[PATH_MAX], bpath[PATH_MAX], buf[65536]; if (saving) { spath(a, names[i]); snprintf(bpath, sizeof bpath, "%s/%s", sd, names[i]); } else { snprintf(a, sizeof a, "%s/%s", sd, names[i]); spath(bpath, names[i]); }
             if (!fexists(a)) { if (!saving) remove(bpath); continue; }
-#define PET_SECTION 105
+#define PET_SECTION 68
 #include PET_SKIN
 #undef PET_SECTION
             if (copy_file(a, bpath)) ok++; }      /* every file is streamed: read_file stops at 64 KB and silently cut relations.txt (65,535 bytes) and chat.txt in the slot */
-#define PET_SECTION 106
+#define PET_SECTION 69
 #include PET_SKIN
 #undef PET_SECTION
     if (!strcmp(v, "clearchat")) { char p[PATH_MAX], q[PATH_MAX]; spath(p, "chat.txt"); snprintf(q, sizeof q, "%s/chat.txt.%ld.bak", ST, now); if (fexists(p)) rename(p, q); snprintf(msg, cap, "chat cleared (kept as chat.txt.%ld.bak)", now); return; }
-#define PET_SECTION 107
+#define PET_SECTION 70
 #include PET_SKIN
 #undef PET_SECTION
     if (!strcmp(v, "view")) { char c[16]; flag_str("view", "2d", c, sizeof c); const char *n = !strcmp(c, "2d") ? "3d" : !strcmp(c, "3d") ? "glyph" : "2d"; set_flag("view", n); snprintf(msg, cap, "view %s (the picture is still 2D: 3D and the Chinese-glyph view are sprint items 7-8)", n); return; }
@@ -1184,14 +1126,10 @@ static void board_interact(int want, int force) {
  * open is <app> on the monster's own room, or when the selection just changed (follow_pchq puts the xelector on the new monster first). */
 static int follow_xelector(char *msg, size_t cap) {
     static int lci = -2; int ci = ctl_idx(); if (ci != lci) { lci = ci; return 0; }
-#define PET_SECTION 108
-#include PET_SKIN
-#undef PET_SECTION
+    char wp[PATH_MAX], wb[2048], m[64] = "", dk[64] = "", xp[PATH_MAX], kb[512]; snprintf(wp, sizeof wp, "%s/pieces/world_01/state.txt", PCHQ); read_file(wp, wb, sizeof wb);
     for (char *l = strtok(wb, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "map_id=", 7)) snprintf(m, sizeof m, "%s", l + 7); else if (!strncmp(l, "desk_id=", 8)) snprintf(dk, sizeof dk, "%s", l + 8); }
     Ent *e = ci < 0 ? &tr : &others[ci]; if (strcmp(m, "" PET_APP "") || strcmp(dk, rooms[e->room].id)) return 0;
-#define PET_SECTION 109
-#include PET_SKIN
-#undef PET_SECTION
+    snprintf(xp, sizeof xp, "%s/pieces/xelector_01/state.txt", PCHQ); read_file(xp, kb, sizeof kb); int xx = -1, xy = -1;
     for (char *l = strtok(kb, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "pos_x=", 6)) xx = atoi(l + 6); else if (!strncmp(l, "pos_y=", 6)) xy = atoi(l + 6); }
     if (xx < 0 || xy < 0 || (xx == e->x && xy == e->y)) return 0;
     int ddx = xx - e->x, ddy = xy - e->y, dx = 0, dy = 0; if (abs(ddx) >= abs(ddy)) dx = ddx > 0 ? 1 : -1; else dy = ddy > 0 ? 1 : -1;
@@ -1201,13 +1139,9 @@ static int follow_xelector(char *msg, size_t cap) {
 /* ENTER = possess (owner 2026-10-12): while INT is on and the xelector stands on a character, Enter chooses that character (same as clicking it in the toolbar): it becomes the one INT controls. Enter reaches the
  * engine, not this daemon, so the daemon reads the engine session's keyboard history for new "KEY_PRESSED: 13" lines (its own engage key, g_own13, is ignored). */
 static int possess_at_xelector(char *msg, size_t cap) {
-#define PET_SECTION 110
-#include PET_SKIN
-#undef PET_SECTION
+    char wp[PATH_MAX], wb[2048], m[64] = "", dk[64] = "", xp[PATH_MAX], kb[512]; snprintf(wp, sizeof wp, "%s/pieces/world_01/state.txt", PCHQ); read_file(wp, wb, sizeof wb);
     for (char *l = strtok(wb, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "map_id=", 7)) snprintf(m, sizeof m, "%s", l + 7); else if (!strncmp(l, "desk_id=", 8)) snprintf(dk, sizeof dk, "%s", l + 8); }
-#define PET_SECTION 111
-#include PET_SKIN
-#undef PET_SECTION
+    if (strcmp(m, "" PET_APP "")) return 0; snprintf(xp, sizeof xp, "%s/pieces/xelector_01/state.txt", PCHQ); read_file(xp, kb, sizeof kb); int xx = -1, xy = -1;
     for (char *l = strtok(kb, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "pos_x=", 6)) xx = atoi(l + 6); else if (!strncmp(l, "pos_y=", 6)) xy = atoi(l + 6); }
     int pick = -2; for (int i = 0; i < nparty; i++) if (!strcmp(rooms[others[i].room].id, dk) && others[i].x == xx && others[i].y == xy) pick = i;
     if (pick == -2 && !strcmp(rooms[tr.room].id, dk) && tr.x == xx && tr.y == xy) pick = -1;
@@ -1238,7 +1172,7 @@ static void board_cam_key(int code) {
 static int daemon_main(void) {
     { char lp[PATH_MAX]; snprintf(lp, sizeof lp, "%s/daemon.lock", ST); static int lfd; lfd = open(lp, O_CREAT | O_RDWR, 0644);      /* ONE resident daemon per game folder (2026-10-17: a board launch and the standalone window each started one, both ticking the same state): flock is dropped by the kernel when this process dies, close-on-exec so a leftover child cannot hold it */
       if (lfd >= 0) { fcntl(lfd, F_SETFD, FD_CLOEXEC); if (flock(lfd, LOCK_EX | LOCK_NB) != 0) { fprintf(stderr, "daemon already running for %s: this one exits\n", ST); return 0; } } }
-#define PET_SECTION 112
+#define PET_SECTION 71
 #include PET_SKIN
 #undef PET_SECTION
     char h1[PATH_MAX], h2[PATH_MAX], d[PATH_MAX]; snprintf(d, sizeof d, "%s/keyboard", ST); mkdir(d, 0755); spath(h1, "interact_relay.txt"); snprintf(h2, sizeof h2, "%s/keyboard/history.txt", ST);
@@ -1248,13 +1182,13 @@ static int daemon_main(void) {
     while (!quit_flag) {
         usleep(100000); while (waitpid(-1, NULL, WNOHANG) > 0) {}      /* reap fire-and-forget children (run_quiet wait=0): no zombies pile up */
         int dirty = 0, codes[64], n; msg[0] = 0; { long lt = now_ms(); if (lt - last_load >= tune("reload_ms", 2000)) { last_load = lt; load_tune(); load_data(); } }      /* catalog / party / rooms / door pages are static: re-parsing them every 100 ms was most of the daemon's own CPU */
-#define PET_SECTION 113
+#define PET_SECTION 72
 #include PET_SKIN
 #undef PET_SECTION
         if (in && enter_pressed_in_engine() && possess_at_xelector(msg, sizeof msg)) { dirty = 1; follow_pchq(); }
         n = poll_keys(h1, &o1, codes, 32); n += poll_keys(h2, &o2, codes + n, 32);     /* the offsets always advance; keys only act while INT is on */
         if (in && n) replay();
-#define PET_SECTION 114
+#define PET_SECTION 73
 #include PET_SKIN
 #undef PET_SECTION
         { int r = run_on() + 2 * rogue_mode(); if (r != was_run) { was_run = r; clock_sync(); dirty = 1; } }
@@ -1290,15 +1224,12 @@ static int daemon_main(void) {
              * click and the canvas size); the scene frame is FW x FH with the room grid at OX,OY, T px per cell, so the cell is ((px-OX)/T, (py-OY)/T). Looked at only while a board window exists; the first
              * look just records the current click so an old one never selects anything. */
             static long csig = -1, cchk = 0; long t = now_ms();
-#define PET_SECTION 115
-#include PET_SKIN
-#undef PET_SECTION
+            if (board_window_open() && t - cchk >= tune("click_poll_ms", 150)) { cchk = t; char cp[PATH_MAX] = "", ub2[1024]; { char up2[PATH_MAX]; snprintf(up2, sizeof up2, "%s/@.apps/" PET_APP "/board/state/ui.txt", HOUSE); if (read_file(up2, ub2, sizeof ub2) > 0) for (char *l2 = strtok(ub2, "\n"); l2; l2 = strtok(NULL, "\n")) if (!strncmp(l2, "bv_session=", 11)) snprintf(cp, sizeof cp, "%s/pieces/display/canvas_click.txt", l2 + 11); }      /* THIS board's own click file (the window writes it inside its engine session): another board's clicks never select here */
+                if (!cp[0]) snprintf(cp, sizeof cp, "%s/pieces/display/canvas_click.txt", ST); struct stat cs;
                 long sg = stat(cp, &cs) == 0 ? (long)cs.st_size * 1000003L + (long)cs.st_mtim.tv_sec * 1000L + cs.st_mtim.tv_nsec / 1000000L : -2;
                 if (csig == -1) csig = sg;
                 else if (sg != csig) { csig = sg; int cx = 0, cy = 0, cw = 0, ch = 0; FILE *cf = fopen(cp, "r"); if (cf) { if (fscanf(cf, "%d %d %d %d", &cx, &cy, &cw, &ch) != 4) cw = 0; fclose(cf); }
-#define PET_SECTION 116
-#include PET_SKIN
-#undef PET_SECTION
+                    if (cw > 0 && ch > 0) { g_gr = vroom; int col = (cx * FW / cw - OX) / T, row = (cy * FH / ch - OY) / T; char *sa[2]; char sid[24]; sa[0] = "select"; sa[1] = sid; int hit = 0;
                         for (int i = 0; i < nparty && !hit; i++) if (others[i].room == vroom && others[i].x == col && others[i].y == row) { snprintf(sid, sizeof sid, "%s", party[i].id); hit = 1; }
                         if (!hit && tr.room == vroom && tr.x == col && tr.y == row) { snprintf(sid, sizeof sid, "%s", hero.name); for (char *q = sid; *q; q++) if (*q >= 'A' && *q <= 'Z') *q += 32; hit = 1; }
                         if (hit) { verb(2, sa, msg, sizeof msg); dirty = 1; } } } }
@@ -1307,7 +1238,7 @@ static int daemon_main(void) {
         long ms = now_ms();
         for (int i = 0; i < nparty; i++) if (ms >= next_ms[i]) { next_ms[i] = ms + tune("step_min_ms", 900) + rand() % tune("step_jitter_ms", 700); if (tm || !run_on()) continue; replay(); if (ai_step(i)) { static long last_far = 0; if (others[i].room == vroom || ms - last_far > tune("far_repaint_ms", 1500)) { dirty = 1; if (others[i].room != vroom) last_far = ms; } } use_ent(active); }     /* real time (INT off): every pet walks on its own. INT on is turn based: no timers, only your acts advance time */
         if (ms - last_ui > 3000) { last_ui = ms; clock_paths(); clock_ui(); }
-#define PET_SECTION 117
+#define PET_SECTION 74
 #include PET_SKIN
 #undef PET_SECTION
         { char tp[PATH_MAX], tb[300]; snprintf(tp, sizeof tp, "%s/world/screen_state.pdl", ST); read_file(tp, tb, sizeof tb); if (strcmp(tb, lasttone)) { snprintf(lasttone, sizeof lasttone, "%s", tb); g_tone_stale = 1; dirty = 1; } }      /* an events-hq tint_screen wrote a new tone */
@@ -1330,7 +1261,7 @@ int main(int argc, char **argv) {
         else if (argc >= 4 && is_dir(argv[1])) { snprintf(textbuf, sizeof textbuf, "%s", argv[3]); for (char *t = strtok(textbuf, " "); t && vargc < 31; t = strtok(NULL, " ")) vargv[vargc++] = t; }
         else for (int i = 1; i < argc && vargc < 31; i++) vargv[vargc++] = argv[i];
     }
-#define PET_SECTION 118
+#define PET_SECTION 75
 #include PET_SKIN
 #undef PET_SECTION
     { char d[PATH_MAX]; snprintf(d, sizeof d, "%s", APP); ASSETS[0] = HOUSE[0] = 0;
@@ -1338,7 +1269,7 @@ int main(int argc, char **argv) {
       if (!ASSETS[0] || !HOUSE[0]) { fprintf(stderr, "" PET_OP ": no #.NNEST_ASSETS / &.widgits above %s\n", APP); return 1; } }
     if (mode == 2) return event_main(argv[1]);
     if (mode == 1) return daemon_main();
-#define PET_SECTION 119
+#define PET_SECTION 76
 #include PET_SKIN
 #undef PET_SECTION
     char msg[240]; verb(vargc, vargv, msg, sizeof msg);
