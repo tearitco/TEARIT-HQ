@@ -788,6 +788,16 @@ static int handle_one_key(int key) {
         return 0;
     }
 
+    /* '+' / '=' (43 / 61) and '-' (45) - zoom of the 2D tile view, every board (owner 2026-10-22: "2d default is fit map to screen", "+- for zoom"). view_2d_zoom 0 = fit the whole page
+     * (the renderer's default), 1..5 = 125, 150, 200, 300, 400 percent of that. Only while the view is 2D (render_mode 0); in 3D the keys fall through. */
+    if ((key == 43 || key == 61 || key == 45) && read_kv_int(state_path, "render_mode", default_render_mode(focused_project_root)) == 0) {
+        char zs[16] = ""; read_kv_str(state_path, "view_2d_zoom", zs, sizeof(zs));
+        int z = atoi(zs) + (key == 45 ? -1 : 1); if (z < 0) z = 0; if (z > 5) z = 5;
+        write_kv_int(state_path, "view_2d_zoom", z);
+        bump_screen_changed(project_root);
+        return 0;
+    }
+
     /* backslash (92) - 2D style toggle between the book's own painted frame ("scene": view.pdl scene_raw, rpg-pet draws its own picture) and the engine's tiles. Always lands in 2D. A book with no
      * scene file shows tiles either way. */
     if (key == 92) {

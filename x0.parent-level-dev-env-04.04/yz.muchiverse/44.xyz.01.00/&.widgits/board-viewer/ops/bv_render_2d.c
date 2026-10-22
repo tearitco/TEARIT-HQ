@@ -1290,8 +1290,18 @@ int main(void) {
             /* On-screen tile is desk_grid.pdl cell_px (the settings
              * grid step). 24 draws the export 1:1. 80 draws the same
              * pixels larger. Source art stays the PNG's own tile. */
+            /* Default zoom = fit: the whole page on screen (whole-pixel tile step, never below 4 px). '+' / '-' (bv_menu_input) set view_2d_zoom 0..5 =
+             * 100, 125, 150, 200, 300, 400 percent of the fit size; above fit the view centres on the selector and scrolls. The selector box below uses
+             * the same size, so `cell` takes it. */
             int draw = cell;
-            if (draw < 8) draw = 8;
+            { int mrows = map_tile > 0 ? map_h / map_tile : 0;
+              if (map_cols > 0 && mrows > 0) {
+                  static const int zpct[6] = {100, 125, 150, 200, 300, 400};
+                  char zs[16] = ""; read_kv_str(st, "view_2d_zoom", zs, sizeof(zs)); int z = atoi(zs); if (z < 0) z = 0; if (z > 5) z = 5;
+                  int fit = W / map_cols, fh = H / mrows; if (fh < fit) fit = fh; if (fit < 4) fit = 4;
+                  draw = fit * zpct[z] / 100;
+              } }
+            if (draw < 4) draw = 4;
             if (map_tile >= 8 && map_tile <= 96 && (map_h % map_tile) == 0) {
                 int cx = sel_x >= 0 ? sel_x : (map_cols / 2);
                 int cy = sel_y >= 0 ? sel_y : ((map_h / map_tile) / 2);
@@ -1353,7 +1363,7 @@ int main(void) {
                     }
                 }
                 free(para);
-                map_ok = 1;
+                map_ok = 1; cell = draw;
                 draw_map_events(px, W, H, mp, map_tile, map_px0, map_py0, draw);
                 /* map_px0/map_py0 stay in source pixels. map_tile stays
                  * the PNG tile. The selector uses `cell` for the box. */
