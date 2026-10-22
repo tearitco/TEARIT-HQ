@@ -3755,7 +3755,14 @@ static int render_one_frame(void) {
         /* Maker (TSOTS-style painted) maps: the selector, the hero and the map events must be the SAME box - same 0.7 footprint, standing on the floor top (1.0) up to the sprite's 2.6 -
          * not a 0.7 cube floating at the pc-hq z level (owner 2026-10-10: "xelector and other cube should be same size and on same level as sprite"). */
         if (g_xelector_present && camera_mode != 1) {
-            if (sc.maker) ADDWIRE(g_xelector_x+0.15, 1.0, g_xelector_y+0.15, g_xelector_x+0.85, 2.6, g_xelector_y+0.85, 40,255,80);      /* the same box as a sprite, as an outline so the selected sprite inside it stays visible */
+            if (sc.maker) {
+                /* z / x move the selector in levels: the floor (board_manifest floor_z + 1) is where it stands, each level down goes into the hung rock (the grid is lifted by zoff, so that is room for zoff levels) */
+                char mfp[PATH_BUF]; snprintf(mfp, sizeof(mfp), "%s/pieces/system/board_manifest.txt", focused_project_root);
+                int mfz = read_kv_int(mfp, "floor_z", -1);
+                double mdz = mfz >= 0 ? (double)(g_xelector_z - mfz - 1) : 0.0;
+                if (mdz < -(double)g_mk.zoff) mdz = -(double)g_mk.zoff;
+                ADDWIRE(g_xelector_x+0.15, 1.0+mdz, g_xelector_y+0.15, g_xelector_x+0.85, 2.6+mdz, g_xelector_y+0.85, 40,255,80);
+            }      /* the same box as a sprite, as an outline so the selected sprite inside it stays visible */
             else ADDBOX(g_xelector_x+0.15, g_xelector_z+0.15, g_xelector_y+0.15,
                    g_xelector_x+0.85, g_xelector_z+0.85, g_xelector_y+0.85, 60,220,220, 0);
         }

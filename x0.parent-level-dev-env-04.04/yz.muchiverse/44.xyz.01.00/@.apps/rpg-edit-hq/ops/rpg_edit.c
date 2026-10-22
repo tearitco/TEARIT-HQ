@@ -264,6 +264,44 @@ static void write_side(void) {
     for (int i = 0; i < 6; i++) fprintf(f, "chat_%d=%s\n", i, sidelog[i]);
     fclose(f);
 }
+/* set one key=value line of a state file (add it if absent); the viewer and the clock daemon re-read these files */
+static void set_kv(const char *path, const char *key, const char *val) {
+    char buf[8192] = ""; size_t n = 0; FILE *f = fopen(path, "r");
+    if (f) { n = fread(buf, 1, sizeof buf - 1, f); buf[n] = 0; fclose(f); }
+    char out[8300]; size_t o = 0; int done = 0, kl = (int)strlen(key);
+    for (char *l = buf; *l; ) {
+        char *e = strchr(l, '\n'); size_t len = e ? (size_t)(e - l) : strlen(l);
+        if (!strncmp(l, key, kl) && l[kl] == '=') { o += snprintf(out + o, sizeof out - o, "%s=%s\n", key, val); done = 1; }
+        else o += snprintf(out + o, sizeof out - o, "%.*s\n", (int)len, l);
+        l += len + (e ? 1 : 0);
+    }
+    if (!done) o += snprintf(out + o, sizeof out - o, "%s=%s\n", key, val);
+    f = fopen(path, "w"); if (f) { fwrite(out, 1, o, f); fclose(f); }
+}
+/* typed chat and the pet buttons arrive as lines in board/state/say_in.txt (appended by "rpg_edit.+x <board dir> say <text>" / "sel <n>", the cli_io and item actions of the board window) */
+static long sayoff;
+static void read_inbox(void) {
+    char p[PATH_MAX]; snprintf(p, sizeof p, "%s/board/state/say_in.txt", APP);
+    FILE *f = fopen(p, "r"); if (!f) return;
+    fseek(f, 0, SEEK_END); long end = ftell(f); if (end < sayoff) sayoff = 0;
+    fseek(f, sayoff, SEEK_SET);
+    char ln[200];
+    while (fgets(ln, sizeof ln, f)) {
+        ln[strcspn(ln, "\n")] = 0; if (!ln[0]) continue;
+        static const char *re[6] = {"hello!", "I was just walking", "nice weather up here", "have you seen the bank?", "the sky is so big", "hi hi"};
+        if (!strncmp(ln, "sel ", 4)) {
+            int n = atoi(ln + 4); if (n < 0 || n > 7) continue;
+            char xp[PATH_MAX], v[16]; snprintf(xp, sizeof xp, "%s/pieces/xelector_01/state.txt", PCHQ);
+            snprintf(v, sizeof v, "%d", pet[n].x); set_kv(xp, "pos_x", v);
+            snprintf(v, sizeof v, "%d", pet[n].y); set_kv(xp, "pos_y", v);
+            { char mp[PATH_MAX], ln2[120]; int fz = 16; snprintf(mp, sizeof mp, "%s/pieces/system/board_manifest.txt", PCHQ);      /* the floor level is board_manifest floor_z; the selector stands one above it */
+              FILE *mf = fopen(mp, "r"); if (mf) { while (fgets(ln2, sizeof ln2, mf)) if (!strncmp(ln2, "floor_z=", 8)) fz = atoi(ln2 + 8); fclose(mf); }
+              snprintf(v, sizeof v, "%d", fz + 1); set_kv(xp, "pos_z", v); }
+            say("you", pet[n].name);
+        } else { say("you", ln); say(pet[rand() % 8].name, re[rand() % 6]); }
+    }
+    sayoff = ftell(f); fclose(f);
+}
 static void follow_ava(void) {
     /* The board stays on the island page when Ava goes through a door (she just vanishes into the building and comes back out). Following her switched the whole board to the cabin page, which renders as empty sky from the island camera, so the xelector and camera looked gone (owner 2026-10-21). Open the cabin by hand from the Desk menu; build with -DFOLLOW_AVA to bring the old behaviour back. */
 #ifndef FOLLOW_AVA
@@ -276,6 +314,7 @@ static void follow_ava(void) {
 }
 static int quiet[8][8];      /* steps until a pair of pets greets again */
 static void step_all(void) {
+    read_inbox();
     for (int a = 0; a < 8; a++) for (int b = 0; b < 8; b++) if (quiet[a][b] > 0) quiet[a][b]--;
     static const int dx[4] = {0, 1, 0, -1}, dy[4] = {-1, 0, 1, 0};
     for (int i = 0; i < 8; i++) {
@@ -317,6 +356,13 @@ static void step_all(void) {
 }
 
 int main(int argc, char **argv) {
+    if (argc >= 3 && strstr(argv[1], "/board") && strlen(argv[1]) > 6 && !strcmp(strrchr(argv[1], '/'), "/board")) {      /* action form (cli_io: board dir, house, text / item: board dir, sel, n) */
+        char ip[PATH_MAX]; snprintf(ip, sizeof ip, "%s/state/say_in.txt", argv[1]);
+        FILE *f = fopen(ip, "a"); if (!f) return 1;
+        if (!strcmp(argv[2], "sel") && argc >= 4) fprintf(f, "sel %s\n", argv[3]);
+        else if (argc >= 4) fprintf(f, "%s\n", argv[3]);
+        fclose(f); return 0;
+    }
     if (argc < 3) return 2;
     snprintf(HOUSE, sizeof HOUSE, "%s", argv[1]);
     snprintf(APP, sizeof APP, "%s", argv[2]);
@@ -376,6 +422,8 @@ int main(int argc, char **argv) {
         char vp[PATH_MAX], buf[4096] = ""; snprintf(vp, sizeof vp, "%s/pieces/system/view.pdl", PCHQ);
         FILE *vf = fopen(vp, "r"); if (vf) { size_t n = fread(buf, 1, sizeof buf - 1, vf); buf[n] = 0; fclose(vf); }
         if (!strstr(buf, "view_fog_end") && (vf = fopen(vp, "a"))) { fputs("# the island map is wide: fog from 90 to 250 cells, not the house 18..48\nview_fog_start=90\nview_fog_end=250\n", vf); fclose(vf); }
+        if (!strstr(buf, "xelector_z_min") && (vf = fopen(vp, "a"))) { fputs("# the hung rock is up to 9 levels deep: z / x may take the xelector down into it (levels relative to the floor)\nxelector_z_min=-8\n", vf); fclose(vf); }
+        { char wp[PATH_MAX]; snprintf(wp, sizeof wp, "%s/pieces/world_01/state.txt", PCHQ); set_kv(wp, "autotick_enabled", "1"); }      /* the session's pc_clock_daemon then runs the day: sky, light and the sun and moon follow it */
     }
     srand((unsigned)time(NULL));
     write_events(); write_side();

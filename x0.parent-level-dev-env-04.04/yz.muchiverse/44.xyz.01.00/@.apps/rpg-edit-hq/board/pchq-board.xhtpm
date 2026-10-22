@@ -190,14 +190,14 @@
       <row id="side-l" class="canvas-overlay-left ov-pin ov-chrome pchq-hotbar theme" show="${side_left}">
         <text label="pets" class="hb-quiet ov-title theme-3"/>
         <item id="sl-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/rpg-edit-hq/board/state/sides.txt' side_left hide"/>
-        <item id="pt0" class="pchq-ft skin-bar" label="${pet_0}" action="void"/>
-        <item id="pt1" class="pchq-ft skin-bar" label="${pet_1}" action="void"/>
-        <item id="pt2" class="pchq-ft skin-bar" label="${pet_2}" action="void"/>
-        <item id="pt3" class="pchq-ft skin-bar" label="${pet_3}" action="void"/>
-        <item id="pt4" class="pchq-ft skin-bar" label="${pet_4}" action="void"/>
-        <item id="pt5" class="pchq-ft skin-bar" label="${pet_5}" action="void"/>
-        <item id="pt6" class="pchq-ft skin-bar" label="${pet_6}" action="void"/>
-        <item id="pt7" class="pchq-ft skin-bar" label="${pet_7}" action="void"/>
+        <item id="pt0" class="pchq-ft skin-bar" label="${pet_0}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit.+x' '${HOUSE}/@.apps/rpg-edit-hq/board' sel 0"/>
+        <item id="pt1" class="pchq-ft skin-bar" label="${pet_1}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit.+x' '${HOUSE}/@.apps/rpg-edit-hq/board' sel 1"/>
+        <item id="pt2" class="pchq-ft skin-bar" label="${pet_2}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit.+x' '${HOUSE}/@.apps/rpg-edit-hq/board' sel 2"/>
+        <item id="pt3" class="pchq-ft skin-bar" label="${pet_3}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit.+x' '${HOUSE}/@.apps/rpg-edit-hq/board' sel 3"/>
+        <item id="pt4" class="pchq-ft skin-bar" label="${pet_4}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit.+x' '${HOUSE}/@.apps/rpg-edit-hq/board' sel 4"/>
+        <item id="pt5" class="pchq-ft skin-bar" label="${pet_5}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit.+x' '${HOUSE}/@.apps/rpg-edit-hq/board' sel 5"/>
+        <item id="pt6" class="pchq-ft skin-bar" label="${pet_6}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit.+x' '${HOUSE}/@.apps/rpg-edit-hq/board' sel 6"/>
+        <item id="pt7" class="pchq-ft skin-bar" label="${pet_7}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit.+x' '${HOUSE}/@.apps/rpg-edit-hq/board' sel 7"/>
       </row>
       <!-- RIGHT pinned bar: the pets chat (ops/rpg_edit.c: greetings when two meet, doors) and the action options. -->
       <row id="side-r" class="canvas-overlay-right ov-pin ov-chrome pchq-hotbar theme" show="${side_right}">
@@ -209,6 +209,7 @@
         <text label="${chat_3}" class="hb-quiet"/>
         <text label="${chat_4}" class="hb-quiet"/>
         <text label="${chat_5}" class="hb-quiet"/>
+        <cli_io id="say" target_id="re-say" class="pchq-ft" label="&gt; " action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit.+x'"/>
         <item id="ac-int" class="pchq-ft skin-bar" label="interact on/off" action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' interact"/>
         <item id="ac-isl" class="pchq-ft skin-bar" label="page: island" action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' desk start"/>
         <item id="ac-cab" class="pchq-ft skin-bar" label="page: cabin" action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' desk cabin"/>

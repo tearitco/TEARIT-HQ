@@ -991,12 +991,17 @@ static int handle_one_key(int key) {
         snprintf(xelector_state_path, sizeof(xelector_state_path), "%s/pieces/xelector_01/state.txt", focused_project_root);
         int xz = read_kv_int(xelector_state_path, "pos_z", 0);
         xz += (key == key_z_up) ? 1 : -1;
-        if (xz < 0) xz = 0;
+        char view_pdl_z[PATH_BUF], mani_z[PATH_BUF];      /* a map with hung (negative z) levels lets the xelector go down into them: its view.pdl sets xelector_z_min, in levels relative to the floor (board_manifest floor_z) */
+        snprintf(view_pdl_z, sizeof(view_pdl_z), "%s/pieces/system/view.pdl", focused_project_root);
+        snprintf(mani_z, sizeof(mani_z), "%s/pieces/system/board_manifest.txt", focused_project_root);
+        int z_min = 0, fz_min = read_kv_int(mani_z, "floor_z", -1), rel_min = read_kv_int(view_pdl_z, "xelector_z_min", 1);
+        if (fz_min >= 0 && rel_min <= 0 && fz_min + rel_min >= 0) z_min = fz_min + rel_min;
+        if (xz < z_min) xz = z_min;
 
         char z_base[PATH_BUF];
         int z_count = 0;
         if (has_z_manifest(focused_project_root, z_base, sizeof(z_base), &z_count) && z_count > 0) {
-            xz = clamp_int(xz, 0, z_count - 1);
+            xz = clamp_int(xz, z_min, z_count - 1);
         }
 
         write_kv_int(xelector_state_path, "pos_z", xz);
