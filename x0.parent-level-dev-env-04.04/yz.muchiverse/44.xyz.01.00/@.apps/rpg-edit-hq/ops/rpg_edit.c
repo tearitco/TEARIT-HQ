@@ -78,8 +78,10 @@ typedef struct { int x, y, dir, room, door, r, g, b, steps, art; char name[16]; 
 static Pet pet[MAXPET]; static int npet;      /* the roster: party.pdl */
 static char artid[MAXPET][48];
 static int doorpet = -1;      /* the pet the board page follows through a door when built with -DFOLLOW_AVA (party.pdl DOOR | name); every pet uses the doors */
-static char glyph[2][ROWS][COLS + 1];
-static int fs[2][ROWS][COLS], ws[2][ROWS][COLS], cdep[2][ROWS][COLS];      /* cdep: blocks hung under the cell (negative z), tapered by taper_islands() */
+#define NPG 9          /* pages: 0 = the islands, 1..ndoor = one interior per building door (copies of one room, named after the building) */
+static int npage = 2; static char pgname[NPG][16] = {"start", "cabin"};
+static char glyph[NPG][ROWS][COLS + 1];
+static int fs[NPG][ROWS][COLS], ws[NPG][ROWS][COLS], cdep[NPG][ROWS][COLS];      /* cdep: blocks hung under the cell (negative z), tapered by taper_islands() */
 
 static void paint_desk(int desk, Sheet *floorS, int fx, int fy, Sheet *wallS, int wx, int wy) {
     unsigned char fl[XT * XT * 4], wa[XT * XT * 4];
@@ -270,7 +272,7 @@ static void write_sky(void) {
         po = snprintf(pd, sizeof pd, "PARALLAX | show | 1\nPARALLAX | name | %s\nPARALLAX | width | %d\nPARALLAX | height | %d\nPARALLAX | loop_x | 1\nPARALLAX | stamp | %ld\n", ph, sk.w, sk.h, (long)time(NULL));
     }
     { char tmp[PATH_MAX + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", pp); FILE *f = fopen(tmp, "w"); if (f) { size_t wn = fwrite(pd, 1, (size_t)po, f); if (fclose(f) == 0 && wn == (size_t)po) rename(tmp, pp); else remove(tmp); } }
-    snprintf(pp, sizeof pp, "%s/pieces/system/maps/edit/cabin/parallax.pdl", PCHQ); { FILE *f = fopen(pp, "w"); if (f) { fputs("PARALLAX | show | 0\nPARALLAX | name | \n", f); fclose(f); } }
+    for (int g = 1; g < npage; g++) { snprintf(pp, sizeof pp, "%s/pieces/system/maps/edit/%s/parallax.pdl", PCHQ, pgname[g]); FILE *f = fopen(pp, "w"); if (f) { fputs("PARALLAX | show | 0\nPARALLAX | name | \n", f); fclose(f); } }
 }
 static unsigned char petpic[MAXPET][XT * XT * 4];      /* the pet's 64x64 art box-filtered to 24x24; alpha 0 where the pet has no art */
 static int petpic_ok[MAXPET];
@@ -289,8 +291,8 @@ static void load_petpic(int i) {
     petpic_ok[i] = 1;
 }
 static void write_map_png(void) {
-    static const char *page[2] = {"start", "cabin"}; static unsigned long last[2];
-    for (int d = 0; d < 2; d++) {
+    static unsigned long last[NPG];
+    for (int d = 0; d < npage; d++) {
         unsigned long sum = 5381; for (int i = 0; i < npet; i++) if (pet[i].room == d) sum = sum * 131 + (unsigned long)(pet[i].x * 64 + pet[i].y + (i << 16) + (petpic_ok[i] << 24)); sum = sum * 131 + (unsigned long)skyver * (unsigned long)(d == 0);
         if (sum == last[d]) continue; last[d] = sum;
         int w = COLS * XT, h = ROWS * XT; unsigned char *im = malloc((size_t)w * h * 4); if (!im) return;
@@ -310,14 +312,14 @@ static void write_map_png(void) {
                 for (int c = 0; c < 3; c++) o[c] = (unsigned char)((s[c] * al + o[c] * (255 - al)) / 255);
             }
         }
-        char pp[PATH_MAX], tp[PATH_MAX + 24]; snprintf(pp, sizeof pp, "%s/pieces/system/maps/edit/%s/map.png", PCHQ, page[d]); snprintf(tp, sizeof tp, "%s.tmp", pp);
+        char pp[PATH_MAX], tp[PATH_MAX + 24]; snprintf(pp, sizeof pp, "%s/pieces/system/maps/edit/%s/map.png", PCHQ, pgname[d]); snprintf(tp, sizeof tp, "%s.tmp", pp);
         if (stbi_write_png(tp, w, h, 4, im, w * 4)) rename(tp, pp); else remove(tp);
-        if (d == 0) {      /* the book's own painted frame ('\\' toggles it, view.pdl scene_raw): the whole island page fitted into 660x430, sky colour behind */
-            enum { SW = 660, SH = 430 }; static unsigned char sc[SW * SH * 4]; int cx0 = COLS, cx1 = 0, cy0 = ROWS, cy1 = 0;
+        if (d == 0) {      /* the book's own painted frame ('\\' toggles it, view.pdl scene_raw): the used part of the island page fitted into 1200x640, the phase sky behind */
+            enum { SW = 1200, SH = 640 }; static unsigned char sc[SW * SH * 4]; int cx0 = COLS, cx1 = 0, cy0 = ROWS, cy1 = 0;
             for (int y = 0; y < ROWS; y++) for (int x = 0; x < COLS; x++) if (fs[0][y][x] > 0 || ws[0][y][x] > 0) { if (x < cx0) cx0 = x; if (x > cx1) cx1 = x; if (y < cy0) cy0 = y; if (y > cy1) cy1 = y; }
             if (cx1 < cx0) { cx0 = 0; cx1 = COLS - 1; cy0 = 0; cy1 = ROWS - 1; }
             int cw = (cx1 - cx0 + 1) * XT, ch = (cy1 - cy0 + 1) * XT, dw = SW, dh = SW * ch / cw; if (dh > SH) { dh = SH; dw = SH * cw / ch; }
-            for (int i = 0; i < SW * SH; i++) { sc[i * 4] = 40; sc[i * 4 + 1] = 40; sc[i * 4 + 2] = 48; sc[i * 4 + 3] = 255; }      /* the used part of the page fitted into the frame */
+            for (int i = 0; i < SW * SH; i++) { int sx = i % SW, sy = i / SW; const unsigned char *q = cursky.px ? cursky.px + ((size_t)(sy % cursky.h) * cursky.w + sx % cursky.w) * 4 : NULL; sc[i * 4] = q ? q[0] : 120; sc[i * 4 + 1] = q ? q[1] : 170; sc[i * 4 + 2] = q ? q[2] : 220; sc[i * 4 + 3] = 255; }      /* the sky, then the used part of the page fitted into the frame */
             for (int y = 0; y < dh; y++) for (int x = 0; x < dw; x++) {
                 const unsigned char *q = im + ((size_t)(cy0 * XT + y * ch / dh) * w + cx0 * XT + x * cw / dw) * 4; unsigned char *o = sc + ((size_t)(y + (SH - dh) / 2) * SW + x + (SW - dw) / 2) * 4;
                 o[0] = q[0]; o[1] = q[1]; o[2] = q[2];
@@ -332,9 +334,8 @@ static void write_map_png(void) {
     }
 }
 static void write_events(void) {
-    const char *page[2] = {"start", "cabin"};
-    for (int d = 0; d < 2; d++) {
-        char p[PATH_MAX]; snprintf(p, sizeof p, "%s/pieces/system/maps/edit/%s/events.txt", PCHQ, page[d]);
+    for (int d = 0; d < npage; d++) {
+        char p[PATH_MAX]; snprintf(p, sizeof p, "%s/pieces/system/maps/edit/%s/events.txt", PCHQ, pgname[d]);
         FILE *f = fopen(p, "w"); if (!f) continue;
         for (int i = 0; i < npet; i++) if (pet[i].room == d) {
             static const int face[4] = {8, 6, 2, 4};      /* dir index 0 up, 1 right, 2 down, 3 left -> RPG Maker 8/6/2/4 */
@@ -355,7 +356,7 @@ static void write_side(void) {
     char p[PATH_MAX]; snprintf(p, sizeof p, "%s/board/state/side_ui.txt", APP);
     FILE *f = fopen(p, "w"); if (!f) return;
     fprintf(f, "n_pet=%d\n", npet);
-    for (int i = 0; i < npet; i++) fprintf(f, "pet_%d_label=%s %d,%d %s\npet_%d_idx=%d\n", i, pet[i].name, pet[i].x, pet[i].y, pet[i].room ? "(inside)" : "", i, i);
+    for (int i = 0; i < npet; i++) fprintf(f, "pet_%d_label=%s %d,%d %s%s%s\npet_%d_idx=%d\n", i, pet[i].name, pet[i].x, pet[i].y, pet[i].room ? "(in " : "", pet[i].room ? pgname[pet[i].room] : "", pet[i].room ? ")" : "", i, i);
     for (int i = 0; i < 6; i++) fprintf(f, "chat_%d=%s\n", i, sidelog[i]);
     fclose(f);
 }
@@ -411,7 +412,7 @@ static void follow_ava(void) {
 #endif
     char p[PATH_MAX]; snprintf(p, sizeof p, "%s/pieces/system/widget_cmds/inbox.txt", PCHQ);
     FILE *f = fopen(p, "a"); if (!f) return;
-    fprintf(f, "CONFIRM_SET_DESK:%s\n", doorpet >= 0 && pet[doorpet].room ? "cabin" : "start");
+    fprintf(f, "CONFIRM_SET_DESK:%s\n", doorpet >= 0 && pet[doorpet].room ? pgname[pet[doorpet].room] : "start");
     fclose(f);
 }
 /* An idle engine only renders on input (BOOK 16.game/PETSLIKE-FRAMEWORK-PLAN.md, same rule as petslike_core.c): after the pets stepped, append the no-op key 126 to this board's engine session relay so the 3D view redraws the moved sprites. The session is the bv_session= line of board/state/ui.txt. */
@@ -436,13 +437,14 @@ static void step_all(void) {
         int desk = pet[i].room;
         if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) continue;
         if (glyph[desk][ny][nx] == 'D') {
-            if (desk == 0) {      /* any island door leads into the shared interior; remember which one */
+            if (desk == 0) {      /* each island door leads into its own interior page (named after the building); remember which door */
                 for (int k = 0; k < ndoor; k++) if (doorx[k] == nx && doory[k] == ny) lastdoor = pet[i].door = k;
-                pet[i].room = 1; pet[i].x = IW / 2; pet[i].y = ROWS - 3;
-                for (int t = 0; t < 40; t++) {      /* the first free cell near the cabin door, not on top of a pet already inside */
+                int pg = 1 + pet[i].door; if (pg >= npage) continue;
+                pet[i].room = pg; pet[i].x = IW / 2; pet[i].y = ROWS - 3;
+                for (int t = 0; t < 40; t++) {      /* the first free cell near the door inside, not on top of a pet already there */
                     int cx = IW / 2 + (t % 5) - 2, cy = ROWS - 3 - t / 5, occ = 0;
-                    for (int k = 0; k < npet; k++) if (k != i && pet[k].room == 1 && pet[k].x == cx && pet[k].y == cy) occ = 1;
-                    if (!occ && !blocked(1, cx, cy) && glyph[1][cy][cx] != 'D') { pet[i].x = cx; pet[i].y = cy; break; } }
+                    for (int k = 0; k < npet; k++) if (k != i && pet[k].room == pg && pet[k].x == cx && pet[k].y == cy) occ = 1;
+                    if (!occ && !blocked(pg, cx, cy) && glyph[pg][cy][cx] != 'D') { pet[i].x = cx; pet[i].y = cy; break; } }
             } else {              /* back out beside the door she came in by (down, left, right, up: the first walkable cell) */
                 static const int ox[4] = {0, -1, 1, 0}, oy[4] = {1, 0, 0, -1};
                 int bx = doorx[pet[i].door], by = doory[pet[i].door];
@@ -450,7 +452,7 @@ static void step_all(void) {
                 for (int k = 0; k < 4; k++) if (!blocked(0, bx + ox[k], by + oy[k]) && glyph[0][by + oy[k]][bx + ox[k]] != 'D') { pet[i].x = bx + ox[k]; pet[i].y = by + oy[k]; break; }
             }
             pet[i].dir = dir;
-            { char t[48]; snprintf(t, sizeof t, "%s door %d", pet[i].room ? "went in at" : "came out of", pet[i].door); say(pet[i].name, t); }
+            { char t[48]; snprintf(t, sizeof t, "%s the %s", pet[i].room ? "went into" : "came out of", pgname[1 + pet[i].door]); say(pet[i].name, t); }
             follow_ava();
             continue;
         }
@@ -493,7 +495,7 @@ int main(int argc, char **argv) {
     Sheet door = load_rel("characters/!Door1.png");
     if (!a5.px || !wb.px) { fprintf(stderr, "rpg_edit: missing RPG Maker sheets under %s\n", ASSETS); return 1; }
     paint_desk(0, &a5, 0, 2 * S48, &a5, 2 * S48, 0);          /* grass floor */
-    paint_desk(1, &in.px ? &in : &a5, 0, 0, &in.px ? &in : &a5, S48, 3 * S48);
+    paint_desk(1, &in.px ? &in : &a5, 0, 2 * S48, &in.px ? &in : &a5, S48, 3 * S48);      /* Inside_A5 (0,0) is a black void tile: the floor is the wood parquet one row down */
     {   Sheet a4 = load_rel("tilesets/Outside_A4.png");        /* the rocky-earth cliff face (row 3, first block) */
         if (a4.px) { unsigned char rk[XT * XT * 4]; tile24(&a4, 0, 13 * S48, rk); rockslot = slot_of(rk); }
     }
@@ -504,26 +506,41 @@ int main(int argc, char **argv) {
         if (door.px) { tile24(&door, 0, 192, dpx); memcpy(bb, slotpx[fs[1][ROWS - 2][IW / 2]], sizeof bb); over24(bb, dpx); ws[1][ROWS - 2][IW / 2] = slot_of(bb); }
     }
     taper_islands();
+    {   /* one interior page per building door: copies of the first room, named after the nearest building (a repeated name gets the door number) */
+        npage = 1 + (ndoor > NPG - 1 ? NPG - 1 : ndoor); if (npage < 2) npage = 2;
+        for (int g = 2; g < npage; g++) { memcpy(glyph[g], glyph[1], sizeof glyph[1]); memcpy(fs[g], fs[1], sizeof fs[1]); memcpy(ws[g], ws[1], sizeof ws[1]); memcpy(cdep[g], cdep[1], sizeof cdep[1]); }
+        for (int g = 1; g < npage; g++) {
+            int best = 0, bd = 1 << 30; for (int b = 0; b < 5; b++) { int dx = doorx[g - 1] - (bld[b].x + 1), dy = doory[g - 1] - (bld[b].y + 2), d2 = dx * dx + dy * dy; if (d2 < bd) { bd = d2; best = b; } }
+            snprintf(pgname[g], sizeof pgname[g], "%s", bld[best].name);
+            for (int h = 1; h < g; h++) if (!strcmp(pgname[h], pgname[g])) snprintf(pgname[g], sizeof pgname[g], "%s%d", bld[best].name, g);
+            if (in.px) {      /* each building has its own Inside_A5 floor: cabin parquet, bank blue stone, store planks, school white tile, hotel red diamond */
+                static const int fx[5] = {0, 1, 1, 5, 3}, fy[5] = {2, 4, 2, 4, 4};
+                unsigned char ft[XT * XT * 4], dpx[XT * XT * 4], bb[XT * XT * 4]; tile24(&in, fx[best] * S48, fy[best] * S48, ft); int fsl = slot_of(ft);
+                for (int y = 0; y < ROWS; y++) for (int x = 0; x < COLS; x++) fs[g][y][x] = fsl;
+                if (door.px) { tile24(&door, 0, 192, dpx); memcpy(bb, slotpx[fsl], sizeof bb); over24(bb, dpx); ws[g][ROWS - 2][IW / 2] = slot_of(bb); }
+            }
+        }
+    }
     char root[PATH_MAX];
     snprintf(root, sizeof root, "%s/pieces/system/maps/edit", PCHQ); mkdir(root, 0755);
-    char d0[PATH_MAX], d1[PATH_MAX];
-    snprintf(d0, sizeof d0, "%s/start", root); snprintf(d1, sizeof d1, "%s/cabin", root);
-    write_atlas(d0, 0); write_atlas(d1, 1);
+    char d0[PATH_MAX];
+    snprintf(d0, sizeof d0, "%s/start", root);
+    for (int g = 0; g < npage; g++) { char dg[PATH_MAX]; snprintf(dg, sizeof dg, "%s/%s", root, pgname[g]); write_atlas(dg, g); }
     { char gp[PATH_MAX], extra[16][48]; int nx = 0; snprintf(gp, sizeof gp, "%s/game.pdl", root);
       { FILE *g = fopen(gp, "r"); char ln[200];      /* pages added from the Desk menu (+ new page) stay listed: keep every desk id that is not one of the two built here */
         while (g && fgets(ln, sizeof ln, g)) { char *k = strstr(ln, "| desk_"), *v = k ? strstr(k, "_id") : NULL; if (!v) continue; v = strchr(v, '|'); if (!v) continue;
             v++; while (*v == ' ') v++; v[strcspn(v, " \r\n")] = 0;
-            if (v[0] && strcmp(v, "start") && strcmp(v, "cabin") && nx < 16) snprintf(extra[nx++], 48, "%s", v); }
+            int mine = 0; for (int g = 0; g < npage; g++) if (!strcmp(v, pgname[g])) mine = 1; if (v[0] && !mine && strcmp(v, "cabin") && nx < 16) snprintf(extra[nx++], 48, "%s", v); }
         if (g) fclose(g); }
       FILE *f = fopen(gp, "w");
       if (f) { fputs("SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\n"
         "GAME         | type               | board-game\nGAME         | icon               | 🖊️\n"
         "GAME         | label              | edit\nGAME         | n_chunks           | 1\n"
         "GAME         | chunk_0_x          | 0\nGAME         | chunk_0_y          | 0\n"
-        "GAME         | desk_1_id          | start\nGAME         | desk_1_label       | start\n"
-        "GAME         | desk_2_id          | cabin\nGAME         | desk_2_label       | cabin\n", f);
-        for (int i = 0; i < nx; i++) fprintf(f, "GAME         | desk_%d_id          | %s\nGAME         | desk_%d_label       | %s\n", i + 3, extra[i], i + 3, extra[i]);
-        fprintf(f, "GAME         | n_desks            | %d\n", 2 + nx); fclose(f); } }
+        , f);
+        for (int g = 0; g < npage; g++) fprintf(f, "GAME         | desk_%d_id          | %s\nGAME         | desk_%d_label       | %s\n", g + 1, pgname[g], g + 1, pgname[g]);
+        for (int i = 0; i < nx; i++) fprintf(f, "GAME         | desk_%d_id          | %s\nGAME         | desk_%d_label       | %s\n", npage + i + 1, extra[i], npage + i + 1, extra[i]);
+        fprintf(f, "GAME         | n_desks            | %d\n", npage + nx); fclose(f); } }
     {   /* the roster is data: party.pdl, PET | name | art id | letter | r | g | b | spawn x | spawn y */
         char rp[PATH_MAX], ln[300]; snprintf(rp, sizeof rp, "%s/party.pdl", APP); FILE *rf = fopen(rp, "r");
         while (rf && fgets(ln, sizeof ln, rf) && npet < MAXPET) {
