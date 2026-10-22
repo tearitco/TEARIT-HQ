@@ -19,6 +19,7 @@
       <tab id="tb-loadw" class="pchq-tb pchq-tb-warn" label="${PID} ${load_label}" onclick="void" show="${load_warn}"/>
     </tabbar>
     <sidebar id="rail" class="pchq-rail sidebar">
+      <repeat count="${n_pre}" bind="pre"><item id="tq-${pre.#}" class="pchq-menu-row dropdown-child" target_id="${pre.tab}" label="${pre.label}" action="${pre.act}"/></repeat>
       <repeat count="${n_party}" bind="party">
         <item id="bk-${party.#}" class="pchq-menu-row dropdown-child ${party.cls}" target_id="tb-book" label="${party.label}" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' select ${party.id}"/>
       </repeat>
@@ -27,6 +28,7 @@
         <item id="rm${room.#}" class="pchq-menu-row dropdown-child " target_id="tb-page" label="${room.label}" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' goto ${room.id}"/>
       </repeat>
       <repeat count="${n_item}" bind="it"><item id="ti-${it.#}" class="pchq-menu-row dropdown-child" target_id="${it.tab}" label="${it.label}" action="${it.act}"/></repeat>
+      <repeat count="${n_post}" bind="post"><item id="tp-${post.#}" class="pchq-menu-row dropdown-child" target_id="${post.tab}" label="${post.label}" action="${post.act}"/></repeat>
       <repeat count="${n_shop}" bind="shop">
         <item id="sh${shop.#}" class="pchq-menu-row dropdown-child " target_id="tb-shop" label="${shop.label}" action="'${HOUSE}/@.apps/cdda-hq/ops/+x/cdda_hq.+x' buy ${shop.key}"/>
       </repeat>

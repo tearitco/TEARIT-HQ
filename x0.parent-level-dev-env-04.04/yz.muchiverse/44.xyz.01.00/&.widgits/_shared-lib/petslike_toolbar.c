@@ -1,24 +1,35 @@
-/* petslike_toolbar.c - the header menus of a pets-like window as DATA (text-include, prefix ptb_, pure file I/O, no globals).
+/* petslike_toolbar.c - the header menus of a pets-like window as DATA, in the LyfeDesk taskbar's shape (text-include, prefix ptb_, pure file I/O, no globals).
  *
- * Owner 2026-10-21: "they should have .pdl for headers so it should be easy ... get back into reusing / sharing parts better". Every pets-like window
- * (rpg-pet, df-hq, tcg-rpgce, dsr-rpg, mcl-hq, cdda-hq, civ-rpgce, gta-hq) had its toolbar tabs and dropdown rows typed into its own .xhtpm; a new menu meant
- * editing nine templates. Now a window has a toolbar.pdl (house pdl: `SECTION | KEY | VALUE` header, `|`-separated rows, `#` comments):
+ * Owner 2026-10-21: "they should have .pdl for headers", "should be similar to lyfedesk". So a window's <app>/toolbar.pdl is written like #.desktop/livedesk_taskbar.pdl
+ * (`SECTION | KEY | VALUE` rows, flat keys, TASKBAR-MENUS-DATA-DRIVEN.md section 2): a menu is `<cell>_menu_<N>_label` + `<cell>_menu_<N>_cmd`, and rows can be staged around a list the op
+ * builds itself (the pets, the rooms) with `<cell>_menu_pre_<N>_*` / `<cell>_menu_post_<N>_*`, exactly the taskbar's pals_menu_pre / pals_menu_post. Fixed tabs are
+ * `tab_<N>_cell` + `tab_<N>_label` (the taskbar's strip_btn_<N>_label).
  *
- *   TAB  | <id> | <label>                       a toolbar tab; its dropdown holds the ITEM rows with the same id
- *   ITEM | <tab id> | <label> | <verb and args>   a dropdown row; the verb is the app op's own verb line (newpal, newroom, goto bedroom ...), empty = just close
+ *   SECTION | tab_0_cell           | pals
+ *   SECTION | tab_0_label          | Pals
+ *   SECTION | pals_menu_1_label    | + new pal
+ *   SECTION | pals_menu_1_cmd      | op:newpal
+ *   SECTION | page_menu_post_1_label | + new room          (after the rooms the op lists)
  *
- * ptb_publish() turns that into ui.txt lines the template repeats over (bind "tb" for tabs, "it" for rows):
- *   n_tab=N  tb_0_id= tb_0_label=        n_item=M  it_0_tab= it_0_label= it_0_act=      (act = the full action= string: "'<op>' <verb>" or "void")
- * The dynamic menus (the pets, the rooms) stay in the template, fed by the op; this file is for the fixed rows.
- * Limits: 8 tabs, 48 rows. A row of an unknown tab is published anyway (it simply never shows). */
+ * _cmd grammar (the taskbar's, with its `livedesk:` internal form renamed for a window): `op:<verb and args>` = the app op's own verb line; empty = just closes the menu;
+ * anything else = a shell string, run as written (the taskbar's bare-string form).
+ *
+ * ptb_publish() writes ui.txt lines the template repeats over (bind "tb" tabs, "it" fixed rows, "pre" and "post" staged rows):
+ *   n_tab tb_N_id (= "tb-<cell>") tb_N_label    n_item it_N_tab it_N_label it_N_act    n_pre pre_N_*    n_post post_N_*     (act = the full action= string)
+ * The cell's tab id in the template is `tb-<cell>` (tb-book, tb-page, tb-pals ...). Limits: 8 tabs, 48 rows per group. */
 #ifndef PETSLIKE_TOOLBAR_C
 #define PETSLIKE_TOOLBAR_C
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 #define PTB_TABS 8
-#define PTB_ITEMS 48
+#define PTB_ROWS 48
+#define PTB_KV 400
+
+typedef struct { char key[96], val[240]; } PtbKV;
+typedef struct { char cell[48], label[160], act[260]; } PtbRow;
 
 static char *ptb_trim(char *s) {
     while (*s == ' ' || *s == '\t') s++;
@@ -27,28 +38,60 @@ static char *ptb_trim(char *s) {
     return s;
 }
 
-/* pdl = <app>/toolbar.pdl, op = the quoted op command the verbs are appended to (e.g. "'/home/.../rpg_pet.+x'"). Appends the ui lines to out; returns bytes written. */
+static const char *ptb_get(const PtbKV *kv, int n, const char *key) {
+    for (int i = 0; i < n; i++) if (!strcmp(kv[i].key, key)) return kv[i].val;
+    return NULL;
+}
+
+/* a "<cell>_menu_[pre_|post_]<N>_label" key: fills cell and stage (0 fixed, 1 pre, 2 post) and the key stem without "_label"; returns 1 if it is one */
+static int ptb_menu_label_key(const char *key, char *cell, size_t cn, int *stage) {
+    size_t l = strlen(key);
+    if (l < 8 || strcmp(key + l - 6, "_label")) return 0;
+    const char *m = strstr(key, "_menu_"); if (!m) return 0;
+    const char *r = m + 6; *stage = 0;
+    if (!strncmp(r, "pre_", 4)) { *stage = 1; r += 4; } else if (!strncmp(r, "post_", 5)) { *stage = 2; r += 5; }
+    if (*r < '0' || *r > '9') return 0;
+    size_t c = (size_t)(m - key); if (c == 0 || c >= cn) return 0;
+    memcpy(cell, key, c); cell[c] = 0; return 1;
+}
+
+/* pdl = <app>/toolbar.pdl, op = the quoted op command the `op:` verbs go to (e.g. "'/home/.../rpg_pet.+x'"). Appends the ui lines to out; returns bytes written. */
 static int ptb_publish(const char *pdl, const char *op, char *out, size_t cap) {
-    FILE *f = fopen(pdl, "r");
-    int o = 0, nt = 0, ni = 0;
-    char line[600], tb[PTB_TABS][2][80], it[PTB_ITEMS][4][240];
-    if (!f) { o += snprintf(out + o, cap - o, "n_tab=0\nn_item=0\n"); return o; }
-    while (fgets(line, sizeof line, f)) {
-        char *f0[5]; int n = 0; char *p = line;
-        if (line[0] == '#' || line[0] == '-' || !strchr(line, '|')) continue;
-        for (; n < 5; n++) { char *bar = strchr(p, '|'); if (bar) *bar = 0; f0[n] = ptb_trim(p); if (!bar) { n++; break; } p = bar + 1; }
-        if (!strcmp(f0[0], "TAB") && n >= 3 && nt < PTB_TABS) { snprintf(tb[nt][0], 80, "%s", f0[1]); snprintf(tb[nt][1], 80, "%s", f0[2]); nt++; }
-        else if (!strcmp(f0[0], "ITEM") && n >= 3 && ni < PTB_ITEMS) {
-            snprintf(it[ni][0], 240, "%s", f0[1]); snprintf(it[ni][1], 240, "%s", f0[2]);
-            if (n >= 4 && f0[3][0]) snprintf(it[ni][2], 240, "%s %s", op, f0[3]); else snprintf(it[ni][2], 240, "void");
-            ni++;
-        }
+    static PtbKV kv[PTB_KV]; static PtbRow rows[3][PTB_ROWS];
+    int nkv = 0, o = 0, nrow[3] = {0, 0, 0}, nt = 0;
+    char line[600]; FILE *f = fopen(pdl, "r");
+    if (!f) { o += snprintf(out + o, cap - o, "n_tab=0\nn_item=0\nn_pre=0\nn_post=0\n"); return o; }
+    while (fgets(line, sizeof line, f) && nkv < PTB_KV) {
+        if (strncmp(line, "SECTION", 7)) continue;
+        char *b1 = strchr(line, '|'); if (!b1) continue; char *b2 = strchr(b1 + 1, '|'); if (!b2) continue;
+        *b1 = 0; *b2 = 0;
+        char *k = ptb_trim(b1 + 1), *v = ptb_trim(b2 + 1);
+        if (!strcmp(k, "KEY")) continue;
+        snprintf(kv[nkv].key, sizeof kv[nkv].key, "%s", k); snprintf(kv[nkv].val, sizeof kv[nkv].val, "%s", v); nkv++;
     }
     fclose(f);
+    for (int i = 0; i < PTB_TABS; i++) {
+        char kc[40], kl[40]; snprintf(kc, sizeof kc, "tab_%d_cell", i); snprintf(kl, sizeof kl, "tab_%d_label", i);
+        const char *c = ptb_get(kv, nkv, kc), *l = ptb_get(kv, nkv, kl); if (!c) continue;
+        o += snprintf(out + o, cap - o, "tb_%d_id=tb-%s\ntb_%d_label=%s\n", nt, c, nt, l ? l : c); nt++;
+    }
+    for (int i = 0; i < nkv; i++) {
+        char cell[48], ck[100]; int st;
+        if (!ptb_menu_label_key(kv[i].key, cell, sizeof cell, &st) || nrow[st] >= PTB_ROWS) continue;
+        snprintf(ck, sizeof ck, "%.*s_cmd", (int)(strlen(kv[i].key) - 6), kv[i].key);
+        const char *cmd = ptb_get(kv, nkv, ck); PtbRow *r = &rows[st][nrow[st]++];
+        snprintf(r->cell, sizeof r->cell, "tb-%s", cell); snprintf(r->label, sizeof r->label, "%s", kv[i].val);
+        if (!cmd || !cmd[0]) snprintf(r->act, sizeof r->act, "void");
+        else if (!strncmp(cmd, "op:", 3)) snprintf(r->act, sizeof r->act, "%s %s", op, cmd + 3);
+        else snprintf(r->act, sizeof r->act, "%s", cmd);
+    }
     o += snprintf(out + o, cap - o, "n_tab=%d\n", nt);
-    for (int i = 0; i < nt && (size_t)o < cap; i++) o += snprintf(out + o, cap - o, "tb_%d_id=%s\ntb_%d_label=%s\n", i, tb[i][0], i, tb[i][1]);
-    o += snprintf(out + o, cap - o, "n_item=%d\n", ni);
-    for (int i = 0; i < ni && (size_t)o < cap; i++) o += snprintf(out + o, cap - o, "it_%d_tab=%s\nit_%d_label=%s\nit_%d_act=%s\n", i, it[i][0], i, it[i][1], i, it[i][2]);
+    static const char *grp[3][2] = {{"n_item", "it"}, {"n_pre", "pre"}, {"n_post", "post"}};
+    for (int g = 0; g < 3; g++) {
+        o += snprintf(out + o, cap - o, "%s=%d\n", grp[g][0], nrow[g]);
+        for (int i = 0; i < nrow[g] && (size_t)o + 600 < cap; i++)
+            o += snprintf(out + o, cap - o, "%s_%d_tab=%s\n%s_%d_label=%s\n%s_%d_act=%s\n", grp[g][1], i, rows[g][i].cell, grp[g][1], i, rows[g][i].label, grp[g][1], i, rows[g][i].act);
+    }
     return o;
 }
 #endif

@@ -22,6 +22,7 @@
       <tab id="tb-time" class="tab rp-tb" label="${time_label} ▾" onclick="ACTIVATE" target_id="tb-time"/>
     </tabbar>
     <sidebar id="side" class="rp-rail sidebar">
+      <repeat count="${n_pre}" bind="pre"><item id="tq-${pre.#}" class="rp-menu-row dropdown-child" target_id="${pre.tab}" label="${pre.label}" action="${pre.act}"/></repeat>
       <repeat count="${n_party}" bind="party">
         <item id="bk-${party.#}" class="rp-menu-row dropdown-child ${party.cls}" target_id="tb-book" label="${party.label}" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' select ${party.id}"/>
       </repeat>
@@ -30,6 +31,7 @@
         <item id="rm${room.#}" class="rp-menu-row dropdown-child" target_id="tb-page" label="${room.label}" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' goto ${room.id}"/>
       </repeat>
       <repeat count="${n_item}" bind="it"><item id="ti-${it.#}" class="rp-menu-row dropdown-child" target_id="${it.tab}" label="${it.label}" action="${it.act}"/></repeat>
+      <repeat count="${n_post}" bind="post"><item id="tp-${post.#}" class="rp-menu-row dropdown-child" target_id="${post.tab}" label="${post.label}" action="${post.act}"/></repeat>
       <item id="tm-cent" class="rp-menu-row dropdown-child" target_id="tb-time" label="speed: turbo (testing)" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' clock rate cent"/>
       <item id="tm-sec" class="rp-menu-row dropdown-child" target_id="tb-time" label="speed: fast (1 hour/sec)" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' clock rate sec"/>
       <item id="tm-min" class="rp-menu-row dropdown-child" target_id="tb-time" label="speed: normal (1 min/sec)" action="'${HOUSE}/@.apps/df-hq/ops/+x/df_hq.+x' clock rate min"/>
