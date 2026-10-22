@@ -501,6 +501,11 @@ static void write_ui(void) {
     PUT("pgnew_action=%s 'PNEW'\ntrig_action=%s 'TRIG'\nloadce_action=%s 'LOADCE'\nbook_action=%s 'BOOK'\npdel_action=%s 'PDEL'\nsw_action=%s 'SWITCH'\n", act, act, act, act, act, act);
     PUT("n_hint=%s\n", nN && csel >= 0 ? "type below: key=value|key=value  edits the selected command;  type|key=value  sets both" : "");
     PUT("load_gdh_action=%s 'LOAD:game-dev-hq'\nload_rpg_action=%s 'LOAD:rpg-pvp-hq'\n", act, act);
+    /* every game of the target house that has a verbs.pdl (the verb-page manifest, BOOK 16.game/EVENT-VERB-PAGES-DESIGN.md) is one row of the Games menu: LOAD:<app> */
+    { char ad[P]; snprintf(ad, P, "%s/@.apps", g_target); static char gn[32][64]; int ng = 0; DIR *d = opendir(ad);
+      if (d) { struct dirent *de; while ((de = readdir(d)) && ng < 32) { if (de->d_name[0] == '.' || strlen(de->d_name) >= 64 || !clean(de->d_name, 0)) continue; char vp[P]; snprintf(vp, P, "%s/%s/verbs.pdl", ad, de->d_name); if (access(vp, F_OK) == 0) snprintf(gn[ng++], 64, "%s", de->d_name); } closedir(d); }
+      qsort(gn, (size_t)ng, 64, cmp_s); PUT("g_count=%d\n", ng);
+      for (int i = 0; i < ng; i++) { PUT("g_%d_label=%s\n", i, gn[i]); PUT("g_%d_action=%s 'LOAD:%s'\n", i, act, gn[i]); } }
     PUT("edit_action=%s 'EDIT'\nadd_action=%s 'ADD'\ncdel_action=%s 'CDEL'\nundo_action=%s 'UNDO'\nundo_line=undo steps: %d\n", act, act, act, act, nU);
     PUT("t_count=%d\n", ntrace);
     for (int i = 0; i < ntrace; i++) PUT("t_%d_label=%s\n", i, trace_rows[i]);

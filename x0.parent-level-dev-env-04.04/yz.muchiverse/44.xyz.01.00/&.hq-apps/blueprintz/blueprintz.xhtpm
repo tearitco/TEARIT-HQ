@@ -5,7 +5,13 @@
 <window label="BLUEPRINTZ" class="database-window" vars="state/ui.txt">
   <module src="&.hq-apps/blueprintz/+x/blueprintz_manager.+x" id="_"/>
   <page name="main">
+    <tabbar id="bp-tabs" class="tab-bar">
+      <tab id="tb-games" class="tab" label="Load verbs of a game ▾" onclick="ACTIVATE" target_id="tb-games"/>
+    </tabbar>
     <sidebar>
+      <repeat count="${g_count}" bind="g">
+        <item id="gm${g.#}" class="dropdown-child" target_id="tb-games" label="${g.label}" action="${g.action}"/>
+      </repeat>
       <text label="Events on this page (click to select)" class="quiet"/>
       <scrolllist class="from-top">
         <repeat count="${e_count}" bind="e">
@@ -33,12 +39,6 @@
       <row class="toolbar">
         <item id="detach" label="Detach" action="${detach_action}"/>
         <item id="refresh" label="Refresh" action="${refresh_action}"/>
-      </row>
-      <row class="toolbar">
-        <item id="loadgdh" label="Load game-dev-hq verbs" action="${load_gdh_action}"/>
-      </row>
-      <row class="toolbar">
-        <item id="loadrpg" label="Load rpg-pvp-hq verbs" action="${load_rpg_action}"/>
       </row>
       <row class="toolbar">
         <item id="loadce" label="Load common events" action="${loadce_action}"/>
@@ -70,8 +70,6 @@
         <item id="refresh" label="Refresh" action="${refresh_action}"/>
       </row>
       <row class="toolbar">
-        <item id="loadgdh" label="Load game-dev-hq verbs" action="${load_gdh_action}"/>
-        <item id="loadrpg" label="Load rpg-pvp-hq verbs" action="${load_rpg_action}"/>
         <item id="loadce" label="Load common events" action="${loadce_action}"/>
         <item id="bookc" label="Compile book" action="${book_action}"/>
       </row>
