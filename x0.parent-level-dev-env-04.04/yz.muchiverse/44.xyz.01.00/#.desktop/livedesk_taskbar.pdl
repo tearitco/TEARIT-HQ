@@ -99,7 +99,10 @@ SECTION      | ai_menu_9_cmd         | sh _.monads/_.livedesk-taskbar/ops/open_c
 # Knowledge HQ (2026-10-07): browse/label/score the chemistry data and accept or reject proposed rows (review_owner.txt). Data-driven row, no C change.
 SECTION      | ai_menu_10_label      | Knowledge
 SECTION      | ai_menu_10_cmd        | sh _.monads/_.livedesk-taskbar/ops/open_knowledge.sh
-SECTION      | ai_menu_11_label      | Cancel
+# img-hai is an h-ai window. toy.pdl used to put it under toys. That file is gone.
+SECTION      | ai_menu_11_label      | img-hai
+SECTION      | ai_menu_11_cmd        | sh &.hq-apps/img-hai/button.sh run
+SECTION      | ai_menu_12_label      | Cancel
 
 # db cell (9.db) - converted from C-hardcoded 2026-09-08. The builder
 # still gates on an active livedesk session (no session -> no menu).
