@@ -277,3 +277,48 @@ SECTION      | clock_menu_5_label    | Cancel
 SECTION      | user_menu_pre_1_label | New User...
 SECTION      | user_menu_pre_1_cmd   | user:new
 SECTION      | user_menu_post_1_label | Cancel
+
+# ---- second batch moved out of C 2026-10-21: the rows that close a scanned or stateful menu (<cell>_menu_post_N), and the static db-ez list ----
+# A cell without post rows still gets one Cancel (livedesk_pdl_tail). The scanned part (pals, toys, sessions, slots, common events, clocks) stays C.
+SECTION      | pals_menu_post_1_label| Cancel
+SECTION      | toys_menu_post_1_label| Cancel
+SECTION      | session_menu_post_1_label| Cancel
+SECTION      | clock_cals_menu_post_1_label| new game clock…
+SECTION      | clock_cals_menu_post_1_cmd| livedesk:clock:new-clock
+SECTION      | clock_cals_menu_post_2_label| back
+SECTION      | clock_cals_menu_post_2_cmd| livedesk:clock:back
+SECTION      | clock_cals_menu_post_3_label| Cancel
+SECTION      | clock_reminders_menu_post_1_label| new reminder…
+SECTION      | clock_reminders_menu_post_1_cmd| livedesk:clock:new-reminder
+SECTION      | clock_reminders_menu_post_2_label| back
+SECTION      | clock_reminders_menu_post_2_cmd| livedesk:clock:back
+SECTION      | clock_reminders_menu_post_3_label| Cancel
+SECTION      | clock_game_menu_post_1_label| back
+SECTION      | clock_game_menu_post_1_cmd| livedesk:clock:back
+SECTION      | clock_game_menu_post_2_label| Cancel
+SECTION      | slots_menu_post_1_label| Cancel (back)
+SECTION      | slots_menu_post_1_cmd | livedesk:savegame-back
+SECTION      | db_ce_menu_post_1_label| + new common event
+SECTION      | db_ce_menu_post_1_cmd | livedesk:new-common-event
+SECTION      | db_ce_menu_post_2_label| back
+SECTION      | db_ce_menu_post_2_cmd | livedesk:db-ez-common-events-back
+SECTION      | db_ce_menu_post_3_label| Cancel
+# db-ez sections (the internal 101 sub-list of the db menu)
+SECTION      | db_ez_menu_1_label    | Actors
+SECTION      | db_ez_menu_2_label    | Classes
+SECTION      | db_ez_menu_3_label    | Skills
+SECTION      | db_ez_menu_4_label    | Items
+SECTION      | db_ez_menu_5_label    | Weapons
+SECTION      | db_ez_menu_6_label    | Armors
+SECTION      | db_ez_menu_7_label    | Enemies
+SECTION      | db_ez_menu_8_label    | Troops
+SECTION      | db_ez_menu_9_label    | States
+SECTION      | db_ez_menu_10_label   | Animations
+SECTION      | db_ez_menu_11_label   | Tilesets
+SECTION      | db_ez_menu_12_label   | System
+SECTION      | db_ez_menu_13_label   | Types
+SECTION      | db_ez_menu_14_label   | Common Events
+SECTION      | db_ez_menu_14_cmd     | livedesk:db-ez-common-events
+SECTION      | db_ez_menu_15_label   | back
+SECTION      | db_ez_menu_15_cmd     | livedesk:db-ez-back
+SECTION      | db_ez_menu_16_label   | Cancel

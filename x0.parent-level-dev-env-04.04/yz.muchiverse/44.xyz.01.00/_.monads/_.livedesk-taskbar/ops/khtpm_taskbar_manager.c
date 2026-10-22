@@ -3672,6 +3672,16 @@ void ktb_poll_widget_result(KtbState *s) {
     }
 }
 
+/* Static rows that close a scanned or stateful menu (new ... / back / Cancel) are data: livedesk_taskbar.pdl `<cell>_menu_post_N_label` / `_cmd`.
+ * Returns how many rows it wrote at menu[0..); a pdl without post rows still gets a dismissible Cancel. */
+static int livedesk_pdl_menu_rows_staged(const char *house_root, const char *cell, const char *stage, HQMenuItem *menu, int max);
+static int livedesk_pdl_tail(const char *house_root, const char *cell, HQMenuItem *menu, int max) {
+    if (max <= 0) return 0;
+    int n = livedesk_pdl_menu_rows_staged(house_root, cell, "post", menu, max);
+    if (n == 0) { snprintf(menu[0].label, sizeof(menu[0].label), "Cancel"); menu[0].command[0] = '\0'; n = 1; }
+    return n;
+}
+
 static int livedesk_build_session_menu(const char *house_root, HQMenuItem *menu, int max) {
     char sroot[KTB_PATH_BUF];
     if (!livedesk_sessions_root(house_root, sroot, sizeof(sroot))) return 0;
@@ -3730,11 +3740,7 @@ static int livedesk_build_session_menu(const char *house_root, HQMenuItem *menu,
         snprintf(menu[i].label, sizeof(menu[i].label), "%s", name);
         snprintf(menu[i].command, sizeof(menu[i].command), "livedesk:open-session:%s", ids[i]);
     }
-    if (n < max) {
-        snprintf(menu[n].label, sizeof(menu[n].label), "Cancel");
-        menu[n].command[0] = '\0';
-        n++;
-    }
+    n += livedesk_pdl_tail(house_root, "session", menu + n, max - n);      /* Cancel: pdl */
     return n;
 }
 
@@ -4507,7 +4513,7 @@ static int livedesk_build_game_slots_menu(const char *house_root, HQMenuItem *me
         else menu[n].command[0] = '\0';
         n++;
     }
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "Cancel (back)"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:savegame-back"); n++; }
+    n += livedesk_pdl_tail(house_root, "slots", menu + n, max - n);      /* Cancel (back): pdl */
     return n;
 }
 
@@ -4692,24 +4698,19 @@ static int livedesk_build_clock_menu(const char *house_root, HQMenuItem *menu, i
 
 static int livedesk_build_clock_cals_menu(const char *house_root, HQMenuItem *menu, int max) {
     int n = livedesk_clock_rows(house_root, menu, max, "clocks", "cal");
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "new game clock…"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:clock:new-clock"); n++; }
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "back"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:clock:back"); n++; }
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "Cancel"); menu[n].command[0] = '\0'; n++; }
+    n += livedesk_pdl_tail(house_root, "clock_cals", menu + n, max - n);      /* new game clock… / back / Cancel: pdl */
     return n;
 }
 
 static int livedesk_build_clock_reminders_menu(const char *house_root, HQMenuItem *menu, int max) {
     int n = livedesk_clock_rows(house_root, menu, max, "reminders", "");
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "new reminder…"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:clock:new-reminder"); n++; }
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "back"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:clock:back"); n++; }
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "Cancel"); menu[n].command[0] = '\0'; n++; }
+    n += livedesk_pdl_tail(house_root, "clock_reminders", menu + n, max - n);      /* new reminder… / back / Cancel: pdl */
     return n;
 }
 
 static int livedesk_build_clock_game_menu(const char *house_root, HQMenuItem *menu, int max) {
     int n = livedesk_clock_rows(house_root, menu, max, "clocks", "game");
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "back"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:clock:back"); n++; }
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "Cancel"); menu[n].command[0] = '\0'; n++; }
+    n += livedesk_pdl_tail(house_root, "clock_game", menu + n, max - n);      /* back / Cancel: pdl */
     return n;
 }
 
@@ -4770,34 +4771,9 @@ static int livedesk_build_db_menu(const char *house_root, HQMenuItem *menu, int 
  * existing convention (e.g. livedesk_build_player_menu()'s "play"/"pause")
  * which already falls through to the harmless default-close path in
  * ktb_hq_activate() - no dispatch case needed for them, so they can't crash. */
-static int livedesk_build_db_ez_sections_menu(HQMenuItem *menu, int max) {
-    static const char *sections[] = {
-        "Actors", "Classes", "Skills", "Items", "Weapons", "Armors",
-        "Enemies", "Troops", "States", "Animations", "Tilesets",
-        "System", "Types"
-    };
-    int n = 0;
-    for (size_t i = 0; i < sizeof(sections) / sizeof(sections[0]) && n < max; i++) {
-        snprintf(menu[n].label, sizeof(menu[n].label), "%s", sections[i]);
-        menu[n].command[0] = '\0';
-        n++;
-    }
-    if (n < max) {
-        snprintf(menu[n].label, sizeof(menu[n].label), "Common Events");
-        snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:db-ez-common-events");
-        n++;
-    }
-    if (n < max) {
-        snprintf(menu[n].label, sizeof(menu[n].label), "back");
-        snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:db-ez-back");
-        n++;
-    }
-    if (n < max) {
-        snprintf(menu[n].label, sizeof(menu[n].label), "Cancel");
-        menu[n].command[0] = '\0';
-        n++;
-    }
-    return n;
+static int livedesk_build_db_ez_sections_menu(const char *house_root, HQMenuItem *menu, int max) {
+    /* Rows are data: livedesk_taskbar.pdl db_ez_menu_N_label/_cmd (the RPG Maker database sections, Common Events, back, Cancel). */
+    return livedesk_pdl_menu_rows(house_root, "db_ez", menu, max);
 }
 
 /* Common Events list - GLOBAL (house_root-wide), not session-scoped, per
@@ -4840,21 +4816,7 @@ static int livedesk_build_db_common_events_menu(const char *house_root, HQMenuIt
         snprintf(menu[i].label, sizeof(menu[i].label), "%s", names[i]);
         snprintf(menu[i].command, sizeof(menu[i].command), "livedesk:open-common-event:%s", names[i]);
     }
-    if (i < max) {
-        snprintf(menu[i].label, sizeof(menu[i].label), "+ new common event");
-        snprintf(menu[i].command, sizeof(menu[i].command), "livedesk:new-common-event");
-        i++;
-    }
-    if (i < max) {
-        snprintf(menu[i].label, sizeof(menu[i].label), "back");
-        snprintf(menu[i].command, sizeof(menu[i].command), "livedesk:db-ez-common-events-back");
-        i++;
-    }
-    if (i < max) {
-        snprintf(menu[i].label, sizeof(menu[i].label), "Cancel");
-        menu[i].command[0] = '\0';
-        i++;
-    }
+    i += livedesk_pdl_tail(house_root, "db_ce", menu + i, max - i);      /* + new common event / back / Cancel: pdl */
     return i;
 }
 
@@ -5187,7 +5149,7 @@ void ktb_hq_open(KtbState *s, int which) {
     else if (which == PLAYER_MENU_SAVE) n = livedesk_build_game_slots_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX, 1);
     else if (which == PLAYER_MENU_LOAD) n = livedesk_build_game_slots_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX, 0);
     else if (which == 100) n = livedesk_build_session_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX); /* 100 = internal-only "session picker", reached from the file cell's "load" row (livedesk:load), never a header click directly - see ktb_hq_activate() */
-    else if (which == 101) n = livedesk_build_db_ez_sections_menu(s->hq_menu, KTB_LIVEDESK_DYN_MAX); /* 101 = internal-only db-ez 14-section list, reached from db cell's "db-ez" row */
+    else if (which == 101) n = livedesk_build_db_ez_sections_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX); /* 101 = internal-only db-ez 14-section list, reached from db cell's "db-ez" row */
     else if (which == 102) n = livedesk_build_db_common_events_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX); /* 102 = internal-only Common Events list (global, house_root-wide), reached from db-ez's "Common Events" row */
     /* network - real, wired 2026-08-31, see livedesk_build_network_
      * menu()'s own header comment. Was one of the bare inert cells
