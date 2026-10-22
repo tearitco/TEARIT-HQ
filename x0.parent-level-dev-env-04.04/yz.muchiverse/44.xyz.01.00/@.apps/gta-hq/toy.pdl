@@ -11,3 +11,4 @@ SECTION | party_row     | DsrRpgParty
 SECTION | party_sheet   | Monster
 SECTION | party_idx_base| 0
 SECTION | reply_tail    | , Voss
+SECTION | cast_label    | cast

@@ -12,3 +12,4 @@ SECTION | party_sheet   | teru
 SECTION | party_idx_base| 0
 SECTION | fallback_party| Ember,Glacine,Murmur,Solvent
 SECTION | reply_tail    | , Harold
+SECTION | cast_label    | cast

@@ -12,3 +12,4 @@ SECTION | party_sheet   | viking
 SECTION | party_idx_base| 1
 SECTION | fallback_party| Blue,Green
 SECTION | reply_tail    | 
+SECTION | cast_label    | cast

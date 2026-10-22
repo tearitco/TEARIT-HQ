@@ -1,0 +1,58 @@
+@@standalone s1
+      <tab id="tb-help" class="tab rp-tb" label="Help ▾" onclick="ACTIVATE" target_id="tb-help"/>
+      <tab id="tb-inv" class="tab rp-tb" label="Inventory ▾" onclick="ACTIVATE" target_id="tb-inv"/>
+      <tab id="tb-craft" class="tab rp-tb" label="Craft ▾" onclick="ACTIVATE" target_id="tb-craft"/>
+@@end
+@@standalone s3
+      <item id="hp-open" class="rp-menu-row dropdown-child" target_id="tb-help" label="Open help" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' helppanel open"/>
+      <item id="hp-next" class="rp-menu-row dropdown-child" target_id="tb-help" label="Next page" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' helppanel next"/>
+      <item id="hp-prev" class="rp-menu-row dropdown-child" target_id="tb-help" label="Prev page" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' helppanel prev"/>
+      <item id="hp-close" class="rp-menu-row dropdown-child" target_id="tb-help" label="Close help" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' helppanel close"/>
+      <item id="hp-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-help" label="- cancel -" action="void"/>
+      <repeat count="${n_inv}" bind="inv">
+        <item id="iv${inv.#}" class="rp-menu-row dropdown-child" target_id="tb-inv" label="${inv.label}" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' fire hold ${inv.key}"/>
+      </repeat>
+      <item id="iv-hold" class="rp-menu-row dropdown-child" target_id="tb-inv" label="Hold next block" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' fire hold"/>
+      <item id="iv-mine" class="rp-menu-row dropdown-child" target_id="tb-inv" label="Mine block ahead" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' fire mine"/>
+      <item id="iv-place" class="rp-menu-row dropdown-child" target_id="tb-inv" label="Place block ahead" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' fire place"/>
+      <item id="iv-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-inv" label="- cancel -" action="void"/>
+      <repeat count="${n_rec}" bind="rec">
+        <item id="cr${rec.#}" class="rp-menu-row dropdown-child" target_id="tb-craft" label="${rec.label}" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' fire craft ${rec.id}"/>
+      </repeat>
+      <item id="cr-recipes" class="rp-menu-row dropdown-child" target_id="tb-craft" label="Recipes" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' recipes"/>
+      <item id="cr-bag" class="rp-menu-row dropdown-child" target_id="tb-craft" label="Bag: what I carry" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' bag"/>
+      <item id="cr-help" class="rp-menu-row dropdown-child" target_id="tb-craft" label="Help: blocks, crafting" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' help"/>
+      <item id="cr-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-craft" label="- cancel -" action="void"/>
+@@end
+@@standalone s5
+        <text label="${note}" class="ph-green rp-side-t"/>
+@@end
+@@standalone s6
+      <row id="help-ov" class="canvas-overlay-left ov-pin ov-chrome rp-help-ov theme" show="${help_visible}">
+        <text label="${help_0}" class="hb-quiet ov-title theme-3"/>
+        <text label="${help_1}" class="rp-chat"/>
+        <text label="${help_2}" class="rp-chat"/>
+        <text label="${help_3}" class="rp-chat"/>
+        <text label="${help_4}" class="rp-chat"/>
+        <text label="${help_5}" class="rp-chat"/>
+        <text label="${help_6}" class="rp-chat"/>
+        <text label="${help_7}" class="rp-chat"/>
+        <text label="${help_8}" class="rp-chat"/>
+        <text label="${help_9}" class="rp-chat"/>
+        <text label="${help_10}" class="rp-chat"/>
+        <item id="help-next" class="rp-menu-row rp-help-row" label="next page" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' helppanel next"/>
+        <item id="help-x" class="rp-menu-row rp-help-row" label="close help" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' helppanel close"/>
+      </row>
+@@end
+@@standalone s7
+        <text label="${chat_0}" class="rp-chat ${chat_cls_0}"/>
+        <text label="${chat_1}" class="rp-chat ${chat_cls_1}"/>
+        <text label="${chat_2}" class="rp-chat ${chat_cls_2}"/>
+        <text label="${chat_3}" class="rp-chat ${chat_cls_3}"/>
+        <text label="${chat_4}" class="rp-chat ${chat_cls_4}"/>
+        <text label="${chat_5}" class="rp-chat ${chat_cls_5}"/>
+        <text label="${chat_6}" class="rp-chat ${chat_cls_6}"/>
+        <text label="${chat_7}" class="rp-chat ${chat_cls_7}"/>
+        <text label="${chat_8}" class="rp-chat ${chat_cls_8}"/>
+        <text label="${chat_9}" class="rp-chat ${chat_cls_9}"/>
+@@end

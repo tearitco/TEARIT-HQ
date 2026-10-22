@@ -8,8 +8,8 @@
 
 | # | Item | State |
 |---|---|---|
-| P1 | **Seams to data**: the ~76 game-specific sections in `petslike_core.c` - first the small ones (hero name and sheet, fallback party, default replies, party filter, sibling app) as `party.pdl` / `toy.pdl` rows read by the core | NOT STARTED |
-| P2 | **One shared window template** for the 16 near-duplicate `.xhtpm` (board + standalone, 8 games): one body, the game's `toolbar.pdl` / `party.pdl` / `flow.pdl` fill it | NOT STARTED |
+| P1 | **Seams to data**: the ~76 game-specific sections in `petslike_core.c` - first the small ones (hero name and sheet, fallback party, default replies, party filter, sibling app) as `party.pdl` / `toy.pdl` rows read by the core | FIRST BATCH DONE 2026-10-21 (sibling, hero, party row/sheet/base, fallback party, reply tail -> `<app>/toy.pdl` + `cfg()`; 71 sections left). The rest are real per-game code (painters, fortress/crafting verbs, gta brixels), not constants |
+| P2 | **One shared window template** for the 16 near-duplicate `.xhtpm` (board + standalone, 8 games): one body, the game's `toolbar.pdl` / `party.pdl` / `flow.pdl` fill it | DONE 2026-10-21: `&.widgits/_shared-lib/petslike/{board,standalone}.xhtpm.in` + `petslike_tpl gen|check <app>` (C op in `_shared-lib/ops`) write each game's `board/pchq-board.xhtpm` and `<app>.xhtpm`; df/cdda/mcl keep their extra tabs and rows in `<app>/xhtpm-extra.txt` blocks; `cast_label` in toy.pdl. All 16 files regenerate byte-for-byte. The window files stay checked in; edit the template, run `gen`, run `check` |
 | P3 | **rpg-edit-hq on the core**: its pets and chat come from the shared core (its map painter stays its own) | NOT STARTED |
 | P4 | **Scanned tb menus to data** so the 1.hq search over every top-tb sub can read them: pals, toys, desks, sessions, accounts, clocks, slots, common events, plus `clock_cal` (per-clock ids) and `menu_menu` | NOT STARTED (static rows and closing rows are done, see TASKBAR-MENUS-DATA-DRIVEN.md) |
 

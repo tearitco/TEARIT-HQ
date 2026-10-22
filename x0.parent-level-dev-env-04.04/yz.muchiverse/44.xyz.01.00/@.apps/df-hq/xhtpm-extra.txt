@@ -1,0 +1,74 @@
+@@standalone s1
+      <tab id="tb-desig" class="tab rp-tb" label="Designations ▾" onclick="ACTIVATE" target_id="tb-desig"/>
+      <tab id="tb-build" class="tab rp-tb" label="Build ▾" onclick="ACTIVATE" target_id="tb-build"/>
+      <tab id="tb-stocks" class="tab rp-tb" label="Stocks ▾" onclick="ACTIVATE" target_id="tb-stocks"/>
+      <tab id="tb-units" class="tab rp-tb" label="Units ▾" onclick="ACTIVATE" target_id="tb-units"/>
+      <tab id="tb-help" class="tab rp-tb" label="Help ▾" onclick="ACTIVATE" target_id="tb-help"/>
+@@end
+@@standalone s2
+      <item id="mn-dig" class="rp-menu-row dropdown-child" target_id="tb-desig" label="Mine: mark in front" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' fire dig"/>
+      <item id="mn-dig-area" class="rp-menu-row dropdown-child" target_id="tb-desig" label="Mine area: corner / area" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' fire dig_area"/>
+      <item id="mn-undig" class="rp-menu-row dropdown-child" target_id="tb-desig" label="Mine: cancel the mark" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' fire undig"/>
+      <item id="ds-channel" class="rp-menu-row dropdown-child quiet" target_id="tb-desig" label="(later) channel" action="void"/>
+      <item id="ds-stairs" class="rp-menu-row dropdown-child quiet" target_id="tb-desig" label="(later) stairs" action="void"/>
+      <item id="ds-chop" class="rp-menu-row dropdown-child quiet" target_id="tb-desig" label="(later) chop trees" action="void"/>
+      <item id="mn-help" class="rp-menu-row dropdown-child" target_id="tb-desig" label="How to mine (next step)" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' help"/>
+      <item id="ds-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-desig" label="- cancel -" action="void"/>
+      <item id="bd-wall" class="rp-menu-row dropdown-child quiet" target_id="tb-build" label="(later) wall" action="void"/>
+      <item id="bd-door" class="rp-menu-row dropdown-child quiet" target_id="tb-build" label="(later) door" action="void"/>
+      <item id="bd-shop" class="rp-menu-row dropdown-child quiet" target_id="tb-build" label="(later) workshop" action="void"/>
+      <item id="bd-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-build" label="- cancel -" action="void"/>
+      <item id="st-total" class="rp-menu-row dropdown-child" target_id="tb-stocks" label="${stock_total}" action="void"/>
+      <repeat count="${n_stock}" bind="stock">
+        <item id="stk${stock.#}" class="rp-menu-row dropdown-child" target_id="tb-stocks" label="${stock.label}" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' select ${stock.key}"/>
+      </repeat>
+      <item id="st-later" class="rp-menu-row dropdown-child quiet" target_id="tb-stocks" label="(later) stockpiles" action="void"/>
+      <item id="st-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-stocks" label="- cancel -" action="void"/>
+      <repeat count="${n_unit}" bind="unit">
+        <item id="un${unit.#}" class="rp-menu-row dropdown-child" target_id="tb-units" label="${unit.label}" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' select ${unit.key}"/>
+      </repeat>
+      <item id="un-later" class="rp-menu-row dropdown-child quiet" target_id="tb-units" label="(later) labor, skills" action="void"/>
+      <item id="un-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-units" label="- cancel -" action="void"/>
+@@end
+@@standalone s3
+      <item id="hp-open" class="rp-menu-row dropdown-child" target_id="tb-help" label="Open help" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' helppanel open"/>
+      <item id="hp-next" class="rp-menu-row dropdown-child" target_id="tb-help" label="Next page" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' helppanel next"/>
+      <item id="hp-prev" class="rp-menu-row dropdown-child" target_id="tb-help" label="Prev page" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' helppanel prev"/>
+      <item id="hp-close" class="rp-menu-row dropdown-child" target_id="tb-help" label="Close help" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' helppanel close"/>
+      <item id="hp-cancel" class="rp-menu-row dropdown-child quiet" target_id="tb-help" label="- cancel -" action="void"/>
+@@end
+@@standalone s4
+      <item id="pm-fort" class="rp-menu-row dropdown-child" target_id="tb-player" label="Load test fortress" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' fire load fortress"/>
+@@end
+@@standalone s5
+        <text label="${note}" class="ph-green rp-side-t"/>
+@@end
+@@standalone s6
+      <row id="help-ov" class="canvas-overlay-left ov-pin ov-chrome rp-help-ov theme" show="${help_visible}">
+        <text label="${help_0}" class="hb-quiet ov-title theme-3"/>
+        <text label="${help_1}" class="rp-chat"/>
+        <text label="${help_2}" class="rp-chat"/>
+        <text label="${help_3}" class="rp-chat"/>
+        <text label="${help_4}" class="rp-chat"/>
+        <text label="${help_5}" class="rp-chat"/>
+        <text label="${help_6}" class="rp-chat"/>
+        <text label="${help_7}" class="rp-chat"/>
+        <text label="${help_8}" class="rp-chat"/>
+        <text label="${help_9}" class="rp-chat"/>
+        <text label="${help_10}" class="rp-chat"/>
+        <item id="help-next" class="rp-menu-row rp-help-row" label="next page" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' helppanel next"/>
+        <item id="help-x" class="rp-menu-row rp-help-row" label="close help" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' helppanel close"/>
+      </row>
+@@end
+@@standalone s7
+        <text label="${chat_0}" class="rp-chat ${chat_cls_0}"/>
+        <text label="${chat_1}" class="rp-chat ${chat_cls_1}"/>
+        <text label="${chat_2}" class="rp-chat ${chat_cls_2}"/>
+        <text label="${chat_3}" class="rp-chat ${chat_cls_3}"/>
+        <text label="${chat_4}" class="rp-chat ${chat_cls_4}"/>
+        <text label="${chat_5}" class="rp-chat ${chat_cls_5}"/>
+        <text label="${chat_6}" class="rp-chat ${chat_cls_6}"/>
+        <text label="${chat_7}" class="rp-chat ${chat_cls_7}"/>
+        <text label="${chat_8}" class="rp-chat ${chat_cls_8}"/>
+        <text label="${chat_9}" class="rp-chat ${chat_cls_9}"/>
+@@end
