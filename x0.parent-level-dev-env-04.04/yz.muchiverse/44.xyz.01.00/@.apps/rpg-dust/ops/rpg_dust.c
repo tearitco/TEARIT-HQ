@@ -13,6 +13,7 @@
 #define PET_VIEW_CELL "24"
 #define PET_VIEW_STYLE "tiles"
 #define PET_OWN_EXPORT 1
+#define PET_ROOM_PHASE(r, ph) do { if ((r) < 3) snprintf(ph, sizeof ph, "night"); } while (0)      /* rooms 0..2 are the ship: deep space is always night */
 #include "../../../&.widgits/_shared-lib/petslike_core.c"
 #else
 #if PET_SECTION == 1
@@ -214,7 +215,7 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
 #elif PET_SECTION == 66
     signal(SIGTERM, bye); signal(SIGINT, bye); signal(SIGHUP, bye); srand((unsigned)(time(NULL) ^ getpid()));
 #elif PET_SECTION == 67
-    if (now_ms() < sk_pin_until) g_pin_now = 1;      /* after a planet / Regen reload the xelector follows the active pet again (follow_pchq re-writes its cell while the pin is set) */
+    if (now_ms() < sk_pin_until) { g_pin_now = 1; char xz[PATH_MAX], hz[PATH_MAX]; snprintf(xz, sizeof xz, "%s/pieces/xelector_01/state.txt", PCHQ); snprintf(hz, sizeof hz, "%s/pieces/hero_01/state.txt", PCHQ); kv_set_int(xz, "pos_z", 17); kv_set_int(hz, "pos_z", 17); }      /* the engine starts the camera one above the LOWEST surface, which is now the planet sunk under the ship: hold it at the ship's floor level (floor 16, camera 17) */      /* after a planet / Regen reload the xelector follows the active pet again (follow_pchq re-writes its cell while the pin is set) */
         { static long pl_safety = 0; long pn = now_ms(); if (!sn_active(&g_sn) || sn_changed(&g_sn, SL_PETS) || pn - pl_safety > 30000) { pl_safety = pn; pet_load(); } }      /* marker/shmem: reload the pets only when a writer moved the slot (or every 30 s for a hand edit) */
         int in = flag_on("int", 0), tm = turn_mode(); static int prev_in = 0; static long int_on_at = 0; if (in && !prev_in) int_on_at = now_ms(); prev_in = in;
 #elif PET_SECTION == 68
@@ -344,14 +345,18 @@ static void sk_ship_room(int g, Sheet *a4, Sheet *door, int fc, int fr, int wc, 
 static void sk_build_ship(void) {      /* called after the planet pages are painted: room SK_SHIP (the region page) is copied into every ship desk as the backdrop, then the ship is drawn over its middle */
     Sheet *a4 = sheet("tilesets", "SF_Inside_A4"), *door = sheet("characters", "!SF_Door1");
     static const int bx[2] = {3, 8}, by[2] = {11, 11}, qx[1] = {3}, qy[1] = {1}, hx[1] = {8}, hy[1] = {1};
-    for (int g = 0; g < SK_SHIP; g++) for (int y = 0; y < SK_H; y++) for (int x = 0; x < SK_W; x++) {      /* around the ship: a hole (the sky shows) with the planet hung BELOW, deeper where the planet is higher: the planet is the tall thing, the ship keeps its size */
-        sk_glyph[g][y][x] = '_'; sk_fs[g][y][x] = 0; sk_ws[g][y][x] = 0; sk_cdep[g][y][x] = 3 + sk_cdep[SK_SHIP][y][x]; }
+    for (int g = 0; g < SK_SHIP; g++) for (int y = 0; y < SK_H; y++) for (int x = 0; x < SK_W; x++) {      /* the planet below: its cells are copied in and SUNK under the ship's floor (negative extrusion in the ship desks' extrusion file), with a body hung under them; no planet = holes, only space */
+        if (sk_pl_cur < 0) { sk_glyph[g][y][x] = '_'; sk_fs[g][y][x] = 0; sk_ws[g][y][x] = 0; sk_cdep[g][y][x] = 0; }
+        else { sk_glyph[g][y][x] = sk_glyph[SK_SHIP][y][x]; sk_fs[g][y][x] = sk_fs[SK_SHIP][y][x]; sk_ws[g][y][x] = 0; sk_cdep[g][y][x] = 4 + sk_cdep[SK_SHIP][y][x]; if (sk_glyph[g][y][x] == 'T' || sk_glyph[g][y][x] == 'r') sk_glyph[g][y][x] = sk_glyph[g][y][x] == 'T' ? 'G' : 'p'; } }      /* trees and rocks become flat ground: seen from the ship the planet is a surface */
     sk_ship_room(0, a4, door, 8, 11, 6, 2, bx, by, 2);      /* bridge: green hex floor, doors in the south wall to the quarters (left) and the hold (right) */
     sk_ship_room(1, a4, door, 4, 1, 4, 2, qx, qy, 1);      /* quarters: wood, a door in the north wall */
     sk_ship_room(2, a4, door, 10, 11, 6, 2, hx, hy, 1);      /* hold: dark grating, a door in the north wall */
+    for (int g = 0; g < SK_SHIP; g++) for (int ly = 0; ly < SSZ; ly++) for (int lx = 0; lx < SSZ; lx++) {      /* the hull is thin (one block hung under the floor): the ship hovers, the planet surface is sunk below it */
+        int x = SOX + lx, y = SOY + ly; sk_cdep[g][y][x] = 1; }
 }
 static void sk_ensure_map(void) {
-    sk_look_load(); if (sk_built && sk_built_sig == sk_look_sig) return; if (sk_built) sk_pin_until = now_ms() + 9000; sk_built = 1; sk_built_sig = sk_look_sig;
+    sk_look_load(); if (sk_built && sk_built_sig == sk_look_sig) return; sk_pin_until = now_ms() + (sk_built ? 9000 : 45000); sk_built = 1;      /* a reload pins for 9 s, the first build (the launch, the engine takes a while to come up) for 45 s */
+     sk_built_sig = sk_look_sig;
     Sheet *a5 = sheet("tilesets", "Outside_A5"), *ob = sheet("tilesets", "Outside_B");
     nslot = 1; memset(slotpx[0], 0, XT * XT * 4); memset(sk_glyph, 0, sizeof sk_glyph); memset(sk_fs, 0, sizeof sk_fs); memset(sk_ws, 0, sizeof sk_ws); memset(sk_cdep, 0, sizeof sk_cdep);
     char reg[200], cmd[PATH_MAX * 3], pg[2][PATH_MAX], sc[PATH_MAX]; int cx = 7, cy = 9, h[SK_H][SK_W];
@@ -392,6 +397,7 @@ static void sk_rebuild(char *msg, size_t cap) {
 /* the cached background of one room: sky behind the void cells, then the floor slot and the wall / object slot of each cell, at 24 px per cell. Written into fr (the 2D frame) at OX,OY. */
 static unsigned char *sk_bg[SK_NR]; static char sk_bgkey[SK_NR][24];
 static void sk_paint_bg(int room, const char *phase) {
+    if (room < SK_SHIP) phase = "night";      /* the ship is in deep space: always dark (design D16) */
     sk_ensure_map(); if (room < 0 || room >= nroom || room >= SK_NR) return;
     Room *rm = &rooms[room]; int W = rm->cols * XT, H = rm->rows * XT; char key[24]; snprintf(key, sizeof key, "%s%lx", rm->outdoor ? phase : "-", (unsigned long)sk_built_sig & 0xffffff);
     if (!sk_bg[room] || strcmp(sk_bgkey[room], key)) {
@@ -473,7 +479,7 @@ static void pet_own_export_room(int r, const char *d) {
     snprintf(p, sizeof p, "%s/extrusion.pdl", d); { FILE *f = fopen_tmp(p); if (f) {
         static const char HEAD[] = "SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\nMETA         | map_id             | " PET_APP "\nMETA         | desk_id            | %s\n";
         static const char PLANET[] = "EXTRUDE      | W                  | 3\nEXTRUDE      | D                  | 3\nEXTRUDE      | p                  | 1\nEXTRUDE      | G                  | 1\nEXTRUDE      | T                  | 2\nEXTRUDE      | r                  | 3\nEXTRUDE      | f                  | 1\nEXTRUDE      | default            | 0\n";
-        static const char SHIP[] = "EXTRUDE      | W                  | 3\nEXTRUDE      | D                  | 3\nEXTRUDE      | f                  | 1\nEXTRUDE      | default            | 0\n";      /* the ship is always 3 tall (owner): walls 3, floor level; the planet is what is tall, hung under the void around it */
+        static const char SHIP[] = "EXTRUDE      | ~                  | -6\nEXTRUDE      | p                  | -5\nEXTRUDE      | G                  | -5\nEXTRUDE      | W                  | 4\nEXTRUDE      | D                  | 4\nEXTRUDE      | f                  | 1\nEXTRUDE      | default            | 0\n";      /* the ship is always 4 tall (owner): walls 4, floor level; the planet is a body hung UNDER the ship (the island trick: the engine draws hung rock under a floor, never under a hole) */
         fprintf(f, HEAD, rooms[r].id); fputs(r < SK_SHIP ? SHIP : PLANET, f); fclose_tmp(f, p); } }
     int acols = 16, nrows = (nslot + acols - 1) / acols, aw = acols * XT, ah = nrows * XT; unsigned char *atlas = (unsigned char *)calloc((size_t)aw * ah * 4, 1); if (!atlas) return;
     for (int i = 0; i < nslot; i++) for (int y = 0; y < XT; y++) memcpy(atlas + ((size_t)((i / acols) * XT + y) * aw + (i % acols) * XT) * 4, slotpx[i] + y * XT * 4, XT * 4);

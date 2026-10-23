@@ -819,6 +819,9 @@ static void write_room_png(int r) {
 static void write_room_sky(int r, const char *d) {
     static char lastkey[16][96]; if (r < 0 || r >= 16) return;
     char ph[40] = "day", dp[PATH_MAX], db[64]; spath(dp, "daylight.txt"); read_file(dp, db, sizeof db); if (strstr(db, "night")) snprintf(ph, sizeof ph, "night"); else if (strstr(db, "dusk")) snprintf(ph, sizeof ph, "dusk"); else if (strstr(db, "dawn")) snprintf(ph, sizeof ph, "dawn");
+#ifdef PET_ROOM_PHASE
+    PET_ROOM_PHASE(r, ph);      /* a skin can force a room's sky phase (rpg-dust: the ship is always night, in deep space) */
+#endif
     int tone[4] = {0, 0, 0, 0}, ht = read_tone(tone); char key[96]; snprintf(key, sizeof key, "%d|%s|%d,%d,%d,%d,%d", rooms[r].outdoor, ph, ht, tone[0], tone[1], tone[2], tone[3]);
     if (!strcmp(key, lastkey[r])) return; snprintf(lastkey[r], sizeof lastkey[r], "%s", key);
     char pp[PATH_MAX], rp[PATH_MAX]; snprintf(pp, sizeof pp, "%s/parallax.pdl", d); snprintf(rp, sizeof rp, "%s/parallax.rgba", d);
