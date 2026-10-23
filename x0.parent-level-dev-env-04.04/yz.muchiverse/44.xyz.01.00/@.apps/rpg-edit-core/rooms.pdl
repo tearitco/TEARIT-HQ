@@ -1,0 +1,12 @@
+SECTION | KEY | VALUE
+------------------------------
+# rooms.pdl - the floating-island town (BOOK 16.game/EDIT-ISLANDS-DESIGN.md). Every room is an "over" room here: cols x rows cells of tile_px (24), no wall strip; what is solid, where the doors are and how the
+# rooms are painted comes from the skin (ops/rpg_edit_core.c builds the island map and the interiors, the doors are the D cells of the island map), not from SCENERY / DOOR rows.
+# ROOM | id | name | floor_col | floor_row | over | cols | rows | tile_px | biome      floor_col,floor_row = the Inside_A5 floor tile of an interior (island: unused)
+# The interiors are named after the building of the door that leads to them, in the order the doors are found on the map (top to bottom, left to right).
+ROOM | start  | Islands | 0 | 0 | over | 56 | 17 | 24 | islands
+ROOM | bank   | Bank    | 1 | 4 | over | 24 | 17 | 24 | interior
+ROOM | store  | Store   | 1 | 2 | over | 24 | 17 | 24 | interior
+ROOM | hotel  | Hotel   | 3 | 4 | over | 24 | 17 | 24 | interior
+ROOM | school | School  | 5 | 4 | over | 24 | 17 | 24 | interior
+ROOM | cabin  | Cabin   | 0 | 2 | over | 24 | 17 | 24 | interior

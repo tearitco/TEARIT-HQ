@@ -1,0 +1,16 @@
+SECTION | KEY | VALUE
+------------------------------
+SECTION | title | rpg-edit-core
+SECTION | launch | button.sh
+# per-game constants read by the shared core (petslike_core.c cfg()); see PETSLIKE-FRAMEWORK-PLAN.md P1 and P3 (rpg-edit-hq on the core)
+SECTION | sibling       | rpg-pet
+SECTION | hero_name     | Harold
+SECTION | hero_sheet    | Actor1
+SECTION | hero_from_db  | 0
+SECTION | party_row     | RpgEditNoDbParty
+SECTION | party_sheet   | Monster
+SECTION | party_idx_base| 0
+# the island pets are not DB actors: the first eight come from here, the pals (Pal 9 ...) from pals.pdl; the picture of each from party.pdl
+SECTION | fallback_party| Ember,Glacine,Murmur,Solvent,Ava,Cursword,Asa,robot
+SECTION | reply_tail    | , Harold
+SECTION | cast_label    | pets

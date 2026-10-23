@@ -1,0 +1,7 @@
+SECTION | KEY | VALUE
+----------------------------------------
+# voices.pdl - how each rpg-edit-core pet sounds (own voices: none are the old pet-trainer voices). Edit, no rebuild.
+# VOICE | pet id | edge-tts voice | rate | pitch | language     language en | zh | ja | ko: the pet SPEAKS its greetings and replies in that language (the chat window keeps English for you).
+# Speech = edge-tts (online, free), cached as a wav per pet and phrase in state/audio, played quietly, one sound at a time. No network / no player = silence, never an error.
+# Chinese, Japanese and Korean are first-class: the house serves those audiences (CJK glyph rendering exists in board-viewer; window text stays English for now, see ROADMAP "language support").
+# A pet only speaks aloud while it is on screen. Menu > Voice on/off (flag voice).

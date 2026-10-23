@@ -1,0 +1,6 @@
+# event.pal - COMPILED from event.ir.pdl (tsots_event_ir.py, shape of khtpm_events_hq_manager.c output)
+li x15, 7
+li x12, 0
+ecall "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/@.apps/rpg-edit-core/state/world/switches.txt" "running"
+exec cmd_2.sh
+halt

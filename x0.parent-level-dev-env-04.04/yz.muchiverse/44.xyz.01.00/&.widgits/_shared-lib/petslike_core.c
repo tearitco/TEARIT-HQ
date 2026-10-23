@@ -356,6 +356,9 @@ static void ent_file(int i, char *p) { char n[64]; if (i < 0) snprintf(n, sizeof
 static void load_ent(int i, Ent *e) {
     char p[PATH_MAX], b[300]; ent_file(i, p); read_file(p, b, sizeof b);
     e->room = 0; e->x = i < 0 ? 8 : 7 + i; e->y = i < 0 ? 8 : 7; e->dir = 0; e->steps = 0; e->tx = e->ty = -1;
+#define PET_SECTION 74      /* a skin may set the first-run spawn (room, x, y) of pet i (-1 = the trainer) */
+#include PET_SKIN
+#undef PET_SECTION
     for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "room=", 5)) { int r = room_idx(l + 5); if (r >= 0) e->room = r; } else if (!strncmp(l, "x=", 2)) e->x = atoi(l + 2); else if (!strncmp(l, "y=", 2)) e->y = atoi(l + 2); else if (!strncmp(l, "dir=", 4)) e->dir = atoi(l + 4); else if (!strncmp(l, "steps=", 6)) e->steps = atoi(l + 6); else if (!strncmp(l, "tx=", 3)) e->tx = atoi(l + 3); else if (!strncmp(l, "ty=", 3)) e->ty = atoi(l + 3); }
     /* HARDENING: a pet file is untrusted (hand edit, truncation, garbage): coordinates, facing and the walk target are forced inside the room so no array is ever indexed from file data */
     { int cw = (nroom > 0 && e->room >= 0 && e->room < nroom) ? rooms[e->room].cols : 13, ch = (nroom > 0 && e->room >= 0 && e->room < nroom) ? rooms[e->room].rows : 8; if (cw < 1) cw = 1; if (ch < 1) ch = 1; if (cw > MAXC) cw = MAXC; if (ch > MAXR) ch = MAXR;
@@ -628,8 +631,9 @@ static void clock_turn(void) { clock_paths(); if (!clock_ok() || !fexists(CFILE)
 #define PET_SECTION 25
 #include PET_SKIN
 #undef PET_SECTION
+static int scene_wanted(void);
 static void out_all(const char *msg) {
-    calc_view(); render();
+    calc_view(); if (scene_wanted()) render();      /* the painted frame (scene.raw) is skipped while nothing displays it: the board in 3D or in its tiles 2D style (the engine draws map.png then), see scene_wanted() */
 #define PET_SECTION 26
 #include PET_SKIN
 #undef PET_SECTION
@@ -777,6 +781,9 @@ static int slot_of(const unsigned char *px) {
     for (int i = 1; i < nslot; i++) if (!memcmp(slotpx[i], px, XT * XT * 4)) return i;
     if (nslot >= MAXSLOT) return 0; memcpy(slotpx[nslot], px, XT * XT * 4); return nslot++;
 }
+#define PET_SECTION 73      /* top level, after tile24 / over24 / slot_of: a skin that paints its own rooms (rpg-edit-hq) defines its map builder and exporter here */
+#include PET_SKIN
+#undef PET_SECTION
 /* 3D sprite frames: the board-viewer 3D raymarcher extrudes a 16x24 RGBA frame per map event (8 voxels deep), looked up as <ASSETS>/../tsots-characters/frames/<charset>_<index>_<dir 2|4|6|8>_<pattern>.rgba
  * (found by walking up from the map folder; same files the 98 TSOTS desks use, tsots_events.py write_frame). No frame file = the flat colour box. A 3x4-frame cell of the 12x8 sheet, nearest-resized to 16x24. */
 static void write_frame(const char *sh, int idx, int dir4, int pat) {
@@ -872,6 +879,21 @@ static void sync_selector(int x, int y) {
     closedir(d); return v;
 }
 static int board_window_open(void) { return viewer_kinds() & 1; }
+/* Who reads state/scene.raw (FW x FH RGBA, rewritten on every pet step: ~1 MB and a rename per write, measured at about a third of the daemon's CPU)? A standalone <app> window (viewer bit 2), or the board's engine
+ * while it shows the 2D "scene" style. Not the 3D view and not the 2D "tiles" style (that one blits maps/<app>/<room>/map.png). The engine's own state tells: <session>/pieces/system/bv_state.txt render_mode (0 = 2D, 1 = 3D)
+ * and view_2d_style (empty = the book's view.pdl default). Cached 700 ms; anything unreadable counts as wanted. tuning.pdl scene_always=1 restores the old always-paint behaviour. */
+static int scene_wanted(void) {
+    static long last = 0; static int v = 1; long t = now_ms(); if (last && t - last < 700) return v; last = t;
+    if (tune("scene_always", 0)) return v = 1;
+    int vk = viewer_kinds(); if (vk & 2) return v = 1; if (!(vk & 1)) return v = 1;      /* no window at all: out_all is not called anyway; keep the frame fresh for whatever opens next */
+    char up[PATH_MAX], ub[2048], sess[PATH_MAX] = "", bp[PATH_MAX], bb[8192]; snprintf(up, sizeof up, "%s/@.apps/" PET_APP "/board/state/ui.txt", HOUSE); if (read_file(up, ub, sizeof ub) <= 0) return v = 1;
+    for (char *l = strtok(ub, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "bv_session=", 11)) snprintf(sess, sizeof sess, "%s", l + 11);
+    if (!sess[0]) return v = 1; snprintf(bp, sizeof bp, "%s/pieces/system/bv_state.txt", sess); if (read_file(bp, bb, sizeof bb) <= 0) return v = 1;
+    int rm = -1; char style[16] = "?"; for (char *l = strtok(bb, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "render_mode=", 12)) rm = atoi(l + 12); else if (!strncmp(l, "view_2d_style=", 14)) snprintf(style, sizeof style, "%s", l + 14); }
+    if (rm < 0 || !strcmp(style, "?")) return v = 1; if (rm == 1) return v = 0;
+    if (!style[0]) snprintf(style, sizeof style, "%s", PET_VIEW_STYLE);
+    return v = !strcmp(style, "scene");
+}
 static int g_pin_now = 0;      /* set when a followed step bumped: follow_pchq puts the xelector back on the monster at once */
 static void board_interact(int want, int force);
 /* The sun and moon of the 3D view (pieces/sun_01, moon_01) are a pure function of the pc-hq world clock: world_01/state.txt game_time_epoch_sec, turned into positions (and the sky light level) by the
@@ -945,8 +967,8 @@ static void export3d(char *msg, size_t cap) {
         go += snprintf(gl + go, sizeof gl - go, "GAME         | desk_%d_id          | %s\nGAME         | desk_%d_label       | %s\n", r + 1, rooms[r].id, r + 1, rooms[r].name);
         snprintf(d, sizeof d, "%s/%s", root, rooms[r].id); mkdir(d, 0755);
 #ifdef PET_OWN_EXPORT      /* a skin that paints its own rooms (rpg-edit-hq: islands with hung rock) writes map.txt / cells / extrusion for room r itself; the common events, sky and 2D png still follow */
-        pet_own_export_room(r, d); write_room_events(r); write_room_png(r); continue;
-#endif
+        pet_own_export_room(r, d); write_room_events(r); write_room_png(r);
+#else
 #define PET_SECTION 49
 #include PET_SKIN
 #undef PET_SECTION
@@ -981,6 +1003,7 @@ static void export3d(char *msg, size_t cap) {
         snprintf(p, sizeof p, "%s/cells.rgba", d); { FILE *f = fopen_tmp(p); if (f) { fwrite(atlas, 1, (size_t)aw * ah * 4, f); fclose_tmp(f, p); } } snprintf(p, sizeof p, "%s/cells.png", d); png_atomic(p, aw, ah, atlas, aw * 4); free(atlas);
         snprintf(p, sizeof p, "%s/cells.txt", d); { FILE *f = fopen_tmp(p); if (f) { fprintf(f, "width=%d\nheight=%d\ntile_px=%d\natlas_cols=16\natlas_tiles=%d\ncells\n", COLS, ROWS, XT, nslot); for (int y = 0; y < ROWS; y++) { for (int x = 0; x < COLS; x++) fprintf(f, "%s%d,%d", x ? " " : "", fs[y][x], ws[y][x]); fputc('\n', f); } fclose_tmp(f, p); } }
         write_room_events(r); write_room_png(r);
+#endif
     }
     snprintf(p, sizeof p, "%s/game.pdl", root); { FILE *f = fopen_tmp(p); if (f) { fputs(gl, f); fclose_tmp(f, p); } }
     snprintf(msg, cap, "exported %d rooms as a pc-hq book: maps/" PET_APP " (open it in pc-hq: Desk > " PET_APP ", then 1-4 / 0 for 3D)", nroom);
@@ -1293,7 +1316,8 @@ static int daemon_main(void) {
 #undef PET_SECTION
         { char tp[PATH_MAX], tb[300]; snprintf(tp, sizeof tp, "%s/world/screen_state.pdl", ST); read_file(tp, tb, sizeof tb); if (strcmp(tb, lasttone)) { snprintf(lasttone, sizeof lasttone, "%s", tb); g_tone_stale = 1; dirty = 1; } }      /* an events-hq tint_screen wrote a new tone */
         { static int was_vo = 1; int vo = viewer_kinds() != 0; if (vo && !was_vo) dirty = 1; was_vo = vo; if (!vo) dirty = 0; }      /* nobody is looking (no <app> / board window): the scene frame and the ui files have no reader, so they are not rendered; a window opening renders at once */
-        if (dirty) { replay(); out_all(msg); }    /* nothing changed -> nothing rendered, nothing written, nothing repainted */
+        { static int pend_out = 0; static long last_out = 0; int om = tune("out_min_ms", 0); if (dirty) pend_out = 1;      /* out_min_ms (tuning.pdl, default 0 = every change): several pets stepping in one second are drawn and written together */
+          if (pend_out && (om <= 0 || now_ms() - last_out >= om)) { pend_out = 0; last_out = now_ms(); replay(); out_all(msg); } }    /* nothing changed -> nothing rendered, nothing written, nothing repainted */
         if ((dirty || now_ms() - last_follow >= tune("follow_ms", 400)) && board_window_open()) { last_follow = now_ms(); follow_pchq(); }      /* the pc-hq 3D view (if open on the <app> book) follows the selected entity; it re-compares the exported files of every room, so at most every 400 ms unless something changed */
     }
     clock_stop();

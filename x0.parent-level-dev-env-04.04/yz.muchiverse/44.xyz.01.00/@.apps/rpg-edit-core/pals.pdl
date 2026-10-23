@@ -1,0 +1,11 @@
+SECTION | KEY | VALUE
+------------------------------
+# pals.pdl - the pals made after the first eight (Menu > + new pal appends here): PAL | id | name | monster picture index. party.pdl gives them their island picture by name.
+PAL | pal_9  | Pal 9  | 0
+PAL | pal_10 | Pal 10 | 1
+PAL | pal_11 | Pal 11 | 2
+PAL | pal_12 | Pal 12 | 3
+PAL | pal_13 | Pal 13 | 4
+PAL | pal_14 | Pal 14 | 5
+PAL | pal_15 | Pal 15 | 6
+PAL | pal_16 | Pal 16 | 7
