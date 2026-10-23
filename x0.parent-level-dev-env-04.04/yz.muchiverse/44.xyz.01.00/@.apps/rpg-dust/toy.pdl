@@ -2,3 +2,14 @@ SECTION | KEY | VALUE
 ------------------------------
 SECTION | title | rpg-dust
 SECTION | launch | button.sh
+# per-game constants read by the shared core (petslike_core.c cfg()); see PETSLIKE-FRAMEWORK-PLAN.md and RPG-DUST-PETSLIKE-BOARD-DESIGN.md
+SECTION | sibling       | rpg-pet
+SECTION | hero_name     | Harold
+SECTION | hero_sheet    | Actor1
+SECTION | hero_from_db  | 0
+SECTION | party_row     | RpgDustNoDbParty
+SECTION | party_sheet   | Monster
+SECTION | party_idx_base| 0
+SECTION | fallback_party| Ember,Glacine,Murmur,Solvent
+SECTION | reply_tail    | , Harold
+SECTION | cast_label    | pets

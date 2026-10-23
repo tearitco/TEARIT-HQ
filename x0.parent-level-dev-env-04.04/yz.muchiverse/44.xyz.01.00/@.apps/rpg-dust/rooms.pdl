@@ -1,0 +1,7 @@
+SECTION | KEY | VALUE
+------------------------------
+# rooms.pdl - the two pages of rpg-dust (BOOK 16.game/RPG-DUST-PETSLIKE-BOARD-DESIGN.md D3). Every room is an "over" room: 16 x 16 cells of tile_px (24), no wall strip. What a cell is comes from the skin (ops/rpg_dust.c reads the
+# generated pages: dust_gen page ...); there are no doors, SCENERY or DOOR rows. Room 0 = the region page (heights 0..99 of the current region address), room 1 = the area page (the zoomed cell of the ledger's address).
+# ROOM | id | name | floor_col | floor_row | over | cols | rows | tile_px | biome
+ROOM | region | Region | 0 | 0 | over | 16 | 16 | 24 | planet
+ROOM | area   | Area   | 0 | 0 | over | 16 | 16 | 24 | planet

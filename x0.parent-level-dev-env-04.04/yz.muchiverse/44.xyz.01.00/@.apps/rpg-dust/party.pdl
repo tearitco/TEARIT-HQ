@@ -1,0 +1,10 @@
+SECTION | KEY | VALUE
+------------------------------
+# party.pdl - the explorers of the planet (the same four pals as the island game, their pictures are shared from ../rpg-edit-hq/art). The core reads columns 1-3 (name, sheet, index); the skin reads the rest.
+# PET | name | sheet | index | art id | letter | red | green | blue | spawn x | spawn y
+#   sheet, index : the generated character sheet the pet wears (!dust0; the skin writes it, 48 px cells); art id none = a coloured disc
+#   spawn        : the wanted first-run cell; the skin moves it to the nearest dry cell
+PET | Ember    | !dust0 | 0 | terumon_001_ember   | e | 220 |  40 |  40 | 7 | 9
+PET | Glacine  | !dust0 | 1 | terumon_002_glacine | g |  40 |  80 | 220 | 8 | 9
+PET | Murmur   | !dust0 | 2 | terumon_003_murmur  | m | 160 |  40 | 200 | 9 | 9
+PET | Solvent  | !dust0 | 3 | terumon_004_solvent | s |  40 | 180 |  60 | 10 | 9

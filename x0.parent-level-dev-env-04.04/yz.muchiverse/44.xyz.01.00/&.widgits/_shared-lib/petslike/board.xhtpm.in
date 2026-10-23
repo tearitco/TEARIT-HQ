@@ -65,6 +65,7 @@
       <canvas id="view" sprite="${canvas_raw}"/>
       <!-- LEFT pinned bar: the pets and their stats. Pinned = takes its width out of the canvas (class ov-pin, width from side_style.pdl), the _ hides it, the footer cell left toggles it. -->
       <row id="side-l" class="canvas-overlay-left ov-pin ov-chrome pchq-hotbar theme" show="${side_left}">
+<!--@@s1:-->
         <text label="@CAST@ - coins ${coins}" class="hb-quiet ov-title theme-3"/>
         <item id="sl-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/@APP@/board/state/sides.txt' side_left hide"/>
         <text id="light" label="${run_label}" class="${run_cls}"/>
@@ -74,6 +75,7 @@
         <repeat count="${n_party}" bind="party">
           <item id="pt${party.#}" class="pchq-ft skin-bar ${party.cls}" label="${party.label}" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' select ${party.id}"/>
         </repeat>
+<!--@@/s1-->
       </row>
       <!-- RIGHT pinned bar: chat as the selected entity (Harold or a pet). -->
       <row id="side-r" class="canvas-overlay-right ov-pin ov-chrome pchq-hotbar theme" show="${side_right}">
