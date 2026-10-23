@@ -406,7 +406,7 @@ static void sk_paint_bg(int room, const char *phase) {
         for (int y = 0; y < rm->rows; y++) for (int x = 0; x < rm->cols; x++) for (int py = 0; py < XT; py++) for (int px = 0; px < XT; px++) {
             unsigned char c[3] = {120, 170, 220}; int ax = x * XT + px, ay = y * XT + py;
             if (sky && sky->px) { const unsigned char *q = sky->px + ((size_t)(ay % sky->h) * sky->w + ax % sky->w) * 4; c[0] = q[0]; c[1] = q[1]; c[2] = q[2]; }
-            for (int layer = 0; layer < 2; layer++) { int sl = layer ? sk_ws[room][y][x] : sk_fs[room][y][x]; if (sl <= 0) continue; const unsigned char *q = slotpx[sl] + (py * XT + px) * 4; int al = q[3]; if (!al) continue;
+            for (int layer = 0; layer < 2; layer++) { int sl = layer ? sk_ws[room][y][x] : sk_fs[room][y][x]; if (sl <= 0) continue; const unsigned char *q = slotpx[sl] + (py * XT + px) * 4; int al = q[3]; if (!al) continue; if (room < SK_SHIP && (x < SOX || y < SOY || x >= SOX + SSZ || y >= SOY + SSZ)) al = al * 55 / 100;      /* around the ship the planet is far below: seen through the stars at 55 % (the parallax sky stays visible in 2D) */
                 for (int k = 0; k < 3; k++) c[k] = (unsigned char)((q[k] * al + c[k] * (255 - al)) / 255); }
             unsigned char *o = sk_bg[room] + ((size_t)ay * W + ax) * 4; o[0] = c[0]; o[1] = c[1]; o[2] = c[2]; o[3] = 255; }
         snprintf(sk_bgkey[room], sizeof sk_bgkey[room], "%s", key);
