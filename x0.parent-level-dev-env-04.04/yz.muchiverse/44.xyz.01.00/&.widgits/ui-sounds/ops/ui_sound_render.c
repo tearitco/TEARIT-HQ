@@ -7,7 +7,8 @@
  *   CUE   | event | sound id | min_gap_ms | category       which UI event plays which sound; EVERY theme must define every sound id a CUE names, so switching theme never leaves an event silent
  * kinds / params (key=value separated by spaces):
  *   blip   wave=sine|square|triangle|sawtooth|noise  f0=<Hz>  [f1=<Hz> linear sweep]  dur=<s 0.01..4>  [attack=<s>] [decay=<s>]  vol=<0..1>  [lp=<Hz one-pole low-pass>]
- *   notes  tempo=<30..300 bpm>  seq=<NOTE:beats ...>  wave=...  vol=<0..1>  [attack=<s>] [decay=<s>]  [tail=<s>]     NOTE = A-G, optional # or b, octave 0-8 (C5), or R for a rest; beats > 0
+ *   notes  tempo=<30..300 bpm>  seq=<NOTE:beats,...>  wave=...  vol=<0..1>  [attack=<s>] [decay=<s>]  [tail=<s>]     NOTE = A-G, optional # or b, octave 0-8 (C5), or R for a rest; beats > 0
+ *          counterpoint: [seq2=..] [seq3=..] sound at the same time as seq, each with [wave2= wave3=] and [gain2= gain3= 0..2]; effects: [shimmer=<0..1> the same lines one octave up, sent to the effects only] [echo=<ms 20..1000>,<feedback 0..0.9>,<mix 0..1>] [reverb=<0..1> Schroeder] [fade=<s> cosine fade-out at the very end = the trail-off]
  * Output: mono 16-bit 44.1 kHz WAV (the player's sink upmixes). Fixed 2 ms fade-in and 5 ms fade-out so no file clicks.
  * Checks per file (audio_dsp.c): duration within 20% of the row, peak between 0.02 and 0.7, rms at most 0.2, |DC| under 0.01. A sound that a CUE of category `startup` names is held to more: at most 2.5 s and peak at most 0.5 (it is the one most likely to startle). A failing check names the file; exit 1.
  * Exit: 0 all rendered and checked (prints `OK theme/id dur=.. peak=.. rms=..` per file and `rendered=N themes=T cues=C`), 1 a row or file is bad (prints `LINE n:` / `FAIL theme/id ...`), 2 usage / unreadable file / cannot write.
@@ -176,13 +177,218 @@ static int note_hz(const char *nt, double *hz) {
     *hz = 440.0 * pow(2.0, ((oct - 4) * 12 + semi - 9) / 12.0);
     return 1;
 }
+/* ---- notes: up to three simultaneous voices (counterpoint), then optional shimmer / echo / reverb and a final fade ---- */
+static int seq_total(const char *seq, double tempo, double *total, char *why, size_t wn) {
+    char tmp[400];
+    int count = 0;
+    *total = 0;
+    cp(tmp, sizeof tmp, seq);
+    for (char *t = strtok(tmp, ","); t; t = strtok(NULL, ",")) {
+        char *colon = strchr(t, ':');
+        double hz, beats;
+        char *e;
+        if (!colon) {
+            snprintf(why, wn, "note '%s' needs NOTE:beats", t);
+            return 0;
+        }
+        *colon = 0;
+        beats = strtod(colon + 1, &e);
+        if (*e || beats <= 0 || beats > 16) {
+            snprintf(why, wn, "beats '%s' must be a number in (0, 16]", colon + 1);
+            return 0;
+        }
+        if (strcmp(t, "R") && !note_hz(t, &hz)) {
+            snprintf(why, wn, "note '%s' is not A-G[#b]0-8 or R", t);
+            return 0;
+        }
+        *total += beats * 60.0 / tempo;
+        count++;
+    }
+    if (count == 0) {
+        snprintf(why, wn, "the sequence is empty");
+        return 0;
+    }
+    return 1;
+}
+static void seq_render(double *buf, long cap, const char *seq, double tempo, const char *wave, double mulf, double att, double dec, double vol, double lp, double ring, uint64_t *rng) {
+    char tmp[400];
+    double at = 0;
+    cp(tmp, sizeof tmp, seq);
+    for (char *t = strtok(tmp, ","); t; t = strtok(NULL, ",")) {
+        char *colon = strchr(t, ':');
+        *colon = 0;
+        double hz = 0, d = strtod(colon + 1, NULL) * 60.0 / tempo;
+        if (strcmp(t, "R") && note_hz(t, &hz)) {
+            double nd = d + ring;
+            voice(buf, cap, (long)(at * SR), wave, hz * mulf, hz * mulf, nd, att, dec > 0 ? fmin(dec, nd) : 0, vol, lp, rng);
+        }
+        at += d;
+    }
+}
+/* y[i] = x[i] + fb * y[i-D]; the returned repeats are mix * y[i-D] (the first repeat is mix * x) */
+static void fx_echo(const double *x, double *rep, long n, int D, double fb, double mix) {
+    double *y = calloc((size_t)n + 1, sizeof *y);
+    for (long i = 0; i < n; i++) {
+        double z = i >= D ? y[i - D] : 0.0;
+        y[i] = x[i] + fb * z;
+        rep[i] = mix * z;
+    }
+    free(y);
+}
+/* Schroeder reverb: four parallel feedback combs, two series all-passes; returns mix * wet */
+static void fx_reverb(const double *x, double *out, long n, double mix) {
+    static const double comb_ms[4] = { 29.7, 37.1, 41.1, 43.7 };
+    static const double ap_ms[2] = { 5.0, 1.7 };
+    double *acc = calloc((size_t)n + 1, sizeof *acc);
+    for (int c = 0; c < 4; c++) {
+        long D = (long)(comb_ms[c] * SR / 1000.0);
+        double *y = calloc((size_t)n + 1, sizeof *y);
+        for (long i = 0; i < n; i++) {
+            y[i] = x[i] + 0.78 * (i >= D ? y[i - D] : 0.0);
+            acc[i] += y[i] * 0.25;
+        }
+        free(y);
+    }
+    for (int a = 0; a < 2; a++) {
+        long D = (long)(ap_ms[a] * SR / 1000.0);
+        double *y = calloc((size_t)n + 1, sizeof *y);
+        for (long i = 0; i < n; i++) {
+            double xd = i >= D ? acc[i - D] : 0.0;
+            double yd = i >= D ? y[i - D] : 0.0;
+            y[i] = -0.7 * acc[i] + xd + 0.7 * yd;
+        }
+        memcpy(acc, y, (size_t)n * sizeof *y);
+        free(y);
+    }
+    for (long i = 0; i < n; i++) {
+        out[i] = mix * acc[i];
+    }
+    free(acc);
+}
+static int getrange(const char *params, const char *key, double lo, double hi, double dflt, double *v, char *why, size_t wn) {
+    int r = getnum(params, key, v);
+    if (r == 0) {
+        *v = dflt;
+        return 1;
+    }
+    if (r < 0 || *v < lo || *v > hi) {
+        snprintf(why, wn, "%s must be a number in %g..%g", key, lo, hi);
+        return 0;
+    }
+    return 1;
+}
+static double *synth_notes(const Snd *s, const char *wave, double vol, double att, double dec, double lp, uint64_t *rng, long *n, double *dur_exp, char *why, size_t wn) {
+    double tempo = 0, tail = 0, shim = 0, rev = 0, fade = 0, g2 = 1, g3 = 1, fb = 0.4, emix = 0;
+    int echo_ms = 0;
+    char seq[3][400] = { "", "", "" }, w2[24], w3[24], eb[64] = "";
+    if (getnum(s->params, "tempo", &tempo) != 1 || tempo < 30 || tempo > 300) {
+        snprintf(why, wn, "tempo must be 30..300");
+        return NULL;
+    }
+    if (!getrange(s->params, "tail", 0, 3, 0, &tail, why, wn) || !getrange(s->params, "shimmer", 0, 1, 0, &shim, why, wn) || !getrange(s->params, "reverb", 0, 1, 0, &rev, why, wn) || !getrange(s->params, "gain2", 0, 2, 1, &g2, why, wn) || !getrange(s->params, "gain3", 0, 2, 1, &g3, why, wn)) {
+        return NULL;
+    }
+    if (!getp(s->params, "seq", seq[0], sizeof seq[0]) || !seq[0][0]) {
+        snprintf(why, wn, "seq is missing");
+        return NULL;
+    }
+    getp(s->params, "seq2", seq[1], sizeof seq[1]);
+    getp(s->params, "seq3", seq[2], sizeof seq[2]);
+    cp(w2, sizeof w2, wave);
+    cp(w3, sizeof w3, wave);
+    getp(s->params, "wave2", w2, sizeof w2);
+    getp(s->params, "wave3", w3, sizeof w3);
+    if (!wave_ok(w2) || !wave_ok(w3)) {
+        snprintf(why, wn, "wave2 / wave3 must be sine, square, triangle, sawtooth or noise");
+        return NULL;
+    }
+    if (getp(s->params, "echo", eb, sizeof eb)) {
+        double ms = 0;
+        if (sscanf(eb, "%lf,%lf,%lf", &ms, &fb, &emix) != 3 || ms < 20 || ms > 1000 || fb < 0 || fb > 0.9 || emix < 0 || emix > 1) {
+            snprintf(why, wn, "echo must be <ms 20..1000>,<feedback 0..0.9>,<mix 0..1>");
+            return NULL;
+        }
+        echo_ms = (int)(ms * SR / 1000.0);
+    }
+    double total = 0;
+    for (int v = 0; v < 3; v++) {
+        double t = 0;
+        if (seq[v][0] && !seq_total(seq[v], tempo, &t, why, wn)) {
+            return NULL;
+        }
+        if (t > total) {
+            total = t;
+        }
+    }
+    if (total + tail > 8.0) {
+        snprintf(why, wn, "the sequence must be at most 8 seconds");
+        return NULL;
+    }
+    if (!getrange(s->params, "fade", 0, total + tail, 0, &fade, why, wn)) {
+        return NULL;
+    }
+    *dur_exp = total + tail;
+    *n = (long)((total + tail) * SR);
+    double *dry = calloc((size_t)*n + 1, sizeof *dry);
+    double *wet = calloc((size_t)*n + 1, sizeof *wet);
+    double ring = tail > 0 ? fmin(tail, 0.3) : 0.0;
+    const char *wv[3] = { wave, w2, w3 };
+    double gv[3] = { 1.0, g2, g3 };
+    for (int v = 0; v < 3; v++) {
+        if (!seq[v][0]) {
+            continue;
+        }
+        seq_render(dry, *n, seq[v], tempo, wv[v], 1.0, att, dec, vol * gv[v], lp, ring, rng);
+        if (shim > 0) {
+            seq_render(wet, *n, seq[v], tempo, wv[v], 2.0, att, dec, vol * gv[v] * shim, lp, ring, rng);     /* the shimmer: the same line one octave up, sent to the effects only */
+        }
+    }
+    if (echo_ms > 0 || rev > 0) {
+        double *rep = calloc((size_t)*n + 1, sizeof *rep);
+        double *send = calloc((size_t)*n + 1, sizeof *send);
+        double *rv = calloc((size_t)*n + 1, sizeof *rv);
+        for (long i = 0; i < *n; i++) {
+            send[i] = dry[i] + wet[i];
+        }
+        if (echo_ms > 0) {
+            fx_echo(send, rep, *n, echo_ms, fb, emix);
+        }
+        if (rev > 0) {
+            double *in = calloc((size_t)*n + 1, sizeof *in);
+            for (long i = 0; i < *n; i++) {
+                in[i] = send[i] + rep[i];
+            }
+            fx_reverb(in, rv, *n, rev);
+            free(in);
+        }
+        for (long i = 0; i < *n; i++) {
+            dry[i] += rep[i] + rv[i];
+        }
+        free(rep);
+        free(send);
+        free(rv);
+    } else if (shim > 0) {
+        for (long i = 0; i < *n; i++) {
+            dry[i] += wet[i];
+        }
+    }
+    free(wet);
+    if (fade > 0) {
+        long fn = (long)(fade * SR);
+        for (long k = 0; k < fn && k < *n; k++) {
+            long i = *n - 1 - k;
+            dry[i] *= 0.5 * (1.0 - cos(M_PI * (double)k / (double)fn));
+        }
+    }
+    return dry;
+}
 /* returns NULL and fills why on a bad row; else a malloc'ed buffer of *n doubles and *dur_exp */
 static double *synth(const Snd *s, uint64_t seed, long *n, double *dur_exp, char *why, size_t wn) {
     uint64_t rng = hash_str(seed, s->theme) ^ hash_str(seed, s->id);
     if (!rng) {
         rng = 1;
     }
-    char wave[24] = "", b[64];
+    char wave[24] = "";
     double vol = 0, att = 0, dec = 0;
     int r;
     if (!getp(s->params, "wave", wave, sizeof wave) || !wave_ok(wave)) {
@@ -233,67 +439,7 @@ static double *synth(const Snd *s, uint64_t seed, long *n, double *dur_exp, char
         return buf;
     }
     if (!strcmp(s->kind, "notes")) {
-        double tempo = 0, tail = 0;
-        if (getnum(s->params, "tempo", &tempo) != 1 || tempo < 30 || tempo > 300) {
-            snprintf(why, wn, "tempo must be 30..300");
-            return NULL;
-        }
-        if (getnum(s->params, "tail", &tail) < 0 || tail < 0 || tail > 3) {
-            snprintf(why, wn, "tail must be 0..3 seconds");
-            return NULL;
-        }
-        char seq[400];
-        if (!getp(s->params, "seq", seq, sizeof seq) || !seq[0]) {
-            snprintf(why, wn, "seq is missing");
-            return NULL;
-        }
-        /* seq has no spaces inside getp's token; notes are joined with ',' */
-        double total = 0;
-        char tmp[400];
-        snprintf(tmp, sizeof tmp, "%s", seq);
-        int count = 0;
-        for (char *t = strtok(tmp, ","); t; t = strtok(NULL, ",")) {
-            char *colon = strchr(t, ':');
-            double hz, beats;
-            char *e;
-            if (!colon) {
-                snprintf(why, wn, "note '%s' needs NOTE:beats", t);
-                return NULL;
-            }
-            *colon = 0;
-            beats = strtod(colon + 1, &e);
-            if (*e || beats <= 0 || beats > 16) {
-                snprintf(why, wn, "beats '%s' must be a number in (0, 16]", colon + 1);
-                return NULL;
-            }
-            if (strcmp(t, "R") && !note_hz(t, &hz)) {
-                snprintf(why, wn, "note '%s' is not A-G[#b]0-8 or R", t);
-                return NULL;
-            }
-            total += beats * 60.0 / tempo;
-            count++;
-        }
-        if (count == 0 || total + tail > 8.0) {
-            snprintf(why, wn, "the sequence must have notes and be at most 8 seconds");
-            return NULL;
-        }
-        *dur_exp = total + tail;
-        *n = (long)((total + tail) * SR);
-        double *buf = calloc((size_t)*n + 1, sizeof *buf);
-        snprintf(tmp, sizeof tmp, "%s", seq);
-        double at = 0;
-        for (char *t = strtok(tmp, ","); t; t = strtok(NULL, ",")) {
-            char *colon = strchr(t, ':');
-            *colon = 0;
-            double beats = strtod(colon + 1, NULL), hz = 0, d = beats * 60.0 / tempo;
-            if (strcmp(t, "R") && note_hz(t, &hz)) {
-                double nd = d + (tail > 0 ? fmin(tail, 0.3) : 0.0);
-                voice(buf, *n, (long)(at * SR), wave, hz, hz, nd, att, dec > 0 ? fmin(dec, nd) : 0, vol, lp, &rng);
-            }
-            at += d;
-        }
-        (void)b;
-        return buf;
+        return synth_notes(s, wave, vol, att, dec, lp, &rng, n, dur_exp, why, wn);
     }
     snprintf(why, wn, "kind '%s' must be blip or notes", s->kind);
     return NULL;
