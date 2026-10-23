@@ -10,6 +10,7 @@ Owner's direction (2026-10-14): train our own voice software; a separate SFX gen
 | `LISTENER-L0-L1.md` | Built and measured: speech detection, capture, whisper `hear`, `wer`, synthetic accuracy set (WER 4.4%; 1.1% with a hot-word hint, leakage caveat). |
 | `LISTENER-STT-DESIGN.md` | The listener: capture, VAD, STT engines (whisper baseline, in-house spotter), HEAR rows, checks, slices L0-L5. Design only. |
 | `HOTSPRINGS-VOICE-MODE-DESIGN.md` | The voice mode (v2 of the 2026-09-28 design): button + Space-to-arm, states, Kokoro out, cursword caveat. Design only. |
+| `UI-SOUNDS-AND-STARTUP-DESIGN.md` | LyfeDesk startup sound (generated, seedable) and UI sound effects for menu movement / clicks, mutable in settings (`hq_ui.pdl` keys): data rows, deterministic renderer, cue marker file + one player process, relay input silent, build order U0-U6. Design only (2026-10-23). |
 | `LEARNING-FROM-HUMAN-SPEECH.md` | What learning from the owner's speech means: five loops, what it will not do, data flow, privacy. Design only. |
 | `VOICE-FX.md` | Voice character: formant, EQ, vibrato, breath, accents, the six pet recipes, proof and problems. |
 | `PRON-CHECK.md` | Slice S2: the pronunciation bank, validator, voice override, proof, limits. |
