@@ -65,16 +65,16 @@
       <canvas id="view" sprite="${canvas_raw}"/>
       <!-- LEFT pinned bar: the pets and their stats. Pinned = takes its width out of the canvas (class ov-pin, width from side_style.pdl), the _ hides it, the footer cell left toggles it. -->
       <row id="side-l" class="canvas-overlay-left ov-pin ov-chrome pchq-hotbar theme" show="${side_left}">
-        <text label="planet - seed ${seed}" class="hb-quiet ov-title theme-3"/>
+        <text label="${pl_label} - seed ${seed}" class="hb-quiet ov-title theme-3"/>
         <item id="sl-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/rpg-dust/board/state/sides.txt' side_left hide"/>
         <text id="light" label="${run_label}" class="${run_cls}"/>
         <text label="${addr_line}" class="ph-quiet"/>
         <item id="regen" class="pchq-ft skin-bar" label="Regen (next seed)" action="'${HOUSE}/@.apps/rpg-dust/ops/+x/rpg_dust.+x' regen"/>
         <item id="zin" class="pchq-ft skin-bar" label="Zoom in here" action="'${HOUSE}/@.apps/rpg-dust/ops/+x/rpg_dust.+x' zoomhere"/>
         <item id="zout" class="pchq-ft skin-bar" label="Zoom out" action="'${HOUSE}/@.apps/rpg-dust/ops/+x/rpg_dust.+x' zoomout"/>
-        <text label="tileset: ${ts_label}" class="ph-quiet"/>
-        <repeat count="${n_ts}" bind="ts">
-          <item id="ts${ts.#}" class="pchq-ft skin-bar ${ts.cls}" label="${ts.label}" action="'${HOUSE}/@.apps/rpg-dust/ops/+x/rpg_dust.+x' tileset ${ts.id}"/>
+        <text label="planet: ${pl_label}" class="ph-quiet"/>
+        <repeat count="${n_pl}" bind="pl">
+          <item id="pl${pl.#}" class="pchq-ft skin-bar ${pl.cls}" label="${pl.label}" action="'${HOUSE}/@.apps/rpg-dust/ops/+x/rpg_dust.+x' planet ${pl.id}"/>
         </repeat>
       </row>
       <!-- RIGHT pinned bar: chat as the selected entity (Harold or a pet). -->
@@ -100,7 +100,7 @@
     </panel>
     <footer id="statusbar" class="pchq-footer" show="${entities_bar_on}">
       <text label="ents" class="quiet"/>
-      <item id="sl-toggle" class="pchq-ft" label="pets" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/rpg-dust/board/state/sides.txt' side_left toggle"/>
+      <item id="sl-toggle" class="pchq-ft" label="planets" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/rpg-dust/board/state/sides.txt' side_left toggle"/>
       <item id="sr-toggle" class="pchq-ft" label="chat" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/rpg-dust/board/state/sides.txt' side_right toggle"/>
       <item id="hb-toggle" class="pchq-ft" label="hb" action="'${HOUSE}/@.apps/rpg-dust/ops/+x/rpg_dust.+x' toggle hb"/>
       <repeat count="${n_ent}" bind="ent">

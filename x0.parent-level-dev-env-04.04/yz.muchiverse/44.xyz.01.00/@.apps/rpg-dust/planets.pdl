@@ -1,0 +1,10 @@
+SECTION | KEY | VALUE
+------------------------------
+# planets.pdl - the worlds of rpg-dust (BOOK 16.game/RPG-DUST-PETSLIKE-BOARD-DESIGN.md D12). Every planet is its own world: its own universe seed (so its own heights, regions and areas) and its own look (a tileset of tilesets.pdl).
+# PLANET | id | label | tileset | seed
+# For now they all orbit one sun (one solar system, one clock). Later each gets its own solar system, sun and solar time (own day and night), and the ship flies between them. Dwarf Fortress and RPG-CE worlds come with those systems.
+# The current planet and any Regen are rows of state/look_ledger.txt (PLANET | id, REGEN | seed: the seed of the CURRENT planet), never edits of this file.
+PLANET | maker | Maker World | rmmv | 20261023
+PLANET | cata  | Cata Prime  | cdda | 20261107
+PLANET | cubia | Cubia       | mcl  | 20261121
+PLANET | hell  | Hellrock    | doom | 20261203

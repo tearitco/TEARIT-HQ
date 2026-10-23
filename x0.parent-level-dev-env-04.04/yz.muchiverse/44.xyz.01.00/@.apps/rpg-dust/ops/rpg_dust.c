@@ -24,14 +24,16 @@
 #elif PET_SECTION == 3
 /* ---- rpg-dust: room 0 = the region page, room 1 = the area page (section 73 builds them into these arrays once per process). glyph: G grass, p sand, T forest tree, ~ water, r rock / snow.
  * fs / ws: the floor and the wall/object slot of the 24 px tile atlas, cdep: hung blocks under the cell (always 0 here). ---- */
-#define SK_NR 2
+#define SK_NR 5
+#define SK_SHIP 3      /* rooms 0..2 are the ship (bridge, quarters, hold); 3 = the region page, 4 = the area page of the current planet */
 #define SK_W 16
 #define SK_H 16
 static char sk_glyph[SK_NR][SK_H][SK_W + 1];
 static int sk_fs[SK_NR][SK_H][SK_W], sk_ws[SK_NR][SK_H][SK_W], sk_cdep[SK_NR][SK_H][SK_W];
 static int sk_built, sk_rockslot;
 typedef struct { char id[24], label[40], kind[8], root[160]; } SkTs;
-static SkTs sk_ts[8]; static int sk_ts_n; static char sk_ts_cur[24] = "rmmv", sk_addr[200] = "globe:3,4/region:0,1"; static unsigned long long sk_seed; static long sk_look_sig = -1, sk_built_sig = -2;
+typedef struct { char id[24], label[40], ts[24]; unsigned long long seed, def; } SkPl;
+static SkPl sk_pl[8]; static int sk_pl_n, sk_pl_cur; static SkTs sk_ts[8]; static int sk_ts_n; static char sk_ts_cur[24] = "rmmv", sk_addr[200] = "globe:3,4/region:0,1"; static unsigned long long sk_seed; static long sk_look_sig = -1, sk_built_sig = -2;
 static void sk_look_load(void); static void sk_rebuild(char *msg, size_t cap); static void export3d(char *msg, size_t cap);
 static int sk_art[NP];      /* 1: pet i has art (csv frames exist: the 3D view shows its front picture) */
 static void sk_ensure_map(void); static int sk_blocked(int room, int x, int y); static void sk_pets_sync(void); static void sk_paint_bg(int room, const char *phase); static void sk_spawn(int i, int *x, int *y);
@@ -63,8 +65,10 @@ static struct { char k[48]; char v[64]; long t; long ep; } g_fc[32];
     sk_pets_sync();
 #elif PET_SECTION == 11
 #elif PET_SECTION == 12
-    for (int i = 0; i < nroom; i++) rooms[i].outdoor = 1;      /* both pages are outdoors: sky and day / night */
-    sk_ensure_map(); ndoor = 0;      /* no doors on a planet page */
+    for (int i = 0; i < nroom; i++) rooms[i].outdoor = i >= SK_SHIP;      /* the ship is indoors; the region and area pages have sky and day / night */
+    sk_ensure_map(); ndoor = 0;      /* the ship's doors: a D cell in a wall, standing on it goes through (ay is the arrival row beside the other door) */
+    { static const int dd[4][7] = { {0, 4, 14, 1, 4, 2, 1}, {1, 4, 0, 0, 4, 14, 1}, {0, 11, 14, 2, 11, 2, 1}, {2, 11, 0, 0, 11, 14, 1} };      /* room, tx, ty (the row above the D cell), dest, ax, ay, autow */
+      for (int k = 0; k < 4 && ndoor < 24; k++) { Door *d = &doors[ndoor++]; d->room = dd[k][0]; d->tx = dd[k][1]; d->ty = dd[k][2]; d->dest = dd[k][3]; d->ax = dd[k][4]; d->ay = dd[k][5]; d->autow = dd[k][6]; } }
 #elif PET_SECTION == 13
 #elif PET_SECTION == 14
     char p[PATH_MAX], line[300]; spath(p, "house.txt");
@@ -115,9 +119,9 @@ static int ui_wrap_keys(char *u, int o, size_t cap) {
     W("left_visible=%s\n", flag_on("left", 1) ? "1" : "");      /* the pinned info bar (default on, Menu > Info show / hide, its _ button) */
     W("chat_visible=%s\nhb_visible=%s\nview_label=view %s\nchat_toggle_label=window %s\n", chat ? "1" : "", hb ? "1" : "", view, chat ? "on" : "off");
     { char cp[PATH_MAX], cb[4000]; spath(cp, "chat.txt"); read_tail(cp, cb, sizeof cb); char *ln[6] = {0}; int k = 0; for (char *l = strtok(cb, "\n"); l; l = strtok(NULL, "\n")) { ln[k % 6] = l; k++; } for (int i = 0; i < 6; i++) { int j = k - 6 + i; W("chat_%d=%s\n", i, j >= 0 ? ln[j % 6] : ""); } }
-    sk_look_load(); { const char *cl = sk_ts_cur; for (int k = 0; k < sk_ts_n; k++) if (!strcmp(sk_ts[k].id, sk_ts_cur)) cl = sk_ts[k].label;      /* the left bar: the address, the seed, Regen and the tilesets (design D8, D5) */
-      W("seed=%llu\naddr_line=%s\nts_label=%s\nn_ts=%d\n", sk_seed, sk_addr, cl, sk_ts_n);
-      for (int k = 0; k < sk_ts_n; k++) W("ts_%d_label=%s\nts_%d_id=%s\nts_%d_cls=%s\n", k, sk_ts[k].label, k, sk_ts[k].id, k, !strcmp(sk_ts[k].id, sk_ts_cur) ? "active nav-selected" : ""); }
+    sk_look_load(); { const char *cl = sk_pl_n ? sk_pl[sk_pl_cur].label : "-";      /* the left bar: the address, the seed, Regen, zoom and the planets (design D8, D12) */
+      W("seed=%llu\naddr_line=%s\npl_label=%s\nn_pl=%d\n", sk_seed, sk_addr, cl, sk_pl_n);
+      for (int k = 0; k < sk_pl_n; k++) W("pl_%d_label=%s\npl_%d_id=%s\npl_%d_cls=%s\n", k, sk_pl[k].label, k, sk_pl[k].id, k, k == sk_pl_cur ? "active nav-selected" : ""); }
 #elif PET_SECTION == 29
 #elif PET_SECTION == 30
 #elif PET_SECTION == 31
@@ -185,9 +189,9 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
         if (!saving) { char b[40]; read_file(mp, b, sizeof b); long long ms = atoll(b); if (ms > 0) { clock_paths(); clock_install(); char ma[32]; snprintf(ma, sizeof ma, "%lld", ms); lc_run(0, "cmd", "rpg", "settime", ma, "--source", "rpg-load", NULL); lc_run(0, "step", "5", NULL); } sn_bump(&g_sn, SL_PETS); sn_bump(&g_sn, SL_FLAGS); sn_bump(&g_sn, SL_DAY); g_flag_epoch++; pet_load(); }
         snprintf(msg, cap, "%s slot %d (%d files)", saving ? "saved to" : "loaded from", slot, ok); return; }
 #elif PET_SECTION == 65
-    if (!strcmp(v, "regen") || !strcmp(v, "tileset") || !strcmp(v, "zoomhere") || !strcmp(v, "zoomout")) {      /* the look and the place are LEDGER rows (state/look_ledger.txt, zoom_ledger.txt): a verb appends, every process replays */
+    if (!strcmp(v, "regen") || !strcmp(v, "planet") || !strcmp(v, "zoomhere") || !strcmp(v, "zoomout")) {      /* the look and the place are LEDGER rows (state/look_ledger.txt, zoom_ledger.txt): a verb appends, every process replays */
         char lp[PATH_MAX], row[160]; snprintf(lp, sizeof lp, "%s/state/look_ledger.txt", APP); sk_look_load();
-        if (!strcmp(v, "tileset")) { int ok = 0; for (int k = 0; argc >= 2 && k < sk_ts_n; k++) if (!strcmp(sk_ts[k].id, argv[1])) ok = 1; if (!ok) { snprintf(msg, cap, "unknown tileset (see tilesets.pdl)"); return; } snprintf(row, sizeof row, "TILESET | %s\n", argv[1]); }
+        if (!strcmp(v, "planet")) { int ok = 0; for (int k = 0; argc >= 2 && k < sk_pl_n; k++) if (!strcmp(sk_pl[k].id, argv[1])) ok = 1; if (!ok) { snprintf(msg, cap, "unknown planet (see planets.pdl)"); return; } snprintf(row, sizeof row, "PLANET | %s\n", argv[1]); }
         else if (!strcmp(v, "regen")) { unsigned long long ns = argc >= 2 ? strtoull(argv[1], NULL, 10) : sk_seed + 1; snprintf(row, sizeof row, "REGEN | %llu\n", ns); }
         else { char cmd[PATH_MAX * 2]; if (!strcmp(v, "zoomout")) snprintf(cmd, sizeof cmd, "DUST_STATE='%s/state' '%s/ops/+x/dust_zoom.+x' zoom_out >/dev/null 2>&1", APP, APP);
             else snprintf(cmd, sizeof cmd, "DUST_STATE='%s/state' '%s/ops/+x/dust_zoom.+x' zoom_in %d %d >/dev/null 2>&1", APP, APP, tr.x < 0 ? 0 : tr.x > 15 ? 15 : tr.x, tr.y < 0 ? 0 : tr.y > 15 ? 15 : tr.y);
@@ -245,7 +249,7 @@ static void sk_stamp(int d, Sheet *s, int c, int r, int x, int y, char g) {     
 static int sk_blocked(int room, int x, int y) {
     sk_ensure_map();
     if (room < 0 || room >= SK_NR || x < 0 || y < 0 || x >= SK_W || y >= SK_H) return 1;
-    char g = sk_glyph[room][y][x]; return g == 'T' || g == '~' || g == 'r';
+    char g = sk_glyph[room][y][x]; return g == 'T' || g == '~' || g == 'r' || g == 'W';
 }
 static void sk_drop_sheet(const char *name) { for (int i = 0; i < nsheet; i++) if (!strcmp(sheets[i].name, name)) { stbi_image_free(sheets[i].px); sheets[i] = sheets[--nsheet]; return; } }
 static void sk_near_free(int room, int *x, int *y) {      /* the nearest walkable cell to (x, y), searched in growing squares */
@@ -262,10 +266,13 @@ static void sk_look_load(void) {
     sk_ts_n = 0; FILE *f = fopen(tp, "r"); char ln[512], *fl[6];
     while (f && fgets(ln, sizeof ln, f)) { int n = split_bar(ln, fl, 6); if (n < 5 || strcmp(fl[0], "TILESET") || sk_ts_n >= 8) continue; SkTs *q = &sk_ts[sk_ts_n++]; snprintf(q->id, sizeof q->id, "%s", fl[1]); snprintf(q->label, sizeof q->label, "%s", fl[2]); snprintf(q->kind, sizeof q->kind, "%s", fl[3]); snprintf(q->root, sizeof q->root, "%s", fl[4]); }
     if (f) fclose(f);
-    snprintf(sk_ts_cur, sizeof sk_ts_cur, "rmmv"); sk_seed = 0; f = fopen(lp, "r");
-    while (f && fgets(ln, sizeof ln, f)) { int n = split_bar(ln, fl, 3); if (n < 2) continue; if (!strcmp(fl[0], "TILESET")) snprintf(sk_ts_cur, sizeof sk_ts_cur, "%s", fl[1]); else if (!strcmp(fl[0], "REGEN")) sk_seed = strtoull(fl[1], NULL, 10); }
+    sk_pl_n = 0; snprintf(tp, sizeof tp, "%s/planets.pdl", APP); f = fopen(tp, "r");
+    while (f && fgets(ln, sizeof ln, f)) { int n = split_bar(ln, fl, 6); if (n < 5 || strcmp(fl[0], "PLANET") || sk_pl_n >= 8) continue; SkPl *q = &sk_pl[sk_pl_n++]; snprintf(q->id, sizeof q->id, "%s", fl[1]); snprintf(q->label, sizeof q->label, "%s", fl[2]); snprintf(q->ts, sizeof q->ts, "%s", fl[3]); q->def = q->seed = strtoull(fl[4], NULL, 10); }
     if (f) fclose(f);
-    if (!sk_seed) { snprintf(tp, sizeof tp, "%s/scale.pdl", APP); f = fopen(tp, "r"); while (f && fgets(ln, sizeof ln, f)) { int n = split_bar(ln, fl, 3); if (n >= 3 && !strcmp(fl[0], "SEED") && !strcmp(fl[1], "universe")) sk_seed = strtoull(fl[2], NULL, 10); } if (f) fclose(f); }
+    sk_pl_cur = 0; snprintf(tp, sizeof tp, "%s/state/look_ledger.txt", APP); f = fopen(tp, "r");      /* replay: PLANET | id picks the planet, REGEN | seed sets the seed of the CURRENT planet (each planet keeps its own) */
+    while (f && fgets(ln, sizeof ln, f)) { int n = split_bar(ln, fl, 3); if (n < 2) continue; if (!strcmp(fl[0], "PLANET")) { for (int k = 0; k < sk_pl_n; k++) if (!strcmp(sk_pl[k].id, fl[1])) sk_pl_cur = k; } else if (!strcmp(fl[0], "REGEN") && sk_pl_n) sk_pl[sk_pl_cur].seed = strtoull(fl[1], NULL, 10); }
+    if (f) fclose(f);
+    if (sk_pl_n) { sk_seed = sk_pl[sk_pl_cur].seed; snprintf(sk_ts_cur, sizeof sk_ts_cur, "%s", sk_pl[sk_pl_cur].ts); } else { sk_seed = 0; snprintf(sk_ts_cur, sizeof sk_ts_cur, "rmmv"); }
     sk_current_address(sk_addr, sizeof sk_addr);
 }
 /* a RUN copy of scale.pdl whose universe SEED is the look ledger's: dust_gen reads this one, the checked-in file is never edited by a click */
@@ -310,14 +317,29 @@ static void sk_cell(int g, int x, int y, int band, int grass, unsigned char tl[7
     unsigned char b[XT * XT * 4]; if (have[band]) { memcpy(b, slotpx[grass], sizeof b); over24(b, tl[band]); sk_glyph[g][y][x] = GL[band]; sk_ws[g][y][x] = slot_of(b); }
     else sk_solid(g, x, y, GL[band], SK_FLAT[band][0], SK_FLAT[band][1], SK_FLAT[band][2], 0, 1);
 }
+/* ---- the ship: three interior rooms of sci-fi RPG Maker tiles (SF_Inside_A4 floor and wall, !SF_Door1), a ring of wall, doors in the wall cells (the pets walk onto a D cell to pass: sections 12 and 31). Tile cells are (col, row) of the 48 px sheet. ---- */
+static void sk_ship_room(int g, Sheet *a4, Sheet *door, int fc, int fr, int wc, int wr, const int *dx, const int *dy, int nd) {
+    unsigned char ft[XT * XT * 4], wt[XT * XT * 4], u[XT * XT * 4], v[XT * XT * 4];
+    if (a4) { tile24(a4, fc * S48, fr * S48, ft); tile24(a4, wc * S48, wr * S48, wt); } else { for (int i = 0; i < XT * XT; i++) { ft[i * 4] = 90; ft[i * 4 + 1] = 100; ft[i * 4 + 2] = 110; ft[i * 4 + 3] = 255; wt[i * 4] = 40; wt[i * 4 + 1] = 45; wt[i * 4 + 2] = 55; wt[i * 4 + 3] = 255; } }
+    int fl = slot_of(ft), wl = slot_of(wt);
+    for (int y = 0; y < SK_H; y++) { for (int x = 0; x < SK_W; x++) { int wall = y < 2 || y == SK_H - 1 || x == 0 || x == SK_W - 1; sk_glyph[g][y][x] = wall ? 'W' : '.'; sk_fs[g][y][x] = fl; sk_ws[g][y][x] = wall ? wl : 0; } sk_glyph[g][y][SK_W] = 0; }
+    for (int k = 0; k < nd; k++) { sk_glyph[g][dy[k]][dx[k]] = 'D'; if (door) { tile24(door, 0, 192, u); memcpy(v, slotpx[fl], sizeof v); over24(v, u); sk_ws[g][dy[k]][dx[k]] = slot_of(v); } else sk_ws[g][dy[k]][dx[k]] = wl; }
+}
+static void sk_build_ship(void) {
+    Sheet *a4 = sheet("tilesets", "SF_Inside_A4"), *door = sheet("characters", "!SF_Door1");
+    static const int bx[2] = {4, 11}, by[2] = {15, 15}, qx[1] = {4}, qy[1] = {1}, hx[1] = {11}, hy[1] = {1};
+    sk_ship_room(0, a4, door, 8, 11, 6, 2, bx, by, 2);      /* bridge: green hex floor, doors south to the quarters (left) and the hold (right) */
+    sk_ship_room(1, a4, door, 4, 1, 4, 2, qx, qy, 1);      /* quarters: wood */
+    sk_ship_room(2, a4, door, 10, 11, 6, 2, hx, hy, 1);      /* hold: dark grating */
+}
 static void sk_ensure_map(void) {
     sk_look_load(); if (sk_built && sk_built_sig == sk_look_sig) return; sk_built = 1; sk_built_sig = sk_look_sig;
     Sheet *a5 = sheet("tilesets", "Outside_A5"), *ob = sheet("tilesets", "Outside_B");
     nslot = 1; memset(slotpx[0], 0, XT * XT * 4); memset(sk_glyph, 0, sizeof sk_glyph); memset(sk_fs, 0, sizeof sk_fs); memset(sk_ws, 0, sizeof sk_ws); memset(sk_cdep, 0, sizeof sk_cdep);
-    char reg[200], cmd[PATH_MAX * 3], pg[SK_NR][PATH_MAX], sc[PATH_MAX]; int cx = 7, cy = 9, h[SK_H][SK_W];
+    char reg[200], cmd[PATH_MAX * 3], pg[2][PATH_MAX], sc[PATH_MAX]; int cx = 7, cy = 9, h[SK_H][SK_W];
     snprintf(reg, sizeof reg, "%s", sk_addr); char *c = strstr(reg, "/cell:"); if (c) { sscanf(c + 6, "%d,%d", &cx, &cy); *c = 0; }
     sk_scale_run(sc, sizeof sc);
-    snprintf(pg[0], PATH_MAX, "%s/state/page_region.txt", APP); snprintf(pg[1], PATH_MAX, "%s/state/page_area.txt", APP);
+    snprintf(pg[0], PATH_MAX, "%s/state/page_region.txt", APP); snprintf(pg[1], PATH_MAX, "%s/state/page_area.txt", APP);      /* pg[0] / pg[1] feed rooms SK_SHIP / SK_SHIP + 1 */
     snprintf(cmd, sizeof cmd, "'%s/ops/+x/dust_gen.+x' page '%s' '%s' '%s' >/dev/null 2>&1", APP, sc, reg, pg[0]); if (system(cmd)) fprintf(stderr, PET_OP ": dust_gen region failed (%s)\n", reg);
     snprintf(cmd, sizeof cmd, "'%s/ops/+x/dust_gen.+x' page '%s' '%s/cell:%d,%d' '%s' >/dev/null 2>&1", APP, sc, reg, cx, cy, pg[1]); if (system(cmd)) fprintf(stderr, PET_OP ": dust_gen area failed (%s/cell:%d,%d)\n", reg, cx, cy);
     const SkTs *ts = NULL; for (int k = 0; k < sk_ts_n; k++) if (!strcmp(sk_ts[k].id, sk_ts_cur)) ts = &sk_ts[k];
@@ -325,8 +347,9 @@ static void sk_ensure_map(void) {
     if (!rm && ts && strcmp(ts->kind, "plain")) for (int b = 0; b < 7; b++) have[b] = sk_tile_load(ts, b, tl[b]);
     if (rm) { if (!a5) { fprintf(stderr, PET_OP ": missing RPG Maker sheets under %s\n", ASSETS); return; } tile24(a5, 0, 2 * S48, tl[3]); have[3] = 1; }
     int grass = slot_of(tl[3]); if (!have[3]) { unsigned char g[XT * XT * 4]; for (int i = 0; i < XT * XT; i++) { g[i * 4] = SK_FLAT[3][0]; g[i * 4 + 1] = SK_FLAT[3][1]; g[i * 4 + 2] = SK_FLAT[3][2]; g[i * 4 + 3] = 255; } memcpy(tl[3], g, sizeof g); grass = slot_of(tl[3]); have[3] = 1; }
-    for (int g = 0; g < SK_NR; g++) {
-        memset(h, 0, sizeof h); sk_read_page(pg[g], h);
+    sk_build_ship();
+    for (int g = SK_SHIP; g < SK_NR; g++) {
+        memset(h, 0, sizeof h); sk_read_page(pg[g - SK_SHIP], h);
         for (int y = 0; y < SK_H; y++) { for (int x = 0; x < SK_W; x++) { int v = h[y][x], band = v < 20 ? 0 : v < 35 ? 1 : v < 45 ? 2 : v < 65 ? 3 : v < 80 ? 4 : v < 92 ? 5 : 6;
             sk_glyph[g][y][x] = 'G'; sk_fs[g][y][x] = grass; sk_ws[g][y][x] = 0;
             if (rm && band == 4) { if (ob) sk_stamp(g, ob, (x + y) & 1, 0, x, y, 'T'); else sk_solid(g, x, y, 'T', 40, 110, 50, 0, 1); }
@@ -423,7 +446,7 @@ static void pet_own_export_room(int r, const char *d) {
         for (int ci = 0; ci < it->w; ci++) for (int cj = 0; cj < it->h; cj++) { int x = pl[i].x + ci, y = pl[i].y + cj; if (x < 0 || x >= cols || y < 0 || y >= rows) continue;
             tile24(s, (it->c + ci) * S48, (it->r + cj) * S48, a); memset(b, 0, sizeof b); if (fs[y][x]) memcpy(b, slotpx[fs[y][x]], sizeof b); over24(b, a); gl[y][x] = 'f'; ws[y][x] = slot_of(b); } }
     snprintf(p, sizeof p, "%s/map.txt", d); { FILE *f = fopen_tmp(p); if (f) { for (int y = 0; y < rows; y++) fprintf(f, "%.*s\n", cols, gl[y]); fclose_tmp(f, p); } }
-    snprintf(p, sizeof p, "%s/extrusion.pdl", d); { FILE *f = fopen_tmp(p); if (f) { fprintf(f, "SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\nMETA         | map_id             | " PET_APP "\nMETA         | desk_id            | %s\nEXTRUDE      | p                  | 1\nEXTRUDE      | G                  | 1\nEXTRUDE      | T                  | 2\nEXTRUDE      | r                  | 3\nEXTRUDE      | f                  | 1\nEXTRUDE      | default            | 0\n", rooms[r].id); fclose_tmp(f, p); } }
+    snprintf(p, sizeof p, "%s/extrusion.pdl", d); { FILE *f = fopen_tmp(p); if (f) { fprintf(f, "SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\nMETA         | map_id             | " PET_APP "\nMETA         | desk_id            | %s\nEXTRUDE      | W                  | 3\nEXTRUDE      | D                  | 3\nEXTRUDE      | p                  | 1\nEXTRUDE      | G                  | 1\nEXTRUDE      | T                  | 2\nEXTRUDE      | r                  | 3\nEXTRUDE      | f                  | 1\nEXTRUDE      | default            | 0\n", rooms[r].id); fclose_tmp(f, p); } }
     int acols = 16, nrows = (nslot + acols - 1) / acols, aw = acols * XT, ah = nrows * XT; unsigned char *atlas = (unsigned char *)calloc((size_t)aw * ah * 4, 1); if (!atlas) return;
     for (int i = 0; i < nslot; i++) for (int y = 0; y < XT; y++) memcpy(atlas + ((size_t)((i / acols) * XT + y) * aw + (i % acols) * XT) * 4, slotpx[i] + y * XT * 4, XT * 4);
     snprintf(p, sizeof p, "%s/cells.rgba", d); { FILE *f = fopen_tmp(p); if (f) { fwrite(atlas, 1, (size_t)aw * ah * 4, f); fclose_tmp(f, p); } } snprintf(p, sizeof p, "%s/cells.png", d); png_atomic(p, aw, ah, atlas, aw * 4); free(atlas);
