@@ -12308,6 +12308,7 @@ static void redraw_body(void) {
         else kh_write_ascii_frame();
         return;
     }
+    g_paint_gen++;
     if (getenv("KH_REDRAW_TRACE")) {
         static int rc = 0; struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
         void *ra = __builtin_return_address(0);

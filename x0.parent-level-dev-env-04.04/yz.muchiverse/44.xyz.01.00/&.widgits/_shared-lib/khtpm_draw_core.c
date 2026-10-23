@@ -155,6 +155,7 @@ static HqSprite g_hq_sprite_cache[HQ_SPRITE_CACHE_N];
  * boot-timeline mark in khtpm_core_render.c; two clock_gettime calls per cell per paint - negligible. */
 static double g_hqs_blit_ms = 0, g_hqs_load_ms = 0;
 static int g_hqs_blits = 0, g_hqs_loads = 0;
+static unsigned long g_paint_gen = 0;     /* bumped at the start of each redraw; keys the per-paint backdrop band in kh_blit_skin_tile */
 static double g_hqs_skin_ms = 0; static int g_hqs_skin_blocks = 0; /* tile-skin blocks painted (kh_draw_skin_rect) */
 static double hqs_now_ms(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return t.tv_sec * 1000.0 + t.tv_nsec / 1e6; }
 static long g_hq_sprite_tick = 0;
@@ -301,28 +302,53 @@ static void hq_blit_sprite(HqSprite *sp, int x0, int y0, int px, unsigned long b
  * XPutImage, on EVERY paint of every skinned tab and button: hq_blit_sprite under kh_draw_skin_rect was about half of the CPU of a board window (SIGPROF profile). With sample_backdrop off the
  * result depends only on (sprite file + mtime, tile size, background colour), so each distinct tile is rendered ONCE through hq_blit_sprite, captured into a server-side Pixmap, and every later
  * paint is one XCopyArea (no pixel work, no data over the socket). 128 tiles, least recently used is freed. A tile that would not lie fully inside the buffer is drawn the slow way, uncached. */
-typedef struct { char path[512]; time_t mtime; int px; unsigned long bg; Pixmap pm; long used; } KhSkinTile;
-static KhSkinTile g_skin_tiles[128];
+typedef struct { char path[512]; time_t mtime; int px; unsigned long bg; unsigned long long bd; Pixmap pm; long used; } KhSkinTile;
+#define KH_SKIN_TILES 512
+static KhSkinTile g_skin_tiles[KH_SKIN_TILES];
 static long g_skin_tile_tick = 0;
-static void kh_blit_skin_tile(HqSprite *sp, int x0, int y0, int px, unsigned long bg_pixel) {
+/* sample != 0 (palette / swatch tiles): the tile is blended over what is ALREADY painted behind it, so the backdrop is part of the key. The region is read back once (small), hashed (FNV-1a), and
+ * the hash joins the key: same sprite over the same backdrop is one XCopyArea, a different backdrop is a different tile, so the result is pixel-identical to the slow path. A tile that is not
+ * fully inside the buffer is drawn the slow way, uncached. */
+static void kh_blit_skin_tile(HqSprite *sp, int x0, int y0, int px, unsigned long bg_pixel, int sample) {
+    Window root_ret; int gx, gy; unsigned int gw, gh, gb, gd;
+    int inside = x0 >= 0 && y0 >= 0 && XGetGeometry(dpy, buf, &root_ret, &gx, &gy, &gw, &gh, &gb, &gd) && x0 + px <= (int)gw && y0 + px <= (int)gh;
+    unsigned long long bd = 0;
+    if (sample) {
+        if (!inside) { hq_blit_sprite(sp, x0, y0, px, bg_pixel, 1); return; }
+        /* one XGetImage per ROW of tiles per paint (a round trip costs about 0.3 ms however small the image: 256 per-tile reads were most of a palette paint); tiles of a row are side by side, never overlapping, so
+         * the band read at the first tile of the row still holds the true backdrop of the later ones. g_paint_gen is bumped at the start of every redraw. */
+        static XImage *band = NULL; static unsigned long band_gen = 0; static int band_y = -1, band_h = 0, band_buf_w = 0;
+        if (!band || band_gen != g_paint_gen || band_y != y0 || band_h != px || band_buf_w != (int)gw) {
+            if (band) { XDestroyImage(band); band = NULL; }
+            band = XGetImage(dpy, buf, 0, y0, gw, (unsigned)px, AllPlanes, ZPixmap);
+            band_gen = g_paint_gen; band_y = y0; band_h = px; band_buf_w = (int)gw;
+        }
+        if (!band) { hq_blit_sprite(sp, x0, y0, px, bg_pixel, 1); return; }
+        int bpp = band->bits_per_pixel / 8;
+        bd = 1469598103934665603ULL;
+        for (int yy = 0; yy < px; yy++) {
+            const unsigned char *d = (const unsigned char *)band->data + (size_t)yy * band->bytes_per_line + (size_t)x0 * bpp;
+            for (int i = 0; i < px * bpp; i++) { bd ^= d[i]; bd *= 1099511628211ULL; }
+        }
+        if (!bd) bd = 1;
+    }
     KhSkinTile *hit = NULL, *free_slot = NULL, *lru = NULL;
-    for (int i = 0; i < 128; i++) {
+    for (int i = 0; i < KH_SKIN_TILES; i++) {
         KhSkinTile *t = &g_skin_tiles[i];
         if (!t->pm) { if (!free_slot) free_slot = t; continue; }
-        if (t->px == px && t->bg == bg_pixel && t->mtime == sp->mtime && strcmp(t->path, sp->path) == 0) { hit = t; break; }
+        if (t->px == px && t->bg == bg_pixel && t->bd == bd && t->mtime == sp->mtime && strcmp(t->path, sp->path) == 0) { hit = t; break; }
         if (!lru || t->used < lru->used) lru = t;
     }
     if (hit) { hit->used = ++g_skin_tile_tick; XCopyArea(dpy, hit->pm, buf, gc, 0, 0, (unsigned)px, (unsigned)px, x0, y0); return; }
-    hq_blit_sprite(sp, x0, y0, px, bg_pixel, 0);      /* the one slow render of this tile */
-    Window root_ret; int gx, gy; unsigned int gw, gh, gb, gd;
-    if (x0 < 0 || y0 < 0 || !XGetGeometry(dpy, buf, &root_ret, &gx, &gy, &gw, &gh, &gb, &gd) || x0 + px > (int)gw || y0 + px > (int)gh) return;
+    hq_blit_sprite(sp, x0, y0, px, bg_pixel, sample);      /* the one slow render of this tile */
+    if (!inside) return;
     KhSkinTile *t = free_slot ? free_slot : lru;
     if (!t) return;
     if (t->pm) { XFreePixmap(dpy, t->pm); t->pm = 0; }
     Pixmap pm = XCreatePixmap(dpy, buf, (unsigned)px, (unsigned)px, gd);
     if (!pm) return;
     XCopyArea(dpy, buf, pm, gc, x0, y0, (unsigned)px, (unsigned)px, 0, 0);
-    snprintf(t->path, sizeof(t->path), "%s", sp->path); t->mtime = sp->mtime; t->px = px; t->bg = bg_pixel; t->pm = pm; t->used = ++g_skin_tile_tick;
+    snprintf(t->path, sizeof(t->path), "%s", sp->path); t->mtime = sp->mtime; t->px = px; t->bg = bg_pixel; t->bd = bd; t->pm = pm; t->used = ++g_skin_tile_tick;
 }
 
 /* ---------- RPG Maker tile bar skin (2026-10-08, owner: "we need these tile renders") ----------
@@ -442,7 +468,7 @@ static int kh_draw_skin_rect(const char (*dirs)[400], int x, int y, int w, int h
     int x0 = x + (w - n * b) / 2;
     double _sk0 = hqs_now_ms();
     for (int i = 0; i < n; i++)   /* n == 1: a single middle block (a narrow dock cell) */
-        kh_blit_skin_tile(n == 1 ? m : (i == 0 ? l : (i == n - 1 ? r : m)), x0 + i * b, y, b, bg_pixel);
+        kh_blit_skin_tile(n == 1 ? m : (i == 0 ? l : (i == n - 1 ? r : m)), x0 + i * b, y, b, bg_pixel, 0);
     g_hqs_skin_ms += hqs_now_ms() - _sk0; g_hqs_skin_blocks += n;
     return 1;
 }
@@ -2356,7 +2382,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                         : (e->y + (e->h - px) / 2);
                 }
                 {   double _b0 = hqs_now_ms();
-                    hq_blit_sprite(sp, blit_x, blit_y, px, bg_pixel, !e->style.has_bg_color);
+                    kh_blit_skin_tile(sp, blit_x, blit_y, px, bg_pixel, !e->style.has_bg_color);
                     g_hqs_blit_ms += hqs_now_ms() - _b0; g_hqs_blits++;
                 }
                 drew_sprite = 1;
