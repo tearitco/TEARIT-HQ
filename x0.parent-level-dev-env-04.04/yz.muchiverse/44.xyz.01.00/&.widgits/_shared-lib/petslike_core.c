@@ -889,8 +889,8 @@ static int scene_wanted(void) {
     char up[PATH_MAX], ub[2048], sess[PATH_MAX] = "", bp[PATH_MAX], bb[8192]; snprintf(up, sizeof up, "%s/@.apps/" PET_APP "/board/state/ui.txt", HOUSE); if (read_file(up, ub, sizeof ub) <= 0) return v = 1;
     for (char *l = strtok(ub, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "bv_session=", 11)) snprintf(sess, sizeof sess, "%s", l + 11);
     if (!sess[0]) return v = 1; snprintf(bp, sizeof bp, "%s/pieces/system/bv_state.txt", sess); if (read_file(bp, bb, sizeof bb) <= 0) return v = 1;
-    int rm = -1; char style[16] = "?"; for (char *l = strtok(bb, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "render_mode=", 12)) rm = atoi(l + 12); else if (!strncmp(l, "view_2d_style=", 14)) snprintf(style, sizeof style, "%s", l + 14); }
-    if (rm < 0 || !strcmp(style, "?")) return v = 1; if (rm == 1) return v = 0;
+    int rm = 1; char style[16] = ""; for (char *l = strtok(bb, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "render_mode=", 12)) rm = atoi(l + 12); else if (!strncmp(l, "view_2d_style=", 14)) snprintf(style, sizeof style, "%s", l + 14); }
+    if (rm == 1) return v = 0;      /* no render_mode line yet = the engine's start state, 3D */
     if (!style[0]) snprintf(style, sizeof style, "%s", PET_VIEW_STYLE);
     return v = !strcmp(style, "scene");
 }
