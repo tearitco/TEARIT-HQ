@@ -1,0 +1,168 @@
+# ⛏️🐾 NIGHT 48 — The Pets Learn to Earn 🐾⛏️
+# ====================================================================
+# Title: "⛏️🐾 NIGHT 48 — The Pets Learn to Earn 🐾⛏️"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: Two days of work on the pet house. The pet window gets its fixes and a bigger picture. A free worker model writes two small programs through an approval gate. The pets get a town, stores, rent, skills, a teacher, and a map with fog. Then the owner explains what the pets are really for: they are wallets on a blockchain that earn cones by mining, and they trade for real needs on an exchange so the chain stays alive and honest with no humans. Ends with what is built, what is only a plan, and what was not proven.
+# Long-form: a working night with an honesty checkpoint. Everything called built was run. Everything called a plan is a plan.
+# Companion documents: 19.phypet/PHYPET.md, 44.xyz.01.00/@.apps/pet-trainer/CHAIN-ECONOMY-DESIGN.md, TOWN-ECONOMY-AND-LEARNING-DESIGN.md, and 44.xyz.01.00/&.hq-apps/co-lab-hai/COLAB-API-GATE.md.
+
+**THE NARRATOR:** Tonight is about a pet that learned to feed itself, and then about why the owner wants it to.
+
+**MAXINE:** Last time the trainer could walk through a village. What changed?
+
+---
+
+**THE NARRATOR:** Part one. The window gets better.
+
+**TOMO:** A lot of small things. The chat now sits at the top right, under the top bar, and long lines wrap onto new rows. The picture inside the window grew from five hundred forty by two hundred eighty to six hundred sixty by four hundred thirty, and the window itself did not change size. The pet shows its age in game days and hours, and there are help pages and tips.
+
+**RAHWEH:** And the bugs?
+
+**TOMO:** Two good ones. The living room had a painted window that always showed daytime, so at night it lied. It is a real window now, with the moon and stars. And the pet never went to the roof. When it chose a door, the code took the first door in the list and stopped, so the roof door could never be picked. Now it picks any door at random, and I watched the pet walk up to the roof.
+
+**MAXINE:** That is the kind of bug you only find by watching.
+
+---
+
+**THE NARRATOR:** Part two. A free worker and an approval gate.
+
+**TOMO:** The owner asked to see every call to an outside model, and to approve it. The co-lab window already had an approval room. I wrote a small script that sits between the delegation runner and the model. It posts the prompt into the room as pending. Only when the owner clicks approve does it call the model, and then it posts the reply back.
+
+**RAHWEH:** Did it work the first time?
+
+**TOMO:** No. The call failed because the model program writes a file into a folder that did not exist. The error said payload write failed. I created the folder and the next call came back with the answer. The room also rings a bell every twenty seconds while something waits for approval.
+
+**MAXINE:** And what did the model build?
+
+**TOMO:** Two small programs, with tests that I wrote first and locked. One checks a lesson card for the pets. The other picks which teacher a pet should ask next, with a daily budget and a cooldown when a provider fails. A free Groq model wrote both on the first attempt. I did not trust the verdict line. I ran my own tests on the result again, eighteen out of eighteen each, and checked that neither program calls a shell.
+
+---
+
+**THE NARRATOR:** Part three. A town and an economy.
+
+**RAHWEH:** What can a pet do now?
+
+**TOMO:** Build a house, a store or a farm, if it can pay for the materials and the land. The land fee rises as the map fills up. A pet that is hungry and has an empty bag walks to the nearest tree, picks an apple, eats it, and remembers the place. A pet short of coins cuts extra wood and sells it to a store owner. A pet with no house rents one and pays rent, or is evicted. Every trade moves real coins and real items, and every trade is a line in a ledger.
+
+**MAXINE:** Did the tests find anything?
+
+**TOMO:** Several things, which is what tests are for. One command that was supposed to empty a pet's bag never ran, so a test passed by luck. A pet walking toward a store was treated as doing nothing, so it also started exploring in the same step. And my training run, which teaches the pets words, started making real calls to a model on the Mac and left stray lesson cards in the live pets. Each one got a fix and a new check.
+
+---
+
+**THE NARRATOR:** Part four. Skills, a teacher and a fog.
+
+**TOMO:** Chat words train four stats: power, magic, defense and intellect. Say train or fight and the pet gets stronger. There is a tech tree of topics. The pet asks a teacher for one lesson card. The teacher writes only a question and an answer, and the program builds the card line, so a small model cannot break the format. A card is checked, and then it waits. It is never accepted by itself. The owner says accept or reject, and only accepted cards answer questions in chat.
+
+**RAHWEH:** Did a real model answer?
+
+**TOMO:** Yes, once, the small Gemma on the Mac. The card was well formed and the answer was wrong. It said ten is bigger than ten. That is exactly why the review step exists.
+
+**MAXINE:** And the fog?
+
+**TOMO:** The village map starts mostly dark. Walking reveals tiles. Pets with nothing to do walk toward the nearest dark place. When enough is explored, the map grows by eight columns. In a test the map grew by itself, and then it stopped at its size limit.
+
+---
+
+**THE NARRATOR:** Part five. Why the pet window was slow.
+
+**TOMO:** The owner said the processor use was up and the screen sometimes flickered. I found three causes. One was my own mistake. A test of the blockchain miner ran against a wallet that did not exist and used almost a whole processor for three minutes before I killed it. The second was the pet scripts. One status call started a hundred and thirty nine programs, and the manager ran it every second. On a computer that was already busy, it could not keep up. It now starts eighty six and runs every two and a half seconds. The third is the likely flicker. The picture file was rewritten in place, so the window could read it half written. It is now written to a temporary file and renamed.
+
+**MAXINE:** Is the flicker gone?
+
+**TOMO:** I do not know. You cannot see a flicker in a screenshot. It is logged as open until the owner says it is gone.
+
+---
+
+**THE NARRATOR:** Part six. What the pets are for.
+
+**RAHWEH:** Then the owner explained the real point.
+
+**TOMO:** The pets are not toys. They are the reason the house has an economy. Each pet is a wallet on a blockchain. The computer in its bedroom mines cones. It buys miners, builds more rooms to keep them in, and maintains them when they wear out. Each pet is also an asset on the chain, and so is the food it grows. Every payment a pet makes is a transaction on the chain. Later the pets can run storage nodes for stake rewards, start businesses, sell shares and pay dividends.
+
+**MAXINE:** What about the old chain?
+
+**TOMO:** That is the surprise. The old chain is nearly all mined. Twenty million nine hundred ninety six thousand of the twenty one million thousandths of a cone exist, and the reward is now zero. So it cannot pay the pets. But its coins are final and confirmed. The owner's company owns those accounts. Their keys are public, so anyone can use them in the game, but the coins always belong to the company, which can recall them. The government and company characters of the market game borrow them to trade, and at the end of the game every coin goes back.
+
+**RAHWEH:** And the pets?
+
+**TOMO:** The pets mine a new chain with much higher difficulty and a daily limit, so they cannot use it up quickly. At the exchange, every other chain's coin is valued by its average trades against the old chain's preferred cones, and using another chain costs a fee that is paid in preferred cones or converted at that average. The owner will set those numbers in the exchange window, and wants to see that window.
+
+---
+
+**THE NARRATOR:** Part seven. The soul of the ecosystem.
+
+**MAXINE:** What does the owner mean by the soul?
+
+**TOMO:** That the pets operate the house the way a person does. They drive the same input relay a keyboard uses, to use the exchange and the auction. They learn by reinforcement, with the house's own models and its test harnesses as the judge. They may change their own harnesses, as proposals that go through the validator, but never the judge that scores them. And they watch real human input as examples. They trade for real needs, food and parts and rent, so the exchange always has honest traffic and the chain stays alive with no humans.
+
+**RAHWEH:** That is a lot of trust to give a learner.
+
+**TOMO:** So the rails are written down with it. Models never decide numbers or promotion. Every change is a difference and a verdict. They practice with play money before real cones. Every pet has trading limits and a kill switch. The company's accounts are only reached through capped leases. And no key is ever put in a prompt or a log.
+
+---
+
+**THE NARRATOR:** Part eight. How the network works today.
+
+**MAXINE:** Before the pets trade, how do the machines even talk?
+
+**TOMO:** Through one small program called the peer. Every peer is the same, there is no server and no client. A window never touches a network socket. It writes a line to an outbox file, the peer sends it, and the other peers drop it in an inbox file that a watcher turns into a redraw. Discovery is just a folder of presence files. Chat, the forum and the chain all use their own copy of it.
+
+**RAHWEH:** Does it work across computers?
+
+**TOMO:** Not yet. The address is hard coded to the same machine. And there is a warning from an old bug. The network was broken once for a while and nobody noticed, because the chat rooms were shared files on one computer, so every test passed anyway. A test that passes on one machine can hide a dead network.
+
+**MAXINE:** And the exchange and the auction?
+
+**TOMO:** Both are plans. The exchange shows a table of every coin with its averaged value in preferred cones, a settings editor for the fee, and a live feed of who traded: a pet, a company, or a person. The auction is an append only ledger of listings, bids and sales, and the state of an auction is always worked out by replaying the ledger, never stored twice. One settlement layer is the only code allowed to touch wallets.
+
+---
+
+**THE NARRATOR:** Part nine. Events, clocks and worlds.
+
+**RAHWEH:** And how does anything in the world actually happen?
+
+**TOMO:** Through events, the way the old role playing game makers do it. A thing in the world has pages. Each page has a trigger, like click, touch or spawn, and a small program. The highest numbered page that matches the trigger wins. A clock sits under all of it. It fires named common events, like the daily tick that reprices goods, pays wages and rent, and grows crops. Every event ends as lines in a ledger, so any day can be replayed.
+
+**MAXINE:** And the pictures?
+
+**TOMO:** A book of maps, each with a tile atlas, wall heights and event rows. The same engine draws the role playing levels, the chess board and the Doom levels. Doom is a starter book with placeholder rooms. The plan is to convert the free Freedoom levels, turn every monster, pickup and exit into an event, and play it with small programs that write state files. A pet is an event too. So a pet can walk through a door into one of those levels, fight or pick things up, and come back with items to sell at the auction. None of that door travel is built yet.
+
+---
+
+**THE NARRATOR:** Part ten. The mysterious market game, and its tournaments.
+
+**MAXINE:** You keep mentioning the market game. What is it?
+
+**TOMO:** WSR. A terminal economy game with fifty corporations, seven governments, stocks, loans, mergers and real estate, and fifty three small programs. The mystery is that the original had lots of scaffolding and thin mechanics. Some of its loops were placeholders. There is a long plan to make it real, with banks that answer loan requests posted on a shared ledger.
+
+**RAHWEH:** And the training?
+
+**TOMO:** A harness called XOD. A state machine presses keys into the game's own relay, no special interface. A planner picks behaviors from a bank of thirteen, scoring each by its goal value minus its cost and the wear on its cash, attention and morale. Evolution mutates the behaviors. A tournament runs several agents in isolated sessions, scores them by portfolio value, and declares a winner. I have read those notes, but I have not rerun the tournaments myself.
+
+**MAXINE:** How does that connect to the pets?
+
+**TOMO:** It is the same shape in another body. A pet drives the exchange the way XOD drives the market. Hunger and rent are its wear. Its fitness is the value of its purse in preferred cones. Pets can compete in paper trading tournaments before any real cones are risked. Today the pets do not use any of that code. It is the bridge that is designed, not built.
+
+---
+
+**THE NARRATOR:** Honesty checkpoint.
+
+**MAXINE:** What was built, and what was only written?
+
+**TOMO:** Built and run: the window changes, the gate and two small programs from a free model, the town and economy, the stats, the teacher with a fake teacher in the tests and one real call, the fog and map growth, and the processor fixes. The test sets passed at the end: training eighty four, town sixteen, ai nine, phones eleven, build fifteen, skills ten, economy nineteen, teacher thirty, explore fifteen, and speech thirty four.
+
+**RAHWEH:** And the plan?
+
+**TOMO:** Everything about the chain is a plan. I have not made the pets' chain, not made a single pet wallet, and not mined a block for them. The old chain is untouched. The compiled chain programs turned out to be two days older than their source, so they ignore some options until rebuilt. There is no asset type on the chain yet, so the pets and the food cannot be assets until the owner approves a change to the chain's code. Plain transfers are not checked against balances when a block is mined, which an honest chain needs. The exchange and auction windows do not exist. The market game's training and tournaments I only read about. Doom and the role playing levels exist, but a pet cannot yet walk into them.
+
+**MAXINE:** What else did you not prove?
+
+**TOMO:** The flicker. A long live run of the economy to see whether the pets behave sensibly. The microphone with a real voice. And real mouse clicks on the new menus.
+
+**RAHWEH:** What is next?
+
+**TOMO:** Rebuild the chain programs on a copy, make the pets' chain, give each pet a wallet, and let the computer in its bedroom mine one real block at a time at low priority. Then the miners, the rooms and the upkeep. The exchange comes after that.
+
+**THE NARRATOR:** A pet that learns to eat is a toy. A pet that learns to earn, and to trade honestly, is the point.

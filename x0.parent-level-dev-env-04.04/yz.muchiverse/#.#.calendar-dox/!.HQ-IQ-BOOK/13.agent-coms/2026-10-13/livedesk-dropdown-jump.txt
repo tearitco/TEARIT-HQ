@@ -1,0 +1,45 @@
+Livedesk dropdown: a click jumps the highlight back to the first menu row.
+Owner 2026-10-13. Grok wrote the search row. Do not hand the nav path back to grok.
+Arrow nav and typed-index nav must keep working. Those are the manager.
+
+What you see
+Open any long top-bar menu (Toys, pals, the rest). Click a lower row, or the search row.
+The highlight lands there, then snaps to the first row of that menu.
+
+Why
+khtpm_core_render.c, click_focus_then_activate:
+a first click relays 6000 plus nav_index unless the hit has class dropdown-child.
+The search row is a synthetic cli_io, id dd-search. It is not a dropdown-child, so its click relays.
+Arrow keys always call dock_nav_after_step, which relays 6000 plus g_focus_nav.
+
+khtpm_taskbar_manager_main.c, KSC_SET_FOCUS_BASE (6000):
+that code is a header cell if the number is small, otherwise a bottom-tab index.
+A dropdown row number is neither. The manager stores a header cell or a tab index.
+
+khtpm_core_render.c, dock_poll_strip_state:
+the next strip_state publish copies strip_focus_cell or tab_focus_idx onto g_focus_nav.
+
+assign_nav_and_layout, the dropdown clamp:
+if a menu is open and g_focus_nav is outside g_dock_drop_lo .. g_dock_drop_hi,
+g_focus_nav is set to g_dock_drop_lo. That is the first menu row. That is the jump.
+
+What not to do
+Grok tried skipping the 6000 relay while focus was inside the menu, and skipping
+dock_poll_strip_state while the menu was open. The jump stopped. Arrow nav and
+number nav died, because a typed index only moves the highlight when that poll
+applies the manager cursor, and arrows report the new row through the same relay.
+Reverted on grok as ffdbca1fd. Leave that relay and that poll in place.
+
+Also do not arm the search field or grab the keyboard when the menu opens.
+That was tried. Keys then typed into the field instead of moving the list.
+A click on the search row may arm it. Opening the menu must not.
+
+Where the search row lives
+Same file, layout of the top dock menu. Static elem g_dd_search_elem.
+Shown only when the full list needs a thumb (g_dock_dd_search).
+Typing filters labels. Enter runs the first match. Not in the xhtpm.
+
+File
+44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c
+Manager side: 44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager_main.c
+Grok tip that restored nav: ffdbca1fd on branch grok. Not pushed.

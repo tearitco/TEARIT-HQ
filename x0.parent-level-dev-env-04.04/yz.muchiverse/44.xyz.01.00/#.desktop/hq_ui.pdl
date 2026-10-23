@@ -25,6 +25,13 @@ win_top_y=96
 # click_two_step: 1 = first click focuses, second activates (default).
 #   0 = one click activates.
 click_two_step=1
+
+# sbar_track: the dark vertical line behind a scrollbar thumb (the anti-thumb).
+#   auto = in-window lists (pc-hq, chat-hai) draw it; the livedesk dropdown does not
+#   1 / on  = draw it on both
+#   0 / off = thumb only on both
+# Live-reloaded with the rest of this file. No rebuild.
+sbar_track=auto
 font_scale=1.25
 
 # pager_btn_w / pager_btn_gap: dock taskbar's bottom-right "-"/"+" pager
@@ -83,7 +90,7 @@ default_win_h=504
 # own CSS font-family (if it sets one) always wins - this is only the
 # fallback every window without its own font-family uses. Live-reloaded
 # same as font_scale; picker lives in the taskbar-settings app.
-font_family=DejaVu Sans
+font_family=M+ 1m
 
 # incremental_reparse: REAL FIX 2026-09-15, direct live report ("navigating
 # the bottom tb and pager, it jumps index after a while and also the pager
@@ -108,3 +115,12 @@ font_family=DejaVu Sans
 # CHTPM-INCREMENTAL-REPARSE-DESIGN.md and 04-bugs/bug_bounty.md for the
 # full writeup. Do not flip this back to 1 without fixing that first.
 incremental_reparse=0
+bar_skin=timber-brace
+
+# dropdown_max_rows: a dropdown with more rows than this scrolls (livedesk top-bar menus and pc-hq tab menus). 0 or missing = only when it would run off the screen.
+dropdown_max_rows=0
+
+# view_fog_start / view_fog_end: distance fog in 3D (cells). Hits fade to the sky colour between the two; 0 or missing = off.
+view_fog_start=18
+view_fog_end=48
+sound_theme=soft
