@@ -377,6 +377,11 @@ def write_atlas(path_png, path_txt, w, h, floors, walls):
     for i, im in enumerate(slots):
         atlas.paste(im, ((i % cols) * OUT, (i // cols) * OUT))
     atlas.save(path_png)
+    # The 3D viewer reads cells.rgba, not the PNG. Same bytes, so a
+    # rezip can leave the atlas out and this script puts it back.
+    if os.path.basename(path_png) == "cells.png":
+        with open(os.path.join(os.path.dirname(path_png), "cells.rgba"), "wb") as rf:
+            rf.write(atlas.tobytes())
     with open(path_txt, "w", encoding="utf-8") as f:
         f.write("width=%d\nheight=%d\ntile_px=%d\natlas_cols=16\natlas_tiles=%d\ncells\n" % (w, h, OUT, n))
         for y in range(h):
@@ -447,9 +452,13 @@ def main():
     if "--all" in sys.argv:
         book = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "@.apps", "piececraft-hq", "pieces", "system", "maps", "tsots"))
         ids = []
+        only_missing = "--missing" in sys.argv
         for name in sorted(os.listdir(book)):
-            if name.startswith("map") and name[3:].isdigit():
-                ids.append(int(name[3:]))
+            if not (name.startswith("map") and name[3:].isdigit()):
+                continue
+            if only_missing and os.path.isfile(os.path.join(book, name, "cells.rgba")):
+                continue
+            ids.append(int(name[3:]))
         cache = {}
         print("book", book, "desks", len(ids), flush=True)
         for mid in ids:

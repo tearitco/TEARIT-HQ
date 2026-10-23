@@ -44,7 +44,7 @@ VERB | reset     | no     | ui     | -             | reset view state
 VERB | select    | no     | ui     | -             | select a character (UI state)
 VERB | step      | no     | engine | -             | one tick (high frequency)
 VERB | walk      | no     | engine | -             | one walking step (high frequency)
-VERB | export3d  | no     | engine | -             | export the scene for the 3D view
+VERB | export3d   | no     | ui     | -             | engine: export the rooms as the pc-hq book
 VERB | mode      | no     | ui     | -             | window mode
 VERB | clearchat | no     | ui     | -             | clear the chat panel
 VERB | toggle    | no     | ui     | -             | UI toggles

@@ -176,7 +176,7 @@ static void load_all(void) {
 
 static void seed(void) {
     if (nstaff) return;
-    const char *rows[][3] = { {"s1","Rex","programmer"}, {"s2","Pip","writer"}, {"s3","Gus","artist"} };
+    const char *rows[][3] = { {"s1","Ivo","programmer"}, {"s2","Ness","writer"}, {"s3","Quill","artist"} };
     int stats[][5] = { {40,30,80,20,50}, {80,20,20,20,60}, {20,80,20,30,40} };
     for (int i = 0; i < 3; i++) {
         Staff *s = &staff[nstaff++];

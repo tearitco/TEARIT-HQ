@@ -1,7 +1,8 @@
 SECTION | KEY | VALUE
 ------------------------------
 # Same character sheets the other books already wear. Index is col + 4*row on the RPG Maker sheet.
-PET | Rex | People3 | 6
-PET | Pip | People2 | 6
-PET | Gus | People1 | 6
-PET | Ada | People3 | 0
+# This studio's cast. Actor3 is not the shooter (Actor2) and not the casino island (People4).
+PET | Ivo  | Actor3 | 0
+PET | Ness | Actor3 | 1
+PET | Quill | Actor3 | 2
+PET | Yara | Actor3 | 3

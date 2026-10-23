@@ -370,6 +370,8 @@ static int emit_full_board(const char *map_id, const char *desk_id) {
     if (!f) return 0;
     char ex_glyphs[MAX_EXTRUDE_GLYPHS]; int ex_deltas[MAX_EXTRUDE_GLYPHS], ex_n, ex_default;
     load_extrusion_table(map_id, desk_id, ex_glyphs, ex_deltas, &ex_n, &ex_default);
+    /* 256 matches bv_render_3d.c MAX_BOARD_DIM. Doom at 32 units/cell
+     * is up to about 216 wide. 128 cut that board in half. */
     static char lines[256][260];
     int nrows = 0, ncols = 0;
     char buf[1024];
@@ -724,6 +726,34 @@ int main(int argc, char **argv) {
      * moving. Procedural/flat worlds keep the original center spawn. */
     int spawn_col = map_id ? 1 : 8;
     int spawn_row = map_id ? 1 : 8;
+    /* The S on the page is the player start. START.txt is that cell.
+     * (1,1) is only the fallback when the page has no start. The
+     * surface table is one 16x16 chunk, so a start outside it must
+     * not index that table. */
+    if (map_id && desk_id && desk_id[0]) {
+        char spath[PATH_BUF];
+        snprintf(spath, sizeof(spath), "%s/pieces/system/maps/%s/%s/START.txt",
+                 real_root, map_id, desk_id);
+        FILE *sf = host_fopen(spath, "r");
+        if (sf) {
+            char line[128];
+            int sx = -1, sy = -1;
+            while (fgets(line, sizeof(line), sf)) {
+                if (strncmp(line, "x=", 2) == 0) sx = atoi(line + 2);
+                else if (strncmp(line, "y=", 2) == 0) sy = atoi(line + 2);
+            }
+            fclose(sf);
+            if (sx >= 0 && sy >= 0 && sx < 256 && sy < 256) {
+                spawn_col = sx;
+                spawn_row = sy;
+            }
+        }
+    }
+    int spawn_z = 0;
+    if (spawn_row < CHUNK_DIM && spawn_col < CHUNK_DIM)
+        spawn_z = surface[spawn_row][spawn_col] + 1;
+    int spawn_cx = spawn_col / CHUNK_DIM;
+    int spawn_cy = spawn_row / CHUNK_DIM;
 
     char hero_state_path[PATH_BUF];
     snprintf(hero_state_path, sizeof(hero_state_path), "%s/state.txt", hero_dir);
@@ -731,10 +761,10 @@ int main(int argc, char **argv) {
     write_kv_int(hero_state_path, "hp", 20);
     write_kv_int(hero_state_path, "pos_x", spawn_col);
     write_kv_int(hero_state_path, "pos_y", spawn_row);
-    write_kv_int(hero_state_path, "pos_z", surface[spawn_row][spawn_col] + 1);
+    write_kv_int(hero_state_path, "pos_z", spawn_z);
     write_kv(hero_state_path, "owner_id", "player");
-    write_kv_int(hero_state_path, "chunk_x", chunk_x);
-    write_kv_int(hero_state_path, "chunk_y", chunk_y);
+    write_kv_int(hero_state_path, "chunk_x", spawn_cx);
+    write_kv_int(hero_state_path, "chunk_y", spawn_cy);
 
     /* pieces/xelector_01/state.txt - real, separate cursor entity, per
      * civ-vs-piece.md §6a's own real precedent citation (fuzz-op's own
@@ -765,14 +795,14 @@ int main(int argc, char **argv) {
     write_kv(xelector_state_path, "entity_type", "xelector");
     write_kv_int(xelector_state_path, "pos_x", spawn_col);
     write_kv_int(xelector_state_path, "pos_y", spawn_row);
-    write_kv_int(xelector_state_path, "pos_z", surface[spawn_row][spawn_col] + 1);
+    write_kv_int(xelector_state_path, "pos_z", spawn_z);
     /* Owner 2026-10-05: the xelector starts as a FREE cursor (possessed_id=none), so
      * the arrow keys move the xelector and it can select the hero, cursword or any
      * entity; possession is explicit (Enter on an entity). It used to be seeded as
      * "hero_01", which made arrows drive the hero from the first keypress. */
     write_kv(xelector_state_path, "possessed_id", "none");
-    write_kv_int(xelector_state_path, "chunk_x", chunk_x);
-    write_kv_int(xelector_state_path, "chunk_y", chunk_y);
+    write_kv_int(xelector_state_path, "chunk_x", spawn_cx);
+    write_kv_int(xelector_state_path, "chunk_y", spawn_cy);
 
     printf("chunk_%d_%d generated: seed=%u surface_center=%d\n", chunk_x, chunk_y, seed, surface[8][8]);
     return 0;

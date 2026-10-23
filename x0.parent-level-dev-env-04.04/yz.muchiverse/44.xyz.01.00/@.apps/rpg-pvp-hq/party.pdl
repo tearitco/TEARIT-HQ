@@ -1,14 +1,12 @@
 SECTION | KEY | VALUE
 ------------------------------
-# party.pdl - which RPG Maker MV monster picture (character sheet Monster.png: 8 monsters, 3 walk frames x 4 directions each; index = col + 4*row) each rpg-pvp-hq pet wears.
-# The pets are their OWN RPG Maker DB entries, NOT the old pet-trainer pets: &.widgits/db-hq/data/system.pdl (SYSTEM RpgPetParty member1..6) and actors.pdl (ACTOR ids 19-24: name,
-# nickname, profile, mhp, mmp, atk, def, mat, mdf, agi, luk). Each has its own entity_uid (state/uid_<id>.txt) and therefore its own wallet identity (e + first 24 hex), see CHAIN-ECONOMY-DESIGN.md.
-# A DB ACTOR "character" value of Sheet:index would win over this file (the DB field holds just the sheet name today). This file is only the picture choice, never the data.
-# The PERSON (Actor1 sheet) is the trainer / player and lives in the village (not built in rpg-pvp-hq yet).
-# PET | actor name | sheet | index
-PET | Rex   | People3 | 6
-PET | Gus   | People1 | 6
-PET | Pip   | People2 | 6
-PET | Orin  | People3 | 0
-PET | Maren | People3 | 1
-PET | Fenn  | Nature | 5
+# party.pdl - this window's cast. The name is the pet. The sheet is the picture.
+# Stats still come from the DsrRpgParty actor in the same slot (Rex's stats on Joss, and so on).
+# People4 is the casino island. People1-3 and Nature were the old shared cast. Actor2 is this shooter only.
+# PET | name | sheet | index
+PET | Joss  | Actor2 | 0
+PET | Keel  | Actor2 | 1
+PET | Moss  | Actor2 | 2
+PET | Ryn   | Actor2 | 3
+PET | Pike  | Actor2 | 4
+PET | Sable | Actor2 | 5
