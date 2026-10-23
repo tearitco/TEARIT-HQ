@@ -264,7 +264,7 @@ static int sk_blocked(int room, int x, int y) {
     sk_ensure_map();
     if (room < 0 || room >= SK_NR || x < 0 || y < 0 || x >= SK_W || y >= SK_H) return 1;
     if (room < SK_SHIP && (x < SOX || y < SOY || x >= SOX + SSZ || y >= SOY + SSZ)) return 1;      /* beyond the hull is the planet far below: nobody walks there */
-    char g = sk_glyph[room][y][x]; return g == 'T' || g == '~' || g == 'r' || g == 'W';
+    char g = sk_glyph[room][y][x]; return g == 'T' || g == '~' || g == 'r' || g == 'W' || g == 'f';
 }
 static void sk_drop_sheet(const char *name) { for (int i = 0; i < nsheet; i++) if (!strcmp(sheets[i].name, name)) { stbi_image_free(sheets[i].px); sheets[i] = sheets[--nsheet]; return; } }
 static void sk_near_free(int room, int *x, int *y) {      /* the nearest walkable cell to (x, y), searched in growing squares */
@@ -342,6 +342,22 @@ static void sk_ship_room(int g, Sheet *a4, Sheet *door, int fc, int fr, int wc, 
     for (int ly = 0; ly < SSZ; ly++) for (int lx = 0; lx < SSZ; lx++) { int x = SOX + lx, y = SOY + ly, wall = ly < 2 || ly == SSZ - 1 || lx == 0 || lx == SSZ - 1; sk_glyph[g][y][x] = wall ? 'W' : '.'; sk_fs[g][y][x] = fl; sk_ws[g][y][x] = wall ? wl : 0; sk_cdep[g][y][x] = 1; }
     for (int k = 0; k < nd; k++) { int x = SOX + dx[k], y = SOY + dy[k]; sk_glyph[g][y][x] = 'D'; if (door) { tile24(door, 0, 192, u); memcpy(v, slotpx[fl], sizeof v); over24(v, u); sk_ws[g][y][x] = slot_of(v); } else sk_ws[g][y][x] = wl; }
 }
+/* ---- what makes the ship rooms different: objects of SF_Inside_B (16 x 16 sheet of 48 px cells) stamped over the floor, glyph f (blocked, one block high). Cells are local to the ship footprint (floor x 1..10, y 2..10); the doors, their arrival cells and the crew's gathering cells (local 5..7, 6..7) stay free. room, sheet col, row, w, h in cells, local x, y ---- */
+static const int SK_DECO[][7] = {
+    {0, 8, 0, 1, 1, 2, 2}, {0, 8, 0, 1, 1, 4, 2}, {0, 8, 0, 1, 1, 6, 2}, {0, 8, 0, 1, 1, 8, 2},      /* bridge: monitors along the north wall ... */
+    {0, 8, 3, 1, 1, 2, 3}, {0, 8, 3, 1, 1, 4, 3}, {0, 8, 3, 1, 1, 6, 3}, {0, 8, 3, 1, 1, 8, 3},      /* ... and a blue chair in front of each */
+    {1, 8, 12, 2, 2, 7, 3}, {1, 12, 12, 2, 2, 9, 3}, {1, 9, 7, 1, 1, 1, 3}, {1, 10, 7, 1, 1, 1, 4},      /* quarters: two beds (purple, blue) and cabinets */
+    {2, 4, 9, 1, 2, 2, 3}, {2, 4, 9, 1, 2, 3, 3}, {2, 1, 9, 1, 1, 5, 3}, {2, 10, 10, 1, 1, 2, 8}, {2, 10, 10, 1, 1, 3, 8}, {2, 1, 9, 1, 1, 9, 8},      /* hold: crates, barrels, cardboard boxes */
+    {3, 4, 6, 2, 2, 2, 3}, {3, 4, 6, 2, 2, 5, 3}, {3, 1, 9, 1, 1, 8, 3}, {3, 1, 9, 1, 1, 8, 5}, {3, 3, 6, 1, 1, 3, 8}, {3, 3, 8, 1, 1, 6, 8},      /* engine: machinery grates, power cells, hazard signs */
+};
+static void sk_ship_deco(void) {
+    Sheet *b = sheet("tilesets", "SF_Inside_B"); if (!b) return;
+    for (size_t k = 0; k < sizeof SK_DECO / sizeof SK_DECO[0]; k++) { const int *d = SK_DECO[k];
+        for (int j = 0; j < d[4]; j++) for (int i = 0; i < d[3]; i++) {
+            int x = SOX + d[5] + i, y = SOY + d[6] + j; if (sk_glyph[d[0]][y][x] != '.') continue;      /* never over a wall, a door or another object */
+            unsigned char a[XT * XT * 4], f[XT * XT * 4]; tile24(b, (d[1] + i) * S48, (d[2] + j) * S48, a); memcpy(f, slotpx[sk_fs[d[0]][y][x]], sizeof f); over24(f, a);
+            sk_glyph[d[0]][y][x] = 'f'; sk_ws[d[0]][y][x] = slot_of(f); } }
+}
 static void sk_build_ship(void) {      /* called after the planet pages are painted: room SK_SHIP (the region page) is copied into every ship desk as the backdrop, then the ship is drawn over its middle */
     Sheet *a4 = sheet("tilesets", "SF_Inside_A4"), *door = sheet("characters", "!SF_Door1");
     static const int bx[3] = {3, 8, 0}, by[3] = {11, 11, 6}, qx[1] = {3}, qy[1] = {1}, hx[1] = {8}, hy[1] = {1}, ex[1] = {11}, ey[1] = {6};
@@ -352,6 +368,7 @@ static void sk_build_ship(void) {      /* called after the planet pages are pain
     sk_ship_room(1, a4, door, 4, 1, 4, 2, qx, qy, 1);      /* quarters: wood, a door in the north wall */
     sk_ship_room(2, a4, door, 10, 11, 6, 2, hx, hy, 1);      /* hold: dark grating, a door in the north wall */
     sk_ship_room(3, a4, door, 8, 6, 6, 2, ex, ey, 1);      /* engine room: dark diamond plate, a door in the east wall back to the bridge */
+    sk_ship_deco();
     for (int g = 0; g < SK_SHIP; g++) for (int ly = 0; ly < SSZ; ly++) for (int lx = 0; lx < SSZ; lx++) {      /* the hull is thin (one block hung under the floor): the ship hovers, the planet surface is sunk below it */
         int x = SOX + lx, y = SOY + ly; sk_cdep[g][y][x] = 1; }
 }
