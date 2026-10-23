@@ -3,7 +3,8 @@ RESULTS | ../results/dust_seed.txt
 CASE | dust-seed
 SCRATCH |
 COPY | @.apps/rpg-dust/ops/dust_seed.c | dust_seed.c
-RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/ds.+x | $T/dust_seed.c
+COPY | @.apps/rpg-dust/ops/dust_pdl.c | dust_pdl.c
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -I | $T | -o | $T/ds.+x | $T/dust_seed.c
 EXPECT_EXIT | 0 | compiles-clean
 RUN | $T/ds.+x | mix | 0
 EXPECT_EXIT | 0 | splitmix64-anchor-exit
@@ -69,3 +70,71 @@ RUN | $T/ds.+x | hash | 1 | a
 EXPECT_EXIT | 2 | unknown-mode
 RUN | $T/ds.+x
 EXPECT_EXIT | 2 | no-args
+# R1b: PARAM rows enter the seed chain at their level (4th field, default root). Fixture ladder top > mid > low; PARAM a at the root, b at mid.
+WRITE | f_base.pdl | SECTION \p KEY \p VALUE\nSEED \p universe \p 7\nPARAM \p a \p 1\nPARAM \p b \p 2 \p mid\nSCALE \p top \p 10 \p t \p - \p dust_gen_t \p 2d-tiles \p day \p n\nSCALE \p mid \p 5 \p m \p top \p dust_gen_m \p 2d-tiles \p day \p n\nSCALE \p low \p 0 \p l \p mid \p dust_gen_l \p 2d-tiles \p day \p n\n
+WRITE | f_b3.pdl | SECTION \p KEY \p VALUE\nSEED \p universe \p 7\nPARAM \p a \p 1\nPARAM \p b \p 3 \p mid\nSCALE \p top \p 10 \p t \p - \p dust_gen_t \p 2d-tiles \p day \p n\nSCALE \p mid \p 5 \p m \p top \p dust_gen_m \p 2d-tiles \p day \p n\nSCALE \p low \p 0 \p l \p mid \p dust_gen_l \p 2d-tiles \p day \p n\n
+WRITE | f_a9.pdl | SECTION \p KEY \p VALUE\nSEED \p universe \p 7\nPARAM \p a \p 9\nPARAM \p b \p 2 \p mid\nSCALE \p top \p 10 \p t \p - \p dust_gen_t \p 2d-tiles \p day \p n\nSCALE \p mid \p 5 \p m \p top \p dust_gen_m \p 2d-tiles \p day \p n\nSCALE \p low \p 0 \p l \p mid \p dust_gen_l \p 2d-tiles \p day \p n\n
+WRITE | f_swapped.pdl | SECTION \p KEY \p VALUE\nSEED \p universe \p 7\nPARAM \p b \p 2 \p mid\nPARAM \p a \p 1\nSCALE \p top \p 10 \p t \p - \p dust_gen_t \p 2d-tiles \p day \p n\nSCALE \p mid \p 5 \p m \p top \p dust_gen_m \p 2d-tiles \p day \p n\nSCALE \p low \p 0 \p l \p mid \p dust_gen_l \p 2d-tiles \p day \p n\n
+WRITE | f_none.pdl | SECTION \p KEY \p VALUE\nSEED \p universe \p 7\nSCALE \p top \p 10 \p t \p - \p dust_gen_t \p 2d-tiles \p day \p n\nSCALE \p mid \p 5 \p m \p top \p dust_gen_m \p 2d-tiles \p day \p n\nSCALE \p low \p 0 \p l \p mid \p dust_gen_l \p 2d-tiles \p day \p n\n
+WRITE | f_badlevel.pdl | SECTION \p KEY \p VALUE\nSEED \p universe \p 7\nPARAM \p a \p 1 \p nowhere\nSCALE \p top \p 10 \p t \p - \p dust_gen_t \p 2d-tiles \p day \p n\nSCALE \p mid \p 5 \p m \p top \p dust_gen_m \p 2d-tiles \p day \p n\nSCALE \p low \p 0 \p l \p mid \p dust_gen_l \p 2d-tiles \p day \p n\n
+RUN | $T/ds.+x | lseed | $T/f_base.pdl | top
+EXPECT_EXIT | 0 | base-top-exit
+EXPECT_OUT_IS | 12180131118657188053 | base-top
+RUN | $T/ds.+x | lseed | $T/f_base.pdl | mid
+EXPECT_EXIT | 0 | base-mid-exit
+EXPECT_OUT_IS | 7558581738418094453 | base-mid
+RUN | $T/ds.+x | lseed | $T/f_base.pdl | low
+EXPECT_EXIT | 0 | base-low-exit
+EXPECT_OUT_IS | 14475818471189903022 | base-low
+RUN | $T/ds.+x | lseed | $T/f_b3.pdl | top
+EXPECT_EXIT | 0 | b3-top-exit
+EXPECT_OUT_IS | 12180131118657188053 | b3-top
+RUN | $T/ds.+x | lseed | $T/f_b3.pdl | mid
+EXPECT_EXIT | 0 | b3-mid-exit
+EXPECT_OUT_IS | 6062623897394233072 | b3-mid
+RUN | $T/ds.+x | lseed | $T/f_b3.pdl | low
+EXPECT_EXIT | 0 | b3-low-exit
+EXPECT_OUT_IS | 16365352311688077719 | b3-low
+RUN | $T/ds.+x | lseed | $T/f_a9.pdl | top
+EXPECT_EXIT | 0 | a9-top-exit
+EXPECT_OUT_IS | 4190379825592750264 | a9-top
+RUN | $T/ds.+x | lseed | $T/f_a9.pdl | mid
+EXPECT_EXIT | 0 | a9-mid-exit
+EXPECT_OUT_IS | 489335268683338059 | a9-mid
+RUN | $T/ds.+x | lseed | $T/f_a9.pdl | low
+EXPECT_EXIT | 0 | a9-low-exit
+EXPECT_OUT_IS | 16475217750833680376 | a9-low
+RUN | $T/ds.+x | lseed | $T/f_swapped.pdl | top
+EXPECT_EXIT | 0 | swapped-top-exit
+EXPECT_OUT_IS | 12180131118657188053 | swapped-top
+RUN | $T/ds.+x | lseed | $T/f_swapped.pdl | mid
+EXPECT_EXIT | 0 | swapped-mid-exit
+EXPECT_OUT_IS | 7558581738418094453 | swapped-mid
+RUN | $T/ds.+x | lseed | $T/f_swapped.pdl | low
+EXPECT_EXIT | 0 | swapped-low-exit
+EXPECT_OUT_IS | 14475818471189903022 | swapped-low
+RUN | $T/ds.+x | lseed | $T/f_none.pdl | low
+EXPECT_EXIT | 0 | none-low-exit
+EXPECT_OUT_IS | 6165272164648903390 | none-low
+RUN | $T/ds.+x | lseed | $T/f_base.pdl | nosuch
+EXPECT_EXIT | 2 | unknown-level-exit-2
+RUN | $T/ds.+x | lseed | $T/missing.pdl | top
+EXPECT_EXIT | 2 | missing-file-exit-2
+RUN | $T/ds.+x | lpage | $T/f_base.pdl | mid | x:1,2 | 3
+EXPECT_EXIT | 0 | lpage-exit
+EXPECT_OUT_IS | PAGE \p 13223037238259808860 \p x:1,2@mid \p 3\n30 70 44\n22 69 99\n83 00 38 | lpage
+# two PARAM rows on ONE level, in both row orders: the level seed must not depend on file order (sorted by name)
+WRITE | f_two.pdl | SECTION \p KEY \p VALUE\nSEED \p universe \p 7\nPARAM \p a \p 1 \p mid\nPARAM \p c \p 4 \p mid\nSCALE \p top \p 10 \p t \p - \p dust_gen_t \p 2d-tiles \p day \p n\nSCALE \p mid \p 5 \p m \p top \p dust_gen_m \p 2d-tiles \p day \p n\nSCALE \p low \p 0 \p l \p mid \p dust_gen_l \p 2d-tiles \p day \p n\n
+WRITE | f_twoswap.pdl | SECTION \p KEY \p VALUE\nSEED \p universe \p 7\nPARAM \p c \p 4 \p mid\nPARAM \p a \p 1 \p mid\nSCALE \p top \p 10 \p t \p - \p dust_gen_t \p 2d-tiles \p day \p n\nSCALE \p mid \p 5 \p m \p top \p dust_gen_m \p 2d-tiles \p day \p n\nSCALE \p low \p 0 \p l \p mid \p dust_gen_l \p 2d-tiles \p day \p n\n
+RUN | $T/ds.+x | lseed | $T/f_two.pdl | mid
+EXPECT_EXIT | 0 | two-mid-exit
+EXPECT_OUT_IS | 13567827550041187656 | two-mid
+RUN | $T/ds.+x | lseed | $T/f_two.pdl | low
+EXPECT_EXIT | 0 | two-low-exit
+EXPECT_OUT_IS | 9593887139732998874 | two-low
+RUN | $T/ds.+x | lseed | $T/f_twoswap.pdl | mid
+EXPECT_EXIT | 0 | twoswap-mid-exit
+EXPECT_OUT_IS | 13567827550041187656 | twoswap-mid
+RUN | $T/ds.+x | lseed | $T/f_twoswap.pdl | low
+EXPECT_EXIT | 0 | twoswap-low-exit
+EXPECT_OUT_IS | 9593887139732998874 | twoswap-low

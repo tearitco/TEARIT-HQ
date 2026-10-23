@@ -5,7 +5,7 @@
  *
  * ladder rows (pipe-delimited, '#' comments, a leading `SECTION | KEY | VALUE` line and a `---` line are skipped):
  *   SEED  | universe | <unsigned 64-bit decimal>             exactly one
- *   PARAM | <name [a-z0-9_]+> | <number>                     names unique
+ *   PARAM | <name [a-z0-9_]+> | <number> [| <level id>]       names unique; the optional level (default: the root) is where the value enters the seed chain (dust_seed lseed)
  *   SCALE | id | log2_m | cell_about | parent | gen | view | tick | note
  *       id [a-z0-9_]+ unique; log2_m integer in -80..+80 (metres per cell = 2^log2_m); parent '-' for exactly ONE root, otherwise the id of another SCALE row;
  *       a child is SMALLER than its parent (log2_m strictly lower), so no cycles; gen = dust_gen_<name>; view = one or more of 2d-tiles 3d-voxel field joined by '+';
@@ -23,19 +23,17 @@
 #include <string.h>
 #include <ctype.h>
 #include <errno.h>
+#include "dust_pdl.c"
 #include "chem_formula.c"      /* found with -I <house>/&.widgits/_shared-lib (build script and harness both pass it) */
 #define MAXL 64
 typedef struct { char id[48]; int log2m; char parent[48]; int line; int ok; } Level;
-static void cp(char *d, size_t n, const char *s) { size_t l = strlen(s); if (l >= n) l = n - 1; memcpy(d, s, l); d[l] = 0; }      /* explicit truncation: ids longer than the buffer are reported by the length checks below, never overflowed */
-static int split_bar(char *line, char **f, int max) { int n = 0; char *p = line; while (n < max) { f[n++] = p; char *b = strchr(p, '|'); if (!b) break; *b = 0; p = b + 1; } for (int i = 0; i < n; i++) { while (*f[i] == ' ') f[i]++; char *e = f[i] + strlen(f[i]); while (e > f[i] && (e[-1] == ' ' || e[-1] == '\n' || e[-1] == '\r')) *--e = 0; } return n; }
-static int ident(const char *s) { if (!*s || strlen(s) > 40) return 0; for (; *s; s++) if (!(islower((unsigned char)*s) || isdigit((unsigned char)*s) || *s == '_')) return 0; return 1; }
 static int is_int(const char *s, long *v) { char *e; if (!*s) return 0; errno = 0; long x = strtol(s, &e, 10); if (*e || errno) return 0; *v = x; return 1; }
 static int is_num(const char *s) { char *e; if (!*s) return 0; strtod(s, &e); return !*e; }
 static int in_set(const char *s, const char *const *set) { for (; *set; set++) if (!strcmp(s, *set)) return 1; return 0; }
 static int check_view(const char *v) { static const char *ok[] = { "2d-tiles", "3d-voxel", "field", 0 }; char b[96]; snprintf(b, sizeof b, "%s", v); int n = 0; for (char *t = strtok(b, "+"); t; t = strtok(NULL, "+")) { while (*t == ' ') t++; char *e = t + strlen(t); while (e > t && e[-1] == ' ') *--e = 0; if (!in_set(t, ok)) return 0; n++; } return n > 0; }
 static int ladder(const char *path) {
     FILE *fp = fopen(path, "r"); if (!fp) { fprintf(stderr, "dust_check: cannot read %s\n", path); return 2; }
-    Level L[MAXL]; int nl = 0, bad = 0, seeds = 0, params = 0; char seed[32] = "", pn[MAXL][48]; char ln[1024]; int lineno = 0;
+    Level L[MAXL]; int nl = 0, bad = 0, seeds = 0, params = 0; char seed[32] = "", pn[MAXL][48], pl[MAXL][48]; int pline[MAXL]; char ln[1024]; int lineno = 0;
 #define ERR(...) do { printf("LINE %d: ", lineno); printf(__VA_ARGS__); printf("\n"); bad++; } while (0)
     while (fgets(ln, sizeof ln, fp)) {
         lineno++; char *s = ln; while (*s == ' ' || *s == '\t') s++; if (!*s || *s == '#' || *s == '\n' || *s == '\r' || !strncmp(s, "---", 3) || !strncmp(s, "SECTION", 7)) continue;
@@ -50,7 +48,7 @@ static int ladder(const char *path) {
         } else if (!strcmp(f[0], "PARAM")) {
             if (n < 3 || !ident(f[1]) || !is_num(f[2])) { ERR("PARAM row must be PARAM | <name a-z0-9_> | <number>"); continue; }
             int dup = 0; for (int i = 0; i < params; i++) if (!strcmp(pn[i], f[1])) dup = 1; if (dup) { ERR("duplicate PARAM '%s'", f[1]); continue; }
-            if (params < MAXL) { cp(pn[params], sizeof pn[0], f[1]); }
+            if (params < MAXL) { cp(pn[params], sizeof pn[0], f[1]); cp(pl[params], sizeof pl[0], n > 3 ? f[3] : ""); pline[params] = lineno; }
             params++;
         } else if (!strcmp(f[0], "SCALE")) {
             if (n < 8) { ERR("SCALE row needs 8 fields (id | log2_m | cell_about | parent | gen | view | tick | note)"); continue; }
@@ -73,6 +71,7 @@ static int ladder(const char *path) {
         if (pi < 0) { lineno = L[i].line; ERR("level '%s' names parent '%s' which is not a level", L[i].id, L[i].parent); }
         else if (L[i].ok && L[pi].ok && L[i].log2m >= L[pi].log2m) { lineno = L[i].line; ERR("level '%s' (log2_m %d) is not smaller than its parent '%s' (log2_m %d)", L[i].id, L[i].log2m, L[pi].id, L[pi].log2m); }
     }
+    for (int i = 0; i < params && i < MAXL; i++) { if (!pl[i][0]) continue; int found = 0; for (int j = 0; j < nl; j++) if (!strcmp(L[j].id, pl[i])) found = 1; if (!found) { lineno = pline[i]; ERR("PARAM '%s' names level '%s' which is not a level", pn[i], pl[i]); } }
     lineno = 0; if (nl == 0) ERR("no SCALE rows"); else if (roots != 1) ERR("%d root levels (parent '-'); exactly one is required", roots);
     if (seeds == 0) ERR("no SEED row");
     if (bad) { printf("ladder FAILED: %d problem%s\n", bad, bad == 1 ? "" : "s"); return 1; }

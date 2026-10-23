@@ -3,6 +3,7 @@ RESULTS | ../results/dust_ladder.txt
 CASE | dust-ladder
 SCRATCH |
 COPY | @.apps/rpg-dust/ops/dust_check.c | dust_check.c
+COPY | @.apps/rpg-dust/ops/dust_pdl.c | dust_pdl.c
 COPY | &.widgits/_shared-lib/chem_formula.c | chem_formula.c
 COPY | @.apps/rpg-dust/scale.pdl | scale.pdl
 RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -I | $T | -o | $T/dc.+x | $T/dust_check.c
@@ -126,3 +127,10 @@ RUN | $T/dc.+x | ladder | $T/nosuch.pdl
 EXPECT_EXIT | 2 | missing-file-exit-2
 RUN | $T/dc.+x | bogus
 EXPECT_EXIT | 2 | bad-usage-exit-2
+WRITE | f.pdl | SECTION \p KEY \p VALUE\nSEED \p universe \p 12345\nPARAM \p x \p 1 \p nowhere\nSCALE \p a \p 10 \p 1 m \p - \p dust_gen_x \p 2d-tiles \p day \p n\n
+RUN | $T/dc.+x | ladder | $T/f.pdl
+EXPECT_EXIT | 1 | param-unknown-level
+EXPECT_OUT | names level 'nowhere' | param-unknown-level-message
+WRITE | f.pdl | SECTION \p KEY \p VALUE\nSEED \p universe \p 12345\nPARAM \p x \p 1 \p a\nSCALE \p a \p 10 \p 1 m \p - \p dust_gen_x \p 2d-tiles \p day \p n\n
+RUN | $T/dc.+x | ladder | $T/f.pdl
+EXPECT_EXIT | 0 | param-known-level

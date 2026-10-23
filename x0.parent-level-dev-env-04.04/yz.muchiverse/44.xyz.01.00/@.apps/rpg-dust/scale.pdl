@@ -2,16 +2,16 @@ SECTION | KEY | VALUE
 ------------------------------
 # scale.pdl - the rpg-dust scale ladder, the universe seed and the tweakable parameters (R0 of BOOK 16.game/RPG-DUST-DESIGN.md; 2026-10-23, claude). PAPER DATA: no generator reads it yet. Checked by `ops/+x/dust_check.+x ladder scale.pdl`.
 # SEED | universe | <unsigned 64-bit decimal>          the one number every generated thing derives from (child seed = hash64(parent seed, child key), section 4 of the design; the hash op is R1)
-# PARAM | <name> | <number>                              tweakable inputs of the generators (names unique); different rows = a different solar system
+# PARAM | <name> | <number> [| <level id>]               tweakable inputs of the generators (names unique); the level (default: the root) is where the value enters the seed chain (dust_seed lseed): changing it changes that level and every level below it, never one above. Different rows = a different solar system
 # SCALE | id | log2_m | cell is about | parent | gen op | view | tick | note
 #   metres per cell = 2^log2_m. A child is SMALLER than its parent (so zooming in is going down the rows). view = 2d-tiles / 3d-voxel / field joined by +. tick = us ms second minute 10min hour day.
 #   To add a level (a galaxy above, a quark below): add a row and a dust_gen_<name> op. Nothing else changes.
 SEED  | universe | 20261023
-PARAM | star_mass_solar     | 1.0
-PARAM | metallicity         | 0.02
-PARAM | planet_count        | 8
-PARAM | ocean_fraction      | 0.7
-PARAM | axial_tilt_deg      | 23.4
+PARAM | star_mass_solar     | 1.0 | system
+PARAM | metallicity         | 0.02 | system
+PARAM | planet_count        | 8 | system
+PARAM | ocean_fraction      | 0.7 | globe
+PARAM | axial_tilt_deg      | 23.4 | globe
 SCALE | system   | 36  | 0.46 AU | -        | dust_gen_system | 2d-tiles          | day    | star, planets, moons; orbits from the seed (physics-nodes: kepler)
 SCALE | globe    | 20  | 1000 km | system   | dust_gen_globe  | 2d-tiles          | day    | one planet: oceans, land, ice, climate bands
 SCALE | region   | 14  | 16 km   | globe    | dust_gen_region | 2d-tiles          | hour   | biomes, rivers, mountains

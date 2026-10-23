@@ -3,6 +3,7 @@ RESULTS | ../results/dust_react.txt
 CASE | dust-react
 SCRATCH |
 COPY | @.apps/rpg-dust/ops/dust_check.c | dust_check.c
+COPY | @.apps/rpg-dust/ops/dust_pdl.c | dust_pdl.c
 COPY | &.widgits/_shared-lib/chem_formula.c | chem_formula.c
 COPY | &.widgits/concept-bank/data/chem/elements.pdl | elements.pdl
 COPY | @.apps/rpg-dust/reactions.pdl | reactions.pdl
