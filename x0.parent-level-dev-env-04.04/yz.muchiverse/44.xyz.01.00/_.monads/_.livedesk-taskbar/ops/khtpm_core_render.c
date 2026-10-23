@@ -259,6 +259,31 @@ static char g_house_root[PATH_BUF];
  * process (the player also coalesces across processes), and nothing is appended once the file passes 256 KB (the player truncates at 64 KB; a missing player must not
  * let it grow without bound). Volume, theme and the per-category switches are the PLAYER's business. */
 static int g_sound_enabled = 1, g_sound_ui = 1, g_sound_relay = 0, g_cue_relay = 0;
+/* The player is normally started by autostart (LAUNCH ui-sounds), but a desktop that was never reset since the sounds were added has none, and cues would pile up unheard.
+ * So a process that is about to write a cue checks (at most once a minute) whether state/player.pid names a live process and, if not, starts &.widgits/ui-sounds/start_player.sh run
+ * detached (double fork, no wait). The script is a singleton, so several windows racing is harmless; `run` does not play the startup chime. */
+static void ui_player_ensure(void) {
+    char pidf[PATH_BUF], script[PATH_BUF];
+    snprintf(pidf, sizeof(pidf), "%s/&.widgits/ui-sounds/state/player.pid", g_house_root);
+    snprintf(script, sizeof(script), "%s/&.widgits/ui-sounds/start_player.sh", g_house_root);
+    if (access(script, X_OK) != 0) return;
+    FILE *f = fopen(pidf, "r");
+    long pid = 0;
+    if (f) { if (fscanf(f, "%ld", &pid) != 1) pid = 0; fclose(f); }
+    if (pid > 1 && kill((pid_t)pid, 0) == 0) return;
+    pid_t c = fork();
+    if (c < 0) return;
+    if (c == 0) {
+        if (fork() != 0) _exit(0);
+        setsid();
+        int dn = open("/dev/null", O_RDWR);
+        if (dn >= 0) { dup2(dn, 0); dup2(dn, 1); dup2(dn, 2); if (dn > 2) close(dn); }
+        execl("/bin/bash", "bash", script, "run", (char *)NULL);
+        _exit(127);
+    }
+    int st;
+    waitpid(c, &st, 0);
+}
 static int g_skip_activate_cue = 0;   /* set by a handler that plays its own cue, so the generic activate cue after it is not added on top */
 static void ui_cue_ex(const char *name, int force) {
     if (!g_sound_enabled || !g_sound_ui || (g_cue_relay && !g_sound_relay) || !g_house_root[0]) return;
@@ -271,6 +296,8 @@ static void ui_cue_ex(const char *name, int force) {
     static long last_ms = -1000;
     if (!force && ms - last_ms < 25) return;
     last_ms = ms;
+    static long player_check_ms = -1000000;
+    if (ms - player_check_ms > 60000) { player_check_ms = ms; ui_player_ensure(); }
     char path[PATH_BUF];
     snprintf(path, sizeof(path), "%s/#.desktop/ui_cue.txt", g_house_root);
     struct stat st;
