@@ -4,6 +4,7 @@ CASE | dust-seed
 SCRATCH |
 COPY | @.apps/rpg-dust/ops/dust_seed.c | dust_seed.c
 COPY | @.apps/rpg-dust/ops/dust_pdl.c | dust_pdl.c
+COPY | @.apps/rpg-dust/ops/dust_hash.c | dust_hash.c
 RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -I | $T | -o | $T/ds.+x | $T/dust_seed.c
 EXPECT_EXIT | 0 | compiles-clean
 RUN | $T/ds.+x | mix | 0

@@ -1,0 +1,4 @@
+# dust_gen.pal - LOCKED acceptance harness for rpg-dust R2: region and area generators, determinism, parameter scoping, zoom conservation. Read results/dust_gen.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/dust_gen.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/dust_gen.pdl
+halt
