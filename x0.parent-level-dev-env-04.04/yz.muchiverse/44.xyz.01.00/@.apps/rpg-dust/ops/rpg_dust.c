@@ -13,7 +13,7 @@
 #define PET_VIEW_CELL "24"
 #define PET_VIEW_STYLE "tiles"
 #define PET_OWN_EXPORT 1
-#define PET_ROOM_PHASE(r, ph) do { if ((r) < 3) snprintf(ph, sizeof ph, "night"); } while (0)      /* rooms 0..2 are the ship: deep space is always night */
+#define PET_ROOM_PHASE(r, ph) do { if ((r) < 4) snprintf(ph, sizeof ph, "night"); } while (0)      /* rooms 0..3 are the ship: deep space is always night */
 #include "../../../&.widgits/_shared-lib/petslike_core.c"
 #else
 #if PET_SECTION == 1
@@ -25,11 +25,11 @@
 #elif PET_SECTION == 3
 /* ---- rpg-dust: room 0 = the region page, room 1 = the area page (section 73 builds them into these arrays once per process). glyph: G grass, p sand, T forest tree, ~ water, r rock / snow.
  * fs / ws: the floor and the wall/object slot of the 24 px tile atlas, cdep: hung blocks under the cell (always 0 here). ---- */
-#define SK_NR 5
+#define SK_NR 6
 #define SOX 2      /* the ship's footprint inside its 16 x 16 desk: 12 x 12 cells at (2,2); the planet is the backdrop around it */
 #define SOY 2
 #define SSZ 12
-#define SK_SHIP 3      /* rooms 0..2 are the ship (bridge, quarters, hold); 3 = the region page, 4 = the area page of the current planet */
+#define SK_SHIP 4      /* rooms 0..3 are the ship (bridge, quarters, hold, engine); 4 = the region page, 5 = the area page of the current planet */
 #define SK_W 16
 #define SK_H 16
 static char sk_glyph[SK_NR][SK_H][SK_W + 1];
@@ -71,8 +71,8 @@ static struct { char k[48]; char v[64]; long t; long ep; } g_fc[32];
 #elif PET_SECTION == 12
     for (int i = 0; i < nroom; i++) rooms[i].outdoor = 1;      /* every desk has sky: the ship hovers above the planet (later: dark, by distance from the sun, design D16) */
     sk_ensure_map(); ndoor = 0;      /* the ship's doors: a D cell in a wall, standing on it goes through (ty is the row above the D cell, ax/ay the arrival cell inside the other room) */
-    { static const int dd[4][7] = { {0, 5, 12, 1, 5, 4, 1}, {1, 5, 2, 0, 5, 12, 1}, {0, 10, 12, 2, 10, 4, 1}, {2, 10, 2, 0, 10, 12, 1} };      /* room, tx, ty, dest, ax, ay, autow */
-      for (int k = 0; k < 4 && ndoor < 24; k++) { Door *d = &doors[ndoor++]; d->room = dd[k][0]; d->tx = dd[k][1]; d->ty = dd[k][2]; d->dest = dd[k][3]; d->ax = dd[k][4]; d->ay = dd[k][5]; d->autow = dd[k][6]; } }
+    { static const int dd[6][7] = { {0, 5, 12, 1, 5, 4, 1}, {1, 5, 2, 0, 5, 12, 1}, {0, 10, 12, 2, 10, 4, 1}, {2, 10, 2, 0, 10, 12, 1}, {0, 2, 7, 3, 12, 8, 1}, {3, 13, 7, 0, 3, 8, 1} };      /* room, tx, ty, dest, ax, ay, autow */
+      for (int k = 0; k < 6 && ndoor < 24; k++) { Door *d = &doors[ndoor++]; d->room = dd[k][0]; d->tx = dd[k][1]; d->ty = dd[k][2]; d->dest = dd[k][3]; d->ax = dd[k][4]; d->ay = dd[k][5]; d->autow = dd[k][6]; } }
 #elif PET_SECTION == 13
 #elif PET_SECTION == 14
     char p[PATH_MAX], line[300]; spath(p, "house.txt");
@@ -344,13 +344,14 @@ static void sk_ship_room(int g, Sheet *a4, Sheet *door, int fc, int fr, int wc, 
 }
 static void sk_build_ship(void) {      /* called after the planet pages are painted: room SK_SHIP (the region page) is copied into every ship desk as the backdrop, then the ship is drawn over its middle */
     Sheet *a4 = sheet("tilesets", "SF_Inside_A4"), *door = sheet("characters", "!SF_Door1");
-    static const int bx[2] = {3, 8}, by[2] = {11, 11}, qx[1] = {3}, qy[1] = {1}, hx[1] = {8}, hy[1] = {1};
+    static const int bx[3] = {3, 8, 0}, by[3] = {11, 11, 6}, qx[1] = {3}, qy[1] = {1}, hx[1] = {8}, hy[1] = {1}, ex[1] = {11}, ey[1] = {6};
     for (int g = 0; g < SK_SHIP; g++) for (int y = 0; y < SK_H; y++) for (int x = 0; x < SK_W; x++) {      /* the planet below: its cells are copied in and SUNK under the ship's floor (negative extrusion in the ship desks' extrusion file), with a body hung under them; no planet = holes, only space */
         if (sk_pl_cur < 0) { sk_glyph[g][y][x] = '_'; sk_fs[g][y][x] = 0; sk_ws[g][y][x] = 0; sk_cdep[g][y][x] = 0; }
         else { sk_glyph[g][y][x] = sk_glyph[SK_SHIP][y][x]; sk_fs[g][y][x] = sk_fs[SK_SHIP][y][x]; sk_ws[g][y][x] = 0; sk_cdep[g][y][x] = 4 + sk_cdep[SK_SHIP][y][x]; if (sk_glyph[g][y][x] == 'T' || sk_glyph[g][y][x] == 'r') sk_glyph[g][y][x] = sk_glyph[g][y][x] == 'T' ? 'G' : 'p'; } }      /* trees and rocks become flat ground: seen from the ship the planet is a surface */
-    sk_ship_room(0, a4, door, 8, 11, 6, 2, bx, by, 2);      /* bridge: green hex floor, doors in the south wall to the quarters (left) and the hold (right) */
+    sk_ship_room(0, a4, door, 8, 11, 6, 2, bx, by, 3);      /* bridge, the hub: green hex floor, doors in the south wall to the quarters (left) and the hold (right) and in the west wall to the engine room */
     sk_ship_room(1, a4, door, 4, 1, 4, 2, qx, qy, 1);      /* quarters: wood, a door in the north wall */
     sk_ship_room(2, a4, door, 10, 11, 6, 2, hx, hy, 1);      /* hold: dark grating, a door in the north wall */
+    sk_ship_room(3, a4, door, 8, 6, 6, 2, ex, ey, 1);      /* engine room: dark diamond plate, a door in the east wall back to the bridge */
     for (int g = 0; g < SK_SHIP; g++) for (int ly = 0; ly < SSZ; ly++) for (int lx = 0; lx < SSZ; lx++) {      /* the hull is thin (one block hung under the floor): the ship hovers, the planet surface is sunk below it */
         int x = SOX + lx, y = SOY + ly; sk_cdep[g][y][x] = 1; }
 }
