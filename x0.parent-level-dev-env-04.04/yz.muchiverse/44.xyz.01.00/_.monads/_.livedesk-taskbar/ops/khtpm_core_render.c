@@ -250,6 +250,34 @@ static Elem *g_elem_pool_target = g_pool;
 static int *g_elem_n_target = &g_n_elems;
 static char g_package_dir[PATH_BUF];
 static char g_house_root[PATH_BUF];
+
+/* UI sound cues (BOOK 19.audio/UI-SOUNDS-AND-STARTUP-DESIGN.md, step U3, 2026-10-23). The render loop never plays or forks: a cue is ONE short append of
+ * `<CLOCK_MONOTONIC ms> <pid> <name>` to <house>/#.desktop/ui_cue.txt, which the separate ui_sound_player process (&.widgits/ui-sounds) reads and plays. Keys in
+ * hq_ui.pdl, live-reloaded with the others: sound_enabled (1), sound_ui (1), sound_relay (0 = input written by the agent relay is silent, so tests are quiet; a REAL
+ * click mirrored through the same file carries the `real` tag and is not silenced). LYFEDESK_MUTE=1 in the environment mutes this process. At most one cue per 25 ms per
+ * process (the player also coalesces across processes), and nothing is appended once the file passes 256 KB (the player truncates at 64 KB; a missing player must not
+ * let it grow without bound). Volume, theme and the per-category switches are the PLAYER's business. */
+static int g_sound_enabled = 1, g_sound_ui = 1, g_sound_relay = 0, g_cue_relay = 0;
+static void ui_cue(const char *name) {
+    if (!g_sound_enabled || !g_sound_ui || (g_cue_relay && !g_sound_relay) || !g_house_root[0]) return;
+    static int env_mute = -1;
+    if (env_mute < 0) { const char *e = getenv("LYFEDESK_MUTE"); env_mute = (e && *e && *e != '0'); }
+    if (env_mute) return;
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    long ms = (long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+    static long last_ms = -1000;
+    if (ms - last_ms < 25) return;
+    last_ms = ms;
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/ui_cue.txt", g_house_root);
+    struct stat st;
+    if (stat(path, &st) == 0 && st.st_size > 262144) return;
+    char buf[96];
+    int n = snprintf(buf, sizeof(buf), "%ld %d %s\n", ms, (int)getpid(), name);
+    int fd = open(path, O_WRONLY | O_APPEND | O_CREAT, 0644);
+    if (fd >= 0) { ssize_t w = write(fd, buf, (size_t)n); (void)w; close(fd); }
+}
 static char g_chtpm_path[PATH_BUF];  /* real, generic (2026-08-31) - the real .chtpm this process was launched against, kept for the generic live-reparse capability below */
 
 /* Entity-menu identity strip for the title bar (2026-09-09, direct
@@ -8874,7 +8902,7 @@ static int kh_row_run_extend(int dir) {
     return 1;
 }
 
-static void kh_nav_step(int dir) {
+static void kh_nav_step_impl(int dir) {
     int prev, n;
     if (g_n_nav < 1) return;
     /* ROW-RUN SELECTION (2026-10-12): moving the cursor WITHOUT shift ends
@@ -8939,6 +8967,12 @@ static void kh_nav_step(int dir) {
         if (g_focus_nav < 1) g_focus_nav = n;
         if (g_focus_nav > n) g_focus_nav = 1;
     } while (g_focus_nav != prev && !kh_elem_arrow_stop(g_nav[g_focus_nav - 1]));
+}
+
+static void kh_nav_step(int dir) {      /* UI sound cue wrapper (U3): the focus moved */
+    int before = g_focus_nav;
+    kh_nav_step_impl(dir);
+    if (g_focus_nav != before) ui_cue("nav_move");
 }
 static void kh_apply_scope_confine(void) {
     /* Do not shrink g_nav[] or zero nav_index. Snap focus if the
@@ -11488,7 +11522,7 @@ static void default_grid_handle_key(KeySym ks, char ch) {
     }
 }
 
-static void activate_focused(void) {
+static void activate_focused_impl(void) {
     if (g_focus_nav < 1 || g_focus_nav > g_n_nav) return;
     Elem *item = g_nav[g_focus_nav - 1];
     /* REAL FIX 2026-09-30 (live report: "after i clicked pc-hq, it
@@ -11725,6 +11759,11 @@ static void activate_focused(void) {
         return;
     }
     if (item->onclick[0]) dispatch(item->onclick);
+}
+
+static void activate_focused(void) {      /* UI sound cue wrapper (U3): Enter / click on the focused row */
+    if (g_focus_nav >= 1 && g_focus_nav <= g_n_nav) ui_cue("activate");
+    activate_focused_impl();
 }
 
 /* REAL, NEW 2026-09-06 - restore the HQ-menu "cli" terminal mirror.
@@ -14245,7 +14284,7 @@ static int span_press_hit(int px, int py, int *nav_out, int *idx_out,
     }
     return 0;
 }
-static int poll_agent_history(void) {
+static int poll_agent_history_impl(void) {
     char path[PATH_BUF];
     history_path(path, sizeof(path));
     struct stat st;
@@ -14273,6 +14312,7 @@ static int poll_agent_history(void) {
         *nl = '\0';
         long here = ftell(f);
         if (line[0] != '#') { /* '#'-prefixed lines are audit comments, not commands */
+            g_cue_relay = 1;   /* U3: relay-written until a `real` tag says otherwise */
             if (strncmp(line, "MOUSE_EVENT: ", 13) == 0) {
                 int button = 0, mx = 0, my = 0, is_press = 1;
 #ifdef _WIN32
@@ -14306,6 +14346,7 @@ static int poll_agent_history(void) {
                 char msrc[16] = "";
                 int nf = sscanf(line + 13, "%d %d %d %d %15s", &button, &mx, &my, &is_press, msrc);
                 int is_real = (strcmp(msrc, "real") == 0);
+                g_cue_relay = !is_real;
 #endif
                 if (nf >= 3 && is_press && (button == 4 || button == 5)) {
                     if (generic_sbar_wheel(mx, my, (button == 5) ? 1 : -1))
@@ -14470,6 +14511,12 @@ static int poll_agent_history(void) {
     fclose(f);
     g_history_cursor = consumed;
     return n;
+}
+
+static int poll_agent_history(void) {      /* UI sound cue wrapper (U3): input read from the relay file is silent unless tagged `real` or sound_relay=1 */
+    int r = poll_agent_history_impl();
+    g_cue_relay = 0;
+    return r;
 }
 
 /* ---- XDND drop target (see the g_drop_action block comment) ---- */
@@ -16718,6 +16765,9 @@ static void desktop_load_click_two_step(const char *house_root) {
             else if (strcmp(val, "0") == 0 || strcmp(val, "off") == 0) g_sbar_track = 0;
             else g_sbar_track = -1; /* auto */
         }
+        else if (strcmp(line, "sound_enabled") == 0) g_sound_enabled = atoi(val) != 0;
+        else if (strcmp(line, "sound_ui") == 0) g_sound_ui = atoi(val) != 0;
+        else if (strcmp(line, "sound_relay") == 0) g_sound_relay = atoi(val) != 0;
         else if (strcmp(line, "dropdown_max_rows") == 0) g_dropdown_max_rows = atoi(val) >= 3 ? atoi(val) : 0;
         /* 2026-09-11, CHTPM-INCREMENTAL-REPARSE-DESIGN.md - runtime
          * toggle for the incremental reparse path, OFF (0) unless this
