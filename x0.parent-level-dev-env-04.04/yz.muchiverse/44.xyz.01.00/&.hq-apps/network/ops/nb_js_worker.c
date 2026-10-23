@@ -1650,6 +1650,13 @@ static JSValue nb_canvas_toDataURL(JSContext *ctx, JSValueConst this_val, int ar
 static JSValue nb_el_onprop_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic);
 static JSValue nb_el_onprop_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic);
 
+static JSValue get_global_attr(JSContext *ctx, const char *name);
+
+static JSValue nb_doc_addEventListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_doc_removeEventListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_doc_dispatchEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_dom_createEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+
 /* ---- document natives ---- */
 static JSValue nb_dom_getElementById(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     char *owned = NULL;
@@ -2004,6 +2011,20 @@ static JSValue nb_dom_head(JSContext *ctx, JSValueConst this_val, int argc, JSVa
         else local_insert_before(g_dom_root, head, NULL);
     }
     return push_node(ctx, head);
+}
+
+/* document.createEvent — create a synthetic event object */
+static JSValue nb_dom_createEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)this_val;
+    if (argc < 1 || !JS_IsString(argv[0])) return JS_UNDEFINED;
+    const char *type = JS_ToCString(ctx, argv[0]);
+    if (!type) return JS_UNDEFINED;
+    JSValue Event = get_global_attr(ctx, "Event");
+    if (!JS_IsFunction(ctx, Event)) { JS_FreeValue(ctx, Event); JS_FreeCString(ctx, type); return JS_UNDEFINED; }
+    JSValue ev = JS_CallConstructor(ctx, Event, 1, argv);
+    JS_FreeValue(ctx, Event);
+    JS_FreeCString(ctx, type);
+    return ev;
 }
 
 /* ---- element natives (this = element object) ---- */
@@ -6543,6 +6564,19 @@ static void install_dom(JSContext *ctx) {
                 JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
             JS_FreeAtom(ctx, nm);
         }
+        JS_SetPropertyStr(ctx, doc, "referrer", JS_NewString(ctx, ""));
+        JS_SetPropertyStr(ctx, doc, "domain", JS_NewString(ctx, ""));
+        JS_SetPropertyStr(ctx, doc, "visibilityState", JS_NewString(ctx, "visible"));
+        JS_SetPropertyStr(ctx, doc, "hidden", JS_NewBool(ctx, 0));
+        JS_SetPropertyStr(ctx, doc, "readyState", JS_NewString(ctx, "complete"));
+        JS_SetPropertyStr(ctx, doc, "createEvent",
+                          JS_NewCFunction(ctx, nb_dom_createEvent, "createEvent", 1));
+        JS_SetPropertyStr(ctx, doc, "addEventListener",
+                          JS_NewCFunction(ctx, nb_doc_addEventListener, "addEventListener", 2));
+        JS_SetPropertyStr(ctx, doc, "removeEventListener",
+                          JS_NewCFunction(ctx, nb_doc_removeEventListener, "removeEventListener", 2));
+        JS_SetPropertyStr(ctx, doc, "dispatchEvent",
+                          JS_NewCFunction(ctx, nb_doc_dispatchEvent, "dispatchEvent", 1));
     }
     JS_FreeValue(ctx, doc);
 

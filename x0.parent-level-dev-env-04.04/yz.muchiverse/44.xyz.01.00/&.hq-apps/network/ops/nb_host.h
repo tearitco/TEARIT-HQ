@@ -955,6 +955,61 @@ static const char g_js_prelude[] =
 "  Object.defineProperty(window,'webkitAudioContext',{ value:AudioContext, configurable:true, writable:true });\n"
 "})();\n";
 
+/* crypto.getRandomValues implementation */
+static JSValue nb_crypto_getRandomValues(JSContext *ctx, JSValueConst this_val,
+                                         int argc, JSValueConst *argv) {
+    (void)this_val;
+    if (argc < 1 || !JS_IsObject(argv[0])) {
+        JS_ThrowTypeError(ctx, "getRandomValues requires an array argument");
+        return JS_EXCEPTION;
+    }
+    JSValue array = argv[0];
+    int32_t len = 0;
+    JSValue len_val = JS_GetPropertyStr(ctx, array, "length");
+    if (JS_IsNumber(len_val)) JS_ToInt32(ctx, &len, len_val);
+    JS_FreeValue(ctx, len_val);
+    if (len <= 0) return array;
+    
+    for (int32_t i = 0; i < len; i++) {
+        uint32_t val = (uint32_t)(rand() & 0xFFFFFFFF);
+        JSValue val_js = JS_NewUint32(ctx, val);
+        JS_SetPropertyUint32(ctx, array, (uint32_t)i, val_js);
+        JS_FreeValue(ctx, val_js);
+    }
+    return array;
+}
+
+/* requestAnimationFrame / cancelAnimationFrame implementation */
+static int g_raf_counter = 0;
+static int g_raf_id = 1;
+static JSValue g_raf_callbacks[128] = {0};
+
+static JSValue nb_requestAnimationFrame(JSContext *ctx, JSValueConst this_val,
+                                        int argc, JSValueConst *argv) {
+    (void)this_val;
+    if (argc < 1 || !JS_IsFunction(ctx, argv[0])) {
+        JS_ThrowTypeError(ctx, "requestAnimationFrame requires a function argument");
+        return JS_EXCEPTION;
+    }
+    int id = g_raf_id++;
+    if (id >= 128) id = 1;
+    g_raf_callbacks[id] = JS_DupValue(ctx, argv[0]);
+    return JS_NewInt32(ctx, id);
+}
+
+static JSValue nb_cancelAnimationFrame(JSContext *ctx, JSValueConst this_val,
+                                       int argc, JSValueConst *argv) {
+    (void)this_val;
+    if (argc < 1 || !JS_IsNumber(argv[0])) return JS_UNDEFINED;
+    int32_t id;
+    JS_ToInt32(ctx, &id, argv[0]);
+    if (id > 0 && id < 128 && !JS_IsUndefined(g_raf_callbacks[id])) {
+        JS_FreeValue(ctx, g_raf_callbacks[id]);
+        g_raf_callbacks[id] = JS_UNDEFINED;
+    }
+    return JS_UNDEFINED;
+}
+
 static void install_host(JSContext *ctx) {
     JSValue g = JS_GetGlobalObject(ctx);
 
@@ -1033,6 +1088,9 @@ static void install_host(JSContext *ctx) {
     JS_SetPropertyStr(ctx, nav, "vendorSub", JS_NewString(ctx, ""));
     JS_SetPropertyStr(ctx, nav, "product", JS_NewString(ctx, "Gecko"));
     JS_SetPropertyStr(ctx, nav, "productSub", JS_NewString(ctx, "20030107"));
+    JS_SetPropertyStr(ctx, nav, "webdriver", JS_NewBool(ctx, 0));
+    JS_SetPropertyStr(ctx, nav, "permissions", JS_NULL);
+    JS_SetPropertyStr(ctx, nav, "connection", JS_NULL);
     JS_SetPropertyStr(ctx, g, "navigator", nav);
 
     /* screen */
@@ -1043,6 +1101,7 @@ static void install_host(JSContext *ctx) {
     JS_SetPropertyStr(ctx, scr, "availHeight", JS_NewInt32(ctx, 1080));
     JS_SetPropertyStr(ctx, scr, "colorDepth",  JS_NewInt32(ctx, 24));
     JS_SetPropertyStr(ctx, scr, "pixelDepth",  JS_NewInt32(ctx, 24));
+    JS_SetPropertyStr(ctx, scr, "devicePixelRatio", JS_NewFloat64(ctx, 1.0));
     JS_SetPropertyStr(ctx, g, "screen", scr);
 
     /* performance — real now()/mark()/getEntriesByType, inert navigation
@@ -1064,6 +1123,117 @@ static void install_host(JSContext *ctx) {
     JS_SetPropertyStr(ctx, ptime, "navigationStart", JS_NewInt64(ctx, 0));
     JS_SetPropertyStr(ctx, perf, "timing", ptime);
     JS_SetPropertyStr(ctx, g, "performance", perf);
+
+    /* crypto — minimal implementation for fingerprinting */
+    JSValue crypto = JS_NewObject(ctx);
+    JSValue subtle = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, subtle, "digest",
+                      JS_NewCFunction(ctx, native_noop, "digest", 2));
+    JS_SetPropertyStr(ctx, subtle, "generateKey",
+                      JS_NewCFunction(ctx, native_noop, "generateKey", 3));
+    JS_SetPropertyStr(ctx, subtle, "importKey",
+                      JS_NewCFunction(ctx, native_noop, "importKey", 4));
+    JS_SetPropertyStr(ctx, subtle, "exportKey",
+                      JS_NewCFunction(ctx, native_noop, "exportKey", 2));
+    JS_SetPropertyStr(ctx, subtle, "sign",
+                      JS_NewCFunction(ctx, native_noop, "sign", 3));
+    JS_SetPropertyStr(ctx, subtle, "verify",
+                      JS_NewCFunction(ctx, native_noop, "verify", 3));
+    JS_SetPropertyStr(ctx, subtle, "deriveKey",
+                      JS_NewCFunction(ctx, native_noop, "deriveKey", 3));
+    JS_SetPropertyStr(ctx, subtle, "deriveBits",
+                      JS_NewCFunction(ctx, native_noop, "deriveBits", 3));
+    JS_SetPropertyStr(ctx, subtle, "encrypt",
+                      JS_NewCFunction(ctx, native_noop, "encrypt", 3));
+    JS_SetPropertyStr(ctx, subtle, "decrypt",
+                      JS_NewCFunction(ctx, native_noop, "decrypt", 3));
+    JS_SetPropertyStr(ctx, subtle, "wrapKey",
+                      JS_NewCFunction(ctx, native_noop, "wrapKey", 4));
+    JS_SetPropertyStr(ctx, subtle, "unwrapKey",
+                      JS_NewCFunction(ctx, native_noop, "unwrapKey", 4));
+    JS_SetPropertyStr(ctx, crypto, "subtle", subtle);
+    JS_SetPropertyStr(ctx, crypto, "getRandomValues",
+                      JS_NewCFunction(ctx, nb_crypto_getRandomValues, "getRandomValues", 1));
+    JS_SetPropertyStr(ctx, g, "crypto", crypto);
+
+    /* indexedDB — stub */
+    JS_SetPropertyStr(ctx, g, "indexedDB", JS_NULL);
+
+    /* Notification — stub */
+    JSValue notification = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, notification, "permission", JS_NewString(ctx, "denied"));
+    JS_SetPropertyStr(ctx, notification, "requestPermission",
+                      JS_NewCFunction(ctx, native_noop, "requestPermission", 1));
+    JS_SetPropertyStr(ctx, g, "Notification", notification);
+
+    /* requestAnimationFrame / cancelAnimationFrame */
+    JS_SetPropertyStr(ctx, g, "requestAnimationFrame",
+                      JS_NewCFunction(ctx, nb_requestAnimationFrame, "requestAnimationFrame", 1));
+    JS_SetPropertyStr(ctx, g, "cancelAnimationFrame",
+                      JS_NewCFunction(ctx, nb_cancelAnimationFrame, "cancelAnimationFrame", 1));
+
+    /* WebAssembly — stub for Cloudflare challenges */
+    JSValue wasm = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, wasm, "compile",
+                      JS_NewCFunction(ctx, native_noop, "compile", 1));
+    JS_SetPropertyStr(ctx, wasm, "instantiate",
+                      JS_NewCFunction(ctx, native_noop, "instantiate", 2));
+    JS_SetPropertyStr(ctx, wasm, "compileStreaming",
+                      JS_NewCFunction(ctx, native_noop, "compileStreaming", 1));
+    JS_SetPropertyStr(ctx, wasm, "instantiateStreaming",
+                      JS_NewCFunction(ctx, native_noop, "instantiateStreaming", 2));
+    JS_SetPropertyStr(ctx, g, "WebAssembly", wasm);
+
+    /* Intl — stub for locale detection */
+    JSValue intl = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, intl, "DateTimeFormat",
+                      JS_NewCFunction(ctx, native_noop, "DateTimeFormat", 2));
+    JS_SetPropertyStr(ctx, intl, "NumberFormat",
+                      JS_NewCFunction(ctx, native_noop, "NumberFormat", 2));
+    JS_SetPropertyStr(ctx, intl, "Collator",
+                      JS_NewCFunction(ctx, native_noop, "Collator", 2));
+    JS_SetPropertyStr(ctx, intl, "getCanonicalLocales",
+                      JS_NewCFunction(ctx, native_noop, "getCanonicalLocales", 1));
+    JS_SetPropertyStr(ctx, g, "Intl", intl);
+
+    /* Blob / File / FileReader — stubs */
+    JSValue blob_ctor = JS_NewCFunction(ctx, native_noop, "Blob", 2);
+    JS_SetPropertyStr(ctx, g, "Blob", blob_ctor);
+    JS_SetPropertyStr(ctx, g, "File", blob_ctor);
+    JSValue fr_ctor = JS_NewCFunction(ctx, native_noop, "FileReader", 0);
+    JS_SetPropertyStr(ctx, fr_ctor, "readAsText", JS_NewCFunction(ctx, native_noop, "readAsText", 1));
+    JS_SetPropertyStr(ctx, fr_ctor, "readAsDataURL", JS_NewCFunction(ctx, native_noop, "readAsDataURL", 1));
+    JS_SetPropertyStr(ctx, fr_ctor, "readAsArrayBuffer", JS_NewCFunction(ctx, native_noop, "readAsArrayBuffer", 1));
+    JS_SetPropertyStr(ctx, fr_ctor, "onload", JS_NULL);
+    JS_SetPropertyStr(ctx, fr_ctor, "onerror", JS_NULL);
+    JS_SetPropertyStr(ctx, g, "FileReader", fr_ctor);
+
+    /* DeviceOrientationEvent / DeviceMotionEvent — stubs */
+    JSValue devOrient = JS_NewCFunction(ctx, native_noop, "DeviceOrientationEvent", 2);
+    JS_SetPropertyStr(ctx, g, "DeviceOrientationEvent", devOrient);
+    JSValue devMotion = JS_NewCFunction(ctx, native_noop, "DeviceMotionEvent", 2);
+    JS_SetPropertyStr(ctx, g, "DeviceMotionEvent", devMotion);
+
+    /* screen.orientation — stub */
+    JSValue screenOrient = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, screenOrient, "type", JS_NewString(ctx, "landscape-primary"));
+    JS_SetPropertyStr(ctx, screenOrient, "angle", JS_NewInt32(ctx, 0));
+    JS_SetPropertyStr(ctx, screenOrient, "lock", JS_NewCFunction(ctx, native_noop, "lock", 1));
+    JS_SetPropertyStr(ctx, screenOrient, "unlock", JS_NewCFunction(ctx, native_noop, "unlock", 0));
+    JS_SetPropertyStr(ctx, screenOrient, "onchange", JS_NULL);
+    JS_SetPropertyStr(ctx, scr, "orientation", screenOrient);
+
+    /* navigator.mediaDevices — stub */
+    JSValue mediaDevices = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, mediaDevices, "getUserMedia",
+                      JS_NewCFunction(ctx, native_noop, "getUserMedia", 1));
+    JS_SetPropertyStr(ctx, mediaDevices, "enumerateDevices",
+                      JS_NewCFunction(ctx, native_noop, "enumerateDevices", 0));
+    JSValue nav2 = JS_GetPropertyStr(ctx, g, "navigator");
+    if (JS_IsObject(nav2)) {
+        JS_SetPropertyStr(ctx, nav2, "mediaDevices", mediaDevices);
+    }
+    JS_FreeValue(ctx, nav2);
 
     /* localStorage / sessionStorage share one inert storage object */
     JSValue stor = JS_NewObject(ctx);
