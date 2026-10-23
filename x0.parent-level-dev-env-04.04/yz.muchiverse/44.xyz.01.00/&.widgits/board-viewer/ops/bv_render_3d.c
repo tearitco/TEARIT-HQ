@@ -660,6 +660,10 @@ static Vec3 v3_norm(Vec3 a) {
  * tactics-txt's own legend files (seeded by their own button.sh, same
  * place board.txt/entities.txt already get touched) reproduce their
  * EXACT prior hardcoded values - this is a pure refactor. */
+static unsigned char *g_bspr; static size_t g_bspr_cap; static int g_bspr_any; static int g_bspr_thick = 80;      /* building_thickness (percent of a cell, 10..100) */
+      /* building_draw=sprite: per-cell flags of this frame (see render_one_frame) */
+#define BSPR_MAX_BOXES 96      /* building_draw=sprite: boxes spent on building slabs (one per cell per level; the GPU scene holds 128 boxes shared with entities) */
+#define BSPR_MAX_SLOTS 20      /* ... and distinct tile pictures (a model each; 80 models shared with entities) */
 #define MAX_TERRAIN_LEGEND 32
 typedef struct {
     char glyph;
@@ -3657,6 +3661,35 @@ static int render_one_frame(void) {
             snprintf(vp, sizeof(vp), "%s/pieces/system/view.pdl", focused_project_root);
             read_kv_str(vp, "event_draw", mode, sizeof(mode));
             int card_furn = strncmp(mode, "billboard", 9) == 0;
+            /* building_draw=sprite (view.pdl, default cubes; building_thickness=10..100 percent of a cell, default 80): tall glyph cells (height >= 3: walls, doors) are drawn like a sprite entity - the picture of the cell's tile, each opaque pixel a column,
+             * transparent pixels left out - instead of a stack of cubes. Budget: at most BSPR_MAX_BOXES slabs (a cell of height h costs h) and BSPR_MAX_SLOTS distinct tile pictures (a model each); cells over the budget stay cubes. */
+            char bmode[32]; read_kv_str(vp, "building_draw", bmode, sizeof(bmode));
+            int bld = strncmp(bmode, "sprite", 6) == 0;
+            g_bspr_any = 0;
+            g_bspr_thick = read_kv_int(vp, "building_thickness", 80); if (g_bspr_thick < 10) g_bspr_thick = 10; if (g_bspr_thick > 100) g_bspr_thick = 100;
+            if (bld) {
+                size_t need = (size_t)g_mk.w * (size_t)g_mk.h;
+                if (need > g_bspr_cap) { free(g_bspr); g_bspr = calloc(need, 1); g_bspr_cap = g_bspr ? need : 0; }
+                if (!g_bspr) bld = 0;
+            }
+            if (bld) {
+                int slots_seen[BSPR_MAX_SLOTS], ns = 0, nbox = 0;
+                memset(g_bspr, 0, (size_t)g_mk.w * (size_t)g_mk.h);
+                if (g_mk.glyph && g_mk.cells) {
+                    for (int my = 0; my < g_mk.h && nbox < BSPR_MAX_BOXES; my++)
+                        for (int mx = 0; mx < g_mk.w && nbox < BSPR_MAX_BOXES; mx++) {
+                            unsigned char zg = (unsigned char)g_mk.glyph[my * g_mk.w + mx];
+                            if (zg >= 128 || g_mk.draw[zg] || g_mk.zh[zg] < 3 || nbox + g_mk.zh[zg] > BSPR_MAX_BOXES) continue;
+                            unsigned short *bc = g_mk.cells + ((size_t)my * g_mk.w + mx) * 2;
+                            int bslot = bc[1] ? bc[1] : bc[0];
+                            if (bslot <= 0) continue;
+                            int known = 0; for (int k = 0; k < ns; k++) if (slots_seen[k] == bslot) known = 1;
+                            if (!known) { if (ns >= BSPR_MAX_SLOTS) continue; slots_seen[ns++] = bslot; }
+                            g_bspr[(size_t)my * g_mk.w + mx] = 1; nbox += g_mk.zh[zg]; g_bspr_any = 1;
+                        }
+                }
+            }
+#define BSPR(mx_, my_) (g_bspr && g_bspr_any && (mx_) >= 0 && (my_) >= 0 && (mx_) < g_mk.w && (my_) < g_mk.h && g_bspr[(size_t)(my_) * g_mk.w + (size_t)(mx_)])
             int z_count = 1;
             for (int row = 0; row < vwh; row++)
                 for (int col = 0; col < vww; col++) {
@@ -3668,6 +3701,7 @@ static int render_one_frame(void) {
                         int furn = card_furn && zg < 128 && g_mk.zh[zg] == 2;
                         if (zg < 128 && g_mk.draw[zg]) sprite = 1;
                         else if (furn) sprite = 1;
+                        else if (BSPR(mx, my)) sprite = 1;
                         else if (zg < 128 && g_mk.zh[zg] > 1) h = g_mk.zh[zg];
                     }
                     size_t src = ((size_t)my * g_mk.w + (size_t)mx) * 2;
@@ -3686,6 +3720,7 @@ static int render_one_frame(void) {
                         furn = card_furn && zg < 128 && g_mk.zh[zg] == 2;
                         if (zg < 128 && g_mk.draw[zg]) sprite = 1;
                         else if (furn) sprite = 1;
+                        else if (BSPR(mx, my)) sprite = 1;
                         else if (zg < 128 && g_mk.zh[zg] > 1) h = g_mk.zh[zg];
                     }
                     if (h <= 1 && !sprite && my >= 0 && my < g_mk.h && mx >= 0 && mx < g_mk.w && g_mk.cells[src + 1]) h = 3;
@@ -3700,9 +3735,10 @@ static int render_one_frame(void) {
                         if (hi > z_count) hi = z_count;
                         if (!hole) for (int lvl = lo; lvl < hi; lvl++) gpu_grid[col + row * vww + lvl * vww * vwh] = 1;
                     }
-                    if (cropped || card_furn) {
+                    if (cropped || card_furn || g_bspr_any) {
                         unsigned short fl = g_mk.cells[src], wl = g_mk.cells[src + 1];
                         if (furn) { fl = 0; wl = 0; }   /* the cube's tile moves onto the card */
+                        if (BSPR(mx, my)) wl = 0;       /* the wall tile moves onto the extruded building picture; the floor stays */
                         view_cells[((size_t)row * vww + col) * 2] = fl;
                         view_cells[((size_t)row * vww + col) * 2 + 1] = wl;
                     }
@@ -3712,9 +3748,9 @@ static int render_one_frame(void) {
             sc.legend_n = 1; sc.legend_glyph[0] = 1;
             sc.legend_rgb[0][0] = sc.legend_rgb[0][1] = sc.legend_rgb[0][2] = 0.5f;
             sc.legend_has_tex[0] = 0;
-            sc.maker = 1; sc.maker_id = g_mk.id + (card_furn ? 100000 : 0); sc.zoff = g_mk.zoff; sc.rock = g_mk.rock;
+            sc.maker = 1; sc.maker_id = g_mk.id + (card_furn ? 100000 : 0) + (g_bspr_any ? 200000 : 0); sc.zoff = g_mk.zoff; sc.rock = g_mk.rock;
             sc.atlas = g_mk.atlas; sc.atlas_w = g_mk.aw; sc.atlas_h = g_mk.ah; sc.atlas_cols = g_mk.cols; sc.tile_px = g_mk.tile_px;
-            sc.cells = (cropped || card_furn) ? view_cells : g_mk.cells;
+            sc.cells = (cropped || card_furn || g_bspr_any) ? view_cells : g_mk.cells;
             sc.cells_w = vww; sc.cells_h = vwh;
             sc.para = g_mk.para; sc.para_w = g_mk.para_w; sc.para_h = g_mk.para_h;
             sc.para_loop_x = g_mk.para_lx; sc.para_loop_y = g_mk.para_ly; sc.para_ver = g_mk.para_ver;
@@ -3829,14 +3865,48 @@ static int render_one_frame(void) {
             int face_x = card && fabs(cam.forward.x) > fabs(cam.forward.z);
             if (g_mk.atlas && g_mk.glyph && g_mk.cells && g_mk.tile_px > 0 && g_mk.cols > 0) {
                 int tp = g_mk.tile_px;
+                int bslot_key[BSPR_MAX_SLOTS], bslot_model[BSPR_MAX_SLOTS], bslot_n = 0;      /* building pictures: one model per distinct tile, shared by every cell that shows it */
                 for (int my = 0; my < g_mk.h && sc.model_n < BV_GPU_MAX_MODEL - 6; my++)
                     for (int mx = 0; mx < g_mk.w && sc.model_n < BV_GPU_MAX_MODEL - 6; mx++) {
                         unsigned char zg = (unsigned char)g_mk.glyph[my * g_mk.w + mx];
                         int furn = card && zg < 128 && g_mk.zh[zg] == 2;
-                        if (zg >= 128 || (!g_mk.draw[zg] && !furn)) continue;
+                        int isb = BSPR(mx, my);
+                        if (zg >= 128 || (!g_mk.draw[zg] && !furn && !isb)) continue;
                         unsigned short *cell = g_mk.cells + ((size_t)my * g_mk.w + mx) * 2;
                         int slot = cell[1] ? cell[1] : cell[0];
                         if (slot <= 0) continue;
+                        if (isb) {
+                            int hmb = -1, kb;
+                            for (kb = 0; kb < bslot_n; kb++) if (bslot_key[kb] == slot) hmb = bslot_model[kb];
+                            if (kb == bslot_n || hmb < 0) {
+                                int bx = (slot % g_mk.cols) * tp, by = (slot / g_mk.cols) * tp;
+                                static PhymojiVoxel bvox[16 * 24 * 8];
+                                int bnv = 0, bcr = 160, bcg = 120, bcb = 70;
+                                for (int py = 0; py < 16; py++)
+                                    for (int px = 0; px < 16; px++) {
+                                        int sx = bx + px * tp / 16, sy = by + py * tp / 16;
+                                        if (sx < 0 || sy < 0 || sx >= g_mk.aw || sy >= g_mk.ah) continue;
+                                        const unsigned char *bs = g_mk.atlas + ((size_t)sy * g_mk.aw + sx) * 4;
+                                        if (bs[3] < 16) continue;
+                                        bcr = bs[0]; bcg = bs[1]; bcb = bs[2];
+                                        for (int z = 0; z < 8 && bnv < 16 * 24 * 8; z++) {
+                                            bvox[bnv].lx = (unsigned char)px; bvox[bnv].ly = (unsigned char)(15 - py); bvox[bnv].lz = (unsigned char)z;
+                                            bvox[bnv].r = bs[0]; bvox[bnv].g = bs[1]; bvox[bnv].b = bs[2]; bnv++;
+                                        }
+                                    }
+                                hmb = (bnv > 0) ? GPU_ADD_MODEL(bvox, bnv, 15, 15, 7) : -1;
+                                if (kb == bslot_n && bslot_n < BSPR_MAX_SLOTS) { bslot_key[bslot_n] = slot; bslot_model[bslot_n] = hmb; bslot_n++; }
+                                (void)bcr; (void)bcg; (void)bcb;
+                            }
+                            if (hmb >= 0) {
+                                int bh = g_mk.zh[zg];      /* one slab per level, each the tile picture 16 x 16 (the same repeat the cube stack had) */
+                                for (int lvl = 0; lvl < bh; lvl++) {
+                                    ADDBOX(mx + 0.0, 1.0 + lvl, my + 0.5 - g_bspr_thick / 200.0, mx + 1.0, 2.0 + lvl, my + 0.5 + g_bspr_thick / 200.0, 160, 120, 70, 0);
+                                    if (sc.box_n > 0) sc.box[sc.box_n - 1].model = hmb;
+                                }
+                            }
+                            continue;
+                        }
                         int ox = (slot % g_mk.cols) * tp, oy = (slot / g_mk.cols) * tp;
                         PhymojiVoxel vox[16 * 24 * 8];
                         int nv = 0, cr = 160, cg = 120, cb = 70;

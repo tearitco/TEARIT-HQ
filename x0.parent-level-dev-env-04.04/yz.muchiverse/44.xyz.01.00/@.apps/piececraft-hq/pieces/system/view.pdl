@@ -5,3 +5,9 @@ see_through=0
 # event_draw=billboard draws height-2 tables and stools as one thin card
 # of their tile, facing the camera. People stay extruded.
 event_draw=billboard
+# building_draw=sprite (2026-10-23, EXPERIMENT; default = cubes, i.e. leave this line out): on painted (pets-like) maps the tall glyph cells (EXTRUDE height >= 3: walls, doors) are drawn like a
+# sprite entity instead of a stack of cubes: the picture of the cell's tile with each opaque pixel a column and the transparent pixels left out, one slab per level. Cells over the budget
+# (96 slabs, 20 distinct tile pictures) stay cubes, so nothing disappears. Read every frame (wake the engine to see it); delete the line to go back.
+# building_thickness=10..100 is the slab depth in percent of a cell (default 80; 30 gives thin cut-out walls).
+# building_draw=sprite
+# building_thickness=30
