@@ -937,6 +937,11 @@ static void follow_pchq(void) {
     char wp[PATH_MAX], xp[PATH_MAX], hp[PATH_MAX], m[64] = "", dk[64] = ""; snprintf(wp, sizeof wp, "%s/pieces/world_01/state.txt", PCHQ);
     char wb[2048]; read_file(wp, wb, sizeof wb); for (char *l = strtok(wb, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "map_id=", 7)) snprintf(m, sizeof m, "%s", l + 7); else if (!strncmp(l, "desk_id=", 8)) snprintf(dk, sizeof dk, "%s", l + 8); }
     if (strcmp(m, "" PET_APP "")) return;
+#ifndef PET_OWN_EXPORT
+    { static int vz_done = 0; if (!vz_done) { vz_done = 1;      /* z / x lower limit of the engine's xelector: a painted map has no levels under the floor, so stop at standing on it (xelector_z_min=1, levels relative to board_manifest floor_z). Without the line the engine's limit is level 0 and z walked the xelector far under the floor, where x then did nothing visible for many presses. A skin with hung rock (PET_OWN_EXPORT: rpg-edit-hq) writes its own, deeper value. */
+        char vp[PATH_MAX], vb[4096] = ""; snprintf(vp, sizeof vp, "%s/pieces/system/view.pdl", PCHQ); read_file(vp, vb, sizeof vb);
+        if (!strstr(vb, "xelector_z_min")) { FILE *vf = fopen(vp, "a"); if (vf) { fputs("# painted map: z / x stop at the floor (levels relative to the floor)\nxelector_z_min=1\n", vf); fclose(vf); } } } }
+#endif
     publish_sky(wp);
     for (int r = 0; r < nroom; r++) write_room_events(r);
 #define PET_SECTION 48

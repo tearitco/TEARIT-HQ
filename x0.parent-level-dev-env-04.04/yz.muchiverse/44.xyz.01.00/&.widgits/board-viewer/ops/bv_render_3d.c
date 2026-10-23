@@ -3166,7 +3166,12 @@ static int render_one_frame(void) {
     int maker_ground = maker_load(focused_project_root);
     if (maker_ground) {
         g_hero_present = 0;
-        if (g_xelector_present) g_xelector_z = 0;
+        if (g_xelector_present) {      /* the xelector's pos_z in levels relative to where it stands on the floor (board_manifest floor_z + 1 = 0): the camera anchor, the z / x lift and the outline all follow it like pc-hq's stack. It used to be forced to 0 here, so z / x moved pos_z and nothing on screen (and the lift below then read 0 - floor - 1 and sat at the bottom of the hung rock). */
+            char mfq[PATH_BUF]; snprintf(mfq, sizeof(mfq), "%s/pieces/system/board_manifest.txt", focused_project_root);
+            int mfz0 = read_kv_int(mfq, "floor_z", -1);
+            g_xelector_z = mfz0 >= 0 ? g_xelector_z - mfz0 - 1 : 0;
+            if (g_xelector_z < -g_mk.zoff) g_xelector_z = -g_mk.zoff;
+        }
         int kept = 0;
         for (int i = 0; i < g_phymoji_world_entity_count; i++) {
             const char *id = g_phymoji_world_entities[i].entity_id;
@@ -3757,10 +3762,7 @@ static int render_one_frame(void) {
         if (g_xelector_present && camera_mode != 1) {
             if (sc.maker) {
                 /* z / x move the selector in levels: the floor (board_manifest floor_z + 1) is where it stands, each level down goes into the hung rock (the grid is lifted by zoff, so that is room for zoff levels) */
-                char mfp[PATH_BUF]; snprintf(mfp, sizeof(mfp), "%s/pieces/system/board_manifest.txt", focused_project_root);
-                int mfz = read_kv_int(mfp, "floor_z", -1);
-                double mdz = mfz >= 0 ? (double)(g_xelector_z - mfz - 1) : 0.0;
-                if (mdz < -(double)g_mk.zoff) mdz = -(double)g_mk.zoff;
+                double mdz = (double)g_xelector_z;      /* already relative to the floor (see maker_ground above) and clamped to the hung depth */
                 ADDWIRE(g_xelector_x+0.15, 1.0+mdz, g_xelector_y+0.15, g_xelector_x+0.85, 2.6+mdz, g_xelector_y+0.85, 40,255,80);
             }      /* the same box as a sprite, as an outline so the selected sprite inside it stays visible */
             else ADDBOX(g_xelector_x+0.15, g_xelector_z+0.15, g_xelector_y+0.15,
