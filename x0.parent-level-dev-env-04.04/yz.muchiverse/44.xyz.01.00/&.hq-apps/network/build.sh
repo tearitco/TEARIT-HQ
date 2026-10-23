@@ -32,7 +32,7 @@ $CC -std=c11 -Wall -O2 -o "$SDIR/+x/network_browser_manager.+x" "$SDIR/network_b
 # convention as stb_image.h already used elsewhere in the house - both
 # live in the shared &.hq-apps/js/ dir, not copied per-op.
 echo "-- nb_js_eval -> ops/+x/nb_js_eval.+x"
-$CC -std=gnu11 -Wall -O2 -D_GNU_SOURCE -DCONFIG_VERSION=\"2026-06-04\" -fwrapv -pthread -I"$JSDIR" -o "$SDIR/ops/+x/nb_js_eval.+x" "$SDIR/ops/nb_js_eval.c" "$JSDIR/quickjs.c" "$JSDIR/cutils.c" "$JSDIR/libregexp.c" "$JSDIR/libunicode.c" "$JSDIR/dtoa.c" -lm && echo "OK nb_js_eval" || exit 1
+$CC -std=gnu11 -Wall -O2 -D_GNU_SOURCE -DCONFIG_VERSION=\"2026-06-04\" -DNDEBUG -fwrapv -pthread -I"$JSDIR" -o "$SDIR/ops/+x/nb_js_eval.+x" "$SDIR/ops/nb_js_eval.c" "$JSDIR/quickjs.c" "$JSDIR/cutils.c" "$JSDIR/libregexp.c" "$JSDIR/libunicode.c" "$JSDIR/dtoa.c" -lm && echo "OK nb_js_eval" || exit 1
 
 # 2026-09-04 (NB-JS worker plan step 2): resident worker owned by the
 # manager, line-RPC over a socketpair dup2'd to stdin/stdout. Shares the
@@ -51,7 +51,7 @@ if pkg-config --exists egl glesv2 2>/dev/null; then
 else
   echo "note: no egl/glesv2 dev - worker builds without WebGL"
 fi
-$CC -std=gnu11 -Wall -O2 -D_GNU_SOURCE -DCONFIG_VERSION=\"2026-06-04\" -fwrapv -pthread -I"$JSDIR" $GL_CFLAGS -o "$SDIR/ops/+x/nb_js_worker.+x" "$SDIR/ops/nb_js_worker.c" "$SDIR/nb_dom.c" "$SDIR/nb_css.c" "$JSDIR/quickjs.c" "$JSDIR/cutils.c" "$JSDIR/libregexp.c" "$JSDIR/libunicode.c" "$JSDIR/dtoa.c" -lm $GL_LIBS && echo "OK nb_js_worker" || exit 1
+$CC -std=gnu11 -Wall -O2 -D_GNU_SOURCE -DCONFIG_VERSION=\"2026-06-04\" -DNDEBUG -fwrapv -pthread -I"$JSDIR" $GL_CFLAGS -o "$SDIR/ops/+x/nb_js_worker.+x" "$SDIR/ops/nb_js_worker.c" "$SDIR/nb_dom.c" "$SDIR/nb_css.c" "$JSDIR/quickjs.c" "$JSDIR/cutils.c" "$JSDIR/libregexp.c" "$JSDIR/libunicode.c" "$JSDIR/dtoa.c" -lm $GL_LIBS && echo "OK nb_js_worker" || exit 1
 
 echo "-- nb_media_to_sprite -> ops/+x/nb_media_to_sprite.+x"
 $CC -std=c11 -Wall -O2 -I"$JSDIR" -o "$SDIR/ops/+x/nb_media_to_sprite.+x" "$SDIR/ops/nb_media_to_sprite.c" -lm && echo "OK nb_media_to_sprite" || exit 1

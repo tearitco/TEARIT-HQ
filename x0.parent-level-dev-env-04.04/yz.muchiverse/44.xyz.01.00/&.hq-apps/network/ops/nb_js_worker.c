@@ -576,6 +576,14 @@ static void img_set_decoded(NbNode *n, int w, int h, unsigned char *data);
 static int img_get_decoded(const NbNode *n, int *w, int *h);
 static unsigned char *b64_decode(const char *in, size_t *out_len);
 
+/* Forward declarations for functions used in script src setter */
+static void cookie_header_for_url(const char *url, char *out, size_t olen);
+static void cfg_line(FILE *f, const char *key, const char *val);
+static void resolve_doc_url(const char *rel, char *out, size_t olen);
+static int peval_budget(JSContext *ctx, const char *src, size_t src_n, char *errbuf, size_t errbuf_sz);
+static NbNode *get_this(JSContext *ctx, JSValueConst this_val);
+static char *attrs_set(const NbNode *n, const char *name, const char *val);
+
 #define MAX_IMG_SRC 256
 static struct { NbNode *n; char src[1024]; } g_img_src[256];
 static int g_img_src_count = 0;
@@ -586,6 +594,142 @@ static void img_set_src(NbNode *n, const char *s) {
 static const char *img_get_src(const NbNode *n) {
     for (int i = 0; i < g_img_src_count; i++) if (g_img_src[i].n == n) return g_img_src[i].src;
     return nb_attr_get(n, "src");
+}
+
+/* ---- script src getter/setter for dynamic script loading (Cloudflare challenge) ---- */
+#define MAX_SCRIPT_SRC 256
+static struct { NbNode *n; char src[1024]; } g_script_src[256];
+static int g_script_src_count = 0;
+
+static void script_set_src(NbNode *n, const char *s) {
+    for (int i = 0; i < g_script_src_count; i++) if (g_script_src[i].n == n) { snprintf(g_script_src[i].src, sizeof(g_script_src[i].src), "%s", s); return; }
+    if (g_script_src_count < MAX_SCRIPT_SRC) { g_script_src[g_script_src_count].n = n; snprintf(g_script_src[g_script_src_count].src, sizeof(g_script_src[g_script_src_count].src), "%s", s); g_script_src_count++; }
+}
+
+static const char *script_get_src(const NbNode *n) {
+    for (int i = 0; i < g_script_src_count; i++) if (g_script_src[i].n == n) return g_script_src[i].src;
+    return nb_attr_get(n, "src");
+}
+
+/* Execute a script in the worker context. Called from script src setter. */
+static void nb_execute_script_in_worker(JSContext *ctx, const char *script_url, const char *script_src) {
+    if (!script_src || !script_src[0]) return;
+    char errbuf[512];
+    if (peval_budget(ctx, script_src, strlen(script_src), errbuf, sizeof(errbuf)) != 0) {
+        fprintf(stderr, "WERR| dynamic script %s: %s\n", script_url, errbuf[0] ? errbuf : "eval error");
+    }
+}
+
+static JSValue nb_script_src_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_NewString(ctx, "");
+    const char *s = script_get_src(n);
+    return JS_NewString(ctx, s ? s : "");
+}
+
+static JSValue nb_script_src_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_UNDEFINED;
+    if (argc < 1 || !JS_IsString(argv[0])) return JS_UNDEFINED;
+    const char *s = JS_ToCString(ctx, argv[0]);
+    if (!s) return JS_UNDEFINED;
+    
+    fprintf(stderr, "DEBUG: script src set to: %s\n", s);
+    
+    /* Update the attribute and our cache */
+    char *new_attrs = attrs_set(n, "src", s);
+    free(n->attrs);
+    n->attrs = new_attrs;
+    script_set_src(n, s);
+    
+    /* Resolve URL against current page URL */
+    char resolved_url[2048];
+    resolve_doc_url(s, resolved_url, sizeof(resolved_url));
+    fprintf(stderr, "DEBUG: resolved script URL: %s\n", resolved_url);
+    
+    /* Fetch the script content using nbFetchSync logic */
+    char *rb = NULL; size_t rn = 0; int status = 0; char errbuf[256] = "";
+    
+    if (strncmp(resolved_url, "file:", 5) == 0) {
+        const char *p = resolved_url + 5;
+        while (*p == '/') p++;
+        if (strncmp(p, "localhost", 9) == 0 && p[9] == '/') p += 10;
+        char abspath[2048];
+        snprintf(abspath, sizeof(abspath), "/%s", p);
+        if (read_file(abspath, &rb, &rn)) status = 200;
+        else snprintf(errbuf, sizeof(errbuf), "cannot read %s", abspath);
+    } else if (strncmp(resolved_url, "http:", 5) == 0 || strncmp(resolved_url, "https:", 6) == 0) {
+        /* Use the same direct curl fallback as nb_fetch_sync for script loading */
+        char cfgpath[1024] = "";
+        char t1[] = "/tmp/nbfetch.XXXXXX";
+        int fd1 = mkstemp(t1);
+        if (fd1 < 0) {
+            snprintf(errbuf, sizeof(errbuf), "mkstemp failed");
+        } else {
+            close(fd1);
+            snprintf(cfgpath, sizeof(cfgpath), "%s", t1);
+            FILE *cf = fopen(cfgpath, "w");
+            if (!cf) {
+                snprintf(errbuf, sizeof(errbuf), "cannot write curl config");
+            } else {
+                cfg_line(cf, "url", resolved_url);
+                cfg_line(cf, "user-agent", "Mozilla/5.0 (NNEST network-browser-hq nb-js-worker rung4)");
+                cfg_line(cf, "max-time", "8");
+                fputs("silent\nlocation\nfail\n", cf);
+                {
+                    char ckhdr[4096];
+                    cookie_header_for_url(resolved_url, ckhdr, sizeof(ckhdr));
+                    if (ckhdr[0]) cfg_line(cf, "header", ckhdr);
+                }
+                char hdrpath[256] = "";
+                {
+                    char t3[] = "/tmp/nbfetchhdr.XXXXXX";
+                    int fd3 = mkstemp(t3);
+                    if (fd3 >= 0) { close(fd3); snprintf(hdrpath, sizeof(hdrpath), "%s", t3); cfg_line(cf, "dump-header", hdrpath); }
+                }
+                cfg_line(cf, "output", "/tmp/nbfetchbody");
+                fclose(cf);
+                
+                char cmd[2048];
+                snprintf(cmd, sizeof(cmd), "curl -K '%s' 2>/dev/null", cfgpath);
+                int rc = system(cmd);
+                unlink(cfgpath);
+                
+                if (rc == 0) {
+                    FILE *bf = fopen("/tmp/nbfetchbody", "rb");
+                    if (bf) {
+                        fseek(bf, 0, SEEK_END);
+                        long fsize = ftell(bf);
+                        fseek(bf, 0, SEEK_SET);
+                        if (fsize > 0 && fsize < 4 * 1024 * 1024) {
+                            rb = malloc((size_t)fsize + 1);
+                            if (rb) {
+                                rn = fread(rb, 1, (size_t)fsize, bf);
+                                rb[rn] = 0;
+                                status = 200;
+                            }
+                        }
+                        fclose(bf);
+                    }
+                    unlink("/tmp/nbfetchbody");
+                    if (hdrpath[0]) unlink(hdrpath);
+                }
+            }
+        }
+    }
+    
+    if (status == 200 && rb && rn > 0) {
+        /* Execute the script in the worker context */
+        nb_execute_script_in_worker(ctx, resolved_url, rb);
+        free(rb);
+    } else {
+        if (rb) free(rb);
+        if (errbuf[0]) fprintf(stderr, "WERR| script load %s: %s\n", resolved_url, errbuf);
+    }
+    
+    JS_FreeCString(ctx, s);
+    return JS_UNDEFINED;
 }
 #define MAX_IMG_DECODED 256
 static struct { NbNode *n; int w, h; unsigned char *data; } g_img_decoded[256];
@@ -2198,6 +2342,101 @@ static JSValue nb_el_appendChild(JSContext *ctx, JSValueConst this_val, int argc
     node_detach(ch);
     orphan_remove(ch);
     local_append(n, ch);
+    
+    /* If a script element with src is appended to head/body, fetch and execute it */
+    if (ch && ch->tag && !strcmp(ch->tag, "script")) {
+        fprintf(stderr, "DEBUG: script element appended, tag: %s\n", ch->tag);
+        const char *src = nb_attr_get(ch, "src");
+        fprintf(stderr, "DEBUG: script src: %s\n", src ? src : "(null)");
+        if (src && src[0]) {
+            /* Resolve URL against current page URL */
+            char resolved_url[2048];
+            resolve_doc_url(src, resolved_url, sizeof(resolved_url));
+            
+            /* Fetch the script content */
+            char *rb = NULL; size_t rn = 0; int status = 0; char errbuf[256] = "";
+            
+            if (strncmp(resolved_url, "file:", 5) == 0) {
+                const char *p = resolved_url + 5;
+                while (*p == '/') p++;
+                if (strncmp(p, "localhost", 9) == 0 && p[9] == '/') p += 10;
+                char abspath[2048];
+                snprintf(abspath, sizeof(abspath), "/%s", p);
+                if (read_file(abspath, &rb, &rn)) status = 200;
+                else snprintf(errbuf, sizeof(errbuf), "cannot read %s", abspath);
+            } else if (strncmp(resolved_url, "http:", 5) == 0 || strncmp(resolved_url, "https:", 6) == 0) {
+                /* Direct curl fallback */
+                char cfgpath[1024] = "";
+                char t1[] = "/tmp/nbfetch.XXXXXX";
+                int fd1 = mkstemp(t1);
+                if (fd1 < 0) {
+                    snprintf(errbuf, sizeof(errbuf), "mkstemp failed");
+                } else {
+                    close(fd1);
+                    snprintf(cfgpath, sizeof(cfgpath), "%s", t1);
+                    FILE *cf = fopen(cfgpath, "w");
+                    if (!cf) {
+                        snprintf(errbuf, sizeof(errbuf), "cannot write curl config");
+                    } else {
+                        cfg_line(cf, "url", resolved_url);
+                        cfg_line(cf, "user-agent", "Mozilla/5.0 (NNEST network-browser-hq nb-js-worker rung4)");
+                        cfg_line(cf, "max-time", "8");
+                        fputs("silent\nlocation\nfail\n", cf);
+                        {
+                            char ckhdr[4096];
+                            cookie_header_for_url(resolved_url, ckhdr, sizeof(ckhdr));
+                            if (ckhdr[0]) cfg_line(cf, "header", ckhdr);
+                        }
+                        char hdrpath[256] = "";
+                        {
+                            char t3[] = "/tmp/nbfetchhdr.XXXXXX";
+                            int fd3 = mkstemp(t3);
+                            if (fd3 >= 0) { close(fd3); snprintf(hdrpath, sizeof(hdrpath), "%s", t3); cfg_line(cf, "dump-header", hdrpath); }
+                        }
+                        cfg_line(cf, "output", "/tmp/nbfetchbody");
+                        fclose(cf);
+                        
+                        char cmd[2048];
+                        snprintf(cmd, sizeof(cmd), "curl -K '%s' 2>/dev/null", cfgpath);
+                        int rc = system(cmd);
+                        unlink(cfgpath);
+                        
+                        if (rc == 0) {
+                            FILE *bf = fopen("/tmp/nbfetchbody", "rb");
+                            if (bf) {
+                                fseek(bf, 0, SEEK_END);
+                                long fsize = ftell(bf);
+                                fseek(bf, 0, SEEK_SET);
+                                if (fsize > 0 && fsize < 4 * 1024 * 1024) {
+                                    rb = malloc((size_t)fsize + 1);
+                                    if (rb) {
+                                        rn = fread(rb, 1, (size_t)fsize, bf);
+                                        rb[rn] = 0;
+                                        status = 200;
+                                    }
+                                }
+                                fclose(bf);
+                            }
+                            unlink("/tmp/nbfetchbody");
+                            if (hdrpath[0]) unlink(hdrpath);
+                        }
+                    }
+                }
+            }
+            
+            if (status == 200 && rb && rn > 0) {
+                char errbuf2[512];
+                if (peval_budget(ctx, rb, rn, errbuf2, sizeof(errbuf2)) != 0) {
+                    fprintf(stderr, "WERR| dynamic script appendChild %s: %s\n", resolved_url, errbuf2[0] ? errbuf2 : "eval error");
+                }
+                free(rb);
+            } else {
+                if (rb) free(rb);
+                if (errbuf[0]) fprintf(stderr, "WERR| script load appendChild %s: %s\n", resolved_url, errbuf);
+            }
+        }
+    }
+    
     return push_node(ctx, ch);
 }
 /* rung-2 remainder: the tree mutators. A removed node is orphaned, not
@@ -2643,19 +2882,29 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
                 JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
             JS_FreeAtom(ctx, nm);
         } else {
-            static const char *src_tags[] = { "script","iframe","input",
-                "source","track","embed","video","audio","frame", NULL };
-            static const char *href_tags[] = { "a","link","area","base", NULL };
-            for (int i = 0; src_tags[i]; i++)
-                if (!strcmp(n->tag, src_tags[i])) {
-                    JS_SetPropertyStr(ctx, el, "src", JS_NewString(ctx, nb_attr_get(n, "src")));
-                    break;
-                }
-            for (int i = 0; href_tags[i]; i++)
-                if (!strcmp(n->tag, href_tags[i])) {
-                    JS_SetPropertyStr(ctx, el, "href", JS_NewString(ctx, nb_attr_get(n, "href")));
-                    break;
-                }
+            if (!strcmp(n->tag, "script")) {
+                /* script.src setter: when set, fetch and execute the script (Cloudflare challenge) */
+                JSAtom nm = JS_NewAtom(ctx, "src");
+                JS_DefinePropertyGetSet(ctx, el, nm,
+                    JS_NewCFunction(ctx, nb_script_src_get, "get src", 0),
+                    JS_NewCFunction(ctx, nb_script_src_set, "set src", 1),
+                    JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+                JS_FreeAtom(ctx, nm);
+            } else {
+                static const char *src_tags[] = { "iframe","input",
+                    "source","track","embed","video","audio","frame", NULL };
+                static const char *href_tags[] = { "a","link","area","base", NULL };
+                for (int i = 0; src_tags[i]; i++)
+                    if (!strcmp(n->tag, src_tags[i])) {
+                        JS_SetPropertyStr(ctx, el, "src", JS_NewString(ctx, nb_attr_get(n, "src")));
+                        break;
+                    }
+                for (int i = 0; href_tags[i]; i++)
+                    if (!strcmp(n->tag, href_tags[i])) {
+                        JS_SetPropertyStr(ctx, el, "href", JS_NewString(ctx, nb_attr_get(n, "href")));
+                        break;
+                    }
+            }
         }
     }
     /* canvas 2D (2026-09-18): real bundles probe <canvas> via
@@ -8690,6 +8939,7 @@ static void run_scripts_slices(JSContext *ctx, char *src, size_t src_n) {
                 slice = (slice > skip) ? (slice - skip) : 0;
             }
             if (slice > 0) {
+                fprintf(stderr, "DEBUG: executing script slice %d, size: %zu, first 100 chars: %.100s\n", idx, slice, p);
                 if (is_module) {
                     if (peval_budget_module(ctx, p, slice, errbuf, sizeof(errbuf)) != 0)
                         fprintf(stderr, "WERR| module %d: %s\n", idx, errbuf[0] ? errbuf : "eval error");
@@ -8731,6 +8981,7 @@ static void run_page(void) {
     node_index_reset();
 
     /* build the DOM tree from the manager's fetch.dom (if present) */
+    fprintf(stderr, "DEBUG: g_fetch_dom = '%s'\n", g_fetch_dom);
     if (g_fetch_dom[0]) {
         FILE *df = fopen(g_fetch_dom, "rb");
         if (!df) {
@@ -8743,8 +8994,10 @@ static void run_page(void) {
                      g_fetch_dom);
             send_worker_error(m);
         } else {
+            fprintf(stderr, "DEBUG: loading DOM from fetch.dom\n");
             g_dom_root = nb_dom_load(df);
             fclose(df);
+            fprintf(stderr, "DEBUG: nb_dom_load returned %p\n", (void*)g_dom_root);
             if (!g_dom_root) {
                 /* Same silence, same consequence. nb_dom_load() reads the
                  * nb_serialize() wire format, not HTML - anything else
@@ -8755,6 +9008,13 @@ static void run_page(void) {
                                   "(nb_dom_load returned NULL; the file must be "
                                   "nb_serialize output, not HTML) - the page will "
                                   "render as its title only");
+            } else {
+                fprintf(stderr, "DEBUG: DOM loaded, root tag: %s, children: %d\n", g_dom_root->tag ? g_dom_root->tag : "NULL", g_dom_root->first_child ? 1 : 0);
+                if (g_dom_root->first_child) {
+                    for (NbNode *c = g_dom_root->first_child; c; c = c->next_sibling) {
+                        fprintf(stderr, "DEBUG: child tag: %s\n", c->tag ? c->tag : "NULL");
+                    }
+                }
             }
         }
     } else if (g_cli) {
@@ -9932,6 +10192,7 @@ int main(int argc, char **argv) {
             if (f[1]) snprintf(g_page_js, sizeof(g_page_js), "%s", f[1]);
             if (f[2]) snprintf(g_fetch_dom, sizeof(g_fetch_dom), "%s", f[2]);
             if (f[3]) snprintf(g_href, sizeof(g_href), "%s", f[3]);
+            fprintf(stderr, "DEBUG: LOAD received, g_href = '%s'\n", g_href);
             if (f[4]) snprintf(g_title, sizeof(g_title), "%s", f[4]);
             if (f[5]) snprintf(g_style_css, sizeof(g_style_css), "%s", f[5]);
             /* f[6] = the viewport width this page will be laid out in.

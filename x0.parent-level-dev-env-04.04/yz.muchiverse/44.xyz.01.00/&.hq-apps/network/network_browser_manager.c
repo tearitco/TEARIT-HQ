@@ -2693,6 +2693,7 @@ static char g_push_buf[65536];
 static int worker_load(const char *js_path, const char *dom_path,
                        const char *href, const char *title,
                        const char *css_path) {
+    fprintf(stderr, "DEBUG MANAGER: worker_load called with href='%s'\n", href ? href : "NULL");
     worker_spawn();
     if (g_worker_fd < 0) return 0;
     char payload[8192];
