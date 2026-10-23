@@ -1,0 +1,21 @@
+# rpg-space: the star system the planets float in (owner 2026-10-23: two suns, half the planets circle each, seen on the space-desk minimap). Same format as &.widgits/physics-nodes/system.pdl (SI units): the orbit PERIOD comes from that op's kepler node, never from private math here.
+CONST | G | 6.6743e-11
+# BODY | name | parent | mass_kg | radius_m | a_m (around parent) | rotation_period_s
+BODY | sun_a  | -     | 1.98841e30 | 6.957e8 | 0             | 2192832
+BODY | sun_b  | -     | 1.2e30     | 5.4e8   | 0             | 2192832
+BODY | maker  | sun_a | 5.9722e24  | 6.371e6 | 1.495978707e11 | 86164.1
+BODY | cata   | sun_a | 6.4171e23  | 3.3895e6 | 2.393565e11   | 88642.7
+BODY | cubia  | sun_b | 5.9722e24  | 6.371e6 | 1.1967e11     | 86164.1
+BODY | hell   | sun_b | 3.3011e23  | 2.4397e6 | 1.944772e11   | 88642.7
+NODE | orbit   | orbit           | in=a,star_mass | out=period,period_days | impl=kepler
+# SPACE | key | value: how the bodies are drawn on the space desk (ops/dust_orbit.c). cells_per_au: desk cells per 1.495978707e11 m; time_scale: game seconds per real second (so one 1 AU orbit around sun_a takes about ten real minutes); sun_x/sun_y: where each sun stands on the desk; phase: start angle in degrees
+SPACE | cells_per_au | 12
+SPACE | time_scale | 52596
+SPACE | desk_w | 96
+SPACE | desk_h | 48
+SPACE | sun_a | 24 | 24
+SPACE | sun_b | 72 | 24
+SPACE | phase | maker | 0
+SPACE | phase | cata | 140
+SPACE | phase | cubia | 70
+SPACE | phase | hell | 250

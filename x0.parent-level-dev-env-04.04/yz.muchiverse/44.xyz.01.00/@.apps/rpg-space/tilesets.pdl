@@ -1,0 +1,35 @@
+SECTION | KEY | VALUE
+------------------------------
+# tilesets.pdl - how the SAME world looks (BOOK 16.game/RPG-DUST-PETSLIKE-BOARD-DESIGN.md D5-D7). The world (map.txt) never changes with the tileset, only the art of the seven height bands does.
+# TILESET | id | label | kind | root
+#   kind: rmmv = RPG Maker tiles painted by the skin (root unused) | plain = flat colours | png = loose PNG files under #.NNEST_ASSETS/<root> | csv = palette sprite folders under &.widgits/palettes/sprites/<root>
+# TILE | tileset | band | source | tint
+#   band: deep water sand grass forest rock snow. source: png = path under the root (an animated strip uses its first frame; any size is box-averaged to 24 px); csv = the sprite folder number.
+#   tint (optional, rrggbb): multiplies the picture (Mineclonia's grass and water textures are grey, the game colours them). forest, rock and snow are drawn over the grass tile; the others replace it.
+# A band with no TILE row falls back to a flat colour, so a new tileset works with only the rows it has. The choice is a TILESET row in state/look_ledger.txt (append-only), not a file edit.
+TILESET | rmmv  | RPG Maker       | rmmv  | -
+TILESET | plain | Plain colours   | plain | -
+TILESET | cdda  | Cataclysm DDA   | png   | cdda-tilesets/gfx/UltimateCataclysm
+TILESET | mcl   | Mineclonia      | png   | mineclonia/mods/ITEMS/mcl_core/textures
+TILESET | doom  | Doom (Freedoom) | csv   | doom/flats
+TILE | cdda | deep   | pngs_normal_32x32/terrain/t_water_moving_dp/t_water_moving_dp_center.png
+TILE | cdda | water  | pngs_normal_32x32/terrain/t_water_moving_sh/t_water_moving_sh_center.png
+TILE | cdda | sand   | pngs_normal_32x32/terrain/t_sand/t_sand_center.png
+TILE | cdda | grass  | pngs_normal_32x32/terrain/t_grass/t_grass_center.png
+TILE | cdda | forest | pngs_giant_96x96/terrain/t_tree/t_tree.png
+TILE | cdda | rock   | pngs_normal_32x32/terrain/t_rock/t_rock_center.png
+TILE | cdda | snow   | pngs_normal_32x32/terrain/snow/snow_smooth.png
+TILE | mcl | deep   | default_water_source_animated.png | 2a4fa0
+TILE | mcl | water  | default_water_source_animated.png | 3f76e4
+TILE | mcl | sand   | default_sand.png
+TILE | mcl | grass  | mcl_core_grass_block_top.png | 91bd59
+TILE | mcl | forest | default_leaves.png | 48b518
+TILE | mcl | rock   | default_stone.png
+TILE | mcl | snow   | default_snow.png
+TILE | doom | deep   | 040
+TILE | doom | water  | 038
+TILE | doom | sand   | 029
+TILE | doom | grass  | 034
+TILE | doom | forest | 037
+TILE | doom | rock   | 044
+TILE | doom | snow   | 021

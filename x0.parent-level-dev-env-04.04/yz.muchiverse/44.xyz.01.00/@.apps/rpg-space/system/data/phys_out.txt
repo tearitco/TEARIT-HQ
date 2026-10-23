@@ -1,0 +1,8 @@
+OUT | maker.orbit | period | 3.15582e+07 | impl=kepler | h=3ea9018cf114a312
+OUT | maker.orbit | period_days | 365.257 | impl=kepler | h=3ea9018cf114a312
+OUT | cata.orbit | period | 6.38693e+07 | impl=kepler | h=f6c1f7adc6d8bad5
+OUT | cata.orbit | period_days | 739.228 | impl=kepler | h=f6c1f7adc6d8bad5
+OUT | cubia.orbit | period | 2.90646e+07 | impl=kepler | h=2dad1fa585063617
+OUT | cubia.orbit | period_days | 336.396 | impl=kepler | h=2dad1fa585063617
+OUT | hell.orbit | period | 6.02129e+07 | impl=kepler | h=6eba805b9b91154a
+OUT | hell.orbit | period_days | 696.908 | impl=kepler | h=6eba805b9b91154a

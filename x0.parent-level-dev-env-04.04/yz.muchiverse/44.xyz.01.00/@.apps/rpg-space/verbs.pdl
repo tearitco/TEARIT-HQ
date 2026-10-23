@@ -1,0 +1,9 @@
+# verbs.pdl - which rpg-space verbs are event pages (BOOK 16.game/EVENT-VERB-PAGES-DESIGN.md). Read by &.widgits/events-hq/ops/+x/verbgen.+x
+#   verbgen check .   engine source (ops/dust_zoom.c) <-> this file <-> events/ must agree
+#   verbgen gen .     write events/<verb>/ for every page=yes verb (never overwrites an edited package)
+# page: yes = an events-hq page calls the op; no = read-only, no page. Every page=yes verb appends to state/zoom_ledger.txt (the world is a function of seed + ledger).
+GAME | rpg-space | dust_zoom_verb | ops/+x/dust_zoom.+x | ops/dust_zoom.c
+VERB | start    | yes | ui | region addr | begin at a region address (START row)
+VERB | zoom_in  | yes | ui | cx cy      | zoom into a region cell (ZOOM row)
+VERB | zoom_out | yes | ui | -          | zoom back out to the region (ZOOM row)
+VERB | where    | no  | ui | -          | print the current address, replayed from the ledger

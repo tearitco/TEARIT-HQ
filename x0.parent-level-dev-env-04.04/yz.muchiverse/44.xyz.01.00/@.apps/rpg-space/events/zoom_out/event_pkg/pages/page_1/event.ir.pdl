@@ -1,0 +1,6 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | zoom_out
+META         | generated          | verbgen
+STATE        | source               | events-hq
+NODE         | id=1 type=dust_zoom_verb | verb=zoom_out|arg=

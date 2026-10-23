@@ -1,0 +1,7 @@
+ops/+x/
+state/
+events/*/master_ledger.txt
+rpg-space-pchq/
+board/state/
+board/*.log
+board/module_parent.pid

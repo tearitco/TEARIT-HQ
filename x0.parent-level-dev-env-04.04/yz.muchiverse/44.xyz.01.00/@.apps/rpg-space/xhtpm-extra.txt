@@ -1,0 +1,15 @@
+@@board s1
+        <text label="${pl_label} - seed ${seed}" class="hb-quiet ov-title theme-3"/>
+        <item id="sl-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/@APP@/board/state/sides.txt' side_left hide"/>
+        <text id="light" label="${run_label}" class="${run_cls}"/>
+        <text label="${addr_line}" class="ph-quiet"/>
+        <item id="regen" class="pchq-ft skin-bar" label="Regen (next seed)" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' regen"/>
+        <item id="zin" class="pchq-ft skin-bar" label="Zoom in here" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' zoomhere"/>
+        <item id="zout" class="pchq-ft skin-bar" label="Zoom out" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' zoomout"/>
+        <text label="planet: ${pl_label}" class="ph-quiet"/>
+        <item id="pl-none" class="pchq-ft skin-bar" label="No planet (deep space)" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' fire planet none"/>
+        <item id="pl-new" class="pchq-ft skin-bar" label="New planet" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' fire newplanet"/>
+        <repeat count="${n_pl}" bind="pl">
+          <item id="pl${pl.#}" class="pchq-ft skin-bar ${pl.cls}" label="${pl.label}" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' fire planet ${pl.id}"/>
+        </repeat>
+@@end
