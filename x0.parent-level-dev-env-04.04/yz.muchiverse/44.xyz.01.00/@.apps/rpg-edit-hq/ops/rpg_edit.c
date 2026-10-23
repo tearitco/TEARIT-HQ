@@ -17,6 +17,7 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "../../../&.widgits/_shared-lib/stb_image_write.h"
 #include "../../../&.widgits/_shared-lib/csv_frames.c"      /* sprite.csv -> 16x24 3D walk frames (shared; also usable by any pet board) */
+#include "../../../&.widgits/_shared-lib/pet_sky.c"        /* the day phase and the parallax sky files, one copy with petslike_core.c */
 
 #define XT 24
 #define S48 48
@@ -252,7 +253,7 @@ static void set_kv(const char *path, const char *key, const char *val);
 static const char *phase_now(void) {
     char wp[PATH_MAX], b[2048]; snprintf(wp, sizeof wp, "%s/pieces/world_01/state.txt", PCHQ); FILE *f = fopen(wp, "r"); long long ms = 1767268800000LL;
     if (f) { size_t n = fread(b, 1, sizeof b - 1, f); b[n] = 0; fclose(f); for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "game_time_epoch_ms=", 19)) ms = atoll(l + 19); }
-    int h = (int)(ms / 3600000 % 24); return (h >= 19 || h < 6) ? "night" : h < 8 ? "dawn" : h >= 17 ? "dusk" : "day";
+    int h = (int)(ms / 3600000 % 24); return pet_phase_of_hour(h);
 }
 static void ensure_autotick(void) {      /* the board's bootstrap resets the world to its starting time with the clock off: switch the day on then */
     char wp[PATH_MAX], b[2048]; snprintf(wp, sizeof wp, "%s/pieces/world_01/state.txt", PCHQ); FILE *f = fopen(wp, "r"); if (!f) return;
@@ -262,17 +263,12 @@ static Sheet cursky;      /* the parallax picture of the current phase: the isla
 static int skyver;        /* bumped when the phase changes, so map.png is repainted */
 static void write_sky(void) {
     static char lastph[16]; const char *ph = phase_now(); if (!strcmp(ph, lastph)) return; snprintf(lastph, sizeof lastph, "%s", ph); skyver++;
-    char dir[PATH_MAX], pp[PATH_MAX], rp[PATH_MAX], pd[240]; snprintf(dir, sizeof dir, "%s/pieces/system/maps/edit/start", PCHQ); snprintf(pp, sizeof pp, "%s/parallax.pdl", dir); snprintf(rp, sizeof rp, "%s/parallax.rgba", dir);
-    char rel[64]; snprintf(rel, sizeof rel, "parallaxes/%s.png", !strcmp(ph, "night") ? "StarlitSky" : (!strcmp(ph, "dusk") || !strcmp(ph, "dawn")) ? "Sunset" : "CloudySky1");
-    Sheet sk = load_rel(rel); int po; if (cursky.px) stbi_image_free(cursky.px); cursky = sk;
-    if (!sk.px || sk.w < 1 || sk.h < 1 || sk.w > 4096 || sk.h > 4096) po = snprintf(pd, sizeof pd, "PARALLAX | show | 0\nPARALLAX | name | \n");
-    else {
-        char tmp[PATH_MAX + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", rp); FILE *f = fopen(tmp, "wb"); size_t n = (size_t)sk.w * sk.h * 4;
-        if (f) { size_t wn = fwrite(sk.px, 1, n, f); if (fclose(f) == 0 && wn == n) rename(tmp, rp); else remove(tmp); }
-        po = snprintf(pd, sizeof pd, "PARALLAX | show | 1\nPARALLAX | name | %s\nPARALLAX | width | %d\nPARALLAX | height | %d\nPARALLAX | loop_x | 1\nPARALLAX | stamp | %ld\n", ph, sk.w, sk.h, (long)time(NULL));
-    }
-    { char tmp[PATH_MAX + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", pp); FILE *f = fopen(tmp, "w"); if (f) { size_t wn = fwrite(pd, 1, (size_t)po, f); if (fclose(f) == 0 && wn == (size_t)po) rename(tmp, pp); else remove(tmp); } }
-    for (int g = 1; g < npage; g++) { snprintf(pp, sizeof pp, "%s/pieces/system/maps/edit/%s/parallax.pdl", PCHQ, pgname[g]); FILE *f = fopen(pp, "w"); if (f) { fputs("PARALLAX | show | 0\nPARALLAX | name | \n", f); fclose(f); } }
+    char dir[PATH_MAX]; snprintf(dir, sizeof dir, "%s/pieces/system/maps/edit/start", PCHQ);
+    char rel[64]; snprintf(rel, sizeof rel, "parallaxes/%s.png", pet_sky_sheet(ph));
+    Sheet sk = load_rel(rel); if (cursky.px) stbi_image_free(cursky.px); cursky = sk;
+    if (!pet_sky_ok(sk.px, sk.w, sk.h)) pet_write_parallax_off(dir);
+    else pet_write_parallax(dir, ph, sk.px, sk.w, sk.h, (long)time(NULL));
+    for (int g = 1; g < npage; g++) { char id[PATH_MAX]; snprintf(id, sizeof id, "%s/pieces/system/maps/edit/%s", PCHQ, pgname[g]); pet_write_parallax_off(id); }
 }
 static unsigned char petpic[MAXPET][XT * XT * 4];      /* the pet's 64x64 art box-filtered to 24x24; alpha 0 where the pet has no art */
 static int petpic_ok[MAXPET];

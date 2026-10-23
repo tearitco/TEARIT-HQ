@@ -54,6 +54,7 @@
 #define STBI_ONLY_PNG
 #include "stb_image.h"
 #include "petslike_toolbar.c"      /* the header menus as data: <app>/toolbar.pdl */
+#include "pet_sky.c"      /* day phase + parallax sky files (shared with rpg-edit-hq) */
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 #define PET_SECTION 2
@@ -547,7 +548,7 @@ static int lc_run(int daemon, ...) {
 }
 static long long clock_kv_ll(const char *key) { char b[2048]; read_file(CFILE, b, sizeof b); size_t kl = strlen(key); for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, key, kl) && l[kl] == '=') return atoll(l + kl + 1); return -1; }
 static void clock_kv_s(const char *key, char *out, size_t cap) { char b[2048]; out[0] = 0; read_file(CFILE, b, sizeof b); size_t kl = strlen(key); for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, key, kl) && l[kl] == '=') { snprintf(out, cap, "%s", l + kl + 1); return; } }
-static void write_phase(long long ms) { int h = (int)(ms / 3600000 % 24); const char *p = (h >= 19 || h < 6) ? "night" : h < 8 ? "dawn" : h >= 17 ? "dusk" : "day"; char b[40]; snprintf(b, sizeof b, "phase=%s\n", p); char f[PATH_MAX]; spath(f, "daylight.txt"); write_if_changed(f, b, strlen(b)); }
+static void write_phase(long long ms) { int h = (int)(ms / 3600000 % 24); const char *p = pet_phase_of_hour(h); char b[40]; snprintf(b, sizeof b, "phase=%s\n", p); char f[PATH_MAX]; spath(f, "daylight.txt"); write_if_changed(f, b, strlen(b)); }
 /* The game clock runs fast (a game day in seconds), so time_label changed ~0.6 times a second and EVERY change made the board window reparse + re-lay-out + redraw (about 67 ms each, measured with a redraw trace: it was
  * the biggest single source of the window's ~25% CPU). The label is written at most once per 5 s: a write that differs from the file ONLY in the time_label line (the first line) is skipped while the file is younger than 5 s. */
 static void clock_ui_write(const char *p, const char *b) {
@@ -791,15 +792,13 @@ static void write_room_sky(int r, const char *d) {
     int tone[4] = {0, 0, 0, 0}, ht = read_tone(tone); char key[96]; snprintf(key, sizeof key, "%d|%s|%d,%d,%d,%d,%d", rooms[r].outdoor, ph, ht, tone[0], tone[1], tone[2], tone[3]);
     if (!strcmp(key, lastkey[r])) return; snprintf(lastkey[r], sizeof lastkey[r], "%s", key);
     char pp[PATH_MAX], rp[PATH_MAX]; snprintf(pp, sizeof pp, "%s/parallax.pdl", d); snprintf(rp, sizeof rp, "%s/parallax.rgba", d);
-    Sheet *sk = rooms[r].outdoor ? sheet("parallaxes", !strcmp(ph, "night") ? "StarlitSky" : (!strcmp(ph, "dusk") || !strcmp(ph, "dawn")) ? "Sunset" : "CloudySky1") : NULL;
+    Sheet *sk = rooms[r].outdoor ? sheet("parallaxes", pet_sky_sheet(ph)) : NULL;
     if (!sk || !sk->px || sk->w < 1 || sk->h < 1 || sk->w > 4096 || sk->h > 4096) { static const char off[] = "PARALLAX | show | 0\nPARALLAX | name | \n"; write_if_changed(pp, off, sizeof off - 1); return; }
     size_t n = (size_t)sk->w * sk->h * 4; unsigned char *b = (unsigned char *)malloc(n); if (!b) return; memcpy(b, sk->px, n);
     if (ht) for (size_t i = 0; i < n; i += 4) { int rr = b[i], gg = b[i + 1], bb = b[i + 2], l = (rr * 30 + gg * 59 + bb * 11) / 100, gy = tone[3];
         if (gy) { rr += (l - rr) * gy / 255; gg += (l - gg) * gy / 255; bb += (l - bb) * gy / 255; } rr += tone[0]; gg += tone[1]; bb += tone[2];
         b[i] = (unsigned char)(rr < 0 ? 0 : rr > 255 ? 255 : rr); b[i + 1] = (unsigned char)(gg < 0 ? 0 : gg > 255 ? 255 : gg); b[i + 2] = (unsigned char)(bb < 0 ? 0 : bb > 255 ? 255 : bb); }
-    { char tmp[PATH_MAX + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", rp); FILE *fp = fopen(tmp, "wb"); if (fp) { size_t wn_ = fwrite(b, 1, n, fp); if (fclose(fp) == 0 && wn_ == n) rename(tmp, rp); else remove(tmp); } } free(b);
-    char pd[240]; int po = snprintf(pd, sizeof pd, "PARALLAX | show | 1\nPARALLAX | name | %s\nPARALLAX | width | %d\nPARALLAX | height | %d\nPARALLAX | loop_x | 1\nPARALLAX | stamp | %ld\n", ph, sk->w, sk->h, (long)now_ms());
-    { char tmp[PATH_MAX + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", pp); FILE *fp = fopen(tmp, "w"); if (fp) { size_t wn_ = fwrite(pd, 1, (size_t)po, fp); if (fclose(fp) == 0 && wn_ == (size_t)po) rename(tmp, pp); else remove(tmp); } }
+    pet_write_parallax(d, ph, b, sk->w, sk->h, now_ms()); free(b);
 }
 static void write_room_events(int r) {
     char d[PATH_MAX], p[PATH_MAX], buf[4096]; int o = 0; static const int dc[4] = {2, 4, 6, 8};
