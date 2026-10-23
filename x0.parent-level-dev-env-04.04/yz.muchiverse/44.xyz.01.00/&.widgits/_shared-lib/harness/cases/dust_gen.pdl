@@ -5,6 +5,7 @@ SCRATCH |
 COPY | @.apps/rpg-dust/ops/dust_gen.c | dust_gen.c
 COPY | @.apps/rpg-dust/ops/dust_hash.c | dust_hash.c
 COPY | @.apps/rpg-dust/ops/dust_pdl.c | dust_pdl.c
+COPY | @.apps/rpg-dust/ops/dust_addr.c | dust_addr.c
 COPY | @.apps/rpg-dust/scale.pdl | scale.pdl
 RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -I | $T | -o | $T/dg.+x | $T/dust_gen.c
 EXPECT_EXIT | 0 | compiles-clean

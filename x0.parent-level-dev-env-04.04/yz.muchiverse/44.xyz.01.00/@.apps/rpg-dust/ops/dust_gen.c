@@ -13,7 +13,7 @@
 #include <string.h>
 #include <ctype.h>
 #include "dust_hash.c"
-#define N 16
+#include "dust_addr.c"
 static int noise(uint64_t seed, int x, int y, int mod) { return (int)(mix(seed ^ mix((uint64_t)(unsigned)x << 32 | (unsigned)y)) % (uint64_t)mod); }
 static int write_page(const char *out, const char *level, const char *addr, uint64_t seed, int h[N][N]) {
     FILE *f = fopen(out, "w"); if (!f) { fprintf(stderr, "dust_gen: cannot write %s\n", out); return 2; }
@@ -55,11 +55,6 @@ static int gen_area(const char *pdl, const char *rpage, int cx, int cy, const ch
     uint64_t s; char full[400]; if (!area_h(pdl, rh, cx, cy, addr, h, &s, full, sizeof full)) return 2; return write_page(out, "area", full, s, h);
 }
 /* ---- addresses: a region address is path components joined by '/'; an AREA address is a region address plus a last component cell:cx,cy ---- */
-static int split_cell(const char *addr, char *parent, size_t psz, int *cx, int *cy) {
-    const char *slash = strrchr(addr, '/'); const char *last = slash ? slash + 1 : addr; char junk;
-    if (!slash || sscanf(last, "cell:%d,%d%c", cx, cy, &junk) != 2 || *cx < 0 || *cy < 0 || *cx >= N || *cy >= N) return 0;
-    size_t l = (size_t)(slash - addr); if (l == 0 || l >= psz) return 0; memcpy(parent, addr, l); parent[l] = 0; return 1;
-}
 /* page <scale.pdl> <addr> <out>: the page that lives at an address, made from the address alone (region, or area when the address ends in /cell:cx,cy) */
 static int gen_page(const char *pdl, const char *addr, const char *out) {
     char parent[400]; int cx, cy; const char *sl = strrchr(addr, '/'); int cellish = !strncmp(sl ? sl + 1 : addr, "cell:", 5);

@@ -1,0 +1,148 @@
+# dust_zoom: LOCKED cases for rpg-dust R2c: zoom in / zoom out as events with an append-only ledger. Source under test: @.apps/rpg-dust/ops/dust_zoom.c (+ dust_addr.c, dust_pdl.c) and the generated pages @.apps/rpg-dust/events/. The current address is replayed from the ledger; a refused zoom changes nothing but is recorded.
+RESULTS | ../results/dust_zoom.txt
+CASE | dust-zoom
+SCRATCH |
+MKDIR | ds
+COPY | @.apps/rpg-dust/ops/dust_zoom.c | dust_zoom.c
+COPY | @.apps/rpg-dust/ops/dust_pdl.c | dust_pdl.c
+COPY | @.apps/rpg-dust/ops/dust_addr.c | dust_addr.c
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -I | $T | -o | $T/dz.+x | $T/dust_zoom.c
+EXPECT_EXIT | 0 | compiles-clean
+ENV | DUST_STATE | $T/ds
+RUN | $T/dz.+x | where
+EXPECT_EXIT | 2 | where-before-start
+RUN | $T/dz.+x | zoom_in | 1 | 1
+EXPECT_EXIT | 1 | zoom-in-before-start
+EXPECT_OUT | refused: no START yet | zoom-in-before-start-says
+EXPECT_HAS | ds/zoom_ledger.txt | REFUSED \p 1 \p zoom_in \p - \p no START yet | row1
+RUN | $T/dz.+x | start | globe:3,4/region:0,1/cell:7,9
+EXPECT_EXIT | 1 | start-with-a-cell-refused
+EXPECT_OUT | start needs a region address | start-with-a-cell-refused-says
+EXPECT_HAS | ds/zoom_ledger.txt | REFUSED \p 2 \p start \p - \p start needs a region address (no cell: component) | row2
+RUN | $T/dz.+x | start | globe:3,4/region:0,1
+EXPECT_EXIT | 0 | start
+EXPECT_OUT_IS | globe:3,4/region:0,1 | start-says
+EXPECT_HAS | ds/zoom_ledger.txt | START \p 3 \p globe:3,4/region:0,1 | row3
+RUN | $T/dz.+x | where
+EXPECT_EXIT | 0 | where-after-start
+EXPECT_OUT_IS | globe:3,4/region:0,1 | where-after-start-says
+RUN | $T/dz.+x | zoom_in | 7 | 9
+EXPECT_EXIT | 0 | zoom-in-7-9
+EXPECT_OUT_IS | globe:3,4/region:0,1/cell:7,9 | zoom-in-7-9-says
+EXPECT_HAS | ds/zoom_ledger.txt | ZOOM \p 4 \p zoom_in \p globe:3,4/region:0,1 \p globe:3,4/region:0,1/cell:7,9 \p 7 \p 9 | row4
+RUN | $T/dz.+x | where
+EXPECT_EXIT | 0 | where-in-area
+EXPECT_OUT_IS | globe:3,4/region:0,1/cell:7,9 | where-in-area-says
+RUN | $T/dz.+x | zoom_in | 1 | 1
+EXPECT_EXIT | 1 | zoom-in-again-refused
+EXPECT_OUT | already at the area level | zoom-in-again-refused-says
+EXPECT_HAS | ds/zoom_ledger.txt | REFUSED \p 5 \p zoom_in \p globe:3,4/region:0,1/cell:7,9 \p already at the area level: nothing below it is built | row5
+RUN | $T/dz.+x | where
+EXPECT_EXIT | 0 | where-unchanged-after-refusal
+EXPECT_OUT_IS | globe:3,4/region:0,1/cell:7,9 | where-unchanged-after-refusal-says
+RUN | $T/dz.+x | zoom_out
+EXPECT_EXIT | 0 | zoom-out
+EXPECT_OUT_IS | globe:3,4/region:0,1 | zoom-out-says
+EXPECT_HAS | ds/zoom_ledger.txt | ZOOM \p 6 \p zoom_out \p globe:3,4/region:0,1/cell:7,9 \p globe:3,4/region:0,1 \p 7 \p 9 | row6
+RUN | $T/dz.+x | zoom_out
+EXPECT_EXIT | 1 | zoom-out-again-refused
+EXPECT_OUT | already at the region level | zoom-out-again-refused-says
+EXPECT_HAS | ds/zoom_ledger.txt | REFUSED \p 7 \p zoom_out \p globe:3,4/region:0,1 \p already at the region level: nothing above it is built | row7
+RUN | $T/dz.+x | zoom_in | 16 | 0
+EXPECT_EXIT | 1 | cell-16-refused
+EXPECT_OUT | each 0..15 | cell-16-refused-says
+EXPECT_HAS | ds/zoom_ledger.txt | REFUSED \p 8 \p zoom_in \p globe:3,4/region:0,1 \p zoom_in needs a cell cx cy, each 0..15 | row8
+RUN | $T/dz.+x | zoom_in | -1 | 0
+EXPECT_EXIT | 1 | cell-negative-refused
+EXPECT_OUT | each 0..15 | cell-negative-refused-says
+RUN | $T/dz.+x | zoom_in | a | 1
+EXPECT_EXIT | 1 | cell-letters-refused
+EXPECT_OUT | each 0..15 | cell-letters-refused-says
+RUN | $T/dz.+x | zoom_in | 1
+EXPECT_EXIT | 1 | cell-one-number-refused
+EXPECT_OUT | each 0..15 | cell-one-number-refused-says
+RUN | $T/dz.+x | where
+EXPECT_EXIT | 0 | where-after-four-refusals
+EXPECT_OUT_IS | globe:3,4/region:0,1 | where-after-four-refusals-says
+RUN | $T/dz.+x | zoom_in | 0 | 15
+EXPECT_EXIT | 0 | zoom-in-0-15
+EXPECT_OUT_IS | globe:3,4/region:0,1/cell:0,15 | zoom-in-0-15-says
+EXPECT_HAS | ds/zoom_ledger.txt | ZOOM \p 12 \p zoom_in \p globe:3,4/region:0,1 \p globe:3,4/region:0,1/cell:0,15 \p 0 \p 15 | row12
+RUN | $T/dz.+x | zoom_out
+EXPECT_EXIT | 0 | zoom-out-0-15
+EXPECT_OUT_IS | globe:3,4/region:0,1 | zoom-out-0-15-says
+EXPECT_HAS | ds/zoom_ledger.txt | ZOOM \p 13 \p zoom_out \p globe:3,4/region:0,1/cell:0,15 \p globe:3,4/region:0,1 \p 0 \p 15 | row13
+ENV | PET_ARG | 15 0
+RUN | $T/dz.+x | zoom_in
+EXPECT_EXIT | 0 | zoom-in-from-PET_ARG
+EXPECT_OUT_IS | globe:3,4/region:0,1/cell:15,0 | zoom-in-from-PET_ARG-says
+ENV | PET_ARG | 
+EXPECT_HAS | ds/zoom_ledger.txt | ZOOM \p 14 \p zoom_in \p globe:3,4/region:0,1 \p globe:3,4/region:0,1/cell:15,0 \p 15 \p 0 | row14
+RUN | $T/dz.+x | where
+EXPECT_EXIT | 0 | where-final
+EXPECT_OUT_IS | globe:3,4/region:0,1/cell:15,0 | where-final-says
+RUN | $T/dz.+x | fly
+EXPECT_EXIT | 2 | unknown-verb
+RUN | $T/dz.+x
+EXPECT_EXIT | 2 | no-verb
+EXPECT_LACKS | ds/zoom_ledger.txt | ZOOM \p 15 | no-row-15-yet
+MKDIR | ds2
+WRITE | ds2/zoom_ledger.txt | START \p 1 \p a/b\nZOOM \p 2 \p zoom_in \p a/b \p a/b/cell:3,3 \p 3 \p 3\nREFUSED \p 3 \p zoom_in \p a/b/cell:3,3 \p x\nZOOM \p 4 \p zoom_out \p a/b/cell:3,3 \p a/b \p 3 \p 3\nREFUSED \p 5 \p zoom_out \p a/b \p y\n
+ENV | DUST_STATE | $T/ds2
+RUN | $T/dz.+x | where
+EXPECT_EXIT | 0 | replay-skips-refused-rows
+EXPECT_OUT_IS | a/b | replay-skips-refused-rows-says
+RUN | $T/dz.+x | zoom_in | 1 | 2
+EXPECT_EXIT | 0 | replay-then-continue-numbers-after-last
+EXPECT_OUT_IS | a/b/cell:1,2 | replay-then-continue-numbers-after-last-says
+EXPECT_HAS | ds2/zoom_ledger.txt | ZOOM \p 6 \p zoom_in \p a/b \p a/b/cell:1,2 \p 1 \p 2 | continues-at-seq-6
+# a ledger with ONLY refusals (nothing ever started) has no current address: REFUSED rows carry an address for the reader, they never move it
+MKDIR | ds4
+ENV | DUST_STATE | $T/ds4
+RUN | $T/dz.+x | zoom_in | 1 | 1
+EXPECT_EXIT | 1 | refused-with-no-start
+RUN | $T/dz.+x | zoom_out
+EXPECT_EXIT | 1 | second-refused-with-no-start
+RUN | $T/dz.+x | where
+EXPECT_EXIT | 2 | where-with-only-refusals-has-no-address
+EXPECT_HAS | ds4/zoom_ledger.txt | REFUSED \p 2 \p zoom_out \p - \p no START yet | second-refusal-is-row-2
+MKDIR | h/xyzfs
+MKDIR | h/101.mutaclsym_t/system
+MKDIR | h/@.apps/rpg-dust/ops/+x
+MKDIR | h/@.apps/rpg-dust/state/world
+MKDIR | h/&.widgits/events-hq/ops
+COPY | &.widgits/_shared-lib/system/prisc+x.c | prisc.c
+RUN | gcc | -O2 | -w | -o | $T/h/101.mutaclsym_t/system/prisc+x | $T/prisc.c | -lm
+EXPECT_EXIT | 0 | scratch-prisc-built
+COPY | &.widgits/events-hq/ops/play_event.sh | h/&.widgits/events-hq/ops/play_event.sh
+RUN | cp | $T/dz.+x | $T/h/@.apps/rpg-dust/ops/+x/dust_zoom.+x
+EXPECT_EXIT | 0 | op-copied-into-scratch-house
+COPYDIR | @.apps/rpg-dust/events | h/@.apps/rpg-dust/events
+MKDIR | ds3
+ENV | DUST_STATE | $T/ds3
+ENV | MUCHI_TARGET_ENT | $T/h/@.apps/rpg-dust/state/world
+ENV | PET_ARG | globe:3,4/region:0,1
+RUN | bash | $T/h/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rpg-dust/events/start | $T/h | ui
+EXPECT_EXIT | 0 | page-start-played
+EXPECT_OUT | ran entity page start | page-start-page-ran
+EXPECT_HAS | ds3/zoom_ledger.txt | START \p 1 \p globe:3,4/region:0,1 | page-start-wrote-START
+ENV | PET_ARG | 7 9
+RUN | bash | $T/h/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rpg-dust/events/zoom_in | $T/h | ui
+EXPECT_EXIT | 0 | page-zoom-in-played
+EXPECT_OUT | ran entity page zoom_in | page-zoom-in-page-ran
+EXPECT_HAS | ds3/zoom_ledger.txt | ZOOM \p 2 \p zoom_in \p globe:3,4/region:0,1 \p globe:3,4/region:0,1/cell:7,9 \p 7 \p 9 | page-zoom-in-wrote-ZOOM
+ENV | PET_ARG | 1 1
+RUN | bash | $T/h/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rpg-dust/events/zoom_in | $T/h | ui
+EXPECT_EXIT | 0 | page-zoom-in-again-played
+EXPECT_OUT | ran entity page zoom_in | page-zoom-in-again-page-ran
+EXPECT_HAS | ds3/zoom_ledger.txt | REFUSED \p 3 \p zoom_in \p globe:3,4/region:0,1/cell:7,9 \p already at the area level: nothing below it is built | page-refusal-is-logged
+ENV | PET_ARG | 
+RUN | bash | $T/h/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rpg-dust/events/zoom_out | $T/h | ui
+EXPECT_EXIT | 0 | page-zoom-out-played
+EXPECT_OUT | ran entity page zoom_out | page-zoom-out-page-ran
+EXPECT_HAS | ds3/zoom_ledger.txt | ZOOM \p 4 \p zoom_out \p globe:3,4/region:0,1/cell:7,9 \p globe:3,4/region:0,1 \p 7 \p 9 | page-zoom-out-wrote-ZOOM
+ENV | PET_ARG | 
+RUN | $T/dz.+x | where
+EXPECT_OUT_IS | globe:3,4/region:0,1 | pages-and-replay-agree
+RUN | grep | -c | . | $T/ds3/zoom_ledger.txt
+EXPECT_OUT_IS | 4 | exactly-four-rows

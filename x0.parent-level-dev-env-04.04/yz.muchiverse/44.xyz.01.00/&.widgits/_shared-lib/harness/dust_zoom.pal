@@ -1,0 +1,4 @@
+# dust_zoom.pal - LOCKED acceptance harness for rpg-dust R2c: zoom in / zoom out as events with an append-only ledger. Read results/dust_zoom.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/dust_zoom.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/dust_zoom.pdl
+halt
