@@ -340,36 +340,26 @@ int main(int argc, char **argv) {
             }
             /* The strip exists for the COMPILE only (owner 2026-10-06: "forget about entities ... stop strip when compile is done, entities is
              * lighting fast now"). Compile over -> a short "Ready" beat -> close. No compile (a ~0.6 s no-op build, or no build at all) -> close at once. */
-            double frac = 1.0;
-            if (compile_seen) { disp += (1.0 - disp) * 0.5; if (disp > 0.995) disp = 1.0; frac = disp; }   /* the last stretch eases in instead of snapping */
-            const char *step = "Ready";
-            if (compile_seen) {
-                if (done_at < 0) done_at = el;
-            } else {
-                /* No real compile (the usual case: a hash-gated no-op build). The strip used to close here, the moment the build ended, which left a blank
-                 * screen for the ~12 s the desktop still needed (owner 2026-10-23: "it will feel slow/broken"). It now follows the NEW boot's own marks and
-                 * closes only when the desktop has settled: 0 start, 1 boot script started, 2 menus published, 3 bottom bar drawn, then Ready once no mark
-                 * has appeared for 1.5 s (or 25 s after the bar was drawn at the latest). Each phase creeps a little so the bar never looks stalled. */
-                static const double FL[4]  = { 0.00, 0.30, 0.55, 0.75 };
-                static const double CAP[4] = { 0.25, 0.50, 0.72, 0.96 };
-                static const char *ST[4]   = { "Starting\xE2\x80\xA6", "Starting desktop\xE2\x80\xA6", "Loading menus\xE2\x80\xA6", "Loading desktop\xE2\x80\xA6" };
-                long long nowm = real_ms();
-                if (el - scan_t >= 0.25) { tl_scan(house, since_ms, &bm); scan_t = el; }
-                int ph = bm.dock >= 0 ? 3 : bm.mgr >= 0 ? 2 : bm.boot >= 0 ? 1 : 0;
-                if (ph != phase) { phase = ph; phase_t = el; }
-                double target = FL[ph] + (el - phase_t) * (ph == 0 ? 0.03 : 0.04);
-                if (target > CAP[ph]) target = CAP[ph];
-                step = ST[ph];
-                if (ph == 3 && ((nowm - bm.dock >= 1500 && nowm - bm.last >= 1500) || nowm - bm.dock > 25000)) {
-                    if (done_at < 0) done_at = el;
-                } else if (ph == 0 && el > 30.0) {
-                    break;                               /* no boot followed this strip: do not hang around */
-                }
-                if (done_at >= 0) { target = 1.0; step = "Ready"; }
-                if (target > disp) disp += (target - disp) * 0.2;      /* eased, monotonic */
-                if (done_at >= 0 && disp > 0.995) disp = 1.0;
-                frac = disp;
-            }
+            /* The strip exists ONLY while nothing of the new desktop is on the screen (owner 2026-10-23: "the loading should only exist if NOTHING is on the
+             * screen"): it goes away the moment the new boot has put its first thing up - the bottom bar drawn (the menu header is published 17 ms before it)
+             * - with no "Ready" beat and no waiting for the rest of the desktop to settle. This holds after a real compile too (the compile display above
+             * is unchanged; once it is over the strip waits here for the first visible element instead of closing on its own). The start-up phases before
+             * that creep a little so the bar never looks stalled: 0 start, 1 boot script started, 2 menus published. Marks older than the strip start
+             * (minus 3 s) are ignored, so the previous boot or the still-running old desktop cannot end it. Gives up after 30 s if no boot follows. */
+            static const double FL[3]  = { 0.00, 0.40, 0.75 };
+            static const double CAP[3] = { 0.35, 0.70, 0.95 };
+            static const char *ST[3]   = { "Starting\xE2\x80\xA6", "Starting desktop\xE2\x80\xA6", "Loading menus\xE2\x80\xA6" };
+            if (el - scan_t >= 0.15) { tl_scan(house, since_ms, &bm); scan_t = el; }
+            int ph = bm.mgr >= 0 ? 2 : bm.boot >= 0 ? 1 : 0;
+            if (ph != phase) { phase = ph; phase_t = el; }
+            double target = FL[ph] + (el - phase_t) * (ph == 0 ? 0.03 : 0.05);
+            if (target > CAP[ph]) target = CAP[ph];
+            const char *step = ST[ph];
+            if (compile_seen && disp > target) target = disp;         /* after a compile the bar is already full: it holds, never goes back */
+            if (bm.dock >= 0) { if (done_at < 0) done_at = el; target = 1.0; disp = 1.0; }
+            else if (!compile_seen && ph == 0 && el > 30.0) break;    /* no boot followed this strip */
+            if (target > disp) disp += (target - disp) * 0.25;        /* eased, monotonic */
+            double frac = disp;
             XSetForeground(dpy, gc, bg);
             XFillRectangle(dpy, dr, gc, 0, 0, ww, wh);
             XftDrawStringUtf8(xftb, &xfg, fbig, 14, 20, (const FcChar8 *)"Loading LyfeDesk\xE2\x80\xA6", 18);
@@ -390,7 +380,7 @@ int main(int argc, char **argv) {
                 XDrawRectangle(dpy, dr, gc, bx, by, bw, bh);
             }
             XCopyArea(dpy, buf, win, gc, 0, 0, (unsigned)ww, (unsigned)wh, 0, 0); XFlush(dpy);
-            if (done_at >= 0 && el - done_at > 0.35 && disp >= 1.0) break;                // let "Ready" show a beat
+            if (done_at >= 0) break;                // the new desktop is on screen: the strip is no longer needed (no "Ready" beat)
             tick++;
             usleep(60000);
         }
