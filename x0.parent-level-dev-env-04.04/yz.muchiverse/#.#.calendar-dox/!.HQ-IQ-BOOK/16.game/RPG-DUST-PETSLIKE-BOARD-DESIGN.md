@@ -63,3 +63,23 @@ Everything else is inherited: chat, clock and day / night, hotbar (with its mini
 ## 6. What this replaces
 
 `@.apps/rpg-dust/board/open_board.sh` and its template copy (commit `da8fc7da9`) are the **first slice**; once the skin runs they are replaced by the pets-like launch (`button.sh` -> `board/open_board.sh` of the generated board). `dust_gen export` and its legend stay for the 3D `terrain_legend.txt` and for the harness.
+
+## 7. Status 2026-10-23 (what was built, RAN unless marked)
+
+Steps A1, A2, B1, B2 and part of C1 are built; the owner opened the window from the toys entry and clicked the Doom row, so the click path works on real hardware.
+
+| Step | Result |
+|---|---|
+| A1 skin | `ops/rpg_dust.c` on `petslike_core.c` (copy of the island skin with the island painter replaced); `ops/build_rpg_dust.sh` builds it and the world ops. The window now has chat (right bar with input), the Time menu (`D1 13:34`), the pets-like hotbar, side bars with `_`, footer toggles. |
+| Hotbar minimize | Cause found: `board/state/pchq/ui.txt`, left over from the first slice (hotbar-hq's manager writes `hb_visible=1` there), is listed after the core's `ui.txt` in the window's `vars`, so it overrode the hide flag. Removed that runtime folder; hide and show then worked both ways (frames compared). The shared board template is not at fault; a board launched from the first-slice template leaves that file behind. |
+| A2 left bar | `board.xhtpm.in` got a block marker `<!--@@s1:-->...<!--@@/s1-->` around the left bar with the old text as default; `petslike_tpl check` is clean for the nine other games (byte-identical) and was shown to fail for rpg-dust before `gen`. rpg-dust fills the block from `xhtpm-extra.txt`: address, Regen, Zoom in here / Zoom out, tileset rows. |
+| B1 tilesets | `tilesets.pdl` (RPG Maker, plain colours, Cataclysm DDA, Mineclonia, Doom/Freedoom). Atlas checked for all five; map identical across tilesets (`65025e8ad107`), atlases differ, same tileset twice identical. Doom CSVs are 48 px not 64 (the shared `csvf_load64` takes only 64), so the skin has its own any-size loader; the doom rows were guessed by name and look rough. No Dwarf Fortress set yet (its tiles are sheets, not loose files). |
+| B2 Regen | `state/look_ledger.txt` (append-only `TILESET | id`, `REGEN | seed`); the skin replays it, writes a run copy `state/scale_run.pdl` with that seed, and `dust_gen` reads the copy. `regen 777` changed the map, `regen 20261023` restored it exactly, `scale.pdl` stayed clean. |
+| C1 zoom | `zoomhere` (the hero's cell) and `zoomout` call `dust_zoom`; **not tested through the window yet**. |
+| Pets and chat | Four explorers (Ember, Glacine, Murmur, Solvent; pictures shared from `../rpg-edit-hq/art`). Chat is standard: a greeting shows when the **selected** pet meets another (Glacine / Murmur seen in the chat bar). Turn mode (INT) must be off for pets to move on their own. The left bar no longer lists pets, so selecting one is through the Pals menu. |
+
+### D11 (owner, same day): a bigger world, with buildings, cars and towns that appear as you zoom in
+Not built. Consequences to design before starting: `N = 16` in `dust_addr.c` and the 16 x 16 pages are small; the skin constants `SK_W/SK_H`, `MAXC/MAXR`, `FW/FH` follow N; the conservation rule (area heights sum to 256 x the region cell) is tied to N; structures (buildings, vehicles, towns) are new generator layers keyed by `(seed, address)` with their own conservation or placement rules, and each needs art per tileset (a `TILE` row per structure band). The ledger design already covers edits.
+
+### Known gaps
+Shop / furniture / Pals-menu items and the catalog are inherited from the island game and do not fit a planet. About 120 lines of the skin (`sk_solid`, `sk_paint_bg`, `sk_pets_sync`, `sk_pic`, `pet_own_export_room`, the pet roster reader) are copies of `rpg_edit_hq.c` and should become one shared text-include, gated by a byte-identical export of rpg-edit-hq. The skin's own verbs (`regen`, `tileset`, `zoomhere`, `zoomout`) are not in `verbs.pdl` (the manifest still binds `dust_zoom`). No harness yet for B1/B2 (the evidence above is by hand). Camera starts low.
