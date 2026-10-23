@@ -23,6 +23,9 @@ User-visible text says **LyfeDesk** (AGENTS.md); internal ids keep `livedesk`.
 1. Defaults ON (UI sounds and startup), volume 40. 2. Startup = **option C**: chime, then a spoken "LyfeDesk" (the chime half is built in U1; the spoken half is a later step on debil + `audio_fx`). 3. **Sound themes are selectable in settings** (`sound_theme=<id>` in `hq_ui.pdl`; the settings window lists the `THEME` rows). 4. First cue set: menu movement and activate first, then window focus/open/close, toggles and refused (all nine are already rendered; hooking is stepwise).
 Consequences: sounds are keyed by (theme, id); every theme must define every sound a cue names (the renderer enforces it); the player loads the chosen theme and reloads on a `sound_theme` change.
 
+### 1c. Startup brief, 2026-10-23 (BUILT in the renderer, not yet listened to)
+"A fast-paced contrapuntal arpeggio, like the Sega / Sonic startup and trail-off; shimmering echo and reverb." Built as: two lines in contrary motion (one rises C5 to B6, one falls G6 to G4, sixteenth notes at 168 bpm) over a low C3 pedal, landing on a held chord, with an octave-up shimmer send, an echo, a Schroeder reverb and a cosine fade; about 2.4 s, peak 0.46 (soft) / 0.41 (retro), within the 2.5 s / 0.5 startup limits. The Sega *chant* itself is a voice: option C's spoken half ("LyfeDesk") is the closest equivalent and is still to do.
+
 ## 2. Decisions this design takes (PROPOSED)
 1. **Never block or fork in the render loop.** A cue is one short append to a marker file; a separate small player process does the sound. This is the house marker rule (change detection = append-only file growth) and the house sharing rule (stateful + 2 consumers = op + file/IPC, not a header).
 2. **All sounds are generated, never recorded.** Rows in a data file are rendered by a deterministic C op into wav files at build time; nothing is synthesised at click time. Same seed and rows give the same bytes (the same gate as rpg-dust R1).

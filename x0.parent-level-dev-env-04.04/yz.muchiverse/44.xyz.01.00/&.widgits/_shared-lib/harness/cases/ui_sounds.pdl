@@ -209,3 +209,118 @@ WRITE | bad1.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\n
 RUN | $T/usr.+x | $T/bad1.pdl | $T/never
 EXPECT_EXIT | 1 | no-sounds-no-render-exit
 EXPECT_NOFILE | never/t/a.wav | nothing-written-on-bad-rows
+
+WRITE | g1.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=120 seq=C5:1,E5:1 wave=triangle vol=0.1 attack=0.005 decay=0.2 tail=0.5 seq2=G5:1,C5:1 wave2=sine gain2=0.8 \p n\n
+RUN | $T/usr.+x | $T/g1.pdl | $T/gx1
+EXPECT_EXIT | 0 | counterpoint-two-voices-ok
+EXPECT_OUT | rendered=1 | counterpoint-two-voices-ok-message
+WRITE | g2.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=120 seq=C5:1,E5:1 wave=triangle vol=0.1 attack=0.005 decay=0.2 tail=0.5 seq2=G5:1,C5:1 seq3=C3:2 wave3=sine \p n\n
+RUN | $T/usr.+x | $T/g2.pdl | $T/gx2
+EXPECT_EXIT | 0 | counterpoint-three-voices-ok
+EXPECT_OUT | rendered=1 | counterpoint-three-voices-ok-message
+WRITE | g3.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=120 seq=C5:1,E5:1 wave=triangle vol=0.1 attack=0.005 decay=0.2 tail=0.5 shimmer=0.4 echo=150,0.4,0.4 reverb=0.3 fade=0.4 \p n\n
+RUN | $T/usr.+x | $T/g3.pdl | $T/gx3
+EXPECT_EXIT | 0 | all-effects-ok
+EXPECT_OUT | rendered=1 | all-effects-ok-message
+WRITE | g4.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=120 seq=C5:1,E5:1 wave=triangle vol=0.1 attack=0.005 decay=0.2 tail=0.5 echo=5,0.4,0.4 \p n\n
+RUN | $T/usr.+x | $T/g4.pdl | $T/gx4
+EXPECT_EXIT | 1 | echo-ms-too-small
+EXPECT_OUT | echo must be | echo-ms-too-small-message
+WRITE | g5.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=120 seq=C5:1,E5:1 wave=triangle vol=0.1 attack=0.005 decay=0.2 tail=0.5 echo=150,0.95,0.4 \p n\n
+RUN | $T/usr.+x | $T/g5.pdl | $T/gx5
+EXPECT_EXIT | 1 | echo-feedback-too-high
+EXPECT_OUT | echo must be | echo-feedback-too-high-message
+WRITE | g6.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=120 seq=C5:1,E5:1 wave=triangle vol=0.1 attack=0.005 decay=0.2 tail=0.5 echo=150,0.4,1.5 \p n\n
+RUN | $T/usr.+x | $T/g6.pdl | $T/gx6
+EXPECT_EXIT | 1 | echo-mix-above-1
+EXPECT_OUT | echo must be | echo-mix-above-1-message
+WRITE | g7.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=120 seq=C5:1,E5:1 wave=triangle vol=0.1 attack=0.005 decay=0.2 tail=0.5 echo=150,0.4 \p n\n
+RUN | $T/usr.+x | $T/g7.pdl | $T/gx7
+EXPECT_EXIT | 1 | echo-missing-field
+EXPECT_OUT | echo must be | echo-missing-field-message
+WRITE | g8.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=120 seq=C5:1,E5:1 wave=triangle vol=0.1 attack=0.005 decay=0.2 tail=0.5 shimmer=2 \p n\n
+RUN | $T/usr.+x | $T/g8.pdl | $T/gx8
+EXPECT_EXIT | 1 | shimmer-above-1
+EXPECT_OUT | shimmer must be | shimmer-above-1-message
+WRITE | g9.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=120 seq=C5:1,E5:1 wave=triangle vol=0.1 attack=0.005 decay=0.2 tail=0.5 reverb=-0.1 \p n\n
+RUN | $T/usr.+x | $T/g9.pdl | $T/gx9
+EXPECT_EXIT | 1 | reverb-negative
+EXPECT_OUT | reverb must be | reverb-negative-message
+WRITE | g10.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=120 seq=C5:1,E5:1 wave=triangle vol=0.1 attack=0.005 decay=0.2 tail=0.5 seq2=G5:1 gain2=3 \p n\n
+RUN | $T/usr.+x | $T/g10.pdl | $T/gx10
+EXPECT_EXIT | 1 | gain2-too-big
+EXPECT_OUT | gain2 must be | gain2-too-big-message
+WRITE | g11.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=120 seq=C5:1,E5:1 wave=triangle vol=0.1 attack=0.005 decay=0.2 tail=0.5 seq2=G5:1 wave2=pink \p n\n
+RUN | $T/usr.+x | $T/g11.pdl | $T/gx11
+EXPECT_EXIT | 1 | wave2-bad
+EXPECT_OUT | wave2 / wave3 must be | wave2-bad-message
+WRITE | g12.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=120 seq=C5:1,E5:1 wave=triangle vol=0.1 attack=0.005 decay=0.2 tail=0.5 seq2=H5:1 \p n\n
+RUN | $T/usr.+x | $T/g12.pdl | $T/gx12
+EXPECT_EXIT | 1 | seq2-bad-note
+EXPECT_OUT | note 'H5' | seq2-bad-note-message
+WRITE | g13.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=120 seq=C5:1,E5:1 wave=triangle vol=0.1 attack=0.005 decay=0.2 tail=0.5 seq3=C3:0 \p n\n
+RUN | $T/usr.+x | $T/g13.pdl | $T/gx13
+EXPECT_EXIT | 1 | seq3-bad-beats
+EXPECT_OUT | beats '0' | seq3-bad-beats-message
+WRITE | g14.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=120 seq=C5:1,E5:1 wave=triangle vol=0.1 attack=0.005 decay=0.2 tail=0.5 fade=9 \p n\n
+RUN | $T/usr.+x | $T/g14.pdl | $T/gx14
+EXPECT_EXIT | 1 | fade-longer-than-sound
+EXPECT_OUT | fade must be | fade-longer-than-sound-message
+WRITE | g15.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=120 seq=C5:1,E5:1 wave=triangle vol=0.1 attack=0.005 decay=0.2 tail=0.5 seq2=C3:16,D3:16 \p n\n
+RUN | $T/usr.+x | $T/g15.pdl | $T/gx15
+EXPECT_EXIT | 1 | voices-together-over-8s
+EXPECT_OUT | at most 8 seconds | voices-together-over-8s-message
+WRITE | e1.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=120 seq=C5:1,E5:1 wave=triangle vol=0.1 attack=0.005 decay=0.2 tail=0.5 seq2=G5:1,C5:1 shimmer=0.4 echo=150,0.4,0.4 reverb=0.3 fade=0.4 \p n\n
+RUN | $T/usr.+x | $T/e1.pdl | $T/e1a
+SUMTREE | ea | e1a
+WRITE | e1b.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=120 seq=C5:1,E5:1 wave=triangle vol=0.1 attack=0.005 decay=0.2 tail=0.5 seq2=G5:1,C5:1 shimmer=0.4 echo=150,0.4,0.4 reverb=0.3 fade=0.4 \p n\n
+RUN | $T/usr.+x | $T/e1b.pdl | $T/e1b
+SUMTREE | eb | e1b
+EXPECT_EQ | $ea | $eb | effects-same-file-twice-same-bytes
+WRITE | e2.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=120 seq=C5:1,E5:1 wave=triangle vol=0.1 attack=0.005 decay=0.2 tail=0.5 seq2=G5:1,C5:1 \p n\n
+RUN | $T/usr.+x | $T/e2.pdl | $T/e2a
+SUMTREE | ec | e2a
+EXPECT_NE | $ea | $ec | effects-change-the-bytes
+WRITE | e3.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=120 seq=C5:1,E5:1 wave=triangle vol=0.1 attack=0.005 decay=0.2 tail=0.5 \p n\n
+RUN | $T/usr.+x | $T/e3.pdl | $T/e3a
+SUMTREE | ed | e3a
+EXPECT_NE | $ec | $ed | second-voice-changes-the-bytes
+WRITE | e4.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=120 seq=C5:1,E5:1 wave=triangle vol=0.1 attack=0.005 decay=0.2 tail=0.5 echo=150,0.4,0.4 \p n\n
+RUN | $T/usr.+x | $T/e4.pdl | $T/e4a
+SUMTREE | ee | e4a
+EXPECT_NE | $ed | $ee | echo-alone-changes-the-bytes
+WRITE | e5.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=120 seq=C5:1,E5:1 wave=triangle vol=0.1 attack=0.005 decay=0.2 tail=0.5 reverb=0.3 \p n\n
+RUN | $T/usr.+x | $T/e5.pdl | $T/e5a
+SUMTREE | ef | e5a
+EXPECT_NE | $ed | $ef | reverb-alone-changes-the-bytes
+WRITE | e6.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=120 seq=C5:1,E5:1 wave=triangle vol=0.1 attack=0.005 decay=0.2 tail=0.5 shimmer=0.4 reverb=0.3 \p n\n
+RUN | $T/usr.+x | $T/e6.pdl | $T/e6a
+SUMTREE | eg | e6a
+EXPECT_NE | $ef | $eg | shimmer-changes-the-bytes
+WRITE | e7.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=120 seq=C5:1,E5:1 wave=triangle vol=0.1 attack=0.005 decay=0.2 tail=0.5 fade=0.4 \p n\n
+RUN | $T/usr.+x | $T/e7.pdl | $T/e7a
+SUMTREE | eh | e7a
+EXPECT_NE | $ed | $eh | fade-changes-the-bytes
+WRITE | h0.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=120 seq=C5:1,E5:1 wave=triangle vol=0.1 attack=0.005 decay=0.2 tail=0.5 seq2=G5:1,C5:1 \p n\n
+RUN | $T/usr.+x | $T/h0.pdl | $T/h0d
+SUMTREE | h0v | h0d
+WRITE | h1.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=120 seq=C5:1,E5:1 wave=triangle vol=0.1 attack=0.005 decay=0.2 tail=0.5 seq2=G5:1,C5:1 gain2=0.5 \p n\n
+RUN | $T/usr.+x | $T/h1.pdl | $T/h1d
+SUMTREE | h1v | h1d
+WRITE | h2.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=120 seq=C5:1,E5:1 wave=triangle vol=0.1 attack=0.005 decay=0.2 tail=0.5 seq2=G5:1,C5:1 wave2=sine \p n\n
+RUN | $T/usr.+x | $T/h2.pdl | $T/h2d
+SUMTREE | h2v | h2d
+WRITE | h3.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=120 seq=C5:1,E5:1 wave=triangle vol=0.1 attack=0.005 decay=0.2 tail=0.5 seq2=G5:1,C5:1 seq3=C3:2 \p n\n
+RUN | $T/usr.+x | $T/h3.pdl | $T/h3d
+SUMTREE | h3v | h3d
+WRITE | h4.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=120 seq=C5:1,E5:1 wave=triangle vol=0.1 attack=0.005 decay=0.2 tail=0.5 seq2=G5:1,C5:1 seq3=C3:2 gain3=0.5 \p n\n
+RUN | $T/usr.+x | $T/h4.pdl | $T/h4d
+SUMTREE | h4v | h4d
+WRITE | h5.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=120 seq=C5:1,E5:1 wave=triangle vol=0.1 attack=0.005 decay=0.2 tail=0.5 seq2=G5:1,C5:1 seq3=C3:2 wave3=sine \p n\n
+RUN | $T/usr.+x | $T/h5.pdl | $T/h5d
+SUMTREE | h5v | h5d
+EXPECT_NE | $h0v | $h1v | gain2-changes-the-bytes
+EXPECT_NE | $h0v | $h2v | wave2-changes-the-bytes
+EXPECT_NE | $h0v | $h3v | third-voice-changes-the-bytes
+EXPECT_NE | $h3v | $h4v | gain3-changes-the-bytes
+EXPECT_NE | $h3v | $h5v | wave3-changes-the-bytes
