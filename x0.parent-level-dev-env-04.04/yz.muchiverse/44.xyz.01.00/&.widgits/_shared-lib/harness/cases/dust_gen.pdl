@@ -197,3 +197,40 @@ EXPECT_EXIT | 0 | round-trip-region-page-identical
 RUN | $T/dg.+x | page | $T/scale.pdl | globe:3,4/region:0,1/cell:8,9 | $T/pb.txt
 RUN | cmp | -s | $T/pa.txt | $T/pb.txt
 EXPECT_EXIT | 1 | neighbour-cell-other-page
+# R3: dust_gen export - a height page becomes the board engine's files. Band edges are pinned at every boundary (19|20, 34|35, 44|45, 64|65, 79|80, 91|92) so an off-by-one fails; legend, terrain legend and extrusion are checked against the same band table.
+MKDIR | ex
+WRITE | ex_page.txt | PAGE \p region \p fixture \p 1 \p 16\n00 19 20 34 35 44 45 64 65 79 80 91 92 99 50 50\n50 50 50 50 50 50 50 50 50 50 50 50 50 50 50 50\n50 50 50 50 50 50 50 50 50 50 50 50 50 50 50 50\n50 50 50 50 50 50 50 50 50 50 50 50 50 50 50 50\n50 50 50 50 50 50 50 50 50 50 50 50 50 50 50 50\n50 50 50 50 50 50 50 50 50 50 50 50 50 50 50 50\n50 50 50 50 50 50 50 50 50 50 50 50 50 50 50 50\n50 50 50 50 50 50 50 50 50 50 50 50 50 50 50 50\n50 50 50 50 50 50 50 50 50 50 50 50 50 50 50 50\n50 50 50 50 50 50 50 50 50 50 50 50 50 50 50 50\n50 50 50 50 50 50 50 50 50 50 50 50 50 50 50 50\n50 50 50 50 50 50 50 50 50 50 50 50 50 50 50 50\n50 50 50 50 50 50 50 50 50 50 50 50 50 50 50 50\n50 50 50 50 50 50 50 50 50 50 50 50 50 50 50 50\n50 50 50 50 50 50 50 50 50 50 50 50 50 50 50 50\n50 50 50 50 50 50 50 50 50 50 50 50 50 50 50 50\n
+RUN | $T/dg.+x | export | $T/ex_page.txt | $T/ex
+EXPECT_EXIT | 0 | export-ok
+EXPECT_HAS | ex/map.txt | aabbccddeeffggdd\ndddddddddddddddd | export-row0-and-row1-bands
+RUN | wc | -l | $T/ex/map.txt
+EXPECT_OUT | 16 | map-has-16-rows
+EXPECT_HAS | ex/ascii_legend.txt | a\p0\p20\p50\p130\p-\pdeep water\p~ | legend-a
+EXPECT_HAS | ex/extrusion.pdl | EXTRUDE      \p a                  \p 0 | extrusion-a
+EXPECT_HAS | ex/ascii_legend.txt | b\p0\p50\p100\p190\p-\pwater\p~ | legend-b
+EXPECT_HAS | ex/extrusion.pdl | EXTRUDE      \p b                  \p 0 | extrusion-b
+EXPECT_HAS | ex/ascii_legend.txt | c\p1\p215\p195\p130\p-\psand\p. | legend-c
+EXPECT_HAS | ex/extrusion.pdl | EXTRUDE      \p c                  \p 1 | extrusion-c
+EXPECT_HAS | ex/ascii_legend.txt | d\p1\p90\p160\p70\p-\pgrass\p" | legend-d
+EXPECT_HAS | ex/extrusion.pdl | EXTRUDE      \p d                  \p 1 | extrusion-d
+EXPECT_HAS | ex/ascii_legend.txt | e\p2\p40\p110\p50\p-\pforest\pT | legend-e
+EXPECT_HAS | ex/extrusion.pdl | EXTRUDE      \p e                  \p 2 | extrusion-e
+EXPECT_HAS | ex/ascii_legend.txt | f\p3\p130\p125\p120\p-\prock\p^ | legend-f
+EXPECT_HAS | ex/extrusion.pdl | EXTRUDE      \p f                  \p 3 | extrusion-f
+EXPECT_HAS | ex/ascii_legend.txt | g\p3\p240\p240\p245\p-\psnow\p* | legend-g
+EXPECT_HAS | ex/extrusion.pdl | EXTRUDE      \p g                  \p 3 | extrusion-g
+EXPECT_HAS | ex/terrain_legend.txt | a\p-0.4\p20\p50\p130\p-\pdeep water\p | terrain-a
+EXPECT_HAS | ex/terrain_legend.txt | b\p-0.2\p50\p100\p190\p-\pwater\p | terrain-b
+EXPECT_HAS | ex/terrain_legend.txt | c\p0.4\p215\p195\p130\p-\psand\p | terrain-c
+EXPECT_HAS | ex/terrain_legend.txt | d\p0.6\p90\p160\p70\p-\pgrass\p | terrain-d
+EXPECT_HAS | ex/terrain_legend.txt | e\p0.8\p40\p110\p50\p-\pforest\p | terrain-e
+EXPECT_HAS | ex/terrain_legend.txt | f\p1.0\p130\p125\p120\p-\prock\p | terrain-f
+EXPECT_HAS | ex/terrain_legend.txt | g\p1.0\p240\p240\p245\p-\psnow\p | terrain-g
+EXPECT_HAS | ex/terrain_legend.txt | _\p0.0\p135\p206\p235\p-\pair\p- | terrain-air
+RUN | $T/dg.+x | export | $T/nosuch.txt | $T/ex
+EXPECT_EXIT | 2 | export-missing-page
+RUN | $T/dg.+x | export | $T/ex_page.txt | $T/no_such_dir
+EXPECT_EXIT | 2 | export-missing-outdir
+WRITE | ex_short.txt | PAGE \p region \p f \p 1 \p 16\n50 50\n
+RUN | $T/dg.+x | export | $T/ex_short.txt | $T/ex
+EXPECT_EXIT | 2 | export-truncated-page

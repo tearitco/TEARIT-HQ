@@ -1,3 +1,7 @@
 ops/+x/
 state/
 events/*/master_ledger.txt
+rpg-dust-pchq/
+board/state/
+board/*.log
+board/module_parent.pid

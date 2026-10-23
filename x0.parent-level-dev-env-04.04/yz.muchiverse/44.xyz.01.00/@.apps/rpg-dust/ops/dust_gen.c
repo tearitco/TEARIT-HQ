@@ -4,6 +4,7 @@
  *   dust_gen page     <scale.pdl> <addr> <out>              the page at an address, from the address alone: a region page, or (address ending /cell:cx,cy) the area page of that region cell
  *   dust_gen zoom_in  <addr> <cx> <cy>                      prints addr/cell:cx,cy (cx, cy 0..15; the address must not already be an area address)
  *   dust_gen zoom_out <addr>                                prints "<parent addr> <cx> <cy>" (exit 2 on a region address, which has no parent here)
+ *   dust_gen export   <page> <outdir>                       write the board files for a page (region or area): map.txt (16 rows of band glyphs a..g), ascii_legend.txt (glyph|extrusion|r|g|b|-|name|ascii), terrain_legend.txt (the engine's instance legend: glyph|top height|r|g|b|-|name|cjk, plus _ air), extrusion.pdl. Bands by height: a 0-19 deep water, b 20-34 water, c 35-44 sand, d 45-64 grass, e 65-79 forest, f 80-91 rock, g 92-99 snow
  *   dust_gen conserve <region-page> <cx> <cy> <area-page>   the zoom must invent nothing: the area page's heights sum to exactly N*N*(the region cell's height), and every height is 0..99. Prints OK or MISMATCH, exit 0 / 1, 2 on unreadable input
  * File format (pipe rows like the rest of the house): `PAGE | <level> | <addr> | <seed> | <n>` then n rows of n two-digit heights. Parent link for an area page: its addr ends in /cell:cx,cy.
  * The conservation rule is the design's "zoom in makes the new page agree with the summary row": the region cell is the summary, the area page is the detail, and the check counts that no height was invented or lost.
@@ -63,6 +64,32 @@ static int gen_page(const char *pdl, const char *addr, const char *out) {
     if (!region_h(pdl, parent, rh, &rs) || !area_h(pdl, rh, cx, cy, parent, h, &s, full, sizeof full)) { return 2; }
     return write_page(out, "area", full, s, h);
 }
+/* ---- board export: a height page -> the files the pc-hq board engine reads (map.txt glyph rows, ascii_legend.txt, extrusion.pdl) ---- */
+typedef struct { char g; int lo, ext, r, gg, b; const char *name; char ascii; double top; const char *cjk; } Band;
+static const Band BANDS[] = { {'a', 0, 0, 20, 50, 130, "deep water", '~', -0.4, "深"}, {'b', 20, 0, 50, 100, 190, "water", '~', -0.2, "水"}, {'c', 35, 1, 215, 195, 130, "sand", '.', 0.4, "沙"}, {'d', 45, 1, 90, 160, 70, "grass", '"', 0.6, "草"}, {'e', 65, 2, 40, 110, 50, "forest", 'T', 0.8, "林"}, {'f', 80, 3, 130, 125, 120, "rock", '^', 1.0, "岩"}, {'g', 92, 3, 240, 240, 245, "snow", '*', 1.0, "雪"} };
+#define NBANDS ((int)(sizeof BANDS / sizeof BANDS[0]))
+static int band_of(int h) { int b = 0; for (int i = 0; i < NBANDS; i++) if (h >= BANDS[i].lo) b = i; return b; }
+static int export_page(const char *page, const char *outdir) {
+    int h[N][N]; if (!read_page(page, h)) { fprintf(stderr, "dust_gen: cannot read page %s\n", page); return 2; }
+    char p[600]; FILE *f;
+    snprintf(p, sizeof p, "%s/map.txt", outdir); if (!(f = fopen(p, "w"))) { fprintf(stderr, "dust_gen: cannot write %s\n", p); return 2; }
+    for (int y = 0; y < N; y++) {
+        for (int x = 0; x < N; x++) { fputc(BANDS[band_of(h[y][x])].g, f); }
+        fputc('\n', f);
+    }
+    fclose(f);
+    snprintf(p, sizeof p, "%s/ascii_legend.txt", outdir); if (!(f = fopen(p, "w"))) { return 2; }
+    for (int i = 0; i < NBANDS; i++) { fprintf(f, "%c|%d|%d|%d|%d|-|%s|%c\n", BANDS[i].g, BANDS[i].ext, BANDS[i].r, BANDS[i].gg, BANDS[i].b, BANDS[i].name, BANDS[i].ascii); }
+    fclose(f);
+    snprintf(p, sizeof p, "%s/terrain_legend.txt", outdir); if (!(f = fopen(p, "w"))) { return 2; }
+    fprintf(f, "# terrain_legend.txt - written by dust_gen export for the rpg-dust board (glyph|height|r|g|b|asset_hex|name|cjk, the board engine's convention). _ is air; a..g are the height bands.\n_|0.0|135|206|235|-|air|-\n");
+    for (int i = 0; i < NBANDS; i++) { fprintf(f, "%c|%.1f|%d|%d|%d|-|%s|%s\n", BANDS[i].g, BANDS[i].top, BANDS[i].r, BANDS[i].gg, BANDS[i].b, BANDS[i].name, BANDS[i].cjk); }
+    fclose(f);
+    snprintf(p, sizeof p, "%s/extrusion.pdl", outdir); if (!(f = fopen(p, "w"))) { return 2; }
+    fprintf(f, "SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\nMETA         | map_id             | rpg-dust\n");
+    for (int i = 0; i < NBANDS; i++) { fprintf(f, "EXTRUDE      | %c                  | %d\n", BANDS[i].g, BANDS[i].ext); }
+    return fclose(f) ? 2 : 0;
+}
 static int conserve(const char *rpage, int cx, int cy, const char *apage) {
     int rh[N][N], ah[N][N]; if (!read_page(rpage, rh) || !read_page(apage, ah)) { fprintf(stderr, "dust_gen: unreadable page\n"); return 2; }
     if (cx < 0 || cy < 0 || cx >= N || cy >= N) { fprintf(stderr, "dust_gen: cell out of range\n"); return 2; }
@@ -73,9 +100,10 @@ static int conserve(const char *rpage, int cx, int cy, const char *apage) {
 int main(int argc, char **argv) {
     if (argc == 5 && !strcmp(argv[1], "region")) return gen_region(argv[2], argv[3], argv[4]);
     if (argc == 8 && !strcmp(argv[1], "area")) return gen_area(argv[2], argv[3], atoi(argv[4]), atoi(argv[5]), argv[6], argv[7]);
+    if (argc == 4 && !strcmp(argv[1], "export")) return export_page(argv[2], argv[3]);
     if (argc == 5 && !strcmp(argv[1], "page")) return gen_page(argv[2], argv[3], argv[4]);
     if (argc == 5 && !strcmp(argv[1], "zoom_in")) { char p[400]; int a, b; int cx = atoi(argv[3]), cy = atoi(argv[4]); if (cx < 0 || cy < 0 || cx >= N || cy >= N || split_cell(argv[2], p, sizeof p, &a, &b)) return 2; printf("%s/cell:%d,%d\n", argv[2], cx, cy); return 0; }
     if (argc == 3 && !strcmp(argv[1], "zoom_out")) { char p[400]; int cx, cy; if (!split_cell(argv[2], p, sizeof p, &cx, &cy)) return 2; printf("%s %d %d\n", p, cx, cy); return 0; }
     if (argc == 6 && !strcmp(argv[1], "conserve")) return conserve(argv[2], atoi(argv[3]), atoi(argv[4]), argv[5]);
-    fprintf(stderr, "usage: dust_gen region <scale.pdl> <addr> <out> | area <scale.pdl> <region-page> <cx> <cy> <addr> <out> | page <scale.pdl> <addr> <out> | zoom_in <addr> <cx> <cy> | zoom_out <addr> | conserve <region-page> <cx> <cy> <area-page>\n"); return 2;
+    fprintf(stderr, "usage: dust_gen region <scale.pdl> <addr> <out> | area <scale.pdl> <region-page> <cx> <cy> <addr> <out> | page <scale.pdl> <addr> <out> | zoom_in <addr> <cx> <cy> | zoom_out <addr> | export <page> <outdir> | conserve <region-page> <cx> <cy> <area-page>\n"); return 2;
 }
