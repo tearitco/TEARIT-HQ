@@ -1,6 +1,0 @@
-SECTION      | KEY                | VALUE
-----------------------------------------------------------------------
-META         | map_id             | edit
-EXTRUDE      | W                  | 3
-EXTRUDE      | f                  | 1
-EXTRUDE      | default            | 0

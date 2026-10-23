@@ -1,2 +1,5 @@
-rpg-edit-hq-pchq/
+state/
+audit/
 ops/+x/
+events/*/master_ledger.txt
+rpg-edit-hq-pchq/

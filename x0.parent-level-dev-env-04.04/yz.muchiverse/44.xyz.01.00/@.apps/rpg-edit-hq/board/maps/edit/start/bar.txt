@@ -1,8 +1,0 @@
-1	Ember 🔴	6	4	on-click
-2	Glacine 🔵	7	4	on-click
-3	Murmur 🟣	8	4	on-click
-4	Solvent 🟢	9	4	on-click
-5	Ava 👩	6	6	on-click
-6	Cursword 🗡️	7	6	on-click
-7	Asa 👨	8	6	on-click
-8	robot 🤖	9	6	on-click
