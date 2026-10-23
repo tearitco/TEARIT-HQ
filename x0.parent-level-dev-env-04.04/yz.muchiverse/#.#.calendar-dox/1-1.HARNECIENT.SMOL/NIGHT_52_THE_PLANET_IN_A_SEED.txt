@@ -1,0 +1,93 @@
+# 🪐🧬 NIGHT 52 — The Planet in a Seed 🧬🪐
+# ====================================================================
+# Title: "🪐🧬 NIGHT 52 — The Planet in a Seed 🧬🪐"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (ja-JP-NanamiNeural), RAHWEH (en-GB-RyanNeural), THE NARRATOR (en-GB-ThomasNeural)
+# Voice profiles (2026-10-23, restored from the owner's description, saved in night_voices.pdl and in the voice-fx studio): Tomo is a Japanese woman, Maxine a young English girl, Rahweh a young British man, the Narrator a storyteller. Measured, not heard: the owner judges by ear.
+# Topic: Design night for rpg-dust, a planned pets-like board that simulates a whole planet from a seed, from a solar system down to molecules. What is decided by hand, what by weights, what by events, how the current boards are reused, and how the marathon refactor makes it cheaper.
+# Long-form: stays on the design and the checks. Everything called measured was run on 2026-10-22 or 2026-10-23; everything called a plan is a plan. Nothing of rpg-dust is built.
+# Companion documents: BOOK 16.game RPG-DUST-DESIGN, XO 29.marathon-sprint-drive RPG-DUST-EMAIL-SUMMARY and ARCHITECTURE-RUNDOWN.
+
+**THE NARRATOR:** NIGHT 51 ended on a hard sentence: a link is knowledge only when the check can refuse it. Tonight is a bigger idea, and the same rule has to hold for it. A planet, from one number.
+
+**MAXINE:** Say the request first, in the owner's own terms, before anyone starts designing.
+
+**TOMO:** A new board in the pets family, called rpg-dust. A seed makes a solar system, a planet in it, and the ground you walk on. Zoom out and the buildings become a village, then a region, then a globe. Zoom in and you reach a body, its bones, its cells, and finally the molecules, where the chemistry and the electric forces can be looked at. Creatures have anatomy. Menus are made from size, place and species. And creatures cook, harvest and make things.
+
+**RAHWEH:** That is a lot of world. Where do I even start building?
+
+**THE NARRATOR:** With the thing that makes it possible, which is not code. Maxine, the first decision.
+
+**MAXINE:** The world is a function of two things: the seed, and a list of changes. Nothing is stored that can be made again. A planet cannot be saved on a disk, but a number and a log of what people did to it can.
+
+**TOMO:** And that is already a house rule. If it is not in a file, it is a lie. The pets already do a small version of it: their coins and furniture are rebuilt by replaying a ledger. Here the ledger covers the world instead of a shop.
+
+**RAHWEH:** So when I cut down a tree, the tree is not saved. A line is saved that says the tree at this address is gone.
+
+**TOMO:** Yes. Delete the generated pages and make them again from the seed and the log, and you must get exactly the same page, tree gone. That is the first test, and it can fail.
+
+**MAXINE:** Now the ladder. How does zoom work?
+
+**TOMO:** Every level of size is one row of data. How many metres one cell is, which program makes it, how it is drawn, and how fast its clock ticks. The sizes go up by powers of two, which matches the cell format the house already designed on paper. A system, a globe, a region, an area, the play scale where our boards live today, a body, tissue, a cell, a molecule, an atom. To add a level you add a row and a generator. Nothing else changes.
+
+**RAHWEH:** And zooming is just walking through a door?
+
+**TOMO:** The core already treats doors as events. Zoom in and zoom out are two more of them.
+
+**THE NARRATOR:** Now the question the owner asked directly. What is done by hand, what by weights, what by events.
+
+**MAXINE:** I will answer with one sentence for each, then the reason. By hand: the laws. By weights: the choices. By events: the actions.
+
+**TOMO:** Laws first. Orbits, the climate balance of a planet, how the thickness of a bone has to grow with the weight it carries, the periodic table, the bond tables, which reactions give which products and how much energy. Those are written by hand, from public tables, locked, and tested. They are never weighted. A weight must never be able to say that a reaction may lose an atom.
+
+**MAXINE:** Choices are different. Which body plan suits a creature of this size, in this gravity, in this place. How long its limbs are, within what the physics allows. Which material a tissue is made of. Which words describe it. Those are soft, so they are weights in the concept bank, and a change to a weight is a proposed edit that a person promotes.
+
+**RAHWEH:** And if a weight pushes a bone past what it can carry?
+
+**MAXINE:** Then the law wins and the check refuses the edit. We already have that check for the physics rows. It passed a good edit and rejected two bad ones when it was run for this class. It does not yet know about anatomy or reactions, and that is work to do.
+
+**TOMO:** Actions are events. Cook, harvest, build, craft, react, zoom. Each is a page that calls a small program, and every result is one line in a ledger. The page sits in the real path, so a person or the blueprint editor can change it.
+
+**RAHWEH:** What about the endless menus? Click a creature, get a menu about its bones, its diet, its habitat.
+
+**TOMO:** A menu is a question put to the data. Which events are linked to this concept? A dragon is linked to loot and fly. A farmer to plant and harvest. A bone to fracture, grow and weigh. Add a concept with its links and a new menu exists, with no new program. That is the honest meaning of limitless.
+
+**THE NARRATOR:** Be careful with that word. Say what limitless does not mean.
+
+**MAXINE:** It does not mean everything exists at once. Only what is looked at is made, and far levels are kept as summary rows. When you zoom in, the new page is made to agree with the summary, and a check counts that nothing was invented. The atoms of each element before a reaction must equal the atoms after.
+
+**RAHWEH:** Is the molecule view real physics?
+
+**TOMO:** No, and the design says so. It is a model. Simple rules, drawn clearly, from the same rows the game uses, with the approximations written beside them. Real quantum mechanics is not what runs. What we promise is that the picture is consistent and that conservation is checked.
+
+**THE NARRATOR:** Now the question of where the work already exists. How do the current boards help?
+
+**TOMO:** A new board is a small skin on the shared core: a few hundred lines of code and about twenty data files. The windows are made from two templates and the verb pages from a list, with a checker that proves they agree. The island board shows the core can bend. It has its own map painter, sixteen pets and bigger pages, and it runs as the ninth board without a fork. That painter is the starting point for terrain and buildings.
+
+**MAXINE:** The views come from the board engine. Three dimensions for ground and bodies, flat tiles for the globe, the cell and the molecule. And the fix we made last night matters here: going up and down in depth now moves the camera and the cursor on painted maps. A level inside a body or under the ground needs that.
+
+**RAHWEH:** Tell me honestly how well it was tested.
+
+**MAXINE:** Run on all nine boards: six passed in full, up four and back to the floor with the picture changing both ways. The island board passed down to its deeper limit. One board stopped two levels short of the floor and I do not know why. One board never got an engine session in the test, and I do not know why either. So seven of nine, and two open.
+
+**THE NARRATOR:** And the marathon. What did it buy for this project?
+
+**TOMO:** A new game became a skin and data, not another eleven hundred lines. About eleven thousand lines of copies became about forty-six hundred. A board idles at two or three percent of a core, where it used to take a third to a half. And there is a habit: compile every skin, compare the verb scripts, hash the generated files, and include a test that must fail. The first gate for rpg-dust is exactly that habit: the same seed twice must give identical files.
+
+**MAXINE:** What it does not buy is just as important. Pages made on demand: the core holds a fixed handful. A clock per level. A creature count in the millions, when the core steps sixteen. A clean boundary between the core and a skin, because today there are seventy-four numbered seams and skins reach into core variables. And no anatomy code, no reaction code, no in-memory database.
+
+**RAHWEH:** So the plan is a slice, not a layer at a time.
+
+**TOMO:** One seed. Two neighbouring levels, region and area, with a zoom between them. Then the change log and a replay. Then one species with one body page. Then one reaction, hydrogen and oxygen making water, with the atom count checked. Each step has a test that can fail. Pages on demand come later, as one core change that helps every board.
+
+**THE NARRATOR:** And the owner's decisions.
+
+**MAXINE:** First slice, terrain or anatomy; I would start with terrain. The first species and the first three reactions. Whether the core may get the on-demand page change. Who writes the first material tables, from public data, locked. And whether a conservation-checked educational model is the right promise at the molecular level.
+
+**RAHWEH:** What am I least sure about?
+
+**TOMO:** Time. A minute at the scale of a house is microseconds at the scale of a molecule. The idea is that only the focused level runs and its parents hold summaries. That is a design, not a measurement, and it is the part most likely to be wrong.
+
+**THE NARRATOR:** Exercises. One: write the rows for three levels of your own ladder and say which program would make each. Two: pick one law and one choice from your favourite animal, and say which is which. Three: write the test that would show your seed rule is broken, and run it on a rule that is.
+
+**THE NARRATOR:** A world is believable when you can delete it and get it back. And a weight is trustworthy only where a law can overrule it.

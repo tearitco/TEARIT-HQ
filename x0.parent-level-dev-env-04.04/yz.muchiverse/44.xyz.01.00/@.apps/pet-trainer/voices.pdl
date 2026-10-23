@@ -28,6 +28,9 @@ KMAP | ja-JP-KeitaNeural   | jm_kumo    | ja
 KMAP | zh-CN-XiaoyiNeural  | zf_xiaoyi  | cmn
 KMAP | zh-CN-XiaoxiaoNeural| zf_xiaoxiao| cmn
 KMAP | ko-KR-InJoonNeural  | -          | -
+# night-class cast (2026-10-23): the same Kokoro voice, but speaking ENGLISH. ja-JP-NanamiNeural above reads Japanese phonemes (lang ja); this alias keeps the Japanese-woman voice and makes it speak English text (accent is whatever the voice carries; the owner judges by ear). en-GB-FableNeural = Kokoro bm_fable, a British storyteller voice.
+KMAP | ja-JP-NanamiNeural-en | jf_alpha   | en-us
+KMAP | en-GB-FableNeural | bm_fable  | en-gb
 # ACCENT | id | from phonemes | to phonemes | note     (rewrites a word's phonemes before speaking; applied in file order to every word that has no PRON override; English voices only. ^ = start of word, $ = end of word; to may be empty)
 ACCENT | th-stop | θ  | t | "think" -> "tink"
 ACCENT | th-stop | ð  | d | "the" -> "de"
