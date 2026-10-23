@@ -67,8 +67,8 @@ static struct { char k[48]; char v[64]; long t; long ep; } g_fc[32];
 #elif PET_SECTION == 12
     for (int i = 0; i < nroom; i++) rooms[i].outdoor = i >= SK_SHIP;      /* the ship is indoors; the region and area pages have sky and day / night */
     sk_ensure_map(); ndoor = 0;      /* the ship's doors: a D cell in a wall, standing on it goes through (ay is the arrival row beside the other door) */
-    { static const int dd[4][7] = { {0, 4, 14, 1, 4, 2, 1}, {1, 4, 0, 0, 4, 14, 1}, {0, 11, 14, 2, 11, 2, 1}, {2, 11, 0, 0, 11, 14, 1} };      /* room, tx, ty (the row above the D cell), dest, ax, ay, autow */
-      for (int k = 0; k < 4 && ndoor < 24; k++) { Door *d = &doors[ndoor++]; d->room = dd[k][0]; d->tx = dd[k][1]; d->ty = dd[k][2]; d->dest = dd[k][3]; d->ax = dd[k][4]; d->ay = dd[k][5]; d->autow = dd[k][6]; } }
+    { static const int dd[6][7] = { {0, 4, 14, 1, 4, 2, 1}, {1, 4, 0, 0, 4, 14, 1}, {0, 11, 14, 2, 11, 2, 1}, {2, 11, 0, 0, 11, 14, 1}, {0, 8, 0, SK_SHIP, 7, 7, 1}, {SK_SHIP, 6, 5, 0, 8, 13, 1} };      /* room, tx, ty (the row above the D cell), dest, ax, ay, autow; the last two are the hatches: bridge <-> the ship deck over the planet */
+      for (int k = 0; k < 6 && ndoor < 24; k++) { Door *d = &doors[ndoor++]; d->room = dd[k][0]; d->tx = dd[k][1]; d->ty = dd[k][2]; d->dest = dd[k][3]; d->ax = dd[k][4]; d->ay = dd[k][5]; d->autow = dd[k][6]; } }
 #elif PET_SECTION == 13
 #elif PET_SECTION == 14
     char p[PATH_MAX], line[300]; spath(p, "house.txt");
@@ -197,7 +197,14 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
             else snprintf(cmd, sizeof cmd, "DUST_STATE='%s/state' '%s/ops/+x/dust_zoom.+x' zoom_in %d %d >/dev/null 2>&1", APP, APP, tr.x < 0 ? 0 : tr.x > 15 ? 15 : tr.x, tr.y < 0 ? 0 : tr.y > 15 ? 15 : tr.y);
             int rc = system(cmd); sk_rebuild(msg, cap); if (rc) snprintf(msg, cap, "zoom refused (already at that level?)"); return; }
         FILE *lf = fopen(lp, "a"); if (!lf) { snprintf(msg, cap, "cannot write the look ledger"); return; } fputs(row, lf); fclose(lf);
-        sk_rebuild(msg, cap); return; }
+        sk_rebuild(msg, cap);
+        if (!strcmp(v, "planet")) {      /* the ship goes ABOVE the planet: the whole crew (the hero and every pet) is placed on the deck and the window follows them there */
+            static const int dk[8][2] = { {7, 6}, {8, 6}, {9, 6}, {7, 7}, {8, 7}, {9, 7}, {7, 8}, {8, 8} }; int slot = 0;
+            for (int ci = -1; ci < nparty; ci++) { use_ent(ci); pet.room = SK_SHIP; pet.x = dk[slot % 8][0]; pet.y = dk[slot % 8][1]; slot++; pet.dir = 0; pet.tx = pet.ty = -1; pet_save(); }
+            use_ent(active); g_gr = SK_SHIP; set_flag("follow", "pet"); calc_view();
+            { char b[96]; snprintf(b, sizeof b, "DOOR|%ld|crew|orbit|%s", (long)time(NULL), sk_pl[sk_pl_cur].id); append_line("events.txt", b); }
+            snprintf(msg, cap, "the ship is above %s", sk_pl[sk_pl_cur].label); }
+        return; }
     if (!strcmp(v, "toggle") && argc >= 2 && (!strcmp(argv[1], "chat") || !strcmp(argv[1], "hb") || !strcmp(argv[1], "voice") || !strcmp(argv[1], "left"))) { set_flag(argv[1], flag_on(argv[1], !strcmp(argv[1], "voice") || !strcmp(argv[1], "left")) ? "0" : "1"); snprintf(msg, cap, "%s toggled", argv[1]); return; }
 #elif PET_SECTION == 66
     signal(SIGTERM, bye); signal(SIGINT, bye); signal(SIGHUP, bye); srand((unsigned)(time(NULL) ^ getpid()));
@@ -249,7 +256,7 @@ static void sk_stamp(int d, Sheet *s, int c, int r, int x, int y, char g) {     
 static int sk_blocked(int room, int x, int y) {
     sk_ensure_map();
     if (room < 0 || room >= SK_NR || x < 0 || y < 0 || x >= SK_W || y >= SK_H) return 1;
-    char g = sk_glyph[room][y][x]; return g == 'T' || g == '~' || g == 'r' || g == 'W';
+    char g = sk_glyph[room][y][x]; return g == 'T' || g == '~' || g == 'r' || g == 'W' || g == 'H';
 }
 static void sk_drop_sheet(const char *name) { for (int i = 0; i < nsheet; i++) if (!strcmp(sheets[i].name, name)) { stbi_image_free(sheets[i].px); sheets[i] = sheets[--nsheet]; return; } }
 static void sk_near_free(int room, int *x, int *y) {      /* the nearest walkable cell to (x, y), searched in growing squares */
@@ -327,10 +334,18 @@ static void sk_ship_room(int g, Sheet *a4, Sheet *door, int fc, int fr, int wc, 
 }
 static void sk_build_ship(void) {
     Sheet *a4 = sheet("tilesets", "SF_Inside_A4"), *door = sheet("characters", "!SF_Door1");
-    static const int bx[2] = {4, 11}, by[2] = {15, 15}, qx[1] = {4}, qy[1] = {1}, hx[1] = {11}, hy[1] = {1};
-    sk_ship_room(0, a4, door, 8, 11, 6, 2, bx, by, 2);      /* bridge: green hex floor, doors south to the quarters (left) and the hold (right) */
+    static const int bx[3] = {4, 11, 8}, by[3] = {15, 15, 1}, qx[1] = {4}, qy[1] = {1}, hx[1] = {11}, hy[1] = {1};
+    sk_ship_room(0, a4, door, 8, 11, 6, 2, bx, by, 3);      /* bridge: green hex floor, doors south to the quarters (left) and the hold (right), a hatch in the north wall up to the deck */
     sk_ship_room(1, a4, door, 4, 1, 4, 2, qx, qy, 1);      /* quarters: wood */
     sk_ship_room(2, a4, door, 10, 11, 6, 2, hx, hy, 1);      /* hold: dark grating */
+}
+/* the ship ABOVE the planet: a steel deck (h, walkable) inside a hull rim (H, blocked) over the middle of the region page, raised above the terrain (extrusion in section 73's export); the hatch D at (6,6) goes down to the bridge */
+static void sk_deck(int g) {
+    Sheet *a4 = sheet("tilesets", "SF_Inside_A4"), *door = sheet("characters", "!SF_Door1"); unsigned char dt[XT * XT * 4], ht[XT * XT * 4], u[XT * XT * 4], v[XT * XT * 4];
+    if (a4) { tile24(a4, 7 * S48, 1 * S48, dt); tile24(a4, 6 * S48, 2 * S48, ht); } else { for (int i = 0; i < XT * XT; i++) { dt[i * 4] = 120; dt[i * 4 + 1] = 130; dt[i * 4 + 2] = 140; dt[i * 4 + 3] = 255; ht[i * 4] = 70; ht[i * 4 + 1] = 75; ht[i * 4 + 2] = 85; ht[i * 4 + 3] = 255; } }
+    int ds = slot_of(dt), hs = slot_of(ht);
+    for (int y = 5; y <= 9; y++) for (int x = 5; x <= 10; x++) { int rim = y == 5 || y == 9 || x == 5 || x == 10; sk_glyph[g][y][x] = rim ? 'H' : 'h'; sk_ws[g][y][x] = rim ? hs : ds; }
+    sk_glyph[g][6][6] = 'D'; if (door) { tile24(door, 0, 192, u); memcpy(v, dt, sizeof v); over24(v, u); sk_ws[g][6][6] = slot_of(v); } else sk_ws[g][6][6] = ds;
 }
 static void sk_ensure_map(void) {
     sk_look_load(); if (sk_built && sk_built_sig == sk_look_sig) return; sk_built = 1; sk_built_sig = sk_look_sig;
@@ -357,6 +372,7 @@ static void sk_ensure_map(void) {
             else if (rm && band >= 5) sk_solid(g, x, y, 'r', SK_FLAT[band][0], SK_FLAT[band][1], SK_FLAT[band][2], 0, 1);
             else if (!rm) sk_cell(g, x, y, band, grass, tl, have); }
             sk_glyph[g][y][SK_W] = 0; }
+        if (g == SK_SHIP) sk_deck(g);
     }
 }
 /* the verb side: drop the cache, rebuild, write the book again and tell the board engine to reload it */
@@ -446,7 +462,7 @@ static void pet_own_export_room(int r, const char *d) {
         for (int ci = 0; ci < it->w; ci++) for (int cj = 0; cj < it->h; cj++) { int x = pl[i].x + ci, y = pl[i].y + cj; if (x < 0 || x >= cols || y < 0 || y >= rows) continue;
             tile24(s, (it->c + ci) * S48, (it->r + cj) * S48, a); memset(b, 0, sizeof b); if (fs[y][x]) memcpy(b, slotpx[fs[y][x]], sizeof b); over24(b, a); gl[y][x] = 'f'; ws[y][x] = slot_of(b); } }
     snprintf(p, sizeof p, "%s/map.txt", d); { FILE *f = fopen_tmp(p); if (f) { for (int y = 0; y < rows; y++) fprintf(f, "%.*s\n", cols, gl[y]); fclose_tmp(f, p); } }
-    snprintf(p, sizeof p, "%s/extrusion.pdl", d); { FILE *f = fopen_tmp(p); if (f) { fprintf(f, "SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\nMETA         | map_id             | " PET_APP "\nMETA         | desk_id            | %s\nEXTRUDE      | W                  | 3\nEXTRUDE      | D                  | 3\nEXTRUDE      | p                  | 1\nEXTRUDE      | G                  | 1\nEXTRUDE      | T                  | 2\nEXTRUDE      | r                  | 3\nEXTRUDE      | f                  | 1\nEXTRUDE      | default            | 0\n", rooms[r].id); fclose_tmp(f, p); } }
+    snprintf(p, sizeof p, "%s/extrusion.pdl", d); { FILE *f = fopen_tmp(p); if (f) { fprintf(f, "SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\nMETA         | map_id             | " PET_APP "\nMETA         | desk_id            | %s\nEXTRUDE      | W                  | 3\nEXTRUDE      | D                  | 3\nEXTRUDE      | h                  | 6\nEXTRUDE      | H                  | 7\nEXTRUDE      | p                  | 1\nEXTRUDE      | G                  | 1\nEXTRUDE      | T                  | 2\nEXTRUDE      | r                  | 3\nEXTRUDE      | f                  | 1\nEXTRUDE      | default            | 0\n", rooms[r].id); fclose_tmp(f, p); } }
     int acols = 16, nrows = (nslot + acols - 1) / acols, aw = acols * XT, ah = nrows * XT; unsigned char *atlas = (unsigned char *)calloc((size_t)aw * ah * 4, 1); if (!atlas) return;
     for (int i = 0; i < nslot; i++) for (int y = 0; y < XT; y++) memcpy(atlas + ((size_t)((i / acols) * XT + y) * aw + (i % acols) * XT) * 4, slotpx[i] + y * XT * 4, XT * 4);
     snprintf(p, sizeof p, "%s/cells.rgba", d); { FILE *f = fopen_tmp(p); if (f) { fwrite(atlas, 1, (size_t)aw * ah * 4, f); fclose_tmp(f, p); } } snprintf(p, sizeof p, "%s/cells.png", d); png_atomic(p, aw, ah, atlas, aw * 4); free(atlas);

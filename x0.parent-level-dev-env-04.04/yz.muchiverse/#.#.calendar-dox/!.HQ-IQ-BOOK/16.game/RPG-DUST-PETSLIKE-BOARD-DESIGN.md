@@ -99,3 +99,25 @@ Owner, in his words: "i wanted them all to be different planets"; "we generate m
 | D18 | Teleport between ship and planets, and flying between solar systems: later. Stopgap today: the Region menu's room list. | later |
 
 Consequence to design: D14, D15 and D16 all need the world to have **layers and a position of the ship in it** (ship cell over a planet cell, distance to the sun), which the current "rooms" list (bridge, quarters, hold, region, area) does not model. Suggested next design step: a `space.pdl` with suns (position, brightness), planets (orbit position, size), and the ship's position and heading; light level = function of distance; the solar clock is one clock per system.
+
+## 9. Owner direction, same day: zoom is the SHIP's size, not the camera's (changes the roadmap)
+
+Owner: "as far as zoom in or zoom out, the ship is what will change in size relative to the surroundings, so it could go underwater and become very small, to see shrimp. or as it teleports, it's near the size of the planet, but it can also be the size of a car, or of a flea. ... it could even go to molecular size. you may want to document that because it may change how you planned the roadmap."
+
+**D19.** The world stays where it is; the **ship scales** relative to it. Planet-sized when it arrives above a planet, car-sized, flea-sized, down to molecular. Nothing "zooms" a camera over one map; what you see around the ship is the world at the size the ship has now. Underwater the ship can shrink to look at shrimp. The ship's **interior** (bridge, quarters, hold, doors, pets) keeps its own human scale at every ship size; only the ship's footprint in the surroundings changes.
+
+What this changes against `RPG-DUST-DESIGN.md` and the code built so far (READ from the code, not yet reworked):
+
+| Piece | Before | After D19 |
+|---|---|---|
+| zoom events | `dust_zoom zoom_in/zoom_out` move a **camera address** region -> area (ledger START / ZOOM rows) | they become **ship size events**: the ship's size level is state (a ledger row per change, replayed), the address of the ship's **position** is separate and fixed while it shrinks |
+| address | one chain `globe:3,4/region:0,1/cell:7,9` that zoom walks down | the ship has a **position** (a point on a planet, or in space) that yields an address at EVERY level (planet, region, area, play, body, tissue, cell, molecule); shrinking reads the next level of the same position |
+| scale ladder (`scale.pdl`) | the levels you zoom through | the levels the ship's size can take; `log2_m` of the ship picks which level's page is drawn around it (cells about the ship's size) |
+| conservation rule (area heights sum to the parent cell) | proves a zoom invents nothing | **still needed and now more important**: when the ship shrinks the surroundings must agree with the coarser view it just left |
+| generators | terrain heights only | need a **vertical dimension** (the sea has a depth, the shrimp live in it) and creatures / structures as entities that exist at the levels where they are visible (shrimp at about shrimp size, not before) |
+| "play" level | a page of cells you walk on | the ship at about human / car size; the pets walk the ship's own rooms, not the terrain |
+| roadmap order (design section 9: R4 species, R5 reactions, R6 cook, R7 menus, R8 on-demand pages, R9 society) | anatomy and chemistry reached by zooming the one map | reached by **shrinking the ship** at a position: anatomy appears when the ship is shrimp-sized beside a shrimp, molecules when it is smaller; **R8 (on-demand pages) moves to the front**, because every ship size at every position needs its page made on demand |
+
+Re-ordered next steps (PROPOSED): (1) ship state: position + size level + heading as ledger rows (`ship.pdl` / `space.pdl` with suns, planets, ship position, light by distance: D16); (2) turn `dust_zoom` into ship size events and keep the address chain per position; (3) on-demand page seam in the core (old R8); (4) vertical dimension (depth under water); (5) the first creature at its size level (old R4); (6) bigger planets (D17), structures (buildings, cars, towns) as generator layers at the levels where they are seen (D11); (7) molecular level (old R5).
+
+State today: the Zoom in here / Zoom out buttons still move a camera address; they are the part D19 replaces. The ship deck over the planet (section 8, D15, first slice) is a fixed 6 x 5 cell footprint; with D19 its footprint must be the ship's size relative to the cells around it.
