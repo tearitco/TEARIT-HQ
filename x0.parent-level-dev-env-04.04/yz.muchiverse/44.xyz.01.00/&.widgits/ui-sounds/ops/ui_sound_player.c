@@ -1,5 +1,5 @@
 /* ui_sound_player - U2 of BOOK 19.audio/UI-SOUNDS-AND-STARTUP-DESIGN.md: reads UI cue lines from a marker file and plays the rendered sounds. One process per desktop.
- *   ui_sound_player --pdl <ui_sounds.pdl> --sounds <dir> --settings <hq_ui.pdl> --cues <file> [--dry-run <log>] [--drain] [--now <ms>] [--max-bytes <n>]
+ *   ui_sound_player --pdl <ui_sounds.pdl> --sounds <dir> --settings <hq_ui.pdl> --cues <file> [--dry-run <log>] [--drain] [--now <ms>] [--boot-stamp <file> [--boot-id <text>]] [--max-bytes <n>]
  *   --pdl       the CUE / THEME rows (event -> sound id, min_gap_ms, category; first THEME is the default theme)
  *   --sounds    the directory ui_sound_render wrote: <sounds>/<theme>/<id>.wav
  *   --settings  hq_ui.pdl, re-read for every batch of cues: sound_enabled (1) sound_volume (40) sound_ui (1) sound_startup (1) sound_theme (first THEME); missing key = the default in brackets
@@ -7,6 +7,7 @@
  *   --dry-run   write what WOULD happen to <log> instead of opening the sound server; decisions are identical to live
  *   --drain     process the whole file from the start once and exit (tests); without it: loop, checking the file size every 30 ms, forever
  *   --now       with --drain: the clock for the stale check (default = the last cue's own time, i.e. nothing is stale)
+ *   --boot-stamp <file>   play the `startup` cue ONCE per login session: the session id is `<boot_id>:<XDG_SESSION_ID>` (--boot-id <text> overrides it, for tests); if the stamp file does not hold it, write it and handle a `startup` cue now (same decisions as any cue: muted, startup_off, theme, volume). A restart or `reset` inside the same session is silent.
  *   --max-bytes live mode: when the file is larger than this and fully consumed, truncate it to 0 (default 65536)
  * Decision per cue, in this order (the log line says which): unknown name -> `skip unknown`; sound_enabled=0 -> `skip muted`; category ui with sound_ui=0 -> `skip ui_off`; category startup with sound_startup=0 -> `skip startup_off`;
  *   older than 150 ms (startup exempt) -> `drop stale`; closer than the cue's min_gap_ms to the last PLAYED cue of that name, from ANY pid -> `coalesce`; volume 0 -> `skip volume0`; else `played <name> theme=<t> vol=<n> latency_ms=<now - cue time>`.
@@ -229,6 +230,7 @@ int main(int argc, char **argv) {
     const char *pdl = NULL, *sounds = NULL, *settings = NULL, *cues = NULL, *dry = NULL;
     int drain = 0, have_now = 0;
     long fixed_now = 0, max_bytes = 65536;
+    const char *boot_stamp = NULL, *boot_id = NULL;
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--pdl") && i + 1 < argc) {
             pdl = argv[++i];
@@ -245,6 +247,10 @@ int main(int argc, char **argv) {
         } else if (!strcmp(argv[i], "--now") && i + 1 < argc) {
             fixed_now = atol(argv[++i]);
             have_now = 1;
+        } else if (!strcmp(argv[i], "--boot-stamp") && i + 1 < argc) {
+            boot_stamp = argv[++i];
+        } else if (!strcmp(argv[i], "--boot-id") && i + 1 < argc) {
+            boot_id = argv[++i];
         } else if (!strcmp(argv[i], "--max-bytes") && i + 1 < argc) {
             max_bytes = atol(argv[++i]);
         } else {
@@ -274,6 +280,43 @@ int main(int argc, char **argv) {
         if (!g_pa) {
             fprintf(stderr, "ui_sound_player: no sound server (%s); UI sounds are off\n", pa_strerror(err));
             return 0;
+        }
+    }
+    if (boot_stamp) {
+        char id[200] = "", old[200] = "";
+        if (boot_id) {
+            cp(id, sizeof id, boot_id);
+        } else {
+            FILE *bf = fopen("/proc/sys/kernel/random/boot_id", "r");
+            char b[64] = "";
+            if (bf) {
+                if (fgets(b, sizeof b, bf)) {
+                    b[strcspn(b, "\r\n")] = 0;
+                }
+                fclose(bf);
+            }
+            const char *sess = getenv("XDG_SESSION_ID");
+            snprintf(id, sizeof id, "%s:%.40s", b, sess ? sess : "");
+        }
+        FILE *sf = fopen(boot_stamp, "r");
+        if (sf) {
+            if (fgets(old, sizeof old, sf)) {
+                old[strcspn(old, "\r\n")] = 0;
+            }
+            fclose(sf);
+        }
+        if (id[0] && strcmp(id, old)) {
+            sf = fopen(boot_stamp, "w");
+            if (sf) {
+                fprintf(sf, "%s\n", id);
+                fclose(sf);
+            }
+            Set set;
+            char line[64];
+            long t = have_now ? fixed_now : now_ms();
+            load_settings(settings, &set);
+            snprintf(line, sizeof line, "%ld %ld startup", t, (long)getpid());
+            handle(line, &set, sounds, t);
         }
     }
     long off = 0;

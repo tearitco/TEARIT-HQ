@@ -12,3 +12,4 @@ CLOSE | hotbar-desk window  | @.apps/hotbar-hq/hotbar-desk.xhtpm | swap: sh @.ap
 CLOSE | hotbar manager      | @.apps/hotbar-hq/ops/+x/hotbar_manager.+x | swap:
 CLOSE | board windows       | @.apps/board-hq/board-
 CLOSE | board manager       | @.apps/board-hq/ops/+x/board_vars_op.+x
+CLOSE | ui sound player   | &.widgits/ui-sounds/ops/+x/ui_sound_player.+x |

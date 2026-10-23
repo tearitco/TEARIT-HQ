@@ -15,3 +15,7 @@ tags
 **/@.apps/layout-studio/sandbox/state/pchq/
 **/@.apps/piececraft-hq/pieces/display/ctx_menu/
 **/@.apps/piececraft-hq/pieces/display/open_book_page.txt
+
+# LyfeDesk UI sounds: generated wav files and the runtime cue file (rendered by &.widgits/ui-sounds/start_player.sh)
+\#.desktop/sounds/
+\#.desktop/ui_cue.txt

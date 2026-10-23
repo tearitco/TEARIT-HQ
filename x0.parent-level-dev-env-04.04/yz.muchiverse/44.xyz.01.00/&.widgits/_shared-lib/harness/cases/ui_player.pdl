@@ -164,4 +164,40 @@ APPEND | trunc.cues | 99999999999 7 nav_move\n
 APPEND | trunc.cues | 99999999999 8 activate\n
 WAIT_HAS | trunc.log | truncated cues | 2000 | live-truncates-when-consumed-and-big
 EXPECT_HAS | trunc.log | played activate | cues-before-truncation-were-played
+
+WRITE | b1.cues | 1 1 activate\n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/none.set | --cues | $T/b1.cues | --dry-run | $T/b1.log | --drain | --now | 5000 | --boot-stamp | $T/bs.stamp | --boot-id | sessA
+EXPECT_EXIT | 0 | b1-exit
+EXPECT_FILE | b1.log | played startup theme=soft vol=40 latency_ms=0\ndrop stale activate age_ms=4999\n | startup-plays-first-time-before-the-cues
+EXPECT_FILE | bs.stamp | sessA\n | stamp-written
+WRITE | b2.cues | 1 1 activate\n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/none.set | --cues | $T/b2.cues | --dry-run | $T/b2.log | --drain | --now | 5000 | --boot-stamp | $T/bs.stamp | --boot-id | sessA
+EXPECT_EXIT | 0 | b2-exit
+EXPECT_FILE | b2.log | drop stale activate age_ms=4999\n | same-session-is-silent
+WRITE | b3.cues | 1 1 activate\n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/none.set | --cues | $T/b3.cues | --dry-run | $T/b3.log | --drain | --now | 5000 | --boot-stamp | $T/bs.stamp | --boot-id | sessB
+EXPECT_EXIT | 0 | b3-exit
+EXPECT_FILE | b3.log | played startup theme=soft vol=40 latency_ms=0\ndrop stale activate age_ms=4999\n | new-session-plays-again
+EXPECT_FILE | bs.stamp | sessB\n | stamp-updated
+WRITE | m1.cues | 1 1 activate\n
+WRITE | m1.set | sound_enabled=0\n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/m1.set | --cues | $T/m1.cues | --dry-run | $T/m1.log | --drain | --now | 5000 | --boot-stamp | $T/ms.stamp | --boot-id | sessM
+EXPECT_EXIT | 0 | m1-exit
+EXPECT_FILE | m1.log | skip muted startup\nskip muted activate\n | muted-startup-skipped
+EXPECT_FILE | ms.stamp | sessM\n | muted-startup-still-stamps
+WRITE | m2.cues | 1 1 activate\n
+WRITE | m2.set | \n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/m2.set | --cues | $T/m2.cues | --dry-run | $T/m2.log | --drain | --now | 5000 | --boot-stamp | $T/ms.stamp | --boot-id | sessM
+EXPECT_EXIT | 0 | m2-exit
+EXPECT_FILE | m2.log | drop stale activate age_ms=4999\n | unmuting-later-does-not-replay-startup
+WRITE | s1.cues | 1 1 activate\n
+WRITE | s1.set | sound_startup=0\n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/s1.set | --cues | $T/s1.cues | --dry-run | $T/s1.log | --drain | --now | 5000 | --boot-stamp | $T/ss.stamp | --boot-id | sessS
+EXPECT_EXIT | 0 | s1-exit
+EXPECT_FILE | s1.log | skip startup_off startup\ndrop stale activate age_ms=4999\n | startup-off-switch
+WRITE | t1.cues | 1 1 activate\n
+WRITE | t1.set | sound_theme=retro\nsound_volume=70\n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/t1.set | --cues | $T/t1.cues | --dry-run | $T/t1.log | --drain | --now | 5000 | --boot-stamp | $T/st.stamp | --boot-id | sessT
+EXPECT_EXIT | 0 | t1-exit
+EXPECT_FILE | t1.log | played startup theme=retro vol=70 latency_ms=0\ndrop stale activate age_ms=4999\n | startup-uses-theme-and-volume
 CLEAN |
