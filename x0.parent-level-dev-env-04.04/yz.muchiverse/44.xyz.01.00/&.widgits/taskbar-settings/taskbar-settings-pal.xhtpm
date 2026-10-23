@@ -95,7 +95,7 @@
     <item id="sound-volume-value" class="row-volume info-chip skin-bar info-long" label="${sound_volume_label}"/>
     <item id="sound-volume-minus" action="SOUND_VOL_MINUS" class="row-volume opacity-btn step-btn" label="-"/>
     <item id="sound-volume-plus"  action="SOUND_VOL_PLUS"  class="row-volume opacity-btn step-btn" label="+"/>
-    <item id="sound-theme-name" class="row-soundtheme info-chip skin-bar info-long" label="${sound_theme_label}"/>
+    <item id="sound-theme-name" action="SOUND_THEME_DEMO" class="row-soundtheme info-chip skin-bar info-long" label="${sound_theme_label}"/>
     <item id="sound-theme-prev" action="SOUND_THEME_PREV" class="row-soundtheme opacity-btn step-btn" label="&lt;"/>
     <item id="sound-theme-next" action="SOUND_THEME_NEXT" class="row-soundtheme opacity-btn step-btn" label="&gt;"/>
     <item id="sound-toggle" action="SOUND_TOGGLE" class="row-sound opacity-btn" label="${sound_enabled_label} (press to switch)"/>

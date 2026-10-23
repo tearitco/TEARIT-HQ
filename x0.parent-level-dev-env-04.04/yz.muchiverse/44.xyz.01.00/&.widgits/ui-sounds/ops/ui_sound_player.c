@@ -13,7 +13,7 @@
  *   older than 150 ms (startup exempt) -> `drop stale`; closer than the cue's min_gap_ms to the last PLAYED cue of that name, from ANY pid -> `coalesce`; volume 0 -> `skip volume0`; else `played <name> theme=<t> vol=<n> latency_ms=<now - cue time>`.
  *   A theme with no such wav falls back to the first theme (`fallback theme=<x>-><y>`); no wav at all -> `skip nofile`. A malformed line -> `skip bad_line`.
  * A cue with the SAME name as the sound still playing (judged from the cue times and the wav length, so it is the same in --dry-run) CUTS IT OFF: the log says `preempt <name>` before `played`. This is what makes a second theme click replace the first demo instead of playing after it.
- * Live playback: one pa_simple stream (libpulse-simple, 100 ms buffer, prebuf 0), 44.1 kHz mono s16, sounds loaded on first use and scaled by volume/100, fed in 20 ms chunks while the cue file is polled between chunks; a different sound waits for the one playing (up to 4 queued, entries older than 250 ms are dropped), the same name preempts it (pa_simple_flush). No sound server: say so once on stderr and exit 0 (the desktop is unaffected).
+ * Live playback: one pa_simple stream (libpulse-simple, 50 ms buffer, default prebuf, every sound padded with silence to 100 ms so it always starts), 44.1 kHz mono s16, sounds loaded on first use and scaled by volume/100, fed in 20 ms chunks paced by the clock (never more than 100 ms ahead; pa_simple_write itself does not pace) while the cue file is polled every ~8 ms; a different sound waits for the one playing (up to 4 queued, entries older than 250 ms are dropped), the same name preempts it (the old sound just stops being fed). No sound server: say so once on stderr and exit 0 (the desktop is unaffected).
  * Exit: 0 normal (drain finished, or no sound server), 2 usage / unreadable --pdl / --settings is allowed to be missing. Build: sh ops/build_ui_sound_player.sh */
 #define _GNU_SOURCE
 #include <stdio.h>
@@ -168,8 +168,15 @@ static int wav_path(const char *dir, const char *theme, const char *id, char *ou
 }
 /* ---- live playback: a current sound fed in 20 ms chunks, a short queue behind it ---- */
 #define CHUNK 882
+#define PAD_SAMPLES 4410      /* >= tlength / 2 bytes per sample, plus margin: see pa_buffer_attr in main */
 typedef struct { short *pcm; long n, pos; char name[48]; long born; } Snd;
 static Snd g_cur = { NULL, 0, 0, "", 0 };
+static long g_cur_t0 = 0;          /* when the current sound started feeding (ms) */
+#define LEAD_SAMPLES 4410          /* never feed more than 100 ms of audio ahead of the clock */
+static void start_cur(const Snd *n) {
+    g_cur = *n;
+    g_cur_t0 = now_ms();
+}
 static Snd g_q[4];
 static int g_nq = 0;
 static int g_drain_sync = 0;      /* --drain without --dry-run: play each sound to the end at once (no loop to feed it from) */
@@ -182,6 +189,15 @@ static int load_snd(Snd *o, const char *path, int vol, const char *name) {
     }
     for (long i = 0; i < n; i++) {
         pcm[i] = (short)(pcm[i] * vol / 100);
+    }
+    if (n < PAD_SAMPLES) {
+        short *pad = calloc((size_t)PAD_SAMPLES, sizeof *pad);
+        if (pad) {
+            memcpy(pad, pcm, (size_t)n * sizeof *pcm);
+            free(pcm);
+            pcm = pad;
+            n = PAD_SAMPLES;
+        }
     }
     o->pcm = pcm;
     o->n = n;
@@ -208,14 +224,13 @@ static void play_request(const char *path, int vol, const char *name, int preemp
         return;
     }
     if (preempt && g_cur.pcm) {
-        int err = 0;
-        pa_simple_flush(g_pa, &err);      /* drop what is already in the server buffer */
+        /* just stop feeding the old sound: the server buffer holds only ~50 ms of it. pa_simple_flush was tried and MEASURED to leave the stream silent in 2 of 3 runs on this sink. */
         snd_free(&g_cur);
-        g_cur = nw;
+        start_cur(&nw);
         return;
     }
     if (!g_cur.pcm) {
-        g_cur = nw;
+        start_cur(&nw);
         return;
     }
     if (g_nq < 4) {
@@ -227,7 +242,7 @@ static void play_request(const char *path, int vol, const char *name, int preemp
 /* write one chunk of the current sound; start the next queued one when it ends. Returns 1 while something is playing. */
 static int play_step(void) {
     while (!g_cur.pcm && g_nq > 0) {
-        g_cur = g_q[0];
+        start_cur(&g_q[0]);
         for (int i = 1; i < g_nq; i++) {
             g_q[i - 1] = g_q[i];
         }
@@ -238,6 +253,11 @@ static int play_step(void) {
     }
     if (!g_cur.pcm) {
         return 0;
+    }
+    /* pa_simple_write does NOT pace us on this server (measured: a 1.08 s sound was accepted in about 1 ms), so pace by the clock: feed only what the elapsed time plus LEAD_SAMPLES allows. That bounds what is queued in the server, so a same-name cue can replace the sound within ~100 ms. */
+    long allowed = (now_ms() - g_cur_t0) * 44100L / 1000L + LEAD_SAMPLES;
+    if (g_cur.pos >= allowed) {
+        return 1;
     }
     long left = g_cur.n - g_cur.pos;
     long take = left < CHUNK ? left : CHUNK;
@@ -358,8 +378,7 @@ int main(int argc, char **argv) {
         int err = 0;
         pa_buffer_attr ba;
         ba.maxlength = (uint32_t)-1;
-        ba.tlength = 8820;      /* 100 ms at 44.1 kHz mono s16 */
-        ba.prebuf = 0;          /* start at once: a 25 ms blip is smaller than any prebuf */
+        ba.tlength = 4410;      /* 50 ms at 44.1 kHz mono s16; prebuf is left at the default (= tlength). MEASURED on this machine's sink: prebuf=0 makes NOTHING play, and a sound shorter than the prebuf never starts (a 20/70 ms blip is lost, or comes out later when more audio arrives), so every sound is padded with silence up to PAD_SAMPLES (load_snd) so that it always reaches the prebuf and starts at once */
         ba.minreq = (uint32_t)-1;
         ba.fragsize = (uint32_t)-1;
         g_pa = pa_simple_new(NULL, "LyfeDesk", PA_STREAM_PLAYBACK, NULL, "ui sounds", &ss, NULL, &ba, &err);
@@ -460,7 +479,8 @@ int main(int argc, char **argv) {
             return 0;
         }
         if (!g_dry && play_step()) {
-            continue;      /* the chunk write paced us (about 20 ms): poll the cue file again at once */
+            usleep(8000);      /* playing: feed by the clock and poll the cue file again soon */
+            continue;
         }
         usleep(30000);
     }

@@ -29,6 +29,9 @@ Consequences: sounds are keyed by (theme, id); every theme must define every sou
 ### 1d. Theme demo, 2026-10-23 (BUILT)
 Owner: "does changing theme in settings also play a demo sound? I'd like that." Before this, a theme click only played the ordinary activate blip in the new theme. Now `SOUND | <theme> | demo` (a two-voice arpeggio of about 1 s, each theme in its own timbre) plays through `CUE | theme_demo` (300 ms gap) when `<` / `>` is pressed; the handler writes the new `sound_theme` key first (so the player reads it), forces the cue, and suppresses the generic activate cue for that click. RAN on a real settings window: one `theme_demo` cue per theme click, `activate` for a volume click, the player decided `theme_demo theme=retro vol=50`; harness 152/84 pass; mutants (demo cue gap 0, retro demo missing) caught.
 
+### 1e. Demo on clicking the row, 2026-10-23 (BUILT)
+Owner: "I think it should play demo when clicking 'sound theme', not just 'changing sound'." The "Sound theme: ..." chip is now a button (`SOUND_THEME_DEMO`): it previews the current theme and changes nothing; `<` / `>` still change the theme and play the new theme's demo. LESSON recorded in the README: verify audio by recording the sink monitor, not by the player's own log.
+
 ## 2. Decisions this design takes (PROPOSED)
 1. **Never block or fork in the render loop.** A cue is one short append to a marker file; a separate small player process does the sound. This is the house marker rule (change detection = append-only file growth) and the house sharing rule (stateful + 2 consumers = op + file/IPC, not a header).
 2. **All sounds are generated, never recorded.** Rows in a data file are rendered by a deterministic C op into wav files at build time; nothing is synthesised at click time. Same seed and rows give the same bytes (the same gate as rpg-dust R1).

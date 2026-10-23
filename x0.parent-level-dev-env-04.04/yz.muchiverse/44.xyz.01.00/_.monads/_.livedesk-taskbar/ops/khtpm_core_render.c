@@ -16753,6 +16753,11 @@ static void desktop_sound_action(const char *house_root, const char *action) {
         hq_ui_write_key(house_root, "sound_ui", g_sound_ui ? "1" : "0");
     } else if (strcmp(action, "SOUND_STARTUP_TOGGLE") == 0) {
         hq_ui_write_key(house_root, "sound_startup", hq_ui_read_int(house_root, "sound_startup", 1) ? "0" : "1");
+    } else if (strcmp(action, "SOUND_THEME_DEMO") == 0) {
+        /* clicking the "Sound theme: ..." row itself previews the CURRENT theme (no change) */
+        ui_cue_ex("theme_demo", 1);
+        g_skip_activate_cue = 1;
+        return;
     } else if (strcmp(action, "SOUND_THEME_NEXT") == 0 || strcmp(action, "SOUND_THEME_PREV") == 0) {
         char pdl[PATH_BUF], line[512], ids[16][48];
         int n = 0;
