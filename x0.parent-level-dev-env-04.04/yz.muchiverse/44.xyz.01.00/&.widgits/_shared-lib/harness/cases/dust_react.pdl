@@ -1,0 +1,85 @@
+# dust_react: LOCKED cases. Source under test: @.apps/rpg-dust/ops/dust_check.c (mode react) + _shared-lib/chem_formula.c; ground truth: the real locked elements.pdl; data under test: @.apps/rpg-dust/reactions.pdl. Atom conservation is checked per element; every IMBALANCE / BAD case is a NEGATIVE test.
+RESULTS | ../results/dust_react.txt
+CASE | dust-react
+SCRATCH |
+COPY | @.apps/rpg-dust/ops/dust_check.c | dust_check.c
+COPY | &.widgits/_shared-lib/chem_formula.c | chem_formula.c
+COPY | &.widgits/concept-bank/data/chem/elements.pdl | elements.pdl
+COPY | @.apps/rpg-dust/reactions.pdl | reactions.pdl
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -I | $T | -o | $T/dc.+x | $T/dust_check.c
+EXPECT_EXIT | 0 | compiles-clean
+RUN | $T/dc.+x | react | $T/elements.pdl | $T/reactions.pdl
+EXPECT_EXIT | 0 | real-reactions-balanced
+EXPECT_OUT_IS | OK water_formation\nOK methane_burning\nOK photosynthesis\nOK rusting\nreactions=4 balanced=4 bad=0 | real-reactions-summary
+WRITE | r.pdl | SECTION \p KEY \p VALUE\n------\nREACTION \p w \p H2 + O2 \p H2O \p 0 \p x \p n\n
+RUN | $T/dc.+x | react | $T/elements.pdl | $T/r.pdl
+EXPECT_EXIT | 1 | unbalanced-water
+EXPECT_OUT | IMBALANCE w O:2->1 | unbalanced-water-message
+WRITE | r.pdl | SECTION \p KEY \p VALUE\n------\nREACTION \p m \p CH4 + 2O2 \p CO2 + H2O \p 0 \p x \p n\n
+RUN | $T/dc.+x | react | $T/elements.pdl | $T/r.pdl
+EXPECT_EXIT | 1 | missing-product-atom
+EXPECT_OUT | IMBALANCE m H:4->2 O:4->3 | missing-product-atom-message
+WRITE | r.pdl | SECTION \p KEY \p VALUE\n------\nREACTION \p e \p 2H2 + O2 \p 2H2O + H \p 0 \p x \p n\n
+RUN | $T/dc.+x | react | $T/elements.pdl | $T/r.pdl
+EXPECT_EXIT | 1 | extra-product-atom
+EXPECT_OUT | IMBALANCE e H:4->5 | extra-product-atom-message
+WRITE | r.pdl | SECTION \p KEY \p VALUE\n------\nREACTION \p c \p H2 + O2 \p 2H2O \p 0 \p x \p n\n
+RUN | $T/dc.+x | react | $T/elements.pdl | $T/r.pdl
+EXPECT_EXIT | 1 | coefficient-matters
+EXPECT_OUT | IMBALANCE c H:2->4 | coefficient-matters-message
+WRITE | r.pdl | SECTION \p KEY \p VALUE\n------\nREACTION \p u \p 2H₂ + O₂ \p 2H₂O \p 0 \p x \p n\n
+RUN | $T/dc.+x | react | $T/elements.pdl | $T/r.pdl
+EXPECT_EXIT | 0 | unicode-subscripts-balance
+EXPECT_OUT | OK u | unicode-subscripts-balance-message
+WRITE | r.pdl | SECTION \p KEY \p VALUE\n------\nREACTION \p n \p Ca(OH)2 + 2HCl \p CaCl2 + 2H2O \p 0 \p x \p n\n
+RUN | $T/dc.+x | react | $T/elements.pdl | $T/r.pdl
+EXPECT_EXIT | 0 | nested-parens-balance
+EXPECT_OUT | OK n | nested-parens-balance-message
+WRITE | r.pdl | SECTION \p KEY \p VALUE\n------\nREACTION \p n2 \p Al2(SO4)3 + 6NaOH \p 2Al(OH)3 + 3Na2SO4 \p 0 \p x \p n\n
+RUN | $T/dc.+x | react | $T/elements.pdl | $T/r.pdl
+EXPECT_EXIT | 0 | nested-parens-count-multiplies
+EXPECT_OUT | OK n2 | nested-parens-count-multiplies-message
+WRITE | r.pdl | SECTION \p KEY \p VALUE\n------\nREACTION \p k \p Co \p CO \p 0 \p x \p n\n
+RUN | $T/dc.+x | react | $T/elements.pdl | $T/r.pdl
+EXPECT_EXIT | 1 | case-matters-Co-vs-CO
+EXPECT_OUT | IMBALANCE k C:0->1 O:0->1 Co:1->0 | case-matters-Co-vs-CO-message
+WRITE | r.pdl | SECTION \p KEY \p VALUE\n------\nREACTION \p k2 \p 2CO + O2 \p 2CO2 \p 0 \p x \p n\n
+RUN | $T/dc.+x | react | $T/elements.pdl | $T/r.pdl
+EXPECT_EXIT | 0 | co-balances
+EXPECT_OUT | OK k2 | co-balances-message
+WRITE | r.pdl | SECTION \p KEY \p VALUE\n------\nREACTION \p k3 \p Co + O2 \p CoO2 \p 0 \p x \p n\n
+RUN | $T/dc.+x | react | $T/elements.pdl | $T/r.pdl
+EXPECT_EXIT | 0 | cobalt-oxide-balances
+EXPECT_OUT | OK k3 | cobalt-oxide-balances-message
+WRITE | r.pdl | SECTION \p KEY \p VALUE\n------\nREACTION \p x \p Xx2 + O2 \p XxO \p 0 \p x \p n\n
+RUN | $T/dc.+x | react | $T/elements.pdl | $T/r.pdl
+EXPECT_EXIT | 1 | unknown-element
+EXPECT_OUT | BAD x | unknown-element-message
+WRITE | r.pdl | SECTION \p KEY \p VALUE\n------\nREACTION \p p \p (OH + H \p H2O \p 0 \p x \p n\n
+RUN | $T/dc.+x | react | $T/elements.pdl | $T/r.pdl
+EXPECT_EXIT | 1 | unbalanced-paren
+EXPECT_OUT | BAD p | unbalanced-paren-message
+WRITE | r.pdl | SECTION \p KEY \p VALUE\n------\nREACTION \p z \p 0H2 + O2 \p H2O \p 0 \p x \p n\n
+RUN | $T/dc.+x | react | $T/elements.pdl | $T/r.pdl
+EXPECT_EXIT | 1 | zero-coefficient
+EXPECT_OUT | BAD z | zero-coefficient-message
+WRITE | r.pdl | SECTION \p KEY \p VALUE\n------\nREACTION \p s \p H2 \p  \p 0 \p x \p n\n
+RUN | $T/dc.+x | react | $T/elements.pdl | $T/r.pdl
+EXPECT_EXIT | 1 | empty-side
+EXPECT_OUT | BAD s | empty-side-message
+WRITE | r.pdl | SECTION \p KEY \p VALUE\n------\nREACTION \p l \p Hx \p H \p 0 \p x \p n\n
+RUN | $T/dc.+x | react | $T/elements.pdl | $T/r.pdl
+EXPECT_EXIT | 1 | stray-lowercase
+EXPECT_OUT | BAD l | stray-lowercase-message
+WRITE | r.pdl | SECTION \p KEY \p VALUE\n------\nREACTION \p g1 \p 2H2 + O2 \p 2H2O \p 0 \p x \p n\nREACTION \p b1 \p H2 \p O2 \p 0 \p x \p n\nREACTION \p g2 \p C + O2 \p CO2 \p 0 \p x \p n\n
+RUN | $T/dc.+x | react | $T/elements.pdl | $T/r.pdl
+EXPECT_EXIT | 1 | one-bad-among-good
+EXPECT_OUT | reactions=3 balanced=2 bad=1 | one-bad-among-good-message
+WRITE | r.pdl | SECTION \p KEY \p VALUE\n------\n
+RUN | $T/dc.+x | react | $T/elements.pdl | $T/r.pdl
+EXPECT_EXIT | 1 | no-reactions
+EXPECT_OUT | reactions=0 | no-reactions-message
+RUN | $T/dc.+x | react | $T/nosuch.pdl | $T/reactions.pdl
+EXPECT_EXIT | 2 | missing-elements-exit-2
+RUN | $T/dc.+x | react | $T/elements.pdl | $T/nosuch.pdl
+EXPECT_EXIT | 2 | missing-reactions-exit-2

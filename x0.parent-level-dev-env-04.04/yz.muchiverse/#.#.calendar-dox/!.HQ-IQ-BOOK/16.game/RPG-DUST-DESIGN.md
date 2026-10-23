@@ -38,7 +38,25 @@ A new pets-like board, **rpg-dust**, that simulates an entire earth-like planet;
 | the vision of a voxel planet with jobs, trade, reproduction | pet-trainer WORLD-DESIGN (layers 1 to 6, society layer) | `@.apps/pet-trainer/WORLD-DESIGN.md` |
 | heavy compute off this machine | offload rule: GPU or big jobs go to debil or the Mac | owner rule 2026-10-13 |
 
-**What does not exist (READ: the 2026-10-14 handoff and a search of the tree today; not a line-by-line audit):** any code for scale levels, zoom between levels, a solar-system or planet generator, an anatomy generator, a reaction resolver, or a molecular view. The Z-cell format is paper. The concept bank has no game, anatomy or reaction nodes yet.
+**What does not exist (READ, corrected 2026-10-23 after finding the prior art below):** code for scale levels and zoom between them, a seeded generator for a planet or a system, an anatomy generator, a reaction resolver, a molecular view. The Z-cell format is paper. The concept bank has no game, anatomy or reaction nodes yet (2026-10-14 handoff).
+
+### 2b. Prior art I MISSED in the first draft (found 2026-10-23; the first draft said "not found: any planet physics"; that was wrong)
+| What | Where | State |
+|---|---|---|
+| **solar sandbox**: four desks (system hub, Earth, Moon, Mars), emoji bodies, Enter / Leave orbit / Teleport rows | `&.widgits/solar-sandbox/` | built as template files, harness 41/0, not installed in a live session |
+| **physics nodes**: gravity, orbit and escape velocity as swappable, linked nodes: rows `CONST BODY NODE LINK TUNABLE OVERRIDE`, resolution **page > planet > system > house default**, op `phys_node_eval` | `&.widgits/physics-nodes/` | built, harness `phys_nodes` 31/0 (Earth g 9.82, Moon 1.62, Mars 3.73; swapping an impl recomputes downstream) |
+| **the design behind it**, incl. the owner's 2026-10-07 correction "gravity is a node, not a built-in": derived-never-stored physics, a random planet generator as step 6 | `08-roadmap/design-docs/SOLAR-SANDBOX-AND-PLANET-PHYSICS-DESIGN.md` | design; steps 1 and 2 built, temperature / pressure / travel nodes not |
+| **a planet as a ball of voxels from a seed**, lazy chunks, spherical gravity as a node, and **two clocks, one world** (stepped vs real-time) | `08-roadmap/design-docs/REAL-3D-PLANET-EXPLORATION-AND-REALTIME-MODE-DESIGN.md` | design only |
+| **formula parser with a locked element table** | `concept-bank/ops/chem_label.c`, harness `chem_label` 21/0 | built; it returns total atoms and mass, not per-element counts |
+| **a variable comparison command**: `variable_math` with `lt le gt ge eq ne add sub mul mod`, a C op over `variables.txt` (the worker pilot `q020 var_cmp` duplicated it and was not registered) | `#.ref/menu/event_commands.registry.pdl`, `ring-board-rmmv/ops/var_math.c` | built; `if` itself tests only switches |
+
+**What this changes in this design:**
+1. **Laws are nodes, not private code.** Section 6.1's laws (scaling, orbits, climate) should be written the physics-nodes way: a node with a hand-written default `impl`, `TUNABLE` joints and `OVERRIDE` rows by scope. They stay hand-authored and deterministic, never learned weights, but a person can swap or tune them without touching generators. This also answers "is the visual layer real": the owner already decided physics is event pages wired together.
+2. **The solar-system generator extends `system.pdl`** (BODY rows, seedable) instead of starting from nothing; the sandbox desks are the first system-level pages.
+3. **The planet-from-seed idea is already designed** (voxel ball, lazy chunks); this design adds the levels below and above it and the overrides ledger.
+4. **Clocks:** the "two clocks, one world" decision stands (a mode is a clock source, never a second implementation); per-level ticks in section 5 extend it.
+5. **Chemistry:** a per-element conservation check is new (built today, section 9, R0b); `chem_label` stays as it is.
+6. **Nodes can carry logic.** RAN 2026-10-23 on a scratch copy: a page of two nodes, `change_items` and `control_switch`, with no C verb, was compiled by the events manager and run by the prisc VM (`item_berry=1`, `harvested=1`; three runs gave `item_berry=3`). Branching on item counts goes through `variable_math` plus a switch; a **cook** built from nodes is plausible but **not yet proven**.
 
 ## 3. The scale ladder (PROPOSED)
 
@@ -87,7 +105,7 @@ SCALE | atom     |  -33   | 0.12 nm       | molecule | dust_gen_atom   | 2d-tile
 - **Physical constants and units**, in one locked file (like `elements.pdl`: derived from a source, hash-locked).
 - **Elements** (done), **bond data** (valence, typical bond lengths and energies) from public tables, a small **reaction table** (reactants, products, enthalpy, activation, conditions) for the reactions the game uses first (combustion, water, photosynthesis, a few oxidations).
 - **Material properties** (density, melting and boiling points, hardness, conductivity) for the first twenty materials, from public data, locked.
-- **Scaling laws** (allometry: how bone cross-section, limb length and metabolic rate scale with mass and gravity), written as small C functions with tests. These are physics, not preferences.
+- **Scaling laws** (allometry: how bone cross-section, limb length and metabolic rate scale with mass and gravity), written as **physics-nodes rows** (`NODE` with a hand-written default `impl`, `TUNABLE`, `OVERRIDE`; section 2b) with tests. These are physics, not preferences: a person can swap or tune them, a learned weight never does.
 - **Orbit and climate maths** for the system and globe generators (Kepler, insolation by latitude, a simple energy balance). Simple and deterministic; labelled a model.
 - The **body-plan skeleton graphs** for the first two or three archetypes (as `ASSEMBLY` rows of bone brixels with sockets). Hand-authored first; later archetypes may be proposed by models as candidates that a human promotes.
 - The **first species and biome rows**, and the **first recipe events** (cook, harvest, smelt).
@@ -140,7 +158,8 @@ The core holds its pages in a fixed array (`rooms[]`, 8 by default, 24 with the 
 
 | Step | What | Proof that would show it wrong |
 |---|---|---|
-| R0 | Ladder rows, seed/hash rule, address grammar, override format (paper plus a parse check) | the parse check rejects a malformed row, a duplicate id, a parent that does not exist, a non-power-of-two span |
+| R0 | **BUILT 2026-10-23** (ladder, seed and params in `@.apps/rpg-dust/scale.pdl`; `dust_check ladder`; harness `dust_ladder` 61/0). Still paper: the address grammar and the override format. | RAN: the check refuses a duplicate id, an unknown parent, two or no roots, a child not smaller than its parent, bad seed (letters, negative, above 2^64-1), bad view / tick / gen name, duplicate or non-numeric PARAM, an unknown row kind; two deliberate code mutants were caught by the harness (5 and 2 failures) |
+| R0b | **BUILT 2026-10-23** atom conservation as a harness case before any reaction code: `dust_check react` over `@.apps/rpg-dust/reactions.pdl` and the locked `elements.pdl`; harness `dust_react` 39/0 | RAN: an unbalanced, a lost-atom, an extra-atom, a wrong-coefficient, an unknown-element, an unbalanced-parenthesis and a case-confusion (Co vs CO) reaction are each refused with the exact per-element difference; a code mutant that only detects lost atoms is caught by 5 checks |
 | R1 | `dust_seed` and a **determinism gate**: the same seed and address twice give identical bytes; a different seed differs; a changed parameter changes only the levels below it | byte compare of generated files; a negative test that flips one parameter and must change the hash |
 | R2 | **Two adjacent levels** (`region -> area`) through the existing painter pattern, shown in the board window; a `zoom_in` event | screenshot of both levels from one seed; zooming in then out returns to the same address; area content agrees with the region's summary row |
 | R3 | **Overrides ledger**: cut a tree, replay from empty, same page | delete the cache, regenerate: identical page including the edit; delete the ledger: the edit is gone |

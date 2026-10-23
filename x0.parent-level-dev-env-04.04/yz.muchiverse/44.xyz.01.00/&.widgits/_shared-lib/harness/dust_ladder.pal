@@ -1,0 +1,4 @@
+# dust_ladder.pal - LOCKED acceptance harness for rpg-dust R0: the scale ladder check. Read results/dust_ladder.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/dust_ladder.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/dust_ladder.pdl
+halt

@@ -1,0 +1,128 @@
+# dust_ladder: LOCKED cases. Source under test: @.apps/rpg-dust/ops/dust_check.c (mode ladder) + _shared-lib/chem_formula.c; data under test: @.apps/rpg-dust/scale.pdl. Every refusal case is a NEGATIVE test: the check must fail on it, with the right message.
+RESULTS | ../results/dust_ladder.txt
+CASE | dust-ladder
+SCRATCH |
+COPY | @.apps/rpg-dust/ops/dust_check.c | dust_check.c
+COPY | &.widgits/_shared-lib/chem_formula.c | chem_formula.c
+COPY | @.apps/rpg-dust/scale.pdl | scale.pdl
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -I | $T | -o | $T/dc.+x | $T/dust_check.c
+EXPECT_EXIT | 0 | compiles-clean
+RUN | $T/dc.+x | ladder | $T/scale.pdl
+EXPECT_EXIT | 0 | real-ladder-ok
+EXPECT_OUT_IS | ladder ok: 10 levels, root system, seed 20261023, 5 params | real-ladder-summary
+WRITE | f.pdl | SECTION \p KEY \p VALUE\n------\nSEED \p universe \p 12345\nSCALE \p a \p 10 \p 1 m \p - \p dust_gen_x \p 2d-tiles \p day \p n\nSCALE \p b \p 5 \p 1 m \p a \p dust_gen_x \p 2d-tiles \p day \p n\n
+RUN | $T/dc.+x | ladder | $T/f.pdl
+EXPECT_EXIT | 0 | small-good-ok
+EXPECT_OUT | ladder ok: 2 levels, root a, seed 12345, 0 params | small-good-ok-message
+WRITE | f.pdl | SECTION \p KEY \p VALUE\n------\nSEED \p universe \p 12345\nSCALE \p a \p 10 \p 1 m \p - \p dust_gen_x \p 2d-tiles \p day \p n\nSCALE \p a \p 5 \p 1 m \p a \p dust_gen_x \p 2d-tiles \p day \p n\n
+RUN | $T/dc.+x | ladder | $T/f.pdl
+EXPECT_EXIT | 1 | dup-id
+EXPECT_OUT | duplicate level id 'a' | dup-id-message
+WRITE | f.pdl | SECTION \p KEY \p VALUE\n------\nSEED \p universe \p 12345\nSCALE \p a \p 10 \p 1 m \p - \p dust_gen_x \p 2d-tiles \p day \p n\nSCALE \p b \p 5 \p 1 m \p zz \p dust_gen_x \p 2d-tiles \p day \p n\n
+RUN | $T/dc.+x | ladder | $T/f.pdl
+EXPECT_EXIT | 1 | unknown-parent
+EXPECT_OUT | names parent 'zz' | unknown-parent-message
+WRITE | f.pdl | SECTION \p KEY \p VALUE\n------\nSEED \p universe \p 12345\nSCALE \p a \p 10 \p 1 m \p - \p dust_gen_x \p 2d-tiles \p day \p n\nSCALE \p b \p 5 \p 1 m \p - \p dust_gen_x \p 2d-tiles \p day \p n\n
+RUN | $T/dc.+x | ladder | $T/f.pdl
+EXPECT_EXIT | 1 | two-roots
+EXPECT_OUT | 2 root levels | two-roots-message
+WRITE | f.pdl | SECTION \p KEY \p VALUE\n------\nSEED \p universe \p 12345\nSCALE \p a \p 10 \p 1 m \p b \p dust_gen_x \p 2d-tiles \p day \p n\nSCALE \p b \p 5 \p 1 m \p a \p dust_gen_x \p 2d-tiles \p day \p n\n
+RUN | $T/dc.+x | ladder | $T/f.pdl
+EXPECT_EXIT | 1 | no-root
+EXPECT_OUT | 0 root levels | no-root-message
+WRITE | f.pdl | SECTION \p KEY \p VALUE\n------\nSEED \p universe \p 12345\nSCALE \p a \p 10 \p 1 m \p - \p dust_gen_x \p 2d-tiles \p day \p n\nSCALE \p b \p 10 \p 1 m \p a \p dust_gen_x \p 2d-tiles \p day \p n\n
+RUN | $T/dc.+x | ladder | $T/f.pdl
+EXPECT_EXIT | 1 | child-equal-to-parent
+EXPECT_OUT | is not smaller than its parent | child-equal-to-parent-message
+WRITE | f.pdl | SECTION \p KEY \p VALUE\n------\nSEED \p universe \p 12345\nSCALE \p a \p 10 \p 1 m \p - \p dust_gen_x \p 2d-tiles \p day \p n\nSCALE \p b \p 11 \p 1 m \p a \p dust_gen_x \p 2d-tiles \p day \p n\n
+RUN | $T/dc.+x | ladder | $T/f.pdl
+EXPECT_EXIT | 1 | child-bigger-than-parent
+EXPECT_OUT | is not smaller than its parent | child-bigger-than-parent-message
+WRITE | f.pdl | SECTION \p KEY \p VALUE\n------\nSEED \p universe \p 12345\nSCALE \p a \p 81 \p 1 m \p - \p dust_gen_x \p 2d-tiles \p day \p n\n
+RUN | $T/dc.+x | ladder | $T/f.pdl
+EXPECT_EXIT | 1 | log2m-out-of-range
+EXPECT_OUT | must be an integer in -80..80 | log2m-out-of-range-message
+WRITE | f.pdl | SECTION \p KEY \p VALUE\n------\nSEED \p universe \p 12345\nSCALE \p a \p 1.5 \p 1 m \p - \p dust_gen_x \p 2d-tiles \p day \p n\n
+RUN | $T/dc.+x | ladder | $T/f.pdl
+EXPECT_EXIT | 1 | log2m-not-integer
+EXPECT_OUT | must be an integer | log2m-not-integer-message
+WRITE | f.pdl | SECTION \p KEY \p VALUE\n------\nSEED \p universe \p 12345\nSCALE \p Aa \p 10 \p 1 m \p - \p dust_gen_x \p 2d-tiles \p day \p n\n
+RUN | $T/dc.+x | ladder | $T/f.pdl
+EXPECT_EXIT | 1 | bad-id-uppercase
+EXPECT_OUT | lower case letters | bad-id-uppercase-message
+WRITE | f.pdl | SECTION \p KEY \p VALUE\n------\nSEED \p universe \p 12345\nSCALE \p a \p 10 \p 1 m \p - \p gen_x \p 2d-tiles \p day \p n\n
+RUN | $T/dc.+x | ladder | $T/f.pdl
+EXPECT_EXIT | 1 | bad-gen-name
+EXPECT_OUT | must be dust_gen_ | bad-gen-name-message
+WRITE | f.pdl | SECTION \p KEY \p VALUE\n------\nSEED \p universe \p 12345\nSCALE \p a \p 10 \p 1 m \p - \p dust_gen_x \p hologram \p day \p n\n
+RUN | $T/dc.+x | ladder | $T/f.pdl
+EXPECT_EXIT | 1 | bad-view
+EXPECT_OUT | view 'hologram' | bad-view-message
+WRITE | f.pdl | SECTION \p KEY \p VALUE\n------\nSEED \p universe \p 12345\nSCALE \p a \p 10 \p 1 m \p - \p dust_gen_x \p 2d-tiles \p fortnight \p n\n
+RUN | $T/dc.+x | ladder | $T/f.pdl
+EXPECT_EXIT | 1 | bad-tick
+EXPECT_OUT | tick 'fortnight' | bad-tick-message
+WRITE | f.pdl | SECTION \p KEY \p VALUE\n------\nSEED \p universe \p 12345\nSCALE \p a \p 10 \p 1 m \p - \p dust_gen_x \p 3d-voxel + 2d-tiles + field \p day \p n\n
+RUN | $T/dc.+x | ladder | $T/f.pdl
+EXPECT_EXIT | 0 | good-view-combo
+EXPECT_OUT | ladder ok | good-view-combo-message
+WRITE | f.pdl | SECTION \p KEY \p VALUE\n------\nSEED \p universe \p 12345\nSCALE \p a \p 10 \p  \p - \p dust_gen_x \p 2d-tiles \p day \p n\n
+RUN | $T/dc.+x | ladder | $T/f.pdl
+EXPECT_EXIT | 1 | empty-cell-about
+EXPECT_OUT | cell_about is empty | empty-cell-about-message
+WRITE | f.pdl | SECTION \p KEY \p VALUE\n------\nSEED \p universe \p 12345\nSCALE \p a \p 10 \p x\n
+RUN | $T/dc.+x | ladder | $T/f.pdl
+EXPECT_EXIT | 1 | too-few-fields
+EXPECT_OUT | needs 8 fields | too-few-fields-message
+WRITE | f.pdl | SECTION \p KEY \p VALUE\n------\nSEED \p universe \p 12345\nSCALE \p a \p 10 \p 1 m \p - \p dust_gen_x \p 2d-tiles \p day \p n\nSCAEL \p b \p 5 \p x \p a \p dust_gen_x \p 2d-tiles \p day \p n\n
+RUN | $T/dc.+x | ladder | $T/f.pdl
+EXPECT_EXIT | 1 | unknown-row-kind
+EXPECT_OUT | unknown row kind 'SCAEL' | unknown-row-kind-message
+WRITE | f.pdl | SECTION \p KEY \p VALUE\n------\nSEED \p universe \p 12345\n
+RUN | $T/dc.+x | ladder | $T/f.pdl
+EXPECT_EXIT | 1 | no-scale-rows
+EXPECT_OUT | no SCALE rows | no-scale-rows-message
+WRITE | f.pdl | SECTION \p KEY \p VALUE\n------\nSCALE \p a \p 10 \p 1 m \p - \p dust_gen_x \p 2d-tiles \p day \p n\n
+RUN | $T/dc.+x | ladder | $T/f.pdl
+EXPECT_EXIT | 1 | no-seed
+EXPECT_OUT | no SEED row | no-seed-message
+WRITE | f.pdl | SECTION \p KEY \p VALUE\n------\nSEED \p universe \p 12345\nSEED \p universe \p 7\nSCALE \p a \p 10 \p 1 m \p - \p dust_gen_x \p 2d-tiles \p day \p n\n
+RUN | $T/dc.+x | ladder | $T/f.pdl
+EXPECT_EXIT | 1 | two-seeds
+EXPECT_OUT | more than one SEED | two-seeds-message
+WRITE | f.pdl | SECTION \p KEY \p VALUE\n------\nSEED \p universe \p 12ab\nSCALE \p a \p 10 \p 1 m \p - \p dust_gen_x \p 2d-tiles \p day \p n\n
+RUN | $T/dc.+x | ladder | $T/f.pdl
+EXPECT_EXIT | 1 | seed-letters
+EXPECT_OUT | not an unsigned 64-bit | seed-letters-message
+WRITE | f.pdl | SECTION \p KEY \p VALUE\n------\nSEED \p universe \p -5\nSCALE \p a \p 10 \p 1 m \p - \p dust_gen_x \p 2d-tiles \p day \p n\n
+RUN | $T/dc.+x | ladder | $T/f.pdl
+EXPECT_EXIT | 1 | seed-negative
+EXPECT_OUT | not an unsigned 64-bit | seed-negative-message
+WRITE | f.pdl | SECTION \p KEY \p VALUE\n------\nSEED \p universe \p 18446744073709551615\nSCALE \p a \p 10 \p 1 m \p - \p dust_gen_x \p 2d-tiles \p day \p n\n
+RUN | $T/dc.+x | ladder | $T/f.pdl
+EXPECT_EXIT | 0 | seed-max-ok
+EXPECT_OUT | seed 18446744073709551615 | seed-max-ok-message
+WRITE | f.pdl | SECTION \p KEY \p VALUE\n------\nSEED \p universe \p 18446744073709551616\nSCALE \p a \p 10 \p 1 m \p - \p dust_gen_x \p 2d-tiles \p day \p n\n
+RUN | $T/dc.+x | ladder | $T/f.pdl
+EXPECT_EXIT | 1 | seed-one-past-max
+EXPECT_OUT | not an unsigned 64-bit | seed-one-past-max-message
+WRITE | f.pdl | SECTION \p KEY \p VALUE\n------\nSEED \p world \p 5\nSCALE \p a \p 10 \p 1 m \p - \p dust_gen_x \p 2d-tiles \p day \p n\n
+RUN | $T/dc.+x | ladder | $T/f.pdl
+EXPECT_EXIT | 1 | seed-wrong-key
+EXPECT_OUT | SEED row must be | seed-wrong-key-message
+WRITE | f.pdl | SECTION \p KEY \p VALUE\n------\nSEED \p universe \p 12345\nPARAM \p star_mass \p 1.5\nSCALE \p a \p 10 \p 1 m \p - \p dust_gen_x \p 2d-tiles \p day \p n\n
+RUN | $T/dc.+x | ladder | $T/f.pdl
+EXPECT_EXIT | 0 | param-ok
+EXPECT_OUT | 1 params | param-ok-message
+WRITE | f.pdl | SECTION \p KEY \p VALUE\n------\nSEED \p universe \p 12345\nPARAM \p x \p 1\nPARAM \p x \p 2\nSCALE \p a \p 10 \p 1 m \p - \p dust_gen_x \p 2d-tiles \p day \p n\n
+RUN | $T/dc.+x | ladder | $T/f.pdl
+EXPECT_EXIT | 1 | param-duplicate
+EXPECT_OUT | duplicate PARAM 'x' | param-duplicate-message
+WRITE | f.pdl | SECTION \p KEY \p VALUE\n------\nSEED \p universe \p 12345\nPARAM \p x \p many\nSCALE \p a \p 10 \p 1 m \p - \p dust_gen_x \p 2d-tiles \p day \p n\n
+RUN | $T/dc.+x | ladder | $T/f.pdl
+EXPECT_EXIT | 1 | param-not-number
+EXPECT_OUT | PARAM row must be | param-not-number-message
+RUN | $T/dc.+x | ladder | $T/nosuch.pdl
+EXPECT_EXIT | 2 | missing-file-exit-2
+RUN | $T/dc.+x | bogus
+EXPECT_EXIT | 2 | bad-usage-exit-2

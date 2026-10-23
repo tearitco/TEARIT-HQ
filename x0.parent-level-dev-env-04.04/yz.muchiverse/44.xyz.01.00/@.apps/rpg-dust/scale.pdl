@@ -1,0 +1,24 @@
+SECTION | KEY | VALUE
+------------------------------
+# scale.pdl - the rpg-dust scale ladder, the universe seed and the tweakable parameters (R0 of BOOK 16.game/RPG-DUST-DESIGN.md; 2026-10-23, claude). PAPER DATA: no generator reads it yet. Checked by `ops/+x/dust_check.+x ladder scale.pdl`.
+# SEED | universe | <unsigned 64-bit decimal>          the one number every generated thing derives from (child seed = hash64(parent seed, child key), section 4 of the design; the hash op is R1)
+# PARAM | <name> | <number>                              tweakable inputs of the generators (names unique); different rows = a different solar system
+# SCALE | id | log2_m | cell is about | parent | gen op | view | tick | note
+#   metres per cell = 2^log2_m. A child is SMALLER than its parent (so zooming in is going down the rows). view = 2d-tiles / 3d-voxel / field joined by +. tick = us ms second minute 10min hour day.
+#   To add a level (a galaxy above, a quark below): add a row and a dust_gen_<name> op. Nothing else changes.
+SEED  | universe | 20261023
+PARAM | star_mass_solar     | 1.0
+PARAM | metallicity         | 0.02
+PARAM | planet_count        | 8
+PARAM | ocean_fraction      | 0.7
+PARAM | axial_tilt_deg      | 23.4
+SCALE | system   | 36  | 0.46 AU | -        | dust_gen_system | 2d-tiles          | day    | star, planets, moons; orbits from the seed (physics-nodes: kepler)
+SCALE | globe    | 20  | 1000 km | system   | dust_gen_globe  | 2d-tiles          | day    | one planet: oceans, land, ice, climate bands
+SCALE | region   | 14  | 16 km   | globe    | dust_gen_region | 2d-tiles          | hour   | biomes, rivers, mountains
+SCALE | area     | 8   | 256 m   | region   | dust_gen_area   | 3d-voxel          | 10min  | a village, a forest, a coast
+SCALE | play     | 0   | 1 m     | area     | dust_gen_play   | 3d-voxel + 2d-tiles | minute | buildings, pets, plants: today's boards
+SCALE | body     | -4  | 6 cm    | play     | dust_gen_body   | 3d-voxel          | second | bones and organs of ONE entity
+SCALE | tissue   | -10 | 1 mm    | body     | dust_gen_tissue | 3d-voxel          | second | bone, muscle, vessels
+SCALE | cell     | -17 | 8 um    | tissue   | dust_gen_cell   | 2d-tiles          | ms     | a cell and its organelles
+SCALE | molecule | -30 | 0.9 nm  | cell     | dust_gen_mol    | 2d-tiles + field  | us     | molecules, bonds, charge (a MODEL, design section 8)
+SCALE | atom     | -33 | 0.12 nm | molecule | dust_gen_atom   | 2d-tiles + field  | us     | electrons as charge clouds (a MODEL)

@@ -1,0 +1,9 @@
+SECTION | KEY | VALUE
+------------------------------
+# reactions.pdl - the first hand-authored reactions of rpg-dust (R5 of the design; 2026-10-23, claude). PAPER DATA: no game reads it yet. Checked by `ops/+x/dust_check.+x react <elements.pdl> reactions.pdl`: every reaction must conserve every element.
+# REACTION | id | reactants | products | dH_kJ_per_mol | conditions | note       (reactants / products: coefficient then formula, joined by '+'; elements as in the locked concept-bank/data/chem/elements.pdl)
+# dH is the standard enthalpy change per mole of the reaction AS WRITTEN, in kJ, from public tables (rounded); negative = releases heat. Values are starting data for the owner and grok to correct, not measured here.
+REACTION | water_formation  | 2H2 + O2          | 2H2O              | -572  | spark or catalyst     | hydrogen burning; 286 kJ per mole of water
+REACTION | methane_burning  | CH4 + 2O2         | CO2 + 2H2O        | -890  | ignition, oxygen      | natural gas
+REACTION | photosynthesis   | 6CO2 + 6H2O       | C6H12O6 + 6O2     | 2803  | light, chlorophyll    | stores energy (positive = needs it)
+REACTION | rusting          | 4Fe + 3O2         | 2Fe2O3            | -1648 | moisture, slow        | iron oxide
