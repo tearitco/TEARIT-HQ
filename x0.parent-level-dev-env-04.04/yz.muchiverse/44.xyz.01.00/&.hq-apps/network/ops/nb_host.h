@@ -889,6 +889,70 @@ static const char g_js_prelude[] =
 "    };\n"
 "    return f;\n"
 "  };\n"
+"})();\n"
+
+/* ---- AudioContext for fingerprinting (Cloudflare, etc.) ---- */
+"(function(){\n"
+"  if (typeof window.AudioContext !== 'undefined') return;\n"
+"  function AudioContext(){\n"
+"    this.sampleRate = 48000;\n"
+"    this.currentTime = 0;\n"
+"    this.state = 'running';\n"
+"    this.onstatechange = null;\n"
+"    this.destination = {\n"
+"      maxChannelCount: 2,\n"
+"      channelCount: 2,\n"
+"      channelCountMode: 'max',\n"
+"      channelInterpretation: 'speakers',\n"
+"      connect: function(){},\n"
+"      disconnect: function(){}\n"
+"    };\n"
+"  }\n"
+"  AudioContext.prototype.createOscillator = function(){\n"
+"    return {\n"
+"      type: 'sine',\n"
+"      frequency: { value: 440 },\n"
+"      detune: { value: 0 },\n"
+"      start: function(){},\n"
+"      stop: function(){},\n"
+"      connect: function(){},\n"
+"      disconnect: function(){}\n"
+"    };\n"
+"  };\n"
+"  AudioContext.prototype.createGain = function(){\n"
+"    return {\n"
+"      gain: { value: 1 },\n"
+"      connect: function(){},\n"
+"      disconnect: function(){}\n"
+"    };\n"
+"  };\n"
+"  AudioContext.prototype.createAnalyser = function(){\n"
+"    return {\n"
+"      fftSize: 2048,\n"
+"      frequencyBinCount: 1024,\n"
+"      minDecibels: -100,\n"
+"      maxDecibels: -30,\n"
+"      smoothingTimeConstant: 0.8,\n"
+"      getFloatFrequencyData: function(arr){ for(var i=0;i<1024;i++) arr[i]=-100; },\n"
+"      getByteFrequencyData: function(arr){ for(var i=0;i<1024;i++) arr[i]=0; },\n"
+"      getFloatTimeDomainData: function(arr){ for(var i=0;i<1024;i++) arr[i]=0; },\n"
+"      getByteTimeDomainData: function(arr){ for(var i=0;i<1024;i++) arr[i]=128; },\n"
+"      connect: function(){},\n"
+"      disconnect: function(){}\n"
+"    };\n"
+"  };\n"
+"  AudioContext.prototype.createBuffer = function(){ return { sampleRate: 48000, length: 48000, duration: 1, numberOfChannels: 1 }; };\n"
+"  AudioContext.prototype.createBufferSource = function(){\n"
+"    return { buffer: null, loop: false, loopStart: 0, loopEnd: 0, playbackRate: { value: 1 }, start: function(){}, stop: function(){}, connect: function(){}, disconnect: function(){} };\n"
+"  };\n"
+"  AudioContext.prototype.decodeAudioData = function(audioData){\n"
+"    return Promise.resolve({ sampleRate: 48000, length: 48000, duration: 1, numberOfChannels: 1 });\n"
+"  };\n"
+"  AudioContext.prototype.close = function(){ return Promise.resolve(); };\n"
+"  AudioContext.prototype.suspend = function(){ return Promise.resolve(); };\n"
+"  AudioContext.prototype.resume = function(){ return Promise.resolve(); };\n"
+"  Object.defineProperty(window,'AudioContext',{ value:AudioContext, configurable:true, writable:true });\n"
+"  Object.defineProperty(window,'webkitAudioContext',{ value:AudioContext, configurable:true, writable:true });\n"
 "})();\n";
 
 static void install_host(JSContext *ctx) {
@@ -952,15 +1016,23 @@ static void install_host(JSContext *ctx) {
     /* navigator — plain data props only, no functions (rung 1) */
     JSValue nav = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, nav, "userAgent",
-                      JS_NewString(ctx, "Mozilla/5.0 (X11; Linux x86_64) nb_js_eval"));
-    JS_SetPropertyStr(ctx, nav, "language", JS_NewString(ctx, "en"));
+                      JS_NewString(ctx, "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"));
+    JS_SetPropertyStr(ctx, nav, "language", JS_NewString(ctx, "en-US"));
     JSValue langs = JS_NewArray(ctx);
-    JS_SetPropertyUint32(ctx, langs, 0, JS_NewString(ctx, "en"));
+    JS_SetPropertyUint32(ctx, langs, 0, JS_NewString(ctx, "en-US"));
+    JS_SetPropertyUint32(ctx, langs, 1, JS_NewString(ctx, "en"));
     JS_SetPropertyStr(ctx, nav, "languages", langs);
     JS_SetPropertyStr(ctx, nav, "platform", JS_NewString(ctx, "Linux x86_64"));
     JS_SetPropertyStr(ctx, nav, "onLine", JS_NewBool(ctx, 1));
-    JS_SetPropertyStr(ctx, nav, "cookieEnabled", JS_NewBool(ctx, 0));
+    JS_SetPropertyStr(ctx, nav, "cookieEnabled", JS_NewBool(ctx, 1));
     JS_SetPropertyStr(ctx, nav, "doNotTrack", JS_NULL);
+    JS_SetPropertyStr(ctx, nav, "hardwareConcurrency", JS_NewInt32(ctx, 8));
+    JS_SetPropertyStr(ctx, nav, "deviceMemory", JS_NewInt32(ctx, 8));
+    JS_SetPropertyStr(ctx, nav, "maxTouchPoints", JS_NewInt32(ctx, 0));
+    JS_SetPropertyStr(ctx, nav, "vendor", JS_NewString(ctx, "Google Inc."));
+    JS_SetPropertyStr(ctx, nav, "vendorSub", JS_NewString(ctx, ""));
+    JS_SetPropertyStr(ctx, nav, "product", JS_NewString(ctx, "Gecko"));
+    JS_SetPropertyStr(ctx, nav, "productSub", JS_NewString(ctx, "20030107"));
     JS_SetPropertyStr(ctx, g, "navigator", nav);
 
     /* screen */

@@ -4297,6 +4297,65 @@ static void nb_font_blit(NbCanvas *cv, unsigned gid, double pen_x, double baseli
     }
 }
 /* "12px sans-serif" -> 12 (default 10) */
+/* Font family mapping for canvas fingerprinting - returns a multiplier for width */
+static double nb_font_family_scale(const char *font_family) {
+    if (!font_family) return 1.0;
+    /* Common font families with different average character widths */
+    if (strstr(font_family, "Arial") || strstr(font_family, "Helvetica") || strstr(font_family, "sans-serif")) return 1.0;
+    if (strstr(font_family, "Times") || strstr(font_family, "serif")) return 0.85;
+    if (strstr(font_family, "Courier") || strstr(font_family, "monospace")) return 1.2;
+    if (strstr(font_family, "Verdana")) return 1.1;
+    if (strstr(font_family, "Georgia")) return 0.9;
+    if (strstr(font_family, "Tahoma")) return 1.05;
+    if (strstr(font_family, "Trebuchet")) return 0.95;
+    if (strstr(font_family, "Impact")) return 1.3;
+    if (strstr(font_family, "Comic")) return 1.15;
+    return 1.0;
+}
+
+/* Extract font family from canvas font string (e.g., "16px Arial" -> "Arial", "16px 'Times New Roman'" -> "Times New Roman") */
+static void nb_font_family_from_ctx(JSContext *ctx, JSValueConst o, char *out, size_t n) {
+    JSValue v = JS_GetPropertyStr(ctx, o, "font");
+    const char *s = JS_IsString(v) ? JS_ToCString(ctx, v) : NULL;
+    if (s) {
+        const char *p = s;
+        /* Skip leading non-digit, non-dot characters (font style/weight) */
+        while (*p && (*p < '0' || *p > '9') && *p != '.') p++;
+        if (*p) {
+            /* Skip the font size number */
+            while (*p && (*p >= '0' && *p <= '9' || *p == '.')) p++;
+            /* Skip unit (px, pt, em, rem, etc.) - skip letters */
+            while (*p && ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z'))) p++;
+            /* Skip whitespace */
+            while (*p && *p == ' ') p++;
+            if (*p) {
+                const char *end = p;
+                char quote = 0;
+                if (*p == '"' || *p == '\'') {
+                    quote = *p;
+                    p++;
+                    end = p;
+                    /* Find closing quote, but don't go past end of string */
+                    while (*end && *end != quote && end - p < 63) end++;
+                } else {
+                    /* Unquoted: find end of font family (space, comma, or end of string) */
+                    while (*end && *end != '"' && *end != '\'' && *end != ',' && *end != ';' && end - p < 63) end++;
+                }
+                size_t len = end - p;
+                if (len >= n) len = n - 1;
+                memcpy(out, p, len);
+                out[len] = 0;
+                JS_FreeCString(ctx, s);
+                JS_FreeValue(ctx, v);
+                return;
+            }
+        }
+        JS_FreeCString(ctx, s);
+    }
+    JS_FreeValue(ctx, v);
+    snprintf(out, n, "sans-serif");
+}
+
 static double nb_font_size_px(JSContext *ctx, JSValueConst o) {
     JSValue v = JS_GetPropertyStr(ctx, o, "font");
     const char *s = JS_IsString(v) ? JS_ToCString(ctx, v) : NULL;
@@ -4923,7 +4982,11 @@ static JSValue nb_c2d_measureText(JSContext *ctx, JSValueConst this_val, int arg
     JSValue m = JS_NewObject(ctx);
     nb_font_load();
     double px = nb_font_size_px(ctx, this_val);
+    char font_family[64];
+    nb_font_family_from_ctx(ctx, this_val, font_family, sizeof(font_family));
+    double family_scale = nb_font_family_scale(font_family);
     double scale = g_font_upm ? px / g_font_upm : 0;
+    scale *= family_scale;
     double w = 0;
     if (argc >= 1 && JS_IsString(argv[0])) {
         const char *s = JS_ToCString(ctx, argv[0]);
@@ -4953,7 +5016,11 @@ static JSValue nb_c2d_fillText(JSContext *ctx, JSValueConst this_val, int argc, 
     if (!s) return JS_UNDEFINED;
     double x = nb_c2d_argd(ctx, argv, argc, 1, 0), y = nb_c2d_argd(ctx, argv, argc, 2, 0);
     double px = nb_font_size_px(ctx, this_val);
+    char font_family[64];
+    nb_font_family_from_ctx(ctx, this_val, font_family, sizeof(font_family));
+    double family_scale = nb_font_family_scale(font_family);
     double scale = g_font_upm ? px / g_font_upm : 0;
+    scale *= family_scale;
     char align[32], base[32];
     nb_ctx_str(ctx, this_val, "textAlign", align, sizeof(align), "start");
     nb_ctx_str(ctx, this_val, "textBaseline", base, sizeof(base), "alphabetic");
@@ -4998,7 +5065,11 @@ static JSValue nb_c2d_strokeText(JSContext *ctx, JSValueConst this_val, int argc
     nb_font_load();
     double x = nb_c2d_argd(ctx, argv, argc, 1, 0), y = nb_c2d_argd(ctx, argv, argc, 2, 0);
     double px = nb_font_size_px(ctx, this_val);
+    char font_family[64];
+    nb_font_family_from_ctx(ctx, this_val, font_family, sizeof(font_family));
+    double family_scale = nb_font_family_scale(font_family);
     double scale = g_font_upm ? px / g_font_upm : 0;
+    scale *= family_scale;
     char align[32], base[32];
     nb_ctx_str(ctx, this_val, "textAlign", align, sizeof(align), "start");
     nb_ctx_str(ctx, this_val, "textBaseline", base, sizeof(base), "alphabetic");
@@ -5704,6 +5775,84 @@ static JSValue nb_gl_getError(JSContext *ctx, JSValueConst this_val, int argc, J
     NbGL *g = nb_gl_for(ctx, this_val); if (!g) return JS_NewInt32(ctx, 0);
     return JS_NewInt32(ctx, (int32_t)glGetError());
 }
+
+static JSValue nb_gl_noop(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)ctx; (void)this_val; (void)argc; (void)argv;
+    return JS_UNDEFINED;
+}
+
+/* getExtension: WEBGL_debug_renderer_info for fingerprinting (UNMASKED_VENDOR_WEBGL, UNMASKED_RENDERER_WEBGL) */
+static JSValue nb_gl_getExtension(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbGL *g = nb_gl_for(ctx, this_val); if (!g) return JS_UNDEFINED;
+    if (argc < 1 || !JS_IsString(argv[0])) return JS_NULL;
+    const char *name = JS_ToCString(ctx, argv[0]);
+    if (!name) return JS_NULL;
+    JSValue ext = JS_UNDEFINED;
+    if (strcmp(name, "WEBGL_debug_renderer_info") == 0) {
+        JSValue ext_obj = JS_NewObject(ctx);
+        const char *vendor = (const char *)glGetString(GL_VENDOR);
+        const char *renderer = (const char *)glGetString(GL_RENDERER);
+        if (vendor) JS_SetPropertyStr(ctx, ext_obj, "UNMASKED_VENDOR_WEBGL", JS_NewString(ctx, vendor));
+        if (renderer) JS_SetPropertyStr(ctx, ext_obj, "UNMASKED_RENDERER_WEBGL", JS_NewString(ctx, renderer));
+        ext = ext_obj;
+    } else if (strcmp(name, "OES_vertex_array_object") == 0) {
+        ext = JS_NewObject(ctx);
+        JS_SetPropertyStr(ctx, ext, "createVertexArrayOES", JS_NewCFunction(ctx, nb_gl_noop, "createVertexArrayOES", 0));
+        JS_SetPropertyStr(ctx, ext, "deleteVertexArrayOES", JS_NewCFunction(ctx, nb_gl_noop, "deleteVertexArrayOES", 1));
+        JS_SetPropertyStr(ctx, ext, "bindVertexArrayOES", JS_NewCFunction(ctx, nb_gl_noop, "bindVertexArrayOES", 1));
+        JS_SetPropertyStr(ctx, ext, "isVertexArrayOES", JS_NewCFunction(ctx, nb_gl_noop, "isVertexArrayOES", 1));
+    } else if (strcmp(name, "ANGLE_instanced_arrays") == 0) {
+        ext = JS_NewObject(ctx);
+        JS_SetPropertyStr(ctx, ext, "drawArraysInstancedANGLE", JS_NewCFunction(ctx, nb_gl_noop, "drawArraysInstancedANGLE", 4));
+        JS_SetPropertyStr(ctx, ext, "drawElementsInstancedANGLE", JS_NewCFunction(ctx, nb_gl_noop, "drawElementsInstancedANGLE", 5));
+        JS_SetPropertyStr(ctx, ext, "vertexAttribDivisorANGLE", JS_NewCFunction(ctx, nb_gl_noop, "vertexAttribDivisorANGLE", 2));
+    } else if (strcmp(name, "EXT_texture_filter_anisotropic") == 0) {
+        ext = JS_NewObject(ctx);
+        JS_SetPropertyStr(ctx, ext, "TEXTURE_MAX_ANISOTROPY_EXT", JS_NewInt32(ctx, 0x84FE));
+        JS_SetPropertyStr(ctx, ext, "MAX_TEXTURE_MAX_ANISOTROPY_EXT", JS_NewInt32(ctx, 0x84FF));
+    } else if (strcmp(name, "WEBGL_depth_texture") == 0 ||
+               strcmp(name, "OES_texture_float") == 0 ||
+               strcmp(name, "OES_texture_half_float") == 0 ||
+               strcmp(name, "OES_standard_derivatives") == 0 ||
+               strcmp(name, "WEBGL_draw_buffers") == 0 ||
+               strcmp(name, "EXT_frag_depth") == 0 ||
+               strcmp(name, "EXT_shader_texture_lod") == 0 ||
+               strcmp(name, "EXT_sRGB") == 0 ||
+               strcmp(name, "OES_element_index_uint") == 0) {
+        /* Return empty object for these extensions - they're just markers */
+        ext = JS_NewObject(ctx);
+    }
+    JS_FreeCString(ctx, name);
+    return ext;
+}
+
+static JSValue nb_gl_getSupportedExtensions(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbGL *g = nb_gl_for(ctx, this_val); if (!g) return JS_UNDEFINED;
+    JSValue arr = JS_NewArray(ctx);
+    const char *exts[] = {
+        "WEBGL_debug_renderer_info",
+        "OES_texture_float",
+        "OES_texture_half_float",
+        "OES_standard_derivatives",
+        "OES_vertex_array_object",
+        "WEBGL_depth_texture",
+        "WEBGL_draw_buffers",
+        "EXT_texture_filter_anisotropic",
+        "EXT_frag_depth",
+        "EXT_shader_texture_lod",
+        "EXT_sRGB",
+        "ANGLE_instanced_arrays",
+        "OES_element_index_uint",
+        NULL
+    };
+    int i = 0;
+    while (exts[i]) {
+        JS_SetPropertyUint32(ctx, arr, (uint32_t)i, JS_NewString(ctx, exts[i]));
+        i++;
+    }
+    return arr;
+}
+
 static JSValue nb_gl_getParameter(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbGL *g = nb_gl_for(ctx, this_val); if (!g) return JS_UNDEFINED;
     GLenum p = (GLenum)nb_gl_argi(ctx, argv, argc, 0, 0);
@@ -5880,6 +6029,8 @@ static JSValue nb_gl_new_context(JSContext *ctx, JSValueConst elem, int cid, int
     JS_SetPropertyStr(ctx, c, "drawElements", JS_NewCFunction(ctx, nb_gl_drawElements, "drawElements", 4));
     JS_SetPropertyStr(ctx, c, "getError", JS_NewCFunction(ctx, nb_gl_getError, "getError", 0));
     JS_SetPropertyStr(ctx, c, "getParameter", JS_NewCFunction(ctx, nb_gl_getParameter, "getParameter", 1));
+    JS_SetPropertyStr(ctx, c, "getExtension", JS_NewCFunction(ctx, nb_gl_getExtension, "getExtension", 1));
+    JS_SetPropertyStr(ctx, c, "getSupportedExtensions", JS_NewCFunction(ctx, nb_gl_getSupportedExtensions, "getSupportedExtensions", 0));
     JS_SetPropertyStr(ctx, c, "enable", JS_NewCFunction(ctx, nb_gl_enable, "enable", 1));
     JS_SetPropertyStr(ctx, c, "disable", JS_NewCFunction(ctx, nb_gl_disable, "disable", 1));
     JS_SetPropertyStr(ctx, c, "blendFunc", JS_NewCFunction(ctx, nb_gl_blendFunc, "blendFunc", 2));
