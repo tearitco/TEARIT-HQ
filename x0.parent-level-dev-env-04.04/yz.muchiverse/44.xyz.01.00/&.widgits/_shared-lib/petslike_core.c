@@ -66,12 +66,27 @@
 /* Per-room geometry: the room being processed is g_gr (set by render, use_ent, walking, placement, export). A normal room is 13 x 8 cells of 48 px with a sky/wall strip (trig row 2); an OVERMAP room (ROOM ... over) is a
  * world-map biome (the island city): cols x rows cells of tpx px (the 48 px RPG Maker tiles are scaled down), no wall strip (trig row 0). Source tile size in the sheets is always S48. */
 #define S48 48
+/* a game that needs more than the defaults defines them BEFORE including this file (its skin top): rpg-edit-hq has 56-wide island pages, 16 pets and a bigger 2D frame */
+#ifndef MAXC
 #define MAXC 40
+#endif
+#ifndef MAXR
 #define MAXR 30
+#endif
 static int g_gr;
 #define T (rooms[g_gr].tpx)
+#ifndef PET_VIEW_CELL
+#define PET_VIEW_CELL "48"          /* view.pdl cell_px of the 2D view */
+#endif
+#ifndef PET_VIEW_STYLE
+#define PET_VIEW_STYLE "scene"      /* view.pdl default_style: scene = the core-painted frame, tiles = maps/<book>/<room>/map.png */
+#endif
+#ifndef FW
 #define FW 660
+#endif
+#ifndef FH
 #define FH 430
+#endif
 #define COLS (rooms[g_gr].cols)
 #define ROWS (rooms[g_gr].rows)
 #define OX ((FW - COLS * T) / 2)
@@ -81,7 +96,9 @@ static int g_gr;
 #define START_COINS 500
 #define MAXI 40
 #define MAXP 200
+#ifndef NP
 #define NP 8      /* up to 6 DB members + the pals made with "+ new pal" (pals.pdl) */
+#endif
 
 typedef struct { char key[32], label[40], sheet[24], effect[12]; int price, c, r, w, h, wall; } Item;
 typedef struct { char id[16], name[32], biome[16]; int fc, fr, outdoor, over, cols, rows, tpx, trig; } Room;
@@ -397,7 +414,11 @@ static int first_free(int room, int item, int *ox, int *oy) { Item *d = &cat[ite
 static Sheet *sheet(const char *dir, const char *name) {
     for (int i = 0; i < nsheet; i++) if (!strcmp(sheets[i].name, name)) return &sheets[i];
     if (nsheet >= 24) return NULL;
-    char p[PATH_MAX]; snprintf(p, sizeof p, "%s/%s/%s.png", ASSETS, dir, name); int n; Sheet *s = &sheets[nsheet];
+    char p[PATH_MAX]; snprintf(p, sizeof p, "%s/%s/%s.png", ASSETS, dir, name);
+#define PET_SECTION 72
+#include PET_SKIN
+#undef PET_SECTION
+    int n; Sheet *s = &sheets[nsheet];
     s->px = stbi_load(p, &s->w, &s->h, &n, 4); if (!s->px) return NULL; snprintf(s->name, 40, "%s", name); nsheet++; return s;
 }
 static void blit(Sheet *s, int sx, int sy, int w, int h, int dx, int dy) {      /* w,h = source px (48 px tiles); drawn T/S48 times the size (nearest) */
@@ -814,7 +835,7 @@ static void write_room_events(int r) {
 #include PET_SKIN
 #undef PET_SECTION
     snprintf(p, sizeof p, "%s/ascii_legend.txt", d); write_if_changed(p, leg, sizeof leg - 1);
-    { char bp[PATH_MAX]; snprintf(bp, sizeof bp, "%s/pieces/system/maps/" PET_APP "/view.pdl", PCHQ); char vw[PATH_MAX + 160]; char sc[PATH_MAX]; spath(sc, "scene.raw"); int vn = snprintf(vw, sizeof vw, "VIEW | cell_px | 48\nVIEW | default_style | scene\nVIEW | scene_raw | %s\nVIEW | scene_w | %d\nVIEW | scene_h | %d\n", sc, FW, FH); write_if_changed(bp, vw, (size_t)vn); }      /* the engine draws this book's 2D at <app>'s own 48 px tile (house desk_grid.pdl says 80) */
+    { char bp[PATH_MAX]; snprintf(bp, sizeof bp, "%s/pieces/system/maps/" PET_APP "/view.pdl", PCHQ); char vw[PATH_MAX + 160]; char sc[PATH_MAX]; spath(sc, "scene.raw"); int vn = snprintf(vw, sizeof vw, "VIEW | cell_px | " PET_VIEW_CELL "\nVIEW | default_style | " PET_VIEW_STYLE "\nVIEW | scene_raw | %s\nVIEW | scene_w | %d\nVIEW | scene_h | %d\n", sc, FW, FH); write_if_changed(bp, vw, (size_t)vn); }      /* the engine draws this book's 2D at <app>'s own 48 px tile (house desk_grid.pdl says 80) */
     /* bar.txt: the bottom entities bar of the pc-hq board lists these (id<TAB>name<TAB>x<TAB>y<TAB>trigger), Harold first */
     char bb[2048]; int bo = 0, id = 1; if (tr.room == r) bo += snprintf(bb + bo, sizeof bb - bo, "%d\t%s\t%d\t%d\ton-click\n", id++, hero.name, tr.x, tr.y);
     for (int i = 0; i < nparty; i++) if (others[i].room == r) bo += snprintf(bb + bo, sizeof bb - bo, "%d\t%s\t%d\t%d\ton-click\n", id++, party[i].name, others[i].x, others[i].y);
@@ -923,6 +944,9 @@ static void export3d(char *msg, size_t cap) {
     for (int r = 0; r < nroom; r++) {
         go += snprintf(gl + go, sizeof gl - go, "GAME         | desk_%d_id          | %s\nGAME         | desk_%d_label       | %s\n", r + 1, rooms[r].id, r + 1, rooms[r].name);
         snprintf(d, sizeof d, "%s/%s", root, rooms[r].id); mkdir(d, 0755);
+#ifdef PET_OWN_EXPORT      /* a skin that paints its own rooms (rpg-edit-hq: islands with hung rock) writes map.txt / cells / extrusion for room r itself; the common events, sky and 2D png still follow */
+        pet_own_export_room(r, d); write_room_events(r); write_room_png(r); continue;
+#endif
 #define PET_SECTION 49
 #include PET_SKIN
 #undef PET_SECTION
