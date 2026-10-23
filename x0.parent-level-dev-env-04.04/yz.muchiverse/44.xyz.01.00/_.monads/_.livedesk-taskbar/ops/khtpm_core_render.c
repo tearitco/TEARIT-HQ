@@ -259,7 +259,8 @@ static char g_house_root[PATH_BUF];
  * process (the player also coalesces across processes), and nothing is appended once the file passes 256 KB (the player truncates at 64 KB; a missing player must not
  * let it grow without bound). Volume, theme and the per-category switches are the PLAYER's business. */
 static int g_sound_enabled = 1, g_sound_ui = 1, g_sound_relay = 0, g_cue_relay = 0;
-static void ui_cue(const char *name) {
+static int g_skip_activate_cue = 0;   /* set by a handler that plays its own cue, so the generic activate cue after it is not added on top */
+static void ui_cue_ex(const char *name, int force) {
     if (!g_sound_enabled || !g_sound_ui || (g_cue_relay && !g_sound_relay) || !g_house_root[0]) return;
     static int env_mute = -1;
     if (env_mute < 0) { const char *e = getenv("LYFEDESK_MUTE"); env_mute = (e && *e && *e != '0'); }
@@ -268,7 +269,7 @@ static void ui_cue(const char *name) {
     clock_gettime(CLOCK_MONOTONIC, &ts);
     long ms = (long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
     static long last_ms = -1000;
-    if (ms - last_ms < 25) return;
+    if (!force && ms - last_ms < 25) return;
     last_ms = ms;
     char path[PATH_BUF];
     snprintf(path, sizeof(path), "%s/#.desktop/ui_cue.txt", g_house_root);
@@ -279,6 +280,7 @@ static void ui_cue(const char *name) {
     int fd = open(path, O_WRONLY | O_APPEND | O_CREAT, 0644);
     if (fd >= 0) { ssize_t w = write(fd, buf, (size_t)n); (void)w; close(fd); }
 }
+static void ui_cue(const char *name) { ui_cue_ex(name, 0); }
 static char g_chtpm_path[PATH_BUF];  /* real, generic (2026-08-31) - the real .chtpm this process was launched against, kept for the generic live-reparse capability below */
 
 /* Entity-menu identity strip for the title bar (2026-09-09, direct
@@ -11771,8 +11773,10 @@ static void activate_focused_impl(void) {
 
 static void activate_focused(void) {      /* UI sound cue wrapper (U3): Enter / click on the focused row. The cue goes AFTER the action, so a click that changes volume or theme is heard with the new setting. */
     int valid = (g_focus_nav >= 1 && g_focus_nav <= g_n_nav);
+    g_skip_activate_cue = 0;
     activate_focused_impl();
-    if (valid) ui_cue("activate");
+    if (valid && !g_skip_activate_cue) ui_cue("activate");
+    g_skip_activate_cue = 0;
 }
 
 /* REAL, NEW 2026-09-06 - restore the HQ-menu "cli" terminal mirror.
@@ -16748,6 +16752,8 @@ static void desktop_sound_action(const char *house_root, const char *action) {
         for (int i = 0; i < n; i++) if (strcmp(ids[i], cur) == 0) ci = i;
         ci = (ci + (strcmp(action, "SOUND_THEME_NEXT") == 0 ? 1 : n - 1)) % n;
         hq_ui_write_key(house_root, "sound_theme", ids[ci]);
+        ui_cue_ex("theme_demo", 1);      /* the demo of the NEW theme (the key above is written first, so the player reads it); replaces the plain activate blip for this click */
+        g_skip_activate_cue = 1;
     } else {
         return;
     }

@@ -10,7 +10,7 @@ RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -isystem | $T/sys | -
 EXPECT_EXIT | 0 | compiles-clean
 RUN | $T/usr.+x | $T/ui_sounds.pdl | $T/a
 EXPECT_EXIT | 0 | real-file-renders
-EXPECT_OUT | rendered=18 themes=2 cues=9 | real-file-summary
+EXPECT_OUT | rendered=20 themes=2 cues=10 | real-file-summary
 EXPECT_OUT_LACKS | FAIL | real-file-no-fail
 EXPECT_EXISTS | a/soft/nav_move.wav | exists-soft-nav_move
 EXPECT_EXISTS | a/soft/activate.wav | exists-soft-activate
@@ -21,6 +21,7 @@ EXPECT_EXISTS | a/soft/refused.wav | exists-soft-refused
 EXPECT_EXISTS | a/soft/toggle_on.wav | exists-soft-toggle_on
 EXPECT_EXISTS | a/soft/toggle_off.wav | exists-soft-toggle_off
 EXPECT_EXISTS | a/soft/startup.wav | exists-soft-startup
+EXPECT_EXISTS | a/soft/demo.wav | exists-soft-demo
 EXPECT_EXISTS | a/retro/nav_move.wav | exists-retro-nav_move
 EXPECT_EXISTS | a/retro/activate.wav | exists-retro-activate
 EXPECT_EXISTS | a/retro/focus_win.wav | exists-retro-focus_win
@@ -30,6 +31,7 @@ EXPECT_EXISTS | a/retro/refused.wav | exists-retro-refused
 EXPECT_EXISTS | a/retro/toggle_on.wav | exists-retro-toggle_on
 EXPECT_EXISTS | a/retro/toggle_off.wav | exists-retro-toggle_off
 EXPECT_EXISTS | a/retro/startup.wav | exists-retro-startup
+EXPECT_EXISTS | a/retro/demo.wav | exists-retro-demo
 RUN | $T/usr.+x | $T/ui_sounds.pdl | $T/b
 EXPECT_EXIT | 0 | second-render-exit
 SUMTREE | ha | a

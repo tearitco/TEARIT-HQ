@@ -200,4 +200,13 @@ WRITE | t1.set | sound_theme=retro\nsound_volume=70\n
 RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/t1.set | --cues | $T/t1.cues | --dry-run | $T/t1.log | --drain | --now | 5000 | --boot-stamp | $T/st.stamp | --boot-id | sessT
 EXPECT_EXIT | 0 | t1-exit
 EXPECT_FILE | t1.log | played startup theme=retro vol=70 latency_ms=0\ndrop stale activate age_ms=4999\n | startup-uses-theme-and-volume
+WRITE | d1.cues | 1 1 theme_demo\n
+WRITE | d1.set | sound_theme=retro\nsound_volume=60\n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/d1.set | --cues | $T/d1.cues | --dry-run | $T/d1.log | --drain
+EXPECT_EXIT | 0 | demo-exit
+EXPECT_FILE | d1.log | played theme_demo theme=retro vol=60 latency_ms=0\n | theme-demo-plays-in-the-chosen-theme
+WRITE | d2.cues | 1 1 theme_demo\n1100 1 theme_demo\n1250 2 theme_demo\n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/none.set | --cues | $T/d2.cues | --dry-run | $T/d2.log | --drain
+EXPECT_EXIT | 0 | demo-gap-exit
+EXPECT_FILE | d2.log | played theme_demo theme=soft vol=40 latency_ms=0\nplayed theme_demo theme=soft vol=40 latency_ms=0\ncoalesce theme_demo gap_ms=150<300\n | theme-demo-rate-limited-to-300ms
 CLEAN |

@@ -18,6 +18,7 @@ SOUND | soft | refused | blip | wave=square f0=180 dur=0.09 attack=0.002 decay=0
 SOUND | soft | toggle_on | blip | wave=sine f0=600 f1=800 dur=0.06 attack=0.002 decay=0.045 vol=0.3 | a switch turned on
 SOUND | soft | toggle_off | blip | wave=sine f0=800 f1=600 dur=0.06 attack=0.002 decay=0.045 vol=0.3 | a switch turned off
 SOUND | soft | startup | notes | tempo=168 seq=C5:0.25,E5:0.25,G5:0.25,B5:0.25,D6:0.25,E6:0.25,G6:0.25,B6:0.25,C7:2 seq2=G6:0.25,E6:0.25,D6:0.25,B5:0.25,G5:0.25,E5:0.25,C5:0.25,G4:0.25,C5:2 seq3=C3:4 wave=triangle wave2=sine wave3=sine gain3=0.8 vol=0.065 attack=0.003 decay=0.25 tail=1 shimmer=0.5 echo=180,0.5,0.5 reverb=0.35 fade=0.8 | LyfeDesk coming up: a fast arpeggio in two voices in contrary motion over a low C, then a shimmering echo and a trail-off (chime half of startup option C; the spoken half is a later step)
+SOUND | soft | demo | notes | tempo=200 seq=C5:0.5,E5:0.5,G5:0.5,C6:1 seq2=G5:0.5,E5:0.5,C5:0.5,G4:1 wave=triangle wave2=sine vol=0.10 attack=0.003 decay=0.2 tail=0.5 shimmer=0.4 echo=120,0.4,0.4 reverb=0.2 fade=0.3 | theme demo: played when the theme is changed in settings (a short two-voice arpeggio in this theme's own sound)
 SOUND | retro | nav_move | blip | wave=square f0=440 dur=0.02 attack=0.002 decay=0.015 vol=0.1 lp=3000 | focus moved one row (the quietest, shortest)
 SOUND | retro | activate | blip | wave=square f0=660 f1=990 dur=0.06 attack=0.002 decay=0.045 vol=0.16 lp=4000 | Enter or click on a button
 SOUND | retro | focus_win | blip | wave=square f0=523 dur=0.04 attack=0.002 decay=0.03 vol=0.12 lp=3500 | a window took focus
@@ -27,6 +28,7 @@ SOUND | retro | refused | blip | wave=square f0=150 f1=110 dur=0.12 attack=0.002
 SOUND | retro | toggle_on | blip | wave=square f0=600 f1=800 dur=0.05 attack=0.002 decay=0.038 vol=0.13 lp=4000 | a switch turned on
 SOUND | retro | toggle_off | blip | wave=square f0=800 f1=600 dur=0.05 attack=0.002 decay=0.038 vol=0.13 lp=4000 | a switch turned off
 SOUND | retro | startup | notes | tempo=180 seq=C5:0.25,E5:0.25,G5:0.25,B5:0.25,D6:0.25,E6:0.25,G6:0.25,B6:0.25,C7:2 seq2=G6:0.25,E6:0.25,D6:0.25,B5:0.25,G5:0.25,E5:0.25,C5:0.25,G4:0.25,C5:2 seq3=C3:4 wave=square wave2=triangle wave3=triangle gain2=1.2 gain3=1 vol=0.05 attack=0.002 decay=0.12 lp=5000 tail=1 shimmer=0.3 echo=150,0.4,0.4 reverb=0.25 fade=0.7 | LyfeDesk coming up: a fast arpeggio in two voices in contrary motion over a low C, then a shimmering echo and a trail-off (chime half of startup option C; the spoken half is a later step)
+SOUND | retro | demo | notes | tempo=220 seq=C5:0.5,E5:0.5,G5:0.5,C6:1 seq2=G5:0.5,E5:0.5,C5:0.5,G4:1 wave=square wave2=triangle gain2=1.2 vol=0.05 attack=0.002 decay=0.1 lp=5000 tail=0.4 echo=100,0.35,0.3 reverb=0.15 fade=0.25 | theme demo (retro)
 CUE   | nav_move | nav_move | 60 | ui
 CUE   | activate | activate | 40 | ui
 CUE   | focus_win | focus_win | 80 | ui
@@ -36,3 +38,4 @@ CUE   | refused | refused | 200 | ui
 CUE   | toggle_on | toggle_on | 80 | ui
 CUE   | toggle_off | toggle_off | 80 | ui
 CUE   | startup | startup | 0 | startup
+CUE   | theme_demo | demo | 300 | ui
