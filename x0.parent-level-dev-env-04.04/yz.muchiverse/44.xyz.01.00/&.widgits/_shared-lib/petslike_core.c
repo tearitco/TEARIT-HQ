@@ -1060,6 +1060,12 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
         const char *bad = check_place(pl[k].room, pl[k].item, x, y, id); if (bad[0]) { snprintf(msg, cap, "not moved: %s", bad); return; } snprintf(b, sizeof b, "MOVE|%d|%ld|%d|%d", id, now, x, y); append_line("house.txt", b); snprintf(msg, cap, "moved #%d to %d,%d", id, x, y); turn_taken = 1; return; }
     if (!strcmp(v, "remove") && argc >= 2) { int id = atoi(argv[1]), k = -1; for (int i = 0; i < npl; i++) if (pl[i].id == id) k = i; if (k < 0) { snprintf(msg, cap, "no placed item #%d", id); return; }
         snprintf(b, sizeof b, "REMOVE|%d|%ld", id, now); append_line("house.txt", b); snprintf(msg, cap, "put #%d (%s) back in the bag", id, cat[pl[k].item].label); turn_taken = 1; return; }
+    if (!strcmp(v, "selev") && argc >= 7) {      /* a click on an entity cell of the bottom bar: selev <kind> <label> <x> <y> <z> <id>. A pet (or the hero) is SELECTED, like its row in the old left bar; the xelector and anything else still open the entity context menu */
+        const char *nm = strchr(argv[2], ' '); nm = nm ? nm + 1 : argv[2]; int k = -1, hero_hit = !strcasecmp(nm, hero.name);
+        if (!strcmp(argv[1], "mapev")) for (int i = 0; i < nparty; i++) if (!strcasecmp(party[i].name, nm) || !strcasecmp(party[i].id, nm)) k = i;
+        if (k >= 0 || (hero_hit && !strcmp(argv[1], "mapev"))) { static char sid[24]; if (k >= 0) snprintf(sid, sizeof sid, "%s", party[k].id); else { snprintf(sid, sizeof sid, "%s", hero.name); for (char *c = sid; *c; c++) if (*c >= 'A' && *c <= 'Z') *c += 32; } v = "select"; argv[1] = sid; argc = 2; }
+        else { char cmd[PATH_MAX * 2]; snprintf(cmd, sizeof cmd, "setsid sh '%s/@.apps/piececraft-hq/ops/pc_entity_ctx.sh' '%s/@.apps/piececraft-hq' '%s' '%s' '%s' '%s' '%s' >/dev/null 2>&1 &", HOUSE, HOUSE, argv[3], argv[4], argv[5], argv[1], argv[6]); if (system(cmd)) { } snprintf(msg, cap, "menu for %s", argv[2]); return; }
+    }
     if (!strcmp(v, "select") && argc >= 2) { char hid[24]; snprintf(hid, sizeof hid, "%s", hero.name); for (char *c = hid; *c; c++) if (*c >= 'A' && *c <= 'Z') *c += 32;
         if (!strcmp(argv[1], hid)) { g_ctl_why = "select-hero-row"; set_flag("ctl", "player"); set_flag("follow", "player"); calc_view(); snprintf(msg, cap, "%s, the hero (owner of the monsters), in the %s - INT controls him", hero.name, rooms[tr.room].name); return; }
         int k = -1; for (int i = 0; i < nparty; i++) if (!strcmp(party[i].id, argv[1])) k = i; if (k < 0) { snprintf(msg, cap, "no pet %s", argv[1]); return; }

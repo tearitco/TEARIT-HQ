@@ -104,7 +104,7 @@
       <item id="sr-toggle" class="pchq-ft" label="chat" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/@APP@/board/state/sides.txt' side_right toggle"/>
       <item id="hb-toggle" class="pchq-ft" label="hb" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' toggle hb"/>
       <repeat count="${n_ent}" bind="ent">
-        <item id="e${ent.#}" class="pchq-ft sprite-inline sprite-big" label="${ent.label}" sprite="${ent.sprite}" action="setsid sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_entity_ctx.sh' '${HOUSE}/@.apps/piececraft-hq' '${ent.x}' '${ent.y}' '${ent.z}' '${ent.kind}' '${ent.id}'"/>
+        <item id="e${ent.#}" class="pchq-ft sprite-inline sprite-big" label="${ent.label}" sprite="${ent.sprite}" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' selev '${ent.kind}' '${ent.label}' '${ent.x}' '${ent.y}' '${ent.z}' '${ent.id}'"/>
       </repeat>
     </footer>
     <text label="No live board-viewer session - open the board with open_board.sh." class="quiet" show="${no_session}"/>
