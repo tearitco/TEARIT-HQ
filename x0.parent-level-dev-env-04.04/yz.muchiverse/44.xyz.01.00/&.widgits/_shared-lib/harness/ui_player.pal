@@ -1,0 +1,4 @@
+# ui_player.pal - LOCKED acceptance harness for UI sounds U2: the player routes, mutes, coalesces and drops stale cues. Read results/ui_player.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/ui_player.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/ui_player.pdl
+halt

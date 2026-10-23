@@ -1,0 +1,167 @@
+# ui_player: LOCKED cases for U2 of BOOK 19.audio/UI-SOUNDS-AND-STARTUP-DESIGN.md. Source under test: &.widgits/ui-sounds/ops/ui_sound_player.c (--dry-run: decisions only, no sound server, so nothing is heard). Each drain case writes a cue file and a settings file, runs the player once over it and compares the WHOLE log. Live cases spawn the player and append cues. NOT tested: real playback (nobody has listened), the first-cue delay of a suspended sink.
+RESULTS | ../results/ui_player.txt
+CASE | ui-player
+SCRATCH |
+MKDIR | sys
+COPY | &.widgits/ui-sounds/ops/ui_sound_render.c | ui_sound_render.c
+COPY | &.widgits/ui-sounds/ops/ui_sound_player.c | ui_sound_player.c
+COPY | &.widgits/_shared-lib/audio_dsp.c | sys/audio_dsp.c
+COPY | &.widgits/ui-sounds/ui_sounds.pdl | ui_sounds.pdl
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -isystem | $T/sys | -o | $T/usr.+x | $T/ui_sound_render.c | -lm
+EXPECT_EXIT | 0 | render-compiles
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -isystem | $T/sys | -o | $T/usp.+x | $T/ui_sound_player.c | -lpulse-simple | -lpulse | -lm
+EXPECT_EXIT | 0 | player-compiles
+RUN | $T/usr.+x | $T/ui_sounds.pdl | $T/snd
+EXPECT_EXIT | 0 | sounds-rendered
+WRITE | c1.cues | 1000 1 nav_move\n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/none.set | --cues | $T/c1.cues | --dry-run | $T/c1.log | --drain
+EXPECT_EXIT | 0 | default-settings-play-exit
+EXPECT_FILE | c1.log | played nav_move theme=soft vol=40 latency_ms=0\n | default-settings-play
+WRITE | c2.cues | 1000 1 nav_move\n1000 1 startup\n
+WRITE | c2.set | sound_enabled=0\n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/c2.set | --cues | $T/c2.cues | --dry-run | $T/c2.log | --drain
+EXPECT_EXIT | 0 | muted-everything-exit
+EXPECT_FILE | c2.log | skip muted nav_move\nskip muted startup\n | muted-everything
+WRITE | c3.cues | 1000 1 activate\n1000 1 startup\n
+WRITE | c3.set | sound_ui=0\n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/c3.set | --cues | $T/c3.cues | --dry-run | $T/c3.log | --drain
+EXPECT_EXIT | 0 | ui-off-startup-still-plays-exit
+EXPECT_FILE | c3.log | skip ui_off activate\nplayed startup theme=soft vol=40 latency_ms=0\n | ui-off-startup-still-plays
+WRITE | c4.cues | 1000 1 activate\n1000 1 startup\n
+WRITE | c4.set | sound_startup=0\n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/c4.set | --cues | $T/c4.cues | --dry-run | $T/c4.log | --drain
+EXPECT_EXIT | 0 | startup-off-ui-still-plays-exit
+EXPECT_FILE | c4.log | played activate theme=soft vol=40 latency_ms=0\nskip startup_off startup\n | startup-off-ui-still-plays
+WRITE | c5.cues | 1000 1 nav_move\n
+WRITE | c5.set | \n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/c5.set | --cues | $T/c5.cues | --dry-run | $T/c5.log | --drain | --now | 1300
+EXPECT_EXIT | 0 | stale-dropped-exit
+EXPECT_FILE | c5.log | drop stale nav_move age_ms=300\n | stale-dropped
+WRITE | c6.cues | 1000 1 nav_move\n
+WRITE | c6.set | \n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/c6.set | --cues | $T/c6.cues | --dry-run | $T/c6.log | --drain | --now | 1150
+EXPECT_EXIT | 0 | stale-boundary-150-plays-exit
+EXPECT_FILE | c6.log | played nav_move theme=soft vol=40 latency_ms=150\n | stale-boundary-150-plays
+WRITE | c7.cues | 1000 1 nav_move\n
+WRITE | c7.set | \n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/c7.set | --cues | $T/c7.cues | --dry-run | $T/c7.log | --drain | --now | 1151
+EXPECT_EXIT | 0 | stale-boundary-151-drops-exit
+EXPECT_FILE | c7.log | drop stale nav_move age_ms=151\n | stale-boundary-151-drops
+WRITE | c8.cues | 1000 1 startup\n
+WRITE | c8.set | \n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/c8.set | --cues | $T/c8.cues | --dry-run | $T/c8.log | --drain | --now | 6000
+EXPECT_EXIT | 0 | startup-exempt-from-stale-exit
+EXPECT_FILE | c8.log | played startup theme=soft vol=40 latency_ms=5000\n | startup-exempt-from-stale
+WRITE | c9.cues | 1000 1 nav_move\n1020 1 nav_move\n
+WRITE | c9.set | \n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/c9.set | --cues | $T/c9.cues | --dry-run | $T/c9.log | --drain
+EXPECT_EXIT | 0 | coalesce-same-name-exit
+EXPECT_FILE | c9.log | played nav_move theme=soft vol=40 latency_ms=0\ncoalesce nav_move gap_ms=20<60\n | coalesce-same-name
+WRITE | c10.cues | 1000 1 nav_move\n1020 2 nav_move\n
+WRITE | c10.set | \n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/c10.set | --cues | $T/c10.cues | --dry-run | $T/c10.log | --drain
+EXPECT_EXIT | 0 | coalesce-across-pids-exit
+EXPECT_FILE | c10.log | played nav_move theme=soft vol=40 latency_ms=0\ncoalesce nav_move gap_ms=20<60\n | coalesce-across-pids
+WRITE | c11.cues | 1000 1 nav_move\n1060 1 nav_move\n
+WRITE | c11.set | \n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/c11.set | --cues | $T/c11.cues | --dry-run | $T/c11.log | --drain
+EXPECT_EXIT | 0 | gap-exactly-met-plays-exit
+EXPECT_FILE | c11.log | played nav_move theme=soft vol=40 latency_ms=0\nplayed nav_move theme=soft vol=40 latency_ms=0\n | gap-exactly-met-plays
+WRITE | c12.cues | 1000 1 nav_move\n1059 1 nav_move\n
+WRITE | c12.set | \n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/c12.set | --cues | $T/c12.cues | --dry-run | $T/c12.log | --drain
+EXPECT_EXIT | 0 | gap-one-short-coalesces-exit
+EXPECT_FILE | c12.log | played nav_move theme=soft vol=40 latency_ms=0\ncoalesce nav_move gap_ms=59<60\n | gap-one-short-coalesces
+WRITE | c13.cues | 1000 1 nav_move\n1001 1 activate\n
+WRITE | c13.set | \n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/c13.set | --cues | $T/c13.cues | --dry-run | $T/c13.log | --drain
+EXPECT_EXIT | 0 | different-names-do-not-coalesce-exit
+EXPECT_FILE | c13.log | played nav_move theme=soft vol=40 latency_ms=0\nplayed activate theme=soft vol=40 latency_ms=0\n | different-names-do-not-coalesce
+WRITE | c14.cues | 1000 1 nav_move\n1030 1 nav_move\n1060 1 nav_move\n
+WRITE | c14.set | \n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/c14.set | --cues | $T/c14.cues | --dry-run | $T/c14.log | --drain
+EXPECT_EXIT | 0 | coalesced-cue-does-not-extend-the-gap-exit
+EXPECT_FILE | c14.log | played nav_move theme=soft vol=40 latency_ms=0\ncoalesce nav_move gap_ms=30<60\nplayed nav_move theme=soft vol=40 latency_ms=0\n | coalesced-cue-does-not-extend-the-gap
+WRITE | c15.cues | 1000 1 activate\n
+WRITE | c15.set | sound_theme=retro\nsound_volume=70\n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/c15.set | --cues | $T/c15.cues | --dry-run | $T/c15.log | --drain
+EXPECT_EXIT | 0 | theme-retro-exit
+EXPECT_FILE | c15.log | played activate theme=retro vol=70 latency_ms=0\n | theme-retro
+WRITE | c16.cues | 1000 1 activate\n
+WRITE | c16.set | sound_theme=zz\n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/c16.set | --cues | $T/c16.cues | --dry-run | $T/c16.log | --drain
+EXPECT_EXIT | 0 | unknown-theme-falls-back-exit
+EXPECT_FILE | c16.log | fallback theme=zz->soft\nplayed activate theme=soft vol=40 latency_ms=0\n | unknown-theme-falls-back
+WRITE | c17.cues | 1000 1 activate\n
+WRITE | c17.set | sound_volume=0\n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/c17.set | --cues | $T/c17.cues | --dry-run | $T/c17.log | --drain
+EXPECT_EXIT | 0 | volume-zero-skips-exit
+EXPECT_FILE | c17.log | skip volume0 activate\n | volume-zero-skips
+WRITE | c18.cues | 1000 1 activate\n
+WRITE | c18.set | sound_volume=150\n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/c18.set | --cues | $T/c18.cues | --dry-run | $T/c18.log | --drain
+EXPECT_EXIT | 0 | volume-clamped-to-100-exit
+EXPECT_FILE | c18.log | played activate theme=soft vol=100 latency_ms=0\n | volume-clamped-to-100
+WRITE | c19.cues | 1000 1 activate\n
+WRITE | c19.set | sound_volume=-5\n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/c19.set | --cues | $T/c19.cues | --dry-run | $T/c19.log | --drain
+EXPECT_EXIT | 0 | volume-negative-clamped-to-0-exit
+EXPECT_FILE | c19.log | skip volume0 activate\n | volume-negative-clamped-to-0
+WRITE | c20.cues | 1000 1 activate\n
+WRITE | c20.set | sound_volume=loud\n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/c20.set | --cues | $T/c20.cues | --dry-run | $T/c20.log | --drain
+EXPECT_EXIT | 0 | volume-garbage-keeps-default-exit
+EXPECT_FILE | c20.log | played activate theme=soft vol=40 latency_ms=0\n | volume-garbage-keeps-default
+WRITE | c21.cues | 1000 1 activate\n
+WRITE | c21.set | sound_enabled=maybe\n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/c21.set | --cues | $T/c21.cues | --dry-run | $T/c21.log | --drain
+EXPECT_EXIT | 0 | enabled-garbage-keeps-default-exit
+EXPECT_FILE | c21.log | played activate theme=soft vol=40 latency_ms=0\n | enabled-garbage-keeps-default
+WRITE | c22.cues | 1000 1 activate\n
+WRITE | c22.set | # sound_enabled=0\nclick_two_step=1\nsound_volume=55\n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/c22.set | --cues | $T/c22.cues | --dry-run | $T/c22.log | --drain
+EXPECT_EXIT | 0 | comments-and-other-keys-ignored-exit
+EXPECT_FILE | c22.log | played activate theme=soft vol=55 latency_ms=0\n | comments-and-other-keys-ignored
+WRITE | c23.cues | 1000 1 foo\nnonsense\n1000 1\n1000 1 activate\n
+WRITE | c23.set | \n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/c23.set | --cues | $T/c23.cues | --dry-run | $T/c23.log | --drain
+EXPECT_EXIT | 0 | unknown-cue-and-bad-lines-exit
+EXPECT_FILE | c23.log | skip unknown foo\nskip bad_line\nskip bad_line\nplayed activate theme=soft vol=40 latency_ms=0\n | unknown-cue-and-bad-lines
+WRITE | c24.cues | 1 1 focus_win\n1 1 open_win\n1 1 close_win\n1 1 refused\n1 1 toggle_on\n1 1 toggle_off\n
+WRITE | c24.set | \n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/c24.set | --cues | $T/c24.cues | --dry-run | $T/c24.log | --drain
+EXPECT_EXIT | 0 | every-ui-cue-plays-exit
+EXPECT_FILE | c24.log | played focus_win theme=soft vol=40 latency_ms=0\nplayed open_win theme=soft vol=40 latency_ms=0\nplayed close_win theme=soft vol=40 latency_ms=0\nplayed refused theme=soft vol=40 latency_ms=0\nplayed toggle_on theme=soft vol=40 latency_ms=0\nplayed toggle_off theme=soft vol=40 latency_ms=0\n | every-ui-cue-plays
+RUN | $T/usp.+x
+EXPECT_EXIT | 2 | no-args-exit-2
+RUN | $T/usp.+x | --bogus
+EXPECT_EXIT | 2 | unknown-arg-exit-2
+RUN | $T/usp.+x | --pdl | $T/nosuch.pdl | --sounds | $T/snd | --settings | $T/none.set | --cues | $T/c1.cues | --dry-run | $T/zz.log | --drain
+EXPECT_EXIT | 2 | missing-pdl-exit-2
+WRITE | nocue.pdl | SEED \p ui \p 1\n
+RUN | $T/usp.+x | --pdl | $T/nocue.pdl | --sounds | $T/snd | --settings | $T/none.set | --cues | $T/c1.cues | --dry-run | $T/zz.log | --drain
+EXPECT_EXIT | 2 | pdl-without-theme-or-cue-exit-2
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/none.set | --cues | $T/nosuch.cues | --dry-run | $T/zz.log | --drain
+EXPECT_EXIT | 2 | missing-cues-exit-2
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/none.set | --cues | $T/c1.cues | --drain | --now
+EXPECT_EXIT | 2 | incomplete-arg-exit-2
+WRITE | live.cues | 99999999990 1 activate\n
+WRITE | live.set | sound_volume=33\n
+SPAWN | pl | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/live.set | --cues | $T/live.cues | --dry-run | $T/live.log
+SLEEP | 250
+EXPECT_ALIVE | $pl | live-player-running
+APPEND | live.cues | 99999999999 7 nav_move\n
+WAIT_HAS | live.log | played nav_move theme=soft vol=33 | 1500 | live-new-cue-played-with-live-settings
+EXPECT_LACKS | live.log | played activate | old-cue-not-replayed-at-start
+APPEND | live.set | sound_enabled=0\n
+APPEND | live.cues | 99999999998 7 refused\n
+WAIT_HAS | live.log | skip muted refused | 1500 | live-mute-takes-effect-without-restart
+WRITE | trunc.cues | \n
+WRITE | trunc.set | \n
+SPAWN | pt | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/trunc.set | --cues | $T/trunc.cues | --dry-run | $T/trunc.log | --max-bytes | 30
+SLEEP | 250
+APPEND | trunc.cues | 99999999999 7 nav_move\n
+APPEND | trunc.cues | 99999999999 8 activate\n
+WAIT_HAS | trunc.log | truncated cues | 2000 | live-truncates-when-consumed-and-big
+EXPECT_HAS | trunc.log | played activate | cues-before-truncation-were-played
+CLEAN |
